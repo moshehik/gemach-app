@@ -70,6 +70,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
 
   // Employee step: only a boolean, non-legacy item can carry an EmployeePermissionOverride.
   const eligibleForEmployeeAccess = selectedItems.some((item) => item.type === 'boolean' && !item.legacyEmployeeField);
+  const legacyItemsInRow = selectedItems.filter((item) => item.legacyEmployeeField);
   const employeeSearchResults = (employees || []).filter((emp) => {
     if (employeeIds.has(emp.id)) return false;
     const q = employeeQuery.trim().toLowerCase();
@@ -238,6 +239,12 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
           {eligibleForEmployeeAccess ? (
             <>
               <div style={hint}>עובד שנבחר כאן מקבל גישה לפריטי השורה גם אם המחלקה שלו כבויה בשלב הקודם. זה יופיע גם ב&quot;הרשאות ספציפיות&quot; בכרטיס העובד שלו. אפשר לדלג.</div>
+              {legacyItemsInRow.length > 0 && (
+                <div className="callout callout-warning" style={{ marginBottom: '10px' }}>
+                  <svg className="icon"><use href="#i-alert-tri" /></svg>
+                  {legacyItemsInRow.map((item) => item.label).join(', ')} לא יינתנו לעובדים שנבחרו כאן: פריט כזה מוענק לעובד ספציפי רק בתיבת הסימון שלו בכרטיס העובד.
+                </div>
+              )}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
                 {selectedEmployees.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>לא נבחרו עובדים ספציפיים</span>}
                 {selectedEmployees.map((emp) => <EmployeeTag key={emp.id} employee={emp} onRemove={() => removeEmployee(emp.id)} disabled={saving} />)}

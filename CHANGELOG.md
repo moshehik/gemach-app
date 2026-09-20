@@ -1,5 +1,13 @@
 # System Changes Log
 
+## 2026-09-20 (third pass): employee card "הרשאות ספציפיות" synced with /admin/permissions
+
+- The card panel still ran on the pre-rows model: it showed the 8 locked pages (admin, employees, price list, dashboard...) with switches that did nothing, gave head management/programmer switches that were ignored, and let the card overwrite or reset a grant that a permission row had made (leaving the row listing an employee who no longer had access).
+- Now each item has ONE owner. Listed for the employee in a row -> read-only on the card ("מורשה דרך שורת הרשאה" + link), and `PUT/DELETE /api/admin/permissions/employees/[id]` answer 409 for it. Anything else is a personal exception edited on the card. Locked pages are hidden, always-allowed roles show "תמיד מורשה" (PUT -> 400).
+- `/admin/permissions` gets a new table "חריגות אישיות מכרטיס העובד" (`personalOverrides` in `GET /api/admin/permissions`): card-made overrides plus the legacy `showAi` / `canReportErrors` checkboxes when they add access the department doesn't give. The AI / error-report lines on the card follow the checkbox live.
+- Known, unchanged design limit: a row cannot grant AI / error reports to a specific employee (those follow the card checkboxes); the wizard now says so on its employee step.
+- Verified live on the TEST DB with sample employees (22/23 API checks - the one "failure" was a wrong assertion, the TEST DB already had another row for the same page - plus real browser checks of the card and the central table); all sample data removed.
+
 ## 2026-09-20: Neve Yaakov email complaint (2026-09-17/18, Ahuvi Pinkel / Rivka Levi) - 5 items verified, 4 fixed
 
 Full detail per item in `docs/email-fixes-2026-09-20/` (README.md = summary + verification matrix).

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId, ALWAYS_ALLOWED_ROLE_IDS } from '@/lib/permissionsMetadata';
-import { parseJson } from '@/lib/permissionPageGroups';
+import { parseJson, ROW_OVERRIDE_NOTE_PREFIX } from '@/lib/permissionPageGroups';
 import { getCachedSetting } from '@/lib/settingsCache';
 
 // Full permissions matrix: every department's effective value for every catalog key
@@ -44,8 +44,9 @@ export async function GET() {
     });
 
     const groups = await buildPermissionGroups(departmentValues);
+    const personalOverrides = await buildPersonalOverrides(departmentValues);
 
-    return NextResponse.json({ departments: departmentValues, groups, orgSettings });
+    return NextResponse.json({ departments: departmentValues, groups, orgSettings, personalOverrides });
   } catch (error) {
     console.error('Error loading permissions matrix:', error);
     return NextResponse.json({ error: 'שגיאה בטעינת מטריצת ההרשאות' }, { status: 500 });
@@ -71,4 +72,46 @@ export async function buildPermissionGroups(departmentValues) {
     for (const dept of departmentValues) access[dept.roleId] = !!storedAccess[dept.roleId];
     return { id: row.id, name: row.name, keys, access, employeeAccess: parseJson(row.employeeIds, []) };
   });
+}
+
+// Personal exceptions set from an employee's own card ("הרשאות ספציפיות"), listed back here so the
+// two surfaces show the same picture. Two sources:
+//   - EmployeePermissionOverride rows NOT created by a permission row (those are already visible in
+//     the table above, as the employee tags of the row that granted them);
+//   - the legacy card checkboxes Employee.showAi / Employee.canReportErrors (feature:ai /
+//     feature:error_reports), which have no override row - listed only when they actually add
+//     something, i.e. the employee's department does not already allow it.
+// Always-allowed roles are skipped: nothing can be added or taken from them.
+export async function buildPersonalOverrides(departmentValues) {
+  const [overrides, flagged] = await Promise.all([
+    prisma.employeePermissionOverride.findMany(),
+    prisma.employee.findMany({
+      where: { OR: [{ showAi: true }, { canReportErrors: true }] },
+      select: { id: true, roleId: true, showAi: true, canReportErrors: true },
+    }),
+  ]);
+  const own = overrides.filter((o) => !(o.note || '').startsWith(ROW_OVERRIDE_NOTE_PREFIX) && getCatalogItem(o.key));
+
+  const list = own.map((o) => {
+    const item = getCatalogItem(o.key);
+    return { employeeId: o.employeeId, key: o.key, value: item.type === 'boolean' ? o.value === 'true' : parseInt(o.value, 10), note: o.note || null, legacy: false };
+  });
+  for (const emp of flagged) {
+    const dept = departmentValues.find((d) => d.roleId === emp.roleId);
+    for (const item of PERMISSION_CATALOG) {
+      if (item.legacyEmployeeField && emp[item.legacyEmployeeField] && !dept?.values[item.key]?.value) {
+        list.push({ employeeId: emp.id, key: item.key, value: true, note: null, legacy: true });
+      }
+    }
+  }
+
+  const ids = [...new Set(list.map((entry) => entry.employeeId))];
+  const employees = ids.length
+    ? await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, firstName: true, lastName: true, roleId: true, isActive: true } })
+    : [];
+  const employeeById = new Map(employees.map((e) => [e.id, e]));
+  return list
+    .map((entry) => ({ ...entry, employee: employeeById.get(entry.employeeId) || null }))
+    // roleId 0/2 are always allowed, and a deleted employee's leftover row means nothing
+    .filter((entry) => entry.employee && !ALWAYS_ALLOWED_ROLE_IDS.includes(entry.employee.roleId));
 }

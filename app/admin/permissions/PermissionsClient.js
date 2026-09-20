@@ -10,6 +10,7 @@ export default function PermissionsClient() {
   const [departments, setDepartments] = useState(null);
   const [groups, setGroups] = useState([]);
   const [orgSettings, setOrgSettings] = useState({});
+  const [personalOverrides, setPersonalOverrides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -25,6 +26,7 @@ export default function PermissionsClient() {
       setDepartments(data.departments);
       setGroups(data.groups || []);
       setOrgSettings(data.orgSettings || {});
+      setPersonalOverrides(data.personalOverrides || []);
     } catch (e) {
       setError(e.message || 'שגיאה בטעינת ההרשאות');
     } finally {
@@ -93,6 +95,8 @@ export default function PermissionsClient() {
         onNew={() => setModal({ group: null })}
         onEdit={(group) => setModal({ group })}
       />
+
+      <PersonalOverridesCard catalog={catalog} overrides={personalOverrides} />
 
       {modal && (
         <PermissionRowWizard
@@ -188,6 +192,63 @@ function PermissionGroupTable({ catalog, groups, departments, employees, onNew, 
                       <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => onEdit(group)} title="ערוך שורה" aria-label="ערוך שורה">
                         <svg className="icon"><use href="#i-edit" /></svg>
                       </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The other half of the picture: exceptions set from an employee's own card ("הרשאות ספציפיות"),
+// which are not part of any row above. Read-only here - each line links to the card that owns it.
+function PersonalOverridesCard({ catalog, overrides }) {
+  return (
+    <div className="card" style={{ marginBottom: '20px' }}>
+      <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h2 className="section-title" style={{ margin: 0 }}>חריגות אישיות מכרטיס העובד</h2>
+        <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
+          הרשאות שנקבעו לעובד ספציפי ישירות בכרטיס שלו ולא דרך שורה. הן חלות בנוסף לשורות שלמעלה, ואת השינוי בהן עושים בכרטיס העובד.
+        </p>
+      </div>
+      <div className="table-wrap">
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
+              <tr>
+                <th style={{ minWidth: '180px' }}>עובד</th>
+                <th style={{ minWidth: '240px' }}>עמוד / פיצ&apos;ר</th>
+                <th style={{ minWidth: '120px' }}>הרשאה</th>
+                <th style={{ width: '54px' }} />
+              </tr>
+            </thead>
+            <tbody>
+              {overrides.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px' }}>אין חריגות אישיות.</td>
+                </tr>
+              )}
+              {overrides.map((entry) => {
+                const item = catalog.find((i) => i.key === entry.key);
+                return (
+                  <tr key={`${entry.employeeId}:${entry.key}`}>
+                    <td><EmployeeTag employee={entry.employee} /></td>
+                    <td><ItemLabel item={item} fallbackKey={entry.key} /></td>
+                    <td>
+                      {item?.type === 'number'
+                        ? <span className="badge badge-neutral">{entry.value}</span>
+                        : entry.value
+                          ? <span className="badge badge-success">מותר{entry.legacy ? ' (תיבת סימון בכרטיס)' : ''}</span>
+                          : <span className="badge badge-danger">חסום</span>}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <a className="btn btn-ghost btn-icon-only btn-sm" href={`/employees/${entry.employeeId}`} title="לכרטיס העובד" aria-label="לכרטיס העובד">
+                        <svg className="icon"><use href="#i-edit" /></svg>
+                      </a>
                     </td>
                   </tr>
                 );

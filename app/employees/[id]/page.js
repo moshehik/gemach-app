@@ -674,9 +674,9 @@ export default function EmployeePage({ params }) {
             <>
               <h2 className="section-title">הרשאות ספציפיות</h2>
               <p className="page-desc" style={{ marginTop: '-6px' }}>
-                חריגות מברירת המחדל של מחלקת העובד. הרשימה המלאה, לפי מחלקה, נמצאת ב<a href="/admin/permissions">מסך ההרשאות</a>.
+                מה העובד מורשה, לפי מחלקתו, שורות ההרשאה ב<a href="/admin/permissions">מסך ההרשאות</a> וחריגות אישיות שנקבעות כאן. הכול נשמר מיד ומופיע גם במסך ההרשאות.
               </p>
-              <EmployeePermissionsPanel employeeId={id} />
+              <EmployeePermissionsPanel employeeId={id} legacyValues={{ showAi: !!employee.showAi, canReportErrors: !!employee.canReportErrors }} />
             </>
           )}
 
