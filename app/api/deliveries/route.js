@@ -30,6 +30,8 @@ function parseDateParam(dateParam) {
 // i.e. an order is "due for outbound delivery" on `date` when
 // eventDate = date + delivery_days_before, and "due for return" when
 // eventDate = date - delivery_days_after.
+// כשההגדרה deliveries_select_by_event_date דולקת, `date` הוא תאריך האירוע עצמו (לא יום
+// הוצאה/חזרה) וכל שורה נושאת dispatchDates עם יום היציאה/האיסוף המחושבים - ר' lib/deliveries.js.
 // Query logic itself lives in lib/deliveries.js (getDeliveriesForDate) - shared with
 // the courier email endpoint (app/api/deliveries/courier-email/route.js), see
 // docs/deliveries-feature-plan-2026-09-16.md §C/§D.
@@ -39,12 +41,13 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const requestedDate = parseDateParam(searchParams.get('date'));
 
-    const { daysBefore, daysAfter, data } = await getDeliveriesForDate(requestedDate);
+    const { daysBefore, daysAfter, selectByEventDate, data } = await getDeliveriesForDate(requestedDate);
 
     return NextResponse.json({
       date: `${requestedDate.getFullYear()}-${String(requestedDate.getMonth() + 1).padStart(2, '0')}-${String(requestedDate.getDate()).padStart(2, '0')}`,
       deliveryDaysBefore: daysBefore,
       deliveryDaysAfter: daysAfter,
+      selectByEventDate,
       data
     });
   } catch (error) {

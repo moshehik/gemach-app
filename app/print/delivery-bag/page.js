@@ -2,11 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { getHebrewWeekdayFullName } from '@/lib/hebrewDate';
+
+// 'YYYY-MM-DD' -> Date מקומי בחצות (בלי הזזת יום של new Date(iso) שמפורש כ-UTC)
+const isoToLocalDate = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// תאריך אירוע לועזי לפי היום הישראלי (eventDate נשמר לרוב כ-...T21:00Z ליום הבא)
+const formatEventGregorian = (eventDate) =>
+  new Date(eventDate).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
 
 // הדפסת "נתונים לשקית" (§E, docs/deliveries-feature-plan-2026-09-16.md) - דף A4 לרוחב
 // לכל הזמנה עם משלוח הלוך בתאריך שנבחר, מיועד להידוק על שקית האריזה: שם פרטי, שם
 // משפחה, כתובת ו-2 מספרי טלפון בפונט גדול. Query param יחיד: date=YYYY-MM-DD - רק
 // משלוחי הלוך, בלי בחירת כיוון (המערכת מסננת אוטומטית).
+// דיווח מייל 2026-09-18 (סעיף 3): בכל דף מוצגים גם תאריך האירוע (עברי+לועזי), שדה ידני
+// "שקית ___ מתוך ___" (אין במערכת נתון של מספר שקיות להזמנה - קווים למילוי בכתב יד),
+// והערות ההזמנה (Order.notes - "הערות כלליות להזמנה", אותו שדה שמודפס בדף ההזמנה).
+// כשההגדרה deliveries_select_by_event_date דולקת, date הוא תאריך האירוע והדף מציין גם את
+// יום היציאה המחושב (row.dispatchDates.out) - כמו הכותרת בהדפסת המשלוחן.
 export default function PrintDeliveryBagPage() {
   const searchParams = useSearchParams();
   const date = searchParams.get('date') || '';
@@ -14,6 +30,7 @@ export default function PrintDeliveryBagPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectByEventDate, setSelectByEventDate] = useState(false);
 
   useEffect(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -27,6 +44,7 @@ export default function PrintDeliveryBagPage() {
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
+        setSelectByEventDate(!!data.selectByEventDate);
         setRows((data.data || []).filter(r => r.directions.includes('out')));
         setLoading(false);
       })
@@ -69,6 +87,11 @@ export default function PrintDeliveryBagPage() {
         .bag-label-name { font-size: 46px; font-weight: 700; margin-bottom: 18px; }
         .bag-label-address { font-size: 30px; margin-bottom: 24px; }
         .bag-label-phones { font-size: 26px; display: flex; gap: 40px; }
+        .bag-label-event { font-size: 26px; margin-top: 24px; }
+        .bag-label-dispatch { font-size: 22px; margin-top: 6px; color: #444; }
+        .bag-label-count { font-size: 30px; margin-top: 24px; display: flex; align-items: flex-end; gap: 12px; }
+        .bag-label-blank { display: inline-block; width: 70px; border-bottom: 2px solid #222; height: 1.1em; }
+        .bag-label-notes { font-size: 22px; margin-top: 24px; white-space: pre-wrap; line-height: 1.35; }
         @media print {
           @page { size: A4 landscape; margin: 10mm; }
           html, body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
@@ -87,7 +110,7 @@ export default function PrintDeliveryBagPage() {
       `}</style>
       {loading && <p style={{ padding: 20 }}>טוען נתונים...</p>}
       {!loading && error && <p style={{ padding: 20, color: '#c0392b' }}>{error}</p>}
-      {!loading && !error && rows.length === 0 && <p style={{ padding: 20 }}>אין משלוחי הלוך בתאריך זה.</p>}
+      {!loading && !error && rows.length === 0 && <p style={{ padding: 20 }}>{selectByEventDate ? 'אין משלוחי הלוך לאירועים בתאריך זה.' : 'אין משלוחי הלוך בתאריך זה.'}</p>}
       {!loading && !error && rows.map(r => (
         <div className="bag-label-page" key={r.orderId}>
           <div className="bag-label-name">{r.customerFirstName} {r.customerLastName}</div>
@@ -96,6 +119,22 @@ export default function PrintDeliveryBagPage() {
             {r.customerPhone && <span dir="ltr">{r.customerPhone}</span>}
             {r.customerPhone2 && <span dir="ltr">{r.customerPhone2}</span>}
           </div>
+          <div className="bag-label-event">
+            <strong>תאריך אירוע: </strong>
+            {getHebrewWeekdayFullName(r.eventDate)} {r.eventDateHebrew || ''} ({formatEventGregorian(r.eventDate)})
+          </div>
+          {r.dispatchDates?.out && (
+            <div className="bag-label-dispatch">
+              משלוח יוצא: {getHebrewWeekdayFullName(isoToLocalDate(r.dispatchDates.out))} {isoToLocalDate(r.dispatchDates.out).toLocaleDateString('he-IL')}
+            </div>
+          )}
+          <div className="bag-label-count">
+            <span>שקית</span><span className="bag-label-blank" />
+            <span>מתוך</span><span className="bag-label-blank" />
+          </div>
+          {r.notes && (
+            <div className="bag-label-notes"><strong>הערות: </strong>{r.notes}</div>
+          )}
         </div>
       ))}
     </>

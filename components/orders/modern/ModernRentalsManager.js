@@ -2,6 +2,7 @@
 
 import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { postRentalRent } from './rentalToggle';
 
 /**
  * טאב "השכרות והחזרות" בעיצוב "אריג" — פורט מלא של OrderRentalsManager:
@@ -182,13 +183,15 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
 
     if (item.id && !item.isNew) {
       try {
-        const res = await fetch('/api/rentals/toggle', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: item.id, action: 'rent', barcode: barcodeToAssign })
-        });
-        if (!res.ok) throw new Error('API failed');
+        // ר' postRentalRent - כולל טיפול בדחיית enforce_rental_barcode_match ועקיפה באישור מנהל
+        const result = await postRentalRent(item.id, barcodeToAssign);
+        if (!result.ok) {
+          const failure = new Error('API failed');
+          failure.userMessage = result.message;
+          throw failure;
+        }
       } catch (err) {
-        alert('שגיאה בשמירת סטטוס השכרה');
+        alert(err.userMessage || 'שגיאה בשמירת סטטוס השכרה');
         onItemsChange(oldItems);
       }
     }
