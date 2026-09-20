@@ -1,5 +1,12 @@
 # System Changes Log
 
+## 2026-09-20 (second pass): permission pages are now connected
+
+- `page:*` items of `/admin/permissions` are enforced: refunds, dress catalog, monthly board, orders, new order, rentals & returns, customers, deliveries, alterations, internal messages. A permissions row (department or specific employee) now really opens or closes the page — by URL and in the sidebar. New server helpers `canOpenPage` / `resolvePageAccess` (lib/permissions.js), `PageGate` component, new `layout.js` files for each page tree.
+- No row = today's behaviour (refunds / dress catalog / board defaults follow the org's `restrict_*` settings). One deliberate tightening: the monthly board is now closed by URL as well when `restrict_board_to_managers` is on (it was only hidden from the sidebar); head management now sees it.
+- Admin / employees / employees report / price list / dashboard / home / kiosk / punch clock are marked `notConfigurable` and no longer offered in the wizard (head-management-only data or no login).
+- Wizard defaults ("מותר כיום") use the organisation's real settings (`orgSettings` from `GET /api/admin/permissions`).
+
 ## 2026-09-20: Live permissions verification + security hardening
 
 - **What was done:** end-to-end test of the permissions system on the LIVE sites (both gemachs) with temporary sample employees at every level (programmer / head management / branch manager / seamstress / secretary / two employees of a temporary department roleId 90), driven through the real login + API + SSR pages. The sample employees, the temporary department and every test permission row were removed afterwards. Full matrix, findings and the open items: `docs/permissions-security-audit-2026-09-20.md`.

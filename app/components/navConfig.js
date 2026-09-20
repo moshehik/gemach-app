@@ -29,10 +29,10 @@ export const NAV_GROUPS = [
     items: [
       // מעל "רשימת הזמנות" בכוונה (2026-09-09, בקשת משתמשת) - במקום שיהיה נגיש רק
       // כקישור מהיר במרכז דף הבית, זמין תמיד מהסיידבר.
-      { href: '/orders/new', label: 'הזמנה חדשה', icon: 'i-plus' },
-      { href: '/orders', label: 'רשימת הזמנות', icon: 'i-file' },
-      { href: '/rentals#rented', label: 'השכרות', icon: 'i-truck' },
-      { href: '/rentals#returned', label: 'החזרות', icon: 'i-check' },
+      { href: '/orders/new', label: 'הזמנה חדשה', icon: 'i-plus', gate: 'showOrdersNew' },
+      { href: '/orders', label: 'רשימת הזמנות', icon: 'i-file', gate: 'showOrders' },
+      { href: '/rentals#rented', label: 'השכרות', icon: 'i-truck', gate: 'showRentals' },
+      { href: '/rentals#returned', label: 'החזרות', icon: 'i-check', gate: 'showRentals' },
       { href: '/deliveries', label: 'משלוחים', icon: 'i-box', gate: 'showDeliveries' },
       { href: '/refunds', label: 'זיכויים וחובות', icon: 'i-wallet', gate: 'showRefundsTab' },
       { href: '/alterations', label: 'תיקונים', icon: 'i-scissors', gate: 'enableAlterations' },
@@ -51,7 +51,7 @@ export const NAV_GROUPS = [
     // כותרת "אנשים" מעל הפריטים.
     label: '',
     items: [
-      { href: '/customers', label: 'לקוחות', icon: 'i-users' },
+      { href: '/customers', label: 'לקוחות', icon: 'i-users', gate: 'showCustomers' },
       { href: '/employees', label: 'עובדים ונוכחות', icon: 'i-user-check', gate: 'showEmployeesTab' },
       { href: '/board', label: 'לוח חודשי', icon: 'i-calendar', gate: 'showBoardTab' },
       { href: '/customer-interface', label: 'עמדת לקוח', icon: 'i-eye' },

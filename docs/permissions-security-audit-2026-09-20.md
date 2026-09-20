@@ -43,7 +43,7 @@ See CLAUDE.md → "Permissions system" → "Live verification + security hardeni
 
 ## Deliberately NOT changed (owner decisions / follow-ups)
 
-1. **`page:*` are still documentation only.** The real gates are each page's `layout.js`. Pages without
+1. **[Resolved in a second pass the same day — see the last section.] `page:*` were still documentation only.** The real gates are each page's `layout.js`. Pages without
    a layout gate (home, orders, customers, rentals, board, deliveries, alterations, messages, …) are reachable by URL
    by any logged-in employee; `page:board` is only hidden from the sidebar. Migrating them to read the
    permissions table is a separate project (the catalog defaults already reproduce today's behaviour).
@@ -94,3 +94,8 @@ Catalog corrections made from this matrix: `page:employees_report` and `page:das
 All sample employees, the temporary department (roleId 90), every test permission row / department value / override and
 the audit rows the sample users generated were deleted from both databases afterwards; employee counts are back to
 95 (org 1) and 83 (org 2) and `PermissionPageGroup` / `DepartmentPermission` / `EmployeePermissionOverride` are empty again.
+
+## Second pass: pages connected
+
+The catalog's page items are now enforced (layout guards + sidebar), see CLAUDE.md → "Pages connected". Results of the
+live sample-user run are appended below.

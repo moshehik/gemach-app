@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PERMISSION_CATALOG } from '@/lib/permissionsMetadata';
 import PermissionRowWizard from '@/app/components/permissions/PermissionRowWizard';
 import EmployeeTag from '@/app/components/permissions/EmployeeTag';
@@ -9,6 +9,7 @@ import ItemLabel from '@/app/components/permissions/ItemInfo';
 export default function PermissionsClient() {
   const [departments, setDepartments] = useState(null);
   const [groups, setGroups] = useState([]);
+  const [orgSettings, setOrgSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -23,6 +24,7 @@ export default function PermissionsClient() {
       if (!res.ok) throw new Error(data.error || 'שגיאה בטעינת ההרשאות');
       setDepartments(data.departments);
       setGroups(data.groups || []);
+      setOrgSettings(data.orgSettings || {});
     } catch (e) {
       setError(e.message || 'שגיאה בטעינת ההרשאות');
     } finally {
@@ -37,6 +39,13 @@ export default function PermissionsClient() {
       .then((list) => setEmployees(Array.isArray(list) ? list : []))
       .catch(() => setEmployees([]));
   }, [load]);
+
+  // Pages such as refunds / dress catalog / monthly board are open or closed by default according to an
+  // org-level setting - the wizard's "מותר כיום" badges must use THIS organisation's real default.
+  const catalog = useMemo(
+    () => PERMISSION_CATALOG.map((item) => ({ ...item, defaultForRoleId: (roleId) => item.defaultForRoleId(roleId, orgSettings) })),
+    [orgSettings]
+  );
 
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}><span className="spinner" /> טוען מטריצת הרשאות...</div>;
@@ -77,7 +86,7 @@ export default function PermissionsClient() {
       </div>
 
       <PermissionGroupTable
-        catalog={PERMISSION_CATALOG}
+        catalog={catalog}
         groups={groups}
         departments={departments}
         employees={employees}
@@ -88,7 +97,7 @@ export default function PermissionsClient() {
       {modal && (
         <PermissionRowWizard
           group={modal.group}
-          catalog={PERMISSION_CATALOG}
+          catalog={catalog}
           allGroups={groups}
           departments={departments}
           employees={employees}

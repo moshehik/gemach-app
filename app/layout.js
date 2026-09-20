@@ -4,7 +4,7 @@ import './design-system.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
-import { getDepartmentEffectiveValue } from '@/lib/permissions';
+import { getDepartmentEffectiveValue, resolvePageAccess } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 
@@ -209,18 +209,29 @@ export default async function RootLayout({ children }) {
   // כשחובת התחברות כבויה. אותו כלל כמו checkPageAccess. אזורי הניהול והעובדים
   // צומצמו ב-2026-08-24 להנהלה ראשית/מתכנת בלבד (roleId 0/2) — לא מספיק
   // שמנהל סניף רגיל (roleId 1) יהיה מחובר, בעקבות דיווחי משתמש מנהל.
+  // Page links are shown by the SAME decision the page's layout.js enforces (lib/permissions.js
+  // resolvePageAccess: head management always, else employee override -> department row -> catalog
+  // default, which for refunds / dress catalog / board follows the org's restrict_* setting). When the
+  // lookup fails we fall back to the old role/setting rules below.
+  const NAV_PAGE_KEYS = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];
+  let pageAccess = null;
+  if (isAuthenticated && emp) {
+    pageAccess = await resolvePageAccess(emp.roleId, authToken.value, NAV_PAGE_KEYS).catch(() => null);
+  }
   const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showRefundsTab = isAuthenticated
-    ? (restrictRefundsToHeadManagement ? isHeadManagement : (isManager || isHeadManagement))
+    ? (pageAccess ? pageAccess['page:refunds'] : (restrictRefundsToHeadManagement ? isHeadManagement : (isManager || isHeadManagement)))
     : !requireLogin;
   const showDressesTab = isAuthenticated
-    ? (restrictDressCatalogToHeadManagement ? isHeadManagement : true)
+    ? (pageAccess ? pageAccess['page:dresses_catalog'] : (restrictDressCatalogToHeadManagement ? isHeadManagement : true))
     : !requireLogin;
+  // open pages: visible unless a permissions row (or the fallback) says otherwise
+  const pageVisible = (key) => (isAuthenticated && pageAccess ? pageAccess[key] : true);
   // "לוח חודשי" הוסתר לעובד רגיל (לא מנהל) - בקשת משתמשת 2026-09-09, כעת ניתנת
   // לשליטה דרך restrict_board_to_managers (ר' למעלה) במקום קשיח בקוד בלבד.
   const showBoardTab = isAuthenticated
-    ? (restrictBoardToManagers ? isManager : true)
+    ? (pageAccess ? pageAccess['page:board'] : (restrictBoardToManagers ? isManager : true))
     : !requireLogin;
 
   const navGroups = buildNavGroups({
@@ -229,9 +240,13 @@ export default async function RootLayout({ children }) {
     showRefundsTab,
     showDressesTab,
     showBoardTab,
-    enableAlterations,
+    enableAlterations: enableAlterations && pageVisible('page:alterations'),
     showMessages: !hideInternalMessaging,
-    showDeliveries,
+    showDeliveries: showDeliveries && pageVisible('page:deliveries'),
+    showOrdersNew: pageVisible('page:orders') && pageVisible('page:orders_new'),
+    showOrders: pageVisible('page:orders'),
+    showRentals: pageVisible('page:rentals'),
+    showCustomers: pageVisible('page:customers'),
   });
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;

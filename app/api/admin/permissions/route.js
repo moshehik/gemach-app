@@ -3,6 +3,7 @@ import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId, ALWAYS_ALLOWED_ROLE_IDS } from '@/lib/permissionsMetadata';
 import { parseJson } from '@/lib/permissionPageGroups';
+import { getCachedSetting } from '@/lib/settingsCache';
 
 // Full permissions matrix: every department's effective value for every catalog key
 // (lib/permissionsMetadata.js). Powers /admin/permissions — see CLAUDE.md's
@@ -19,6 +20,13 @@ export async function GET() {
     const departments = (await prisma.department.findMany({ orderBy: { roleId: 'asc' } }))
       .filter((d) => !ALWAYS_ALLOWED_ROLE_IDS.includes(d.roleId));
     const rows = await prisma.departmentPermission.findMany();
+    // org-level toggles some page defaults follow (refunds / dress catalog / monthly board)
+    const orgSettings = {};
+    for (const item of PERMISSION_CATALOG) {
+      for (const k of item.settingKeys || []) {
+        if (!(k in orgSettings)) orgSettings[k] = (await getCachedSetting(k).catch(() => null))?.value;
+      }
+    }
     const rowByRoleAndKey = new Map(rows.map((r) => [`${r.roleId}:${r.key}`, r.value]));
 
     const departmentValues = departments.map((department) => {
@@ -28,7 +36,7 @@ export async function GET() {
         values[item.key] = {
           value: raw !== undefined
             ? (item.type === 'boolean' ? raw === 'true' : parseInt(raw, 10))
-            : defaultValueForRoleId(item, department.roleId),
+            : defaultValueForRoleId(item, department.roleId, orgSettings),
           isExplicit: raw !== undefined,
         };
       }
@@ -37,7 +45,7 @@ export async function GET() {
 
     const groups = await buildPermissionGroups(departmentValues);
 
-    return NextResponse.json({ departments: departmentValues, groups });
+    return NextResponse.json({ departments: departmentValues, groups, orgSettings });
   } catch (error) {
     console.error('Error loading permissions matrix:', error);
     return NextResponse.json({ error: 'שגיאה בטעינת מטריצת ההרשאות' }, { status: 500 });
