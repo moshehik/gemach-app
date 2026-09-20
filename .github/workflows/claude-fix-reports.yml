@@ -112,6 +112,11 @@ jobs:
             echo "any_enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # ffmpeg: scripts/fetch-report-recording.js מחלץ פריימים מהסרטות מסך של מדווחים, כדי שהסוכן יראה אותן
+      - name: Install ffmpeg (report screen recordings -> frames)
+        if: steps.check.outputs.any_enabled == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
       - name: Run Claude Code (fix-reports)
         if: steps.check.outputs.any_enabled == 'true'
         uses: anthropics/claude-code-action@v1
@@ -136,10 +141,13 @@ jobs:
             לתזמן הרצה נוספת בעצמכם.
           claude_args: |
             --model sonnet
-            --allowedTools "Bash(node:*),Bash(git:*),Bash(gh:*),Edit,Write"
+            --allowedTools "Bash(node:*),Bash(git:*),Bash(gh:*),Read,Edit,Write"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
           # scripts/get-preview-deployment-url.js בלבד (ר' fix-reports.md) - הטוקן
           # האוטומטי של ה-workflow, לא secret נפרד; מוגבל ל-deployments:read למעלה.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # scripts/fetch-report-recording.js: הורדת הסרטות מסך של מדווחים מהדרייב (אותם סודות של גיבויי הדרייב)
+          DRIVE_BRIDGE_URL: ${{ secrets.DRIVE_BRIDGE_URL }}
+          DRIVE_BRIDGE_SECRET: ${{ secrets.DRIVE_BRIDGE_SECRET }}
