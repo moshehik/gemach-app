@@ -126,7 +126,11 @@ anything within the last 7 days.
   there is no scheduled-export / scheduled-backup-to-file endpoint on this plan - branching
   and restore are the only built-in mechanisms.
 
-## Layer 2: nightly logical dump (this repo) - superseded by Layer 0
+## Layer 2: nightly logical dump (this repo) - superseded by Layer 0, **task DISABLED 2026-09-20**
+
+**Status: the Windows Scheduled Task `GemachApp-ProdDbBackup` was disabled on 2026-09-20** (see
+"Local backup task disabled" at the bottom of this file for why, what that changes, and how to
+undo it). This layer is now manual-only.
 
 **Superseded by the cloud backup above**, once it has completed a verified successful run for
 both orgs - at that point the Windows Scheduled Task (`GemachApp-ProdDbBackup`) gets disabled
@@ -190,7 +194,11 @@ compressed plain-SQL export you can keep outside Neon entirely.
 
 ## Scheduling
 
-A Windows Task Scheduler job runs the backup automatically:
+> **DISABLED since 2026-09-20** - the task below still exists in Task Scheduler (state `Disabled`, not
+> deleted) but no longer runs. Everything in this section describes how it was set up, for the
+> manual-fallback / re-enable case. See "Local backup task disabled" at the bottom of this file.
+
+A Windows Task Scheduler job used to run the backup automatically:
 
 - **Task name:** `GemachApp-ProdDbBackup` (visible in Task Scheduler's root folder, or via
   `schtasks /Query /TN "GemachApp-ProdDbBackup" /V /FO LIST`)
@@ -291,3 +299,37 @@ Task GemachApp-NeonKeepAlive (כל 5 דקות 07:55-21:55) בוטל ונמחק �
 
 ## Backups count against Neon egress (2026-09-20)
 Neon Free caps **data transfer at 5GB per project per month**, and a backup is a full read of the DB over the wire: org1's dump is ~148MB raw (~29MB after gzip - the gzip happens *after* the transfer). One dump a day ≈ 4.5GB/month; the cloud backup (`backup-to-drive.yml`, daily) **plus** the local `GemachApp-ProdDbBackup` task (03:30, now pointed at the new org1 project) is two dumps a day - more than the whole quota on backups alone. Rules: (1) once the cloud backup has a verified `ok` run for both orgs, disable the local task (`Disable-ScheduledTask -TaskName GemachApp-ProdDbBackup`) - it is meant to be a manual fallback only; (2) don't lower `backup_interval_hours` below 24 without checking the project's current egress in the Neon console; (3) the 7-day PITR (Layer 1) is not egress and already covers short-range recovery, so 48-72h intervals are a reasonable trade if the quota is tight. Context: [docs/vercel-resource-audit-2026-09-20.md](docs/vercel-resource-audit-2026-09-20.md).
+
+## Local backup task disabled (2026-09-20)
+**What was done:** `Disable-ScheduledTask -TaskName GemachApp-ProdDbBackup` on the owner's Windows machine (state now `Disabled`; the task, its
+definition and the existing `backups/*.sql.gz` files are all still there - nothing was deleted). `GemachApp-LogCleanup` (03:45) is a different
+task and was left alone.
+
+**Why:** every backup is a *full* read of the database (see "Full copy every time" above), and Neon Free caps data transfer at 5GB per project
+per month. With both this local task and the cloud backup (`backup-to-drive.yml`, daily) running, org1 (the main gemach) was pulling two ~148MB
+dumps a day - about 8.9GB a month, more than the entire quota - which is the most likely reason the project hit 100% on 2026-09-17/18 and took the
+site down. The cloud backup already covers both gemachs and does not depend on this machine being powered on, so the local job was pure duplicate
+egress. It was also failing on and off (ECONNRESET on 2026-09-19, quota error on 2026-09-18).
+
+**What this changes:**
+- Automatic off-Neon backups now come **only** from the cloud backup (GitHub Actions -> Google Drive), for both orgs. Check it in `/admin/backups`
+  (`BackupRun` rows) - that is now the only place to see whether last night's backup happened. `backups/backup.log` will no longer get new lines.
+- The newest local dump, `backups/gemach-prod-2026-09-20.sql.gz` (27.5MB, taken 2026-09-20 03:31 local from the *new* org1 DB), is now static -
+  it is a snapshot, not a rolling backup. The 14-daily + 8-weekly rotation no longer runs, so nothing else is deleted automatically.
+- **Pending (not part of this change):** org1's cloud backups are only reachable from the shared Drive-bridge Google account until
+  `backup_owner_email` is set in `/admin/backups` for that gemach (the backup log warns about this on every run). Set it, so the files are shared
+  to a real person, before relying on the cloud backup as the only copy.
+
+**Manual local backup is still available** (costs one full dump, ~148MB of org1's Neon transfer - don't run it casually):
+```bash
+npm run backup:prod        # writes backups/gemach-prod-YYYY-MM-DD.sql.gz, reads .env PROD_DATABASE_URL (org1's live DB)
+```
+Only org1 is covered by this script; there is no local script for Neve Yaakov (org2) - use the cloud backup / `/admin/backups` "גיבוי מיידי" for it.
+
+**To re-enable the scheduled task** (e.g. if the cloud backup is broken and this is the only working layer):
+```powershell
+Enable-ScheduledTask -TaskName "GemachApp-ProdDbBackup"
+Get-ScheduledTaskInfo -TaskName "GemachApp-ProdDbBackup"   # NextRunTime should show 03:30
+```
+If you do, remember the egress arithmetic above: also raise `backup_interval_hours` for org1 in `/admin/backups` (72+) or the two jobs together will
+exceed the 5GB monthly cap again. Context and measurements: [docs/vercel-resource-audit-2026-09-20.md](docs/vercel-resource-audit-2026-09-20.md).
