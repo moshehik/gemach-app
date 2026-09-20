@@ -44,7 +44,7 @@ See CLAUDE.md → "Permissions system" → "Live verification + security hardeni
 ## Deliberately NOT changed (owner decisions / follow-ups)
 
 1. **`page:*` are still documentation only.** The real gates are each page's `layout.js`. Pages without
-   a layout gate (home, orders, customers, rentals, board, dashboard, messages, …) are reachable by URL
+   a layout gate (home, orders, customers, rentals, board, deliveries, alterations, messages, …) are reachable by URL
    by any logged-in employee; `page:board` is only hidden from the sidebar. Migrating them to read the
    permissions table is a separate project (the catalog defaults already reproduce today's behaviour).
 2. **Refund APIs stay open to every logged-in employee** (`/api/refunds`, `/api/refunds/[id]`): the order's
@@ -63,4 +63,34 @@ See CLAUDE.md → "Permissions system" → "Live verification + security hardeni
 
 ## Results after the fixes
 
-(see the "Results" section appended below)
+Deployed to main (both Vercel projects, commit 8ae589b) and re-run against the LIVE sites with fresh sample users:
+
+| Suite | org 1 (main gemach) | org 2 (נווה יעקב) |
+|---|---|---|
+| Access matrix by level (auth forgery, admin APIs, feature defaults per level, AI gate, escalation, page gates) | 91 / 91 pass | 90 / 91 — the one difference is expected: org 2 has `restrict_refunds_to_head_management` on, so a branch manager is (correctly) denied /refunds |
+| Row lifecycle (create / edit / same key in two rows = union / delete = back to defaults), employee overrides on the card, forged-approver checks, escalation, leaks, AI extras, verify-pin | 104 / 104 pass | 104 / 104 pass |
+| AI positive path (head user gets a real answer; smart-search page 2 with the signed token works; a token issued for another page context is rejected; secretary blocked) | 6 / 6 pass | – |
+
+(The same 104-check suite was first run against a local dev server on the new code: 104 / 104.)
+
+Not exercised on live data on purpose: a *successful* debt-approval write (it would add an audit row to a real order),
+and a *successful* error-report submission (it e-mails the programmers) — those were checked at the gate only
+(400 = allowed through, 403 = blocked).
+
+### Page-access matrix actually observed (documentation-only items vs. reality)
+
+| Page | org 1 | org 2 |
+|---|---|---|
+| /admin, /employees, /employees/report, /dashboard/pricelist, /dashboard | programmer + head management only | same |
+| /refunds | head + programmer + branch manager (setting off) | head + programmer only (setting on) |
+| /dashboard/dresses | everyone (setting off) | head + programmer only (setting on) |
+| /admin/site-settings | programmer only | programmer only (head management is denied) |
+| /board, /, /orders, /orders/new, /rentals, /customers, /deliveries, /alterations, /messages | everyone logged in (no server gate; /board and the sidebar rules are UI only) | same |
+
+Catalog corrections made from this matrix: `page:employees_report` and `page:dashboard` are head-management-only.
+
+### Cleanup
+
+All sample employees, the temporary department (roleId 90), every test permission row / department value / override and
+the audit rows the sample users generated were deleted from both databases afterwards; employee counts are back to
+95 (org 1) and 83 (org 2) and `PermissionPageGroup` / `DepartmentPermission` / `EmployeePermissionOverride` are empty again.
