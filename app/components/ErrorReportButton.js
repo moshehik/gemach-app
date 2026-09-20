@@ -5,13 +5,38 @@ import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { captureElement, captureViewport } from '../../lib/clientCapture';
 import useElementPicker, { describeElement, ElementPickerOverlay } from './useElementPicker';
+import useActionRecorder from './useActionRecorder';
+import { formatActionSteps, appendStepsToReport, splitReportSteps, stepsCountLabel } from '../../lib/actionRecorderCore';
 
 // כותרת קבועה לזיהוי שרשור "יומן הסוכן האוטומטי" (ר' scripts/agent-log-report.js -
 // חייבת להישאר זהה בשני המקומות, אין שדה ייעודי בסכימה בכוונה כדי לא לדרוש migration).
 const AGENT_LOG_TITLE = '🤖 יומן הסוכן האוטומטי (נא לא למחוק)';
 
-// attachmentUrls מאוחסן כמערך JSON של כתובות (תמונות מ-Phase 3 ו/או הקלטת מסך
-// אחת מ-Phase 4) - מוצג כגלריה קטנה של תמונות קליקביליות ווידאו.
+// attachmentUrls מאוחסן כמערך JSON של כתובות (צילומי מסך/אלמנטים) — מוצג כגלריה עם כותרת
+// וספירה. כתובת שנשברה (למשל צילום ישן מחנות ה-Blob שנמחקה) מוצגת כתיבה ברורה במקום
+// אייקון תמונה שבורה.
+function AttachmentThumb({ url, index }) {
+  const [broken, setBroken] = useState(false);
+  const isVideo = /\.(webm|mp4)$/i.test(url);
+  const box = { width: 96, height: 96, borderRadius: 8, border: '1px solid var(--border)', flexShrink: 0 };
+  if (broken) {
+    return (
+      <div title="הקובץ אינו זמין יותר" style={{ ...box, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: 'var(--surface-alt)', color: 'var(--text-3)', fontSize: 11, textAlign: 'center', padding: 6 }}>
+        <svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-alert-circle" /></svg>
+        הקובץ אינו זמין יותר
+      </div>
+    );
+  }
+  if (isVideo) {
+    return <video src={url} controls onError={() => setBroken(true)} style={{ ...box, width: 170, objectFit: 'cover' }} />;
+  }
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" title="לחץ לפתיחה בגודל מלא" style={{ display: 'block', flexShrink: 0 }}>
+      <img src={url} alt={`צילום מצורף ${index + 1}`} onError={() => setBroken(true)} style={{ ...box, objectFit: 'cover', display: 'block' }} />
+    </a>
+  );
+}
+
 function AttachmentGallery({ attachmentUrls }) {
   let urls = [];
   try {
@@ -22,17 +47,36 @@ function AttachmentGallery({ attachmentUrls }) {
   if (!Array.isArray(urls) || urls.length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-      {urls.map((url, idx) => (
-        url.endsWith('.webm') ? (
-          <video key={idx} src={url} controls style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, border: '1px solid var(--border)' }} />
-        ) : (
-          <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-            <img src={url} alt="צילום מצורף" style={{ maxWidth: 140, maxHeight: 140, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-          </a>
-        )
-      ))}
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 6 }}>
+        <svg className="icon" style={{ width: 13, height: 13 }}><use href="#i-grid" /></svg>
+        צרופות ({urls.length}) · לחיצה על תמונה פותחת אותה בגודל מלא
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {urls.map((url, idx) => <AttachmentThumb key={idx} url={url} index={idx} />)}
+      </div>
     </div>
+  );
+}
+
+// טקסט הדיווח, כשהפעולות שהמשתמש הקליט (ר' useActionRecorder) מוצגות כרשימה מקופלת
+// ממוספרת במקום שורות גולמיות בתוך הטקסט.
+function ReportText({ text }) {
+  const { body, steps } = splitReportSteps(text);
+  return (
+    <>
+      <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{body}</p>
+      {steps.length > 0 && (
+        <details style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-alt)' }}>
+          <summary style={{ cursor: 'pointer', padding: '8px 12px', fontWeight: 600, fontSize: 13 }}>
+            הפעולות שבוצעו לפני התקלה ({stepsCountLabel(steps.length)})
+          </summary>
+          <ol style={{ margin: 0, padding: '4px 30px 10px', fontSize: 12.5, lineHeight: 1.7 }}>
+            {steps.map((s, i) => <li key={i}>{s}</li>)}
+          </ol>
+        </details>
+      )}
+    </>
   );
 }
 
@@ -79,6 +123,13 @@ export default function ErrorReportButton() {
   // מופרד לפי הקשר ('new'/'reply') כמו pickingContextRef.
   const [newAttachments, setNewAttachments] = useState([]);
   const [replyAttachments, setReplyAttachments] = useState([]);
+
+  // "הקלט את הפעולות שלי" — מקליט פעולות (לחיצות/הקלדות/ניווט) בלי וידאו ובלי הרשאת שיתוף מסך.
+  // המודל נסגר, המשתמש משחזר את התקלה, ולוחץ "סיום" בסרגל הצף; הצעדים מתווספים לדיווח.
+  const actionRecorder = useActionRecorder();
+  const [isRecordingSteps, setIsRecordingSteps] = useState(false);
+  const [stepCount, setStepCount] = useState(0);
+  const [recordedSteps, setRecordedSteps] = useState('');
   // 'new' = טופס דיווח חדש (pickedElements, כמו קודם), 'reply' = תגובה בתוך
   // שרשור קיים (מוסיף ישירות לטקסט התגובה) - כדי שאיתור אלמנטים יעבוד גם
   // כשעונים על דיווח פתוח, לא רק בהודעה הראשונה.
@@ -100,6 +151,28 @@ export default function ErrorReportButton() {
     }
   };
   const picker = useElementPicker(handleElementPicked);
+
+  const startStepsRecording = () => {
+    setIsOpen(false);
+    setStepCount(0);
+    setIsRecordingSteps(true);
+    actionRecorder.start();
+  };
+
+  const finishStepsRecording = () => {
+    const text = formatActionSteps(actionRecorder.stop());
+    setIsRecordingSteps(false);
+    setRecordedSteps(text);
+    setIsOpen(true);
+    setActiveTab('new');
+    if (!text) showToast('לא נרשמו פעולות — נסה שוב', 'info');
+  };
+
+  useEffect(() => {
+    if (!isRecordingSteps) return undefined;
+    const id = setInterval(() => setStepCount(actionRecorder.getCount()), 400);
+    return () => clearInterval(id);
+  }, [isRecordingSteps, actionRecorder]);
 
   const captureFullScreen = async (context = 'new') => {
     pickingContextRef.current = context;
@@ -265,9 +338,10 @@ export default function ErrorReportButton() {
     const fullText = pickedElements.length > 0
       ? `${userText}\n\n[אלמנטים מסומנים:\n${pickedElements.map((el, i) => `${i + 1}. ${el.label}`).join('\n')}]`
       : userText;
+    const reportText = appendStepsToReport(fullText, recordedSteps);
 
     const payload = {
-      userText: fullText,
+      userText: reportText,
       url: window.location.href,
       title: document.title,
       time: getHebrewDateString(new Date()) + ' ' + new Date().toLocaleTimeString('he-IL'),
@@ -288,6 +362,7 @@ export default function ErrorReportButton() {
         setUserText('');
         setPickedElements([]);
         setNewAttachments([]);
+        setRecordedSteps('');
         setActiveTab('list');
         fetchReports();
       } else {
@@ -670,7 +745,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       <strong>{selectedReport.employee ? selectedReport.employee.firstName + ' ' + selectedReport.employee.lastName : 'משתמש'}</strong>
                       <span>{getHebrewDateString(selectedReport.createdAt)} {new Date(selectedReport.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{selectedReport.userText}</p>
+                    <ReportText text={selectedReport.userText} />
                     <AttachmentGallery attachmentUrls={selectedReport.attachmentUrls} />
                   </div>
 
@@ -893,7 +968,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                             </button>
                           </div>
                         </div>
-                        <p style={{ margin: '0 0 8px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{report.userText}</p>
+                        <p style={{ margin: '0 0 8px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{splitReportSteps(report.userText).body}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>
                           <svg className="icon"><use href="#i-message" /></svg>
                           <span>{report.replies?.length || 0} תגובות</span>
@@ -993,6 +1068,38 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     צלם את כל המסך
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={startStepsRecording}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                      padding: '10px 14px', cursor: 'pointer', marginTop: 8, textAlign: 'start',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)', fontWeight: 600, fontSize: 13
+                    }}
+                  >
+                    <svg className="icon" style={{ width: 15, height: 15, flexShrink: 0 }}><use href="#i-activity" /></svg>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span>{recordedSteps ? 'הקלט את הפעולות מחדש' : 'הקלט את הפעולות שלי'}</span>
+                      <span style={{ fontWeight: 400, fontSize: 11.5, color: 'var(--text-3)' }}>
+                        המערכת תרשום מה אתה לוחץ ומקליד (בלי סיסמאות ופרטי אשראי) בזמן שאתה משחזר את התקלה, ותצרף לדיווח
+                      </span>
+                    </span>
+                  </button>
+
+                  {recordedSteps && (
+                    <details open style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-alt)' }}>
+                      <summary style={{ cursor: 'pointer', padding: '8px 12px', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <svg className="icon" style={{ width: 14, height: 14 }}><use href="#i-check" /></svg>
+                        נרשמו {stepsCountLabel(recordedSteps.split('\n').length)} — יצורפו לדיווח
+                        <button type="button" className="btn btn-ghost btn-sm" style={{ marginInlineStart: 'auto' }} onClick={(ev) => { ev.preventDefault(); setRecordedSteps(''); }}>הסר</button>
+                      </summary>
+                      <pre style={{ margin: 0, padding: '4px 12px 10px', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', maxHeight: 140, overflowY: 'auto' }}>{recordedSteps}</pre>
+                    </details>
+                  )}
+
                   {newAttachments.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                       {newAttachments.map((src, idx) => (
@@ -1022,7 +1129,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 10 }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); setNewAttachments([]); }}>ביטול</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); setNewAttachments([]); setRecordedSteps(''); }}>ביטול</button>
                   <button type="submit" className="btn btn-primary">
                     <svg className="icon"><use href="#i-arrow-end" /></svg>
                     שליחה למתכנת
@@ -1037,6 +1144,23 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
       )}
 
       <ElementPickerOverlay isPicking={picker.isPicking} hoverRect={picker.hoverRect} />
+
+      {isRecordingSteps && mounted && createPortal(
+        <div data-no-record="true" style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 9999998,
+          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px 10px 10px',
+          background: 'var(--surface)', border: '1px solid var(--danger-solid)', borderRadius: 999,
+          boxShadow: 'var(--shadow-lg)',
+        }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--danger-solid)', animation: 'pulse 1.5s infinite' }} />
+          <span style={{ fontSize: 13, fontWeight: 600 }}>
+            רושם את הפעולות שלך · {stepsCountLabel(stepCount)}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>שחזר את התקלה, ואז לחץ "סיום"</span>
+          <button type="button" data-no-record="true" className="btn btn-primary btn-sm" onClick={finishStepsRecording}>סיום</button>
+        </div>,
+        document.body
+      )}
 
       {toast && mounted && createPortal(
         <div className={`toast ${toast.type}`} style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 9999999 }}>
