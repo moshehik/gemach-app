@@ -836,20 +836,24 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                             {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
                           </>
                         )}
+                        {/* חלון העריכה המלא (15 דק׳) נסגר: הכפתור לפתיחה מחדש באישור מנהל יושב כאן, בתא
+                            הדגם/מידה, ולא בעמודת התיקונים — שם הוא נעלם כשתיקונים כבויים ("עריכה" נראתה מתה) */}
+                        {isEditingMode && !item.isNew && !fullyEditableNow && (
+                          <div className="hint" style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span>חלון העריכה המלא (15 דק׳) נסגר — {showAlterCol ? 'ניתן לערוך כעת רק את פירוט התיקון' : 'להחלפת דגם/מידה יש לפתוח עריכה מלאה'}</span>
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopenFullEdit(item)}>
+                              <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-unlock" /></svg>
+                              פתיחת עריכה מלאה (אישור מנהל)
+                            </button>
+                          </div>
+                        )}
                       </td>
                       {showAlterCol && (
                         <td>
                           {isEditingMode ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {!item.isNew && !fullyEditableNow && (
-                                <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                  <span>חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון</span>
-                                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopenFullEdit(item)}>
-                                    <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-unlock" /></svg>
-                                    פתיחת עריכה מלאה (אישור מנהל)
-                                  </button>
-                                </div>
-                              )}
+                              {/* הודעת "החלון נסגר" וכפתור הפתיחה מחדש עברו לתא הדגם/מידה (מעל) — שם הם זמינים
+                                  גם כשעמודת התיקונים מוסתרת (תיקונים כבויים בגמח / עמודה מכווצת) */}
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <button type="button"
                                   className={`pill-tab ${isChecked(item.neckAlteration) ? 'active' : ''}`}
@@ -917,7 +921,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                             <>
                               {!item.isTaken && (
                                 <button type="button" className="btn btn-secondary btn-sm"
-                                  title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון'}
+                                  title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : `חלון העריכה המלא (15 דק׳) נסגר — ${showAlterCol ? 'ניתן לערוך רק את פירוט התיקון' : 'לשינוי דגם/מידה יש לפתוח עריכה מלאה באישור מנהל'}`}
                                   onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
                                   <svg className="icon"><use href="#i-edit" /></svg>עריכה
                                 </button>

@@ -555,6 +555,18 @@ export default function PrintOrderPage() {
           @page {
             size: A4 portrait;
             margin: 10mm;
+            /* תחתית "עמוד X מתוך Y" — קופסת שוליים של CSS (Chrome/Edge 131+), כך שהמספור
+               מודפס מעצמו בלי שהמשתמש יצטרך להפעיל כותרות/תחתיות בחלון ההדפסה.
+               counter(pages) סופר את כל המסמך: בהדפסה מרוכזת של כמה הזמנות הוא רץ ברצף
+               על כולן ("עמוד 5 מתוך 12"), לא מתאפס בין הזמנה להזמנה. בדפדפן שלא תומך —
+               הכלל מתעלם בשקט ופשוט אין מספור, בלי שום פגיעה בפריסה. */
+            @bottom-center {
+              content: "עמוד " counter(page) " מתוך " counter(pages);
+              direction: rtl;
+              font-family: 'David Libre', 'Times New Roman', Georgia, serif;
+              font-size: 10px;
+              color: #666;
+            }
           }
           html, body, #__next, .__next {
             background-color: white !important;
