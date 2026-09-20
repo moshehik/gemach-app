@@ -5,9 +5,11 @@ import ItemLabel from './ItemInfo';
 
 // Searchable list for the wizard's "pages / features" step (PermissionRowWizard.js).
 // Pages and features are listed together under two headings. Each row: the item's label
-// (a link opening the real page in a new tab, for pages) + an info icon, and an "already
+// (a link opening the real page in a new tab, for pages) + an info icon, an "already
 // in row X" badge when the item also sits in another row (allowed — it's highlighted and
-// the real access is the union of its rows). There used to be an inline iframe preview
+// the real access is the union of its rows), and an explicit "+ הוסף" button — the label
+// is a link, so clicking it must NOT add (it opens the page); adding is the button (or a
+// click on the empty part of the row). There used to be an inline iframe preview
 // (eye button) here; it rendered a blank white window, so it was removed — the label link
 // opens the real page instead.
 const SECTIONS = [
@@ -30,6 +32,15 @@ export default function GroupPagePicker({ items, onAdd }) {
             כבר בשורה: {item.alsoIn.join(', ')}
           </span>
         )}
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          title={`הוסף לשורה: ${item.label}`}
+          aria-label={`הוסף לשורה: ${item.label}`}
+          onClick={(e) => { e.stopPropagation(); onAdd(item.key); }}
+        >
+          <svg className="icon"><use href="#i-plus" /></svg>הוסף
+        </button>
       </div>
     </div>
   );
