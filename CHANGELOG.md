@@ -5,6 +5,7 @@
 - `page:*` items of `/admin/permissions` are enforced: refunds, dress catalog, monthly board, orders, new order, rentals & returns, customers, deliveries, alterations, internal messages. A permissions row (department or specific employee) now really opens or closes the page — by URL and in the sidebar. New server helpers `canOpenPage` / `resolvePageAccess` (lib/permissions.js), `PageGate` component, new `layout.js` files for each page tree.
 - No row = today's behaviour (refunds / dress catalog / board defaults follow the org's `restrict_*` settings). One deliberate tightening: the monthly board is now closed by URL as well when `restrict_board_to_managers` is on (it was only hidden from the sidebar); head management now sees it.
 - Admin / employees / employees report / price list / dashboard / home / kiosk / punch clock are marked `notConfigurable` and no longer offered in the wizard (head-management-only data or no login).
+- Bug fixed: employee lookups matched a UUID that starts with digits against another employee's numeric legacyId (login could say "wrong password" for such an employee); legacyId is now used only for digits-only input.
 - Wizard defaults ("מותר כיום") use the organisation's real settings (`orgSettings` from `GET /api/admin/permissions`).
 
 ## 2026-09-20: Live permissions verification + security hardening

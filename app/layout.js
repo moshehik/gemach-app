@@ -86,7 +86,7 @@ export default async function RootLayout({ children }) {
 
   let employeePromise = Promise.resolve(null);
   if (isAuthenticated && !session) {
-    const parsedLegacy = parseInt(authToken.value, 10);
+    const parsedLegacy = /^\d+$/.test(String(authToken.value)) ? parseInt(authToken.value, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
     employeePromise = prisma.employee.findFirst({
       where: {
         OR: [
