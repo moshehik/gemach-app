@@ -3,9 +3,11 @@ import { cookies } from 'next/headers';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
+import { checkAiAccess } from '../../../../lib/permissions';
+import { verifiedCookieStore } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
-import { assertReadOnlySelect } from '../../../../lib/sqlGuard';
+import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
 import { getAllCachedSettings } from '../../../../lib/settingsCache';
 import { buildSettingsGuide } from '../../../../lib/settingsMetadata';
 import { buildHowToGuide } from '../../../../lib/howToGuide';
@@ -57,6 +59,7 @@ Rules for SQL query generation:
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
 
   try {
     const { prompt, history = [], contextQuery = '' } = await req.json();
@@ -66,7 +69,7 @@ export async function POST(req) {
     }
 
     const cookieStore = await cookies();
-    const { isManager, employeeId } = await loadEmployeeAccess(prisma, cookieStore);
+    const { isManager, employeeId } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
 
     const schemaText = getFullSchemaContext();
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
@@ -111,7 +114,7 @@ export async function POST(req) {
               console.error('SQL Guard rejected AI-generated statistics query:', guardErr.message, '\nRejected SQL:', q);
               throw guardErr;
             }
-            results.push(await prisma.$queryRawUnsafe(q));
+            results.push(stripSecretColumns(await prisma.$queryRawUnsafe(q)));
           }
           return results;
         };

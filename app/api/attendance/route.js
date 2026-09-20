@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { checkAuth } from '../../../lib/auth';
 import { verifySecret } from '../../../lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '../../../lib/trustedDevice';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 
 
@@ -100,7 +101,7 @@ export async function POST(request) {
     } else {
       // If no password provided, ensure the current session belongs to this employee
       const cookieStore = await cookies();
-      const token = cookieStore.get('auth_token');
+      const token = getVerifiedAuthCookie(cookieStore);
       // auth_token holds the employee UUID; the client may have sent either the UUID or
       // the numeric legacyId, so compare against the resolved employee's UUID.
       if (!token || token.value !== employee.id) {

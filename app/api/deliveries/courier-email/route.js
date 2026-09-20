@@ -6,6 +6,7 @@ import { getDeliveriesForDate } from '@/lib/deliveries';
 import { groupDeliveryRowsForCourier, isoRangeToDates } from '@/lib/deliveryCourier';
 import { renderCourierDeliveryEmailHtml } from '@/lib/emailTemplates';
 import { sendSystemEmail } from '@/lib/mailer';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function POST(request) {
     const subject = groups.length === 1 ? groups[0].title : `נתוני משלוחים - ${groups.length} קבוצות`;
 
     const cookieStore = await cookies();
-    const employeeId = cookieStore.get('auth_token')?.value || null;
+    const employeeId = getVerifiedAuthCookie(cookieStore)?.value || null;
 
     const result = await sendSystemEmail({
       to: courierEmail,

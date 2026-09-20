@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { canApproveDebt } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export async function POST(request, { params }) {
 
     const { employeeId } = await request.json();
     if (!employeeId) return NextResponse.json({ error: 'נדרש מזהה עובד מאשר' }, { status: 400 });
+    if (!(await canApproveDebt(employeeId))) return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
 
     const balance = await loadOrderBalance(orderId);
     if (!balance) return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
@@ -74,6 +76,7 @@ export async function DELETE(request, { params }) {
 
     const { employeeId } = await request.json();
     if (!employeeId) return NextResponse.json({ error: 'נדרש מזהה עובד מאשר' }, { status: 400 });
+    if (!(await canApproveDebt(employeeId))) return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
 
     const order = await prisma.order.findUnique({ where: { orderId }, select: { orderId: true } });
     if (!order) return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });

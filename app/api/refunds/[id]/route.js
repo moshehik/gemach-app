@@ -5,6 +5,7 @@ import { checkAuth } from '@/lib/auth';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderGenericEmailHtml } from '@/lib/emailTemplates';
 import { getAllCachedSettings } from '@/lib/settingsCache';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export async function PUT(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -12,7 +13,7 @@ export async function PUT(request, { params }) {
     const { id } = await params;
 
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    const token = getVerifiedAuthCookie(cookieStore)?.value;
 
     // Check if employee has required permissions
     let employeeCode = null;
@@ -192,7 +193,7 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
 
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    const token = getVerifiedAuthCookie(cookieStore)?.value;
 
     const result = await prisma.$transaction(async (tx) => {
       const existingRefund = await tx.refund.findUnique({ where: { id } });

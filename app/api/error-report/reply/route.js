@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
 import { uploadAttachmentDataUrls } from '../../../../lib/attachmentUpload';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });

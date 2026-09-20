@@ -6,6 +6,7 @@ import { checkAuth } from '@/lib/auth';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { cookies } from 'next/headers';
 import { DRAFT_ORDER_STATUS, isOrderShell, cleanupSiblingDraftOrders } from '@/lib/orderReservation';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // The items a draft holds. 'pending' is what makes `inventory_hold_minutes` release them back
 // into the pool once the hold expires, so an abandoned cart does not sit on a dress forever.
@@ -32,7 +33,7 @@ export async function POST(request) {
   try {
     const data = await request.json();
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     const loggedInEmployeeId = token?.value || null;
 
     let orderId = data.orderId ? parseInt(data.orderId, 10) : null;

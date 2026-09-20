@@ -10,6 +10,7 @@ import { validateOrderItemsAvailability, addDaysSkippingWeekends, reconcileDress
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export const dynamic = 'force-dynamic';
 
@@ -648,7 +649,7 @@ export async function POST(request) {
   try {
     const data = await request.json();
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     const loggedInEmployeeId = token?.value || null;
 
     // This route creates orders; editing one goes through PUT /api/orders/[id], which

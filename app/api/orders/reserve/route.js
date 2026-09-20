@@ -4,6 +4,7 @@ import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { cookies } from 'next/headers';
 import { RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function POST(request) {
   try {
     const data = await request.json().catch(() => ({}));
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     const loggedInEmployeeId = token?.value || null;
 
     // Same read-max-and-retry dance as the create path: two employees reserving at the same

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
-import { checkAuth, checkPageAccess } from '../../../lib/auth';
+import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES, getSessionEmployee, canManageRoles } from '../../../lib/auth';
 import { getEffectiveValueForEmployees } from '../../../lib/permissions';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
@@ -13,7 +13,13 @@ import { getEffectiveValueForEmployees } from '../../../lib/permissions';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const all = searchParams.get('all') === 'true';
+    // The anonymous caller (login screen / punch clock / kiosk) only ever needs names + ids
+    // to fill a picker. Everything else on an employee row - phone, email, wage, role, notes,
+    // home address - is HR data and goes out only to a logged-in session (found 2026-09-20:
+    // it used to be served to the whole internet, which also handed out every employee id).
+    // (checkAuth() = a verified login session, or anybody at all while require_login is OFF - open mode.)
+    const requesterIsAuthenticated = !!(await checkAuth());
+    const all = requesterIsAuthenticated && searchParams.get('all') === 'true';
 
     const employees = await prisma.employee.findMany({
       where: all ? {} : { isActive: true },
@@ -24,27 +30,30 @@ export async function GET(request) {
       ]
     });
 
+    if (!requesterIsAuthenticated) {
+      return NextResponse.json(employees.map((e) => ({
+        id: e.id, firstName: e.firstName, lastName: e.lastName, fullName: e.fullName, isActive: e.isActive,
+      })));
+    }
+
     // needsPasswordReset only goes out to logged-in requests (the admin list at
     // /employees) - it's a boolean, not the hash itself, but there's no reason
     // for the anonymous login-screen picker to see it.
-    const isLoggedIn = all && !!(await checkAuth());
+    const isLoggedIn = all;
 
     // canApproveWithoutPayment powers the "מאשר הזמנה ללא תשלום" employee
     // picker in app/components/PopupProvider.js (which fetches this route without
     // `all=true`) - checked against any logged-in caller, not just the `all=true`
     // admin list, so that picker keeps working. See lib/permissions.js /
     // lib/permissionsMetadata.js's feature:debt_approval.
-    const requesterIsAuthenticated = !!(await checkAuth());
-    const debtApprovalByEmployee = requesterIsAuthenticated
-      ? await getEffectiveValueForEmployees(employees, 'feature:debt_approval')
-      : new Map();
+    const debtApprovalByEmployee = await getEffectiveValueForEmployees(employees, 'feature:debt_approval');
 
     // Never send hashes (password/pinHash) to the client - there's no legitimate reason
     // for the browser to hold them, hashed or not.
     const safeEmployees = employees.map(({ password, pinHash, ...emp }) => ({
       ...emp,
       ...(isLoggedIn ? { needsPasswordReset: !!password && !password.startsWith('$2') } : {}),
-      ...(requesterIsAuthenticated ? { canApproveWithoutPayment: !!debtApprovalByEmployee.get(emp.id) } : {})
+      canApproveWithoutPayment: !!debtApprovalByEmployee.get(emp.id)
     }));
 
     return NextResponse.json(safeEmployees);
@@ -55,10 +64,18 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-  if (!(await checkPageAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  // Same audience as the /employees pages (app/employees/layout.js): head management + programmer.
+  // This used to be the default checkPageAccess() = branch managers too, which let a role-1
+  // manager create an account with any roleId (incl. programmer) and a password they chose.
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const body = await request.json();
+    const actor = await getSessionEmployee();
+    const newRoleId = body.roleId !== "" && body.roleId !== null && body.roleId !== undefined ? parseInt(body.roleId, 10) : null;
+    if (!actor || !canManageRoles(actor.roleId, newRoleId)) {
+      return NextResponse.json({ error: 'אין הרשאה להגדיר תפקיד בכיר מהתפקיד שלך' }, { status: 403 });
+    }
 
     // An initial password is set in plaintext here (the "new employee" form field) and
     // hashed before it ever reaches the database - same treatment as a real login password.

@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { verifySecret } from '@/lib/passwordAuth';
-import { HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
+import { HEAD_MANAGEMENT_ROLES, checkAuth } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 
 export async function POST(request) {
+  // Was fully anonymous: with no employeeId it tried the typed password against EVERY active
+  // employee and answered with the matching employee's id - a password-guessing oracle open to
+  // the internet. Every caller is the in-app "manager code" popup, i.e. already logged in
+  // (checkAuth() is still open-mode-tolerant when require_login is off).
+  if (!(await checkAuth())) {
+    return NextResponse.json({ success: false, error: 'יש להתחבר למערכת' }, { status: 401 });
+  }
   try {
     const { pin, requiredLevel, employeeId } = await request.json();
 
@@ -70,7 +77,10 @@ export async function POST(request) {
 
     // מאשר הזמנה ללא תשלום - מנהל/מתכנת כתמיד, בתוספת הרשאת feature:debt_approval
     // (/admin/permissions, ר' lib/permissionsMetadata.js) ישירות לעובד או למחלקה שלו.
-    if (requiredLevel === 'מאשר הזמנה ללא תשלום' && !isManager && !(await hasPermission(employee, 'feature:debt_approval'))) {
+    // hasPermission is authoritative (roleId 0/2 always allowed; roleId 1 by default, but a
+    // permissions row CAN now revoke it - the old `!isManager` bypass made such a row a no-op here
+    // while /api/employees already reported the manager as not allowed).
+    if (requiredLevel === 'מאשר הזמנה ללא תשלום' && !(await hasPermission(employee, 'feature:debt_approval'))) {
       return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למי שהורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
     }
 

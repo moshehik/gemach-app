@@ -2,8 +2,11 @@
 
 
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
+import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
 
 export async function GET(request, { params }) {
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const resolvedParams = await params;
     const idParam = resolvedParams.id;
@@ -14,7 +17,7 @@ export async function GET(request, { params }) {
       // UUID
       order = await prisma.order.findUnique({
         where: { id: idParam },
-        include: { employee: true }
+        include: { employee: { select: SAFE_EMPLOYEE_SELECT } }
       });
     } else {
       // Legacy Int ID
@@ -24,7 +27,7 @@ export async function GET(request, { params }) {
       }
       order = await prisma.order.findUnique({
         where: { orderId: id },
-        include: { employee: true }
+        include: { employee: { select: SAFE_EMPLOYEE_SELECT } }
       });
     }
 
@@ -63,7 +66,7 @@ export async function GET(request, { params }) {
         ]
       },
       include: {
-        employee: true
+        employee: { select: SAFE_EMPLOYEE_SELECT }
       }
     });
 

@@ -1,6 +1,7 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // פרופיל אישי לעובד המחובר בלבד — מזוהה אך ורק לפי ה-cookie, בלי פרמטר id,
 // כך שעובד לעולם לא יכול לקרוא/לעדכן רשומה של עובד אחר דרך הנתיב הזה.
@@ -9,7 +10,7 @@ import { cookies } from 'next/headers';
 
 async function getSessionEmployee() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token');
+  const token = getVerifiedAuthCookie(cookieStore);
   if (!token || !token.value) return null;
 
   const parsedLegacy = parseInt(token.value, 10);
