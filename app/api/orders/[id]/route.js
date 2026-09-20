@@ -64,6 +64,8 @@ import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus }
 import { verifyManagerPin } from '../../../../lib/managerAuth';
 import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
 import { canApproveDebt } from '@/lib/permissions';
+import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
+import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -509,7 +511,10 @@ export async function PUT(request, { params }) {
           id: true, cartStatus: true, isDeleted: true,
           sizeText: true, neckAlteration: true, sleeveAlteration: true,
           lengthAlteration: true, alterationDetails: true, alterationDone: true,
-          barcode: true
+          barcode: true,
+          // לזיהוי הדגם/מידה שהוזמנו - לבדיקת enforce_rental_barcode_match למטה
+          barcodePrefix: true,
+          dressItem: { select: { barcodePrefix: true, sizeText: true, dress: { select: { barcodePrefix: true } } } }
         }
       }),
       // המצב הקודם של ההתחייבויות — כדי לזהות ביטול/שחזור ולרשום אותו ביומן בשם מפורש
@@ -519,6 +524,29 @@ export async function PUT(request, { params }) {
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
+
+    // enforce_rental_barcode_match (ברירת מחדל כבוי = התנהגות ישנה): שמירת ההזמנה כותבת את
+    // ה-barcode שהלקוח שולח, ולכן זה נתיב נוסף שבו ברקוד יכול להגיע לפריט בלי בדיקה. משייכים כאן
+    // רק כשהברקוד באמת משתנה (ההד של ברקוד ששויך כבר דרך /api/rentals/toggle לא נבדק שוב).
+    // אין כאן עקיפת מנהל - עקיפה מאושרת נעשית ב-toggle, ואז הברקוד כבר שמור ולא משתנה בשמירה.
+    // 400 ולא 409 - הלקוח מפרש 409 בשמירת הזמנה כהתנגשות נתונים ("עודכנה בשרת").
+    if (Array.isArray(data.items) && await isRentalBarcodeMatchEnforced()) {
+      for (const item of data.items) {
+        if (!item.id) continue;
+        const stored = storedItemById.get(item.id);
+        const newBarcode = item.barcode || item.dressItem?.barcode || undefined;
+        if (!stored || newBarcode === undefined || newBarcode === stored.barcode) continue;
+        const match = checkBarcodeMatchesItem(stored, newBarcode);
+        if (!match.ok) {
+          return NextResponse.json({
+            error: `${describeMismatch(match.expected, match.scanned)}. לא ניתן לשמור - שיוך ברקוד לא תואם מתבצע רק בהשכרה עם אישור מנהל.`,
+            barcodeMismatch: true,
+            expected: match.expected,
+            scanned: match.scanned
+          }, { status: 400 });
+        }
+      }
+    }
     const storedPaymentById = new Map(storedPayments.map(p => [p.id, p]));
     const storedObligationById = new Map(storedObligations.map(o => [o.id, o]));
 

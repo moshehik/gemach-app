@@ -7,7 +7,7 @@ import HebrewDatePicker from '@/components/HebrewDatePicker';
 import HebrewDateRangePicker from '@/components/HebrewDateRangePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
-import { getHebrewDateString } from '@/lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayFullName } from '@/lib/hebrewDate';
 
 const todayIso = () => {
   const d = new Date();
@@ -36,6 +36,14 @@ const formatRangeDayHeader = (iso) => {
   return `${date.toLocaleDateString('he-IL')} (${getHebrewDateString(date)})`;
 };
 
+// יום היציאה/האיסוף המחושב (dispatchDates מ-/api/deliveries, רק כש-deliveries_select_by_event_date
+// דולקת - התאריך שנבחר במסך הוא אז תאריך האירוע, ולכן יום היציאה/האיסוף כבר לא משתמע מהבחירה).
+// עקבי עם כותרת הדפסת המשלוחן ("משלוח יוצא/נאסף <יום שבוע>", lib/deliveryCourier.js).
+const formatDispatchHint = (direction, iso) => {
+  const date = isoToLocalDate(iso);
+  return `${direction === 'out' ? 'יוצא' : 'נאסף'} ${getHebrewWeekdayFullName(date)} ${date.toLocaleDateString('he-IL')}`;
+};
+
 // תוויות/צבעים/אייקונים לכל כיוון משלוח - עקבי עם שפת ה-badge/dot-badge של design-system.css.
 // הלוך (יוצא ללקוח) מקבל גוון warning (כמו "הושכר"/"בקרוב" - "עוד לא אצלנו"), חזור (חוזר מהלקוח)
 // מקבל גוון info (כמו "הוחזר חלקי" - "בדרך חזרה") - בחירה עיצובית, אין רפרנס מדויק לכיוונים האלו.
@@ -55,6 +63,8 @@ export default function DeliveriesPage() {
   const [rangeMode, setRangeMode] = useState('day'); // day | week | 2weeks | month
   const [rangeEnabled, setRangeEnabled] = useState(false);
   const [rangeRows, setRangeRows] = useState({}); // date -> rows
+  // deliveries_select_by_event_date - התאריך שנבחר הוא תאריך האירוע (ולא יום הוצאה/חזרה)
+  const [byEventDate, setByEventDate] = useState(false);
 
   // הדפסת/שליחת נתונים למשלוחן + הדפסת נתונים לשקית (§C/§D/§E,
   // docs/deliveries-feature-plan-2026-09-16.md) - מודל בחירה נפרד מטבלת התצוגה
@@ -111,6 +121,7 @@ export default function DeliveriesPage() {
     fetch('/api/settings', { cache: 'no-store' }).then(r => r.json()).then(arr => {
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'delivery_table_range_enabled')?.value : null;
       if (v === 'true') setRangeEnabled(true);
+      if (Array.isArray(arr) && arr.find(s => s.key === 'deliveries_select_by_event_date')?.value === 'true') setByEventDate(true);
     }).catch(() => {});
   }, []);
 
@@ -196,10 +207,13 @@ export default function DeliveriesPage() {
       <td>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {visibleDirections(row).map(d => (
-            <span key={d} className={`badge ${DIRECTION_META[d].badgeClass}`}>
-              <svg className="icon"><use href="#i-box" /></svg>
-              {DIRECTION_META[d].label}
-            </span>
+            <div key={d} style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
+              <span className={`badge ${DIRECTION_META[d].badgeClass}`}>
+                <svg className="icon"><use href="#i-box" /></svg>
+                {DIRECTION_META[d].label}
+              </span>
+              {row.dispatchDates?.[d] && <span className="cell-muted">{formatDispatchHint(d, row.dispatchDates[d])}</span>}
+            </div>
           ))}
         </div>
       </td>
@@ -228,6 +242,7 @@ export default function DeliveriesPage() {
     ...r,
     directionsLabel: visibleDirections(r).map(d => DIRECTION_META[d].label).join(' + '),
     dressModelsLabel: r.dressModelNames.join(' | '),
+    dispatchLabel: r.dispatchDates ? visibleDirections(r).map(d => formatDispatchHint(d, r.dispatchDates[d])).join(' | ') : '',
     chargeStatusLabel: visibleDirections(r).map(d => `${DIRECTION_META[d].label}: ${r.chargeExists[d] ? 'נוצר חיוב' : 'טרם נוצר חיוב'}`).join(' | '),
   }));
 
@@ -255,6 +270,7 @@ export default function DeliveriesPage() {
               { key: 'eventDateHebrew', label: 'תאריך אירוע' },
               { key: 'dressModelsLabel', label: 'דגמים' },
               { key: 'directionsLabel', label: 'כיוון משלוח' },
+              ...(byEventDate ? [{ key: 'dispatchLabel', label: 'יציאה/איסוף' }] : []),
               { key: 'chargeStatusLabel', label: 'סטטוס חיוב' },
             ]}
             iconOnly={true}
@@ -274,6 +290,7 @@ export default function DeliveriesPage() {
         <div style={{ width: '260px' }}>
           <HebrewDatePicker value={selectedDate} onChange={setSelectedDate} />
         </div>
+        {byEventDate && <span className="hint">מוצגים משלוחים להזמנות שתאריך האירוע שלהן הוא התאריך שנבחר</span>}
       </div>
 
       {/* סרגל חיפוש חופשי (הזמנה/לקוח/טלפון) */}
@@ -334,7 +351,7 @@ export default function DeliveriesPage() {
             if (dayRows.length === 0) return null;
             return (
               <div key={d} className="card card-pad" style={{ marginBottom: 12 }}>
-                <strong style={{ display: 'block', marginBottom: 8 }}>{formatRangeDayHeader(d)} - {dayRows.length} משלוחים</strong>
+                <strong style={{ display: 'block', marginBottom: 8 }}>{byEventDate ? 'אירועים ב-' : ''}{formatRangeDayHeader(d)} - {dayRows.length} משלוחים</strong>
                 <div className="table-wrap">
                   <div className="table-scroll">
                     <table className="data">
@@ -385,8 +402,8 @@ export default function DeliveriesPage() {
                   <td colSpan="7">
                     <div className="empty-state">
                       <svg className="icon"><use href="#i-box" /></svg>
-                      <h4>אין משלוחים ליום זה</h4>
-                      <p>לא נמצאו הזמנות עם משלוח הלוך או חזור בתאריך שנבחר.</p>
+                      <h4>{byEventDate ? 'אין משלוחים לאירועים ביום זה' : 'אין משלוחים ליום זה'}</h4>
+                      <p>{byEventDate ? 'לא נמצאו הזמנות עם משלוח שתאריך האירוע שלהן הוא התאריך שנבחר.' : 'לא נמצאו הזמנות עם משלוח הלוך או חזור בתאריך שנבחר.'}</p>
                     </div>
                   </td>
                 </tr>
@@ -422,7 +439,7 @@ export default function DeliveriesPage() {
 
               {printAction === 'bag-label' ? (
                 <div className="field" style={{ marginBottom: 0 }}>
-                  <label>תאריך (משלוחי הלוך בלבד)</label>
+                  <label>{byEventDate ? 'תאריך אירוע (משלוחי הלוך בלבד)' : 'תאריך (משלוחי הלוך בלבד)'}</label>
                   <HebrewDatePicker value={printBagDate} onChange={setPrintBagDate} />
                 </div>
               ) : (
@@ -436,7 +453,7 @@ export default function DeliveriesPage() {
                     </div>
                   </div>
                   <div className="field" style={{ marginBottom: 0 }}>
-                    <label>טווח תאריכים</label>
+                    <label>{byEventDate ? 'טווח תאריכי אירוע' : 'טווח תאריכים'}</label>
                     <HebrewDateRangePicker startDate={printFrom} endDate={printTo} onChange={(start, end) => { setPrintFrom(start); setPrintTo(end); }} />
                   </div>
                 </>
