@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAiAccess } from '../../../../lib/permissions';
 import { generateContent } from '../../../../lib/ai/gemini';
-import { HDate } from '@hebcal/core';
+import { buildDateContext, getIsraelNow, fixDatePairsInText } from '../../../../lib/ai/aiCommon';
 
 export async function POST(req) {
   // Was completely unauthenticated (a free Gemini proxy for anyone on the internet).
@@ -13,9 +13,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Data and prompt are required' }, { status: 400 });
     }
 
-    const todayGregorian = new Date().toISOString().split('T')[0];
-    const todayHebrew = new HDate().renderGematriya();
-    const dateContext = `Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. Use this as the anchor for any relative date filtering/sorting/grouping the user asks for.`;
+    // עוגן זמן ישראלי מחושב בשרת; כותרת "תאריך הפקה" בדוח חייבת להשתמש בו כלשונו
+    // (בבדיקה נכתב "ט' תשרי (19/09/2026)" - צירוף שלא קיים, כי התאריך העברי והלועזי נלקחו מאזורי זמן שונים)
+    const now = getIsraelNow();
+    const dateContext = buildDateContext() + `
+If the report shows a "report date"/"generated on" line, write exactly: ${now.hebrew} (${now.dmy}). Never write any other date pair that is not present in the data.`;
 
     let systemPrompt = '';
 
@@ -66,7 +68,7 @@ ${JSON.stringify(data)}
       if (htmlString.startsWith('```')) htmlString = htmlString.replace(/^```\s*/, '');
       if (htmlString.endsWith('```')) htmlString = htmlString.replace(/\s*```$/, '');
       
-      return NextResponse.json({ processedData: htmlString.trim() });
+      return NextResponse.json({ processedData: fixDatePairsInText(htmlString.trim()) });
     } else {
       // Extract JSON using regex in case AI adds conversational text
       let jsonString = aiResponse;

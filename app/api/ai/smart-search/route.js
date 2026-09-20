@@ -4,13 +4,13 @@ import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { checkAiAccess } from '../../../../lib/permissions';
-import { HDate } from '@hebcal/core';
-import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { buildDateContext, buildUserDateHints, normalizeAiSql } from '../../../../lib/ai/aiCommon';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
 
 const SCHEMA_MAP = {
   customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
-  orders: "Table: Order\nColumns: id, orderId, customerId, totalAmount, paymentDate, paymentMethod, status, isPaid, isDeleted, eventDate, eventDateHebrew, returnDate\nRelated Table: Customer (id, firstName, lastName, phone1, phone2, city)",
+  orders: "Table: Order\nColumns: id, orderId, customerId, totalAmount, paymentDate, paymentMethod, status, isPaid, isDeleted, eventDate, eventDateHebrew, returnDate, orderDate, notes, isDelivery, deliveryCity, deliveryDirection, isAbroad, fromDate, toDate\nRelated Table: Customer (id, firstName, lastName, phone1, phone2, city)",
   dresses: "Table: DressItem\nColumns: id, dressModelId, dressName, barcodePrefix, sizeText, serialNumber, dressBarcode, location, locationNum, quantity, inRepair, notInUse\nRelated Table: DressModel (id, name, priceCategory)",
   rentals: "Table: OrderItem\nColumns: id, orderId, dressItemId, barcode, barcodePrefix, price, sizeText, finalPrice, isTaken, isReturned, returnedOk\nRelated Tables: Order (orderId, customerId), Customer (id, firstName, lastName), DressItem (id, dressName, dressBarcode)"
 };
@@ -75,6 +75,11 @@ Rules:
 4. If searching text, NEVER use '='. Use LIKE '%value%' or OR conditions for variations. If searching for a multi-word phrase like 'זהב קומות', use AND (e.g. LIKE '%זהב%' AND LIKE '%קומות%').
 5. Remember that the main table is "${tableName}". If you need to filter by a related table, use a subquery (e.g. \`"customerId" IN (SELECT id FROM "Customer" WHERE ...)\`). If filtering by multiple dress sizes, use a subquery with HAVING to ensure all sizes are present. CRITICAL: Single-digit sizes (e.g., 2, 4, 6) are stored with a leading zero (e.g., '02', '04', '06'). You MUST pad them!
 6. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
+7. WHOLE HEBREW MONTH ("מחודש אלול", "בתשרי"): use the month macros, never guess Gregorian first/last days: "eventDate" >= HEBREW_MONTH_START('ELUL', 5786) AND "eventDate" <= HEBREW_MONTH_END('ELUL', 5786). If the year is not stated use the current Hebrew year from the context (or the coming one for "הקרוב"). NEVER filter "eventDateHebrew" with LIKE (it stores the day letters without quote marks, e.g. 'יא תשרי תשפז', so a pattern with a gershayim matches nothing).
+8. CUSTOMER NAMES: the user can type a name in either order and with typos. Split the typed name into words and require EVERY word to match "firstName" OR "lastName" (ILIKE '%word%'). For the "Order"/"OrderItem" tables use a subquery: "customerId" IN (SELECT id FROM "Customer" WHERE ("firstName" ILIKE '%a%' OR "lastName" ILIKE '%a%') AND ("firstName" ILIKE '%b%' OR "lastName" ILIKE '%b%')).
+9. STATUS: never write "status" NOT IN (...) or "status" <> '...' ("status" is NULL for almost every order and NOT IN drops NULL rows). Use COALESCE("status", '') if you must filter it.
+10. DELIVERY: an order that ordered delivery has "isDelivery" = true; the word "משלוח" inside "notes" is different.
+11. MODEL NUMBER: to filter dresses/rentals by model number N use "barcodePrefix" = N (an integer column of "DressItem" and "OrderItem"). "dressModelId" is a UUID - NEVER compare it to a number.
 
 Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
@@ -103,10 +108,11 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
     // מעבר עמוד בתוצאות AI קיימות (item 2 - היה LIMIT 100 קבוע בלי דרך לראות עוד) -
     // לא פונים שוב ל-Gemini, רק מריצים שוב את אותו whereClause עם OFFSET אחר.
     if (reuseWhereClause && page > 1) {
-      whereClause = readWhere(reuseWhereClause, pageContext);
-      if (!whereClause) {
+      const verifiedClause = readWhere(reuseWhereClause, pageContext);
+      if (!verifiedClause) {
         return NextResponse.json({ error: 'החיפוש פג תוקף - יש להריץ אותו מחדש.' }, { status: 400 });
       }
+      whereClause = normalizeAiSql(verifiedClause);
       query = buildQuery(whereClause, (page - 1) * PAGE_SIZE);
       try {
         assertReadOnlySelect(query);
@@ -120,10 +126,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
         }
       }
     } else {
-      const todayGregorian = new Date().toISOString().split('T')[0];
-      const todayHebrew = new HDate().renderGematriya();
-      const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.
-Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
+      const dateContext = buildDateContext() + buildUserDateHints(prompt);
 
       let aiResponse = await generateContent(`${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}`);
 
@@ -141,7 +144,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
       };
 
       whereClause = parseWhereClause(aiResponse);
-      whereClause = processHebrewDateMacro(whereClause);
+      whereClause = normalizeAiSql(processHebrewDateMacro(whereClause));
       console.log('AI Smart Search Cleaned Where Clause:', whereClause);
 
       query = buildQuery(whereClause, 0);
@@ -164,7 +167,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
         console.log('AI Smart Search Retry Response:', retryResponse);
 
         whereClause = parseWhereClause(retryResponse);
-        whereClause = processHebrewDateMacro(whereClause);
+        whereClause = normalizeAiSql(processHebrewDateMacro(whereClause));
         query = buildQuery(whereClause, 0);
 
         try {

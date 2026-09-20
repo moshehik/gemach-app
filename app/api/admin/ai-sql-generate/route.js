@@ -3,24 +3,11 @@ import { generateContent } from '../../../../lib/ai/gemini';
 import { checkAuth } from '../../../../lib/auth';
 import fs from 'fs';
 import path from 'path';
-import { HDate } from '@hebcal/core';
-import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { buildDateContext, getFullSchemaContext, normalizeAiSql } from '../../../../lib/ai/aiCommon';
+import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
 
-let cachedSchema = null;
-function getSchemaContext() {
-  if (cachedSchema) return cachedSchema;
-  try {
-    const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
-    const fullSchema = fs.readFileSync(schemaPath, 'utf8');
-    // Strip comments to save tokens
-    const cleanSchema = fullSchema.replace(/\/\/.*/g, '').replace(/\n\s*\n/g, '\n').trim();
-    cachedSchema = `Here is the FULL PostgreSQL database schema for the system:\n\n${cleanSchema}`;
-    return cachedSchema;
-  } catch (e) {
-    console.error('Error reading schema', e);
-    return 'Error reading schema.';
-  }
-}
+const getSchemaContext = getFullSchemaContext;
 
 const SYSTEM_PROMPT_BASE = `You are an AI database administrator for the 'Gemach' system.
 You will be provided with the user's prompt in Hebrew asking to update, delete, or insert data.
@@ -35,7 +22,11 @@ Rules for SQL query generation:
 3. VERY IMPORTANT FOR DATES: Use PostgreSQL date functions like EXTRACT(YEAR FROM "eventDate") = 2024. For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
 4. IMPORTANT: Always quote table names and column names with double quotes because PostgreSQL is case-sensitive with identifiers created by Prisma (e.g. "Customer", "firstName", "Order", "isDeleted").
 5. Be aware of the field names exactly as defined in the schema.
-6. Make sure to format strings properly (using single quotes for string values).`;
+6. Make sure to format strings properly (using single quotes for string values).
+7. SOFT DELETE CONVENTION: this system never hard-deletes business rows. When the user asks to delete/remove/cancel records in a table that has an "isDeleted" column (Customer, Order, OrderItem, Payment, DressItem, DressModel, ...) generate UPDATE ... SET "isDeleted" = true (and "deletedAt" = NOW() if that column exists) instead of DELETE. Generate a real DELETE only if the user explicitly says permanent/hard delete (מחיקה סופית / לצמיתות / קשיחה).
+8. PLACEHOLDER ORDERS: the "Order"."status" column holds the Hebrew values '${DRAFT_ORDER_STATUS}' (unfinished draft order) and '${RESERVED_ORDER_STATUS}' (temporary reservation). "Draft" means status = '${DRAFT_ORDER_STATUS}' - NEVER the English word 'draft'. For "real orders only" filters use COALESCE("status", '') NOT IN ('${DRAFT_ORDER_STATUS}', '${RESERVED_ORDER_STATUS}') (status is NULL for almost every real order, so a bare NOT IN or <> drops them).
+9. TEXT MATCHING in the WHERE of UPDATE/DELETE: when the user gives a value written by hand (city names, names) keep the exact literal they typed - but prefer ILIKE for names/free text in SELECTs. For a SELECT that lists customers or orders show readable columns (order number "orderId", customer first+last name, dates) - never a long UUID "customerId".
+10. WHOLE HEBREW MONTH: use "eventDate" >= HEBREW_MONTH_START('ELUL', 5786) AND "eventDate" <= HEBREW_MONTH_END('ELUL', 5786); the system replaces the macros with exact dates.`;
 
 export async function POST(req) {
   if (!(await checkAuth('הנהלה ראשית'))) {
@@ -50,9 +41,7 @@ export async function POST(req) {
     }
 
     const schemaText = getSchemaContext();
-    const todayGregorian = new Date().toISOString().split('T')[0];
-    const todayHebrew = new HDate().renderGematriya();
-    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.`;
+    const dateContext = buildDateContext();
     
     const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nGenerate ONLY the raw SQL query string now:`;
     
@@ -70,7 +59,7 @@ export async function POST(req) {
     }
     query = query.trim();
     
-    query = processHebrewDateMacro(query);
+    query = normalizeAiSql(processHebrewDateMacro(query));
 
     return NextResponse.json({ sql: query });
   } catch (error) {

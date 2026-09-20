@@ -1,137 +1,200 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { checkAiAccess } from '../../../../lib/permissions';
-import { HDate } from '@hebcal/core';
-import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
-import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { getAllCachedSettings } from '../../../../lib/settingsCache';
+import { buildSettingsGuide } from '../../../../lib/settingsMetadata';
+import { buildHowToGuide } from '../../../../lib/howToGuide';
+import {
+  buildDateContext,
+  buildSharedSqlRules,
+  getFullSchemaContext,
+  loadEmployeeAccess,
+  normalizeAiSql,
+  extractSqlQueries,
+  finalizeAiText,
+  validateSettingTags,
+  validateLinkTags,
+  buildGuideFollowupPrompt,
+  buildUserDateHints,
+  rowCountFacts,
+  resultsHaveData,
+  answerSaysNone,
+  trimEnumeration,
+  humanizeResultDates,
+  finalizeTagsAndText,
+} from '../../../../lib/ai/aiCommon';
 
-// Types below mirror prisma/schema.prisma: all `id` / foreign-key columns are UUID strings
-// (Prisma's `@id @default(uuid())`), never numeric, except Order.orderId/legacyId/DressModel
-// fields explicitly typed Int. Getting this wrong makes the AI emit numeric comparisons like
-// "id" = 5 against a UUID column, which fail or silently return nothing.
-const SCHEMA_MAP = {
-  customers: "model Customer { id String (UUID), legacyId Int, firstName String, lastName String, phone1 String, phone2 String, city String, street String, houseNum Int, email String, notes String, isDeleted Boolean }",
-  orders: "model Order { id String (UUID), orderId Int, legacyId Int, customerId String (UUID, FK->Customer.id), totalAmount Float, paymentDate DateTime, paymentMethod String, status String, isPaid Boolean, isDeleted Boolean, eventDate DateTime, eventDateHebrew String, orderDate DateTime, returnDate DateTime }",
-  dresses: "model DressItem { id String (UUID), legacyId Int, dressModelId String (UUID, FK->DressModel.id), dressName String, barcodePrefix Int, sizeText String, serialNumber Int, dressBarcode String, location String, locationNum Int, quantity Int, inRepair Boolean, notInUse Boolean, isDeleted Boolean }",
-  dressModels: "model DressModel { id String (UUID), legacyId Int, name String, barcodePrefix Int, priceCategory String, isDeleted Boolean } -- the dress DESIGN; DressItem.dressModelId joins here for the model's name/category. DressItem.dressName mirrors DressModel.name and can be used directly without a join.",
-  rentals: "model OrderItem { id String (UUID), legacyId Int, orderId Int (FK->Order.orderId), dressItemId String (UUID, FK->DressItem.id), price Float, sizeText String, finalPrice Float, isTaken Boolean, isReturned Boolean, returnedOk Boolean, isDeleted Boolean }"
-};
+// עוזר הסטטיסטיקה (StatisticsModal). עד 2026-09-20 קיבל סכימה חלקית (SCHEMA_MAP) בלי שדות כמו
+// isDelivery / zeout / takenDate, דרש שהתשובה תתחיל ב-"SQL:" (אחרת הציג את השאילתה הגולמית
+// למשתמשת ולא הריץ אותה), לא החזיר טבלה ("איפה הרשימה?") ולא ידע לענות על שאלות "איפה/איך".
+// עכשיו: סכימה מלאה, חילוץ SQL מכל מקום בתשובה, החזרת השורות לממשק, ושני כלי ההדרכה של הצ'אט.
 
-const SYSTEM_PROMPT = `You are a helpful and smart AI statistics assistant for a dress rental management system.
-You have access to the PostgreSQL database.
-When the user asks a statistics question, you must FIRST output ONLY a valid PostgreSQL SQL query starting with the exact prefix "SQL: ".
+const MAX_ROWS_FOR_MODEL = 200;
+const MAX_ROWS_FOR_UI = 500;
+
+const SYSTEM_PROMPT = `You are a helpful and smart AI statistics/data assistant for a dress rental management system (Gemach).
+You have access to the FULL PostgreSQL database schema provided below.
+When the user asks for data, statistics, a list, or details about a record, you must FIRST output ONLY valid PostgreSQL SQL queries, each on its own line starting with the exact prefix "SQL: " (no text before them). If you need several separate results output several "SQL: " lines.
 
 Rules for SQL query generation:
-1. Do NOT include markdown formatting or backticks around the SQL query.
-2. The query must be valid PostgreSQL syntax.
-3. Use double quotes for table names (e.g. "Order", "Customer") and camelCase column names (e.g. "firstName").
-4. Booleans must use true/false, not 1/0.
-5. ALWAYS use 'AS' to alias column names into Hebrew. For example: SELECT COUNT(*) AS 'סה"כ לקוחות'.
-6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
-7. CRITICAL RULE FOR DELETED/INACTIVE DATA: Whenever you query ANY table (e.g. "Customer", "Order", "DressItem", "DressModel", "OrderItem"), you MUST ALWAYS filter out deleted items by adding '"isDeleted" = false' to your WHERE clause. For "DressItem", also add '"notInUse" = false' and '"inRepair" = false' unless explicitly asked about them. Never include deleted or inactive records in counts or lists unless the user specifically asks for them.
-8. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
-9. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: The "Order" table's "status" column can hold two internal placeholder values that are NOT real orders and must NEVER be counted, summed, or listed as orders/rentals/revenue unless the user explicitly asks about drafts or placeholders: '${DRAFT_ORDER_STATUS}' (an unfinished order the new-order screen autosaved and the employee never completed) and '${RESERVED_ORDER_STATUS}' (a temporary row that only reserves an order number for a card charge). Whenever you query or aggregate "Order" (directly, or by joining through it from "OrderItem"/"Payment"/"PaymentObligation"), you MUST add '"status" NOT IN (''${DRAFT_ORDER_STATUS}'', ''${RESERVED_ORDER_STATUS}'')' to your WHERE clause in addition to the isDeleted filter.
-`;
+1. Do NOT include markdown formatting or backticks around the SQL query. The query must be valid PostgreSQL syntax.
+2. Use double quotes for table names (e.g. "Order", "Customer") and camelCase column names (e.g. "firstName"). Booleans use true/false.
+3. ALWAYS use 'AS' with double quotes to alias output columns into Hebrew, e.g. SELECT COUNT(*) AS "סה""כ לקוחות" (avoid a double quote inside an alias - write סהכ or use a hyphen).
+4. If it's a general question that needs neither the database nor a guide, answer it naturally in Hebrew without the "SQL: " prefix.
+5. CRITICAL RULE FOR DELETED/INACTIVE DATA: whenever you query any table add '"isDeleted" = false'. For "DressItem" also add '"notInUse" = false' and '"inRepair" = false' unless the user asks about them.
+6. CRITICAL RULE FOR TEXT FIELDS: never use '=' for names/descriptions - use ILIKE with wildcards (multi-word: AND between words, not OR).
+7. SIZES/MODELS: a rental's size is "OrderItem"."sizeText" (only single digits carry a leading zero: '08'; '68' stays '68'). The model number is "barcodePrefix" - filter with "OrderItem"."barcodePrefix" = 811 directly, never by joining "DressModel" by name. A barcode is "OrderItem"."barcode" (text); its rental history is in "OrderItem" joined to "Order" (use "takenDate" for when it left).
+8. ORDER SORTING: when you query "Order"/"OrderItem" sort by "eventDate" DESC NULLS LAST unless asked otherwise.
+9. IMPORTANT UI FEATURE: for rows the user may want to open, include two hidden columns "_actionUrl" and "_actionLabel". Orders: use the short orderId: '/orders/' || "orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel". Customers: '/customers/' || "id" AS "_actionUrl", 'תיק לקוח' AS "_actionLabel". Never display long UUIDs to the user - show "orderId" for orders, "legacyId" for customers, "barcodePrefix" for models.
+10. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: "Order"."status" can hold two internal placeholders that are NOT real orders: '${DRAFT_ORDER_STATUS}' (unfinished draft) and '${RESERVED_ORDER_STATUS}' (temporary number reservation). Never count/list them unless asked. Whenever you query or join through "Order" add COALESCE("status", '') NOT IN ('${DRAFT_ORDER_STATUS}', '${RESERVED_ORDER_STATUS}') (see rule S1 below - never a bare NOT IN).
+11. You cannot compute dress availability for a date via SQL. For statistics about past/future bookings use "OrderItem"/"Order" data only.
+12. QUESTIONS ABOUT WHERE/HOW (not data): if the user asks where a system setting is or how to change it (e.g. "איפה מגדירים...", "איך משנים...") output exactly one line: ACTION: SETTINGS_GUIDE() . If the user asks how to perform an operational action in the system (e.g. "איך מוסיפים...", "איך עורכים עובדים") output exactly one line: ACTION: HOWTO_GUIDE() . The system then gives you the catalog to answer from. Never guess menu names yourself.`;
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
-  
+
   try {
-    const { prompt, history = [], contextQuery = '', pageContext = 'customers' } = await req.json();
+    const { prompt, history = [], contextQuery = '' } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const schemaContext = Object.entries(SCHEMA_MAP).map(([k, v]) => `-- ${k} Schema --\n${v}`).join('\n\n');
+    const cookieStore = await cookies();
+    const { isManager, employeeId } = await loadEmployeeAccess(prisma, cookieStore);
+
+    const schemaText = getFullSchemaContext();
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
-    
-    const todayGregorian = new Date().toISOString().split('T')[0];
-    const todayHebrew = new HDate().renderGematriya();
-    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.
-Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
-    
-    // Step 1: Ask the AI for SQL
-    const initialPrompt = `${SYSTEM_PROMPT}\n\nSchema:\n${schemaContext}\n${dateContext}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const dateContext = buildDateContext();
+    // גם ההודעות הקודמות של המשתמשת: "לא הגיוני" מתייחס לחודש שהוזכר בשאלה הקודמת
+    const userDateHints = buildUserDateHints([...history.filter(m => m.role === 'user').slice(-3).map(m => m.content), prompt].join('\n'));
+    const sharedRules = buildSharedSqlRules({ draftStatus: DRAFT_ORDER_STATUS, reservedStatus: RESERVED_ORDER_STATUS });
+
+    const initialPrompt = `${SYSTEM_PROMPT}\n${sharedRules}\n\n${schemaText}\n${dateContext}${userDateHints}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History (the user's latest message may dispute or refine the previous answer - re-check the data instead of apologizing or asking permission):\n${historyText}\n\nCurrent User Question: ${prompt}`;
     let aiResponse = await generateContent(initialPrompt);
+    let tableRows = null;
 
-    // Step 2: Execute SQL if generated
-    if (aiResponse.trim().startsWith('SQL:')) {
-      let sqlQuery = aiResponse.trim().replace(/^SQL:\s*/i, '').trim();
-      if (sqlQuery.startsWith('\`\`\`sql')) sqlQuery = sqlQuery.replace(/^\`\`\`sql/, '');
-      if (sqlQuery.startsWith('\`\`\`')) sqlQuery = sqlQuery.replace(/^\`\`\`/, '');
-      if (sqlQuery.endsWith('\`\`\`')) sqlQuery = sqlQuery.replace(/\`\`\`$/, '');
-      sqlQuery = sqlQuery.trim();
-
-      let queryResult = null;
-      let dbErrorStr = null;
-
-      sqlQuery = processHebrewDateMacro(sqlQuery);
-
+    // --- הדרכות: "איפה ההגדרה" / "איך עושים" (בשימוש אמיתי נשאלו כאן שאלות כאלה והתשובה הייתה ניחוש)
+    const wantsSettings = isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse);
+    const wantsHowTo = /ACTION:\s*HOWTO_GUIDE\(\)/i.test(aiResponse) || (!isManager && /ACTION:\s*SETTINGS_GUIDE\(\)/i.test(aiResponse));
+    if (wantsSettings || wantsHowTo) {
       try {
-        assertReadOnlySelect(sqlQuery);
-        queryResult = stripSecretColumns(await prisma.$queryRawUnsafe(sqlQuery));
-      } catch (dbError) {
-        dbErrorStr = dbError.message;
-        if (dbError.rejectedSql) {
-          console.error('SQL Guard rejected AI-generated statistics query:', dbError.message, '\nRejected SQL:', dbError.rejectedSql);
+        if (wantsSettings) {
+          const catalog = buildSettingsGuide(await getAllCachedSettings());
+          const text = await generateContent(buildGuideFollowupPrompt({ kind: 'settings', prompt, catalog, dateContext }));
+          aiResponse = validateSettingTags(text, catalog);
+        } else {
+          const catalog = buildHowToGuide();
+          const text = await generateContent(buildGuideFollowupPrompt({ kind: 'howto', prompt, catalog, dateContext }));
+          aiResponse = validateLinkTags(text, catalog);
         }
+      } catch (guideErr) {
+        console.error('Statistics guide error:', guideErr);
+        aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';
+      }
+    } else {
+      // --- שאילתות: מחפשים "SQL:" בכל מקום בתשובה (לא רק בתחילתה)
+      let queries = extractSqlQueries(aiResponse).map(q => normalizeAiSql(processHebrewDateMacro(q)));
 
-        // Retry
-        const retryPrompt = `${SYSTEM_PROMPT}\nSchema:\n${schemaContext}\n${dateContext}\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY a corrected PostgreSQL SQL query starting with "SQL: " to fix this issue.`;
-        let retryResponse = await generateContent(retryPrompt);
-        
-        if (retryResponse.trim().startsWith('SQL:')) {
-          let retrySql = retryResponse.trim().replace(/^SQL:\s*/i, '').trim();
-          if (retrySql.startsWith('\`\`\`sql')) retrySql = retrySql.replace(/^\`\`\`sql/, '');
-          if (retrySql.startsWith('\`\`\`')) retrySql = retrySql.replace(/^\`\`\`/, '');
-          if (retrySql.endsWith('\`\`\`')) retrySql = retrySql.replace(/\`\`\`$/, '');
-          retrySql = retrySql.trim();
-          retrySql = processHebrewDateMacro(retrySql);
-          
-          try {
-             assertReadOnlySelect(retrySql);
-             queryResult = stripSecretColumns(await prisma.$queryRawUnsafe(retrySql));
-             sqlQuery = retrySql;
-             dbErrorStr = null;
-          } catch (retryErr) {
-             dbErrorStr = retryErr.message;
-             if (retryErr.rejectedSql) {
-               console.error('SQL Guard rejected AI-generated statistics retry query:', retryErr.message, '\nRejected SQL:', retryErr.rejectedSql);
-             }
+      if (queries.length > 0) {
+        const runAll = async (qs) => {
+          const results = [];
+          for (const q of qs) {
+            try {
+              assertReadOnlySelect(q);
+            } catch (guardErr) {
+              console.error('SQL Guard rejected AI-generated statistics query:', guardErr.message, '\nRejected SQL:', q);
+              throw guardErr;
+            }
+            results.push(stripSecretColumns(await prisma.$queryRawUnsafe(q)));
+          }
+          return results;
+        };
+
+        let combinedResults = null;
+        let dbErrorStr = null;
+        try {
+          combinedResults = await runAll(queries);
+        } catch (dbError) {
+          dbErrorStr = dbError.message;
+          // תיקון עצמי: מחזירים למודל את השגיאה
+          const retryPrompt = `${SYSTEM_PROMPT}\n${sharedRules}\n\n${schemaText}\n${dateContext}${userDateHints}\n\nUser Question: ${prompt}\n\nYou generated these SQL queries:\n${queries.join('\n')}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY corrected PostgreSQL SQL queries, each line starting with "SQL: ". Avoid double quotes inside Hebrew aliases.`;
+          const retryResponse = await generateContent(retryPrompt);
+          const retryQueries = extractSqlQueries(retryResponse).map(q => normalizeAiSql(processHebrewDateMacro(q)));
+          if (retryQueries.length > 0) {
+            try {
+              combinedResults = await runAll(retryQueries);
+              queries = retryQueries;
+              dbErrorStr = null;
+            } catch (retryErr) {
+              dbErrorStr = retryErr.message;
+            }
           }
         }
-      }
 
-      if (dbErrorStr) {
-         aiResponse = "מצטער, נתקלתי בשגיאה בעת חישוב הסטטיסטיקה. אנא נסה לנסח את השאלה אחרת.";
-      } else {
-        // Step 3: Ask the AI to summarize the result
-        const followupPrompt = `The user asked: "${prompt}".
-You generated this SQL query: ${sqlQuery}
-The database returned this JSON result: ${JSON.stringify(queryResult, (key, value) => typeof value === 'bigint' ? value.toString() : value)}
-Please provide a clear and friendly natural language answer to the user in Hebrew based on these statistics. 
+        if (dbErrorStr || !combinedResults) {
+          aiResponse = 'מצטער, נתקלתי בשגיאה בעת חישוב הסטטיסטיקה. אנא נסה לנסח את השאלה אחרת.';
+        } else {
+          const toJson = (v) => JSON.parse(JSON.stringify(v, (k, x) => typeof x === 'bigint' ? x.toString() : x));
+          const safeResults = combinedResults.map(toJson);
+          const forModel = safeResults.map(r => humanizeResultDates(Array.isArray(r) ? r.slice(0, MAX_ROWS_FOR_MODEL) : r));
+          const truncatedNote = safeResults.some(r => Array.isArray(r) && r.length > MAX_ROWS_FOR_MODEL)
+            ? `\nNOTE: some result sets were truncated to the first ${MAX_ROWS_FOR_MODEL} rows for you; the real row counts are: ${JSON.stringify(safeResults.map(r => Array.isArray(r) ? r.length : 1))}. State the real counts.`
+            : '';
+
+          // הטבלה שמוצגת למשתמשת: תוצאת השאילתה האחרונה שהיא רשימה (לא ספירה בודדת)
+          const lastList = [...safeResults].reverse().find(r => Array.isArray(r) && r.length > 0 && Object.keys(r[0]).length > 0);
+          if (lastList && !(lastList.length === 1 && Object.keys(lastList[0]).filter(k => !k.startsWith('_')).length === 1)) {
+            tableRows = lastList.slice(0, MAX_ROWS_FOR_UI);
+          }
+
+          const followupPrompt = `The user asked: "${prompt}".
+${history.length ? `Earlier in this chat (the user may be disputing or refining the previous answer):\n${historyText}\n` : ''}You executed these SQL queries:
+${queries.join('\n')}
+The database returned these JSON results (in order):
+${JSON.stringify(forModel)}${truncatedNote}
+ROW COUNTS (facts computed by the server): ${rowCountFacts(safeResults)}. The SQL already applied the user's filters, so every returned row matches the request.
+
+Answer the user directly in Hebrew, based ONLY on these results.
 CRITICAL RULES FOR YOUR RESPONSE:
-1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
-2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). Do NOT calculate or guess any dates yourself, ensure accuracy.
-3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
-Summarize the information nicely.
-IMPORTANT: You are directly talking to the user. Output ONLY the exact final answer intended for the user, with NO meta-text, NO conversational filler directed at me, and NO prefaces like "Here is a summarizing answer for the user" or "בשמחה".`;
-        
-        aiResponse = await generateContent(followupPrompt);
+1. NO markdown at all (no asterisks, no "*" bullets). Plain sentences, or lines starting with "-".
+2. Dates: dates inside the results are already formatted by the server as "Hebrew date (dd/mm/yyyy)" - copy them exactly as they appear; for any other date copy both forms from the date context below. NEVER convert or compute a date yourself, and never state the start/end dates of a period (a month, a range) unless those exact dates appear in the results or in the resolved-dates block - otherwise just name the period (e.g. "חודש אלול תשפ\"ו"). Today's date is in the date context.
+3. Do not list long runs of consecutive dates - group them into a range.
+4. NEVER show SQL, table/column names or long UUIDs. NEVER write links or file names, and never promise an Excel/PDF/CSV file - you cannot create files.
+5. If the user asked for a list/details and rows were returned, say how many records were found and that the full list is shown in the table below your answer. Do not repeat every row in the text.
+6. If the results are empty, say plainly that no matching records were found and state exactly what was searched (names/dates/model). Do not invent reasons and do not ask the user for permission to search again.
+7. Output ONLY the final answer to the user - no meta text, no "here is a summary".${dateContext}${userDateHints}`;
+
+          aiResponse = await generateContent(followupPrompt);
+
+          // בבדיקה המודל כתב "לא נמצאו הזמנות" כשהשאילתה החזירה 25 שורות. אם התשובה סותרת את הנתונים
+          // - מנסים פעם אחת עם אזהרה מפורשת, ואם שוב - תשובה דטרמיניסטית מהנתונים עצמם.
+          if (resultsHaveData(safeResults) && answerSaysNone(aiResponse)) {
+            aiResponse = await generateContent(`${followupPrompt}\n\nWARNING: your previous answer claimed nothing was found, but the database DID return data (${rowCountFacts(safeResults)}). Answer again strictly from the results above.`);
+            if (answerSaysNone(aiResponse)) {
+              const n = tableRows ? tableRows.length : null;
+              aiResponse = n ? `נמצאו ${n} רשומות התואמות לחיפוש. הרשימה המלאה מוצגת בטבלה מתחת.` : `התוצאה: ${JSON.stringify(forModel[forModel.length - 1]).slice(0, 200)}`;
+            }
+          }
+          if (tableRows) aiResponse = trimEnumeration(aiResponse);
+        }
       }
     }
 
+    aiResponse = await finalizeTagsAndText(aiResponse, {
+      isManager,
+      loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
+      loadHowToCatalog: async () => buildHowToGuide(),
+    });
+
     try {
-      const { cookies } = await import('next/headers');
-      const cookieStore = await cookies();
-      const token = getVerifiedAuthCookie(cookieStore);
-      const employeeId = token?.value || null;
       if (employeeId) {
         await prisma.aIChatSession.create({
           data: {
@@ -144,9 +207,9 @@ IMPORTANT: You are directly talking to the user. Output ONLY the exact final ans
           }
         });
       }
-    } catch(e) { console.error('Failed to save AI session', e); }
+    } catch (e) { console.error('Failed to save AI session', e); }
 
-    return NextResponse.json({ response: aiResponse });
+    return NextResponse.json({ response: aiResponse, data: tableRows });
   } catch (error) {
     console.error('API Statistics Route Error:', error);
     return NextResponse.json({ error: 'Failed to generate statistics' }, { status: 500 });

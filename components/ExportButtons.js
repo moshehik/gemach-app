@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import * as XLSX from 'xlsx';
+import { downloadRowsAsXlsx } from '../lib/xlsxExport';
 
 export default function ExportButtons({ data = [], filename = 'export', columns = [], iconOnly = false, onFetchData = null }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -156,10 +156,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
 
     if (action === 'excel') {
       const exportData = columns.length > 0 ? processDataForExport(dataToExport) : dataToExport;
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-      XLSX.writeFile(workbook, `${filename}.xlsx`);
+      await downloadRowsAsXlsx(exportData, filename);
       setIsModalOpen(false);
     } else if (action === 'pdf') {
       if (openPrintDocument(buildTableHtml(dataToExport))) {
@@ -184,10 +181,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
         const { processedData } = await response.json();
 
         if (exportFormat === 'excel') {
-          const worksheet = XLSX.utils.json_to_sheet(processedData);
-          const workbook = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-          XLSX.writeFile(workbook, `${filename}.xlsx`);
+          await downloadRowsAsXlsx(processedData, filename);
         } else {
           // processedData is either an HTML string from the AI, or (as a
           // fallback) still an array of row objects.

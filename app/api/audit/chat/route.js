@@ -1,7 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import { generateContent } from '../../../../lib/ai/gemini';
 import { checkAuth } from '../../../../lib/auth';
-import { HDate } from '@hebcal/core';
+import { getIsraelNow, buildAuditRanges } from '../../../../lib/ai/aiCommon';
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -13,8 +13,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const todayIso = new Date().toISOString();
-    const todayHebrew = new HDate().renderGematriya();
+    // טווחי הזמן מחושבים בשרת לפי חצות ישראל (Asia/Jerusalem). בבדיקה "אתמול" נקבע לפי UTC ולכן
+    // בין 00:00 ל-03:00 שעון ישראל הוא היה יום אחד אחורה, והטווח נחתך 3 שעות מחוץ ליום הישראלי.
+    const now = getIsraelNow();
+    const ranges = buildAuditRanges();
     const systemPrompt = `You are a smart audit log filter assistant for a system called "Gemach".
 The user is asking a natural language question about system audit logs (e.g., "מי מחק הזמנות אתמול?"). 
 Your goal is to extract the filters from their request and return them strictly as a JSON object.
@@ -29,7 +31,7 @@ Allowed fields in JSON:
 
 Rules:
 1. ONLY return the JSON object. Do not include markdown formatting like \`\`\`json.
-2. If a date is mentioned (like "yesterday", "last week"), calculate the approximate ISO string relative to today: ${todayIso} (Hebrew date today: ${todayHebrew}).
+2. Today (Israel) is ${now.weekday}, ${now.hebrew} = ${now.dmy}. For relative dates use EXACTLY these precomputed ISO ranges (Israeli calendar days, already converted to UTC) and never compute your own: ${JSON.stringify(ranges)}. Mapping: "היום"=today, "אתמול"=yesterday, "השבוע האחרון"/"בשבוע האחרון"/"7 ימים"=last7Days, "החודש"=thisMonth, "החודש שעבר"=lastMonth, "30 יום"/"החודש האחרון"=last30Days. For a specific calendar date in the request use that day's start/end in Israel time (start = previous day 21:00Z or 22:00Z depending on daylight saving; if unsure use the range whose ISO matches). Use each range's "start" as startDate and "end" as endDate.
 3. If they ask about orders, entityType is "Order". Customers -> "Customer". Dresses -> "DressItem". Users/Employees -> "Employee".
 4. If the user searches for a specific value (e.g. size "08", name "כהן"), extract ONLY the value to the 'search' field (e.g. "08" or "כהן").
 5. DO NOT include Hebrew field names (like 'מידה' or 'שם') in the 'search' field, because the search runs on raw database JSON values.

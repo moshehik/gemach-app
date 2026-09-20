@@ -9,33 +9,34 @@ import prisma from '../../lib/prisma';
 import fs from 'fs';
 import path from 'path';
 import { HDate } from '@hebcal/core';
-import { getHebrewYearContext, processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
+import { processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../lib/sqlGuard';
 import { buildSettingsGuide } from '../../../lib/settingsMetadata';
 import { buildHowToGuide } from '../../../lib/howToGuide';
 import { uploadAndWaitForFile } from '../../../lib/ai/geminiFiles';
-import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import {
+  buildDateContext,
+  buildSharedSqlRules,
+  getFullSchemaContext,
+  getIsraelNow,
+  normalizeAiSql,
+  finalizeAiText,
+  validateSettingTags,
+  validateLinkTags,
+  buildUserDateHints,
+  rowCountFacts,
+  resultsHaveData,
+  answerSaysNone,
+  humanizeResultDates,
+  finalizeTagsAndText,
+} from '../../../lib/ai/aiCommon';
 
 // הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
 // serverless - ר' Phase 4 בתוכנית.
 export const maxDuration = 60;
 
-let cachedSchema = null;
-function getSchemaContext() {
-  if (cachedSchema) return cachedSchema;
-  try {
-    const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
-    const fullSchema = fs.readFileSync(schemaPath, 'utf8');
-    // Strip comments to save tokens
-    const cleanSchema = fullSchema.replace(/\/\/.*/g, '').replace(/\n\s*\n/g, '\n').trim();
-    cachedSchema = `Here is the FULL PostgreSQL database schema for the system:\n\n${cleanSchema}`;
-    return cachedSchema;
-  } catch (e) {
-    console.error('Error reading schema', e);
-    return 'Error reading schema.';
-  }
-}
+const getSchemaContext = getFullSchemaContext;
 
 const SYSTEM_PROMPT_BASE = `You are a helpful and smart AI assistant for the 'Gemach' system (a dress rental management system). 
 You have access to the FULL PostgreSQL database schema provided below.
@@ -54,7 +55,7 @@ Rules for SQL query generation:
 1. Do NOT include markdown formatting or backticks (\`\`\`) around the SQL query.
 2. The query must be valid PostgreSQL syntax.
 3. VERY IMPORTANT FOR DATES: Use PostgreSQL date functions like EXTRACT(YEAR FROM "eventDate") = 2024. For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by a specific Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
-IMPORTANT: If the user searches for a whole Hebrew month (e.g. "מתי בסיוון?"), you cannot use the macro. Instead, query the "eventDateHebrew" column using LIKE. However, you MUST account for Hebrew spelling variations! For example: ("eventDateHebrew" LIKE '%סיון%' OR "eventDateHebrew" LIKE '%סיוון%'). For Iyyar: ('%אייר%' OR '%איר%'). For Cheshvan: ('%חשון%' OR '%חשוון%').
+IMPORTANT: If the user searches for a whole Hebrew month (e.g. "מתי בסיוון?" / "כמה הזמנות באלול?"), use the month macros: "eventDate" >= HEBREW_MONTH_START('SIVAN', 5786) AND "eventDate" <= HEBREW_MONTH_END('SIVAN', 5786) (see rule S2 below). Do NOT filter "eventDateHebrew" with LIKE, and never guess the Gregorian first/last day of a Hebrew month.
 4. IMPORTANT: Always quote table names and column names with double quotes because PostgreSQL is case-sensitive with identifiers created by Prisma (e.g. "Customer", "firstName", "Order", "isDeleted").
 5. Be aware of the field names exactly as defined in the schema.
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
@@ -67,8 +68,8 @@ IMPORTANT: If the user searches for a whole Hebrew month (e.g. "מתי בסיו�
     - For Orders: ALWAYS use the short 'orderId' for both display AND URL. NEVER use the UUID 'id' for orders! Example: SELECT "orderId" AS "מספר הזמנה", '/orders/' || "orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel" FROM "Order".
 12. CRITICAL DISPLAY RULE: When talking to the user or generating data tables, NEVER show long UUIDs (e.g., 'a372870a...'). Always display the short readable numbers: 'orderId' for Orders, 'legacyId' for Customers, and 'legacyId' or 'barcodePrefix' for Dress Models.
 13. CRITICAL RULE FOR INVENTORY AVAILABILITY: You CANNOT calculate real-time dress availability for specific dates via SQL. Availability depends on complex JS business logic, buffer days, and interval packing algorithms that do not exist in the database. If a user asks "Is it available?" or "When is it available?", you MUST NOT generate an SQL query. Instead, you MUST output exactly this command on a new line:
-ACTION: CHECK_AVAILABILITY({"dates":["YYYY-MM-DD"], "models":[1, "שם דגם"], "sizes":["36", "38"]})
-You MUST provide a valid JSON object. "dates" is required (array of strings OR Hebrew date objects). "models" is optional (array of IDs or model names). "sizes" is optional (array of strings).
+ACTION: CHECK_AVAILABILITY({"dates":["YYYY-MM-DD"], "models":["551", "שם דגם"], "sizes":["36", "38"]})
+You MUST provide a valid JSON object. "dates" is required (array of strings OR Hebrew date objects). "models" is optional (array of dress model numbers such as "551" - always as strings - or model names). "sizes" is optional (array of strings).
 CRITICAL DATE RULE: For Gregorian dates, use "YYYY-MM-DD". For Hebrew dates (like "י' סיון"), DO NOT GUESS THE GREGORIAN DATE! Instead, pass an object: {"day": 10, "month": "Sivan", "year": 5786}. If the user asks for a whole month (like "מתי בסיוון?"), omit the day: {"month": "Sivan", "year": 5786}. Month names must be one of: Nisan, Iyyar, Sivan, Tamuz, Av, Elul, Tishrei, Cheshvan, Kislev, Tevet, Shvat, Adar I, Adar II. If year is missing, use the current Hebrew year from the context.
 The system will then run the complex algorithm and provide you the exact availability results to summarize. Do NOT output SQL if you output this ACTION.
 IMPORTANT: If the user explicitly asks to SEE OR FIND ORDERS (e.g., "When was it ordered?", "Show me the orders for this dress"), you SHOULD use a standard SQL query on the "Order" and "OrderItem" tables to find the exact order dates, rather than checking availability!
@@ -76,7 +77,7 @@ IMPORTANT: If the user explicitly asks to SEE OR FIND ORDERS (e.g., "When was it
 15. CRITICAL RULE FOR CONVERSATION: Never attempt to translate Gregorian dates to Hebrew dates in your head or invent Hebrew dates! If you are referring to a date the user mentioned, use the EXACT Hebrew text the user provided (e.g. if the user said 'כ"ה בסיוון', reply with 'כ"ה בסיוון'). Do not shift the date by a day or invent dates like 'כ"ד' or 'כ"ו'.
 16. CRITICAL SORTING RULE: Whenever you query the "Order" or "OrderItem" tables, you MUST ALWAYS sort the results by "eventDate" DESC NULLS LAST. Do NOT sort by orderId or id unless explicitly requested!
 17. CRITICAL DATE CONTEXT RULE: Do NOT carry over dates from previous user messages into new queries unless the user explicitly refers to them. If the user asks a new question without specifying a date, DO NOT assume they are still asking about a date mentioned earlier in the chat history.
-18. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: The "Order" table's "status" column can hold two internal placeholder values that are NOT real orders and must NEVER be counted, summed, or listed as orders/rentals/revenue unless the user explicitly asks about drafts or placeholders: '${DRAFT_ORDER_STATUS}' (an unfinished order the new-order screen autosaved and the employee never completed) and '${RESERVED_ORDER_STATUS}' (a temporary row that only reserves an order number for a card charge). Whenever you query or aggregate "Order" (directly, or by joining through it from "OrderItem"/"Payment"/"PaymentObligation"), you MUST add '"status" NOT IN (''${DRAFT_ORDER_STATUS}'', ''${RESERVED_ORDER_STATUS}'')' to your WHERE clause in addition to the isDeleted filter.
+18. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: The "Order" table's "status" column can hold two internal placeholder values that are NOT real orders and must NEVER be counted, summed, or listed as orders/rentals/revenue unless the user explicitly asks about drafts or placeholders: '${DRAFT_ORDER_STATUS}' (an unfinished order the new-order screen autosaved and the employee never completed) and '${RESERVED_ORDER_STATUS}' (a temporary row that only reserves an order number for a card charge). Whenever you query or aggregate "Order" (directly, or by joining through it from "OrderItem"/"Payment"/"PaymentObligation"), you MUST add 'COALESCE("status", '''') NOT IN (''${DRAFT_ORDER_STATUS}'', ''${RESERVED_ORDER_STATUS}'')' to your WHERE clause in addition to the isDeleted filter (NEVER write a bare "status" NOT IN (...): "status" is NULL for almost every real order, and NOT IN silently drops all NULL rows).
 19. CONTEXT FOR QUESTIONS ABOUT AVAILABILITY vs. THE OLD ACCESS SYSTEM (background info, updated 2026-09-15): This gemach used to run entirely on a Microsoft Access desktop system before this website replaced it. The owner sometimes still cross-checks a dress's availability against that old Access file, or asks why the two disagree. If asked about this, answer naturally in Hebrew using these facts - do NOT run SQL for this, and do NOT guess numbers:
     - Availability per size = physical stock (excluding items marked "לא בשימוש"/"בתיקון", and excluding items whose location contains "רזרבה" UNLESS the "allow_renting_reserve_items" setting is enabled) MINUS the highest number of units booked at once on any single day inside a buffer window around the requested date.
     - The buffer window ("inventory_buffer_days" SystemSetting) is applied symmetrically - the same number of days before AND after the event date. Each gemach organization has ITS OWN value, carried over from that org's own Access data - never assume the two orgs match. As of 2026-09-15: the main gemach = 3 days, Neve Yaakov = 2 days. Both were verified to reproduce Access's own live numbers exactly.
@@ -118,7 +119,7 @@ export async function POST(req) {
 
         const mediaPrompt = `אתה עוזר וירטואלי למערכת ניהול גמ"ח שמלות. המשתמש/ת צירף/ה ${recordingUrl ? 'הקלטת מסך' : 'צילום מסך'} מהמערכת ושאל/ה: "${prompt}".\n${context ? `הקשר נוסף: ${context}\n` : ''}ענה/י בעברית בצורה קצרה וברורה, בהתבסס על מה שרואים בפועל במדיה המצורפת. אל תשתמש בסימוני markdown כמו כוכביות.`;
         const mediaResponse = await generateContent(mediaPrompt, null, media);
-        return NextResponse.json({ response: mediaResponse, data: null, sqlQuery: null });
+        return NextResponse.json({ response: finalizeAiText(mediaResponse), data: null, sqlQuery: null });
       } catch (mediaErr) {
         console.error('AI media analysis error:', mediaErr);
         return NextResponse.json({ response: 'מצטער, נתקלתי בשגיאה בעת ניתוח הצילום/ההקלטה. אנא נסה שוב.', data: null, sqlQuery: null });
@@ -127,7 +128,7 @@ export async function POST(req) {
 
     // Employee Classification Protections
     const cookieStore = await cookies();
-    const token = getVerifiedAuthCookie(cookieStore);
+    const token = cookieStore.get('auth_token');
     let employeeContext = '';
     let isManager = false;
     if (token && token.value) {
@@ -164,16 +165,17 @@ ACTION: HOWTO_GUIDE()
 The system will then give you a catalog of common operational actions (title, short instructions, and the page route to open), and you must answer based on that catalog alone. If nothing in the catalog genuinely matches, say honestly that you don't have instructions for that yet instead of guessing.`;
 
     const schemaText = getSchemaContext();
-    const todayGregorian = new Date().toISOString().split('T')[0];
-    const todayHebrew = new HDate().renderGematriya();
-    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user. For example, if the user asks for a date in the current Hebrew year, it is the year ${todayHebrew.split(' ').pop()}.
-Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
-    
+    // עוגן "עכשיו" בזמן ישראל (תאריך+שעה+יום בשבוע, עברי ולועזי) - מחושב בשרת ולא ע"י המודל
+    const israelNow = getIsraelNow();
+    const dateContext = buildDateContext();
+    const sharedRules = buildSharedSqlRules({ draftStatus: DRAFT_ORDER_STATUS, reservedStatus: RESERVED_ORDER_STATUS });
+    const userDateHints = buildUserDateHints([...history.filter(m => m.role === 'user').slice(-3).map(m => m.content), prompt].join('\n'));
+
     const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
     
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n${sharedRules}\n\n${schemaText}\n${employeeContext}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${userDateHints}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     
     let aiResponse = await generateContent(initialPrompt);
     
@@ -209,7 +211,7 @@ Here is the complete, up-to-date catalog of every configurable system setting in
 ${JSON.stringify(catalog)}
 
 Answer the user in Hebrew:
-1. Say clearly where the relevant setting is found (the category/tab, e.g. "הגדרות מערכת ← הזמנות").
+1. Say clearly where the relevant setting is found, copying the EXACT "location" field of that setting from the catalog (e.g. "הגדרות מערכת ← יומן") - never guess or paraphrase the tab name.
 2. Briefly explain in plain Hebrew what the setting does and its current value.
 3. Do NOT invent a setting key that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
 4. Keep the answer short and conversational. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
@@ -225,7 +227,8 @@ CRITICAL: If you identified one or more specific setting keys that answer the qu
           fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
         } catch (e) {}
 
-        return NextResponse.json({ response: finalResponse, data: null, sqlQuery: null });
+        // אימות בקוד מול הקטלוג: תגית עם מפתח שלא קיים מוסרת, ומיקום ("הגדרות מערכת ← X") מתוקן לקטגוריה האמיתית
+        return NextResponse.json({ response: finalizeAiText(validateSettingTags(finalResponse, catalog), new Date()), data: null, sqlQuery: null });
       } catch (err) {
         console.error('Settings guide action error:', err);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת קטלוג ההגדרות. אנא נסה לנסח את השאלה מחדש.';
@@ -255,7 +258,7 @@ CRITICAL: If you identified one or more specific catalog entries that answer the
           fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== HOWTO GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
         } catch (e) {}
 
-        return NextResponse.json({ response: finalResponse, data: null, sqlQuery: null });
+        return NextResponse.json({ response: finalizeAiText(validateLinkTags(finalResponse, catalog)), data: null, sqlQuery: null });
       } catch (err) {
         console.error('Howto guide action error:', err);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';
@@ -286,9 +289,32 @@ CRITICAL: If you identified one or more specific catalog entries that answer the
         const allModels = await prisma.dressModel.findMany();
         const modelMap = {};
         allModels.forEach(m => modelMap[m.id] = m.name);
-        
+
+        // זיהוי דגמים בקוד: לפי מזהה פנימי, לפי מספר דגם (barcodePrefix) או לפי שם. בבדיקת האמינות
+        // ה-AI העביר את הדגם כמספר (551) ואף דגם לא התאים (מפתחות הזמינות הם UUID), הטבלה חזרה ריקה
+        // והתשובה הייתה "אינו פנוי" כשבפועל היו 9 שמלות פנויות.
+        const resolvedModelIds = new Set();
+        const unresolvedModels = [];
+        for (const reqM of requestedModels) {
+          const key = String(reqM).trim();
+          const hits = allModels.filter(m =>
+            m.id === key ||
+            (m.barcodePrefix != null && String(m.barcodePrefix) === key) ||
+            (m.name && m.name.toLowerCase().includes(key.toLowerCase()))
+          );
+          // אם יש התאמה מדויקת (מזהה/מספר/שם זהה) עדיפה על התאמת תת-מחרוזת
+          const exact = hits.filter(m => m.id === key || String(m.barcodePrefix) === key || (m.name || '').toLowerCase() === key.toLowerCase());
+          const chosen = exact.length > 0 ? exact : hits;
+          if (chosen.length === 0) unresolvedModels.push(key);
+          chosen.forEach(m => resolvedModelIds.add(m.id));
+        }
+        // מידות חד-ספרתיות נשמרות עם 0 מוביל ('08'); התאמה מדויקת ולא תת-מחרוזת (8 לא צריך להתאים ל-18/28)
+        const normalizeSize = (s) => { const t = String(s).trim(); return /^\d$/.test(t) ? `0${t}` : t; };
+        const wantedSizes = requestedSizes.map(normalizeSize);
+
         const formattedResults = [];
-        const currentHebrewYear = parseInt(todayHebrew.split(' ').pop()) || 5784;
+        const currentHebrewYear = israelNow.hdate.getFullYear();
+        let sampleAvailability = null;
         
         let expandedDates = [];
         for (const dateItem of dates) {
@@ -326,18 +352,14 @@ CRITICAL: If you identified one or more specific catalog entries that answer the
            
            const availabilityData = await getBulkAvailableInventory(targetDate);
            
+           if (!sampleAvailability) sampleAvailability = availabilityData;
+
            for (const modelId in availabilityData) {
-              const mIdNum = parseInt(modelId, 10);
-              const mName = modelMap[modelId] || "";
-              if (requestedModels.length > 0) {
-                 const matchesId = requestedModels.includes(mIdNum) || requestedModels.includes(modelId.toString());
-                 const matchesName = requestedModels.some(reqM => typeof reqM === 'string' && mName.includes(reqM));
-                 if (!matchesId && !matchesName) continue;
-              }
-              
+              if (requestedModels.length > 0 && !resolvedModelIds.has(modelId)) continue;
+
               for (const size in availabilityData[modelId]) {
-                 if (requestedSizes.length > 0 && !requestedSizes.some(reqS => size.toString().includes(reqS.toString().trim()))) continue;
-                 
+                 if (wantedSizes.length > 0 && !wantedSizes.includes(size)) continue;
+
                  const invData = availabilityData[modelId][size];
                  formattedResults.push({
                     "תאריך": dateStr,
@@ -354,12 +376,33 @@ CRITICAL: If you identified one or more specific catalog entries that answer the
         
         tableData = formattedResults;
         sqlQueryToReturn = `ACTION: CHECK_AVAILABILITY(${JSON.stringify(requestData)})`;
-        
+
+        // עובדות שחושבו בקוד (לא ע"י המודל): התאריכים המפוענחים בשני הלוחות, ומה לא נמצא.
+        // כשהטבלה ריקה המודל נהג להמציא תאריך לועזי ולהכריז "אינו פנוי".
+        const resolvedDates = expandedDates.slice(0, 40).map(iso => {
+          const [yy, mm, dd] = iso.split('-');
+          return { gregorian: `${dd}/${mm}/${yy}`, hebrew: getHebrewDateString(new Date(iso)) };
+        });
+        const resolutionNotes = [];
+        unresolvedModels.forEach(m => resolutionNotes.push(`There is NO dress model matching "${m}" in the system.`));
+        if (sampleAvailability && wantedSizes.length > 0) {
+          resolvedModelIds.forEach(id => {
+            const existing = Object.keys(sampleAvailability[id] || {});
+            const missing = wantedSizes.filter(sz => !existing.includes(sz));
+            if (missing.length > 0) {
+              resolutionNotes.push(`Model "${modelMap[id]}" has NO size ${missing.join(', ')}. Sizes that exist for this model: ${existing.join(', ') || 'none'}.`);
+            }
+          });
+        }
+        if (formattedResults.length === 0 && resolutionNotes.length === 0) {
+          resolutionNotes.push('No availability data was found for the requested dates/models/sizes.');
+        }
+
         const followupPrompt = `The user asked: "${prompt}".
-You requested to check availability for dates: ${dates.join(', ')}.
+You requested to check availability. The server resolved the requested dates to (use ONLY these Hebrew/Gregorian pairs when mentioning dates): ${JSON.stringify(resolvedDates)}.
 The sophisticated inventory system returned these availability results (already accounting for all buffer rules and overlap logic):
 ${JSON.stringify(formattedResults)}
-
+${resolutionNotes.length > 0 ? `\nFACTS FROM THE SERVER ABOUT WHAT WAS NOT FOUND (explain these to the user plainly; if the results list is empty NEVER say the dress is "not available" - say what does not exist or that no data was found, and offer the sizes that do exist): ${JSON.stringify(resolutionNotes)}\n` : ''}
 Please provide a short, clear, and friendly natural language answer to the user in Hebrew based on these results.
 CRITICAL RULES FOR YOUR RESPONSE:
 1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
@@ -379,7 +422,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
            fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== FINAL AI RESPONSE ====\n' + finalResponse + '\n\n');
         } catch(e) {}
 
-        return NextResponse.json({ response: finalResponse, data: tableData, sqlQuery: sqlQueryToReturn });
+        return NextResponse.json({ response: finalizeAiText(finalResponse), data: tableData, sqlQuery: sqlQueryToReturn });
       } catch (err) {
          console.error('Action error:', err);
          aiResponse = "מצטער, נתקלתי בשגיאה בעת פיענוח הבקשה לבדיקת זמינות. אנא נסח את השאלה מחדש.";
@@ -403,7 +446,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
 
         try {
           for (let i = 0; i < queries.length; i++) {
-            queries[i] = processHebrewDateMacro(queries[i]);
+            queries[i] = normalizeAiSql(processHebrewDateMacro(queries[i]));
             console.log(`AI generated SQL query ${i + 1}:`, queries[i]);
             try {
               assertReadOnlySelect(queries[i]);
@@ -419,7 +462,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
           dbErrorStr = dbError.message;
           
           // SELF HEALING RETRY
-          const retryPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nYou generated these SQL queries:\n${queries.join('\n')}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY corrected PostgreSQL SQL queries starting with "SQL: " to fix this issue.`;
+          const retryPrompt = `${SYSTEM_PROMPT_BASE}\n${sharedRules}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nYou generated these SQL queries:\n${queries.join('\n')}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY corrected PostgreSQL SQL queries starting with "SQL: " to fix this issue.`;
           let retryResponse = await generateContent(retryPrompt);
           
           const retryQueries = [];
@@ -436,7 +479,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
             try {
               combinedResults = [];
               for (let i = 0; i < retryQueries.length; i++) {
-                retryQueries[i] = processHebrewDateMacro(retryQueries[i]);
+                retryQueries[i] = normalizeAiSql(processHebrewDateMacro(retryQueries[i]));
                 console.log(`AI generated Retry SQL query ${i + 1}:`, retryQueries[i]);
                 try {
                   assertReadOnlySelect(retryQueries[i]);
@@ -468,26 +511,45 @@ You executed the following SQL queries:
 ${queries.join('\n')}
 
 The database returned these JSON results (in order):
-${JSON.stringify(combinedResults, (key, value) => typeof value === 'bigint' ? value.toString() : value)}
+${JSON.stringify(humanizeResultDates(JSON.parse(JSON.stringify(combinedResults, (key, value) => typeof value === 'bigint' ? value.toString() : value))))}
 
 Please provide a short, clear, and friendly natural language answer to the user in Hebrew based on these database results. 
 CRITICAL RULES FOR YOUR RESPONSE:
 1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
-2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). Do NOT calculate or guess any dates yourself, ensure accuracy.
+2. Dates inside the results are already formatted by the server as "Hebrew date (dd/mm/yyyy)" - copy them exactly as they appear. Whenever you mention any other date, mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). Do NOT calculate or guess any dates yourself, ensure accuracy, and never state the start/end dates of a period (a month, a range) unless those exact dates appear in the results or in the resolved-dates block - otherwise just name the period.
 3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
 4. DO NOT tell the user you are showing a table, and DO NOT output raw JSON or Markdown tables.
 5. STRICT PRIVACY RULE: You must NEVER expose, mention, or list ANY customer names, phone numbers, or personal details in your text response, even if you see them in the database results. Your response is intended to be shown or forwarded to clients, so you must keep all other clients' information completely confidential. Only summarize inventory and availability.
 6. SMART FILTERING: If the user is asking about specific models, colors, or sizes, you MUST append a filter tag at the very end of your response: [FILTER:term] where term is the search term (e.g. [FILTER:זהב] or [FILTER:42]). The frontend will render this as a beautiful modern button to filter the display. Only provide ONE filter tag.
-Summarize the information nicely as a helpful customer service representative. For example, instead of listing all items, say "יש לנו 5 שמלות מדגם זה במידות 38-42".`;
+7. If the database returned NO rows, say plainly that no matching records were found and state exactly what was searched (names, dates, model). Do NOT invent reasons and do NOT guess; never claim something was "already settled/handled" just because nothing was found.
+8. Today's date/time and the calendar are given below - use them if you need to mention today. Never invent a date pair.
+9. ROW COUNTS (facts computed by the server): ${rowCountFacts(combinedResults)}. The SQL already applied the user's filters, so every returned row matches the request - if rows came back never say nothing was found.
+Summarize the information nicely as a helpful customer service representative. For example, instead of listing all items, say "יש לנו 5 שמלות מדגם זה במידות 38-42".
+${dateContext}${userDateHints}`;
           
           aiResponse = await generateContent(followupPrompt);
+          // תשובה שסותרת את הנתונים ("לא נמצאו" כשחזרו שורות): ניסיון חוזר אחד עם אזהרה, ואז תשובה מהנתונים עצמם
+          if (resultsHaveData(combinedResults) && answerSaysNone(aiResponse)) {
+            aiResponse = await generateContent(`${followupPrompt}
+
+WARNING: your previous answer claimed nothing was found, but the database DID return data (${rowCountFacts(combinedResults)}). Answer again strictly from the results above.`);
+            if (answerSaysNone(aiResponse)) {
+              const last = combinedResults[combinedResults.length - 1];
+              aiResponse = Array.isArray(last) && last.length > 1 ? `נמצאו ${last.length} רשומות התואמות לחיפוש. הרשימה המלאה מוצגת בטבלה.` : 'נמצאו נתונים התואמים לחיפוש. הם מוצגים בטבלה.';
+            }
+          }
         }
       }
     }
 
     const safeData = tableData ? JSON.parse(JSON.stringify(tableData, (key, value) => typeof value === 'bigint' ? value.toString() : value)) : null;
 
-    return NextResponse.json({ response: aiResponse, data: safeData, sqlQuery: sqlQueryToReturn });
+    const finalText = await finalizeTagsAndText(aiResponse, {
+      isManager,
+      loadSettingsCatalog: async () => buildSettingsGuide(await getAllCachedSettings()),
+      loadHowToCatalog: async () => buildHowToGuide(),
+    });
+    return NextResponse.json({ response: finalText, data: safeData, sqlQuery: sqlQueryToReturn });
   } catch (error) {
     console.error('API Route Error:', error);
     return NextResponse.json({ error: 'Failed to generate response' }, { status: 500 });
