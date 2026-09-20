@@ -1,5 +1,17 @@
 # System Changes Log
 
+## 2026-09-20: Neve Yaakov email complaint (2026-09-17/18, Ahuvi Pinkel / Rivka Levi) - 5 items verified, 4 fixed
+
+Full detail per item in `docs/email-fixes-2026-09-20/` (README.md = summary + verification matrix).
+
+- **#1 (critical) wrong-dress barcode accepted at rental:** real case order #52103 (ordered 557 size 06, rented with barcode 5470606 = model 547). Root cause: the manual-barcode modal of the order card -> `/api/rentals/toggle` never compared the barcode with the ordered model/size. Now the server checks it (`lib/rentalBarcodeMatch.js`, `lib/rentalBarcodeGuard.js`), returns 409 `barcodeMismatch`, and a manager (roleId 1/2) can override with a password (managers get a notification). Also enforced on order save (`PUT /api/orders/[id]`, 400) and on the manual-typed path of `/api/rentals/scan`. **Switch `enforce_rental_barcode_match` (default false = old behaviour); ON in Neve Yaakov only.**
+- **#2 model+size search in advanced order search:** already fixed before this round (PR #95, new "size" field); verified again, nothing changed.
+- **#3 deliveries by event date:** with `deliveries_select_by_event_date` ON, picking date D on the deliveries screen / courier print / courier email / bag page lists orders whose EVENT is on D (Israel day) instead of the outbound/return window (D+daysBefore / D-daysAfter); each row still shows the computed dispatch/pickup days (`dispatchDates`). Bag page (`/print/delivery-bag`) additionally prints the event date, a hand-fill "bag ___ of ___" line and the order notes (`Order.notes`) - no switch, pure addition. **Switch default false; ON in Neve Yaakov only.**
+- **#4 "page X of Y" on the order print:** CSS `@page { @bottom-center }` counters in `app/print/order/page.js`, verified in a real PDF (`/api/pdf`). Batch print counts across the whole document. No switch.
+- **#5 (critical) item edit "button does not work":** after the 15-minute full-edit window the only unlock button ("פתיחת עריכה מלאה (אישור מנהל)") lived inside the alterations column, which is hidden when `enable_alterations=false` (Neve Yaakov). It now lives in the model/size cell. **Not implemented:** "model replacement updates a partial payment of 50%" - business rule undefined, see the interpretation table in `docs/email-fixes-2026-09-20/02-edit-unlock-and-print-page-numbers.md`.
+- **DB:** both settings rows created in both PROD DBs by a host-checked script (org1 = false/false, Neve Yaakov = true/true); no schema change. An earlier agent run also created `deliveries_select_by_event_date=false` in org1 PROD by accident (same value the seed would create).
+- **Verified:** merged branch run against the TEST DB (API + real browser + real PDF), all TEST data restored.
+
 ## 2026-09-20: Live permissions verification + security hardening
 
 - **What was done:** end-to-end test of the permissions system on the LIVE sites (both gemachs) with temporary sample employees at every level (programmer / head management / branch manager / seamstress / secretary / two employees of a temporary department roleId 90), driven through the real login + API + SSR pages. The sample employees, the temporary department and every test permission row were removed afterwards. Full matrix, findings and the open items: `docs/permissions-security-audit-2026-09-20.md`.
