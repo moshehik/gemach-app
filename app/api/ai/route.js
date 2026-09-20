@@ -3,6 +3,7 @@ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
 import { checkAuth } from '../../../lib/auth';
 import { checkAiAccess } from '../../../lib/permissions';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
 import { cookies } from 'next/headers';
 import prisma from '../../lib/prisma';
@@ -128,7 +129,7 @@ export async function POST(req) {
 
     // Employee Classification Protections
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     let employeeContext = '';
     let isManager = false;
     if (token && token.value) {

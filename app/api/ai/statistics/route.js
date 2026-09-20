@@ -4,6 +4,7 @@ import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { checkAiAccess } from '../../../../lib/permissions';
+import { verifiedCookieStore } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
@@ -68,7 +69,7 @@ export async function POST(req) {
     }
 
     const cookieStore = await cookies();
-    const { isManager, employeeId } = await loadEmployeeAccess(prisma, cookieStore);
+    const { isManager, employeeId } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
 
     const schemaText = getFullSchemaContext();
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
