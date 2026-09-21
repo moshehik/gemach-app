@@ -4,6 +4,8 @@ import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { sendSystemEmail } from '@/lib/mailer';
+import { renderGenericEmailHtml } from '@/lib/emailTemplates';
+import { emailSubject } from '@/lib/emailCatalog';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +44,7 @@ export async function POST(request) {
       if (!seen.has(email)) seen.set(email, o);
     }
     const batchId = `bulk-${Date.now()}`;
+    const gmachName = get('gmach_name') || 'גמ"ח שמלות';
     // מקור לקישור האישור - origin של הבקשה הנוכחית (עובד גם ב-prod וגם ב-test/preview
     // deployments בלי env נוסף, ראה request.nextUrl ב-Next.js App Router).
     const origin = request.nextUrl?.origin || new URL(request.url).origin;
@@ -55,12 +58,21 @@ export async function POST(request) {
         // מידע על לקוחות אחרים אם הטוקן שגוי/מנוחש.
         const confirmToken = crypto.randomBytes(32).toString('base64url');
         const confirmUrl = `${origin}/api/bulk-email/confirm?token=${confirmToken}`;
-        const personalized = `${body}\n\n(הזמנה #${o.orderId}, אירוע: ${o.eventDateHebrew || getHebrewDateString(o.eventDate)})\n\nלאישור קבלת ההודעה, יש ללחוץ על הקישור:\n${confirmUrl}`;
+        const orderLine = `הזמנה #${o.orderId}, אירוע: ${o.eventDateHebrew || getHebrewDateString(o.eventDate)}`;
+        const personalized = `${body}\n\n(${orderLine})\n\nלאישור קבלת ההודעה, יש ללחוץ על הקישור:\n${confirmUrl}`;
         const r = await sendSystemEmail({
           to: email,
-          subject: `${subject} [${batchId}]`,
+          subject: emailSubject('bulkEventDate', { subject, batchId }),
           body: personalized,
-          html: `<div dir="rtl" style="font-family:Arial;line-height:1.6"><p>${String(body).replace(/\n/g, '<br/>')}</p><p style="color:#888;font-size:12px">הזמנה #${o.orderId}, אירוע: ${o.eventDateHebrew || getHebrewDateString(o.eventDate)}</p><p style="margin-top:16px"><a href="${confirmUrl}" style="background:#2f6f4f;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">אישור קבלת ההודעה</a></p></div>`,
+          html: renderGenericEmailHtml({
+            title: subject,
+            bodyText: String(body),
+            gmachName,
+            subtitle: 'הודעה חשובה',
+            icon: '📣',
+            footnote: orderLine,
+            actionButton: { label: 'אישור קבלת ההודעה', url: confirmUrl },
+          }),
           customerId: o.customerId || null,
           confirmToken,
         });

@@ -3,8 +3,10 @@ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { parseIdList } from '../../../lib/notificationLists';
-import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { renderInternalMessageEmailHtml } from '../../../lib/emailTemplates';
+import { sendSystemEmail } from '../../../lib/mailer';
+import { emailSubject } from '../../../lib/emailCatalog';
 
 // #24/#25 — קטגוריות הודעה מותרות. כל ערך אחר (כולל undefined) = הודעה כללית.
 const ALLOWED_CATEGORIES = ['shift_handover', 'management'];
@@ -155,14 +157,8 @@ export async function POST(request) {
 
     // Always try to send emails, filtering by receiveEmailAlerts
     try {
-      const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'].includes(s.key));
-      const linkA = settings.find(s => s.key === 'email_link_a')?.value;
-      const linkB = settings.find(s => s.key === 'email_link_b')?.value;
-      const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+      const settings = (await getAllCachedSettings()).filter(s => s.key === 'gmach_name');
       const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
-
-      const FALLBACK_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-      const scriptUrl = (strategy === 'all_b' && linkB) ? linkB : (linkA || FALLBACK_SCRIPT_URL);
 
       let receivers = [];
       if (parsedReceiver) {
@@ -173,24 +169,17 @@ export async function POST(request) {
         receivers = emps.map(e => e.email).filter(Boolean);
       }
 
-      const subject = title || 'הודעה חדשה במערכת הגמח';
-      const htmlBody = renderGenericEmailHtml({ title, bodyText: content, gmachName, subtitle: 'הודעה חדשה' });
+      const subject = emailSubject('internalMessageAlert', { title });
+      const sender = await prisma.employee.findUnique({ where: { id: employeeId }, select: { firstName: true, lastName: true } });
+      const senderName = [sender?.firstName, sender?.lastName].filter(Boolean).join(' ');
+      const htmlBody = renderInternalMessageEmailHtml({ title: title || 'הודעה חדשה', bodyText: content, senderName, gmachName });
 
-      for (const email of receivers) {
-        fetch(scriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: email,
-            cc: '',
-            subject,
-            body: content || '',
-            htmlBody,
-            fileName: 'הודעה.txt',
-            fileContent: Buffer.from('נשלח ממערכת הגמח').toString('base64')
-          })
-        }).catch(e => console.error('Failed to send email alert to', email, e));
-      }
+      // דרך המערכת המרכזית (lib/mailer.js): ניתוב לפי הגדרות, יישור RTL, בלי קובץ ממלא מקום
+      // בגוף המייל, וגם רישום ב-EmailLog (עד כה מיילי ההתראה האלה לא נרשמו בכלל).
+      // במקביל ולא ברצף - הודעה לכל העובדים לא צריכה לחכות ל-N שליחות עוקבות.
+      await Promise.allSettled(receivers.map(email =>
+        sendSystemEmail({ to: email, subject, body: content || '', html: htmlBody, employeeId })
+      ));
     } catch (e) {
       console.error('Email alert process failed:', e);
     }
