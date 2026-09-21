@@ -725,7 +725,7 @@ export default function SettingsClient({ mode = 'general' }) {
               displayName = HEBREW_NAMES[setting.key] || setting.key;
             }
             if (setting.key === 'hide_ai_features') displayName = 'הפעל בינה מלאכותית (AI)';
-            else if (setting.key === 'enable_ai_specific_employees' || setting.name === 'enable_ai_specific_employees') displayName = 'תצוגת AI לעובדים מורשים בלבד';
+            else if (setting.key === 'enable_ai_specific_employees' || setting.name === 'enable_ai_specific_employees') displayName = 'הסתר את ה-AI ממסך הלקוחות (קיוסק)';
             else if (setting.key === 'hide_dress_images') displayName = 'הצג תמונות דגמים במערכת';
             else if (setting.key === 'hide_gregorian_calendar') displayName = 'אפשר תאריך לועזי ביומן';
             else if (setting.key === 'hide_internal_messaging') displayName = 'הפעל מערכת הודעות פנימית';

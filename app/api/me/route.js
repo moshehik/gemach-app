@@ -18,7 +18,7 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
     }
 
-    const parsedLegacyId = parseInt(employeeId, 10);
+    const parsedLegacyId = /^\d+$/.test(String(employeeId)) ? parseInt(employeeId, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
     const employee = await prisma.employee.findFirst({
       where: {
         OR: [
@@ -35,7 +35,6 @@ export async function GET(request) {
         roleId: true,
         receiveEmailAlerts: true,
         email: true,
-        showAi: true,
         department: { select: { name: true } }
       }
     });

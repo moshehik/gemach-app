@@ -43,7 +43,7 @@ See CLAUDE.md → "Permissions system" → "Live verification + security hardeni
 
 ## Deliberately NOT changed (owner decisions / follow-ups)
 
-1. **`page:*` are still documentation only.** The real gates are each page's `layout.js`. Pages without
+1. **[Resolved in a second pass the same day — see the last section.] `page:*` were still documentation only.** The real gates are each page's `layout.js`. Pages without
    a layout gate (home, orders, customers, rentals, board, deliveries, alterations, messages, …) are reachable by URL
    by any logged-in employee; `page:board` is only hidden from the sidebar. Migrating them to read the
    permissions table is a separate project (the catalog defaults already reproduce today's behaviour).
@@ -94,3 +94,20 @@ Catalog corrections made from this matrix: `page:employees_report` and `page:das
 All sample employees, the temporary department (roleId 90), every test permission row / department value / override and
 the audit rows the sample users generated were deleted from both databases afterwards; employee counts are back to
 95 (org 1) and 83 (org 2) and `PermissionPageGroup` / `DepartmentPermission` / `EmployeePermissionOverride` are empty again.
+
+## Second pass: pages connected
+
+The catalog's page items are now enforced (layout guards + sidebar), see CLAUDE.md → "Pages connected". Results of the
+live sample-user run are appended below.
+
+Live results of the second pass (fresh sample users, deployed commit `040fbed`):
+
+| Suite | org 1 | org 2 |
+|---|---|---|
+| Page permissions (`pagerows`): defaults unchanged for every level, deny row, second department member also denied, real departments unaffected, employee exception, grant beyond the default (board / refunds / dress catalog), head-management-only pages cannot be opened by a row, sidebar link appears/disappears with the page, delete row = back to defaults, wizard API defaults follow the org settings | 87 / 87 | 87 / 87 |
+| Regression: access matrix by level | 91 / 91 | 90 / 91 (expected, org-2 refunds setting) |
+| Regression: rows / overrides / escalation / leaks / AI | 104 / 104 | 104 / 104 |
+
+Found while testing: a UUID that starts with digits was also matched against the employee whose numeric `legacyId` equals that
+prefix (login for that employee failed with "wrong password"); fixed by using `legacyId` only for digits-only input.
+Sample employees, the temporary department, rows and generated audit rows were deleted again from both databases.

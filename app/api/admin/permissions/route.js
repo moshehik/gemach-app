@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId, ALWAYS_ALLOWED_ROLE_IDS } from '@/lib/permissionsMetadata';
-import { parseJson } from '@/lib/permissionPageGroups';
+import { parseJson, ROW_OVERRIDE_NOTE_PREFIX } from '@/lib/permissionPageGroups';
+import { getCachedSetting } from '@/lib/settingsCache';
 
 // Full permissions matrix: every department's effective value for every catalog key
 // (lib/permissionsMetadata.js). Powers /admin/permissions — see CLAUDE.md's
@@ -19,6 +20,13 @@ export async function GET() {
     const departments = (await prisma.department.findMany({ orderBy: { roleId: 'asc' } }))
       .filter((d) => !ALWAYS_ALLOWED_ROLE_IDS.includes(d.roleId));
     const rows = await prisma.departmentPermission.findMany();
+    // org-level toggles some page defaults follow (refunds / dress catalog / monthly board)
+    const orgSettings = {};
+    for (const item of PERMISSION_CATALOG) {
+      for (const k of item.settingKeys || []) {
+        if (!(k in orgSettings)) orgSettings[k] = (await getCachedSetting(k).catch(() => null))?.value;
+      }
+    }
     const rowByRoleAndKey = new Map(rows.map((r) => [`${r.roleId}:${r.key}`, r.value]));
 
     const departmentValues = departments.map((department) => {
@@ -28,7 +36,7 @@ export async function GET() {
         values[item.key] = {
           value: raw !== undefined
             ? (item.type === 'boolean' ? raw === 'true' : parseInt(raw, 10))
-            : defaultValueForRoleId(item, department.roleId),
+            : defaultValueForRoleId(item, department.roleId, orgSettings),
           isExplicit: raw !== undefined,
         };
       }
@@ -36,8 +44,9 @@ export async function GET() {
     });
 
     const groups = await buildPermissionGroups(departmentValues);
+    const personalOverrides = await buildPersonalOverrides();
 
-    return NextResponse.json({ departments: departmentValues, groups });
+    return NextResponse.json({ departments: departmentValues, groups, orgSettings, personalOverrides });
   } catch (error) {
     console.error('Error loading permissions matrix:', error);
     return NextResponse.json({ error: 'שגיאה בטעינת מטריצת ההרשאות' }, { status: 500 });
@@ -63,4 +72,29 @@ export async function buildPermissionGroups(departmentValues) {
     for (const dept of departmentValues) access[dept.roleId] = !!storedAccess[dept.roleId];
     return { id: row.id, name: row.name, keys, access, employeeAccess: parseJson(row.employeeIds, []) };
   });
+}
+
+// Personal exceptions set from an employee's own card ("הרשאות ספציפיות"), listed back here so the
+// two surfaces show the same picture: EmployeePermissionOverride rows NOT created by a permission row
+// (those are already visible in the table above, as the employee tags of the row that granted them).
+// Always-allowed roles are skipped for yes/no items: nothing can be added or taken from them.
+export async function buildPersonalOverrides() {
+  const overrides = await prisma.employeePermissionOverride.findMany();
+  const own = overrides.filter((o) => !(o.note || '').startsWith(ROW_OVERRIDE_NOTE_PREFIX) && getCatalogItem(o.key));
+
+  const list = own.map((o) => {
+    const item = getCatalogItem(o.key);
+    return { employeeId: o.employeeId, key: o.key, value: item.type === 'boolean' ? o.value === 'true' : parseInt(o.value, 10), note: o.note || null };
+  });
+
+  const ids = [...new Set(list.map((entry) => entry.employeeId))];
+  const employees = ids.length
+    ? await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, firstName: true, lastName: true, roleId: true, isActive: true } })
+    : [];
+  const employeeById = new Map(employees.map((e) => [e.id, e]));
+  return list
+    .map((entry) => ({ ...entry, employee: employeeById.get(entry.employeeId) || null }))
+    // roleId 0/2 are always allowed, and a deleted employee's leftover row means nothing
+    // (only for yes/no items - a number override still applies to them, e.g. export_max_rows)
+    .filter((entry) => entry.employee && !(ALWAYS_ALLOWED_ROLE_IDS.includes(entry.employee.roleId) && typeof entry.value === 'boolean'));
 }

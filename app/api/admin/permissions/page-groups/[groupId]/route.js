@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, parseJson, syncKeys } from '@/lib/permissionPageGroups';
+import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, parseJson, syncKeys, findPersonalBlockConflicts } from '@/lib/permissionPageGroups';
+
+function conflictResponse(conflicts) {
+  const lines = conflicts.map((c) => `${c.name} - ${c.label}`).join('; ');
+  return NextResponse.json({
+    error: `לא ניתן לשמור: לעובדים הבאים יש חסימה אישית בכרטיס העובד על פריט בשורה (${lines}). הסירו את החסימה בכרטיס העובד, או הסירו את העובד מהשורה.`,
+    conflicts,
+  }, { status: 409 });
+}
+
 
 // PUT { name?, keys?, access?, employeeIds? } — updates a row's display name, its
 // attached pages (full replacement array), and/or its own department / specific-employee
@@ -9,7 +18,7 @@ import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, parseJson, syncK
 // syncKeys re-derives the real per-key values for the row's old AND new keys (union of
 // every row containing a key — see lib/permissionPageGroups.js).
 export async function PUT(request, { params }) {
-  if (!(await checkAuth('הנהלה ראשית'))) {
+  if (!(await checkAuth('הנהלה ראשית', { forceDb: true }))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {
@@ -37,6 +46,11 @@ export async function PUT(request, { params }) {
     if (access !== undefined) data.access = JSON.stringify(sanitizeAccess(access));
     if (employeeIds !== undefined) data.employeeIds = JSON.stringify(sanitizeEmployeeIds(employeeIds));
 
+    // the row's final state (what is stored + what this request changes) must not wipe a personal block
+    const finalEmployeeIds = employeeIds !== undefined ? sanitizeEmployeeIds(employeeIds) : parseJson(existing.employeeIds, []);
+    const conflicts = await findPersonalBlockConflicts(effectiveKeys, finalEmployeeIds);
+    if (conflicts.length) return conflictResponse(conflicts);
+
     if (Object.keys(data).length) {
       await prisma.permissionPageGroup.update({ where: { id: groupId }, data });
     }
@@ -54,7 +68,7 @@ export async function PUT(request, { params }) {
 // EmployeePermissionOverride values are cleared); one that is also in another row
 // keeps that row's access.
 export async function DELETE(request, { params }) {
-  if (!(await checkAuth('הנהלה ראשית'))) {
+  if (!(await checkAuth('הנהלה ראשית', { forceDb: true }))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {

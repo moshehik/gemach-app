@@ -28,13 +28,13 @@ export default function GroupPagePicker({ items, onAdd }) {
       <div className="combobox-option" style={{ borderBottom: 'none' }} onClick={() => onAdd(item.key)}>
         <span style={{ flex: 1, minWidth: 0 }}><ItemLabel item={item} /></span>
         {item.alsoIn && (
-          <span className="badge badge-warning" style={{ fontSize: '10.5px' }} title="קיים כבר בשורה אחרת — אפשר להוסיף גם לכאן, הגישה תהיה מותרת אם אחת מהשורות מתירה">
-            כבר בשורה: {item.alsoIn.join(', ')}
+          <span className="badge badge-warning" style={{ fontSize: '10.5px' }} title={`כבר בשורה: ${item.alsoIn.join(', ')}. אפשר להוסיף גם לכאן, הגישה תהיה מותרת אם אחת מהשורות מתירה`}>
+            כבר בשורה
           </span>
         )}
         <button
           type="button"
-          className="btn btn-secondary btn-sm"
+          className="btn btn-primary btn-sm"
           title={`הוסף לשורה: ${item.label}`}
           aria-label={`הוסף לשורה: ${item.label}`}
           onClick={(e) => { e.stopPropagation(); onAdd(item.key); }}
@@ -46,17 +46,18 @@ export default function GroupPagePicker({ items, onAdd }) {
   );
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-      <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--surface)' }}>
+      <div style={{ padding: '8px', borderBottom: '1px solid var(--border)' }}>
         <input
           className="input"
-          style={{ height: '34px' }}
+          style={{ height: '40px' }}
+          autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="חיפוש עמוד או פיצ'ר..."
         />
       </div>
-      <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
         {filtered.length === 0 && (
           <div style={{ padding: '10px 12px', fontSize: '12.5px', color: 'var(--text-3)' }}>לא נמצאו תוצאות</div>
         )}

@@ -4,6 +4,7 @@ import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { verifySecret } from '@/lib/passwordAuth';
 import { notifyManagers } from '@/lib/notifyManagers';
+import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -61,6 +62,13 @@ export async function POST(request) {
         if (manualOn && manualEntry === true && manualConfirm === true && manualSignature) {
           if (itemIdToForce) {
             try {
+              // enforce_rental_barcode_match (ברירת מחדל כבוי): גם בהקלדה ידנית של ברקוד שלא קיים
+              // במאגר אפשר לפענח דגם/מידה מהספרות ולבדוק מול הפריט שהוזמן; עקיפה - באישור מנהל.
+              const targetItem = await prisma.orderItem.findUnique({ where: { id: itemIdToForce }, select: RENTAL_MATCH_ITEM_SELECT });
+              if (targetItem) {
+                const guard = await checkRentalBarcodeMatch(targetItem, barcode, { overridePin, overrideEmployeeId, context: 'הקלדה ידנית של ברקוד שלא קיים במאגר' });
+                if (guard.response) return guard.response;
+              }
               const manualItem = await prisma.orderItem.update({
                 where: { id: itemIdToForce },
                 data: {

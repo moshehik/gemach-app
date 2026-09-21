@@ -64,7 +64,7 @@ export async function GET(request) {
 
     const isProgrammer = employee.roleId === 2;
     // isManager = מותר להגיש דיווח חדש: תפקיד מנהל/הנהלה/מתכנת, הרשאת feature:error_reports
-    // למחלקה שלו (/admin/permissions), או אישור פרטני בכרטיס העובד (canReportErrors)
+    // למחלקה שלו (/admin/permissions), או חריגה אישית לעובד (כרטיס העובד או שורת הרשאה)
     const isManager = await hasPermission(employee, 'feature:error_reports');
 
     // Fetch reports: programmers see all, regular users see their own

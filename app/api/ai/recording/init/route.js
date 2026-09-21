@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
-import { checkAiAccess } from '@/lib/permissions';
+import { checkAiAccess, hasPermission } from '@/lib/permissions';
+import { getSessionEmployee } from '@/lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { isDriveBridgeConfigured, startResumableUpload } from '@/lib/driveBridgeServer';
 
@@ -9,10 +10,24 @@ import { isDriveBridgeConfigured, startResumableUpload } from '@/lib/driveBridge
 const MAX_BYTES = 200 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
+// פתיחת העלאה כוללת 2-3 קריאות לגשר של Apps Script (כל אחת עד כמה שניות, לפעמים 12+ ב-cold start);
+// בלי זה ברירת המחדל ב-Vercel Hobby היא 10 שניות והפתיחה נכשלה ב-504.
+export const maxDuration = 60;
 
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!(await checkAiAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const body = await request.json().catch(() => ({}));
+  // הסרטה מתוך דיווח שגיאה לא דורשת הרשאת AI (מי שמדווח אינו בהכרח משתמש AI) אבל דורשת את הרשאת
+  // הדיווח על תקלות (feature:error_reports) - אחרת הפרמטר הזה עוקף כל בדיקה; הסרטה מעוזר ה-AI דורשת feature:ai.
+  const forErrorReport = body.purpose === 'error-report';
+  if (forErrorReport) {
+    const employee = await getSessionEmployee();
+    if (!employee || !(await hasPermission(employee, 'feature:error_reports'))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } else if (!(await checkAiAccess())) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   try {
     const setting = await getCachedSetting('ai_screen_recording_enabled');
     if (!setting || setting.value !== 'true') {
@@ -22,7 +37,6 @@ export async function POST(request) {
       // הלקוח ממשיך בלי וידאו (רק רשימת הפעולות) — ר' uploadScreenRecording
       return NextResponse.json({ error: 'אחסון הוידאו בדרייב אינו מוגדר בשרת', code: 'DRIVE_NOT_CONFIGURED' }, { status: 503 });
     }
-    const body = await request.json().catch(() => ({}));
     // הלקוח פותח את ההעלאה כבר בתחילת ההקלטה (כדי להסתיר את זמן ההמתנה לגשר), כשהגודל עוד לא ידוע
     const size = Number(body.size) || 0;
     if (size < 0 || size > MAX_BYTES) return NextResponse.json({ error: 'גודל הקלטה לא חוקי' }, { status: 400 });
@@ -33,6 +47,7 @@ export async function POST(request) {
     return NextResponse.json({ sessionUri, name });
   } catch (error) {
     console.error('Error starting recording upload:', error);
-    return NextResponse.json({ error: 'שגיאה בפתיחת העלאת ההקלטה' }, { status: 500 });
+    // detail = הודעת השגיאה המקורית (בעברית/טכנית, ללא סודות) - בלי זה אי אפשר לדעת מהדפדפן אם הכשל בגשר, בטוקן או בדרייב
+    return NextResponse.json({ error: 'שגיאה בפתיחת העלאת ההקלטה', detail: String(error?.message || error).slice(0, 300) }, { status: 500 });
   }
 }

@@ -4,7 +4,7 @@ import './design-system.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
-import { getDepartmentEffectiveValue } from '@/lib/permissions';
+import { resolvePageAccess } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 
@@ -65,7 +65,7 @@ export default async function RootLayout({ children }) {
   // them in parallel instead of the old sequential awaits (each one is a
   // Neon round-trip on every page render of the whole app). When the signed
   // auth_session cookie is present, verified, and fresh, the employee query
-  // is skipped entirely — roleId/showAi come from the token (see
+  // is skipped entirely — roleId comes from the token (see
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
@@ -86,7 +86,7 @@ export default async function RootLayout({ children }) {
 
   let employeePromise = Promise.resolve(null);
   if (isAuthenticated && !session) {
-    const parsedLegacy = parseInt(authToken.value, 10);
+    const parsedLegacy = /^\d+$/.test(String(authToken.value)) ? parseInt(authToken.value, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
     employeePromise = prisma.employee.findFirst({
       where: {
         OR: [
@@ -94,7 +94,7 @@ export default async function RootLayout({ children }) {
           ...(isNaN(parsedLegacy) ? [] : [{ legacyId: parsedLegacy }])
         ]
       },
-      select: { roleId: true, showAi: true }
+      select: { roleId: true }
     }).catch(e => {
       console.warn('Error fetching employee role:', e?.message || e);
       return null;
@@ -102,7 +102,7 @@ export default async function RootLayout({ children }) {
   }
 
   const [settings, employeeRow] = await Promise.all([settingsPromise, employeePromise]);
-  const emp = session ? { roleId: session.r, showAi: !!session.a } : employeeRow;
+  const emp = session ? { roleId: session.r } : employeeRow;
 
   {
     const requireLoginSetting = settings.find(s => s.key === 'require_login');
@@ -172,7 +172,6 @@ export default async function RootLayout({ children }) {
 
   let isManager = false;
   let isHeadManagement = false;
-  let employeeShowAi = false;
   let isProgrammer = false;
   if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
     isManager = true;
@@ -183,25 +182,18 @@ export default async function RootLayout({ children }) {
   if (emp && emp.roleId === 2) {
     isProgrammer = true;
   }
-  if (emp && emp.showAi) {
-    employeeShowAi = true;
+  // feature:ai is a normal permission (/admin/permissions row, or the employee's own card): the
+  // widget shows exactly when checkAiAccess() would let the API through - same resolution
+  // (resolvePageAccess: head management always, else employee override -> department row -> default).
+  // Only checked when we have an employee to look up, to avoid a DB round-trip for anonymous visitors.
+  // Default (no row anywhere) = head management only, agreed 2026-08-24.
+  let hasAiPermission = false;
+  if (emp && isHeadManagement) {
+    hasAiPermission = true;
+  } else if (emp) {
+    hasAiPermission = !!(await resolvePageAccess(emp.roleId, authToken.value, ['feature:ai']).then((r) => r['feature:ai']).catch(() => false));
   }
-
-  // Department-level "feature:ai" permission (/admin/permissions) - a whole
-  // department can be granted AI without flipping showAi per employee. See
-  // lib/permissionsMetadata.js's feature:ai note and CLAUDE.md's "Permissions
-  // system" section. Only checked when we have a role to look up, to avoid a
-  // DB round-trip for anonymous visitors.
-  let departmentHasAi = false;
-  if (emp && !isHeadManagement) {
-    departmentHasAi = await getDepartmentEffectiveValue(emp.roleId, 'feature:ai').catch(() => false);
-  }
-
-  // הנהלה ראשית (roleId 0) ומתכנת (roleId 2) מקבלים AI תמיד; מעבר לזה, ה-AI
-  // מוצג רק כשעובד ספציפי סומן ל-showAi (או שמחלקתו קיבלה הרשאת feature:ai) וגם
-  // ההגדרה הזו הופעלה. סוכם ב-2026-08-24: AI לא אמור להיות זמין למנהל סניף רגיל
-  // או לעובדים כברירת מחדל.
-  if (!isHeadManagement && !(employeeShowAi || departmentHasAi)) {
+  if (!hasAiPermission) {
     hideAIFeatures = true;
   }
 
@@ -209,18 +201,29 @@ export default async function RootLayout({ children }) {
   // כשחובת התחברות כבויה. אותו כלל כמו checkPageAccess. אזורי הניהול והעובדים
   // צומצמו ב-2026-08-24 להנהלה ראשית/מתכנת בלבד (roleId 0/2) — לא מספיק
   // שמנהל סניף רגיל (roleId 1) יהיה מחובר, בעקבות דיווחי משתמש מנהל.
+  // Page links are shown by the SAME decision the page's layout.js enforces (lib/permissions.js
+  // resolvePageAccess: head management always, else employee override -> department row -> catalog
+  // default, which for refunds / dress catalog / board follows the org's restrict_* setting). When the
+  // lookup fails we fall back to the old role/setting rules below.
+  const NAV_PAGE_KEYS = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];
+  let pageAccess = null;
+  if (isAuthenticated && emp) {
+    pageAccess = await resolvePageAccess(emp.roleId, authToken.value, NAV_PAGE_KEYS).catch(() => null);
+  }
   const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showRefundsTab = isAuthenticated
-    ? (restrictRefundsToHeadManagement ? isHeadManagement : (isManager || isHeadManagement))
+    ? (pageAccess ? pageAccess['page:refunds'] : (restrictRefundsToHeadManagement ? isHeadManagement : (isManager || isHeadManagement)))
     : !requireLogin;
   const showDressesTab = isAuthenticated
-    ? (restrictDressCatalogToHeadManagement ? isHeadManagement : true)
+    ? (pageAccess ? pageAccess['page:dresses_catalog'] : (restrictDressCatalogToHeadManagement ? isHeadManagement : true))
     : !requireLogin;
+  // open pages: visible unless a permissions row (or the fallback) says otherwise
+  const pageVisible = (key) => (isAuthenticated && pageAccess ? pageAccess[key] : true);
   // "לוח חודשי" הוסתר לעובד רגיל (לא מנהל) - בקשת משתמשת 2026-09-09, כעת ניתנת
   // לשליטה דרך restrict_board_to_managers (ר' למעלה) במקום קשיח בקוד בלבד.
   const showBoardTab = isAuthenticated
-    ? (restrictBoardToManagers ? isManager : true)
+    ? (pageAccess ? pageAccess['page:board'] : (restrictBoardToManagers ? isManager : true))
     : !requireLogin;
 
   const navGroups = buildNavGroups({
@@ -229,9 +232,13 @@ export default async function RootLayout({ children }) {
     showRefundsTab,
     showDressesTab,
     showBoardTab,
-    enableAlterations,
+    enableAlterations: enableAlterations && pageVisible('page:alterations'),
     showMessages: !hideInternalMessaging,
-    showDeliveries,
+    showDeliveries: showDeliveries && pageVisible('page:deliveries'),
+    showOrdersNew: pageVisible('page:orders') && pageVisible('page:orders_new'),
+    showOrders: pageVisible('page:orders'),
+    showRentals: pageVisible('page:rentals'),
+    showCustomers: pageVisible('page:customers'),
   });
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;

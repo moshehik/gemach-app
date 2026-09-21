@@ -71,6 +71,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [recordingEnabled, setRecordingEnabled] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
 
+  const uploadPromiseRef = useRef(null);
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -120,8 +121,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     setPendingRecordingUrl(URL.createObjectURL(blob));
     setPendingRecordingMeta({ fileId: null, stepsText });
     setIsUploadingRecording(true);
+    // שומרים את ההבטחה: אם המשתמש שולח את ההודעה לפני שההעלאה הסתיימה, sendMessage ממתין לה
+    // (אחרת נשלחה שאלה בלי הוידאו ובלי הצעדים, והתשובה הייתה "אינני מסוגל לצפות בסרטונים")
+    const uploading = uploadScreenRecording(blob, prepared);
+    uploadPromiseRef.current = uploading.then((fileId) => fileId, () => null);
     try {
-      const fileId = await uploadScreenRecording(blob, prepared);
+      const fileId = await uploading;
       setPendingRecordingMeta({ fileId, stepsText });
     } catch (e) {
       if (e.code !== 'DRIVE_NOT_CONFIGURED') console.error('Failed to upload screen recording:', e);
@@ -258,17 +263,32 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהסרטה הזו?' : 'מה רואים בתמונה הזו?');
     const imageToSend = pendingImage ? dataUrlToParts(pendingImage) : null;
     const recordingToSend = pendingRecordingUrl;
-    const recordingMetaToSend = pendingRecordingMeta;
+    let recordingMetaToSend = pendingRecordingMeta;
+    const stillUploading = Boolean(recordingToSend && isUploadingRecording && uploadPromiseRef.current);
     setInput('');
     setPendingImage(null);
     setPendingRecordingUrl(null);
     setPendingRecordingMeta(null);
 
-    const newMessages = [...messages, { role: 'user', content: userMsg, attachedImage: pendingImage, attachedRecording: recordingToSend }];
+    // ההודעה מופיעה מיד; אם הוידאו עוד עולה, מסמנים אותה "מעלה הסרטה" והבקשה ל-AI יוצאת רק אחרי שההעלאה הסתיימה
+    const userMessage = { role: 'user', content: userMsg, attachedImage: pendingImage, attachedRecording: recordingToSend, uploadingRecording: stillUploading };
+    const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setLoading(true);
 
     try {
+      if (stillUploading) {
+        const fileId = await uploadPromiseRef.current;
+        recordingMetaToSend = { ...(recordingMetaToSend || {}), fileId: fileId || null };
+        // מסירים את סימון ההעלאה מההודעה (newMessages הוא המקור שממנו נבנית ההיסטוריה שנשמרת)
+        userMessage.uploadingRecording = false;
+        setMessages(prev => prev.map(m => (m === userMessage ? { ...m, uploadingRecording: false } : m)));
+        // ההעלאה נכשלה ואין גם רשימת פעולות - אין מה לשלוח ל-AI (בלי זה הוא עונה "אינני מסוגל לצפות בסרטונים")
+        if (!fileId && !recordingMetaToSend?.stepsText) {
+          setMessages(prev => [...prev, { role: 'assistant', content: 'העלאת ההסרטה נכשלה, ולכן לא שלחתי את השאלה. נסה להסריט שוב.' }]);
+          return;
+        }
+      }
       // Cap the history sent to the AI to the most recent exchanges - a chat window left
       // open for hours/days (messages never auto-expire, see the mount effect above) was
       // sending its entire, possibly stale, history as context on every new question,
@@ -604,6 +624,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                     )}
                     {msg.attachedRecording && (
                       <video src={msg.attachedRecording} controls style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, marginTop: 6, display: 'block' }} />
+                    )}
+                    {msg.uploadingRecording && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 12.5, opacity: 0.9 }}>
+                        <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                        מעלה את ההסרטה ברקע - השאלה תישלח ל-AI מיד אחרי שההעלאה תסתיים
+                      </div>
                     )}
                     {msg.tableData && renderTable(msg.tableData)}
                     {openSettingKeys.length > 0 && (

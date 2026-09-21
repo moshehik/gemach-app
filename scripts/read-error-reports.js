@@ -12,6 +12,8 @@
  *
  * פלט: JSON למערך דיווחים ל-stdout, כדי שיהיה קל לקלוד לפרסר. כל דיווח כולל
  * employee (שם המדווח), ואת replies המלא (isProgrammer מסמן תגובת "תמיכה").
+ * `recordings` (בדיווח ובתגובה) = מזהי קבצי וידאו בדרייב (הסרטת מסך של המדווח/ת): להורדה ולפריימים -
+ * `node scripts/fetch-report-recording.js --report=<id> [--org=N]`, ואז Read על קבצי ה-PNG.
  *
  * טעינת env/בחירת DB: ר' scripts/lib/db-env.js (--org בוחר בין 2 ה-DB-ים הנפרדים).
  */
@@ -20,6 +22,15 @@
 
 const { PrismaClient } = require('@prisma/client');
 const { parseOrgArg, resolveDbUrl } = require('./lib/db-env');
+
+// attachmentUrls הוא JSON של מחרוזות: צילומי מסך (/api/attachment/<id>, שמורים ב-DB של האתר - הסוכן לא יכול להוריד
+// אותם) והסרטות מסך ("gdrive:<fileId>", וידאו בדרייב). את ההסרטות אפשר לראות: ר' scripts/fetch-report-recording.js.
+function shapeAttachments(raw) {
+  let list = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch { return { attachments: [], recordings: [] }; }
+  const recordings = list.filter((u) => typeof u === 'string' && u.startsWith('gdrive:')).map((u) => u.slice(7));
+  return { attachments: list, recordings };
+}
 
 async function main() {
   const { org, rest } = parseOrgArg(process.argv.slice(2));
@@ -50,6 +61,7 @@ async function main() {
       queryParams: r.queryParams,
       lastButtons: r.lastButtons ? (() => { try { return JSON.parse(r.lastButtons); } catch { return r.lastButtons; } })() : [],
       userText: r.userText,
+      ...shapeAttachments(r.attachmentUrls),
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       replies: r.replies.map((rep) => ({
@@ -58,6 +70,7 @@ async function main() {
         author: rep.employee ? `${rep.employee.firstName || ''} ${rep.employee.lastName || ''}`.trim() : (rep.isProgrammer ? 'תמיכה' : 'משתמש'),
         text: rep.text,
         isQuestion: rep.isQuestion,
+        ...shapeAttachments(rep.attachmentUrls),
         createdAt: rep.createdAt,
       })),
     }));

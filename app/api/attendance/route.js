@@ -66,7 +66,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields or invalid action' }, { status: 400 });
     }
 
-    const parsedLegacyId = parseInt(employeeId, 10);
+    const parsedLegacyId = /^\d+$/.test(String(employeeId)) ? parseInt(employeeId, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
     const employee = await prisma.employee.findFirst({
       where: {
         OR: [

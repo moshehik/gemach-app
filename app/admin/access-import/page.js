@@ -14,7 +14,7 @@ export default function AccessImportPage() {
       </div>
 
       <div className="hint" style={{ color: 'var(--text-3)', marginBottom: '20px' }}>
-        עודכן לאחרונה: 06.08.2026 · המקור הטכני: <code>scripts/import_from_access.js</code> (התיעוד המלא בהערת הכותרת של הקובץ)
+        עודכן לאחרונה: 20.09.2026 · המקור הטכני: <code>scripts/import_from_access.js</code> (התיעוד המלא בהערת הכותרת של הקובץ)
       </div>
 
       <section style={{ marginBottom: '24px' }}>
@@ -258,6 +258,61 @@ export default function AccessImportPage() {
       </section>
 
       <section style={{ marginBottom: '24px' }}>
+        <h2>כלל אוטומטי: סימון &quot;נלקח&quot; בנתוני אקסס ישנים</h2>
+        <div className="card card-pad">
+          <p>
+            באקסס הישן לפעמים לא נלחץ הכפתור &quot;אשר השכרה&quot;: בפריט נרשמו ברקוד ותאריך לקיחה (או שהפריט כבר
+            הוחזר), אבל השדה &quot;נלקח&quot; נשאר כבוי. התוצאה — ההזמנה נשארת במסך &quot;הזמנות&quot; ולא מופיעה
+            ב&quot;השכרות&quot;. הכלל שאושר על ידי הבעלים (20.09.2026) מתקן את זה: פריט השכרה מסומן{' '}
+            <strong>&quot;נלקח&quot;</strong> אם הוא עדיין לא מסומן, וגם מתקיים אחד מהשניים:
+          </p>
+          <ul>
+            <li><strong>כלל R1:</strong> יש לפריט תאריך לקיחה וגם ברקוד (לא ריק).</li>
+            <li><strong>כלל R2:</strong> הפריט מסומן כמוחזר, או שיש לו תאריך החזרה.</li>
+          </ul>
+
+          <p style={{ marginTop: '14px' }}><strong>מה הכלל לעולם לא עושה:</strong></p>
+          <ul>
+            <li><strong>לא ממציא תאריכים</strong> — אם אין תאריך לקיחה או החזרה, הוא נשאר ריק. (סקריפט ישן שהמציא תאריכים גרם נזק בעבר, ולכן זה חוק ברזל.)</li>
+            <li><strong>לא נוגע בפריטים מחוקים</strong>, ולא בפריטים של הזמנה מחוקה.</li>
+            <li><strong>לא משנה את מיקום השמלה</strong> (<code>DressItem.location</code>), לא את סטטוס הסל ולא את סימון ההחזרה.</li>
+            <li>משנה שדה אחד בלבד — &quot;נלקח&quot; מכבוי לדלוק. לכל פריט ששונה נכתבת שורה ביומן השינויים (מי שינה: ריק, כי זו פעולה אוטומטית).</li>
+          </ul>
+
+          <div className="callout callout-info" style={{ margin: '14px 0' }}>
+            <svg className="icon"><use href="#i-info" /></svg>
+            <div>
+              <strong>רץ אוטומטית בסוף כל ייבוא</strong><br />
+              בסוף כל הרצה של <code>import_from_access.js</code> (וגם של כלי הייבוא של גמ&quot;ח נווה יעקב) יש צעד נפרד
+              עם כותרת ברורה בפלט. בהרצת ניסיון הוא רק מדווח כמה פריטים היה משנה; עם <code>--write</code> הוא באמת
+              משנה. הכלל בודק את כל המסד, לא רק הזמנות שיובאו עכשיו, וההרצה חוזרת בלי נזק — אם אין מה לתקן, לא משתנה כלום.
+            </div>
+          </div>
+
+          <p>אפשר גם להריץ ידנית, מתיקיית האפליקציה (<code>gemach-app/</code>):</p>
+          <div className="table-wrap">
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr><th>פקודה</th><th>מה קורה</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="cell-primary"><code>node scripts/normalize_legacy_rental_flags.js --org=1</code></td>
+                    <td>הרצת ניסיון (ברירת מחדל): מדפיס כמה פריטים ייתפסו לפי כל כלל, כמה דולגו כי הם מחוקים, וטבלה של הפריטים. לא כותב כלום. <code>--org=2</code> — נווה יעקב.</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary"><code>node scripts/normalize_legacy_rental_flags.js --org=1 --write --expect-host=&lt;תחילית&gt;</code></td>
+                    <td>כתיבה אמיתית. חובה לציין את תחילית כתובת המסד (מודפסת בהרצת הניסיון) — כך אי אפשר לכתוב בטעות לגמ&quot;ח הלא נכון.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: '24px' }}>
         <h2>מה בודקים אחרי כל הרצה</h2>
         <div className="card card-pad">
           <ul>
@@ -289,6 +344,7 @@ export default function AccessImportPage() {
             <li>06.08.2026 — <strong>תוקן:</strong> הורץ סקריפט ה-backfill ההיסטורי שחיכה מ-05.08.2026 (<code>scripts/fix_employee_shifts.js</code>) — השלים <code>totalMinutes</code>/<code>totalCalculated</code> ל-12,657 משמרות שהועברו מאקסס (אומת: 0 משמרות נותרו בלי חישוב).</li>
             <li>06.08.2026 — <strong>נוסף:</strong> נוכחות עובדים (Shift, <code>עובדים_נוכחות</code>) הצטרפה לרשימת הטבלאות המיובאות — ר&apos; פירוט בטבלה ובסעיף &quot;מה הכלי לעולם לא נוגע בו&quot; למעלה.</li>
             <li>06.08.2026 — <strong>תוקן:</strong> הבדיקה &quot;איזו הזמנה צריכה פריטים/תשלומים/חיובים&quot; עברה מ&quot;חדשה למסד בהרצה הזו&quot; לבדיקה ישירה מול המסד (&quot;האם באמת אין לה עדיין אף שורה&quot;) — סוגר פער שבו קריסה באמצע הרצה בין שמירת ההזמנה לשמירת פרטיה הייתה משאירה אותה בלי פרטים לצמיתות. גם: <code>Unparsed date strings</code> ורשימת <code>FAILED</code> נשמרות עכשיו לקובץ JSON מתויג-זמן תחת <code>backups/import-logs/</code> בכל הרצת <code>--write</code>, לא רק ל-stdout.</li>
+            <li>20.09.2026 — <strong>נוסף:</strong> כלל אוטומטי &quot;נורמליזציית סטטוס נלקח לנתוני אקסס ישנים&quot; (<code>scripts/normalize_legacy_rental_flags.js</code>) — פריט שיש לו תאריך לקיחה וברקוד, או שהוחזר, מסומן &quot;נלקח&quot;; לא ממציא תאריכים ולא נוגע במחוקים. רץ אוטומטית בסוף כל ייבוא — ר&apos; הסעיף למעלה.</li>
           </ul>
         </div>
       </section>

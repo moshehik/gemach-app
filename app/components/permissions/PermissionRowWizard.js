@@ -44,9 +44,10 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
     for (const k of g.keys) otherRowsByKey.set(k, [...(otherRowsByKey.get(k) || []), g.name]);
   }
   // Number-type items (feature:export_max_rows) have no yes/no to set from a row, so
-  // they aren't offered (managed from the employee's own permissions card).
+  // they aren't offered (department value: the numeric card on /admin/permissions; employee value: their card).
   const availableToAdd = catalog
-    .filter((item) => item.type === 'boolean' && !keys.includes(item.key))
+    // notConfigurable items (locked to head management / no login) have nothing to configure here
+    .filter((item) => item.type === 'boolean' && !item.notConfigurable && !keys.includes(item.key))
     .map((item) => ({ ...item, alsoIn: otherRowsByKey.get(item.key) }));
 
   const defaultsFor = (itemList) => {
@@ -67,8 +68,8 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
   const setAllAccess = (value) => { setAccessTouched(true); setAccess(Object.fromEntries(departments.map((d) => [d.roleId, value]))); };
   const resetToDefaults = () => { setAccessTouched(true); setAccess(defaultsFor(selectedItems)); };
 
-  // Employee step: only a boolean, non-legacy item can carry an EmployeePermissionOverride.
-  const eligibleForEmployeeAccess = selectedItems.some((item) => item.type === 'boolean' && !item.legacyEmployeeField);
+  // Employee step: only a boolean item can carry an EmployeePermissionOverride.
+  const eligibleForEmployeeAccess = selectedItems.some((item) => item.type === 'boolean');
   const employeeSearchResults = (employees || []).filter((emp) => {
     if (employeeIds.has(emp.id)) return false;
     const q = employeeQuery.trim().toLowerCase();
@@ -98,7 +99,6 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
 
   const allowedDepartments = departments.filter((d) => access[d.roleId]);
   const hasEnforced = selectedItems.some((item) => item.enforced);
-  const hasDocOnly = selectedItems.some((item) => !item.enforced);
   const sharedItems = selectedItems.filter((item) => otherRowsByKey.has(item.key));
   const nobodyAllowed = allowedDepartments.length === 0 && selectedEmployees.length === 0;
 
@@ -173,7 +173,6 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
       return (
         <div className="field" style={{ marginBottom: 0 }}>
           <label>שם השורה</label>
-          <div style={hint}>שם שיעזור לזהות מיד על מה השורה — לדוגמה &quot;דפי ניהול מלאי&quot; או &quot;אישור הזמנות בחוב&quot;.</div>
           <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') goTo(1); }} placeholder="שם השורה" disabled={saving} />
         </div>
       );
@@ -181,19 +180,26 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
 
     if (step === 1) {
       return (
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label>עמודים ופיצ&apos;רים בשורה</label>
-          <div style={hint}>
-            אפשר לשלב עמודים ופיצ&apos;רים באותה שורה. לחיצה על שם עמוד פותחת אותו בטאב חדש, והאיקון מסביר מה הפריט עושה ומה שולט בו היום.
-            פריט שכבר נמצא בשורה אחרת יודגש — הוא יכול להופיע בכמה שורות, והגישה בפועל מותרת אם לפחות שורה אחת מתירה אותה.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ border: '2px solid var(--primary)', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--primary-tint, var(--surface-alt))', padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <svg className="icon" style={{ color: 'var(--primary)' }}><use href="#i-plus" /></svg>
+              <strong style={{ fontSize: '15px' }}>הוספת עמודים ופיצ&apos;רים לשורה</strong>
+            </div>
+            {availableToAdd.length > 0
+              ? <GroupPagePicker items={availableToAdd} onAdd={addKey} />
+              : <span style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>כל הפריטים כבר בשורה</span>}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-            {selectedItems.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>עדיין לא נבחרו פריטים</span>}
-            {selectedItems.map(itemChip)}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <strong style={{ fontSize: '13px' }}>נבחרו לשורה</strong>
+              <span className={selectedItems.length ? 'badge badge-primary' : 'badge badge-neutral'}>{selectedItems.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', minHeight: '30px' }}>
+              {selectedItems.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>עדיין לא נבחר דבר</span>}
+              {selectedItems.map(itemChip)}
+            </div>
           </div>
-          {availableToAdd.length > 0
-            ? <GroupPagePicker items={availableToAdd} onAdd={addKey} />
-            : <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>כל הפריטים כבר משובצים לשורה זו</span>}
         </div>
       );
     }
@@ -202,7 +208,6 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
       return (
         <div className="field" style={{ marginBottom: 0 }}>
           <label>אילו מחלקות מורשות</label>
-          <div style={hint}>חל בבת אחת על כל הפריטים בשורה. התג ליד כל מחלקה מראה מה ברירת המחדל של המערכת היום עבורה. הנהלה ראשית ומתכנת תמיד מורשים לכל דבר (למעט מה שמוגבל למתכנת בלבד), ולכן אינם מופיעים ברשימה.</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAllAccess(true)} disabled={saving}>סמן הכל</button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAllAccess(false)} disabled={saving}>נקה הכל</button>
@@ -236,7 +241,6 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
           <label>עובדים ספציפיים עם גישה (לא חובה)</label>
           {eligibleForEmployeeAccess ? (
             <>
-              <div style={hint}>עובד שנבחר כאן מקבל גישה לפריטי השורה גם אם המחלקה שלו כבויה בשלב הקודם. זה יופיע גם ב&quot;הרשאות ספציפיות&quot; בכרטיס העובד שלו. אפשר לדלג.</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
                 {selectedEmployees.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>לא נבחרו עובדים ספציפיים</span>}
                 {selectedEmployees.map((emp) => <EmployeeTag key={emp.id} employee={emp} onRemove={() => removeEmployee(emp.id)} disabled={saving} />)}
@@ -257,7 +261,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
             </>
           ) : (
             <div className="callout callout-info">
-              אף פריט בשורה הזו לא תומך בהרשאה פרטנית לעובד (פריטים שמנוהלים מכרטיס העובד עצמו, כמו שימוש ב-AI ודיווח על תקלות, לא נתמכים כאן). אפשר להמשיך לשלב האישור.
+              פריט מספרי (כמו כמות שורות מרבית לייצוא) אינו כן/לא, ולכן אי אפשר לתת אותו לעובד ספציפי דרך שורה. את הערך שלו קובעים בכרטיס העובד או לפי מחלקה. אפשר להמשיך לשלב האישור.
             </div>
           )}
         </div>
@@ -290,22 +294,10 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
             : <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>ללא</span>}
         </div>
 
-        {hasEnforced && (
-          <div className="callout callout-warning">
-            <svg className="icon"><use href="#i-alert-tri" /></svg>
-            השורה כוללת פיצ&apos;רים שנאכפים <strong>בפועל</strong> — שמירה משנה את ההתנהגות באפליקציה מיד.
-          </div>
-        )}
         {hasEnforced && nobodyAllowed && (
           <div className="callout callout-danger">
             <svg className="icon"><use href="#i-alert-circle" /></svg>
-            לא נבחרה אף מחלקה ואף עובד — הפיצ&apos;רים שבשורה ייחסמו לכולם (חוץ ממתכנת).
-          </div>
-        )}
-        {hasDocOnly && (
-          <div className="callout callout-info">
-            <svg className="icon"><use href="#i-info" /></svg>
-            עמודים המסומנים &quot;לתיעוד בלבד&quot; נשמרים לתיעוד בלבד — הגישה בפועל אליהם נשארת כמו שהיא היום ולא תשתנה.
+            לא נבחרה אף מחלקה ואף עובד — הפריטים שבשורה ייחסמו לכולם (חוץ מהנהלה ראשית ומתכנת).
           </div>
         )}
         {sharedItems.length > 0 && (
@@ -323,7 +315,6 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
   const content = (
     <div
       className="modal-backdrop"
-      onClick={() => !saving && onClose()}
       style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
       <div className="modal animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: '640px', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>

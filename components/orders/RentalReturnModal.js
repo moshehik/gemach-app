@@ -10,6 +10,7 @@ import OrderPrintMenu from './OrderPrintMenu';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { verifyPin } from './modern/mocAuth';
+import { describeMismatch } from '../../lib/rentalBarcodeMatch';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../lib/lateReturn';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
@@ -196,6 +197,21 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           );
           if (authResult && isMountedRef.current) {
             await handleRentalScan(barcodeToScan, itemIdToForce, authResult); // Retry with override
+          }
+        } else if (data.barcodeMismatch) {
+          // enforce_rental_barcode_match: הברקוד לא תואם לדגם/מידה שהוזמנו. מנהל יכול לעקוף
+          // באישור סיסמה (השרת מאמת שוב בעצמו) - ואז השליחה חוזרת עם אותם פרמטרים.
+          const mismatchMsg = describeMismatch(data.expected, data.scanned);
+          const authResult = await verifyPin(
+            `${data.overrideRejected ? `${data.error}
+` : `${mismatchMsg}.
+`}להשכיר בכל זאת? נדרש אישור מנהל.`,
+            'מנהל'
+          );
+          if (authResult && isMountedRef.current) {
+            await handleRentalScan(barcodeToScan, itemIdToForce, authResult, manualParams);
+          } else if (!authResult) {
+            alert(`${mismatchMsg} - הברקוד לא שויך.`);
           }
         } else if (data.barcodeInvalid && itemIdToForce && !manualParams) {
           // 31 - הברקוד לא נמצא במאגר: פותחים אוטומטית את טופס ההקלדה הידנית הכפולה

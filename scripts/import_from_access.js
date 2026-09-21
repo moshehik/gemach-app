@@ -1367,6 +1367,19 @@ async function main() {
     }
   }
 
+  // Legacy-rental-flag normalization (approved rule R1/R2, 2026-09-20): items the old Access
+  // left isTaken=false although a barcode+takenDate were recorded (or that were returned) get
+  // isTaken=true. Never invents dates, skips deleted, idempotent, runs over the whole DB (not just
+  // this run's new orders). Separate step so a failure here can't undo the import above.
+  console.log('\n' + '='.repeat(78));
+  console.log('POST-IMPORT STEP: normalize legacy rental flags (scripts/normalize_legacy_rental_flags.js)');
+  console.log('='.repeat(78));
+  try {
+    const { normalizeLegacyRentalFlags } = require('./normalize_legacy_rental_flags');
+    await normalizeLegacyRentalFlags(prisma, { write: WRITE });
+  } catch (e) {
+    console.error('WARNING: normalize_legacy_rental_flags failed (the import itself is unaffected; re-run it manually):', e.message);
+  }
   console.log('\nDone.' + (WRITE ? '' : '  (dry run - nothing was written; re-run with --write to apply)'));
   await prisma.$disconnect();
 }
