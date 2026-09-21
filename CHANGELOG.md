@@ -9,6 +9,12 @@
 - **Wizard UI:** clicking the backdrop no longer closes it; redundant explanation lines removed; step 2 is now a highlighted "add pages and features" panel with primary add buttons and a focused search.
 - **Verified live on the TEST DB copy** with sample employees in every tier: 76/76 checks (defaults, department rows, employee rows, card grant/block, conflicts, head-management, number item, locked pages, department change, auth, legacy columns ignored). Leftover sample data of an earlier stalled run was also cleaned. Known: page layouts cache permissions for up to 8 s across server instances.
 
+## 2026-09-20: Live test of the courier email (Neve Yaakov real data) - one bug found + fixed
+
+- **Test:** a local server (current main) on Neve Yaakov's real DB and the real mail bridge sent the courier email (`POST /api/deliveries/courier-email`, both directions, events 4-5.10) to Moshe's own mailbox, read back in Gmail. `courier_email` was set temporarily and deleted right after (Neve Yaakov has NO `courier_email` configured - the "send to courier" button on the live site returns 400 until it is set in admin settings). Both emails were logged in `EmailLog` (status success).
+- **Bug found and fixed (PR #105):** `groupDeliveryRowsForCourier` grouped by the UTC date slice of `eventDate`; imported orders carry different hours for the same event day (21:00Z vs 00:00Z), so one event day appeared as two groups with the same title (5 groups instead of 4). Now grouped by Israel calendar day (`lib/deliveryCourier.js`). Verified: 5 -> 4 groups on the real data, second email arrived as "4 groups".
+- **Observation (not changed):** with `delivery_days_before=2` an event on Monday gets its outbound dispatch on **Shabbat** ("משלוח יוצא שבת" in the email). Business decision for the owner (skip Shabbat / shift to Friday?).
+
 ## 2026-09-20: Neve Yaakov email complaint (2026-09-17/18, Ahuvi Pinkel / Rivka Levi) - 5 items verified, 4 fixed
 
 Full detail per item in `docs/email-fixes-2026-09-20/` (README.md = summary + verification matrix).
