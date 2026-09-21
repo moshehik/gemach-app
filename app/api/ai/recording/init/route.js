@@ -9,6 +9,9 @@ import { isDriveBridgeConfigured, startResumableUpload } from '@/lib/driveBridge
 const MAX_BYTES = 200 * 1024 * 1024;
 
 export const dynamic = 'force-dynamic';
+// פתיחת העלאה כוללת 2-3 קריאות לגשר של Apps Script (כל אחת עד כמה שניות, לפעמים 12+ ב-cold start);
+// בלי זה ברירת המחדל ב-Vercel Hobby היא 10 שניות והפתיחה נכשלה ב-504.
+export const maxDuration = 60;
 
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

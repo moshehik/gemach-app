@@ -71,6 +71,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [recordingEnabled, setRecordingEnabled] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
 
+  const uploadPromiseRef = useRef(null);
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -120,8 +121,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     setPendingRecordingUrl(URL.createObjectURL(blob));
     setPendingRecordingMeta({ fileId: null, stepsText });
     setIsUploadingRecording(true);
+    // שומרים את ההבטחה: אם המשתמש שולח את ההודעה לפני שההעלאה הסתיימה, sendMessage ממתין לה
+    // (אחרת נשלחה שאלה בלי הוידאו ובלי הצעדים, והתשובה הייתה "אינני מסוגל לצפות בסרטונים")
+    const uploading = uploadScreenRecording(blob, prepared);
+    uploadPromiseRef.current = uploading.then((fileId) => fileId, () => null);
     try {
-      const fileId = await uploadScreenRecording(blob, prepared);
+      const fileId = await uploading;
       setPendingRecordingMeta({ fileId, stepsText });
     } catch (e) {
       if (e.code !== 'DRIVE_NOT_CONFIGURED') console.error('Failed to upload screen recording:', e);
@@ -258,7 +263,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהסרטה הזו?' : 'מה רואים בתמונה הזו?');
     const imageToSend = pendingImage ? dataUrlToParts(pendingImage) : null;
     const recordingToSend = pendingRecordingUrl;
-    const recordingMetaToSend = pendingRecordingMeta;
+    let recordingMetaToSend = pendingRecordingMeta;
+    if (recordingToSend && isUploadingRecording && uploadPromiseRef.current) {
+      setLoading(true);
+      const fileId = await uploadPromiseRef.current;
+      recordingMetaToSend = { ...(recordingMetaToSend || {}), fileId: fileId || null };
+    }
     setInput('');
     setPendingImage(null);
     setPendingRecordingUrl(null);
