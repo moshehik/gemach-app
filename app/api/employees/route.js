@@ -108,8 +108,7 @@ export async function POST(request) {
         isActive: body.isActive !== undefined ? body.isActive : true,
         // themeColor לא נכתב ביצירה — העמודה משמשת העדפות-עיצוב פר-עובד (JSON)
         profileImage: body.profileImage,
-        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true),
-        showAi: typeof body.showAi === 'boolean' ? body.showAi : (body.showAi === 'true' || body.showAi === true)
+        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true)
       }
     });
     const { password, pinHash: _pinHash, ...safeEmployee } = newEmployee;

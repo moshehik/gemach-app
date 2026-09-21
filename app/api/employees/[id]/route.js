@@ -110,9 +110,9 @@ export async function PUT(request, { params }) {
         // themeColor אינו מתעדכן כאן יותר — העמודה הוסבה ל-JSON של העדפות
         // עיצוב פר-עובד (/api/me/design-prefs); כתיבה מכאן הייתה דורסת אותן.
         profileImage: body.profileImage,
-        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true),
-        showAi: typeof body.showAi === 'boolean' ? body.showAi : (body.showAi === 'true' || body.showAi === true),
-        canReportErrors: typeof body.canReportErrors === 'boolean' ? body.canReportErrors : (body.canReportErrors === 'true' || body.canReportErrors === true)
+        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true)
+        // showAi / canReportErrors are no longer written or read: AI / error-report access is a
+        // normal permission (feature:ai / feature:error_reports) - see lib/permissions.js.
       }
     });
 

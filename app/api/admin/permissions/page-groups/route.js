@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, syncKeys } from '@/lib/permissionPageGroups';
+import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, syncKeys, findPersonalBlockConflicts } from '@/lib/permissionPageGroups';
+
+function conflictResponse(conflicts) {
+  const lines = conflicts.map((c) => `${c.name} - ${c.label}`).join('; ');
+  return NextResponse.json({
+    error: `לא ניתן לשמור: לעובדים הבאים יש חסימה אישית בכרטיס העובד על פריט בשורה (${lines}). הסירו את החסימה בכרטיס העובד, או הסירו את העובד מהשורה.`,
+    conflicts,
+  }, { status: 409 });
+}
+
 
 // POST { name, keys?, access?, employeeIds? } — creates a new group row (it may mix
 // pages and features). The row stores its own `access` /
@@ -9,7 +18,7 @@ import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, syncKeys } from 
 // contains the key) by syncKeys — see lib/permissionPageGroups.js. A key may sit in
 // several rows at once.
 export async function POST(request) {
-  if (!(await checkAuth('הנהלה ראשית'))) {
+  if (!(await checkAuth('הנהלה ראשית', { forceDb: true }))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {
@@ -20,6 +29,9 @@ export async function POST(request) {
     if (!validatePageKeys(keys)) {
       return NextResponse.json({ error: 'רשימת עמודים ופיצ\'רים לא תקינה' }, { status: 400 });
     }
+
+    const conflicts = await findPersonalBlockConflicts(keys, sanitizeEmployeeIds(employeeIds));
+    if (conflicts.length) return conflictResponse(conflicts);
 
     const maxOrder = await prisma.permissionPageGroup.aggregate({ _max: { order: true } });
     const created = await prisma.permissionPageGroup.create({

@@ -10,6 +10,7 @@ export default function PermissionsClient() {
   const [departments, setDepartments] = useState(null);
   const [groups, setGroups] = useState([]);
   const [orgSettings, setOrgSettings] = useState({});
+  const [personalOverrides, setPersonalOverrides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -25,6 +26,7 @@ export default function PermissionsClient() {
       setDepartments(data.departments);
       setGroups(data.groups || []);
       setOrgSettings(data.orgSettings || {});
+      setPersonalOverrides(data.personalOverrides || []);
     } catch (e) {
       setError(e.message || 'שגיאה בטעינת ההרשאות');
     } finally {
@@ -93,6 +95,10 @@ export default function PermissionsClient() {
         onNew={() => setModal({ group: null })}
         onEdit={(group) => setModal({ group })}
       />
+
+      <NumericValuesCard catalog={catalog} departments={departments} onSaved={load} />
+
+      <PersonalOverridesCard catalog={catalog} overrides={personalOverrides} />
 
       {modal && (
         <PermissionRowWizard
@@ -192,6 +198,146 @@ function PermissionGroupTable({ catalog, groups, departments, employees, onNew, 
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The other half of the picture: exceptions set from an employee's own card ("הרשאות ספציפיות"),
+// which are not part of any row above. Read-only here - each line links to the card that owns it.
+function PersonalOverridesCard({ catalog, overrides }) {
+  return (
+    <div className="card" style={{ marginBottom: '20px' }}>
+      <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h2 className="section-title" style={{ margin: 0 }}>חריגות אישיות מכרטיס העובד</h2>
+        <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
+          הרשאות שנקבעו לעובד ספציפי ישירות בכרטיס שלו ולא דרך שורה. הן קודמות לשורת המחלקה (מותר או חסום), ואת השינוי בהן עושים בכרטיס העובד.
+        </p>
+      </div>
+      <div className="table-wrap">
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
+              <tr>
+                <th style={{ minWidth: '180px' }}>עובד</th>
+                <th style={{ minWidth: '240px' }}>עמוד / פיצ&apos;ר</th>
+                <th style={{ minWidth: '120px' }}>הרשאה</th>
+                <th style={{ width: '54px' }} />
+              </tr>
+            </thead>
+            <tbody>
+              {overrides.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-3)', padding: '20px' }}>אין חריגות אישיות.</td>
+                </tr>
+              )}
+              {overrides.map((entry) => {
+                const item = catalog.find((i) => i.key === entry.key);
+                return (
+                  <tr key={`${entry.employeeId}:${entry.key}`}>
+                    <td><EmployeeTag employee={entry.employee} /></td>
+                    <td><ItemLabel item={item} fallbackKey={entry.key} /></td>
+                    <td>
+                      {item?.type === 'number'
+                        ? <span className="badge badge-neutral">{entry.value}</span>
+                        : entry.value
+                          ? <span className="badge badge-success">מותר</span>
+                          : <span className="badge badge-danger">חסום</span>}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <a className="btn btn-ghost btn-icon-only btn-sm" href={`/employees/${entry.employeeId}`} title="לכרטיס העובד" aria-label="לכרטיס העובד">
+                        <svg className="icon"><use href="#i-edit" /></svg>
+                      </a>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Number items (e.g. max rows to export without a manager) have no yes/no, so a permission row can't
+// carry them - this is their department-level editor. An employee's own value is set on the card and
+// listed in the table below.
+function NumericValuesCard({ catalog, departments, onSaved }) {
+  const numeric = catalog.filter((item) => item.type === 'number');
+  const [busyKey, setBusyKey] = useState(null);
+  if (numeric.length === 0) return null;
+
+  const save = async (roleId, key, value) => {
+    setBusyKey(`${roleId}:${key}`);
+    try {
+      const res = await fetch('/api/admin/permissions/department-values', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roleId, key, value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'שגיאה בשמירה');
+      await onSaved();
+    } catch (e) {
+      alert(e.message || 'שגיאה בשמירת הערך');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: '20px' }}>
+      <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h2 className="section-title" style={{ margin: 0 }}>ערכים מספריים לפי מחלקה</h2>
+        <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
+          פריטים שהם מספר ולא כן/לא, ולכן לא נכנסים לשורות הרשאה. לעובד ספציפי קובעים ערך בכרטיס שלו.
+        </p>
+      </div>
+      <div className="table-wrap">
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
+              <tr>
+                <th style={{ minWidth: '260px' }}>פריט</th>
+                {departments.map((d) => <th key={d.roleId}>{d.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {numeric.map((item) => (
+                <tr key={item.key}>
+                  <td><ItemLabel item={item} /></td>
+                  {departments.map((d) => {
+                    const cell = d.values[item.key];
+                    const busy = busyKey === `${d.roleId}:${item.key}`;
+                    return (
+                      <td key={d.roleId}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <input
+                            className="input"
+                            type="number"
+                            min="0"
+                            style={{ width: '90px' }}
+                            defaultValue={cell.value}
+                            key={`${d.roleId}-${cell.value}`}
+                            disabled={busy}
+                            onBlur={(e) => {
+                              const n = parseInt(e.target.value, 10);
+                              if (!isNaN(n) && n !== cell.value) save(d.roleId, item.key, n);
+                            }}
+                          />
+                          {cell.isExplicit && (
+                            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => save(d.roleId, item.key, null)} title="אפס לברירת המחדל">איפוס</button>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
