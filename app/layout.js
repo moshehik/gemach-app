@@ -4,7 +4,7 @@ import './design-system.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
-import { getDepartmentEffectiveValue, resolvePageAccess } from '@/lib/permissions';
+import { resolvePageAccess } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 
@@ -65,7 +65,7 @@ export default async function RootLayout({ children }) {
   // them in parallel instead of the old sequential awaits (each one is a
   // Neon round-trip on every page render of the whole app). When the signed
   // auth_session cookie is present, verified, and fresh, the employee query
-  // is skipped entirely — roleId/showAi come from the token (see
+  // is skipped entirely — roleId comes from the token (see
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
@@ -94,7 +94,7 @@ export default async function RootLayout({ children }) {
           ...(isNaN(parsedLegacy) ? [] : [{ legacyId: parsedLegacy }])
         ]
       },
-      select: { roleId: true, showAi: true }
+      select: { roleId: true }
     }).catch(e => {
       console.warn('Error fetching employee role:', e?.message || e);
       return null;
@@ -102,7 +102,7 @@ export default async function RootLayout({ children }) {
   }
 
   const [settings, employeeRow] = await Promise.all([settingsPromise, employeePromise]);
-  const emp = session ? { roleId: session.r, showAi: !!session.a } : employeeRow;
+  const emp = session ? { roleId: session.r } : employeeRow;
 
   {
     const requireLoginSetting = settings.find(s => s.key === 'require_login');
@@ -172,7 +172,6 @@ export default async function RootLayout({ children }) {
 
   let isManager = false;
   let isHeadManagement = false;
-  let employeeShowAi = false;
   let isProgrammer = false;
   if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
     isManager = true;
@@ -183,25 +182,18 @@ export default async function RootLayout({ children }) {
   if (emp && emp.roleId === 2) {
     isProgrammer = true;
   }
-  if (emp && emp.showAi) {
-    employeeShowAi = true;
+  // feature:ai is a normal permission (/admin/permissions row, or the employee's own card): the
+  // widget shows exactly when checkAiAccess() would let the API through - same resolution
+  // (resolvePageAccess: head management always, else employee override -> department row -> default).
+  // Only checked when we have an employee to look up, to avoid a DB round-trip for anonymous visitors.
+  // Default (no row anywhere) = head management only, agreed 2026-08-24.
+  let hasAiPermission = false;
+  if (emp && isHeadManagement) {
+    hasAiPermission = true;
+  } else if (emp) {
+    hasAiPermission = !!(await resolvePageAccess(emp.roleId, authToken.value, ['feature:ai']).then((r) => r['feature:ai']).catch(() => false));
   }
-
-  // Department-level "feature:ai" permission (/admin/permissions) - a whole
-  // department can be granted AI without flipping showAi per employee. See
-  // lib/permissionsMetadata.js's feature:ai note and CLAUDE.md's "Permissions
-  // system" section. Only checked when we have a role to look up, to avoid a
-  // DB round-trip for anonymous visitors.
-  let departmentHasAi = false;
-  if (emp && !isHeadManagement) {
-    departmentHasAi = await getDepartmentEffectiveValue(emp.roleId, 'feature:ai').catch(() => false);
-  }
-
-  // הנהלה ראשית (roleId 0) ומתכנת (roleId 2) מקבלים AI תמיד; מעבר לזה, ה-AI
-  // מוצג רק כשעובד ספציפי סומן ל-showAi (או שמחלקתו קיבלה הרשאת feature:ai) וגם
-  // ההגדרה הזו הופעלה. סוכם ב-2026-08-24: AI לא אמור להיות זמין למנהל סניף רגיל
-  // או לעובדים כברירת מחדל.
-  if (!isHeadManagement && !(employeeShowAi || departmentHasAi)) {
+  if (!hasAiPermission) {
     hideAIFeatures = true;
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
-import { checkAiAccess } from '@/lib/permissions';
+import { checkAiAccess, hasPermission } from '@/lib/permissions';
+import { getSessionEmployee } from '@/lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { isDriveBridgeConfigured, startResumableUpload } from '@/lib/driveBridgeServer';
 
@@ -16,9 +17,17 @@ export const maxDuration = 60;
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await request.json().catch(() => ({}));
-  // הסרטה מתוך דיווח שגיאה לא דורשת הרשאת AI (מי שמדווח אינו בהכרח משתמש AI); הסרטה מעוזר ה-AI דורשת.
+  // הסרטה מתוך דיווח שגיאה לא דורשת הרשאת AI (מי שמדווח אינו בהכרח משתמש AI) אבל דורשת את הרשאת
+  // הדיווח על תקלות (feature:error_reports) - אחרת הפרמטר הזה עוקף כל בדיקה; הסרטה מעוזר ה-AI דורשת feature:ai.
   const forErrorReport = body.purpose === 'error-report';
-  if (!forErrorReport && !(await checkAiAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (forErrorReport) {
+    const employee = await getSessionEmployee();
+    if (!employee || !(await hasPermission(employee, 'feature:error_reports'))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } else if (!(await checkAiAccess())) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   try {
     const setting = await getCachedSetting('ai_screen_recording_enabled');
     if (!setting || setting.value !== 'true') {

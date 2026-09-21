@@ -2,23 +2,22 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PERMISSION_CATALOG } from '@/lib/permissionsMetadata';
+import ItemLabel from './ItemInfo';
 
-// Shared "הרשאות ספציפיות" panel — one employee's effective value per catalog key,
-// with a control to override the department default. Used both embedded in an
-// employee's own card (app/employees/[id]/page.js) and from the employee picker on
-// /admin/permissions (app/admin/permissions/PermissionsClient.js) — one component so
-// the two surfaces the request asked for ("גם דרך דף הניהול וגם דרך כרטיס העובד")
-// can never drift apart.
-//
-// `linkToCard` renders a "לכרטיס העובד" link next to legacy-field items (AI/error
-// reports) instead of a disabled control — only makes sense when this panel is NOT
-// already embedded inside that same card (i.e. from the admin page).
-export default function EmployeePermissionsPanel({ employeeId, linkToCard = false }) {
+// "הרשאות ספציפיות" on an employee's own card (app/employees/[id]/page.js) - the card's side of
+// /admin/permissions. Both read the same rows, and each item is owned by exactly one of them:
+//   - listed for this employee in a permission row  -> owned by that row: read-only here, with a
+//                                                       link to the central window;
+//   - anything else                                 -> a personal exception, edited here and listed
+//                                                       back on /admin/permissions;
+//   - items the central window can't configure (locked pages) are not shown at all, and head
+//     management / programmer show "always allowed" with no controls - same as the central window.
+// Every item - AI and error reports included - goes through this one model (no special checkboxes).
+export default function EmployeePermissionsPanel({ employeeId }) {
   const [items, setItems] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [savingKey, setSavingKey] = useState(null);
-  const [noteDrafts, setNoteDrafts] = useState({});
 
   const load = useCallback(async () => {
     if (!employeeId) return;
@@ -44,15 +43,15 @@ export default function EmployeePermissionsPanel({ employeeId, linkToCard = fals
       const res = await fetch(`/api/admin/permissions/employees/${employeeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, value, note: noteDrafts[key] }),
+        body: JSON.stringify({ key, value }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירה');
-      await load();
     } catch (e) {
       alert(e.message || 'שגיאה בשמירת ההרשאה');
     } finally {
       setSavingKey(null);
+      await load(); // also after a refusal: another tab may have changed the row meanwhile
     }
   };
 
@@ -62,91 +61,139 @@ export default function EmployeePermissionsPanel({ employeeId, linkToCard = fals
       const res = await fetch(`/api/admin/permissions/employees/${employeeId}?key=${encodeURIComponent(key)}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה באיפוס ההרשאה');
-      await load();
     } catch (e) {
       alert(e.message || 'שגיאה באיפוס ההרשאה');
     } finally {
       setSavingKey(null);
+      await load();
     }
   };
 
-  if (loading) return <div style={{ padding: '12px 0' }}><span className="spinner" /> טוען הרשאות...</div>;
-  if (error) return <div className="callout callout-error">{error}</div>;
+  if (loading && !items) return <div style={{ padding: '12px 0' }}><span className="spinner" /> טוען הרשאות...</div>;
+  if (error) return <div className="callout callout-danger">{error}</div>;
   if (!items) return null;
 
   const byKey = new Map(items.map((it) => [it.key, it]));
+  const visible = PERMISSION_CATALOG.filter((item) => byKey.has(item.key) && !byKey.get(item.key).locked);
+
+  const renderGroup = (group, title) => {
+    const groupItems = visible.filter((item) => item.group === group);
+    if (!groupItems.length) return null;
+    return (
+      <div key={group}>
+        <h3 style={{ margin: '4px 0 8px', fontSize: '13px', color: 'var(--text-2)' }}>{title}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {groupItems.map((catalogItem) => (
+            <PermissionLine
+              key={catalogItem.key}
+              catalogItem={catalogItem}
+              row={byKey.get(catalogItem.key)}
+              busy={savingKey === catalogItem.key}
+              onSave={saveOverride}
+              onClear={clearOverride}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {PERMISSION_CATALOG.map((catalogItem) => {
-        const row = byKey.get(catalogItem.key);
-        if (!row) return null;
-        const isLegacy = !!catalogItem.legacyEmployeeField;
-        const hasOverride = !!row.override;
-        const isSaving = savingKey === catalogItem.key;
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', opacity: loading ? 0.6 : 1 }}>
+      {renderGroup('pages', 'עמודים')}
+      {renderGroup('features', "פיצ'רים")}
+    </div>
+  );
+}
 
-        return (
-          <div key={catalogItem.key} className="card card-pad" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px' }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <strong style={{ fontSize: '13.5px' }}>{catalogItem.label}</strong>
-                {!catalogItem.enforced && (
-                  <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}>לתיעוד בלבד — עדיין לא משנה את הגישה בפועל</span>
-                )}
-              </div>
-              <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>{catalogItem.description}</p>
-              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
-                ברירת מחדל לפי מחלקה: <strong>{formatValue(catalogItem, row.departmentDefault)}</strong>
-              </p>
-            </div>
+function PermissionLine({ catalogItem, row, busy, onSave, onClear }) {
+  const hasOverride = !!row.override;
+  const listedRows = row.rows.filter((r) => r.employeeListed);
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-              {isLegacy ? (
-                linkToCard ? (
-                  <a className="btn btn-secondary btn-sm" href={`/employees/${employeeId}`}>עריכה בכרטיס העובד</a>
-                ) : (
-                  <span className="badge">{formatValue(catalogItem, row.effective)} · נקבע בכרטיס העובד</span>
-                )
-              ) : catalogItem.type === 'boolean' ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {hasOverride && (
-                    <button type="button" className="btn btn-ghost btn-sm" disabled={isSaving} onClick={() => clearOverride(catalogItem.key)} title="אפס לברירת המחדל של המחלקה">
-                      איפוס
-                    </button>
-                  )}
-                  <div
-                    className={row.effective ? 'switch on' : 'switch'}
-                    onClick={() => !isSaving && saveOverride(catalogItem.key, !row.effective)}
-                    title={hasOverride ? 'הרשאה פרטנית לעובד זה' : 'לחיצה תיצור הרשאה פרטנית לעובד זה'}
-                  />
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    className="input"
-                    type="number"
-                    style={{ width: '90px' }}
-                    defaultValue={row.effective}
-                    disabled={isSaving}
-                    onBlur={(e) => {
-                      const n = parseInt(e.target.value, 10);
-                      if (!isNaN(n) && n !== row.effective) saveOverride(catalogItem.key, n);
-                    }}
-                  />
-                  {hasOverride && (
-                    <button type="button" className="btn btn-ghost btn-sm" disabled={isSaving} onClick={() => clearOverride(catalogItem.key)} title="אפס לברירת המחדל של המחלקה">
-                      איפוס
-                    </button>
-                  )}
-                </div>
-              )}
-              {hasOverride && row.override?.note && (
-                <span style={{ fontSize: '11.5px', color: 'var(--text-3)' }}>{row.override.note}</span>
-              )}
-            </div>
-          </div>
-        );
-      })}
+  let control;
+  if (row.alwaysAllowed) {
+    control = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {hasOverride && (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onClear(catalogItem.key)} title="חריגה ישנה שנשארה מלפני שהעובד הועבר להנהלה ראשית / מתכנת. אין לה השפעה, אפשר לנקות">
+            נקה חריגה ישנה
+          </button>
+        )}
+        <span className="badge badge-success">תמיד מורשה (הנהלה ראשית / מתכנת)</span>
+      </div>
+    );
+  } else if (listedRows.length) {
+    control = (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+        <span className="badge badge-success">מורשה דרך שורת הרשאה</span>
+        <a href="/admin/permissions" style={{ fontSize: '12px' }}>{listedRows.map((r) => r.name).join(', ')} — עריכה במסך ההרשאות</a>
+      </div>
+    );
+  } else if (catalogItem.type === 'boolean') {
+    control = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {hasOverride && (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onClear(catalogItem.key)} title="אפס לברירת המחדל של המחלקה">
+            איפוס
+          </button>
+        )}
+        <div
+          className={row.effective ? 'switch on' : 'switch'}
+          onClick={() => !busy && onSave(catalogItem.key, !row.effective)}
+          title={hasOverride ? 'חריגה אישית לעובד זה' : 'לחיצה תיצור חריגה אישית לעובד זה'}
+        />
+      </div>
+    );
+  } else {
+    control = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <input
+          className="input"
+          type="number"
+          style={{ width: '90px' }}
+          defaultValue={row.effective}
+          key={`${row.key}-${row.effective}`}
+          disabled={busy}
+          onBlur={(e) => {
+            const n = parseInt(e.target.value, 10);
+            if (!isNaN(n) && n !== row.effective) onSave(catalogItem.key, n);
+          }}
+        />
+        {hasOverride && (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onClear(catalogItem.key)} title="אפס לברירת המחדל של המחלקה">
+            איפוס
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Rows that contain this item but don't list the employee: they still govern the department default.
+  // Only worth naming when the row groups several items - a row that is just this item's own line adds nothing.
+  const otherRows = row.rows.filter((r) => !listedRows.includes(r) && r.itemCount > 1);
+
+  return (
+    <div className="card card-pad" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <strong style={{ fontSize: '13.5px' }}><ItemLabel item={catalogItem} /></strong>
+          {!catalogItem.enforced && (
+            <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}>לתיעוד בלבד — עדיין לא משנה את הגישה בפועל</span>
+          )}
+          {hasOverride && !row.alwaysAllowed && listedRows.length === 0 && <span className="badge badge-primary">חריגה אישית</span>}
+        </div>
+        <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>{catalogItem.description}</p>
+        <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-3)' }}>
+          לפי המחלקה: <strong>{formatValue(catalogItem, row.departmentDefault)}</strong>
+          {otherRows.length > 0 && <> · מוגדר בשורות: {otherRows.map((r) => r.name).join(', ')}</>}
+        </p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+        {control}
+        {hasOverride && row.override?.note && !row.override.fromRow && (
+          <span style={{ fontSize: '11.5px', color: 'var(--text-3)' }}>{row.override.note}</span>
+        )}
+      </div>
     </div>
   );
 }
