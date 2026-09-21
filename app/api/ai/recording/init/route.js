@@ -38,6 +38,7 @@ export async function POST(request) {
     return NextResponse.json({ sessionUri, name });
   } catch (error) {
     console.error('Error starting recording upload:', error);
-    return NextResponse.json({ error: 'שגיאה בפתיחת העלאת ההקלטה' }, { status: 500 });
+    // detail = הודעת השגיאה המקורית (בעברית/טכנית, ללא סודות) - בלי זה אי אפשר לדעת מהדפדפן אם הכשל בגשר, בטוקן או בדרייב
+    return NextResponse.json({ error: 'שגיאה בפתיחת העלאת ההקלטה', detail: String(error?.message || error).slice(0, 300) }, { status: 500 });
   }
 }
