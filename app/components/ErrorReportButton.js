@@ -750,6 +750,12 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     <svg className="icon" style={{ width: 13, height: 13, verticalAlign: -2, marginInlineEnd: 4 }}><use href="#i-archive" /></svg>
                     ארכיון {archivedReports.length > 0 ? `(${archivedReports.length})` : ''}
                   </button>
+                  {(isManager || isProgrammer) && (
+                    <button type="button" className="btn btn-primary btn-sm" style={{ marginInlineStart: 'auto', alignSelf: 'center', marginBottom: 4, flexShrink: 0 }} onClick={() => setActiveTab('new')}>
+                      <svg className="icon"><use href="#i-plus" /></svg>
+                      דיווח חדש
+                    </button>
+                  )}
                 </div>
                 {(activeTab === 'list' || activeTab === 'archive') && (
                   <div style={{ padding: '10px 22px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -766,12 +772,6 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     </div>
                     {searchQuery && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSearchQuery('')}>נקה</button>
-                    )}
-                    {(isManager || isProgrammer) && (
-                      <button type="button" className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={() => setActiveTab('new')}>
-                        <svg className="icon"><use href="#i-plus" /></svg>
-                        דיווח חדש
-                      </button>
                     )}
                   </div>
                 )}
@@ -1114,31 +1114,31 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ fontWeight: 700, fontSize: 13.5 }}>עזרו לנו לראות את התקלה <span style={{ fontWeight: 400, color: 'var(--text-3)' }}>(לא חובה)</span></div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     {[
-                      { key: 'pick', icon: '#i-pin', title: pickedElements.length > 0 ? 'סמן אלמנט נוסף' : 'סמן אלמנט בעמוד', hint: 'הצבעה על המקום הבעייתי', onClick: () => startPicking('new') },
+                      { key: 'pick', icon: '#i-pin', title: pickedElements.length > 0 ? 'אלמנט נוסף' : 'סימון אלמנט', hint: 'הצבעה על המקום הבעייתי בעמוד', onClick: () => startPicking('new') },
                       { key: 'shot', icon: '#i-grid', title: 'צילום מסך', hint: 'תמונה של כל המסך', onClick: () => captureFullScreen('new') },
-                      ...(recordingEnabled ? [{ key: 'video', icon: '#i-camera', title: videoUploading ? 'מעלה את ההסרטה...' : 'הסרטת מסך', hint: 'וידאו + הפעולות שלך', onClick: () => startVideoRecording('new'), disabled: videoUploading }] : []),
-                      { key: 'steps', icon: '#i-activity', title: recordedSteps ? 'הקלטת פעולות מחדש' : 'הקלטת פעולות', hint: 'בלי וידאו ובלי שיתוף מסך', onClick: () => startStepsRecording('new') },
+                      ...(recordingEnabled ? [{ key: 'video', icon: '#i-camera', title: videoUploading ? 'מעלה...' : 'הסרטת מסך', hint: 'וידאו + הפעולות שלך', onClick: () => startVideoRecording('new'), disabled: videoUploading, spinning: videoUploading }] : []),
+                      { key: 'steps', icon: '#i-activity', title: recordedSteps ? 'פעולות מחדש' : 'הקלטת פעולות', hint: 'רישום הלחיצות וההקלדות, בלי וידאו ובלי שיתוף מסך', onClick: () => startStepsRecording('new') },
                     ].map(t => (
                       <button
                         key={t.key}
                         type="button"
+                        title={t.hint}
                         onClick={t.onClick}
                         disabled={t.disabled}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textAlign: 'start',
-                          cursor: t.disabled ? 'default' : 'pointer', opacity: t.disabled ? 0.6 : 1,
+                          flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 6px', textAlign: 'center',
+                          cursor: t.disabled ? 'default' : 'pointer', opacity: t.disabled && !t.spinning ? 0.6 : 1,
                           borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
                         }}
                       >
                         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'var(--primary-tint)', color: 'var(--primary-solid)', flexShrink: 0 }}>
-                          <svg className="icon" style={{ width: 16, height: 16 }}><use href={t.icon} /></svg>
+                          {t.spinning
+                            ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                            : <svg className="icon" style={{ width: 16, height: 16 }}><use href={t.icon} /></svg>}
                         </span>
-                        <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-                          <span style={{ fontWeight: 600, fontSize: 13 }}>{t.title}</span>
-                          <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{t.hint}</span>
-                        </span>
+                        <span style={{ fontWeight: 600, fontSize: 12.5, lineHeight: 1.25 }}>{t.title}</span>
                       </button>
                     ))}
                   </div>
