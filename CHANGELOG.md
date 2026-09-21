@@ -1,5 +1,13 @@
 # System Changes Log
 
+## 2026-09-22: Settings panel -> permissions mapping; 4 "who may approve" items added; direct link from /admin
+
+- Every `SystemSetting` was classified (full write-up: `docs/permissions-settings-mapping-2026-09-22.md`). Already in the catalog: the three `restrict_*` toggles (they only feed a page's default). **Missing and now added, all enforced** (defaults reproduce today's behaviour): `feature:reserve_rental_approval` (was `allow_shift_lead_reserve_rental`), `feature:payment_exit_approval` (was `PAYMENT_APPROVAL_LEVEL`), `feature:item_change_approval` (was `require_manager_code_for_item_changes` + hardcoded roleId 1/2 in `verifyManagerPin`), `feature:barcode_mismatch_override` (was hardcoded roleId 1/2 in `lib/rentalBarcodeGuard.js`).
+- New catalog flag `approver: true` (+ `approverLabel`): `/api/auth/verify-pin` accepts `requiredLevel: 'feature:<key>'` and decides with `hasPermission`; `GET /api/employees` returns `approvals` per employee so `PopupProvider`'s picker lists exactly the valid approvers. `verifyManagerPin(id, pin, permissionKey)` takes an optional key.
+- Side effect: head management (roleId 0, always allowed) is now a valid approver in those three places. The "reserve rented on a shift lead's approval" notification now fires when the approver is not branch manager/head management/programmer (before: whenever the setting was on).
+- Dead settings `cancel_order_permission` / `reserve_permission` ("לא בשימוש") left alone; the cancel-order one is an open owner question (today any logged-in employee may cancel).
+- Link to `/admin/permissions` added to the main admin hub (`/admin`) and to the general settings sidebar (was developer-only). 39/39 live checks on the TEST copy.
+
 ## 2026-09-22: Swap / cancellation / refund policy - one setting per rule, gap-size pricing, size-edit window
 
 - **Neve Yaakov policy implemented** (full rules, per-gemach values and verification: `docs/refund-swap-policy-2026-09-22.md`): free size swap only for same model + same price band, until 2 days before the event; model change = 50% refund, none within 2 days; sizes between price ranges (21-31) charged at the cheaper neighbouring range (price-list screen highlights it); in-place size edit after 15 min for the same band. Main gemach unchanged (missing setting row = old behaviour; verified 0 diffs on 20,000 random orders).

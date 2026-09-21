@@ -1152,7 +1152,10 @@ export default function NewOrderPage() {
     if (isManagerExitPayment || (pAmount > 0 && !isCreditCardPayment)) {
       const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
       if (level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה') {
-        const authResult = await window.customAuthPrompt(`פעולה זו דורשת הרשאת ${level}. אנא בחר משתמש והזן סיסמה:`, level);
+        // 2026-09-22: ההגדרה קובעת אם החלונית מופיעה בכלל; מי שרשאי לאשר נקבע בהרשאה
+        // feature:payment_exit_approval (ברירת המחדל נגזרת מרמת ההגדרה: עובד / מנהל / מנהל סניף ומעלה,
+        // ושורת הרשאה ב-/admin/permissions גוברת) - הבורר וה-verify-pin מכריעים באותה הכרעה.
+        const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
         if (!authResult || !authResult.pin) {
           alert('אישור תשלום בוטל.');
           return;
@@ -1162,7 +1165,7 @@ export default function NewOrderPage() {
           const res = await fetch('/api/auth/verify-pin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: level })
+            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:payment_exit_approval' })
           });
           const data = await res.json();
           if (!data.success) {

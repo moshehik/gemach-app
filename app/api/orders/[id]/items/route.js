@@ -45,7 +45,7 @@ export async function POST(request, { params }) {
     const settingsForManagerCheck = await getAllCachedSettings();
     const requireManagerCode = settingsForManagerCheck.find(s => s.key === 'require_manager_code_for_item_changes')?.value === 'true';
     if (requireManagerCode) {
-      const managerOk = await verifyManagerPin(itemData.managerEmployeeId, itemData.managerPin);
+      const managerOk = await verifyManagerPin(itemData.managerEmployeeId, itemData.managerPin, 'feature:item_change_approval');
       if (!managerOk) {
         return NextResponse.json({ error: 'דרוש אישור מנהל (קוד/סיסמה) בתוקף להוספת פריט להזמנה קיימת.' }, { status: 403 });
       }

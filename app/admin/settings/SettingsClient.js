@@ -637,18 +637,16 @@ export default function SettingsClient({ mode = 'general' }) {
             );
           })}
 
-          {/* עמוד הרשאות נפרד (/admin/permissions) - נגיש רק מכאן (מתכנת). דפי הגישה שם
-              הם תיעוד כוונה בלבד (enforced:false ב-lib/permissionsMetadata.js) ואינם נאכפים. */}
-          {mode === 'developer' && (
-            <Link
-              href="/admin/permissions"
-              className="tab settings-cat"
-              style={{ marginInlineEnd: 0, width: '100%', textAlign: 'start', textDecoration: 'none', borderTop: 'none' }}
-            >
-              <svg className="icon"><use href="#i-shield" /></svg>
-              הרשאות
-            </Link>
-          )}
+          {/* עמוד הרשאות נפרד (/admin/permissions): מי נכנס לאיזה עמוד ומי רשאי לאשר פעולות. כמה
+              הגדרות בטאבים כאן קובעות רק את ברירת המחדל שלהן (ר' lib/permissionsMetadata.js, settingKeys). */}
+          <Link
+            href="/admin/permissions"
+            className="tab settings-cat"
+            style={{ marginInlineEnd: 0, width: '100%', textAlign: 'start', textDecoration: 'none', borderTop: 'none' }}
+          >
+            <svg className="icon"><use href="#i-shield" /></svg>
+            ניהול הרשאות (מחלקות ועובדים)
+          </Link>
         </div>
 
         {/* Content pane */}

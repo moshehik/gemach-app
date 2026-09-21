@@ -646,7 +646,7 @@ export default function OrderDetailsPage({ params }) {
       return after && after.isDeleted;
     });
     if (cancelledItemNow) {
-      const authResult = await window.customAuthPrompt('ביטול פריט מהזמנה קיימת דורש גם אישור מנהל (בנוסף לאימות ת״ז). אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      const authResult = await window.customAuthPrompt('ביטול פריט מהזמנה קיימת דורש גם אישור מנהל (בנוסף לאימות ת״ז). אנא בחר מנהל והזן סיסמה:', 'feature:item_change_approval');
       if (!authResult || !authResult.pin) {
         setSaving(false);
         setSaveMessage('השמירה בוטלה: ביטול פריט דורש אישור מנהל.');
@@ -656,7 +656,7 @@ export default function OrderDetailsPage({ params }) {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:item_change_approval' })
         });
         const data = await res.json();
         if (!data.success) {

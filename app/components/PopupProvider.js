@@ -2,8 +2,16 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { getCatalogItem } from '@/lib/permissionsMetadata';
 
 const PopupContext = createContext(null);
+
+// הכיתוב ב"בחר ..." / "קוד ..." של חלונית האימות: לרמה רגילה ('מנהל', 'עובד') זה השם עצמו, ולפריט מאשר
+// בקטלוג ההרשאות (requiredLevel = 'feature:...') זה approverLabel שלו.
+const approverLevelLabel = (level) => {
+  const item = typeof level === 'string' && level.startsWith('feature:') ? getCatalogItem(level) : null;
+  return item?.approverLabel || level;
+};
 
 // נתוני האימות (רשימת עובדים + משתמש נוכחי) נטענים דרך המטמון המשותף —
 // חלונית אישור מנהל/עובד נפתחת מיד, והרשימה מתרעננת אוטומטית אחרי עריכת עובדים
@@ -145,6 +153,10 @@ export function PopupProvider({ children }) {
           // canApproveWithoutPayment = feature:debt_approval כפי שהשרת פותר אותו (הנהלה ראשית/מתכנת תמיד;
           // אחרת חריגה אישית -> שורת מחלקה -> ברירת מחדל). אותה החלטה ש-verify-pin אוכף, ולכן בלי רשימת תפקידים קבועה.
           employees = employees.filter(e => e.canApproveWithoutPayment);
+        } else if (typeof requiredLevel === 'string' && requiredLevel.startsWith('feature:')) {
+          // פריט "מאשר" בקטלוג ההרשאות (approver:true) - approvals[key] מגיע מ-GET /api/employees ומחושב
+          // באותה הכרעה ש-verify-pin אוכף (חריגה אישית -> שורת מחלקה -> ברירת מחדל).
+          employees = employees.filter(e => e.approvals && e.approvals[requiredLevel]);
         }
         const currentUser = (meData && meData.success) ? meData.employee : null;
 
@@ -325,7 +337,7 @@ export function PopupProvider({ children }) {
                 {authPromptConfig.message}
               </p>
               <div className="field">
-                <label>בחר {authPromptConfig.requiredLevel}</label>
+                <label>בחר {approverLevelLabel(authPromptConfig.requiredLevel)}</label>
                 <div className="combobox">
                   <input
                     data-element-name="חיפוש_PopupProvider_15"
@@ -382,7 +394,7 @@ export function PopupProvider({ children }) {
                 </div>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label>קוד {authPromptConfig.requiredLevel}</label>
+                <label>קוד {approverLevelLabel(authPromptConfig.requiredLevel)}</label>
                 <div className="password-field">
                   <svg className="icon lead-icon"><use href="#i-lock" /></svg>
                   <input

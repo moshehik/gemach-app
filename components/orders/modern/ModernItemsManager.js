@@ -442,13 +442,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     // (localStorage, ר' app/lib/orderDrafts.js).
     let managerAuth = null;
     if (!isEditing && settings.require_manager_code_for_item_changes === 'true') {
-      const authResult = await window.customAuthPrompt('הוספת פריט חדש להזמנה קיימת דורשת גם אישור מנהל (בנוסף לאימות ת״ז בשמירה). אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      const authResult = await window.customAuthPrompt('הוספת פריט חדש להזמנה קיימת דורשת גם אישור מנהל (בנוסף לאימות ת״ז בשמירה). אנא בחר מנהל והזן סיסמה:', 'feature:item_change_approval');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:item_change_approval' })
         });
         const data = await res.json();
         if (!data.success) {

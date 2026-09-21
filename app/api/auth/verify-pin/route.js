@@ -3,6 +3,7 @@ import prisma from '../../../lib/prisma';
 import { verifySecret } from '@/lib/passwordAuth';
 import { HEAD_MANAGEMENT_ROLES, checkAuth } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
+import { getCatalogItem } from '@/lib/permissionsMetadata';
 
 export async function POST(request) {
   // Was fully anonymous: with no employeeId it tried the typed password against EVERY active
@@ -82,6 +83,20 @@ export async function POST(request) {
     // while /api/employees already reported the manager as not allowed).
     if (requiredLevel === 'מאשר הזמנה ללא תשלום' && !(await hasPermission(employee, 'feature:debt_approval'))) {
       return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למי שהורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
+    }
+
+    // requiredLevel = מפתח של פריט "מאשר" בקטלוג ההרשאות (approver:true ב-lib/permissionsMetadata.js,
+    // למשל feature:reserve_rental_approval / feature:item_change_approval): הכרעה אחת של hasPermission
+    // (הנהלה ראשית/מתכנת תמיד -> חריגה אישית -> שורת מחלקה -> ברירת המחדל שנגזרת מהגדרת המערכת),
+    // בדיוק כמו 'מאשר הזמנה ללא תשלום' למעלה - בלי רשימת תפקידים קשיחה.
+    if (typeof requiredLevel === 'string' && requiredLevel.startsWith('feature:')) {
+      const approverItem = getCatalogItem(requiredLevel);
+      if (!approverItem || !approverItem.approver) {
+        return NextResponse.json({ success: false, error: 'רמת אישור לא מוכרת' }, { status: 400 });
+      }
+      if (!(await hasPermission(employee, requiredLevel))) {
+        return NextResponse.json({ success: false, error: `אין הרשאה לאשר פעולה זו (${approverItem.label})` }, { status: 403 });
+      }
     }
 
     return NextResponse.json({ success: true, employeeId: employee.id, employeeName: employee.firstName + ' ' + employee.lastName });
