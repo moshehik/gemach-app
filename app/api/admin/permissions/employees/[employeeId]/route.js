@@ -33,7 +33,7 @@ const isAlwaysAllowed = (employee, item) =>
   item.type === 'boolean' && ALWAYS_ALLOWED_ROLE_IDS.includes(employee.roleId);
 
 export async function GET(request, { params }) {
-  if (!(await checkAuth('הנהלה ראשית'))) {
+  if (!(await checkAuth('הנהלה ראשית', { forceDb: true }))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {
@@ -58,22 +58,12 @@ export async function GET(request, { params }) {
         locked: !!item.notConfigurable,
         alwaysAllowed: isAlwaysAllowed(employee, item),
       };
-      if (item.legacyEmployeeField) {
-        const legacyOn = !!employee[item.legacyEmployeeField];
-        return {
-          ...base,
-          override: null,
-          effective: item.type === 'boolean' ? (legacyOn || !!departmentDefault) : departmentDefault,
-          legacyEmployeeField: item.legacyEmployeeField,
-        };
-      }
       const row = overrideByKey.get(item.key);
       const overrideValue = row ? (item.type === 'boolean' ? row.value === 'true' : parseInt(row.value, 10)) : null;
       return {
         ...base,
         override: row ? { value: overrideValue, note: row.note, updatedAt: row.updatedAt, fromRow: (row.note || '').startsWith(ROW_OVERRIDE_NOTE_PREFIX) } : null,
         effective: base.alwaysAllowed ? true : (row ? overrideValue : departmentDefault),
-        legacyEmployeeField: null,
       };
     }));
 
@@ -103,23 +93,25 @@ async function refuseIfOwnedElsewhere(employee, item, { forWrite }) {
 }
 
 export async function PUT(request, { params }) {
-  if (!(await checkAuth('הנהלה ראשית'))) {
+  if (!(await checkAuth('הנהלה ראשית', { forceDb: true }))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {
     const { employeeId } = await params;
-    const { key, value, note } = await request.json();
+    const { key, value } = await request.json();
     const item = getCatalogItem(key);
     if (!item) {
       return NextResponse.json({ error: 'מפתח הרשאה לא מוכר' }, { status: 400 });
     }
-    if (item.legacyEmployeeField) {
-      return NextResponse.json({
-        error: `הרשאה זו נקבעת דרך השדה הקיים בכרטיס העובד (${item.legacyEmployeeField}), לא כאן`,
-      }, { status: 400 });
+    // same strictness as the department editor: a real boolean / a whole non-negative number
+    if (item.type === 'boolean' && typeof value !== 'boolean') {
+      return NextResponse.json({ error: 'הערך חייב להיות מותר או חסום' }, { status: 400 });
     }
-    if (item.type === 'number' && (value === '' || value === null || isNaN(parseInt(value, 10)))) {
-      return NextResponse.json({ error: 'יש להזין ערך מספרי תקין' }, { status: 400 });
+    if (item.type === 'number' && !(Number.isInteger(value) || (typeof value === 'string' && /^\d+$/.test(value.trim())))) {
+      return NextResponse.json({ error: 'יש להזין מספר שלם תקין' }, { status: 400 });
+    }
+    if (item.type === 'number' && parseInt(value, 10) < 0) {
+      return NextResponse.json({ error: 'יש להזין מספר שלם תקין' }, { status: 400 });
     }
     const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true, roleId: true } });
     if (!employee) {
@@ -127,7 +119,9 @@ export async function PUT(request, { params }) {
     }
     const refusal = await refuseIfOwnedElsewhere(employee, item, { forWrite: true });
     if (refusal) return refusal;
-    await setEmployeeOverride(employeeId, key, item.type === 'boolean' ? !!value : parseInt(value, 10), { note });
+    // no free-text note from the client: a note starting with the row prefix would make a personal
+    // override look row-owned (hidden from /admin/permissions and deleted by the next row sync)
+    await setEmployeeOverride(employeeId, key, item.type === 'boolean' ? value : parseInt(value, 10));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error setting employee permission override:', error);
@@ -136,7 +130,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  if (!(await checkAuth('הנהלה ראשית'))) {
+  if (!(await checkAuth('הנהלה ראשית', { forceDb: true }))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {

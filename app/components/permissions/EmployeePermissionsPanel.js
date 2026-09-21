@@ -12,9 +12,8 @@ import ItemLabel from './ItemInfo';
 //                                                       back on /admin/permissions;
 //   - items the central window can't configure (locked pages) are not shown at all, and head
 //     management / programmer show "always allowed" with no controls - same as the central window.
-// `legacyValues` = the live { showAi, canReportErrors } checkbox state of the card's form, so the
-// feature:ai / feature:error_reports lines follow the checkbox before it is even saved.
-export default function EmployeePermissionsPanel({ employeeId, legacyValues }) {
+// Every item - AI and error reports included - goes through this one model (no special checkboxes).
+export default function EmployeePermissionsPanel({ employeeId }) {
   const [items, setItems] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -89,7 +88,6 @@ export default function EmployeePermissionsPanel({ employeeId, legacyValues }) {
               key={catalogItem.key}
               catalogItem={catalogItem}
               row={byKey.get(catalogItem.key)}
-              legacyValues={legacyValues}
               busy={savingKey === catalogItem.key}
               onSave={saveOverride}
               onClear={clearOverride}
@@ -108,30 +106,28 @@ export default function EmployeePermissionsPanel({ employeeId, legacyValues }) {
   );
 }
 
-function PermissionLine({ catalogItem, row, legacyValues, busy, onSave, onClear }) {
+function PermissionLine({ catalogItem, row, busy, onSave, onClear }) {
   const hasOverride = !!row.override;
-  const isLegacy = !!catalogItem.legacyEmployeeField;
-  // A row can't grant a legacy item (AI / error reports) to a specific employee - those follow the
-  // card's checkboxes (see the wizard's employee step) - so a row listing the employee doesn't count for them.
-  const listedRows = isLegacy ? [] : row.rows.filter((r) => r.employeeListed);
-
-  // Legacy items follow the live checkbox above; everything else is the value the server resolved.
-  const legacyOn = isLegacy && legacyValues ? !!legacyValues[catalogItem.legacyEmployeeField] : null;
-  const effective = isLegacy && legacyOn !== null ? (legacyOn || !!row.departmentDefault) : row.effective;
+  const listedRows = row.rows.filter((r) => r.employeeListed);
 
   let control;
   if (row.alwaysAllowed) {
-    control = <span className="badge badge-success">תמיד מורשה (הנהלה ראשית / מתכנת)</span>;
+    control = (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {hasOverride && (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onClear(catalogItem.key)} title="חריגה ישנה שנשארה מלפני שהעובד הועבר להנהלה ראשית / מתכנת. אין לה השפעה, אפשר לנקות">
+            נקה חריגה ישנה
+          </button>
+        )}
+        <span className="badge badge-success">תמיד מורשה (הנהלה ראשית / מתכנת)</span>
+      </div>
+    );
   } else if (listedRows.length) {
     control = (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
         <span className="badge badge-success">מורשה דרך שורת הרשאה</span>
         <a href="/admin/permissions" style={{ fontSize: '12px' }}>{listedRows.map((r) => r.name).join(', ')} — עריכה במסך ההרשאות</a>
       </div>
-    );
-  } else if (isLegacy) {
-    control = (
-      <span className="badge">{effective ? 'מופעל' : 'כבוי'} · נקבע בתיבת הסימון למעלה</span>
     );
   } else if (catalogItem.type === 'boolean') {
     control = (

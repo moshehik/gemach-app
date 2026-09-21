@@ -14,6 +14,7 @@ export default function EmployeePage({ params }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details'); // details, attendance, history
   const [saving, setSaving] = useState(false);
+  const [permissionsRefresh, setPermissionsRefresh] = useState(0);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   // Attendance specific states
@@ -117,6 +118,7 @@ export default function EmployeePage({ params }) {
       if (id === 'new' && data.id) {
         router.push(`/employees/${data.id}`);
       } else {
+        setPermissionsRefresh((n) => n + 1); // a changed department changes the department defaults shown below
         alert('הפרטים נשמרו בהצלחה!');
       }
     } catch (e) {
@@ -653,30 +655,13 @@ export default function EmployeePage({ params }) {
             </div>
           </div>
 
-          <div className="field">
-            <div className="checkbox-row">
-              <input data-element-name="שדה_page_39" type="checkbox" id="employee-detail-showAi" name="showAi" checked={employee.showAi || false} onChange={handleChange} />
-              <label htmlFor="employee-detail-showAi" style={{ fontWeight: 600, color: 'var(--text)' }}>הצג AI לעובד זה</label>
-            </div>
-          </div>
-
-          <div className="field">
-            <div className="checkbox-row">
-              <input data-element-name="שדה_page_39b" type="checkbox" id="employee-detail-canReportErrors" name="canReportErrors" checked={employee.canReportErrors || false} onChange={handleChange} />
-              <label htmlFor="employee-detail-canReportErrors" style={{ fontWeight: 600, color: 'var(--text)' }}>אישור פרטני לדיווח על תקלות</label>
-            </div>
-            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-3)' }}>
-              מאפשר לעובד זה לדווח על תקלות במערכת גם אם תפקידו אינו מנהל/הנהלה ראשית/מתכנת.
-            </p>
-          </div>
-
           {id !== 'new' && (
             <>
               <h2 className="section-title">הרשאות ספציפיות</h2>
               <p className="page-desc" style={{ marginTop: '-6px' }}>
                 מה העובד מורשה, לפי מחלקתו, שורות ההרשאה ב<a href="/admin/permissions">מסך ההרשאות</a> וחריגות אישיות שנקבעות כאן. הכול נשמר מיד ומופיע גם במסך ההרשאות.
               </p>
-              <EmployeePermissionsPanel employeeId={id} legacyValues={{ showAi: !!employee.showAi, canReportErrors: !!employee.canReportErrors }} />
+              <EmployeePermissionsPanel key={permissionsRefresh} employeeId={id} />
             </>
           )}
 

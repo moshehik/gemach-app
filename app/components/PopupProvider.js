@@ -142,9 +142,9 @@ export function PopupProvider({ children }) {
         } else if (requiredLevel === 'מנהל סניף ומעלה') {
           employees = employees.filter(e => e.roleId === 0 || e.roleId === 1 || e.roleId === 2);
         } else if (requiredLevel === 'מאשר הזמנה ללא תשלום') {
-          // מנהל/מתכנת כתמיד, בתוספת עובד שקיבל את הרשאת feature:debt_approval
-          // (ר' lib/permissionsMetadata.js) - ישירות או דרך המחלקה שלו, ב-/admin/permissions
-          employees = employees.filter(e => e.roleId === 1 || e.roleId === 2 || e.canApproveWithoutPayment);
+          // canApproveWithoutPayment = feature:debt_approval כפי שהשרת פותר אותו (הנהלה ראשית/מתכנת תמיד;
+          // אחרת חריגה אישית -> שורת מחלקה -> ברירת מחדל). אותה החלטה ש-verify-pin אוכף, ולכן בלי רשימת תפקידים קבועה.
+          employees = employees.filter(e => e.canApproveWithoutPayment);
         }
         const currentUser = (meData && meData.success) ? meData.employee : null;
 

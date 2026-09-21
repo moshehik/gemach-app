@@ -44,7 +44,7 @@ export async function GET() {
     });
 
     const groups = await buildPermissionGroups(departmentValues);
-    const personalOverrides = await buildPersonalOverrides(departmentValues);
+    const personalOverrides = await buildPersonalOverrides();
 
     return NextResponse.json({ departments: departmentValues, groups, orgSettings, personalOverrides });
   } catch (error) {
@@ -75,35 +75,17 @@ export async function buildPermissionGroups(departmentValues) {
 }
 
 // Personal exceptions set from an employee's own card ("הרשאות ספציפיות"), listed back here so the
-// two surfaces show the same picture. Two sources:
-//   - EmployeePermissionOverride rows NOT created by a permission row (those are already visible in
-//     the table above, as the employee tags of the row that granted them);
-//   - the legacy card checkboxes Employee.showAi / Employee.canReportErrors (feature:ai /
-//     feature:error_reports), which have no override row - listed only when they actually add
-//     something, i.e. the employee's department does not already allow it.
-// Always-allowed roles are skipped: nothing can be added or taken from them.
-export async function buildPersonalOverrides(departmentValues) {
-  const [overrides, flagged] = await Promise.all([
-    prisma.employeePermissionOverride.findMany(),
-    prisma.employee.findMany({
-      where: { OR: [{ showAi: true }, { canReportErrors: true }] },
-      select: { id: true, roleId: true, showAi: true, canReportErrors: true },
-    }),
-  ]);
+// two surfaces show the same picture: EmployeePermissionOverride rows NOT created by a permission row
+// (those are already visible in the table above, as the employee tags of the row that granted them).
+// Always-allowed roles are skipped for yes/no items: nothing can be added or taken from them.
+export async function buildPersonalOverrides() {
+  const overrides = await prisma.employeePermissionOverride.findMany();
   const own = overrides.filter((o) => !(o.note || '').startsWith(ROW_OVERRIDE_NOTE_PREFIX) && getCatalogItem(o.key));
 
   const list = own.map((o) => {
     const item = getCatalogItem(o.key);
-    return { employeeId: o.employeeId, key: o.key, value: item.type === 'boolean' ? o.value === 'true' : parseInt(o.value, 10), note: o.note || null, legacy: false };
+    return { employeeId: o.employeeId, key: o.key, value: item.type === 'boolean' ? o.value === 'true' : parseInt(o.value, 10), note: o.note || null };
   });
-  for (const emp of flagged) {
-    const dept = departmentValues.find((d) => d.roleId === emp.roleId);
-    for (const item of PERMISSION_CATALOG) {
-      if (item.legacyEmployeeField && emp[item.legacyEmployeeField] && !dept?.values[item.key]?.value) {
-        list.push({ employeeId: emp.id, key: item.key, value: true, note: null, legacy: true });
-      }
-    }
-  }
 
   const ids = [...new Set(list.map((entry) => entry.employeeId))];
   const employees = ids.length
@@ -113,5 +95,6 @@ export async function buildPersonalOverrides(departmentValues) {
   return list
     .map((entry) => ({ ...entry, employee: employeeById.get(entry.employeeId) || null }))
     // roleId 0/2 are always allowed, and a deleted employee's leftover row means nothing
-    .filter((entry) => entry.employee && !ALWAYS_ALLOWED_ROLE_IDS.includes(entry.employee.roleId));
+    // (only for yes/no items - a number override still applies to them, e.g. export_max_rows)
+    .filter((entry) => entry.employee && !(ALWAYS_ALLOWED_ROLE_IDS.includes(entry.employee.roleId) && typeof entry.value === 'boolean'));
 }

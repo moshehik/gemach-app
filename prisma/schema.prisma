@@ -602,9 +602,9 @@ model DepartmentPermission {
 }
 
 // Per-employee override of one permissions-catalog key, taking precedence over their
-// department's value. Never used for a catalog item that has `legacyEmployeeField` set
-// (showAi/canReportErrors) - those are edited via the existing Employee column instead,
-// see the field comments below and lib/permissions.js.
+// department's value. Holds every boolean item (AI and error reports included; the old
+// Employee.showAi / canReportErrors columns are unused since 2026-09-20) - written by the employee
+// card (personal exceptions) and by permission rows (note starts with ROW_OVERRIDE_NOTE_PREFIX).
 model EmployeePermissionOverride {
   id          String   @id @default(uuid())
   employeeId  String

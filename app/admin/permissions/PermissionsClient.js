@@ -96,6 +96,8 @@ export default function PermissionsClient() {
         onEdit={(group) => setModal({ group })}
       />
 
+      <NumericValuesCard catalog={catalog} departments={departments} onSaved={load} />
+
       <PersonalOverridesCard catalog={catalog} overrides={personalOverrides} />
 
       {modal && (
@@ -212,7 +214,7 @@ function PersonalOverridesCard({ catalog, overrides }) {
       <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
         <h2 className="section-title" style={{ margin: 0 }}>חריגות אישיות מכרטיס העובד</h2>
         <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
-          הרשאות שנקבעו לעובד ספציפי ישירות בכרטיס שלו ולא דרך שורה. הן חלות בנוסף לשורות שלמעלה, ואת השינוי בהן עושים בכרטיס העובד.
+          הרשאות שנקבעו לעובד ספציפי ישירות בכרטיס שלו ולא דרך שורה. הן קודמות לשורת המחלקה (מותר או חסום), ואת השינוי בהן עושים בכרטיס העובד.
         </p>
       </div>
       <div className="table-wrap">
@@ -242,7 +244,7 @@ function PersonalOverridesCard({ catalog, overrides }) {
                       {item?.type === 'number'
                         ? <span className="badge badge-neutral">{entry.value}</span>
                         : entry.value
-                          ? <span className="badge badge-success">מותר{entry.legacy ? ' (תיבת סימון בכרטיס)' : ''}</span>
+                          ? <span className="badge badge-success">מותר</span>
                           : <span className="badge badge-danger">חסום</span>}
                     </td>
                     <td style={{ textAlign: 'center' }}>
@@ -253,6 +255,89 @@ function PersonalOverridesCard({ catalog, overrides }) {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Number items (e.g. max rows to export without a manager) have no yes/no, so a permission row can't
+// carry them - this is their department-level editor. An employee's own value is set on the card and
+// listed in the table below.
+function NumericValuesCard({ catalog, departments, onSaved }) {
+  const numeric = catalog.filter((item) => item.type === 'number');
+  const [busyKey, setBusyKey] = useState(null);
+  if (numeric.length === 0) return null;
+
+  const save = async (roleId, key, value) => {
+    setBusyKey(`${roleId}:${key}`);
+    try {
+      const res = await fetch('/api/admin/permissions/department-values', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roleId, key, value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'שגיאה בשמירה');
+      await onSaved();
+    } catch (e) {
+      alert(e.message || 'שגיאה בשמירת הערך');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: '20px' }}>
+      <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h2 className="section-title" style={{ margin: 0 }}>ערכים מספריים לפי מחלקה</h2>
+        <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
+          פריטים שהם מספר ולא כן/לא, ולכן לא נכנסים לשורות הרשאה. לעובד ספציפי קובעים ערך בכרטיס שלו.
+        </p>
+      </div>
+      <div className="table-wrap">
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
+              <tr>
+                <th style={{ minWidth: '260px' }}>פריט</th>
+                {departments.map((d) => <th key={d.roleId}>{d.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {numeric.map((item) => (
+                <tr key={item.key}>
+                  <td><ItemLabel item={item} /></td>
+                  {departments.map((d) => {
+                    const cell = d.values[item.key];
+                    const busy = busyKey === `${d.roleId}:${item.key}`;
+                    return (
+                      <td key={d.roleId}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <input
+                            className="input"
+                            type="number"
+                            min="0"
+                            style={{ width: '90px' }}
+                            defaultValue={cell.value}
+                            key={`${d.roleId}-${cell.value}`}
+                            disabled={busy}
+                            onBlur={(e) => {
+                              const n = parseInt(e.target.value, 10);
+                              if (!isNaN(n) && n !== cell.value) save(d.roleId, item.key, n);
+                            }}
+                          />
+                          {cell.isExplicit && (
+                            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => save(d.roleId, item.key, null)} title="אפס לברירת המחדל">איפוס</button>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

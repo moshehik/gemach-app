@@ -35,7 +35,6 @@ export async function GET(request) {
         roleId: true,
         receiveEmailAlerts: true,
         email: true,
-        showAi: true,
         department: { select: { name: true } }
       }
     });
