@@ -1,9 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { listGapRanges, normalizeGapRule, GAP_RULE_CHEAPER } from '@/lib/priceRows';
+
+// קטגוריות שאינן מחירי שמלה לפי מידה (תיקונים / תוספת חו"ל) - כלל "מידה בין טווחים" לא חל עליהן
+const NON_DRESS_CATEGORIES = ['תיקונים', 'תיקון אורך', 'חול', 'חו"ל'];
 
 export default function PricelistManagement() {
   const [pricelists, setPricelists] = useState([]);
+  // gap_size_price_rule: none (ברירת מחדל) / cheaper. null = עדיין לא נטען / נכשל - אז לא מציגים דבר
+  const [gapRule, setGapRule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -28,6 +34,16 @@ export default function PricelistManagement() {
 
   useEffect(() => {
     fetchPricelists();
+    // קריאת ההגדרה כמו ב-app/orders/new/page.js: /api/settings מחזיר מערך {key, value}
+    fetch('/api/settings')
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (Array.isArray(data)) {
+          const row = data.find(s => s.key === 'gap_size_price_rule');
+          setGapRule(normalizeGapRule(row ? row.value : ''));
+        }
+      })
+      .catch(e => console.error(e));
   }, []);
 
   // כמו בכל מסך אחר שדורש אישור מנהל (app/orders/[id]/page.js וכו') - אימות בפועל מול
@@ -139,6 +155,14 @@ export default function PricelistManagement() {
     return acc;
   }, {});
 
+  // טווחי מידות שנופלים בפער בין שני טווחי מחיר סמוכים, לכל קטגוריית שמלות (לפי המחירון כפי שמוצג כאן)
+  const gapsByCategory = Object.keys(categoriesMap)
+    .filter(cat => !NON_DRESS_CATEGORIES.includes(cat))
+    .map(cat => ({ category: cat, gaps: listGapRanges(pricelists, cat) }))
+    .filter(entry => entry.gaps.length > 0);
+
+  const formatGapSizes = (gap) => (gap.fromSize === gap.toSize ? `מידה ${gap.fromSize}` : `מידות ${gap.fromSize}–${gap.toSize}`);
+
   const cancelEdit = () => { setEditingId(null); setIsAddingNew(false); };
 
   const renderEditRow = (isNewRow, rowKey) => (
@@ -241,6 +265,53 @@ export default function PricelistManagement() {
         </div>
       ) : (
         <>
+          {gapRule === GAP_RULE_CHEAPER && (
+            <div className="callout callout-info" style={{ marginBottom: '20px' }}>
+              <svg className="icon"><use href="#i-info" /></svg>
+              <div>
+                <strong style={{ fontSize: '14px' }}>מידה שאין לה שורת מחיר - מחויבת לפי הטווח הזול</strong>
+                <div style={{ marginTop: '4px' }}>
+                  מידה שאין לה שורת מחיר ונמצאת בין שני טווחים סמוכים מחויבת לפי המחיר הזול מבין שני הטווחים.
+                </div>
+                {gapsByCategory.length > 0 ? (
+                  <ul style={{ margin: '8px 0 0', paddingInlineStart: '20px' }}>
+                    {gapsByCategory.map(entry => entry.gaps.map(gap => (
+                      <li key={`${entry.category}-${gap.fromSize}`}>
+                        <strong>{entry.category}:</strong> {formatGapSizes(gap)} - לפי הטווח הזול
+                        {gap.row.description ? ` (${gap.row.description})` : ''}, ₪{gap.price}
+                      </li>
+                    )))}
+                  </ul>
+                ) : (
+                  <div style={{ marginTop: '4px' }}>כרגע אין במחירון מידות שנופלות בין טווחים.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {gapRule !== null && gapRule !== GAP_RULE_CHEAPER && gapsByCategory.length > 0 && (
+            <div className="callout callout-warning" style={{ marginBottom: '20px' }}>
+              <svg className="icon"><use href="#i-alert-tri" /></svg>
+              <div>
+                <strong>יש מידות שאין להן שורת מחיר</strong>
+                <div style={{ marginTop: '4px' }}>
+                  המידות הבאות נמצאות בין שני טווחים ואין להן מחיר, ולכן כרגע הן מחויבות 0 ₪:
+                </div>
+                <ul style={{ margin: '6px 0 0', paddingInlineStart: '20px' }}>
+                  {gapsByCategory.map(entry => entry.gaps.map(gap => (
+                    <li key={`${entry.category}-${gap.fromSize}`}>
+                      <strong>{entry.category}:</strong> {formatGapSizes(gap)}
+                    </li>
+                  )))}
+                </ul>
+                <div style={{ marginTop: '6px' }}>
+                  כדי שמידות כאלה יחויבו לפי הטווח הזול מבין שני הטווחים הסמוכים, יש להפעיל את ההגדרה
+                  {' '}&quot;מידה שנמצאת בין שני טווחי מחיר&quot; (לבחור &quot;לפי הזול משני הטווחים&quot;) ב<a href="/admin/settings" style={{ color: 'inherit', textDecoration: 'underline' }}>הגדרות המערכת</a> (קבוצת תשלומים).
+                </div>
+              </div>
+            </div>
+          )}
+
           {isAddingNew && editingId === 'new' && addingCategory === 'NEW' && (
             <div className="card card-pad" style={{ marginBottom: '24px' }}>
               <h2 style={{ margin: '0 0 16px', fontSize: '15px' }}>הוספת קטגוריה / שורה חדשה</h2>

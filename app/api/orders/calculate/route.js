@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
+import { findPriceRowForSize, normalizeGapRule } from '@/lib/priceRows';
 
 export async function POST(request) {
   try {
@@ -19,6 +20,7 @@ export async function POST(request) {
       return setting ? setting.value : def;
     };
     const enableSetDiscounts = getSetting('ENABLE_SET_DISCOUNTS', 'false') === 'true';
+    const gapRule = normalizeGapRule(getSetting('gap_size_price_rule', ''));
 
     const priceList = await prisma.priceList.findMany();
 
@@ -63,19 +65,18 @@ export async function POST(request) {
       const category = dbModel.priceCategory || '';
       const size = parseInt(item.sizeText || '0');
 
-      const matchedPrice = priceList.find(p => {
-        const catMatch = p.category === category || p.category === category.replace('כלול ב', '').trim();
-        if (!catMatch) return false;
-        const sizeMatch = size >= (p.fromSize || 0) && (p.toSize === null || size <= p.toSize);
-        
-        let dateMatch = true;
-        if (eventDate) {
-          const evDate = new Date(eventDate);
-          if (p.startDate && evDate < new Date(p.startDate)) dateMatch = false;
-          if (p.endDate && evDate > new Date(p.endDate)) dateMatch = false;
+      // אותו כלל חיפוש שורת מחיר כמו במנוע (lib/priceRows.js), כולל gap_size_price_rule:
+      // קודם התאמה ישירה בקטגוריה (או בקטגוריה בלי "כלול ב"), ורק אם אין - כלל המידה שבין טווחים.
+      const strippedCategory = category.replace('כלול ב', '').trim();
+      const categoryCandidates = strippedCategory && strippedCategory !== category ? [category, strippedCategory] : [category];
+      let matchedPrice = null;
+      for (const gapMode of ['none', gapRule]) {
+        for (const cat of categoryCandidates) {
+          matchedPrice = findPriceRowForSize(priceList, cat, size, { eventDate, gapRule: gapMode }).row;
+          if (matchedPrice) break;
         }
-        return sizeMatch && dateMatch;
-      });
+        if (matchedPrice) break;
+      }
 
       let basePrice = matchedPrice ? matchedPrice.price : 0;
 

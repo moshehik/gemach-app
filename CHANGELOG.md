@@ -1,5 +1,11 @@
 # System Changes Log
 
+## 2026-09-22: Swap / cancellation / refund policy - one setting per rule, gap-size pricing, size-edit window
+
+- **Neve Yaakov policy implemented** (full rules, per-gemach values and verification: `docs/refund-swap-policy-2026-09-22.md`): free size swap only for same model + same price band, until 2 days before the event; model change = 50% refund, none within 2 days; sizes between price ranges (21-31) charged at the cheaper neighbouring range (price-list screen highlights it); in-place size edit after 15 min for the same band. Main gemach unchanged (missing setting row = old behaviour; verified 0 diffs on 20,000 random orders).
+- New `SystemSetting` keys: `swap_min_days_before_event`, `swap_same_category_only`, `swap_pairing_window_minutes`, `instant_undo_minutes` (split from `CANCELLATION_CREDIT_MINUTES`), `gap_size_price_rule`, `size_edit_until_days_before_event`, `refund_tiers_at_deletion_time`. Pure engine moved to `lib/pricingCalc.js`; price lookup in `lib/priceRows.js`.
+- Closed a loophole: a real cancellation was refunded in full whenever another item of the same model existed in the order (swap pairing is now by time window).
+
 ## 2026-09-22: ONE permission model (AI + error reports joined), employee card synced with /admin/permissions
 
 - **AI and error reports are normal items now.** The old checkboxes on the employee card (`Employee.showAi` / `canReportErrors`, additive-only) are gone from the card and from the employee APIs, and NOTHING reads them any more (columns stay, unused; `scripts/migrate_legacy_permission_flags.js` moves flagged employees into override rows - dry runs on TEST, main PROD and Neve Yaakov PROD found zero flagged employees, so no data was written). Same resolution everywhere: head management/programmer always -> employee override (allow OR block) -> department row -> default. The AI widget (`app/layout.js`), `checkAiAccess()`, error reports, debt approval and every page gate use it (`resolvePageAccess` now covers feature keys too).
