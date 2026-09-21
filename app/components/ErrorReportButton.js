@@ -216,7 +216,7 @@ export default function ErrorReportButton() {
     }
     setVideoUploading(true);
     try {
-      const fileId = await uploadScreenRecording(blob, prepared);
+      const fileId = await uploadScreenRecording(blob, prepared, 'error-report');
       addAttachmentFor(context, `gdrive:${fileId}`);
     } catch (err) {
       if (err.code !== 'DRIVE_NOT_CONFIGURED') console.error('Failed to upload screen recording:', err);
@@ -705,7 +705,16 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
           <div className="modal" style={{ maxWidth: 600, width: '90%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-head">
-              <strong><svg className="icon"><use href="#i-info" /></svg> מערכת תמיכה ושגיאות</strong>
+              {activeTab === 'new' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חזרה לרשימה" onClick={() => setActiveTab('list')}>
+                    <svg className="icon"><use href="#i-chevron-end" /></svg>
+                  </button>
+                  <strong>דיווח על תקלה חדשה</strong>
+                </div>
+              ) : (
+                <strong><svg className="icon"><use href="#i-info" /></svg> מערכת תמיכה ושגיאות</strong>
+              )}
               <div style={{ display: 'flex', gap: 6 }}>
                 {isProgrammer && (
                   <button
@@ -731,7 +740,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
               </div>
             </div>
 
-            {activeTab !== 'thread' && (
+            {activeTab !== 'thread' && activeTab !== 'new' && (
               <>
                 <div className="tabs" style={{ margin: '0 22px' }}>
                   <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
@@ -741,11 +750,6 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     <svg className="icon" style={{ width: 13, height: 13, verticalAlign: -2, marginInlineEnd: 4 }}><use href="#i-archive" /></svg>
                     ארכיון {archivedReports.length > 0 ? `(${archivedReports.length})` : ''}
                   </button>
-                  {(isManager || isProgrammer) && (
-                    <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('new')}>
-                      דיווח על תקלה חדשה
-                    </button>
-                  )}
                 </div>
                 {(activeTab === 'list' || activeTab === 'archive') && (
                   <div style={{ padding: '10px 22px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -762,6 +766,12 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     </div>
                     {searchQuery && (
                       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSearchQuery('')}>נקה</button>
+                    )}
+                    {(isManager || isProgrammer) && (
+                      <button type="button" className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={() => setActiveTab('new')}>
+                        <svg className="icon"><use href="#i-plus" /></svg>
+                        דיווח חדש
+                      </button>
                     )}
                   </div>
                 )}
@@ -1088,175 +1098,106 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('list')}>חזור לרשימה</button>
                 </div>
               ) : (
-              <form onSubmit={handleSubmit} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, overflowY: 'auto' }}>
+              <form onSubmit={handleSubmit} style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: 18, flex: 1, overflowY: 'auto' }}>
                 <div className="field" style={{ marginBottom: 0 }}>
-                  <label>סימון אלמנטים בעמוד (לא חובה)</label>
-
-                  {pickedElements.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                      {pickedElements.map((el, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: '10px 12px',
-                            borderRadius: 'var(--radius-sm)',
-                            background: 'var(--primary-tint)',
-                            border: '1px solid var(--primary-tint-2)'
-                          }}
-                        >
-                          <span
-                            style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              width: 22, height: 22, borderRadius: '50%',
-                              background: 'var(--primary-solid)', color: '#fff',
-                              fontSize: 11.5, fontWeight: 700, flexShrink: 0
-                            }}
-                          >{idx + 1}</span>
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
-                            {el.label}
-                          </span>
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setPickedElements(prev => prev.filter((_, i) => i !== idx))} title="הסר סימון זה">
-                            <svg className="icon"><use href="#i-x" /></svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => startPicking('new')}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                      padding: '12px 14px', cursor: 'pointer',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1.5px dashed var(--primary-tint-2)',
-                      background: 'var(--primary-tint)',
-                      color: 'var(--primary-solid)', fontWeight: 700, fontSize: 13.5
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 30, height: 30, borderRadius: '50%',
-                        background: 'var(--primary-solid)', color: '#fff', flexShrink: 0
-                      }}
-                    >
-                      <svg className="icon" style={{ width: 15, height: 15 }}><use href="#i-pin" /></svg>
-                    </span>
-                    {pickedElements.length > 0 ? 'סמן אלמנט נוסף' : 'סמן אלמנט בעמוד שקשור לתקלה'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => captureFullScreen('new')}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                      padding: '10px 14px', cursor: 'pointer', marginTop: 8,
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--text)', fontWeight: 600, fontSize: 13
-                    }}
-                  >
-                    <svg className="icon" style={{ width: 15, height: 15 }}><use href="#i-grid" /></svg>
-                    צלם את כל המסך
-                  </button>
-
-                  {recordingEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => startVideoRecording('new')}
-                      disabled={videoUploading}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                        padding: '10px 14px', cursor: 'pointer', marginTop: 8, textAlign: 'start',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--primary-tint-2)',
-                        background: 'var(--primary-tint)',
-                        color: 'var(--primary-solid)', fontWeight: 700, fontSize: 13
-                      }}
-                    >
-                      <svg className="icon" style={{ width: 15, height: 15, flexShrink: 0 }}><use href="#i-activity" /></svg>
-                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span>{videoUploading ? 'מעלה את ההסרטה...' : 'הסרטת מסך'}</span>
-                        <span style={{ fontWeight: 400, fontSize: 11.5, color: 'var(--text-3)' }}>
-                          מסריטה את המסך ורושמת מה אתה לוחץ ומקליד (בלי סיסמאות ופרטי אשראי) בזמן שאתה משחזר את התקלה. הוידאו נשמר בדרייב והפעולות מצורפות לדיווח
-                        </span>
-                      </span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => startStepsRecording('new')}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                      padding: '10px 14px', cursor: 'pointer', marginTop: 8, textAlign: 'start',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--text)', fontWeight: 600, fontSize: 13
-                    }}
-                  >
-                    <svg className="icon" style={{ width: 15, height: 15, flexShrink: 0 }}><use href="#i-activity" /></svg>
-                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span>{recordedSteps ? 'הקלט את הפעולות מחדש' : 'הקלט את הפעולות שלי'}</span>
-                      <span style={{ fontWeight: 400, fontSize: 11.5, color: 'var(--text-3)' }}>
-                        בלי וידאו ובלי בקשת שיתוף מסך: המערכת רק תרשום מה אתה לוחץ ומקליד (בלי סיסמאות ופרטי אשראי) ותצרף לדיווח
-                      </span>
-                    </span>
-                  </button>
-
-                  {recordedSteps && (
-                    <details open style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-alt)' }}>
-                      <summary style={{ cursor: 'pointer', padding: '8px 12px', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <svg className="icon" style={{ width: 14, height: 14 }}><use href="#i-check" /></svg>
-                        נרשמו {stepsCountLabel(recordedSteps.split('\n').length)} — יצורפו לדיווח
-                        <button type="button" className="btn btn-ghost btn-sm" style={{ marginInlineStart: 'auto' }} onClick={(ev) => { ev.preventDefault(); setRecordedSteps(''); }}>הסר</button>
-                      </summary>
-                      <pre style={{ margin: 0, padding: '4px 12px 10px', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', maxHeight: 140, overflowY: 'auto' }}>{recordedSteps}</pre>
-                    </details>
-                  )}
-
-                  {newAttachments.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                      {newAttachments.map((src, idx) => (
-                        <div key={idx} style={{ position: 'relative' }}>
-                          {src.startsWith('gdrive:')
-                            ? <div style={{ width: 70, height: 70, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10.5, color: 'var(--text-3)', textAlign: 'center' }}><svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-activity" /></svg>הסרטת מסך</div>
-                            : <img src={src} alt="צילום מצורף" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />}
-                          <button
-                            type="button"
-                            onClick={() => setNewAttachments(prev => prev.filter((_, i) => i !== idx))}
-                            style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
-                          >×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="field">
-                  <label>תאר את התקלה בצורה המפורטת ביותר (מה ניסית לעשות, ומה קרה?):</label>
+                  <label style={{ fontWeight: 700 }}>מה קרה?</label>
                   <textarea
                     className="textarea"
                     value={userText}
                     onChange={e => setUserText(e.target.value)}
-                    placeholder="לדוגמה: לחצתי על כפתור השמירה, הופיעה שגיאה אדומה והדף קפא..."
-                    style={{ height: 140 }}
+                    placeholder="מה ניסית לעשות, ומה קרה בפועל? לדוגמה: לחצתי על שמירה, הופיעה שגיאה אדומה והדף קפא"
+                    style={{ height: 120 }}
                     required
+                    autoFocus
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13.5 }}>עזרו לנו לראות את התקלה <span style={{ fontWeight: 400, color: 'var(--text-3)' }}>(לא חובה)</span></div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                    {[
+                      { key: 'pick', icon: '#i-pin', title: pickedElements.length > 0 ? 'סמן אלמנט נוסף' : 'סמן אלמנט בעמוד', hint: 'הצבעה על המקום הבעייתי', onClick: () => startPicking('new') },
+                      { key: 'shot', icon: '#i-grid', title: 'צילום מסך', hint: 'תמונה של כל המסך', onClick: () => captureFullScreen('new') },
+                      ...(recordingEnabled ? [{ key: 'video', icon: '#i-camera', title: videoUploading ? 'מעלה את ההסרטה...' : 'הסרטת מסך', hint: 'וידאו + הפעולות שלך', onClick: () => startVideoRecording('new'), disabled: videoUploading }] : []),
+                      { key: 'steps', icon: '#i-activity', title: recordedSteps ? 'הקלטת פעולות מחדש' : 'הקלטת פעולות', hint: 'בלי וידאו ובלי שיתוף מסך', onClick: () => startStepsRecording('new') },
+                    ].map(t => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={t.onClick}
+                        disabled={t.disabled}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textAlign: 'start',
+                          cursor: t.disabled ? 'default' : 'pointer', opacity: t.disabled ? 0.6 : 1,
+                          borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'var(--primary-tint)', color: 'var(--primary-solid)', flexShrink: 0 }}>
+                          <svg className="icon" style={{ width: 16, height: 16 }}><use href={t.icon} /></svg>
+                        </span>
+                        <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>{t.title}</span>
+                          <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{t.hint}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>הסרטה ורישום פעולות לא כוללים סיסמאות ופרטי אשראי.</div>
+                </div>
+
+                {(pickedElements.length > 0 || newAttachments.length > 0 || recordedSteps) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text-2)' }}>מצורף לדיווח</div>
+
+                    {pickedElements.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {pickedElements.map((el, idx) => (
+                          <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', padding: '3px 10px 3px 4px', borderRadius: 999, background: 'var(--primary-tint)', border: '1px solid var(--primary-tint-2)', fontSize: 12.5 }}>
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ width: 22, height: 22, minWidth: 22 }} onClick={() => setPickedElements(prev => prev.filter((_, i) => i !== idx))} title="הסר סימון זה">
+                              <svg className="icon" style={{ width: 12, height: 12 }}><use href="#i-x" /></svg>
+                            </button>
+                            <span style={{ fontWeight: 700, color: 'var(--primary-solid)' }}>{idx + 1}</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{el.label}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {newAttachments.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {newAttachments.map((src, idx) => (
+                          <div key={idx} style={{ position: 'relative' }}>
+                            {src.startsWith('gdrive:')
+                              ? <div style={{ width: 64, height: 64, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10.5, color: 'var(--text-3)', textAlign: 'center' }}><svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-camera" /></svg>הסרטת מסך</div>
+                              : <img src={src} alt="צילום מצורף" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />}
+                            <button
+                              type="button"
+                              onClick={() => setNewAttachments(prev => prev.filter((_, i) => i !== idx))}
+                              style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
+                            >×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {recordedSteps && (
+                      <details style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+                        <summary style={{ cursor: 'pointer', padding: '6px 10px', fontWeight: 600, fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <svg className="icon" style={{ width: 14, height: 14 }}><use href="#i-check" /></svg>
+                          נרשמו {stepsCountLabel(recordedSteps.split('\n').length)}
+                          <button type="button" className="btn btn-ghost btn-sm" style={{ marginInlineStart: 'auto' }} onClick={(ev) => { ev.preventDefault(); setRecordedSteps(''); }}>הסר</button>
+                        </summary>
+                        <pre style={{ margin: 0, padding: '4px 12px 10px', fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: 'inherit', maxHeight: 140, overflowY: 'auto' }}>{recordedSteps}</pre>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 4 }}>
                   <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); setNewAttachments([]); setRecordedSteps(''); }}>ביטול</button>
-                  <button type="submit" className="btn btn-primary">
+                  <button type="submit" className="btn btn-primary" disabled={videoUploading}>
                     <svg className="icon"><use href="#i-arrow-end" /></svg>
-                    שליחה למתכנת
+                    {videoUploading ? 'מעלה הסרטה...' : 'שליחה למתכנת'}
                   </button>
                 </div>
               </form>
