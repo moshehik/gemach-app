@@ -516,7 +516,7 @@ export default function OrderDetailsPage({ params }) {
   };
 
   // Save changes
-  const handleSave = async (overrideOrder = null) => {
+  const handleSave = async (overrideOrder = null, { promptPrint = false } = {}) => {
     setSaving(true);
     setSaveMessage('');
 
@@ -751,6 +751,19 @@ export default function OrderDetailsPage({ params }) {
 
       setSaveMessage('השינויים נשמרו בהצלחה!');
       setTimeout(() => setSaveMessage(''), 3000);
+
+      // דיווח 13eaff88 (נווה יעקב): לאחר שמירת שינוי בהזמנה קיימת (לחיצה מפורשת על
+      // "שמור שינויים", לא שמירות פנימיות כמו עדכון תאריך מתוך ModernInfoTab) לתת
+      // אפשרות מפורשת להדפיס את הכרטיס המעודכן - במקום שהמשתמשת תצטרך לזכור
+      // ללחוץ בעצמה על תפריט ההדפסה (OrderPrintMenu.js) בכרטיס שנשאר פתוח.
+      if (promptPrint) {
+        const wantsPrint = window.customConfirm
+          ? await window.customConfirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?')
+          : window.confirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?');
+        if (wantsPrint) {
+          window.open(`/print/order?orderId=${updatedOrder.orderId}&type=order`, '_blank');
+        }
+      }
     } catch (err) {
       console.error(err);
       setSaveMessage(err.message || 'שגיאה בשמירת הנתונים.');
@@ -1280,7 +1293,7 @@ export default function OrderDetailsPage({ params }) {
           isPastEvent={isPastEvent}
           onUnlock={handleUnlock}
           onLock={() => setIsUnlocked(false)}
-          onSave={() => handleSave()}
+          onSave={() => handleSave(null, { promptPrint: true })}
           onCancelChanges={handleCancelChanges}
           onDelete={handleDeleteOrder}
           onExit={() => handleExit()}
