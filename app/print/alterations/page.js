@@ -348,14 +348,14 @@ export default function PrintAlterationsPage() {
         .print-table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 8px;
+          margin-top: 6px;
           border: 1px solid #e5e5e5;
         }
         .print-table th, .print-table td {
           border-bottom: 1px solid #eee;
-          padding: 9px 12px;
+          padding: 5px 10px;
           text-align: right;
-          font-size: 13.5px;
+          font-size: 12.5px;
         }
         /* globals.css has a global sticky-header rule (table thead tr th {...!important})
            meant for on-screen data tables - it forces position:sticky, a white/themed
@@ -384,43 +384,43 @@ export default function PrintAlterationsPage() {
         .group-title {
           font-family: 'Frank Ruhl Libre', 'David Libre', serif;
           border-bottom: 1px solid #e5e5e5;
-          padding-bottom: 7px;
-          margin-bottom: 16px;
+          padding-bottom: 5px;
+          margin-bottom: 10px;
           color: #262626;
-          font-size: 18px;
+          font-size: 16px;
           font-weight: 700;
           letter-spacing: 0.3px;
         }
         .order-block {
-          margin-bottom: 22px;
+          margin-bottom: 12px;
           background: #fff;
           border: 1px solid #e5e5e5;
-          padding: 14px 16px;
+          padding: 8px 12px;
         }
         .order-header {
-          font-size: 14.5px;
+          font-size: 13px;
           color: #555;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
         .order-header strong {
           color: #262626;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 14px;
         }
         .order-notes {
-          font-size: 13px;
+          font-size: 12px;
           color: #888;
-          margin-bottom: 8px;
+          margin-bottom: 5px;
         }
         .date-summary {
-          margin-top: 4px;
-          margin-bottom: 12px;
-          padding: 9px 16px;
+          margin-top: 3px;
+          margin-bottom: 8px;
+          padding: 6px 12px;
           border: 1px solid #e5e5e5;
           background: #f4f4f4;
           display: inline-block;
           font-weight: 600;
-          font-size: 13.5px;
+          font-size: 12.5px;
           color: #444;
         }
 
@@ -633,7 +633,7 @@ export default function PrintAlterationsPage() {
               <Fragment key={group.date}>
                 <tr>
                   <td style={{ border: 'none', padding: 0 }}>
-                    <h3 className="group-title" style={{ marginBottom: '12px', marginTop: '20px' }}>
+                    <h3 className="group-title" style={{ marginBottom: '8px', marginTop: '12px' }}>
                       {dayOfWeek ? `${dayOfWeek} - ` : ''}{group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
                     </h3>
                   </td>
