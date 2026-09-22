@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { computeOrderObligations } from '@/lib/pricingEngine';
+import { computeOrderObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,9 @@ const SETTING_KEYS = [
   'refund_tiers_at_deletion_time',
   'swap_pairing_window_minutes',
   'instant_undo_minutes',
-  'gap_size_price_rule'
+  'gap_size_price_rule',
+  'delivery_price_by_city',
+  'delivery_price'
 ];
 
 /**
@@ -52,7 +54,13 @@ export async function POST(request, { params }) {
     const orderOverrides = body.order || {};
 
     const [baseOrder, priceList, settings] = await Promise.all([
-      prisma.order.findUnique({ where: { orderId: parsedOrderId } }),
+      prisma.order.findUnique({
+        where: { orderId: parsedOrderId },
+        // obligations רק בשביל בדיקת "כבר קיים חיוב משלוח" ב-computeDeliveryObligationPreview
+        // למטה - לא רלוונטי לחישוב עצמו (computeOrderObligations מקבל את items/deletedItems
+        // מהלקוח, לא מה-DB, ר' התיעוד למעלה).
+        include: { obligations: { where: { isDeleted: false }, select: { description: true } } }
+      }),
       prisma.priceList.findMany(),
       getAllCachedSettings().then(all => all.filter(s => SETTING_KEYS.includes(s.key)))
     ]);
@@ -70,7 +78,10 @@ export async function POST(request, { params }) {
       isAbroad: orderOverrides.isAbroad !== undefined ? orderOverrides.isAbroad : baseOrder.isAbroad,
       isWeekdayEvent: orderOverrides.isWeekdayEvent !== undefined ? orderOverrides.isWeekdayEvent : baseOrder.isWeekdayEvent,
       fromDate: orderOverrides.fromDate !== undefined ? orderOverrides.fromDate : baseOrder.fromDate,
-      toDate: orderOverrides.toDate !== undefined ? orderOverrides.toDate : baseOrder.toDate
+      toDate: orderOverrides.toDate !== undefined ? orderOverrides.toDate : baseOrder.toDate,
+      isDelivery: orderOverrides.isDelivery !== undefined ? orderOverrides.isDelivery : baseOrder.isDelivery,
+      deliveryCity: orderOverrides.deliveryCity !== undefined ? orderOverrides.deliveryCity : baseOrder.deliveryCity,
+      deliveryDirection: orderOverrides.deliveryDirection !== undefined ? orderOverrides.deliveryDirection : baseOrder.deliveryDirection
     };
 
     const now = new Date();
@@ -86,6 +97,26 @@ export async function POST(request, { params }) {
       priceList,
       settings
     });
+
+    // חיוב משלוח (ר' applyDeliveryCharge ב-lib/pricingEngine.js) לא חלק מ-computeOrderObligations
+    // בכלל - הוא מחושב רק בפועל בתוך ה-PUT האמיתי. בלעדיו, תצוגה מקדימה של הזמנה קיימת
+    // שמסמנים בה משלוח (או משנים בה עיר/כיוון משלוח) לא כללה את החיוב הזה כלל, כך שהסכום
+    // שהוצג לפני שמירה היה נמוך מהאמת - בדיוק הבאג שגרם לחוב לא-ידוע על משלוח (ר' דיווח
+    // 6124472b). מוסיפים אותו כאן מאותו חישוב טהור ומשותף (computeDeliveryObligationPreview).
+    const deliveryPreview = computeDeliveryObligationPreview({
+      isDelivery: effectiveOrder.isDelivery,
+      deliveryCity: effectiveOrder.deliveryCity,
+      deliveryDirection: effectiveOrder.deliveryDirection,
+      deliveryPriceByCity: settings.find(s => s.key === 'delivery_price_by_city')?.value,
+      deliveryPrice: settings.find(s => s.key === 'delivery_price')?.value,
+      // חיוב "משלוח" קיים ולא נמחק בהזמנה האמיתית - נבדק בנפרד מ-newObligations (שמכיל רק
+      // חיובים אוטומטיים מ-computeOrderObligations, לא כולל משלוח מלכתחילה, כך שאין סיכון
+      // לספור פעמיים).
+      existingObligations: baseOrder.obligations || []
+    });
+    if (deliveryPreview) {
+      newObligations.push({ ...deliveryPreview, isPreview: true });
+    }
 
     const newTotal = newObligations.reduce((sum, o) => sum + o.amount, 0);
 
