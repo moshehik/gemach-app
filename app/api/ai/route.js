@@ -3,7 +3,7 @@ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
 import { checkAuth } from '../../../lib/auth';
 import { checkAiAccess } from '../../../lib/permissions';
-import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { verifiedCookieStore } from '@/lib/authTokens';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
 import { cookies } from 'next/headers';
 import prisma from '../../lib/prisma';
@@ -31,6 +31,7 @@ import {
   answerSaysNone,
   humanizeResultDates,
   finalizeTagsAndText,
+  loadEmployeeAccess,
 } from '../../../lib/ai/aiCommon';
 import { downloadRecording } from '../../../lib/driveBridgeServer';
 
@@ -135,22 +136,10 @@ export async function POST(req) {
       }
     }
 
-    // Employee Classification Protections
+    // Employee Classification Protections - שיטה משותפת עם app/api/ai/statistics/route.js
+    // (loadEmployeeAccess ב-lib/ai/aiCommon.js), במקום עותק קשיח נפרד כאן.
     const cookieStore = await cookies();
-    const token = getVerifiedAuthCookie(cookieStore);
-    let employeeContext = '';
-    let isManager = false;
-    if (token && token.value) {
-      const employee = await prisma.employee.findUnique({ where: { id: token.value } });
-      if (employee) {
-        if (employee.roleId !== 1 && employee.roleId !== 2) {
-          employeeContext = `\nCRITICAL SECURITY RULE: The current user is a standard employee (Role: ${employee.roleId}). Do NOT provide any sensitive financial data (such as total revenues, employee wages, or overall business statistics). Only answer questions related to daily operations like customers, orders, or dress inventory.`;
-        } else {
-          isManager = true;
-          employeeContext = `\nUser Role: Manager/Admin. Full access to all data is permitted.`;
-        }
-      }
-    }
+    const { isManager, employeeContext } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
 
     // ACTION: SETTINGS_GUIDE() - see the branch below that handles it - lets the AI
     // point a manager to a specific SystemSetting's location, explain what it does,
