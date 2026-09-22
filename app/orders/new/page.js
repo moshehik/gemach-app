@@ -2060,6 +2060,11 @@ export default function NewOrderPage() {
                     </div>
                   )}
                 </div>
+                {/* הזמנת משלוח מותנית ב-enable_deliveries (המתג הראשי של הפיצ'ר) - לא רק בכך
+                    שהכרטיס כולו מוצג (delivery_show_in_order, שער נפרד לטלפוני/סניף). בלי
+                    התנאי הזה האפשרות הופיעה גם כשהמשלוחים כבויים לגמרי (דיווח תקלה e8dc2860,
+                    2026-09-22), בשונה מכרטיס העריכה של הזמנה קיימת שכבר נעלם לגמרי כשכבוי. */}
+                {settings.enable_deliveries === 'true' && (
                 <div className="form-grid" style={{ marginTop: 8 }}>
                   <div className="field">
                     <label className="checkbox-row" style={{ cursor: 'pointer' }}>
@@ -2106,6 +2111,7 @@ export default function NewOrderPage() {
                     </>
                   )}
                 </div>
+                )}
               </div>
               )}
             </div>
@@ -2238,6 +2244,7 @@ export default function NewOrderPage() {
                           type="text"
                           inputMode="decimal"
                           name="lengthAlteration"
+                          autoComplete="new-password"
                           className="input"
                           style={{ width: '70px', padding: '6px 8px' }}
                           value={newItem.lengthAlteration || ''}
@@ -2334,6 +2341,24 @@ export default function NewOrderPage() {
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* הערות כלליות להזמנה - גם כאן (בנוסף לשלב 2), כי דיווח תקלה 9c358793 (2026-09-22)
+                חזר פעמיים על כך שבזמן הוספת פריטים (שלב זה) לא רואים אפשרות להקליד הערה חופשית -
+                אותו שדה order.notes בדיוק, לא שדה נפרד. */}
+            <div className="card card-pad" style={{ marginTop: 16 }}>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label htmlFor="order-notes-step3">הערות כלליות להזמנה</label>
+                <textarea
+                  id="order-notes-step3"
+                  name="notes"
+                  className="textarea"
+                  rows={2}
+                  value={order.notes}
+                  onChange={handleOrderChange}
+                  placeholder="בקשות מיוחדות, סיכומים עם הלקוח..."
+                />
               </div>
             </div>
           </div>

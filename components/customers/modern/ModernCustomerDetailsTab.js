@@ -163,11 +163,13 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 </div>
               </div>
               <div className="field">
-                <label>דוא&quot;ל {settings.require_customer_email === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                {/* require_customer_email/require_full_address חלים רק על יצירת לקוח חדש, לא על עריכת
+                    לקוח קיים כאן - כמו require_customer_id_number למטה (דיווח תקלה 48ff7055, 2026-09-22). */}
+                <label>דוא&quot;ל</label>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <div className="input-icon-wrap" style={{ flex: 1 }}>
                     <svg className="icon"><use href="#i-mail" /></svg>
-                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} required={settings.require_customer_email === 'true'} />
+                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
                   </div>
                   {customer.email && (
                     <>
@@ -192,22 +194,22 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 )}
               </div>
               <div className="field">
-                <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                <input type="text" className="input" name="city" list="modern-cust-city-list" autoComplete="new-password" value={customer.city || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <label>עיר</label>
+                <input type="text" className="input" name="city" list="modern-cust-city-list" autoComplete="new-password" value={customer.city || ''} onChange={onChange} />
                 <datalist id="modern-cust-city-list">
                   {customerLocations.cities.map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
               <div className="field">
-                <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                <input type="text" className="input" name="street" list="modern-cust-street-list" autoComplete="new-password" value={customer.street || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <label>רחוב</label>
+                <input type="text" className="input" name="street" list="modern-cust-street-list" autoComplete="new-password" value={customer.street || ''} onChange={onChange} />
                 <datalist id="modern-cust-street-list">
                   {customerLocations.streets.map(s => <option key={s} value={s} />)}
                 </datalist>
               </div>
               <div className="field">
-                <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <label>מספר בית</label>
+                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} />
               </div>
               <div className="field">
                 <label>תעודת זהות (לעריכה/ביטול)</label>

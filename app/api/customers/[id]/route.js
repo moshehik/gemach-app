@@ -81,20 +81,14 @@ export async function PUT(request, { params }) {
 
     const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
 
-    // 4 - אכיפה בעריכת לקוח קיים (גם ב-API, לא רק ב-UI החדש)
+    // 4 - אכיפה בעריכת לקוח קיים (גם ב-API, לא רק ב-UI). require_customer_email/
+    // require_full_address הוסרו מכאן (דיווח תקלה 48ff7055, 2026-09-22) - הן חלות
+    // עכשיו רק על יצירת לקוח חדש (POST /api/customers), בדיוק כמו require_customer_id_number
+    // שכבר לא נאכף כאן - אין למלא מייל/כתובת כדי לערוך פרטים אחרים של לקוח קיים.
     try {
       const allSettings = await getAllCachedSettings();
       const sMap = new Map(allSettings.map(s => [s.key, s.value]));
       const errors = [];
-      if (sMap.get('require_customer_email') === 'true') {
-        const rawEmail = String(body.email || (body.emailSuffix && String(body.emailSuffix).includes('@') ? body.emailSuffix : '') || '').trim();
-        if (!rawEmail || !rawEmail.includes('@')) errors.push('מייל חובה');
-      }
-      if (sMap.get('require_full_address') === 'true') {
-        if (!String(body.city || '').trim()) errors.push('עיר חובה');
-        if (!String(body.street || '').trim()) errors.push('רחוב חובה');
-        if (!String(body.houseNum || '').trim()) errors.push('מספר בית חובה');
-      }
       if (sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
       }

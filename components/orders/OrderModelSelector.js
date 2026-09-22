@@ -188,6 +188,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = '×‘×
           data-agy-id="order_model_selector_input"
           className="input"
           type="text"
+          autoComplete="new-password"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

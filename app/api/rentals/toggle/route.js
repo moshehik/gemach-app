@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
+import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
 // אפשר יהיה לראות במפורש מתי בוצעה השכרה, החזרה, ביטול השכרה או ביטול החזרה.
@@ -44,10 +45,19 @@ export async function POST(request) {
     // המצב לפני העדכון נשמר כדי שרשומת ההיסטוריה תציג "מ-X ל-Y" ולא רק את הערך החדש
     const before = await prisma.orderItem.findUnique({
       where: { id: String(itemId) },
-      select: { isTaken: true, takenDate: true, isReturned: true, returnedOk: true, returnDate: true, barcode: true, ...RENTAL_MATCH_ITEM_SELECT }
+      select: {
+        isTaken: true, takenDate: true, isReturned: true, returnedOk: true, returnDate: true, barcode: true,
+        ...RENTAL_MATCH_ITEM_SELECT,
+        order: { select: { orderId: true, eventDate: true } }
+      }
     });
     if (!before) {
       return NextResponse.json({ error: 'פריט לא נמצא' }, { status: 404 });
+    }
+
+    if (action === 'return' && before.order) {
+      const guard = await checkEarlyReturn(before.order, { overridePin, overrideEmployeeId });
+      if (guard.response) return guard.response;
     }
 
     // enforce_rental_barcode_match (ברירת מחדל כבוי = התנהגות ישנה): ברקוד שמשייכים בהשכרה

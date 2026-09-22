@@ -12,7 +12,7 @@ import { normalizeGapRule } from '../../../lib/priceRows';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { sortSizeRows } from '../../../lib/sizeSort';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
-import { postRentalRent } from './rentalToggle';
+import { postRentalRent, postRentalReturn } from './rentalToggle';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
 const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
@@ -651,14 +651,10 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i));
 
     if (item.id && !item.isNew) {
-      try {
-        const res = await fetch('/api/rentals/toggle', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: item.id, action: 'return' })
-        });
-        if (!res.ok) throw new Error('API failed');
-      } catch (err) {
-        alert('שגיאה בשמירת סטטוס החזרה');
+      // postRentalReturn מטפל גם בדחיית השרת "האירוע עדיין לא הגיע" (require_approval_for_early_return)
+      const result = await postRentalReturn(item.id);
+      if (!result.ok) {
+        alert(result.message || 'שגיאה בשמירת סטטוס החזרה');
         onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
       }
     }
