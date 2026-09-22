@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import { checkAuth } from '../../../lib/auth';
+import { checkAuth, HEAD_MANAGEMENT_ROLES } from '../../../lib/auth';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 import { verifySecret } from '@/lib/passwordAuth';
 
@@ -100,8 +100,10 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, message: 'שם משתמש או סיסמה שגויים' }, { status: 401 });
     }
 
-    // Check for management role (roleId === 1)
-    if (validEmployee.roleId !== 1) {
+    // Check for management role - מנהל סניף (1) וגם הנהלה ראשית/מתכנת (HEAD_MANAGEMENT_ROLES),
+    // לא roleId===1 בלבד כמו קודם (חוסר עקביות עם שאר המערכת שנמצא בביקורת חיווט ההרשאות
+    // מ-2026-09-22 - הנהלה ראשית ומתכנת דווקא לא הצליחו למחוק דרך הנתיב הזה).
+    if (validEmployee.roleId !== 1 && !HEAD_MANAGEMENT_ROLES.includes(validEmployee.roleId)) {
       return NextResponse.json({ success: false, message: 'אין הרשאת ניהול (מנהל) לביצוע פעולה זו' }, { status: 403 });
     }
 

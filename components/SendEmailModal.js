@@ -35,8 +35,9 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
     fetch('/api/employees')
       .then(res => res.json())
       .then(data => {
-        // Filter by manager (1) or programmer (2)
-        const filtered = data.filter(emp => emp.roleId === 1 || emp.roleId === 2);
+        // כמו PopupProvider.js - מי שבאמת מורשה לפי feature:customer_email_approval
+        // (approvals מגיע מ-GET /api/employees), לא רק roleId 1/2 קשיח.
+        const filtered = data.filter(emp => emp.approvals && emp.approvals['feature:customer_email_approval']);
         setAdmins(filtered);
       })
       .catch(console.error);
