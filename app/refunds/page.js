@@ -672,6 +672,7 @@ export default function RefundsPage() {
                     <th>לקוח</th>
                     <th>הזמנה</th>
                     <th>סכום</th>
+                    <th>סיבה</th>
                     <th>פרטי בנק</th>
                     <th>אשראי מקורי</th>
                     <th>סטטוס</th>
@@ -681,7 +682,7 @@ export default function RefundsPage() {
                 <tbody>
                   {filteredRefunds.length === 0 ? (
                     <tr>
-                      <td colSpan="8">
+                      <td colSpan="9">
                         <div className="empty-state">
                           <svg className="icon"><use href="#i-search" /></svg>
                           <p>לא נמצאו זיכויים תואמים.</p>
@@ -719,7 +720,9 @@ export default function RefundsPage() {
                         </td>
                         <td>
                           <span style={{ fontWeight: 700, color: 'var(--danger)', fontSize: '15px' }}>₪{refund.amount}</span>
-                          {refund.reason && <div className="hint" style={{ color: 'var(--text-3)' }}>{refund.reason}</div>}
+                        </td>
+                        <td>
+                          {refund.reason ? refund.reason : <span style={{ color: 'var(--text-3)' }}>-</span>}
                         </td>
                         <td>
                           {refund.bankName || refund.bankAccount ? (
