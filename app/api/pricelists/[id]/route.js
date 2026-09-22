@@ -30,9 +30,13 @@ export async function PUT(request, { params }) {
     if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const resolvedParams = await params;
-        const id = parseInt(resolvedParams.id);
+        // PriceList.id is a UUID string (prisma/schema.prisma), not a numeric id -
+        // parseInt() used to truncate it to a meaningless number (e.g. "83384b96-..."
+        // -> 83384), which Prisma then rejected as an invalid `id` filter, failing
+        // every single edit with a generic 500.
+        const id = resolvedParams.id;
         const data = await request.json();
-        
+
         const priceList = await prisma.priceList.update({
             where: { id },
             data: {
@@ -67,7 +71,8 @@ export async function DELETE(request, { params }) {
         }
 
         const resolvedParams = await params;
-        const id = parseInt(resolvedParams.id);
+        // Same UUID-vs-parseInt bug as PUT above - see the comment there.
+        const id = resolvedParams.id;
         await prisma.priceList.delete({
             where: { id }
         });
