@@ -13,6 +13,16 @@ export default function OrderModelSelector({ value, onChange, placeholder = '×‘×
   const wrapperRef = useRef(null);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+  // Chrome/Firefox fall back to an input's `id` (this one is a fixed, reused string
+  // like "item-model") to key their own "previously typed values" suggestion list when
+  // there's no `name` - autoComplete="off"/"new-password" alone didn't suppress that for
+  // this field (unlike the phone field, whose fix was a `type` change - here `type` was
+  // already "text"). A random per-mount `name` means the browser never has a stable key
+  // to accumulate or match history against.
+  const autofillGuardNameRef = useRef(null);
+  if (!autofillGuardNameRef.current) {
+    autofillGuardNameRef.current = `no-autofill-${Math.random().toString(36).slice(2)}`;
+  }
 
   const hasSelection = Boolean(value?.name);
   // Elegant fix: when dropdown is open and input still shows the selected value's name,
@@ -196,7 +206,8 @@ export default function OrderModelSelector({ value, onChange, placeholder = '×‘×
           data-agy-id="order_model_selector_input"
           className="input"
           type="text"
-          autoComplete="new-password"
+          name={autofillGuardNameRef.current}
+          autoComplete="off"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
