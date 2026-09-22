@@ -110,13 +110,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // חלון העריכה המלא (15 דק') נעל את הפריט - נדרש אישור מנהל כדי לפתוח אותו מחדש לעריכה
   // מלאה (דגם/מידה/תיקונים), כמו הפתיחה מחדש של הזמנה נעולה למעלה (handleUnlock בעמוד ההזמנה).
   const handleReopenFullEdit = async (item) => {
-    const authResult = await window.customAuthPrompt('חלון העריכה המלא (15 דק׳) לפריט זה נסגר. נדרש אישור מנהל לפתיחתו מחדש לעריכה מלאה. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    const authResult = await window.customAuthPrompt('חלון העריכה המלא (15 דק׳) לפריט זה נסגר. נדרש אישור מנהל לפתיחתו מחדש לעריכה מלאה. אנא בחר מנהל והזן סיסמה:', 'feature:item_edit_reopen');
     if (!authResult || !authResult.pin) return;
     try {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:item_edit_reopen' }) // הרשאה: feature:item_edit_reopen
       });
       const data = await res.json();
       if (!data.success) {
@@ -268,13 +268,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     }
 
     if (!isFullyPaid) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל:", 'מנהל');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:unpaid_action_items_tab' }) // הרשאה: feature:unpaid_action_items_tab
         });
         const data = await res.json();
         if (!data.success) {
@@ -586,13 +586,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // עריכה אחרת שקרתה באותו חלון זמן (למשל שינוי בפריט אחר) עלולה להידרס.
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור מנהל:", 'מנהל');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:unpaid_action_items_tab' }) // הרשאה: feature:unpaid_action_items_tab
         });
         const data = await res.json();
         if (!data.success) {
@@ -630,13 +630,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   const handleReturn = async (item, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור מנהל:", 'מנהל');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:unpaid_action_items_tab' }) // הרשאה: feature:unpaid_action_items_tab
         });
         const data = await res.json();
         if (!data.success) {

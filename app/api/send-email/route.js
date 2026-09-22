@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 import { verifySecret } from '@/lib/passwordAuth';
+import { hasPermission } from '@/lib/permissions';
 import { renderGenericEmailHtml, renderAttachmentsGuideTable, renderAttachmentsGuideText } from '../../../lib/emailTemplates';
 import { normalizeAttachments } from '@/lib/mailer';
 
@@ -48,8 +49,10 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'שם משתמש או סיסמה שגויים' }, { status: 401 });
     }
 
-    if (validEmployee.roleId !== 1 && validEmployee.roleId !== 2) {
-      return NextResponse.json({ success: false, message: 'אין הרשאת ניהול (מנהל/מתכנת) לביצוע פעולה זו' }, { status: 403 });
+    // מי רשאי לאשר שליחת מייל נקבע ב-feature:customer_email_approval (ר' lib/permissionsMetadata.js)
+    // ולא לפי roleId קשיח.
+    if (!(await hasPermission(validEmployee, 'feature:customer_email_approval'))) {
+      return NextResponse.json({ success: false, message: 'אין הרשאה לאשר שליחת מייל' }, { status: 403 });
     }
 
     // 2. Prepare payload for Google Script

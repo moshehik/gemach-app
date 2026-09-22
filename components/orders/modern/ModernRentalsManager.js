@@ -38,7 +38,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
     if (!barcode) return;
 
     if (!isFullyPaid) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל או עובד מורשה:", 'עובד');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל או עובד מורשה:", 'feature:unpaid_action_rentals_tab');
       if (!authResult || !authResult.pin) {
         setBarcodeInput('');
         return;
@@ -47,7 +47,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:unpaid_action_rentals_tab' }) // הרשאה: feature:unpaid_action_rentals_tab
         });
         const data = await res.json();
         if (!data.success) {
@@ -167,7 +167,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
 
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור:", 'עובד');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור:", 'feature:unpaid_action_rentals_tab'); // הרשאה: feature:unpaid_action_rentals_tab
       if (!authResult || !authResult.pin) return;
     }
     const oldItems = [...items];
@@ -199,7 +199,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
 
   const handleReturn = async (item, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור:", 'עובד');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור:", 'feature:unpaid_action_rentals_tab'); // הרשאה: feature:unpaid_action_rentals_tab
       if (!authResult || !authResult.pin) return;
     }
     const oldItems = [...items];

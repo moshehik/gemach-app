@@ -224,7 +224,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: adminPin, requiredLevel: 'מנהל' })
+        body: JSON.stringify({ pin: adminPin, requiredLevel: 'feature:export_over_limit_approval' }) // הרשאה: feature:export_over_limit_approval
       });
       const data = await res.json();
       if (data.success) {

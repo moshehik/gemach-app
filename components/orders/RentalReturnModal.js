@@ -181,14 +181,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           // באפליקציה) הוא רק כדי להציג הודעת שגיאה מוקדמת ללא-מנהל; השרת מוודא
           // שוב את הסיסמה בעצמו (רואים /api/rentals/scan) ולא סומך על דגל מהלקוח.
           //
-          // 2026-09-22: כשזו חסימת-רזרבה טהורה (לא מחסן) מי שרשאי לאשר נקבע בהרשאה
-          // feature:reserve_rental_approval (ברירת המחדל שלה נגזרת מההגדרה
-          // allow_shift_lead_reserve_rental: דלוקה = כל עובד/ת פעיל/ה, כבויה = מנהל סניף/מתכנת) -
-          // הבורר והשרת מכריעים באותה הכרעה. מחסן תמיד נשאר ברמת 'מנהל'.
+          // 2026-09-22: מי שרשאי לאשר נקבע בקטלוג ההרשאות ולא בקוד קשיח - חסימת-רזרבה טהורה
+          // ב-feature:reserve_rental_approval, חסימת מחסן (או מחסן+רזרבה יחד) ב-feature:warehouse_rental_approval -
+          // הבורר והשרת מכריעים באותה הכרעה.
           const reserveApproval = data.reserveOnly;
-          const requiredLevel = reserveApproval ? 'feature:reserve_rental_approval' : 'מנהל';
+          const requiredLevel = reserveApproval ? 'feature:reserve_rental_approval' : 'feature:warehouse_rental_approval';
           const authResult = await verifyPin(
-            `${data.error}\nלעקוף את החסימה ולהשכיר בכל זאת? נדרש אישור ${reserveApproval ? 'של מי שהורשה לאשר השכרת רזרבה' : 'מנהל'}.`,
+            `${data.error}\nלעקוף את החסימה ולהשכיר בכל זאת? נדרש אישור ${reserveApproval ? 'של מי שהורשה לאשר השכרת רזרבה' : 'של מי שהורשה לאשר השכרת מחסן'}.`,
             requiredLevel
           );
           if (authResult && isMountedRef.current) {

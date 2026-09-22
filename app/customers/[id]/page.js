@@ -81,7 +81,7 @@ export default function CustomerPage({ params }) {
       alert("ללקוח זה לא מעודכנת כתובת מייל. אנא עדכן ב'פרטים אישיים' ושמור תחילה.");
       return;
     }
-    const auth = await verifyPin('שליחת מייל דורשת אישור מנהל. אנא הזן סיסמה:', 'מנהל');
+    const auth = await verifyPin('שליחת מייל דורשת אישור מנהל. אנא הזן סיסמה:', 'feature:customer_email_approval');
     if (!auth) return;
     setEmailAuthResult(auth);
     setEmailModalOpen(true);

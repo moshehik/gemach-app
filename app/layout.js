@@ -69,7 +69,7 @@ export default async function RootLayout({ children }) {
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management', 'restrict_board_to_managers', 'enable_unreturned_orders_popup'].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup'].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -157,19 +157,10 @@ export default async function RootLayout({ children }) {
 
   // שני הטוגלים האלה (ר' /admin/settings) שולטים על הרשאת קטלוג הדגמים ודף
   // הזיכויים/חובות - ברירת המחדל של שניהם 'true' (ההגבלה שהתבקשה במקור).
-  // הערך בפועל נאכף בשרת ב-app/dashboard/dresses/layout.js ו-app/refunds/layout.js;
-  // כאן רק קובעים אם הקישורים האלה בסיידבר יוצגו בכלל, כדי לא להראות לעובד קישור
-  // שיוביל אותו למסך "אין הרשאה".
-  const restrictDressCatalogSetting = settings.find(s => s.key === 'restrict_dress_catalog_to_head_management');
-  const restrictDressCatalogToHeadManagement = !restrictDressCatalogSetting || restrictDressCatalogSetting.value !== 'false';
-  const restrictRefundsSetting = settings.find(s => s.key === 'restrict_refunds_to_head_management');
-  const restrictRefundsToHeadManagement = !restrictRefundsSetting || restrictRefundsSetting.value !== 'false';
-
-  // שולט על הצגת "לוח חודשי" בסיידבר לעובד רגיל (לא מנהל) - ר' /admin/settings →
-  // תצוגה. ברירת המחדל 'true' (ההגבלה הקיימת מ-2026-09-09, ר' showBoardTab למטה).
-  const restrictBoardSetting = settings.find(s => s.key === 'restrict_board_to_managers');
-  const restrictBoardToManagers = !restrictBoardSetting || restrictBoardSetting.value !== 'false';
-
+  // עמודים אלה נאכפים בשרת ב-lib/permissions.js (resolvePageAccess/canOpenPage): מ-2026-09-22
+  // ברירת המחדל שלהם סגורה (רק הנהלה ראשית/מתכנת) וכל גישה אחרת מגיעה משורת הרשאה - שלוש
+  // הגדרות ה-restrict_* הישנות (dress catalog/refunds/board) כבר לא נקראות כאן ולא בקטלוג עצמו.
+  // ה-fallback למטה (כש-pageAccess לא נטען, למשל תקלת רשת) הולך אחרי אותה ברירת מחדל סגורה.
   let isManager = false;
   let isHeadManagement = false;
   let isProgrammer = false;
@@ -213,17 +204,17 @@ export default async function RootLayout({ children }) {
   const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showRefundsTab = isAuthenticated
-    ? (pageAccess ? pageAccess['page:refunds'] : (restrictRefundsToHeadManagement ? isHeadManagement : (isManager || isHeadManagement)))
+    ? (pageAccess ? pageAccess['page:refunds'] : isHeadManagement)
     : !requireLogin;
   const showDressesTab = isAuthenticated
-    ? (pageAccess ? pageAccess['page:dresses_catalog'] : (restrictDressCatalogToHeadManagement ? isHeadManagement : true))
+    ? (pageAccess ? pageAccess['page:dresses_catalog'] : isHeadManagement)
     : !requireLogin;
   // open pages: visible unless a permissions row (or the fallback) says otherwise
   const pageVisible = (key) => (isAuthenticated && pageAccess ? pageAccess[key] : true);
-  // "לוח חודשי" הוסתר לעובד רגיל (לא מנהל) - בקשת משתמשת 2026-09-09, כעת ניתנת
-  // לשליטה דרך restrict_board_to_managers (ר' למעלה) במקום קשיח בקוד בלבד.
+  // "לוח חודשי" - ר' page:board בקטלוג ההרשאות; ה-fallback (pageAccess לא נטען) הולך אחרי
+  // אותה ברירת מחדל סגורה כמו שאר עמודי ה-page:* למעלה.
   const showBoardTab = isAuthenticated
-    ? (pageAccess ? pageAccess['page:board'] : (restrictBoardToManagers ? isManager : true))
+    ? (pageAccess ? pageAccess['page:board'] : isHeadManagement)
     : !requireLogin;
 
   const navGroups = buildNavGroups({

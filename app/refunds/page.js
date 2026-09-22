@@ -349,7 +349,7 @@ export default function RefundsPage() {
   };
 
   const confirmApproveSelected = async () => {
-    const auth = await verifyPin('אישור תשלום עבור החובות שנבחרו דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    const auth = await verifyPin('אישור תשלום עבור החובות שנבחרו דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval');
     if (!auth) return;
     setIsApproving(true);
     try {
@@ -377,7 +377,7 @@ export default function RefundsPage() {
 
   const undoDebtApproval = async (orderId) => {
     if (!(await window.customConfirm('לבטל את אישור יתרת החוב עבור הזמנה זו? ניתן יהיה לאשר שוב בכל עת.'))) return;
-    const auth = await verifyPin('ביטול אישור חוב דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    const auth = await verifyPin('ביטול אישור חוב דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval');
     if (!auth) return;
     setIsApproving(true);
     try {

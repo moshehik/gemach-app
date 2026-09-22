@@ -132,12 +132,11 @@ export async function POST(request) {
       const isWarehouseBlocked = !includeWarehouse && (locLower.includes('מחסן') || locLower.includes('warehouse'));
       const isReserveBlocked = !allowRentingReserve && (locLower.includes('רזרבה') || locLower.includes('reserve'));
       const isReserved = isWarehouseBlocked || isReserveBlocked;
-      // אחראית משמרת מורשית לאשר רק חסימת-רזרבה טהורה (לא מחסן) וכשההגדרה דלוקה -
-      // מחסן תמיד נשאר ברמת מנהל/מתכנת בלבד, ללא תלות בהגדרה הזו.
-      // 2026-09-22: "מי רשאי לאשר" חסימת-רזרבה טהורה נקבע בקטלוג ההרשאות (feature:reserve_rental_approval,
-      // ברירת המחדל שלו נגזרת מ-allow_shift_lead_reserve_rental) ולא רק במתג ההגדרה; מחסן נשאר תמיד
-      // ברמת מנהל סניף/מתכנת.
+      // 2026-09-22: "מי רשאי לאשר" נקבע בקטלוג ההרשאות ולא בקוד קשיח - חסימת-רזרבה טהורה
+      // ב-feature:reserve_rental_approval (ברירת המחדל שלו הייתה נגזרת מ-allow_shift_lead_reserve_rental,
+      // ההגדרה הזו כבר לא נקראת), חסימת מחסן (או מחסן+רזרבה יחד) ב-feature:warehouse_rental_approval.
       const reserveOnlyBlock = isReserveBlocked && !isWarehouseBlocked;
+      const approverKey = reserveOnlyBlock ? 'feature:reserve_rental_approval' : 'feature:warehouse_rental_approval';
       let reserveApproverBelowManager = false;
       if (isReserved) {
         let overrideVerified = false;
@@ -147,10 +146,7 @@ export async function POST(request) {
           });
           for (const candidate of candidates) {
             if (!(await verifySecret(overridePin, candidate.password))) continue;
-            const roleOk = reserveOnlyBlock
-              ? await hasPermission(candidate, 'feature:reserve_rental_approval')
-              : (candidate.roleId === 1 || candidate.roleId === 2);
-            if (roleOk) {
+            if (await hasPermission(candidate, approverKey)) {
               overrideVerified = true;
               reserveApproverBelowManager = ![0, 1, 2].includes(candidate.roleId);
               break;
