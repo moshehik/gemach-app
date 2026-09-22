@@ -16,7 +16,7 @@
   --card:#FFFFFF;
   --ink:#2B221C;
   --ink-soft:#6E5F52;
-  --ink-faint:#A6957F;
+  --ink-faint:#7D6D57;
   --line:#E7D6C2;
   --line-soft:#F1E3D2;
   --terracotta:#B5533C;
@@ -268,7 +268,7 @@ body.hide-gregorian-calendar .ka-cal-day .g{display:none}
 .ka-check-row input{width:17px; height:17px; accent-color:var(--terracotta)}
 .ka-check-row-inner{display:flex; align-items:center; gap:9px}
 
-.ka-size-chip-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.ka-size-chip-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; direction:ltr}
 .ka-size-chip{
   border:1.5px solid var(--line); border-radius:12px; padding:8px 4px; text-align:center; cursor:pointer; background:var(--paper);
   transition:.15s;
@@ -336,7 +336,7 @@ body.hide-gregorian-calendar .ka-cal-day .g{display:none}
 .ka-avail-line .icon{width:15px; height:15px}
 .ka-avail-line.ok{color:var(--sage)}
 .ka-avail-line.bad{color:var(--brick)}
-.ka-size-row{display:flex; flex-wrap:wrap; gap:6px}
+.ka-size-row{display:flex; flex-wrap:wrap; gap:6px; direction:ltr}
 .ka-size-pill{font-size:11px; font-weight:800; padding:4px 9px; border-radius:8px}
 .ka-size-pill.avail{background:var(--sage-soft); color:var(--sage)}
 .ka-size-pill.out{background:var(--brick-soft); color:var(--brick); text-decoration:line-through; opacity:.75}
