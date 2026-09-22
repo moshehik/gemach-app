@@ -287,6 +287,8 @@ export default function CustomerInventoryViewer() {
   const [search, setSearch] = useState('');
   const [showZeroSizes, setShowZeroSizes] = useState(false);
   const [viewMode, setViewMode] = useState('rows');
+  const [zoomPopoverOpen, setZoomPopoverOpen] = useState(false);
+  const zoomPopoverRef = useRef(null);
   const [zoomLevel, setZoomLevel] = useState(() => {
     if (typeof window === 'undefined') return 1;
     const saved = parseFloat(localStorage.getItem('ka_zoom_level'));
@@ -406,6 +408,17 @@ export default function CustomerInventoryViewer() {
   const [aiLoading, setAiLoading] = useState(false);
   const [isAiChatVisible, setIsAiChatVisible] = useState(false);
   useEffect(() => { setIsAiChatVisible(false); }, [stage]); // Close chat on stage change
+
+  useEffect(() => {
+    if (!zoomPopoverOpen) return;
+    const handleClickOutside = (e) => {
+      if (zoomPopoverRef.current && !zoomPopoverRef.current.contains(e.target)) {
+        setZoomPopoverOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [zoomPopoverOpen]);
 
   const chatEndRef = useRef(null);
 
@@ -1048,6 +1061,34 @@ export default function CustomerInventoryViewer() {
               {(search || selectedCategories.length > 0 || selectedSizes.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--terracotta)', display: 'inline-block' }} />}
             </button>
 
+            <div className="ka-zoom-popover-wrap" ref={zoomPopoverRef}>
+              <button data-agy-id="zoom_toggle_btn" type="button" className="ka-icon-btn" title="גודל תצוגה"
+                onClick={() => setZoomPopoverOpen(o => !o)}>
+                <svg className="icon"><use href="#i-search" /></svg>
+              </button>
+              {zoomPopoverOpen && (
+                <div className="ka-zoom-popover">
+                  <div className="ka-slider-field">
+                    <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
+                    <input
+                      data-agy-id="zoom_range_input"
+                      type="range"
+                      min="0.5" max="1.5" step="0.1"
+                      value={zoomLevel}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        setZoomLevel(val);
+                        localStorage.setItem('ka_zoom_level', String(val));
+                      }}
+                    />
+                    <div className="s-ticks">
+                      <span>קטן</span><span>גדול</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="ka-action-cluster">
               <button data-agy-id="exit_to_system_btn" type="button" className="ka-icon-btn"
                 onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
@@ -1520,26 +1561,6 @@ export default function CustomerInventoryViewer() {
                   })}
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* גודל תצוגה נשאר תמיד גלוי כאן, מחוץ לפאנל הסינון הניתן לקיפול - דיווח
-              267e5bbb: לקוחה שקיפלה את פאנל הסינון עדיין רוצה גישה מהירה לשליטה בגודל. */}
-          <div className="ka-slider-field ka-zoom-bar">
-            <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
-            <input
-              data-agy-id="zoom_range_input"
-              type="range"
-              min="0.5" max="1.5" step="0.1"
-              value={zoomLevel}
-              onChange={e => {
-                const val = parseFloat(e.target.value);
-                setZoomLevel(val);
-                localStorage.setItem('ka_zoom_level', String(val));
-              }}
-            />
-            <div className="s-ticks">
-              <span>קטן</span><span>גדול</span>
             </div>
           </div>
         </section>
