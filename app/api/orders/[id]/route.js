@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '../../../../lib/auth';
+import { getCachedSetting } from '@/lib/settingsCache';
+import { validateDeliveryFields } from '@/lib/deliveryValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -292,6 +294,34 @@ export async function PUT(request, { params }) {
     }
 
     const data = await request.json();
+
+    // אכיפה שרתית של שדות חובה במשלוח (עיר/כתובת) - אותה לוגיקה בדיוק כמו POST /api/orders
+    // (lib/deliveryValidation.js), אבל רק כשמשלוח באמת משתנה בבקשה הזו - לא על כל שמירה
+    // (למשל הוספת תשלום) של הזמנה ישנה שכבר הייתה לה תצורת משלוח לא-תקינה מלפני התיקון
+    // הזה, כדי לא לחסום פתאום שמירות שאין להן שום קשר לשדות המשלוח.
+    const deliveryFieldsChanged =
+      (data.isDelivery !== undefined && !!data.isDelivery !== !!existingOrder.isDelivery) ||
+      (data.deliveryCity !== undefined && (data.deliveryCity || null) !== (existingOrder.deliveryCity || null)) ||
+      (data.deliveryAddress !== undefined && (data.deliveryAddress || null) !== (existingOrder.deliveryAddress || null));
+    const effectiveIsDelivery = data.isDelivery !== undefined ? !!data.isDelivery : existingOrder.isDelivery;
+    if (effectiveIsDelivery && deliveryFieldsChanged) {
+      const effectiveOrderForValidation = {
+        isDelivery: effectiveIsDelivery,
+        deliveryCity: data.deliveryCity !== undefined ? data.deliveryCity : existingOrder.deliveryCity,
+        deliveryAddress: data.deliveryAddress !== undefined ? data.deliveryAddress : existingOrder.deliveryAddress
+      };
+      const customerIdForDelivery = data.customerId !== undefined ? data.customerId : existingOrder.customerId;
+      const [customerForDelivery, priceByCitySetting] = await Promise.all([
+        customerIdForDelivery ? prisma.customer.findUnique({ where: { id: customerIdForDelivery }, select: { city: true } }) : null,
+        getCachedSetting('delivery_price_by_city')
+      ]);
+      let deliveryPriceCities = [];
+      try { deliveryPriceCities = Object.keys(JSON.parse(priceByCitySetting?.value || '{}')); } catch {}
+      const deliveryError = validateDeliveryFields(effectiveOrderForValidation, customerForDelivery?.city, deliveryPriceCities);
+      if (deliveryError) {
+        return NextResponse.json({ error: deliveryError, message: deliveryError }, { status: 400 });
+      }
+    }
 
     // The approver named in debtApprovedBy must really hold feature:debt_approval (lib/permissions.js).
     if (data.debtApprovedBy && !(await canApproveDebt(data.debtApprovedBy))) {
@@ -595,9 +625,14 @@ export async function PUT(request, { params }) {
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      const parsedEventDate = parseSafeDate(data.eventDate);
       const parsedFromDate = parseSafeDate(data.fromDate);
       const parsedToDate = parseSafeDate(data.toDate);
+      // isAbroad/isWeekdayEvent orders drive dates from fromDate/toDate, not eventDate (ר'
+      // orders/[id]/page.js:297) - keep eventDate in sync with fromDate here too, or it goes
+      // stale relative to an edited date range and pickup-date calc (email/print) breaks.
+      const parsedEventDate = (data.isAbroad || data.isWeekdayEvent) && parsedFromDate
+        ? parsedFromDate
+        : parseSafeDate(data.eventDate);
       const parsedReturnDate = parseSafeDate(data.returnDate);
       // Developer-only edit (see requiredLevel: 'מתכנת' gate in the client) - shifts the
       // REFUND_DAYS_FROM_ORDER window in lib/pricingEngine.js, so it's normally immutable

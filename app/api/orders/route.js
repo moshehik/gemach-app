@@ -11,6 +11,7 @@ import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { validateDeliveryFields } from '@/lib/deliveryValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -729,18 +730,38 @@ export async function POST(request) {
     // שבאמת שייך לדגם שנשלח.
     const reconciledItems = await reconcileDressItemIds(data.items);
 
+    // אכיפה שרתית של שדות חובה במשלוח (עיר/כתובת) - הבדיקה בקליינט (app/orders/new/page.js)
+    // ניתנת לעקיפה, אז חוזרת כאן על אותה לוגיקה בדיוק (lib/deliveryValidation.js) לפני היצירה.
+    if (data.isDelivery) {
+      const [customerForDelivery, priceByCitySetting] = await Promise.all([
+        data.customerId ? prisma.customer.findUnique({ where: { id: data.customerId }, select: { city: true } }) : null,
+        getCachedSetting('delivery_price_by_city')
+      ]);
+      let deliveryPriceCities = [];
+      try { deliveryPriceCities = Object.keys(JSON.parse(priceByCitySetting?.value || '{}')); } catch {}
+      const deliveryError = validateDeliveryFields(data, customerForDelivery?.city, deliveryPriceCities);
+      if (deliveryError) {
+        return NextResponse.json({ error: deliveryError }, { status: 400 });
+      }
+    }
+
     // 1 - אם hide_custom_spacing מופעל, כל ציפוף מיוחד נחסם שרתית (גם אם נשלח מהקליינט) - לא מוחקים שדה, רק מאפסים
     let effectiveCustomSpacing = data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null;
     try {
       const hideSpacingSetting = await getCachedSetting('hide_custom_spacing');
       if (hideSpacingSetting?.value === 'true') effectiveCustomSpacing = null;
     } catch {}
+    // isAbroad/isWeekdayEvent orders use fromDate/toDate instead of a single eventDate in the
+    // UI (ר' orders/new/page.js:1117) - both must fall back to fromDate here too, or pickup-date
+    // calculations downstream (email/print, which derive pickup from eventDate) silently break
+    // for isWeekdayEvent orders (previously only isAbroad got this treatment).
+    const effectiveEventDateRaw = (data.isAbroad || data.isWeekdayEvent) && data.fromDate ? data.fromDate : data.eventDate;
     const orderData = {
       customerId: data.customerId || null,
       totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
       orderDate: new Date(),
-      eventDate: data.isAbroad && data.fromDate ? new Date(data.fromDate) : (data.eventDate ? new Date(data.eventDate) : null),
-      eventDateHebrew: data.eventDateHebrew || (data.eventDate ? getHebrewDateString(data.eventDate) : null),
+      eventDate: effectiveEventDateRaw ? new Date(effectiveEventDateRaw) : null,
+      eventDateHebrew: data.eventDateHebrew || (effectiveEventDateRaw ? getHebrewDateString(effectiveEventDateRaw) : null),
       returnDate: data.returnDate ? new Date(data.returnDate) : null,
       employeeId: data.employeeId || loggedInEmployeeId || null,
       isAbroad: data.isAbroad ?? false,

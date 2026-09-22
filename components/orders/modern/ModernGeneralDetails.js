@@ -9,6 +9,7 @@ import CustomerSelector from '../../CustomerSelector';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/deliveryValidation';
 
 /**
  * טאב "פרטים כלליים" בעיצוב "אריג" — כרטיס לקוח + כרטיס אירוע + כרטיס ציפוף ימים
@@ -174,6 +175,15 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   // בהגדרות הניהול, קטגוריית "משלוחים"), אותו מתג שמסתיר/מציג את לשונית "משלוחים" עצמה
   // (app/layout.js showDeliveries) - כשהמתג כבוי, הכרטיס לא מוצג כלל, לא רק שדותיו הפנימיים.
   const [deliverySettings, setDeliverySettings] = React.useState({ enabled: false, allowAddressOverride: false, oneDayBeforeOption: false, priceByCity: {} });
+  // רשימת גיבוי לתפריט "עיר משלוח" כש-delivery_price_by_city עוד ריקה - בלי זה שדה הבחירה
+  // היה נשאר חסום ללא אף אפשרות בהזמנות של ארגון שעוד לא הגדיר מחירי משלוח לפי עיר,
+  // בדיוק כמו הגיבוי הקיים כבר ב-app/orders/new/page.js (customerLocations.cities).
+  const [fallbackCities, setFallbackCities] = React.useState([]);
+  React.useEffect(() => {
+    fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
+      .then(data => setFallbackCities(data?.cities || []))
+      .catch(() => {});
+  }, []);
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).then(arr => {
       const list = Array.isArray(arr) ? arr : [];
@@ -192,8 +202,10 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
       }
     }).catch(() => {});
   }, []);
-  const deliveryCityOptions = Object.keys(deliverySettings.priceByCity || {});
-  const deliveryAddressRequired = !!(order.isDelivery && order.deliveryCity && customer?.city && order.deliveryCity !== customer.city);
+  const deliveryPriceCities = Object.keys(deliverySettings.priceByCity || {});
+  const deliveryCityOptions = deliveryPriceCities.length ? deliveryPriceCities : fallbackCities;
+  const deliveryAddressRequired = isDeliveryAddressRequired(order, customer?.city);
+  const deliveryCityRequired = isDeliveryCityRequired(order, customer?.city, deliveryPriceCities);
   const hasCustomSpacing = !hideCustomSpacing && order.customSpacing !== null && order.customSpacing !== undefined;
   const selectedSpacing = hasCustomSpacing ? order.customSpacing : null;
   const maxAxisDay = Math.max(systemDefaultSpacing + 2, selectedSpacing !== null ? selectedSpacing : 0, 4);
@@ -426,11 +438,16 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="delivery-city-edit">עיר משלוח (לחישוב מחיר)</label>
-                <input id="delivery-city-edit" type="text" className="input" list="delivery-city-list-edit" autoComplete="new-password" value={order.deliveryCity || ''} onChange={e => handleChange({ deliveryCity: e.target.value })} placeholder="עיר" />
-                <datalist id="delivery-city-list-edit">
-                  {deliveryCityOptions.map(c => <option key={c} value={c} />)}
-                </datalist>
+                <label htmlFor="delivery-city-edit">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+                <select id="delivery-city-edit" className="select" value={order.deliveryCity || ''} onChange={e => handleChange({ deliveryCity: e.target.value })}>
+                  <option value="">בחר עיר…</option>
+                  {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
+                  <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                    עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
+                  </p>
+                )}
               </div>
               {(deliverySettings.allowAddressOverride || deliveryAddressRequired) && (
                 <div className="field">
