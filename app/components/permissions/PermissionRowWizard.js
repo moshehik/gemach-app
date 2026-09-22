@@ -148,7 +148,13 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
         key={item.key}
         className="chip"
         title={alsoIn ? `מופיע גם בשורה: ${alsoIn.join(', ')}` : undefined}
-        style={alsoIn ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 } : undefined}
+        style={
+          alsoIn
+            ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 }
+            : item.group === 'features'
+              ? { background: 'var(--accent-tint)', color: 'var(--accent-solid, var(--accent))' }
+              : undefined
+        }
       >
         {alsoIn && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-link" /></svg>}
         <ItemLabel item={item} />
@@ -181,15 +187,6 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
     if (step === 1) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ border: '2px solid var(--primary)', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--primary-tint, var(--surface-alt))', padding: '12px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <svg className="icon" style={{ color: 'var(--primary)' }}><use href="#i-plus" /></svg>
-              <strong style={{ fontSize: '15px' }}>הוספת עמודים ופיצ&apos;רים לשורה</strong>
-            </div>
-            {availableToAdd.length > 0
-              ? <GroupPagePicker items={availableToAdd} onAdd={addKey} />
-              : <span style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>כל הפריטים כבר בשורה</span>}
-          </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <strong style={{ fontSize: '13px' }}>נבחרו לשורה</strong>
@@ -199,6 +196,15 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
               {selectedItems.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>עדיין לא נבחר דבר</span>}
               {selectedItems.map(itemChip)}
             </div>
+          </div>
+          <div style={{ border: '2px solid var(--primary)', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--primary-tint, var(--surface-alt))', padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <svg className="icon" style={{ color: 'var(--primary)' }}><use href="#i-plus" /></svg>
+              <strong style={{ fontSize: '15px' }}>הוספת עמודים ופיצ&apos;רים לשורה</strong>
+            </div>
+            {availableToAdd.length > 0
+              ? <GroupPagePicker items={availableToAdd} onAdd={addKey} />
+              : <span style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>כל הפריטים כבר בשורה</span>}
           </div>
         </div>
       );
