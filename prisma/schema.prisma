@@ -763,6 +763,7 @@ model NedarimHok {
   mosadId             String?
   status              String // 'success' | 'error'
   confirmation        String?
+  institutionName     String? // השם שנדרים פלוס מחזירים עבור ה-mosadId שנשלח (שדה Alert) - בדיקת שפיות שאכן זה המוסד המיועד, ר' תקרית 2026-09-23 CLAUDE.md
   errorMessage        String?
   rawResponse         String?   @db.Text
   isTest              Boolean   @default(false) // נוצר מדף הניסוי הייעודי ולא מתהליך הזמנה אמיתי
