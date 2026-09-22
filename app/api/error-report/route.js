@@ -139,21 +139,42 @@ export async function PATCH(request) {
     // "אוף! אני צריך מענה אנושי!" - המדווח/ת ביקש/ה לדלג על הסוכן האוטומטי ולקבל
     // מענה ישיר מתמיכה. שולחים מייל רק כשמדליקים את הדגל (לא כשמכבים אותו), ורק
     // מי שאינו מתכנת יכול להדליק אותו (אכיפה למעלה: !isProgrammer && employeeId===own).
+    // המייל כולל את כל שרשור התגובות עד כה (לא רק את הדיווח המקורי) - כך שיש למי
+    // שעונה בעצמו את כל ההקשר בלי לפתוח את האתר.
     if (needsHumanProvided && needsHuman && !existing.needsHuman) {
       const reporterName = employee.firstName ? `${employee.firstName} ${employee.lastName || ''}`.trim() : 'משתמש';
+      const existingReplies = await prisma.errorReportReply.findMany({
+        where: { errorReportId: reportId },
+        orderBy: { createdAt: 'asc' },
+        include: { employee: { select: { firstName: true, lastName: true } } }
+      });
+      const replies = existingReplies.map(r => {
+        const isBot = r.isProgrammer && !r.employeeId;
+        const authorLabel = isBot
+          ? 'תמיכה (סוכן אוטומטי)'
+          : r.isProgrammer
+            ? `תמיכה${r.employee ? ` - ${r.employee.firstName} ${r.employee.lastName || ''}`.trim() : ''}`
+            : reporterName;
+        return { authorLabel, text: r.text, isBot };
+      });
+      const threadText = replies.length
+        ? '\n\nשרשור התגובות עד כה:\n' + replies.map(r => `--- ${r.authorLabel} ---\n${r.text}`).join('\n\n')
+        : '';
       const textBody = `
 ${reporterName} ביקש/ה מענה אנושי ישיר בדיווח תקלה, במקום המענה האוטומטי.
 
 חלון/דף: ${existing.title || 'לא צוין'}
-תיאור התקלה:
+תיאור התקלה המקורי:
 ${existing.userText}
+${threadText}
 
 הסוכן האוטומטי ידלג על הדיווח הזה מעתה - יש לענות בעצמכם בשרשור.
       `.trim();
       const htmlBody = renderHumanRequestedEmailHtml({
         reporterName,
         pageTitle: existing.title || 'לא צוין',
-        description: existing.userText
+        description: existing.userText,
+        replies
       });
       sendProgrammerEmail({
         subject: emailSubject('errorReportHumanRequested', { reporterName }),

@@ -56,6 +56,16 @@ async function main() {
       console.error(`ERROR: report ${reportId} not found`);
       process.exit(1);
     }
+    // מגן קשיח נגד race condition: מדווח/ת שלוחצ/ת "אוף! אני צריך מענה אנושי!"
+    // (needsHuman=true, ר' ErrorReportButton.js) תוך כדי שהרצת הסוכן כבר רצה -
+    // fix-reports.md מנחה לדלג לגמרי על דיווח כזה, אבל אותה הנחיה נקראת פעם אחת
+    // בתחילת ההרצה (שלב 0) ולא מתעדכנת תוך כדי. הבדיקה כאן קוראת את המצב הכי
+    // עדכני *ממש לפני* הכתיבה בפועל, אז גם אם ה-flag עלה אחרי שההרצה כבר התחילה -
+    // הפרסום נחסם.
+    if (existing.needsHuman) {
+      console.error(`SKIPPED: report ${reportId} has needsHuman=true (reporter asked for a human reply) - refusing to post an automated reply`);
+      process.exit(1);
+    }
 
     const reply = await prisma.errorReportReply.create({
       data: { errorReportId: reportId, isProgrammer: true, text, previewUrl: previewUrl || null, isQuestion },
