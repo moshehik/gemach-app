@@ -18,6 +18,16 @@ export default function LoginScreen({ isModal = false, onClose }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const router = useRouter();
+  // Chrome falls back to an input's `id` (this one is a fixed string, "login-employee")
+  // to key its own "previously typed values" suggestion list when there's no `name` -
+  // autoComplete="new-password" alone didn't suppress that (see the comment at the input
+  // itself, and report 2a4a2af4 which kept recurring even after that fix). A random
+  // per-mount `name` means the browser never has a stable key to accumulate/match against -
+  // same fix already applied to the order-item model search field (report 0a88cf56 follow-up).
+  const employeeAutofillGuardNameRef = useRef(null);
+  if (!employeeAutofillGuardNameRef.current) {
+    employeeAutofillGuardNameRef.current = `no-autofill-${Math.random().toString(36).slice(2)}`;
+  }
 
   // Trusted-device fast path: this computer may have been marked trusted by a manager
   // (see /admin/trusted-devices), which lets whoever logs in from it use just the last 4
@@ -273,6 +283,9 @@ export default function LoginScreen({ isModal = false, onClose }) {
             // מהסוג הזה) - בלי זה, מעל תיבת הבחירה המותאמת-אישית של הרכיב (עם
             // רשימת העובדים המלאה) הדפדפן הציג גם dropdown native משלו עם ערכים
             // שהוקלדו בעבר באותו שדה - שתי רשימות זו על גבי זו (דיווח 2a4a2af4).
+            // עדיין לא הספיק לבד - לשדה אין name, אז כרום נופל חזרה על ה-id הקבוע
+            // ("login-employee") כמפתח להיסטוריה שלו; name אקראי מונע את זה לגמרי.
+            name={employeeAutofillGuardNameRef.current}
             autoComplete="new-password"
           />
           {selectedEmployee && !isFetchingEmployees && (
