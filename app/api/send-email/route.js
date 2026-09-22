@@ -4,8 +4,9 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 import { verifySecret } from '@/lib/passwordAuth';
 import { hasPermission } from '@/lib/permissions';
-import { renderGenericEmailHtml, renderAttachmentsGuideTable, renderAttachmentsGuideText } from '../../../lib/emailTemplates';
-import { normalizeAttachments } from '@/lib/mailer';
+import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
+import { normalizeAttachments, buildGasPayload, postToMailer } from '@/lib/mailer';
+import { emailSubject } from '@/lib/emailCatalog';
 
 export async function POST(request) {
   try {
@@ -58,85 +59,32 @@ export async function POST(request) {
     // 2. Prepare payload for Google Script
     // תאימות לאחור: קובץ בודד fileName/fileContent + פורמט חדש attachments[].
     // dest לכל קובץ: 'email' (מצורף למייל) / 'drive' (עולה לדרייב+שיתוף) / 'both' (גם וגם).
-    let normalized = normalizeAttachments({ fileName, fileContent, attachments: attachmentsRaw, sendMode });
-    if (normalized.length === 0) {
-      normalized = normalizeAttachments({
-        fileName: 'הודעה.txt',
-        fileContent: Buffer.from('נשלח ממערכת הגמ"ח').toString('base64'),
-        sendMode
-      });
-    }
-    const finalFileName = normalized[0]?.fileName || 'הודעה.txt';
-    const finalFileContent = normalized[0]?.fileContent || Buffer.from('נשלח ממערכת הגמ"ח').toString('base64');
+    // רק קבצים אמיתיים - בלי קבצים, buildGasPayload מוסיף ממלא מקום עם noAttachment=true
+    // ואין שורה מיותרת של "הודעה.txt" בטבלת ההוראות או בגוף המייל.
+    const normalized = normalizeAttachments({ fileName, fileContent, attachments: attachmentsRaw, sendMode });
 
-    // 3. Call Google Apps Script - Get URL from settings
-    const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name', 'email_drive_folder_id'].includes(s.key));
-    const linkA = settings.find(s => s.key === 'email_link_a')?.value;
-    const linkB = settings.find(s => s.key === 'email_link_b')?.value;
-    const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+    // 3. Call Google Apps Script - URL resolved centrally (lib/mailer.js)
+    const settings = (await getAllCachedSettings()).filter(s => ['gmach_name', 'email_drive_folder_id'].includes(s.key));
     const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
     const defaultDriveFolder = settings.find(s => s.key === 'email_drive_folder_id')?.value || '';
     const driveFolderId = (driveFolderIdRaw || defaultDriveFolder || '').trim();
 
-    // טבלת הוראות מסודרת - נשלחת כחלק מגוף המייל (HTML + טקסט) דרך ה-GAS,
-    // כדי שהנמען יראה לכל קובץ לאן נשלח ואיך מורידים אותו.
-    const guideTableHtml = renderAttachmentsGuideTable(normalized);
-    const guideText = renderAttachmentsGuideText(normalized);
-    const baseHtml = renderGenericEmailHtml({ title: subject, bodyText: emailBody, gmachName });
-    const htmlWithGuide = guideTableHtml
-      ? baseHtml.replace('</div>\n      </div>\n    </body>', `${guideTableHtml}</div>\n      </div>\n    </body>`)
-      : baseHtml;
+    const emailHtml = renderGenericEmailHtml({ title: subject, bodyText: emailBody, gmachName, subtitle: 'הודעה מהגמ"ח' });
 
-    const googlePayload = {
+    const googlePayload = buildGasPayload({
       to,
-      cc: cc || '',
-      subject: subject || 'הודעה חדשה',
-      body: `${emailBody || ''}${guideText}`,
-      htmlBody: htmlWithGuide,
-      fileName: finalFileName,
-      fileContent: finalFileContent,
-      // פורמט מורחב ל-GAS החדש - פריסות ישנות מתעלמות מהשדות האלה
-      attachments: normalized.map(a => ({
-        fileName: a.fileName,
-        fileContent: a.fileContent,
-        mimeType: a.mimeType || 'application/octet-stream',
-        sizeBytes: a.sizeBytes ?? null,
-        dest: a.dest || (sendMode === 'drive' ? 'drive' : sendMode === 'both' ? 'both' : 'email')
-      })),
+      cc,
+      subject: emailSubject('managerFreeText', { subject }),
+      body: emailBody || '',
+      htmlBody: emailHtml,
+      attachments: normalized,
       sendMode,
       driveFolderId,
       driveShareEmail: to || '',
-      driveAllowDownload: true,
       grantFullDownload: true
-    };
-
-    let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-    
-    // For standard emails, only use B if strategy is 'all_b'. Otherwise use A.
-    if (strategy === 'all_b' && linkB) {
-      scriptUrl = linkB;
-    } else if (linkA) {
-      scriptUrl = linkA;
-    }
-    
-    const response = await fetch(scriptUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(googlePayload)
     });
 
-    const responseText = await response.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      // Sometimes google scripts return HTML if there's an error
-      result = { status: 'error', message: responseText };
-    }
-
-    const isSuccess = result.status === 'success';
+    const { isSuccess, result } = await postToMailer(googlePayload);
     const driveLinks = Array.isArray(result.driveLinks) ? result.driveLinks : (Array.isArray(result.driveFiles) ? result.driveFiles : []);
 
     // 4. Save to EmailLog
@@ -145,7 +93,7 @@ export async function POST(request) {
         to,
         cc: cc || null,
         subject: subject || null,
-        body: `${emailBody || ''}${guideText}`,
+        body: emailBody || '',
         fileName: normalized.map(a => a.fileName).join(', ') || null,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess

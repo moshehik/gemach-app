@@ -3,7 +3,8 @@ import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth } from '@/lib/auth';
 import { sendSystemEmail } from '@/lib/mailer';
-import { renderGenericEmailHtml } from '@/lib/emailTemplates';
+import { renderRefundExecutedEmailHtml } from '@/lib/emailTemplates';
+import { emailSubject } from '@/lib/emailCatalog';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
@@ -136,9 +137,12 @@ export async function PUT(request, { params }) {
           const bodyText = `שלום ${customerName},\n\nבוצע עבורך זיכוי על סך ₪${existingRefund.amount.toLocaleString('he-IL')}.${orderLine}\n\nהזיכוי יועבר לחשבון הבנק שנמסר לנו (בנק ${existingRefund.bankName || ''} סניף ${existingRefund.bankBranch || ''}).`;
           await sendSystemEmail({
             to: recipientEmail,
-            subject: 'אישור ביצוע זיכוי - מערכת הגמ"ח',
+            subject: emailSubject('refundExecuted'),
             body: bodyText,
-            html: renderGenericEmailHtml({ title: 'אישור ביצוע זיכוי', bodyText, gmachName }),
+            html: renderRefundExecutedEmailHtml({
+              customerName, amount: existingRefund.amount, orderId: existingRefund.orderId,
+              bankName: existingRefund.bankName || '', bankBranch: existingRefund.bankBranch || '', gmachName,
+            }),
           });
         } catch (emailErr) {
           console.error('Failed to send refund confirmation email:', emailErr);

@@ -5,6 +5,7 @@ import { checkAuth, canManageRoles } from '@/lib/auth';
 import { hashSecret, verifySecret, last4Of, generateTempPassword } from '@/lib/passwordAuth';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderPasswordResetEmailHtml } from '@/lib/emailTemplates';
+import { emailSubject } from '@/lib/emailCatalog';
 
 // Manager-only replacement for the old "הצג סיסמה" (show password) feature: instead of
 // revealing an employee's existing password, a manager triggers a reset - a random
@@ -75,7 +76,7 @@ export async function POST(request, { params }) {
 
     const emailResult = await sendSystemEmail({
       to: employee.email,
-      subject: 'איפוס סיסמה - מערכת הגמ"ח',
+      subject: emailSubject('passwordResetManager'),
       body: `שלום ${employee.firstName || ''},\n\nסיסמתך למערכת הגמ"ח אופסה על ידי מנהל.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, יש לפנות למנהל המערכת.`,
       html: renderPasswordResetEmailHtml({
         firstName: employee.firstName,

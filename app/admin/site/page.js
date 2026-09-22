@@ -28,6 +28,7 @@ const categories = [
       { href: '/admin/departments', icon: 'i-users', label: 'ניהול מחלקות', subLabel: 'תפקידי עובדים ומספרי מחלקה' },
       { href: '/admin/permissions', icon: 'i-shield', label: 'הרשאות', subLabel: 'דפים ופיצ׳רים לפי מחלקה, וחריגות פרטניות' },
       { href: '/admin/refund-policy', icon: 'i-receipt', label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
+      { href: '/admin/refund-planner', icon: 'i-coin', label: 'מתכנן זיכויים', subLabel: 'ציר זמן חזותי וסימולציה' },
       { href: '/admin/labels', icon: 'i-tag', label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
       { href: '/admin/trusted-devices', icon: 'i-shield', label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
       { href: '/admin/audit-system', icon: 'i-check-circle', label: 'מערכת ביקורת (11 סוכנים)', subLabel: 'תיעוד סוכני הבדיקה האוטומטיים' },
@@ -50,6 +51,7 @@ const categories = [
       { href: '/admin/site-settings', icon: 'i-settings', label: 'הגדרות אתר', subLabel: 'מסד נתונים, מערכת ומיילים (מתכנת בלבד)' },
       { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/management/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו' },
+      { href: '/admin/email-test', icon: 'i-mail', label: 'בדיקת מיילים', subLabel: 'שליחת דוגמה מכל סוגי המיילים' },
       { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
     ]
   }

@@ -2,46 +2,24 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
-import { renderErrorReportEmailHtml, renderGenericEmailHtml } from '../../../lib/emailTemplates';
+import { renderErrorReportEmailHtml, renderHumanRequestedEmailHtml } from '../../../lib/emailTemplates';
+import { sendSystemEmail } from '../../../lib/mailer';
+import { emailSubject } from '../../../lib/emailCatalog';
 import { uploadAttachmentDataUrls } from '../../../lib/attachmentUpload';
 import { hasPermission } from '@/lib/permissions';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
-// שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך אותו Google Apps Script mailer
-// ששאר המערכת משתמשת בו - ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
-async function sendProgrammerEmail({ subject, textBody, htmlBody, fileName }) {
+// שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך המערכת המרכזית (lib/mailer.js) -
+// ניתוב bugs_b_rest_a, יישור RTL ורישום ב-EmailLog. ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
+async function sendProgrammerEmail({ subject, textBody, htmlBody }) {
   const programmers = await prisma.employee.findMany({
     where: { roleId: 2, isActive: true, email: { not: null } }
   });
   if (programmers.length === 0) return;
 
-  const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy'].includes(s.key));
-  const linkA = settings.find(s => s.key === 'email_link_a')?.value;
-  const linkB = settings.find(s => s.key === 'email_link_b')?.value;
-  const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
-
-  let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-  if ((strategy === 'all_b' || strategy === 'bugs_b_rest_a') && linkB) {
-    scriptUrl = linkB;
-  } else if (linkA) {
-    scriptUrl = linkA;
-  }
-
   for (const prog of programmers) {
     try {
-      await fetch(scriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: prog.email,
-          cc: '',
-          subject,
-          body: textBody,
-          htmlBody,
-          fileName: fileName || 'הודעה.txt',
-          fileContent: Buffer.from('הודעה').toString('base64')
-        })
-      });
+      await sendSystemEmail({ to: prog.email, subject, body: textBody, html: htmlBody, bugRouting: true });
     } catch (e) {
       console.error('Failed to send email to', prog.email, e);
     }
@@ -172,15 +150,15 @@ ${existing.userText}
 
 הסוכן האוטומטי ידלג על הדיווח הזה מעתה - יש לענות בעצמכם בשרשור.
       `.trim();
-      const htmlBody = renderGenericEmailHtml({
-        title: 'התבקש מענה אנושי בדיווח תקלה',
-        bodyText: textBody
+      const htmlBody = renderHumanRequestedEmailHtml({
+        reporterName,
+        pageTitle: existing.title || 'לא צוין',
+        description: existing.userText
       });
       sendProgrammerEmail({
-        subject: `${reporterName} מבקש/ת מענה אנושי - דיווח תקלה`,
+        subject: emailSubject('errorReportHumanRequested', { reporterName }),
         textBody,
-        htmlBody,
-        fileName: 'בקשה למענה אנושי.txt'
+        htmlBody
       }).catch((e) => console.error('Failed to send needsHuman email', e));
     }
 
@@ -245,21 +223,7 @@ export async function POST(request) {
     });
 
     if (programmers.length > 0) {
-      // Determine Script URL from settings
-      const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'].includes(s.key));
-      const linkA = settings.find(s => s.key === 'email_link_a')?.value;
-      const linkB = settings.find(s => s.key === 'email_link_b')?.value;
-      const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
-      const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
-
-      let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-
-      // For bugs, use B if strategy is 'all_b' OR 'bugs_b_rest_a'
-      if ((strategy === 'all_b' || strategy === 'bugs_b_rest_a') && linkB) {
-        scriptUrl = linkB;
-      } else if (linkA) {
-        scriptUrl = linkA;
-      }
+      const gmachName = (await getAllCachedSettings()).find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
 
       const hiddenData = JSON.stringify({
         employeeName, time, title, url, queryParams, lastButtons, userText, status: 'OPEN', reportId: newReport.id
@@ -287,20 +251,16 @@ ${hiddenData}
         employeeName, time, title, url, userText, lastButtons, gmachName
       });
 
+      // ה-body הטקסטואלי כולל את בלוק ה-AI_DATA (למכונה); ה-HTML לא כולל אותו (ר' התבנית)
       for (const prog of programmers) {
         try {
-          await fetch(scriptUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: prog.email,
-              cc: '',
-              subject: 'דיווח תקלה ממערכת הגמח - לטיפול AI',
-              body: emailContent,
-              htmlBody,
-              fileName: 'דוח שגיאה.txt',
-              fileContent: Buffer.from('Error Report').toString('base64')
-            })
+          await sendSystemEmail({
+            to: prog.email,
+            subject: emailSubject('errorReportNew'),
+            body: emailContent,
+            html: htmlBody,
+            bugRouting: true,
+            rtlBody: false // הגוף כולל בלוק JSON שסוכן ה-AI קורא - לא מוסיפים לו תווי כיוון
           });
         } catch (e) {
           console.error('Failed to send error report to', prog.email, e);

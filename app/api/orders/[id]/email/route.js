@@ -3,8 +3,9 @@ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../../lib/prisma';
 import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../../../lib/hebrewDate';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
-import { renderGenericEmailHtml, renderAttachmentsGuideTable, renderAttachmentsGuideText } from '../../../../../lib/emailTemplates';
-import { normalizeAttachments } from '@/lib/mailer';
+import { renderOrderCardEmailHtml } from '../../../../../lib/emailTemplates';
+import { normalizeAttachments, postToMailer } from '@/lib/mailer';
+import { emailSubject } from '@/lib/emailCatalog';
 import { addDaysSkippingWeekends } from '../../../../../lib/inventory';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
@@ -455,11 +456,6 @@ export async function POST(request, { params }) {
 
     const { pdfBase64 } = body;
 
-    // הגוף המלווה של המייל (מה שרואים בתיבת הדואר; הדוח המלא מצורף כ-PDF) - עטוף
-    // בתבנית המעוצבת המשותפת. סקריפט ה-Apps Script מעביר את bodyText כ-htmlBody של
-    // ההודעה, כך שהוא יכול לשאת HTML מלא.
-    const accompanyingText = `מצורף כרטיס ${printType === 'rental' ? 'השכרה' : 'הזמנה'} עבור אירוע בתאריך ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '')}.`;
-
     // רשימת קבצים מלאה: ה-PDF של ההזמנה + קבצים נוספים שהמשתמש צרף,
     // כל אחד עם יעד בהתאמה (מייל / דרייב / גם וגם) + טבלת הוראות מסודרת.
     const pdfEntry = pdfBase64 ? [{
@@ -471,17 +467,15 @@ export async function POST(request, { params }) {
     }] : [];
     const extraNormalized = normalizeAttachments({ attachments: extraRaw, sendMode });
     const allFiles = [...pdfEntry, ...extraNormalized];
-    const guideTableHtml = renderAttachmentsGuideTable(allFiles);
-    const guideText = renderAttachmentsGuideText(allFiles);
-    const accompanyingHtmlBase = renderGenericEmailHtml({
-      title: `${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}`,
-      bodyText: accompanyingText,
+    const accompanyingHtml = renderOrderCardEmailHtml({
+      orderId: order.orderId,
+      printType,
+      customerName: [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' '),
+      eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : ''),
       gmachName: printSettings.gmachName,
-      subtitle: 'המסמך המלא מצורף כקובץ PDF'
+      gmachAddress: printSettings.gmachAddress,
+      gmachPhone: printSettings.gmachPhone
     });
-    const accompanyingHtml = guideTableHtml
-      ? accompanyingHtmlBase.replace('</div>\n      </div>\n    </body>', `${guideTableHtml}</div>\n      </div>\n    </body>`)
-      : accompanyingHtmlBase;
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
     const driveFolderId = (driveFolderIdRaw || driveFolderDefault || '').trim();
@@ -491,13 +485,13 @@ export async function POST(request, { params }) {
       action: "sendGemachOrderEmail",
       to: email,
       cc: '',
-      subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
+      subject: emailSubject('orderCard', { orderId: order.orderId }),
       htmlBody: htmlBody,
       bodyText: accompanyingHtml,
       fileName: `הזמנה ${order.orderId}.pdf`,
 
       // Keep old parameters for backwards compatibility just in case the old script is used
-      body: `${pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody}${guideText}`,
+      body: pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody,
       fileContent: pdfBase64 || '',
       // פורמט מורחב: כל הקבצים + יעד + דרייב עם הרשאת הורדה מלאה לנמען
       attachments: allFiles.map(a => ({
@@ -514,44 +508,16 @@ export async function POST(request, { params }) {
       grantFullDownload: true
     };
 
-    // Determine Script URL
-    const linkA = settingsData.find(s => s.key === 'email_link_a')?.value;
-    const linkB = settingsData.find(s => s.key === 'email_link_b')?.value;
-    const strategy = settingsData.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
-
-    let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-    
-    if (strategy === 'all_b' && linkB) {
-      scriptUrl = linkB;
-    } else if (linkA) {
-      scriptUrl = linkA;
-    }
-    
-    const response = await fetch(scriptUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(googlePayload)
-    });
-
-    const responseText = await response.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      result = { status: 'error', message: responseText };
-    }
-
-    const isSuccess = result.status === 'success';
+    // כתובת ה-Apps Script נפתרת מרכזית (lib/mailer.js) לפי email_link_a/b + אסטרטגיית הניתוב
+    const { isSuccess, result } = await postToMailer(googlePayload);
     const driveLinks = Array.isArray(result.driveLinks) ? result.driveLinks : (Array.isArray(result.driveFiles) ? result.driveFiles : []);
 
     await prisma.emailLog.create({
       data: {
         to: email,
         cc: null,
-        subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
-        body: `HTML body sent to App Script for PDF conversion${guideText}`,
+        subject: emailSubject('orderCard', { orderId: order.orderId }),
+        body: 'HTML body sent to App Script for PDF conversion',
         fileName: allFiles.map(a => a.fileName).join(', ') || `הזמנה ${order.orderId}.pdf`,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess
@@ -570,7 +536,7 @@ export async function POST(request, { params }) {
           entityId: String(order.orderId),
           action: 'EMAIL_SENT',
           changesJson: JSON.stringify({
-            subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
+            subject: emailSubject('orderCard', { orderId: order.orderId }),
             to: email,
             type: printType,
             sendMode,

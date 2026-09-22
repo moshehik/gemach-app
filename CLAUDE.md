@@ -111,6 +111,16 @@ shared HTML template in [lib/emailTemplates.js](lib/emailTemplates.js). See
 [EMAILS.md](EMAILS.md) for the full list of send sites, attachment filenames, and how to
 add a new templated email.
 
+**Unified email library (2026-09-22):** [lib/emailCatalog.js](lib/emailCatalog.js) is the single
+registry of all 16 emails (trigger, recipients, subject, template, gate setting, source file) —
+subjects live only there (`emailSubject(id, params)`). Every email goes through `sendSystemEmail` /
+`postToMailer` in [lib/mailer.js](lib/mailer.js) — never a direct `fetch` to Apps Script. All
+Hebrew email text is RTL-forced (inline `dir`/`direction`, `rtlPlainText` for the text part), and
+the fake `הודעה.txt` placeholder attachment is flagged `noAttachment` and hidden from the body.
+The Apps Script fix that makes `noAttachment` actually drop the attachment ([docs/gas-mailer-live.gs](docs/gas-mailer-live.gs))
+was deployed 2026-09-22 (versions 6/7 of both live deployments). `/admin/email-test` sends a sample of every
+email type to an address you type (samples in [lib/emailSamples.js](lib/emailSamples.js)).
+
 ## Keep-alive (2026-09-01 בוטל)
 Task GemachApp-NeonKeepAlive כל 5 דקות (07:55-21:55) בוטל ונמחק לבקשת הבעלים - Neon ישן כדי לחסוך compute. נשאר רק cron יומי 04:00 ב-vercel.json. התכנית החדשה: דגל ב-Vercel יעיר את Neon רק כשיש שינויים. קובץ scripts/neon_keepalive.ps1 מסומן DEPRECATED.
 
