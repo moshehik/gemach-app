@@ -50,24 +50,29 @@ export default function PricelistManagement() {
   // ה-DB דרך /api/auth/verify-pin, לא רק בדיקה מול הרשימה שכבר בדפדפן (שהייתה משווה את
   // הקוד שהוקלד ל-UUID הפנימי של העובד, שאף עובד לא מקליד בפועל כ"קוד עובד" שלו - ולכן
   // אף אחד לא הצליח לפתוח את הנעילה).
+  // הרמה חייבת להיות 'הנהלה ראשית' (roleId 0/2) ולא 'מנהל' (roleId 1/2) - כך בדיוק
+  // נבדקת ההרשאה בפועל ב-DELETE/PUT של app/api/pricelists/[id]/route.js ובנעילת הדף
+  // עצמה (HEAD_MANAGEMENT_ROLES). עם 'מנהל' עובד מסווג הנהלה ראשית (roleId 0, לא 1
+  // ולא 2) שמקליד את הסיסמה האמיתית שלו נדחה כאן ("אין הרשאת מנהל/מתכנת") אף שהוא
+  // בדיוק מי שאמור להיות מורשה - זו הייתה הסיבה ל"שגיאה במחיקה גם אחרי הזנת קוד מנהל".
   const handleLockToggle = async () => {
-    const authResult = await window.customAuthPrompt('נדרש אישור מנהל/מתכנת כדי לשנות את נעילת המחיקה.', 'מנהל');
+    const authResult = await window.customAuthPrompt('נדרש אישור הנהלה ראשית/מתכנת כדי לשנות את נעילת המחיקה.', 'הנהלה ראשית');
     if (!authResult || !authResult.pin) return;
     try {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'הנהלה ראשית' })
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או שאין הרשאות מתאימות (נדרש סיווג מנהל/מתכנת).');
+        alert(data.error || 'סיסמה שגויה או שאין הרשאות מתאימות (נדרש סיווג הנהלה ראשית/מתכנת).');
         return;
       }
       setIsLocked(prev => !prev);
     } catch (e) {
       console.error(e);
-      alert('שגיאה באימות קוד עובד/מנהל.');
+      alert('שגיאה באימות קוד הנהלה ראשית/מנהל.');
     }
   };
 
