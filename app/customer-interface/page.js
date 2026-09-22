@@ -796,7 +796,7 @@ export default function CustomerInventoryViewer() {
           <td style="font-weight:bold;">${getModelDisplayName(model)}</td>
           <td>${model.barcodePrefix || model.id || ''}</td>
           <td style="font-weight:bold;">${totalAvailable}</td>
-          <td>${sizesHtml || 'אין מלאי'}</td>
+          <td style="direction:ltr; text-align:right;">${sizesHtml || 'אין מלאי'}</td>
         </tr>
       `;
     });
@@ -1386,7 +1386,7 @@ export default function CustomerInventoryViewer() {
                             </td>
                             <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--sage)' : 'var(--brick)' }}>{totalAvailable}</td>
                             <td>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', direction: 'ltr' }}>
                                 {visibleSizesArr.length === 0 ? (
                                   <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
                                 ) : visibleSizesArr.map(([sName, sData]) => (
@@ -1395,7 +1395,7 @@ export default function CustomerInventoryViewer() {
                                     onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
                                     title={`מידה ${sName}: ${sData.available} פנויות`}
                                     style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                    {sName} <span style={{ opacity: 0.45 }}>· {sData.available}</span>
+                                    {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
                                   </span>
                                 ))}
                               </div>
@@ -1455,7 +1455,7 @@ export default function CustomerInventoryViewer() {
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}</span>
+                                {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
                               </span>
                             ))
                           )}
@@ -1510,7 +1510,7 @@ export default function CustomerInventoryViewer() {
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}</span>
+                                {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
                               </span>
                             ))
                           )}
