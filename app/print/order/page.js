@@ -265,18 +265,20 @@ export default function PrintOrderPage() {
               {/* 5c1be668 - היה מותנה ב-printType==='rental', אבל אף מסך באפליקציה לא
                   פותח את דף ההדפסה עם type=rental בפועל (רק type=order, מיד ביצירת
                   ההזמנה) - כך שפרטי ההחזרה מעולם לא הופיעו בכרטיס המודפס בפועל, בניגוד
-                  לתאריך הקבלה שמוצג תמיד למטה בלי תנאי דומה. */}
+                  לתאריך הקבלה שמוצג תמיד למטה בלי תנאי דומה.
+                  05d34467 (2026-09-22): קבלת השמלות מוצגת לפני פרטי ההחזרה - כרונולוגית
+                  קבלת השמלות קודמת לאירוע, וההחזרה אחריו. */}
+              {pickupDate && (
+                <div className="return-details-box">
+                  <strong>קבלת השמלות:</strong> ביום {getHebrewWeekdayLabel(pickupDate)} {getHebrewDateString(pickupDate)} בשעה {printSettings?.pickupHours || STANDARD_PICKUP_HOURS} בדיוק.
+                </div>
+              )}
               {returnByDate && (
                 <div className="return-details-box">
                   <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
                     <div className="belt-notice-line">{printSettings.beltNotice}</div>
                   )}
-                </div>
-              )}
-              {pickupDate && (
-                <div className="return-details-box">
-                  <strong>קבלת השמלות:</strong> ביום {getHebrewWeekdayLabel(pickupDate)} {getHebrewDateString(pickupDate)} בשעה {printSettings?.pickupHours || STANDARD_PICKUP_HOURS} בדיוק.
                 </div>
               )}
               <div className="return-details-box">
