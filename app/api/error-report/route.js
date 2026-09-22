@@ -176,11 +176,18 @@ ${threadText}
         description: existing.userText,
         replies
       });
-      sendProgrammerEmail({
-        subject: emailSubject('errorReportHumanRequested', { reporterName }),
-        textBody,
-        htmlBody
-      }).catch((e) => console.error('Failed to send needsHuman email', e));
+      // ממתינים לשליחה בפועל (לא "יורים ושוכחים") - בפונקציית שרת ב-Vercel אין
+      // ערובה שעבודה לא ממתנת תמשיך לרוץ אחרי שהתשובה כבר נשלחה ללקוח; ה-invocation
+      // עלול "לקפוא" באמצע לפני שהמייל בכלל יצא.
+      try {
+        await sendProgrammerEmail({
+          subject: emailSubject('errorReportHumanRequested', { reporterName }),
+          textBody,
+          htmlBody
+        });
+      } catch (e) {
+        console.error('Failed to send needsHuman email', e);
+      }
     }
 
     return NextResponse.json({ success: true, report: updated });
