@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Resp
 
 const COLORS = ['var(--primary-solid)', 'var(--success)', 'var(--info)', 'var(--accent)', 'var(--danger)'];
 
-export default function DashboardChartsImpl({ revenueByMethod, revenueTrend }) {
+export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, revenueTrendWeekly, revenueTrendMonthly }) {
   return (
     <div className="form-grid" style={{ marginTop: '1.5rem' }}>
 
@@ -62,6 +62,56 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend }) {
                 <Tooltip formatter={(value) => `₪${value}`} />
                 <Legend />
                 <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--primary-solid)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <div className="card-title-row">
+            <svg className="icon"><use href="#i-activity" /></svg>
+            <h3>הכנסות שבועיות (תקופה אחרונה)</h3>
+          </div>
+        </div>
+        <div className="card-pad">
+          <div style={{ height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={revenueTrendWeekly}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <XAxis dataKey="week" />
+                <YAxis />
+                <Tooltip formatter={(value) => `₪${value}`} />
+                <Legend />
+                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--info)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <div className="card-title-row">
+            <svg className="icon"><use href="#i-activity" /></svg>
+            <h3>הכנסות חודשיות (תקופה אחרונה)</h3>
+          </div>
+        </div>
+        <div className="card-pad">
+          <div style={{ height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={revenueTrendMonthly}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => `₪${value}`} />
+                <Legend />
+                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--success)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
