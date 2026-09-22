@@ -24,10 +24,14 @@ export default function LoginScreen({ isModal = false, onClose }) {
   // itself, and report 2a4a2af4 which kept recurring even after that fix). A random
   // per-mount `name` means the browser never has a stable key to accumulate/match against -
   // same fix already applied to the order-item model search field (report 0a88cf56 follow-up).
-  const employeeAutofillGuardNameRef = useRef(null);
-  if (!employeeAutofillGuardNameRef.current) {
-    employeeAutofillGuardNameRef.current = `no-autofill-${Math.random().toString(36).slice(2)}`;
-  }
+  // Generated client-side only (useEffect, not during render) so the server-rendered HTML
+  // and the client's pre-hydration render both have no `name` attribute here - computing it
+  // during render (even via a ref) makes the server and client pick different random values
+  // for the same paint, which React flags as a hydration mismatch on this exact attribute.
+  const [employeeAutofillGuardName, setEmployeeAutofillGuardName] = useState(undefined);
+  useEffect(() => {
+    setEmployeeAutofillGuardName(`no-autofill-${Math.random().toString(36).slice(2)}`);
+  }, []);
 
   // Trusted-device fast path: this computer may have been marked trusted by a manager
   // (see /admin/trusted-devices), which lets whoever logs in from it use just the last 4
@@ -284,7 +288,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
             // שהוקלדו בעבר באותו שדה - שתי רשימות זו על גבי זו (דיווח 2a4a2af4).
             // עדיין לא הספיק לבד - לשדה אין name, אז כרום נופל חזרה על ה-id הקבוע
             // ("login-employee") כמפתח להיסטוריה שלו; name אקראי מונע את זה לגמרי.
-            name={employeeAutofillGuardNameRef.current}
+            name={employeeAutofillGuardName}
             autoComplete="new-password"
           />
           {selectedEmployee && !isFetchingEmployees && (
