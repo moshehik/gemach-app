@@ -71,6 +71,7 @@ export default function ModernDressItemsTab({
   const [rowSaving, setRowSaving] = useState(false);
   const [rowError, setRowError] = useState('');
   const [quickMovingId, setQuickMovingId] = useState(null);
+  const [quickCartonSavingId, setQuickCartonSavingId] = useState(null);
 
   const [newItem, setNewItem] = useState({ sizeText: '', serialNumber: '', dressBarcode: '', location: '' });
   const [adding, setAdding] = useState(false);
@@ -259,6 +260,33 @@ export default function ModernDressItemsTab({
       alert('שגיאה בתקשורת עם השרת');
     } finally {
       setQuickMovingId(null);
+    }
+  };
+
+  // עדכון מהיר של מספר קרטון - כמו quickSetLocation, בלי לפתוח מצב עריכה מלאה
+  // (התבקש כי מיקום ניתן לשינוי מהיר דרך הבורר, אבל מספר קרטון היה נעול לעריכה מלאה בלבד).
+  const quickSetCartonNumber = async (item, value) => {
+    const trimmed = (value || '').trim();
+    if (trimmed === (item.cartonNumber || '')) return;
+    if (quickCartonSavingId) return;
+    setQuickCartonSavingId(item.id);
+    try {
+      const res = await fetch(`/api/dresses/items/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartonNumber: trimmed || null })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'שגיאה בעדכון מספר קרטון');
+        return;
+      }
+      onItemsChange(items.map(i => i.id === item.id ? { ...i, ...data } : i));
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בתקשורת עם השרת');
+    } finally {
+      setQuickCartonSavingId(null);
     }
   };
 
@@ -598,7 +626,16 @@ export default function ModernDressItemsTab({
                               onKeyDown={e => { if (e.key === 'Enter') saveEdit(item); if (e.key === 'Escape') cancelEdit(); }}
                             />
                           ) : (
-                            <span>{item.cartonNumber || '—'}</span>
+                            <input
+                              type="text"
+                              className="input"
+                              style={{ padding: '6px 9px', fontSize: '12.5px', width: '90px' }}
+                              defaultValue={item.cartonNumber || ''}
+                              key={item.cartonNumber || ''}
+                              disabled={quickCartonSavingId === item.id || item.isDeleted}
+                              onBlur={e => quickSetCartonNumber(item, e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                            />
                           )}
                         </td>
 

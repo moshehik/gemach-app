@@ -277,14 +277,24 @@ export default function CustomerPage({ params }) {
               </div>
             </div>
             <div className="field">
-              <label>טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <label>
+                טלפון נוסף{' '}
+                {settings.require_customer_email !== 'true' && !String(customer.email || '').trim() && (
+                  <span style={{ color: 'var(--danger)' }}>*</span>
+                )}
+              </label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
                 <input type="text" className="input" name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={handleChange} />
               </div>
             </div>
             <div className="field">
-              <label>דוא&quot;ל {settings.require_customer_email === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+              <label>
+                דוא&quot;ל{' '}
+                {(settings.require_customer_email === 'true' || !String(customer.phone2 || '').trim()) && (
+                  <span style={{ color: 'var(--danger)' }}>*</span>
+                )}
+              </label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-mail" /></svg>
                 <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} required={settings.require_customer_email === 'true'} />
@@ -309,10 +319,12 @@ export default function CustomerPage({ params }) {
               <label>תעודת זהות (לעריכה/ביטול) {settings.require_customer_id_number === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
               <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
             </div>
-            <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
-              <input type="checkbox" id="newMarketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={handleChange} />
-              <label htmlFor="newMarketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
-            </div>
+            {settings.hide_marketing_consent_field !== 'true' && (
+              <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
+                <input type="checkbox" id="newMarketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={handleChange} />
+                <label htmlFor="newMarketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
+              </div>
+            )}
           </div>
 
           <div className="field" style={{ marginBottom: 0 }}>

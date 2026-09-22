@@ -89,7 +89,7 @@ export async function PUT(request, { params }) {
       const allSettings = await getAllCachedSettings();
       const sMap = new Map(allSettings.map(s => [s.key, s.value]));
       const errors = [];
-      if (sMap.get('require_marketing_consent') === 'true') {
+      if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
       }
       if (sMap.get('strict_mandatory_fields') === 'true') {

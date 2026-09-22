@@ -131,7 +131,7 @@ export async function POST(request) {
         if (!String(body.street || '').trim()) errors.push('רחוב חובה');
         if (!String(body.houseNum || '').trim()) errors.push('מספר בית חובה');
       }
-      if (sMap.get('require_marketing_consent') === 'true') {
+      if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
       }
       // require_customer_id_number - הגדרה ייעודית לגמח נווה יעקב בלבד (מופעלת רק
