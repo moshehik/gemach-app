@@ -72,7 +72,11 @@ const summarizeListDiffCounts = (snapList = [], currList = []) => {
 // נדלק גם על הוספת חיוב ידני / תשלום בלבד, ואז ה-preview רץ מיותר ומחליף את החיובים
 // האוטומטיים השמורים בתוצאה שחושבה מחדש - שעלולה להיות ריקה (למשל כשלפריטים אין
 // dressItem.dress מקושר, ר' הסינון ב-preview-pricing/route.js) ואז "החיובים נעלמים".
-const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate'];
+// isDelivery/deliveryCity/deliveryDirection נוספו כאן כי בלעדיהם, סימון/שינוי משלוח לא
+// היה מפעיל את החישוב המחדש למטה בכלל, גם כשכן עוברים לטאב תשלומים - preview-pricing
+// עכשיו כן יודע לחשב משלוח (ר' computeDeliveryObligationPreview), אבל בלי השדות האלה
+// כאן pricingInputsChanged היה מחזיר false ומדלג על הקריאה מלכתחילה (דיווח 6124472b).
+const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection'];
 const pricingInputsChanged = (snap, currItems, currOrder) => {
   if (!snap) return false;
   if (JSON.stringify(snap.items || []) !== JSON.stringify(currItems || [])) return true;
@@ -163,6 +167,12 @@ export default function OrderDetailsPage({ params }) {
   // יציאה - בניגוד לחוב, זה לא חוסם לצמיתות: אם העובד סגר את החלון בלי למלא (למשל אין לו
   // כרגע את פרטי הבנק), לא מונעים ממנו לצאת בניסיון הבא.
   const bankDetailsPromptedOnExitRef = useRef(false);
+  // חלון "סיכום ההזמנה" שמוצג לפני שמירה בפועל כש-enable_order_edit_summary_confirm
+  // מופעל (ר' confirmSaveSummaryIfNeeded והרינדור למטה). null = סגור.
+  const [summaryConfirmData, setSummaryConfirmData] = useState(null);
+  // מחזיק את פונקציית ה-resolve של ה-Promise שמחזירה confirmSaveSummaryIfNeeded, כדי
+  // שכפתורי החלון (שמעבר לרינדור הזה) יוכלו "לענות" לקריאה שממתינה ב-handleSave/handleExit.
+  const summaryConfirmResolverRef = useRef(null);
   const [isPastEvent, setIsPastEvent] = useState(false);
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
@@ -215,6 +225,12 @@ export default function OrderDetailsPage({ params }) {
   // הטיוטה המקומית (ר' האפקט למטה) הייתה גלובלית וללא אפשרות כיבוי. ברירת המחדל true
   // שומרת על ההתנהגות הקודמת אצל כל גמח שלא הגדיר את המפתח הזה ב-DB שלו במפורש.
   const [enableLocalDrafts, setEnableLocalDrafts] = useState(true);
+  // enable_order_edit_summary_confirm - מוגדר כרגע רק ב-Neve יעקב (ראה code-fixes-vs-
+  // settings-scope: מפתח קיים אצל שני הגמחים, אבל הערך "true" רק אצל מי שביקש את זה).
+  // כשמופעל, handleSave/handleExit עוצרים לפני השמירה בפועל ומציגים חלון סיכום+חוב
+  // (ר' confirmSaveSummaryIfNeeded ו-OrderEditSummaryModal) - בדומה לשלבי סיכום/תשלום
+  // באשף הזמנה חדשה, שם אין תלות ב-tab (זה כרטיס אחד עם טאבים, לא אשף שלבים).
+  const [enableEditSummaryConfirm, setEnableEditSummaryConfirm] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -230,6 +246,8 @@ export default function OrderDetailsPage({ params }) {
         if (reqManagerCode) setRequireManagerCodeForItems(reqManagerCode.value === 'true');
         const localDrafts = data.find(s => s.key === 'enable_local_order_drafts');
         if (localDrafts) setEnableLocalDrafts(localDrafts.value === 'true');
+        const editSummaryConfirm = data.find(s => s.key === 'enable_order_edit_summary_confirm');
+        if (editSummaryConfirm) setEnableEditSummaryConfirm(editSummaryConfirm.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -365,7 +383,10 @@ export default function OrderDetailsPage({ params }) {
               isAbroad: order.isAbroad,
               isWeekdayEvent: order.isWeekdayEvent,
               fromDate: order.fromDate,
-              toDate: order.toDate
+              toDate: order.toDate,
+              isDelivery: order.isDelivery,
+              deliveryCity: order.deliveryCity,
+              deliveryDirection: order.deliveryDirection
             }
           })
         });
@@ -385,7 +406,7 @@ export default function OrderDetailsPage({ params }) {
     }, 400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.orderId, hasUnsavedChanges]);
+  }, [activeTab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.orderId, hasUnsavedChanges]);
 
   // חוסם סגירה/רענון של החלון רק כשבאמת יש שינויים שלא נשמרו.
   // יתרת חוב לא נחסמת כאן: הדפדפן מתעלם מהודעה מותאמת ומציג תמיד טקסט גנרי ("ייתכן שהשינויים
@@ -524,6 +545,69 @@ export default function OrderDetailsPage({ params }) {
     return send({ ...payload, overwriteConflict: true });
   };
 
+  // מציג את חלון "סיכום ההזמנה" (פריטים/משלוח, סה"כ, שולם, יתרה) לפני שמירה בפועל -
+  // בדומה לשלבי סיכום/תשלום באשף הזמנה חדשה - רק כש-enable_order_edit_summary_confirm
+  // מופעל (נכון להיום: נווה יעקב בלבד, ר' code-fixes-vs-settings-scope). כשהמתג כבוי
+  // מחזיר proceed:true מיד, בלי לפגוע בהתנהגות הקיימת אצל שאר הגמחים. משתמש בתצוגה
+  // המקדימה (preview-pricing, עכשיו כוללת גם משלוח - ר' computeDeliveryObligationPreview)
+  // כדי שהסכום שמוצג יהיה מדויק - כולל תוספת שנוצרת רק בצד השרת, בדיוק החוב שהיה
+  // "נעלם" בדיווח 6124472b. מחזיר גם previewObligations/previewTotal כדי שהקורא
+  // (handleSave/handleExit) יוכל להשתמש בהם ישירות בבדיקת החוב שאחריו, במקום ב-state
+  // הישן (totalRequired מה-closure הנוכחי לא מתעדכן רק מ-setObligations כאן).
+  const confirmSaveSummaryIfNeeded = async (currentOrder) => {
+    if (!enableEditSummaryConfirm || !currentOrder?.orderId) return { proceed: true };
+
+    let previewObligations = obligations;
+    let previewTotal = totalRequired;
+    try {
+      const res = await fetch(`/api/orders/${currentOrder.orderId}/preview-pricing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items,
+          order: {
+            eventDate: currentOrder.eventDate,
+            isAbroad: currentOrder.isAbroad,
+            isWeekdayEvent: currentOrder.isWeekdayEvent,
+            fromDate: currentOrder.fromDate,
+            toDate: currentOrder.toDate,
+            isDelivery: currentOrder.isDelivery,
+            deliveryCity: currentOrder.deliveryCity,
+            deliveryDirection: currentOrder.deliveryDirection
+          }
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const manual = obligations.filter(o => o.isManual !== false && !o.isDeleted);
+        const autoPreview = (data.newObligations || []).map(o => ({ ...o, isPreview: true }));
+        previewObligations = [...manual, ...autoPreview];
+        previewTotal = previewObligations.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+      }
+    } catch (err) {
+      console.error('Failed to compute pre-save summary preview', err);
+      // ממשיכים עם ה-state הקיים (פחות מדויק, אבל לא חוסמים שמירה בגלל תקלת תצוגה)
+    }
+
+    return new Promise(resolve => {
+      summaryConfirmResolverRef.current = (confirmed) => {
+        setSummaryConfirmData(null);
+        resolve(confirmed ? { proceed: true, previewObligations, previewTotal } : { proceed: false });
+      };
+      setSummaryConfirmData({
+        obligations: previewObligations,
+        totalRequired: previewTotal,
+        totalPaid
+      });
+    });
+  };
+
+  const handleSummaryConfirmDecision = (confirmed) => {
+    const resolve = summaryConfirmResolverRef.current;
+    summaryConfirmResolverRef.current = null;
+    if (resolve) resolve(confirmed);
+  };
+
   // Save changes
   const handleSave = async (overrideOrder = null, { promptPrint = false } = {}) => {
     setSaving(true);
@@ -604,6 +688,15 @@ export default function OrderDetailsPage({ params }) {
       }
     }
 
+    const summaryConfirmResult = await confirmSaveSummaryIfNeeded(currentOrder);
+    if (!summaryConfirmResult.proceed) {
+      setSaving(false);
+      return;
+    }
+    if (summaryConfirmResult.previewObligations) {
+      setObligations(summaryConfirmResult.previewObligations);
+    }
+
     let debtApprovedBy = null;
     // CHECK DEBT AND REQUIRE APPROVAL TO SAVE - but only when this save actually creates or
     // changes the debt. An order that was already unpaid before the card was opened, with no
@@ -611,7 +704,10 @@ export default function OrderDetailsPage({ params }) {
     // being saved (e.g. saving an unrelated notes/date change). Compare against the balance
     // captured when the card was loaded (openedDebt) rather than always checking "is there
     // any debt at all" - that comparison never distinguished pre-existing debt from new debt.
-    const currentDebt = totalRequired - totalPaid;
+    // summaryConfirmResult.previewTotal, when present, is the just-fetched accurate preview
+    // (includes delivery) - more reliable than the possibly-stale totalRequired from this
+    // render's closure, which setObligations above can't update mid-execution.
+    const currentDebt = (summaryConfirmResult.previewTotal !== undefined ? summaryConfirmResult.previewTotal : totalRequired) - totalPaid;
     const debtUnchangedSinceOpen = openedDebt !== null
       && Math.round(currentDebt * 100) === Math.round(openedDebt * 100);
     if (currentDebt > 0 && !debtUnchangedSinceOpen) {
@@ -897,11 +993,19 @@ export default function OrderDetailsPage({ params }) {
         return;
       }
     }
+    const exitSummaryConfirmResult = await confirmSaveSummaryIfNeeded(order);
+    if (!exitSummaryConfirmResult.proceed) return;
+    if (exitSummaryConfirmResult.previewObligations) {
+      setObligations(exitSummaryConfirmResult.previewObligations);
+    }
+
     let exitDebtApprovedBy = typeof debtApproved === 'string' ? debtApproved : null;
     // דיווח לקוח (הגמח הראשי): יציאה מהכרטיס דרשה אישור מנהל גם כשהחוב היה קיים מראש ולא
     // השתנה בעריכה הזו (למשל שינוי הערה בלבד) - בניגוד לכפתור "שמירה" למעלה, שכבר מדלג על
     // האישור במקרה הזה (debtUnchangedSinceOpen). ליישר את שני המסלולים לאותה התנהגות.
-    const exitCurrentDebt = totalRequired - totalPaid;
+    // exitSummaryConfirmResult.previewTotal, כשקיים, הוא התצוגה המקדימה המדויקת שזה עתה
+    // התקבלה (כולל משלוח) - ר' אותה הערה ב-handleSave.
+    const exitCurrentDebt = (exitSummaryConfirmResult.previewTotal !== undefined ? exitSummaryConfirmResult.previewTotal : totalRequired) - totalPaid;
     const exitDebtUnchangedSinceOpen = openedDebt !== null
       && Math.round(exitCurrentDebt * 100) === Math.round(openedDebt * 100);
     if (exitCurrentDebt > 0 && !exitDebtUnchangedSinceOpen && !exitDebtApprovedBy) {
@@ -1339,6 +1443,67 @@ export default function OrderDetailsPage({ params }) {
             <strong style={{ fontSize: '20px' }}>ההזמנה נשמרה בהצלחה!</strong>
           </div>
         </div>
+      )}
+
+      {/* חלון "סיכום ההזמנה" לפני שמירה בפועל - רק כש-enable_order_edit_summary_confirm
+          מופעל (ר' confirmSaveSummaryIfNeeded). בדומה לשלבי סיכום/תשלום באשף הזמנה חדשה. */}
+      {summaryConfirmData && typeof document !== 'undefined' && createPortal(
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div className="modal" style={{ margin: 0, maxWidth: '520px', width: '95%' }}>
+            <div className="modal-head">
+              <strong>סיכום ההזמנה לפני שמירה</strong>
+            </div>
+            <div className="modal-body">
+              {/* מציגים ישירות את רשימת החיובים (obligations) ולא את items - החיובים כבר
+                  כוללים שורה לכל פריט (עם שם+מידה, ר' computeOrderObligations) בנוסף
+                  לתיקונים/דמי ביטול/משלוח, ומסתכמים בדיוק לסכום למטה - הצגת items בנפרד
+                  הייתה משכפלת את שורות הפריטים ומחסירה שורות אחרות (תיקון/ביטול). */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                {summaryConfirmData.obligations.filter(o => !o.isDeleted).map((o, idx) => (
+                  <div key={o.id || `${o.description}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '13.5px' }}>
+                    <span>{o.description || 'חיוב'}</span>
+                    <span style={{ direction: 'ltr' }}>₪{(parseFloat(o.amount) || 0).toLocaleString('he-IL')}</span>
+                  </div>
+                ))}
+                {summaryConfirmData.obligations.filter(o => !o.isDeleted).length === 0 && (
+                  <div className="hint" style={{ color: 'var(--text-3)' }}>אין חיובים בהזמנה זו.</div>
+                )}
+              </div>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px' }}>
+                  <span>סה&quot;כ לתשלום</span>
+                  <span style={{ direction: 'ltr', fontWeight: 700 }}>₪{summaryConfirmData.totalRequired.toLocaleString('he-IL')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px' }}>
+                  <span>שולם עד כה</span>
+                  <span style={{ direction: 'ltr' }}>₪{summaryConfirmData.totalPaid.toLocaleString('he-IL')}</span>
+                </div>
+                {(() => {
+                  const balance = Math.round((summaryConfirmData.totalRequired - summaryConfirmData.totalPaid) * 100) / 100;
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700, color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                      <span>{balance > 0 ? 'יתרה לתשלום' : 'יתרת זכות/מאוזן'}</span>
+                      <span style={{ direction: 'ltr' }}>₪{Math.abs(balance).toLocaleString('he-IL')}</span>
+                    </div>
+                  );
+                })()}
+                {(summaryConfirmData.totalRequired - summaryConfirmData.totalPaid) > 0.01 && (
+                  <div className="hint" style={{ color: 'var(--text-3)', marginTop: '4px' }}>
+                    לאחר האישור תישמר ההזמנה ותועבר אוטומטית לטאב תשלומים להשלמת הגבייה.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => handleSummaryConfirmDecision(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" onClick={() => handleSummaryConfirmDecision(true)}>אישור ושמירה</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* באנר טיוטה מקומית: שינויים שלא נשמרו מביקור קודם בכרטיס (למשל דפדפן שנסגר).
