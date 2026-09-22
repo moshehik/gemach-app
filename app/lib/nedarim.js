@@ -15,7 +15,15 @@
  * @param {number} params.amount - The amount to charge.
  * @param {number} params.installments - Number of installments (Tashloumim).
  * @param {string} params.notes - Notes for the transaction (Avour).
- * @param {boolean} params.isKeva - Whether this is a recurring payment (Horaat Keva).
+ * @param {boolean} params.isKeva - Whether this is a recurring/standing-order authorization
+ *   (הוראת קבע / הו"ק), posted to DebitKeva.aspx instead of DebitCard.aspx. The legacy Access
+ *   VBA (תשלום_בנדרים_פלוס) took this same flag but had a bug where it always posted to the
+ *   Card endpoint regardless of the flag - fixed here, DebitKeva.aspx is used whenever isKeva
+ *   is true.
+ * @param {string} [params.day] - Day-of-month the recurring charge falls on (Nedarim's "Day"
+ *   param). Only meaningful when isKeva is true.
+ * @param {Date|string} [params.startFrom] - First/target charge date for the standing order
+ *   (Nedarim's "StartFrom" param, format DD/MM/YYYY). Only meaningful when isKeva is true.
  * @param {string} params.token - The institution's Nedarim Plus API token (Employee/Settings
  *   > nedarim_plus_token), if one has been issued for this Mosad. Optional: older Mosad
  *   accounts authenticate by Mosad ID alone.
@@ -32,6 +40,8 @@ export async function chargeNedarimPlus({
   installments = 1,
   notes = '',
   isKeva = false,
+  day = '',
+  startFrom = '',
   zeout = '',
   cvv = '',
   email = '',
@@ -42,7 +52,7 @@ export async function chargeNedarimPlus({
   // 2 - רינת לב: אם הועבר customEndpoint (URL מלא) - משתמשים בו, אחרת endpoint רגיל
   const url = customEndpoint || `https://www.matara.pro/nedarimplus/V6/Files/WebServices/${endpoint}`;
 
-  const bodyParams = new URLSearchParams({
+  const paramsObj = {
     Mosad: mosadId,
     ClientName: clientName,
     Adresse: address,
@@ -60,7 +70,17 @@ export async function chargeNedarimPlus({
     Mail: email || '',
     Currency: '1',
     MasofId: 'Online',
-  });
+  };
+
+  if (isKeva) {
+    const startFromStr = startFrom instanceof Date
+      ? `${String(startFrom.getDate()).padStart(2, '0')}/${String(startFrom.getMonth() + 1).padStart(2, '0')}/${startFrom.getFullYear()}`
+      : (startFrom || '');
+    if (day !== '' && day != null) paramsObj.Day = String(day);
+    if (startFromStr) paramsObj.StartFrom = startFromStr;
+  }
+
+  const bodyParams = new URLSearchParams(paramsObj);
 
   try {
     const response = await fetch(url, {
