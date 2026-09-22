@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { sendSystemEmail } from '@/lib/mailer';
+import {
+  renderPickupReminderEmailHtml, renderLateReturnEmailHtml, renderManualBarcodesEmailHtml,
+} from '@/lib/emailTemplates';
+import { emailSubject } from '@/lib/emailCatalog';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 
@@ -52,8 +56,11 @@ export async function GET(request) {
         const hebrewDate = o.eventDateHebrew || getHebrewDateString(o.eventDate);
         const itemsList = (o.items || []).map(i => i.description || i.sizeText || 'פריט').join(', ');
         const body = `שלום ${o.customer.firstName || ''} ${o.customer.lastName || ''},\n\nתזכורת: מחר (${hebrewDate}) איסוף ההזמנה #${o.orderId} ב${gmachName}.\nכתובת: ${gmachAddress}\nטלפון: ${gmachPhone}\nפריטים: ${itemsList}\n\nנשמח לראותכם!`;
-        const html = `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.6"><h2>תזכורת איסוף - הזמנה #${o.orderId}</h2><p>שלום ${o.customer.firstName || ''},</p><p>מחר <strong>${hebrewDate}</strong> איסוף ההזמנה שלך ב<strong>${gmachName}</strong>.</p><p>כתובת: ${gmachAddress}<br/>טלפון: ${gmachPhone}</p><p>פריטים: ${itemsList}</p></div>`;
-        const r = await sendSystemEmail({ to: email, subject: `תזכורת איסוף - הזמנה #${o.orderId} - ${gmachName}`, body, html });
+        const html = renderPickupReminderEmailHtml({
+          customerName: `${o.customer.firstName || ''} ${o.customer.lastName || ''}`.trim(), orderId: o.orderId, eventDate: hebrewDate,
+          items: (o.items || []).map(i => i.description || i.sizeText || 'פריט'), gmachName, gmachAddress, gmachPhone,
+        });
+        const r = await sendSystemEmail({ to: email, subject: emailSubject('pickupReminder', { orderId: o.orderId, gmachName }), body, html });
         if (r.success) results.pickupReminders++;
         else results.errors.push(`pickup ${o.orderId}: ${r.message}`);
       }
@@ -69,6 +76,8 @@ export async function GET(request) {
         // (05:30 UTC) וספר הזמנות שנפתחו "היום" בעוד היום עצמו כמעט לא התחיל, כך
         // שהמספר כמעט תמיד יצא 0 בלי קשר לפעילות האמיתית. עכשיו שני מספרים ברורים:
         // הזמנות חדשות שנפתחו אתמול (יום שלם, כמו שהתבקש), והזמנות שהאירוע שלהן היום.
+        // (שים לב: renderDailyReportEmailHtml החדשה מהספרייה המאוחדת מניחה רשימת
+        // הזמנות אחת ולא מתאימה לפורמט שני-המספרים הזה - נשאר HTML ידני כאן בכוונה.)
         const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayEnd = new Date(yesterday); yesterdayEnd.setHours(23,59,59,999);
         const todayEnd = new Date(today); todayEnd.setHours(23,59,59,999);
@@ -130,11 +139,14 @@ export async function GET(request) {
       for (const o of overdueOrders) {
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;
-        const subject = `תזכורת החזרה - הזמנה #${o.orderId}`;
+        const subject = emailSubject('lateReturnReminder', { orderId: o.orderId });
         const alreadySent = await prisma.emailLog.findFirst({ where: { subject, status: 'success' } });
         if (alreadySent) continue;
         const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${getHebrewDateString(o.returnDate)}\n`;
-        const html = `<div dir="rtl" style="font-family:Arial"><h2 style="color:#d32f2f">החזרה באיחור - הזמנה #${o.orderId}</h2><p>${text}</p><p>תאריך החזרה: ${getHebrewDateString(o.returnDate)}</p></div>`;
+        const html = renderLateReturnEmailHtml({
+          customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: getHebrewDateString(o.returnDate), message: text,
+          gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: get('gmach_address') || '', gmachPhone: get('gmach_phone') || '',
+        });
         const r = await sendSystemEmail({ to: email, subject, body, html });
         if (r.success) results.lateEmails++;
         else results.errors.push(`late ${o.orderId}: ${r.message}`);
@@ -229,8 +241,11 @@ export async function GET(request) {
       if (managerEmail && managerEmail.includes('@') && items.length > 0) {
         const lines = items.map(i => `#${i.order?.orderId ?? '?'} - ברקוד: ${i.barcode || '?'} - ${i.description || i.sizeText || ''}`).join('\n');
         const body = `ברקודים שהוקלדו ידנית היום (${getHebrewDateString(today)}): ${items.length}\n\n${lines}`;
-        const html = `<div dir="rtl" style="font-family:Arial"><h2>ברקודים ידניים - ${items.length}</h2><pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${lines}</pre></div>`;
-        const r = await sendSystemEmail({ to: managerEmail, subject: `ברקודים ידניים ${getHebrewDateString(today)} - ${items.length}`, body, html });
+        const html = renderManualBarcodesEmailHtml({
+          dateHebrew: getHebrewDateString(today), gmachName: get('gmach_name') || 'גמ"ח שמלות',
+          items: items.map(i => ({ orderId: i.order?.orderId ?? '?', barcode: i.barcode || '?', description: i.description || i.sizeText || '' })),
+        });
+        const r = await sendSystemEmail({ to: managerEmail, subject: emailSubject('manualBarcodesReport', { hebrewDate: getHebrewDateString(today), count: items.length }), body, html });
         if (!r.success) results.errors.push(`manualBarcodes: ${r.message}`);
       }
     } catch (e) { results.errors.push(`manualBarcodes: ${e.message}`); }

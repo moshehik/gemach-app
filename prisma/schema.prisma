@@ -739,3 +739,38 @@ model Attachment {
   contentType String
   createdAt   DateTime @default(now())
 }
+
+// הוק (הוראת קבע) בנדרים פלוס - לא קשור ל-Customer.hokBank*/Order.hokDetails
+// (אלו "38 בקשות" - הוראת קבע בנקאית, מנגנון שונה לגמרי). זהו רישום של הוראת
+// קבע שנוצרה מול Nedarim Plus (DebitKeva.aspx, ר' app/lib/nedarim.js) - בדר"כ
+// בסכום סמלי (1 ש"ח) לתאריך עתידי, כך שניתן יהיה לערוך את הפרטים בממשק הניהול
+// של נדרים פלוס ולגבות בפועל במקרה של אי-החזרת פריט. הפיצ'ר עדיין לא מחובר
+// לתהליך ההזמנה/תשלום עצמו - ר' תיעוד ב-CLAUDE.md "הוק בנדרים פלוס". שדות
+// orderId/customerId הם סקלריים בלבד (ללא @relation) בכוונה, כדי לא לחייב
+// תלות בסכימת Order/Customer בשני מאגרי הנתונים הנפרדים (org1/org2).
+model NedarimHok {
+  id                  String    @id @default(uuid())
+  orderId             Int? // Order.orderId (מספר הזמנה קריא), לא UUID
+  customerId          String?
+  clientName          String?
+  phone               String?
+  zeout               String?
+  cardLast4           String?
+  amount              Float
+  chargeDate          DateTime // התאריך שההוק אמור להיפרע בו אצל נדרים פלוס
+  dayOfMonth          Int?
+  installments        Int?      @default(1)
+  mosadId             String?
+  status              String // 'success' | 'error'
+  confirmation        String?
+  errorMessage        String?
+  rawResponse         String?   @db.Text
+  isTest              Boolean   @default(false) // נוצר מדף הניסוי הייעודי ולא מתהליך הזמנה אמיתי
+  createdByEmployeeId String?
+  notes               String?
+  createdAt           DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([createdAt])
+}

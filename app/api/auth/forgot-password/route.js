@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { hashSecret, last4Of, generateTempPassword } from '@/lib/passwordAuth';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderPasswordResetEmailHtml } from '@/lib/emailTemplates';
+import { emailSubject } from '@/lib/emailCatalog';
 
 // Self-service "forgot password", reachable from the login screen without being logged in.
 // Generates a temporary password, hashes it in place of the real one, emails it to the
@@ -56,7 +57,7 @@ export async function POST(request) {
 
     const emailResult = await sendSystemEmail({
       to: employee.email,
-      subject: 'איפוס סיסמה - מערכת הגמ"ח',
+      subject: emailSubject('passwordResetSelf'),
       body: `שלום ${employee.firstName || ''},\n\nביקשת לאפס את סיסמתך למערכת הגמ"ח.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, אפשר להתעלם מהודעה זו ולפנות למנהל המערכת.`,
       html: renderPasswordResetEmailHtml({
         firstName: employee.firstName,

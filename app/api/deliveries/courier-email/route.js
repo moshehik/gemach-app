@@ -7,6 +7,7 @@ import { groupDeliveryRowsForCourier, isoRangeToDates } from '@/lib/deliveryCour
 import { renderCourierDeliveryEmailHtml } from '@/lib/emailTemplates';
 import { sendSystemEmail } from '@/lib/mailer';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { emailSubject } from '@/lib/emailCatalog';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function POST(request) {
     const gmachName = settingsMap.gmach_name || 'גמ"ח שמלות';
     const html = renderCourierDeliveryEmailHtml({ groups, gmachName });
     const plainText = groups.map(g => `${g.title}\n${g.rows.map(r => `${r.customerName} | ${r.address || '-'} | ${r.customerPhone || '-'} | ${r.customerPhone2 || '-'}`).join('\n')}`).join('\n\n');
-    const subject = groups.length === 1 ? groups[0].title : `נתוני משלוחים - ${groups.length} קבוצות`;
+    const subject = emailSubject('courierDeliveries', { groups });
 
     const cookieStore = await cookies();
     const employeeId = getVerifiedAuthCookie(cookieStore)?.value || null;
@@ -58,8 +59,6 @@ export async function POST(request) {
       body: plainText,
       html,
       employeeId,
-      fileName: 'נתוני משלוחים.txt',
-      fileContent: Buffer.from(plainText).toString('base64'),
     });
 
     if (!result.success) {

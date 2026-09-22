@@ -1043,9 +1043,16 @@ export async function POST(request) {
 
           // fire-and-forget - לא חוסם את תשובת ה-API
           const { sendSystemEmail } = await import('@/lib/mailer');
+          const { renderOrderConfirmationEmailHtml } = await import('@/lib/emailTemplates');
+          const { emailSubject } = await import('@/lib/emailCatalog');
           const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}\nסה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
-          const html = `<div dir="rtl" style="font-family:Arial;line-height:1.6"><h2>הזמנה #${updatedOrder.orderId} - ${gmachName}</h2><p>שלום ${updatedOrder.customer.firstName || ''},</p><p>הזמנתך נקלטה בהצלחה.</p><p><strong>תאריך אירוע:</strong> ${hebrewDate}${pickupLine ? `<br/><strong>קבלת השמלות:</strong> ${pickupLine}` : ''}${returnLine ? `<br/><strong>החזרת השמלות:</strong> ${returnLine}` : ''}</p><p><strong>פריטים:</strong> ${itemsList}</p><p><strong>סה"כ לחיוב:</strong> ₪${totalObligations}<br/><strong>סה"כ שולם:</strong> ₪${totalPayments}<br/><strong>יתרה לתשלום:</strong> ₪${balance}</p><p>כתובת איסוף: ${gmachAddress}<br/>טלפון: ${gmachPhone}</p></div>`;
-          sendSystemEmail({ to: email, subject: `הזמנה #${updatedOrder.orderId} - ${gmachName}`, body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
+          const html = renderOrderConfirmationEmailHtml({
+            customerName: `${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''}`.trim(),
+            orderId: updatedOrder.orderId, eventDate: hebrewDate, pickupLine, returnLine,
+            items: itemsWithDress.map(i => ({ name: i.dressItem?.dress?.name || i.description || 'פריט', size: i.sizeText || i.dressItem?.sizeText || '' })),
+            totalCharge: totalObligations, totalPaid: totalPayments, balance, gmachName, gmachAddress, gmachPhone,
+          });
+          sendSystemEmail({ to: email, subject: emailSubject('orderCreatedAuto', { orderId: updatedOrder.orderId, gmachName }), body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
       }
     } catch (e) { console.error('auto email check failed', e); }
 
