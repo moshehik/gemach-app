@@ -787,6 +787,15 @@ export async function PUT(request, { params }) {
       if (data.obligations && Array.isArray(data.obligations)) {
         for (const obs of data.obligations) {
           if (obs.id) {
+            // מכיל גם התחייבויות שחושבו אוטומטית (isManual: false), לא רק ידניות - הלקוח
+            // שולח את מערך ה-obligations כולו. recalculateOrderObligations (בהמשך אותה
+            // בקשה, ובקשות שמירה קודמות של אותה הזמנה) מוחקת שורות אוטומטיות לגמרי
+            // (hard delete, לא isDeleted) כשהחישוב המחודש שלהן משתנה - אם הלקוח עדיין
+            // מחזיק מצב ישן עם id של שורה כזו שכבר נמחקה, update-by-id נכשל עם
+            // "required record not found" (P2025) שדלף כשגיאת Prisma גולמית למסך
+            // המשתמש - ר' דיווח 263308b1/125a069b. storedObligationById נשלף בתחילת
+            // הבקשה הנוכחית, אז אם השורה כבר לא שם - מדלגים במקום לנסות לעדכן אותה.
+            if (!storedObligationById.has(obs.id)) continue;
             const obsAuditAction = cancelActionFor(storedObligationById, obs.id, obs.isDeleted, 'CANCEL_OBLIGATION', 'RESTORE_OBLIGATION');
             await tx.paymentObligation.update(auditAs(obsAuditAction, {
               where: { id: obs.id },

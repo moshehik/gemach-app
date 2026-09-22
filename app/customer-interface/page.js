@@ -47,10 +47,14 @@ function getModelDisplayName(model) {
 
 // דגמים בלי שם תיאורי אמיתי (getModelDisplayName מחזיר להם את מספר הדגם עצמו) מציגים
 // בתצוגת "שורות" את אותו מספר פעמיים נוספות (תג "#מספר" בכותרת + שורת קוד נפרדת),
-// בנוסף לעיגול שכבר מציג אותו — ר' דיווח ffa88595.
+// בנוסף לעיגול שכבר מציג אותו — ר' דיווח ffa88595. חלק מהדגמים המיובאים מאקסס נשמרו
+// עם model.name שהוא בדיוק מספר הדגם עצמו כמחרוזת (למשל name="316", barcodePrefix=316)
+// - זה עדיין לא שם תיאורי אמיתי, למרות ש-rawName כאן לא ריק ולא מתחיל ב"ללא שם".
 function modelHasRealName(model) {
   const rawName = (model.name || '').trim();
-  return !!rawName && !rawName.startsWith('ללא שם');
+  if (!rawName || rawName.startsWith('ללא שם')) return false;
+  if (model.barcodePrefix != null && rawName === String(model.barcodePrefix)) return false;
+  return true;
 }
 
 // עיגול פרופיל לדגם: תמונה אם קיימת (ומותרת), אחרת אותיות הדגם —
