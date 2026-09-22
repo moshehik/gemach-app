@@ -1629,10 +1629,11 @@ export default function NewOrderPage() {
                   <label htmlFor="cust-phone">מספר טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input
                     id="cust-phone"
-                    type="tel"
+                    type="text"
+                    inputMode="tel"
                     dir="ltr"
                     className="input"
-                    autoComplete="new-password"
+                    autoComplete="off"
                     value={phoneSearchInput}
                     onChange={e => setPhoneSearchInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
