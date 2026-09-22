@@ -100,6 +100,7 @@ export async function POST(request) {
         mosadId,
         status: result.success ? 'success' : 'error',
         confirmation: result.confirmation || null,
+        institutionName: result.institutionName || null,
         errorMessage: result.error || null,
         rawResponse: result.rawResponse || null,
         isTest: true,

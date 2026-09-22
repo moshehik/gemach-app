@@ -114,9 +114,21 @@ export async function chargeNedarimPlus({
           rawResponse: resultText,
         };
       } else {
+        // DebitCard.aspx success returns `Confirmation`; DebitKeva.aspx success has no
+        // `Confirmation` field at all - the standing-order's own id comes back as `KevaId`
+        // instead (confirmed live 2026-09-23, real response included Status/KevaId/NextDate/
+        // MosadNumber/Alert, no Confirmation key). Fall back through AuthorisationNumber too,
+        // since that's the field DebitCard-style responses could use for a card-present auth.
         return {
           success: true,
-          confirmation: resultJson.Confirmation,
+          confirmation: resultJson.Confirmation || resultJson.KevaId || resultJson.AuthorisationNumber || '',
+          // Nedarim echoes the institution's own display name back as `Alert` (confirmed live
+          // 2026-09-23 - a test against a mosadId that turned out to belong to a DIFFERENT
+          // institution than intended still returned Status:OK, with Alert naming the real
+          // institution the money/authorization actually landed on). Surface this so a wrong
+          // mosadId is caught immediately instead of silently creating a real charge/הוק
+          // against someone else's account.
+          institutionName: resultJson.Alert || '',
           rawResponse: resultText,
         };
       }

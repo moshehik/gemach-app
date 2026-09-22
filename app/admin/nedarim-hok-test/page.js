@@ -158,6 +158,13 @@ export default function NedarimHokTestPage() {
         </div>
       )}
 
+      {result?.success && (
+        <div className="callout callout-warning" style={{ marginTop: 8, maxWidth: 640 }}>
+          <strong>מוסד שזוהה אצל נדרים פלוס:</strong> {result.institutionName || '(לא הוחזר שם מוסד בתגובה)'}
+          <br />ודא שזה שם הגמח שלך - אם זה שם אחר, ההוק נוצר בטעות בחשבון נדרים פלוס של מוסד אחר.
+        </div>
+      )}
+
       {loadError && <div className="callout callout-danger" style={{ marginTop: 16 }}>{loadError}</div>}
 
       <div className="card card-pad" style={{ marginTop: 16 }}>
@@ -171,6 +178,7 @@ export default function NedarimHokTestPage() {
               <th>סכום</th>
               <th>תאריך חיוב</th>
               <th>קוד מוסד</th>
+              <th>מוסד שזוהה</th>
               <th>סטטוס</th>
               <th>אישור / שגיאה</th>
             </tr>
@@ -184,6 +192,7 @@ export default function NedarimHokTestPage() {
                 <td>{r.amount}</td>
                 <td>{new Date(r.chargeDate).toLocaleDateString('he-IL')}</td>
                 <td dir="ltr">{r.mosadId}</td>
+                <td>{r.institutionName}</td>
                 <td><span className={STATUS_CLASS[r.status]}>{STATUS_LABEL[r.status] || r.status}</span></td>
                 <td>{r.confirmation || r.errorMessage}</td>
               </tr>
