@@ -60,8 +60,9 @@ export async function POST(request) {
     const token = await resolveToken();
 
     const chargeDateObj = new Date(chargeDate);
-    const resolvedDay = dayOfMonth || chargeDateObj.getDate();
+    const resolvedDay = (dayOfMonth != null && dayOfMonth !== '') ? Number(dayOfMonth) : chargeDateObj.getDate();
     const finalAmount = amount != null && amount !== '' ? Number(amount) : 1;
+    const resolvedInstallments = (installments != null && installments !== '') ? Number(installments) : 1;
 
     const employee = await getSessionEmployee();
 
@@ -73,7 +74,7 @@ export async function POST(request) {
       cardNumber,
       tokef,
       amount: finalAmount,
-      installments: installments || 1,
+      installments: resolvedInstallments,
       notes: notes || 'הוק לבדיקה - בקשת אי-החזרה',
       isKeva: true,
       day: resolvedDay,
@@ -95,7 +96,7 @@ export async function POST(request) {
         amount: finalAmount,
         chargeDate: chargeDateObj,
         dayOfMonth: resolvedDay,
-        installments: installments || 1,
+        installments: resolvedInstallments,
         mosadId,
         status: result.success ? 'success' : 'error',
         confirmation: result.confirmation || null,
