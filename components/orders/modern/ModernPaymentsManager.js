@@ -636,8 +636,20 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   // רק כשההזמנה כולה נשמרת) - רק עם תיאור/סכום קבועים מראש. הגנה מפני כפילות: כפתור מוסתר/מנוטרל
   // אם כבר יש בפועל שורת חיוב פעילה (לא-מחוקה) עם אותו תיאור מדויק בהזמנה הזו.
   const enableDeliveries = settings.enable_deliveries === 'true';
-  const parsedDeliveryPrice = parseFloat(settings.delivery_price);
-  const deliveryPrice = isNaN(parsedDeliveryPrice) ? 50 : parsedDeliveryPrice;
+  // תמחור לפי עיר (delivery_price_by_city) קודם - אותה עדיפות בדיוק כמו applyDeliveryCharge
+  // האוטומטי ב-lib/pricingEngine.js - אחרת הכפתור הידני כאן תמיד חייב לפי delivery_price
+  // השטוח בלי קשר לעיר המשלוח שהוגדרה בהזמנה (ר' דיווח "תמיד 50 ש\"ח").
+  const deliveryPrice = (() => {
+    if (order.deliveryCity) {
+      try {
+        const cityMap = JSON.parse(settings.delivery_price_by_city || '{}');
+        const cityPrice = parseFloat(cityMap[order.deliveryCity]);
+        if (!isNaN(cityPrice) && cityPrice > 0) return cityPrice;
+      } catch {}
+    }
+    const parsedDeliveryPrice = parseFloat(settings.delivery_price);
+    return isNaN(parsedDeliveryPrice) || parsedDeliveryPrice <= 0 ? 50 : parsedDeliveryPrice;
+  })();
 
   // ה-obligation האוטומטי של משלוח (applyDeliveryCharge, lib/pricingEngine.js) נשמר
   // בתור "משלוח <כיוון> - <עיר>", לא בדיוק "משלוח הלוך"/"משלוח חזור" - השוואת שוויון

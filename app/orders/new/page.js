@@ -13,6 +13,7 @@ import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -152,6 +153,17 @@ export default function NewOrderPage() {
     }
     return customerLocations.cities;
   }, [settings.delivery_price_by_city, customerLocations.cities]);
+
+  // ערי המשלוח שיש להן מחיר מוגדר בפועל (delivery_price_by_city) - להבדיל מ-deliveryCityOptions
+  // (שנופל חזרה לכל ערי הלקוחות כשהטבלה ריקה) - זו הרשימה שקובעת אם עיר המגורים של
+  // הלקוח "ידועה" לצורך isDeliveryCityRequired.
+  const deliveryPriceCities = useMemo(() => {
+    try {
+      return Object.keys(JSON.parse(settings.delivery_price_by_city || '{}'));
+    } catch {
+      return [];
+    }
+  }, [settings.delivery_price_by_city]);
 
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
@@ -1081,36 +1093,12 @@ export default function NewOrderPage() {
     }
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
-    // כשעיר המשלוח שונה מעיר המגורים של הלקוח (למשל שולחים לסבתא בעיר אחרת), כתובת
-    // המשלוח חייבת להיות מוזנת - אחרת המשלוח ייצא לכתובת המגורים בעיר הלא-נכונה.
-    if (order.isDelivery && settings.delivery_allow_address_override === 'true' && order.deliveryCity && order.selectedCustomer?.city
-      && order.deliveryCity !== order.selectedCustomer.city && !String(order.deliveryAddress || '').trim()) {
-      return alert('עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת משלוח (שדה "כתובת משלוח שונה").');
-    }
-
-    // אם עיר המשלוח שהוזנה שונה מעיר המגורים של הלקוח, כתובת המשלוח (השונה מכתובת
-    // המגורים) היא שדה חובה - אחרת אין למשלוח לאן להגיע. ר' דיווח org2 f82e76c1.
-    if (order.isDelivery && settings.delivery_allow_address_override === 'true'
-      && order.deliveryCity && order.selectedCustomer?.city
-      && order.deliveryCity.trim() !== order.selectedCustomer.city.trim()
-      && !String(order.deliveryAddress || '').trim()) {
-      return alert('עיר המשלוח שונה מעיר המגורים של הלקוח - יש להזין כתובת משלוח מלאה.');
-    }
-
-    // אם עיר המגורים של הלקוח אינה ברשימת הערים שיש להן מחיר משלוח מוגדר
-    // (delivery_price_by_city), לא ניתן להניח שהמשלוח יגיע אליה כרגיל - יש לחייב
-    // הזנה מפורשת של עיר המשלוח בפועל. ר' דיווחים org2 136f8d4b/5133e518.
-    if (order.isDelivery) {
-      let deliveryPriceCities = [];
-      try {
-        deliveryPriceCities = Object.keys(JSON.parse(settings.delivery_price_by_city || '{}'));
-      } catch { /* JSON לא תקין בהגדרה - מתייחסים כאילו אין רשימה כלל */ }
-      const customerCity = String(order.selectedCustomer?.city || '').trim();
-      const customerCityKnown = customerCity && deliveryPriceCities.includes(customerCity);
-      if (!customerCityKnown && !String(order.deliveryCity || '').trim()) {
-        return alert('עיר המגורים של הלקוח אינה ברשימת ערי המשלוח המוגדרות - יש להזין עיר משלוח באופן מפורש.');
-      }
-    }
+    // שדות חובה של משלוח (כתובת כשעיר המשלוח שונה מעיר הלקוח / עיר משלוח כשעיר הלקוח
+    // לא ברשימת ערי המשלוח) - נאכף תמיד, לא רק כש-delivery_allow_address_override דולק
+    // (אותה תנאי בדיוק כמו האינדיקציה החזותית deliveryAddressRequired/deliveryCityRequired
+    // למעלה - ר' דיווחים org2 f82e76c1, 136f8d4b/5133e518).
+    const deliveryError = validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities);
+    if (deliveryError) return alert(deliveryError);
 
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
@@ -1379,7 +1367,8 @@ export default function NewOrderPage() {
   const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
   // f82e76c1 - כתובת משלוח הופכת לשדה חובה כשעיר המשלוח שונה מעיר הלקוח (כלומר לא מסתפקים
   // בכתובת המגורים הרגילה שלו) - כדי שלא יישלח משלוח בלי כתובת מדויקת ליעד אחר.
-  const deliveryAddressRequired = !!(order.isDelivery && order.deliveryCity && order.selectedCustomer?.city && order.deliveryCity !== order.selectedCustomer.city);
+  const deliveryAddressRequired = isDeliveryAddressRequired(order, order.selectedCustomer?.city);
+  const deliveryCityRequired = isDeliveryCityRequired(order, order.selectedCustomer?.city, deliveryPriceCities);
   const totalPaid = paymentsList.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
   const remaining = Math.max(0, totalAmount - totalPaid);
   const repairsTotal = (calculatedData.items || []).reduce((acc, i) => acc + (parseFloat(i.repairsCost) || 0), 0);
@@ -1569,7 +1558,7 @@ export default function NewOrderPage() {
               </button>
             )}
             {step === 2 && (
-              <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!datesFilled || (deliveryAddressRequired && !order.deliveryAddress.trim())}>
+              <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!datesFilled || !!validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities)}>
                 המשך לבחירת פריטים <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             )}
@@ -1601,7 +1590,7 @@ export default function NewOrderPage() {
                 type="button"
                 className={searchMode === 'phone' ? 'tab active' : 'tab'}
                 style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-                onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); setPhoneMatches([]); }}
+                onClick={() => { setSearchMode('phone'); setFoundCustomersFromPhone([]); }}
               >
                 <svg className="icon"><use href="#i-phone" /></svg> לפי טלפון
               </button>
@@ -2096,17 +2085,22 @@ export default function NewOrderPage() {
                         </select>
                       </div>
                       <div className="field">
-                        <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר)</label>
-                        <input id="delivery-city" type="text" className="input" list="delivery-city-list" autoComplete="new-password" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
-                        <datalist id="delivery-city-list">
-                          {deliveryCityOptions.map(c => <option key={c} value={c} />)}
-                        </datalist>
+                        <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+                        <select id="delivery-city" className="select" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}>
+                          <option value="">בחר עיר…</option>
+                          {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
+                          <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                            עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
+                          </p>
+                        )}
                       </div>
                       {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
                         <div className="field">
                           <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
                           <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                          {deliveryAddressRequired && !order.deliveryAddress.trim() && (
+                          {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
                             <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
                               עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
                             </p>

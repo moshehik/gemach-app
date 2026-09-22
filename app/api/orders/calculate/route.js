@@ -131,12 +131,13 @@ export async function POST(request) {
       let priceMap = {};
       try { priceMap = JSON.parse(priceByCity || '{}'); } catch { /* ignore invalid JSON */ }
       let cityPrice = priceMap[deliveryCity];
-      if (!cityPrice) cityPrice = getSetting('delivery_price', '0');
-      if (cityPrice && Number(cityPrice) > 0) {
-        const dir = deliveryDirection || 'הלוך-חזור';
-        const count = dir === 'הלוך-חזור' ? 2 : 1;
-        deliveryAmount = Number(cityPrice) * count;
-      }
+      if (!cityPrice || Number(cityPrice) <= 0) cityPrice = getSetting('delivery_price', '0');
+      // תואם ל-fallback ב-applyDeliveryCharge (lib/pricingEngine.js) - אחרת התצוגה המקדימה כאן
+      // מציגה 0 בזמן שההזמנה בפועל תחויב ב-50 ש"ח כברירת מחדל.
+      if (!cityPrice || Number(cityPrice) <= 0) cityPrice = 50;
+      const dir = deliveryDirection || 'הלוך-חזור';
+      const count = dir === 'הלוך-חזור' ? 2 : 1;
+      deliveryAmount = Number(cityPrice) * count;
     }
     totalAmount += deliveryAmount;
 
