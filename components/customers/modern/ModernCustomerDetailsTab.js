@@ -213,10 +213,12 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 <label>תעודת זהות (לעריכה/ביטול)</label>
                 <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={onChange} placeholder="ת״ז" />
               </div>
-              <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
-                <input type="checkbox" id="marketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={(e) => onChange({ target: { name: 'marketingConsent', value: e.target.checked } })} />
-                <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
-              </div>
+              {settings.hide_marketing_consent_field !== 'true' && (
+                <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
+                  <input type="checkbox" id="marketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={(e) => onChange({ target: { name: 'marketingConsent', value: e.target.checked } })} />
+                  <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
+                </div>
+              )}
             </div>
 
             <div className="field">

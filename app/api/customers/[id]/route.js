@@ -95,7 +95,7 @@ export async function PUT(request, { params }) {
         if (!String(body.street || '').trim()) errors.push('רחוב חובה');
         if (!String(body.houseNum || '').trim()) errors.push('מספר בית חובה');
       }
-      if (sMap.get('require_marketing_consent') === 'true') {
+      if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
       }
       if (sMap.get('strict_mandatory_fields') === 'true') {

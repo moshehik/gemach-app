@@ -588,7 +588,7 @@ export default function CustomerInventoryViewer() {
       if (!String(customerObj.street || '').trim()) extra.push('street');
       if (!String(customerObj.houseNum || '').trim()) extra.push('houseNum');
     }
-    if (settings.require_marketing_consent === 'true' && !customerObj.marketingConsent) extra.push('marketingConsent');
+    if (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true' && !customerObj.marketingConsent) extra.push('marketingConsent');
     return [...baseMissing, ...extra.filter(k => !baseMissing.includes(k))];
   };
 
@@ -1199,13 +1199,15 @@ export default function CustomerInventoryViewer() {
                       </div>
                     </div>
 
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', fontWeight: 600, margin: '6px 0 4px', cursor: 'pointer' }}>
-                      <input data-agy-id="reg_marketing_consent_input" type="checkbox"
-                        style={{ width: '17px', height: '17px', accentColor: 'var(--terracotta)' }}
-                        checked={regForm.marketingConsent}
-                        onChange={e => setRegForm(p => ({ ...p, marketingConsent: e.target.checked }))} />
-                      מאשר/ת קבלת דיוור ועדכונים {settings.require_marketing_consent === 'true' && '*'}
-                    </label>
+                    {settings.hide_marketing_consent_field !== 'true' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', fontWeight: 600, margin: '6px 0 4px', cursor: 'pointer' }}>
+                        <input data-agy-id="reg_marketing_consent_input" type="checkbox"
+                          style={{ width: '17px', height: '17px', accentColor: 'var(--terracotta)' }}
+                          checked={regForm.marketingConsent}
+                          onChange={e => setRegForm(p => ({ ...p, marketingConsent: e.target.checked }))} />
+                        מאשר/ת קבלת דיוור ועדכונים {settings.require_marketing_consent === 'true' && '*'}
+                      </label>
+                    )}
 
                     {regError && <div className="ka-error">{regError}</div>}
 

@@ -487,7 +487,7 @@ export default function NewOrderPage() {
       if (!String(customerObj.street || '').trim()) extra.push('street');
       if (!String(customerObj.houseNum || '').trim()) extra.push('houseNum');
     }
-    if (settings.require_marketing_consent === 'true' && !customerObj.marketingConsent) extra.push('marketingConsent');
+    if (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true' && !customerObj.marketingConsent) extra.push('marketingConsent');
     // איחוד ללא כפילויות
     const all = [...baseMissing, ...extra.filter(k => !baseMissing.includes(k))];
     return all;
@@ -1845,7 +1845,7 @@ export default function NewOrderPage() {
                     בחלונית מוסתרת"). */}
                 <NocCollapsible
                   title="פרטים נוספים"
-                  openWhen={settings.require_full_address === 'true' || settings.require_marketing_consent === 'true' || settings.require_customer_id_number === 'true'}
+                  openWhen={settings.require_full_address === 'true' || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
                 >
                   <div className="form-grid">
                     <div className="field">
@@ -1876,12 +1876,14 @@ export default function NewOrderPage() {
                     </label>
                     <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
                   </div>
-                  <div className="field" style={{ marginTop: 10 }}>
-                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                      <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
-                      <span>מאשר/ת קבלת דיוורים ועדכונים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
-                    </label>
-                  </div>
+                  {settings.hide_marketing_consent_field !== 'true' && (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
+                        <span>מאשר/ת קבלת דיוורים ועדכונים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
+                      </label>
+                    </div>
+                  )}
                   {/* 3 - פרטי הוראת קבע בהזמנה (מותנה ב-hok_enabled, כבוי = מוסתר) */}
                   {settings.hok_enabled === 'true' && (
                     <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
