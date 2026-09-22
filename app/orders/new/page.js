@@ -2447,7 +2447,6 @@ export default function NewOrderPage() {
         {step === 5 && (
           <div>
             <h2>תשלום וסיום</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>אפשר לפצל למספר אמצעי תשלום, או לסיים עם יתרה פתוחה באישור מנהל.</p>
 
             <div className="two-col">
               <div className="card card-pad">
