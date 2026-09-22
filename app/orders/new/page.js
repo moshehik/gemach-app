@@ -591,7 +591,7 @@ export default function NewOrderPage() {
       // לעקוף כשחסר. שאר השדות החסרים (לא קשורים לאמצעי תקשורת) ממשיכים באישור חריגה רגיל.
       if (missingContactMethod) {
         const auth = await verifyPin(
-          `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nנדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת בלי אמצעי תקשורת נוסף.`,
+          `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nנדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת בלי אמצעי תקשורת נוסף.\nאפשר גם ללחוץ "ביטול" ואז על הכפתור "עריכת פרטי לקוח" כדי להשלים את הפרטים במקום.`,
           'feature:missing_contact_approval'
         );
         if (!auth) return;
