@@ -65,18 +65,37 @@ export async function GET(request) {
     try {
       const managerEmail = get('daily_manager_report_email') || get('main_email');
       if (managerEmail && managerEmail.includes('@')) {
-        const dayStart = new Date(today);
-        const dayEnd = new Date(today); dayEnd.setHours(23,59,59,999);
-        const orders = await prisma.order.findMany({
-          where: { isDeleted: false, orderDate: { gte: dayStart, lte: dayEnd } },
-          include: { customer: true, items: { where: { isDeleted: false } } },
-          orderBy: { orderId: 'desc' },
-          take: 100
-        });
-        const lines = orders.map(o => `#${o.orderId} - ${o.customer?.firstName || ''} ${o.customer?.lastName || ''} - ${o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : '')} - ${o.items.length} פריטים`).join('\n');
-        const body = `דוח יומי - ${getHebrewDateString(today)}\nסה"כ הזמנות היום: ${orders.length}\n\n${lines || 'אין הזמנות היום'}`;
-        const html = `<div dir="rtl" style="font-family:Arial"><h2>דוח יומי - ${getHebrewDateString(today)}</h2><p>סה"כ הזמנות היום: ${orders.length}</p><pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${lines || 'אין הזמנות היום'}</pre></div>`;
-        const r = await sendSystemEmail({ to: managerEmail, subject: `דוח יומי ${getHebrewDateString(today)} - ${orders.length} הזמנות`, body, html });
+        // דיווח 8c96c94c (נווה יעקב): "0 הזמנות" בדוח היה מבלבל - הדוח נשלח בבוקר
+        // (05:30 UTC) וספר הזמנות שנפתחו "היום" בעוד היום עצמו כמעט לא התחיל, כך
+        // שהמספר כמעט תמיד יצא 0 בלי קשר לפעילות האמיתית. עכשיו שני מספרים ברורים:
+        // הזמנות חדשות שנפתחו אתמול (יום שלם, כמו שהתבקש), והזמנות שהאירוע שלהן היום.
+        const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayEnd = new Date(yesterday); yesterdayEnd.setHours(23,59,59,999);
+        const todayEnd = new Date(today); todayEnd.setHours(23,59,59,999);
+        const [openedYesterday, reservedToday] = await Promise.all([
+          prisma.order.findMany({
+            where: { isDeleted: false, orderDate: { gte: yesterday, lte: yesterdayEnd } },
+            include: { customer: true, items: { where: { isDeleted: false } } },
+            orderBy: { orderId: 'desc' },
+            take: 100
+          }),
+          prisma.order.findMany({
+            where: { isDeleted: false, eventDate: { gte: today, lte: todayEnd } },
+            include: { customer: true, items: { where: { isDeleted: false } } },
+            orderBy: { orderId: 'desc' },
+            take: 100
+          }),
+        ]);
+        const formatLine = (o) => `#${o.orderId} - ${o.customer?.firstName || ''} ${o.customer?.lastName || ''} - ${o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : '')} - ${o.items.length} פריטים`;
+        const openedLines = openedYesterday.map(formatLine).join('\n');
+        const reservedLines = reservedToday.map(formatLine).join('\n');
+        const body = `דוח יומי - ${getHebrewDateString(today)}\n\nהזמנות חדשות שנפתחו אתמול: ${openedYesterday.length}\n${openedLines || 'אין'}\n\nהזמנות עם אירוע היום: ${reservedToday.length}\n${reservedLines || 'אין'}`;
+        const html = `<div dir="rtl" style="font-family:Arial"><h2>דוח יומי - ${getHebrewDateString(today)}</h2>` +
+          `<p><strong>הזמנות חדשות שנפתחו אתמול:</strong> ${openedYesterday.length}</p>` +
+          `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${openedLines || 'אין'}</pre>` +
+          `<p><strong>הזמנות עם אירוע היום:</strong> ${reservedToday.length}</p>` +
+          `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${reservedLines || 'אין'}</pre></div>`;
+        const r = await sendSystemEmail({ to: managerEmail, subject: `דוח יומי ${getHebrewDateString(today)} - ${openedYesterday.length} הזמנות חדשות אתמול, ${reservedToday.length} עם אירוע היום`, body, html });
         results.dailyReport = !!r.success;
         if (!r.success) results.errors.push(`dailyReport: ${r.message}`);
       }
