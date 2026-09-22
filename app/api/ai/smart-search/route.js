@@ -22,6 +22,13 @@ const ORDERS_SAFE_COLUMNS = [
   '"isAbroad"', '"fromDate"', '"toDate"',
 ];
 
+// Same idea for "rentals" (OrderItem) - the financial_columns_rentals restriction
+// (lib/ai/restrictionsRegistry.js). Excludes price/finalPrice.
+const RENTALS_SAFE_COLUMNS = [
+  'id', '"orderId"', '"dressItemId"', '"barcode"', '"barcodePrefix"', '"sizeText"',
+  '"isTaken"', '"isReturned"', '"returnedOk"',
+];
+
 const SCHEMA_MAP = {
   customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
   orders: "Table: Order\nColumns: id, orderId, customerId, totalAmount, paymentDate, paymentMethod, status, isPaid, isDeleted, eventDate, eventDateHebrew, returnDate, orderDate, notes, isDelivery, deliveryCity, deliveryDirection, isAbroad, fromDate, toDate\nRelated Table: Customer (id, firstName, lastName, phone1, phone2, city)",
@@ -75,17 +82,22 @@ export async function POST(req) {
     const schemaContext = SCHEMA_MAP[pageContext] || SCHEMA_MAP['customers'];
     const tableName = TABLE_MAP[pageContext] || "Customer";
 
-    // financial_columns_orders restriction (see lib/ai/restrictionsRegistry.js) - real column
-    // selection, not prompt text, since the AI here never chooses the SELECT list.
+    // financial_columns_orders / financial_columns_rentals restrictions (see
+    // lib/ai/restrictionsRegistry.js) - real column selection, not prompt text, since the AI here
+    // never chooses the SELECT list.
     let restrictOrdersFinancialColumns = false;
-    if (pageContext === 'orders') {
+    let restrictRentalsFinancialColumns = false;
+    if (pageContext === 'orders' || pageContext === 'rentals') {
+      const restrictionId = pageContext === 'orders' ? 'financial_columns_orders' : 'financial_columns_rentals';
       const smartSearchConfig = await getFeatureRestrictionConfig('smart_search');
-      if (isRestrictionEnabled('smart_search', smartSearchConfig, 'financial_columns_orders')) {
+      if (isRestrictionEnabled('smart_search', smartSearchConfig, restrictionId)) {
         const cookieStore = await cookies();
         const authToken = getVerifiedAuthCookie(cookieStore);
         if (authToken?.value) {
           const employee = await prisma.employee.findUnique({ where: { id: authToken.value }, select: { roleId: true } });
-          restrictOrdersFinancialColumns = !!employee && employee.roleId !== 1 && employee.roleId !== 2;
+          const isNonManager = !!employee && employee.roleId !== 1 && employee.roleId !== 2;
+          if (pageContext === 'orders') restrictOrdersFinancialColumns = isNonManager;
+          else restrictRentalsFinancialColumns = isNonManager;
         }
       }
     }
@@ -114,7 +126,11 @@ Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
 `;
 
-    const selectList = restrictOrdersFinancialColumns ? ORDERS_SAFE_COLUMNS.join(', ') : '*';
+    const selectList = restrictOrdersFinancialColumns
+      ? ORDERS_SAFE_COLUMNS.join(', ')
+      : restrictRentalsFinancialColumns
+        ? RENTALS_SAFE_COLUMNS.join(', ')
+        : '*';
     const buildQuery = (clause, offset) => {
        let finalCondition = `"isDeleted" = false AND (${clause})`;
        if (pageContext === 'dresses' || pageContext === 'rentals') {
