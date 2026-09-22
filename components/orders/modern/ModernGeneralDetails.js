@@ -80,7 +80,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
     // אישור מנהל נדרש בכל צמצום בפועל של הציפוף — לא רק בפעם הראשונה מברירת המחדל.
     // בלי זה, אחרי אישור אחד אפשר היה להמשיך ולהקטין עוד ועוד (למשל מ-1 ל-0) בלי אישור נוסף.
     if (newSpacing < prevSpacing) {
-      const ok = await verifyPin('שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      const ok = await verifyPin('שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:special_spacing_approval');
       if (!ok) return;
     }
     // ערך זהה לברירת המחדל של המערכת שקול ל"ללא ציפוף מותאם" — לא נשמר כערך מפורש,
@@ -104,7 +104,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   };
 
   const handleQuickEmail = async () => {
-    const ok = await verifyPin('שליחת מייל מהיר ללקוח דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    const ok = await verifyPin('שליחת מייל מהיר ללקוח דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:customer_email_approval');
     if (!ok) return;
     onQuickEmail();
   };

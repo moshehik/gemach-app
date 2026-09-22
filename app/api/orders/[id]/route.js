@@ -361,7 +361,7 @@ export async function PUT(request, { params }) {
         const hasNewCancel = data.items.some(it => it.id && it.isDeleted === true && currentDeletedById.get(it.id) === false);
         const hasNewAdd = data.items.some(it => it.isNew && it.dressModelId && it.sizeText);
         if (hasNewCancel || hasNewAdd) {
-          const managerOk = await verifyManagerPin(data.managerEmployeeId, data.managerPin);
+          const managerOk = await verifyManagerPin(data.managerEmployeeId, data.managerPin, 'feature:item_change_approval');
           if (!managerOk) {
             return NextResponse.json({ error: 'דרוש אישור מנהל (קוד/סיסמה) בתוקף לביטול או הוספת פריט בהזמנה קיימת.' }, { status: 403 });
           }

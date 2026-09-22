@@ -513,7 +513,7 @@ export default function NewOrderPage() {
     if (!newCustomer.phone2.trim() && !newCustomer.email.trim()) {
        // כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או אימייל) - אך לפי בקשת ההנהלה
        // אין לחסום סופית, אלא לאפשר עקיפה עם אישור מנהל בפועל (PIN), כמו בלקוח קיים.
-       const auth = await verifyPin('כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או כתובת מייל) - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.', 'מנהל');
+       const auth = await verifyPin('כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או כתובת מייל) - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.', 'feature:missing_contact_approval');
        if (!auth) return;
     }
 
@@ -592,7 +592,7 @@ export default function NewOrderPage() {
       if (missingContactMethod) {
         const auth = await verifyPin(
           `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nנדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת בלי אמצעי תקשורת נוסף.`,
-          'מנהל'
+          'feature:missing_contact_approval'
         );
         if (!auth) return;
       } else {
@@ -1116,7 +1116,7 @@ export default function NewOrderPage() {
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
     const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
     if (relevantDate && new Date(relevantDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)) {
-      const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:past_date_order_approval');
       if (!auth) return;
     }
 
@@ -1152,7 +1152,10 @@ export default function NewOrderPage() {
     if (isManagerExitPayment || (pAmount > 0 && !isCreditCardPayment)) {
       const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
       if (level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה') {
-        const authResult = await window.customAuthPrompt(`פעולה זו דורשת הרשאת ${level}. אנא בחר משתמש והזן סיסמה:`, level);
+        // 2026-09-22: ההגדרה קובעת אם החלונית מופיעה בכלל; מי שרשאי לאשר נקבע בהרשאה
+        // feature:payment_exit_approval (ברירת המחדל נגזרת מרמת ההגדרה: עובד / מנהל / מנהל סניף ומעלה,
+        // ושורת הרשאה ב-/admin/permissions גוברת) - הבורר וה-verify-pin מכריעים באותה הכרעה.
+        const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
         if (!authResult || !authResult.pin) {
           alert('אישור תשלום בוטל.');
           return;
@@ -1162,7 +1165,7 @@ export default function NewOrderPage() {
           const res = await fetch('/api/auth/verify-pin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: level })
+            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:payment_exit_approval' })
           });
           const data = await res.json();
           if (!data.success) {
@@ -1458,13 +1461,13 @@ export default function NewOrderPage() {
     const val = pendingSpacingChange;
     setPendingSpacingChange(null);
 
-    const authResult = await window.customAuthPrompt('שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    const authResult = await window.customAuthPrompt('שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:special_spacing_approval');
     if (!authResult || !authResult.pin) return;
     try {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:special_spacing_approval' })
       });
       const data = await res.json();
       if (!data.success) {

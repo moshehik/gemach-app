@@ -29,7 +29,7 @@ export async function postRentalRent(itemId, barcode) {
     const mismatchMsg = describeMismatch(data.expected, data.scanned);
     const authResult = await verifyPin(
       `${data.overrideRejected ? `${data.error}\n` : `${mismatchMsg}.\n`}להשכיר בכל זאת? נדרש אישור מנהל.`,
-      'מנהל'
+      'feature:barcode_mismatch_override'
     );
     if (!authResult) return { ok: false, message: `${mismatchMsg} - ההשכרה בוטלה.` };
     res = await post({ overridePin: authResult.pin, overrideEmployeeId: authResult.employeeId });

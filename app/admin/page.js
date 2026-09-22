@@ -15,6 +15,12 @@ const cards = [
     desc: 'דוחות ותובנות, בקרה והתראות, נתונים ומערכת',
   },
   {
+    href: '/admin/permissions',
+    icon: 'i-shield',
+    label: 'הרשאות',
+    desc: 'מי נכנס לאיזה עמוד ומי רשאי לאשר פעולות, לפי מחלקה ולפי עובד',
+  },
+  {
     href: '/dashboard/pricelist',
     icon: 'i-tag',
     label: 'ניהול מחירון',
@@ -32,7 +38,7 @@ export default function AdminHubPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '700px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '1060px' }}>
         {cards.map((card) => (
           <Link
             key={card.href}

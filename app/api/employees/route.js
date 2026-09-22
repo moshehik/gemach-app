@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
 import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES, getSessionEmployee, canManageRoles } from '../../../lib/auth';
 import { getEffectiveValueForEmployees } from '../../../lib/permissions';
+import { getApproverKeys } from '../../../lib/permissionsMetadata';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
 // (app/components/LoginScreen.js) fetches this list to populate the employee
@@ -47,13 +48,18 @@ export async function GET(request) {
     // admin list, so that picker keeps working. See lib/permissions.js /
     // lib/permissionsMetadata.js's feature:debt_approval.
     const debtApprovalByEmployee = await getEffectiveValueForEmployees(employees, 'feature:debt_approval');
+    // Same idea for every other password-approval item in the catalog (approver:true): the picker in
+    // PopupProvider.js filters by `approvals[<requiredLevel key>]`, i.e. exactly what verify-pin enforces.
+    const approverKeys = getApproverKeys();
+    const approverMaps = await Promise.all(approverKeys.map((key) => getEffectiveValueForEmployees(employees, key)));
 
     // Never send hashes (password/pinHash) to the client - there's no legitimate reason
     // for the browser to hold them, hashed or not.
     const safeEmployees = employees.map(({ password, pinHash, ...emp }) => ({
       ...emp,
       ...(isLoggedIn ? { needsPasswordReset: !!password && !password.startsWith('$2') } : {}),
-      canApproveWithoutPayment: !!debtApprovalByEmployee.get(emp.id)
+      canApproveWithoutPayment: !!debtApprovalByEmployee.get(emp.id),
+      approvals: Object.fromEntries(approverKeys.map((key, i) => [key, !!approverMaps[i].get(emp.id)]))
     }));
 
     return NextResponse.json(safeEmployees);

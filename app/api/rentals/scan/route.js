@@ -3,6 +3,7 @@ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { verifySecret } from '@/lib/passwordAuth';
+import { hasPermission } from '@/lib/permissions';
 import { notifyManagers } from '@/lib/notifyManagers';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 
@@ -18,7 +19,7 @@ export async function POST(request) {
     // 1+2. Validate order and find the DressItem by barcode — three independent lookups,
     // fetched in parallel (this is the hot path of every barcode scan). The validation
     // checks below run in the exact same order as before, so error precedence is unchanged.
-    const [order, dressItem, warehouseSetting, reserveSetting, shiftLeadReserveSetting] = await Promise.all([
+    const [order, dressItem, warehouseSetting, reserveSetting] = await Promise.all([
       prisma.order.findUnique({
         where: { orderId: parseInt(orderId) },
         include: { items: true }
@@ -28,8 +29,7 @@ export async function POST(request) {
         include: { dress: true }
       }),
       getCachedSetting('inventory_include_warehouse'),
-      getCachedSetting('allow_renting_reserve_items'),
-      getCachedSetting('allow_shift_lead_reserve_rental')
+      getCachedSetting('allow_renting_reserve_items')
     ]);
 
     if (!order) {
@@ -117,13 +117,9 @@ export async function POST(request) {
     // folded into inventory_include_warehouse - see lib/inventory.js for the reasoning. When on,
     // רזרבה items skip this block entirely (no manager PIN needed each time); מחסן items still do.
     const allowRentingReserve = reserveSetting && reserveSetting.value === 'true';
-    // allow_shift_lead_reserve_rental (SystemSetting, default missing/false = old behavior -
-    // reserve override still requires a manager/מתכנת's own password, same as before). This is a
-    // separate, narrower question from allow_renting_reserve_items above: that one controls
-    // WHETHER a reserve item can be rented at all; this one controls WHO may approve it when it's
-    // still blocked (ר' docs/fix-protocol-error-reports.md section 7-8). Deliberately does NOT
-    // extend to מחסן - only a pure-רזרבה block may be approved this way.
-    const allowShiftLeadReserve = shiftLeadReserveSetting && shiftLeadReserveSetting.value === 'true';
+    // מי רשאי לאשר עקיפה של חסימת-רזרבה (ולא רק אם) - feature:reserve_rental_approval בקטלוג ההרשאות;
+    // ברירת המחדל שלו נגזרת מההגדרה allow_shift_lead_reserve_rental (כבויה = מנהל סניף/מתכנת בלבד, כמו
+    // תמיד), ר' docs/fix-protocol-error-reports.md section 7-8. לא חל על מחסן - רק על חסימת-רזרבה טהורה.
 
     // חסימת רזרבה/מחסן ניתנת לעקיפה באישור מנהל - יש מצבים בפועל שבהם שמלה
     // שמסומנת רזרבה/מחסן כן ניתנת להוצאה, וזו החלטה תפעולית של מנהל. האימות
@@ -136,9 +132,12 @@ export async function POST(request) {
       const isWarehouseBlocked = !includeWarehouse && (locLower.includes('מחסן') || locLower.includes('warehouse'));
       const isReserveBlocked = !allowRentingReserve && (locLower.includes('רזרבה') || locLower.includes('reserve'));
       const isReserved = isWarehouseBlocked || isReserveBlocked;
-      // אחראית משמרת מורשית לאשר רק חסימת-רזרבה טהורה (לא מחסן) וכשההגדרה דלוקה -
-      // מחסן תמיד נשאר ברמת מנהל/מתכנת בלבד, ללא תלות בהגדרה הזו.
-      const reserveShiftLeadAllowed = isReserveBlocked && !isWarehouseBlocked && allowShiftLeadReserve;
+      // 2026-09-22: "מי רשאי לאשר" נקבע בקטלוג ההרשאות ולא בקוד קשיח - חסימת-רזרבה טהורה
+      // ב-feature:reserve_rental_approval (ברירת המחדל שלו הייתה נגזרת מ-allow_shift_lead_reserve_rental,
+      // ההגדרה הזו כבר לא נקראת), חסימת מחסן (או מחסן+רזרבה יחד) ב-feature:warehouse_rental_approval.
+      const reserveOnlyBlock = isReserveBlocked && !isWarehouseBlocked;
+      const approverKey = reserveOnlyBlock ? 'feature:reserve_rental_approval' : 'feature:warehouse_rental_approval';
+      let reserveApproverBelowManager = false;
       if (isReserved) {
         let overrideVerified = false;
         if (overridePin) {
@@ -146,9 +145,10 @@ export async function POST(request) {
             where: { isActive: true, ...(overrideEmployeeId ? { id: overrideEmployeeId } : {}) }
           });
           for (const candidate of candidates) {
-            const roleOk = reserveShiftLeadAllowed || candidate.roleId === 1 || candidate.roleId === 2;
-            if (roleOk && await verifySecret(overridePin, candidate.password)) {
+            if (!(await verifySecret(overridePin, candidate.password))) continue;
+            if (await hasPermission(candidate, approverKey)) {
               overrideVerified = true;
+              reserveApproverBelowManager = ![0, 1, 2].includes(candidate.roleId);
               break;
             }
           }
@@ -163,7 +163,7 @@ export async function POST(request) {
         // בקשה 2026-09-10 (בעל הגמ"ח): כשההשכרה הושלמה בפועל דרך המסלול המקל (אחראית
         // משמרת, לא רק מנהל) - שולחים התראה פנימית לכל המנהלים עם פרטי הברקוד, כדי
         // שתהיה להם נראות על מה שיוצא מהרזרבה גם כשלא הם עצמם אישרו את זה.
-        if (reserveShiftLeadAllowed) {
+        if (reserveOnlyBlock && reserveApproverBelowManager) {
           try {
             const actingId = await getActingEmployeeId();
             const actingEmployee = actingId
