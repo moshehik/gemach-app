@@ -195,7 +195,7 @@ export default function AppShell({
           {activeMeta && (
             <div className="crumb">
               <svg className="icon"><use href={`#${activeMeta.icon}`} /></svg>
-              <span>{activeMeta.groupLabel} / {activeMeta.label}</span>
+              <span className="topbar-title">{activeMeta.label}</span>
             </div>
           )}
 
