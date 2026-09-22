@@ -34,6 +34,7 @@ import {
   loadEmployeeAccess,
 } from '../../../lib/ai/aiCommon';
 import { downloadRecording } from '../../../lib/driveBridgeServer';
+import { getFeatureRestrictionConfig, buildRestrictionPromptBlock, isRestrictionEnabled } from '../../../lib/ai/restrictionsConfig';
 
 // הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
 // serverless - ר' Phase 4 בתוכנית.
@@ -127,7 +128,10 @@ export async function POST(req) {
           }
         }
 
-        const mediaPrompt = `אתה עוזר וירטואלי למערכת ניהול גמ"ח שמלות. המשתמש/ת צירף/ה ${hasRecording ? 'הסרטת מסך' : 'צילום מסך'} מהמערכת ושאל/ה: "${prompt}".\n${context ? `הקשר נוסף: ${context}\n` : ''}${recordingSteps ? `רשימת הפעולות שהמשתמש/ת ביצע/ה בזמן ההסרטה (נרשמה אוטומטית, לפי הסדר; ערכים רגישים הוסתרו):\n${String(recordingSteps).slice(0, 8000)}\n` : ''}ענה/י בעברית בצורה קצרה וברורה, בהתבסס על מה שרואים בפועל במדיה המצורפת. אל תשתמש בסימוני markdown כמו כוכביות.`;
+        const recordingRestrictionConfig = await getFeatureRestrictionConfig('recording');
+        const recordingRestrictionBlock = buildRestrictionPromptBlock('recording', recordingRestrictionConfig);
+
+        const mediaPrompt = `אתה עוזר וירטואלי למערכת ניהול גמ"ח שמלות. המשתמש/ת צירף/ה ${hasRecording ? 'הסרטת מסך' : 'צילום מסך'} מהמערכת ושאל/ה: "${prompt}".\n${context ? `הקשר נוסף: ${context}\n` : ''}${recordingSteps ? `רשימת הפעולות שהמשתמש/ת ביצע/ה בזמן ההסרטה (נרשמה אוטומטית, לפי הסדר; ערכים רגישים הוסתרו):\n${String(recordingSteps).slice(0, 8000)}\n` : ''}ענה/י בעברית בצורה קצרה וברורה, בהתבסס על מה שרואים בפועל במדיה המצורפת. אל תשתמש בסימוני markdown כמו כוכביות.${recordingRestrictionBlock}`;
         const mediaResponse = await generateContent(mediaPrompt, null, media);
         return NextResponse.json({ response: finalizeAiText(mediaResponse), data: null, sqlQuery: null });
       } catch (mediaErr) {
@@ -140,6 +144,17 @@ export async function POST(req) {
     // (loadEmployeeAccess ב-lib/ai/aiCommon.js), במקום עותק קשיח נפרד כאן.
     const cookieStore = await cookies();
     const { isManager, employeeContext } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
+
+    const mainChatRestrictionConfig = await getFeatureRestrictionConfig('main_chat');
+    // loadEmployeeAccess() already computed the default financial-data-restriction text above;
+    // an admin override at /admin/ai-restrictions replaces it, same pattern as app/api/ai/statistics/route.js.
+    const financialRestrictionOn = isManager || isRestrictionEnabled('main_chat', mainChatRestrictionConfig, 'financial_data');
+    const effectiveEmployeeContext = isManager
+      ? employeeContext
+      : (financialRestrictionOn
+          ? employeeContext
+          : '\nUser Role: standard employee, but full data access (including financial figures) is explicitly permitted by an administrator for this feature.');
+    const mainChatRestrictionBlock = buildRestrictionPromptBlock('main_chat', mainChatRestrictionConfig, { excludeIds: ['financial_data'] });
 
     // ACTION: SETTINGS_GUIDE() - see the branch below that handles it - lets the AI
     // point a manager to a specific SystemSetting's location, explain what it does,
@@ -173,7 +188,7 @@ The system will then give you a catalog of common operational actions (title, sh
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
     
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n${sharedRules}\n\n${schemaText}\n${employeeContext}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${userDateHints}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n${sharedRules}\n\n${schemaText}\n${effectiveEmployeeContext}${mainChatRestrictionBlock}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${userDateHints}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     
     let aiResponse = await generateContent(initialPrompt);
     

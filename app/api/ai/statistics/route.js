@@ -30,6 +30,7 @@ import {
   humanizeResultDates,
   finalizeTagsAndText,
 } from '../../../../lib/ai/aiCommon';
+import { getFeatureRestrictionConfig, buildRestrictionPromptBlock, isRestrictionEnabled } from '../../../../lib/ai/restrictionsConfig';
 
 // עוזר הסטטיסטיקה (StatisticsModal). עד 2026-09-20 קיבל סכימה חלקית (SCHEMA_MAP) בלי שדות כמו
 // isDelivery / zeout / takenDate, דרש שהתשובה תתחיל ב-"SQL:" (אחרת הציג את השאילתה הגולמית
@@ -69,7 +70,18 @@ export async function POST(req) {
     }
 
     const cookieStore = await cookies();
-    const { isManager, employeeId } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
+    const { isManager, employeeId, employeeContext } = await loadEmployeeAccess(prisma, verifiedCookieStore(cookieStore));
+
+    const statsRestrictionConfig = await getFeatureRestrictionConfig('statistics');
+    // loadEmployeeAccess() already computed the default financial-data-restriction text above;
+    // an admin override at /admin/ai-restrictions replaces it, same pattern as app/api/ai/route.js.
+    const financialRestrictionOn = isManager || isRestrictionEnabled('statistics', statsRestrictionConfig, 'financial_data');
+    const effectiveEmployeeContext = isManager
+      ? employeeContext
+      : (financialRestrictionOn
+          ? employeeContext
+          : '\nUser Role: standard employee, but full data access (including financial figures) is explicitly permitted by an administrator for this feature.');
+    const statsRestrictionBlock = buildRestrictionPromptBlock('statistics', statsRestrictionConfig, { excludeIds: ['financial_data'] });
 
     const schemaText = getFullSchemaContext();
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
@@ -78,7 +90,7 @@ export async function POST(req) {
     const userDateHints = buildUserDateHints([...history.filter(m => m.role === 'user').slice(-3).map(m => m.content), prompt].join('\n'));
     const sharedRules = buildSharedSqlRules({ draftStatus: DRAFT_ORDER_STATUS, reservedStatus: RESERVED_ORDER_STATUS });
 
-    const initialPrompt = `${SYSTEM_PROMPT}\n${sharedRules}\n\n${schemaText}\n${dateContext}${userDateHints}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History (the user's latest message may dispute or refine the previous answer - re-check the data instead of apologizing or asking permission):\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT}\n${sharedRules}\n\n${schemaText}\n${effectiveEmployeeContext}${statsRestrictionBlock}${dateContext}${userDateHints}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History (the user's latest message may dispute or refine the previous answer - re-check the data instead of apologizing or asking permission):\n${historyText}\n\nCurrent User Question: ${prompt}`;
     let aiResponse = await generateContent(initialPrompt);
     let tableRows = null;
 

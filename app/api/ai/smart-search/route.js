@@ -4,9 +4,30 @@ import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { checkAiAccess } from '../../../../lib/permissions';
+import { cookies } from 'next/headers';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { buildDateContext, buildUserDateHints, normalizeAiSql } from '../../../../lib/ai/aiCommon';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
+import { getFeatureRestrictionConfig, isRestrictionEnabled } from '../../../../lib/ai/restrictionsConfig';
+
+// Columns used for "orders" smart-search results when the financial_columns_orders restriction
+// (lib/ai/restrictionsRegistry.js, feature "smart_search") is on for a non-manager - this route
+// always ran SELECT * (the AI here only ever writes a WHERE fragment, never picks columns), so
+// this is a real column-selection change, not just prompt text. Excludes totalAmount/totalPaid/
+// paymentDate/paymentMethod/isPaid.
+const ORDERS_SAFE_COLUMNS = [
+  'id', '"orderId"', '"customerId"', '"status"', '"isDeleted"', '"eventDate"', '"eventDateHebrew"',
+  '"returnDate"', '"orderDate"', '"notes"', '"isDelivery"', '"deliveryCity"', '"deliveryDirection"',
+  '"isAbroad"', '"fromDate"', '"toDate"',
+];
+
+// Same idea for "rentals" (OrderItem) - the financial_columns_rentals restriction
+// (lib/ai/restrictionsRegistry.js). Excludes price/finalPrice.
+const RENTALS_SAFE_COLUMNS = [
+  'id', '"orderId"', '"dressItemId"', '"barcode"', '"barcodePrefix"', '"sizeText"',
+  '"isTaken"', '"isReturned"', '"returnedOk"',
+];
 
 const SCHEMA_MAP = {
   customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
@@ -61,6 +82,26 @@ export async function POST(req) {
     const schemaContext = SCHEMA_MAP[pageContext] || SCHEMA_MAP['customers'];
     const tableName = TABLE_MAP[pageContext] || "Customer";
 
+    // financial_columns_orders / financial_columns_rentals restrictions (see
+    // lib/ai/restrictionsRegistry.js) - real column selection, not prompt text, since the AI here
+    // never chooses the SELECT list.
+    let restrictOrdersFinancialColumns = false;
+    let restrictRentalsFinancialColumns = false;
+    if (pageContext === 'orders' || pageContext === 'rentals') {
+      const restrictionId = pageContext === 'orders' ? 'financial_columns_orders' : 'financial_columns_rentals';
+      const smartSearchConfig = await getFeatureRestrictionConfig('smart_search');
+      if (isRestrictionEnabled('smart_search', smartSearchConfig, restrictionId)) {
+        const cookieStore = await cookies();
+        const authToken = getVerifiedAuthCookie(cookieStore);
+        if (authToken?.value) {
+          const employee = await prisma.employee.findUnique({ where: { id: authToken.value }, select: { roleId: true } });
+          const isNonManager = !!employee && employee.roleId !== 1 && employee.roleId !== 2;
+          if (pageContext === 'orders') restrictOrdersFinancialColumns = isNonManager;
+          else restrictRentalsFinancialColumns = isNonManager;
+        }
+      }
+    }
+
     const systemPrompt = `You are a smart database filtering assistant.
 The user wants to search for data in the following table schema:
 ${schemaContext}
@@ -85,12 +126,17 @@ Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
 `;
 
+    const selectList = restrictOrdersFinancialColumns
+      ? ORDERS_SAFE_COLUMNS.join(', ')
+      : restrictRentalsFinancialColumns
+        ? RENTALS_SAFE_COLUMNS.join(', ')
+        : '*';
     const buildQuery = (clause, offset) => {
        let finalCondition = `"isDeleted" = false AND (${clause})`;
        if (pageContext === 'dresses' || pageContext === 'rentals') {
          finalCondition = clause;
        }
-       return `SELECT * FROM "${tableName}" WHERE ${finalCondition} LIMIT ${PAGE_SIZE} OFFSET ${offset};`;
+       return `SELECT ${selectList} FROM "${tableName}" WHERE ${finalCondition} LIMIT ${PAGE_SIZE} OFFSET ${offset};`;
     };
     const buildCountQuery = (clause) => {
        let finalCondition = `"isDeleted" = false AND (${clause})`;
@@ -226,17 +272,24 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
         const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
         data = fullOrders.map(order => {
-          const calculatedTotalAmount = order.obligations?.length > 0 
-            ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0) 
+          const calculatedTotalAmount = order.obligations?.length > 0
+            ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0)
             : (order.totalAmount || 0);
 
-          return {
-            orderId: order.orderId,
-            customerId: order.customerId,
+          // financial_columns_orders restriction - this enrichment step re-fetches full Order rows
+          // via Prisma regardless of the raw-SQL column list above, so the restriction has to be
+          // re-applied here too or it would leak back in through this second fetch.
+          const financialFields = restrictOrdersFinancialColumns ? {} : {
             totalAmount: calculatedTotalAmount,
             totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
             paymentDate: order.paymentDate,
             paymentMethod: order.paymentMethod,
+          };
+
+          return {
+            orderId: order.orderId,
+            customerId: order.customerId,
+            ...financialFields,
             status: order.status || (order.paymentDate ? 'שולם' : 'ממתין לתשלום'),
             notes: order.notes,
             eventDate: order.eventDate,
@@ -257,7 +310,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
                 dressId: i.dressItem?.dress?.id,
                 itemId: i.dressItemId,
                 description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
-                price: i.price,
+                ...(restrictOrdersFinancialColumns ? {} : { price: i.price }),
                 isTaken: i.isTaken,
                 isReturned: i.isReturned,
                 isDeleted: i.isDeleted,
