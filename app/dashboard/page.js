@@ -18,9 +18,11 @@ export default async function Dashboard() {
   if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) {
     return <NoAccessMessage />;
   }
-  // Trend window: 35 days back covers the "last 30 active days" chart
+  // Trend window: 13 months back covers all three trend charts below (daily
+  // last-30-active-days, weekly last-12-active-weeks, monthly last-12-active-months)
+  // from a single query, per דיווח 58d71561 (נווה יעקב).
   const trendSince = new Date();
-  trendSince.setDate(trendSince.getDate() - 35);
+  trendSince.setMonth(trendSince.getMonth() - 13);
 
   const [
     totalCustomers,
@@ -83,6 +85,39 @@ export default async function Dashboard() {
       revenue: dateRevenueMap[date]
     }));
 
+  // Week starts on Sunday (getDay() === 0), matching the calendar convention
+  // used elsewhere in the app (board/shifts).
+  const weekRevenueMap = {};
+  const monthRevenueMap = {};
+  recentPayments.forEach(payment => {
+    if (!payment.paymentDate) return;
+    const d = payment.paymentDate;
+    const weekStart = new Date(d);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekKey = weekStart.toISOString().split('T')[0];
+    weekRevenueMap[weekKey] = (weekRevenueMap[weekKey] || 0) + (payment.amount || 0);
+
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    monthRevenueMap[monthKey] = (monthRevenueMap[monthKey] || 0) + (payment.amount || 0);
+  });
+
+  // Limit to last 12 active weeks/months
+  const revenueTrendWeekly = Object.keys(weekRevenueMap)
+    .sort()
+    .slice(-12)
+    .map(week => ({
+      week,
+      revenue: weekRevenueMap[week]
+    }));
+
+  const revenueTrendMonthly = Object.keys(monthRevenueMap)
+    .sort()
+    .slice(-12)
+    .map(month => ({
+      month,
+      revenue: monthRevenueMap[month]
+    }));
+
   return (
     <>
       <div className="page-head">
@@ -135,7 +170,12 @@ export default async function Dashboard() {
       </div>
 
       <h2 className="section-title">פילוח נתונים</h2>
-      <DashboardCharts revenueByMethod={revenueByMethod} revenueTrend={revenueTrend} />
+      <DashboardCharts
+        revenueByMethod={revenueByMethod}
+        revenueTrend={revenueTrend}
+        revenueTrendWeekly={revenueTrendWeekly}
+        revenueTrendMonthly={revenueTrendMonthly}
+      />
     </>
   );
 }

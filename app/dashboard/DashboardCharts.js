@@ -36,6 +36,32 @@ function ChartsSkeleton() {
           </div>
         </div>
       </div>
+      <div className="card">
+        <div className="card-head">
+          <div className="card-title-row">
+            <svg className="icon"><use href="#i-activity" /></svg>
+            <h3>הכנסות שבועיות (תקופה אחרונה)</h3>
+          </div>
+        </div>
+        <div className="card-pad">
+          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
+          </div>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-head">
+          <div className="card-title-row">
+            <svg className="icon"><use href="#i-activity" /></svg>
+            <h3>הכנסות חודשיות (תקופה אחרונה)</h3>
+          </div>
+        </div>
+        <div className="card-pad">
+          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
