@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 
 // חיפוש read-only של הזמנה/פריט לפי ברקוד, בלי לבצע החזרה בפועל - משמש את בר
 // ההחזרה המהיר ב-app/rentals/page.js כדי לבדוק איחור (ר' lib/lateReturn.js)
@@ -37,7 +38,7 @@ export async function GET(request) {
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { barcode, orderId } = await request.json();
+    const { barcode, orderId, overridePin, overrideEmployeeId } = await request.json();
 
     if (!barcode) {
       return NextResponse.json({ error: 'חסר ברקוד' }, { status: 400 });
@@ -54,7 +55,8 @@ export async function POST(request) {
           isTaken: true,
           isReturned: false,
           isDeleted: false
-        }
+        },
+        include: { order: { select: { orderId: true, eventDate: true } } }
       });
 
       if (!itemToReturn) {
@@ -68,12 +70,18 @@ export async function POST(request) {
           isTaken: true,
           isReturned: false,
           isDeleted: false
-        }
+        },
+        include: { order: { select: { orderId: true, eventDate: true } } }
       });
 
       if (!itemToReturn) {
         return NextResponse.json({ error: 'לא הצלחנו למצוא את ההזמנה' }, { status: 404 });
       }
+    }
+
+    if (itemToReturn.order) {
+      const guard = await checkEarlyReturn(itemToReturn.order, { overridePin, overrideEmployeeId });
+      if (guard.response) return guard.response;
     }
 
     // Mark as returned

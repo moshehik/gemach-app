@@ -12,6 +12,7 @@ import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { verifyPin } from './modern/mocAuth';
 import { describeMismatch } from '../../lib/rentalBarcodeMatch';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../lib/lateReturn';
+import { postReturnScan } from './returnScanClient';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -265,17 +266,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const handleReturnScan = async (barcode) => {
     setIsBusy(true);
     try {
-      const res = await fetch('/api/returns/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: selectedOrder.orderId, barcode })
-      });
-      const data = await res.json();
+      // postReturnScan מטפל גם בדחיית השרת "האירוע עדיין לא הגיע" (require_approval_for_early_return)
+      const { res, data } = await postReturnScan({ orderId: selectedOrder.orderId, barcode });
 
       if (res.ok) {
         patchItem(data.item.id, { isReturned: data.item.isReturned, returnedOk: data.item.returnedOk, returnDate: data.item.returnDate });
-      } else {
-        alert(data.error);
+      } else if (!data?.cancelled) {
+        alert(data?.error || 'שגיאה בהחזרת פריט');
         // The item may already be up to date on the server (e.g. a previous click
         // already went through) - refresh so the card stops showing a stale status.
         await refreshOrder();

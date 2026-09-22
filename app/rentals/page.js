@@ -13,6 +13,7 @@ import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { postReturnScan } from '@/components/orders/returnScanClient';
 import RentedPastEventWidget from '@/app/components/RentedPastEventWidget';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
@@ -336,21 +337,19 @@ export default function RentalsPage() {
         // בעיית תקשורת בבדיקת האיחור לא צריכה לחסום החזרה רגילה - ממשיכים לניסיון ההחזרה עצמו
       }
 
-      const res = await fetch('/api/returns/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: cleanBarcode })
-      });
-      const data = await res.json();
+      // postReturnScan מטפל גם בדחיית השרת "האירוע עדיין לא הגיע" (require_approval_for_early_return)
+      const { res, data } = await postReturnScan({ barcode: cleanBarcode });
 
       if (res.ok) {
         setQuickStatus('success');
         setQuickBarcode('');
         // Open the order that was just returned
         setSelectedOrderId(data.orderId);
-      } else {
+      } else if (!data?.cancelled) {
         setQuickStatus('error');
-        alert(data.error);
+        alert(data?.error || 'שגיאה בהחזרת פריט');
+      } else {
+        setQuickStatus(null);
       }
       setTimeout(() => setQuickStatus(null), 1000);
     } catch (err) {

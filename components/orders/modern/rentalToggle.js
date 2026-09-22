@@ -36,3 +36,32 @@ export async function postRentalRent(itemId, barcode) {
   }
   return { ok: false, message: 'אישור המנהל נכשל - ההשכרה בוטלה.' };
 }
+
+// שליחת "החזרה" ל-/api/rentals/toggle, כולל הטיפול ב-require_approval_for_early_return
+// (lib/earlyReturnGuard.js): כשהשרת דוחה החזרה של פריט בהזמנה שתאריך האירוע שלה עדיין
+// לא הגיע (409 + earlyReturn) מציגים אישור מנהל ושולחים שוב עם ה-pin - אותו דפוס בדיוק
+// כמו postRentalRent למעלה.
+export async function postRentalReturn(itemId) {
+  const post = (extra = {}) => fetch('/api/rentals/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemId, action: 'return', ...extra })
+  });
+
+  let res = await post();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (res.ok) return { ok: true };
+
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* גוף לא תקין - הודעת ברירת מחדל */ }
+    if (res.status !== 409 || !data?.earlyReturn) return { ok: false, message: data?.error || null };
+
+    const authResult = await verifyPin(
+      `${data.overrideRejected ? `${data.error}\n` : `${data.error}\n`}להחזיר בכל זאת? נדרש אישור מנהל.`,
+      'feature:early_return_approval'
+    );
+    if (!authResult) return { ok: false, message: 'ההחזרה בוטלה - האירוע עדיין לא הגיע.' };
+    res = await post({ overridePin: authResult.pin, overrideEmployeeId: authResult.employeeId });
+  }
+  return { ok: false, message: 'אישור המנהל נכשל - ההחזרה בוטלה.' };
+}

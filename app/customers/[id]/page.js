@@ -150,12 +150,15 @@ export default function CustomerPage({ params }) {
       return;
     }
 
-    // 3/6 - אכיפה קדמית של שדות חובה לפי הגדרות (השרת אוכף גם הוא כגיבוי - ר' API)
+    // 3/6 - אכיפה קדמית של שדות חובה לפי הגדרות (השרת אוכף גם הוא כגיבוי - ר' API).
+    // כמו require_customer_id_number למטה - רק ביצירת לקוח חדש, לא באכיפה רטרואקטיבית
+    // על עריכת לקוחות קיימים (דיווח תקלה 48ff7055, 2026-09-22: לא לחייב מילוי מייל/כתובת
+    // כדי לערוך פרטים אחרים של לקוח שכבר קיים).
     const missing = [];
-    if (settings.require_customer_email === 'true' && !String(customer.email || '').trim()) {
+    if (id === 'new' && settings.require_customer_email === 'true' && !String(customer.email || '').trim()) {
       missing.push('דוא"ל');
     }
-    if (settings.require_full_address === 'true') {
+    if (id === 'new' && settings.require_full_address === 'true') {
       if (!String(customer.city || '').trim()) missing.push('עיר');
       if (!String(customer.street || '').trim()) missing.push('רחוב');
       if (!String(customer.houseNum || '').trim()) missing.push('מספר בית');
@@ -281,7 +284,7 @@ export default function CustomerPage({ params }) {
               </div>
             </div>
             <div className="field">
-              <label>דוא&quot;ל <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <label>דוא&quot;ל {settings.require_customer_email === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-mail" /></svg>
                 <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} required={settings.require_customer_email === 'true'} />
