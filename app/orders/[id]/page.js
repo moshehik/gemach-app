@@ -155,6 +155,10 @@ export default function OrderDetailsPage({ params }) {
   // מחזיק תמיד את הגרסה העדכנית של handleExit (המוגדר בהמשך הקומפוננטה) כדי שניתן יהיה
   // לקרוא לו מ-useEffect שמוגדר לפני ה-early return, בלי לשבור את סדר ה-hooks.
   const handleExitRef = useRef(null);
+  // מסומן ל-true כשיציאה נחסמה כי השמירה שקדמה לה יצרה חוב חדש שהעובד עדיין לא טיפל
+  // בו (ר' handleExit) - מבטיח שניסיון יציאה חוזר לא ינצל את קיצור הדרך "אין שינויים
+  // שלא נשמרו" כדי לצאת בשקט בלי שעובר דרך בדיקת החוב הרגילה.
+  const pendingDebtBlockRef = useRef(false);
   const [isPastEvent, setIsPastEvent] = useState(false);
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
@@ -752,18 +756,27 @@ export default function OrderDetailsPage({ params }) {
         setTimeout(() => paymentsManagerRef.current?.openPendingAutoRefundBankModal(), 60);
       }
 
-      // הוספת פריט חדש להזמנה קיימת יוצרת חיוב חדש שצריך לגבות - במקום להשאיר את
-      // זה לגילוי ידני (דיווח 68912d76: "איפה היא משלמת עליו?"), עוברים אוטומטית
-      // לטאב תשלומים כשבאמת נוצרה יתרת חוב חדשה מהשמירה הזו. מחושב מהתשובה הטרייה
-      // מהשרת (לא ממצב totalRequired/totalPaid הישן) כדי שיהיה מדויק מיד אחרי השמירה.
-      if (submittedLocalIds.length > 0 && activeTab === 'items') {
-        const freshRequired = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
-        const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-        if (freshRequired - freshPaid > 0) setActiveTab('payments');
+      // הוספת פריט/משלוח (או כל שינוי אחר) להזמנה קיימת עלולה ליצור חיוב חדש שצריך
+      // לגבות - במקום להשאיר את זה לגילוי ידני (דיווח 68912d76: "איפה היא משלמת
+      // עליו?", ודיווח 6124472b: הוספת משלוח לא נתנה שום דרך ברורה לשלם עליו),
+      // עוברים אוטומטית לטאב תשלומים בכל פעם שהשמירה הזו יצרה/הגדילה בפועל את יתרת
+      // החוב מעבר למה שהייתה כשהכרטיס נפתח (openedDebt) - לא רק כשנוסף פריט מהטאב
+      // "פריטים". חיוב משלוח, למשל, נוצר רק בצד השרת בתוך ה-PUT (applyDeliveryCharge)
+      // ולכן ה-state המקומי (totalRequired/totalPaid) לא ידע עליו לפני זה - מחושב
+      // מהתשובה הטרייה מהשרת (לא מה-state הישן) כדי שיהיה מדויק מיד אחרי השמירה.
+      const freshRequired = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+      const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+      const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
+      const newDebtCreatedBySave = freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01;
+      if (newDebtCreatedBySave) {
+        setActiveTab('payments');
       }
 
-      setSaveMessage('השינויים נשמרו בהצלחה!');
-      setTimeout(() => setSaveMessage(''), 3000);
+      setSaveMessage(newDebtCreatedBySave
+        ? `השינויים נשמרו בהצלחה! נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} - עברת אוטומטית לטאב תשלומים להשלמת הגבייה.`
+        : 'השינויים נשמרו בהצלחה!');
+      setTimeout(() => setSaveMessage(''), newDebtCreatedBySave ? 7000 : 3000);
       setShowSaveSuccessOverlay(true);
       setTimeout(() => setShowSaveSuccessOverlay(false), 5000);
 
@@ -849,7 +862,7 @@ export default function OrderDetailsPage({ params }) {
     // תמחור מלא, כותב ל-AuditLog ומקפיץ updatedAt על כל יציאה). בקרת החוב ביציאה
     // רלוונטית רק כשנוצר/השתנה חוב בכרטיס הזה, וזה תמיד עובר דרך שמירה (handleSave
     // כבר דורש שם אישור מנהל כשהחוב השתנה מאז הפתיחה) או דרך מסלול השמירה שלמטה.
-    if (!hasUnsavedChanges) {
+    if (!hasUnsavedChanges && !pendingDebtBlockRef.current) {
       if (destinationHref) {
         router.push(destinationHref);
       } else {
@@ -963,23 +976,49 @@ export default function OrderDetailsPage({ params }) {
 
       setSaving(false);
 
-      // התראת מידע בלבד (לא חוסמת) - יתרת זכות סימטרית ל"יתרת חוב", אבל בלי שום דבר
-      // לאשר: בקשת הזיכוי האוטומטית כבר נוצרה/עודכנה בצד השרת (syncPendingCreditRefund
-      // רץ בתוך ה-PUT שזה עתה הצליח) - כאן רק מוודאים שהעובד רואה שמגיע ללקוח זיכוי.
       try {
         const updatedOrder = await res.clone().json();
         const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
         const freshRequired = (updatedOrder.totalAmount && updatedOrder.totalAmount > 0)
           ? updatedOrder.totalAmount
           : (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+        const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+        const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
+
+        // דיווח נווה יעקב (6124472b): הוספת משלוח לא עדכנה את ה-state המקומי (חיוב
+        // המשלוח נוצר רק בצד השרת, בתוך ה-PUT שזה עתה הצליח - ר' applyDeliveryCharge),
+        // כך שבדיקת החוב שלמעלה (exitCurrentDebt, על בסיס state ישן) לא תפסה את החוב
+        // החדש, וזה איפשר לצאת מהכרטיס בלי לשלם ובלי שום התראה. בודקים שוב מול הנתונים
+        // העדכניים שחזרו זה עתה מהשרת (המקור היחיד המהימן למשלוח) לפני שבאמת עוזבים -
+        // אם נוצר חוב חדש שעדיין לא אושר, לא יוצאים: מסנכרנים את ה-state לנתונים
+        // הטריים ונשארים בטאב תשלומים. pendingDebtBlockRef מבטיח שניסיון יציאה נוסף לא
+        // ינצל את "אין שינויים שלא נשמרו" כדי לעקוף את בדיקת החוב הרגילה בפעם הבאה.
+        if (freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01 && !exitDebtApprovedBy) {
+          setOrder(updatedOrder);
+          const mergedItems = mergePendingItems(updatedOrder.items || [], items, submittedLocalIds);
+          setItems(mergedItems);
+          setObligations(updatedOrder.obligations || []);
+          setPayments(updatedOrder.payments || []);
+          setRefunds(updatedOrder.refunds || []);
+          savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
+          pendingDebtBlockRef.current = true;
+          setActiveTab('payments');
+          alert(`השינויים נשמרו, אך נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בטאב תשלומים.`);
+          return;
+        }
+
+        // התראת מידע בלבד (לא חוסמת) - יתרת זכות סימטרית ל"יתרת חוב", אבל בלי שום דבר
+        // לאשר: בקשת הזיכוי האוטומטית כבר נוצרה/עודכנה בצד השרת (syncPendingCreditRefund
+        // רץ בתוך ה-PUT שזה עתה הצליח) - כאן רק מוודאים שהעובד רואה שמגיע ללקוח זיכוי.
         const creditNow = Math.round((freshPaid - freshRequired) * 100) / 100;
         if (creditNow > 0) {
           alert(`שים לב: ללקוח מגיע זיכוי של ₪${creditNow.toLocaleString('he-IL')} עבור הזמנה זו.\nבקשת זיכוי ממתינה נרשמה אוטומטית בטאב "זיכויים".`);
         }
       } catch (e) {
-        console.error('Failed to check credit balance on exit', e);
+        console.error('Failed to check debt/credit balance on exit', e);
       }
 
+      pendingDebtBlockRef.current = false;
       if (destinationHref) {
         router.push(destinationHref);
       } else {
