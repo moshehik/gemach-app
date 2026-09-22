@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { checkAiAccess } from '../../../../lib/permissions';
 import { generateContent } from '../../../../lib/ai/gemini';
 import { buildDateContext, getIsraelNow, fixDatePairsInText } from '../../../../lib/ai/aiCommon';
+import { getFeatureRestrictionConfig, buildRestrictionPromptBlock } from '../../../../lib/ai/restrictionsConfig';
 
 export async function POST(req) {
   // Was completely unauthenticated (a free Gemini proxy for anyone on the internet).
@@ -16,8 +17,10 @@ export async function POST(req) {
     // עוגן זמן ישראלי מחושב בשרת; כותרת "תאריך הפקה" בדוח חייבת להשתמש בו כלשונו
     // (בבדיקה נכתב "ט' תשרי (19/09/2026)" - צירוף שלא קיים, כי התאריך העברי והלועזי נלקחו מאזורי זמן שונים)
     const now = getIsraelNow();
+    const restrictionConfig = await getFeatureRestrictionConfig('report');
+    const restrictionBlock = buildRestrictionPromptBlock('report', restrictionConfig);
     const dateContext = buildDateContext() + `
-If the report shows a "report date"/"generated on" line, write exactly: ${now.hebrew} (${now.dmy}). Never write any other date pair that is not present in the data.`;
+If the report shows a "report date"/"generated on" line, write exactly: ${now.hebrew} (${now.dmy}). Never write any other date pair that is not present in the data.${restrictionBlock}`;
 
     let systemPrompt = '';
 

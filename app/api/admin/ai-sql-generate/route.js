@@ -6,6 +6,7 @@ import path from 'path';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { buildDateContext, getFullSchemaContext, normalizeAiSql } from '../../../../lib/ai/aiCommon';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
+import { getFeatureRestrictionConfig, buildRestrictionPromptBlock } from '../../../../lib/ai/restrictionsConfig';
 
 const getSchemaContext = getFullSchemaContext;
 
@@ -23,10 +24,9 @@ Rules for SQL query generation:
 4. IMPORTANT: Always quote table names and column names with double quotes because PostgreSQL is case-sensitive with identifiers created by Prisma (e.g. "Customer", "firstName", "Order", "isDeleted").
 5. Be aware of the field names exactly as defined in the schema.
 6. Make sure to format strings properly (using single quotes for string values).
-7. SOFT DELETE CONVENTION: this system never hard-deletes business rows. When the user asks to delete/remove/cancel records in a table that has an "isDeleted" column (Customer, Order, OrderItem, Payment, DressItem, DressModel, ...) generate UPDATE ... SET "isDeleted" = true (and "deletedAt" = NOW() if that column exists) instead of DELETE. Generate a real DELETE only if the user explicitly says permanent/hard delete (מחיקה סופית / לצמיתות / קשיחה).
-8. PLACEHOLDER ORDERS: the "Order"."status" column holds the Hebrew values '${DRAFT_ORDER_STATUS}' (unfinished draft order) and '${RESERVED_ORDER_STATUS}' (temporary reservation). "Draft" means status = '${DRAFT_ORDER_STATUS}' - NEVER the English word 'draft'. For "real orders only" filters use COALESCE("status", '') NOT IN ('${DRAFT_ORDER_STATUS}', '${RESERVED_ORDER_STATUS}') (status is NULL for almost every real order, so a bare NOT IN or <> drops them).
-9. TEXT MATCHING in the WHERE of UPDATE/DELETE: when the user gives a value written by hand (city names, names) keep the exact literal they typed - but prefer ILIKE for names/free text in SELECTs. For a SELECT that lists customers or orders show readable columns (order number "orderId", customer first+last name, dates) - never a long UUID "customerId".
-10. WHOLE HEBREW MONTH: use "eventDate" >= HEBREW_MONTH_START('ELUL', 5786) AND "eventDate" <= HEBREW_MONTH_END('ELUL', 5786); the system replaces the macros with exact dates.`;
+7. PLACEHOLDER ORDERS: the "Order"."status" column holds the Hebrew values '${DRAFT_ORDER_STATUS}' (unfinished draft order) and '${RESERVED_ORDER_STATUS}' (temporary reservation). "Draft" means status = '${DRAFT_ORDER_STATUS}' - NEVER the English word 'draft'. For "real orders only" filters use COALESCE("status", '') NOT IN ('${DRAFT_ORDER_STATUS}', '${RESERVED_ORDER_STATUS}') (status is NULL for almost every real order, so a bare NOT IN or <> drops them).
+8. TEXT MATCHING in the WHERE of UPDATE/DELETE: when the user gives a value written by hand (city names, names) keep the exact literal they typed - but prefer ILIKE for names/free text in SELECTs. For a SELECT that lists customers or orders show readable columns (order number "orderId", customer first+last name, dates) - never a long UUID "customerId".
+9. WHOLE HEBREW MONTH: use "eventDate" >= HEBREW_MONTH_START('ELUL', 5786) AND "eventDate" <= HEBREW_MONTH_END('ELUL', 5786); the system replaces the macros with exact dates.`;
 
 export async function POST(req) {
   if (!(await checkAuth('הנהלה ראשית'))) {
@@ -42,8 +42,10 @@ export async function POST(req) {
 
     const schemaText = getSchemaContext();
     const dateContext = buildDateContext();
-    
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nGenerate ONLY the raw SQL query string now:`;
+    const restrictionConfig = await getFeatureRestrictionConfig('admin_sql_generator');
+    const restrictionBlock = buildRestrictionPromptBlock('admin_sql_generator', restrictionConfig);
+
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n${restrictionBlock}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nGenerate ONLY the raw SQL query string now:`;
     
     let aiResponse = await generateContent(initialPrompt);
     
