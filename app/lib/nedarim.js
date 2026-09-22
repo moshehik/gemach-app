@@ -53,7 +53,12 @@ export async function chargeNedarimPlus({
   const url = customEndpoint || `https://www.matara.pro/nedarimplus/V6/Files/WebServices/${endpoint}`;
 
   const paramsObj = {
-    Mosad: mosadId,
+    // DebitKeva.aspx expects the institution param named `MosadId`, not `Mosad` -
+    // confirmed live 2026-09-23: `Mosad=<real institution number>` on DebitKeva.aspx
+    // returns the exact same "חובה לציין מספר מוסד בספרות בלבד" as sending no
+    // institution param at all, while `MosadId=<same number>` moves past that
+    // check to the next validation error. DebitCard.aspx uses `Mosad`, unaffected.
+    ...(isKeva ? { MosadId: mosadId } : { Mosad: mosadId }),
     ClientName: clientName,
     Adresse: address,
     Phone: phone,
