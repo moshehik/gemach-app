@@ -701,9 +701,9 @@ export default function CustomerInventoryViewer() {
     });
 
     list.sort((a, b) => {
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
+      const nameA = getModelDisplayName(a).toLowerCase();
+      const nameB = getModelDisplayName(b).toLowerCase();
+      return nameA.localeCompare(nameB, undefined, { numeric: true });
     });
     return list;
   }, [dresses, search, selectedCategories, selectedSizes]);

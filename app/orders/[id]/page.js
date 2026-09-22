@@ -163,6 +163,7 @@ export default function OrderDetailsPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [showSaveSuccessOverlay, setShowSaveSuccessOverlay] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [inventoryCache, setInventoryCache] = useState(null);
@@ -751,6 +752,8 @@ export default function OrderDetailsPage({ params }) {
 
       setSaveMessage('השינויים נשמרו בהצלחה!');
       setTimeout(() => setSaveMessage(''), 3000);
+      setShowSaveSuccessOverlay(true);
+      setTimeout(() => setShowSaveSuccessOverlay(false), 5000);
     } catch (err) {
       console.error(err);
       setSaveMessage(err.message || 'שגיאה בשמירת הנתונים.');
@@ -1222,6 +1225,24 @@ export default function OrderDetailsPage({ params }) {
 
   return (
     <>
+      {/* הודעת אישור מסך-מלא לאחר שמירת הזמנה בהצלחה - נעלמת מעצמה אחרי 5 שניות */}
+      {showSaveSuccessOverlay && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
+        >
+          <div
+            className="modal confirm-modal"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '32px 48px', pointerEvents: 'none' }}
+          >
+            <div className="modal-icon-circle" style={{ background: 'var(--success-tint)', color: 'var(--success)', width: '56px', height: '56px' }}>
+              <svg className="icon" style={{ width: '32px', height: '32px' }}><use href="#i-check-circle" /></svg>
+            </div>
+            <strong style={{ fontSize: '20px' }}>ההזמנה נשמרה בהצלחה!</strong>
+          </div>
+        </div>
+      )}
+
       {/* באנר טיוטה מקומית: שינויים שלא נשמרו מביקור קודם בכרטיס (למשל דפדפן שנסגר).
           לא חוסם — אפשר לעיין בכרטיס לפני שמחליטים לשחזר או למחוק. */}
       {pendingDraft && (
