@@ -1756,6 +1756,10 @@ export default function NewOrderPage() {
                         {order.selectedCustomer.isBlocked && (
                           <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
                         )}
+                        {' '}
+                        <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="hint" style={{ fontWeight: 600 }}>
+                          <svg className="icon" style={{ width: '13px', height: '13px', verticalAlign: 'middle' }}><use href="#i-edit" /></svg> עריכה
+                        </a>
                       </strong>
                     </div>
                     {(order.selectedCustomer.phone2 || order.selectedCustomer.email) && (
@@ -1816,13 +1820,17 @@ export default function NewOrderPage() {
                   <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                 </div>
 
+                {/* טלפון נוסף/אימייל: השדה היחיד שבאמת תמיד חובה הוא require_customer_email
+                    (הגדרה נפרדת) - חוץ מזה נדרש רק אחד מהשניים (ר' handleSaveNewCustomerAndProceed),
+                    וגם זו חסימה רכה עם אפשרות עקיפה באישור מנהל. הכוכבית על שניהם בו-זמנית
+                    בלי תלות בהגדרה גרמה לתחושה ששניהם שדה חובה נפרד (דיווח b6bc7d98). */}
                 <div className="form-grid">
                   <div className="field">
-                    <label htmlFor="cust-phone2">טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <label htmlFor="cust-phone2">טלפון נוסף {!newCustomer.phone2.trim() && !newCustomer.email.trim() && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
-                    <label htmlFor="cust-email">אימייל <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || (!newCustomer.phone2.trim() && !newCustomer.email.trim())) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
@@ -1838,6 +1846,9 @@ export default function NewOrderPage() {
                     </div>
                   </div>
                 </div>
+                {!newCustomer.phone2.trim() && !newCustomer.email.trim() && (
+                  <p className="field hint" style={{ margin: '0 0 10px' }}>יש למלא לפחות אחד מהשניים - טלפון נוסף או אימייל.</p>
+                )}
 
                 {/* 4 - עיר/רחוב/מספר בית ואישור דיוור יכולים להיות שדות חובה בפועל
                     (require_full_address / require_marketing_consent) - כשהם כאלה, פותחים
