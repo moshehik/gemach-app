@@ -91,8 +91,16 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
     }
   }, [value?.name]);
 
+  // 9000aab4 (נווה יעקב): כמה דגמים ישנים נשמרו עם השם הזמני "ללא שם" (יובאו בלי שם
+  // תיאורי אמיתי) - עדיף להציג את קוד הדגם, כמו שכבר קורה בעמדת הלקוחות ובפריטי הזמנה.
+  const displayModelName = (model) => {
+    const name = (model?.name || '').trim();
+    if (name.startsWith('ללא שם') && model?.barcodePrefix) return String(model.barcodePrefix);
+    return name;
+  };
+
   const handleSelect = (model) => {
-    setQuery(model.name);
+    setQuery(displayModelName(model));
     onChange(model);
     setIsOpen(false);
   };
@@ -167,7 +175,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
           onClick={() => handleSelect(m)}
         >
           <svg className="icon"><use href="#i-tag" /></svg>
-          <span>{m.name}</span>
+          <span>{displayModelName(m)}</span>
           {m.barcodePrefix && <span className="meta">קוד: {m.barcodePrefix}</span>}
         </div>
       ))}
