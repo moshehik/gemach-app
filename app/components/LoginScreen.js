@@ -119,11 +119,10 @@ export default function LoginScreen({ isModal = false, onClose }) {
     // ו-UserMenu מציג את /api/me מהמטמון המשותף בזיכרון — שניהם מתעדכנים
     // לעובד שנכנס רק בטעינת עמוד נקייה. אם העמוד הנוכחי אסור לתפקיד החדש,
     // ה-guard בשרת ממילא יפנה לדף הבית.
-    if (isModal && onClose) {
-      window.location.reload();
-    } else {
-      window.location.href = '/';
-    }
+    // גם כשמסך הכניסה מוצג במקום דף מבוקש (showLogin ב-layout.js, לא ניווט
+    // אמיתי - כתובת ה-URL נשארת זהה לדף שהמשתמש ניסה להגיע אליו), reload()
+    // ולא href='/' - כדי לחזור לאותו דף במקום לקפוץ לדף הבית (דיווח 2026-09-23).
+    window.location.reload();
   };
 
   const handleLogin = async (e) => {
