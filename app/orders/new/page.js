@@ -1128,7 +1128,7 @@ export default function NewOrderPage() {
 
     if (!isManagerExitPayment) {
       if (totalWithCurrent < totalAmount) {
-        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל, השתמש בכפתור "אישור תשלום / פיצול".');
+        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל בין כמה אמצעי תשלום, השתמש בכפתור "אישור תשלום" כמה פעמים.');
         return;
       }
     }
@@ -1428,7 +1428,7 @@ export default function NewOrderPage() {
     {
       id: 5, label: 'תשלום', enabled: canNavigateToStep(5),
       lockedReason: 'יש להוסיף לפחות פריט אחד להזמנה',
-      value: totalPaid > 0 ? `שולם ₪${totalPaid.toLocaleString('he-IL')}` : 'רישום תשלום וסיום'
+      value: totalPaid > 0 ? `שולם ₪${totalPaid.toLocaleString('he-IL')}` : ''
     }
   ];
 
@@ -1920,7 +1920,6 @@ export default function NewOrderPage() {
         {step === 2 && (
           <div style={{ maxWidth: '520px', margin: '0 auto' }}>
             <h2>מתי האירוע?</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>התאריך קובע את חישוב המלאי ואת מועדי הלקיחה וההחזרה.</p>
 
             <div className="pill-tabs" style={{ marginBottom: '14px' }}>
               <button
@@ -2116,7 +2115,6 @@ export default function NewOrderPage() {
         {step === 3 && (
           <div>
             <h2>אילו פריטים?</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>בחירת דגם ומידה — הסל והמחיר מתעדכנים בזמן אמת.</p>
 
             <div className="two-col">
               {/* --- הוספת פריט --- */}
@@ -2342,8 +2340,7 @@ export default function NewOrderPage() {
         {/* ==================== שלב 4 · סיכום ==================== */}
         {step === 4 && (
           <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-            <h2>הכול נכון?</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>בדיקה אחרונה של פרטי ההזמנה לפני מעבר לתשלום.</p>
+            <h2>סיכום</h2>
 
             <div className="card card-pad" style={{ marginBottom: '16px' }}>
               <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
@@ -2452,7 +2449,7 @@ export default function NewOrderPage() {
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
                     <button type="submit" className="btn btn-secondary" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
-                      <svg className="icon"><use href="#i-plus" /></svg> אישור תשלום / פיצול
+                      <svg className="icon"><use href="#i-plus" /></svg> אישור תשלום
                     </button>
                     {settings.nedarim_plus_enabled !== 'false' && (
                       <button
