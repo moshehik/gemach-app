@@ -13,6 +13,7 @@
   --navy-900:#0a2242; --navy:#0f2c52; --navy-700:#173c6b; --navy-500:#2b5a94;
   --sky-50:#f3f9fe; --sky-100:#e4f1fb; --sky-200:#cfe6f7; --sky-300:#a9d2f0; --sky-400:#7fb8e6;
   --gold-50:#fbf6e3; --gold-100:#f4e8c1; --gold-300:#e0c56e; --gold:#c9a227; --gold-b:#b8912f; --gold-d:#9a7a1f; --gold-700:#6f5710;
+  --rose-50:#fff5f9; --rose-100:#fde6ef; --rose-200:#fbcfe0; --rose-300:#f4a6c0; --rose-500:#d9739c; --rose-700:#a83d6c;
   --gbtn:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%);
   --gbtn-d:#9a7a1f;
   /* semantic aliases (mapped ONLY to the 3 families) */
@@ -22,12 +23,12 @@
   --gold-t:var(--gold-100);
   --green:var(--navy); --green-t:var(--sky-200);
   --blue:var(--navy-500); --blue-t:var(--sky-100);
-  --amber:var(--gold-700); --amber-t:var(--gold-100);
+  --amber:var(--rose-700); --amber-t:var(--rose-100);
   --red:var(--gold-700); --red-t:var(--gold-100);
   --teal:var(--navy-500); --teal-t:var(--sky-200);
-  --plum:var(--navy-700); --plum-t:var(--sky-100);
+  --plum:var(--rose-700); --plum-t:var(--rose-100);
   --navy2:var(--navy-700);
-  --r:22px; --r-sm:14px;
+  --r:16px; --r-sm:12px;
   --sh:0 1px 2px rgba(15,44,82,.06),0 8px 24px -10px rgba(15,44,82,.22);
   --sh-lg:0 20px 60px -15px rgba(10,34,66,.5);
 }
@@ -105,7 +106,7 @@ bdi,.num{unicode-bidi:isolate}
 .tab{flex:1;min-width:max-content;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border:0;background:transparent;border-radius:15px;font-weight:500;color:var(--ink2);white-space:nowrap;transition:.2s}
 .tab:hover{color:var(--ink)}
 .tab.on{background:var(--surface);color:var(--brand);box-shadow:0 2px 8px rgba(15,44,82,.12);font-weight:600}
-.tab .cnt{background:var(--sky-300);color:var(--ink2);border-radius:999px;min-width:22px;height:22px;padding:0 7px;font-size:13px;display:grid;place-items:center}
+.tab .cnt{background:var(--sky-300);color:var(--ink2);border-radius:999px;min-width:22px;height:22px;padding:0 7px;font-size:14px;display:grid;place-items:center}
 .tab.on .cnt{background:var(--brand-t);color:var(--brand)}
 .tab .pip{width:9px;height:9px;border-radius:50%;background:var(--teal)}
 .tab.tdel.on{color:var(--teal)}
@@ -139,7 +140,7 @@ bdi,.num{unicode-bidi:isolate}
 .kv .f .chip{margin-top:4px}
 .kv .f{background:var(--surface2);border-radius:var(--r-sm);padding:12px 14px;display:flex;gap:10px;align-items:center;min-width:0}
 .kv .f .ic{color:var(--ink3)}
-.kv .f small{display:block;color:var(--ink3);font-size:13px;line-height:1.2}
+.kv .f small{display:block;color:var(--ink3);font-size:14px;line-height:1.2}
 .kv .f b{font-weight:500;overflow-wrap:anywhere}
 
 .tip{width:24px;height:24px;border-radius:50%;border:0;background:transparent;color:var(--ink3);display:inline-grid;place-items:center;padding:0;flex:none}
@@ -213,7 +214,7 @@ label.lbl{display:flex;align-items:center;gap:6px;font-weight:500;margin-bottom:
 .itm .chevb{transition:.25s}
 .itm.open .chevb{transform:rotate(180deg)}
 .det .dts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.det .dts small{display:block;color:var(--ink3);font-size:13px}
+.det .dts small{display:block;color:var(--ink3);font-size:14px}
 .addpanel{border:2px dashed var(--brand);background:var(--gold-50);border-radius:var(--r);padding:20px;display:none;flex-direction:column;gap:16px}
 .addpanel.open{display:flex}
 .sizes{display:flex;gap:8px;flex-wrap:wrap}
@@ -277,7 +278,7 @@ label.lbl{display:flex;align-items:center;gap:6px;font-weight:500;margin-bottom:
 .tn .p{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;flex:none}
 .tn b{display:block;font-weight:600;line-height:1.3}
 .tn small{color:var(--ink2);font-size:14px;display:block}
-.tn .dl{display:inline-flex;gap:5px;align-items:center;color:var(--teal);font-size:13px;margin-top:3px}
+.tn .dl{display:inline-flex;gap:5px;align-items:center;color:var(--teal);font-size:14px;margin-top:3px}
 .ract{display:flex;flex-direction:column;gap:10px}
 .saved-note{display:flex;align-items:center;gap:8px;justify-content:center;color:var(--green);font-weight:500;font-size:14px}
 .mbar{display:none}
@@ -363,7 +364,7 @@ label.lbl{display:flex;align-items:center;gap:6px;font-weight:500;margin-bottom:
   .stepper{padding:14px 8px 12px}
   .step .c{width:34px;height:34px}
   .step:not(:last-child)::after{top:15px;inset-inline-start:calc(50% + 24px);width:calc(100% - 48px)}
-  .step b{font-size:15px}.step span{font-size:13px}
+  .step b{font-size:15px}.step span{font-size:14px}
   .grid2{grid-template-columns:1fr}
   .card{padding:16px}
   .card-h .ico{width:40px;height:40px}
@@ -375,7 +376,7 @@ label.lbl{display:flex;align-items:center;gap:6px;font-weight:500;margin-bottom:
   .dlg{padding:22px;border-radius:24px}
   .scrim{align-items:flex-end;padding:8px}
   #toast{left:12px;bottom:88px}
-  .demo{font-size:13px;padding:8px}
+  .demo{font-size:14px;padding:8px}
   .bal .n{font-size:32px}
   .dhero{flex-wrap:wrap}
 }
@@ -523,6 +524,196 @@ body{background-image:radial-gradient(1200px 500px at 85% -10%,var(--sky-50) 0,t
 .demo{background:var(--navy-900)}
 .itm.pending,.li.pend{border-color:var(--sky-400)}
 
+/* ===== ORDER / CLARITY PASS: 8px scale, stacked rows, navy+sky structure, rose+gold accents ===== */
+:root{--s1:8px;--s2:16px;--s3:24px;--s4:32px}
+body{line-height:1.6;font-size:16px}
+.app{padding:24px 24px 64px}
+.layout{gap:24px;margin-top:24px}
+.panel{gap:24px;margin-top:24px}
+.rail{gap:16px}
+/* cards: hairline, calm */
+.card{padding:24px;border:1px solid var(--sky-200);box-shadow:0 1px 2px rgba(15,44,82,.04);border-radius:var(--r)}
+.stepper{border:1px solid var(--sky-200);box-shadow:0 1px 2px rgba(15,44,82,.04);border-radius:var(--r);padding:24px}
+.itm,.scan{border:1px solid var(--sky-200);box-shadow:0 1px 2px rgba(15,44,82,.04);border-radius:var(--r)}
+.card-h{gap:16px;margin-bottom:16px;min-height:44px}
+.card-h h2{font-size:18px;font-weight:600}
+.card-h .ico{width:44px;height:44px;border-radius:12px;background:var(--sky-100);color:var(--navy)}
+.card-h .ico.rose,.card-h .ico.plum{background:var(--rose-100);color:var(--rose-700)}
+.card-h .ico.gold,.card-h .ico.green,.card-h .ico.blue,.card-h .ico.teal,.card-h .ico.gray{background:var(--sky-100);color:var(--navy)}
+.ttl h1{font-size:28px;font-weight:600}
+.big{font-size:20px;font-weight:600}
+/* stacked label-above-value rows with hairlines */
+.kv{grid-template-columns:1fr;gap:0}
+.kv .f{background:none;border-radius:0;padding:16px 0;border-bottom:1px solid var(--sky-100);align-items:flex-start;gap:16px}
+.kv .f:first-child{padding-top:0}
+.kv .f:last-child{border-bottom:0;padding-bottom:0}
+.kv .f small{font-size:14px;color:var(--ink3);line-height:1.4;margin-bottom:2px}
+.kv .f b{font-size:17px;font-weight:500;color:var(--ink)}
+.kv .f .ic{margin-top:4px;color:var(--navy-500)}
+.kv .f .chip{margin-top:8px}
+.grid2{grid-template-columns:1fr;gap:24px}
+.stackl{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:16px}
+.legs{flex-direction:column;align-items:flex-start;gap:8px;margin-top:16px}
+.leg{background:var(--sky-50);border:1px solid var(--sky-200)}
+.bal{flex-direction:column;align-items:stretch;gap:16px}
+.bal .n{font-size:36px}
+.bal>div{width:100%}
+.pbar{margin-top:8px;height:8px}
+lbl.lbl,label.lbl{margin-bottom:8px;color:var(--ink2);font-weight:500;font-size:15px}
+.field{gap:0}
+/* item card */
+.itm .top{align-items:flex-start;padding:24px 24px 16px;gap:16px}
+.itm .info{gap:4px}
+.itm .model{font-size:20px;font-weight:600}
+.itm .meta{color:var(--ink3);font-size:15px}
+.itm .stat{margin-top:4px}
+.itm .price{order:0;text-align:start;font-size:20px;font-weight:600;margin-top:8px;min-width:0}
+.itm .acts{padding:0 24px 24px;justify-content:flex-start;gap:8px}
+.itm .det{padding:24px;gap:16px;background:var(--sky-50)}
+.det .dts{display:flex;flex-direction:column;gap:12px}
+.det .dts small{font-size:14px;color:var(--ink3)}
+.itm.pending,.li.pend{background:var(--rose-50);border:1.5px dashed var(--rose-300)}
+.li.pend{background:var(--rose-50)}
+.thumb{width:64px;height:80px;border-radius:12px}
+/* list rows: stacked, hairline separated */
+.li{align-items:flex-start;padding:16px 0;gap:16px;border-bottom:1px solid var(--sky-100)}
+.li .ic-b{background:var(--sky-100);color:var(--navy);width:40px;height:40px;border-radius:12px}
+.li .t small{display:block;margin-bottom:4px}
+.li .a{font-size:17px;font-weight:600;margin-top:0;color:var(--ink)}
+.li .a.cr{color:var(--navy)}
+.li.pend{padding:16px;margin:8px 0;border-radius:12px}
+.li.pend .ic-b{background:var(--rose-200);color:var(--rose-700)}
+/* timeline history */
+.tl .e .p{background:var(--sky-100);color:var(--navy)}
+/* tabs */
+.tabs{background:var(--sky-100);padding:4px;border-radius:14px;gap:4px}
+.tab{min-height:44px;border-radius:12px;padding:8px 16px;transition:150ms}
+.tab.on{background:#fff;box-shadow:0 1px 3px rgba(15,44,82,.12);color:var(--navy);font-weight:600}
+.tab .cnt{background:var(--sky-200);color:var(--navy)}
+.tab.on .cnt{background:var(--rose-100);color:var(--rose-700)}
+.tab .pip{background:var(--gold)}
+.seg{background:var(--sky-100);border-radius:12px}
+.seg button{min-height:40px;border-radius:9px;transition:150ms}
+.seg button.on{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(15,44,82,.12)}
+/* chips */
+.chip{padding:4px 12px;font-weight:500}
+.chip.rose,.chip.amber{background:var(--rose-100);color:var(--rose-700)}
+.chip.gold{background:var(--gold-100);color:var(--gold-700)}
+.chip.blue,.chip.teal{background:var(--sky-200);color:var(--navy)}
+.chip.gray{background:var(--sky-100);color:var(--ink2)}
+/* buttons: gold = primary only; everything else quiet */
+.btn{min-height:44px;background:#fff;color:var(--navy);border:1px solid var(--sky-300);box-shadow:none;border-radius:12px;font-weight:500;padding:8px 16px;transition:background-color 150ms,color 150ms,border-color 150ms}
+.btn:hover{background:var(--navy);color:#fff;border-color:var(--navy);transform:none}
+.btn.sm{min-height:44px;padding:8px 16px;font-size:15px}
+.btn.lg{min-height:52px;font-size:17px}
+.btn.primary,.btn.green{background:var(--gbtn);color:#000;border:1px solid var(--gold-d);font-weight:600;box-shadow:none}
+.btn.primary:hover,.btn.green:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.navy{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.navy:hover{background:var(--navy-500);border-color:var(--navy-500)}
+.btn.danger{color:var(--navy);background:#fff}
+.btn.danger:hover{background:var(--rose-100);color:var(--rose-700);border-color:var(--rose-300)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--navy)}
+.btn.ghost:hover{background:var(--sky-100);color:var(--navy);border-color:transparent}
+.btn:disabled,.btn:disabled:hover{background:var(--sky-100);color:var(--ink3);border-color:var(--sky-200);cursor:not-allowed}
+.ibtn,.back{width:44px;height:44px;border-radius:12px;background:#fff;color:var(--navy);border:1px solid var(--sky-300);box-shadow:none;transition:background-color 150ms,color 150ms,border-color 150ms}
+.back{border-radius:50%}
+.ibtn:hover,.back:hover,.ibtn.danger:hover{background:var(--navy);color:#fff;border-color:var(--navy);transform:none}
+.ibtn.danger{color:var(--navy)}
+.demo button{background:var(--navy-700);color:#fff;border:1px solid var(--navy-500);min-height:36px}
+.demo button:hover{background:#fff;color:var(--navy);border-color:#fff}
+.btn:focus-visible,.ibtn:focus-visible,.back:focus-visible,.demo button:focus-visible,.tab:focus-visible,.seg button:focus-visible,.sizes button:focus-visible,.methods button:focus-visible,.opt:focus-visible,.chip.btnlike:focus-visible,#toast button:focus-visible,.tip:focus-visible{outline:3px solid var(--gold);outline-offset:2px;box-shadow:none}
+.sizes button{width:48px;height:44px}
+.menu button{min-height:44px}
+/* rail: navy, quiet secondaries, gold primary */
+.rcard{padding:24px;border:0;box-shadow:none;background:var(--navy);border-radius:var(--r)}
+.rail .rsum h3{font-size:20px;font-weight:600;margin:0}
+.rsum .row.wrap{flex-direction:column;align-items:flex-start;gap:8px;margin-top:16px}
+.brk{margin-top:16px;gap:16px}
+.brk div{flex-direction:column;align-items:flex-start;gap:0;color:#c9daee;font-size:15px}
+.brk div span:last-child{color:#fff;font-size:17px;font-weight:500}
+.brk .tot{border-top:1px solid rgba(255,255,255,.2);padding-top:16px;margin-top:0}
+.brk .tot span:first-child{color:#c9daee;font-size:15px;font-weight:400}
+.brk .tot span:last-child{font-size:22px;font-weight:600;color:#fff}
+.status{padding:16px 24px;border-radius:12px;border:0}
+.status.ok{background:var(--navy-700)}
+.status.ok .ic{color:var(--gold-300)}
+.status.debt{background:var(--gbtn);color:#000}
+.status.cred{background:var(--rose-200);color:var(--navy-900)}
+.status .n{font-size:24px;font-weight:600}
+.pendbox{background:rgba(244,166,192,.18);border:1.5px dashed var(--rose-300);color:#fff;border-radius:12px;padding:16px;margin-top:16px}
+.pendbox .ic{color:var(--rose-300)}
+.tline{margin-top:16px}
+.tn{padding-bottom:24px}
+.tn .p{width:40px;height:40px;border-radius:12px}
+.tline .tn .p{background:rgba(255,255,255,.1)!important;color:var(--gold-300)!important}
+.tn b{font-size:16px}
+.tn small{font-size:14px;line-height:1.5}
+.rcard .ract,.ract{gap:16px}
+.rcard .btn{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35)}
+.rcard .btn:hover{background:#fff;color:var(--navy);border-color:#fff}
+.rcard .btn.primary{background:var(--gbtn);color:#000;border-color:var(--gold-d)}
+.rcard .btn.primary:hover{background:#fff;color:#000}
+.rcard .btn.ghost{background:transparent;border-color:transparent;color:#fff}
+.rcard .btn.ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+.rcard .btn:disabled,.rcard .btn:disabled:hover{background:rgba(255,255,255,.08);color:#9fb7d3;border-color:transparent}
+.rcard .btn:focus-visible{outline-color:var(--gold-300)}
+.saved-note{color:var(--gold-300)}
+.mbar .btn{background:#fff;color:var(--navy);border:1px solid var(--sky-300)}
+.mbar .btn.primary{background:var(--gbtn);color:#000;border-color:var(--gold-d)}
+/* dialogs / toast */
+.dlg{padding:32px;border-radius:20px}
+.dlg h2{font-size:24px;font-weight:600}
+.chg{gap:8px;margin:24px 0}
+.chg .c{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;padding:16px;background:var(--sky-50);border-radius:12px;align-items:start}
+.chg .c .amt{grid-column:2}
+.chg .c .ico.rose,.chg .c .ico.green,.chg .c .ico.gray{background:var(--sky-100)!important;color:var(--navy)!important}
+.net{padding:16px 24px;border-radius:12px;margin-bottom:24px}
+.net.charge{background:var(--gold-100);border:1px solid var(--gold-b);color:var(--navy-900)}
+.net.credit{background:var(--rose-100);border:1px solid var(--rose-300);color:var(--navy-900)}
+.net.zero{background:var(--sky-100)}
+.opt.on{border-color:var(--navy);background:var(--sky-50)}
+.methods button.on{border-color:var(--navy);background:var(--sky-100);color:var(--navy)}
+.sizes button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.success .sc{flex-direction:column;align-items:center;gap:8px}
+#toast.credit .tb{background:var(--rose-300);color:var(--navy-900)}
+#toast.charge .tb{background:var(--gbtn);color:#000}
+#toast button{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;min-height:44px;border-radius:12px;padding:8px 16px}
+#toast button:hover{background:#fff;color:var(--navy)}
+.creditile{background:var(--rose-100);border:1px solid var(--rose-300);color:var(--navy-900);border-radius:var(--r)}
+.addpanel{background:var(--rose-50);border:1.5px dashed var(--rose-300);padding:24px;gap:24px}
+.scan{padding:8px 8px 8px 16px}
+.dhero{padding:24px;border-radius:var(--r);border:1px solid var(--sky-200);background:var(--sky-50)}
+.dhero .ico{background:var(--navy);width:56px;height:56px;border-radius:16px}
+.dhero.off .ico{background:var(--sky-300)}
+.coll{border:1px dashed var(--sky-300);border-radius:var(--r)}
+.coll[open]{border:1px solid var(--sky-200)}
+.coll>summary{min-height:56px;padding:8px 24px}
+.coll .in{padding:8px 24px 24px;gap:24px}
+.step .c{transition:150ms}
+.chip.btnlike{min-height:32px}
+.mbar{padding:8px 16px calc(8px + env(safe-area-inset-bottom));gap:8px}
+@media (max-width:1020px){.rail .tn{padding-bottom:0}.layout{gap:16px}.brk div:not(.tot){display:none}.brk .tot{border-top:0;padding-top:0}.brk{margin-top:8px}.rsum .row.wrap{flex-direction:row;flex-wrap:wrap}}
+@media (max-width:640px){.app{padding:16px 16px 112px}.card{padding:16px}.rcard{padding:16px}.itm .top{padding:16px 16px 8px}.itm .acts{padding:0 16px 16px}.dlg{padding:24px}.stepper{padding:16px 8px}.panel{gap:16px;margin-top:16px}}
+
+.kv .f .chip{display:flex;width:max-content;max-width:100%}
+.rcard:has(>.status){padding:8px}
+.rcard:has(>.status) .pendbox{margin:8px}
+#p-items .seg{min-width:0!important;max-width:none!important;flex:1 1 100%}
+.seg button{min-width:0;padding:8px 6px;gap:6px}
+.seg button .chip{padding:0 8px;min-width:24px;justify-content:center}
+@media (max-width:640px){.seg button{font-size:15px}.seg button .ic{display:none}}
+.kv .f .chip.green{background:var(--sky-100);color:var(--navy)}
+#evType{min-width:0!important;flex:1 1 200px}
+
+/* ALL buttons: gold family, black text */
+.btn,.btn.danger,.btn.navy,.ibtn,.back,.demo button,.mbar .btn,#toast button,.rcard .btn,.rcard .btn.ghost,.btn.ghost{background:var(--gold-100);color:#000;border:1.5px solid var(--gold-d)}
+.btn.primary,.btn.green,.rcard .btn.primary,.mbar .btn.primary,.btn.navy{background:var(--gbtn);color:#000;border:1.5px solid var(--gold-d)}
+.btn:hover,.btn.danger:hover,.btn.navy:hover,.ibtn:hover,.back:hover,.demo button:hover,.mbar .btn:hover,#toast button:hover,.btn.ghost:hover,.ibtn.danger:hover,.btn.primary:hover,.btn.green:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.rcard .btn:hover,.rcard .btn.ghost:hover,.rcard .btn.primary:hover{background:#fff;color:#000;border-color:#fff}
+.btn:disabled,.btn:disabled:hover{background:var(--gold-50);color:var(--gold-700);border-color:var(--gold-300)}
+.rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border-color:var(--navy-500)}
+.demo button{background:var(--gold-100)}
+@media (max-width:420px){#p-items .seg button{font-size:14px;padding:8px 2px;gap:4px;white-space:nowrap}#p-items .seg button .chip{padding:0 6px;min-width:20px;font-size:13px}}
 </style>
 </head>
 <body>
@@ -755,7 +946,7 @@ function pDetails(){
     <div class="row wrap" style="gap:14px;margin-bottom:14px"><span class="big">${CUSTOMER.name}</span></div>
     <div class="kv">
       <div class="f">${ic('phone')}<div><small>טלפון</small><b><bdi>${CUSTOMER.phone}</bdi></b></div></div>
-      <div class="f">${ic('mail')}<div style="min-width:0"><small>מייל</small><b><bdi>${CUSTOMER.email}</bdi></b> <span class="chip green" style="padding:0 8px;font-size:12.5px">${ic('check')}${CUSTOMER.mailFresh}</span></div></div>
+      <div class="f">${ic('mail')}<div style="min-width:0"><small>מייל</small><b><bdi>${CUSTOMER.email}</bdi></b> <span class="chip green" style="padding:0 8px;font-size:14px">${ic('check')}${CUSTOMER.mailFresh}</span></div></div>
       <div class="f">${ic('pin')}<div><small>כתובת</small><b>${CUSTOMER.addr}</b></div></div>
       <div class="f">${ic('phone')}<div><small>טלפון נוסף</small><b><bdi>${CUSTOMER.phone2}</bdi></b></div></div>
     </div>
@@ -776,7 +967,7 @@ function pDetails(){
   <div class="card">
     <div class="card-h"><div class="ico plum">${ic('note','lg')}</div><h2>הערות להזמנה ${tip('כאן כותבים הערות חופשיות. הן מוצגות ברשימת ההזמנות ומודפסות פעם אחת בדף ההזמנה.')}</h2></div>
     <textarea class="inp" id="notes" placeholder="כתבו כאן הערה…">${cur.notes}</textarea>
-    <div class="row wrap" style="margin-top:12px;gap:8px"><span class="faint sm">מופיע ב:</span><span class="chip gray">${ic('file')}רשימת הזמנות</span><span class="chip gray">${ic('print')}הדפסה (פעם אחת)</span></div>
+    <div class="stackl"><span class="faint sm">מופיע ב:</span><span class="chip gray">${ic('file')}רשימת הזמנות</span><span class="chip gray">${ic('print')}הדפסה (פעם אחת)</span></div>
   </div>
 
   <details class="coll" id="adv" ${UI.openItem['adv']?'open':''}>
@@ -805,18 +996,20 @@ function itemCard(i,mode){
   const stChip = i.st==='returned'?`<span class="chip green">${ic('check')}הוחזרה</span>`:i.st==='taken'?`<span class="chip blue">${ic('bag')}בהשכרה</span>`:`<span class="chip amber"><span class="dot"></span>ממתינה</span>`;
   const alts = [i.alt.neck&&'צוואר',i.alt.sleeve&&'שרוול'].filter(Boolean);
   const th = THUMBS[(parseInt(i.model)||0)%THUMBS.length];
-  const actBtn = i.st==='ordered'?`<button class="btn sm primary" data-act="take" data-id="${i.id}" ${isNew?'disabled title="יש לשמור קודם"':''}>${ic('bag','sm')}השכר</button>`:i.st==='taken'?`<button class="btn sm green" data-act="giveback" data-id="${i.id}">${ic('undo','sm')}החזר</button>`:'';
+  const actBtn = i.st==='ordered'?`<button class="btn sm" data-act="take" data-id="${i.id}" ${isNew?'disabled title="יש לשמור קודם"':''}>${ic('bag','sm')}השכר</button>`:i.st==='taken'?`<button class="btn sm" data-act="giveback" data-id="${i.id}">${ic('undo','sm')}החזר</button>`:'';
   return `<div class="itm ${isNew?'pending':''} ${UI.openItem['i'+i.id]?'open':''}">
     <div class="top">
       <div class="thumb" style="background:${th}">${ic('dress','lg')}</div>
       <div class="info">
-        <div class="model">דגם <bdi>${i.model}</bdi><span class="sz">מידה ${i.size}</span></div>
-        <div class="row wrap" style="gap:8px">${isNew?`<span class="chip blue">${ic('plus')}חדש · ממתין לשמירה</span>`:stChip}${alts.map(a=>`<span class="chip rose">${ic('scissors')}${a}${i.alt.done?' ✓':''}</span>`).join('')}</div>
+        <div class="model">דגם <bdi>${i.model}</bdi></div>
+        <div class="meta">מידה ${i.size}</div>
+        <div class="stat">${isNew?`<span class="chip rose">${ic('plus')}חדש · ממתין לשמירה</span>`:stChip}</div>
+        ${alts.map(a=>`<div class="stat"><span class="chip rose">${ic('scissors')}תיקון ${a}${i.alt.done?' ✓':''}</span></div>`).join('')}
+        <div class="price">${money(i.price)}</div>
       </div>
-      <div class="price">${money(i.price)}</div>
-      <div class="acts">${mode==='active'?actBtn+`<button class="ibtn" style="width:40px;height:40px" data-act="edititem" data-id="${i.id}" title="עריכת מידה">${ic('pencil','sm')}</button><button class="ibtn danger" style="width:40px;height:40px" data-act="rmitem" data-id="${i.id}" title="הסרת פריט">${ic('trash','sm')}</button>`:`<button class="btn sm" data-act="restore" data-id="${i.id}">${ic('undo','sm')}שחזור</button>`}
-        <button class="ibtn chevb" style="width:40px;height:40px" data-act="opitem" data-id="${i.id}" title="פרטים נוספים">${ic('chev','sm')}</button></div>
     </div>
+    <div class="acts">${mode==='active'?actBtn+`<button class="ibtn" data-act="edititem" data-id="${i.id}" title="עריכת מידה" aria-label="עריכת מידה">${ic('pencil','sm')}</button><button class="ibtn" data-act="rmitem" data-id="${i.id}" title="הסרת פריט" aria-label="הסרת פריט">${ic('trash','sm')}</button>`:`<button class="btn sm" data-act="restore" data-id="${i.id}">${ic('undo','sm')}שחזור</button>`}
+      <button class="ibtn chevb" data-act="opitem" data-id="${i.id}" title="פרטים נוספים" aria-label="פרטים נוספים">${ic('chev','sm')}</button></div>
     <div class="det">
       <div class="dts"><div><small>נוסף</small><b>${i.added||'היום'}</b></div><div><small>לקיחה</small><b>${dayShort(pickup())}</b></div><div><small>החזרה</small><b>${dayShort(ret())}</b></div></div>
       <div class="row" style="gap:10px">${ic('card','sm')}<span>חיוב: <b>${money(i.price)}</b></span>${i.alt.sleeve||i.alt.neck?`<button class="btn sm" data-act="altdone" data-id="${i.id}">${ic('check','sm')}${i.alt.done?'בטל סימון תיקון':'סמן תיקון בוצע'}</button>`:''}</div>
@@ -837,7 +1030,7 @@ function pItems(){
       <button class="${sub==='alt'?'on':''}" data-sub="alt">${ic('scissors','sm')}תיקונים <span class="chip gray" style="padding:0 8px">${alt.length}</span></button>
       <button class="${sub==='del'?'on':''}" data-sub="del">${ic('trash','sm')}נמחקו <span class="chip gray" style="padding:0 8px">${del.length}</span></button>
     </div>
-    <button class="btn primary" data-act="addtoggle">${ic('plus')}הוסף פריט</button>
+    <button class="btn navy" data-act="addtoggle">${ic('plus')}הוסף פריט</button>
   </div>
   <div class="addpanel ${UI.addOpen?'open':''}">
     <div class="row spread"><b class="big" style="font-size:19px">הוספת שמלה</b><button class="ibtn" style="width:38px;height:38px" data-act="addtoggle">${ic('x','sm')}</button></div>
@@ -845,7 +1038,7 @@ function pItems(){
       <div class="field"><label class="lbl">${ic('dress','sm')}מספר דגם</label><input class="inp" id="addModel" inputmode="numeric" placeholder="למשל 4519" value="4519"></div>
       <div class="field"><label class="lbl">מידה</label><div class="sizes">${['34','36','38','40','42','44'].map(z=>`<button data-size="${z}" class="${UI.addSize===z?'on':''}">${z}</button>`).join('')}</div></div>
     </div>
-    <div class="row spread wrap"><span class="muted">מחיר השכרה: <b>${money(ADD_PRICE)}</b></span><button class="btn primary" data-act="additem">${ic('plus')}הוסף להזמנה</button></div>
+    <div class="row spread wrap"><span class="muted">מחיר השכרה: <b>${money(ADD_PRICE)}</b></span><button class="btn navy" data-act="additem">${ic('plus')}הוסף להזמנה</button></div>
   </div>
   <div style="display:flex;flex-direction:column;gap:14px">${body}</div>`;
 }
@@ -879,7 +1072,7 @@ function pDelivery(){
   </div>
   <div class="card ${d.on?'':'dfields off'}" style="${d.on?'background:linear-gradient(135deg,#fff,var(--sky-50))':''}">
     <div class="card-h"><div class="ico green">${ic('wallet','lg')}</div><h2>חיוב משלוח</h2><span class="big">${money(pr)}</span></div>
-    <div class="row spread wrap" style="gap:12px"><span class="muted">${legs(d)===2?`הלוך-חזור · 2 × ${money(lp)}`:`כיוון אחד · ${money(lp)}`}</span>
+    <div class="stackl" style="margin-top:0"><span class="muted">${legs(d)===2?`הלוך-חזור · 2 × ${money(lp)}`:`כיוון אחד · ${money(lp)}`}</span>
       <span class="chip green">${ic('check')}נכלל בחיובי ההזמנה</span></div>
     <button class="btn sm" style="margin-top:14px" data-tab-go="payments">${ic('card','sm')}לתשלומים</button>
   </div>`;
@@ -901,19 +1094,19 @@ function pPayments(){
   ${credit}
   <div class="card">
     <div class="card-h"><div class="ico green">${ic('wallet','lg')}</div><h2>מאזן</h2>
-      ${bal>0?`<span class="chip red">${ic('alert')}חוב</span>`:bal<0?`<span class="chip blue">${ic('undo')}יתרת זכות</span>`:`<span class="chip green">${ic('check')}שולם במלואו</span>`}</div>
+      ${bal>0?`<span class="chip red">${ic('alert')}חוב</span>`:bal<0?`<span class="chip rose">${ic('undo')}יתרת זכות</span>`:`<span class="chip green">${ic('check')}שולם במלואו</span>`}</div>
     <div class="bal"><div><div class="faint sm">נשאר לתשלום</div><div class="n" style="color:${bal>0?'var(--red)':'var(--green)'}">${money(Math.max(0,bal))}</div></div>
       <div style="flex:1;min-width:200px"><div class="row spread sm muted"><span>שולם ${money(Math.min(paid,tot))}</span><span>מתוך ${money(tot)}</span></div><div class="pbar"><i style="width:${pct}%"></i></div></div></div>
-    ${bal>0?`<button class="btn primary lg block" style="margin-top:18px" data-act="pay-now" data-amt="${bal}">${ic('card')}קבלת תשלום ${money(bal)}</button>`:''}
+    ${bal>0?`<button class="btn ${dirty()?'':'primary'} lg block" style="margin-top:24px" data-act="pay-now" data-amt="${bal}">${ic('card')}קבלת תשלום ${money(bal)}</button>`:''}
   </div>
   <div class="card">
     <div class="card-h"><div class="ico rose">${ic('file','lg')}</div><h2>חיובים ${tip('החיובים מתעדכנים אוטומטית לפי הפריטים והמשלוח. אין צורך להוסיף חיוב ידנית.')}</h2></div>
-    <div class="list">${obligations().map(o=>`<div class="li"><div class="ic-b">${ic(o.ic)}</div><div class="t"><b>${o.t}</b><small>${o.s}</small></div><div class="a">${money(o.a)}</div></div>`).join('')}
-    ${changesList.map(c=>`<div class="li pend"><div class="ic-b" style="background:var(--sky-100);color:var(--blue)">${ic(c.icon)}</div><div class="t"><b>${c.text}</b><small>ממתין לשמירה</small></div><div class="a ${c.amt<0?'cr':''}">${smoney(c.amt)}</div></div>`).join('')}</div>
+    <div class="list">${obligations().map(o=>`<div class="li"><div class="ic-b">${ic(o.ic)}</div><div class="t"><b>${o.t}</b><small>${o.s}</small><div class="a">${money(o.a)}</div></div></div>`).join('')}
+    ${changesList.map(c=>`<div class="li pend"><div class="ic-b" style="background:var(--sky-100);color:var(--blue)">${ic(c.icon)}</div><div class="t"><b>${c.text}</b><small>ממתין לשמירה</small><div class="a ${c.amt<0?'cr':''}">${smoney(c.amt)}</div></div></div>`).join('')}</div>
   </div>
   <div class="card">
     <div class="card-h"><div class="ico blue">${ic('card','lg')}</div><h2>תשלומים שהתקבלו</h2></div>
-    <div class="list">${payments.map(p=>`<div class="li"><div class="ic-b">${ic(p.icon)}</div><div class="t"><b>${p.method}</b><small>${p.date} · ${p.note}</small></div><div class="a ${p.amt<0?'cr':''}">${p.amt<0?smoney(p.amt):money(p.amt)}</div></div>`).join('')}</div>
+    <div class="list">${payments.map(p=>`<div class="li"><div class="ic-b">${ic(p.icon)}</div><div class="t"><b>${p.method}</b><small>${p.date} · ${p.note}</small><div class="a ${p.amt<0?'cr':''}">${p.amt<0?smoney(p.amt):money(p.amt)}</div></div></div>`).join('')}</div>
   </div>
   <details class="coll">
     <summary>${ic('lock')}אפשרויות מנהל${ic('chev','chev')}</summary>
@@ -1165,7 +1358,7 @@ function act(a,b){
     case 'confirm-pay-only': { const amt=Math.max(0,+$('#payAmt').value||0); payments.push({id:Date.now(),method:UI.payMethod,icon:UI.payMethod==='מזומן'?'cash':UI.payMethod==='אשראי'?'card':UI.payMethod==='העברה'?'bank':'cheque',amt,date:'24.9.2026',note:'קבלת תשלום'}); logs.unshift({t:`שולם ₪${amt} ב${UI.payMethod}`,d:nowStr(),w:'אתם'}); closeDlg(); afterEdit(false); toast('info',`התקבל תשלום ${money(amt)}`,''); break; }
     case 'confirm-pay': { const amt=Math.max(0,+$('#payAmt').value||0); commit(amt,UI.payMethod); finish('ההזמנה נשמרה והתשלום התקבל',[`<span class="chip green">${ic('check')}נשמר</span>`,`<span class="chip blue">${ic('card')}שולם ${money(amt)} · ${UI.payMethod}</span>`]); break; }
     case 'pay-later': commit(0); finish('ההזמנה נשמרה עם יתרת חוב',[`<span class="chip green">${ic('check')}נשמר</span>`,`<span class="chip red">${ic('alert')}חוב ${money(balance())}</span>`]); break;
-    case 'confirm-credit': { const n=Math.abs(netDelta()); commit(0); if(UI.creditOpt==='bank'){ payments.push({id:Date.now(),method:'החזר כספי',icon:'bank',amt:-n,date:'24.9.2026',note:'זיכוי בגין הסרת פריט'}); } if(UI.creditOpt==='credit'){ UI.creditUntil=Date.now()+15*60000-1000; UI.creditAmt=n; } finish('ההזמנה נשמרה והזיכוי נרשם',[`<span class="chip green">${ic('check')}נשמר</span>`,`<span class="chip blue">${ic('undo')}זיכוי ${money(n)}</span>`]); break; }
+    case 'confirm-credit': { const n=Math.abs(netDelta()); commit(0); if(UI.creditOpt==='bank'){ payments.push({id:Date.now(),method:'החזר כספי',icon:'bank',amt:-n,date:'24.9.2026',note:'זיכוי בגין הסרת פריט'}); } if(UI.creditOpt==='credit'){ UI.creditUntil=Date.now()+15*60000-1000; UI.creditAmt=n; } finish('ההזמנה נשמרה והזיכוי נרשם',[`<span class="chip green">${ic('check')}נשמר</span>`,`<span class="chip rose">${ic('undo')}זיכוי ${money(n)}</span>`]); break; }
     case 'new-order': closeDlg(); toast('info','נפתחה הזמנה חדשה','(הדגמה)'); break;
     case 'to-list': closeDlg(); toast('info','חזרה לרשימת ההזמנות','(הדגמה)'); break;
     case 'print-done': closeDlg(); toast('info','דף ההזמנה נשלח להדפסה','(הדגמה)'); break;
