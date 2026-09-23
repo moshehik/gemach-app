@@ -1043,6 +1043,13 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .step.current{color:var(--text)}
 .step-line{width:40px; height:2px; background:var(--border-strong); margin:0 8px}
 
+/* narrower variant of .stepper/.step for the new-order wizard - scoped so it doesn't
+   affect the dress-model wizard, which shares the same base classes */
+.stepper-compact{margin-bottom:16px}
+.stepper-compact .step{gap:6px; font-size:11px}
+.stepper-compact .step-num{width:20px; height:20px; font-size:10.5px}
+.stepper-compact .step-line{width:24px; margin:0 6px}
+
 .chat-thread{display:flex; flex-direction:column; gap:12px}
 .bubble{max-width:70%; padding:11px 14px; border-radius:var(--radius-md); font-size:13.5px; line-height:1.5; position:relative}
 .bubble.user{align-self:flex-end; background:var(--primary); color:var(--text-on-primary); border-end-end-radius:2px}

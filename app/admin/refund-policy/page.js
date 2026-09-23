@@ -1,3 +1,5 @@
+import { RefundNav } from '../refund-planner/shared';
+
 const Badge = ({ children }) => (
   <span className="badge badge-neutral">{children}</span>
 );
@@ -6,13 +8,14 @@ export const metadata = { title: 'מדיניות זיכויים וביטולים
 
 export default function RefundPolicyPage() {
   return (
-    <>
+    <div className="rp-root">
       <div className="page-head">
         <div>
           <h1>מדיניות זיכויים וביטולים</h1>
           <p className="page-desc">תיעוד מלא של מה שהמערכת בפועל מחשבת כשמבטלים פריט, מחליפים מידה או עורכים פריט בהזמנה — כדי שהצוות וההנהלה יהיו מסונכרנים על אותה מדיניות.</p>
         </div>
       </div>
+      <RefundNav current="policy" />
 
       <div className="content-page">
         <div className="content-updated">
@@ -282,6 +285,6 @@ export default function RefundPolicyPage() {
           </li>
         </ul>
       </div>
-    </>
+    </div>
   );
 }

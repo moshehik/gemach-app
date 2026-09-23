@@ -1,0 +1,365 @@
+/* מתכנן זיכויים - /admin/refund-planner
+   כל הסלקטורים מתחילים ב-rp- כדי שלא ידרסו/יידרסו ע"י שאר האתר. צבעי האזורים מוגדרים כאן
+   (ירוק/ענבר/אדום) ולא נגזרים מפלטת המשתמש, כי משמעותם קבועה ולא אסתטית. */
+
+.rp-root{
+  --rp-full:#2f9e6b; --rp-partial:#e29a2b; --rp-none:#d0524a;
+  --rp-full-2:#5cc08f; --rp-partial-2:#f3bd63; --rp-none-2:#e6857e;
+  --rp-credit:#3f7fb5; --rp-credit-2:#7ab0dc;
+  --rp-lane-h:230px;
+  --c:var(--primary-solid);
+  direction:rtl;
+}
+:root[data-theme="dark"] .rp-root{
+  --rp-full:#3fb47c; --rp-partial:#eeaa3e; --rp-none:#e5685f;
+  --rp-full-2:#6fd3a0; --rp-partial-2:#f6c97d; --rp-none-2:#f09a93;
+  --rp-credit:#6fa8dc; --rp-credit-2:#9cc5ea;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .rp-root{
+    --rp-full:#3fb47c; --rp-partial:#eeaa3e; --rp-none:#e5685f;
+    --rp-full-2:#6fd3a0; --rp-partial-2:#f6c97d; --rp-none-2:#f09a93;
+    --rp-credit:#6fa8dc; --rp-credit-2:#9cc5ea;
+  }
+}
+.rp-root .t-full{--c:var(--rp-full); --c2:var(--rp-full-2)}
+.rp-root .t-partial{--c:var(--rp-partial); --c2:var(--rp-partial-2)}
+.rp-root .t-none{--c:var(--rp-none); --c2:var(--rp-none-2)}
+.rp-root .t-credit{--c:var(--rp-credit); --c2:var(--rp-credit-2)}
+
+/* ---------- layout: טופס בימין, ציר זמן בשמאל (RTL: העמודה הראשונה בימין) ---------- */
+.rp-shell{display:grid; grid-template-columns:352px minmax(0,1fr); gap:20px; align-items:start}
+.rp-side{position:sticky; top:12px; display:flex; flex-direction:column; gap:14px}
+.rp-main{display:flex; flex-direction:column; gap:16px; min-width:0}
+
+/* ---------- טופס ---------- */
+.rp-panel{padding:0; overflow:hidden}
+.rp-sec{padding:16px 18px; border-bottom:1px solid var(--border)}
+.rp-sec:last-child{border-bottom:0}
+.rp-sec-title{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800; color:var(--text); margin-bottom:12px}
+.rp-sec-title .icon{width:15px; height:15px; color:var(--text-3)}
+.rp-sec-title .rp-src{margin-inline-start:auto; font-size:11px; font-weight:700}
+.rp-panel .field{margin-bottom:12px}
+.rp-panel .field:last-child{margin-bottom:0}
+.rp-two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.rp-heb{font-size:11.5px; color:var(--text-3); margin-top:-2px; min-height:16px}
+
+.rp-money{position:relative}
+.rp-money .input{padding-inline-start:30px; font-variant-numeric:tabular-nums}
+.rp-money::before{content:"₪"; position:absolute; inset-inline-start:11px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:13px; pointer-events:none}
+
+/* שורת כלל בצבע האזור שלה */
+.rp-rule{display:flex; flex-direction:column; gap:8px; padding:12px 12px 12px 12px; margin-bottom:10px; border-radius:var(--radius-md);
+  background:color-mix(in srgb, var(--c) 9%, var(--surface)); border:1px solid color-mix(in srgb, var(--c) 30%, var(--border)); border-inline-start:4px solid var(--c)}
+.rp-rule:last-of-type{margin-bottom:0}
+.rp-rule-top{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:800; color:var(--text)}
+.rp-rule-top i{width:10px; height:10px; border-radius:50%; background:var(--c); flex:0 0 auto}
+.rp-rule-sub{font-size:12px; color:var(--text-2); line-height:1.5}
+.rp-rule-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+
+.rp-step{display:inline-flex; align-items:stretch; background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--radius-sm); overflow:hidden}
+.rp-step button{width:34px; border:0; background:var(--surface-alt); color:var(--text); font-size:17px; font-weight:800; cursor:pointer; font-family:var(--font); line-height:1}
+.rp-step button:hover{background:var(--c); color:#fff}
+.rp-step button:active{filter:brightness(.92)}
+.rp-step input{width:54px; border:0; text-align:center; font-family:var(--font); font-size:15px; font-weight:800; color:var(--text); background:transparent; padding:7px 0; font-variant-numeric:tabular-nums; -moz-appearance:textfield}
+.rp-step input::-webkit-outer-spin-button, .rp-step input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.rp-step input:focus{outline:2px solid color-mix(in srgb, var(--c) 45%, transparent); outline-offset:-2px}
+.rp-unit{font-size:12.5px; color:var(--text-2); font-weight:600}
+
+.rp-range{width:100%; accent-color:var(--c); margin:2px 0 0}
+.rp-pct-line{display:flex; align-items:center; gap:10px}
+
+.rp-toggle{display:flex; align-items:center; gap:10px; padding:10px 0 0; font-size:12.5px; color:var(--text-2); cursor:pointer; user-select:none}
+.rp-toggle b{color:var(--text); font-weight:700}
+
+.rp-actions{display:flex; flex-direction:column; gap:8px}
+.rp-dirty{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--text-2)}
+.rp-dirty .dot{width:8px; height:8px; border-radius:50%; background:var(--text-3)}
+.rp-dirty.on{color:var(--warning)}
+.rp-dirty.on .dot{background:var(--rp-partial)}
+.rp-confirm{border:1px solid color-mix(in srgb, var(--rp-partial) 45%, var(--border)); background:color-mix(in srgb, var(--rp-partial) 10%, var(--surface)); border-radius:var(--radius-md); padding:12px 14px; font-size:12.5px; color:var(--text-2); line-height:1.6}
+.rp-confirm ul{margin:6px 0 10px; padding:0; list-style:none}
+.rp-confirm li{display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-bottom:1px dashed var(--border)}
+.rp-confirm li:last-child{border-bottom:0}
+.rp-confirm li b{color:var(--text); font-variant-numeric:tabular-nums}
+.rp-confirm .row{display:flex; gap:8px}
+.rp-flash{border-radius:var(--radius-md); padding:10px 12px; font-size:12.5px; font-weight:700}
+.rp-flash.ok{background:var(--success-tint); color:var(--success)}
+.rp-flash.err{background:var(--danger-tint); color:var(--danger)}
+
+/* ---------- כרטיסי אזורים ---------- */
+.rp-bands{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+.rp-band{position:relative; text-align:start; font-family:var(--font); cursor:pointer; padding:13px 15px 13px 13px; border-radius:var(--radius-lg);
+  background:color-mix(in srgb, var(--c) 8%, var(--surface)); border:1px solid color-mix(in srgb, var(--c) 28%, var(--border)); border-inline-start:5px solid var(--c);
+  transition:transform .12s ease, box-shadow .12s ease}
+.rp-band:hover{transform:translateY(-2px); box-shadow:var(--shadow-md)}
+.rp-band.off{opacity:.55; cursor:default}
+.rp-band.off:hover{transform:none; box-shadow:none}
+.rp-band-name{display:flex; align-items:center; gap:7px; font-size:12px; font-weight:800; color:var(--c)}
+.rp-band-name i{width:9px; height:9px; border-radius:50%; background:var(--c)}
+.rp-band-big{font-size:26px; font-weight:800; margin-top:4px; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.15}
+.rp-band-big small{font-size:13px; font-weight:700; color:var(--text-2); margin-inline-start:4px}
+.rp-band-sub{font-size:12px; color:var(--text-2); margin-top:4px; line-height:1.5}
+.rp-band-sub b{color:var(--text); font-weight:700}
+
+/* ---------- כרטיס ציר הזמן ---------- */
+.rp-tl{padding:18px 20px 16px}
+.rp-tl-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.rp-tl-title{font-size:16px; font-weight:800}
+.rp-tl-sub{font-size:12.5px; color:var(--text-2); margin-top:2px}
+.rp-chips{display:flex; gap:8px; flex-wrap:wrap}
+
+.rp-lanewrap{position:relative; margin-top:276px; margin-inline-end:46px}
+.rp-lane{position:relative; height:var(--rp-lane-h); border-radius:var(--radius-md); touch-action:none}
+.rp-clip{position:absolute; inset:0; border-radius:var(--radius-md); overflow:hidden; background:var(--surface-alt); border:1px solid var(--border)}
+.rp-tint{position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--c) 13%, transparent)}
+.rp-tint.t-none{background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 15%, transparent) 0 7px, color-mix(in srgb, var(--c) 6%, transparent) 7px 14px)}
+.rp-gl{position:absolute; top:0; bottom:0; width:1px; background:color-mix(in srgb, var(--text) 8%, transparent)}
+.rp-gl.wk{background:color-mix(in srgb, var(--text) 16%, transparent)}
+.rp-sat{position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--text) 5%, transparent)}
+.rp-hz{position:absolute; inset-inline:0; height:0; border-top:1px dashed color-mix(in srgb, var(--text) 18%, transparent)}
+.rp-hz.top{border-top-color:color-mix(in srgb, var(--text) 32%, transparent)}
+.rp-yl{position:absolute; inset-inline-start:calc(100% + 8px); transform:translateY(50%); font-size:11px; color:var(--text-3); font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; text-align:end}
+.rp-bar{position:absolute; bottom:0; background:linear-gradient(180deg, var(--c2), var(--c)); border-top:3px solid color-mix(in srgb, var(--c) 70%, #000); box-shadow:inset 0 -18px 30px color-mix(in srgb, var(--c) 30%, transparent); transition:height .18s ease}
+.rp-bar.zero{height:0 !important; border-top:0; box-shadow:none}
+.rp-cap{position:absolute; background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--text) 14%, transparent) 0 4px, transparent 4px 8px); pointer-events:none}
+.rp-tail{position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--text) 10%, transparent); pointer-events:none}
+.rp-capture{position:absolute; inset:0; cursor:crosshair}
+
+.rp-marker{position:absolute; top:-18px; bottom:0; width:0; border-inline-start:2px solid var(--text); pointer-events:none; transition:inset-inline-start .08s linear}
+.rp-marker.pin{border-inline-start-color:var(--primary-solid)}
+.rp-mdot{position:absolute; width:14px; height:14px; border-radius:50%; background:var(--surface); border:3px solid var(--text); transform:translate(50%,50%); pointer-events:none; box-shadow:var(--shadow-md)}
+.rp-mdot.pin{border-color:var(--primary-solid)}
+.rp-today{position:absolute; top:0; bottom:0; width:0; border-inline-start:2px dashed var(--info); pointer-events:none}
+.rp-today span{position:absolute; top:6px; inset-inline-start:5px; background:var(--info-tint); color:var(--info); font-size:10.5px; font-weight:800; padding:1px 7px; border-radius:var(--radius-full)}
+
+/* ידיות גרירה */
+.rp-handle{position:absolute; top:-6px; bottom:0; width:34px; margin-inline-start:-17px; cursor:ew-resize; touch-action:none; z-index:6; display:flex; justify-content:center; outline:0}
+.rp-handle::before{content:""; position:absolute; top:22px; bottom:0; width:0; border-inline-start:3px solid var(--c); transition:border-width .1s}
+.rp-handle:hover::before, .rp-handle.drag::before, .rp-handle:focus-visible::before{border-inline-start-width:5px}
+.rp-grabpill{position:absolute; top:0; transform:translateY(0); display:flex; align-items:center; gap:5px; white-space:nowrap; background:var(--c); color:#fff; font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:var(--radius-full); box-shadow:0 3px 10px color-mix(in srgb, var(--c) 45%, transparent), 0 0 0 3px var(--surface); font-variant-numeric:tabular-nums}
+.rp-grabpill svg{width:10px; height:10px}
+.rp-handle:focus-visible .rp-grabpill{box-shadow:0 0 0 3px var(--surface), 0 0 0 5px var(--c)}
+.rp-handle.drag .rp-grabpill{transform:scale(1.08)}
+.rp-grip{position:absolute; z-index:5; transform:translate(-50%,-50%); cursor:ns-resize; touch-action:none; outline:0}
+.rp-grip .rp-grabpill{position:static}
+.rp-grip.dis{cursor:not-allowed; opacity:.8}
+.rp-grip:focus-visible .rp-grabpill{box-shadow:0 0 0 3px var(--surface), 0 0 0 5px var(--c)}
+
+/* חלונית צפה */
+.rp-pop{position:absolute; bottom:calc(100% + 20px); width:min(348px,100%); background:var(--surface); border:1px solid var(--border); border-top:4px solid var(--c);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); padding:11px 14px 12px; z-index:8; transform:translateX(-50%); transition:left .1s ease-out}
+.rp-pop.hover{pointer-events:none}
+.rp-pop-head{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+.rp-tier{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800; padding:3px 11px; border-radius:var(--radius-full); color:var(--c); background:color-mix(in srgb, var(--c) 14%, var(--surface)); border:1px solid color-mix(in srgb, var(--c) 35%, transparent)}
+.rp-tier i{width:8px; height:8px; border-radius:50%; background:var(--c)}
+.rp-pop-date{font-size:12.5px; font-weight:800; color:var(--text); line-height:1.25; margin-inline-start:auto; text-align:end}
+.rp-pop-date small{display:block; font-size:11px; font-weight:600; color:var(--text-3)}
+.rp-pop-x{border:0; background:transparent; color:var(--text-3); cursor:pointer; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+.rp-pop-x:hover{background:var(--surface-alt); color:var(--text)}
+.rp-pop-x svg{width:13px; height:13px}
+.rp-pop-main{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.rp-kpi-l{font-size:11px; font-weight:700; color:var(--text-3)}
+.rp-kpi-v{font-size:23px; font-weight:800; color:var(--text); line-height:1.15; font-variant-numeric:tabular-nums}
+.rp-kpi-v.get{color:var(--rp-full)}
+.rp-kpi-v.keep{color:var(--text-2)}
+.rp-kpi-v small{font-size:12px; font-weight:700; margin-inline-start:4px; color:var(--text-2)}
+.rp-split{display:flex; height:8px; border-radius:var(--radius-full); overflow:hidden; background:color-mix(in srgb, var(--rp-none) 30%, var(--surface-sunken)); margin:8px 0 7px}
+.rp-split i{background:linear-gradient(90deg, var(--rp-full), var(--rp-full-2)); transition:width .2s ease}
+.rp-ledger{margin:0; font-size:12px; border-top:1px dashed var(--border); padding-top:7px}
+.rp-ledger div{display:flex; justify-content:space-between; gap:8px; padding:2px 0; color:var(--text-2)}
+.rp-ledger dd{margin:0; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums}
+.rp-ledger dd.neg{color:var(--rp-full)}
+.rp-ledger dt{margin:0}
+.rp-ledger .sum{border-top:1px solid var(--border); margin-top:4px; padding-top:5px; font-weight:800}
+.rp-ledger .sum dt{color:var(--text)}
+.rp-reason{font-size:11.5px; color:var(--text-2); line-height:1.5; margin:6px 0 0}
+.rp-pop-hint{margin-top:6px; font-size:11px; color:var(--text-3)}
+.rp-hintbox{position:absolute; bottom:calc(100% + 20px); inset-inline:0; height:auto; display:flex; justify-content:center; pointer-events:none}
+.rp-hintbox span{display:inline-flex; align-items:center; gap:7px; background:var(--surface-alt); border:1px dashed var(--border-strong); color:var(--text-2); font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:var(--radius-full)}
+
+/* ציר תאריכים */
+.rp-axis{position:relative; height:44px; margin-top:8px}
+.rp-tick{position:absolute; top:0; transform:translateX(50%); text-align:center; font-size:11.5px; font-weight:700; color:var(--text-2); line-height:1.2; white-space:nowrap; font-variant-numeric:tabular-nums}
+.rp-tick small{display:block; font-size:10.5px; font-weight:600; color:var(--text-3)}
+.rp-tick.sat{color:var(--text-3)}
+.rp-tick::before{content:""; display:block; width:1px; height:5px; background:var(--border-strong); margin:0 auto 2px}
+.rp-flags{position:relative; height:30px; margin-top:2px}
+.rp-flag{position:absolute; top:0; transform:translateX(50%); display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:800; padding:3px 10px; border-radius:var(--radius-full); white-space:nowrap; background:var(--surface-alt); border:1px solid var(--border-strong); color:var(--text)}
+.rp-flag.ev{background:var(--primary-tint); border-color:var(--primary-tint-2); color:var(--primary)}
+.rp-flag svg{width:12px; height:12px}
+.rp-foot{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:10px; padding-top:12px; border-top:1px solid var(--border); font-size:12px; color:var(--text-2)}
+.rp-foot span{display:inline-flex; align-items:center; gap:6px}
+.rp-foot b{color:var(--text)}
+.rp-kbd{display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 5px; background:var(--surface-alt); border:1px solid var(--border-strong); border-radius:5px; font-size:11px; font-weight:800; color:var(--text-2)}
+.rp-empty{padding:60px 20px; text-align:center; color:var(--text-2)}
+
+@media (max-width: 1080px){
+  .rp-shell{grid-template-columns:minmax(0,1fr)}
+  .rp-side{position:static; order:2}
+  .rp-main{order:1}
+}
+@media (max-width: 720px){
+  .rp-bands{grid-template-columns:minmax(0,1fr)}
+  .rp-tl{padding:14px 12px}
+  .rp-lanewrap{margin-inline-end:36px; margin-top:290px}
+  .rp-lane{--rp-lane-h:200px}
+  .rp-pop-main{gap:8px}
+  .rp-kpi-v{font-size:21px}
+}
+@media print{
+  .rp-side, .rp-pop-x{display:none}
+  .rp-shell{grid-template-columns:1fr}
+}
+
+.rp-sr{position:absolute; opacity:0; width:1px; height:1px; pointer-events:none}
+.rp-toggle{position:relative}
+.rp-sr:focus-visible + .switch{outline:2px solid var(--primary-solid); outline-offset:2px}
+.rp-handle:hover, .rp-handle.drag, .rp-handle:focus-visible{z-index:9}
+.rp-pop{max-height:300px; overflow-y:auto}
+
+/* ניווט בין דפי הזיכויים */
+.rp-nav{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; padding:5px; background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-lg); width:fit-content; max-width:100%}
+.rp-nav-tab{display:flex; align-items:center; gap:9px; padding:8px 16px; border-radius:calc(var(--radius-lg) - 4px); color:var(--text-2); text-decoration:none; transition:background .12s}
+.rp-nav-tab:hover{background:var(--surface); color:var(--text)}
+.rp-nav-tab.on{background:var(--surface); color:var(--primary-solid); box-shadow:var(--shadow-sm)}
+.rp-nav-tab .icon{width:17px; height:17px}
+.rp-nav-tab b{display:block; font-size:13px; font-weight:800; line-height:1.2}
+.rp-nav-tab small{display:block; font-size:11px; font-weight:600; color:var(--text-3)}
+
+/* ---------- לשוניות נושא ---------- */
+.rp-num{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--primary-tint); color:var(--primary); font-size:12px; font-weight:800; flex:0 0 auto}
+.rp-tabs{display:flex; gap:8px; flex-wrap:wrap}
+.rp-tab{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:var(--radius-full); border:1px solid var(--border-strong); background:var(--surface); color:var(--text-2); font-family:var(--font); font-size:13.5px; font-weight:800; cursor:pointer; transition:background .12s, border-color .12s}
+.rp-tab:hover{border-color:var(--primary-solid); color:var(--text)}
+.rp-tab.on{background:var(--primary-solid); border-color:var(--primary-solid); color:var(--text-on-primary); box-shadow:var(--shadow-sm)}
+.rp-tab.on .rp-num{background:rgba(255,255,255,.22); color:#fff}
+.rp-sec.focus{background:color-mix(in srgb, var(--primary-tint) 55%, var(--surface)); box-shadow:inset 4px 0 0 var(--primary-solid)}
+.rp-daybar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:11px 16px; border-radius:var(--radius-lg); background:var(--surface); border:1px solid var(--border); font-size:13px; font-weight:700; color:var(--text-2)}
+.rp-foot-note{margin:12px 0 0; font-size:12px; color:var(--text-3)}
+
+/* ---------- תרחישי הלשוניות ---------- */
+.rp-scn{margin-top:16px; display:flex; flex-direction:column; gap:14px}
+.rp-scn-lead{margin:0; font-size:14px; line-height:1.75; color:var(--text-2)}
+.rp-scn-lead b{color:var(--text)}
+.rp-notes{margin:0; padding-inline-start:20px; font-size:12.5px; color:var(--text-2); line-height:1.75}
+.rp-notes b{color:var(--text)}
+.rp-scn-controls{display:flex; gap:18px; flex-wrap:wrap}
+.rp-mini{display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:700; color:var(--text-2); min-width:150px}
+.rp-mini .rp-money{max-width:170px}
+
+.rp-track-wrap{position:relative; margin:18px 0 6px; padding-top:76px}
+.rp-mpop{position:absolute; top:0; inset-inline:0; margin-inline:auto; width:min(420px,100%); padding:10px 14px; border-radius:var(--radius-lg); background:var(--surface); border:1px solid var(--border); border-top:4px solid var(--c, var(--primary-solid)); box-shadow:var(--shadow-md); font-size:12.5px; color:var(--text-2); line-height:1.6}
+.rp-mpop b{display:block; color:var(--text); font-size:13px}
+.rp-mpop em{font-style:normal; font-weight:800; color:var(--text)}
+.rp-mpop em.good{color:var(--rp-full)}
+.rp-mpop.ok{--c:var(--rp-full)}
+.rp-mpop.late{--c:var(--rp-partial)}
+.rp-track{position:relative; height:56px; border-radius:var(--radius-md); overflow:visible; display:flex; cursor:crosshair; touch-action:none}
+.rp-track-seg{display:flex; align-items:center; justify-content:center; min-width:0; font-size:12px; font-weight:800; overflow:hidden; white-space:nowrap}
+.rp-track-seg:first-of-type{border-start-start-radius:var(--radius-md); border-end-start-radius:var(--radius-md)}
+.rp-track-seg:last-of-type{border-start-end-radius:var(--radius-md); border-end-end-radius:var(--radius-md)}
+.rp-track-seg.ok{background:linear-gradient(180deg, var(--rp-full-2), var(--rp-full)); color:#fff}
+.rp-track-seg.late{background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--rp-partial) 22%, var(--surface-alt)) 0 8px, color-mix(in srgb, var(--rp-partial) 10%, var(--surface-alt)) 8px 16px); color:var(--text-2)}
+.rp-track-pin{position:absolute; top:-8px; bottom:-8px; width:0; border-inline-start:2px solid var(--text); pointer-events:none}
+.rp-track-ax{position:relative; height:20px; margin-top:8px; font-size:11px; font-weight:700; color:var(--text-3)}
+.rp-track-ax span{position:absolute; transform:translateX(50%); white-space:nowrap}
+.rp-track .rp-handle{top:-6px}
+
+.rp-flow{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:12px; align-items:stretch}
+.rp-flow-card{padding:14px; border-radius:var(--radius-lg); background:var(--surface-alt); border:1px solid var(--border)}
+.rp-flow-title{font-size:13px; font-weight:800; margin-bottom:10px}
+.rp-stack{display:flex; height:22px; border-radius:var(--radius-full); overflow:hidden; background:var(--surface-sunken)}
+.rp-stack i{display:block; height:100%; transition:width .2s ease}
+.rp-stack .get{background:var(--rp-full)} .rp-stack .fee{background:var(--rp-none)} .rp-stack .rep{background:repeating-linear-gradient(135deg, var(--rp-none) 0 4px, color-mix(in srgb, var(--rp-none) 45%, #fff) 4px 8px)}
+.rp-stack .cred{background:var(--rp-full)} .rp-stack .pay{background:var(--rp-partial)}
+.rp-legend{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--text-2)}
+.rp-legend li{display:flex; align-items:center; gap:7px}
+.rp-legend i{width:10px; height:10px; border-radius:3px; flex:0 0 auto}
+.rp-legend .get,.rp-legend .cred{background:var(--rp-full)} .rp-legend .fee{background:var(--rp-none)} .rp-legend .rep{background:color-mix(in srgb, var(--rp-none) 60%, #fff)} .rp-legend .pay{background:var(--rp-partial)}
+.rp-flow-arrow{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--text-3); font-weight:800; font-size:11.5px; min-width:64px; text-align:center}
+.rp-flow-arrow .icon{width:24px; height:24px}
+.rp-flow-arrow.on{color:var(--rp-full)}
+.rp-verdict{padding:12px 16px; border-radius:var(--radius-md); font-size:13.5px; line-height:1.6}
+.rp-verdict.good{background:var(--success-tint); color:var(--success)}
+.rp-verdict.plain{background:var(--surface-alt); color:var(--text-2)}
+.rp-verdict b{font-weight:800}
+
+.rp-swap-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.rp-swap{padding:14px 16px; border-radius:var(--radius-lg); background:color-mix(in srgb, var(--c) 8%, var(--surface)); border:1px solid color-mix(in srgb, var(--c) 28%, var(--border)); border-inline-start:5px solid var(--c)}
+.rp-swap-title{font-size:13.5px; font-weight:800}
+.rp-swap-sub{font-size:12px; color:var(--text-3); margin-bottom:8px}
+.rp-swap-big{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1}
+.rp-swap-big small{font-size:12px; font-weight:700; color:var(--text-2); margin-inline-start:6px}
+.rp-swap-fee{font-size:12.5px; color:var(--text-2); margin-top:4px}
+.rp-swap-tag{display:inline-block; margin-top:8px; font-size:11.5px; font-weight:800; color:var(--c)}
+
+@media (max-width: 720px){
+  .rp-flow{grid-template-columns:minmax(0,1fr)}
+  .rp-flow-arrow{flex-direction:row; min-width:0}
+  .rp-flow-arrow .icon{transform:rotate(-90deg)}
+  .rp-swap-grid{grid-template-columns:minmax(0,1fr)}
+  .rp-track-wrap{padding-top:96px}
+}
+
+/* ---------- הפס האחד: דקות + ימים + פסי משנה ---------- */
+.rp-lanewrap.rp-unified{margin-top:206px}
+.rp-pop{width:min(300px,100%); padding:10px 13px 11px}
+.rp-pop-main.one{grid-template-columns:1fr}
+.rp-pop .rp-kpi-v{font-size:22px}
+.rp-pop .rp-reason{margin:5px 0 0; font-size:11.5px}
+.rp-chips2{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+.rp-chips2 span{font-size:11px; font-weight:700; padding:2px 9px; border-radius:var(--radius-full); background:var(--surface-alt); color:var(--text-3); border:1px solid var(--border)}
+.rp-chips2 span.cred{background:color-mix(in srgb, var(--rp-credit) 14%, var(--surface)); color:var(--rp-credit); border-color:color-mix(in srgb, var(--rp-credit) 35%, transparent)}
+.rp-chips2 span.on{background:color-mix(in srgb, var(--rp-full) 14%, var(--surface)); color:var(--rp-full); border-color:color-mix(in srgb, var(--rp-full) 35%, transparent)}
+.rp-bar.inst{--c:var(--rp-full); --c2:var(--rp-full-2); height:100%}
+.rp-bar.inst::after{content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,.28) 0 5px, transparent 5px 10px)}
+.rp-after{opacity:.5}
+.rp-break{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--text) 10%, transparent) 0 3px, transparent 3px 7px); border-inline:1px solid color-mix(in srgb, var(--text) 18%, transparent)}
+.rp-bands.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* קו המתיחה של האחוז - תפוס במקום ה"כפתור" הקטן שהיה קשה לתפוס */
+.rp-stretch{position:absolute; height:20px; z-index:7; cursor:ns-resize; touch-action:none; display:flex; align-items:center; justify-content:center; outline:0}
+.rp-stretch::before{content:""; position:absolute; inset-inline:0; top:50%; border-top:3px dashed #fff; filter:drop-shadow(0 0 2px rgba(0,0,0,.45))}
+.rp-stretch:hover::before, .rp-stretch:focus-visible::before{border-top-width:5px}
+.rp-stretch .rp-grabpill{position:relative; top:auto; gap:6px}
+.rp-stretch .rp-grabpill em{font-style:normal; font-weight:700; opacity:.9; padding-inline-start:6px; border-inline-start:1px solid rgba(255,255,255,.5)}
+.rp-stretch.dis{cursor:not-allowed; opacity:.85}
+.rp-subtracks{display:flex; flex-direction:column; gap:6px; margin-top:10px}
+.rp-sub{position:relative; display:block; width:100%; height:26px; border-radius:var(--radius-sm); background:var(--surface-alt); border:1px solid var(--border); overflow:hidden; text-align:start; font-family:var(--font); padding:0; color:var(--text)}
+.rp-sub-fill{position:absolute; inset:0}
+.rp-sub-fill i{position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--rp-credit) 34%, transparent)}
+.rp-sub.cred{cursor:default}
+.rp-sub.cred .rp-sub-label .icon{color:var(--rp-credit)}
+.rp-sub.cred.off{opacity:.6}
+.rp-sub.cred.off .rp-sub-label .icon{color:var(--text-3)}
+.rp-sub.swap{cursor:pointer; background:repeating-linear-gradient(135deg, var(--surface-alt) 0 8px, var(--surface-sunken) 8px 16px)}
+.rp-sub.swap:hover{border-color:var(--rp-full)}
+.rp-sub.swap.on{border-color:color-mix(in srgb, var(--rp-full) 55%, var(--border))}
+.rp-sub.swap.on .rp-sub-label .icon{color:var(--rp-full)}
+.rp-sub.swap .rp-sub-fill i{background:color-mix(in srgb, var(--rp-full) 32%, transparent)}
+/* חלון "החלפת מידה חינם" על גבי הפס הראשי - שכבת קווקוו ירוקה מעל כל גובה הפס */
+.rp-swaphatch{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--rp-full) 20%, transparent) 0 6px, transparent 6px 12px); border-inline-end:2px dashed color-mix(in srgb, var(--rp-full) 55%, transparent); pointer-events:none; z-index:3}
+.rp-swap-sub-panel{margin-top:12px; padding-top:12px; border-top:1px dashed var(--border)}
+.rp-sub-label{position:relative; z-index:1; display:flex; align-items:center; gap:7px; padding:0 12px; line-height:24px; font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text)}
+.rp-sub-label .icon{width:14px; height:14px; flex:0 0 auto}
+.rp-axis{height:24px}
+.rp-flags{height:26px}
+.rp-howto{padding:16px 20px}
+.rp-howto summary{cursor:pointer; list-style:none; margin:0}
+.rp-howto summary::-webkit-details-marker{display:none}
+.rp-howto-title{font-size:14px; font-weight:800; margin-bottom:0}
+.rp-howto[open] .rp-howto-title{margin-bottom:8px}
+@media (max-width: 1240px){ .rp-bands.four{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width: 720px){
+  .rp-lanewrap.rp-unified{margin-top:214px}
+  .rp-bands.four{grid-template-columns:minmax(0,1fr)}
+  .rp-sub-label{font-size:11px; padding:0 8px}
+}
+
+.rp-handle.t-credit .rp-grabpill{top:34px}
+.rp-handle.t-credit::before{top:56px}
+
+/* ---------- שדה דקות ניתן לביטול (instant_undo_minutes) ---------- */
+.rp-nullable{display:flex; flex-direction:column; gap:6px}
+.rp-toggle-sm{padding-top:0; gap:8px; font-size:12px}
+.rp-nullable-fallback{font-size:12px; color:var(--text-3); padding:8px 10px; background:var(--surface-alt); border-radius:var(--radius-sm); border:1px dashed var(--border-strong)}

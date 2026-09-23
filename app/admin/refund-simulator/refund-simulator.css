@@ -1,0 +1,169 @@
+/* סימולטור זיכויים אמיתי - /admin/refund-simulator
+   כל הסלקטורים החדשים מתחילים ב-rs-. צבעי האזורים (t-full / t-partial / t-none) ורכיבי הטופס
+   מגיעים מ-refund-planner.css (rp-*) ומעיצוב המערכת. */
+
+.rp-root.rs-root{
+  --rs-label:84px;
+  --rp-lane-h:88px;
+}
+.rp-root.rs-root .v-active{--c:var(--primary-solid); --c2:var(--primary-solid)}
+.rp-root.rs-root .v-ok{--c:var(--rp-full); --c2:var(--rp-full-2)}
+.rp-root.rs-root .v-info{--c:var(--info); --c2:var(--info)}
+.rp-root.rs-root .v-neutral{--c:var(--text-3); --c2:var(--text-3)}
+
+/* ---------- עמודת הטופס: גלילה פנימית כשהטופס גבוה מהמסך ---------- */
+.rs-side{max-height:calc(100vh - 24px); overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; padding-inline-end:2px}
+.rs-loading{padding:26px 6px; text-align:center; color:var(--text-2); font-size:13px}
+.rs-loaderr{margin-bottom:14px; align-items:center}
+.rs-loaderr .btn{margin-inline-start:8px}
+
+.rs-num{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--primary-solid); color:var(--text-on-primary); font-size:12px; font-weight:800; flex:0 0 auto}
+.rs-count{margin-inline-start:auto}
+.rs-tip{font-size:11.5px; color:var(--text-3); line-height:1.5; margin-top:6px}
+.rs-tip-top{margin:-4px 0 12px}
+.rs-err{color:var(--danger); font-size:12px; margin-bottom:8px}
+.rs-price{font-size:11.5px; color:var(--text-2); line-height:1.4}
+.rs-price b{color:var(--text)}
+.rs-price.none{color:var(--warning)}
+
+.rs-check{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text-2); cursor:pointer; user-select:none}
+.rs-check input{accent-color:var(--primary-solid); width:15px; height:15px; margin:0}
+.rs-checks{display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:12px}
+.rs-inline{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-2)}
+.rs-inline .input{width:84px}
+
+.rs-quick{display:flex; flex-wrap:wrap; gap:6px}
+
+/* ---------- פריטים ---------- */
+.rs-presets{display:flex; flex-direction:column; gap:8px; margin-bottom:10px}
+.rs-presets .btn{justify-content:flex-start; white-space:normal; text-align:start}
+.rs-note{font-size:12px; line-height:1.5; color:var(--info); background:var(--info-tint); border-radius:var(--radius-md); padding:9px 11px; margin-bottom:10px}
+.rs-empty-items{font-size:12.5px; color:var(--text-2); padding:10px 0}
+.rs-item{border:1px solid var(--border); border-inline-start:4px solid var(--primary-solid); border-radius:var(--radius-md); background:var(--surface); padding:12px; margin-bottom:10px}
+.rs-item.is-cancelled{border-inline-start-color:var(--rp-none); background:color-mix(in srgb, var(--rp-none) 5%, var(--surface))}
+.rs-item .field{margin-bottom:10px}
+.rs-item .field:last-child{margin-bottom:0}
+.rs-item .select, .rs-item .input{min-width:0}
+.rs-item-head{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap}
+.rs-item-head b{font-size:13px}
+.rs-item-actions{margin-inline-start:auto; display:inline-flex; gap:2px}
+.rs-seg{display:inline-flex; background:var(--surface-alt); border:1px solid var(--border-strong); border-radius:var(--radius-full); overflow:hidden}
+.rs-seg button{border:0; background:transparent; font-family:var(--font); font-size:12px; font-weight:700; color:var(--text-2); padding:4px 12px; cursor:pointer}
+.rs-seg button.on{background:var(--primary-solid); color:var(--text-on-primary)}
+.rs-seg button.on.bad{background:var(--rp-none)}
+.rs-add{width:100%; justify-content:center}
+.rs-reset{margin-top:12px}
+.rp-panel .rp-rule .rp-toggle{padding-top:2px}
+
+/* ---------- סיכום מילולי ---------- */
+.rs-recap{padding:14px 18px; border-inline-start:5px solid var(--c, var(--border-strong)); background:color-mix(in srgb, var(--c, var(--surface)) 7%, var(--surface))}
+.rs-recap p{margin:0; font-size:14px; line-height:1.7; color:var(--text)}
+.rs-recap p b{font-variant-numeric:tabular-nums}
+.rs-recap .rs-boundary{margin-top:6px; font-size:12.5px; color:var(--text-2)}
+.rs-tier{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:800; padding:2px 11px; border-radius:var(--radius-full); color:var(--c); background:color-mix(in srgb, var(--c) 14%, var(--surface)); border:1px solid color-mix(in srgb, var(--c) 35%, transparent)}
+.rs-tier i{width:8px; height:8px; border-radius:50%; background:var(--c)}
+
+/* ---------- ציר הזמן ---------- */
+.rs-tl{padding:18px 20px 14px}
+.rs-tl-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.rs-pending{font-size:12px; font-weight:700; color:var(--text-2); background:var(--surface-alt); border-radius:var(--radius-full); padding:3px 11px; animation:rs-pulse 1s ease-in-out infinite; white-space:nowrap}
+@keyframes rs-pulse{50%{opacity:.45}}
+
+.rs-plot{position:relative; margin-top:52px; margin-inline-start:var(--rs-label)}
+.rs-zone{position:relative}
+.rs-lane{height:var(--rp-lane-h)}
+.rs-rowlbl{position:absolute; inset-inline-end:calc(100% + 8px); top:50%; transform:translateY(-50%); width:calc(var(--rs-label) - 12px); font-size:11px; font-weight:700; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:start}
+.rs-seg-lbl{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; pointer-events:none; line-height:1.3; padding:0 4px}
+.rs-seg-lbl b{font-size:12px; font-weight:800; color:var(--c)}
+.rs-seg-lbl small{font-size:10.5px; font-weight:600; color:var(--text-2); font-variant-numeric:tabular-nums}
+
+.rs-life{margin-top:6px; display:flex; flex-direction:column; gap:4px}
+.rs-life-row{position:relative; height:18px; border-radius:var(--radius-sm); background:var(--surface-alt)}
+.rs-life-row .rs-rowlbl{font-size:10.5px}
+.rs-life-bar{position:absolute; top:6px; height:6px; min-width:3px; border-radius:var(--radius-full); background:var(--primary-solid); opacity:.85}
+.rs-life-row.cancelled .rs-life-bar{background:var(--rp-none)}
+.rs-life-row.active .rs-life-bar{opacity:.4}
+.rs-dot{position:absolute; top:50%; width:10px; height:10px; border-radius:50%; transform:translate(50%,-50%); background:var(--surface); border:2.5px solid var(--primary-solid); box-sizing:border-box}
+.rs-dot.x{border-color:var(--rp-none); background:var(--rp-none)}
+.rs-legend .rs-dot{position:static; display:inline-block; transform:none; vertical-align:middle; margin-inline-end:5px}
+.rs-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; padding-top:10px; border-top:1px solid var(--border); font-size:11.5px; color:var(--text-2)}
+.rs-swatch{display:inline-block; width:14px; height:10px; border-radius:3px; margin-inline-end:5px; vertical-align:middle; background:color-mix(in srgb, var(--text) 14%, transparent)}
+
+.rs-overlay{position:absolute; inset:0; z-index:4; cursor:ew-resize; touch-action:none; outline:0}
+.rs-now-line{position:absolute; top:-8px; bottom:-2px; width:0; border-inline-start:2px solid var(--primary-solid); pointer-events:none; box-shadow:0 0 0 1px color-mix(in srgb, var(--surface) 70%, transparent)}
+.rs-now-pill{position:absolute; top:-40px; transform:translateX(50%); display:flex; align-items:center; gap:6px; white-space:nowrap; pointer-events:none; background:var(--c, var(--primary-solid)); color:#fff; font-size:12px; font-weight:800; padding:5px 12px; border-radius:var(--radius-full); box-shadow:0 3px 10px color-mix(in srgb, var(--c, var(--primary-solid)) 45%, transparent), 0 0 0 3px var(--surface); font-variant-numeric:tabular-nums}
+.rs-now-pill svg{width:10px; height:10px}
+.rs-overlay:focus-visible .rs-now-pill{box-shadow:0 0 0 3px var(--surface), 0 0 0 5px var(--c, var(--primary-solid))}
+.rs-overlay.drag .rs-now-pill{transform:translateX(50%) scale(1.06)}
+
+/* ---------- תוצאות ---------- */
+.rs-results{display:flex; flex-direction:column; gap:14px; transition:opacity .15s}
+.rs-results.is-pending{opacity:.72}
+.rs-wait{color:var(--text-2); font-size:13px; text-align:center; padding:8px}
+.rs-stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px}
+.rs-stat{padding:13px 15px; border-inline-start:5px solid var(--border-strong)}
+.rs-stat.get{border-inline-start-color:var(--rp-full)}
+.rs-stat.warn{border-inline-start-color:var(--rp-partial)}
+.rs-stat.bad{border-inline-start-color:var(--rp-none)}
+.rs-stat.total{border-inline-start-color:var(--primary-solid); background:color-mix(in srgb, var(--primary-solid) 6%, var(--surface))}
+.rs-stat-l{font-size:12px; font-weight:800; color:var(--text-2)}
+.rs-stat-v{font-size:25px; font-weight:800; color:var(--text); line-height:1.2; margin-top:3px; font-variant-numeric:tabular-nums}
+.rs-stat.get .rs-stat-v{color:var(--rp-full)}
+.rs-stat-s{font-size:11.5px; color:var(--text-3); margin-top:4px; line-height:1.5}
+.rs-amt{unicode-bidi:isolate}
+
+.rs-h{font-size:14.5px; font-weight:800; padding:14px 18px 6px}
+.rs-h small{font-size:12px; font-weight:600; color:var(--text-3)}
+.rs-verdicts{list-style:none; margin:0; padding:6px 14px 14px; display:flex; flex-direction:column; gap:10px}
+.rs-verdict{border:1px solid color-mix(in srgb, var(--c) 30%, var(--border)); border-inline-start:5px solid var(--c); border-radius:var(--radius-md); background:color-mix(in srgb, var(--c) 7%, var(--surface)); padding:11px 14px}
+.rs-v-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.rs-v-head b{font-size:13.5px}
+.rs-v-sub{font-size:12px; color:var(--text-3)}
+.rs-chip{margin-inline-start:auto; font-size:12px; font-weight:800; color:var(--c); background:color-mix(in srgb, var(--c) 14%, var(--surface)); border:1px solid color-mix(in srgb, var(--c) 38%, transparent); border-radius:var(--radius-full); padding:2px 12px; white-space:nowrap}
+.rs-verdict p{margin:6px 0 0; font-size:13px; line-height:1.6; color:var(--text-2)}
+.rs-v-amts{display:flex; gap:8px 18px; flex-wrap:wrap; margin-top:8px; font-size:12.5px; font-weight:700; color:var(--text-2)}
+.rs-v-amts .get .rs-amt{color:var(--rp-full)}
+.rs-v-amts .keep .rs-amt{color:var(--text)}
+.rs-verdict .rs-v-hint{font-size:11.5px; color:var(--text-3); margin-top:6px}
+
+.rs-raw{padding-bottom:6px}
+.rs-table-wrap{padding:6px 14px 4px; overflow-x:auto}
+.rs-table{width:100%; border-collapse:collapse; font-size:12.5px}
+.rs-table th{text-align:start; font-size:11.5px; color:var(--text-3); font-weight:700; padding:6px 8px; border-bottom:1px solid var(--border)}
+.rs-table td{padding:7px 8px; border-bottom:1px dashed var(--border); color:var(--text-2); vertical-align:top}
+.rs-table td:last-child, .rs-table th:last-child{text-align:end; white-space:nowrap; font-variant-numeric:tabular-nums; width:1%}
+.rs-table tr.neg td:last-child .rs-amt{color:var(--rp-full); font-weight:800}
+.rs-table tr.fee-warn td{background:color-mix(in srgb, var(--rp-partial) 12%, transparent)}
+.rs-table tr.fee-bad td{background:color-mix(in srgb, var(--rp-none) 12%, transparent)}
+.rs-table tr.fee-warn td:last-child .rs-amt{color:var(--rp-partial); font-weight:800}
+.rs-table tr.fee-bad td:last-child .rs-amt{color:var(--rp-none); font-weight:800}
+.rs-table tfoot td{font-weight:800; color:var(--text); border-bottom:0; border-top:2px solid var(--border-strong)}
+.rs-explain{margin:8px 18px 12px; font-size:12.5px; color:var(--text-2)}
+.rs-explain summary{cursor:pointer; font-weight:800; color:var(--primary-solid); padding:4px 0}
+.rs-explain ul{margin:6px 0 0; padding-inline-start:18px; line-height:1.7}
+.rs-explain li b{color:var(--text)}
+
+@media (max-width: 1080px){
+  .rs-side{max-height:none; overflow:visible}
+}
+@media (max-width: 900px){
+  .rs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width: 720px){
+  .rp-root.rs-root{--rs-label:58px}
+  .rs-tl{padding:14px 12px 12px}
+  .rs-plot{margin-top:50px}
+  .rs-stat-v{font-size:21px}
+  .rs-stats{gap:8px}
+  .rs-stat{padding:11px 12px}
+  .rs-recap{padding:12px 14px}
+  .rs-now-pill{font-size:11px; padding:4px 9px}
+  .rs-verdicts{padding:6px 10px 12px}
+  .rs-h{padding:12px 14px 4px}
+}
+@media (max-width: 420px){
+  .rs-stats{grid-template-columns:minmax(0,1fr)}
+}
+@media print{
+  .rs-side{display:none}
+}
