@@ -17,7 +17,8 @@ import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/
  * ציפוף באישור מנהל, עריכת תאריך הזמנה באישור מאשר מוגדר) בתוספת: מייל מהיר באישור מנהל
  * והחלפת לקוח מהכרטיס.
  */
-export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onToggleSignature, onQuickEmail }) {
+export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onToggleSignature, onQuickEmail, showManualPaymentCreditButton = false, onOpenManualPaymentCredit }) {
+  const [showManualPaymentCreditChooser, setShowManualPaymentCreditChooser] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(!order?.eventDate && !order?.fromDate);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerMode, setCustomerMode] = useState('existing');
@@ -530,6 +531,23 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         </div>
       )}
 
+      {/* כפתור מאוחד "הוספת תשלום/זיכוי ידני" - מחליף את שני הכפתורים הנפרדים שמוסתרים אז
+          בטאב תשלומים (ר' ModernPaymentsManager.js, מותנה באותו SystemSetting
+          consolidate_manual_payment_credit_ui, כרגע true רק בנווה יעקב). ההוספה עצמה דורשת
+          קוד מאשר - נבדק ב-onOpenManualPaymentCredit (app/orders/[id]/page.js) לפני שהחלונית
+          האמיתית (תשלום/זיכוי) נפתחת בפועל בטאב תשלומים. */}
+      {showManualPaymentCreditButton && (
+        <div className="card card-pad" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
+            <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח - דורש קוד מאשר.</div>
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowManualPaymentCreditChooser(true)}>
+            <svg className="icon"><use href="#i-coin" /></svg>הוספת תשלום/זיכוי ידני
+          </button>
+        </div>
+      )}
+
       {/* תאריך ביצוע ההזמנה */}
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1 }}>
@@ -620,6 +638,44 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                   שמור ובחר
                 </button>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ===== בורר "תשלום או זיכוי" עבור הכפתור המאוחד למעלה ===== */}
+      {showManualPaymentCreditChooser && typeof document !== 'undefined' && createPortal(
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowManualPaymentCreditChooser(false); }}
+        >
+          <div className="modal" style={{ maxWidth: '420px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <strong>הוספת תשלום/זיכוי ידני</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowManualPaymentCreditChooser(false)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p className="hint" style={{ color: 'var(--text-2)', margin: 0 }}>בחר את סוג הפעולה. שתיהן דורשות קוד מאשר.</p>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ justifyContent: 'flex-start' }}
+                onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('payment'); }}
+              >
+                <svg className="icon"><use href="#i-coin" /></svg>רישום תשלום נוסף (למשל מזומן)
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ justifyContent: 'flex-start' }}
+                onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('credit'); }}
+              >
+                <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
+              </button>
             </div>
           </div>
         </div>,
