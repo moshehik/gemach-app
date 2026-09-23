@@ -33,10 +33,11 @@ const badgeClassFor = (action) => ACTION_BADGE_CLASS[action] || 'badge-neutral';
 
 /**
  * טאב "מידע" בעיצוב "אריג" — כרטיס "בוצעה על ידי" (עם תאריך עברי ועריכת
- * תאריך ביצוע בהרשאת מתכנת) + היסטוריית שינויים כללית עם סינון.
+ * תאריך ביצוע באישור מאשר מוגדר) + היסטוריית שינויים כללית עם סינון.
  */
 export default function ModernInfoTab({ order, createdDate, onShowEmployees, onOrderDateSave }) {
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
+  const [orderDateApproval, setOrderDateApproval] = useState(null);
 
   // היסטוריה כללית
   const [logs, setLogs] = useState([]);
@@ -70,16 +71,19 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
     return () => { cancelled = true; };
   }, [order?.orderId, filterSearch]);
 
-  // עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול — מוגבלת למתכנת בלבד
+  // עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול — הרשאה רגילה (מי מאשר נקבע
+  // ב-/admin/permissions, פריט feature:order_date_edit_approval), לא roleId קשיח של מתכנת.
+  // authResult נשמר כדי שיישלח שוב עם השמירה - השרת בודק אותו מחדש (PUT /api/orders/[id]).
   const requestOrderDateEdit = async () => {
-    const ok = await verifyPin('עריכת תאריך ביצוע ההזמנה משפיעה על חישובי זיכוי בביטול ומוגבלת למתכנת. אנא בחר משתמש והזן סיסמה:', 'מתכנת');
-    if (!ok) return;
+    const authResult = await verifyPin('עריכת תאריך ביצוע ההזמנה משפיעה על חישובי זיכוי בביטול. אנא בחר משתמש והזן סיסמה:', 'feature:order_date_edit_approval');
+    if (!authResult) return;
+    setOrderDateApproval(authResult);
     setIsEditingOrderDate(true);
   };
 
   const handleOrderDateChange = (date) => {
     setIsEditingOrderDate(false);
-    onOrderDateSave(date);
+    onOrderDateSave(date, orderDateApproval);
   };
 
   const performedByName = order.employee
@@ -110,7 +114,7 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
               <button
                 type="button"
                 className="btn btn-ghost btn-icon-only btn-sm"
-                title="שינוי תאריך ביצוע ההזמנה — לצורך בדיקות (מתכנת בלבד)"
+                title="שינוי תאריך ביצוע ההזמנה — לצורך בדיקות (דורש אישור)"
                 onClick={requestOrderDateEdit}
               >
                 <svg className="icon"><use href="#i-edit" /></svg>

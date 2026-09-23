@@ -597,7 +597,15 @@ export default function OrderDetailsPage({ params }) {
       setSummaryConfirmData({
         obligations: previewObligations,
         totalRequired: previewTotal,
-        totalPaid
+        totalPaid,
+        // צילום של החיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת - נלקח כאן (בתוך handler, לא
+        // ב-render) כדי שרינדור החלון יוכל להבחין "מה היה קודם" מ-"מה נוסף עכשיו" בלי לקרוא
+        // ל-savedSnapshotRef.current ישירות תוך כדי render (react-hooks/refs).
+        savedDescriptions: new Set(
+          (savedSnapshotRef.current?.obligations || [])
+            .filter(so => !so.isDeleted)
+            .map(so => so.description)
+        )
       });
     });
   };
@@ -609,7 +617,7 @@ export default function OrderDetailsPage({ params }) {
   };
 
   // Save changes
-  const handleSave = async (overrideOrder = null, { promptPrint = false } = {}) => {
+  const handleSave = async (overrideOrder = null, { promptPrint = false, orderDateApproval = null } = {}) => {
     setSaving(true);
     setSaveMessage('');
 
@@ -710,7 +718,15 @@ export default function OrderDetailsPage({ params }) {
     const currentDebt = (summaryConfirmResult.previewTotal !== undefined ? summaryConfirmResult.previewTotal : totalRequired) - totalPaid;
     const debtUnchangedSinceOpen = openedDebt !== null
       && Math.round(currentDebt * 100) === Math.round(openedDebt * 100);
-    if (currentDebt > 0 && !debtUnchangedSinceOpen) {
+    // כש-enableEditSummaryConfirm פעיל (נווה יעקב), העובד כבר ראה את חלונית "סיכום ההזמנה
+    // לפני שמירה" עם היתרה המדויקת ואישר אותה מפורשות (confirmSaveSummaryIfNeeded למעלה) -
+    // כולל את המשפט "לאחר האישור תישמר ההזמנה ותועבר אוטומטית לטאב תשלומים להשלמת הגבייה".
+    // דרישת קוד מנהל כאן שוב, מיד אחרי אותו אישור, הייתה סותרת את ההבטחה הזו: העובד מתכוון
+    // לשלם מיד ולא לדלג על התשלום, אבל הפרומפט המוצג לו ("מאשר הזמנה ללא תשלום") אומר בדיוק
+    // ההפך - זה מה שדווח כ"אחרי אישור ותשלום עובר לאישור מנהל ליציאה בלי תשלום, במקום לעבור
+    // לתשלום". הגנת "לא לעזוב עם חוב לא משולם" עדיין קיימת - היא רק עוברת אחריות ל-handleExit
+    // (ולבדיקת newDebtCreatedBySave למטה, שמעבירה לטאב תשלומים אחרי השמירה).
+    if (currentDebt > 0 && !debtUnchangedSinceOpen && !enableEditSummaryConfirm) {
       const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מאשר הזמנה ללא תשלום');
       if (!authResult || !authResult.pin) {
         setSaving(false);
@@ -811,6 +827,10 @@ export default function OrderDetailsPage({ params }) {
           updatedAt: currentOrder.updatedAt,
           managerEmployeeId: managerAuthForItemChange?.employeeId,
           managerPin: managerAuthForItemChange?.pin,
+          // אישור feature:order_date_edit_approval שכבר עבר ב-requestOrderDateEdit (בטאב
+          // "פרטים כלליים" או "מידע") - נבדק שוב בשרת מול orderDate הישן (ר' PUT route).
+          orderDateApproverId: orderDateApproval?.employeeId,
+          orderDateApproverPin: orderDateApproval?.pin,
           items: items,
           obligations: obligations,
           payments: payments,
@@ -1462,12 +1482,33 @@ export default function OrderDetailsPage({ params }) {
                   לתיקונים/דמי ביטול/משלוח, ומסתכמים בדיוק לסכום למטה - הצגת items בנפרד
                   הייתה משכפלת את שורות הפריטים ומחסירה שורות אחרות (תיקון/ביטול). */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                {summaryConfirmData.obligations.filter(o => !o.isDeleted).map((o, idx) => (
-                  <div key={o.id || `${o.description}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '13.5px' }}>
-                    <span>{o.description || 'חיוב'}</span>
-                    <span style={{ direction: 'ltr' }}>₪{(parseFloat(o.amount) || 0).toLocaleString('he-IL')}</span>
-                  </div>
-                ))}
+                {(() => {
+                  // savedDescriptions (חיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת, ר'
+                  // confirmSaveSummaryIfNeeded) מאפשר להבחין "מה היה קודם" מ-"מה נוסף עכשיו"
+                  // (למשל חיוב משלוח שנוצר מהתצוגה המקדימה) - בלי זה כל השורות נראות "אותו
+                  // דבר" (דיווח: "לא ברור מה היה קודם ומה נוסף עכשיו").
+                  const savedDescriptions = summaryConfirmData.savedDescriptions || new Set();
+                  return summaryConfirmData.obligations.filter(o => !o.isDeleted).map((o, idx) => {
+                    // "(פריט #<uuid>)" הוא ה-id הפנימי של OrderItem, מוצמד לתיאור רק כדי
+                    // להבחין בין שני פריטים זהים (שם+מידה) באותה הזמנה - לא מיועד לתצוגה
+                    // (ר' כלל תצוגת ה-ID ב-AGENTS.md), בדיוק כמו ב-ModernPaymentsManager.js.
+                    const cleanDesc = (o.description || 'חיוב').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '');
+                    const isNew = !savedDescriptions.has(o.description);
+                    return (
+                      <div key={o.id || `${o.description}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '13.5px' }}>
+                        <span>
+                          {cleanDesc}
+                          {isNew && (
+                            <span style={{ marginRight: '6px', fontSize: '11px', fontWeight: 700, color: 'var(--success)', background: 'var(--success-tint)', borderRadius: '4px', padding: '1px 6px' }}>
+                              נוסף עכשיו
+                            </span>
+                          )}
+                        </span>
+                        <span style={{ direction: 'ltr' }}>₪{(parseFloat(o.amount) || 0).toLocaleString('he-IL')}</span>
+                      </div>
+                    );
+                  });
+                })()}
                 {summaryConfirmData.obligations.filter(o => !o.isDeleted).length === 0 && (
                   <div className="hint" style={{ color: 'var(--text-3)' }}>אין חיובים בהזמנה זו.</div>
                 )}
@@ -1633,10 +1674,10 @@ export default function OrderDetailsPage({ params }) {
                 order={order}
                 createdDate={createdDate}
                 onShowEmployees={() => setShowEmployeesModal(true)}
-                onOrderDateSave={(date) => {
+                onOrderDateSave={(date, orderDateApproval) => {
                   const newOrder = { ...order, orderDate: date };
                   setOrder(newOrder);
-                  handleSave(newOrder);
+                  handleSave(newOrder, { orderDateApproval });
                 }}
               />
             )

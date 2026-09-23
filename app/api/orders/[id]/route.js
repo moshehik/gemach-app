@@ -397,6 +397,24 @@ export async function PUT(request, { params }) {
           }
         }
       }
+
+      // feature:order_date_edit_approval (ר' lib/permissionsMetadata.js) - עד כה נאכף רק
+      // בלקוח (verifyPin לפני requestOrderDateEdit ב-ModernGeneralDetails.js/ModernInfoTab.js),
+      // כלומר קריאת API ישירה הייתה יכולה לשנות orderDate בלי שום אישור ולהזיז את חלון
+      // הזיכוי בביטול (REFUND_DAYS_FROM_ORDER, lib/pricingEngine.js). נבדק כאן רק כש-orderDate
+      // באמת משתנה מול מה ששמור בשרת - שמירה רגילה תמיד שולחת את אותו orderDate שכבר טעונה,
+      // ולא תיתקל בבדיקה הזו.
+      if (data.orderDate !== undefined) {
+        const requestedOrderDate = parseSafeDate(data.orderDate);
+        const requestedTime = requestedOrderDate ? requestedOrderDate.getTime() : null;
+        const existingTime = existingOrder.orderDate ? new Date(existingOrder.orderDate).getTime() : null;
+        if (requestedTime !== existingTime) {
+          const orderDateApprovalOk = await verifyManagerPin(data.orderDateApproverId, data.orderDateApproverPin, 'feature:order_date_edit_approval');
+          if (!orderDateApprovalOk) {
+            return NextResponse.json({ error: 'דרוש אישור מאשר מוגדר (קוד/סיסמה) בתוקף לעריכת תאריך ביצוע ההזמנה.' }, { status: 403 });
+          }
+        }
+      }
     } catch (e) {
       // ה-return-ים של 401/403/400 כבר החזירו תשובה ויצאו - לכאן מגיעים רק על שגיאת DB/cache אמיתית (fail-open)
       console.error('zeout/allow check failed (fail-open)', e);
@@ -634,7 +652,8 @@ export async function PUT(request, { params }) {
         ? parsedFromDate
         : parseSafeDate(data.eventDate);
       const parsedReturnDate = parseSafeDate(data.returnDate);
-      // Developer-only edit (see requiredLevel: 'מתכנת' gate in the client) - shifts the
+      // Gated behind feature:order_date_edit_approval both here (see the orderDateApproverId/Pin
+      // check above) and in the client (lib/permissionsMetadata.js) - shifts the
       // REFUND_DAYS_FROM_ORDER window in lib/pricingEngine.js, so it's normally immutable
       // after creation (app/api/orders/route.js only sets it once, at order creation).
       const parsedOrderDate = parseSafeDate(data.orderDate);
