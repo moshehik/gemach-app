@@ -1116,9 +1116,13 @@ export default function NewOrderPage() {
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
     const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
+    // האישור שכבר ניתן על תאריך שעבר - נשמר בזיכרון בלבד כדי שאם גם היציאה בלי תשלום מלא דורשת
+    // אישור, אותו מאשר לא יתבקש להקליד קוד פעם שנייה (ר' בדיקת feature:payment_exit_approval למטה).
+    let pastDateAuth = null;
     if (relevantDate && new Date(relevantDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)) {
       const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:past_date_order_approval');
       if (!auth) return;
+      pastDateAuth = auth;
     }
 
     const pAmount = parseFloat(payment.amount) || 0;
@@ -1156,26 +1160,42 @@ export default function NewOrderPage() {
         // 2026-09-22: ההגדרה קובעת אם החלונית מופיעה בכלל; מי שרשאי לאשר נקבע בהרשאה
         // feature:payment_exit_approval (ברירת המחדל נגזרת מרמת ההגדרה: עובד / מנהל / מנהל סניף ומעלה,
         // ושורת הרשאה ב-/admin/permissions גוברת) - הבורר וה-verify-pin מכריעים באותה הכרעה.
-        const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
-        if (!authResult || !authResult.pin) {
-          alert('אישור תשלום בוטל.');
-          return;
-        }
-
-        try {
+        const verifyPaymentExit = async (creds) => {
           const res = await fetch('/api/auth/verify-pin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:payment_exit_approval' })
+            body: JSON.stringify({ pin: creds.pin, employeeId: creds.employeeId, requiredLevel: 'feature:payment_exit_approval' })
           });
-          const data = await res.json();
-          if (!data.success) {
-            alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return res.json();
+        };
+
+        // אותו מאשר שכבר אישר עכשיו את התאריך שעבר - אם ההרשאה שלו מכסה גם את היציאה בלי
+        // תשלום, לא מבקשים ממנו להקליד את הקוד שוב (אימות שקט מול אותה בדיקת שרת בדיוק). אם
+        // אין לו הרשאה לזה, נפתחת החלונית הרגילה כמו קודם.
+        let alreadyApproved = false;
+        if (pastDateAuth?.pin && pastDateAuth?.employeeId) {
+          try {
+            alreadyApproved = !!(await verifyPaymentExit(pastDateAuth)).success;
+          } catch { /* נופלים לחלונית הרגילה */ }
+        }
+
+        if (!alreadyApproved) {
+          const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
+          if (!authResult || !authResult.pin) {
+            alert('אישור תשלום בוטל.');
             return;
           }
-        } catch (err) {
-          alert('שגיאה באימות קוד מנהל.');
-          return;
+
+          try {
+            const data = await verifyPaymentExit(authResult);
+            if (!data.success) {
+              alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+              return;
+            }
+          } catch (err) {
+            alert('שגיאה באימות קוד מנהל.');
+            return;
+          }
         }
       }
     }
@@ -1339,10 +1359,18 @@ export default function NewOrderPage() {
       }
       // 42 - מסך יעד אחרי יצירת הזמנה, מותנה ב-order_new_redirect_screen (ברירת מחדל
       // "order" = ההתנהגות הקודמת, כרטיס ההזמנה שזה עתה נוצרה).
-      router.push(resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
+      const redirectHref = resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
         orderId: data.orderId,
         customerId: data.customerId,
-      }));
+      });
+      // "הזמנה חדשה" כמסך יעד = אותו נתיב שבו אנחנו נמצאים. router.push לאותו נתיב לא מרכיב את
+      // הדף מחדש, אז saving נשאר true לנצח (הסיבוב האינסופי) והטופס נשאר עם ההזמנה שנשמרה.
+      // טעינה מלאה מנקה את כל המצב (טיוטה, סטייט, מגן ה"אחורה") ומחזירה טופס ריק.
+      if (redirectHref === window.location.pathname) {
+        window.location.assign(redirectHref);
+        return;
+      }
+      router.push(redirectHref);
     } catch (error) {
       console.error(error);
       alert(`שגיאה בשמירת הזמנה: ${error.message}`);
