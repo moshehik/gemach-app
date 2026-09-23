@@ -1,13 +1,27 @@
 #!/usr/bin/env node
 /**
- * Nightly logical backup of the PRODUCTION Neon Postgres database.
+ * Logical backup of the PRODUCTION Neon Postgres database(s), for BOTH gemachs
+ * (org 1 = main gemach, org 2 = "Neve Yaakov" - separate Neon projects/DBs).
+ *
+ * NOTE ON WHAT THIS IS TODAY (2026-09-23): this used to be the primary automatic
+ * nightly backup (Windows Task Scheduler, `GemachApp-ProdDbBackup`, daily 03:30),
+ * but that task was deliberately DISABLED on 2026-09-20 after running it alongside
+ * the newer cloud backup (`scripts/cloud_backup.js` -> GitHub Actions -> Google
+ * Drive, see BACKUPS.md "Layer 0") caused org1 to exceed Neon's free-tier 5GB/month
+ * data-transfer quota and take the site down (two full-DB reads/day instead of
+ * one). The cloud backup already covers BOTH orgs automatically and does not
+ * depend on this machine being on - see BACKUPS.md for the full story. This
+ * script is now a MANUAL fallback only (`npm run backup:prod`) - useful if the
+ * cloud backup is ever broken, or you just want a local off-Neon copy right now.
+ * Do NOT re-enable automatic/scheduled runs of this script for both orgs without
+ * first re-checking each org's current Neon egress headroom - see BACKUPS.md's
+ * "Backups count against Neon egress" section.
  *
  * This is an ADDITIONAL safety net on top of Neon's built-in point-in-time
- * restore (PITR - the project's `history_retention_seconds` is 604800 = 7 days
- * as of 2026-08-05). PITR only protects against accidental changes *within*
- * that rolling window and only from inside Neon (branch-and-restore) - it is
- * not a portable file. This script produces a compressed, plain-SQL dump you
- * can keep off-Neon and restore anywhere with plain `psql`. See BACKUPS.md.
+ * restore (PITR - 7 days). PITR only protects against accidental changes
+ * *within* that rolling window and only from inside Neon (branch-and-restore) -
+ * it is not a portable file. This script produces a compressed, plain-SQL dump
+ * you can keep off-Neon and restore anywhere with plain `psql`. See BACKUPS.md.
  *
  * Real `pg_dump` is not installed on this machine (checked with
  * `pg_dump --version` - not found), so this reimplements a minimal,
@@ -15,30 +29,48 @@
  * package.json: it discovers every base table + foreign-key edge in the
  * `public` schema, topologically sorts tables (parents before children), and
  * streams each one out as batched `INSERT INTO ... VALUES (...), (...);`
- * statements, all inside one REPEATABLE READ / READ ONLY transaction so the
- * whole file is a consistent snapshot as of a single instant.
+ * statements, all inside one REPEATABLE READ / READ ONLY transaction per org
+ * so each org's file is a consistent snapshot as of a single instant. Same
+ * dump algorithm as `scripts/cloud_backup.js` (kept in sync deliberately).
  *
  * Usage:
  *   node scripts/backup_prod_db.js
+ *   npm run backup:prod
+ *
+ * Always attempts org 1 first, then org 2, independently - a problem with one
+ * org's DB or config does not stop the other org's backup from running.
  *
  * Env (read from process.env, falling back to .env.local then .env in the
- * repo root - Next.js precedence: .env.local wins over .env):
- *   BACKUP_DATABASE_URL   optional explicit override
- *   PROD_DATABASE_URL     used if BACKUP_DATABASE_URL is not set
- *   DATABASE_URL          used if neither of the above is set
+ * repo root - Next.js precedence: .env.local wins over .env), reusing
+ * scripts/lib/db-env.js's resolveDbUrl() for the org1/org2 lookup pattern
+ * already used by scripts/cloud_backup.js and the /fix-reports scripts:
+ *   org1 (required - a hard failure if missing, same as always):
+ *     BACKUP_DATABASE_URL         optional explicit override
+ *     PROD_DATABASE_URL           used if BACKUP_DATABASE_URL is not set
+ *     DATABASE_URL                used if neither of the above is set
+ *   org2 (optional - skipped with a clear log line if not configured):
+ *     BACKUP_DATABASE_URL_ORG2    optional explicit override
+ *     PROD_DATABASE_URL_ORG2      used if BACKUP_DATABASE_URL_ORG2 is not set
+ *     DATABASE_URL_ORG2           used if neither of the above is set
  *
- * Output:
- *   backups/gemach-prod-YYYY-MM-DD.sql.gz   (gitignored - see .gitignore)
- *   backups/backup.log                      (one line appended per run)
+ * Output (gitignored - see .gitignore):
+ *   backups/gemach-prod-YYYY-MM-DD.sql.gz        org1 (unchanged filename, for
+ *                                                 backward compatibility with
+ *                                                 existing files/rotation/docs)
+ *   backups/gemach-org2-prod-YYYY-MM-DD.sql.gz   org2 (new)
+ *   backups/backup.log                           one line per org per run,
+ *                                                 tagged "[org1]"/"[org2]"
  *
- * Rotation: keeps the most recent 14 daily dumps, plus one dump per ISO
- * calendar week for the 8 weeks before that; anything older is deleted.
+ * Rotation: each org keeps its own most recent 14 daily dumps, plus one dump
+ * per ISO calendar week for the 8 weeks before that, independently of the
+ * other org's files.
  *
  * Restore (disaster recovery) - see BACKUPS.md for the full walkthrough:
  *   1. Recreate the schema on the target DB from the versioned Prisma schema:
  *        DATABASE_URL="<target>" npx prisma db push --schema=prisma/schema.prisma
  *   2. Load the data:
  *        gunzip -c backups/gemach-prod-2026-08-05.sql.gz | psql "<target-connection-string>"
+ *        gunzip -c backups/gemach-org2-prod-2026-09-23.sql.gz | psql "<target-connection-string>"
  */
 
 'use strict';
@@ -47,6 +79,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { Client } = require('pg');
+const { resolveDbUrl } = require('./lib/db-env');
 
 const ROOT = path.join(__dirname, '..');
 const BACKUP_DIR = path.join(ROOT, 'backups');
@@ -63,6 +96,9 @@ const ROWS_PER_INSERT = 500; // rows per multi-row INSERT statement
 // package, so that script would crash on `require('dotenv')` - don't repeat
 // that mistake). This mirrors Next.js's precedence: .env.local wins over
 // .env, and anything already present in process.env wins over both.
+// scripts/lib/db-env.js's own loadEnvFiles() does the same thing and is
+// idempotent, so calling both is harmless - kept here too so the
+// BACKUP_DATABASE_URL*/env-var documentation above stays self-contained.
 // ---------------------------------------------------------------------------
 function loadEnvFile(file) {
   if (!fs.existsSync(file)) return;
@@ -83,11 +119,22 @@ function loadEnvFile(file) {
 loadEnvFile(path.join(ROOT, '.env.local'));
 loadEnvFile(path.join(ROOT, '.env'));
 
-const DATABASE_URL = process.env.BACKUP_DATABASE_URL || process.env.PROD_DATABASE_URL || process.env.DATABASE_URL;
+// ---------------------------------------------------------------------------
+// Per-org config
+// ---------------------------------------------------------------------------
+const ORGS = [
+  { org: 1, label: 'org1', filePrefix: 'gemach-prod', required: true, overrideEnv: 'BACKUP_DATABASE_URL' },
+  { org: 2, label: 'org2', filePrefix: 'gemach-org2-prod', required: false, overrideEnv: 'BACKUP_DATABASE_URL_ORG2' },
+];
 
-if (!DATABASE_URL) {
-  console.error('No database URL found (checked BACKUP_DATABASE_URL, PROD_DATABASE_URL, DATABASE_URL).');
-  process.exit(1);
+/** Resolves the connection string for one org, honoring its BACKUP_DATABASE_URL*
+ * override first, then falling back to scripts/lib/db-env.js's resolveDbUrl()
+ * (PROD_DATABASE_URL[_ORG2] / DATABASE_URL[_ORG2]). Throws if nothing is found -
+ * caller decides whether that's a hard failure (org1) or a skip (org2). */
+function resolveOrgUrl(orgCfg) {
+  const override = process.env[orgCfg.overrideEnv];
+  if (override) return override;
+  return resolveDbUrl(orgCfg.org);
 }
 
 // ---------------------------------------------------------------------------
@@ -207,7 +254,8 @@ async function dumpTable(client, table, columns, write) {
 }
 
 // ---------------------------------------------------------------------------
-// Rotation: keep last 14 daily + last 8 weekly, delete the rest
+// Rotation: keep last 14 daily + last 8 weekly, delete the rest - run
+// independently per org against that org's own filename prefix.
 // ---------------------------------------------------------------------------
 function formatDate(d) {
   return d.toISOString().slice(0, 10); // YYYY-MM-DD
@@ -222,13 +270,12 @@ function isoWeekKey(d) {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
-const FILE_RE = /^gemach-prod-(\d{4}-\d{2}-\d{2})\.sql\.gz$/;
-
-function rotateBackups() {
+function rotateBackups(filePrefix) {
+  const fileRe = new RegExp(`^${filePrefix}-(\\d{4}-\\d{2}-\\d{2})\\.sql\\.gz$`);
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR) : [];
   const dated = files
     .map((f) => {
-      const m = f.match(FILE_RE);
+      const m = f.match(fileRe);
       return m ? { file: f, date: new Date(m[1] + 'T00:00:00Z') } : null;
     })
     .filter(Boolean)
@@ -262,17 +309,18 @@ function appendLog(line) {
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// One org's dump: connect, dump every table inside one read-only transaction,
+// gzip to a tmp file, rename into place on success, rotate that org's files.
+// Throws on failure (caller logs/handles) - never leaves a partial file at
+// the final name (only at "<name>.tmp", which is not picked up by rotation).
 // ---------------------------------------------------------------------------
-async function main() {
+async function dumpOrg(orgCfg, dbUrl) {
   const startedAt = Date.now();
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
-
   const dateStr = formatDate(new Date());
-  const outFile = path.join(BACKUP_DIR, `gemach-prod-${dateStr}.sql.gz`);
+  const outFile = path.join(BACKUP_DIR, `${orgCfg.filePrefix}-${dateStr}.sql.gz`);
   const tmpFile = outFile + '.tmp';
 
-  const client = new Client({ connectionString: DATABASE_URL });
+  const client = new Client({ connectionString: dbUrl });
   await client.connect();
 
   const gzip = zlib.createGzip({ level: 9 });
@@ -294,9 +342,9 @@ async function main() {
     const edges = await discoverForeignKeyEdges(client);
     const orderedTables = topologicalSort(tables, edges);
 
-    write('-- gemach-app production logical backup\n');
+    write(`-- gemach-app production logical backup (${orgCfg.label})\n`);
     write(`-- generated: ${new Date().toISOString()}\n`);
-    write(`-- source: ${DATABASE_URL.replace(/:[^:@/]+@/, ':***@')}\n`);
+    write(`-- source: ${dbUrl.replace(/:[^:@/]+@/, ':***@')}\n`);
     write(`-- tables: ${orderedTables.length}\n`);
     write('-- Restore: recreate the schema first (npx prisma db push), then\n');
     write('--   gunzip -c <this file> | psql "<target-connection-string>"\n');
@@ -327,9 +375,7 @@ async function main() {
       /* ignore */
     }
     await client.end();
-    appendLog(`FAILED ${err.message}`);
-    console.error('Backup failed:', err);
-    process.exit(1);
+    throw err;
   }
 
   gzip.end();
@@ -340,13 +386,55 @@ async function main() {
   const { size } = fs.statSync(outFile);
   const elapsedSec = ((Date.now() - startedAt) / 1000).toFixed(1);
 
-  const { kept, deleted } = rotateBackups();
+  const { kept, deleted } = rotateBackups(orgCfg.filePrefix);
 
-  const summaryLine = `OK ${path.basename(outFile)} ${size}bytes ${elapsedSec}s tables=${tableSummary.length} kept=${kept.length} deleted=${deleted.length}`;
+  const summaryLine = `[${orgCfg.label}] OK ${path.basename(outFile)} ${size}bytes ${elapsedSec}s tables=${tableSummary.length} kept=${kept.length} deleted=${deleted.length}`;
   appendLog(summaryLine);
   console.log(summaryLine);
-  console.log('Row counts:', tableSummary.join(', '));
-  if (deleted.length) console.log('Rotated away:', deleted.join(', '));
+  console.log(`[${orgCfg.label}] Row counts:`, tableSummary.join(', '));
+  if (deleted.length) console.log(`[${orgCfg.label}] Rotated away:`, deleted.join(', '));
+}
+
+// ---------------------------------------------------------------------------
+// Main: org1 then org2, independently. org1 missing entirely is a hard
+// failure (same as always); org2 missing is a skip, not an error.
+// ---------------------------------------------------------------------------
+async function main() {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  let hadFailure = false;
+
+  for (const orgCfg of ORGS) {
+    let dbUrl;
+    try {
+      dbUrl = resolveOrgUrl(orgCfg);
+    } catch (e) {
+      if (orgCfg.required) {
+        console.error(
+          `[${orgCfg.label}] No database URL found (checked ${orgCfg.overrideEnv}, PROD_DATABASE_URL, DATABASE_URL).`
+        );
+        process.exit(1);
+      }
+      const msg = `SKIPPED no database URL configured (checked ${orgCfg.overrideEnv}, PROD_DATABASE_URL_ORG2, DATABASE_URL_ORG2) - see BACKUPS.md.`;
+      console.log(`[${orgCfg.label}] ${msg}`);
+      appendLog(`[${orgCfg.label}] ${msg}`);
+      continue;
+    }
+
+    try {
+      await dumpOrg(orgCfg, dbUrl);
+    } catch (err) {
+      hadFailure = true;
+      console.error(`[${orgCfg.label}] Backup failed:`, err);
+      appendLog(`[${orgCfg.label}] FAILED ${err.message}`);
+      if (orgCfg.required) {
+        // org1 failing is treated the same as before: stop the whole run.
+        process.exit(1);
+      }
+      // org2 failing does not affect org1's already-completed backup.
+    }
+  }
+
+  if (hadFailure) process.exit(1);
 }
 
 main().catch((err) => {
