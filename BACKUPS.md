@@ -126,7 +126,7 @@ anything within the last 7 days.
   there is no scheduled-export / scheduled-backup-to-file endpoint on this plan - branching
   and restore are the only built-in mechanisms.
 
-## Layer 2: nightly logical dump (this repo) - superseded by Layer 0, **task DISABLED 2026-09-20**
+## Layer 2: local logical dump (this repo) - superseded by Layer 0, **task DISABLED 2026-09-20**
 
 **Status: the Windows Scheduled Task `GemachApp-ProdDbBackup` was disabled on 2026-09-20** (see
 "Local backup task disabled" at the bottom of this file for why, what that changes, and how to
@@ -142,9 +142,24 @@ off. The description below is kept for that manual-fallback use and for historic
 [scripts/backup_prod_db.js](scripts/backup_prod_db.js) is the additional layer: a portable,
 compressed plain-SQL export you can keep outside Neon entirely.
 
-- **What it covers:** a full logical copy of every table's data (all 23 models in
-  `prisma/schema.prisma`), as of one consistent instant (it runs inside a single
-  `REPEATABLE READ, READ ONLY` transaction so nothing is torn mid-dump).
+**2026-09-23: extended to cover both orgs.** The script now dumps org1 (required - same as
+always, a hard failure if its DB URL is missing) and then, independently, org2/Neve Yaakov
+(optional - skipped with a clear log line if `DATABASE_URL_ORG2`/`PROD_DATABASE_URL_ORG2` isn't
+configured), reusing [scripts/lib/db-env.js](scripts/lib/db-env.js)'s `resolveDbUrl(org)` - the
+same org-selection pattern `scripts/cloud_backup.js` already uses. This was added purely as a
+manual/on-demand fallback capability (there previously was no local script at all for org2) -
+**it is still deliberately not scheduled to run automatically for either org**, for the exact
+egress reason documented in "Local backup task disabled" below; running it manually for both
+orgs occasionally is fine, scheduling it nightly again is what caused the 2026-09-17/18 outage.
+[scripts/setup_local_backup.ps1](scripts/setup_local_backup.ps1) (`npm run setup:backup`)
+idempotently provisions everything this layer needs (Node.js check, `npm ci`/`npm install`,
+env-var presence check for both orgs, and both Scheduled Tasks) on this machine or a replacement
+one - it registers `GemachApp-ProdDbBackup` **disabled** by default and never silently flips an
+existing task's enabled state either way.
+
+- **What it covers:** a full logical copy of every table's data (31 models in
+  `prisma/schema.prisma` as of 2026-09-23), as of one consistent instant per org (each org runs
+  inside its own single `REPEATABLE READ, READ ONLY` transaction so nothing is torn mid-dump).
 - **Why not `pg_dump`:** real `pg_dump`/`psql` are not installed on this machine (verified
   with `pg_dump --version`). The script reimplements the relevant slice of `pg_dump --inserts`
   using the `pg` driver already in `package.json`: it introspects `information_schema` for
@@ -154,13 +169,15 @@ compressed plain-SQL export you can keep outside Neon entirely.
 - **Schema is not included in the dump** - it doesn't need to be. `prisma/schema.prisma` is
   already the version-controlled source of truth for the schema and is restored separately
   (see below).
-- **Where dumps land:** `backups/gemach-prod-YYYY-MM-DD.sql.gz` (gitignored - see
-  `.gitignore`). One file per calendar day.
-- **Retention/rotation:** the script keeps the most recent 14 daily dumps, plus one dump per
-  ISO calendar week for the 8 weeks before that; everything older is deleted automatically
-  at the end of each run.
-- **Run log:** `backups/backup.log`, one line appended per run (`OK ...` with row/byte/timing
-  summary, or `FAILED <error>`).
+- **Where dumps land:** `backups/gemach-prod-YYYY-MM-DD.sql.gz` for org1 (gitignored - see
+  `.gitignore`, filename unchanged from before for backward compatibility) and
+  `backups/gemach-org2-prod-YYYY-MM-DD.sql.gz` for org2 (new). One file per org per calendar day.
+- **Retention/rotation:** each org keeps its own most recent 14 daily dumps, plus one dump per
+  ISO calendar week for the 8 weeks before that, independently of the other org's files;
+  everything older is deleted automatically at the end of each run.
+- **Run log:** `backups/backup.log`, one line appended per org per run, tagged `[org1]`/`[org2]`
+  (`[org1] OK ...` with row/byte/timing summary, `[org2] SKIPPED ...` if org2's DB URL isn't
+  configured, or `[org1|org2] FAILED <error>`).
 
 ### Restoring from a dump (disaster recovery)
 
@@ -214,31 +231,58 @@ A Windows Task Scheduler job used to run the backup automatically:
   for existing scheduled-task references before choosing this), so Task Scheduler - already
   built into Windows - was used rather than introducing new infrastructure.
 
-### How to verify it ran
+### How to verify it ran (both orgs)
 
 ```powershell
-# Task Scheduler's own record of the last/next run and result code
+# Task Scheduler's own record of the last/next run and result code - N/A while the
+# task is disabled (see "Local backup task disabled" below); still useful if re-enabled
 Get-ScheduledTaskInfo -TaskName "GemachApp-ProdDbBackup"
 
-# The script's own run log (one line per run)
-Get-Content "<repo>\backups\backup.log" -Tail 5
+# The script's own run log - one line PER ORG per run, tagged [org1]/[org2]
+Get-Content "<repo>\backups\backup.log" -Tail 10
 
-# The actual dump files present, with size/date
-Get-ChildItem "<repo>\backups" -Filter "gemach-prod-*.sql.gz" | Sort-Object LastWriteTime -Descending
+# The actual dump files present, with size/date - one glob per org (different prefixes)
+Get-ChildItem "<repo>\backups" -Filter "gemach-prod-*.sql.gz" | Sort-Object LastWriteTime -Descending       # org1
+Get-ChildItem "<repo>\backups" -Filter "gemach-org2-prod-*.sql.gz" | Sort-Object LastWriteTime -Descending  # org2
 ```
 
-A `LastTaskResult` of `0` and a matching `OK ...` line in `backup.log` for today's date means
-last night's backup succeeded. Anything else (nonzero result code, or a `FAILED ...` line)
-means it needs attention - the underlying error message is in `backup.log` and in the Task
-Scheduler history tab for that task.
+A `LastTaskResult` of `0` (when the task is enabled) and a matching `[org1] OK ...` /
+`[org2] OK ...` line in `backup.log` for today's date means the backup succeeded for that org.
+`[org2] SKIPPED ...` means org2's DB URL isn't configured on this machine - not a failure, just
+not set up yet (see the env-var check in `scripts/setup_local_backup.ps1`). Anything else
+(nonzero result code, or a `FAILED ...` line) means it needs attention - the underlying error
+message is in `backup.log` and in the Task Scheduler history tab for that task.
 
-### To run a backup manually at any time
+### To run a backup manually at any time (both orgs, independently)
 
 ```bash
 npm run backup:prod
 # or directly:
 node scripts/backup_prod_db.js
 ```
+
+Always attempts org1 first, then org2 - a problem with one org doesn't stop the other's backup.
+Org2 needs `DATABASE_URL_ORG2` or `PROD_DATABASE_URL_ORG2` in `.env.local`/`.env` (see
+`scratch/new_gemach_db.env` for org2's current live DB pointer if you need to add/refresh it -
+that pointer moves whenever org2's DB host changes, see CLAUDE.md's Neon-cutover notes).
+
+### Provisioning this layer on a machine (or a replacement machine)
+
+```bash
+npm run setup:backup
+# or directly:
+powershell -ExecutionPolicy Bypass -File scripts/setup_local_backup.ps1
+```
+
+[scripts/setup_local_backup.ps1](scripts/setup_local_backup.ps1) is idempotent - checks Node.js,
+runs `npm ci`/`npm install` and verifies the `pg` driver resolves, reports which of org1's
+(required) and org2's (optional) DB env vars are present without ever printing the values, and
+registers/verifies both Scheduled Tasks below (safe to re-run; it detects an already-correct
+task and leaves it alone, and only updates a task whose Action path has drifted). It never
+force-enables `GemachApp-ProdDbBackup` - see "Local backup task disabled" below for why - it
+registers that task **disabled** if creating it fresh, and leaves an existing task's
+enabled/disabled state untouched either way. Ends with a pass/fail summary table and a list of
+any manual action still needed (e.g. "add DATABASE_URL_ORG2 to .env.local").
 
 ## Log retention cleanup (PageVisitLog / QueryLog)
 
@@ -320,16 +364,45 @@ egress. It was also failing on and off (ECONNRESET on 2026-09-19, quota error on
   `backup_owner_email` is set in `/admin/backups` for that gemach (the backup log warns about this on every run). Set it, so the files are shared
   to a real person, before relying on the cloud backup as the only copy.
 
-**Manual local backup is still available** (costs one full dump, ~148MB of org1's Neon transfer - don't run it casually):
+**Manual local backup is still available** (costs one full dump per org you run - ~148MB of org1's Neon transfer, less for org2 - don't run it casually):
 ```bash
-npm run backup:prod        # writes backups/gemach-prod-YYYY-MM-DD.sql.gz, reads .env PROD_DATABASE_URL (org1's live DB)
+npm run backup:prod        # org1: writes backups/gemach-prod-YYYY-MM-DD.sql.gz (reads PROD_DATABASE_URL)
+                            # org2: writes backups/gemach-org2-prod-YYYY-MM-DD.sql.gz (reads PROD_DATABASE_URL_ORG2, if configured)
 ```
-Only org1 is covered by this script; there is no local script for Neve Yaakov (org2) - use the cloud backup / `/admin/backups` "גיבוי מיידי" for it.
+**Update 2026-09-23:** org2 (Neve Yaakov) is now also covered by this script (previously it wasn't - see the note above under "Local
+backup task disabled"'s sibling Layer-2 section). Still manual-only, same reasoning as org1: don't schedule it automatically, use the
+cloud backup / `/admin/backups` "גיבוי מיידי" for automatic coverage of either org.
 
 **To re-enable the scheduled task** (e.g. if the cloud backup is broken and this is the only working layer):
 ```powershell
 Enable-ScheduledTask -TaskName "GemachApp-ProdDbBackup"
 Get-ScheduledTaskInfo -TaskName "GemachApp-ProdDbBackup"   # NextRunTime should show 03:30
 ```
-If you do, remember the egress arithmetic above: also raise `backup_interval_hours` for org1 in `/admin/backups` (72+) or the two jobs together will
-exceed the 5GB monthly cap again. Context and measurements: [docs/vercel-resource-audit-2026-09-20.md](docs/vercel-resource-audit-2026-09-20.md).
+If you do, remember the egress arithmetic above: also raise `backup_interval_hours` for **both orgs** in `/admin/backups` (72+) or the
+jobs together will exceed the 5GB monthly cap again (now potentially for both orgs' Neon projects, since the task would dump both).
+Context and measurements: [docs/vercel-resource-audit-2026-09-20.md](docs/vercel-resource-audit-2026-09-20.md).
+
+## Local backup extended to org2 + setup script added (2026-09-23)
+Investigated a request to fully re-provision local backups for both orgs (env-var check, extend the script, re-enable the scheduled
+task, build an installer). Along the way, discovered the premise didn't match current reality: Layer 0 (cloud backup) is **not** still
+"code complete but blocked on a GAS deployment decision" as an earlier local note suggested - it has been live and merged since
+2026-09-16/17 (PR #85, then the archive-bridge fix), and a live check of the GitHub Actions run history confirmed **both** orgs have
+real successful (`ok`) `BackupRun`s on a daily schedule (`DATABASE_URL_ORG2` is a configured GitHub secret and org2's runs succeed).
+The local task's `Disabled` state is therefore exactly what's described above: a deliberate 2026-09-20 fix for a real quota-driven
+outage, not a regression - **left disabled, not re-enabled**.
+- `scripts/backup_prod_db.js` extended to also dump org2 manually/on-demand (see "Layer 2" above for the technical detail) - verified
+  end-to-end against real prod for both orgs: org1 31,096,516 bytes/83.3s/31 tables, org2 17,079,139 bytes/31.3s/31 tables (run from an
+  isolated worktree so as not to touch the shared working tree or the real `backups/` rotation state during verification).
+- `scripts/setup_local_backup.ps1` added (`npm run setup:backup`) - idempotent provisioning for a from-scratch machine; registers
+  `GemachApp-ProdDbBackup` **disabled** by default and never auto-enables an existing task, specifically to avoid silently
+  reintroducing the egress problem this section documents.
+- `GemachApp-LogCleanup`'s one observed failure (`0xC0000135`/`STATUS_DLL_NOT_FOUND`, 2026-09-22 04:21) could not be reproduced -
+  Task Scheduler's own Operational event log is disabled on this machine (no historical detail available beyond `schtasks`' summary),
+  and a fresh manual trigger (`schtasks /Run /TN "GemachApp-LogCleanup"`) completed with `LastResult 0` and a normal log line. Likely a
+  one-off transient glitch (e.g. Windows Update/AV/disk contention at that exact moment) rather than a configuration problem - both
+  tasks' registered Actions are identical in shape (full absolute `node.exe` path, quoted script path, no working-directory
+  dependency), so there is no structural reason for one to fail and not the other. No fix was applied since none was reproducible;
+  monitor `backups/log-cleanup.log` for a recurrence.
+- Org2's current DB pointer (from `scratch/new_gemach_db.env`, `ep-broad-night-b1fxha9e.c-5.eu-central-1.aws.neon.tech`) was copied
+  into the local `.env` as `PROD_DATABASE_URL_ORG2` so the manual script and `setup_local_backup.ps1`'s env check can see it - this is
+  a plain local, gitignored file edit, not a DB write.
