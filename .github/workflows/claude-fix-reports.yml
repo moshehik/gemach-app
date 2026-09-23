@@ -32,6 +32,13 @@
 # fix-reports.md) - ומתועד גם ב-print-center (23.8.2026) ש-claude-code-action חסום
 # מבנית מלדחוף ישירות ל-branch שהוא לא ה-checkout המקורי. מיזוג ל-main (ומכאן דיפלוי
 # אוטומטי ב-Vercel, לשני הגמחים) נשאר תמיד ביד משה.
+#
+# דגל "מותר לפרוס" נפרד (2026-09-23, agent_fix_loop_deploy_enabled, אייקון נוסף
+# ב-ErrorReportButton.js): כל push לענף PR מפעיל Vercel Preview Deployment אוטומטי,
+# שצורך מהמכסה היומית (100/יום) של Vercel. הדגל הזה מאפשר להשאיר את הסוכן דלוק
+# (עונה בשרשורים, חוקר ומאבחן) בלי לפתוח ענף+PR בפועל - שימושי כשהמכסה מתמלאת.
+# לא משפיע על any_enabled למטה; מועבר ל-prompt כ-org{1,2}_deploy ומטופל בתוך
+# fix-reports.md עצמו.
 name: Claude Fix Reports (סוכן תיקון אוטומטי)
 
 on:
@@ -93,6 +100,9 @@ jobs:
       # בדיקה זולה - קוראת את הדגל ישירות מול כל DB, בלי להפעיל את Claude בכלל אם
       # שני הגמחים כבויים. exit code של agent-loop-status.js הוא 0=enabled/1=disabled,
       # אבל לא רוצים שזה יכשיל את ה-step עצמו - לכן `|| true` על כל השמה.
+      # גם קוראת את דגל "מותר לפרוס" הנפרד (--flag=deploy, ברירת מחדל true) - לא
+      # משפיע על any_enabled (הסוכן ממשיך לרוץ ולהשיב גם כשפריסות כבויות), רק מועבר
+      # ל-prompt כדי ש-fix-reports.md ידע אם מותר לו לפתוח ענף+PR לגמח הזה.
       - name: Check agent loop flags (both orgs)
         id: check
         env:
@@ -100,12 +110,17 @@ jobs:
           DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
         run: |
           ORG1=$(node scripts/agent-loop-status.js --org=1) || true
+          ORG1_DEPLOY=$(node scripts/agent-loop-status.js --org=1 --flag=deploy) || true
           ORG2="false"
+          ORG2_DEPLOY="true"
           if [ -n "$DATABASE_URL_ORG2" ]; then
             ORG2=$(node scripts/agent-loop-status.js --org=2) || true
+            ORG2_DEPLOY=$(node scripts/agent-loop-status.js --org=2 --flag=deploy) || true
           fi
           echo "org1=$ORG1" >> "$GITHUB_OUTPUT"
+          echo "org1_deploy=$ORG1_DEPLOY" >> "$GITHUB_OUTPUT"
           echo "org2=$ORG2" >> "$GITHUB_OUTPUT"
+          echo "org2_deploy=$ORG2_DEPLOY" >> "$GITHUB_OUTPUT"
           if [ "$ORG1" = "true" ] || [ "$ORG2" = "true" ]; then
             echo "any_enabled=true" >> "$GITHUB_OUTPUT"
           else
@@ -131,8 +146,8 @@ jobs:
           prompt: |
             REPO: ${{ github.repository }}
 
-            גמח 1 (ראשי) דלוק: ${{ steps.check.outputs.org1 }}
-            גמח 2 (נווה יעקב) דלוק: ${{ steps.check.outputs.org2 }}
+            גמח 1 (ראשי) דלוק: ${{ steps.check.outputs.org1 }}, מותר לפרוס (ענף+PR): ${{ steps.check.outputs.org1_deploy }}
+            גמח 2 (נווה יעקב) דלוק: ${{ steps.check.outputs.org2 }}, מותר לפרוס (ענף+PR): ${{ steps.check.outputs.org2_deploy }}
 
             הפעילו את הפקודה /fix-reports בדיוק כפי שהיא מתועדת ב-
             .claude/commands/fix-reports.md - קראו את הקובץ הזה ועקבו אחריו במדויק.
