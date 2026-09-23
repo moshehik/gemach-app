@@ -476,14 +476,18 @@ export default function CustomerInventoryViewer() {
   const fetchInventory = () => {
     setLoading(true);
     const dateQuery = selectedDate ? `?eventDate=${selectedDate.toISOString()}&limit=10000` : '?limit=10000';
-    fetch(`/api/dresses${dateQuery}`)
+    // filterStatus=active (same server-side logic the admin catalog's "פעיל" tab uses -
+    // app/api/dresses/route.js) excludes isDeleted/exited models and models whose every
+    // item is notInUse/deleted, so a fully-retired design (all items notInUse, e.g.
+    // דיווח 9b7fe2af - models 316/333/417) never reaches the public kiosk - while a
+    // model that still has real active items just booked out for this date is still
+    // returned (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570).
+    fetch(`/api/dresses${dateQuery}&filterStatus=active`)
       .then(res => res.json())
       .then(data => {
-        // עמדת הלקוחות היא ציבורית - דגמים "לא פעילים" (exitDateFromRepo ממולא,
-        // כלומר הוצאו מהמאגר) לא אמורים להופיע כלל, בלי קשר לזמינות פריטים בפועל
-        // (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570). דגמים ללא אף פריט
-        // בכלל (שרידי יבוא ריקים, לא "מלאי אפס") גם לא אמורים להופיע - דיווח
-        // a0ecee8c/90472699.
+        // דגמים ללא אף פריט בכלל (שרידי יבוא ריקים, לא "מלאי אפס") גם לא אמורים
+        // להופיע - דיווח a0ecee8c/90472699 (כבר מסונן ע"י filterStatus=active למעלה,
+        // הבדיקה כאן היא הגנה כפולה בצד הלקוח).
         const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
         if (list) {
           setDresses(list.filter(d => !d.exitDateFromRepo && d.items && d.items.length > 0));
