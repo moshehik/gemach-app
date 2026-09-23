@@ -902,6 +902,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                               <OrderModelSelector
                                 value={{ name: item.description, id: item.dressModelId }}
                                 onChange={(model) => handleModelChange(originalIndex, model)}
+                                hasActiveItems
                               />
                             </div>
                             <div className="field" style={{ marginBottom: 0 }}>
