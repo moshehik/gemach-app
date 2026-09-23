@@ -937,19 +937,26 @@ export default function OrderDetailsPage({ params }) {
       const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
       const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
       const newDebtCreatedBySave = freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01;
+      // בנווה יעקב (enableEditSummaryConfirm), כשהשמירה הזו יצרה חוב, חלונית "השלמת תשלום"
+      // (paymentContinueAmount, במרכז המסך - ר' הרינדור למטה) היא ההודעה הבאה שהעובד רואה -
+      // במקום להסתפק בהודעת "נשמר" גנרית שמתחרה איתה על תשומת הלב, ר' דיווח: "יקפוץ באמצע
+      // מיד אחרי חלונית אישור השינויים, עוד לפני ההודעה שההזמנה נשמרה". לכן מדלגים כאן על
+      // showSaveSuccessOverlay/saveMessage הרגילים - חלונית התשלום עצמה כבר מתקשרת "נשמר,
+      // הנה מה שנשאר לעשות" בלי צורך בהודעת הצלחה נפרדת שרק מסיטה את הפוקוס ממנה.
+      const showsPaymentContinuePrompt = newDebtCreatedBySave && enableEditSummaryConfirm;
       if (newDebtCreatedBySave) {
         setActiveTab('payments');
-        // חלונית צפה "השלמת תשלום" - רק בנווה יעקב (enableEditSummaryConfirm), במקום
-        // להסתפק במעבר שקט לטאב + הודעת טוסט (ר' הצהרת paymentContinueAmount למעלה).
-        if (enableEditSummaryConfirm) setPaymentContinueAmount(freshDebtNow);
+        if (showsPaymentContinuePrompt) setPaymentContinueAmount(freshDebtNow);
       }
 
-      setSaveMessage(newDebtCreatedBySave
-        ? `השינויים נשמרו בהצלחה! נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} - עברת אוטומטית לטאב תשלומים להשלמת הגבייה.`
-        : 'השינויים נשמרו בהצלחה!');
-      setTimeout(() => setSaveMessage(''), newDebtCreatedBySave ? 7000 : 3000);
-      setShowSaveSuccessOverlay(true);
-      setTimeout(() => setShowSaveSuccessOverlay(false), 5000);
+      if (!showsPaymentContinuePrompt) {
+        setSaveMessage(newDebtCreatedBySave
+          ? `השינויים נשמרו בהצלחה! נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} - עברת אוטומטית לטאב תשלומים להשלמת הגבייה.`
+          : 'השינויים נשמרו בהצלחה!');
+        setTimeout(() => setSaveMessage(''), newDebtCreatedBySave ? 7000 : 3000);
+        setShowSaveSuccessOverlay(true);
+        setTimeout(() => setShowSaveSuccessOverlay(false), 5000);
+      }
 
       // דיווח 13eaff88 (נווה יעקב): לאחר שמירת שינוי בהזמנה קיימת (לחיצה מפורשת על
       // "שמור שינויים", לא שמירות פנימיות כמו עדכון תאריך מתוך ModernInfoTab) לתת
@@ -995,6 +1002,21 @@ export default function OrderDetailsPage({ params }) {
     setHasUnsavedChanges(stillPending);
     if (!stillPending) {
       savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
+    }
+
+    // כל קורא ל-onOrderUpdated כבר סבב לשרת בפועל (ר' ההערה למעלה) - כולל הוספת פריט מטאב
+    // הפריטים, שיוצרת PaymentObligation חדש שם ישירות בלי לעבור דרך handleSave בכלל. בלי
+    // הבדיקה הזו, הוספת פריט כזו (בנווה יעקב) הייתה משאירה חוב חדש בלי שום נוכחות ברורה -
+    // בדיוק אותו דיווח שכבר טופל עבור שמירה/יציאה (paymentContinueAmount, ר' handleSave).
+    if (enableEditSummaryConfirm) {
+      const freshRequired = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+      const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+      const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
+      if (freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01) {
+        setActiveTab('payments');
+        setPaymentContinueAmount(freshDebtNow);
+      }
     }
   };
 
@@ -1645,58 +1667,59 @@ export default function OrderDetailsPage({ params }) {
         document.body
       )}
 
-      {/* חלונית צפה "השלמת תשלום" - ר' paymentContinueAmount, מוצגת רק בנווה יעקב אחרי
-          ששמירה/ניסיון יציאה יצרו חוב חדש. לא backdrop חוסם (בכוונה - זו "המשך", לא עוד
-          אישור) - מציעה ישירות את פעולות התשלום הרלוונטיות במקום להשאיר לעובד לחפש אותן
-          בטאב תשלומים. חסימת היציאה עצמה (כשרלוונטי) כבר קרתה קודם ב-handleExit
+      {/* חלונית "השלמת תשלום" - ר' paymentContinueAmount, מוצגת רק בנווה יעקב אחרי ששמירה/
+          ניסיון יציאה יצרו חוב חדש. קופצת במרכז המסך (כמו חלונית "סיכום ההזמנה" עצמה) מיד
+          אחרי שזו נסגרת ועוד לפני כל הודעת "נשמר" - ר' showsPaymentContinuePrompt ב-handleSave,
+          שמדלג שם על הודעת ההצלחה הרגילה בדיוק כדי שזו תהיה ההודעה הבאה שרואים, לא מתחרה
+          איתה. מציעה ישירות את פעולות התשלום הרלוונטיות במקום להשאיר לעובד לחפש אותן בטאב
+          תשלומים. חסימת היציאה עצמה (כשרלוונטי) כבר קרתה קודם ב-handleExit
           (pendingDebtBlockRef/return) - זה עוד לפני שהחלונית הזו בכלל נפתחת. */}
       {paymentContinueAmount !== null && typeof document !== 'undefined' && createPortal(
-        <div style={{ position: 'fixed', bottom: '20px', insetInlineEnd: '20px', zIndex: 2050, width: '320px', maxWidth: 'calc(100vw - 32px)' }}>
-          <div className="card card-pad" style={{ boxShadow: '0 12px 32px rgba(0,0,0,.22)', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-              <div className="modal-icon-circle" style={{ background: 'var(--warning-tint)', color: 'var(--warning)', width: '36px', height: '36px', flex: '0 0 auto' }}>
-                <svg className="icon" style={{ width: '20px', height: '20px' }}><use href="#i-coin" /></svg>
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div className="modal" style={{ margin: 0, maxWidth: '380px', width: '95%' }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingTop: '28px' }}>
+              <div className="modal-icon-circle" style={{ background: 'var(--warning-tint)', color: 'var(--warning)', width: '56px', height: '56px' }}>
+                <svg className="icon" style={{ width: '32px', height: '32px' }}><use href="#i-coin" /></svg>
               </div>
-              <div style={{ flex: 1 }}>
-                <strong style={{ fontSize: '14px' }}>נוצר חיוב חדש - השלמת תשלום</strong>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--danger)', marginTop: '2px', direction: 'ltr', textAlign: 'right' }}>
-                  ₪{paymentContinueAmount.toLocaleString('he-IL')}
-                </div>
+              <strong style={{ fontSize: '17px' }}>השינויים נשמרו! נוצר חיוב חדש</strong>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--danger)' }}>
+                ₪{paymentContinueAmount.toLocaleString('he-IL')}
               </div>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setPaymentContinueAmount(null)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {nedarimPlusEnabled && (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => {
-                    setPaymentContinueAmount(null);
-                    setActiveTab('payments');
-                    setTimeout(() => paymentsManagerRef.current?.openCreditModal(), 60);
-                  }}
-                >
-                  <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי
+              <div className="hint" style={{ color: 'var(--text-3)', textAlign: 'center' }}>יש להשלים את הגבייה</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '10px' }}>
+                {nedarimPlusEnabled && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setPaymentContinueAmount(null);
+                      setActiveTab('payments');
+                      setTimeout(() => paymentsManagerRef.current?.openCreditModal(), 60);
+                    }}
+                  >
+                    <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי
+                  </button>
+                )}
+                {allowAdditionalPayment && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setPaymentContinueAmount(null);
+                      setActiveTab('payments');
+                      setTimeout(() => paymentsManagerRef.current?.openAdditionalPaymentModal(), 60);
+                    }}
+                  >
+                    <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף (מזומן וכו&apos;)
+                  </button>
+                )}
+                <button type="button" className="btn btn-ghost" onClick={() => setPaymentContinueAmount(null)}>
+                  אטפל בזה בטאב תשלומים
                 </button>
-              )}
-              {allowAdditionalPayment && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setPaymentContinueAmount(null);
-                    setActiveTab('payments');
-                    setTimeout(() => paymentsManagerRef.current?.openAdditionalPaymentModal(), 60);
-                  }}
-                >
-                  <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף (מזומן וכו&apos;)
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPaymentContinueAmount(null)}>
-                אטפל בזה בטאב תשלומים
-              </button>
+              </div>
             </div>
           </div>
         </div>,
