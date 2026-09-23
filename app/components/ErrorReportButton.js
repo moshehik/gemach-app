@@ -121,6 +121,11 @@ export default function ErrorReportButton() {
   // Actions שבודק דיווחים פתוחים כל 5 דק' ומתקן קוד (ר' .github/workflows/claude-fix-reports.yml).
   const [agentLoopEnabled, setAgentLoopEnabled] = useState(false);
   const [agentLoopBusy, setAgentLoopBusy] = useState(false);
+  // דגל נפרד (2026-09-23): האם מותר לסוכן לפתוח ענף+PR (=פריסת Vercel אוטומטית לכל
+  // push). כשכבוי - הסוכן ממשיך לרוץ ולהשיב בשרשורים כרגיל, פשוט לא נוגע ב-git.
+  // ברירת מחדל true עד שנטען המצב האמיתי מהשרת, כדי לא להבהב "כבוי" לרגע.
+  const [deployEnabled, setDeployEnabled] = useState(true);
+  const [deployBusy, setDeployBusy] = useState(false);
 
   // שימור מיקום הגלילה ברשימת הפניות/ארכיון: כשפותחים פנייה (thread) וחוזרים
   // חזרה, הרשימה נטענת/מוצגת מחדש ובלי זה הגלילה הייתה קופצת לראש בכל פעם.
@@ -558,7 +563,10 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
       const res = await fetch('/api/agent/fix-loop');
       if (!res.ok) return;
       const data = await res.json();
-      if (data.success) setAgentLoopEnabled(!!data.enabled);
+      if (data.success) {
+        setAgentLoopEnabled(!!data.enabled);
+        setDeployEnabled(data.deployEnabled !== false);
+      }
     } catch (err) {
       console.error('Error fetching agent loop status:', err);
     }
@@ -588,6 +596,33 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
       showToast('שגיאת תקשורת', 'error');
     } finally {
       setAgentLoopBusy(false);
+    }
+  };
+
+  const toggleDeploy = async () => {
+    if (deployBusy) return;
+    setDeployBusy(true);
+    const next = !deployEnabled;
+    try {
+      const res = await fetch('/api/agent/fix-loop', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deployEnabled: next }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDeployEnabled(data.deployEnabled);
+        showToast(data.deployEnabled
+          ? 'הסוכן מורשה לפרוס תיקונים (לפתוח ענף+PR) בוורסל'
+          : 'פריסות מהסוכן כבויות - הוא ימשיך לענות ולחקור, בלי לפתוח ענף/PR');
+      } else {
+        showToast(data.error || 'שגיאה בעדכון מצב הפריסה', 'error');
+      }
+    } catch (err) {
+      console.error('Error toggling agent deploy flag:', err);
+      showToast('שגיאת תקשורת', 'error');
+    } finally {
+      setDeployBusy(false);
     }
   };
 
@@ -727,6 +762,19 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     onClick={toggleAgentLoop}
                   >
                     <svg className="icon"><use href="#i-activity" /></svg>
+                  </button>
+                )}
+                {isProgrammer && agentLoopEnabled && (
+                  <button
+                    type="button"
+                    className={`btn btn-icon-only btn-sm ${deployEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                    title={deployEnabled
+                      ? 'הסוכן מורשה לפרוס תיקונים (לפתוח ענף+PR) בוורסל. לחצו לכיבוי - הוא ימשיך לענות ולחקור, בלי לפרוס.'
+                      : 'פריסות מהסוכן כבויות - הוא עדיין עונה ובודק דיווחים, אבל לא פותח ענף/PR (כדי לא לצרוך את מכסת הפריסות היומית בוורסל). לחצו להפעלה.'}
+                    disabled={deployBusy}
+                    onClick={toggleDeploy}
+                  >
+                    <svg className="icon"><use href="#i-upload" /></svg>
                   </button>
                 )}
                 {activeTab === 'list' && (
