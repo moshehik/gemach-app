@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>סימולציה - התנגשות זמינות בשינוי תאריך</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,"Segoe UI",sans-serif;margin:0;padding:16px;background:#f4f5f7;color:#222;font-size:14px}
+h1{font-size:19px;margin:0 0 4px}
+h2{font-size:15px;margin:0 0 8px}
+.sub{color:#666;margin-bottom:12px}
+.box{background:#fff;border:1px solid #d5d8de;border-radius:6px;padding:12px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+label{display:inline-flex;gap:6px;align-items:center}
+input[type=number]{width:60px}
+input,button{font:inherit}
+button{padding:5px 10px;border:1px solid #9aa1ad;background:#fafafa;border-radius:4px;cursor:pointer}
+button:hover:not(:disabled){background:#eef}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:#1f6feb;color:#fff;border-color:#1f6feb}
+button.warn{background:#fff3e0;border-color:#e0a030}
+button.danger{background:#fdecea;border-color:#d9534f}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:800px){.two{grid-template-columns:1fr}}
+ol{margin:0;padding-inline-start:20px}
+.legend span.sw{display:inline-block;width:26px;height:12px;vertical-align:middle;margin-inline-end:4px;border:1px solid #0002}
+.legend div{margin:3px 0}
+.banner{padding:10px 12px;border-radius:6px;font-weight:bold;margin-bottom:12px}
+.b-bad{background:#fdecea;border:1px solid #d9534f;color:#8a1f1a}
+.b-ok{background:#e7f6ec;border:1px solid #3a9d5d;color:#1d5e36}
+.b-mid{background:#fff3e0;border:1px solid #e0a030;color:#7a4a00}
+.dress{background:#fff;border:1px solid #d5d8de;border-inline-start:6px solid #999;border-radius:6px;padding:12px;margin-bottom:12px}
+.dress.free{border-inline-start-color:#3a9d5d}
+.dress.compactable,.dress.compact{border-inline-start-color:#e0a030}
+.dress.blocked{border-inline-start-color:#d9534f}
+.dress.removed{opacity:.7}
+.head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.badge{padding:2px 9px;border-radius:10px;font-size:12px;font-weight:bold;display:inline-block}
+.s-free{background:#d7f0df;color:#1d5e36}
+.s-compactable,.s-compact{background:#ffe7bd;color:#7a4a00}
+.s-blocked{background:#f9d0cc;color:#8a1f1a}
+.s-removed{background:#e3e3e3;color:#444}
+table{border-collapse:collapse;width:100%;margin:6px 0}
+th,td{border:1px solid #d5d8de;padding:4px 8px;text-align:start}
+th{background:#f0f2f5;font-weight:600}
+.gain{color:#1d7a3f;font-weight:bold}
+.bad{color:#b02a24;font-weight:bold}
+.muted{color:#777;font-size:12px}
+.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tl{margin:6px 0}
+.tl .lane{position:relative;height:24px;border:1px solid #cfd3da;background:#fff;overflow:hidden;margin-bottom:3px}
+.tl .lbl{font-size:12px;margin:4px 0 1px;color:#555}
+.tl .axis{position:relative;height:16px;font-size:10px;color:#555}
+.tl .axis span{position:absolute;top:0;text-align:center;overflow:hidden}
+.tl .cell{position:absolute;top:0;bottom:0;background:#f1f1f1}
+.tl .bar{position:absolute;top:3px;bottom:3px;font-size:10px;overflow:hidden;white-space:nowrap;text-align:center;line-height:16px}
+.buf{background:#bfc3ca}
+.own{background:#2e8b57;color:#fff;z-index:2}
+.own.bad{background:#2e8b57}
+.nb{background:#3b4a63;color:#fff;z-index:1;top:6px;bottom:6px;line-height:10px}
+.cf{background:repeating-linear-gradient(45deg,#e53935,#e53935 4px,#ff8a80 4px,#ff8a80 8px);z-index:3;top:0;bottom:0}
+.today{position:absolute;top:0;bottom:0;border-inline-start:2px dashed #999;z-index:0}
+.note{font-size:12px;color:#555}
+.mgr{background:#fff3e0;border:1px dashed #e0a030;padding:2px 8px;border-radius:4px;font-size:12px}
+#log{min-height:20px;color:#333}
+</style>
+</head>
+<body>
+<h1>שינוי תאריך הזמנה - חלון זמינות / התנגשויות (קונספט)</h1>
+<div class="sub">הזמנה 51873 · לקוחה: כהן רחל · תאריך נוכחי (שמור): <b id="origTxt"></b> · נתונים בדויים לצורך הדגמה</div>
+
+<div class="box">
+  <h2>שינוי תאריך בכרטיס ההזמנה</h2>
+  <div class="row">
+    <label><input type="radio" name="mode" value="single" checked> תאריך בודד</label>
+    <label><input type="radio" name="mode" value="range"> טווח (חו"ל / ימי חול)</label>
+    <label>מתאריך <input type="date" id="dFrom" value="2026-10-15"></label>
+    <label id="toWrap" style="display:none">עד תאריך <input type="date" id="dTo" value="2026-10-17"></label>
+    <span class="note" id="dayName"></span>
+  </div>
+  <hr style="border:0;border-top:1px solid #e3e5e9;margin:10px 0">
+  <div class="row">
+    <b>הגדרות:</b>
+    <label>ימי מרווח רגיל <input type="number" id="buf" min="0" max="10" value="3"></label>
+    <label>ציפוף - ימים N <input type="number" id="nComp" min="0" max="10" value="2"></label>
+    <label><input type="checkbox" id="skipWk"> דלג על שישי-שבת בספירת המרווח</label>
+  </div>
+</div>
+
+<div class="two">
+  <div class="box">
+    <h2>איך זה עובד</h2>
+    <ol>
+      <li>לכל שמלה: חלון ההזמנה = התאריכים + מרווח של X ימים לפני ואחרי.</li>
+      <li>התנגשות = הזמנה אחרת של אותה שמלה נכנסת לחלון (מרווח בפועל &lt; נדרש).</li>
+      <li>פנויות = מלאי השמלה פחות הזמנות מתנגשות.</li>
+      <li>ציפוף "ימים N" מצמצם את המרווח ל-N ימים ומראה כמה יחידות מתפנות (+).</li>
+      <li>חפיפה ישירה בין תאריכי האירוע - אין ציפוף שיעזור.</li>
+    </ol>
+  </div>
+  <div class="box legend">
+    <h2>מקרא</h2>
+    <div><span class="sw" style="background:#2e8b57"></span>התאריכים החדשים של ההזמנה</div>
+    <div><span class="sw" style="background:#bfc3ca"></span>ימי מרווח (אפור)</div>
+    <div><span class="sw" style="background:#3b4a63"></span>הזמנה שכנה (מס' הזמנה)</div>
+    <div><span class="sw" style="background:repeating-linear-gradient(45deg,#e53935,#e53935 4px,#ff8a80 4px,#ff8a80 8px)"></span>חפיפה = התנגשות</div>
+    <div><span class="sw" style="background:#f1f1f1"></span>שישי / שבת · ציר הזמן: ימים מוקדמים מימין</div>
+  </div>
+</div>
+
+<div id="banner"></div>
+<div id="dresses"></div>
+
+<div class="box">
+  <h2>פעולות להזמנה</h2>
+  <div id="suggest" class="row" style="margin-bottom:8px"></div>
+  <div class="actions">
+    <button id="bCompAll">החל ציפוף על כל הפריטים הניתנים לציפוף</button>
+    <button id="bApprove" class="warn">אשר בכל זאת (מנהל)</button>
+    <button id="bCancel" class="danger">בטל שינוי תאריך</button>
+    <button id="bSave" class="primary">שמור שינוי תאריך</button>
+  </div>
+  <div id="log" class="note" style="margin-top:8px"></div>
+</div>
+
+<script>
+const DAY=864e5, TODAY=Date.UTC(2026,8,24)/DAY;
+const pd=s=>{const[a,b,c]=s.split('-').map(Number);return Date.UTC(a,b-1,c)/DAY};
+const dow=d=>new Date(d*DAY).getUTCDay();
+const WD=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+const fmt=d=>{const t=new Date(d*DAY);return WD[t.getUTCDay()]+' '+t.getUTCDate()+'/'+(t.getUTCMonth()+1)};
+const fmtR=(a,b)=>a===b?fmt(a):fmt(a)+' - '+fmt(b);
+const iso=d=>new Date(d*DAY).toISOString().slice(0,10);
+
+const DRESSES=[
+ {id:1,no:'1204',name:'שרה',size:'38',qty:1,bk:[['48102','2026-10-05'],['48277','2026-10-19'],['48350','2026-11-12']]},
+ {id:2,no:'2210',name:'רות',size:'40',qty:1,bk:[['48211','2026-10-12'],['48333','2026-10-25']]},
+ {id:3,no:'3307',name:'נועה',size:'36',qty:1,bk:[['48390','2026-10-14','2026-10-16'],['48401','2026-10-22']]},
+ {id:4,no:'4102',name:'מיכל',size:'42',qty:1,bk:[['48120','2026-09-30'],['48455','2026-11-02']]},
+ {id:5,no:'5015',name:'דנה',size:'44',qty:2,bk:[['48160','2026-10-12'],['48480','2026-10-30']]},
+];
+DRESSES.forEach(d=>d.b=d.bk.map(x=>({o:x[0],s:pd(x[1]),e:pd(x[2]||x[1])})));
+const SUBS=['6120 ליאת (מידה 38)','6244 תמר (מידה 40)','7003 אורית (מידה 36)'];
+
+const ORIG=pd('2026-10-08');
+let S={}, approved=false, saved=false;
+const $=id=>document.getElementById(id);
+const counted=d=>!$('skipWk').checked||(dow(d)!==5&&dow(d)!==6);
+function countBetween(a,b){let c=0;for(let d=a;d<=b;d++)if(counted(d))c++;return c}
+function walk(d,dir,n){let c=0;while(c<n){d+=dir;if(counted(d))c++}return d}
+function span(){const s=pd($('dFrom').value);let e=$('dFrom').value&&document.querySelector('[name=mode]:checked').value==='range'?pd($('dTo').value):s;if(e<s)e=s;return[s,e]}
+function win(s,e,buf){return buf>0?[walk(s,-1,buf),walk(e,1,buf)]:[s,e]}
+
+function evalD(d,s,e,buf){
+  const[ws,we]=win(s,e,buf);
+  const conf=[];
+  d.b.forEach(n=>{
+    if(n.e>=ws&&n.s<=we){
+      const direct=n.e>=s&&n.s<=e;
+      const gap=direct?-1:(n.e<s?countBetween(n.e+1,s-1):countBetween(e+1,n.s-1));
+      conf.push({n,direct,gap});
+    }
+  });
+  return{conf,free:d.qty-conf.length,ws,we};
+}
+
+function status(d,s,e,B,N){
+  const st=S[d.id];
+  if(st==='removed'||st==='replaced')return{k:'removed',nrm:null,cmp:null};
+  const nrm=evalD(d,s,e,B),cmp=evalD(d,s,e,N);
+  let k;
+  if(nrm.free>=1)k='free';
+  else if(st==='compact'&&cmp.free>=1)k='compact';
+  else if(cmp.free>=1)k='compactable';
+  else k='blocked';
+  return{k,nrm,cmp};
+}
+
+function lane(d,s,e,buf,label,cls){
+  const lo=s-12,hi=e+12,T=hi-lo+1,w=100/T;
+  const pos=(a,b)=>`right:${(a-lo)*w}%;width:${(b-a+1)*w}%`;
+  const ev=evalD(d,s,e,buf);
+  let h=`<div class="lbl">${label}</div><div class="lane">`;
+  for(let x=lo;x<=hi;x++)if(dow(x)===5||dow(x)===6)h+=`<div class="cell" style="${pos(x,x)}"></div>`;
+  if(TODAY>=lo&&TODAY<=hi)h+=`<div class="today" style="right:${(TODAY-lo)*w}%"></div>`;
+  if(buf>0){
+    if(ev.ws<s)h+=`<div class="bar buf" style="${pos(ev.ws,s-1)}"></div>`;
+    if(ev.we>e)h+=`<div class="bar buf" style="${pos(e+1,ev.we)}"></div>`;
+  }
+  d.b.forEach(n=>{
+    if(n.e<lo||n.s>hi)return;
+    const a=Math.max(n.s,lo),b=Math.min(n.e,hi);
+    h+=`<div class="bar nb" style="${pos(a,b)}" title="הזמנה ${n.o}">${n.o}</div>`;
+    const oa=Math.max(a,ev.ws),ob=Math.min(b,ev.we);
+    if(oa<=ob)h+=`<div class="bar cf" style="${pos(oa,ob)}"></div>`;
+  });
+  h+=`<div class="bar own" style="${pos(s,e)}">${s===e?'':'ההזמנה'}</div></div>`;
+  return h;
+}
+function axis(s,e){
+  const lo=s-12,hi=e+12,T=hi-lo+1,w=100/T;let h='<div class="axis">';
+  for(let x=lo;x<=hi;x++){const t=new Date(x*DAY);
+    h+=`<span style="right:${(x-lo)*w}%;width:${w}%">${t.getUTCDate()}${t.getUTCDate()===1?'/'+(t.getUTCMonth()+1):''}</span>`}
+  return h+'</div>';
+}
+
+const LBL={free:'פנוי',compactable:'תפוס - ניתן לציפוף',compact:'פנוי בציפוף (ממתין לאישור מנהל)',blocked:'תפוס - חסום',removed:'הוסר / הוחלף'};
+
+function render(){
+  const B=+$('buf').value||0,N=Math.min(+$('nComp').value||0,B);
+  const[s,e]=span();
+  $('dayName').textContent=s===e?'':`(${e-s+1} ימים)`;
+  $('origTxt').textContent=fmt(ORIG);
+  let cntBlocked=0,cntCompact=0,html='';
+  const res=DRESSES.map(d=>status(d,s,e,B,N));
+  DRESSES.forEach((d,i)=>{
+    const r=res[i],k=r.k;
+    if(k==='blocked')cntBlocked++;
+    if(k==='compactable'||k==='compact')cntCompact++;
+    html+=`<div class="dress ${k}"><div class="head"><div><b>${d.no} ${d.name}</b> · מידה ${d.size} · מלאי ${d.qty} יח'</div>
+      <div><span class="badge s-${k}">${LBL[k]}</span>${k==='compact'?' <span class="mgr">סימון: צמצום ימים '+N+' - אישור מנהל</span>':''}</div></div>`;
+    if(k==='removed'){
+      html+=`<div class="note">${S[d.id]==='replaced'?'הוחלפה ב-'+SUBS[d.id%3]+' (זמינה בתאריכים החדשים)':'השמלה הוסרה מההזמנה'}</div>
+        <div class="actions"><button data-a="undo" data-id="${d.id}">החזר שמלה</button></div></div>`;return;
+    }
+    const n=r.nrm,c=r.cmp,gain=c.free-n.free;
+    html+=`<table><tr><th>תצוגה</th><th>מרווח</th><th>הזמנות מתנגשות</th><th>יחידות פנויות</th><th>רווח</th></tr>
+      <tr><td>רגיל</td><td>${B} ימים</td><td>${n.conf.length}</td><td class="${n.free<1?'bad':''}">${n.free} מתוך ${d.qty}</td><td>-</td></tr>
+      <tr><td>ימים ${N}</td><td>${N} ימים</td><td>${c.conf.length}</td><td class="${c.free<1?'bad':''}">${c.free} מתוך ${d.qty}</td><td class="${gain>0?'gain':''}">${gain>0?'+'+gain:'0'}</td></tr></table>`;
+    if(n.conf.length){
+      html+=`<table><tr><th>הזמנה שכנה</th><th>תאריכים</th><th>מרווח בפועל</th><th>נדרש</th><th>חסר</th><th>בציפוף ${N}</th></tr>`;
+      n.conf.forEach(x=>{
+        const ok=!x.direct&&x.gap>=N;
+        html+=`<tr><td>${x.n.o}</td><td>${fmtR(x.n.s,x.n.e)}</td><td>${x.direct?'<span class="bad">חפיפה ישירה</span>':x.gap+' ימים'}</td><td>${B}</td>
+          <td class="bad">${x.direct?'-':(B-x.gap)+' ימים'}</td><td>${ok?'<span class="gain">מספיק</span>':'<span class="bad">לא מספיק</span>'}</td></tr>`;
+      });
+      html+='</table>';
+    }
+    html+=`<div class="tl">${axis(s,e)}${lane(d,s,e,B,'ציר זמן - מרווח רגיל ('+B+')')}${lane(d,s,e,N,'ציר זמן - ציפוף (ימים '+N+')')}</div>`;
+    html+=`<div class="actions">
+      ${k==='compactable'?`<button class="warn" data-a="compact" data-id="${d.id}">החל ציפוף ימים ${N} (אישור מנהל)</button>`:''}
+      ${k==='compact'?`<button data-a="uncompact" data-id="${d.id}">בטל ציפוף</button>`:''}
+      ${k!=='free'?`<button data-a="replace" data-id="${d.id}">החלף שמלה</button><button data-a="remove" data-id="${d.id}" class="danger">הסר שמלה</button>`:''}
+    </div></div>`;
+  });
+  $('dresses').innerHTML=html;
+
+  const ban=$('banner');
+  if(cntBlocked)ban.innerHTML=`<div class="banner b-bad">חלק מהפריטים תפוסים / חסרים במלאי בתאריכים החדשים (${cntBlocked} חסומים${cntCompact?', '+cntCompact+' ניתנים לציפוף':''})</div>`;
+  else if(cntCompact)ban.innerHTML=`<div class="banner b-mid">חלק מהפריטים תפוסים במרווח הרגיל - ניתן לפתור בציפוף ימים ${N} (נדרש אישור מנהל)</div>`;
+  else ban.innerHTML=`<div class="banner b-ok">כל הפריטים זמינים בתאריכים החדשים</div>`;
+
+  // alternative dates
+  const active=DRESSES.filter(d=>S[d.id]!=='removed'&&S[d.id]!=='replaced');
+  const alts=[];
+  for(let k=1;k<=30&&alts.length<3;k++)for(const sg of[1,-1]){
+    const ns=s+sg*k;if(ns<TODAY||alts.length>=3)continue;
+    if(active.every(d=>evalD(d,ns,ns+(e-s),B).free>=1))alts.push(ns);
+  }
+  $('suggest').innerHTML='<b>תאריכים חלופיים פנויים לכל הפריטים:</b> '+(alts.length?alts.map(a=>`<button data-alt="${a}">${fmtR(a,a+(e-s))}</button>`).join(' '):'<span class="note">לא נמצא בטווח 30 יום</span>');
+
+  const unresolved=res.filter(r=>r.k==='blocked'||r.k==='compactable').length;
+  $('bCompAll').disabled=!res.some(r=>r.k==='compactable');
+  $('bApprove').disabled=!unresolved||approved;
+  $('bApprove').textContent=approved?'אושר בחריגה (מנהל) ✓':'אשר בכל זאת (מנהל)';
+  $('bSave').disabled=(unresolved&&!approved)||(s===ORIG&&e===ORIG);
+}
+function log(t){$('log').textContent=t}
+function reset(){S={};approved=false}
+
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('button');if(!t)return;
+  if(t.dataset.alt){const a=+t.dataset.alt,[s,e]=span();$('dFrom').value=iso(a);$('dTo').value=iso(a+(e-s));reset();log('נבחר תאריך חלופי: '+fmt(a));render();return}
+  if(t.dataset.a){const id=+t.dataset.id,a=t.dataset.a;
+    if(a==='compact'){S[id]='compact';log('הוחל ציפוף - סומן לאישור מנהל')}
+    else if(a==='uncompact'||a==='undo'){delete S[id]}
+    else if(a==='replace'){S[id]='replaced';log('שמלה הוחלפה')}
+    else if(a==='remove'){S[id]='removed';log('שמלה הוסרה מההזמנה')}
+    render();
+  }
+});
+$('bCompAll').onclick=()=>{const B=+$('buf').value,N=Math.min(+$('nComp').value,B),[s,e]=span();
+  DRESSES.forEach(d=>{if(status(d,s,e,B,N).k==='compactable')S[d.id]='compact'});log('הוחל ציפוף על כל הפריטים הניתנים - סומן לאישור מנהל');render()};
+$('bApprove').onclick=()=>{approved=true;log('אושר בחריגה ע"י מנהל - ההזמנה תישמר עם התנגשות פתוחה');render()};
+$('bCancel').onclick=()=>{$('dFrom').value=iso(ORIG);$('dTo').value=iso(ORIG);document.querySelector('[name=mode][value=single]').checked=true;$('toWrap').style.display='none';reset();log('שינוי התאריך בוטל - חזרה לתאריך השמור');render()};
+$('bSave').onclick=()=>{log('נשמר (הדגמה). '+(Object.values(S).includes('compact')?'כולל סימון ציפוף לאישור מנהל. ':'')+(approved?'אושר בחריגה. ':''))};
+['dFrom','dTo','buf','nComp','skipWk'].forEach(i=>$(i).addEventListener('input',()=>{
+  if($('dTo').value<$('dFrom').value)$('dTo').value=$('dFrom').value;reset();render()}));
+document.querySelectorAll('[name=mode]').forEach(r=>r.addEventListener('change',()=>{
+  $('toWrap').style.display=r.value==='range'&&r.checked?'':(r.checked?'none':$('toWrap').style.display);
+  if(r.checked&&r.value==='range'&&$('dTo').value<$('dFrom').value)$('dTo').value=$('dFrom').value;reset();render()}));
+render();
+</script>
+</body>
+</html>

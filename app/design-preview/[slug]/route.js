@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 const FILES = {
   'order-card-a-9ca452c9e5': () => fs.readFileSync(path.join(process.cwd(), 'lib', 'design-preview', 'order-card-sketch-A.html'), 'utf8'),
   'order-card-b-267f9d95e0': () => fs.readFileSync(path.join(process.cwd(), 'lib', 'design-preview', 'order-card-sketch-B.html'), 'utf8'),
+  'availability-sim-812db49974': () => fs.readFileSync(path.join(process.cwd(), 'lib', 'design-preview', 'availability-conflict-simulation.html'), 'utf8'),
 };
 
 async function isNeveYaakov() {

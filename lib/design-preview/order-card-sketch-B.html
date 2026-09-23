@@ -13,7 +13,8 @@
   --navy-900:#0a2242; --navy:#0f2c52; --navy-700:#173c6b; --navy-500:#2b5a94;
   --sky-50:#f3f9fe; --sky-100:#e4f1fb; --sky-200:#cfe6f7; --sky-300:#a9d2f0; --sky-400:#7fb8e6;
   --gold-50:#fbf6e3; --gold-100:#f4e8c1; --gold-300:#e0c56e; --gold:#c9a227; --gold-b:#b8912f; --gold-d:#9a7a1f; --gold-700:#6f5710;
-  --rose-50:#fff5f9; --rose-100:#fde6ef; --rose-200:#fbcfe0; --rose-300:#f4a6c0; --rose-500:#d9739c; --rose-700:#a83d6c;
+  --rose-50:#fbf6e3; --rose-100:#f4e8c1; --rose-200:#ecd99b; --rose-300:#e0c56e; --rose-500:#b8912f; --rose-700:#6f5710; /* surfaces: gold tints (no pink) */
+  --pink-300:#ff0a9e; --pink-500:#ff0a9e; --pink-d:#d6007f; --pbtn:linear-gradient(135deg,#ff0a9e 0%,#f0008f 100%);
   --gbtn:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%);
   --gbtn-d:#9a7a1f;
   /* semantic aliases (mapped ONLY to the 3 families) */
@@ -714,6 +715,59 @@ lbl.lbl,label.lbl{margin-bottom:8px;color:var(--ink2);font-weight:500;font-size:
 .rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border-color:var(--navy-500)}
 .demo button{background:var(--gold-100)}
 @media (max-width:420px){#p-items .seg button{font-size:14px;padding:8px 2px;gap:4px;white-space:nowrap}#p-items .seg button .chip{padding:0 6px;min-width:20px;font-size:13px}}
+
+/* bubblegum pink: bolder surfaces + friendly rounded touches */
+body{background-image:radial-gradient(1200px 500px at 85% -10%,var(--sky-50) 0,transparent 60%),radial-gradient(700px 420px at 0% 100%,rgba(255,143,184,.28) 0,transparent 65%),radial-gradient(900px 500px at 0% 0%,var(--sky-300) 0,transparent 55%)}
+.card-h .ico.rose,.card-h .ico.plum{background:var(--rose-200);color:var(--rose-700);border-radius:50%}
+.card-h .ico.rose::after{content:""}
+.chip.rose,.chip.amber{background:var(--rose-200);color:var(--rose-700);border:1px solid var(--rose-300);font-weight:600}
+.chip.rose .ic,.chip.amber .ic{color:var(--rose-500)}
+.tab.on .cnt{background:var(--rose-200);color:var(--rose-700)}
+.itm.pending{background:var(--rose-100);border:2px dashed var(--rose-500)}
+.li.pend{background:var(--rose-100);border:2px dashed var(--rose-500)}
+.li.pend .ic-b{background:var(--rose-300);color:var(--navy-900)}
+.addpanel{background:var(--rose-100);border:2px dashed var(--rose-500)}
+.pendbox{background:rgba(255,143,184,.30);border:2px dashed var(--rose-300);color:#fff;font-weight:600}
+.pendbox .ic{color:var(--rose-300)}
+.status.cred{background:var(--rose-300);color:var(--navy-900);border:0}
+.status.cred .ic{color:var(--navy-900)}
+.creditile{background:var(--rose-200);border:2px solid var(--rose-300);color:var(--navy-900)}
+.net.credit{background:var(--rose-200);border:2px solid var(--rose-300)}
+.chg .c .ico.rose{background:var(--rose-200)!important;color:var(--rose-700)!important}
+#toast.credit .tb{background:var(--rose-300);color:var(--navy-900)}
+.stackl .chip,.rsum .chip{border-radius:999px}
+.ttl h1::after{content:"";display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--rose-300);margin-inline-start:12px;box-shadow:20px 6px 0 -3px var(--gold-300),-18px -4px 0 -4px var(--rose-500)}
+.seg button.on{box-shadow:0 0 0 2px var(--rose-300)}
+.step.cur .c{box-shadow:0 0 0 6px var(--rose-200)}
+
+/* ===== PINK ONLY ON BUTTONS ===== */
+body{background-image:radial-gradient(1200px 500px at 85% -10%,var(--sky-50) 0,transparent 60%),radial-gradient(900px 500px at 0% 0%,var(--sky-300) 0,transparent 55%)}
+.ttl h1::after{display:none}
+.seg button.on{box-shadow:0 1px 3px rgba(15,44,82,.12)}
+.step.cur .c{box-shadow:0 0 0 6px var(--gold-100)}
+.card-h .ico.rose,.card-h .ico.plum{border-radius:12px;background:var(--gold-100);color:var(--gold-700)}
+.chip.rose,.chip.amber{background:var(--gold-100);color:var(--gold-700);border:1px solid var(--gold-300)}
+.chip.rose .ic,.chip.amber .ic{color:var(--gold-b)}
+.itm.pending,.li.pend,.addpanel{background:var(--gold-50);border:1.5px dashed var(--gold-b)}
+.li.pend .ic-b{background:var(--gold-100);color:var(--gold-700)}
+.pendbox{background:rgba(224,197,110,.16);border:1.5px dashed var(--gold-300);color:#fff;font-weight:500}
+.pendbox .ic{color:var(--gold-300)}
+.status.cred{background:var(--sky-200);color:var(--navy);border:0}
+.status.cred .ic{color:var(--navy)}
+.creditile,.net.credit{background:var(--sky-200);border:1px solid var(--sky-400);color:var(--navy)}
+.chg .c .ico.rose{background:var(--sky-100)!important;color:var(--navy)!important}
+#toast.credit .tb{background:var(--sky-300);color:var(--navy)}
+.tab.on .cnt{background:var(--gold-100);color:var(--gold-700)}
+/* buttons: pink fill + gold border (primary) ; gold tint + pink outline (secondary) */
+.btn.primary,.btn.green,.btn.navy,.rcard .btn.primary,.mbar .btn.primary{background:var(--pbtn);color:#000;border:2px solid var(--gold-b);box-shadow:inset 0 1px 0 rgba(255,236,170,.85),0 0 0 1px rgba(224,197,110,.5);font-weight:600}
+.btn,.btn.danger,.btn.ghost,.ibtn,.back,.demo button,.mbar .btn,#toast button,.rcard .btn,.rcard .btn.ghost{background:var(--gold-100);color:#000;border:2px solid var(--pink-500);box-shadow:none}
+.btn.primary:hover,.btn.green:hover,.btn.navy:hover,.btn:hover,.btn.danger:hover,.btn.ghost:hover,.ibtn:hover,.back:hover,.ibtn.danger:hover,.demo button:hover,.mbar .btn:hover,#toast button:hover{background:var(--navy);color:var(--gold-300);border-color:var(--gold-b);box-shadow:none}
+.rcard .btn:hover,.rcard .btn.ghost:hover,.rcard .btn.primary:hover{background:#fff;color:#000;border-color:#fff}
+.rcard .btn{background:var(--gold-100);color:#000}
+.rcard .btn.primary{background:var(--pbtn)}
+.btn:disabled,.btn:disabled:hover{background:var(--gold-50);color:var(--gold-700);border:2px solid var(--gold-300);box-shadow:none}
+.rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border:2px solid var(--navy-500)}
+.btn,.ibtn,.back{transition:background-color 180ms,color 180ms,border-color 180ms}
 </style>
 </head>
 <body>
