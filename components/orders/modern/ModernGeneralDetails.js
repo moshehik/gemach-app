@@ -23,6 +23,11 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [customerMode, setCustomerMode] = useState('existing');
   const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
+  // כרטיס המשלוח, בניגוד לכרטיס פרטי האירוע, לא היה לו בכלל מצב "תצוגה מקוצרת" עם עיפרון
+  // לעריכה ו-V לסיום (הדפוס הקיים בשאר הכרטיס) - היה תמיד פתוח כטופס מלא. פותח אוטומטית
+  // במצב עריכה רק כשמשלוח כבר מסומן אך עדיין אין עיר משלוח (בדיוק כמו isEditingEvent
+  // למעלה, שנפתח כברירת מחדל רק כשאין עדיין תאריך אירוע).
+  const [isEditingDelivery, setIsEditingDelivery] = useState(!!order?.isDelivery && !order?.deliveryCity);
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
   const [enableRentalExtension, setEnableRentalExtension] = useState(false);
 
@@ -420,56 +425,103 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           (app/api/orders/[id]/route.js) כבר מריץ applyDeliveryCharge מחדש בעדכון. */}
       {deliverySettings.enabled && (
         <div className="card card-pad" style={{ marginBottom: '16px' }}>
-          <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח</h3>
-          <div className="field" style={{ marginBottom: order.isDelivery ? 8 : 0 }}>
-            <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-              <input type="checkbox" checked={!!order.isDelivery} onChange={e => handleChange({ isDelivery: e.target.checked })} />
-              <span>הזמנת משלוח</span>
-            </label>
+          {/* מתג "הזמנת משלוח" — נשאר תמיד גלוי (לא נכנס למצב עריכה/קריאה כמו שאר הכרטיס
+              למטה) ומודגש יותר משאר השדות, כי הוא הקובע היחיד אם כל שאר האזור פעיל בכלל. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
+            <h3 style={{ margin: 0, fontSize: 14 }}>משלוח</h3>
+            <div
+              className={`switch${order.isDelivery ? ' on' : ''}`}
+              role="switch"
+              aria-checked={!!order.isDelivery}
+              tabIndex={0}
+              title={order.isDelivery ? 'הזמנת משלוח — מופעל. לחץ לכיבוי' : 'הזמנת משלוח — כבוי. לחץ להפעלה'}
+              onClick={() => {
+                const turningOn = !order.isDelivery;
+                handleChange({ isDelivery: turningOn });
+                if (turningOn) setIsEditingDelivery(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                const turningOn = !order.isDelivery;
+                handleChange({ isDelivery: turningOn });
+                if (turningOn) setIsEditingDelivery(true);
+              }}
+            />
           </div>
-          {order.isDelivery && (
-            <div className="form-grid">
-              <div className="field">
-                <label>כיוון משלוח</label>
-                <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
-                  <option value="הלוך">הלוך</option>
-                  <option value="חזור">חזור</option>
-                  <option value="הלוך-חזור">הלוך-חזור</option>
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="delivery-city-edit">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                <select id="delivery-city-edit" className="select" value={order.deliveryCity || ''} onChange={e => handleChange({ deliveryCity: e.target.value })}>
-                  <option value="">בחר עיר…</option>
-                  {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
-                  <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                    עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
-                  </p>
-                )}
-              </div>
-              {(deliverySettings.allowAddressOverride || deliveryAddressRequired) && (
+          {order.isDelivery && (isEditingDelivery ? (
+            <>
+              <div className="form-grid" style={{ marginTop: '14px' }}>
                 <div className="field">
-                  <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                  <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                  {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
+                  <label>כיוון משלוח</label>
+                  <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
+                    <option value="הלוך">הלוך</option>
+                    <option value="חזור">חזור</option>
+                    <option value="הלוך-חזור">הלוך-חזור</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="delivery-city-edit">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+                  <select id="delivery-city-edit" className="select" value={order.deliveryCity || ''} onChange={e => handleChange({ deliveryCity: e.target.value })}>
+                    <option value="">בחר עיר…</option>
+                    {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
                     <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                      עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
+                      עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
                     </p>
                   )}
                 </div>
-              )}
+                {(deliverySettings.allowAddressOverride || deliveryAddressRequired) && (
+                  <div className="field">
+                    <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+                    <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
+                    {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
+                      <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                        עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
               {deliverySettings.oneDayBeforeOption && (
-                <div className="field">
-                  <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                    <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => handleChange({ deliveryOneDayBefore: e.target.checked })} />
-                    <span>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
-                  </label>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px',
+                  marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)'
+                }}>
+                  <span style={{ fontSize: '13px' }}>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
+                  <div
+                    className={`switch${order.deliveryOneDayBefore ? ' on' : ''}`}
+                    role="switch"
+                    aria-checked={!!order.deliveryOneDayBefore}
+                    tabIndex={0}
+                    title={order.deliveryOneDayBefore ? 'יוצא יום לפני — מופעל. לחץ לכיבוי' : 'יוצא יום לפני — כבוי. לחץ להפעלה'}
+                    onClick={() => handleChange({ deliveryOneDayBefore: !order.deliveryOneDayBefore })}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleChange({ deliveryOneDayBefore: !order.deliveryOneDayBefore }); } }}
+                  />
                 </div>
               )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button type="button" className="btn btn-ghost btn-icon-only" title="סיים עריכת פרטי משלוח" onClick={() => setIsEditingDelivery(false)}>
+                  <svg className="icon"><use href="#i-check" /></svg>
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', marginTop: '10px' }}>
+              <span className="hint" style={{ color: 'var(--text-2)' }}>
+                {[
+                  order.deliveryDirection || 'הלוך-חזור',
+                  order.deliveryCity,
+                  order.deliveryAddress,
+                  order.deliveryOneDayBefore ? 'יוצא יום לפני האירוע' : null
+                ].filter(Boolean).join(' · ') || 'טרם הוזנו פרטי משלוח'}
+              </span>
+              <button type="button" className="btn btn-ghost btn-icon-only" title="עריכת פרטי משלוח" onClick={() => setIsEditingDelivery(true)}>
+                <svg className="icon"><use href="#i-edit" /></svg>
+              </button>
             </div>
-          )}
+          ))}
         </div>
       )}
 
