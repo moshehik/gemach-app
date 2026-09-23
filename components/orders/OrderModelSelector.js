@@ -167,10 +167,15 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
         // Positioned via a portal against a JS-measured viewport rect
         // (getBoundingClientRect() is always left/top-based, regardless of
         // page direction), so this uses physical left/top intentionally
-        // instead of logical inset-inline properties.
+        // instead of logical inset-inline properties. `.combobox-results`
+        // also sets `inset-inline:0` (→ right:0 in RTL) for its two non-portal
+        // callers; with left/right/width all set the browser was dropping our
+        // measured `left` in favor of that `right:0`, so the list snapped to
+        // the viewport edge instead of the field. Explicit right:'auto' wins.
         position: 'fixed',
         top: dropdownPos.top,
         left: dropdownPos.left,
+        right: 'auto',
         width: dropdownPos.width,
         zIndex: 999999,
         maxHeight: '250px',
