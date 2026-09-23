@@ -23,6 +23,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [customerMode, setCustomerMode] = useState('existing');
   const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
+  const [orderDateApproval, setOrderDateApproval] = useState(null);
   // כרטיס המשלוח, בניגוד לכרטיס פרטי האירוע, לא היה לו בכלל מצב "תצוגה מקוצרת" עם עיפרון
   // לעריכה ו-V לסיום (הדפוס הקיים בשאר הכרטיס) - היה תמיד פתוח כטופס מלא. פותח אוטומטית
   // במצב עריכה רק כשמשלוח כבר מסומן אך עדיין אין עיר משלוח (בדיוק כמו isEditingEvent
@@ -96,10 +97,13 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   };
 
   // עריכת תאריך ההזמנה משפיעה על חלון הזיכוי במנוע התמחור — הרשאה רגילה (מי מאשר נקבע
-  // ב-/admin/permissions, פריט feature:order_date_edit_approval), לא roleId קשיח של מתכנת
+  // ב-/admin/permissions, פריט feature:order_date_edit_approval), לא roleId קשיח של מתכנת.
+  // authResult (employeeId+pin) נשמר כדי שיישלח שוב עם השמירה למטה - השרת בודק אותו מחדש
+  // (PUT /api/orders/[id]) כדי שקריאת API ישירה לא תעקוף את האישור שכבר עבר כאן.
   const requestOrderDateEdit = async () => {
-    const ok = await verifyPin('עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול. אנא בחר משתמש והזן סיסמה:', 'feature:order_date_edit_approval');
-    if (!ok) return;
+    const authResult = await verifyPin('עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול. אנא בחר משתמש והזן סיסמה:', 'feature:order_date_edit_approval');
+    if (!authResult) return;
+    setOrderDateApproval(authResult);
     setIsEditingOrderDate(true);
   };
 
@@ -107,7 +111,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
     setIsEditingOrderDate(false);
     const newOrder = { ...order, orderDate: date };
     onOrderChange(newOrder);
-    if (onSaveRequest) onSaveRequest(newOrder);
+    if (onSaveRequest) onSaveRequest(newOrder, { orderDateApproval });
   };
 
   const handleQuickEmail = async () => {

@@ -617,7 +617,7 @@ export default function OrderDetailsPage({ params }) {
   };
 
   // Save changes
-  const handleSave = async (overrideOrder = null, { promptPrint = false } = {}) => {
+  const handleSave = async (overrideOrder = null, { promptPrint = false, orderDateApproval = null } = {}) => {
     setSaving(true);
     setSaveMessage('');
 
@@ -827,6 +827,10 @@ export default function OrderDetailsPage({ params }) {
           updatedAt: currentOrder.updatedAt,
           managerEmployeeId: managerAuthForItemChange?.employeeId,
           managerPin: managerAuthForItemChange?.pin,
+          // אישור feature:order_date_edit_approval שכבר עבר ב-requestOrderDateEdit (בטאב
+          // "פרטים כלליים" או "מידע") - נבדק שוב בשרת מול orderDate הישן (ר' PUT route).
+          orderDateApproverId: orderDateApproval?.employeeId,
+          orderDateApproverPin: orderDateApproval?.pin,
           items: items,
           obligations: obligations,
           payments: payments,
@@ -1670,10 +1674,10 @@ export default function OrderDetailsPage({ params }) {
                 order={order}
                 createdDate={createdDate}
                 onShowEmployees={() => setShowEmployeesModal(true)}
-                onOrderDateSave={(date) => {
+                onOrderDateSave={(date, orderDateApproval) => {
                   const newOrder = { ...order, orderDate: date };
                   setOrder(newOrder);
-                  handleSave(newOrder);
+                  handleSave(newOrder, { orderDateApproval });
                 }}
               />
             )
