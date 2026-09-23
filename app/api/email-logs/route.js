@@ -3,7 +3,9 @@ import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 
 export async function GET(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // יומן המיילים נגיש רק דרך /admin/site-settings/email-logs (הגדרות אתר, מתכנת בלבד) -
+  // השער חייב להיות מתכנת גם ברמת ה-API, לא רק ברמת הדף.
+  if (!(await checkAuth('מתכנת'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   
   try {
     const { searchParams } = new URL(request.url);

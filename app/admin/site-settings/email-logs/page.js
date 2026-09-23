@@ -57,9 +57,9 @@ export default function EmailLogsPage() {
           <div className="page-desc">נמצאו {totalCount} רשומות (מציג {limit} לעמוד)</div>
         </div>
         <div className="page-actions">
-          <Link href="/management" className="btn btn-secondary">
+          <Link href="/admin/site-settings" className="btn btn-secondary">
             <svg className="icon"><use href="#i-arrow-end" /></svg>
-            חזרה
+            חזרה להגדרות אתר
           </Link>
         </div>
       </div>
