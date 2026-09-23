@@ -85,6 +85,10 @@ export async function PUT(request, { params }) {
     // require_full_address הוסרו מכאן (דיווח תקלה 48ff7055, 2026-09-22) - הן חלות
     // עכשיו רק על יצירת לקוח חדש (POST /api/customers), בדיוק כמו require_customer_id_number
     // שכבר לא נאכף כאן - אין למלא מייל/כתובת כדי לערוך פרטים אחרים של לקוח קיים.
+    // מאותה סיבה, mandatory_field_groups (ר' lib/customerValidation.js) גם לא נאכף כאן -
+    // בכוונה, לא שכחה. אם היה נאכף על עריכה, לקוח ותיק בלי טלפון-נוסף/מייל (יובא מאקסס לפני
+    // שהדרישה הזו קמה) היה נחסם מעריכת כל פרט אחר - בדיוק הבאג שדיווח 48ff7055 תיקן. אכיפה
+    // בפועל (POST /api/customers) ותצוגת כוכבית דינמית (UI, שני המסכים) - כן פעילות.
     try {
       const allSettings = await getAllCachedSettings();
       const sMap = new Map(allSettings.map(s => [s.key, s.value]));

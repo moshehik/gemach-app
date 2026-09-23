@@ -3,7 +3,7 @@ import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { validateCustomerFieldFormats } from '@/lib/customerValidation';
+import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
 
 export async function GET(request) {
@@ -134,6 +134,9 @@ export async function POST(request) {
       if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
       }
+      // "לפחות שדה אחד מהקבוצה" (mandatory_field_groups, ר' lib/customerValidation.js) - למשל
+      // טלפון נוסף/אימייל. לא היה נאכף בשרת כלל לפני זה, רק כוכבית דינמית ב-UI (client-only).
+      errors.push(...unsatisfiedFieldGroupErrors(body, parseFieldGroups(sMap.get('mandatory_field_groups'))));
       // require_customer_id_number - הגדרה ייעודית לגמח נווה יעקב בלבד (מופעלת רק
       // ב-DB שלהם), נפרדת בכוונה מ-mandatory_fields (שמשמש את מסך "מילוי פרטי הזמנה"
       // ולא את טופס יצירת הלקוח עצמו - ר' getMissingMandatoryCustomerFields ב-
