@@ -868,6 +868,12 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
             <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
           </button>
         </div>
+        {/* דיווח תקלה (הזמנה #53377): "הוסף חיוב" בלבל עובדות לחשוב שהן צריכות להוסיף חיובים
+            בעצמן בכל הזמנה - למרות שחיובי מחירון רגילים (כולל ביטולים/החלפות) כבר מחושבים
+            ומתעדכנים אוטומטית. הכפתור עצמו נשאר (נחוץ למקרים חריגים אמיתיים), רק ההסבר נוסף. */}
+        <p className="hint" style={{ margin: '-10px 0 10px', color: 'var(--text-2)' }}>
+          &quot;הוסף חיוב&quot; מיועד למקרים חריגים בלבד - חיובי מחירון רגילים (כולל ביטולים והחלפות) מתעדכנים אוטומטית ואין צורך להוסיף אותם ידנית.
+        </p>
         {activeObligations.length > 0 ? (
           <div className="table-wrap">
             <div className="table-scroll">
@@ -945,6 +951,10 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
             <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
           </button>
+          {/* אותו הבהרה כמו ב"הוסף חיוב" למעלה - ר' דיווח הזמנה #53377 */}
+          <p className="hint" style={{ flexBasis: '100%', margin: '6px 0 0', color: 'var(--text-2)' }}>
+            &quot;בקשת זיכוי ללקוח&quot; מיועד למקרים חריגים בלבד - זיכויים בגין ביטול/החלפה נוצרים אוטומטית ואין צורך לפתוח בקשה ידנית עבורם.
+          </p>
         </div>
         {activePayments.length > 0 ? (
           <div className="table-wrap">
