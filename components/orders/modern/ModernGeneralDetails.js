@@ -14,7 +14,7 @@ import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/
 /**
  * טאב "פרטים כלליים" בעיצוב "אריג" — כרטיס לקוח + כרטיס אירוע + כרטיס ציפוף ימים
  * מותאם + כרטיס תאריך ביצוע ההזמנה. הלוגיקה פורטה מ-OrderGeneralDetails (עריכת תאריכים,
- * ציפוף באישור מנהל, עריכת תאריך הזמנה למתכנת בלבד) בתוספת: מייל מהיר באישור מנהל
+ * ציפוף באישור מנהל, עריכת תאריך הזמנה באישור מאשר מוגדר) בתוספת: מייל מהיר באישור מנהל
  * והחלפת לקוח מהכרטיס.
  */
 export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onToggleSignature, onQuickEmail }) {
@@ -95,9 +95,10 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
     changeDates({ customSpacing: valueToStore });
   };
 
-  // עריכת תאריך ההזמנה משפיעה על חלון הזיכוי במנוע התמחור — מוגבלת למתכנת בלבד
+  // עריכת תאריך ההזמנה משפיעה על חלון הזיכוי במנוע התמחור — הרשאה רגילה (מי מאשר נקבע
+  // ב-/admin/permissions, פריט feature:order_date_edit_approval), לא roleId קשיח של מתכנת
   const requestOrderDateEdit = async () => {
-    const ok = await verifyPin('עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול ומוגבלת למתכנת. אנא בחר משתמש והזן סיסמה:', 'מתכנת');
+    const ok = await verifyPin('עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול. אנא בחר משתמש והזן סיסמה:', 'feature:order_date_edit_approval');
     if (!ok) return;
     setIsEditingOrderDate(true);
   };
@@ -538,7 +539,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           )}
         </div>
         {!isEditingOrderDate && (
-          <button type="button" className="btn btn-ghost btn-icon-only" title="ערוך תאריך הזמנה (מתכנת בלבד)" onClick={requestOrderDateEdit}>
+          <button type="button" className="btn btn-ghost btn-icon-only" title="ערוך תאריך הזמנה (דורש אישור)" onClick={requestOrderDateEdit}>
             <svg className="icon"><use href="#i-edit" /></svg>
           </button>
         )}
