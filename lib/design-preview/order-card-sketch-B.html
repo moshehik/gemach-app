@@ -12,8 +12,8 @@
   /* === 3 families: NAVY (blue) / SKY (light blue) / GOLD === */
   --navy-900:#0a2242; --navy:#0f2c52; --navy-700:#173c6b; --navy-500:#2b5a94;
   --sky-50:#f3f9fe; --sky-100:#e4f1fb; --sky-200:#cfe6f7; --sky-300:#a9d2f0; --sky-400:#7fb8e6;
-  --gold-50:#fbf6e3; --gold-100:#f4e8c1; --gold-300:#e0c56e; --gold:#c9a227; --gold-b:#b8912f; --gold-d:#9a7a1f; --gold-700:#6f5710;
-  --rose-50:#fbf6e3; --rose-100:#f4e8c1; --rose-200:#ecd99b; --rose-300:#e0c56e; --rose-500:#b8912f; --rose-700:#6f5710; /* surfaces: gold tints (no pink) */
+  --gold-50:#fff0f6; --gold-100:#ffe3ef; --gold-300:#e0c56e; --gold:#c9a227; --gold-b:#b8912f; --gold-d:#9a7a1f; --gold-700:#a83d6c;
+  --rose-50:#fff0f6; --rose-100:#ffe3ef; --rose-200:#ffc7dd; --rose-300:#ff6ec0; --rose-500:#d9739c; --rose-700:#a83d6c; /* LIGHT PINK family */
   --pink-300:#ff6ec0; --pink-500:#ff6ec0; --pink-d:#ff3fa6; --pbtn:#ff6ec0;
   --gbtn:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%);
   --gbtn-d:#9a7a1f;
@@ -804,6 +804,27 @@ body{background-image:radial-gradient(1200px 500px at 85% -10%,var(--sky-50) 0,t
 /* opt-in pink (unused for now) */
 .btn.btn-pink,.ibtn.btn-pink{background:var(--pbtn);color:#000;border:1.5px solid #000}
 .btn.btn-pink:hover,.ibtn.btn-pink:hover{background:var(--pink-d);color:#000}
+
+/* ===== LIGHT GOLD -> LIGHT PINK (luxe gold only on primary buttons, debt tile, accents) ===== */
+.step.cur .c{box-shadow:0 0 0 6px rgba(201,162,39,.28)}
+.chip.rose,.chip.amber,.chip.gold{background:var(--rose-100);color:var(--rose-700);border:1px solid var(--rose-200)}
+.chip.rose .ic,.chip.amber .ic,.chip.gold .ic{color:var(--rose-500)}
+.card-h .ico.rose,.card-h .ico.plum,.card-h .ico.gold{background:var(--rose-100);color:var(--rose-700)}
+.itm.pending,.li.pend,.addpanel{background:var(--rose-50);border:1.5px dashed var(--rose-300)}
+.li.pend .ic-b{background:var(--rose-200);color:var(--rose-700)}
+.pendbox{background:rgba(255,110,192,.2);border:1.5px dashed var(--rose-300);color:#fff}
+.pendbox .ic{color:var(--rose-300)}
+.net.charge{background:var(--rose-100);border:1px solid var(--rose-300);color:var(--navy-900)}
+.chg .amt.p{color:var(--rose-700)}
+.tab.on .cnt{background:var(--rose-100);color:var(--rose-700)}
+/* secondary/soft buttons: light pink, black border+text; primary stays gold */
+.btn,.btn.danger,.btn.ghost,.btn.navy,.ibtn,.back,.demo button,.mbar .btn,#toast button,.rcard .btn,.rcard .btn.ghost{background:var(--rose-200);color:#000;border:1.5px solid #000;box-shadow:none}
+.btn:hover,.btn.danger:hover,.btn.ghost:hover,.btn.navy:hover,.ibtn:hover,.back:hover,.ibtn.danger:hover,.demo button:hover,.mbar .btn:hover,#toast button:hover,.rcard .btn:hover,.rcard .btn.ghost:hover{background:var(--rose-300);color:#000;border-color:#000;transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(15,44,82,.45)}
+.btn.primary,.btn.green,.rcard .btn.primary,.mbar .btn.primary{background:var(--gbtn);color:#000;border:1.5px solid #000;box-shadow:inset 0 1px 0 rgba(255,244,196,.7)}
+.btn.primary:hover,.btn.green:hover,.rcard .btn.primary:hover,.mbar .btn.primary:hover{background:linear-gradient(135deg,#c9a227,#9a7a1f);color:#000}
+.btn:disabled,.btn:disabled:hover{background:var(--rose-50);color:var(--rose-700);border:1.5px solid var(--rose-200);box-shadow:none;transform:none}
+.rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border:1.5px solid var(--navy-500)}
+@media (max-width:420px){#p-items .seg button .chip{background:none;padding:0;min-width:0;border:0;font-weight:600}#p-items .seg button{gap:3px;padding:8px 0}}
 </style>
 </head>
 <body>
@@ -995,10 +1016,9 @@ function stepIdx(){
 /* ---------- render: header + stepper ---------- */
 function renderHead(){
   const s=stepIdx(), a=active(saved), taken=a.filter(i=>i.st!=='ordered').length;
-  const stChip = s===0?`<span class="chip amber"><span class="dot"></span>הוזמנה</span>`:s===1?`<span class="chip blue"><span class="dot"></span>נלקחה${taken<a.length?` · ${taken}/${a.length}`:''}</span>`:`<span class="chip green"><span class="dot"></span>הוחזרה</span>`;
   const sig = `<button class="chip btnlike ${cur.signed?'green':'gray'}" data-act="sig" title="לחצו לשינוי">${ic(cur.signed?'check':'sig')}${cur.signed?'חתמה על תקנון':'טרם חתמה על תקנון'}</button>`;
   const del = cur.delivery.on?`<span class="chip teal">${ic('truck')}משלוח</span>`:'';
-  $('#hdrChips').innerHTML = stChip+del+sig;
+  $('#hdrChips').innerHTML = del+sig; /* order status lives only in the stepper */
 
   const dts = [['הוזמנה','23.9'],['נלקחה',s>=1?'24.9':heDate(pickup())],['הוחזרה',s>=2?'—':heDate(ret())]];
   function heDate(iso){return new Date(iso+'T12:00:00').toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}
