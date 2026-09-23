@@ -50,7 +50,7 @@ const categories = [
       { href: '/admin/backups', icon: 'i-database', label: 'גיבוי לדרייב', subLabel: 'גיבוי אוטומטי, לחצן מיידי ולוג' },
       { href: '/admin/site-settings', icon: 'i-settings', label: 'הגדרות אתר', subLabel: 'מסד נתונים, מערכת ומיילים (מתכנת בלבד)' },
       { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
-      { href: '/management/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו' },
+      { href: '/admin/site-settings/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו (מתכנת בלבד)' },
       { href: '/admin/email-test', icon: 'i-mail', label: 'בדיקת מיילים', subLabel: 'שליחת דוגמה מכל סוגי המיילים' },
       { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
     ]
