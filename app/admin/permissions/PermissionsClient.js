@@ -164,12 +164,17 @@ function PermissionGroupTable({ catalog, groups, departments, employees, onNew, 
                               <span
                                 className="chip"
                                 title={otherRows.length ? `מופיע גם בשורה: ${otherRows.join(', ')} — אם אחת השורות מתירה, הגישה מותרת` : undefined}
-                                style={otherRows.length ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 } : undefined}
+                                style={
+                                  otherRows.length
+                                    ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 }
+                                    : item?.group === 'features'
+                                      ? { background: 'var(--accent-tint)', color: 'var(--accent-solid, var(--accent))' }
+                                      : undefined
+                                }
                               >
                                 {otherRows.length > 0 && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-link" /></svg>}
                                 <ItemLabel item={item} fallbackKey={key} />
                               </span>
-                              {item?.group === 'features' && <span className="badge badge-neutral" style={{ fontSize: '10px' }}>פיצ&apos;ר</span>}
                               {item && !item.enforced && (
                                 <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontSize: '10px' }}>לתיעוד בלבד</span>
                               )}

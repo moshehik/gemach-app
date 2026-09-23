@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import SettingQuickPanel from '../../components/SettingQuickPanel';
+import { renderCopyable } from '../../components/CopyableText';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -118,7 +119,7 @@ export default function AIPage() {
       const data = await res.json();
 
       const assistantMessage = res.ok
-        ? { role: 'assistant', content: data.response, tableData: data.tableData }
+        ? { role: 'assistant', content: data.response, tableData: data.data }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       // Append strictly to the thread that initiated the request
@@ -226,7 +227,7 @@ export default function AIPage() {
               const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
               return (
                 <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{displayText}</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{renderCopyable(displayText)}</div>
                   {msg.tableData && renderTable(msg.tableData)}
                   {openSettingKeys.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
@@ -301,17 +302,25 @@ export default function AIPage() {
                   <table className="data">
                     <thead>
                       <tr>
-                        {Object.keys(modalTableData[0]).map(h => (
+                        {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
                           <th key={h}>{h}</th>
                         ))}
+                        {modalTableData.some(r => r._actionUrl) && <th>פעולות</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {modalTableData.map((row, i) => (
                         <tr key={i}>
-                          {Object.keys(modalTableData[0]).map(h => (
-                            <td key={h}>{row[h]}</td>
+                          {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
+                            <td key={h}>{renderCopyable(row[h])}</td>
                           ))}
+                          {modalTableData.some(r => r._actionUrl) && (
+                            <td>
+                              {row._actionUrl && row._actionLabel ? (
+                                <a href={row._actionUrl} className="btn btn-secondary btn-sm">{row._actionLabel}</a>
+                              ) : null}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
