@@ -634,9 +634,11 @@ export async function PUT(request, { params }) {
         ? parsedFromDate
         : parseSafeDate(data.eventDate);
       const parsedReturnDate = parseSafeDate(data.returnDate);
-      // Developer-only edit (see requiredLevel: 'מתכנת' gate in the client) - shifts the
-      // REFUND_DAYS_FROM_ORDER window in lib/pricingEngine.js, so it's normally immutable
-      // after creation (app/api/orders/route.js only sets it once, at order creation).
+      // Gated in the client behind feature:order_date_edit_approval (lib/permissionsMetadata.js,
+      // was hardcoded requiredLevel: 'מתכנת' until 2026-09-23) - shifts the REFUND_DAYS_FROM_ORDER
+      // window in lib/pricingEngine.js, so it's normally immutable after creation
+      // (app/api/orders/route.js only sets it once, at order creation). No matching server-side
+      // check here yet - see that catalog item's note.
       const parsedOrderDate = parseSafeDate(data.orderDate);
 
       // 1. Update general order details
