@@ -61,6 +61,10 @@ th{background:#f0f2f5;font-weight:600}
 .nb{background:#3b4a63;color:#fff;z-index:1;top:6px;bottom:6px;line-height:10px}
 .cf{background:repeating-linear-gradient(45deg,#e53935,#e53935 4px,#ff8a80 4px,#ff8a80 8px);z-index:3;top:0;bottom:0}
 .today{position:absolute;top:0;bottom:0;border-inline-start:2px dashed #999;z-index:0}
+#tip{position:fixed;z-index:99;left:0;top:0;max-width:260px;background:#0f2c52;color:#fff;font-size:13.5px;line-height:1.4;padding:8px 12px;border-radius:10px;box-shadow:0 6px 18px rgba(15,44,82,.35);opacity:0;pointer-events:none;transition:opacity .12s;direction:rtl;text-align:right}
+#tip.on{opacity:1}
+#tip::after{content:"";position:absolute;left:var(--ax,50%);width:10px;height:10px;background:#0f2c52;transform:translateX(-50%) rotate(45deg)}
+#tip.up::after{bottom:-5px}#tip.down::after{top:-5px}
 .note{font-size:12px;color:#555}
 .mgr{background:#fff3e0;border:1px dashed #e0a030;padding:2px 8px;border-radius:4px;font-size:12px}
 #log{min-height:20px;color:#333}
@@ -98,14 +102,15 @@ th{background:#f0f2f5;font-weight:600}
 <div class="box">
     <div id="suggest" class="row" style="margin-bottom:8px"></div>
   <div class="actions">
-    <button id="bCompAll">ציפוף לכולם</button>
-    <button id="bApprove" class="warn">אשר בכל זאת (מנהל)</button>
+    <button id="bCompAll" data-tip="מחיל ציפוף על כל הפריטים הניתנים לציפוף">ציפוף לכולם</button>
+    <button id="bApprove" class="warn" data-tip="נשמר עם התנגשות פתוחה">אשר בכל זאת (מנהל)</button>
     <button id="bCancel" class="danger">בטל שינוי תאריך</button>
     <button id="bSave" class="primary">שמור שינוי תאריך</button>
   </div>
   <div id="log" class="note" style="margin-top:8px"></div>
 </div>
 
+<div id="tip" role="tooltip"></div>
 <script>
 const DAY=864e5, TODAY=Date.UTC(2026,8,24)/DAY;
 const pd=s=>{const[a,b,c]=s.split('-').map(Number);return Date.UTC(a,b-1,c)/DAY};
@@ -193,17 +198,18 @@ function lane(d,s,e,buf,label,cls){
   for(let x=lo;x<=hi;x++)if(dow(x)===5||dow(x)===6)h+=`<div class="cell" style="${pos(x,x)}"></div>`;
   if(TODAY>=lo&&TODAY<=hi)h+=`<div class="today" style="right:${(TODAY-lo)*w}%"></div>`;
   if(buf>0){
-    if(ev.ws<s)h+=`<div class="bar buf" style="${pos(ev.ws,s-1)}"></div>`;
-    if(ev.we>e)h+=`<div class="bar buf" style="${pos(e+1,ev.we)}"></div>`;
+    const bt=(a,b)=>`data-tip="מרווח ${buf} ימים · ${fmt(a)}${a===b?'':' - '+fmt(b)}" tabindex="0"`;
+    if(ev.ws<s)h+=`<div class="bar buf" ${bt(ev.ws,s-1)} style="${pos(ev.ws,s-1)}"></div>`;
+    if(ev.we>e)h+=`<div class="bar buf" ${bt(e+1,ev.we)} style="${pos(e+1,ev.we)}"></div>`;
   }
   d.b.forEach(n=>{
     if(n.e<lo||n.s>hi)return;
     const a=Math.max(n.s,lo),b=Math.min(n.e,hi);
-    h+=`<div class="bar nb" style="${pos(a,b)}">${n.o}</div>`;
+    h+=`<div class="bar nb" tabindex="0" data-tip="הזמנה ${n.o} · ${fmtR(n.s,n.e)}" style="${pos(a,b)}">${n.o}</div>`;
     const oa=Math.max(a,ev.ws),ob=Math.min(b,ev.we);
-    if(oa<=ob)h+=`<div class="bar cf" style="${pos(oa,ob)}"></div>`;
+    if(oa<=ob){const c=ev.conf.find(x=>x.n===n);h+=`<div class="bar cf" tabindex="0" data-tip="התנגשות עם ${n.o} · ${c&&!c.direct?'חסרים '+(buf-c.gap)+' ימים':'חפיפה בתאריכים'}" style="${pos(oa,ob)}"></div>`}
   });
-  h+=`<div class="bar own" style="${pos(s,e)}">${s===e?'':'ההזמנה'}</div></div>`;
+  h+=`<div class="bar own" tabindex="0" data-tip="ההזמנה · ${fmtR(s,e)}" style="${pos(s,e)}">${s===e?'':'ההזמנה'}</div></div>`;
   return h;
 }
 function axis(s,e){
@@ -249,7 +255,7 @@ function render(){
     }
     html+=`<div class="tl">${axis(s,e)}${lane(d,s,e,B,'רגיל')}${lane(d,s,e,N,'ימים '+N)}</div>`;
     html+=`<div class="actions">
-      ${k==='compactable'?`<button class="warn" data-a="compact" data-id="${d.id}">ציפוף ימים ${N}</button>`:''}
+      ${k==='compactable'?`<button class="warn" data-a="compact" data-tip="מצמצם את המרווח ל-${N} ימים · נדרש אישור מנהל" data-id="${d.id}">ציפוף ימים ${N}</button>`:''}
       ${k==='compact'?`<button data-a="uncompact" data-id="${d.id}">בטל ציפוף</button>`:''}
       ${k!=='free'?`<button data-a="replace" data-id="${d.id}">החלף</button><button data-a="remove" data-id="${d.id}" class="danger">הסר</button>`:''}
     </div></div>`;
@@ -302,6 +308,27 @@ PF.set(pd('2026-10-15'));PT.set(pd('2026-10-17'));
 document.querySelectorAll('[name=mode]').forEach(r=>r.addEventListener('change',()=>{
   $('toWrap').style.display=document.querySelector('[name=mode]:checked').value==='range'?'':'none';
   if(PT.get()<PF.get())PT.set(PF.get());reset();render()}));
+(function(){
+  const tip=document.getElementById('tip');let cur=null;
+  function show(el){
+    cur=el;tip.textContent=el.dataset.tip;tip.style.left='0px';tip.style.top='0px';
+    const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight,vw=document.documentElement.clientWidth,vh=window.innerHeight,m=8;
+    const up=r.top-h-10>=m,cx=r.left+r.width/2;
+    let x=Math.min(Math.max(cx-w/2,m),vw-w-m);
+    const y=up?r.top-h-10:Math.min(r.bottom+10,vh-h-m);
+    tip.className='on '+(up?'up':'down');
+    tip.style.left=x+'px';tip.style.top=y+'px';
+    tip.style.setProperty('--ax',Math.min(Math.max(cx-x,14),w-14)+'px');
+  }
+  function hide(){cur=null;tip.classList.remove('on')}
+  const find=t=>t.closest&&t.closest('[data-tip]');
+  document.addEventListener('mouseover',e=>{const el=find(e.target);el?show(el):hide()});
+  document.addEventListener('mouseout',e=>{if(!e.relatedTarget||!find(e.relatedTarget))hide()});
+  document.addEventListener('focusin',e=>{const el=find(e.target);if(el)show(el)});
+  document.addEventListener('focusout',hide);
+  document.addEventListener('touchstart',e=>{const el=find(e.target);el&&el!==cur?show(el):hide()},{passive:true});
+  window.addEventListener('scroll',hide,true);
+})();
 render();
 </script>
 </body>
