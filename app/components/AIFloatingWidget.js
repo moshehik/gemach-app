@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import SettingQuickPanel from './SettingQuickPanel';
+import { CopyChip, splitCopyable, renderCopyable } from './CopyableText';
 import useElementPicker, { ElementPickerOverlay } from './useElementPicker';
 import useScreenRecorder from './useScreenRecorder';
 import useActionRecorder from './useActionRecorder';
@@ -159,8 +160,18 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     router.push(href);
   };
 
+  // אימייל/טלפון מפוצלים קודם לתגיות העתקה; רק הטקסט שביניהם עובר זיהוי קישורי הזמנה/לקוח
+  // (אחרת "לקוח abc@x.com" היה נתפס כקישור ללקוח "abc").
   const parseMessageToLinks = (text) => {
     if (!text) return null;
+    return splitCopyable(text).map((seg, s) =>
+      seg.token
+        ? <CopyChip key={s} value={seg.text.trim()} />
+        : <span key={s}>{parseLinksOnly(seg.text)}</span>
+    );
+  };
+
+  const parseLinksOnly = (text) => {
     const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
     return parts.map((part, i) => {
       let match = part.match(/הזמנה\s*(\d+)/);
@@ -320,7 +331,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       const data = await res.json();
 
       const assistantMessage = res.ok
-        ? { role: 'assistant', content: data.response, tableData: data.tableData }
+        ? { role: 'assistant', content: data.response, tableData: data.data }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       const finalMessages = [...newMessages, assistantMessage];
@@ -816,17 +827,31 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                   <table className="data">
                     <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                       <tr>
-                        {Object.keys(modalTableData[0]).map(h => (
+                        {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
                           <th key={h}>{h}</th>
                         ))}
+                        {modalTableData.some(r => r._actionUrl) && <th>פעולות</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {modalTableData.map((row, i) => (
                         <tr key={i}>
-                          {Object.keys(modalTableData[0]).map(h => (
-                            <td key={h}>{row[h]}</td>
+                          {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
+                            <td key={h}>{renderCopyable(row[h])}</td>
                           ))}
+                          {modalTableData.some(r => r._actionUrl) && (
+                            <td>
+                              {row._actionUrl && row._actionLabel ? (
+                                <a
+                                  href={row._actionUrl}
+                                  onClick={(e) => { setShowTableModal(false); navigateInApp(e, row._actionUrl); }}
+                                  className="btn btn-secondary btn-sm"
+                                >
+                                  {row._actionLabel}
+                                </a>
+                              ) : null}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

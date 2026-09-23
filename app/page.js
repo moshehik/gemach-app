@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { HDate } from '@hebcal/core';
 import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 import SettingQuickPanel from './components/SettingQuickPanel';
+import { CopyChip, splitCopyable, renderCopyable } from './components/CopyableText';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -121,8 +122,17 @@ export default function HomeDashboard() {
     router.push(href);
   };
 
+  // אימייל/טלפון מפוצלים קודם לתגיות העתקה; רק הטקסט שביניהם עובר זיהוי קישורי הזמנה/לקוח.
   const parseMessageToLinks = (text) => {
     if (!text) return null;
+    return splitCopyable(text).map((seg, s) =>
+      seg.token
+        ? <CopyChip key={s} value={seg.text.trim()} />
+        : <span key={s}>{parseLinksOnly(seg.text)}</span>
+    );
+  };
+
+  const parseLinksOnly = (text) => {
     const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
     return parts.map((part, i) => {
       let match = part.match(/הזמנה\s*(\d+)/);
@@ -500,7 +510,7 @@ export default function HomeDashboard() {
                             <tr key={rIdx}>
                               {Object.entries(row)
                                 .filter(([k]) => !k.startsWith('_action'))
-                                .map(([k, val], vIdx) => <td key={vIdx}>{val}</td>)}
+                                .map(([k, val], vIdx) => <td key={vIdx}>{renderCopyable(val)}</td>)}
                               {msg.data.some(r => r._actionUrl) && (
                                 <td>
                                   {row._actionUrl && row._actionLabel ? (
