@@ -17,17 +17,11 @@ export default function NewOrderShell({
   children,           // גוף השלב
   footer              // כפתורי ניווט
 }) {
-  const current = steps.find(s => s.id === step);
-
   return (
     <>
       <div className="page-head">
         <div>
           <h1>הזמנה חדשה</h1>
-          <p className="page-desc">
-            שלב {step} מתוך {steps.length}
-            {current ? ` · ${current.label}` : ''}
-          </p>
         </div>
         <div className="page-actions">{topBar}</div>
       </div>
@@ -39,7 +33,7 @@ export default function NewOrderShell({
         </div>
       )}
 
-      <nav className="stepper" aria-label="שלבי ההזמנה" style={{ flexWrap: 'wrap' }}>
+      <nav className="stepper stepper-compact" aria-label="שלבי ההזמנה" style={{ flexWrap: 'wrap' }}>
         {steps.map((s, idx) => {
           const done = s.id < step;
           const isCurrent = s.id === step;

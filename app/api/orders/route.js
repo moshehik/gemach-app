@@ -314,11 +314,14 @@ export async function GET(request) {
         items: { select: { isTaken: true, isDeleted: true } }
       };
 
+      // No `take` cap here - the total/pagination below is computed from this full set
+      // in JS (payments/isTaken can't be filtered in SQL), so a hard cap silently drops
+      // both the displayed count and the actual rows beyond it (found live: org1/org2
+      // both exceed a 2000-row cap that used to be here).
       const minimalOrders = await prisma.order.findMany({
         where,
         select: minimalSelect,
-        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
-        take: 2000
+        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } }
       });
 
       let minimalFormatted = minimalOrders.map(o => {
@@ -348,10 +351,11 @@ export async function GET(request) {
       finalTotalCount = minimalFormatted.length;
       finalOrderIds = minimalFormatted.slice(skip, skip + limit).map(o => o.orderId);
     } else if (isSmartRentalsSort) {
+      // Same reasoning as the isUnpaidQuery branch above - the smart sort/pagination
+      // needs every matching order's id+eventDate, so no `take` cap here either.
       const minimalOrders = await prisma.order.findMany({
         where,
-        select: { orderId: true, eventDate: true },
-        take: 2000
+        select: { orderId: true, eventDate: true }
       });
 
       const todayTime = today.getTime();
