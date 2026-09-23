@@ -14,6 +14,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
+import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -522,10 +523,11 @@ export default function NewOrderPage() {
        return;
     }
 
-    if (!newCustomer.phone2.trim() && !newCustomer.email.trim()) {
+    const newCustomerGroupErrors = unsatisfiedFieldGroupErrors(newCustomer, parseFieldGroups(settings.mandatory_field_groups));
+    if (newCustomerGroupErrors.length > 0) {
        // כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או אימייל) - אך לפי בקשת ההנהלה
        // אין לחסום סופית, אלא לאפשר עקיפה עם אישור מנהל בפועל (PIN), כמו בלקוח קיים.
-       const auth = await verifyPin('כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או כתובת מייל) - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.', 'feature:missing_contact_approval');
+       const auth = await verifyPin(`${newCustomerGroupErrors.join('. ')} - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.`, 'feature:missing_contact_approval');
        if (!auth) return;
     }
 
@@ -582,12 +584,14 @@ export default function NewOrderPage() {
     if (!await confirmBlockedCustomerOverride(existingCustomer)) return;
 
     const missingFields = getMissingMandatoryCustomerFields(existingCustomer);
-    const missingContactMethod = !String(existingCustomer.phone2 || '').trim() && !String(existingCustomer.email || '').trim();
+    const fieldGroups = parseFieldGroups(settings.mandatory_field_groups);
+    const missingGroupLabels = unsatisfiedFieldGroupShortLabels(existingCustomer, fieldGroups);
+    const missingContactMethod = missingGroupLabels.length > 0;
 
     if (missingFields.length > 0 || missingContactMethod) {
       const missingParts = [
         ...missingFields.map(k => CUSTOMER_FIELD_LABELS[k]),
-        ...(missingContactMethod ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+        ...missingGroupLabels
       ];
       // בקשה 4: אכיפה קשיחה - גם לא באישור מנהל. כבוי = ההתנהגות הקודמת (אישור חריגה)
       // תוקן: קודם זו הייתה נקודת-מבוי-סתום (הודעה בלבד, בלי שום דרך להמשיך) - עכשיו
@@ -1677,11 +1681,11 @@ export default function NewOrderPage() {
                     </div>
                     {(() => {
                       const missing = getMissingMandatoryCustomerFields(foundCustomer);
-                      const missingContact = !foundCustomer.phone2 && !foundCustomer.email;
-                      if (missing.length === 0 && !missingContact) return null;
+                      const missingGroupLabels = unsatisfiedFieldGroupShortLabels(foundCustomer, parseFieldGroups(settings.mandatory_field_groups));
+                      if (missing.length === 0 && missingGroupLabels.length === 0) return null;
                       const parts = [
                         ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                        ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+                        ...missingGroupLabels
                       ];
                       return (
                         <div style={{ margin: '0 0 12px' }}>
@@ -1700,7 +1704,7 @@ export default function NewOrderPage() {
                       <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomer)}>
                         <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
                       </button>
-                      {(getMissingMandatoryCustomerFields(foundCustomer).length > 0 || (!foundCustomer.phone2 && !foundCustomer.email)) && (
+                      {(getMissingMandatoryCustomerFields(foundCustomer).length > 0 || getUnsatisfiedFieldGroups(foundCustomer, parseFieldGroups(settings.mandatory_field_groups)).length > 0) && (
                         <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, minWidth: '160px' }}>
                           <svg className="icon"><use href="#i-edit" /></svg> עריכת פרטי לקוח
                         </a>
@@ -1758,11 +1762,11 @@ export default function NewOrderPage() {
                     )}
                     {(() => {
                       const missing = getMissingMandatoryCustomerFields(order.selectedCustomer);
-                      const missingContact = !order.selectedCustomer.phone2 && !order.selectedCustomer.email;
-                      if (missing.length === 0 && !missingContact) return null;
+                      const missingGroupLabels = unsatisfiedFieldGroupShortLabels(order.selectedCustomer, parseFieldGroups(settings.mandatory_field_groups));
+                      if (missing.length === 0 && missingGroupLabels.length === 0) return null;
                       const parts = [
                         ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                        ...(missingContact ? ['אמצעי תקשורת נוסף'] : [])
+                        ...missingGroupLabels
                       ];
                       return (
                         <div style={{ margin: '4px 0 0', textAlign: 'end' }}>
@@ -1815,11 +1819,11 @@ export default function NewOrderPage() {
                     בלי תלות בהגדרה גרמה לתחושה ששניהם שדה חובה נפרד (דיווח b6bc7d98). */}
                 <div className="form-grid">
                   <div className="field">
-                    <label htmlFor="cust-phone2">טלפון נוסף {!newCustomer.phone2.trim() && !newCustomer.email.trim() && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                    <label htmlFor="cust-phone2">טלפון נוסף {isFieldRequiredByGroup('phone2', newCustomer, parseFieldGroups(settings.mandatory_field_groups)) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
-                    <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || (!newCustomer.phone2.trim() && !newCustomer.email.trim())) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                    <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
@@ -1835,9 +1839,9 @@ export default function NewOrderPage() {
                     </div>
                   </div>
                 </div>
-                {!newCustomer.phone2.trim() && !newCustomer.email.trim() && (
-                  <p className="field hint" style={{ margin: '0 0 10px' }}>יש למלא לפחות אחד מהשניים - טלפון נוסף או אימייל.</p>
-                )}
+                {unsatisfiedFieldGroupErrors(newCustomer, parseFieldGroups(settings.mandatory_field_groups)).map((msg, i) => (
+                  <p key={i} className="field hint" style={{ margin: '0 0 10px' }}>{msg}</p>
+                ))}
 
                 {/* 4 - עיר/רחוב/מספר בית ואישור דיוור יכולים להיות שדות חובה בפועל
                     (require_full_address / require_marketing_consent) - כשהם כאלה, פותחים
@@ -2678,11 +2682,11 @@ export default function NewOrderPage() {
                   // לקוח לצד רשימת השדות החסרים, כדי שלא תהיה כאן נקודת מבוי סתום כשהאכיפה
                   // הקשיחה (strict_mandatory_fields) חוסמת את "השתמש בלקוח הקיים" למטה.
                   const missing = getMissingMandatoryCustomerFields(duplicateCustomer);
-                  const missingContact = !String(duplicateCustomer.phone2 || '').trim() && !String(duplicateCustomer.email || '').trim();
-                  if (missing.length === 0 && !missingContact) return null;
+                  const missingGroupLabels = unsatisfiedFieldGroupShortLabels(duplicateCustomer, parseFieldGroups(settings.mandatory_field_groups));
+                  if (missing.length === 0 && missingGroupLabels.length === 0) return null;
                   const parts = [
                     ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                    ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+                    ...missingGroupLabels
                   ];
                   return (
                     <p className="hint" style={{ color: 'var(--warning)', margin: '8px 0 0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', textAlign: 'start' }}>

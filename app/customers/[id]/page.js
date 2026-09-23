@@ -13,7 +13,7 @@ import ModernCustomerHistoryTab from '../../../components/customers/modern/Moder
 import { addHistory } from '@/lib/historyManager';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { validateCustomerFieldFormats } from '@/lib/customerValidation';
+import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup } from '@/lib/customerValidation';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -145,9 +145,13 @@ export default function CustomerPage({ params }) {
   const handleSave = async (e) => {
     e.preventDefault();
 
-    if (id === 'new' && !String(customer.phone2 || '').trim() && !String(customer.email || '').trim()) {
-      alert('כל הזמנה מחייבת 2 אמצעי תקשורת: יש למלא טלפון נוסף או כתובת מייל.');
-      return;
+    const fieldGroups = parseFieldGroups(settings.mandatory_field_groups);
+    if (id === 'new') {
+      const groupErrors = unsatisfiedFieldGroupErrors(customer, fieldGroups);
+      if (groupErrors.length > 0) {
+        alert(groupErrors.join('\n'));
+        return;
+      }
     }
 
     // 3/6 - אכיפה קדמית של שדות חובה לפי הגדרות (השרת אוכף גם הוא כגיבוי - ר' API).
@@ -279,7 +283,7 @@ export default function CustomerPage({ params }) {
             <div className="field">
               <label>
                 טלפון נוסף{' '}
-                {settings.require_customer_email !== 'true' && !String(customer.email || '').trim() && (
+                {settings.require_customer_email !== 'true' && isFieldRequiredByGroup('phone2', customer, parseFieldGroups(settings.mandatory_field_groups)) && (
                   <span style={{ color: 'var(--danger)' }}>*</span>
                 )}
               </label>
@@ -291,7 +295,7 @@ export default function CustomerPage({ params }) {
             <div className="field">
               <label>
                 דוא&quot;ל{' '}
-                {(settings.require_customer_email === 'true' || !String(customer.phone2 || '').trim()) && (
+                {(settings.require_customer_email === 'true' || isFieldRequiredByGroup('email', customer, parseFieldGroups(settings.mandatory_field_groups))) && (
                   <span style={{ color: 'var(--danger)' }}>*</span>
                 )}
               </label>

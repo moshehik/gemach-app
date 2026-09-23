@@ -183,6 +183,126 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   );
 }
 
+// עורך קבוצות "לפחות שדה אחד מספיק" (למשל טלפון נוסף / אימייל) - ההגדרה mandatory_field_groups.
+// שונה מ-CustomerFieldsCheckboxPicker למעלה: כאן זה מערך של קבוצות, לא רשימת שדות שטוחה, אז
+// הערך נשמר כ-JSON (מערך של מערכי מפתחות שדה, לא alias - אין צורך בתאימות לשמות אקסס כאן,
+// זו הגדרה חדשה). אותו מעטפת עיצוב (כרטיס עוגן מתחת לכפתור) כמו הפיקר למעלה, לפי הקונבנציה
+// הקיימת למקטעי הגדרה מורכבים - לא מודל מרכזי.
+function FieldGroupsEditor({ value, onChange, elementName }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  let groups = [];
+  try {
+    const parsed = JSON.parse(value || '[]');
+    if (Array.isArray(parsed)) groups = parsed.filter(g => Array.isArray(g));
+  } catch (e) {
+    groups = [];
+  }
+
+  const fieldName = (key) => CUSTOMER_FIELDS.find(f => f.key === key)?.name || key;
+  const usedKeysInGroup = (groupIdx) => new Set(groups[groupIdx] || []);
+
+  const commit = (nextGroups) => onChange(JSON.stringify(nextGroups.filter(g => g.length > 0)));
+
+  const addGroup = () => commit([...groups, []]);
+  const removeGroup = (groupIdx) => commit(groups.filter((_, i) => i !== groupIdx));
+  const addFieldToGroup = (groupIdx, key) => {
+    if (!key) return;
+    commit(groups.map((g, i) => (i === groupIdx ? [...g, key] : g)));
+  };
+  const removeFieldFromGroup = (groupIdx, key) => {
+    commit(groups.map((g, i) => (i === groupIdx ? g.filter(k => k !== key) : g)));
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        style={{ width: '100%' }}
+        data-element-name={elementName}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <svg className="icon"><use href="#i-check" /></svg>
+        קבוצות שדות ({groups.length})
+      </button>
+
+      {isOpen && (
+        <div className="card" style={{ position: 'absolute', top: '105%', insetInlineEnd: 0, insetInlineStart: 0, zIndex: 100, padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '340px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
+              קבוצות &quot;לפחות שדה אחד חובה&quot;
+            </span>
+            <button
+              type="button"
+              onClick={addGroup}
+              style={{ background: 'none', border: 'none', color: 'var(--primary-solid)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              + קבוצה חדשה
+            </button>
+          </div>
+
+          {groups.length === 0 ? (
+            <p className="hint" style={{ margin: 0, color: 'var(--text-3)' }}>
+              אין קבוצות מוגדרות - ברירת המחדל: טלפון נוסף / אימייל, אחד מספיק (כמו שהיה קודם).
+            </p>
+          ) : (
+            groups.map((group, groupIdx) => {
+              const used = usedKeysInGroup(groupIdx);
+              const options = CUSTOMER_FIELDS.filter(f => !used.has(f.key));
+              return (
+                <div key={groupIdx} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11.5px', color: 'var(--text-3)', fontWeight: 600 }}>קבוצה {groupIdx + 1} - אחד מספיק מבין:</span>
+                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הסר קבוצה" onClick={() => removeGroup(groupIdx)}>
+                      <svg className="icon"><use href="#i-trash" /></svg>
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {group.map(key => (
+                      <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--primary-tint)', color: 'var(--primary-solid)', borderRadius: 'var(--radius-sm)', padding: '4px 8px', fontSize: '12px', fontWeight: 600 }}>
+                        {fieldName(key)}
+                        <button type="button" onClick={() => removeFieldFromGroup(groupIdx, key)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                  {options.length > 0 && (
+                    <select
+                      className="select"
+                      style={{ fontSize: '12px' }}
+                      value=""
+                      onChange={(e) => addFieldToGroup(groupIdx, e.target.value)}
+                    >
+                      <option value="">+ הוסף שדה לקבוצה...</option>
+                      {options.map(f => <option key={f.key} value={f.key}>{f.name}</option>)}
+                    </select>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DepartmentDropdownPicker({ value, onChange, departments, elementName }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -765,6 +885,7 @@ export default function SettingsClient({ mode = 'general' }) {
             };
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
+            const isFieldGroupsSetting = setting.key === 'mandatory_field_groups';
             const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy' || setting.key === 'PAYMENT_APPROVAL_LEVEL' || !!SETTINGS_SELECT_OPTIONS[setting.key];
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
             // ערך מלא ISO שנכתב אוטומטית ע"י הסוכן (agent_fix_loop_last_activity) - שדה
@@ -779,7 +900,7 @@ export default function SettingsClient({ mode = 'general' }) {
               setting.key === 'enable_ai_specific_employees';
 
             // Helper to check if it needs a larger multiline textbox
-            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isSelectSetting && !isSecretSetting && (
+            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isFieldGroupsSetting && !isSelectSetting && !isSecretSetting && (
               setting.key.toLowerCase().includes('print') ||
               setting.key.toLowerCase().includes('box') ||
               setting.key.toLowerCase().includes('footer') ||
@@ -826,6 +947,12 @@ export default function SettingsClient({ mode = 'general' }) {
                     <CustomerFieldsCheckboxPicker
                       value={rawValue || ''}
                       elementName="שדה_SettingsClient_21"
+                      onChange={(val) => handleChange(setting.key, val)}
+                    />
+                  ) : isFieldGroupsSetting ? (
+                    <FieldGroupsEditor
+                      value={rawValue || ''}
+                      elementName="שדה_SettingsClient_22"
                       onChange={(val) => handleChange(setting.key, val)}
                     />
                   ) : isSelectSetting && setting.key === 'PAYMENT_APPROVAL_LEVEL' ? (

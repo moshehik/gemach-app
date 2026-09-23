@@ -20,7 +20,7 @@ import { toDisplayValue } from '@/lib/settingsMetadata';
 // שדות מורכבים (מחלקות/שדות-חובה/סודות/חותמת-זמן) מוצגים לקריאה בלבד עם קישור
 // לעמוד ההגדרות המלא - אין להם כאן בורר ייעודי (זה קיים רק ב-SettingsClient.js),
 // ועדיף תצוגה-בלבד נכונה על פני עריכה גולמית שעלולה לשבש ערך JSON/רשימה.
-const READ_ONLY_FIELD_TYPES = ['department', 'mandatoryFields', 'secret', 'timestamp'];
+const READ_ONLY_FIELD_TYPES = ['department', 'mandatoryFields', 'fieldGroups', 'secret', 'timestamp'];
 
 export default function SettingQuickPanel({ settingKey, onClose }) {
   const [loading, setLoading] = useState(true);
