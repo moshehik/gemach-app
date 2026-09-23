@@ -231,6 +231,12 @@ export default function OrderDetailsPage({ params }) {
   // (ר' confirmSaveSummaryIfNeeded ו-OrderEditSummaryModal) - בדומה לשלבי סיכום/תשלום
   // באשף הזמנה חדשה, שם אין תלות ב-tab (זה כרטיס אחד עם טאבים, לא אשף שלבים).
   const [enableEditSummaryConfirm, setEnableEditSummaryConfirm] = useState(false);
+  // consolidate_manual_payment_credit_ui - כמו enable_order_edit_summary_confirm למעלה,
+  // מוגדר "true" רק אצל נווה יעקב (המפתח קיים אצל שני הגמחים). כשמופעל, כפתורי "תשלום
+  // נוסף"/"בקשת זיכוי ללקוח" מוסתרים מטאב תשלומים (ר' ModernPaymentsManager.js), וכפתור
+  // מאוחד יחיד מופיע בטאב "פרטים כלליים" (ר' handleOpenManualPaymentCredit למטה) - שם
+  // ההוספה עצמה דורשת קוד מאשר (feature:manual_payment_credit_add ב-lib/permissionsMetadata.js).
+  const [consolidateManualPaymentCredit, setConsolidateManualPaymentCredit] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -248,6 +254,8 @@ export default function OrderDetailsPage({ params }) {
         if (localDrafts) setEnableLocalDrafts(localDrafts.value === 'true');
         const editSummaryConfirm = data.find(s => s.key === 'enable_order_edit_summary_confirm');
         if (editSummaryConfirm) setEnableEditSummaryConfirm(editSummaryConfirm.value === 'true');
+        const consolidatedPaymentCredit = data.find(s => s.key === 'consolidate_manual_payment_credit_ui');
+        if (consolidatedPaymentCredit) setConsolidateManualPaymentCredit(consolidatedPaymentCredit.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -1381,6 +1389,40 @@ export default function OrderDetailsPage({ params }) {
     }
   };
 
+  // כפתור מאוחד "הוספת תשלום/זיכוי ידני" בטאב פרטים כלליים (ר' consolidateManualPaymentCredit
+  // למעלה) - מחליף את שני הכפתורים הנפרדים שמוסתרים אז בטאב תשלומים. ModernPaymentsManager
+  // תמיד מורכב (ר' ModernOrderCard.js - כל הטאבים מרונדרים יחד, רק tab-panel מוסתר ב-CSS),
+  // כך שאפשר לקרוא לו דרך ה-ref גם כשטאב תשלומים לא פעיל כרגע - בדיוק כמו handleWalletClick
+  // למעלה. ה-PIN עצמו מאומת מול feature:manual_payment_credit_add (lib/permissionsMetadata.js),
+  // אותו מנגנון generic כמו כל שאר ה"מאשרים" בכרטיס (ר' cancelledItemNow ב-handleSave).
+  const handleOpenManualPaymentCredit = async (type) => {
+    const authResult = await window.customAuthPrompt(
+      'הוספת תשלום/זיכוי ידני דורשת קוד מאשר. אנא בחר מאשר והזן סיסמה:',
+      'feature:manual_payment_credit_add'
+    );
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:manual_payment_credit_add' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+        return;
+      }
+    } catch (err) {
+      alert('שגיאה באימות קוד מאשר.');
+      return;
+    }
+    setActiveTab('payments');
+    setTimeout(() => {
+      if (type === 'credit') paymentsManagerRef.current?.openRefundModal();
+      else paymentsManagerRef.current?.openAdditionalPaymentModal();
+    }, 60);
+  };
+
   const handleSendEmail = async (type, forcedEmail = null) => {
     let targetEmail = forcedEmail || order.customer?.email;
     
@@ -1627,6 +1669,8 @@ export default function OrderDetailsPage({ params }) {
                 onSaveRequest={handleSave}
                 onToggleSignature={handleToggleSignature}
                 onQuickEmail={() => handleSendEmail('order')}
+                showManualPaymentCreditButton={consolidateManualPaymentCredit}
+                onOpenManualPaymentCredit={handleOpenManualPaymentCredit}
               />
             ),
             items: (

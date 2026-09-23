@@ -489,7 +489,13 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       if (!pending) return false;
       openAutoRefundBankModal(pending);
       return true;
-    }
+    },
+    // נקראים מ-app/orders/[id]/page.js (handleOpenManualPaymentCredit) - הכפתור המאוחד
+    // בטאב "פרטים כלליים" כש-consolidate_manual_payment_credit_ui מופעל (נווה יעקב).
+    // אותם חלונות בדיוק כמו הכפתורים הרגילים למטה - האישור (feature:manual_payment_credit_add)
+    // כבר קרה לפני שהקורא מגיע לכאן, אין צורך לחזור ולבדוק.
+    openAdditionalPaymentModal: () => handleOpenAdditionalPaymentModal(),
+    openRefundModal: () => handleOpenRefundModal()
   }));
 
   /** מעקף אשראי מלא מתוך האתר - רושם תשלום אשראי כאילו שולם, מבלי לפנות למסוף נדרים פלוס בכלל.
@@ -943,18 +949,26 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי (נדרים פלוס)
             </button>
           )}
-          {settings.allow_additional_payment_on_order === 'true' && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenAdditionalPaymentModal} title="רישום תשלום נוסף (למשל מזומן) בנוסף לתשלומים הקיימים בהזמנה">
-              <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף
-            </button>
+          {/* "תשלום נוסף" ו"בקשת זיכוי ללקוח" מוסתרים כש-consolidate_manual_payment_credit_ui
+              מופעל (כרגע: נווה יעקב בלבד) - הכפתור המאוחד עובר לטאב "פרטים כלליים" ודורש שם
+              קוד מאשר (ר' handleOpenManualPaymentCredit ב-app/orders/[id]/page.js), במקום
+              להיות פתוח לכל עובד כמו כאן. אצל שאר הגמחים (המתג כבוי) שום דבר לא משתנה. */}
+          {settings.consolidate_manual_payment_credit_ui !== 'true' && (
+            <>
+              {settings.allow_additional_payment_on_order === 'true' && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenAdditionalPaymentModal} title="רישום תשלום נוסף (למשל מזומן) בנוסף לתשלומים הקיימים בהזמנה">
+                  <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף
+                </button>
+              )}
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
+                <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
+              </button>
+              {/* אותו הבהרה כמו ב"הוסף חיוב" למעלה - ר' דיווח הזמנה #53377 */}
+              <p className="hint" style={{ flexBasis: '100%', margin: '6px 0 0', color: 'var(--text-2)' }}>
+                &quot;בקשת זיכוי ללקוח&quot; מיועד למקרים חריגים בלבד - זיכויים בגין ביטול/החלפה נוצרים אוטומטית ואין צורך לפתוח בקשה ידנית עבורם.
+              </p>
+            </>
           )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
-            <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
-          </button>
-          {/* אותו הבהרה כמו ב"הוסף חיוב" למעלה - ר' דיווח הזמנה #53377 */}
-          <p className="hint" style={{ flexBasis: '100%', margin: '6px 0 0', color: 'var(--text-2)' }}>
-            &quot;בקשת זיכוי ללקוח&quot; מיועד למקרים חריגים בלבד - זיכויים בגין ביטול/החלפה נוצרים אוטומטית ואין צורך לפתוח בקשה ידנית עבורם.
-          </p>
         </div>
         {activePayments.length > 0 ? (
           <div className="table-wrap">
