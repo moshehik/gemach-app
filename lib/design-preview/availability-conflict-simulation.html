@@ -24,7 +24,8 @@ button.danger{background:#fdecea;border-color:#d9534f}
 @media(max-width:800px){.two{grid-template-columns:1fr}}
 ol{margin:0;padding-inline-start:20px}
 .legend span.sw{display:inline-block;width:26px;height:12px;vertical-align:middle;margin-inline-end:4px;border:1px solid #0002}
-.legend div{margin:3px 0}
+select{font:inherit;padding:2px}
+.legend{margin-bottom:10px}.legend .sw{margin-inline-start:14px}
 .banner{padding:10px 12px;border-radius:6px;font-weight:bold;margin-bottom:12px}
 .b-bad{background:#fdecea;border:1px solid #d9534f;color:#8a1f1a}
 .b-ok{background:#e7f6ec;border:1px solid #3a9d5d;color:#1d5e36}
@@ -66,56 +67,38 @@ th{background:#f0f2f5;font-weight:600}
 </style>
 </head>
 <body>
-<h1>שינוי תאריך הזמנה - חלון זמינות / התנגשויות (קונספט)</h1>
-<div class="sub">הזמנה 51873 · לקוחה: כהן רחל · תאריך נוכחי (שמור): <b id="origTxt"></b> · נתונים בדויים לצורך הדגמה</div>
+<h1>שינוי תאריך - הזמנה 51873</h1>
+<div class="sub">תאריך שמור: <b id="origTxt"></b></div>
 
 <div class="box">
-  <h2>שינוי תאריך בכרטיס ההזמנה</h2>
-  <div class="row">
+    <div class="row">
     <label><input type="radio" name="mode" value="single" checked> תאריך בודד</label>
-    <label><input type="radio" name="mode" value="range"> טווח (חו"ל / ימי חול)</label>
-    <label>מתאריך <input type="date" id="dFrom" value="2026-10-15"></label>
-    <label id="toWrap" style="display:none">עד תאריך <input type="date" id="dTo" value="2026-10-17"></label>
+    <label><input type="radio" name="mode" value="range"> טווח</label>
+    <label>מתאריך <span id="pFrom"></span></label>
+    <label id="toWrap" style="display:none">עד <span id="pTo"></span></label>
     <span class="note" id="dayName"></span>
   </div>
   <hr style="border:0;border-top:1px solid #e3e5e9;margin:10px 0">
   <div class="row">
-    <b>הגדרות:</b>
-    <label>ימי מרווח רגיל <input type="number" id="buf" min="0" max="10" value="3"></label>
-    <label>ציפוף - ימים N <input type="number" id="nComp" min="0" max="10" value="2"></label>
-    <label><input type="checkbox" id="skipWk"> דלג על שישי-שבת בספירת המרווח</label>
+    <label>מרווח <input type="number" id="buf" min="0" max="10" value="3"></label>
+    <label>ציפוף N <input type="number" id="nComp" min="0" max="10" value="2"></label>
+    <label><input type="checkbox" id="skipWk"> ללא ו׳-ש׳</label>
   </div>
 </div>
 
-<div class="two">
-  <div class="box">
-    <h2>איך זה עובד</h2>
-    <ol>
-      <li>לכל שמלה: חלון ההזמנה = התאריכים + מרווח של X ימים לפני ואחרי.</li>
-      <li>התנגשות = הזמנה אחרת של אותה שמלה נכנסת לחלון (מרווח בפועל &lt; נדרש).</li>
-      <li>פנויות = מלאי השמלה פחות הזמנות מתנגשות.</li>
-      <li>ציפוף "ימים N" מצמצם את המרווח ל-N ימים ומראה כמה יחידות מתפנות (+).</li>
-      <li>חפיפה ישירה בין תאריכי האירוע - אין ציפוף שיעזור.</li>
-    </ol>
-  </div>
-  <div class="box legend">
-    <h2>מקרא</h2>
-    <div><span class="sw" style="background:#2e8b57"></span>התאריכים החדשים של ההזמנה</div>
-    <div><span class="sw" style="background:#bfc3ca"></span>ימי מרווח (אפור)</div>
-    <div><span class="sw" style="background:#3b4a63"></span>הזמנה שכנה (מס' הזמנה)</div>
-    <div><span class="sw" style="background:repeating-linear-gradient(45deg,#e53935,#e53935 4px,#ff8a80 4px,#ff8a80 8px)"></span>חפיפה = התנגשות</div>
-    <div><span class="sw" style="background:#f1f1f1"></span>שישי / שבת · ציר הזמן: ימים מוקדמים מימין</div>
-  </div>
+<div class="legend note">
+<span class="sw" style="background:#2e8b57"></span>חדש
+<span class="sw" style="background:#bfc3ca"></span>מרווח
+<span class="sw" style="background:#3b4a63"></span>הזמנה שכנה
+<span class="sw" style="background:repeating-linear-gradient(45deg,#e53935,#e53935 4px,#ff8a80 4px,#ff8a80 8px)"></span>התנגשות
 </div>
-
 <div id="banner"></div>
 <div id="dresses"></div>
 
 <div class="box">
-  <h2>פעולות להזמנה</h2>
-  <div id="suggest" class="row" style="margin-bottom:8px"></div>
+    <div id="suggest" class="row" style="margin-bottom:8px"></div>
   <div class="actions">
-    <button id="bCompAll">החל ציפוף על כל הפריטים הניתנים לציפוף</button>
+    <button id="bCompAll">ציפוף לכולם</button>
     <button id="bApprove" class="warn">אשר בכל זאת (מנהל)</button>
     <button id="bCancel" class="danger">בטל שינוי תאריך</button>
     <button id="bSave" class="primary">שמור שינוי תאריך</button>
@@ -128,9 +111,34 @@ const DAY=864e5, TODAY=Date.UTC(2026,8,24)/DAY;
 const pd=s=>{const[a,b,c]=s.split('-').map(Number);return Date.UTC(a,b-1,c)/DAY};
 const dow=d=>new Date(d*DAY).getUTCDay();
 const WD=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
-const fmt=d=>{const t=new Date(d*DAY);return WD[t.getUTCDay()]+' '+t.getUTCDate()+'/'+(t.getUTCMonth()+1)};
+const HF=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+function gem(n){const U=['','א','ב','ג','ד','ה','ו','ז','ח','ט'],T=['','י','כ','ל','מ','נ','ס','ע','פ','צ'],H=['','ק','ר','ש','ת'];
+  let r='';while(n>=400){r+='ת';n-=400}
+  if(n>=100){r+=H[Math.floor(n/100)];n%=100}
+  if(n===15)r+='טו';else if(n===16)r+='טז';else r+=T[Math.floor(n/10)]+U[n%10];
+  return r.length>1?r.slice(0,-1)+'״'+r.slice(-1):r+'׳'}
+const hp=d=>{const o={};HF.formatToParts(new Date(d*DAY)).forEach(x=>o[x.type]=x.value);return{d:+o.day,m:o.month,y:+o.year}};
+const fmt=d=>{const h=hp(d);return WD[dow(d)]+' '+gem(h.d)+' '+h.m};                 // short (timeline / tables)
+const fmtL=d=>{const h=hp(d);return 'יום '+WD[dow(d)]+' '+gem(h.d)+' '+h.m+' '+gem(h.y%1000)}; // long (with year)
 const fmtR=(a,b)=>a===b?fmt(a):fmt(a)+' - '+fmt(b);
-const iso=d=>new Date(d*DAY).toISOString().slice(0,10);
+const ymCache={};
+function hYear(y){ if(ymCache[y])return ymCache[y];
+  const out=[];let d=Date.UTC(y-3761,7,20)/DAY,cur=null;
+  for(let i=0;i<420;i++,d++){const h=hp(d);if(h.y<y)continue;if(h.y>y)break;
+    if(!cur||cur.name!==h.m){cur={name:h.m,start:d,len:0};out.push(cur)}cur.len++}
+  return ymCache[y]=out}
+function makePicker(host,onchange){
+  host.innerHTML='<select class="py"></select> <select class="pm"></select> <select class="pd"></select>';
+  const [sy,sm,sd]=host.querySelectorAll('select');
+  sy.innerHTML=[5786,5787,5788].map(y=>`<option value="${y}">${gem(y%1000)}</option>`).join('');
+  function fillM(y,mi){const ms=hYear(y);sm.innerHTML=ms.map((m,i)=>`<option value="${i}">${m.name}</option>`).join('');sm.value=Math.min(mi,ms.length-1);fillD(1)}
+  function fillD(dd){const m=hYear(+sy.value)[+sm.value];sd.innerHTML=Array.from({length:m.len},(_,i)=>`<option value="${i}">${gem(hp(m.start+i).d)}</option>`).join('');sd.value=Math.min(dd-1,m.len-1)}
+  const api={get:()=>hYear(+sy.value)[+sm.value].start+ +sd.value,
+    set(d){const h=hp(d);sy.value=h.y;fillM(h.y,0);const ms=hYear(h.y);const i=ms.findIndex(m=>d>=m.start&&d<m.start+m.len);sm.value=i;fillD(1);sd.value=d-ms[i].start}};
+  sy.onchange=()=>{fillM(+sy.value,+sm.value);fire()};
+  sm.onchange=()=>{fillD(1);fire()};sd.onchange=fire;
+  function fire(){onchange()}
+  return api}
 
 const DRESSES=[
  {id:1,no:'1204',name:'שרה',size:'38',qty:1,bk:[['48102','2026-10-05'],['48277','2026-10-19'],['48350','2026-11-12']]},
@@ -148,7 +156,8 @@ const $=id=>document.getElementById(id);
 const counted=d=>!$('skipWk').checked||(dow(d)!==5&&dow(d)!==6);
 function countBetween(a,b){let c=0;for(let d=a;d<=b;d++)if(counted(d))c++;return c}
 function walk(d,dir,n){let c=0;while(c<n){d+=dir;if(counted(d))c++}return d}
-function span(){const s=pd($('dFrom').value);let e=$('dFrom').value&&document.querySelector('[name=mode]:checked').value==='range'?pd($('dTo').value):s;if(e<s)e=s;return[s,e]}
+let PF,PT;
+function span(){const s=PF.get();let e=document.querySelector('[name=mode]:checked').value==='range'?PT.get():s;if(e<s)e=s;return[s,e]}
 function win(s,e,buf){return buf>0?[walk(s,-1,buf),walk(e,1,buf)]:[s,e]}
 
 function evalD(d,s,e,buf){
@@ -190,7 +199,7 @@ function lane(d,s,e,buf,label,cls){
   d.b.forEach(n=>{
     if(n.e<lo||n.s>hi)return;
     const a=Math.max(n.s,lo),b=Math.min(n.e,hi);
-    h+=`<div class="bar nb" style="${pos(a,b)}" title="הזמנה ${n.o}">${n.o}</div>`;
+    h+=`<div class="bar nb" style="${pos(a,b)}">${n.o}</div>`;
     const oa=Math.max(a,ev.ws),ob=Math.min(b,ev.we);
     if(oa<=ob)h+=`<div class="bar cf" style="${pos(oa,ob)}"></div>`;
   });
@@ -199,56 +208,58 @@ function lane(d,s,e,buf,label,cls){
 }
 function axis(s,e){
   const lo=s-12,hi=e+12,T=hi-lo+1,w=100/T;let h='<div class="axis">';
-  for(let x=lo;x<=hi;x++){const t=new Date(x*DAY);
-    h+=`<span style="right:${(x-lo)*w}%;width:${w}%">${t.getUTCDate()}${t.getUTCDate()===1?'/'+(t.getUTCMonth()+1):''}</span>`}
+  for(let x=lo;x<=hi;x++)h+=`<span style="right:${(x-lo)*w}%;width:${w}%">${gem(hp(x).d)}</span>`;
+  h+='</div><div class="axis" style="height:14px">';
+  const tick=x=>`<span style="right:${(x-lo+0.5)*w}%;width:auto;transform:translateX(50%);white-space:nowrap;overflow:visible;font-weight:bold">${fmt(x)}</span>`;
+  h+=tick(lo)+tick(s)+(e-s>=5?tick(e):'')+tick(hi);
   return h+'</div>';
 }
 
-const LBL={free:'פנוי',compactable:'תפוס - ניתן לציפוף',compact:'פנוי בציפוף (ממתין לאישור מנהל)',blocked:'תפוס - חסום',removed:'הוסר / הוחלף'};
+const LBL={free:'✔ פנוי',compactable:'⚠ תפוס - ניתן לציפוף',compact:'✔ בציפוף - אישור מנהל',blocked:'✖ תפוס',removed:'הוסר'};
 
 function render(){
   const B=+$('buf').value||0,N=Math.min(+$('nComp').value||0,B);
   const[s,e]=span();
-  $('dayName').textContent=s===e?'':`(${e-s+1} ימים)`;
-  $('origTxt').textContent=fmt(ORIG);
+  $('dayName').textContent=fmtL(s)+(s===e?'':' - '+fmtL(e)+` (${e-s+1} ימים)`);
+  $('origTxt').textContent=fmtL(ORIG);
   let cntBlocked=0,cntCompact=0,html='';
   const res=DRESSES.map(d=>status(d,s,e,B,N));
   DRESSES.forEach((d,i)=>{
     const r=res[i],k=r.k;
     if(k==='blocked')cntBlocked++;
     if(k==='compactable'||k==='compact')cntCompact++;
-    html+=`<div class="dress ${k}"><div class="head"><div><b>${d.no} ${d.name}</b> · מידה ${d.size} · מלאי ${d.qty} יח'</div>
-      <div><span class="badge s-${k}">${LBL[k]}</span>${k==='compact'?' <span class="mgr">סימון: צמצום ימים '+N+' - אישור מנהל</span>':''}</div></div>`;
+    html+=`<div class="dress ${k}"><div class="head"><div><b>${d.no} ${d.name}</b> · ${d.size}</div>
+      <div><span class="badge s-${k}">${LBL[k]}</span></div></div>`;
     if(k==='removed'){
-      html+=`<div class="note">${S[d.id]==='replaced'?'הוחלפה ב-'+SUBS[d.id%3]+' (זמינה בתאריכים החדשים)':'השמלה הוסרה מההזמנה'}</div>
-        <div class="actions"><button data-a="undo" data-id="${d.id}">החזר שמלה</button></div></div>`;return;
+      html+=`<div class="note">${S[d.id]==='replaced'?'הוחלפה ב-'+SUBS[d.id%3]:'הוסרה'}</div>
+        <div class="actions"><button data-a="undo" data-id="${d.id}">החזר</button></div></div>`;return;
     }
     const n=r.nrm,c=r.cmp,gain=c.free-n.free;
-    html+=`<table><tr><th>תצוגה</th><th>מרווח</th><th>הזמנות מתנגשות</th><th>יחידות פנויות</th><th>רווח</th></tr>
-      <tr><td>רגיל</td><td>${B} ימים</td><td>${n.conf.length}</td><td class="${n.free<1?'bad':''}">${n.free} מתוך ${d.qty}</td><td>-</td></tr>
-      <tr><td>ימים ${N}</td><td>${N} ימים</td><td>${c.conf.length}</td><td class="${c.free<1?'bad':''}">${c.free} מתוך ${d.qty}</td><td class="${gain>0?'gain':''}">${gain>0?'+'+gain:'0'}</td></tr></table>`;
+    html+=`<table><tr><th></th><th>פנוי</th><th>רווח</th></tr>
+      <tr><td>רגיל (${B})</td><td class="${n.free<1?'bad':''}">${n.free}/${d.qty}</td><td></td></tr>
+      <tr><td>ימים ${N}</td><td class="${c.free<1?'bad':''}">${c.free}/${d.qty}</td><td class="${gain>0?'gain':''}">${gain>0?'+'+gain:''}</td></tr></table>`;
     if(n.conf.length){
-      html+=`<table><tr><th>הזמנה שכנה</th><th>תאריכים</th><th>מרווח בפועל</th><th>נדרש</th><th>חסר</th><th>בציפוף ${N}</th></tr>`;
+      html+=`<table><tr><th>הזמנה</th><th>תאריכים</th><th>מרווח</th><th>חסר</th><th>ימים ${N}</th></tr>`;
       n.conf.forEach(x=>{
         const ok=!x.direct&&x.gap>=N;
-        html+=`<tr><td>${x.n.o}</td><td>${fmtR(x.n.s,x.n.e)}</td><td>${x.direct?'<span class="bad">חפיפה ישירה</span>':x.gap+' ימים'}</td><td>${B}</td>
-          <td class="bad">${x.direct?'-':(B-x.gap)+' ימים'}</td><td>${ok?'<span class="gain">מספיק</span>':'<span class="bad">לא מספיק</span>'}</td></tr>`;
+        html+=`<tr><td>${x.n.o}</td><td>${fmtR(x.n.s,x.n.e)}</td><td>${x.direct?'<span class="bad">חפיפה</span>':x.gap}</td>
+          <td class="bad">${x.direct?'':(B-x.gap)}</td><td>${ok?'<span class="gain">✔</span>':'<span class="bad">✖</span>'}</td></tr>`;
       });
       html+='</table>';
     }
-    html+=`<div class="tl">${axis(s,e)}${lane(d,s,e,B,'ציר זמן - מרווח רגיל ('+B+')')}${lane(d,s,e,N,'ציר זמן - ציפוף (ימים '+N+')')}</div>`;
+    html+=`<div class="tl">${axis(s,e)}${lane(d,s,e,B,'רגיל')}${lane(d,s,e,N,'ימים '+N)}</div>`;
     html+=`<div class="actions">
-      ${k==='compactable'?`<button class="warn" data-a="compact" data-id="${d.id}">החל ציפוף ימים ${N} (אישור מנהל)</button>`:''}
+      ${k==='compactable'?`<button class="warn" data-a="compact" data-id="${d.id}">ציפוף ימים ${N}</button>`:''}
       ${k==='compact'?`<button data-a="uncompact" data-id="${d.id}">בטל ציפוף</button>`:''}
-      ${k!=='free'?`<button data-a="replace" data-id="${d.id}">החלף שמלה</button><button data-a="remove" data-id="${d.id}" class="danger">הסר שמלה</button>`:''}
+      ${k!=='free'?`<button data-a="replace" data-id="${d.id}">החלף</button><button data-a="remove" data-id="${d.id}" class="danger">הסר</button>`:''}
     </div></div>`;
   });
   $('dresses').innerHTML=html;
 
   const ban=$('banner');
-  if(cntBlocked)ban.innerHTML=`<div class="banner b-bad">חלק מהפריטים תפוסים / חסרים במלאי בתאריכים החדשים (${cntBlocked} חסומים${cntCompact?', '+cntCompact+' ניתנים לציפוף':''})</div>`;
-  else if(cntCompact)ban.innerHTML=`<div class="banner b-mid">חלק מהפריטים תפוסים במרווח הרגיל - ניתן לפתור בציפוף ימים ${N} (נדרש אישור מנהל)</div>`;
-  else ban.innerHTML=`<div class="banner b-ok">כל הפריטים זמינים בתאריכים החדשים</div>`;
+  if(cntBlocked)ban.innerHTML=`<div class="banner b-bad">חלק מהפריטים תפוסים / חסרים במלאי</div>`;
+  else if(cntCompact)ban.innerHTML=`<div class="banner b-mid">ניתן לפתור בציפוף ימים ${N}</div>`;
+  else ban.innerHTML=`<div class="banner b-ok">הכול זמין</div>`;
 
   // alternative dates
   const active=DRESSES.filter(d=>S[d.id]!=='removed'&&S[d.id]!=='replaced');
@@ -257,20 +268,20 @@ function render(){
     const ns=s+sg*k;if(ns<TODAY||alts.length>=3)continue;
     if(active.every(d=>evalD(d,ns,ns+(e-s),B).free>=1))alts.push(ns);
   }
-  $('suggest').innerHTML='<b>תאריכים חלופיים פנויים לכל הפריטים:</b> '+(alts.length?alts.map(a=>`<button data-alt="${a}">${fmtR(a,a+(e-s))}</button>`).join(' '):'<span class="note">לא נמצא בטווח 30 יום</span>');
+  $('suggest').innerHTML='<b>תאריך חלופי:</b> '+(alts.length?alts.map(a=>`<button data-alt="${a}">${fmtR(a,a+(e-s))}</button>`).join(' '):'-');
 
   const unresolved=res.filter(r=>r.k==='blocked'||r.k==='compactable').length;
   $('bCompAll').disabled=!res.some(r=>r.k==='compactable');
   $('bApprove').disabled=!unresolved||approved;
-  $('bApprove').textContent=approved?'אושר בחריגה (מנהל) ✓':'אשר בכל זאת (מנהל)';
+  $('bApprove').textContent=approved?'אושר ✓':'אשר בכל זאת (מנהל)';
   $('bSave').disabled=(unresolved&&!approved)||(s===ORIG&&e===ORIG);
 }
-function log(t){$('log').textContent=t}
+function log(t){}
 function reset(){S={};approved=false}
 
 document.addEventListener('click',ev=>{
   const t=ev.target.closest('button');if(!t)return;
-  if(t.dataset.alt){const a=+t.dataset.alt,[s,e]=span();$('dFrom').value=iso(a);$('dTo').value=iso(a+(e-s));reset();log('נבחר תאריך חלופי: '+fmt(a));render();return}
+  if(t.dataset.alt){const a=+t.dataset.alt,[s,e]=span();PF.set(a);PT.set(a+(e-s));reset();render();return}
   if(t.dataset.a){const id=+t.dataset.id,a=t.dataset.a;
     if(a==='compact'){S[id]='compact';log('הוחל ציפוף - סומן לאישור מנהל')}
     else if(a==='uncompact'||a==='undo'){delete S[id]}
@@ -282,13 +293,15 @@ document.addEventListener('click',ev=>{
 $('bCompAll').onclick=()=>{const B=+$('buf').value,N=Math.min(+$('nComp').value,B),[s,e]=span();
   DRESSES.forEach(d=>{if(status(d,s,e,B,N).k==='compactable')S[d.id]='compact'});log('הוחל ציפוף על כל הפריטים הניתנים - סומן לאישור מנהל');render()};
 $('bApprove').onclick=()=>{approved=true;log('אושר בחריגה ע"י מנהל - ההזמנה תישמר עם התנגשות פתוחה');render()};
-$('bCancel').onclick=()=>{$('dFrom').value=iso(ORIG);$('dTo').value=iso(ORIG);document.querySelector('[name=mode][value=single]').checked=true;$('toWrap').style.display='none';reset();log('שינוי התאריך בוטל - חזרה לתאריך השמור');render()};
-$('bSave').onclick=()=>{log('נשמר (הדגמה). '+(Object.values(S).includes('compact')?'כולל סימון ציפוף לאישור מנהל. ':'')+(approved?'אושר בחריגה. ':''))};
-['dFrom','dTo','buf','nComp','skipWk'].forEach(i=>$(i).addEventListener('input',()=>{
-  if($('dTo').value<$('dFrom').value)$('dTo').value=$('dFrom').value;reset();render()}));
+$('bCancel').onclick=()=>{PF.set(ORIG);PT.set(ORIG);document.querySelector('[name=mode][value=single]').checked=true;$('toWrap').style.display='none';reset();log('שינוי התאריך בוטל - חזרה לתאריך השמור');render()};
+$('bSave').onclick=()=>{$('log').textContent='נשמר'+(Object.values(S).includes('compact')?' · ציפוף - אישור מנהל':'')+(approved?' · אושר בחריגה':'')};
+const chg=()=>{if(PT.get()<PF.get())PT.set(PF.get());reset();render()};
+PF=makePicker($('pFrom'),chg);PT=makePicker($('pTo'),chg);
+PF.set(pd('2026-10-15'));PT.set(pd('2026-10-17'));
+['buf','nComp','skipWk'].forEach(i=>$(i).addEventListener('input',()=>{reset();render()}));
 document.querySelectorAll('[name=mode]').forEach(r=>r.addEventListener('change',()=>{
-  $('toWrap').style.display=r.value==='range'&&r.checked?'':(r.checked?'none':$('toWrap').style.display);
-  if(r.checked&&r.value==='range'&&$('dTo').value<$('dFrom').value)$('dTo').value=$('dFrom').value;reset();render()}));
+  $('toWrap').style.display=document.querySelector('[name=mode]:checked').value==='range'?'':'none';
+  if(PT.get()<PF.get())PT.set(PF.get());reset();render()}));
 render();
 </script>
 </body>
