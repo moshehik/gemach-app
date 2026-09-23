@@ -143,6 +143,25 @@ const buildDraftRows = (snap, curr) => {
   return rows;
 };
 
+// זיהוי "מה זה" עבור חיוב, יציב יותר מהשוואת description מילולית מלאה - ר' חלון "סיכום
+// ההזמנה לפני שמירה" (confirmSaveSummaryIfNeeded) שמנסה להבחין חיוב שכבר היה בהזמנה
+// מחיוב שנוסף רק בעריכה הנוכחית. הזמנה ישנה שיובאה מ-Access (scripts/import_from_access.js:
+// description מגיע ישירות משדה "תיאור" ב-Access, ללא שום קשר לפורמט "<שם> מידה <X>
+// (פריט #<uuid>)" ש-computeOrderObligations מייצר) נושאת טקסט description שלעולם לא
+// יתאים לתצוגה המקדימה שמחושבת עכשיו - השוואת מחרוזות מלאה סימנה אז כל שורה כ"נוסף עכשיו",
+// גם פריטים ישנים שלא נגעו בהם (דיווח: "רק הוספתי משלוח" אבל כל השורות סומנו). orderItemId
+// יציב גם בהזמנה מיובאת (itemLegacyToNewId באותו סקריפט ייבוא) - לכן מזהים חיוב מקושר-פריט
+// לפי (orderItemId + סוג השורה, לפי קידומת ידועה), ורק נופלים חזרה לטקסט description מלא
+// עבור שורות בלי orderItemId (משלוח/חיוב ידני), ששם הטקסט כן נקבע דטרמיניסטית ויציב.
+const OBLIGATION_KIND_PREFIXES = ['תיקון צוואר', 'תיקון שרוול', 'תיקון אורך', 'חיוב מקורי', 'זיכוי בגין ביטול', 'זיכוי דמי ביטול', 'דמי ביטול ותיקונים'];
+const obligationIdentityKey = (o) => {
+  if (o.orderItemId) {
+    const kind = OBLIGATION_KIND_PREFIXES.find(p => (o.description || '').startsWith(p)) || 'רגיל';
+    return `item:${o.orderItemId}:${kind}`;
+  }
+  return `desc:${o.description || ''}`;
+};
+
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
@@ -608,11 +627,12 @@ export default function OrderDetailsPage({ params }) {
         totalPaid,
         // צילום של החיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת - נלקח כאן (בתוך handler, לא
         // ב-render) כדי שרינדור החלון יוכל להבחין "מה היה קודם" מ-"מה נוסף עכשיו" בלי לקרוא
-        // ל-savedSnapshotRef.current ישירות תוך כדי render (react-hooks/refs).
-        savedDescriptions: new Set(
+        // ל-savedSnapshotRef.current ישירות תוך כדי render (react-hooks/refs). לפי
+        // obligationIdentityKey ולא description מלא - ר' התיעוד שם.
+        savedObligationKeys: new Set(
           (savedSnapshotRef.current?.obligations || [])
             .filter(so => !so.isDeleted)
-            .map(so => so.description)
+            .map(so => obligationIdentityKey(so))
         )
       });
     });
@@ -1525,17 +1545,17 @@ export default function OrderDetailsPage({ params }) {
                   הייתה משכפלת את שורות הפריטים ומחסירה שורות אחרות (תיקון/ביטול). */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                 {(() => {
-                  // savedDescriptions (חיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת, ר'
-                  // confirmSaveSummaryIfNeeded) מאפשר להבחין "מה היה קודם" מ-"מה נוסף עכשיו"
-                  // (למשל חיוב משלוח שנוצר מהתצוגה המקדימה) - בלי זה כל השורות נראות "אותו
-                  // דבר" (דיווח: "לא ברור מה היה קודם ומה נוסף עכשיו").
-                  const savedDescriptions = summaryConfirmData.savedDescriptions || new Set();
+                  // savedObligationKeys (חיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת, ר'
+                  // confirmSaveSummaryIfNeeded/obligationIdentityKey) מאפשר להבחין "מה היה
+                  // קודם" מ-"מה נוסף עכשיו" (למשל חיוב משלוח שנוצר מהתצוגה המקדימה) - בלי זה
+                  // כל השורות נראות "אותו דבר" (דיווח: "לא ברור מה היה קודם ומה נוסף עכשיו").
+                  const savedKeys = summaryConfirmData.savedObligationKeys || new Set();
                   return summaryConfirmData.obligations.filter(o => !o.isDeleted).map((o, idx) => {
                     // "(פריט #<uuid>)" הוא ה-id הפנימי של OrderItem, מוצמד לתיאור רק כדי
                     // להבחין בין שני פריטים זהים (שם+מידה) באותה הזמנה - לא מיועד לתצוגה
                     // (ר' כלל תצוגת ה-ID ב-AGENTS.md), בדיוק כמו ב-ModernPaymentsManager.js.
                     const cleanDesc = (o.description || 'חיוב').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '');
-                    const isNew = !savedDescriptions.has(o.description);
+                    const isNew = !savedKeys.has(obligationIdentityKey(o));
                     return (
                       <div key={o.id || `${o.description}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '13.5px' }}>
                         <span>
