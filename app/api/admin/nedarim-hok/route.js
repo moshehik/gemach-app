@@ -1,24 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
-import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
+import { getCachedSetting } from '@/lib/settingsCache';
 import { decryptSecret, isEncryptedSecret } from '@/lib/secretCrypto';
 import { chargeNedarimPlus } from '@/app/lib/nedarim';
+import { resolveNedarimMosadId } from '@/app/lib/nedarimSettings';
 
 // דף ניסוי ייעודי (/admin/nedarim-hok-test) ליצירת הוק (הוראת קבע) בנדרים פלוס:
 // לא קשור ל-Customer.hokBank*/Order.hokDetails (הוראת קבע בנקאית, "38 בקשות" -
 // מנגנון שונה לגמרי). כל קריאה - הצלחה או כישלון - נרשמת בטבלת NedarimHok, כדי
 // שהרשומות שנוצרות בניסוי יהיו גלויות וניתנות למעקב. עדיין לא מחובר לתהליך
 // ההזמנה/תשלום האמיתי - ר' תיעוד ב-CLAUDE.md "הוק בנדרים פלוס".
-
-async function resolveMosadId(overrideMosadId) {
-  if (overrideMosadId) return overrideMosadId;
-  if (process.env.NEDARIM_MOSAD_ID) return process.env.NEDARIM_MOSAD_ID;
-  const setting = (await getAllCachedSettings()).find(
-    (s) => s.key === 'NEDARIM_MOSAD' || s.key === 'nedarim_plus_terminal'
-  );
-  return setting?.value || '';
-}
 
 async function resolveToken() {
   const tokenSetting = await getCachedSetting('nedarim_plus_token');
@@ -53,7 +45,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'חסר תאריך חיוב עתידי (StartFrom)' }, { status: 400 });
     }
 
-    const mosadId = await resolveMosadId(mosadIdOverride);
+    const mosadId = await resolveNedarimMosadId(mosadIdOverride);
     if (!mosadId) {
       return NextResponse.json({ success: false, error: 'מספר מוסד (Mosad) לא מוגדר - ניתן להקליד ידנית בדף הניסוי או להגדיר nedarim_plus_terminal בהגדרות' }, { status: 400 });
     }
