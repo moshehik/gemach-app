@@ -668,6 +668,26 @@ export default function SettingsClient({ mode = 'general' }) {
             </>
           )}
 
+          {activeTab === 'מיילים' && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ fontSize: '14.5px', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg className="icon" style={{ width: '16px', height: '16px', color: 'var(--text-3)' }}><use href="#i-mail" /></svg>
+                  יומן מיילים
+                </h3>
+                <p className="hint" style={{ color: 'var(--text-3)', margin: 0, maxWidth: '450px', fontSize: '12.5px' }}>
+                  היסטוריית כל המיילים שנשלחו מהמערכת (כל 16 הסוגים) - נמען, נושא, קובץ מצורף וסטטוס שליחה.
+                </p>
+              </div>
+              <div style={{ flex: '0 0 auto' }}>
+                <Link href="/admin/site-settings/email-logs" className="btn btn-secondary btn-sm">
+                  <svg className="icon"><use href="#i-history" /></svg>
+                  צפייה ביומן
+                </Link>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'תצוגה' && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
