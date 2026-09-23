@@ -189,6 +189,11 @@ export default function OrderDetailsPage({ params }) {
   // חלון "סיכום ההזמנה" שמוצג לפני שמירה בפועל כש-enable_order_edit_summary_confirm
   // מופעל (ר' confirmSaveSummaryIfNeeded והרינדור למטה). null = סגור.
   const [summaryConfirmData, setSummaryConfirmData] = useState(null);
+  // חלונית צפה "השלמת תשלום" - מוצגת (רק כש-enableEditSummaryConfirm, נווה יעקב) מיד אחרי
+  // ששמירה יצרה/הגדילה חוב, במקום להסתפק בהודעת טוסט + מעבר שקט לטאב תשלומים (דיווח:
+  // "פשוט שמר בלי לבקש תשלום" - לא היה מספיק ברור). number = סכום היתרה לתשלום, מציג;
+  // null = סגורה. ר' handleSave/handleExit למטה.
+  const [paymentContinueAmount, setPaymentContinueAmount] = useState(null);
   // מחזיק את פונקציית ה-resolve של ה-Promise שמחזירה confirmSaveSummaryIfNeeded, כדי
   // שכפתורי החלון (שמעבר לרינדור הזה) יוכלו "לענות" לקריאה שממתינה ב-handleSave/handleExit.
   const summaryConfirmResolverRef = useRef(null);
@@ -256,6 +261,11 @@ export default function OrderDetailsPage({ params }) {
   // מאוחד יחיד מופיע בטאב "פרטים כלליים" (ר' handleOpenManualPaymentCredit למטה) - שם
   // ההוספה עצמה דורשת קוד מאשר (feature:manual_payment_credit_add ב-lib/permissionsMetadata.js).
   const [consolidateManualPaymentCredit, setConsolidateManualPaymentCredit] = useState(false);
+  // מציג/מסתיר כפתורי פעולה בחלונית הצפה "המשך תשלום" למטה (paymentContinueAmount) - אותם
+  // מתגים בדיוק ששולטים בכפתורים המקבילים בטאב תשלומים עצמו (ModernPaymentsManager.js),
+  // נקראים כאן בנפרד כי page.js צריך אותם גם בלי לפתוח את הטאב קודם.
+  const [nedarimPlusEnabled, setNedarimPlusEnabled] = useState(true);
+  const [allowAdditionalPayment, setAllowAdditionalPayment] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -275,6 +285,10 @@ export default function OrderDetailsPage({ params }) {
         if (editSummaryConfirm) setEnableEditSummaryConfirm(editSummaryConfirm.value === 'true');
         const consolidatedPaymentCredit = data.find(s => s.key === 'consolidate_manual_payment_credit_ui');
         if (consolidatedPaymentCredit) setConsolidateManualPaymentCredit(consolidatedPaymentCredit.value === 'true');
+        const nedarimSetting = data.find(s => s.key === 'nedarim_plus_enabled');
+        if (nedarimSetting) setNedarimPlusEnabled(nedarimSetting.value !== 'false');
+        const additionalPaymentSetting = data.find(s => s.key === 'allow_additional_payment_on_order');
+        if (additionalPaymentSetting) setAllowAdditionalPayment(additionalPaymentSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -919,6 +933,9 @@ export default function OrderDetailsPage({ params }) {
       const newDebtCreatedBySave = freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01;
       if (newDebtCreatedBySave) {
         setActiveTab('payments');
+        // חלונית צפה "השלמת תשלום" - רק בנווה יעקב (enableEditSummaryConfirm), במקום
+        // להסתפק במעבר שקט לטאב + הודעת טוסט (ר' הצהרת paymentContinueAmount למעלה).
+        if (enableEditSummaryConfirm) setPaymentContinueAmount(freshDebtNow);
       }
 
       setSaveMessage(newDebtCreatedBySave
@@ -1163,7 +1180,14 @@ export default function OrderDetailsPage({ params }) {
           savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
           pendingDebtBlockRef.current = true;
           setActiveTab('payments');
-          alert(`השינויים נשמרו, אך נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בטאב תשלומים.`);
+          // בנווה יעקב (enableEditSummaryConfirm) מציגים את חלונית "השלמת תשלום" הצפה
+          // במקום alert() רגיל - ר' paymentContinueAmount למעלה. שאר הגמחים ממשיכים לקבל
+          // את ה-alert הרגיל, בלי שינוי התנהגות.
+          if (enableEditSummaryConfirm) {
+            setPaymentContinueAmount(freshDebtNow);
+          } else {
+            alert(`השינויים נשמרו, אך נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בטאב תשלומים.`);
+          }
           return;
         }
 
@@ -1603,6 +1627,64 @@ export default function OrderDetailsPage({ params }) {
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => handleSummaryConfirmDecision(false)}>ביטול</button>
               <button type="button" className="btn btn-primary" onClick={() => handleSummaryConfirmDecision(true)}>אישור ושמירה</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* חלונית צפה "השלמת תשלום" - ר' paymentContinueAmount, מוצגת רק בנווה יעקב אחרי
+          ששמירה/ניסיון יציאה יצרו חוב חדש. לא backdrop חוסם (בכוונה - זו "המשך", לא עוד
+          אישור) - מציעה ישירות את פעולות התשלום הרלוונטיות במקום להשאיר לעובד לחפש אותן
+          בטאב תשלומים. חסימת היציאה עצמה (כשרלוונטי) כבר קרתה קודם ב-handleExit
+          (pendingDebtBlockRef/return) - זה עוד לפני שהחלונית הזו בכלל נפתחת. */}
+      {paymentContinueAmount !== null && typeof document !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', bottom: '20px', insetInlineEnd: '20px', zIndex: 2050, width: '320px', maxWidth: 'calc(100vw - 32px)' }}>
+          <div className="card card-pad" style={{ boxShadow: '0 12px 32px rgba(0,0,0,.22)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+              <div className="modal-icon-circle" style={{ background: 'var(--warning-tint)', color: 'var(--warning)', width: '36px', height: '36px', flex: '0 0 auto' }}>
+                <svg className="icon" style={{ width: '20px', height: '20px' }}><use href="#i-coin" /></svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <strong style={{ fontSize: '14px' }}>נוצר חיוב חדש - השלמת תשלום</strong>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--danger)', marginTop: '2px', direction: 'ltr', textAlign: 'right' }}>
+                  ₪{paymentContinueAmount.toLocaleString('he-IL')}
+                </div>
+              </div>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setPaymentContinueAmount(null)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {nedarimPlusEnabled && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    setPaymentContinueAmount(null);
+                    setActiveTab('payments');
+                    setTimeout(() => paymentsManagerRef.current?.openCreditModal(), 60);
+                  }}
+                >
+                  <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי
+                </button>
+              )}
+              {allowAdditionalPayment && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setPaymentContinueAmount(null);
+                    setActiveTab('payments');
+                    setTimeout(() => paymentsManagerRef.current?.openAdditionalPaymentModal(), 60);
+                  }}
+                >
+                  <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף (מזומן וכו&apos;)
+                </button>
+              )}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPaymentContinueAmount(null)}>
+                אטפל בזה בטאב תשלומים
+              </button>
             </div>
           </div>
         </div>,
