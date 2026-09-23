@@ -902,7 +902,7 @@ export default function SettingsClient({ mode = 'general' }) {
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
             const isFieldGroupsSetting = setting.key === 'mandatory_field_groups';
-            const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy' || setting.key === 'PAYMENT_APPROVAL_LEVEL' || !!SETTINGS_SELECT_OPTIONS[setting.key];
+            const isSelectSetting = setting.type === 'select' || Object.prototype.hasOwnProperty.call(SETTINGS_SELECT_OPTIONS, setting.key);
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
             // ערך מלא ISO שנכתב אוטומטית ע"י הסוכן (agent_fix_loop_last_activity) - שדה
             // תצוגה בלבד, לא לעריכה ידנית. מוצג בזמן ישראל, לא ה-UTC הגולמי מה-DB.
@@ -998,12 +998,12 @@ export default function SettingsClient({ mode = 'general' }) {
                     <select
                       className="select"
                       style={{ width: '100%' }}
-                      value={rawValue || 'all_a'}
+                      value={rawValue || (SETTINGS_SELECT_OPTIONS[setting.key]?.[0]?.value ?? '')}
                       onChange={(e) => handleChange(setting.key, e.target.value)}
                     >
-                      <option value="all_a">שלח הכל מקישור א&apos; (ראשי)</option>
-                      <option value="all_b">שלח הכל מקישור ב&apos; (משני)</option>
-                      <option value="bugs_b_rest_a">דיווחי שגיאות מב&apos;, השאר מא&apos;</option>
+                      {(SETTINGS_SELECT_OPTIONS[setting.key] || []).map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   ) : isDepartmentSetting ? (
                     <DepartmentDropdownPicker

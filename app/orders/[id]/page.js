@@ -14,6 +14,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { addHistory } from '../../../lib/historyManager';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -266,6 +267,9 @@ export default function OrderDetailsPage({ params }) {
   // נקראים כאן בנפרד כי page.js צריך אותם גם בלי לפתוח את הטאב קודם.
   const [nedarimPlusEnabled, setNedarimPlusEnabled] = useState(true);
   const [allowAdditionalPayment, setAllowAdditionalPayment] = useState(false);
+  // order_edit_redirect_screen - מסך היעד כשיוצאים מהכרטיס (handleExit) בלי יעד מפורש
+  // משלו. ברירת מחדל "orders_list" = ההתנהגות הקודמת (חזרה לרשימת ההזמנות).
+  const [orderEditRedirectScreen, setOrderEditRedirectScreen] = useState('orders_list');
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -289,6 +293,8 @@ export default function OrderDetailsPage({ params }) {
         if (nedarimSetting) setNedarimPlusEnabled(nedarimSetting.value !== 'false');
         const additionalPaymentSetting = data.find(s => s.key === 'allow_additional_payment_on_order');
         if (additionalPaymentSetting) setAllowAdditionalPayment(additionalPaymentSetting.value === 'true');
+        const editRedirect = data.find(s => s.key === 'order_edit_redirect_screen');
+        if (editRedirect && editRedirect.value) setOrderEditRedirectScreen(editRedirect.value);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -1045,6 +1051,12 @@ export default function OrderDetailsPage({ params }) {
   const createdDate = order.orderDate || order.createdAt;
 
   const handleExit = async (destinationHref) => {
+    // מסך יעד כשלא צוין destinationHref מפורש (כפתור "חזור" הרגיל) - מותנה ב-
+    // order_edit_redirect_screen, ברירת מחדל "orders_list" = ההתנהגות הקודמת.
+    const fallbackExitHref = resolveOrderRedirectHref(orderEditRedirectScreen, {
+      orderId: order.orderId,
+      customerId: order.customerId,
+    });
     // צפייה בלבד — אין שום שינוי לשמור, ולכן יוצאים מיד בלי PUT לשרת (שמריץ חישוב
     // תמחור מלא, כותב ל-AuditLog ומקפיץ updatedAt על כל יציאה). בקרת החוב ביציאה
     // רלוונטית רק כשנוצר/השתנה חוב בכרטיס הזה, וזה תמיד עובר דרך שמירה (handleSave
@@ -1057,7 +1069,7 @@ export default function OrderDetailsPage({ params }) {
         // קבוע, לא היסטוריית דפדפן. router.back() היה שקט לגמרי (בלי שום ניווט) כשהכרטיס
         // נפתח בלי היסטוריית ניווט קודמת בטאב (קישור ישיר/רענון) - שני דיווחי משתמש
         // "כפתור חזור לא מגיב" (2026-09-09).
-        router.push('/orders');
+        router.push(fallbackExitHref);
       }
       return;
     }
@@ -1075,7 +1087,7 @@ export default function OrderDetailsPage({ params }) {
         if (destinationHref) {
           router.push(destinationHref);
         } else {
-          router.push('/orders');
+          router.push(fallbackExitHref);
         }
         return;
       }
@@ -1254,7 +1266,7 @@ export default function OrderDetailsPage({ params }) {
       if (destinationHref) {
         router.push(destinationHref);
       } else {
-        router.push('/orders');
+        router.push(fallbackExitHref);
       }
     } catch (err) {
       setSaving(false);
