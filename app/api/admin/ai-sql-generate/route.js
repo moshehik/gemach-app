@@ -7,6 +7,7 @@ import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { buildDateContext, getFullSchemaContext, normalizeAiSql } from '../../../../lib/ai/aiCommon';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
 import { getFeatureRestrictionConfig, buildRestrictionPromptBlock } from '../../../../lib/ai/restrictionsConfig';
+import { checkNoCredentialExposure } from '../../../../lib/sqlGuard';
 
 const getSchemaContext = getFullSchemaContext;
 
@@ -62,6 +63,15 @@ export async function POST(req) {
     query = query.trim();
     
     query = normalizeAiSql(processHebrewDateMacro(query));
+
+    // Unlike every other AI feature (chat/statistics/smart-search), this generator must let
+    // the AI write INSERT/UPDATE/DELETE for a trusted admin - so it can't run the full
+    // read-only sqlGuard check. It must still never generate a query touching employee
+    // credentials, so the narrower credential-only check applies here instead.
+    const credCheck = checkNoCredentialExposure(query);
+    if (!credCheck.ok) {
+      return NextResponse.json({ error: `השאילתה שנוצרה נוגעת בעמודות מוגנות (סיסמאות/קודי כניסה) ולא תוחזר: ${credCheck.reason}. ניסחי מחדש את הבקשה בלי לבקש מידע על סיסמאות/קודי כניסה של עובדים.` }, { status: 400 });
+    }
 
     return NextResponse.json({ sql: query });
   } catch (error) {
