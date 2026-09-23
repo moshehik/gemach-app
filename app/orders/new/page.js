@@ -2146,6 +2146,7 @@ export default function NewOrderPage() {
                   <label htmlFor="item-model">דגם <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <OrderModelSelector
                     inputId="item-model"
+                    hasActiveItems
                     value={{ name: newItem.dressName }}
                     onChange={(model) => {
                       if (!model || !model.id) {

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
-export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId }) {
+export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId, hasActiveItems = false }) {
   const [query, setQuery] = useState('');
   const [models, setModels] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -79,7 +79,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
       setIsLoading(true);
       try {
         // מטמון משותף — אותם חיפושי דגמים חוזרים על עצמם שוב ושוב בזמן קליטת הזמנה
-        const data = await fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(effectiveQuery)}`, { ttl: TTL.REFERENCE });
+        const data = await fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(effectiveQuery)}${hasActiveItems ? '&hasActiveItems=true' : ''}`, { ttl: TTL.REFERENCE });
         if (!cancelled) setModels(data.models || []);
       } catch (err) {
         console.error('Failed to fetch models', err);
@@ -90,7 +90,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
 
     const timeoutId = setTimeout(fetchModels, 300);
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [effectiveQuery]);
+  }, [effectiveQuery, hasActiveItems]);
 
   // Sync text if value changes from outside (e.g., reset)
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
     let match = findExact(models);
     if (!match) {
       try {
-        const data = await fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(typed)}`, { ttl: TTL.REFERENCE });
+        const data = await fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(typed)}${hasActiveItems ? '&hasActiveItems=true' : ''}`, { ttl: TTL.REFERENCE });
         match = findExact(data.models);
       } catch (err) {
         console.error('Failed to resolve typed model', err);
