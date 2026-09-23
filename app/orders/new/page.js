@@ -481,15 +481,23 @@ export default function NewOrderPage() {
     firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', email: 'אימייל', city: 'עיר', street: 'רחוב', houseNum: 'מספר בית', marketingConsent: 'אישור דיוור'
   };
 
+  // האם `key` מסומן כ"שדה חובה" ב-CustomerFieldsCheckboxPicker (הגדרת mandatory_fields) -
+  // נשען ישירות כדי שגם כוכביות ה-* על אימייל/עיר/רחוב/מס' בית יסכימו עם מה שבאמת נאכף
+  // (getMissingMandatoryCustomerFields למטה), לא רק עם המתגים הייעודיים require_customer_email
+  // / require_full_address (דיווח: אפשר לסמן "אימייל" חובה בהגדרות הכלליות בלי שתופיע כוכבית).
+  const isFieldMandatoryFromPicker = (key) => {
+    const configuredMandatory = (settings.mandatory_fields || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    return (CUSTOMER_FIELD_ALIASES[key] || []).some(alias => configuredMandatory.includes(alias.toLowerCase()));
+  };
+
   // משותף בין טופס "לקוח חדש" (חסימה קשיחה) לבין אישור התאמת לקוח קיים
   // (חסימה רכה עם אפשרות לדלג באישור מפורש) — כדי ששני המסלולים יבדקו בדיוק אותם שדות.
   // בקשה 4: חובה גם מייל + כתובת מלאה + אישור דיוורים כאשר ההגדרות המתאימות מופעלות.
   const getMissingMandatoryCustomerFields = (customerObj) => {
-    const configuredMandatory = (settings.mandatory_fields || '')
-      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     const baseMissing = Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
       const alwaysRequired = key === 'firstName' || key === 'lastName' || key === 'phone1';
-      const isRequired = alwaysRequired || CUSTOMER_FIELD_ALIASES[key].some(alias => configuredMandatory.includes(alias.toLowerCase()));
+      const isRequired = alwaysRequired || isFieldMandatoryFromPicker(key);
       return isRequired && !String(customerObj[key] || '').trim();
     });
     // 4: אכיפה נוספת לפי מתגי חובה ייעודיים (לא רק mandatory_fields)
@@ -1823,7 +1831,7 @@ export default function NewOrderPage() {
                     <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
-                    <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                    <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldMandatoryFromPicker('email') || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
@@ -1850,25 +1858,25 @@ export default function NewOrderPage() {
                     בחלונית מוסתרת"). */}
                 <NocCollapsible
                   title="פרטים נוספים"
-                  openWhen={settings.require_full_address === 'true' || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
+                  openWhen={settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city') || isFieldMandatoryFromPicker('street') || isFieldMandatoryFromPicker('houseNum') || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
                 >
                   <div className="form-grid">
                     <div className="field">
-                      <label htmlFor="cust-city">עיר מגורים {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                      <label htmlFor="cust-city">עיר מגורים {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-city-list">
                         {customerLocations.cities.map(c => <option key={c} value={c} />)}
                       </datalist>
                     </div>
                     <div className="field">
-                      <label htmlFor="cust-street">רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                      <label htmlFor="cust-street">רחוב {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('street')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-street-list">
                         {customerLocations.streets.map(s => <option key={s} value={s} />)}
                       </datalist>
                     </div>
                     <div className="field">
-                      <label htmlFor="cust-house">מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                      <label htmlFor="cust-house">מספר בית {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('houseNum')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                     </div>
                   </div>
@@ -2019,12 +2027,21 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   {settings.phone_order_marker_enabled === 'true' && (
                     <div className="field">
-                      <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                        {/* 6 - הזמנה טלפונית וסניף ביצוע לא יכולים להיות מסומנים יחד - סימון
-                            "טלפונית" מנקה סניף שנבחר (ור' onChange של ה-select למטה, שמנקה בכיוון ההפוך) */}
-                        <input type="checkbox" checked={!!order.isPhoneOrder} onChange={e => setOrder(prev => ({ ...prev, isPhoneOrder: e.target.checked, branch: e.target.checked ? '' : prev.branch }))} />
-                        <span>הזמנה טלפונית</span>
-                      </label>
+                      <label>הזמנה טלפונית</label>
+                      {/* 6 - הזמנה טלפונית וסניף ביצוע לא יכולים להיות מסומנים יחד - סימון
+                          "טלפונית" מנקה סניף שנבחר (ור' onChange של ה-select למטה, שמנקה בכיוון ההפוך).
+                          שדה זה קיבל label עליון + switch (במקום checkbox רגיל) כדי להתיישר
+                          עם שורת "סניף ביצוע" הסמוכה, שגם היא label למעלה + control למטה. */}
+                      <div style={{ display: 'flex', alignItems: 'center', minHeight: '37px' }}>
+                        <span
+                          className={`switch${order.isPhoneOrder ? ' on' : ''}`}
+                          role="switch"
+                          aria-checked={!!order.isPhoneOrder}
+                          tabIndex={0}
+                          onClick={() => setOrder(prev => { const next = !prev.isPhoneOrder; return { ...prev, isPhoneOrder: next, branch: next ? '' : prev.branch }; })}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOrder(prev => { const next = !prev.isPhoneOrder; return { ...prev, isPhoneOrder: next, branch: next ? '' : prev.branch }; }); } }}
+                        />
+                      </div>
                     </div>
                   )}
                   {/* 13 - זיהוי סניף ביצוע: מותנה ב-track_branch_on_order (לא ב-branches_enabled -

@@ -27,6 +27,12 @@ const CATEGORY_ICONS = SETTINGS_CATEGORY_ICONS;
 const HEBREW_NAMES = SETTINGS_HEBREW_NAMES;
 const HEBREW_NOTES = SETTINGS_HEBREW_NOTES;
 
+// הרשימה המלאה - משמשת גם את FieldGroupsEditor למטה (בחירת שדות לקבוצות "אחד מספיק"),
+// ששם זה רלוונטי לכל שדה טקסט של הלקוח. עבור "שדות חובה" הרגילים (הפיקר הבא) יש
+// ENFORCEABLE_FIELD_KEYS נפרד - כי בפועל רק חלק מהשדות כאן נבדקים בטופס הזמנה חדשה
+// (app/orders/new/page.js: CUSTOMER_FIELD_ALIASES) - שאר השדות (הערות/פרטי בנק) נערכים
+// רק בכרטיס הלקוח עצמו ולא נאכפים בשום מקום, אז סימונם "חובה" כאן לא היה עושה דבר
+// בפועל (דיווח: "לא כל השדות שמסומנים כחובה באמת נאכפים").
 const CUSTOMER_FIELDS = [
   { key: 'firstName', name: 'שם פרטי', alias: 'שם_פרטי' },
   { key: 'lastName', name: 'שם משפחה', alias: 'שם_משפחה' },
@@ -42,6 +48,10 @@ const CUSTOMER_FIELDS = [
   { key: 'bankBranch', name: 'סניף בנק', alias: 'סניף' },
   { key: 'bankAccount', name: 'חשבון בנק', alias: 'חשבון' }
 ];
+
+// שדות שבאמת נאכפים כ"שדה חובה רגיל" (חוסמים שמירת הזמנה/לקוח עד שימולאו) - טלפון נוסף
+// יצא מהרשימה כי הוא מנוהל אך ורק דרך "קבוצות שדות" למטה (אחד מספיק מבין טלפון נוסף/אימייל).
+const ENFORCEABLE_FIELD_KEYS = ['firstName', 'lastName', 'phone1', 'email', 'city', 'street', 'houseNum'];
 
 function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -61,6 +71,8 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [isOpen]);
+
+  const fields = CUSTOMER_FIELDS.filter(f => ENFORCEABLE_FIELD_KEYS.includes(f.key));
 
   const rawItems = (value || '')
     .split(',')
@@ -91,7 +103,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   };
 
   const selectAll = () => {
-    const allAliases = CUSTOMER_FIELDS.map(f => f.alias || f.name);
+    const allAliases = fields.map(f => f.alias || f.name);
     onChange(allAliases.join(', '));
   };
 
@@ -99,7 +111,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
     onChange('');
   };
 
-  const count = CUSTOMER_FIELDS.filter(f => isSelected(f)).length;
+  const count = fields.filter(f => isSelected(f)).length;
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', display: 'flex', gap: '8px' }}>
@@ -148,8 +160,12 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
             </div>
           </div>
 
+          <p className="hint" style={{ margin: 0, color: 'var(--text-3)' }}>
+            שדה מסומן חוסם שמירת ההזמנה/הלקוח כל עוד הוא ריק (כוכבית אדומה מוצגת ליד השדה בטופס). לדרישת "אחד מספיק מבין שני שדות" (למשל טלפון נוסף / אימייל) - ר&apos; &quot;קבוצות שדות&quot; למטה.
+          </p>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
-            {CUSTOMER_FIELDS.map(field => {
+            {fields.map(field => {
               const active = isSelected(field);
 
               return (
