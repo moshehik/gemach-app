@@ -15,6 +15,7 @@ import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
+import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -1336,7 +1337,12 @@ export default function NewOrderPage() {
       if (settings.auto_print_on_order_create === 'true' && data.orderId) {
         window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank');
       }
-      router.push(`/orders/${data.orderId}`);
+      // 42 - מסך יעד אחרי יצירת הזמנה, מותנה ב-order_new_redirect_screen (ברירת מחדל
+      // "order" = ההתנהגות הקודמת, כרטיס ההזמנה שזה עתה נוצרה).
+      router.push(resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
+        orderId: data.orderId,
+        customerId: data.customerId,
+      }));
     } catch (error) {
       console.error(error);
       alert(`שגיאה בשמירת הזמנה: ${error.message}`);
