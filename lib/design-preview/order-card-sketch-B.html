@@ -14,7 +14,7 @@
   --sky-50:#f3f9fe; --sky-100:#e4f1fb; --sky-200:#cfe6f7; --sky-300:#a9d2f0; --sky-400:#7fb8e6;
   --gold-50:#fbf6e3; --gold-100:#f4e8c1; --gold-300:#e0c56e; --gold:#c9a227; --gold-b:#b8912f; --gold-d:#9a7a1f; --gold-700:#6f5710;
   --rose-50:#fbf6e3; --rose-100:#f4e8c1; --rose-200:#ecd99b; --rose-300:#e0c56e; --rose-500:#b8912f; --rose-700:#6f5710; /* surfaces: gold tints (no pink) */
-  --pink-300:#ff0a9e; --pink-500:#ff0a9e; --pink-d:#d6007f; --pbtn:linear-gradient(135deg,#ff0a9e 0%,#f0008f 100%);
+  --pink-300:#ff6ec0; --pink-500:#ff6ec0; --pink-d:#ff3fa6; --pbtn:#ff6ec0;
   --gbtn:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%);
   --gbtn-d:#9a7a1f;
   /* semantic aliases (mapped ONLY to the 3 families) */
@@ -768,6 +768,42 @@ body{background-image:radial-gradient(1200px 500px at 85% -10%,var(--sky-50) 0,t
 .btn:disabled,.btn:disabled:hover{background:var(--gold-50);color:var(--gold-700);border:2px solid var(--gold-300);box-shadow:none}
 .rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border:2px solid var(--navy-500)}
 .btn,.ibtn,.back{transition:background-color 180ms,color 180ms,border-color 180ms}
+
+/* ===== FINAL BUTTONS: pink fill + black border (actions), gold fill + black border (save/confirm) ===== */
+.btn,.btn.danger,.btn.ghost,.btn.navy,.ibtn,.back,.demo button,.mbar .btn,#toast button,.rcard .btn,.rcard .btn.ghost{background:#ff0a9e;color:#000;border:2px solid #000;box-shadow:none}
+.btn.primary,.btn.green,.rcard .btn.primary,.mbar .btn.primary{background:var(--gbtn);color:#000;border:2px solid #000;box-shadow:inset 0 1px 0 rgba(255,240,180,.8);font-weight:600}
+.btn:hover,.btn.danger:hover,.btn.ghost:hover,.btn.navy:hover,.ibtn:hover,.back:hover,.ibtn.danger:hover,.demo button:hover,.mbar .btn:hover,#toast button:hover{background:var(--navy);color:#fff;border-color:#000;box-shadow:none}
+.btn.primary:hover,.btn.green:hover,.rcard .btn.primary:hover,.mbar .btn.primary:hover{background:linear-gradient(135deg,#b8912f,#8f6f17);color:#000;border-color:#000}
+.rcard .btn:hover,.rcard .btn.ghost:hover{background:#fff;color:#000;border-color:#000}
+.rcard .btn.primary:hover{background:linear-gradient(135deg,#b8912f,#8f6f17)}
+.btn:disabled,.btn:disabled:hover{background:var(--gold-50);color:var(--gold-700);border:2px solid var(--gold-300);box-shadow:none}
+.rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border:2px solid var(--navy-500)}
+.btn:focus-visible,.ibtn:focus-visible,.back:focus-visible,.demo button:focus-visible,#toast button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.rcard .btn:focus-visible{outline-color:var(--gold-300)}
+
+/* ===== REFINED BUTTONS: light pink #ff6ec0 + gold, 1.5px black border, shared radius/weight ===== */
+.btn,.btn.danger,.btn.ghost,.btn.navy,.ibtn,.back,.demo button,.mbar .btn,#toast button,.rcard .btn,.rcard .btn.ghost{background:#ff6ec0;color:#000;border:1.5px solid #000;border-radius:14px;font-weight:600;box-shadow:none}
+.back{border-radius:50%}
+.btn.primary,.btn.green,.rcard .btn.primary,.mbar .btn.primary{background:var(--gbtn);color:#000;border:1.5px solid #000;border-radius:14px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,244,196,.7)}
+.btn:hover,.btn.danger:hover,.btn.ghost:hover,.btn.navy:hover,.ibtn:hover,.back:hover,.ibtn.danger:hover,.demo button:hover,.mbar .btn:hover,#toast button:hover,.rcard .btn:hover,.rcard .btn.ghost:hover{background:#ff3fa6;color:#000;border-color:#000;transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(15,44,82,.45)}
+.btn.primary:hover,.btn.green:hover,.rcard .btn.primary:hover,.mbar .btn.primary:hover{background:linear-gradient(135deg,#c9a227,#a3821c);color:#000;transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(15,44,82,.45)}
+.btn:active,.ibtn:active,.back:active{transform:none;box-shadow:none}
+.btn:disabled,.btn:disabled:hover{transform:none}
+.btn .ic,.ibtn .ic{stroke-width:2}
+.btn.sm{border-radius:12px}
+.ibtn{border-radius:12px}
+
+/* ===== ALL BUTTONS: luxurious gold. Pink kept as opt-in .btn-pink ===== */
+.btn,.btn.danger,.btn.ghost,.btn.navy,.btn.primary,.btn.green,.ibtn,.back,.demo button,.mbar .btn,.mbar .btn.primary,#toast button,.rcard .btn,.rcard .btn.ghost,.rcard .btn.primary{background:var(--gbtn);color:#000;border:1.5px solid #000;border-radius:14px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,244,196,.7)}
+.back{border-radius:50%}
+.btn:hover,.btn.danger:hover,.btn.ghost:hover,.btn.navy:hover,.btn.primary:hover,.btn.green:hover,.ibtn:hover,.back:hover,.ibtn.danger:hover,.demo button:hover,.mbar .btn:hover,#toast button:hover,.rcard .btn:hover,.rcard .btn.ghost:hover,.rcard .btn.primary:hover{background:linear-gradient(135deg,#c9a227,#9a7a1f);color:#000;border-color:#000;transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(15,44,82,.45)}
+.btn:disabled,.btn:disabled:hover{background:var(--gold-50);color:var(--gold-700);border:1.5px solid var(--gold-300);box-shadow:none;transform:none}
+.rcard .btn:disabled,.rcard .btn:disabled:hover{background:var(--navy-700);color:var(--sky-300);border:1.5px solid var(--navy-500)}
+.btn:focus-visible,.ibtn:focus-visible,.back:focus-visible,.demo button:focus-visible,#toast button:focus-visible{outline:3px solid var(--navy);outline-offset:3px;box-shadow:0 0 0 6px var(--gold)}
+.rcard .btn:focus-visible{outline-color:#fff;box-shadow:0 0 0 6px var(--gold)}
+/* opt-in pink (unused for now) */
+.btn.btn-pink,.ibtn.btn-pink{background:var(--pbtn);color:#000;border:1.5px solid #000}
+.btn.btn-pink:hover,.ibtn.btn-pink:hover{background:var(--pink-d);color:#000}
 </style>
 </head>
 <body>
@@ -1151,7 +1187,7 @@ function pPayments(){
       ${bal>0?`<span class="chip red">${ic('alert')}חוב</span>`:bal<0?`<span class="chip rose">${ic('undo')}יתרת זכות</span>`:`<span class="chip green">${ic('check')}שולם במלואו</span>`}</div>
     <div class="bal"><div><div class="faint sm">נשאר לתשלום</div><div class="n" style="color:${bal>0?'var(--red)':'var(--green)'}">${money(Math.max(0,bal))}</div></div>
       <div style="flex:1;min-width:200px"><div class="row spread sm muted"><span>שולם ${money(Math.min(paid,tot))}</span><span>מתוך ${money(tot)}</span></div><div class="pbar"><i style="width:${pct}%"></i></div></div></div>
-    ${bal>0?`<button class="btn ${dirty()?'':'primary'} lg block" style="margin-top:24px" data-act="pay-now" data-amt="${bal}">${ic('card')}קבלת תשלום ${money(bal)}</button>`:''}
+    ${bal>0?`<button class="btn lg block" style="margin-top:24px" data-act="pay-now" data-amt="${bal}">${ic('card')}קבלת תשלום ${money(bal)}</button>`:''}
   </div>
   <div class="card">
     <div class="card-h"><div class="ico rose">${ic('file','lg')}</div><h2>חיובים ${tip('החיובים מתעדכנים אוטומטית לפי הפריטים והמשלוח. אין צורך להוסיף חיוב ידנית.')}</h2></div>
