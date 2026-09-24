@@ -109,6 +109,8 @@ html[data-motion=reduced] *,html[data-motion=reduced] *::before,html[data-motion
 .app{height:100dvh;display:flex;flex-direction:column}
 .screen{flex:1;min-height:0;display:flex;flex-direction:column}
 .scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-padding-top:16px}
+/* REVIEW-touch-1 M-2: בטלפון/טאבלט צר הכותרת+סרגל הכלים גבוהים (עד ~550px) — הם נגללים יחד עם התוכן (ציר גלילה אחד, עדיין בתוך .screen ולא המסמך) */
+@media (max-width:767px){.screen{overflow-y:auto;overscroll-behavior:contain}.screen>.scroll{flex:none;min-height:auto;overflow:visible}}
 .wrap{max-width:1440px;margin:0 auto;padding:var(--v3-sp-5);padding-bottom:calc(var(--v3-sp-7) + env(safe-area-inset-bottom))}
 @media (max-width:640px){.wrap{padding:var(--v3-sp-4)}}
 
@@ -194,7 +196,7 @@ select.input{appearance:none;background-image:none;padding-inline-end:16px}
 .day.today{border:2px dashed var(--v3-gold-600)}
 .day[aria-pressed=true]{background:var(--v3-navy-800);color:#fff;border-color:var(--v3-navy-800);box-shadow:inset 0 -4px 0 var(--v3-gold-500)}
 .day[aria-pressed=true] small{color:var(--v3-on-dark-2)}
-.day.muted{background:transparent;color:var(--v3-disabled-ink);opacity:.55;cursor:default;pointer-events:none}
+.day.muted{background:transparent;color:var(--v3-ink-3);font-weight:400;cursor:default;pointer-events:none} /* REVIEW-touch-1 M-4: היה opacity .55 = 2.33:1 */
 .cal-foot{display:flex;align-items:center;gap:var(--v3-sp-3);flex-wrap:wrap;margin-top:var(--v3-sp-4);padding-top:var(--v3-sp-3);border-top:1px solid var(--v3-line-soft)}
 .cal-foot .hd{flex:1;min-width:200px;display:flex;flex-direction:column}
 .cal-foot .hd b{font-size:var(--v3-fs-xl)}
@@ -249,6 +251,7 @@ select.input{appearance:none;background-image:none;padding-inline-end:16px}
 .dress.tap:hover{border-color:var(--v3-navy-500);box-shadow:var(--v3-el-1)}
 .dress .d-top{display:flex;gap:14px;align-items:center;min-width:0}
 .dress .d-name{display:flex;flex-direction:column;min-width:0;flex:1}
+.d-open{border:0;background:none;padding:0;text-align:start;min-height:var(--v3-tap-touch);justify-content:center;border-radius:var(--v3-r-md);color:inherit;cursor:pointer}
 .dress .d-name b{font-size:var(--v3-fs-xl);font-weight:600;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dress .d-name span{font-size:var(--v3-fs-base);color:var(--v3-ink-3)}
 .res-list .dress{flex-direction:row;flex-wrap:wrap;align-items:center}
@@ -368,7 +371,8 @@ html[data-motion=reduced] .b-timer{animation-duration:var(--t-ms,3000ms)!importa
 .ord:first-child{border-top:0}
 .ord .o-t{flex:1;min-width:0;display:flex;flex-direction:column}
 .ord .o-t b{font-size:var(--v3-fs-lg)}
-.ord .o-t span{font-size:var(--v3-fs-base);color:var(--d-sub);overflow-wrap:anywhere}
+.ord .o-t span:not(.chip){font-size:var(--v3-fs-base);color:var(--d-sub);overflow-wrap:anywhere} /* REVIEW-touch-1 M-5 */
+.ord .o-t .chip{align-self:flex-start;margin-top:4px}
 .fam{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;text-align:start;align-self:stretch}
 .fam li{padding:8px 12px;border-radius:12px;background:var(--d-row);font-size:var(--v3-fs-lg)}
 @media (max-width:640px){
@@ -461,8 +465,8 @@ html[data-long] .dress .d-name b{-webkit-line-clamp:3}
     <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></symbol>
     <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/></symbol>
     <symbol id="i-ruler" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 7v4M10 7v3M14 7v4M18 7v3"/></symbol>
-    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="M14 8l-4 4 4 4"/><path d="M10 12h10"/></symbol>
-    <symbol id="i-login" viewBox="0 0 24 24"><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h10"/></symbol><!-- REVIEW-touch-1 M-3: יציאה ב-RTL = חץ שמאלה שיוצא מהדלת שבימין -->
+    <symbol id="i-login" viewBox="0 0 24 24"><path d="M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5"/><path d="M14 8l-4 4 4 4"/><path d="M10 12h10"/></symbol><!-- כניסה ב-RTL = חץ שמאלה אל תוך הדלת שבשמאל -->
     <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M11 10.5v-2a1.5 1.5 0 0 1 3 0V11"/><path d="M14 10a1.5 1.5 0 0 1 3 0v1.5"/><path d="M17 11a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L4.3 15a1.5 1.5 0 0 1 2.4-1.8L8 15"/></symbol>
     <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-9V3"/></symbol>
     <symbol id="i-washer" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="13" r="4.5"/><path d="M7 6.5h.01M10 6.5h4"/></symbol>
@@ -490,8 +494,10 @@ html[data-long] .dress .d-name b{-webkit-line-clamp:3}
   <div><h3>פרופיל הגדרות (ערכי דמה — לא אומתו מול DB)</h3>
     <div class="row"><select id="dProfile" aria-label="פרופיל הגדרות"><option value="org1">ארגון א׳</option><option value="org2">ארגון ב׳</option><option value="min">מינימלי (הכול חסר)</option><option value="max">קיצוני (הכול דלוק, ערכים ארוכים)</option></select></div>
     <label class="dchk"><input type="checkbox" id="dSelf"> רישום עצמי בעמדה</label>
-    <label class="dchk"><input type="checkbox" id="dAi"> עוזר חכם מוצג</label>
+    <label class="dchk"><input type="checkbox" id="dAi"> הגדרה: עוזר חכם לא מוסתר</label>
+    <label class="dchk"><input type="checkbox" id="dAiPerm" checked> לאיש הצוות המחובר יש הרשאת עוזר חכם</label>
     <label class="dchk"><input type="checkbox" id="dImg"> תמונות דגמים מוצגות</label>
+    <label class="dchk"><input type="checkbox" id="dGreg"> תאריך לועזי בלוח מוצג</label>
     <label class="dchk"><input type="checkbox" id="dLaundry"> בדיקת החזרות ביציאה (שעון)</label>
   </div>
   <div><h3>נתונים ומצבים</h3>
@@ -523,7 +529,7 @@ const failOn = () => $('#dFail').checked;
 /* ===== config (מדמה useOrgConfig). ברירות המחדל = ההתנהגות כשהשורה חסרה ===== */
 const REG = { kiosk_customer_self_service:'false', hide_ai_features:'false', enable_ai_specific_employees:'false', hide_dress_images:'false',
   require_customer_email:'false', require_full_address:'false', require_marketing_consent:'false', hide_marketing_consent_field:'false', mandatory_fields:'',
-  mandatory_field_groups:'', require_customer_id_number:'false', strict_mandatory_fields:'false', laundress_return_check_on_exit:'false' };
+  mandatory_field_groups:'', hide_gregorian_calendar:'false', require_customer_id_number:'false', strict_mandatory_fields:'false', laundress_return_check_on_exit:'false' };
 const PROFILES = {
   org1:{ s:{ hide_marketing_consent_field:'true' } },
   org2:{ s:{ kiosk_customer_self_service:'true', require_customer_id_number:'true', laundress_return_check_on_exit:'true' } },
@@ -531,7 +537,9 @@ const PROFILES = {
   max:{ s:{ kiosk_customer_self_service:'true', require_customer_email:'true', require_full_address:'true', require_marketing_consent:'true', mandatory_fields:'עיר', laundress_return_check_on_exit:'true' }, long:true }
 };
 const cfg = { s:{}, v(k){ return this.s[k] ?? REG[k]; }, on(k){ return this.v(k) === 'true'; } };
-const aiOn = () => !cfg.on('hide_ai_features') && !cfg.on('enable_ai_specific_employees');
+const aiSettingOn = () => !cfg.on('hide_ai_features') && !cfg.on('enable_ai_specific_employees');
+/* REVIEW-touch-1 M-1: layout.js מסתיר את העוזר (body.hide-ai-features) לכל מי שאין לו feature:ai — כולל כל אורח לא מחובר, בלי קשר ל-require_login */
+const aiOn = () => aiSettingOn() && $('#dAiPerm').checked && !$('#dNoSession').checked;
 
 /* =========================================================
    לוח עברי — Intl (לוח עברי מובנה בדפדפן) במקום @hebcal בהדגמה
@@ -596,8 +604,8 @@ function render(){
   document.documentElement.dataset.screen = k ? 'kiosk' : 'punch';
   $('#topbar').hidden = k && S.locked;               /* TK-3: הסרגל הגלובלי מוסתר רק כשהעמדה נעולה */
   $('#tbNote').innerHTML = k ? `${ic('unlock','sm')}<span>העמדה פתוחה לעובדים. לפני שמוסרים ללקוחה — נועלים.</span>` : `${ic('clock','sm')}<span>אפשר לרשום נוכחות גם בלי להיכנס למערכת</span>`;
-  const scr = $('#screen'); const keep = scr.querySelector('.scroll') ? scr.querySelector('.scroll').scrollTop : 0;
-  scr.innerHTML = k ? renderKiosk() : renderPunch();
+  const scr = $('#screen'); const keep = scr.querySelector('.scroll') ? scr.querySelector('.scroll').scrollTop : 0; const keepScr = scr.scrollTop;
+  scr.innerHTML = k ? renderKiosk() : renderPunch(); scr.scrollTop = keepScr;
   const sc = scr.querySelector('.scroll'); if (sc) sc.scrollTop = keep;
 }
 
@@ -637,10 +645,11 @@ function calendarCard(){
   const months = []; let ms = S.view;
   for (let i = 0; i < 3; i++){ const hh = heb(ms); const cells = []; let x = ms; while (heb(x).m === hh.m){ cells.push(x); x = addDays(x, 1); } months.push({ label:`${hh.m} ${gem(hh.y)}`, cells, next:x }); ms = x; }
   const today = dayStart(new Date());
-  const grid = mo => { const lead = mo.cells[0].getDay(); let out = ''; for (let i = lead; i > 0; i--){ const dd = addDays(mo.cells[0], -i); out += `<span class="day muted" aria-hidden="true">${gem(heb(dd).d)}<small>${dd.getDate()}</small></span>`; }
-    mo.cells.forEach(dd => { const hd = heb(dd); const on = sameDay(dd, S.date); out += `<button type="button" class="day ${sameDay(dd, today) ? 'today' : ''}" data-day="${dd.toISOString()}" aria-pressed="${on}" aria-label="${esc(`${gem(hd.d)} ב${hd.m} ${gem(hd.y)}, ${gregStr(dd)}`)}${sameDay(dd, today) ? ' (היום)' : ''}">${gem(hd.d)}<small>${dd.getDate()}</small></button>`; });
+  const noGreg = cfg.on('hide_gregorian_calendar'); const gs = dd => noGreg ? '' : `<small>${dd.getDate()}</small>`; /* hide_gregorian_calendar (K-36) */
+  const grid = mo => { const lead = mo.cells[0].getDay(); let out = ''; for (let i = lead; i > 0; i--){ const dd = addDays(mo.cells[0], -i); out += `<span class="day muted" aria-hidden="true">${gem(heb(dd).d)}${gs(dd)}</span>`; }
+    mo.cells.forEach(dd => { const hd = heb(dd); const on = sameDay(dd, S.date); out += `<button type="button" class="day ${sameDay(dd, today) ? 'today' : ''}" data-day="${dd.toISOString()}" aria-pressed="${on}" aria-label="${esc(`${gem(hd.d)} ב${hd.m} ${gem(hd.y)}, ${gregStr(dd)}`)}${sameDay(dd, today) ? ' (היום)' : ''}">${gem(hd.d)}${gs(dd)}</button>`; });
     const trail = (7 - (lead + mo.cells.length) % 7) % 7; let t = addDays(mo.cells[mo.cells.length - 1], 1);
-    for (let i = 0; i < trail; i++, t = addDays(t, 1)) out += `<span class="day muted" aria-hidden="true">${gem(heb(t).d)}<small>${t.getDate()}</small></span>`;
+    for (let i = 0; i < trail; i++, t = addDays(t, 1)) out += `<span class="day muted" aria-hidden="true">${gem(heb(t).d)}${gs(t)}</span>`;
     return out; };
   return `<section class="card cal-card" aria-labelledby="calT">
     <div class="card-h"><span class="ico">${ic('cal','','pop')}</span><div style="flex:1;min-width:0"><h2 id="calT">מתי האירוע?</h2><p>נוגעים ביום — ומיד רואים אילו שמלות פנויות.</p></div>
@@ -654,7 +663,7 @@ function calendarCard(){
       <span class="range-t">${esc(months[0].label)} – ${esc(months[2].label)}</span>
       <button type="button" class="ibtn quiet" data-cal-nav="1" aria-label="חודש הבא" data-tip="חודש הבא">${ic('next-m','','nudge')}</button></div>
     <div class="months">${months.map(mo => `<div class="month"><h3>${esc(mo.label)}</h3><div class="wd" aria-hidden="true">${['א','ב','ג','ד','ה','ו','ש'].map(x => `<span>${x}</span>`).join('')}</div><div class="days">${grid(mo)}</div></div>`).join('')}</div>
-    <div class="cal-foot"><div class="hd"><b>${esc(hebStr(S.date))}</b><span><bdi>${gregStr(S.date)}</bdi> · פרשת השבוע ${tip('במערכת מוצגת כאן פרשת השבת הקרובה לתאריך. בהדגמה לא מחושבת.')}</span></div>
+    <div class="cal-foot"><div class="hd"><b>${esc(hebStr(S.date))}</b><span>${noGreg ? '' : `<bdi>${gregStr(S.date)}</bdi> · `}פרשת השבוע ${tip('במערכת מוצגת כאן פרשת השבת הקרובה לתאריך. בהדגמה לא מחושבת.')}</span></div>
       <button type="button" class="btn quiet" data-act="today">${ic('refresh','','spin')}חזרה להיום</button></div>
   </section>`;
 }
@@ -727,16 +736,16 @@ function renderResultsBar(){
         ${S.zoomOpen ? `<div class="zoom-pop" role="dialog" aria-label="גודל התצוגה"><div class="field"><label for="zr">גודל התצוגה: <bdi>${Math.round(S.zoom * 100)}%</bdi></label><input type="range" id="zr" min="0.5" max="1.5" step="0.1" value="${S.zoom}"><div class="ends"><span>קטן</span><span>גדול</span></div></div></div>` : ''}</div>
       <button type="button" class="tbtn" data-step="1">${ic('back','','back')}תאריך אחר</button>
       <button type="button" class="tbtn" data-act="refresh">${ic('refresh','','spin')}רענון</button>
-      <button type="button" class="tbtn" data-act="print" ${S.locked ? 'data-tip="צריך אישור עובדת"' : ''}>${ic('printer','','rise')}הדפסה</button>
-      <button type="button" class="tbtn" data-act="exit" ${S.locked ? 'data-tip="צריך אישור עובדת"' : ''}>${ic('exit','','back')}${S.locked ? 'יציאה' : 'למערכת'}</button>
+      <button type="button" class="tbtn" data-act="print" ${S.locked ? 'data-tip="צריך אישור מהצוות"' : ''}>${ic('printer','','rise')}הדפסה</button>
+      <button type="button" class="tbtn" data-act="exit" ${S.locked ? 'data-tip="צריך אישור מהצוות"' : ''}>${ic('exit','','nudge')}${S.locked ? 'יציאה' : 'למערכת'}</button>
       ${S.locked ? `<button type="button" class="tbtn primary" data-act="unlock">${ic('unlock','','wig')}שחרור</button>`
-        : `<button type="button" class="tbtn primary" data-act="lock" data-tip="מסך מלא. יציאה ממנו תבקש אישור עובדת.">${ic('lock','','wig')}נעילה ללקוחה</button>`}
+        : `<button type="button" class="tbtn primary" data-act="lock" data-tip="מסך מלא. יציאה ממנו תבקש אישור מהצוות.">${ic('lock','','wig')}נעילה ללקוחה</button>`}
     </div></div></div>`;
 }
 function panelHTML(){
   const counts = {}; S.dresses.forEach(d => counts[d.cat] = (counts[d.cat] || 0) + 1);
   const cats = S.cats.length || S.dresses.length ? ($('#dProfile').value === 'max' ? [...CATS, 'שמלות ערב לאירועים גדולים במיוחד', 'כללי', 'נוער', 'אחיות', 'אמהות', 'שמלות קצרות'] : CATS) : [];
-  const szMap = new Map(); S.dresses.forEach(d => Object.keys(d.sizes).forEach(s => { if (s !== 'כללי' || true) szMap.set(s, (szMap.get(s) || 0) + 1); }));
+  const szMap = new Map(); S.dresses.forEach(d => Object.keys(d.sizes).forEach(s => { if (s !== 'כללי') szMap.set(s, (szMap.get(s) || 0) + 1); }));
   const szs = [...szMap.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric:true }));
   return `<div class="fgrp"><h3>${ic('search','sm')}חיפוש</h3><div class="search">${ic('search','sm')}<label class="sr-only" for="fq">חיפוש שמלה</label><input id="fq" data-f="search" value="${esc(S.search)}" placeholder="שם, מספר או ״מידה 40״" autocomplete="off"></div>
       <p class="fhint" style="margin:6px 0 0">אפשר לכתוב שם, מספר דגם, או ״מידה 40״.</p></div>
@@ -757,8 +766,10 @@ function pillsHTML(m){
 function availHTML(m){ const a = sizeInfo(m).avail; return a > 0 ? `<div class="avail ok">${ic('check')}<span><bdi>${a}</bdi> פנויות בתאריך הזה</span></div>` : `<div class="avail none">${ic('alert')}<span>אין פנויות בתאריך הזה</span></div>`; }
 function dressCard(m){
   const code = `#<bdi>${m.bp}</bdi>${m.cat ? ` · ${esc(m.cat)}` : ''}`;
-  const nameBlock = S.mode === 'rows' && !hasRealName(m) ? `<span class="d-name"><b>דגם <bdi>${m.bp}</bdi></b>${m.cat && m.cat !== 'כללי' ? `<span>${esc(m.cat)}</span>` : ''}</span>` : `<span class="d-name"><b>${esc(displayName(m))}</b><span>${code}</span></span>`;
-  return `<article class="dress ${S.locked ? '' : 'tap'}" ${S.locked ? '' : `data-model="${m.id}" tabindex="0" role="button" aria-label="${esc(displayName(m))}: הזמנות סביב התאריך"`}>
+  const inner = S.mode === 'rows' && !hasRealName(m) ? `<b>דגם <bdi>${m.bp}</bdi></b>${m.cat && m.cat !== 'כללי' ? `<span>${esc(m.cat)}</span>` : ''}` : `<b>${esc(displayName(m))}</b><span>${code}</span>`;
+  /* REVIEW-touch-1 M-4: לא role=button על כרטיס שמכיל כפתורים (axe nested-interactive) — השם הוא הכפתור; לחיצה בכל הכרטיס עדיין פותחת */
+  const nameBlock = S.locked ? `<span class="d-name">${inner}</span>` : `<button type="button" class="d-name d-open" data-model="${m.id}" aria-label="${esc(displayName(m))}: הזמנות סביב התאריך">${inner}</button>`;
+  return `<article class="dress ${S.locked ? '' : 'tap'}" ${S.locked ? '' : `data-model="${m.id}"`}>
     <div class="d-top">${avatar(m)}${nameBlock}<button type="button" class="ibtn quiet d-print" data-print-one="${m.id}" aria-label="הדפסת הדגם הזה" data-tip="הדפסת הדגם הזה">${ic('printer','','rise')}</button></div>
     ${availHTML(m)}${pillsHTML(m)}</article>`;
 }
@@ -770,7 +781,7 @@ function renderStage2(){
   if (S.panel) h += `<aside class="fpanel inline" aria-label="סינון ותצוגה">${panelHTML()}</aside>`;
   h += `<section aria-label="תוצאות" style="min-width:0">`;
   if (S.load === 'loading') h += `<div class="res-grid" role="status" aria-label="טוענים את השמלות">${'<div class="sk"></div>'.repeat(6)}</div>`;
-  else if (S.load === 'error') h += `<div class="empty card"><span class="e-ic">${ic('alert','xxl')}</span><b>לא הצלחנו לטעון את השמלות</b><span>${$('#dNoSession').checked ? 'העמדה צריכה עובדת מחוברת. פנו לצוות.' : 'אולי אין חיבור. נסו שוב בעוד רגע.'}</span><button type="button" class="btn primary key" data-act="refresh">${ic('refresh','','spin')}לנסות שוב</button></div>`;
+  else if (S.load === 'error') h += `<div class="empty card"><span class="e-ic">${ic('alert','xxl')}</span><b>לא הצלחנו לטעון את השמלות</b><span>${$('#dNoSession').checked ? 'העמדה צריכה איש צוות מחובר. פנו לצוות.' : 'אולי אין חיבור. נסו שוב בעוד רגע.'}</span><button type="button" class="btn primary key" data-act="refresh">${ic('refresh','','spin')}לנסות שוב</button></div>`;
   else {
     const list = filtered();
     if (!list.length) h += `<div class="empty card"><span class="e-ic">${ic('search','xxl')}</span><b>לא מצאנו שמלה מתאימה</b><span>${hasFilter() ? 'נסו לנקות את החיפוש או הסינון.' : 'אין שמלות בקטלוג.'}</span>${hasFilter() ? `<button type="button" class="btn primary key" data-act="clearF">${ic('x','','pop')}ניקוי ונסו שוב</button>` : ''}</div>`;
@@ -785,7 +796,7 @@ function renderStage2(){
 function renderPunch(){
   const trusted = $('#dTrusted').checked;
   const list = EMPLOYEES.filter(e => e.name.includes(P.q));
-  const loading = S.load === 'loading';
+  const loading = S.load === 'loading', failed = S.load === 'error';
   const now = new Date();
   let msg = '';
   if (P.msg){ const box = { ok:'okbox', err:'errbox', attn:'attnbox' }[P.msg.kind]; const icn = { ok:'check', err:'alert', attn:'info' }[P.msg.kind];
@@ -794,16 +805,16 @@ function renderPunch(){
     <div style="display:flex;align-items:center;gap:8px"><h1 id="pcT" style="margin:0;font-size:var(--v3-fs-h1)">שעון נוכחות</h1>${tip('בוחרים את השם, מקלידים סיסמה, ונוגעים ב״כניסה״ או ב״יציאה״.')}</div>
     <div class="clock" role="timer" aria-label="השעה עכשיו"><span class="lbl">${ic('clock','sm clock-ic')}השעה עכשיו</span><span class="t" id="clockT">${now.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}</span><span class="d">${esc(hebStr(now))} · <bdi>${gregStr(now)}</bdi></span></div>
     <div class="card stack" style="gap:20px">
-      <div class="field"><label for="pcEmp">מי את?</label>
+      <div class="field"><label for="pcEmp">השם שלך</label>
         <div class="combo"><input class="input" id="pcEmp" role="combobox" aria-expanded="${P.open}" aria-controls="pcList" aria-autocomplete="list" autocomplete="off" placeholder="${loading ? 'טוענים את השמות…' : 'הקלידו שם לחיפוש'}" value="${esc(P.q)}" ${P.act >= 0 ? `aria-activedescendant="pco-${P.act}"` : ''}>
-        ${P.open ? `<div class="combo-list" id="pcList" role="listbox" aria-label="עובדות">${loading ? `<div class="opt-note" role="status">${ic('loader','sm','loop')}טוענים את השמות…</div>` : list.length ? list.map((e, i) => `<button type="button" class="opt ${i === P.act ? 'act' : ''}" role="option" id="pco-${i}" aria-selected="${P.emp && P.emp.id === e.id}" data-emp="${e.id}" tabindex="-1"><span class="oa">${esc(e.name[0])}</span><span class="on">${esc(e.name)}</span></button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין עובדת בשם הזה</div>`}</div>` : ''}</div>
+        ${P.open ? `<div class="combo-list" id="pcList" role="listbox" aria-label="צוות">${loading ? `<div class="opt-note" role="status">${ic('loader','sm','loop')}טוענים את השמות…</div>` : failed ? `<div class="opt-note" role="alert">${ic('alert','sm')}<span style="flex:1">לא הצלחנו לטעון את השמות.</span><button type="button" class="btn sm" data-act="pcRetry">${ic('refresh','sm','spin')}לנסות שוב</button></div>` : list.length ? list.map((e, i) => `<button type="button" class="opt ${i === P.act ? 'act' : ''}" role="option" id="pco-${i}" aria-selected="${!!(P.emp && P.emp.id === e.id)}" data-emp="${e.id}" tabindex="-1"><span class="oa">${esc(e.name[0])}</span><span class="on">${esc(e.name)}</span></button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין שם כזה ברשימה</div>`}</div>` : ''}</div>
         ${P.emp ? `<span class="fhint">${ic('check','sm')} נבחרה: ${esc(P.emp.name)}</span>` : ''}</div>
       <div class="field"><label for="pcPw">${trusted ? 'סיסמה או קוד קצר' : 'סיסמה'}${trusted ? tip('במחשב הזה, שהוגדר כמחשב מערכת, אפשר להקליד גם את הקוד הקצר: ארבעת התווים האחרונים של הסיסמה.') : ''}</label>
         <div class="pw" id="pcPwBox"><input class="input" id="pcPw" type="${P.show ? 'text' : 'password'}" dir="auto" autocomplete="new-password" placeholder="מקלידים כאן" value="${esc(P.pw)}">
         <button type="button" class="ibtn" data-act="pcShow" aria-pressed="${P.show}" aria-label="${P.show ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}" data-tip="${P.show ? 'הסתרה' : 'הצגה'}">${ic('eye','','pop')}</button></div></div>
       <div class="pc-acts">
         <button type="button" class="btn primary key" data-punch="IN" ${P.busy ? 'disabled' : ''}>${P.busy === 'IN' ? ic('loader','xl','loop') : ic('login','xl','nudge')}כניסה</button>
-        <button type="button" class="btn key" data-punch="OUT" ${P.busy ? 'disabled' : ''}>${P.busy === 'OUT' ? ic('loader','xl','loop') : ic('exit','xl','back')}יציאה</button>
+        <button type="button" class="btn key" data-punch="OUT" ${P.busy ? 'disabled' : ''}>${P.busy === 'OUT' ? ic('loader','xl','loop') : ic('exit','xl','nudge')}יציאה</button>
       </div>
       <div aria-live="polite">${msg}</div>
     </div></section></div></div>`;
@@ -860,11 +871,11 @@ document.addEventListener('keydown', e => {
 /* ===== חלון אישור עובדת (שחרור / הדפסה) — TK-48…TK-52 ===== */
 function unlockDlg(intent){
   const pool = EMPLOYEES; let sel = -1;
-  const title = intent === 'print' ? 'אישור עובדת להדפסה' : 'שחרור המסך';
-  const html = `<div class="dlg-h"><span class="dlg-badge">${ic(intent === 'print' ? 'printer' : 'lock','xl enter')}</span><h2 id="%TID%">${title}</h2><p>${intent === 'print' ? 'אחרי האישור נדפיס, והמסך יישאר נעול.' : 'רק עובדת יכולה לשחרר את המסך.'}</p></div>
+  const title = intent === 'print' ? 'אישור צוות להדפסה' : 'שחרור המסך';
+  const html = `<div class="dlg-h"><span class="dlg-badge">${ic(intent === 'print' ? 'printer' : 'lock','xl enter')}</span><h2 id="%TID%">${title}</h2><p>${intent === 'print' ? 'אחרי האישור נדפיס, והמסך יישאר נעול.' : 'רק מישהו מהצוות יכול לשחרר את המסך.'}</p></div>
     <div class="dlg-b">
-      <div class="field"><label for="ul-q">מי את?</label><input class="input" id="ul-q" role="combobox" aria-expanded="true" aria-controls="ul-list" aria-autocomplete="list" autocomplete="off" placeholder="חיפוש לפי שם">
-        <div class="appr-list" id="ul-list" role="listbox" aria-label="עובדות"></div></div>
+      <div class="field"><label for="ul-q">השם שלך</label><input class="input" id="ul-q" role="combobox" aria-expanded="true" aria-controls="ul-list" aria-autocomplete="list" autocomplete="off" placeholder="חיפוש לפי שם">
+        <div class="appr-list" id="ul-list" role="listbox" aria-label="צוות"></div></div>
       <div class="field"><label for="ul-pw">הסיסמה שלך ${tip('כאן צריך את הסיסמה המלאה. הקוד הקצר לא מתקבל בחלון הזה.')}</label>
         <div class="pw"><input class="input" id="ul-pw" type="password" autocomplete="off" dir="auto"><button type="button" class="ibtn quiet" data-pw aria-label="הצגת הסיסמה" aria-pressed="false">${ic('eye')}</button></div></div>
       <div class="derr" role="alert" id="ulErr"></div>
@@ -872,8 +883,11 @@ function unlockDlg(intent){
     <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic(intent === 'print' ? 'printer' : 'unlock','','pop')}${intent === 'print' ? 'אישור והדפסה' : 'שחרור'}</button><button type="button" class="btn quiet" data-cancel>ביטול — המסך נשאר נעול</button></div>`;
   const o = openLayer({ type:'code', size:'s', html, closeOnScrim:false, onMount(d, layer){
     const q = d.querySelector('#ul-q'), list = d.querySelector('#ul-list'), pw = d.querySelector('#ul-pw'), err = d.querySelector('#ulErr'), go = d.querySelector('[data-go]');
-    const draw = () => { const f = q.value.trim(); const shown = pool.map((a, i) => [a, i]).filter(([a]) => !f || a.name.includes(f));
-      list.innerHTML = shown.length ? shown.map(([a, i]) => `<button type="button" class="appr" role="option" aria-selected="${i === sel}" data-i="${i}" tabindex="-1"><span class="oa">${esc(a.name[0])}</span><span>${esc(a.name)}</span>${i === sel ? ic('check','sm') : ''}</button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין עובדת בשם הזה</div>`;
+    const draw = () => { if ($('#dLoad').value === 'error'){ /* REVIEW-touch-1 M-6: GET /api/employees נכשל */
+        list.innerHTML = `<div class="opt-note" role="alert">${ic('alert','sm')}<span style="flex:1">לא הצלחנו לטעון את רשימת הצוות.</span><button type="button" class="btn sm" data-ul-retry>${ic('refresh','sm','spin')}לנסות שוב</button></div>`;
+        list.querySelector('[data-ul-retry]').onclick = () => { $('#dLoad').value = 'ok'; draw(); q.focus(); }; return; }
+      const f = q.value.trim(); const shown = pool.map((a, i) => [a, i]).filter(([a]) => !f || a.name.includes(f));
+      list.innerHTML = shown.length ? shown.map(([a, i]) => `<button type="button" class="appr" role="option" aria-selected="${i === sel}" data-i="${i}" tabindex="-1"><span class="oa">${esc(a.name[0])}</span><span>${esc(a.name)}</span>${i === sel ? ic('check','sm') : ''}</button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין שם כזה ברשימה</div>`;
       list.querySelectorAll('.appr').forEach(b => b.onclick = () => { sel = +b.dataset.i; err.textContent = ''; draw(); pw.focus(); }); };
     draw(); q.oninput = draw; q.focus();
     q.onkeydown = e => { if (e.key === 'ArrowDown'){ e.preventDefault(); const b = list.querySelector('.appr'); b && b.focus(); } };
@@ -882,8 +896,8 @@ function unlockDlg(intent){
     pw.onkeydown = e => { if (e.key === 'Enter') go.click(); };
     d.querySelector('[data-cancel]').onclick = () => closeLayer(layer, null);
     go.onclick = async () => {
-      const shake = m => { const g = d.querySelector('.pw'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); err.textContent = m; pw.select(); pw.focus(); };
-      if (sel < 0){ err.textContent = 'צריך לבחור עובדת מהרשימה'; q.focus(); return; }
+      const shake = m => { const g = d.querySelector('.pw'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); err.textContent = m; pw.select(); pw.focus(); err.scrollIntoView({ block:'nearest' }); };
+      if (sel < 0){ err.textContent = 'צריך לבחור שם מהרשימה'; q.focus(); return; }
       if (!pw.value) return shake('צריך להקליד סיסמה');
       layer.busy = true; go.disabled = true; const old = go.innerHTML; go.innerHTML = `${ic('loader','','loop')}בודקים…`;
       await sleep(600); layer.busy = false; go.disabled = false; go.innerHTML = old;
@@ -903,10 +917,15 @@ function ordersDlg(m, size){
     <div class="dlg-b" id="ordB"><div class="opt-note" role="status">${ic('loader','sm','loop')}טוענים הזמנות…</div></div>`;
   const o = openLayer({ type:'viewer', size:'m', html, onMount(d, layer){
     d.querySelector('[data-x]').onclick = () => closeLayer(layer, null);
-    setTimeout(() => { const b = d.querySelector('#ordB'); if (!b) return; const n = (m.bp + (size ? size.length : 0)) % 4;
+    const load = () => { const b = d.querySelector('#ordB'); if (!b) return; b.innerHTML = `<div class="opt-note" role="status">${ic('loader','sm','loop')}טוענים הזמנות…</div>`; setTimeout(() => { if (!b.isConnected) return;
+      if (failOn()){ /* REVIEW-touch-1 M-6: היום כשל = "אין הזמנות" — כאן מצב שגיאה נפרד (UI בלבד, אותה קריאה) */
+        b.innerHTML = `<div class="empty" style="padding:24px" role="alert"><span class="e-ic">${ic('alert','xl')}</span><b>לא הצלחנו לטעון את ההזמנות</b><span>נסו שוב בעוד רגע.</span><button type="button" class="btn primary" data-retry>${ic('refresh','','spin')}לנסות שוב</button></div>`;
+        b.querySelector('[data-retry]').onclick = load; return; }
+      const n = (m.bp + (size ? size.length : 0)) % 4;
       b.innerHTML = n === 0 ? `<div class="empty" style="padding:24px"><span class="e-ic">${ic('bag','xl')}</span><b>אין הזמנות בטווח הזה</b></div>` :
-        Array.from({ length:n + 1 }, (_, i) => { const dd = addDays(S.date, i * 3 - 6); const st = PAY[(m.bp + i) % 4]; return `<div class="ord"><span class="o-t"><b>הזמנה <bdi>${53100 + m.bp % 90 + i}</bdi></b><span>${esc(['משפחת כהן','משפחת לוי','משפחת גולדברג','משפחת רוזנטל'][i % 4])}</span><span>אירוע: ${esc(hebStr(dd))} · <bdi>${gregStr(dd)}</bdi></span><span class="chip ${st === 'שולם' ? 'done' : st === 'שולם חלקי' ? 'gold' : 'attn'}" style="align-self:flex-start;margin-top:4px">${esc(st)}</span></span><button type="button" class="ibtn" data-open-order aria-label="פתיחת ההזמנה בחלון חדש" data-tip="פתיחה בחלון חדש">${ic('open','','nudge')}</button></div>`; }).join('');
-      b.querySelectorAll('[data-open-order]').forEach(x => x.onclick = () => toast('info', 'ההזמנה נפתחת בחלון חדש', 'בהדגמה נשארים כאן', 2600)); }, 500);
+        Array.from({ length:n + 1 }, (_, i) => { const dd = addDays(S.date, i * 3 - 6); const st = PAY[(m.bp + i) % 4]; return `<div class="ord"><span class="o-t"><b>הזמנה <bdi>${53100 + m.bp % 90 + i}</bdi></b><span>${esc(['רחל כהן','מרים לוי','שרה גולדברג','חנה רוזנטל'][i % 4])}</span><span>אירוע: ${esc(hebStr(dd))} · <bdi>${gregStr(dd)}</bdi></span><span class="chip ${st === 'שולם' ? 'done' : st === 'שולם חלקי' ? 'gold' : 'attn'}">${esc(st)}</span></span><button type="button" class="ibtn" data-open-order aria-label="פתיחת ההזמנה בחלון חדש" data-tip="פתיחה בחלון חדש">${ic('open','','nudge')}</button></div>`; }).join('');
+      b.querySelectorAll('[data-open-order]').forEach(x => x.onclick = () => toast('info', 'ההזמנה נפתחת בחלון חדש', 'בהדגמה נשארים כאן', 2600)); }, 500); };
+    load();
   }});
   return o ? o.done : null;
 }
@@ -940,14 +959,14 @@ function loadInventory(){
   setTimeout(() => { const want = $('#dLoad').value; S.load = ($('#dNoSession').checked || want === 'error') ? 'error' : want === 'loading' ? 'loading' : 'ok'; S.dresses = makeDresses($('#dData').value, $('#dProfile').value === 'max'); render(); }, 450);
 }
 async function lockScreen(){
-  S.locked = true; S.zoomOpen = false; render();
+  S.locked = true; S.zoomOpen = false; render(); { const u = document.querySelector('[data-act=unlock]'); u && u.focus(); }
   try { await document.documentElement.requestFullscreen(); } catch {}
-  toast('info', 'המסך נעול ללקוחה', 'יציאה ממסך מלא תבקש אישור עובדת', 2600);
+  toast('info', 'המסך נעול ללקוחה', 'יציאה ממסך מלא תבקש אישור מהצוות', 2600);
 }
 async function doUnlock(intent, model){
   const r = await unlockDlg(intent); if (!r) return; /* ביטול = נשאר נעול */
   if (intent === 'print'){ printReport(model); return; }
-  S.locked = false; render(); try { if (document.fullscreenElement) await document.exitFullscreen(); } catch {}
+  S.locked = false; render(); { const l = document.querySelector('[data-act=lock]'); l && l.focus(); } try { if (document.fullscreenElement) await document.exitFullscreen(); } catch {}
   toast('ok', 'המסך שוחרר', `על ידי ${r.employee}`, 2600);
 }
 function printReport(model){
@@ -990,7 +1009,7 @@ async function submitReg(){
   if (failOn()){ S.regMsg = 'אין חיבור. פנו לצוות הגמ״ח.'; return render(); }
   const res = serverReg();
   if (res.status === 200) S.regDone = res;
-  else if (res.status === 401) S.regMsg = 'הרישום צריך עובדת מחוברת במחשב הזה. פנו לצוות הגמ״ח.';
+  else if (res.status === 401) S.regMsg = 'הרישום צריך איש צוות מחובר במחשב הזה. פנו לצוות הגמ״ח.';
   else S.regMsg = res.error; /* הודעת השרת כמו שהיא (מחרוזת אחת) */
   render();
 }
@@ -1002,7 +1021,7 @@ let pcTimer;
 function pcMsg(kind, t, s){ clearTimeout(pcTimer); P.msg = { kind, t, s }; render(); if (kind === 'ok') pcTimer = setTimeout(() => { P.msg = null; render(); }, 3000); }
 async function punch(action){
   if (!P.emp || !P.pw){ pcMsg('attn', 'בחרו שם מהרשימה והקלידו סיסמה'); (P.emp ? $('#pcPw') : $('#pcEmp')).focus(); return; }
-  if (action === 'OUT' && cfg.on('laundress_return_check_on_exit') && !$('#dNoSession').checked){ /* TK-65: רצה לפני נעילת הכפתורים */
+  if (action === 'OUT' && cfg.on('laundress_return_check_on_exit') && !$('#dNoSession').checked && !failOn()){ /* כשל = נבלע ומדלגים (TK-65) */ /* TK-65: רצה לפני נעילת הכפתורים */
     const fams = ['משפחת כהן','משפחת לוי','משפחת פרידמן','משפחת שטרן','משפחת רוזן','משפחת קליין','משפחת הלר'];
     const n = $('#dProfile').value === 'max' ? 12 : 3; const shown = fams.slice(0, Math.min(5, n));
     const r = await confirmDlg({ icon:'washer', title:'יש משפחות שעוד לא החזירו', text:`${n} משפחות עדיין לא החזירו. לוודא שהן באמת לא החזירו?`,
@@ -1053,9 +1072,11 @@ document.addEventListener('click', e => {
   if (a === 'aiNew'){ S.chats[S.stage] = []; if (S.stage === 1) S.chatOpen[1] = false; render(); return; }
   if (a === 'aiClose'){ S.chatOpen[2] = false; render(); return; }
   if (a === 'regAgain'){ S.regDone = null; S.reg = { firstName:'', lastName:'', phone1:'', email:'', city:'', street:'', houseNum:'', marketingConsent:false }; S.regErr = {}; render(); $('#r-firstName').focus(); return; }
+  if (a === 'pcRetry'){ $('#dLoad').value = 'ok'; S.load = 'ok'; P.open = true; render(); $('#pcEmp').focus(); return; }
   if (a === 'pcShow'){ P.show = !P.show; render(); $('#pcPw').focus(); return; }
 });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S.zoomOpen && !layers.length){ S.zoomOpen = false; render(); const z = document.querySelector('[data-act=zoom]'); z && z.focus(); return; }
   const m = e.target.closest && e.target.closest('[data-model]');
   if (m && (e.key === 'Enter' || e.key === ' ') && e.target === m){ e.preventDefault(); m.click(); }
   if (e.target.id === 'pcEmp'){
@@ -1123,7 +1144,7 @@ function showAttract(){
   if (layers.length) return idleReset();
   const b = document.createElement('button'); b.type = 'button'; b.className = 'attract'; b.setAttribute('aria-label', 'נגיעה כדי להתחיל');
   b.innerHTML = `<span class="prop">הצעה — לא קיים היום</span><span class="ring">${ic('hand','xxl')}</span><b>גמ״ח שמלות</b><span>נוגעים במסך כדי להתחיל</span>`;
-  b.onclick = () => { b.remove(); S.stage = 1; S.search = ''; S.cats = []; S.sizes = []; S.chats = { 1:[], 2:[] }; S.chatOpen = { 1:false, 2:false }; render(); idleReset(); };
+  b.onclick = () => { b.remove(); S.stage = 1; S.search = ''; S.cats = []; S.sizes = []; S.date = dayStart(new Date()); S.view = monthStart(S.date); S.regDone = null; S.reg = { firstName:'', lastName:'', phone1:'', email:'', city:'', street:'', houseNum:'', marketingConsent:false }; S.regErr = {}; S.regMsg = ''; S.chats = { 1:[], 2:[] }; S.chatOpen = { 1:false, 2:false }; render(); idleReset(); };
   $('#attractRoot').appendChild(b); b.focus();
 }
 ['pointerdown','keydown'].forEach(ev => document.addEventListener(ev, idleReset, { passive:true }));
@@ -1134,7 +1155,7 @@ function showAttract(){
 $('#demoFab').onclick = () => { const p = $('#demoPanel'); p.hidden = !p.hidden; $('#demoFab').setAttribute('aria-expanded', !p.hidden); };
 function applyProfile(){
   const k = $('#dProfile').value; cfg.s = { ...PROFILES[k].s };
-  $('#dSelf').checked = cfg.on('kiosk_customer_self_service'); $('#dAi').checked = aiOn(); $('#dImg').checked = !cfg.on('hide_dress_images'); $('#dLaundry').checked = cfg.on('laundress_return_check_on_exit');
+  $('#dSelf').checked = cfg.on('kiosk_customer_self_service'); $('#dAi').checked = aiSettingOn(); $('#dImg').checked = !cfg.on('hide_dress_images'); $('#dGreg').checked = !cfg.on('hide_gregorian_calendar'); $('#dLaundry').checked = cfg.on('laundress_return_check_on_exit');
   document.documentElement.toggleAttribute('data-long', !!PROFILES[k].long);
   S.regErr = {}; S.regMsg = '';
 }
@@ -1143,10 +1164,12 @@ $('#dProfile').onchange = () => { applyProfile(); S.dresses = makeDresses($('#dD
 $('#dSelf').onchange = e => { cfg.s.kiosk_customer_self_service = String(e.target.checked); render(); };
 $('#dAi').onchange = e => { cfg.s.hide_ai_features = String(!e.target.checked); cfg.s.enable_ai_specific_employees = 'false'; render(); };
 $('#dImg').onchange = e => { cfg.s.hide_dress_images = String(!e.target.checked); render(); };
+$('#dGreg').onchange = e => { cfg.s.hide_gregorian_calendar = String(!e.target.checked); render(); };
 $('#dLaundry').onchange = e => { cfg.s.laundress_return_check_on_exit = String(e.target.checked); };
 $('#dData').onchange = () => { if (S.stage === 2) loadInventory(); else S.dresses = makeDresses($('#dData').value, $('#dProfile').value === 'max'); };
 $('#dLoad').onchange = () => { if (S.stage === 2 || S.screen === 'punch') { if (S.screen === 'punch'){ S.load = $('#dLoad').value; render(); } else loadInventory(); } };
-$('#dNoSession').onchange = () => { if (S.stage === 2) loadInventory(); };
+$('#dNoSession').onchange = () => { if (S.stage === 2) loadInventory(); else render(); };
+$('#dAiPerm').onchange = () => render();
 $('#dTrusted').onchange = () => render();
 $('#dMotion').onchange = e => { if (e.target.checked) document.documentElement.setAttribute('data-motion', 'reduced'); else document.documentElement.removeAttribute('data-motion'); };
 $('#dTheme').onclick = e => { S.dark = !S.dark; e.currentTarget.setAttribute('aria-pressed', S.dark); e.currentTarget.textContent = `חלוניות אישור/קוד: ${S.dark ? 'כהה' : 'בהיר'}`; };

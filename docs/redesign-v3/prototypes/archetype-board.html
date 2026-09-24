@@ -1459,7 +1459,7 @@ function dayDlg(i){
       d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
       const p = d.querySelector('[data-print]'); if (p) p.onclick = () => printDay(i); } });
 }
-function printDay(i){ const os = byDay(visibleOrders())[i] || []; if (!os.length) return; toast('info', `נפתחת הדפסה של ${os.length} הזמנות`, 'לשונית חדשה, עיצוב "הדפסה מרוכזת"'); }
+function printDay(i){ const os = byDay(visibleOrders())[i] || []; if (!os.length) return; toast('info', `נפתחת הדפסה של ${ordersTxt(os.length)}`, 'לשונית חדשה, עיצוב "הדפסה מרוכזת"'); }
 
 /* ---------- חיפוש בכל החודשים (צפייה בלבד → עוקב ערכת נושא) ---------- */
 function globalDlg(){
