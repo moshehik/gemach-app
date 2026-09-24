@@ -3236,6 +3236,8 @@ function renderNotes(notes){
 }
 
 /* ============ לשונית הזמנות (סקיצה itemCard L2163: .itm + .tag אחד לשורה) ============ */
+/* C-1.14: תגית רק לסטטוס פעיל שדורש תשומת לב; סטטוס שהסתיים = טקסט + אייקון (עד 3 תגיות באזור מסך) */
+const LIVE_ST = ['בקרוב','הושכר','הושכר חלקי'];
 const ST_TAG = { 'הוחזר':['dn','check'], 'הוחזר חלקי':['s','check'], 'הושכר':['s','bag'], 'הושכר חלקי':['s','bag'], 'בקרוב':['n','clock'], 'טיוטה':['n','pencil'], 'מחוק':['n','x'] };
 /* אותה פונקציה בדיוק כמו calculatePaymentStatus — 4 ערכים בלבד (CC-45) */
 function calcPayStatus(req, paid){ if (paid > req && req > 0) return 'ממתין לזיכוי'; if (paid > 0 && req === 0) return 'ממתין לזיכוי'; if (req > 0 && paid >= req) return 'שולם'; if (paid > 0 && paid < req) return 'שולם חלקי'; return 'לא שולם'; }
@@ -3250,7 +3252,7 @@ function pOrders(){
           <div class="thumb" style="background:${THUMBS[n % THUMBS.length]}">${ic(o.weekday ? 'cal' : 'bag')}</div>
           <div class="info"><div class="model"><a href="#" data-order-link="${o.orderId}">הזמנה <bdi>${o.orderId}</bdi></a></div>
             <div class="meta">${o.weekday ? '' : 'אירוע: '}<bdi>${esc(o.date)}</bdi>${o.greg ? ` · <bdi>${o.greg}</bdi>` : ''}</div>
-            <div class="stat"><span class="tag ${tc}">${ic(ti)}${o.status}</span></div></div>
+            <div class="stat">${LIVE_ST.includes(o.status) ? `<span class="tag ${tc}">${ic(ti)}${o.status}</span>` : `<span class="stx">${ic(ti)}${o.status}</span>`}</div></div>
           <button class="ibtn chevb" data-act="opord" data-id="${o.orderId}" aria-expanded="${open}" aria-controls="od-${o.orderId}" aria-label="${open ? 'הסתרת הסכומים' : 'סכומים ומצב תשלום'}">${ic('chev','sm')}</button>
         </div>
         <div class="det-wrap"><div class="det" id="od-${o.orderId}"><div class="det-in">
@@ -3292,7 +3294,7 @@ function pRefunds(){
   const refs = S.payments.filter(p => p.type === 'refund');
   const list = refs.length ? `<div class="list">${refs.map(r => `<div class="li"><div class="ic-b">${ic('undo')}</div><div class="t">
       <b>${esc(r.reason)}</b><small>בקשה <bdi>${r.date}</bdi> · <a href="#" data-order="${r.order}">הזמנה <bdi>${r.order}</bdi></a> · ${r.executed ? `בוצע <bdi>${r.execDate}</bdi>` : 'ממתין לביצוע'}</small>
-      <div class="a">${money(r.amount)}</div></div>${r.executed ? `<span class="tag dn">${ic('check')}בוצע</span>` : `<span class="tag at">${ic('clock')}ממתין</span>`}</div>`).join('')}</div><div class="foot">${plural(refs.length, 'זיכוי אחד', 'זיכויים')}</div>`
+      <div class="a">${money(r.amount)}</div></div>${r.executed ? '' : `<span class="tag at">${ic('clock')}ממתין</span>`}</div>`).join('')}</div><div class="foot">${plural(refs.length, 'זיכוי אחד', 'זיכויים')}</div>`
     : `<div class="empty">${ic('undo','lg')}<br><b>אין זיכויים</b><br>זיכוי שנפתח בהזמנה של הלקוח יופיע כאן.</div>`;
   return `<div class="card"><div class="card-h"><div class="ico blue">${ic('bank','lg')}</div><h2>חשבון בנק להחזרים ${tip('לשם מעבירים כסף כשהלקוח מקבל זיכוי. נשמר יחד עם שאר השינויים בכרטיס.')}</h2></div>
       <form class="fcol" autocomplete="off" novalidate>
