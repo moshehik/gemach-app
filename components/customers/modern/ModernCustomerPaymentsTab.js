@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Card, Chip, Row, Rows, Table, Empty, Icon } from '@/app/v3/ui/components';
 
 export default function ModernCustomerPaymentsTab({ payments = [], customer }) {
   const totalRequired = (customer?.orders || []).reduce((acc, order) => {
@@ -18,96 +19,94 @@ export default function ModernCustomerPaymentsTab({ payments = [], customer }) {
   const effectivePaid = totalPayments - totalRefunds;
   const debt = totalRequired - effectivePaid;
 
-  const debtIcon = debt > 0 ? 'i-alert-tri' : debt < 0 ? 'i-wallet' : 'i-check';
+  const debtIcon = debt > 0 ? 'alert-tri' : debt < 0 ? 'wallet' : 'check';
   const debtLabel = debt > 0 ? 'יתרת חוב' : debt < 0 ? 'יתרת זכות' : 'מאוזן';
-  const debtColor = debt > 0 ? 'var(--danger)' : debt < 0 ? 'var(--info)' : 'var(--success)';
-  const debtTint = debt > 0 ? 'var(--danger-tint)' : debt < 0 ? 'var(--info-tint)' : 'var(--success-tint)';
+  const debtClass = debt > 0 ? 'v3-status v3-status--debt' : debt < 0 ? 'v3-status v3-status--credit' : 'v3-status';
+
+  const rows = payments.map(p => ({ ...p, _key: `${p.entryType}-${p.id}` }));
+
+  const columns = [
+    { key: 'paymentDate', header: 'תאריך', render: (p) => <bdi>{new Date(p.paymentDate).toLocaleDateString('he-IL')}</bdi> },
+    {
+      key: 'entryType',
+      header: 'סוג',
+      render: (p) => (p.entryType === 'refund'
+        ? <Chip variant="attn" icon="refresh">זיכוי</Chip>
+        : <Chip variant="done" icon="card">תשלום</Chip>)
+    },
+    {
+      key: 'amount',
+      header: 'סכום',
+      num: true,
+      render: (p) => <bdi>{p.entryType === 'refund' ? '-' : ''}₪{p.amount}</bdi>
+    }
+  ];
 
   return (
-    <div>
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary)' }}><svg className="icon"><use href="#i-coin" /></svg></div></div>
-          <div className="kpi-label">סך הכל חיובים</div>
-          <div className="kpi-value">₪{totalRequired.toLocaleString('he-IL')}</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}><svg className="icon"><use href="#i-wallet" /></svg></div></div>
-          <div className="kpi-label">סה&quot;כ שולם</div>
-          <div className="kpi-value">₪{totalPayments.toLocaleString('he-IL')}</div>
-        </div>
-        {totalRefunds > 0 && (
-          <div className="kpi-card">
-            <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}><svg className="icon"><use href="#i-refresh" /></svg></div></div>
-            <div className="kpi-label">סה&quot;כ זיכויים</div>
-            <div className="kpi-value">₪{totalRefunds.toLocaleString('he-IL')}</div>
+    <>
+      <Card icon="coin" title="סיכום כספי" tip="יתרת החוב = סך החיובים פחות (תשלומים פחות זיכויים).">
+        <div className="v3-stack">
+          <div className="v3-status">
+            <Icon name="coin" size="lg" />
+            <div>
+              <small>סך כל החיובים</small>
+              <span className="v3-status__n"><bdi>₪{totalRequired.toLocaleString('he-IL')}</bdi></span>
+            </div>
           </div>
-        )}
-        <div className="kpi-card">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background: debtTint, color: debtColor }}><svg className="icon"><use href={`#${debtIcon}`} /></svg></div></div>
-          <div className="kpi-label">{debtLabel}</div>
-          <div className="kpi-value" style={{ color: debtColor, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            ₪{Math.abs(debt).toLocaleString('he-IL')}
-            {debt !== 0 && (
-              <span className="badge" style={{ background: debtColor, color: 'var(--text-on-primary)', fontSize: '10px' }}>
-                {debt > 0 ? 'חובה' : 'זכות'}
-              </span>
-            )}
+          <div className="v3-status">
+            <Icon name="wallet" size="lg" />
+            <div>
+              <small>סך כל התשלומים</small>
+              <span className="v3-status__n"><bdi>₪{totalPayments.toLocaleString('he-IL')}</bdi></span>
+            </div>
+          </div>
+          {totalRefunds > 0 && (
+            <div className="v3-status">
+              <Icon name="refresh" size="lg" />
+              <div>
+                <small>סך כל הזיכויים</small>
+                <span className="v3-status__n"><bdi>₪{totalRefunds.toLocaleString('he-IL')}</bdi></span>
+              </div>
+            </div>
+          )}
+          <div className={debtClass}>
+            <Icon name={debtIcon} size="lg" />
+            <div>
+              <small>{debtLabel}</small>
+              <span className="v3-status__n"><bdi>₪{Math.abs(debt).toLocaleString('he-IL')}</bdi></span>
+            </div>
+            {debt !== 0 && <Chip variant={debt > 0 ? 'gold' : 'info'}>{debt > 0 ? 'חובה' : 'זכות'}</Chip>}
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="toolbar">
-        <div style={{ fontWeight: 800, fontSize: '14.5px' }}>היסטוריית תשלומים</div>
-        <span className="spacer" />
-        <span className="hint" style={{ color: 'var(--text-3)' }}>{payments.length} רשומות</span>
-      </div>
-
-      {payments.length > 0 ? (
-        <div className="table-wrap">
-          <div className="table-scroll">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>תאריך</th>
-                <th>סוג</th>
-                <th>הזמנה מקושרת</th>
-                <th>אופן תשלום</th>
-                <th>סכום</th>
-                <th>הערות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map(payment => {
-                const isRefund = payment.entryType === 'refund';
+      <Card icon="receipt" title="תשלומים וזיכויים" tip="החץ בכל שורה מציג את ההזמנה, אופן התשלום וההערות.">
+        {rows.length > 0 ? (
+          <div className="v3-stack">
+            <Table
+              caption="היסטוריית תשלומים"
+              columns={columns}
+              rows={rows}
+              rowKey="_key"
+              renderExpanded={(p) => {
+                const isRefund = p.entryType === 'refund';
                 return (
-                  <tr key={`${payment.entryType}-${payment.id}`}>
-                    <td>{new Date(payment.paymentDate).toLocaleDateString('he-IL')}</td>
-                    <td>
-                      <span className={`badge ${isRefund ? 'badge-danger' : 'badge-success'}`}>{isRefund ? 'זיכוי' : 'תשלום'}</span>
-                    </td>
-                    <td>{payment.orderId ? `הזמנה ${payment.orderId}` : '-'}</td>
-                    <td>{isRefund ? (payment.reason || 'זיכוי') : payment.paymentMethod}</td>
-                    <td className="cell-primary" style={{ color: isRefund ? 'var(--danger)' : 'var(--primary-solid)' }}>{isRefund ? '-' : ''}₪{payment.amount}</td>
-                    <td className={isRefund ? undefined : (payment.notes ? undefined : 'cell-muted')}>
-                      {isRefund ? (payment.isExecuted ? 'בוצע' : 'ממתין לביצוע') : (payment.notes || '-')}
-                    </td>
-                  </tr>
+                  <Rows>
+                    <Row label="הזמנה מקושרת">{p.orderId ? <>הזמנה <bdi>{p.orderId}</bdi></> : '-'}</Row>
+                    <Row label={isRefund ? 'סיבת הזיכוי' : 'אופן תשלום'}>{isRefund ? (p.reason || 'זיכוי') : p.paymentMethod}</Row>
+                    <Row label={isRefund ? 'סטטוס' : 'הערות'}>
+                      {isRefund ? (p.isExecuted ? 'בוצע' : 'ממתין לביצוע') : (p.notes || '-')}
+                    </Row>
+                  </Rows>
                 );
-              })}
-            </tbody>
-          </table>
+              }}
+            />
+            <span className="v3-faint">סה&quot;כ <bdi>{payments.length}</bdi> רשומות</span>
           </div>
-          <div className="table-foot">
-            <span>סה&quot;כ רשומות מוצגות: {payments.length}</span>
-          </div>
-        </div>
-      ) : (
-        <div className="empty-state">
-          <svg className="icon"><use href="#i-card" /></svg>
-          <p>אין היסטוריית תשלומים ללקוח זה.</p>
-        </div>
-      )}
-    </div>
+        ) : (
+          <Empty icon="card" title="אין תשלומים ללקוח הזה" />
+        )}
+      </Card>
+    </>
   );
 }

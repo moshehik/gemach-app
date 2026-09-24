@@ -2,20 +2,20 @@
 
 import React from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { V3Page, Card, Btn, Chip, Row, Rows, Tabs, Tip } from '@/app/v3/ui/components';
 
 const TABS = [
-  { id: 'details', label: 'פרטים אישיים', icon: 'i-id' },
-  { id: 'orders', label: 'הזמנות', icon: 'i-bag', withCount: true },
-  { id: 'payments', label: 'תשלומים', icon: 'i-card' },
-  { id: 'refunds', label: 'זיכויים ופרטי בנק', icon: 'i-refresh' },
-  { id: 'history', label: 'היסטוריה', icon: 'i-history' }
+  { id: 'details', label: 'פרטים אישיים', icon: 'id' },
+  { id: 'orders', label: 'הזמנות', icon: 'bag', withCount: true },
+  { id: 'payments', label: 'תשלומים', icon: 'card' },
+  { id: 'refunds', label: 'זיכויים ובנק', icon: 'refresh' },
+  { id: 'history', label: 'היסטוריה', icon: 'history' }
 ];
 
 /**
- * המעטפת של כרטיס הלקוח: כותרת עמוד עם פעולות, כרטיס תקציר (אווטאר + פרטי קשר),
- * ולשוניות בעיצוב מערכת העיצוב "אריג" (page-head / card / tabs / tab-panel).
- * כל הטאבים נשארים mounted (tab-panel לא-active מוסתר ב-CSS בלבד) כדי לשמור על
- * סטייט פנימי של הטפסים/הטבלאות בכל טאב.
+ * מעטפת כרטיס הלקוח (תבנית כרטיס-פרט, סקיצה B): כרטיס מסגרת עם כותרת, שורות נתונים,
+ * פעולות ולשוניות. כל הלשוניות נשארות mounted (ה-panel הלא-פעיל מוסתר בלבד) כדי לשמור
+ * על state פנימי של הטפסים והטבלאות בכל לשונית.
  */
 export default function ModernCustomerCard({
   customer, activeTab, onTabChange, onExit, tabContents,
@@ -29,91 +29,80 @@ export default function ModernCustomerCard({
   const address = [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ');
 
   const updatedLabel = customer.updatedAt
-    ? `עודכן לאחרונה: ${getHebrewDateString(customer.updatedAt)} · ${new Date(customer.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `${getHebrewDateString(customer.updatedAt)} · ${new Date(customer.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
   const initials = `${customer.firstName?.[0] || ''}${customer.lastName?.[0] || ''}` || '?';
 
   return (
-    <>
-      <div className="page-head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div className="avatar lg">{initials}</div>
-          <div>
-            <h1>{customerName}</h1>
-            <div className="page-desc">
-              לקוח #{customer.legacyId || customer.id} · {ordersCount} הזמנות
-              {updatedLabel && ` · ${updatedLabel}`}
-            </div>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '6px', color: 'var(--text-2)', fontSize: '13px' }}>
-              {customer.phone1 && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <svg className="icon"><use href="#i-phone" /></svg><span style={{ direction: 'ltr' }}>{customer.phone1}</span>
-                </span>
-              )}
-              {customer.email && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <svg className="icon"><use href="#i-mail" /></svg><span style={{ direction: 'ltr' }}>{customer.email}</span>
-                </span>
-              )}
-              {address && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <svg className="icon"><use href="#i-pin" /></svg>{address}
-                </span>
-              )}
+    <V3Page>
+      <Card variant="cust" as="header">
+        <div className="v3-hero">
+          <div className="v3-hero__ico" aria-hidden="true"><b>{initials}</b></div>
+          <div className="v3-stack">
+            <h1 className="v3-h1">{customerName}</h1>
+            <div className="v3-cluster">
+              <Chip variant="info" icon="id">לקוח <bdi>{customer.legacyId || customer.id}</bdi></Chip>
+              <Chip icon="bag"><bdi>{ordersCount}</bdi> הזמנות</Chip>
+              {customer.isBlocked && <Chip variant="attn" icon="alert-tri">חסום להזמנות</Chip>}
+              <Tip>הכפתורים למטה שומרים או מבטלים שינויים בכל לשוניות הכרטיס.</Tip>
             </div>
           </div>
         </div>
-        <div className="page-actions">
+
+        <Rows>
+          {customer.phone1 && <Row label="טלפון" icon="phone"><bdi>{customer.phone1}</bdi></Row>}
+          {customer.email && <Row label="דוא&quot;ל" icon="mail"><bdi>{customer.email}</bdi></Row>}
+          {address && <Row label="כתובת" icon="pin">{address}</Row>}
+          {updatedLabel && <Row label="עודכן לאחרונה" icon="clock"><bdi>{updatedLabel}</bdi></Row>}
+        </Rows>
+
+        <div className="v3-cluster">
           {onSave && (
-            <button type="button" className="btn btn-primary" title="שמירת שינויים" onClick={(e) => onSave(e)} disabled={saving}>
-              {saving ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+            <Btn variant="primary" icon="check" title="שמירת שינויים" onClick={(e) => onSave(e)} loading={saving}>
               שמירת שינויים
-            </button>
+            </Btn>
           )}
           {onCancelChanges && (
-            <button type="button" className="btn btn-secondary" title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'} onClick={onCancelChanges} disabled={!hasUnsavedChanges || saving}>
-              <svg className="icon"><use href="#i-refresh" /></svg>
+            <Btn icon="refresh" title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'} onClick={onCancelChanges} disabled={!hasUnsavedChanges || saving}>
               ביטול שינויים
-            </button>
+            </Btn>
           )}
           {onSendEmail && (
-            <button type="button" className="btn btn-secondary" title="שליחת מייל ללקוח" onClick={onSendEmail}>
-              <svg className="icon"><use href="#i-mail" /></svg>
+            <Btn icon="mail" title="שליחת מייל ללקוח" onClick={onSendEmail}>
               שליחת מייל
-            </button>
+            </Btn>
           )}
-          <button type="button" className="btn btn-ghost" title="חזור לרשימת הלקוחות" onClick={onExit}>
-            <svg className="icon"><use href="#i-arrow-end" /></svg>
-            חזור
-          </button>
+          <Btn variant="quiet" icon="back" title="חזור לרשימת הלקוחות" onClick={onExit}>
+            חזרה
+          </Btn>
         </div>
-      </div>
+      </Card>
 
-      <div className="tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`tab${activeTab === tab.id ? ' active' : ''}`}
-            style={{
-              appearance: 'none', WebkitAppearance: 'none', background: 'none', font: 'inherit',
-              borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none'
-            }}
-            onClick={() => onTabChange(tab.id)}
-          >
-            <svg className="icon"><use href={`#${tab.icon}`} /></svg>
-            {tab.label}
-            {tab.withCount && <span className="badge badge-neutral">{ordersCount}</span>}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="לשוניות כרטיס הלקוח"
+        value={activeTab}
+        onChange={onTabChange}
+        items={TABS.map(tab => ({
+          key: tab.id,
+          label: tab.label,
+          icon: tab.icon,
+          ...(tab.withCount ? { count: ordersCount } : {})
+        }))}
+      />
 
       {TABS.map(tab => (
-        <div key={tab.id} className={`tab-panel ${activeTab === tab.id ? 'active' : ''}`}>
+        <div
+          key={tab.id}
+          role="tabpanel"
+          aria-labelledby={`tab-${tab.id}`}
+          hidden={activeTab !== tab.id}
+          className="v3-panel"
+          style={activeTab === tab.id ? undefined : { display: 'none' }}
+        >
           {tabContents[tab.id]}
         </div>
       ))}
-    </>
+    </V3Page>
   );
 }

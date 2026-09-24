@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { Card, Btn, IconBtn, Chip, Field, Row, Rows, Switch, Banner, Icon } from '@/app/v3/ui/components';
 
 const renderCustomerNotes = (notes) => {
   if (!notes) return null;
@@ -22,23 +23,23 @@ const renderCustomerNotes = (notes) => {
       const size = barcode.substring(3, 5) || '';
 
       return (
-        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', padding: '8px', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: '6px', fontSize: '13px' }}>
-          <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>[{hebDate}]</span>
-          <strong style={{ color: 'var(--primary)' }}>אוטומטי:</strong>
-          <span>דגם {model} מידה {size}</span>
+        <div key={index} className="v3-cluster">
+          <Chip><bdi>{hebDate}</bdi></Chip>
+          <Chip variant="info" icon="sparkles">אוטומטי</Chip>
+          <span>דגם <bdi>{model}</bdi> מידה <bdi>{size}</bdi></span>
           <span>{restText}</span>
           <a
             href={`/orders/${orderId}`}
             title={`צפה בהזמנה ${orderId}`}
-            style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', textDecoration: 'none', marginInlineStart: '4px' }}
+            aria-label={`צפה בהזמנה ${orderId}`}
           >
-            <svg className="icon"><use href="#i-link" /></svg>
+            <Icon name="link" />
           </a>
         </div>
       );
     }
 
-    return <div key={index} style={{ marginBottom: '4px', fontSize: '13px' }}>{line}</div>;
+    return <div key={index}>{line}</div>;
   });
 };
 
@@ -65,7 +66,7 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
   }, [cancelSignal]);
 
   // onSubmit (= handleSave מ-app/customers/[id]/page.js) מחזיר עכשיו true/false לפי
-  // הצלחת השמירה בפועל (ולידציה/שגיאת שרת מחזירות false) - כדי ששני הנתיבים כאן
+  // הצלחת השמירה בפעמון (ולידציה/שגיאת שרת מחזירות false) - כדי ששני הנתיבים כאן
   // (טופס + כפתור ה-V) יידעו לסגור את מצב העריכה רק כשבאמת נשמר, ולא בשקט מתחת
   // להודעת שגיאה שהמשתמש עוד לא הספיק לקרוא.
   const attemptSave = async (e) => {
@@ -96,158 +97,119 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
 
   const customerName = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'לקוח ללא שם';
   const address = [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ');
+  const hasContact = !!(customer.phone1 || customer.phone2 || customer.email || address);
 
   return (
-    <div>
+    <>
       {customer.isBlocked && (
-        <div className="callout callout-danger" style={{ marginBottom: '18px', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <svg className="icon"><use href="#i-alert-tri" /></svg>
-            <span>
-              <strong>לקוח חסום מהזמנות חדשות</strong>
-              {customer.blockedReason && <>{' — '}{customer.blockedReason}</>}
-            </span>
-          </span>
-          {isHeadManagement && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={onUnblock}>
-              ביטול חסימה
-            </button>
-          )}
-        </div>
+        <Banner
+          kind="alert"
+          title="הלקוח חסום להזמנות חדשות"
+          text={customer.blockedReason ? String(customer.blockedReason) : undefined}
+          action={isHeadManagement ? { label: 'ביטול חסימה', onClick: onUnblock } : undefined}
+        />
       )}
 
-      <div className="card card-pad" style={{ marginBottom: '18px' }}>
-        <div className="card-title-row" style={{ marginBottom: isEditing ? '14px' : 0 }}>
-          <svg className="icon"><use href="#i-id" /></svg>
-          <h3 style={{ margin: 0 }}>{isEditing ? 'עריכת פרטים אישיים' : customerName}</h3>
-          <button
-            type="button"
-            className="btn btn-ghost btn-icon-only btn-sm"
-            style={{ marginInlineStart: 'auto' }}
+      <Card
+        icon="id"
+        title={isEditing ? 'עריכת פרטים אישיים' : customerName}
+        tip="במצב עריכה, סימון ה-V שומר את הפרטים, כמו כפתור השמירה."
+        actions={(
+          <IconBtn
+            icon={isEditing ? 'check' : 'edit'}
+            label={isEditing ? 'סגור עריכה' : 'עריכת פרטים אישיים'}
             title={isEditing ? 'סגור עריכה' : 'עריכת פרטים אישיים'}
+            variant="quiet"
             onClick={handleToggleEdit}
-          >
-            <svg className="icon"><use href={isEditing ? '#i-check' : '#i-edit'} /></svg>
-          </button>
-        </div>
-
+          />
+        )}
+      >
         {!isEditing && (
-          <div className="hint" style={{ color: 'var(--text-3)' }} title={[customer.phone1, customer.phone2, customer.email, address].filter(Boolean).join(' · ')}>
-            {[customer.phone1, customer.phone2, customer.email, address].filter(Boolean).join(' · ') || 'אין פרטי קשר או כתובת'}
-          </div>
+          hasContact ? (
+            <Rows>
+              {customer.phone1 && <Row label="טלפון" icon="phone"><bdi>{customer.phone1}</bdi></Row>}
+              {customer.phone2 && <Row label="טלפון נוסף" icon="phone"><bdi>{customer.phone2}</bdi></Row>}
+              {customer.email && <Row label="דוא&quot;ל" icon="mail"><bdi>{customer.email}</bdi></Row>}
+              {address && <Row label="כתובת" icon="pin">{address}</Row>}
+            </Rows>
+          ) : (
+            <Row label="פרטי קשר" icon="phone" missing missingText="לא הוזנו פרטי קשר או כתובת" />
+          )
         )}
 
         {isEditing && (
-          <form onSubmit={handleSubmit} autoComplete="off">
-            <div className="form-grid">
-              <div className="field">
-                <label>שם פרטי *</label>
-                <input type="text" className="input" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={onChange} required />
-              </div>
-              <div className="field">
-                <label>שם משפחה *</label>
-                <input type="text" className="input" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={onChange} required />
-              </div>
-              <div className="field">
-                <label>טלפון *</label>
-                <div className="input-icon-wrap">
-                  <svg className="icon"><use href="#i-phone" /></svg>
-                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={onChange} required />
-                </div>
-              </div>
-              <div className="field">
-                <label>טלפון נוסף</label>
-                <div className="input-icon-wrap">
-                  <svg className="icon"><use href="#i-phone" /></svg>
-                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={onChange} />
-                </div>
-              </div>
-              <div className="field">
-                {/* require_customer_email/require_full_address חלים רק על יצירת לקוח חדש, לא על עריכת
-                    לקוח קיים כאן - כמו require_customer_id_number למטה (דיווח תקלה 48ff7055, 2026-09-22). */}
-                <label>דוא&quot;ל</label>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <div className="input-icon-wrap" style={{ flex: 1 }}>
-                    <svg className="icon"><use href="#i-mail" /></svg>
-                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
-                  </div>
-                  {customer.email && (
-                    <>
-                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="העתק כתובת מייל" onClick={onCopyEmail}>
-                        <svg className="icon"><use href="#i-link" /></svg>
-                      </button>
-                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שלח מייל" onClick={onOpenEmailModal}>
-                        <svg className="icon"><use href="#i-mail" /></svg>
-                      </button>
-                    </>
-                  )}
-                </div>
-                {(!customer.email || !customer.email.includes('@')) && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ marginTop: '6px' }}
-                    onClick={() => onChange({ target: { name: 'email', value: `${customer.email || ''}@gmail.com` } })}
-                  >
-                    השלם ל- @gmail.com
-                  </button>
-                )}
-              </div>
-              <div className="field">
-                <label>עיר</label>
-                <input type="text" className="input" name="city" list="modern-cust-city-list" autoComplete="new-password" value={customer.city || ''} onChange={onChange} />
-                <datalist id="modern-cust-city-list">
-                  {customerLocations.cities.map(c => <option key={c} value={c} />)}
-                </datalist>
-              </div>
-              <div className="field">
-                <label>רחוב</label>
-                <input type="text" className="input" name="street" list="modern-cust-street-list" autoComplete="new-password" value={customer.street || ''} onChange={onChange} />
-                <datalist id="modern-cust-street-list">
-                  {customerLocations.streets.map(s => <option key={s} value={s} />)}
-                </datalist>
-              </div>
-              <div className="field">
-                <label>מספר בית</label>
-                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} />
-              </div>
-              <div className="field">
-                <label>תעודת זהות (לעריכה/ביטול)</label>
-                <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={onChange} placeholder="ת״ז" />
-              </div>
-              {settings.hide_marketing_consent_field !== 'true' && (
-                <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
-                  <input type="checkbox" id="marketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={(e) => onChange({ target: { name: 'marketingConsent', value: e.target.checked } })} />
-                  <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
-                </div>
+          <form onSubmit={handleSubmit} autoComplete="off" className="v3-stack">
+            <Field label="שם פרטי" required type="text" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={onChange} />
+            <Field label="שם משפחה" required type="text" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={onChange} />
+            <Field label="טלפון" required type="text" style={{ direction: 'ltr' }} name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={onChange} />
+            <Field label="טלפון נוסף" type="text" style={{ direction: 'ltr' }} name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={onChange} />
+
+            {/* require_customer_email/require_full_address חלים רק על יצירת לקוח חדש, לא על עריכת
+                לקוח קיים כאן - כמו require_customer_id_number למטה (דיווח תקלה 48ff7055, 2026-09-22). */}
+            <Field label="דוא&quot;ל" type="email" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
+            <div className="v3-cluster">
+              {customer.email && (
+                <>
+                  <IconBtn icon="copy" label="העתקת כתובת המייל" title="העתקת כתובת המייל" variant="quiet" size="sm" onClick={onCopyEmail} />
+                  <IconBtn icon="mail" label="שליחת מייל" title="שליחת מייל" variant="quiet" size="sm" onClick={onOpenEmailModal} />
+                </>
+              )}
+              {(!customer.email || !customer.email.includes('@')) && (
+                <Btn
+                  size="sm"
+                  onClick={() => onChange({ target: { name: 'email', value: `${customer.email || ''}@gmail.com` } })}
+                >
+                  השלמה ל-@gmail.com
+                </Btn>
               )}
             </div>
 
-            <div className="field">
-              <label>הערות</label>
-              <textarea className="textarea" name="notes" autoComplete="off" value={customer.notes || ''} onChange={onChange} rows={4} />
-            </div>
+            <Field label="עיר" type="text" name="city" list="modern-cust-city-list" autoComplete="new-password" value={customer.city || ''} onChange={onChange} />
+            <datalist id="modern-cust-city-list">
+              {customerLocations.cities.map(c => <option key={c} value={c} />)}
+            </datalist>
+            <Field label="רחוב" type="text" name="street" list="modern-cust-street-list" autoComplete="new-password" value={customer.street || ''} onChange={onChange} />
+            <datalist id="modern-cust-street-list">
+              {customerLocations.streets.map(s => <option key={s} value={s} />)}
+            </datalist>
+            <Field label="מספר בית" type="number" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} />
+            <Field
+              label="תעודת זהות"
+              tip="משמשת לאימות כשעורכים או מבטלים הזמנה."
+              type="text"
+              style={{ direction: 'ltr' }}
+              name="zeout"
+              autoComplete="off"
+              value={customer.zeout || ''}
+              onChange={onChange}
+              placeholder="ת״ז"
+            />
+            {settings.hide_marketing_consent_field !== 'true' && (
+              <Switch
+                id="marketingConsent"
+                name="marketingConsent"
+                checked={!!customer.marketingConsent}
+                onChange={(v) => onChange({ target: { name: 'marketingConsent', value: v } })}
+                label="מאשר/ת קבלת דיוורים"
+              />
+            )}
+            <Field label="הערות" as="textarea" name="notes" autoComplete="off" value={customer.notes || ''} onChange={onChange} rows={4} />
 
             {/* כפתור שמירה בסוף הטופס, בנוסף לכפתור "שמירת שינויים" הראשי למעלה
                 ולכפתור ה-V בכותרת הכרטיס - בקשת עובדת (דיווח 823fef1d): לא צריך
                 לגלול חזרה למעלה אחרי מילוי כל הפרטים כדי לשמור. */}
-            <button type="submit" className="btn btn-primary" style={{ marginTop: '18px', width: '100%' }} disabled={saving}>
-              {saving ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+            <Btn type="submit" variant="primary" icon="check" block loading={saving}>
               שמירת שינויים
-            </button>
+            </Btn>
           </form>
         )}
-      </div>
+      </Card>
 
       {!isEditing && customer.notes && (
-        <div className="card card-pad">
-          <div className="card-title-row" style={{ marginBottom: '12px' }}>
-            <svg className="icon"><use href="#i-file" /></svg>
-            <h3 style={{ margin: 0 }}>הערות הלקוח</h3>
-          </div>
-          <div>{renderCustomerNotes(customer.notes)}</div>
-        </div>
+        <Card icon="file" title="הערות" variant="quiet">
+          <div className="v3-stack">{renderCustomerNotes(customer.notes)}</div>
+        </Card>
       )}
-    </div>
+    </>
   );
 }

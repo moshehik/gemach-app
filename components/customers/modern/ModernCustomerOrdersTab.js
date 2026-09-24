@@ -1,49 +1,48 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { calculateOrderStatus, calculatePaymentStatus } from '@/lib/orderStatus';
+import { Card, Chip, Row, Rows, Empty, Icon } from '@/app/v3/ui/components';
 
 // מיפוי סטטוס טקסטואלי (calculateOrderStatus/calculatePaymentStatus ב-lib/orderStatus.js) אל
-// מחלקת ה-badge של מערכת העיצוב "אריג" — אותו מיפוי בדיוק כמו בעמוד רשימת ההזמנות (app/orders/page.js).
-const getStatusBadgeClass = (status) => {
+// וריאנט הצ'יפ של v3 — אותו מיפוי בדיוק כמו בעמוד רשימת ההזמנות (app/orders/page.js).
+const getStatusChipVariant = (status) => {
   switch (status) {
     case 'הוחזר':
     case 'הוחזר חלקי':
-      return 'badge-success';
+      return 'done';
     case 'הושכר':
     case 'הושכר חלקי':
-      return 'badge-info';
+      return 'info';
     case 'בקרוב':
-      return 'badge-warning';
+      return 'gold';
     case 'עבר':
-      return 'badge-neutral';
     case 'מחוק':
-      return 'badge-neutral';
     case 'טיוטה':
-      return 'badge-neutral';
     default:
-      return 'badge-neutral';
+      return undefined;
   }
 };
 
-const getPaymentBadgeClass = (status) => {
+const getPaymentChipVariant = (status) => {
   switch (status) {
     case 'שולם':
-      return 'badge-success';
+      return 'done';
     case 'שולם חלקי':
-      return 'badge-warning';
+      return 'gold';
     case 'ממתין לזיכוי':
-      return 'badge-info';
+      return 'info';
     case 'לא שולם':
     default:
-      return 'badge-danger';
+      return 'attn';
   }
 };
 
 export default function ModernCustomerOrdersTab({ orders = [] }) {
   const router = useRouter();
+  const [openId, setOpenId] = useState(null);
 
   const sortedOrders = [...orders].sort((a, b) => {
     const getEventSortDate = (o) => (o.isWeekdayEvent || o.isAbroad)
@@ -53,77 +52,80 @@ export default function ModernCustomerOrdersTab({ orders = [] }) {
   });
 
   return (
-    <div>
-      <div className="toolbar">
-        <div style={{ fontWeight: 800, fontSize: '14.5px' }}>הזמנות הלקוח</div>
-        <span className="spacer" />
-        <span className="hint" style={{ color: 'var(--text-3)' }}>{orders.length} הזמנות</span>
-      </div>
-
+    <Card icon="bag" title="הזמנות הלקוח" tip="לחיצה על הזמנה פותחת אותה. החץ מציג את הסכומים והסטטוסים.">
       {sortedOrders.length > 0 ? (
-        <div className="table-wrap">
-          <div className="table-scroll">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>קוד הזמנה</th>
-                <th>תאריך אירוע/השכרה</th>
-                <th>סטטוס פריטים</th>
-                <th>סכום לחיוב</th>
-                <th>שולם</th>
-                <th>סטטוס תשלום</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedOrders.map(order => {
-                const calculatedTotalAmount = order.obligations?.length > 0
-                  ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0)
-                  : (order.totalAmount || 0);
-                const totalPaid = order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
-                const orderStatus = calculateOrderStatus(order);
-                const paymentStatus = calculatePaymentStatus(calculatedTotalAmount, totalPaid);
+        <div className="v3-stack">
+          {sortedOrders.map(order => {
+            const calculatedTotalAmount = order.obligations?.length > 0
+              ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0)
+              : (order.totalAmount || 0);
+            const totalPaid = order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
+            const orderStatus = calculateOrderStatus(order);
+            const paymentStatus = calculatePaymentStatus(calculatedTotalAmount, totalPaid);
+            const isOpen = openId === order.id;
+            const paidIsFull = totalPaid >= calculatedTotalAmount && calculatedTotalAmount > 0;
 
-                return (
-                  <tr key={order.id} onClick={() => router.push(`/orders/${order.orderId}`)} style={{ cursor: 'pointer' }}>
-                    <td className="cell-primary">
-                      <Link href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-solid)' }}>
-                        {order.orderId}
+            return (
+              <div key={order.id} className={`v3-item${isOpen ? ' is-open' : ''}`}>
+                <div
+                  className="v3-item__top"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => router.push(`/orders/${order.orderId}`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) router.push(`/orders/${order.orderId}`); }}
+                >
+                  <div className="v3-item__thumb"><Icon name="bag" /></div>
+                  <div className="v3-item__info">
+                    <span className="v3-item__model">
+                      <Link href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()}>
+                        הזמנה <bdi>{order.orderId}</bdi>
                       </Link>
-                    </td>
-                    <td>
+                    </span>
+                    <span className="v3-item__meta">
                       {order.isWeekdayEvent ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12.5px' }}>
-                          <span><strong>לקיחה:</strong> {order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</span>
-                          <span><strong>החזרה:</strong> {order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</span>
-                        </div>
+                        <>
+                          לקיחה: <bdi>{order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</bdi>
+                          {' · '}
+                          החזרה: <bdi>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</bdi>
+                        </>
                       ) : (
-                        order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))
+                        <bdi>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))}</bdi>
                       )}
-                    </td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(orderStatus)}`}>{orderStatus}</span>
-                    </td>
-                    <td className="cell-primary">₪{calculatedTotalAmount}</td>
-                    <td style={{ color: totalPaid >= calculatedTotalAmount && calculatedTotalAmount > 0 ? 'var(--success)' : (totalPaid < calculatedTotalAmount ? 'var(--danger)' : undefined) }}>₪{totalPaid}</td>
-                    <td>
-                      <span className={`badge ${getPaymentBadgeClass(paymentStatus)}`}>{paymentStatus}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          </div>
-          <div className="table-foot">
-            <span>סה&quot;כ הזמנות מוצגות: {sortedOrders.length}</span>
-          </div>
+                    </span>
+                  </div>
+                  <Chip variant={getStatusChipVariant(orderStatus)}>{orderStatus}</Chip>
+                  <button
+                    type="button"
+                    className="v3-th-btn v3-item__chev"
+                    aria-label={isOpen ? 'סגירת פרטים' : 'פתיחת פרטים'}
+                    aria-expanded={isOpen}
+                    onClick={(e) => { e.stopPropagation(); setOpenId(isOpen ? null : order.id); }}
+                  >
+                    <Icon name="chevron-down" anim={false} />
+                  </button>
+                </div>
+                <div className="v3-item__wrap">
+                  <div className="v3-item__det">
+                    <div className="v3-item__det-in">
+                      <Rows>
+                        <Row label="סכום לחיוב"><bdi>₪{calculatedTotalAmount}</bdi></Row>
+                        <Row label="שולם">
+                          <bdi>₪{totalPaid}</bdi>
+                          {paidIsFull && <Chip variant="done" icon="check">שולם במלואו</Chip>}
+                        </Row>
+                        <Row label="סטטוס תשלום"><Chip variant={getPaymentChipVariant(paymentStatus)}>{paymentStatus}</Chip></Row>
+                      </Rows>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <span className="v3-faint">סה&quot;כ <bdi>{sortedOrders.length}</bdi> הזמנות</span>
         </div>
       ) : (
-        <div className="empty-state">
-          <svg className="icon"><use href="#i-bag" /></svg>
-          <p>אין הזמנות ללקוח זה.</p>
-        </div>
+        <Empty icon="bag" title="אין הזמנות ללקוח הזה" />
       )}
-    </div>
+    </Card>
   );
 }
