@@ -1,0 +1,1624 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>לוח חודשי · אב-טיפוס A4</title>
+<meta name="description" content="אב-טיפוס סטטי לאישור: ארכיטיפ לוח / ציר זמן (A4) על הלוח החודשי, בשפת סקיצה B. נתוני דמה בלבד.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   TOKENS — שכבה L0 (גולמי) → L1 (סמנטי). עמודים בהירים בלבד.
+   כהה קיים רק על שכבה צפה (data-v3-mode="dark").
+   ========================================================= */
+:root{
+  --v3-navy-900:#0a2242; --v3-navy-800:#0f2c52; --v3-navy-700:#173c6b; --v3-navy-500:#2b5a94;
+  --v3-sky-50:#f3f9fe; --v3-sky-100:#e4f1fb; --v3-sky-200:#cfe6f7; --v3-sky-300:#a9d2f0; --v3-sky-400:#7fb8e6;
+  --v3-gold-100:#fbf1d3; --v3-gold-300:#e0c56e; --v3-gold-500:#c9a227; --v3-gold-600:#b8912f; --v3-gold-700:#9a7a1f; --v3-gold-800:#6f560f; /* REVIEW-1 M-4: טקסט זהב על רקע בהיר (AA) */
+  --v3-rose-50:#fff6f2; --v3-rose-100:#ffece5; --v3-rose-200:#fdd9cc; --v3-rose-300:#fbbfa9; --v3-rose-500:#fa9e84; --v3-rose-700:#a8442a;
+  --v3-plum:#a83d6c; --v3-peri:#8fa6e8;
+
+  /* L1 */
+  --v3-bg:var(--v3-sky-200); --v3-surface:#fff; --v3-surface-2:var(--v3-sky-50); --v3-surface-3:var(--v3-sky-100);
+  --v3-line:var(--v3-sky-300); --v3-line-soft:var(--v3-sky-100); --v3-frame:var(--v3-navy-800); --v3-frame-soft:rgba(15,44,82,.22);
+  --v3-ink:var(--v3-navy-900); --v3-ink-2:#2f4a6b; --v3-ink-3:#4d6787; --v3-ink-inverse:#fff;
+  --v3-brand:var(--v3-navy-800); --v3-brand-tint:var(--v3-sky-100);
+  --v3-accent:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%); --v3-accent-solid:var(--v3-gold-600); --v3-accent-ink:#000;
+  --v3-focus-ring:var(--v3-gold-500); --v3-link:var(--v3-navy-500);
+  --v3-scrim:rgba(10,34,66,.45); --v3-scrim-strong:rgba(10,34,66,.6);
+  --v3-charge-bg:var(--v3-rose-100); --v3-charge-ink:var(--v3-rose-700); --v3-charge-line:var(--v3-rose-300);
+  --v3-credit-bg:var(--v3-sky-100); --v3-credit-ink:var(--v3-navy-800); --v3-credit-line:var(--v3-sky-300);
+  --v3-done-bg:var(--v3-sky-100); --v3-done-ink:var(--v3-navy-800);
+  --v3-pending-bg:var(--v3-rose-50); --v3-pending-line:var(--v3-rose-500);
+  --v3-disabled-bg:var(--v3-sky-100); --v3-disabled-ink:var(--v3-ink-3); --v3-disabled-line:var(--v3-sky-200);
+  --v3-danger-ink:var(--v3-plum);
+  --v3-on-dark:#fff; --v3-on-dark-2:#c9daee; --v3-on-dark-3:#9fb6d2;
+  --v3-topbar-bg:var(--v3-navy-900); --v3-tooltip-bg:var(--v3-navy-900); --v3-tooltip-ink:#fff;
+
+  /* טיפוגרפיה */
+  --v3-font:"Rubik","Heebo",system-ui,sans-serif;
+  --v3-fs-cap:12px; --v3-fs-2xs:13px; --v3-fs-sm:14px; --v3-fs-base:16px; --v3-fs-md:17px; --v3-fs-lg:18px; --v3-fs-xl:20px; --v3-fs-2xl:24px; --v3-fs-h1:28px; --v3-fs-amount:34px;
+  /* מרווח / רדיוס / צל */
+  --v3-sp-1:4px; --v3-sp-2:8px; --v3-sp-3:12px; --v3-sp-4:16px; --v3-sp-5:24px; --v3-sp-6:32px; --v3-sp-7:40px;
+  --v3-r-sm:10px; --v3-r-md:12px; --v3-r-btn:14px; --v3-r-lg:16px; --v3-r-xl:20px; --v3-r-dlg:24px; --v3-r-pill:999px;
+  --v3-el-1:0 1px 2px rgba(15,44,82,.06),0 8px 24px -10px rgba(15,44,82,.22);
+  --v3-el-3:0 12px 32px -10px rgba(10,34,66,.35);
+  --v3-el-4:0 24px 60px -12px rgba(10,34,66,.5);
+  /* z-index */
+  --v3-z-sticky:10; --v3-z-rail:20; --v3-z-topbar:40; --v3-z-popover:60; --v3-z-drawer:80; --v3-z-layer:100; --v3-z-notice:300; --v3-z-toast:310; --v3-z-tip:400;
+  /* תנועה */
+  --v3-fast:150ms; --v3-base:220ms; --v3-med:300ms; --v3-enter:450ms;
+  --v3-ease:cubic-bezier(.22,1,.36,1); --v3-spring:cubic-bezier(.2,1.3,.3,1);
+  --v3-notice-ms:15000ms;
+  /* מידות */
+  --v3-topbar-h:64px; --v3-w-content:1240px; --v3-tap:44px; --v3-rail-w:340px;
+  --v3-fs-h1-cur:var(--v3-fs-h1);
+}
+@media (max-width:640px){ :root{ --v3-topbar-h:58px; --v3-fs-h1-cur:23px; } }
+
+/* =========== בסיס =========== */
+*,*::before,*::after{box-sizing:border-box}
+html{scrollbar-gutter:stable;background:var(--v3-bg)}
+html[data-v3-lock]{overflow:hidden}
+*{scrollbar-width:thin;scrollbar-color:var(--v3-line) transparent}
+body{margin:0;font-family:var(--v3-font);font-size:var(--v3-fs-base);line-height:1.6;color:var(--v3-ink);background:var(--v3-bg);min-height:100dvh;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--v3-link)}
+bdi,.num{unicode-bidi:isolate}
+.ltr{direction:ltr;text-align:end}
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--v3-navy-800);outline-offset:2px;box-shadow:0 0 0 6px var(--v3-gold-300);border-radius:6px}
+[hidden]{display:none!important}
+
+/* =========== אייקונים + אנימציה =========== */
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle}
+.ic.sm{width:16px;height:16px}.ic.lg{width:24px;height:24px}.ic.xl{width:32px;height:32px}.ic.xxl{width:48px;height:48px}
+@keyframes ia-nudge{0%,100%{transform:none}50%{transform:translateX(-4px)}}
+@keyframes ia-nudge-back{0%,100%{transform:none}50%{transform:translateX(4px)}}
+@keyframes ia-spin{to{transform:rotate(-360deg)}}
+@keyframes ia-pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:none}}
+@keyframes ia-wig{0%,100%{transform:none}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@keyframes ia-rise{0%,100%{transform:none}50%{transform:translateY(-3px)}}
+@keyframes ia-loop{to{transform:rotate(360deg)}}
+@keyframes ia-draw{from{stroke-dashoffset:30}}
+:is(button,a,[role=tab],summary,.tip):is(:hover,:focus-visible):not(:disabled) .ic[data-a=nudge]{animation:ia-nudge .6s var(--v3-ease)}
+:is(button,a,[role=tab],summary,.tip):is(:hover,:focus-visible):not(:disabled) .ic[data-a=back]{animation:ia-nudge-back .6s var(--v3-ease)}
+:is(button,a,[role=tab],summary,.tip):is(:hover,:focus-visible):not(:disabled) .ic[data-a=spin]{animation:ia-spin .6s var(--v3-ease)}
+:is(button,a,[role=tab],summary,.tip):is(:hover,:focus-visible):not(:disabled) .ic[data-a=pop]{animation:ia-pop .45s var(--v3-spring)}
+:is(button,a,[role=tab],summary,.tip):is(:hover,:focus-visible):not(:disabled) .ic[data-a=wig]{animation:ia-wig .5s var(--v3-ease)}
+:is(button,a,[role=tab],summary,.tip):is(:hover,:focus-visible):not(:disabled) .ic[data-a=rise]{animation:ia-rise .5s var(--v3-ease)}
+.ic[data-a=loop]{animation:ia-loop 1s linear infinite}
+.ic.draw{stroke-dasharray:30;animation:ia-draw .5s var(--v3-ease)}
+.ic.enter{animation:ia-pop .45s var(--v3-spring)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+html[data-motion=reduced] *,html[data-motion=reduced] *::before,html[data-motion=reduced] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+
+/* =========== כפתורים =========== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--v3-tap);padding:10px 18px;border-radius:var(--v3-r-btn);border:1.5px solid var(--v3-rose-500);background:var(--v3-rose-200);color:#000;font-weight:500;white-space:nowrap;transition:background-color var(--v3-fast),color var(--v3-fast),border-color var(--v3-fast),transform var(--v3-fast)}
+.btn:hover{background:var(--v3-navy-800);border-color:var(--v3-navy-800);color:#fff;transform:translateY(-1px)}
+.btn.primary{background:var(--v3-accent);border-color:var(--v3-gold-700);color:var(--v3-accent-ink);font-weight:600;box-shadow:0 6px 16px -8px rgba(15,44,82,.6)}
+.btn.primary:hover{background:var(--v3-navy-800);color:#fff}
+.btn.quiet{background:transparent;border-color:var(--v3-frame-soft)}
+.btn.quiet:hover{background:var(--v3-navy-800);color:#fff}
+.btn.lg{min-height:52px;padding:12px 24px;font-size:var(--v3-fs-md);border-radius:var(--v3-r-lg)}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:var(--v3-fs-sm);border-radius:var(--v3-r-sm)}
+.btn.block{width:100%}
+.btn:disabled,.btn:disabled:hover{background:var(--v3-disabled-bg);color:var(--v3-disabled-ink);border-color:var(--v3-disabled-line);box-shadow:none;transform:none;cursor:not-allowed}
+.btn.is-busy .ic{animation:ia-loop 1s linear infinite}
+.ibtn{width:var(--v3-tap);height:var(--v3-tap);display:inline-grid;place-items:center;border-radius:var(--v3-r-btn);border:1.5px solid var(--v3-rose-500);background:var(--v3-rose-200);color:#000;flex:none;transition:background-color var(--v3-fast),color var(--v3-fast)}
+.ibtn:hover{background:var(--v3-navy-800);color:#fff;border-color:var(--v3-navy-800)}
+.ibtn.quiet{background:transparent;border-color:transparent;color:var(--v3-ink-2)}
+.ibtn.quiet:hover{background:var(--v3-surface-3);color:var(--v3-ink)}
+.ibtn.round{border-radius:50%;width:48px;height:48px;background:var(--v3-surface);border:1px solid var(--v3-line);box-shadow:var(--v3-el-1)}
+.ibtn.round:hover{background:var(--v3-navy-800);color:#fff}
+.tip{width:var(--v3-tap);height:var(--v3-tap);margin:-10px;display:inline-grid;place-items:center;border:0;background:none;color:var(--v3-ink-3);border-radius:50%;flex:none}
+.tip:hover,.tip:focus-visible{color:var(--v3-navy-800)}
+
+/* =========== סרגל עליון =========== */
+.topbar{position:sticky;top:0;z-index:var(--v3-z-topbar);height:var(--v3-topbar-h);background:var(--v3-topbar-bg);color:var(--v3-on-dark);display:flex;align-items:center;gap:var(--v3-sp-3);padding:0 var(--v3-sp-5);padding-top:env(safe-area-inset-top);border-bottom:3px solid var(--v3-gold-500)}
+.tb-brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;flex:none}
+.tb-mark{width:40px;height:40px;border-radius:12px;background:var(--v3-accent);color:#000;display:grid;place-items:center}
+.tb-name{font-weight:700;font-size:var(--v3-fs-lg)}
+.tb-org{font-size:var(--v3-fs-2xs);color:var(--v3-on-dark-2);border:1px solid rgba(255,255,255,.2);border-radius:var(--v3-r-pill);padding:1px 10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-nav{display:flex;gap:4px;flex:1;min-width:0;justify-content:center}
+.tb-nav a{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;color:var(--v3-on-dark-2);text-decoration:none;font-weight:500;white-space:nowrap}
+.tb-nav a:hover{background:rgba(255,255,255,.08);color:#fff}
+.tb-nav a[aria-current=page]{background:rgba(255,255,255,.12);color:var(--v3-gold-300);box-shadow:inset 0 -3px 0 var(--v3-gold-500)}
+.tb-act{display:flex;align-items:center;gap:6px;flex:none;margin-inline-start:auto}
+.tb-ib{width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:#fff;display:grid;place-items:center;position:relative}
+.tb-ib:hover{background:rgba(255,255,255,.1)}
+.tb-badge{position:absolute;inset-block-start:4px;inset-inline-end:4px;min-width:18px;height:18px;border-radius:9px;background:var(--v3-rose-500);color:#000;font-size:var(--v3-fs-cap);font-weight:700;display:grid;place-items:center;padding:0 4px}
+.tb-user{display:flex;align-items:center;gap:8px;height:44px;padding:0 6px 0 12px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff}
+.tb-av{width:32px;height:32px;border-radius:50%;background:var(--v3-accent);color:#000;display:grid;place-items:center;font-weight:700}
+.tb-burger{display:none}
+.drawer{position:fixed;inset-block:0;inset-inline-start:0;width:min(88vw,360px);background:var(--v3-navy-900);color:#fff;z-index:var(--v3-z-drawer);padding:var(--v3-sp-4);padding-top:calc(env(safe-area-inset-top) + 16px);display:flex;flex-direction:column;gap:6px;box-shadow:var(--v3-el-4);animation:dr-in var(--v3-med) var(--v3-ease)}
+@keyframes dr-in{from{transform:translateX(100%)}}
+.drawer a{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:12px;color:var(--v3-on-dark-2);text-decoration:none}
+.drawer a[aria-current=page]{background:rgba(255,255,255,.1);color:var(--v3-gold-300)}
+.drawer-scrim{position:fixed;inset:0;background:var(--v3-scrim);z-index:calc(var(--v3-z-drawer) - 1)}
+@media (max-width:1439px){.tb-org{display:none}} /* REVIEW-1 m-3 */
+@media (max-width:1023px){
+  .tb-nav{display:none}
+  .tb-burger{display:grid}
+  .tb-uname{display:none}
+}
+@media (max-width:640px){
+  .topbar{padding:0 var(--v3-sp-3);gap:var(--v3-sp-2)}
+  .tb-org{display:none}
+  .tb-name{font-size:var(--v3-fs-base)}
+  .tb-user{padding:0 4px;border:0}
+}
+
+/* =========== בקרת הדגמה =========== */
+.demo{max-width:var(--v3-w-content);margin:var(--v3-sp-3) auto 0;padding:0 var(--v3-sp-5)}
+.demo details{background:var(--v3-surface);border:1.5px dashed var(--v3-gold-600);border-radius:var(--v3-r-lg)}
+.demo summary{list-style:none;display:flex;align-items:center;gap:10px;padding:10px 16px;font-weight:600;cursor:pointer;min-height:48px}
+.demo summary::-webkit-details-marker{display:none}
+.demo summary small{font-weight:400;color:var(--v3-ink-3)}
+.demo summary .chev{margin-inline-start:auto;transition:transform var(--v3-base)}
+.demo details[open] summary .chev{transform:rotate(180deg)}
+.demo-body{padding:0 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--v3-sp-4)}
+.demo-grp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.demo-grp h3{margin:0;font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:600}
+.demo-row{display:flex;flex-wrap:wrap;gap:6px}
+.demo select{min-height:40px;border:1.5px solid var(--v3-line);border-radius:var(--v3-r-sm);padding:0 10px;background:#fff;max-width:100%}
+.chk{display:flex;align-items:center;gap:8px;font-size:var(--v3-fs-sm);min-height:32px;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--v3-navy-800)}
+
+/* =========== הודעות עליונות (NoticeBar) =========== */
+.notice-area{position:sticky;top:var(--v3-topbar-h);z-index:var(--v3-z-notice);max-width:var(--v3-w-content);margin:0 auto;padding:0 var(--v3-sp-5)}
+.notice-area:empty{display:none}
+.notice{position:relative;margin-top:var(--v3-sp-2);background:var(--v3-navy-800);color:#fff;border-radius:var(--v3-r-lg);box-shadow:var(--v3-el-4);overflow:hidden;animation:nb-in var(--v3-med) var(--v3-ease)}
+@keyframes nb-in{from{transform:translateY(-14px)}}
+.notice.is-leaving{opacity:0;transform:translateY(-10px);transition:opacity 200ms,transform 200ms}
+.nb-main{display:flex;align-items:center;gap:14px;padding:12px 16px}
+.nb-ic{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--v3-sky-100);color:var(--v3-navy-800);border:2px solid var(--v3-gold-300)}
+.nb-msg{flex:1;min-width:0;display:flex;flex-direction:column}
+.nb-msg b{font-weight:700}
+.nb-msg span{font-size:var(--v3-fs-sm);color:var(--v3-on-dark-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nb-acts{display:flex;gap:6px;flex:none}
+.nb-acts .btn{min-height:40px;padding:6px 14px;font-size:var(--v3-fs-sm)}
+.nb-x{width:40px;height:40px;border-radius:10px;border:0;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center}
+.nb-x:hover{background:rgba(255,255,255,.24)}
+.nb-timer{height:4px;background:var(--v3-accent);transform-origin:right center;animation:nb-t var(--v3-notice-ms) linear forwards}
+.notice:is(:hover,:focus-within) .nb-timer{animation-play-state:paused}
+@keyframes nb-t{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+html[data-motion=reduced] .nb-timer{animation-duration:var(--v3-notice-ms)!important}
+@media (prefers-reduced-motion:reduce){.nb-timer{animation-duration:var(--v3-notice-ms)!important}}
+@media (max-width:640px){.notice-area{padding:0 var(--v3-sp-3)}.nb-acts .btn{display:none}}
+
+/* =========== מעטפת עמוד =========== */
+.page{max-width:var(--v3-w-content);margin:0 auto;padding:var(--v3-sp-5) var(--v3-sp-5) calc(var(--v3-sp-7) + 80px)}
+@media (max-width:640px){.page{padding:var(--v3-sp-4) var(--v3-sp-4) calc(var(--v3-sp-7) + 96px)}}
+.pagehead{display:flex;align-items:center;gap:var(--v3-sp-4);margin-bottom:var(--v3-sp-5);flex-wrap:wrap}
+.ph-av{width:60px;height:60px;border-radius:18px;background:var(--v3-navy-800);color:#fff;display:grid;place-items:center;font-size:var(--v3-fs-2xl);font-weight:700;flex:none;border:2px solid var(--v3-gold-500)}
+.ph-ttl{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.ph-kind{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:500}
+.ph-ttl h1{margin:0;font-size:var(--v3-fs-h1-cur);line-height:1.25;font-weight:700;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ph-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ph-tools{display:flex;gap:8px;flex:none;align-self:flex-start}
+.ph-chips .chip{white-space:normal;text-align:start}
+@media (max-width:640px){.ph-av{width:48px;height:48px;font-size:var(--v3-fs-lg)}.pagehead{gap:var(--v3-sp-3)}.ph-ttl{flex-basis:100%;order:0}.ph-tools{width:100%}.ph-tools .btn{flex:1}}
+
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 12px;border-radius:var(--v3-r-pill);font-size:var(--v3-fs-2xs);font-weight:500;background:var(--v3-surface-3);color:var(--v3-ink-2);border:1px solid var(--v3-line);white-space:nowrap;max-width:100%}
+.chip .ic{width:14px;height:14px}
+.chip.info{background:var(--v3-brand-tint);color:var(--v3-navy-800)}
+.chip.done{background:var(--v3-navy-800);color:#fff;border-color:var(--v3-navy-800)}
+.chip.gold{background:var(--v3-gold-100);color:var(--v3-gold-800);border-color:var(--v3-gold-300)}
+.chip.attn{background:var(--v3-rose-100);color:var(--v3-rose-700);border-color:var(--v3-rose-300)}
+.chip.pend{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line);color:var(--v3-rose-700)}
+
+/* =========== פריסת A2: תוכן + רייל =========== */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) var(--v3-rail-w);gap:var(--v3-sp-5);align-items:start}
+@media (max-width:1023px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* לשוניות */
+.tabs{display:flex;gap:6px;background:var(--v3-sky-100);padding:6px;border-radius:var(--v3-r-xl);overflow-x:auto;scrollbar-width:none;border:1px solid var(--v3-line);margin-bottom:var(--v3-sp-4)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:max-content;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:8px 16px;border:0;background:transparent;border-radius:15px;font-weight:500;color:var(--v3-ink-2);white-space:nowrap;position:relative}
+.tab:hover{color:var(--v3-ink);background:rgba(255,255,255,.5)}
+.tab[aria-selected=true]{background:var(--v3-surface);color:var(--v3-brand);font-weight:600;box-shadow:0 2px 8px rgba(15,44,82,.14),inset 0 -3px 0 var(--v3-gold-500)}
+.tab .cnt{background:var(--v3-sky-300);color:var(--v3-ink-2);border-radius:var(--v3-r-pill);min-width:24px;height:24px;padding:0 7px;font-size:var(--v3-fs-sm);display:grid;place-items:center}
+.tab[aria-selected=true] .cnt{background:var(--v3-brand-tint);color:var(--v3-brand)}
+.tab .pip{width:10px;height:10px;border-radius:50%;background:var(--v3-rose-500);border:1.5px solid var(--v3-rose-700)}
+.tab .pend{width:12px;height:12px;border-radius:50%;background:var(--v3-rose-200);border:2px dashed var(--v3-rose-700)}
+@media (max-width:1439px){.tab{padding:8px 10px;gap:6px}:root{--v3-rail-w:300px}}
+@media (max-width:640px){.tab{flex:none;padding:8px 12px}}
+.file-pick{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.file-pick input{position:absolute;width:1px;height:1px;opacity:0}
+.file-pick input:focus-visible + label{outline:3px solid var(--v3-navy-800);outline-offset:2px}
+
+.panel{display:flex;flex-direction:column;gap:var(--v3-sp-4)}
+.panel[hidden]{display:none}
+.panel{animation:fade-up var(--v3-med) var(--v3-ease)}
+@keyframes fade-up{from{transform:translateY(8px)}}
+
+/* כרטיס */
+.card{background:var(--v3-surface);border:1px solid var(--v3-frame-soft);border-radius:var(--v3-r-lg);box-shadow:var(--v3-el-1);padding:var(--v3-sp-5)}
+.card.strong{border:2px solid var(--v3-frame)}
+@media (max-width:640px){.card{padding:var(--v3-sp-4)}}
+.card-h{display:flex;align-items:center;gap:12px;margin-bottom:var(--v3-sp-4)}
+.card-h .ico{width:44px;height:44px;border-radius:14px;background:var(--v3-rose-100);color:var(--v3-rose-700);display:grid;place-items:center;flex:none;border:1px solid var(--v3-rose-300)}
+.card-h h2{margin:0;font-size:var(--v3-fs-lg);font-weight:600;flex:1;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card-h .acts{display:flex;gap:8px;flex:none}
+.card-h h2 small{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:400}
+
+/* שורות נתון: תווית מעל, ערך מתחת */
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:28px minmax(0,1fr);gap:4px 12px;padding:14px 0;border-top:1px solid var(--v3-line-soft)}
+.row:first-child{border-top:0;padding-top:0}
+.row>.ic{margin-top:4px;color:var(--v3-ink-3)}
+.row .lbl{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);display:flex;align-items:center;gap:6px}
+.row .val{grid-column:2;font-size:var(--v3-fs-md);font-weight:500;overflow-wrap:anywhere}
+.row .val.missing{color:var(--v3-gold-800);display:flex;align-items:center;gap:6px;font-weight:500;font-size:var(--v3-fs-base)}
+.row .val.missing .ic{color:var(--v3-gold-600)}
+.row .sub{grid-column:2;display:flex;flex-wrap:wrap;gap:6px}
+.row.changed{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line);border-radius:var(--v3-r-md);padding:12px;margin-block:4px}
+.row.changed + .row{border-top:0}
+.row .val .was{display:block;font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:400;text-decoration:line-through}
+
+/* שדות */
+.form{display:flex;flex-direction:column;gap:var(--v3-sp-4)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:var(--v3-sp-4)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.field .flbl{font-size:var(--v3-fs-sm);color:var(--v3-ink-2);font-weight:500;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.req{color:var(--v3-plum);font-weight:700}
+.opt-note{color:var(--v3-ink-3);font-weight:400}
+.input{min-height:48px;border:1.5px solid var(--v3-line);border-radius:var(--v3-r-md);padding:10px 14px;background:var(--v3-surface);font-size:var(--v3-fs-md);width:100%;transition:border-color var(--v3-fast)}
+.input:hover{border-color:var(--v3-sky-400)}
+.input:focus{outline:none;border-color:var(--v3-navy-800);box-shadow:0 0 0 4px var(--v3-gold-300)}
+textarea.input{min-height:110px;resize:vertical;line-height:1.6}
+.field.is-changed .input{border-style:dashed;border-color:var(--v3-pending-line);background:var(--v3-pending-bg)}
+.field.is-err .input{border-color:var(--v3-gold-600);border-width:2px}
+.ferr{color:var(--v3-plum);font-size:var(--v3-fs-sm);display:flex;align-items:center;gap:6px}
+.fhint{color:var(--v3-ink-3);font-size:var(--v3-fs-sm)}
+.inline-acts{display:flex;flex-wrap:wrap;gap:6px}
+.switch{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer}
+.switch input{appearance:none;width:52px;height:30px;border-radius:15px;background:var(--v3-sky-300);position:relative;flex:none;border:1.5px solid var(--v3-navy-500);cursor:pointer;transition:background-color var(--v3-fast)}
+.switch input::after{content:"";position:absolute;inset-block-start:3px;inset-inline-start:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform var(--v3-base) var(--v3-ease)}
+.switch input:checked{background:var(--v3-navy-800)}
+.switch input:checked::after{transform:translateX(-22px)}
+.switch.is-changed{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line);border-radius:var(--v3-r-md);padding:0 12px}
+
+/* באנר */
+.banner{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--v3-r-lg);border:2px solid var(--v3-gold-600);background:var(--v3-gold-100);flex-wrap:wrap}
+.banner .b-ic{width:44px;height:44px;border-radius:50%;background:#fff;color:var(--v3-plum);display:grid;place-items:center;border:2px solid var(--v3-gold-500);flex:none}
+.banner .b-t{flex:1;min-width:180px;display:flex;flex-direction:column}
+.banner .b-t b{font-size:var(--v3-fs-md)}
+.banner .b-t span{color:var(--v3-ink-2);font-size:var(--v3-fs-sm);overflow-wrap:anywhere}
+
+/* הערות אוטומטיות */
+.note-line{padding:10px 0;border-top:1px solid var(--v3-line-soft);display:flex;flex-direction:column;gap:6px}
+.note-line:first-child{border-top:0;padding-top:0}
+.note-line .nl-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.note-line a{display:inline-flex;align-items:center;gap:4px;font-weight:500;text-decoration:none;min-height:32px}
+.note-line a:hover{text-decoration:underline}
+
+/* רשימת הזמנות (שורה מורחבת) */
+.list{display:flex;flex-direction:column;gap:10px}
+.item{border:1.5px solid var(--v3-line);border-radius:var(--v3-r-lg);background:var(--v3-surface);overflow:hidden}
+.item.is-open{border-color:var(--v3-navy-500)}
+.it-top{display:grid;grid-template-columns:44px minmax(0,1fr) auto 44px;align-items:center;gap:12px;padding:10px 12px;cursor:pointer}
+.it-top:hover{background:var(--v3-surface-2)}
+.it-thumb{width:44px;height:44px;border-radius:12px;background:var(--v3-sky-100);display:grid;place-items:center;color:var(--v3-navy-800)}
+.it-info{display:flex;flex-direction:column;min-width:0}
+.it-info a{font-weight:600;font-size:var(--v3-fs-md);text-decoration:none;color:var(--v3-ink);display:inline-flex;align-items:center;gap:6px;min-height:32px}
+.it-info a:hover{color:var(--v3-link);text-decoration:underline}
+.it-meta{font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.it-chev{width:44px;height:44px;border-radius:12px;border:1px solid var(--v3-line);background:var(--v3-surface);display:grid;place-items:center}
+.it-chev .ic{transition:transform var(--v3-base) var(--v3-ease)}
+.item.is-open .it-chev .ic{transform:rotate(180deg)}
+.it-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--v3-med) var(--v3-ease)}
+.item.is-open .it-wrap{grid-template-rows:1fr}
+.it-det{overflow:hidden}
+.it-det-in{padding:4px 16px 16px;border-top:1px dashed var(--v3-line)}
+.item:not(.is-open) .it-det{visibility:hidden}
+@media (max-width:480px){.it-top{grid-template-columns:minmax(0,1fr) 44px}.it-thumb{display:none}.it-top .chip{grid-column:1;justify-self:start;grid-row:2}}
+.foot{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);padding-top:4px}
+
+/* טבלה מינימלית + הרחבה */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--v3-line);border-radius:var(--v3-r-lg)}
+table.tbl{width:100%;border-collapse:collapse;min-width:420px}
+.tbl th{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:500;text-align:start;padding:10px 14px;background:var(--v3-surface-2);border-bottom:1px solid var(--v3-line)}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--v3-line-soft);font-size:var(--v3-fs-base);vertical-align:middle}
+.tbl .n{text-align:end;white-space:nowrap}
+.tbl th.x,.tbl td.x{width:56px;text-align:center;padding-inline:6px}
+.tbl tr.exp td{background:var(--v3-surface-2);padding:6px 18px 14px}
+.tbl tr.is-open>td{border-bottom-color:transparent}
+.tbl .neg{color:var(--v3-credit-ink)}
+
+/* סיכום כספי / אריחים */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:var(--v3-sp-3)}
+.tile{border:1px solid var(--v3-line);border-radius:var(--v3-r-lg);padding:14px 16px;display:flex;flex-direction:column;gap:2px;background:var(--v3-surface-2);min-width:0}
+.tile .t-l{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);display:flex;align-items:center;gap:6px}
+.tile .t-v{font-size:var(--v3-fs-2xl);font-weight:700;overflow-wrap:anywhere}
+.tile.debt{background:var(--v3-charge-bg);border:2px solid var(--v3-charge-line)}
+.tile.debt .t-v{color:var(--v3-charge-ink)}
+.tile.credit{background:var(--v3-credit-bg);border:2px solid var(--v3-credit-line)}
+.tile.even{background:var(--v3-done-bg);border:2px solid var(--v3-navy-500)}
+.formula{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);display:flex;align-items:center;gap:4px;margin-top:var(--v3-sp-3)}
+
+/* פיד היסטוריה */
+.hfilter{display:flex;gap:8px;flex-wrap:wrap}
+.search{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;min-height:48px;border:1.5px solid var(--v3-line);border-radius:var(--v3-r-md);padding:0 12px;background:#fff}
+.search:focus-within{border-color:var(--v3-navy-800);box-shadow:0 0 0 4px var(--v3-gold-300)}
+.search input{border:0;outline:0;flex:1;min-width:0;font-size:var(--v3-fs-md);background:transparent}
+.hday{position:sticky;top:calc(var(--v3-topbar-h) + 4px);z-index:1;background:var(--v3-surface);padding:8px 0;font-weight:600;display:flex;gap:8px;align-items:baseline;border-bottom:2px solid var(--v3-gold-500);margin-top:var(--v3-sp-4)}
+.hday small{color:var(--v3-ink-3);font-weight:400}
+.hent{border-bottom:1px solid var(--v3-line-soft)}
+.he-top{display:grid;grid-template-columns:40px minmax(0,1fr) auto 44px;gap:12px;align-items:center;padding:10px 0;width:100%;border:0;background:none;text-align:start;cursor:pointer}
+.he-top:hover{background:var(--v3-surface-2)}
+.he-ic{width:40px;height:40px;border-radius:50%;background:var(--v3-sky-100);display:grid;place-items:center;color:var(--v3-navy-800);border:1.5px solid var(--v3-peri)}
+.he-t{display:flex;flex-direction:column;min-width:0}
+.he-t b{font-weight:500;font-size:var(--v3-fs-md);overflow-wrap:anywhere}
+.he-t span{font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.he-chev{display:grid;place-items:center;width:44px;height:44px}
+.he-chev .ic{transition:transform var(--v3-base)}
+.hent.is-open .he-chev .ic{transform:rotate(180deg)}
+.he-det{padding-block:0 14px;padding-inline:52px 0}
+.he-det .row{padding:8px 0}
+.range{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.range .from{color:var(--v3-ink-3);text-decoration:line-through;font-weight:400}
+.range .ic{color:var(--v3-gold-700)}
+.hnote{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--v3-r-md);background:var(--v3-surface-2);border:1px dashed var(--v3-line);font-size:var(--v3-fs-sm);color:var(--v3-ink-2)}
+mark{background:var(--v3-gold-100);color:inherit;border-radius:3px;padding:0 2px}
+
+/* מצב ריק / טעינה / שגיאה */
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:var(--v3-sp-7) var(--v3-sp-4);color:var(--v3-ink-2)}
+.empty .e-ic{width:72px;height:72px;border-radius:50%;background:var(--v3-sky-100);display:grid;place-items:center;color:var(--v3-navy-800);border:2px solid var(--v3-gold-300)}
+.empty b{font-size:var(--v3-fs-lg);color:var(--v3-ink)}
+.sk{background:linear-gradient(90deg,var(--v3-sky-100) 0%,var(--v3-sky-50) 50%,var(--v3-sky-100) 100%);background-size:200% 100%;border-radius:10px;animation:sk 1.4s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+
+/* =========== רייל (צד שמאל ב-RTL) =========== */
+.rail{position:sticky;top:calc(var(--v3-topbar-h) + 16px);max-height:calc(100dvh - var(--v3-topbar-h) - 32px);overflow-y:auto;display:flex;flex-direction:column;gap:var(--v3-sp-4);background:var(--v3-navy-800);color:#fff;border-radius:var(--v3-r-xl);padding:var(--v3-sp-5);box-shadow:var(--v3-el-3);z-index:var(--v3-z-rail)}
+.rail h2{margin:0;font-size:var(--v3-fs-lg);display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:3px solid var(--v3-gold-500)}
+.rail h2 .cnt{margin-inline-start:auto;min-width:28px;height:28px;border-radius:14px;background:var(--v3-rose-500);color:#000;font-size:var(--v3-fs-sm);display:grid;place-items:center;padding:0 8px}
+.rail h2 .cnt.zero{background:rgba(255,255,255,.15);color:#fff}
+.rail .tip{color:var(--v3-on-dark-3)}
+.rail .tip:hover{color:#fff}
+.glance{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gl{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.gl .t-l{font-size:var(--v3-fs-2xs);color:var(--v3-on-dark-2);display:flex;align-items:center;gap:6px}
+.gl .t-v{font-size:var(--v3-fs-lg);font-weight:700;overflow-wrap:anywhere}
+.gl.wide{grid-column:1/-1}
+.gl.debt{border:1.5px solid var(--v3-gold-300);background:rgba(224,197,110,.14)}
+.gl.debt .t-v{color:var(--v3-gold-300)}
+.gl.block{border:1.5px dashed var(--v3-rose-300)}
+.chg-list{display:flex;flex-direction:column;gap:8px}
+.chg{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border-radius:14px;background:rgba(255,255,255,.08);border:1.5px dashed var(--v3-rose-300);animation:row-in var(--v3-med) var(--v3-ease)}
+@keyframes row-in{from{transform:translateX(8px)}}
+.chg .c-ic{width:32px;height:32px;border-radius:10px;background:var(--v3-rose-200);color:#000;display:grid;place-items:center}
+.chg .c-t{display:flex;flex-direction:column;min-width:0;font-size:var(--v3-fs-sm)}
+.chg .c-t b{font-size:var(--v3-fs-base);font-weight:600}
+.chg .c-t .range{color:var(--v3-on-dark-2)}
+.chg .c-t .range .from{color:var(--v3-on-dark-3)}
+.chg .c-t .range .ic{color:var(--v3-gold-300)}
+.chg .c-t .range bdi{overflow-wrap:anywhere}
+.chg.undone{border-style:solid;border-color:rgba(255,255,255,.14);background:transparent;opacity:.85}
+.chg.undone .c-ic{background:rgba(255,255,255,.14);color:#fff}
+.chg.undone .c-t b{text-decoration:line-through;text-decoration-color:var(--v3-on-dark-3)}
+.chg .c-btn{width:44px;height:44px;border-radius:12px;border:1.5px solid rgba(255,255,255,.3);background:transparent;color:#fff;display:grid;place-items:center}
+.chg .c-btn:hover{background:#fff;color:var(--v3-navy-800)}
+.rail-empty{display:flex;align-items:center;gap:10px;color:var(--v3-on-dark-2);font-size:var(--v3-fs-sm);padding:6px 0}
+.rail-sub{font-size:var(--v3-fs-sm);color:var(--v3-on-dark-2);margin:4px 0 0;display:flex;align-items:center;gap:6px}
+.rail .btn.quiet{color:#fff;border-color:rgba(255,255,255,.35)}
+.rail .btn.quiet:hover{background:#fff;color:var(--v3-navy-800)}
+.rail .btn:disabled{background:rgba(255,255,255,.08);color:var(--v3-on-dark-3);border-color:rgba(255,255,255,.14)}
+.rail-cta{display:flex;flex-direction:column;gap:8px;position:sticky;bottom:calc(-1 * var(--v3-sp-5));background:var(--v3-navy-800);padding:10px 0 4px;margin-bottom:-4px}
+.rail-sheet-h{display:none}
+.glance-inline{display:none}
+/* רייל בטלפון/טאבלט = פס תחתון + גיליון תחתון */
+.railbar{display:none}
+@media (max-width:1023px){
+  .glance-inline{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-bottom:var(--v3-sp-4)}
+  .glance-inline .gl{background:var(--v3-surface);border:1px solid var(--v3-line);color:var(--v3-ink)}
+  .glance-inline .gl .t-l{color:var(--v3-ink-3)}
+  .glance-inline .gl.debt{background:var(--v3-charge-bg);border:2px solid var(--v3-charge-line)}
+  .glance-inline .gl.debt .t-v{color:var(--v3-charge-ink)}
+  .glance-inline .gl.block{display:none}
+  .rail{display:none}
+  @media (max-width:640px){.glance-inline{grid-template-columns:1fr 1fr}.glance-inline .gl{padding:8px 12px}.glance-inline .gl .t-v{font-size:var(--v3-fs-md)}}
+  .rail.as-sheet{box-shadow:0 0 0 100vmax var(--v3-scrim);display:flex;position:fixed;inset-inline:0;inset-block-end:0;top:auto;max-height:85dvh;border-radius:var(--v3-r-dlg) var(--v3-r-dlg) 0 0;z-index:calc(var(--v3-z-layer) + 1);padding-bottom:calc(var(--v3-sp-5) + env(safe-area-inset-bottom));animation:sheet-up var(--v3-med) var(--v3-ease)}
+  .rail .rail-glance{display:none}
+  .rail-sheet-h{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .rail-sheet-h .grab{width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.35)}
+  .railbar{display:flex;position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--v3-z-sticky);background:var(--v3-navy-800);color:#fff;padding:10px var(--v3-sp-4);padding-bottom:calc(10px + env(safe-area-inset-bottom));gap:10px;align-items:center;border-top:3px solid var(--v3-gold-500)}
+  .railbar .rb-open{flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:48px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);border-radius:14px;color:#fff;padding:0 12px;text-align:start}
+  .railbar .rb-open span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .railbar .rb-open.has{border-style:dashed;border-color:var(--v3-rose-300)}
+  .railbar .btn:disabled{background:rgba(255,255,255,.08);color:var(--v3-on-dark-3);border-color:rgba(255,255,255,.14)}
+}
+@keyframes sheet-up{from{transform:translateY(40px)}}
+
+/* =========== שכבות (LayerManager) =========== */
+#layer-root{position:relative;z-index:var(--v3-z-layer)}
+.scrim{position:fixed;inset:0;background:var(--v3-scrim);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade var(--v3-base)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.scrim{background:var(--v3-scrim-strong)}}
+@media (prefers-reduced-transparency:reduce){.scrim{backdrop-filter:none;background:var(--v3-scrim-strong)}}
+@keyframes fade{from{background:transparent}}
+.scrim.is-leaving{opacity:0;transition:opacity 200ms}
+.dlg{--d-bg:#fff;--d-ink:var(--v3-ink);--d-sub:var(--v3-ink-2);--d-line:var(--v3-line);--d-row:var(--v3-surface-2);--d-ic-bg:var(--v3-sky-100);--d-ic:var(--v3-navy-800);
+  background:var(--d-bg);color:var(--d-ink);border-radius:var(--v3-r-dlg);box-shadow:var(--v3-el-4);width:100%;max-width:min(100vw - 32px,var(--dw,520px));max-height:90dvh;display:flex;flex-direction:column;overflow:hidden;animation:dlg-in var(--v3-base) var(--v3-ease)}
+@keyframes dlg-in{from{transform:scale(.96)}}
+.dlg[data-v3-mode=dark]{--d-bg:#0d2a4f;--d-ink:#fff;--d-sub:#cfe0f2;--d-line:rgba(255,255,255,.16);--d-row:rgba(169,210,240,.12);--d-ic-bg:rgba(224,197,110,.16);--d-ic:#f1dc8f;border:1px solid rgba(255,255,255,.14)}
+.dlg.s{--dw:400px}.dlg.m{--dw:520px}.dlg.l{--dw:760px}
+.dlg-h{padding:24px 24px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.dlg-badge{width:64px;height:64px;border-radius:50%;background:var(--d-ic-bg);color:var(--d-ic);display:grid;place-items:center;border:2px solid var(--v3-gold-500);box-shadow:0 0 0 6px color-mix(in srgb,var(--v3-gold-300) 30%,transparent)}
+.dlg-h h2{margin:0;font-size:var(--v3-fs-2xl);line-height:1.3}
+.dlg-h p{margin:0;color:var(--d-sub);max-width:60ch}
+.dlg-b{padding:8px 24px 16px;overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0}
+.dlg-f{padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--d-line)}
+.dlg-f .btn{min-height:48px;width:100%}
+.dlg.form .dlg-h{flex-direction:row;text-align:start;align-items:center;border-bottom:1px solid var(--d-line);padding-bottom:16px}
+.dlg.form .dlg-h .dlg-badge{width:48px;height:48px;box-shadow:none}
+.dlg.form .dlg-h h2{font-size:var(--v3-fs-xl);flex:1}
+.dlg.form .dlg-h p{font-size:var(--v3-fs-sm)}
+.dlg.form .dlg-b{padding-top:16px}
+@media (min-width:641px){.dlg.form .dlg-f{flex-direction:row;justify-content:flex-start}.dlg.form .dlg-f .btn{width:auto;min-width:140px}}
+.dlg[data-v3-mode=dark] .btn.quiet{color:#fff;border-color:rgba(255,255,255,.35)}
+.dlg[data-v3-mode=dark] .btn.quiet:hover{background:#fff;color:var(--v3-navy-800)}
+.dlg[data-v3-mode=dark] .input,.dlg[data-v3-mode=dark] select.input{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.25);color:#fff}
+.dlg[data-v3-mode=dark] .field>label{color:var(--d-sub)}
+.dlg .x-btn{width:44px;height:44px;border-radius:12px;border:0;background:var(--d-row);color:var(--d-ink);display:grid;place-items:center;flex:none}
+.pin{display:flex;gap:10px;justify-content:center;direction:ltr}
+.pin input{width:56px;height:64px;text-align:center;font-size:var(--v3-fs-2xl);font-weight:700;border-radius:14px;border:2px solid var(--d-line);background:var(--d-row);color:var(--d-ink)}
+.pin input:focus{outline:0;border-color:var(--v3-gold-500);box-shadow:0 0 0 4px color-mix(in srgb,var(--v3-gold-300) 45%,transparent)}
+.pin.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.approvers{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.appr{display:flex;align-items:center;gap:12px;min-height:52px;padding:6px 12px;border-radius:14px;border:1.5px solid var(--d-line);background:var(--d-row);color:var(--d-ink);text-align:start}
+.appr[aria-checked=true]{border-color:var(--v3-gold-500);box-shadow:inset 0 0 0 1px var(--v3-gold-500)}
+.appr .tb-av{width:36px;height:36px}
+.appr small{display:block;color:var(--d-sub);font-size:var(--v3-fs-2xs)}
+.appr-box{display:flex;flex-direction:column;gap:8px}
+.approvers{max-height:min(200px,30dvh);overflow-y:auto;overscroll-behavior:contain;margin-bottom:0;padding:2px;border-radius:14px}
+.dlg-b > .field + .field{margin-top:var(--v3-sp-4)}
+.appr{width:100%}
+.appr .ic{margin-inline-start:auto;color:var(--v3-gold-500)}
+.appr[aria-selected=true]{border-color:var(--v3-gold-500);box-shadow:inset 0 0 0 1px var(--v3-gold-500)}
+.appr-note{display:flex;align-items:center;gap:8px;padding:10px 12px;color:var(--d-sub);font-size:var(--v3-fs-sm)}
+.pw{display:flex;gap:8px;align-items:center}
+.pw .input{flex:1}
+.pw.shake{animation:shake .4s}
+.dlg[data-v3-mode=dark] .ibtn.quiet{color:var(--d-ink)}
+.okbox .links{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.okbox .links a{display:inline-flex;align-items:center;gap:6px;min-height:32px}
+.derr{color:var(--v3-rose-300);text-align:center;font-size:var(--v3-fs-sm);margin-top:10px;min-height:1.6em}
+.dlg:not([data-v3-mode=dark]) .derr{color:var(--v3-plum)}
+.seg{display:flex;flex-wrap:wrap;gap:6px;background:var(--v3-sky-100);padding:5px;border-radius:14px}
+.seg button{flex:1;min-width:max-content;min-height:44px;border:0;border-radius:10px;background:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px}
+.seg button[aria-checked=true]{background:#fff;font-weight:600;box-shadow:0 1px 4px rgba(15,44,82,.15)}
+.okbox{display:flex;gap:12px;align-items:center;padding:14px;border-radius:14px;background:var(--v3-sky-100);border:1.5px solid var(--v3-navy-500);margin-bottom:12px}
+.errbox{display:flex;gap:12px;align-items:center;padding:14px;border-radius:14px;background:var(--v3-gold-100);border:2px solid var(--v3-gold-600);color:var(--v3-ink);margin-bottom:12px}
+@media (max-width:640px){
+  .scrim.sheet{align-items:flex-end;padding:0}
+  .scrim.sheet .dlg{max-width:100%;border-radius:var(--v3-r-dlg) var(--v3-r-dlg) 0 0;padding-bottom:env(safe-area-inset-bottom);animation:sheet-up var(--v3-med) var(--v3-ease)}
+  .scrim.full{padding:0}
+  .scrim.full .dlg{max-width:100%;max-height:100dvh;height:100dvh;border-radius:0}
+  .scrim.full .dlg-f{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+}
+
+/* =========== Toast (פינה שמאלית-תחתונה, פיזית) =========== */
+.toasts{position:fixed;left:24px;bottom:24px;z-index:var(--v3-z-toast);display:flex;flex-direction:column-reverse;gap:10px;width:min(400px,calc(100vw - 32px));pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:14px;background:var(--v3-navy-800);color:#fff;border-radius:18px;padding:12px 12px 12px 14px;box-shadow:var(--v3-el-4);position:relative;overflow:hidden;animation:t-in var(--v3-enter) var(--v3-spring)}
+@keyframes t-in{from{transform:translateX(-110%)}}
+.toast.is-leaving{opacity:0;transform:translateX(-20px);transition:opacity 200ms,transform 200ms}
+.toast .t-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--v3-sky-200);color:var(--v3-navy-700);flex:none;border:2px solid var(--v3-gold-300)}
+.toast.err .t-ic{background:var(--v3-gold-300);color:var(--v3-plum)}
+.toast .t-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.toast .t-t b{font-size:var(--v3-fs-md)}
+.toast .t-t small{color:var(--v3-sky-200);font-size:var(--v3-fs-sm)}
+.toast .t-x{width:40px;height:40px;border-radius:10px;border:0;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;flex:none}
+.toast .t-bar{position:absolute;inset-inline:0;bottom:0;height:3px;background:var(--v3-sky-300);transform-origin:left;animation:nb-t var(--t-ms,6500ms) linear forwards}
+.toast:hover .t-bar,.toast:focus-within .t-bar,html[data-v3-lock] .toast .t-bar{animation-play-state:paused}
+@media (max-width:1023px){.toasts{left:16px;bottom:calc(88px + env(safe-area-inset-bottom))}}
+/* בזמן שכבה מודאלית: הטיימר מושהה, והערימה יורדת מתחת לרקע כדי לא לכסות כפתורים בחלונית */
+html[data-v3-lock] :is(.toasts,.notice-area){z-index:calc(var(--v3-z-layer) - 1)}
+html[data-v3-lock] .nb-timer{animation-play-state:paused}
+
+/* =========== Tooltip =========== */
+#tipbox{position:fixed;z-index:var(--v3-z-tip);max-width:290px;background:var(--v3-tooltip-bg);color:var(--v3-tooltip-ink);font-size:var(--v3-fs-sm);line-height:1.5;padding:8px 12px;border-radius:14px;box-shadow:var(--v3-el-3);pointer-events:none;animation:tip-in var(--v3-fast) var(--v3-ease)}
+@keyframes tip-in{from{transform:translateY(4px)}}
+
+/* תוויות ארוכות (מבחן עמידות) */
+html[data-long] .tab{max-width:220px}
+html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
+
+
+/* =========== תוספות משותפות ל-A4/A5 =========== */
+:root{ --v3-z-richtip:410; --v3-w-wide:1440px; }
+.dlg-h .dlg-ht{display:flex;flex-direction:column;align-items:inherit;gap:4px;min-width:0}
+.dlg.form .dlg-h .dlg-ht,.dlg.viewer .dlg-h .dlg-ht,.dlg.menu .dlg-h .dlg-ht{flex:1;align-items:flex-start;text-align:start}
+.dlg.viewer .dlg-h,.dlg.menu .dlg-h{flex-direction:row;text-align:start;align-items:center;border-bottom:1px solid var(--d-line);padding-bottom:16px}
+.dlg.viewer .dlg-h .dlg-badge{width:48px;height:48px;box-shadow:none}
+.dlg.viewer .dlg-h h2,.dlg.menu .dlg-h h2{font-size:var(--v3-fs-xl)}
+.dlg.viewer .dlg-b,.dlg.menu .dlg-b{padding-top:16px}
+.dlg.menu .dlg-h{justify-content:center}
+.demo-hint{text-align:center;margin:0;color:inherit;opacity:.8}
+/* תפריט מעוגן (popover) */
+.menu{position:fixed;z-index:var(--v3-z-popover);min-width:240px;max-width:min(340px,calc(100vw - 16px));background:var(--v3-surface);border:1.5px solid var(--v3-frame);border-radius:var(--v3-r-lg);box-shadow:var(--v3-el-3);padding:6px;display:flex;flex-direction:column;gap:2px;animation:tip-in var(--v3-fast) var(--v3-ease)}
+.menu-h{padding:8px 12px 10px;font-weight:600;border-bottom:2px solid var(--v3-gold-500);margin-bottom:4px;font-size:var(--v3-fs-base)}
+.menu-list{display:flex;flex-direction:column;gap:6px}
+.menu-it{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 12px;border-radius:12px;border:0;background:transparent;text-align:start;color:inherit;text-decoration:none;width:100%}
+.menu-it:hover,.menu-it:focus-visible{background:var(--v3-surface-3)}
+.menu-it small{display:block;font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.menu-it[aria-current=page]{background:var(--v3-surface-3);border-inline-start:4px solid var(--v3-gold-500);font-weight:600}
+.dlg .menu-list .menu-it{border:1.5px solid var(--d-line)}
+/* מתג (seg) בסרגלים */
+.seg.on-page{background:var(--v3-surface);border:1.5px solid var(--v3-line)}
+.seg.on-page button[aria-checked=true]{background:var(--v3-navy-800);color:#fff}
+/* בקרת הדגמה — כמו A2 */
+.demo select{font-size:var(--v3-fs-sm)}
+/* רוחב רחב לארכיטיפ לוח */
+.page.wide{max-width:var(--v3-w-wide)}
+/* שדה צף בתחתית (שאלת המשך) */
+.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 6px 6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
+.pill-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:var(--v3-fs-md);padding-inline:12px}
+.pill-input:focus-within{box-shadow:0 0 0 4px var(--v3-gold-300),var(--v3-el-3)}
+
+
+/* =========== A4 לוח / ציר זמן =========== */
+.pagehead.board-head{align-items:center}
+.bh-title{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.bh-title h1{margin:0;font-size:var(--v3-fs-h1-cur);line-height:1.25;display:flex;align-items:center;gap:10px}
+.bh-title .ph-kind{font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.period{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.period-lbl{min-width:0;display:flex;flex-direction:column;align-items:center;padding:4px 16px;min-height:52px;justify-content:center;border:1.5px solid var(--v3-frame);border-radius:var(--v3-r-lg);background:var(--v3-surface)}
+.period-lbl b{font-size:var(--v3-fs-xl);line-height:1.2}
+.period-lbl small{font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:var(--v3-sp-4)}
+.toolbar .search{max-width:560px}
+.search .mode{display:inline-flex;align-items:center;gap:6px;font-size:var(--v3-fs-sm);color:var(--v3-ink-3);border-inline-end:1px solid var(--v3-line);padding-inline-end:10px}
+.search.ai{border-color:var(--v3-gold-600);background:var(--v3-gold-100)}
+.search.ai .mode{color:var(--v3-gold-800)}
+.search .ibtn.quiet{width:40px;height:40px}
+.search .ibtn[aria-pressed=true]{background:var(--v3-gold-100);color:var(--v3-gold-800);border-color:var(--v3-gold-600)}
+.tb-group{display:flex;gap:8px;flex-wrap:wrap}
+.filters-on{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:var(--v3-sp-4)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:12px 16px;border:1px solid var(--v3-frame-soft);border-radius:var(--v3-r-lg);background:var(--v3-surface);margin-bottom:var(--v3-sp-4)}
+.legend h2{margin:0;font-size:var(--v3-fs-base);font-weight:600;display:flex;align-items:center;gap:4px;margin-inline-end:6px}
+.legend .sep{width:1px;align-self:stretch;background:var(--v3-line);margin-inline:4px}
+details.legend-wrap summary{list-style:none;cursor:pointer}
+details.legend-wrap summary::-webkit-details-marker{display:none}
+
+/* קטגוריות — פס בתחילת הכרטיס + תגית (אייקון + מילה; לא צבע בלבד) */
+.cat-returned{--cat:var(--v3-navy-800)} .cat-rented{--cat:var(--v3-sky-400)} .cat-repairs{--cat:var(--v3-navy-500)}
+.cat-unpaid{--cat:var(--v3-rose-500)} .cat-completed{--cat:var(--v3-sky-300)} .cat-empty{--cat:var(--v3-gold-600)} .cat-other{--cat:var(--v3-line)}
+.chip.rep{background:var(--v3-surface);color:var(--v3-navy-800);border:1.5px solid var(--v3-navy-500)}
+.chip.paid{background:var(--v3-sky-50);color:var(--v3-navy-800);border-color:var(--v3-sky-300)}
+.chip.late{background:var(--v3-surface);color:var(--v3-plum);border:1.5px solid var(--v3-plum);font-weight:600}
+.chip.empty-c{background:var(--v3-gold-100);color:var(--v3-gold-800);border:1.5px dashed var(--v3-gold-600)}
+.chip.today-c{background:var(--v3-accent);color:#000;border-color:var(--v3-gold-700);font-weight:600}
+
+/* רשת החודש */
+.cal-wrap{border:1.5px solid var(--v3-frame);border-radius:var(--v3-r-xl);overflow:hidden;background:var(--v3-surface);box-shadow:var(--v3-el-1)}
+.cal-dow,.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.cal-dow div{padding:10px 8px;text-align:center;font-weight:600;font-size:var(--v3-fs-sm);color:var(--v3-on-dark-2);background:var(--v3-navy-800)}
+.cal-dow div abbr{text-decoration:none}
+.cal{gap:0;background:var(--v3-line-soft)}
+.day{position:relative;min-height:150px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--v3-surface);border-top:1px solid var(--v3-line);border-inline-start:1px solid var(--v3-line);min-width:0}
+.cal .day:nth-child(7n+1){border-inline-start:0}
+.day.void{background:repeating-linear-gradient(135deg,var(--v3-sky-50) 0 8px,var(--v3-surface) 8px 16px)}
+.day.past .d-num{color:var(--v3-ink-3)}
+.day.shab{background:var(--v3-surface-2)}
+.day.today{box-shadow:inset 0 0 0 3px var(--v3-gold-500);background:var(--v3-gold-100)}
+.day.hl{box-shadow:inset 0 0 0 3px var(--v3-navy-500)}
+.day.late{border-inline-start:4px solid var(--v3-plum)}
+.d-head{display:flex;align-items:flex-start;gap:6px;min-height:32px}
+.d-num{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.d-num b{font-size:var(--v3-fs-lg);font-weight:700}
+.d-num small{font-size:var(--v3-fs-2xs);color:var(--v3-ink-3)}
+.d-tools{margin-inline-start:auto;display:flex;align-items:center;gap:2px}
+.d-tools .ibtn{width:36px;height:36px;border-radius:10px}
+.d-count{font-size:var(--v3-fs-2xs);font-weight:600;color:var(--v3-ink-2);background:var(--v3-sky-100);border-radius:var(--v3-r-pill);padding:1px 8px;white-space:nowrap}
+.today-pin{position:absolute;inset-block-start:-1px;inset-inline-start:50%;transform:translate(50%,-2px);background:var(--v3-accent);color:#000;border:1.5px solid #000;border-radius:0 0 10px 10px;font-size:var(--v3-fs-cap);font-weight:700;padding:0 10px;line-height:20px;z-index:1}
+.today-pin::after{content:"";position:absolute;inset-inline-start:50%;inset-block-end:-10px;width:2px;height:8px;background:#000}
+.late-flag{display:inline-flex;align-items:center;gap:4px;color:var(--v3-plum);font-size:var(--v3-fs-2xs);font-weight:700}
+.d-tags{display:flex;flex-wrap:wrap;gap:4px}
+.d-tags .chip{min-height:24px;padding:0 8px;font-size:var(--v3-fs-cap);white-space:normal}
+.d-list{display:flex;flex-direction:column;gap:6px;min-width:0}
+.more-btn{min-height:36px;border:1.5px dashed var(--v3-navy-500);border-radius:10px;background:var(--v3-surface);color:var(--v3-navy-800);font-weight:600;font-size:var(--v3-fs-sm);display:flex;align-items:center;justify-content:center;gap:6px}
+.more-btn:hover{background:var(--v3-navy-800);color:#fff;border-style:solid}
+
+/* כרטיס הזמנה מקופל */
+.oc{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 36px;align-items:stretch;border:1px solid var(--v3-line);border-inline-start:5px solid var(--cat);border-radius:10px;background:var(--v3-surface);min-width:0;transition:border-color var(--v3-fast),transform var(--v3-fast)}
+.oc:hover{border-color:var(--v3-navy-500);border-inline-start-color:var(--cat);transform:translateY(-1px)}
+.oc.is-late{border:2px solid var(--v3-plum);border-inline-start:5px solid var(--cat)}
+.oc.cat-empty{border-style:dashed;border-inline-start-style:solid}
+.oc-main{border:0;background:transparent;text-align:start;padding:6px 8px;display:flex;flex-direction:column;gap:2px;min-width:0;min-height:44px;border-radius:10px}
+.oc-name{font-weight:600;font-size:var(--v3-fs-sm);line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.oc-id{font-size:var(--v3-fs-2xs);color:var(--v3-ink-3);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.oc .chip{min-height:24px;padding:0 8px;font-size:var(--v3-fs-cap);align-self:flex-start;white-space:normal}
+.oc-info{border:0;border-inline-start:1px solid var(--v3-line-soft);background:transparent;color:var(--v3-ink-3);display:grid;place-items:center;border-radius:10px;min-height:44px}
+.oc-info:hover,.oc-info:focus-visible{background:var(--v3-surface-3);color:var(--v3-navy-800)}
+/* כרטיס רחב (רשימה/חלון יום): כל נתון בשורה */
+.oc.wide .oc-main{padding:10px 14px;gap:4px}
+.oc.wide .oc-name{font-size:var(--v3-fs-md);-webkit-line-clamp:3}
+.oc.wide .oc-id{font-size:var(--v3-fs-sm)}
+.oc.wide .chip{font-size:var(--v3-fs-2xs);min-height:28px}
+.oc.wide{grid-template-columns:minmax(0,1fr) 48px}
+
+/* כרטיס פרטים בריחוף (rich tip) */
+#richtip{position:fixed;z-index:var(--v3-z-richtip);width:300px;max-width:calc(100vw - 16px);background:var(--v3-surface);color:var(--v3-ink);border:1.5px solid var(--v3-frame);border-radius:var(--v3-r-lg);box-shadow:var(--v3-el-3);padding:12px 14px;pointer-events:none;animation:tip-in var(--v3-fast) var(--v3-ease)}
+#richtip h3{margin:0 0 8px;font-size:var(--v3-fs-base);display:flex;align-items:center;gap:6px;padding-bottom:8px;border-bottom:2px solid var(--v3-gold-500)}
+.kv{display:flex;flex-direction:column;padding:6px 0;border-top:1px solid var(--v3-line-soft)}
+.kv:first-of-type{border-top:0}
+.kv .l{font-size:var(--v3-fs-2xs);color:var(--v3-ink-3);display:flex;align-items:center;gap:6px}
+.kv .v{font-size:var(--v3-fs-base);font-weight:500;overflow-wrap:anywhere}
+.kv2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.dlg[data-v3-mode=dark] .kv{border-color:var(--d-line)}
+.dlg[data-v3-mode=dark] .kv .l{color:var(--d-sub)}
+.pay-full{font-weight:700} .pay-part{font-weight:700;text-decoration:underline dotted} .pay-none{font-weight:700}
+
+/* תצוגת שבוע */
+.cal.week .day{min-height:280px}
+/* רשימה יומית (אג'נדה) עם סמן "היום" */
+.agenda{display:flex;flex-direction:column;gap:var(--v3-sp-4)}
+.ag-day{background:var(--v3-surface);border:1px solid var(--v3-frame-soft);border-radius:var(--v3-r-lg);overflow:hidden}
+.ag-day.today{border:2px solid var(--v3-gold-600)}
+.ag-day.late{border-inline-start:5px solid var(--v3-plum)}
+.ag-h{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--v3-surface-2);border-bottom:1px solid var(--v3-line);flex-wrap:wrap}
+.ag-date{display:flex;flex-direction:column;min-width:0;flex:1}
+.ag-date b{font-size:var(--v3-fs-lg)}
+.ag-date small{color:var(--v3-ink-3);font-size:var(--v3-fs-sm)}
+.ag-list{display:flex;flex-direction:column;gap:10px;padding:12px 16px 16px}
+.ag-empty{padding:12px 16px;color:var(--v3-ink-3);font-size:var(--v3-fs-sm);display:flex;align-items:center;gap:8px}
+.now-line{display:flex;align-items:center;gap:10px;color:var(--v3-ink);font-weight:600}
+.now-line::before,.now-line::after{content:"";flex:1;height:3px;background:var(--v3-gold-500);border-radius:2px}
+.now-line b{background:var(--v3-accent);border:1.5px solid #000;border-radius:var(--v3-r-pill);padding:0 14px;line-height:28px;color:#000;display:inline-flex;align-items:center;gap:6px}
+.ai-banner{display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:var(--v3-r-lg);background:var(--v3-gold-100);border:2px solid var(--v3-gold-600);margin-bottom:var(--v3-sp-4);flex-wrap:wrap}
+.ai-banner .b-t{flex:1;min-width:200px;display:flex;flex-direction:column}
+.ai-banner .b-t span{font-size:var(--v3-fs-sm);color:var(--v3-ink-2)}
+.state-box{background:var(--v3-surface);border:1px solid var(--v3-frame-soft);border-radius:var(--v3-r-xl)}
+.sk-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:12px}
+.sk-cal .sk{height:120px}
+
+/* כרטיס השכרה */
+.rr-items{display:flex;flex-direction:column;gap:10px}
+.rr-it{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 12px;padding:12px;border:1.5px solid var(--v3-line);border-radius:var(--v3-r-lg);background:var(--v3-surface)}
+.rr-it.pend{border-style:dashed;border-color:var(--v3-pending-line);background:var(--v3-pending-bg)}
+.rr-it .it-thumb{grid-row:span 3}
+.rr-it b{font-size:var(--v3-fs-md)}
+.rr-it .meta{font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.rr-it .acts{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
+.scanbar{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;margin-bottom:var(--v3-sp-4)}
+.scanbar .input{flex:1;min-width:180px;font-size:var(--v3-fs-lg);letter-spacing:.04em}
+
+/* רספונסיבי */
+@media (max-width:1439px){ .day{min-height:132px} }
+@media (max-width:1023px){
+  /* טאבלט וטלפון: רשת החודש = מספר היום + ספירה; הכרטיסים בחלון היום או בתצוגת רשימה */
+  .cal:not(.week) .day{min-height:84px;padding:6px 4px;gap:2px;align-items:stretch}
+  .cal:not(.week) .d-tools,.cal:not(.week) .d-list{display:none}
+  .cal:not(.week) .d-tags .chip{display:none}
+  .cal:not(.week) .d-tags .chip.hol-main{display:inline-flex;justify-content:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cal:not(.week) .day .d-head{flex-direction:column;align-items:center;gap:0}
+  .cal:not(.week) .d-num{align-items:center}
+  .cal:not(.week) .day-tap{display:flex}
+  .cal:not(.week) .day-dot{display:inline-grid}
+  .cal.week .day{min-height:200px}
+  .cal.week .oc-info{display:none}
+  .cal.week .oc{grid-template-columns:minmax(0,1fr)}
+  .board-head .period{width:100%}
+}
+@media (max-width:767px){
+  .cal-dow div{padding:8px 2px;font-size:var(--v3-fs-2xs)}
+  .cal-dow .full{display:none}
+  .cal-dow .short{display:inline}
+  .cal:not(.week) .day{min-height:64px}
+  .cal:not(.week) .d-tags{display:none}
+  .cal .d-num b{font-size:var(--v3-fs-base)}
+  .today-pin{font-size:0;padding:0;width:20px;height:6px;border-radius:0 0 6px 6px}
+  .today-pin::after{display:none}
+  .board-head .period{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:8px}
+  .period-x{grid-column:1/-1}
+  .period-x .btn{flex:1}
+  .period-lbl{padding:4px 8px;text-align:center}
+  .toolbar .search{max-width:none;flex-basis:100%}
+  .search .mode{display:none}
+  .tb-group{width:100%}
+  .tb-group .btn{flex:1;padding-inline:10px}
+  .toolbar .seg.on-page{width:100%;margin-inline-start:0!important}
+  .cal.week{grid-template-columns:minmax(0,1fr)}
+  .cal.week .day{min-height:0;border-inline-start:0}
+}
+.day-tap{display:none;position:absolute;inset:0;border:0;background:transparent;border-radius:0}
+.day-tap:focus-visible{outline-offset:-3px}
+.day-dot{display:none;place-items:center;min-width:24px;height:22px;border-radius:11px;background:var(--v3-navy-800);color:#fff;font-size:var(--v3-fs-cap);font-weight:700;margin-top:4px;align-self:center;padding:0 6px}
+.day.late .day-dot{background:var(--v3-plum)}
+.period-x{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.day.today{padding-top:24px}
+.legend-toggle{display:none}
+@media (max-width:639px){
+  .legend-toggle{display:flex;width:100%;justify-content:space-between;min-height:44px;border:0;background:transparent;font-weight:600;padding:0}
+  .legend.is-closed > :not(.legend-toggle){display:none}
+  .legend:not(.is-closed) .legend-toggle{margin-bottom:6px}
+  .legend.is-closed{padding-block:4px}
+  .legend h2{display:none}
+}
+@media (max-width:639px){ .legend{padding:10px 12px} .legend .sep{display:none} }
+
+.seg button[aria-selected=true]{background:#fff;font-weight:600;box-shadow:0 1px 4px rgba(15,44,82,.15)}
+.gres{border:1.5px solid var(--d-line);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.gres .inline-acts{margin-top:6px}
+.kv .missing{opacity:.85}
+.cal-dow .short{display:none}
+@media (max-width:767px){ .cal-dow .short{display:inline} }
+.cal:not(.week) .day.today{padding-top:22px}
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-dress" viewBox="0 0 24 24"><path d="M9 3h6l-1 4 4 13H6l4-13z"/><path d="M9 3c0 2 1.5 3 3 3s3-1 3-3"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.7c2 .6 3.5 2.3 3.5 5.3"/></symbol>
+    <symbol id="i-id" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2"/><path d="M15 10h3M15 13h3"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-12a7 7 0 0 1 14 0c0 5.7-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20h18"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h9"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 3 10l7 3 3 7z"/><path d="m21 3-11 10"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M15 5 20 10l-5 5"/><path d="M20 10H9a5 5 0 0 0 0 10h3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M9 5 4 10l5 5"/><path d="M4 10h11a5 5 0 0 1 0 10h-3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7h15a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 7V6a2 2 0 0 1 2-2h10v3"/><circle cx="16" cy="13.5" r="1.3"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"/><path d="M20 20v-4h-4"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M3 8 12 3l9 5v8l-9 5-9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4L14.5 7.5"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M8 7.5A6 6 0 0 1 18 11a4 4 0 0 1 2.6 6.9"/><path d="M17 18H7a4 4 0 0 1-1.4-7.8"/></symbol>
+    <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></symbol>
+    <symbol id="i-printer" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></symbol>
+    <symbol id="i-week" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v11M15 10v11"/></symbol>
+    <symbol id="i-today" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2.2"/></symbol>
+    <symbol id="i-late" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-pie" viewBox="0 0 24 24"><path d="M12 3v9h9a9 9 0 1 1-9-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
+    <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M10 4v16"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar" role="banner">
+  <button type="button" class="tb-ib tb-burger" id="burger" aria-label="פתיחת התפריט" data-tip="תפריט"><svg class="ic lg"><use href="#i-menu"/></svg></button>
+  <a class="tb-brand" href="#" aria-label="לעמוד הבית">
+    <span class="tb-mark"><svg class="ic"><use href="#i-dress"/></svg></span>
+    <span class="tb-name">גמ״ח שמלות</span><span class="tb-org" id="tbOrg"></span>
+  </a>
+  <nav class="tb-nav" aria-label="ניווט ראשי" id="tbNav"></nav>
+  <div class="tb-act">
+    <button type="button" class="tb-ib" aria-label="חיפוש באתר" data-tip="חיפוש הזמנה, לקוח או עמוד"><svg class="ic" data-a="rise"><use href="#i-search"/></svg></button>
+    <button type="button" class="tb-ib" aria-label="התראות, 2 חדשות" data-tip="התראות"><svg class="ic" data-a="wig"><use href="#i-bell"/></svg><span class="tb-badge">2</span></button>
+    <button type="button" class="tb-user" aria-label="תפריט משתמש" data-tip="הפרופיל שלי"><span class="tb-av" id="tbAv">ש</span><span class="tb-uname" id="tbUser">שולמית</span></button>
+  </div>
+</header>
+
+<div class="notice-area" id="noticeArea" aria-live="polite"></div>
+
+<div class="demo">
+  <details id="demoPanel">
+    <summary><svg class="ic" data-a="spin"><use href="#i-sparkles"/></svg> בקרת הדגמה <small>(לא חלק מהעיצוב — פרופיל ארגון, נתונים, מצבים וחלוניות)</small><svg class="ic chev"><use href="#i-down"/></svg></summary>
+    <div class="demo-body">
+      <div class="demo-grp">
+        <h3>פרופיל הגדרות (org variance)</h3>
+        <select id="dProfile" aria-label="פרופיל הגדרות">
+          <option value="org1">ארגון א׳ (דמה: תיקונים דלוקים, בלי הדפסת הכנה)</option>
+          <option value="org2">ארגון ב׳ (דמה: בלי תיקונים, ציפוף מוסתר, עם הדפסת הכנה)</option>
+          <option value="min">מינימלי (כל ההגדרות חסרות)</option>
+          <option value="max">קיצוני (הכול דלוק + שמות ארוכים)</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="dAlt"> תיקונים פעילים <code>enable_alterations</code></label>
+        <label class="chk"><input type="checkbox" id="dSpacing"> הסתרת ציפוף <code>hide_custom_spacing</code></label>
+        <label class="chk"><input type="checkbox" id="dPrint"> הדפסת הכנה <code>enable_batch_print_prep</code></label>
+        <label class="chk"><input type="checkbox" id="dHideTaken"> הסתרת הזמנות שנמסרו כולן (שרת)</label>
+        <label class="chk"><input type="checkbox" id="dAi" checked> חיפוש חכם זמין (AI)</label>
+      </div>
+      <div class="demo-grp">
+        <h3>נתונים ומצבים</h3>
+        <select id="dData" aria-label="נתוני הלוח">
+          <option value="normal">רגיל (חודש עם הזמנות, איחורים, חגים)</option>
+          <option value="busy">עמוס (יום עם 14 הזמנות)</option>
+          <option value="empty">חודש בלי הזמנות</option>
+        </select>
+        <select id="dLoad" aria-label="מצב טעינה">
+          <option value="ok">נטען</option>
+          <option value="loading">טוען…</option>
+          <option value="error">שגיאת טעינה</option>
+          <option value="denied">אין הרשאה לעמוד</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="dFail"> כשל בפעולות שרת</label>
+        <label class="chk"><input type="checkbox" id="dMotion"> הדמיית הפחתת תנועה</label>
+      </div>
+      <div class="demo-grp">
+        <h3>חלוניות</h3>
+        <div class="demo-row">
+          <button type="button" class="btn sm quiet" id="dTheme" aria-pressed="true">חלוניות אישור/קוד/צפייה: כהה</button>
+          <button type="button" class="btn sm quiet" data-demo="code">אישור מנהל</button>
+          <button type="button" class="btn sm quiet" data-demo="notice">פס עליון</button>
+          <button type="button" class="btn sm quiet" data-demo="toast">הודעה</button>
+        </div>
+        <p class="fhint">נתוני דמה בלבד: שמות, מספרים וסכומים מומצאים. לוח השנה (אלול תשפ״ו – חשוון תשפ״ז) הוא דמה קבוע; "היום" = י״ג תשרי.</p>
+      </div>
+    </div>
+  </details>
+</div>
+
+<main class="page wide" id="page">
+  <div id="view"></div>
+</main>
+
+<div id="layer-root"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="tipbox" role="tooltip" hidden></div>
+<div id="richtip" hidden aria-hidden="true"></div>
+
+<script>
+/* =========================================================
+   תשתית משותפת (זהה לאב-טיפוס A2): עזרים, LayerManager מיניאטורי,
+   Toast שמאל-תחתון, NoticeBar עליון עם פס זהב יורד, Tooltip יחיד.
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ic = (n, cls = '', anim = '') => `<svg class="ic ${cls}"${anim ? ` data-a="${anim}"` : ''} aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const money = n => `<bdi dir="ltr">₪${Math.round(Math.abs(n)).toLocaleString('he-IL')}</bdi>`;
+const num = n => `<bdi>${Number(n).toLocaleString('he-IL')}</bdi>`;
+const tip = t => `<button type="button" class="tip" data-tip="${esc(t)}" aria-label="הסבר: ${esc(t)}">${ic('info','sm')}</button>`;
+const UI = { dark:true, sheetOpen:false };
+
+/* ---------- LayerManager: שכבה תמיד מעל כל העמוד ---------- */
+const layers = [];
+const INERT_SEL = ['.topbar', '.demo', '#page', '#noticeArea', '#followup'];
+function lockSync(){
+  const locked = layers.length > 0;
+  document.documentElement.toggleAttribute('data-v3-lock', locked);
+  INERT_SEL.forEach(s => { const el = $(s); if (el) el.inert = locked; });
+  layers.forEach((l, i) => { l.el.inert = i !== layers.length - 1; });
+  closeMenu();
+}
+/* type: confirm | code | viewer (בלי קלט — עוקבים ערכת נושא) · form | menu (בהיר תמיד) */
+function openLayer({ type, size = 'm', html, onMount, closeOnScrim = true }){
+  if (layers.length >= 3) { console.warn('max 3 layers'); return null; }
+  const themed = type === 'confirm' || type === 'code' || type === 'viewer';
+  const mode = themed && UI.dark ? 'dark' : 'light';
+  const scrim = document.createElement('div');
+  scrim.className = `scrim ${type === 'form' ? 'full' : 'sheet'}`;
+  scrim.style.zIndex = 100 + layers.length * 10;
+  const tid = `dl-t-${Date.now()}-${layers.length}`;
+  scrim.innerHTML = `<div class="dlg ${size} ${type}" data-v3-mode="${mode}" role="${type === 'confirm' ? 'alertdialog' : 'dialog'}" aria-modal="true" aria-labelledby="${tid}">${html.replace(/%TID%/g, tid)}</div>`;
+  const layer = { el:scrim, trigger:document.activeElement, type, busy:false, resolve:null, onClose:null };
+  const p = new Promise(r => { layer.resolve = r; });
+  scrim.addEventListener('mousedown', e => { if (e.target === scrim && closeOnScrim && !layer.busy) closeLayer(layer, null); });
+  $('#layer-root').appendChild(scrim); layers.push(layer); lockSync();
+  if (onMount) onMount(scrim.querySelector('.dlg'), layer);
+  const af = scrim.querySelector('[data-autofocus]') || scrim.querySelector('button,input,select,textarea,a[href]');
+  af && af.focus();
+  return { layer, done:p };
+}
+async function closeLayer(layer, result){
+  if (layer.onClose && result === null){ const ok = await layer.onClose(); if (!ok) return; }
+  const i = layers.indexOf(layer); if (i < 0) return;
+  layers.splice(i, 1);
+  const el = layer.el; el.classList.add('is-leaving'); setTimeout(() => el.remove(), 200);
+  lockSync(); layer.resolve(result);
+  if (layer.trigger && document.contains(layer.trigger)) layer.trigger.focus();
+}
+document.addEventListener('keydown', e => {
+  const top = layers[layers.length - 1];
+  if (e.key === 'Escape') {
+    if (menuEl) { e.preventDefault(); closeMenu(true); return; }
+    if (top && !top.busy) { e.preventDefault(); closeLayer(top, null); return; }
+  }
+  if (e.key === 'Tab' && top){
+    const f = [...top.el.querySelectorAll('button:not(:disabled),input:not(:disabled),select,textarea,a[href],[tabindex="0"]')].filter(x => x.offsetParent !== null);
+    if (!f.length) return; const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
+});
+function dlgHead(icon, title, sub, closeLabel){
+  return `<div class="dlg-h"><span class="dlg-badge">${ic(icon,'lg')}</span><div class="dlg-ht"><h2 id="%TID%">${title}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${closeLabel ? `<button type="button" class="x-btn" data-x aria-label="${esc(closeLabel)}">${ic('x')}</button>` : ''}</div>`;
+}
+function confirmDlg({ icon = 'alert', title, text, buttons, danger = false }){
+  const html = `<div class="dlg-h"><span class="dlg-badge">${ic(icon,'lg enter')}</span><h2 id="%TID%">${title}</h2>${text ? `<p>${text}</p>` : ''}</div>
+    <div class="dlg-f">${buttons.map(b => `<button type="button" class="btn ${b.kind || ''}" data-r="${esc(b.value)}" ${b.auto ? 'data-autofocus' : ''}>${b.icon ? ic(b.icon,'','pop') : ''}${b.label}</button>`).join('')}</div>`;
+  const o = openLayer({ type:'confirm', size:'s', html, closeOnScrim:!danger, onMount(d, layer){ d.querySelectorAll('[data-r]').forEach(b => b.onclick = () => closeLayer(layer, b.dataset.r)); } });
+  return o ? o.done : Promise.resolve(null);
+}
+function alertDlg(title, text, icon = 'alert'){ return confirmDlg({ icon, title, text, buttons:[{ label:'הבנתי', kind:'primary', value:'ok', auto:1 }] }); }
+
+/* אישור מנהל = בחירת מאשר (עם חיפוש) + סיסמה מלאה — כמו customAuthPrompt היום (REVIEW-1 B-1).
+   הרשימה = GET /api/employees מסונן לפי employee.approvals[key]; ברירת מחדל = המחובר אם מורשה.
+   האימות = POST /api/auth/verify-pin {employeeId, pin, requiredLevel} — ללא שינוי. */
+const APPROVERS = [{ id:'e1', n:'שולמית', r:'הנהלה ראשית' }, { id:'e2', n:'מרים גולד', r:'הנהלה ראשית' }, { id:'e3', n:'אסתר ברק', r:'מנהלת סניף' }];
+function codeDlg(purpose, { me = 'שולמית', pool = APPROVERS, fail = () => false } = {}){
+  let sel = pool.findIndex(a => a.n === me); let loaded = false;
+  const html = `<div class="dlg-h"><span class="dlg-badge">${ic('lock','lg')}</span><h2 id="%TID%">אישור מנהל</h2><p>${esc(purpose)}</p></div>
+    <div class="dlg-b">
+      <div class="field"><label for="ap-q">מי מאשר${tip('רק מי שמורשה לאשר את הפעולה הזו מופיע ברשימה.')}</label>
+        <div class="appr-box"><input class="input" id="ap-q" role="combobox" aria-expanded="true" aria-controls="ap-list" aria-autocomplete="list" autocomplete="off" placeholder="חיפוש לפי שם">
+        <div class="approvers" id="ap-list" role="listbox" aria-label="מאשרים"></div></div></div>
+      <div class="field"><label for="ap-pw">הסיסמה של המאשר</label>
+        <div class="pw"><input class="input" id="ap-pw" type="password" autocomplete="new-password" dir="ltr" data-autofocus><button type="button" class="ibtn quiet" data-pw aria-label="הצגת הסיסמה" aria-pressed="false">${ic('eye')}</button></div></div>
+      <div class="derr" role="alert"></div><p class="fhint demo-hint">בהדגמה: "0000" = סיסמה שגויה.</p></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('check','','pop')}אישור</button><button type="button" class="btn quiet" data-cancel>ביטול</button></div>`;
+  const o = openLayer({ type:'code', size:'s', html, closeOnScrim:false, onMount(d, layer){
+    const q = d.querySelector('#ap-q'), list = d.querySelector('#ap-list'), pw = d.querySelector('#ap-pw'), err = d.querySelector('.derr'), go = d.querySelector('[data-go]');
+    const draw = () => {
+      if (!loaded){ list.innerHTML = `<div class="appr-note" role="status">${ic('loader','sm','loop')}טוענים את רשימת המאשרים…</div>`; go.disabled = true; return; }
+      if (!pool.length){ list.innerHTML = `<div class="appr-note">${ic('info','sm')}אין מי שמורשה לאשר את זה. מגדירים מאשרים בעמוד ההרשאות.</div>`; go.disabled = true; q.disabled = true; return; }
+      const f = q.value.trim(); const shown = pool.map((a, i) => [a, i]).filter(([a]) => !f || a.n.includes(f));
+      list.innerHTML = shown.length ? shown.map(([a, i]) => `<button type="button" class="appr" role="option" aria-selected="${i === sel}" data-i="${i}" tabindex="-1"><span class="tb-av">${a.n[0]}</span><span>${a.n}${a.n === me ? ' (אני)' : ''}<small>${a.r}</small></span>${i === sel ? ic('check','sm') : ''}</button>`).join('') : `<div class="appr-note">${ic('search','sm')}אין מאשר בשם הזה</div>`;
+      go.disabled = sel < 0;
+      list.querySelectorAll('.appr').forEach(b => b.onclick = () => { sel = +b.dataset.i; q.value = ''; err.textContent = ''; draw(); pw.focus(); });
+    };
+    setTimeout(() => { loaded = true; draw(); }, 450); draw();
+    q.oninput = draw;
+    d.querySelector('[data-pw]').onclick = e => { const show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; e.currentTarget.setAttribute('aria-pressed', show); e.currentTarget.setAttribute('aria-label', show ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'); pw.focus(); };
+    pw.onkeydown = e => { if (e.key === 'Enter') go.click(); };
+    d.querySelector('[data-cancel]').onclick = () => closeLayer(layer, null);
+    go.onclick = () => {
+      const shake = m => { const g = d.querySelector('.pw'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); err.textContent = m; pw.select(); pw.focus(); };
+      if (sel < 0) { err.textContent = 'צריך לבחור מי מאשר'; q.focus(); return; }
+      if (!pw.value) return shake('צריך להקליד סיסמה');
+      layer.busy = true; go.disabled = true; go.innerHTML = `${ic('loader','','loop')}בודקים…`;
+      setTimeout(() => {
+        layer.busy = false; go.disabled = false; go.innerHTML = `${ic('check','','pop')}אישור`;
+        if (fail()) return shake('אין חיבור לשרת. נסו שוב.');
+        if (pw.value === '0000') return shake('הסיסמה לא נכונה, או שאין הרשאה לאשר.');
+        closeLayer(layer, { employeeId: pool[sel].id, approver: pool[sel].n });
+      }, 450);
+    };
+  }});
+  return o ? o.done : Promise.resolve(null);
+}
+
+/* ---------- Popover/Menu: לא מודאלי, light-dismiss; בטלפון = גיליון תחתון ---------- */
+let menuEl = null, menuTrigger = null;
+function openMenu(anchor, title, items){
+  closeMenu();
+  if (innerWidth < 640){ /* phone: הופך לגיליון תחתון (§ד.8) */
+    const html = `<div class="dlg-h"><h2 id="%TID%">${title}</h2></div><div class="dlg-b"><div class="menu-list">${items.map((it, i) => `<button type="button" class="menu-it" data-mi="${i}">${ic(it.icon,'','nudge')}<span>${it.label}${it.sub ? `<small>${it.sub}</small>` : ''}</span></button>`).join('')}</div></div><div class="dlg-f"><button type="button" class="btn quiet" data-cancel>סגירה</button></div>`;
+    openLayer({ type:'menu', size:'s', html, onMount(d, layer){ d.querySelectorAll('[data-mi]').forEach(b => b.onclick = () => { closeLayer(layer, 'x'); items[+b.dataset.mi].run(); }); d.querySelector('[data-cancel]').onclick = () => closeLayer(layer, null); } });
+    return;
+  }
+  menuTrigger = anchor; anchor.setAttribute('aria-expanded', 'true');
+  menuEl = document.createElement('div'); menuEl.className = 'menu'; menuEl.setAttribute('role', 'menu'); menuEl.setAttribute('aria-label', title.replace(/<[^>]+>/g, ''));
+  menuEl.innerHTML = `<div class="menu-h">${title}</div>${items.map((it, i) => `<button type="button" class="menu-it" role="menuitem" data-mi="${i}" tabindex="-1">${ic(it.icon,'','nudge')}<span>${it.label}${it.sub ? `<small>${it.sub}</small>` : ''}</span></button>`).join('')}`;
+  if (layers.length) menuEl.style.zIndex = 100 + layers.length * 10 + 5; /* תפריט מתוך חלונית: מעליה */
+  $('#layer-root').appendChild(menuEl);
+  const r = anchor.getBoundingClientRect(), m = menuEl.getBoundingClientRect();
+  let top = r.bottom + 6, left = r.right - m.width; /* RTL: מיושר לתחילת העוגן (ימין) */
+  if (top + m.height > innerHeight - 8) top = Math.max(8, r.top - m.height - 6);
+  left = Math.max(8, Math.min(left, innerWidth - m.width - 8));
+  menuEl.style.top = top + 'px'; menuEl.style.left = left + 'px';
+  const btns = [...menuEl.querySelectorAll('.menu-it')];
+  btns.forEach((b, i) => b.onclick = () => { closeMenu(); items[i].run(); });
+  menuEl.onkeydown = e => { const i = btns.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown'){ e.preventDefault(); (btns[i + 1] || btns[0]).focus(); }
+    if (e.key === 'ArrowUp'){ e.preventDefault(); (btns[i - 1] || btns[btns.length - 1]).focus(); }
+    if (e.key === 'Home'){ e.preventDefault(); btns[0].focus(); } if (e.key === 'End'){ e.preventDefault(); btns[btns.length - 1].focus(); }
+    if (e.key === 'Tab') closeMenu(); };
+  btns[0] && btns[0].focus();
+}
+function closeMenu(refocus){
+  if (!menuEl) return; menuEl.remove(); menuEl = null;
+  if (menuTrigger){ menuTrigger.setAttribute('aria-expanded', 'false'); if (refocus && document.contains(menuTrigger)) menuTrigger.focus(); }
+  menuTrigger = null;
+}
+document.addEventListener('mousedown', e => { if (menuEl && !menuEl.contains(e.target) && e.target !== menuTrigger && !menuTrigger?.contains(e.target)) closeMenu(); });
+addEventListener('resize', () => closeMenu());
+
+/* ---------- Toast (פינה שמאלית-תחתונה, פיזית) ---------- */
+function toast(kind, title, text, ms = 6500){
+  const box = $('#toasts'); while (box.children.length >= 3) box.firstElementChild.remove();
+  const t = document.createElement('div'); t.className = `toast ${kind === 'err' ? 'err' : ''}`; if (kind === 'err') t.setAttribute('role', 'alert');
+  t.style.setProperty('--t-ms', ms + 'ms');
+  t.innerHTML = `<span class="t-ic">${ic(kind === 'err' ? 'alert' : kind === 'info' ? 'info' : 'check','lg enter')}</span><span class="t-t"><b>${esc(title)}</b>${text ? `<small>${esc(text)}</small>` : ''}</span><button type="button" class="t-x" aria-label="סגירת ההודעה">${ic('x','sm')}</button><span class="t-bar" aria-hidden="true"></span>`;
+  const kill = () => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 200); };
+  t.querySelector('.t-x').onclick = kill; t.querySelector('.t-bar').addEventListener('animationend', kill);
+  box.appendChild(t);
+}
+/* ---------- NoticeBar עליון: פס זהב יורד ~15ש', עוצר בריחוף/מיקוד ---------- */
+function notice(kind, title, text, action){
+  const area = $('#noticeArea'); area.innerHTML = '';
+  const n = document.createElement('div'); n.className = 'notice'; n.setAttribute('role', 'status');
+  n.innerHTML = `<div class="nb-main"><span class="nb-ic">${ic(kind === 'success' ? 'check' : 'info','draw')}</span><div class="nb-msg"><b>${esc(title)}</b>${text ? `<span>${esc(text)}</span>` : ''}</div>
+    <div class="nb-acts">${action ? `<button type="button" class="btn sm" data-nb-act>${ic('next','sm','nudge')}${esc(action.label)}</button>` : ''}</div>
+    <button type="button" class="nb-x" aria-label="סגירת ההודעה">${ic('x','sm')}</button></div><div class="nb-timer" aria-hidden="true"></div>`;
+  const kill = () => { n.classList.add('is-leaving'); setTimeout(() => n.remove(), 200); };
+  n.querySelector('.nb-x').onclick = kill;
+  n.querySelector('.nb-timer').addEventListener('animationend', kill);
+  if (action) n.querySelector('[data-nb-act]').onclick = () => { kill(); action.run(); };
+  area.appendChild(n);
+}
+/* ---------- Tooltip יחיד: ריחוף 150ms / מיקוד / מגע ---------- */
+(() => {
+  const box = $('#tipbox'); let timer, cur;
+  const show = el => { const txt = el.getAttribute('data-tip'); if (!txt) return; cur = el; box.textContent = txt; box.hidden = false;
+    const r = el.getBoundingClientRect(), b = box.getBoundingClientRect(); let top = r.bottom + 8, left = r.left + r.width / 2 - b.width / 2;
+    if (top + b.height > innerHeight - 8) top = r.top - b.height - 8; left = Math.max(8, Math.min(left, innerWidth - b.width - 8));
+    box.style.top = top + 'px'; box.style.left = left + 'px'; };
+  const hide = () => { clearTimeout(timer); box.hidden = true; cur = null; };
+  document.addEventListener('pointerover', e => { if (e.pointerType === 'touch') return; const el = e.target.closest('[data-tip]'); if (el === cur) return; clearTimeout(timer); if (!el) return hide(); timer = setTimeout(() => show(el), 150); });
+  document.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el && e.target.matches(':focus-visible')) show(el); else hide(); });
+  document.addEventListener('pointerdown', e => { const el = e.target.closest('.tip'); if (e.pointerType === 'touch' && el){ cur === el ? hide() : show(el); } else if (!el) hide(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
+  addEventListener('scroll', hide, { passive:true });
+})();
+/* ---------- מגירת ניווט (טלפון/טאבלט) ---------- */
+function bindBurger(NAV, current){
+  $('#burger').onclick = () => {
+    const html = `<div class="dlg-h"><h2 id="%TID%">תפריט</h2></div><div class="dlg-b"><nav class="menu-list" aria-label="תפריט ראשי">${NAV.map(([i, l]) => `<a href="#" class="menu-it" ${l === current ? 'aria-current="page"' : ''}>${ic(i)}<span>${l}</span></a>`).join('')}</nav></div>`;
+    openLayer({ type:'menu', size:'s', html, onMount(d, layer){ d.querySelectorAll('a').forEach(a => a.onclick = ev => { ev.preventDefault(); closeLayer(layer, 'x'); }); } });
+  };
+}
+function renderTopbar(NAV, current){
+  $('#tbNav').innerHTML = NAV.map(([i, l]) => `<a href="#" ${l === current ? 'aria-current="page"' : ''}>${ic(i,'','rise')}${l}</a>`).join('');
+}
+
+/* =========================================================
+   A4 — לוח חודשי. נתוני דמה; הכללים (קטגוריה, איחור, מקרא, סינון יום,
+   תנאי כפתורים) הם אותם כללים בדיוק של app/board/page.js (BD-20/21/26/27/30).
+   ========================================================= */
+const NAV = [['home','ראשי'],['file','הזמנות'],['users','לקוחות'],['dress','מלאי'],['cal','לוח'],['menu','עוד']];
+const PROFILES = {
+  org1:{ name:'סניף מרכז', s:{ enable_alterations:'true', hide_custom_spacing:'false', enable_batch_print_prep:'false' } },
+  org2:{ name:'סניף צפון', s:{ enable_alterations:'false', hide_custom_spacing:'true', enable_batch_print_prep:'true' } },
+  min:{ name:'', s:{} },
+  max:{ name:'סניף מרכז הארץ והשפלה — אולם תצוגה חדש', long:true, s:{ enable_alterations:'true', hide_custom_spacing:'false', enable_batch_print_prep:'true' } },
+};
+/* ברירות המחדל = ההתנהגות כשאין שורה (BD-3): תיקונים דלוקים, ציפוף מוצג, הדפסה כבויה */
+const REG = { enable_alterations:'true', hide_custom_spacing:'false', enable_batch_print_prep:'false' };
+const cfg = { s:{}, flag(k){ return (this.s[k] ?? REG[k]) === 'true'; } };
+
+/* ---------- לוח שנה עברי (דמה קבוע: 3 חודשים) ---------- */
+const GEM = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ז׳','ח׳','ט׳','י׳','י״א','י״ב','י״ג','י״ד','ט״ו','ט״ז','י״ז','י״ח','י״ט','כ׳','כ״א','כ״ב','כ״ג','כ״ד','כ״ה','כ״ו','כ״ז','כ״ח','כ״ט','ל׳'];
+const DOW = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const MONTHS = [
+  { name:'אלול', year:'תשפ״ו', days:29, start:[2026,7,14],
+    hol:{1:['ראש חודש אלול']}, par:{2:'שופטים',9:'כי תצא',16:'כי תבוא',23:'נצבים-וילך'} },
+  { name:'תשרי', year:'תשפ״ז', days:30, start:[2026,8,12],
+    hol:{1:['ראש השנה'],2:['ראש השנה'],3:['צום גדליה'],9:['ערב יום כיפור'],10:['יום כיפור'],14:['ערב סוכות'],15:['סוכות'],16:['חול המועד'],17:['חול המועד'],18:['חול המועד'],19:['חול המועד'],20:['חול המועד'],21:['הושענא רבה'],22:['שמיני עצרת','שמחת תורה'],30:['ראש חודש חשוון']},
+    par:{8:'האזינו',29:'בראשית'} },
+  { name:'חשוון', year:'תשפ״ז', days:29, start:[2026,9,12],
+    hol:{1:['ראש חודש חשוון']}, par:{6:'נח',13:'לך לך',20:'וירא',27:'חיי שרה'} },
+];
+const TODAY = new Date(2026, 8, 24); /* י״ג תשרי תשפ״ז */
+const DAYS = [];
+MONTHS.forEach((m, mi) => { for (let d = 1; d <= m.days; d++){ const g = new Date(m.start[0], m.start[1], m.start[2] + d - 1); DAYS.push({ mi, d, g, key:g.toDateString(), dow:g.getDay(), hol:m.hol[d] || [], par:g.getDay() === 6 ? (m.par[d] || '') : '' }); } });
+const dayIdx = g => DAYS.findIndex(x => x.key === g.toDateString());
+const TODAY_I = dayIdx(TODAY);
+const fmtG = g => `${g.getDate()}/${g.getMonth() + 1}`;
+const fmtGFull = g => g.toLocaleDateString('he-IL');
+const hebLabel = x => `${GEM[x.d - 1]} ${MONTHS[x.mi].name} ${MONTHS[x.mi].year}`;
+
+/* ---------- נתוני הזמנות (דמה, זרע קבוע) ---------- */
+const FN = ['רחל','לאה','מרים','שרה','חנה','אסתר','דבורה','יעל','נעמה','תמר','רבקה','בתיה','צביה','אביגיל','מלכה'];
+const LN = ['כהן','לוי','מזרחי','פרידמן','גולדברג','אברהם','ברגר','שטרן','רוזן','קליין','וייס','הלוי','פרץ','דהן','גרין'];
+const LONG_NAME = 'בת-שבע רבקה מרים פרנקנטל-שוורצנברגר';
+function rng(seed){ let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = s * 16807 % 2147483647) / 2147483647; }
+let ORDERS = [];
+function buildOrders(){
+  const r = rng(7); let id = 48100; ORDERS = [];
+  DAYS.forEach((x, i) => {
+    if (S.data === 'empty' && x.mi === 1) return;
+    const chag = x.hol.some(h => /ראש השנה|יום כיפור|^סוכות|שמיני|ערב|צום/.test(h));
+    let n = x.dow === 6 || chag ? 0 : x.dow === 5 ? (r() < .35 ? 1 : 0) : Math.floor(r() * 4.2);
+    if (S.data === 'busy' && x.mi === 1 && x.d === 24) n = 14;
+    if (x.mi === 1 && x.d === 13) n = Math.max(n, 2);
+    for (let k = 0; k < n; k++){
+      const past = i < TODAY_I, diff = TODAY_I - i;
+      const nItems = r() < .06 ? 0 : 1 + Math.floor(r() * 3);
+      const items = [];
+      for (let j = 0; j < nItems; j++){
+        let isTaken = false, isReturned = false;
+        if (past){ isTaken = true; isReturned = diff > 2 ? r() > .12 : r() > .7; }
+        else if (diff >= -2 && r() < .4) isTaken = true;
+        items.push({ isTaken, isReturned, isDeleted: r() < .05, alt: r() < .18 });
+      }
+      const total = nItems ? [350, 400, 450, 600, 750, 900][Math.floor(r() * 6)] * nItems / 2 : 0;
+      const paidR = r(); const paid = !total ? 0 : paidR < .3 ? 0 : paidR < .55 ? Math.round(total / 2) : total;
+      const long = PROFILES[S.profile].long && k === 0 && x.d % 5 === 0;
+      const fn = FN[Math.floor(r() * FN.length)], ln = LN[Math.floor(r() * LN.length)];
+      ORDERS.push({ orderId: ++id, customerName: long ? LONG_NAME : `${fn} ${ln}`, customerId: r() < .95 ? 'c' + id : null,
+        customerPhone: r() < .9 ? `05${Math.floor(r() * 9)}-${String(Math.floor(r() * 9e6) + 1e6)}` : '', city: ['ירושלים','בני ברק','בית שמש','ביתר עילית'][Math.floor(r() * 4)],
+        day:i, customSpacing: r() < .15 ? [1, 2, 3, 14][Math.floor(r() * 4)] : null, totalAmount: total, totalPaid: paid, items });
+    }
+  });
+}
+/* BD-20 — זהה ל-getOrderCategory */
+function category(o){
+  const isEmpty = !o.items || o.items.length === 0;
+  const hasRepairs = o.items && o.items.some(i => i.alt);
+  const isUnpaid = (o.totalPaid || 0) < (o.totalAmount || 0);
+  const isPaidInFull = (o.totalAmount || 0) > 0 && (o.totalPaid || 0) >= o.totalAmount;
+  const v = o.items ? o.items.filter(i => !i.isDeleted) : [];
+  const allReturned = v.length > 0 && v.every(i => i.isReturned);
+  const someReturned = v.some(i => i.isReturned);
+  const allTaken = v.length > 0 && v.every(i => i.isTaken);
+  const someTaken = v.some(i => i.isTaken);
+  if (isEmpty) return 'empty';
+  if (allReturned) return 'returned';
+  if (allTaken || someTaken || someReturned) return 'rented';
+  if (cfg.flag('enable_alterations') && hasRepairs) return 'repairs';
+  if (isUnpaid) return 'unpaid';
+  if (isPaidInFull) return 'completed';
+  return 'other';
+}
+/* BD-21 — נמסר ולא הוחזר, ועברו יותר מ-2 ימים מהאירוע */
+function isLate(o){ const v = o.items.filter(i => !i.isDeleted); return v.some(i => i.isTaken && !i.isReturned) && (TODAY_I - o.day) > 2; }
+const CAT = {
+  empty:{ label:'בלי פריטים', chip:'empty-c', icon:'alert', tip:'הזמנה שאין בה אף פריט' },
+  repairs:{ label:'תיקונים', chip:'rep', icon:'scissors', tip:'יש פריט עם תיקון (צוואר, אורך, שרוול או פירוט)' },
+  unpaid:{ label:'לא שולם', chip:'attn', icon:'wallet', tip:'שולם פחות מהסכום לתשלום' },
+  returned:{ label:'הוחזר', chip:'done', icon:'check', tip:'כל הפריטים חזרו' },
+  rented:{ label:'בהשכרה', chip:'info', icon:'bag', tip:'לפחות פריט אחד נמסר או חזר — כולל השכרה חלקית' },
+  completed:{ label:'שולם', chip:'paid', icon:'coin', tip:'שולם הסכום המלא' },
+  other:{ label:'אחר', chip:'', icon:'more', tip:'אין סכום לתשלום ואין מסירה — בלי תגית בכרטיס' },
+};
+const LEGEND = () => ['empty', ...(cfg.flag('enable_alterations') ? ['repairs'] : []), 'unpaid', 'rented', 'returned', 'completed', 'other'];
+
+/* ---------- מצב ---------- */
+const S = { profile:'org1', data:'normal', load:'ok', view: innerWidth < 768 ? 'list' : 'month', mi:1, weekStart:0, search:'', ai:false, aiMode:false, aiText:'',
+  legendOpen: innerWidth >= 640, adv:{ from:'', to:'', orderId:'', item:'', name:'', phone:'', city:'' }, advAi:false, aiAvail:true, hideTaken:false, hl:-1 };
+function weekStartOf(i){ return Math.max(0, i - DAYS[i].dow); }
+S.weekStart = weekStartOf(TODAY_I);
+const serverFails = () => $('#dFail').checked;
+
+function visibleOrders(){
+  if (S.aiMode) return []; /* BD-33: הבאג הקיים — תוצאות החיפוש החכם בלי תאריך אירוע, הלוח ריק */
+  const q = S.search.trim(), a = S.adv;
+  return ORDERS.filter(o => {
+    if (S.hideTaken){ const v = o.items.filter(i => !i.isDeleted); if (v.length && v.every(i => i.isTaken)) return false; }
+    if (q && !(String(o.orderId).includes(q) || o.customerName.includes(q))) return false;
+    if (a.orderId && !String(o.orderId).includes(a.orderId)) return false;
+    if (a.name && !o.customerName.includes(a.name)) return false;
+    if (a.phone && !o.customerPhone.replace(/\D/g, '').includes(a.phone.replace(/\D/g, ''))) return false;
+    if (a.city && !o.city.includes(a.city)) return false;
+    return true;
+  });
+}
+function byDay(list){ const m = {}; list.forEach(o => (m[o.day] = m[o.day] || []).push(o)); return m; }
+const advCount = () => Object.values(S.adv).filter(Boolean).length;
+
+/* ---------- רינדור ---------- */
+function render(){
+  renderTopbar(NAV, 'לוח');
+  $('#tbOrg').textContent = PROFILES[S.profile].name || ''; $('#tbOrg').hidden = !PROFILES[S.profile].name;
+  const v = $('#view');
+  if (S.load === 'denied'){ v.innerHTML = `<div class="state-box empty" role="status"><span class="e-ic">${ic('lock','xl')}</span><b>אין לך גישה ללוח החודשי</b><span>הגישה נקבעת בעמוד ההרשאות. אפשר לבקש ממנהלת להוסיף אותך.</span><a class="btn primary" href="#">${ic('home','','rise')}לעמוד הבית</a></div>`; return; }
+  const list = visibleOrders(), map = byDay(list);
+  v.innerHTML = head() + toolbar() + filtersOn() + aiBanner() + legend() + body(map, list);
+}
+function periodLabel(){
+  if (S.view === 'week'){ const a = DAYS[S.weekStart], b = DAYS[Math.min(DAYS.length - 1, S.weekStart + 6)];
+    return `<b>שבוע ${GEM[a.d - 1]} ${MONTHS[a.mi].name} – ${GEM[b.d - 1]} ${MONTHS[b.mi].name}</b><small><bdi dir="ltr">${fmtG(a.g)}–${fmtG(b.g)}</bdi></small>`; }
+  const m = MONTHS[S.mi], a = DAYS.find(x => x.mi === S.mi), b = [...DAYS].reverse().find(x => x.mi === S.mi);
+  return `<b>${m.name} ${m.year}</b><small><bdi dir="ltr">${fmtGFull(a.g)} – ${fmtGFull(b.g)}</bdi></small>`;
+}
+function head(){
+  const isWeek = S.view === 'week';
+  const printBtn = cfg.flag('enable_batch_print_prep') ? `<button type="button" class="btn quiet" data-act="print">${ic('printer','','pop')}<span>הדפסת הזמנות להכנה</span></button>` : '';
+  const onToday = isWeek ? S.weekStart === weekStartOf(TODAY_I) : S.mi === DAYS[TODAY_I].mi;
+  return `<div class="pagehead board-head">
+    <div class="bh-title"><span class="ph-kind">לוח חודשי</span><h1>${ic('cal','lg')}הזמנות לפי תאריך אירוע</h1></div>
+    <div class="period" role="group" aria-label="ניווט תקופה">
+      <button type="button" class="ibtn round" data-act="prev" aria-label="${isWeek ? 'השבוע הקודם' : 'החודש הקודם'}" data-tip="${isWeek ? 'השבוע הקודם' : 'החודש הקודם'}">${ic('back','','back')}</button>
+      <div class="period-lbl" aria-live="polite">${periodLabel()}</div>
+      <button type="button" class="ibtn round" data-act="next" aria-label="${isWeek ? 'השבוע הבא' : 'החודש הבא'}" data-tip="${isWeek ? 'השבוע הבא' : 'החודש הבא'}">${ic('next','','nudge')}</button>
+      <div class="period-x"><button type="button" class="btn quiet" data-act="today" ${onToday && S.view !== 'list' ? 'disabled' : ''}>${ic('today','','pop')}היום</button>
+      <button type="button" class="ibtn" data-act="jump" aria-label="קפיצה לתאריך" data-tip="קפיצה לתאריך עברי">${ic('cal','','pop')}</button>
+      ${printBtn}</div>
+    </div></div>`;
+}
+function toolbar(){
+  const ai = S.ai;
+  const views = [['month','חודש','grid'],['week','שבוע','week'],['list','רשימה','list']];
+  return `<div class="toolbar">
+    <form class="search ${ai ? 'ai' : ''}" id="sForm" role="search">
+      <span class="mode">${ai ? ic('star','sm') + 'חכם' : ic('search','sm') + 'רגיל'}</span>
+      <input id="sq" aria-label="${ai ? 'שאלה לחיפוש חכם' : 'חיפוש לפי מספר הזמנה או שם'}" placeholder="${ai ? 'למשל: הזמנות של משפחת כהן' : 'מספר הזמנה או שם לקוח'}" value="${esc(ai ? S.aiText : (S.draft ?? S.search))}" autocomplete="off">
+      ${(ai ? S.aiText : (S.draft ?? S.search)) ? `<button type="button" class="ibtn quiet" data-act="clearSearch" aria-label="ניקוי החיפוש" data-tip="ניקוי">${ic('x','sm')}</button>` : ''}
+      ${S.aiAvail ? `<button type="button" class="ibtn quiet" data-act="toggleAi" aria-pressed="${ai}" aria-label="${ai ? 'חזרה לחיפוש רגיל' : 'מעבר לחיפוש חכם'}" data-tip="${ai ? 'חזרה לחיפוש רגיל' : 'חיפוש חכם (AI)'}">${ic('star','','spin')}</button>
+      <button type="button" class="ibtn quiet" data-act="stats" aria-label="שאלות סטטיסטיקה" data-tip="שאלות סטטיסטיקה (AI)">${ic('chart','','rise')}</button>` : ''}
+      <button type="submit" class="btn sm primary">${ai ? 'לחפש בחכמה' : 'לחפש'}</button>
+    </form>
+    <div class="tb-group">
+      <button type="button" class="btn quiet" data-act="global">${ic('search','','rise')}<span>בכל החודשים</span></button>
+      <button type="button" class="btn quiet" data-act="adv">${ic('filter','','wig')}<span>חיפוש מתקדם</span>${advCount() ? `<span class="chip done">${num(advCount())}</span>` : ''}</button>
+    </div>
+    <div class="seg on-page" role="radiogroup" aria-label="תצוגה" style="margin-inline-start:auto">${views.map(([k, l, i]) => `<button type="button" role="radio" aria-checked="${S.view === k}" data-view="${k}">${ic(i,'sm')}${l}</button>`).join('')}</div>
+  </div>`;
+}
+function filtersOn(){
+  const f = []; if (S.search) f.push(`חיפוש: ${esc(S.search)}`);
+  const L = { from:'מתאריך', to:'עד תאריך', orderId:'מספר הזמנה', item:'פריט', name:'שם', phone:'טלפון', city:'עיר' };
+  Object.entries(S.adv).forEach(([k, v]) => v && f.push(`${L[k]}: ${esc(v)}`));
+  if (!f.length) return '';
+  return `<div class="filters-on" role="status">${ic('filter','sm')}<span>מסונן:</span>${f.map(t => `<span class="chip info">${t}</span>`).join('')}<button type="button" class="btn sm quiet" data-act="clearAll">${ic('x','sm')}ניקוי הסינון</button></div>`;
+}
+function aiBanner(){
+  if (!S.aiMode) return '';
+  return `<div class="ai-banner" role="status">${ic('star','lg')}<div class="b-t"><b>מוצגות תוצאות החיפוש החכם</b><span>מעבר חודש לא טוען הזמנות עד שמנקים את החיפוש. היום החיפוש החכם בלוח לא מחזיר הזמנות עם תאריך — ראו שאלה BDQ-B3.</span></div><button type="button" class="btn sm" data-act="clearSearch">${ic('x','sm')}ניקוי</button></div>`;
+}
+function legend(){
+  return `<section class="legend ${S.legendOpen ? '' : 'is-closed'}" aria-labelledby="lgT"><button type="button" class="legend-toggle" data-act="legend" aria-expanded="${S.legendOpen}">${ic('info')}<span>מקרא: מה אומרים הצבעים והתגיות</span>${ic('down')}</button><h2 id="lgT">מקרא${tip('הפס בצד כל הזמנה והתגית מסמנים את מצבה. הסדר קובע: הזמנה שהוחזרה לא תסומן "לא שולם" גם אם נשאר חוב.')}</h2>
+    ${LEGEND().map(c => `<span class="chip ${CAT[c].chip} cat-${c}" data-tip="${esc(CAT[c].tip)}" tabindex="0">${ic(CAT[c].icon)}${CAT[c].label}</span>`).join('')}
+    <span class="sep" aria-hidden="true"></span>
+    <span class="chip late" data-tip="נמסר פריט ולא הוחזר, ועברו יותר מיומיים מהאירוע" tabindex="0">${ic('late')}באיחור</span>
+    <span class="chip today-c">${ic('today')}היום</span></section>`;
+}
+function body(map, list){
+  if (S.load === 'loading') return `<div class="state-box" role="status" aria-label="טוענים את הלוח"><div class="sk-cal">${Array.from({ length:14 }, () => '<div class="sk"></div>').join('')}</div><div class="empty" style="padding-top:0">${ic('loader','lg','loop')}<b>טוענים את ההזמנות של החודש…</b></div></div>`;
+  if (S.load === 'error') return `<div class="state-box empty" role="alert"><span class="e-ic">${ic('cloud-off','xl')}</span><b>הלוח לא נטען</b><span>אין חיבור לשרת כרגע. ההזמנות לא נמחקו.</span><button type="button" class="btn primary" data-act="retry">${ic('refresh','','spin')}לנסות שוב</button></div>`;
+  const inScope = S.view === 'week' ? list.filter(o => o.day >= S.weekStart && o.day < S.weekStart + 7) : list.filter(o => DAYS[o.day].mi === S.mi);
+  const note = !inScope.length && !S.aiMode ? `<div class="hnote" style="margin-bottom:var(--v3-sp-4)">${ic('info')}<span>${S.search || advCount() ? 'אין הזמנות שמתאימות לסינון בתקופה הזו.' : 'אין הזמנות בתקופה הזו.'}${S.search || advCount() ? ' אפשר לנקות את הסינון או לחפש בכל החודשים.' : ''}</span></div>` : '';
+  if (S.view === 'list') return note + agenda(map);
+  return note + grid(map);
+}
+function orderCard(o, wide){
+  const c = category(o), late = isLate(o), m = CAT[c];
+  return `<div class="oc cat-${c} ${late ? 'is-late' : ''} ${wide ? 'wide' : ''}">
+    <button type="button" class="oc-main" data-order="${o.orderId}" aria-haspopup="menu" aria-expanded="false" aria-label="הזמנה ${o.orderId}, ${esc(o.customerName)}, ${c === 'other' ? '' : m.label}${late ? ', באיחור' : ''} — פעולות">
+      <span class="oc-name">${esc(o.customerName)}</span>
+      <span class="oc-id"><bdi>#${o.orderId}</bdi>${late ? `<span class="late-flag">${ic('late','sm')}<span class="lt">באיחור</span></span>` : ''}</span>
+      ${c !== 'other' ? `<span class="chip ${m.chip}">${ic(m.icon)}<span class="ct">${m.label}</span></span>` : ''}
+    </button>
+    <button type="button" class="oc-info" data-info="${o.orderId}" aria-label="פרטי הזמנה ${o.orderId}">${ic('info','','pop')}</button>
+  </div>`;
+}
+function dayCell(x, i, orders, clamp){
+  const past = i < TODAY_I, today = i === TODAY_I, late = orders.some(isLate);
+  const print = cfg.flag('enable_batch_print_prep') && orders.length > 0;
+  const shown = clamp ? orders.slice(0, 3) : orders;
+  const tags = [x.par && `<span class="chip">${ic('file','sm')}${x.par}</span>`, ...x.hol.map((h, k) => `<span class="chip ${k === 0 ? 'hol-main' : ''}">${h}</span>`)].filter(Boolean).join('');
+  const aria = `${DOW[x.dow]} ${hebLabel(x)}, ${fmtGFull(x.g)}${today ? ', היום' : ''}${orders.length ? `, ${orders.length} הזמנות` : ''}${late ? ', יש איחור' : ''}`;
+  return `<div class="day ${past ? 'past' : ''} ${today ? 'today' : ''} ${x.dow === 6 ? 'shab' : ''} ${late ? 'late' : ''} ${S.hl === i ? 'hl' : ''}" role="gridcell" aria-label="${aria}">
+    ${today ? '<span class="today-pin" aria-hidden="true">היום</span>' : ''}
+    <button type="button" class="day-tap" data-day="${i}" aria-label="${aria} — פתיחת היום"></button>
+    <div class="d-head"><span class="d-num"><b>${GEM[x.d - 1]}</b><small><bdi dir="ltr">${fmtG(x.g)}</bdi></small></span>
+      ${orders.length ? `<span class="day-dot" aria-hidden="true">${orders.length}</span>` : ''}
+      <span class="d-tools">${late ? `<span class="late-flag" data-tip="יש כאן הזמנה באיחור">${ic('late','sm')}<span class="sr-only">יש הזמנה באיחור</span></span>` : ''}
+      ${orders.length ? `<span class="d-count"><bdi>${orders.length}</bdi> הזמנות</span>` : ''}
+      ${orders.length > 2 ? `<button type="button" class="ibtn quiet" data-day="${i}" aria-label="פתיחת כל ההזמנות של היום" data-tip="כל ההזמנות של היום">${ic('expand','sm','pop')}</button>` : ''}
+      ${print ? `<button type="button" class="ibtn quiet" data-printday="${i}" aria-label="הדפסת ההזמנות של היום" data-tip="הדפסת ההזמנות של היום">${ic('printer','sm','pop')}</button>` : ''}</span></div>
+    ${tags ? `<div class="d-tags">${tags}</div>` : ''}
+    <div class="d-list">${shown.map(o => orderCard(o)).join('')}
+      ${clamp && orders.length > 3 ? `<button type="button" class="more-btn" data-day="${i}">${ic('plus','sm')}עוד <bdi>${orders.length - 3}</bdi></button>` : ''}</div>
+  </div>`;
+}
+function grid(map){
+  const week = S.view === 'week';
+  let cells = [];
+  if (week){ for (let i = S.weekStart; i < Math.min(DAYS.length, S.weekStart + 7); i++) cells.push(dayCell(DAYS[i], i, map[i] || [], false)); }
+  else {
+    const first = DAYS.findIndex(x => x.mi === S.mi), last = DAYS.map(x => x.mi).lastIndexOf(S.mi);
+    for (let k = 0; k < DAYS[first].dow; k++) cells.push('<div class="day void" role="gridcell" aria-hidden="true"></div>');
+    for (let i = first; i <= last; i++) cells.push(dayCell(DAYS[i], i, map[i] || [], true));
+    while (cells.length % 7) cells.push('<div class="day void" role="gridcell" aria-hidden="true"></div>');
+  }
+  const rows = []; for (let k = 0; k < cells.length; k += 7) rows.push(`<div role="row" style="display:contents">${cells.slice(k, k + 7).join('')}</div>`);
+  return `<div class="cal-wrap"><div class="cal-dow" role="presentation">${DOW.map((d, k) => `<div><span class="full">${d}</span><span class="short" aria-hidden="true">${['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'][k]}</span></div>`).join('')}</div>
+    <div class="cal ${week ? 'week' : ''}" role="grid" aria-label="${week ? 'שבוע' : 'חודש'} — הזמנות לפי יום">${rows.join('')}</div></div>`;
+}
+function agenda(map){
+  const days = DAYS.map((x, i) => [x, i]).filter(([x, i]) => x.mi === S.mi && ((map[i] || []).length || i === TODAY_I));
+  if (!days.length) return '';
+  let out = '', nowPlaced = false;
+  days.forEach(([x, i]) => {
+    if (!nowPlaced && i >= TODAY_I && DAYS[TODAY_I].mi === S.mi){ out += `<div class="now-line" role="separator" aria-label="היום, ${hebLabel(DAYS[TODAY_I])}"><b>${ic('today','sm')}היום</b></div>`; nowPlaced = true; }
+    const os = map[i] || [], late = os.some(isLate), print = cfg.flag('enable_batch_print_prep') && os.length;
+    out += `<section class="ag-day ${i === TODAY_I ? 'today' : ''} ${late ? 'late' : ''}" aria-label="${DOW[x.dow]} ${hebLabel(x)}">
+      <div class="ag-h"><div class="ag-date"><b>יום ${DOW[x.dow]}, ${GEM[x.d - 1]} ${MONTHS[x.mi].name}</b><small><bdi dir="ltr">${fmtGFull(x.g)}</bdi>${x.par ? ` · פרשת ${x.par}` : ''}</small></div>
+        ${x.hol.map(h => `<span class="chip">${h}</span>`).join('')}
+        ${late ? `<span class="chip late">${ic('late')}יש איחור</span>` : ''}
+        ${os.length ? `<span class="d-count"><bdi>${os.length}</bdi> הזמנות</span>` : ''}
+        ${print ? `<button type="button" class="ibtn quiet" data-printday="${i}" aria-label="הדפסת ההזמנות של היום" data-tip="הדפסת ההזמנות של היום">${ic('printer','sm','pop')}</button>` : ''}
+        ${os.length > 2 ? `<button type="button" class="ibtn quiet" data-day="${i}" aria-label="פתיחת היום בחלון עם סינון" data-tip="חלון היום, עם סינון">${ic('expand','sm','pop')}</button>` : ''}</div>
+      ${os.length ? `<div class="ag-list">${os.map(o => orderCard(o, true)).join('')}</div>` : `<div class="ag-empty">${ic('info','sm')}אין הזמנות היום.</div>`}</section>`;
+  });
+  if (!nowPlaced && DAYS[TODAY_I].mi === S.mi) out += `<div class="now-line" role="separator"><b>${ic('today','sm')}היום</b></div>`;
+  return `<div class="agenda">${out}</div>`;
+}
+
+/* ---------- פרטי הזמנה: כרטיס בריחוף (עכבר) + חלונית צפייה (מגע/מקלדת) ---------- */
+const findOrder = id => ORDERS.find(o => o.orderId === +id);
+function detailRows(o){
+  const v = o.items.filter(i => !i.isDeleted), c = category(o);
+  const pay = o.totalPaid >= o.totalAmount && o.totalAmount > 0 ? ['pay-full', 'שולם הכול'] : o.totalPaid > 0 ? ['pay-part', 'שולם חלק'] : ['pay-none', 'לא שולם כלום'];
+  const x = DAYS[o.day];
+  const spacing = !cfg.flag('hide_custom_spacing') && o.customSpacing != null;
+  return `<div class="kv"><span class="l">${ic('user','sm')}לקוח</span><span class="v">${esc(o.customerName)}</span></div>
+    <div class="kv"><span class="l">${ic('phone','sm')}טלפון</span><span class="v">${o.customerPhone ? `<bdi dir="ltr">${o.customerPhone}</bdi>` : '<span class="missing">לא הוזן</span>'}</span></div>
+    <div class="kv"><span class="l">${ic('cal','sm')}תאריך האירוע</span><span class="v">${hebLabel(x)}</span><span class="v"><bdi dir="ltr">${fmtGFull(x.g)}</bdi></span></div>
+    ${spacing ? `<div class="kv"><span class="l">${ic('clock','sm')}ציפוף ימים</span><span class="v"><span class="chip attn">${num(o.customSpacing)} ${o.customSpacing === 1 ? 'יום' : 'ימים'}</span></span></div>` : ''}
+    <div class="kv2"><div class="kv"><span class="l">${ic('bag','sm')}פריטים</span><span class="v">${num(v.length)}</span></div>
+      <div class="kv"><span class="l">${ic('box','sm')}נמסרו</span><span class="v">${num(v.filter(i => i.isTaken).length)}</span></div>
+      <div class="kv"><span class="l">${ic('check','sm')}הוחזרו</span><span class="v">${num(v.filter(i => i.isReturned).length)}</span></div>
+      <div class="kv"><span class="l">${ic('card','sm')}לתשלום</span><span class="v">${money(o.totalAmount || 0)}</span></div></div>
+    <div class="kv"><span class="l">${ic('coin','sm')}שולם</span><span class="v ${pay[0]}">${money(o.totalPaid || 0)} <small>(${pay[1]})</small></span></div>
+    <div class="kv"><span class="l">${ic('info','sm')}מצב בלוח</span><span class="v">${CAT[c].label}${isLate(o) ? ' · באיחור' : ''}</span></div>`;
+}
+(() => { /* rich tip: עכבר בלבד; במגע/מקלדת הכפתור פותח חלונית */
+  const box = $('#richtip'); let t;
+  document.addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const b = e.target.closest('[data-info]'); clearTimeout(t);
+    if (!b){ box.hidden = true; return; }
+    t = setTimeout(() => { const o = findOrder(b.dataset.info); box.innerHTML = `<h3>${ic('info','sm')}הזמנה <bdi>#${o.orderId}</bdi></h3>${detailRows(o)}`; box.hidden = false;
+      const r = b.getBoundingClientRect(), m = box.getBoundingClientRect(); let top = r.top - m.height - 8; if (top < 8) top = r.bottom + 8; if (top + m.height > innerHeight - 8) top = Math.max(8, innerHeight - m.height - 8);
+      let left = r.left - m.width - 8; if (left < 8) left = Math.min(innerWidth - m.width - 8, r.right + 8); box.style.top = top + 'px'; box.style.left = left + 'px'; }, 150); });
+  addEventListener('scroll', () => { box.hidden = true; }, { passive:true });
+  document.addEventListener('pointerdown', () => { box.hidden = true; });
+})();
+function detailsDlg(o){
+  $('#richtip').hidden = true;
+  openLayer({ type:'viewer', size:'s', html:`${dlgHead('info', `הזמנה <bdi>#${o.orderId}</bdi>`, '', 'סגירה')}<div class="dlg-b">${detailRows(o)}</div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('next','','nudge')}פעולות להזמנה</button><button type="button" class="btn quiet" data-x>סגירה</button></div>`,
+    onMount(d, layer){ d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null)); d.querySelector('[data-go]').onclick = () => { closeLayer(layer, 'x'); const a = document.querySelector(`[data-order="${o.orderId}"]`); orderMenu(o, a || document.body); }; } });
+}
+function orderMenu(o, anchor){
+  const items = [{ icon:'file', label:'כרטיס הזמנה', sub:'פתיחת ההזמנה', run(){ toast('info', `נפתח כרטיס הזמנה #${o.orderId}`, 'בהדגמה: אין מעבר עמוד', 2600); } }];
+  if (o.customerId) items.push({ icon:'user', label:'כרטיס לקוח', sub:esc(o.customerName), run(){ toast('info', 'נפתח כרטיס הלקוח', 'בהדגמה: אין מעבר עמוד', 2600); } });
+  items.push({ icon:'box', label:'כרטיס השכרה', sub:'מסירה והחזרה בסריקה', run(){ rentalDlg(o); } });
+  openMenu(anchor, `הזמנה <bdi>#${o.orderId}</bdi>`, items);
+}
+
+/* ---------- חלון היום (עם סינון → בהיר בלבד) ---------- */
+function dayDlg(i){
+  const x = DAYS[i]; let f = '';
+  const draw = d => { const os = (byDay(visibleOrders())[i] || []).filter(o => !f || o.customerName.toLowerCase().includes(f.toLowerCase()) || o.customerPhone.includes(f) || String(o.orderId).includes(f));
+    d.querySelector('#dayList').innerHTML = os.length ? os.map(o => orderCard(o, true)).join('') : `<div class="empty">${ic('search','lg')}<b>אין הזמנה שמתאימה</b><span>אפשר לחפש לפי שם, טלפון או מספר הזמנה.</span></div>`;
+    d.querySelector('#dayCnt').innerHTML = `${num(os.length)} הזמנות`; };
+  const print = cfg.flag('enable_batch_print_prep');
+  openLayer({ type:'form', size:'m', html:`${dlgHead('cal', `יום ${DOW[x.dow]}, ${GEM[x.d - 1]} ${MONTHS[x.mi].name}`, `<bdi dir="ltr">${fmtGFull(x.g)}</bdi> · <span id="dayCnt"></span>`, 'סגירה')}
+    <div class="dlg-b"><div class="search" style="margin-bottom:var(--v3-sp-4)">${ic('search')}<input id="dayQ" aria-label="סינון ההזמנות של היום" placeholder="שם, טלפון או מספר הזמנה" data-autofocus><button type="button" class="ibtn quiet" data-clr aria-label="ניקוי הסינון" hidden>${ic('x','sm')}</button></div>
+    <div class="list" id="dayList"></div></div>
+    <div class="dlg-f">${print ? `<button type="button" class="btn" data-print>${ic('printer','','pop')}הדפסת ההזמנות של היום</button>` : ''}<button type="button" class="btn quiet" data-x>סגירה</button></div>`,
+    onMount(d, layer){ draw(d); const q = d.querySelector('#dayQ'), clr = d.querySelector('[data-clr]');
+      q.oninput = () => { f = q.value.trim(); clr.hidden = !f; draw(d); }; clr.onclick = () => { q.value = ''; f = ''; clr.hidden = true; draw(d); q.focus(); };
+      d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+      const p = d.querySelector('[data-print]'); if (p) p.onclick = () => printDay(i); } });
+}
+function printDay(i){ const os = byDay(visibleOrders())[i] || []; if (!os.length) return; toast('info', `נפתחת הדפסה של ${os.length} הזמנות`, 'לשונית חדשה, עיצוב "הדפסה מרוכזת"'); }
+
+/* ---------- חיפוש בכל החודשים (צפייה בלבד → עוקב ערכת נושא) ---------- */
+function globalDlg(){
+  const q = (S.ai ? S.aiText : S.search).trim() || $('#sq')?.value.trim();
+  if (!q){ alertDlg('אין מה לחפש', 'מקלידים מספר הזמנה או שם לקוח בשורת החיפוש, ואז מחפשים בכל החודשים.', 'search'); return; }
+  const o = openLayer({ type:'viewer', size:'m', html:`${dlgHead('search', 'תוצאות בכל החודשים', `חיפוש: <bdi>${esc(q)}</bdi>`, 'סגירה')}<div class="dlg-b" id="gRes"><div class="appr-note" role="status">${ic('loader','sm','loop')}מחפשים…</div></div><div class="dlg-f"><button type="button" class="btn quiet" data-x>סגירה</button></div>`,
+    onMount(d, layer){ d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+      setTimeout(() => {
+        if (serverFails()){ d.querySelector('#gRes').innerHTML = `<div class="errbox" role="alert">${ic('alert','lg')}<span>החיפוש לא הצליח — אין חיבור לשרת.</span></div>`; return; }
+        const res = ORDERS.filter(o => String(o.orderId).includes(q) || o.customerName.includes(q)).slice(0, 100);
+        d.querySelector('#gRes').innerHTML = res.length ? `<p class="fhint">${num(res.length)} תוצאות (עד 100)</p><div class="menu-list">${res.map(o => { const x = DAYS[o.day]; return `<div class="gres"><div class="kv"><span class="l">הזמנה</span><span class="v"><bdi>#${o.orderId}</bdi></span></div><div class="kv"><span class="l">לקוח</span><span class="v">${esc(o.customerName)}</span></div><div class="kv"><span class="l">תאריך האירוע</span><span class="v">${hebLabel(x)}</span></div>
+          <div class="inline-acts"><button type="button" class="btn sm" data-goto="${o.day}">${ic('cal','sm','pop')}לחודש הזה</button><a class="btn sm primary" href="#" data-open="${o.orderId}">${ic('open','sm','nudge')}פתיחת ההזמנה</a></div></div>`; }).join('')}</div>`
+          : `<div class="empty">${ic('search','lg')}<b>לא נמצאה הזמנה</b><span>לא נמצא דבר עבור "<bdi>${esc(q)}</bdi>".</span></div>`;
+        d.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => { const i = +b.dataset.goto; S.mi = DAYS[i].mi; S.weekStart = weekStartOf(i); S.hl = i; closeLayer(layer, 'x'); render(); });
+        d.querySelectorAll('[data-open]').forEach(a => a.onclick = e => { e.preventDefault(); toast('info', `ההזמנה נפתחת בלשונית חדשה`, 'בהדגמה: אין מעבר', 2600); });
+      }, 700); } });
+}
+
+/* ---------- חיפוש מתקדם (הזנה → בהיר בלבד); הסינון חל תוך כדי הקלדה (BD-39) ---------- */
+function advDlg(){
+  let tab = 'basic';
+  const F = { basic:[['from','מתאריך אירוע','למשל: א׳ תשרי','cal'],['to','עד תאריך אירוע','למשל: ל׳ תשרי','cal'],['orderId','מספר הזמנה','למשל 48123'],['item','ברקוד או פרטי פריט','ברקוד או תיאור']],
+    details:[['name','שם הלקוח','שם פרטי או משפחה'],['phone','טלפון','מספר טלפון'],['city','עיר','עיר מגורים']] };
+  const drawF = d => { d.querySelector('#advF').innerHTML = F[tab].map(([k, l, p, i]) => `<div class="field"><label for="adv-${k}">${l}</label>${i ? `<div class="pw"><input class="input" id="adv-${k}" data-k="${k}" placeholder="${p}" value="${esc(S.adv[k])}"><button type="button" class="ibtn quiet" aria-label="בורר תאריך עברי" data-tip="בורר תאריך עברי (רכיב משותף)">${ic('cal')}</button></div>` : `<input class="input" id="adv-${k}" data-k="${k}" placeholder="${p}" value="${esc(S.adv[k])}" ${k === 'orderId' || k === 'phone' ? 'dir="ltr" inputmode="numeric"' : ''}>`}</div>`).join('');
+    d.querySelectorAll('[data-k]').forEach(x => x.oninput = () => { S.adv[x.dataset.k] = x.value.trim(); render(); d.querySelector('#advLive').textContent = advCount() ? `${advCount()} שדות מסננים את הלוח עכשיו` : 'הלוח לא מסונן'; }); };
+  openLayer({ type:'form', size:'m', html:`${dlgHead('filter', 'חיפוש מתקדם', 'הלוח מתעדכן תוך כדי הקלדה.', 'סגירה')}
+    <div class="dlg-b"><div class="seg" role="tablist" aria-label="קבוצות שדות" style="margin-bottom:var(--v3-sp-4)"><button type="button" role="tab" aria-selected="true" data-tab="basic">${ic('cal','sm')}תאריך והזמנה</button><button type="button" role="tab" aria-selected="false" data-tab="details">${ic('user','sm')}פרטי לקוח</button></div>
+    <div class="form-grid" id="advF"></div>
+    ${S.aiAvail ? `<label class="switch" style="margin-top:var(--v3-sp-4)"><input type="checkbox" id="advAi" ${S.advAi ? 'checked' : ''}><span>חיפוש חכם לפי השדות שמולאו</span>${tip('במקום לסנן ישירות, המערכת מנסחת שאלה מהשדות ומחפשת לפיה.')}</label>` : ''}
+    <p class="fhint" id="advLive" role="status">${advCount() ? `${advCount()} שדות מסננים את הלוח עכשיו` : 'הלוח לא מסונן'}</p></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-apply>${ic('check','','pop')}סיום</button><button type="button" class="btn quiet" data-clear>${ic('x','sm')}ניקוי כל השדות</button></div>`,
+    onMount(d, layer){ drawF(d);
+      d.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; d.querySelectorAll('[data-tab]').forEach(x => x.setAttribute('aria-selected', x === b)); drawF(d); });
+      const sw = d.querySelector('#advAi'); if (sw) sw.onchange = () => { S.advAi = sw.checked; };
+      d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+      d.querySelector('[data-clear]').onclick = () => { Object.keys(S.adv).forEach(k => S.adv[k] = ''); drawF(d); render(); d.querySelector('#advLive').textContent = 'הלוח לא מסונן'; };
+      d.querySelector('[data-apply]').onclick = () => { closeLayer(layer, 'x'); if (S.advAi && advCount()) runAi('הזמנות לפי השדות שמולאו'); };
+    } });
+}
+
+/* ---------- חיפוש חכם (BD-32..34) ---------- */
+function runAi(text){
+  const f = $('#sForm'); const btn = f && f.querySelector('[type=submit]'); if (btn){ btn.disabled = true; btn.innerHTML = `${ic('loader','sm','loop')}מחפשים…`; }
+  setTimeout(() => {
+    if (serverFails()){ render(); alertDlg('החיפוש החכם לא הצליח', 'אין חיבור לשרת. נסו שוב בעוד רגע.', 'cloud-off'); return; }
+    S.aiMode = true; S.aiText = text; render();
+  }, 900);
+}
+function statsDlg(){
+  openLayer({ type:'form', size:'m', html:`${dlgHead('chart', 'שאלות סטטיסטיקה', 'שאלה בשפה חופשית על ההזמנות.', 'סגירה')}
+    <div class="dlg-b"><div class="hnote">${ic('info')}<span>זו חלונית שיחה משותפת (רכיב נפרד, מחוץ לתחום אב-הטיפוס). ${S.aiMode ? 'השאלה תתייחס גם לחיפוש החכם האחרון.' : ''}</span></div>
+    <div class="field" style="margin-top:var(--v3-sp-4)"><label for="stQ">השאלה</label><textarea class="input" id="stQ" rows="3" placeholder="למשל: כמה הזמנות היו בתשרי?" data-autofocus></textarea></div><div id="stA"></div></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-ask>${ic('send','','nudge')}שליחה</button><button type="button" class="btn quiet" data-x>סגירה</button></div>`,
+    onMount(d, layer){ d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+      d.querySelector('[data-ask]').onclick = () => { const v = d.querySelector('#stQ').value.trim(); if (!v){ d.querySelector('#stA').innerHTML = `<p class="ferr" role="alert">${ic('alert','sm')}צריך לכתוב שאלה</p>`; return; }
+        d.querySelector('#stA').innerHTML = `<div class="appr-note" role="status">${ic('loader','sm','loop')}מחשבים…</div>`;
+        setTimeout(() => { d.querySelector('#stA').innerHTML = serverFails() ? `<div class="errbox" role="alert">${ic('alert','lg')}<span>אין חיבור לשרת.</span></div>` : `<div class="okbox">${ic('chart','lg')}<span>בהדגמה: כאן תופיע התשובה, ולפעמים גם טבלה.</span></div>`; }, 800); }; } });
+}
+function jumpDlg(){
+  openLayer({ type:'form', size:'s', html:`${dlgHead('cal', 'קפיצה לתאריך', 'בחירת יום עברי.', 'סגירה')}
+    <div class="dlg-b"><div class="form-grid"><div class="field"><label for="jD">יום</label><select class="input" id="jD" data-autofocus>${GEM.map((g, k) => `<option value="${k + 1}">${g}</option>`).join('')}</select></div>
+    <div class="field"><label for="jM">חודש</label><select class="input" id="jM">${MONTHS.map((m, k) => `<option value="${k}" ${k === S.mi ? 'selected' : ''}>${m.name} ${m.year}</option>`).join('')}</select></div></div>
+    <p class="fhint">במימוש: בורר התאריך העברי המשותף.</p></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('next','','nudge')}מעבר לתאריך</button><button type="button" class="btn quiet" data-x>ביטול</button></div>`,
+    onMount(d, layer){ d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+      d.querySelector('[data-go]').onclick = () => { const mi = +d.querySelector('#jM').value, dd = Math.min(+d.querySelector('#jD').value, MONTHS[mi].days); const i = DAYS.findIndex(x => x.mi === mi && x.d === dd);
+        S.mi = mi; S.weekStart = weekStartOf(i); S.hl = i; closeLayer(layer, 'x'); render(); }; } });
+}
+function printWizard(){
+  openLayer({ type:'form', size:'m', html:`${dlgHead('printer', 'הדפסת הזמנות להכנה', 'אשף ההדפסה המשותף (ארכיטיפ A3) — כאן בקיצור.', 'סגירה')}
+    <div class="dlg-b"><div class="field"><span class="flbl" id="pwL">אילו הזמנות</span><div class="seg" role="radiogroup" aria-labelledby="pwL">
+      <button type="button" role="radio" aria-checked="true" data-pm="prep">${ic('clock','sm')}להכנה היום</button><button type="button" role="radio" aria-checked="false" data-pm="event">${ic('cal','sm')}לפי תאריך אירוע</button></div></div>
+    <p class="fhint" id="pwH" style="margin-top:var(--v3-sp-3)">הזמנות שצריך להכין היום (3 ימי עבודה לפני האירוע, בלי שישי, שבת וחגים).</p></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('printer','','pop')}הדפסה</button><button type="button" class="btn quiet" data-x>ביטול</button></div>`,
+    onMount(d, layer){ d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+      d.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { d.querySelectorAll('[data-pm]').forEach(x => x.setAttribute('aria-checked', x === b)); d.querySelector('#pwH').textContent = b.dataset.pm === 'prep' ? 'הזמנות שצריך להכין היום (3 ימי עבודה לפני האירוע, בלי שישי, שבת וחגים).' : 'בוחרים תאריך אירוע אחד או טווח.'; });
+      d.querySelector('[data-go]').onclick = () => { closeLayer(layer, 'x'); if (serverFails()) toast('err', 'ההדפסה לא הוכנה', 'אין חיבור לשרת'); else toast('ok', 'נמצאו 6 הזמנות להדפסה', 'נפתחת לשונית הדפסה'); }; } });
+}
+
+/* ---------- כרטיס השכרה (בקיצור; BD-50..59) ---------- */
+function rentalDlg(o){
+  const DRESS = ['שמלת ערב "ורד"', 'שמלת כלה "אלמוג"', 'שמלת שושבינה "טל"', 'שמלת ילדה "פנינה"'];
+  const items = o.items.filter(i => !i.isDeleted).map((it, k) => ({ ...it, name: DRESS[k % 4], size: [36, 38, 40, 42][k % 4], barcode: it.isTaken ? String(10240 + k) + String([36, 38, 40, 42][k % 4]) + '07' : '', pending:false, bad:false }));
+  const status = () => { const all = items.length; if (!all) return 'מחוק'; const r = items.filter(i => i.isReturned).length, t = items.filter(i => i.isTaken).length;
+    if (r === all) return 'הוחזר'; if (r) return 'הוחזר חלקי'; if (t === all) return 'הושכר'; if (t) return 'הושכר חלקי'; return o.day < TODAY_I ? 'עבר' : 'בקרוב'; };
+  const itStatus = i => i.isReturned ? (i.bad ? 'הוחזר — לא תקין' : 'הוחזר') : i.isTaken ? 'מושכר' : i.pending ? 'נסרק — ממתין לאישור' : 'ממתין';
+  const pendingN = () => items.filter(i => i.pending).length;
+  const draw = d => {
+    d.querySelector('#rrSt').innerHTML = `<span class="chip ${/הוחזר/.test(status()) ? 'done' : /הושכר/.test(status()) ? 'info' : 'gold'}">${status()}</span>`;
+    d.querySelector('#rrList').innerHTML = items.length ? items.map((i, k) => `<div class="rr-it ${i.pending ? 'pend' : ''}"><span class="it-thumb">${ic('dress')}</span><b>${i.name}</b>
+      <span class="meta">מידה <bdi>${i.size}</bdi>${i.barcode ? ` · ברקוד <bdi dir="ltr">${i.barcode}</bdi>` : ''}</span>
+      ${cfg.flag('enable_alterations') && i.alt ? `<span class="meta">${ic('scissors','sm')}תיקון: קיצור אורך</span>` : ''}
+      <span class="acts"><span class="chip ${i.isReturned ? 'done' : i.isTaken ? 'info' : i.pending ? 'pend' : ''}">${itStatus(i)}</span>
+      ${i.isReturned ? `<button type="button" class="btn sm quiet" data-undo-ret="${k}">${ic('undo','sm')}ביטול ההחזרה</button>` : i.isTaken ? `<button type="button" class="btn sm quiet" data-undo-rent="${k}">${ic('undo','sm')}ביטול ההשכרה</button>` : ''}
+      <button type="button" class="ibtn quiet" data-hist="${k}" aria-label="היסטוריית הפריט" data-tip="היסטוריית הפריט">${ic('history','sm')}</button></span></div>`).join('') : `<div class="empty">${ic('bag','lg')}<b>אין פריטים בהזמנה</b></div>`;
+    const c = d.querySelector('[data-confirm]'); c.disabled = !pendingN(); c.innerHTML = `${ic('check','','pop')}אישור ההשכרה${pendingN() ? ` (<bdi>${pendingN()}</bdi>)` : ''}`;
+    d.querySelector('[data-discard]').hidden = !pendingN();
+  };
+  const html = `${dlgHead('box', `כרטיס השכרה · הזמנה <bdi>#${o.orderId}</bdi>`, `${esc(o.customerName)} · אירוע ${hebLabel(DAYS[o.day])}`, 'סגירה')}
+    <div class="dlg-b"><div class="field"><span class="flbl">מצב ההזמנה</span><span id="rrSt"></span></div>
+    <form class="scanbar" id="rrScan" style="margin-top:var(--v3-sp-4)"><label class="sr-only" for="rrB">ברקוד</label><input class="input" id="rrB" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="סריקת ברקוד" data-autofocus>
+      <button type="submit" class="btn primary">${ic('scan','','pop')}סריקה</button></form>
+    <p class="fhint">ברקוד של פריט שבחוץ = החזרה. אחר = מסירה. בהדגמה: ברקוד שמתחיל ב-8 = פריט ממחסן (אישור מנהל); 9999 = בחוץ בהזמנה אחרת.</p>
+    <div class="errbox" id="rrErr" role="alert" hidden></div>
+    <div class="rr-items" id="rrList"></div></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-confirm>אישור ההשכרה</button><button type="button" class="btn" data-discard>${ic('x','sm')}ביטול הסריקות</button><button type="button" class="btn quiet" data-x>סגירה</button></div>`;
+  openLayer({ type:'form', size:'l', html, closeOnScrim:false, onMount(d, layer){
+    draw(d); const err = m => { const e = d.querySelector('#rrErr'); e.hidden = !m; e.innerHTML = m ? `${ic('alert','lg')}<span>${m}</span>` : ''; };
+    layer.onClose = async () => { if (!pendingN()) return true;
+      const r = await confirmDlg({ icon:'alert', title:'יש סריקות שלא אושרו', text:`${pendingN()} פריטים נסרקו אבל ההשכרה לא אושרה.`, buttons:[{ label:'אישור ההשכרה וסגירה', kind:'primary', value:'c', auto:1, icon:'check' }, { label:'ביטול הסריקות וסגירה', value:'d' }, { label:'להישאר', kind:'quiet', value:'s' }] });
+      if (r === 'c'){ items.forEach(i => { if (i.pending){ i.pending = false; i.isTaken = true; } }); toast('ok', 'ההשכרה אושרה'); return true; }
+      if (r === 'd'){ items.forEach(i => { if (i.pending){ i.pending = false; i.barcode = ''; } }); return true; } return false; };
+    d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
+    d.querySelector('#rrScan').onsubmit = async e => { e.preventDefault(); const inp = d.querySelector('#rrB'); const b = inp.value.replace(/\s/g, ''); err('');
+      if (!b){ err('צריך לסרוק או להקליד ברקוד.'); inp.focus(); return; }
+      if (serverFails()){ err('אין חיבור לשרת. הסריקה לא נשמרה.'); return; }
+      const out = items.find(i => i.isTaken && !i.isReturned && i.barcode === b);
+      if (out){ if (TODAY_I - o.day >= 7){ const r = await confirmDlg({ icon:'late', title:'ההחזרה מאחרת', text:'הפריט חוזר אחרי המועד. לסמן אותו "לא תקין"?', buttons:[{ label:'לסמן לא תקין', kind:'primary', value:'bad' }, { label:'להחזיר כרגיל', value:'ok', auto:1 }, { label:'ביטול', kind:'quiet', value:null }] }); if (!r) return; out.bad = r === 'bad'; }
+        out.isReturned = true; inp.value = ''; draw(d); toast('ok', 'הפריט הוחזר', out.name); render(); return; }
+      if (b === '9999'){ const r = await confirmDlg({ icon:'alert', title:'השמלה עדיין בחוץ', text:'הפריט רשום כמושכר בהזמנה אחרת. להחזיר אותו שם קודם?', buttons:[{ label:'החזרה בהזמנה האחרת', kind:'primary', value:'y' }, { label:'ביטול', kind:'quiet', value:'n', auto:1 }] }); if (r !== 'y') return; }
+      if (b[0] === '8'){ const ok = await codeDlg('הפריט נמצא במחסן. צריך אישור מנהל כדי למסור אותו.', { fail:serverFails }); if (!ok) return; }
+      const free = items.find(i => !i.isTaken && !i.pending);
+      if (!free){ err('הפריט לא קיים בהזמנה הזו (הדגם או המידה לא מתאימים).'); inp.select(); return; }
+      free.pending = true; free.barcode = b; inp.value = ''; draw(d); inp.focus(); };
+    d.querySelector('[data-confirm]').onclick = async () => {
+      const left = items.filter(i => !i.isTaken && !i.pending).length;
+      if (left && (await confirmDlg({ icon:'alert', title:'לא כל הפריטים נסרקו', text:`${left} פריטים עוד לא נסרקו. לאשר רק את מה שנסרק?`, buttons:[{ label:'אישור מה שנסרק', kind:'primary', value:'y' }, { label:'ביטול', kind:'quiet', value:'n', auto:1 }] })) !== 'y') return;
+      items.forEach(i => { if (i.pending){ i.pending = false; i.isTaken = true; } }); o.items.forEach((it, k) => { if (items[k]) Object.assign(it, { isTaken:items[k].isTaken, isReturned:items[k].isReturned }); });
+      draw(d); render(); toast('ok', 'ההשכרה אושרה', 'הלוח עודכן'); };
+    d.querySelector('[data-discard]').onclick = () => { items.forEach(i => { if (i.pending){ i.pending = false; i.barcode = ''; } }); draw(d); };
+    d.querySelector('#rrList').onclick = async e => { const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.undoRet){ items[+t.dataset.undoRet].isReturned = false; draw(d); toast('info', 'ההחזרה בוטלה'); }
+      if (t.dataset.undoRent){ const r = await confirmDlg({ icon:'undo', title:'לבטל את ההשכרה?', text:'הפריט יחזור למצב "ממתין" והברקוד יימחק מההזמנה.', buttons:[{ label:'ביטול ההשכרה', kind:'primary', value:'y' }, { label:'להשאיר', kind:'quiet', value:'n', auto:1 }] }); if (r === 'y'){ const i = items[+t.dataset.undoRent]; i.isTaken = false; i.barcode = ''; draw(d); } }
+      if (t.dataset.hist) openLayer({ type:'viewer', size:'s', html:`${dlgHead('history', 'היסטוריית הפריט', items[+t.dataset.hist].name, 'סגירה')}<div class="dlg-b"><div class="hnote">${ic('info')}<span>רשימת פעולות על הפריט (מסירה, החזרה, ביטולים). פירוט מלא — בחוזה כרטיס ההשכרה.</span></div></div><div class="dlg-f"><button type="button" class="btn quiet" data-x>סגירה</button></div>`, onMount(dd, l){ dd.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(l, null)); } });
+    };
+  } });
+}
+
+/* ---------- האזנה ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button,a'); if (!b) return;
+  if (b.dataset.order){ const o = findOrder(b.dataset.order); orderMenu(o, b); return; }
+  if (b.dataset.info){ detailsDlg(findOrder(b.dataset.info)); return; }
+  if (b.closest('#layer-root') || b.closest('.demo')) return;
+  if (b.dataset.view){ S.view = b.dataset.view; if (S.view === 'week' && DAYS[S.weekStart].mi !== S.mi) S.weekStart = weekStartOf(DAYS.findIndex(x => x.mi === S.mi)); render(); return; }
+  if (b.dataset.day){ dayDlg(+b.dataset.day); return; }
+  if (b.dataset.printday){ printDay(+b.dataset.printday); return; }
+  const a = b.dataset.act; if (!a) return;
+  if (a === 'prev' || a === 'next'){ const dlt = a === 'next' ? 1 : -1; S.hl = -1;
+    if (S.view === 'week'){ const n = S.weekStart + 7 * dlt; if (n < 0 || n >= DAYS.length){ toast('info', 'אין נתוני דמה לתקופה הזו', '', 2600); return; } S.weekStart = n; S.mi = DAYS[n].mi; }
+    else { const n = S.mi + dlt; if (n < 0 || n >= MONTHS.length){ toast('info', 'אין נתוני דמה לחודש הזה', 'בהדגמה יש 3 חודשים', 2600); return; } S.mi = n; }
+    render(); $(`[data-act=${a}]`)?.focus(); }
+  if (a === 'today'){ S.mi = DAYS[TODAY_I].mi; S.weekStart = weekStartOf(TODAY_I); S.hl = -1; render();
+    if (S.view === 'list') document.querySelector('.now-line')?.scrollIntoView({ block:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+  if (a === 'legend'){ S.legendOpen = !S.legendOpen; render(); $('[data-act=legend]').focus(); }
+  if (a === 'jump') jumpDlg();
+  if (a === 'print') printWizard();
+  if (a === 'global') globalDlg();
+  if (a === 'adv') advDlg();
+  if (a === 'stats') statsDlg();
+  if (a === 'toggleAi'){ const cur = $('#sq').value; if (S.ai) S.draft = cur; else S.aiText = cur; S.ai = !S.ai; /* המעבר שומר את הטקסט (BD-32) */ render(); $('#sq').focus(); }
+  if (a === 'clearSearch'){ S.search = ''; S.draft = null; S.aiText = ''; S.aiMode = false; render(); $('#sq')?.focus(); }
+  if (a === 'clearAll'){ S.search = ''; Object.keys(S.adv).forEach(k => S.adv[k] = ''); render(); }
+  if (a === 'retry'){ S.load = 'loading'; $('#dLoad').value = 'loading'; render(); setTimeout(() => { S.load = 'ok'; $('#dLoad').value = 'ok'; render(); }, 900); }
+});
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'sForm') return; e.preventDefault(); const v = $('#sq').value.trim();
+  if (S.ai){ if (!v) return; runAi(v); } else { S.search = v; S.draft = null; S.aiMode = false; render(); $('#sq').focus(); }
+});
+
+/* ---------- בקרת הדגמה ---------- */
+function applyProfile(){ const p = PROFILES[$('#dProfile').value]; S.profile = $('#dProfile').value; cfg.s = { ...p.s };
+  $('#dAlt').checked = cfg.flag('enable_alterations'); $('#dSpacing').checked = cfg.flag('hide_custom_spacing'); $('#dPrint').checked = cfg.flag('enable_batch_print_prep'); }
+$('#dProfile').onchange = () => { applyProfile(); buildOrders(); render(); };
+$('#dAlt').onchange = e => { cfg.s.enable_alterations = String(e.target.checked); render(); };
+$('#dSpacing').onchange = e => { cfg.s.hide_custom_spacing = String(e.target.checked); render(); };
+$('#dPrint').onchange = e => { cfg.s.enable_batch_print_prep = String(e.target.checked); render(); };
+$('#dHideTaken').onchange = e => { S.hideTaken = e.target.checked; render(); };
+$('#dAi').onchange = e => { S.aiAvail = e.target.checked; if (!S.aiAvail){ S.ai = false; S.aiMode = false; } render(); };
+$('#dData').onchange = e => { S.data = e.target.value; buildOrders(); if (S.data === 'busy'){ S.mi = 1; } render(); };
+$('#dLoad').onchange = e => { S.load = e.target.value; render(); };
+$('#dMotion').onchange = e => { if (e.target.checked) document.documentElement.setAttribute('data-motion', 'reduced'); else document.documentElement.removeAttribute('data-motion'); };
+$('#dTheme').onclick = e => { UI.dark = !UI.dark; e.currentTarget.setAttribute('aria-pressed', UI.dark); e.currentTarget.textContent = `חלוניות אישור/קוד/צפייה: ${UI.dark ? 'כהה' : 'בהיר'}`; toast('info', `חלוניות אישור, קוד וצפייה: ${UI.dark ? 'כהות' : 'בהירות'}`, 'חלון הזנת מידע נשאר בהיר תמיד', 2600); };
+document.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => {
+  if (b.dataset.demo === 'code') codeDlg('דוגמה: מסירת פריט ממחסן.', { fail:serverFails });
+  if (b.dataset.demo === 'toast') toast('ok', 'ההשכרה אושרה', 'הלוח עודכן');
+  if (b.dataset.demo === 'notice') notice('success', 'ההזמנה נשמרה', 'חזרתם ללוח; הפס הזהוב יורד במשך 15 שניות', { label:'פתיחת ההזמנה', run(){ toast('info', 'נפתחת ההזמנה', 'בהדגמה: אין מעבר', 2600); } });
+});
+bindBurger(NAV, 'לוח');
+applyProfile(); buildOrders(); render();
+
+</script>
+</body>
+</html>
