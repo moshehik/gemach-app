@@ -10,14 +10,19 @@ import ModernCustomerOrdersTab from '../../../components/customers/modern/Modern
 import ModernCustomerPaymentsTab from '../../../components/customers/modern/ModernCustomerPaymentsTab';
 import ModernCustomerRefundsTab from '../../../components/customers/modern/ModernCustomerRefundsTab';
 import ModernCustomerHistoryTab from '../../../components/customers/modern/ModernCustomerHistoryTab';
+import { useAlertDialog, useConfirmDialog } from '../../../components/customers/modern/customerDialogs';
 import { addHistory } from '@/lib/historyManager';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup } from '@/lib/customerValidation';
+import { V3Page, Card, Btn, IconBtn, Field, Switch, Icon } from '@/app/v3/ui/components';
+import { enqueueNotice } from '@/app/v3/notify';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
   const { id } = use(params);
+  const [showAlert, alertNode] = useAlertDialog();
+  const [askConfirm, confirmNode] = useConfirmDialog();
   const [customer, setCustomer] = useState(null);
   const [originalCustomer, setOriginalCustomer] = useState(null);
   const [refunds, setRefunds] = useState([]);
@@ -56,7 +61,7 @@ export default function CustomerPage({ params }) {
 
   const handleUnblockCustomer = async () => {
     if (!customer?.id) return;
-    if (!await window.customConfirm('לבטל את חסימת הלקוח מהזמנות חדשות?', 'ביטול חסימה')) return;
+    if (!await askConfirm('הלקוח יוכל שוב לבצע הזמנות חדשות.', 'לבטל את החסימה?')) return;
     try {
       const res = await fetch(`/api/customers/${customer.id}`, {
         method: 'PATCH',
@@ -65,20 +70,20 @@ export default function CustomerPage({ params }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        alert((data && data.error) || 'שגיאה בביטול החסימה');
+        showAlert((data && data.error) || 'שגיאה בביטול החסימה');
         return;
       }
       setCustomer(prev => ({ ...prev, isBlocked: false, blockedReason: null }));
       setOriginalCustomer(prev => prev ? { ...prev, isBlocked: false, blockedReason: null } : prev);
     } catch (err) {
       console.error(err);
-      alert('שגיאת רשת בביטול החסימה');
+      showAlert('שגיאת רשת בביטול החסימה');
     }
   };
 
   const handleSendEmailClick = async () => {
     if (!customer?.email) {
-      alert("ללקוח זה לא מעודכנת כתובת מייל. אנא עדכן ב'פרטים אישיים' ושמור תחילה.");
+      showAlert("ללקוח הזה אין כתובת מייל. הוסיפו אותה בלשונית 'פרטים אישיים', שמרו, ונסו שוב.");
       return;
     }
     const auth = await verifyPin('שליחת מייל דורשת אישור מנהל. אנא הזן סיסמה:', 'feature:customer_email_approval');
@@ -149,7 +154,7 @@ export default function CustomerPage({ params }) {
     if (id === 'new') {
       const groupErrors = unsatisfiedFieldGroupErrors(customer, fieldGroups);
       if (groupErrors.length > 0) {
-        alert(groupErrors.join('\n'));
+        showAlert(groupErrors.join('\n'));
         return;
       }
     }
@@ -174,14 +179,14 @@ export default function CustomerPage({ params }) {
       missing.push('תעודת זהות');
     }
     if (missing.length > 0) {
-      alert(`שדות חובה חסרים: ${missing.join(', ')}`);
+      showAlert(`שדות חובה חסרים: ${missing.join(', ')}`);
       return;
     }
 
     // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים)
     const formatErrors = validateCustomerFieldFormats(customer);
     if (formatErrors.length > 0) {
-      alert(formatErrors.join('\n'));
+      showAlert(formatErrors.join('\n'));
       return;
     }
 
@@ -205,7 +210,7 @@ export default function CustomerPage({ params }) {
 
       if (!res.ok) {
         if (res.status === 409 && data.message) {
-          alert(data.message);
+          showAlert(data.message);
           return;
         }
         // שדות חובה/ולידציית תבנית (400) מגיעים תחת data.error, לא data.message -
@@ -213,11 +218,19 @@ export default function CustomerPage({ params }) {
         throw new Error(data.error || data.message || 'שגיאה בשמירת נתונים');
       }
 
+      const savedName = [customer.firstName, customer.lastName].filter(n => n && String(n).toLowerCase() !== 'null').join(' ');
       if (id === 'new' && data.id) {
+        // R20 - התראת יצירה (אחרי הצלחת ה-POST, לפני המעבר לכרטיס). כשל בהתראה לא משפיע על השמירה.
+        try {
+          enqueueNotice({ kind: 'success', title: 'הלקוח נוצר', text: savedName, href: `/customers/${data.id}`, persistToBell: true, entity: { type: 'Customer', id: data.id } });
+        } catch (notifyErr) { console.error(notifyErr); }
         router.push(`/customers/${data.id}`);
       } else {
         setOriginalCustomer(data);
-        alert('הפרטים נשמרו בהצלחה!');
+        // R20 - התראת שמירה (במקום alert). נשארים בעמוד, לכן בלי href.
+        try {
+          enqueueNotice({ kind: 'success', title: 'הפרטים נשמרו', text: savedName, persistToBell: true, entity: { type: 'Customer', id } });
+        } catch (notifyErr) { console.error(notifyErr); }
       }
       // ModernCustomerDetailsTab (כפתור ה-V + טופס העריכה) סוגר את מצב העריכה רק אם
       // זה מחזיר true - ר' ההערה שם. שאר הבליטות (בדיקת שדות חובה, פורמט, 409, קטע
@@ -225,7 +238,7 @@ export default function CustomerPage({ params }) {
       // (falsy) כברירת מחדל.
       return true;
     } catch (e) {
-      alert(e.message || 'שגיאה בשמירת נתונים');
+      showAlert(e.message || 'שגיאה בשמירת נתונים');
     } finally {
       setSaving(false);
     }
@@ -240,109 +253,94 @@ export default function CustomerPage({ params }) {
 
   if (loading) {
     return (
-      <div className="page-loading">
-        <span className="spinner lg" />
-        טוען נתונים...
-      </div>
+      <V3Page>
+        <div className="v3-empty" role="status">
+          <Icon name="loader" size="xl" loop />
+          <span>טוענים את פרטי הלקוח...</span>
+        </div>
+      </V3Page>
     );
   }
   if (!customer) return null;
 
-  // לקוח חדש — טופס יצירה פשוט, בלי כרטיס טאבים (מקביל ליחס בין /orders/new לבין /orders/[id])
+  // לקוח חדש — טופס יצירה פשוט, בלי כרטיס לשוניות (מקביל ליחס בין /orders/new לבין /orders/[id])
   if (id === 'new') {
+    const groups = parseFieldGroups(settings.mandatory_field_groups);
+    const emailRequired = settings.require_customer_email === 'true';
+    const addressRequired = settings.require_full_address === 'true';
+    const idRequired = settings.require_customer_id_number === 'true';
+    const star = <span className="v3-req" aria-hidden="true">*</span>;
+
     return (
-      <>
-        <div className="page-head">
-          <div>
-            <h1>לקוח חדש</h1>
+      <V3Page>
+        <header className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <IconBtn icon="back" label="חזרה" title="חזרה" variant="quiet" onClick={() => router.back()} />
+            <h1 className="v3-h1">לקוח חדש</h1>
           </div>
-          <div className="page-actions">
-            <button type="button" className="btn btn-secondary btn-icon-only" title="חזרה" onClick={() => router.back()}>
-              <svg className="icon"><use href="#i-arrow-end" /></svg>
-            </button>
-          </div>
-        </div>
+        </header>
 
-        <form onSubmit={handleSave} className="card card-pad" autoComplete="off">
-          <div className="form-grid">
-            <div className="field">
-              <label>שם פרטי *</label>
-              <input type="text" className="input" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={handleChange} required />
-            </div>
-            <div className="field">
-              <label>שם משפחה *</label>
-              <input type="text" className="input" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={handleChange} required />
-            </div>
-            <div className="field">
-              <label>טלפון *</label>
-              <div className="input-icon-wrap">
-                <svg className="icon"><use href="#i-phone" /></svg>
-                <input type="text" className="input" name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={handleChange} required />
-              </div>
-            </div>
-            <div className="field">
-              <label>
-                טלפון נוסף{' '}
-                {settings.require_customer_email !== 'true' && isFieldRequiredByGroup('phone2', customer, parseFieldGroups(settings.mandatory_field_groups)) && (
-                  <span style={{ color: 'var(--danger)' }}>*</span>
-                )}
-              </label>
-              <div className="input-icon-wrap">
-                <svg className="icon"><use href="#i-phone" /></svg>
-                <input type="text" className="input" name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={handleChange} />
-              </div>
-            </div>
-            <div className="field">
-              <label>
-                דוא&quot;ל{' '}
-                {(settings.require_customer_email === 'true' || isFieldRequiredByGroup('email', customer, parseFieldGroups(settings.mandatory_field_groups))) && (
-                  <span style={{ color: 'var(--danger)' }}>*</span>
-                )}
-              </label>
-              <div className="input-icon-wrap">
-                <svg className="icon"><use href="#i-mail" /></svg>
-                <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} required={settings.require_customer_email === 'true'} />
-              </div>
-            </div>
-            <p className="hint" style={{ gridColumn: '1 / -1', margin: '-6px 0 0', color: 'var(--text-2)' }}>
-              כל הזמנה מחייבת 2 אמצעי תקשורת — יש למלא לפחות אחד מבין טלפון נוסף / אימייל.
-            </p>
-            <div className="field">
-              <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
-            </div>
-            <div className="field">
-              <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
-            </div>
-            <div className="field">
-              <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
-            </div>
-            <div className="field">
-              <label>תעודת זהות (לעריכה/ביטול) {settings.require_customer_id_number === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
-            </div>
-            {settings.hide_marketing_consent_field !== 'true' && (
-              <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
-                <input type="checkbox" id="newMarketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={handleChange} />
-                <label htmlFor="newMarketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
-              </div>
-            )}
-          </div>
+        <form onSubmit={handleSave} autoComplete="off">
+          <Card icon="user" title="פרטי הלקוח" tip="לכל הזמנה נדרשים שני אמצעי קשר: מלאו טלפון נוסף או דוא&quot;ל, לפחות אחד.">
+            <div className="v3-stack">
+              <Field label="שם פרטי" required type="text" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={handleChange} />
+              <Field label="שם משפחה" required type="text" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={handleChange} />
+              <Field label="טלפון" required type="text" name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={handleChange} />
+              <Field
+                label={<>טלפון נוסף{!emailRequired && isFieldRequiredByGroup('phone2', customer, groups) && star}</>}
+                type="text"
+                name="phone2"
+                autoComplete="off"
+                value={customer.phone2 || ''}
+                onChange={handleChange}
+              />
+              <Field
+                label={<>דוא&quot;ל{!emailRequired && isFieldRequiredByGroup('email', customer, groups) && star}</>}
+                required={emailRequired}
+                type="email"
+                name="email"
+                autoComplete="off"
+                value={customer.email || ''}
+                onChange={handleChange}
+                onBlur={handleEmailBlur}
+              />
+              <Field label="עיר" required={addressRequired} type="text" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} />
+              <Field label="רחוב" required={addressRequired} type="text" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} />
+              <Field label="מספר בית" required={addressRequired} type="number" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} />
+              <Field
+                label="תעודת זהות"
+                tip="משמשת לאימות כשעורכים או מבטלים הזמנה."
+                required={idRequired}
+                type="text"
+                style={{ direction: 'ltr' }}
+                name="zeout"
+                autoComplete="off"
+                value={customer.zeout || ''}
+                onChange={handleChange}
+                placeholder="ת״ז"
+              />
+              {settings.hide_marketing_consent_field !== 'true' && (
+                <Switch
+                  id="newMarketingConsent"
+                  name="marketingConsent"
+                  checked={!!customer.marketingConsent}
+                  onChange={(v) => handleChange({ target: { name: 'marketingConsent', type: 'checkbox', checked: v } })}
+                  label="מאשר/ת קבלת דיוורים"
+                />
+              )}
+              <Field label="הערות" as="textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} />
 
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>הערות</label>
-            <textarea className="textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
-            <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
-              {saving ? 'שומר...' : 'שמור פרטים'}
-            </button>
-          </div>
+              <div className="v3-cluster">
+                <Btn type="submit" variant="primary" size="lg" icon="check" loading={saving}>
+                  {saving ? 'שומר...' : 'שמירת הלקוח'}
+                </Btn>
+              </div>
+            </div>
+          </Card>
         </form>
-      </>
+        {alertNode}
+        {confirmNode}
+      </V3Page>
     );
   }
 
@@ -404,6 +402,8 @@ export default function CustomerPage({ params }) {
         customer={customer}
         authResult={emailAuthResult}
       />
+      {alertNode}
+      {confirmNode}
     </>
   );
 }

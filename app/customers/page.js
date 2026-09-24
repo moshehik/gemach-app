@@ -8,6 +8,8 @@ import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildCustomersListParams } from '@/app/lib/prefetchRoutes';
+import { V3Page, Card, Btn, IconBtn, Chip, Field, Tabs, Switch, Tip, Dialog, Empty, Icon } from '@/app/v3/ui/components';
+import { useAlertDialog } from '@/components/customers/modern/customerDialogs';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const customersCache = cacheNamespace('customers');
@@ -29,6 +31,7 @@ const buildCustomersAiPrompt = (f) => {
 export default function CustomersPage() {
   const router = useRouter();
   const { getLabel } = useLabels();
+  const [showAlert, alertNode] = useAlertDialog();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -156,11 +159,11 @@ export default function CustomersPage() {
         setAiPromptUsed(query);
         setAiWhereClause(result.whereClause || null);
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        showAlert(result.error || 'שגיאה בחיפוש החכם');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      showAlert('שגיאת תקשורת');
     } finally {
       setAiLoading(false);
     }
@@ -210,14 +213,11 @@ export default function CustomersPage() {
 
   const renderSortIcon = (column) => {
     if (sort !== column) {
-      return <svg className="icon"><use href="#i-sort" /></svg>;
+      return <Icon name="sort" size="sm" anim={false} />;
     }
-    return (
-      <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: order === 'desc' ? 'rotate(180deg)' : 'none' }}>
-        <use href="#i-chevron-down" />
-      </svg>
-    );
+    return <Icon name="chevron-down" size="sm" anim={false} className="is-on" style={{ transform: order === 'desc' ? "rotate(180deg)" : 'none' }} />;
   };
+
 
   const fetchCustomersForExport = async (exportLimit) => {
     try {
@@ -240,21 +240,28 @@ export default function CustomersPage() {
     }
   };
 
+  // עמודות הטבלה: המפתח = שדה המיון בשרת (handleSort), התווית דרך getLabel כמו קודם
+  const columns = [
+    { key: 'legacyId', label: 'קוד לקוח' },
+    { key: 'firstName', label: getLabel('customer_firstName', 'שם פרטי') },
+    { key: 'lastName', label: getLabel('customer_lastName', 'שם משפחה') },
+    { key: 'phone1', label: getLabel('customer_phone1', 'טלפון') },
+    { key: 'city', label: getLabel('customer_city', 'עיר') },
+    { key: 'email', label: getLabel('customer_email', 'דוא"ל') }
+  ];
+
+  const openCustomer = (customer) => router.push(`/customers/${customer.id}`);
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>ניהול לקוחות</h1>
-          <div className="page-desc">סה"כ רשומות: {totalCount}</div>
+    <V3Page>
+      <header className="v3-pagehead">
+        <div className="v3-pagehead__title">
+          <h1 className="v3-h1">לקוחות</h1>
+          <Chip variant="info" icon="users"><bdi>{totalCount}</bdi> במערכת</Chip>
+          <Tip>לחיצה על שורה פותחת את כרטיס הלקוח. בחיפוש החכם אפשר לכתוב משפט חופשי.</Tip>
         </div>
-        <div className="page-actions">
-          <button
-            onClick={() => setShowAdvSearch(true)}
-            className="btn btn-secondary btn-icon-only"
-            title="חיפוש מתקדם"
-          >
-            <svg className="icon"><use href="#i-list" /></svg>
-          </button>
+        <div className="v3-pagehead__tools">
+          <IconBtn icon="list" label="חיפוש מתקדם" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)} />
 
           <ExportButtons
             data={customers}
@@ -271,134 +278,118 @@ export default function CustomersPage() {
             iconOnly={true}
           />
 
-          <button
-            onClick={() => router.push('/customers/new')}
-            className="btn btn-primary"
-          >
-            <svg className="icon"><use href="#i-plus" /></svg>
-            לקוח חדש
-          </button>
+          <Btn variant="primary" icon="plus" onClick={() => router.push('/customers/new')}>לקוח חדש</Btn>
         </div>
-      </div>
+      </header>
 
-      {/* סרגל חיפוש: חיפוש טקסטואלי רגיל + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה, במסגרת אחת */}
-      <div className="toolbar">
-        {aiInputMode ? (
-          <form onSubmit={handleAiInputSubmit} className="search-toolbar">
-            {aiLoading
-              ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-              : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
+      {/* סרגל חיפוש: רגיל / חכם (AI) + שאלות סטטיסטיקה */}
+      {aiInputMode ? (
+        <form onSubmit={handleAiInputSubmit} className="v3-filter-bar" role="search">
+          <div className="v3-search">
+            {aiLoading ? <Icon name="loader" loop /> : <Icon name="sparkles" />}
             <input
               type="text"
               value={aiInputText}
               onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="בקש מה-AI למצוא נתונים (למשל: 'לקוחות מירושלים')..."
+              placeholder="תארו את מי לחפש, למשל: לקוחות מירושלים"
+              aria-label="חיפוש חכם"
               disabled={aiLoading}
             />
-            <div className="search-toolbar-actions">
-              {aiInputText && !aiLoading && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
-                <svg className="icon"><use href="#i-star" /></svg>
+            {aiInputText && !aiLoading && (
+              <button type="button" className="v3-search__clear is-on" aria-label="ניקוי הטקסט" onClick={() => setAiInputText('')}>
+                <Icon name="x" size="sm" />
               </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSearch} className="search-toolbar">
-            <svg className="icon"><use href="#i-search" /></svg>
+            )}
+          </div>
+          <IconBtn icon="sparkles" variant="primary" label="חזרה לחיפוש רגיל" title="חיפוש חכם (AI)" onClick={toggleAiInputMode} />
+          <IconBtn icon="stats" label="שאלות סטטיסטיקה" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+          <Btn type="submit" variant="primary" loading={aiLoading}>{aiLoading ? 'בונה שאילתה...' : 'חיפוש חכם'}</Btn>
+        </form>
+      ) : (
+        <form onSubmit={handleSearch} className="v3-filter-bar" role="search">
+          <div className="v3-search">
+            <Icon name="search" />
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
+              placeholder="שם, טלפון או עיר"
+              aria-label="חיפוש לקוח"
             />
-            <div className="search-toolbar-actions">
-              {searchInput && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+            {searchInput && (
+              <button type="button" className="v3-search__clear is-on" aria-label="ניקוי החיפוש" onClick={handleClearSearch}>
+                <Icon name="x" size="sm" />
               </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
-            </div>
-          </form>
-        )}
-      </div>
+            )}
+          </div>
+          <IconBtn icon="sparkles" label="חיפוש חכם (AI)" title="חיפוש חכם (AI)" onClick={toggleAiInputMode} />
+          <IconBtn icon="stats" label="שאלות סטטיסטיקה" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+          <Btn type="submit" variant="primary">חיפוש</Btn>
+        </form>
+      )}
 
       {loading && customers.length === 0 ? (
-        <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
+        <div className="v3-empty" role="status">
+          <Icon name="loader" size="xl" loop />
+          <span>טוענים לקוחות...</span>
+        </div>
       ) : (
-        <div className="table-wrap">
-          <div className="table-scroll">
-            <table className="data">
+        <Card>
+          <div className="v3-table__wrap">
+            <table className="v3-table">
+              <caption className="v3-sr">רשימת לקוחות</caption>
               <thead>
                 <tr>
-                  <th className={sort === 'legacyId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('legacyId')}>
-                    קוד לקוח {renderSortIcon('legacyId')}
-                  </th>
-                  <th className={sort === 'firstName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('firstName')}>
-                    {getLabel('customer_firstName', 'שם פרטי')} {renderSortIcon('firstName')}
-                  </th>
-                  <th className={sort === 'lastName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('lastName')}>
-                    {getLabel('customer_lastName', 'שם משפחה')} {renderSortIcon('lastName')}
-                  </th>
-                  <th className={sort === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('phone1')}>
-                    {getLabel('customer_phone1', 'טלפון')} {renderSortIcon('phone1')}
-                  </th>
-                  <th className={sort === 'city' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('city')}>
-                    {getLabel('customer_city', 'עיר')} {renderSortIcon('city')}
-                  </th>
-                  <th className={sort === 'email' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('email')}>
-                    {getLabel('customer_email', 'דוא"ל')} {renderSortIcon('email')}
-                  </th>
+                  {columns.map((col) => (
+                    <th key={col.key} scope="col" aria-sort={sort === col.key ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                      <button type="button" className="v3-th-btn" onClick={() => handleSort(col.key)}>
+                        {col.label}{renderSortIcon(col.key)}
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {customers.map(customer => (
-                  <tr key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)}>
-                    <td className={customer.legacyId ? 'cell-primary' : 'cell-primary cell-muted'}>{customer.legacyId || 'חדש'}</td>
+                  <tr
+                    key={customer.id}
+                    tabIndex={0}
+                    onClick={() => openCustomer(customer)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) openCustomer(customer); }}
+                  >
+                    <td>{customer.legacyId ? <bdi>{customer.legacyId}</bdi> : <Chip variant="info">חדש</Chip>}</td>
                     <td>{customer.firstName}</td>
                     <td>{customer.lastName}</td>
-                    <td>{customer.phone1}</td>
+                    <td><bdi>{customer.phone1}</bdi></td>
                     <td>{customer.city}</td>
-                    <td>{customer.email || '-'}</td>
+                    <td>{customer.email ? <bdi>{customer.email}</bdi> : '-'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="table-foot">
-            <span>סה"כ שורות מוצגות: {customers.length}</span>
+          {customers.length === 0 && (
+            <Empty icon="search" title="לא נמצאו לקוחות" text="נסו חיפוש אחר או נקו את הסינון." />
+          )}
+          <div className="v3-cluster">
+            <span className="v3-faint">מוצגים <bdi>{customers.length}</bdi> לקוחות</span>
             {totalPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
+              <div className="v3-cluster" style={{ marginInlineStart: 'auto' }}>
+                <Btn
+                  size="sm"
+                  icon="chevron-end"
                   disabled={page <= 1 || aiLoading}
                   onClick={() => isAiModeActive ? handleAiPageChange(page - 1) : setPage(p => p - 1)}
                   title="עמוד קודם"
                 >
-                  <svg className="icon"><use href="#i-chevron-end" /></svg>הקודם
-                </button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  הקודם
+                </Btn>
+                <span className="v3-cluster">
                   <label htmlFor="customers-page-num">עמוד</label>
                   <input
                     id="customers-page-num"
                     type="number"
-                    className="input"
+                    className="v3-input"
                     min={1}
                     max={totalPages || 1}
                     value={page}
@@ -408,23 +399,24 @@ export default function CustomersPage() {
                         if (isAiModeActive) handleAiPageChange(v); else setPage(v);
                       }
                     }}
-                    style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+                    style={{ width: 'var(--v3-sp-9)', textAlign: 'center' }}
                     disabled={aiLoading}
                   />
-                  מתוך {totalPages}
+                  <span>מתוך <bdi>{totalPages}</bdi></span>
                 </span>
-                <button
-                  className="btn btn-secondary btn-sm"
+                <Btn
+                  size="sm"
+                  iconEnd="chevron-start"
                   disabled={page >= totalPages || aiLoading}
                   onClick={() => isAiModeActive ? handleAiPageChange(page + 1) : setPage(p => p + 1)}
                   title="עמוד הבא"
                 >
-                  הבא<svg className="icon"><use href="#i-chevron-start" /></svg>
-                </button>
+                  הבא
+                </Btn>
               </div>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       <StatisticsModal
@@ -435,120 +427,103 @@ export default function CustomersPage() {
         position={typeof showStatistics === 'object' ? showStatistics : null}
       />
 
-      {/* מודל: חיפוש מתקדם (לקוחות) */}
-      {showAdvSearch && (
-        <div className="modal-backdrop" onClick={() => setShowAdvSearch(false)}>
-          <div className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-list" /></svg>
-                חיפוש מתקדם (לקוחות)
-              </strong>
-              <button className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowAdvSearch(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
+      {/* חלונית: חיפוש מתקדם (הזנת נתונים = חלונית טופס, בהירה בלבד) */}
+      <Dialog
+        open={showAdvSearch}
+        onClose={() => setShowAdvSearch(false)}
+        variant="form"
+        icon="list"
+        title="חיפוש מתקדם"
+        sub="הסינון חל מיד תוך כדי הקלדה."
+        actions={(
+          <>
+            <Btn variant="primary" icon="check" onClick={() => {
+              if (advAiMode) {
+                const prompt = buildCustomersAiPrompt(advFilters);
+                setShowAdvSearch(false);
+                if (prompt) handleAiSearch(prompt);
+              } else {
+                setShowAdvSearch(false);
+              }
+            }}>
+              סיום
+            </Btn>
+            <Btn variant="quiet" onClick={() => {
+              setAdvFilters({ firstName: '', lastName: '', phone: '', city: '', email: '' });
+            }}>
+              ניקוי הכול
+            </Btn>
+          </>
+        )}
+      >
+        <div className="v3-stack">
+          <Tabs
+            label="קבוצות סינון"
+            value={advTab}
+            onChange={setAdvTab}
+            items={[
+              { key: 'basic', label: 'שם', icon: 'user' },
+              { key: 'details', label: 'פרטי קשר', icon: 'phone' }
+            ]}
+          />
 
-            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): שם הלקוח מול פרטי הקשר שלו.
-               סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js */}
-            <div className="tabs" style={{ margin: '0 22px' }}>
-              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
-                שם
-              </button>
-              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
-                פרטי קשר
-              </button>
+          {advTab === 'basic' && (
+            <div className="v3-stack">
+              <Field
+                id="adv-search-firstname"
+                label={getLabel('customer_firstName', 'שם פרטי')}
+                type="text"
+                value={advFilters.firstName}
+                onChange={e => setAdvFilters(p => ({ ...p, firstName: e.target.value }))}
+              />
+              <Field
+                id="adv-search-lastname"
+                label={getLabel('customer_lastName', 'שם משפחה')}
+                type="text"
+                value={advFilters.lastName}
+                onChange={e => setAdvFilters(p => ({ ...p, lastName: e.target.value }))}
+              />
             </div>
+          )}
 
-            <div className="modal-body">
-              {advTab === 'basic' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="adv-search-firstname">{getLabel('customer_firstName', 'שם פרטי')}</label>
-                    <input
-                      id="adv-search-firstname"
-                      type="text"
-                      className="input"
-                      value={advFilters.firstName}
-                      onChange={e => setAdvFilters(p => ({ ...p, firstName: e.target.value }))}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="adv-search-lastname">{getLabel('customer_lastName', 'שם משפחה')}</label>
-                    <input
-                      id="adv-search-lastname"
-                      type="text"
-                      className="input"
-                      value={advFilters.lastName}
-                      onChange={e => setAdvFilters(p => ({ ...p, lastName: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {advTab === 'details' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="adv-search-phone">{getLabel('customer_phone1', 'טלפון')}</label>
-                    <input
-                      id="adv-search-phone"
-                      type="text"
-                      className="input"
-                      value={advFilters.phone}
-                      onChange={e => setAdvFilters(p => ({ ...p, phone: e.target.value }))}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="adv-search-city">{getLabel('customer_city', 'עיר מגורים')}</label>
-                    <input
-                      id="adv-search-city"
-                      type="text"
-                      className="input"
-                      value={advFilters.city}
-                      onChange={e => setAdvFilters(p => ({ ...p, city: e.target.value }))}
-                    />
-                  </div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
-                    <label htmlFor="adv-search-email">{getLabel('customer_email', 'דוא"ל')}</label>
-                    <input
-                      id="adv-search-email"
-                      type="text"
-                      className="input"
-                      value={advFilters.email}
-                      onChange={e => setAdvFilters(p => ({ ...p, email: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
-              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
-                <input type="checkbox" id="customers-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
-                <label htmlFor="customers-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
-              </div>
+          {advTab === 'details' && (
+            <div className="v3-stack">
+              <Field
+                id="adv-search-phone"
+                label={getLabel('customer_phone1', 'טלפון')}
+                type="text"
+                value={advFilters.phone}
+                onChange={e => setAdvFilters(p => ({ ...p, phone: e.target.value }))}
+              />
+              <Field
+                id="adv-search-city"
+                label={getLabel('customer_city', 'עיר מגורים')}
+                type="text"
+                value={advFilters.city}
+                onChange={e => setAdvFilters(p => ({ ...p, city: e.target.value }))}
+              />
+              <Field
+                id="adv-search-email"
+                label={getLabel('customer_email', 'דוא"ל')}
+                type="text"
+                value={advFilters.email}
+                onChange={e => setAdvFilters(p => ({ ...p, email: e.target.value }))}
+              />
             </div>
-            <div className="modal-foot">
-              <button className="btn btn-secondary" onClick={() => {
-                setAdvFilters({ firstName: '', lastName: '', phone: '', city: '', email: '' });
-              }}>
-                נקה הכל
-              </button>
-              <button className="btn btn-primary" onClick={() => {
-                if (advAiMode) {
-                  const prompt = buildCustomersAiPrompt(advFilters);
-                  setShowAdvSearch(false);
-                  if (prompt) handleAiSearch(prompt);
-                } else {
-                  setShowAdvSearch(false);
-                }
-              }}>
-                <svg className="icon"><use href="#i-check" /></svg>
-                סגור והחל סינון
-              </button>
-            </div>
+          )}
+
+          {/* AI על השדות שמולאו - מוסתר לגמרי כש-AI כבוי במערכת (.ai-feature-element) */}
+          <div className="ai-feature-element">
+            <Switch
+              id="customers-adv-ai-mode"
+              checked={advAiMode}
+              onChange={setAdvAiMode}
+              label="חיפוש חכם לפי מה שמילאתי"
+            />
           </div>
         </div>
-      )}
-    </>
+      </Dialog>
+      {alertNode}
+    </V3Page>
   );
 }

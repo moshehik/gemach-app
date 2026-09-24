@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Dialog, Btn, Field, Seg, Banner } from '@/app/v3/ui/components';
 
 export default function ModernSendEmailModal({ isOpen, onClose, customer, authResult }) {
   const [subject, setSubject] = useState('');
@@ -90,110 +90,90 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
     }
   };
 
-  return createPortal(
-    <div
-      className="modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+  return (
+    <Dialog
+      open={isOpen}
+      onClose={() => { if (!loading) onClose(); }}
+      variant="form"
+      icon="mail"
+      title={`מייל ל${customer.firstName || ''} ${customer.lastName || ''}`.trim()}
+      sub={customer.email ? `יישלח אל ${customer.email}` : undefined}
+      actions={(
+        <>
+          <Btn type="submit" form="customer-email-form" variant="primary" icon="send" loading={loading}>
+            {loading ? 'שולח...' : 'שליחה'}
+          </Btn>
+          <Btn variant="quiet" onClick={onClose} disabled={loading}>ביטול</Btn>
+        </>
+      )}
     >
-      <div className="modal" style={{ maxWidth: '500px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-head">
-          <strong>
-            <svg className="icon"><use href="#i-mail" /></svg>
-            שליחת מייל - {customer.firstName} {customer.lastName}
-          </strong>
-          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => !loading && onClose()}>
-            <svg className="icon"><use href="#i-x" /></svg>
-          </button>
+      <form id="customer-email-form" onSubmit={handleSubmit} className="v3-stack">
+        {error && <Banner kind="alert" title={error} />}
+        {sentOk && (
+          <Banner kind="success" title={sentOk} />
+        )}
+        {sentOk && driveLinks.length > 0 && (
+          <ul>
+            {driveLinks.map((l, i) => (
+              <li key={i}>{l.url ? <a href={l.url} target="_blank" rel="noreferrer">{l.fileName || l.url}</a> : (l.fileName || '')}</li>
+            ))}
+          </ul>
+        )}
+
+        <Field
+          label="נושא"
+          type="text"
+          value={subject}
+          onChange={e => setSubject(e.target.value)}
+          required
+          disabled={loading}
+        />
+
+        <Field
+          label="תוכן ההודעה"
+          as="textarea"
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          rows={6}
+          required
+          disabled={loading}
+        />
+
+        <Field
+          label="קבצים מצורפים"
+          tip="אפשר לבחור כמה קבצים. טבלת הוראות מצורפת למייל אוטומטית."
+          hint={files.length > 0 ? `נבחרו ${files.length} קבצים: ${files.map(f => f.name).join(', ')}` : undefined}
+        >
+          <input type="file" multiple onChange={e => setFiles(e.target.files ? Array.from(e.target.files) : [])} disabled={loading} />
+        </Field>
+
+        <div className="v3-field">
+          <span className="v3-label">איך לשלוח את הקבצים</span>
+          <Seg
+            label="יעד הקבצים"
+            value={sendMode}
+            onChange={(v) => { if (!loading) setSendMode(v); }}
+            options={[
+              { value: 'email', label: 'צרופה למייל', icon: 'mail' },
+              { value: 'drive', label: 'דרייב ושיתוף', icon: 'folder' },
+              { value: 'both', label: 'שניהם', icon: 'copy' }
+            ]}
+          />
         </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {error && (
-              <div className="callout callout-danger">
-                <svg className="icon"><use href="#i-alert-circle" /></svg>
-                {error}
-              </div>
-            )}
-            {sentOk && (
-              <div className="callout callout-success">
-                <svg className="icon"><use href="#i-check-circle" /></svg>
-                {sentOk}
-                {driveLinks.length > 0 && (
-                  <ul style={{ paddingInlineStart: '18px', margin: '8px 0 0 0', fontSize: '0.82rem' }}>
-                    {driveLinks.map((l, i) => (
-                      <li key={i}>{l.url ? <a href={l.url} target="_blank" rel="noreferrer">{l.fileName || l.url}</a> : (l.fileName || '')}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
 
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>נושא ההודעה</label>
-              <input
-                type="text"
-                className="input"
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>תוכן</label>
-              <textarea
-                className="textarea"
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                rows={6}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>קבצים מצורפים (ניתן לבחור כמה)</label>
-              <input type="file" className="input" multiple onChange={e => setFiles(e.target.files ? Array.from(e.target.files) : [])} disabled={loading} />
-              {files.length > 0 && (
-                <div className="hint" style={{ marginTop: '6px' }}>
-                  {files.length} קבצים נבחרו: {files.map(f => f.name).join(', ')} - טבלת הוראות תצורף אוטומטית למייל.
-                </div>
-              )}
-            </div>
-
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>יעד הקבצים בהתאמה</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {[
-                  { v: 'email', label: 'צרופה למייל' },
-                  { v: 'drive', label: 'דרייב + שיתוף' },
-                  { v: 'both', label: 'גם וגם' }
-                ].map(o => (
-                  <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)', borderRadius: '20px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
-                    <input type="radio" name="modernSendMode" value={o.v} checked={sendMode === o.v} onChange={() => setSendMode(o.v)} disabled={loading} />
-                    {o.label}
-                  </label>
-                ))}
-              </div>
-              {(sendMode === 'drive' || sendMode === 'both') && (
-                <input type="text" className="input" value={driveFolderId} onChange={e => setDriveFolderId(e.target.value)} placeholder="מזהה תיקיית דרייב (רשות)" dir="ltr" disabled={loading} style={{ marginTop: '8px' }} />
-              )}
-              {(sendMode === 'drive' || sendMode === 'both') && (
-                <div className="hint" style={{ marginTop: '6px' }}>הקבצים ישותפו עם הנמען בהרשאת הורדה מלאה.</div>
-              )}
-            </div>
-          </div>
-          <div className="modal-foot">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>ביטול</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
-              {loading ? 'שולח...' : 'שלח'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
+        {(sendMode === 'drive' || sendMode === 'both') && (
+          <Field
+            label="תיקיית דרייב"
+            hint="הנמען יקבל הרשאת הורדה מלאה לקבצים."
+            type="text"
+            value={driveFolderId}
+            onChange={e => setDriveFolderId(e.target.value)}
+            placeholder="מזהה תיקייה (לא חובה)"
+            dir="ltr"
+            disabled={loading}
+          />
+        )}
+      </form>
+    </Dialog>
   );
 }
