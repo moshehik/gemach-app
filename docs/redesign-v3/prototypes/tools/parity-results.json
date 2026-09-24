@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-24T13:39:19.258Z",
+ "generated": "2026-09-24T21:26:31.245Z",
  "widths": [
   1440,
   1024,
@@ -278,7 +278,7 @@
      },
      {
       "id": "button",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -859,7 +859,7 @@
      },
      {
       "id": "button",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -1447,7 +1447,7 @@
      },
      {
       "id": "button",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -1849,11 +1849,6 @@
        "transition-timing-function": "ease"
       }
      }
-    },
-    {
-     "id": "button",
-     "status": "n/a",
-     "diffs": []
     },
     {
      "id": "button sm",
@@ -4142,7 +4137,7 @@
     ]
    },
    "contrast": {
-    "sampled": 186,
+    "sampled": 185,
     "bad": [],
     "badCount": 0
    }
@@ -5867,7 +5862,7 @@
     ]
    },
    "contrast": {
-    "sampled": 17,
+    "sampled": 20,
     "bad": [],
     "badCount": 0
    }
@@ -7761,7 +7756,7 @@
      },
      {
       "id": "button",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -8189,7 +8184,7 @@
      },
      {
       "id": "button",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -8624,7 +8619,7 @@
      },
      {
       "id": "button",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -8893,11 +8888,6 @@
        "transition-timing-function": "ease, ease, ease, cubic-bezier(0.22, 1, 0.36, 1)"
       }
      }
-    },
-    {
-     "id": "button",
-     "status": "n/a",
-     "diffs": []
     },
     {
      "id": "button primary",
@@ -9174,6 +9164,7 @@
      "ia-sway",
      "ia-wig",
      "ia-nR",
+     "ia-nL",
      "ia-nD",
      "ia-nUR",
      "ia-spin",
@@ -9195,7 +9186,7 @@
     ]
    },
    "contrast": {
-    "sampled": 20,
+    "sampled": 25,
     "bad": [],
     "badCount": 0
    }
@@ -12734,7 +12725,7 @@
     ]
    },
    "contrast": {
-    "sampled": 35,
+    "sampled": 45,
     "bad": [],
     "badCount": 0
    }

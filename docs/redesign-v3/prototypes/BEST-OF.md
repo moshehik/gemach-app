@@ -117,3 +117,64 @@ Screenshots: `archetype-forms-view-{1440,390}-*`.
 | — | Read-only "תאריך הצטרפות" in a tinted box | personal details | Polished: sketch `.kv` label/value row with a tooltip | **replaced by sketch component** (`.kv`) |
 | — | Sticky bottom save bar ("הכול שמור" / ביטול / שמירה) | bottom of the viewport | Polished: the rail binder (summary + changes + save) | **replaced by sketch component** (rail/binder) |
 | — | Top nav reduced to 4 items for a staff user | top bar | Polished: full sketch top bar | **replaced by sketch component** (top bar) |
+
+---
+
+## 8. Observations — prototypes built after the polish base (not merged into this branch)
+
+Checked by extracting the files from their branches into a scratch copy of the folder and running the same `tools/parity-check.cjs` there (nothing from those branches was committed here).
+
+### `redesign/v3-proto-tables` — `archetype-customers-list.html`, rebuilt `archetype-list.html`, `TABLES-PATTERN.md`
+- **Shell:** both files carry the same shell block `v1 sha:d7c2b5b7b88b` as the 7 curated prototypes — consistent. The branch is based on `redesign/v3-protos-polish`.
+- **Parity (run):** customers list — style 15/14/14 PASS, 0 FAIL at 1440/1024/390; motion 10 PASS / 0 FAIL; fields PASS; overflow ok at 360/768/1024/1440; page @media and physical properties clean; 0 of 223 sampled texts below AA. Rebuilt orders list — style 18/17/15 PASS, 0 FAIL; motion 9/0; fields PASS; overflow ok; 0 of 392 below AA.
+- **Consistency notes for the owner:**
+  1. Every table row ends in a filled salmon `.ibtn` chevron (≈50 per screen). It is the shared button, so it is "correct", but it is the loudest element on a data screen — same concern as the board's info buttons (see §9 "quiet icon button").
+  2. The rebuilt list already fixes the phone status-switcher squeeze that L1 fixes here (it scrolls), but without an edge fade — "לא נלקחו" is simply cut at the edge. If the tables branch is adopted, carry over L1's fade.
+  3. Count in the title as "(137)" / "(63)" — consistent with A2 (count as text).
+  4. The customers table's status column is empty for almost every row (only "חסום" appears) — fine for C-1.14, but the column could be dropped or narrowed at ≤1023px.
+  5. None of the curation restorations above (order-link style R1, empty-state ring R4) exist there yet; if the tables list replaces this list, R1's `.olink` would apply to its order links too.
+
+### `redesign/v3-proto-login` — `archetype-login.html`
+- **Shell: not used.** The file carries no `V3-SHELL` block (the branch is based on an older review commit, not on the polish base). By design there is no site top bar before login, but it also means none of the shared tokens/motion are guaranteed identical.
+- **Parity (run, 390 only is comparable):** 2 style FAILs — page background: `html` has two radial gradients and `body` is transparent, where the sketch has `body` `#dcedfa` and no `html` image. Motion 5 PASS / 0 FAIL; fields PASS; overflow ok at 360/768/1024/1440; no page @media outside the allowed set; 0 physical properties. (Contrast sampler found 0 texts to sample in its selector set — not a pass, just not measured.)
+- **Deviations worth a decision:**
+  1. Brand mark is a gold tile with the letters "גה", while the shared top bar's brand mark is the dress icon — two different logos.
+  2. The floating "בקרת הדגמה" pill (bottom-start) overlaps the footer link "רק לדווח משמרת" at 390px — the other prototypes use the sketch's demo strip at the top.
+  3. The navy brand panel with the dress outline is a nice, distinctive first screen; if kept, it would be the only page with its own background — consider building it on the shell tokens (and the shell's page background) so the step from login to the app doesn't change colour.
+  4. Nice details to keep if it is rebuilt on the shell: the "צעד 1 מתוך 2 · שם" progress line (same idea as W1), avatar initials in the name list, the gold inline-start bar on the highlighted name.
+
+---
+
+## 9. "Promote to shared library" candidates — for the owner to decide (NOT added to the shell block)
+
+| Candidate | Seen in | Why | Where it lives today |
+|---|---|---|---|
+| **Content link** (`.olink`: ink, bold, arrow, underline on hover) | customer card R1; also every "הזמנה N" link in list/board/wizard | The shell has **no** style for an in-content `<a>`, so any link falls back to browser blue + underline. This will recur on every page | page-only in `archetype-detail-card.html` |
+| **Empty state with ringed icon** (`.empty .eic`) | customer card R4 | The shared `.empty` is bare; every list/tab needs an empty state | page-only in `archetype-detail-card.html` |
+| **Quiet icon button** (text-coloured, no fill, 44px hit area) | board info buttons, table row chevrons, recent searches | The only icon button is the filled salmon `.ibtn`; on data screens 30–50 of them become the loudest thing on the page | not built — needs a sketch-level decision |
+| **Navigation tile** (`.ql-t`: icon box, name, one-line description, arrow) | dashboard D1 | A second "shortcut" surface will appear on admin/settings pages | page-only in `archetype-dashboard.html` |
+| **Compact item row** (status on the title line, ≈76px) | customer card orders, touch catalogue | `.itm` is tuned for the order card's few dresses; lists of 10–50 links need density | not built |
+| **"Who · time" on collapsed history rows** | customer card history | Scanning a log without expanding each row | shared history feed (S3) — would change the sketch |
+| **Big size tile** (size + "N פנויות" inside a bordered tile) | wizard step 3, touch T2 | Same data in two flows; the kiosk version is now page-only | page-only `.szt` in `archetype-touch.html` |
+| **"Today" marker** (gold tab / gold divider label) | board B2/B3, touch calendar | Any calendar/timeline needs one | page-only in `archetype-board.html` |
+| **Phone scroll fade for segmented controls** | list L1 (and the tables branch) | `.seg` with 5+ options on phones | page-only in `archetype-list.html` |
+
+---
+
+## 10. Verification (all run on this branch, 2026-09-24)
+
+| Check | Command / method | Result |
+|---|---|---|
+| Shell block unchanged and identical in all 7 | `node tools/build-shell.cjs --check` | **pass** (exit 0, `sha:d7c2b5b7b88b`) |
+| Style parity vs sketch @1440/1024/390 | `tools/parity-check.cjs` (full run, results in `tools/parity-results.json`) | **pass** — 0 FAIL in all 7 (detail-card 39/38/36, board 17/16/17, wizard 24/23/21, list 20/19/15, dashboard 18/17/15, touch 21/21/21, forms 24/23/21 PASS) |
+| Motion parity | same run | **pass** — 0 FAIL in all 7 |
+| One field per line (C-1.16) | same run | **pass** in all 7 (detail-card 33 state×width checks) |
+| No horizontal overflow 360/768/1024/1440 | same run | **pass** in all 7 |
+| Allowed breakpoints (page `<style>`) | same run | **pass** — no bad page @media (new rules use 480/767/1023 only). Shell's own 1180/1040/900 remain the documented deviation from PARITY-REPORT §6, untouched |
+| No physical CSS properties | same run | **pass** — page 0, shell 0 in all 7 |
+| WCAG AA contrast (sampled) | same run | **pass** — 0 below AA in all 7 (47/185/20/385/25/203/45 sampled) |
+| Page errors | same run + every screenshot run | **none** |
+| Chip counts (C-1.14), polished → curated, same selector as PARITY-REPORT §1 | `chips` probe at 1440 (12 states) | **unchanged** in every state: detail-card details 1→1, orders 2→2, payments 1→1; board month/list 0→0; wizard 0→0; list 50→50 (one per row, open point L-1); dashboard, touch, forms 0→0. Note: the board's restored "today" tab and list "today" label are one live marker per screen and do not use a chip class |
+| Interaction spot-checks | Playwright | customer card: 0-orders state renders the ringed empty state; blocked banner falls back to full-width button at 390; forms: section marks appear while typing and focus stays in the field; list: switcher scrolls at 390 |
+| Screens at 1440 and 390 | `screenshots/curation/*-{original,polished,curated}.png` | produced for every prototype |
+| Not run | — | keyboard-only walkthrough of the new controls beyond focus rings; screen-reader pass; 768/1024 screenshots (overflow was checked at those widths, visuals were not reviewed) |

@@ -1,0 +1,6 @@
+CURATION DONE — 2026-09-24
+Branch: redesign/v3-protos-curated (from origin/redesign/v3-protos-polish)
+Restored: customer card R1–R4, board B1–B3, wizard W1–W2, list L1, dashboard D1, touch T1–T2, forms F1 (all page-only, marked /* CURATION Rn */).
+Shell block untouched (build-shell --check pass, sha d7c2b5b7b88b). Full parity-check: 0 style FAIL, 0 motion FAIL, fields PASS, no overflow, 0 below AA, in all 7.
+Report: BEST-OF.md · questions: CURATION-QUESTIONS.md · screenshots: screenshots/curation/
+Newer branches (tables, login) reviewed as observations only — not merged.
