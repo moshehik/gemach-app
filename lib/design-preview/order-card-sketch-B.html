@@ -1364,7 +1364,8 @@ html,body{background-image:none !important;background-color:#dcedfa !important}
 #toast .tbtn .ic{transition:transform 220ms var(--ease)}
 #toast .tbtn:is(:hover,:focus-visible) .ic{animation:icnpop .35s var(--spring)}
 #toast .tbtn:active{transform:scale(.98)}
-.menu{display:flex;flex-direction:column;gap:8px}
+.menu{flex-direction:column;gap:8px}
+.menu.open{display:flex}
 .menu button{transition:background-color 150ms,transform 150ms}
 .menu button:active{transform:scale(.98)}
 .menu button .ic{transition:transform 220ms var(--ease)}
@@ -1374,7 +1375,8 @@ html,body{background-image:none !important;background-color:#dcedfa !important}
 .cart-actions.enter{animation:rowin .3s var(--ease) both}
 .tabmk{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;flex:none}
 .tabmk .ic{width:14px;height:14px;stroke-width:2.6}
-.tabmk.ok{background:var(--navy);color:#fff}
+.tabmk.ok{background:var(--sky-200);color:var(--navy)}
+.tab .cnt,.tab.on .cnt{background:var(--sky-200) !important;color:var(--navy) !important}
 .tabmk.debt{background:var(--gbtn);color:#000;border:1px solid #000}
 .tabmk.cred{background:var(--sky-200);color:var(--navy)}
 .tabmk.fresh{animation:popin .45s var(--spring) both}
@@ -1401,6 +1403,54 @@ html,body{background-image:none !important;background-color:#dcedfa !important}
 .sec-h,.cart-h{width:auto;max-width:100%;box-sizing:border-box;min-width:0}
 .sec-h::after,.cart-h::after,.sec-h::before,.cart-h::before{left:0;right:0;inset-inline:0;width:auto;max-width:100%}
 .sec-h,.cart-h{overflow:clip;overflow-clip-margin:6px}
+
+/* ===== history feed ===== */
+.hist{padding:24px}
+.hf{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px}
+.hfc{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 16px;border-radius:999px;border:1.5px solid var(--sky-300);background:#fff;color:var(--navy);font:inherit;font-weight:600;font-size:15px;cursor:pointer;transition:background-color 150ms,color 150ms,border-color 150ms,transform 150ms}
+.hfc em{font-style:normal;font-size:13px;min-width:22px;height:22px;border-radius:999px;background:var(--sky-100);color:var(--navy);display:grid;place-items:center;padding:0 6px}
+.hfc:hover{border-color:var(--navy);transform:translateY(-1px)}
+.hfc:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hfc.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.hfc.on em{background:var(--gbtn);color:#000}
+.hfeed{display:flex;flex-direction:column;gap:24px}
+.hgrp{display:flex;flex-direction:column}
+.hday{position:sticky;top:8px;z-index:3;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:10px 16px;margin-bottom:16px;border-radius:12px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border:1px solid var(--sky-200);box-shadow:0 2px 8px -4px rgba(15,44,82,.2)}
+.hday b{font-size:16px;font-weight:700;color:var(--navy)}
+.hday small{font-size:14px;color:var(--ink3)}
+.hv{position:relative;display:flex;gap:16px;padding-bottom:16px;animation:rowin .32s var(--ease) both;animation-delay:calc(var(--i,0)*28ms)}
+.hv:last-child{padding-bottom:0}
+.hv::before{content:"";position:absolute;top:44px;bottom:0;inset-inline-start:21px;width:2px;background:var(--sky-200)}
+.hv:last-child::before{display:none}
+.hv-b{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--sky-100);color:var(--navy);border:2px solid var(--sky-300);z-index:1;transition:transform 220ms var(--ease)}
+.hv.navy .hv-b{background:var(--navy);color:#fff;border-color:var(--navy)}
+.hv.gold .hv-b{background:var(--gold-100);color:var(--gold-700);border-color:var(--gold-b)}
+.hv:hover .hv-b{transform:scale(1.06)}
+.hv.fresh .hv-b{animation:popin .45s var(--spring) both}
+.hv-c{position:relative;flex:1;min-width:0;background:#fff;border:1px solid var(--sky-200);border-radius:14px;padding:16px 56px 16px 20px;display:flex;flex-direction:column;gap:12px;transition:border-color 150ms,box-shadow 150ms}
+.hv-c:hover{border-color:var(--navy-500);box-shadow:0 6px 16px -8px rgba(15,44,82,.3)}
+.hv-t{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.hv-t b{font-size:16px;font-weight:700;color:var(--navy-900);line-height:1.5}
+.hv-s{font-size:14px;color:var(--ink3);line-height:1.5}
+.hamt{margin-top:4px;display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;font-weight:700;font-size:14px}
+.hamt.chg{background:var(--gold-100);color:var(--gold-700);border:1px solid var(--gold-300)}
+.hamt.crd{background:var(--sky-200);color:var(--navy)}
+.hamt.pay{background:var(--navy);color:#fff}
+.hv-m{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--ink2)}
+.hv-m .av{display:none}
+.hv-m .hv-w::before{content:attr(data-i)}
+.hv-m .hv-w{display:flex;align-items:center;gap:8px}
+.hv-m time{color:var(--ink3);font-variant-numeric:tabular-nums}
+.hv-x{position:absolute;top:12px;inset-inline-end:12px;width:40px;height:40px;border-radius:12px;border:1px solid var(--sky-300);background:#fff;color:var(--navy);display:grid;place-items:center;cursor:pointer;transition:background-color 150ms,color 150ms}
+.hv-x:hover,.hv-x:focus-visible{background:var(--navy);color:#fff;outline:0}
+.hv-x .ic{transition:transform 250ms var(--ease)}
+.hv-x[aria-expanded=true] .ic{transform:rotate(180deg)}
+.hv-d{display:none;flex-direction:column;gap:12px;padding-top:12px;border-top:1px dashed var(--sky-300)}
+.hv-d.on{display:flex;animation:rowin .25s var(--ease) both}
+.hv-d small{display:block;color:var(--ink3);font-size:13px}
+.hv-d b{font-weight:600;color:var(--ink);font-size:14px}
+.hempty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 16px;color:var(--ink3);text-align:center}
+@media (max-width:640px){.hist{padding:16px}.hv-c{padding:14px 52px 14px 16px}.hv{gap:12px}.hday{padding:8px 12px}}
 </style>
 </head>
 <body>
@@ -1594,12 +1644,26 @@ let payments = [
   {id:1,method:'מזומן',icon:'cash',amt:300,date:'23.9.2026',note:'בעת ההזמנה'},
   {id:2,method:'אשראי',icon:'card',amt:230,date:'23.9.2026',note:'ספרות 4432'}
 ];
+const WHO='דנה אברהם';
+let LID=100;
 let logs = [
-  {t:'הזמנה נוצרה',d:'23.9.2026 · 10:12',w:'רחל (סניף נווה יעקב)'},
-  {t:'נוסף משלוח הלוך-חזור',d:'23.9.2026 · 10:15',w:'רחל'},
-  {t:'שולם ₪300 במזומן',d:'23.9.2026 · 10:18',w:'רחל'},
-  {t:'הוסר פריט דגם 1893',d:'23.9.2026 · 10:31',w:'רחל'}
+  {id:1,ts:'2026-09-23T10:12',cat:'items',icon:'file',text:'ההזמנה נוצרה',sub:'סניף נווה יעקב',who:'רחל כהן',det:[['מס׳ הזמנה','#53375'],['לקוחה','מרים אברמוביץ']]},
+  {id:2,ts:'2026-09-23T10:13',cat:'items',icon:'dress',text:'נוסף פריט: דגם 4512, מידה 38',who:'רחל כהן',amt:150,det:[['מחיר','₪150'],['סטטוס','טרם נלקחה']]},
+  {id:3,ts:'2026-09-23T10:14',cat:'items',icon:'dress',text:'נוסף פריט: דגם 3087, מידה 36',who:'רחל כהן',amt:120,det:[['מחיר','₪120'],['תיקון','שרוול']]},
+  {id:4,ts:'2026-09-23T10:14',cat:'items',icon:'dress',text:'נוסף פריט: דגם 2764, מידה 40',who:'רחל כהן',amt:140,det:[['מחיר','₪140']]},
+  {id:5,ts:'2026-09-23T10:15',cat:'del',icon:'truck',text:'נוסף משלוח',sub:'הלוך-חזור · ירושלים',who:'רחל כהן',amt:80,det:[['לפני','ללא משלוח'],['אחרי','הלוך-חזור · ירושלים · ₪80']]},
+  {id:6,ts:'2026-09-23T10:16',cat:'dates',icon:'cal',text:'נקבע תאריך האירוע',sub:'יום ה׳ 8.10.2026',who:'רחל כהן',det:[['לפני','לא נקבע'],['אחרי','יום ה׳ 8.10.2026']]},
+  {id:7,ts:'2026-09-23T10:18',cat:'pay',icon:'cash',text:'התקבל תשלום במזומן',who:'רחל כהן',amt:300,kind:'pay',det:[['שיטה','מזומן'],['סכום','₪300']]},
+  {id:8,ts:'2026-09-23T10:19',cat:'pay',icon:'card',text:'התקבל תשלום באשראי',sub:'ספרות 4432',who:'רחל כהן',amt:230,kind:'pay',det:[['שיטה','אשראי'],['סכום','₪230']]},
+  {id:9,ts:'2026-09-23T10:31',cat:'items',icon:'dress',text:'הוסר פריט: דגם 1893, מידה 38',sub:'דמי ביטול ₪40',who:'רחל כהן',amt:40,det:[['מחיר','₪100'],['דמי ביטול','₪40']]},
+  {id:10,ts:'2026-09-23T10:35',cat:'docs',icon:'print',text:'הודפס סיכום הזמנה',who:'רחל כהן',det:[['מסמך','סיכום ללקוחה']]},
+  {id:11,ts:'2026-09-24T09:05',cat:'docs',icon:'mail',text:'נשלח מייל אישור ללקוחה',sub:'miriam.abr@example.com',who:'דוד לוי',det:[['נמען','miriam.abr@example.com']]},
+  {id:12,ts:'2026-09-24T09:40',cat:'items',icon:'scissors',text:'נוספה בקשת תיקון',sub:'דגם 3087 · שרוול',who:'דוד לוי',det:[['פריט','דגם 3087'],['תיקון','שרוול']]}
 ];
+const HCATS=[['all','הכל','list'],['items','פריטים','dress'],['pay','תשלומים','card'],['del','משלוח','truck'],['dates','תאריכים','cal'],['docs','מסמכים','file']];
+const nowISO=()=>{const d=new Date();return '2026-09-24T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+function addLog(o){ logs.unshift(Object.assign({id:++LID,ts:nowISO(),who:WHO},o)); if(typeof pHistory==='function'){ const el=document.querySelector('#p-history'); if(el) el.innerHTML=pHistory(); } }
+const LOGCAT={add:'items',rm:'items',alt:'items',del:'del',delcfg:'del',deladdr:'del',delone:'del',date:'dates',note:'docs',sig:'docs'};
 const UI = {tab:'details', itemsSub:'active', openItem:{}, addOpen:false, editDate:false, savedAt:null, creditUntil:null, addSize:'38', menuOpen:false, payMethod:'מזומן', creditOpt:'credit', logQ:''};
 
 /* ---------- derived ---------- */
@@ -1868,7 +1932,7 @@ function pPayments(){
   return `
   ${credit}
   <div class="card">
-    <div class="card-h"><div class="ico green">${ic('wallet','lg')}</div><h2>מאזן</h2></div>
+    <div class="card-h"><div class="ico green">${ic('wallet','lg')}</div><h2>מצב תשלום</h2></div>
     <div class="bal"><div><div class="faint sm">נשאר לתשלום</div><div class="n" style="color:${bal>0?'var(--red)':'var(--green)'}">${money(Math.max(0,bal))}</div></div>
       <div style="flex:1;min-width:200px"><div class="row spread sm muted"><span>שולם ${money(Math.min(paid,tot))}</span><span>מתוך ${money(tot)}</span></div><div class="pbar"><i style="width:${pct}%"></i></div></div></div>
     ${bal>0?`<button class="btn lg block" style="margin-top:24px" data-act="pay-now" data-amt="${bal}">${ic('card')}קבלת תשלום ${money(bal)}</button>`:''}
@@ -1896,11 +1960,33 @@ function pPayments(){
 }
 
 /* ---------- panel: history ---------- */
+
+const GDAY=['','א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב','יג','יד','טו','טז','יז','יח','יט','כ','כא','כב','כג','כד','כה','כו','כז','כח','כט','ל'];
+function gershay(str){ return str.length>1? str.slice(0,-1)+'״'+str.slice(-1) : str+'׳'; }
+function gemYear(n){ n=n%1000; const L=[[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק'],[90,'צ'],[80,'פ'],[70,'ע'],[60,'ס'],[50,'נ'],[40,'מ'],[30,'ל'],[20,'כ'],[10,'י'],[9,'ט'],[8,'ח'],[7,'ז'],[6,'ו'],[5,'ה'],[4,'ד'],[3,'ג'],[2,'ב'],[1,'א']]; let o=''; for(const [v,c] of L){ while(n>=v){ if(n===15){o+='טו';n=0;break} if(n===16){o+='טז';n=0;break} o+=c;n-=v } } return gershay(o); }
+function dayTitle(iso){ const d=new Date(iso+'T12:00:00'); const opt=o=>d.toLocaleDateString('he-IL-u-ca-hebrew',o); const day=parseInt(opt({day:'numeric'}),10), mon=opt({month:'long'}), yr=parseInt(opt({year:'numeric'}),10); return `${wdl(iso)} ${gershay(GDAY[day])} ${mon} ${gemYear(yr)}`; }
+const greg=iso=>{const x=new Date(iso+'T12:00:00');return x.getDate()+'.'+(x.getMonth()+1)+'.'+x.getFullYear()};
 function pHistory(){
-  const q=UI.logQ.trim(); const L=logs.filter(l=>!q||(l.t+l.w).includes(q));
-  return `<div class="card"><div class="card-h"><div class="ico gold">${ic('clock','lg')}</div><h2>היסטוריית שינויים</h2><span class="chip gray">${logs.length}</span></div>
-  <div class="scan" style="margin-bottom:20px;box-shadow:none">${ic('search')}<input id="logQ" placeholder="חיפוש בהיסטוריה" value="${q}"></div>
-  <div class="tl">${L.length?L.map(l=>`<div class="e"><div class="p">${ic('flag','sm')}</div><div><b>${l.t}</b><small>${l.d} · ${l.w}</small></div></div>`).join(''):'<div class="empty">לא נמצאו תוצאות</div>'}</div></div>`;
+  const f=UI.hf||'all', open=UI.hopen||(UI.hopen={});
+  const all=logs.slice().sort((a,b)=>a.ts<b.ts?1:a.ts>b.ts?-1:b.id-a.id);
+  const L=all.filter(l=>f==='all'||l.cat===f);
+  const cnt=k=>k==='all'?logs.length:logs.filter(l=>l.cat===k).length;
+  const chips=HCATS.map(([k,l,i])=>`<button type="button" class="hfc${f===k?' on':''}" data-act="hfilter" data-f="${k}" aria-pressed="${f===k}">${ic(i,'sm')}<span>${l}</span><em>${cnt(k)}</em></button>`).join('');
+  let html='', lastDay='';
+  L.forEach((l,i)=>{
+    const day=l.ts.slice(0,10); if(day!==lastDay){ if(lastDay) html+='</div>'; html+=`<div class="hgrp"><div class="hday"><b>${dayTitle(day)}</b><small>${greg(day)}</small></div>`; lastDay=day; }
+    const tone=l.cat==='pay'?'gold':(l.cat==='items'?'navy':'sky');
+    const amt=l.amt?(l.kind==='pay'?`<span class="hamt pay" data-tip="תשלום">${money(l.amt)}</span>`:`<span class="hamt ${l.amt>0?'chg':'crd'}" data-tip="${l.amt>0?'חיוב':'זיכוי'}">${smoney(l.amt)}</span>`):'';
+    const init=(l.who||'?').trim()[0];
+    const dets=(l.det||[]).map(([a,b])=>`<div><small>${a}</small><b>${b}</b></div>`).join('');
+    const o=!!open[l.id];
+    html+=`<article class="hv ${tone}${l.isNew?' fresh':''}" style="--i:${i}"><div class="hv-b">${ic(l.icon||'clock')}</div><div class="hv-c"><div class="hv-t"><b>${l.text}</b>${l.sub?`<span class="hv-s">${l.sub}</span>`:''}${amt}</div><div class="hv-m"><span class="av" data-tip="${l.who}">${init}</span><span class="hv-w">${l.who}</span><time>${l.ts.slice(11)}</time></div>${dets?`<button type="button" class="hv-x" data-act="hexp" data-i="${l.id}" aria-expanded="${o}" aria-label="פרטים">${ic('chev','sm')}</button><div class="hv-d${o?' on':''}">${dets}</div>`:''}</div></article>`;
+  });
+  if(lastDay) html+='</div>';
+  const empty=`<div class="hempty">${ic('clock','lg')}<span>אין פעולות בקטגוריה זו</span></div>`;
+  return `<div class="card hist"><div class="card-h"><div class="ico gold">${ic('clock','lg')}</div><h2>היסטוריה</h2><span class="chip gray">${logs.length}</span></div>
+  <div class="hf" role="group" aria-label="סינון">${chips}</div>
+  <div class="hfeed">${html||empty}</div></div>`;
 }
 
 /* ---------- rail ---------- */
@@ -2027,8 +2113,8 @@ function successDlg(head,sub,chips){
 /* ---------- save ---------- */
 function commit(payAmt,method){
   const ch=changes(); const n=netDelta();
-  ch.forEach(c=>logs.unshift({t:c.text.replace(/<[^>]+>/g,''),d:nowStr(),w:'אתם'}));
-  if(payAmt>0){ payments.push({session:true,id:Date.now(),method,icon:method==='מזומן'?'cash':method==='אשראי'?'card':method==='העברה'?'bank':'cheque',amt:payAmt,date:'24.9.2026',note:'שינוי הזמנה'}); logs.unshift({t:`שולם ₪${payAmt} ב${method}`,d:nowStr(),w:'אתם'}); }
+  ch.forEach(c=>{ const kk=c.k.split(':')[0]; const pl=c.text.replace(/<[^>]+>/g,''); const it=cur.items.find(x=>String(x.id)===c.k.split(':')[1]); const txt=(kk==='add'||kk==='rm')&&it?`${kk==='add'?(c.text.includes('שוחזרה')?'שוחזר':'נוסף'):'הוסר'} פריט: דגם ${it.model}, מידה ${it.size}`:pl; addLog({cat:LOGCAT[kk]||'items',icon:{add:'dress',rm:'dress',alt:'scissors',del:'truck',delcfg:'truck',deladdr:'pin',delone:'clock',date:'cal',note:'note',sig:'sig'}[kk]||'clock',text:txt,sub:(kk==='add'||kk==='rm'||kk==='alt')?(kk==='rm'?c.note:''):(c.note||''),amt:c.amt||0,isNew:1,det:[...(c.note?[['פרטים',c.note]]:[]),...(c.amt?[[c.amt>0?'חיוב':'זיכוי',smoney(c.amt).replace(/<[^>]+>/g,'')]]:[])]}); });
+  if(payAmt>0){ payments.push({session:true,id:Date.now(),method,icon:method==='מזומן'?'cash':method==='אשראי'?'card':method==='העברה'?'bank':'cheque',amt:payAmt,date:'24.9.2026',note:'שינוי הזמנה'}); addLog({cat:'pay',icon:method==='מזומן'?'cash':method==='אשראי'?'card':method==='העברה'?'bank':'cheque',text:`התקבל תשלום ב${method}`,amt:payAmt,kind:'pay',isNew:1,det:[['שיטה',method],['סכום','₪'+payAmt]]}); }
   // items: drop ones that were new & deleted, keep saved flag
   cur.items = cur.items.filter(i=>!(i.deleted && !saved.items.find(s=>s.id===i.id)));
   saved = clone(cur);
@@ -2171,7 +2257,8 @@ function act(a,b){
   const id = b && b.dataset.id ? +b.dataset.id : null; const it = id?cur.items.find(i=>i.id===id):null;
   switch(a){
     case 'menu': $('#pmenu').classList.toggle('open'); scrollTo({top:0,behavior:'smooth'}); break;
-    case 'toast-info': $('#pmenu').classList.remove('open'); toast('info',b.dataset.msg,'(הדגמה)'); break;
+    case 'toast-info': { const m=b.dataset.msg||''; if(/הדפסה|מייל/.test(m)) addLog({cat:'docs',icon:/מייל/.test(m)?'mail':'print',text:m.replace('נשלח להדפסה','הודפס').replace('נשלח','נשלח'),isNew:1,det:[['מסמך',m]]}); }
+    case 'toast-info__': $('#pmenu').classList.remove('open'); toast('info',b.dataset.msg,'(הדגמה)'); break;
     case 'lock': toast('info','ההזמנה נעולה לעריכת תאריכים','לחצו שוב לשחרור באישור מנהל'); break;
     case 'delete': openDlg(`<h2>מחיקת הזמנה</h2><div class="sub">ההזמנה תועבר לפריטים מחוקים ותוכלו לשחזר אותה.</div><div class="dbtns"><button class="btn primary lg block" data-act="close">${ic('trash')}מחק הזמנה</button><button class="btn ghost block" data-act="close">${ic('x','sm')}ביטול</button></div>`); break;
     case 'sig': cur.signed=!cur.signed; afterEdit(false); break;
@@ -2189,6 +2276,8 @@ function act(a,b){
     case 'sim-rm': { cur=clone(saved); const x=cur.items.find(i=>i.id===2); if(x) x.deleted=true; UI.tab='items'; UI.itemsSub='active'; afterEdit(); break; }
     case 'reset': cur=clone(saved); UI.savedAt=null; closeDlg(); $('#toast').classList.remove('on'); afterEdit(false); break;
     case 'details-toggle': { UI.dpop=!UI.dpop; renderRail(); const d=$('#dpop'); if(UI.dpop&&d) d.focus(); else { const ib=document.querySelector('.cart-info'); ib&&ib.focus(); } break; }
+    case 'hfilter': UI.hf=b.dataset.f; $('#p-history').innerHTML=pHistory(); break;
+    case 'hexp': { UI.hopen=UI.hopen||{}; UI.hopen[b.dataset.i]=!UI.hopen[b.dataset.i]; const on=UI.hopen[b.dataset.i]; b.setAttribute('aria-expanded',on); const d=b.parentElement.querySelector('.hv-d'); d&&d.classList.toggle('on',on); break; }
     case 'cart-toggle': UI.cartOpen=!UI.cartOpen; $('#rail').classList.toggle('open',UI.cartOpen); b.setAttribute('aria-expanded',UI.cartOpen); break;
     case 'undo': { const row=b.closest('.cl'); const k=b.dataset.k; if(row&&!matchMedia('(prefers-reduced-motion:reduce)').matches){ row.classList.add('leaving'); setTimeout(()=>undoChange(k),220); } else undoChange(k); break; }
     case 'discard': { const n=changes().length; openDlg(`<h2>לבטל את כל השינויים?</h2><div class="sub">${n} ${n===1?'שינוי יימחק':'שינויים יימחקו'}</div><div class="dbtns"><button class="btn primary lg block" data-act="discard-close">${ic('undo')}כן, בטל שינויים</button><button class="btn ghost block" data-act="close">${ic('pencil','sm')}חזרה לעריכה</button></div>`); break; }
@@ -2200,7 +2289,7 @@ function act(a,b){
     case 'do-save': { const n=netDelta(); if(n!==0){ payDlg(); } else { commit(0); finish('ההזמנה נשמרה',[]); } break; }
     case 'pay-now': { openDlg(''); const amt=+b.dataset.amt; const M=[['מזומן','cash'],['אשראי','card'],['העברה','bank'],['צ׳ק','cheque']];
       openDlg(`<h2>קבלת תשלום</h2><div class="sub">יתרת חוב בהזמנה</div><div class="amtin"><span>₪</span><input id="payAmt" type="number" value="${amt}" inputmode="numeric"></div><div class="methods">${M.map(([m,i])=>`<button data-method="${m}" class="${UI.payMethod===m?'on':''}">${ic(i,'lg')}${m}</button>`).join('')}</div><div class="dbtns"><button class="btn green lg block" data-act="confirm-pay-only">${ic('check')}אישור תשלום</button><button class="btn ghost block" data-act="close">${ic('back','sm')}חזרה</button></div>`); break; }
-    case 'confirm-pay-only': { const amt=Math.max(0,+$('#payAmt').value||0); payments.push({session:true,id:Date.now(),method:UI.payMethod,icon:UI.payMethod==='מזומן'?'cash':UI.payMethod==='אשראי'?'card':UI.payMethod==='העברה'?'bank':'cheque',amt,date:'24.9.2026',note:'קבלת תשלום'}); logs.unshift({t:`שולם ₪${amt} ב${UI.payMethod}`,d:nowStr(),w:'אתם'}); closeDlg(); afterEdit(false); toast('info',`התקבל תשלום ${money(amt)}`,''); break; }
+    case 'confirm-pay-only': { const amt=Math.max(0,+$('#payAmt').value||0); payments.push({session:true,id:Date.now(),method:UI.payMethod,icon:UI.payMethod==='מזומן'?'cash':UI.payMethod==='אשראי'?'card':UI.payMethod==='העברה'?'bank':'cheque',amt,date:'24.9.2026',note:'קבלת תשלום'}); addLog({cat:'pay',icon:UI.payMethod==='מזומן'?'cash':UI.payMethod==='אשראי'?'card':UI.payMethod==='העברה'?'bank':'cheque',text:`התקבל תשלום ב${UI.payMethod}`,amt:amt,kind:'pay',isNew:1,det:[['שיטה',UI.payMethod],['סכום','₪'+amt]]}); closeDlg(); afterEdit(false); toast('info',`התקבל תשלום ${money(amt)}`,''); break; }
     case 'confirm-pay': { const amt=Math.max(0,+$('#payAmt').value||0); commit(amt,UI.payMethod); finish(`נשמר ושולם ${money(amt)} · ${UI.payMethod}`,[]); break; }
     case 'pay-later': commit(0); finish(`נשמר · חוב ${money(balance())}`,[]); break;
     case 'confirm-credit': { const n=Math.abs(netDelta()); commit(0); if(UI.creditOpt==='bank'){ payments.push({session:true,id:Date.now(),method:'החזר כספי',icon:'bank',amt:-n,date:'24.9.2026',note:'זיכוי בגין הסרת פריט'}); } if(UI.creditOpt==='credit'){ UI.creditUntil=Date.now()+15*60000-1000; UI.creditAmt=n; } finish(`נשמר · זיכוי ${money(n)}`,[]); break; }
