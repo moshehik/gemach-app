@@ -46,6 +46,12 @@ export const SETTINGS_REGISTRY = {
   hide_dress_images: { type: 'flag', default: false, meaning: 'הסתרת תמונות שמלה ברשימות/כרטיסים', affects: ['dressCard', 'dressesList'] },
   hide_gregorian_calendar: { type: 'flag', default: false, meaning: 'הסתרת התאריך הלועזי לצד העברי', affects: ['orderCard.generalDetails'] },
   hide_marketing_consent_field: { type: 'flag', default: false, meaning: 'הסתרת שדה הסכמה לדיוור', affects: ['customerCard.details'] },
+  // כרטיס לקוח (פיילוט) — כולם נאכפים בצד הלקוח רק ביצירת לקוח חדש (דיווח 48ff7055), כמו היום.
+  require_customer_email: { type: 'flag', default: false, meaning: 'דוא"ל חובה ביצירת לקוח', affects: ['customerCard.new'] },
+  require_full_address: { type: 'flag', default: false, meaning: 'עיר+רחוב+מספר בית חובה ביצירת לקוח', affects: ['customerCard.new'] },
+  // text ולא json: הערך הגולמי עובר כמו שהוא ל-parseFieldGroups (lib/customerValidation.js) — שם נקבעים
+  // ברירת המחדל [["phone2","email"]] ל-חסר/ריק/JSON שבור, ו-'[]' = ללא דרישה. לא משכפלים את הלוגיקה.
+  mandatory_field_groups: { type: 'text', default: '', meaning: 'קבוצות "לפחות אחד מבין" ביצירת לקוח (JSON)', affects: ['customerCard.new'] },
   require_login: { type: 'flag', default: true, meaning: 'האם האתר דורש התחברות (כבוי רק בקיוסק)', affects: ['*'] },
 };
 

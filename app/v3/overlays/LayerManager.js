@@ -187,18 +187,27 @@ export function useLayers() {
 function LayerSurface({ layer, index, isTop, onClose }) {
   const uid = useId().replace(/:/g, '');
   const ref = useRef(null);
+  // busy (LIBRARY-MAP §4 ctx.setBusy): בזמן פעולת שרת השכבה לא נסגרת ב-Esc/scrim (§ד.3.3)
+  const [busy, setBusy] = useState(false);
   const meta = TYPE_META[layer.type] || TYPE_META.confirm;
   const size = layer.size || meta.size;
   const mode = meta.followsTheme ? currentSiteTheme() : 'light';
-  const dismissOnScrim = layer.dismiss?.scrim ?? (layer.type === 'confirm' || layer.type === 'sheet');
-  const dismissOnEsc = layer.dismiss?.esc ?? !meta.noClose;
+  const dismissOnScrim = !busy && (layer.dismiss?.scrim ?? (layer.type === 'confirm' || layer.type === 'sheet'));
+  const dismissOnEsc = !busy && (layer.dismiss?.esc ?? !meta.noClose);
 
+  // פוקוס ראשוני + החזרה לטריגר — פעם אחת לכל שכבה (לא בכל שינוי busy/isTop)
   useEffect(() => {
     const root = ref.current;
     if (!root) return undefined;
     const prevFocus = document.activeElement;
     const target = root.querySelector('[data-autofocus]') || root.querySelector(FOCUSABLE) || root;
     target.focus({ preventScroll: true });
+    return () => { if (prevFocus && document.contains(prevFocus)) prevFocus.focus({ preventScroll: true }); };
+  }, []);
+
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return undefined;
     const onKey = (e) => {
       if (!isTop) return;
       if (e.key === 'Escape' && dismissOnEsc) { e.stopPropagation(); onClose(layer.type === 'confirm' ? false : null); return; }
@@ -210,10 +219,7 @@ function LayerSurface({ layer, index, isTop, onClose }) {
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', onKey, true);
-    return () => {
-      document.removeEventListener('keydown', onKey, true);
-      if (prevFocus && document.contains(prevFocus)) prevFocus.focus({ preventScroll: true });
-    };
+    return () => document.removeEventListener('keydown', onKey, true);
   }, [isTop, dismissOnEsc, layer.type, onClose]);
 
   const tid = layer.title ? `v3lt-${uid}` : undefined;
@@ -243,18 +249,20 @@ function LayerSurface({ layer, index, isTop, onClose }) {
         )}
         {layer.title && <h2 id={tid} className="v3ov-title">{layer.title}</h2>}
         {layer.sub && <p id={sid} className="v3ov-sub">{layer.sub}</p>}
-        <LayerBody layer={layer} onClose={onClose} />
+        <LayerBody layer={layer} onClose={onClose} setBusy={setBusy} />
       </div>
     </div>
   );
 }
 
-function LayerBody({ layer, onClose }) {
+function LayerBody({ layer, onClose, setBusy }) {
+  // render מותאם גובר על הגוף המובנה של כל type (LIBRARY-MAP §4: open({type, render: (ctx) => …})) —
+  // ה-type עדיין קובע ערכת נושא/גודל/role/סגירה. ctx = { close(result), setBusy(bool) }.
+  if (layer.render) return layer.render({ close: onClose, setBusy });
   if (layer.type === 'confirm') return <ConfirmBody layer={layer} onClose={onClose} />;
   if (layer.type === 'code') return <CodeBody layer={layer} onClose={onClose} />;
   if (layer.type === 'form') return <FormBody layer={layer} onClose={onClose} />;
   if (layer.type === 'busy') return <BusyBody layer={layer} onClose={onClose} />;
-  if (layer.render) return layer.render({ close: onClose });
   return layer.body || null;
 }
 

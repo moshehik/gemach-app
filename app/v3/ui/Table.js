@@ -21,7 +21,7 @@ export function useSort(rows, columns, initial = null) {
  * Table (R16 מינימלי): columns=[{key,header,render?,sortable?,sortValue?,num?}] · rows · rowKey
  * sort/onSort (מ-useSort) · sticky (כותרת דביקה, גלילה פנימית) · renderExpanded(row) = שורה מורחבת בלחיצה
  */
-export default function Table({ columns, rows, rowKey = 'id', sort, onSort, sticky, renderExpanded, caption, className }) {
+export default function Table({ columns, rows, rowKey = 'id', sort, onSort, sticky, renderExpanded, onRowClick, caption, className }) {
   const [open, setOpen] = useState(null);
   return (
     <div className={cx('v3-table__wrap', sticky && 'v3-table__wrap--scroll')}>
@@ -50,10 +50,11 @@ export default function Table({ columns, rows, rowKey = 'id', sort, onSort, stic
             const isOpen = open === k;
             return (
               <Fragment key={k}>
-                <tr aria-expanded={renderExpanded ? isOpen : undefined}>
+                <tr aria-expanded={renderExpanded ? isOpen : undefined}
+                  className={onRowClick ? 'v3-tr--link' : undefined} onClick={onRowClick ? () => onRowClick(r) : undefined}>
                   {renderExpanded && (
                     <td>
-                      <button type="button" className="v3-th-btn" aria-label={isOpen ? 'סגירת פרטים' : 'פתיחת פרטים'} aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : k)}>
+                      <button type="button" className="v3-th-btn" aria-label={isOpen ? 'סגירת פרטים' : 'פתיחת פרטים'} aria-expanded={isOpen} onClick={(e) => { e.stopPropagation(); setOpen(isOpen ? null : k); }}>
                         <Icon name="chevron-down" size="sm" className={isOpen ? 'is-on' : undefined} anim={false} />
                       </button>
                     </td>
