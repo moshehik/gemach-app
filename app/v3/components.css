@@ -725,7 +725,7 @@ textarea.v3-input { resize: vertical; min-height: 110px; line-height: var(--v3-l
 .v3-combo__clear { width: 32px; height: 32px; border-radius: var(--v3-r-round); border: 0; background: var(--v3-white); color: var(--v3-navy); display: grid; place-items: center; flex: none; }
 .v3-combo__clear[hidden] { display: none; }
 .v3-combo__list { list-style: none; margin: 0; padding: var(--v3-sp-2); max-height: 280px; overflow-y: auto; }
-.v3-combo__o { position: relative; display: flex; align-items: center; gap: var(--v3-sp-3); min-height: 46px; padding: 6px 10px; border-radius: var(--v3-r-md); cursor: pointer; animation: v3-rowin .25s var(--v3-ease) both; animation-delay: calc(min(var(--i, 0), 7) * 30ms); transition: background-color 120ms, transform var(--v3-dur-fast); }
+.v3-combo__o { position: relative; display: flex; align-items: center; gap: var(--v3-sp-3); min-height: 46px; padding: 6px 10px; border-radius: var(--v3-r-md); cursor: pointer; animation: v3-combo-row .25s var(--v3-ease) both; animation-delay: calc(min(var(--i, 0), 7) * 30ms); transition: background-color 120ms, transform var(--v3-dur-fast); }
 .v3-combo__o:hover, .v3-combo__o.is-active { background: var(--v3-sky-a60); transform: translateX(-3px); }
 .v3-combo__oi { width: 32px; height: 32px; border-radius: var(--v3-r-round); background: var(--v3-white); color: var(--v3-navy); display: grid; place-items: center; flex: none; transition: transform var(--v3-dur) var(--v3-spring); }
 .v3-combo__o:hover .v3-combo__oi, .v3-combo__o.is-active .v3-combo__oi { transform: scale(1.15); }
@@ -1382,3 +1382,6 @@ button.v3-tl-dot:focus-visible, .v3-tl-dot[role="button"]:focus-visible { outlin
 
 /* fix by main: מחלקות layout (v3-stack, v3-card...) מגדירות display ודורסות את התכונה hidden — לשוניות טעונות-תמיד נראו כולן. hidden חייב לנצח בתוך v3 */
 [data-v3] [hidden], .v3-dialog [hidden] { display: none !important; }
+
+/* fix by main: כניסת שורות ה-combobox בלי opacity — שמות עובדים לא יכולים להיעלם אם האנימציה לא רצה (דיווח: 'אין שמות עובדים בחלון הכניסה') */
+@keyframes v3-combo-row { from { transform: translateY(-6px); } }
