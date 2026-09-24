@@ -1,25 +1,19 @@
 'use client';
 
 // התוכן המקורי של DashboardCharts — הופרד לקובץ נפרד כדי ש-recharts ייטען
-// דינמית (ראה DashboardCharts.js). אין כאן שינוי עיצובי כלשהו.
+// דינמית (ראה DashboardCharts.js). מעטפת v3 בלבד.
 
+import { Card } from '@/app/v3/ui/components';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const COLORS = ['var(--primary-solid)', 'var(--success)', 'var(--info)', 'var(--accent)', 'var(--danger)'];
+const COLORS = ['var(--v3-navy)', 'var(--v3-gold)', 'var(--v3-sky-400)', 'var(--v3-rose-500)', 'var(--v3-navy-500)'];
 
 export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, revenueTrendWeekly, revenueTrendMonthly }) {
   return (
-    <div className="form-grid" style={{ marginTop: '1.5rem' }}>
+    <div className="dv3-charts">
 
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-wallet" /></svg>
-            <h3>התפלגות הכנסות לפי אמצעי תשלום</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px' }}>
+      <Card icon="wallet" title="הכנסות לפי אמצעי תשלום" level={3}>
+          <div className="dv3-chart">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -40,18 +34,10 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות לפי תאריך תשלום (תקופה אחרונה)</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px' }}>
+      <Card icon="activity" title="הכנסות לפי יום" level={3}>
+          <div className="dv3-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={revenueTrend}
@@ -61,22 +47,14 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
                 <YAxis />
                 <Tooltip formatter={(value) => `₪${value}`} />
                 <Legend />
-                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--primary-solid)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--v3-navy)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות שבועיות (תקופה אחרונה)</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px' }}>
+      <Card icon="activity" title="הכנסות לפי שבוע" level={3}>
+          <div className="dv3-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={revenueTrendWeekly}
@@ -86,22 +64,14 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
                 <YAxis />
                 <Tooltip formatter={(value) => `₪${value}`} />
                 <Legend />
-                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--info)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--v3-sky-400)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+      </Card>
 
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות חודשיות (תקופה אחרונה)</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px' }}>
+      <Card icon="activity" title="הכנסות לפי חודש" level={3}>
+          <div className="dv3-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={revenueTrendMonthly}
@@ -111,12 +81,11 @@ export default function DashboardChartsImpl({ revenueByMethod, revenueTrend, rev
                 <YAxis />
                 <Tooltip formatter={(value) => `₪${value}`} />
                 <Legend />
-                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--success)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--v3-gold)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+      </Card>
 
     </div>
   );

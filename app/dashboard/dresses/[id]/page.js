@@ -12,6 +12,9 @@ import { ModernInactiveReasonModal } from '../../../../components/dresses/modern
 import ModernNewDressWizard from '../../../../components/dresses/modern/ModernNewDressWizard';
 import { addHistory } from '../../../../lib/historyManager';
 import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
+import { V3Page, Empty, Icon } from '@/app/v3/ui/components';
+import { v3NoticeSaved } from '@/app/v3/notify';
+import useDressDialogs from '@/components/dresses/useDressDialogs';
 
 // השדות של הדגם שנשמרים בכפתור השמירה (הפריטים נשמרים בנפרד, מיידית)
 const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'thumbnailUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason', 'isSplit', 'isPremium'];
@@ -54,6 +57,7 @@ export default function DressCardPage({ params }) {
   const { id } = use(params);
   const isNewModel = id === 'new';
   const { getLabel } = useLabels();
+  const { confirm, notice, dialogs } = useDressDialogs();
 
   const cached = isNewModel ? null : dressCache.get(id);
   const [dress, setDress] = useState(isNewModel ? { ...emptyDress } : (cached?.model || null));
@@ -235,9 +239,11 @@ export default function DressCardPage({ params }) {
       return;
     }
     const changed = MODEL_FIELDS.filter(f => JSON.stringify(snap[f] ?? null) !== JSON.stringify(dress[f] ?? null));
-    const confirmed = await window.customConfirm(
-      `פעולה זו תבטל את השינויים שלא נשמרו בכרטיס הדגם ותחזיר אותו למצב האחרון שנשמר${changed.length ? ` (${changed.length} שדות)` : ''}.`
-    );
+    const confirmed = await confirm({
+      title: 'לבטל את השינויים?',
+      text: `הכרטיס יחזור למצב השמור האחרון${changed.length ? ` (${changed.length} שדות ישתנו)` : ''}.`,
+      confirmLabel: 'ביטול השינויים', cancelLabel: 'להמשיך לערוך', mode: 'dark', icon: 'refresh',
+    });
     if (!confirmed) return;
     setDress(snap);
     setHasUnsavedChanges(false);
@@ -248,13 +254,16 @@ export default function DressCardPage({ params }) {
     if (hasUnsavedChanges) {
       const saved = await saveDress();
       if (!saved) return; // שמירה נכשלה — נשארים בכרטיס כדי לא לאבד את השינויים
+      try {
+        v3NoticeSaved({ title: 'הדגם נשמר', text: `דגם ${saved.barcodePrefix || ''} ${saved.name || ''}`.trim(), href: `/dashboard/dresses/${id}` });
+      } catch (e) { console.error(e); }
     }
     router.push('/dashboard/dresses');
   };
 
   // ===== מחיקה / שחזור =====
   const handleDelete = async () => {
-    if (!(await window.customConfirm('האם למחוק דגם זה? לא ניתן למחוק אם יש פריטים פעילים במלאי.'))) return;
+    if (!(await confirm({ title: 'למחוק את הדגם?', text: 'אי אפשר למחוק דגם שיש לו פריטים פעילים במלאי.', confirmLabel: 'מחיקה', danger: true, mode: 'dark', icon: 'trash' }))) return;
     try {
       const res = await fetch(`/api/dresses/${id}`, { method: 'DELETE' });
       const data = await res.json();
@@ -272,7 +281,7 @@ export default function DressCardPage({ params }) {
   };
 
   const handleRestore = async () => {
-    if (!(await window.customConfirm('האם לשחזר את הדגם המחוק?'))) return;
+    if (!(await confirm({ title: 'לשחזר את הדגם?', text: 'הדגם יחזור לקטלוג.', confirmLabel: 'שחזור', mode: 'dark', icon: 'refresh' }))) return;
     try {
       const res = await fetch(`/api/dresses/${id}`, {
         method: 'PUT',
@@ -295,7 +304,7 @@ export default function DressCardPage({ params }) {
 
   // ===== סטטוס פעילות =====
   const handleReturnToActivity = async () => {
-    if (!(await window.customConfirm('האם להחזיר את הדגם לפעילות?'))) return;
+    if (!(await confirm({ title: 'להחזיר לפעילות?', text: 'הדגם יחזור להיות פעיל.', confirmLabel: 'החזרה לפעילות', mode: 'dark', icon: 'refresh' }))) return;
     const activeItems = items.filter(i => !i.isDeleted && !i.notInUse);
     const saved = await saveDress({ exitDateFromRepo: null, inactiveReason: null }, ACTIVITY_TOGGLE_FIELDS);
     if (saved && activeItems.length === 0) {
@@ -381,44 +390,48 @@ export default function DressCardPage({ params }) {
   // דגם חדש נבנה באשף ייעודי (מבנה הצעדים של /orders/new), לא בכרטיס
   if (isNewModel) {
     return (
-      <ModernNewDressWizard
-        useModelNames={useModelNames}
-        showImages={showImages}
-        categories={categories}
-        locations={locations}
-        onCancel={() => router.push('/dashboard/dresses')}
-        onCreated={(created, failedItems) => {
-          if (failedItems?.length) {
-            alert(`הדגם נוצר, אך חלק מהפריטים נכשלו:\n\n${failedItems.join('\n')}`);
-          }
-          router.replace(`/dashboard/dresses/${created.id}`);
-        }}
-      />
+      <V3Page>
+        <ModernNewDressWizard
+          useModelNames={useModelNames}
+          showImages={showImages}
+          categories={categories}
+          locations={locations}
+          onCancel={() => router.push('/dashboard/dresses')}
+          onCreated={async (created, failedItems) => {
+            if (failedItems?.length) {
+              await notice({ title: 'הדגם נוצר, אבל חלק מהפריטים לא', text: failedItems.join(' · '), icon: 'alert-tri' });
+            }
+            try {
+              v3NoticeSaved({ title: 'הדגם נוצר', text: `דגם ${created.barcodePrefix || ''} ${created.name || ''}`.trim(), href: `/dashboard/dresses/${created.id}` });
+            } catch (e) { console.error(e); }
+            router.replace(`/dashboard/dresses/${created.id}`);
+          }}
+        />
+        {dialogs}
+      </V3Page>
     );
   }
 
   if (loading) {
     return (
-      <div className="page-loading">
-        <span className="spinner lg" />
-        טוען כרטיס דגם...
-      </div>
+      <V3Page>
+        <div className="v3-empty" role="status"><Icon name="loader" size="xl" loop /><p className="v3-empty__text">פותחים את כרטיס הדגם…</p></div>
+      </V3Page>
     );
   }
 
   if (!dress) {
     return (
-      <div className="empty-state">
-        <svg className="icon"><use href="#i-alert-circle" /></svg>
-        <h4>הדגם לא נמצא</h4>
-      </div>
+      <V3Page>
+        <Empty icon="alert-circle" title="הדגם לא נמצא" />
+      </V3Page>
     );
   }
 
   const imageSrc = getImageSource(dress);
 
   return (
-    <>
+    <V3Page>
       <ModernDressCard
         dress={dress}
         items={items}
@@ -491,6 +504,7 @@ export default function DressCardPage({ params }) {
           onSave={handleSaveInactive}
         />
       )}
-    </>
+      {dialogs}
+    </V3Page>
   );
 }

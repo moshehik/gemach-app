@@ -1,0 +1,11 @@
+/* סגנונות מקומיים למשפחת הדגמים - tokens של v3 בלבד (R2) */
+.dr3-photo {
+  border-radius: var(--v3-r-lg); overflow: hidden; border: var(--v3-bw-hair) solid var(--v3-line-soft);
+  background: var(--v3-sky-50); height: calc(var(--v3-sp-9) * 4);
+  display: flex; align-items: center; justify-content: center;
+}
+.dr3-photo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.dr3-two { display: grid; grid-template-columns: 1fr; gap: var(--v3-sp-5); }
+@media (min-width: 900px) { .dr3-two--img { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); } }
+.dr3-ltr { direction: ltr; text-align: start; }
+.dr3-hidden-file { display: none; }

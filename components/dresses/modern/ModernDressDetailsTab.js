@@ -5,6 +5,8 @@ import Link from 'next/link';
 import HebrewDatePicker from '../../HebrewDatePicker';
 import UploadZone from '../../../app/components/UploadZone';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { Card, Btn, Field, Row, Rows, Seg, Switch, Tip, Icon } from '@/app/v3/ui/components';
+import '../dresses-v3.css';
 
 const fmtDate = (d) => {
   if (!d) return null;
@@ -44,43 +46,29 @@ export default function ModernDressDetailsTab({
 
   return (
     <>
-      <div className={showImages ? 'two-col' : undefined}>
+      <div className={showImages ? 'dr3-two dr3-two--img' : 'dr3-two'}>
         {showImages && (
-          <div className="card card-pad" style={{ textAlign: 'center' }}>
-            <h3>תמונת הדגם</h3>
-
+          <Card icon="image" title="תמונה">
             {imageSrc ? (
               <>
-                <div style={{
-                  borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)',
-                  background: 'var(--surface-alt)', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
+                <div className="dr3-photo">
                   <img
                     src={imageSrc}
                     alt={dress.name || 'תמונת דגם'}
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ flex: 1 }}
-                    disabled={uploading}
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    {uploading ? <><span className="spinner" /> מעלה...</> : <><svg className="icon"><use href="#i-upload" /></svg>החלף תמונה</>}
-                  </button>
-                  <button type="button" className="btn btn-danger-ghost btn-icon-only btn-sm" title="הסר תמונה" onClick={onRemoveImage}>
-                    <svg className="icon"><use href="#i-trash" /></svg>
-                  </button>
+                <div className="v3-cluster">
+                  <Btn size="sm" icon="upload" loading={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? 'מעלים…' : 'החלפת תמונה'}
+                  </Btn>
+                  <Btn size="sm" variant="danger" icon="trash" title="הסרת התמונה" onClick={onRemoveImage}>הסרה</Btn>
                 </div>
                 <input
                   ref={fileRef}
                   type="file"
                   accept="image/*"
-                  style={{ display: 'none' }}
+                  className="dr3-hidden-file"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) onImageUpload(f); e.target.value = ''; }}
                 />
               </>
@@ -90,200 +78,159 @@ export default function ModernDressDetailsTab({
                 accept="image/*"
                 onFileSelect={onImageUpload}
                 disabled={uploading}
-                label={uploading ? 'מעלה תמונה...' : 'אין תמונה — לחץ להעלאה'}
+                label={uploading ? 'מעלים תמונה…' : 'אין תמונה. לחצו כדי להעלות'}
                 hint="PNG או JPG"
               />
             )}
 
-            <div className="field" style={{ marginTop: '12px', marginBottom: 0, textAlign: 'right' }}>
-              <label htmlFor="dress-detail-image-url">או הזן כתובת תמונה ידנית</label>
-              <input
-                id="dress-detail-image-url"
-                className="input"
-                type="text"
-                dir="ltr"
-                value={dress.imageUrl || ''}
-                onChange={(e) => onChange({ imageUrl: e.target.value || null })}
-                placeholder={`/images/dresses/${dress.barcodePrefix || '1234'}.jpg`}
-              />
-            </div>
-
-            <p className="hint" style={{ marginTop: '12px', color: 'var(--text-3)', lineHeight: 1.7 }}>
-              כשאין תמונה מועלית, המערכת מחפשת אוטומטית קובץ בשם הקוד ({dress.barcodePrefix || '####'}.jpg) לפי הגדרת &quot;שמות קבצים לתמונות&quot;.
-            </p>
-          </div>
+            <Field
+              id="dress-detail-image-url"
+              label="כתובת תמונה ידנית"
+              tip={`בלי תמונה מועלית המערכת מחפשת קובץ בשם הקוד (${dress.barcodePrefix || '####'}.jpg), לפי ההגדרה "שמות קבצים לתמונות".`}
+              className="dr3-ltr"
+              type="text"
+              dir="ltr"
+              value={dress.imageUrl || ''}
+              onChange={(e) => onChange({ imageUrl: e.target.value || null })}
+              placeholder={`/images/dresses/${dress.barcodePrefix || '1234'}.jpg`}
+            />
+          </Card>
         )}
 
-        <div className="card card-pad">
-          <h3>זיהוי הדגם</h3>
-          <div className="form-grid">
-            <div className="field">
-              <label htmlFor="dress-detail-code">קוד דגם (קידומת ברקוד) {isNewModel && '*'}</label>
-              <input
-                id="dress-detail-code"
-                className="input"
-                type="number"
-                value={dress.barcodePrefix ?? ''}
-                disabled={!isNewModel}
-                title={isNewModel ? '' : 'לא ניתן לשנות קוד לדגם קיים — הוא מרכיב את ברקודי הפריטים'}
-                onChange={(e) => onChange({ barcodePrefix: e.target.value })}
-              />
-              {isNewModel ? (
-                <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '6px' }} onClick={onAutoCode}>
-                  <svg className="icon"><use href="#i-refresh" /></svg>קוד אוטומטי
-                </button>
-              ) : (
-                <span className="hint">הקוד ננעל לאחר יצירת הדגם — הוא מרכיב את ברקודי הפריטים.</span>
-              )}
-            </div>
-
-            {useModelNames && (
-              <div className="field">
-                <label htmlFor="dress-detail-name">שם דגם *</label>
-                <input
-                  id="dress-detail-name"
-                  className="input"
-                  type="text"
-                  value={dress.name || ''}
-                  onChange={(e) => onChange({ name: e.target.value })}
-                />
+        <Card icon="id" title="זיהוי הדגם">
+          <div className="v3-stack">
+            <Field
+              id="dress-detail-code"
+              label="קוד הדגם"
+              required={!!isNewModel}
+              tip="הקוד הוא קידומת הברקוד של כל הפריטים, ולכן אי אפשר לשנות אותו אחרי יצירת הדגם."
+              hint={isNewModel ? undefined : 'נעול אחרי היצירה'}
+              type="number"
+              value={dress.barcodePrefix ?? ''}
+              disabled={!isNewModel}
+              title={isNewModel ? '' : 'לא ניתן לשנות קוד לדגם קיים — הוא מרכיב את ברקודי הפריטים'}
+              onChange={(e) => onChange({ barcodePrefix: e.target.value })}
+            />
+            {isNewModel && (
+              <div>
+                <Btn size="sm" icon="refresh" onClick={onAutoCode}>קוד אוטומטי</Btn>
               </div>
             )}
 
-            <div className="field">
-              <label htmlFor="dress-detail-category">קטגוריית מחיר</label>
-              <select
-                id="dress-detail-category"
-                className="select"
-                value={dress.priceCategory || ''}
-                onChange={(e) => onChange({ priceCategory: e.target.value })}
-              >
-                <option value="">-- בחר קטגוריית מחיר --</option>
-                {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
-              </select>
-            </div>
+            {useModelNames && (
+              <Field
+                id="dress-detail-name"
+                label="שם הדגם"
+                required
+                type="text"
+                value={dress.name || ''}
+                onChange={(e) => onChange({ name: e.target.value })}
+              />
+            )}
+
+            <Field
+              id="dress-detail-category"
+              as="select"
+              label="קטגוריית מחיר"
+              value={dress.priceCategory || ''}
+              onChange={(e) => onChange({ priceCategory: e.target.value })}
+            >
+              <option value="">בחרו קטגוריה</option>
+              {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+            </Field>
+
             {/* 35/36 - שמלת פרימיום. "דגם מפוצל 2 חלקים" הוסתר זמנית לבקשת ההנהלה (דיווח
                 תקלה 2761ce82, 2026-09-10) כדי למנוע תקלות - השדה isSplit עצמו לא נגע בו,
                 דגמים קיימים עם isSplit=true ממשיכים לפעול כרגיל, רק אי אפשר לסמן דגם חדש. */}
-            <div className="field" id="dress-split-premium" style={{ gridColumn: '1 / -1' }}>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
-                <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                  <input type="checkbox" checked={!!dress.isPremium} onChange={(e) => onChange({ isPremium: e.target.checked })} />
-                  <span>שמלת פרימיום (מחיר אחר) (35/36)</span>
-                </label>
-              </div>
-              <p className="hint" style={{ marginTop: 4 }}>פרימיום: מחיר לפי קטגוריית פרימיום כשה-toggle מופעל.</p>
+            <div id="dress-split-premium">
+              <Switch
+                label={<>שמלת פרימיום <Tip>שמלת פרימיום מתומחרת לפי קטגוריית הפרימיום, כשהאפשרות הזו מופעלת בהגדרות.</Tip></>}
+                checked={!!dress.isPremium}
+                onChange={(v) => onChange({ isPremium: v })}
+              />
             </div>
 
-            <div className="field">
-              <label htmlFor="dress-detail-entrydate">תאריך כניסה למאגר</label>
+            <div className="v3-field">
+              <span className="v3-label">תאריך כניסה למאגר</span>
               <HebrewDatePicker value={dress.entryDateToRepo} onChange={(date) => onChange({ entryDateToRepo: date })} />
             </div>
-          </div>
 
-          <Link href="/dashboard/pricelist" target="_blank" className="btn btn-ghost btn-sm">
-            <svg className="icon"><use href="#i-link" /></svg>מעבר למחירון הקטגוריה
-          </Link>
-        </div>
+            <div>
+              <Link href="/dashboard/pricelist" target="_blank" className="v3-btn v3-btn--quiet v3-btn--sm">
+                <Icon name="link" /><span>למחירון הקטגוריה</span>
+              </Link>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {!isNewModel && (
-        <div className="card card-pad" style={{ marginTop: '16px' }}>
-          <h3>סטטוס פעילות ובדיקה</h3>
+        <Card icon="check-circle" title="סטטוס ובדיקה">
+          <div className="v3-stack">
+            <Row label={hasExitDate ? 'הדגם לא פעיל' : 'הדגם פעיל'} tip={hasExitDate
+              ? 'הדגם הוצא מהמאגר, ואי אפשר לבחור בו בהזמנה חדשה.'
+              : 'הדגם זמין להשכרה ומופיע בבחירת דגמים בהזמנה חדשה.'}>
+              <Seg
+                label="סטטוס הדגם"
+                value={hasExitDate ? 'inactive' : 'active'}
+                onChange={(v) => {
+                  if (v === 'active') { if (hasExitDate) onReturnToActivity(); }
+                  else if (!hasExitDate) onMarkInactive();
+                }}
+                options={[
+                  { value: 'active', label: 'פעיל', icon: 'check-circle' },
+                  { value: 'inactive', label: 'לא פעיל', icon: 'x-circle' },
+                ]}
+              />
+            </Row>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>{hasExitDate ? 'הדגם לא פעיל' : 'הדגם פעיל'}</div>
-              <div className="hint" style={{ color: 'var(--text-3)' }}>
-                {hasExitDate
-                  ? 'הדגם הוצא מהמאגר — לא ניתן לבחור אותו בהזמנה חדשה'
-                  : 'הדגם זמין להשכרה ומופיע בבחירת דגמים בהזמנה חדשה'}
+            {hasExitDate && (
+              <div className="v3-note v3-note--attn">
+                <Rows>
+                  <Row label="סיבה" icon="x-circle">{dress.inactiveReason || 'לא צוינה סיבה'}</Row>
+                  <Row label="יצא מהמאגר בתאריך" icon="calendar"><bdi>{fmtDate(dress.exitDateFromRepo)}</bdi></Row>
+                </Rows>
+                <Btn size="sm" icon="edit" onClick={onMarkInactive}>עריכת סיבה ותאריך</Btn>
               </div>
-            </div>
-            <div className="toggle-btn-group">
-              <button type="button" className={!hasExitDate ? 'on' : undefined} onClick={() => { if (hasExitDate) onReturnToActivity(); }}>
-                <svg className="icon"><use href="#i-check-circle" /></svg>פעיל
-              </button>
-              <button type="button" className={hasExitDate ? 'off' : undefined} onClick={() => { if (!hasExitDate) onMarkInactive(); }}>
-                <svg className="icon"><use href="#i-x-circle" /></svg>לא פעיל
-              </button>
-            </div>
-          </div>
+            )}
 
-          {hasExitDate && (
-            <div className="callout callout-danger" style={{ marginTop: '16px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <svg className="icon"><use href="#i-x-circle" /></svg>
-                <div>
-                  <div style={{ fontWeight: 700 }}>סיבת לא-פעיל: {dress.inactiveReason || 'לא צוינה סיבה'}</div>
-                  <div style={{ fontSize: '11.5px', marginTop: '2px', opacity: 0.85 }}>
-                    תאריך יציאה מהמאגר: {fmtDate(dress.exitDateFromRepo)}
-                  </div>
-                </div>
-              </div>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={onMarkInactive}>
-                <svg className="icon"><use href="#i-edit" /></svg>ערוך סיבה ותאריך
-              </button>
-            </div>
-          )}
-
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap',
-            marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)'
-          }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>הצג בבדיקה (התראה)</div>
-              <div className="hint" style={{ color: 'var(--text-3)' }}>
-                תג ויזואלי בלבד לסימון עצמי - כשמסומן, מופיע תג "בבדיקה" בכותרת הדגם (וגם בתדפיס), כדי שיהיה ברור לכל מי שמסתכל בדגם שהוא דורש תשומת לב מיוחדת. לא חוסם השכרה ולא מופיע ברשימת התראות המלאי.
-              </div>
-            </div>
-            <div
-              className={`switch${dress.inInspection ? ' on' : ''}`}
-              role="switch"
-              aria-checked={!!dress.inInspection}
-              tabIndex={0}
+            <Switch
+              label={<>סימון &quot;בבדיקה&quot; <Tip>סימון עזר בלבד. כשהוא פעיל מופיע תג &quot;בבדיקה&quot; בכותרת הדגם ובהדפסה, כדי שכל מי שרואה את הדגם ידע שהוא דורש תשומת לב. הוא לא חוסם השכרה ולא מופיע בהתראות המלאי.</Tip></>}
+              checked={!!dress.inInspection}
+              onChange={() => onToggleInspection()}
               title={dress.inInspection ? 'הצג בבדיקה — מופעל. לחץ לכיבוי' : 'הצג בבדיקה — כבוי. לחץ להפעלה'}
-              onClick={onToggleInspection}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleInspection(); } }}
             />
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="card card-pad" style={{ marginTop: '16px' }}>
-        <h3>הערות לדגם</h3>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label htmlFor="dress-detail-notes" className="sr-only">הערות לדגם</label>
-          <textarea
-            id="dress-detail-notes"
-            className="textarea"
-            rows={3}
-            value={dress.notes || ''}
-            onChange={(e) => onChange({ notes: e.target.value })}
-            placeholder="הערות כלליות לגבי הדגם..."
-          />
-        </div>
-      </div>
+      <Card icon="file" title="הערות">
+        <Field
+          id="dress-detail-notes"
+          as="textarea"
+          label="הערות לדגם"
+          rows={3}
+          value={dress.notes || ''}
+          onChange={(e) => onChange({ notes: e.target.value })}
+          placeholder="הערות כלליות על הדגם"
+        />
+      </Card>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', marginTop: '18px' }}>
-        <div className="hint" style={{ color: 'var(--text-3)' }}>
-          {!isNewModel && <>מזהה במערכת הישנה (Access): <strong style={{ color: 'var(--text)' }}>{dress.legacyId ?? '—'}</strong></>}
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="v3-stack">
+        {!isNewModel && (
+          <Row label="מזהה במערכת הישנה (Access)"><bdi>{dress.legacyId ?? '—'}</bdi></Row>
+        )}
+        <div className="v3-cluster">
+          <Btn variant="primary" icon="check" loading={saving} onClick={() => onSave()}>
+            {isNewModel ? 'שמירה ויצירת הדגם' : 'שמירת פרטי הדגם'}
+          </Btn>
           {!isNewModel && (
             dress.isDeleted ? (
-              <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--success)' }} onClick={onRestore}>
-                <svg className="icon"><use href="#i-refresh" /></svg>שחזר דגם מחוק
-              </button>
+              <Btn size="sm" icon="refresh" onClick={onRestore}>שחזור הדגם</Btn>
             ) : (
-              <button type="button" className="btn btn-danger-ghost btn-sm" onClick={onDelete}>
-                <svg className="icon"><use href="#i-trash" /></svg>מחק דגם
-              </button>
+              <Btn size="sm" variant="danger" icon="trash" onClick={onDelete}>מחיקת הדגם</Btn>
             )
           )}
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => onSave()} disabled={saving}>
-            {saving ? <><span className="spinner" />שומר...</> : <><svg className="icon"><use href="#i-check" /></svg>{isNewModel ? 'שמור וצור דגם' : 'שמור פרטי דגם'}</>}
-          </button>
         </div>
       </div>
     </>

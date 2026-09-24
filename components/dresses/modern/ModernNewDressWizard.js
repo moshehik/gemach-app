@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import HebrewDatePicker from '../../HebrewDatePicker';
 import UploadZone from '../../../app/components/UploadZone';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { Card, Btn, IconBtn, Field, Tip, Stepper, StepNav, Table, Empty, Banner, Row, Rows, Chip, Switch, Icon } from '@/app/v3/ui/components';
 
 const fmtDate = (d) => {
   if (!d) return null;
@@ -18,14 +19,14 @@ const fmtDate = (d) => {
 const pad2 = (v) => String(v).padStart(2, '0');
 
 const STEP_LABELS = (showImages) => ([
-  { id: 1, label: 'זיהוי הדגם' },
-  { id: 2, label: showImages ? 'תמונה והערות' : 'הערות והתראות' },
-  { id: 3, label: 'מלאי ראשוני' },
+  { id: 1, label: 'זיהוי' },
+  { id: 2, label: showImages ? 'תמונה והערות' : 'הערות' },
+  { id: 3, label: 'מלאי' },
   { id: 4, label: 'סיכום' }
 ]);
 
 /**
- * אשף "הוספת דגם חדש" — אשף רב-שלבי (stepper) בשפת העיצוב "אריג".
+ * אשף "הוספת דגם חדש" — אשף רב-שלבי (v3 Stepper/StepNav).
  * צעד 3 מאפשר להזין את המלאי ההתחלתי לפי מידות; הדגם והפריטים נוצרים יחד
  * בסיום, במקום ליצור דגם ואז להוסיף פריטים אחד-אחד.
  */
@@ -244,375 +245,286 @@ export default function ModernNewDressWizard({
   const imageSrc = dress.imageUrl || null;
   const isErrorMsg = message.includes('שגיאה');
 
+  // חסרים לצעד 1 - מוצג כהסבר ליד "להמשך" (הלוגיקה של step1Ok ללא שינוי)
+  const missingList = [
+    !codeOk && (codeStr ? 'קוד דגם בן 3 ספרות' : 'קוד דגם'),
+    !nameOk && 'שם דגם',
+    !catOk && 'קטגוריית מחיר'
+  ].filter(Boolean).join(', ');
+
+  const planned = plannedItems.map((it, idx) => ({ ...it, key: pendingItems[idx].key }));
+  const summaryRows = plannedItems.map((it, idx) => ({ ...it, key: idx }));
+  const itemColumns = [
+    { key: 'sizeText', header: 'מידה', render: (it) => <b><bdi>{it.sizeText}</bdi></b> },
+    { key: 'serialNumber', header: 'מס׳ סידורי', render: (it) => <bdi>{pad2(it.serialNumber)}</bdi> },
+    { key: 'dressBarcode', header: 'ברקוד', render: (it) => <bdi>{it.dressBarcode}</bdi> },
+    { key: 'location', header: 'מיקום', render: (it) => it.location || '—' }
+  ];
+
+  const stepperSteps = STEPS.map((s) => ({
+    key: s.id,
+    label: s.label,
+    locked: !canGoTo(s.id),
+    lockedReason: 'קודם משלימים את פרטי הזיהוי'
+  }));
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>הוספת דגם חדש</h1>
-          <div className="page-desc">גמ&quot;ח שמלות &raquo; <Link href="/dashboard/dresses">מאגר שמלות</Link> &raquo; הוספת דגם חדש</div>
+    <div className="v3-stack">
+      <div className="v3-pagehead">
+        <div className="v3-pagehead__title">
+          <h1 className="v3-h1">דגם חדש</h1>
+          <span className="v3-muted">
+            <Link href="/dashboard/dresses">מאגר שמלות</Link> &raquo; דגם חדש
+          </span>
         </div>
-        <div className="page-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={saving}>
-            <svg className="icon"><use href="#i-x" /></svg>ביטול וחזרה לקטלוג
-          </button>
+        <div className="v3-pagehead__tools">
+          <Btn variant="quiet" size="sm" icon="x" onClick={onCancel} disabled={saving}>חזרה לקטלוג</Btn>
         </div>
       </div>
 
-      <nav className="stepper" aria-label="שלבי הוספת הדגם" style={{ flexWrap: 'wrap' }}>
-        {STEPS.map((s, idx) => (
-          <React.Fragment key={s.id}>
-            <div
-              className={`step${step > s.id ? ' done' : step === s.id ? ' current' : ''}`}
-              role="button"
-              tabIndex={canGoTo(s.id) ? 0 : -1}
-              aria-disabled={!canGoTo(s.id)}
-              style={{ cursor: canGoTo(s.id) && !saving ? 'pointer' : 'not-allowed', opacity: canGoTo(s.id) ? 1 : 0.6 }}
-              onClick={() => { if (canGoTo(s.id) && !saving) setStep(s.id); }}
-            >
-              <span className="step-num">{step > s.id ? <svg className="icon"><use href="#i-check" /></svg> : s.id}</span>
-              {s.label}
-            </div>
-            {idx < STEPS.length - 1 && <div className="step-line" />}
-          </React.Fragment>
-        ))}
-      </nav>
+      <Card>
+        <Stepper
+          label="שלבי הוספת הדגם"
+          steps={stepperSteps}
+          current={step - 1}
+          onStep={(i) => { const id = i + 1; if (canGoTo(id) && !saving) setStep(id); }}
+        />
+      </Card>
 
-      <div className="card card-pad">
-        {message && (
-          <div className={`callout ${isErrorMsg ? 'callout-danger' : 'callout-info'}`} style={{ marginBottom: '16px' }}>
-            <svg className="icon"><use href={isErrorMsg ? '#i-alert-circle' : '#i-info'} /></svg>
-            {message}
-          </div>
-        )}
+      <Card>
+        <div className="v3-stack">
+          {message && (
+            <Banner kind={isErrorMsg ? 'alert' : 'info'} text={message} />
+          )}
 
-        {/* ===== צעד 1 — זיהוי ===== */}
-        {step === 1 && (
-          <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-            <h2>זיהוי הדגם</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>הקוד מרכיב את ברקודי הפריטים ואינו ניתן לשינוי לאחר היצירה.</p>
+          <div key={step} className="v3-stack v3-anim-fade">
+            {/* ===== צעד 1 — זיהוי ===== */}
+            {step === 1 && (
+              <>
+                <h2 className="v3-h2">איזה דגם מוסיפים?</h2>
 
-            <div className="form-grid">
-              <div className="field">
-                <label htmlFor="dress-new-code">קוד דגם (קידומת ברקוד) *</label>
-                <input
+                <Field
+                  label="קוד דגם"
+                  required
+                  tip="הקוד מרכיב את ברקודי הפריטים, ואי אפשר לשנות אותו אחרי היצירה."
                   id="dress-new-code"
-                  className="input"
                   type="number"
                   value={dress.barcodePrefix}
                   placeholder={codeLoading ? 'טוען קוד פנוי...' : ''}
                   onChange={e => patch({ barcodePrefix: e.target.value })}
                 />
-                <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '6px', width: 'fit-content' }} onClick={handleAutoCode}>
-                  <svg className="icon"><use href="#i-refresh" /></svg>קוד פנוי
-                </button>
-              </div>
-
-              {useModelNames && (
-                <div className="field">
-                  <label htmlFor="dress-new-name">שם דגם *</label>
-                  <input id="dress-new-name" className="input" type="text" value={dress.name} onChange={e => patch({ name: e.target.value })} placeholder="לדוגמה: רומנטיקה" autoFocus />
+                <div className="v3-cluster">
+                  <Btn size="sm" icon="refresh" onClick={handleAutoCode}>קוד פנוי</Btn>
                 </div>
-              )}
 
-              <div className="field">
-                <label htmlFor="dress-new-category">קטגוריית מחיר *</label>
-                <select id="dress-new-category" className="select" value={dress.priceCategory} onChange={e => patch({ priceCategory: e.target.value })}>
-                  <option value="">-- בחר קטגוריית מחיר --</option>
-                  {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
-                </select>
-              </div>
+                {useModelNames && (
+                  <Field label="שם דגם" required id="dress-new-name" type="text" value={dress.name} onChange={e => patch({ name: e.target.value })} placeholder="לדוגמה: רומנטיקה" autoFocus />
+                )}
 
-              <div className="field">
-                <label htmlFor="dress-new-entrydate">תאריך כניסה למאגר</label>
-                <HebrewDatePicker value={dress.entryDateToRepo} onChange={(date) => patch({ entryDateToRepo: date })} />
-              </div>
-            </div>
+                <Field label="קטגוריית מחיר" required id="dress-new-category">
+                  <select value={dress.priceCategory} onChange={e => patch({ priceCategory: e.target.value })}>
+                    <option value="">בחירת קטגוריה</option>
+                    {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+                  </select>
+                </Field>
 
-            {!step1Ok && (
-              <p className="hint" style={{ display: 'block', marginTop: '14px' }}>
-                <svg className="icon" style={{ verticalAlign: '-2px' }}><use href="#i-alert-tri" /></svg>{' '}
-                יש להשלים {[
-                  !codeOk && (codeStr ? 'קוד דגם בן 3 ספרות בדיוק' : 'קוד דגם'),
-                  !nameOk && 'שם דגם',
-                  !catOk && 'קטגוריית מחיר'
-                ].filter(Boolean).join(', ')} כדי להמשיך.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* ===== צעד 2 — תמונה והערות ===== */}
-        {step === 2 && (
-          <div className={showImages ? 'two-col' : undefined}>
-            {showImages && (
-              <div>
-                <div className="field">
-                  <label>תמונת הדגם</label>
-                  {imageSrc ? (
-                    <>
-                      <div style={{
-                        borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)',
-                        background: 'var(--surface-alt)', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
-                        <img src={imageSrc} alt="תצוגה מקדימה" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      </div>
-                      <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '10px', width: 'fit-content' }} onClick={() => fileRef.current?.click()}>
-                        <svg className="icon"><use href="#i-upload" /></svg>החלף תמונה
-                      </button>
-                      <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }} />
-                      <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '10px', width: 'fit-content' }} onClick={() => patch({ imageUrl: '', thumbnailUrl: '' })}>
-                        <svg className="icon"><use href="#i-trash" /></svg>הסר תמונה
-                      </button>
-                    </>
-                  ) : (
-                    <UploadZone
-                      id="dress-new-image"
-                      accept="image/*"
-                      onFileSelect={handleImageUpload}
-                      disabled={uploading}
-                      label={uploading ? 'מעלה תמונה...' : 'אין תמונה — לחץ להעלאה'}
-                      hint="PNG או JPG"
-                    />
-                  )}
-                  <span className="hint">אפשר גם לדלג — המערכת תחפש אוטומטית קובץ בשם {dress.barcodePrefix || '####'}.jpg.</span>
+                <div className="v3-field">
+                  <span className="v3-label" id="dress-new-entrydate-label">תאריך כניסה למאגר</span>
+                  <div role="group" aria-labelledby="dress-new-entrydate-label">
+                    <HebrewDatePicker value={dress.entryDateToRepo} onChange={(date) => patch({ entryDateToRepo: date })} />
+                  </div>
                 </div>
-              </div>
+
+                {!step1Ok && (
+                  <div className="v3-hint" role="status">
+                    <Icon name="alert-tri" size="sm" /> להמשך חסר: {missingList}
+                  </div>
+                )}
+              </>
             )}
 
-            <div>
-              <h3>הערות והתראות</h3>
-              <p className="hint" style={{ margin: '-4px 0 12px' }}>מידע שיוצג לעובד בעת בחירת הדגם</p>
+            {/* ===== צעד 2 — תמונה והערות ===== */}
+            {step === 2 && (
+              <>
+                {showImages && (
+                  <div className="v3-field">
+                    <span className="v3-label">
+                      תמונת הדגם
+                      <Tip>אפשר לדלג: המערכת תחפש אוטומטית קובץ בשם <bdi>{dress.barcodePrefix || '####'}.jpg</bdi>.</Tip>
+                    </span>
+                    {imageSrc ? (
+                      <>
+                        <div style={{
+                          borderRadius: 'var(--v3-r-md)', overflow: 'hidden', border: 'var(--v3-bw-hair) solid var(--v3-line)',
+                          background: 'var(--v3-surface-2)', blockSize: 'calc(var(--v3-tap) * 5)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <img src={imageSrc} alt="תצוגה מקדימה" style={{ maxInlineSize: '100%', maxBlockSize: '100%', objectFit: 'contain' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        </div>
+                        <div className="v3-cluster">
+                          <Btn size="sm" icon="upload" onClick={() => fileRef.current?.click()}>החלפת תמונה</Btn>
+                          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }} />
+                          <Btn size="sm" icon="trash" onClick={() => patch({ imageUrl: '', thumbnailUrl: '' })}>הסרת תמונה</Btn>
+                        </div>
+                      </>
+                    ) : (
+                      <UploadZone
+                        id="dress-new-image"
+                        accept="image/*"
+                        onFileSelect={handleImageUpload}
+                        disabled={uploading}
+                        label={uploading ? 'מעלה תמונה...' : 'אין תמונה. לחצו כדי להעלות'}
+                        hint="PNG או JPG"
+                      />
+                    )}
+                  </div>
+                )}
 
-              <div className="field">
-                <label htmlFor="dress-new-notes">הערות לדגם</label>
-                <textarea
+                <h2 className="v3-h2">הערות לדגם</h2>
+                <Field
+                  label="הערות"
+                  tip="מוצגות לעובד כשהוא בוחר את הדגם."
+                  as="textarea"
                   id="dress-new-notes"
-                  className="textarea"
                   rows={4}
                   value={dress.notes}
                   onChange={e => patch({ notes: e.target.value })}
-                  placeholder="לדוגמה: רכיסה אחורית — לשים לב בהחזרה"
+                  placeholder="לדוגמה: רכיסה אחורית, לשים לב בהחזרה"
                 />
-              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', marginTop: '10px' }}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>הצג בבדיקה (התראה)</div>
-                  <div className="hint" style={{ color: 'var(--text-3)' }}>תג ויזואלי בלבד לסימון עצמי - מופיע תג "בבדיקה" בכותרת הדגם ובתדפיס. לא חוסם השכרה ולא מופיע ברשימת התראות המלאי.</div>
-                </div>
-                <div
-                  className={`switch${dress.inInspection ? ' on' : ''}`}
-                  role="switch"
-                  aria-checked={!!dress.inInspection}
-                  tabIndex={0}
-                  onClick={() => patch({ inInspection: !dress.inInspection })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); patch({ inInspection: !dress.inInspection }); } }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===== צעד 3 — מלאי ראשוני ===== */}
-        {step === 3 && (
-          <div>
-            <h2>מלאי ראשוני</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>כל שורה היא פריט אחד — הברקוד נבנה אוטומטית מקוד הדגם, המידה והמס&apos; הסידורי</p>
-
-            <div className="card card-pad" style={{ marginBottom: '16px' }}>
-              <div className="form-grid cols-3">
-                <div className="field">
-                  <label htmlFor="dress-new-item-size">מידה *</label>
-                  <input
-                    id="dress-new-item-size"
-                    className="input"
-                    type="number" min="0" max="99" placeholder="38"
-                    value={newItem.sizeText}
-                    onChange={e => changeNewItem('sizeText', e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') addPendingItem(); }}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="dress-new-item-serial">מס&apos; סידורי</label>
-                  <input
-                    id="dress-new-item-serial"
-                    className="input"
-                    type="number" min="1" max="99"
-                    value={newItem.serialNumber}
-                    onChange={e => changeNewItem('serialNumber', e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') addPendingItem(); }}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="dress-new-item-loc">מיקום</label>
-                  <select id="dress-new-item-loc" className="select" value={newItem.location} onChange={e => changeNewItem('location', e.target.value)}>
-                    <option value="">-- בחר מיקום --</option>
-                    {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span className="chip" title="הברקוד נבנה אוטומטית מקוד הדגם + מידה + מס' סידורי">
-                  ברקוד פריט: {String(newItem.sizeText).trim() ? buildBarcode(newItem.sizeText, Number(newItem.serialNumber) || nextSerialFor(newItem.sizeText)) : `${codeStr || '###'}____`}
-                </span>
-                <button type="button" className="btn btn-primary btn-sm" onClick={addPendingItem}>
-                  <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט
-                </button>
-                {addError && <span className="error-text"><svg className="icon"><use href="#i-alert-circle" /></svg>{addError}</span>}
-              </div>
-            </div>
-
-            {pendingItems.length === 0 ? (
-              <div className="empty-state">
-                <svg className="icon"><use href="#i-box" /></svg>
-                <p>עדיין לא נוספו פריטים לדגם.</p>
-              </div>
-            ) : (
-              <div className="table-wrap" style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                <div className="table-scroll">
-                  <table className="data">
-                    <thead>
-                      <tr><th>מידה</th><th>מס&apos; סידורי</th><th>ברקוד</th><th>מיקום</th><th style={{ textAlign: 'center' }} /></tr>
-                    </thead>
-                    <tbody>
-                      {plannedItems.map((it, idx) => (
-                        <tr key={pendingItems[idx].key}>
-                          <td className="cell-primary">{it.sizeText}</td>
-                          <td>{pad2(it.serialNumber)}</td>
-                          <td>{it.dressBarcode}</td>
-                          <td>{it.location || '—'}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="הסר פריט" onClick={() => removePendingItem(pendingItems[idx].key)}>
-                              <svg className="icon"><use href="#i-trash" /></svg>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===== צעד 4 — סיכום ===== */}
-        {step === 4 && (
-          <div>
-            <h2>סיכום לפני יצירה</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>בדוק את הפרטים — אפשר לחזור לכל צעד מסרגל הצעדים</p>
-
-            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
-              <div className="kpi-card">
-                <div className="kpi-label">קוד דגם</div>
-                <div className="kpi-value">{dress.barcodePrefix || '—'}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-label">מידות</div>
-                <div className="kpi-value" style={{ color: 'var(--success)' }}>{new Set(pendingItems.map(p => String(p.sizeText).trim())).size}</div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-label">פריטים שייווצרו</div>
-                <div className="kpi-value" style={{ color: 'var(--info)' }}>{totalItems}</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', margin: '18px 0' }}>
-              {useModelNames && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-tag" /></svg>
-                  <span className="cell-muted" style={{ minWidth: '150px' }}>שם דגם</span>
-                  <strong>{dress.name || 'לא הוזן'}</strong>
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-tag" /></svg>
-                <span className="cell-muted" style={{ minWidth: '150px' }}>קטגוריית מחיר</span>
-                <strong>{dress.priceCategory || 'לא נבחרה'}</strong>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-calendar" /></svg>
-                <span className="cell-muted" style={{ minWidth: '150px' }}>תאריך כניסה</span>
-                <strong>{fmtDate(dress.entryDateToRepo) || 'לא נבחר'}</strong>
-              </div>
-              {showImages && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-image" /></svg>
-                  <span className="cell-muted" style={{ minWidth: '150px' }}>תמונה</span>
-                  <strong>{dress.imageUrl ? 'הועלתה' : `תיטען אוטומטית לפי הקוד (${dress.barcodePrefix || '####'}.jpg)`}</strong>
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-alert-tri" /></svg>
-                <span className="cell-muted" style={{ minWidth: '150px' }}>הצג בבדיקה</span>
-                <strong>{dress.inInspection ? 'מופעל' : 'כבוי'}</strong>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0' }}>
-                <svg className="icon" style={{ color: 'var(--text-3)', marginTop: '3px' }}><use href="#i-file" /></svg>
-                <span className="cell-muted" style={{ minWidth: '150px' }}>הערות</span>
-                <strong style={{ whiteSpace: 'pre-wrap' }}>{dress.notes || 'אין'}</strong>
-              </div>
-            </div>
-
-            {totalItems > 0 ? (
-              <>
-                <h3>הפריטים שייווצרו</h3>
-                <div className="table-wrap" style={{ maxHeight: '260px', overflowY: 'auto' }}>
-                  <div className="table-scroll">
-                    <table className="data">
-                      <thead><tr><th>מידה</th><th>מס&apos; סידורי</th><th>ברקוד</th><th>מיקום</th></tr></thead>
-                      <tbody>
-                        {plannedItems.map((it, idx) => (
-                          <tr key={idx}>
-                            <td className="cell-primary">{it.sizeText}</td>
-                            <td>{pad2(it.serialNumber)}</td>
-                            <td>{it.dressBarcode}</td>
-                            <td>{it.location || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="v3-cluster">
+                  <Switch checked={!!dress.inInspection} onChange={() => patch({ inInspection: !dress.inInspection })} label="סימון בבדיקה" />
+                  <Tip>תג לסימון עצמי בלבד: מופיע &quot;בבדיקה&quot; בכותרת הדגם ובהדפסה. לא חוסם השכרה ולא מופיע בהתראות המלאי.</Tip>
                 </div>
               </>
-            ) : (
-              <div className="callout callout-warning" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <svg className="icon"><use href="#i-alert-tri" /></svg>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>הדגם ייווצר ללא פריטים</div>
-                    <div style={{ fontSize: '11.5px', marginTop: '2px' }}>דגם ללא פריטים פעילים לא יופיע כזמין בהזמנה חדשה. אפשר להוסיף פריטים מיד לאחר היצירה.</div>
-                  </div>
+            )}
+
+            {/* ===== צעד 3 — מלאי ראשוני ===== */}
+            {step === 3 && (
+              <>
+                <h2 className="v3-h2">אילו פריטים יש בדגם?</h2>
+                <div className="v3-cluster">
+                  <span className="v3-muted">כל שורה היא פריט אחד</span>
+                  <Tip>הברקוד נבנה אוטומטית מקוד הדגם, המידה והמספר הסידורי.</Tip>
                 </div>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setStep(3)}>הוסף מלאי</button>
-              </div>
+
+                <Field
+                  label="מידה"
+                  required
+                  id="dress-new-item-size"
+                  type="number" min="0" max="99" placeholder="38"
+                  value={newItem.sizeText}
+                  onChange={e => changeNewItem('sizeText', e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addPendingItem(); }}
+                />
+                <Field
+                  label="מס׳ סידורי"
+                  id="dress-new-item-serial"
+                  type="number" min="1" max="99"
+                  value={newItem.serialNumber}
+                  onChange={e => changeNewItem('serialNumber', e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addPendingItem(); }}
+                />
+                <Field label="מיקום" id="dress-new-item-loc">
+                  <select value={newItem.location} onChange={e => changeNewItem('location', e.target.value)}>
+                    <option value="">בחירת מיקום</option>
+                    {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
+                  </select>
+                </Field>
+
+                <div className="v3-cluster">
+                  <Chip variant="info" icon="tag">
+                    ברקוד: <bdi>{String(newItem.sizeText).trim() ? buildBarcode(newItem.sizeText, Number(newItem.serialNumber) || nextSerialFor(newItem.sizeText)) : `${codeStr || '###'}____`}</bdi>
+                  </Chip>
+                  <Btn variant="primary" size="sm" icon="plus" onClick={addPendingItem}>הוספת פריט</Btn>
+                </div>
+                {addError && (
+                  <div className="v3-error" role="alert"><Icon name="alert-circle" size="sm" />{addError}</div>
+                )}
+
+                {pendingItems.length === 0 ? (
+                  <Empty icon="box" title="עוד אין פריטים" text="אפשר גם להוסיף אותם אחרי יצירת הדגם." />
+                ) : (
+                  <Table
+                    caption="פריטים שנוספו"
+                    sticky
+                    rowKey="key"
+                    rows={planned}
+                    columns={[
+                      ...itemColumns,
+                      {
+                        key: 'remove',
+                        header: <span className="v3-sr">הסרה</span>,
+                        render: (it) => (
+                          <IconBtn icon="trash" label="הסרת פריט" variant="quiet" size="sm" title="הסרת פריט" onClick={() => removePendingItem(it.key)} />
+                        )
+                      }
+                    ]}
+                  />
+                )}
+              </>
+            )}
+
+            {/* ===== צעד 4 — סיכום ===== */}
+            {step === 4 && (
+              <>
+                <h2 className="v3-h2">הכול מוכן ליצירה?</h2>
+
+                <Rows>
+                  <Row label="קוד דגם" icon="tag"><bdi>{dress.barcodePrefix || '—'}</bdi></Row>
+                  {useModelNames && (
+                    <Row label="שם דגם" icon="tag" missing={!dress.name} missingText="לא הוזן">{dress.name}</Row>
+                  )}
+                  <Row label="קטגוריית מחיר" icon="category" missing={!dress.priceCategory} missingText="לא נבחרה">{dress.priceCategory}</Row>
+                  <Row label="תאריך כניסה למאגר" icon="calendar" missing={!fmtDate(dress.entryDateToRepo)} missingText="לא נבחר"><bdi>{fmtDate(dress.entryDateToRepo)}</bdi></Row>
+                  {showImages && (
+                    <Row label="תמונה" icon="image">
+                      {dress.imageUrl ? 'הועלתה' : <>תיטען אוטומטית מהקובץ <bdi>{dress.barcodePrefix || '####'}.jpg</bdi></>}
+                    </Row>
+                  )}
+                  <Row label="סימון בבדיקה" icon="alert-tri">{dress.inInspection ? 'פעיל' : 'כבוי'}</Row>
+                  <Row label="הערות" icon="file"><span style={{ whiteSpace: 'pre-wrap' }}>{dress.notes || 'אין'}</span></Row>
+                  <Row label="מידות" icon="ruler"><bdi>{new Set(pendingItems.map(p => String(p.sizeText).trim())).size}</bdi></Row>
+                  <Row label="פריטים שייווצרו" icon="box"><bdi>{totalItems}</bdi></Row>
+                </Rows>
+
+                {totalItems > 0 ? (
+                  <>
+                    <h3 className="v3-h2">הפריטים</h3>
+                    <Table caption="הפריטים שייווצרו" sticky rowKey="key" rows={summaryRows} columns={itemColumns} />
+                  </>
+                ) : (
+                  <Banner
+                    kind="warning"
+                    title="הדגם ייווצר בלי פריטים"
+                    text="דגם בלי פריטים פעילים לא יוצג כזמין בהזמנה. אפשר להוסיף פריטים מיד אחרי היצירה."
+                    action={{ label: 'הוספת מלאי', onClick: () => setStep(3) }}
+                  />
+                )}
+              </>
             )}
           </div>
-        )}
 
-        {/* ===== ניווט ===== */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => (step === 1 ? onCancel() : setStep(step - 1))} disabled={saving}>
-            <svg className="icon"><use href="#i-chevron-end" /></svg>{step === 1 ? 'ביטול' : 'הקודם'}
-          </button>
-
+          {/* ===== ניווט ===== */}
           {step < STEPS.length ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setStep(step + 1)}
-              disabled={!canGoTo(step + 1) || saving}
-              title={!canGoTo(step + 1) ? 'יש להשלים את פרטי הזיהוי' : ''}
-            >
-              הבא<svg className="icon"><use href="#i-chevron-start" /></svg>
-            </button>
+            <StepNav
+              onBack={() => { if (saving) return; if (step === 1) onCancel(); else setStep(step - 1); }}
+              backLabel={step === 1 ? 'ביטול' : 'חזרה'}
+              onNext={() => setStep(step + 1)}
+              nextDisabled={!canGoTo(step + 1) || saving}
+              nextTip="קודם משלימים את פרטי הזיהוי."
+            />
           ) : (
-            <button type="button" className="btn btn-primary" onClick={handleCreate} disabled={saving}>
-              {saving ? <><span className="spinner" />יוצר...</> : <><svg className="icon"><use href="#i-check" /></svg>צור דגם{totalItems > 0 ? ` ו-${totalItems} פריטים` : ''}</>}
-            </button>
+            <div className="v3-stepnav">
+              <div className="v3-cluster">
+                <Btn variant="primary" icon="check" onClick={handleCreate} loading={saving}>
+                  {saving ? 'יוצר...' : `יצירת הדגם${totalItems > 0 ? ` ו-${totalItems} פריטים` : ''}`}
+                </Btn>
+              </div>
+              <Btn variant="quiet" icon="back" onClick={() => { if (!saving) setStep(step - 1); }} disabled={saving}>חזרה</Btn>
+            </div>
           )}
         </div>
-      </div>
-    </>
+      </Card>
+    </div>
   );
 }

@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import HebrewDatePicker from '../../HebrewDatePicker';
+import { Dialog, Btn, Field, Icon } from '@/app/v3/ui/components';
 
 /**
  * מודל "סימון כלא פעיל" — סיבה + תאריך יציאה מהמאגר.
  * מוצג גם כשעורכים סיבה קיימת.
+ * חלונית עם קלט => Dialog variant="form" (בהיר בלבד, R19). ההורה מציג/מסתיר אותה, לכן open תמיד true.
  */
 export function ModernInactiveReasonModal({ dress, onClose, onSave }) {
   const [reason, setReason] = useState(dress.inactiveReason || '');
@@ -15,61 +16,43 @@ export function ModernInactiveReasonModal({ dress, onClose, onSave }) {
 
   const handleSave = () => {
     if (dress.entryDateToRepo && exitDate && new Date(exitDate) < new Date(dress.entryDateToRepo)) {
-      setError('תאריך היציאה לא יכול להיות קודם לתאריך הכניסה למאגר');
+      setError('תאריך היציאה לא יכול להיות לפני תאריך הכניסה למאגר');
       return;
     }
     onSave({ exitDateFromRepo: exitDate, inactiveReason: reason.trim() || null });
   };
 
-  if (typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div
-      className="modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  return (
+    <Dialog
+      open
+      variant="form"
+      icon="x-circle"
+      badgeKind="tilt"
+      title="להוציא את הדגם מהפעילות?"
+      sub="הדגם לא יופיע יותר בבחירת דגמים בהזמנה חדשה."
+      onClose={onClose}
+      initialFocus="#dress-inactive-reason"
+      actions={
+        <>
+          <Btn variant="primary" icon="check" onClick={handleSave}>שמירה</Btn>
+          <Btn variant="quiet" onClick={onClose}>ביטול</Btn>
+        </>
+      }
     >
-      <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
-          <svg className="icon"><use href="#i-x-circle" /></svg>
-        </div>
-        <h3>סימון הדגם כלא פעיל</h3>
-        <p>יש לציין סיבה ותאריך יציאה מהמאגר. הדגם לא יופיע יותר בבחירת דגמים להזמנה חדשה.</p>
-
-        <div style={{ textAlign: 'right' }}>
-          <div className="field">
-            <label htmlFor="dress-inactive-exitdate">תאריך יציאה מהמאגר</label>
+      <div className="v3-stack">
+        <div className="v3-field">
+          <span className="v3-label" id="dress-inactive-exitdate-label">תאריך יציאה מהמאגר</span>
+          <div role="group" aria-labelledby="dress-inactive-exitdate-label">
             <HebrewDatePicker value={exitDate} onChange={(date) => { setError(''); setExitDate(date); }} />
           </div>
-
-          <div className="field">
-            <label htmlFor="dress-inactive-reason">סיבה</label>
-            <textarea
-              id="dress-inactive-reason"
-              className="textarea"
-              rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="לדוגמה: הדגם התיישן, נתרם, הושמד..."
-              autoFocus
-            />
-          </div>
-
-          {error && (
-            <div className="field">
-              <span className="error-text"><svg className="icon"><use href="#i-alert-circle" /></svg>{error}</span>
-            </div>
-          )}
         </div>
 
-        <div className="confirm-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>ביטול</button>
-          <button type="button" className="btn btn-primary" onClick={handleSave}>
-            <svg className="icon"><use href="#i-check" /></svg> שמור סימון
-          </button>
-        </div>
+        <Field label="סיבה" as="textarea" id="dress-inactive-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="לדוגמה: התיישן, נתרם, נמכר..." />
+
+        {error && (
+          <div className="v3-error" role="alert"><Icon name="alert-circle" size="sm" />{error}</div>
+        )}
       </div>
-    </div>,
-    document.body
+    </Dialog>
   );
 }

@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { listGapRanges, normalizeGapRule, GAP_RULE_CHEAPER } from '@/lib/priceRows';
+import { V3Page, Card, Btn, IconBtn, Field, Tip, Dialog, Icon } from '@/app/v3/ui/components';
+import { v3Toast } from '@/app/v3/notify';
 
 // קטגוריות שאינן מחירי שמלה לפי מידה (תיקונים / תוספת חו"ל) - כלל "מידה בין טווחים" לא חל עליהן
 const NON_DRESS_CATEGORIES = ['תיקונים', 'תיקון אורך', 'חול', 'חו"ל'];
+
+// רוחב שדה מספר בטבלה - נגזר מטוקן מטרת המגע (R2)
+const NUM_INPUT_STYLE = { inlineSize: 'calc(var(--v3-tap) * 2)' };
 
 export default function PricelistManagement() {
   const [pricelists, setPricelists] = useState([]);
@@ -17,6 +22,19 @@ export default function PricelistManagement() {
   const [addingCategory, setAddingCategory] = useState(null);
 
   const [isLocked, setIsLocked] = useState(true);
+
+  // חלונית אישור v3 שמחליפה את window.customConfirm - אותו זרימת await: מחזירה true/false
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const confirmResolve = useRef(null);
+  const askConfirm = () => new Promise((resolve) => {
+    confirmResolve.current = resolve;
+    setConfirmOpen(true);
+  });
+  const settleConfirm = (value) => {
+    setConfirmOpen(false);
+    if (confirmResolve.current) confirmResolve.current(value);
+    confirmResolve.current = null;
+  };
 
   const fetchPricelists = async () => {
     setLoading(true);
@@ -66,13 +84,13 @@ export default function PricelistManagement() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או שאין הרשאות מתאימות (נדרש סיווג הנהלה ראשית/מתכנת).');
+        v3Toast(data.error || 'הקוד שגוי, או שאין לך הרשאת הנהלה ראשית / מתכנת.', 'error');
         return;
       }
       setIsLocked(prev => !prev);
     } catch (e) {
       console.error(e);
-      alert('שגיאה באימות קוד הנהלה ראשית/מנהל.');
+      v3Toast('האימות נכשל. נסו שוב.', 'error');
     }
   };
 
@@ -98,31 +116,33 @@ export default function PricelistManagement() {
         setEditingId(null);
         setIsAddingNew(false);
         fetchPricelists();
+        // התראת הצלחה משנית (NOTIFICATIONS-DESIGN §4) - לא נשמרת בפעמון
+        try { v3Toast({ kind: 'success', title: 'המחירון נשמר', persistToBell: false }); } catch (e2) { /* התראה משנית - אין השפעה על השמירה */ }
       } else {
-        alert('שגיאה בשמירת הנתונים');
+        v3Toast('השמירה נכשלה. נסו שוב.', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאה בשמירת הנתונים');
+      v3Toast('השמירה נכשלה. נסו שוב.', 'error');
     }
   };
 
   const handleDelete = async (id) => {
     if (isLocked) {
-      alert('המחיקה נעולה. אנא פתח את הנעילה תחילה ע"י קוד מנהל/מתכנת.');
+      v3Toast('המחיקה נעולה. יש לפתוח אותה קודם בקוד הנהלה.', 'warn');
       return;
     }
-    if (!await window.customConfirm('האם אתה בטוח שברצונך למחוק שורה זו? הפעולה אינה ניתנת לביטול.')) return;
+    if (!await askConfirm()) return;
     try {
       const res = await fetch(`/api/pricelists/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchPricelists();
       } else {
-        alert('שגיאה במחיקה');
+        v3Toast('המחיקה נכשלה. נסו שוב.', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאה במחיקה');
+      v3Toast('המחיקה נכשלה. נסו שוב.', 'error');
     }
   };
 
@@ -171,34 +191,37 @@ export default function PricelistManagement() {
   const cancelEdit = () => { setEditingId(null); setIsAddingNew(false); };
 
   const renderEditRow = (isNewRow, rowKey) => (
-    <tr key={rowKey} style={isNewRow ? { background: 'var(--surface-alt)' } : undefined}>
+    <tr key={rowKey}>
       <td>
         <input
           type="text"
           value={editForm.description || ''}
           onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-          className="input"
+          className="v3-input"
+          aria-label="תיאור"
           placeholder={isNewRow ? 'תיאור' : undefined}
           autoFocus={isNewRow}
         />
       </td>
       <td>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <div className="v3-cluster">
           <input
             type="number"
             value={editForm.fromSize || ''}
             onChange={e => setEditForm({ ...editForm, fromSize: e.target.value })}
-            className="input"
-            style={{ width: '64px' }}
+            className="v3-input"
+            style={NUM_INPUT_STYLE}
+            aria-label="ממידה"
             placeholder="מ-"
           />
-          <span>-</span>
+          <span aria-hidden="true">-</span>
           <input
             type="number"
             value={editForm.toSize || ''}
             onChange={e => setEditForm({ ...editForm, toSize: e.target.value })}
-            className="input"
-            style={{ width: '64px' }}
+            className="v3-input"
+            style={NUM_INPUT_STYLE}
+            aria-label="עד מידה"
             placeholder="עד"
           />
         </div>
@@ -208,8 +231,9 @@ export default function PricelistManagement() {
           type="number"
           value={editForm.price || ''}
           onChange={e => setEditForm({ ...editForm, price: e.target.value })}
-          className="input"
-          style={{ width: '90px' }}
+          className="v3-input"
+          style={NUM_INPUT_STYLE}
+          aria-label="מחיר השכרה"
           placeholder={isNewRow ? 'מחיר' : undefined}
         />
       </td>
@@ -218,167 +242,136 @@ export default function PricelistManagement() {
           type="number"
           value={editForm.deposit || ''}
           onChange={e => setEditForm({ ...editForm, deposit: e.target.value })}
-          className="input"
-          style={{ width: '90px' }}
+          className="v3-input"
+          style={NUM_INPUT_STYLE}
+          aria-label="פיקדון"
           placeholder={isNewRow ? 'פיקדון' : undefined}
         />
       </td>
-      <td style={{ textAlign: 'center' }}>
-        <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} onClick={() => handleSave(isNewRow ? null : editingId)} title="שמור">
-            <svg className="icon"><use href="#i-check" /></svg>
-          </button>
-          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} onClick={cancelEdit} title="בטל">
-            <svg className="icon"><use href="#i-x" /></svg>
-          </button>
+      <td>
+        <div className="v3-cluster">
+          <IconBtn icon="check" label="שמירה" variant="primary" size="sm" title="שמירה" onClick={() => handleSave(isNewRow ? null : editingId)} />
+          <IconBtn icon="x" label="ביטול" variant="quiet" size="sm" title="ביטול" onClick={cancelEdit} />
         </div>
       </td>
     </tr>
   );
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>ניהול מחירון</h1>
-          <div className="page-desc">מחירי השכרה ופיקדון לפי קטגוריה ומידה</div>
-        </div>
-        <div className="page-actions">
-          <button
-            type="button"
-            className={isLocked ? 'btn btn-danger-ghost' : 'btn btn-secondary'}
-            style={isLocked ? undefined : { background: 'var(--success-tint)', color: 'var(--success)' }}
-            onClick={handleLockToggle}
-            title={isLocked ? 'נעול - לחץ כדי לפתוח' : 'פתוח - לחץ כדי לנעול'}
-          >
-            <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-check-circle'} /></svg>
-            {isLocked ? 'מחיקה נעולה' : 'מחיקה פתוחה'}
-          </button>
-          <button type="button" className="btn btn-primary" onClick={() => handleAddNew('', true)}>
-            <svg className="icon"><use href="#i-plus" /></svg>
-            מחירון חדש
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="table-wrap">
-          <div className="page-loading">
-            <span className="spinner lg" />
-            <h3 style={{ margin: 0 }}>טוען נתונים...</h3>
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">מחירון</h1>
+            <span className="v3-muted">מחיר השכרה ופיקדון לפי קטגוריה ומידה</span>
+          </div>
+          <div className="v3-pagehead__tools">
+            <Btn
+              variant={isLocked ? 'danger' : 'secondary'}
+              icon={isLocked ? 'lock' : 'check-circle'}
+              onClick={handleLockToggle}
+              title={isLocked ? 'המחיקה נעולה. לחיצה תפתח אותה' : 'המחיקה פתוחה. לחיצה תנעל אותה'}
+            >
+              {isLocked ? 'מחיקה נעולה' : 'מחיקה פתוחה'}
+            </Btn>
+            <Btn variant="primary" icon="plus" onClick={() => handleAddNew('', true)}>קטגוריה חדשה</Btn>
           </div>
         </div>
-      ) : (
-        <>
-          {gapRule === GAP_RULE_CHEAPER && (
-            <div className="callout callout-info" style={{ marginBottom: '20px' }}>
-              <svg className="icon"><use href="#i-info" /></svg>
-              <div>
-                <strong style={{ fontSize: '14px' }}>מידה שאין לה שורת מחיר - מחויבת לפי הטווח הזול</strong>
-                <div style={{ marginTop: '4px' }}>
-                  מידה שאין לה שורת מחיר ונמצאת בין שני טווחים סמוכים מחויבת לפי המחיר הזול מבין שני הטווחים.
-                </div>
+
+        {loading ? (
+          <div className="v3-cluster" role="status">
+            <Icon name="loader" loop />
+            <span className="v3-muted">טוען מחירון...</span>
+          </div>
+        ) : (
+          <>
+            {gapRule === GAP_RULE_CHEAPER && (
+              <Card
+                variant="info"
+                icon="info"
+                title="מידות בין טווחים מחויבות לפי הזול"
+                tip="מידה שאין לה שורת מחיר ונמצאת בין שני טווחים סמוכים מחויבת לפי המחיר הזול מבין השניים."
+              >
                 {gapsByCategory.length > 0 ? (
-                  <ul style={{ margin: '8px 0 0', paddingInlineStart: '20px' }}>
+                  <ul className="v3-stack">
                     {gapsByCategory.map(entry => entry.gaps.map(gap => (
                       <li key={`${entry.category}-${gap.fromSize}`}>
-                        <strong>{entry.category}:</strong> {formatGapSizes(gap)} - לפי הטווח הזול
-                        {gap.row.description ? ` (${gap.row.description})` : ''}, ₪{gap.price}
+                        <b>{entry.category}</b>
+                        <div className="v3-muted">
+                          <bdi>{formatGapSizes(gap)}</bdi> · לפי הטווח הזול
+                          {gap.row.description ? ` (${gap.row.description})` : ''}, <bdi>₪{gap.price}</bdi>
+                        </div>
                       </li>
                     )))}
                   </ul>
                 ) : (
-                  <div style={{ marginTop: '4px' }}>כרגע אין במחירון מידות שנופלות בין טווחים.</div>
+                  <p className="v3-muted">אין כרגע מידות שנופלות בין טווחים.</p>
                 )}
-              </div>
-            </div>
-          )}
+              </Card>
+            )}
 
-          {gapRule !== null && gapRule !== GAP_RULE_CHEAPER && gapsByCategory.length > 0 && (
-            <div className="callout callout-warning" style={{ marginBottom: '20px' }}>
-              <svg className="icon"><use href="#i-alert-tri" /></svg>
-              <div>
-                <strong>יש מידות שאין להן שורת מחיר</strong>
-                <div style={{ marginTop: '4px' }}>
-                  המידות הבאות נמצאות בין שני טווחים ואין להן מחיר, ולכן כרגע הן מחויבות 0 ₪:
-                </div>
-                <ul style={{ margin: '6px 0 0', paddingInlineStart: '20px' }}>
-                  {gapsByCategory.map(entry => entry.gaps.map(gap => (
-                    <li key={`${entry.category}-${gap.fromSize}`}>
-                      <strong>{entry.category}:</strong> {formatGapSizes(gap)}
-                    </li>
-                  )))}
-                </ul>
-                <div style={{ marginTop: '6px' }}>
-                  כדי שמידות כאלה יחויבו לפי הטווח הזול מבין שני הטווחים הסמוכים, יש להפעיל את ההגדרה
-                  {' '}&quot;מידה שנמצאת בין שני טווחי מחיר&quot; (לבחור &quot;לפי הזול משני הטווחים&quot;) ב<a href="/admin/settings" style={{ color: 'inherit', textDecoration: 'underline' }}>הגדרות המערכת</a> (קבוצת תשלומים).
+            {gapRule !== null && gapRule !== GAP_RULE_CHEAPER && gapsByCategory.length > 0 && (
+              <div className="v3-note v3-note--attn" role="status">
+                <div className="v3-stack">
+                  <div className="v3-cluster">
+                    <Icon name="alert-tri" />
+                    <b>יש מידות בלי מחיר</b>
+                    <Tip>
+                      מידות שבין שני טווחים ללא שורת מחיר מחויבות כרגע 0 ₪. כדי לחייב אותן לפי הזול משני הטווחים, יש לשנות את ההגדרה &quot;מידה בין שני טווחי מחיר&quot; (קבוצת תשלומים) בהגדרות המערכת.
+                    </Tip>
+                  </div>
+                  <ul className="v3-stack">
+                    {gapsByCategory.map(entry => entry.gaps.map(gap => (
+                      <li key={`${entry.category}-${gap.fromSize}`}>
+                        <b>{entry.category}</b>
+                        <div className="v3-muted"><bdi>{formatGapSizes(gap)}</bdi></div>
+                      </li>
+                    )))}
+                  </ul>
+                  <div className="v3-cluster">
+                    <Btn href="/admin/settings" variant="secondary" size="sm" icon="settings">להגדרות המערכת</Btn>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {isAddingNew && editingId === 'new' && addingCategory === 'NEW' && (
-            <div className="card card-pad" style={{ marginBottom: '24px' }}>
-              <h2 style={{ margin: '0 0 16px', fontSize: '15px' }}>הוספת קטגוריה / שורה חדשה</h2>
-              <div className="form-grid cols-3">
-                <div className="field">
-                  <label htmlFor="pricelist-newCategory">קטגוריה</label>
-                  <input id="pricelist-newCategory" type="text" value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} className="input" placeholder="לדוגמה: נשים" />
+            {isAddingNew && editingId === 'new' && addingCategory === 'NEW' && (
+              <Card icon="plus" title="קטגוריה או שורה חדשה">
+                <div className="v3-stack">
+                  <Field label="קטגוריה" id="pricelist-newCategory" type="text" value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} placeholder="לדוגמה: נשים" />
+                  <Field label="תיאור" id="pricelist-newDescription" type="text" value={editForm.description || ''} onChange={e => setEditForm({ ...editForm, description: e.target.value })} placeholder="לדוגמה: תחרה" />
+                  <Field label="ממידה" id="pricelist-newFromSize" type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({ ...editForm, fromSize: e.target.value })} placeholder="36" />
+                  <Field label="עד מידה" id="pricelist-newToSize" type="number" value={editForm.toSize || ''} onChange={e => setEditForm({ ...editForm, toSize: e.target.value })} placeholder="44" />
+                  <Field label="מחיר השכרה (₪)" id="pricelist-newPrice" type="number" value={editForm.price || ''} onChange={e => setEditForm({ ...editForm, price: e.target.value })} placeholder="350" />
+                  <Field label="פיקדון (₪)" id="pricelist-newDeposit" type="number" value={editForm.deposit || ''} onChange={e => setEditForm({ ...editForm, deposit: e.target.value })} placeholder="50" />
+                  <div className="v3-cluster">
+                    <Btn variant="primary" icon="check" onClick={() => handleSave(null)}>שמירה</Btn>
+                    <Btn variant="quiet" icon="x" onClick={cancelEdit}>ביטול</Btn>
+                  </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="pricelist-newDescription">תיאור</label>
-                  <input id="pricelist-newDescription" type="text" value={editForm.description || ''} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="input" placeholder="לדוגמה: תחרה" />
-                </div>
-                <div className="field">
-                  <label htmlFor="pricelist-newFromSize">ממידה</label>
-                  <input id="pricelist-newFromSize" type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({ ...editForm, fromSize: e.target.value })} className="input" placeholder="36" />
-                </div>
-                <div className="field">
-                  <label htmlFor="pricelist-newToSize">עד מידה</label>
-                  <input id="pricelist-newToSize" type="number" value={editForm.toSize || ''} onChange={e => setEditForm({ ...editForm, toSize: e.target.value })} className="input" placeholder="44" />
-                </div>
-                <div className="field">
-                  <label htmlFor="pricelist-newPrice">מחיר (₪)</label>
-                  <input id="pricelist-newPrice" type="number" value={editForm.price || ''} onChange={e => setEditForm({ ...editForm, price: e.target.value })} className="input" placeholder="350" />
-                </div>
-                <div className="field">
-                  <label htmlFor="pricelist-newDeposit">פיקדון (₪)</label>
-                  <input id="pricelist-newDeposit" type="number" value={editForm.deposit || ''} onChange={e => setEditForm({ ...editForm, deposit: e.target.value })} className="input" placeholder="50" />
-                </div>
-              </div>
-              <div className="row-actions" style={{ justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button type="button" className="btn btn-primary" onClick={() => handleSave(null)}>
-                  <svg className="icon"><use href="#i-check" /></svg>
-                  שמור
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={cancelEdit}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                  בטל
-                </button>
-              </div>
-            </div>
-          )}
+              </Card>
+            )}
 
-          {Object.keys(categoriesMap).map((categoryName) => (
-            <div key={categoryName} style={{ marginBottom: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px' }}>
-                <h2 className="section-title" style={{ margin: 0 }}>{categoryName}</h2>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleAddNew(categoryName !== 'ללא קטגוריה' ? categoryName : '')}>
-                  <svg className="icon"><use href="#i-plus" /></svg>
-                  הוסף שורה לקטגוריה
-                </button>
-              </div>
+            {Object.keys(categoriesMap).map((categoryName) => (
+              <section key={categoryName} className="v3-stack">
+                <div className="v3-pagehead">
+                  <div className="v3-pagehead__title">
+                    <h2 className="v3-h2">{categoryName}</h2>
+                    <span className="v3-muted v3-text-sm"><bdi>{categoriesMap[categoryName].length}</bdi> שורות</span>
+                  </div>
+                  <Btn size="sm" icon="plus" onClick={() => handleAddNew(categoryName !== 'ללא קטגוריה' ? categoryName : '')}>שורה בקטגוריה</Btn>
+                </div>
 
-              <div className="table-wrap">
-                <div className="table-scroll">
-                  <table className="data">
+                <div className="v3-table__wrap">
+                  <table className="v3-table">
+                    <caption className="v3-sr">{categoryName}</caption>
                     <thead>
                       <tr>
-                        <th>תיאור</th>
-                        <th>מידות</th>
-                        <th>מחיר השכרה</th>
-                        <th>החזר פיקדון</th>
-                        <th style={{ textAlign: 'center' }}>פעולות</th>
+                        <th scope="col">תיאור</th>
+                        <th scope="col">מידות</th>
+                        <th scope="col">מחיר השכרה</th>
+                        <th scope="col">פיקדון</th>
+                        <th scope="col"><span className="v3-sr">פעולות</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -387,35 +380,32 @@ export default function PricelistManagement() {
                           renderEditRow(false, item.id)
                         ) : (
                           <tr key={item.id}>
-                            <td className="cell-primary">{item.description || '-'}</td>
+                            <td><b>{item.description || '-'}</b></td>
                             <td>
                               {item.fromSize || item.toSize ? (
-                                <span className="badge badge-neutral">
-                                  {item.fromSize && item.toSize ? `${item.fromSize} - ${item.toSize}` : item.fromSize ? `מ-${item.fromSize}` : `עד ${item.toSize}`}
+                                <span className="v3-badge v3-badge--neutral">
+                                  <bdi>{item.fromSize && item.toSize ? `${item.fromSize} - ${item.toSize}` : item.fromSize ? `מ-${item.fromSize}` : `עד ${item.toSize}`}</bdi>
                                 </span>
                               ) : '-'}
                             </td>
                             <td>
-                              {item.price ? <span className="badge badge-primary">₪{item.price}</span> : '-'}
+                              {item.price ? <span className="v3-badge v3-badge--navy"><bdi>₪{item.price}</bdi></span> : '-'}
                             </td>
                             <td>
-                              {item.deposit ? `₪${item.deposit}` : '-'}
+                              {item.deposit ? <bdi>₪{item.deposit}</bdi> : '-'}
                             </td>
-                            <td style={{ textAlign: 'center' }}>
-                              <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => handleEditClick(item)} title="ערוך">
-                                  <svg className="icon"><use href="#i-edit" /></svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-ghost btn-icon-only btn-sm"
+                            <td>
+                              <div className="v3-cluster">
+                                <IconBtn icon="edit" label="עריכה" variant="quiet" size="sm" title="עריכה" onClick={() => handleEditClick(item)} />
+                                <IconBtn
+                                  icon={isLocked ? 'lock' : 'trash'}
+                                  label="מחיקה"
+                                  variant="quiet"
+                                  size="sm"
+                                  title="מחיקה"
                                   onClick={() => handleDelete(item.id)}
-                                  title="מחק"
                                   disabled={isLocked}
-                                  style={{ opacity: isLocked ? 0.45 : 1 }}
-                                >
-                                  <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-trash'} /></svg>
-                                </button>
+                                />
                               </div>
                             </td>
                           </tr>
@@ -425,14 +415,27 @@ export default function PricelistManagement() {
                     </tbody>
                   </table>
                 </div>
-                <div className="table-foot">
-                  <span>סה&quot;כ שורות מוצגות: {categoriesMap[categoryName].length}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-    </>
+              </section>
+            ))}
+          </>
+        )}
+      </div>
+
+      <Dialog
+        open={confirmOpen}
+        onClose={() => settleConfirm(false)}
+        variant="confirm"
+        mode="light"
+        icon="trash"
+        title="למחוק את השורה?"
+        sub="אי אפשר לשחזר אותה אחרי המחיקה."
+        actions={
+          <>
+            <Btn variant="danger" icon="trash" data-autofocus="" onClick={() => settleConfirm(true)}>מחיקה</Btn>
+            <Btn variant="quiet" onClick={() => settleConfirm(false)}>ביטול</Btn>
+          </>
+        }
+      />
+    </V3Page>
   );
 }
