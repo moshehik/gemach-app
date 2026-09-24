@@ -1,71 +1,62 @@
 'use client';
 
 import React from 'react';
+import { V3Page, Banner, Stepper } from '@/app/v3/ui/components';
 
 /**
- * מעטפת "הזמנה חדשה": כותרת עמוד ופעולות עליונות, הודעת טוסט (אוטוסייב טיוטה),
- * מסלול חמשת השלבים (stepper), גוף השלב הפעיל ופוטר ניווט.
- * כל התוכן והלוגיקה מגיעים מהעמוד — כאן רק הפריסה, בשפת העיצוב "אריג"
- * (ראו scratch/design-v2/fragments/order-new.html + ModernNewDressWizard.js לאותה מוסכמת stepper).
+ * מעטפת "הזמנה חדשה" בשפת v3: כותרת ופעולות עליונות, הודעת אוטוסייב,
+ * ציר השלבים (V3Stepper + "שלב X מתוך N"), גוף השלב (key={step} — איפוס מצב מקומי בכל מעבר)
+ * ופוטר ניווט קבוע. כל התוכן והלוגיקה מגיעים מהעמוד — כאן רק הפריסה (R8).
  */
 export default function NewOrderShell({
   step,
   steps,              // [{ id, label, value, enabled, lockedReason }]
-  onStepChange,
-  topBar,             // פעולות בשורה העליונה (page-actions)
+  onStepChange,       // (id) => void  — id 1..N
+  topBar,             // פעולות בשורה העליונה
   flash,              // { type: 'ok' | 'err', text } | null
   children,           // גוף השלב
   footer              // כפתורי ניווט
 }) {
+  const nodes = steps.map((s) => ({
+    key: s.id,
+    label: s.label,
+    value: s.value || undefined,
+    locked: !s.enabled,
+    lockedReason: s.lockedReason
+  }));
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>הזמנה חדשה</h1>
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">הזמנה חדשה</h1>
+          </div>
+          <div className="v3-pagehead__tools">{topBar}</div>
         </div>
-        <div className="page-actions">{topBar}</div>
-      </div>
 
-      {flash && (
-        <div className={`toast ${flash.type === 'err' ? 'error' : 'success'}`} style={{ marginBottom: '18px' }}>
-          <svg className="icon"><use href={flash.type === 'err' ? '#i-alert-circle' : '#i-check-circle'} /></svg>
-          {flash.text}
+        {flash && (
+          <Banner kind={flash.type === 'err' ? 'alert' : 'success'} text={flash.text} />
+        )}
+
+        <Stepper
+          steps={nodes}
+          current={step - 1}
+          onStep={(i) => onStepChange(steps[i].id)}
+          label="שלבי ההזמנה"
+        />
+
+        <section key={step} style={{ animation: 'v3-rowin var(--v3-dur-med) var(--v3-ease) both' }}>
+          {children}
+        </section>
+
+        <div
+          className="v3-stepnav"
+          style={{ position: 'sticky', bottom: 0, zIndex: 5, background: 'var(--v3-surface)', paddingBlock: 'var(--v3-sp-3)' }}
+        >
+          {footer}
         </div>
-      )}
-
-      <nav className="stepper stepper-compact" aria-label="שלבי ההזמנה" style={{ flexWrap: 'wrap' }}>
-        {steps.map((s, idx) => {
-          const done = s.id < step;
-          const isCurrent = s.id === step;
-          const canFocus = s.enabled || isCurrent;
-          return (
-            <React.Fragment key={s.id}>
-              <div
-                className={`step${done ? ' done' : isCurrent ? ' current' : ''}`}
-                role="button"
-                tabIndex={canFocus ? 0 : -1}
-                aria-disabled={!canFocus}
-                aria-current={isCurrent ? 'step' : undefined}
-                title={!canFocus ? s.lockedReason : undefined}
-                style={{ cursor: canFocus ? 'pointer' : 'not-allowed', opacity: canFocus ? 1 : 0.6 }}
-                onClick={() => onStepChange(s.id)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStepChange(s.id); } }}
-              >
-                <span className="step-num">{done ? <svg className="icon"><use href="#i-check" /></svg> : s.id}</span>
-                {s.label}
-                {s.value ? <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>· {s.value}</span> : null}
-              </div>
-              {idx < steps.length - 1 && <div className="step-line" />}
-            </React.Fragment>
-          );
-        })}
-      </nav>
-
-      <section key={step} className="animate-fade-in">{children}</section>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-        {footer}
       </div>
-    </>
+    </V3Page>
   );
 }
