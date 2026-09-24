@@ -27,3 +27,20 @@ Screenshots: `archetype-detail-card-details-*`, `archetype-detail-card-orders-*`
 | — | Bank form in a 2×2 grid | refunds tab | Original: 2 fields per line. Polished: `.fcol` | **rejected because C-1.16** (one field per line) |
 | — | Order rows compact: status tag on the same line as the title (≈76px rows vs ≈130px) | orders tab | Original: grid row thumb / title+meta / status / chevron. Polished: sketch `.itm` (status on its own line under the meta) | **replaced by sketch component** (`itemCard`). Density difference listed as a promotion candidate (§9: compact `.itm` for link lists) |
 | — | "who · time" visible on every collapsed history row | history tab | Original: sub-line "מרים גולד · 17:05". Polished: sketch history feed shows who/time only after expanding | **replaced by sketch component** (history is owner-listed shared). Promotion candidate (§9) |
+
+---
+
+## 2. Monthly board — `archetype-board.html`
+
+Screenshots: `archetype-board-month-{1440,390}-*`, `archetype-board-list-1440-*`.
+
+| # | Detail | Where | Original vs polished | Decision |
+|---|---|---|---|---|
+| B1 | **Hatched days outside the month** (diagonal sky-50/white stripes) | month grid, leading/trailing cells | Original: hatch makes the month's edge obvious. Polished: flat `--surface2`, the same tint as Shabbat cells, so "not this month" and "Shabbat" looked alike | **restored** — page-only `.day.void` repeating gradient from the shell's own tokens |
+| B2 | **Gold "today" tab hanging from the top of today's cell** | month grid | Original: small gold tab + tick. Polished: the word "היום" inline next to the date number (easy to miss) | **restored** — `.today-pin` (gold / navy-900 border, `aria-hidden`; the cell's aria-label already says "היום"). ≤1023px it shrinks to a 20×6 bar as in the original. One per screen, a live marker → within C-1.14 |
+| B3 | **"Today" divider label in the list view** | list view | Original: gold rule with a gold "היום" label + calendar icon. Polished: gold rule with plain text | **restored** — same visual language as B2 (one per screen) |
+| — | Rental cards with a slim "(i)" column separated by a hairline | month/week/list cards | Original: quiet text-coloured info icon. Polished: the sketch's `.ibtn` (salmon 44px) | **replaced by sketch component** (buttons are owner-listed shared). Note for the owner: 30+ salmon info buttons on one month is loud — see §9 "quiet icon button" candidate |
+| — | Month navigation as a centred pill "תשרי תשפ״ז · 12.9–11.10" between arrows, page title "הזמנות לפי תאריך אירוע" | title row | Polished: sketch title row (month as the h1, range under it, arrows as `.ibtn` tools) | **replaced by sketch component** (title row is shared) |
+| — | Month / week / list as a compact segmented control | toolbar | Polished: the sketch `.tabs` bar | **replaced by sketch component** (tabs) |
+| — | Order-count pills "3 הזמנות", holiday chips, legend chips | day headers, legend | Polished: "(3)", plain holiday text, legend as colour bars + text | **rejected because C-1.14** (counts and labels are not statuses); nothing lost |
+| — | Search bar with the button and the star/statistics icons inside the same field | toolbar | Polished: field + separate buttons in a row | **replaced by sketch component** (fields/buttons base styles). Composition is acceptable; not restored |

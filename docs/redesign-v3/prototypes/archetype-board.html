@@ -2308,6 +2308,12 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .d-num small{font-size:13px;color:var(--ink3)}
 .day.past .d-num b{color:var(--ink3)}
 .d-now{font-size:13px;font-weight:700;color:var(--navy)}
+/* CURATION B1 (from pre-polish): days outside the month are hatched, not just tinted — the month's edge reads at a glance */
+.day.void{background:repeating-linear-gradient(135deg,var(--sky-50) 0 8px,var(--surface) 8px 16px)}
+/* CURATION B2 (from pre-polish): a gold "today" tab hanging from the top of today's cell (one per screen — a live marker, C-1.14 ok) */
+.today-pin{position:absolute;inset-block-start:0;inset-inline-start:50%;transform:translateX(50%);background:var(--gold);color:var(--navy-900);border:1.5px solid var(--navy-900);border-block-start:0;border-radius:0 0 10px 10px;font-size:13px;font-weight:700;padding:0 10px;line-height:20px;z-index:2;pointer-events:none}
+.day.today .d-now{display:none}
+@media (max-width:1023px){.today-pin{font-size:0;padding:0;width:20px;height:6px;border-radius:0 0 6px 6px}}
 .d-tools{margin-inline-start:auto;display:flex;align-items:center;gap:2px;flex-wrap:wrap;justify-content:flex-end;min-width:0}
 .d-cnt{font-size:13px;color:var(--ink2);white-space:nowrap}
 .d-late{color:var(--gold-700);display:inline-flex}
@@ -2338,6 +2344,8 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .ag-sub{display:block;font-size:14px;font-weight:400;color:var(--ink3)}
 .now-line{display:flex;align-items:center;gap:12px;color:var(--navy);font-weight:700}
 .now-line::before,.now-line::after{content:"";flex:1;height:3px;border-radius:2px;background:var(--gold)}
+/* CURATION B3 (from pre-polish): the list's "today" divider carries the same gold label as the month grid's today tab */
+.now-line b{display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:var(--navy-900);border:1.5px solid var(--navy-900);border-radius:999px;padding:0 14px;line-height:28px}
 
 /* תפריט פעולות להזמנה: עוגן קבוע שמחזיק את ה-.menu של הסקיצה */
 #ocHost{position:fixed;z-index:90;width:0;height:0}
@@ -3378,6 +3386,7 @@ function dayCell(x, i, orders, clamp){
     <button type="button" class="day-tap" data-day="${i}" aria-label="${aria}. פתיחת היום"></button>
     <div class="d-head"><span class="d-num"><b>${GEM[x.d - 1]}</b><small><bdi dir="ltr">${fmtG(x.g)}</bdi></small></span>
       ${today ? '<span class="d-now">היום</span>' : ''}
+      ${today ? '<span class="today-pin" aria-hidden="true">היום</span>' : ''}
       <span class="d-tools">${late ? `<span class="d-late" data-tip="יש כאן הזמנה באיחור" tabindex="0">${ic('clock','sm')}<span class="bsr">יש הזמנה באיחור</span></span>` : ''}
         ${orders.length ? `<span class="d-cnt">(${orders.length})</span>` : ''}
         ${orders.length > 2 ? `<button type="button" class="ibtn" data-day="${i}" aria-label="כל ההזמנות של היום">${ic('list','sm')}</button>` : ''}
@@ -3406,7 +3415,7 @@ function agenda(map){
   const days = DAYS.map((x, i) => [x, i]).filter(([x, i]) => x.mi === S.mi && ((map[i] || []).length || i === TODAY_I));
   if (!days.length) return '';
   let out = '', nowPlaced = false;
-  const nowLine = `<div class="now-line" role="separator" aria-label="היום, ${hebLabel(DAYS[TODAY_I])}">היום</div>`;
+  const nowLine = `<div class="now-line" role="separator" aria-label="היום, ${hebLabel(DAYS[TODAY_I])}"><b>${ic('cal','sm')}היום</b></div>`;
   days.forEach(([x, i]) => {
     if (!nowPlaced && i >= TODAY_I && DAYS[TODAY_I].mi === S.mi){ out += nowLine; nowPlaced = true; }
     const os = map[i] || [], late = os.some(isLate), print = cfg.flag('enable_batch_print_prep') && os.length;
