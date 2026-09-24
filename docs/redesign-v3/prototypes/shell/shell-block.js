@@ -440,7 +440,7 @@ function sync(){
   const L=live(), n=L.length; if(n<=1) all=true;
   area.classList.toggle('multi',n>1); area.classList.toggle('col',n>1&&!all);
   area.querySelectorAll('.nb-chip').forEach(c=>{ c.firstElementChild.textContent='+'+(n-1); c.setAttribute('aria-label',plural(n-1,'התראה נוספת','התראות נוספות')); c.setAttribute('aria-expanded',all); });
-  const add=menu.querySelector('[data-nb=add]'); if(add){ add.disabled=n>=3; add.querySelector('span').textContent=n>=3?'הוסף התראה נוספת (מקסימום 3)':'הוסף התראה נוספת'; }
+  const add=menu&&menu.querySelector('[data-nb=add]'); if(add){ add.disabled=n>=3; add.querySelector('span').textContent=n>=3?'הוסף התראה נוספת (מקסימום 3)':'הוסף התראה נוספת'; }
 }
 function add(kind){
   if(live().length>=3) return false; const d=DEMO[kind], k=KINDS[kind], id='nb'+(++seq);

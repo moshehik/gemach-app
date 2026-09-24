@@ -1,12 +1,12 @@
 {
- "generated": "2026-09-24T13:20:43.486Z",
+ "generated": "2026-09-24T13:26:55.470Z",
  "widths": [
   1440,
   1024,
   390
  ],
  "protos": {
-  "archetype-detail-card": {
+  "archetype-forms": {
    "style": {
     "390": [
      {
@@ -136,77 +136,36 @@
      },
      {
       "id": "tabs bar",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "4px",
-       "gap": "4px",
-       "border-top-left-radius": "14px",
-       "background-color": "rgb(228, 241, 251)",
-       "box.height": 52
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "0px",
-       "border-top-left-radius": "12px",
-       "font-size": "16px",
-       "font-weight": "500",
-       "line-height": "25.6px",
-       "color": "rgb(47, 74, 107)",
-       "background-color": "rgba(0, 0, 0, 0)",
-       "background-image": "none",
-       "border-top-color": "rgb(47, 74, 107)",
-       "box-shadow": "none",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab (on)",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "0px",
-       "border-top-left-radius": "12px",
-       "font-size": "16px",
-       "font-weight": "600",
-       "line-height": "25.6px",
-       "color": "rgb(15, 44, 82)",
-       "background-color": "rgb(255, 255, 255)",
-       "background-image": "none",
-       "border-top-color": "rgb(15, 44, 82)",
-       "box-shadow": "rgba(15, 44, 82, 0.12) 0px 1px 3px 0px",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab marker",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "20px",
-       "height": "20px",
-       "border-top-left-radius": "50%",
-       "box.height": 20
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "panel",
-      "status": "PASS",
-      "diffs": [],
+      "status": "FAIL",
+      "diffs": [
+       {
+        "k": "gap",
+        "sketch": "16px",
+        "proto": "24px"
+       }
+      ],
       "values": {
-       "gap": "16px",
+       "gap": "24px",
        "margin-top": "16px",
        "animation-name": "tabin",
        "animation-duration": "0.18s"
@@ -219,11 +178,11 @@
       "values": {
        "padding-top": "16px",
        "padding-inline-start": "16px",
-       "border-top-width": "2px",
+       "border-top-width": "1px",
        "border-top-color": "rgb(15, 44, 82)",
        "border-top-left-radius": "16px",
        "background-color": "rgb(255, 255, 255)",
-       "box-shadow": "rgba(15, 44, 82, 0.12) 0px 0px 0px 3px"
+       "box-shadow": "rgba(15, 44, 82, 0.04) 0px 1px 2px 0px"
       }
      },
      {
@@ -249,12 +208,18 @@
      },
      {
       "id": "label/value row",
-      "status": "PASS",
-      "diffs": [],
+      "status": "FAIL",
+      "diffs": [
+       {
+        "k": "border-bottom-color",
+        "sketch": "rgb(228, 241, 251)",
+        "proto": "rgb(10, 34, 66)"
+       }
+      ],
       "values": {
        "padding-top": "0px",
        "gap": "16px",
-       "border-bottom-color": "rgb(228, 241, 251)"
+       "border-bottom-color": "rgb(10, 34, 66)"
       }
      },
      {
@@ -293,25 +258,8 @@
      },
      {
       "id": "button sm",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "1px",
-       "border-top-left-radius": "12px",
-       "font-size": "15px",
-       "font-weight": "600",
-       "line-height": "24px",
-       "color": "rgb(0, 0, 0)",
-       "background-color": "rgb(251, 191, 169)",
-       "background-image": "none",
-       "border-top-color": "rgb(0, 0, 0)",
-       "box-shadow": "none",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "button lg",
@@ -320,16 +268,8 @@
      },
      {
       "id": "icon button",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "40px",
-       "height": "40px",
-       "border-top-left-radius": "12px",
-       "background-image": "none",
-       "border-top-color": "rgb(0, 0, 0)",
-       "box.height": 40
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "info tip",
@@ -344,13 +284,19 @@
      },
      {
       "id": "field input",
-      "status": "n/a (not on page)",
+      "status": "n/a (not in sketch)",
       "diffs": []
      },
      {
       "id": "field label",
-      "status": "n/a (not on page)",
-      "diffs": []
+      "status": "PASS",
+      "diffs": [],
+      "values": {
+       "font-size": "15px",
+       "font-weight": "500",
+       "color": "rgb(47, 74, 107)",
+       "margin-bottom": "8px"
+      }
      },
      {
       "id": "segmented",
@@ -359,7 +305,7 @@
      },
      {
       "id": "switch",
-      "status": "n/a (not on page)",
+      "status": "n/a (not in sketch)",
       "diffs": []
      },
      {
@@ -374,7 +320,7 @@
      },
      {
       "id": "list row",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -435,103 +381,53 @@
      },
      {
       "id": "status tag",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
       "id": "history card",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "16px",
-       "border-top-left-radius": "16px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history search",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "48px",
-       "border-top-left-radius": "14px",
-       "border-top-color": "rgb(169, 210, 240)",
-       "box.height": 48
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history filter btn",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "48px",
-       "font-size": "16px",
-       "font-weight": "600",
-       "border-top-left-radius": "14px",
-       "box.height": 48
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history day header",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "8px",
-       "padding-inline-start": "12px",
-       "border-top-left-radius": "12px",
-       "border-inline-start-width": "4px",
-       "background-color": "rgba(243, 249, 254, 0.96)",
-       "margin-bottom": "0px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history day title",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "font-size": "16px",
-       "font-weight": "700",
-       "color": "rgb(15, 44, 82)"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "border-top-color": "rgba(15, 44, 82, 0.12)",
-       "border-top-left-radius": "16px",
-       "animation-name": "rowin",
-       "animation-duration": "0.32s",
-       "animation-timing-function": "cubic-bezier(0.22, 1, 0.36, 1)"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry icon",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "40px",
-       "height": "40px",
-       "border-top-left-radius": "12px",
-       "box.height": 40
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry text",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "font-size": "16px",
-       "font-weight": "600"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history group gap",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "gap": "16px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "table head",
@@ -717,70 +613,23 @@
      },
      {
       "id": "tabs bar",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "4px",
-       "gap": "4px",
-       "border-top-left-radius": "14px",
-       "background-color": "rgb(228, 241, 251)",
-       "box.height": 52
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "0px",
-       "border-top-left-radius": "12px",
-       "font-size": "16px",
-       "font-weight": "500",
-       "line-height": "25.6px",
-       "color": "rgb(47, 74, 107)",
-       "background-color": "rgba(0, 0, 0, 0)",
-       "background-image": "none",
-       "border-top-color": "rgb(47, 74, 107)",
-       "box-shadow": "none",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab (on)",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "0px",
-       "border-top-left-radius": "12px",
-       "font-size": "16px",
-       "font-weight": "600",
-       "line-height": "25.6px",
-       "color": "rgb(15, 44, 82)",
-       "background-color": "rgb(255, 255, 255)",
-       "background-image": "none",
-       "border-top-color": "rgb(15, 44, 82)",
-       "box-shadow": "rgba(15, 44, 82, 0.12) 0px 1px 3px 0px",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab marker",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "20px",
-       "height": "20px",
-       "border-top-left-radius": "50%",
-       "box.height": 20
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "panel",
@@ -800,11 +649,11 @@
       "values": {
        "padding-top": "24px",
        "padding-inline-start": "24px",
-       "border-top-width": "2px",
+       "border-top-width": "1px",
        "border-top-color": "rgb(15, 44, 82)",
        "border-top-left-radius": "16px",
        "background-color": "rgb(255, 255, 255)",
-       "box-shadow": "rgba(15, 44, 82, 0.12) 0px 0px 0px 3px"
+       "box-shadow": "rgba(15, 44, 82, 0.04) 0px 1px 2px 0px"
       }
      },
      {
@@ -830,12 +679,18 @@
      },
      {
       "id": "label/value row",
-      "status": "PASS",
-      "diffs": [],
+      "status": "FAIL",
+      "diffs": [
+       {
+        "k": "border-bottom-color",
+        "sketch": "rgb(228, 241, 251)",
+        "proto": "rgb(10, 34, 66)"
+       }
+      ],
       "values": {
        "padding-top": "0px",
        "gap": "16px",
-       "border-bottom-color": "rgb(228, 241, 251)"
+       "border-bottom-color": "rgb(10, 34, 66)"
       }
      },
      {
@@ -874,25 +729,8 @@
      },
      {
       "id": "button sm",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "1px",
-       "border-top-left-radius": "12px",
-       "font-size": "15px",
-       "font-weight": "600",
-       "line-height": "24px",
-       "color": "rgb(0, 0, 0)",
-       "background-color": "rgb(251, 191, 169)",
-       "background-image": "none",
-       "border-top-color": "rgb(0, 0, 0)",
-       "box-shadow": "none",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "button lg",
@@ -901,16 +739,8 @@
      },
      {
       "id": "icon button",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "44px",
-       "height": "44px",
-       "border-top-left-radius": "14px",
-       "background-image": "none",
-       "border-top-color": "rgb(0, 0, 0)",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "info tip",
@@ -925,13 +755,19 @@
      },
      {
       "id": "field input",
-      "status": "n/a (not on page)",
+      "status": "n/a (not in sketch)",
       "diffs": []
      },
      {
       "id": "field label",
-      "status": "n/a (not on page)",
-      "diffs": []
+      "status": "PASS",
+      "diffs": [],
+      "values": {
+       "font-size": "15px",
+       "font-weight": "500",
+       "color": "rgb(47, 74, 107)",
+       "margin-bottom": "8px"
+      }
      },
      {
       "id": "segmented",
@@ -940,7 +776,7 @@
      },
      {
       "id": "switch",
-      "status": "n/a (not on page)",
+      "status": "n/a (not in sketch)",
       "diffs": []
      },
      {
@@ -955,7 +791,7 @@
      },
      {
       "id": "list row",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -1016,103 +852,53 @@
      },
      {
       "id": "status tag",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
       "id": "history card",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "24px",
-       "border-top-left-radius": "16px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history search",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "48px",
-       "border-top-left-radius": "14px",
-       "border-top-color": "rgb(169, 210, 240)",
-       "box.height": 48
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history filter btn",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "48px",
-       "font-size": "16px",
-       "font-weight": "600",
-       "border-top-left-radius": "14px",
-       "box.height": 48
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history day header",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "10px",
-       "padding-inline-start": "16px",
-       "border-top-left-radius": "12px",
-       "border-inline-start-width": "4px",
-       "background-color": "rgba(243, 249, 254, 0.96)",
-       "margin-bottom": "0px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history day title",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "font-size": "16px",
-       "font-weight": "700",
-       "color": "rgb(15, 44, 82)"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "border-top-color": "rgba(15, 44, 82, 0.12)",
-       "border-top-left-radius": "16px",
-       "animation-name": "rowin",
-       "animation-duration": "0.32s",
-       "animation-timing-function": "cubic-bezier(0.22, 1, 0.36, 1)"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry icon",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "40px",
-       "height": "40px",
-       "border-top-left-radius": "12px",
-       "box.height": 40
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry text",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "font-size": "16px",
-       "font-weight": "600"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history group gap",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "gap": "16px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "table head",
@@ -1305,70 +1091,23 @@
      },
      {
       "id": "tabs bar",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "4px",
-       "gap": "4px",
-       "border-top-left-radius": "14px",
-       "background-color": "rgb(228, 241, 251)",
-       "box.height": 52
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "0px",
-       "border-top-left-radius": "12px",
-       "font-size": "16px",
-       "font-weight": "500",
-       "line-height": "25.6px",
-       "color": "rgb(47, 74, 107)",
-       "background-color": "rgba(0, 0, 0, 0)",
-       "background-image": "none",
-       "border-top-color": "rgb(47, 74, 107)",
-       "box-shadow": "none",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab (on)",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "0px",
-       "border-top-left-radius": "12px",
-       "font-size": "16px",
-       "font-weight": "600",
-       "line-height": "25.6px",
-       "color": "rgb(15, 44, 82)",
-       "background-color": "rgb(255, 255, 255)",
-       "background-image": "none",
-       "border-top-color": "rgb(15, 44, 82)",
-       "box-shadow": "rgba(15, 44, 82, 0.12) 0px 1px 3px 0px",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "tab marker",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "20px",
-       "height": "20px",
-       "border-top-left-radius": "50%",
-       "box.height": 20
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "panel",
@@ -1388,11 +1127,11 @@
       "values": {
        "padding-top": "24px",
        "padding-inline-start": "24px",
-       "border-top-width": "2px",
+       "border-top-width": "1px",
        "border-top-color": "rgb(15, 44, 82)",
        "border-top-left-radius": "16px",
        "background-color": "rgb(255, 255, 255)",
-       "box-shadow": "rgba(15, 44, 82, 0.12) 0px 0px 0px 3px"
+       "box-shadow": "rgba(15, 44, 82, 0.04) 0px 1px 2px 0px"
       }
      },
      {
@@ -1418,12 +1157,18 @@
      },
      {
       "id": "label/value row",
-      "status": "PASS",
-      "diffs": [],
+      "status": "FAIL",
+      "diffs": [
+       {
+        "k": "border-bottom-color",
+        "sketch": "rgb(228, 241, 251)",
+        "proto": "rgb(10, 34, 66)"
+       }
+      ],
       "values": {
        "padding-top": "0px",
        "gap": "16px",
-       "border-bottom-color": "rgb(228, 241, 251)"
+       "border-bottom-color": "rgb(10, 34, 66)"
       }
      },
      {
@@ -1462,25 +1207,8 @@
      },
      {
       "id": "button sm",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "44px",
-       "padding-top": "8px",
-       "padding-inline-start": "16px",
-       "border-top-width": "1px",
-       "border-top-left-radius": "12px",
-       "font-size": "15px",
-       "font-weight": "600",
-       "line-height": "24px",
-       "color": "rgb(0, 0, 0)",
-       "background-color": "rgb(251, 191, 169)",
-       "background-image": "none",
-       "border-top-color": "rgb(0, 0, 0)",
-       "box-shadow": "none",
-       "gap": "8px",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "button lg",
@@ -1489,16 +1217,8 @@
      },
      {
       "id": "icon button",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "44px",
-       "height": "44px",
-       "border-top-left-radius": "14px",
-       "background-image": "none",
-       "border-top-color": "rgb(0, 0, 0)",
-       "box.height": 44
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "info tip",
@@ -1513,13 +1233,19 @@
      },
      {
       "id": "field input",
-      "status": "n/a (not on page)",
+      "status": "n/a (not in sketch)",
       "diffs": []
      },
      {
       "id": "field label",
-      "status": "n/a (not on page)",
-      "diffs": []
+      "status": "PASS",
+      "diffs": [],
+      "values": {
+       "font-size": "15px",
+       "font-weight": "500",
+       "color": "rgb(47, 74, 107)",
+       "margin-bottom": "8px"
+      }
      },
      {
       "id": "segmented",
@@ -1528,7 +1254,7 @@
      },
      {
       "id": "switch",
-      "status": "n/a (not on page)",
+      "status": "n/a (not in sketch)",
       "diffs": []
      },
      {
@@ -1543,7 +1269,7 @@
      },
      {
       "id": "list row",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
@@ -1604,103 +1330,53 @@
      },
      {
       "id": "status tag",
-      "status": "n/a (not in sketch)",
+      "status": "n/a (not on page)",
       "diffs": []
      },
      {
       "id": "history card",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "24px",
-       "border-top-left-radius": "16px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history search",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "48px",
-       "border-top-left-radius": "14px",
-       "border-top-color": "rgb(169, 210, 240)",
-       "box.height": 48
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history filter btn",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "height": "48px",
-       "font-size": "16px",
-       "font-weight": "600",
-       "border-top-left-radius": "14px",
-       "box.height": 48
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history day header",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "padding-top": "10px",
-       "padding-inline-start": "16px",
-       "border-top-left-radius": "12px",
-       "border-inline-start-width": "4px",
-       "background-color": "rgba(243, 249, 254, 0.96)",
-       "margin-bottom": "0px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history day title",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "font-size": "16px",
-       "font-weight": "700",
-       "color": "rgb(15, 44, 82)"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "border-top-color": "rgba(15, 44, 82, 0.12)",
-       "border-top-left-radius": "16px",
-       "animation-name": "rowin",
-       "animation-duration": "0.32s",
-       "animation-timing-function": "cubic-bezier(0.22, 1, 0.36, 1)"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry icon",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "width": "40px",
-       "height": "40px",
-       "border-top-left-radius": "12px",
-       "box.height": 40
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history entry text",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "font-size": "16px",
-       "font-weight": "600"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "history group gap",
-      "status": "PASS",
-      "diffs": [],
-      "values": {
-       "gap": "16px"
-      }
+      "status": "n/a (not on page)",
+      "diffs": []
      },
      {
       "id": "table head",
@@ -1826,84 +1502,9 @@
      }
     },
     {
-     "id": "tab",
-     "status": "PASS",
-     "diffs": [],
-     "values": {
-      "initial": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "all",
-       "transition-duration": "0.15s",
-       "transition-timing-function": "ease"
-      },
-      "hover": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "all",
-       "transition-duration": "0.15s",
-       "transition-timing-function": "ease"
-      }
-     }
-    },
-    {
      "id": "button",
      "status": "n/a",
      "diffs": []
-    },
-    {
-     "id": "button sm",
-     "status": "PASS",
-     "diffs": [],
-     "values": {
-      "initial": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "background-color, color, border-color",
-       "transition-duration": "0.18s, 0.18s, 0.18s",
-       "transition-timing-function": "ease, ease, ease"
-      },
-      "hover": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "background-color, color, border-color",
-       "transition-duration": "0.18s, 0.18s, 0.18s",
-       "transition-timing-function": "ease, ease, ease"
-      }
-     }
-    },
-    {
-     "id": "icon button",
-     "status": "PASS",
-     "diffs": [],
-     "values": {
-      "initial": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "background-color, color, border-color",
-       "transition-duration": "0.18s, 0.18s, 0.18s",
-       "transition-timing-function": "ease, ease, ease"
-      },
-      "hover": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "background-color, color, border-color",
-       "transition-duration": "0.18s, 0.18s, 0.18s",
-       "transition-timing-function": "ease, ease, ease"
-      }
-     }
     },
     {
      "id": "info tip",
@@ -1935,11 +1536,7 @@
      "status": "PASS",
      "diffs": [],
      "values": {
-      "entering": {
-       "animation-name": "tabin",
-       "animation-duration": "0.18s",
-       "animation-timing-function": "cubic-bezier(0.22, 1, 0.36, 1)"
-      }
+      "entering": null
      }
     },
     {
@@ -1947,15 +1544,7 @@
      "status": "PASS",
      "diffs": [],
      "values": {
-      "on": {
-       "animation-name": "none",
-       "animation-duration": "0s",
-       "animation-timing-function": "ease",
-       "animation-iteration-count": "1",
-       "transition-property": "all",
-       "transition-duration": "0.15s",
-       "transition-timing-function": "ease"
-      }
+      "on": null
      }
     },
     {
@@ -1974,11 +1563,7 @@
      "status": "PASS",
      "diffs": [],
      "values": {
-      "on": {
-       "transition-property": "grid-template-rows",
-       "transition-duration": "0.3s",
-       "transition-timing-function": "cubic-bezier(0.22, 1, 0.36, 1)"
-      }
+      "on": null
      }
     },
     {
@@ -1998,199 +1583,19 @@
     {
      "w": 1440,
      "state": "default",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "tab 1",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "tab 2",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "tab 3",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "tab 4",
-     "n": 4,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "tab 5",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "details edit",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "bank form",
-     "n": 4,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "new customer",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "new customer (errors)",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 1440,
-     "state": "mail dialog",
-     "n": 3,
+     "n": 9,
      "bad": []
     },
     {
      "w": 1024,
      "state": "default",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "tab 1",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "tab 2",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "tab 3",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "tab 4",
-     "n": 4,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "tab 5",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "details edit",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "bank form",
-     "n": 4,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "new customer",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "new customer (errors)",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 1024,
-     "state": "mail dialog",
-     "n": 3,
+     "n": 9,
      "bad": []
     },
     {
      "w": 390,
      "state": "default",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "tab 1",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "tab 2",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "tab 3",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "tab 4",
-     "n": 4,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "tab 5",
-     "n": 0,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "details edit",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "bank form",
-     "n": 4,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "new customer",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "new customer (errors)",
-     "n": 10,
-     "bad": []
-    },
-    {
-     "w": 390,
-     "state": "mail dialog",
-     "n": 3,
+     "n": 9,
      "bad": []
     }
    ],
@@ -2225,7 +1630,7 @@
     ],
     "pagePhysical": 0,
     "shellPhysical": 0,
-    "shellSha": "v1 sha:35e1619a82ed"
+    "shellSha": "v1 sha:bb876a8d4d3d"
    },
    "errors": [],
    "keyframes": {
@@ -2329,9 +1734,6 @@
      "fade",
      "pop",
      "tabin",
-     "popin",
-     "icnpop",
-     "cartbounce",
      "snpulse",
      "barDraw",
      "barShine",
@@ -2360,12 +1762,9 @@
      "ia-squash",
      "ia-snip",
      "ia-wave",
-     "ia-undo",
      "ia-draw",
      "ia-drive",
-     "ia-cart",
      "dk-ring",
-     "ia-send",
      "ia-spinx",
      "ia-spinp",
      "ia-flipy",
@@ -2374,7 +1773,7 @@
     ]
    },
    "contrast": {
-    "sampled": 47,
+    "sampled": 35,
     "bad": [],
     "badCount": 0
    }
