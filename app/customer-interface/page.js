@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
 import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
-import { calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
+import { calculatePaymentStatus } from '@/lib/orderStatus';
+import { V3Page, Card, Btn, IconBtn, Chip, Badge, Field, Tip, Dialog, Empty, Icon } from '@/app/v3/ui/components';
 import './kiosk.css';
 
 // 32/33 - קיוסק לקוח: מותנה ב-kiosk_customer_self_service / kiosk_allow_self_order (כבוי = מוסתר/דורש התחברות)
@@ -69,9 +70,29 @@ function ModelAvatar({ model, size, showImage }) {
     ? `${parts[0][0]}${parts[1][0]}`
     : (/^\d+$/.test(parts[0] || '') ? parts[0].slice(0, 3) : name.slice(0, 2)) || '?';
   return (
-    <div className={`ka-avatar ${size}`} title={name}>
+    <div className={`v3k-avatar v3k-avatar--${size}`} title={name}>
       {showImage && model.imageUrl ? <KioskThumbImg model={model} /> : <span>{initials}</span>}
     </div>
+  );
+}
+
+// כפתור מידה (pill): מספר יחידות פנויות. לחיצה פותחת את חלונית ההזמנות לאותה מידה.
+// כשהמסך נעול זה רק תווית (הלחיצה בכלל לא עושה דבר בנעילה - handleModelDoubleClick חוזר מיד).
+function SizePill({ sName, available, locked, onPick }) {
+  const cls = `v3k-pill ${available > 0 ? 'is-avail' : 'is-out'}`;
+  const label = `מידה ${sName}: ${available} פנויות`;
+  const inner = (
+    <>
+      <bdi>{sName}</bdi>
+      <span className="v3k-pill__n"><bdi>{available}</bdi></span>
+    </>
+  );
+  if (locked) return <span className={`${cls} is-static`} title={label}>{inner}</span>;
+  return (
+    <button type="button" className={cls} title={label} aria-label={label}
+      onClick={(e) => { e.stopPropagation(); onPick(); }}>
+      {inner}
+    </button>
   );
 }
 
@@ -94,10 +115,9 @@ const getMonthsForYear = (year) => {
   ];
 };
 
-// לוח שנה עברי מוטמע (inline) של מסך הלקוח — עיצוב 1:1 מהמוקאפ (אטלייה חמה),
-// במקום הפופאפ של HebrewDatePicker. הבחירה מתעדכנת מיידית (selects/גריד);
-// המעבר לשלב 2 נעשה רק בכפתור "הצג מלאי".
-function AtelierCalendar({ selectedDate, onSelect }) {
+// לוח שנה עברי מוטמע (inline) של מסך הלקוח, במקום הפופאפ של HebrewDatePicker.
+// כל בחירה (selects / גריד / "היום") מעדכנת את התאריך וגם מעבירה לשלב 2 (onSelect בעמוד).
+function KioskCalendar({ selectedDate, onSelect }) {
   const selHd = useMemo(() => {
     try {
       const d = new Date(selectedDate);
@@ -205,78 +225,69 @@ function AtelierCalendar({ selectedDate, onSelect }) {
 
   return (
     <>
-      <div className="ka-hebrew-selects">
-        <div>
-          <label>יום</label>
-          <select data-agy-id="kiosk_cal_day_select" value={selHd.getDate()}
-            onChange={e => changeSelection(parseInt(e.target.value), selHd.getMonth(), selHd.getFullYear())}>
-            {Array.from({ length: HDate.daysInMonth(selHd.getMonth(), selHd.getFullYear()) }, (_, i) => i + 1).map(d => (
-              <option key={d} value={d}>{HEBREW_DAYS[d]}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>חודש</label>
-          <select data-agy-id="kiosk_cal_month_select" value={selHd.getMonth()}
-            onChange={e => changeSelection(selHd.getDate(), parseInt(e.target.value), selHd.getFullYear())}>
-            {getMonthsForYear(selHd.getFullYear()).map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>שנה</label>
-          <select data-agy-id="kiosk_cal_year_select" value={selHd.getFullYear()}
-            onChange={e => changeSelection(selHd.getDate(), selHd.getMonth(), parseInt(e.target.value))}>
-            {yearOptions.map(y => (
-              <option key={y} value={y}>{gematriya(y)}</option>
-            ))}
-          </select>
-        </div>
+      <div className="v3k-cal-selects">
+        <Field as="select" label="יום" data-agy-id="kiosk_cal_day_select" value={selHd.getDate()}
+          onChange={e => changeSelection(parseInt(e.target.value), selHd.getMonth(), selHd.getFullYear())}>
+          {Array.from({ length: HDate.daysInMonth(selHd.getMonth(), selHd.getFullYear()) }, (_, i) => i + 1).map(d => (
+            <option key={d} value={d}>{HEBREW_DAYS[d]}</option>
+          ))}
+        </Field>
+        <Field as="select" label="חודש" data-agy-id="kiosk_cal_month_select" value={selHd.getMonth()}
+          onChange={e => changeSelection(selHd.getDate(), parseInt(e.target.value), selHd.getFullYear())}>
+          {getMonthsForYear(selHd.getFullYear()).map(m => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </Field>
+        <Field as="select" label="שנה" data-agy-id="kiosk_cal_year_select" value={selHd.getFullYear()}
+          onChange={e => changeSelection(selHd.getDate(), selHd.getMonth(), parseInt(e.target.value))}>
+          {yearOptions.map(y => (
+            <option key={y} value={y}>{gematriya(y)}</option>
+          ))}
+        </Field>
       </div>
 
-      <div className="ka-calendar">
-        <div className="ka-cal-head">
-          <button type="button" className="ka-icon-btn" title="חודש קודם" onClick={prevMonth}>
-            <svg className="icon"><use href="#i-chevron-end" /></svg>
-          </button>
-          <span>{monthsToShow[0].label} {gematriya(monthsToShow[0].year)} - {monthsToShow[monthsToShow.length - 1].label} {gematriya(monthsToShow[monthsToShow.length - 1].year)}</span>
-          <button type="button" className="ka-icon-btn" title="חודש הבא" onClick={nextMonth}>
-            <svg className="icon"><use href="#i-chevron-start" /></svg>
-          </button>
+      <div className="v3k-cal">
+        <div className="v3k-cal__head">
+          <IconBtn icon="chevron-end" label="לחודש הקודם" size="lg" onClick={prevMonth} />
+          <span className="v3k-cal__range">{monthsToShow[0].label} {gematriya(monthsToShow[0].year)} - {monthsToShow[monthsToShow.length - 1].label} {gematriya(monthsToShow[monthsToShow.length - 1].year)}</span>
+          <IconBtn icon="chevron-start" label="לחודש הבא" size="lg" onClick={nextMonth} />
         </div>
-        {monthsToShow.map(({ month, year, label }, mi) => (
-          <div key={mi} className="ka-cal-month">
-            <div className="ka-cal-month-label">{label} {gematriya(year)}</div>
-            <div className="ka-cal-weekdays">
-              <span>א</span><span>ב</span><span>ג</span><span>ד</span><span>ה</span><span>ו</span><span>ש</span>
+        <div className="v3k-cal__months">
+          {monthsToShow.map(({ month, year, label }, mi) => (
+            <div key={mi} className="v3k-cal__month">
+              <div className="v3k-cal__month-label">{label} {gematriya(year)}</div>
+              <div className="v3k-cal__weekdays" aria-hidden="true">
+                <span>א</span><span>ב</span><span>ג</span><span>ד</span><span>ה</span><span>ו</span><span>ש</span>
+              </div>
+              <div className="v3k-cal__grid">
+                {buildMonthCells(month, year).map(({ hd, muted }, idx) => {
+                  const abs = hd.abs();
+                  const isSelected = abs === selAbs;
+                  const isToday = todayAbs !== null && abs === todayAbs;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`v3k-cal__day${muted ? ' is-muted' : ''}${isSelected ? ' is-selected' : ''}${isToday && !isSelected ? ' is-today' : ''}`}
+                      onClick={muted ? undefined : () => applyHdate(hd)}
+                      tabIndex={muted ? -1 : 0}
+                      aria-pressed={muted ? undefined : isSelected}
+                      aria-current={isToday ? 'date' : undefined}
+                      aria-disabled={muted || undefined}
+                      aria-label={`${HEBREW_DAYS[hd.getDate()]} (${hd.greg().toLocaleDateString('he-IL')})`}
+                    >
+                      <span>{HEBREW_DAYS[hd.getDate()]}</span>
+                      <span className="g"><bdi>{hd.greg().getDate()}</bdi></span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="ka-cal-grid">
-              {buildMonthCells(month, year).map(({ hd, muted }, idx) => {
-                const abs = hd.abs();
-                const isSelected = abs === selAbs;
-                const isToday = todayAbs !== null && abs === todayAbs;
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    className={`ka-cal-day${muted ? ' muted' : ''}${isSelected ? ' selected' : ''}${isToday && !isSelected ? ' today' : ''}`}
-                    onClick={muted ? undefined : () => applyHdate(hd)}
-                    tabIndex={muted ? -1 : 0}
-                  >
-                    <span>{HEBREW_DAYS[hd.getDate()]}</span>
-                    <span className="g">{hd.greg().getDate()}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        <div className="ka-cal-foot">
-          <span className="ka-parsha">{footStr}</span>
-          <button type="button" data-agy-id="kiosk_cal_clear_btn" onClick={() => applyHdate(new HDate())}>
-            <svg className="icon"><use href="#i-x" /></svg>ניקוי
-          </button>
+          ))}
+        </div>
+        <div className="v3k-cal__foot">
+          <span className="v3k-cal__parsha">{footStr}</span>
+          <Btn variant="quiet" icon="calendar" data-agy-id="kiosk_cal_clear_btn" onClick={() => applyHdate(new HDate())}>היום</Btn>
         </div>
       </div>
     </>
@@ -371,8 +382,8 @@ export default function CustomerInventoryViewer() {
     return () => document.body.classList.remove('hide-global-nav');
   }, [isLocked]);
 
-  // רקע "נייר חם" של האטלייה על כל אזור התוכן (העמוד עצמו מוגבל ברוחב) —
-  // ראה body.katelier-bg בקובץ kiosk.css. מוסר אוטומטית בעזיבת המסך.
+  // רקע העמוד על כל אזור התוכן (העמוד עצמו מוגבל ברוחב) והסרת ה-padding של .content —
+  // ראה body.katelier-bg בקובץ kiosk.css (שם המחלקה נשמר, הוא חלק מהחוזה). מוסר בעזיבת המסך.
   useEffect(() => {
     document.body.classList.add('katelier-bg');
     return () => document.body.classList.remove('katelier-bg');
@@ -784,7 +795,7 @@ export default function CustomerInventoryViewer() {
   const handleCatalogPrint = (modelsToPrint) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert("נא לאפשר חלונות קופצים (Pop-ups) כדי להדפיס");
+      alert("כדי להדפיס, צריך לאפשר חלונות קופצים בדפדפן");
       return;
     }
 
@@ -822,6 +833,9 @@ export default function CustomerInventoryViewer() {
       `;
     });
 
+    // חלון ההדפסה הוא מסמך נפרד (popup) שלא טוען את ה-CSS/tokens של האתר, ומיועד לנייר A4:
+    // לכן הצבעים והגדלים בו קשיחים ונייטרליים-להדפסה בכוונה (חריג מכלל "בלי ערכים קשיחים", R2).
+    // התוכן והמלל שלו הם חוזה (contracts/customer-interface.md §10) - לא משנים.
     const html = `
       <!DOCTYPE html>
       <html dir="rtl" lang="he">
@@ -901,29 +915,28 @@ export default function CustomerInventoryViewer() {
     }
 
     return (
-      <div key={idx} className={`ka-bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+      <div key={idx} className={`v3k-bubble ${msg.role === 'user' ? 'is-user' : 'is-assistant'}`}>
         <div>{displayContent}</div>
         {msg.role === 'assistant' && isoDateMatch && !filterMatchStr && (
-          <div>
-            <button
-              type="button"
-              className="ka-quick-chip"
+          <div className="v3k-bubble__acts">
+            <Chip
+              variant="info"
+              icon="calendar"
               onClick={(e) => {
                 e.preventDefault();
                 setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
                 setStage(2);
               }}
             >
-              <svg className="icon"><use href="#i-calendar" /></svg>
-              הצג מלאי לתאריך {getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))}
-            </button>
+              הצגת שמלות לתאריך {getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))}
+            </Chip>
           </div>
         )}
         {msg.role === 'assistant' && filterMatchStr && (
-          <div>
-            <button
-              type="button"
-              className="ka-quick-chip"
+          <div className="v3k-bubble__acts">
+            <Chip
+              variant="info"
+              icon="search"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -934,9 +947,8 @@ export default function CustomerInventoryViewer() {
                 setStage(2);
               }}
             >
-              <svg className="icon"><use href="#i-search" /></svg>
-              סנן והצג: {filterMatchStr} {isoDateMatch ? `(לתאריך ${getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))})` : ''}
-            </button>
+              הצגת התוצאות: {filterMatchStr} {isoDateMatch ? `(לתאריך ${getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))})` : ''}
+            </Chip>
           </div>
         )}
       </div>
@@ -945,480 +957,481 @@ export default function CustomerInventoryViewer() {
 
   // כרטיס הצ'אט המלא של העוזר החכם (משותף לשלב 1 ולשלב 2)
   const renderAiChatCard = (onClose) => (
-    <div className="ka-card ka-card-pad ai-feature-element" style={{ width: '100%' }}>
-      <div className="ka-assist-head">
-        <div className="ka-assist-title">
-          <div className="ka-glow"><svg className="icon"><use href="#i-star" /></svg></div>
-          העוזר החכם
-        </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button data-agy-id="new_ai_chat_btn" type="button" className="ka-icon-btn" title="שיחה חדשה"
+    <Card
+      className="ai-feature-element v3k-chat"
+      icon="sparkles"
+      title="העוזר החכם"
+      tip="העוזר עוזר לחפש שמלות לפי תיאור. הוא לא מוסר מידע על לקוחות אחרים."
+      actions={(
+        <div className="v3-cluster">
+          <IconBtn data-agy-id="new_ai_chat_btn" icon="plus" label="שיחה חדשה"
             onClick={() => setAiChats(prev => ({
               ...prev,
               [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }]
-            }))}>
-            <svg className="icon"><use href="#i-plus" /></svg>
-          </button>
+            }))} />
           {onClose && (
-            <button data-agy-id="close_ai_chat_btn" type="button" className="ka-icon-btn" title="סגור" onClick={onClose}>
-              <svg className="icon"><use href="#i-x" /></svg>
-            </button>
+            <IconBtn data-agy-id="close_ai_chat_btn" icon="x" label="סגירת העוזר" onClick={onClose} />
           )}
         </div>
-      </div>
-
-      <div className="ka-chat-thread">
+      )}
+    >
+      <div className="v3k-chat__thread" role="log" aria-live="polite">
         {aiMessages.slice(1).map(renderAiBubble)}
         {aiLoading && (
-          <div className="ka-bubble assistant" style={{ padding: 0 }}>
-            <div className="ka-typing"><span></span><span></span><span></span></div>
+          <div className="v3k-bubble is-assistant">
+            <div className="v3k-typing" aria-label="העוזר כותב"><span></span><span></span><span></span></div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      <form onSubmit={handleAiSubmit} className="ka-assist-input-row">
+      <form onSubmit={handleAiSubmit} className="v3k-chat__form">
         <input
           data-agy-id="ai_chat_input"
+          className="v3-input"
           type="text"
+          aria-label="מה לחפש"
           value={aiInput}
           onChange={e => setAiInput(e.target.value)}
           disabled={aiLoading}
-          placeholder="מה תרצה לחפש?"
+          placeholder="כתבו כאן מה מחפשים"
         />
-        <button data-agy-id="ai_chat_submit_btn" type="submit" className="ka-icon-btn primary" disabled={aiLoading || !aiInput.trim()} title="שלח">
-          {aiLoading ? <span className="ka-spinner sm" style={{ borderTopColor: '#fff' }} /> : <svg className="icon"><use href="#ka-i-send" /></svg>}
-        </button>
+        <IconBtn data-agy-id="ai_chat_submit_btn" type="submit" variant="primary" icon="send" label="שליחה" loading={aiLoading} disabled={!aiInput.trim()} />
       </form>
+    </Card>
+  );
+
+  // תיאור הדגם בשורה/כרטיס: תגיות (קידומת ברקוד וקטגוריה). ללא כפילות עם העיגול.
+  const renderModelTags = (model) => (
+    <div className="v3k-tags">
+      {model.barcodePrefix && <Chip><bdi>#{model.barcodePrefix}</bdi></Chip>}
+      {model.priceCategory && <Chip variant={model.priceCategory !== 'כללי' ? 'info' : undefined}>{model.priceCategory}</Chip>}
     </div>
   );
 
+  const renderAvailability = (totalAvailable) => (
+    <div className={`v3k-avail ${totalAvailable > 0 ? 'is-ok' : 'is-out'}`}>
+      <Icon name={totalAvailable > 0 ? 'check-circle' : 'alert-tri'} />
+      {totalAvailable > 0 ? <span><bdi>{totalAvailable}</bdi> פנויות</span> : <span>אין פנויות בתאריך הזה</span>}
+    </div>
+  );
+
+  const renderSizePills = (model, sizesArray, visibleSizesArr) => (
+    <div className="v3k-pills">
+      {visibleSizesArr.length === 0 ? (
+        <span className="v3k-pills__none">{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מידות פנויות'}</span>
+      ) : (
+        visibleSizesArr.map(([sName, sData]) => (
+          <SizePill key={sName} sName={sName} available={sData.available} locked={isLocked}
+            onPick={() => handleModelDoubleClick(model, sName)} />
+        ))
+      )}
+    </div>
+  );
+
+  const renderPrintModelBtn = (model, className) => (
+    <IconBtn icon="printer" label="הדפסת השמלה הזו" className={className}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (isLocked) { printModelRef.current = model; setUnlockIntent('print'); setShowUnlockModal(true); return; }
+        handleCatalogPrint([model]);
+      }} />
+  );
+
+  const clearFilters = () => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); };
+
   return (
-    <div data-agy-id="customer_inventory_main_container" className="katelier">
+    <V3Page page={false} data-agy-id="customer_inventory_main_container" className={`v3k${isLocked ? ' is-locked' : ''}`}>
 
-      {/* אייקונים שקיימים במוקאפ אך לא בספרייט הגלובלי (IconSprite.js) */}
-      <svg style={{ display: 'none' }} aria-hidden="true">
-        <symbol id="ka-i-send" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-6z" /></symbol>
-        <symbol id="ka-i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M3 16h18M10 4v16" /></symbol>
-        <symbol id="ka-i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4 2v-8z" /></symbol>
-      </svg>
-
-      {/* Topbar: brand + 2-step stepper (row1, always shown); row2 (results
-          toolbar) only renders on stage 2 — a purely visual layer over the
-          existing `stage` state. */}
-      <div className="ka-topbar">
-        <div className="ka-topbar-row1">
-          <div className="ka-brand">
-            <div className="ka-brand-mark"><svg className="icon"><use href="#i-bag" /></svg></div>
-            <div>עמדת לקוחות</div>
-          </div>
-          <div className="ka-stepper">
-            <button type="button" className={`ka-step-btn${stage > 1 ? ' done' : ''}${stage === 1 ? ' current' : ''}`} onClick={() => setStage(1)}>
-              <span className="num">
-                {stage > 1 ? <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg> : '1'}
-              </span>
-              שלב 1 · בחירת תאריך
-            </button>
-            <div className="ka-step-sep" />
-            <button type="button" className={`ka-step-btn${stage === 2 ? ' current' : ''}`} onClick={() => setStage(2)}>
-              <span className="num">2</span>
-              שלב 2 · קטלוג ותוצאות
-            </button>
-          </div>
+      {/* סרגל עליון: מותג + שני השלבים. שורת הכלים של שלב 2 נמצאת מתחתיו. */}
+      <header className="v3k-bar">
+        <div className="v3k-brand">
+          <span className="v3k-brand__mark"><Icon name="bag" size="lg" /></span>
+          <span className="v3k-brand__text">
+            <b>גמ"ח שמלות</b>
+            <small>בוחרים שמלה לאירוע</small>
+          </span>
         </div>
+        <nav className="v3k-steps" aria-label="שלבי הבחירה">
+          <button type="button" className={`v3k-step${stage === 1 ? ' is-current' : ''}${stage > 1 ? ' is-done' : ''}`}
+            aria-current={stage === 1 ? 'step' : undefined} onClick={() => setStage(1)}>
+            <span className="v3k-step__num">{stage > 1 ? <Icon name="check" size="sm" /> : '1'}</span>
+            תאריך האירוע
+          </button>
+          <span className="v3k-step__sep" aria-hidden="true" />
+          <button type="button" className={`v3k-step${stage === 2 ? ' is-current' : ''}`}
+            aria-current={stage === 2 ? 'step' : undefined} onClick={() => setStage(2)}>
+            <span className="v3k-step__num">2</span>
+            השמלות הפנויות
+          </button>
+        </nav>
+      </header>
 
-        {stage === 2 && (
-          <div className="ka-topbar-row2">
-            <h2 className="ka-results-title">
-              <svg className="icon"><use href="#i-bag" /></svg>
-              קטלוג שמלות זמינות
-            </h2>
-            <span className="ka-date-chip">
-              <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-calendar" /></svg>
-              {getHebrewDateString(new Date(selectedDate))} ({(new Date(selectedDate)).toLocaleDateString('he-IL')})
+      {stage === 2 && (
+        <Card className="v3k-tools">
+          <div className="v3k-tools__top">
+            <h2 className="v3k-title"><Icon name="bag" size="lg" />השמלות הפנויות</h2>
+            <Chip variant="info" icon="calendar">
+              {getHebrewDateString(new Date(selectedDate))} (<bdi>{(new Date(selectedDate)).toLocaleDateString('he-IL')}</bdi>)
+            </Chip>
+            <span data-agy-id="catalog_results_count" className="v3k-count">
+              <bdi>{displayDresses.length}</bdi> דגמים · <b><bdi>{grandTotalItems}</bdi> פנויות</b>
             </span>
-            <span data-agy-id="catalog_results_count" className="ka-count-line">
-              {displayDresses.length} דגמים · <span className="good">{grandTotalItems} פנויות</span>
-            </span>
+          </div>
 
+          <div className="v3k-tools__row">
             {aiEnabled && (
               isAiChatVisible ? (
-                <button data-agy-id="catalog_close_ai_btn" type="button" className="ai-feature-element ka-ask-active"
+                <Btn data-agy-id="catalog_close_ai_btn" size="lg" icon="sparkles" className="ai-feature-element v3k-ask-active"
                   onClick={() => setIsAiChatVisible(false)}>
-                  <svg className="icon"><use href="#i-star" /></svg>
-                  העוזר החכם פעיל - לחץ לסגירה
-                </button>
+                  העוזר החכם פעיל · לסגירה
+                </Btn>
               ) : (
-                <form onSubmit={handleAiSubmit} className="ai-feature-element ka-ai-ask">
-                  <svg className="icon"><use href="#i-star" /></svg>
+                <form onSubmit={handleAiSubmit} className="ai-feature-element v3k-ask">
+                  <Icon name="sparkles" size="lg" />
                   <input
                     data-agy-id="catalog_ai_input"
                     type="text"
-                    placeholder="שאל את ה-AI..."
+                    aria-label="שאלה לעוזר החכם"
+                    placeholder="שואלים את העוזר החכם..."
                     value={aiInput}
                     onChange={e => setAiInput(e.target.value)}
                     disabled={aiLoading}
                   />
+                  <IconBtn type="submit" variant="primary" icon="send" label="שליחה" disabled={aiLoading || !aiInput.trim()} />
                 </form>
               ))}
 
-            <button data-agy-id="toggle_sidebar_btn" type="button" className="ka-btn-soft"
+            <Btn data-agy-id="toggle_sidebar_btn" size="lg" icon="category" aria-expanded={sidebarOpen}
               onClick={() => setSidebarOpen(o => !o)}>
-              <svg className="icon"><use href="#ka-i-filter" /></svg>
               סינון ותצוגה
-              {(search || selectedCategories.length > 0 || selectedSizes.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--terracotta)', display: 'inline-block' }} />}
-            </button>
+              {(search || selectedCategories.length > 0 || selectedSizes.length > 0) && (
+                <Badge variant="gold" aria-label="יש סינון פעיל">{(search ? 1 : 0) + selectedCategories.length + selectedSizes.length}</Badge>
+              )}
+            </Btn>
 
-            <div className="ka-zoom-popover-wrap" ref={zoomPopoverRef}>
-              <button data-agy-id="zoom_toggle_btn" type="button" className="ka-icon-btn" title="גודל תצוגה"
+            <div className="v3k-zoom" ref={zoomPopoverRef}>
+              <Btn data-agy-id="zoom_toggle_btn" size="lg" icon="expand" aria-expanded={zoomPopoverOpen} aria-haspopup="true"
                 onClick={() => setZoomPopoverOpen(o => !o)}>
-                <svg className="icon"><use href="#i-search" /></svg>
-              </button>
+                גודל התצוגה
+              </Btn>
               {zoomPopoverOpen && (
-                <div className="ka-zoom-popover">
-                  <div className="ka-slider-field">
-                    <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
-                    <input
-                      data-agy-id="zoom_range_input"
-                      type="range"
-                      min="0.5" max="1.5" step="0.1"
-                      value={zoomLevel}
-                      onChange={e => {
-                        const val = parseFloat(e.target.value);
-                        setZoomLevel(val);
-                        localStorage.setItem('ka_zoom_level', String(val));
-                      }}
-                    />
-                    <div className="s-ticks">
-                      <span>קטן</span><span>גדול</span>
-                    </div>
-                  </div>
+                <div className="v3k-zoom__pop">
+                  <div className="v3k-zoom__head"><label htmlFor="v3k-zoom-range">גודל התצוגה</label><b><bdi>{Math.round(zoomLevel * 100)}%</bdi></b></div>
+                  <input
+                    id="v3k-zoom-range"
+                    className="v3k-range"
+                    data-agy-id="zoom_range_input"
+                    type="range"
+                    min="0.5" max="1.5" step="0.1"
+                    value={zoomLevel}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value);
+                      setZoomLevel(val);
+                      localStorage.setItem('ka_zoom_level', String(val));
+                    }}
+                  />
+                  <div className="v3k-zoom__ticks"><span>קטן</span><span>גדול</span></div>
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="ka-action-cluster">
-              <button data-agy-id="exit_to_system_btn" type="button" className="ka-icon-btn"
-                onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
-                <svg className="icon"><use href="#i-logout" /></svg>
-              </button>
-              <button data-agy-id="new_search_btn" type="button" className="ka-icon-btn" onClick={() => setStage(1)} title="חיפוש חדש">
-                <svg className="icon"><use href="#i-search" /></svg>
-              </button>
-              <button data-agy-id="refresh_inventory_btn" type="button" className="ka-icon-btn" onClick={fetchInventory} title="רענון מלאי">
-                <svg className="icon"><use href="#i-refresh" /></svg>
-              </button>
-              <button data-agy-id="print_catalog_btn" type="button" className="ka-icon-btn"
-                onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }}
-                title={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'}>
-                <svg className="icon"><use href="#i-printer" /></svg>
-              </button>
+          <div className="v3k-tools__row v3k-tools__row--end">
+            <div className="v3k-actions">
+              <Btn data-agy-id="new_search_btn" size="lg" icon="search" onClick={() => setStage(1)}>חיפוש חדש</Btn>
+              <Btn data-agy-id="refresh_inventory_btn" size="lg" icon="refresh" onClick={fetchInventory}>רענון</Btn>
+              <Btn data-agy-id="print_catalog_btn" size="lg" icon="printer"
+                onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }}>
+                {isLocked ? 'הדפסה באישור עובד' : 'הדפסה'}
+              </Btn>
+            </div>
+            <div className="v3k-staff">
+              <span className="v3k-staff__label">לצוות
+                <Tip label="מידע על כפתורי הצוות">
+                  {isLocked
+                    ? 'המסך נעול ללקוחה. כדי לצאת או לשחרר צריך אישור של עובד.'
+                    : 'נעילת המסך עוברת למסך מלא. יציאה ממנו (Esc) מבקשת אישור עובד מחדש.'}
+                </Tip>
+              </span>
+              <Btn data-agy-id="exit_to_system_btn" variant="quiet" size="lg" icon="logout"
+                onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }}>
+                חזרה למערכת
+              </Btn>
               {isLocked ? (
-                <button data-agy-id="unlock_screen_btn" type="button" className="ka-icon-btn danger"
-                  onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }} title="שחרור מסך">
-                  <svg className="icon"><use href="#i-lock" /></svg>
-                </button>
+                <Btn data-agy-id="unlock_screen_btn" variant="danger" size="lg" icon="unlock"
+                  onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }}>
+                  שחרור המסך
+                </Btn>
               ) : (
-                <button data-agy-id="lock_screen_btn" type="button" className="ka-icon-btn danger" onClick={() => {
+                <Btn data-agy-id="lock_screen_btn" variant="danger" size="lg" icon="lock" onClick={() => {
                   // The orders modal links into staff order pages — never leave it up on a locked kiosk.
                   setShowOrdersModal(false);
                   setIsLocked(true);
                   if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen().catch(err => console.warn(err));
                   }
-                }} title="נעילת מסך ללקוח — מעבר למסך מלא, יציאה (Esc) דורשת אישור עובד מחדש">
-                  <svg className="icon"><use href="#i-lock" /></svg>
-                </button>
+                }}>
+                  נעילת המסך
+                </Btn>
               )}
             </div>
           </div>
-        )}
-      </div>
+        </Card>
+      )}
 
-      {/* Stage 1: Search & Date Selection */}
+      {/* שלב 1: תאריך האירוע */}
       {stage === 1 && (
-        <section>
+        <section className="v3k-stage">
+          <div className="v3k-hello">
+            <h1 className="v3-h1">נמצא יחד את השמלה שלכם
+              <Tip label="איך זה עובד">בוחרים תאריך לאירוע ורואים מיד אילו שמלות פנויות ביום הזה.</Tip>
+            </h1>
+          </div>
+
           {aiEnabled && aiMessages.length <= 1 && (
-            <div className="ai-feature-element ka-search-pill">
-              <svg className="icon"><use href="#i-search" /></svg>
+            <div className="ai-feature-element v3k-hero-search">
+              <Icon name="sparkles" size="lg" />
               <form onSubmit={handleAiSubmit}>
                 <input
                   data-agy-id="hero_ai_search_input"
                   type="text"
-                  placeholder="לדוגמה: שמלה שחורה מידה 12..."
+                  aria-label="חיפוש חכם"
+                  placeholder="לדוגמה: שמלה שחורה במידה 12"
                   value={aiInput}
                   onChange={e => setAiInput(e.target.value)}
                   disabled={aiLoading}
                 />
-                <button data-agy-id="hero_ai_search_btn" type="submit" className="ka-icon-btn primary" disabled={aiLoading} title="שלח">
-                  {aiLoading ? <span className="ka-spinner sm" style={{ borderTopColor: '#fff' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
-                </button>
+                <IconBtn data-agy-id="hero_ai_search_btn" type="submit" variant="primary" icon="send" label="שליחה" round loading={aiLoading} />
               </form>
             </div>
           )}
 
-          <div className="ka-stack">
+          <div className="v3k-stack">
             {aiEnabled && aiMessages.length > 1 && renderAiChatCard(null)}
 
-            <div className="ka-card ka-card-pad">
-              <div className="ka-date-title">
-                <svg className="icon"><use href="#i-calendar" /></svg>
-                מתי האירוע שלכם?
-              </div>
-
-              <AtelierCalendar
+            <Card icon="calendar" title="מתי האירוע?" tip="בוחרים יום בלוח או בתפריטים, וישר עוברים לראות אילו שמלות פנויות בתאריך הזה.">
+              <KioskCalendar
                 selectedDate={selectedDate}
                 onSelect={(d) => {
                   setSelectedDate(d);
                   setStage(2);
                 }}
               />
-            </div>
+            </Card>
 
             {/* 32 - רישום עצמי: מוצג רק כשההגדרה "עמדת לקוח - רישום עצמי" דלוקה.
                 קורא ל-POST /api/customers הקיים, עם אותה ולידציה כמו טופס "לקוח חדש"
                 בהזמנה. read-only view (חיפוש/זמינות) נשאר כפי שהיה - הקטלוג בשלב 2. */}
             {kioskSelfServiceOn && (
-              <div data-agy-id="kiosk_self_registration_card" className="ka-card ka-card-pad">
-                <div className="ka-date-title">
-                  <svg className="icon"><use href="#i-user" /></svg>
-                  רישום פרטים אישיים
-                </div>
-                <p style={{ color: 'var(--ink-soft)', fontSize: '13px', margin: '4px 0 16px' }}>
-                  מלאו את הפרטים הבאים כדי להירשם כלקוח/ה חדש/ה בגמ"ח. אפשר להמשיך גם לחפש דגם למטה בלי להירשם.
-                </p>
-
+              <Card data-agy-id="kiosk_self_registration_card" icon="user" title="הרשמה מהירה"
+                tip='אפשר להירשם כלקוחה חדשה בגמ"ח, ואפשר גם לדלג ולהמשיך לבחור שמלה בלי להירשם.'>
                 {regSuccess ? (
-                  <div style={{ textAlign: 'center', padding: '14px 0' }}>
-                    <svg className="icon" style={{ width: '38px', height: '38px', color: 'var(--sage)', margin: '0 auto 10px' }}><use href="#i-check-circle" /></svg>
-                    <p style={{ fontWeight: 800, marginBottom: '6px' }}>נרשמתם בהצלחה!</p>
-                    <p style={{ color: 'var(--ink-soft)', fontSize: '13px' }}>
-                      {regSuccess.legacyId ? `מספר לקוח: ${regSuccess.legacyId}. ` : ''}אפשר להמשיך ולחפש דגם בשלב הבא.
+                  <div className="v3k-done">
+                    <Icon name="check-circle" size="2xl" enter />
+                    <b className="v3-h2">נרשמתם בהצלחה, תודה!</b>
+                    <p>
+                      {regSuccess.legacyId ? <>מספר הלקוחה שלכם: <bdi>{regSuccess.legacyId}</bdi>. </> : ''}
+                      אפשר להמשיך לבחור שמלה.
                     </p>
-                    <button type="button" className="ka-btn ka-btn-ghost" style={{ marginTop: '14px' }}
-                      onClick={() => {
-                        setRegSuccess(null);
-                        setRegForm({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false });
-                      }}>
-                      רישום לקוח נוסף
-                    </button>
+                    <Btn size="lg" icon="plus" onClick={() => {
+                      setRegSuccess(null);
+                      setRegForm({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false });
+                    }}>
+                      הרשמה נוספת
+                    </Btn>
                   </div>
                 ) : (
-                  <form onSubmit={handleRegisterSubmit}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="ka-field">
-                        <label>שם פרטי *</label>
-                        <input data-agy-id="reg_firstName_input" type="text" value={regForm.firstName}
-                          onChange={e => setRegForm(p => ({ ...p, firstName: e.target.value }))} />
-                      </div>
-                      <div className="ka-field">
-                        <label>שם משפחה *</label>
-                        <input data-agy-id="reg_lastName_input" type="text" value={regForm.lastName}
-                          onChange={e => setRegForm(p => ({ ...p, lastName: e.target.value }))} />
-                      </div>
+                  <form onSubmit={handleRegisterSubmit} className="v3k-form">
+                    <div className="v3k-form__grid">
+                      <Field label={<>שם פרטי<span className="v3-req" aria-hidden="true">*</span></>} data-agy-id="reg_firstName_input" type="text" value={regForm.firstName}
+                        onChange={e => setRegForm(p => ({ ...p, firstName: e.target.value }))} />
+                      <Field label={<>שם משפחה<span className="v3-req" aria-hidden="true">*</span></>} data-agy-id="reg_lastName_input" type="text" value={regForm.lastName}
+                        onChange={e => setRegForm(p => ({ ...p, lastName: e.target.value }))} />
                     </div>
 
-                    <div className="ka-field">
-                      <label>טלפון *</label>
-                      <input data-agy-id="reg_phone1_input" type="tel" dir="ltr" placeholder="נייד או קווי" value={regForm.phone1}
-                        onChange={e => setRegForm(p => ({ ...p, phone1: e.target.value }))} />
-                    </div>
+                    <Field label={<>טלפון<span className="v3-req" aria-hidden="true">*</span></>} data-agy-id="reg_phone1_input" type="tel" dir="ltr" placeholder="נייד או קווי" value={regForm.phone1}
+                      onChange={e => setRegForm(p => ({ ...p, phone1: e.target.value }))} />
 
-                    <div className="ka-field">
-                      <label>אימייל {settings.require_customer_email === 'true' && '*'}</label>
-                      <input data-agy-id="reg_email_input" type="email" dir="ltr" value={regForm.email}
-                        onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} />
-                    </div>
+                    <Field label={<>אימייל{settings.require_customer_email === 'true' && <span className="v3-req" aria-hidden="true">*</span>}</>} data-agy-id="reg_email_input" type="email" dir="ltr" value={regForm.email}
+                      onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} />
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                      <div className="ka-field">
-                        <label>עיר {settings.require_full_address === 'true' && '*'}</label>
-                        <input data-agy-id="reg_city_input" type="text" value={regForm.city}
-                          onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} />
-                      </div>
-                      <div className="ka-field">
-                        <label>רחוב {settings.require_full_address === 'true' && '*'}</label>
-                        <input data-agy-id="reg_street_input" type="text" value={regForm.street}
-                          onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} />
-                      </div>
-                      <div className="ka-field">
-                        <label>מספר בית {settings.require_full_address === 'true' && '*'}</label>
-                        <input data-agy-id="reg_houseNum_input" type="text" value={regForm.houseNum}
-                          onChange={e => setRegForm(p => ({ ...p, houseNum: e.target.value }))} />
-                      </div>
+                    <div className="v3k-form__grid v3k-form__grid--3">
+                      <Field label={<>עיר{settings.require_full_address === 'true' && <span className="v3-req" aria-hidden="true">*</span>}</>} data-agy-id="reg_city_input" type="text" value={regForm.city}
+                        onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} />
+                      <Field label={<>רחוב{settings.require_full_address === 'true' && <span className="v3-req" aria-hidden="true">*</span>}</>} data-agy-id="reg_street_input" type="text" value={regForm.street}
+                        onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} />
+                      <Field label={<>מספר בית{settings.require_full_address === 'true' && <span className="v3-req" aria-hidden="true">*</span>}</>} data-agy-id="reg_houseNum_input" type="text" value={regForm.houseNum}
+                        onChange={e => setRegForm(p => ({ ...p, houseNum: e.target.value }))} />
                     </div>
 
                     {settings.hide_marketing_consent_field !== 'true' && (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', fontWeight: 600, margin: '6px 0 4px', cursor: 'pointer' }}>
+                      <label className="v3k-consent">
                         <input data-agy-id="reg_marketing_consent_input" type="checkbox"
-                          style={{ width: '17px', height: '17px', accentColor: 'var(--terracotta)' }}
                           checked={regForm.marketingConsent}
                           onChange={e => setRegForm(p => ({ ...p, marketingConsent: e.target.checked }))} />
-                        מאשר/ת קבלת דיוור ועדכונים {settings.require_marketing_consent === 'true' && '*'}
+                        <span>מאשרים לקבל עדכונים והטבות{settings.require_marketing_consent === 'true' && <span className="v3-req" aria-hidden="true">*</span>}</span>
                       </label>
                     )}
 
-                    {regError && <div className="ka-error">{regError}</div>}
+                    {regError && <div className="v3-error" role="alert"><Icon name="alert-circle" size="sm" />{regError}</div>}
 
-                    <div className="ka-cta-row" style={{ marginTop: '14px' }}>
-                      <button data-agy-id="reg_submit_btn" type="submit" className="ka-btn-cta" disabled={regSubmitting}>
-                        {regSubmitting ? 'שולח...' : 'סיום רישום'}
-                        <svg className="icon"><use href="#i-check-circle" /></svg>
-                      </button>
-                    </div>
+                    <Btn data-agy-id="reg_submit_btn" type="submit" variant="primary" size="lg" iconEnd="check-circle" loading={regSubmitting} block>
+                      {regSubmitting ? 'שולחים...' : 'סיום ההרשמה'}
+                    </Btn>
                   </form>
                 )}
-              </div>
+              </Card>
             )}
 
             {/* 33 - הזמנה עצמית: עדיין stub מכוון - תלוי בהחלטות עסקיות שטרם נענו
                 (אישור אוטומטי מול טיוטה לאישור צוות, תשלום מראש) - ראה KIOSK.md/CLAUDE.md.
                 לא לחבר יצירת הזמנה אמיתית כאן בלי מענה לשאלות האלה. */}
             {kioskSelfServiceOn && (
-              <div data-agy-id="kiosk_self_order_stub_card" className="ka-card ka-card-pad" style={{ textAlign: 'center' }}>
-                <div className="ka-date-title" style={{ justifyContent: 'center' }}>
-                  <svg className="icon"><use href="#i-bag" /></svg>
-                  הזמנה עצמאית
-                </div>
-                <p style={{ color: 'var(--ink-soft)', fontSize: '13px', margin: '8px 0 14px' }}>
-                  בקרוב תוכלו להזמין שמלה ישירות מכאן, ללא צורך בהמתנה לצוות.
-                </p>
-                <button data-agy-id="self_order_stub_btn" type="button" className="ka-btn ka-btn-ghost" disabled
-                  title="הזמנה עצמאית תיפתח בקרוב">
-                  הזמנה עצמאית תיפתח בקרוב
-                </button>
-              </div>
+              <Card data-agy-id="kiosk_self_order_stub_card" variant="quiet" icon="bag" title="הזמנה עצמאית"
+                tip="בקרוב אפשר יהיה להזמין שמלה ישירות מהמסך הזה, בלי לחכות לצוות.">
+                <Btn data-agy-id="self_order_stub_btn" size="lg" block disabled>ההזמנה העצמאית תיפתח בקרוב</Btn>
+              </Card>
             )}
           </div>
         </section>
       )}
 
-      {/* Stage 2: Inventory Grid */}
+      {/* שלב 2: קטלוג */}
       {stage === 2 && (
-        <section>
+        <section className="v3k-stage">
           {aiEnabled && isAiChatVisible && (
-            <div style={{ marginBottom: '20px' }}>
+            <div className="v3k-chat-wrap">
               {renderAiChatCard(() => setIsAiChatVisible(false))}
             </div>
           )}
 
-          <div className={`ka-layout${sidebarOpen ? '' : ' no-panel'}`}>
+          <div className={`v3k-layout${sidebarOpen ? '' : ' is-no-panel'}`}>
 
-            {/* Sidebar: filters & display settings */}
+            {/* סינון והגדרות תצוגה */}
             {sidebarOpen && (
-              <aside data-agy-id="catalog_sidebar" className="ka-filter-panel">
+              <Card as="aside" data-agy-id="catalog_sidebar" className="v3k-filters" icon="category" title="סינון ותצוגה">
 
-                <div className="ka-filter-group">
-                  <h4><svg className="icon"><use href="#i-search" /></svg>חיפוש</h4>
-                  <input
-                    data-agy-id="catalog_search_input"
-                    type="text"
-                    placeholder="שם דגם, מספר, או מידה..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                  />
-                  <div className="ka-filter-hint">
-                    אפשר לחפש שם שמלה, מספר קטלוגי, או לכתוב "מידה 40"
+                <div className="v3k-group">
+                  <h3 className="v3k-group__title"><Icon name="search" />חיפוש
+                    <Tip label="איך מחפשים">אפשר לחפש שם של שמלה, מספר דגם, או לכתוב "מידה 40" כדי לראות רק את המידה הזו.</Tip>
+                  </h3>
+                  <div className="v3-search">
+                    <Icon name="search" />
+                    <input
+                      data-agy-id="catalog_search_input"
+                      type="text"
+                      aria-label="חיפוש שמלה"
+                      placeholder="שם שמלה, מספר או מידה"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                    />
+                    <button type="button" className={`v3-search__clear${search ? ' is-on' : ''}`} aria-label="ניקוי החיפוש"
+                      tabIndex={search ? 0 : -1} onClick={() => setSearch('')}>
+                      <Icon name="x" size="sm" />
+                    </button>
                   </div>
                 </div>
 
                 {priceCategories.length > 0 && (
-                  <div className="ka-filter-group">
-                    <h4><svg className="icon"><use href="#i-tag" /></svg>קטגוריה</h4>
-                    {priceCategories.map(cat => {
-                      const count = categoryCounts[cat] || 0;
-                      const checked = selectedCategories.includes(cat);
-                      return (
-                        <label key={cat} data-agy-id={`category_filter_${cat}`} className="ka-check-row" style={{ opacity: count === 0 && !checked ? 0.5 : 1 }}>
-                          <span className="ka-check-row-inner">
-                            <input type="checkbox" checked={checked}
-                              onChange={() => setSelectedCategories(prev => checked ? prev.filter(c => c !== cat) : [...prev, cat])} />
-                            <span>{cat}</span>
-                          </span>
-                          <span className="count">{count}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {sizeChipData.length > 0 && (
-                  <div className="ka-filter-group">
-                    <h4><svg className="icon"><use href="#i-box" /></svg>סינון מהיר לפי מידה</h4>
-                    <div className="ka-size-chip-grid">
-                      {sizeChipData.map(([sz, count]) => {
-                        const active = selectedSizes.includes(sz);
+                  <div className="v3k-group">
+                    <h3 className="v3k-group__title"><Icon name="tag" />קטגוריה</h3>
+                    <div className="v3k-checks">
+                      {priceCategories.map(cat => {
+                        const count = categoryCounts[cat] || 0;
+                        const checked = selectedCategories.includes(cat);
                         return (
-                          <div key={sz} data-agy-id={`size_chip_${sz}`}
-                            className={`ka-size-chip${active ? ' active' : ''}${count === 0 ? ' zero' : ''}`}
-                            onClick={() => setSelectedSizes(prev => active ? prev.filter(s => s !== sz) : [...prev, sz])}>
-                            <strong>{sz}</strong>
-                            <div className="count">{count}</div>
-                          </div>
+                          <label key={cat} data-agy-id={`category_filter_${cat}`} className={`v3k-check${count === 0 && !checked ? ' is-dim' : ''}`}>
+                            <input type="checkbox" className="v3-sr" checked={checked}
+                              onChange={() => setSelectedCategories(prev => checked ? prev.filter(c => c !== cat) : [...prev, cat])} />
+                            <span className={`v3-check${checked ? ' is-on' : ''}`} aria-hidden="true"><Icon name="check" anim={false} /></span>
+                            <span className="v3k-check__name">{cat}</span>
+                            <Badge variant="neutral"><bdi>{count}</bdi></Badge>
+                          </label>
                         );
                       })}
                     </div>
                   </div>
                 )}
 
-                <div data-agy-id="toggle_zero_sizes_div" className="ka-switch-row" onClick={() => setShowZeroSizes(!showZeroSizes)}>
-                  <div className={`ka-switch${showZeroSizes ? ' on' : ''}`} />
-                  הצג גם מידות ללא מלאי פנוי
+                {sizeChipData.length > 0 && (
+                  <div className="v3k-group">
+                    <h3 className="v3k-group__title"><Icon name="box" />מידה
+                      <Tip label="על המספרים">מתחת לכל מידה מופיע מספר הדגמים שיש בה.</Tip>
+                    </h3>
+                    <div className="v3k-sizes">
+                      {sizeChipData.map(([sz, count]) => {
+                        const active = selectedSizes.includes(sz);
+                        return (
+                          <button key={sz} type="button" data-agy-id={`size_chip_${sz}`} aria-pressed={active}
+                            className={`v3k-size${active ? ' is-on' : ''}${count === 0 ? ' is-dim' : ''}`}
+                            onClick={() => setSelectedSizes(prev => active ? prev.filter(s => s !== sz) : [...prev, sz])}>
+                            <strong><bdi>{sz}</bdi></strong>
+                            <span className="v3k-size__n"><bdi>{count}</bdi></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div data-agy-id="toggle_zero_sizes_div" className="v3k-switch" role="switch" aria-checked={showZeroSizes} tabIndex={0}
+                  onClick={() => setShowZeroSizes(!showZeroSizes)}
+                  onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setShowZeroSizes(!showZeroSizes); } }}>
+                  <span className="v3-switch" aria-hidden="true">
+                    <input type="checkbox" tabIndex={-1} checked={showZeroSizes} readOnly />
+                    <i />
+                  </span>
+                  <span>להציג גם מידות שאזלו
+                    <Tip label="על מידות שאזלו">מידות שאין מהן שום יחידה פנויה בתאריך שבחרתם.</Tip>
+                  </span>
                 </div>
 
-                <div className="ka-filter-group">
-                  <h4><svg className="icon"><use href="#i-grid" /></svg>צורת תצוגה</h4>
-                  <div className="ka-view-toggle">
+                <div className="v3k-group">
+                  <h3 className="v3k-group__title"><Icon name="grid" />איך להציג</h3>
+                  <div className="v3-seg" role="group" aria-label="צורת תצוגה">
                     {[
-                      { key: 'grid', label: 'כרטיסים גדולים', iconId: 'i-grid', agyId: 'view_grid_btn' },
-                      { key: 'rows', label: 'רשימה מפורטת', iconId: 'i-list', agyId: 'view_rows_btn' },
-                      { key: 'table', label: 'טבלה קומפקטית', iconId: 'ka-i-table', agyId: 'view_table_btn' },
-                    ].map(({ key, label, iconId, agyId }) => (
-                      <button key={key} data-agy-id={agyId} type="button" title={label}
-                        className={viewMode === key ? 'active' : ''}
-                        onClick={() => setViewMode(key)}>
-                        <svg className="icon"><use href={`#${iconId}`} /></svg>
+                      { key: 'grid', label: 'כרטיסים', title: 'כרטיסים גדולים', icon: 'grid', agyId: 'view_grid_btn' },
+                      { key: 'rows', label: 'רשימה', title: 'רשימה מפורטת', icon: 'list', agyId: 'view_rows_btn' },
+                      { key: 'table', label: 'טבלה', title: 'טבלה קומפקטית', icon: 'database', agyId: 'view_table_btn' },
+                    ].map(({ key, label, title, icon, agyId }) => (
+                      <button key={key} data-agy-id={agyId} type="button" title={title} aria-pressed={viewMode === key}
+                        className="v3-seg__btn v3k-seg-btn" onClick={() => setViewMode(key)}>
+                        <Icon name={icon} />{label}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
-                  onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                  נקה את כל הסינונים
-                </button>
-              </aside>
+                <Btn data-agy-id="clear_all_filters_btn" icon="x" size="lg" block onClick={clearFilters}>
+                  ניקוי כל הסינונים
+                </Btn>
+              </Card>
             )}
 
-            {/* Catalog content */}
-            <div style={{ minWidth: 0 }}>
+            {/* תוצאות */}
+            <div className="v3k-results">
               {loading ? (
-                <div className="ka-state-box">
-                  <div className="ka-spinner" />
-                  <p>טוען נתונים...</p>
+                <div className="v3k-state" role="status">
+                  <Icon name="loader" size="2xl" loop />
+                  <p>רגע, טוענים את השמלות...</p>
                 </div>
               ) : displayDresses.length === 0 ? (
-                <div className="ka-state-box">
-                  <svg className="icon"><use href="#i-search" /></svg>
-                  <h4>לא נמצאו דגמים מתאימים</h4>
-                  <p>נסו לנקות את החיפוש או את סינון הקטגוריה</p>
-                  <button data-agy-id="empty_state_clear_btn" type="button" className="ka-btn-mini"
-                    onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
-                    נקה סינון ונסה שוב
-                  </button>
-                </div>
+                <Card variant="quiet" as="div">
+                  <Empty icon="search" title="לא מצאנו שמלות מתאימות" text="אפשר לנסות חיפוש אחר, או לנקות את הסינון."
+                    action={<Btn data-agy-id="empty_state_clear_btn" size="lg" onClick={clearFilters}>ניקוי הסינון</Btn>} />
+                </Card>
               ) : viewMode === 'table' ? (
-                <div className="ka-table-wrap" style={{ zoom: zoomLevel }}>
-                  <table className="ka-data">
+                <div className="v3-table__wrap v3k-table" style={{ zoom: zoomLevel }}>
+                  <table className="v3-table">
                     <thead>
                       <tr>
-                        <th></th>
-                        <th>שם דגם</th>
-                        <th>מק״ט</th>
+                        <th><span className="v3-sr">תמונה</span></th>
+                        <th>שם השמלה</th>
+                        <th>מספר דגם</th>
                         <th>קטגוריה</th>
-                        <th>סה״כ פנוי</th>
-                        <th>פירוט לפי מידה</th>
+                        <th>פנויות</th>
+                        <th>מידות</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1426,31 +1439,15 @@ export default function CustomerInventoryViewer() {
                         const { sizesArray, totalAvailable } = getModelSizeInfo(model);
                         const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
                         return (
-                          <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                            <td style={{ width: '58px' }}>
+                          <tr key={model.id} onClick={() => handleModelDoubleClick(model)}>
+                            <td className="v3k-table__img">
                               <ModelAvatar model={model} size="sm" showImage={settings.hide_dress_images !== 'true'} />
                             </td>
-                            <td className="ka-cell-primary">{getModelDisplayName(model)}</td>
-                            <td className="ka-cell-muted">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
-                            <td>
-                              {model.priceCategory ? <span className="ka-badge ka-badge-neutral">{model.priceCategory}</span> : '—'}
-                            </td>
-                            <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--sage)' : 'var(--brick)' }}>{totalAvailable}</td>
-                            <td>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', direction: 'ltr' }}>
-                                {visibleSizesArr.length === 0 ? (
-                                  <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
-                                ) : visibleSizesArr.map(([sName, sData]) => (
-                                  <span key={sName}
-                                    className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                    onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
-                                    title={`מידה ${sName}: ${sData.available} פנויות`}
-                                    style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                    {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
+                            <td className="v3k-table__name">{getModelDisplayName(model)}</td>
+                            <td className="v3k-table__muted">{model.barcodePrefix ? <bdi>#{model.barcodePrefix}</bdi> : '—'}</td>
+                            <td>{model.priceCategory ? <Chip>{model.priceCategory}</Chip> : '—'}</td>
+                            <td className={`v3k-table__avail ${totalAvailable > 0 ? 'is-ok' : 'is-out'}`}><bdi>{totalAvailable}</bdi></td>
+                            <td>{renderSizePills(model, sizesArray, visibleSizesArr)}</td>
                           </tr>
                         );
                       })}
@@ -1458,114 +1455,45 @@ export default function CustomerInventoryViewer() {
                   </table>
                 </div>
               ) : viewMode === 'rows' ? (
-                <div className="ka-results-list" style={{ zoom: zoomLevel }}>
+                <div className="v3k-list" style={{ zoom: zoomLevel }}>
                   {displayDresses.map(model => {
                     const { sizesArray, totalAvailable } = getModelSizeInfo(model);
                     const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
 
                     return (
-                      <div key={model.id} className="ka-dress-row" style={{ cursor: isLocked ? 'default' : 'pointer' }}
-                        onClick={() => handleModelDoubleClick(model)}>
+                      <div key={model.id} className="v3k-row" onClick={() => handleModelDoubleClick(model)}>
                         <ModelAvatar model={model} size="md" showImage={settings.hide_dress_images !== 'true'} />
-                        {modelHasRealName(model) && (
-                          <div className="ka-rmeta">
-                            <h3>
-                              {getModelDisplayName(model)}
-                              {model.barcodePrefix && <span className="ka-badge ka-badge-neutral">#{model.barcodePrefix}</span>}
-                              {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
-                            </h3>
-                            <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : ''}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
+                        {modelHasRealName(model) ? (
+                          <div className="v3k-row__meta">
+                            <h3 className="v3k-name">{getModelDisplayName(model)}</h3>
+                            {renderModelTags(model)}
                           </div>
+                        ) : (
+                          <div className="v3k-row__meta">{renderModelTags(model)}</div>
                         )}
-                        <button type="button" className="ka-icon-btn" title="הדפסת הדגם הזה בלבד"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isLocked) { printModelRef.current = model; setUnlockIntent('print'); setShowUnlockModal(true); return; }
-                            handleCatalogPrint([model]);
-                          }}>
-                          <svg className="icon"><use href="#i-printer" /></svg>
-                        </button>
-
-                        <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
-                          <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
-                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות` : 'אין יחידות פנויות לתאריך זה'}
-                        </div>
-
-                        <div className="ka-size-row">
-                          {visibleSizesArr.length === 0 ? (
-                            <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
-                          ) : (
-                            visibleSizesArr.map(([sName, sData]) => (
-                              <span
-                                key={sName}
-                                className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                title={`מידה ${sName}: ${sData.available} פנויות`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleModelDoubleClick(model, sName);
-                                }}
-                                style={{ cursor: isLocked ? 'default' : 'pointer' }}
-                              >
-                                {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
-                              </span>
-                            ))
-                          )}
-                        </div>
+                        {renderAvailability(totalAvailable)}
+                        {renderPrintModelBtn(model, 'v3k-row__print')}
+                        {renderSizePills(model, sizesArray, visibleSizesArr)}
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="ka-results-grid" style={{ zoom: zoomLevel }}>
+                <div className="v3k-grid" style={{ zoom: zoomLevel }}>
                   {displayDresses.map(model => {
                     const { sizesArray, totalAvailable } = getModelSizeInfo(model);
                     const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
 
                     return (
-                      <div key={model.id} className="ka-dress-card" style={{ cursor: isLocked ? 'default' : 'pointer' }} onClick={() => {
+                      <div key={model.id} className="v3k-card" onClick={() => {
                         handleModelDoubleClick(model);
                       }}>
-                        <button type="button" className="ka-icon-btn ka-card-print-btn" title="הדפסת הדגם הזה בלבד"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isLocked) { printModelRef.current = model; setUnlockIntent('print'); setShowUnlockModal(true); return; }
-                            handleCatalogPrint([model]);
-                          }}>
-                          <svg className="icon"><use href="#i-printer" /></svg>
-                        </button>
+                        {renderPrintModelBtn(model, 'v3k-card__print')}
                         <ModelAvatar model={model} size="lg" showImage={settings.hide_dress_images !== 'true'} />
-
-                        <h3>
-                          {getModelDisplayName(model)}
-                          {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
-                        </h3>
-                        <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
-
-                        <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
-                          <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
-                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות` : 'אין יחידות פנויות לתאריך זה'}
-                        </div>
-
-                        <div className="ka-size-row">
-                          {visibleSizesArr.length === 0 ? (
-                            <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
-                          ) : (
-                            visibleSizesArr.map(([sName, sData]) => (
-                              <span
-                                key={sName}
-                                className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                title={`מידה ${sName}: ${sData.available} פנויות`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleModelDoubleClick(model, sName);
-                                }}
-                                style={{ cursor: isLocked ? 'default' : 'pointer' }}
-                              >
-                                {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
-                              </span>
-                            ))
-                          )}
-                        </div>
+                        <h3 className="v3k-name">{getModelDisplayName(model)}</h3>
+                        {renderModelTags(model)}
+                        {renderAvailability(totalAvailable)}
+                        {renderSizePills(model, sizesArray, visibleSizesArr)}
                       </div>
                     );
                   })}
@@ -1576,108 +1504,92 @@ export default function CustomerInventoryViewer() {
         </section>
       )}
 
-      {/* Unlock modal */}
-      {showUnlockModal && (
-        <div className="ka-modal-backdrop">
-          <form onSubmit={handleUnlock} autoComplete="off" className="ka-modal">
-            <div className="ka-modal-head">
-              <span className="ka-modal-head-title">
-                <svg className="icon"><use href="#i-lock" /></svg>
-                {unlockIntent === 'print' ? 'אישור עובד להדפסה' : 'שחרור מסך מנעילה'}
-              </span>
-            </div>
-            <div className="ka-modal-body">
-              <div className="ka-field">
-                <label>בחר עובד:</label>
-                <select data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)}>
-                  <option value="">-- בחר --</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="ka-field">
-                <label>קוד גישה:</label>
-                <div className="ka-pin-field">
-                  <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                  <input data-agy-id="unlock_password_input" type={showUnlockPassword ? 'text' : 'password'} autoComplete="off"
-                    placeholder="••••••"
-                    value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} />
-                  <button type="button" className="toggle-eye" title={showUnlockPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                    onClick={() => setShowUnlockPassword(v => !v)}>
-                    <svg className="icon"><use href="#i-eye" /></svg>
-                  </button>
-                </div>
-              </div>
-              {unlockError && <div className="ka-error">{unlockError}</div>}
-            </div>
-            <div className="ka-modal-foot">
-              <button data-agy-id="cancel_unlock_btn" type="button" className="ka-btn ka-btn-ghost"
-                onClick={() => { setShowUnlockModal(false); setUnlockIntent('unlock'); setShowUnlockPassword(false); }}>ביטול</button>
-              <button data-agy-id="submit_unlock_btn" type="submit" className="ka-btn ka-btn-primary" disabled={unlockLoading}>
-                {unlockLoading ? 'בודק...' : (unlockIntent === 'print' ? 'אשר והדפס' : 'שחרר')}
+      {/* חלונית שחרור נעילה / אישור עובד להדפסה. יש בה שדות ← חלונית טופס, בהירה בלבד (R19).
+          Esc ולחיצה על הרקע לא סוגרות אותה בכוונה (כמו במקור); רק "ביטול" סוגר, ואינו משחרר את הנעילה. */}
+      <Dialog
+        open={showUnlockModal}
+        onClose={() => {}}
+        closeOnScrim={false}
+        variant="form"
+        icon="lock"
+        title={unlockIntent === 'print' ? 'אישור עובד להדפסה' : 'שחרור המסך'}
+        sub={'לעובדי הגמ"ח בלבד'}
+        initialFocus="[data-agy-id='unlock_employee_select']"
+        actions={(
+          <>
+            <Btn data-agy-id="submit_unlock_btn" type="submit" form="v3k-unlock-form" variant="primary" size="lg" loading={unlockLoading}>
+              {unlockLoading ? 'בודקים...' : (unlockIntent === 'print' ? 'אישור והדפסה' : 'שחרור')}
+            </Btn>
+            <Btn data-agy-id="cancel_unlock_btn" variant="quiet" size="lg"
+              onClick={() => { setShowUnlockModal(false); setUnlockIntent('unlock'); setShowUnlockPassword(false); }}>
+              ביטול
+            </Btn>
+          </>
+        )}
+      >
+        <form id="v3k-unlock-form" onSubmit={handleUnlock} autoComplete="off" className="v3k-form">
+          <Field as="select" label="שם העובד או העובדת" data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)}>
+            <option value="">בחרו שם</option>
+            {employees.map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+            ))}
+          </Field>
+          <div className="v3-field">
+            <label className="v3-label" htmlFor="v3k-unlock-pass">קוד גישה</label>
+            <div className="v3k-pin">
+              <input id="v3k-unlock-pass" className="v3-input" data-agy-id="unlock_password_input" type={showUnlockPassword ? 'text' : 'password'} autoComplete="off"
+                placeholder="••••••" aria-invalid={unlockError ? 'true' : undefined}
+                value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} />
+              <button type="button" className="v3k-pin__eye" aria-label={showUnlockPassword ? 'הסתרת הקוד' : 'הצגת הקוד'} aria-pressed={showUnlockPassword}
+                onClick={() => setShowUnlockPassword(v => !v)}>
+                <Icon name="eye" />
               </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Orders-for-model modal */}
-      {showOrdersModal && (
-        <div className="ka-modal-backdrop" style={{ zIndex: 10000 }}>
-          <div className="ka-modal wide">
-            <div className="ka-modal-head">
-              <span className="ka-modal-head-title">
-                <svg className="icon"><use href="#i-bag" /></svg>
-                הזמנות - {ordersModalModel ? getModelDisplayName(ordersModalModel) : ''} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
-              </span>
-              <button data-agy-id="close_orders_modal_btn" type="button" className="ka-icon-btn" style={{ width: '32px', height: '32px' }} title="סגירה" onClick={() => setShowOrdersModal(false)}>
-                <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="ka-modal-body">
-              <div className="ka-modal-hint">טווח: שבוע לפני ואחרי תאריך האירוע</div>
-              {ordersModalLoading ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', padding: '20px 0', color: 'var(--ink-soft)' }}>
-                  <span className="ka-spinner sm" />טוען נתונים...
-                </div>
-              ) : ordersModalOrders.length === 0 ? (
-                <div style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '30px 0', fontSize: '13px' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
-              ) : (
-                <div>
-                  {ordersModalOrders.map(order => {
-                    // order.status מ-/api/orders הוא שדה DB גולמי שכמעט תמיד ריק בפועל (הסטטוס
-                    // האמיתי מחושב דינמית) - מציגים במקום זאת סטטוס תשלום אמיתי מ-totalAmount/
-                    // totalPaid, באותה שיטה כמו app/orders/page.js.
-                    const paymentStatus = calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0);
-                    const paymentColor = getPaymentStatusColor(paymentStatus);
-                    return (
-                    <div key={order.orderId} className="ka-order-row">
-                      <div className="om">
-                        <strong>הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}</strong>
-                        <span>תאריך אירוע: {new Date(order.eventDate).toLocaleDateString('he-IL')}</span>
-                      </div>
-                      <span className="ka-badge" style={{ background: paymentColor.bg, color: paymentColor.text }}>
-                        {paymentStatus}
-                      </span>
-                      <a
-                        href={`/orders/${order.orderId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="פתח הזמנה"
-                        className="ka-link-btn"
-                      >
-                        <svg className="icon"><use href="#i-link" /></svg>
-                      </a>
-                    </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+          {unlockError && <div className="v3-error" role="alert"><Icon name="alert-circle" size="sm" />{unlockError}</div>}
+        </form>
+      </Dialog>
+
+      {/* הזמנות לדגם: תצוגה בלבד (ללא הזנה) */}
+      <Dialog
+        open={showOrdersModal}
+        onClose={() => setShowOrdersModal(false)}
+        variant="sheet"
+        icon="bag"
+        title={`הזמנות של ${ordersModalModel ? getModelDisplayName(ordersModalModel) : ''}${ordersModalSize ? ` (מידה ${ordersModalSize})` : ''}`}
+        sub="שבוע לפני ואחרי תאריך האירוע שבחרתם"
+        actions={<Btn data-agy-id="close_orders_modal_btn" variant="quiet" size="lg" onClick={() => setShowOrdersModal(false)}>סגירה</Btn>}
+      >
+        {ordersModalLoading ? (
+          <div className="v3k-state v3k-state--flat" role="status">
+            <Icon name="loader" size="xl" loop />
+            <p>טוענים...</p>
+          </div>
+        ) : ordersModalOrders.length === 0 ? (
+          <p className="v3k-modal-empty">אין הזמנות לדגם הזה בטווח התאריכים.</p>
+        ) : (
+          <div className="v3-dlg-rows">
+            {ordersModalOrders.map(order => {
+              // order.status מ-/api/orders הוא שדה DB גולמי שכמעט תמיד ריק בפועל (הסטטוס
+              // האמיתי מחושב דינמית) - מציגים במקום זאת סטטוס תשלום אמיתי מ-totalAmount/
+              // totalPaid, באותה שיטה כמו app/orders/page.js.
+              const paymentStatus = calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0);
+              // צבע הסטטוס: משפחות v3 במקום צבעי lib/orderStatus (שהם ערכי צבע של העיצוב הישן)
+              const statusVariant = paymentStatus === 'שולם' ? 'done' : paymentStatus === 'ממתין לזיכוי' ? 'info' : 'attn';
+              return (
+                <div key={order.orderId} className="v3-dlg-row">
+                  <div className="v3-dlg-row__t">
+                    <b>הזמנה <bdi>#{order.orderId}</bdi> · {order.customer?.firstName} {order.customer?.lastName}</b>
+                    <div className="v3-faint">תאריך האירוע: <bdi>{new Date(order.eventDate).toLocaleDateString('he-IL')}</bdi></div>
+                  </div>
+                  <Chip variant={statusVariant}>{paymentStatus}</Chip>
+                  <IconBtn href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" icon="external-link" label="פתיחת ההזמנה" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Dialog>
+    </V3Page>
   );
 }
