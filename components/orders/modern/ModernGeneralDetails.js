@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import HebrewDatePicker from '../../HebrewDatePicker';
 import HebrewDateRangePicker from '../../HebrewDateRangePicker';
@@ -10,14 +9,18 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired } from '../../../lib/deliveryValidation';
+import { Card, Btn, IconBtn, Chip, Field, Row, Rows, Seg, Switch, Dialog, Icon, Tip } from '../../../app/v3/ui/components';
+import { useV3Dialogs, TipWrap } from './orderCardDialogs';
+import './orderCardV3.css';
 
 /**
- * טאב "פרטים כלליים" בעיצוב "אריג" — כרטיס לקוח + כרטיס אירוע + כרטיס ציפוף ימים
- * מותאם + כרטיס תאריך ביצוע ההזמנה. הלוגיקה פורטה מ-OrderGeneralDetails (עריכת תאריכים,
+ * לשונית "פרטים" בעיצוב v3 - כרטיס לקוח + כרטיס אירוע + כרטיס ציפוף ימים
+ * מותאם + כרטיס משלוח + תאריך ביצוע ההזמנה. הלוגיקה פורטה מ-OrderGeneralDetails (עריכת תאריכים,
  * ציפוף באישור מנהל, עריכת תאריך הזמנה באישור מאשר מוגדר) בתוספת: מייל מהיר באישור מנהל
- * והחלפת לקוח מהכרטיס.
+ * והחלפת לקוח מהכרטיס. בגרסה הזו רק שכבת התצוגה הוחלפה - כל ה-state, ה-handlers והקריאות נשארו.
  */
 export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onToggleSignature, onQuickEmail, showManualPaymentCreditButton = false, onOpenManualPaymentCredit }) {
+  const { v3Alert, dialogs } = useV3Dialogs();
   const [showManualPaymentCreditChooser, setShowManualPaymentCreditChooser] = useState(false);
   const [isEditingEvent, setIsEditingEvent] = useState(!order?.eventDate && !order?.fromDate);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -136,7 +139,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
 
   const handleSaveNewCustomer = async () => {
     if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1 || !newCustomer.email) {
-      alert('יש למלא שם פרטי, משפחה, טלפון ודוא"ל');
+      await v3Alert('צריך למלא שם פרטי, שם משפחה, טלפון ומייל.');
       return;
     }
     try {
@@ -150,16 +153,15 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         selectCustomer(saved);
         setNewCustomer({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
       } else {
-        alert('שגיאה בשמירת לקוח');
+        await v3Alert('שמירת הלקוח נכשלה.');
       }
     } catch (e) {
-      alert('שגיאה בשמירת לקוח');
+      await v3Alert('שמירת הלקוח נכשלה.');
     }
   };
 
   const customer = order.customer;
   const customerName = customer ? [customer.firstName, customer.lastName].filter(Boolean).join(' ') : 'לא נבחר לקוח';
-  const initials = customer ? (`${customer.firstName?.[0] || ''}${customer.lastName?.[0] || ''}` || '?') : '?';
   const address = customer ? [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ') : '';
 
   // רק סוג האירוע — התאריכים עצמם מוצגים בשדה שמתחת (בלי כפילות)
@@ -222,143 +224,159 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const maxAxisDay = Math.max(systemDefaultSpacing + 2, selectedSpacing !== null ? selectedSpacing : 0, 4);
   const axisDays = Array.from({ length: maxAxisDay + 1 }, (_, i) => i);
 
-  const spacingCardNode = (
-    <div className="card card-pad" style={{ marginBottom: '16px', borderColor: 'var(--warning)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-        <svg className="icon" style={{ color: 'var(--warning)' }}><use href="#i-alert-tri" /></svg>
-        <strong style={{ fontSize: '13.5px' }}>ציפוף ימים מיוחד</strong>
-        <span className="hint" style={{ color: 'var(--text-3)' }}>— רגיל לפי המערכת: {systemDefaultSpacing} ימים</span>
-      </div>
+  const toggleDelivery = (turningOn) => {
+    handleChange({ isDelivery: turningOn });
+    if (turningOn) setIsEditingDelivery(true);
+  };
 
-      <div className="pill-tabs" style={{ marginBottom: '8px' }}>
-        <button
-          type="button"
-          className={`pill-tab${!hasCustomSpacing ? ' active' : ''}`}
+  const spacingCardNode = (
+    <Card
+      icon="alert-tri"
+      title="ציפוף ימים מיוחד"
+      tip="דורש הרשאת מנהל. צובע את ההזמנה בצהוב ומשפיע על בדיקת המלאי של ההזמנה הזו בלבד."
+    >
+      <p className="v3-muted">
+        ברירת המחדל של המערכת: <bdi>{systemDefaultSpacing}</bdi> ימי רווח בין השכרות.
+      </p>
+      <div className="v3-cluster" role="group" aria-label="ימי רווח בין השכרות" style={{ marginTop: 'var(--v3-sp-3)' }}>
+        <Chip
+          variant={!hasCustomSpacing ? 'done' : 'info'}
+          icon={!hasCustomSpacing ? 'check' : undefined}
+          aria-pressed={!hasCustomSpacing}
           onClick={() => { if (hasCustomSpacing) applyCustomSpacing(null); }}
-          title="חזרה לרווח הרגיל של המערכת"
         >
-          {!hasCustomSpacing && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}
-          רגיל (לפי המערכת — {systemDefaultSpacing} ימים)
-        </button>
+          רגיל (<bdi>{systemDefaultSpacing}</bdi> ימים)
+        </Chip>
         {axisDays.map(d => (
-          <button
+          <Chip
             key={d}
-            type="button"
-            className={`pill-tab${selectedSpacing === d ? ' active' : ''}`}
-            title={d === 0 ? 'ללא רווח כלל' : `${d} ימי רווח בין השכרות`}
+            variant={selectedSpacing === d ? 'done' : 'info'}
+            icon={selectedSpacing === d ? 'check' : undefined}
+            aria-pressed={selectedSpacing === d}
+            aria-label={d === 0 ? 'ללא רווח כלל' : `${d} ימי רווח בין השכרות`}
             onClick={() => { if (selectedSpacing !== d) applyCustomSpacing(d); }}
           >
-            {d}{d === systemDefaultSpacing ? ' (ברירת מחדל)' : ''}
-          </button>
+            <bdi>{d}</bdi>{d === systemDefaultSpacing ? ' (ברירת מחדל)' : ''}
+          </Chip>
         ))}
       </div>
-
-      <div className="hint" style={{ color: 'var(--text-3)' }}>דורש הרשאת מנהל · צובע את ההזמנה בצהוב ומשפיע על בדיקת המלאי להזמנה זו בלבד</div>
-    </div>
+    </Card>
   );
 
   return (
     <>
       {/* כרטיס לקוח */}
-      <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="avatar">{initials}</div>
-          <div style={{ flex: 1, minWidth: '220px' }}>
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>{customerName}</div>
-            <div className="hint" style={{ color: 'var(--text-3)' }} title={customer ? [customer.phone1, customer.phone2, customer.email, address].filter(Boolean).join(' · ') : ''}>
-              {customer
-                ? ([customer.phone1, customer.phone2, customer.email, address].filter(Boolean).join(' · ') || 'אין פרטי קשר')
-                : 'לא נבחר לקוח — לחץ על אייקון העריכה לבחירה'}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-warning'}`}
-              style={{ border: 'none', cursor: 'pointer' }}
+      <Card
+        variant="cust"
+        icon="user"
+        title={customerName}
+        actions={(
+          <div className="oc-tools">
+            <Chip
+              variant={order.hasSignedRegulations ? 'done' : 'attn'}
+              icon={order.hasSignedRegulations ? 'check-circle' : 'x-circle'}
               onClick={toggleSignature}
-              title="סטטוס חתימה על תקנון — לחץ לשינוי"
+              aria-label="סטטוס חתימה על תקנון - לחיצה לשינוי"
             >
-              <svg className="icon"><use href={order.hasSignedRegulations ? '#i-check-circle' : '#i-x-circle'} /></svg>
-              {order.hasSignedRegulations ? 'חתם על תקנון' : 'לא חתם'}
-            </button>
-            <button type="button" className="btn btn-ghost btn-icon-only" title="שליחת מייל מהיר (באישור מנהל)" onClick={handleQuickEmail}>
-              <svg className="icon"><use href="#i-mail" /></svg>
-            </button>
+              {order.hasSignedRegulations ? 'חתם על התקנון' : 'לא חתם'}
+            </Chip>
+            <TipWrap content="שליחת מייל מהיר ללקוח (באישור מנהל)">
+              <IconBtn icon="mail" label="שליחת מייל מהיר" onClick={handleQuickEmail} />
+            </TipWrap>
             {customer?.id && (
-              <Link href={`/customers/${customer.id}`} target="_blank" title="מעבר לכרטיס לקוח" className="btn btn-ghost btn-icon-only">
-                <svg className="icon"><use href="#i-link" /></svg>
-              </Link>
+              <TipWrap content="פתיחת כרטיס הלקוח בלשונית חדשה">
+                <Link href={`/customers/${customer.id}`} target="_blank" className="v3-btn v3-btn--icon" aria-label="מעבר לכרטיס הלקוח">
+                  <Icon name="link" />
+                </Link>
+              </TipWrap>
             )}
-            <button type="button" className="btn btn-ghost btn-icon-only" title="החלפת לקוח" onClick={() => setShowCustomerModal(true)}>
-              <svg className="icon"><use href="#i-edit" /></svg>
-            </button>
+            <TipWrap content="החלפת הלקוח בהזמנה">
+              <IconBtn icon="edit" label="החלפת לקוח" onClick={() => setShowCustomerModal(true)} />
+            </TipWrap>
           </div>
-        </div>
-      </div>
+        )}
+      >
+        {customer ? (
+          <Rows>
+            <Row icon="phone" label="טלפון" missing={!customer.phone1}><bdi dir="ltr">{customer.phone1}</bdi></Row>
+            {customer.phone2 && <Row icon="phone" label="טלפון נוסף"><bdi dir="ltr">{customer.phone2}</bdi></Row>}
+            <Row icon="mail" label="מייל" missing={!customer.email}><bdi dir="ltr">{customer.email}</bdi></Row>
+            <Row icon="pin" label="כתובת" missing={!address}>{address}</Row>
+          </Rows>
+        ) : (
+          <p className="v3-muted">עוד לא נבחר לקוח להזמנה. אפשר לבחור דרך כפתור ההחלפה.</p>
+        )}
+      </Card>
 
       {/* כרטיס אירוע */}
-      <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        {!isEditingEvent ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <div className="avatar"><svg className="icon"><use href="#i-calendar" /></svg></div>
-            <div style={{ flex: 1, minWidth: '220px' }}>
-              <div style={{ fontWeight: 700, fontSize: '15px' }}>{eventSubLabel}</div>
-              <div className="hint" style={{ color: 'var(--text-3)' }}>
-                {isAbroad
-                  ? (order.fromDate
-                    ? <>לקיחה: <strong style={{ color: 'var(--text)' }}>{fmtFullDate(order.fromDate)}</strong> · החזרה: <strong style={{ color: 'var(--text)' }}>{fmtFullDate(order.toDate || order.returnDate) || '?'}</strong>{order.extraDay ? <> · <span className="badge badge-warning">יום נוסף {order.extraDay === 'before' ? 'לפני' : 'אחרי'}</span></> : null}</>
-                    : 'טרם נבחרו תאריכים')
-                  : (order.eventDate
-                    ? <strong style={{ color: 'var(--text)' }}>{`${new Date(order.eventDate).toLocaleDateString('he-IL')} (${order.eventDateHebrew || getHebrewDateString(order.eventDate)})`}</strong>
-                    : 'טרם נבחר תאריך')}
-                {order.notes ? <> · הערות: {order.notes}</> : null}
-              </div>
-            </div>
-            <button type="button" className="btn btn-ghost btn-icon-only" title="עריכת פרטי אירוע" onClick={() => setIsEditingEvent(true)}>
-              <svg className="icon"><use href="#i-edit" /></svg>
-            </button>
-          </div>
+      <Card
+        icon="calendar"
+        title="האירוע"
+        actions={!isEditingEvent ? (
+          <TipWrap content="עריכת פרטי האירוע">
+            <IconBtn icon="edit" label="עריכת פרטי האירוע" onClick={() => setIsEditingEvent(true)} />
+          </TipWrap>
         ) : (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
-              <div className="pill-tabs">
-                <button
-                  type="button"
-                  className={`pill-tab${!isAbroad ? ' active' : ''}`}
-                  onClick={() => {
-                    if (!isAbroad) return;
-                    // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
-                    changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
-                  }}
-                >
-                  אירוע רגיל
-                </button>
-                <button
-                  type="button"
-                  className={`pill-tab${isAbroad ? ' active' : ''}`}
-                  onClick={() => {
-                    if (isAbroad) return;
-                    // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
-                    changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
-                  }}
-                >
-                  אירוע חו"ל
-                </button>
-              </div>
-              <button type="button" className="btn btn-ghost btn-icon-only" title="סיים עריכה" onClick={() => setIsEditingEvent(false)}>
-                <svg className="icon"><use href="#i-check" /></svg>
-              </button>
-            </div>
+          <TipWrap content="סיום העריכה">
+            <IconBtn icon="check" label="סיום עריכת האירוע" onClick={() => setIsEditingEvent(false)} />
+          </TipWrap>
+        )}
+      >
+        {!isEditingEvent ? (
+          <Rows>
+            <Row icon="tag" label="סוג האירוע">{eventSubLabel}</Row>
+            {isAbroad ? (
+              order.fromDate ? (
+                <>
+                  <Row icon="calendar" label="לקיחה">{fmtFullDate(order.fromDate)}</Row>
+                  <Row icon="calendar" label="החזרה">
+                    {fmtFullDate(order.toDate || order.returnDate) || '?'}
+                    {order.extraDay ? <Chip variant="attn">יום נוסף {order.extraDay === 'before' ? 'לפני' : 'אחרי'}</Chip> : null}
+                  </Row>
+                </>
+              ) : (
+                <Row icon="calendar" label="תאריכים" missing missingText="טרם נבחרו" />
+              )
+            ) : (
+              <Row icon="calendar" label="תאריך האירוע" missing={!order.eventDate} missingText="טרם נבחר">
+                {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${order.eventDateHebrew || getHebrewDateString(order.eventDate)})` : null}
+              </Row>
+            )}
+            {order.notes ? <Row icon="file" label="הערות להזמנה">{order.notes}</Row> : null}
+          </Rows>
+        ) : (
+          <div className="v3-stack">
+            <Seg
+              label="סוג האירוע"
+              value={isAbroad ? 'abroad' : 'regular'}
+              onChange={(v) => {
+                if (v === 'regular') {
+                  if (!isAbroad) return;
+                  // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
+                  changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
+                } else {
+                  if (isAbroad) return;
+                  // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
+                  changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
+                }
+              }}
+              options={[
+                { value: 'regular', label: 'אירוע רגיל', icon: 'calendar' },
+                { value: 'abroad', label: 'אירוע חו"ל', icon: 'pin' }
+              ]}
+            />
 
             {!isAbroad ? (
-              <div className="field">
-                <label>תאריך אירוע</label>
+              <div className="v3-field">
+                <span className="v3-label">תאריך האירוע</span>
                 <HebrewDatePicker value={order.eventDate} onChange={(date) => changeDates({ eventDate: date })} />
               </div>
             ) : (
-              <div className="field">
-                <label>טווח תאריכים (לקיחה והחזרה)</label>
+              <div className="v3-field">
+                <span className="v3-label">
+                  לקיחה והחזרה
+                  <Tip>בוחרים טווח תאריכים חופשי: היום הראשון הוא הלקיחה והאחרון הוא ההחזרה.</Tip>
+                </span>
                 <HebrewDateRangePicker
                   startDate={order.fromDate}
                   endDate={order.toDate || order.returnDate}
@@ -381,48 +399,47 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
             )}
 
             {isAbroad && enableRentalExtension && (
-              <div className="field">
-                <label>יום השכרה נוסף (תוספת 50% מסך ההזמנה)</label>
-                <div className="pill-tabs">
-                  <button type="button" className={`pill-tab${!order.extraDay ? ' active' : ''}`} onClick={() => setExtraDay(null)}>
-                    ללא
-                  </button>
-                  <button type="button" className={`pill-tab${order.extraDay === 'before' ? ' active' : ''}`} onClick={() => setExtraDay('before')}>
-                    יום נוסף לפני
-                  </button>
-                  <button type="button" className={`pill-tab${order.extraDay === 'after' ? ' active' : ''}`} onClick={() => setExtraDay('after')}>
-                    יום נוסף אחרי
-                  </button>
-                </div>
+              <div className="v3-field">
+                <span className="v3-label">
+                  יום השכרה נוסף
+                  <Tip>תוספת של 50% מסך ההזמנה עבור יום אחד לפני הלקיחה או אחרי ההחזרה.</Tip>
+                </span>
+                <Seg
+                  label="יום השכרה נוסף"
+                  value={order.extraDay || 'none'}
+                  onChange={(v) => setExtraDay(v === 'none' ? null : v)}
+                  options={[
+                    { value: 'none', label: 'ללא' },
+                    { value: 'before', label: 'יום לפני' },
+                    { value: 'after', label: 'יום אחרי' }
+                  ]}
+                />
               </div>
             )}
 
-            <div className="field">
-              <label>הערות להזמנה</label>
-              <textarea
-                className="textarea"
-                rows={3}
-                value={order.notes || ''}
-                onChange={(e) => handleChange({ notes: e.target.value })}
-                placeholder="הערות כלליות לגבי ההזמנה..."
-              />
-            </div>
+            <Field
+              as="textarea"
+              label="הערות להזמנה"
+              rows={3}
+              value={order.notes || ''}
+              onChange={(e) => handleChange({ notes: e.target.value })}
+              placeholder="כל דבר שחשוב לדעת על ההזמנה"
+            />
 
-            <div className="field" style={{ marginBottom: order.isDelivery ? undefined : 0 }}>
-              <label>הערות פנימיות (לא מוצג ללקוח)</label>
-              <textarea
-                className="textarea"
-                rows={3}
-                value={order.internalNotes || ''}
-                onChange={(e) => handleChange({ internalNotes: e.target.value })}
-                placeholder="הערות לצוות בלבד - לא יופיעו בהדפסה או במייל ללקוח..."
-              />
-            </div>
-          </>
+            <Field
+              as="textarea"
+              label="הערות פנימיות"
+              tip="לצוות בלבד. לא מופיע בהדפסה ולא במייל ללקוח."
+              rows={3}
+              value={order.internalNotes || ''}
+              onChange={(e) => handleChange({ internalNotes: e.target.value })}
+              placeholder="הערות לצוות"
+            />
+          </div>
         )}
-      </div>
+      </Card>
 
-      {/* ציפוף ימים מיוחד — סעיף נפרד, מוצג בזמן עריכת האירוע וגם כאינדיקציה במצב קריאה. מוסתר לגמרי כאשר hide_custom_spacing מופעל */}
+      {/* ציפוף ימים מיוחד — מוצג בזמן עריכת האירוע וגם כאינדיקציה במצב קריאה. מוסתר לגמרי כאשר hide_custom_spacing מופעל */}
       {!hideCustomSpacing && (isEditingEvent || hasCustomSpacing) && spacingCardNode}
 
       {/* כרטיס משלוח — קיים גם בהזמנה חדשה (app/orders/new/page.js), כאן מאפשר להוסיף/לערוך
@@ -430,257 +447,217 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           השדות בפועל קורית ב-handleSave (app/orders/[id]/page.js) שמעביר אותם ל-PUT, וה-API
           (app/api/orders/[id]/route.js) כבר מריץ applyDeliveryCharge מחדש בעדכון. */}
       {deliverySettings.enabled && (
-        <div className="card card-pad" style={{ marginBottom: '16px' }}>
-          {/* מתג "הזמנת משלוח" — נשאר תמיד גלוי (לא נכנס למצב עריכה/קריאה כמו שאר הכרטיס
-              למטה) ומודגש יותר משאר השדות, כי הוא הקובע היחיד אם כל שאר האזור פעיל בכלל. */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>משלוח</h3>
-            <div
-              className={`switch${order.isDelivery ? ' on' : ''}`}
-              role="switch"
-              aria-checked={!!order.isDelivery}
-              tabIndex={0}
-              title={order.isDelivery ? 'הזמנת משלוח — מופעל. לחץ לכיבוי' : 'הזמנת משלוח — כבוי. לחץ להפעלה'}
-              onClick={() => {
-                const turningOn = !order.isDelivery;
-                handleChange({ isDelivery: turningOn });
-                if (turningOn) setIsEditingDelivery(true);
-              }}
+        <Card
+          icon="truck"
+          title="משלוח"
+          actions={(
+            // מתג "הזמנת משלוח" — נשאר תמיד גלוי (לא נכנס למצב עריכה/קריאה כמו שאר הכרטיס)
+            // והוא הקובע היחיד אם כל שאר האזור פעיל. גם Enter וגם רווח מחליפים אותו.
+            <Switch
+              checked={!!order.isDelivery}
+              label="הזמנה עם משלוח"
+              onChange={(on) => toggleDelivery(on)}
               onKeyDown={(e) => {
-                if (e.key !== 'Enter' && e.key !== ' ') return;
+                if (e.key !== 'Enter') return;
                 e.preventDefault();
-                const turningOn = !order.isDelivery;
-                handleChange({ isDelivery: turningOn });
-                if (turningOn) setIsEditingDelivery(true);
+                toggleDelivery(!order.isDelivery);
               }}
             />
-          </div>
+          )}
+        >
           {order.isDelivery && (isEditingDelivery ? (
-            <>
-              <div className="form-grid" style={{ marginTop: '14px' }}>
-                <div className="field">
-                  <label>כיוון משלוח</label>
-                  <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
-                    <option value="הלוך">הלוך</option>
-                    <option value="חזור">חזור</option>
-                    <option value="הלוך-חזור">הלוך-חזור</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="delivery-city-edit">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                  <select id="delivery-city-edit" className="select" value={order.deliveryCity || ''} onChange={e => handleChange({ deliveryCity: e.target.value })}>
-                    <option value="">בחר עיר…</option>
-                    {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
-                    <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                      עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
-                    </p>
-                  )}
-                </div>
-                {(deliverySettings.allowAddressOverride || deliveryAddressRequired) && (
-                  <div className="field">
-                    <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                    <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                    {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
-                      <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                        עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-              {deliverySettings.oneDayBeforeOption && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px',
-                  marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)'
-                }}>
-                  <span style={{ fontSize: '13px' }}>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
-                  <div
-                    className={`switch${order.deliveryOneDayBefore ? ' on' : ''}`}
-                    role="switch"
-                    aria-checked={!!order.deliveryOneDayBefore}
-                    tabIndex={0}
-                    title={order.deliveryOneDayBefore ? 'יוצא יום לפני — מופעל. לחץ לכיבוי' : 'יוצא יום לפני — כבוי. לחץ להפעלה'}
-                    onClick={() => handleChange({ deliveryOneDayBefore: !order.deliveryOneDayBefore })}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleChange({ deliveryOneDayBefore: !order.deliveryOneDayBefore }); } }}
-                  />
-                </div>
+            <div className="v3-stack">
+              <Field as="select" label="כיוון המשלוח" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
+                <option value="הלוך">הלוך</option>
+                <option value="חזור">חזור</option>
+                <option value="הלוך-חזור">הלוך-חזור</option>
+              </Field>
+              <Field
+                as="select"
+                id="delivery-city-edit"
+                label="עיר המשלוח"
+                tip="העיר קובעת את מחיר המשלוח."
+                required={deliveryCityRequired}
+                error={deliveryCityRequired && !String(order.deliveryCity || '').trim() ? 'עיר המגורים של הלקוח לא ברשימת ערי המשלוח, אז צריך לבחור עיר משלוח.' : undefined}
+                value={order.deliveryCity || ''}
+                onChange={e => handleChange({ deliveryCity: e.target.value })}
+              >
+                <option value="">בחירת עיר…</option>
+                {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
+              </Field>
+              {(deliverySettings.allowAddressOverride || deliveryAddressRequired) && (
+                <Field
+                  label="כתובת משלוח שונה"
+                  required={deliveryAddressRequired}
+                  error={deliveryAddressRequired && !String(order.deliveryAddress || '').trim() ? 'עיר המשלוח שונה מעיר הלקוח, אז צריך להזין כתובת למשלוח.' : undefined}
+                  type="text"
+                  value={order.deliveryAddress || ''}
+                  onChange={e => handleChange({ deliveryAddress: e.target.value })}
+                  placeholder="רחוב, מספר ועיר"
+                />
               )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button type="button" className="btn btn-ghost btn-icon-only" title="סיים עריכת פרטי משלוח" onClick={() => setIsEditingDelivery(false)}>
-                  <svg className="icon"><use href="#i-check" /></svg>
-                </button>
+              {deliverySettings.oneDayBeforeOption && (
+                <Switch
+                  checked={!!order.deliveryOneDayBefore}
+                  label="המשלוח יוצא יום לפני האירוע (ולא יומיים לפני)"
+                  onChange={(on) => handleChange({ deliveryOneDayBefore: on })}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    handleChange({ deliveryOneDayBefore: !order.deliveryOneDayBefore });
+                  }}
+                />
+              )}
+              <div className="oc-tools">
+                <Btn variant="primary" icon="check" onClick={() => setIsEditingDelivery(false)}>סיום עריכת המשלוח</Btn>
               </div>
-            </>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', marginTop: '10px' }}>
-              <span className="hint" style={{ color: 'var(--text-2)' }}>
-                {[
-                  order.deliveryDirection || 'הלוך-חזור',
-                  order.deliveryCity,
-                  order.deliveryAddress,
-                  order.deliveryOneDayBefore ? 'יוצא יום לפני האירוע' : null
-                ].filter(Boolean).join(' · ') || 'טרם הוזנו פרטי משלוח'}
-              </span>
-              <button type="button" className="btn btn-ghost btn-icon-only" title="עריכת פרטי משלוח" onClick={() => setIsEditingDelivery(true)}>
-                <svg className="icon"><use href="#i-edit" /></svg>
-              </button>
             </div>
+          ) : (
+            <Rows>
+              <Row icon="truck" label="כיוון">{order.deliveryDirection || 'הלוך-חזור'}</Row>
+              <Row icon="pin" label="עיר" missing={!order.deliveryCity} missingText="טרם הוזנה">{order.deliveryCity}</Row>
+              {order.deliveryAddress ? <Row icon="pin" label="כתובת המשלוח">{order.deliveryAddress}</Row> : null}
+              {order.deliveryOneDayBefore ? <Row icon="clock" label="יציאה">יום לפני האירוע</Row> : null}
+              <div className="oc-tools">
+                <Btn icon="edit" onClick={() => setIsEditingDelivery(true)}>עריכת פרטי המשלוח</Btn>
+              </div>
+            </Rows>
           ))}
-        </div>
+        </Card>
       )}
 
       {/* כפתור מאוחד "הוספת תשלום/זיכוי ידני" - מחליף את שני הכפתורים הנפרדים שמוסתרים אז
           בטאב תשלומים (ר' ModernPaymentsManager.js, מותנה באותו SystemSetting
           consolidate_manual_payment_credit_ui, כרגע true רק בנווה יעקב). ההוספה עצמה דורשת
           קוד מאשר - נבדק ב-onOpenManualPaymentCredit (app/orders/[id]/page.js) לפני שהחלונית
-          האמיתית (תשלום/זיכוי) נפתחת בפועל בטאב תשלומים. */}
+          האמיתית (תשלום/זיכוי) נפתחת בפועל בלשונית התשלומים. */}
       {showManualPaymentCreditButton && (
-        <div className="card card-pad" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
-            <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח - דורש קוד מאשר.</div>
-          </div>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowManualPaymentCreditChooser(true)}>
-            <svg className="icon"><use href="#i-coin" /></svg>הוספת תשלום/זיכוי ידני
-          </button>
-        </div>
+        <Card
+          icon="coin"
+          title="תשלום או זיכוי ידני"
+          tip="רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח. דורש קוד מאשר."
+          actions={<Btn icon="plus" onClick={() => setShowManualPaymentCreditChooser(true)}>הוספה</Btn>}
+        />
       )}
 
       {/* תאריך ביצוע ההזמנה */}
-      <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1 }}>
-          <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך ביצוע ההזמנה</span>
-          {isEditingOrderDate ? (
-            <div style={{ marginTop: '6px', maxWidth: '220px' }}>
-              <HebrewDatePicker value={order.orderDate} onChange={handleOrderDateChange} />
-            </div>
-          ) : (
-            <div style={{ fontWeight: 700, marginTop: '2px' }}>{orderDateStr}</div>
-          )}
-        </div>
-        {!isEditingOrderDate && (
-          <button type="button" className="btn btn-ghost btn-icon-only" title="ערוך תאריך הזמנה (דורש אישור)" onClick={requestOrderDateEdit}>
-            <svg className="icon"><use href="#i-edit" /></svg>
-          </button>
+      <Card
+        icon="clock"
+        title="תאריך ביצוע ההזמנה"
+        tip="עריכת התאריך משפיעה על חישובי זיכוי בביטול, ולכן דורשת אישור."
+        actions={!isEditingOrderDate ? (
+          <TipWrap content="עריכת תאריך הביצוע (דורש אישור)">
+            <IconBtn icon="edit" label="עריכת תאריך ביצוע ההזמנה" onClick={requestOrderDateEdit} />
+          </TipWrap>
+        ) : null}
+      >
+        {isEditingOrderDate ? (
+          <HebrewDatePicker value={order.orderDate} onChange={handleOrderDateChange} />
+        ) : (
+          <Rows><Row icon="calendar" label="בוצעה בתאריך">{orderDateStr}</Row></Rows>
         )}
-      </div>
+      </Card>
 
-      {/* ===== מודל החלפת לקוח ===== */}
-      {showCustomerModal && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowCustomerModal(false); }}
-        >
-          <div className="modal" style={{ maxWidth: '560px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>החלפת לקוח</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowCustomerModal(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
+      {/* ===== חלונית החלפת לקוח (חלונית הזנה - בהיר בלבד) ===== */}
+      <Dialog
+        open={showCustomerModal}
+        variant="form"
+        icon="user"
+        title="החלפת לקוח"
+        sub="בוחרים לקוח קיים, או יוצרים לקוח חדש."
+        onClose={() => setShowCustomerModal(false)}
+        actions={(
+          <>
+            {customerMode === 'new' && (
+              <Btn variant="primary" icon="check" onClick={handleSaveNewCustomer}>שמור ובחר</Btn>
+            )}
+            <Btn variant="quiet" onClick={() => setShowCustomerModal(false)}>ביטול</Btn>
+          </>
+        )}
+      >
+        <Seg
+          label="סוג הלקוח"
+          value={customerMode}
+          onChange={setCustomerMode}
+          options={[
+            { value: 'existing', label: 'לקוח קיים', icon: 'search' },
+            { value: 'new', label: 'לקוח חדש', icon: 'plus' }
+          ]}
+        />
+
+        {customerMode === 'existing' ? (
+          <div className="v3-field">
+            <span className="v3-label">חיפוש לקוח</span>
+            {/* value=null בכוונה — אחרת שדה החיפוש מתמלא בשם הלקוח הנוכחי והרשימה מסוננת רק אליו */}
+            <CustomerSelector
+              value={null}
+              onChange={selectCustomer}
+              placeholder="שם, טלפון או עיר"
+            />
+          </div>
+        ) : (
+          <div className="v3-stack">
+            <div className="oc-two">
+              <Field label="שם פרטי" required type="text" autoComplete="off" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} />
+              <Field label="שם משפחה" required type="text" autoComplete="off" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} />
             </div>
-            <div className="modal-body">
-              <div className="pill-tabs" style={{ marginBottom: '16px' }}>
-                <button type="button" className={`pill-tab${customerMode === 'existing' ? ' active' : ''}`} onClick={() => setCustomerMode('existing')}>לקוח קיים</button>
-                <button type="button" className={`pill-tab${customerMode === 'new' ? ' active' : ''}`} onClick={() => setCustomerMode('new')}>לקוח חדש</button>
+            <div className="oc-two">
+              <Field label="טלפון" required type="text" dir="ltr" autoComplete="off" value={newCustomer.phone1} onChange={e => setNewCustomer({ ...newCustomer, phone1: e.target.value })} />
+              <div className="v3-stack">
+                <Field label="מייל" required type="email" dir="ltr" autoComplete="off" value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                {(!newCustomer.email || !newCustomer.email.includes('@')) && (
+                  <div>
+                    <Btn
+                      size="sm"
+                      onClick={() => setNewCustomer(prev => ({ ...prev, email: (prev.email || '') + '@gmail.com' }))}
+                    >
+                      הוספת <bdi dir="ltr">@gmail.com</bdi>
+                    </Btn>
+                  </div>
+                )}
               </div>
-
-              {customerMode === 'existing' ? (
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>חיפוש לקוח</label>
-                  {/* value=null בכוונה — אחרת שדה החיפוש מתמלא בשם הלקוח הנוכחי והרשימה מסוננת רק אליו */}
-                  <CustomerSelector
-                    value={null}
-                    onChange={selectCustomer}
-                    placeholder="חפש לקוח לפי שם, טלפון, עיר..."
-                  />
-                </div>
-              ) : (
-                <div>
-                  <div className="form-grid">
-                    <div className="field"><label>שם פרטי *</label><input type="text" className="input" autoComplete="off" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} /></div>
-                    <div className="field"><label>שם משפחה *</label><input type="text" className="input" autoComplete="off" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} /></div>
-                  </div>
-                  <div className="form-grid">
-                    <div className="field"><label>טלפון *</label><input type="text" className="input" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.phone1} onChange={e => setNewCustomer({ ...newCustomer, phone1: e.target.value })} /></div>
-                    <div className="field">
-                      <label>דוא&quot;ל *</label>
-                      <input type="email" className="input" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
-                      {(!newCustomer.email || !newCustomer.email.includes('@')) && (
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          style={{ marginTop: '6px' }}
-                          onClick={() => setNewCustomer(prev => ({ ...prev, email: (prev.email || '') + '@gmail.com' }))}
-                        >
-                          השלם ל- @gmail.com
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="form-grid">
-                    <div className="field"><label>עיר</label><input type="text" className="input" autoComplete="off" value={newCustomer.city} onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })} /></div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <div className="field" style={{ flex: 2 }}><label>רחוב</label><input type="text" className="input" autoComplete="off" value={newCustomer.street} onChange={e => setNewCustomer({ ...newCustomer, street: e.target.value })} /></div>
-                      <div className="field" style={{ flex: 1 }}><label>בית</label><input type="text" className="input" autoComplete="off" value={newCustomer.houseNum} onChange={e => setNewCustomer({ ...newCustomer, houseNum: e.target.value })} /></div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowCustomerModal(false)}>ביטול</button>
-              {customerMode === 'new' && (
-                <button type="button" className="btn btn-primary" onClick={handleSaveNewCustomer}>
-                  <svg className="icon"><use href="#i-check" /></svg>
-                  שמור ובחר
-                </button>
-              )}
+            <div className="oc-two">
+              <Field label="עיר" type="text" autoComplete="off" value={newCustomer.city} onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })} />
+              <Field label="רחוב" type="text" autoComplete="off" value={newCustomer.street} onChange={e => setNewCustomer({ ...newCustomer, street: e.target.value })} />
             </div>
+            <Field label="מספר בית" type="text" autoComplete="off" value={newCustomer.houseNum} onChange={e => setNewCustomer({ ...newCustomer, houseNum: e.target.value })} />
           </div>
-        </div>,
-        document.body
-      )}
+        )}
+      </Dialog>
 
-      {/* ===== בורר "תשלום או זיכוי" עבור הכפתור המאוחד למעלה ===== */}
-      {showManualPaymentCreditChooser && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowManualPaymentCreditChooser(false); }}
-        >
-          <div className="modal" style={{ maxWidth: '420px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>הוספת תשלום/זיכוי ידני</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowManualPaymentCreditChooser(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p className="hint" style={{ color: 'var(--text-2)', margin: 0 }}>בחר את סוג הפעולה. שתיהן דורשות קוד מאשר.</p>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ justifyContent: 'flex-start' }}
-                onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('payment'); }}
-              >
-                <svg className="icon"><use href="#i-coin" /></svg>רישום תשלום נוסף (למשל מזומן)
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ justifyContent: 'flex-start' }}
-                onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('credit'); }}
-              >
-                <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* ===== בורר "תשלום או זיכוי" עבור הכפתור המאוחד למעלה - חלונית בחירה ===== */}
+      <Dialog
+        open={showManualPaymentCreditChooser}
+        variant="confirm"
+        mode="light"
+        icon="coin"
+        title="איזו פעולה לרשום?"
+        sub="שתי הפעולות דורשות קוד מאשר."
+        onClose={() => setShowManualPaymentCreditChooser(false)}
+        actions={<Btn variant="quiet" onClick={() => setShowManualPaymentCreditChooser(false)}>ביטול</Btn>}
+      >
+        <div className="v3-options">
+          <button
+            type="button"
+            className="v3-option"
+            onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('payment'); }}
+          >
+            <Icon name="coin" />
+            <span>רישום תשלום נוסף<small>למשל מזומן</small></span>
+          </button>
+          <button
+            type="button"
+            className="v3-option"
+            onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('credit'); }}
+          >
+            <Icon name="refresh" />
+            <span>בקשת זיכוי ללקוח<small>החזר כסף על ההזמנה</small></span>
+          </button>
+        </div>
+      </Dialog>
+
+      {dialogs}
     </>
   );
 }

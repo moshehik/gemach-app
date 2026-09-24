@@ -6,34 +6,39 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { ChangesChips } from '../../modern/ChangesChips';
 import { verifyPin } from './mocAuth';
+import { Card, Btn, IconBtn, Chip, Icon, Row, Rows, Empty, Banner } from '../../../app/v3/ui/components';
+import { TipWrap } from './orderCardDialogs';
+import './orderCardV3.css';
 
-// מיפוי מקומי (עיצוב "אריג" בלבד) מפעולת יומן ל-badge סמנטי — אותה קיבוץ סמנטי
-// כמו ACTION_TONES (משותף), רק ממופה ל-classNames של מערכת העיצוב.
-const ACTION_BADGE_CLASS = {
-  CREATE: 'badge-success',
-  DELETE: 'badge-danger',
-  UPDATE: 'badge-primary',
-  CANCEL_RENTAL: 'badge-danger',
-  CANCEL_RETURN: 'badge-danger',
-  CANCEL_SCAN: 'badge-danger',
-  CANCEL_ITEM: 'badge-danger',
-  CANCEL_OBLIGATION: 'badge-danger',
-  CANCEL_PAYMENT: 'badge-danger',
-  CANCEL_ORDER: 'badge-danger',
-  CANCEL_CHANGES: 'badge-danger',
-  RESTORE_ITEM: 'badge-success',
-  RESTORE_OBLIGATION: 'badge-success',
-  RESTORE_PAYMENT: 'badge-success',
-  CONFIRM_RENTAL: 'badge-success',
-  RETURN_RENTAL: 'badge-success',
-  DEBT_APPROVED: 'badge-success',
-  CANCEL_DEBT_APPROVAL: 'badge-danger'
+// מיפוי מקומי בלבד מפעולת יומן ל-Chip של v3 — אותה קיבוץ סמנטי כמו ACTION_TONES (משותף):
+// הצלחה = navy מלא, ביטול/מחיקה = אפרסק ("תשומת לב"), עדכון = תכלת, ניטרלי = ברירת מחדל.
+const ACTION_CHIP_VARIANT = {
+  CREATE: 'done',
+  DELETE: 'attn',
+  UPDATE: 'info',
+  CANCEL_RENTAL: 'attn',
+  CANCEL_RETURN: 'attn',
+  CANCEL_SCAN: 'attn',
+  CANCEL_ITEM: 'attn',
+  CANCEL_OBLIGATION: 'attn',
+  CANCEL_PAYMENT: 'attn',
+  CANCEL_ORDER: 'attn',
+  CANCEL_CHANGES: 'attn',
+  RESTORE_ITEM: 'done',
+  RESTORE_OBLIGATION: 'done',
+  RESTORE_PAYMENT: 'done',
+  CONFIRM_RENTAL: 'done',
+  RETURN_RENTAL: 'done',
+  DEBT_APPROVED: 'done',
+  CANCEL_DEBT_APPROVAL: 'attn'
 };
-const badgeClassFor = (action) => ACTION_BADGE_CLASS[action] || 'badge-neutral';
+const chipVariantFor = (action) => ACTION_CHIP_VARIANT[action];
 
 /**
- * טאב "מידע" בעיצוב "אריג" — כרטיס "בוצעה על ידי" (עם תאריך עברי ועריכת
- * תאריך ביצוע באישור מאשר מוגדר) + היסטוריית שינויים כללית עם סינון.
+ * לשונית "היסטוריה" בעיצוב v3 — כרטיס "בוצעה על ידי" (עם תאריך עברי ועריכת
+ * תאריך ביצוע באישור מאשר מוגדר) + היסטוריית שינויים כללית עם חיפוש.
+ * הערה: אזור "פיד ההיסטוריה" (מסומן למטה) מיועד להחלפה ע"י משפחת ה-history (HISTORY-DESIGN.md);
+ * שאר הקובץ (כרטיס ה"בוצעה על ידי", עריכת התאריך, כפתור העובדים) שייך לכרטיס ההזמנה.
  */
 export default function ModernInfoTab({ order, createdDate, onShowEmployees, onOrderDateSave }) {
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
@@ -97,104 +102,105 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
   return (
     <>
       {/* בוצעה על ידי */}
-      <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <div className="avatar lg"><svg className="icon"><use href="#i-user" /></svg></div>
-        <div style={{ flex: 1, minWidth: '220px' }}>
-          <span className="hint" style={{ color: 'var(--text-3)' }}>בוצעה על ידי</span>
-          <div style={{ fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '2px' }}>
-            <span>{performedByName} · {dateLabel}</span>
+      <Card
+        icon="user"
+        title="פרטי הביצוע"
+        actions={(
+          <TipWrap content="מי עבד במשמרת בזמן ההזמנה">
+            <IconBtn icon="users" label="עובדים פעילים בזמן ההזמנה" onClick={onShowEmployees} />
+          </TipWrap>
+        )}
+      >
+        <Rows>
+          <Row icon="user" label="בוצעה על ידי">{performedByName}</Row>
+          <Row
+            icon="calendar"
+            label="תאריך ושעה"
+            tip="שינוי תאריך הביצוע משפיע על חישובי זיכוי בביטול, ולכן דורש אישור."
+          >
             {isEditingOrderDate ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minWidth: '200px' }}>
+              <div className="oc-inline-edit">
                 <HebrewDatePicker value={order.orderDate} onChange={handleOrderDateChange} />
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ביטול עריכה" onClick={() => setIsEditingOrderDate(false)}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-ghost btn-icon-only btn-sm"
-                title="שינוי תאריך ביצוע ההזמנה — לצורך בדיקות (דורש אישור)"
-                onClick={requestOrderDateEdit}
-              >
-                <svg className="icon"><use href="#i-edit" /></svg>
-              </button>
-            )}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="btn btn-secondary btn-icon-only"
-          title="עובדים פעילים בהזמנה"
-          onClick={onShowEmployees}
-        >
-          <svg className="icon"><use href="#i-users" /></svg>
-        </button>
-      </div>
-
-      {/* היסטוריית שינויים כללית */}
-      <div className="toolbar">
-        <h3 style={{ fontSize: '15px' }}>היסטוריית שינויים</h3>
-        <span className="spacer" />
-        <span className="hint" style={{ color: 'var(--text-3)' }}>{logs.length} תיעודי פעולות</span>
-      </div>
-
-      {/* חיפוש פשוט */}
-      <form onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-        <div className="input-icon-wrap" style={{ flex: 1 }}>
-          <svg className="icon"><use href="#i-search" /></svg>
-          <input
-            type="text"
-            className="input"
-            placeholder="חיפוש בהיסטוריה..."
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-          />
-        </div>
-        <button type="submit" className="btn btn-primary btn-sm">חפש</button>
-        {filterSearch && (
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setFilterSearch(''); setSearchInput(''); }}>
-            <svg className="icon"><use href="#i-x" /></svg> נקה
-          </button>
-        )}
-      </form>
-
-      <div className="card">
-        {loading ? (
-          <div className="loading-inline" style={{ padding: '28px 0' }}>
-            <span className="spinner lg" />
-            טוען היסטוריית שינויים...
-          </div>
-        ) : error ? (
-          <div style={{ color: 'var(--danger)', textAlign: 'center', padding: '20px 0', fontWeight: 700 }}>
-            שגיאה בטעינת היסטוריה: {error}
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="empty-state">
-            <svg className="icon"><use href="#i-history" /></svg>
-            <p>לא נמצאו תיעודי היסטוריה או שינויים</p>
-          </div>
-        ) : (
-          logs.map((log) => {
-            const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
-            const d = new Date(log.createdAt);
-            return (
-              <div key={log.id} className="select-row" style={{ alignItems: 'flex-start' }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <span className={`badge ${badgeClassFor(log.action)}`}>{actionLabel}</span>
-                  <strong style={{ fontSize: '13px', marginInlineStart: '6px' }}>
-                    {log.employeeId ? (log.employeeName || 'עובד שנמחק') : 'מערכת'} ביצע/ה {actionLabel}
-                  </strong>
-                  <div className="hint" style={{ color: 'var(--text-3)', marginTop: '2px' }}>
-                    {d.toLocaleDateString('he-IL')} ({getHebrewDateString(d)}) · {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                  <ChangesChips changesJson={log.changesJson} />
-                </div>
+                <TipWrap content="ביטול העריכה">
+                  <IconBtn icon="x" label="ביטול עריכת התאריך" onClick={() => setIsEditingOrderDate(false)} />
+                </TipWrap>
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              <div className="oc-inline-edit">
+                <span>{dateLabel}</span>
+                <TipWrap content="שינוי תאריך הביצוע (דורש אישור)">
+                  <IconBtn icon="edit" label="שינוי תאריך ביצוע ההזמנה" onClick={requestOrderDateEdit} />
+                </TipWrap>
+              </div>
+            )}
+          </Row>
+        </Rows>
+      </Card>
+
+      {/* ===== התחלת אזור פיד ההיסטוריה (להחלפה ע"י משפחת history) ===== */}
+      <Card
+        icon="history"
+        title="היסטוריית שינויים"
+        actions={<Chip icon="list"><bdi>{logs.length}</bdi> רשומות</Chip>}
+      >
+        {/* חיפוש פשוט */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }}
+          className="oc-inline-edit"
+          role="search"
+        >
+          <div className="v3-search" style={{ flex: 1, minWidth: 0 }}>
+            <Icon name="search" />
+            <input
+              type="text"
+              aria-label="חיפוש בהיסטוריה"
+              placeholder="חיפוש בהיסטוריה"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+            />
+          </div>
+          <Btn type="submit" variant="primary" icon="search">חיפוש</Btn>
+          {filterSearch && (
+            <Btn variant="quiet" icon="x" onClick={() => { setFilterSearch(''); setSearchInput(''); }}>ניקוי</Btn>
+          )}
+        </form>
+
+        <div style={{ marginTop: 'var(--v3-sp-4)' }}>
+          {loading ? (
+            <div className="v3-empty" role="status" aria-live="polite">
+              <Icon name="loader" size="xl" loop />
+              <span>טוענים את ההיסטוריה...</span>
+            </div>
+          ) : error ? (
+            <Banner kind="alert" title={`שגיאה בטעינת היסטוריה: ${error}`} />
+          ) : logs.length === 0 ? (
+            <Empty icon="history" title="אין עדיין היסטוריה" text="כשיתבצעו שינויים בהזמנה הם יופיעו כאן." />
+          ) : (
+            <div className="v3-list">
+              {logs.map((log) => {
+                const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
+                const d = new Date(log.createdAt);
+                return (
+                  <div key={log.id} className="v3-li">
+                    <div className="v3-li__ic"><Icon name="history" /></div>
+                    <div className="v3-li__body">
+                      <span className="v3-li__title">
+                        {log.employeeId ? (log.employeeName || 'עובד שנמחק') : 'המערכת'} ביצע/ה: {actionLabel}
+                      </span>
+                      <span className="v3-li__sub">
+                        <bdi>{d.toLocaleDateString('he-IL')}</bdi> ({getHebrewDateString(d)}) · <bdi>{d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi>
+                      </span>
+                      <ChangesChips changesJson={log.changesJson} />
+                    </div>
+                    <Chip variant={chipVariantFor(log.action)}>{actionLabel}</Chip>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+      {/* ===== סוף אזור פיד ההיסטוריה ===== */}
     </>
   );
 }
