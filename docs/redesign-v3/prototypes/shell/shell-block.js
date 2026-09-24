@@ -492,7 +492,6 @@ document.addEventListener('keydown',e=>{
 });
 addEventListener('resize',()=>{ if(menu.classList.contains('on')) place(); });
 })();
-</script>
 /* [S14] nf- bell notifications — sketch L3704-3813 */
 /* nf-: notification centre (bell panel + mobile drawer), session-only */
 (()=>{
