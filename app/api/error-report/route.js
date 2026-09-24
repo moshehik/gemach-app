@@ -76,6 +76,14 @@ export async function GET(request) {
           })
     });
 
+    // sketchHtml (סקיצה מהסוכן) יכול להיות כבד - לא נשלח ברשימה; הלקוח טוען אותו ב-iframe
+    // דרך /api/error-report/sketch/[replyId] ורק מקבל כאן דגל hasSketch.
+    if (!isLight) {
+      for (const r of reports) {
+        r.replies = r.replies.map(({ sketchHtml, ...rep }) => ({ ...rep, hasSketch: !!sketchHtml }));
+      }
+    }
+
     return NextResponse.json({ success: true, reports, isProgrammer, isManager });
   } catch (error) {
     console.error('Error fetching error reports:', error);

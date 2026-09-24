@@ -70,6 +70,7 @@ async function main() {
         author: rep.employee ? `${rep.employee.firstName || ''} ${rep.employee.lastName || ''}`.trim() : (rep.isProgrammer ? 'תמיכה' : 'משתמש'),
         text: rep.text,
         isQuestion: rep.isQuestion,
+        sketchStatus: rep.sketchStatus || null, // PENDING=ממתין לאישור, APPROVED=מותר לפתוח ענף, REJECTED=לתקן סקיצה ולשאול שוב
         ...shapeAttachments(rep.attachmentUrls),
         createdAt: rep.createdAt,
       })),

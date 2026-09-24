@@ -6,13 +6,16 @@
  * שרשור "יומן הסוכן" הקבוע (ר' scripts/agent-log-report.js) - זה עדיין ErrorReport רגיל.
  *
  * Usage:
- *   node scripts/error-report-reply.js <reportId> "<טקסט>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>] [--question]
+ *   node scripts/error-report-reply.js <reportId> "<טקסט>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>] [--question] [--sketch=<file.html>]
  *
  * status אופציונלי: OPEN|ARCHIVED. הוסיפו --status=ARCHIVED רק כשהתיקון אומת בפועל -
  * אחרת השאירו את הדיווח פתוח כדי שמשה יסגור בעצמו אחרי שהוא מאשר (ר' fix-reports.md).
  * --org=2 כותב לדיווח בגמח "נווה יעקב" (ברירת מחדל: 1, הגמח הראשי) - ר' scripts/lib/db-env.js.
  * --preview-url=<url> - קישור Preview Deployment זמני (ר' scripts/get-preview-deployment-url.js),
  * מוצג בלקוח כפתור מעוצב ולא כטקסט/URL גולמי בתוך text - ר' fix-reports.md לכללי מתי מותר לצרף.
+ * --sketch=<file.html> - מצרף סקיצת HTML עצמאית (בלי JS/משאבים חיצוניים, עד 300KB) לתגובה. מסמן
+ *   אוטומטית isQuestion=true ו-sketchStatus=PENDING - המדווח/ת רואה כפתור "צפה בסקיצה" + אשר/דחה.
+ *   רק אחרי APPROVED מותר לפתוח ענף (ר' fix-reports.md, "סקיצה לפני ענף").
  * --question - סמנו את התגובה הזו כ"שאלה פתוחה" (isQuestion=true), רק כשהתגובה בפועל
  * מחכה לתשובה מהמדווח/ת כדי להמשיך (למשל: "איזה ערך אתם רוצים?"). בלי הדגל הזה התגובה
  * נחשבת "תגובה סתם" (עדכון סטטוס/סיכום/"ראיתי, בודק") - גם אם היא מנוסחת כמשפט שאלה
@@ -34,10 +37,24 @@ async function main() {
   const positional = rest.filter((a) => !a.startsWith('--'));
   const [reportId, text] = positional;
   const status = statusArg ? statusArg.slice('--status='.length) : null;
+  const sketchArg = rest.find((a) => a.startsWith('--sketch='));
+  let sketchHtml = null;
+  if (sketchArg) {
+    const file = sketchArg.slice('--sketch='.length);
+    const fs = require('fs');
+    if (!fs.existsSync(file)) { console.error(`--sketch file not found: ${file}`); process.exit(1); }
+    sketchHtml = fs.readFileSync(file, 'utf8');
+    const forCheck = sketchHtml.replace(/xmlns(:\w+)?="http:\/\/www\.w3\.org\/[^"]*"/g, '');
+    if (Buffer.byteLength(sketchHtml) > 300 * 1024) { console.error('--sketch file too large (max 300KB)'); process.exit(1); }
+    if (/<script|<iframe|<object|<embed|https?:\/\//i.test(forCheck)) {
+      console.error('--sketch must be self-contained: no <script>/<iframe>/<object>/<embed> and no external http(s) URLs');
+      process.exit(1);
+    }
+  }
   const previewUrl = previewUrlArg ? previewUrlArg.slice('--preview-url='.length) : null;
 
   if (!reportId || !text) {
-    console.error('Usage: node scripts/error-report-reply.js <reportId> "<text>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>] [--question]');
+    console.error('Usage: node scripts/error-report-reply.js <reportId> "<text>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>] [--question] [--sketch=<file.html>]');
     process.exit(1);
   }
   if (status && !['OPEN', 'ARCHIVED'].includes(status)) {
@@ -68,14 +85,14 @@ async function main() {
     }
 
     const reply = await prisma.errorReportReply.create({
-      data: { errorReportId: reportId, isProgrammer: true, text, previewUrl: previewUrl || null, isQuestion },
+      data: { errorReportId: reportId, isProgrammer: true, text, previewUrl: previewUrl || null, isQuestion: isQuestion || !!sketchHtml, ...(sketchHtml ? { sketchHtml, sketchStatus: 'PENDING' } : {}) },
     });
 
     const updateData = { isReadByUser: false, isReadByProgrammer: true, updatedAt: new Date() };
     if (status) updateData.status = status;
     await prisma.errorReport.update({ where: { id: reportId }, data: updateData });
 
-    console.log(`OK: reply ${reply.id} posted to report ${reportId}${status ? ` (status -> ${status})` : ''}${isQuestion ? ' [question - awaiting reporter]' : ''}`);
+    console.log(`OK: reply ${reply.id} posted to report ${reportId}${status ? ` (status -> ${status})` : ''}${isQuestion || sketchHtml ? ' [question - awaiting reporter]' : ''}`);
   } finally {
     await prisma.$disconnect();
   }
