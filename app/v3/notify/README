@@ -1,0 +1,35 @@
+מנגנון ההתראות של v3 (R20 + R21) - קבצים חדשים בלבד, עדיין לא מחובר ל-app/layout.js.
+
+קבצים
+  store.js             תור ב-sessionStorage, dedupe, pause/resume, שמירה בפעמון (POST category=activity_note)
+  V3NotifyProvider.js  שורת ההתראה (15ש', פס זהב יורד, עצירה בריחוף/מיקוד, X, Esc) + useV3Notify()
+  V3MessagesToast.js   R21: הודעה פנימית מתמשכת למטה-שמאל (portal ל-#v3-toast-region)
+  bridge.js            v3Toast(message,type) / v3Alert - חתימה זהה ל-PopupProvider.showAlert; v3NoticeSaved()
+  notify.css           סגנונות (tokens --v3-* בלבד). index.js - ייצוא מרוכז
+
+חיבור (בשלב הבא, לא נעשה): לעטוף את AppShell ב-<V3NotifyProvider onNavigate={router.push}> בתוך PopupProvider;
+  ב-PopupProvider.showAlert להפנות ל-v3Toast; להאזין ל-'v3:bell-refresh' ב-NotificationBell.
+  לפני הפעלת persistToBell חובה ליישם את docs/redesign-v3/reports/notify-api-patch.md (אחרת ייווצר מייל/קטגוריה null).
+  ב-messages/page.js לסנן category==='activity_note'. אם hideInternalMessaging - persistToBell=false.
+  הערה: notify.css משתמש ב-tokens (z-toast, grad-navy-float, sh-pop-dark ועוד) - לוודא ש-tokens.css נטען גלובלית.
+
+API
+  const { notify } = useV3Notify();
+  notify({kind:'success'|'info'|'warn'|'error', title, text, href, persistToBell, durationMs, dedupeKey})
+  אפשר גם enqueueNotice(...) ישירות מכל מקום, ממש לפני router.push.
+  כלל: ניווט מיד אחרי כתיבה מוצלחת = persistToBell:true; שגיאות/אישורי מנהל = v3Toast (לא נשמר).
+
+נקודות להמרה (NOTIFICATIONS-DESIGN §4)
+  1  app/orders/new/page.js:1342   אחרי POST /api/orders, לפני router.push - success, href לפי order_new_redirect_screen; data.warning (1333) = warn
+  2  app/orders/[id]/page.js:952-958   handleSave - להחליף setSaveMessage + showSaveSuccessOverlay (1571); לדלג אם showsPaymentContinuePrompt
+  3  app/orders/[id]/page.js ~1191-1267   handleExit אחרי PUT מוצלח, לפני router.push (היום אין משוב)
+  4  app/orders/[id]/page.js:1234   alert "מגיע זיכוי" - info + persist
+  5  app/orders/[id]/page.js:1395   מחיקת הזמנה -> /orders
+  6  app/orders/[id]/page.js:1087-1090   זנח - בלי הודעה
+  7  app/customers/[id]/page.js:217 (יצירה), :220 (עדכון alert 'הפרטים נשמרו')
+  8  app/employees/[id]/page.js:119 (יצירה), :121 (עדכון)
+  9  app/dashboard/dresses/[id]/page.js:252   handleExit אחרי saveDress()
+  10 app/dashboard/dresses/[id]/page.js:394   יצירת דגם (router.replace); failedItems = warn
+  11 app/orders/[id]/page.js:1219   חוב חדש - warn; בנווה יעקב הדיאלוג paymentContinueAmount נשאר
+  משניים (persist:false): refunds/page.js:458,483; alterations/page.js:107,134; dashboard/pricelist; admin/settings/SettingsClient.js; admin/labels:105
+  R21 (V3MessagesToast): ShiftMessageWatcher.js (במקום showConfirm חוסם), LoginScreen.js:110-118 (דגל sessionStorage v3.login.notify)

@@ -1,0 +1,97 @@
+/* =====================================================================
+   v3 — איקונים: גדלים נוספים + מיקרו-אנימציות (R12)
+   קובץ חדש; לא נוגע ב-tokens.css / components.css. משתמש בטוקנים בלבד.
+   - טרנספורם בלבד, עקומה אחת: var(--v3-ease).
+   - הפעלה: ריחוף/מיקוד של ההורה (.v3-btn / .v3-ibtn / button / a / [data-v3-anim-host])
+     או ריחוף האיקון עצמו, או בטעינה עם .v3-icon--enter, או רציף עם data-loop / aria-busy.
+   - <svg class="v3-ic" data-anim="pop"><use href="#i-check"/></svg>
+   ===================================================================== */
+
+:root { --v3-dir: 1; }              /* כיוון אופקי: RTL מהפך אנימציות כיווניות */
+[dir="rtl"] { --v3-dir: -1; }
+
+.v3-ic--xs { width: 12px; height: 12px; }
+.v3-ic--xl { width: 32px; height: 32px; }
+.v3-ic--2xl { width: 48px; height: 48px; }
+
+.v3-ic[data-anim], .v3-ic.v3-icon--enter { transform-origin: 50% 50%; }
+
+@keyframes v3-ic-pop    { 0% { transform: scale(1); } 40% { transform: scale(1.28) rotate(-6deg); } 70% { transform: scale(.94); } 100% { transform: scale(1); } }
+@keyframes v3-ic-draw   { 0% { transform: scale(.5) rotate(-18deg); } 60% { transform: scale(1.15) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes v3-ic-shake  { 0%,100% { transform: translateX(0); } 20% { transform: translateX(calc(-3px * var(--v3-dir))); } 40% { transform: translateX(calc(3px * var(--v3-dir))); } 60% { transform: translateX(calc(-2px * var(--v3-dir))); } 80% { transform: translateX(calc(2px * var(--v3-dir))); } }
+@keyframes v3-ic-wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
+@keyframes v3-ic-ring   { 0%,100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 35% { transform: rotate(-14deg); } 55% { transform: rotate(10deg); } 75% { transform: rotate(-6deg); } }
+@keyframes v3-ic-bounce { 0%,100% { transform: translateY(0); } 35% { transform: translateY(-4px); } 65% { transform: translateY(0); } 80% { transform: translateY(-1.5px); } }
+@keyframes v3-ic-drive  { 0%,100% { transform: translateX(0); } 45%,55% { transform: translateX(calc(5px * var(--v3-dir))); } }
+@keyframes v3-ic-nudge  { 0%,100% { transform: translateX(0); } 50% { transform: translateX(calc(4px * var(--v3-dir))); } }
+@keyframes v3-ic-nudge-back { 0%,100% { transform: translateX(0); } 50% { transform: translateX(calc(-4px * var(--v3-dir))); } }
+@keyframes v3-ic-nudge-diag { 0%,100% { transform: translate(0,0); } 50% { transform: translate(calc(3px * var(--v3-dir)), -3px); } }
+@keyframes v3-ic-spin   { to { transform: rotate(360deg); } }
+@keyframes v3-ic-spin90 { to { transform: rotate(90deg); } }
+@keyframes v3-ic-rewind { 0%,100% { transform: rotate(0); } 50% { transform: rotate(calc(45deg * var(--v3-dir))); } }
+@keyframes v3-ic-pulse  { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes v3-ic-tilt   { 0%,100% { transform: rotate(0); } 50% { transform: rotate(calc(-14deg * var(--v3-dir))) scale(1.08); } }
+@keyframes v3-ic-flip   { 0%,100% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } }
+@keyframes v3-ic-flip-y { to { transform: rotateY(360deg); } }
+@keyframes v3-ic-flip180 { to { transform: rotate(180deg); } }
+@keyframes v3-ic-drop   { 0% { transform: translateY(-6px); } 55% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+@keyframes v3-ic-rise   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes v3-ic-swing  { 0%,100% { transform: rotate(0); } 30% { transform: rotate(14deg); } 70% { transform: rotate(-9deg); } }
+@keyframes v3-ic-snip   { 0%,100% { transform: scale(1) rotate(0); } 30% { transform: scale(.88) rotate(-8deg); } 60% { transform: scale(1.05) rotate(4deg); } }
+@keyframes v3-ic-blink  { 0%,100% { transform: scaleY(1); } 45% { transform: scaleY(.15); } }
+@keyframes v3-ic-fly    { 0%,100% { transform: translate(0,0); } 45% { transform: translate(calc(4px * var(--v3-dir)), -4px) rotate(calc(-8deg * var(--v3-dir))); } }
+@keyframes v3-ic-enter  { 0% { transform: scale(.4); } 65% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+.v3-ic { --v3-ic-anim-name: v3-ic-pop; --v3-ic-anim-dur: var(--v3-dur-enter); }
+.v3-ic[data-anim="pop"]        { --v3-ic-anim-name: v3-ic-pop; }
+.v3-ic[data-anim="draw"]       { --v3-ic-anim-name: v3-ic-draw; }
+.v3-ic[data-anim="shake"]      { --v3-ic-anim-name: v3-ic-shake;  --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="wiggle"]     { --v3-ic-anim-name: v3-ic-wiggle; --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="ring"]       { --v3-ic-anim-name: v3-ic-ring; }
+.v3-ic[data-anim="bounce"]     { --v3-ic-anim-name: v3-ic-bounce; }
+.v3-ic[data-anim="drive"]      { --v3-ic-anim-name: v3-ic-drive; }
+.v3-ic[data-anim="nudge"]      { --v3-ic-anim-name: v3-ic-nudge;  --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="nudge-back"] { --v3-ic-anim-name: v3-ic-nudge-back; --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="nudge-diag"] { --v3-ic-anim-name: v3-ic-nudge-diag; --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="spin"]       { --v3-ic-anim-name: v3-ic-spin; }
+.v3-ic[data-anim="spin90"]     { --v3-ic-anim-name: v3-ic-spin90; --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="rewind"]     { --v3-ic-anim-name: v3-ic-rewind; }
+.v3-ic[data-anim="pulse"]      { --v3-ic-anim-name: v3-ic-pulse;  --v3-ic-anim-dur: var(--v3-dur-loop); }
+.v3-ic[data-anim="tilt"]       { --v3-ic-anim-name: v3-ic-tilt; }
+.v3-ic[data-anim="flip"]       { --v3-ic-anim-name: v3-ic-flip;   --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="flip-y"]     { --v3-ic-anim-name: v3-ic-flip-y; }
+.v3-ic[data-anim="flip180"]    { --v3-ic-anim-name: v3-ic-flip180; --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="drop"]       { --v3-ic-anim-name: v3-ic-drop;   --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="rise"]       { --v3-ic-anim-name: v3-ic-rise;   --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="swing"]      { --v3-ic-anim-name: v3-ic-swing; }
+.v3-ic[data-anim="snip"]       { --v3-ic-anim-name: v3-ic-snip;   --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="blink"]      { --v3-ic-anim-name: v3-ic-blink;  --v3-ic-anim-dur: var(--v3-dur-med); }
+.v3-ic[data-anim="fly"]        { --v3-ic-anim-name: v3-ic-fly; }
+
+:is(.v3-btn, .v3-ibtn, button, a, [data-v3-anim-host]):is(:hover, :focus-visible) .v3-ic[data-anim],
+.v3-ic[data-anim]:hover,
+.v3-ic[data-anim][data-play="true"] {
+  animation: var(--v3-ic-anim-name) var(--v3-ic-anim-dur) var(--v3-ease) 1 forwards;
+}
+:is(button, .v3-btn, .v3-ibtn)[disabled] .v3-ic[data-anim],
+[aria-disabled="true"] .v3-ic[data-anim] { animation: none; }
+
+.v3-ic[data-loop="true"],
+[aria-busy="true"] .v3-ic[data-anim="spin"],
+[aria-busy="true"] .v3-ic[data-anim="pulse"] {
+  animation: var(--v3-ic-anim-name) var(--v3-ic-anim-dur) linear infinite;
+}
+.v3-ic[data-loop="true"][data-anim="spin"],
+[aria-busy="true"] .v3-ic[data-anim="spin"] { --v3-ic-anim-dur: var(--v3-dur-loop); }
+.v3-ic[data-loop="true"][data-anim="pulse"] { animation-timing-function: var(--v3-ease); }
+
+.v3-icon--enter { animation: v3-ic-enter var(--v3-dur-enter) var(--v3-ease) 1 both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-ic, .v3-ic[data-anim], .v3-icon--enter,
+  :is(.v3-btn, .v3-ibtn, button, a, [data-v3-anim-host]):is(:hover, :focus-visible) .v3-ic[data-anim],
+  .v3-ic[data-loop="true"], [aria-busy="true"] .v3-ic[data-anim] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
