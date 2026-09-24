@@ -1,0 +1,98 @@
+/* =====================================================================
+   components/orders/orderItemsV3.css — שכבת עיצוב v3 לטאב הפריטים בכרטיס ההזמנה.
+   משמש רק: ModernItemsManager · OrderModelSelector · OrderSizeSelector · ItemCapacityModal.
+   כללים: tokens --v3-* בלבד; מאפיינים לוגיים; מחלקות עם prefix oi-.
+   (מחלקות בסיס v3-* מגיעות מ-app/v3/components.css — כאן רק ההשלמות שחסרות שם.)
+   ===================================================================== */
+
+/* שורש: מוסיף data-v3 כדי שה-tokens יעבדו גם בעמוד שעוד לא הוסב; בלי לצבוע את הרקע. */
+.oi-root[data-v3] { background: transparent; display: flex; flex-direction: column; gap: var(--v3-sp-4); min-width: 0; }
+.oi-root--inline[data-v3] { display: block; }
+
+.oi-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v3-sp-3); }
+.oi-bar__sum { margin-inline-start: auto; display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); }
+
+/* כפתור-מתג (chip לחיץ) במצב פעיל */
+.oi-toggle[aria-pressed="true"] { background: var(--v3-navy); color: var(--v3-white); }
+.oi-toggle[aria-pressed="true"] .v3-ic { color: var(--v3-white); }
+.oi-toggle:disabled { opacity: .5; cursor: not-allowed; }
+
+.oi-list { display: flex; flex-direction: column; gap: var(--v3-sp-4); }
+.oi-item .v3-item__top { align-items: flex-start; }
+.oi-item .v3-item__top.is-static { cursor: default; }
+.oi-item .v3-item__model a { color: inherit; text-decoration: none; border-bottom: var(--v3-bw-hair) solid var(--v3-sky-400); }
+.oi-item .v3-item__model a:hover, .oi-item .v3-item__model a:focus-visible { border-bottom-color: var(--v3-gold); }
+.oi-item .v3-item__chev { align-self: center; }
+.oi-deleted { background: var(--v3-sky-50); }
+.oi-deleted .v3-item__model { color: var(--v3-ink-3); text-decoration: line-through; }
+.oi-stat { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); margin-top: var(--v3-sp-1); }
+.oi-note { color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }
+.oi-note--err { color: var(--v3-plum); font-weight: var(--v3-fw-semi); }
+.oi-acts { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); align-items: center; }
+.oi-acts__sep { flex-basis: 100%; height: 0; border-top: var(--v3-bw-hair) solid var(--v3-line-hair); margin-block: var(--v3-sp-1); }
+.oi-fs { border: 0; padding: 0; margin: 0; min-width: 0; }
+.oi-fs:disabled { opacity: .6; }
+.oi-locked { display: inline-flex; align-items: center; gap: var(--v3-sp-2); color: var(--v3-ink-3); }
+
+/* טופס פריט (חדש/עריכה): עמודה אחת, נתון בשורה */
+.oi-form { display: flex; flex-direction: column; gap: var(--v3-sp-4); }
+.oi-form__sub { display: flex; flex-direction: column; gap: var(--v3-sp-2); padding-top: var(--v3-sp-3); border-top: var(--v3-bw-hair) solid var(--v3-line-hair); }
+.oi-cluster { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); align-items: center; }
+.oi-len { max-width: 160px; }
+.oi-ltr { direction: ltr; text-align: center; }
+.oi-static { font-weight: var(--v3-fw-semi); }
+
+/* ריבועי מידה (מחליפים select) */
+.oi-sizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: var(--v3-sp-2); }
+.oi-size { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: var(--v3-tap); padding: var(--v3-sp-2); border: var(--v3-bw) solid var(--v3-line); border-radius: var(--v3-r-md); background: var(--v3-surface); color: var(--v3-ink); text-align: center; transition: background-color var(--v3-dur-fast), border-color var(--v3-dur-fast); }
+.oi-size b { font-size: var(--v3-fs-md); font-weight: var(--v3-fw-semi); }
+.oi-size small { font-size: var(--v3-fs-sm); color: var(--v3-ink-3); line-height: 1.3; }
+.oi-size:hover:not(:disabled) { border-color: var(--v3-navy-500); }
+.oi-size:focus-visible { outline: var(--v3-focus-outline); outline-offset: var(--v3-focus-offset); }
+.oi-size[aria-pressed="true"] { background: var(--v3-navy); border-color: var(--v3-navy); color: var(--v3-white); }
+.oi-size[aria-pressed="true"] small { color: var(--v3-sky-200); }
+.oi-size:disabled { border-style: dashed; background: var(--v3-sky-50); cursor: not-allowed; }
+.oi-size:disabled b { color: var(--v3-ink-3); }
+.oi-sizes__msg { display: flex; align-items: center; gap: var(--v3-sp-2); color: var(--v3-ink-3); min-height: var(--v3-tap); }
+
+/* בורר דגם */
+.oi-model { position: relative; width: 100%; }
+.oi-model__in { position: relative; }
+.oi-model__in > .v3-ic, .oi-model__in > .v3-spin { position: absolute; inset-inline-start: var(--v3-sp-3); top: 50%; transform: translateY(-50%); color: var(--v3-navy-500); pointer-events: none; }
+.oi-model__in > .v3-spin { width: 16px; height: 16px; }
+.oi-model__in input { padding-inline-start: var(--v3-sp-7); }
+.oi-model__in input.has-clear { padding-inline-end: var(--v3-sp-7); }
+.oi-model__clear { position: absolute; inset-inline-end: var(--v3-sp-2); top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: var(--v3-r-round); border: 0; background: var(--v3-sky-100); color: var(--v3-navy); display: grid; place-items: center; padding: 0; }
+.oi-model__clear:hover, .oi-model__clear:focus-visible { background: var(--v3-navy); color: var(--v3-white); outline: 0; }
+.oi-model__clear .v3-ic { width: 16px; height: 16px; }
+/* הרשימה נפתחת ב-portal ל-body ומוצבת לפי מדידה פיזית (fixed) — לכן top/left פיזיים בכוונה. z-index גבוה כמו קודם: הבורר חי גם בתוך חלוניות ישנות. */
+.oi-drop { --oi-z-drop: 999999; position: fixed; z-index: var(--oi-z-drop); max-height: 280px; overflow-y: auto; padding: var(--v3-sp-2); background: var(--v3-surface); border: var(--v3-bw-hair) solid var(--v3-dlg-bd); border-radius: var(--v3-r-xl); box-shadow: var(--v3-sh-pop); }
+.oi-drop .v3-combo__o { cursor: pointer; }
+
+/* חלוניות */
+.oi-dlg-rows { display: flex; flex-direction: column; gap: var(--v3-sp-2); }
+.oi-barcode { direction: ltr; unicode-bidi: isolate; display: inline-block; padding: var(--v3-sp-1) var(--v3-sp-3); border-radius: var(--v3-r-sm); background: var(--v3-sky-100); font-weight: var(--v3-fw-semi); letter-spacing: .5px; }
+.oi-sec { display: flex; flex-direction: column; gap: var(--v3-sp-3); }
+.oi-sec__h { display: flex; align-items: center; gap: var(--v3-sp-2); margin: 0; font-size: var(--v3-fs-md); font-weight: var(--v3-fw-semi); }
+.oi-money { direction: ltr; unicode-bidi: isolate; font-weight: var(--v3-fw-semi); }
+.oi-money--credit { color: var(--v3-navy); }
+.oi-money--charge { color: var(--v3-plum); }
+.oi-total { display: flex; justify-content: space-between; align-items: center; padding-top: var(--v3-sp-3); border-top: var(--v3-bw) solid var(--v3-line); font-weight: var(--v3-fw-semi); }
+.oi-hist { display: flex; flex-direction: column; border: var(--v3-bw-hair) solid var(--v3-line-soft); border-radius: var(--v3-r-lg); max-height: 320px; overflow-y: auto; background: var(--v3-surface); }
+.oi-hist__row { display: flex; align-items: center; gap: var(--v3-sp-3); width: 100%; min-height: var(--v3-tap); padding: var(--v3-sp-2) var(--v3-sp-4); border: 0; border-bottom: var(--v3-bw-hair) solid var(--v3-line-hair); background: transparent; text-align: start; }
+.oi-hist__row:hover { background: var(--v3-sky-50); }
+.oi-hist__row .v3-ic { transition: transform var(--v3-dur) var(--v3-ease); color: var(--v3-ink-3); }
+.oi-hist__row[aria-expanded="true"] .v3-ic { transform: rotate(180deg); }
+.oi-hist__body { padding: var(--v3-sp-2) var(--v3-sp-5) var(--v3-sp-4); display: flex; flex-direction: column; gap: var(--v3-sp-1); font-size: var(--v3-fs-sm); line-height: var(--v3-lh-body); border-bottom: var(--v3-bw-hair) solid var(--v3-line-hair); }
+.oi-hist__msg { display: flex; align-items: center; gap: var(--v3-sp-2); padding: var(--v3-sp-4); color: var(--v3-ink-3); }
+
+/* חלונית תפוסה */
+.oi-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--v3-sp-3); }
+.oi-kpi { display: flex; flex-direction: column; align-items: center; gap: var(--v3-sp-1); padding: var(--v3-sp-3); border: var(--v3-bw-hair) solid var(--v3-line-soft); border-radius: var(--v3-r-lg); background: var(--v3-sky-50); text-align: center; }
+.oi-kpi small { color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }
+.oi-kpi b { font-size: var(--v3-fs-2xl); font-weight: var(--v3-fw-bold); color: var(--v3-navy); line-height: 1.1; }
+.oi-cur td { background: var(--v3-sky-100); }
+.oi-cap-wrap { overflow-x: auto; }
+.oi-center { display: flex; justify-content: center; }
+
+.oi-push { margin-inline-start: auto; }

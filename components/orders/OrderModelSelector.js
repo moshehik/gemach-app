@@ -1,9 +1,11 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
+import { V3Page, Icon } from '@/app/v3/ui/components';
+import './orderItemsV3.css';
 
-export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId, hasActiveItems = false }) {
+export default function OrderModelSelector({ value, onChange, placeholder = 'חיפוש דגם או קוד', inputId, hasActiveItems = false }) {
   const [query, setQuery] = useState('');
   const [models, setModels] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +15,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
   const wrapperRef = useRef(null);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+  const listId = useId().replace(/:/g, '') + '-models';
   // Chrome/Firefox fall back to an input's `id` (this one is a fixed, reused string
   // like "item-model") to key their own "previously typed values" suggestion list when
   // there's no `name` - autoComplete="off"/"new-password" alone didn't suppress that for
@@ -141,7 +144,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
     if (match) {
       handleSelect(match);
     } else {
-      alert(`לא נמצא דגם עם השם/קוד "${typed}". יש לבחור דגם מהרשימה הנפתחת.`);
+      alert(`לא נמצא דגם או קוד "${typed}". בחרו דגם מהרשימה שנפתחת.`);
     }
   };
 
@@ -162,130 +165,81 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
   const dropdownContent = isOpen && models.length > 0 && (
     <div
       ref={dropdownRef}
-      className="combobox-results"
-      style={{
-        // Positioned via a portal against a JS-measured viewport rect
-        // (getBoundingClientRect() is always left/top-based, regardless of
-        // page direction), so this uses physical left/top intentionally
-        // instead of logical inset-inline properties. `.combobox-results`
-        // also sets `inset-inline:0` (→ right:0 in RTL) for its two non-portal
-        // callers; with left/right/width all set the browser was dropping our
-        // measured `left` in favor of that `right:0`, so the list snapped to
-        // the viewport edge instead of the field. Explicit right:'auto' wins.
-        position: 'fixed',
-        top: dropdownPos.top,
-        left: dropdownPos.left,
-        right: 'auto',
-        width: dropdownPos.width,
-        zIndex: 999999,
-        maxHeight: '250px',
-        overflowY: 'auto'
-      }}
+      data-v3=""
+      dir="rtl"
+      role="listbox"
+      id={listId}
+      className="oi-drop"
+      // הרשימה נפתחת ב-portal ומוצבת מול מלבן שנמדד ב-JS (getBoundingClientRect הוא תמיד left/top פיזי,
+      // בלי קשר לכיוון העמוד) — לכן top/left פיזיים בכוונה ולא inset-inline.
+      style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
     >
       {models.map((m) => (
         <div
           data-agy-id="order_model_selector_dropdown_item"
           key={m.id}
-          className="combobox-option"
+          role="option"
+          aria-selected={value?.id === m.id}
+          className="v3-combo__o"
           onClick={() => handleSelect(m)}
         >
-          <svg className="icon"><use href="#i-tag" /></svg>
-          <span>{displayModelName(m)}</span>
-          {m.barcodePrefix && <span className="meta">קוד: {m.barcodePrefix}</span>}
+          <span className="v3-combo__oi"><Icon name="tag" size="sm" /></span>
+          <span className="v3-combo__ox">
+            <b>{displayModelName(m)}</b>
+            {m.barcodePrefix && <small>קוד <bdi>{m.barcodePrefix}</bdi></small>}
+          </span>
         </div>
       ))}
     </div>
   );
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
-      <div className="input-icon-wrap" style={{ position: 'relative' }}>
-        {isLoading ? (
-          <span className="spinner" style={{ position: 'absolute', insetInlineStart: '12px', top: '50%', transform: 'translateY(-50%)', width: '15px', height: '15px', borderWidth: '2px' }} />
-        ) : (
-          <svg className="icon"><use href="#i-search" /></svg>
-        )}
-        <input
-          ref={inputRef}
-          id={inputId}
-          data-agy-id="order_model_selector_input"
-          className="input"
-          type="text"
-          name={autofillGuardNameRef.current}
-          autoComplete="off"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              resolveTypedValue();
-            }
-          }}
-          placeholder={placeholder}
-          style={{ height: '42px', paddingInlineEnd: hasSelection ? '38px' : undefined }}
-        />
-        {hasSelection && (
-          <button
-            type="button"
-            aria-label="נקה בחירה"
-            title="נקה בחירה"
-            data-agy-id="order_model_selector_clear"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={handleClear}
-            className="model-clear-btn"
-            style={{
-              position: 'absolute',
-              insetInlineEnd: '8px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              border: '1px solid transparent',
-              background: '#f1f5f9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#64748b',
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              flexShrink: 0,
-              lineHeight: 1,
-              padding: 0,
-              zIndex: 1,
+    <V3Page page={false} sprite={false} className="oi-root oi-root--inline">
+      <div ref={wrapperRef} className="oi-model">
+        <div className="oi-model__in">
+          {isLoading ? <span className="v3-spin" aria-hidden="true" /> : <Icon name="search" size="sm" />}
+          <input
+            ref={inputRef}
+            id={inputId}
+            data-agy-id="order_model_selector_input"
+            className={`v3-input${hasSelection ? ' has-clear' : ''}`}
+            type="text"
+            role="combobox"
+            aria-expanded={isOpen && models.length > 0}
+            aria-controls={listId}
+            aria-label={placeholder}
+            name={autofillGuardNameRef.current}
+            autoComplete="off"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setIsOpen(true);
             }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M18 6L6 18" />
-              <path d="M6 6l12 12" />
-            </svg>
-          </button>
-        )}
+            onFocus={() => setIsOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                resolveTypedValue();
+              }
+            }}
+            placeholder={placeholder}
+          />
+          {hasSelection && (
+            <button
+              type="button"
+              aria-label="ניקוי הדגם שנבחר"
+              data-agy-id="order_model_selector_clear"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClear}
+              className="oi-model__clear"
+            >
+              <Icon name="x" size="sm" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <style>{`
-        .model-clear-btn:hover {
-          background: #fee2e2 !important;
-          color: #dc2626 !important;
-          border-color: #fecaca !important;
-          transform: translateY(-50%) scale(1.08) !important;
-          box-shadow: 0 2px 8px rgba(220, 38, 38, 0.18) !important;
-        }
-        .model-clear-btn:active {
-          transform: translateY(-50%) scale(0.92) !important;
-          box-shadow: none !important;
-        }
-        .model-clear-btn:focus-visible {
-          outline: 2px solid #fca5a5;
-          outline-offset: 2px;
-        }
-      `}</style>
-
       {mounted && createPortal(dropdownContent, document.body)}
-    </div>
+    </V3Page>
   );
 }

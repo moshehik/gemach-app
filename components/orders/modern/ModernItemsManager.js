@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { createPortal } from 'react-dom';
 import OrderModelSelector from '../OrderModelSelector';
-import OrderSizeSelector from '../OrderSizeSelector';
+import OrderSizeSelector, { SizeChips } from '../OrderSizeSelector';
 import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -13,6 +12,9 @@ import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { sortSizeRows } from '../../../lib/sizeSort';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { postRentalRent, postRentalReturn } from './rentalToggle';
+import { V3Page, Dialog, Btn, Chip, Tag, Field, Row, Rows, Seg, Tip, Banner, Empty, Icon } from '@/app/v3/ui/components';
+import { cx } from '@/app/v3/ui/cx';
+import '../orderItemsV3.css';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
 const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
@@ -72,6 +74,8 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const [priceList, setPriceList] = useState([]);
   const [sizeSwapNotice, setSizeSwapNotice] = useState({});
   const [expandedHistory, setExpandedHistory] = useState({});
+  // פתיחה/סגירה של כרטיסי הפריטים (תצוגה בלבד) — מפתח = מזהה השורה; שורה בעריכה תמיד פתוחה
+  const [openItems, setOpenItems] = useState({});
   const isFullyPaid = totalPaid >= totalRequired;
 
   // כל שורת היסטוריה מתחילה מכווצת — לחיצה על השורה מרחיבה את פירוט השינויים שלה בלבד
@@ -110,7 +114,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // חלון העריכה המלא (15 דק') נעל את הפריט - נדרש אישור מנהל כדי לפתוח אותו מחדש לעריכה
   // מלאה (דגם/מידה/תיקונים), כמו הפתיחה מחדש של הזמנה נעולה למעלה (handleUnlock בעמוד ההזמנה).
   const handleReopenFullEdit = async (item) => {
-    const authResult = await window.customAuthPrompt('חלון העריכה המלא (15 דק׳) לפריט זה נסגר. נדרש אישור מנהל לפתיחתו מחדש לעריכה מלאה. אנא בחר מנהל והזן סיסמה:', 'feature:item_edit_reopen');
+    const authResult = await window.customAuthPrompt('חלון העריכה המלאה (15 דק׳) של הפריט נסגר. לפתיחה מחדש בחרו מנהל והזינו את הסיסמה שלו.', 'feature:item_edit_reopen');
     if (!authResult || !authResult.pin) return;
     try {
       const res = await fetch('/api/auth/verify-pin', {
@@ -120,12 +124,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        alert(data.error || 'הסיסמה שגויה או שאין הרשאה.');
         return;
       }
       setForceEditableIds(prev => new Set(prev).add(item.id));
     } catch (err) {
-      alert('שגיאה באימות קוד מנהל.');
+      alert('לא הצלחנו לאמת את קוד המנהל.');
     }
   };
 
@@ -194,33 +198,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       );
     }
 
-    const hasCustom = order && order.customSpacing !== undefined && order.customSpacing !== null;
-    const options = rows
-      .map(row => ({ row, sizeVal: row.sizeText || row.size }))
-      .filter(({ sizeVal }) => sizeVal && (sizeVal === value || isSizeAllowed(sizeVal).ok))
-      .map(({ row, sizeVal }) => {
-        const normalAvail = row.withNormalBuffer?.availableQuantity ?? row.availableQuantity;
-        const customAvail = row.withCustomSpacing?.availableQuantity;
-        const selectedAvail = hasCustom ? customAvail : normalAvail;
-        const disabled = selectedAvail !== undefined && selectedAvail <= 0;
-        const info = normalAvail !== undefined
-          ? `פנוי ${selectedAvail ?? normalAvail} מתוך ${row.totalInStock}`
-          : `במלאי: ${row.totalQuantity || row.totalInStock}`;
-        return { sizeVal, disabled, info };
-      });
-
-    return (
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        style={{ width: '100%', height: '42px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-strong)', textAlign: 'center', backgroundColor: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', appearance: 'none', boxSizing: 'border-box', fontSize: '0.95rem', outline: 'none' }}
-      >
-        {!value && <option value="">-</option>}
-        {options.map(({ sizeVal, disabled, info }) => (
-          <option key={sizeVal} value={sizeVal} disabled={disabled}>{sizeVal} ({info})</option>
-        ))}
-      </select>
-    );
+    // רק מידות שמותר לעבור אליהן (אותה קטגוריית מחיר) + המידה הנוכחית; הזמינות מסומנת על כל ריבוע
+    const allowedRows = rows.filter(row => {
+      const sizeVal = row.sizeText || row.size;
+      return sizeVal && (sizeVal === value || isSizeAllowed(sizeVal).ok);
+    });
+    return <SizeChips rows={allowedRows} value={value} onChange={onChange} order={order} hasModel />;
   };
 
   // האם ואיך אפשר להחליף מידה בפריט שחלון העריכה המלא שלו נסגר. בלי checkedSize נבדקים רק
@@ -262,13 +245,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         return b === barcode && i.isTaken && !i.isReturned;
       });
       if (!isReturnScan) {
-        alert('ההזמנה נעולה (תאריך האירוע עבר) — ניתן לבצע החזרה בלבד. השכרה דורשת שחרור באישור מנהל.');
+        alert('ההזמנה נעולה כי האירוע כבר עבר. אפשר רק להחזיר פריטים; להשכרה צריך לשחרר את ההזמנה באישור מנהל.');
         return;
       }
     }
 
     if (!isFullyPaid) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
+      const authResult = await window.customAuthPrompt('ההזמנה עוד לא שולמה במלואה. לביצוע הפעולה נדרש אישור מנהל.', 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
@@ -278,11 +261,11 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         });
         const data = await res.json();
         if (!data.success) {
-          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          alert(data.error || 'הסיסמה שגויה או שאין הרשאה.');
           return;
         }
       } catch (err) {
-        alert('שגיאה באימות קוד.');
+        alert('לא הצלחנו לאמת את הקוד.');
         return;
       }
     }
@@ -297,12 +280,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       });
       const vData = await vRes.json();
       if (!vRes.ok || !vData.valid) {
-        alert(vData.error || `ברקוד ${barcode} אינו תקף להשכרה.`);
+        alert(vData.error || `הברקוד ${barcode} לא מתאים להשכרה.`);
         return;
       }
 
       if (vData.unreturned) {
-        const confirmMsg = `${vData.warning}\nהאם ברצונך לסמן אותה כהוחזרה מההשכרה הקודמת (הזמנה #${vData.unreturnedOrderId}) ולהמשיך בהשכרה זו?`;
+        const confirmMsg = `${vData.warning}\nלסמן אותה כמוחזרת מההשכרה הקודמת (הזמנה #${vData.unreturnedOrderId}) ולהמשיך בהשכרה הזו?`;
         const promptFunc = window.customConfirm || window.confirm;
         if (await promptFunc(confirmMsg)) {
           const putRes = await fetch('/api/rentals/scan', {
@@ -312,7 +295,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           });
           if (!putRes.ok) {
             const errData = await putRes.json();
-            alert(errData.error || 'שגיאה בעדכון החזרה מהשכרה קודמת');
+            alert(errData.error || 'לא הצלחנו לסמן את ההחזרה מההשכרה הקודמת');
             return;
           }
         } else {
@@ -363,7 +346,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
     if (!matchedItem) {
       const detailsStr = dressInfo ? ` (דגם ${dressInfo.dressName || dressInfo.barcodePrefix || ''}, מידה ${dressInfo.sizeText || ''})` : '';
-      alert(`ברקוד ${barcode}${detailsStr} לא נמצא בין הפריטים שטרם הושכרו בהזמנה זו.`);
+      alert(`הברקוד ${barcode}${detailsStr} לא שייך לאף פריט שממתין להשכרה בהזמנה הזו.`);
       return;
     }
 
@@ -372,7 +355,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     } else if (!matchedItem.isReturned) {
       handleReturn(matchedItem, true);
     } else {
-      alert(`פריט ${barcode} כבר הוחזר.`);
+      alert(`הפריט ${barcode} כבר סומן כמוחזר.`);
     }
   };
 
@@ -424,12 +407,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     // מותר לאשר עריכת תיקונים עבורם בלי לדרוש בחירת דגם דרך הבורר (שאין להם ממנו מה לבחור)
     const hasModelIdentity = !!(item.dressModelId || item.barcodePrefix || item.dressItem?.dressModelId || item.dressItem?.barcodePrefix);
     if (!item.sizeText || !hasModelIdentity) {
-      alert('יש לבחור דגם ומידה לפני האישור');
+      alert('בחרו דגם ומידה לפני השמירה.');
       return;
     }
     const hasRepair = item.neckAlteration || item.sleeveAlteration || (item.lengthAlteration && item.lengthAlteration.trim() !== '');
     if (enableAlterations && hasRepair && (!item.alterationDetails || item.alterationDetails.trim() === '')) {
-      alert('חובה להזין פירוט תיקון כאשר נבחר תיקון');
+      alert('כתבו מה התיקון הנדרש.');
       return;
     }
 
@@ -442,7 +425,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     // (localStorage, ר' app/lib/orderDrafts.js).
     let managerAuth = null;
     if (!isEditing && settings.require_manager_code_for_item_changes === 'true') {
-      const authResult = await window.customAuthPrompt('הוספת פריט חדש להזמנה קיימת דורשת גם אישור מנהל (בנוסף לאימות ת״ז בשמירה). אנא בחר מנהל והזן סיסמה:', 'feature:item_change_approval');
+      const authResult = await window.customAuthPrompt('להוספת פריט להזמנה קיימת נדרש אישור מנהל, בנוסף לאימות הזהות בשמירה. בחרו מנהל והזינו את הסיסמה שלו.', 'feature:item_change_approval');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
@@ -452,7 +435,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         });
         const data = await res.json();
         if (!data.success) {
-          alert(data.error || 'סיסמה שגויה או שאין מספיק הרשאות.');
+          alert(data.error || 'הסיסמה שגויה או שאין הרשאה.');
           return;
         }
         managerAuth = { managerEmployeeId: authResult.employeeId, managerPin: authResult.pin };
@@ -475,7 +458,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         body: JSON.stringify(body)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת הפריט');
+      if (!res.ok) throw new Error(data.error || 'לא הצלחנו לשמור את הפריט');
       if (onOrderUpdated) {
         // מוסרים את השורה המקומית שנשמרה, אבל משאירים שורות חדשות שנוספו בזמן השמירה
         onOrderUpdated(data, { savedLocalId: item._localId });
@@ -490,7 +473,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const handleEditItem = (index) => {
     const item = items[index];
     if (item.isTaken && !item.isReturned) {
-      alert('לא ניתן לערוך פריט שכבר נלקח (מושכר).');
+      alert('פריט מושכר אי אפשר לערוך.');
       return;
     }
     onItemsChange(prev => {
@@ -531,21 +514,21 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const item = items[index];
 
     if (!isCurrentlyDeleted && item.isTaken) {
-      alert('לא ניתן למחוק פריט שכבר נלקח (מושכר). יש להחזירו קודם לכן או לבטל את הלקיחה.');
+      alert('פריט מושכר אי אפשר למחוק. קודם מסמנים החזרה או מבטלים את ההשכרה.');
       return;
     }
     if (isCurrentlyDeleted) {
       const maxItems = parseInt(settings.max_items_per_order);
       const activeCount = items.filter(i => !i.isDeleted).length;
       if (!isNaN(maxItems) && maxItems > 0 && activeCount >= maxItems) {
-        alert(`הגבלת מערכת: לא ניתן לשחזר פריט. המקסימום המותר הוא ${maxItems} פריטים בהזמנה.`);
+        alert(`אי אפשר לשחזר: המקסימום להזמנה הוא ${maxItems} פריטים.`);
         return;
       }
     }
 
     const confirmed = await window.customConfirm(isCurrentlyDeleted
-      ? 'האם אתה בטוח שברצונך לשחזר פריט זה להזמנה?'
-      : 'האם אתה בטוח שברצונך למחוק פריט זה?');
+      ? 'לשחזר את הפריט להזמנה?'
+      : 'למחוק את הפריט מההזמנה?');
     if (!confirmed) return;
     handleItemChange(index, 'isDeleted', !isCurrentlyDeleted);
   };
@@ -555,7 +538,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const maxItems = parseInt(settings.max_items_per_order);
     const activeCount = items.filter(i => !i.isDeleted).length;
     if (!isNaN(maxItems) && maxItems > 0 && activeCount >= maxItems) {
-      alert(`הגבלת מערכת: לא ניתן להוסיף יותר מ-${maxItems} פריטים להזמנה.`);
+      alert(`אי אפשר להוסיף: המקסימום להזמנה הוא ${maxItems} פריטים.`);
       return;
     }
 
@@ -586,7 +569,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // עריכה אחרת שקרתה באותו חלון זמן (למשל שינוי בפריט אחר) עלולה להידרס.
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
+      const authResult = await window.customAuthPrompt('ההזמנה עוד לא שולמה במלואה. להשכרה נדרש אישור מנהל.', 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
@@ -596,7 +579,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         });
         const data = await res.json();
         if (!data.success) {
-          alert('סיסמה שגויה או שאין מספיק הרשאות');
+          alert('הסיסמה שגויה או שאין הרשאה.');
           return;
         }
       } catch (e) {
@@ -622,7 +605,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           throw failure;
         }
       } catch (err) {
-        alert(err.userMessage || 'שגיאה בשמירת סטטוס השכרה');
+        alert(err.userMessage || 'לא הצלחנו לשמור את ההשכרה');
         onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
       }
     }
@@ -630,7 +613,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   const handleReturn = async (item, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
+      const authResult = await window.customAuthPrompt('ההזמנה עוד לא שולמה במלואה. להחזרה נדרש אישור מנהל.', 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
@@ -640,7 +623,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         });
         const data = await res.json();
         if (!data.success) {
-          alert('סיסמה שגויה או שאין מספיק הרשאות');
+          alert('הסיסמה שגויה או שאין הרשאה.');
           return;
         }
       } catch (e) {
@@ -654,7 +637,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       // postRentalReturn מטפל גם בדחיית השרת "האירוע עדיין לא הגיע" (require_approval_for_early_return)
       const result = await postRentalReturn(item.id);
       if (!result.ok) {
-        alert(result.message || 'שגיאה בשמירת סטטוס החזרה');
+        alert(result.message || 'לא הצלחנו לשמור את ההחזרה');
         onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
       }
     }
@@ -670,7 +653,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         });
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
-        alert('שגיאה בביטול סטטוס השכרה');
+        alert('לא הצלחנו לבטל את ההשכרה');
         onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
       }
     }
@@ -686,7 +669,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         });
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
-        alert('שגיאה בביטול סטטוס החזרה');
+        alert('לא הצלחנו לבטל את ההחזרה');
         onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
       }
     }
@@ -705,8 +688,8 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     let note = null;
     if (!ok) {
       note = window.customPrompt
-        ? await window.customPrompt('לסמן את הפריט כ"הוחזר - לא תקין"? ניתן להוסיף הערה על הבעיה (אופציונלי) - תתווסף גם הערה אוטומטית בכרטיס הלקוח:', '', 'text')
-        : window.prompt('לסמן את הפריט כ"הוחזר - לא תקין"? ניתן להוסיף הערה על הבעיה (אופציונלי):', '');
+        ? await window.customPrompt('מה הבעיה בפריט שהוחזר? ההערה לא חובה, והיא תירשם גם בכרטיס הלקוח.', '', 'text')
+        : window.prompt('מה הבעיה בפריט שהוחזר? (לא חובה)', '');
       if (note === null) return;
     }
 
@@ -724,7 +707,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           });
       if (!res.ok) throw new Error('API failed');
     } catch (err) {
-      alert('שגיאה בעדכון מצב הפריט');
+      alert('לא הצלחנו לעדכן את מצב הפריט');
       onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, returnedOk: item.returnedOk } : i));
     } finally {
       setSavingConditionId(null);
@@ -766,621 +749,619 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   const isChecked = (v) => v === 1 || v === true;
 
-  const renderRepairChips = (item, index) => {
+  // תגית סטטוס אחת לכל פריט
+  const renderStatusTag = (item) => {
+    if (item.isNew) return <Tag variant="attn" icon="plus">חדש · טרם נשמר</Tag>;
+    if (item.isReturned) {
+      if (item.returnedOk === false) return <Tag variant="attn" icon="alert-tri">הוחזר עם בעיה</Tag>;
+      return <Tag variant="done" icon="check">הוחזר תקין</Tag>;
+    }
+    if (item.isTaken) return <Tag variant="soft" icon="box">מושכר</Tag>;
+    return <Tag icon="clock">טרם הושכר</Tag>;
+  };
+
+  // צ'יפים של התיקונים (צוואר / שרוול / אורך) — קריאה בלבד
+  const getRepairInfo = (item) => {
     const neck = isChecked(item.neckAlteration);
     const sleeve = isChecked(item.sleeveAlteration);
     const length = item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : null;
-    const hasAny = neck || sleeve || length;
-    return (
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-        {neck && <span className="chip" title="תיקון צוואר"><svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-scissors" /></svg>צוואר</span>}
-        {sleeve && <span className="chip" title="תיקון שרוול"><svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-scissors" /></svg>שרוול</span>}
-        {length && <span className="chip">{length} ס"מ</span>}
-        {!hasAny && <span className="chip" style={{ opacity: .7 }}>ללא תיקונים</span>}
-        {hasAny && (
-          <button
-            type="button"
-            className={`badge ${item.alterationDone ? 'badge-success' : 'badge-warning'}`}
-            style={{ border: 'none', font: 'inherit', cursor: locked ? 'default' : 'pointer' }}
-            title={(item.alterationDetails ? `פירוט: ${item.alterationDetails} · ` : '') + (locked ? 'הזמנה נעולה' : 'לחץ לשינוי סטטוס ביצוע התיקון')}
-            onClick={() => { if (!locked) handleItemChange(index, 'alterationDone', !item.alterationDone); }}
-          >
-            {item.alterationDone ? <><svg className="icon"><use href="#i-check" /></svg>בוצע</> : 'לא בוצע'}
-          </button>
-        )}
-        {hasAny && item.alterationDetails && (
-          <span className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)' }}>{item.alterationDetails}</span>
-        )}
-      </div>
-    );
+    return { neck, sleeve, length, hasAny: !!(neck || sleeve || length) };
   };
-
-  const renderStatusBadge = (item) => {
-    if (item.isReturned) {
-      if (item.returnedOk === false) {
-        return <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר - לא תקין</span>;
-      }
-      return <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר - תקין</span>;
-    }
-    if (item.isTaken) return <span className="badge badge-info"><svg className="icon"><use href="#i-box" /></svg>בהשכרה</span>;
-    return <span className="badge badge-neutral">ממתין</span>;
-  };
+  const renderRepairChips = (info) => (
+    <>
+      {info.neck && <Chip variant="info" icon="scissors">צוואר</Chip>}
+      {info.sleeve && <Chip variant="info" icon="scissors">שרוול</Chip>}
+      {info.length && <Chip variant="info" icon="ruler"><bdi>{info.length}</bdi> ס״מ</Chip>}
+    </>
+  );
 
   // בורר מצב לפריט שהוחזר — זמין גם בהזמנה נעולה, כי פריט מוחזר הוא כמעט תמיד של אירוע שעבר
   const renderConditionToggle = (item) => {
     const isGood = item.returnedOk !== false;
     const busy = savingConditionId === item.id;
     return (
-      <div className="toggle-btn-group" title="מצב הפריט בהחזרה">
-        <button type="button" className={isGood ? 'on' : ''} disabled={busy} title="תקין"
-          onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, true); }}>
-          <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg>
-        </button>
-        <button type="button" className={!isGood ? 'off' : ''} disabled={busy} title="לא תקין"
-          onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, false); }}>
-          <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-alert-tri" /></svg>
-        </button>
-      </div>
+      <fieldset className="oi-fs" disabled={busy}>
+        <Seg
+          label="מצב הפריט בהחזרה"
+          value={isGood ? 'ok' : 'bad'}
+          onChange={(v) => handleSetReturnCondition(item, v === 'ok')}
+          options={[
+            { value: 'ok', label: 'תקין', icon: 'check-circle' },
+            { value: 'bad', label: 'יש בעיה', icon: 'alert-tri' },
+          ]}
+        />
+      </fieldset>
     );
   };
 
   const showAlterCol = enableAlterations && showAlterations;
   const visibleItems = (items || []).map((item, originalIndex) => ({ item, originalIndex })).filter(({ item }) => showDeleted || !item.isDeleted);
+  const closeConfirm = () => setConfirmModal({ isOpen: false, item: null, actionType: null });
+  const closeItemChoice = () => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null });
+  const closeManualScan = () => { setShowManualScanModal(false); setManualBarcode(''); };
 
-  return (
-    <>
-      {locked && (
-        <div className="callout callout-warning" style={{ marginBottom: '16px' }}>
-          <svg className="icon"><use href="#i-lock" /></svg>
-          <span>ההזמנה נעולה — תאריך האירוע עבר. ניתן לבצע החזרה מהשכרה בלבד; השכרה, עריכה ומחיקה חסומות עד שחרור באישור מנהל דרך אייקון המנעול למעלה.</span>
-        </div>
-      )}
+  // ===== כרטיס פריט =====
+  const renderItemCard = ({ item, originalIndex }) => {
+    const isDeletedRow = item.isDeleted;
+    const isRented = item.isTaken && !item.isReturned;
+    const isEditingMode = item.isNew || item.isEditing;
+    // פריטים ישנים שהוגרו מ-Access בלי DressItem מקושר (dressModelId ריק) אין להם
+    // מלאי מזוהה לבחור ממנו — עבורם דגם/מידה נשארים לקריאה בלבד גם במצב עריכה,
+    // ורק פרטי התיקון ניתנים לעריכה.
+    const fullyEditableNow = canFullyEditItem(item);
+    const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId && fullyEditableNow);
+    // חלון העריכה המלא סגור, אבל מותר להחליף מידה באותה קטגוריית מחיר בלי אישור מנהל
+    const swapEligibility = (!item.isNew && !fullyEditableNow) ? evaluateSizeSwap(item) : { ok: false, reason: null };
+    const canEditSizeOnly = !canEditModelSize && !!item.isEditing && !!item.dressModelId && swapEligibility.ok;
+    const code = itemCode(item);
+    const rowKey = item.id || item._localId || originalIndex;
+    const open = !!isEditingMode || !!openItems[rowKey];
+    const repair = getRepairInfo(item);
+    const price = parseFloat(item.finalPrice) || parseFloat(item.price) || 0;
+    const saving = savingItemIndex === originalIndex;
+    const detId = `oi-det-${rowKey}`;
+    const toggleOpen = () => { if (!isEditingMode) setOpenItems(prev => ({ ...prev, [rowKey]: !prev[rowKey] })); };
 
-      {/* סרגל עליון של הטאב — כפתור ההוספה, בוררי תצוגה ומונה פריטים */}
-      <div className="toolbar">
-        {!locked && (
-          <button type="button" className="btn btn-primary btn-sm" title="הוסף פריט חדש" onClick={handleAddItem}>
-            <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט
-          </button>
+    const modelLink = itemModelId(item) ? (
+      <a
+        href={`/dashboard/dresses/${itemModelId(item)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`פתיחת כרטיס הדגם ${itemName(item)}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {itemName(item)}
+      </a>
+    ) : <span>{itemName(item)}</span>;
+
+    // --- שורות מידע (מצב תצוגה) ---
+    const infoRows = [];
+    if (price > 0) infoRows.push(<Row key="price" label="מחיר" icon="coin"><span className="oi-money">₪{price.toLocaleString('he-IL')}</span></Row>);
+    if (code && item.barcode) infoRows.push(<Row key="bc" label="ברקוד" icon="tag"><bdi>{item.barcode}</bdi></Row>);
+    if (showAlterCol && !isEditingMode) {
+      if (repair.hasAny) {
+        infoRows.push(<Row key="alt" label="תיקונים" icon="scissors"><span className="oi-cluster">{renderRepairChips(repair)}</span></Row>);
+        if (item.alterationDetails) infoRows.push(<Row key="altd" label="פירוט התיקון" icon="edit">{item.alterationDetails}</Row>);
+      } else {
+        infoRows.push(<Row key="alt" label="תיקונים" icon="scissors">ללא תיקונים</Row>);
+      }
+    }
+
+    // --- פעולות ראשיות לפי מצב (אותו עץ תנאים כמו קודם) ---
+    let mainActs = null;
+    if (locked) {
+      // הזמנה נעולה — מותרות החזרה וסימון מצב הפריט בלבד; עריכה, השכרה וביטולים חסומים
+      if (isRented) {
+        mainActs = (
+          <Btn size="sm" variant="primary" icon="check"
+            onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
+            סמן כהוחזר
+          </Btn>
+        );
+      } else if (item.isReturned && !isDeletedRow) {
+        mainActs = (
+          <>
+            {renderConditionToggle(item)}
+            <Btn size="sm" variant="quiet" icon="refresh"
+              onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
+              ביטול ההחזרה
+            </Btn>
+          </>
+        );
+      } else {
+        mainActs = <span className="oi-locked"><Icon name="lock" size="sm" />נעול</span>;
+      }
+    } else if (isEditingMode) {
+      mainActs = (
+        <>
+          <Btn size="sm" variant="primary" icon="check" loading={saving}
+            onClick={(e) => { e.stopPropagation(); handleConfirmItem(originalIndex); }}>
+            {saving ? 'שומר…' : 'שמירת הפריט'}
+          </Btn>
+          <Btn size="sm" icon="x" disabled={saving}
+            onClick={(e) => { e.stopPropagation(); item.isNew ? cancelNewItem(originalIndex) : cancelEditItem(originalIndex); }}>
+            ביטול
+          </Btn>
+        </>
+      );
+    } else if (!isDeletedRow) {
+      mainActs = (
+        <>
+          {!item.isTaken && !item.isNew && (
+            <Btn size="sm" variant="primary" icon="box"
+              onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'rent' }); }}>
+              סמן כמושכר
+            </Btn>
+          )}
+          {isRented && (
+            <>
+              <Btn size="sm" variant="primary" icon="check"
+                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
+                סמן כהוחזר
+              </Btn>
+              <Btn size="sm" variant="quiet" icon="x-circle"
+                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' }); }}>
+                ביטול השכרה
+              </Btn>
+            </>
+          )}
+          {item.isReturned && (
+            <>
+              {renderConditionToggle(item)}
+              <Btn size="sm" variant="quiet" icon="refresh"
+                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
+                ביטול ההחזרה
+              </Btn>
+            </>
+          )}
+          {!item.isTaken && (
+            <span className="oi-acts">
+              <Btn size="sm" icon="edit"
+                onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
+                עריכת הפריט
+              </Btn>
+              <Tip>
+                {canFullyEditItem(item)
+                  ? 'אפשר לשנות דגם, מידה ותיקונים.'
+                  : (evaluateSizeSwap(item).ok
+                    ? 'חלון העריכה המלאה (15 דק׳) נסגר. אפשר להחליף מידה באותה קטגוריית מחיר ולערוך את פירוט התיקון.'
+                    : `חלון העריכה המלאה (15 דק׳) נסגר. ${showAlterCol ? 'אפשר לערוך רק את פירוט התיקון.' : 'לשינוי דגם או מידה צריך לפתוח עריכה מלאה באישור מנהל.'}`)}
+              </Tip>
+            </span>
+          )}
+        </>
+      );
+    }
+
+    // --- פעולות משניות: פרטים · תפוסה · מחיקה/שחזור · סימון תיקון ---
+    const secondaryActs = (
+      <>
+        {!item.isNew && (
+          <Btn size="sm" variant="quiet" icon="info"
+            onClick={(e) => { e.stopPropagation(); showItemDetails(item); }}>
+            פרטים והיסטוריה
+          </Btn>
         )}
-        {enableAlterations && (
-          <div className="pill-tabs">
-            <button type="button" className={`pill-tab ${showAlterations ? 'active' : ''}`} onClick={() => setShowAlterations(v => !v)} title="הצגת עמודת התיקונים">
-              {showAlterations && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}פרטי תיקונים
-            </button>
-            <button type="button" className={`pill-tab ${showDeleted ? 'active' : ''}`} onClick={() => setShowDeleted(v => !v)} title="הצגת פריטים שנמחקו">
-              {showDeleted && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}פריטים מחוקים
-            </button>
+        {!item.isNew && (
+          <Btn size="sm" variant="quiet" icon="calendar"
+            onClick={(e) => { e.stopPropagation(); setCapacityModalItem(item); }}>
+            בדיקת תפוסה
+          </Btn>
+        )}
+        {/* מחיקה — לא זמינה לפריט שנלקח (מושכר או הוחזר) או בהזמנה נעולה; שחזור תמיד מוצג לשורה מחוקה */}
+        {!locked && !item.isNew && (isDeletedRow || !item.isTaken) && (
+          <Btn size="sm" variant="quiet" icon={isDeletedRow ? 'refresh' : 'trash'}
+            onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}>
+            {isDeletedRow ? 'שחזור הפריט' : 'מחיקת הפריט'}
+          </Btn>
+        )}
+        {/* סימון "תיקון בוצע" — state מקומי, נשמר בשמירת ההזמנה/הפריט; בהזמנה נעולה לא מגיב */}
+        {showAlterCol && !isEditingMode && repair.hasAny && (
+          <Btn size="sm" variant="quiet" icon="check" disabled={locked}
+            onClick={(e) => { e.stopPropagation(); if (!locked) handleItemChange(originalIndex, 'alterationDone', !item.alterationDone); }}>
+            {item.alterationDone ? 'ביטול סימון "תיקון בוצע"' : 'סימון "תיקון בוצע"'}
+          </Btn>
+        )}
+      </>
+    );
+
+    // --- טופס עריכה / פריט חדש ---
+    const editForm = isEditingMode && (
+      <div className="oi-form">
+        {canEditModelSize ? (
+          <>
+            <div className="v3-field">
+              <label className="v3-label" htmlFor={`oi-model-${rowKey}`}>דגם</label>
+              <OrderModelSelector
+                inputId={`oi-model-${rowKey}`}
+                value={{ name: item.description, id: item.dressModelId }}
+                onChange={(model) => handleModelChange(originalIndex, model)}
+                hasActiveItems
+              />
+            </div>
+            <div className="v3-field">
+              <span className="v3-label">מידה</span>
+              <OrderSizeSelector
+                modelId={item.dressModelId}
+                order={order}
+                value={item.sizeText}
+                onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
+                inventoryCache={inventoryCache}
+                // הפריט הנערך עצמו לא נספר כ"תפוס" מול עצמו — אחרת המידה הנוכחית שלו
+                // תוצג כלא זמינה רק כי הוא כבר מחזיק אותה
+                currentCartItems={items.filter((_, i) => i !== originalIndex)}
+              />
+            </div>
+          </>
+        ) : canEditSizeOnly ? (
+          <>
+            <Row label="דגם" icon="shirt">
+              <span className="oi-static">{itemName(item)}</span>
+              {code && <div className="oi-note">קוד <bdi>{code}</bdi></div>}
+            </Row>
+            <div className="v3-field">
+              <span className="v3-label">מידה</span>
+              {renderSameBandSizeSelect({
+                modelId: item.dressModelId,
+                value: item.sizeText,
+                currentCartItems: items.filter((_, i) => i !== originalIndex),
+                isSizeAllowed: (sz) => evaluateSizeSwap(item, sz),
+                onRejected: (reason) => setSizeSwapNotice(prev => ({ ...prev, [item.id]: reason })),
+                onChange: (val) => {
+                  setSizeSwapNotice(prev => ({ ...prev, [item.id]: '' }));
+                  handleItemChange(originalIndex, 'sizeText', val);
+                }
+              })}
+              <div className={sizeSwapNotice[item.id] ? 'oi-note oi-note--err' : 'oi-note'} role={sizeSwapNotice[item.id] ? 'alert' : undefined}>
+                {sizeSwapNotice[item.id] || 'אפשר להחליף רק למידה באותה קטגוריית מחיר.'}
+              </div>
+            </div>
+          </>
+        ) : (
+          <Row label="דגם ומידה" icon="shirt">
+            <span className="oi-static">{modelLink}{item.sizeText ? <> · מידה <bdi>{item.sizeText}</bdi></> : null}</span>
+            {code && <div className="oi-note">קוד <bdi>{code}</bdi>{item.barcode ? <> · ברקוד <bdi>{item.barcode}</bdi></> : null}</div>}
+          </Row>
+        )}
+
+        {/* חלון העריכה המלא (15 דק׳) נסגר: הכפתור לפתיחה מחדש באישור מנהל יושב כאן, בבלוק
+            הדגם/מידה, ולא בבלוק התיקונים — שם הוא נעלם כשתיקונים כבויים */}
+        {!item.isNew && !fullyEditableNow && (
+          <div className="oi-form__sub">
+            <span className="oi-note">
+              {evaluateSizeSwap(item).ok
+                ? 'חלון העריכה המלאה (15 דק׳) נסגר. אפשר להחליף מידה באותה קטגוריית מחיר.'
+                : `חלון העריכה המלאה (15 דק׳) נסגר. ${showAlterCol ? 'אפשר לערוך עכשיו רק את פירוט התיקון.' : 'להחלפת דגם או מידה צריך לפתוח עריכה מלאה.'}`}
+              {!evaluateSizeSwap(item).ok && evaluateSizeSwap(item).reason ? ` (${evaluateSizeSwap(item).reason})` : ''}
+            </span>
+            <div className="oi-acts">
+              <Btn size="sm" icon="unlock" onClick={() => handleReopenFullEdit(item)}>פתיחת עריכה מלאה</Btn>
+              <Tip>הפתיחה מחדש דורשת אישור מנהל, ובתוקף עד שסוגרים את כרטיס ההזמנה.</Tip>
+            </div>
           </div>
         )}
-        {!enableAlterations && (
-          <button type="button" className={`pill-tab ${showDeleted ? 'active' : ''}`} onClick={() => setShowDeleted(v => !v)} title="הצגת פריטים שנמחקו">
-            {showDeleted && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}פריטים מחוקים
-          </button>
+
+        {showAlterCol && (
+          <div className="oi-form__sub">
+            <span className="v3-label">תיקונים</span>
+            <div className="oi-cluster">
+              <Chip className="oi-toggle" icon="scissors" aria-pressed={isChecked(item.neckAlteration)} disabled={!fullyEditableNow}
+                onClick={() => handleItemChange(originalIndex, 'neckAlteration', isChecked(item.neckAlteration) ? 0 : 1)}>
+                צוואר
+              </Chip>
+              <Chip className="oi-toggle" icon="scissors" aria-pressed={isChecked(item.sleeveAlteration)} disabled={!fullyEditableNow}
+                onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', isChecked(item.sleeveAlteration) ? 0 : 1)}>
+                שרוול
+              </Chip>
+            </div>
+            <Field label="אורך לקיצור (ס״מ)" className="oi-len" type="text" inputMode="decimal" value={item.lengthAlteration || ''}
+              disabled={!fullyEditableNow}
+              onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
+              placeholder="למשל 5" />
+            <Field label="מה התיקון?" type="text" autoComplete="off" value={item.alterationDetails || item.repairs || ''}
+              required={enableAlterations && repair.hasAny}
+              tip="חובה לפרט כשנבחר תיקון. את הפירוט אפשר לערוך גם אחרי סגירת חלון העריכה."
+              onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
+              placeholder="למשל: קיצור שרוול ב-2 ס״מ" />
+          </div>
         )}
-        <span className="spacer" />
-        <span className="hint" style={{ color: 'var(--text-3)' }}>
-          {activeItems.length} פריטים פעילים{totalPrice > 0 ? ` · סה"כ ₪${totalPrice.toLocaleString('he-IL')}` : ''}
-        </span>
+      </div>
+    );
+
+    return (
+      <article
+        key={rowKey}
+        className={cx('v3-item', 'oi-item', item.isNew && 'v3-item--pending', open && 'is-open', isDeletedRow && 'oi-deleted')}
+      >
+        <div className={cx('v3-item__top', isEditingMode && 'is-static')} onClick={toggleOpen}>
+          <div className="v3-item__thumb" aria-hidden="true"><Icon name="dress" /></div>
+          <div className="v3-item__info">
+            {isEditingMode ? (
+              <div className="v3-item__model">{item.isNew ? 'פריט חדש' : itemName(item)}</div>
+            ) : (
+              <div className="v3-item__model">
+                {modelLink}
+                {item.sizeText && <span className="v3-item__size">מידה <bdi>{item.sizeText}</bdi></span>}
+              </div>
+            )}
+            {!isEditingMode && code && <div className="v3-item__meta">קוד <bdi>{code}</bdi></div>}
+            <div className="oi-stat">
+              {isEditingMode && !item.isNew ? <Tag variant="attn" icon="edit">בעריכה</Tag> : renderStatusTag(item)}
+              {!isEditingMode && showAlterCol && repair.hasAny && (
+                <>
+                  {renderRepairChips(repair)}
+                  <Tag variant={item.alterationDone ? 'done' : 'attn'} icon={item.alterationDone ? 'check' : 'scissors'}>
+                    {item.alterationDone ? 'תיקון בוצע' : 'תיקון ממתין'}
+                  </Tag>
+                </>
+              )}
+            </div>
+          </div>
+          {!isEditingMode && (
+            <button type="button" className="v3-btn v3-btn--quiet v3-btn--icon v3-item__chev" aria-expanded={open} aria-controls={detId} aria-label="פרטים ופעולות"
+              onClick={(e) => { e.stopPropagation(); toggleOpen(); }}>
+              <Icon name="chevron-down" />
+            </button>
+          )}
+        </div>
+        <div className="v3-item__wrap">
+          <div className="v3-item__det" id={detId}>
+            <div className="v3-item__det-in">
+              {editForm}
+              {!isEditingMode && infoRows.length > 0 && <Rows>{infoRows}</Rows>}
+              {mainActs && <div className="oi-acts">{mainActs}</div>}
+              <div className="oi-acts">{secondaryActs}</div>
+            </div>
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+  const confirmLabel = confirmModal.item
+    ? `"${itemName(confirmModal.item)}"${itemCode(confirmModal.item) ? ` (קוד ${itemCode(confirmModal.item)})` : ''}`
+    : 'הפריט';
+  const confirmCopy = {
+    rent: { title: 'השכרת פריט', icon: 'box', text: `לסמן את ${confirmLabel} כמושכר?` },
+    return: { title: 'החזרת פריט', icon: 'check', text: `לסמן את ${confirmLabel} כהוחזר?` },
+    cancelRent: { title: 'ביטול השכרה', icon: 'x-circle', text: `לבטל את ההשכרה של ${confirmLabel}?` },
+    cancelReturn: { title: 'ביטול החזרה', icon: 'x-circle', text: `לבטל את ההחזרה של ${confirmLabel}?` },
+  }[confirmModal.actionType] || { title: 'אישור', icon: 'info', text: '' };
+  const confirmNeedsPayNote = !isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return');
+  const confirmHasScanTip = confirmModal.actionType === 'rent' && !!(confirmModal.item?.barcodePrefix || confirmModal.item?.dressItem?.barcodePrefix);
+
+  return (
+    <V3Page page={false} className="oi-root">
+      {locked && (
+        <Banner
+          kind="warning"
+          icon="lock"
+          title="ההזמנה נעולה"
+          text={<>אפשר רק לסמן החזרות. <Tip>האירוע כבר עבר, ולכן השכרה, עריכה ומחיקה חסומות. לשחרור לוחצים על המנעול בראש העמוד ומאשרים כמנהל.</Tip></>}
+        />
+      )}
+
+      {/* סרגל עליון של הטאב — הוספה, מתגי תצוגה ומונים */}
+      <div className="oi-bar">
+        {!locked && <Btn variant="primary" icon="plus" onClick={handleAddItem}>פריט חדש</Btn>}
+        {enableAlterations && (
+          <Chip className="oi-toggle" icon="scissors" aria-pressed={showAlterations} onClick={() => setShowAlterations(v => !v)}>
+            פרטי תיקון
+          </Chip>
+        )}
+        <Chip className="oi-toggle" icon="trash" aria-pressed={showDeleted} onClick={() => setShowDeleted(v => !v)}>
+          הצגת מחוקים
+        </Chip>
+        <div className="oi-bar__sum">
+          <Chip variant="info" icon="shirt"><bdi>{activeItems.length}</bdi> פריטים פעילים</Chip>
+          {totalPrice > 0 && <Chip variant="info" icon="coin">סה״כ <bdi>₪{totalPrice.toLocaleString('he-IL')}</bdi></Chip>}
+        </div>
       </div>
 
       {visibleItems.length > 0 ? (
-        <div className="table-wrap" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          <div className="table-scroll">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>תיאור דגם ומידה</th>
-                  {showAlterCol && <th>תיקונים</th>}
-                  <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
-                  <th></th>
-                  <th style={{ textAlign: 'center', width: '110px' }}>פרטים</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleItems.map(({ item, originalIndex }) => {
-                  const isDeletedRow = item.isDeleted;
-                  const isRented = item.isTaken && !item.isReturned;
-                  const isEditingMode = item.isNew || item.isEditing;
-                  // פריטים ישנים שהוגרו מ-Access בלי DressItem מקושר (dressModelId ריק) אין להם
-                  // מלאי מזוהה לבחור ממנו — עבורם דגם/מידה נשארים לקריאה בלבד גם במצב עריכה,
-                  // ורק פרטי התיקון ניתנים לעריכה.
-                  const fullyEditableNow = canFullyEditItem(item);
-                  const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId && fullyEditableNow);
-                  // חלון העריכה המלא סגור, אבל מותר להחליף מידה באותה קטגוריית מחיר בלי אישור מנהל
-                  const swapEligibility = (!item.isNew && !fullyEditableNow) ? evaluateSizeSwap(item) : { ok: false, reason: null };
-                  const canEditSizeOnly = !canEditModelSize && !!item.isEditing && !!item.dressModelId && swapEligibility.ok;
-                  const code = itemCode(item);
-  
-                  return (
-                    <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'row-flag' : ''}>
-                      <td>
-                        {canEditModelSize ? (
-                          <div className="form-grid" style={{ gap: '8px', gridTemplateColumns: '1fr 1fr' }}>
-                            <div className="field" style={{ marginBottom: 0 }}>
-                              <label>דגם</label>
-                              <OrderModelSelector
-                                value={{ name: item.description, id: item.dressModelId }}
-                                onChange={(model) => handleModelChange(originalIndex, model)}
-                                hasActiveItems
-                              />
-                            </div>
-                            <div className="field" style={{ marginBottom: 0 }}>
-                              <label>מידה</label>
-                              <OrderSizeSelector
-                                modelId={item.dressModelId}
-                                order={order}
-                                value={item.sizeText}
-                                onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
-                                inventoryCache={inventoryCache}
-                                // הפריט הנערך עצמו לא נספר כ"תפוס" מול עצמו — אחרת המידה הנוכחית שלו
-                                // תוצג כלא זמינה רק כי הוא כבר מחזיק אותה
-                                currentCartItems={items.filter((_, i) => i !== originalIndex)}
-                              />
-                            </div>
-                          </div>
-                        ) : canEditSizeOnly ? (
-                          <div className="form-grid" style={{ gap: '8px', gridTemplateColumns: '1fr 1fr' }}>
-                            <div className="field" style={{ marginBottom: 0 }}>
-                              <label>דגם</label>
-                              <strong>{itemName(item)}</strong>
-                              {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}</div>}
-                            </div>
-                            <div className="field" style={{ marginBottom: 0 }}>
-                              <label>מידה</label>
-                              {renderSameBandSizeSelect({
-                                modelId: item.dressModelId,
-                                value: item.sizeText,
-                                currentCartItems: items.filter((_, i) => i !== originalIndex),
-                                isSizeAllowed: (sz) => evaluateSizeSwap(item, sz),
-                                onRejected: (reason) => setSizeSwapNotice(prev => ({ ...prev, [item.id]: reason })),
-                                onChange: (val) => {
-                                  setSizeSwapNotice(prev => ({ ...prev, [item.id]: '' }));
-                                  handleItemChange(originalIndex, 'sizeText', val);
-                                }
-                              })}
-                              <div className="hint" style={{ fontSize: '11.5px', color: sizeSwapNotice[item.id] ? 'var(--danger)' : 'var(--text-3)', marginTop: '4px' }}>
-                                {sizeSwapNotice[item.id] || 'אפשר להחליף רק למידה באותה קטגוריית מחיר.'}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {itemModelId(item) ? (
-                              <a
-                                href={`/dashboard/dresses/${itemModelId(item)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="פתח כרטיס דגם"
-                                className="cell-primary"
-                                style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}
-                              >
-                                {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
-                              </a>
-                            ) : (
-                              <strong style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}>
-                                {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
-                              </strong>
-                            )}
-                            {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
-                          </>
-                        )}
-                        {/* חלון העריכה המלא (15 דק׳) נסגר: הכפתור לפתיחה מחדש באישור מנהל יושב כאן, בתא
-                            הדגם/מידה, ולא בעמודת התיקונים — שם הוא נעלם כשתיקונים כבויים ("עריכה" נראתה מתה) */}
-                        {isEditingMode && !item.isNew && !fullyEditableNow && (
-                          <div className="hint" style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span>
-                              {evaluateSizeSwap(item).ok
-                                ? 'חלון העריכה המלא (15 דק׳) נסגר — אפשר להחליף מידה באותה קטגוריית מחיר'
-                                : `חלון העריכה המלא (15 דק׳) נסגר — ${showAlterCol ? 'ניתן לערוך כעת רק את פירוט התיקון' : 'להחלפת דגם/מידה יש לפתוח עריכה מלאה'}`}
-                              {!evaluateSizeSwap(item).ok && evaluateSizeSwap(item).reason ? ` (${evaluateSizeSwap(item).reason})` : ''}
-                            </span>
-                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopenFullEdit(item)}>
-                              <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-unlock" /></svg>
-                              פתיחת עריכה מלאה (אישור מנהל)
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      {showAlterCol && (
-                        <td>
-                          {isEditingMode ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {/* הודעת "החלון נסגר" וכפתור הפתיחה מחדש עברו לתא הדגם/מידה (מעל) — שם הם זמינים
-                                  גם כשעמודת התיקונים מוסתרת (תיקונים כבויים בגמח / עמודה מכווצת) */}
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <button type="button"
-                                  className={`pill-tab ${isChecked(item.neckAlteration) ? 'active' : ''}`}
-                                  disabled={!fullyEditableNow}
-                                  onClick={() => handleItemChange(originalIndex, 'neckAlteration', isChecked(item.neckAlteration) ? 0 : 1)}>
-                                  <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>צוואר
-                                </button>
-                                <button type="button"
-                                  className={`pill-tab ${isChecked(item.sleeveAlteration) ? 'active' : ''}`}
-                                  disabled={!fullyEditableNow}
-                                  onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', isChecked(item.sleeveAlteration) ? 0 : 1)}>
-                                  <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>שרוול
-                                </button>
-                                <input type="text" inputMode="decimal" className="input" style={{ maxWidth: '100px' }} value={item.lengthAlteration || ''}
-                                  disabled={!fullyEditableNow}
-                                  onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
-                                  placeholder="אורך (ס״מ)" />
-                              </div>
-                              <input type="text" className="input" autoComplete="off" value={item.alterationDetails || item.repairs || ''}
-                                onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
-                                placeholder="פירוט התיקון הנדרש..." />
-                            </div>
-                          ) : (
-                            renderRepairChips(item, originalIndex)
-                          )}
-                        </td>
-                      )}
-                      <td style={{ textAlign: 'center' }}>
-                        {item.isNew ? <span className="badge badge-neutral">חדש</span> : renderStatusBadge(item)}
-                      </td>
-                      <td>
-                        <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-                          {locked ? (
-                            // הזמנה נעולה — מותרות החזרה וסימון מצב הפריט בלבד; עריכה, השכרה וביטולים חסומים
-                            isRented ? (
-                              <button type="button" className="btn btn-secondary btn-sm"
-                                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
-                                <svg className="icon"><use href="#i-check" /></svg>החזרה
-                              </button>
-                            ) : item.isReturned && !isDeletedRow ? (
-                              <>
-                                {renderConditionToggle(item)}
-                                <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל החזרה"
-                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
-                                  <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
-                                </button>
-                              </>
-                            ) : (
-                              <span className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>נעול</span>
-                            )
-                          ) : isEditingMode ? (
-                            <>
-                              <button type="button" className="btn btn-primary btn-sm"
-                                disabled={savingItemIndex === originalIndex}
-                                onClick={(e) => { e.stopPropagation(); handleConfirmItem(originalIndex); }}>
-                                {savingItemIndex === originalIndex ? <><span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} />שומר...</> : <><svg className="icon"><use href="#i-check" /></svg>אישור</>}
-                              </button>
-                              <button type="button" className="btn btn-secondary btn-sm"
-                                disabled={savingItemIndex === originalIndex}
-                                onClick={(e) => { e.stopPropagation(); item.isNew ? cancelNewItem(originalIndex) : cancelEditItem(originalIndex); }}>
-                                <svg className="icon"><use href="#i-x" /></svg>ביטול
-                              </button>
-                            </>
-                          ) : isDeletedRow ? null : (
-                            <>
-                              {!item.isTaken && (
-                                <button type="button" className="btn btn-secondary btn-sm"
-                                  title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : (evaluateSizeSwap(item).ok ? 'חלון העריכה המלא (15 דק׳) נסגר — אפשר להחליף מידה באותה קטגוריית מחיר ולערוך את פירוט התיקון' : `חלון העריכה המלא (15 דק׳) נסגר — ${showAlterCol ? 'ניתן לערוך רק את פירוט התיקון' : 'לשינוי דגם/מידה יש לפתוח עריכה מלאה באישור מנהל'}`)}
-                                  onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
-                                  <svg className="icon"><use href="#i-edit" /></svg>עריכה
-                                </button>
-                              )}
-                              {!item.isTaken && !item.isNew && (
-                                <button type="button" className="btn btn-primary btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'rent' }); }}>
-                                  <svg className="icon"><use href="#i-box" /></svg>השכרה
-                                </button>
-                              )}
-                              {isRented && (
-                                <>
-                                  <button type="button" className="btn btn-secondary btn-sm"
-                                    onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
-                                    <svg className="icon"><use href="#i-check" /></svg>החזרה
-                                  </button>
-                                  <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל השכרה"
-                                    onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' }); }}>
-                                    <svg className="icon"><use href="#i-x-circle" /></svg>ביטול
-                                  </button>
-                                </>
-                              )}
-                              {item.isReturned && (
-                                <>
-                                  {renderConditionToggle(item)}
-                                  <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל החזרה"
-                                    onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
-                                    <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
-                                  </button>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                          {!item.isNew && (
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים והיסטוריה"
-                              onClick={(e) => { e.stopPropagation(); showItemDetails(item); }}>
-                              <svg className="icon"><use href="#i-info" /></svg>
-                            </button>
-                          )}
-                          {!item.isNew && (
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="בדוק תפוסה לתאריך אירוע"
-                              onClick={(e) => { e.stopPropagation(); setCapacityModalItem(item); }}>
-                              <svg className="icon"><use href="#i-calendar" /></svg>
-                            </button>
-                          )}
-                          {/* מחיקה — לא זמינה לפריט שנלקח (מושכר או הוחזר) או בהזמנה נעולה; שחזור תמיד מוצג לשורה מחוקה */}
-                          {!locked && !item.isNew && (isDeletedRow || !item.isTaken) && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-icon-only btn-sm"
-                              title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
-                              onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}
-                            >
-                              <svg className="icon"><use href={isDeletedRow ? '#i-refresh' : '#i-trash'} /></svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div ref={listEndRef} />
-          </div>
+        <div className="oi-list">
+          {visibleItems.map(renderItemCard)}
+          <div ref={listEndRef} />
         </div>
       ) : (
-        <div className="table-wrap">
-          <div className="table-scroll">
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-bag" /></svg>
-              <h4>אין פריטים להזמנה זו</h4>
-              <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '10px' }} onClick={handleAddItem}>
-                <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט ראשון
-              </button>
-            </div>
-          </div>
-        </div>
+        <Empty
+          icon="bag"
+          title="אין פריטים בהזמנה"
+          action={<Btn variant="primary" icon="plus" onClick={handleAddItem}>הוספת הפריט הראשון</Btn>}
+        />
       )}
 
-      {/* ===== מודל אישור השכרה/החזרה ===== */}
-      {confirmModal.isOpen && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setConfirmModal({ isOpen: false, item: null, actionType: null }); }}>
-          <div className="modal confirm-modal" style={{ margin: 0 }}>
-            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
-              <svg className="icon"><use href={confirmModal.actionType === 'return' ? '#i-check' : confirmModal.actionType === 'rent' ? '#i-box' : '#i-x-circle'} /></svg>
-            </div>
-            <h3>
-              {confirmModal.actionType === 'rent' ? 'אישור השכרה' : confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelRent' ? 'ביטול השכרה' : 'ביטול החזרה'}
-            </h3>
-            <p>
-              {(() => {
-                const label = confirmModal.item ? `"${itemName(confirmModal.item)}"${itemCode(confirmModal.item) ? ` (קוד: ${itemCode(confirmModal.item)})` : ''}` : 'פריט זה';
-                if (confirmModal.actionType === 'rent') return `האם אתה בטוח שברצונך לסמן את ${label} כמושכר?`;
-                if (confirmModal.actionType === 'return') return `האם אתה בטוח שברצונך לסמן את ${label} כמוחזר?`;
-                if (confirmModal.actionType === 'cancelRent') return `האם אתה בטוח שברצונך לבטל את השכרת ${label}?`;
-                return `האם אתה בטוח שברצונך לבטל את החזרת ${label}?`;
-              })()}
-            </p>
-            {!isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return') && (
-              <div className="callout callout-danger" style={{ marginBottom: '20px', textAlign: 'start' }}>
-                <svg className="icon"><use href="#i-alert-tri" /></svg>
-                <span>שים לב: ההזמנה לא שולמה במלואה! נדרש אישור מנהל.</span>
-              </div>
-            )}
-            {confirmModal.actionType === 'rent' && (confirmModal.item?.barcodePrefix || confirmModal.item?.dressItem?.barcodePrefix) && (
-              <div className="callout" style={{ marginBottom: '20px', textAlign: 'start' }}>
-                <svg className="icon"><use href="#i-info" /></svg>
-                <span>טיפ: אפשר לדלג על החלון הזה — סריקת הברקוד בשדה &quot;סריקה מהירה&quot; למעלה משכירה כמה שמלות ברצף, אחת אחרי השנייה.</span>
-              </div>
-            )}
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={async () => {
-                const { item, actionType } = confirmModal;
-                setConfirmModal({ isOpen: false, item: null, actionType: null });
-                if (actionType === 'rent') {
-                  if (item.barcodePrefix || item.dressItem?.barcodePrefix) {
-                    setSelectedItemForScan(item);
-                    setShowManualScanModal(true);
-                  } else {
-                    await handleRent(item);
-                  }
-                } else if (actionType === 'return') {
-                  await handleReturn(item);
-                } else if (actionType === 'cancelRent') {
-                  await handleCancelRent(item);
-                } else if (actionType === 'cancelReturn') {
-                  await handleCancelReturn(item);
+      {/* ===== אישור השכרה/החזרה/ביטול ===== */}
+      <Dialog
+        open={confirmModal.isOpen}
+        onClose={closeConfirm}
+        variant="confirm"
+        icon={confirmCopy.icon}
+        title={confirmCopy.title}
+        sub={confirmCopy.text}
+        actions={(
+          <>
+            <Btn variant="primary" onClick={async () => {
+              const { item, actionType } = confirmModal;
+              setConfirmModal({ isOpen: false, item: null, actionType: null });
+              if (actionType === 'rent') {
+                if (item.barcodePrefix || item.dressItem?.barcodePrefix) {
+                  setSelectedItemForScan(item);
+                  setShowManualScanModal(true);
+                } else {
+                  await handleRent(item);
                 }
-              }}>אישור</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== מודל בחירת פריט — כשכמה פריטים זהים בהזמנה תואמים לברקוד שנסרק ===== */}
-      {itemChoiceModal.isOpen && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
-          <div className="modal" style={{ margin: 0 }}>
-            <div className="modal-head">
-              <strong><svg className="icon"><use href="#i-tag" /></svg>לאיזה פריט לשייך את הברקוד?</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="hint" style={{ color: 'var(--text-2)', lineHeight: 1.6 }}>
-                נמצאו מספר פריטים זהים בהזמנה שמתאימים לברקוד שנסרק — יש לבחור לאיזה פריט לשייך אותו:
-              </p>
-              <p style={{ marginBottom: '16px' }}>
-                <strong style={{ display: 'inline-block', padding: '4px 10px', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', fontFamily: 'Consolas, monospace', direction: 'ltr' }}>
-                  {itemChoiceModal.barcode}
-                </strong>
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {itemChoiceModal.candidates.map((item, idx) => {
-                  const hasRepair = isChecked(item.neckAlteration) || isChecked(item.sleeveAlteration) ||
-                    (item.lengthAlteration && String(item.lengthAlteration).trim() !== '');
-                  return (
-                    <button
-                      key={item.id || idx}
-                      type="button"
-                      className="list-card"
-                      style={{ width: '100%', cursor: 'pointer', textAlign: 'start', font: 'inherit', color: 'inherit' }}
-                      onClick={() => chooseItemForBarcode(item)}
-                    >
-                      <span className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
-                        <svg className="icon"><use href="#i-box" /></svg>
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{itemName(item)}</div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px', fontSize: '12px', color: 'var(--text-3)' }}>
-                          <span>מידה {item.sizeText || '-'}</span>
-                          <span className={`badge ${hasRepair ? 'badge-warning' : 'badge-neutral'}`}>
-                            {hasRepair && <svg className="icon"><use href="#i-scissors" /></svg>}{hasRepair ? 'עם תיקון' : 'ללא תיקון'}
-                          </span>
-                        </div>
-                      </span>
-                      <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
-                    </button>
-                  );
-                })}
+              } else if (actionType === 'return') {
+                await handleReturn(item);
+              } else if (actionType === 'cancelRent') {
+                await handleCancelRent(item);
+              } else if (actionType === 'cancelReturn') {
+                await handleCancelReturn(item);
+              }
+            }}>אישור</Btn>
+            <Btn variant="quiet" onClick={closeConfirm}>ביטול</Btn>
+          </>
+        )}
+      >
+        {(confirmNeedsPayNote || confirmHasScanTip) && (
+          <div className="v3-dlg-rows">
+            {confirmNeedsPayNote && (
+              <div className="v3-dlg-row">
+                <span className="v3-dlg-row__ico"><Icon name="alert-tri" /></span>
+                <span className="v3-dlg-row__t">ההזמנה עוד לא שולמה במלואה, ולכן נדרש אישור מנהל.</span>
               </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== מודל ברקוד ידני להשכרה ===== */}
-      {showManualScanModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) { setShowManualScanModal(false); setManualBarcode(''); } }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '400px' }}>
-            <div className="modal-head">
-              <strong>הזנת ברקוד ידנית</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); }}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="hint" style={{ color: 'var(--text-2)', marginTop: 0 }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                setShowManualScanModal(false);
-                const barcode = manualBarcode.trim();
-                setManualBarcode('');
-                if (selectedItemForScan) await handleRent(selectedItemForScan, barcode);
-              }}>
-                <div className="input-icon-wrap" style={{ marginBottom: '14px' }}>
-                  <svg className="icon"><use href="#i-tag" /></svg>
-                  <input type="text" className="input" autoFocus placeholder="סרוק או הקלד ברקוד..." value={manualBarcode}
-                    onChange={(e) => setManualBarcode(e.target.value)} style={{ textAlign: 'center', direction: 'ltr' }} />
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>בצע סריקה</button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== מודל פרטי פריט (חיובים + היסטוריה) ===== */}
-      {mounted && detailsModalItem && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setDetailsModalItem(null); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '720px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-head">
-              <strong>פרטי פריט: {itemName(detailsModalItem)}</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setDetailsModalItem(null)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body" style={{ overflowY: 'auto' }}>
-              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>תשלומים וחיובים לפריט זה (חיוב, זיכוי, ביטול, תיקונים)</span>
-              <div className="table-wrap" style={{ margin: '8px 0 16px', maxHeight: '190px', overflowY: 'auto' }}>
-                <div className="table-scroll">
-                  {(() => {
-                    if (!order || !order.obligations) return <div className="empty-state" style={{ padding: '16px' }}>לא נמצאו חיובים מפורטים</div>;
-                    const searchStr = `(פריט #${detailsModalItem.id})`;
-                    const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
-                    // כל ההתחייבויות שמשויכות לפריט — כולל זיכויים/ביטולים (סכומים שליליים)
-                    const relatedObligations = order.obligations.filter(obs =>
-                      !obs.isDeleted && obs.description && obs.description.includes(searchStr)
-                    );
-                    if (relatedObligations.length === 0) return <div className="empty-state" style={{ padding: '16px' }}>אין חיובים מפורטים לפריט זה</div>;
-                    return (
-                      <table className="data">
-                        <tbody>
-                          {relatedObligations.map((obs, idx) => {
-                            const isCredit = obs.amount < 0;
-                            const label = cleanTxt(obs.productName)
-                              || (isCredit ? 'זיכוי / ביטול' : (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
-                            const desc = cleanTxt(obs.description);
-                            // ברוב החיובים ה-productName וה-description זהים — לא להציג את אותו טקסט פעמיים
-                            const showDesc = desc && desc !== label;
-                            return (
-                              <tr key={idx}>
-                                <td className="cell-primary" colSpan={showDesc ? 1 : 2}>
-                                  {label}
-                                  {isCredit && <span className="badge badge-danger" style={{ marginInlineStart: '6px' }}>זיכוי</span>}
-                                </td>
-                                {showDesc && <td className="cell-muted">{desc}</td>}
-                                <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
-                                  {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          <tr style={{ fontWeight: 700, background: 'var(--surface-alt)' }}>
-                            <td colSpan={2}>סה"כ לפריט</td>
-                            <td style={{ color: 'var(--success)', direction: 'ltr', textAlign: 'left' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    );
-                  })()}
-                </div>
+            )}
+            {confirmHasScanTip && (
+              <div className="v3-dlg-row">
+                <span className="v3-dlg-row__ico"><Icon name="tag" /></span>
+                <span className="v3-dlg-row__t">אפשר לדלג על החלון הזה <Tip>סריקת ברקוד בשדה הסריקה המהירה בראש העמוד משכירה כמה שמלות ברצף, בלי חלונות באמצע.</Tip></span>
               </div>
+            )}
+          </div>
+        )}
+      </Dialog>
 
+      {/* ===== בחירת פריט — כשכמה פריטים זהים בהזמנה תואמים לברקוד שנסרק ===== */}
+      <Dialog
+        open={itemChoiceModal.isOpen}
+        onClose={closeItemChoice}
+        variant="confirm"
+        icon="tag"
+        title="לאיזה פריט לשייך?"
+        sub="כמה פריטים בהזמנה מתאימים לברקוד שנסרק. בחרו אחד."
+        actions={<Btn variant="quiet" onClick={closeItemChoice}>ביטול</Btn>}
+      >
+        <div className="oi-center"><span className="oi-barcode">{itemChoiceModal.barcode}</span></div>
+        <div className="v3-options">
+          {itemChoiceModal.candidates.map((item, idx) => {
+            const hasRepair = isChecked(item.neckAlteration) || isChecked(item.sleeveAlteration) ||
+              (item.lengthAlteration && String(item.lengthAlteration).trim() !== '');
+            return (
+              <button key={item.id || idx} type="button" className="v3-option" onClick={() => chooseItemForBarcode(item)}>
+                <Icon name="box" />
+                <span>
+                  <b>{itemName(item)}</b>
+                  <small>מידה <bdi>{item.sizeText || '-'}</bdi> · {hasRepair ? 'עם תיקון' : 'בלי תיקון'}</small>
+                </span>
+                <Icon name="chevron-start" className="oi-push" />
+              </button>
+            );
+          })}
+        </div>
+      </Dialog>
+
+      {/* ===== ברקוד ידני להשכרה ===== */}
+      <Dialog
+        open={showManualScanModal}
+        onClose={closeManualScan}
+        variant="form"
+        icon="tag"
+        title="הזנת ברקוד"
+        sub="סרקו או הקלידו את הברקוד שעל הפריט כדי להשכיר אותו."
+      >
+        <form
+          className="oi-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setShowManualScanModal(false);
+            const barcode = manualBarcode.trim();
+            setManualBarcode('');
+            if (selectedItemForScan) await handleRent(selectedItemForScan, barcode);
+          }}
+        >
+          <Field label="ברקוד" type="text" className="oi-ltr" data-autofocus="" placeholder="סרקו או הקלידו" autoComplete="off"
+            value={manualBarcode} onChange={(e) => setManualBarcode(e.target.value)} />
+          <div className="v3-mail__actions">
+            <Btn type="submit" variant="primary" icon="check">אישור והשכרה</Btn>
+            <Btn variant="quiet" onClick={closeManualScan}>ביטול</Btn>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* ===== פרטי פריט (חיובים + היסטוריה) ===== */}
+      <Dialog
+        open={mounted && !!detailsModalItem}
+        onClose={() => setDetailsModalItem(null)}
+        variant="sheet"
+        icon="info"
+        title="פרטי הפריט"
+        sub={detailsModalItem ? itemName(detailsModalItem) : undefined}
+        actions={<Btn icon="x" onClick={() => setDetailsModalItem(null)}>סגירה</Btn>}
+      >
+        {detailsModalItem && (
+          <div className="oi-sec">
+            <section className="oi-sec">
+              <h3 className="oi-sec__h">
+                <Icon name="receipt" size="sm" />חיובים וזיכויים
+                <Tip>חיובים, זיכויים, ביטולים ותיקונים ששויכו לפריט הזה.</Tip>
+              </h3>
               {(() => {
-                // כל התאריכים עם תאריך עברי: הוספה, לקיחה, החזרה
-                const fmtFull = (d0) => {
-                  if (!d0) return null;
-                  const d = new Date(d0);
-                  if (isNaN(d.getTime())) return null;
-                  return `${d.toLocaleDateString('he-IL')} (${getHebrewDateString(d)}) · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
-                };
-                const addedDate = fmtFull(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt);
-                const takenDate = fmtFull(detailsModalItem.takenDate);
-                const returnDate = fmtFull(detailsModalItem.returnDate);
+                if (!order || !order.obligations) return <div className="oi-hist__msg">לא נמצאו חיובים מפורטים</div>;
+                const searchStr = `(פריט #${detailsModalItem.id})`;
+                const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
+                // כל ההתחייבויות שמשויכות לפריט — כולל זיכויים/ביטולים (סכומים שליליים)
+                const relatedObligations = order.obligations.filter(obs =>
+                  !obs.isDeleted && obs.description && obs.description.includes(searchStr)
+                );
+                if (relatedObligations.length === 0) return <div className="oi-hist__msg">אין חיובים לפריט הזה</div>;
                 return (
-                  <div className="form-grid cols-3" style={{ marginBottom: '16px' }}>
-                    <div>
-                      <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך הוספה</span>
-                      <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px' }}>{addedDate || '-'}</div>
+                  <>
+                    <div className="v3-list">
+                      {relatedObligations.map((obs, idx) => {
+                        const isCredit = obs.amount < 0;
+                        const label = cleanTxt(obs.productName)
+                          || (isCredit ? 'זיכוי / ביטול' : (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
+                        const desc = cleanTxt(obs.description);
+                        // ברוב החיובים ה-productName וה-description זהים — לא להציג את אותו טקסט פעמיים
+                        const showDesc = desc && desc !== label;
+                        return (
+                          <div className="v3-li" key={idx}>
+                            <span className="v3-li__ic" aria-hidden="true"><Icon name={isCredit ? 'refresh' : 'coin'} /></span>
+                            <div className="v3-li__body">
+                              <span className="v3-li__title">{label} {isCredit && <Tag variant="soft">זיכוי</Tag>}</span>
+                              {showDesc && <span className="v3-li__sub">{desc}</span>}
+                            </div>
+                            <span className={cx('v3-li__amt', 'oi-money', isCredit ? 'oi-money--credit' : 'oi-money--charge')}>
+                              {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div>
-                      <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך השכרה (לקיחה)</span>
-                      <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px', color: takenDate ? undefined : 'var(--text-3)' }}>
-                        {takenDate || 'טרם הושכר'}
-                      </div>
+                    <div className="oi-total">
+                      <span>סה״כ לפריט</span>
+                      <span className="oi-money">₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</span>
                     </div>
-                    <div>
-                      <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך החזרה</span>
-                      <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px', color: returnDate ? undefined : 'var(--text-3)' }}>
-                        {returnDate || 'טרם הוחזר'}
-                      </div>
-                    </div>
-                  </div>
+                  </>
                 );
               })()}
+            </section>
 
-              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>היסטוריית שינויים</span>
-              <div className="card" style={{ marginTop: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+            {(() => {
+              // כל התאריכים עם תאריך עברי: הוספה, לקיחה, החזרה
+              const fmtFull = (d0) => {
+                if (!d0) return null;
+                const d = new Date(d0);
+                if (isNaN(d.getTime())) return null;
+                return `${d.toLocaleDateString('he-IL')} (${getHebrewDateString(d)}) · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
+              };
+              const addedDate = fmtFull(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt);
+              const takenDate = fmtFull(detailsModalItem.takenDate);
+              const returnDate = fmtFull(detailsModalItem.returnDate);
+              return (
+                <Rows>
+                  <Row label="נוסף להזמנה" icon="calendar"><bdi>{addedDate || '-'}</bdi></Row>
+                  <Row label="הושכר ב" icon="box">{takenDate ? <bdi>{takenDate}</bdi> : <span className="v3-faint">טרם הושכר</span>}</Row>
+                  <Row label="הוחזר ב" icon="check-circle">{returnDate ? <bdi>{returnDate}</bdi> : <span className="v3-faint">טרם הוחזר</span>}</Row>
+                </Rows>
+              );
+            })()}
+
+            <section className="oi-sec">
+              <h3 className="oi-sec__h"><Icon name="history" size="sm" />היסטוריית שינויים</h3>
+              <div className="oi-hist">
                 {detailsModalItem.loadingLogs ? (
-                  <div className="loading-inline"><span className="spinner" />טוען היסטוריה...</div>
+                  <div className="oi-hist__msg" aria-busy="true"><span className="v3-spin" aria-hidden="true" />טוען היסטוריה…</div>
                 ) : detailsModalItem.auditLogs && detailsModalItem.auditLogs.length > 0 ? (
                   dedupeAuditLogs(detailsModalItem.auditLogs).map((log, idx) => {
                     const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
@@ -1397,45 +1378,40 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                           const fromStr = typeof value.from === 'boolean' ? (value.from ? 'כן' : 'לא') : String(value.from || '-');
                           const toStr = typeof value.to === 'boolean' ? (value.to ? 'כן' : 'לא') : String(value.to || '-');
                           if (fromStr === toStr) continue;
-                          rows.push(<div key={key}><strong>{label}:</strong> {fromStr} ← {toStr}</div>);
+                          rows.push(<div key={key}><strong>{label}:</strong> <bdi>{fromStr}</bdi> ← <bdi>{toStr}</bdi></div>);
                         } else {
                           const valStr = typeof value === 'boolean' ? (value ? 'כן' : 'לא') : String(value);
-                          rows.push(<div key={key}><strong>{label}:</strong> {valStr}</div>);
+                          rows.push(<div key={key}><strong>{label}:</strong> <bdi>{valStr}</bdi></div>);
                         }
                       }
                       changesNode = rows.length > 0
-                        ? <div style={{ fontSize: '12px', lineHeight: 1.7 }}>{rows}</div>
-                        : <div className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>אין שינויים רלוונטיים להצגה</div>;
+                        ? rows
+                        : <div className="oi-note">אין שינויים להצגה</div>;
                     } catch (e) {
-                      changesNode = <div style={{ fontSize: '12px', fontFamily: 'Consolas, monospace' }}>{String(log.changesJson)}</div>;
+                      changesNode = <div className="oi-note">{String(log.changesJson)}</div>;
                     }
                     const isExpanded = !!expandedHistory[idx];
                     return (
                       <div key={idx}>
-                        <button type="button" className="select-row" style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'start', color: 'inherit' }}
-                          onClick={() => toggleHistoryExpand(idx)}>
-                          <svg className="icon" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease', color: 'var(--text-3)' }}><use href="#i-chevron-down" /></svg>
-                          <span className="badge badge-primary">{actionLabel}</span>
-                          <span className="hint" style={{ color: 'var(--text-3)' }}>
-                            {new Date(log.createdAt).toLocaleDateString('he-IL')} ({getHebrewDateString(log.createdAt)}) · {new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}
+                        <button type="button" className="oi-hist__row" aria-expanded={isExpanded} onClick={() => toggleHistoryExpand(idx)}>
+                          <Icon name="chevron-down" size="sm" />
+                          <Tag variant="soft">{actionLabel}</Tag>
+                          <span className="oi-note">
+                            <bdi>{new Date(log.createdAt).toLocaleDateString('he-IL')}</bdi> ({getHebrewDateString(log.createdAt)}) · <bdi>{new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}</bdi>
                           </span>
                         </button>
-                        {isExpanded && <div style={{ padding: '0 16px 12px 44px' }}>{changesNode}</div>}
+                        {isExpanded && <div className="oi-hist__body">{changesNode}</div>}
                       </div>
                     );
                   })
                 ) : (
-                  <div className="empty-state" style={{ padding: '16px' }}>אין היסטוריית שינויים להצגה</div>
+                  <div className="oi-hist__msg">אין היסטוריית שינויים להצגה</div>
                 )}
               </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setDetailsModalItem(null)}>סגור</button>
-            </div>
+            </section>
           </div>
-        </div>,
-        document.body
-      )}
+        )}
+      </Dialog>
 
       {capacityModalItem && (
         <ItemCapacityModal
@@ -1445,7 +1421,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           onClose={() => setCapacityModalItem(null)}
         />
       )}
-    </>
+    </V3Page>
   );
 });
 

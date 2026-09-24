@@ -2,6 +2,65 @@
 import React, { useState, useEffect } from 'react';
 import { calculateDynamicAvailability } from '../../lib/clientInventory';
 import { sortSizeRows } from '../../lib/sizeSort';
+import { V3Page, Icon } from '@/app/v3/ui/components';
+import './orderItemsV3.css';
+
+// כמה פנוי מכל מידה — לוגיקה אחת לשני הבוחרים (הרגיל וזה של "אותה קטגוריית מחיר" ב-ModernItemsManager).
+export function describeSizeRow(s, order) {
+  const sizeVal = s.sizeText || s.size;
+  // תמיכה בשתי המבנים — המבנה החדש (עם withNormalBuffer) והישן (עם availableQuantity ישירה)
+  const normalAvail = s.withNormalBuffer?.availableQuantity ?? s.availableQuantity;
+  const customAvail = s.withCustomSpacing?.availableQuantity;
+  const selectedAvail = order && order.customSpacing !== undefined && order.customSpacing !== null ? customAvail : normalAvail;
+  const isUnavailable = selectedAvail !== undefined && selectedAvail <= 0;
+  let short = '';
+  let full = '';
+  if (normalAvail !== undefined) {
+    if (s.withCustomSpacing) {
+      const gain = s.withCustomSpacing.gain || 0;
+      short = `רגיל ${normalAvail} · ציפוף ${customAvail}${gain > 0 ? ` (+${gain})` : ''}`;
+      full = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${s.totalInStock}`;
+    } else {
+      short = `פנוי ${normalAvail} מתוך ${s.totalInStock}`;
+      full = short;
+    }
+  } else {
+    short = `במלאי: ${s.totalQuantity || s.totalInStock}`;
+    full = short;
+  }
+  return { sizeVal, isUnavailable, short, full };
+}
+
+// ריבועי מידה (במקום select): מוצגים כשכבר יש רשימת מידות. onChange(מחרוזת) — אותה חתימה כמו ב-select.
+export function SizeChips({ rows, value, onChange, order, disabled = false, loading = false, hasModel = true }) {
+  if (!hasModel) return <div className="oi-sizes__msg"><Icon name="info" size="sm" />בחרו דגם כדי לראות מידות</div>;
+  if (loading) return <div className="oi-sizes__msg" aria-busy="true"><Icon name="loader" size="sm" loop />טוען מידות...</div>;
+  if (!rows.length) return <div className="oi-sizes__msg"><Icon name="info" size="sm" />אין מידות להצגה</div>;
+  return (
+    <div className="oi-sizes" role="group" aria-label="מידה" data-agy-id="order_size_selector_select">
+      {rows.map((s) => {
+        const { sizeVal, isUnavailable, short, full } = describeSizeRow(s, order);
+        const on = sizeVal === value;
+        return (
+          <button
+            type="button"
+            key={sizeVal}
+            data-agy-id="order_size_selector_option"
+            className="oi-size"
+            aria-pressed={on}
+            aria-label={`${sizeVal} — ${full}`}
+            title={full}
+            disabled={disabled || isUnavailable}
+            onClick={() => onChange(on ? '' : sizeVal)}
+          >
+            <b><bdi>{sizeVal}</bdi></b>
+            <small>{short}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-', inventoryCache, currentCartItems }) {
   const [sizes, setSizes] = useState([]);
@@ -74,64 +133,8 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
   }, [modelId, order, inventoryCache, currentCartItems]);
 
   return (
-    <select
-      data-agy-id="order_size_selector_select"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={!modelId || loading}
-      style={{
-        width: '100%',
-        height: '42px',
-        padding: '0.5rem 0.8rem',
-        borderRadius: '8px',
-        border: '1px solid var(--border-strong)',
-        textAlign: 'center',
-        backgroundColor: (!modelId || loading) ? 'var(--surface-sunken)' : 'var(--surface)',
-        color: (!modelId || loading) ? 'var(--text-3)' : 'var(--text)',
-        cursor: (!modelId || loading) ? 'not-allowed' : 'pointer',
-        appearance: 'none',
-        boxSizing: 'border-box',
-        fontSize: '0.95rem',
-        outline: 'none',
-        transition: 'border-color 0.2s'
-      }}
-    >
-      <option value="">{loading ? 'טוען...' : placeholder}</option>
-      {sizes.map((s) => {
-        const sizeVal = s.sizeText || s.size;
-
-        // תמיכה בשתי המבנים — המבנה החדש (עם withNormalBuffer) והישן (עם availableQuantity ישירה)
-        const normalAvail = s.withNormalBuffer?.availableQuantity ?? s.availableQuantity;
-        const customAvail = s.withCustomSpacing?.availableQuantity;
-        const selectedAvail = order && order.customSpacing !== undefined && order.customSpacing !== null ? customAvail : normalAvail;
-        const isUnavailable = selectedAvail !== undefined && selectedAvail <= 0;
-
-        let availableInfo = '';
-        if (normalAvail !== undefined) {
-          if (s.withCustomSpacing) {
-            // הזמנה עם ציפוף — הצג שתי כמויות בבירור
-            const gain = s.withCustomSpacing.gain || 0;
-            availableInfo = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${s.totalInStock}`;
-          } else {
-            // הזמנה רגילה — הצג כמות אחת בלבד
-            availableInfo = `פנוי ${normalAvail} מתוך ${s.totalInStock}`;
-          }
-        } else {
-          availableInfo = `במלאי: ${s.totalQuantity || s.totalInStock}`;
-        }
-
-        return (
-          <option
-            data-agy-id="order_size_selector_option"
-            key={sizeVal}
-            value={sizeVal}
-            title={availableInfo}
-            disabled={isUnavailable}
-          >
-            {sizeVal} ({availableInfo})
-          </option>
-        );
-      })}
-    </select>
+    <V3Page page={false} sprite={false} className="oi-root oi-root--inline">
+      <SizeChips rows={sizes} value={value} onChange={onChange} order={order} loading={loading} hasModel={!!modelId} placeholder={placeholder} />
+    </V3Page>
   );
 }
