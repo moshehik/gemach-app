@@ -16,7 +16,7 @@
 :root{
   --v3-navy-900:#0a2242; --v3-navy-800:#0f2c52; --v3-navy-700:#173c6b; --v3-navy-500:#2b5a94;
   --v3-sky-50:#f3f9fe; --v3-sky-100:#e4f1fb; --v3-sky-200:#cfe6f7; --v3-sky-300:#a9d2f0; --v3-sky-400:#7fb8e6;
-  --v3-gold-100:#fbf1d3; --v3-gold-300:#e0c56e; --v3-gold-500:#c9a227; --v3-gold-600:#b8912f; --v3-gold-700:#9a7a1f;
+  --v3-gold-100:#fbf1d3; --v3-gold-300:#e0c56e; --v3-gold-500:#c9a227; --v3-gold-600:#b8912f; --v3-gold-700:#9a7a1f; --v3-gold-800:#6f560f; /* REVIEW-1 M-4: טקסט זהב על רקע בהיר (AA) */
   --v3-rose-50:#fff6f2; --v3-rose-100:#ffece5; --v3-rose-200:#fdd9cc; --v3-rose-300:#fbbfa9; --v3-rose-500:#fa9e84; --v3-rose-700:#a8442a;
   --v3-plum:#a83d6c; --v3-peri:#8fa6e8;
 
@@ -141,6 +141,7 @@ html[data-motion=reduced] *,html[data-motion=reduced] *::before,html[data-motion
 .drawer a{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:12px;color:var(--v3-on-dark-2);text-decoration:none}
 .drawer a[aria-current=page]{background:rgba(255,255,255,.1);color:var(--v3-gold-300)}
 .drawer-scrim{position:fixed;inset:0;background:var(--v3-scrim);z-index:calc(var(--v3-z-drawer) - 1)}
+@media (max-width:1439px){.tb-org{display:none}} /* REVIEW-1 m-3 */
 @media (max-width:1023px){
   .tb-nav{display:none}
   .tb-burger{display:grid}
@@ -208,7 +209,7 @@ html[data-motion=reduced] .nb-timer{animation-duration:var(--v3-notice-ms)!impor
 .chip .ic{width:14px;height:14px}
 .chip.info{background:var(--v3-brand-tint);color:var(--v3-navy-800)}
 .chip.done{background:var(--v3-navy-800);color:#fff;border-color:var(--v3-navy-800)}
-.chip.gold{background:var(--v3-gold-100);color:var(--v3-gold-700);border-color:var(--v3-gold-300)}
+.chip.gold{background:var(--v3-gold-100);color:var(--v3-gold-800);border-color:var(--v3-gold-300)}
 .chip.attn{background:var(--v3-rose-100);color:var(--v3-rose-700);border-color:var(--v3-rose-300)}
 .chip.pend{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line);color:var(--v3-rose-700)}
 
@@ -226,7 +227,7 @@ html[data-motion=reduced] .nb-timer{animation-duration:var(--v3-notice-ms)!impor
 .tab[aria-selected=true] .cnt{background:var(--v3-brand-tint);color:var(--v3-brand)}
 .tab .pip{width:10px;height:10px;border-radius:50%;background:var(--v3-rose-500);border:1.5px solid var(--v3-rose-700)}
 .tab .pend{width:12px;height:12px;border-radius:50%;background:var(--v3-rose-200);border:2px dashed var(--v3-rose-700)}
-@media (max-width:1279px){.tab{padding:8px 10px;gap:6px}:root{--v3-rail-w:300px}}
+@media (max-width:1439px){.tab{padding:8px 10px;gap:6px}:root{--v3-rail-w:300px}}
 @media (max-width:640px){.tab{flex:none;padding:8px 12px}}
 .file-pick{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .file-pick input{position:absolute;width:1px;height:1px;opacity:0}
@@ -254,7 +255,8 @@ html[data-motion=reduced] .nb-timer{animation-duration:var(--v3-notice-ms)!impor
 .row>.ic{margin-top:4px;color:var(--v3-ink-3)}
 .row .lbl{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);display:flex;align-items:center;gap:6px}
 .row .val{grid-column:2;font-size:var(--v3-fs-md);font-weight:500;overflow-wrap:anywhere}
-.row .val.missing{color:var(--v3-gold-700);display:flex;align-items:center;gap:6px;font-weight:500;font-size:var(--v3-fs-base)}
+.row .val.missing{color:var(--v3-gold-800);display:flex;align-items:center;gap:6px;font-weight:500;font-size:var(--v3-fs-base)}
+.row .val.missing .ic{color:var(--v3-gold-600)}
 .row .sub{grid-column:2;display:flex;flex-wrap:wrap;gap:6px}
 .row.changed{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line);border-radius:var(--v3-r-md);padding:12px;margin-block:4px}
 .row.changed + .row{border-top:0}
@@ -358,7 +360,7 @@ table.tbl{width:100%;border-collapse:collapse;min-width:420px}
 .he-chev{display:grid;place-items:center;width:44px;height:44px}
 .he-chev .ic{transition:transform var(--v3-base)}
 .hent.is-open .he-chev .ic{transform:rotate(180deg)}
-.he-det{padding:0 52px 14px 0}
+.he-det{padding-block:0 14px;padding-inline:52px 0}
 .he-det .row{padding:8px 0}
 .range{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
 .range .from{color:var(--v3-ink-3);text-decoration:line-through;font-weight:400}
@@ -474,6 +476,19 @@ mark{background:var(--v3-gold-100);color:inherit;border-radius:3px;padding:0 2px
 .appr[aria-checked=true]{border-color:var(--v3-gold-500);box-shadow:inset 0 0 0 1px var(--v3-gold-500)}
 .appr .tb-av{width:36px;height:36px}
 .appr small{display:block;color:var(--d-sub);font-size:var(--v3-fs-2xs)}
+.appr-box{display:flex;flex-direction:column;gap:8px}
+.approvers{max-height:min(200px,30dvh);overflow-y:auto;overscroll-behavior:contain;margin-bottom:0;padding:2px;border-radius:14px}
+.dlg-b > .field + .field{margin-top:var(--v3-sp-4)}
+.appr{width:100%}
+.appr .ic{margin-inline-start:auto;color:var(--v3-gold-500)}
+.appr[aria-selected=true]{border-color:var(--v3-gold-500);box-shadow:inset 0 0 0 1px var(--v3-gold-500)}
+.appr-note{display:flex;align-items:center;gap:8px;padding:10px 12px;color:var(--d-sub);font-size:var(--v3-fs-sm)}
+.pw{display:flex;gap:8px;align-items:center}
+.pw .input{flex:1}
+.pw.shake{animation:shake .4s}
+.dlg[data-v3-mode=dark] .ibtn.quiet{color:var(--d-ink)}
+.okbox .links{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.okbox .links a{display:inline-flex;align-items:center;gap:6px;min-height:32px}
 .derr{color:var(--v3-rose-300);text-align:center;font-size:var(--v3-fs-sm);margin-top:10px;min-height:1.6em}
 .dlg:not([data-v3-mode=dark]) .derr{color:var(--v3-plum)}
 .seg{display:flex;flex-wrap:wrap;gap:6px;background:var(--v3-sky-100);padding:5px;border-radius:14px}
@@ -564,6 +579,7 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
     <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
     <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="M20 11.5 12 19.5a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4L14.5 7.5"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M8 7.5A6 6 0 0 1 18 11a4 4 0 0 1 2.6 6.9"/><path d="M17 18H7a4 4 0 0 1-1.4-7.8"/></symbol>
   </defs>
@@ -634,6 +650,8 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
           <button type="button" class="btn sm" data-demo="toast">הודעה (toast)</button>
           <button type="button" class="btn sm" data-demo="notice">פס עליון</button>
         </div>
+        <label class="chk"><input type="checkbox" id="dFail"> כשל בפעולות שרת (אישור / מייל / ביטול חסימה)</label>
+        <label class="chk"><input type="checkbox" id="dNoAppr"> אין מאשרים מורשים</label>
         <label class="chk"><input type="checkbox" id="dMotion"> הדמיית "הפחתת תנועה"</label>
       </div>
     </div>
@@ -714,6 +732,7 @@ function makePayments(kind, long){
 }
 const HISTORY = [
   { day:'יום ד׳ · י״ב תשרי תשפ״ז', greg:'23.9.2026', items:[
+    { t:'17:05', icon:'send', text:'נשלח מייל ללקוחה', who:'מרים גולד (אישרה)', det:[['נושא','','תזכורת להחזרת שמלה'],['קבצים','','הוראות-כביסה.pdf']] },
     { t:'16:42', icon:'phone', text:'עודכן טלפון נוסף', who:'שולמית לוי', det:[['טלפון נוסף','025810000','025810090']] },
     { t:'11:05', icon:'ban', text:'הלקוחה נחסמה להזמנות חדשות', who:'מערכת', det:[['סיבה','','שמלה לא הוחזרה בזמן פעמיים']] } ]},
   { day:'יום ה׳ · כ״ח אלול תשפ״ו', greg:'10.9.2026', items:[
@@ -722,7 +741,8 @@ const HISTORY = [
     { t:'13:12', icon:'file', text:'נוספה הערה אוטומטית', who:'מערכת', det:[['הערות','','הוחזרה עם כתם קטן בשרוול']] },
     { t:'10:02', icon:'user', text:'הלקוחה נוספה למערכת', who:'עובד שנמחק', det:[['שם','','רבקה פרידמן'],['טלפון','','0527134455']] } ]}
 ];
-const APPROVERS = [{ n:'מרים גולד', r:'הנהלה ראשית' }, { n:'אסתר ברק', r:'מנהלת סניף' }, { n:'דבורה שטרן', r:'מנהלת סניף' }];
+/* approvals[key] מחושב בשרת (GET /api/employees); ok=false = לא מורשה ולכן לא מוצג. אורך הרשימה משתנה (0..הרבה). */
+const APPROVERS = [{ id:'e1', n:'שולמית', r:'הנהלה ראשית', ok:true }, { id:'e2', n:'מרים גולד', r:'הנהלה ראשית', ok:true }, { id:'e3', n:'אסתר ברק', r:'מנהלת סניף', ok:true }, { id:'e4', n:'דבורה שטרן', r:'מנהלת סניף', ok:true }, { id:'e5', n:'נחמה', r:'מזכירות', ok:false }];
 
 /* ============ מצב העמוד ============ */
 const S = { tab:'details', editing:false, orig:null, cur:null, redo:{}, orders:[], payments:[], openOrder:null, openPay:null, openRef:null, openHist:new Set(), hq:'', errors:{}, saving:false, data:'full', load:'ok', mode:'card', head:true, dark:true, long:false, consentOverride:null };
@@ -898,7 +918,10 @@ function renderNotes(notes){
 
 const ST_CHIP = { 'הוחזר':'done', 'הוחזר חלקי':'done', 'הושכר':'info', 'הושכר חלקי':'info', 'בקרוב':'gold' };
 const ST_IC = { 'הוחזר':'check', 'הוחזר חלקי':'check', 'בקרוב':'clock', 'מחוק':'x', 'טיוטה':'edit', 'הושכר':'bag' };
-function payStatus(o){ if (o.total === 0 && o.paid === 0) return ['אין חיוב','']; if (o.paid > o.total) return ['ממתין לזיכוי','info']; if (o.paid >= o.total) return ['שולם','done']; if (o.paid > 0) return ['שולם חלקית','gold']; return ['לא שולם','attn']; }
+/* REVIEW-1 M-5: אותה פונקציה בדיוק כמו calculatePaymentStatus (lib/orderStatus.js) — 4 ערכים בלבד */
+function calcPayStatus(req, paid){ if (paid > req && req > 0) return 'ממתין לזיכוי'; if (paid > 0 && req === 0) return 'ממתין לזיכוי'; if (req > 0 && paid >= req) return 'שולם'; if (paid > 0 && paid < req) return 'שולם חלקי'; return 'לא שולם'; }
+const PAY_CHIP = { 'שולם':'done', 'שולם חלקי':'gold', 'ממתין לזיכוי':'info', 'לא שולם':'attn' };
+function payStatus(o){ const st = calcPayStatus(o.total, o.paid); return [st, PAY_CHIP[st]]; }
 function renderOrders(){
   if (!S.orders.length) return `<div class="card"><div class="empty"><span class="e-ic">${ic('bag','xl')}</span><b>עדיין אין הזמנות</b><span>הזמנות של הלקוח יופיעו כאן, מהחדשה לישנה.</span></div></div>`;
   return `<div class="card"><div class="card-h"><span class="ico">${ic('bag')}</span><h2>ההזמנות של הלקוח${tip('לחיצה על שורה פותחת את ההזמנה. החץ בצד מציג סכומים.')}</h2></div>
@@ -947,7 +970,7 @@ function renderPayments(m){
         ${m.refs > 0 ? `<div class="tile"><span class="t-l">${ic('refresh','sm')}סך הזיכויים</span><span class="t-v">${money(m.refs)}</span></div>` : ''}
         ${balTile(m)}
       </div>
-      <div class="formula">${ic('info','sm')}היתרה = חיובים, פחות תשלומים, ועוד זיכויים שהוחזרו.</div></div>
+      <div class="formula">${ic('info','sm')}היתרה = חיובים, פחות תשלומים, ועוד כל הזיכויים (גם אלה שעוד ממתינים לביצוע).</div></div>
     <div class="card"><div class="card-h"><span class="ico">${ic('receipt')}</span><h2>תשלומים וזיכויים${tip('החץ בכל שורה מציג לאיזו הזמנה היא שייכת ואיך שולם.')}</h2></div>${tbl}</div>`;
 }
 
@@ -1065,9 +1088,25 @@ function bindNew(){
 function consentVisible(){ return S.consentOverride ?? !cfg.flag('hide_marketing_consent_field'); }
 
 /* ===== ולידציה (מדגים CC-65..67; אותם כללים, תצוגה inline) ===== */
+/* ספרת ביקורת ישראלית — כמו lib/customerValidation.js (במימוש: קוראים לפונקציה הקיימת, לא מעתיקים) */
+function validIsraeliId(v){ const d = String(v).replace(/\D/g, ''); if (!d || d.length > 9) return false; const p = d.padStart(9, '0'); let sum = 0; for (let i = 0; i < 9; i++){ let x = +p[i] * (i % 2 + 1); if (x > 9) x -= 9; sum += x; } return sum % 10 === 0; }
+/* REVIEW-1 M-6: הדגמה מוקטנת של normalizeEmail(email, emailSuffix) (lib/emailUtils.js). במימוש: הפונקציה הקיימת. */
+function normalizeEmailDemo(raw, suffix){
+  let v = String(raw ?? '').trim().toLowerCase(); if (!v) return '';
+  v = v.replace(/\/(com|org|co\.il|org\.il|net)$/i, '.$1').replace(/\//g, '.');
+  const sfx = suffix && suffix.includes('.') ? suffix.replace(/^@/, '') : 'gmail.com';
+  if (!v.includes('@')) return v + '@' + sfx;
+  if (v.endsWith('@')) return v + sfx;
+  v = v.replace(/@+/g, '@');
+  const [u, dom] = v.split('@');
+  if (!dom.includes('.')) return `${u}@${dom}${dom === 'walla' ? '.co.il' : '.com'}`;
+  return v;
+}
 function validate(c, isNew){
   const e = {}; const t = k => String(c[k] ?? '').trim();
-  ['firstName','lastName','phone1'].forEach(k => { if (!t(k)) e[k] = 'צריך למלא'; });
+  /* REVIEW-1 M-1: ביצירה — תמיד. בעריכה — רק שדה שהמשתמש עצמו רוקן (היום ה-required נאכף רק בטופס הפרטים,
+     ושמירת בנק/כפתור הכותרת עוקפים אותו; לקוחות מיובאים בלי טלפון חייבים להמשיך להישמר). */
+  ['firstName','lastName','phone1'].forEach(k => { if (!t(k) && (isNew || String(S.orig[k] ?? '').trim() !== '')) e[k] = 'צריך למלא'; });
   if (isNew){
     if (cfg.flag('require_customer_email') && !t('email')) e.email = 'צריך למלא';
     if (cfg.flag('require_full_address')) ['city','street','houseNum'].forEach(k => { if (!t(k)) e[k] = 'צריך למלא'; });
@@ -1079,7 +1118,7 @@ function validate(c, isNew){
   if (t('phone2') && !/^0\d{8,9}$/.test(dig(t('phone2')))) e.phone2 = 'מספר לא תקין';
   if (t('phone2') && dig(t('phone2')) === dig(t('phone1'))) e.phone2 = 'זהה לטלפון הראשי';
   if (t('email') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t('email'))) e.email = 'כתובת לא תקינה';
-  if (t('zeout') && !/^\d{5,9}$/.test(t('zeout'))) e.zeout = 'מספר לא תקין';
+  if (t('zeout') && !validIsraeliId(t('zeout'))) e.zeout = 'מספר לא תקין';
   return e;
 }
 
@@ -1140,55 +1179,96 @@ function confirmDlg({ icon = 'alert', title, text, buttons, danger = false }){
 }
 function alertDlg(title, text, icon = 'alert'){ return confirmDlg({ icon, title, text, buttons:[{ label:'הבנתי', kind:'primary', value:'ok', auto:1 }] }); }
 
+/* REVIEW-1 B-1: חלון אישור = בחירת מאשר (עם חיפוש) + סיסמה מלאה, כמו customAuthPrompt היום.
+   הרשימה = GET /api/employees מסונן לפי employee.approvals[key]; ברירת מחדל = העובד המחובר אם הוא מורשה.
+   האימות = POST /api/auth/verify-pin {employeeId, pin, requiredLevel} — ללא שינוי. */
 function codeDlg(purpose){
-  let sel = 0;
+  const me = $('#tbUser').textContent;
+  const pool = $('#dNoAppr') && $('#dNoAppr').checked ? [] : APPROVERS.filter(a => a.ok);
+  let sel = pool.findIndex(a => a.n === me); let loaded = false;
   const html = `<div class="dlg-h"><span class="dlg-badge">${ic('lock','lg')}</span><h2 id="%TID%">אישור מנהל</h2><p>${esc(purpose)}</p></div>
-    <div class="dlg-b"><div class="approvers" role="radiogroup" aria-label="מי מאשר">${APPROVERS.map((a, i) => `<button type="button" class="appr" role="radio" aria-checked="${i === 0}" data-i="${i}" tabindex="${i === 0 ? 0 : -1}"><span class="tb-av">${a.n[0]}</span><span>${a.n}<small>${a.r}</small></span></button>`).join('')}</div>
-      <div class="field"><label class="flbl" id="pinl" style="justify-content:center">קוד אישי (4 ספרות)</label><div class="pin" role="group" aria-labelledby="pinl">${[0,1,2,3].map(i => `<input inputmode="numeric" maxlength="1" aria-label="ספרה ${i + 1}" data-pin="${i}" ${i === 0 ? 'data-autofocus' : ''}>`).join('')}</div></div>
-      <div class="derr" role="alert" id="pinErr"></div><p class="fhint" style="text-align:center;margin:0;color:inherit;opacity:.75">בהדגמה: כל קוד חוץ מ-0000.</p></div>
+    <div class="dlg-b">
+      <div class="field"><label for="ap-q">מי מאשר${tip('רק עובדים שמורשים לאשר את הפעולה הזו מופיעים ברשימה.')}</label>
+        <div class="appr-box"><input class="input" id="ap-q" role="combobox" aria-expanded="true" aria-controls="ap-list" aria-autocomplete="list" autocomplete="off" placeholder="חיפוש לפי שם">
+        <div class="approvers" id="ap-list" role="listbox" aria-label="מאשרים"></div></div></div>
+      <div class="field"><label for="ap-pw">הסיסמה של המאשר</label>
+        <div class="pw"><input class="input" id="ap-pw" type="password" autocomplete="new-password" dir="ltr" data-autofocus><button type="button" class="ibtn quiet" data-pw aria-label="הצגת הסיסמה" aria-pressed="false">${ic('eye')}</button></div></div>
+      <div class="derr" role="alert" id="pinErr"></div><p class="fhint" style="text-align:center;margin:0;color:inherit;opacity:.75">בהדגמה: הסיסמה "0000" שגויה, כל השאר נכונה.</p></div>
     <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('check','','pop')}אישור</button><button type="button" class="btn quiet" data-cancel>ביטול</button></div>`;
   const o = openLayer({ type:'code', size:'s', html, closeOnScrim:false, onMount(d, layer){
-    const pins = [...d.querySelectorAll('[data-pin]')];
-    d.querySelectorAll('.appr').forEach(b => b.onclick = () => { sel = +b.dataset.i; d.querySelectorAll('.appr').forEach(x => { x.setAttribute('aria-checked', x === b); x.tabIndex = x === b ? 0 : -1; }); pins[0].focus(); });
-    pins.forEach((p, i) => { p.oninput = () => { p.value = p.value.replace(/\D/g, '').slice(-1); if (p.value && pins[i + 1]) pins[i + 1].focus(); if (pins.every(x => x.value)) d.querySelector('[data-go]').focus(); };
-      p.onkeydown = e => { if (e.key === 'Backspace' && !p.value && pins[i - 1]) pins[i - 1].focus(); if (e.key === 'Enter') d.querySelector('[data-go]').click(); }; });
+    const q = d.querySelector('#ap-q'), list = d.querySelector('#ap-list'), pw = d.querySelector('#ap-pw'), err = d.querySelector('#pinErr'), go = d.querySelector('[data-go]');
+    const draw = () => {
+      if (!loaded){ list.innerHTML = `<div class="appr-note" role="status">${ic('loader','sm','loop')}טוענים את רשימת המאשרים…</div>`; go.disabled = true; return; }
+      if (!pool.length){ list.innerHTML = `<div class="appr-note">${ic('info','sm')}אין עובד שמורשה לאשר את זה. אפשר להגדיר מאשרים בעמוד ההרשאות.</div>`; go.disabled = true; q.disabled = true; return; }
+      const f = q.value.trim(); const shown = pool.map((a, i) => [a, i]).filter(([a]) => !f || a.n.includes(f));
+      list.innerHTML = shown.length ? shown.map(([a, i]) => `<button type="button" class="appr" role="option" aria-selected="${i === sel}" data-i="${i}" tabindex="-1"><span class="tb-av">${a.n[0]}</span><span>${a.n}${a.n === me ? ' (אני)' : ''}<small>${a.r}</small></span>${i === sel ? ic('check','sm') : ''}</button>`).join('') : `<div class="appr-note">${ic('search','sm')}לא נמצא עובד בשם הזה</div>`;
+      go.disabled = sel < 0;
+      list.querySelectorAll('.appr').forEach(b => b.onclick = () => { sel = +b.dataset.i; q.value = ''; err.textContent = ''; draw(); pw.focus(); });
+    };
+    setTimeout(() => { loaded = true; draw(); }, 500); draw();
+    q.oninput = draw;
+    q.onkeydown = e => { if (e.key === 'ArrowDown'){ e.preventDefault(); const b = list.querySelector('.appr'); b && b.focus(); } };
+    list.onkeydown = e => { const all = [...list.querySelectorAll('.appr')]; const i = all.indexOf(document.activeElement); if (e.key === 'ArrowDown' && all[i + 1]){ e.preventDefault(); all[i + 1].focus(); } if (e.key === 'ArrowUp'){ e.preventDefault(); (all[i - 1] || q).focus(); } };
+    d.querySelector('[data-pw]').onclick = e => { const show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; e.currentTarget.setAttribute('aria-pressed', show); e.currentTarget.setAttribute('aria-label', show ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'); pw.focus(); };
+    pw.onkeydown = e => { if (e.key === 'Enter') go.click(); };
     d.querySelector('[data-cancel]').onclick = () => closeLayer(layer, null);
-    d.querySelector('[data-go]').onclick = () => {
-      const code = pins.map(x => x.value).join('');
-      if (code.length < 4 || code === '0000') { const g = d.querySelector('.pin'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); d.querySelector('#pinErr').textContent = code.length < 4 ? 'צריך 4 ספרות' : 'הקוד לא נכון. נסו שוב.'; pins.forEach(x => x.value = ''); pins[0].focus(); return; }
-      closeLayer(layer, { approver:APPROVERS[sel].n });
+    go.onclick = () => {
+      const shake = m => { const g = d.querySelector('.pw'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); err.textContent = m; pw.select(); pw.focus(); };
+      if (sel < 0) { err.textContent = 'צריך לבחור מי מאשר'; q.focus(); return; }
+      if (!pw.value) return shake('צריך להקליד סיסמה');
+      layer.busy = true; go.disabled = true; go.classList.add('is-busy'); go.innerHTML = `${ic('loader','','loop')}בודקים…`;
+      setTimeout(() => {
+        layer.busy = false; go.disabled = false; go.classList.remove('is-busy'); go.innerHTML = `${ic('check','','pop')}אישור`;
+        if (serverFails()) return shake('אין חיבור לשרת. נסו שוב.');
+        if (pw.value === '0000') return shake('הסיסמה לא נכונה, או שהעובד לא פעיל.');
+        closeLayer(layer, { employeeId: pool[sel].id, approver: pool[sel].n }); /* + pin: נשמר בזיכרון בלבד ונשלח עם המייל, כמו היום */
+      }, 500);
     };
   }});
   return o ? o.done : Promise.resolve(null);
 }
+function serverFails(){ return !!($('#dFail') && $('#dFail').checked); }
 
+/* REVIEW-1 OQ-4: הטיוטה נשמרת עד שיוצאים מהכרטיס (כמו היום) — סגירה לא מוחקת, ולכן לא צריך אישור. */
+const mailDraft = { sub:'', body:'', dest:'email', folder:'', files:[] };
 function emailDlg(){
-  const c = S.cur; let dest = 'email', files = [];
-  const html = `<div class="dlg-h"><span class="dlg-badge">${ic('mail','lg')}</span><div style="flex:1;min-width:0"><h2 id="%TID%">מייל ל${esc(fullName(c))}</h2><p>יישלח אל <bdi dir="ltr">${esc(c.email)}</bdi></p></div><button type="button" class="x-btn" data-cancel aria-label="סגירה">${ic('x')}</button></div>
+  const c = S.cur; let files = mailDraft.files;
+  const fh = () => files.length ? `נבחרו ${files.length} קבצים: ${files.map(f => f.name).join(', ')}` : 'לא נבחרו קבצים';
+  const html = `<div class="dlg-h"><span class="dlg-badge">${ic('mail','lg')}</span><div style="flex:1;min-width:0"><h2 id="%TID%">מייל ל${esc(fullName(c))}</h2><p>יישלח אל <bdi dir="ltr">${esc(c.email)}</bdi></p></div><button type="button" class="x-btn" data-cancel aria-label="סגירה (הטיוטה נשמרת)">${ic('x')}</button></div>
     <div class="dlg-b"><form class="form" id="mailForm" novalidate>
       <div id="mailMsg"></div>
-      <div class="field"><label for="m-sub">נושא<span class="req" aria-hidden="true">*</span></label><input class="input" id="m-sub" aria-required="true" data-autofocus></div>
-      <div class="field"><label for="m-body">תוכן ההודעה<span class="req" aria-hidden="true">*</span></label><textarea class="input" id="m-body" rows="6" aria-required="true"></textarea></div>
-      <div class="field"><span class="flbl">קבצים${tip('אפשר לבחור כמה קבצים. טבלת הוראות מצורפת מעצמה.')}<span class="opt-note">(לא חובה)</span></span><div class="file-pick"><input id="m-files" type="file" multiple><label for="m-files" class="btn sm quiet">${ic('paperclip','sm','wig')}בחירת קבצים</label><span class="fhint" id="m-fh">לא נבחרו קבצים</span></div></div>
+      <div class="field"><label for="m-sub">נושא<span class="req" aria-hidden="true">*</span></label><input class="input" id="m-sub" aria-required="true" data-autofocus value="${esc(mailDraft.sub)}"></div>
+      <div class="field"><label for="m-body">תוכן ההודעה<span class="req" aria-hidden="true">*</span></label><textarea class="input" id="m-body" rows="6" aria-required="true">${esc(mailDraft.body)}</textarea></div>
+      <div class="field"><span class="flbl">קבצים${tip('אפשר לבחור כמה קבצים. טבלת הוראות מצורפת מעצמה.')}<span class="opt-note">(לא חובה)</span></span><div class="file-pick"><input id="m-files" type="file" multiple><label for="m-files" class="btn sm quiet">${ic('paperclip','sm','wig')}בחירת קבצים</label><span class="fhint" id="m-fh">${esc(fh())}</span></div></div>
       <div class="field"><span class="flbl" id="m-dl">איך לשלוח את הקבצים</span><div class="seg" role="radiogroup" aria-labelledby="m-dl">
-        ${[['email','בתוך המייל','paperclip'],['drive','קישור מהדרייב','folder'],['both','שניהם','copy']].map(([v, l, i]) => `<button type="button" role="radio" aria-checked="${v === 'email'}" data-dest="${v}">${ic(i,'sm')}${l}</button>`).join('')}</div></div>
-      <div class="field" id="m-drive" hidden><label for="m-folder">תיקייה בדרייב<span class="opt-note">(לא חובה)</span></label><input class="input" id="m-folder" dir="ltr" placeholder="מזהה התיקייה"><span class="fhint">הנמען יוכל להוריד את הקבצים.</span></div>
+        ${[['email','בתוך המייל','paperclip'],['drive','קישור מהדרייב','folder'],['both','שניהם','copy']].map(([v, l, i]) => `<button type="button" role="radio" aria-checked="${v === mailDraft.dest}" data-dest="${v}">${ic(i,'sm')}${l}</button>`).join('')}</div></div>
+      <div class="field" id="m-drive" ${mailDraft.dest === 'email' ? 'hidden' : ''}><label for="m-folder">תיקייה בדרייב<span class="opt-note">(לא חובה)</span></label><input class="input" id="m-folder" dir="ltr" placeholder="מזהה התיקייה" value="${esc(mailDraft.folder)}"><span class="fhint">הנמען יוכל להוריד את הקבצים.</span></div>
     </form></div>
-    <div class="dlg-f"><button type="button" class="btn primary" data-send>${ic('send','','nudge')}שליחה</button><button type="button" class="btn quiet" data-cancel>ביטול</button></div>`;
+    <div class="dlg-f"><button type="button" class="btn primary" data-send>${ic('send','','nudge')}שליחה</button><button type="button" class="btn quiet" data-clear>${ic('x','sm')}ניקוי הטיוטה</button></div>`;
   openLayer({ type:'form', size:'m', html, closeOnScrim:false, onMount(d, layer){
-    d.querySelectorAll('[data-cancel]').forEach(b => b.onclick = async () => {
-      const dirty = d.querySelector('#m-sub').value || d.querySelector('#m-body').value;
-      if (dirty && (await confirmDlg({ icon:'alert', title:'לסגור בלי לשלוח?', text:'מה שכתבתם במייל יימחק.', buttons:[{ label:'להמשיך לכתוב', kind:'primary', value:'stay', auto:1 }, { label:'סגירה בלי שליחה', kind:'quiet', value:'close' }] })) !== 'close') return;
-      closeLayer(layer, null);
-    });
-    d.querySelector('#m-files').onchange = e => { files = [...e.target.files]; d.querySelector('#m-fh').textContent = files.length ? `נבחרו ${files.length} קבצים: ${files.map(f => f.name).join(', ')}` : 'לא נבחרו קבצים'; };
-    d.querySelectorAll('[data-dest]').forEach(b => b.onclick = () => { dest = b.dataset.dest; d.querySelectorAll('[data-dest]').forEach(x => x.setAttribute('aria-checked', x === b)); d.querySelector('#m-drive').hidden = dest === 'email'; });
+    const sub = d.querySelector('#m-sub'), body = d.querySelector('#m-body'), folder = d.querySelector('#m-folder'), msg = d.querySelector('#mailMsg');
+    const keep = () => { mailDraft.sub = sub.value; mailDraft.body = body.value; mailDraft.folder = folder.value; mailDraft.files = files; };
+    [sub, body, folder].forEach(x => x.addEventListener('input', keep));
+    d.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => { keep(); closeLayer(layer, null); });
+    d.querySelector('[data-clear]').onclick = async () => {
+      if ((sub.value || body.value || files.length) && (await confirmDlg({ icon:'alert', title:'לנקות את הטיוטה?', text:'הנושא, התוכן והקבצים שבחרתם יימחקו.', buttons:[{ label:'ניקוי הטיוטה', kind:'primary', value:'y' }, { label:'להשאיר', kind:'quiet', value:'n', auto:1 }] })) !== 'y') return;
+      Object.assign(mailDraft, { sub:'', body:'', dest:'email', folder:'', files:[] }); files = []; sub.value = body.value = folder.value = ''; d.querySelector('#m-fh').textContent = fh(); msg.innerHTML = ''; sub.focus();
+    };
+    d.querySelector('#m-files').onchange = e => { files = [...e.target.files]; keep(); d.querySelector('#m-fh').textContent = fh(); };
+    d.querySelectorAll('[data-dest]').forEach(b => b.onclick = () => { mailDraft.dest = b.dataset.dest; d.querySelectorAll('[data-dest]').forEach(x => x.setAttribute('aria-checked', x === b)); d.querySelector('#m-drive').hidden = mailDraft.dest === 'email'; });
     d.querySelector('[data-send]').onclick = () => {
-      const sub = d.querySelector('#m-sub'), body = d.querySelector('#m-body'), msg = d.querySelector('#mailMsg');
       if (!sub.value.trim() || !body.value.trim()) { msg.innerHTML = `<div class="errbox" role="alert">${ic('alert','lg')}<span>צריך למלא נושא ותוכן.</span></div>`; (sub.value.trim() ? body : sub).focus(); return; }
       layer.busy = true; d.querySelectorAll('input,textarea,button').forEach(x => x.disabled = true);
       const sb = d.querySelector('[data-send]'); sb.classList.add('is-busy'); sb.innerHTML = `${ic('loader','','loop')}שולחים…`;
-      setTimeout(() => { msg.innerHTML = `<div class="okbox" role="status">${ic('check','lg draw')}<span><b>המייל נשלח.</b> החלון ייסגר מעצמו.</span></div>`;
+      setTimeout(() => {
+        if (serverFails()){ /* M-2: כשל שרת — ההודעה מהשרת (data.message) בתוך החלון; החלון נשאר פתוח עם הטיוטה */
+          layer.busy = false; d.querySelectorAll('input,textarea,button').forEach(x => x.disabled = false); sb.classList.remove('is-busy'); sb.innerHTML = `${ic('send','','nudge')}שליחה`;
+          msg.innerHTML = `<div class="errbox" role="alert">${ic('alert','lg')}<span><b>המייל לא נשלח.</b> השרת החזיר: "השליחה נכשלה". הטיוטה נשמרה — אפשר לנסות שוב.</span></div>`; sb.focus(); return;
+        }
+        const toDrive = mailDraft.dest !== 'email' && files.length;
+        const links = toDrive ? files.map(f => `<li><a href="#" target="_blank" rel="noopener">${ic('folder','sm')}<bdi>${esc(f.name)}</bdi></a></li>`).join('') : '';
+        msg.innerHTML = `<div class="okbox" role="status">${ic('check','lg draw')}<span><b>${toDrive ? `המייל נשלח. <bdi>${files.length}</bdi> קבצים שותפו בדרייב להורדה.` : 'המייל נשלח.'}</b> החלון ייסגר מעצמו.${links ? `<ul class="links">${links}</ul>` : ''}</span></div>`;
+        Object.assign(mailDraft, { sub:'', body:'', dest:'email', folder:'', files:[] });
         setTimeout(() => { layer.busy = false; closeLayer(layer, 'sent'); toast('ok', 'המייל נשלח', `אל ${fullName(c)}`); }, 2400); }, 900);
     };
   }});
@@ -1271,6 +1351,7 @@ async function mailFlow(){
 async function unblock(){
   const r = await confirmDlg({ icon:'unlock', title:'לבטל את החסימה?', text:'הלקוח יוכל שוב לקבל הזמנות חדשות.', buttons:[{ label:'ביטול החסימה', kind:'primary', value:'yes', icon:'unlock' }, { label:'השארת החסימה', kind:'quiet', value:'no', auto:1 }] });
   if (r !== 'yes') return;
+  if (serverFails()) { toast('err', 'החסימה לא בוטלה', 'השרת החזיר: הפעולה מוגבלת להנהלה ראשית, או שאין חיבור'); return; } /* REVIEW-1 m-4 */
   S.cur.isBlocked = false; S.orig.isBlocked = false; $('#dBlocked').checked = false; render(); toast('ok', 'החסימה בוטלה', fullName(S.cur));
 }
 function openSheet(){ railSheetOpen = true; render(); lockSync(); const r = $('#rail'); r && r.querySelector('button') && r.querySelector('button').focus(); }
@@ -1323,7 +1404,7 @@ document.addEventListener('input', e => {
   setField(k, e.target.type === 'checkbox' ? e.target.checked : e.target.value); refreshKeep();
 });
 document.addEventListener('focusout', e => { /* נרמול מייל ביציאה מהשדה (CC-32) */
-  if (e.target.dataset && e.target.dataset.f === 'email' && S.cur.email){ const v = S.cur.email.trim().toLowerCase(); if (v !== S.cur.email){ S.cur.email = v; setTimeout(refreshKeep); } }
+  if (e.target.dataset && e.target.dataset.f === 'email' && S.cur.email){ const v = normalizeEmailDemo(S.cur.email, S.cur.emailSuffix); if (v !== S.cur.email){ S.cur.email = v; setTimeout(refreshKeep); } }
 });
 document.addEventListener('submit', e => { if (e.target.id === 'hForm'){ e.preventDefault(); S.hq = $('#hq').value; render(); $('#hq') && $('#hq').focus(); } });
 
