@@ -1,0 +1,55 @@
+/* =====================================================================
+   app/v3/motion/presets.css — פריסטי תנועה משותפים (CONSTITUTION §ה.1-4).
+   שם המחלקה = v3-m-<preset>. צרכן: app/v3/overlays/** ורכיבים חדשים.
+
+   כללי ביצוע (§ה.2): רק transform/opacity/stroke/grid-template-rows;
+   אין transition:all; משכים/עקומות רק מ-tokens (scale.css).
+   כלל "אין העלמת תוכן" (§ה.4): opacity:0 מופיע רק כ-`from` ב-@keyframes
+   (לא fill-mode backwards/both) - אם האנימציה לא רצה, ה-`to`/מצב הרגיל
+   של האלמנט (ללא אנימציה כלל) הוא w מלא-נראה. יציאה (.is-leaving/
+   [data-state="closed"]) היא המקום היחיד שבו opacity:0 הוא ה-*יעד*.
+   ===================================================================== */
+
+@keyframes v3-m-pop-kf     { from { transform: scale(.5); } 65% { transform: scale(1.12); } to { transform: scale(1); } }
+@keyframes v3-m-rowin-kf   { from { transform: translateY(-8px); } to { transform: translateY(0); } }
+@keyframes v3-m-fadeup-kf  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes v3-m-dialogin-kf{ from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes v3-m-sheetup-kf { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes v3-m-draw-kf    { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes v3-m-goldsweep-kf { 0% { background-position: -140% 0; } 100% { background-position: 240% 0; } }
+@keyframes v3-m-ringtravel-kf { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes v3-m-shake-kf   { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(calc(-6px * var(--v3-dir, 1))); } 40% { transform: translateX(calc(6px * var(--v3-dir, 1))); } 60% { transform: translateX(calc(-4px * var(--v3-dir, 1))); } 80% { transform: translateX(calc(4px * var(--v3-dir, 1))); } }
+@keyframes v3-m-pulse-kf   { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .85; } }
+@keyframes v3-m-leave-kf   { from { opacity: 1; } to { opacity: 0; } }
+
+.v3-m-pop       { animation: v3-m-pop-kf var(--v3-dur-enter) var(--v3-spring) both; }
+.v3-m-row-in    { animation: v3-m-rowin-kf var(--v3-dur-med) var(--v3-ease); }
+.v3-m-fade-up   { animation: v3-m-fadeup-kf var(--v3-dur-med) var(--v3-ease); }
+.v3-m-dialog-in { animation: v3-m-dialogin-kf var(--v3-dur-enter) var(--v3-ease); }
+.v3-m-sheet-up  { animation: v3-m-sheetup-kf var(--v3-dur-med) var(--v3-ease); }
+.v3-m-draw      { stroke-dasharray: 1; animation: v3-m-draw-kf var(--v3-dur-med) var(--v3-ease) forwards; }
+.v3-m-gold-sweep{
+  background-image: linear-gradient(100deg, transparent 40%, var(--v3-gold-a55) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: v3-m-goldsweep-kf 2.4s linear infinite;
+}
+.v3-m-ring-travel { animation: v3-m-ringtravel-kf 4.5s linear infinite; }
+.v3-m-shake     { animation: v3-m-shake-kf var(--v3-dur-med) var(--v3-ease); }
+.v3-m-pulse     { animation: v3-m-pulse-kf var(--v3-dur-loop) var(--v3-ease) infinite; }
+
+/* expand: grid-template-rows 0fr -> 1fr (§ה.2 - לא height, מותר grid-template-rows) */
+.v3-m-expand { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--v3-dur-med) var(--v3-ease); }
+.v3-m-expand > * { overflow: hidden; min-height: 0; }
+.v3-m-expand[data-open="true"] { grid-template-rows: 1fr; }
+
+/* יציאה - היחיד שבו opacity:0 הוא היעד, לא הבסיס (§ה.4) */
+.is-leaving, [data-state="closed"] { animation: v3-m-leave-kf var(--v3-dur-fast) var(--v3-ease-in) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-m-pop, .v3-m-row-in, .v3-m-fade-up, .v3-m-dialog-in, .v3-m-sheet-up,
+  .v3-m-draw, .v3-m-gold-sweep, .v3-m-ring-travel, .v3-m-shake, .v3-m-pulse,
+  .is-leaving, [data-state="closed"] {
+    animation: none !important;
+  }
+  .v3-m-expand { transition: none !important; }
+}
