@@ -4,6 +4,8 @@ import {
   V3Page, Card, Btn, IconBtn, Chip, Tag, Badge, Field, Row, Rows, Tabs, Seg, Switch, Tip, Dialog, CodeInput,
   Stepper, StepNav, Timeline, Table, useSort, Empty, Banner, Icon,
 } from '../v3/ui/components';
+import { LayersProvider, useLayers, Popover, InfoTip } from '../v3/overlays';
+import { AnimatedNumber } from '../v3/motion';
 
 const ROWS = [
   { id: 1, name: 'שרה כהן', dresses: 3, total: 1250, status: 'שולם' },
@@ -66,7 +68,57 @@ function RtlCheck() {
   );
 }
 
-export default function Gallery() {
+function LayerManagerDemo() {
+  const layers = useLayers();
+  const [popOpen, setPopOpen] = useState(false);
+  const [amount, setAmount] = useState(1250);
+  const anchorRef = useRef(null);
+  const [log, setLog] = useState([]);
+  const pushLog = (line) => setLog((l) => [line, ...l].slice(0, 6));
+
+  return (
+    <div className="v3-stack">
+      <p className="v3-muted">
+        מערכת שכבות חדשה (LayerManager, CONSTITUTION §ד) - מחסנית אחת, portal ל-body, נעילת גלילה +
+        inert אוטומטיים, focus-trap, Esc רק לעליונה. <b>לא מורכבת ב-app/layout.js בסבב הזה</b> (ראו
+        docs/redesign-v3/AGENT-QUESTIONS.md Q-1) - כאן, בגלריה, היא רק מוכיחה את עצמה.
+      </p>
+      <div className="v3-cluster">
+        <Btn onClick={async () => { const ok = await layers.confirm({ title: 'לבטל את ההזמנה?', sub: 'הפעולה תחזיר את הפריטים למלאי.', danger: true, confirmLabel: 'כן, לבטל', cancelLabel: 'חזרה' }); pushLog(`confirm -> ${ok}`); }}>Confirm (בהיר/כהה לפי ערכת נושא)</Btn>
+        <Btn onClick={async () => { const res = await layers.code({ title: 'נדרש אישור מנהל', sub: 'הקלידי קוד אישור', purpose: 'מחיקת פריט', approvers: [{ id: '1', name: 'דנה כהן' }, { id: '2', name: 'משה שיינועטר' }] }); pushLog(`code -> ${JSON.stringify(res)}`); }}>Code / PIN</Btn>
+        <Btn onClick={async () => { const v = await layers.prompt({ title: 'מייל מהיר', label: 'נמען', defaultValue: 'name@example.com' }); pushLog(`prompt -> ${v}`); }}>Form (בהיר בלבד, גם בכהה)</Btn>
+        <Btn onClick={async () => { await layers.open({ type: 'sheet', size: 'L', title: 'פרטי תשלום', body: <Rows><Row label="סכום"><bdi>₪1,250</bdi></Row><Row label="אמצעי">אשראי</Row></Rows>, dismiss: { esc: true, scrim: true } }); pushLog('sheet closed'); }}>Sheet</Btn>
+        <Btn onClick={async () => {
+          await layers.open({ type: 'busy', body: 'שומר…', autoCloseAfter: 1500 });
+          pushLog('busy done');
+        }}>Busy (חוסם)</Btn>
+      </div>
+      <div className="v3-cluster">
+        <Btn variant="quiet" onClick={() => layers.toast({ title: 'נשמר', text: 'ההזמנה נשמרה בהצלחה', icon: 'check-circle' })}>Toast רגיל</Btn>
+        <Btn variant="quiet" onClick={() => layers.toast({ kind: 'info', title: 'מידע', text: 'הפעולה בוצעה', duration: 2600, icon: 'info' })}>Toast מידע (2.6s)</Btn>
+        <Btn variant="quiet" onClick={() => layers.notice({ text: 'ההזמנה נשמרה', icon: 'check-circle', action: { label: 'פתיחה', onClick: () => {} } })}>NoticeBar (15s, פס זהב יורד)</Btn>
+        <span ref={anchorRef} style={{ display: 'inline-flex' }}><Btn variant="quiet" onClick={() => setPopOpen((o) => !o)}>Popover</Btn></span>
+        <Popover anchorRef={anchorRef} open={popOpen} onClose={() => setPopOpen(false)} label="תפריט לדוגמה">
+          <div className="v3-stack" style={{ padding: 'var(--v3-sp-2)' }}>
+            <button type="button" className="v3-link" onClick={() => setPopOpen(false)}>פעולה ראשונה</button>
+            <button type="button" className="v3-link" onClick={() => setPopOpen(false)}>פעולה שנייה</button>
+          </div>
+        </Popover>
+        <span>סכום מונפש: <b><AnimatedNumber value={amount} format={(n) => `₪${n.toLocaleString('he-IL')}`} /></b> <Btn size="sm" variant="quiet" onClick={() => setAmount((a) => (a === 1250 ? 3400 : 1250))}>שינוי</Btn></span>
+        <span>הסבר: <InfoTip content="ה-InfoTip הוא כפתור ⓘ 44×44 עם aria-label חובה, מציג את אותו Tip שמעל." /></span>
+      </div>
+      {log.length > 0 && (
+        <Card title="יומן פעולות אחרונות" icon="history">
+          <ul style={{ margin: 0, paddingInlineStart: 'var(--v3-sp-5)', fontSize: 'var(--v3-fs-sm)' }}>
+            {log.map((l, i) => <li key={i}>{l}</li>)}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function GalleryInner() {
   const [tab, setTab] = useState('a');
   const [seg, setSeg] = useState('m');
   const [sw, setSw] = useState(true);
@@ -148,7 +200,7 @@ export default function Gallery() {
         </div>
       </Sec>
 
-      <Sec id="s-dlg" title="חלוניות">
+      <Sec id="s-dlg" title="חלוניות (ui/Dialog.js הישן — עדיין בשימוש באתר החי)">
         <div className="v3-cluster">
           <Btn onClick={() => setDlg('confirm-light')}>אישור — בהיר</Btn>
           <Btn onClick={() => setDlg('confirm-dark')}>אישור — כהה</Btn>
@@ -157,6 +209,10 @@ export default function Gallery() {
           <Btn onClick={() => setDlg('form')}>טופס (בהיר בלבד)</Btn>
           <Btn onClick={() => setDlg('sheet')}>גיליון קריאה</Btn>
         </div>
+      </Sec>
+
+      <Sec id="s-layers" title="LayerManager (app/v3/overlays/** — חדש, ראו CONSTITUTION §ד)">
+        <LayerManagerDemo />
       </Sec>
 
       <Sec id="s-step" title="סטפר / ציר זמן">
@@ -196,5 +252,15 @@ export default function Gallery() {
         <Rows><Row label="סכום"><bdi>₪1,250</bdi></Row><Row label="אמצעי">אשראי</Row><Row label="תאריך"><bdi>12.10.2026</bdi></Row></Rows>
       </Dialog>
     </V3Page>
+  );
+}
+
+// LayersProvider עוטף רק את הגלריה עצמה (client component עצמאי) - **לא** ב-app/layout.js
+// המשותף (ראו docs/redesign-v3/AGENT-QUESTIONS.md Q-1 להסבר המלא).
+export default function Gallery() {
+  return (
+    <LayersProvider>
+      <GalleryInner />
+    </LayersProvider>
   );
 }

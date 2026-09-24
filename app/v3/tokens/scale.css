@@ -168,6 +168,14 @@
   --v3-dlg-w-code: 400px;
   --v3-tip-max: 290px;
 
+  /* גדלי LayerManager (CONSTITUTION §ד.2): S/M/L/full - תוספת, לא משנה את
+     --v3-dlg-w-* הישן שממשיך לשמש את ui/Dialog.js. */
+  --v3-lyr-w-s: 400px;
+  --v3-lyr-w-m: 520px;
+  --v3-lyr-w-l: 760px;
+  --v3-lyr-drawer-w: 400px;
+  --v3-lyr-toast-w: 400px;
+
   /* שכבות (z-index) */
   --v3-z-rail-m: 70;            /* רייל תחתון במובייל */
   --v3-z-popover: 30;
