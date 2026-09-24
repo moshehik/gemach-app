@@ -26,12 +26,13 @@ export default function Dialog({
   const dark = mode === 'dark' && variant !== 'form';
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || !mounted) return undefined;
+    const root = ref.current;
+    if (!root) return undefined; // fix by main: בטעינה ראשונה כשהחלונית כבר פתוחה ה-portal עוד לא הורכב
     const token = uid;
     stack.push(token);
     const prev = document.activeElement;
     if (locks++ === 0) { document.documentElement.dataset.v3Lock = ''; document.body.style.overflow = 'hidden'; }
-    const root = ref.current;
     const target = (initialFocus && root.querySelector(initialFocus)) || root.querySelector('[data-autofocus]') || root.querySelector(FOCUSABLE) || root;
     target.focus({ preventScroll: true });
     const onKey = (e) => {
@@ -51,7 +52,7 @@ export default function Dialog({
       if (--locks === 0) { delete document.documentElement.dataset.v3Lock; document.body.style.overflow = ''; }
       if (prev && document.contains(prev)) prev.focus({ preventScroll: true });
     };
-  }, [open, uid, initialFocus]);
+  }, [open, mounted, uid, initialFocus]);
 
   if (!open || !mounted) return null;
   const tid = title ? `dt${uid}` : undefined, sid = sub ? `ds${uid}` : undefined;

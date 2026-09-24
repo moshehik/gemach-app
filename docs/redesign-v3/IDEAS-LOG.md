@@ -99,3 +99,5 @@
 - הצעה: בפעמון — שורה ייעודית (אייקון + href) ל-category==='activity_note' אחרי שה-API patch (reports/notify-api-patch.md) ייושם. ← הצעה.
 #29 · 2026-09-24 · claude-main · באג ספרייה: hidden נדרס ע"י display
 - נתפס בביקורת השמלות: `hidden` + `.v3-stack{display:flex}` → כל הלשוניות מוצגות. תוקן גלובלית ב-components.css (`[data-v3] [hidden]{display:none!important}`). חשוב במיוחד לכרטיס ההזמנה (פאנלים טעונים תמיד). ← נעשה.
+#30 · 2026-09-24 · claude-main · באג ספרייה: Dialog קורס כשנטען כבר פתוח
+- שני בונים (orderitems, ordercard) נתקלו: ה-effect רץ לפני שה-portal הורכב (mounted=false ← ref ריק). תוקן ב-Dialog.js (תלות ב-mounted + guard). ← נעשה. הבונים עקפו בשמירת חלוניות תמיד-מורכבות — לא חובה עוד.
