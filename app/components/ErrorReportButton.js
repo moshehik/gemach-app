@@ -92,6 +92,79 @@ function ReportText({ text }) {
   );
 }
 
+// סקיצת HTML שהסוכן האוטומטי מציע לפני שהוא פותח ענף (ErrorReportReply.sketchHtml).
+// נטענת ב-iframe sandbox (בלי סקריפטים/same-origin) דרך /api/error-report/sketch/[id];
+// כשהסטטוס PENDING מוצגים כפתורי אשר/דחה, וההחלטה נשמרת דרך /api/error-report/sketch-decision.
+function SketchBlock({ reply, onDecided }) {
+  const [open, setOpen] = useState(reply.sketchStatus === 'PENDING');
+  const [busy, setBusy] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [note, setNote] = useState('');
+
+  const decide = async (decision) => {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/error-report/sketch-decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replyId: reply.id, decision, note }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) onDecided(reply.id, decision, data.reply);
+      else alert(data.error || 'שגיאה בשמירת ההחלטה');
+    } catch {
+      alert('שגיאת תקשורת');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const statusLabel = { PENDING: 'ממתינה לאישור', APPROVED: 'אושרה', REJECTED: 'נדחתה' }[reply.sketchStatus];
+  return (
+    <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-alt)', padding: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 13 }}>סקיצה להדגמה</strong>
+        {statusLabel && <span className="badge" style={{ fontSize: 11 }}>{statusLabel}</span>}
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(o => !o)}>
+          {open ? 'הסתר סקיצה' : 'צפה בסקיצה'}
+        </button>
+      </div>
+      {open && (
+        <iframe
+          title="סקיצה"
+          sandbox=""
+          src={`/api/error-report/sketch/${reply.id}`}
+          style={{ width: '100%', height: 420, marginTop: 10, border: '1px solid var(--border)', borderRadius: 8, background: '#fff' }}
+        />
+      )}
+      {reply.sketchStatus === 'PENDING' && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rejecting ? (
+            <>
+              <textarea
+                className="input"
+                rows={2}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="מה לשנות בסקיצה? (אופציונלי)"
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => decide('REJECTED')}>שלח דחייה</button>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRejecting(false)}>ביטול</button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => decide('APPROVED')}>✅ אשר</button>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRejecting(true)}>❌ דחה</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'archive' or 'new' or 'thread'
@@ -915,6 +988,12 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                         </div>
                         <ReportText text={reply.text} />
                         <AttachmentGallery attachmentUrls={reply.attachmentUrls} />
+                        {reply.hasSketch && (
+                          <SketchBlock
+                            reply={reply}
+                            onDecided={(id, decision, newReply) => { setSelectedReport(prev => ({ ...prev, replies: [...prev.replies.map(r => r.id === id ? { ...r, sketchStatus: decision } : r), ...(newReply ? [newReply] : [])] })); fetchReports(); }}
+                          />
+                        )}
                         {reply.previewUrl && (
                           <a
                             href={reply.previewUrl}

@@ -721,6 +721,8 @@ model ErrorReportReply {
   text          String      @db.Text
   isQuestion    Boolean     @default(false) // true = this reply is an open question expecting a response from the other side, not just a status update/log - drives the "awaiting reply" thread tint in ErrorReportButton.js and the --question flag in scripts/error-report-reply.js
   attachmentUrls String?    @db.Text // JSON-encoded array of URLs, same as ErrorReport.attachmentUrls
+  sketchHtml    String?     @db.Text // סקיצת HTML עצמאית שהסוכן הציע לפני שנפתח ענף (ר' scripts/error-report-reply.js --sketch) - מוצגת ב-iframe sandbox דרך /api/error-report/sketch/[id], לא נשלחת ברשימת הדיווחים
+  sketchStatus  String?     // PENDING | APPROVED | REJECTED - null = אין סקיצה בתגובה הזו. רק אחרי APPROVED מותר לסוכן לפתוח ענף+PR
   previewUrl    String? // temporary Vercel preview link for this fix (see scripts/get-preview-deployment-url.js) - shown as a button in the UI, never a raw URL in `text`
   createdAt     DateTime    @default(now())
 }
