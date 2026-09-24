@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth } from '../../../lib/auth';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { redactRequestQuery, redactUrl } from '@/lib/redactSensitive';
 
 
 export async function POST(request) {
@@ -17,9 +18,10 @@ export async function POST(request) {
       .slice(0, 50)
       .filter((e) => e && typeof e.pageUrl === 'string' && e.pageUrl)
       .map((e) => ({
-        pageUrl: e.pageUrl.slice(0, 2000),
+        // הגנה בעומק: גם אם קליינט ישן/זדוני שולח סיסמה או PIN - לא נשמרים ב-DB (ר' lib/redactSensitive.js)
+        pageUrl: redactUrl(e.pageUrl).slice(0, 2000),
         loadingError: e.loadingError ? String(e.loadingError).slice(0, 2000) : null,
-        requestQuery: e.requestQuery ? String(e.requestQuery).slice(0, 4000) : null,
+        requestQuery: e.requestQuery ? redactRequestQuery(String(e.requestQuery).slice(0, 4000), e.pageUrl) : null,
         responseSize: typeof e.responseSize === 'number' ? e.responseSize : null,
         executionTime: typeof e.executionTime === 'number' ? e.executionTime : null,
         // חותמת הזמן של הקליינט נשמרת (האצווה נשלחת עד ~20 שנ' אחרי הפעולה) - רק אם סבירה
