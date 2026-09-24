@@ -11,13 +11,13 @@ export async function GET(request) {
   const enabled = all.find(s => s.key === 'yemot_enabled')?.value === 'true';
   const viewOn = all.find(s => s.key === 'yemot_queue_view_enabled')?.value === 'true';
   if (!enabled || !viewOn) {
-    return NextResponse.json({ queue: [], disabled: true, message: 'סנכרון ימות/תור כבוי בהגדרות → סנכרון' });
+    return NextResponse.json({ queue: [], disabled: true, message: 'סנכרון ימות/תור כבוי בהגדרות ← סנכרון' });
   }
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const apiUrl = all.find(s => s.key === 'yemot_api_url')?.value || '';
   const token = all.find(s => s.key === 'yemot_api_token')?.value || '';
   if (!apiUrl || !token) {
-    return NextResponse.json({ queue: [], message: 'נא להגדיר URL וטוקן ימות בהגדרות → סנכרון' });
+    return NextResponse.json({ queue: [], message: 'נא להגדיר URL וטוקן ימות בהגדרות ← סנכרון' });
   }
   try {
     const url = apiUrl.includes('?') ? `${apiUrl}&token=${encodeURIComponent(token)}` : `${apiUrl}?token=${encodeURIComponent(token)}`;

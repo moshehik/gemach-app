@@ -417,8 +417,8 @@ export default function LoginScreen({ isModal = false, onClose }) {
         loading={loading}
       >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--v3-sp-2)' }}>
-          {!loading && <Icon name="arrow-end" data-element-name="רכיב_LoginScreen_11" />}
           כניסה למערכת
+          {!loading && <Icon name="arrow-start" data-element-name="רכיב_LoginScreen_11" />}
         </span>
       </Btn>
     </form>

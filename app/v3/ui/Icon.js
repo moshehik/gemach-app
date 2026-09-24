@@ -8,18 +8,19 @@ export const ICON_ALIASES = {
   close: 'x', add: 'plus', delete: 'trash', remove: 'trash', view: 'eye',
   success: 'check-circle', error: 'x-circle', warning: 'alert-tri', alert: 'alert-circle',
   order: 'bag', delivery: 'truck', print: 'printer', alteration: 'scissors',
-  back: 'chevron-start', next: 'chevron-end', 'chevron-back': 'chevron-start', 'chevron-next': 'chevron-end',
-  arrow: 'arrow-end', external: 'external-link', location: 'pin', 'pin-fixed': 'thumbtack',
+  // RTL: "קדימה" = שמאלה (chevron-start, <), "אחורה" = ימינה (chevron-end, >)
+  back: 'chevron-end', next: 'chevron-start', 'chevron-back': 'chevron-end', 'chevron-next': 'chevron-start',
+  arrow: 'arrow-start', 'arrow-next': 'arrow-start', 'arrow-back': 'arrow-end', external: 'external-link', location: 'pin', 'pin-fixed': 'thumbtack',
   'user-verified': 'user-check', dress: 'shirt', ai: 'sparkles', stats: 'chart', offline: 'wifi-off',
 };
 
 // אנימציית ברירת מחדל לכל איקון (ICON-INVENTORY סעיף 2 + החדשים)
 export const ICON_ANIM = {
   x: 'spin90', check: 'draw', 'alert-circle': 'shake', 'check-circle': 'draw', 'alert-tri': 'wiggle',
-  refresh: 'spin', search: 'tilt', 'chevron-start': 'nudge-back', 'chevron-end': 'nudge', 'chevron-down': 'flip180',
+  refresh: 'spin', search: 'tilt', 'chevron-start': 'nudge', 'chevron-end': 'nudge-back', 'chevron-down': 'flip180',
   calendar: 'flip', plus: 'spin90', clock: 'spin', user: 'pop', link: 'wiggle', trash: 'shake', mail: 'fly',
   bag: 'bounce', tag: 'swing', info: 'pulse', history: 'rewind', list: 'pop', file: 'pop', box: 'bounce',
-  'x-circle': 'shake', activity: 'pulse', 'arrow-end': 'nudge', edit: 'tilt', printer: 'rise', lock: 'pop',
+  'x-circle': 'shake', activity: 'pulse', 'arrow-end': 'nudge-back', 'arrow-start': 'nudge', edit: 'tilt', printer: 'rise', lock: 'pop',
   phone: 'ring', star: 'pop', card: 'nudge', coin: 'flip-y', pin: 'drop', scissors: 'snip', wallet: 'pop',
   download: 'drop', message: 'pop', shield: 'pulse', sort: 'rise', grid: 'pop', settings: 'spin90',
   upload: 'rise', home: 'bounce', truck: 'drive', users: 'pop', eye: 'blink', id: 'flip', expand: 'pulse',

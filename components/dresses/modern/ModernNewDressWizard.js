@@ -274,7 +274,7 @@ export default function ModernNewDressWizard({
         <div className="v3-pagehead__title">
           <h1 className="v3-h1">דגם חדש</h1>
           <span className="v3-muted">
-            <Link href="/dashboard/dresses">מאגר שמלות</Link> &raquo; דגם חדש
+            <Link href="/dashboard/dresses">מאגר שמלות</Link> &laquo; דגם חדש
           </span>
         </div>
         <div className="v3-pagehead__tools">

@@ -204,7 +204,7 @@ export default function TopbarSearch() {
               />
             </div>
             <button type="submit" className="v3-tb-go" title="בצע החזרה" aria-label="בצע החזרה" disabled={isReturning}>
-              <Icon name="arrow-end" />
+              <Icon name="arrow-start" />
             </button>
           </form>
         </div>

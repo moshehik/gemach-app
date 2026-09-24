@@ -667,8 +667,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                             onClick={(e) => navigateInApp(e, link.route)}
                             className="btn btn-secondary btn-sm"
                           >
-                            <svg className="icon"><use href="#i-chevron-start" /></svg>
                             {link.label}
+                            <svg className="icon"><use href="#i-chevron-start" /></svg>
                           </a>
                         ))}
                       </div>

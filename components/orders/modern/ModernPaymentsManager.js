@@ -1082,7 +1082,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <Btn
                   variant="quiet"
                   size="sm"
-                  icon="arrow-end"
+                  iconEnd="arrow-start"
                   disabled={isProcessing}
                   onClick={handleBypassCreditPayment}
                   style={{ marginInlineStart: 'auto' }}

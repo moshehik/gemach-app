@@ -12,7 +12,7 @@ export async function POST(request) {
   const enabled = all.find(s => s.key === 'yemot_enabled')?.value === 'true';
   const importOn = all.find(s => s.key === 'yemot_import_customer_enabled')?.value === 'true';
   if (!enabled || !importOn) {
-    return NextResponse.json({ error: 'ייבוא מימות כבוי בהגדרות → סנכרון' }, { status: 403 });
+    return NextResponse.json({ error: 'ייבוא מימות כבוי בהגדרות ← סנכרון' }, { status: 403 });
   }
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {

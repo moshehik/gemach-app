@@ -67,6 +67,7 @@ export default function IconSprite() {
         <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m5 17 5-5 3.5 3.5L18 11l2.5 2.5" /></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5.5v13l11-6.5Z" /></symbol>
         <symbol id="i-arrow-end" viewBox="0 0 24 24"><path d="M4 12h16M13 6l6 6-6 6" /></symbol>
+        <symbol id="i-arrow-start" viewBox="0 0 24 24"><path d="M20 12H4M11 6l-6 6 6 6" /></symbol>
         <symbol id="i-list" viewBox="0 0 24 24"><circle cx="4.5" cy="6.5" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="17.5" r="1" /><path d="M9 6.5h11M9 12h11M9 17.5h11" /></symbol>
         <symbol id="i-expand" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" /><path d="m8.3 10.3 3.7 3.7 3.7-3.7" /></symbol>
         <symbol id="i-category" viewBox="0 0 24 24"><path d="M12 3.5 3.5 8l8.5 4.5L20.5 8Z" /><path d="m3.5 12 8.5 4.5L20.5 12" /><path d="m3.5 16 8.5 4.5L20.5 16" /></symbol>

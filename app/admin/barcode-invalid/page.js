@@ -29,7 +29,7 @@ export default function BarcodeInvalidPage() {
     return (
       <div className="card card-pad">
         <h1>ברקודים לא תקינים</h1>
-        <p className="hint">התכונה כבויה. הפעל בהגדרות → ברקודים → &quot;רשימת ברקודים לא תקינים&quot;.</p>
+        <p className="hint">התכונה כבויה. הפעל בהגדרות ← ברקודים ← &quot;רשימת ברקודים לא תקינים&quot;.</p>
       </div>
     );
   }

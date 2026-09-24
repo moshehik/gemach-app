@@ -1014,7 +1014,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       required
                     />
                     <button type="submit" className="btn btn-primary btn-icon-only" disabled={isReplying || videoUploading}>
-                      <svg className="icon"><use href="#i-arrow-end" /></svg>
+                      <svg className="icon"><use href="#i-arrow-start" /></svg>
                     </button>
                   </div>
                 </form>
@@ -1244,8 +1244,8 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 4 }}>
                   <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); setNewAttachments([]); setRecordedSteps(''); }}>ביטול</button>
                   <button type="submit" className="btn btn-primary" disabled={videoUploading}>
-                    <svg className="icon"><use href="#i-arrow-end" /></svg>
                     {videoUploading ? 'מעלה הסרטה...' : 'שליחה למתכנת'}
+                    <svg className="icon"><use href="#i-arrow-start" /></svg>
                   </button>
                 </div>
               </form>
