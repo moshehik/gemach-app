@@ -558,9 +558,10 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
 /* רוחב רחב לארכיטיפ לוח */
 .page.wide{max-width:var(--v3-w-wide)}
 /* שדה צף בתחתית (שאלת המשך) */
-.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 6px 6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
+.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
 .pill-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:var(--v3-fs-md);padding-inline:12px}
 .pill-input:focus-within{box-shadow:0 0 0 4px var(--v3-gold-300),var(--v3-el-3)}
+.tbl-wrap{position:relative} /* sr-only בתוך טבלה גוללת לא בורח למסמך */
 
 
 /* =========== A5 בית / סיכומים =========== */
@@ -654,15 +655,19 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
 @keyframes grow{from{transform:scaleX(0)}}
 .vchart{width:100%;height:auto;display:block;overflow:visible}
 .vchart .bar{fill:var(--v3-navy-800)}
-.vchart .bar.now{fill:var(--v3-gold-500)}
+.vchart .bar.now{fill:var(--v3-gold-500);stroke:var(--v3-navy-900);stroke-width:1.5} /* ניגודיות לא-טקסט 3:1 */
 .vchart .bar:hover{fill:var(--v3-navy-500)}
 .vchart .grid{stroke:var(--v3-line-soft);stroke-width:1}
 .vchart .axis{fill:var(--v3-ink-3);font-size:12px;font-family:var(--v3-font)}
 .chart-foot{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px;font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
 .legend-dot{display:inline-flex;align-items:center;gap:6px}
-.legend-dot i{width:12px;height:12px;border-radius:3px;background:var(--v3-gold-500);display:inline-block}
+.legend-dot i{width:12px;height:12px;border-radius:3px;background:var(--v3-gold-500);border:1.5px solid var(--v3-navy-900);display:inline-block}
 .denied{max-width:560px;margin:var(--v3-sp-7) auto}
 @media (max-width:639px){ .sbox-row{flex-direction:column} .sbox .btn.primary{width:100%} .sbox{padding:var(--v3-sp-3)} .kpi .k-v{font-size:var(--v3-fs-2xl)} }
+.home > *,.chat,.bub,.card{min-width:0}
+.bub .tbl-wrap{max-width:100%}
+.cp-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vchart text{direction:ltr;unicode-bidi:isolate} /* ערכי ציר מימין לעמודות, לא מעליהן */
 
 </style>
 </head>
@@ -1097,7 +1102,7 @@ function resultsView(){
 }
 /* DB-33: מייל/טלפון → תגית העתקה; "הזמנה N" / "לקוח X" → קישור */
 function richText(t){
-  return esc(t).replace(/([\w.+-]+@[\w-]+\.[\w.]+)|(0(?:5\d|7\d|[2-4]|[89])-?\d{3}-?\d{4})/g, m => `<button type="button" class="cp-chip" data-copy="${m}" aria-label="העתקת ${m}">${ic('copy','sm')}${m}</button>`)
+  return esc(t).replace(/([\w.+-]+@[\w-]+(?:\.[\w-]+)+)|(0(?:5\d|7\d|[2-4]|[89])-?\d{3}-?\d{4})/g, m => `<button type="button" class="cp-chip" data-copy="${m}" aria-label="העתקת ${m}">${ic('copy','sm')}${m}</button>`)
     .replace(/הזמנה (\d+)/g, (m, n) => `<a class="lnk-chip" href="#" data-open="הזמנה">${ic('file','sm')}הזמנה <bdi>${n}</bdi></a>`);
 }
 function chatView(){

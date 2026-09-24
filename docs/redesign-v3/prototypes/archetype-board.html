@@ -558,9 +558,10 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
 /* רוחב רחב לארכיטיפ לוח */
 .page.wide{max-width:var(--v3-w-wide)}
 /* שדה צף בתחתית (שאלת המשך) */
-.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 6px 6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
+.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
 .pill-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:var(--v3-fs-md);padding-inline:12px}
 .pill-input:focus-within{box-shadow:0 0 0 4px var(--v3-gold-300),var(--v3-el-3)}
+.tbl-wrap{position:relative} /* sr-only בתוך טבלה גוללת לא בורח למסמך */
 
 
 /* =========== A4 לוח / ציר זמן =========== */
@@ -751,6 +752,9 @@ details.legend-wrap summary::-webkit-details-marker{display:none}
 .cal-dow .short{display:none}
 @media (max-width:767px){ .cal-dow .short{display:inline} }
 .cal:not(.week) .day.today{padding-top:22px}
+
+.d-head{flex-wrap:wrap}
+.d-tools{flex-wrap:wrap;justify-content:flex-end;row-gap:2px}
 
 </style>
 </head>
@@ -1228,6 +1232,7 @@ function visibleOrders(){
   });
 }
 function byDay(list){ const m = {}; list.forEach(o => (m[o.day] = m[o.day] || []).push(o)); return m; }
+const nOrders = n => n === 1 ? 'הזמנה אחת' : `<bdi>${n}</bdi> הזמנות`;
 const advCount = () => Object.values(S.adv).filter(Boolean).length;
 
 /* ---------- רינדור ---------- */
@@ -1328,7 +1333,7 @@ function dayCell(x, i, orders, clamp){
     <div class="d-head"><span class="d-num"><b>${GEM[x.d - 1]}</b><small><bdi dir="ltr">${fmtG(x.g)}</bdi></small></span>
       ${orders.length ? `<span class="day-dot" aria-hidden="true">${orders.length}</span>` : ''}
       <span class="d-tools">${late ? `<span class="late-flag" data-tip="יש כאן הזמנה באיחור">${ic('late','sm')}<span class="sr-only">יש הזמנה באיחור</span></span>` : ''}
-      ${orders.length ? `<span class="d-count"><bdi>${orders.length}</bdi> הזמנות</span>` : ''}
+      ${orders.length ? `<span class="d-count">${nOrders(orders.length)}</span>` : ''}
       ${orders.length > 2 ? `<button type="button" class="ibtn quiet" data-day="${i}" aria-label="פתיחת כל ההזמנות של היום" data-tip="כל ההזמנות של היום">${ic('expand','sm','pop')}</button>` : ''}
       ${print ? `<button type="button" class="ibtn quiet" data-printday="${i}" aria-label="הדפסת ההזמנות של היום" data-tip="הדפסת ההזמנות של היום">${ic('printer','sm','pop')}</button>` : ''}</span></div>
     ${tags ? `<div class="d-tags">${tags}</div>` : ''}
@@ -1361,7 +1366,7 @@ function agenda(map){
       <div class="ag-h"><div class="ag-date"><b>יום ${DOW[x.dow]}, ${GEM[x.d - 1]} ${MONTHS[x.mi].name}</b><small><bdi dir="ltr">${fmtGFull(x.g)}</bdi>${x.par ? ` · פרשת ${x.par}` : ''}</small></div>
         ${x.hol.map(h => `<span class="chip">${h}</span>`).join('')}
         ${late ? `<span class="chip late">${ic('late')}יש איחור</span>` : ''}
-        ${os.length ? `<span class="d-count"><bdi>${os.length}</bdi> הזמנות</span>` : ''}
+        ${os.length ? `<span class="d-count">${nOrders(os.length)}</span>` : ''}
         ${print ? `<button type="button" class="ibtn quiet" data-printday="${i}" aria-label="הדפסת ההזמנות של היום" data-tip="הדפסת ההזמנות של היום">${ic('printer','sm','pop')}</button>` : ''}
         ${os.length > 2 ? `<button type="button" class="ibtn quiet" data-day="${i}" aria-label="פתיחת היום בחלון עם סינון" data-tip="חלון היום, עם סינון">${ic('expand','sm','pop')}</button>` : ''}</div>
       ${os.length ? `<div class="ag-list">${os.map(o => orderCard(o, true)).join('')}</div>` : `<div class="ag-empty">${ic('info','sm')}אין הזמנות היום.</div>`}</section>`;
@@ -1416,7 +1421,7 @@ function dayDlg(i){
   const x = DAYS[i]; let f = '';
   const draw = d => { const os = (byDay(visibleOrders())[i] || []).filter(o => !f || o.customerName.toLowerCase().includes(f.toLowerCase()) || o.customerPhone.includes(f) || String(o.orderId).includes(f));
     d.querySelector('#dayList').innerHTML = os.length ? os.map(o => orderCard(o, true)).join('') : `<div class="empty">${ic('search','lg')}<b>אין הזמנה שמתאימה</b><span>אפשר לחפש לפי שם, טלפון או מספר הזמנה.</span></div>`;
-    d.querySelector('#dayCnt').innerHTML = `${num(os.length)} הזמנות`; };
+    d.querySelector('#dayCnt').innerHTML = nOrders(os.length); };
   const print = cfg.flag('enable_batch_print_prep');
   openLayer({ type:'form', size:'m', html:`${dlgHead('cal', `יום ${DOW[x.dow]}, ${GEM[x.d - 1]} ${MONTHS[x.mi].name}`, `<bdi dir="ltr">${fmtGFull(x.g)}</bdi> · <span id="dayCnt"></span>`, 'סגירה')}
     <div class="dlg-b"><div class="search" style="margin-bottom:var(--v3-sp-4)">${ic('search')}<input id="dayQ" aria-label="סינון ההזמנות של היום" placeholder="שם, טלפון או מספר הזמנה" data-autofocus><button type="button" class="ibtn quiet" data-clr aria-label="ניקוי הסינון" hidden>${ic('x','sm')}</button></div>
@@ -1523,7 +1528,7 @@ function rentalDlg(o){
       <span class="acts"><span class="chip ${i.isReturned ? 'done' : i.isTaken ? 'info' : i.pending ? 'pend' : ''}">${itStatus(i)}</span>
       ${i.isReturned ? `<button type="button" class="btn sm quiet" data-undo-ret="${k}">${ic('undo','sm')}ביטול ההחזרה</button>` : i.isTaken ? `<button type="button" class="btn sm quiet" data-undo-rent="${k}">${ic('undo','sm')}ביטול ההשכרה</button>` : ''}
       <button type="button" class="ibtn quiet" data-hist="${k}" aria-label="היסטוריית הפריט" data-tip="היסטוריית הפריט">${ic('history','sm')}</button></span></div>`).join('') : `<div class="empty">${ic('bag','lg')}<b>אין פריטים בהזמנה</b></div>`;
-    const c = d.querySelector('[data-confirm]'); c.disabled = !pendingN(); c.innerHTML = `${ic('check','','pop')}אישור ההשכרה${pendingN() ? ` (<bdi>${pendingN()}</bdi>)` : ''}`;
+    const c = d.querySelector('[data-confirm]'); c.disabled = !pendingN(); c.innerHTML = `${ic('check','','pop')}אישור ההשכרה${pendingN() ? ` · <bdi>${pendingN()}</bdi> פריטים` : ''}`;
     d.querySelector('[data-discard]').hidden = !pendingN();
   };
   const html = `${dlgHead('box', `כרטיס השכרה · הזמנה <bdi>#${o.orderId}</bdi>`, `${esc(o.customerName)} · אירוע ${hebLabel(DAYS[o.day])}`, 'סגירה')}
