@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { V3Page, Card, Btn, IconBtn, Chip, Field, Row, Rows, Tip, Dialog, Empty, Banner, Icon } from '../../../app/v3/ui/components';
+
+/** סכום עם סימן: שלילי = "-₪X" (תמיד בתוך <bdi> בתצוגה, כדי שהסימן לא יתהפך ב-RTL). */
+const fmtMoney = (n) => (n < 0 ? `-₪${Math.abs(n)}` : `₪${n}`);
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
@@ -31,34 +34,29 @@ function CancellationCreditBadge({ deadline, amount }) {
   const countdown = useCountdown(deadline);
   if (!countdown) return null;
   return (
-    <div style={{ marginTop: '4px' }}>
-      <span
-        className={`badge ${countdown.urgent ? 'badge-danger' : 'badge-warning'}`}
-        title="ניתן לנצל סכום זה כזיכוי אוטומטי אם יתווסף פריט חלופי לאותה הזמנה, עד לתום הזמן שנקבע בהגדרות"
-      >
-        <svg className="icon"><use href="#i-clock" /></svg>
-        ניתן לזכות ₪{amount} על פריט חדש עוד {countdown.text}
-      </span>
+    <div className="v3-cluster">
+      <Chip variant={countdown.urgent ? 'attn' : 'gold'} icon="clock">
+        זיכוי <bdi>₪{amount}</bdi> על פריט חדש · עוד <bdi>{countdown.text}</bdi>
+      </Chip>
+      <Tip>אפשר לנצל את הסכום כזיכוי אוטומטי אם יתווסף להזמנה פריט חלופי, עד שהזמן שהוגדר נגמר.</Tip>
     </div>
   );
 }
 
-/** קובייה בטאב תשלומים שמסכמת זיכוי ביטול זמין לניצול, אם יש כזה כרגע בהזמנה. */
+/** אריח בטאב תשלומים שמסכם זיכוי ביטול זמין לניצול, אם יש כזה כרגע בהזמנה. */
 function CreditWindowTile({ deadline, amount }) {
   const countdown = useCountdown(deadline);
   if (!countdown) return null;
   return (
-    <div className="kpi-card">
-      <div className="kpi-top">
-        <div className="kpi-icon" style={{ background: 'var(--warning-tint)', color: 'var(--warning)' }}>
-          <svg className="icon"><use href="#i-clock" /></svg>
-        </div>
+    <div className={`v3-note ${countdown.urgent ? 'v3-note--attn' : ''}`} role="status">
+      <Icon name="clock" size="lg" />
+      <div className="v3-stack">
+        <b className="v3-h2">
+          זיכוי ביטול לניצול <Tip>סכום שאפשר לנצל כזיכוי אוטומטי אם יתווסף להזמנה פריט חלופי, עד שהזמן נגמר.</Tip>
+        </b>
+        <span className="v3-big"><bdi>₪{amount}</bdi></span>
+        <span className="v3-text-sm">נשארו <bdi>{countdown.text}</bdi></span>
       </div>
-      <div className="kpi-label">זיכוי ביטול זמין לניצול</div>
-      <div className="kpi-value">₪{amount}</div>
-      <span className={`badge ${countdown.urgent ? 'badge-danger' : 'badge-warning'}`} style={{ marginTop: '6px' }}>
-        <svg className="icon"><use href="#i-clock" /></svg> {countdown.text}
-      </span>
     </div>
   );
 }
@@ -133,6 +131,16 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
   const [selectedObligationDetails, setSelectedObligationDetails] = useState(null);
   const [mounted, setMounted] = useState(false);
+  // חלוניות v3 במקום window.customConfirm / alert (אותה זרימת await): confirmState מחזיק את ה-resolve של ההבטחה.
+  const [confirmState, setConfirmState] = useState(null);
+  const askConfirm = (opts) => new Promise(resolve => setConfirmState({ ...opts, resolve }));
+  const settleConfirm = (answer) => {
+    const current = confirmState;
+    setConfirmState(null);
+    current?.resolve(answer);
+  };
+  const [messageState, setMessageState] = useState(null);
+  const showMessage = (text, kind = 'info') => setMessageState({ text, kind });
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -166,7 +174,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   };
 
   const removeObligation = async (idx) => {
-    if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק חיוב זה?'))) return;
+    if (!(await askConfirm({ title: 'מחיקת חיוב', sub: 'החיוב יימחק מההזמנה כשתשמרו אותה.', icon: 'trash', confirmLabel: 'מחיקה' }))) return;
     const updated = [...obligations];
     if (updated[idx].id) updated[idx].isDeleted = true;
     else updated.splice(idx, 1);
@@ -174,7 +182,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   };
 
   const removePayment = async (idx) => {
-    if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק תשלום זה?'))) return;
+    if (!(await askConfirm({ title: 'מחיקת תשלום', sub: 'התשלום יימחק מההזמנה כשתשמרו אותה.', icon: 'trash', confirmLabel: 'מחיקה' }))) return;
     const updated = [...payments];
     if (updated[idx].id) updated[idx].isDeleted = true;
     else updated.splice(idx, 1);
@@ -229,11 +237,11 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
   const submitRefund = async () => {
     if (!refundData.amount || parseFloat(refundData.amount) <= 0) {
-      alert('יש להזין סכום חיובי לזיכוי');
+      showMessage('הזינו סכום זיכוי גדול מאפס.', 'warn');
       return;
     }
     if (!refundData.bankName?.trim() || !refundData.bankBranch?.trim()) {
-      alert('יש להזין בנק וסניף לזיכוי');
+      showMessage('חובה למלא בנק וסניף כדי לפתוח זיכוי.', 'warn');
       return;
     }
     setIsProcessing(true);
@@ -246,7 +254,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create refund');
 
-      alert('בקשת הזיכוי נוצרה בהצלחה. ניתן לנהל אותה במסמך הזיכויים הראשי או כאן בטאב תשלומים.');
+      showMessage('בקשת הזיכוי נפתחה. אפשר לעקוב אחריה כאן, ברשימת הזיכויים הממתינים, או במסך הזיכויים.', 'success');
       setShowRefundModal(false);
 
       if (onOrderUpdated) {
@@ -254,7 +262,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         if (orderRes.ok) onOrderUpdated(await orderRes.json());
       }
     } catch (err) {
-      alert(err.message || 'שגיאה ביצירת הזיכוי');
+      showMessage(err.message || 'לא הצלחנו לפתוח את הזיכוי.', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -273,7 +281,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const submitAdditionalPayment = async () => {
     const amount = parseFloat(additionalPaymentData.amount);
     if (!amount || amount <= 0) {
-      setAdditionalPaymentError('יש להזין סכום חיובי לתשלום');
+      setAdditionalPaymentError('הזינו סכום תשלום גדול מאפס.');
       return;
     }
     setIsProcessing(true);
@@ -290,18 +298,18 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת התשלום');
+      if (!res.ok) throw new Error(data.error || 'לא הצלחנו לשמור את התשלום.');
       onPaymentsChange([...payments, data]);
       setShowAdditionalPaymentModal(false);
     } catch (err) {
-      setAdditionalPaymentError(err.message || 'שגיאה בשמירת התשלום');
+      setAdditionalPaymentError(err.message || 'לא הצלחנו לשמור את התשלום.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   const approveRefund = async (refundId) => {
-    if (!(await window.customConfirm('האם לאשר ביצוע זיכוי זה? הפעולה תיצור תשלום הפכי להזמנה.'))) return;
+    if (!(await askConfirm({ title: 'אישור ביצוע הזיכוי', sub: 'האישור יוצר בהזמנה תשלום הפוך, ולא ניתן לבטל אותו כאן.', icon: 'check-circle', confirmLabel: 'אישור הזיכוי' }))) return;
     setIsProcessing(true);
     try {
       const res = await fetch(`/api/refunds/${refundId}`, {
@@ -310,7 +318,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         body: JSON.stringify({ isExecuted: true })
       });
       if (!res.ok) throw new Error('Failed to approve refund');
-      alert('הזיכוי אושר ובוצע בהצלחה.');
+      showMessage('הזיכוי אושר ונרשם בהזמנה.', 'success');
 
       if (onOrderUpdated) {
         const orderRes = await fetch(`/api/orders/${orderId}`);
@@ -319,7 +327,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         onRefundsChange(refunds.filter(r => r.id !== refundId));
       }
     } catch (err) {
-      alert(err.message || 'שגיאה באישור הזיכוי');
+      showMessage(err.message || 'לא הצלחנו לאשר את הזיכוי.', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -328,7 +336,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   /** מחשב מחדש את חיובי ההזמנה הזו בלבד (משתמש באותה לוגיקה כמו רשימת חישוב מחדש
    * באדמין - /api/admin/recalculations - רק לפריט בודד, ישירות מטאב התשלומים). */
   const handleRecalculate = async () => {
-    if (!(await window.customConfirm('לחשב מחדש את כל חיובי ההזמנה הזו לפי הכללים העדכניים? פעולה זו עשויה לשנות סכומים קיימים.'))) return;
+    if (!(await askConfirm({ title: 'חישוב מחדש', sub: 'חיובי ההזמנה יחושבו שוב לפי הכללים העדכניים. סכומים קיימים עשויים להשתנות.', icon: 'refresh', confirmLabel: 'חשבו מחדש' }))) return;
     setIsRecalculating(true);
     try {
       const res = await fetch('/api/admin/recalculations', {
@@ -337,16 +345,16 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         body: JSON.stringify({ orderIds: [orderId] })
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'שגיאה בחישוב מחדש');
-      if (data.errors?.length) throw new Error(data.errors[0].error || 'שגיאה בחישוב מחדש');
+      if (!res.ok || !data.success) throw new Error(data.error || 'החישוב מחדש נכשל.');
+      if (data.errors?.length) throw new Error(data.errors[0].error || 'החישוב מחדש נכשל.');
 
       if (onOrderUpdated) {
         const orderRes = await fetch(`/api/orders/${orderId}`);
         if (orderRes.ok) onOrderUpdated(await orderRes.json());
       }
-      alert('החישוב עודכן בהצלחה.');
+      showMessage('החיובים חושבו מחדש.', 'success');
     } catch (err) {
-      alert(err.message || 'שגיאה בחישוב מחדש');
+      showMessage(err.message || 'החישוב מחדש נכשל.', 'error');
     } finally {
       setIsRecalculating(false);
     }
@@ -426,10 +434,10 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         setShowRegulationsModal(false);
         openCreditModalNow();
       } else {
-        alert('שגיאה בשמירת אישור החתימה');
+        showMessage('לא הצלחנו לשמור את אישור החתימה.', 'error');
       }
     } catch (e) {
-      alert('שגיאת תקשורת בשמירת אישור החתימה');
+      showMessage('אין תקשורת עם השרת, אישור החתימה לא נשמר.', 'error');
     } finally {
       setConfirmingSigned(false);
     }
@@ -452,7 +460,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
   const submitAutoRefundBank = async () => {
     if (!autoRefundBankData.bankName?.trim() || !autoRefundBankData.bankBranch?.trim()) {
-      alert('יש להזין בנק וסניף לזיכוי');
+      showMessage('חובה למלא בנק וסניף כדי לפתוח זיכוי.', 'warn');
       return;
     }
     setIsSavingAutoRefundBank(true);
@@ -463,13 +471,13 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         body: JSON.stringify(autoRefundBankData)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת פרטי הבנק');
+      if (!res.ok) throw new Error(data.error || 'לא הצלחנו לשמור את פרטי הבנק.');
       if (onRefundsChange) {
         onRefundsChange(refunds.map(r => (r.id === autoRefundTarget ? { ...r, ...autoRefundBankData } : r)));
       }
       setShowAutoRefundBankModal(false);
     } catch (err) {
-      alert(err.message || 'שגיאה בשמירת פרטי הבנק');
+      showMessage(err.message || 'לא הצלחנו לשמור את פרטי הבנק.', 'error');
     } finally {
       setIsSavingAutoRefundBank(false);
     }
@@ -503,12 +511,12 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const handleBypassCreditPayment = async () => {
     const amount = parseFloat(creditCardData.amount);
     if (!amount || amount <= 0) {
-      setCreditError('אנא הזן סכום לפני מעקף.');
+      setCreditError('הזינו סכום לפני המעקף.');
       return;
     }
     const balance = totalRequired - totalPaid;
     if (amount > balance) {
-      setCreditError(`לא ניתן לשלם יותר מהיתרה הנדרשת (₪${balance}).`);
+      setCreditError(`אי אפשר לחייב יותר מהיתרה (₪${balance}).`);
       return;
     }
 
@@ -585,14 +593,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
   const handleProcessCreditCard = async () => {
     if (!creditCardData.cardNumber || !creditCardData.tokef || !creditCardData.amount) {
-      setCreditError('אנא מלא את כל השדות החובה (מספר כרטיס, תוקף, וסכום).');
+      setCreditError('יש למלא מספר כרטיס, תוקף וסכום.');
       return;
     }
 
     const paymentAmount = parseFloat(creditCardData.amount);
     const balance = totalRequired - totalPaid;
     if (paymentAmount > balance) {
-      setCreditError(`לא ניתן לשלם יותר מהיתרה הנדרשת (₪${balance}).`);
+      setCreditError(`אי אפשר לחייב יותר מהיתרה (₪${balance}).`);
       return;
     }
 
@@ -676,13 +684,13 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           // בשמירה הידנית הבאה), אבל חובה להתריע בקול רם: הכסף כבר נגבה מהלקוח.
           onPaymentsChange([...payments, added]);
           setShowCreditModal(false);
-          alert(`שים לב: הכרטיס חויב בהצלחה בסך ₪${added.amount}, אך שמירת התשלום בשרת נכשלה. יש ללחוץ מיד על "שמור" כדי לתעד את התשלום בהזמנה. אם השמירה הידנית נכשלת גם היא - יש לתעד את התשלום באופן חריג ולפנות לתמיכה, כדי שלא יישאר חיוב בלי רישום.`);
+          showMessage(`הכרטיס חויב ב-₪${added.amount}, אבל התשלום לא נשמר בשרת. לחצו עכשיו על "שמור" כדי לרשום אותו בהזמנה. אם גם השמירה נכשלת, תעדו את התשלום ידנית ופנו לתמיכה, כדי שלא יישאר חיוב בלי רישום.`, 'warn');
         }
       } else {
-        setCreditError(data.error || 'שגיאה בחיוב הכרטיס');
+        setCreditError(data.error || 'החיוב נכשל.');
       }
     } catch (err) {
-      setCreditError('שגיאת תקשורת בחיוב הכרטיס');
+      setCreditError('אין תקשורת עם הסליקה. בדקו אם הכרטיס חויב לפני שמנסים שוב.');
     } finally {
       setIsProcessing(false);
     }
@@ -793,315 +801,260 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       }
     : null;
 
+  // תצוגה בלבד: אחוז התשלום לפס ההתקדמות (נגזר מאותם totalRequired/totalPaid שההורה מעביר).
+  const paidPct = totalRequired > 0 ? Math.min(100, Math.max(0, Math.round(((totalPaid || 0) / totalRequired) * 100))) : 0;
+  const statusKind = balance > 0 ? 'debt' : balance < 0 ? 'credit' : 'paid';
+  const cleanItemTag = (text) => (text || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '');
+  const submitRefundOnEnter = (e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } };
+  const submitAdditionalOnEnter = (e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } };
+  const messageMeta = {
+    success: { title: 'בוצע', icon: 'check-circle' },
+    error: { title: 'משהו השתבש', icon: 'alert-circle' },
+    warn: { title: 'שימו לב', icon: 'alert-tri' },
+    info: { title: 'הודעה', icon: 'info' }
+  }[messageState?.kind || 'info'];
+
   return (
-    <>
-      {/* אריחי סיכום */}
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
-              <svg className="icon"><use href="#i-receipt" /></svg>
+    <V3Page page={false} sprite={false} className="v3-panel">
+      {/* ===== זיכוי ביטול לניצול (ספירה לאחור) ===== */}
+      {nearestCreditWindow && <CreditWindowTile deadline={nearestCreditWindow.deadline} amount={nearestCreditWindow.amount} />}
+
+      {/* ===== מצב תשלום ===== */}
+      <Card icon="wallet" title="מצב תשלום">
+        <div className="v3-balance">
+          <div className={`v3-status v3-status--${statusKind}`}>
+            <Icon name={statusKind === 'debt' ? 'alert-tri' : statusKind === 'credit' ? 'coin' : 'check-circle'} size="lg" />
+            <div>
+              <small>{statusKind === 'credit' ? 'יתרת זכות ללקוח' : statusKind === 'paid' ? 'ההזמנה שולמה במלואה' : 'נשאר לתשלום'}</small>
+              <div className="v3-status__n"><bdi>₪{Math.abs(balance).toLocaleString('he-IL')}</bdi></div>
             </div>
-            <button
-              type="button"
-              className="btn btn-ghost btn-icon-only btn-sm"
-              onClick={handleRecalculate}
-              disabled={isRecalculating}
-              title="חשב מחדש את חיובי ההזמנה לפי הכללים העדכניים"
-            >
-              <svg className="icon" style={{ animation: isRecalculating ? 'spin 1s linear infinite' : 'none' }}><use href="#i-refresh" /></svg>
-            </button>
           </div>
-          <div className="kpi-label">
-            סה"כ לתשלום
-          </div>
-          <div className="kpi-value">₪{(totalRequired || 0).toLocaleString('he-IL')}</div>
           {isLivePreviewing && (
-            <div className="hint" style={{ color: 'var(--text-3)', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }} title="מחשב מחדש ברקע לפי השינויים שעדיין לא נשמרו">
-              <span className="spinner" style={{ width: '10px', height: '10px', borderWidth: '2px' }} />מחשב מחדש ברקע…
+            <div className="v3-cluster v3-faint v3-text-sm" role="status">
+              <span className="v3-spin" aria-hidden="true" />
+              מעדכנים את החישוב ברקע
+              <Tip>הסכומים מתעדכנים לפי שינויים שעדיין לא נשמרו בהזמנה.</Tip>
+            </div>
+          )}
+          <div>
+            <div className="v3-cluster v3-text-sm v3-muted">
+              <span>שולם <bdi>₪{(totalPaid || 0).toLocaleString('he-IL')}</bdi></span>
+              <span aria-hidden="true">·</span>
+              <span>מתוך <bdi>₪{(totalRequired || 0).toLocaleString('he-IL')}</bdi></span>
+            </div>
+            <div className="v3-progress" role="progressbar" aria-label="התקדמות התשלום" aria-valuemin={0} aria-valuemax={100} aria-valuenow={paidPct}>
+              <i style={{ width: `${paidPct}%` }} />
+            </div>
+          </div>
+          <Rows>
+            <Row label="סה״כ לתשלום" icon="receipt"><bdi>₪{(totalRequired || 0).toLocaleString('he-IL')}</bdi></Row>
+            <Row label="שולם עד כה" icon="coin"><bdi>₪{(totalPaid || 0).toLocaleString('he-IL')}</bdi></Row>
+          </Rows>
+          {settings.nedarim_plus_enabled !== 'false' && (
+            <div className="v3-cluster">
+              <Btn variant={balance > 0 ? 'primary' : 'secondary'} size="lg" icon="card" onClick={handleOpenCreditModal}>
+                {balance > 0 ? <>תשלום באשראי <bdi>₪{balance.toLocaleString('he-IL')}</bdi></> : 'תשלום באשראי'}
+              </Btn>
+              <Tip>החיוב נשלח מיד לנדרים פלוס ונשמר בהזמנה, בלי לחכות ללחיצה על שמירה.</Tip>
             </div>
           )}
         </div>
-        <div className="kpi-card">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}><svg className="icon"><use href="#i-coin" /></svg></div></div>
-          <div className="kpi-label">שולם עד כה</div>
-          <div className="kpi-value">₪{(totalPaid || 0).toLocaleString('he-IL')}</div>
-        </div>
-        {balance >= 0 ? (
-          <div className="kpi-card">
-            <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}><svg className="icon"><use href="#i-alert-tri" /></svg></div></div>
-            <div className="kpi-label">יתרת חוב</div>
-            <div className="kpi-value">₪{balance.toLocaleString('he-IL')}</div>
-          </div>
-        ) : (
-          <div className="kpi-card">
-            <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}><svg className="icon"><use href="#i-coin" /></svg></div></div>
-            <div className="kpi-label">יתרת זכות</div>
-            <div className="kpi-value">₪{Math.abs(balance).toLocaleString('he-IL')}</div>
-          </div>
-        )}
-        {nearestCreditWindow && <CreditWindowTile deadline={nearestCreditWindow.deadline} amount={nearestCreditWindow.amount} />}
-      </div>
+      </Card>
 
       {/* ===== חיובים ===== */}
-      <div style={{ marginBottom: '22px' }}>
-        <div className="toolbar">
-          <h3 style={{ fontSize: '15px', color: 'var(--danger)' }}>חיובים</h3>
-          <span className="spacer" />
-          {enableDeliveries && (
-            <>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={hasActiveObligationWithDescription('משלוח הלוך')}
-                onClick={() => addDeliveryObligation('משלוח הלוך')}
-                title={hasActiveObligationWithDescription('משלוח הלוך') ? 'כבר קיים חיוב משלוח הלוך פעיל בהזמנה זו' : `הוספת חיוב משלוח הלוך בסך ₪${deliveryPrice}`}
-              >
-                <svg className="icon"><use href="#i-box" /></svg>הוסף חיוב משלוח הלוך
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={hasActiveObligationWithDescription('משלוח חזור')}
-                onClick={() => addDeliveryObligation('משלוח חזור')}
-                title={hasActiveObligationWithDescription('משלוח חזור') ? 'כבר קיים חיוב משלוח חזור פעיל בהזמנה זו' : `הוספת חיוב משלוח חזור בסך ₪${deliveryPrice}`}
-              >
-                <svg className="icon"><use href="#i-box" /></svg>הוסף חיוב משלוח חזור
-              </button>
-            </>
-          )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
-            <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
-          </button>
-        </div>
-        {/* דיווח תקלה (הזמנה #53377): "הוסף חיוב" בלבל עובדות לחשוב שהן צריכות להוסיף חיובים
-            בעצמן בכל הזמנה - למרות שחיובי מחירון רגילים (כולל ביטולים/החלפות) כבר מחושבים
-            ומתעדכנים אוטומטית. הכפתור עצמו נשאר (נחוץ למקרים חריגים אמיתיים), רק ההסבר נוסף. */}
-        <p className="hint" style={{ margin: '-10px 0 10px', color: 'var(--text-2)' }}>
-          &quot;הוסף חיוב&quot; מיועד למקרים חריגים בלבד - חיובי מחירון רגילים (כולל ביטולים והחלפות) מתעדכנים אוטומטית ואין צורך להוסיף אותם ידנית.
-        </p>
+      <Card icon="receipt" title="חיובים" tip="חיובי מחירון, כולל ביטולים והחלפות, מתעדכנים לבד. אין צורך להוסיף אותם ידנית.">
         {activeObligations.length > 0 ? (
-          <div className="table-wrap">
-            <div className="table-scroll">
-              <table className="data">
-                <thead>
-                  <tr><th>תיאור</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
-                </thead>
-                <tbody>
-                  {sortedObligations.map((obs, idx) => {
-                    const descText = (obs.productName || obs.description || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
-                    // חיוב שלילי הוא זיכוי/ביטול — הסימן וכיוון ה-LTR נדרשים במפורש, אחרת אלגוריתם
-                    // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
-                    const isCredit = obs.amount < 0;
-                    const creditInfo = getCancellationCreditInfo(obs);
-                    const iconId = getObligationIcon(obs);
-                    return (
-                      <tr key={idx}>
-                        <td className="cell-primary">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                            <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href={`#${iconId}`} /></svg>
-                            {descText}
-                          </div>
-                          {creditInfo && <CancellationCreditBadge deadline={creditInfo.deadline} amount={creditInfo.remaining} />}
-                        </td>
-                        <td className="cell-muted">{fmtDate(obs.createdAt)}</td>
-                        <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
-                          {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
-                        </td>
-                        <td>
-                          <div className="row-actions">
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedObligationDetails(obs)}>
-                              <svg className="icon"><use href="#i-info" /></svg>
-                            </button>
-                            {obs.isManual !== false && (
-                              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removeObligation(obligations.indexOf(obs))}>
-                                <svg className="icon"><use href="#i-trash" /></svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          <div className="v3-list">
+            {sortedObligations.map((obs, idx) => {
+              const descText = cleanItemTag(obs.productName || obs.description || '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
+              // חיוב שלילי הוא זיכוי/ביטול - הסימן בתוך <bdi> כדי שלא יוצג הפוך בהקשר RTL
+              const isCredit = obs.amount < 0;
+              const creditInfo = getCancellationCreditInfo(obs);
+              const iconId = getObligationIcon(obs);
+              const isPending = obs.isNew || obs.isPreview;
+              return (
+                <div key={idx} className={`v3-li ${isPending ? 'v3-li--pending' : ''}`}>
+                  <div className="v3-li__ic"><Icon name={iconId} /></div>
+                  <div className="v3-li__body">
+                    <span className="v3-li__title">{descText}</span>
+                    <span className="v3-li__sub"><bdi>{fmtDate(obs.createdAt)}</bdi>{isPending && ' · ממתין לשמירה'}</span>
+                    <div className={`v3-li__amt ${isCredit ? 'v3-li__amt--credit' : ''}`}><bdi>{fmtMoney(obs.amount)}</bdi></div>
+                    {creditInfo && <CancellationCreditBadge deadline={creditInfo.deadline} amount={creditInfo.remaining} />}
+                  </div>
+                  <div className="v3-cluster">
+                    <IconBtn variant="quiet" size="sm" icon="info" label="פרטי החיוב" onClick={() => setSelectedObligationDetails(obs)} />
+                    {obs.isManual !== false && (
+                      <IconBtn variant="quiet" size="sm" icon="trash" label="מחיקת החיוב" onClick={() => removeObligation(obligations.indexOf(obs))} />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <div className="table-wrap">
-            <div className="table-scroll">
-              <div className="empty-state">
-                <svg className="icon"><use href="#i-receipt" /></svg>
-                <h4>אין חיובים מתועדים</h4>
-              </div>
-            </div>
+          <Empty icon="receipt" title="אין חיובים בהזמנה" />
+        )}
+        {enableDeliveries && (
+          <div className="v3-cluster">
+            <Btn
+              size="sm"
+              icon="box"
+              disabled={hasActiveObligationWithDescription('משלוח הלוך')}
+              onClick={() => addDeliveryObligation('משלוח הלוך')}
+              title={hasActiveObligationWithDescription('משלוח הלוך') ? undefined : `חיוב משלוח הלוך, ₪${deliveryPrice}`}
+            >
+              חיוב משלוח הלוך
+            </Btn>
+            {hasActiveObligationWithDescription('משלוח הלוך') && <Tip>כבר יש בהזמנה חיוב משלוח הלוך פעיל.</Tip>}
+            <Btn
+              size="sm"
+              icon="box"
+              disabled={hasActiveObligationWithDescription('משלוח חזור')}
+              onClick={() => addDeliveryObligation('משלוח חזור')}
+              title={hasActiveObligationWithDescription('משלוח חזור') ? undefined : `חיוב משלוח חזור, ₪${deliveryPrice}`}
+            >
+              חיוב משלוח חזור
+            </Btn>
+            {hasActiveObligationWithDescription('משלוח חזור') && <Tip>כבר יש בהזמנה חיוב משלוח חזור פעיל.</Tip>}
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* ===== תשלומים ===== */}
-      <div style={{ marginBottom: '22px' }}>
-        <div className="toolbar">
-          <h3 style={{ fontSize: '15px', color: 'var(--success)' }}>תשלומים</h3>
-          <span className="spacer" />
-          {settings.nedarim_plus_enabled !== 'false' && (
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
-              <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי (נדרים פלוס)
-            </button>
-          )}
-          {/* "תשלום נוסף" ו"בקשת זיכוי ללקוח" מוסתרים כש-consolidate_manual_payment_credit_ui
-              מופעל (כרגע: נווה יעקב בלבד) - הכפתור המאוחד עובר לטאב "פרטים כלליים" ודורש שם
-              קוד מאשר (ר' handleOpenManualPaymentCredit ב-app/orders/[id]/page.js), במקום
-              להיות פתוח לכל עובד כמו כאן. אצל שאר הגמחים (המתג כבוי) שום דבר לא משתנה. */}
+      {/* ===== תשלומים שהתקבלו ===== */}
+      <Card icon="card" title="תשלומים שהתקבלו">
+        {activePayments.length > 0 ? (
+          <div className="v3-list">
+            {sortedPayments.map((p, idx) => {
+              // תשלום שלילי הוא החזר שנרשם כתנועה שלילית - אותו טיפול בסימן וב-bdi
+              const isCreditPayment = p.amount < 0;
+              return (
+                <div key={idx} className={`v3-li ${p.isNew ? 'v3-li--pending' : ''}`}>
+                  <div className="v3-li__ic"><Icon name={(p.paymentMethod || '').includes('אשראי') ? 'card' : 'coin'} /></div>
+                  <div className="v3-li__body">
+                    <span className="v3-li__title">{p.paymentMethod || '-'}</span>
+                    <span className="v3-li__sub"><bdi>{fmtDate(p.paymentDate)}</bdi>{p.isNew && ' · ממתין לשמירה'}</span>
+                    <div className={`v3-li__amt ${isCreditPayment ? 'v3-li__amt--credit' : ''}`}><bdi>{fmtMoney(p.amount)}</bdi></div>
+                  </div>
+                  <div className="v3-cluster">
+                    <IconBtn variant="quiet" size="sm" icon="info" label="פרטי התשלום" onClick={() => setSelectedPaymentDetails(p)} />
+                    <IconBtn variant="quiet" size="sm" icon="trash" label="מחיקת התשלום" onClick={() => removePayment(payments.indexOf(p))} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty icon="coin" title="עדיין לא התקבלו תשלומים" />
+        )}
+      </Card>
+
+      {/* ===== זיכויים ממתינים ===== */}
+      <Card icon="refresh" title="זיכויים ממתינים" tip="בקשות זיכוי שנפתחו וממתינות לאישור ביצוע. האישור יוצר בהזמנה תשלום הפוך.">
+        {pendingRefunds.length > 0 ? (
+          <div className="v3-list">
+            {pendingRefunds.map((r, idx) => {
+              const bankMissing = !r.bankName?.trim() || !r.bankBranch?.trim();
+              return (
+                <div key={idx} className="v3-li">
+                  <div className="v3-li__ic"><Icon name="refresh" /></div>
+                  <div className="v3-li__body">
+                    <span className="v3-li__title">{r.reason || 'לא צוינה סיבה'}</span>
+                    <span className="v3-li__sub"><bdi>{fmtDate(r.createdAt)}</bdi></span>
+                    <div className="v3-li__amt v3-li__amt--credit"><bdi>₪{r.amount}</bdi></div>
+                    {bankMissing && <Chip variant="attn" icon="alert-circle">חסרים פרטי בנק</Chip>}
+                  </div>
+                  <div className="v3-cluster">
+                    <Btn size="sm" icon="edit" onClick={() => openAutoRefundBankModal(r)}>
+                      {bankMissing ? 'הוספת פרטי בנק' : 'עדכון פרטי בנק'}
+                    </Btn>
+                    <Btn variant="primary" size="sm" icon="check" loading={isProcessing} onClick={() => approveRefund(r.id)}>
+                      אישור ביצוע
+                    </Btn>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty icon="refresh" title="אין זיכויים ממתינים" text="בקשת זיכוי חדשה תופיע כאן עד שתאושר." />
+        )}
+      </Card>
+
+      {/* ===== פעולות ידניות ===== */}
+      <details className="v3-collapse">
+        <summary>
+          <Icon name="settings" />
+          פעולות ידניות
+          <Icon name="chevron-down" className="v3-collapse__chev" />
+        </summary>
+        <div className="v3-collapse__in">
+          <span className="v3-faint v3-text-sm">
+            לרוב אין בזה צורך <Tip>חיובים וזיכויים נוצרים לבד מהפעולות בהזמנה. כאן רק למקרים חריגים.</Tip>
+          </span>
+          <div className="v3-cluster">
+            <Btn icon="plus" onClick={() => setShowAddChargeModal(true)}>הוספת חיוב</Btn>
+            <Tip>לחיוב חריג בלבד. חיובי מחירון רגילים, כולל ביטולים והחלפות, מתעדכנים לבד.</Tip>
+          </div>
+          {/* "תשלום נוסף" ו"בקשת זיכוי" מוסתרים כש-consolidate_manual_payment_credit_ui מופעל (נווה יעקב):
+              הכפתור המאוחד עובר ל"פרטים כלליים" ודורש שם קוד מאשר. */}
           {settings.consolidate_manual_payment_credit_ui !== 'true' && (
             <>
               {settings.allow_additional_payment_on_order === 'true' && (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenAdditionalPaymentModal} title="רישום תשלום נוסף (למשל מזומן) בנוסף לתשלומים הקיימים בהזמנה">
-                  <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף
-                </button>
+                <div className="v3-cluster">
+                  <Btn icon="coin" onClick={handleOpenAdditionalPaymentModal}>תשלום נוסף</Btn>
+                  <Tip>רישום תשלום שהתקבל מחוץ לאשראי, למשל מזומן. נשמר מיד, בלי לחכות לשמירת ההזמנה.</Tip>
+                </div>
               )}
-              <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
-                <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
-              </button>
-              {/* אותו הבהרה כמו ב"הוסף חיוב" למעלה - ר' דיווח הזמנה #53377 */}
-              <p className="hint" style={{ flexBasis: '100%', margin: '6px 0 0', color: 'var(--text-2)' }}>
-                &quot;בקשת זיכוי ללקוח&quot; מיועד למקרים חריגים בלבד - זיכויים בגין ביטול/החלפה נוצרים אוטומטית ואין צורך לפתוח בקשה ידנית עבורם.
-              </p>
+              <div className="v3-cluster">
+                <Btn icon="refresh" onClick={handleOpenRefundModal}>בקשת זיכוי ללקוח</Btn>
+                <Tip>לזיכוי חריג בלבד. זיכוי על ביטול או החלפה נוצר לבד.</Tip>
+              </div>
             </>
           )}
+          <div className="v3-cluster">
+            <Btn icon="refresh" loading={isRecalculating} onClick={handleRecalculate}>חישוב מחדש</Btn>
+            <Tip>מחשב שוב את כל חיובי ההזמנה לפי הכללים העדכניים. סכומים קיימים עשויים להשתנות.</Tip>
+          </div>
         </div>
-        {activePayments.length > 0 ? (
-          <div className="table-wrap">
-            <div className="table-scroll">
-              <table className="data">
-                <thead>
-                  <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
-                </thead>
-                <tbody>
-                  {sortedPayments.map((p, idx) => {
-                    // תשלום שלילי הוא זיכוי/החזר שנרשם כתנועה שלילית — אותו טיפול סימן/כיווניות
-                    // כמו בטבלת החיובים, כדי שלא יוצג "₪-45" (סימן במקום הלא נכון) בהקשר RTL
-                    const isCreditPayment = p.amount < 0;
-                    return (
-                      <tr key={idx}>
-                        <td className="cell-primary">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                            <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href="#i-coin" /></svg>
-                            {p.paymentMethod || '-'}
-                          </div>
-                        </td>
-                        <td className="cell-muted">{fmtDate(p.paymentDate)}</td>
-                        <td style={{ fontWeight: 700, color: isCreditPayment ? 'var(--info)' : 'var(--success)', direction: 'ltr', textAlign: 'left' }}>
-                          {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
-                        </td>
-                        <td>
-                          <div className="row-actions">
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedPaymentDetails(p)}>
-                              <svg className="icon"><use href="#i-info" /></svg>
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removePayment(payments.indexOf(p))}>
-                              <svg className="icon"><use href="#i-trash" /></svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <div className="table-scroll">
-              <div className="empty-state">
-                <svg className="icon"><use href="#i-coin" /></svg>
-                <h4>לא בוצעו תשלומים</h4>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      </details>
 
-      {/* ===== זיכויים ממתינים ===== */}
-      <div>
-        <div className="toolbar">
-          <h3 style={{ fontSize: '15px', color: 'var(--info)' }}>זיכויים ממתינים</h3>
-        </div>
-        {pendingRefunds.length > 0 ? (
-          <div className="table-wrap">
-            <div className="table-scroll">
-              <table className="data">
-                <thead>
-                  <tr><th>פרטים / סיבה</th><th>תאריך בקשה</th><th>סכום</th><th style={{ width: '110px' }}></th><th style={{ width: '110px' }}></th></tr>
-                </thead>
-                <tbody>
-                  {pendingRefunds.map((r, idx) => (
-                    <tr key={idx}>
-                      <td className="cell-primary">{r.reason || 'ללא סיבה'}</td>
-                      <td className="cell-muted">{fmtDate(r.createdAt)}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--info)', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
-                      <td>
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => openAutoRefundBankModal(r)}>
-                          {(!r.bankName?.trim() || !r.bankBranch?.trim()) ? 'הזנת פרטי בנק' : 'עריכת פרטי בנק'}
-                        </button>
-                      </td>
-                      <td>
-                        <button type="button" className="btn btn-primary btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
-                          {isProcessing ? <span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} /> : 'אשר ביצוע'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <div className="table-scroll">
-              <div className="empty-state">
-                <svg className="icon"><use href="#i-refresh" /></svg>
-                <h4>אין זיכויים ממתינים</h4>
-                <p>בקשות זיכוי שנוצרו יופיעו כאן וימתינו לאישור ביצוע.</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {mounted && (
+        <>
+          {/* ===== חתימה על תקנון (נשאל גם כאן, לפני תשלום) ===== */}
+          <Dialog
+            open={showRegulationsModal}
+            onClose={() => { if (!confirmingSigned) setShowRegulationsModal(false); }}
+            variant="confirm"
+            mode="dark"
+            icon="edit"
+            badgeKind="write"
+            title="חתימה על התקנון"
+            sub="לפני קבלת תשלום צריך לוודא שהלקוח חתם על התקנון. הוא חתם?"
+            actions={
+              <>
+                <Btn variant="primary" icon="check" loading={confirmingSigned} onClick={confirmSignedThenOpenCredit}>כן, חתם</Btn>
+                <Btn variant="quiet" disabled={confirmingSigned} onClick={() => setShowRegulationsModal(false)}>עדיין לא</Btn>
+              </>
+            }
+          />
 
-      {/* ===== מודל חתימה על תקנון (נשאל גם כאן, לפני תשלום - ר' הערה למעלה) ===== */}
-      {mounted && showRegulationsModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if (!confirmingSigned) setShowRegulationsModal(false); }}>
-          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
-              <svg className="icon"><use href="#i-edit" /></svg>
-            </div>
-            <h3>חתימה על תקנון</h3>
-            <p>לפני קבלת תשלום יש לוודא שהלקוח חתם על התקנון. האם הלקוח חתם על התקנון?</p>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmSignedThenOpenCredit} disabled={confirmingSigned}>
-                {confirmingSigned && <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />}
-                כן, חתם
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowRegulationsModal(false)} disabled={confirmingSigned}>לא (ביטול)</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל העברה מהירה (קורא מגנטי) ===== */}
-      {mounted && showQuickSwipeModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal confirm-modal" style={{ margin: 0 }}>
-            <div className="modal-icon-circle" style={{ background: 'var(--warning-tint)', color: 'var(--warning)' }}>
-              <svg className="icon"><use href="#i-tag" /></svg>
-            </div>
-            <h3>העברת כרטיס מהירה</h3>
-            <p>אנא העבר כעת את כרטיס האשראי בקורא המגנטי...</p>
+          {/* ===== העברת כרטיס מהירה (קורא מגנטי) - אין סגירה בלחיצה על הרקע ===== */}
+          <Dialog
+            open={showQuickSwipeModal}
+            onClose={() => setShowQuickSwipeModal(false)}
+            closeOnScrim={false}
+            variant="confirm"
+            mode="light"
+            icon="tag"
+            badgeKind="tilt"
+            title="העבירו את הכרטיס"
+            sub="העבירו את הכרטיס בקורא המגנטי. מספר הכרטיס והתוקף יתמלאו לבד."
+            actions={<Btn variant="quiet" onClick={() => setShowQuickSwipeModal(false)}>ביטול</Btn>}
+          >
             <input
               autoFocus
+              data-autofocus=""
+              aria-label="קלט מהקורא המגנטי"
               type="text"
               value={swipeInput}
               onChange={handleSwipeInputChange}
@@ -1109,392 +1062,371 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
               style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
             />
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowQuickSwipeModal(false)}>ביטול חלון מהיר</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </Dialog>
 
-      {/* ===== מודל סליקת אשראי (נדרים פלוס) ===== */}
-      {mounted && showCreditModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal" style={{ margin: 0 }}>
-            <div className="modal-head">
-              <strong>תשלום בכרטיס אשראי (נדרים פלוס)</strong>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button type="button" className="btn btn-secondary btn-sm" title="העברת כרטיס מהירה בקורא מגנטי"
-                  onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}>
-                  <svg className="icon"><use href="#i-activity" /></svg>העברה מהירה
-                </button>
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowCreditModal(false)}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              </div>
-            </div>
-            <div className="modal-body">
-              <div className="field">
-                <label>שם לקוח</label>
-                <input type="text" className="input" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ background: 'var(--surface-alt)' }} />
-              </div>
-
-              <div className="field">
-                <label>סכום לחיוב (₪)</label>
-                <input ref={creditAmountRef} type="number" className="input" value={creditCardData.amount}
-                  onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
-                  onKeyDown={(e) => focusNextOnEnter(e, creditCardNumberRef)}
-                  style={{ fontWeight: 700 }} />
-              </div>
-
-              <div className="field">
-                <label>מספר כרטיס אשראי</label>
-                <input ref={creditCardNumberRef} type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
-                  onKeyDown={(e) => focusNextOnEnter(e, creditTokefRef)}
-                  placeholder="0000 0000 0000 0000" maxLength={19}
-                  style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>תוקף (MM/YY)</label>
-                  <input ref={creditTokefRef} type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
-                    onKeyDown={(e) => focusNextOnEnter(e, creditInstallmentsRef)}
-                    placeholder="12/28" maxLength={5} style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
-                </div>
-                <div className="field">
-                  <label>תשלומים</label>
-                  <input ref={creditInstallmentsRef} type="number" className="input" min={1} max={36} value={creditCardData.installments}
-                    onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })}
-                    onKeyDown={(e) => focusNextOnEnter(e, creditNotesRef)} />
-                </div>
-              </div>
-
-              <div className="field" style={{ marginBottom: creditError ? '14px' : 0 }}>
-                <label>הערות</label>
-                <input ref={creditNotesRef} type="text" className="input" value={creditCardData.notes}
-                  onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
-                  placeholder="הערות לחיוב" />
-              </div>
-
-              {creditError && (
-                <div className="callout callout-danger">
-                  <svg className="icon"><use href="#i-alert-tri" /></svg>
-                  <span>{creditError}</span>
-                </div>
-              )}
-            </div>
-            <div className="modal-foot">
-              <button
-                type="button"
-                className="btn btn-ghost btn-icon-only"
-                title="מעקף מתכנת: רישום ידני כאילו שולם, ללא חיוב אשראי בפועל (מוגבל למתכנת)"
-                disabled={isProcessing}
-                onClick={handleBypassCreditPayment}
-                style={{ color: 'var(--warning)', marginInlineEnd: 'auto' }}
-              >
-                <svg className="icon"><use href="#i-arrow-end" /></svg>
-              </button>
-              <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={handleProcessCreditCard}>
-                {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> מעבד...</> : 'בצע חיוב'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל הוספת חיוב ידני ===== */}
-      {mounted && showAddChargeModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddChargeModal(false); }}>
-          <div className="modal" style={{ margin: 0 }}>
-            <div className="modal-head">
-              <strong>הוספת חיוב ידני</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAddChargeModal(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="field">
-                <label>תיאור החיוב</label>
-                <input type="text" className="input" placeholder="לדוגמא: שמלה נוספת" value={newObligation.description}
-                  onChange={e => setNewObligation({ ...newObligation, description: e.target.value })} />
-              </div>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label>סכום (₪)</label>
-                <input type="number" className="input" placeholder="0" value={newObligation.amount}
-                  onChange={e => setNewObligation({ ...newObligation, amount: e.target.value })}
-                  style={{ fontWeight: 700 }} />
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAddChargeModal(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" disabled={!newObligation.description || !newObligation.amount} onClick={addObligation}>שמור חיוב</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל פרטי תשלום ===== */}
-      {mounted && selectedPaymentDetails && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedPaymentDetails(null); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
-            <div className="modal-head">
-              <strong>פרטי תשלום מלאים</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setSelectedPaymentDetails(null)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-grid" style={{ marginBottom: '14px' }}>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>אופן תשלום</label>
-                  <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{selectedPaymentDetails.paymentMethod || '-'}</div>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>סכום</label>
-                  <div style={{ fontWeight: 700, fontSize: '13.5px', color: selectedPaymentDetails.amount < 0 ? 'var(--info)' : 'var(--success)', direction: 'ltr', textAlign: 'right' }}>
-                    {selectedPaymentDetails.amount < 0 ? `-₪${Math.abs(selectedPaymentDetails.amount)}` : `₪${selectedPaymentDetails.amount}`}
-                  </div>
-                </div>
-              </div>
-              <div className="field">
-                <label>תאריך</label>
-                <div style={{ fontSize: '13px', fontWeight: 600 }}>
-                  {getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}
-                </div>
-              </div>
-
-              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>הערות ופירוט (נדרים פלוס / אחר)</span>
-              <div className="card" style={{ marginTop: '8px', padding: '12px 14px', maxHeight: '280px', overflowY: 'auto' }}>
-                {(() => {
-                  const notes = selectedPaymentDetails.notes;
-                  if (!notes) return <span className="hint" style={{ color: 'var(--text-3)' }}>אין הערות</span>;
-                  try {
-                    if (typeof notes === 'string' && notes.trim().startsWith('{')) {
-                      const parsed = JSON.parse(notes);
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {Object.entries(parsed).map(([k, v]) => (
-                            <div key={k} style={{ display: 'flex', borderBottom: '1px solid var(--border)', paddingBottom: '6px', gap: '8px' }}>
-                              <strong style={{ width: '140px', flexShrink: 0, fontSize: '0.88rem', color: 'var(--text-3)' }}>{k}:</strong>
-                              <span style={{ flex: 1, wordBreak: 'break-word', fontSize: '0.92rem', direction: 'ltr', textAlign: 'right', fontWeight: 500 }}>{String(v)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                  } catch (e) { }
-                  return <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{typeof notes === 'string' ? notes.split(' | ').join('\n') : String(notes)}</div>;
-                })()}
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setSelectedPaymentDetails(null)}>סגור</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל פרטי חיוב ===== */}
-      {mounted && selectedObligationDetails && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedObligationDetails(null); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
-            <div className="modal-head">
-              <strong>פרטי חיוב</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setSelectedObligationDetails(null)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-grid" style={{ marginBottom: '14px' }}>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>סוג חיוב</label>
-                  <div style={{ fontWeight: 700, fontSize: '13.5px' }}>
-                    {selectedObligationDetails.isManual === false
-                      ? (selectedObligationDetails.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי')
-                      : (selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}
-                  </div>
-                </div>
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>סכום</label>
-                  <div style={{ fontWeight: 700, fontSize: '13.5px', color: selectedObligationDetails.amount < 0 ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'right' }}>
-                    {selectedObligationDetails.amount < 0 ? `-₪${Math.abs(selectedObligationDetails.amount)}` : `₪${selectedObligationDetails.amount}`}
-                  </div>
-                </div>
-              </div>
-              <div className="field">
-                <label>תאריך</label>
-                <div style={{ fontSize: '13px', fontWeight: 600 }}>
-                  {getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}
-                </div>
-              </div>
-
-              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>תיאור מפורט</span>
-              <div className="card" style={{ marginTop: '8px', padding: '14px 16px', fontSize: '13px', lineHeight: 1.7 }}>
-                <div><strong>פירוט:</strong> {selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'ללא תיאור'}</div>
-                {selectedObligationDetails.priceCategory && (
-                  <div style={{ marginTop: '8px' }}><strong>קטגוריה (מחירון):</strong> {selectedObligationDetails.priceCategory}</div>
-                )}
-                {selectedObligationDetails.priceDescription && (
-                  <div style={{ marginTop: '8px' }}><strong>תיאור (מחירון):</strong> {selectedObligationDetails.priceDescription}</div>
-                )}
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setSelectedObligationDetails(null)}>סגור</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל בקשת זיכוי ===== */}
-      {mounted && showRefundModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setShowRefundModal(false); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }}>
-            <div className="modal-head">
-              <strong>יצירת בקשת זיכוי</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowRefundModal(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="field">
-                <label>סכום לזיכוי (₪) *</label>
-                <input type="number" className="input" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ fontWeight: 700 }} />
-              </div>
-
-              <div className="field">
-                <label>סיבה לזיכוי / הערות</label>
-                <input type="text" className="input" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} />
-              </div>
-
-              <span className="hint" style={{ display: 'block', fontSize: '13px', color: 'var(--text)', fontWeight: 700, marginBottom: '8px' }}>פרטי בנק לזיכוי</span>
-              <div className="form-grid">
-                <div className="field"><label>בנק *</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
-                <div className="field"><label>סניף *</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
-              </div>
-              <div className="form-grid">
-                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
-                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
-              </div>
-
-              <div className="field">
-                <label>אמצעי תשלום לזיכוי (נלקח אוטומטית מתשלום אחרון)</label>
-                <input type="text" className="input" readOnly value={refundData.paymentDetails} style={{ background: 'var(--surface-alt)' }} title="שדה זה מתמלא אוטומטית מהתשלום האחרון במערכת" />
-              </div>
-
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label>מייל לקוח (לשליחת אישור זיכוי)</label>
-                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ direction: 'ltr' }} />
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowRefundModal(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={submitRefund}>
-                {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> מעבד...</> : 'צור בקשת זיכוי'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל פרטי בנק לזיכוי אוטומטי (קיים כבר, רק משלימים פרטי בנק) ===== */}
-      {mounted && showAutoRefundBankModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget && !isSavingAutoRefundBank) setShowAutoRefundBankModal(false); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '480px', width: '95%' }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !isSavingAutoRefundBank) { e.preventDefault(); submitAutoRefundBank(); } }}>
-            <div className="modal-head">
-              <strong>פרטי בנק לזיכוי</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAutoRefundBankModal(false)} disabled={isSavingAutoRefundBank}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p className="hint" style={{ marginTop: 0 }}>ללקוח נוצרה יתרת זכות עבור הזמנה זו. יש להזין (או לאשר) את פרטי הבנק להעברת הזיכוי.</p>
-              <div className="form-grid">
-                <div className="field"><label>בנק *</label><input type="text" className="input" autoFocus value={autoRefundBankData.bankName} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankName: e.target.value })} /></div>
-                <div className="field"><label>סניף *</label><input type="text" className="input" value={autoRefundBankData.bankBranch} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankBranch: e.target.value })} /></div>
-              </div>
-              <div className="form-grid">
-                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={autoRefundBankData.bankAccount} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankAccount: e.target.value })} /></div>
-                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={autoRefundBankData.bankAccountName} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankAccountName: e.target.value })} /></div>
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAutoRefundBankModal(false)} disabled={isSavingAutoRefundBank}>סגור, אמלא מאוחר יותר</button>
-              <button type="button" className="btn btn-primary" disabled={isSavingAutoRefundBank} onClick={submitAutoRefundBank}>
-                {isSavingAutoRefundBank ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> שומר...</> : 'שמירת פרטי בנק'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל תשלום נוסף (מזומן/אחר) - מאחורי allow_additional_payment_on_order ===== */}
-      {mounted && showAdditionalPaymentModal && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget && !isProcessing) setShowAdditionalPaymentModal(false); }}>
-          <div className="modal" style={{ margin: 0 }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}>
-            <div className="modal-head">
-              <strong>תשלום נוסף</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAdditionalPaymentModal(false)} disabled={isProcessing}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="field">
-                <label>אופן תשלום</label>
-                <select
-                  className="input"
-                  value={additionalPaymentData.paymentMethod}
-                  onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, paymentMethod: e.target.value })}
+          {/* ===== תשלום באשראי (נדרים פלוס) - אין סגירה בלחיצה על הרקע, כדי לא לאבד פרטי כרטיס ===== */}
+          <Dialog
+            open={showCreditModal}
+            onClose={() => setShowCreditModal(false)}
+            closeOnScrim={false}
+            variant="form"
+            icon="card"
+            title="תשלום באשראי"
+            sub="החיוב נשלח לנדרים פלוס ונשמר בהזמנה מיד."
+            actions={
+              <>
+                <Btn variant="primary" icon="card" loading={isProcessing} onClick={handleProcessCreditCard}>
+                  {isProcessing ? 'מחייב…' : 'חיוב הכרטיס'}
+                </Btn>
+                <Btn variant="quiet" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</Btn>
+                <Btn
+                  variant="quiet"
+                  size="sm"
+                  icon="arrow-end"
+                  disabled={isProcessing}
+                  onClick={handleBypassCreditPayment}
+                  style={{ marginInlineStart: 'auto' }}
                 >
-                  {additionalPaymentMethodOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>סכום (₪)</label>
-                <input type="number" className="input" placeholder="0" value={additionalPaymentData.amount}
-                  onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, amount: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
-                  style={{ fontWeight: 700 }} />
-              </div>
-              <div className="field" style={{ marginBottom: additionalPaymentError ? '14px' : 0 }}>
-                <label>הערות</label>
-                <input type="text" className="input" value={additionalPaymentData.notes}
-                  onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, notes: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
-                  placeholder="הערות לתשלום" />
-              </div>
-              {additionalPaymentError && (
-                <div className="callout callout-danger">
-                  <svg className="icon"><use href="#i-alert-tri" /></svg>
-                  <span>{additionalPaymentError}</span>
-                </div>
-              )}
+                  מעקף מתכנת
+                </Btn>
+                <Tip>רושם את התשלום ידנית, כאילו שולם, בלי לפנות לנדרים פלוס. מיועד לתקלת סליקה, ודורש סיסמת מתכנת.</Tip>
+              </>
+            }
+          >
+            <div className="v3-cluster">
+              <Btn
+                size="sm"
+                icon="activity"
+                onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}
+              >
+                העברה בקורא מגנטי
+              </Btn>
             </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => setShowAdditionalPaymentModal(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" disabled={isProcessing || !additionalPaymentData.amount} onClick={submitAdditionalPayment}>
-                {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> שומר...</> : 'שמור תשלום'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+            <Field label="לקוח">
+              <input type="text" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} />
+            </Field>
+            <Field label="סכום לחיוב (₪)">
+              <input
+                ref={creditAmountRef}
+                type="number"
+                dir="ltr"
+                value={creditCardData.amount}
+                onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
+                onKeyDown={(e) => focusNextOnEnter(e, creditCardNumberRef)}
+              />
+            </Field>
+            <Field label="מספר כרטיס">
+              <input
+                ref={creditCardNumberRef}
+                type="text"
+                dir="ltr"
+                inputMode="numeric"
+                value={creditCardData.cardNumber}
+                onChange={handleCardNumberChange}
+                onKeyDown={(e) => focusNextOnEnter(e, creditTokefRef)}
+                placeholder="0000 0000 0000 0000"
+                maxLength={19}
+              />
+            </Field>
+            <Field label="תוקף (MM/YY)">
+              <input
+                ref={creditTokefRef}
+                type="text"
+                dir="ltr"
+                inputMode="numeric"
+                value={creditCardData.tokef}
+                onChange={handleTokefChange}
+                onKeyDown={(e) => focusNextOnEnter(e, creditInstallmentsRef)}
+                placeholder="12/28"
+                maxLength={5}
+              />
+            </Field>
+            <Field label="מספר תשלומים">
+              <input
+                ref={creditInstallmentsRef}
+                type="number"
+                dir="ltr"
+                min={1}
+                max={36}
+                value={creditCardData.installments}
+                onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })}
+                onKeyDown={(e) => focusNextOnEnter(e, creditNotesRef)}
+              />
+            </Field>
+            <Field label="הערה">
+              <input
+                ref={creditNotesRef}
+                type="text"
+                value={creditCardData.notes}
+                onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
+                placeholder="הערה לחיוב"
+              />
+            </Field>
+            {creditError && <Banner kind="alert" text={creditError} />}
+          </Dialog>
+
+          {/* ===== הוספת חיוב ידני ===== */}
+          <Dialog
+            open={showAddChargeModal}
+            onClose={() => setShowAddChargeModal(false)}
+            variant="form"
+            icon="plus"
+            title="הוספת חיוב"
+            sub="החיוב יירשם בהזמנה כשתשמרו אותה."
+            actions={
+              <>
+                <Btn variant="primary" disabled={!newObligation.description || !newObligation.amount} onClick={addObligation}>שמירת החיוב</Btn>
+                <Btn variant="quiet" onClick={() => setShowAddChargeModal(false)}>ביטול</Btn>
+              </>
+            }
+          >
+            <Field label="על מה החיוב">
+              <input
+                type="text"
+                placeholder="למשל: שמלה נוספת"
+                value={newObligation.description}
+                onChange={e => setNewObligation({ ...newObligation, description: e.target.value })}
+              />
+            </Field>
+            <Field label="סכום (₪)">
+              <input
+                type="number"
+                dir="ltr"
+                placeholder="0"
+                value={newObligation.amount}
+                onChange={e => setNewObligation({ ...newObligation, amount: e.target.value })}
+              />
+            </Field>
+          </Dialog>
+
+          {/* ===== פרטי תשלום ===== */}
+          <Dialog
+            open={!!selectedPaymentDetails}
+            onClose={() => setSelectedPaymentDetails(null)}
+            variant="sheet"
+            mode="light"
+            icon="coin"
+            title="פרטי התשלום"
+            actions={<Btn onClick={() => setSelectedPaymentDetails(null)}>סגירה</Btn>}
+          >
+            {selectedPaymentDetails && (
+              <Rows>
+                <Row label="אופן תשלום">{selectedPaymentDetails.paymentMethod || '-'}</Row>
+                <Row label="סכום"><bdi>{fmtMoney(selectedPaymentDetails.amount)}</bdi></Row>
+                <Row label="תאריך">
+                  <bdi>{getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}</bdi>
+                </Row>
+                <Row label="פירוט מהסליקה" tip="הערות ופרטים שנשמרו עם התשלום, כולל תשובת נדרים פלוס.">
+                  {(() => {
+                    const notes = selectedPaymentDetails.notes;
+                    if (!notes) return <span className="v3-faint">אין פירוט</span>;
+                    try {
+                      if (typeof notes === 'string' && notes.trim().startsWith('{')) {
+                        const parsed = JSON.parse(notes);
+                        return (
+                          <Rows>
+                            {Object.entries(parsed).map(([k, v]) => (
+                              <Row key={k} label={k}><bdi dir="ltr">{String(v)}</bdi></Row>
+                            ))}
+                          </Rows>
+                        );
+                      }
+                    } catch (e) { }
+                    return <div style={{ whiteSpace: 'pre-wrap' }}>{typeof notes === 'string' ? notes.split(' | ').join('\n') : String(notes)}</div>;
+                  })()}
+                </Row>
+              </Rows>
+            )}
+          </Dialog>
+
+          {/* ===== פרטי חיוב ===== */}
+          <Dialog
+            open={!!selectedObligationDetails}
+            onClose={() => setSelectedObligationDetails(null)}
+            variant="sheet"
+            mode="light"
+            icon="receipt"
+            title="פרטי החיוב"
+            actions={<Btn onClick={() => setSelectedObligationDetails(null)}>סגירה</Btn>}
+          >
+            {selectedObligationDetails && (
+              <Rows>
+                <Row label="סוג החיוב">
+                  {selectedObligationDetails.isManual === false
+                    ? (cleanItemTag(selectedObligationDetails.productName) || 'חיוב אוטומטי')
+                    : (cleanItemTag(selectedObligationDetails.description) || 'חיוב ידני')}
+                </Row>
+                <Row label="סכום"><bdi>{fmtMoney(selectedObligationDetails.amount)}</bdi></Row>
+                <Row label="תאריך">
+                  <bdi>{getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}</bdi>
+                </Row>
+                <Row label="פירוט">{cleanItemTag(selectedObligationDetails.description) || 'ללא תיאור'}</Row>
+                {selectedObligationDetails.priceCategory && <Row label="קטגוריה במחירון">{selectedObligationDetails.priceCategory}</Row>}
+                {selectedObligationDetails.priceDescription && <Row label="תיאור במחירון">{selectedObligationDetails.priceDescription}</Row>}
+              </Rows>
+            )}
+          </Dialog>
+
+          {/* ===== בקשת זיכוי ===== */}
+          <Dialog
+            open={showRefundModal}
+            onClose={() => setShowRefundModal(false)}
+            variant="form"
+            icon="refresh"
+            title="בקשת זיכוי ללקוח"
+            sub="הבקשה נשמרת מיד ותמתין לאישור ביצוע."
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }}
+            actions={
+              <>
+                <Btn variant="primary" loading={isProcessing} onClick={submitRefund}>
+                  {isProcessing ? 'שולח…' : 'פתיחת הבקשה'}
+                </Btn>
+                <Btn variant="quiet" onClick={() => setShowRefundModal(false)}>ביטול</Btn>
+              </>
+            }
+          >
+            <Field label="סכום לזיכוי (₪)" required>
+              <input type="number" dir="ltr" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+            <Field label="סיבה או הערה">
+              <input type="text" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+            <Field label="בנק" required>
+              <input type="text" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+            <Field label="סניף" required>
+              <input type="text" dir="ltr" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+            <Field label="מספר חשבון">
+              <input type="text" dir="ltr" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+            <Field label="שם בעל החשבון">
+              <input type="text" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+            <Field label="אמצעי התשלום המקורי" tip="נלקח אוטומטית מהתשלום האחרון בהזמנה.">
+              <input type="text" readOnly value={refundData.paymentDetails} />
+            </Field>
+            <Field label="מייל הלקוח" tip="לשליחת אישור הזיכוי.">
+              <input type="email" dir="ltr" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} onKeyDown={submitRefundOnEnter} />
+            </Field>
+          </Dialog>
+
+          {/* ===== פרטי בנק לזיכוי קיים (רק משלימים פרטי בנק) ===== */}
+          <Dialog
+            open={showAutoRefundBankModal}
+            onClose={() => { if (!isSavingAutoRefundBank) setShowAutoRefundBankModal(false); }}
+            variant="form"
+            icon="edit"
+            title="פרטי בנק לזיכוי"
+            sub="ללקוח נוצרה יתרת זכות. הזינו או אשרו את פרטי הבנק להעברת הזיכוי."
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isSavingAutoRefundBank) { e.preventDefault(); submitAutoRefundBank(); } }}
+            actions={
+              <>
+                <Btn variant="primary" loading={isSavingAutoRefundBank} onClick={submitAutoRefundBank}>
+                  {isSavingAutoRefundBank ? 'שומר…' : 'שמירת פרטי הבנק'}
+                </Btn>
+                <Btn variant="quiet" disabled={isSavingAutoRefundBank} onClick={() => setShowAutoRefundBankModal(false)}>אמלא מאוחר יותר</Btn>
+              </>
+            }
+          >
+            <Field label="בנק" required>
+              <input type="text" autoFocus data-autofocus="" value={autoRefundBankData.bankName} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankName: e.target.value })} />
+            </Field>
+            <Field label="סניף" required>
+              <input type="text" dir="ltr" value={autoRefundBankData.bankBranch} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankBranch: e.target.value })} />
+            </Field>
+            <Field label="מספר חשבון">
+              <input type="text" dir="ltr" value={autoRefundBankData.bankAccount} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankAccount: e.target.value })} />
+            </Field>
+            <Field label="שם בעל החשבון">
+              <input type="text" value={autoRefundBankData.bankAccountName} onChange={e => setAutoRefundBankData({ ...autoRefundBankData, bankAccountName: e.target.value })} />
+            </Field>
+          </Dialog>
+
+          {/* ===== תשלום נוסף (מזומן/אחר) - מאחורי allow_additional_payment_on_order ===== */}
+          <Dialog
+            open={showAdditionalPaymentModal}
+            onClose={() => { if (!isProcessing) setShowAdditionalPaymentModal(false); }}
+            variant="form"
+            icon="coin"
+            title="תשלום נוסף"
+            sub="התשלום נשמר מיד בהזמנה."
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
+            actions={
+              <>
+                <Btn variant="primary" loading={isProcessing} disabled={!additionalPaymentData.amount} onClick={submitAdditionalPayment}>
+                  {isProcessing ? 'שומר…' : 'שמירת התשלום'}
+                </Btn>
+                <Btn variant="quiet" disabled={isProcessing} onClick={() => setShowAdditionalPaymentModal(false)}>ביטול</Btn>
+              </>
+            }
+          >
+            <Field
+              label="אופן תשלום"
+              as="select"
+              value={additionalPaymentData.paymentMethod}
+              onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, paymentMethod: e.target.value })}
+            >
+              {additionalPaymentMethodOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </Field>
+            <Field label="סכום (₪)">
+              <input
+                type="number"
+                dir="ltr"
+                placeholder="0"
+                value={additionalPaymentData.amount}
+                onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, amount: e.target.value })}
+                onKeyDown={submitAdditionalOnEnter}
+              />
+            </Field>
+            <Field label="הערה">
+              <input
+                type="text"
+                value={additionalPaymentData.notes}
+                onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, notes: e.target.value })}
+                onKeyDown={submitAdditionalOnEnter}
+                placeholder="הערה לתשלום"
+              />
+            </Field>
+            {additionalPaymentError && <Banner kind="alert" text={additionalPaymentError} />}
+          </Dialog>
+
+          {/* ===== אישור פעולה (במקום window.customConfirm) ===== */}
+          <Dialog
+            open={!!confirmState}
+            onClose={() => settleConfirm(false)}
+            nested
+            variant="confirm"
+            mode="dark"
+            icon={confirmState?.icon || 'info'}
+            title={confirmState?.title}
+            sub={confirmState?.sub}
+            actions={
+              <>
+                <Btn variant="primary" onClick={() => settleConfirm(true)}>{confirmState?.confirmLabel || 'אישור'}</Btn>
+                <Btn variant="quiet" onClick={() => settleConfirm(false)}>ביטול</Btn>
+              </>
+            }
+          />
+
+          {/* ===== הודעה (במקום alert) ===== */}
+          <Dialog
+            open={!!messageState}
+            onClose={() => setMessageState(null)}
+            nested
+            variant="confirm"
+            mode="dark"
+            icon={messageMeta.icon}
+            title={messageMeta.title}
+            sub={messageState?.text}
+            actions={<Btn variant="primary" onClick={() => setMessageState(null)}>הבנתי</Btn>}
+          />
+        </>
       )}
-    </>
+    </V3Page>
   );
 });
 
