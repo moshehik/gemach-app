@@ -1100,7 +1100,7 @@ function renderStepper(){
   $('#anchor').innerHTML = `שלב <bdi>${W.step}</bdi> מתוך <bdi>${STEPS.length}</bdi>`;
   $('#stepq').textContent = STEPS[W.step - 1][2];
 }
-function render(){ renderTopbar('הזמנות', PROFILES[cfg.profile].orgName); renderChips(); if (W.saved) return renderSaved(); renderStepper(); $('#stepBody').innerHTML = `<div class="sbody" id="sb-${W.step}">${W.err ? `<div class="callout err" role="alert">${ic('alert','lg')}<div><b>${esc(W.err)}</b>הנתונים נשמרו בטופס — אפשר לנסות שוב.</div></div>` : ''}${[s1, s2, s3, s4, s5][W.step - 1]()}</div>`; renderNav(); }
+function render(){ renderTopbar('הזמנות', PROFILES[cfg.profile].orgName); renderChips(); $('#stepper').hidden = !!W.saved; /* אחרי שמירה — בלי מסגרת סטפר ריקה */ if (W.saved) return renderSaved(); renderStepper(); $('#stepBody').innerHTML = `<div class="sbody" id="sb-${W.step}">${W.err ? `<div class="callout err" role="alert">${ic('alert','lg')}<div><b>${esc(W.err)}</b>הנתונים נשמרו בטופס — אפשר לנסות שוב.</div></div>` : ''}${[s1, s2, s3, s4, s5][W.step - 1]()}</div>`; renderNav(); }
 function renderKeep(){ const a = document.activeElement, id = a && a.id, pos = a && typeof a.selectionStart === 'number' ? a.selectionStart : null; render(); if (id){ const n = document.getElementById(id); if (n){ n.focus(); if (pos != null && n.setSelectionRange) try { n.setSelectionRange(pos, pos); } catch (e) {} } } }
 const row = (i, l, v, extra = '') => `<div class="row">${ic(i)}<span class="lbl">${l}</span><span class="val ${extra}">${v}</span></div>`;
 const missingVal = t => `<span class="val missing">${ic('alert','sm')}${t}</span>`;
