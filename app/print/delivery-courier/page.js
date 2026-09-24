@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { groupDeliveryRowsForCourier, isoRangeToDates } from '@/lib/deliveryCourier';
+import PrintToolbar from '../PrintToolbar';
 
 // הדפסת "נתונים למשלוחן" (§C, docs/deliveries-feature-plan-2026-09-16.md) - טבלת
 // שם/כתובת/2 טלפונים לכל קבוצת כיוון+תאריך אירוע בטווח שנבחר. Query params:
@@ -88,6 +89,7 @@ export default function PrintDeliveryCourierPage() {
           .courier-group { break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
+      <PrintToolbar />
       <div className="print-container">
         <h1 style={{ fontSize: '18px', marginBottom: '20px' }}>{gmachName} — נתוני משלוחים למשלוחן</h1>
         {loading && <p>טוען נתונים...</p>}

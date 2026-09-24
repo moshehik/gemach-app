@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
 import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
 import { addDaysSkippingWeekends } from '../../../lib/clientInventory';
+import PrintToolbar from '../PrintToolbar';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
@@ -929,6 +930,8 @@ export default function PrintOrderPage() {
           margin: 0 0 24px 0;
         }
       `}</style>
+
+      <PrintToolbar />
 
       <div
         data-agy-id="print-order-container"
