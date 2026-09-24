@@ -272,6 +272,8 @@ html[data-v3-lock] .nb-timer{animation-play-state:paused}
 /* הערימה יושבת מעל פס השמירה הדביק ולא מכסה את כפתור השמירה */
 body.has-savebar .toasts{bottom:calc(var(--sb-h,96px) + 12px)}
 @media (max-width:1023px){.toasts{left:16px}}
+/* phone: טוסט עם פעולה — הפעולה יורדת לשורה שנייה כדי שהמלל לא יידחס לעמודה צרה */
+@media (max-width:640px){.toast{flex-wrap:wrap;row-gap:8px}.toast .t-t{flex:1 1 calc(100% - 130px)}.toast [data-ta]{margin-inline-start:58px}}
 
 #tipbox{position:fixed;z-index:var(--v3-z-tip);max-width:290px;background:var(--v3-tooltip-bg);color:#fff;font-size:var(--v3-fs-sm);line-height:1.5;padding:8px 12px;border-radius:14px;box-shadow:var(--v3-el-3);pointer-events:none;animation:tip-in var(--v3-fast) var(--v3-ease)}
 @keyframes tip-in{from{transform:translateY(4px)}}
@@ -522,7 +524,7 @@ async function save(){
   if (Object.keys(S.errors).length){ render(); const k = Object.keys(S.errors)[0]; $('#f-' + k).focus(); toast('err', 'אי אפשר לשמור עדיין', 'יש שדה אחד לתיקון', 6500); return false; }
   S.saving = true; renderSavebar(changed()); await sleep(800); S.saving = false;
   const fm = failMode();
-  if (fm){ renderSavebar(changed()); /* המימוש: 401/403 → "צריך להתחבר"; שגיאה אחרת מהשרת → "השמירה לא הצליחה"; חריגה (fetch נכשל) → "אין חיבור" */
+  if (fm){ renderSavebar(changed()); /* המימוש: 401/403 = "צריך להתחבר"; שגיאה אחרת מהשרת = "השמירה לא הצליחה"; חריגה (fetch נכשל) = "אין חיבור" */
     if (fm === 'session') toast('err', 'צריך להתחבר מחדש', 'החיבור שלך הסתיים. השינויים עדיין כאן. מתחברים ושומרים שוב.', 6500, { label:'התחברות', run:() => toast('info', 'נפתח חלון הכניסה', 'בהדגמה נשארים כאן', 2600) });
     else if (fm === 'network') toast('err', 'אין חיבור לשרת', 'השינויים שלך עדיין כאן. בודקים את החיבור ומנסים שוב.', 6500, { label:'לנסות שוב', run:save });
     else toast('err', 'השמירה לא הצליחה', 'תקלה בשרת. השינויים שלך עדיין כאן.', 6500, { label:'לנסות שוב', run:save });
