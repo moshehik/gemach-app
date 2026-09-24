@@ -215,6 +215,8 @@ const contrastFn = () => {
   // sketch reference
   const ref = {}, refMot = {};
   for (const w of WIDTHS) { await prep(p, SKETCH, w); ref[w] = await probeAll(p); if (w === 1440) { await prep(p, SKETCH, w); refMot[w] = await motionStates(p); } }
+  res.sketch = { style: ref, motion: refMot };
+  await prep(p, SKETCH, 1440); res.sketch.keyframes = await p.evaluate(keyframeUse);
   let tableRef = {};
   for (const name of PROTOS) {
     const file = path.join(ROOT, name + '.html'); if (!fs.existsSync(file)) continue;
@@ -282,6 +284,8 @@ const contrastFn = () => {
       for (const [sq, act, sel] of SEQ) { await prep(p, url, 1440); const t0 = Date.now(); await act(p);
         for (const ms of [0, 150, 300, 600]) { const wait = ms - (Date.now() - t0); if (wait > 0) await p.waitForTimeout(wait); const el = p.locator(sel).first(); try { await (sel === 'body' ? p : el).screenshot({ path: path.join(D, `${sq}-${nm}-${ms}ms.png`), timeout: 2000 }); } catch { } } } }
   }
-  fs.writeFileSync(path.join(__dirname, 'parity-results.json'), JSON.stringify(res, null, 1));
+  const RF = path.join(__dirname, 'parity-results.json'); let prev = {}; try { prev = JSON.parse(fs.readFileSync(RF, 'utf8')); } catch { }
+  res.protos = Object.assign(prev.protos || {}, res.protos);
+  fs.writeFileSync(RF, JSON.stringify(res, null, 1));
   await b.close();
 })();
