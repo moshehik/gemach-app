@@ -2283,6 +2283,19 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .loading{display:flex;flex-direction:column;align-items:center;gap:16px;padding:64px 16px;color:var(--ink2)}
 .loading .mspin{width:36px;height:36px;border-width:3px}
+
+/* ===== OWNER OVERRIDES 2026-09-25 (CONSTITUTION C-1.17 / C-1.18) ===== */
+/* C-1.17: every field and value is aligned to the RIGHT (RTL start), even when it holds only digits or an e-mail */
+input,textarea,select,.inp,input[dir="ltr"],.inp[dir="ltr"]{direction:rtl;text-align:right}
+.f b,.row .val,.mto-r b{text-align:right}
+/* C-1.18: in-content links are never blue/underlined; a modern gold bar draws in on hover and keyboard focus (same bar as the dialog ghost buttons) */
+a:not([class*="sn-"]):not(.btn){position:relative;display:inline-block;padding-bottom:3px;color:var(--navy);font-weight:600;text-decoration:none;cursor:pointer}
+a:not([class*="sn-"]):not(.btn):visited{color:var(--navy)}
+a:not([class*="sn-"]):not(.btn)::after{content:"";position:absolute;inset-inline:0;bottom:0;height:2px;border-radius:2px;pointer-events:none;background:linear-gradient(90deg,#e0bf5a,#c9a227,#f1dc8f);transform:scaleX(0);transform-origin:100% 50%;transition:transform 260ms var(--ease)}
+a:not([class*="sn-"]):not(.btn):is(:hover,:focus-visible)::after{transform:scaleX(1)}
+a:not([class*="sn-"]):not(.btn):focus-visible{outline:2px solid var(--gold-b);outline-offset:3px;border-radius:4px}
+@media (hover:none){a:not([class*="sn-"]):not(.btn)::after{transform:scaleX(1);opacity:.5}}
+@media (prefers-reduced-motion:reduce){a:not([class*="sn-"]):not(.btn)::after{transition:none}}
 </style>
 </head>
 <body>
