@@ -35,8 +35,11 @@
   direction: rtl;
 }
 [data-v3] bdi, .v3-num { unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
-[data-v3] button, [data-v3] input, [data-v3] select, [data-v3] textarea { font: inherit; color: inherit; }
-[data-v3] button { cursor: pointer; }
+/* F1 (diagnosis 01 §3/§6): הכלל היה [data-v3] button {...} - ספציפיות (0,1,1) שדורסת כל מחלקה
+   בודדת על <button> (.v3-btn, .v3-user, טאבי סרגל...). :where() מאפס את הספציפיות של הבורר
+   [data-v3] כך שמחלקות ספציפיות (0,1,0) תמיד מנצחות, בלי לשנות אף ערך בפועל. */
+:where([data-v3]) button, :where([data-v3]) input, :where([data-v3]) select, :where([data-v3]) textarea { font: inherit; color: inherit; }
+:where([data-v3]) button { cursor: pointer; }
 .v3-page { max-width: var(--v3-container); margin-inline: auto; padding: var(--v3-gutter) var(--v3-gutter) 64px; }
 .v3-layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--v3-rail-w); gap: var(--v3-gap-panel); margin-top: var(--v3-gap-panel); align-items: start; }
 .v3-main { min-width: 0; }

@@ -1,0 +1,137 @@
+/* =====================================================================
+   app/v3/tokens/overlay.dark.css  —  --v3-dlg-* (חלונית הישנה, ui/Dialog.js)
+   + --v3-ov-* (חלונית החדשה, app/v3/overlays/** / LayerManager).
+
+   CONSTITUTION §ב.2: זהו המקום היחיד באתר שיש בו ערכת-נושא כהה — ורק
+   לשטחי חלונית צפה מסוג confirm/code/PIN (data-v3-mode="dark" על השכבה
+   עצמה, לא על העמוד). data-entry (form) תמיד בהיר גם בהקשר כהה (D-2).
+
+   שני סטים חיים כאן בכוונה, לא בטעות:
+   - --v3-dlg-* : הסט הישן, עדיין בשימוש ע"י app/v3/ui/Dialog.js +
+     components.css (§12 בקובץ ההוא). לא נגעתי בערכים.
+   - --v3-ov-* : סט חדש, שמות מדויקים לפי CONSTITUTION §ב.2
+     (surface/ink/line/accent/scrim), צרכן יחיד = app/v3/overlays/**.
+     הערכים זהים חזותית ל--v3-dlg-* (אותה חלונית בדיוק) - מוגדר כאן
+     כאליאס-בערך (לא var() הדדי, כי צריך לעבוד גם תחת [data-v3-mode]).
+   ===================================================================== */
+
+:root,
+[data-v3] {
+  /* ---------------------------------------------------------------
+     11. חלוניות - ברירת מחדל = בהיר (dlg-*)
+         מצב כהה נמצא בבלוק [data-v3-mode="dark"] בסוף הקובץ.
+     --------------------------------------------------------------- */
+  --v3-dlg-bg: #eaf4fd;
+  --v3-dlg-sheen: rgba(255, 255, 255, .65);
+  --v3-dlg-solid: #dcedfa;
+  --v3-dlg-ink: var(--v3-navy-900);
+  --v3-dlg-sub: #2f4a6b;
+  --v3-dlg-faint: #4d6787;
+  --v3-dlg-row: rgba(169, 210, 240, .38);
+  --v3-dlg-rowb: rgba(15, 44, 82, .16);
+  --v3-dlg-hair: rgba(15, 44, 82, .12);
+  --v3-dlg-bd: rgba(15, 44, 82, .18);
+  --v3-dlg-chargebg: var(--v3-rose-100);
+  --v3-dlg-charge: var(--v3-plum);
+  --v3-dlg-creditbg: var(--v3-sky-100);
+  --v3-dlg-credit: var(--v3-navy);
+  --v3-dlg-gap: #eaf4fd;          /* צבע ה"מרווח" בטבעת הזהב של הבאדג' */
+  --v3-dlg-ghost: var(--v3-navy); /* טקסט כפתור שקט */
+  --v3-dlg-ic: var(--v3-navy);
+  --v3-dlg-err: var(--v3-plum);
+  --v3-dlg-shadow: var(--v3-sh-pop);
+  --v3-scrim: rgba(10, 34, 66, .45);
+  --v3-scrim-blur: 6px;
+
+  /* --- --v3-ov-* : ברירת מחדל בהיר, אותם ערכים חזותית כמו dlg-* למעלה --- */
+  --v3-ov-surface: #eaf4fd;
+  --v3-ov-surface-2: #dcedfa;
+  --v3-ov-ink: var(--v3-navy-900);
+  --v3-ov-ink-2: #2f4a6b;
+  --v3-ov-ink-3: #4d6787;
+  --v3-ov-line: rgba(15, 44, 82, .18);
+  --v3-ov-line-soft: rgba(15, 44, 82, .12);
+  --v3-ov-accent: var(--v3-gold);
+  --v3-ov-accent-ink: var(--v3-ink-on-gold);
+  --v3-ov-danger: var(--v3-plum);
+  --v3-ov-scrim: rgba(10, 34, 66, .45);
+  --v3-ov-shadow: var(--v3-sh-pop);
+}
+
+/* =====================================================================
+   מצב כהה - רק לחלוניות אישור / קוד (R19).
+   שימוש: <div class="v3-dialog" data-v3-mode="dark"> (ישן)
+          <div class="v3ov-surface" data-v3-mode="dark"> (חדש, overlays/**)
+   ===================================================================== */
+[data-v3-mode="dark"] {
+  --v3-dlg-bg: #0d2a4f;
+  --v3-dlg-sheen: rgba(169, 210, 240, .20);
+  --v3-dlg-solid: #0a2242;
+  --v3-dlg-ink: #fff;
+  --v3-dlg-sub: #cfe0f2;
+  --v3-dlg-faint: #b4c9e0;
+  --v3-dlg-row: rgba(169, 210, 240, .12);
+  --v3-dlg-rowb: rgba(169, 210, 240, .20);
+  --v3-dlg-hair: rgba(255, 255, 255, .12);
+  --v3-dlg-bd: rgba(255, 255, 255, .14);
+  --v3-dlg-chargebg: rgba(224, 197, 110, .18);
+  --v3-dlg-charge: var(--v3-gold-hi);
+  --v3-dlg-creditbg: rgba(169, 210, 240, .18);
+  --v3-dlg-credit: var(--v3-sky-200);
+  --v3-dlg-gap: #0f2c52;
+  --v3-dlg-ghost: var(--v3-champagne-100);
+  --v3-dlg-ic: var(--v3-gold-hi);
+  --v3-dlg-err: var(--v3-rose-300);
+  --v3-dlg-shadow: var(--v3-sh-pop-dark);
+
+  --v3-ov-surface: #0d2a4f;
+  --v3-ov-surface-2: #0a2242;
+  --v3-ov-ink: #fff;
+  --v3-ov-ink-2: #cfe0f2;
+  --v3-ov-ink-3: #b4c9e0;
+  --v3-ov-line: rgba(255, 255, 255, .14);
+  --v3-ov-line-soft: rgba(255, 255, 255, .12);
+  --v3-ov-accent: var(--v3-gold-hi);
+  --v3-ov-accent-ink: #1a1200;
+  --v3-ov-danger: var(--v3-rose-300);
+  --v3-ov-scrim: rgba(2, 10, 24, .6);
+  --v3-ov-shadow: var(--v3-sh-pop-dark);
+}
+
+/* חלונית עם הזנת מידע (מייל מהיר וכד') = בהיר בלבד, גם אם האתר במצב כהה (R19, D-2).
+   חייב לבוא אחרי בלוק ה-dark (אותה ספציפיות, האחרון מנצח). */
+[data-v3-mode="light"],
+.v3-dialog--form {
+  --v3-dlg-bg: #eaf4fd;
+  --v3-dlg-sheen: rgba(255, 255, 255, .65);
+  --v3-dlg-solid: #dcedfa;
+  --v3-dlg-ink: var(--v3-navy-900);
+  --v3-dlg-sub: #2f4a6b;
+  --v3-dlg-faint: #4d6787;
+  --v3-dlg-row: rgba(169, 210, 240, .38);
+  --v3-dlg-rowb: rgba(15, 44, 82, .16);
+  --v3-dlg-hair: rgba(15, 44, 82, .12);
+  --v3-dlg-bd: rgba(15, 44, 82, .18);
+  --v3-dlg-chargebg: var(--v3-rose-100);
+  --v3-dlg-charge: var(--v3-plum);
+  --v3-dlg-creditbg: var(--v3-sky-100);
+  --v3-dlg-credit: var(--v3-navy);
+  --v3-dlg-gap: #eaf4fd;
+  --v3-dlg-ghost: var(--v3-navy);
+  --v3-dlg-ic: var(--v3-navy);
+  --v3-dlg-err: var(--v3-plum);
+  --v3-dlg-shadow: var(--v3-sh-pop);
+
+  --v3-ov-surface: #eaf4fd;
+  --v3-ov-surface-2: #dcedfa;
+  --v3-ov-ink: var(--v3-navy-900);
+  --v3-ov-ink-2: #2f4a6b;
+  --v3-ov-ink-3: #4d6787;
+  --v3-ov-line: rgba(15, 44, 82, .18);
+  --v3-ov-line-soft: rgba(15, 44, 82, .12);
+  --v3-ov-accent: var(--v3-gold);
+  --v3-ov-accent-ink: var(--v3-ink-on-gold);
+  --v3-ov-danger: var(--v3-plum);
+  --v3-ov-scrim: rgba(10, 34, 66, .45);
+  --v3-ov-shadow: var(--v3-sh-pop);
+}

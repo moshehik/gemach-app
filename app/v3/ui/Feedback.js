@@ -23,7 +23,7 @@ export function Banner({ kind = 'info', title, text, action, onClose, icon, clas
       <div className="v3-banner__main">
         <span className="v3-banner__ic"><Icon name={icon || KIND_ICON[kind]} /></span>
         <div className="v3-banner__msg">{title && <b>{title}</b>}{text && <span>{text}</span>}</div>
-        {action && <button type="button" className="v3-banner__more" onClick={action.onClick}>{action.label}<Icon name="chevron-start" size="sm" /></button>}
+        {action && <button type="button" className="v3-banner__more" onClick={action.onClick}>{action.label}<Icon name="next" size="sm" /></button>}
         {onClose && <button type="button" className="v3-banner__x" aria-label="סגירה" onClick={onClose}><Icon name="x" size="sm" /></button>}
       </div>
     </div>

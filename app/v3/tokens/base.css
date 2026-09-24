@@ -1,0 +1,72 @@
+/* =====================================================================
+   app/v3/tokens/base.css  —  reset מבודד + בסיס עמוד (CONSTITUTION §ג.2-3).
+
+   טעון ע"י V3Page (כל עמוד v3). מתקן שני באגים מ-diagnosis-2026-09-24/01:
+
+   F2 (§3.3/§11 בדוח): הרקע היה על .v3-page (מיכל 1240px), לא על html/body -
+   בדפים קצרים/רחבים נראה רקע-גוף ישן (קרם/גרדיאנט) משני הצדדים/למטה.
+   התיקון כאן מוגבל ל-html שסימנו document.documentElement[data-v3-page]
+   (מוצב ע"י V3Page.js בעת mount, מוסר ב-unmount/מונה) - כלומר הרקע הזה
+   פעיל *רק* כשעמוד v3 אמיתי מורכב, לא גורף את שאר האתר.
+
+   F3 (§6.5): design-overrides.css כופה font-family:Assistant !important על
+   body/button/input/select/textarea בכל האתר. זהו קובץ גלובלי מכוון -
+   לא נוגעים בו (ראה AGENT-QUESTIONS Q-3). כאן, בתוך scope v3 בלבד, כלל
+   נגדי באותה עוצמת !important (רק דרך זה אפשר לנצח !important בלי @layer)
+   משחזר את Rubik/Heebo. לא הופעל @layer כדי לא להפוך את סדר הקדימות מול
+   כל שאר ה-CSS הלא-מסודר-בשכבות באתר (diagnosis 01 §14 שלב 1.3 מזהיר
+   מפורשות מפני זה בלי שיוכל להיבדק בדפדפן אמיתי במפגש הזה).
+   ===================================================================== */
+
+html[data-v3-page] {
+  background: var(--v3-bg);
+}
+html[data-v3-page] body {
+  background: var(--v3-bg);
+  background-image: none;
+}
+
+:where([data-v3], [data-v3] *) {
+  font-family: 'Rubik', 'Heebo', system-ui, sans-serif !important;
+}
+:where([data-v3] :is(h1, h2, h3, h4, h5, h6)) {
+  font-family: 'Rubik', 'Heebo', system-ui, sans-serif !important;
+  font-weight: var(--v3-fw-semi);
+}
+
+/* גלילה (CONSTITUTION §ג.2): thin, צבע מה-tokens, מוגדר פעם אחת. */
+html[data-v3-page] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--v3-line) transparent;
+  scrollbar-gutter: stable;
+}
+html[data-v3-page] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-v3-page] ::-webkit-scrollbar-track { background: transparent; }
+html[data-v3-page] ::-webkit-scrollbar-thumb { background: var(--v3-line); border-radius: var(--v3-r-pill); }
+@media (pointer: coarse) {
+  html[data-v3-page] { scrollbar-width: none; }
+}
+
+/* dvh + safe-area עוזרים (§ג.3) - יחידות למשתמשי הספרייה, לא כלל רוחבי. */
+:root {
+  --v3-100dvh: 100vh;
+  --v3-safe-t: env(safe-area-inset-top, 0px);
+  --v3-safe-b: env(safe-area-inset-bottom, 0px);
+  --v3-safe-s: env(safe-area-inset-inline-start, 0px);
+  --v3-safe-e: env(safe-area-inset-inline-end, 0px);
+}
+@supports (height: 100dvh) {
+  :root { --v3-100dvh: 100dvh; }
+}
+
+/* נעילת גלילה גלובלית כששכבה מודאלית פתוחה (LayerManager מפעיל/מכבה data-v3-lock). */
+html[data-v3-lock] {
+  overflow: hidden;
+}
+
+/* מיקוד נראה תמיד (C-1.12) - טבעת זהב + navy, לא :focus גרידא אלא :focus-visible. */
+:where([data-v3]) :focus-visible {
+  outline: var(--v3-focus-outline);
+  outline-offset: var(--v3-focus-offset);
+  border-radius: var(--v3-r-xs);
+}
