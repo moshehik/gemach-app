@@ -1,0 +1,308 @@
+# חוקת העיצוב v3 (CONSTITUTION)
+
+> מסמך מחייב. כל סוכן/מפתח קורא אותו לפני שהוא נוגע בעמוד. אם כלל כאן סותר מסמך אחר בתיקייה — **החוקה מנצחת** (ואז מתקנים את המסמך האחר).
+> מקורות: `RULES.md` (R1–R24), סקיצה B `sketch/order-card-sketch-B.html` (**ההפניה החזותית היחידה**; `scratch/design-v2` **מיושן — לא להשתמש**), ארבעת דוחות `diagnosis-2026-09-24/`.
+> שפה: עברית; מזהי קוד באנגלית. מזהה כלל = `C-<סעיף>.<מספר>` — ניתן לצטט בבדיקות ובדוחות.
+> הפרויקט קוסמטי בלבד (R8): לא משנים API, חישובים, הרשאות, מצבי שמירה, מבנה נתונים. שינוי שכן נוגע בהם (למשל מנוע השינויים, §ז) הוא **פרויקט נפרד** באישור המשתמש.
+
+## 0. עקרונות-על (ל-10 שניות)
+1. **מקור אחד לכל דבר** — ערך עיצוב = token; רכיב = ספרייה; מלל = מילון מחרוזות; הגדרה עסקית = שכבת config. עמוד לא מגדיר כלום בעצמו.
+2. **חוק שאי אפשר לאכוף אוטומטית — לא חוק.** כל כלל ב-§ח מתורגם לבדיקה שנכשלת.
+3. **כל שכבה צפה נולדת ב-LayerManager** ורק בו (§ד).
+4. **RTL תחילה; חץ קדימה = שמאלה.**
+5. **תוכן משתנה: אין הנחות על מספר/אורך.** כל רכיב מוגדר למצבי קצה (§ט).
+6. **שני גמחים, קוד אחד**: אין org בקוד עיצוב; הכול דרך config (§ט).
+
+---
+
+## א. עקרונות עיצוב (נגזרים מסקיצה B)
+| # | כלל | פירוט מחייב |
+|---|---|---|
+| C-1.1 | פלטה | 90% navy + sky + לבן. **זהב** = כפתור ראשי אחד לאזור, "עכשיו", פס התקדמות/טיימר, טבעת פוקוס. **אפרסק (rose)** = כפתור משני, "ממתין/דורש תשומת לב". plum = דיו חוב בחלונית. peri = ציר זמן בלבד. אין ירוק/אדום/כתום/סגול. מצב לא מסומן בצבע בלבד (אייקון + מלל). |
+| C-1.2 | סרגל עליון | `header.v3-topbar` יחיד, navy, גובה 64 (58 ב-phone), קו זהב תחתון; אין תפריט צד. פאנלים נפתחים = Popover (§ד). |
+| C-1.3 | טיפוגרפיה | Rubik→Heebo; **גדול ומרווח**: גוף 16, ערך 17, כותרת כרטיס 18, כותרת עמוד 28/23; מינימום קריא 14; 12–13 רק תגיות. line-height 1.6. אין italic, אין UPPERCASE. |
+| C-1.4 | נתון בשורה | תווית מעל (14, ink-3), ערך מתחת (17/500). **חריג יחיד: טבלה** (תווית = כותרת עמודה). chip בתוך ערך = שורה נפרדת מתחתיו. נתון חסר = "חסר" + אייקון זהב. |
+| C-1.5 | טבלאות | מקסימום 5 עמודות (מובייל: 2–3); השאר בשורה מורחבת (`renderExpanded`) או בכרטיס. עמודת פעולות: פעולה ראשית אחת + "עוד". מספרים מיושרים לסוף, `<bdi>`. |
+| C-1.6 | מסגרות | 1px navy דק על כרטיס פרט לבן; 1.5px שדה/כפתור; 2px כרטיס לקוח/בחירה; מקווקו = "ממתין/לא נשמר". רדיוסים לפי tokens בלבד. |
+| C-1.7 | מלל | קצר, מובן, **נכתב מחדש** (לא מועתק מהאתר הישן); מפעיל לפני אובייקט ("שמירת שינויים" לא "בוצע שמירה של…"); בלי "טוגל" ("מתג הפעלה/כיבוי"). כל המלל נמצא במילון `strings/` (§ב.6). |
+| C-1.8 | הסברים | הסבר ארוך = `Tip` (ⓘ) ולא טקסט קבוע בעמוד. כל כפתור-אייקון = `IconBtn` עם `label` (aria-label + tooltip אוטומטי). |
+| C-1.9 | אייקונים מונפשים | כל אייקון מ-`Icon` ומונפש לפי פעולה (§ה). |
+| C-1.10 | RTL | `dir=rtl` בשורש; **מאפיינים לוגיים בלבד** (`inset-inline-*`, `margin-inline-*`, `padding-inline`, `text-align:start/end`, `border-inline-*`). מספרים/טלפונים/סכומים ב-`<bdi>` או `.v3-num`. אסור `order` לסידור RTL. שדות LTR (סכום, קוד, טלפון) = `direction:ltr` מפורש. |
+| C-1.11 | חצים | **הבא/קדימה/פתח = שמאלה; חזרה/הקודם = ימינה.** רק דרך `<Icon name="next\|prev\|back\|forward\|expand\|collapse">` (סמנטי, לא גיאומטרי). אסור `←→‹›«»` כתווי טקסט ב-JSX (חריג: רכיב `Range` להצגת "מ ← עד"). אימות: בדיקת גיאומטריית גליף (לא רק `getBoundingClientRect` של הקופסה). |
+| C-1.12 | מיקוד ונגישות | מיקוד נראה תמיד (טבעת זהב + navy); ניגודיות AA; `aria-*` בכל רכיב אינטראקטיבי; אין מידע בצבע בלבד; ניווט מקלדת מלא. |
+| C-1.13 | "ממתין" מול "בוצע" | ממתין = מקווקו + rose; בוצע = navy מלא + ✓; שגיאה = מסגרת gold-b + plum + אייקון. |
+
+---
+
+## ב. שכבת ה-TOKENS
+מיקום: `app/v3/tokens/`. **מקור אמת יחיד**; אין ערך עיצוב מחוץ אליו (§ח-1). קידומת `--v3-`.
+
+### ב.1 שלוש שכבות
+- **L0 primitives** — רמפות גולמיות (`--v3-navy-900…`, `--v3-sky-50…400`, `gold*`, `rose*`, `plum`, `peri*`, `white/black`). **לא** משתמשים בהן בעמודים וברכיבים; רק בהגדרת L1.
+- **L1 semantic** — אלה היחידים שרכיבים/עמודים צורכים. **סט חובה (~40)**:
+  `bg, surface, surface-2, surface-3, line, line-soft, line-hair, frame, frame-soft, ink, ink-2, ink-3, ink-inverse, brand, brand-tint, accent, accent-ink (טקסט על accent), focus-ring, link, scrim, scrim-strong, shadow-color, charge-{bg,ink,line}, credit-{bg,ink,line}, done-{bg,ink}, pending-{bg,line}, disabled-{bg,ink,line}, danger-ink, on-dark, on-dark-2, on-dark-3, topbar-bg, tooltip-bg, tooltip-ink`.
+- **L2 component** — `--v3-btn-*`, `--v3-dlg-*`, `--v3-toast-*` וכו'. נגזרים מ-L1 בלבד (`var(--v3-…)`), מוגדרים ליד הרכיב ב-`components.css`.
+
+### ב.2 מצב כהה (dark) — יסודי, לא תוספת
+- מתג: `html[data-theme="dark"]` (קיים: `ThemeToggle`) + `prefers-color-scheme` כברירת מחדל כשאין העדפה.
+- **כל token ב-L1 חייב ערך בהיר וכהה.** קובץ `semantic.light.css` + `semantic.dark.css` (הבדיקה §ח-14 נכשלת אם משתנה חסר באחד).
+- אין `--v3-white`/`--v3-black` קשיחים ברכיבים (היום 107 שימושים) — משתמשים ב-`surface`/`ink-inverse`/`on-dark`.
+- כללי dark: surface = navy-כהה בשכבות (לא שחור טהור); ink = sky-50/`#c9daee`; זהב נשאר accent אך בעוצמה מופחתת; צללים → מסגרת + הבהרת surface; תמונות/לוגו על אריח בהיר.
+- **מדיניות חלוניות** (חל בנוסף, לא במקום): confirm/code/PIN עוקבות ערכת נושא (כהה+בהיר); data-entry = **בהיר בלבד** בשני המצבים (§ד.5).
+- האם **עמודים** נתמכים בכהה בכל האתר — החלטה פתוחה (`DECISIONS.md` D-1). התשתית נבנית מלאה בכל מקרה; ההפעלה ל-עמוד = דגל.
+
+### ב.3 מערכת הפלטות האישיות
+קיים: `Employee.themeColor` (JSON prefs), `customPalette`, 23 משתני פלטה (`app/lib/customPalette.js`, `designPrefs.js`).
+- פלטה = **החלפת ערכי L1 בלבד** (ורמפות נגזרות), אף פעם לא L2 ולא CSS של רכיב.
+- **כל פלטה מגדירה `light` ו-`dark` מלאים** (כל ~40 tokens של L1). פלטת משתמש שנשמרה רק עם light → נגזר dark אוטומטית ע"י `deriveDark(palette)` (אלגוריתם דטרמיניסטי אחד, מתועד ב-`tokens/README`); פלטה שלא עוברת ניגודיות AA (טקסט 4.5, UI 3) נדחית/מתוקנת אוטומטית עם הודעה.
+- ברירת מחדל = פלטת סקיצה B (navy/sky/gold). פלטת משתמש נטענת כ-`<style data-v3-palette>` על `html[data-palette]`.
+- `data-font` (בחירת גופן משתמש) מזין `--v3-font`.
+- בעיית build ידועה: `*/` בתוך הערה עברית שוברת CSS — אסור ב-token/CSS שנוצר אוטומטית.
+- גשר לעמודים לא-מומרים: `--primary*`/`--accent*` הישנים ממופים ל-L1 (`legacy-bridge.css`) עד למחיקתם; לא משתמשים בגשר בקוד חדש.
+
+### ב.4 סולם טיפוגרפיה (`--v3-fs-*`, `--v3-fw-*`, `--v3-lh-*`)
+`cap 12 · 2xs 13 · sm 14 · md- 15 · base 16 · md 17 · lg 18 · xl 20 · 2xl 24 · h1 28 (h1-m 23) · net 30 · amount 34 · display 36`. משקלים 400/500/600/700. `font-size` מספרי ב-CSS/JS = כישלון (§ח-4). קליפ רספונסיבי: כותרות משתמשות `--v3-fs-h1` שמוחלף ב-`--v3-fs-h1-m` ב-≤640 דרך token, לא ב-media בעמוד.
+
+### ב.5 סולמות נוספים
+| סולם | ערכים |
+|---|---|
+| **מרווח** `--v3-sp-1..9` | 4 · 8 · 12 · 16 · 24 · 32 · 40 · 48 · 64 (4 ו-12 רק פנימי). שוליים עמוד 24 (16 ב-phone); בין כרטיסים 24 (16); padding כרטיס 24 (16). |
+| **רדיוס** | xs 6 · sm 10 · md 12 · btn 14 · lg 16 · xl 20 · dlg 24 · pill 999 |
+| **elevation** `--v3-el-0..4` (מחליף `sh-*` פזורים) | 0 שטוח (כרטיס: מסגרת בלבד) · 1 `sh-card` · 2 `sh-raise` (הרמת כפתור) · 3 `sh-pop` (תפריט/פופאובר/דרור) · 4 `sh-pop-dark` (חלונית/טוסט/tooltip). בכהה: elevation = surface בהיר יותר + מסגרת. |
+| **z-index** (סולם יחיד; אסור מספר עירום) | `base 0 · sticky 10 · rail 20 · topbar 40 · popover 60 · drawer 80 · layer-base 100 (LayerManager: כל שכבה +10, עד 3 שכבות = 100/110/120) · notice 300 · toast 310 · tooltip 400 · rich-tip 410 · dev-banner 500`. ערכים חדשים נקבעים בגלריה בלבד. |
+| **motion** | משכים: `fast 150` (צבע/גבול) · `base 220` (אייקון) · `med 300` (הרחבה/כניסת שורה) · `enter 450` (pop) · `loop 1.8s`. עקומות: `ease cubic-bezier(.22,1,.36,1)` · `spring (.2,1.3,.3,1)` · `ease-in (.4,0,1,1)`. אין משך > 600ms מלבד לולאות עדינות ו-`--v3-toast-duration*`. |
+| **עמדות טיימר** | toast 6500ms · info 2600ms · notice-bar אחרי שמירה+מעבר 15000ms. |
+| **גדלי מגע** | `--v3-tap-min 44` · `--v3-tap-dlg 48` · `--v3-tap-touch 56` (kiosk) · `--v3-tap-key 72` (keypad). |
+
+### ב.6 Breakpoints — סט יחיד
+CSS לא מאפשר משתנה ב-`@media`, לכן הסט מוגדר ב-`tokens/breakpoints.js` + `postcss custom-media`; **מותרים רק אלה**:
+`sm 480 · md 640 (phone↔sheet) · lg 768 (tablet: drawer↔topbar) · xl 1024 (laptop: rail↔bottom-sheet) · 2xl 1440 (wide) · 3xl 1920 (מגבלת רוחב)`.
+מיפוי מהבלגן הקיים: 420→480; 640 נשאר; 767/900→768; 1020/1040/1180→1024 (הסרגל העליון מתכווץ לפי **container query/overflow-menu**, לא לפי breakpoint נוסף). בדיקה §ח-11 נכשלת על כל מספר אחר ב-`@media`.
+
+---
+
+## ג. תוכנית המסכים (SCREEN MASTER PLAN)
+### ג.1 מחלקות מסך
+| מחלקה | רוחב | מכשיר אופייני | מאפיינים |
+|---|---|---|---|
+| `phone` | <640 | טלפון | עמודה אחת; חלוניות = bottom-sheet/מסך מלא; רייל = bottom-sheet; טאבים גוללים אופקית; seg בלי אייקונים; מגירת ניווט |
+| `tablet` | 640–1023 | טאבלט/טלפון אופקי | עמודה אחת או שתיים; חלוניות ממורכזות; רייל תחתון (<1024); topbar מלא עם overflow |
+| `laptop` | 1024–1439 | מחשב נייד | פריסה מלאה, רייל צדדי סטיקי |
+| `wide` | ≥1440 (מגבלה 1920) | מסך רחב | אותו פריסה; **מיכל לא גדל** מעבר למקסימום; רקע ממלא הכול |
+| `kiosk/touch` | כל רוחב, `data-screen="kiosk"` (מסלול `/customer-interface`, `/punch-clock`) או `pointer:coarse` במצב נעול | עמדת לקוח / שעון נוכחות | יעדי מגע 56–72, בלי hover-only, אין סרגל עליון (`hide-global-nav`), תצוגה מלאה ללא גלילת עמוד |
+`data-screen` מוצב על `html` ע"י `V3Page`; CSS משתמש בו + ב-breakpoints, לא בזיהוי UA.
+
+### ג.2 מי גולל
+- **ברירת מחדל: העמוד (document) גולל.** סרגל עליון `sticky`. רקע הדף על `html, body` (לא על `.v3-page`).
+- **גלילה פנימית מותרת רק ב:** גוף חלונית/sheet/drawer; רשימת popover/combobox; עטיפת טבלה (אופקית); רייל צדדי (`max-height: calc(100dvh - topbar - gap)` + `overflow:auto`); לוח kiosk.
+- **כלל: בכל תצוגה ציר גלילה אנכי אחד פעיל.** אין גלילה מקוננת באותו ציר מחוץ לשכבות. אין גלילה אופקית של המסמך בשום רוחב (בדיקה §ח-17).
+- **כשיש שכבה מודאלית:** `html[data-v3-lock]` → `overflow:hidden` על `html` + `scrollbar-gutter:stable` (אין קפיצת פריסה); מונה נעילות (מקבילי לשכבות); iOS: `overscroll-behavior:contain` בפנים. הדף מאחור `inert`.
+- `scrollbar-gutter: stable` על `html`. **סגנון גלילה:** `scrollbar-width: thin; scrollbar-color: var(--v3-line) transparent`; WebKit: 10px, thumb `--v3-line`, מעוגל, track שקוף; במגע (`pointer:coarse`) — נסתר/overlay. מוגדר פעם אחת ב-`base.css` על `*`.
+### ג.3 גובה, safe-area, רוחבי מיכל
+- גובה: `100dvh` (fallback `100vh`) — לעולם לא `100vh` לבד; מקלדת וירטואלית: שדה ממוקד `scrollIntoView({block:'center'})`.
+- `env(safe-area-inset-*)` על כל דבר קבוע/דביק (סרגל תחתון, sheet, toast, StepNav).
+- מיכלים: `--v3-w-content 1240` (ברירת מחדל) · `--v3-w-wide 1440` (טבלאות/לוח) · `--v3-w-read 720` (טפסים/הגדרות) · kiosk = מלא. שוליים לפי §ב.5. מיכל ממורכז; רקע לא.
+- מינימום מגע: §ב.5; מרווח בין יעדי מגע ≥8px.
+- טקסט מקסימום: שורה ≤ 75 תווים בפסקאות.
+
+---
+
+## ד. מערכת השכבות (OVERLAY SYSTEM)
+### ד.1 LayerManager
+- **רכיב יחיד**, `app/v3/overlays/LayerManager.js`, מורכב **פעם אחת ב-`app/layout.js`** (מעל כל providers שאינם UI, כולל במסך הכניסה). מרנדר אל **`<div id="v3-layer-root">` בילד ישיר של `body`** (portal), מחוץ לשורש האפליקציה.
+- **שכבה לעולם לא צפה מעל אלמנט — תמיד מעל העמוד כולו.** לכן: portal ל-body; שורש האפליקציה לא יוצר stacking context עם z-index; אסור `transform/filter/contain/will-change` על אב של תוכן שממנו נפתחות שכבות (שכבות לא נפתחות בתוך הזרע; הן ב-root).
+- **backdrop**: `position:fixed; inset:0` על כל ה-viewport; navy 45% + `backdrop-filter: blur(6px)` (fallback: אטימות 60% כשאין תמיכה/`prefers-reduced-transparency`). מטשטש **את כל העמוד כולל הסרגל העליון**.
+- **API** (מחייב; פרטים ב-`LIBRARY-MAP.md`):
+  `const layers = useLayers(); layers.open({ type, size, props }) → Promise<result>`; `layers.close(id, result)`; `layers.confirm/prompt/code/notify(...)` עוזרים. שכבות **הצהרתיות** (`<Dialog open>`) נרשמות ל-manager דרך אותו hook — אין `createPortal` מחוץ ל-`overlays/`.
+- **מחסנית:** מערך; `z = layer-base + 10*index`; **מקסימום 3 שכבות מודאליות** (4+ = חריג שנחסם ומתועד). רק העליונה אינטראקטיבית — התחתונות והעמוד `inert` + `aria-hidden`. הסגירה מחזירה פוקוס לטריגר. כפתור "אחורה" בטלפון סוגר את העליונה (`history.pushState` לשכבה) — אינו מנווט את העמוד.
+- טוסטים/NoticeBar/tooltips **לא** במחסנית המודאלית (שכבות ייעודיות, §ד.6–ד.8).
+
+### ד.2 טקסונומיה וכללים לכל סוג
+| סוג | קוד | מודאלי | גודל | מיקום (phone / tablet+) | גלילה פנימית | סגירה |
+|---|---|---|---|---|---|---|
+| **Confirm** (אישור/ביטול, כולל 3 כפתורים) | C | כן | S (400) / M (520) | bottom-sheet / מרכז | גוף בלבד אם >90dvh | Esc, scrim (אלא בפעולה הרסנית), כפתור |
+| **Code/PIN** (בחירת מאשר + קוד) | K | כן | S (400) | מרכז (sheet) / מרכז | אין | Esc, ביטול; scrim לא סוגר |
+| **Form** (הזנת מידע) | F | כן | M / L (760) | **מסך מלא** / מרכז | גוף (כותרת+פעולות דבוקות) | Esc + אזהרת "נשמר?" אם שונה; scrim לא סוגר |
+| **Sheet/Viewer** (פרטים, טבלאות, תצוגה מקדימה) | S | כן | L / full | מסך מלא / מרכז או full | גוף | Esc, scrim, ✕ |
+| **Wizard/Full** (הדפסה, אשף) | W | כן | full | מסך מלא / full | גוף | Esc עם אישור |
+| **Drawer** (פאנל צד: מגירת ניווט, פילטרים) | D | כן (scrim) | 360–420 | מגירה מהקצה / drawer בקצה ההתחלה | כן | Esc, scrim, החלקה |
+| **Bottom sheet** (בחירה/פילטר/combobox ב-phone) | B | כן | עד 85dvh | תחתון + ידית 44×5 | כן | Esc, scrim, גרירה |
+| **Popover/Menu/Combobox** | P | לא (light-dismiss) | לפי עוגן, ≤360 | מעוגן; phone: הופך ל-B | רשימה בלבד | Esc, קליק בחוץ, בחירה |
+| **Tooltip / InfoTip** | T | לא | ≤290 | מעוגן | אין | ריחוף/מיקוד/מגע |
+| **Toast/Message** | M | לא | 360–420 | **פינה שמאלית-תחתונה (פיזי)**; phone: מעל StepNav/bottom-sheet | אין | ✕, טיימר |
+| **NoticeBar** | N | לא | רוחב תוכן | **מתחת לסרגל העליון**, מרכז | אין | ✕, טיימר, "פתח" |
+| **Busy** | Z | כן (חוסם) | — | מרכז | אין | לא נסגר ידנית |
+
+**כללי גדלים:** S/M/L = `--v3-dlg-w-s/m/l` (400/520/760); `max-width: min(100vw - 32px, W)`; `max-height: 90dvh`; תוכן ארוך → גלילה בגוף, כותרת ופעולות דבוקות. **רוחב לעולם לא תלוי בתוכן**. כפתורים: עמודה ברוחב מלא (ראשי למעלה, שקט למטה) בטלפון וב-C/K; שורה בטופס במסך רחב. גובה כפתור 48.
+### ד.3 התנהגות משותפת (כל שכבה מודאלית)
+1. `role="dialog"` (`alertdialog` ל-confirm הרסני) + `aria-modal="true"` + `aria-labelledby` (כותרת) + `aria-describedby` (תת-כותרת).
+2. פוקוס: ראשוני על `[data-autofocus]` → כפתור ראשי בטוח (בפעולה הרסנית: "ביטול") → אלמנט ראשון; לכידת Tab/Shift+Tab; חזרה לטריגר בסגירה.
+3. `Esc` סוגר **רק את העליונה**; לא נסגר בזמן `busy`.
+4. נעילת גלילה (§ג.2). scrim-click מוגדר בטבלה.
+5. אנימציה: כניסה scale .96→1 + fade 220ms (desktop), עלייה מלמטה 300ms (sheet); יציאה 200ms; ילדים מדורגים ≤230ms; **תחת `prefers-reduced-motion` — ללא תנועה, מיידי**. **תוכן החלונית לעולם לא מתחיל ב-`opacity:0` בלי מנגנון גיבוי** (§ה.4).
+6. תוכן: כותרת (מרכז), תת-כותרת אופציונלית, גוף, פעולות. אייקון-באדג' אופציונלי (טבעת זהב, מונפש).
+7. שגיאות: inline בשדה (`role=alert`); לא `alert()`.
+### ד.4 חלוניות בקוד ובמערכת הישנה
+`window.customConfirm/customPrompt/customAuthPrompt/customThreeWayConfirm/alert` → **shim** שמנתב ל-LayerManager עם אותן חתימות (ראו `LIBRARY-MAP.md` §7). `window.confirm/prompt` (סינכרוניים) **אי אפשר** להחליף ב-shim — חייבים לשנות את המקרא (§7 שם). אחרי המרה: אין קריאה ישירה ל-shim בקוד חדש; משתמשים ב-`useLayers`.
+### ד.5 כלל ערכת נושא לחלוניות (R19)
+| סוג תוכן | כהה+בהיר (עוקב ערכת נושא) | בהיר בלבד |
+|---|---|---|
+| Confirm, Code/PIN, Busy, Viewer בלי קלט | ✔ | |
+| Form/data-entry: תשלום/אשראי, מייל מהיר, חיפוש מתקדם, pickers (תאריך/לקוח/דגם), הערה חופשית | | ✔ (בשני מצבי האתר) |
+| Viewer **עם** שדה קלט (חיפוש/סינון) | | ✔ |
+מנגנון: `mode` **נגזר** מ-`type`+ערכת הנושא ע"י ה-LayerManager; **אין `mode=` בקריאה** (בדיקה §ח-6). `data-v3-mode="light|dark"` על השכבה בלבד; Form כופה `light`.
+### ד.6 Toast והודעות (R21)
+- הודעות פנימיות/מערכת (`v3Toast`, המרה של `alert()`, הודעת עובד): **פינה שמאלית-תחתונה פיזית** (`inset-inline-start` לא נכון כאן — מעוגן `left`, חריג מתועד), ערימה עד 3, חדשה מעל; כרטיס navy, אייקון 44 עם טבעת זהב, כותרת+טקסט, פעולה אחת אופציונלית, ✕. טיימר 6.5s (מידע 2.6s), **מושהה בריחוף/מיקוד ובזמן שכבה מודאלית פתוחה**. `role="status" aria-live="polite"` (שגיאה: `assertive`). phone: מעל `StepNav`/bottom-sheet (`bottom: calc(88px + safe-area)`).
+- הודעה שדורשת החלטה **אינה** toast — היא Confirm.
+### ד.7 NoticeBar עליון (R20)
+- אחרי שמירה/יצירה/מחיקה **ועם מעבר עמוד**: שורת התראה **מתחת לסרגל העליון**, ברוחב תוכן, שורדת ניווט (mount ב-root; מצב ב-`sessionStorage`; `expiresAt` מוחלט).
+- **פס זהב יורד** (`scaleX 1→0`, linear) כמונה ~15s; עצירה בריחוף/מיקוד; ✕/"פתח" סוגרים מיד.
+- **בסיום/סגירה → הערה נשמרת בהתראות (פעמון)**. שמירה בפעמון דורשת החלטת API (D-4, `NOTIFICATIONS-DESIGN §2.4`); עד אז `persistToBell:false`. **אסור להפעיל `persistToBell` לפני יישום ענף `activity_note` בשרת** (אחרת שידור+מייל לכל העובדים).
+- דדופ ב-60ש'; אין כפל עם toast; אם יש `paymentContinue`/חוב — לא מציגים "נשמר".
+### ד.8 Popover / Menu / Combobox
+- מעוגן לעוגן ב-portal של LayerManager (שכבת `popover`, לא מודאלית). מיקום: מתחת, מתהפך למעלה, מוצמד לחלון (collision), RTL-aware (מיושר ל-`inline-start` של העוגן).
+- `Esc` וקליק-בחוץ סוגרים ומחזירים פוקוס; ניווט מקלדת (`↑↓`, Home/End, type-ahead, Enter); `role=menu/listbox/combobox` מלא (`aria-expanded/controls/activedescendant`).
+- phone (<640): הופך ל-Bottom sheet. **אין** `<select>` שקוף מקורי לבחירות ארוכות — `Combobox` עם חיפוש.
+- רק פופאובר אחד פתוח; פתיחת שכבה מודאלית סוגרת אותו.
+### ד.9 Tooltip ו-InfoTip (R11)
+- `Tip` יחיד לכל האתר: navy, 14px, רדיוס 14, ≤290px. **עכבר**: ריחוף (השהיה 150ms). **מקלדת**: מיקוד. **מגע**: לחיצה מחליפה, לחיצה בחוץ/`Esc` סוגרת (אין hover). `role="tooltip"` + `aria-describedby`; לא מכיל אלמנטים אינטראקטיביים (אם כן → Popover).
+- `ⓘ` = כפתור 44×44 אזור מגע (אייקון 24), `label` נגיש חובה. `data-tip` על כל אלמנט. נכנס fade+4px (ללא opacity:0 בסיס).
+- לא מסתיר את העוגן; לא נחתך בגלילה פנימית (portal).
+### ד.10 Drawer / Bottom sheet בטלפון
+מגירת הניווט (≤767): מ-`inline-start`, 88vw ≤360, scrim, אקורדיון; נעילת גלילה, `Esc`/scrim/ניווט סוגרים. פילטר/combobox/רייל שינויים ב-phone = Bottom sheet עם ידית; StepNav דביק תחתון עם `safe-area`.
+
+---
+
+## ה. תנועה ואייקונים (MOTION & ICON)
+### ה.1 פריסטים (`motion/presets.css`, שם = מחלקה `v3-m-*`)
+`pop` (.5→1.12→1, 450) · `row-in` (−8px, 300) · `fade-up` (10px, 380) · `dialog-in` · `sheet-up` · `draw` (✓ מצויר) · `gold-sweep` (נצנוץ קו זהב) · `ring-travel` (טבעת זהב נוסעת, 4.5s, נעצרת מחוץ למסך) · `shake` (PIN שגוי) · `pulse` ("עכשיו", 1.8s) · `expand` (grid-template-rows 0fr→1fr, 300) · `count` (tween סכומים). כניסה = קפיצה; יציאה = קצרה ובלי קפיצה (≤220ms).
+### ה.2 כללי ביצוע
+רק `transform`/`opacity`/`stroke`/`grid-template-rows` — **אין** אנימציית `width/height/top/left/margin`. אין `transition: all`. משכים ועקומות רק מ-tokens. לולאות רק כשמסך גלוי (IntersectionObserver / `animation-play-state`).
+### ה.3 `prefers-reduced-motion: reduce`
+כל אנימציה/מעבר ≈ 0.01ms; לולאות (טבעת, פעימה, נצנוץ, ריטוט) כבויות; סימוני `draw` בסטטוס סיום; טיימר NoticeBar ממשיך (פס נשאר, ללא `steps` מהבהבים); ללא parallax/scroll-hijack. מתג משתמש (`data-motion="reduced"`) שקול לנ"ל. **הסקיצה מכבה זאת בכוונה לצורך הדגמה — v3 מכבד.**
+### ה.4 כלל "אין העלמת תוכן"
+- **אסור `opacity:0` (או `visibility:hidden`/`transform:scale(0)`) כמצב בסיס** של אלמנט עם תוכן. כניסה מוגדרת ב-`@keyframes` עם `from` בלבד (`to` = מצב הרגיל) וללא `animation-fill-mode: backwards/both` — אם האנימציה לא רצה (דפדפן תקוע, הרחבה, טאב ברקע, reduced-motion) התוכן **נראה במלואו**.
+- `opacity:0` מותר רק ב: מצבי יציאה (`[data-state="closed"]`/`.is-leaving`), רכיב דקורטיבי (נצנוץ), `sr-only`.
+- אירוע היסטורי: שמות עובדים נעלמו ב-combobox בגלל כניסת opacity (commit f2c74ec). בדיקה §ח-15.
+### ה.5 מערכת האייקונים
+- `Icon` יחיד (`app/v3/icons/`), sprite אחד (איחוד `IconSprite`+`IconSpriteV3`), **שם, לא SVG מקומי**. אסור `lucide-react`/אמוג'י/`<svg>` inline בעמוד.
+- אנימציה ברירת-מחדל לפי שם (טבלת `ICON_ANIM`), מופעלת בריחוף/מיקוד של האייקון או ההורה האינטראקטיבי; `loop` לטעינה; `enter` לכניסה; `anim={false}` לכיבוי. כפתור disabled — ללא אנימציה. אין אנימציה בדפי הדפסה.
+- **אייקונים תלויי-כיוון** (מתהפכים ב-RTL): `next, prev, back, forward, arrow-*, chevron-*, undo, redo, send, logout, list-forward`. רק בשמות סמנטיים; טבלת המיפוי היחידה ב-`icons/aliases.js`. אנימציות כיוון (`nudge/drive/shake`) מתהפכות דרך `--v3-dir`.
+- מידות: xs12 sm16 md20 lg24 xl32 2xl48. אייקון-כפתור: אזור מגע ≥44. `title` רק לאייקון עצמאי (role=img); דקורטיבי `aria-hidden`.
+
+---
+
+## ו. שבעת ארכיטיפי העמודים
+כל עמוד שייך לארכיטיפ אחד (או משלב שני במפורש בחוזה). לכל ארכיטיפ יש **אב-טיפוס סטטי מאושר** (Phase 2) ורכיב-תבנית ב-`patterns/`. עמוד שאינו תואם — שואלים, לא ממציאים.
+
+| # | ארכיטיפ | דוגמאות | חייב להכיל |
+|---|---|---|---|
+| A1 | **List** | orders, customers, dresses list, rentals, refunds, alterations, employees list | כותרת עמוד + פעולה ראשית אחת; שורת חיפוש + פילטר מרובה עם pills; Seg סטטוס עם ספירות; טבלה מינימלית (≤5 עמודות) עם שורה מורחבת; מיון (`aria-sort`); pagination/`load more`; מצב ריק חכם (אייקון+משפט+"נקה"); שלד טעינה; מצב שגיאה+נסה שוב; phone: כרטיסי-רשימה במקום טבלה |
+| A2 | **Detail card** (טאבים/רייל/change-list) | order card, customer card, dress card, employee card | סרגל כותרת (חזרה + h1 + כלים); ציר זמן/סטטוס אם רלוונטי; **טאבים** (≤5, עם ספירות/סימנים); תוכן בשורות תווית-מעל-ערך; **רייל** (בצד ההתחלה-שמאלי ב-RTL: "במבט אחד" + **change-list** + סטטוס חשבון + CTA דינמי + "ביטול שינויים"); טאב היסטוריה = `HistoryFeed`; חיווי "לא נשמר" (מקווקו); יציאה עם שינויים = Confirm 3-דרכי; phone: הרייל = bottom-sheet |
+| A3 | **Wizard / New** | orders/new, dress wizard, permissions wizard, print wizard | `Stepper` (ציר B: done/cur/fut) + עוגן "שלב X מתוך N"; כותרת שלב = שאלה; `StepNav` (המשך ראשי בתחילת שורה, חזרה בסוף, דביק בטלפון); ולידציה = tooltip לא alert; סיכום עם "עריכה" לכל בלוק; חסימת שלב = ⓘ עם סיבה; שמירה = NoticeBar |
+| A4 | **Board / Timeline** | board (לוח חודשי), deliveries, alterations board, calendar | ניווט תקופה (חצים RTL); רשת/ציר עם תא=כרטיס מקופל; כרטיס פרטים בריחוף/מגע (`rich-tip`/sheet); מקרא צבעים (לא בצבע בלבד); מצב יום/שבוע/חודש; phone: רשימה יומית |
+| A5 | **Dashboard / Home** | `/`, `/dashboard` | אריחי KPI ("במבט אחד") עם כרטיס פרטים; גרפים עם חלופה טקסטואלית/טבלה; רשימות "דורש טיפול" (חובות, לא הוחזרו); קיצורי פעולה; חיפוש גלובלי בולט; טעינה הדרגתית לכל אריח |
+| A6 | **Touch Kiosk / Punch-clock** | customer-interface, punch-clock, login | יעדי מגע 56–72; **בלי hover-only**; כפתורים גדולים בעמודה; אין סרגל עליון; מצב idle/screensaver; הפניה אוטומטית אחרי חוסר פעילות; קלט (PIN/קוד) בקיפד; גופן ≥20; ללא גלילת עמוד (פאנלים פנימיים); RTL |
+| A7 | **Form / Settings** | profile, display-settings, admin/settings, error reports | עמודה אחת ברוחב קריאה (720); קבוצות בכרטיסים עם כותרת+ⓘ; `Field` עם תווית/רמז/שגיאה/חובה; מתג הפעלה/כיבוי במקום checkbox להגדרות; שמירה דביקה (שינויים לא שמורים = טבעת מקווקו); איפוס/ביטול; חיווי "נשמר" = NoticeBar |
+הדפסה (`/print/*`) — **מחוץ לארכיטיפים** (ניטרלית, Q5): רק tokens של גופן/מסגרת, בלי רקע; ראו `ARCHITECTURE`. כל ארכיטיפ חייב לקבל **כל** מצבי הקצה של §ט.2.
+
+---
+
+## ז. מנוע השינויים (CHANGE ENGINE) — **פרויקט נפרד**
+**מושג:** ברייל של עמוד עריכה (בצד שמאל ב-RTL) רשימת **שינויים** שלא נשמרו. כל שורה = פעולה אחת של המשתמש בשפה אנושית ("שינוי תאריך אירוע ל-…", "נוסף פריט: …"), עם **ביטול (undo) ושחזור (redo) פר-שורה**, סכומי השפעה כספית, וכפתור "בטל הכול". "שמירה" מבצעת את כל השינויים בבת אחת באותו payload קיים.
+**גבולות (חובה):**
+1. מנוע השינויים **לא** משנה payload של שמירה, API, חישוב, או הרשאה (R8). הוא שכבת מצב-ותצוגה מעל אותם `onOrderChange/onItemsChange/...` הקיימים.
+2. **מחלקות הפיכות (הכללים המדויקים ייקבעו ע"י המשתמש — `DECISIONS.md` D-7):**
+   `R0` שינוי מקומי טהור (הפיך חופשי) · `R1` מקומי עם תלויים (ביטול פריט שיש לו חיוב — מה קורה לחיוב?) · `R2` כבר בוצע בשרת (תשלום שנגבה, סריקת החזרה) — **לא ברשימה**, יש "ביטול מיידי" בחלון זמן (15/120 דק' לפי הגדרה) · `R3` בלתי הפיך (אישור מנהל שהתקבל, מייל שנשלח).
+3. שאלות שנשארות פתוחות: undo של שינוי שאחרים תלויים בו (חסום / מפל / אזהרה), סדר redo אחרי שינוי חדש (מחיקת מחסנית?), האם שורות שמסתכמות (עריכה חוזרת של אותו שדה) ממוזגות, התמדה בין ביקורים (יש `orderDrafts`/localStorage — מיזוג), כשל שמירה חלקי.
+4. עד ההחלטה — העמוד מציג רשימת שינויים **לקריאה בלבד** (מה שקיים היום: `getChangeRows`) עם "בטל הכול".
+5. חוזה API של הספרייה: `useChangeSet({ schema })` → `{ changes, record(kind, before, after), undo(id), redo(id), discardAll(), commit() }` — ראו `LIBRARY-MAP.md` §6. **לא נבנה לפני אישור D-7.**
+
+---
+
+## ח. אכיפה מכנית ובדיקות קבלה
+### ח.1 בדיקות lint/CI (כל אחת נכשלת = בילד נכשל; מיקום: `tools/v3-lint/` + `eslint.config.mjs` + `.stylelintrc`)
+| # | כלל | בדיקה | כלי |
+|---|---|---|---|
+| 1 | אין hex/rgb/hsl מחוץ ל-tokens | `color-no-hex`, `function-disallowed-list: [rgb,rgba,hsl,hsla]` ב-CSS; ב-JS regex `#[0-9a-f]{3,8}\b` ו-`rgb\(` בקבצים תחת `app/**`,`components/**` (חוץ `tokens/**`, `print/**`) | stylelint + ESLint custom |
+| 2 | אין `alert/confirm/prompt` | `no-restricted-properties` (`window.alert/confirm/prompt`), `no-restricted-globals` (`alert`,`confirm`,`prompt`); יוצא מן הכלל: `overlays/legacyShim.js` | ESLint |
+| 3 | אין modal-backdrop/overlay ידני | grep `modal-backdrop\|modal-overlay\|popup-overlay\|className="modal"`; `position:fixed` + `inset:0` מותר רק ב-`overlays/**`,`topbar`,`sticky-footer` | ESLint/stylelint + grep script |
+| 4 | אין `font-size` קשיח | `declaration-property-value-allowed-list`: `font-size: var(--v3-fs-*)\|inherit`; JS: אסור `fontSize:` מספרי/`px` | stylelint + ESLint |
+| 5 | חצים רק דרך `Icon` | אסור `chevron-*`/`arrow-*` גולמי ב-`<use>`/`Icon name`; אסור `←→‹›»«` בטקסט JSX (חוץ `<Range>`); `Icon` מקבל רק שמות סמנטיים | ESLint custom |
+| 6 | כל השכבות דרך LayerManager | אסור `createPortal` ו-`aria-modal`/`role="dialog"` מחוץ ל-`app/v3/overlays/**`; אסור `mode=` בקריאת Dialog | ESLint custom |
+| 7 | אין `style={{}}` ל-tokens | `react/forbid-dom-props` ל-`style` בקבצי עמוד; מותר רק `style={{ '--v3-*': x }}` (משתנה דינמי) | ESLint |
+| 8 | מאפיינים לוגיים RTL | stylelint `liberty/use-logical-spec` (או `declaration-property-value-disallowed-list`): `left/right/margin-left/-right/padding-left/-right/border-left/-right/text-align:left/right/float/clear`; חריג מסומן `/* v3-physical: <סיבה> */` (טוסט, `translateX`, LTR fields) | stylelint |
+| 9 | z-index רק מסולם | `declaration-property-value-allowed-list: z-index: var(--v3-z-*)\|auto\|0` | stylelint |
+| 10 | תנועה רק מ-tokens | אסור `transition: all`, משך/עקומה עירומים; אסור אנימציית `width/height/top/left/margin`; `@keyframes` רק ב-`motion/` | stylelint |
+| 11 | breakpoints מהסט | סקריפט: כל `min/max-width` ב-`@media` ∈ {480,640,768,1024,1440,1920} | `tools/v3-lint/media.mjs` |
+| 12 | **מלל ו-org דרך config** | ESLint `no-hebrew-literal`: אסור מחרוזת עברית ב-JSX/props בקבצי v3 מחוץ ל-`strings/`; אסור מילות org (`נווה יעקב`, org-id, שמות סניפים); אסור `settings.find(s => s.key===` בעמודים (רק `useOrgConfig`); רשימת מילים אסורות ("טוגל") | ESLint custom + grep |
+| 13 | כפתור-אייקון עם תווית | `IconBtn` דורש `label`; `jsx-a11y/control-has-associated-label`; `aria-label` על כל `button` בלי טקסט | ESLint |
+| 14 | שלמות tokens | כל `var(--v3-*)` מוגדר; כל פלטה כוללת כל tokens של L1 ב-light ו-dark; ניגודיות AA לזוגות ink/surface, on-dark, accent-ink/accent | `tools/v3-lint/tokens.mjs` |
+| 15 | אין העלמת תוכן | stylelint: `opacity:0` רק בסלקטור `[data-state=closed]/.is-leaving/.sr-only`; `animation-fill-mode: backwards/both` על כניסות אסור | stylelint |
+| 16 | כיסוי גלריה | לכל רכיב מיוצא ב-`ui/`,`overlays/`,`patterns/` יש `*.gallery.js` עם כל המצבים (default/hover/focus/disabled/loading/error/empty/long/RTL/dark) | `tools/v3-lint/gallery.mjs` |
+| 17 | בדיקות דפדפן (מקומי/preview) | Playwright: אין גלילה אופקית במסמך ב-5 רוחבות; יעדי מגע ≥44; נעילת גלילה בשכבה פתוחה; ציר גלילה אנכי יחיד; גיאומטריית RTL/חצים; focus-trap; Esc | Playwright |
+| 18 | נגישות | axe: 0 בעיות serious/critical בכל מצב ארכיטיפ, light+dark | `@axe-core/playwright` |
+| 19 | תחומי שכבות | אסור import של `app/v3/**` מתוך `lib/**`,`app/api/**`; עמוד v3 לא מייבא CSS ישן | ESLint `no-restricted-imports` |
+**הכנסה הדרגתית:** כלל חדש נכנס כ-`warn` + baseline (קובץ `lint-baseline.json` של הפרות קיימות שלא גדל), ועובר ל-`error` לעמוד ברגע שהוא מומר. עמוד מומר = 0 baseline.
+### ח.2 כרטיס קבלה לכל עמוד (ACCEPTANCE SCORECARD)
+עמוד לא נחשב "גמור" (ולא נפתח לפרודקשן) אלא אם **כל** השורות עוברות, עם ראיה מצורפת ב-`reports/scorecard-<page>.md`:
+| # | קריטריון | ראיה |
+|---|---|---|
+| S1 | **מטריצת עקיבות**: כל פריט בחוזה העמוד הישן (`contracts/<page>.md`, ממוספר `C-nn`) → אלמנט בעמוד החדש / "הוסר בכוונה + סיבה + אישור" | טבלה 100% מלאה, אפס שורות ריקות |
+| S2 | **התאמה לאב-טיפוס הארכיטיפ המאושר** — כל חלק חובה מטבלת §ו קיים | רשימת בדיקה + צילומי צד-לצד |
+| S3 | **התאמת API/נתונים 100% (R24)**: אותן קריאות, שדות, סדר, מצבים | diff סטטי של קריאות fetch + רשימת payload |
+| S4 | lint: 0 הפרות baseline לעמוד (§ח.1) | פלט CI |
+| S5 | axe: 0 serious/critical | פלט |
+| S6 | צילומים ב-**360 / 768 / 1024 / 1440 / 1920** × **light + dark** (dark: רק אם העמוד מוגדר תומך — D-1), כולל מצבי ריק/טעינה/שגיאה/ארוך | קבצי תמונה בשם `<page>-<w>-<theme>.png` |
+| S7 | RTL: בדיקת `getBoundingClientRect` + גליפי חצים + `<bdi>` | פלט Playwright |
+| S8 | מקלדת: מעבר מלא, focus-trap, Esc; reduced-motion; מגע (kiosk) | רשימה + הקלטה |
+| S9 | **אומת מול פרופילי ההגדרות של שני הגמחים** (§ט.3–ט.4): ראשי + נווה יעקב, וכן מצבי קצה (הגדרה חסרה/ריקה/ארוכה) | מטריצת org-variance ממולאת + צילומים לשני פרופילים |
+| S10 | מלל: אין מלל מועתק; כל המלל במילון; tooltips לכל הסבר | דוח מחרוזות |
+| S11 | ביצועים בסיסיים: אין layout shift מנעילת גלילה; אין `console.error` | פלט |
+| S12 | סוקר עצמאי (לא הבונה) חתם; עד 2 סבבי תיקון | חתימה בדוח |
+
+---
+
+## ט. רב-ארגוני והגדרות (Multi-org & settings-driven design)
+**רקע:** קוד אחד משרת שני גמחים — הראשי ו"נווה יעקב" (org-2) — כל אחד עם פרויקט Vercel, מסד Neon ו-`SystemSetting` משלו. הבדלי התנהגות מגיעים **רק** מהגדרות (אין `if (org)` בקוד העמודים). העיצוב חייב לעבוד לכל מצב בשניהם ולהישאר תקין אחרי כל שינוי הגדרה עתידי.
+### ט.1 כללי ברזל
+- **C-9.1 אין קידוד ארגון.** אסור בקומפוננטה/ארכיטיפ: תווית, שדה, סניף, כלל, מחיר, מדיניות, מינוח או ספק תשלום ספציפיים לארגון. כל מה שתלוי-ארגון/הגדרה (דגלים כגון `premium_pricing_enabled`, `enable_deliveries`; סניפים; מדיניות; שדות חובה; חוקי החזר; מינוח; ספקי תשלום) מגיע **משכבת config מרכזית אחת** (`app/v3/config/`: `useOrgConfig()` מעל `/api/settings`) ולא מקריאה ישירה בעמוד. ברירת המחדל של כל מפתח מוגדרת פעם אחת ב-`settingsRegistry` וחייבת לשקף את **ההתנהגות שלפני השינוי** (שורה חסרה = התנהגות קיימת).
+- **C-9.2 מלל לפי ארגון.** מילון המחרוזות (`strings/`) תומך ב-**override לארגון** דרך המנגנון הקיים (`/api/settings/labels`, `useLabels().getLabel(key, default)`); ה-default = טקסט המילון. שינוי מינוח בארגון אחד = שורת label, לא קוד.
+- **C-9.3 מצבי קצה חובה בכל רכיב/ארכיטיפ** — כל רכיב ב-`ui/`,`overlays/`,`patterns/` מגדיר (ומדגים בגלריה): הגדרה **דלוקה / כבויה**; **חסרה / ריקה**; ערכים **ארוכים/קצרים בהרבה** מהצפוי (שם 60 תווים, סכום 7 ספרות, תווית ארוכה — חיתוך `line-clamp` + tooltip, לא שבירת פריסה); **יותר/פחות** סניפים, שלבים, עמודות, טאבים, פריטים (0,1,2,50,500). **אסור להניח מספר קבוע** של טאבים/עמודות/שלבים/אריחים; קטע אופציונלי שנעלם לא משאיר חור (גריד `auto-fit`, לא מיקום קבוע).
+- **C-9.4 קוד מול הגדרות (פריסה).** שינוי **קוד/עיצוב** נפרס לשני האתרים. שינוי **הגדרה/כלל עסקי** מכוון **רק** ל-DB של הארגון המבוקש; כל סקריפט שכותב `SystemSetting` בכמות חייב **בדיקת host** של החיבור לפני כתיבה (אירוע 2026-09-08: סקריפט בלי בדיקה כתב כללי נווה יעקב ל-PROD של הראשי) והתאמה מול הקובץ **הנוכחי** של חיבור הארגון (cutover של Neon יכול לאבד כתיבות ישירות). מפתח חדש: שורה חסרה = OFF; deploy order לא משנה.
+- **C-9.5 סודות.** **אף טוקן/סיסמה/מפתח לא נכתב ל-repo או למסמכים** — רק שמות משתני סביבה (למשל `AGENT_LOGIN_SECRET`, `DATABASE_URL`, `TEST_DATABASE_URL`, `NEON_API_KEY`, `NEDARIM_API_PASSWORD`). גישה לשני האתרים לצורך אימות תסופק ע"י המשתמש בסביבה בלבד.
+### ט.2 שכבת ה-config (עקרונות; מימוש ב-`LIBRARY-MAP.md` §5)
+`useOrgConfig()` מחזיר getters מוקלדים: `flag(key)`, `num(key)`, `text(key)`, `list(key)`, `json(key)`; רשימות דינמיות (סניפים, ערים+מחיר משלוח, קטגוריות) מגיעות ממנה; **רכיב לא קורא הגדרה בשם מחרוזת** אלא דרך מפתח רשום ב-`settingsRegistry` (טיפוס+default+"מה שולט"+"אילו רכיבים מושפעים"). מפתח שלא רשום = שגיאת lint (#12).
+### ט.3 מטריצת org-variance (כל חוזה עמוד חייב למלא)
+| חלק בעמוד / רכיב | הבדל היום בין ראשי ↔ נווה יעקב | הגדרות שמניעות (מפתחות) | מה קורה אם ההגדרה משתנה / חסרה / ריקה | מצב קצה שנבדק (ארוך/קצר/מרובה/מועט) | נבדק בפרופיל ראשי / נווה |
+|---|---|---|---|---|---|
+*(שורה לכל אלמנט תלוי-הגדרה; עמוד שאין בו הבדלים כותב במפורש "אין" ומפנה לחיפוש שנעשה).*
+**ההבדלים הידועים היום** (מקורות: `CLAUDE.md`, `docs/refund-swap-policy-2026-09-22.md`, `contracts/orders-id.md §ז`; **נכון ל-2026-09-22 — הסוכן חייב לאמת מול ה-DB החי לפני הסתמכות**):
+| מפתח | ראשי | נווה יעקב | משפיע על |
+|---|---|---|---|
+| `enable_deliveries` | false | true | טאב/כרטיס משלוח, מסך משלוחים, סימני ציר זמן |
+| `delivery_price_by_city`, `delivery_price`, `delivery_*` (skip_weekends, days_before/after, allow_address_override, one_day_before_option, show_in_order) | — | מוגדרים | טופס משלוח (city = select), מחיר, ולידציות |
+| `deliveries_select_by_event_date` | false | true | מסך משלוחים/הדפסה/מייל |
+| `enable_order_edit_summary_confirm` | false | true | חלון סיכום לפני שמירה, השלמת תשלום |
+| `consolidate_manual_payment_credit_ui` | false | true | כפתור מאוחד בפרטים כלליים מול שני כפתורים בתשלומים |
+| `allow_additional_payment_on_order` | false | true (ייעודי) | "תשלום נוסף" |
+| `require_customer_id_number` | false | true (ייעודי) | שדה ת"ז חובה |
+| `enforce_rental_barcode_match` | false | true | אישור ברקוד בהשכרה |
+| `enable_alterations`, `max_items_per_order`, `hide_custom_spacing` | (ברירת מחדל) | false / 6 / true | עמודת תיקונים, מגבלת פריטים, ציפוף ימים |
+| `same_model_swap_no_fee`, `swap_min_days_before_event`, `swap_same_category_only`, `swap_pairing_window_minutes` | false / 0 / false / 0 | true / 2 / true / 120 | מחיר החלפת מידה |
+| `CANCELLATION_CREDIT_MINUTES`, `instant_undo_minutes` | 120 / 120 | 0 / 15 | חלונות ביטול/זיכוי בפריטים ותשלומים |
+| `gap_size_price_rule`, `size_edit_until_days_before_event`, `refund_tiers_at_deletion_time`, `NO_REFUND_DAYS_BEFORE_EVENT` | none / ריק / false / 14 | cheaper / 2 / true / 2 | תמחור, עריכת מידה, החזרים |
+| `premium_pricing_enabled` | false | false (כרגע) | תיבת "פרימיום" בעריכת שמלה |
+| `agent_digest_email_*` | קיים | חסר (בכוונה) | לא UI |
+| הגדרות `hide_*` (`hide_internal_messaging`, `hide_ai_features`, `hide_error_reporting`, `hide_dress_images`, `hide_gregorian_calendar`, `hide_marketing_consent_field`), `require_*`, `enable_*` נוספות | לפי DB | לפי DB | כל רכיב מותנה חייב להסתדר עם היעדרו |
+| הרשאות (`restrict_*`, קטלוג `feature:*`) ופרטי ספק תשלום (מסוף/טוקן Nedarim) | שונים | שונים | מי רואה מה; אין ספק תשלום בקוד |
+| סניפים (`Order.branch`), ערים, קטגוריות מחיר | שונים | שונים | רשימות דינמיות, אורך משתנה |
+### ט.4 בדיקות
+- **פרופילי הגדרות לבדיקה**: `config/profiles/org1.json`, `org2.json` (ערכי הגדרות **לא-סודיים** בלבד) + פרופיל "מינימלי" (הכול חסר) ופרופיל "קיצוני" (הכול דלוק, מחרוזות ארוכות). כל עמוד בגלריה ובצילומים נבדק לפחות בשלושה: org1, org2, מינימלי.
+- אימות אמיתי מול DB החי: **קריאה בלבד** (`SELECT` על `SystemSetting`), ע"י סוכן מקומי עם גישה בלבד.
+- כל מפתח חדש שנוסף: רשומה ב-`settingsRegistry` + עמודה במטריצה §ט.3 + תבנית seed עם host-check.
+
+---
+
+## י. סמכות ושינוי החוקה
+תיקון לחוקה = commit נפרד `docs(constitution): …` + רישום ב-`IDEAS-LOG.md` (R3) + עדכון בדיקה ב-§ח אם רלוונטי. שאלות פתוחות: `DECISIONS.md`. תוכנית ביצוע: `MASTER-PLAN.md`. מפת הספרייה: `LIBRARY-MAP.md`.
