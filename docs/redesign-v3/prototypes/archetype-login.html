@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>כניסה לצוות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  אב-טיפוס סטטי למסך הכניסה של v3 — עיצוב חדש מאפס (ר' archetype-login.contract.md).
+  אין API, אין שרת: תגובות השרת מדומות לפי הטבלה ב-LG-26/LG-38 ונבחרות בבקרת ההדגמה.
+  ערכי השדות/כפתורים/תוויות/tooltip נלקחו מהערכים המחושבים של sketch/order-card-sketch-B.html
+  (Chromium, 1440px): .inp, label.lbl, .btn, .btn.primary(.lg), ghost של חלונית, #tt, .tip.
+-->
+<style>
+:root{
+  /* === sketch-B families (ערכים כפי שהם בסקיצה) === */
+  --navy-900:#0a2242; --navy:#0f2c52; --navy-700:#173c6b; --navy-500:#2b5a94;
+  --sky-50:#f3f9fe; --sky-100:#e4f1fb; --sky-200:#cfe6f7; --sky-300:#a9d2f0; --sky-400:#7fb8e6;
+  --gold-50:#fff6f2; --gold-100:#ffece5; --gold-300:#e0c56e; --gold:#c9a227; --gold-b:#b8912f; --gold-d:#9a7a1f;
+  --rose-100:#ffece5; --rose-200:#fdd9cc; --rose-300:#fbbfa9; --rose-700:#a8442a;
+  --gbtn:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%);
+  --gbtn-h:linear-gradient(135deg,#c9a227,#9a7a1f);
+  --page-bg:#dcedfa;
+  --surface:#fff; --line:var(--sky-300);
+  --ink:var(--navy-900); --ink2:#2f4a6b; --ink3:#4d6787;
+  --plum:var(--rose-700);
+  --r-btn:14px; --r-card:16px; --r-dlg:20px; --r-pill:999px;
+  --sh-lg:0 20px 60px -15px rgba(10,34,66,.5);
+  --ease:cubic-bezier(.22,1,.36,1); --spring:cubic-bezier(.2,1.3,.3,1);
+  --t-fast:150ms; --t-base:220ms; --t-med:300ms; --t-enter:450ms;
+  --tap:44px;
+  --dir:-1; /* RTL: "קדימה" = שמאלה */
+}
+*{box-sizing:border-box}
+html{font-size:16px;min-height:100%;background-color:var(--page-bg);
+  background-image:radial-gradient(1200px 500px at 85% -10%,var(--sky-50) 0,transparent 60%),radial-gradient(900px 500px at 0% 0%,var(--sky-200) 0,transparent 55%);background-attachment:fixed}
+body{margin:0;min-height:100vh;min-height:100dvh;background:transparent;color:var(--ink);font-family:'Rubik','Heebo',system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+bdi{unicode-bidi:isolate}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.sm{width:16px;height:16px}.ic.lg{width:24px;height:24px}.ic.xl{width:32px;height:32px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ================= the gate: identity zone + action zone ================= */
+.gate{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr}
+@media (min-width:1024px){ .gate{grid-template-columns:minmax(380px,40%) 1fr;grid-template-rows:1fr} }
+
+/* identity zone (navy) */
+.idz{position:relative;overflow:hidden;color:#fff;background:linear-gradient(180deg,var(--navy-900) 0,var(--navy) 100%);
+  border-block-end:3px solid var(--gold);display:flex;align-items:center;gap:12px;padding:12px 16px}
+.idz::before{content:"";position:absolute;inset:auto;inset-block-start:-30%;inset-inline-end:-25%;width:70%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(127,184,230,.22),transparent);pointer-events:none}
+.idz__mark{position:relative;width:48px;height:48px;border-radius:14px;flex:none;display:grid;place-items:center;background:var(--gbtn);color:var(--navy-900);
+  box-shadow:0 4px 12px -4px rgba(201,162,39,.7);transition:transform var(--t-base) var(--ease)}
+.idz__mark .ic{width:26px;height:26px;stroke-width:2}
+.idz__mark.has-logo{background:#fff;padding:6px}
+.idz__mark img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.idz__mark .mono{font-weight:700;font-size:18px;letter-spacing:-.3px}
+.idz__txt{position:relative;min-width:0;display:flex;flex-direction:column;gap:2px}
+.idz__name{margin:0;font-size:20px;font-weight:700;letter-spacing:-.2px;line-height:1.25;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.idz__rule{display:none}
+.idz__tag{margin:0;font-size:14px;color:var(--sky-300);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idz__tag:empty{display:none}
+.idz__deco{display:none}
+.idz:hover .idz__mark{transform:rotate(-6deg) scale(1.04)}
+@media (max-width:639px){ .idz__tag{display:none} }
+@media (min-width:1024px){
+  .idz{border-block-end:0;border-inline-end:3px solid var(--gold);flex-direction:column;align-items:flex-start;justify-content:center;gap:24px;
+    padding:48px clamp(32px,4vw,64px);min-height:100vh;min-height:100dvh;position:sticky;inset-block-start:0}
+  .idz::before{inset-block-start:-20%;inset-inline-end:-40%;width:120%}
+  .idz__mark{width:96px;height:96px;border-radius:24px}
+  .idz__mark .ic{width:52px;height:52px;stroke-width:1.6}
+  .idz__mark.has-logo{padding:12px}
+  .idz__mark .mono{font-size:36px}
+  .idz__txt{gap:16px}
+  .idz__name{font-size:36px;letter-spacing:-.5px;line-height:1.2;-webkit-line-clamp:3;line-clamp:3}
+  .idz__rule{display:block;width:72px;height:3px;border-radius:3px;background:var(--gold);transform-origin:center;animation:draw-x .7s var(--ease)}
+  .idz__tag{font-size:18px;white-space:normal}
+  .idz__deco{display:block;position:absolute;inset-block-end:-6%;inset-inline-end:-8%;width:58%;height:auto;aspect-ratio:1;fill:none;stroke:var(--sky-400);stroke-width:.35;opacity:.18;pointer-events:none}
+}
+@keyframes draw-x{from{transform:scaleX(0)}}
+
+/* action zone */
+.act{display:flex;flex-direction:column;min-width:0;min-height:0;padding:clamp(16px,4vh,48px) 16px 16px}
+@media (min-width:640px){ .act{padding-inline:24px} }
+.flow{flex:1;width:100%;max-width:520px;margin-inline:auto;display:flex;flex-direction:column;min-height:0}
+@media (min-width:1024px){ .flow{justify-content:center;max-width:540px} .act{padding-block:clamp(24px,6vh,72px) 24px} }
+.foot{width:100%;max-width:520px;margin-inline:auto;margin-block-start:16px;padding-block-start:12px;border-block-start:1px solid var(--sky-300);display:flex;align-items:center;justify-content:center;gap:4px}
+@media (min-width:1024px){ .foot{max-width:540px} }
+
+/* step frame */
+.step{display:flex;flex-direction:column;gap:24px;min-height:0;animation:step-in var(--t-enter) var(--ease)}
+.step[hidden]{display:none}
+.step--who{flex:1}
+@media (min-width:1024px){ .step--who{flex:0 1 auto;max-height:100%} }
+@keyframes step-in{from{transform:translateY(10px)}}
+
+.progress{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--ink3);font-weight:500}
+.progress i{display:block;width:32px;height:4px;border-radius:4px;background:var(--sky-300)}
+.progress i.on{background:var(--gold)}
+.progress i.done{background:var(--navy)}
+.progress span{margin-inline-start:4px}
+
+.hd{display:flex;flex-direction:column;gap:8px}
+.h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.3px;line-height:1.25;overflow-wrap:anywhere}
+@media (min-width:768px){ .h1{font-size:36px;letter-spacing:-.5px} }
+.sub{margin:0;font-size:17px;color:var(--ink2)}
+.sub b{color:var(--ink);font-weight:600}
+
+/* === fields: exactly sketch-B .inp / label.lbl === */
+.fld{display:flex;flex-direction:column}
+label.lbl,.lbl{display:flex;align-items:center;gap:6px;font-weight:500;font-size:15px;color:var(--ink2);margin-block-end:8px;line-height:24px}
+.lblg{display:inline-flex;align-items:center;gap:6px}
+.lblrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-block-end:8px}
+.lblrow .lbl{margin-block-end:0}
+.ctl{position:relative}
+.inp{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-btn);padding:12px 14px;outline:0;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast);font-size:16px;line-height:25.6px;color:var(--ink)}
+.inp::placeholder{color:var(--ink3);opacity:1}
+.inp:focus{border-color:var(--navy);box-shadow:0 0 0 4px var(--sky-100)}
+.inp[aria-invalid="true"]{border-color:var(--gold-b);box-shadow:0 0 0 4px var(--gold-100)}
+.inp:disabled{background:var(--sky-50);color:var(--ink3);cursor:not-allowed}
+.ctl .lead{position:absolute;inset-inline-start:14px;inset-block-start:50%;transform:translateY(-50%);color:var(--navy-500);pointer-events:none;transition:transform var(--t-base) var(--spring),color var(--t-fast)}
+.ctl .inp.has-lead{padding-inline-start:46px}
+.ctl .inp.has-trail{padding-inline-end:52px}
+.ctl:focus-within .lead{color:var(--navy)}
+.ctl--search:focus-within .lead{animation:wig .5s var(--spring)}
+@keyframes wig{30%{transform:translateY(-50%) rotate(-14deg)}60%{transform:translateY(-50%) rotate(8deg)}}
+.inp.ltr{direction:ltr;text-align:end}
+.inp.pin{font-size:24px;font-weight:600;letter-spacing:.6em;text-align:center;padding-inline:52px;direction:ltr}
+.inp.pin::placeholder{letter-spacing:.4em;font-weight:400}
+.eye{position:absolute;inset-inline-end:4px;inset-block-start:50%;transform:translateY(-50%);width:var(--tap);height:var(--tap);border:0;border-radius:12px;background:transparent;color:var(--ink3);display:grid;place-items:center}
+.eye:hover{background:var(--sky-100);color:var(--navy)}
+.eye:focus-visible{outline:3px solid var(--gold);outline-offset:-3px}
+.eye .ic{transition:transform var(--t-base) var(--spring)}
+.eye:active .ic{transform:scale(.85)}
+.slots{display:flex;justify-content:center;gap:12px;margin-block-start:12px}
+.slots i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--navy-500);background:transparent;transition:background-color var(--t-fast),transform var(--t-base) var(--spring)}
+.slots i.on{background:var(--navy);border-color:var(--navy);transform:scale(1.15)}
+
+/* === buttons: exactly sketch-B computed .btn / .btn.primary / .btn.lg === */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-radius:var(--r-btn);
+  border:1px solid #000;background:var(--rose-300);color:#000;font-weight:600;font-size:16px;line-height:24px;white-space:nowrap;
+  transition:background-color .18s,color .18s,border-color .18s}
+.btn:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.primary{background:var(--gbtn);box-shadow:inset 0 1px 0 rgba(255,244,196,.7);
+  transition:background-color .2s,color .2s,border-color .2s,transform .15s,box-shadow .2s}
+.btn.primary:hover{background:var(--gbtn-h);color:#000;border-color:#000;box-shadow:0 4px 10px -4px rgba(15,44,82,.45)}
+.btn.lg{min-height:52px;padding:14px 22px;font-size:17px}
+.btn.block{width:100%}
+.btn:focus-visible{outline:3px solid var(--navy);outline-offset:3px;box-shadow:0 0 0 6px var(--gold)}
+.btn:disabled,.btn[aria-disabled="true"]{background:var(--gold-50);color:var(--rose-700);border-color:var(--rose-200);cursor:not-allowed;box-shadow:none}
+.btn.primary[aria-busy="true"]{background:var(--gbtn);color:#000;border-color:#000;cursor:progress}
+.btn .go{transition:transform var(--t-base) var(--ease)}
+.btn:hover .go,.btn:focus-visible .go{transform:translateX(calc(var(--dir) * -4px))}
+/* sketch-B dialog ghost (#dlg .dbtns .btn.ghost) — "link" buttons */
+.lnk{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:0;border-radius:var(--r-btn);background:transparent;color:var(--navy);font-weight:600;font-size:15px;
+  text-underline-offset:4px;transition:background-color var(--t-fast)}
+.lnk:hover{background:var(--sky-100);text-decoration:underline}
+.lnk:active{background:var(--sky-200)}
+.lnk:focus-visible{outline:3px solid var(--gold);outline-offset:2px;background:var(--sky-100)}
+.lnk .ic{color:var(--navy);transition:transform var(--t-base) var(--spring)}
+.lnk:hover .ic.rot{transform:rotate(-20deg)}
+.lnk:hover .ic.back,.lnk:focus-visible .ic.back{transform:translateX(calc(var(--dir) * 3px))}
+.lnk.sm{font-size:14px;min-height:44px}
+.lnk--ondark{color:var(--gold-300)}
+.lnk--ondark .ic{color:var(--gold-300)}
+.lnk--ondark:hover{background:rgba(255,255,255,.1)}
+
+/* === info tip: sketch-B .tip (24px visual) with a 44px hit area === */
+.tip{position:relative;width:24px;height:24px;margin:-10px;padding:10px;box-sizing:content-box;border:0;background:transparent;color:var(--ink3);display:inline-grid;place-items:center;border-radius:50%;background-clip:content-box}
+.tip:hover,.tip:focus-visible{color:var(--navy);background-color:var(--sky-100);outline:0}
+.tip:focus-visible{box-shadow:inset 0 0 0 2px var(--gold)}
+.tip .ic{width:16px;height:16px}
+#tt{position:fixed;z-index:400;inset-block-start:0;inset-inline-start:0;background:linear-gradient(180deg,#12305a,#0a2242);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:14px;
+  padding:10px 14px;font-size:14px;line-height:1.45;max-width:290px;box-shadow:0 16px 40px -10px rgba(2,10,24,.6);pointer-events:none;display:none}
+#tt.on{display:block;animation:tt-in var(--t-fast) var(--ease)}
+@keyframes tt-in{from{transform:translateY(4px)}}
+
+/* === employee list (listbox) === */
+.who-body{display:flex;flex-direction:column;gap:12px;min-height:0;flex:1}
+.list{flex:1 1 auto;min-height:168px;max-height:min(460px,calc(100vh - 410px));max-height:min(460px,calc(100dvh - 410px));overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:6px;scrollbar-width:thin}
+@media (max-width:1023px){ .list{max-height:max(168px,calc(100vh - 480px));max-height:max(168px,calc(100dvh - 480px))} }
+.opt{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px;border-radius:12px;cursor:pointer;position:relative;transition:background-color var(--t-fast)}
+.opt+.opt{margin-block-start:2px}
+.opt:hover{background:var(--sky-50)}
+.opt.is-active{background:var(--sky-100)}
+.opt.is-active::before{content:"";position:absolute;inset-block:10px;inset-inline-start:0;width:3px;border-radius:3px;background:var(--gold)}
+.opt .av{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--sky-100);color:var(--navy-700);border:1px solid var(--sky-300);font-weight:600;font-size:15px;transition:transform var(--t-base) var(--spring)}
+.opt:hover .av,.opt.is-active .av{background:var(--navy);color:var(--gold-300);border-color:var(--navy);transform:scale(1.06)}
+.opt .nm{flex:1;min-width:0;font-size:17px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.opt .nm mark{background:var(--gold-100);color:inherit;border-radius:4px;padding:0 1px}
+.opt .go{color:var(--sky-400);transition:color var(--t-fast),transform var(--t-base) var(--ease)}
+.opt:hover .go,.opt.is-active .go{color:var(--navy);transform:translateX(calc(var(--dir) * -3px))}
+.list-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px 16px;color:var(--ink2);min-height:156px}
+.list-state .ic{color:var(--navy-500)}
+.list-state b{color:var(--ink);font-size:17px;font-weight:600}
+.skel{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px}
+.skel i{display:block;border-radius:999px;background:linear-gradient(90deg,var(--sky-100) 0,var(--sky-50) 50%,var(--sky-100) 100%);background-size:200% 100%;animation:shimmer 1.4s linear infinite}
+.skel i:first-child{width:40px;height:40px;flex:none}
+.skel i:last-child{height:14px;width:45%}
+@keyframes shimmer{to{background-position:-200% 0}}
+.count{font-size:14px;color:var(--ink3)}
+
+/* === code step: who am I row === */
+.me{display:flex;align-items:center;gap:16px}
+.me .av{width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--navy);color:var(--gold-300);border:2px solid var(--gold-b);font-weight:700;font-size:22px;
+  box-shadow:0 0 0 6px rgba(201,162,39,.14);animation:popin var(--t-enter) var(--spring)}
+@keyframes popin{from{transform:scale(.5)}60%{transform:scale(1.12)}}
+.me .hd{min-width:0;flex:1}
+.backrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-block-end:-8px}
+.note{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink2);padding:10px 14px;border:1px solid var(--sky-300);border-radius:var(--r-btn);background:var(--sky-50)}
+.note .ic{color:var(--navy)}
+.note .ic .ck{stroke-dasharray:12;stroke-dashoffset:0;animation:draw-s .6s var(--ease)}
+@keyframes draw-s{from{stroke-dashoffset:12}}
+.note span{flex:1}
+.aux{display:flex;justify-content:flex-end;margin-block-start:4px}
+
+/* === messages: C-1.13 error = frame gold-b + plum + icon === */
+.msg{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:var(--r-btn);font-weight:500;font-size:15px;line-height:1.5;animation:msg-in var(--t-med) var(--ease)}
+.msg .ic{margin-block-start:2px}
+.msg--err{background:var(--gold-50);border:1.5px solid var(--gold-b);color:var(--plum)}
+.msg--err.shake{animation:shake .38s ease}
+.msg--ok{background:var(--sky-50);border:1.5px solid var(--navy);color:var(--navy)}
+.msg[hidden]{display:none}
+@keyframes msg-in{from{transform:translateY(-4px)}}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.fld-err{display:flex;align-items:center;gap:6px;margin-block-start:8px;color:var(--plum);font-size:14px;font-weight:500}
+.fld-err[hidden]{display:none}
+
+/* spinner */
+.spin{width:20px;height:20px;border-radius:50%;border:2.5px solid currentColor;border-inline-end-color:transparent;animation:rot .8s linear infinite;flex:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* success */
+.done{align-items:center;text-align:center;justify-content:center;flex:1;gap:16px}
+.done .ring{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:var(--gold-300);box-shadow:0 0 0 10px rgba(201,162,39,.16);animation:popin var(--t-enter) var(--spring)}
+.done .ring svg{width:52px;height:52px;stroke-width:2.4}
+.done .ring path{stroke-dasharray:24;stroke-dashoffset:0;animation:draw-c .6s var(--ease)}
+@keyframes draw-c{from{stroke-dashoffset:24}}
+.done .bar{width:180px;height:4px;border-radius:4px;background:var(--sky-300);overflow:hidden}
+.done .bar i{display:block;height:100%;width:100%;background:var(--gold);transform-origin:center;animation:fill 1.2s var(--ease)}
+@keyframes fill{from{transform:scaleX(.05)}}
+
+/* ================= modal variant (UserMenu → LoginScreen isModal) ================= */
+.faux{height:100vh;height:100dvh;overflow:hidden}
+.faux__bar{height:64px;background:linear-gradient(rgba(10,34,66,.97),rgba(15,44,82,.97));border-block-end:3px solid var(--gold)}
+.faux__body{max-width:1240px;margin-inline:auto;padding:24px;display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.faux__body i{display:block;height:160px;border-radius:16px;background:#fff;border:1px solid var(--sky-300)}
+.scrim{position:fixed;inset:0;z-index:100;background:rgba(10,34,66,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px}
+.dlg{position:relative;width:100%;max-width:520px;max-height:calc(100dvh - 32px);overflow:auto;background:#fff;color:var(--ink);border-radius:var(--r-dlg);box-shadow:var(--sh-lg);padding:32px;animation:pop .3s var(--ease);display:flex;flex-direction:column;gap:24px}
+@keyframes pop{from{transform:scale(.92)}}
+.dlg__h{display:flex;align-items:center;gap:12px}
+.dlg__h .mk{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--gbtn);color:var(--navy-900);flex:none}
+.dlg__h h2{margin:0;font-size:20px;font-weight:600;flex:1}
+.x{width:var(--tap);height:var(--tap);border-radius:14px;border:1px solid #000;background:var(--rose-300);color:#000;display:grid;place-items:center}
+.x:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+.x:focus-visible{outline:3px solid var(--navy);outline-offset:3px;box-shadow:0 0 0 6px var(--gold)}
+.x .ic{transition:transform var(--t-base) var(--spring)}
+.x:hover .ic{transform:rotate(90deg)}
+.dlg .step{gap:20px}
+.dlg .h1{font-size:24px}
+.dlg .list{max-height:min(320px,40dvh)}
+@media (max-width:639px){ .scrim{padding:0;align-items:stretch} .dlg{max-width:none;max-height:none;border-radius:0;padding:24px 16px} }
+
+/* ================= demo control (not part of the design) ================= */
+.dm-fab{position:fixed;z-index:500;inset-block-end:12px;inset-inline-end:12px;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 14px;border-radius:999px;border:1.5px dashed var(--gold-d);background:var(--navy);color:var(--gold-100);font-size:14px;font-weight:600;box-shadow:var(--sh-lg)}
+.dm-fab[hidden]{display:none}
+.dm-fab:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px var(--gold-300)}
+.dm{position:fixed;z-index:500;inset-block-end:64px;inset-inline-end:12px;width:min(380px,calc(100vw - 24px));max-height:calc(100dvh - 80px);overflow:auto;background:var(--navy);color:var(--gold-100);
+  border:2px dashed var(--gold-300);border-radius:16px;padding:14px;font-size:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--sh-lg)}
+.dm[hidden]{display:none}
+.dm h2{margin:0;font-size:15px;color:var(--gold-300)}
+.dm label{display:flex;flex-direction:column;gap:4px}
+.dm select{font:inherit;font-size:14px;min-height:40px;border-radius:10px;border:1px solid var(--navy-700);background:var(--navy-700);color:#fff;padding:6px 8px}
+.dm .ck{flex-direction:row;align-items:center;gap:8px;min-height:32px}
+.dm .ck input{width:18px;height:18px;accent-color:var(--gold)}
+.dm small{color:var(--sky-300);line-height:1.4}
+.dm select:focus-visible,.dm input:focus-visible{outline:2px solid var(--gold-300);outline-offset:2px}
+
+/* ================= motion ================= */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .spin{animation:none!important;border-inline-end-color:currentColor;opacity:.6}
+}
+html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-motion="reduced"] *::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+html[data-motion="reduced"] .spin{animation:none!important;border-inline-end-color:currentColor;opacity:.6}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3 7.5 7.5 9 4.5-1.5 7.5-4.5 7.5-9V6z"/><path class="ck" d="m9 12 2 2 4-4"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3zM12 10v4M12 17v.01"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></symbol>
+<symbol id="i-next" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+<symbol id="i-dress" viewBox="0 0 24 24"><path d="M10 2.5L12 4.6 14 2.5 15.6 3.6 18 6.4 16.8 7.6 15.4 6.4 14.7 11 20.5 21.5Q12 23.2 3.5 21.5L9.3 11 8.6 6.4 7.2 7.6 6 6.4 8.4 3.6zM9.3 11h5.4"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5l2 2M20 4v5h-5M20 12a8 8 0 0 1-14 5l-2-2M4 20v-5h5"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19v.01"/><path d="M3 3l18 18"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+</defs></svg>
+
+<div id="root"></div>
+<div id="tt" role="tooltip"></div>
+
+<!-- ======== demo control (בקרת הדגמה) — לא חלק מהעיצוב ======== -->
+<button type="button" class="dm-fab" id="dmFab" aria-expanded="false" aria-controls="dm"><svg class="ic sm"><use href="#i-sliders"/></svg>בקרת הדגמה</button>
+<section class="dm" id="dm" hidden aria-label="בקרת הדגמה">
+  <h2>בקרת הדגמה — לא חלק מהעיצוב</h2>
+  <label>מצב מוכן
+    <select id="dmState"></select>
+  </label>
+  <label>פרופיל ארגון
+    <select id="dmOrg">
+      <option value="a">א — שם קצר, בלי לוגו</option>
+      <option value="b">ב — עם לוגו ותג משנה</option>
+      <option value="x">קיצוני — שם ותג ארוכים מאוד</option>
+      <option value="min">מינימלי — שום הגדרה (ברירות מחדל)</option>
+    </select>
+  </label>
+  <label>רשימת עובדים
+    <select id="dmEmps">
+      <option value="12">12 שמות</option>
+      <option value="3">3 שמות</option>
+      <option value="120">120 שמות (כולל שמות ארוכים)</option>
+      <option value="0">ריקה</option>
+      <option value="loading">עדיין נטענת</option>
+      <option value="failed">הטעינה נכשלה</option>
+    </select>
+  </label>
+  <label>תגובת השרת לכניסה הבאה
+    <select id="dmServer">
+      <option value="ok">הצלחה</option>
+      <option value="reset">הצלחה — סיסמה זמנית (חובה לבחור קבועה)</option>
+      <option value="wrong">סיסמה / קוד שגויים (401)</option>
+      <option value="notTrusted">מחשב לא מהימן — חזרה לסיסמה מלאה (401)</option>
+      <option value="noPin">אין קוד מקוצר לעובד — חזרה לסיסמה מלאה (401)</option>
+      <option value="noPass">לעובד אין סיסמה (401)</option>
+      <option value="inactive">חשבון לא פעיל (403)</option>
+      <option value="notFound">עובד לא נמצא (404)</option>
+      <option value="server">שגיאת שרת (500)</option>
+      <option value="network">אין רשת</option>
+    </select>
+  </label>
+  <label>תגובת השרת ל"שכחתי"
+    <select id="dmForgot">
+      <option value="ok">נשלח</option>
+      <option value="noMail">אין מייל שמור (400)</option>
+      <option value="mailFail">שליחת המייל נכשלה (502)</option>
+      <option value="network">אין רשת</option>
+    </select>
+  </label>
+  <label class="ck"><input type="checkbox" id="dmTrusted"> מחשב מהימן (קוד מקוצר)</label>
+  <label class="ck"><input type="checkbox" id="dmModal"> חלונית (מתוך תפריט המשתמש)</label>
+  <label class="ck"><input type="checkbox" id="dmPm"> תמיכה במנהלי סיסמאות (Q-L1, כבוי = היום)</label>
+  <label class="ck"><input type="checkbox" id="dmSlow" checked> השהיית שרת 1.2 שנ׳</label>
+  <label class="ck"><input type="checkbox" id="dmMotion"> הדמיית הפחתת תנועה</label>
+  <small>אין שרת: כל תגובה מדומה לפי הטבלאות ב-LG-26 / LG-38 בחוזה. "מנהלי סיסמאות" מוסיף שדה username נסתר ומשנה את autocomplete — ר' LG-32.</small>
+</section>
+
+<script>
+(function(){
+'use strict';
+/* ---------------- data ---------------- */
+const ORGS={
+  a:{name:'גמ״ח השמלות',tag:'ניהול הזמנות והשכרות',logo:null},
+  b:{name:'גמ״ח שמלות נווה יעקב',tag:'הזמנות, השכרות ומלאי',logo:'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#f3f9fe"/><circle cx="32" cy="32" r="22" fill="none" stroke="#2b5a94" stroke-width="3"/><path d="M27 18l5 5 5-5 3 7-3 3 2 16H25l2-16-3-3z" fill="#c9a227" stroke="#0f2c52" stroke-width="1.5" stroke-linejoin="round"/><text x="32" y="60" font-size="7" text-anchor="middle" fill="#0f2c52" font-family="sans-serif">LOGO</text></svg>')},
+  x:{name:'גמ״ח שמלות כלה וערב לזכר השושנה והמרגלית — הסניף המרכזי ברחוב הרב קוק פינת הנביאים',tag:'השאלת שמלות כלה, ערב, שושבינות וילדות לכל אירוע — מהמדידה ועד ההחזרה',logo:null},
+  min:{name:'',tag:'',logo:null}
+};
+const DEFAULT_ORG_NAME='גמ"ח שמלות'; // ברירת המחדל שכבר קיימת בשרת (forgot-password/route.js)
+const FIRST=['רחל','שרה','לאה','מרים','חנה','אסתר','דבורה','רבקה','יהודית','נחמה','שושנה','צביה','בתיה','פנינה','תמר','אביגיל','הדסה','מלכה','חיה','יוכבד'];
+const LAST=['כהן','לוי','מזרחי','פרידמן','גולדברג','רוזנברג','שפירא','ברגר','וייס','קליין','אדלר','שטרן','הורוביץ','פרלמן','זילברמן'];
+function makeEmps(n){
+  const out=[];for(let i=0;i<n;i++){out.push({id:'e'+i,firstName:FIRST[i%FIRST.length],lastName:LAST[(i*7+3)%LAST.length]});}
+  if(n>=100){out[17]={id:'e17',firstName:'פרומט־גיטל חיה־שרה',lastName:'בן־שמעון־רוזנצווייג־אלטשולר'};out[41]={id:'e41',firstName:'ש.',lastName:'ק.'};}
+  return out;
+}
+const SERVER={
+  ok:{ok:true,body:{success:true,mustResetPassword:false}},
+  reset:{ok:true,body:{success:true,mustResetPassword:true}},
+  wrongPw:{status:401,body:{success:false,message:'סיסמא שגויה'}},
+  wrongPin:{status:401,body:{success:false,message:'קוד שגוי'}},
+  notTrusted:{status:401,body:{success:false,message:'מחשב זה אינו מוגדר כמערכת מהימנה - יש להזין את הסיסמה המלאה',requireFullPassword:true}},
+  noPin:{status:401,body:{success:false,message:'לעובד זה טרם הוגדר קוד כניסה מקוצר. יש להזין את הסיסמה המלאה',requireFullPassword:true}},
+  noPass:{status:401,body:{success:false,message:'לעובד זה טרם הוגדרה סיסמה במערכת. אנא פנה למנהל.'}},
+  inactive:{status:403,body:{success:false,message:'חשבון העובד אינו פעיל'}},
+  notFound:{status:404,body:{success:false,message:'עובד לא נמצא'}},
+  server:{status:500,body:{success:false,message:'שגיאת שרת'}}
+};
+const FORGOT={
+  ok:{success:true,message:'סיסמה זמנית נשלחה לכתובת המייל השמורה'},
+  noMail:{success:false,message:'לא קיימת כתובת מייל שמורה עבור עובד זה. יש לפנות למנהל.'},
+  mailFail:{success:false,message:'שליחת המייל נכשלה, נסה שוב או פנה למנהל'}
+};
+/* ---------------- strings (fresh copy, contract §ג) ---------------- */
+const T={
+  eyebrow:'כניסה לצוות', step1:'צעד 1 מתוך 2 · שם', step2:'צעד 2 מתוך 2 · קוד',
+  whoTitle:'שלום, מי כאן?', whoSub:'בוחרים את השם שלכם, ואז הקוד',
+  search:'חיפוש שם', searchPh:'מתחילים להקליד שם', listLabel:'שמות הצוות',
+  loading:'טוענים את הצוות…', none:'אין שם כזה ברשימה', noneSub:'בודקים את האיות, או מוחקים ומחפשים שוב',
+  empty:'עדיין אין אנשי צוות במערכת', emptySub:'מנהל/ת הגמח מוסיפים עובדים במסך הצוות',
+  failed:'הרשימה לא נטענה', failedSub:'יכול להיות שאין חיבור לשרת', retry:'לנסות שוב',
+  hi:n=>`שלום, ${n}`, notMe:'לא אני', password:'סיסמה', pin:'4 התווים האחרונים של הסיסמה',
+  toPin:'קוד קצר במקום', toFull:'סיסמה מלאה במקום', trusted:'המחשב הזה מאושר לקוד קצר',
+  trustedTip:'מנהל/ת סימנו את המחשב הזה כמהימן. לכן מספיקים 4 התווים האחרונים של הסיסמה שלכם.',
+  pinTip:'אם הסיסמה היא 58213, הקוד הקצר הוא 8213.',
+  show:'הצגת הסיסמה', hide:'הסתרת הסיסמה', forgot:'שכחתי את הסיסמה',
+  submit:'כניסה', busy:'בודקים…', done:'נכנסים…', doneSub:n=>`${n}, טוענים את המערכת`,
+  emptyPin:'צריך 4 תווים כדי להמשיך', emptyPw:'צריך סיסמה כדי להמשיך', net:'אין חיבור לשרת. בודקים את האינטרנט ומנסים שוב',
+  punch:'רק לדווח משמרת', punchTip:'שעון הנוכחות פתוח גם בלי כניסה למערכת.',
+  fTitle:'סיסמה זמנית במייל', fSub:n=>`נשלח למייל של <b><bdi>${n}</bdi></b> שרשום אצלנו`, fTip:'אחרי הכניסה עם הסיסמה הזמנית תבחרו סיסמה קבועה.',
+  fSend:'שליחת סיסמה זמנית', fSending:'שולחים…', fBack:'חזרה לכניסה', fNoEmp:'קודם בוחרים שם',
+  rTitle:'בוחרים סיסמה קבועה', rSub:'נכנסתם עם סיסמה זמנית. עוד צעד אחד', rNew:'סיסמה חדשה', rAgain:'שוב אותה סיסמה',
+  rShort:'לפחות 4 תווים', rMismatch:'שתי הסיסמאות לא זהות', rSave:'שמירה וכניסה', rSaving:'שומרים…',
+  mTitle:'כניסת צוות', close:'סגירה'
+};
+/* ---------------- state ---------------- */
+const S={org:'a',empsMode:'12',emps:[],empsStatus:'ok',step:'who',q:'',active:0,sel:null,
+  trusted:false,pinMode:false,showPw:false,err:'',errShake:false,loading:false,server:'ok',forgotServer:'ok',
+  forgotSending:false,forgotRes:null,resetErr:'',resetSaving:false,modal:false,pm:false,slow:true,guard:''};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ic=(n,c)=>`<svg class="ic${c?' '+c:''}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const full=e=>`${e.firstName} ${e.lastName}`.trim();
+const initials=e=>`${(e.firstName||'').trim().charAt(0)}${(e.lastName||'').trim().charAt(0)}`;
+const orgInitials=n=>{const w=n.replace(/[״"׳']/g,'').split(/\s+/).filter(Boolean);return (w[0]||'').charAt(0)+(w[1]||'').charAt(0);};
+const wait=ms=>new Promise(r=>setTimeout(r,S.slow?ms:30));
+const tip=(t,label)=>`<button type="button" class="tip" data-tip="${esc(t)}" aria-label="${esc(label||'הסבר')}">${ic('info')}</button>`;
+
+/* ---------------- render: shell ---------------- */
+function render(){
+  const root=$('#root');
+  const o=ORGS[S.org], name=o.name||DEFAULT_ORG_NAME;
+  const mark=o.logo?`<span class="idz__mark has-logo"><img src="${o.logo}" alt=""></span>`
+                   :(o.name?`<span class="idz__mark" aria-hidden="true"><span class="mono">${esc(orgInitials(name))}</span></span>`:`<span class="idz__mark" aria-hidden="true">${ic('dress')}</span>`);
+  if(S.modal){
+    root.innerHTML=`<div class="faux" aria-hidden="true" inert><div class="faux__bar"></div><div class="faux__body"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="scrim"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgT" data-mode="light">
+      <div class="dlg__h"><span class="mk">${ic('lock')}</span><h2 id="dlgT">${T.mTitle}</h2>
+        <button type="button" class="x" id="dlgX" data-element-name="כפתור_LoginScreen_1" aria-label="${T.close}" data-tip="${T.close}">${ic('x','','')}</button></div>
+      <div class="flow" id="flow"></div></div></div>`;
+  }else{
+    root.innerHTML=`<div class="gate">
+      <aside class="idz" aria-label="${esc(name)}">${mark}
+        <svg class="idz__deco" aria-hidden="true" focusable="false"><use href="#i-dress"/></svg><div class="idz__txt"><p class="idz__name" data-tip-overflow="${esc(name)}">${esc(name)}</p><span class="idz__rule" aria-hidden="true"></span><p class="idz__tag">${esc(o.tag||'')}</p></div>
+      </aside>
+      <main class="act"><div class="flow" id="flow"></div>
+        <div class="foot"><a class="lnk sm" href="#punch-clock" id="punch">${ic('clock','rot')}${T.punch}</a>${tip(T.punchTip,'על שעון הנוכחות')}</div>
+      </main></div>`;
+  }
+  renderStep();
+  const x=$('#dlgX'); if(x) x.onclick=()=>{ S.modal=false; $('#dmModal').checked=false; render(); };
+}
+/* ---------------- render: steps ---------------- */
+function progress(n){return `<div class="progress" aria-hidden="true"><i class="${n===1?'on':'done'}"></i><i class="${n===2?'on':''}"></i><span>${n===1?T.step1:T.step2}</span></div>`;}
+function renderStep(){
+  const f=$('#flow'); const sel=S.sel;
+  if(S.step==='who'){
+    f.innerHTML=`<section class="step step--who" aria-labelledby="h-who">
+      ${progress(1)}
+      <div class="hd"><h1 class="h1" id="h-who" tabindex="-1">${T.whoTitle}</h1><p class="sub">${T.whoSub}</p></div>
+      <div class="who-body">
+        <div class="fld">
+          <div class="lblrow"><label class="lbl" for="login-employee">${T.search}</label><span class="count" id="cnt" aria-live="polite"></span></div>
+          <div class="ctl ctl--search">
+            <svg class="ic lead" aria-hidden="true" data-element-name="לחיץ_LoginScreen_6"><use href="#i-search"/></svg>
+            <!-- שדה חיפוש, לא שם משתמש: name אקראי (נוצר בצד לקוח בלבד) + autocomplete=new-password — LG-14, אסור לשנות -->
+            <input id="login-employee" data-element-name="שדה_LoginScreen_4" class="inp has-lead" type="text" role="combobox" aria-expanded="true" aria-controls="lb" aria-autocomplete="list"
+              name="${S.guard}" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="${T.searchPh}" value="${esc(S.q)}" ${S.empsStatus!=='ok'?'disabled':''}>
+          </div>
+        </div>
+        <div class="list" id="lb" role="listbox" aria-label="${T.listLabel}"></div>
+      </div></section>`;
+    renderList();
+    const inp=$('#login-employee');
+    inp.addEventListener('input',()=>{S.q=inp.value;S.active=0;S.sel=null;renderList();});
+    inp.addEventListener('keydown',onListKey);
+  }
+  else if(S.step==='code'){
+    const pm=S.pm && !S.pinMode;
+    f.innerHTML=`<section class="step" aria-labelledby="h-code">
+      <div class="backrow">${progress(2)}<button type="button" class="lnk sm" id="notMe" data-element-name="כפתור_LoginScreen_clear">${ic('back','back')}${T.notMe}</button></div>
+      <div class="me"><span class="av" aria-hidden="true"><bdi>${esc(initials(sel))}</bdi></span>
+        <div class="hd"><h1 class="h1" id="h-code" tabindex="-1">${esc(T.hi(sel.firstName))}</h1><p class="sub"><bdi>${esc(full(sel))}</bdi></p></div></div>
+      ${S.trusted?`<div class="note">${ic('shield')}<span>${T.trusted}</span>${tip(T.trustedTip,'על מחשב מהימן')}</div>`:''}
+      <form id="fLogin" novalidate ${S.pm?'':'autocomplete="off"'}>
+        ${S.pm?`<input class="sr-only" type="text" name="username" autocomplete="username" value="${esc(full(sel))}" readonly tabindex="-1" aria-hidden="true">`:''}
+        <div class="fld">
+          <div class="lblrow"><span class="lblg"><label class="lbl" for="login-password">${S.pinMode?T.pin:T.password}</label>${S.pinMode?tip(T.pinTip,'מה זה קוד קצר'):''}</span>
+            ${S.trusted?`<button type="button" class="lnk sm" id="modeBtn">${ic(S.pinMode?'lock':'shield')}${S.pinMode?T.toFull:T.toPin}</button>`:''}</div>
+          <div class="ctl">
+            <svg class="ic lead" aria-hidden="true"><use href="#i-${S.pinMode?'key':'lock'}"/></svg>
+            <input id="login-password" data-element-name="${S.pinMode?'שדה_LoginScreen_pin':'שדה_LoginScreen_8'}" class="inp has-lead has-trail${S.pinMode?' pin':' ltr'}"
+              type="${S.showPw?'text':'password'}" ${S.pinMode?'maxlength="4" placeholder="• • • •" autocomplete="one-time-code"':(pm?'name="password" autocomplete="current-password"':'autocomplete="new-password"')}
+              autocapitalize="off" spellcheck="false" aria-describedby="loginErr" ${S.err?'aria-invalid="true"':''}>
+            <button type="button" class="eye" id="eye" aria-pressed="${S.showPw}" aria-label="${S.showPw?T.hide:T.show}" data-tip="${S.showPw?T.hide:T.show}">${ic(S.showPw?'eyeoff':'eye')}</button>
+          </div>
+          ${S.pinMode?`<div class="slots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>`:''}
+          <div class="msg msg--err" id="loginErr" role="alert" style="margin-block-start:12px" ${S.err?'':'hidden'}>${ic('alert')}<span id="loginErrT">${esc(S.err)}</span></div>
+          <div class="aux"><button type="button" class="lnk sm" id="forgotBtn">${ic('mail','rot')}${T.forgot}</button></div>
+        </div>
+        <div style="margin-block-start:16px">
+          <button type="submit" class="btn primary lg block" id="go" data-element-name="כפתור_LoginScreen_10">${T.submit}<svg class="ic go" aria-hidden="true" data-element-name="רכיב_LoginScreen_11"><use href="#i-next"/></svg></button>
+        </div>
+      </form></section>`;
+    wireCode();
+  }
+  else if(S.step==='forgot'){
+    const r=S.forgotRes;
+    f.innerHTML=`<section class="step" aria-labelledby="h-f">
+      <div class="backrow"><span></span><button type="button" class="lnk sm" id="fBack">${ic('back','back')}${T.fBack}</button></div>
+      <div class="hd"><h1 class="h1" id="h-f" tabindex="-1">${T.fTitle}</h1><p class="sub">${sel?T.fSub(esc(full(sel))):T.fNoEmp} ${tip(T.fTip,'מה קורה אחרי')}</p></div>
+      <div class="msg ${r&&r.success?'msg--ok':'msg--err'}" role="alert" ${r?'':'hidden'}>${ic(r&&r.success?'check':'alert')}<span>${r?esc(r.message):''}</span></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button type="button" class="btn primary lg block" id="fSend" ${S.forgotSending?'aria-busy="true"':''}>${S.forgotSending?`<span class="spin" aria-hidden="true"></span>${T.fSending}`:`${ic('mail')}${T.fSend}`}</button>
+      </div></section>`;
+    $('#fBack').onclick=()=>{S.step='code';S.forgotRes=null;renderStep();focusMain();};
+    $('#fSend').onclick=sendForgot;
+  }
+  else if(S.step==='reset'){
+    f.innerHTML=`<section class="step" aria-labelledby="h-r">
+      <div class="me"><span class="av" aria-hidden="true">${ic('shield','lg')}</span>
+      <div class="hd"><h1 class="h1" id="h-r" tabindex="-1">${T.rTitle}</h1><p class="sub">${T.rSub}</p></div></div>
+      <form id="fReset" novalidate>
+        ${S.pm&&sel?`<input class="sr-only" type="text" name="username" autocomplete="username" value="${esc(full(sel))}" readonly tabindex="-1" aria-hidden="true">`:''}
+        ${pwField('login-newpass1',T.rNew)}
+        <div style="height:20px"></div>
+        ${pwField('login-newpass2',T.rAgain)}
+        <div class="msg msg--err" id="resetErr" role="alert" style="margin-block-start:16px" ${S.resetErr?'':'hidden'}>${ic('alert')}<span>${esc(S.resetErr)}</span></div>
+        <div style="margin-block-start:16px"><button type="submit" class="btn primary lg block" id="rSave" ${S.resetSaving?'aria-busy="true"':''}>${S.resetSaving?`<span class="spin" aria-hidden="true"></span>${T.rSaving}`:`${T.rSave}<svg class="ic go" aria-hidden="true"><use href="#i-next"/></svg>`}</button></div>
+      </form></section>`;
+    document.querySelectorAll('.eye[data-for]').forEach(b=>b.onclick=()=>toggleEye(b));
+    $('#fReset').onsubmit=saveReset;
+  }
+  else if(S.step==='done'){
+    f.innerHTML=`<section class="step done" aria-live="polite">
+      <span class="ring" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+      <h1 class="h1" tabindex="-1">${T.done}</h1><p class="sub">${esc(T.doneSub(sel?sel.firstName:''))}</p>
+      <span class="bar" aria-hidden="true"><i></i></span></section>`;
+  }
+}
+function pwField(id,label){
+  return `<div class="fld"><label class="lbl" for="${id}">${label}</label><div class="ctl">
+    <svg class="ic lead" aria-hidden="true"><use href="#i-lock"/></svg>
+    <input id="${id}" class="inp has-lead has-trail ltr" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" ${S.resetErr?'aria-invalid="true"':''} aria-describedby="resetErr">
+    <button type="button" class="eye" data-for="${id}" aria-pressed="false" aria-label="${T.show}" data-tip="${T.show}">${ic('eye')}</button></div></div>`;
+}
+function toggleEye(b){const i=document.getElementById(b.dataset.for);const on=i.type==='password';i.type=on?'text':'password';b.setAttribute('aria-pressed',on);b.setAttribute('aria-label',on?T.hide:T.show);b.dataset.tip=on?T.hide:T.show;b.innerHTML=ic(on?'eyeoff':'eye');}
+
+/* ---------------- list ---------------- */
+function filtered(){return S.emps.filter(e=>full(e).includes(S.q.trim()));}
+function hl(name){const q=S.q.trim();if(!q)return esc(name);const i=name.indexOf(q);if(i<0)return esc(name);return esc(name.slice(0,i))+'<mark>'+esc(q)+'</mark>'+esc(name.slice(i+q.length));}
+function renderList(){
+  const lb=$('#lb'),cnt=$('#cnt'),inp=$('#login-employee'); if(!lb) return;
+  if(S.empsStatus==='loading'){lb.setAttribute('aria-busy','true');lb.innerHTML=`<span class="sr-only">${T.loading}</span>`+'<div class="skel" aria-hidden="true"><i></i><i></i></div>'.repeat(5);cnt.textContent='';inp&&inp.removeAttribute('aria-activedescendant');return;}
+  lb.removeAttribute('aria-busy');
+  if(S.empsStatus==='failed'){lb.innerHTML=`<div class="list-state" role="status">${ic('wifi','xl')}<b>${T.failed}</b><span>${T.failedSub}</span><button type="button" class="btn" id="retry">${ic('refresh')}${T.retry}</button></div>`;cnt.textContent='';$('#retry').onclick=retryEmps;return;}
+  if(!S.emps.length){lb.innerHTML=`<div class="list-state" role="status">${ic('user','xl')}<b>${T.empty}</b><span>${T.emptySub}</span></div>`;cnt.textContent='';return;}
+  const list=filtered();
+  cnt.textContent=S.q.trim()?`${list.length} מתוך ${S.emps.length}`:`${S.emps.length} שמות`;
+  if(!list.length){lb.innerHTML=`<div class="list-state" role="status">${ic('search','xl')}<b>${T.none}</b><span>${T.noneSub}</span></div>`;inp.removeAttribute('aria-activedescendant');return;}
+  if(S.active>=list.length) S.active=list.length-1;
+  lb.innerHTML=list.map((e,i)=>`<div class="opt${i===S.active?' is-active':''}" role="option" id="opt-${e.id}" aria-selected="${i===S.active}" data-id="${e.id}" data-element-name="לחיץ_LoginScreen_7">
+     <span class="av" aria-hidden="true"><bdi>${esc(initials(e))}</bdi></span><span class="nm" title="${esc(full(e))}">${hl(full(e))}</span>${ic('next','go')}</div>`).join('');
+  inp.setAttribute('aria-activedescendant','opt-'+list[S.active].id);
+  lb.querySelectorAll('.opt').forEach(o=>{o.onclick=()=>choose(o.dataset.id);o.onmousemove=()=>{const i=list.findIndex(e=>e.id===o.dataset.id);if(i!==S.active){S.active=i;markActive(list);}};});
+}
+function markActive(list){document.querySelectorAll('#lb .opt').forEach((o,i)=>{o.classList.toggle('is-active',i===S.active);o.setAttribute('aria-selected',i===S.active);});
+  const a=document.querySelectorAll('#lb .opt')[S.active]; if(a){$('#login-employee').setAttribute('aria-activedescendant',a.id);a.scrollIntoView({block:'nearest'});}}
+function onListKey(ev){
+  const list=filtered(); if(!list.length){ if(ev.key==='Enter') ev.preventDefault(); return; }
+  if(ev.key==='ArrowDown'){ev.preventDefault();S.active=Math.min(list.length-1,S.active+1);markActive(list);}
+  else if(ev.key==='ArrowUp'){ev.preventDefault();S.active=Math.max(0,S.active-1);markActive(list);}
+  else if(ev.key==='Home'&&ev.ctrlKey){ev.preventDefault();S.active=0;markActive(list);}
+  else if(ev.key==='End'&&ev.ctrlKey){ev.preventDefault();S.active=list.length-1;markActive(list);}
+  else if(ev.key==='Enter'){ev.preventDefault(); // resolveEmployeeId: שם זהה בדיוק גובר על הפעיל
+    const exact=S.emps.find(e=>full(e)===S.q.trim()); choose((exact||list[S.active]).id);}
+  else if(ev.key==='Escape'){ if(S.q){ev.preventDefault();S.q='';ev.target.value='';S.active=0;renderList();} }
+}
+function choose(id){S.sel=S.emps.find(e=>e.id===id);S.q=full(S.sel);S.step='code';S.err='';S.showPw=false;S.pinMode=S.trusted;renderStep();focusMain();}
+async function retryEmps(){S.empsStatus='loading';renderStep();await wait(900);S.empsStatus='ok';S.emps=makeEmps(12);renderStep();focusMain();}
+
+/* ---------------- code step ---------------- */
+function wireCode(){
+  const inp=$('#login-password');
+  $('#notMe').onclick=()=>{S.sel=null;S.q='';S.err='';S.step='who';renderStep();focusMain();};
+  $('#eye').onclick=()=>{S.showPw=!S.showPw;const v=inp.value;renderStep();const n=$('#login-password');n.value=v;updSlots();n.focus();};
+  const mb=$('#modeBtn'); if(mb) mb.onclick=()=>{S.pinMode=!S.pinMode;S.err='';S.showPw=false;renderStep();focusMain();};
+  $('#forgotBtn').onclick=()=>{S.step='forgot';S.forgotRes=null;renderStep();focusMain(true);};
+  inp.addEventListener('input',()=>{ if(S.pinMode&&inp.value.length>4) inp.value=inp.value.slice(0,4); if(S.err){S.err='';setErr('');} updSlots(); });
+  $('#fLogin').onsubmit=submitLogin;
+  updSlots();
+}
+function updSlots(){const inp=$('#login-password');document.querySelectorAll('.slots i').forEach((s,i)=>s.classList.toggle('on',inp&&i<inp.value.length));}
+function setErr(m,shake){
+  S.err=m; const box=$('#loginErr'),inp=$('#login-password'); if(!box) return;
+  box.hidden=!m; $('#loginErrT').textContent=m;
+  if(m) inp.setAttribute('aria-invalid','true'); else inp.removeAttribute('aria-invalid');
+  if(m&&shake){box.classList.remove('shake');void box.offsetWidth;box.classList.add('shake');}
+}
+function setBusy(b){const g=$('#go');S.loading=b;if(!g)return;
+  if(b){g.setAttribute('aria-busy','true');g.innerHTML=`<span class="spin" aria-hidden="true"></span>${T.busy}`;}
+  else{g.removeAttribute('aria-busy');g.innerHTML=`${T.submit}<svg class="ic go" aria-hidden="true" data-element-name="רכיב_LoginScreen_11"><use href="#i-next"/></svg>`;}}
+async function submitLogin(ev){
+  ev.preventDefault(); if(S.loading) return;
+  const v=$('#login-password').value;
+  if(!S.sel||!v){setErr(S.pinMode?T.emptyPin:T.emptyPw,true);$('#login-password').focus();return;}   // LG-23
+  setErr('');setBusy(true);
+  await wait(1200);
+  let key=S.server; if(key==='wrong') key=S.pinMode?'wrongPin':'wrongPw';
+  if(key==='network'){setBusy(false);setErr(T.net,true);return;}                                       // LG-27
+  const r=SERVER[key];
+  if(r.ok&&r.body.success){ if(r.body.mustResetPassword){S.step='reset';S.resetErr='';renderStep();focusMain();} else {S.step='done';renderStep();} return; } // LG-25
+  setBusy(false);
+  if(r.body.requireFullPassword&&S.pinMode){S.pinMode=false;S.showPw=false;S.err=r.body.message;renderStep();$('#login-password').focus();return;} // LG-26
+  setErr(r.body.message||'ההתחברות לא הצליחה',true);
+  const i=$('#login-password'); i.select(); i.focus();
+}
+/* ---------------- forgot / reset ---------------- */
+async function sendForgot(){
+  if(S.forgotSending) return;
+  if(!S.sel){S.forgotRes={success:false,message:T.fNoEmp};renderStep();return;}
+  S.forgotSending=true;S.forgotRes=null;renderStep();
+  await wait(1200);
+  S.forgotSending=false;
+  S.forgotRes=S.forgotServer==='network'?{success:false,message:T.net}:FORGOT[S.forgotServer];
+  renderStep(); $('#fSend').focus();
+}
+async function saveReset(ev){
+  ev.preventDefault(); if(S.resetSaving) return;
+  const a=$('#login-newpass1').value,b=$('#login-newpass2').value;
+  if(!a||a.length<4){showResetErr(T.rShort);$('#login-newpass1').focus();return;}
+  if(a!==b){showResetErr(T.rMismatch);$('#login-newpass2').focus();return;}
+  S.resetSaving=true;S.resetErr='';const va=a,vb=b;renderStep();$('#login-newpass1').value=va;$('#login-newpass2').value=vb;
+  await wait(1100); S.resetSaving=false; S.step='done'; renderStep();
+}
+function showResetErr(m){S.resetErr=m;const box=$('#resetErr');box.hidden=false;box.querySelector('span').textContent=m;
+  document.querySelectorAll('#fReset .inp').forEach(i=>i.setAttribute('aria-invalid','true'));box.classList.remove('shake');void box.offsetWidth;box.classList.add('shake');}
+
+function focusMain(heading){requestAnimationFrame(()=>{
+  const el=heading?document.querySelector('.step .h1'):(document.querySelector('#login-employee:not([disabled])')||document.querySelector('#login-password')||document.querySelector('#login-newpass1')||document.querySelector('.step .h1'));
+  el&&el.focus({preventScroll:false});});}
+
+/* ---------------- tooltip (hover / focus / touch toggle / Esc) ---------------- */
+const tt=$('#tt'); let ttFor=null;
+function showTip(el){const t=el.dataset.tip;if(!t)return;ttFor=el;tt.textContent=t;tt.classList.add('on');
+  const r=el.getBoundingClientRect(),w=tt.offsetWidth,h=tt.offsetHeight,vw=document.documentElement.clientWidth;
+  const fromEnd=vw-r.right; let s=fromEnd+r.width/2-w/2; s=Math.max(8,Math.min(vw-w-8,s));   // RTL: inline-start = מימין
+  let y=r.top-h-10; if(y<8) y=r.bottom+10; tt.style.insetInlineStart=s+'px'; tt.style.insetBlockStart=y+'px'; el.setAttribute('aria-describedby','tt');}
+function hideTip(){tt.classList.remove('on');if(ttFor){ttFor.removeAttribute('aria-describedby');ttFor=null;}}
+document.addEventListener('mouseover',e=>{const t=e.target.closest('[data-tip]');if(t)showTip(t);});
+document.addEventListener('mouseout',e=>{if(e.target.closest('[data-tip]'))hideTip();});
+document.addEventListener('focusin',e=>{const t=e.target.closest('[data-tip]');if(t)showTip(t);else hideTip();});
+document.addEventListener('click',e=>{const t=e.target.closest('.tip');if(t){ if(ttFor===t&&tt.classList.contains('on')) hideTip(); else showTip(t);} else if(!e.target.closest('[data-tip]')) hideTip();});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  if(tt.classList.contains('on')){hideTip();return;}
+  if(S.modal&&!$('#dm').contains(e.target)){ // Q-L7: Esc סוגר רק כשלא הוקלד כלום
+    const typed=[...document.querySelectorAll('.dlg input:not([readonly])')].some(i=>i.value)&&S.step!=='who'; if(S.step!=='reset'&&!typed){S.modal=false;$('#dmModal').checked=false;render();}
+  }
+});
+window.addEventListener('scroll',hideTip,true);window.addEventListener('resize',hideTip);
+/* long org name → tooltip only when clamped */
+document.addEventListener('mouseover',e=>{const n=e.target.closest('.idz__name');if(n&&n.scrollHeight>n.clientHeight+1){n.dataset.tip=n.dataset.tipOverflow;showTip(n);}});
+
+/* ---------------- demo control ---------------- */
+const STATES=[
+ ['who','שם — רגיל'],['who-typing','שם — מקלידים "רח"'],['who-none','שם — אין תוצאה'],['who-loading','שם — טוען'],['who-failed','שם — נכשלה טעינה'],['who-empty','שם — אין עובדים'],
+ ['code','קוד — סיסמה (רגיל)'],['code-typing','קוד — מוקלדת, מוצגת'],['code-pin','קוד — קוד קצר (מחשב מהימן)'],['code-invalid','קוד — שדה ריק'],['code-wrong','קוד — סיסמה שגויה'],
+ ['code-fallback','קוד — קוד קצר נדחה → סיסמה מלאה'],['code-inactive','קוד — חשבון לא פעיל'],['code-server','קוד — שגיאת שרת'],['code-network','קוד — אין רשת'],['code-loading','קוד — שולחים'],
+ ['done','הצלחה — נכנסים'],['forgot','שכחתי — רגיל'],['forgot-sending','שכחתי — שולחים'],['forgot-sent','שכחתי — נשלח'],['forgot-nomail','שכחתי — אין מייל'],
+ ['reset','סיסמה קבועה — רגיל'],['reset-mismatch','סיסמה קבועה — לא זהות'],['modal-who','חלונית — שם'],['modal-code','חלונית — קוד']
+];
+function applyPreset(st){
+  S.step='who';S.q='';S.active=0;S.sel=null;S.err='';S.showPw=false;S.loading=false;S.forgotRes=null;S.forgotSending=false;S.resetErr='';S.resetSaving=false;
+  S.modal=st.startsWith('modal');$('#dmModal').checked=S.modal;
+  loadEmps(st==='who-loading'?'loading':st==='who-failed'?'failed':st==='who-empty'?'0':$('#dmEmps').value==='loading'||$('#dmEmps').value==='failed'||$('#dmEmps').value==='0'?'12':$('#dmEmps').value);
+  if(st==='code-pin'||st==='code-fallback'){S.trusted=true;$('#dmTrusted').checked=true;}
+  const pick=()=>{S.sel=S.emps[0]||makeEmps(1)[0];S.q=full(S.sel);S.pinMode=S.trusted;};
+  if(st==='who-typing'){S.q='רח';}
+  if(st==='who-none'){S.q='זזזז';}
+  if(st.startsWith('code')||st==='modal-code'||st==='done'||st.startsWith('forgot')||st.startsWith('reset')){pick();S.step='code';}
+  if(st==='code-typing'){S.showPw=true;}
+  if(st==='code-invalid'){S.err=S.pinMode?T.emptyPin:T.emptyPw;}
+  if(st==='code-wrong'){S.err=S.pinMode?SERVER.wrongPin.body.message:SERVER.wrongPw.body.message;}
+  if(st==='code-fallback'){S.pinMode=false;S.err=SERVER.notTrusted.body.message;}
+  if(st==='code-inactive'){S.err=SERVER.inactive.body.message;}
+  if(st==='code-server'){S.err=SERVER.server.body.message;}
+  if(st==='code-network'){S.err=T.net;}
+  if(st==='done') S.step='done';
+  if(st.startsWith('forgot')) S.step='forgot';
+  if(st==='forgot-sending') S.forgotSending=true;
+  if(st==='forgot-sent') S.forgotRes=FORGOT.ok;
+  if(st==='forgot-nomail') S.forgotRes=FORGOT.noMail;
+  if(st.startsWith('reset')) S.step='reset';
+  if(st==='reset-mismatch') S.resetErr=T.rMismatch;
+  render();
+  if(st==='code-typing'){const i=$('#login-password');i.value='Gemach2026';updSlots();}
+  if(st==='code-pin'){const i=$('#login-password');i.value='82';updSlots();}
+  if(st==='code-wrong'||st==='code-invalid'){const i=$('#login-password');if(st==='code-wrong'){i.value='12345';}}
+  if(st==='code-loading'){const i=$('#login-password');i.value='12345';setBusy(true);}
+  if(st==='reset-mismatch'){$('#login-newpass1').value='abcd1';$('#login-newpass2').value='abcd2';}
+  if(!['who-loading','who-failed','who-empty'].includes(st)&&!st.startsWith('done')) focusMain();
+}
+function loadEmps(mode){
+  if(mode==='loading'){S.empsStatus='loading';S.emps=[];}
+  else if(mode==='failed'){S.empsStatus='failed';S.emps=[];}
+  else {S.empsStatus='ok';S.emps=makeEmps(+mode);}
+}
+const dmS=$('#dmState'); dmS.innerHTML=STATES.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+$('#dmFab').onclick=()=>{const d=$('#dm');d.hidden=!d.hidden;$('#dmFab').setAttribute('aria-expanded',String(!d.hidden));};
+dmS.onchange=()=>applyPreset(dmS.value);
+$('#dmOrg').onchange=e=>{S.org=e.target.value;render();};
+$('#dmEmps').onchange=e=>{loadEmps(e.target.value);S.step='who';S.q='';S.sel=null;render();focusMain();};
+$('#dmServer').onchange=e=>{S.server=e.target.value;};
+$('#dmForgot').onchange=e=>{S.forgotServer=e.target.value;};
+$('#dmTrusted').onchange=e=>{S.trusted=e.target.checked;S.pinMode=S.trusted;S.err='';if(S.step==='code')renderStep();};
+$('#dmModal').onchange=e=>{S.modal=e.target.checked;render();};
+$('#dmPm').onchange=e=>{S.pm=e.target.checked;if(S.step==='code'||S.step==='reset')renderStep();};
+$('#dmSlow').onchange=e=>{S.slow=e.target.checked;};
+$('#dmMotion').onchange=e=>{document.documentElement.dataset.motion=e.target.checked?'reduced':'';};
+
+/* ---------------- boot ---------------- */
+// הגנת autofill: name אקראי שנוצר רק בצד לקוח (במימוש: useEffect) — LG-14
+S.guard='no-autofill-'+Math.random().toString(36).slice(2);
+// מצב מתוך ה-hash (#state=…&org=…&emps=…&pm=1&trusted=1&motion=reduced&demo=0) — לצילומים ולקישורים
+function applyHash(){
+  const P=new URLSearchParams(location.hash.slice(1));
+  S.org=ORGS[P.get('org')]?P.get('org'):'a'; $('#dmOrg').value=S.org;
+  $('#dmEmps').value=P.get('emps')||'12';
+  S.pm=P.get('pm')==='1'; $('#dmPm').checked=S.pm;
+  S.trusted=P.get('trusted')==='1'; $('#dmTrusted').checked=S.trusted;
+  const rm=P.get('motion')==='reduced'; document.documentElement.dataset.motion=rm?'reduced':''; $('#dmMotion').checked=rm;
+  $('#dmFab').hidden=P.get('demo')==='0';
+  const st=P.get('state')||'who'; dmS.value=st; applyPreset(st);
+}
+window.addEventListener('hashchange',applyHash);
+applyHash();
+})();
+</script>
+</body>
+</html>

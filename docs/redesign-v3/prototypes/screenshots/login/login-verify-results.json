@@ -1,0 +1,1638 @@
+{
+ "static": {
+  "breakpoints": {
+   "used": [
+    1024,
+    639,
+    640,
+    768,
+    1023
+   ],
+   "bad": []
+  },
+  "heightQueries": [],
+  "physical": [],
+  "physicalJs": [],
+  "dialogsApi": [],
+  "externals": [
+   "https://fonts.googleapis.com",
+   "https://fonts.gstatic.com",
+   "https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap"
+  ],
+  "chipClass": 0
+ },
+ "pages": [
+  {
+   "w": 360,
+   "h": 780,
+   "st": "who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-who.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "who-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-who-typing.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "who-none",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-who-none.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "who-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-who-loading.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "who-failed",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-who-failed.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "who-empty",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-who-empty.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-typing.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-pin",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-pin.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-invalid",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-invalid.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-wrong",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-wrong.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-fallback",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-fallback.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-inactive",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-inactive.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-server",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-server.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-network",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-network.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "code-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-code-loading.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "done",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-done.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "forgot",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-forgot.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "forgot-sent",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-forgot-sent.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "forgot-nomail",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-forgot-nomail.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "reset",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-reset.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "reset-mismatch",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-reset-mismatch.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "modal-who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-modal-who.png"
+  },
+  {
+   "w": 360,
+   "h": 780,
+   "st": "modal-code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "360-modal-code.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-who.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "who-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-who-typing.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "who-none",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-who-none.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "who-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-who-loading.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "who-failed",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-who-failed.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "who-empty",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-who-empty.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-typing.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-pin",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-pin.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-invalid",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-invalid.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-wrong",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-wrong.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-fallback",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-fallback.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-inactive",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-inactive.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-server",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-server.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-network",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-network.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "code-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-code-loading.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "done",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-done.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "forgot",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-forgot.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "forgot-sent",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-forgot-sent.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "forgot-nomail",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-forgot-nomail.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "reset",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-reset.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "reset-mismatch",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-reset-mismatch.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "modal-who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-modal-who.png"
+  },
+  {
+   "w": 768,
+   "h": 1024,
+   "st": "modal-code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "768-modal-code.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-who.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-who-typing.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who-none",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-who-none.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-who-loading.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who-failed",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-who-failed.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who-empty",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-who-empty.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-typing.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-pin",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-pin.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-invalid",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-invalid.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-wrong",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-wrong.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-fallback",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-fallback.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-inactive",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-inactive.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-server",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-server.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-network",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-network.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-code-loading.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "done",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-done.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "forgot",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-forgot.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "forgot-sent",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-forgot-sent.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "forgot-nomail",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-forgot-nomail.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "reset",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-reset.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "reset-mismatch",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-reset-mismatch.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "modal-who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-modal-who.png"
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "modal-code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1024-modal-code.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-who.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-who-typing.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who-none",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-who-none.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-who-loading.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who-failed",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-who-failed.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who-empty",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-who-empty.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-typing",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-typing.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-pin",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-pin.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-invalid",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-invalid.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-wrong",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-wrong.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-fallback",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-fallback.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-inactive",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-inactive.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-server",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-server.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-network",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-network.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-loading",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-code-loading.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "done",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-done.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "forgot",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-forgot.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "forgot-sent",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-forgot-sent.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "forgot-nomail",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-forgot-nomail.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "reset",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-reset.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "reset-mismatch",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-reset-mismatch.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "modal-who",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-modal-who.png"
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "modal-code",
+   "hOverflow": false,
+   "vScroll": false,
+   "file": "1440-modal-code.png"
+  }
+ ],
+ "laptops": [
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "who",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-pin",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "code-fallback",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "forgot-nomail",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "reset-mismatch",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1440,
+   "h": 900,
+   "st": "done",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 900
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "who",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "code",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "code-pin",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "code-fallback",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "forgot-nomail",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "reset-mismatch",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1366,
+   "h": 768,
+   "st": "done",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "who",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "code",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "code-pin",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "code-fallback",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "forgot-nomail",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "reset-mismatch",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1280,
+   "h": 720,
+   "st": "done",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 720
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "who",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-pin",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "code-fallback",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "forgot-nomail",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "reset-mismatch",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  },
+  {
+   "w": 1024,
+   "h": 768,
+   "st": "done",
+   "vScroll": false,
+   "hOverflow": false,
+   "sh": 768
+  }
+ ],
+ "contrast": [
+  {
+   "st": "who",
+   "text": "גמ״ח שמלות נווה יעקב",
+   "ratio": 13.98,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "הזמנות, השכרות ומלאי",
+   "ratio": 8.76,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "שלום, מי כאן?",
+   "ratio": 13.28,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "בוחרים את השם שלכם, ואז הקוד",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "חיפוש שם",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "12 שמות",
+   "ratio": 4.86,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "רחל פרידמן",
+   "ratio": 13.84,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "שרה אדלר",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "לאה מזרחי",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "מרים קליין",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "חנה לוי",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "אסתר וייס",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "דבורה כהן",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "רבקה ברגר",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "יהודית זילברמן",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "נחמה שפירא",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "שושנה פרלמן",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "צביה רוזנברג",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who",
+   "text": "רק לדווח משמרת",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "גמ״ח שמלות נווה יעקב",
+   "ratio": 13.98,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "הזמנות, השכרות ומלאי",
+   "ratio": 8.76,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "שלום, מי כאן?",
+   "ratio": 13.28,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "בוחרים את השם שלכם, ואז הקוד",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "חיפוש שם",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "הרשימה לא נטענה",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "יכול להיות שאין חיבור לשרת",
+   "ratio": 9.08,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "לנסות שוב",
+   "ratio": 13.13,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "who-failed",
+   "text": "רק לדווח משמרת",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "גמ״ח שמלות נווה יעקב",
+   "ratio": 13.98,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "הזמנות, השכרות ומלאי",
+   "ratio": 8.76,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "לא אני",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "שלום, רחל",
+   "ratio": 13.28,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "רחל פרידמן",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "המחשב הזה מאושר לקוד קצר",
+   "ratio": 8.56,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "4 התווים האחרונים של הסיסמה",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "סיסמה מלאה במקום",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "שכחתי את הסיסמה",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "כניסה",
+   "ratio": 7.13,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-pin",
+   "text": "רק לדווח משמרת",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "גמ״ח שמלות נווה יעקב",
+   "ratio": 13.98,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "הזמנות, השכרות ומלאי",
+   "ratio": 8.76,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "לא אני",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "שלום, רחל",
+   "ratio": 13.28,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "רחל פרידמן",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "סיסמה",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "סיסמא שגויה",
+   "ratio": 5.59,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "שכחתי את הסיסמה",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "כניסה",
+   "ratio": 7.13,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "code-wrong",
+   "text": "רק לדווח משמרת",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "גמ״ח שמלות נווה יעקב",
+   "ratio": 13.98,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "הזמנות, השכרות ומלאי",
+   "ratio": 8.76,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "חזרה לכניסה",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "סיסמה זמנית במייל",
+   "ratio": 13.28,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "נשלח למייל של",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "רחל פרידמן",
+   "ratio": 13.28,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "סיסמה זמנית נשלחה לכתובת המייל",
+   "ratio": 13.17,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "שליחת סיסמה זמנית",
+   "ratio": 7.13,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "forgot-sent",
+   "text": "רק לדווח משמרת",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "כניסת צוות",
+   "ratio": 15.9,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "לא אני",
+   "ratio": 13.98,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "שלום, רחל",
+   "ratio": 15.9,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "רחל פרידמן",
+   "ratio": 9.08,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "סיסמה",
+   "ratio": 9.08,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "שכחתי את הסיסמה",
+   "ratio": 13.98,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "modal-code",
+   "text": "כניסה",
+   "ratio": 7.13,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "done",
+   "text": "גמ״ח שמלות נווה יעקב",
+   "ratio": 13.98,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "done",
+   "text": "הזמנות, השכרות ומלאי",
+   "ratio": 8.76,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "done",
+   "text": "נכנסים…",
+   "ratio": 13.28,
+   "need": 3,
+   "pass": true
+  },
+  {
+   "st": "done",
+   "text": "רחל, טוענים את המערכת",
+   "ratio": 7.58,
+   "need": 4.5,
+   "pass": true
+  },
+  {
+   "st": "done",
+   "text": "רק לדווח משמרת",
+   "ratio": 11.67,
+   "need": 4.5,
+   "pass": true
+  }
+ ],
+ "flows": [
+  {
+   "name": "focus lands in search on load; typing filters; ArrowDown+Enter selects → code step, focus in password",
+   "pass": true,
+   "detail": {
+    "f1": "login-employee",
+    "f2": "login-password"
+   }
+  },
+  {
+   "name": "Enter on empty password → client validation, no network, aria-invalid",
+   "pass": true,
+   "detail": {
+    "t": "צריך סיסמה כדי להמשיך",
+    "inv": "true",
+    "busy": null
+   }
+  },
+  {
+   "name": "wrong password (server 401) → server message verbatim, button re-enabled",
+   "pass": true,
+   "detail": {
+    "t": "סיסמא שגויה",
+    "busy": null
+   }
+  },
+  {
+   "name": "eye toggles type + aria-pressed, keeps value",
+   "pass": true,
+   "detail": {
+    "type": "text",
+    "v": "abc",
+    "p": "true"
+   }
+  },
+  {
+   "name": "success → done step",
+   "pass": true,
+   "detail": "done"
+  },
+  {
+   "name": "trusted PIN: maxlength 4, slots fill, requireFullPassword falls back to full password",
+   "pass": true,
+   "detail": {
+    "v": {
+     "v": "1234",
+     "on": 4
+    },
+    "r": {
+     "pin": false,
+     "t": "לעובד זה טרם הוגדר קוד כניסה מקוצר. יש להזין את הסיסמה המלאה"
+    }
+   }
+  },
+  {
+   "name": "forgot → server \"no email\" message; back returns to code",
+   "pass": true,
+   "detail": "לא קיימת כתובת מייל שמורה עבור עובד זה. יש לפנות למנהל."
+  },
+  {
+   "name": "reset: mismatch blocked; cannot go back",
+   "pass": true,
+   "detail": {
+    "t": "שתי הסיסמאות לא זהות",
+    "back": false
+   }
+  },
+  {
+   "name": "autofill attributes: default = today (new-password, no username); pm=1 → username + current-password",
+   "pass": true,
+   "detail": {
+    "a": {
+     "ac": "new-password",
+     "u": false,
+     "formOff": "off"
+    },
+    "b": {
+     "ac": "current-password",
+     "u": true,
+     "uDisplay": "block",
+     "formOff": null
+    },
+    "s": {
+     "ac": "new-password",
+     "name": "no-autofill-5dnmfvdjyt"
+    }
+   }
+  },
+  {
+   "name": "modal: X closes; Esc closes when nothing typed",
+   "pass": true,
+   "detail": {
+    "has1": true,
+    "has2": false
+   }
+  },
+  {
+   "name": "tooltip: focus on ⓘ shows role=tooltip, Esc hides",
+   "pass": true,
+   "detail": {
+    "on": true,
+    "off": true
+   }
+  },
+  {
+   "name": "focus ring visible on primary button (outline ≥ 3px)",
+   "pass": true,
+   "detail": {
+    "id": "punch",
+    "cls": "lnk sm",
+    "outline": "3px solid"
+   }
+  }
+ ],
+ "console": [],
+ "reducedMotionDoneOpacity": "1",
+ "reducedMotionCheckDashOffset": "0px",
+ "summary": {
+  "screenshots": 96,
+  "hOverflow": [],
+  "laptopVScroll": [],
+  "contrastFail": [],
+  "flowsFail": [],
+  "flowsPass": "12/12",
+  "console": []
+ }
+}
