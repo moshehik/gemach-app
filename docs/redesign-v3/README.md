@@ -5,7 +5,7 @@
 > השינוי **קוסמטי בלבד** — לוגיקת הליבה, ה-API, מבנה הנתונים ותצורת ההזנה/שמירה — ללא שינוי.
 
 ## קבצים בתיקייה
-> **מסמכי הקמה חדשים (2026-09-24):** [CONSTITUTION.md](CONSTITUTION.md) (חוקה מחייבת) · [LIBRARY-MAP.md](LIBRARY-MAP.md) · [MASTER-PLAN.md](MASTER-PLAN.md) · [DECISIONS.md](DECISIONS.md). בסתירה — החוקה מנצחת.
+> **מסמכי הקמה חדשים (2026-09-24):** [CONSTITUTION.md](CONSTITUTION.md) (חוקה מחייבת) · [LIBRARY-MAP.md](LIBRARY-MAP.md) · [MASTER-PLAN.md](MASTER-PLAN.md) · [DECISIONS.md](DECISIONS.md) (D-1…D-15 נענו 2026-09-24) · [ACCESS-LOG.md](ACCESS-LOG.md) (יומן אימות חי). **עיקרי ההחלטות:** עמודים בהירים בלבד, כהה רק לחלוניות confirm/code/PIN · פלטה כללית אחת (ללא התאמה אישית) · הספרייה `app/v3/` מרכזית · תמיכה רב-ארגונית (ראו חוקה §ט). בסתירה — החוקה מנצחת.
 
 | קובץ | תפקיד |
 |---|---|

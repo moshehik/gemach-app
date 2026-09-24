@@ -9,11 +9,11 @@ app/v3/
   index.js                 ← ייצוא ציבורי יחיד (ui + overlays + icons + strings + config + patterns)
   tokens/
     primitives.css         ← L0 רמפות
-    semantic.light.css     ← L1 (~40) בהיר
-    semantic.dark.css      ← L1 כהה (html[data-theme=dark])
+    semantic.css           ← L1 (~40) בהיר בלבד — העמודים בהירים בלבד (D-1)
+    overlay.dark.css       ← --v3-ov-* : סט כהה+בהיר לשטחי חלונית צפה בלבד (confirm/code/PIN)
     scale.css              ← טיפוגרפיה, מרווח, רדיוס, elevation, z-index, motion, tap sizes, רוחבי מיכל
     breakpoints.js         ← SM/MD/LG/XL/2XL/3XL + custom-media
-    palettes/              ← פלטות ברירת מחדל (light+dark מלאים) + deriveDark.js + contrast.js
+    contrast.js            ← בדיקת AA (פלטה כללית אחת קבועה navy/sky/gold — D-8; אין palettes/ ואין deriveDark)
     legacy-bridge.css      ← --primary* → L1 (זמני, נמחק בסוף)
     base.css               ← reset מבודד (@layer), html/body background, scrollbar, dvh, safe-area, focus-ring
     README.md
@@ -23,7 +23,7 @@ app/v3/
   icons/                   ← Icon, sprite אחד, aliases.js (סמנטיים + כיוון), anim.css
   strings/                 ← he.js (מילון), keys.js, t()/useStrings, org overrides, README (כללי ניסוח)
   config/                  ← settingsRegistry, OrgConfigProvider, useOrgConfig, profiles/*.json (בדיקות)
-  change/                  ← מנוע שינויים (Phase 5; נבנה רק באישור D-7)
+  change/                  ← מנוע שינויים (Phase 5; נבנה רק אחרי שהמשתמש מאשר את §ז.6 — D-7)
   history/                 ← HistoryFeed + adapter (קיים)
   patterns/                ← 7 ארכיטיפים + slot-components
   gallery/                 ← *.gallery.js לכל רכיב + מחולל התיעוד
@@ -34,7 +34,7 @@ app/v3-gallery/            ← route הגלריה החיה (קיים: page.js + 
 ## 2. קיים בענף מול חסר
 | אזור | קיים (`app/v3/**`) | חסר / לשינוי |
 |---|---|---|
-| **tokens** | `tokens.css` (400 שורות): 93 hex + שקיפויות בשם, סולמות type/sp/r/sh/motion/z; בלוק `[data-v3-mode="dark"]` לחלונית בלבד; מוגדר גם על `:root` (דליפה) | פיצול ל-L0/L1/L2; **dark מלא** ל-L1 (0 היום); סולם z חדש (§ב.5); breakpoints.js; `base.css` (רקע על html/body, scrollbar, dvh); פלטות משתמש עם light+dark (`deriveDark`); הסרת `--v3-white/black` קשיחים; `@layer` לבידוד מה-CSS הישן (בעיה F1: `[data-v3] button{font:inherit}` דורס מחלקות) |
+| **tokens** | `tokens.css` (400 שורות): 93 hex + שקיפויות בשם, סולמות type/sp/r/sh/motion/z; בלוק `[data-v3-mode="dark"]` לחלונית בלבד; מוגדר גם על `:root` (דליפה) | פיצול ל-L0/L1/L2; dark רק לשטחי חלונית צפה (`--v3-ov-*`); L1 של העמודים בהיר בלבד; סולם z חדש (§ב.5); breakpoints.js; `base.css` (רקע על html/body, scrollbar, dvh); פלטה כללית אחת (מערכת הפלטות האישית הקיימת נזנחת בעמודי v3; הקוד לא נמחק עכשיו — D-8); הסרת `--v3-white/black` קשיחים; `@layer` לבידוד מה-CSS הישן (בעיה F1: `[data-v3] button{font:inherit}` דורס מחלקות) |
 | **components.css** | 1387 שורות, מחלקות `v3-*`; ~10 `@media` עם 420/640/1020/767 | להפריד ל-`ui.css` + `overlays.css`; התאמה לסט breakpoints; מחיקת `.v3-toast` הישן (כפל עם NoticeBar) |
 | **ui/** | `Btn Card Chip Tag Badge Field Row Tabs Seg Switch Tip Dialog CodeInput Stepper StepNav Timeline Table useSort Empty Banner V3Page IconBtn` | `Popover`, `Combobox`/`Select`, `DatePicker` (עוטף `HebrewDatePicker`), `Skeleton`, `Pagination`, `FilterBar`, `Range`, `Avatar`, `Money`/`Num` (`<bdi>`), `Tabs.mark`, `Table` כרטיסי-phone, שימוש בפועל ב-`Table/useSort/renderExpanded` (היום אף עמוד לא משתמש) |
 | **overlays** | `ui/Dialog.js` (94 שורות; מחסנית מקומית, נעילת גלילה, פוקוס; **`mode` כפרמטר**), `ui/Tip.js`, `notify/*` (`NoticeItem`, store, `V3MessagesToast` שלא מוזן) | **LayerManager** (חדש; מחסנית אחת גלובלית), `Dialog` נגזר-ערכה, `Sheet/Drawer/Popover/Combobox/Busy`, איחוד `notify` → `NoticeBar`+`Toast`, `legacyShim`; הסרת 6 ה-ask-hooks הכפולים |
@@ -88,7 +88,7 @@ app/v3/config/
 - **לא בשכבה זו:** סודות (`NEDARIM_API_PASSWORD`, מסוף/טוקן) — נשארים בשרת/env; ה-UI מקבל רק "ספק זמין: כן/לא".
 - הגלריה טוענת רכיבים תחת `<OrgConfigProvider profile="org2">` עם מתג פרופיל (§8).
 
-## 6. מנוע שינויים (Phase 5, מותנה ב-D-7)
+## 6. מנוע שינויים (Phase 5, מותנה באישור המדיניות המוצעת ב-CONSTITUTION §ז.6 — D-7 PROPOSED-AWAITING-REVIEW)
 ```
 app/v3/change/
   changeSchema.js   ← הגדרת "סוג שינוי": kind, entity, label(t-key), reversibility: R0|R1|R2|R3, dependsOn, summarize(before,after)
@@ -113,11 +113,11 @@ app/v3/change/
 
 ## 8. גלריה חיה כתיעוד
 - `/v3-gallery` נשאר route (מוגן login; פיתוח/preview בלבד). **הגלריה נוצרת מהרכיבים**, לא נכתבת ידנית: כל `*.gallery.js` מייצא `meta` + מצבים; `gallery/build.mjs` סורק ומרכיב דפים אוטומטית (אינדקס לפי קבוצה: tokens / ui / overlays / motion / icons / strings / patterns).
-- לכל רכיב: props מתוך JSDoc (`react-docgen`), כל המצבים (default/hover/focus/disabled/loading/error/empty/long/many/few/RTL/dark/reduced-motion), snippet לשימוש, כלל חוקה רלוונטי, קישור ל-lint.
-- **סרגלי בקרה בגלריה:** ערכת נושא (light/dark), פלטה, פרופיל org (`org1/org2/minimal/extreme`), רוחב (360/768/1024/1440/1920), `prefers-reduced-motion`, ולוח בדיקת RTL (`getBoundingClientRect` + גליפי חצים).
+- לכל רכיב: props מתוך JSDoc (`react-docgen`), כל המצבים (default/hover/focus/disabled/loading/error/empty/long/many/few/RTL/reduced-motion; dark — רק לרכיבי חלונית confirm/code/PIN), snippet לשימוש, כלל חוקה רלוונטי, קישור ל-lint.
+- **סרגלי בקרה בגלריה:** מתג light/dark לחלוניות confirm/code/PIN בלבד, פרופיל org (`org1/org2/minimal/extreme`), רוחב (360/768/1024/1440/1920), `prefers-reduced-motion`, ולוח בדיקת RTL (`getBoundingClientRect` + גליפי חצים).
 - דף tokens נוצר מ-`tokens/**` (דגימות צבע כולל ניגודיות AA), דף icons מה-sprite (כולל אנימציה והכיוון), דף strings מ-`he.js` (חיפוש + מי משתמש).
 - הגלריה = מקור צילומי הקבלה (S6) ומטרת הבדיקות (#16, #17, #18). רכיב בלי `gallery` = לא קיים (lint #16).
 - כלל: תיעוד .md מפנה לגלריה ולא משכפל טבלאות ערכים (טבלאות מפתח נוצרות אוטומטית) — כדי שלא יתיישן (R1).
 
 ## 9. סדר בנייה (מתחבר ל-`MASTER-PLAN.md`)
-Phase 1 (עם הפיילוט): `tokens/` + `base.css` + dark ל-L1 + `overlays/{LayerManager,Dialog,Tip,NoticeBar,Toast}` + `icons/` + `strings/` בסיס + `config/` בסיס + lint 1–10. Phase 2: `patterns/` סטטי. Phase 3–4: השלמת `ui/`+`overlays/` לפי צורך העמודים. Phase 5: shim + `change/`.
+Phase 1 (עם הפיילוט): `tokens/` + `base.css` + `overlay.dark.css` (כהה לחלוניות בלבד) + `overlays/{LayerManager,Dialog,Tip,NoticeBar,Toast}` + `icons/` + `strings/` בסיס + `config/` בסיס + lint 1–10. Phase 2: `patterns/` סטטי. Phase 3–4: השלמת `ui/`+`overlays/` לפי צורך העמודים. Phase 5: shim + `change/`.
