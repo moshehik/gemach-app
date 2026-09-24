@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import StatisticsModal from '../components/StatisticsModal';
 import ExportButtons from '../../components/ExportButtons';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
+import { V3Page, Btn, IconBtn, Tabs, Seg, Tag, Tip, Empty, Icon } from '@/app/v3/ui/components';
 
 // מיון בצד הלקוח לשתי הטבלאות בעמוד זה (רשימת עובדים + סיכום נוכחות) - שתיהן טוענות
 // את כל הנתונים למקשה אחת בלי pagination בשרת, אז אין צורך במיון צד-שרת. אותו דפוס
@@ -26,12 +27,22 @@ const sortRows = (rows, sort, getValue) => {
   return copy;
 };
 
-const SortIcon = ({ sort, colKey }) => {
-  if (sort.key !== colKey) return <svg className="icon"><use href="#i-sort" /></svg>;
+// כותרת עמודה ממוינת (תצוגה בלבד) - אותו state ואותה לחיצה כמו קודם.
+const SortHead = ({ sort, colKey, onSort, children }) => {
+  const on = sort.key === colKey;
   return (
-    <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: sort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
-      <use href="#i-chevron-down" />
-    </svg>
+    <th scope="col" aria-sort={on ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className="v3-th-btn" onClick={() => onSort(colKey)}>
+        {children}
+        <Icon
+          name={on ? 'chevron-down' : 'sort'}
+          size="sm"
+          anim={false}
+          className={on ? 'is-on' : undefined}
+          style={on && sort.direction === 'desc' ? { transform: 'rotate(180deg)' } : undefined}
+        />
+      </button>
+    </th>
   );
 };
 
@@ -274,7 +285,7 @@ export default function EmployeesPage() {
   const sortedAttendance = sortRows(processedAttendance, attSort, (r, key) => r[key]);
 
   return (
-    <>
+    <V3Page>
       <style dangerouslySetInnerHTML={{__html: `
         #print-area { display: none; }
         @media print {
@@ -301,202 +312,179 @@ export default function EmployeesPage() {
         }
       `}} />
 
-      <div className="no-print">
+      <div className="no-print v3-stack">
         {showStatistics && <StatisticsModal isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
 
-        <div className="page-head">
-          <div>
-            <h1>ניהול עובדים ונוכחות</h1>
+        <header className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">עובדים ונוכחות</h1>
+            <Tip>כאן רואים את כל אנשי הצוות, נכנסים לכרטיס של כל אחד, ובודקים שעות עבודה וסיכום שכר לפי חודש.</Tip>
           </div>
-        </div>
+        </header>
 
-        {/* Tabs Navigation */}
-        <div className="tabs">
-          <button type="button" className={activeTab === 'list' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
-            <svg className="icon"><use href="#i-users" /></svg>
-            רשימת עובדים
-          </button>
-          <button type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('attendance')}>
-            <svg className="icon"><use href="#i-clock" /></svg>
-            נוכחות
-          </button>
-        </div>
+        <Tabs
+          label="אזורי המסך"
+          value={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: 'list', label: 'הצוות', icon: 'users' },
+            { key: 'attendance', label: 'שעות עבודה', icon: 'clock' },
+          ]}
+        />
 
         {/* Employees List Tab Content */}
         {activeTab === 'list' && (
-          <div>
-            <div className="toolbar">
-              {aiInputMode ? (
-                <form onSubmit={handleAiInputSubmit} className="search-toolbar">
+          <div className="v3-stack">
+            {aiInputMode ? (
+              <form onSubmit={handleAiInputSubmit} className="v3-filter-bar">
+                <div className="v3-search">
                   {aiLoading
-                    ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-                    : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
+                    ? <Icon name="loader" loop />
+                    : <Icon name="ai" />}
                   <input
                     type="text"
                     value={aiInputText}
                     onChange={(e) => setAiInputText(e.target.value)}
-                    placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
+                    placeholder="תארו במילים מה לחפש"
+                    aria-label="חיפוש חכם"
                     disabled={aiLoading}
                   />
-                  <div className="search-toolbar-actions">
-                    {aiInputText && !aiLoading && (
-                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                        <svg className="icon"><use href="#i-x" /></svg>
-                      </button>
-                    )}
-                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
-                      <svg className="icon"><use href="#i-star" /></svg>
+                  {aiInputText && !aiLoading && (
+                    <button type="button" className="v3-search__clear is-on" aria-label="ניקוי הטקסט" title="ניקוי הטקסט" onClick={() => setAiInputText('')}>
+                      <Icon name="x" size="sm" />
                     </button>
-                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                      <svg className="icon"><use href="#i-activity" /></svg>
-                    </button>
-                    <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                      {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleSearch} className="search-toolbar">
-                  <svg className="icon"><use href="#i-search" /></svg>
+                  )}
+                </div>
+                <IconBtn variant="primary" icon="ai" label="חזרה לחיפוש רגיל" title="חזרה לחיפוש רגיל" onClick={toggleAiInputMode} />
+                <IconBtn icon="activity" label="שאלות על הנתונים" title="שאלות על הנתונים" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+                <Btn type="submit" variant="primary" loading={aiLoading}>
+                  {aiLoading ? 'מכין שאילתה...' : 'חיפוש חכם'}
+                </Btn>
+              </form>
+            ) : (
+              <form onSubmit={handleSearch} className="v3-filter-bar">
+                <div className="v3-search">
+                  <Icon name="search" />
                   <input
                     type="text"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="חיפוש עובד (שם, טלפון, קוד)..."
+                    placeholder="שם, טלפון או קוד עובד"
+                    aria-label="חיפוש עובד"
                   />
-                  <div className="search-toolbar-actions">
-                    {searchInput && (
-                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
-                        <svg className="icon"><use href="#i-x" /></svg>
-                      </button>
-                    )}
-                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                      <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+                  {searchInput && (
+                    <button type="button" className="v3-search__clear is-on" aria-label="ניקוי החיפוש" title="ניקוי החיפוש" onClick={handleClearSearch}>
+                      <Icon name="x" size="sm" />
                     </button>
-                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                      <svg className="icon"><use href="#i-activity" /></svg>
-                    </button>
-                    <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
-                  </div>
-                </form>
-              )}
+                  )}
+                </div>
+                <IconBtn icon="ai" label="חיפוש חכם" title="חיפוש חכם" onClick={toggleAiInputMode} />
+                <IconBtn icon="activity" label="שאלות על הנתונים" title="שאלות על הנתונים" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+                <Btn type="submit" variant="primary">חיפוש</Btn>
+              </form>
+            )}
 
-              <div className="spacer"></div>
-
-              <div className="pill-tabs">
-                <button type="button" onClick={() => setFilterStatus('active')} className={filterStatus === 'active' ? 'pill-tab active' : 'pill-tab'} title="עובדים פעילים">
-                  <svg className="icon"><use href="#i-user-check" /></svg>
-                  פעילים
-                </button>
-                <button type="button" onClick={() => setFilterStatus('inactive')} className={filterStatus === 'inactive' ? 'pill-tab active' : 'pill-tab'} title="לא פעילים">
-                  <svg className="icon"><use href="#i-user" /></svg>
-                  לא פעילים
-                </button>
-                <button type="button" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
-                  <svg className="icon"><use href="#i-users" /></svg>
-                  הכל
-                </button>
-              </div>
-
-              <button type="button" onClick={() => router.push('/employees/new')} className="btn btn-primary" title="עובד חדש">
-                <svg className="icon"><use href="#i-plus" /></svg>
-                עובד חדש
-              </button>
+            <div className="v3-cluster">
+              <Seg
+                label="סינון לפי סטטוס"
+                value={filterStatus}
+                onChange={setFilterStatus}
+                options={[
+                  { value: 'active', label: 'פעילים', icon: 'user-check' },
+                  { value: 'inactive', label: 'לא פעילים', icon: 'user' },
+                  { value: 'all', label: 'כולם', icon: 'users' },
+                ]}
+              />
+              <Btn variant="primary" icon="plus" onClick={() => router.push('/employees/new')}>עובד חדש</Btn>
             </div>
 
-            <div className="table-wrap">
-              <div className="table-scroll">
-                {loading ? (
-                  <div className="page-loading">
-                    <span className="spinner lg" />
-                    טוען נתונים...
-                  </div>
-                ) : (
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        <th className={empSort.key === 'code' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('code')}>קוד עובד <SortIcon sort={empSort} colKey="code" /></th>
-                        <th className={empSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('fullName')}>שם מלא <SortIcon sort={empSort} colKey="fullName" /></th>
-                        <th className={empSort.key === 'department' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('department')}>תפקיד <SortIcon sort={empSort} colKey="department" /></th>
-                        <th className={empSort.key === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('phone1')}>טלפון <SortIcon sort={empSort} colKey="phone1" /></th>
-                        <th className={empSort.key === 'isActive' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('isActive')}>סטטוס <SortIcon sort={empSort} colKey="isActive" /></th>
-                        <th className={empSort.key === 'needsPasswordReset' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('needsPasswordReset')}>סיסמה <SortIcon sort={empSort} colKey="needsPasswordReset" /></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedEmployees.map(employee => (
-                        <tr key={employee.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/employees/${employee.id}`)}>
-                          <td className="cell-primary">{employee.legacyId || employee.id.substring(0, 5)}</td>
-                          <td className="cell-primary">{employee.firstName} {employee.lastName}</td>
-                          <td>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
-                          <td>{employee.phone1 || '-'}</td>
-                          <td>
-                            <span className={employee.isActive ? 'badge badge-success' : 'badge badge-neutral'}>
-                              {employee.isActive ? 'פעיל' : 'לא פעיל'}
+            <div className="v3-table__wrap">
+              {loading ? (
+                <div className="v3-empty" role="status">
+                  <Icon name="loader" size="xl" loop />
+                  <span>טוענים את הרשימה...</span>
+                </div>
+              ) : (
+                <table className="v3-table">
+                  <thead>
+                    <tr>
+                      <SortHead sort={empSort} colKey="code" onSort={handleEmpSort}>קוד</SortHead>
+                      <SortHead sort={empSort} colKey="fullName" onSort={handleEmpSort}>שם</SortHead>
+                      <SortHead sort={empSort} colKey="department" onSort={handleEmpSort}>תפקיד</SortHead>
+                      <SortHead sort={empSort} colKey="phone1" onSort={handleEmpSort}>טלפון</SortHead>
+                      <SortHead sort={empSort} colKey="isActive" onSort={handleEmpSort}>סטטוס</SortHead>
+                      <SortHead sort={empSort} colKey="needsPasswordReset" onSort={handleEmpSort}>סיסמה</SortHead>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedEmployees.map(employee => (
+                      <tr
+                        key={employee.id}
+                        style={{ cursor: 'pointer' }}
+                        tabIndex={0}
+                        onClick={() => router.push(`/employees/${employee.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/employees/${employee.id}`); }}
+                      >
+                        <td><bdi>{employee.legacyId || employee.id.substring(0, 5)}</bdi></td>
+                        <td><b>{employee.firstName} {employee.lastName}</b></td>
+                        <td>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
+                        <td>{employee.phone1 ? <bdi>{employee.phone1}</bdi> : '-'}</td>
+                        <td>
+                          {employee.isActive
+                            ? <Tag variant="done" icon="user-check">פעיל</Tag>
+                            : <Tag variant="soft" icon="user">לא פעיל</Tag>}
+                        </td>
+                        <td>
+                          {employee.needsPasswordReset && (
+                            <span className="v3-cluster" onClick={(e) => e.stopPropagation()}>
+                              <Tag variant="attn" icon="alert-tri">לעדכן</Tag>
+                              <Tip label="למה צריך לעדכן סיסמה">הסיסמה הישנה שמורה בצורה לא מאובטחת. בכרטיס העובד אפשר לאפס אותה או לקבוע סיסמה חדשה.</Tip>
                             </span>
-                          </td>
-                          <td>
-                            {employee.needsPasswordReset && (
-                              <span className="badge badge-warning" title="הסיסמה ישנה/לא מוצפנת - יש לאפס או לקבוע סיסמה חדשה בכרטיס העובד">
-                                <svg className="icon"><use href="#i-alert-tri" /></svg>
-                                יש לעדכן
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {filteredEmployees.length === 0 && (
-                        <tr>
-                          <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-              <div className="table-foot">
-                <span>סה&quot;כ שורות מוצגות: {loading ? '...' : filteredEmployees.length}</span>
-              </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredEmployees.length === 0 && (
+                      <tr>
+                        <td colSpan="6">
+                          <Empty icon="search" text="לא נמצאו עובדים שמתאימים לחיפוש." />
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
+            <p className="v3-faint" role="status">מוצגים <bdi>{loading ? '...' : filteredEmployees.length}</bdi> עובדים</p>
           </div>
         )}
 
         {/* Attendance Tab Content */}
         {activeTab === 'attendance' && (
-          <div>
-            <div className="toolbar">
-              <button type="button" onClick={handlePrevMonth} className="btn btn-ghost btn-icon-only" title="חודש קודם">
-                <svg className="icon"><use href="#i-chevron-end" /></svg>
-              </button>
-              <strong style={{ minWidth: '110px', textAlign: 'center', color: 'var(--primary)' }}>
-                {getMonthName(selectedMonth)} {selectedYear}
+          <div className="v3-stack">
+            <div className="v3-cluster">
+              <IconBtn icon="chevron-end" label="החודש הקודם" title="החודש הקודם" onClick={handlePrevMonth} />
+              <strong className="v3-big">
+                {getMonthName(selectedMonth)} <bdi>{selectedYear}</bdi>
               </strong>
-              <button type="button" onClick={handleNextMonth} className="btn btn-ghost btn-icon-only" title="חודש הבא">
-                <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
+              <IconBtn icon="chevron-start" label="החודש הבא" title="החודש הבא" onClick={handleNextMonth} />
 
-              <div className="spacer"></div>
-
-              <div ref={printMenuRef} style={{ position: 'relative' }}>
-                <button
-                  type="button"
+              <div ref={printMenuRef} style={{ position: 'relative', marginInlineStart: 'auto' }}>
+                <IconBtn
+                  icon="printer"
+                  label="הדפסה"
+                  title="הדפסה"
                   onClick={() => setPrintMenuOpen(o => !o)}
-                  className="btn btn-secondary btn-icon-only"
                   disabled={processedAttendance.length === 0}
-                  title="הדפסת נוכחות"
-                >
-                  <svg className="icon"><use href="#i-printer" /></svg>
-                </button>
+                />
                 {printMenuOpen && (
-                  <div className="card" style={{ position: 'absolute', top: 'calc(100% + 6px)', insetInlineEnd: 0, minWidth: '250px', padding: '6px', zIndex: 20 }}>
-                    <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => handlePrintPdfs(null, 'full')}>
-                      <svg className="icon"><use href="#i-file" /></svg>
-                      דוחות מלאים לכל עובד
-                    </button>
-                    <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => handlePrintPdfs(null, 'summary')}>
-                      <svg className="icon"><use href="#i-list" /></svg>
-                      טבלת סיכום בלבד ({getMonthName(selectedMonth)} {selectedYear})
-                    </button>
+                  <div className="v3-popover is-on" style={{ insetInlineStart: 'auto', insetInlineEnd: 0, width: 'max-content' }}>
+                    <div className="v3-btn-group">
+                      <Btn variant="quiet" icon="file" onClick={() => handlePrintPdfs(null, 'full')}>דוח נפרד לכל עובד</Btn>
+                      <Btn variant="quiet" icon="list" onClick={() => handlePrintPdfs(null, 'summary')}>
+                        טבלת סיכום בלבד ({getMonthName(selectedMonth)} {selectedYear})
+                      </Btn>
+                    </div>
                   </div>
                 )}
               </div>
@@ -515,69 +503,65 @@ export default function EmployeesPage() {
               />
             </div>
 
-            <div className="table-wrap">
-              <div className="table-scroll">
-                <table className="data">
-                  <thead>
+            <div className="v3-table__wrap">
+              <table className="v3-table">
+                <thead>
+                  <tr>
+                    <SortHead sort={attSort} colKey="fullName" onSort={handleAttSort}>שם</SortHead>
+                    <SortHead sort={attSort} colKey="totalMinutes" onSort={handleAttSort}>זמן עבודה</SortHead>
+                    <SortHead sort={attSort} colKey="daysCount" onSort={handleAttSort}>ימים</SortHead>
+                    <SortHead sort={attSort} colKey="issues" onSort={handleAttSort}>תקלות</SortHead>
+                    <SortHead sort={attSort} colKey="totalCalculated" onSort={handleAttSort}>לתשלום</SortHead>
+                    <SortHead sort={attSort} colKey="hasTravels" onSort={handleAttSort}>נסיעות</SortHead>
+                    <th className="no-print" scope="col"><span className="v3-sr">פעולות</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingAttendance ? (
                     <tr>
-                      <th className={attSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('fullName')}>שם <SortIcon sort={attSort} colKey="fullName" /></th>
-                      <th className={attSort.key === 'totalMinutes' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalMinutes')}>ס&quot;ה דקות <SortIcon sort={attSort} colKey="totalMinutes" /></th>
-                      <th className={attSort.key === 'daysCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('daysCount')}>כמות ימים <SortIcon sort={attSort} colKey="daysCount" /></th>
-                      <th className={attSort.key === 'issues' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('issues')}>תקלות <SortIcon sort={attSort} colKey="issues" /></th>
-                      <th className={attSort.key === 'totalCalculated' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalCalculated')}>ס&quot;ה <SortIcon sort={attSort} colKey="totalCalculated" /></th>
-                      <th className={attSort.key === 'hasTravels' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('hasTravels')}>נסיעות <SortIcon sort={attSort} colKey="hasTravels" /></th>
-                      <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
+                      <td colSpan="7">
+                        <div className="v3-empty" role="status">
+                          <Icon name="loader" size="xl" loop />
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {loadingAttendance ? (
-                      <tr>
-                        <td colSpan="7" style={{ padding: '4rem', textAlign: 'center' }}>
-                          <span className="spinner lg" style={{ margin: '0 auto' }} />
+                  ) : processedAttendance.length === 0 ? (
+                    <tr>
+                      <td colSpan="7">
+                        <Empty icon="calendar" text="אין נתוני נוכחות לחודש הזה." />
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedAttendance.map(emp => (
+                      <tr
+                        key={emp.id}
+                        style={{ cursor: 'pointer', background: emp.issues > 0 ? 'var(--v3-charge-bg)' : undefined }}
+                        tabIndex={0}
+                        onClick={() => router.push(`/employees/${emp.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/employees/${emp.id}`); }}
+                      >
+                        <td><b>{emp.fullName}</b></td>
+                        <td>{emp.timeStr}</td>
+                        <td><bdi>{emp.daysCount}</bdi></td>
+                        <td>
+                          {emp.issues > 0 && (
+                            <Tag variant="attn" icon="alert-tri"><bdi>{emp.issues}</bdi></Tag>
+                          )}
+                        </td>
+                        <td><b>₪<bdi>{emp.totalCalculated.toFixed(2)}</bdi></b></td>
+                        <td>{emp.hasTravels}</td>
+                        <td className="no-print">
+                          <Btn size="sm" icon="printer" title="הדפסת דוח אישי" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }}>
+                            הדפסה
+                          </Btn>
                         </td>
                       </tr>
-                    ) : processedAttendance.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>
-                          לא נמצאו נתוני נוכחות לחודש זה.
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedAttendance.map(emp => (
-                        <tr
-                          key={emp.id}
-                          className={emp.issues > 0 ? 'row-flag' : undefined}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => router.push(`/employees/${emp.id}`)}
-                        >
-                          <td className="cell-primary">{emp.fullName}</td>
-                          <td>{emp.timeStr}</td>
-                          <td>{emp.daysCount}</td>
-                          <td>
-                            {emp.issues > 0 && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontWeight: 700 }}>
-                                {emp.issues} <svg className="icon"><use href="#i-alert-tri" /></svg>
-                              </span>
-                            )}
-                          </td>
-                          <td className="cell-primary">{emp.totalCalculated.toFixed(2)}</td>
-                          <td>{emp.hasTravels}</td>
-                          <td className="no-print" style={{ textAlign: 'center' }}>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-secondary btn-sm" title="הדפס דוח אישי לעובד זה">
-                              <svg className="icon"><use href="#i-printer" /></svg>
-                              הדפס
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="table-foot">
-                <span>סה&quot;כ שורות מוצגות: {loadingAttendance ? '...' : processedAttendance.length}</span>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
+            <p className="v3-faint" role="status"><bdi>{loadingAttendance ? '...' : processedAttendance.length}</bdi> עובדים עם שעות בחודש הזה</p>
           </div>
         )}
       </div>
@@ -688,6 +672,6 @@ export default function EmployeesPage() {
           })}
         </div>
       )}
-    </>
+    </V3Page>
   );
 }

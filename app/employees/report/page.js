@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { V3Page, Card, Btn, Field, Tag, Tip, Empty, Icon } from '@/app/v3/ui/components';
+import { v3Toast } from '@/app/v3/notify';
 
 export default function AttendanceReportPage() {
   const router = useRouter();
@@ -21,11 +23,11 @@ export default function AttendanceReportPage() {
       if (result.success) {
         setData(result.data);
       } else {
-        alert('שגיאה בטעינת הנתונים');
+        v3Toast('לא הצלחנו לטעון את נתוני הנוכחות.', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      v3Toast('אין תקשורת עם השרת, נסו שוב.', 'error');
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ export default function AttendanceReportPage() {
   };
 
   return (
-    <>
+    <V3Page>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {
@@ -124,12 +126,17 @@ export default function AttendanceReportPage() {
             direction: rtl;
             overflow: visible !important;
           }
-          #print-area .card {
+          #print-area .v3-card {
             background: #fff !important;
             box-shadow: none !important;
+            border: none !important;
           }
-          #print-area table.data thead th,
-          #print-area .table-foot {
+          #print-area .v3-table__wrap {
+            border: none !important;
+            border-radius: 0 !important;
+          }
+          #print-area .v3-table thead th,
+          #print-area .report-foot {
             background: #fff !important;
           }
           .no-print {
@@ -157,80 +164,74 @@ export default function AttendanceReportPage() {
         }
       `}} />
 
-      <div className="no-print">
-        <button type="button" onClick={() => router.push('/employees')} className="btn btn-ghost" style={{ marginBottom: '16px' }}>
-          <svg className="icon"><use href="#i-arrow-end" /></svg>
-          חזור לניהול עובדים
-        </button>
-
-        <div className="page-head">
-          <div>
-            <h1>דוח נוכחות חודשי</h1>
-            <div className="page-desc">הפקת דוח נוכחות לכלל העובדים ב-PDF או אקסל (כל עובד בעמוד נפרד).</div>
-          </div>
-          <div className="page-actions" style={{ alignItems: 'flex-end' }}>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="employees-report-month">חודש</label>
-              <select
-                id="employees-report-month"
-                className="select"
-                value={selectedMonth}
-                onChange={e => setSelectedMonth(parseInt(e.target.value))}
-              >
-                {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>{getMonthName(i + 1)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="employees-report-year">שנה</label>
-              <select
-                id="employees-report-year"
-                className="select"
-                value={selectedYear}
-                onChange={e => setSelectedYear(parseInt(e.target.value))}
-              >
-                {[...Array(5)].map((_, i) => {
-                  const y = currentDate.getFullYear() - i;
-                  return <option key={y} value={y}>{y}</option>;
-                })}
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="btn btn-secondary btn-icon-only"
-              title="הדפס / PDF"
-              disabled={loading || data.length === 0}
-            >
-              <svg className="icon"><use href="#i-printer" /></svg>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="btn btn-secondary btn-icon-only"
-              title="ייצוא לאקסל"
-              disabled={loading || data.length === 0}
-            >
-              <svg className="icon"><use href="#i-download" /></svg>
-            </button>
-          </div>
+      <div className="no-print v3-stack">
+        <div>
+          <Btn variant="quiet" icon="arrow-end" onClick={() => router.push('/employees')}>חזרה לעובדים</Btn>
         </div>
+
+        <header className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">דוח נוכחות חודשי</h1>
+            <Tip>מפיקים דוח שעות לכל העובדים בחודש שנבחר. אפשר להדפיס או לשמור כ-PDF (עמוד נפרד לכל עובד), או לייצא לאקסל.</Tip>
+          </div>
+        </header>
+
+        <Card>
+          <div className="v3-stack">
+            <Field
+              as="select"
+              id="employees-report-month"
+              label="חודש"
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(parseInt(e.target.value))}
+            >
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>{getMonthName(i + 1)}</option>
+              ))}
+            </Field>
+            <Field
+              as="select"
+              id="employees-report-year"
+              label="שנה"
+              value={selectedYear}
+              onChange={e => setSelectedYear(parseInt(e.target.value))}
+            >
+              {[...Array(5)].map((_, i) => {
+                const y = currentDate.getFullYear() - i;
+                return <option key={y} value={y}>{y}</option>;
+              })}
+            </Field>
+            <div className="v3-cluster">
+              <Btn
+                variant="primary"
+                icon="printer"
+                onClick={handlePrint}
+                disabled={loading || data.length === 0}
+              >
+                הדפסה / PDF
+              </Btn>
+              <Btn
+                icon="download"
+                onClick={handleExportExcel}
+                disabled={loading || data.length === 0}
+              >
+                ייצוא לאקסל
+              </Btn>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      <div id="print-area">
+      <div id="print-area" className="v3-stack">
         <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
         {loading ? (
-          <div className="page-loading">
-            <span className="spinner lg" />
+          <div className="v3-empty" role="status">
+            <Icon name="loader" size="xl" loop />
           </div>
         ) : data.length === 0 ? (
-          <div className="empty-state">
-            <svg className="icon"><use href="#i-calendar" /></svg>
-            <p>לא נמצאו נתוני נוכחות לחודש המבוקש.</p>
-          </div>
+          <Empty icon="calendar" text="אין נתוני נוכחות לחודש שנבחר." />
         ) : (
-          <div>
+          <div className="v3-stack">
             {data.map((employee) => {
               if (employee.shifts.length === 0) return null; // Skip employees with no shifts
 
@@ -240,26 +241,21 @@ export default function AttendanceReportPage() {
               const initials = `${(employee.firstName || '').charAt(0)}${(employee.lastName || '').charAt(0)}`;
 
               return (
-                <div key={employee.id} className="card employee-page" style={{ marginBottom: '20px' }}>
-                  <div className="card-head">
-                    <div className="card-title-row">
-                      <div className="avatar">{initials}</div>
+                <Card key={employee.id} className="employee-page">
+                  <div className="v3-stack">
+                    <div className="v3-cluster">
+                      <span className="v3-avatar" aria-hidden="true">{initials}</span>
                       <div>
-                        <h2 style={{ fontSize: '15px', margin: 0 }}>דוח נוכחות עובד: {employee.firstName} {employee.lastName}</h2>
-                        <div className="hint" style={{ color: 'var(--text-3)' }}>תקופה: {getMonthName(selectedMonth)} {selectedYear}</div>
+                        <h2 className="v3-h2">{employee.firstName} {employee.lastName}</h2>
+                        <div className="v3-faint">תקופה: {getMonthName(selectedMonth)} <bdi>{selectedYear}</bdi></div>
                       </div>
+                      {employee.department && (
+                        <Tag variant="soft" icon="category">מחלקה: {employee.department.name}</Tag>
+                      )}
                     </div>
-                    {employee.department && (
-                      <span className="badge badge-neutral">
-                        <svg className="icon"><use href="#i-category" /></svg>
-                        מחלקה: {employee.department.name}
-                      </span>
-                    )}
-                  </div>
 
-                  <div className="table-wrap" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
-                    <div className="table-scroll">
-                      <table className="data">
+                    <div className="v3-table__wrap">
+                      <table className="v3-table">
                         <thead>
                           {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
                               בראש כל עמוד פיזי כשטבלת המשמרות של עובד נשברת לכמה עמודי הדפסה, בדיוק
@@ -270,39 +266,39 @@ export default function AttendanceReportPage() {
                             </th>
                           </tr>
                           <tr>
-                            <th>תאריך</th>
-                            <th>כניסה</th>
-                            <th>יציאה</th>
-                            <th>סה&quot;כ שעות</th>
-                            <th>סה&quot;כ לתשלום</th>
+                            <th scope="col">תאריך</th>
+                            <th scope="col">כניסה</th>
+                            <th scope="col">יציאה</th>
+                            <th scope="col">שעות</th>
+                            <th scope="col">לתשלום</th>
                           </tr>
                         </thead>
                         <tbody>
                           {employee.shifts.map((shift) => (
                             <tr key={shift.id}>
                               <td>{shift.date ? getHebrewDateString(shift.date) : '-'}</td>
-                              <td>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                              <td>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                              <td>{shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}</td>
-                              <td className="cell-primary">₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}</td>
+                              <td>{shift.entryTime ? <bdi>{new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi> : '-'}</td>
+                              <td>{shift.exitTime ? <bdi>{new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi> : '-'}</td>
+                              <td><bdi>{shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}</bdi></td>
+                              <td><b>₪<bdi>{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}</bdi></b></td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </div>
 
-                  <div className="table-foot">
-                    <span>סה&quot;כ משמרות: <strong>{employee.shifts.length}</strong></span>
-                    <span>סה&quot;כ שעות: <strong>{totalHours}</strong></span>
-                    <span>סה&quot;כ לתשלום: <strong style={{ color: 'var(--success)' }}>₪{totalAmount.toFixed(2)}</strong></span>
+                    <div className="report-foot v3-stack">
+                      <div><span className="v3-faint">סה&quot;כ משמרות</span><br /><b><bdi>{employee.shifts.length}</bdi></b></div>
+                      <div><span className="v3-faint">סה&quot;כ שעות</span><br /><b><bdi>{totalHours}</bdi></b></div>
+                      <div><span className="v3-faint">סה&quot;כ לתשלום</span><br /><b className="v3-big">₪<bdi>{totalAmount.toFixed(2)}</bdi></b></div>
+                    </div>
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>
         )}
       </div>
-    </>
+    </V3Page>
   );
 }

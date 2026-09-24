@@ -4,34 +4,35 @@ import React, { useState, useEffect } from 'react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { ChangesChips } from '../modern/ChangesChips';
+import { Card, Tag, Badge, Banner, Empty, Icon } from '@/app/v3/ui/components';
 
 // שדות טכניים שאין טעם להציג בהיסטוריה (מזהים/חותמות עדכון)
 const HIDDEN_FIELDS = ['id', 'employeeId', 'legacyId', 'updatedAt'];
 
-// מיפוי מקומי (עיצוב "אריג" בלבד) מפעולת יומן ל-badge סמנטי — אותה קיבוץ סמנטי
-// כמו ACTION_TONES ב-components/modern/ChangesChips.js (משותף, מחוץ לאשכול הזה),
-// באותה תבנית כמו ModernCustomerHistoryTab.js.
+// מיפוי מקומי (תצוגה בלבד) מפעולת יומן לוריאנט של Tag ב-v3 — אותה קיבוץ סמנטי
+// כמו ACTION_TONES ב-components/modern/ChangesChips.js (משותף, מחוץ לאשכול הזה):
+// done = הצלחה/שחזור, attn = מחיקה/ביטול, soft = ניטרלי.
 const ACTION_BADGE_CLASS = {
-  CREATE: 'badge-success',
-  DELETE: 'badge-danger',
-  UPDATE: 'badge-primary',
-  CANCEL_RENTAL: 'badge-danger',
-  CANCEL_RETURN: 'badge-danger',
-  CANCEL_SCAN: 'badge-danger',
-  CANCEL_ITEM: 'badge-danger',
-  CANCEL_OBLIGATION: 'badge-danger',
-  CANCEL_PAYMENT: 'badge-danger',
-  CANCEL_ORDER: 'badge-danger',
-  CANCEL_CHANGES: 'badge-danger',
-  RESTORE_ITEM: 'badge-success',
-  RESTORE_OBLIGATION: 'badge-success',
-  RESTORE_PAYMENT: 'badge-success',
-  CONFIRM_RENTAL: 'badge-success',
-  RETURN_RENTAL: 'badge-success',
-  DEBT_APPROVED: 'badge-success',
-  CANCEL_DEBT_APPROVAL: 'badge-danger'
+  CREATE: 'done',
+  DELETE: 'attn',
+  UPDATE: 'soft',
+  CANCEL_RENTAL: 'attn',
+  CANCEL_RETURN: 'attn',
+  CANCEL_SCAN: 'attn',
+  CANCEL_ITEM: 'attn',
+  CANCEL_OBLIGATION: 'attn',
+  CANCEL_PAYMENT: 'attn',
+  CANCEL_ORDER: 'attn',
+  CANCEL_CHANGES: 'attn',
+  RESTORE_ITEM: 'done',
+  RESTORE_OBLIGATION: 'done',
+  RESTORE_PAYMENT: 'done',
+  CONFIRM_RENTAL: 'done',
+  RETURN_RENTAL: 'done',
+  DEBT_APPROVED: 'done',
+  CANCEL_DEBT_APPROVAL: 'attn'
 };
-const badgeClassFor = (action) => ACTION_BADGE_CLASS[action] || 'badge-neutral';
+const badgeClassFor = (action) => ACTION_BADGE_CLASS[action] || 'soft';
 
 /**
  * שורות AuditLog שנכתבות ידנית מראוטי המשמרות (Shift מוחרג מתוסף היומן האוטומטי,
@@ -113,50 +114,39 @@ export default function ModernEmployeeHistoryTab({ employeeId }) {
   const entityLabel = (entityType) => (entityType === 'Shift' ? 'משמרת' : entityType === 'Employee' ? 'עובד' : entityType);
 
   return (
-    <div>
-      <div className="toolbar">
-        <div style={{ fontWeight: 800, fontSize: '14.5px' }}>היסטוריית שינויים</div>
-        <span className="spacer" />
-        <span className="hint" style={{ color: 'var(--text-3)' }}>{logs.length} תיעודי פעולות</span>
-      </div>
-
-      <div className="card">
-        {loading ? (
-          <div className="loading-inline" style={{ padding: '28px 0' }}>
-            <span className="spinner lg" />
-            טוען היסטוריית שינויים...
-          </div>
-        ) : error ? (
-          <div style={{ color: 'var(--danger)', textAlign: 'center', padding: '20px 0', fontWeight: 700 }}>
-            שגיאה בטעינת היסטוריה: {error}
-          </div>
-        ) : logs.length === 0 ? (
-          <div className="empty-state">
-            <svg className="icon"><use href="#i-history" /></svg>
-            <p>אין תיעוד היסטוריה לעובד זה</p>
-          </div>
-        ) : (
-          logs.map((log) => {
+    <Card icon="history" title="היסטוריית שינויים" actions={<Badge variant="neutral"><bdi>{logs.length}</bdi></Badge>}>
+      {loading ? (
+        <div className="v3-empty" role="status">
+          <Icon name="loader" size="xl" loop />
+          <span>טוענים את ההיסטוריה...</span>
+        </div>
+      ) : error ? (
+        <Banner kind="alert" title="לא הצלחנו לטעון את ההיסטוריה" text={error} />
+      ) : logs.length === 0 ? (
+        <Empty icon="history" text="עדיין אין שינויים מתועדים לעובד הזה." />
+      ) : (
+        <div className="v3-rows">
+          {logs.map((log) => {
             const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
             const d = new Date(log.createdAt);
             const normalized = normalizeChangesForDisplay(log.changesJson, log.action);
             return (
-              <div key={log.id} className="select-row" style={{ alignItems: 'flex-start' }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <span className={`badge ${badgeClassFor(log.action)}`}>{actionLabel}</span>
-                  <strong style={{ fontSize: '13px', marginInlineStart: '6px' }}>
-                    {entityLabel(log.entityType)} · {log.employeeId ? (log.employeeName || 'עובד שנמחק') : 'מערכת'} ביצע/ה {actionLabel}
-                  </strong>
-                  <div className="hint" style={{ color: 'var(--text-3)', marginTop: '2px' }}>
-                    {d.toLocaleDateString('he-IL')} ({getHebrewDateString(d)}) · {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+              <div key={log.id} className="v3-row">
+                <div className="v3-row__body">
+                  <div>
+                    <Tag variant={badgeClassFor(log.action)}>{actionLabel}</Tag>
+                  </div>
+                  <b>{log.employeeId ? (log.employeeName || 'עובד שנמחק') : 'מערכת'} · {entityLabel(log.entityType)}</b>
+                  <div className="v3-faint">
+                    <bdi>{d.toLocaleDateString('he-IL')}</bdi> ({getHebrewDateString(d)}) · <bdi>{d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi>
                   </div>
                   <ChangesChips changesJson={JSON.stringify(normalized)} />
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
-    </div>
+          })}
+        </div>
+      )}
+    </Card>
   );
 }
