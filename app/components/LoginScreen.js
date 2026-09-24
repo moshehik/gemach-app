@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { V3Page, Btn, Chip, Dialog, Row, Tip, Icon } from '@/app/v3/ui/components';
 
 export default function LoginScreen({ isModal = false, onClose }) {
   const [employees, setEmployees] = useState([]);
@@ -111,7 +111,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
             const list = nd.notifications || [];
             const unread = list.filter(x => !x.isRead && !x.isArchived);
             if (unread.length > 0 && typeof window !== 'undefined') {
-              const msg = `יש ${unread.length} הודעה/ות חדשה/ות שלא טופלו`;
+              const msg = `מחכות לכם ${unread.length} הודעות חדשות שלא טופלו`;
               if (window.customAlert) window.customAlert(msg);
               else alert(msg);
             }
@@ -136,7 +136,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
     const credential = usePinMode ? pinValue : password;
 
     if (!finalEmployeeId || !credential) {
-      setError(usePinMode ? 'נא לבחור עובד ולהזין 4 תווים' : 'נא לבחור עובד ולהזין סיסמה');
+      setError(usePinMode ? 'בחרו את שמכם והקלידו 4 תווים' : 'בחרו את שמכם והקלידו את הקוד');
       return;
     }
 
@@ -168,10 +168,10 @@ export default function LoginScreen({ isModal = false, onClose }) {
           setUsePinMode(false);
           setPinValue('');
         }
-        setError(data.message || 'שגיאה בהתחברות');
+        setError(data.message || 'ההתחברות לא הצליחה');
       }
     } catch (err) {
-      setError('שגיאת תקשורת');
+      setError('אין קשר עם השרת, נסו שוב');
     } finally {
       setLoading(false);
     }
@@ -180,7 +180,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
   const handleForgotPassword = async () => {
     const finalEmployeeId = resolveEmployeeId();
     if (!finalEmployeeId) {
-      setForgotResult({ success: false, message: 'יש לבחור קודם עובד מהרשימה' });
+      setForgotResult({ success: false, message: 'קודם בוחרים את שמכם ברשימה' });
       return;
     }
     setForgotSending(true);
@@ -192,9 +192,9 @@ export default function LoginScreen({ isModal = false, onClose }) {
         body: JSON.stringify({ employeeId: finalEmployeeId })
       });
       const data = await res.json();
-      setForgotResult({ success: !!data.success, message: data.message || (data.success ? 'נשלח בהצלחה' : 'שליחה נכשלה') });
+      setForgotResult({ success: !!data.success, message: data.message || (data.success ? 'הסיסמה הזמנית בדרך למייל' : 'לא הצלחנו לשלוח, נסו שוב') });
     } catch (err) {
-      setForgotResult({ success: false, message: 'שגיאת תקשורת' });
+      setForgotResult({ success: false, message: 'אין קשר עם השרת, נסו שוב' });
     } finally {
       setForgotSending(false);
     }
@@ -204,11 +204,11 @@ export default function LoginScreen({ isModal = false, onClose }) {
     e.preventDefault();
     setResetError('');
     if (!newPass1 || newPass1.length < 4) {
-      setResetError('הסיסמה החדשה קצרה מדי (לפחות 4 תווים)');
+      setResetError('הסיסמה צריכה לכלול לפחות 4 תווים');
       return;
     }
     if (newPass1 !== newPass2) {
-      setResetError('הסיסמאות אינן תואמות');
+      setResetError('שתי הסיסמאות צריכות להיות זהות');
       return;
     }
     setResetSaving(true);
@@ -223,10 +223,10 @@ export default function LoginScreen({ isModal = false, onClose }) {
         setResetRequired(false);
         finishLogin();
       } else {
-        setResetError(data.message || 'שגיאה בשמירת הסיסמה');
+        setResetError(data.message || 'לא הצלחנו לשמור את הסיסמה');
       }
     } catch (err) {
-      setResetError('שגיאת תקשורת');
+      setResetError('אין קשר עם השרת, נסו שוב');
     } finally {
       setResetSaving(false);
     }
@@ -240,36 +240,39 @@ export default function LoginScreen({ isModal = false, onClose }) {
     ? employees
     : employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm));
 
+  // ---- v3 presentation layer (cosmetic only) ----
+  const initialsOf = (emp) => `${(emp.firstName || '').trim().charAt(0)}${(emp.lastName || '').trim().charAt(0)}`;
+
   const trustedNote = deviceTrusted && (
-    <div className="badge badge-success" style={{ margin: '10px auto 0', width: 'fit-content' }}>
-      <svg className="icon"><use href="#i-shield" /></svg>
-      מחשב זה מוגדר כמערכת מהימנה
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--v3-sp-1)' }}>
+      <Chip variant="info" icon="shield">מחשב מהימן</Chip>
+      <Tip label="על מחשב מהימן">מנהל סימן את המחשב הזה כמהימן, ולכן מספיקים 4 התווים האחרונים של הסיסמה.</Tip>
+    </div>
+  );
+
+  const errorBox = error && (
+    <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 'var(--v3-sp-2)', background: 'var(--v3-rose-50)', border: 'var(--v3-bw-hair) solid var(--v3-rose-200)', color: 'var(--v3-plum)', borderRadius: 'var(--v3-r-btn)', padding: 'var(--v3-sp-3) var(--v3-sp-4)', fontWeight: 'var(--v3-fw-medium)' }}>
+      <Icon name="alert-circle" />
+      <span>{error}</span>
     </div>
   );
 
   const formFields = (
-    <form onSubmit={handleLogin} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+    <form onSubmit={handleLogin} autoComplete="off" className="v3-stack">
 
-      {error && (
-        <div className="callout callout-danger" style={{ marginBottom: '14px' }}>
-          <svg className="icon"><use href="#i-alert-circle" /></svg>
-          <span>{error}</span>
-        </div>
-      )}
+      {errorBox}
 
-      <div className="field combobox" ref={dropdownRef}>
-        <label htmlFor="login-employee">שם העובד</label>
-        <div className="input-icon-wrap" style={{ position: 'relative' }}>
+      <div className="v3-field" ref={dropdownRef}>
+        <label className="v3-label" htmlFor="login-employee">שם העובד</label>
+        <div style={{ position: 'relative' }}>
           {isFetchingEmployees ? (
-            <span className="spinner" style={{ position: 'absolute', insetInlineStart: '12px', top: '50%', transform: 'translateY(-50%)', width: '15px', height: '15px', borderWidth: '2px' }} />
+            <span className="v3-spin" style={{ position: 'absolute', insetInlineStart: 'var(--v3-sp-3)', top: '50%', transform: 'translateY(-50%)' }} />
           ) : (
-            <svg data-element-name="לחיץ_LoginScreen_6" className="icon" style={{ cursor: 'pointer', color: selectedEmployee ? 'var(--primary-solid)' : undefined }} onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <use href="#i-user" />
-            </svg>
+            <Icon name="user" data-element-name="לחיץ_LoginScreen_6" style={{ position: 'absolute', insetInlineStart: 'var(--v3-sp-3)', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: selectedEmployee ? 'var(--v3-navy)' : 'var(--v3-navy-500)' }} onClick={() => setIsDropdownOpen(!isDropdownOpen)} />
           )}
           <input data-element-name="שדה_LoginScreen_4"
             id="login-employee"
-            className="input"
+            className="v3-input"
             type="text"
             value={searchTerm}
             onChange={(e) => {
@@ -278,10 +281,10 @@ export default function LoginScreen({ isModal = false, onClose }) {
               setIsDropdownOpen(true);
             }}
             disabled={isFetchingEmployees}
-            placeholder={isFetchingEmployees ? 'טוען רשימת עובדים...' : 'הקלד או בחר מהרשימה'}
+            placeholder={isFetchingEmployees ? 'רגע, טוענים את הרשימה...' : 'הקלידו שם או בחרו מהרשימה'}
             onFocus={() => setIsDropdownOpen(true)}
             onClick={() => { if (selectedDisplay) setIsDropdownOpen(true); }}
-            style={selectedEmployee ? { paddingInlineEnd: '36px' } : undefined}
+            style={{ minHeight: 'var(--v3-control-h-lg)', paddingInlineStart: 'var(--v3-sp-8)', paddingInlineEnd: selectedEmployee ? 'var(--v3-sp-8)' : undefined }}
             // autoComplete="new-password" (לא "off", שכרום מתעלם ממנו בפועל בשדות
             // מהסוג הזה) - בלי זה, מעל תיבת הבחירה המותאמת-אישית של הרכיב (עם
             // רשימת העובדים המלאה) הדפדפן הציג גם dropdown native משלו עם ערכים
@@ -294,98 +297,87 @@ export default function LoginScreen({ isModal = false, onClose }) {
           {selectedEmployee && !isFetchingEmployees && (
             <button
               type="button"
+              className="v3-combo__clear"
               aria-label="נקה בחירה"
               title="נקה בחירה"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setSelectedEmployee(''); setSearchTerm(''); setIsDropdownOpen(true); }}
-              style={{
-                position: 'absolute',
-                insetInlineEnd: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                border: '1px solid var(--border)',
-                background: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--text-2)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                transition: 'all 0.15s ease',
-                padding: 0,
-                lineHeight: 1,
-                flexShrink: 0
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = 'var(--text-1)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}
+              style={{ position: 'absolute', insetInlineEnd: 'var(--v3-sp-2)', top: '50%', transform: 'translateY(-50%)', border: 'var(--v3-bw-hair) solid var(--v3-sky-300)', cursor: 'pointer', padding: 0 }}
             >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+              <Icon name="x" size="xs" />
             </button>
           )}
         </div>
 
         {isDropdownOpen && (
-          <div className="combobox-results">
+          <div role="listbox" aria-label="רשימת עובדים" style={{ marginTop: 'var(--v3-sp-2)', border: 'var(--v3-bw-hair) solid var(--v3-sky-300)', borderRadius: 'var(--v3-r-btn)', background: 'var(--v3-surface)', overflow: 'hidden' }}>
             {isFetchingEmployees ? (
-              <div className="combobox-option" style={{ cursor: 'default', color: 'var(--text-2)', justifyContent: 'center', gap: '8px' }}>
-                <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
-                טוען רשימת עובדים...
+              <div className="v3-combo__empty">
+                <span className="v3-spin" />
+                רגע, טוענים את הרשימה...
               </div>
             ) : filteredEmployees.length > 0 ? (
-              filteredEmployees.map(emp => (
-                <div data-element-name="לחיץ_LoginScreen_7"
-                  key={emp.id}
-                  className="combobox-option"
-                  style={selectedEmployee === emp.id ? { background: 'var(--primary-tint)', fontWeight: 700 } : undefined}
-                  onClick={() => {
-                    setSelectedEmployee(emp.id);
-                    setSearchTerm(`${emp.firstName} ${emp.lastName}`);
-                    setIsDropdownOpen(false);
-                  }}
-                >
-                  <svg className="icon"><use href="#i-user" /></svg>
-                  {emp.firstName} {emp.lastName}
-                </div>
-              ))
+              <div className="v3-combo__list">
+                {filteredEmployees.map((emp, i) => (
+                  <div data-element-name="לחיץ_LoginScreen_7"
+                    key={emp.id}
+                    role="option"
+                    aria-selected={selectedEmployee === emp.id}
+                    className={`v3-combo__o${selectedEmployee === emp.id ? ' is-selected' : ''}`}
+                    style={{ '--i': i }}
+                    onClick={() => {
+                      setSelectedEmployee(emp.id);
+                      setSearchTerm(`${emp.firstName} ${emp.lastName}`);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    <span className="v3-combo__oi" aria-hidden="true"><bdi>{initialsOf(emp)}</bdi></span>
+                    <span className="v3-combo__ox"><b>{emp.firstName} {emp.lastName}</b></span>
+                    {selectedEmployee === emp.id && <span className="v3-combo__ck"><Icon name="check" size="sm" /></span>}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="combobox-option" style={{ cursor: 'default', color: 'var(--text-3)', justifyContent: 'center' }}>
-                לא נמצאו עובדים
+              <div className="v3-combo__empty">
+                <Icon name="user" />
+                לא מצאנו עובד בשם הזה
               </div>
             )}
           </div>
         )}
       </div>
 
-      <div className="field">
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <label htmlFor="login-password" style={{ marginBottom: 0 }}>
-            {usePinMode ? '4 התווים האחרונים בסיסמה' : 'קוד כניסה'}
-          </label>
+      <div className="v3-field">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--v3-sp-2)', flexWrap: 'wrap' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--v3-sp-1)' }}>
+            <label className="v3-label" htmlFor="login-password" style={{ marginBottom: 0 }}>
+              {usePinMode ? '4 התווים האחרונים של הסיסמה' : 'קוד כניסה'}
+            </label>
+            {usePinMode && <Tip label="על הקוד המקוצר">במחשב מהימן מספיקים 4 התווים האחרונים של הסיסמה שלכם.</Tip>}
+          </span>
           {deviceTrusted && (
-            <button
-              type="button"
+            <Btn
+              variant="quiet"
+              size="sm"
+              icon={usePinMode ? 'lock' : 'shield'}
               onClick={() => { setUsePinMode(!usePinMode); setError(''); setPassword(''); setPinValue(''); }}
-              style={{ background: 'none', border: 'none', padding: 0, color: 'var(--primary-solid)', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              {usePinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 תווים)'}
-            </button>
+              {usePinMode ? 'עוברים לסיסמה המלאה' : 'עוברים לקוד מקוצר'}
+            </Btn>
           )}
         </div>
-        <div className="password-field">
-          <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+        <div style={{ position: 'relative' }}>
+          <Icon name="lock" style={{ position: 'absolute', insetInlineStart: 'var(--v3-sp-3)', top: '50%', transform: 'translateY(-50%)', color: 'var(--v3-navy-500)', pointerEvents: 'none' }} />
           {usePinMode ? (
             <input data-element-name="שדה_LoginScreen_pin"
               id="login-password"
-              className="input"
+              className="v3-input"
               type="password"
               maxLength={4}
               value={pinValue}
               onChange={(e) => setPinValue(e.target.value.slice(0, 4))}
               placeholder="••••"
-              style={{ letterSpacing: '0.6em', textAlign: 'center' }}
+              style={{ minHeight: 'var(--v3-control-h-lg)', letterSpacing: '0.6em', textAlign: 'center', paddingInline: 'var(--v3-sp-8)' }}
               // "new-password" ולא "off" - כרום מתעלם בפועל מ-off בשדות סיסמה של
               // התחברות, אבל מכבד new-password (מסמן שזו לא סיסמה שמורה קיימת, אז
               // לא מציע אוטופיל ולא מציע לשמור) - אותו טריק שכבר קיים בשדה העובד
@@ -395,190 +387,195 @@ export default function LoginScreen({ isModal = false, onClose }) {
           ) : (
             <input data-element-name="שדה_LoginScreen_8"
               id="login-password"
-              className="input"
+              className="v3-input"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="הזן את הקוד שלך"
+              placeholder="הקלידו את הקוד שלכם"
+              style={{ minHeight: 'var(--v3-control-h-lg)', paddingInlineStart: 'var(--v3-sp-8)' }}
               autoComplete="new-password"
             />
           )}
         </div>
-        <div style={{ textAlign: 'end', marginTop: '6px' }}>
-          <button
-            type="button"
+        <div style={{ textAlign: 'end', marginTop: 'var(--v3-sp-1)' }}>
+          <Btn
+            variant="quiet"
+            size="sm"
+            icon="mail"
             onClick={() => { setForgotOpen(true); setForgotResult(null); }}
-            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-3)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             שכחתי סיסמה
-          </button>
+          </Btn>
         </div>
       </div>
 
-      <button data-element-name="כפתור_LoginScreen_10"
+      <Btn data-element-name="כפתור_LoginScreen_10"
         type="submit"
-        className="btn btn-primary btn-lg"
-        disabled={loading}
-        style={{ width: '100%', marginTop: '10px' }}
+        variant="primary"
+        size="lg"
+        block
+        loading={loading}
       >
-        {loading ? (
-          <span className="spinner" />
-        ) : (
-          <svg data-element-name="רכיב_LoginScreen_11" className="icon"><use href="#i-arrow-end" /></svg>
-        )}
-        היכנס למערכת
-      </button>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--v3-sp-2)' }}>
+          {!loading && <Icon name="arrow-end" data-element-name="רכיב_LoginScreen_11" />}
+          כניסה למערכת
+        </span>
+      </Btn>
     </form>
   );
 
+  const markTile = (
+    <div style={{ width: 'var(--v3-sp-9)', height: 'var(--v3-sp-9)', borderRadius: 'var(--v3-r-lg)', background: 'var(--v3-grad-navy-panel)', color: 'var(--v3-white)', display: 'grid', placeItems: 'center', margin: '0 auto var(--v3-sp-3)', boxShadow: 'var(--v3-sh-raise)' }}>
+      <Icon name="lock" size="xl" data-element-name="רכיב_LoginScreen_3" style={{ color: 'var(--v3-white)' }} />
+    </div>
+  );
+
   const loginCard = isModal ? (
-    <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }} dir="rtl">
-      <div className="modal" style={{ maxWidth: '440px', width: '100%', margin: 0 }}>
-        <div className="modal-head">
-          <strong>
-            <svg data-element-name="רכיב_LoginScreen_3" className="icon"><use href="#i-lock" /></svg>
-            כניסת עובדים
-          </strong>
-          {onClose && (
-            <button data-element-name="כפתור_LoginScreen_1" type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => onClose(false)} title="סגירה">
-              <svg data-element-name="רכיב_LoginScreen_2" className="icon"><use href="#i-x" /></svg>
-            </button>
-          )}
-        </div>
-        <div className="modal-body">
-          <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-            <p className="page-desc" style={{ margin: 0 }}>נא להזדהות על מנת להמשיך למערכת</p>
+    <Dialog
+      open
+      variant="form"
+      closeOnScrim={false}
+      onClose={() => { if (onClose) onClose(false); }}
+      aria-label="כניסת עובדים"
+      style={{ maxWidth: 'var(--v3-dlg-w)' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--v3-sp-3)' }}>
+        <Icon name="lock" data-element-name="רכיב_LoginScreen_3" />
+        <h2 className="v3-h3" style={{ flex: 1, margin: 0 }}>כניסת עובדים</h2>
+        {onClose && (
+          <Btn data-element-name="כפתור_LoginScreen_1" round size="sm" className="v3-btn--icon" onClick={() => onClose(false)} title="סגירה" aria-label="סגירה">
+            <Icon name="x" data-element-name="רכיב_LoginScreen_2" />
+          </Btn>
+        )}
+      </div>
+      <p className="v3-muted" style={{ margin: 0, textAlign: 'center' }}>בחרו את שמכם והקלידו את הקוד</p>
+      {trustedNote}
+      {formFields}
+    </Dialog>
+  ) : (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundImage: 'radial-gradient(circle at 15% 0%, var(--v3-sky-a60), transparent 55%), radial-gradient(circle at 100% 100%, var(--v3-sky-a40), transparent 50%)' }}>
+      <header style={{ minHeight: 'var(--v3-sp-9)', display: 'flex', alignItems: 'center', gap: 'var(--v3-sp-3)', padding: '0 var(--v3-gutter)', background: 'var(--v3-grad-topbar)', color: 'var(--v3-white)' }}>
+        <Icon name="shirt" size="lg" style={{ color: 'var(--v3-gold-300)' }} />
+        <b style={{ fontSize: 'var(--v3-fs-xl)' }}>גמ"ח</b>
+        <span style={{ width: 1, alignSelf: 'stretch', margin: 'var(--v3-sp-4) 0', background: 'var(--v3-dark-hair)' }} aria-hidden="true" />
+        <small style={{ color: 'var(--v3-sky-300)', fontSize: 'var(--v3-fs-sm)', lineHeight: 1.3 }}>הזמנות<br />והשכרות</small>
+      </header>
+      <main style={{ flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 'var(--v3-sp-7)', padding: 'var(--v3-sp-7) var(--v3-gutter)', width: '100%', maxWidth: 'var(--v3-container)', marginInline: 'auto' }}>
+        <section className="v3-card" data-v3-anim-host="" style={{ flex: '1 1 320px', maxWidth: 480, padding: 'var(--v3-sp-6)' }}>
+          <div style={{ textAlign: 'center', marginBottom: 'var(--v3-sp-5)' }}>
+            {markTile}
+            <h1 className="v3-h1">ברוכים הבאים</h1>
+            <p className="v3-muted" style={{ margin: 'var(--v3-sp-2) 0 var(--v3-sp-2)' }}>בחרו את שמכם והקלידו את הקוד</p>
             {trustedNote}
           </div>
           {formFields}
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg)',
-      backgroundImage: 'radial-gradient(circle at 50% -15%, color-mix(in srgb, var(--primary) 22%, transparent) 0%, transparent 45%), radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 45%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem'
-    }} dir="rtl">
-      <div className="card card-pad" style={{ width: '100%', maxWidth: '440px', padding: '2.5rem 2rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: 'var(--radius-lg)', background: 'linear-gradient(135deg, var(--primary-solid), var(--accent-solid))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', boxShadow: 'var(--shadow-md)' }}>
-            <svg data-element-name="רכיב_LoginScreen_3" className="icon" style={{ width: '28px', height: '28px', color: 'var(--text-on-primary)' }}>
-              <use href="#i-lock" />
-            </svg>
+          <div style={{ textAlign: 'center', marginTop: 'var(--v3-sp-4)' }}>
+            <Btn variant="quiet" size="sm" icon="clock" href="/punch-clock">רק לדווח כניסה או יציאה ממשמרת</Btn>
           </div>
-          <h1 style={{ fontSize: '22px', margin: '0 0 4px' }}>כניסת עובדים</h1>
-          <p className="page-desc" style={{ margin: 0 }}>נא להזדהות על מנת להמשיך למערכת</p>
-          {trustedNote}
-        </div>
-        {formFields}
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <a
-            href="/punch-clock"
-            style={{ color: 'var(--text-3)', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}
-          >
-            רק לרישום כניסה/יציאה למשמרת? לחצו כאן
-          </a>
-        </div>
-      </div>
+        </section>
+        <aside style={{ flex: '1 1 280px', maxWidth: 440 }}>
+          <h2 style={{ margin: '0 0 var(--v3-sp-5)', fontSize: 'var(--v3-fs-display)', lineHeight: 1.15, color: 'var(--v3-navy)' }}>
+            כל הגמח,<br /><span style={{ color: 'var(--v3-gold-b)' }}>במקום אחד</span>
+          </h2>
+          <div className="v3-stack">
+            {[
+              { icon: 'shirt', title: 'הזמנות והשכרות', text: 'מהפגישה הראשונה ועד ההחזרה.' },
+              { icon: 'box', title: 'מלאי וזמינות', text: 'רואים מיד מה פנוי לאירוע.' },
+              { icon: 'coin', title: 'תשלומים ומעקב', text: 'חובות, זיכויים וקבלות בכל רגע.' },
+            ].map((p) => (
+              <div key={p.title} style={{ display: 'flex', gap: 'var(--v3-sp-3)', alignItems: 'flex-start' }}>
+                <span style={{ width: 'var(--v3-sp-7)', height: 'var(--v3-sp-7)', flex: 'none', borderRadius: 'var(--v3-r-md)', display: 'grid', placeItems: 'center', background: 'var(--v3-sky-100)', color: 'var(--v3-navy-500)', border: 'var(--v3-bw-hair) solid var(--v3-sky-300)' }}>
+                  <Icon name={p.icon} />
+                </span>
+                <span className="v3-muted"><b style={{ color: 'var(--v3-navy)' }}>{p.title}</b><br />{p.text}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </main>
     </div>
   );
 
   const forgotDialog = (
-    <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} dir="rtl" onClick={(e) => { if (e.target === e.currentTarget) setForgotOpen(false); }}>
-      <div className="modal" style={{ maxWidth: '400px', width: '100%', margin: 0 }}>
-        <div className="modal-head">
-          <strong>
-            <svg className="icon"><use href="#i-mail" /></svg>
-            שכחתי סיסמה
-          </strong>
-        </div>
-        <div className="modal-body">
-          <p style={{ color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6, marginBottom: forgotResult ? '14px' : 0 }}>
-            תישלח סיסמה זמנית לכתובת המייל השמורה במערכת עבור העובד שנבחר ({searchTerm || 'לא נבחר עובד'}). לאחר ההתחברות עם הסיסמה הזמנית תתבקש/י להגדיר סיסמה חדשה.
-          </p>
-          {forgotResult && (
-            <div className={`callout ${forgotResult.success ? 'callout-success' : 'callout-danger'}`}>
-              <svg className="icon"><use href={forgotResult.success ? '#i-check-circle' : '#i-alert-circle'} /></svg>
-              <span>{forgotResult.message}</span>
-            </div>
-          )}
-        </div>
-        <div className="modal-foot">
-          <button type="button" className="btn btn-secondary" onClick={() => setForgotOpen(false)}>סגור</button>
-          <button type="button" className="btn btn-primary" disabled={forgotSending} onClick={handleForgotPassword}>
-            {forgotSending ? (<><span className="spinner" />שולח...</>) : 'שלח סיסמה זמנית'}
-          </button>
-        </div>
+    <Dialog
+      open={forgotOpen}
+      onClose={() => setForgotOpen(false)}
+      variant="form"
+      nested
+      icon="mail"
+      title="שכחתי סיסמה"
+      style={{ maxWidth: 'var(--v3-dlg-w)' }}
+      actions={(
+        <>
+          <Btn variant="primary" loading={forgotSending} onClick={handleForgotPassword}>
+            {forgotSending ? 'שולח...' : 'שלחו לי סיסמה זמנית'}
+          </Btn>
+          <Btn onClick={() => setForgotOpen(false)}>סגירה</Btn>
+        </>
+      )}
+    >
+      <div className="v3-rows">
+        <Row label="הסיסמה הזמנית תישלח עבור" icon="user" tip="הסיסמה תישלח למייל השמור במערכת. אחרי הכניסה איתה תתבקשו לבחור סיסמה קבועה חדשה.">
+          {searchTerm || 'לא נבחר עובד'}
+        </Row>
       </div>
-    </div>
+      {forgotResult && (
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 'var(--v3-sp-2)', borderRadius: 'var(--v3-r-btn)', padding: 'var(--v3-sp-3) var(--v3-sp-4)', fontWeight: 'var(--v3-fw-medium)', ...(forgotResult.success ? { background: 'var(--v3-sky-100)', border: 'var(--v3-bw-hair) solid var(--v3-sky-300)', color: 'var(--v3-navy)' } : { background: 'var(--v3-rose-50)', border: 'var(--v3-bw-hair) solid var(--v3-rose-200)', color: 'var(--v3-plum)' }) }}>
+          <Icon name={forgotResult.success ? 'check-circle' : 'alert-circle'} />
+          <span>{forgotResult.message}</span>
+        </div>
+      )}
+    </Dialog>
   );
 
   const resetDialog = (
-    <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} dir="rtl">
-      <div className="modal" style={{ maxWidth: '420px', width: '100%', margin: 0 }}>
-        <div className="modal-head">
-          <strong>
-            <svg className="icon"><use href="#i-shield" /></svg>
-            יש להגדיר סיסמה חדשה
-          </strong>
+    <Dialog
+      open={resetRequired}
+      onClose={() => {}}
+      variant="form"
+      nested
+      closeOnScrim={false}
+      icon="shield"
+      title="בחרו סיסמה קבועה"
+      sub="נכנסתם עם סיסמה זמנית"
+      style={{ maxWidth: 'var(--v3-dlg-w)' }}
+    >
+      {resetError && (
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 'var(--v3-sp-2)', background: 'var(--v3-rose-50)', border: 'var(--v3-bw-hair) solid var(--v3-rose-200)', color: 'var(--v3-plum)', borderRadius: 'var(--v3-r-btn)', padding: 'var(--v3-sp-3) var(--v3-sp-4)', fontWeight: 'var(--v3-fw-medium)' }}>
+          <Icon name="alert-circle" />
+          <span>{resetError}</span>
         </div>
-        <div className="modal-body">
-          <p style={{ color: 'var(--text-2)', fontSize: '13px', lineHeight: 1.6, marginBottom: '14px' }}>
-            התחברת עם סיסמה זמנית. יש להגדיר סיסמה קבועה חדשה כדי להמשיך.
-          </p>
-          {resetError && (
-            <div className="callout callout-danger" style={{ marginBottom: '14px' }}>
-              <svg className="icon"><use href="#i-alert-circle" /></svg>
-              <span>{resetError}</span>
-            </div>
-          )}
-          <form onSubmit={handleSetNewPassword} style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="field">
-              <label htmlFor="login-newpass1">סיסמה חדשה</label>
-              <div className="password-field">
-                <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input id="login-newpass1" className="input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} autoComplete="new-password" />
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="login-newpass2">אימות סיסמה חדשה</label>
-              <div className="password-field">
-                <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input id="login-newpass2" className="input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" />
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary btn-lg" disabled={resetSaving} style={{ width: '100%', marginTop: '6px' }}>
-              {resetSaving ? (<><span className="spinner" />שומר...</>) : 'שמור והמשך'}
-            </button>
-          </form>
+      )}
+      <form onSubmit={handleSetNewPassword} className="v3-stack">
+        <div className="v3-field">
+          <label className="v3-label" htmlFor="login-newpass1">סיסמה חדשה</label>
+          <div style={{ position: 'relative' }}>
+            <Icon name="lock" style={{ position: 'absolute', insetInlineStart: 'var(--v3-sp-3)', top: '50%', transform: 'translateY(-50%)', color: 'var(--v3-navy-500)', pointerEvents: 'none' }} />
+            <input id="login-newpass1" className="v3-input" style={{ paddingInlineStart: 'var(--v3-sp-8)' }} type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} autoComplete="new-password" />
+          </div>
         </div>
-      </div>
-    </div>
+        <div className="v3-field">
+          <label className="v3-label" htmlFor="login-newpass2">הקלידו שוב את הסיסמה</label>
+          <div style={{ position: 'relative' }}>
+            <Icon name="lock" style={{ position: 'absolute', insetInlineStart: 'var(--v3-sp-3)', top: '50%', transform: 'translateY(-50%)', color: 'var(--v3-navy-500)', pointerEvents: 'none' }} />
+            <input id="login-newpass2" className="v3-input" style={{ paddingInlineStart: 'var(--v3-sp-8)' }} type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" />
+          </div>
+        </div>
+        <Btn type="submit" variant="primary" size="lg" block loading={resetSaving}>
+          {resetSaving ? 'שומר...' : 'שמירה והמשך'}
+        </Btn>
+      </form>
+    </Dialog>
   );
 
-  if (isModal) {
-    // Before the client-only mount effect fires, render the modal inline (no portal) rather
-    // than nothing - createPortal needs document.body, which isn't available during SSR.
-    if (!mounted) return loginCard;
-    return (
-      <>
-        {createPortal(loginCard, document.body)}
-        {forgotOpen && createPortal(forgotDialog, document.body)}
-        {resetRequired && createPortal(resetDialog, document.body)}
-      </>
-    );
-  }
-
+  // Dialog portals itself to document.body (after its own mount), so both display
+  // modes render the same tree; `mounted` is kept for parity with the old flow.
+  void mounted;
   return (
-    <>
+    <V3Page page={false} sprite={!isModal} style={isModal ? { display: 'contents' } : undefined}>
       {loginCard}
-      {forgotOpen && forgotDialog}
-      {resetRequired && resetDialog}
-    </>
+      {forgotDialog}
+      {resetDialog}
+    </V3Page>
   );
 }
