@@ -1073,7 +1073,7 @@ const payload = o => { const { isDeleted, hasZeout, ...rest } = o; return rest; 
 const stat = o => calculateOrderStatus(payload(o), { draftsAsDeleted: draftsAsDeleted() });
 /* מחיקה מוסתרת רק כשהשורה נמחקה כבר מהאפליקציה (כל הפריטים מחוקים) בלשונית "מחוקות" — נגזר מהתשובה (הצהרה LQ-4) */
 const canDelete = o => !(S.tab === 'deleted' && o.items.length > 0 && valid(o).length === 0);
-/* REVIEW-list-1 M-1: בלשונית "לא שולם" השרת לא בוחר תשלומים/חיובים → totalPaid תמיד 0 (I-86). לא מציגים "שולם" ומצב תשלום שם */
+/* REVIEW-list-1 M-1: בלשונית "לא שולם" השרת לא בוחר תשלומים/חיובים, ולכן totalPaid תמיד 0 (I-86). לא מציגים "שולם" ומצב תשלום שם */
 const unpaidView = () => S.tab === 'unpaid' && !S.ai;
 const pay = o => calculatePaymentStatus(o.totalAmount || 0, o.totalPaid || 0);
 const models = o => [...new Set(valid(o).map(i => i.dressName))];
@@ -1307,14 +1307,14 @@ async function doDelete(o, zeout){
 }
 function idDlg(o){
   const html = `<div class="dlg-h"><span class="dlg-badge">${ic('id','lg')}</span><div style="flex:1;min-width:0"><h2 id="%TID%">אימות ת״ז לפני מחיקה</h2><p>בגמ״ח הזה מוחקים הזמנה רק אחרי אימות תעודת הזהות של הלקוח.</p></div><button type="button" class="x-btn" data-x aria-label="סגירה">${ic('x')}</button></div>
-    <div class="dlg-b"><div id="idMsg"></div><div class="field"><label for="idIn">תעודת הזהות של ${esc(o.customerName)}</label><input class="input ltr-in" id="idIn" inputmode="numeric" autocomplete="off" maxlength="9" data-autofocus aria-describedby="idHint"><span class="fhint" id="idHint">בהדגמה: 123456782 נכונה, כל השאר לא תואמת.</span></div></div>
+    <div class="dlg-b"><div id="idMsg"></div><div class="field"><label for="idIn">תעודת הזהות של ${esc(o.customerName)}</label><input class="input ltr-in" id="idIn" autocomplete="off" data-autofocus aria-describedby="idHint"><!-- REVIEW-list-1 M-5: בלי maxlength ובלי ניקוי תווים — השרת משווה מחרוזת אחרי trim בלבד --><span class="fhint" id="idHint">בהדגמה: 123456782 נכונה, כל השאר לא תואמת.</span></div></div>
     <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('trash','','wig')}אימות ומחיקה</button><button type="button" class="btn quiet" data-x>ביטול</button></div>`;
   const o2 = openLayer({ type:'form', size:'s', html, closeOnScrim:false, onMount(d, layer){
     const inp = d.querySelector('#idIn'), msg = d.querySelector('#idMsg'), go = d.querySelector('[data-go]');
     d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
     inp.onkeydown = e => { if (e.key === 'Enter') go.click(); };
     go.onclick = () => {
-      const v = inp.value.replace(/\D/g, '');
+      const v = inp.value.trim(); /* כמו השרת: String(zeout).trim() === provided.trim() */
       if (!v){ msg.innerHTML = `<div class="errbox" role="alert">${ic('alert','lg')}<span>צריך להקליד תעודת זהות.</span></div>`; inp.focus(); return; }
       layer.busy = true; go.disabled = true; go.innerHTML = `${ic('loader','','loop')}בודקים…`;
       setTimeout(() => { layer.busy = false; go.disabled = false; go.innerHTML = `${ic('trash','','wig')}אימות ומחיקה`;
@@ -1413,10 +1413,13 @@ function printDlg(){
   let mode = modes()[0][0];
   const html = `<div class="dlg-h"><span class="dlg-badge">${ic('printer','lg')}</span><div style="flex:1;min-width:0"><h2 id="%TID%">הדפסת דוח</h2><p>בוחרים סוג דוח ותאריכים, ומקבלים קובץ להדפסה.</p></div><button type="button" class="x-btn" data-x aria-label="סגירה">${ic('x')}</button></div>
     <div class="dlg-b"><div class="form"><fieldset style="border:0;padding:0;margin:0"><legend class="flbl" style="margin-bottom:8px">איזה דוח?</legend><div class="radios" id="ptypes"></div></fieldset>
-      <fieldset style="border:0;padding:0;margin:0"><legend class="flbl" style="margin-bottom:8px" id="pmodeL">אילו תאריכים?</legend><div class="radios" id="pmodes"></div></fieldset><div id="pdates"></div></div></div>
-    <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('printer','','rise')}יצירת הדוח</button><button type="button" class="btn quiet" data-x>ביטול</button></div>`;
+      <fieldset style="border:0;padding:0;margin:0"><legend class="flbl" style="margin-bottom:8px" id="pmodeL">אילו תאריכים?</legend><div class="radios" id="pmodes"></div></fieldset><div id="pdates"></div>
+    <div id="pErr"></div></div></div>
+    <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('printer','','rise')}יצירת הדוח</button><button type="button" class="btn" data-pdf>${ic('download','','rise')}הורדה כ-PDF</button><button type="button" class="btn quiet" data-x>ביטול</button></div>`;
   openLayer({ type:'form', size:'m', html, closeOnScrim:false, onMount(d, layer){
     const draw = () => {
+      d.querySelector('[data-pdf]').hidden = type === 'order_prep_by_date'; /* REVIEW-list-1 M-4: הורדת PDF מהשרת (downloadPdf) — לא בדוח ההכנה, כמו היום */
+      d.querySelector('#pErr').innerHTML = '';
       d.querySelector('#ptypes').innerHTML = types.map(([v, l, i]) => `<label class="radio"><input type="radio" name="pt" value="${v}" ${v === type ? 'checked' : ''}>${ic(i)}<span>${l}</span></label>`).join('');
       d.querySelector('#pmodeL').textContent = type === 'order_prep_by_date' ? 'לפי איזה תאריך?' : 'אילו תאריכים?';
       d.querySelector('#pmodes').innerHTML = modes().map(([v, l]) => `<label class="radio"><input type="radio" name="pm" value="${v}" ${v === mode ? 'checked' : ''}><span>${l}${v === 'current' ? `<small>לפי החיפוש והסינון (עד 2,000 הזמנות)</small>` : ''}</span></label>`).join('');
@@ -1426,11 +1429,14 @@ function printDlg(){
     };
     draw();
     d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
-    d.querySelector('[data-go]').onclick = () => {
+    const go = asPdf => {
       const need = mode === 'custom' ? ['#pF','#pT'] : mode === 'single' ? ['#pS'] : [];
       const miss = need.find(s => !d.querySelector(s).value); if (miss){ const f = d.querySelector(miss).closest('.field'); f.classList.add('is-err'); if (!f.querySelector('.ferr')) f.insertAdjacentHTML('beforeend', `<span class="ferr" role="alert">${ic('alert','sm')}צריך לבחור תאריך</span>`); d.querySelector(miss).focus(); return; }
-      closeLayer(layer, 'ok'); serverFails() ? toast('err', 'הדוח לא נוצר', 'השרת לא ענה. נסו שוב.') : toast('ok', 'הדוח מוכן להדפסה', types.find(t => t[0] === type)[1]);
+      if (mode === 'current' && query().total === 0){ d.querySelector('#pErr').innerHTML = `<div class="errbox" role="alert">${ic('alert','lg')}<span>אין הזמנות ברשימה שמוצגת עכשיו. אפשר לבחור תאריכים אחרים.</span></div>`; return; }
+      closeLayer(layer, 'ok'); serverFails() ? toast('err', asPdf ? 'קובץ ה-PDF לא נוצר' : 'הדוח לא נוצר', 'השרת לא ענה. נסו שוב.') : toast('ok', asPdf ? 'קובץ ה-PDF ירד' : 'הדוח נפתח בלשונית חדשה', types.find(t => t[0] === type)[1]);
     };
+    d.querySelector('[data-go]').onclick = () => go(false);
+    d.querySelector('[data-pdf]').onclick = () => go(true);
   }});
 }
 

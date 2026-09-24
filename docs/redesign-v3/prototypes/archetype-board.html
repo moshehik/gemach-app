@@ -133,7 +133,7 @@ html[data-motion=reduced] *,html[data-motion=reduced] *::before,html[data-motion
 .tb-ib{width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:#fff;display:grid;place-items:center;position:relative}
 .tb-ib:hover{background:rgba(255,255,255,.1)}
 .tb-badge{position:absolute;inset-block-start:4px;inset-inline-end:4px;min-width:18px;height:18px;border-radius:9px;background:var(--v3-rose-500);color:#000;font-size:var(--v3-fs-cap);font-weight:700;display:grid;place-items:center;padding:0 4px}
-.tb-user{display:flex;align-items:center;gap:8px;height:44px;padding:0 6px 0 12px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff}
+.tb-user{display:flex;align-items:center;gap:8px;height:44px;padding-block:0;padding-inline:6px 12px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff}
 .tb-av{width:32px;height:32px;border-radius:50%;background:var(--v3-accent);color:#000;display:grid;place-items:center;font-weight:700}
 .tb-burger{display:none}
 .drawer{position:fixed;inset-block:0;inset-inline-start:0;width:min(88vw,360px);background:var(--v3-navy-900);color:#fff;z-index:var(--v3-z-drawer);padding:var(--v3-sp-4);padding-top:calc(env(safe-area-inset-top) + 16px);display:flex;flex-direction:column;gap:6px;box-shadow:var(--v3-el-4);animation:dr-in var(--v3-med) var(--v3-ease)}
@@ -756,8 +756,9 @@ details.legend-wrap summary::-webkit-details-marker{display:none}
 .d-head{flex-wrap:wrap}
 .d-num{flex:none}
 .d-tools{flex-wrap:wrap;justify-content:flex-end;min-width:0}
-.oc .chip{max-width:100%}
-.oc .chip .ct{min-width:0;overflow-wrap:anywhere}
+.oc .chip{max-width:100%;flex-wrap:wrap;row-gap:0}
+.oc .chip .ct{min-width:0;overflow-wrap:normal;word-break:keep-all}
+@media (max-width:1439px){ .oc .chip{padding-inline:6px;gap:4px} }
 @media (max-width:1439px){ .d-count .w{display:none} }
 /* REVIEW-board-1 M-4: יעדי מגע ≥ 44 (§ב.5, §ח-17) */
 .d-tools .ibtn{width:var(--v3-tap);height:var(--v3-tap);margin-block:-4px}
@@ -1532,7 +1533,7 @@ function printWizard(){
     <p class="fhint" id="pwH" style="margin-top:var(--v3-sp-3)">הזמנות שצריך להכין היום (3 ימי עבודה לפני האירוע, בלי שישי, שבת וחגים).</p></div>
     <div class="dlg-f"><button type="button" class="btn primary" data-go>${ic('printer','','pop')}הדפסה</button><button type="button" class="btn quiet" data-x>ביטול</button></div>`,
     onMount(d, layer){ d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
-      d.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { d.querySelectorAll('[data-pm]').forEach(x => x.setAttribute('aria-checked', x === b)); d.querySelector('#pwH').textContent = b.dataset.pm === 'prep' ? 'הזמנות שצריך להכין היום (3 ימי עבודה לפני האירוע, בלי שישי, שבת וחגים).' : 'בוחרים תאריך אירוע אחד או טווח.'; });
+      d.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { d.querySelectorAll('[data-pm]').forEach(x => x.setAttribute('aria-checked', x === b)); d.querySelector('#pwH').textContent = b.dataset.pm === 'prep' ? 'הזמנות שצריך להכין היום (3 ימי עבודה לפני האירוע, בלי שישי, שבת וחגים).' : 'בוחרים תאריך אירוע אחד או טווח. במימוש: האשף המשותף, עם כל סוגי הדוחות (תיקונים, הזמנות, מדבקות).'; });
       d.querySelector('[data-go]').onclick = () => { closeLayer(layer, 'x'); if (serverFails()) toast('err', 'ההדפסה לא הוכנה', 'אין חיבור לשרת'); else toast('ok', 'נמצאו 6 הזמנות להדפסה', 'נפתחת לשונית הדפסה'); }; } });
 }
 
@@ -1540,8 +1541,15 @@ function printWizard(){
 function rentalDlg(o){
   const DRESS = ['שמלת ערב "ורד"', 'שמלת כלה "אלמוג"', 'שמלת שושבינה "טל"', 'שמלת ילדה "פנינה"'];
   const items = o.items.filter(i => !i.isDeleted).map((it, k) => ({ ...it, name: DRESS[k % 4], size: [36, 38, 40, 42][k % 4], barcode: it.isTaken ? String(10240 + k) + String([36, 38, 40, 42][k % 4]) + '07' : '', pending:false, bad:false }));
-  const status = () => { const all = items.length; if (!all) return 'מחוק'; const r = items.filter(i => i.isReturned).length, t = items.filter(i => i.isTaken).length;
-    if (r === all) return 'הוחזר'; if (r) return 'הוחזר חלקי'; if (t === all) return 'הושכר'; if (t) return 'הושכר חלקי'; return o.day < TODAY_I ? 'עבר' : 'בקרוב'; };
+  /* REVIEW-board-1 M-3: בדיוק calculateOrderStatus — "מחוק" רק כשיש פריטים וכולם מחוקים; הזמנה בלי פריטים בכלל = עבר/בקרוב.
+     (טיוטה = לפי Order.status, לא קיים בנתוני הדמה.) */
+  const status = () => { const all = items.length; if (o.items.length > 0 && !all) return 'מחוק';
+    if (all){ const r = items.filter(i => i.isReturned).length, t = items.filter(i => i.isTaken).length;
+      if (r === all) return 'הוחזר'; if (r) return 'הוחזר חלקי'; if (t === all) return 'הושכר'; if (t) return 'הושכר חלקי'; }
+    return o.day < TODAY_I ? 'עבר' : 'בקרוב'; };
+  /* REVIEW-board-1 m-5: כמו getLateReturnInfo — מועד החזרה = יום עסקים אחד אחרי האירוע (בלי שישי/שבת); איחור מ-7 ימים (late_return_threshold_days) */
+  const lateReturn = () => { const due = new Date(DAYS[o.day].g); do { due.setDate(due.getDate() + 1); } while (due.getDay() === 5 || due.getDay() === 6);
+    return Math.floor((TODAY - due) / 864e5) >= 7; };
   const itStatus = i => i.isReturned ? (i.bad ? 'הוחזר — לא תקין' : 'הוחזר') : i.isTaken ? 'מושכר' : i.pending ? 'נסרק — ממתין לאישור' : 'ממתין';
   const pendingN = () => items.filter(i => i.pending).length;
   const draw = d => {
@@ -1574,7 +1582,7 @@ function rentalDlg(o){
       if (!b){ err('צריך לסרוק או להקליד ברקוד.'); inp.focus(); return; }
       if (serverFails()){ err('אין חיבור לשרת. הסריקה לא נשמרה.'); return; }
       const out = items.find(i => i.isTaken && !i.isReturned && i.barcode === b);
-      if (out){ if (TODAY_I - o.day >= 7){ const r = await confirmDlg({ icon:'late', title:'ההחזרה מאחרת', text:'הפריט חוזר אחרי המועד. לסמן אותו "לא תקין"?', buttons:[{ label:'לסמן לא תקין', kind:'primary', value:'bad' }, { label:'להחזיר כרגיל', value:'ok', auto:1 }, { label:'ביטול', kind:'quiet', value:null }] }); if (!r) return; out.bad = r === 'bad'; }
+      if (out){ if (lateReturn()){ const r = await confirmDlg({ icon:'late', title:'ההחזרה מאחרת', text:'הפריט חוזר אחרי המועד. לסמן אותו "לא תקין"?', buttons:[{ label:'לסמן לא תקין', kind:'primary', value:'bad' }, { label:'להחזיר כרגיל', value:'ok', auto:1 }, { label:'ביטול', kind:'quiet', value:null }] }); if (!r) return; out.bad = r === 'bad'; }
         out.isReturned = true; inp.value = ''; draw(d); toast('ok', 'הפריט הוחזר', out.name); render(); return; }
       if (b === '9999'){ const r = await confirmDlg({ icon:'alert', title:'השמלה עדיין בחוץ', text:'הפריט רשום כמושכר בהזמנה אחרת. להחזיר אותו שם קודם?', buttons:[{ label:'החזרה בהזמנה האחרת', kind:'primary', value:'y' }, { label:'ביטול', kind:'quiet', value:'n', auto:1 }] }); if (r !== 'y') return; }
       if (b[0] === '8'){ const ok = await codeDlg('הפריט נמצא במחסן. צריך אישור מנהל כדי למסור אותו.', { fail:serverFails }); if (!ok) return; }
@@ -1588,7 +1596,7 @@ function rentalDlg(o){
       draw(d); render(); toast('ok', 'ההשכרה אושרה', 'הלוח עודכן'); };
     d.querySelector('[data-discard]').onclick = () => { items.forEach(i => { if (i.pending){ i.pending = false; i.barcode = ''; } }); draw(d); };
     d.querySelector('#rrList').onclick = async e => { const t = e.target.closest('button'); if (!t) return;
-      if (t.dataset.undoRet){ items[+t.dataset.undoRet].isReturned = false; draw(d); toast('info', 'ההחזרה בוטלה'); }
+      if (t.dataset.undoRet){ /* REVIEW-board-1 m-4: כמו היום — אישור לפני ביטול החזרה */ const r = await confirmDlg({ icon:'undo', title:'לבטל את ההחזרה?', text:'הפריט יחזור להיות אצל הלקוח.', buttons:[{ label:'ביטול ההחזרה', kind:'primary', value:'y' }, { label:'להשאיר', kind:'quiet', value:'n', auto:1 }] }); if (r === 'y'){ items[+t.dataset.undoRet].isReturned = false; draw(d); toast('info', 'ההחזרה בוטלה'); } }
       if (t.dataset.undoRent){ const r = await confirmDlg({ icon:'undo', title:'לבטל את ההשכרה?', text:'הפריט יחזור למצב "ממתין" והברקוד יימחק מההזמנה.', buttons:[{ label:'ביטול ההשכרה', kind:'primary', value:'y' }, { label:'להשאיר', kind:'quiet', value:'n', auto:1 }] }); if (r === 'y'){ const i = items[+t.dataset.undoRent]; i.isTaken = false; i.barcode = ''; draw(d); } }
       if (t.dataset.hist) openLayer({ type:'viewer', size:'s', html:`${dlgHead('history', 'היסטוריית הפריט', items[+t.dataset.hist].name, 'סגירה')}<div class="dlg-b"><div class="hnote">${ic('info')}<span>רשימת פעולות על הפריט (מסירה, החזרה, ביטולים). פירוט מלא — בחוזה כרטיס ההשכרה.</span></div></div><div class="dlg-f"><button type="button" class="btn quiet" data-x>סגירה</button></div>`, onMount(dd, l){ dd.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(l, null)); } });
     };

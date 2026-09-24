@@ -791,7 +791,7 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
         <select id="dHome" aria-label="מצב עמוד הבית">
           <option value="start">פתיחה</option><option value="results">תוצאות חיפוש</option><option value="none">חיפוש בלי תוצאות</option><option value="error">חיפוש נכשל</option><option value="ai">שיחה חכמה עם טבלה</option>
         </select>
-        <select id="dDash" aria-label="נתוני הסיכום"><option value="normal">סיכום: רגיל</option><option value="empty">סיכום: אין תשלומים</option><option value="loading">סיכום: הגרפים נטענים</option></select>
+        <select id="dDash" aria-label="נתוני הסיכום"><option value="normal">סיכום: רגיל</option><option value="empty">סיכום: אין תשלומים</option><option value="loading">סיכום: טעינה הדרגתית</option><option value="error">סיכום: שגיאת שרת</option></select>
         <label class="chk"><input type="checkbox" id="dFail"> כשל בפעולות שרת</label>
         <label class="chk"><input type="checkbox" id="dMotion"> הדמיית הפחתת תנועה</label>
         <div class="demo-row"><button type="button" class="btn sm quiet" id="dTheme" aria-pressed="true">חלוניות אישור/קוד/צפייה: כהה</button><button type="button" class="btn sm quiet" data-demo="notice">פס עליון</button></div>
@@ -1053,8 +1053,12 @@ function render(){
   $('#tbOrg').textContent = PROFILES[S.profile].name || ''; $('#tbOrg').hidden = !PROFILES[S.profile].name;
   const who = { '0':['ש','שולמית'], '1':['א','אסתר'], '3':['נ','נחמה'], anon:['?','כניסה'] }[S.role];
   $('#tbAv').textContent = who[0]; $('#tbUser').textContent = who[1];
-  $('#view').innerHTML = S.page === 'home' ? homeView() : dashView();
-  if (S.page === 'dash') drawTrend();
+  /* REVIEW-dashboard-1 M-6: לא מחובר + require_login דלוק → מסך הכניסה מחליף את העמוד כולו (layout), בשני העמודים */
+  $('#view').innerHTML = (!loggedIn() && cfg.flag('require_login')) ? loginGate() : S.page === 'home' ? homeView() : dashView();
+  if (S.page === 'dash' && $('#trendBox')) drawTrend();
+}
+function loginGate(){
+  return `<div class="card empty denied" role="status"><span class="e-ic">${ic('lock','xl')}</span><b>צריך להתחבר כדי להמשיך</b><span>כאן מופיע מסך הכניסה של המערכת (מחוץ לתחום אב-הטיפוס). הארגון דורש כניסה, ולכן מי שלא מחובר לא רואה את העמוד.</span></div>`;
 }
 function searchBox(){
   const ai = S.aiMode && aiAllowed();
@@ -1106,14 +1110,19 @@ function resultsView(){
 }
 /* DB-33: מייל/טלפון → תגית העתקה; "הזמנה N" / "לקוח X" → קישור */
 function richText(t){
-  return esc(t).replace(/([\w.+-]+@[\w-]+\.[\w.]+)|(0(?:5\d|7\d|[2-4]|[89])-?\d{3}-?\d{4})/g, m => `<button type="button" class="cp-chip" data-copy="${m}" aria-label="העתקת ${m}">${ic('copy','sm')}${m}</button>`)
+  /* m-5: אותו ביטוי בדיוק כמו COPYABLE_RE ב-app/components/CopyableText.js */
+  return esc(t).replace(/([A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+|(?<![\d-])0(?:5\d|7\d|[2-489])[-\s]?\d{3}[-\s]?\d{4}(?!\d))/g, m => `<button type="button" class="cp-chip" data-copy="${m}" aria-label="העתקת ${m}">${ic('copy','sm')}${m}</button>`)
     .replace(/הזמנה (\d+)/g, (m, n) => `<a class="lnk-chip" href="#" data-open="הזמנה">${ic('file','sm')}הזמנה <bdi>${n}</bdi></a>`);
 }
 function chatView(){
   const bot = S.chat.length ? S.chat : [
     { me:true, t:'אילו הזמנות לא שולמו בשבוע הבא?' },
-    { t:'מצאתי 3 הזמנות שעוד לא שולמו במלואן. הדחופה ביותר היא הזמנה 48133. אפשר לפנות ללקוחה ב-052-4418210 או ב-rachel.k@gmail.com.', table:true, setting:isManagerAi() },
+    { t:'מצאתי 3 הזמנות שעוד לא שולמו במלואן. הדחופה ביותר היא הזמנה 48133. הפרטים בטבלה.', table:true },
+    { me:true, t:'איך משנים את שעת הודעת הבוקר?' },
+    /* m-4: תשובה אחת = ענף אחד בשרת. SETTINGS_GUIDE (רק feature:ai_financial_data) = כפתור הגדרה, בלי טבלה; אחרת HOWTO_GUIDE = קישור לעמוד */
+    isManagerAi() ? { t:'זו ההגדרה "שעת הודעת הבוקר". אפשר לשנות אותה כאן.', setting:true } : { t:'משנים אותה בעמוד ההגדרות, בלשונית ההודעות. לשאלות: support@example.org', link:'עמוד ההגדרות' },
   ];
+  S._shown = bot;
   const rows = [{ 'מספר הזמנה':'48133', 'לקוחה':'מלכה רוזן', 'תאריך אירוע':'ט״ו תשרי', 'חוב':'₪450', 'טלפון':'052-4418210', _actionUrl:'/orders/48133', _actionLabel:'פתיחה' }, { 'מספר הזמנה':'48140', 'לקוחה':'יעל גרין', 'תאריך אירוע':'ט״ז תשרי', 'חוב':'₪900', 'טלפון':'054-1102233', _actionUrl:'/orders/48140', _actionLabel:'פתיחה' }, { 'מספר הזמנה':'48152', 'לקוחה':'תמר וייס', 'תאריך אירוע':'י״ח תשרי', 'חוב':'₪300', 'טלפון':'', _actionUrl:'', _actionLabel:'' }];
   const table = () => { const cols = Object.keys(rows[0]).filter(k => !k.startsWith('_action')); const main = cols.slice(0, 3), rest = cols.slice(3); const hasAct = rows.some(r => r._actionUrl);
     return `<div class="bub-acts"><button type="button" class="btn sm" data-act="excel">${ic('download','sm','rise')}ייצוא ל-Excel</button><span class="fhint">${num(rows.length)} שורות${rows.length > 15 ? ' · מוצגות 15 הראשונות' : ''}</span></div>
@@ -1123,6 +1132,7 @@ function chatView(){
   return `<section class="card" aria-labelledby="chT"><div class="card-h"><span class="ico">${ic('star')}</span><h2 id="chT">שיחה עם החיפוש החכם</h2><div class="acts"><button type="button" class="ibtn quiet" data-act="clearChat" aria-label="ניקוי השיחה" data-tip="ניקוי השיחה">${ic('x')}</button></div></div>
     <div class="chat" aria-live="polite">${bot.map((m, i) => `<div class="bub ${m.me ? 'me' : 'bot'} ${m.err ? 'err' : ''}"><span class="who">${ic(m.me ? 'user' : 'star','sm')}${m.me ? 'אני' : 'החיפוש החכם'}</span>
       <button type="button" class="copy" data-copymsg="${i}" aria-label="העתקת ההודעה" data-tip="העתקה">${ic('copy','sm')}</button><p>${m.me ? esc(m.t) : richText(m.t)}</p>
+      ${m.link ? `<div class="bub-acts"><a class="btn sm" href="#" data-open="עמוד">${ic('open','sm','nudge')}פתיחת ${m.link}</a></div>` : ''}
       ${m.setting ? `<div class="bub-acts"><button type="button" class="btn sm" data-act="setting">${ic('settings','sm','spin')}פתיחת ההגדרה</button></div>` : ''}
       ${m.table ? table() : ''}</div>`).join('')}
       ${S.loading ? '<div class="typing" role="status" aria-label="החיפוש החכם כותב תשובה"><span></span><span></span><span></span></div>' : ''}</div></section>
@@ -1143,11 +1153,14 @@ const DATA = (() => {
 function dashView(){
   /* DB-47: הנהלה ראשית/מתכנת בלבד; לא מחובר רק כש-require_login כבוי */
   if (!isHead()) return `<div class="card empty denied" role="alert"><span class="e-ic">${ic('lock','xl')}</span><b>הסיכום הכספי פתוח להנהלה ראשית בלבד</b><span>אם צריך גישה, פונים להנהלה.</span><a class="btn primary" href="#" data-act="home">${ic('home','','rise')}לעמוד הבית</a></div>`;
+  /* REVIEW-dashboard-1 M-3: שגיאת שרת — היום עמוד השגיאה הכללי של Next; כאן: כרטיס שגיאה (error.js, UI בלבד) */
+  if (S.dash === 'error' || serverFails()) return `<div class="card empty denied" role="alert"><span class="e-ic">${ic('cloud-off','xl')}</span><b>לא הצלחנו לטעון את הסיכום</b><span>אין חיבור לשרת כרגע. המספרים לא השתנו.</span><button type="button" class="btn primary" data-act="dashRetry">${ic('refresh','','spin')}לנסות שוב</button></div>`;
   const big = PROFILES[S.profile].big, empty = S.dash === 'empty';
+  const kSk = S.dash === 'loading' && !S.kpiReady; /* M-4: טעינה הדרגתית — שלד לכל אריח (loading.js), הגרפים נטענים אחריהם */
   const K = empty ? [0, 0, 0, 1] : big ? [8428650, 128412, 212300, 146] : [1284650, 8412, 21230, 23];
   const methods = empty ? [] : [['אשראי', 612400, 1830], ['מזומן', 402150, 2210], ['העברה בנקאית', 188300, 410], ['צ׳ק', 61800, 95], ['לא מוגדר', 20000, 40]];
   const tot = methods.reduce((a, m) => a + m[1], 0);
-  const kpi = (hero, icon, label, val, sub, how) => `<button type="button" class="kpi ${hero ? 'hero-k' : ''}" data-kpi="${esc(label)}" data-how="${esc(how)}" data-val="${esc(val.replace(/<[^>]+>/g, ''))}"><span class="k-top"><span class="k-ic">${ic(icon,'lg','pop')}</span><span class="k-l">${label}</span><span class="k-more">${ic('info','sm')}</span></span><span class="k-v">${val}</span><span class="k-s">${sub}</span></button>`;
+  const kpi = (hero, icon, label, val, sub, how) => `<button type="button" class="kpi ${hero ? 'hero-k' : ''}" ${kSk ? 'disabled aria-busy="true"' : ''} data-kpi="${esc(label)}" data-how="${esc(how)}" data-val="${esc(val.replace(/<[^>]+>/g, ''))}"><span class="k-top"><span class="k-ic">${ic(icon,'lg','pop')}</span><span class="k-l">${label}</span><span class="k-more">${ic('info','sm')}</span></span>${kSk ? '<span class="k-v sk" role="status" aria-label="נטען"></span><span class="k-s sk"></span>' : `<span class="k-v">${val}</span><span class="k-s">${sub}</span>`}</button>`;
   return `<div class="pagehead"><div class="bh-title" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span class="ph-kind" style="font-size:var(--v3-fs-sm);color:var(--v3-ink-3)">הנהלה ראשית</span><h1 style="margin:0;font-size:var(--v3-fs-h1-cur);display:flex;gap:10px;align-items:center">${ic('chart','lg')}סיכום כספי</h1></div>
     <span class="chip info">${ic('clock','sm')}מחושב מחדש בכל כניסה</span></div>
     <section aria-labelledby="kT"><h2 class="sec-h" id="kT">במבט אחד${tip('ארבעה מספרים מצטברים מכל הזמנים. לחיצה על אריח מסבירה איך הוא מחושב.')}</h2>
@@ -1173,12 +1186,13 @@ function drawTrend(){
   if (S.dash === 'loading'){ box.innerHTML = '<div class="sk" style="height:240px" role="status" aria-label="הגרף נטען"></div>'; return; }
   const d = S.dash === 'empty' ? [] : DATA[S.trend];
   if (!d.length){ box.innerHTML = `<div class="empty">${ic('trend','xl')}<b>אין עדיין תשלומים בתקופה</b><span>הגרף יתמלא אחרי התשלום הראשון.</span></div>`; return; }
-  const W = 640, H = 240, pad = 36, max = Math.max(...d.map(x => x.v)) * 1.1, bw = (W - pad) / d.length;
+  const W = Math.max(280, Math.round(box.clientWidth || 640)), H = 240, pad = 40; /* m-6: רוחב אמיתי → תוויות ציר ב-12px גם בטלפון */
+  const max = Math.max(...d.map(x => x.v)) * 1.1, bw = (W - pad) / d.length, every = Math.ceil(d.length / Math.max(3, Math.floor(W / 90)));
   const ticks = [0, .5, 1].map(t => Math.round(max * t / 1000) * 1000);
   /* RTL: הזמן זורם מימין לשמאל — האחרון בצד שמאל, בזהב ("עכשיו") */
   const bars = d.map((x, i) => { const h = x.v / max * (H - 30), xx = W - pad - (i + 1) * bw + bw * .18; return `<rect class="bar ${i === d.length - 1 ? 'now' : ''}" x="${xx.toFixed(1)}" y="${(H - 24 - h).toFixed(1)}" width="${(bw * .64).toFixed(1)}" height="${h.toFixed(1)}" rx="4" data-tip="${x.k}: ₪${x.v.toLocaleString('he-IL')}"></rect>`; }).join('');
-  const labels = d.map((x, i) => i % Math.ceil(d.length / 6) === 0 || i === d.length - 1 ? `<text class="axis" x="${(W - pad - (i + .5) * bw).toFixed(1)}" y="${H - 6}" text-anchor="middle">${x.k}</text>` : '').join('');
-  const grid = ticks.map(t => { const y = H - 24 - t / max * (H - 30); return `<line class="grid" x1="0" x2="${W - pad}" y1="${y}" y2="${y}"></line><text class="axis" x="${W - pad + 4}" y="${y + 4}">${t >= 1000 ? (t / 1000) + 'K' : t}</text>`; }).join('');
+  const labels = d.map((x, i) => i % every === 0 || i === d.length - 1 ? `<text class="axis" x="${(W - pad - (i + .5) * bw).toFixed(1)}" y="${H - 6}" text-anchor="middle">${x.k}</text>` : '').join('');
+  const grid = ticks.map(t => { const y = H - 24 - t / max * (H - 30); return `<line class="grid" x1="0" x2="${W - pad}" y1="${y}" y2="${y}"></line><text class="axis" x="${W - pad + 6}" y="${y + 4}">${t >= 1000 ? (t / 1000) + 'K' : t}</text>`; }).join('');
   const sum = d.reduce((a, x) => a + x.v, 0);
   box.innerHTML = `<svg class="vchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="גרף עמודות: ${d.length} תקופות, סך ₪${sum.toLocaleString('he-IL')}. הנתונים המלאים בטבלה.">${grid}${bars}${labels}</svg>
     <div class="chart-foot"><span class="legend-dot"><i></i>התקופה האחרונה</span><span>סה״כ בתקופה: ${money(sum)}</span></div>
@@ -1204,7 +1218,7 @@ function doSearch(q){
 }
 function followUp(q){
   q = q.trim(); if (!q) return;
-  if (!S.chat.length) S.chat = [{ me:true, t:'אילו הזמנות לא שולמו בשבוע הבא?' }, { t:'מצאתי 3 הזמנות שעוד לא שולמו במלואן. הדחופה ביותר היא הזמנה 48133.', table:true, setting:isManagerAi() }];
+  if (!S.chat.length) S.chat = [{ me:true, t:'אילו הזמנות לא שולמו בשבוע הבא?' }, { t:'מצאתי 3 הזמנות שעוד לא שולמו במלואן. הדחופה ביותר היא הזמנה 48133. הפרטים בטבלה.', table:true }];
   S.chat.push({ me:true, t:q }); S.loading = true; render();
   setTimeout(() => { S.loading = false; S.chat.push(serverFails() ? { err:true, t:'אין תקשורת עם השרת. השאלה לא נשלחה.' } : { t:'בהדגמה: כאן תופיע התשובה לשאלת ההמשך. למשל, הזמנה 48140 שייכת ללקוחה יעל גרין.' }); render(); $('#fuQ')?.focus(); }, 900);
 }
@@ -1220,7 +1234,7 @@ function settingPanel(){
         if (denied || serverFails()){ B.innerHTML = `<div class="errbox" role="alert">${ic('lock','lg')}<span>${denied ? '<b>אין הרשאה לצפות בהגדרה.</b> (פער קיים: החלונית נפתחת היום רק למנהלת סניף ולמתכנת — שאלה BDQ-D2.)' : 'אין חיבור לשרת.'}</span></div>`; return; }
         B.innerHTML = `<div class="field"><label for="spV">השעה</label><input class="input" id="spV" dir="ltr" value="08:00" inputmode="numeric" data-autofocus></div><p class="fhint">מתי נשלחת הודעת הבוקר לעובדות.</p><div id="spMsg"></div>`;
         const save = d.querySelector('[data-save]'); save.hidden = false; B.querySelector('input').focus();
-        save.onclick = async () => { const ok = await codeDlg('שינוי הגדרה דורש אישור של הנהלה ראשית.', { me:'—', fail:serverFails }); if (!ok) return; closeLayer(layer, 'x'); toast('ok', 'ההגדרה נשמרה', `אישרה: ${ok.approver}`); };
+        save.onclick = async () => { const ok = await codeDlg('שינוי הגדרה דורש אישור של הנהלה ראשית.', { me:'—', pool:APPROVERS.filter(a => a.r === 'הנהלה ראשית'), fail:serverFails }); /* M-6: customAuthPrompt(…,'הנהלה ראשית') מסנן roleId 0/2 */ if (!ok) return; closeLayer(layer, 'x'); toast('ok', 'ההגדרה נשמרה', `אישרה: ${ok.approver}`); };
       }, 600); } });
 }
 
@@ -1232,7 +1246,7 @@ document.addEventListener('click', e => {
   if (b.dataset.link){ e.preventDefault(); toast('info', `מעבר אל ${b.querySelector('b').textContent}`, 'בהדגמה: אין מעבר עמוד', 2600); return; }
   if (b.dataset.open){ e.preventDefault(); toast('info', `נפתח כרטיס ה${b.dataset.open}`, 'בהדגמה: אין מעבר עמוד', 2600); return; }
   if (b.dataset.copy){ navigator.clipboard?.writeText(b.dataset.copy).catch(() => {}); toast('ok', 'הועתק', b.dataset.copy, 2600); return; }
-  if (b.dataset.copymsg){ const m = (S.chat.length ? S.chat : [{}, {}])[+b.dataset.copymsg]; navigator.clipboard?.writeText(m?.t || '').catch(() => {}); b.innerHTML = ic('check','sm draw'); setTimeout(() => { b.innerHTML = ic('copy','sm'); }, 1500); return; }
+  if (b.dataset.copymsg){ const m = (S._shown || [])[+b.dataset.copymsg]; navigator.clipboard?.writeText(m?.t || '').catch(() => {}); b.innerHTML = ic('check','sm draw'); setTimeout(() => { b.innerHTML = ic('copy','sm'); }, 1500); return; }
   if (b.dataset.exp){ const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); $(`[data-exprow="${b.dataset.exp}"]`).hidden = !open; b.querySelector('.ic').style.transform = open ? 'rotate(180deg)' : ''; return; }
   if (b.dataset.trend){ S.trend = b.dataset.trend; $$('[data-trend]').forEach(x => x.setAttribute('aria-checked', x === b)); drawTrend(); return; }
   if (b.dataset.kpi){ openLayer({ type:'viewer', size:'s', html:`${dlgHead('info', b.dataset.kpi, '', 'סגירה')}<div class="dlg-b"><div class="kv"><span class="l">הערך</span><span class="v" style="font-size:var(--v3-fs-2xl);font-weight:700"><bdi dir="ltr">${esc(b.dataset.val)}</bdi></span></div><div class="kv"><span class="l">איך זה מחושב</span><span class="v">${esc(b.dataset.how)}</span></div></div><div class="dlg-f"><button type="button" class="btn primary" data-x>הבנתי</button></div>`, onMount(d, l){ d.querySelectorAll('[data-x]').forEach(x => x.onclick = () => closeLayer(l, null)); } }); return; }
@@ -1243,9 +1257,16 @@ document.addEventListener('click', e => {
   if (a === 'excel') toast('ok', 'הקובץ ירד', 'בהדגמה: אין קובץ אמיתי', 2600);
   if (a === 'setting') settingPanel();
   if (a === 'home'){ S.page = 'home'; $('#dPage').value = 'home'; render(); }
+  if (a === 'dashRetry'){ if (serverFails()) toast('err', 'עדיין אין חיבור', 'נסו שוב בעוד רגע'); else { S.dash = 'normal'; $('#dDash').value = 'normal'; render(); } }
   if (a === 'tblMethods'){ const t = $('#mTbl'), bars = $('#mBars'); if (!t) return; const on = t.hidden; t.hidden = !on; bars.hidden = on; b.setAttribute('aria-pressed', on); }
   if (a === 'tblTrend'){ S.trendTbl = !S.trendTbl; b.setAttribute('aria-pressed', S.trendTbl); drawTrend(); }
-  if (a === 'privacy') openLayer({ type:'viewer', size:'m', html:`${dlgHead('shield', 'פרטיות', 'איך נשמר המידע של הלקוחות.', 'סגירה')}<div class="dlg-b"><p>שומרים רק מה שצריך כדי להשאיל שמלה ולחזור ללקוחה: שם, טלפון וכתובת.</p><p>המידע לא עובר לגורם אחר בלי אישור.</p><p class="fhint">הטקסט היום זמני; הנוסח הסופי — החלטת הבעלים.</p></div><div class="dlg-f"><button type="button" class="btn primary" data-x>הבנתי</button></div>`, onMount(d, l){ d.querySelectorAll('[data-x]').forEach(x => x.onclick = () => closeLayer(l, null)); } });
+  if (a === 'privacy') openLayer({ type:'viewer', size:'m', html:`${dlgHead('shield', 'פרטיות', 'איך נשמר המידע של הלקוחות.', 'סגירה')}<div class="dlg-b"><p class="fhint">כאן יופיע נוסח מדיניות הפרטיות של הארגון.</p><p>הנוסח היום זמני ואינו מחייב. הבעלים כותבים את הנוסח הסופי (שאלה BDQ-D11); אב-הטיפוס לא מציע תוכן משפטי.</p></div><div class="dlg-f"><button type="button" class="btn primary" data-x>הבנתי</button></div>`, onMount(d, l){ d.querySelectorAll('[data-x]').forEach(x => x.onclick = () => closeLayer(l, null)); } });
+});
+/* m-7: radiogroup — חצים ימינה/שמאלה בוחרים (RTL: שמאלה = הבא) */
+document.addEventListener('keydown', e => {
+  const r = e.target.closest?.('[role=radiogroup] [role=radio]'); if (!r || !['ArrowLeft','ArrowRight'].includes(e.key)) return;
+  const all = [...r.parentElement.querySelectorAll('[role=radio]')]; const i = all.indexOf(r); const n = all[(i + (e.key === 'ArrowLeft' ? 1 : -1) + all.length) % all.length];
+  e.preventDefault(); n.click(); const k = n.dataset.trend ? `[data-trend=${n.dataset.trend}]` : `[data-mode=${n.dataset.mode}]`; $(k)?.focus();
 });
 document.addEventListener('submit', e => {
   e.preventDefault();
@@ -1261,7 +1282,8 @@ $('#dRole').onchange = e => { S.role = e.target.value; if (!aiAllowed()) S.aiMod
 $('#dAiPerm').onchange = e => { S.aiPerm = e.target.checked; if (!aiAllowed()) S.aiMode = false; render(); };
 $('#dProposal').onchange = e => { S.proposal = e.target.checked; render(); };
 $('#dHome').onchange = e => { S.home = e.target.value; S.page = 'home'; $('#dPage').value = 'home'; if (S.home !== 'start' && !S.q) S.q = 'כהן'; if (S.home === 'ai'){ S.chat = []; S.aiMode = aiAllowed(); } render(); };
-$('#dDash').onchange = e => { S.dash = e.target.value; S.page = 'dash'; $('#dPage').value = 'dash'; render(); };
+$('#dDash').onchange = e => { S.dash = e.target.value; S.page = 'dash'; $('#dPage').value = 'dash'; S.kpiReady = false; render();
+  if (S.dash === 'loading') setTimeout(() => { S.kpiReady = true; if (S.dash === 'loading' && S.page === 'dash') render(); }, 1200); };
 $('#dMotion').onchange = e => { if (e.target.checked) document.documentElement.setAttribute('data-motion', 'reduced'); else document.documentElement.removeAttribute('data-motion'); };
 $('#dTheme').onclick = e => { UI.dark = !UI.dark; e.currentTarget.setAttribute('aria-pressed', UI.dark); e.currentTarget.textContent = `חלוניות אישור/קוד/צפייה: ${UI.dark ? 'כהה' : 'בהיר'}`; };
 $$('[data-demo]').forEach(b => b.onclick = () => notice('success', 'ההזמנה נשמרה', 'חזרתם לעמוד הבית; הפס הזהוב יורד במשך 15 שניות', { label:'פתיחת ההזמנה', run(){ toast('info', 'נפתחת ההזמנה', 'בהדגמה: אין מעבר', 2600); } }));
