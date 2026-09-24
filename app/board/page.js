@@ -13,6 +13,9 @@ import PrintWizardModal from '../components/PrintWizardModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildBoardMonthParams } from '@/app/lib/prefetchRoutes';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { V3Page, Btn, Chip, Tag, Tabs, Tip, Dialog, Field, Switch, Icon } from '@/app/v3/ui/components';
+import { cx } from '@/app/v3/ui/cx';
+import { TipBtn, SearchBar, useOpsDialogs, dlgMode } from '@/components/ops-v3/OpsKit';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const boardCache = cacheNamespace('board');
@@ -34,20 +37,22 @@ const buildBoardAiPrompt = (f) => {
   return `הזמנות ${parts.join(', ')}`;
 };
 
-// מיפוי קטגוריית סטטוס הזמנה (getOrderCategory למטה) אל מחלקת badge + צבע מסגרת + אייקון
-// של מערכת העיצוב "אריג" — לא נוגעים בלוגיקת הקטגוריזציה עצמה, רק בייצוג הוויזואלי שלה.
+// מיפוי קטגוריית סטטוס הזמנה (getOrderCategory למטה) אל chip (variant) + אייקון + מחלקת פס צבע (ops.css).
+// לא נוגעים בלוגיקת הקטגוריזציה עצמה, רק בייצוג הוויזואלי שלה.
 const CATEGORY_STYLE = {
-  empty: { badge: 'badge-danger', border: 'var(--danger)', text: 'var(--danger)', icon: 'i-alert-tri' },
-  repairs: { badge: 'badge-primary', border: 'var(--primary)', text: 'var(--primary)', icon: 'i-scissors' },
-  unpaid: { badge: 'badge-warning', border: 'var(--warning)', text: 'var(--warning)', icon: 'i-alert-circle' },
-  returned: { badge: 'badge-success', border: 'var(--success)', text: 'var(--success)', icon: 'i-check-circle' },
-  rented: { badge: 'badge-info', border: 'var(--info)', text: 'var(--info)', icon: 'i-truck' },
-  completed: { badge: 'badge-success', border: 'var(--success)', text: 'var(--success)', icon: 'i-wallet' },
-  other: { badge: 'badge-neutral', border: 'var(--border-strong)', text: 'var(--text-2)', icon: 'i-more' },
+  empty: { chip: 'attn', icon: 'alert-tri', cls: 'empty' },
+  repairs: { chip: 'info', icon: 'scissors', cls: 'repairs' },
+  unpaid: { chip: 'attn', icon: 'alert-circle', cls: 'unpaid' },
+  returned: { chip: 'done', icon: 'check-circle', cls: 'returned' },
+  rented: { chip: 'gold', icon: 'truck', cls: 'rented' },
+  completed: { chip: undefined, icon: 'wallet', cls: 'completed' },
+  other: { chip: undefined, icon: 'more', cls: 'other' },
 };
 
 export default function BoardPage() {
   const router = useRouter();
+  // v3: הודעות במקום alert() (חלונית עם הבנתי)
+  const { tell, node: dialogsNode } = useOpsDialogs();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [orders, setOrders] = useState([]);
   // מתחיל כ-true כדי שהרינדור הראשון בכניסה לאתר יציג "טוען נתונים..."
@@ -129,7 +134,7 @@ export default function BoardPage() {
 
   const handleGlobalSearch = async () => {
     if (!searchInput) {
-      alert("נא להזין טקסט לחיפוש גלובלי (לפי מספר הזמנה או שם לקוח)");
+      tell({ title: 'אין מה לחפש', text: 'הקלידו מספר הזמנה או שם לקוח בשורת החיפוש.', icon: 'search' });
       return;
     }
     setGlobalSearchLoading(true);
@@ -223,11 +228,11 @@ export default function BoardPage() {
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        tell({ title: 'החיפוש החכם לא הצליח', text: result.error || undefined, icon: 'alert-circle' });
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      tell({ title: 'אין תקשורת עם השרת', text: 'נסו שוב בעוד רגע.', icon: 'alert-circle' });
     } finally {
       setAiLoading(false);
     }
@@ -307,12 +312,12 @@ export default function BoardPage() {
 
   const getCategoryLabel = (category) => {
     switch (category) {
-      case 'empty': return 'הזמנה פגומה (0 פריטים)';
-      case 'repairs': return 'יש תיקונים';
-      case 'unpaid': return 'לא שולם';
-      case 'returned': return 'הוחזר';
-      case 'rented': return 'מושכר/חלקית';
-      case 'completed': return 'הושלם (שולם)';
+      case 'empty': return 'הזמנה ריקה';
+      case 'repairs': return 'בתיקון';
+      case 'unpaid': return 'לא שולמה';
+      case 'returned': return 'הוחזרה';
+      case 'rented': return 'בהשכרה';
+      case 'completed': return 'שולמה במלואה';
       default: return 'אחר';
     }
   };
@@ -355,41 +360,30 @@ export default function BoardPage() {
     return (
       <div
         key={order.orderId}
-        className="card"
-        style={{
-          padding: '8px 10px',
-          cursor: 'pointer',
-          position: 'relative',
-          ...(isOrderLate ? { border: '2px solid var(--danger)' } : { borderInlineStart: `3px solid ${meta.border}` })
-        }}
-        title={`סטטוס: ${getCategoryLabel(category)}\nסה"כ: ₪${order.totalAmount}\nשולם: ₪${order.totalPaid}`}
+        className={cx('ops-ord', `ops-ord--${meta.cls}`, isOrderLate && 'ops-ord--late')}
+        title={`מצב: ${getCategoryLabel(category)}\nלתשלום: ₪${order.totalAmount}\nשולם: ₪${order.totalPaid}`}
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           setActionPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
           setActionOrder(order);
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
-          <strong style={{ fontSize: '12.5px', color: isOrderLate ? 'var(--danger)' : undefined, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`}
-          </strong>
-          <span style={{ fontSize: '11px', color: isOrderLate ? 'var(--danger)' : 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: isOrderLate ? 700 : undefined, flexShrink: 0 }}>
-            {isOrderLate && <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-alert-circle" /></svg>}
-            #{order.orderId}
-          </span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px', gap: '6px' }}>
+        <span className="ops-ord__name">
+          {order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`}
+        </span>
+        <span className="ops-ord__id">
+          {isOrderLate && <Icon name="alert-circle" size="xs" title="באיחור" />}
+          <bdi>#{order.orderId}</bdi>
+        </span>
+        <div className="ops-ord__foot">
           {category !== 'other' ? (
-            <span className={`badge ${meta.badge}`} style={{ fontSize: '10px', padding: '2px 8px' }}>
-              <svg className="icon"><use href={`#${meta.icon}`} /></svg>
-              {getCategoryLabel(category)}
-            </span>
+            <Chip variant={meta.chip} icon={meta.icon}>{getCategoryLabel(category)}</Chip>
           ) : <span></span>}
 
           <button
             type="button"
-            className="btn btn-ghost btn-icon-only btn-sm"
-            title="פרטים נוספים"
+            className="v3-btn v3-btn--quiet v3-btn--icon v3-btn--sm"
+            aria-label="פרטים נוספים"
             onMouseEnter={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
@@ -398,7 +392,7 @@ export default function BoardPage() {
             onMouseLeave={() => setHoveredOrder(null)}
             onClick={(e) => { e.stopPropagation(); }}
           >
-            <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-info" /></svg>
+            <Icon name="info" />
           </button>
         </div>
       </div>
@@ -441,16 +435,16 @@ export default function BoardPage() {
 
     return (
       <>
-        <div className="card card-pad" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', textAlign: 'center', fontWeight: 700, fontSize: '12.5px', color: 'var(--text-2)', marginBottom: '8px' }}>
+        <div className="ops-dow">
           {["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"].map(d => (
             <div key={d}>{d}</div>
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: '8px' }}>
+        <div className="ops-grid">
           {weeks.map((week, i) => (
             week.map((day, j) => {
-              if (!day) return <div key={`empty-${i}-${j}`} className="card" style={{ minHeight: '130px', minWidth: 0, background: 'var(--surface-alt)', borderStyle: 'dashed' }}></div>;
+              if (!day) return <div key={`empty-${i}-${j}`} className="ops-day ops-day--empty"></div>;
 
               const cellHDate = new HDate(day, hMonth, hYear);
               const cellGreg = cellHDate.greg();
@@ -506,32 +500,22 @@ export default function BoardPage() {
                 }).map(e => e.render('he'));
               } catch (e) {}
 
-              let cellStyle = { minHeight: '130px', minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' };
-              if (isToday) cellStyle = { ...cellStyle, borderColor: 'var(--primary-solid)', borderWidth: '2px', boxShadow: '0 0 0 1px var(--primary-solid)' };
-              if (isLate) cellStyle = { ...cellStyle, borderColor: 'var(--danger)', borderWidth: '2px', boxShadow: '0 0 0 1px var(--danger)' };
-              if (isHighlighted) cellStyle = { ...cellStyle, borderColor: 'var(--primary-solid)', borderWidth: '2px', boxShadow: '0 0 0 3px var(--primary-tint-2)' };
-
               return (
-                <div key={j} className="card card-pad" style={cellStyle}>
-                  {isLate && (
-                    <div style={{
-                      position: 'absolute', top: '-10px', insetInlineEnd: '-10px', width: '24px', height: '24px',
-                      borderRadius: 'var(--radius-full)', background: 'var(--danger-solid)', color: 'var(--text-on-primary)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '14px',
-                      boxShadow: 'var(--shadow-md)', zIndex: 10
-                    }}>!</div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <strong style={{ fontSize: '13px', color: isToday ? 'var(--primary-solid)' : undefined }}>{hebrewDayStr}</strong>
-                      {dayOrders.length > 0 && (
-                        <span className="cell-muted" style={{ fontSize: '11px' }} title="מספר הזמנות ליום זה">{dayOrders.length}</span>
-                      )}
+                <div key={j} className={cx('ops-day', isToday && 'ops-day--today', isLate && 'ops-day--late', isHighlighted && 'ops-day--hl')}>
+                  {isLate && <span className="ops-day__late" role="img" aria-label="יש בתא הזמנות באיחור">!</span>}
+                  <div className="ops-day__head">
+                    <strong className="ops-day__num">{hebrewDayStr}</strong>
+                    <span className="ops-muted ops-day__greg"><bdi>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</bdi></span>
+                  </div>
+                  {(dayOrders.length > 0) && (
+                    <div className="ops-day__tools">
+                      <span className="ops-day__count" title="מספר הזמנות ליום זה"><bdi>{dayOrders.length}</bdi> הזמנות</span>
                       {dayOrders.length > 2 && (
                         <button
                           type="button"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          title="תצוגה מורחבת ליום זה"
+                          className="v3-btn v3-btn--quiet v3-btn--icon v3-btn--sm"
+                          aria-label="תצוגה מורחבת של היום"
+                          title="תצוגה מורחבת של היום"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedDayOrders({
@@ -541,36 +525,36 @@ export default function BoardPage() {
                             });
                           }}
                         >
-                          <svg className="icon"><use href="#i-expand" /></svg>
+                          <Icon name="expand" />
                         </button>
                       )}
-                      {dayOrders.length > 0 && enableBatchPrintPrep && (
+                      {enableBatchPrintPrep && (
                         <button
                           type="button"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          title="הדפסת פרוט ההזמנות ליום זה"
+                          className="v3-btn v3-btn--quiet v3-btn--icon v3-btn--sm"
+                          aria-label="הדפסת הזמנות היום"
+                          title="הדפסת הזמנות היום"
                           onClick={(e) => {
                             e.stopPropagation();
                             printDayOrders(dayOrders);
                           }}
                         >
-                          <svg className="icon"><use href="#i-printer" /></svg>
+                          <Icon name="printer" />
                         </button>
                       )}
                     </div>
-                    <span className="cell-muted" style={{ fontSize: '11px' }}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</span>
-                  </div>
+                  )}
 
                   {(parashaText || holidays.length > 0) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {parashaText && <span className="badge badge-neutral" style={{ fontSize: '10px', alignSelf: 'flex-start' }}>{parashaText}</span>}
+                    <div className="ops-day__tags">
+                      {parashaText && <Chip>{parashaText}</Chip>}
                       {holidays.map((h, idx) => (
-                        <span key={idx} className="badge badge-neutral" style={{ fontSize: '10px', alignSelf: 'flex-start' }}>{h}</span>
+                        <Chip key={idx}>{h}</Chip>
                       ))}
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexGrow: 1, overflowY: 'auto', maxHeight: '150px', paddingInlineEnd: '4px' }}>
+                  <div className="ops-day__list">
                     {dayOrders.map(order => renderOrderCard(order))}
                   </div>
                 </div>
@@ -584,380 +568,256 @@ export default function BoardPage() {
 
   const currentMonthYear = getHebrewMonthYear(selectedDate);
 
+  const paidClass = (o) => (o.totalPaid >= o.totalAmount && o.totalAmount > 0 ? 'ops-paid--full' : (o.totalPaid > 0 ? 'ops-paid--part' : 'ops-paid--none'));
+  const advTabs = [
+    { key: 'basic', label: 'תאריך והזמנה', icon: 'calendar' },
+    { key: 'details', label: 'פרטי לקוח', icon: 'user' },
+  ];
+  const legendCats = enableAlterations ? ['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other'] : ['unpaid', 'rented', 'returned', 'completed', 'other'];
+  const closeDayOrders = () => { setSelectedDayOrders(null); setDayOrdersFilter(''); };
+
   return (
-    <div>
-      <div className="page-head">
-        <div>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <svg className="icon"><use href="#i-calendar" /></svg>
-            לוח שנה
-          </h1>
+    <V3Page>
+      {dialogsNode}
+
+      <div className="v3-pagehead ops-head">
+        <div className="v3-pagehead__title ops-head__title">
+          <h1 className="v3-h1"><Icon name="calendar" />לוח שנה</h1>
         </div>
-        <div className="page-actions" style={{ alignItems: 'center' }}>
-          <button type="button" className="btn btn-secondary btn-icon-only" onClick={() => changeMonth(-1)} title="חודש קודם">
-            <svg className="icon"><use href="#i-chevron-end" /></svg>
-          </button>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '14.5px', padding: '0 6px' }}>
-            {currentMonthYear}
-            <HebrewDatePicker value={jumpDate} onChange={setJumpDate} placeholder="קפוץ לתאריך..." iconOnly={true} />
+        <div className="v3-pagehead__tools">
+          <TipBtn icon="chevron-end" label="החודש הקודם" onClick={() => changeMonth(-1)} />
+          <span className="ops-month">
+            <bdi>{currentMonthYear}</bdi>
+            <HebrewDatePicker value={jumpDate} onChange={setJumpDate} placeholder="קפיצה לתאריך" iconOnly={true} />
           </span>
-          <button type="button" className="btn btn-secondary btn-icon-only" onClick={() => changeMonth(1)} title="חודש הבא">
-            <svg className="icon"><use href="#i-chevron-start" /></svg>
-          </button>
+          <TipBtn icon="chevron-start" label="החודש הבא" onClick={() => changeMonth(1)} />
           {enableBatchPrintPrep && (
-            <button type="button" className="btn btn-secondary btn-icon-only" title="הדפסת הזמנות להכנה" onClick={() => setShowPrintWizard(true)}>
-              <svg className="icon"><use href="#i-printer" /></svg>
-            </button>
+            <TipBtn icon="printer" label="הדפסת הזמנות להכנה" onClick={() => setShowPrintWizard(true)} />
           )}
         </div>
       </div>
 
       {/* סרגל חיפוש: חיפוש רגיל + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה + חיפוש גלובלי (כל החודשים) + חיפוש מתקדם */}
-      <div className="toolbar">
-        {aiInputMode ? (
-          <form onSubmit={handleAiInputSubmit} className="search-toolbar" style={{ flex: 1, minWidth: '260px', maxWidth: '420px' }}>
-            {aiLoading
-              ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-              : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
-            <input
-              type="text"
-              value={aiInputText}
-              onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
-              disabled={aiLoading}
-            />
-            <div className="search-toolbar-actions">
-              {aiInputText && !aiLoading && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
-                <svg className="icon"><use href="#i-star" /></svg>
-              </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSearch} className="search-toolbar" style={{ flex: 1, minWidth: '260px', maxWidth: '420px' }}>
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-            />
-            <div className="search-toolbar-actions">
-              {searchInput && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
-              </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
-            </div>
-          </form>
-        )}
-        <span className="spacer"></span>
-        <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש בכל החודשים (גלובלי)" onClick={handleGlobalSearch}>
-          <svg className="icon"><use href="#i-search" /></svg>
-        </button>
-        <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
-          <svg className="icon"><use href="#i-list" /></svg>
-        </button>
+      <div className="ops-toolbar ops-toolbar--center">
+        <SearchBar
+          className="ops-search--max"
+          aiInputMode={aiInputMode}
+          aiLoading={aiLoading}
+          aiInputText={aiInputText}
+          setAiInputText={setAiInputText}
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          onSubmit={handleSearch}
+          onSubmitAi={handleAiInputSubmit}
+          onClear={handleClearSearch}
+          onToggleAi={toggleAiInputMode}
+          onStats={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+          placeholder="מספר הזמנה או שם לקוח"
+          placeholderAi="למשל: הזמנות של משפחת שיינועטר"
+        />
+        <TipBtn icon="search" label="חיפוש בכל החודשים" onClick={handleGlobalSearch} />
+        <TipBtn icon="list" label="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)} />
       </div>
 
-      {/* מקרא צבעים: כל קטגוריית סטטוס של הזמנה בתא היום */}
-      <div className="toolbar" style={{ marginBottom: '20px', flexWrap: 'wrap' }}>
-        <strong style={{ fontSize: '13px', color: 'var(--text)' }}>מקרא:</strong>
-        {(enableAlterations ? ['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other'] : ['unpaid', 'rented', 'returned', 'completed', 'other']).map(cat => {
+      {/* מקרא: כל מצב הזמנה בלוח */}
+      <div className="ops-toolbar ops-toolbar--center ops-legend">
+        <span className="ops-strong">מצבי הזמנה <Tip>הפס בצד כל הזמנה מסמן את מצבה. הזמנה באיחור מקבלת מסגרת מודגשת, וביום שלה מופיע סימן קריאה. &quot;בהשכרה&quot; כולל גם השכרה חלקית.</Tip></span>
+        {legendCats.map(cat => {
           const meta = CATEGORY_STYLE[cat];
           return (
-            <span key={cat} className={`badge ${meta.badge}`}>
-              <svg className="icon"><use href={`#${meta.icon}`} /></svg>
-              {getCategoryLabel(cat)}
-            </span>
+            <Chip key={cat} variant={meta.chip} icon={meta.icon}>{getCategoryLabel(cat)}</Chip>
           );
         })}
       </div>
 
       {loading ? (
-        <div className="page-loading">
-          <span className="spinner lg" />
-          טוען נתונים...
+        <div className="v3-empty" role="status">
+          <span className="v3-spin" aria-hidden="true" />
+          <span>טוען…</span>
         </div>
       ) : (
         renderCalendar()
       )}
 
       {hoveredOrder && typeof document !== 'undefined' && createPortal(
-        <div
-          className="card"
-          style={{
-            position: 'fixed',
-            top: popoverPos.top,
-            left: popoverPos.left,
-            transform: 'translate(-50%, -100%)',
-            width: 'max-content',
-            maxWidth: '320px',
-            zIndex: 10000,
-            pointerEvents: 'none'
-          }}
-        >
-          <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '12.5px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '14px', color: 'var(--primary-solid)', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '2px' }}>
-              <svg className="icon"><use href="#i-info" /></svg>
-              פרטים על הזמנה #{hoveredOrder.order.orderId}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)' }}>לקוח:</span>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-phone" /></svg>
-                טלפון:
-              </span>
-              <span dir="ltr">{hoveredOrder.order.customerPhone || 'לא הוזן'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-calendar" /></svg>
-                תאריך עברי:
-              </span>
-              <span>{hoveredOrder.order.eventDateHebrew || 'לא צוין'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-calendar" /></svg>
-                תאריך לועזי:
-              </span>
-              <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
-            </div>
+        <div data-v3="" dir="rtl" className="ops-pop" style={{ top: popoverPos.top, left: popoverPos.left }}>
+          <div className="ops-pop__h">
+            <Icon name="info" anim={false} />
+            הזמנה <bdi>#{hoveredOrder.order.orderId}</bdi>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l">לקוח</span>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="phone" size="xs" anim={false} />טלפון</span>
+            <span className="ops-ltr">{hoveredOrder.order.customerPhone || 'לא הוזן'}</span>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="calendar" size="xs" anim={false} />תאריך עברי</span>
+            <span>{hoveredOrder.order.eventDateHebrew || 'לא צוין'}</span>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="calendar" size="xs" anim={false} />תאריך לועזי</span>
+            <bdi>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</bdi>
+          </div>
 
-            {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה, ומוסתר כש-hide_custom_spacing מופעל (בקשה 1) */}
-            {!hideCustomSpacing && hoveredOrder.order.customSpacing !== null && hoveredOrder.order.customSpacing !== undefined && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-clock" /></svg>
-                  ציפוף ימים:
-                </span>
-                <span className="badge badge-warning">
-                  {hoveredOrder.order.customSpacing} {hoveredOrder.order.customSpacing === 1 ? 'יום' : 'ימים'}
-                </span>
+          {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה, ומוסתר כש-hide_custom_spacing מופעל (בקשה 1) */}
+          {!hideCustomSpacing && hoveredOrder.order.customSpacing !== null && hoveredOrder.order.customSpacing !== undefined && (
+            <div className="ops-kv">
+              <span className="ops-kv__l"><Icon name="clock" size="xs" anim={false} />ציפוף</span>
+              <Tag variant="attn">
+                <bdi>{hoveredOrder.order.customSpacing}</bdi> {hoveredOrder.order.customSpacing === 1 ? 'יום' : 'ימים'}
+              </Tag>
+            </div>
+          )}
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="bag" size="xs" anim={false} />פריטים</span>
+            <bdi>{hoveredOrder.order.items?.filter(i => !i.isDeleted).length || 0}</bdi>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="bag" size="xs" anim={false} />הושכרו</span>
+            <bdi>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isTaken).length || 0}</bdi>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="bag" size="xs" anim={false} />הוחזרו</span>
+            <bdi>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isReturned).length || 0}</bdi>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="card" size="xs" anim={false} />לתשלום</span>
+            <bdi>₪{hoveredOrder.order.totalAmount || 0}</bdi>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l"><Icon name="check-circle" size="xs" anim={false} />שולם</span>
+            <bdi className={cx('ops-paid', paidClass(hoveredOrder.order))}>₪{hoveredOrder.order.totalPaid || 0}</bdi>
+          </div>
+          <div className="ops-kv">
+            <span className="ops-kv__l">מצב</span>
+            <span className="ops-strong">{getCategoryLabel(hoveredOrder.category)}</span>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* חיפוש מתקדם — חלונית עם שדות הזנה ← בהיר בלבד */}
+      <Dialog
+        open={showAdvSearch}
+        onClose={() => setShowAdvSearch(false)}
+        variant="form"
+        icon="list"
+        title="חיפוש מתקדם"
+        actions={
+          <>
+            <Btn variant="primary" icon="check" onClick={() => {
+              if (advAiMode) {
+                const prompt = buildBoardAiPrompt(advFilters);
+                setShowAdvSearch(false);
+                if (prompt) handleAiSearch(prompt);
+              } else {
+                setShowAdvSearch(false);
+              }
+            }}>
+              החלת הסינון
+            </Btn>
+            <Btn variant="secondary" onClick={() => {
+              setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
+            }}>ניקוי כל השדות</Btn>
+          </>
+        }
+      >
+        {/* פיצול השדות הקיימים לשתי לשוניות (item 33): תאריך אירוע + זיהוי הזמנה/פריט מול פרטי לקוח */}
+        <Tabs label="קבוצות שדות" items={advTabs} value={advTab} onChange={setAdvTab} />
+
+        <div className="ops-form-grid">
+          {advTab === 'basic' && (
+            <>
+              <div className="v3-field">
+                <span className="v3-label">מתאריך אירוע</span>
+                <HebrewDatePicker value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך" />
               </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-bag" /></svg>
-                פריטים בהזמנה:
-              </span>
-              <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted).length || 0}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-bag" /></svg>
-                הושכר:
-              </span>
-              <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isTaken).length || 0}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-bag" /></svg>
-                הוחזר:
-              </span>
-              <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isReturned).length || 0}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-card" /></svg>
-                סה&quot;כ לתשלום:
-              </span>
-              <span>₪{hoveredOrder.order.totalAmount || 0}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check-circle" /></svg>
-                שולם:
-              </span>
-              <span style={{ color: hoveredOrder.order.totalPaid >= hoveredOrder.order.totalAmount && hoveredOrder.order.totalAmount > 0 ? 'var(--success)' : (hoveredOrder.order.totalPaid > 0 ? 'var(--warning)' : 'var(--danger)'), fontWeight: 'bold' }}>
-                ₪{hoveredOrder.order.totalPaid || 0}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)' }}>סטטוס:</span>
-              <span style={{ color: CATEGORY_STYLE[hoveredOrder.category]?.text }}>{getCategoryLabel(hoveredOrder.category)}</span>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {showAdvSearch && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowAdvSearch(false)}>
-          <div className="modal" style={{ maxWidth: '640px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-list" /></svg>
-                חיפוש מתקדם
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowAdvSearch(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-
-            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): תאריך אירוע + זיהוי הזמנה/פריט מול
-               פרטי לקוח (אין כאן פילטר סטטוס פריטים כמו בעמוד ההזמנות, אז הלשונית הראשונה
-               מרכזת את שדות ה"מתי/מה" והשנייה את שדות ה"מי"). סגנון הלשוניות מבוסס על
-               app/components/ErrorReportButton.js */}
-            <div className="tabs" style={{ margin: '0 22px' }}>
-              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
-                תאריך והזמנה
-              </button>
-              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
-                פרטי לקוח
-              </button>
-            </div>
-
-            <div className="modal-body">
-              {advTab === 'basic' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label>מתאריך אירוע</label>
-                    <HebrewDatePicker value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
-                  </div>
-                  <div className="field">
-                    <label>עד תאריך אירוע</label>
-                    <HebrewDatePicker value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
-                  </div>
-                  <div className="field">
-                    <label>מספר הזמנה</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-search" /></svg>
-                      <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>ברקוד/פרטי פריט</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-bag" /></svg>
-                      <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {advTab === 'details' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label>שם לקוח</label>
-                    <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
-                  </div>
-                  <div className="field">
-                    <label>טלפון לקוח</label>
-                    <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
-                  </div>
-                  <div className="field">
-                    <label>עיר מגורים</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-pin" /></svg>
-                      <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
-              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
-                <input type="checkbox" id="board-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
-                <label htmlFor="board-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
+              <div className="v3-field">
+                <span className="v3-label">עד תאריך אירוע</span>
+                <HebrewDatePicker value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך" />
               </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
-              }}>נקה הכל</button>
-              <button type="button" className="btn btn-primary" onClick={() => {
-                if (advAiMode) {
-                  const prompt = buildBoardAiPrompt(advFilters);
-                  setShowAdvSearch(false);
-                  if (prompt) handleAiSearch(prompt);
-                } else {
-                  setShowAdvSearch(false);
-                }
-              }}>
-                <svg className="icon"><use href="#i-check" /></svg>
-                החל סינון
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+              <Field label="מספר הזמנה" type="text" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="למשל 1042" />
+              <Field label="ברקוד או פרטי פריט" type="text" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור" />
+            </>
+          )}
 
-      {showGlobalSearchModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowGlobalSearchModal(false)}>
-          <div className="modal" style={{ maxWidth: '640px', width: '100%', margin: 0, display: 'flex', flexDirection: 'column', maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-search" /></svg>
-                תוצאות חיפוש גלובלי
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowGlobalSearchModal(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
+          {advTab === 'details' && (
+            <>
+              <Field label="שם הלקוח" type="text" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם פרטי או משפחה" />
+              <Field label="טלפון" type="text" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון" />
+              <Field label="עיר" type="text" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר מגורים" />
+            </>
+          )}
 
-            <div className="modal-body" style={{ overflowY: 'auto', flexGrow: 1 }}>
-              {globalSearchLoading ? (
-                <div className="page-loading">
-                  <span className="spinner lg" />
-                  טוען תוצאות...
-                </div>
-              ) : globalSearchResults && globalSearchResults.length > 0 ? (
-                <div>
-                  {globalSearchResults.map(order => (
-                    <div key={order.orderId} className="list-card">
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700 }}>הזמנה #{order.orderId} - {order.customer?.firstName || ''} {order.customer?.lastName || order.customerName || ''}</div>
-                        <div className="cell-muted" style={{ fontSize: '12px' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '')}</div>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          if (order.eventDate) {
-                            setJumpDate(new Date(order.eventDate));
-                            setShowGlobalSearchModal(false);
-                          }
-                        }}
-                      >
-                        קפוץ לחודש
-                      </button>
-                      <Link href={`/orders/${order.orderId}`} target="_blank" className="btn btn-primary btn-sm">
-                        צפה בהזמנה
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <svg className="icon"><use href="#i-search" /></svg>
-                  <p>לא נמצאו תוצאות לחיפוש: &quot;{searchInput}&quot;</p>
-                </div>
-              )}
-            </div>
+          {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+          <div className="ai-feature-element">
+            <Switch
+              id="board-adv-ai-mode"
+              checked={advAiMode}
+              onChange={(v) => setAdvAiMode(v)}
+              label="חיפוש חכם לפי השדות שמולאו"
+            />
+            <Tip>במקום לסנן ישירות, המערכת תנסח שאלה מהשדות שמילאתם ותחפש לפיה.</Tip>
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
+      </Dialog>
+
+      {/* תוצאות חיפוש גלובלי — צפייה בלבד (ללא קלט): כהה/בהיר לפי ערכת הנושא */}
+      <Dialog
+        open={showGlobalSearchModal}
+        onClose={() => setShowGlobalSearchModal(false)}
+        variant="sheet"
+        mode={dlgMode()}
+        icon="search"
+        title="תוצאות בכל החודשים"
+        actions={<Btn variant="quiet" onClick={() => setShowGlobalSearchModal(false)}>סגירה</Btn>}
+      >
+        <div className="v3-dlg-rows ops-modal-list">
+          {globalSearchLoading ? (
+            <div className="v3-dlg-row" role="status">
+              <span className="v3-dlg-row__ico"><Icon name="loader" loop /></span>
+              <div className="v3-dlg-row__t">טוען תוצאות…</div>
+            </div>
+          ) : globalSearchResults && globalSearchResults.length > 0 ? (
+            globalSearchResults.map(order => (
+              <div key={order.orderId} className="v3-dlg-row ops-res">
+                <span className="v3-dlg-row__ico"><Icon name="file" /></span>
+                <div className="v3-dlg-row__t">
+                  <b>הזמנה <bdi>#{order.orderId}</bdi></b>
+                  <div>{order.customer?.firstName || ''} {order.customer?.lastName || order.customerName || ''}</div>
+                  <div className="v3-faint">{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '')}</div>
+                  <div className="ops-res__acts">
+                    <Btn
+                      variant="secondary"
+                      size="sm"
+                      icon="calendar"
+                      onClick={() => {
+                        if (order.eventDate) {
+                          setJumpDate(new Date(order.eventDate));
+                          setShowGlobalSearchModal(false);
+                        }
+                      }}
+                    >
+                      מעבר לחודש
+                    </Btn>
+                    <Link href={`/orders/${order.orderId}`} target="_blank" className="v3-btn v3-btn--primary v3-btn--sm">
+                      <Icon name="external-link" />
+                      <span>פתיחת ההזמנה</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="v3-dlg-row">
+              <span className="v3-dlg-row__ico"><Icon name="search" /></span>
+              <div className="v3-dlg-row__t">לא נמצאו תוצאות עבור &quot;{searchInput}&quot;</div>
+            </div>
+          )}
+        </div>
+      </Dialog>
 
       <StatisticsModal
         isOpen={!!showStatistics}
@@ -967,73 +827,54 @@ export default function BoardPage() {
         contextQuery={aiQueryUsed}
       />
 
-      {selectedDayOrders && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 9998, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}
-        >
-          <div
-            className="modal"
-            onClick={e => e.stopPropagation()}
-            style={{ maxWidth: '520px', width: '90%', margin: 0, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+      {/* הזמנות ליום — יש בה שדה סינון ← בהיר בלבד */}
+      <Dialog
+        open={!!selectedDayOrders}
+        onClose={closeDayOrders}
+        variant="form"
+        icon="calendar"
+        title={selectedDayOrders ? `הזמנות ליום ${selectedDayOrders.date.toLocaleDateString('he-IL')}` : undefined}
+        sub={selectedDayOrders ? selectedDayOrders.hebrewDate : undefined}
+        actions={
+          <>
+            {enableBatchPrintPrep && selectedDayOrders && (
+              <Btn variant="secondary" icon="printer" onClick={() => printDayOrders(selectedDayOrders.orders)}>הדפסת ההזמנות</Btn>
+            )}
+            <Btn variant="quiet" onClick={closeDayOrders}>סגירה</Btn>
+          </>
+        }
+      >
+        <div className="v3-search">
+          <Icon name="search" />
+          <input
+            type="text"
+            aria-label="חיפוש בתוך היום"
+            placeholder="שם, טלפון או מספר הזמנה"
+            value={dayOrdersFilter}
+            onChange={(e) => setDayOrdersFilter(e.target.value)}
+          />
+          <button
+            type="button"
+            className={cx('v3-search__clear', dayOrdersFilter && 'is-on')}
+            aria-label="ניקוי הסינון"
+            tabIndex={dayOrdersFilter ? 0 : -1}
+            onClick={() => setDayOrdersFilter('')}
           >
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-calendar" /></svg>
-                הזמנות ליום {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})
-              </strong>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {enableBatchPrintPrep && (
-                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הדפסת פרוט ההזמנות ליום זה" onClick={() => printDayOrders(selectedDayOrders.orders)}>
-                    <svg className="icon"><use href="#i-printer" /></svg>
-                  </button>
-                )}
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגור" onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              </div>
-            </div>
+            <Icon name="x" size="sm" />
+          </button>
+        </div>
 
-            <div className="modal-body" style={{ overflowY: 'auto' }}>
-              <div className="input-icon-wrap" style={{ marginBottom: '14px', position: 'relative' }}>
-                <svg className="icon"><use href="#i-search" /></svg>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="חיפוש הזמנה ביום זה (שם, טלפון, מספר)..."
-                  value={dayOrdersFilter}
-                  onChange={(e) => setDayOrdersFilter(e.target.value)}
-                  style={dayOrdersFilter ? { paddingInlineEnd: '34px' } : undefined}
-                />
-                {dayOrdersFilter && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-icon-only btn-sm"
-                    title="נקה סינון"
-                    onClick={() => setDayOrdersFilter('')}
-                    style={{ position: 'absolute', insetInlineEnd: '2px', top: '50%', transform: 'translateY(-50%)' }}
-                  >
-                    <svg className="icon"><use href="#i-x" /></svg>
-                  </button>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {selectedDayOrders.orders.filter(order => {
-                    if(!dayOrdersFilter) return true;
-                    const lower = dayOrdersFilter.toLowerCase();
-                    const name = (order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`).toLowerCase();
-                    const phone = (order.customerPhone || '').toLowerCase();
-                    const idStr = String(order.orderId);
-                    return name.includes(lower) || phone.includes(lower) || idStr.includes(lower);
-                }).map(order => renderOrderCard(order))}
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+        <div className="ops-modal-list">
+          {selectedDayOrders && selectedDayOrders.orders.filter(order => {
+              if(!dayOrdersFilter) return true;
+              const lower = dayOrdersFilter.toLowerCase();
+              const name = (order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`).toLowerCase();
+              const phone = (order.customerPhone || '').toLowerCase();
+              const idStr = String(order.orderId);
+              return name.includes(lower) || phone.includes(lower) || idStr.includes(lower);
+          }).map(order => renderOrderCard(order))}
+        </div>
+      </Dialog>
 
       {selectedRentalOrderId && (
         <RentalReturnModal
@@ -1051,65 +892,44 @@ export default function BoardPage() {
         />
       )}
 
-      {/* Action Menu Popover */}
+      {/* תפריט פעולות להזמנה — מעוגן ליד הכרטיס (מיקום לפי הכרטיס שנלחץ), נסגר בלחיצה בחוץ */}
       {actionOrder && typeof document !== 'undefined' && createPortal(
         <>
+          <div data-v3="" className="ops-overlay" onClick={() => setActionOrder(null)} />
           <div
-            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9998 }}
-            onClick={() => setActionOrder(null)}
-          />
-          <div
-            className="card card-pad"
-            style={{
-              position: 'absolute',
-              top: actionPos.top,
-              left: actionPos.left,
-              zIndex: 9999,
-              boxShadow: 'var(--shadow-lg)',
-              padding: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              minWidth: '200px'
-            }}
+            data-v3=""
+            dir="rtl"
+            className="v3-menu is-open ops-menu"
+            style={{ top: actionPos.top, left: actionPos.left }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-2)', padding: '0 6px 6px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-              הזמנה #{actionOrder.orderId}
-            </div>
-            <Link
-              href={`/orders/${actionOrder.orderId}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 6px', borderRadius: 'var(--radius-sm)', color: 'var(--text)', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}
-            >
-              <svg className="icon" style={{ color: 'var(--primary)' }}><use href="#i-file" /></svg>
+            <div className="ops-menu__h">הזמנה <bdi>#{actionOrder.orderId}</bdi></div>
+            <Link href={`/orders/${actionOrder.orderId}`} className="v3-menu__item">
+              <Icon name="file" />
               כרטיס הזמנה
             </Link>
             {(actionOrder.customerId || actionOrder.customer?.id) && (
-              <Link
-                href={`/customers/${actionOrder.customerId || actionOrder.customer?.id}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 6px', borderRadius: 'var(--radius-sm)', color: 'var(--text)', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}
-              >
-                <svg className="icon" style={{ color: 'var(--success)' }}><use href="#i-user" /></svg>
+              <Link href={`/customers/${actionOrder.customerId || actionOrder.customer?.id}`} className="v3-menu__item">
+                <Icon name="user" />
                 כרטיס לקוח
               </Link>
             )}
             <button
               type="button"
-              className="btn btn-ghost"
-              style={{ justifyContent: 'flex-start', gap: '8px', padding: '8px 6px', fontSize: '13px' }}
+              className="v3-menu__item"
               onClick={() => {
                 setSelectedRentalOrderId(actionOrder.orderId);
                 setActionOrder(null);
                 if (selectedDayOrders) setSelectedDayOrders(null);
               }}
             >
-              <svg className="icon" style={{ color: 'var(--warning)' }}><use href="#i-box" /></svg>
+              <Icon name="box" />
               כרטיס השכרה
             </button>
           </div>
         </>,
         document.body
       )}
-    </div>
+    </V3Page>
   );
 }

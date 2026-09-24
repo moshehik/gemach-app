@@ -1,0 +1,113 @@
+/* עמודי תפעול (תפירות · לוח שנה · משלוחים) — רק tokens של --v3-*, קידומת ops-. */
+[data-v3] .ops-anchor { display: inline-flex; }
+[data-v3] .ops-head { align-items: flex-start; margin-bottom: var(--v3-sp-4); }
+[data-v3] .ops-head__title { flex-direction: column; align-items: flex-start; gap: var(--v3-sp-1); }
+[data-v3] .ops-head__title .v3-h1 { display: flex; align-items: center; gap: var(--v3-sp-2); }
+[data-v3] .ops-head .v3-pagehead__tools { flex-wrap: wrap; }
+[data-v3] .ops-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--v3-sp-3); margin-bottom: var(--v3-sp-4); }
+[data-v3] .ops-toolbar--center { align-items: center; }
+[data-v3] .ops-toolbar > .v3-field { margin: 0; }
+[data-v3] .ops-grow { flex: 1 1 calc(var(--v3-sp-9) * 4); min-width: 0; }
+[data-v3] .ops-picker { display: flex; min-width: calc(var(--v3-sp-9) * 5); max-width: calc(var(--v3-sp-9) * 6); flex: 1 1 calc(var(--v3-sp-9) * 5); }
+[data-v3] .ops-picker--sm { min-width: calc(var(--v3-sp-9) * 4); max-width: none; flex: 0 1 calc(var(--v3-sp-9) * 4); }
+[data-v3] .ops-section { margin-bottom: var(--v3-sp-4); }
+[data-v3] .ops-hidden { visibility: hidden; }
+[data-v3] .ops-ltr { direction: ltr; text-align: start; unicode-bidi: isolate; }
+[data-v3] .ops-muted { color: var(--v3-ink-3); }
+
+/* חיפוש */
+[data-v3] .ops-search { flex: 1 1 calc(var(--v3-sp-9) * 5); min-width: 0; padding-inline-end: var(--v3-sp-2); gap: var(--v3-sp-1); }
+[data-v3] .ops-search--max { max-width: calc(var(--v3-sp-9) * 7); }
+[data-v3] .ops-search input { padding-inline: calc(var(--v3-sp-8) - var(--v3-sp-1)) var(--v3-sp-2); }
+[data-v3] .ops-search__acts { display: flex; align-items: center; gap: var(--v3-sp-1); flex: none; }
+[data-v3] .ops-search__spin { position: absolute; inset-inline-start: var(--v3-sp-3); }
+[data-v3] .ops-search .ops-on { background: var(--v3-sky-200); color: var(--v3-navy); }
+
+/* מיכל טבלה + תחתית */
+[data-v3] .ops-tablecard { border: var(--v3-bw-hair) solid var(--v3-line-soft); border-radius: var(--v3-r-lg); background: var(--v3-surface); overflow: hidden; }
+[data-v3] .ops-tablecard .v3-table__wrap { border: 0; border-radius: 0; }
+[data-v3] .ops-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--v3-sp-3); padding: var(--v3-sp-3) var(--v3-sp-4); border-top: var(--v3-bw-hair) solid var(--v3-line-hair); color: var(--v3-ink-2); font-size: var(--v3-fs-sm); }
+[data-v3] .ops-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v3-sp-3); }
+[data-v3] .ops-pager__num { display: inline-flex; align-items: center; gap: var(--v3-sp-2); }
+[data-v3] .ops-pager__num .v3-input { width: calc(var(--v3-sp-9) + var(--v3-sp-2)); padding-inline: var(--v3-sp-2); text-align: center; }
+[data-v3] .ops-cell-stack { display: flex; flex-direction: column; align-items: flex-start; gap: var(--v3-sp-1); }
+[data-v3] .ops-chips { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); }
+[data-v3] .ops-actions { display: flex; align-items: center; gap: var(--v3-sp-1); justify-content: flex-end; }
+
+/* שורות טבלה לפי סטטוס (פס בהתחלה — RTL: ימין) */
+[data-v3] .ops-table td:first-child { border-inline-start: var(--v3-sp-1) solid transparent; }
+[data-v3] .ops-row--pending { background: var(--v3-pending-bg); }
+[data-v3] .ops-row--pending td:first-child { border-inline-start-color: var(--v3-pending-line); }
+[data-v3] .ops-row--done { background: var(--v3-sky-50); }
+[data-v3] .ops-row--done td:first-child { border-inline-start-color: var(--v3-navy); }
+[data-v3] .v3-table tbody tr.ops-row--pending:hover { background: var(--v3-pending-bg); }
+[data-v3] .v3-table tbody tr.ops-row--done:hover { background: var(--v3-sky-50); }
+[data-v3] .ops-strong { font-weight: var(--v3-fw-semi); color: var(--v3-navy-900); }
+
+/* חלוניות */
+[data-v3] .ops-legend-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--v3-sp-1); }
+[data-v3] .ops-modal-list { display: flex; flex-direction: column; gap: var(--v3-sp-2); max-height: 60vh; overflow-y: auto; }
+[data-v3] .ops-form-grid { display: flex; flex-direction: column; gap: var(--v3-sp-4); }
+[data-v3] .ops-result { display: flex; align-items: center; gap: var(--v3-sp-2); margin-top: var(--v3-sp-3); }
+[data-v3] .ops-result--bad { color: var(--v3-plum); }
+[data-v3] .ops-result--ok { color: var(--v3-navy); font-weight: var(--v3-fw-medium); }
+
+/* משלוחים */
+[data-v3] .ops-dirs { display: flex; flex-direction: column; gap: var(--v3-sp-3); }
+[data-v3] .ops-dir { display: flex; flex-direction: column; align-items: flex-start; gap: var(--v3-sp-1); }
+[data-v3] .ops-dir + .ops-dir { padding-top: var(--v3-sp-3); border-top: var(--v3-bw-hair) solid var(--v3-line-hair); align-self: stretch; }
+[data-v3] .ops-range-title { margin-bottom: var(--v3-sp-3); }
+[data-v3] .ops-link { color: var(--v3-navy); font-weight: var(--v3-fw-medium); text-decoration: underline; text-underline-offset: var(--v3-sp-1); }
+[data-v3] .ops-link:hover, [data-v3] .ops-link:focus-visible { color: var(--v3-navy-500); }
+
+/* לוח שנה */
+[data-v3] .ops-month { display: inline-flex; align-items: center; gap: var(--v3-sp-2); font-size: var(--v3-fs-lg); font-weight: var(--v3-fw-semi); color: var(--v3-navy-900); padding-inline: var(--v3-sp-2); }
+[data-v3] .ops-legend { gap: var(--v3-sp-2); }
+[data-v3] .ops-dow, [data-v3] .ops-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--v3-sp-2); }
+[data-v3] .ops-dow { text-align: center; font-weight: var(--v3-fw-semi); color: var(--v3-ink-2); font-size: var(--v3-fs-sm); padding: var(--v3-sp-3) 0; margin-bottom: var(--v3-sp-2); background: var(--v3-sky-50); border: var(--v3-bw-hair) solid var(--v3-line-soft); border-radius: var(--v3-r-lg); }
+[data-v3] .ops-day { position: relative; min-width: 0; min-height: calc(var(--v3-sp-9) * 2); display: flex; flex-direction: column; gap: var(--v3-sp-2); padding: var(--v3-sp-3); background: var(--v3-surface); border: var(--v3-bw-hair) solid var(--v3-line-soft); border-radius: var(--v3-r-lg); }
+[data-v3] .ops-day--empty { background: var(--v3-sky-50); border-style: dashed; }
+[data-v3] .ops-day--today { border: var(--v3-bw-strong) solid var(--v3-navy); box-shadow: var(--v3-ring-navy); }
+[data-v3] .ops-day--late { border: var(--v3-bw-strong) solid var(--v3-plum); box-shadow: 0 0 0 var(--v3-sp-1) var(--v3-rose-100); }
+[data-v3] .ops-day--hl { border: var(--v3-bw-strong) solid var(--v3-navy); box-shadow: var(--v3-ring-gold); }
+[data-v3] .ops-day__late { position: absolute; top: calc(var(--v3-sp-3) * -1); inset-inline-end: calc(var(--v3-sp-3) * -1); width: var(--v3-sp-5); height: var(--v3-sp-5); display: grid; place-items: center; border-radius: var(--v3-r-round); background: var(--v3-plum); color: var(--v3-white); font-weight: var(--v3-fw-bold); box-shadow: var(--v3-sh-raise); z-index: 1; }
+[data-v3] .ops-day__head { display: flex; justify-content: space-between; align-items: center; gap: var(--v3-sp-2); }
+[data-v3] .ops-day--today .ops-day__num { color: var(--v3-navy); }
+[data-v3] .ops-day__num { font-size: var(--v3-fs-md); }
+[data-v3] .ops-day__greg { font-size: var(--v3-fs-2xs); }
+[data-v3] .ops-day__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--v3-sp-1); }
+[data-v3] .ops-day__count { font-size: var(--v3-fs-sm); color: var(--v3-ink-2); margin-inline-end: auto; }
+[data-v3] .ops-day__tags { display: flex; flex-direction: column; align-items: flex-start; gap: var(--v3-sp-1); }
+[data-v3] .ops-day__list { display: flex; flex-direction: column; gap: var(--v3-sp-2); flex-grow: 1; overflow-y: auto; max-height: calc(var(--v3-sp-9) * 2 + var(--v3-sp-5)); padding-inline-end: var(--v3-sp-1); }
+
+/* כרטיס הזמנה בתא */
+[data-v3] .ops-ord { display: flex; flex-direction: column; gap: var(--v3-sp-1); padding: var(--v3-sp-2) var(--v3-sp-3); cursor: pointer; background: var(--v3-surface); border: var(--v3-bw-hair) solid var(--v3-line-soft); border-inline-start: var(--v3-sp-1) solid var(--v3-sky-200); border-radius: var(--v3-r-md); min-width: 0; transition: box-shadow var(--v3-dur-fast); }
+[data-v3] .ops-ord:hover { box-shadow: var(--v3-sh-raise); }
+[data-v3] .ops-ord--empty { border-inline-start-color: var(--v3-rose-700); }
+[data-v3] .ops-ord--repairs { border-inline-start-color: var(--v3-sky-400); }
+[data-v3] .ops-ord--unpaid { border-inline-start-color: var(--v3-rose-500); }
+[data-v3] .ops-ord--returned { border-inline-start-color: var(--v3-navy); }
+[data-v3] .ops-ord--rented { border-inline-start-color: var(--v3-gold); }
+[data-v3] .ops-ord--completed { border-inline-start-color: var(--v3-navy-500); }
+[data-v3] .ops-ord--late { border: var(--v3-bw-strong) solid var(--v3-plum); }
+[data-v3] .ops-ord--late .ops-ord__name, [data-v3] .ops-ord--late .ops-ord__id { color: var(--v3-plum); }
+[data-v3] .ops-ord__name { font-weight: var(--v3-fw-semi); font-size: var(--v3-fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-v3] .ops-ord__id { display: inline-flex; align-items: center; gap: var(--v3-sp-1); font-size: var(--v3-fs-2xs); color: var(--v3-ink-3); }
+[data-v3] .ops-ord__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--v3-sp-1); flex-wrap: wrap; }
+
+/* כרטיס פרטים צף (ריחוף) — מעל הכול, לא בולע אירועים */
+[data-v3].ops-pop { position: fixed; transform: translate(-50%, -100%); width: max-content; max-width: calc(var(--v3-sp-9) * 5); z-index: var(--v3-z-tip); pointer-events: none; display: flex; flex-direction: column; gap: var(--v3-sp-2); padding: var(--v3-sp-4); background: var(--v3-surface); border: var(--v3-bw-hair) solid var(--v3-navy); border-radius: var(--v3-r-lg); box-shadow: var(--v3-sh-pop); font-size: var(--v3-fs-sm); }
+[data-v3] .ops-pop__h { display: flex; align-items: center; gap: var(--v3-sp-2); font-weight: var(--v3-fw-bold); font-size: var(--v3-fs-base); color: var(--v3-navy); padding-bottom: var(--v3-sp-2); border-bottom: var(--v3-bw-hair) solid var(--v3-line-hair); }
+[data-v3] .ops-kv { display: flex; justify-content: space-between; align-items: center; gap: var(--v3-sp-5); }
+[data-v3] .ops-kv__l { display: inline-flex; align-items: center; gap: var(--v3-sp-1); color: var(--v3-ink-2); }
+[data-v3] .ops-paid { font-weight: var(--v3-fw-bold); }
+[data-v3] .ops-paid--full { color: var(--v3-navy); }
+[data-v3] .ops-paid--part { color: var(--v3-gold-d); }
+[data-v3] .ops-paid--none { color: var(--v3-plum); }
+
+/* תפריט פעולות מעוגן (מיקום דינמי inline) + שכבת סגירה — מעל חלוניות, מתחת ל-Tip */
+[data-v3].ops-overlay { background: transparent; position: fixed; inset: 0; z-index: calc(var(--v3-z-menu) - var(--v3-sp-1)); }
+[data-v3].ops-menu { position: absolute; inset-inline-end: auto; z-index: var(--v3-z-menu); min-width: calc(var(--v3-sp-9) * 3); }
+[data-v3] .ops-menu__h { font-size: var(--v3-fs-sm); font-weight: var(--v3-fw-semi); color: var(--v3-ink-2); padding: var(--v3-sp-1) var(--v3-sp-3) var(--v3-sp-2); border-bottom: var(--v3-bw-hair) solid var(--v3-line-hair); margin-bottom: var(--v3-sp-1); }
+[data-v3] .ops-menu a.v3-menu__item { text-decoration: none; }
+[data-v3] .ops-res__acts { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); margin-top: var(--v3-sp-2); }
