@@ -2277,6 +2277,18 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .pf-state .empty b{display:block;font-size:20px;color:var(--ink);margin-bottom:8px}
 .pf-state .empty p{margin:0 0 20px;color:var(--ink2);line-height:1.6}
 .pf-v{overflow-wrap:anywhere}
+/* CURATION F1: section index + save-model explainer (page content; links are plain text links, no chips) */
+.pf-toc{display:flex;flex-direction:column;gap:12px}
+.pf-toc-l{display:flex;flex-wrap:wrap;gap:4px 18px}
+.pf-toc-l a{display:inline-flex;align-items:center;gap:6px;min-height:40px;color:var(--ink);font-weight:600;text-decoration:none;border-radius:8px}
+.pf-toc-l a:hover{text-decoration:underline;text-underline-offset:4px}
+.pf-toc-l a:focus-visible{outline:3px solid var(--navy-500);outline-offset:2px}
+.pf-toc-l a>.ic{color:var(--navy-500)}
+.pf-toc-l .pd{display:inline-flex;color:var(--rose-700)}
+.pf-how{display:flex;flex-wrap:wrap;gap:4px 24px;padding-top:12px;border-top:1px solid var(--line2);font-size:14px;color:var(--ink2)}
+.pf-how span{display:inline-flex;align-items:center;gap:6px}
+.pf-how b{color:var(--ink)}
+.pf-main .card[id^="sec-"]{scroll-margin-top:88px}
 @media (max-width:767px){.pf-dept{order:3;flex-basis:100%}}
 .pf-was s{color:var(--ink3)}
 .pf-pw{display:flex;gap:8px;align-items:center}
@@ -3114,7 +3126,12 @@ function render(){
       <div class="fcol"><div class="fhint">${imCh ? `<span class="stx warn">${ic('pencil','sm')}<span>התמונה עוד לא נשמרה. היא תישמר יחד עם שאר הפרטים.</span></span>` : 'PNG או JPG, עד 5MB. התמונה נשמרת יחד עם שאר הפרטים.'}</div></div>`);
   }
   const name = `${o.firstName || ''} ${o.lastName || ''}`.trim();
-  app.innerHTML = titleRow(name, o.department?.name || '') + `<div class="layout"><main class="main"><section class="panel on pf-main" aria-label="פרטי הפרופיל">${cards}</section></main><aside class="rail" id="rail" aria-label="סיכום ושמירה"></aside></div>`;
+  /* CURATION F1 (from pre-polish): "בעמוד הזה" section index with an unsaved-change mark per section + the two save models spelled out (was only in a tooltip) */
+  const ch = changed(), SEC = [['personal','פרטים אישיים','user',['firstName','lastName','fullName']],['contact','יצירת קשר','phone',['phone1','phone2','email']],['address','כתובת','pin',['city','street','houseNum']],['alerts','התראות','bell',['receiveEmailAlerts']],['password','סיסמה','lock',[]]].concat(cfgOn('show_employee_profile_image') ? [['photo','תמונת פרופיל','user',['profileImage']]] : []);
+  const pend = (keys, id) => keys.some(k => ch.includes(k)) || (id === 'alerts' && !!c.receiveEmailAlerts !== !!o.receiveEmailAlerts) || (id === 'photo' && (c.profileImage || '') !== (o.profileImage || ''));
+  const toc = `<nav class="card pf-toc" aria-label="בעמוד הזה"><div class="pf-toc-l">${SEC.map(([id, t, i, keys]) => `<a href="#sec-${id}">${ic(i,'sm')}${t}${pend(keys, id) ? `<span class="pd" role="img" aria-label="יש כאן שינוי שלא נשמר">${ic('pencil','sm')}</span>` : ''}</a>`).join('')}</div>
+    <div class="pf-how"><span>${ic('check','sm')}<b>פרטים</b> נשמרים יחד בכפתור ״שמירת השינויים״.</span><span>${ic('lock','sm')}<b>סיסמה</b> מתחלפת מיד, בחלון שלה.</span></div></nav>`;
+  app.innerHTML = titleRow(name, o.department?.name || '') + `<div class="layout"><main class="main"><section class="panel on pf-main" aria-label="פרטי הפרופיל">${toc}${cards}</section></main><aside class="rail" id="rail" aria-label="סיכום ושמירה"></aside></div>`;
   renderRail();
 }
 function renderRail(){

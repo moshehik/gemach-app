@@ -104,3 +104,16 @@ Screenshots: `archetype-touch-date-{1440,390}-*`, `archetype-touch-catalogue-{14
 | — | Large rounded "ask the assistant" pill with a sparkle icon | top of both steps | Polished: plain field + "שליחה" button | **replaced by sketch component** (fields/buttons base styles) |
 | — | Compact one-line model rows (≈14 models per screen) | catalogue | Polished: sketch `.itm` cards (≈4 per screen) | **replaced by sketch component** (`itemCard`). Density listed in §9 |
 | — | Toolbar with six labelled icon buttons (סינון / גודל / תאריך אחר / רענון / הדפסה / למערכת) + gold "נעילה ללקוח" | header | Polished: title tools `.ibtn` + rail actions + "סינון ותצוגה" collapsible | **replaced by sketch component** |
+
+---
+
+## 7. Profile form — `archetype-forms.html`
+
+Screenshots: `archetype-forms-view-{1440,390}-*`.
+
+| # | Detail | Where | Original vs polished | Decision |
+|---|---|---|---|---|
+| F1 | **"בעמוד הזה" section index** with a per-section "unsaved change" mark, plus **the two save models spelled out** ("פרטים נשמרים יחד בכפתור ״שמירת השינויים״ · סיסמה מתחלפת מיד, בחלון שלה") | top of the main column | Original: a sticky side index (6 anchors, dot on changed sections) + two explainer tiles. Polished: both gone; the save explanation only in an (i) tooltip in the title row, and a long single-column form with no way to jump | **restored, adapted** — one `.card` (shared) at the top of the main column holding plain text anchor links (icon + label, pencil mark when the section has an unsaved change) and the explainer line. No chips, no sticky side column (the rail owns that side). Verified: marks update while typing and focus stays in the field |
+| — | Read-only "תאריך הצטרפות" in a tinted box | personal details | Polished: sketch `.kv` label/value row with a tooltip | **replaced by sketch component** (`.kv`) |
+| — | Sticky bottom save bar ("הכול שמור" / ביטול / שמירה) | bottom of the viewport | Polished: the rail binder (summary + changes + save) | **replaced by sketch component** (rail/binder) |
+| — | Top nav reduced to 4 items for a staff user | top bar | Polished: full sketch top bar | **replaced by sketch component** (top bar) |
