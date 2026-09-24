@@ -60,3 +60,17 @@ Screenshots: `archetype-wizard-step1-{1440,390}-*`.
 | — | Footer nav under the content (back / continue) | every step | Polished: navigation lives in the rail (sketch binder actions) | **replaced by sketch component** (rail/binder) |
 | — | Exit as a labelled "יציאה" button in the title row | title row | Polished: "יציאה מההזמנה" in the rail | **replaced by sketch component** (title row + rail) |
 | — | Cart rows with three always-visible icon actions (dates / edit / delete) | step 3, cart | Polished: sketch `.itm` with the actions inside the expander | **replaced by sketch component** (`itemCard`) |
+
+---
+
+## 4. Orders list — `archetype-list.html` (polish-base version)
+
+Screenshots: `archetype-list-soon-{1440,390}-*`. Note: this list is also being rebuilt on `redesign/v3-proto-tables` (see §8) — this pass only fixes the version on the polish base.
+
+| # | Detail | Where | Original vs polished | Decision |
+|---|---|---|---|---|
+| L1 | **Status switcher scrolls sideways with an edge fade on phones** | toolbar (בקרוב / ארכיון / מחוקות / לא שולם / לא נלקחו / הכול) at ≤767px | Original: labels keep their width, the row scrolls, a soft fade at the far (left) edge says "there's more". Polished: six labels squeezed into ≈59px each — "לא שולם" and "לא נלקחו" ran into each other and "הכול" was cut off | **restored** — page-only: `#statSeg>button{flex:0 0 auto;white-space:nowrap}` + mask fade at ≤767px (the shared `.seg` look is unchanged) |
+| — | Labelled toolbar buttons (סינון מתקדם / תפוסה / הדפסה / ייצוא) | title row | Polished: `.ibtn` icons (tooltip + aria-label) | **replaced by sketch component** (title tools) |
+| — | Count pill on the active status ("בקרוב 63") | status switcher | Polished: count only in "64 הזמנות מתאימות" above | **rejected because C-1.14** — the same number is already written once in text |
+| — | Hold countdown as a gold pill ("שמור עוד 10:58") | row, order column | Polished: coloured text + hourglass | **rejected because C-1.14** (the row already carries its one status tag) |
+| — | "⋯ more" row menu + "עוד פרטים" button in phone cards | rows / cards | Polished: one chevron `.ibtn` opening the details | **replaced by sketch component** (item-row expander) |

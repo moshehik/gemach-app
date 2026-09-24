@@ -2281,6 +2281,9 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .segx{display:flex;overflow-x:auto;scrollbar-width:none;padding-block:2px}
 .segx::-webkit-scrollbar{display:none}
 .segx>*{flex:1 0 auto}
+/* CURATION L1 (from pre-polish): on narrow widths the status switcher scrolls sideways with a soft edge fade instead of squeezing six labels into ~59px each (text ran into the next label) */
+#statSeg>button{flex:0 0 auto;white-space:nowrap}
+@media (max-width:767px){.segx{-webkit-mask-image:linear-gradient(to right,transparent 0,#000 28px);mask-image:linear-gradient(to right,transparent 0,#000 28px)}}
 /* list info + sort */
 .lbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
 .lbar .info{color:var(--ink2);font-size:16px}
