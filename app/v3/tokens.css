@@ -1,0 +1,358 @@
+/* =====================================================================
+   app/v3/tokens.css  -  מקור האמת היחיד לערכי העיצוב של v3.
+   נגזר מהסקיצה הקנונית order-card-sketch-B.html (אחרי פתרון ה-cascade:
+   הבלוקים המאוחרים "FINAL"/override ניצחו).
+
+   כללים:
+   - כל המשתנים עם הקידומת --v3-  (לא מתנגשים עם הסגנון הישן).
+   - מוגדרים על [data-v3] וגם על :root - כדי שחלוניות/טוסטים שנפתחים
+     ב-portal (מחוץ לשורש העמוד) יקבלו את אותם ערכים.
+   - מצב כהה: רק לחלוניות אישור/קוד - מסמנים data-v3-mode="dark" על
+     האלמנט של החלונית. חלונית עם הזנת מידע = תמיד בהיר (ראו הבלוק
+     האחרון בקובץ).
+   - אין כאן כללי רכיבים. רכיבים = components.css.
+   ===================================================================== */
+
+:root,
+[data-v3] {
+
+  /* ---------------------------------------------------------------
+     1. פלטת בסיס - שלוש משפחות: NAVY / SKY / GOLD
+        + ורוד-אפרסק (rose) כמבטא נדיר. ראו DESIGN-LANGUAGE לכללי שימוש.
+     --------------------------------------------------------------- */
+  /* NAVY - מבנה, טקסט, מצב "בוצע", פס הצד, טולטיפ */
+  --v3-navy-900: #0a2242;
+  --v3-navy: #0f2c52;
+  --v3-navy-700: #173c6b;
+  --v3-navy-500: #2b5a94;
+
+  /* SKY - רקעים, קווי מסגרת, שדות, כרטיסים "שקטים" */
+  --v3-sky-50: #f3f9fe;
+  --v3-sky-100: #e4f1fb;
+  --v3-sky-200: #cfe6f7;
+  --v3-sky-300: #a9d2f0;
+  --v3-sky-400: #7fb8e6;
+  --v3-page-bg: #dcedfa;            /* רקע העמוד (שטוח, בלי גרדיאנט) */
+
+  /* GOLD - כפתור ראשי, "עכשיו", פס התקדמות, טבעות פוקוס */
+  --v3-gold-300: #e0c56e;
+  --v3-gold: #c9a227;
+  --v3-gold-b: #b8912f;
+  --v3-gold-d: #9a7a1f;
+  --v3-gold-lo: #e0bf5a;            /* קצה כהה של פס זהב מונפש */
+  --v3-gold-hi: #f1dc8f;            /* קצה בהיר / טקסט זהב על כהה */
+  --v3-gold-tint: #fbf3d6;          /* רקע רך לתגית חיוב בפיד */
+  --v3-gold-ink: #7a5f14;           /* טקסט על gold-tint */
+  --v3-champagne-100: #f7ecc4;      /* כותרות על navy, טבעת מסביב לאייקון */
+  --v3-champagne-200: #ecd99b;
+  --v3-warm-white: #fffdf6;         /* ראש פאנל צף (מתמזג ללבן) */
+
+  /* ROSE (אפרסק-ורוד) - "דורש תשומת לב", כפתור משני, ממתין */
+  --v3-rose-50: #fff6f2;
+  --v3-rose-100: #ffece5;
+  --v3-rose-200: #fdd9cc;
+  --v3-rose-300: #fbbfa9;
+  --v3-rose-500: #e8785a;
+  --v3-rose-700: #a8442a;           /* טקסט על rose-100 */
+  --v3-salmon: #fa9e84;             /* ריחוף כפתור משני, תג-ספירה */
+  --v3-salmon-d: #f38a6b;
+  --v3-plum: #a83d6c;               /* דיו של חוב/שגיאה בחלונית (סכום חיוב) */
+
+  /* PERIWINKLE - כרטיס ציר הזמן בלבד */
+  --v3-peri-100: #d9dfff;
+  --v3-peri-200: #c2cafd;
+  --v3-peri-300: #a1aeee;           /* מסילה שטרם נסעה */
+
+  --v3-white: #fff;
+  --v3-black: #000;
+
+  /* ---------------------------------------------------------------
+     2. משתנים סמנטיים (בעמודים משתמשים רק בהם, לא בפלטת הבסיס)
+     --------------------------------------------------------------- */
+  --v3-bg: var(--v3-page-bg);
+  --v3-surface: var(--v3-white);
+  --v3-surface-2: var(--v3-sky-50);
+  --v3-surface-3: var(--v3-sky-100);
+  --v3-line: var(--v3-sky-300);         /* מסגרת שדה / כפתור משני */
+  --v3-line-soft: var(--v3-sky-200);    /* מסגרת כרטיס שקט */
+  --v3-line-hair: var(--v3-sky-100);    /* קו הפרדה בין שורות */
+  --v3-frame: var(--v3-navy);           /* מסגרת דקה על כרטיסי פרט לבנים */
+  --v3-frame-soft: rgba(15, 44, 82, .12);
+  --v3-ink: var(--v3-navy-900);
+  --v3-ink-2: #2f4a6b;
+  --v3-ink-3: #4d6787;
+  --v3-brand: var(--v3-navy);
+  --v3-brand-tint: var(--v3-sky-100);
+  --v3-accent: var(--v3-gold);
+
+  /* על רקע כהה (פס צד, סרגל עליון, טוסט) */
+  --v3-on-dark: #fff;
+  --v3-on-dark-2: #c9daee;
+  --v3-on-dark-3: #9fb7d3;
+  --v3-dark-hair: rgba(255, 255, 255, .14);
+  --v3-dark-tile: rgba(255, 255, 255, .1);
+  --v3-dark-tile-hover: rgba(255, 255, 255, .2);
+  --v3-dark-border: rgba(255, 255, 255, .3);
+
+  /* מצבים */
+  --v3-charge-bg: var(--v3-rose-100);   /* חיוב ממתין / דורש תשומת לב */
+  --v3-charge-ink: var(--v3-rose-700);
+  --v3-charge-line: var(--v3-rose-300);
+  --v3-credit-bg: var(--v3-sky-200);    /* זיכוי */
+  --v3-credit-ink: var(--v3-navy);
+  --v3-credit-line: var(--v3-sky-400);
+  --v3-done-bg: var(--v3-navy);         /* בוצע */
+  --v3-done-ink: var(--v3-white);
+  --v3-pending-bg: var(--v3-rose-50);   /* כרטיס/שורה שטרם נשמרו */
+  --v3-pending-line: var(--v3-rose-300);
+  --v3-disabled-bg: var(--v3-rose-50);
+  --v3-disabled-ink: var(--v3-rose-700);
+  --v3-disabled-line: var(--v3-rose-200);
+
+  /* ---------------------------------------------------------------
+     3. גרדיאנטים
+     --------------------------------------------------------------- */
+  --v3-grad-gold: linear-gradient(135deg, #d9b84a 0%, #b8912f 100%);
+  --v3-grad-gold-hover: linear-gradient(135deg, #c9a227 0%, #9a7a1f 100%);
+  --v3-grad-gold-dlg: linear-gradient(180deg, #e8ca5e 0%, #cfa92c 55%, #b8912f 100%);
+  --v3-grad-gold-dlg-hover: linear-gradient(180deg, #d9b84a 0%, #b8912f 60%, #9a7a1f 100%);
+  --v3-grad-gold-bar: linear-gradient(90deg, #e0bf5a, #c9a227, #f1dc8f);
+  --v3-grad-gold-bar-light: linear-gradient(90deg, #fff6cf, #ffe9a0, #fff6cf);
+  --v3-grad-champagne: linear-gradient(135deg, #f7ecc4 0%, #ecd99b 100%);
+  --v3-grad-navy-panel: linear-gradient(135deg, #0f2c52 0%, #0a2242 100%);
+  --v3-grad-navy-float: linear-gradient(180deg, #12305a, #0a2242);
+  --v3-grad-topbar: linear-gradient(180deg, rgba(10, 34, 66, .97), rgba(15, 44, 82, .97));
+  --v3-grad-light-float: linear-gradient(180deg, #eaf4fd, #dcedfa);
+  --v3-grad-panel-warm: linear-gradient(180deg, #fffdf6 0, #fff 90px);
+  --v3-grad-timeline: linear-gradient(180deg, #d9dfff 0%, #c2cafd 100%);
+  /* מסגרת "זהב עתיק" - משמשת ב-border-box מאחורי ה-padding-box */
+  --v3-grad-frame-gold: linear-gradient(135deg, #e6c860 0%, #b8912f 35%, #f1dc8f 65%, #a3821c 100%);
+  --v3-shine-sweep: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .9) 50%, transparent 70%);
+
+  /* ---------------------------------------------------------------
+     4. טיפוגרפיה  (בסיס 16px, מינימום 14px לטקסט קריא)
+     --------------------------------------------------------------- */
+  --v3-font: 'Rubik', 'Heebo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --v3-fs-cap: 12px;      /* רק תגיות בסרגל העליון / מספרי תג. לא לטקסט רץ */
+  --v3-fs-2xs: 13px;      /* תת-כיתוב זעיר (מונה, שעה) */
+  --v3-fs-sm: 14px;       /* כיתוב, תווית-תחת, chip, tag */
+  --v3-fs-md-: 15px;      /* כפתור קטן, תווית שדה, meta */
+  --v3-fs-base: 16px;     /* גוף */
+  --v3-fs-md: 17px;       /* ערך בשורה, סכום ברשימה */
+  --v3-fs-lg: 18px;       /* כותרת כרטיס (h2), כותרת רייל */
+  --v3-fs-xl: 20px;       /* כותרת חלונית, שם פריט, סכום */
+  --v3-fs-2xl: 24px;      /* כותרת חלונית גדולה, סטטוס */
+  --v3-fs-h1: 28px;       /* כותרת עמוד (23px במובייל) */
+  --v3-fs-h1-m: 23px;
+  --v3-fs-display: 36px;  /* יתרה גדולה */
+  --v3-fs-net: 30px;      /* סכום נטו בחלונית */
+  --v3-fs-amount-in: 34px;/* שדה סכום */
+  --v3-fw-regular: 400;
+  --v3-fw-medium: 500;
+  --v3-fw-semi: 600;
+  --v3-fw-bold: 700;
+  --v3-lh-body: 1.6;
+  --v3-lh-tight: 1.3;
+  --v3-lh-snug: 1.45;
+
+  /* ---------------------------------------------------------------
+     5. מרווחים - סולם 8px (4 ו-12 רק לפרטים פנימיים)
+     --------------------------------------------------------------- */
+  --v3-sp-1: 4px;
+  --v3-sp-2: 8px;
+  --v3-sp-3: 12px;
+  --v3-sp-4: 16px;
+  --v3-sp-5: 24px;
+  --v3-sp-6: 32px;
+  --v3-sp-7: 40px;
+  --v3-sp-8: 48px;
+  --v3-sp-9: 64px;
+  --v3-gutter: 24px;            /* שוליים של העמוד */
+  --v3-gutter-m: 16px;          /* מובייל */
+  --v3-gap-panel: 24px;         /* מרווח בין כרטיסים */
+  --v3-pad-card: 24px;          /* padding כרטיס (16px במובייל) */
+  --v3-pad-card-m: 16px;
+
+  /* ---------------------------------------------------------------
+     6. רדיוסים
+     --------------------------------------------------------------- */
+  --v3-r-xs: 6px;      /* תיבת סימון */
+  --v3-r-sm: 10px;     /* שורת תפריט קטנה */
+  --v3-r-md: 12px;     /* טאב, ריבוע אייקון, שורת פרטים, ibtn */
+  --v3-r-btn: 14px;    /* כפתור, שדה, seg */
+  --v3-r-lg: 16px;     /* כרטיס, רייל, פאנל צף */
+  --v3-r-xl: 20px;     /* תפריט, פופאובר, טוסט */
+  --v3-r-dlg: 24px;    /* חלונית */
+  --v3-r-pill: 999px;  /* chip, tag, pill */
+  --v3-r-round: 50%;
+
+  /* ---------------------------------------------------------------
+     7. מסגרות
+     --------------------------------------------------------------- */
+  --v3-bw-hair: 1px;    /* כרטיס, שורה, פאנל */
+  --v3-bw: 1.5px;       /* כפתור, שדה, בחירה */
+  --v3-bw-strong: 2px;  /* כרטיס לקוח, בחירה נבחרת בחלונית */
+  --v3-bw-frame: 3px;   /* מסגרת ציר הזמן, פס זהב עליון של פאנל */
+
+  /* ---------------------------------------------------------------
+     8. צללים
+     --------------------------------------------------------------- */
+  --v3-sh-card: 0 1px 2px rgba(15, 44, 82, .04);
+  --v3-sh-raise: 0 1px 2px rgba(15, 44, 82, .06), 0 8px 24px -10px rgba(15, 44, 82, .22);
+  --v3-sh-tab: 0 1px 3px rgba(15, 44, 82, .12);
+  --v3-sh-topbar: 0 8px 22px -14px rgba(10, 34, 66, .7);
+  --v3-sh-pop: 0 24px 60px -12px rgba(15, 44, 82, .35), 0 2px 8px rgba(15, 44, 82, .08);
+  --v3-sh-pop-dark: 0 24px 60px -12px rgba(2, 10, 24, .65), 0 2px 8px rgba(2, 10, 24, .35), inset 0 1px 0 rgba(255, 255, 255, .09);
+  --v3-sh-dropdown: 0 20px 48px -12px rgba(10, 34, 66, .4);
+  --v3-sh-tip: 0 16px 40px -10px rgba(2, 10, 24, .6);
+  --v3-sh-btn-hover: 0 4px 10px -4px rgba(15, 44, 82, .45);
+  --v3-sh-btn-gold-inset: inset 0 1px 0 rgba(255, 244, 196, .7);
+  --v3-sh-cust: 0 0 0 3px rgba(15, 44, 82, .12);
+  --v3-sh-timeline: inset 0 0 0 1px #f4e8c1, 0 6px 18px rgba(184, 145, 47, .25);
+  /* הצללת באדג' הזהב של חלונית: ההרכבה עם --v3-dlg-gap נעשית ב-components.css
+     (משתנה שמפנה למשתנה אחר נקבע בזמן ההגדרה, ולכן לא שומרים אותו כאן). */
+  --v3-sh-badge-gold-glow: 0 10px 22px -8px rgba(201, 162, 39, .7), inset 0 0 14px rgba(201, 162, 39, .28);
+
+  /* טבעות פוקוס */
+  --v3-ring-gold: 0 0 0 3px rgba(201, 162, 39, .4);       /* שדה בפוקוס */
+  --v3-ring-gold-soft: 0 0 0 3px rgba(201, 162, 39, .35);
+  --v3-ring-navy: 0 0 0 4px rgba(15, 44, 82, .12);        /* combobox */
+  --v3-ring-brand: 0 0 0 4px var(--v3-sky-100);           /* input רגיל */
+  --v3-focus-outline: 3px solid var(--v3-gold);           /* ברירת מחדל */
+  --v3-focus-offset: 2px;
+
+  /* ---------------------------------------------------------------
+     9. תנועה
+     --------------------------------------------------------------- */
+  --v3-ease: cubic-bezier(.22, 1, .36, 1);
+  --v3-spring: cubic-bezier(.2, 1.3, .3, 1);
+  --v3-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --v3-dur-fast: 150ms;     /* צבע/רקע/גבול */
+  --v3-dur: 220ms;          /* טרנספורם של איקון */
+  --v3-dur-med: 300ms;      /* הרחבת כרטיס, כניסת שורה */
+  --v3-dur-enter: 450ms;    /* קפיצת כניסה (pop) */
+  --v3-dur-loop: 1.8s;      /* פעימת "עכשיו" */
+  --v3-toast-duration: 6500ms;        /* טוסט רגיל */
+  --v3-toast-duration-info: 2600ms;   /* טוסט מידע קצר */
+  --v3-toast-duration-nav: 15000ms;   /* R20: התראה אחרי שמירה+מעבר עמוד */
+
+  /* ---------------------------------------------------------------
+     10. גדלים קבועים
+     --------------------------------------------------------------- */
+  --v3-tap: 44px;               /* מטרת מגע מינימלית = גובה כפתור */
+  --v3-control-h: 44px;
+  --v3-control-h-lg: 52px;
+  --v3-control-h-dlg: 48px;
+  --v3-ic: 20px;                /* אייקון ברירת מחדל */
+  --v3-ic-sm: 16px;
+  --v3-ic-lg: 24px;
+  --v3-ic-stroke: 1.8;
+  --v3-topbar-h: 64px;          /* 58px בעד 767px */
+  --v3-rail-w: 372px;
+  --v3-container: 1240px;
+  --v3-dlg-w: 520px;
+  --v3-dlg-w-mail: 600px;
+  --v3-dlg-w-code: 400px;
+  --v3-tip-max: 290px;
+
+  /* שכבות (z-index) */
+  --v3-z-rail-m: 70;            /* רייל תחתון במובייל */
+  --v3-z-popover: 30;
+  --v3-z-combo: 70;
+  --v3-z-topbar: 95;
+  --v3-z-scrim: 100;
+  --v3-z-toast: 120;
+  --v3-z-scrim-2: 140;          /* חלונית מעל חלונית */
+  --v3-z-menu: 150;
+  --v3-z-tip: 200;
+  --v3-z-rich-tip: 400;
+
+  /* ---------------------------------------------------------------
+     11. חלוניות - ברירת מחדל = בהיר (dlg-*)
+         מצב כהה נמצא בבלוק [data-v3-mode="dark"] בסוף הקובץ.
+     --------------------------------------------------------------- */
+  --v3-dlg-bg: #eaf4fd;
+  --v3-dlg-sheen: rgba(255, 255, 255, .65);
+  --v3-dlg-solid: #dcedfa;
+  --v3-dlg-ink: var(--v3-navy-900);
+  --v3-dlg-sub: #2f4a6b;
+  --v3-dlg-faint: #4d6787;
+  --v3-dlg-row: rgba(169, 210, 240, .38);
+  --v3-dlg-rowb: rgba(15, 44, 82, .16);
+  --v3-dlg-hair: rgba(15, 44, 82, .12);
+  --v3-dlg-bd: rgba(15, 44, 82, .18);
+  --v3-dlg-chargebg: var(--v3-rose-100);
+  --v3-dlg-charge: var(--v3-plum);
+  --v3-dlg-creditbg: var(--v3-sky-100);
+  --v3-dlg-credit: var(--v3-navy);
+  --v3-dlg-gap: #eaf4fd;          /* צבע ה"מרווח" בטבעת הזהב של הבאדג' */
+  --v3-dlg-ghost: var(--v3-navy); /* טקסט כפתור שקט */
+  --v3-dlg-ic: var(--v3-navy);
+  --v3-dlg-err: var(--v3-plum);
+  --v3-dlg-shadow: var(--v3-sh-pop);
+  --v3-scrim: rgba(10, 34, 66, .45);
+  --v3-scrim-blur: 6px;
+}
+
+/* =====================================================================
+   מצב כהה - רק לחלוניות אישור / קוד (R19).
+   שימוש: <div class="v3-dialog" data-v3-mode="dark">
+   ===================================================================== */
+[data-v3-mode="dark"] {
+  --v3-dlg-bg: #0d2a4f;
+  --v3-dlg-sheen: rgba(169, 210, 240, .20);
+  --v3-dlg-solid: #0a2242;
+  --v3-dlg-ink: #fff;
+  --v3-dlg-sub: #cfe0f2;
+  --v3-dlg-faint: #b4c9e0;
+  --v3-dlg-row: rgba(169, 210, 240, .12);
+  --v3-dlg-rowb: rgba(169, 210, 240, .20);
+  --v3-dlg-hair: rgba(255, 255, 255, .12);
+  --v3-dlg-bd: rgba(255, 255, 255, .14);
+  --v3-dlg-chargebg: rgba(224, 197, 110, .18);
+  --v3-dlg-charge: var(--v3-gold-hi);
+  --v3-dlg-creditbg: rgba(169, 210, 240, .18);
+  --v3-dlg-credit: var(--v3-sky-200);
+  --v3-dlg-gap: #0f2c52;
+  --v3-dlg-ghost: var(--v3-champagne-100);
+  --v3-dlg-ic: var(--v3-gold-hi);
+  --v3-dlg-err: var(--v3-rose-300);
+  --v3-dlg-shadow: var(--v3-sh-pop-dark);
+}
+
+/* חלונית עם הזנת מידע (מייל מהיר וכד') = בהיר בלבד, גם אם האתר במצב כהה (R19).
+   חייב לבוא אחרי בלוק ה-dark (אותה ספציפיות, האחרון מנצח). */
+[data-v3-mode="light"],
+.v3-dialog--form {
+  --v3-dlg-bg: #eaf4fd;
+  --v3-dlg-sheen: rgba(255, 255, 255, .65);
+  --v3-dlg-solid: #dcedfa;
+  --v3-dlg-ink: var(--v3-navy-900);
+  --v3-dlg-sub: #2f4a6b;
+  --v3-dlg-faint: #4d6787;
+  --v3-dlg-row: rgba(169, 210, 240, .38);
+  --v3-dlg-rowb: rgba(15, 44, 82, .16);
+  --v3-dlg-hair: rgba(15, 44, 82, .12);
+  --v3-dlg-bd: rgba(15, 44, 82, .18);
+  --v3-dlg-chargebg: var(--v3-rose-100);
+  --v3-dlg-charge: var(--v3-plum);
+  --v3-dlg-creditbg: var(--v3-sky-100);
+  --v3-dlg-credit: var(--v3-navy);
+  --v3-dlg-gap: #eaf4fd;
+  --v3-dlg-ghost: var(--v3-navy);
+  --v3-dlg-ic: var(--v3-navy);
+  --v3-dlg-err: var(--v3-plum);
+  --v3-dlg-shadow: var(--v3-sh-pop);
+}
+
+/* =====================================================================
+   נקודות שבירה (אי אפשר להשתמש ב-var בתוך media query - נשמרות כאן
+   כתיעוד; כל הרכיבים משתמשים באותם מספרים):
+     1180  הסתרת תגית המותג בסרגל העליון
+     1040  הסתרת שעון + שם משתמש בסרגל
+     1020  הרייל הופך ל"עגלה" תחתונה (מובייל / טאבלט)
+      900  הסתרת איקונים בטאבים של הסרגל
+      767  סרגל עליון -> המבורגר + מגירה
+      640  מובייל: כרטיס 16px, ציר זמן אנכי, חלונית = bottom sheet
+      420  דחיסת seg קטנה
+   ===================================================================== */

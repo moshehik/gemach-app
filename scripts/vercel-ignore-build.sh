@@ -20,6 +20,13 @@ if [[ "$msg" == *"[force-deploy]"* ]]; then
   exit 1
 fi
 
+# 0. ענפי redesign/* (פרויקט העיצוב-מחדש v3) - לא בונים אוטומטית, כדי לא לשרוף את מכסת ה-100 deploys ליום.
+#    לפריוויו: [force-deploy] בהודעת הקומיט.
+if [[ "$ref" == redesign/site-v3-* ]]; then
+  echo "ignore-build: redesign v3 branch ($ref) -> skip (use [force-deploy] for a preview)"
+  exit 0
+fi
+
 # 1. ענף-תיקון של סוכן התיקון האוטומטי שמיועד לנווה יעקב (fix-reports/org2-*) - Preview רלוונטי רק
 #    בפרויקט של נווה יעקב. על main שני הפרויקטים ממשיכים לבנות כרגיל (קוד משותף).
 if [[ "$ref" == fix-reports/org2-* && "$ident" == *uyh4* ]]; then
