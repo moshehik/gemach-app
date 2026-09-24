@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { invalidate } from '@/lib/apiCache';
+import { V3Page, Card, Btn, IconBtn, Field, Chip, Switch, Tip, Empty } from '@/app/v3/ui/components';
+import Icon from '@/app/v3/ui/Icon';
+import useAskDialog from '@/app/components/v3misc/useAskDialog';
 
 // כרטיס "הפרופיל שלי" — גרסה מצומצמת של כרטיס העובד, לעובד המחובר בלבד.
 // מציג ומעדכן פרטים אישיים בלבד דרך /api/me/profile (בלי שכר, תפקיד, AI
 // ונוכחות — אלה נשארים בכרטיס העובד המנהלי תחת /employees).
 export default function MyProfilePage() {
   const router = useRouter();
+  const { ask, node: askNode } = useAskDialog();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
@@ -66,12 +70,12 @@ export default function MyProfilePage() {
       const data = await res.json();
       if (data.success) {
         invalidate(['/api/me']);
-        window.alert('הפרטים נשמרו בהצלחה!');
+        await ask({ title: 'נשמר', sub: 'הפרטים עודכנו.', icon: 'check-circle' });
       } else {
-        window.alert(data.error || 'שגיאה בשמירת נתונים');
+        await ask({ title: 'השמירה נכשלה', sub: data.error || 'הפרטים לא נשמרו. נסו שוב.', icon: 'alert-circle' });
       }
     } catch (err) {
-      window.alert('שגיאה בשמירת נתונים');
+      await ask({ title: 'השמירה נכשלה', sub: 'הפרטים לא נשמרו. נסו שוב.', icon: 'alert-circle' });
     } finally {
       setSaving(false);
     }
@@ -79,7 +83,7 @@ export default function MyProfilePage() {
 
   const handlePasswordConfirm = async () => {
     if (!newPasswordInput) {
-      window.alert('יש להזין סיסמא חדשה');
+      await ask({ title: 'חסרה סיסמה חדשה', sub: 'הזינו את הסיסמה החדשה ואז אשרו.', icon: 'lock' });
       return;
     }
     try {
@@ -93,12 +97,12 @@ export default function MyProfilePage() {
         setShowChangePassword(false);
         setOldPasswordInput('');
         setNewPasswordInput('');
-        window.alert('הסיסמא שונתה בהצלחה');
+        await ask({ title: 'הסיסמה הוחלפה', icon: 'check-circle' });
       } else {
-        window.alert(data.message || 'שינוי הסיסמה נכשל');
+        await ask({ title: 'הסיסמה לא הוחלפה', sub: data.message || 'נסו שוב.', icon: 'alert-circle' });
       }
     } catch (err) {
-      window.alert('שגיאה בשינוי הסיסמה');
+      await ask({ title: 'הסיסמה לא הוחלפה', sub: 'אירעה תקלה. נסו שוב.', icon: 'alert-circle' });
     }
   };
 
@@ -115,199 +119,143 @@ export default function MyProfilePage() {
 
   if (loading) {
     return (
-      <div className="page-head">
-        <div>
-          <h1>הפרופיל שלי</h1>
-          <div className="page-desc">טוען נתונים...</div>
+      <V3Page>
+        <div className="v3-empty" role="status">
+          <span className="v3-spin" aria-hidden="true" />
+          <span>טוען את הפרופיל</span>
         </div>
-      </div>
+      </V3Page>
     );
   }
 
   if (notLoggedIn || !profile) {
     return (
-      <>
-        <div className="page-head">
-          <div>
-            <h1>הפרופיל שלי</h1>
-          </div>
-        </div>
-        <div className="card card-pad">
-          <p>כדי לצפות בפרופיל האישי יש להתחבר למערכת עם המשתמש שלך.</p>
-        </div>
-      </>
+      <V3Page>
+        <Empty icon="lock" title="צריך להתחבר" text="כדי לראות ולערוך את הפרופיל, היכנסו למערכת עם המשתמש שלכם." />
+      </V3Page>
     );
   }
 
   const initials = `${(profile.firstName || '').charAt(0)}${(profile.lastName || '').charAt(0)}`;
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>הפרופיל שלי</h1>
-          <div className="page-desc">
-            פרטים אישיים, אבטחה והעדפות תצוגה של המשתמש המחובר
-            {profile.department?.name && (
-              <span className="badge badge-neutral" style={{ marginInlineStart: '8px' }}>{profile.department.name}</span>
-            )}
+    <V3Page>
+      <form onSubmit={handleSave} className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <IconBtn data-element-name="כפתור_profile_back" icon="back" label="חזרה" variant="quiet" onClick={() => router.back()} />
+            <h1 className="v3-h1">הפרופיל שלי</h1>
+            <Tip>כאן מעדכנים פרטים אישיים וסיסמה. עיצוב ותצוגה מוגדרים במסך נפרד.</Tip>
+            {profile.department?.name && <Chip variant="info" icon="users">{profile.department.name}</Chip>}
           </div>
         </div>
-        <div className="page-actions">
-          <button data-element-name="כפתור_profile_back" type="button" onClick={() => router.back()} className="btn btn-secondary btn-icon-only" title="חזרה">
-            <svg className="icon"><use href="#i-arrow-end" /></svg>
-          </button>
-        </div>
-      </div>
 
-      <form onSubmit={handleSave} className="card card-pad">
-        <div className="form-grid">
-
-          <div className="field">
-            <label htmlFor="profile-firstName">שם פרטי</label>
-            <input data-element-name="שדה_profile_1" className="input" type="text" id="profile-firstName" name="firstName" value={profile.firstName || ''} onChange={handleChange} autoComplete="new-password" />
+        <Card icon="user" title="פרטים אישיים">
+          <div className="v3-stack">
+            <Field data-element-name="שדה_profile_1" label="שם פרטי" type="text" id="profile-firstName" name="firstName" value={profile.firstName || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_2" label="שם משפחה" type="text" id="profile-lastName" name="lastName" value={profile.lastName || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_3" label="שם מלא" type="text" id="profile-fullName" name="fullName" value={profile.fullName || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_4" label="תאריך הצטרפות" tip="נקבע על ידי ההנהלה ואי אפשר לשנותו כאן." type="text" id="profile-joinDate" value={profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('he-IL') : '—'} disabled />
           </div>
+        </Card>
 
-          <div className="field">
-            <label htmlFor="profile-lastName">שם משפחה</label>
-            <input data-element-name="שדה_profile_2" className="input" type="text" id="profile-lastName" name="lastName" value={profile.lastName || ''} onChange={handleChange} autoComplete="new-password" />
+        <Card icon="phone" title="יצירת קשר">
+          <div className="v3-stack">
+            <Field data-element-name="שדה_profile_5" label="טלפון ראשי" type="text" id="profile-phone1" name="phone1" value={profile.phone1 || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_6" label="טלפון נוסף" type="text" id="profile-phone2" name="phone2" value={profile.phone2 || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_7" label="מייל" type="email" id="profile-email" name="email" value={profile.email || ''} onChange={handleChange} autoComplete="new-password" />
+            <Switch
+              data-element-name="שדה_profile_16"
+              id="receiveEmailAlerts"
+              name="receiveEmailAlerts"
+              checked={!!profile.receiveEmailAlerts}
+              onChange={(checked) => setProfile(prev => ({ ...prev, receiveEmailAlerts: checked }))}
+              label="לקבל התראות במייל"
+            />
           </div>
+        </Card>
 
-          <div className="field">
-            <label htmlFor="profile-fullName">שם מלא</label>
-            <input data-element-name="שדה_profile_3" className="input" type="text" id="profile-fullName" name="fullName" value={profile.fullName || ''} onChange={handleChange} autoComplete="new-password" />
+        <Card icon="pin" title="כתובת">
+          <div className="v3-stack">
+            <Field data-element-name="שדה_profile_8" label="עיר" type="text" id="profile-city" name="city" value={profile.city || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_9" label="רחוב" type="text" id="profile-street" name="street" value={profile.street || ''} onChange={handleChange} autoComplete="new-password" />
+            <Field data-element-name="שדה_profile_10" label="מספר בית" type="text" id="profile-houseNum" name="houseNum" value={profile.houseNum || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
+        </Card>
 
-          <div className="field">
-            <label htmlFor="profile-joinDate">תאריך כניסה לארגון</label>
-            <div className="input-icon-wrap">
-              <svg className="icon"><use href="#i-calendar" /></svg>
-              <input data-element-name="שדה_profile_4" className="input" type="text" id="profile-joinDate" value={profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('he-IL') : '—'} disabled />
+        {/* בורר "פלטת גוונים" הישן הוסר — הוא מעולם לא השפיע על התצוגה.
+            העדפות עיצוב אישיות (פלטה/מצב/גופן וכו') נמצאות בעמוד
+            "עיצוב ותצוגה" (/display-settings) ונשמרות פר-עובד. */}
+
+        <Card icon="lock" title="סיסמה" tip="הסיסמה משמשת גם לרישום כניסה ויציאה בשעון הנוכחות.">
+          <div className="v3-stack">
+            <div className="v3-field">
+              <label className="v3-label" htmlFor="profile-pwDisplay">הסיסמה הנוכחית</label>
+              <input data-element-name="שדה_profile_11" className="v3-input" type="password" id="profile-pwDisplay" value="********" disabled />
             </div>
-          </div>
-
-          <div className="field">
-            <label htmlFor="profile-phone1">טלפון 1</label>
-            <div className="input-icon-wrap">
-              <svg className="icon"><use href="#i-phone" /></svg>
-              <input data-element-name="שדה_profile_5" className="input" type="text" id="profile-phone1" name="phone1" value={profile.phone1 || ''} onChange={handleChange} autoComplete="new-password" />
-            </div>
-          </div>
-
-          <div className="field">
-            <label htmlFor="profile-phone2">טלפון 2</label>
-            <div className="input-icon-wrap">
-              <svg className="icon"><use href="#i-phone" /></svg>
-              <input data-element-name="שדה_profile_6" className="input" type="text" id="profile-phone2" name="phone2" value={profile.phone2 || ''} onChange={handleChange} autoComplete="new-password" />
-            </div>
-          </div>
-
-          <div className="field">
-            <label htmlFor="profile-email">מייל</label>
-            <div className="input-icon-wrap">
-              <svg className="icon"><use href="#i-mail" /></svg>
-              <input data-element-name="שדה_profile_7" className="input" type="email" id="profile-email" name="email" value={profile.email || ''} onChange={handleChange} autoComplete="new-password" />
-            </div>
-          </div>
-
-          <div className="field">
-            <label htmlFor="profile-city">עיר</label>
-            <input data-element-name="שדה_profile_8" className="input" type="text" id="profile-city" name="city" value={profile.city || ''} onChange={handleChange} autoComplete="new-password" />
-          </div>
-
-          <div className="field">
-            <label htmlFor="profile-street">רחוב</label>
-            <input data-element-name="שדה_profile_9" className="input" type="text" id="profile-street" name="street" value={profile.street || ''} onChange={handleChange} autoComplete="new-password" />
-          </div>
-
-          <div className="field">
-            <label htmlFor="profile-houseNum">מספר בית</label>
-            <input data-element-name="שדה_profile_10" className="input" type="text" id="profile-houseNum" name="houseNum" value={profile.houseNum || ''} onChange={handleChange} autoComplete="new-password" />
-          </div>
-
-          {/* בורר "פלטת גוונים" הישן הוסר — הוא מעולם לא השפיע על התצוגה.
-              העדפות עיצוב אישיות (פלטה/מצב/גופן וכו') נמצאות בעמוד
-              "עיצוב ותצוגה" (/display-settings) ונשמרות פר-עובד. */}
-
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label htmlFor="profile-pwDisplay">סיסמא לשעון נוכחות</label>
-            <div style={{ display: 'flex', gap: '8px', maxWidth: '460px' }}>
-              <div className="password-field" style={{ flex: 1 }}>
-                <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input data-element-name="שדה_profile_11" className="input" type="password" id="profile-pwDisplay" value="********" disabled />
-              </div>
-              <button data-element-name="כפתור_profile_pw" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>שינוי סיסמא</button>
+            <div className="v3-cluster">
+              <Btn data-element-name="כפתור_profile_pw" variant="secondary" icon="edit" onClick={() => setShowChangePassword(true)}>החלפת סיסמה</Btn>
             </div>
 
             {showChangePassword && (
-              <div className="card card-pad" style={{ marginTop: '12px', maxWidth: '460px' }}>
-                <div className="field">
-                  <label htmlFor="profile-oldPassword">סיסמא ישנה</label>
-                  <div className="password-field">
-                    <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                    <input data-element-name="שדה_profile_12" className="input" type={showOldPassword ? 'text' : 'password'} id="profile-oldPassword" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} />
-                    <button type="button" className="toggle-visibility" title="הצג סיסמה" onClick={() => setShowOldPassword(v => !v)}>
-                      <svg className="icon"><use href="#i-eye" /></svg>
-                    </button>
+              <Card variant="info" icon="lock" title="סיסמה חדשה" level={3}>
+                <div className="v3-stack">
+                  <div className="v3-field">
+                    <label className="v3-label" htmlFor="profile-oldPassword">הסיסמה הישנה</label>
+                    <div className="v3-cluster" style={{ flexWrap: 'nowrap' }}>
+                      <input data-element-name="שדה_profile_12" className="v3-input" style={{ flex: 1, minWidth: 0 }} type={showOldPassword ? 'text' : 'password'} id="profile-oldPassword" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} />
+                      <IconBtn icon="eye" label="הצגת הסיסמה" title="הצג סיסמה" aria-pressed={showOldPassword} onClick={() => setShowOldPassword(v => !v)} />
+                    </div>
+                  </div>
+                  <div className="v3-field">
+                    <label className="v3-label" htmlFor="profile-newPassword">הסיסמה החדשה</label>
+                    <div className="v3-cluster" style={{ flexWrap: 'nowrap' }}>
+                      <input data-element-name="שדה_profile_13" className="v3-input" style={{ flex: 1, minWidth: 0 }} type={showNewPassword ? 'text' : 'password'} id="profile-newPassword" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} />
+                      <IconBtn icon="eye" label="הצגת הסיסמה" title="הצג סיסמה" aria-pressed={showNewPassword} onClick={() => setShowNewPassword(v => !v)} />
+                    </div>
+                  </div>
+                  <div className="v3-cluster">
+                    <Btn data-element-name="כפתור_profile_pw_ok" variant="primary" icon="check" onClick={handlePasswordConfirm}>עדכון הסיסמה</Btn>
+                    <Btn data-element-name="כפתור_profile_pw_cancel" variant="quiet" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }}>ביטול</Btn>
                   </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="profile-newPassword">סיסמא חדשה</label>
-                  <div className="password-field">
-                    <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                    <input data-element-name="שדה_profile_13" className="input" type={showNewPassword ? 'text' : 'password'} id="profile-newPassword" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} />
-                    <button type="button" className="toggle-visibility" title="הצג סיסמה" onClick={() => setShowNewPassword(v => !v)}>
-                      <svg className="icon"><use href="#i-eye" /></svg>
-                    </button>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button data-element-name="כפתור_profile_pw_cancel" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn btn-secondary">ביטול</button>
-                  <button data-element-name="כפתור_profile_pw_ok" type="button" onClick={handlePasswordConfirm} className="btn btn-primary">אשר שינוי</button>
-                </div>
-              </div>
+              </Card>
             )}
           </div>
+        </Card>
 
-          {showProfileImage && (
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label htmlFor="profile-avatarInput">תמונת פרופיל (העלאת קובץ)</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        {showProfileImage && (
+          <Card icon="camera" title="תמונה">
+            <div className="v3-stack">
               {profile.profileImage && profile.profileImage.startsWith('data:image') ? (
-                <img src={profile.profileImage} alt="Profile" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '50%' }} />
+                <img src={profile.profileImage} alt="תמונת הפרופיל" style={{ width: 'var(--v3-tap)', height: 'var(--v3-tap)', objectFit: 'cover', borderRadius: 'var(--v3-r-round)' }} />
               ) : (
-                <div className="avatar lg">{initials}</div>
+                <span className="v3-avatar" aria-hidden="true">{initials}</span>
               )}
-              <label className="upload-zone" htmlFor="profile-avatarInput" title="לחיצה או גרירת קובץ להעלאת תמונת פרופיל" style={{ flex: 1, minWidth: '220px', padding: '16px' }}>
-                <svg className="icon"><use href="#i-camera" /></svg>
-                <strong>גרור/י תמונה לכאן או לחצ/י לבחירה</strong>
-                <span className="hint">PNG או JPG · עד 5MB</span>
+              <label className="v3-file v3-focusable" htmlFor="profile-avatarInput" title="בחירת תמונה מהמחשב">
+                <Icon name="camera" />
+                <span className="v3-stack">
+                  <b>בחירת תמונה</b>
+                  <span className="v3-faint v3-text-sm">PNG או JPG, עד 5MB</span>
+                </span>
               </label>
               <input data-element-name="שדה_profile_15" type="file" id="profile-avatarInput" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
               {profile.profileImage && (
-                <button data-element-name="כפתור_profile_img_rm" type="button" onClick={() => setProfile(prev => ({ ...prev, profileImage: '' }))} className="btn btn-danger-ghost btn-sm" title="הסרת תמונת הפרופיל">
-                  <svg className="icon"><use href="#i-trash" /></svg>
-                  הסר
-                </button>
+                <div className="v3-cluster">
+                  <Btn data-element-name="כפתור_profile_img_rm" variant="quiet" size="sm" icon="trash" title="הסרת תמונת הפרופיל" onClick={() => setProfile(prev => ({ ...prev, profileImage: '' }))}>הסרה</Btn>
+                </div>
               )}
             </div>
-          </div>
-          )}
+          </Card>
+        )}
 
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <div className="checkbox-row">
-              <input data-element-name="שדה_profile_16" type="checkbox" id="receiveEmailAlerts" name="receiveEmailAlerts" checked={!!profile.receiveEmailAlerts} onChange={handleChange} />
-              <label htmlFor="receiveEmailAlerts">קבלת התראות למייל</label>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
-          <button data-element-name="כפתור_profile_save" type="submit" disabled={saving} className="btn btn-primary btn-lg">
-            {saving ? 'שומר...' : 'שמירת פרטים'}
-          </button>
+        <div className="v3-cluster">
+          <Btn data-element-name="כפתור_profile_save" type="submit" variant="primary" size="lg" icon="check" loading={saving}>
+            {saving ? 'שומר' : 'שמירה'}
+          </Btn>
         </div>
       </form>
-    </>
+      {askNode}
+    </V3Page>
   );
 }

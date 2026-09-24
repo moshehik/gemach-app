@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { cacheNamespace, fetchJson } from '@/app/lib/pageCache';
+import { V3Page, Card, Btn, IconBtn, Field, Chip, Tabs, Switch, Tip, Empty } from '@/app/v3/ui/components';
+import Icon from '@/app/v3/ui/Icon';
 
 // #24/#25 — הודעות "בין משמרות" ו"להנהלה" ממומשות כאן כשני טאבים ייעודיים,
 // כשתיהן שידור-לכולם על גבי Notification.category ('shift_handover' / 'management').
@@ -124,7 +126,7 @@ export default function MessagesPage() {
       messagesCache.set(MESSAGES_CACHE_KEY, { notifData, empData, meData, settingsData });
       applyData(notifData, empData, meData, settingsData);
     } catch (err) {
-      setError('שגיאה בטעינת נתונים');
+      setError('הנתונים לא נטענו. נסו לרענן.');
     } finally {
       setLoading(false);
     }
@@ -171,10 +173,10 @@ export default function MessagesPage() {
         messagesCache.delete(MESSAGES_CACHE_KEY);
         fetchData();
       } else {
-        setError(data.error || 'שגיאה בשליחת ההודעה');
+        setError(data.error || 'ההודעה לא נשלחה. נסו שוב.');
       }
     } catch (err) {
-      setError('שגיאת תקשורת');
+      setError('אין תקשורת עם השרת. נסו שוב.');
     } finally {
       setIsSendingShiftNote(false);
     }
@@ -196,10 +198,10 @@ export default function MessagesPage() {
         messagesCache.delete(MESSAGES_CACHE_KEY);
         fetchData();
       } else {
-        setError(data.error || 'שגיאה בשליחת ההודעה');
+        setError(data.error || 'ההודעה לא נשלחה. נסו שוב.');
       }
     } catch (err) {
-      setError('שגיאת תקשורת');
+      setError('אין תקשורת עם השרת. נסו שוב.');
     } finally {
       setIsSendingManagementNote(false);
     }
@@ -221,10 +223,10 @@ export default function MessagesPage() {
         setShiftHandoverNotes(updateList);
         messagesCache.delete(MESSAGES_CACHE_KEY);
       } else {
-        setError(data.error || 'שגיאה בעדכון סטטוס טיפול');
+        setError(data.error || 'הסטטוס לא עודכן. נסו שוב.');
       }
     } catch (err) {
-      setError('שגיאת תקשורת');
+      setError('אין תקשורת עם השרת. נסו שוב.');
     }
   };
 
@@ -279,7 +281,7 @@ export default function MessagesPage() {
 
   const handleSend = async () => {
     if (!content.trim()) {
-      setError('יש להזין תוכן להודעה');
+      setError('כתבו את תוכן ההודעה.');
       return;
     }
 
@@ -306,10 +308,10 @@ export default function MessagesPage() {
         fetchData(); // Refresh messages
         setActiveTab('outgoing');
       } else {
-        setError(data.error || 'שגיאה בשליחת הודעה');
+        setError(data.error || 'ההודעה לא נשלחה. נסו שוב.');
       }
     } catch (err) {
-      setError('שגיאת תקשורת');
+      setError('אין תקשורת עם השרת. נסו שוב.');
     } finally {
       setIsSending(false);
     }
@@ -337,17 +339,14 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="page-loading">
-        <span className="spinner lg" />
-        טוען הודעות...
-      </div>
+      <V3Page>
+        <div className="v3-empty" role="status">
+          <span className="v3-spin" aria-hidden="true" />
+          <span>טוען הודעות</span>
+        </div>
+      </V3Page>
     );
   }
-
-  // כפתור טאב: מאפס את סגנון ה-<button> הדפדפן המובנה (רקע/מסגרת),
-  // ומשאיר את קו התחתית וצבע הפעיל להיקבע ע"י מחלקת ה-tab עצמה.
-  const tabResetStyle = { background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' };
-  const paneTitleStyle = { fontSize: '17px', marginBottom: '14px' };
 
   // #25 — הרשאת "מנהל" לסימון הודעות הנהלה כטופל: roleId 1 (מנהל) / 0 (הנהלה
   // ראשית) / 2 (מתכנת). תואם את הבדיקה המקומית ב-app/api/notifications/handle/route.js
@@ -356,88 +355,64 @@ export default function MessagesPage() {
 
   const formatNoteAuthor = (notif) => notif.sender ? `${notif.sender.firstName || ''} ${notif.sender.lastName || ''}`.trim() : 'מערכת הגמ"ח';
 
+  const handledByTitle = (notif) => (notif.handledBy ? `טופל ע"י ${notif.handledBy.firstName || ''} ${notif.handledBy.lastName || ''}`.trim() : undefined);
+
   const renderShiftNoteCard = (notif) => {
     const isHandled = !!notif.handledAt;
     return (
-      <div key={notif.id} className="card card-pad" style={!notif.isRead ? { background: 'var(--primary-tint)', borderColor: 'var(--primary)' } : undefined}>
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-          <div className="avatar">{formatNoteAuthor(notif).charAt(0) || 'מ'}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: '14.5px', margin: 0 }}>{formatNoteAuthor(notif)}</h3>
-              <span className="hint" style={{ color: 'var(--text-3)' }}>{new Date(notif.createdAt).toLocaleString('he-IL')}</span>
-              <div style={{ display: 'flex', gap: '6px', marginInlineStart: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
-                {notif.isRead ? (
-                  <span className="badge badge-success">
-                    <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check" /></svg>
-                    אושרה קריאה
-                  </span>
-                ) : (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => markAsRead(notif.id)}>
-                    <svg className="icon"><use href="#i-check" /></svg>
-                    אשר קריאה
-                  </button>
-                )}
-                {isHandled ? (
-                  <span className="badge badge-success" title={notif.handledBy ? `טופל ע"י ${notif.handledBy.firstName || ''} ${notif.handledBy.lastName || ''}`.trim() : undefined}>
-                    <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check-circle" /></svg>
-                    טופל
-                  </span>
-                ) : (
-                  <span className="badge badge-warning">ממתין לטיפול</span>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleToggleHandled(notif.id, !isHandled)}
-                  title={isHandled ? 'בטל סימון טופל' : 'סמן כטופל'}
-                >
-                  {isHandled ? 'בטל טופל' : 'סמן כטופל'}
-                </button>
-              </div>
-            </div>
-            <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+      <Card key={notif.id} variant={!notif.isRead ? 'info' : undefined}>
+        <div className="v3-stack">
+          <div className="v3-cluster">
+            <span className="v3-avatar" aria-hidden="true">{formatNoteAuthor(notif).charAt(0) || 'מ'}</span>
+            <b>{formatNoteAuthor(notif)}</b>
+          </div>
+          <span className="v3-faint v3-text-sm"><bdi>{new Date(notif.createdAt).toLocaleString('he-IL')}</bdi></span>
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+          <div className="v3-cluster">
+            {notif.isRead ? (
+              <Chip variant="done" icon="check">נקראה</Chip>
+            ) : (
+              <Btn size="sm" icon="check" onClick={() => markAsRead(notif.id)}>קראתי</Btn>
+            )}
+            {isHandled ? (
+              <Chip variant="done" icon="check-circle" title={handledByTitle(notif)}>טופלה</Chip>
+            ) : (
+              <Chip variant="attn">ממתינה לטיפול</Chip>
+            )}
+            <Btn size="sm" variant="quiet" onClick={() => handleToggleHandled(notif.id, !isHandled)}>
+              {isHandled ? 'החזרה לטיפול' : 'סימון כטופלה'}
+            </Btn>
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
   const renderManagementNoteCard = (notif) => {
     const isHandled = !!notif.handledAt;
     return (
-      <div key={notif.id} className="card card-pad" style={isHandled ? undefined : { background: 'var(--warning-tint)', borderColor: 'var(--warning)' }}>
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-          <div className="avatar">{formatNoteAuthor(notif).charAt(0) || 'מ'}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: '14.5px', margin: 0 }}>{formatNoteAuthor(notif)}</h3>
-              <span className="hint" style={{ color: 'var(--text-3)' }}>{new Date(notif.createdAt).toLocaleString('he-IL')}</span>
-              <div style={{ display: 'flex', gap: '6px', marginInlineStart: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
-                {isHandled ? (
-                  <span className="badge badge-success" title={notif.handledBy ? `טופל ע"י ${notif.handledBy.firstName || ''} ${notif.handledBy.lastName || ''}`.trim() : undefined}>
-                    <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check-circle" /></svg>
-                    טופל
-                  </span>
-                ) : (
-                  <span className="badge badge-warning">ממתין לטיפול</span>
-                )}
-                {isManagerRole && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => handleToggleHandled(notif.id, !isHandled)}
-                    title={isHandled ? 'בטל סימון טופל' : 'סמן כטופל'}
-                  >
-                    {isHandled ? 'בטל טופל' : 'סמן כטופל'}
-                  </button>
-                )}
-              </div>
-            </div>
-            <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+      <Card key={notif.id} className={isHandled ? undefined : 'v3-note--attn'}>
+        <div className="v3-stack">
+          <div className="v3-cluster">
+            <span className="v3-avatar" aria-hidden="true">{formatNoteAuthor(notif).charAt(0) || 'מ'}</span>
+            <b>{formatNoteAuthor(notif)}</b>
+          </div>
+          <span className="v3-faint v3-text-sm"><bdi>{new Date(notif.createdAt).toLocaleString('he-IL')}</bdi></span>
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+          <div className="v3-cluster">
+            {isHandled ? (
+              <Chip variant="done" icon="check-circle" title={handledByTitle(notif)}>טופלה</Chip>
+            ) : (
+              <Chip variant="attn">ממתינה לטיפול</Chip>
+            )}
+            {isManagerRole && (
+              <Btn size="sm" variant="quiet" onClick={() => handleToggleHandled(notif.id, !isHandled)}>
+                {isHandled ? 'החזרה לטיפול' : 'סימון כטופלה'}
+              </Btn>
+            )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -446,44 +421,30 @@ export default function MessagesPage() {
     const inputVal = tagInputs[notif.id] || '';
 
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginTop: '12px' }}>
-        <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-tag" /></svg>
+      <div className="v3-cluster">
+        <Icon name="tag" size="sm" />
         {tags.map((tag, idx) => (
-          <span key={idx} className="chip">
+          <Chip key={idx}>
             {tag}
-            <button
-              type="button"
-              onClick={() => removeTag(notif, tag)}
-              title="הסר תגית"
-              style={{ background: 'none', border: 'none', padding: 0, marginInlineStart: '4px', cursor: 'pointer', color: 'var(--text-3)', display: 'inline-flex' }}
-            >
-              <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-x" /></svg>
-            </button>
-          </span>
+            <IconBtn icon="x" label="הסרת התגית" variant="quiet" size="sm" onClick={() => removeTag(notif, tag)} />
+          </Chip>
         ))}
-        <span className="chip" style={{ gap: '4px', paddingInlineEnd: '4px' }}>
-          <input
-            type="text"
-            placeholder="הוסף תגית..."
-            value={inputVal}
-            onChange={e => setTagInputs(prev => ({ ...prev, [notif.id]: e.target.value }))}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addTag(notif, inputVal);
-              }
-            }}
-            style={{ border: 'none', background: 'transparent', outline: 'none', font: 'inherit', fontSize: '12px', width: '70px', color: 'var(--text)' }}
-          />
-          <button
-            type="button"
-            onClick={() => addTag(notif, inputVal)}
-            title="שמור תגית"
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary-solid)', display: 'inline-flex' }}
-          >
-            <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-plus" /></svg>
-          </button>
-        </span>
+        <input
+          type="text"
+          className="v3-input"
+          aria-label="תגית חדשה"
+          placeholder="תגית חדשה"
+          value={inputVal}
+          onChange={e => setTagInputs(prev => ({ ...prev, [notif.id]: e.target.value }))}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTag(notif, inputVal);
+            }
+          }}
+          style={{ flex: 1, minWidth: 0 }}
+        />
+        <IconBtn icon="plus" label="שמירת התגית" variant="quiet" size="sm" onClick={() => addTag(notif, inputVal)} />
       </div>
     );
   };
@@ -492,56 +453,36 @@ export default function MessagesPage() {
     const isUnread = type === 'incoming' && !notif.isRead;
     const isBroadcast = notif.receiverId === null;
     return (
-      <div
-        key={notif.id}
-        className="card card-pad"
-        style={isUnread ? { background: 'var(--primary-tint)', borderColor: 'var(--primary)' } : undefined}
-      >
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-          <div className="avatar" style={isBroadcast ? { background: 'var(--warning-tint)', color: 'var(--warning)' } : undefined}>
-            {type === 'outgoing'
-              ? <svg className="icon"><use href="#i-user" /></svg>
-              : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
+      <Card key={notif.id} variant={isUnread ? 'info' : undefined}>
+        <div className="v3-stack">
+          <div className="v3-cluster">
+            <span className="v3-avatar" aria-hidden="true">
+              {type === 'outgoing'
+                ? <Icon name="user" size="xs" />
+                : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
+            </span>
+            <b>
+              {type === 'outgoing'
+                ? `אל: ${notif.receiverId === null ? 'כל העובדים' : (notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : 'לא ידוע')}`
+                : (notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת הגמ"ח')}
+            </b>
+            {isBroadcast && <Chip variant="gold" icon="users">לכולם</Chip>}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: '14.5px', margin: 0 }}>
-                {type === 'outgoing'
-                  ? `אל: ${notif.receiverId === null ? 'כל העובדים' : (notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : 'לא ידוע')}`
-                  : (notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת הגמ"ח')}
-              </h3>
-              <span className="hint" style={{ color: 'var(--text-3)' }}>
-                {new Date(notif.createdAt).toLocaleString('he-IL')}
-              </span>
-              {isBroadcast && <span className="badge badge-warning">הודעה לכולם</span>}
-
-              <div style={{ display: 'flex', gap: '6px', marginInlineStart: 'auto', flexWrap: 'wrap' }}>
-                {isUnread && (
-                  <button type="button" className="btn btn-secondary btn-sm" title="סמן כנקרא" onClick={() => markAsRead(notif.id)}>
-                    <svg className="icon"><use href="#i-check" /></svg>
-                    סמן כנקרא
-                  </button>
-                )}
-                {notif.isArchived ? (
-                  <button type="button" className="btn btn-secondary btn-sm" title="החזר מארכיון" onClick={() => handleArchive(notif.id, false)}>
-                    <svg className="icon"><use href="#i-refresh" /></svg>
-                    שחזר
-                  </button>
-                ) : (
-                  <button type="button" className="btn btn-secondary btn-sm" title="העבר לארכיון" onClick={() => handleArchive(notif.id, true)}>
-                    <svg className="icon"><use href="#i-folder" /></svg>
-                    ארכיון
-                  </button>
-                )}
-              </div>
-            </div>
-            <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-              {notif.content}
-            </p>
-            {renderTags(notif)}
+          <span className="v3-faint v3-text-sm"><bdi>{new Date(notif.createdAt).toLocaleString('he-IL')}</bdi></span>
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+          {renderTags(notif)}
+          <div className="v3-cluster">
+            {isUnread && (
+              <Btn size="sm" icon="check" onClick={() => markAsRead(notif.id)}>סימון כנקראה</Btn>
+            )}
+            {notif.isArchived ? (
+              <Btn size="sm" variant="quiet" icon="refresh" onClick={() => handleArchive(notif.id, false)}>החזרה לתיבה</Btn>
+            ) : (
+              <Btn size="sm" variant="quiet" icon="folder" onClick={() => handleArchive(notif.id, true)}>לארכיון</Btn>
+            )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -561,327 +502,242 @@ export default function MessagesPage() {
   const visibleOutgoing = outgoing.filter(matchesSearch);
   const visibleArchived = archived.filter(matchesSearch);
   const unreadCount = incoming.filter(n => !n.isRead).length;
+  const unreadShiftCount = shiftHandoverNotes.filter(n => !n.isRead).length;
+  const openManagementCount = managementNotes.filter(n => !n.handledAt).length;
+
+  const tabItems = [
+    { key: 'incoming', label: 'נכנסות', icon: 'mail', count: unreadCount > 0 ? unreadCount : undefined },
+    { key: 'outgoing', label: 'יוצאות', icon: 'message', count: outgoing.length > 0 ? outgoing.length : undefined },
+    { key: 'archived', label: 'ארכיון', icon: 'folder', count: archived.length > 0 ? archived.length : undefined },
+    ...(shiftHandoverEnabled ? [{ key: 'shift', label: 'בין משמרות', icon: 'refresh', count: unreadShiftCount > 0 ? unreadShiftCount : undefined }] : []),
+    ...(managementMessagesEnabled ? [{ key: 'management', label: 'להנהלה', icon: 'alert-circle', count: openManagementCount > 0 ? openManagementCount : undefined }] : []),
+    { key: 'settings', label: 'הגדרות', icon: 'settings' },
+    { key: 'compose', label: 'הודעה חדשה', icon: 'plus' },
+  ];
+
+  // שורת חיפוש משותפת (אותו state searchTerm בשלושת הטאבים)
+  const searchField = (
+    <Field
+      label="חיפוש"
+      tip="מחפש בתוכן, בשם השולח או המקבל ובתגיות."
+      type="text"
+      placeholder="מה לחפש?"
+      value={searchTerm}
+      onChange={e => setSearchTerm(e.target.value)}
+    />
+  );
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>מרכז הודעות</h1>
-          <div className="page-desc">נהל את ההתראות וההודעות הפנימיות שלך</div>
-        </div>
-      </div>
-
-      <div className="tabs">
-        <button type="button" className={activeTab === 'incoming' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('incoming')} title="דואר נכנס">
-          <svg className="icon"><use href="#i-mail" /></svg>
-          נכנסות
-          {unreadCount > 0 && <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>{unreadCount}</span>}
-        </button>
-        <button type="button" className={activeTab === 'outgoing' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('outgoing')} title="דואר יוצא">
-          <svg className="icon"><use href="#i-message" /></svg>
-          יוצאות
-          {outgoing.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{outgoing.length}</span>}
-        </button>
-        <button type="button" className={activeTab === 'archived' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('archived')} title="ארכיון הודעות">
-          <svg className="icon"><use href="#i-folder" /></svg>
-          ארכיון
-          {archived.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{archived.length}</span>}
-        </button>
-        {shiftHandoverEnabled && (
-          <button type="button" className={activeTab === 'shift' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('shift')} title="הודעות בין משמרות">
-            <svg className="icon"><use href="#i-refresh" /></svg>
-            בין משמרות
-            {shiftHandoverNotes.filter(n => !n.isRead).length > 0 && <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>{shiftHandoverNotes.filter(n => !n.isRead).length}</span>}
-          </button>
-        )}
-        {managementMessagesEnabled && (
-          <button type="button" className={activeTab === 'management' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('management')} title="הודעות להנהלה">
-            <svg className="icon"><use href="#i-alert-circle" /></svg>
-            להנהלה
-            {managementNotes.filter(n => !n.handledAt).length > 0 && <span className="badge badge-warning" style={{ marginInlineStart: '4px' }}>{managementNotes.filter(n => !n.handledAt).length}</span>}
-          </button>
-        )}
-        <button type="button" className={activeTab === 'settings' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('settings')} title="הגדרות התראות">
-          <svg className="icon"><use href="#i-settings" /></svg>
-          הגדרות
-        </button>
-        <button type="button" className={activeTab === 'compose' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('compose')} title="הודעה חדשה">
-          <svg className="icon"><use href="#i-plus" /></svg>
-          הודעה חדשה
-        </button>
-      </div>
-
-      {/* INCOMING TAB */}
-      {activeTab === 'incoming' && (
-        <div>
-          <h2 style={paneTitleStyle}>דואר נכנס</h2>
-          <div className="input-icon-wrap" style={{ maxWidth: '420px', marginBottom: '18px' }}>
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              className="input"
-              placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {visibleIncoming.length === 0 ? (
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-mail" /></svg>
-              <p>{incoming.length === 0 ? 'תיבת הדואר הנכנס ריקה' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {visibleIncoming.map(notif => renderMessageCard(notif, 'incoming'))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* OUTGOING TAB */}
-      {activeTab === 'outgoing' && (
-        <div>
-          <h2 style={paneTitleStyle}>דואר יוצא</h2>
-          <div className="input-icon-wrap" style={{ maxWidth: '420px', marginBottom: '18px' }}>
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              className="input"
-              placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {visibleOutgoing.length === 0 ? (
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-message" /></svg>
-              <p>{outgoing.length === 0 ? 'לא שלחת הודעות עדיין' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {visibleOutgoing.map(notif => renderMessageCard(notif, 'outgoing'))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* #24 — SHIFT HANDOVER TAB: הודעות בין משמרות, שידור לכולם, "אשר קריאה" פר-עובד */}
-      {activeTab === 'shift' && shiftHandoverEnabled && (
-        <div>
-          <h2 style={paneTitleStyle}>הודעות בין משמרות</h2>
-          <div className="card card-pad" style={{ maxWidth: '560px', marginBottom: '20px' }}>
-            <div className="field">
-              <label htmlFor="shift-note-content">הודעה חדשה למשמרת הבאה:</label>
-              <textarea
-                id="shift-note-content"
-                className="textarea"
-                value={shiftNoteText}
-                onChange={e => setShiftNoteText(e.target.value)}
-                placeholder="לדוגמה: 3 שמלות בייבוש, אין להשכיר מידה 40 עד שיתייבשו..."
-                style={{ minHeight: '90px' }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-primary" onClick={handleSendShiftNote} disabled={isSendingShiftNote || !shiftNoteText.trim()}>
-                {isSendingShiftNote ? 'שולח...' : (<><svg className="icon"><use href="#i-plus" /></svg>הוסף הודעה</>)}
-              </button>
-            </div>
-          </div>
-
-          {shiftHandoverNotes.length === 0 ? (
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-refresh" /></svg>
-              <p>אין הודעות בין משמרות כרגע</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {shiftHandoverNotes.map(renderShiftNoteCard)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* #25 — MANAGEMENT TAB: הודעות להנהלה, שידור לכולם, "סמן כטופל" למנהלים בלבד */}
-      {activeTab === 'management' && managementMessagesEnabled && (
-        <div>
-          <h2 style={paneTitleStyle}>הודעות להנהלה</h2>
-          <div className="card card-pad" style={{ maxWidth: '560px', marginBottom: '20px' }}>
-            <div className="field">
-              <label htmlFor="management-note-content">הודעה/שאלה חדשה להנהלה:</label>
-              <textarea
-                id="management-note-content"
-                className="textarea"
-                value={managementNoteText}
-                onChange={e => setManagementNoteText(e.target.value)}
-                placeholder="לדוגמה: לקוחה X התלוננה על Y / שאלת מדיניות..."
-                style={{ minHeight: '90px' }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-primary" onClick={handleSendManagementNote} disabled={isSendingManagementNote || !managementNoteText.trim()}>
-                {isSendingManagementNote ? 'שולח...' : (<><svg className="icon"><use href="#i-plus" /></svg>שלח להנהלה</>)}
-              </button>
-            </div>
-          </div>
-
-          {managementNotes.length === 0 ? (
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-alert-circle" /></svg>
-              <p>אין הודעות להנהלה כרגע</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {managementNotes.map(renderManagementNoteCard)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ARCHIVED TAB */}
-      {activeTab === 'archived' && (
-        <div>
-          <h2 style={paneTitleStyle}>ארכיון הודעות</h2>
-          <div className="input-icon-wrap" style={{ maxWidth: '420px', marginBottom: '18px' }}>
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              className="input"
-              placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {visibleArchived.length === 0 ? (
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-folder" /></svg>
-              <p>{archived.length === 0 ? 'אין הודעות בארכיון' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {visibleArchived.map(notif => renderMessageCard(notif, notif.direction || 'incoming'))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* COMPOSE TAB */}
-      {activeTab === 'compose' && (
-        <div>
-          <h2 style={paneTitleStyle}>כתיבת הודעה חדשה</h2>
-
-          {error && (
-            <div className="callout callout-danger" style={{ marginBottom: '20px', maxWidth: '560px' }}>
-              <svg className="icon"><use href="#i-alert-circle" /></svg>
-              {error}
-            </div>
-          )}
-
-          {sendSuccess && (
-            <div className="callout callout-success" style={{ marginBottom: '20px', maxWidth: '560px' }}>
-              <svg className="icon"><use href="#i-check-circle" /></svg>
-              ההודעה נשלחה בהצלחה!
-            </div>
-          )}
-
-          <div className="card card-pad" style={{ maxWidth: '560px' }}>
-            <div className="field">
-              <label htmlFor="messages-receiver">שלח אל:</label>
-              <select
-                id="messages-receiver"
-                className="select"
-                value={receiverId}
-                onChange={e => setReceiverId(e.target.value)}
-              >
-                <option value="all">כל העובדים במערכת (הודעה כללית)</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.firstName} {emp.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor="messages-content">תוכן ההודעה:</label>
-              <textarea
-                id="messages-content"
-                className="textarea"
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                placeholder="הקלד את הודעתך כאן..."
-                style={{ minHeight: '150px' }}
-              />
-            </div>
-
-            <div className="checkbox-row" style={{ marginBottom: '20px' }}>
-              <input
-                type="checkbox"
-                id="messages-send-email"
-                checked={sendEmail}
-                onChange={e => setSendEmail(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--primary-solid)' }}
-              />
-              <label htmlFor="messages-send-email">שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)</label>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSend}
-                disabled={isSending}
-                title="שלח הודעה"
-              >
-                {isSending ? 'שולח...' : (<><svg className="icon"><use href="#i-mail" /></svg>שלח הודעה</>)}
-              </button>
-            </div>
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">הודעות</h1>
+            <Tip>הודעות פנימיות בין העובדים, הודעות למשמרת הבאה ופניות להנהלה.</Tip>
           </div>
         </div>
-      )}
 
-      {/* SETTINGS TAB */}
-      {activeTab === 'settings' && (
-        <div>
-          <h2 style={paneTitleStyle}>הגדרות התראות</h2>
+        <Tabs items={tabItems} value={activeTab} onChange={setActiveTab} label="סוגי הודעות" />
 
-          <div className="card card-pad" style={{ maxWidth: '560px' }}>
-            <div className="card-title-row" style={{ marginBottom: '14px' }}>
-              <svg className="icon"><use href="#i-mail" /></svg>
-              <h3 style={{ margin: 0 }}>התראות במייל</h3>
-            </div>
-
-            {currentUser ? (
-              <div>
-                {currentUser.email ? (
-                  <p style={{ color: 'var(--text-2)', fontSize: '13.5px', marginBottom: '18px' }}>
-                    המייל המעודכן שלך במערכת הוא: <strong dir="ltr" style={{ color: 'var(--text)' }}>{currentUser.email}</strong>
-                  </p>
-                ) : (
-                  <p style={{ color: 'var(--danger)', fontSize: '13.5px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg className="icon"><use href="#i-alert-circle" /></svg>
-                    לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
-                  </p>
-                )}
-
-                <div className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    id="messages-receive-alerts"
-                    checked={currentUser.receiveEmailAlerts || false}
-                    onChange={(e) => handleSaveSettings(e.target.checked)}
-                    disabled={isSavingSettings || !currentUser.email}
-                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary-solid)' }}
-                  />
-                  <label htmlFor="messages-receive-alerts">קבל התראות למייל על הודעות חדשות</label>
-                </div>
-                {isSavingSettings && <span style={{ fontSize: '12.5px', color: 'var(--primary-solid)', marginTop: '8px', display: 'block' }}>שומר שינויים...</span>}
-              </div>
+        {/* INCOMING TAB */}
+        {activeTab === 'incoming' && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-incoming">
+            {searchField}
+            {visibleIncoming.length === 0 ? (
+              <Empty icon="mail" title={incoming.length === 0 ? 'אין הודעות חדשות' : 'לא נמצאו הודעות'} />
             ) : (
-              <p style={{ color: 'var(--text-2)' }}>טוען נתוני עובד...</p>
+              visibleIncoming.map(notif => renderMessageCard(notif, 'incoming'))
             )}
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+        {/* OUTGOING TAB */}
+        {activeTab === 'outgoing' && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-outgoing">
+            {searchField}
+            {visibleOutgoing.length === 0 ? (
+              <Empty icon="message" title={outgoing.length === 0 ? 'עוד לא שלחתם הודעות' : 'לא נמצאו הודעות'} />
+            ) : (
+              visibleOutgoing.map(notif => renderMessageCard(notif, 'outgoing'))
+            )}
+          </div>
+        )}
+
+        {/* #24 — SHIFT HANDOVER TAB: הודעות בין משמרות, שידור לכולם, "אשר קריאה" פר-עובד */}
+        {activeTab === 'shift' && shiftHandoverEnabled && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-shift">
+            <Card icon="refresh" title="הודעה למשמרת הבאה" tip="ההודעה מגיעה לכל העובדים.">
+              <div className="v3-stack">
+                <Field
+                  as="textarea"
+                  id="shift-note-content"
+                  label="מה חשוב להעביר?"
+                  value={shiftNoteText}
+                  onChange={e => setShiftNoteText(e.target.value)}
+                  placeholder="למשל: שלוש שמלות בייבוש, מידה 40 לא זמינה"
+                />
+                <div className="v3-cluster">
+                  <Btn variant="primary" icon="plus" loading={isSendingShiftNote} disabled={!shiftNoteText.trim()} onClick={handleSendShiftNote}>
+                    הוספה
+                  </Btn>
+                </div>
+              </div>
+            </Card>
+
+            {shiftHandoverNotes.length === 0 ? (
+              <Empty icon="refresh" title="אין הודעות למשמרת" />
+            ) : (
+              shiftHandoverNotes.map(renderShiftNoteCard)
+            )}
+          </div>
+        )}
+
+        {/* #25 — MANAGEMENT TAB: הודעות להנהלה, שידור לכולם, "סמן כטופל" למנהלים בלבד */}
+        {activeTab === 'management' && managementMessagesEnabled && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-management">
+            <Card icon="alert-circle" title="פנייה להנהלה" tip="רק מנהלים יכולים לסמן פנייה כטופלה.">
+              <div className="v3-stack">
+                <Field
+                  as="textarea"
+                  id="management-note-content"
+                  label="מה תרצו להעביר להנהלה?"
+                  value={managementNoteText}
+                  onChange={e => setManagementNoteText(e.target.value)}
+                  placeholder="למשל: שאלה על מדיניות, או תלונה של לקוחה"
+                />
+                <div className="v3-cluster">
+                  <Btn variant="primary" icon="send" loading={isSendingManagementNote} disabled={!managementNoteText.trim()} onClick={handleSendManagementNote}>
+                    שליחה
+                  </Btn>
+                </div>
+              </div>
+            </Card>
+
+            {managementNotes.length === 0 ? (
+              <Empty icon="alert-circle" title="אין פניות להנהלה" />
+            ) : (
+              managementNotes.map(renderManagementNoteCard)
+            )}
+          </div>
+        )}
+
+        {/* ARCHIVED TAB */}
+        {activeTab === 'archived' && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-archived">
+            {searchField}
+            {visibleArchived.length === 0 ? (
+              <Empty icon="folder" title={archived.length === 0 ? 'הארכיון ריק' : 'לא נמצאו הודעות'} />
+            ) : (
+              visibleArchived.map(notif => renderMessageCard(notif, notif.direction || 'incoming'))
+            )}
+          </div>
+        )}
+
+        {/* COMPOSE TAB */}
+        {activeTab === 'compose' && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-compose">
+            {error && (
+              <div className="v3-banner v3-banner--alert" role="alert">
+                <div className="v3-banner__main">
+                  <span className="v3-banner__ic"><Icon name="alert-circle" /></span>
+                  <div className="v3-banner__msg"><span>{error}</span></div>
+                </div>
+              </div>
+            )}
+
+            {sendSuccess && (
+              <div className="v3-banner v3-banner--success" role="status">
+                <div className="v3-banner__main">
+                  <span className="v3-banner__ic"><Icon name="check-circle" /></span>
+                  <div className="v3-banner__msg"><span>ההודעה נשלחה</span></div>
+                </div>
+              </div>
+            )}
+
+            <Card icon="send" title="הודעה חדשה">
+              <div className="v3-stack">
+                <Field
+                  as="select"
+                  id="messages-receiver"
+                  label="למי לשלוח?"
+                  value={receiverId}
+                  onChange={e => setReceiverId(e.target.value)}
+                >
+                  <option value="all">כל העובדים</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstName} {emp.lastName}
+                    </option>
+                  ))}
+                </Field>
+
+                <Field
+                  as="textarea"
+                  id="messages-content"
+                  label="ההודעה"
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  placeholder="כתבו כאן"
+                />
+
+                <div className="v3-cluster">
+                  <Switch
+                    id="messages-send-email"
+                    checked={sendEmail}
+                    onChange={setSendEmail}
+                    label="לשלוח גם במייל"
+                  />
+                  <Tip>המייל יישלח רק לעובדים שיש להם כתובת מייל מעודכנת.</Tip>
+                </div>
+
+                <div className="v3-cluster">
+                  <Btn variant="primary" icon="send" loading={isSending} onClick={handleSend} title="שליחת ההודעה">
+                    שליחה
+                  </Btn>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* SETTINGS TAB */}
+        {activeTab === 'settings' && (
+          <div className="v3-stack" role="tabpanel" aria-labelledby="tab-settings">
+            <Card icon="mail" title="התראות במייל">
+              {currentUser ? (
+                <div className="v3-stack">
+                  {currentUser.email ? (
+                    <div className="v3-stack">
+                      <span className="v3-label">כתובת המייל שלך</span>
+                      <b dir="ltr"><bdi>{currentUser.email}</bdi></b>
+                    </div>
+                  ) : (
+                    <div className="v3-banner v3-banner--warning" role="status">
+                      <div className="v3-banner__main">
+                        <span className="v3-banner__ic"><Icon name="alert-tri" /></span>
+                        <div className="v3-banner__msg"><span>אין כתובת מייל בחשבון שלך. כדי להוסיף אחת, פנו למנהל.</span></div>
+                      </div>
+                    </div>
+                  )}
+
+                  <Switch
+                    id="messages-receive-alerts"
+                    checked={currentUser.receiveEmailAlerts || false}
+                    onChange={(checked) => handleSaveSettings(checked)}
+                    disabled={isSavingSettings || !currentUser.email}
+                    label="לקבל מייל על הודעות חדשות"
+                  />
+                  {isSavingSettings && (
+                    <span className="v3-cluster v3-muted" role="status"><span className="v3-spin" aria-hidden="true" />שומר</span>
+                  )}
+                </div>
+              ) : (
+                <div className="v3-cluster v3-muted" role="status"><span className="v3-spin" aria-hidden="true" />טוען</div>
+              )}
+            </Card>
+          </div>
+        )}
+      </div>
+    </V3Page>
   );
 }

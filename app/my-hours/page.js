@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { V3Page, Card, Field, Row, Tip, Empty, Table } from '@/app/v3/ui/components';
 
 const MONTH_NAMES = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
@@ -52,61 +53,54 @@ export default function MyHoursPage() {
   }, [shifts]);
 
   if (notLoggedIn) {
-    return <div className="empty-state">יש להתחבר כדי לצפות בשעות העבודה שלך.</div>;
+    return (
+      <V3Page>
+        <Empty icon="lock" title="צריך להתחבר" text="כדי לראות את המשמרות שלך, היכנסו למערכת." />
+      </V3Page>
+    );
   }
 
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>שעות העבודה שלי</h1>
-          <div className="page-desc">רשימת המשמרות שלך לפי חודש, כולל סה&quot;כ שעות</div>
-        </div>
-      </div>
+  const columns = [
+    { key: 'date', header: 'תאריך', render: (shift) => <bdi>{shift.hebrewDate || new Date(shift.date).toLocaleDateString('he-IL')}</bdi> },
+    { key: 'entry', header: 'כניסה', render: (shift) => <bdi>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</bdi> },
+    { key: 'exit', header: 'יציאה', render: (shift) => <bdi>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</bdi> },
+    { key: 'total', header: 'שעות', num: true, render: (shift) => <bdi>{shift.totalMinutes ? formatHoursMinutes(shift.totalMinutes) : '-'}</bdi> },
+  ];
 
-      <div className="card card-pad" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <select className="select" value={filterMonth} onChange={e => setFilterMonth(parseInt(e.target.value, 10))}>
-            {MONTH_NAMES.map((name, idx) => <option key={idx} value={idx}>{name}</option>)}
-          </select>
-          <select className="select" value={filterYear} onChange={e => setFilterYear(parseInt(e.target.value, 10))}>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <div style={{ marginInlineStart: 'auto', fontWeight: 700 }}>
-            סה&quot;כ החודש: {formatHoursMinutes(monthlyTotalMinutes)} שעות
+  return (
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">השעות שלי</h1>
+            <Tip>המשמרות שלך בלבד, לפי חודש, עם סיכום שעות חודשי.</Tip>
           </div>
         </div>
-      </div>
 
-      {shifts === null ? (
-        <div className="page-loading"><span className="spinner lg" /></div>
-      ) : (
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>תאריך</th>
-                <th>כניסה</th>
-                <th>יציאה</th>
-                <th>סה&quot;כ שעות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredShifts.map(shift => (
-                <tr key={shift.id}>
-                  <td>{shift.hebrewDate || new Date(shift.date).toLocaleDateString('he-IL')}</td>
-                  <td>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                  <td>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                  <td>{shift.totalMinutes ? formatHoursMinutes(shift.totalMinutes) : '-'}</td>
-                </tr>
-              ))}
-              {filteredShifts.length === 0 && (
-                <tr><td colSpan={4} className="empty-cell">אין משמרות בחודש זה</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </>
+        <Card icon="calendar" title="בחירת חודש">
+          <div className="v3-stack">
+            <Field as="select" label="חודש" value={filterMonth} onChange={e => setFilterMonth(parseInt(e.target.value, 10))}>
+              {MONTH_NAMES.map((name, idx) => <option key={idx} value={idx}>{name}</option>)}
+            </Field>
+            <Field as="select" label="שנה" value={filterYear} onChange={e => setFilterYear(parseInt(e.target.value, 10))}>
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </Field>
+            <Row icon="clock" label="סך השעות בחודש">
+              <span className="v3-big"><bdi>{formatHoursMinutes(monthlyTotalMinutes)}</bdi></span>
+            </Row>
+          </div>
+        </Card>
+
+        {shifts === null ? (
+          <div className="v3-empty" role="status"><span className="v3-spin" aria-hidden="true" /><span className="v3-sr">טוען</span></div>
+        ) : filteredShifts.length === 0 ? (
+          <Empty icon="calendar" title="אין משמרות בחודש הזה" />
+        ) : (
+          <Card>
+            <Table columns={columns} rows={filteredShifts} rowKey="id" caption="משמרות החודש" />
+          </Card>
+        )}
+      </div>
+    </V3Page>
   );
 }

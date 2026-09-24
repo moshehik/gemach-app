@@ -16,6 +16,7 @@ import {
   writeLocalPrefs,
   writeThemeCookie,
 } from '../lib/designPrefs';
+import { V3Page, Card, Btn, IconBtn, Field, Switch, Tip, Banner } from '@/app/v3/ui/components';
 
 // עמוד "עיצוב ותצוגה" — גרסה קומפקטית ומאורגנת (סעיפים ברורים, רוחב מוגבל):
 //   1. מצב תצוגה (בהיר/כהה/ניגודיות/אוטומטי)
@@ -171,13 +172,18 @@ function PreviewStrip({ colors }) {
     ['טקסט', side.text],
   ]);
   return (
-    <div className="preview-rows">
+    <div className="v3-stack">
       {[['בהיר', vars.light], ['כהה', vars.dark]].map(([label, side]) => (
-        <div key={label} className="preview-row">
-          <span className="preview-row-label">{label}</span>
-          <div className="preview-strip">
+        <div key={label} className="v3-stack">
+          <span className="v3-label">{label}</span>
+          <div className="v3-cluster">
             {cells(side).map(([name, color]) => (
-              <span key={name} className="preview-cell" style={{ background: color }} title={`${name} · ${color}`} />
+              <span
+                key={name}
+                title={`${name} · ${color}`}
+                aria-label={`${name} · ${color}`}
+                style={{ width: 'var(--v3-sp-6)', height: 'var(--v3-sp-6)', borderRadius: 'var(--v3-r-sm)', border: 'var(--v3-bw-hair) solid var(--v3-line)', background: color }}
+              />
             ))}
           </div>
         </div>
@@ -351,261 +357,249 @@ export default function DisplaySettingsPage() {
   const manualNeutral = Boolean(customColors.neutral);
 
   return (
-    <div className="settings-wrap">
-      <div className="page-head">
-        <div>
-          <h1>עיצוב ותצוגה</h1>
-          <div className="page-desc">
-            העדפות תצוגה אישיות — נשמרות לחשבון שלך וחלות בכל מחשב שבו תתחבר/י.
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">עיצוב ותצוגה</h1>
+            <Tip>ההעדפות נשמרות בחשבון שלכם ותקפות בכל מחשב שבו תתחברו.</Tip>
           </div>
         </div>
-      </div>
 
-      {/* 1 — מצב תצוגה */}
-      <div className="card card-pad settings-card">
-        <div className="section-title">מצב תצוגה</div>
-        <div className="mode-row mode-row-4">
-          {MODES.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              data-theme-mode={m.key}
-              className={`mode-btn${prefs.mode === m.key ? ' active' : ''}`}
-              onClick={() => updatePref('mode', m.key)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 2 — פלטות מובנות */}
-      <div className="card card-pad settings-card">
-        <div className="section-title">פלטות מובנות</div>
-        <div className="swatch-row">
-          {PALETTES.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              className={`swatch-btn${prefs.palette === p.key ? ' active' : ''}`}
-              style={{ background: `linear-gradient(135deg, ${p.primary}, ${p.accent})` }}
-              title={p.label}
-              aria-label={p.label}
-              onClick={() => updatePref('palette', p.key)}
-            />
-          ))}
-        </div>
-        <div className="hint" style={{ marginTop: 8 }}>
-          {activePreset ? `פעילה: ${activePreset.label}` : 'פעילה: פלטה מותאמת אישית'}
-        </div>
-      </div>
-
-      {/* 3 — הפלטות שלי + עורך */}
-      <div className="card card-pad settings-card">
-        <div className="section-title">הפלטות שלי</div>
-
-        {savedPalettes.length > 0 && (
-          <div className="saved-palette-list">
-            {savedPalettes.map((entry) => (
-              <div key={entry.id} className={`saved-palette-row${isSavedActive(entry) ? ' active' : ''}`}>
-                <span
-                  className="saved-palette-dot"
-                  style={{ background: `linear-gradient(135deg, ${entry.primary}, ${entry.accent})` }}
-                />
-                <span className="saved-palette-name">{entry.name}</span>
-                <span className="saved-palette-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => applySavedPalette(entry)}
-                    disabled={isSavedActive(entry)}
-                  >
-                    {isSavedActive(entry) ? 'פעילה' : 'החלה'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm saved-palette-delete"
-                    title="מחיקת הפלטה"
-                    aria-label={`מחיקת הפלטה ${entry.name}`}
-                    onClick={() => deleteSavedPalette(entry.id)}
-                  >
-                    <svg className="icon"><use href="#i-trash" /></svg>
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
+        {!employeeId && (
+          <Banner kind="info" text="לא מחוברים. ההעדפות יישמרו בדפדפן הזה בלבד, ואחרי התחברות יישמרו בחשבון." />
         )}
 
-        <div className="custom-palette-editor">
-          <div className="settings-inline-head">
-            <strong>עורך פלטה מותאמת</strong>
-            {prefs.palette !== 'custom' && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={selectCustomPalette}>
-                הפעלת הפלטה המותאמת
+        {/* 1 — מצב תצוגה */}
+        <Card icon="sun" title="מצב תצוגה">
+          <div className="v3-options v3-options--grid">
+            {MODES.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                data-theme-mode={m.key}
+                className="v3-option"
+                aria-pressed={prefs.mode === m.key}
+                onClick={() => updatePref('mode', m.key)}
+              >
+                {m.label}
               </button>
-            )}
+            ))}
           </div>
-          <div className="color-fields-grid">
-            <div className="field">
-              <label htmlFor="custom-palette-primary">צבע ראשי</label>
-              <div className="color-field-row">
-                <input
-                  id="custom-palette-primary"
-                  type="color"
-                  className="color-swatch-input"
-                  value={customColors.primary}
-                  onChange={(e) => updateCustomColor('primary', e.target.value)}
-                />
-                <span className="color-field-hex">{customColors.primary.toUpperCase()}</span>
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="custom-palette-accent">צבע משני</label>
-              <div className="color-field-row">
-                <input
-                  id="custom-palette-accent"
-                  type="color"
-                  className="color-swatch-input"
-                  value={customColors.accent}
-                  onChange={(e) => updateCustomColor('accent', e.target.value)}
-                />
-                <span className="color-field-hex">{customColors.accent.toUpperCase()}</span>
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="custom-palette-neutral">גוון רקע (נייטרלי)</label>
-              <div className="color-field-row">
-                <label className="neutral-auto-toggle">
-                  <input
-                    type="checkbox"
-                    checked={manualNeutral}
-                    onChange={(e) => toggleManualNeutral(e.target.checked)}
+        </Card>
+
+        {/* 2 — פלטות מובנות */}
+        <Card icon="sparkles" title="פלטות מובנות">
+          <div className="v3-stack">
+            <div className="v3-options v3-options--grid">
+              {PALETTES.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  className="v3-option"
+                  aria-pressed={prefs.palette === p.key}
+                  title={p.label}
+                  aria-label={p.label}
+                  onClick={() => updatePref('palette', p.key)}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{ width: 'var(--v3-sp-5)', height: 'var(--v3-sp-5)', flex: 'none', borderRadius: 'var(--v3-r-round)', background: `linear-gradient(135deg, ${p.primary}, ${p.accent})` }}
                   />
-                  ידני
-                </label>
-                {manualNeutral ? (
-                  <>
-                    <input
-                      id="custom-palette-neutral"
-                      type="color"
-                      className="color-swatch-input"
-                      value={customColors.neutral}
-                      onChange={(e) => updateCustomColor('neutral', e.target.value)}
+                  <span>{p.label}</span>
+                </button>
+              ))}
+            </div>
+            <span className="v3-muted" role="status">
+              {activePreset ? `נבחרה: ${activePreset.label}` : 'נבחרה: פלטה אישית'}
+            </span>
+          </div>
+        </Card>
+
+        {/* 3 — הפלטות שלי + עורך */}
+        <Card icon="edit" title="הפלטות שלי" tip="כל הגוונים, כולל מצב כהה, נגזרים אוטומטית מהצבעים שתבחרו.">
+          <div className="v3-stack">
+            {savedPalettes.length > 0 && (
+              <div className="v3-list">
+                {savedPalettes.map((entry) => (
+                  <div key={entry.id} className={isSavedActive(entry) ? 'v3-li v3-li--pending' : 'v3-li'}>
+                    <span
+                      aria-hidden="true"
+                      style={{ width: 'var(--v3-sp-5)', height: 'var(--v3-sp-5)', flex: 'none', borderRadius: 'var(--v3-r-round)', background: `linear-gradient(135deg, ${entry.primary}, ${entry.accent})` }}
                     />
-                    <span className="color-field-hex">{customColors.neutral.toUpperCase()}</span>
-                  </>
-                ) : (
-                  <span className="hint">אוטומטי — נגזר מהצבע הראשי</span>
+                    <span className="v3-li__body"><b>{entry.name}</b></span>
+                    <div className="v3-cluster">
+                      <Btn
+                        size="sm"
+                        icon={isSavedActive(entry) ? 'check' : undefined}
+                        onClick={() => applySavedPalette(entry)}
+                        disabled={isSavedActive(entry)}
+                      >
+                        {isSavedActive(entry) ? 'בשימוש' : 'להפעלה'}
+                      </Btn>
+                      <IconBtn
+                        icon="trash"
+                        variant="quiet"
+                        size="sm"
+                        title="מחיקת הפלטה"
+                        label={`מחיקת הפלטה ${entry.name}`}
+                        onClick={() => deleteSavedPalette(entry.id)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="v3-stack">
+              <div className="v3-cluster">
+                <b>יצירת פלטה אישית</b>
+                {prefs.palette !== 'custom' && (
+                  <Btn size="sm" onClick={selectCustomPalette}>להפעלת הפלטה האישית</Btn>
                 )}
               </div>
+
+              <div className="v3-field">
+                <label className="v3-label" htmlFor="custom-palette-primary">צבע ראשי</label>
+                <div className="v3-cluster">
+                  <input
+                    id="custom-palette-primary"
+                    type="color"
+                    value={customColors.primary}
+                    onChange={(e) => updateCustomColor('primary', e.target.value)}
+                  />
+                  <bdi dir="ltr">{customColors.primary.toUpperCase()}</bdi>
+                </div>
+              </div>
+
+              <div className="v3-field">
+                <label className="v3-label" htmlFor="custom-palette-accent">צבע משני</label>
+                <div className="v3-cluster">
+                  <input
+                    id="custom-palette-accent"
+                    type="color"
+                    value={customColors.accent}
+                    onChange={(e) => updateCustomColor('accent', e.target.value)}
+                  />
+                  <bdi dir="ltr">{customColors.accent.toUpperCase()}</bdi>
+                </div>
+              </div>
+
+              <div className="v3-field">
+                <label className="v3-label" htmlFor="custom-palette-neutral">גוון הרקע</label>
+                <div className="v3-cluster">
+                  <Switch checked={manualNeutral} onChange={toggleManualNeutral} label="בחירה ידנית" />
+                  {manualNeutral ? (
+                    <>
+                      <input
+                        id="custom-palette-neutral"
+                        type="color"
+                        value={customColors.neutral}
+                        onChange={(e) => updateCustomColor('neutral', e.target.value)}
+                      />
+                      <bdi dir="ltr">{customColors.neutral.toUpperCase()}</bdi>
+                    </>
+                  ) : (
+                    <span className="v3-muted">נגזר מהצבע הראשי</span>
+                  )}
+                </div>
+              </div>
+
+              <PreviewStrip colors={customColors} />
+
+              <Field
+                label="שם הפלטה"
+                type="text"
+                placeholder="למשל: הוורוד שלי"
+                value={newPaletteName}
+                maxLength={40}
+                onChange={(e) => setNewPaletteName(e.target.value)}
+              />
+              <div className="v3-cluster">
+                <Btn variant="primary" icon="check" onClick={saveCurrentAsPalette}>שמירת הפלטה</Btn>
+              </div>
             </div>
           </div>
+        </Card>
 
-          <PreviewStrip colors={customColors} />
-          <div className="hint">
-            כל הגוונים — רקעים, גבולות, טקסט, צללים ומצב כהה — נגזרים אוטומטית מהצבעים שנבחרו.
-          </div>
-
-          <div className="settings-inline-actions">
-            <input
-              type="text"
-              className="input"
-              style={{ maxWidth: 220 }}
-              placeholder="שם לפלטה (למשל: ורוד שלי)"
-              value={newPaletteName}
-              maxLength={40}
-              onChange={(e) => setNewPaletteName(e.target.value)}
-            />
-            <button type="button" className="btn btn-primary btn-sm" onClick={saveCurrentAsPalette}>
-              שמירה כפלטה חדשה
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4 — אפשרויות נוספות */}
-      <div className="card card-pad settings-card">
-        <div className="section-title">אפשרויות נוספות</div>
-
-        <div className="field">
-          <label>גופן</label>
-          <div className="font-grid">
-            {QUICK_FONTS.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                className={`font-opt${prefs.font === f.key ? ' active' : ''}`}
-                onClick={() => updatePref('font', f.key)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <label htmlFor="display-settings-more-fonts">עוד גופנים</label>
-          <select
-            id="display-settings-more-fonts"
-            className="select"
-            style={{ maxWidth: 280 }}
-            value={selectFontValue}
-            onChange={(e) => {
-              if (!e.target.value) return;
-              updatePref('font', e.target.value);
-            }}
-          >
-            <option value="">בחר/י גופן נוסף…</option>
-            {MORE_FONT_GROUPS.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.options.map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+        {/* 4 — אפשרויות נוספות */}
+        <Card icon="settings" title="גופן, צפיפות וגודל טקסט">
+          <div className="v3-stack">
+            <div className="v3-field">
+              <span className="v3-label">גופן</span>
+              <div className="v3-options v3-options--grid">
+                {QUICK_FONTS.map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    className="v3-option"
+                    aria-pressed={prefs.font === f.key}
+                    onClick={() => updatePref('font', f.key)}
+                  >
+                    {f.label}
+                  </button>
                 ))}
-              </optgroup>
-            ))}
-          </select>
-        </div>
+              </div>
+            </div>
 
-        <div className="settings-two-col">
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>צפיפות</label>
-            <div className="density-row">
-              {DENSITIES.map((d) => (
-                <button
-                  key={d.key}
-                  type="button"
-                  data-density-mode={d.key}
-                  className={`density-btn${prefs.density === d.key ? ' active' : ''}`}
-                  onClick={() => updatePref('density', d.key)}
-                >
-                  {d.label}
-                </button>
+            <Field
+              as="select"
+              id="display-settings-more-fonts"
+              label="גופנים נוספים"
+              value={selectFontValue}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                updatePref('font', e.target.value);
+              }}
+            >
+              <option value="">בחירת גופן…</option>
+              {MORE_FONT_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </optgroup>
               ))}
+            </Field>
+
+            <div className="v3-field">
+              <span className="v3-label">צפיפות</span>
+              <div className="v3-options v3-options--grid">
+                {DENSITIES.map((d) => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    data-density-mode={d.key}
+                    className="v3-option"
+                    aria-pressed={prefs.density === d.key}
+                    onClick={() => updatePref('density', d.key)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="v3-field">
+              <span className="v3-label">גודל טקסט</span>
+              <div className="v3-options v3-options--grid">
+                {TEXT_SCALES.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    data-text-scale-mode={t.key}
+                    className="v3-option"
+                    aria-pressed={prefs.textScale === t.key}
+                    onClick={() => updatePref('textScale', t.key)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label>גודל טקסט</label>
-            <div className="density-row">
-              {TEXT_SCALES.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  data-text-scale-mode={t.key}
-                  className={`density-btn${prefs.textScale === t.key ? ' active' : ''}`}
-                  onClick={() => updatePref('textScale', t.key)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        {!employeeId && (
-          <div className="hint" style={{ marginTop: 10 }}>
-            לא מחובר/ת — ההעדפות נשמרות על הדפדפן הזה בלבד. התחברות תשמור אותן לחשבון.
-          </div>
-        )}
+        </Card>
       </div>
-    </div>
+    </V3Page>
   );
 }

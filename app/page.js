@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { HDate } from '@hebcal/core';
 import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 import SettingQuickPanel from './components/SettingQuickPanel';
 import { CopyChip, splitCopyable, renderCopyable } from './components/CopyableText';
+import { V3Page, Card, Btn, IconBtn, Tip, Empty, Dialog, Table } from '@/app/v3/ui/components';
+import Icon from '@/app/v3/ui/Icon';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -80,7 +81,7 @@ export default function HomeDashboard() {
   // know the employee's role and the messaging setting, so a non-manager never
   // even briefly sees a card pointing at revenue data.
   const [quickLinkFlags, setQuickLinkFlags] = useState({ headManagement: false, messagingEnabled: false });
-  const [welcomeTitle, setWelcomeTitle] = useState('ברוכים הבאים למערכת ניהול הגמ"ח');
+  const [welcomeTitle, setWelcomeTitle] = useState('ברוכים הבאים לגמ"ח');
   useEffect(() => {
     Promise.all([
       fetchJson('/api/me').catch(() => ({ success: false })),
@@ -142,8 +143,7 @@ export default function HomeDashboard() {
             key={i}
             href={`/orders/${match[1]}`}
             onClick={(e) => navigateInApp(e, `/orders/${match[1]}`)}
-            className="chip"
-            style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
+            className="v3-chip v3-chip--info"
           >
             {part}
           </a>
@@ -156,8 +156,7 @@ export default function HomeDashboard() {
             key={i}
             href={`/customers/${match[1]}`}
             onClick={(e) => navigateInApp(e, `/customers/${match[1]}`)}
-            className="chip"
-            style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
+            className="v3-chip v3-chip--info"
           >
             {part}
           </a>
@@ -330,15 +329,15 @@ export default function HomeDashboard() {
 
   const renderStatusIcon = (status) => {
     const map = {
-      'הוחזר': { icon: 'i-check-circle', color: 'var(--success)' },
-      'מושכר': { icon: 'i-tag', color: 'var(--warning)' },
-      'בוטל': { icon: 'i-x-circle', color: 'var(--danger)' },
-      'שולם': { icon: 'i-check', color: 'var(--info)' },
+      'הוחזר': { icon: 'check-circle', color: 'var(--v3-navy)' },
+      'מושכר': { icon: 'tag', color: 'var(--v3-gold-d)' },
+      'בוטל': { icon: 'x-circle', color: 'var(--v3-rose-700)' },
+      'שולם': { icon: 'check', color: 'var(--v3-navy-500)' },
     };
-    const { icon, color } = map[status] || { icon: 'i-clock', color: 'var(--text-3)' };
+    const { icon, color } = map[status] || { icon: 'clock', color: 'var(--v3-ink-3)' };
     return (
       <span title={status || 'פעיל'} style={{ display: 'inline-flex', color, flex: '0 0 auto' }}>
-        <svg className="icon" style={{ width: '14px', height: '14px' }}><use href={`#${icon}`} /></svg>
+        <Icon name={icon} size="sm" />
       </span>
     );
   };
@@ -363,84 +362,79 @@ export default function HomeDashboard() {
   const isInitialState = !searchResults && aiMessages.length === 0;
 
   return (
-    <div
+    <V3Page
       style={{
-        paddingTop: isInitialState ? '16vh' : '4px',
-        paddingBottom: aiMessages.length > 0 ? '110px' : '20px',
+        paddingTop: isInitialState ? 'calc(var(--v3-sp-9) * 2)' : 'var(--v3-sp-1)',
+        paddingBottom: aiMessages.length > 0 ? 'calc(var(--v3-sp-9) * 2)' : 'var(--v3-sp-5)',
         minHeight: '70vh',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+        transition: 'padding-top var(--v3-dur-enter) var(--v3-ease)'
       }}
     >
 
       {/* Header & Search */}
-      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-        <h1 style={{ marginBottom: '20px' }}>{welcomeTitle}</h1>
-        <div className="card card-pad" style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div className="v3-stack" style={{ marginBottom: 'var(--v3-sp-6)', textAlign: 'center' }}>
+        <h1 className="v3-h1">{welcomeTitle}</h1>
+        <Card style={{ maxWidth: 'calc(var(--v3-container) * .65)', width: '100%', marginInline: 'auto' }}>
           {aiInputMode ? (
-            <form onSubmit={handleAiInputSubmit} className="search-toolbar" style={{ maxWidth: 'none' }}>
-              {(aiLoading && aiMessages.length === 0)
-                ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-                : <svg className="icon" style={{ color: 'var(--primary-solid)' }}><use href="#i-star" /></svg>}
-              <input
-                type="text"
-                value={aiInputText}
-                onChange={(e) => setAiInputText(e.target.value)}
-                placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
-                disabled={aiLoading}
-              />
-              <div className="search-toolbar-actions">
+            <form onSubmit={handleAiInputSubmit} className="v3-stack">
+              <div className="v3-search">
+                <Icon name="sparkles" />
+                <input
+                  type="text"
+                  value={aiInputText}
+                  onChange={(e) => setAiInputText(e.target.value)}
+                  placeholder="שאלו את ה-AI, למשל: הזמנות של משפחת שיינועטר"
+                  aria-label="שאלה לחיפוש חכם"
+                  disabled={aiLoading}
+                />
+              </div>
+              <div className="v3-cluster">
+                <Btn type="submit" variant="primary" icon="sparkles" loading={aiLoading}>
+                  {aiLoading ? 'מחפש' : 'חיפוש חכם'}
+                </Btn>
                 {aiInputText && !aiLoading && (
-                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                    <svg className="icon"><use href="#i-x" /></svg>
-                  </button>
+                  <Btn variant="quiet" icon="x" onClick={() => setAiInputText('')}>ניקוי</Btn>
                 )}
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--primary-solid)', background: 'var(--primary-tint)' }} onClick={toggleAiInputMode}>
-                  <svg className="icon"><use href="#i-star" /></svg>
-                </button>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                  {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
-                </button>
+                <Btn variant="quiet" icon="search" onClick={toggleAiInputMode}>לחיפוש רגיל</Btn>
               </div>
             </form>
           ) : (
-            <form onSubmit={handleGlobalSearch} className="search-toolbar" style={{ maxWidth: 'none' }}>
-              {loadingSearch
-                ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-                : <svg className="icon"><use href="#i-search" /></svg>}
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="דוגמא משפחת כהן..."
-                disabled={loadingSearch}
-              />
-              <div className="search-toolbar-actions">
+            <form onSubmit={handleGlobalSearch} className="v3-stack">
+              <div className="v3-search">
+                <Icon name="search" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="למשל: משפחת כהן"
+                  aria-label="חיפוש"
+                  disabled={loadingSearch}
+                />
+              </div>
+              <div className="v3-cluster">
+                <Btn type="submit" variant="primary" icon="search" loading={loadingSearch}>חיפוש</Btn>
                 {searchInput && !loadingSearch && (
-                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה חיפוש" onClick={clearSearch}>
-                    <svg className="icon"><use href="#i-x" /></svg>
-                  </button>
+                  <Btn variant="quiet" icon="x" onClick={clearSearch}>ניקוי</Btn>
                 )}
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                  <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
-                </button>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={loadingSearch}>חיפוש</button>
+                <Btn variant="quiet" icon="sparkles" onClick={toggleAiInputMode}>חיפוש חכם</Btn>
+                <Tip>חיפוש חכם מבין שאלות חופשיות ומחזיר טבלה או תשובה.</Tip>
               </div>
             </form>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Quick Links */}
       {isInitialState && (
-        <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto 32px' }}>
-          <div className="section-title">קישורים מהירים</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+        <div className="v3-stack" style={{ maxWidth: 'calc(var(--v3-container) * .65)', width: '100%', marginInline: 'auto', marginBottom: 'var(--v3-sp-6)' }}>
+          <h2 className="v3-h2">קיצורי דרך</h2>
+          <div className="v3-cluster">
             {visibleQuickLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-                <svg className="icon" style={{ color: 'var(--text-3)' }}><use href={`#${link.icon}`} /></svg>
-                <span style={{ fontWeight: 600, fontSize: '13px' }}>{link.label}</span>
+              <Link key={link.href} href={link.href} className="v3-btn">
+                <Icon name={link.icon} />
+                <span>{link.label}</span>
               </Link>
             ))}
           </div>
@@ -449,280 +443,232 @@ export default function HomeDashboard() {
 
       {/* AI Response Area */}
       {aiMessages.length > 0 && (
-        <div className="card card-pad" style={{ maxWidth: '800px', width: '100%', margin: '0 auto 32px', borderColor: 'var(--primary-tint-2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div className="card-title-row" style={{ color: 'var(--primary-solid)', fontWeight: 800 }}>
-              <svg className="icon" style={{ color: 'var(--primary-solid)' }}><use href="#i-star" /></svg>
-              <span style={{ fontSize: '1.05rem' }}>צ&apos;אט חכם מבוסס AI:</span>
-            </div>
-            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה צ&apos;אט" onClick={clearAiChat}>
-              <svg className="icon"><use href="#i-x" /></svg>
-            </button>
-          </div>
-
-          <div className="chat-thread" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+        <Card
+          icon="sparkles"
+          title="שיחה עם ה-AI"
+          actions={<IconBtn icon="x" label="ניקוי השיחה" variant="quiet" onClick={clearAiChat} />}
+          style={{ maxWidth: 'calc(var(--v3-container) * .65)', width: '100%', marginInline: 'auto', marginBottom: 'var(--v3-sp-6)' }}
+        >
+          <div className="v3-stack" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
             {aiMessages.map((msg, idx) => {
               const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+              const dataKeys = msg.data && msg.data.length > 0 ? Object.keys(msg.data[0]).filter(k => !k.startsWith('_action')) : [];
+              const hasActions = !!(msg.data && msg.data.some(r => r._actionUrl));
+              const tableColumns = [
+                ...dataKeys.map(k => ({ key: k, header: k, render: (row) => renderCopyable(row[k]) })),
+                ...(hasActions ? [{
+                  key: '_actions',
+                  header: 'פעולות',
+                  render: (row) => (row._actionUrl && row._actionLabel ? (
+                    <Link href={row._actionUrl} className="v3-btn v3-btn--sm">
+                      {row._actionLabel}
+                    </Link>
+                  ) : null),
+                }] : []),
+              ];
               return (
-              <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                <button
-                  type="button"
-                  className={`bubble-copy-btn${copiedAiIdx === idx ? ' copied' : ''}`}
-                  title="העתק"
-                  onClick={() => copyBubbleText(idx, msg.content)}
-                >
-                  <svg className="icon"><use href={`#${copiedAiIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
-                </button>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(displayText)}</div>
-                {openSettingKeys.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                    {openSettingKeys.map(key => (
-                      <button
-                        key={key}
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setOpenSettingKey(key)}
-                      >
-                        <svg className="icon"><use href="#i-settings" /></svg>
-                        פתח הגדרה
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {msg.data && msg.data.length > 0 && (
-                  <div style={{ marginTop: '10px' }}>
-                    <button type="button" className="btn btn-secondary btn-sm" style={{ marginBottom: '10px' }} onClick={() => exportTableToExcel(msg.data, 'AI_Export')}>
-                      <svg className="icon"><use href="#i-download" /></svg> הורד Excel
-                    </button>
-                    <div className="table-wrap">
-                      <div className="table-scroll">
-                      <table className="data">
-                        <thead>
-                          <tr>
-                            {Object.keys(msg.data[0])
-                              .filter(k => !k.startsWith('_action'))
-                              .map(k => <th key={k}>{k}</th>)}
-                            {msg.data.some(r => r._actionUrl) && <th>פעולות</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {msg.data.slice(0, 15).map((row, rIdx) => (
-                            <tr key={rIdx}>
-                              {Object.entries(row)
-                                .filter(([k]) => !k.startsWith('_action'))
-                                .map(([k, val], vIdx) => <td key={vIdx}>{renderCopyable(val)}</td>)}
-                              {msg.data.some(r => r._actionUrl) && (
-                                <td>
-                                  {row._actionUrl && row._actionLabel ? (
-                                    <Link href={row._actionUrl} className="btn btn-secondary btn-sm">
-                                      {row._actionLabel}
-                                    </Link>
-                                  ) : null}
-                                </td>
-                              )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      </div>
-                      {msg.data.length > 15 && (
-                        <div style={{ textAlign: 'center', padding: '8px', color: 'var(--text-3)', fontStyle: 'italic' }}>
-                          מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)
-                        </div>
-                      )}
+                <div key={idx} className={msg.role === 'user' ? 'v3-card v3-card--info' : 'v3-card v3-card--quiet'}>
+                  <div className="v3-stack">
+                    <div className="v3-cluster">
+                      <Icon name={msg.role === 'user' ? 'user' : 'sparkles'} size="sm" />
+                      <b>{msg.role === 'user' ? 'אתם' : 'ה-AI'}</b>
+                      <IconBtn
+                        icon={copiedAiIdx === idx ? 'check' : 'copy'}
+                        label="העתקת ההודעה"
+                        variant="quiet"
+                        size="sm"
+                        aria-pressed={copiedAiIdx === idx}
+                        onClick={() => copyBubbleText(idx, msg.content)}
+                      />
                     </div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(displayText)}</div>
+                    {openSettingKeys.length > 0 && (
+                      <div className="v3-cluster">
+                        {openSettingKeys.map(key => (
+                          <Btn key={key} size="sm" icon="settings" onClick={() => setOpenSettingKey(key)}>
+                            פתיחת ההגדרה
+                          </Btn>
+                        ))}
+                      </div>
+                    )}
+                    {msg.data && msg.data.length > 0 && (
+                      <div className="v3-stack">
+                        <div className="v3-cluster">
+                          <Btn size="sm" icon="download" onClick={() => exportTableToExcel(msg.data, 'AI_Export')}>ייצוא ל-Excel</Btn>
+                        </div>
+                        <Table
+                          columns={tableColumns}
+                          rows={msg.data.slice(0, 15).map((row, rIdx) => ({ ...row, __rowIdx: rIdx }))}
+                          rowKey="__rowIdx"
+                          caption="תוצאות השאילתה"
+                        />
+                        {msg.data.length > 15 && (
+                          <span className="v3-faint v3-text-sm">מוצגות 15 השורות הראשונות. הקובץ המיוצא כולל הכול.</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
               );
             })}
             {aiLoading && (
-              <div className="bubble assistant" style={{ padding: 0 }}>
-                <div className="typing-indicator"><span></span><span></span><span></span></div>
+              <div className="v3-cluster v3-muted" role="status">
+                <span className="v3-spin" aria-hidden="true" />
+                <span>ה-AI חושב</span>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Floating Chat Input */}
       {aiMessages.length > 0 && (
-        <div className="card" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '800px', padding: '10px', borderRadius: 'var(--radius-full)', borderColor: 'var(--primary-tint-2)', boxShadow: 'var(--shadow-lg)', zIndex: 1000, display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <input
-            type="text"
-            value={aiReplyInput}
-            onChange={(e) => setAiReplyInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) handleAiSearch(aiReplyInput, true); }}
-            placeholder="שאל שאלת המשך ל-AI..."
-            className="input"
-            style={{ flex: 1, border: 'none', borderRadius: 'var(--radius-full)', background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}
-            disabled={aiLoading}
-          />
-          <button type="button" className="btn btn-primary btn-icon-only" title="שלח" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()}>
-            <svg className="icon"><use href="#i-chevron-start" /></svg>
-          </button>
-          <button type="button" className="btn btn-ghost btn-icon-only" title="סגור צ&apos;אט" onClick={clearAiChat}>
-            <svg className="icon"><use href="#i-x" /></svg>
-          </button>
+        <div
+          className="v3-card"
+          style={{ position: 'fixed', bottom: 'var(--v3-sp-5)', insetInline: 0, marginInline: 'auto', width: '90%', maxWidth: 'calc(var(--v3-container) * .65)', zIndex: 'var(--v3-z-combo)', boxShadow: 'var(--v3-sh-pop)' }}
+        >
+          <div className="v3-cluster" style={{ flexWrap: 'nowrap' }}>
+            <input
+              type="text"
+              value={aiReplyInput}
+              onChange={(e) => setAiReplyInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) handleAiSearch(aiReplyInput, true); }}
+              placeholder="שאלת המשך"
+              aria-label="שאלת המשך ל-AI"
+              className="v3-input"
+              style={{ flex: 1, minWidth: 0 }}
+              disabled={aiLoading}
+            />
+            <IconBtn variant="primary" icon="send" label="שליחה" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} />
+            <IconBtn variant="quiet" icon="x" label="סגירת השיחה" onClick={clearAiChat} />
+          </div>
         </div>
       )}
 
       {/* Global Search Results Area */}
       {searchResults && aiMessages.length === 0 && (
-        <div>
-          <div className="section-title">תוצאות חיפוש ל: &quot;{searchInput}&quot;</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+        <div className="v3-stack">
+          <h2 className="v3-h2">תוצאות עבור &quot;{searchInput}&quot;</h2>
 
-            {/* Customers */}
-            <div className="card card-pad">
-              <div className="card-title-row" style={{ color: 'var(--info)', marginBottom: '12px', fontWeight: 800 }}>
-                <svg className="icon" style={{ color: 'var(--info)' }}><use href="#i-user" /></svg>
-                <span>לקוחות ({searchResults.customers?.length || 0})</span>
-              </div>
-              {searchResults.customers?.length > 0 ? (
-                <>
-                  <div>
-                    {searchResults.customers.slice(0, showMoreCustomers ? undefined : 5).map(c => (
-                      <Link key={c.id} href={`/customers/${c.id}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700 }}>{c.firstName} {c.lastName}</div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>{c.phone1} • {c.city}</div>
-                        </div>
-                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
-                      </Link>
-                    ))}
-                  </div>
-                  {searchResults.customers.length > 5 && (
-                    <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowMoreCustomers(!showMoreCustomers)}>
-                      {showMoreCustomers ? 'הצג פחות' : 'הצג עוד'}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="empty-state" style={{ padding: '24px' }}>
-                  <svg className="icon"><use href="#i-search" /></svg>
-                  <h4>לא נמצאו לקוחות</h4>
+          {/* Customers */}
+          <Card icon="user" title={<>לקוחות <bdi>({searchResults.customers?.length || 0})</bdi></>}>
+            {searchResults.customers?.length > 0 ? (
+              <div className="v3-stack">
+                <div className="v3-list">
+                  {searchResults.customers.slice(0, showMoreCustomers ? undefined : 5).map(c => (
+                    <Link key={c.id} href={`/customers/${c.id}`} className="v3-link">
+                      <span className="v3-link__ic"><Icon name="user" /></span>
+                      <span className="v3-stack" style={{ flex: 1, gap: 0 }}>
+                        <b>{c.firstName} {c.lastName}</b>
+                        <span className="v3-faint v3-text-sm"><bdi>{c.phone1}</bdi></span>
+                        <span className="v3-faint v3-text-sm">{c.city}</span>
+                      </span>
+                      <Icon name="next" size="sm" />
+                    </Link>
+                  ))}
                 </div>
-              )}
-            </div>
-
-            {/* Orders */}
-            <div className="card card-pad">
-              <div className="card-title-row" style={{ color: 'var(--success)', marginBottom: '12px', fontWeight: 800 }}>
-                <svg className="icon" style={{ color: 'var(--success)' }}><use href="#i-bag" /></svg>
-                <span>הזמנות ({searchResults.orders?.length || 0})</span>
+                {searchResults.customers.length > 5 && (
+                  <Btn block onClick={() => setShowMoreCustomers(!showMoreCustomers)}>
+                    {showMoreCustomers ? 'פחות' : 'עוד'}
+                  </Btn>
+                )}
               </div>
-              {searchResults.orders?.length > 0 ? (
-                <>
-                  <div>
-                    {searchResults.orders.slice(0, showMoreOrders ? undefined : 5).map(o => (
-                      <Link key={o.id} href={`/orders/${o.orderId}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {o.firstName} {o.lastName}
-                            {renderStatusIcon(o.status)}
-                          </div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)', marginTop: '2px' }}>
-                            קוד: <strong>#{o.orderId}</strong> | אירוע: <strong>{o.eventDateHebrew || '-'}</strong>
-                          </div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)', marginTop: '1px' }}>
-                            סה&quot;כ: <strong>₪{o.totalAmount || 0}</strong> | פריטים: <strong>{o.itemCount || 0}</strong>
-                          </div>
-                        </div>
-                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
-                      </Link>
-                    ))}
-                  </div>
-                  {searchResults.orders.length > 5 && (
-                    <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowMoreOrders(!showMoreOrders)}>
-                      {showMoreOrders ? 'הצג פחות' : 'הצג עוד'}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="empty-state" style={{ padding: '24px' }}>
-                  <svg className="icon"><use href="#i-search" /></svg>
-                  <h4>לא נמצאו הזמנות</h4>
-                </div>
-              )}
-            </div>
+            ) : (
+              <Empty icon="search" title="אין לקוחות תואמים" />
+            )}
+          </Card>
 
-            {/* Rentals */}
-            <div className="card card-pad">
-              <div className="card-title-row" style={{ color: 'var(--warning)', marginBottom: '12px', fontWeight: 800 }}>
-                <svg className="icon" style={{ color: 'var(--warning)' }}><use href="#i-tag" /></svg>
-                <span>השכרות ({searchResults.rentals?.length || 0})</span>
+          {/* Orders */}
+          <Card icon="bag" title={<>הזמנות <bdi>({searchResults.orders?.length || 0})</bdi></>}>
+            {searchResults.orders?.length > 0 ? (
+              <div className="v3-stack">
+                <div className="v3-list">
+                  {searchResults.orders.slice(0, showMoreOrders ? undefined : 5).map(o => (
+                    <Link key={o.id} href={`/orders/${o.orderId}`} className="v3-link">
+                      <span className="v3-link__ic"><Icon name="bag" /></span>
+                      <span className="v3-stack" style={{ flex: 1, gap: 0 }}>
+                        <b className="v3-cluster">
+                          {o.firstName} {o.lastName}
+                          {renderStatusIcon(o.status)}
+                        </b>
+                        <span className="v3-faint v3-text-sm">הזמנה <bdi>#{o.orderId}</bdi></span>
+                        <span className="v3-faint v3-text-sm">אירוע: <bdi>{o.eventDateHebrew || '-'}</bdi></span>
+                        <span className="v3-faint v3-text-sm">סכום: <bdi>₪{o.totalAmount || 0}</bdi></span>
+                        <span className="v3-faint v3-text-sm">פריטים: <bdi>{o.itemCount || 0}</bdi></span>
+                      </span>
+                      <Icon name="next" size="sm" />
+                    </Link>
+                  ))}
+                </div>
+                {searchResults.orders.length > 5 && (
+                  <Btn block onClick={() => setShowMoreOrders(!showMoreOrders)}>
+                    {showMoreOrders ? 'פחות' : 'עוד'}
+                  </Btn>
+                )}
               </div>
-              {searchResults.rentals?.length > 0 ? (
-                <>
-                  <div>
-                    {searchResults.rentals.slice(0, showMoreRentals ? undefined : 5).map(r => (
-                      <Link key={r.id} href={`/orders/${r.orderId}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700 }}>{r.catalogName || r.description}</div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
-                        </div>
-                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
-                      </Link>
-                    ))}
-                  </div>
-                  {searchResults.rentals.length > 5 && (
-                    <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowMoreRentals(!showMoreRentals)}>
-                      {showMoreRentals ? 'הצג פחות' : 'הצג עוד'}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="empty-state" style={{ padding: '24px' }}>
-                  <svg className="icon"><use href="#i-search" /></svg>
-                  <h4>לא נמצאו השכרות</h4>
-                </div>
-              )}
-            </div>
+            ) : (
+              <Empty icon="search" title="אין הזמנות תואמות" />
+            )}
+          </Card>
 
-          </div>
+          {/* Rentals */}
+          <Card icon="tag" title={<>השכרות <bdi>({searchResults.rentals?.length || 0})</bdi></>}>
+            {searchResults.rentals?.length > 0 ? (
+              <div className="v3-stack">
+                <div className="v3-list">
+                  {searchResults.rentals.slice(0, showMoreRentals ? undefined : 5).map(r => (
+                    <Link key={r.id} href={`/orders/${r.orderId}`} className="v3-link">
+                      <span className="v3-link__ic"><Icon name="tag" /></span>
+                      <span className="v3-stack" style={{ flex: 1, gap: 0 }}>
+                        <b>{r.catalogName || r.description}</b>
+                        <span className="v3-faint v3-text-sm">ברקוד: <bdi>{r.barcode || r.catalogBarcode}</bdi></span>
+                        <span className="v3-faint v3-text-sm">מידה: <bdi>{r.sizeText}</bdi></span>
+                      </span>
+                      <Icon name="next" size="sm" />
+                    </Link>
+                  ))}
+                </div>
+                {searchResults.rentals.length > 5 && (
+                  <Btn block onClick={() => setShowMoreRentals(!showMoreRentals)}>
+                    {showMoreRentals ? 'פחות' : 'עוד'}
+                  </Btn>
+                )}
+              </div>
+            ) : (
+              <Empty icon="search" title="אין השכרות תואמות" />
+            )}
+          </Card>
         </div>
       )}
 
       {/* Footer / Privacy Policy Link */}
-      <div style={{ marginTop: 'auto', paddingTop: '26px', textAlign: 'center' }}>
-        <button type="button" className="btn btn-ghost btn-sm" style={{ textDecoration: 'underline', color: 'var(--text-3)' }} onClick={() => setShowPrivacyPolicy(true)}>
-          מדיניות פרטיות
-        </button>
+      <div style={{ marginTop: 'auto', paddingTop: 'var(--v3-sp-5)', textAlign: 'center' }}>
+        <Btn variant="quiet" size="sm" icon="shield" onClick={() => setShowPrivacyPolicy(true)}>
+          פרטיות
+        </Btn>
       </div>
 
       {/* Privacy Policy Modal */}
-      {showPrivacyPolicy && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowPrivacyPolicy(false)}>
-          <div className="modal" style={{ maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>מדיניות פרטיות</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowPrivacyPolicy(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body" style={{ overflowY: 'auto' }}>
-              <p>טקסט זמני למדיניות פרטיות.</p>
-              <br />
-              <p>כאן יפורטו התנאים הנוגעים לאיסוף ושמירת מידע של משתמשים ולקוחות.</p>
-              <p><strong>1. איסוף נתונים:</strong> המערכת שומרת פרטים אישיים בסיסיים כגון שם, טלפון וכתובת לצורך יצירת קשר בלבד ולמען תפעול תקין של הגמ&quot;ח.</p>
-              <p><strong>2. אבטחת מידע:</strong> אנו עושים מאמצים לשמור על בטיחות המידע ולא נעביר אותו לצד שלישי ללא אישור מפורש.</p>
-              <br />
-              <p style={{ color: 'var(--text-3)', fontSize: '12.5px', fontStyle: 'italic' }}>* ניתן לערוך טקסט זה בהמשך בקוד המערכת.</p>
-            </div>
-            <div className="modal-foot" style={{ justifyContent: 'center' }}>
-              <button type="button" className="btn btn-primary" onClick={() => setShowPrivacyPolicy(false)}>הבנתי</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <Dialog
+        open={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+        variant="sheet"
+        mode="light"
+        icon="shield"
+        title="פרטיות"
+        actions={<Btn variant="primary" onClick={() => setShowPrivacyPolicy(false)}>הבנתי</Btn>}
+      >
+        <div className="v3-stack">
+          <p>המערכת שומרת פרטי קשר בסיסיים של לקוחות ועובדים: שם, טלפון וכתובת. המידע משמש לתפעול הגמ&quot;ח בלבד.</p>
+          <p>אנחנו שומרים על המידע, ולא מעבירים אותו לגורם חיצוני בלי אישור מפורש.</p>
+        </div>
+      </Dialog>
 
       {openSettingKey && (
         <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
       )}
 
-    </div>
+    </V3Page>
   );
 }
