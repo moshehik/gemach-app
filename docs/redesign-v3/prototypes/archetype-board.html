@@ -752,6 +752,22 @@ details.legend-wrap summary::-webkit-details-marker{display:none}
 @media (max-width:767px){ .cal-dow .short{display:inline} }
 .cal:not(.week) .day.today{padding-top:22px}
 
+/* REVIEW-board-1 M-1: כותרת היום לא מתנגשת במונה/כפתורים (1024–1439, עם הדפסה), והתגית לא גולשת מהכרטיס */
+.d-head{flex-wrap:wrap}
+.d-num{flex:none}
+.d-tools{flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.oc .chip{max-width:100%}
+.oc .chip .ct{min-width:0;overflow-wrap:anywhere}
+@media (max-width:1439px){ .d-count .w{display:none} }
+/* REVIEW-board-1 M-4: יעדי מגע ≥ 44 (§ב.5, §ח-17) */
+.d-tools .ibtn{width:var(--v3-tap);height:var(--v3-tap);margin-block:-4px}
+.search .ibtn.quiet{width:var(--v3-tap);height:var(--v3-tap)}
+.more-btn{min-height:var(--v3-tap)}
+/* REVIEW-board-1 m-12: placeholder קריא גם במצב חכם (רקע gold-100) */
+.search input::placeholder{color:var(--v3-ink-3)}
+/* REVIEW-board-1 M-2: שדה שמולא אבל לא מסנן היום (תקלה ידועה) */
+.chip.noeff{background:var(--v3-surface);border:1.5px dashed var(--v3-gold-600);color:var(--v3-gold-800)}
+
 </style>
 </head>
 <body>
@@ -1041,7 +1057,7 @@ function openMenu(anchor, title, items){
   left = Math.max(8, Math.min(left, innerWidth - m.width - 8));
   menuEl.style.top = top + 'px'; menuEl.style.left = left + 'px';
   const btns = [...menuEl.querySelectorAll('.menu-it')];
-  btns.forEach((b, i) => b.onclick = () => { closeMenu(); items[i].run(); });
+  btns.forEach((b, i) => b.onclick = () => { closeMenu(true); items[i].run(); }); /* REVIEW-board-1 M-5: הפוקוס חוזר לכרטיס לפני פתיחת השכבה, כדי שהסגירה תחזיר אליו */
   menuEl.onkeydown = e => { const i = btns.indexOf(document.activeElement);
     if (e.key === 'ArrowDown'){ e.preventDefault(); (btns[i + 1] || btns[0]).focus(); }
     if (e.key === 'ArrowUp'){ e.preventDefault(); (btns[i - 1] || btns[btns.length - 1]).focus(); }
@@ -1125,16 +1141,18 @@ const GEM = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ז׳','ח׳','ט׳','י�
 const DOW = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 const MONTHS = [
   { name:'אלול', year:'תשפ״ו', days:29, start:[2026,7,14],
-    hol:{1:['ראש חודש אלול']}, par:{2:'שופטים',9:'כי תצא',16:'כי תבוא',23:'נצבים-וילך'} },
+    hol:{}, par:{2:'שופטים',9:'כי תצא',16:'כי תבוא',23:'נצבים-וילך'} },
+  /* REVIEW-board-1 m-1: כמו הסינון בקוד (לוח ישראל) — בלי ערב חג ובלי ראש חודש; בארץ שמיני עצרת בלבד.
+     quiet = ימים שבדמה אין בהם הזמנות (ערבי חג), לא מוצגים כתגית. */
   { name:'תשרי', year:'תשפ״ז', days:30, start:[2026,8,12],
-    hol:{1:['ראש השנה'],2:['ראש השנה'],3:['צום גדליה'],9:['ערב יום כיפור'],10:['יום כיפור'],14:['ערב סוכות'],15:['סוכות'],16:['חול המועד'],17:['חול המועד'],18:['חול המועד'],19:['חול המועד'],20:['חול המועד'],21:['הושענא רבה'],22:['שמיני עצרת','שמחת תורה'],30:['ראש חודש חשוון']},
-    par:{8:'האזינו',29:'בראשית'} },
+    hol:{1:['ראש השנה'],2:['ראש השנה'],3:['צום גדליה'],10:['יום כיפור'],15:['סוכות'],16:['חול המועד'],17:['חול המועד'],18:['חול המועד'],19:['חול המועד'],20:['חול המועד'],21:['הושענא רבה'],22:['שמיני עצרת']},
+    quiet:{9:1,14:1}, par:{8:'האזינו',29:'בראשית'} },
   { name:'חשוון', year:'תשפ״ז', days:29, start:[2026,9,12],
-    hol:{1:['ראש חודש חשוון']}, par:{6:'נח',13:'לך לך',20:'וירא',27:'חיי שרה'} },
+    hol:{}, par:{6:'נח',13:'לך לך',20:'וירא',27:'חיי שרה'} },
 ];
 const TODAY = new Date(2026, 8, 24); /* י״ג תשרי תשפ״ז */
 const DAYS = [];
-MONTHS.forEach((m, mi) => { for (let d = 1; d <= m.days; d++){ const g = new Date(m.start[0], m.start[1], m.start[2] + d - 1); DAYS.push({ mi, d, g, key:g.toDateString(), dow:g.getDay(), hol:m.hol[d] || [], par:g.getDay() === 6 ? (m.par[d] || '') : '' }); } });
+MONTHS.forEach((m, mi) => { for (let d = 1; d <= m.days; d++){ const g = new Date(m.start[0], m.start[1], m.start[2] + d - 1); DAYS.push({ mi, d, g, key:g.toDateString(), dow:g.getDay(), hol:m.hol[d] || [], quiet:!!(m.quiet && m.quiet[d]), par:g.getDay() === 6 ? (m.par[d] || '') : '' }); } });
 const dayIdx = g => DAYS.findIndex(x => x.key === g.toDateString());
 const TODAY_I = dayIdx(TODAY);
 const fmtG = g => `${g.getDate()}/${g.getMonth() + 1}`;
@@ -1151,7 +1169,7 @@ function buildOrders(){
   const r = rng(7); let id = 48100; ORDERS = [];
   DAYS.forEach((x, i) => {
     if (S.data === 'empty' && x.mi === 1) return;
-    const chag = x.hol.some(h => /ראש השנה|יום כיפור|^סוכות|שמיני|ערב|צום/.test(h));
+    const chag = x.quiet || x.hol.some(h => /ראש השנה|יום כיפור|^סוכות|שמיני|ערב|צום/.test(h));
     let n = x.dow === 6 || chag ? 0 : x.dow === 5 ? (r() < .35 ? 1 : 0) : Math.floor(r() * 4.2);
     if (S.data === 'busy' && x.mi === 1 && x.d === 24) n = 14;
     if (x.mi === 1 && x.d === 13) n = Math.max(n, 2);
@@ -1229,6 +1247,16 @@ function visibleOrders(){
 }
 function byDay(list){ const m = {}; list.forEach(o => (m[o.day] = m[o.day] || []).push(o)); return m; }
 const advCount = () => Object.values(S.adv).filter(Boolean).length;
+/* REVIEW-board-1 M-2: מתאריך/עד תאריך נשלחים לשרת אבל לא מסננים (טווח החודש גובר — I-67) */
+const NOEFF = ['from', 'to'];
+const advEffCount = () => Object.entries(S.adv).filter(([k, v]) => v && !NOEFF.includes(k)).length;
+const advNoEff = () => NOEFF.some(k => S.adv[k]);
+function advLiveText(){ const n = advEffCount();
+  return (n === 0 ? 'הלוח לא מסונן' : n === 1 ? 'שדה אחד מסנן את הלוח עכשיו' : `${n} שדות מסננים את הלוח עכשיו`) + (advNoEff() ? '. התאריכים לא משנים את הלוח (תקלה ידועה).' : ''); }
+/* REVIEW-board-1 m-2: "הזמנה אחת", לא "1 הזמנות". במסך צר המילה מוסתרת והמספר נשאר */
+const ordersWord = n => n === 1 ? 'הזמנה' : 'הזמנות';
+const ordersTxt = n => n === 1 ? 'הזמנה אחת' : `${n} הזמנות`;
+const countPill = n => `<span class="d-count" data-tip="${ordersTxt(n)}"><bdi>${n}</bdi><span class="w"> ${ordersWord(n)}</span></span>`;
 
 /* ---------- רינדור ---------- */
 function render(){
@@ -1280,15 +1308,16 @@ function toolbar(){
   </div>`;
 }
 function filtersOn(){
-  const f = []; if (S.search) f.push(`חיפוש: ${esc(S.search)}`);
+  const f = []; if (S.search) f.push(`<span class="chip info">חיפוש: ${esc(S.search)}</span>`);
   const L = { from:'מתאריך', to:'עד תאריך', orderId:'מספר הזמנה', item:'פריט', name:'שם', phone:'טלפון', city:'עיר' };
-  Object.entries(S.adv).forEach(([k, v]) => v && f.push(`${L[k]}: ${esc(v)}`));
+  Object.entries(S.adv).forEach(([k, v]) => { if (!v) return;
+    f.push(NOEFF.includes(k) ? `<span class="chip noeff" tabindex="0" data-tip="היום התאריך הזה לא משנה את ההזמנות שבלוח — הלוח תמיד מציג את החודש כולו (תקלה ידועה).">${L[k]}: ${esc(v)} · לא מסנן</span>` : `<span class="chip info">${L[k]}: ${esc(v)}</span>`); });
   if (!f.length) return '';
-  return `<div class="filters-on" role="status">${ic('filter','sm')}<span>מסונן:</span>${f.map(t => `<span class="chip info">${t}</span>`).join('')}<button type="button" class="btn sm quiet" data-act="clearAll">${ic('x','sm')}ניקוי הסינון</button></div>`;
+  return `<div class="filters-on" role="status">${ic('filter','sm')}<span>מסונן:</span>${f.join('')}<button type="button" class="btn sm quiet" data-act="clearAll">${ic('x','sm')}ניקוי הסינון</button></div>`;
 }
 function aiBanner(){
   if (!S.aiMode) return '';
-  return `<div class="ai-banner" role="status">${ic('star','lg')}<div class="b-t"><b>מוצגות תוצאות החיפוש החכם</b><span>מעבר חודש לא טוען הזמנות עד שמנקים את החיפוש. היום החיפוש החכם בלוח לא מחזיר הזמנות עם תאריך — ראו שאלה BDQ-B3.</span></div><button type="button" class="btn sm" data-act="clearSearch">${ic('x','sm')}ניקוי</button></div>`;
+  return `<div class="ai-banner" role="status">${ic('star','lg')}<div class="b-t"><b>מוצגות תוצאות החיפוש החכם</b><span>מעבר חודש לא טוען הזמנות עד שמנקים את החיפוש. כרגע החיפוש החכם בלוח לא מחזיר הזמנות עם תאריך אירוע, ולכן הלוח ריק.</span></div><button type="button" class="btn sm" data-act="clearSearch">${ic('x','sm')}ניקוי</button></div>`;
 }
 function legend(){
   return `<section class="legend ${S.legendOpen ? '' : 'is-closed'}" aria-labelledby="lgT"><button type="button" class="legend-toggle" data-act="legend" aria-expanded="${S.legendOpen}">${ic('info')}<span>מקרא: מה אומרים הצבעים והתגיות</span>${ic('down')}</button><h2 id="lgT">מקרא${tip('הפס בצד כל הזמנה והתגית מסמנים את מצבה. הסדר קובע: הזמנה שהוחזרה לא תסומן "לא שולם" גם אם נשאר חוב.')}</h2>
@@ -1301,7 +1330,7 @@ function body(map, list){
   if (S.load === 'loading') return `<div class="state-box" role="status" aria-label="טוענים את הלוח"><div class="sk-cal">${Array.from({ length:14 }, () => '<div class="sk"></div>').join('')}</div><div class="empty" style="padding-top:0">${ic('loader','lg','loop')}<b>טוענים את ההזמנות של החודש…</b></div></div>`;
   if (S.load === 'error') return `<div class="state-box empty" role="alert"><span class="e-ic">${ic('cloud-off','xl')}</span><b>הלוח לא נטען</b><span>אין חיבור לשרת כרגע. ההזמנות לא נמחקו.</span><button type="button" class="btn primary" data-act="retry">${ic('refresh','','spin')}לנסות שוב</button></div>`;
   const inScope = S.view === 'week' ? list.filter(o => o.day >= S.weekStart && o.day < S.weekStart + 7) : list.filter(o => DAYS[o.day].mi === S.mi);
-  const note = !inScope.length && !S.aiMode ? `<div class="hnote" style="margin-bottom:var(--v3-sp-4)">${ic('info')}<span>${S.search || advCount() ? 'אין הזמנות שמתאימות לסינון בתקופה הזו.' : 'אין הזמנות בתקופה הזו.'}${S.search || advCount() ? ' אפשר לנקות את הסינון או לחפש בכל החודשים.' : ''}</span></div>` : '';
+  const note = !inScope.length && !S.aiMode ? `<div class="hnote" style="margin-bottom:var(--v3-sp-4)">${ic('info')}<span>${S.search || advEffCount() ? 'אין הזמנות שמתאימות לסינון בתקופה הזו.' : 'אין הזמנות בתקופה הזו.'}${S.search || advEffCount() ? ' אפשר לנקות את הסינון או לחפש בכל החודשים.' : ''}</span></div>` : '';
   if (S.view === 'list') return note + agenda(map);
   return note + grid(map);
 }
@@ -1321,14 +1350,14 @@ function dayCell(x, i, orders, clamp){
   const print = cfg.flag('enable_batch_print_prep') && orders.length > 0;
   const shown = clamp ? orders.slice(0, 3) : orders;
   const tags = [x.par && `<span class="chip">${ic('file','sm')}${x.par}</span>`, ...x.hol.map((h, k) => `<span class="chip ${k === 0 ? 'hol-main' : ''}">${h}</span>`)].filter(Boolean).join('');
-  const aria = `${DOW[x.dow]} ${hebLabel(x)}, ${fmtGFull(x.g)}${today ? ', היום' : ''}${orders.length ? `, ${orders.length} הזמנות` : ''}${late ? ', יש איחור' : ''}`;
+  const aria = `${DOW[x.dow]} ${hebLabel(x)}, ${fmtGFull(x.g)}${today ? ', היום' : ''}${orders.length ? `, ${ordersTxt(orders.length)}` : ''}${late ? ', יש איחור' : ''}`;
   return `<div class="day ${past ? 'past' : ''} ${today ? 'today' : ''} ${x.dow === 6 ? 'shab' : ''} ${late ? 'late' : ''} ${S.hl === i ? 'hl' : ''}" role="gridcell" aria-label="${aria}">
     ${today ? '<span class="today-pin" aria-hidden="true">היום</span>' : ''}
     <button type="button" class="day-tap" data-day="${i}" aria-label="${aria} — פתיחת היום"></button>
     <div class="d-head"><span class="d-num"><b>${GEM[x.d - 1]}</b><small><bdi dir="ltr">${fmtG(x.g)}</bdi></small></span>
       ${orders.length ? `<span class="day-dot" aria-hidden="true">${orders.length}</span>` : ''}
       <span class="d-tools">${late ? `<span class="late-flag" data-tip="יש כאן הזמנה באיחור">${ic('late','sm')}<span class="sr-only">יש הזמנה באיחור</span></span>` : ''}
-      ${orders.length ? `<span class="d-count"><bdi>${orders.length}</bdi> הזמנות</span>` : ''}
+      ${orders.length ? countPill(orders.length) : ''}
       ${orders.length > 2 ? `<button type="button" class="ibtn quiet" data-day="${i}" aria-label="פתיחת כל ההזמנות של היום" data-tip="כל ההזמנות של היום">${ic('expand','sm','pop')}</button>` : ''}
       ${print ? `<button type="button" class="ibtn quiet" data-printday="${i}" aria-label="הדפסת ההזמנות של היום" data-tip="הדפסת ההזמנות של היום">${ic('printer','sm','pop')}</button>` : ''}</span></div>
     ${tags ? `<div class="d-tags">${tags}</div>` : ''}
@@ -1361,7 +1390,7 @@ function agenda(map){
       <div class="ag-h"><div class="ag-date"><b>יום ${DOW[x.dow]}, ${GEM[x.d - 1]} ${MONTHS[x.mi].name}</b><small><bdi dir="ltr">${fmtGFull(x.g)}</bdi>${x.par ? ` · פרשת ${x.par}` : ''}</small></div>
         ${x.hol.map(h => `<span class="chip">${h}</span>`).join('')}
         ${late ? `<span class="chip late">${ic('late')}יש איחור</span>` : ''}
-        ${os.length ? `<span class="d-count"><bdi>${os.length}</bdi> הזמנות</span>` : ''}
+        ${os.length ? countPill(os.length) : ''}
         ${print ? `<button type="button" class="ibtn quiet" data-printday="${i}" aria-label="הדפסת ההזמנות של היום" data-tip="הדפסת ההזמנות של היום">${ic('printer','sm','pop')}</button>` : ''}
         ${os.length > 2 ? `<button type="button" class="ibtn quiet" data-day="${i}" aria-label="פתיחת היום בחלון עם סינון" data-tip="חלון היום, עם סינון">${ic('expand','sm','pop')}</button>` : ''}</div>
       ${os.length ? `<div class="ag-list">${os.map(o => orderCard(o, true)).join('')}</div>` : `<div class="ag-empty">${ic('info','sm')}אין הזמנות היום.</div>`}</section>`;
@@ -1416,7 +1445,7 @@ function dayDlg(i){
   const x = DAYS[i]; let f = '';
   const draw = d => { const os = (byDay(visibleOrders())[i] || []).filter(o => !f || o.customerName.toLowerCase().includes(f.toLowerCase()) || o.customerPhone.includes(f) || String(o.orderId).includes(f));
     d.querySelector('#dayList').innerHTML = os.length ? os.map(o => orderCard(o, true)).join('') : `<div class="empty">${ic('search','lg')}<b>אין הזמנה שמתאימה</b><span>אפשר לחפש לפי שם, טלפון או מספר הזמנה.</span></div>`;
-    d.querySelector('#dayCnt').innerHTML = `${num(os.length)} הזמנות`; };
+    d.querySelector('#dayCnt').innerHTML = os.length === 1 ? 'הזמנה אחת' : `${num(os.length)} הזמנות`; };
   const print = cfg.flag('enable_batch_print_prep');
   openLayer({ type:'form', size:'m', html:`${dlgHead('cal', `יום ${DOW[x.dow]}, ${GEM[x.d - 1]} ${MONTHS[x.mi].name}`, `<bdi dir="ltr">${fmtGFull(x.g)}</bdi> · <span id="dayCnt"></span>`, 'סגירה')}
     <div class="dlg-b"><div class="search" style="margin-bottom:var(--v3-sp-4)">${ic('search')}<input id="dayQ" aria-label="סינון ההזמנות של היום" placeholder="שם, טלפון או מספר הזמנה" data-autofocus><button type="button" class="ibtn quiet" data-clr aria-label="ניקוי הסינון" hidden>${ic('x','sm')}</button></div>
@@ -1451,19 +1480,19 @@ function advDlg(){
   let tab = 'basic';
   const F = { basic:[['from','מתאריך אירוע','למשל: א׳ תשרי','cal'],['to','עד תאריך אירוע','למשל: ל׳ תשרי','cal'],['orderId','מספר הזמנה','למשל 48123'],['item','ברקוד או פרטי פריט','ברקוד או תיאור']],
     details:[['name','שם הלקוח','שם פרטי או משפחה'],['phone','טלפון','מספר טלפון'],['city','עיר','עיר מגורים']] };
-  const drawF = d => { d.querySelector('#advF').innerHTML = F[tab].map(([k, l, p, i]) => `<div class="field"><label for="adv-${k}">${l}</label>${i ? `<div class="pw"><input class="input" id="adv-${k}" data-k="${k}" placeholder="${p}" value="${esc(S.adv[k])}"><button type="button" class="ibtn quiet" aria-label="בורר תאריך עברי" data-tip="בורר תאריך עברי (רכיב משותף)">${ic('cal')}</button></div>` : `<input class="input" id="adv-${k}" data-k="${k}" placeholder="${p}" value="${esc(S.adv[k])}" ${k === 'orderId' || k === 'phone' ? 'dir="ltr" inputmode="numeric"' : ''}>`}</div>`).join('');
-    d.querySelectorAll('[data-k]').forEach(x => x.oninput = () => { S.adv[x.dataset.k] = x.value.trim(); render(); d.querySelector('#advLive').textContent = advCount() ? `${advCount()} שדות מסננים את הלוח עכשיו` : 'הלוח לא מסונן'; }); };
+  const drawF = d => { d.querySelector('#advF').innerHTML = F[tab].map(([k, l, p, i]) => `<div class="field"><label for="adv-${k}">${l}</label>${i ? `<div class="pw"><input class="input" id="adv-${k}" data-k="${k}" placeholder="${p}" value="${esc(S.adv[k])}" aria-describedby="adv-${k}-h"><button type="button" class="ibtn quiet" aria-label="בורר תאריך עברי" data-tip="בורר תאריך עברי (רכיב משותף)">${ic('cal')}</button></div><span class="fhint" id="adv-${k}-h">היום לא משנה את הלוח (תקלה ידועה)</span>` : `<input class="input" id="adv-${k}" data-k="${k}" placeholder="${p}" value="${esc(S.adv[k])}" ${k === 'orderId' || k === 'phone' ? 'dir="ltr" inputmode="numeric"' : ''}>`}</div>`).join('');
+    d.querySelectorAll('[data-k]').forEach(x => x.oninput = () => { S.adv[x.dataset.k] = x.value.trim(); render(); d.querySelector('#advLive').textContent = advLiveText(); }); };
   openLayer({ type:'form', size:'m', html:`${dlgHead('filter', 'חיפוש מתקדם', 'הלוח מתעדכן תוך כדי הקלדה.', 'סגירה')}
     <div class="dlg-b"><div class="seg" role="tablist" aria-label="קבוצות שדות" style="margin-bottom:var(--v3-sp-4)"><button type="button" role="tab" aria-selected="true" data-tab="basic">${ic('cal','sm')}תאריך והזמנה</button><button type="button" role="tab" aria-selected="false" data-tab="details">${ic('user','sm')}פרטי לקוח</button></div>
     <div class="form-grid" id="advF"></div>
     ${S.aiAvail ? `<label class="switch" style="margin-top:var(--v3-sp-4)"><input type="checkbox" id="advAi" ${S.advAi ? 'checked' : ''}><span>חיפוש חכם לפי השדות שמולאו</span>${tip('במקום לסנן ישירות, המערכת מנסחת שאלה מהשדות ומחפשת לפיה.')}</label>` : ''}
-    <p class="fhint" id="advLive" role="status">${advCount() ? `${advCount()} שדות מסננים את הלוח עכשיו` : 'הלוח לא מסונן'}</p></div>
+    <p class="fhint" id="advLive" role="status">${advLiveText()}</p></div>
     <div class="dlg-f"><button type="button" class="btn primary" data-apply>${ic('check','','pop')}סיום</button><button type="button" class="btn quiet" data-clear>${ic('x','sm')}ניקוי כל השדות</button></div>`,
     onMount(d, layer){ drawF(d);
       d.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; d.querySelectorAll('[data-tab]').forEach(x => x.setAttribute('aria-selected', x === b)); drawF(d); });
       const sw = d.querySelector('#advAi'); if (sw) sw.onchange = () => { S.advAi = sw.checked; };
       d.querySelectorAll('[data-x]').forEach(b => b.onclick = () => closeLayer(layer, null));
-      d.querySelector('[data-clear]').onclick = () => { Object.keys(S.adv).forEach(k => S.adv[k] = ''); drawF(d); render(); d.querySelector('#advLive').textContent = 'הלוח לא מסונן'; };
+      d.querySelector('[data-clear]').onclick = () => { Object.keys(S.adv).forEach(k => S.adv[k] = ''); drawF(d); render(); d.querySelector('#advLive').textContent = advLiveText(); };
       d.querySelector('[data-apply]').onclick = () => { closeLayer(layer, 'x'); if (S.advAi && advCount()) runAi('הזמנות לפי השדות שמולאו'); };
     } });
 }

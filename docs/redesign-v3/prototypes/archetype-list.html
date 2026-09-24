@@ -1021,6 +1021,8 @@ function makeOrders(kind, long){
     const first = long && k % 4 === 1 ? `${pick(FIRST)} ${LONGNAME}` : pick(FIRST);
     const o = { orderId, legacyId: k > 25 ? 90000 + k : null, customerName:`${first} ${pick(LAST)}`, customerPhone: rnd() < .92 ? `05${Math.floor(rnd()*9)}${String(Math.floor(rnd()*1e7)).padStart(7,'0')}` : '', customerEmail: rnd() < .6 ? `user${k}@example.com` : '', customerCity: pick(CITY), hasZeout: rnd() < .7,
       eventDate, totalAmount: total, totalPaid: paid, customSpacing: rnd() < .06 ? 1 + Math.floor(rnd() * 3) : null, status:null, isDeleted: rnd() < .05, items, orderDate: addDays(TODAY, -Math.round(rnd() * 60) - (offset < 0 ? -offset : 0)) };
+    /* REVIEW-list-1 M-3: מחיקה מהאפליקציה מוחקת גם את הפריטים (DELETE /api/orders/[id]); חלק מהמחוקות "מיבוא Access" נשארו עם פריטים חיים */
+    if (o.isDeleted && k % 3 !== 0) o.items.forEach(i => { i.isDeleted = true; });
     out.push(o);
   }
   if (out.length){
@@ -1066,7 +1068,13 @@ function flagOf(o, drafts){
   if (isUnpaid(o)) return 'debt';
   return '';
 }
-const stat = o => calculateOrderStatus(o, { draftsAsDeleted: draftsAsDeleted() });
+/* REVIEW-list-1 M-3: תשובת GET /api/orders לא כוללת Order.isDeleted — הסטטוס מחושב בדיוק ממה שהתשובה מחזירה */
+const payload = o => { const { isDeleted, hasZeout, ...rest } = o; return rest; };
+const stat = o => calculateOrderStatus(payload(o), { draftsAsDeleted: draftsAsDeleted() });
+/* מחיקה מוסתרת רק כשהשורה נמחקה כבר מהאפליקציה (כל הפריטים מחוקים) בלשונית "מחוקות" — נגזר מהתשובה (הצהרה LQ-4) */
+const canDelete = o => !(S.tab === 'deleted' && o.items.length > 0 && valid(o).length === 0);
+/* REVIEW-list-1 M-1: בלשונית "לא שולם" השרת לא בוחר תשלומים/חיובים → totalPaid תמיד 0 (I-86). לא מציגים "שולם" ומצב תשלום שם */
+const unpaidView = () => S.tab === 'unpaid' && !S.ai;
 const pay = o => calculatePaymentStatus(o.totalAmount || 0, o.totalPaid || 0);
 const models = o => [...new Set(valid(o).map(i => i.dressName))];
 
@@ -1104,12 +1112,14 @@ function query(){
   else r.sort((x, y) => { const a1 = key(x), b1 = key(y); if (a1 == null && b1 == null) return 0; if (a1 == null) return 1; if (b1 == null) return -1; return (typeof a1 === 'string' ? a1.localeCompare(b1, 'he') : a1 - b1) * dir; });
   const total = r.length, pages = Math.max(1, Math.ceil(total / LIMIT));
   let rows = r.slice((S.page - 1) * LIMIT, S.page * LIMIT);
+  if (t === 'unpaid') rows = rows.map(o => ({ ...o, totalPaid:0 })); /* כמו התשובה האמיתית בלשונית הזו (I-86) */
   rows = [...rows].sort((x, y) => { const px = (pendingLeft(x) ?? -1) > 0, py = (pendingLeft(y) ?? -1) > 0; return px === py ? 0 : px ? -1 : 1; }); /* LI-16 */
   return { rows, total, pages };
 }
 
 /* ===== רינדור ===== */
-const SORTS = [['eventDate','תאריך אירוע'],['orderId','מספר הזמנה'],['customerName','שם פרטי של הלקוח'],['totalAmount','סכום לחיוב'],['totalPaid','סכום ששולם'],['status','סטטוס שמור']];
+/* REVIEW-list-1 M-2: "סכום ששולם" הוסר — אין עמודת totalPaid ב-Order, ומיון לפיה מחזיר 500 מהשרת (I-87). הצהרה LQ-2 */
+const SORTS = [['eventDate','תאריך אירוע'],['orderId','מספר הזמנה'],['customerName','שם פרטי של הלקוח'],['totalAmount','סכום לחיוב שמור'],['status','סטטוס שמור']];
 function renderTools(){
   const advCount = activePills().filter(p => !p.def && p.k !== 'search').length;
   $('#phTools').innerHTML = `
@@ -1166,15 +1176,15 @@ function expanded(o, drafts){
       ${row('check','הוחזרו', num(v.filter(i => i.isReturned).length))}
       ${hasSpacing(o) ? row('gap','ציפוף ימים מיוחד', o.customSpacing === 1 ? 'יום אחד' : `${num(o.customSpacing)} ימים`) : ''}</div></div>
     <div class="xcard"><h3>${ic('wallet')}תשלום</h3><div class="rows">
-      ${row('receipt','לחיוב', money(o.totalAmount))}
-      ${row('coin','שולם', money(o.totalPaid))}
-      ${row('wallet', bal > 0 ? 'יתרת חוב' : bal < 0 ? 'יתרת זכות' : 'יתרה', bal === 0 ? 'מאוזן' : money(Math.abs(bal)), bal > 0 ? 'bal-debt' : bal < 0 ? 'bal-credit' : '')}
-      <div class="row">${ic('flag')}<span class="lbl">מצב</span><span class="sub">${chip(ORDER_CHIP, stat(o))}${chip(PAY_CHIP, pay(o))}</span></div></div></div>
+      ${row('receipt', label('order_totalAmount', 'לחיוב'), money(o.totalAmount))}
+      ${unpaidView() ? `<div class="row">${ic('coin')}<span class="lbl">שולם${tip('בלשונית "לא שולם" הרשימה לא מקבלת את התשלומים מהשרת. הסכום ששולם מופיע בכרטיס ההזמנה.')}</span>${missing('לא מוצג בלשונית הזו')}</div>` : `${row('coin','שולם', money(o.totalPaid))}
+      ${row('wallet', bal > 0 ? 'יתרת חוב' : bal < 0 ? 'יתרת זכות' : 'יתרה', bal === 0 ? 'מאוזן' : money(Math.abs(bal)), bal > 0 ? 'bal-debt' : bal < 0 ? 'bal-credit' : '')}`}
+      <div class="row">${ic('flag')}<span class="lbl">מצב</span><span class="sub">${chip(ORDER_CHIP, stat(o))}${unpaidView() ? '' : chip(PAY_CHIP, pay(o))}</span></div></div></div>
     ${d ? `<div class="xcard draft"><h3>${ic('edit')}שינויים שלא נשמרו</h3><p style="margin:0" class="cmeta">נשמרו בדפדפן הזה לפני ${Math.round((Date.now() - d.savedAt) / 60000) >= 60 ? `${num(Math.round((Date.now() - d.savedAt) / 3600000))} שעות` : `${num(Math.round((Date.now() - d.savedAt) / 60000))} דקות`}</p><ul>${d.summary.map(x => `<li>${esc(x)}</li>`).join('')}</ul><p class="fhint" style="margin:8px 0 0">פותחים את ההזמנה כדי לשחזר או למחוק אותם.</p></div>` : ''}
     <div class="xacts">
       <a href="#" class="btn primary" data-open="${o.orderId}">${ic('open','','nudge')}פתיחת ההזמנה</a>
       <button type="button" class="btn" data-rental="${o.orderId}">${ic('truck','','nudge')}השכרה או החזרה</button>
-      ${o.isDeleted ? '' : `<button type="button" class="btn quiet" data-del="${o.orderId}">${ic('trash','','wig')}מחיקת ההזמנה</button>`}
+      ${!canDelete(o) ? '' : `<button type="button" class="btn quiet" data-del="${o.orderId}">${ic('trash','','wig')}מחיקת ההזמנה</button>`}
     </div></div>`;
 }
 function thSort(k, l){
@@ -1194,7 +1204,7 @@ function renderList(){
   $('#listbar').innerHTML = S.load !== 'ok' ? '' : `<div class="lb-info">${total ? `מוצגות <bdi>${num((S.page - 1) * LIMIT + 1)}–${num((S.page - 1) * LIMIT + rows.length)}</bdi> מתוך ${num(total)}` : ''}</div>
     <div class="sortctl"><label for="sortSel">מיון</label><select id="sortSel" ${S.ai || S.tab === 'unpaid' ? 'disabled' : ''}>${SORTS.map(([k, l]) => `<option value="${k}" ${S.sort === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button type="button" class="ibtn" data-act="flip" ${S.ai || S.tab === 'unpaid' ? 'disabled' : ''} aria-label="כיוון המיון: ${S.order === 'asc' ? 'עולה' : 'יורד'}. לחיצה הופכת" data-tip="היפוך כיוון המיון">${ic('sort','','spin')}</button>
-      ${S.tab === 'unpaid' ? tip('בלשונית "לא שולם" הרשימה תמיד לפי תאריך אירוע, מהמאוחר למוקדם.') : S.sort === 'status' ? tip('"סטטוס שמור" ממיין לפי שדה שמור בהזמנה, שכמעט תמיד ריק — לא לפי המצב שמוצג בתגיות.') : ''}</div>`;
+      ${S.tab === 'unpaid' ? tip('בלשונית "לא שולם" הרשימה תמיד לפי תאריך אירוע, מהמאוחר למוקדם. בלשונית הזו לא מוצגים הסכום ששולם ומצב התשלום — הם מופיעים בכרטיס ההזמנה.') : S.sort === 'status' ? tip('"סטטוס שמור" ממיין לפי שדה שמור בהזמנה, שכמעט תמיד ריק — לא לפי המצב שמוצג בתגיות.') : S.sort === 'totalAmount' ? tip('ממיין לפי הסכום השמור בהזמנה. בהזמנה בלי סכום שמור, הסכום שמוצג מחושב מהחיובים ולכן המיקום שלה עלול להיראות לא במקום.') : ''}</div>`;
   const area = $('#listArea');
   if (S.load === 'loading'){
     area.setAttribute('aria-busy', 'true');
@@ -1221,11 +1231,11 @@ function renderList(){
         <td><div class="cell"><button type="button" class="oid" data-open="${o.orderId}" aria-label="פתיחת הזמנה ${o.orderId}"><bdi>${o.orderId}</bdi></button>${tags(o, drafts)}</div></td>
         <td><div class="cell"><span class="cname">${esc(o.customerName)}</span><span class="cmeta">${models(o).length ? esc(models(o).slice(0, 2).join(' · ')) + (models(o).length > 2 ? ` ועוד ${models(o).length - 2}` : '') : '—'}</span></div></td>
         <td><div class="cell">${dateCell(o)}</div></td>
-        <td><div class="stack">${chip(ORDER_CHIP, stat(o))}${chip(PAY_CHIP, pay(o))}</div></td>
+        <td><div class="stack">${chip(ORDER_CHIP, stat(o))}${unpaidView() ? '' : chip(PAY_CHIP, pay(o))}</div></td>
         <td><div class="racts"><button type="button" class="ibtn" data-exp="${o.orderId}" aria-expanded="${open}" aria-controls="x-${o.orderId}" aria-label="${open ? 'הסתרת הפרטים' : 'הצגת הפרטים'} של הזמנה ${o.orderId}" data-tip="${open ? 'הסתרת הפרטים' : 'פרטים: לקוח, פריטים, תשלום'}">${ic('down')}</button><button type="button" class="ibtn" data-more="${o.orderId}" aria-haspopup="menu" aria-label="עוד פעולות להזמנה ${o.orderId}" data-tip="עוד פעולות">${ic('more','','pop')}</button></div></td></tr>
         ${open ? `<tr class="exp" id="x-${o.orderId}"><td colspan="5">${expanded(o, drafts)}</td></tr>` : ''}`; }).join('')}</tbody></table></div>${pager(total, pages)}</div>
     <ul class="clist" aria-label="רשימת הזמנות">${rows.map(o => { const open = S.open.has(o.orderId); return `<li class="ocard" data-flag="${flagOf(o, drafts)}">
-      <div class="oc-top"><div class="oc-main"><button type="button" class="oid" data-open="${o.orderId}" aria-label="פתיחת הזמנה ${o.orderId}">הזמנה <bdi>${o.orderId}</bdi>${ic('next','sm','nudge')}</button><span class="cname">${esc(o.customerName)}</span><span class="cmeta">${o.eventDate ? `אירוע: ${esc(hDate(o.eventDate) || gDate(o.eventDate))}` : 'בלי תאריך אירוע'}</span>${!cfg.flag('hide_gregorian_calendar') && o.eventDate ? `<span class="cmeta"><bdi dir="ltr">${gDate(o.eventDate)}</bdi></span>` : ''}</div><div class="stack">${chip(ORDER_CHIP, stat(o))}${chip(PAY_CHIP, pay(o))}</div></div>
+      <div class="oc-top"><div class="oc-main"><button type="button" class="oid" data-open="${o.orderId}" aria-label="פתיחת הזמנה ${o.orderId}">הזמנה <bdi>${o.orderId}</bdi>${ic('next','sm','nudge')}</button><span class="cname">${esc(o.customerName)}</span><span class="cmeta">${o.eventDate ? `אירוע: ${esc(hDate(o.eventDate) || gDate(o.eventDate))}` : 'בלי תאריך אירוע'}</span>${!cfg.flag('hide_gregorian_calendar') && o.eventDate ? `<span class="cmeta"><bdi dir="ltr">${gDate(o.eventDate)}</bdi></span>` : ''}</div><div class="stack">${chip(ORDER_CHIP, stat(o))}${unpaidView() ? '' : chip(PAY_CHIP, pay(o))}</div></div>
       ${tags(o, drafts) ? `<div style="padding:0 14px 10px">${tags(o, drafts)}</div>` : ''}
       <div class="oc-foot"><button type="button" class="btn quiet" data-exp="${o.orderId}" aria-expanded="${open}">${ic('down')}${open ? 'פחות פרטים' : 'עוד פרטים'}</button><button type="button" class="ibtn" data-more="${o.orderId}" aria-haspopup="dialog" aria-label="עוד פעולות להזמנה ${o.orderId}">${ic('more')}</button></div>
       ${open ? `<div class="expwrap">${expanded(o, drafts)}</div>` : ''}</li>`; }).join('')}</ul>
@@ -1250,7 +1260,7 @@ const byId = id => S.all.find(o => o.orderId === +id);
 function goPage(p){ const { pages } = query(); S.page = Math.min(Math.max(1, p), pages); S.open.clear(); renderList(); $('#listArea').scrollIntoView({ block:'start', behavior:'smooth' }); }
 function menuFor(btn, o){
   closePop();
-  const items = [['open','פתיחת ההזמנה','open'],['rental','השכרה או החזרה','truck'], ...(o.isDeleted ? [] : [['del','מחיקת ההזמנה','trash']])];
+  const items = [['open','פתיחת ההזמנה','open'],['rental','השכרה או החזרה','truck'], ...(!canDelete(o) ? [] : [['del','מחיקת ההזמנה','trash']])];
   if (innerWidth <= 640){ /* phone: bottom sheet */
     return confirmDlg({ icon:'more', title:`הזמנה ${o.orderId}`, text:esc(o.customerName), buttons:[...items.map(([v, l, i], k) => ({ label:l, value:v, icon:i, kind: k === 0 ? 'primary' : '' })), { label:'סגירה', value:'x', kind:'quiet' }] }).then(r => r && r !== 'x' && runItem(r, o));
   }
@@ -1292,7 +1302,7 @@ async function doDelete(o, zeout){
     const z = await idDlg(o); if (!z) return toast('info', 'המחיקה בוטלה', 'לא הוזנה תעודת זהות', 2600);
     return;
   }
-  o.isDeleted = true; S.open.delete(o.orderId); renderList();
+  o.isDeleted = true; o.items.forEach(i => { i.isDeleted = true; }); S.open.delete(o.orderId); renderList(); /* השרת מוחק גם את הפריטים */
   toast('ok', `הזמנה ${o.orderId} נמחקה`, 'אפשר לראות אותה בלשונית "מחוקות"');
 }
 function idDlg(o){
@@ -1310,7 +1320,7 @@ function idDlg(o){
       setTimeout(() => { layer.busy = false; go.disabled = false; go.innerHTML = `${ic('trash','','wig')}אימות ומחיקה`;
         if (serverFails()){ msg.innerHTML = `<div class="errbox" role="alert">${ic('cloud-off','lg')}<span>אין חיבור לשרת. נסו שוב.</span></div>`; return; }
         if (v !== '123456782'){ msg.innerHTML = `<div class="errbox" role="alert">${ic('alert','lg')}<span>תעודת הזהות לא תואמת את מה שרשום אצל הלקוח.</span></div>`; inp.select(); return; }
-        closeLayer(layer, v); o.isDeleted = true; S.open.delete(o.orderId); renderList(); toast('ok', `הזמנה ${o.orderId} נמחקה`, 'אחרי אימות תעודת זהות');
+        closeLayer(layer, v); o.isDeleted = true; o.items.forEach(i => { i.isDeleted = true; }); S.open.delete(o.orderId); renderList(); toast('ok', `הזמנה ${o.orderId} נמחקה`, 'אחרי אימות תעודת זהות');
       }, 500);
     };
   }});
