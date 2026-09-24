@@ -74,3 +74,16 @@ Screenshots: `archetype-list-soon-{1440,390}-*`. Note: this list is also being r
 | — | Count pill on the active status ("בקרוב 63") | status switcher | Polished: count only in "64 הזמנות מתאימות" above | **rejected because C-1.14** — the same number is already written once in text |
 | — | Hold countdown as a gold pill ("שמור עוד 10:58") | row, order column | Polished: coloured text + hourglass | **rejected because C-1.14** (the row already carries its one status tag) |
 | — | "⋯ more" row menu + "עוד פרטים" button in phone cards | rows / cards | Polished: one chevron `.ibtn` opening the details | **replaced by sketch component** (item-row expander) |
+
+---
+
+## 5. Home / dashboard — `archetype-dashboard.html`
+
+Screenshots: `archetype-dashboard-home-{1440,390}-*`.
+
+| # | Detail | Where | Original vs polished | Decision |
+|---|---|---|---|---|
+| D1 | **Shortcut tiles with a visible one-line description** (icon box · name · "הכנסות וגרפים" · forward arrow) | "קיצורי דרך" card | Original: quiet white tiles, the description readable at a glance, arrow nudges on hover. Polished: five filled salmon buttons in a row — the description only in a hover tooltip (invisible on touch), and a wall of primary-looking buttons for plain navigation | **restored** — page-only `.ql-t` tiles on shell tokens (`--line`, `--sky-100`, `--r-sm`, `--sh`), focus ring, reduced-motion safe. Promotion candidate (§9 "navigation tile") |
+| — | Search card without its own header, big centred greeting | top | Polished: sketch title row + a card with a card-h "חיפוש" | **replaced by sketch component** (title row, card header) |
+| — | Recent searches as small quiet pills | search card | Polished: `btn sm` (salmon) | **replaced by sketch component** (buttons). Heavier than before — see §9 "quiet button" candidate |
+| — | Count "5" as a small grey number next to the heading | shortcuts header | Polished: "(5)" | **replaced by sketch component** (A2 count-as-text) |

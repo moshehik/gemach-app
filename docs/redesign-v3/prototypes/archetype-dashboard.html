@@ -2276,7 +2276,18 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .dash-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px}
 .dash-c{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
 .res-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start}
-.ql-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.ql-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+/* CURATION D1 (from pre-polish): shortcut tiles = icon + name + one-line description + forward arrow (the description used to be visible, not a hover-only tooltip) */
+.ql-t{display:flex;align-items:center;gap:12px;min-height:72px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;text-align:start;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.ql-t:hover{border-color:var(--navy-500);box-shadow:var(--sh)}
+.ql-t:focus-visible{outline:3px solid var(--navy-500);outline-offset:2px}
+.ql-t .qi{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--sky-100);color:var(--navy)}
+.ql-t .qt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ql-t .qt b{font-size:16px;font-weight:700}
+.ql-t .qt small{font-size:14px;color:var(--ink3)}
+.ql-t>.ic:last-child{flex:none;color:var(--ink3);transition:transform .2s}
+.ql-t:hover>.ic:last-child{transform:translateX(-3px)}
+@media (prefers-reduced-motion:reduce){.ql-t,.ql-t>.ic:last-child{transition:none}.ql-t:hover>.ic:last-child{transform:none}}
 @media (max-width:1023px){.dash-c{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:639px){.dash-k,.res-g{grid-template-columns:minmax(0,1fr)}.ql-g{grid-template-columns:minmax(0,1fr)}}
 
@@ -3184,7 +3195,7 @@ function quickLinks(){
   const L = [['/dashboard','סיכום כספי','הכנסות וגרפים','wallet','head'], ['/dashboard/pricelist','מחירון','מחירים לפי מידה','tag','head'], ['/employees/report','דוח נוכחות','שעות העובדים','userck','head'], ['/messages','הודעות','הודעות פנימיות','msg','msg'], ['/punch-clock','שעון נוכחות','כניסה ויציאה','clock','']];
   const vis = L.filter(([, , , , g]) => !g || (g === 'head' ? isHead() : !cfg.flag('hide_internal_messaging')));
   return `<div class="card"><div class="card-h"><div class="ico teal">${ic('home','lg')}</div><h2>קיצורי דרך <span class="faint">(${vis.length})</span> ${tip('מה שמופיע כאן תלוי בתפקיד ובהגדרות הארגון. קיצורי הנהלה מופיעים רק להנהלה ראשית.')}</h2></div>
-    <div class="ql-g">${vis.map(([h, l, s, i]) => `<button type="button" class="btn" data-link="${h}" data-label="${l}" data-tip="${s}">${ic(i)}${l}</button>`).join('')}</div></div>`;
+    <div class="ql-g">${vis.map(([h, l, s, i]) => `<button type="button" class="ql-t" data-link="${h}" data-label="${l}"><span class="qi" aria-hidden="true">${ic(i)}</span><span class="qt"><b>${l}</b><small>${s}</small></span>${ic('arrl','sm')}</button>`).join('')}</div></div>`;
 }
 function proposal(){
   if (!S.proposal) return '';
