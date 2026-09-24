@@ -87,3 +87,20 @@ Screenshots: `archetype-dashboard-home-{1440,390}-*`.
 | — | Search card without its own header, big centred greeting | top | Polished: sketch title row + a card with a card-h "חיפוש" | **replaced by sketch component** (title row, card header) |
 | — | Recent searches as small quiet pills | search card | Polished: `btn sm` (salmon) | **replaced by sketch component** (buttons). Heavier than before — see §9 "quiet button" candidate |
 | — | Count "5" as a small grey number next to the heading | shortcuts header | Polished: "(5)" | **replaced by sketch component** (A2 count-as-text) |
+
+---
+
+## 6. Customer kiosk / touch — `archetype-touch.html`
+
+Screenshots: `archetype-touch-date-{1440,390}-*`, `archetype-touch-catalogue-{1440,390}-*`.
+
+| # | Detail | Where | Original vs polished | Decision |
+|---|---|---|---|---|
+| T1 | **Calmer month grid** — soft sky-50 day cells with no hairline, chosen day navy **with a gold underline** | date step, Hebrew calendar | Original: filled cells, no borders, gold underline on the chosen day. Polished: every day a white box with a sky-200 border (≈90 outlined boxes), chosen day plain navy | **restored** — page-only overrides on `.kday` (the kiosk calendar is page-specific content; the sketch has no month grid) |
+| T2 | **Sizes as small data tiles** (size big, "3 פנויות" under it; unavailable = dashed + struck) | catalogue, each model card | Original: tiles next to the model, scannable by a customer. Polished: one text line "מידות: 38 (3) · 40 (2)" — the parentheses read as noise | **restored** — `sizeTiles()` + page-only `.szt` (bordered boxes, not chips: a size is data, not a status — C-1.14 unaffected; the table view keeps the text line) |
+| — | Two-step kiosk progress pills in a navy header ("שלב 1 · בחירת תאריך → שלב 2") | header | Polished: site top bar + sketch `.tabs` (תאריך האירוע ✓ / שמלות פנויות (14)) | **replaced by sketch component** (top bar, tabs) |
+| — | Three month grids side by side at 1440 | date step | Polished: two (the rail takes the third column) | **replaced by sketch component** (rail/binder layout) |
+| — | Day / month / year selects on one line | date step | Polished: one per line | **rejected because C-1.16** |
+| — | Large rounded "ask the assistant" pill with a sparkle icon | top of both steps | Polished: plain field + "שליחה" button | **replaced by sketch component** (fields/buttons base styles) |
+| — | Compact one-line model rows (≈14 models per screen) | catalogue | Polished: sketch `.itm` cards (≈4 per screen) | **replaced by sketch component** (`itemCard`). Density listed in §9 |
+| — | Toolbar with six labelled icon buttons (סינון / גודל / תאריך אחר / רענון / הדפסה / למערכת) + gold "נעילה ללקוח" | header | Polished: title tools `.ibtn` + rail actions + "סינון ותצוגה" collapsible | **replaced by sketch component** |

@@ -2284,6 +2284,17 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .kday[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff;animation:tilepop .45s var(--spring)}
 .kday[aria-pressed="true"] small{color:var(--sky-200)}
 .kday.out{background:transparent;border-color:transparent;color:var(--ink3);font-weight:400;cursor:default}
+.szt{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.szt li{display:flex;flex-direction:column;align-items:center;min-width:64px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);line-height:1.25}
+.szt b{font-size:17px;font-weight:700;color:var(--ink)}
+.szt small{font-size:13px;color:var(--ink3)}
+.szt li.z{border-style:dashed}
+.szt li.z b{text-decoration:line-through;color:var(--ink3)}
+/* CURATION T1 (from pre-polish): calmer month grid — soft sky-50 fill with no hairline around each day, the chosen day keeps its navy fill plus a gold underline */
+.kday:not(.out){border-color:transparent;background:var(--sky-50)}
+.kday:not(.out):hover{border-color:var(--navy-500);background:var(--sky-100)}
+.kday.today:not([aria-pressed="true"]){border:2px solid var(--navy)}
+.kday[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);box-shadow:inset 0 -4px 0 var(--gold)}
 .kcal-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:24px;padding-top:16px;border-top:1px solid var(--sky-100)}
 .kcal-foot b{display:block;font-size:18px;font-weight:600;color:var(--navy)}
 .kcal-foot span{color:var(--ink3);font-size:15px}
@@ -3316,6 +3327,12 @@ function sizesLine(m){
   if (!vis.length) return 'אין מלאי פנוי לתאריך זה';
   return 'מידות: ' + vis.map(([s, x]) => `${esc(s)} (${x[0]})`).join(' · ');   /* TK-39: מידה · פנויות */
 }
+/* CURATION T2 (from pre-polish): sizes as small data tiles — the size big, "N פנויות" under it — so a customer scans them without reading a sentence */
+function sizeTiles(m){
+  const { arr } = sizeInfo(m); const vis = K.zero ? arr : arr.filter(([, x]) => x[0] > 0);
+  if (!arr.length || !vis.length) return `<div class="meta">${sizesLine(m)}</div>`;
+  return `<ul class="szt" aria-label="מידות ומספר יחידות פנויות">${vis.map(([sz, x]) => `<li class="${x[0] > 0 ? '' : 'z'}"><b><bdi>${esc(sz)}</bdi></b><small>${x[0] > 0 ? plural(x[0], 'פנויה אחת', 'פנויות') : 'אין פנויות'}</small></li>`).join('')}</ul>`;
+}
 function itemCard(m, i){
   const open = !!K.openItm[m.id]; const L = DM.locked;
   const { arr } = sizeInfo(m); const vis = K.zero ? arr : arr.filter(([, x]) => x[0] > 0);
@@ -3323,7 +3340,7 @@ function itemCard(m, i){
   const meta = (K.mode === 'rows' && !hasRealName(m)) ? (m.cat && m.cat !== 'כללי' ? esc(m.cat) : '') : `דגם <bdi>${m.bp}</bdi>${m.cat && m.cat !== 'כללי' ? ' · ' + esc(m.cat) : ''}`;   /* TK-40 */
   return `<article class="itm ${open ? 'open' : ''}">
     <div class="top">${thumbHTML(m, i)}
-      <div class="info"><div class="model">${title}</div>${meta ? `<div class="meta">${meta}</div>` : ''}<div class="stat">${availStx(m)}</div><div class="meta">${sizesLine(m)}</div></div>
+      <div class="info"><div class="model">${title}</div>${meta ? `<div class="meta">${meta}</div>` : ''}<div class="stat">${availStx(m)}</div>${sizeTiles(m)}</div>
       <button type="button" class="ibtn chevb" data-k="itm" data-id="${m.id}" aria-expanded="${open}" aria-controls="det-${m.id}" aria-label="מידות${L ? '' : ', הזמנות'} והדפסה" data-tip="מידות${L ? '' : ', הזמנות'} והדפסה">${ic('chev','sm')}</button>
     </div>
     <div class="det-wrap"><div class="det" id="det-${m.id}"><div class="det-in">
