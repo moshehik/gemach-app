@@ -19,11 +19,10 @@
    1. טיפוגרפיה — דריסת גופנים שנכפו inline
    חלק מהמסכים כפו fontFamily: 'system-ui' וכדומה, מה שביטל את גופני המערכת.
    -------------------------------------------------------------------------- */
+/* ספריית v3 (Rubik) מחוץ לכלל: קודם button/input/select/textarea בתוך [data-v3] / הסרגל / חלוניות נכפו ל-Assistant עם !important,
+   בניגוד ל-font: inherit של v3 - כל כפתור יצא בפונט אחר מהטקסט שסביבו. */
 body,
-button,
-input,
-select,
-textarea,
+:is(button, input, select, textarea):not(:is([data-v3], .v3-topbar, .v3-drawer, .v3-menu, .v3-dialog, .v3-scrim, .v3-toast, .v3-tip) *),
 [style*="system-ui"],
 [style*="Segoe UI"],
 [style*="-apple-system"] {

@@ -11,9 +11,36 @@
 /* כותרות טבלה דביקות (StickyTableHeaders) נעצרות מתחת לסרגל העליון (הוא מדד רק את .navbar הישן) */
 html { --navbar-height: var(--v3-topbar-h) !important; }
 html:has(body.hide-global-nav) { --navbar-height: 0px !important; }
-.app-shell.v3-shell { min-height: 100vh; }
-.v3-shell > .main { min-width: 0; flex: 1 1 auto; }
+/* רקע התכלת של v3 חי על ה-.v3-page הפנימי (מיכל עם max-width וריפוד) - לכן הוא נעצר במסגרת פנימית ומסביבו נראה
+   רקע העיצוב הישן (קרם/כהה): במסכים רחבים, בעמודים קצרים, בגלילת-יתר ובמצב כהה. הפתרון ברמת המעטפת: כשהעמוד הנוכחי
+   הוא עמוד v3 (שורש data-v3 ישירות מתחת ל-.content), הרקע עצמו עובר ל-html ול-body ומכסה את כל ה-viewport.
+   עמודים ישנים שעוד לא הומרו נשארים עם רקע הערכה שלהם. v3 בהיר בלבד (QUESTIONS Q3) - ולכן גם במצב כהה. */
+html:has(.v3-shell .content > [data-v3]),
+html:has(.v3-shell .content > [data-v3]) body {
+  background-color: var(--v3-page-bg) !important;
+  background-image: none !important;
+  color-scheme: light;
+}
+html:has(.v3-shell .content > [data-v3]) body { min-height: 100vh; min-height: 100dvh; }
+.app-shell.v3-shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.v3-shell > .main { flex: 1 0 auto; }
+.v3-shell .content { flex: 1 0 auto; }
 .v3-shell .content { padding-top: var(--v3-sp-5); }
+
+/* עמוד v3 במצב כהה: v3 בהיר בלבד (Q3) אבל טוקני העיצוב הישן (--text/--surface/... והגשרים --text-main/--card-bg/...) מתהפכים
+   ב-:root[data-theme=dark] ומדליפים לתוכו - כותרות בהירות על תכלת, שדות כהים. מגדירים מחדש את הטוקנים בתוך שורש העמוד
+   (גם את הגשרים: var() בטוקן מותאם נפתר במקום ההצהרה, לכן שינוי --surface בלבד לא היה מספיק). */
+:root[data-theme="dark"] .v3-shell .content > [data-v3] {
+  color-scheme: light;
+  --bg: var(--v3-bg); --surface: var(--v3-surface); --surface-alt: var(--v3-surface-2); --surface-sunken: var(--v3-surface-3);
+  --border: var(--v3-line-soft); --border-strong: var(--v3-line);
+  --text: var(--v3-ink); --text-2: var(--v3-ink-2); --text-3: var(--v3-ink-3);
+  --bg-color: var(--v3-bg); --text-main: var(--v3-ink); --text-muted: var(--v3-ink-2); --text-color: var(--v3-ink);
+  --card-bg: var(--v3-surface); --border-color: var(--v3-line-soft); --element-bg: var(--v3-surface-2); --element-border: var(--v3-line-soft);
+  --image-bg: var(--v3-surface-3); --divider: var(--v3-line-soft); --input-bg: var(--v3-surface);
+  --glass-border: 1px solid var(--v3-line-soft); --sticky-header-bg: var(--v3-surface-2);
+  color: var(--v3-ink);
+}
 
 /* קיוסק נעול: כל ה-chrome של הניווט מוסתר (כמו .main > .topbar הישן) */
 body.hide-global-nav .v3-shell .v3-topbar,
@@ -93,6 +120,9 @@ body:has(.v3-drawer.is-open) .ai-widget-panel { display: none !important; }
 .v3-tb-all-tag { min-height: 0; padding-block: 0; font-size: var(--v3-fs-cap); }
 .v3-tb-read { align-self: flex-start; margin-top: 4px; margin-inline-start: -10px; }
 
+/* נקודת "יש חדש" בפריט תפריט (דיווח שגיאות / היסטוריית הודעות) */
+.v3-menu-dot { margin-inline-start: auto; flex: none; width: 9px; height: 9px; border-radius: var(--v3-r-round); background: var(--v3-salmon); }
+
 /* משתמש */
 .v3-user { flex: none; }
 .v3-user .v3-topbar__chev { opacity: .8; width: 13px; height: 13px; }
@@ -129,11 +159,10 @@ body:has(.v3-drawer.is-open) .ai-widget-panel { display: none !important; }
 @media (max-width: 1040px) { .v3-user--skeleton { width: 46px; } .v3-pins { display: none; } }
 @media (max-width: 900px) { .v3-tb-search { width: 340px; } }
 @media (max-width: 767px) {
-  /* הסרגל הראשי מוסתר; נשארים בו רק פעולות חיוניות (חיפוש, דיווח שגיאות, פעמון, משתמש) + המבורגר.
-     ניווט/אחורה/קדימה/ריענון/ערכת נושא עוברים למגירה */
+  /* הסרגל הראשי מוסתר; נשארים בו רק פעולות חיוניות (חיפוש, פעמון, משתמש) + המבורגר.
+     הניווט עובר למגירה */
   .v3-topbar__nav, .v3-pins { display: none; }
   .v3-topbar__act { display: flex; margin-inline-start: auto; gap: 2px; }
-  .v3-topbar__act .v3-hide-m { display: none; }
   .v3-burger { margin-inline-start: 0; }
   .v3-brand__logo { height: 40px; } .v3-brand__logo img { height: 28px; max-width: 90px; }
   .v3-user { padding-inline: 4px 6px; gap: 4px; }
@@ -146,11 +175,7 @@ body:has(.v3-drawer.is-open) .ai-widget-panel { display: none !important; }
   .v3-acc .v3-link__ic { background: var(--v3-sky-100); color: var(--v3-navy-500); }
   .v3-acc { cursor: pointer; }
   .v3-acc-body .v3-linkrow > .v3-link { padding-inline-start: 26px; }
-  .v3-dfoot { display: flex; align-items: center; gap: var(--v3-sp-2); padding: var(--v3-sp-3) 10px var(--v3-sp-1); margin-top: 6px; border-top: var(--v3-bw-hair) dashed var(--v3-gold-a45); }
-  .v3-dbtn { color: var(--v3-navy); background: var(--v3-sky-100); }
-  .v3-dbtn:hover { color: var(--v3-navy); background: var(--v3-gold-a14); }
 }
-@media (min-width: 768px) { .v3-dfoot { display: none; } }
 @media (max-width: 380px) { .v3-brand__logo { padding-inline: 6px; } .v3-brand__logo img { max-width: 64px; } }
 
 /* ---------- באנרי סביבה (ישנים: fixed למעלה במרכז) ---------- */

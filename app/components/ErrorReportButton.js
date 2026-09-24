@@ -7,6 +7,7 @@ import { captureElement, captureViewport } from '../../lib/clientCapture';
 import useElementPicker, { describeElement, ElementPickerOverlay } from './useElementPicker';
 import useActionRecorder from './useActionRecorder';
 import useScreenRecorder from './useScreenRecorder';
+import { Icon } from '@/app/v3/ui';
 import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
 import { formatActionSteps, appendStepsToReport, splitReportSteps, stepsCountLabel } from '../../lib/actionRecorderCore';
 
@@ -92,7 +93,7 @@ function ReportText({ text }) {
   );
 }
 
-export default function ErrorReportButton() {
+export default function ErrorReportButton({ variant } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'archive' or 'new' or 'thread'
   const [userText, setUserText] = useState('');
@@ -726,15 +727,29 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
 
   return (
     <>
-      <button
-        type="button"
-        className="icon-btn"
-        onClick={() => { setIsOpen(true); setActiveTab('list'); fetchReports(); }}
-        title="מערכת דיווחי שגיאות"
-      >
-        <svg className="icon"><use href="#i-alert-circle" /></svg>
-        {unreadCount > 0 && <span className="dot" />}
-      </button>
+      {variant === 'menu' ? (
+        <button
+          type="button"
+          className="v3-link"
+          role="menuitem"
+          data-tbl
+          onClick={() => { setIsOpen(true); setActiveTab('list'); fetchReports(); }}
+        >
+          <span className="v3-link__ic"><Icon name="alert-circle" /></span>
+          דיווח שגיאות ותמיכה
+          {unreadCount > 0 && <span className="v3-menu-dot" aria-hidden="true" />}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => { setIsOpen(true); setActiveTab('list'); fetchReports(); }}
+          title="מערכת דיווחי שגיאות"
+        >
+          <svg className="icon"><use href="#i-alert-circle" /></svg>
+          {unreadCount > 0 && <span className="dot" />}
+        </button>
+      )}
 
       {isOpen && mounted && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>

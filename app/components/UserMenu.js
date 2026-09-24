@@ -6,7 +6,7 @@ import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { Icon } from '@/app/v3/ui';
 import { useTopbarPanel } from './topbarPanel';
 
-export default function UserMenu({ hideInternalMessaging = false }) {
+export default function UserMenu({ hideInternalMessaging = false, children }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [activeShift, setActiveShift] = useState(null);
@@ -183,6 +183,7 @@ export default function UserMenu({ hideInternalMessaging = false }) {
             onClick={() => { closeMenu(false); router.push('/display-settings'); }}>
             <span className="v3-link__ic"><Icon name="settings" /></span>עיצוב ותצוגה — התאמה אישית
           </button>
+          {children}
           <div className="v3-sep" role="separator" />
           <button type="button" className="v3-link v3-link--danger" role="menuitem" data-tbl onClick={handleLogout} disabled={actionLoading}>
             <span className="v3-link__ic"><Icon name="logout" /></span>התנתקות

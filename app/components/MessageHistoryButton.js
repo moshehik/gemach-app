@@ -3,24 +3,40 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePopup } from './PopupProvider';
+import { Icon } from '@/app/v3/ui';
 
-export default function MessageHistoryButton({ 'data-element-name': dataElementName }) {
+export default function MessageHistoryButton({ 'data-element-name': dataElementName, variant }) {
   const [isOpen, setIsOpen] = useState(false);
   const popupContext = usePopup();
   const alertsHistory = popupContext?.alertsHistory || [];
 
   return (
     <>
-      <button
-        type="button"
-        data-element-name={dataElementName || 'כפתור_היסטוריית_הודעות'}
-        className="icon-btn"
-        onClick={() => setIsOpen(true)}
-        title="היסטוריית הודעות מערכת"
-      >
-        <svg className="icon"><use href="#i-message" /></svg>
-        {alertsHistory.length > 0 && <span className="dot" />}
-      </button>
+      {variant === 'menu' ? (
+        <button
+          type="button"
+          data-element-name={dataElementName || 'כפתור_היסטוריית_הודעות'}
+          className="v3-link"
+          role="menuitem"
+          data-tbl
+          onClick={() => setIsOpen(true)}
+        >
+          <span className="v3-link__ic"><Icon name="message" /></span>
+          היסטוריית הודעות מערכת
+          {alertsHistory.length > 0 && <span className="v3-menu-dot" aria-hidden="true" />}
+        </button>
+      ) : (
+        <button
+          type="button"
+          data-element-name={dataElementName || 'כפתור_היסטוריית_הודעות'}
+          className="icon-btn"
+          onClick={() => setIsOpen(true)}
+          title="היסטוריית הודעות מערכת"
+        >
+          <svg className="icon"><use href="#i-message" /></svg>
+          {alertsHistory.length > 0 && <span className="dot" />}
+        </button>
+      )}
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>

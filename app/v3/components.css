@@ -35,7 +35,9 @@
   direction: rtl;
 }
 [data-v3] bdi, .v3-num { unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
-[data-v3] button, [data-v3] input, [data-v3] select, [data-v3] textarea { font: inherit; color: inherit; }
+/* :where() = ספציפיות 0. קודם: [data-v3] button (0,1,1) גבר על כל כלל של מחלקה בודדת (.v3-topbar__tab, .v3-user, ...) ולכן כפתורי
+   הסרגל יצאו 16px/400 במקום 14-15px/500-600. עכשיו זה רק ברירת מחדל שכל מחלקה דורסת. */
+:where([data-v3]) :where(button, input, select, textarea) { font: inherit; color: inherit; }
 [data-v3] button { cursor: pointer; }
 .v3-page { max-width: var(--v3-container); margin-inline: auto; padding: var(--v3-gutter) var(--v3-gutter) 64px; }
 .v3-layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--v3-rail-w); gap: var(--v3-gap-panel); margin-top: var(--v3-gap-panel); align-items: start; }

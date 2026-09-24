@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import BrandLogo from './BrandLogo';
 import TopbarSearch from './TopbarSearch';
 import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
-import ThemeToggle from './ThemeToggle';
 import ErrorReportButton from './ErrorReportButton';
 import MessageHistoryButton from './MessageHistoryButton';
 import OverdueRemindersWatcher from './OverdueRemindersWatcher';
@@ -98,11 +97,9 @@ export default function AppShell({
   hideInternalMessaging,
   showOverdueRemindersPopup,
   authToken,
-  themePreference,
   children,
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openAcc, setOpenAcc] = useState(null); // מפתח קבוצה פתוחה באקורדיון של המגירה (null = הקבוצה הפעילה)
   const [pinned, setPinned] = useState([]); // [{href,label,icon}] — pinned shortcuts shown in the topbar
@@ -170,18 +167,6 @@ export default function AppShell({
   }, []);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
-
-  const handleRefresh = () => {
-    window.location.href = window.location.pathname;
-  };
-
-  const handleBack = () => {
-    // router.back() is silently a no-op when the tab has no earlier history entry
-    // (deep link, new tab, refresh) - user report "כפתור אחורה לא מגיב" (2026-09-09).
-    // Falling back to the dashboard keeps the button always doing something visible.
-    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
-    else router.push('/');
-  };
 
   // ניווט לקישור עם #hash (כמו /rentals#returned) בזמן שכבר נמצאים באותו path
   // (למשל /rentals#rented) הוא, עבור <Link> של Next, ניווט client-side שמעדכן
@@ -296,24 +281,14 @@ export default function AppShell({
           )}
 
           <div className="v3-topbar__act">
-            {/* RTL: "back" (previous) points right like the pagination convention elsewhere
-                in this design system, "forward" (next) points left — not the LTR-mirrored
-                assumption of back=left/forward=right. */}
-            <button type="button" className="v3-topbar__ib v3-hide-m" title="אחורה" aria-label="אחורה" onClick={handleBack}>
-              <Icon name="chevron-end" />
-            </button>
-            <button type="button" className="v3-topbar__ib v3-hide-m" title="קדימה" aria-label="קדימה" onClick={() => router.forward()}>
-              <Icon name="chevron-start" />
-            </button>
-            <button type="button" className="v3-topbar__ib v3-hide-m" title="ריענון וניקוי פילטרים" aria-label="ריענון וניקוי פילטרים" onClick={handleRefresh}>
-              <Icon name="refresh" />
-            </button>
             <TopbarSearch />
-            <ThemeToggle employeeId={authToken} initialTheme={themePreference} className="v3-hide-m" />
-            {isProgrammer && <MessageHistoryButton />}
-            {!hideErrorReporting && <ErrorReportButton />}
             {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
-            <UserMenu hideInternalMessaging={hideInternalMessaging} />
+            {/* בסרגל נשארים רק חיפוש · פעמון · משתמש (כמו באב-הטיפוס). דיווח שגיאות והיסטוריית הודעות
+                עברו לתפריט המשתמש; אחורה/קדימה/ריענון = כפתורי הדפדפן; מצב כהה/בהיר = /display-settings. */}
+            <UserMenu hideInternalMessaging={hideInternalMessaging}>
+              {isProgrammer && <MessageHistoryButton variant="menu" />}
+              {!hideErrorReporting && <ErrorReportButton variant="menu" />}
+            </UserMenu>
           </div>
 
           <button
@@ -381,18 +356,6 @@ export default function AppShell({
                 </div>
               );
             })}
-            <div className="v3-dfoot">
-              <button type="button" className="v3-topbar__ib v3-dbtn" title="אחורה" aria-label="אחורה" onClick={() => { setMobileOpen(false); handleBack(); }}>
-                <Icon name="chevron-end" />
-              </button>
-              <button type="button" className="v3-topbar__ib v3-dbtn" title="קדימה" aria-label="קדימה" onClick={() => { setMobileOpen(false); router.forward(); }}>
-                <Icon name="chevron-start" />
-              </button>
-              <button type="button" className="v3-topbar__ib v3-dbtn" title="ריענון וניקוי פילטרים" aria-label="ריענון וניקוי פילטרים" onClick={handleRefresh}>
-                <Icon name="refresh" />
-              </button>
-              <ThemeToggle employeeId={authToken} initialTheme={themePreference} className="v3-dbtn" />
-            </div>
           </div>
         </header>
         <div className={`v3-drawer-scrim${mobileOpen ? ' is-on' : ''}`} onClick={() => setMobileOpen(false)} aria-hidden="true" />
