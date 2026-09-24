@@ -2245,3 +2245,8 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .stx .ic{width:16px;height:16px;color:var(--navy-500)}
 .stx.warn{color:var(--gold-700)}.stx.warn .ic{color:var(--gold-b)}
 .stx.ok{color:var(--navy)}
+
+/* A6 · sketch defect fix — at 768-1100px the CLOSED nav dropdowns (visibility:hidden, absolutely positioned)
+   stick out past the viewport edge and create a horizontal page scroll (measured: sketch scrollWidth 862 @768).
+   Clipping the bar horizontally removes the scroll; open panels are already kept on-screen by the sketch JS. */
+.snav{overflow-x:clip}
