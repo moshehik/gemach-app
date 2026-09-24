@@ -16,6 +16,8 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
+import { Btn, IconBtn, Card, Field, Row, Rows, Tabs, Seg, Switch, Tip, Dialog, Banner, Empty, Icon, Tag, Badge } from '@/app/v3/ui/components';
+import { enqueueNotice } from '@/app/v3/notify/store';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -49,8 +51,19 @@ const computePaymentMethodOptions = (settingsObj) => {
 
 export default function NewOrderPage() {
   const router = useRouter();
-  
+
   const [step, setStep] = useState(1);
+
+  // ===== v3: הודעות (במקום alert), אישור יציאה (במקום window.confirm), חזרה-לסיכום אחרי עריכה =====
+  // כל הקריאות מחזירות Promise שנפתר בסגירת החלונית, כך שזרימת ה-await נשארת כמו ב-alert/confirm המובנים.
+  const [alertQueue, setAlertQueue] = useState([]);
+  const showAlert = (message) => new Promise((resolve) => {
+    setAlertQueue(q => [...q, { message: String(message ?? ''), resolve }]);
+  });
+  const [leaveAsk, setLeaveAsk] = useState(null);
+  const leaveAskPendingRef = useRef(false);
+  const [returnToSummary, setReturnToSummary] = useState(false);
+  const editingStepRef = useRef(1);
 
   const canNavigateToStep = (targetStep) => {
     if (targetStep === 1) return true;
@@ -292,7 +305,7 @@ export default function NewOrderPage() {
 
   const handleProcessCreditCard = async () => {
     if (!creditCardData.cardNumber || !creditCardData.tokef || !creditCardData.amount) {
-       setCreditError('אנא מלא את כל השדות החובה (מספר כרטיס, תוקף, וסכום).');
+       setCreditError('מלאו מספר כרטיס, תוקף וסכום לחיוב.');
        return;
     }
 
@@ -368,13 +381,13 @@ export default function NewOrderPage() {
         if (newTotalPaid >= totalAmount) {
           executeSaveOrderForList(updatedList);
         } else {
-          alert('תשלום חלקי עבר בהצלחה. יש להשלים את יתרת התשלום (או לצאת באישור מנהל) כדי לסיים את ההזמנה.');
+          await showAlert('חלק מהסכום חויב בהצלחה. השלימו את היתרה, או בחרו "יציאה באישור מנהל", כדי לסיים.');
         }
       } else {
-        setCreditError(data.error || 'שגיאה בחיוב הכרטיס');
+        setCreditError(data.error || 'החיוב נכשל.');
       }
     } catch (err) {
-      setCreditError('שגיאת תקשורת בחיוב הכרטיס');
+      setCreditError('תקלת תקשורת בחיוב. בדקו אם החיוב עבר לפני ניסיון נוסף.');
     } finally {
       setIsProcessingCredit(false);
     }
@@ -444,7 +457,7 @@ export default function NewOrderPage() {
 
   const handleCheckPhone = async () => {
     if (!phoneSearchInput || phoneSearchInput.trim().length < 9) {
-      alert('נא להזין מספר טלפון תקין');
+      await showAlert('הזינו מספר טלפון תקין (לפחות 9 ספרות).');
       return;
     }
     
@@ -461,7 +474,7 @@ export default function NewOrderPage() {
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאה בחיפוש הלקוח');
+      await showAlert('חיפוש הלקוח נכשל. נסו שוב.');
     } finally {
       setIsCheckingPhone(false);
     }
@@ -519,7 +532,7 @@ export default function NewOrderPage() {
     const missingFields = getMissingMandatoryCustomerFields(newCustomer);
 
     if (missingFields.length > 0) {
-       alert(`יש למלא: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
+       await showAlert(`חסרים פרטים: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
        return;
     }
 
@@ -528,7 +541,7 @@ export default function NewOrderPage() {
     // handleUseExistingCustomer לבדיקת לקוח קיים שנבחר - אין לאכוף רטרואקטיבית ת"ז
     // חסרה על לקוחות ותיקים. הגדרה ייעודית לגמח נווה יעקב בלבד).
     if (settings.require_customer_id_number === 'true' && !String(newCustomer.zeout || '').trim()) {
-       alert('יש למלא: תעודת זהות');
+       await showAlert('חסרה תעודת זהות.');
        return;
     }
 
@@ -536,7 +549,7 @@ export default function NewOrderPage() {
     if (newCustomerGroupErrors.length > 0) {
        // כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או אימייל) - אך לפי בקשת ההנהלה
        // אין לחסום סופית, אלא לאפשר עקיפה עם אישור מנהל בפועל (PIN), כמו בלקוח קיים.
-       const auth = await verifyPin(`${newCustomerGroupErrors.join('. ')} - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.`, 'feature:missing_contact_approval');
+       const auth = await verifyPin(`${newCustomerGroupErrors.join('. ')} — חסר בכרטיס הלקוח. להמשך בלי להשלים נדרש אישור מנהל.`, 'feature:missing_contact_approval');
        if (!auth) return;
     }
 
@@ -566,10 +579,10 @@ export default function NewOrderPage() {
          setDuplicateCustomers([]);
       } else {
          const errorMsg = data.error || 'שגיאה בשמירת לקוח';
-         alert(`שגיאה בשמירת לקוח: ${errorMsg}`);
+         await showAlert(`שמירת הלקוח נכשלה: ${errorMsg}`);
       }
     } catch (e) {
-      alert(`שגיאה בשמירת לקוח: ${e.message}`);
+      await showAlert(`שמירת הלקוח נכשלה: ${e.message}`);
     }
   };
 
@@ -581,7 +594,7 @@ export default function NewOrderPage() {
   const confirmBlockedCustomerOverride = async (customer) => {
     if (!customer || !customer.isBlocked) return true;
     const authResult = await verifyPin(
-      `לקוח זה חסום מהזמנות חדשות${customer.blockedReason ? ` (${customer.blockedReason})` : ''}.\nלעקוף את החסימה ולהמשיך בכל זאת? נדרש אישור הנהלה ראשית.`,
+      `הלקוח חסום להזמנות חדשות${customer.blockedReason ? ` (${customer.blockedReason})` : ''}.\nלעקיפת החסימה נדרש אישור הנהלה ראשית.`,
       'הנהלה ראשית'
     );
     return !!authResult;
@@ -608,7 +621,7 @@ export default function NewOrderPage() {
       // (נפתח בכרטיסייה נפרדת) וכפתור ביטול/"לקוח אחר" לחזרה, ר' הכרטיס שמוצג לצד
       // חיפוש טלפון וחלונית "לקוח קיים במערכת" למטה.
       if (settings.strict_mandatory_fields === 'true') {
-        alert(`לא ניתן להמשיך - ללקוח חסרים פרטי חובה: ${missingParts.join(', ')}. אפשר ללחוץ על "עריכת פרטי לקוח" להשלמת הפרטים ואז לחזור ולנסות שוב, או לבטל ולבחור לקוח אחר.`);
+        await showAlert(`אי אפשר להמשיך: בכרטיס הלקוח חסר ${missingParts.join(', ')}. אפשר להשלים דרך "עריכת הלקוח" ולנסות שוב, או לבחור לקוח אחר.`);
         return;
       }
       // חסר אמצעי תקשורת נוסף (טלפון 2/אימייל) דורש אישור מנהל בפועל (לא רק אישור
@@ -616,13 +629,13 @@ export default function NewOrderPage() {
       // לעקוף כשחסר. שאר השדות החסרים (לא קשורים לאמצעי תקשורת) ממשיכים באישור חריגה רגיל.
       if (missingContactMethod) {
         const auth = await verifyPin(
-          `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nנדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת בלי אמצעי תקשורת נוסף.\nאפשר גם ללחוץ "ביטול" ואז על הכפתור "עריכת פרטי לקוח" כדי להשלים את הפרטים במקום.`,
+          `בכרטיס הלקוח חסר: ${missingParts.join(', ')}.\nלהמשך בלי אמצעי תקשורת נוסף נדרש אישור מנהל.\nאפשר גם לבטל ולהשלים את הפרטים דרך "עריכת הלקוח".`,
           'feature:missing_contact_approval'
         );
         if (!auth) return;
       } else {
         const confirmed = await window.customConfirm(
-          `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nהאם לאשר חריגה ולהמשיך בכל זאת בלי להשלים את הפרטים?`
+          `בכרטיס הלקוח חסר: ${missingParts.join(', ')}.\nלהמשיך בלי להשלים את הפרטים?`
         );
         if (!confirmed) return;
       }
@@ -635,7 +648,7 @@ export default function NewOrderPage() {
 
   const proceedToStep2 = async () => {
     if (!order.customerId) {
-       alert('יש לבחור לקוח');
+       await showAlert('בחרו לקוח כדי להמשיך.');
        return;
     }
     if (!await confirmBlockedCustomerOverride(order.selectedCustomer)) return;
@@ -755,7 +768,7 @@ export default function NewOrderPage() {
       const fromDateVal = 'fromDate' in updates ? updates.fromDate : order.fromDate;
       const toDateVal = 'toDate' in updates ? updates.toDate : order.toDate;
       if (fromDateVal && toDateVal && new Date(toDateVal) < new Date(fromDateVal)) {
-        alert('שגיאה: תאריך החזרה (עד תאריך) אינו יכול להיות לפני תאריך ההתחלה (מתאריך)!');
+        await showAlert('תאריך הסיום מוקדם מתאריך ההתחלה.');
         return;
       }
     }
@@ -794,23 +807,23 @@ export default function NewOrderPage() {
         
         const validateData = await validateRes.json();
         if (validateData.error) {
-          alert(`שגיאה בבדיקת מלאי: ${validateData.error}`);
+          await showAlert(`בדיקת המלאי נכשלה: ${validateData.error}`);
           return;
         }
         if (!validateData.valid) {
           const errorLines = validateData.errors.map(e => {
-            const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
+            const msg = `• ${e.dressName}, מידה ${e.sizeText}: חסרות ${e.requested - e.available} יחידות`;
             return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
           }).join('\n');
           const customSpacingNote = validateData.errors.some(e => e.isCustomSpacingIssue)
-            ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+            ? '\n\nחלק מהחוסרים נובעים מציפוף מיוחד. אפשר לנסות ציפוף קטן פחות.'
             : '';
-          alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}${customSpacingNote}`);
+          await showAlert(`אי אפשר לשנות את התאריך: חסר מלאי בפריטים שכבר בהזמנה.\n\n${errorLines}${customSpacingNote}`);
           return;
         }
       } catch (err) {
         console.error('Validation fetch error', err);
-        alert('שגיאה בבדיקת המלאי מול השרת.');
+        await showAlert('לא הצלחנו לבדוק מלאי מול השרת.');
         return; 
       }
     }
@@ -841,7 +854,7 @@ export default function NewOrderPage() {
 
   const addItemToOrder = async () => {
     if (newItem.selectedSizes.length === 0) {
-      alert('יש לבחור דגם ומידה אחת לפחות לפני ההוספה');
+      await showAlert('בחרו דגם ומידה אחת לפחות.');
       return;
     }
 
@@ -868,13 +881,13 @@ export default function NewOrderPage() {
       }
     }
     if (validSizes.length === 0) {
-      alert('כל המידות שנבחרו אזלו מהמלאי לתאריך זה.');
+      await showAlert('המידות שנבחרו אזלו לתאריך הזה.');
       return;
     }
 
     const maxItems = parseInt(settings.max_items_per_order);
     if (!isNaN(maxItems) && maxItems > 0 && order.items.length + validSizes.length > maxItems) {
-      alert(`הגבלת מערכת: לא ניתן להוסיף יותר מ-${maxItems} פריטים להזמנה (בחרת ${validSizes.length} מידות, יש כבר ${order.items.length} בסל).`);
+      await showAlert(`מגבלת המערכת: עד ${maxItems} פריטים בהזמנה (נבחרו ${validSizes.length} מידות, ובסל כבר ${order.items.length}).`);
       return;
     }
 
@@ -918,7 +931,7 @@ export default function NewOrderPage() {
     }));
 
     if (unavailable.length > 0) {
-      alert(`שימו לב: המידות הבאות אזלו מהמלאי ולא נוספו: ${unavailable.join(', ')}`);
+      await showAlert(`לא נוספו כי אזלו מהמלאי: ${unavailable.join(', ')}`);
     }
   };
 
@@ -1073,13 +1086,17 @@ export default function NewOrderPage() {
   useEffect(() => {
     const handlePopState = () => {
       if (!backGuardArmedRef.current || !hasStartedOrderRef.current) return;
-      const leave = window.confirm('יש נתונים שהוזנו בהזמנה ועדיין לא נשמרו. לצאת בכל זאת ולאבד אותם?');
-      if (!leave) {
-        window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
-        return;
-      }
-      backGuardArmedRef.current = false;
-      window.history.back();
+      // v3: החלונית אסינכרונית (לא חוסמת כמו window.confirm), לכן קודם מחזירים את רשומת העצירה
+      // ואז שואלים. אישור יציאה = חזרה של שתי רשומות (העצירה החדשה + העמוד הנוכחי), כמו history.back() המקורי.
+      window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
+      if (leaveAskPendingRef.current) return;
+      leaveAskPendingRef.current = true;
+      new Promise((resolve) => setLeaveAsk({ resolve })).then((leave) => {
+        leaveAskPendingRef.current = false;
+        if (!leave) return;
+        backGuardArmedRef.current = false;
+        window.history.go(-2);
+      });
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -1100,24 +1117,24 @@ export default function NewOrderPage() {
 
   const saveOrder = async () => {
     const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
-    if (!order.customerId) return alert('יש לבחור לקוח');
+    if (!order.customerId) return await showAlert('בחרו לקוח כדי להמשיך.');
     if (!String(order.selectedCustomer?.phone1 || '').trim() && !String(order.selectedCustomer?.phone2 || '').trim()) {
-      return alert('לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון. יש להשלים מספר טלפון בכרטיס הלקוח.');
+      return await showAlert('אי אפשר לשמור הזמנה ללקוח בלי טלפון. השלימו טלפון בכרטיס הלקוח.');
     }
-    if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
-    if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
+    if (!hasDates) return await showAlert(order.isAbroad || order.isWeekdayEvent ? 'בחרו טווח תאריכים לאירוע.' : 'בחרו תאריך לאירוע.');
+    if (order.items.length === 0) return await showAlert('הוסיפו פריט אחד לפחות.');
     // שדות חובה של משלוח (כתובת כשעיר המשלוח שונה מעיר הלקוח / עיר משלוח כשעיר הלקוח
     // לא ברשימת ערי המשלוח) - נאכף תמיד, לא רק כש-delivery_allow_address_override דולק
     // (אותה תנאי בדיוק כמו האינדיקציה החזותית deliveryAddressRequired/deliveryCityRequired
     // למעלה - ר' דיווחים org2 f82e76c1, 136f8d4b/5133e518).
     const deliveryError = validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities);
-    if (deliveryError) return alert(deliveryError);
+    if (deliveryError) return await showAlert(deliveryError);
 
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
     const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
     if (relevantDate && new Date(relevantDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)) {
-      const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:past_date_order_approval');
+      const auth = await verifyPin('התאריך שנבחר כבר עבר. לשמירת הזמנה לתאריך שעבר נדרש אישור מנהל. בחרו מנהל והזינו סיסמה:', 'feature:past_date_order_approval');
       if (!auth) return;
     }
 
@@ -1129,7 +1146,7 @@ export default function NewOrderPage() {
 
     if (!isManagerExitPayment) {
       if (totalWithCurrent < totalAmount) {
-        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל בין כמה אמצעי תשלום, השתמש בכפתור "אישור תשלום" כמה פעמים.');
+        await showAlert('התשלום עדיין לא מלא. הוסיפו את הסכום החסר, או בחרו "יציאה באישור מנהל". לפיצול בין כמה אמצעי תשלום אפשר ללחוץ על "הוספת תשלום" כמה פעמים.');
         return;
       }
     }
@@ -1156,9 +1173,9 @@ export default function NewOrderPage() {
         // 2026-09-22: ההגדרה קובעת אם החלונית מופיעה בכלל; מי שרשאי לאשר נקבע בהרשאה
         // feature:payment_exit_approval (ברירת המחדל נגזרת מרמת ההגדרה: עובד / מנהל / מנהל סניף ומעלה,
         // ושורת הרשאה ב-/admin/permissions גוברת) - הבורר וה-verify-pin מכריעים באותה הכרעה.
-        const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
+        const authResult = await window.customAuthPrompt('סיום ההזמנה בלי תשלום מלא דורש אישור מורשה. בחרו משתמש והזינו סיסמה:', 'feature:payment_exit_approval');
         if (!authResult || !authResult.pin) {
-          alert('אישור תשלום בוטל.');
+          await showAlert('האישור בוטל, ההזמנה לא נשמרה.');
           return;
         }
 
@@ -1170,11 +1187,11 @@ export default function NewOrderPage() {
           });
           const data = await res.json();
           if (!data.success) {
-            alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+            await showAlert(data.error || 'הסיסמה שגויה או שאין הרשאה.');
             return;
           }
         } catch (err) {
-          alert('שגיאה באימות קוד מנהל.');
+          await showAlert('אימות המנהל נכשל.');
           return;
         }
       }
@@ -1191,7 +1208,7 @@ export default function NewOrderPage() {
 
   const handleAddPaymentClick = () => {
     const pAmount = parseFloat(payment.amount) || 0;
-    if (pAmount <= 0) return alert('יש להזין סכום גדול מ-0');
+    if (pAmount <= 0) return showAlert('הזינו סכום גדול מ-0.');
 
     if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית')) {
         setCreditCardData({
@@ -1314,13 +1331,13 @@ export default function NewOrderPage() {
       if (res.status === 409 && data.validationErrors) {
         abandonSave();
         const errorLines = data.validationErrors.map(e => {
-          const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
+          const msg = `• ${e.dressName}, מידה ${e.sizeText}: חסרות ${e.requested - e.available} יחידות`;
           return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
         }).join('\n');
         const customSpacingNote = data.validationErrors.some(e => e.isCustomSpacingIssue)
-          ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+          ? '\n\nחלק מהחוסרים נובעים מציפוף מיוחד. אפשר לנסות ציפוף קטן פחות.'
           : '';
-        alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}${customSpacingNote}`);
+        await showAlert(`ההזמנה לא נשמרה: חסר מלאי בתאריכים שנבחרו.\n\n${errorLines}${customSpacingNote}`);
         return;
       }
       if (!res.ok) {
@@ -1330,7 +1347,7 @@ export default function NewOrderPage() {
       }
       // The order is saved even when the pricing engine failed afterwards - show what went
       // wrong but still open it, so nobody saves a second copy thinking the first was lost.
-      if (data.warning) alert(data.warning);
+      if (data.warning) await showAlert(data.warning);
       // 4 - הדפסה אוטומטית עם סיום יצירת הזמנה, מותנה ב-auto_print_on_order_create
       // (כבוי כברירת מחדל = ההתנהגות הקודמת, לפי כלל ההגדרות עם שחזור). אותו נתיב הדפסה
       // בדיוק כמו כפתור "הדפסה ומייל" -> "הזמנה" (OrderPrintMenu.js openPrint('order')).
@@ -1339,13 +1356,27 @@ export default function NewOrderPage() {
       }
       // 42 - מסך יעד אחרי יצירת הזמנה, מותנה ב-order_new_redirect_screen (ברירת מחדל
       // "order" = ההתנהגות הקודמת, כרטיס ההזמנה שזה עתה נוצרה).
-      router.push(resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
+      const redirectHref = resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
         orderId: data.orderId,
         customerId: data.customerId,
-      }));
+      });
+      // v3 (R20): התראה מעוצבת שנשמרת בפעמון - אחרי הנתיב המוצלח, לפני הניווט; כשל בה לא משפיע על הניווט.
+      try {
+        enqueueNotice({
+          kind: 'success',
+          title: 'ההזמנה נוצרה',
+          text: `הזמנה #${data.orderId} · ${getCustomerFullName(order.selectedCustomer)}`,
+          href: redirectHref === `/orders/${data.orderId}` ? null : (data.orderId ? `/orders/${data.orderId}` : null),
+          persistToBell: true,
+          dedupeKey: `order-created-${data.orderId}`
+        });
+      } catch (noticeErr) {
+        console.error('order-created notice failed', noticeErr);
+      }
+      router.push(redirectHref);
     } catch (error) {
       console.error(error);
-      alert(`שגיאה בשמירת הזמנה: ${error.message}`);
+      await showAlert(`שמירת ההזמנה נכשלה: ${error.message}`);
       abandonSave();
     }
   };
@@ -1419,22 +1450,22 @@ export default function NewOrderPage() {
     },
     {
       id: 2, label: 'תאריכים', enabled: canNavigateToStep(2),
-      lockedReason: 'יש לבחור לקוח תחילה',
+      lockedReason: 'קודם בוחרים לקוח.',
       value: datesFilled ? eventDateLabel : ''
     },
     {
       id: 3, label: 'פריטים', enabled: canNavigateToStep(3),
-      lockedReason: 'יש למלא תאריכים תחילה',
+      lockedReason: 'קודם ממלאים תאריך.',
       value: activeItems.length ? `${activeItems.length} פריטים · ₪${(totalAmount || 0).toLocaleString('he-IL')}` : ''
     },
     {
       id: 4, label: 'סיכום', enabled: canNavigateToStep(4),
-      lockedReason: 'יש להוסיף לפחות פריט אחד להזמנה',
-      value: activeItems.length ? '' : 'בדיקה אחרונה'
+      lockedReason: 'קודם מוסיפים פריט אחד לפחות.',
+      value: activeItems.length ? '' : 'בדיקה סופית'
     },
     {
       id: 5, label: 'תשלום', enabled: canNavigateToStep(5),
-      lockedReason: 'יש להוסיף לפחות פריט אחד להזמנה',
+      lockedReason: 'קודם מוסיפים פריט אחד לפחות.',
       value: totalPaid > 0 ? `שולם ₪${totalPaid.toLocaleString('he-IL')}` : ''
     }
   ];
@@ -1445,7 +1476,7 @@ export default function NewOrderPage() {
       return;
     }
     const meta = stepsMeta.find(s => s.id === target);
-    if (meta && meta.lockedReason) alert(meta.lockedReason);
+    if (meta && meta.lockedReason) showAlert(meta.lockedReason);
   };
 
   // ציפוף ימים מותאם — אותה בקרה של המסך הקודם: ציפוף קטן מברירת המחדל (3)
@@ -1468,7 +1499,7 @@ export default function NewOrderPage() {
     const val = pendingSpacingChange;
     setPendingSpacingChange(null);
 
-    const authResult = await window.customAuthPrompt('שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:special_spacing_approval');
+    const authResult = await window.customAuthPrompt('ציפוף ימים מיוחד דורש אישור מנהל. בחרו מנהל והזינו סיסמה:', 'feature:special_spacing_approval');
     if (!authResult || !authResult.pin) return;
     try {
       const res = await fetch('/api/auth/verify-pin', {
@@ -1478,11 +1509,11 @@ export default function NewOrderPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        await showAlert(data.error || 'הסיסמה שגויה או שאין הרשאה מספקת.');
         return;
       }
     } catch (err) {
-      alert('שגיאה באימות קוד מנהל.');
+      await showAlert('אימות המנהל נכשל.');
       return;
     }
 
@@ -1509,6 +1540,17 @@ export default function NewOrderPage() {
 
   const busy = saving || isProcessingCredit;
 
+  // v3: אחרי "עריכה" מהסיכום — ברגע שהמשתמש מתקדם מהשלב שנערך חוזרים ישר לסיכום (STEPPER-PATTERNS #8).
+  // ניווט בלבד; אין נגיעה במצב ההזמנה. שער השלבים (canNavigateToStep) נשאר כפי שהוא.
+  useEffect(() => {
+    if (!returnToSummary) return;
+    if (step === 4) { setReturnToSummary(false); return; }
+    if (step > editingStepRef.current && canNavigateToStep(4)) {
+      setReturnToSummary(false);
+      setStep(4);
+    }
+  }, [step, returnToSummary]);
+
   // 3 - פרטי הוראת קבע כשנבחר לקוח קיים (טלפון/חיפוש-שם) - אותם שדות/תוויות בדיוק
   // כמו ב"פרטים נוספים" של לקוח חדש (ר' newCustomer.hok* למטה), רק ששומרים אותם על
   // order.hok* ומשגרים אותם כ-Order.hokDetails (JSON) בשמירה - ר' handleSaveNewCustomerAndProceed
@@ -1516,29 +1558,71 @@ export default function NewOrderPage() {
   const renderHokFieldsForExistingCustomer = () => {
     if (settings.hok_enabled !== 'true') return null;
     return (
-      <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
-        <h4 style={{ margin: '0 0 8px' }}>פרטי הוראת קבע (3)</h4>
-        <div className="form-grid">
-          <div className="field">
-            <label>בנק</label>
-            <input type="text" className="input" value={order.hokBankName || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankName: e.target.value }))} />
-          </div>
-          <div className="field">
-            <label>סניף</label>
-            <input type="text" className="input" value={order.hokBankBranch || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankBranch: e.target.value }))} />
-          </div>
-          <div className="field">
-            <label>חשבון</label>
-            <input type="text" className="input" style={{ direction: 'ltr' }} value={order.hokBankAccount || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankAccount: e.target.value }))} />
-          </div>
+      <Card variant="quiet" icon="card" title="הוראת קבע" level={3}>
+        <div className="v3-stack">
+          <Field label="בנק"><input type="text" value={order.hokBankName || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankName: e.target.value }))} /></Field>
+          <Field label="סניף"><input type="text" value={order.hokBankBranch || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankBranch: e.target.value }))} /></Field>
+          <Field label="חשבון"><input type="text" dir="ltr" value={order.hokBankAccount || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankAccount: e.target.value }))} /></Field>
+          <Switch checked={!!order.hokConsent} onChange={(v) => setOrder(prev => ({ ...prev, hokConsent: v }))} label="מאשרים גבייה אוטומטית בהוראת קבע במקרה של איחור או נזק" />
         </div>
-        <label className="checkbox-row" style={{ cursor: 'pointer', marginTop: 8 }}>
-          <input type="checkbox" checked={!!order.hokConsent} onChange={e => setOrder(prev => ({ ...prev, hokConsent: e.target.checked }))} />
-          <span>מאשר/ת גביה אוטומטית בהו&quot;ק במקרה של איחור/נזק</span>
-        </label>
-      </div>
+      </Card>
     );
   };
+
+  // ===== שלב האשף — עזרים של תצוגה בלבד (R8: אין שינוי לוגיקה) =====
+  const narrow = { maxWidth: 'var(--v3-dlg-w)', marginInline: 'auto' };
+  const fieldGroups = parseFieldGroups(settings.mandatory_field_groups);
+  const missingPartsOf = (c) => [
+    ...getMissingMandatoryCustomerFields(c).map(k => CUSTOMER_FIELD_LABELS[k]),
+    ...unsatisfiedFieldGroupShortLabels(c, fieldGroups)
+  ];
+  const goEditFromSummary = (target) => {
+    editingStepRef.current = target;
+    setReturnToSummary(true);
+    setStep(target);
+  };
+  const isMissingCity = deliveryCityRequired && !String(order.deliveryCity || '').trim();
+  const isMissingAddress = deliveryAddressRequired && !String(order.deliveryAddress || '').trim();
+  const step2Blocker = !datesFilled ? 'בחרו תאריך לאירוע כדי להמשיך.' : validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities);
+
+  // כרטיס שורות של לקוח (שורה לכל נתון, R15)
+  const renderCustomerRows = (c) => (
+    <Rows>
+      <Row label="טלפון" icon="phone"><bdi dir="ltr">{c.phone1}</bdi></Row>
+      {c.phone2 ? <Row label="טלפון נוסף" icon="phone"><bdi dir="ltr">{c.phone2}</bdi></Row> : null}
+      {c.email ? <Row label="אימייל" icon="mail"><bdi dir="ltr">{c.email}</bdi></Row> : null}
+      {c.city ? <Row label="כתובת" icon="pin">{c.city}{c.street ? `, ${c.street} ${c.houseNum || ''}` : ''}</Row> : null}
+    </Rows>
+  );
+
+  const renderMissingBanner = (c, withLink = true) => {
+    const parts = missingPartsOf(c);
+    if (parts.length === 0) return null;
+    return (
+      <Banner
+        kind="warning"
+        title={`בכרטיס הלקוח חסר: ${parts.join(', ')}`}
+        text={withLink ? (
+          <a href={`/customers/${c.id}`} target="_blank" rel="noreferrer">השלמת פרטים בכרטיס הלקוח (נפתח בלשונית חדשה)</a>
+        ) : undefined}
+      />
+    );
+  };
+
+  const nextLabelFor = (base) => (returnToSummary ? 'שמירה וחזרה לסיכום' : base);
+
+  let nextBtn = null;
+  if (step === 1) {
+    nextBtn = { label: nextLabelFor('להמשך: תאריכים'), onClick: proceedToStep2, disabled: !order.customerId, tip: 'בחרו לקוח כדי להמשיך.' };
+  } else if (step === 2) {
+    nextBtn = { label: nextLabelFor('להמשך: פריטים'), onClick: () => setStep(3), disabled: !datesFilled || !!validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities), tip: step2Blocker || 'בחרו תאריך כדי להמשיך.' };
+  } else if (step === 3) {
+    nextBtn = { label: nextLabelFor('להמשך: סיכום'), onClick: () => setStep(4), disabled: activeItems.length === 0, tip: 'הוסיפו פריט אחד לפחות כדי להמשיך.' };
+  } else if (step === 4) {
+    nextBtn = { label: 'להמשך: תשלום', onClick: () => setStep(5) };
+  }
+  const backLabels = { 2: 'חזרה ללקוח', 3: 'חזרה לתאריכים', 4: 'חזרה לפריטים', 5: 'חזרה לסיכום' };
+  const alertHead = alertQueue[0] || null;
 
   return (
     <>
@@ -1550,623 +1634,422 @@ export default function NewOrderPage() {
         topBar={
           <>
             {draftOrderId && (
-              <a className="btn btn-ghost" href={`/orders/${draftOrderId}`} target="_blank" rel="noopener noreferrer" title="פתח את הטיוטה בכרטיסייה נפרדת">
-                <svg className="icon"><use href="#i-link" /></svg> טיוטה #{draftOrderId}
-              </a>
+              <Btn variant="quiet" icon="link" href={`/orders/${draftOrderId}`} target="_blank" rel="noopener noreferrer" title="פתיחת הטיוטה בלשונית חדשה">
+                <span>טיוטה <bdi>#{draftOrderId}</bdi></span>
+              </Btn>
             )}
-            <button type="button" className="btn btn-ghost btn-icon-only" onClick={handleExit} disabled={busy} title="יציאה מהמסך" aria-label="יציאה מהמסך">
-              <svg className="icon"><use href="#i-x" /></svg>
-            </button>
+            <IconBtn variant="quiet" icon="x" label="יציאה מהמסך" title="יציאה מהמסך" onClick={handleExit} disabled={busy} />
           </>
         }
         footer={
           <>
-            {step > 1 && (
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(step - 1)} disabled={busy}>
-                <svg className="icon"><use href="#i-chevron-end" /></svg> חזור
-              </button>
-            )}
-            {step === 1 && (
-              <button type="button" className="btn btn-ghost" onClick={handleExit} disabled={busy}>ביטול</button>
-            )}
-            <span style={{ flex: 1 }} />
-            {step === 1 && (
-              <button type="button" className="btn btn-primary" onClick={proceedToStep2} disabled={!order.customerId}>
-                המשך <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
-            )}
-            {step === 2 && (
-              <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!datesFilled || !!validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities)}>
-                המשך לבחירת פריטים <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
-            )}
-            {step === 3 && (
-              <button type="button" className="btn btn-primary" onClick={() => setStep(4)} disabled={activeItems.length === 0}>
-                המשך לסיכום <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
-            )}
-            {step === 4 && (
-              <button type="button" className="btn btn-primary" onClick={() => setStep(5)}>
-                המשך לתשלום <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
-            )}
-            {step === 5 && (
-              <button type="button" className="btn btn-primary" onClick={saveOrder} disabled={busy} aria-busy={saving}>
-                {saving ? <><span className="spinner" /> שומר...</> : <><svg className="icon"><use href="#i-check" /></svg> סיום ויצירת ההזמנה</>}
-              </button>
+            <div className="v3-cluster">
+              {step === 5 ? (
+                <Btn variant="primary" size="lg" icon="check" onClick={saveOrder} disabled={busy} loading={saving}>
+                  {saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}
+                </Btn>
+              ) : (
+                <>
+                  <Btn variant="primary" size="lg" iconEnd="next" onClick={nextBtn.onClick} disabled={nextBtn.disabled}>{nextBtn.label}</Btn>
+                  {nextBtn.disabled && nextBtn.tip && <Tip label="למה אי אפשר להמשיך?">{nextBtn.tip}</Tip>}
+                </>
+              )}
+            </div>
+            {step === 1 ? (
+              <Btn variant="quiet" icon="x" onClick={handleExit} disabled={busy}>ביטול</Btn>
+            ) : (
+              <Btn variant="quiet" icon="back" onClick={() => setStep(step - 1)} disabled={busy}>{backLabels[step]}</Btn>
             )}
           </>
         }
       >
         {/* ==================== שלב 1 · לקוח ==================== */}
         {step === 1 && (
-          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-            <h2>מי הלקוח?</h2>
+          <div className="v3-stack" style={narrow}>
+            <h2 className="v3-h1">עבור מי ההזמנה?</h2>
 
-            <div className="tabs">
-              <button
-                type="button"
-                className={searchMode === 'phone' ? 'tab active' : 'tab'}
-                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-                onClick={() => { setSearchMode('phone'); setFoundCustomersFromPhone([]); }}
-              >
-                <svg className="icon"><use href="#i-phone" /></svg> לפי טלפון
-              </button>
-              <button
-                type="button"
-                className={searchMode === 'name' ? 'tab active' : 'tab'}
-                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-                onClick={() => setSearchMode('name')}
-              >
-                <svg className="icon"><use href="#i-search" /></svg> מהרשימה
-              </button>
-              <button
-                type="button"
-                className={searchMode === 'new' ? 'tab active' : 'tab'}
-                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-                onClick={() => setSearchMode('new')}
-              >
-                <svg className="icon"><use href="#i-user" /></svg> לקוח חדש
-              </button>
-            </div>
+            <Tabs
+              label="דרך לבחירת לקוח"
+              value={searchMode}
+              onChange={(k) => { if (k === 'phone') { setSearchMode('phone'); setFoundCustomersFromPhone([]); } else setSearchMode(k); }}
+              items={[
+                { key: 'phone', label: 'לפי טלפון', icon: 'phone' },
+                { key: 'name', label: 'מהרשימה', icon: 'search' },
+                { key: 'new', label: 'לקוח חדש', icon: 'user' }
+              ]}
+            />
 
             {searchMode === 'phone' && foundCustomersFromPhone.length === 0 && (
-              <div className="card card-pad">
-                <div className="field">
-                  <label htmlFor="cust-phone">מספר טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input
-                    id="cust-phone"
-                    type="text"
-                    inputMode="tel"
-                    dir="ltr"
-                    className="input"
-                    autoComplete="off"
-                    value={phoneSearchInput}
-                    onChange={e => setPhoneSearchInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
-                    placeholder="05..."
-                    autoFocus
-                  />
+              <Card icon="phone" title="חיפוש לפי טלפון" tip="מספר שלא קיים במערכת פותח כרטיס לקוח חדש עם המספר שהוזן.">
+                <div className="v3-stack">
+                  <Field id="cust-phone" label={<>מספר טלפון <Req /></>}>
+                    <input
+                      type="text"
+                      inputMode="tel"
+                      dir="ltr"
+                      autoComplete="off"
+                      value={phoneSearchInput}
+                      onChange={e => setPhoneSearchInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
+                      placeholder="05..."
+                      autoFocus
+                    />
+                  </Field>
+                  <Btn variant="primary" icon="search" block onClick={handleCheckPhone} loading={isCheckingPhone}>
+                    {isCheckingPhone ? 'מחפש...' : 'חיפוש לקוח'}
+                  </Btn>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ width: '100%' }}
-                  onClick={handleCheckPhone}
-                  disabled={isCheckingPhone}
-                >
-                  {isCheckingPhone ? <><span className="spinner" /> מחפש...</> : <><svg className="icon"><use href="#i-search" /></svg> בדיקה והמשך</>}
-                </button>
-                <p className="field hint" style={{ margin: '14px 0 0', textAlign: 'center' }}>
-                  מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן.
-                </p>
-              </div>
+              </Card>
             )}
 
             {searchMode === 'phone' && foundCustomersFromPhone.length > 0 && (
-              <div className="card card-pad">
+              <div className="v3-stack">
                 {foundCustomersFromPhone.length > 1 && (
-                  <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                    נמצאו {foundCustomersFromPhone.length} לקוחות עם מספר טלפון זה - יש לבחור את הלקוח הנכון.
-                  </p>
+                  <Banner kind="warning" title={`נמצאו ${foundCustomersFromPhone.length} לקוחות עם הטלפון הזה`} text="בחרו את הלקוח הנכון." />
                 )}
-                {foundCustomersFromPhone.map((foundCustomer, idx) => (
-                  <div key={foundCustomer.id} style={idx > 0 ? { marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' } : undefined}>
-                    <div className="card-title-row" style={{ marginBottom: '14px' }}>
-                      <div className="avatar">
-                        {`${(foundCustomer.firstName || '')[0] || ''}${(foundCustomer.lastName || '')[0] || ''}`}
+                {foundCustomersFromPhone.map((foundCustomer) => (
+                  <Card key={foundCustomer.id} variant="cust">
+                    <div className="v3-stack">
+                      <div className="v3-cluster">
+                        <span className="v3-avatar" aria-hidden="true">
+                          {`${(foundCustomer.firstName || '')[0] || ''}${(foundCustomer.lastName || '')[0] || ''}`}
+                        </span>
+                        <b className="v3-h2">{getCustomerFullName(foundCustomer)}</b>
+                        {foundCustomer.isBlocked && <Tag variant="attn">לקוח חסום</Tag>}
                       </div>
-                      <div>
-                        <strong style={{ fontSize: '15px' }}>
-                          {getCustomerFullName(foundCustomer)}
-                          {foundCustomer.isBlocked && (
-                            <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
-                          )}
-                        </strong>
-                        <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0' }}>
-                          {foundCustomer.phone1}
-                          {foundCustomer.phone2 ? ` · ${foundCustomer.phone2}` : ''}
-                          {foundCustomer.email ? ` · ${foundCustomer.email}` : ''}
-                          {foundCustomer.city ? ` · ${foundCustomer.city}` : ''}
-                          {foundCustomer.street ? `, ${foundCustomer.street} ${foundCustomer.houseNum || ''}` : ''}
-                        </p>
+                      {renderCustomerRows(foundCustomer)}
+                      {renderMissingBanner(foundCustomer)}
+                      {foundCustomersFromPhone.length === 1 && renderHokFieldsForExistingCustomer()}
+                      <div className="v3-cluster">
+                        <Btn variant="primary" icon="check" onClick={() => handleUseExistingCustomer(foundCustomer)}>זה הלקוח</Btn>
+                        {(getMissingMandatoryCustomerFields(foundCustomer).length > 0 || getUnsatisfiedFieldGroups(foundCustomer, fieldGroups).length > 0) && (
+                          <Btn icon="edit" href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer">עריכת הלקוח</Btn>
+                        )}
                       </div>
                     </div>
-                    {(() => {
-                      const missing = getMissingMandatoryCustomerFields(foundCustomer);
-                      const missingGroupLabels = unsatisfiedFieldGroupShortLabels(foundCustomer, parseFieldGroups(settings.mandatory_field_groups));
-                      if (missing.length === 0 && missingGroupLabels.length === 0) return null;
-                      const parts = [
-                        ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                        ...missingGroupLabels
-                      ];
-                      return (
-                        <div style={{ margin: '0 0 12px' }}>
-                          <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                            חסר ללקוח: {parts.join(', ')}.
-                          </p>
-                          <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
-                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)
-                          </a>
-                        </div>
-                      );
-                    })()}
-                    {foundCustomersFromPhone.length === 1 && renderHokFieldsForExistingCustomer()}
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomer)}>
-                        <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
-                      </button>
-                      {(getMissingMandatoryCustomerFields(foundCustomer).length > 0 || getUnsatisfiedFieldGroups(foundCustomer, parseFieldGroups(settings.mandatory_field_groups)).length > 0) && (
-                        <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, minWidth: '160px' }}>
-                          <svg className="icon"><use href="#i-edit" /></svg> עריכת פרטי לקוח
-                        </a>
-                      )}
-                    </div>
-                  </div>
+                  </Card>
                 ))}
-                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    style={{ width: '100%' }}
-                    onClick={() => {
-                      setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
-                      setFoundCustomersFromPhone([]);
-                      setSearchMode('new');
-                    }}
-                  >אף אחד מאלה - לקוח חדש</button>
-                </div>
+                <Btn
+                  block
+                  icon="user"
+                  onClick={() => {
+                    setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
+                    setFoundCustomersFromPhone([]);
+                    setSearchMode('new');
+                  }}
+                >
+                  אף אחד מהם — לקוח חדש
+                </Btn>
               </div>
             )}
 
             {searchMode === 'name' && (
-              <div className="card card-pad">
-                <div className="field">
-                  <label>חיפוש לפי שם, טלפון או עיר</label>
-                  <CustomerSelector
-                    value={order.selectedCustomer}
-                    onChange={(c) => {
-                      if (!c) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }
-                      setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }));
-                    }}
-                    placeholder="חפש לקוח לפי שם, טלפון, עיר..."
-                  />
-                </div>
-                {order.selectedCustomer && (
-                  <div style={{ padding: '12px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="hint" style={{ color: 'var(--text-3)' }}>נבחר</span>
-                      <strong>
-                        {selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer.phone1 || ''}</span>
-                        {order.selectedCustomer.isBlocked && (
-                          <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
-                        )}
-                        {' '}
-                        <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="hint" style={{ fontWeight: 600 }}>
-                          <svg className="icon" style={{ width: '13px', height: '13px', verticalAlign: 'middle' }}><use href="#i-edit" /></svg> עריכה
-                        </a>
-                      </strong>
-                    </div>
-                    {(order.selectedCustomer.phone2 || order.selectedCustomer.email) && (
-                      <p className="hint" style={{ color: 'var(--text-3)', textAlign: 'end', margin: '2px 0 0' }}>
-                        {[order.selectedCustomer.phone2, order.selectedCustomer.email].filter(Boolean).join(' · ')}
-                      </p>
-                    )}
-                    {(() => {
-                      const missing = getMissingMandatoryCustomerFields(order.selectedCustomer);
-                      const missingGroupLabels = unsatisfiedFieldGroupShortLabels(order.selectedCustomer, parseFieldGroups(settings.mandatory_field_groups));
-                      if (missing.length === 0 && missingGroupLabels.length === 0) return null;
-                      const parts = [
-                        ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                        ...missingGroupLabels
-                      ];
-                      return (
-                        <div style={{ margin: '4px 0 0', textAlign: 'end' }}>
-                          <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 8px' }}>
-                            חסר ללקוח: {parts.join(', ')}.
-                          </p>
-                          <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
-                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)
-                          </a>
-                        </div>
-                      );
-                    })()}
+              <Card icon="search" title="בחירה מהרשימה">
+                <div className="v3-stack">
+                  <div className="v3-field">
+                    <span className="v3-label">שם, טלפון או עיר</span>
+                    <CustomerSelector
+                      value={order.selectedCustomer}
+                      onChange={(c) => {
+                        if (!c) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }
+                        setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }));
+                      }}
+                      placeholder="חפשו לקוח לפי שם, טלפון או עיר..."
+                    />
                   </div>
-                )}
-                {order.selectedCustomer && renderHokFieldsForExistingCustomer()}
-              </div>
+                  {order.selectedCustomer && (
+                    <>
+                      <Rows>
+                        <Row label="הלקוח שנבחר" icon="user">
+                          <span className="v3-cluster">
+                            <b>{selectedCustomerName}</b>
+                            {order.selectedCustomer.isBlocked && <Tag variant="attn">לקוח חסום</Tag>}
+                          </span>
+                        </Row>
+                        <Row label="טלפון" icon="phone"><bdi dir="ltr">{order.selectedCustomer.phone1 || ''}</bdi></Row>
+                        {order.selectedCustomer.phone2 ? <Row label="טלפון נוסף" icon="phone"><bdi dir="ltr">{order.selectedCustomer.phone2}</bdi></Row> : null}
+                        {order.selectedCustomer.email ? <Row label="אימייל" icon="mail"><bdi dir="ltr">{order.selectedCustomer.email}</bdi></Row> : null}
+                      </Rows>
+                      <div className="v3-cluster">
+                        <Btn size="sm" icon="edit" href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer">עריכת הלקוח</Btn>
+                      </div>
+                      {renderMissingBanner(order.selectedCustomer)}
+                    </>
+                  )}
+                  {order.selectedCustomer && renderHokFieldsForExistingCustomer()}
+                </div>
+              </Card>
             )}
 
             {searchMode === 'new' && (
-              <div className="card card-pad" ref={newCustomerFormRef}>
-                {/* 1 - לא נמצא לקוח לפי הטלפון שהוזן (או שנבחר "לקוח אחר") - לפני שממלאים
-                    כרטיס לקוח חדש מלא, להציע במפורש לנסות חיפוש לפי שם/עיר, כדי שטעות הקלדה
-                    בטלפון לא תדחוף ליצירת כרטיס כפול ללקוח שכבר קיים במערכת. */}
-                {phoneSearchInput.trim() && (
-                  <p className="hint" style={{ margin: '0 0 14px', padding: '10px 12px', background: 'var(--surface-alt)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <svg className="icon" style={{ width: 14, height: 14, flexShrink: 0 }}><use href="#i-alert-circle" /></svg>
-                    <span>לא נמצא לקוח עם הטלפון שהוזן. יתכן שהמספר במערכת שונה מעט - כדאי לנסות</span>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSearchMode('name')}>חיפוש לפי שם</button>
-                    <span>לפני יצירת כרטיס חדש.</span>
-                  </p>
-                )}
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
-                  </div>
-                </div>
-                <div className="field">
-                  <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
-                </div>
-
-                {/* טלפון נוסף/אימייל: השדה היחיד שבאמת תמיד חובה הוא require_customer_email
-                    (הגדרה נפרדת) - חוץ מזה נדרש רק אחד מהשניים (ר' handleSaveNewCustomerAndProceed),
-                    וגם זו חסימה רכה עם אפשרות עקיפה באישור מנהל. הכוכבית על שניהם בו-זמנית
-                    בלי תלות בהגדרה גרמה לתחושה ששניהם שדה חובה נפרד (דיווח b6bc7d98). */}
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="cust-phone2">טלפון נוסף {isFieldRequiredByGroup('phone2', newCustomer, parseFieldGroups(settings.mandatory_field_groups)) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldMandatoryFromPicker('email') || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
-                      {newCustomer.email && !newCustomer.email.includes('@') && (
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          style={{ flexShrink: 0 }}
-                          onClick={() => setNewCustomer(prev => ({ ...prev, email: `${prev.email}@gmail.com` }))}
-                        >
-                          השלם ל- @gmail.com
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {unsatisfiedFieldGroupErrors(newCustomer, parseFieldGroups(settings.mandatory_field_groups)).map((msg, i) => (
-                  <p key={i} className="field hint" style={{ margin: '0 0 10px' }}>{msg}</p>
-                ))}
-
-                {/* 4 - עיר/רחוב/מספר בית ואישור דיוור יכולים להיות שדות חובה בפועל
-                    (require_full_address / require_marketing_consent) - כשהם כאלה, פותחים
-                    את "פרטים נוספים" אוטומטית כדי שלא יישארו מוסתרים מתחת למגירה סגורה
-                    (משוב לקוח: "עיר רחוב ת״ז ואישור קבלת דיוורים הם שדות חובה, אז למה הם
-                    בחלונית מוסתרת"). */}
-                <NocCollapsible
-                  title="פרטים נוספים"
-                  openWhen={settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city') || isFieldMandatoryFromPicker('street') || isFieldMandatoryFromPicker('houseNum') || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
-                >
-                  <div className="form-grid">
-                    <div className="field">
-                      <label htmlFor="cust-city">עיר מגורים {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
-                      <datalist id="cust-city-list">
-                        {customerLocations.cities.map(c => <option key={c} value={c} />)}
-                      </datalist>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="cust-street">רחוב {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('street')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
-                      <datalist id="cust-street-list">
-                        {customerLocations.streets.map(s => <option key={s} value={s} />)}
-                      </datalist>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="cust-house">מספר בית {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('houseNum')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cust-zeout">
-                      תעודת זהות{' '}
-                      {settings.require_customer_id_number === 'true'
-                        ? <span style={{ color: 'var(--danger)' }}>*</span>
-                        : (settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>)}
-                    </label>
-                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
-                  </div>
-                  {settings.hide_marketing_consent_field !== 'true' && (
-                    <div className="field" style={{ marginTop: 10 }}>
-                      <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                        <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
-                        <span>מאשר/ת קבלת דיוורים ועדכונים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
-                      </label>
+              <Card icon="user" title="פרטי הלקוח החדש">
+                <div className="v3-stack" ref={newCustomerFormRef}>
+                  {phoneSearchInput.trim() && (
+                    <Banner
+                      kind="info"
+                      title="לא נמצא לקוח עם הטלפון שהוזן"
+                      text="ייתכן שהמספר שמור אחרת. כדאי לחפש לפי שם לפני פתיחת כרטיס חדש."
+                      action={{ label: 'חיפוש לפי שם', onClick: () => setSearchMode('name') }}
+                    />
+                  )}
+                  <Field id="cust-firstName" label={<>שם פרטי <Req /></>}>
+                    <input type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                  </Field>
+                  <Field id="cust-lastName" label={<>שם משפחה <Req /></>}>
+                    <input type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                  </Field>
+                  <Field id="cust-phone1" label={<>טלפון <Req /></>}>
+                    <input type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                  </Field>
+                  <Field id="cust-phone2" label={<>טלפון נוסף {isFieldRequiredByGroup('phone2', newCustomer, fieldGroups) && <Req />}</>}>
+                    <input type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                  </Field>
+                  <Field id="cust-email" label={<>אימייל {(settings.require_customer_email === 'true' || isFieldMandatoryFromPicker('email') || isFieldRequiredByGroup('email', newCustomer, fieldGroups)) && <Req />}</>}>
+                    <input type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" />
+                  </Field>
+                  {newCustomer.email && !newCustomer.email.includes('@') && (
+                    <div className="v3-cluster">
+                      <Btn size="sm" onClick={() => setNewCustomer(prev => ({ ...prev, email: `${prev.email}@gmail.com` }))}>
+                        <bdi dir="ltr">@gmail.com</bdi> — השלמה
+                      </Btn>
                     </div>
                   )}
-                  {/* 3 - פרטי הוראת קבע בהזמנה (מותנה ב-hok_enabled, כבוי = מוסתר) */}
-                  {settings.hok_enabled === 'true' && (
-                    <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
-                      <h4 style={{ margin: '0 0 8px' }}>פרטי הוראת קבע (3)</h4>
-                      <div className="form-grid">
-                        <div className="field">
-                          <label>בנק</label>
-                          <input type="text" className="input" value={newCustomer.hokBankName || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankName: e.target.value }))} />
-                        </div>
-                        <div className="field">
-                          <label>סניף</label>
-                          <input type="text" className="input" value={newCustomer.hokBankBranch || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankBranch: e.target.value }))} />
-                        </div>
-                        <div className="field">
-                          <label>חשבון</label>
-                          <input type="text" className="input" style={{ direction: 'ltr' }} value={newCustomer.hokBankAccount || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankAccount: e.target.value }))} />
-                        </div>
-                      </div>
-                      <label className="checkbox-row" style={{ cursor: 'pointer', marginTop: 8 }}>
-                        <input type="checkbox" checked={!!newCustomer.hokConsent} onChange={e => setNewCustomer(prev => ({ ...prev, hokConsent: e.target.checked }))} />
-                        <span>מאשר/ת גביה אוטומטית בהו&quot;ק במקרה של איחור/נזק</span>
-                      </label>
-                    </div>
-                  )}
-                </NocCollapsible>
+                  {unsatisfiedFieldGroupErrors(newCustomer, fieldGroups).map((msg, i) => (
+                    <div key={i} className="v3-hint">{msg}</div>
+                  ))}
 
-                <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }} onClick={() => handleSaveNewCustomerAndProceed()}>
-                  <svg className="icon"><use href="#i-check" /></svg> שמור לקוח והמשך
-                </button>
-              </div>
+                  <NocCollapsible
+                    title="פרטים נוספים"
+                    openWhen={settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city') || isFieldMandatoryFromPicker('street') || isFieldMandatoryFromPicker('houseNum') || (settings.hide_marketing_consent_field !== 'true' && settings.require_marketing_consent === 'true') || settings.require_customer_id_number === 'true'}
+                  >
+                    <Field id="cust-city" label={<>עיר מגורים {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city')) && <Req />}</>}>
+                      <input type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    </Field>
+                    <datalist id="cust-city-list">
+                      {customerLocations.cities.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                    <Field id="cust-street" label={<>רחוב {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('street')) && <Req />}</>}>
+                      <input type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    </Field>
+                    <datalist id="cust-street-list">
+                      {customerLocations.streets.map(s => <option key={s} value={s} />)}
+                    </datalist>
+                    <Field id="cust-house" label={<>מספר בית {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('houseNum')) && <Req />}</>}>
+                      <input type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                    </Field>
+                    <Field
+                      id="cust-zeout"
+                      label={<>תעודת זהות {settings.require_customer_id_number === 'true' ? <Req /> : (settings.require_id_for_edit_cancel === 'true' && <span className="v3-faint v3-text-sm">(נדרשת לעריכה או ביטול בהמשך)</span>)}</>}
+                    >
+                      <input type="text" dir="ltr" autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
+                    </Field>
+                    {settings.hide_marketing_consent_field !== 'true' && (
+                      <Switch
+                        checked={!!newCustomer.marketingConsent}
+                        onChange={(v) => setNewCustomer(prev => ({ ...prev, marketingConsent: v }))}
+                        label={<>מסכימים לקבל עדכונים ודיוורים {settings.require_marketing_consent === 'true' && <Req />}</>}
+                      />
+                    )}
+                    {settings.hok_enabled === 'true' && (
+                      <Card variant="quiet" icon="card" title="הוראת קבע" level={3}>
+                        <div className="v3-stack">
+                          <Field label="בנק"><input type="text" value={newCustomer.hokBankName || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankName: e.target.value }))} /></Field>
+                          <Field label="סניף"><input type="text" value={newCustomer.hokBankBranch || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankBranch: e.target.value }))} /></Field>
+                          <Field label="חשבון"><input type="text" dir="ltr" value={newCustomer.hokBankAccount || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankAccount: e.target.value }))} /></Field>
+                          <Switch checked={!!newCustomer.hokConsent} onChange={(v) => setNewCustomer(prev => ({ ...prev, hokConsent: v }))} label="מאשרים גבייה אוטומטית בהוראת קבע במקרה של איחור או נזק" />
+                        </div>
+                      </Card>
+                    )}
+                  </NocCollapsible>
+
+                  <Btn variant="primary" icon="check" block onClick={() => handleSaveNewCustomerAndProceed()}>שמירת הלקוח והמשך</Btn>
+                </div>
+              </Card>
             )}
           </div>
         )}
 
         {/* ==================== שלב 2 · תאריכים ==================== */}
         {step === 2 && (
-          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-            <h2>מתי האירוע?</h2>
+          <div className="v3-stack" style={narrow}>
+            <h2 className="v3-h1">לאיזה תאריך?</h2>
 
-            <div className="pill-tabs" style={{ marginBottom: '14px' }}>
-              <button
-                type="button"
-                className={`pill-tab${!order.isAbroad ? ' active' : ''}`}
-                aria-pressed={!order.isAbroad}
-                onClick={() => handleDateChangeWithValidation('isAbroad', false)}
-              >אירוע רגיל</button>
-              <button
-                type="button"
-                className={`pill-tab${order.isAbroad ? ' active' : ''}`}
-                aria-pressed={!!order.isAbroad}
-                onClick={() => handleDateChangeWithValidation('isAbroad', true)}
-              >חו&quot;ל / תפוסה ארוכה</button>
-            </div>
+            <Seg
+              label="סוג האירוע"
+              value={!!order.isAbroad}
+              onChange={(v) => handleDateChangeWithValidation('isAbroad', v)}
+              options={[
+                { value: false, label: 'אירוע רגיל', icon: 'calendar' },
+                { value: true, label: 'חו"ל / תפוסה ארוכה', icon: 'calendar' }
+              ]}
+            />
 
-            <div className="card card-pad">
-              {!order.isAbroad ? (
-                <div className="field">
-                  <label>תאריך אירוע <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
-                </div>
-              ) : (
-                <div className="field">
-                  <label>טווח תאריכים (מתאריך עד תאריך) <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <HebrewDateRangePicker
-                    startDate={order.fromDate}
-                    endDate={order.toDate}
-                    onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })}
-                  />
-                </div>
-              )}
+            <Card icon="calendar" title={!order.isAbroad ? 'תאריך האירוע' : 'טווח תאריכים'} tip={order.isAbroad ? 'בחרו את יום ההתחלה ואת יום הסיום של ההשכרה.' : undefined}>
+              <div className="v3-stack">
+                {!order.isAbroad ? (
+                  <div className="v3-field">
+                    <span className="v3-label">תאריך אירוע <Req /></span>
+                    <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
+                  </div>
+                ) : (
+                  <div className="v3-field">
+                    <span className="v3-label">מתאריך עד תאריך <Req /></span>
+                    <HebrewDateRangePicker
+                      startDate={order.fromDate}
+                      endDate={order.toDate}
+                      onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })}
+                    />
+                  </div>
+                )}
 
-              <NocCollapsible
-                title={settings.hide_custom_spacing === 'true' ? 'הערות' : 'הערות וריווח ימים'}
-                badge={settings.hide_custom_spacing === 'true' ? (order.notes ? 'יש הערה' : null) : ((order.customSpacing !== null && order.customSpacing !== undefined) ? spacingLabel : (order.notes ? 'יש הערה' : null))}
-              >
-                <div className="field">
-                  <label htmlFor="order-notes">הערות כלליות להזמנה</label>
-                  <textarea
+                <NocCollapsible
+                  title={settings.hide_custom_spacing === 'true' ? 'הערות' : 'הערות וריווח ימים'}
+                  badge={settings.hide_custom_spacing === 'true' ? (order.notes ? 'יש הערה' : null) : ((order.customSpacing !== null && order.customSpacing !== undefined) ? spacingLabel : (order.notes ? 'יש הערה' : null))}
+                >
+                  <Field
                     id="order-notes"
+                    as="textarea"
+                    label="הערות להזמנה"
                     name="notes"
-                    className="textarea"
                     rows={2}
                     value={order.notes}
                     onChange={handleOrderChange}
-                    placeholder="בקשות מיוחדות, סיכומים עם הלקוח..."
+                    placeholder="בקשות מיוחדות, מה סוכם עם הלקוח..."
                   />
-                </div>
 
-                {settings.hide_custom_spacing !== 'true' && (
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>ריווח ימים בין השכרות</label>
-                  <div className="pill-tabs">
-                    {[
-                      { val: null, label: 'רגיל' },
-                      { val: 0, label: 'ללא' },
-                      { val: 1, label: 'יום' },
-                      { val: 2, label: 'יומיים' },
-                      { val: 3, label: '3 ימים' },
-                      { val: 4, label: '4 ימים' }
-                    ].map(opt => {
-                      const on = order.customSpacing === opt.val;
-                      return (
-                        <button
-                          key={String(opt.val)}
-                          type="button"
-                          className={`pill-tab${on ? ' active' : ''}`}
-                          aria-pressed={on}
-                          onClick={() => handleSpacingChange(opt.val)}
-                        >{opt.label}</button>
-                      );
-                    })}
-                  </div>
-                  <p className="hint" style={{ marginTop: '8px', color: (order.customSpacing !== null && order.customSpacing !== undefined && order.customSpacing < 3) ? 'var(--warning)' : 'var(--text-3)' }}>
-                    {(order.customSpacing === null || order.customSpacing === undefined)
-                      ? 'ברירת המחדל של המערכת.'
-                      : order.customSpacing < 3
-                        ? 'ציפוף מיוחד — משפיע על בדיקת המלאי להזמנה זו בלבד, מסמן את ההזמנה ודורש אישור מנהל.'
-                        : 'ריווח מורחב — פחות זמינות לשאר ההזמנות.'}
-                  </p>
-                </div>
-                )}
-              </NocCollapsible>
-
-              {/* 15 + 13/34 - משלוח, טלפוני וסניף (מותנה ב-toggle, כבוי = מוסתר) */}
-              {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
-              <div className="card card-pad" style={{ marginTop: 12 }}>
-                <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח / סניף / טלפוני</h3>
-                <div className="form-grid">
-                  {settings.phone_order_marker_enabled === 'true' && (
-                    <div className="field">
-                      <label>הזמנה טלפונית</label>
-                      {/* 6 - הזמנה טלפונית וסניף ביצוע לא יכולים להיות מסומנים יחד - סימון
-                          "טלפונית" מנקה סניף שנבחר (ור' onChange של ה-select למטה, שמנקה בכיוון ההפוך).
-                          שדה זה קיבל label עליון + switch (במקום checkbox רגיל) כדי להתיישר
-                          עם שורת "סניף ביצוע" הסמוכה, שגם היא label למעלה + control למטה. */}
-                      <div style={{ display: 'flex', alignItems: 'center', minHeight: '37px' }}>
-                        <span
-                          className={`switch${order.isPhoneOrder ? ' on' : ''}`}
-                          role="switch"
-                          aria-checked={!!order.isPhoneOrder}
-                          tabIndex={0}
-                          onClick={() => setOrder(prev => { const next = !prev.isPhoneOrder; return { ...prev, isPhoneOrder: next, branch: next ? '' : prev.branch }; })}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOrder(prev => { const next = !prev.isPhoneOrder; return { ...prev, isPhoneOrder: next, branch: next ? '' : prev.branch }; }); } }}
-                        />
-                      </div>
+                  {settings.hide_custom_spacing !== 'true' && (
+                    <div className="v3-field">
+                      <span className="v3-label">
+                        ריווח ימים בין השכרות
+                        <Tip>
+                          {(order.customSpacing === null || order.customSpacing === undefined)
+                            ? 'ברירת המחדל של המערכת.'
+                            : order.customSpacing < 3
+                              ? 'ציפוף מיוחד משפיע על בדיקת המלאי בהזמנה הזו בלבד, מסמן אותה ודורש אישור מנהל.'
+                              : 'ריווח מורחב: פחות זמינות לשאר ההזמנות.'}
+                        </Tip>
+                      </span>
+                      <Seg
+                        label="ריווח ימים בין השכרות"
+                        value={String(order.customSpacing ?? null)}
+                        onChange={(v) => handleSpacingChange(v === 'null' ? null : Number(v))}
+                        options={[
+                          { value: 'null', label: 'רגיל' },
+                          { value: '0', label: 'ללא' },
+                          { value: '1', label: 'יום' },
+                          { value: '2', label: 'יומיים' },
+                          { value: '3', label: '3 ימים' },
+                          { value: '4', label: '4 ימים' }
+                        ]}
+                      />
+                      {order.customSpacing !== null && order.customSpacing !== undefined && order.customSpacing < 3 && (
+                        <div className="v3-hint">נדרש אישור מנהל</div>
+                      )}
                     </div>
                   )}
-                  {/* 13 - זיהוי סניף ביצוע: מותנה ב-track_branch_on_order (לא ב-branches_enabled -
-                      זה שער ה"התייחסות לסניפים" המורחבת של בקשה 34 בלבד, ר' סניף איסוף למטה).
-                      2 - select סגור מתוך הגדרת branch_list בלבד (לא עוד input חופשי + datalist -
-                      אפשר היה להקליד כל טקסט, לא רק את הסניפים שבהגדרה). */}
+                </NocCollapsible>
+              </div>
+            </Card>
+
+            {/* משלוח, טלפוני וסניף (מותנה בהגדרות) */}
+            {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
+              <Card icon="truck" title="משלוח, סניף וטלפוני">
+                <div className="v3-stack">
+                  {settings.phone_order_marker_enabled === 'true' && (
+                    <Tip content="הזמנה טלפונית וסניף ביצוע לא מסומנים יחד: סימון אחד מנקה את השני.">
+                      <span>
+                        <Switch
+                          checked={!!order.isPhoneOrder}
+                          label="הזמנה טלפונית"
+                          onChange={() => setOrder(prev => { const next = !prev.isPhoneOrder; return { ...prev, isPhoneOrder: next, branch: next ? '' : prev.branch }; })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setOrder(prev => { const next = !prev.isPhoneOrder; return { ...prev, isPhoneOrder: next, branch: next ? '' : prev.branch }; }); } }}
+                        />
+                      </span>
+                    </Tip>
+                  )}
                   {settings.track_branch_on_order === 'true' && (
-                    <div className="field">
-                      <label>סניף ביצוע</label>
-                      <select
-                        className="input"
-                        value={order.branch || ''}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setOrder(prev => ({ ...prev, branch: val, isPhoneOrder: val ? false : prev.isPhoneOrder }));
-                          try { if (val) localStorage.setItem('gemach_last_order_branch', val); } catch {}
-                        }}
-                      >
-                        <option value="">בחר סניף...</option>
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <Field
+                      as="select"
+                      label="סניף ביצוע"
+                      value={order.branch || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setOrder(prev => ({ ...prev, branch: val, isPhoneOrder: val ? false : prev.isPhoneOrder }));
+                        try { if (val) localStorage.setItem('gemach_last_order_branch', val); } catch {}
+                      }}
+                    >
+                      <option value="">בחרו סניף...</option>
+                      {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </Field>
                   )}
                   {settings.branches_enabled === 'true' && (
-                    <div className="field">
-                      <label>סניף איסוף</label>
-                      <select
-                        className="input"
-                        value={order.pickupBranch || ''}
-                        onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))}
-                      >
-                        <option value="">בחר סניף...</option>
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <Field
+                      as="select"
+                      label="סניף איסוף"
+                      value={order.pickupBranch || ''}
+                      onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))}
+                    >
+                      <option value="">בחרו סניף...</option>
+                      {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </Field>
                   )}
-                </div>
-                {/* הזמנת משלוח מותנית ב-enable_deliveries (המתג הראשי של הפיצ'ר) - לא רק בכך
-                    שהכרטיס כולו מוצג (delivery_show_in_order, שער נפרד לטלפוני/סניף). בלי
-                    התנאי הזה האפשרות הופיעה גם כשהמשלוחים כבויים לגמרי (דיווח תקלה e8dc2860,
-                    2026-09-22), בשונה מכרטיס העריכה של הזמנה קיימת שכבר נעלם לגמרי כשכבוי. */}
-                {settings.enable_deliveries === 'true' && (
-                <div className="form-grid" style={{ marginTop: 8 }}>
-                  <div className="field">
-                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                      <input type="checkbox" checked={!!order.isDelivery} onChange={e => setOrder(prev => ({ ...prev, isDelivery: e.target.checked }))} />
-                      <span>הזמנת משלוח</span>
-                    </label>
-                  </div>
-                  {order.isDelivery && (
+
+                  {settings.enable_deliveries === 'true' && (
                     <>
-                      <div className="field">
-                        <label>כיוון משלוח</label>
-                        <select className="select" value={order.deliveryDirection} onChange={e => setOrder(prev => ({ ...prev, deliveryDirection: e.target.value }))}>
-                          <option value="הלוך">הלוך</option>
-                          <option value="חזור">חזור</option>
-                          <option value="הלוך-חזור">הלוך-חזור</option>
-                        </select>
-                      </div>
-                      <div className="field">
-                        <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                        <select id="delivery-city" className="select" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}>
-                          <option value="">בחר עיר…</option>
-                          {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
-                          <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                            עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
-                          </p>
-                        )}
-                      </div>
-                      {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
-                        <div className="field">
-                          <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                          <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                          {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
-                            <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                              עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
-                            </p>
+                      <Switch checked={!!order.isDelivery} onChange={(v) => setOrder(prev => ({ ...prev, isDelivery: v }))} label="הזמנת משלוח" />
+                      {order.isDelivery && (
+                        <>
+                          <Field as="select" label="כיוון המשלוח" value={order.deliveryDirection} onChange={e => setOrder(prev => ({ ...prev, deliveryDirection: e.target.value }))}>
+                            <option value="הלוך">הלוך</option>
+                            <option value="חזור">חזור</option>
+                            <option value="הלוך-חזור">הלוך וחזור</option>
+                          </Field>
+                          <Field
+                            id="delivery-city"
+                            as="select"
+                            label={<>עיר משלוח {deliveryCityRequired && <Req />}</>}
+                            tip="העיר קובעת את מחיר המשלוח."
+                            value={order.deliveryCity || ''}
+                            onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}
+                            error={isMissingCity ? 'עיר המגורים של הלקוח לא ברשימת ערי המשלוח. בחרו עיר משלוח.' : undefined}
+                          >
+                            <option value="">בחרו עיר…</option>
+                            {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
+                          </Field>
+                          {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
+                            <Field
+                              label={<>כתובת משלוח שונה {deliveryAddressRequired && <Req />}</>}
+                              error={isMissingAddress ? 'עיר המשלוח שונה מעיר הלקוח. הזינו כתובת למשלוח.' : undefined}
+                            >
+                              <input type="text" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (אם שונה ממגורים)" />
+                            </Field>
                           )}
-                        </div>
-                      )}
-                      {settings.delivery_one_day_before_option === 'true' && (
-                        <div className="field">
-                          <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                            <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => setOrder(prev => ({ ...prev, deliveryOneDayBefore: e.target.checked }))} />
-                            <span>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
-                          </label>
-                        </div>
+                          {settings.delivery_one_day_before_option === 'true' && (
+                            <Switch checked={!!order.deliveryOneDayBefore} onChange={(v) => setOrder(prev => ({ ...prev, deliveryOneDayBefore: v }))} label="המשלוח יוצא יום לפני האירוע (ולא יומיים)" />
+                          )}
+                        </>
                       )}
                     </>
                   )}
                 </div>
-                )}
-              </div>
-              )}
-            </div>
+              </Card>
+            )}
           </div>
         )}
 
         {/* ==================== שלב 3 · פריטים ==================== */}
         {step === 3 && (
-          <div>
-            <h2>אילו פריטים?</h2>
+          <div className="v3-stack">
+            <h2 className="v3-h1">מה מזמינים?</h2>
 
-            <div className="two-col">
-              {/* --- הוספת פריט --- */}
-              <div className="card card-pad">
-                <div className="card-title-row" style={{ marginBottom: '14px' }}>
-                  <svg className="icon"><use href="#i-bag" /></svg>
-                  <h3 style={{ margin: 0 }}>הוספת פריט</h3>
-                </div>
-
-                <div className="field">
-                  <label htmlFor="item-model">דגם <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <Card icon="bag" title="הוספת פריט">
+              <div className="v3-stack">
+                <div className="v3-field">
+                  <label className="v3-label" htmlFor="item-model">דגם <Req /></label>
                   <OrderModelSelector
                     inputId="item-model"
                     hasActiveItems
@@ -2188,65 +2071,55 @@ export default function NewOrderPage() {
                         selectedSizes: []
                       }));
                     }}
-                    placeholder="חפש דגם פריט..."
+                    placeholder="חפשו דגם לפי שם או ברקוד..."
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-2)' }}>
-                    מידה (אפשר לסמן כמה יחד) <span style={{ color: 'var(--danger)' }}>*</span>
-                    {loadingSizes && <span style={{ fontWeight: 400 }}> (בודק זמינות...)</span>}
+                <div className="v3-field">
+                  <div className="v3-cluster" style={{ justifyContent: 'space-between' }}>
+                    <span className="v3-label" style={{ marginBottom: 0 }}>
+                      מידות <Req />
+                      <Tip>אפשר לסמן כמה מידות יחד. כל מידה נוספת כפריט נפרד בסל.</Tip>
+                      {loadingSizes && <span className="v3-faint v3-text-sm">בודק זמינות...</span>}
+                    </span>
+                    <IconBtn variant="quiet" size="sm" icon="refresh" label="רענון זמינות המלאי" title="רענון זמינות המלאי" onClick={refreshInventory} disabled={loadingPreload || loadingSizes} />
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-icon-only btn-sm"
-                    onClick={refreshInventory}
-                    disabled={loadingPreload || loadingSizes}
-                    title="רענן זמינות מלאי"
-                    aria-label="רענן זמינות מלאי"
-                  >
-                    <svg className="icon"><use href="#i-refresh" /></svg>
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px', minHeight: '38px', alignItems: 'center' }}>
-                  {availableSizes.length === 0 ? (
-                    <p className="hint">
-                      {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
-                    </p>
-                  ) : (
-                    availableSizes.map(s => {
-                      const normalAvail = s.withNormalBuffer?.availableQuantity ?? s.availableQuantity ?? 0;
-                      const customAvail = s.withCustomSpacing?.availableQuantity;
-                      const selectedAvail = s.withCustomSpacing ? customAvail : normalAvail;
-                      const isAvailable = selectedAvail > 0;
-                      const isSelected = newItem.selectedSizes.includes(s.sizeText);
-                      const tooltipText = s.withCustomSpacing
-                        ? `רגיל: ${normalAvail} | ציפוף: ${customAvail}${s.withCustomSpacing.gain > 0 ? ` (+${s.withCustomSpacing.gain})` : ''}`
-                        : `זמין: ${normalAvail}`;
-
-                      return (
-                        <button
-                          key={s.sizeText}
-                          type="button"
-                          className={`pill-tab${isSelected ? ' active' : ''}`}
-                          disabled={!isAvailable}
-                          aria-pressed={isSelected}
-                          title={tooltipText}
-                          style={!isAvailable ? { opacity: 0.45, textDecoration: 'line-through' } : undefined}
-                          onClick={() => toggleSizeSelection(s.sizeText)}
-                        >
-                          {s.sizeText}{' '}
-                          <span style={{ opacity: 0.75, fontWeight: 600 }}>
-                            {!isAvailable ? '· אזל' : `· ${normalAvail} פנויות`}
-                          </span>
-                          {isAvailable && s.withCustomSpacing && s.withCustomSpacing.gain > 0 && (
-                            <span style={{ color: 'var(--success)', fontWeight: 800 }}> +{s.withCustomSpacing.gain}</span>
-                          )}
-                        </button>
-                      );
-                    })
-                  )}
+                  <div className="v3-options v3-options--grid" style={{ marginTop: 'var(--v3-sp-2)' }}>
+                    {availableSizes.length === 0 ? (
+                      <p className="v3-hint">
+                        {newItem.dressModelId ? 'אין מידות פנויות לתאריך הזה.' : 'בחרו דגם כדי לראות מידות פנויות.'}
+                      </p>
+                    ) : (
+                      availableSizes.map(s => {
+                        const normalAvail = s.withNormalBuffer?.availableQuantity ?? s.availableQuantity ?? 0;
+                        const customAvail = s.withCustomSpacing?.availableQuantity;
+                        const selectedAvail = s.withCustomSpacing ? customAvail : normalAvail;
+                        const isAvailable = selectedAvail > 0;
+                        const isSelected = newItem.selectedSizes.includes(s.sizeText);
+                        const tooltipText = s.withCustomSpacing
+                          ? `רגיל: ${normalAvail} | ציפוף: ${customAvail}${s.withCustomSpacing.gain > 0 ? ` (+${s.withCustomSpacing.gain})` : ''}`
+                          : `זמין: ${normalAvail}`;
+                        return (
+                          <button
+                            key={s.sizeText}
+                            type="button"
+                            className="v3-option"
+                            disabled={!isAvailable}
+                            aria-pressed={isSelected}
+                            title={tooltipText}
+                            onClick={() => toggleSizeSelection(s.sizeText)}
+                          >
+                            <span>
+                              <b>{s.sizeText}</b>
+                              <small>{!isAvailable ? 'אזל' : <><bdi>{normalAvail}</bdi> פנויות</>}
+                                {isAvailable && s.withCustomSpacing && s.withCustomSpacing.gain > 0 && <> · <bdi>+{s.withCustomSpacing.gain}</bdi> בציפוף</>}
+                              </small>
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
 
                 {settings.enable_alterations !== 'false' && (
@@ -2255,267 +2128,219 @@ export default function NewOrderPage() {
                     badge={alterationsChosen ? alterationsSummary : null}
                     openWhen={alterationsChosen}
                   >
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                      <button
-                        type="button"
-                        aria-pressed={!!newItem.neckAlteration}
-                        className={`pill-tab${newItem.neckAlteration ? ' active' : ''}`}
-                        onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration } })}
-                      >
-                        <svg className="icon"><use href="#i-scissors" /></svg> צוואר
+                    <div className="v3-options v3-options--grid">
+                      <button type="button" className="v3-option" aria-pressed={!!newItem.neckAlteration} onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration } })}>
+                        <Icon name="scissors" /> צוואר
                       </button>
-                      <button
-                        type="button"
-                        aria-pressed={!!newItem.sleeveAlteration}
-                        className={`pill-tab${newItem.sleeveAlteration ? ' active' : ''}`}
-                        onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration } })}
-                      >
-                        <svg className="icon"><use href="#i-scissors" /></svg> שרוול
+                      <button type="button" className="v3-option" aria-pressed={!!newItem.sleeveAlteration} onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration } })}>
+                        <Icon name="scissors" /> שרוול
                       </button>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-2)' }}>
-                        אורך
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          name="lengthAlteration"
-                          autoComplete="new-password"
-                          className="input"
-                          style={{ width: '70px', padding: '6px 8px' }}
-                          value={newItem.lengthAlteration || ''}
-                          onChange={handleNewItemChange}
-                          placeholder="ס״מ"
-                          aria-label="קיצור אורך בסנטימטרים"
-                        />
-                        ס״מ
-                      </span>
                     </div>
-
-                    <div className="field" style={{ marginTop: '14px', marginBottom: 0 }}>
-                      <label htmlFor="item-repairs">
-                        פירוט לתופרת {alterationsChosen && <span style={{ color: 'var(--danger)' }}>* (חובה)</span>}
-                      </label>
+                    <Field label="קיצור אורך (ס״מ)">
                       <input
-                        id="item-repairs"
+                        type="text"
+                        inputMode="decimal"
+                        name="lengthAlteration"
+                        autoComplete="new-password"
+                        value={newItem.lengthAlteration || ''}
+                        onChange={handleNewItemChange}
+                        placeholder="ס״מ"
+                        aria-label="קיצור אורך בסנטימטרים"
+                      />
+                    </Field>
+                    <Field
+                      id="item-repairs"
+                      label={<>פירוט לתופרת {alterationsChosen && <Req />}</>}
+                      error={(alterationsChosen && !(newItem.repairs || '').trim()) ? 'כדאי לפרט מה בדיוק לתקן' : undefined}
+                    >
+                      <input
                         type="text"
                         name="repairs"
                         autoComplete="new-password"
-                        className="input"
                         value={newItem.repairs || ''}
                         onChange={handleNewItemChange}
                         placeholder="מה בדיוק לתקן..."
-                        style={{ borderColor: (alterationsChosen && !(newItem.repairs || '').trim()) ? 'var(--danger)' : undefined }}
                       />
-                    </div>
+                    </Field>
                   </NocCollapsible>
                 )}
 
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ width: '100%', marginTop: '16px' }}
-                  onClick={addItemToOrder}
-                  disabled={newItem.selectedSizes.length === 0}
-                >
-                  <svg className="icon"><use href="#i-plus" /></svg>{' '}
-                  {newItem.selectedSizes.length > 1 ? `הוסף ${newItem.selectedSizes.length} פריטים לסל` : 'הוסף לסל'}
-                </button>
+                <Btn variant="primary" icon="plus" block onClick={addItemToOrder} disabled={newItem.selectedSizes.length === 0}>
+                  {newItem.selectedSizes.length > 1 ? `הוספת ${newItem.selectedSizes.length} פריטים לסל` : 'הוספה לסל'}
+                </Btn>
               </div>
+            </Card>
 
-              {/* --- הסל --- */}
-              <div className="card card-pad">
-                <div className="card-title-row" style={{ justifyContent: 'space-between', marginBottom: '12px', display: 'flex' }}>
-                  <div className="card-title-row">
-                    <svg className="icon"><use href="#i-receipt" /></svg>
-                    <h3 style={{ margin: 0 }}>בסל{activeItems.length ? ` · ${activeItems.length}` : ''}</h3>
-                  </div>
-                  {calculating && (
-                    <span className="hint" style={{ color: 'var(--text-3)' }}>
-                      <span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px', verticalAlign: '-2px' }} /> מחשב מחירים...
-                    </span>
-                  )}
-                </div>
-
-                {order.items.length === 0 ? (
-                  <div className="empty-state">
-                    <svg className="icon"><use href="#i-bag" /></svg>
-                    <p>טרם הוספת פריטים להזמנה</p>
-                  </div>
-                ) : (
-                  <>
-                    <div role="region" aria-label="פריטים בסל" tabIndex={0}>
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="list-card">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName || 'דגם לא ידוע'}</div>
-                            <div className="hint" style={{ color: 'var(--text-3)' }}>{item.sizeText}{settings.enable_alterations !== 'false' ? ` · ${describeAlterations(item)}` : ''}</div>
+            <Card
+              icon="receipt"
+              title={`בסל${activeItems.length ? ` · ${activeItems.length}` : ''}`}
+              actions={calculating ? (
+                <span className="v3-faint v3-text-sm v3-cluster"><Icon name="loader" loop /> מחשב מחירים...</span>
+              ) : undefined}
+            >
+              {order.items.length === 0 ? (
+                <Empty icon="bag" title="הסל ריק" text="הוסיפו פריט כדי להמשיך." />
+              ) : (
+                <div className="v3-stack">
+                  <div className="v3-stack" role="region" aria-label="פריטים בסל" tabIndex={0}>
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="v3-item">
+                        <div className="v3-item__top" style={{ cursor: 'default' }}>
+                          <span className="v3-item__thumb"><Icon name="shirt" /></span>
+                          <div className="v3-item__info">
+                            <span className="v3-item__model">{item.dressName || 'דגם לא ידוע'} <span className="v3-item__size">{item.sizeText}</span></span>
+                            {settings.enable_alterations !== 'false' && <span className="v3-item__meta">{describeAlterations(item)}</span>}
                           </div>
-                          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
-                            ₪{(calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice) || 0}
-                          </strong>
-                          <div className="row-actions">
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="בדוק תפוסה לתאריך האירוע" aria-label="בדוק תפוסה" onClick={() => setCapacityModalItem(item)}>
-                              <svg className="icon"><use href="#i-calendar" /></svg>
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ערוך פריט" aria-label="ערוך פריט" onClick={() => editItem(idx)}>
-                              <svg className="icon"><use href="#i-edit" /></svg>
-                            </button>
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הסר פריט" aria-label="הסר פריט" style={{ color: 'var(--danger)' }} onClick={async () => { if (await window.customConfirm('האם אתה בטוח שברצונך להסיר את הפריט מהסל?')) removeItem(idx); }}>
-                              <svg className="icon"><use href="#i-trash" /></svg>
-                            </button>
-                          </div>
+                          <b className="v3-item__price"><bdi>₪{(calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice) || 0}</bdi></b>
                         </div>
-                      ))}
-                    </div>
+                        <div className="v3-item__acts" style={{ paddingInline: 'var(--v3-sp-5)', paddingBottom: 'var(--v3-sp-4)' }}>
+                          <IconBtn variant="quiet" size="sm" icon="calendar" label="בדיקת תפוסה" title="בדיקת תפוסה לתאריך האירוע" onClick={() => setCapacityModalItem(item)} />
+                          <IconBtn variant="quiet" size="sm" icon="edit" label="עריכת פריט" title="עריכת פריט" onClick={() => editItem(idx)} />
+                          <IconBtn variant="danger" size="sm" icon="trash" label="הסרת פריט" title="הסרת פריט" onClick={async () => { if (await window.customConfirm('להסיר את הפריט מהסל?')) removeItem(idx); }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="v3-cluster" style={{ justifyContent: 'space-between' }}>
+                    <span className="v3-muted">סה&quot;כ</span>
+                    <b className="v3-h2"><bdi>₪{(totalAmount || 0).toLocaleString('he-IL')}</bdi></b>
+                  </div>
+                </div>
+              )}
+            </Card>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '10px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '13.5px' }}>סה&quot;כ</span>
-                      <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--primary-solid)', fontVariantNumeric: 'tabular-nums' }}>
-                        ₪{(totalAmount || 0).toLocaleString('he-IL')}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* הערות כלליות להזמנה - גם כאן (בנוסף לשלב 2), כי דיווח תקלה 9c358793 (2026-09-22)
-                חזר פעמיים על כך שבזמן הוספת פריטים (שלב זה) לא רואים אפשרות להקליד הערה חופשית -
-                אותו שדה order.notes בדיוק, לא שדה נפרד. */}
-            <div className="card card-pad" style={{ marginTop: 16 }}>
-              <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="order-notes-step3">הערות כלליות להזמנה</label>
-                <textarea
-                  id="order-notes-step3"
-                  name="notes"
-                  className="textarea"
-                  rows={2}
-                  value={order.notes}
-                  onChange={handleOrderChange}
-                  placeholder="בקשות מיוחדות, סיכומים עם הלקוח..."
-                />
-              </div>
-            </div>
+            {/* אותו order.notes כמו בשלב 2 (id שונה) */}
+            <Card icon="edit" title="הערות להזמנה">
+              <Field
+                id="order-notes-step3"
+                as="textarea"
+                aria-label="הערות להזמנה"
+                name="notes"
+                rows={2}
+                value={order.notes}
+                onChange={handleOrderChange}
+                placeholder="בקשות מיוחדות, מה סוכם עם הלקוח..."
+              />
+            </Card>
           </div>
         )}
 
         {/* ==================== שלב 4 · סיכום ==================== */}
         {step === 4 && (
-          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-            <h2>סיכום</h2>
+          <div className="v3-stack" style={{ maxWidth: 'var(--v3-dlg-w)', marginInline: 'auto' }}>
+            <h2 className="v3-h1">בדיקה לפני תשלום</h2>
 
-            <div className="card card-pad" style={{ marginBottom: '16px' }}>
-              <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0 }}>פרטי ההזמנה</h3>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(1)}>עריכה</button>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>לקוח</span>
-                <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer?.phone1 || ''}</span></strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>תאריכים</span>
-                <strong>
-                  {order.isAbroad
-                    ? `מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)}`
-                    : getHebrewDateString(order.eventDate)}
-                </strong>
-              </div>
-              {settings.hide_custom_spacing !== 'true' && order.customSpacing !== null && order.customSpacing !== undefined && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                  <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
-                  <strong>{spacingLabel}</strong>
-                </div>
-              )}
-              {order.notes && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 4px 4px' }}>
-                  <span className="hint" style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>הערות</span>
-                  <strong style={{ textAlign: 'left' }}>{order.notes}</strong>
-                </div>
-              )}
-            </div>
+            <Card icon="user" title="לקוח" actions={<Btn variant="quiet" size="sm" icon="edit" onClick={() => goEditFromSummary(1)}>עריכה</Btn>}>
+              <Rows>
+                <Row label="שם" icon="user">{selectedCustomerName}</Row>
+                <Row label="טלפון" icon="phone"><bdi dir="ltr">{order.selectedCustomer?.phone1 || ''}</bdi></Row>
+              </Rows>
+            </Card>
 
-            <div className="card card-pad">
-              <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0 }}>פריטים ({order.items.length})</h3>
-              </div>
+            <Card icon="calendar" title="תאריכים" actions={<Btn variant="quiet" size="sm" icon="edit" onClick={() => goEditFromSummary(2)}>עריכה</Btn>}>
+              <Rows>
+                {order.isAbroad ? (
+                  <>
+                    <Row label="מתאריך" icon="calendar">{getHebrewDateString(order.fromDate)}</Row>
+                    <Row label="עד תאריך" icon="calendar">{getHebrewDateString(order.toDate)}</Row>
+                  </>
+                ) : (
+                  <Row label="תאריך האירוע" icon="calendar">{getHebrewDateString(order.eventDate)}</Row>
+                )}
+                {settings.hide_custom_spacing !== 'true' && order.customSpacing !== null && order.customSpacing !== undefined && (
+                  <Row label="ריווח ימים" icon="clock">{spacingLabel}</Row>
+                )}
+                {order.notes && <Row label="הערות" icon="edit">{order.notes}</Row>}
+              </Rows>
+            </Card>
 
-              <div style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
-                {order.items.map((item, idx) => {
-                  const calcItem = calculatedData.items[idx];
-                  const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
-                  const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
-                  return (
-                    <div key={idx} className="list-card">
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName} · {item.sizeText}</div>
-                        {settings.enable_alterations !== 'false' && (
-                          <div className="hint" style={{ color: 'var(--text-3)' }}>
-                            תיקונים: {describeAlterations(item)}
-                            {repairsCost > 0 && <span style={{ color: 'var(--warning)' }}> (+₪{repairsCost})</span>}
+            <Card icon="bag" title={`פריטים (${order.items.length})`} actions={<Btn variant="quiet" size="sm" icon="edit" onClick={() => goEditFromSummary(3)}>עריכה</Btn>}>
+              <div className="v3-stack">
+                <div className="v3-stack" style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
+                  {order.items.map((item, idx) => {
+                    const calcItem = calculatedData.items[idx];
+                    const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
+                    const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
+                    return (
+                      <div key={idx} className="v3-item">
+                        <div className="v3-item__top" style={{ cursor: 'default' }}>
+                          <span className="v3-item__thumb"><Icon name="shirt" /></span>
+                          <div className="v3-item__info">
+                            <span className="v3-item__model">{item.dressName} <span className="v3-item__size">{item.sizeText}</span></span>
+                            {settings.enable_alterations !== 'false' && (
+                              <span className="v3-item__meta">
+                                תיקונים: {describeAlterations(item)}
+                                {repairsCost > 0 && <> (+<bdi>₪{repairsCost}</bdi>)</>}
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <b className="v3-item__price"><bdi>₪{displayPrice || 0}</bdi></b>
+                        </div>
                       </div>
-                      <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{displayPrice || 0}</strong>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <div className="v3-cluster" style={{ justifyContent: 'space-between' }}>
+                  <span className="v3-muted">סה&quot;כ לתשלום</span>
+                  <b className="v3-h2"><bdi>₪{(totalAmount || 0).toLocaleString('he-IL')}</bdi></b>
+                </div>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '10px' }}>
-                <span style={{ fontWeight: 700, fontSize: '13.5px' }}>סה&quot;כ לתשלום</span>
-                <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--primary-solid)', fontVariantNumeric: 'tabular-nums' }}>
-                  ₪{(totalAmount || 0).toLocaleString('he-IL')}
-                </span>
-              </div>
-            </div>
+            </Card>
           </div>
         )}
 
         {/* ==================== שלב 5 · תשלום ==================== */}
         {step === 5 && (
-          <div>
-            <h2>תשלום וסיום</h2>
+          <div className="v3-stack" style={{ maxWidth: 'var(--v3-dlg-w)', marginInline: 'auto' }}>
+            <h2 className="v3-h1">תשלום ושמירה</h2>
 
-            <div className="two-col">
-              <div className="card card-pad">
-                <form onSubmit={(e) => { e.preventDefault(); handleAddPaymentClick(); }}>
-                  <div className="field">
-                    <label htmlFor="pay-amount">סכום לתשלום כעת (₪)</label>
+            <Card icon="receipt" title="מצב התשלום">
+              <Rows>
+                <Row label="סה&quot;כ לתשלום" icon="receipt"><bdi>₪{(totalAmount || 0).toLocaleString('he-IL')}</bdi></Row>
+                <Row label="שולם" icon="check-circle"><bdi>₪{totalPaid.toLocaleString('he-IL')}</bdi></Row>
+                <Row label="יתרה" icon="wallet"><b><bdi>₪{remaining.toLocaleString('he-IL')}</bdi></b></Row>
+              </Rows>
+              {remaining > 0 && (
+                <div style={{ marginTop: 'var(--v3-sp-4)' }}>
+                  <Banner
+                    kind="warning"
+                    title={`נותרה יתרה של ₪${remaining.toLocaleString('he-IL')}`}
+                    text="אפשר לסיים בלי תשלום מלא רק דרך אופן התשלום ״יציאה באישור מנהל״. זה ידרוש קוד מנהל."
+                  />
+                </div>
+              )}
+            </Card>
+
+            <Card icon="wallet" title="תשלום חדש">
+              <form onSubmit={(e) => { e.preventDefault(); handleAddPaymentClick(); }}>
+                <div className="v3-stack">
+                  <Field id="pay-amount" label="סכום לתשלום עכשיו (₪)">
                     <input
-                      id="pay-amount"
                       type="number"
-                      className="input"
                       value={payment.amount}
                       onChange={e => setPayment(prev => ({ ...prev, amount: e.target.value }))}
                     />
-                  </div>
-
-                  <div className="field">
-                    <label htmlFor="pay-method">אופן תשלום</label>
-                    <select id="pay-method" className="select" value={payment.method} onChange={e => setPayment(prev => ({ ...prev, method: e.target.value }))}>
-                      {paymentMethodOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
-
+                  </Field>
+                  <Field id="pay-method" as="select" label="אופן תשלום" value={payment.method} onChange={e => setPayment(prev => ({ ...prev, method: e.target.value }))}>
+                    {paymentMethodOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </Field>
                   <NocCollapsible title="הערה לתשלום" badge={payment.notes ? 'יש הערה' : null}>
-                    <input
-                      type="text"
-                      className="input"
-                      value={payment.notes}
-                      onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="מספר אישור, פרטי הבנק, שם המשלם..."
-                    />
+                    <Field>
+                      <input
+                        type="text"
+                        aria-label="הערה לתשלום"
+                        value={payment.notes}
+                        onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="מספר אישור, פרטי בנק, שם המשלם..."
+                      />
+                    </Field>
                   </NocCollapsible>
-
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
-                    <button type="submit" className="btn btn-secondary" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
-                      <svg className="icon"><use href="#i-plus" /></svg> אישור תשלום
-                    </button>
+                  <div className="v3-cluster">
+                    <Btn type="submit" icon="plus" disabled={busy}>הוספת תשלום</Btn>
                     {settings.nedarim_plus_enabled !== 'false' && (
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        style={{ flex: 1, minWidth: '150px' }}
+                      <Btn
+                        variant="primary"
+                        icon="card"
                         disabled={busy}
                         onClick={() => {
                           setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: payment.notes, amount: payment.amount });
@@ -2523,79 +2348,48 @@ export default function NewOrderPage() {
                           setShowCreditModal(true);
                         }}
                       >
-                        <svg className="icon"><use href="#i-card" /></svg> חיוב אשראי
-                      </button>
+                        חיוב באשראי
+                      </Btn>
                     )}
                   </div>
-                </form>
-              </div>
-
-              <div>
-                <div className="card card-pad" style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
-                    <span className="hint" style={{ color: 'var(--text-3)' }}>סה&quot;כ חיובים</span>
-                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{(totalAmount || 0).toLocaleString('he-IL')}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
-                    <span className="hint" style={{ color: 'var(--text-3)' }}>שולם</span>
-                    <strong style={{ color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>₪{totalPaid.toLocaleString('he-IL')}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
-                    <span className="hint" style={{ color: 'var(--text-3)' }}>יתרה</span>
-                    <strong style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>₪{remaining.toLocaleString('he-IL')}</strong>
-                  </div>
                 </div>
+              </form>
+            </Card>
 
-                <div className="card card-pad">
-                  <div className="card-title-row" style={{ marginBottom: '10px' }}>
-                    <svg className="icon"><use href="#i-receipt" /></svg>
-                    <h3 style={{ margin: 0 }}>תשלומים שנרשמו</h3>
-                  </div>
-                  {paymentsList.length === 0 ? (
-                    <div className="empty-state">
-                      <svg className="icon"><use href="#i-wallet" /></svg>
-                      <p>טרם נרשמו תשלומים</p>
-                    </div>
-                  ) : (
-                    <div>
-                      {paymentsList.map((p, idx) => (
-                        <div key={idx} className="list-card">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{p.method}</div>
-                            {p.notes && <div className="hint" style={{ color: 'var(--text-3)' }}>{p.notes}</div>}
-                          </div>
-                          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{Number(p.amount).toLocaleString('he-IL')}</strong>
-                          <div className="row-actions">
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-icon-only btn-sm"
-                              disabled={isChargedPayment(p)}
-                              title={isChargedPayment(p) ? 'חיוב אשראי שכבר בוצע — לא ניתן להסרה' : 'הסר תשלום'}
-                              aria-label="הסר תשלום"
-                              style={{ color: 'var(--danger)' }}
-                              onClick={() => removePayment(idx)}
-                            >
-                              <svg className="icon"><use href="#i-trash" /></svg>
-                            </button>
-                          </div>
+            <Card icon="receipt" title="תשלומים שנרשמו">
+              {paymentsList.length === 0 ? (
+                <Empty icon="wallet" title="עוד לא נרשמו תשלומים" />
+              ) : (
+                <div className="v3-stack">
+                  {paymentsList.map((p, idx) => (
+                    <div key={idx} className="v3-item">
+                      <div className="v3-item__top" style={{ cursor: 'default' }}>
+                        <span className="v3-item__thumb"><Icon name="coin" /></span>
+                        <div className="v3-item__info">
+                          <span className="v3-item__model">{p.method}</span>
+                          {p.notes && <span className="v3-item__meta">{p.notes}</span>}
                         </div>
-                      ))}
+                        <b className="v3-item__price"><bdi>₪{Number(p.amount).toLocaleString('he-IL')}</bdi></b>
+                        <IconBtn
+                          variant="danger"
+                          size="sm"
+                          icon="trash"
+                          label="הסרת תשלום"
+                          disabled={isChargedPayment(p)}
+                          title={isChargedPayment(p) ? 'החיוב כבר בוצע, אי אפשר להסיר אותו' : 'הסרת תשלום'}
+                          onClick={() => removePayment(idx)}
+                        />
+                      </div>
                     </div>
-                  )}
-
-                  {remaining > 0 && (
-                    <p className="field hint" style={{ margin: '12px 0 0', color: 'var(--warning)' }}>
-                      נותרה יתרה של ₪{remaining.toLocaleString('he-IL')}. סיום ההזמנה ללא תשלום מלא אפשרי רק אם בוחרים &quot;יציאה באישור מנהל&quot; מתוך רשימת &quot;אופן תשלום&quot; למעלה (ולא בכפתור נפרד) - זה יבקש קוד וסיסמת מנהל.
-                    </p>
-                  )}
+                  ))}
                 </div>
-              </div>
-            </div>
+              )}
+            </Card>
           </div>
         )}
       </NewOrderShell>
 
-      {/* ==================== מודלים ==================== */}
+      {/* ==================== חלוניות ==================== */}
       {capacityModalItem && (
         <ItemCapacityModal
           item={capacityModalItem}
@@ -2605,35 +2399,21 @@ export default function NewOrderPage() {
         />
       )}
 
-      {pendingSpacingChange !== null && !showSpacingCapacitySearch && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setPendingSpacingChange(null); }}
-        >
-          <div className="modal" style={{ maxWidth: '420px' }} role="dialog" aria-modal="true">
-            <div className="modal-head">
-              <strong>רגע, בדקת מלאי?</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setPendingSpacingChange(null)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ margin: '0 0 12px', color: 'var(--text-2)', fontSize: '13.5px' }}>
-                ציפוף מיוחד משפיע על בדיקת המלאי להזמנה זו בלבד, ומסמן את ההזמנה לאישור מנהל.
-              </p>
-              <button type="button" className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowSpacingCapacitySearch(true)}>
-                פתח חיפוש תפוסה מהיר
-                <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setPendingSpacingChange(null)}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={confirmSpacingChange}>כן, המשך</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={pendingSpacingChange !== null && !showSpacingCapacitySearch}
+        onClose={() => setPendingSpacingChange(null)}
+        variant="confirm"
+        icon="alert-tri"
+        title="לבדוק מלאי לפני ציפוף?"
+        sub="ציפוף מיוחד משפיע על בדיקת המלאי בהזמנה הזו בלבד, ומסמן אותה לאישור מנהל."
+        actions={
+          <>
+            <Btn variant="primary" onClick={confirmSpacingChange}>כן, להמשיך</Btn>
+            <Btn iconEnd="next" onClick={() => setShowSpacingCapacitySearch(true)}>חיפוש תפוסה מהיר</Btn>
+            <Btn variant="quiet" onClick={() => setPendingSpacingChange(null)}>ביטול</Btn>
+          </>
+        }
+      />
 
       {showSpacingCapacitySearch && (
         <CapacitySearchModal
@@ -2642,261 +2422,225 @@ export default function NewOrderPage() {
         />
       )}
 
-      {showExitConfirm && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}
-        >
-          <div className="modal" style={{ maxWidth: '420px' }} role="dialog" aria-modal="true">
-            <div className="modal-head">
-              <strong>יציאה מההזמנה</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setShowExitConfirm(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
-                {draftOrderId
-                  ? `ההזמנה שמורה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים, ואפשר להמשיך אותה מרשימת ההזמנות.`
-                  : 'ההזמנה עדיין לא נשמרה. יציאה עכשיו תמחק את מה שהוזן במסך.'}
-              </p>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowExitConfirm(false)}>המשך בהזמנה</button>
-              <button type="button" className="btn btn-primary" onClick={() => router.push('/orders')}>
-                {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        variant="confirm"
+        icon="logout"
+        title="לצאת מההזמנה?"
+        sub={draftOrderId
+          ? `ההזמנה נשמרה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים. אפשר להמשיך אותה מרשימת ההזמנות.`
+          : 'ההזמנה עוד לא נשמרה. יציאה עכשיו תמחק את מה שהוזן.'}
+        actions={
+          <>
+            <Btn variant="primary" onClick={() => setShowExitConfirm(false)}>להמשיך בהזמנה</Btn>
+            <Btn variant="danger" onClick={() => router.push('/orders')}>{draftOrderId ? 'יציאה (הטיוטה שמורה)' : 'יציאה בלי לשמור'}</Btn>
+          </>
+        }
+      />
 
-      {duplicateCustomers.length > 0 && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setDuplicateCustomers([]); }}
-        >
-          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-title">
-            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
-              <svg className="icon"><use href="#i-alert-tri" /></svg>
-            </div>
-            <h3 id="dup-title">{duplicateCustomers.length > 1 ? 'כמה לקוחות עם מספר טלפון זה' : 'לקוח קיים במערכת'}</h3>
-            <p>
-              {duplicateCustomers.length > 1
-                ? 'נמצאו כמה לקוחות עם מספר הטלפון שהוזן. אפשר להשתמש באחד מהכרטיסים הקיימים, או ליצור כרטיס נוסף.'
-                : 'הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.'}
-            </p>
-            {duplicateCustomers.map((duplicateCustomer, idx) => (
-              <div key={duplicateCustomer.id} className="card card-pad" style={{ textAlign: 'start', marginBottom: idx === duplicateCustomers.length - 1 ? '20px' : '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
-                  <span className="hint" style={{ color: 'var(--text-3)' }}>שם</span>
-                  <strong>
-                    {getCustomerFullName(duplicateCustomer)}
-                    {duplicateCustomer.isBlocked && (
-                      <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
-                    )}
-                  </strong>
+      <Dialog
+        open={duplicateCustomers.length > 0}
+        onClose={() => setDuplicateCustomers([])}
+        variant="confirm"
+        icon="alert-tri"
+        title={duplicateCustomers.length > 1 ? 'יש כמה לקוחות עם הטלפון הזה' : 'הלקוח כבר קיים'}
+        sub={duplicateCustomers.length > 1
+          ? 'אפשר לבחור באחד הכרטיסים הקיימים, או לפתוח כרטיס נוסף.'
+          : 'הטלפון שהוזן שייך ללקוח קיים. אפשר להשתמש בכרטיס שלו, או לפתוח כרטיס נוסף.'}
+        actions={
+          <>
+            <Btn variant="quiet" onClick={() => setDuplicateCustomers([])}>ביטול</Btn>
+            <Btn variant="danger" onClick={() => handleSaveNewCustomerAndProceed(true)}>ליצור לקוח חדש בכל זאת</Btn>
+          </>
+        }
+      >
+        <div className="v3-stack" style={{ marginBottom: 'var(--v3-sp-4)' }}>
+          {duplicateCustomers.map((duplicateCustomer) => {
+            const parts = missingPartsOf(duplicateCustomer);
+            return (
+              <Card key={duplicateCustomer.id} variant="quiet">
+                <div className="v3-stack">
+                  <Rows>
+                    <Row label="שם" icon="user">
+                      <span className="v3-cluster">{getCustomerFullName(duplicateCustomer)}{duplicateCustomer.isBlocked && <Tag variant="attn">לקוח חסום</Tag>}</span>
+                    </Row>
+                    <Row label="טלפון" icon="phone"><bdi dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</bdi></Row>
+                    <Row label="עיר" icon="pin">{duplicateCustomer.city || 'לא צוינה'}</Row>
+                  </Rows>
+                  {parts.length > 0 && (
+                    <Banner
+                      kind="warning"
+                      title={`חסר בכרטיס: ${parts.join(', ')}`}
+                      text={<a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer">עריכת פרטי הלקוח</a>}
+                    />
+                  )}
+                  <Btn variant="primary" icon="check" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>להשתמש בלקוח הזה</Btn>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>טלפון</span><span dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>עיר</span><span>{duplicateCustomer.city || 'לא צוינה'}</span></div>
-                {(() => {
-                  // אותו דפוס בדיוק כמו בכרטיס "לקוח נמצא לפי טלפון" למעלה - קישור עריכת
-                  // לקוח לצד רשימת השדות החסרים, כדי שלא תהיה כאן נקודת מבוי סתום כשהאכיפה
-                  // הקשיחה (strict_mandatory_fields) חוסמת את "השתמש בלקוח הקיים" למטה.
-                  const missing = getMissingMandatoryCustomerFields(duplicateCustomer);
-                  const missingGroupLabels = unsatisfiedFieldGroupShortLabels(duplicateCustomer, parseFieldGroups(settings.mandatory_field_groups));
-                  if (missing.length === 0 && missingGroupLabels.length === 0) return null;
-                  const parts = [
-                    ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                    ...missingGroupLabels
-                  ];
-                  return (
-                    <p className="hint" style={{ color: 'var(--warning)', margin: '8px 0 0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', textAlign: 'start' }}>
-                      <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                      חסר ללקוח: {parts.join(', ')}.
-                      {' '}
-                      <a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                        עריכת פרטי לקוח
-                      </a>
-                    </p>
-                  );
-                })()}
-                <div className="confirm-actions" style={{ flexWrap: 'wrap', marginTop: '10px' }}>
-                  <button type="button" className="btn btn-primary" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>השתמש בלקוח הזה</button>
-                </div>
-              </div>
-            ))}
-            <div className="confirm-actions" style={{ flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setDuplicateCustomers([])}>ביטול</button>
-              <button type="button" className="btn btn-danger-ghost" onClick={() => handleSaveNewCustomerAndProceed(true)}>צור לקוח חדש בכל זאת</button>
-            </div>
-          </div>
+              </Card>
+            );
+          })}
         </div>
-      )}
+      </Dialog>
 
-      {duplicateOrderWarning && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-order-title">
-            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
-              <svg className="icon"><use href="#i-alert-tri" /></svg>
-            </div>
-            <h3 id="dup-order-title">הזמנה זו כבר נשמרה</h3>
-            <p>
-              כבר קיימת הזמנה שמורה עבור אותו לקוח ואותו תאריך — הזמנה מס&apos; {duplicateOrderWarning.existingOrderId}.
-              כדאי לבדוק אותה לפני שממשיכים, כדי לא ליצור הזמנה כפולה.
-            </p>
-            <a
-              href={`/orders/${duplicateOrderWarning.existingOrderId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-secondary"
-              style={{ marginBottom: '20px' }}
-            >
-              <svg className="icon"><use href="#i-link" /></svg> פתח את הזמנה #{duplicateOrderWarning.existingOrderId}
-            </a>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-danger-ghost" onClick={handleConfirmDuplicateSave}>שמור בכל זאת כהזמנה נפרדת</button>
-              <button type="button" className="btn btn-primary" onClick={handleCancelDuplicateSave}>אבדוק את הקיימת</button>
-            </div>
+      <Dialog
+        open={!!duplicateOrderWarning}
+        onClose={() => {}}
+        closeOnScrim={false}
+        variant="confirm"
+        icon="alert-tri"
+        title="ההזמנה כבר נשמרה"
+        sub={duplicateOrderWarning ? `יש כבר הזמנה לאותו לקוח ולאותו תאריך: מס' ${duplicateOrderWarning.existingOrderId}. כדאי לבדוק אותה לפני שיוצרים הזמנה כפולה.` : undefined}
+        actions={
+          <>
+            <Btn variant="primary" onClick={handleCancelDuplicateSave}>לבדוק את ההזמנה הקיימת</Btn>
+            <Btn variant="danger" onClick={handleConfirmDuplicateSave}>לשמור בכל זאת כהזמנה נפרדת</Btn>
+          </>
+        }
+      >
+        {duplicateOrderWarning && (
+          <div className="v3-cluster" style={{ marginBottom: 'var(--v3-sp-4)' }}>
+            <Btn icon="link" href={`/orders/${duplicateOrderWarning.existingOrderId}`} target="_blank" rel="noopener noreferrer">
+              <span>פתיחת הזמנה <bdi>#{duplicateOrderWarning.existingOrderId}</bdi></span>
+            </Btn>
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
 
-      {showCreditModal && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => !isProcessingCredit && setShowCreditModal(false)}
-        >
-          <div className="modal" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="credit-title">
-            <div className="modal-head">
-              <strong id="credit-title"><svg className="icon"><use href="#i-card" /></svg> חיוב באשראי (נדרים פלוס)</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setShowCreditModal(false)} disabled={isProcessingCredit}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                style={{ marginBottom: '18px' }}
-                title="העברת כרטיס מהירה בקורא מגנטי"
-                onClick={() => { setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}
-              >
-                <svg className="icon"><use href="#i-refresh" /></svg> העברה מהירה
-              </button>
-
-              {creditError && (
-                <div className="callout callout-danger" style={{ marginBottom: '16px' }}>
-                  <svg className="icon"><use href="#i-alert-circle" /></svg> <span>{creditError}</span>
-                </div>
-              )}
-
-              <form id="credit-charge-form" onSubmit={(e) => { e.preventDefault(); handleProcessCreditCard(); }}>
-                <div className="field">
-                  <label htmlFor="cc-number">מספר כרטיס אשראי (או העברה בקורא)</label>
-                  <input
-                    id="cc-number"
-                    type="text"
-                    className="input"
-                    inputMode="numeric"
-                    autoComplete="cc-number"
-                    value={creditCardData.cardNumber}
-                    onChange={handleCardNumberChange}
-                    placeholder="0000 0000 0000 0000"
-                    maxLength="19"
-                    dir="ltr"
-                    style={{ textAlign: 'left', letterSpacing: '2px' }}
-                  />
-                </div>
-
-                <div className="form-grid">
-                  <div className="field">
-                    <label htmlFor="cc-exp">תוקף (MM/YY)</label>
-                    <input id="cc-exp" type="text" className="input" autoComplete="cc-exp" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" dir="ltr" style={{ textAlign: 'left', letterSpacing: '2px' }} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cc-amount">סכום לחיוב (₪)</label>
-                    <input id="cc-amount" type="number" className="input" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({ ...prev, amount: e.target.value }))} style={{ fontWeight: 700, textAlign: 'center' }} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cc-installments">תשלומים</label>
-                    <input id="cc-installments" type="number" className="input" min="1" max="12" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({ ...prev, installments: e.target.value }))} style={{ textAlign: 'center' }} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cc-notes">הערות לנדרים</label>
-                    <input id="cc-notes" type="text" className="input" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({ ...prev, notes: e.target.value }))} />
-                  </div>
-                </div>
-              </form>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowCreditModal(false)} disabled={isProcessingCredit}>ביטול</button>
-              <button type="submit" form="credit-charge-form" className="btn btn-primary" disabled={isProcessingCredit} aria-busy={isProcessingCredit}>
-                {isProcessingCredit ? <><span className="spinner" /> מבצע חיוב...</> : <><svg className="icon"><use href="#i-card" /></svg> בצע חיוב ושמור הזמנה</>}
-              </button>
-            </div>
+      <Dialog
+        open={showCreditModal}
+        onClose={() => { if (!isProcessingCredit && !saving) setShowCreditModal(false); }}
+        variant="form"
+        icon="card"
+        title="חיוב באשראי (נדרים פלוס)"
+        actions={
+          <>
+            <Btn variant="quiet" onClick={() => setShowCreditModal(false)} disabled={isProcessingCredit}>ביטול</Btn>
+            <Btn type="submit" form="credit-charge-form" variant="primary" icon="card" loading={isProcessingCredit}>
+              {isProcessingCredit ? 'מבצע חיוב...' : 'חיוב ושמירת ההזמנה'}
+            </Btn>
+          </>
+        }
+      >
+        <div className="v3-stack">
+          <div className="v3-cluster">
+            <Btn size="sm" icon="refresh" title="העברת כרטיס מהירה בקורא מגנטי" onClick={() => { setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}>
+              העברה בקורא
+            </Btn>
+            <Tip>מעבירים את הכרטיס בקורא המגנטי והפרטים נקלטים לבד.</Tip>
           </div>
-        </div>
-      )}
 
-      {showQuickSwipeModal && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowQuickSwipeModal(false)}
-        >
-          <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="swipe-title">
-            <span className="spinner lg" style={{ margin: '0 auto 16px' }} />
-            <h3 id="swipe-title">העברת כרטיס מהירה</h3>
-            <p>אנא העבר כעת את כרטיס האשראי בקורא המגנטי. פרטי הכרטיס ייקלטו אוטומטית.</p>
-            <input
-              autoFocus
-              type="text"
-              value={swipeInput}
-              onChange={handleSwipeInputChange}
-              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-              onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
-              style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
-              aria-label="קלט קורא כרטיסים"
-            />
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowQuickSwipeModal(false)}>ביטול</button>
+          {creditError && <Banner kind="alert" text={creditError} />}
+
+          <form id="credit-charge-form" onSubmit={(e) => { e.preventDefault(); handleProcessCreditCard(); }}>
+            <div className="v3-stack">
+              <Field id="cc-number" label="מספר כרטיס (או העברה בקורא)">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                  value={creditCardData.cardNumber}
+                  onChange={handleCardNumberChange}
+                  placeholder="0000 0000 0000 0000"
+                  maxLength="19"
+                  dir="ltr"
+                />
+              </Field>
+              <Field id="cc-exp" label="תוקף (MM/YY)">
+                <input type="text" autoComplete="cc-exp" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" dir="ltr" />
+              </Field>
+              <Field id="cc-amount" label="סכום לחיוב (₪)">
+                <input type="number" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({ ...prev, amount: e.target.value }))} />
+              </Field>
+              <Field id="cc-installments" label="מספר תשלומים">
+                <input type="number" min="1" max="12" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({ ...prev, installments: e.target.value }))} />
+              </Field>
+              <Field id="cc-notes" label="הערה לנדרים">
+                <input type="text" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({ ...prev, notes: e.target.value }))} />
+              </Field>
             </div>
-          </div>
+          </form>
         </div>
-      )}
+      </Dialog>
 
-      {/* חסימת המסך בזמן חיוב/שמירה, כדי שאיש לא ילחץ פעמיים או ינווט באמצע */}
-      {busy && (
-        <div
-          className="modal-backdrop"
-          role="alertdialog"
-          aria-live="assertive"
-          aria-busy="true"
-          aria-label="פעולה מתבצעת"
-          style={{ position: 'fixed', inset: 0, zIndex: 1600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div className="modal confirm-modal" style={{ maxWidth: '320px' }}>
-            <span className="spinner lg" style={{ margin: '0 auto 16px' }} />
-            <h3>{isProcessingCredit ? 'מבצע חיוב מול נדרים פלוס' : 'יוצר את ההזמנה'}</h3>
-            <p style={{ margin: '8px 0 0' }}>
-              {isProcessingCredit
-                ? 'אין לסגור את החלון עד לקבלת אישור מחברת האשראי.'
-                : 'מאמת זמינות מלאי, רושם פריטים ומחשב חיובים. נא לא לסגור את החלון.'}
-            </p>
-          </div>
+      <Dialog
+        open={showQuickSwipeModal}
+        onClose={() => { if (!isProcessingCredit && !saving) setShowQuickSwipeModal(false); }}
+        variant="confirm"
+        icon="card"
+        title="מעבירים כרטיס"
+        sub="העבירו עכשיו את כרטיס האשראי בקורא המגנטי. הפרטים ייקלטו אוטומטית."
+        actions={<Btn variant="quiet" onClick={() => setShowQuickSwipeModal(false)}>ביטול</Btn>}
+      >
+        <div className="v3-cluster" style={{ justifyContent: 'center', marginBottom: 'var(--v3-sp-4)' }}>
+          <Icon name="loader" size="xl" loop />
         </div>
-      )}
+        <input
+          autoFocus
+          data-autofocus=""
+          type="text"
+          value={swipeInput}
+          onChange={handleSwipeInputChange}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+          onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
+          style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
+          aria-label="קלט קורא כרטיסים"
+        />
+      </Dialog>
+
+      {/* חסימת המסך בזמן חיוב/שמירה: לא ניתנת לסגירה */}
+      <Dialog
+        open={busy}
+        onClose={() => {}}
+        closeOnScrim={false}
+        variant="confirm"
+        icon="loader"
+        aria-busy="true"
+        aria-label="פעולה מתבצעת"
+        title={isProcessingCredit ? 'מבצעים חיוב מול נדרים פלוס' : 'יוצרים את ההזמנה'}
+        sub={isProcessingCredit
+          ? 'לא סוגרים את החלון עד שמגיע אישור מחברת האשראי.'
+          : 'בודקים מלאי, רושמים פריטים ומחשבים חיובים. לא סוגרים את החלון.'}
+      />
+
+      {/* אישור יציאה בכפתור "אחורה" של הדפדפן (היה window.confirm) */}
+      <Dialog
+        open={!!leaveAsk}
+        onClose={() => { const r = leaveAsk; setLeaveAsk(null); r?.resolve(false); }}
+        variant="confirm"
+        icon="logout"
+        title="לצאת בלי לשמור?"
+        sub="הוזנו נתונים בהזמנה שעוד לא נשמרו. יציאה תמחק אותם."
+        actions={
+          <>
+            <Btn variant="primary" onClick={() => { const r = leaveAsk; setLeaveAsk(null); r?.resolve(false); }}>להישאר בהזמנה</Btn>
+            <Btn variant="danger" onClick={() => { const r = leaveAsk; setLeaveAsk(null); r?.resolve(true); }}>לצאת ולמחוק</Btn>
+          </>
+        }
+      />
+
+      {/* הודעות (היו alert מובנה) — נחסמות עד אישור, כמו קודם */}
+      <Dialog
+        open={!!alertHead}
+        onClose={() => { const h = alertHead; setAlertQueue(q => q.slice(1)); h?.resolve(); }}
+        variant="confirm"
+        icon="alert-circle"
+        title="שימו לב"
+        sub={alertHead ? <span style={{ whiteSpace: 'pre-line' }}>{alertHead.message}</span> : undefined}
+        actions={<Btn variant="primary" data-autofocus="" onClick={() => { const h = alertHead; setAlertQueue(q => q.slice(1)); h?.resolve(); }}>הבנתי</Btn>}
+      />
     </>
   );
 }
 
+// כוכבית שדה חובה (תצוגה בלבד; אין required מקורי כדי לא לשנות התנהגות שליחה)
+function Req() {
+  return <span className="v3-req" aria-hidden="true">*</span>;
+}
+
 /**
  * מגירה מתקפלת — כל מה שאינו חובה במסך יושב בתוכה, כדי שכל שלב יציג
- * רק את השדות שבאמת נדרשים כדי להתקדם (details/summary בשפת "אריג").
+ * רק את השדות שבאמת נדרשים כדי להתקדם (details/summary בשפת v3).
  */
 function NocCollapsible({ title, badge, defaultOpen = false, openWhen = false, children }) {
   const [open, setOpen] = useState(defaultOpen || openWhen);
@@ -2905,13 +2649,13 @@ function NocCollapsible({ title, badge, defaultOpen = false, openWhen = false, c
     if (openWhen) setOpen(true);
   }, [openWhen]);
   return (
-    <details className="faq-item" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+    <details className="v3-collapse" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
         {title}
-        {!open && badge ? <span className="badge badge-primary">{badge}</span> : null}
-        <svg className="icon"><use href="#i-chevron-down" /></svg>
+        {!open && badge ? <Badge variant="gold">{badge}</Badge> : null}
+        <Icon name="chevron-down" className="v3-collapse__chev" />
       </summary>
-      <div className="faq-body">{children}</div>
+      <div className="v3-collapse__in">{children}</div>
     </details>
   );
 }
