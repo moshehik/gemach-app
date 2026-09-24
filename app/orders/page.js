@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -16,29 +16,31 @@ import PrintWizardModal from '../components/PrintWizardModal';
 import { fetchSharedJson, readCache, subscribe, TTL } from '../../lib/apiCache';
 import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
 import { listOrderDrafts } from '@/app/lib/orderDrafts';
+import { V3Page, Btn, Chip, Tabs, Tip, Dialog, Field, Switch, Empty, Row, Rows, Icon } from '@/app/v3/ui/components';
+import { useListDialogs, IconAction } from '@/components/lists/listKit';
 
 // מיפוי סטטוס טקסטואלי (calculateOrderStatus/calculatePaymentStatus ב-lib/orderStatus.js, משותף
-// לכמה עמודים) אל מחלקת ה-badge של מערכת העיצוב "אריג" כאן בעמוד ההזמנות בלבד — לא נוגעים בעוזר המשותף עצמו.
-const getStatusBadgeClass = (status) => {
+// לכמה עמודים) אל וריאנט ה-Chip של v3 כאן בעמוד ההזמנות בלבד — לא נוגעים בעוזר המשותף עצמו.
+// סטטוס = ניטרלי/navy; "דורש תשומת לב" = אפרסק (DESIGN-LANGUAGE §1.2).
+const getStatusChip = (status) => {
   switch (status) {
     case 'הוחזר':
-      return 'badge-success';
+      return { variant: 'done', icon: 'check-circle' };
     case 'הוחזר חלקי':
-      return 'badge-warning';
+      return { variant: 'info', icon: 'refresh' };
     case 'הושכר':
-      return 'badge-info';
+      return { variant: 'gold', icon: 'bag' };
     case 'הושכר חלקי':
-      return 'badge-accent';
+      return { variant: 'info', icon: 'bag' };
     case 'בקרוב':
-      return 'badge-warning';
-    case 'עבר':
-      return 'badge-neutral';
+      return { variant: undefined, icon: 'calendar' };
     case 'מחוק':
-      return 'badge-neutral';
+      return { variant: undefined, icon: 'trash' };
     case 'טיוטה':
-      return 'badge-neutral';
+      return { variant: undefined, icon: 'edit' };
+    case 'עבר':
     default:
-      return 'badge-neutral';
+      return { variant: undefined, icon: 'folder' };
   }
 };
 
@@ -51,18 +53,28 @@ const getOrderModelNames = (order) => {
   return Array.from(new Set(names));
 };
 
-const getPaymentBadgeClass = (status) => {
+const getPaymentChip = (status) => {
   switch (status) {
     case 'שולם':
-      return 'badge-success';
+      return { variant: 'done', icon: 'check-circle' };
     case 'שולם חלקי':
-      return 'badge-warning';
+      return { variant: 'attn', icon: 'card' };
     case 'ממתין לזיכוי':
-      return 'badge-info';
+      return { variant: 'info', icon: 'clock' };
     case 'לא שולם':
     default:
-      return 'badge-danger';
+      return { variant: 'attn', icon: 'alert-circle' };
   }
+};
+
+// גוון שורה לפי מצב (סדר העדיפויות נשמר בקוד השורה: טיוטה > ציפוף > ממתין > לא שולם).
+// ערכי צבע = tokens של v3 בלבד.
+const ROW_TONES = {
+  selected: { bg: 'var(--v3-surface-2)', bar: 'var(--v3-navy-500)' },
+  draft: { bg: 'var(--v3-sky-100)', bar: 'var(--v3-navy-500)' },
+  spacing: { bg: 'var(--v3-rose-50)', bar: 'var(--v3-rose-500)' },
+  pending: { bg: 'var(--v3-pending-bg)', bar: 'var(--v3-pending-line)' },
+  unpaid: { bg: 'var(--v3-rose-50)', bar: 'var(--v3-plum)' },
 };
 
 // בונה משפט חיפוש טבעי מתוך שדות הסינון המתקדם שמולאו בפועל, לשימוש כשמסמנים
@@ -117,10 +129,9 @@ const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
 
   if (!timeLeft) return null;
   return (
-    <span className={`badge ${timeLeft === 'פג תוקף' ? 'badge-danger' : 'badge-warning'}`}>
-      <svg className="icon"><use href="#i-clock" /></svg>
-      {timeLeft}
-    </span>
+    <Chip variant="attn" icon={timeLeft === 'פג תוקף' ? 'alert-circle' : 'clock'}>
+      <bdi>{timeLeft}</bdi>
+    </Chip>
   );
 };
 
@@ -142,6 +153,9 @@ const sortPendingFirst = (list, holdMinutes) => {
 export default function OrdersPage() {
   const router = useRouter();
   const { getLabel } = useLabels();
+  const { confirm: v3Confirm, notify: v3Alert, prompt: v3Prompt, dialogs } = useListDialogs();
+  // הרחבת שורה (פרטים נוספים בטבלה מינימלית) — מצב תצוגה בלבד
+  const [expandedRows, setExpandedRows] = useState({});
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -352,11 +366,11 @@ export default function OrdersPage() {
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        v3Alert(result.error || 'החיפוש החכם לא הצליח. נסו שוב.', { title: 'החיפוש נכשל', icon: 'alert-circle' });
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      v3Alert('אין קשר עם השרת כרגע. בדקו את החיבור ונסו שוב.', { title: 'בעיית תקשורת', icon: 'wifi-off' });
     }
   };
 
@@ -395,12 +409,10 @@ export default function OrdersPage() {
 
   const renderSortIcon = (column) => {
     if (sort !== column) {
-      return <svg className="icon"><use href="#i-sort" /></svg>;
+      return <Icon name="sort" size="sm" anim={false} />;
     }
     return (
-      <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: order === 'desc' ? 'rotate(180deg)' : 'none' }}>
-        <use href="#i-chevron-down" />
-      </svg>
+      <Icon name="chevron-down" size="sm" anim={false} className="is-on" style={{ transform: order === 'desc' ? 'rotate(180deg)' : 'none' }} />
     );
   };
 
@@ -408,25 +420,24 @@ export default function OrdersPage() {
     e.stopPropagation();
     const status = calculateOrderStatus(order, { draftsAsDeleted });
     if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
-      alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
+      await v3Alert('הזמנה שכבר יצאה להשכרה (מלאה או חלקית) או שהוחזרה — אי אפשר למחוק.', { title: 'המחיקה חסומה', icon: 'lock' });
       return;
     }
     // 27 - חסימת מחיקת מושכר חלקי גם בצד לקוח
     if (!allowEditPartially && order.items?.some(i => !i.isDeleted && i.isTaken)) {
-      alert('לא ניתן למחוק הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      await v3Alert('הגדרות המערכת חוסמות מחיקה של הזמנה שהושכרה חלקית.', { title: 'המחיקה חסומה', icon: 'lock' });
       return;
     }
 
-    if (await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) {
+    if (await v3Confirm(`ההזמנה #${order.orderId} תימחק. להמשיך?`, { title: 'למחוק את ההזמנה?', confirmLabel: 'מחיקה', cancelLabel: 'להשאיר', danger: true })) {
       // 14 - בקשת ת״ז לפני ביטול אם מופעל
       // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה - ר' הערה מקבילה ב-app/orders/[id]/page.js
       let zeoutForDelete = null;
       if (requireIdForEdit && order.customer?.zeout) {
-        const msg = 'ביטול הזמנה דורש אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
-        if (window.customPrompt) zeoutForDelete = await window.customPrompt(msg, '', 'text');
-        else zeoutForDelete = window.prompt(msg);
+        const msg = 'כדי לבטל את ההזמנה צריך לאמת את תעודת הזהות של הלקוח.';
+        zeoutForDelete = await v3Prompt(msg, { title: 'אימות זהות הלקוח', label: 'תעודת זהות', confirmLabel: 'אימות' });
         zeoutForDelete = zeoutForDelete ? String(zeoutForDelete).trim() : null;
-        if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
+        if (!zeoutForDelete) { await v3Alert('לא הוזנה תעודת זהות, ולכן ההזמנה לא נמחקה.', { title: 'הפעולה הופסקה', icon: 'info' }); return; }
       }
       try {
         const res = await fetch(`/api/orders/${order.orderId}`, {
@@ -438,11 +449,11 @@ export default function OrdersPage() {
           fetchOrders();
         } else {
           const data = await res.json();
-          alert(data.error || 'שגיאה במחיקת הזמנה');
+          v3Alert(data.error || 'מחיקת ההזמנה נכשלה.', { title: 'המחיקה נכשלה', icon: 'alert-circle' });
         }
       } catch (err) {
         console.error(err);
-        alert('שגיאה במחיקת הזמנה');
+        v3Alert('מחיקת ההזמנה נכשלה.', { title: 'המחיקה נכשלה', icon: 'alert-circle' });
       }
     }
   };
@@ -489,445 +500,450 @@ export default function OrdersPage() {
     return list.map(o => o.orderId).filter(id => id != null);
   };
 
+  const statusTabs = [
+    { key: 'soon', label: 'בקרוב', icon: 'calendar' },
+    { key: 'archive', label: 'ארכיון', icon: 'folder' },
+    { key: 'deleted', label: 'מחוקות', icon: 'trash' },
+    { key: 'unpaid', label: 'לא שולם', icon: 'alert-circle' },
+    // מוסתר כש-draft_orders_show_as_deleted דלוק: טיוטות שלא הושלמו מוצגות כ"מחוק" ולא כטאב נפרד (ר' ההערה למעלה)
+    ...(!draftsAsDeleted ? [{ key: 'drafts', label: 'טיוטות', icon: 'edit' }] : []),
+    // 37 - הזמנות שלא נלקחו/חלקית - מוסתר כש-show_not_taken_orders כבוי
+    ...(showNotTakenOrders ? [{ key: 'not_taken', label: 'לא נלקחו', icon: 'clock' }] : []),
+    { key: 'all', label: 'הכל', icon: 'list' },
+  ];
+
+  const handleStatusTab = (key) => {
+    if (key === 'all') { handleShowAll(); return; }
+    setFilterStatus(key);
+    setPage(1);
+  };
+
+  const sortHeader = (column, label) => (
+    <button type="button" className="v3-th-btn" onClick={() => handleSort(column)}>
+      {label}{renderSortIcon(column)}
+    </button>
+  );
+  const ariaSort = (...columns) => {
+    const on = columns.find(c => c === sort);
+    return on ? (order === 'asc' ? 'ascending' : 'descending') : 'none';
+  };
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>ניהול הזמנות</h1>
-          <div className="page-desc">סה&quot;כ רשומות: {totalCount}</div>
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">ההזמנות</h1>
+            <Chip icon="list"><bdi>{totalCount}</bdi> בסך הכול</Chip>
+          </div>
+          <div className="v3-pagehead__tools">
+            <IconAction icon="list" label="סינון מתקדם" onClick={() => setShowAdvSearch(true)} />
+            <IconAction icon="calendar" label="בדיקת תפוסה" onClick={() => setShowCapacitySearch(true)} />
+            <IconAction icon="printer" label="הדפסות ודוחות" onClick={() => setShowPrintWizard(true)} />
+            <ExportButtons
+              data={orders.map(o => ({
+                ...o,
+                status: calculateOrderStatus(o, { draftsAsDeleted })
+              }))}
+              filename="הזמנות"
+              columns={[
+                { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
+                { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+                { key: 'customerPhone', label: 'טלפון' },
+                { key: 'customerEmail', label: 'אימייל' },
+                { key: 'customerCity', label: 'עיר' },
+                { key: 'orderDateFormatted', label: 'תאריך ביצוע ההזמנה' },
+                { key: 'orderTimeFormatted', label: 'שעת ביצוע ההזמנה' },
+                { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
+                { key: 'totalPaid', label: 'שולם' },
+                { key: 'paymentStatus', label: 'סטטוס תשלום' },
+                { key: 'status', label: getLabel('order_status', 'סטטוס') }
+              ]}
+              iconOnly={true}
+              onFetchData={fetchOrdersForExport}
+            />
+            <Link href="/orders/new" className="v3-btn v3-btn--primary">
+              <Icon name="plus" />
+              <span>הזמנה חדשה</span>
+            </Link>
+          </div>
         </div>
-        <div className="page-actions">
-          <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
-            <svg className="icon"><use href="#i-list" /></svg>
-          </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש תפוסה" onClick={() => setShowCapacitySearch(true)}>
-            <svg className="icon"><use href="#i-calendar" /></svg>
-          </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="הדפסת דוחות" onClick={() => setShowPrintWizard(true)}>
-            <svg className="icon"><use href="#i-printer" /></svg>
-          </button>
-          <ExportButtons
-            data={orders.map(o => ({
-              ...o,
-              status: calculateOrderStatus(o, { draftsAsDeleted })
-            }))}
-            filename="הזמנות"
-            columns={[
-              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
-              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
-              { key: 'customerPhone', label: 'טלפון' },
-              { key: 'customerEmail', label: 'אימייל' },
-              { key: 'customerCity', label: 'עיר' },
-              { key: 'orderDateFormatted', label: 'תאריך ביצוע ההזמנה' },
-              { key: 'orderTimeFormatted', label: 'שעת ביצוע ההזמנה' },
-              { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
-              { key: 'totalPaid', label: 'שולם' },
-              { key: 'paymentStatus', label: 'סטטוס תשלום' },
-              { key: 'status', label: getLabel('order_status', 'סטטוס') }
-            ]}
-            iconOnly={true}
-            onFetchData={fetchOrdersForExport}
-          />
-          <Link href="/orders/new" className="btn btn-primary">
-            <svg className="icon"><use href="#i-plus" /></svg>
-            הזמנה חדשה
-          </Link>
-        </div>
-      </div>
 
-      {/* סרגל חיפוש: חיפוש טקסטואלי (Enter או כפתור) + שאלות סטטיסטיקה */}
-      <div className="toolbar">
-        <form onSubmit={handleSearch} className="search-toolbar">
-          <svg className="icon"><use href="#i-search" /></svg>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח, דגם)..."
-          />
-          <div className="search-toolbar-actions">
-            {searchInput && (
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            )}
-            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-              <svg className="icon"><use href="#i-activity" /></svg>
+        {/* חיפוש טקסטואלי (Enter או כפתור) + שאלות סטטיסטיקה */}
+        <form onSubmit={handleSearch} className="v3-filter-bar">
+          <div className="v3-search">
+            <Icon name="search" />
+            <input
+              type="text"
+              aria-label="חיפוש הזמנה"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="מספר הזמנה, שם לקוח או דגם…"
+            />
+            <button type="button" className={`v3-search__clear${searchInput ? ' is-on' : ''}`} aria-label="ניקוי החיפוש" onClick={handleClearSearch}>
+              <Icon name="x" size="sm" />
             </button>
-            <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
           </div>
+          <IconAction icon="activity" label="שאלות על הנתונים" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+          <Btn type="submit" variant="primary" icon="search">חיפוש</Btn>
         </form>
-      </div>
 
-      {/* סינון סטטוס: הכפתור הפעיל קובע אילו הזמנות מוצגות בטבלה */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
-        <button type="button" onClick={() => { setFilterStatus('soon'); setPage(1); }} className={filterStatus === 'soon' ? 'pill-tab active' : 'pill-tab'} title="בקרוב (החל מהיום ואילך)">
-          <svg className="icon"><use href="#i-calendar" /></svg>
-          בקרוב
-        </button>
-        <button type="button" onClick={() => { setFilterStatus('archive'); setPage(1); }} className={filterStatus === 'archive' ? 'pill-tab active' : 'pill-tab'} title="ארכיון / עבר">
-          <svg className="icon"><use href="#i-folder" /></svg>
-          ארכיון/עבר
-        </button>
-        <button type="button" onClick={() => { setFilterStatus('deleted'); setPage(1); }} className={filterStatus === 'deleted' ? 'pill-tab active' : 'pill-tab'} title="מחוקים">
-          <svg className="icon"><use href="#i-trash" /></svg>
-          מחוק
-        </button>
-        <button type="button" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} className={filterStatus === 'unpaid' ? 'pill-tab active' : 'pill-tab'} title="לא שולם (חודשים אחרונים)">
-          <svg className="icon"><use href="#i-alert-circle" /></svg>
-          לא שולם
-        </button>
-        {/* מוסתר כש-draft_orders_show_as_deleted דלוק: טיוטות שלא הושלמו מוצגות כ"מחוק" ולא כטאב נפרד (ר' ההערה למעלה) */}
-        {!draftsAsDeleted && (
-          <button type="button" onClick={() => { setFilterStatus('drafts'); setPage(1); }} className={filterStatus === 'drafts' ? 'pill-tab active' : 'pill-tab'} title="טיוטות">
-            <svg className="icon"><use href="#i-edit" /></svg>
-            טיוטות
-          </button>
-        )}
-        {/* 37 - הזמנות שלא נלקחו/חלקית - מוסתר כש-show_not_taken_orders כבוי */}
-        {showNotTakenOrders && (
-          <button type="button" onClick={() => { setFilterStatus('not_taken'); setPage(1); }} className={filterStatus === 'not_taken' ? 'pill-tab active' : 'pill-tab'} title="הזמנות שלא נלקחו או נלקחו חלקית">
-            <svg className="icon"><use href="#i-clock" /></svg>
-            לא-נלקחו
-          </button>
-        )}
-        <button type="button" onClick={handleShowAll} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
-          <svg className="icon"><use href="#i-list" /></svg>
-          הכל
-        </button>
-      </div>
+        {/* סינון סטטוס: הלשונית הפעילה קובעת אילו הזמנות מוצגות בטבלה */}
+        <div className="v3-cluster">
+          <Tabs items={statusTabs} value={filterStatus} onChange={handleStatusTab} label="סינון לפי מצב הזמנה" />
+          <Tip label="מה כל לשונית מציגה">
+            בקרוב: אירועים מהיום והלאה. ארכיון: אירועים שעברו. מחוקות: הזמנות שנמחקו. לא שולם: חובות מהחודשים האחרונים. לא נלקחו: הזמנות שלא נלקחו או נלקחו רק חלקית. הכל: מנקה את כל הסינונים.
+          </Tip>
+        </div>
 
-      {showAdvSearch && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowAdvSearch(false)}>
-          <div className="modal" style={{ maxWidth: '760px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-list" /></svg>
-                סינון מתקדם
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowAdvSearch(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
+        <div className="v3-table__wrap">
+          {loading && orders.length === 0 ? (
+            <div className="v3-empty" aria-busy="true">
+              <Icon name="loader" size="xl" loop />
+              <b className="v3-h2">טוענים הזמנות…</b>
             </div>
-
-            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): תאריך אירוע + סטטוס פריטים מול
-               פרטי הזמנה/פריט/לקוח. סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js */}
-            <div className="tabs" style={{ margin: '0 22px' }}>
-              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
-                תאריך וסטטוס
-              </button>
-              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
-                פרטי הזמנה ולקוח
-              </button>
-            </div>
-
-            <div className="modal-body">
-              {advTab === 'basic' && (
-                <>
-                  <div className="field">
-                    <label>טווח תאריכי אירוע</label>
-                    <HebrewDateRangePicker
-                      startDate={advFilters.eventDateFrom}
-                      endDate={advFilters.eventDateTo}
-                      onChange={(start, end) => setAdvFilters(p => ({ ...p, eventDateFrom: start, eventDateTo: end }))}
-                    />
-                  </div>
-
-                  <div className="field">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label style={{ margin: 0 }}>סטטוס פריטים</label>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          const allSelected = advFilters.rentalStatus.length === 3;
-                          setAdvFilters(p => ({
-                            ...p,
-                            rentalStatus: allSelected ? [] : ['pendingOnly', 'activeOnly', 'returnedOnly']
-                          }));
-                        }}
-                      >
-                        {advFilters.rentalStatus.length === 3 ? 'בטל בחירת הכל' : 'בחר הכל'}
-                      </button>
-                    </div>
-                    <div className="pill-tabs">
-                      {[
-                        { value: 'pendingOnly', label: 'ממתינים', icon: 'i-clock' },
-                        { value: 'activeOnly', label: 'מושכרים', icon: 'i-bag' },
-                        { value: 'returnedOnly', label: 'מוחזרים', icon: 'i-check' }
-                      ].map(opt => {
-                        const isSelected = advFilters.rentalStatus.includes(opt.value);
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            className={isSelected ? 'pill-tab active' : 'pill-tab'}
-                            onClick={() => {
-                              setAdvFilters(p => {
-                                const current = p.rentalStatus;
-                                const next = current.includes(opt.value)
-                                  ? current.filter(x => x !== opt.value)
-                                  : [...current, opt.value];
-                                return { ...p, rentalStatus: next };
-                              });
-                            }}
-                          >
-                            <svg className="icon"><use href={`#${opt.icon}`} /></svg>
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {advTab === 'details' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label>{getLabel('order_id', 'מספר הזמנה')}</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-search" /></svg>
-                      <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} placeholder="חפש לפי מספר..." />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>ברקוד/פרטי פריט</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-tag" /></svg>
-                      <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} placeholder="ברקוד או תיאור..." />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>דגם</label>
-                      <OrderModelSelector
-                        value={{ name: advFilters.advModelName }}
-                        onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
-                        placeholder="בחר דגם..."
-                      />
-                  </div>
-                  <div className="field">
-                    <label>מידה</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-tag" /></svg>
-                      <input type="text" className="input" value={advFilters.advSize} onChange={e => setAdvFilters(p => ({ ...p, advSize: e.target.value }))} placeholder="לדוגמה: 38..." />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>{getLabel('order_customerName', 'שם לקוח')}</label>
-                    <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} placeholder="שם הלקוח..." />
-                  </div>
-                  <div className="field">
-                    <label>טלפון לקוח</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-phone" /></svg>
-                      <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} placeholder="מספר טלפון..." />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>עיר מגורים</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-pin" /></svg>
-                      <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} placeholder="עיר..." />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
-              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
-                <input type="checkbox" id="orders-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
-                <label htmlFor="orders-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', advSize: '', eventDateFrom: '', eventDateTo: '', rentalStatus: [] });
-              }}>נקה הכל</button>
-              <button type="button" className="btn btn-primary" onClick={() => {
-                if (advAiMode) {
-                  const prompt = buildOrdersAiPrompt(advFilters);
-                  setShowAdvSearch(false);
-                  if (prompt) handleAiSearch(prompt);
-                } else {
-                  setShowAdvSearch(false);
-                }
-              }}>
-                <svg className="icon"><use href="#i-check" /></svg>
-                החל סינון
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      <div className="table-wrap">
-        <div className="table-scroll">
-        {loading && orders.length === 0 ? (
-          <div className="page-loading">
-            <span className="spinner lg" />
-            טוען נתונים...
-          </div>
-        ) : (
-          <table className="data">
-            <thead>
-              <tr>
-                <th className={sort === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} {renderSortIcon('orderId')}</th>
-                <th className={sort === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', 'לקוח')} {renderSortIcon('customerName')}</th>
-                <th>דגם</th>
-                <th>כמות פריטים</th>
-                <th className={sort === 'eventDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('eventDate')}>תאריך אירוע {renderSortIcon('eventDate')}</th>
-                <th className={sort === 'totalAmount' ? 'sortable sort-active' : 'sortable'} style={{ color: 'var(--text-3)', fontWeight: 500 }} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} {renderSortIcon('totalAmount')}</th>
-                <th className={sort === 'totalPaid' ? 'sortable sort-active' : 'sortable'} style={{ color: 'var(--text-3)', fontWeight: 500 }} onClick={() => handleSort('totalPaid')}>שולם {renderSortIcon('totalPaid')}</th>
-                <th className={sort === 'status' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} {renderSortIcon('status')}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(order => {
-                const isPaid = (order.totalPaid >= order.totalAmount && order.totalAmount > 0) || order.totalPaid > 0 || order.status === 'שולם' || order.status === 'שולם חלקי';
-                const pendingItem = (!order.legacyId && !isPaid) ? order.items?.find(i => i.cartStatus === 'pending') : null;
-                const isPending = pendingItem && nowTick && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 > nowTick;
-
-                const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
-                const hasCustomSpacing = !hideCustomSpacing && order.customSpacing !== null && order.customSpacing !== undefined;
-                // טיוטה מקומית של שינויים שלא נשמרו בכרטיס (ר' app/lib/orderDrafts.js) —
-                // גוון ייחודי + תג, לפני שאר הצבעים: דורש החלטת משתמש בתוך הכרטיס.
-                const unsavedDraft = unsavedDrafts[order.orderId];
-
-                let rowClassName = '';
-                let rowStyle = {};
-                if (selectedOrder?.orderId === order.orderId) {
-                  rowStyle = { background: 'var(--surface-alt)' };
-                } else if (unsavedDraft) {
-                  rowStyle = { background: 'var(--info-tint)', borderRight: '4px solid var(--info)' };
-                } else if (hasCustomSpacing) {
-                  rowStyle = { background: 'var(--warning-tint)', borderRight: '4px solid var(--warning)' };
-                } else if (isPending) {
-                  rowStyle = { background: 'var(--accent-tint)', borderRight: '4px solid var(--accent)' };
-                } else if (isUnpaid) {
-                  rowClassName = 'row-flag';
-                  rowStyle = { borderRight: '4px solid var(--danger)' };
-                }
-
-                return (
-                  <tr key={order.orderId} className={rowClassName} style={{ cursor: 'pointer', ...rowStyle }} onClick={() => router.push(`/orders/${order.orderId}`)}>
-                    <td className="cell-primary" style={{ color: isUnpaid ? 'var(--danger)' : (isPending ? 'var(--accent)' : undefined) }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>#{order.orderId}</span>
-                        {unsavedDraft && (
-                          <span
-                            className="badge badge-info"
-                            title={`שינויים שלא נשמרו מ-${unsavedDraft.savedAt ? new Date(unsavedDraft.savedAt).toLocaleString('he-IL') : 'ביקור קודם'}${(unsavedDraft.summary || []).length ? ':\n' + unsavedDraft.summary.join('\n') : ''}\nפתח את הכרטיס כדי לשחזר או למחוק אותם`}
-                          >
-                            <svg className="icon" style={{ width: '10px', height: '10px' }}><use href="#i-edit" /></svg>
-                            לא נשמר
-                          </span>
-                        )}
-                        {pendingItem && <PendingTimer cartStatusDate={pendingItem.cartStatusDate} holdMinutes={holdMinutes} />}
-                        <span
-                          style={{ marginRight: 'auto', display: 'flex', color: 'var(--text-3)', cursor: 'pointer', pointerEvents: 'auto' }}
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
-                            setHoveredOrder(order);
-                          }}
-                          onMouseLeave={() => setHoveredOrder(null)}
-                          onClick={(e) => { e.stopPropagation(); }}
-                          title="פרטי הזמנה"
-                        >
-                          <svg className="icon"><use href="#i-info" /></svg>
-                        </span>
-                      </div>
-                    </td>
-                    <td>{order.customerName}</td>
-                    <td className="cell-primary">{getOrderModelNames(order).join(', ') || '—'}</td>
-                    <td>{order.items ? order.items.filter(i => !i.isDeleted).length : 0}</td>
-                    <td>{order.eventDateHebrew || ''}</td>
-                    <td style={{ color: 'var(--text-3)', fontSize: '12.5px' }}>₪{order.totalAmount}</td>
-                    <td style={{ color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'var(--success)' : (isUnpaid ? 'var(--danger)' : 'var(--text-3)'), fontWeight: isUnpaid ? '700' : undefined, fontSize: isUnpaid ? undefined : '12.5px' }}>
-                      ₪{order.totalPaid}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
-                        <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(order, { draftsAsDeleted }))}`}>{calculateOrderStatus(order, { draftsAsDeleted })}</span>
-                        <span className={`badge ${getPaymentBadgeClass(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0))}`}>{calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="row-actions">
-                        <Link
-                          href={`/orders/${order.orderId}`}
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          onClick={(e) => e.stopPropagation()}
-                          title="כרטיס הזמנה"
-                        >
-                          <svg className="icon"><use href="#i-edit" /></svg>
-                        </Link>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          style={{ color: 'var(--success)' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRentalModalOrderId(order.orderId);
-                          }}
-                          title="מעבר להשכרה/החזרה"
-                        >
-                          <svg className="icon"><use href="#i-truck" /></svg>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          style={{ color: 'var(--danger)' }}
-                          onClick={(e) => handleDeleteOrder(order, e)}
-                          title="מחיקת הזמנה"
-                        >
-                          <svg className="icon"><use href="#i-trash" /></svg>
-                        </button>
-                      </div>
+          ) : (
+            <table className="v3-table">
+              <thead>
+                <tr>
+                  <th scope="col" aria-sort={ariaSort('orderId', 'customerName')}>
+                    <span className="v3-cluster">
+                      {sortHeader('orderId', getLabel('order_id', 'מס׳ הזמנה'))}
+                      {sortHeader('customerName', getLabel('order_customerName', 'לקוח'))}
+                    </span>
+                  </th>
+                  <th scope="col">דגם</th>
+                  <th scope="col" aria-sort={ariaSort('eventDate')}>{sortHeader('eventDate', 'תאריך האירוע')}</th>
+                  <th scope="col" aria-sort={ariaSort('totalAmount', 'totalPaid')}>
+                    <span className="v3-cluster">
+                      {sortHeader('totalAmount', getLabel('order_totalAmount', 'סכום'))}
+                      {sortHeader('totalPaid', 'שולם')}
+                    </span>
+                  </th>
+                  <th scope="col" aria-sort={ariaSort('status')}>{sortHeader('status', getLabel('order_status', 'מצב'))}</th>
+                  <th scope="col"><span className="v3-sr">פעולות</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.length === 0 && (
+                  <tr>
+                    <td colSpan={6}>
+                      <Empty icon="search" title="לא נמצאו הזמנות" text="נסו לשנות את החיפוש או לעבור ללשונית אחרת." />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+                )}
+                {orders.map(order => {
+                  const isPaid = (order.totalPaid >= order.totalAmount && order.totalAmount > 0) || order.totalPaid > 0 || order.status === 'שולם' || order.status === 'שולם חלקי';
+                  const pendingItem = (!order.legacyId && !isPaid) ? order.items?.find(i => i.cartStatus === 'pending') : null;
+                  const isPending = pendingItem && nowTick && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 > nowTick;
+
+                  const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
+                  const hasCustomSpacing = !hideCustomSpacing && order.customSpacing !== null && order.customSpacing !== undefined;
+                  // טיוטה מקומית של שינויים שלא נשמרו בכרטיס (ר' app/lib/orderDrafts.js) —
+                  // גוון ייחודי + תג, לפני שאר הצבעים: דורש החלטת משתמש בתוך הכרטיס.
+                  const unsavedDraft = unsavedDrafts[order.orderId];
+
+                  let tone = null;
+                  if (selectedOrder?.orderId === order.orderId) {
+                    tone = ROW_TONES.selected;
+                  } else if (unsavedDraft) {
+                    tone = ROW_TONES.draft;
+                  } else if (hasCustomSpacing) {
+                    tone = ROW_TONES.spacing;
+                  } else if (isPending) {
+                    tone = ROW_TONES.pending;
+                  } else if (isUnpaid) {
+                    tone = ROW_TONES.unpaid;
+                  }
+                  const rowStyle = tone ? { background: tone.bg } : {};
+                  const barStyle = tone ? { borderInlineStart: `var(--v3-sp-1) solid ${tone.bar}` } : {};
+
+                  const statusText = calculateOrderStatus(order, { draftsAsDeleted });
+                  const paymentText = calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0);
+                  const statusChip = getStatusChip(statusText);
+                  const paymentChip = getPaymentChip(paymentText);
+                  const isExpanded = !!expandedRows[order.orderId];
+                  const itemsCount = order.items ? order.items.filter(i => !i.isDeleted).length : 0;
+
+                  return (
+                    <Fragment key={order.orderId}>
+                      <tr aria-expanded={isExpanded} style={{ cursor: 'pointer', ...rowStyle }} onClick={() => router.push(`/orders/${order.orderId}`)}>
+                        <td style={barStyle}>
+                          <div className="v3-cluster">
+                            <b style={{ color: isUnpaid ? 'var(--v3-plum)' : (isPending ? 'var(--v3-gold-d)' : undefined) }}>#<bdi>{order.orderId}</bdi></b>
+                            {unsavedDraft && (
+                              <Tip content={(
+                                <span style={{ whiteSpace: 'pre-line' }}>
+                                  {`שינויים שלא נשמרו מ-${unsavedDraft.savedAt ? new Date(unsavedDraft.savedAt).toLocaleString('he-IL') : 'ביקור קודם'}${(unsavedDraft.summary || []).length ? ':\n' + unsavedDraft.summary.join('\n') : ''}\nפתחו את הכרטיס כדי לשחזר אותם או למחוק.`}
+                                </span>
+                              )}>
+                                <Chip variant="info" icon="edit" tabIndex={-1}>לא נשמר</Chip>
+                              </Tip>
+                            )}
+                            {pendingItem && <PendingTimer cartStatusDate={pendingItem.cartStatusDate} holdMinutes={holdMinutes} />}
+                            {hasCustomSpacing && <Icon name="alert-tri" size="sm" title="מרווח החזרה מותאם להזמנה" />}
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              className="v3-focusable"
+                              aria-label={`פרטים מהירים על הזמנה ${order.orderId}`}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
+                                setHoveredOrder(order);
+                              }}
+                              onMouseLeave={() => setHoveredOrder(null)}
+                              onFocus={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
+                                setHoveredOrder(order);
+                              }}
+                              onBlur={() => setHoveredOrder(null)}
+                              onClick={(e) => { e.stopPropagation(); }}
+                            >
+                              <Icon name="info" size="sm" />
+                            </span>
+                          </div>
+                          <div className="v3-faint v3-text-sm">{order.customerName}</div>
+                        </td>
+                        <td>{getOrderModelNames(order).join(', ') || '—'}</td>
+                        <td>{order.eventDateHebrew || ''}</td>
+                        <td>
+                          <div><bdi>₪{order.totalAmount}</bdi></div>
+                          <div
+                            className="v3-text-sm"
+                            style={{
+                              color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'var(--v3-navy-700)' : (isUnpaid ? 'var(--v3-plum)' : 'var(--v3-ink-3)'),
+                              fontWeight: isUnpaid ? 'var(--v3-fw-bold)' : undefined,
+                            }}
+                          >
+                            שולם <bdi>₪{order.totalPaid}</bdi>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="v3-cluster">
+                            <Chip variant={statusChip.variant} icon={statusChip.icon}>{statusText}</Chip>
+                            <Chip variant={paymentChip.variant} icon={paymentChip.icon}>{paymentText}</Chip>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="v3-cluster">
+                            <Link
+                              href={`/orders/${order.orderId}`}
+                              className="v3-btn v3-btn--icon v3-btn--sm"
+                              onClick={(e) => e.stopPropagation()}
+                              title="כרטיס הזמנה"
+                              aria-label="פתיחת כרטיס הזמנה"
+                            >
+                              <Icon name="edit" />
+                            </Link>
+                            <button
+                              type="button"
+                              className="v3-btn v3-btn--icon v3-btn--sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRentalModalOrderId(order.orderId);
+                              }}
+                              title="השכרה / החזרה"
+                              aria-label="מעבר להשכרה או החזרה"
+                            >
+                              <Icon name="truck" />
+                            </button>
+                            <button
+                              type="button"
+                              className="v3-btn v3-btn--icon v3-btn--sm v3-btn--danger"
+                              onClick={(e) => handleDeleteOrder(order, e)}
+                              title="מחיקת הזמנה"
+                              aria-label="מחיקת הזמנה"
+                            >
+                              <Icon name="trash" />
+                            </button>
+                            <button
+                              type="button"
+                              className="v3-btn v3-btn--icon v3-btn--sm v3-btn--quiet"
+                              aria-expanded={isExpanded}
+                              aria-label={isExpanded ? 'הסתרת פרטים נוספים' : 'הצגת פרטים נוספים'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedRows(prev => ({ ...prev, [order.orderId]: !prev[order.orderId] }));
+                              }}
+                            >
+                              <Icon name="chevron-down" className={isExpanded ? 'is-on' : undefined} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={6}>
+                            <Rows>
+                              <Row label="כמות פריטים" icon="box"><bdi>{itemsCount}</bdi></Row>
+                              <Row label={getLabel('order_totalAmount', 'סכום לחיוב')} icon="card"><bdi>₪{order.totalAmount}</bdi></Row>
+                              <Row label="שולם עד כה" icon="check-circle"><bdi>₪{order.totalPaid}</bdi></Row>
+                            </Rows>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* סיכום הרשומות ועימוד */}
-        <div className="table-foot">
-          <span>סה&quot;כ שורות מוצגות: {orders.length}</span>
+        <div className="v3-cluster">
+          <span className="v3-muted">מוצגות <bdi>{orders.length}</bdi> הזמנות</span>
           {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} title="עמוד קודם">
-                <svg className="icon"><use href="#i-chevron-end" /></svg>
-                הקודם
-              </button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="v3-cluster">
+              <Btn size="sm" icon="chevron-end" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} title="לעמוד הקודם">הקודם</Btn>
+              <span className="v3-cluster">
                 <label htmlFor="ordersListPageNum">עמוד</label>
                 <input
                   id="ordersListPageNum"
                   type="number"
-                  className="input"
+                  className="v3-input"
                   min={1}
                   max={totalPages || 1}
                   value={page}
                   onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
                   disabled={isAiModeActive}
-                  style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+                  style={{ inlineSize: 'var(--v3-sp-9)', textAlign: 'center' }}
                 />
-                מתוך {totalPages}
+                מתוך <bdi>{totalPages}</bdi>
               </span>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} title="עמוד הבא">
-                הבא
-                <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
+              <Btn size="sm" iconEnd="chevron-start" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} title="לעמוד הבא">הבא</Btn>
             </div>
           )}
         </div>
       </div>
+
+      {/* סינון מתקדם — חלונית עם שדות = בהיר בלבד. הסינון חי בזמן אמת; "החל" רק סוגר (או מפעיל AI). */}
+      <Dialog
+        open={showAdvSearch}
+        variant="form"
+        icon="list"
+        title="סינון מתקדם"
+        onClose={() => setShowAdvSearch(false)}
+        actions={(
+          <>
+            <Btn variant="primary" icon="check" onClick={() => {
+              if (advAiMode) {
+                const prompt = buildOrdersAiPrompt(advFilters);
+                setShowAdvSearch(false);
+                if (prompt) handleAiSearch(prompt);
+              } else {
+                setShowAdvSearch(false);
+              }
+            }}>החלת הסינון</Btn>
+            <Btn variant="quiet" onClick={() => {
+              setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', advSize: '', eventDateFrom: '', eventDateTo: '', rentalStatus: [] });
+            }}>ניקוי כל השדות</Btn>
+          </>
+        )}
+      >
+        {/* שתי לשוניות (item 33): תאריך + סטטוס פריטים מול פרטי הזמנה/פריט/לקוח */}
+        <Tabs
+          items={[{ key: 'basic', label: 'תאריך ומצב' }, { key: 'details', label: 'הזמנה ולקוח' }]}
+          value={advTab}
+          onChange={setAdvTab}
+          label="חלקי הסינון"
+        />
+
+        <div className="v3-stack">
+          {advTab === 'basic' && (
+            <>
+              <div className="v3-field">
+                <span className="v3-label">טווח תאריכי האירוע</span>
+                <HebrewDateRangePicker
+                  startDate={advFilters.eventDateFrom}
+                  endDate={advFilters.eventDateTo}
+                  onChange={(start, end) => setAdvFilters(p => ({ ...p, eventDateFrom: start, eventDateTo: end }))}
+                />
+              </div>
+
+              <div className="v3-field">
+                <div className="v3-cluster">
+                  <span className="v3-label">מצב הפריטים</span>
+                  <Btn
+                    variant="quiet"
+                    size="sm"
+                    onClick={() => {
+                      const allSelected = advFilters.rentalStatus.length === 3;
+                      setAdvFilters(p => ({
+                        ...p,
+                        rentalStatus: allSelected ? [] : ['pendingOnly', 'activeOnly', 'returnedOnly']
+                      }));
+                    }}
+                  >
+                    {advFilters.rentalStatus.length === 3 ? 'ביטול הכל' : 'בחירת הכל'}
+                  </Btn>
+                </div>
+                <div className="v3-cluster">
+                  {[
+                    { value: 'pendingOnly', label: 'ממתינים', icon: 'clock' },
+                    { value: 'activeOnly', label: 'מושכרים', icon: 'bag' },
+                    { value: 'returnedOnly', label: 'הוחזרו', icon: 'check' }
+                  ].map(opt => {
+                    const isSelected = advFilters.rentalStatus.includes(opt.value);
+                    return (
+                      <Chip
+                        key={opt.value}
+                        variant={isSelected ? 'done' : 'info'}
+                        icon={opt.icon}
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          setAdvFilters(p => {
+                            const current = p.rentalStatus;
+                            const next = current.includes(opt.value)
+                              ? current.filter(x => x !== opt.value)
+                              : [...current, opt.value];
+                            return { ...p, rentalStatus: next };
+                          });
+                        }}
+                      >
+                        {opt.label}
+                      </Chip>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {advTab === 'details' && (
+            <>
+              <Field label={getLabel('order_id', 'מספר הזמנה')} value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} placeholder="למשל 1024" />
+              <Field label="ברקוד או פרטי פריט" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} placeholder="ברקוד או תיאור" />
+              <div className="v3-field">
+                <span className="v3-label">דגם</span>
+                <OrderModelSelector
+                  value={{ name: advFilters.advModelName }}
+                  onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
+                  placeholder="בחירת דגם…"
+                />
+              </div>
+              <Field label="מידה" value={advFilters.advSize} onChange={e => setAdvFilters(p => ({ ...p, advSize: e.target.value }))} placeholder="למשל 38" />
+              <Field label={getLabel('order_customerName', 'שם הלקוח')} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} placeholder="שם מלא או חלקי" />
+              <Field label="טלפון הלקוח" type="tel" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} placeholder="מספר טלפון" />
+              <Field label="עיר" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} placeholder="עיר מגורים" />
+            </>
+          )}
+
+          {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+          <div className="ai-feature-element">
+            <Switch
+              id="orders-adv-ai-mode"
+              checked={advAiMode}
+              onChange={(v) => setAdvAiMode(v)}
+              label="חיפוש חכם (AI) לפי השדות שמילאתם"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {dialogs}
 
       {/* Modals */}
       <CapacitySearchModal
@@ -961,78 +977,68 @@ export default function OrdersPage() {
         position={typeof showStatistics === 'object' ? showStatistics : null}
       />
 
+      {/* כרטיס פרטים מהיר בריחוף על ⓘ (מיקום מחושב ב-JS — לא CSS-tooltip; ר' חוזה orders-list §k.4) */}
       {hoveredOrder && typeof document !== 'undefined' && createPortal(
-        <div
-          className="card"
-          style={{
-            position: 'fixed',
-            top: popoverPos.top,
-            left: popoverPos.left,
-            transform: 'translate(-50%, -100%)',
-            width: 'max-content',
-            maxWidth: '320px',
-            zIndex: 1000,
-            pointerEvents: 'none'
-          }}
-        >
-          <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: '7px', fontSize: '12.5px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '14px', color: 'var(--primary-solid)', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '2px' }}>
-              <svg className="icon"><use href="#i-info" /></svg>
-              הזמנה #{hoveredOrder.orderId}
+        <div data-v3="" dir="rtl">
+          <div
+            className="v3-rich-tip is-on"
+            role="tooltip"
+            style={{
+              top: popoverPos.top,
+              left: popoverPos.left,
+              transform: 'translate(-50%, -100%)',
+            }}
+          >
+            <div className="v3-rich-tip__h">הזמנה #<bdi>{hoveredOrder.orderId}</bdi></div>
+            <div className="v3-rich-tip__r">
+              <Icon name="user" size="sm" />
+              <div><small>לקוח</small><div>{hoveredOrder.customerName}</div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)' }}>לקוח:</span>
-              <span style={{ fontWeight: 500 }}>{hoveredOrder.customerName}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="phone" size="sm" />
+              <div><small>טלפון</small><div dir="ltr">{hoveredOrder.customerPhone || 'לא הוזן'}</div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-phone" /></svg> טלפון:</span>
-              <span style={{ fontWeight: 500 }} dir="ltr">{hoveredOrder.customerPhone || 'לא הוזן'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-calendar" /></svg> תאריך עברי:</span>
-              <span style={{ fontWeight: 500 }}>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="calendar" size="sm" />
+              <div><small>תאריך עברי</small><div>{hoveredOrder.eventDateHebrew || 'לא צוין'}</div></div>
             </div>
 
             {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה (אותו תנאי שצובע את השורה), מוסתר כש-hide_custom_spacing מופעל (בקשה 1) */}
             {!hideCustomSpacing && hoveredOrder.customSpacing !== null && hoveredOrder.customSpacing !== undefined && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-                <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-alert-tri" /></svg> ציפוף ימים:</span>
-                <span style={{ fontWeight: 700, color: 'var(--warning)' }}>
-                  {hoveredOrder.customSpacing} {hoveredOrder.customSpacing === 1 ? 'יום' : 'ימים'}
-                </span>
+              <div className="v3-rich-tip__r">
+                <Icon name="alert-tri" size="sm" />
+                <div><small>ציפוף ימים</small><div><bdi>{hoveredOrder.customSpacing}</bdi> {hoveredOrder.customSpacing === 1 ? 'יום' : 'ימים'}</div></div>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-truck" /></svg> הושכר:</span>
-              <span style={{ fontWeight: 500 }}>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isTaken).length : 0}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="truck" size="sm" />
+              <div><small>הושכרו</small><div><bdi>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isTaken).length : 0}</bdi></div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-check" /></svg> הוחזר:</span>
-              <span style={{ fontWeight: 500 }}>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isReturned).length : 0}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="check" size="sm" />
+              <div><small>הוחזרו</small><div><bdi>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isReturned).length : 0}</bdi></div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-card" /></svg> סה&quot;כ לתשלום:</span>
-              <span style={{ fontWeight: 500 }}>₪{hoveredOrder.totalAmount || 0}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="card" size="sm" />
+              <div><small>סכום לתשלום</small><div><bdi>₪{hoveredOrder.totalAmount || 0}</bdi></div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-check-circle" /></svg> שולם:</span>
-              <span style={{ fontWeight: 700, color: hoveredOrder.totalPaid >= hoveredOrder.totalAmount && hoveredOrder.totalAmount > 0 ? 'var(--success)' : (hoveredOrder.totalPaid > 0 ? 'var(--warning)' : 'var(--danger)') }}>
-                ₪{hoveredOrder.totalPaid || 0}
-              </span>
+            <div className="v3-rich-tip__r">
+              <Icon name="check-circle" size="sm" />
+              <div><small>שולם</small><div><b><bdi>₪{hoveredOrder.totalPaid || 0}</bdi></b></div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)' }}>סטטוס פריטים:</span>
-              <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(hoveredOrder, { draftsAsDeleted }))}`}>{calculateOrderStatus(hoveredOrder, { draftsAsDeleted })}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="bag" size="sm" />
+              <div><small>מצב הפריטים</small><div>{calculateOrderStatus(hoveredOrder, { draftsAsDeleted })}</div></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span style={{ color: 'var(--text-2)' }}>סטטוס תשלום:</span>
-              <span className={`badge ${getPaymentBadgeClass(calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0))}`}>{calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)}</span>
+            <div className="v3-rich-tip__r">
+              <Icon name="card" size="sm" />
+              <div><small>מצב התשלום</small><div>{calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)}</div></div>
             </div>
           </div>
         </div>,
         document.body
       )}
-    </>
+    </V3Page>
   );
 }
