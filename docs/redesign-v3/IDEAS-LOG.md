@@ -97,3 +97,5 @@
 - מציאה: StickyTableHeaders מודד רק .navbar הישן, לכן כותרות טבלה דביקות היו נעצרות מתחת לסרגל; נפתר ב-CSS (--navbar-height = גובה הסרגל). כשכל הטבלאות יעברו ל-Table של v3 אפשר למחוק אותו. ← הערה.
 - מציאה: agent-login דורש AGENT_LOGIN_SECRET ב-env; אין ב-worktree. אימות המעטפת נעשה בדף בדיקה זמני עם mock (נמחק). כדאי secret מקומי ב-.env.local של ה-worktree. ← הצעה.
 - הצעה: בפעמון — שורה ייעודית (אייקון + href) ל-category==='activity_note' אחרי שה-API patch (reports/notify-api-patch.md) ייושם. ← הצעה.
+#29 · 2026-09-24 · claude-main · באג ספרייה: hidden נדרס ע"י display
+- נתפס בביקורת השמלות: `hidden` + `.v3-stack{display:flex}` → כל הלשוניות מוצגות. תוקן גלובלית ב-components.css (`[data-v3] [hidden]{display:none!important}`). חשוב במיוחד לכרטיס ההזמנה (פאנלים טעונים תמיד). ← נעשה.

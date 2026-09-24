@@ -1379,3 +1379,6 @@ button.v3-tl-dot:focus-visible, .v3-tl-dot[role="button"]:focus-visible { outlin
   letter-spacing: normal;
 }
 [data-v3] :is(h1, h2, h3, h4, h5, h6), .v3-dialog :is(h1, h2, h3, h4, h5, h6) { font-family: var(--v3-font); }
+
+/* fix by main: מחלקות layout (v3-stack, v3-card...) מגדירות display ודורסות את התכונה hidden — לשוניות טעונות-תמיד נראו כולן. hidden חייב לנצח בתוך v3 */
+[data-v3] [hidden], .v3-dialog [hidden] { display: none !important; }
