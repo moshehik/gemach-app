@@ -276,3 +276,14 @@ sync();
 window.nfPush=push;
 /* (sketch order-card wiring of commit/addLog/approval removed — pages call nfPush directly) */
 })();
+
+/* ---- A15 (CONSTITUTION C-1.25): the ONE shared staff-page footer. Pages call mountSiteFooter(el, {groups:[{h, links:[[label, 'data-x="…"']…]}], name, ver, date}).
+   Links follow C-1.18 (.lnk / .site-foot a: navy + gold bar), no chips, minimal text (C-1.20). Links are filtered by permission BY THE PAGE (only allowed ones are passed). ---- */
+function siteFooterHTML(o){
+  o=o||{};
+  var cols=(o.groups||[]).filter(function(g){return g.links&&g.links.length;}).map(function(g){
+    return '<nav class="sf-col" aria-label="'+g.h+'"><h3>'+g.h+'</h3>'+g.links.map(function(l){return '<a href="#" '+(l[1]||'')+'>'+l[0]+'</a>';}).join('')+'</nav>';
+  }).join('');
+  return '<div class="sf-in">'+cols+'</div><div class="sf-meta"><b>'+ic('dress','sm')+(o.name||'')+'</b>'+(o.ver?'<span>'+o.ver+'</span>':'')+(o.date?'<span>'+o.date+'</span>':'')+'</div>';
+}
+function mountSiteFooter(el,o){ if(el){ el.className='site-foot'; el.setAttribute('role','contentinfo'); el.innerHTML=siteFooterHTML(o); } }
