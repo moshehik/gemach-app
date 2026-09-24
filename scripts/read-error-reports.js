@@ -32,6 +32,10 @@ function shapeAttachments(raw) {
   return { attachments: list, recordings };
 }
 
+function parseUrls(json) {
+  try { const v = json ? JSON.parse(json) : []; return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
 async function main() {
   const { org, rest } = parseOrgArg(process.argv.slice(2));
   const all = rest.includes('ALL');
@@ -70,6 +74,7 @@ async function main() {
         author: rep.employee ? `${rep.employee.firstName || ''} ${rep.employee.lastName || ''}`.trim() : (rep.isProgrammer ? 'תמיכה' : 'משתמש'),
         text: rep.text,
         isQuestion: rep.isQuestion,
+        attachments: parseUrls(rep.attachmentUrls),
         sketchStatus: rep.sketchStatus || null, // PENDING=ממתין לאישור, APPROVED=מותר לפתוח ענף, REJECTED=לתקן סקיצה ולשאול שוב
         ...shapeAttachments(rep.attachmentUrls),
         createdAt: rep.createdAt,
