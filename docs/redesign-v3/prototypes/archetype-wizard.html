@@ -3167,7 +3167,7 @@ function render(){ renderHead(); renderStepper(); renderPanel(); renderRail(); }
 function renderKeep(){ const a = document.activeElement, id = a && a.id, pos = a && typeof a.selectionStart === 'number' ? a.selectionStart : null; render(); if (id){ const n = document.getElementById(id); if (n){ n.focus({ preventScroll:true }); if (pos != null && n.setSelectionRange) try { n.setSelectionRange(pos, pos); } catch (e) {} } } }
 
 function renderHead(){
-  $('#wzTtl').innerHTML = `<h1><small>הזמנה</small>חדשה</h1>${W.draftId && !W.saved ? `<span class="faint">טיוטה <bdi>${W.draftId}</bdi> · נשמרת לבד תוך כדי מילוי</span>` : ''}`;
+  $('#wzTtl').innerHTML = `<h1><small>הזמנה</small>חדשה</h1><span id="hdrChips" class="row wrap">${W.draftId && !W.saved ? `<span class="faint">טיוטה <bdi>${W.draftId}</bdi> · נשמרת לבד תוך כדי מילוי</span>` : ''}</span>`;
   $('#wzTools').innerHTML = W.draftId && !W.saved ? `<button type="button" class="ibtn" data-act="openDraft" aria-label="פתיחת טיוטה ${W.draftId} בלשונית חדשה">${ic('ext')}</button>` : '';
 }
 

@@ -2277,7 +2277,7 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .bflt{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--ink2);font-size:15px}
 .bflt>b{font-weight:600;color:var(--ink)}
 .bflt .fv{display:inline-flex;align-items:center;gap:6px}
-.bperiod{color:var(--ink3);font-size:15px;flex-basis:100%}
+.bperiod{color:var(--ink3);font-size:15px;flex-basis:100%;order:3}
 
 /* מקרא */
 .lgd{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
@@ -2308,6 +2308,7 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .d-late{color:var(--gold-700);display:inline-flex}
 .d-hol{font-size:13px;color:var(--ink3);line-height:1.35}
 .d-list{display:flex;flex-direction:column;gap:6px;min-width:0}
+.bsr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .day-tap{display:none;position:absolute;inset:0;border:0;background:transparent;border-radius:0;z-index:1}
 
 /* כרטיס הזמנה קומפקטי בתוך תא (אותו רכיב .itm של הסקיצה, בצפיפות של תא) */
@@ -3274,17 +3275,16 @@ function periodTitle(){
 }
 function head(){
   const isWeek = S.view === 'week', p = periodTitle();
-  const onToday = isWeek ? S.weekStart === weekStartOf(TODAY_I) : S.mi === DAYS[TODAY_I].mi;
   const prevL = isWeek ? 'השבוע הקודם' : 'החודש הקודם', nextL = isWeek ? 'השבוע הבא' : 'החודש הבא';
   return `<div class="ttl"><h1><small>לוח חודשי</small><bdi>${p.t}</bdi></h1><span class="bperiod" aria-live="polite"><bdi dir="ltr">${p.g}</bdi></span></div>
     <div class="tools" role="group" aria-label="ניווט תקופה">
       <button type="button" class="ibtn" data-act="prev" aria-label="${prevL}">${ic('arrr')}</button>
-      <button type="button" class="btn" data-act="today" ${onToday && S.view !== 'list' ? 'disabled' : ''}>${ic('pin','sm')}היום</button>
       <button type="button" class="ibtn" data-act="next" aria-label="${nextL}">${ic('arrl')}</button>
       <button type="button" class="ibtn" data-act="jump" aria-label="קפיצה לתאריך עברי">${ic('cal')}</button>
       ${cfg.flag('enable_batch_print_prep') ? `<button type="button" class="ibtn" data-act="print" aria-label="הדפסת הזמנות להכנה">${ic('print')}</button>` : ''}
     </div>`;
 }
+function todayOff(){ const on = S.view === 'week' ? S.weekStart === weekStartOf(TODAY_I) : S.mi === DAYS[TODAY_I].mi; return on && S.view !== 'list'; }
 function tools(){
   const ai = S.ai, val = ai ? S.aiText : (S.draft ?? S.search);
   const n = advCount();
@@ -3294,6 +3294,7 @@ function tools(){
       ${S.aiAvail ? `<button type="button" class="ibtn" data-act="toggleAi" aria-pressed="${ai}" aria-label="${ai ? 'חזרה לחיפוש רגיל' : 'מעבר לחיפוש חכם'}">${ic(ai ? 'search' : 'spark')}</button>` : ''}
       <button type="submit" class="btn sm primary">${ai ? 'חיפוש חכם' : 'חיפוש'}</button></form>
     <div class="bsub">
+      <button type="button" class="btn" data-act="today" ${todayOff() ? 'disabled' : ''}>${ic('pin','sm')}חזרה להיום</button>
       <button type="button" class="btn" data-act="global">${ic('search','sm')}חיפוש בכל החודשים</button>
       <button type="button" class="btn" data-act="adv">${ic('sliders','sm')}חיפוש מתקדם${n ? ` (${n})` : ''}</button>
       ${S.aiAvail ? `<button type="button" class="btn" data-act="stats">${ic('chart','sm')}שאלות סטטיסטיקה</button>` : ''}
@@ -3365,7 +3366,7 @@ function dayCell(x, i, orders, clamp){
     <button type="button" class="day-tap" data-day="${i}" aria-label="${aria}. פתיחת היום"></button>
     <div class="d-head"><span class="d-num"><b>${GEM[x.d - 1]}</b><small><bdi dir="ltr">${fmtG(x.g)}</bdi></small></span>
       ${today ? '<span class="d-now">היום</span>' : ''}
-      <span class="d-tools">${late ? `<span class="d-late" data-tip="יש כאן הזמנה באיחור" tabindex="0">${ic('clock','sm')}<span class="sr-only">יש הזמנה באיחור</span></span>` : ''}
+      <span class="d-tools">${late ? `<span class="d-late" data-tip="יש כאן הזמנה באיחור" tabindex="0">${ic('clock','sm')}<span class="bsr">יש הזמנה באיחור</span></span>` : ''}
         ${orders.length ? `<span class="d-cnt">(${orders.length})</span>` : ''}
         ${orders.length > 2 ? `<button type="button" class="ibtn" data-day="${i}" aria-label="כל ההזמנות של היום">${ic('list','sm')}</button>` : ''}
         ${print ? `<button type="button" class="ibtn" data-printday="${i}" aria-label="הדפסת ההזמנות של היום">${ic('print','sm')}</button>` : ''}</span></div>
@@ -3704,7 +3705,7 @@ function rentalDlg(o){
     const st = status(), n = pendingN();
     openForm(`${mh('box', `כרטיס השכרה · הזמנה <bdi>#${o.orderId}</bdi>`, 'rr-t')}
       <div class="row wrap" style="gap:10px"><span class="muted">${escH(o.customerName)} · אירוע ${hebLabel(DAYS[o.day])}</span><span class="chip ${/הוחזר/.test(st) ? 'green' : /הושכר/.test(st) ? 'blue' : 'gray'}" role="status">מצב ההזמנה: ${st}</span></div>
-      <form class="scan" id="rrScan">${ic('scan','lg')}<label class="sr-only" for="rrB">ברקוד</label><input id="rrB" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="סריקת ברקוד" data-autofocus>${tip('ברקוד של פריט שבחוץ = החזרה. אחר = מסירה. בהדגמה: ברקוד שמתחיל ב-8 = פריט ממחסן (אישור מנהל); 9999 = בחוץ בהזמנה אחרת.')}<button type="submit" class="btn sm primary">סריקה</button></form>
+      <form class="scan" id="rrScan">${ic('scan','lg')}<label class="bsr" for="rrB">ברקוד</label><input id="rrB" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="סריקת ברקוד" data-autofocus>${tip('ברקוד של פריט שבחוץ = החזרה. אחר = מסירה. בהדגמה: ברקוד שמתחיל ב-8 = פריט ממחסן (אישור מנהל); 9999 = בחוץ בהזמנה אחרת.')}<button type="submit" class="btn sm primary">סריקה</button></form>
       ${err ? `<p class="rr-err" role="alert">${ic('alert')}${err}</p>` : ''}
       <div class="rr-list">${items.length ? items.map((i, k) => { const [si, sc, sl] = itStatus(i); return `<div class="itm ${i.pending ? 'pending' : ''}"><div class="top">
         <div class="thumb" style="background:${THUMBS[k % THUMBS.length]}">${ic('dress')}</div>
