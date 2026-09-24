@@ -6,6 +6,8 @@ import {
 } from '../v3/ui/components';
 import { LayersProvider, useLayers, Popover, InfoTip } from '../v3/overlays';
 import { AnimatedNumber } from '../v3/motion';
+import { OrgConfigProvider, useOrgConfig } from '../v3/config';
+import { useStrings } from '../v3/strings';
 
 const ROWS = [
   { id: 1, name: 'שרה כהן', dresses: 3, total: 1250, status: 'שולם' },
@@ -114,6 +116,42 @@ function LayerManagerDemo() {
           </ul>
         </Card>
       )}
+    </div>
+  );
+}
+
+function OrgConfigReadout() {
+  const cfg = useOrgConfig();
+  const { t } = useStrings();
+  return (
+    <Card title={t('customer.card.title')} icon="user" tip="הכותרת ('כרטיס לקוחה') וכל שאר הטקסט כאן מגיעים מ-app/v3/strings/he.js דרך t(), לא כתובים בעמוד.">
+      <Rows>
+        <Row label="enable_deliveries (flag)"><Chip variant={cfg.flag('enable_deliveries') ? 'done' : undefined}>{String(cfg.flag('enable_deliveries'))}</Chip></Row>
+        <Row label="delivery_price (num)"><bdi>₪{cfg.num('delivery_price')}</bdi></Row>
+        <Row label="max_items_per_order (num)"><bdi>{cfg.num('max_items_per_order')}</bdi></Row>
+        <Row label="require_customer_id_number (flag)">{cfg.flag('require_customer_id_number') ? `${t('customer.field.idNumber')} — חובה` : 'לא חובה'}</Row>
+      </Rows>
+      {cfg.flag('enable_deliveries') && (
+        <p className="v3-muted" style={{ marginTop: 'var(--v3-sp-3)' }}>
+          טאב המשלוח היה מופיע כאן בכרטיס הזמנה אמיתי — הפרופיל הנוכחי מדליק אותו.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+/** מדגים useOrgConfig() בפועל: אותו רכיב (OrgConfigReadout) מוצג תחת ארבעה פרופילים
+ * שונים בבת אחת (org1/org2/minimal/extreme) - בדיוק הבדיקה ש-CONSTITUTION §ט.4 דורש
+ * לכל עמוד. strings/ מודגם באותו רכיב דרך t(). */
+function StringsConfigDemo() {
+  return (
+    <div className="v3-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+      {['org1', 'org2', 'minimal', 'extreme'].map((p) => (
+        <div key={p} className="v3-stack">
+          <b className="v3-label">{p}</b>
+          <OrgConfigProvider profile={p}><OrgConfigReadout /></OrgConfigProvider>
+        </div>
+      ))}
     </div>
   );
 }
@@ -233,6 +271,10 @@ function GalleryInner() {
         <Banner kind="warning" title="שים לב" text="הסכום לא תואם לתשלומים" />
         <Banner kind="success" title="נשמר" text="ההזמנה נשמרה בהצלחה" />
         <Banner kind="alert" title="חוב פתוח" text="ללקוחה יש חוב של 400 ₪" />
+      </Sec>
+
+      <Sec id="s-strconf" title="strings/ + config/ — שימוש אמיתי (Scope E)">
+        <StringsConfigDemo />
       </Sec>
 
       <Sec id="s-rtl" title="בדיקת RTL"><Card><RtlCheck /></Card></Sec>
