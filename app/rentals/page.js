@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, Fragment } from 'react';
-import { createPortal } from 'react-dom';
-import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
+import { calculateOrderStatus } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
@@ -15,6 +14,8 @@ import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/pref
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import RentedPastEventWidget from '@/app/components/RentedPastEventWidget';
+import { V3Page, Btn, Chip, Tabs, Seg, Tip, Dialog, Field, Switch, Empty, Row, Rows, Icon } from '@/app/v3/ui/components';
+import { useListDialogs, IconAction } from '@/components/lists/listKit';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
 const PAGE_SIZE = 50;
@@ -65,8 +66,40 @@ const STATUS_DOT_COLORS = {
   'בקרוב': 'var(--primary-solid)',
 };
 
+// סטטוס הזמנה -> וריאנט Chip של v3 (סטטוס = ניטרלי/navy; זהב = "בחוץ עכשיו").
+const getStatusChip = (status) => {
+  switch (status) {
+    case 'הושכר':
+      return { variant: 'gold', icon: 'bag' };
+    case 'הושכר חלקי':
+      return { variant: 'info', icon: 'bag' };
+    case 'הוחזר':
+      return { variant: 'done', icon: 'check-circle' };
+    case 'הוחזר חלקי':
+      return { variant: 'info', icon: 'refresh' };
+    case 'מחוק':
+      return { variant: undefined, icon: 'trash' };
+    case 'טיוטה':
+      return { variant: undefined, icon: 'edit' };
+    case 'בקרוב':
+      return { variant: undefined, icon: 'calendar' };
+    default:
+      return { variant: undefined, icon: 'folder' };
+  }
+};
+
+// גוון שורה לפי סטטוס (הנגזר תמיד מ-calculateOrderStatus) — tokens של v3 בלבד.
+const STATUS_TONES = {
+  'הושכר': { bg: 'var(--v3-gold-a12)', bar: 'var(--v3-gold)' },
+  'הושכר חלקי': { bg: 'var(--v3-gold-a12)', bar: 'var(--v3-gold-b)' },
+  'הוחזר': { bg: 'var(--v3-sky-100)', bar: 'var(--v3-navy-500)' },
+  'הוחזר חלקי': { bg: 'var(--v3-sky-50)', bar: 'var(--v3-sky-400)' },
+};
+const SPACING_TONE = { bg: 'var(--v3-rose-50)', bar: 'var(--v3-rose-500)' };
+
 export default function RentalsPage() {
   const { getLabel } = useLabels();
+  const { confirm: v3Confirm, notify: v3Alert, dialogs } = useListDialogs();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -176,15 +209,13 @@ export default function RentalsPage() {
     // 'eventDateSmart' (ברירת המחדל) מוצג ככיוון "עולה" על עמודת תאריך האירוע,
     // גם שאין ל-sort ערך 'eventDate' ממש - כדי שהעמודה לא תיראה לא-ממוינת.
     if (sort === 'eventDateSmart' && column === 'eventDate') {
-      return <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)' }}><use href="#i-chevron-down" /></svg>;
+      return <Icon name="chevron-down" size="sm" anim={false} className="is-on" />;
     }
     if (sort !== column) {
-      return <svg className="icon"><use href="#i-sort" /></svg>;
+      return <Icon name="sort" size="sm" anim={false} />;
     }
     return (
-      <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: order === 'desc' ? 'rotate(180deg)' : 'none' }}>
-        <use href="#i-chevron-down" />
-      </svg>
+      <Icon name="chevron-down" size="sm" anim={false} className="is-on" style={{ transform: order === 'desc' ? 'rotate(180deg)' : 'none' }} />
     );
   };
 
@@ -268,11 +299,11 @@ export default function RentalsPage() {
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        v3Alert(result.error || 'החיפוש החכם לא הצליח. נסו שוב.', { title: 'החיפוש נכשל', icon: 'alert-circle' });
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      v3Alert('אין קשר עם השרת כרגע. בדקו את החיבור ונסו שוב.', { title: 'בעיית תקשורת', icon: 'wifi-off' });
     } finally {
       setAiLoading(false);
     }
@@ -320,9 +351,9 @@ export default function RentalsPage() {
           const lookupData = await lookupRes.json();
           const { isLate, daysLate } = getLateReturnInfo(lookupData.order, lateReturnThresholdDays);
           if (isLate) {
-            const wantsFullCard = await window.customConfirm(
-              `ההחזרה מאוחרת ב-${daysLate} ימים ממועד ההחזרה הצפוי. יש לטפל בהחזרה זו דרך כרטיס ההשכרה המלא (כדי לתעד ולסמן במידת הצורך כלא תקין). לפתוח את כרטיס ההזמנה?`,
-              'החזרה באיחור'
+            const wantsFullCard = await v3Confirm(
+              `ההחזרה מאוחרת ב-${daysLate} ימים מהמועד הצפוי. כדי לתעד אותה (ולסמן כלא תקינה אם צריך) יש לטפל בה בכרטיס ההשכרה המלא. לפתוח אותו?`,
+              { title: 'החזרה באיחור', confirmLabel: 'פתיחת הכרטיס', cancelLabel: 'להחזיר בכל זאת', icon: 'clock' }
             );
             if (wantsFullCard) {
               setQuickBarcode('');
@@ -347,7 +378,7 @@ export default function RentalsPage() {
         setSelectedOrderId(data.orderId);
       } else if (!data?.cancelled) {
         setQuickStatus('error');
-        alert(data?.error || 'שגיאה בהחזרת פריט');
+        v3Alert(data?.error || 'החזרת הפריט נכשלה.', { title: 'ההחזרה נכשלה', icon: 'alert-circle' });
       } else {
         setQuickStatus(null);
       }
@@ -365,385 +396,343 @@ export default function RentalsPage() {
     setSelectedOrderId(orderId);
   };
 
+  const sortHeader = (column, label) => (
+    <button type="button" className="v3-th-btn" onClick={() => handleSort(column)}>
+      {label}{renderSortIcon(column)}
+    </button>
+  );
+  const ariaSort = (...columns) => {
+    const on = columns.find(c => c === sort);
+    return on ? (order === 'asc' ? 'ascending' : 'descending') : 'none';
+  };
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>{activeTabGroup === 'returns' ? 'החזרות' : 'השכרות'}</h1>
-          <div className="page-desc">סה&quot;כ רשומות: {loading ? '...' : totalCount}</div>
-        </div>
-        <div className="page-actions">
-          <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
-            <svg className="icon"><use href="#i-list" /></svg>
-          </button>
-          <ExportButtons
-            data={orders.map(o => ({
-              ...o,
-              status: calculateOrderStatus(o),
-              eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
-              itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
-            }))}
-            filename="השכרות"
-            columns={[
-              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
-              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
-              { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
-              { key: 'status', label: getLabel('order_status', 'סטטוס') },
-              { key: 'itemsSummary', label: 'פריטים' }
-            ]}
-            iconOnly={true}
-          />
-        </div>
-      </div>
-
-      {activeTabGroup === 'rentals' && <RentedPastEventWidget />}
-
-      {/* סרגל חיפוש: חיפוש חופשי (הזמנה/לקוח/דגם) + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה, במסגרת אחת */}
-      <div className="toolbar">
-        {aiInputMode ? (
-          <form onSubmit={handleAiInputSubmit} className="search-toolbar">
-            {aiLoading
-              ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-              : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
-            <input
-              type="text"
-              value={aiInputText}
-              onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
-              disabled={aiLoading}
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">{activeTabGroup === 'returns' ? 'החזרות' : 'השכרות'}</h1>
+            <Chip icon="list"><bdi>{loading ? '…' : totalCount}</bdi> בסך הכול</Chip>
+          </div>
+          <div className="v3-pagehead__tools">
+            <IconAction icon="list" label="סינון מתקדם" onClick={() => setShowAdvSearch(true)} />
+            <ExportButtons
+              data={orders.map(o => ({
+                ...o,
+                status: calculateOrderStatus(o),
+                eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
+                itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
+              }))}
+              filename="השכרות"
+              columns={[
+                { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
+                { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+                { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
+                { key: 'status', label: getLabel('order_status', 'סטטוס') },
+                { key: 'itemsSummary', label: 'פריטים' }
+              ]}
+              iconOnly={true}
             />
-            <div className="search-toolbar-actions">
-              {aiInputText && !aiLoading && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
-                <svg className="icon"><use href="#i-star" /></svg>
-              </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
+          </div>
+        </div>
+
+        {activeTabGroup === 'rentals' && <RentedPastEventWidget />}
+
+        {/* חיפוש חופשי (הזמנה/לקוח/דגם) + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה */}
+        {aiInputMode ? (
+          <form onSubmit={handleAiInputSubmit} className="v3-filter-bar">
+            <div className="v3-search">
+              {aiLoading ? <span className="v3-spin" aria-hidden="true" /> : <Icon name="sparkles" />}
+              <input
+                type="text"
+                aria-label="שאלה לחיפוש החכם"
+                value={aiInputText}
+                onChange={(e) => setAiInputText(e.target.value)}
+                placeholder="תארו מה לחפש, למשל: הזמנות של משפחת כהן"
+                disabled={aiLoading}
+              />
+              <button type="button" className={`v3-search__clear${aiInputText && !aiLoading ? ' is-on' : ''}`} aria-label="ניקוי" onClick={() => setAiInputText('')}>
+                <Icon name="x" size="sm" />
               </button>
             </div>
+            <IconAction icon="sparkles" label="חזרה לחיפוש רגיל" onClick={toggleAiInputMode} />
+            <IconAction icon="activity" label="שאלות על הנתונים" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+            <Btn type="submit" variant="primary" icon="sparkles" loading={aiLoading}>{aiLoading ? 'מכינים חיפוש…' : 'חיפוש חכם'}</Btn>
           </form>
         ) : (
           <form
             onSubmit={(e) => { e.preventDefault(); if (isAiModeActive) setIsAiModeActive(false); }}
-            className="search-toolbar"
+            className="v3-filter-bar"
           >
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
-            />
-            <div className="search-toolbar-actions">
-              {search && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה חיפוש" onClick={handleClearSearch}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+            <div className="v3-search">
+              <Icon name="search" />
+              <input
+                type="text"
+                aria-label="חיפוש השכרה"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="מספר הזמנה, לקוח או דגם…"
+              />
+              <button type="button" className={`v3-search__clear${search ? ' is-on' : ''}`} aria-label="ניקוי החיפוש" onClick={handleClearSearch}>
+                <Icon name="x" size="sm" />
               </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
             </div>
+            <IconAction icon="sparkles" label="מעבר לחיפוש חכם (AI)" onClick={toggleAiInputMode} />
+            <IconAction icon="activity" label="שאלות על הנתונים" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })} />
+            <Btn type="submit" variant="primary" icon="search">חיפוש</Btn>
           </form>
         )}
-      </div>
 
-      {/* שתי לשוניות ראשיות נפרדות - "השכרות" (פריטים שנמצאים כרגע בחוץ) מול "החזרות"
-         (פריטים שהוחזרו כבר) - דיווח e6c14620 + הבקשה המשלימה: לא לערבב את שתי זרימות
-         העבודה השונות (מעקב אחרי פריט שיצא, מול טיפול בבעיה שמתגלה בהחזרה) באותה תצוגה. */}
-      <div className="tabs" style={{ marginBottom: '4px' }}>
-        <button type="button" className={`tab${activeTabGroup === 'rentals' ? ' active' : ''}`} onClick={() => switchTabGroup('rentals')}>
-          <svg className="icon"><use href="#i-truck" /></svg> השכרות
-        </button>
-        <button type="button" className={`tab${activeTabGroup === 'returns' ? ' active' : ''}`} onClick={() => switchTabGroup('returns')}>
-          <svg className="icon"><use href="#i-check" /></svg> החזרות
-        </button>
-      </div>
+        {/* שתי לשוניות ראשיות נפרדות - "השכרות" (פריטים שנמצאים כרגע בחוץ) מול "החזרות"
+           (פריטים שהוחזרו כבר) - דיווח e6c14620 + הבקשה המשלימה. */}
+        <Tabs
+          items={[
+            { key: 'rentals', label: 'השכרות', icon: 'truck' },
+            { key: 'returns', label: 'החזרות', icon: 'check' },
+          ]}
+          value={activeTabGroup}
+          onChange={switchTabGroup}
+          label="שכרות או החזרות"
+        />
 
-      {/* תת-סינון בתוך הלשונית הפעילה - "הכל" (כולל חלקי) מול "חלקי בלבד" */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
-        {activeTabGroup === 'rentals' ? (
-          <>
-            <button type="button" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שנמצא כרגע בחוץ (כולל הושכר חלקי)">
-              <svg className="icon"><use href="#i-bag" /></svg> הכל
-            </button>
-            <button type="button" onClick={() => setViewMode('rented_partial')} className={viewMode === 'rented_partial' ? 'pill-tab active' : 'pill-tab'} title="רק הזמנות עם חלק מהפריטים בחוץ וחלק שטרם נלקח">
-              <svg className="icon"><use href="#i-clock" /></svg> הושכר חלקי בלבד
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" onClick={() => setViewMode('returned')} className={viewMode === 'returned' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שהוחזר (כולל הוחזר חלקי)">
-              <svg className="icon"><use href="#i-check" /></svg> הכל
-            </button>
-            <button type="button" onClick={() => setViewMode('returned_partial')} className={viewMode === 'returned_partial' ? 'pill-tab active' : 'pill-tab'} title="רק הזמנות עם חלק מהפריטים שהוחזרו וחלק שעדיין לא">
-              <svg className="icon"><use href="#i-refresh" /></svg> הוחזר חלקי בלבד
-            </button>
-          </>
-        )}
-      </div>
-
-      {showAdvSearch && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowAdvSearch(false)}>
-          <div className="modal" style={{ maxWidth: '640px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-list" /></svg>
-                חיפוש מתקדם
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowAdvSearch(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-
-            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): זיהוי הזמנה/פריט/דגם מול פרטי לקוח.
-               סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js */}
-            <div className="tabs" style={{ margin: '0 22px' }}>
-              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
-                הזמנה ופריט
-              </button>
-              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
-                פרטי לקוח
-              </button>
-            </div>
-
-            <div className="modal-body">
-              {advTab === 'basic' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label>{getLabel('order_id', 'מספר הזמנה')}</label>
-                    <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} />
-                  </div>
-                  <div className="field">
-                    <label>ברקוד/פרטי פריט</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-tag" /></svg>
-                      <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>דגם</label>
-                      <OrderModelSelector
-                        value={{ name: advFilters.advModelName }}
-                        onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
-                        placeholder="בחר דגם..."
-                      />
-                  </div>
-                </div>
-              )}
-
-              {advTab === 'details' && (
-                <div className="form-grid">
-                  <div className="field">
-                    <label>{getLabel('order_customerName', 'שם לקוח')}</label>
-                    <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} />
-                  </div>
-                  <div className="field">
-                    <label>טלפון לקוח</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-phone" /></svg>
-                      <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>עיר מגורים</label>
-                    <div className="input-icon-wrap">
-                      <svg className="icon"><use href="#i-pin" /></svg>
-                      <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
-              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
-                <input type="checkbox" id="rentals-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
-                <label htmlFor="rentals-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setAdvFilters(defaultRentalsAdvFilters())}>נקה הכל</button>
-              <button type="button" className="btn btn-primary" onClick={() => {
-                if (advAiMode) {
-                  const prompt = buildRentalsAiPrompt(advFilters);
-                  setShowAdvSearch(false);
-                  if (prompt) handleAiSearch(prompt);
-                } else {
-                  setShowAdvSearch(false);
-                }
-              }}>
-                <svg className="icon"><use href="#i-check" /></svg>
-                סגור והחל סינון
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      <div className="table-wrap">
-        <div className="table-scroll">
-        <table className="data">
-          <thead>
-            <tr>
-              <th className={sort === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderId')}>מספר הזמנה {renderSortIcon('orderId')}</th>
-              <th className={sort === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('customerName')}>לקוח {renderSortIcon('customerName')}</th>
-              <th className={(sort === 'eventDate' || sort === 'eventDateSmart') ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('eventDate')}>תאריך אירוע {renderSortIcon('eventDate')}</th>
-              <th className={sort === 'status' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('status')}>סטטוס {renderSortIcon('status')}</th>
-              <th>פריטים (מתוך סה&quot;כ)</th>
-              <th>הערות</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="6"><div className="loading-inline"><span className="spinner" />טוען נתונים...</div></td>
-              </tr>
-            ) : orders.map(ord => {
-              const statusLabel = calculateOrderStatus(ord);
-              const statusColor = getStatusColor(statusLabel).text;
-              const totalItems = ord.items?.filter(i => !i.isDeleted).length || 0;
-              const rentedItems = ord.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
-              const returnedItems = ord.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
-              const hasCustomSpacing = !hideCustomSpacing && ord.customSpacing !== null && ord.customSpacing !== undefined;
-
-              // צבע הרקע נגזר תמיד מ-statusLabel (calculateOrderStatus, מקור האמת היחיד) ולא
-              // מספירה מקומית של rentedItems/returnedItems - שרשרת if נפרדת שהתבססה על הספירות
-              // האלה בעבר לא הסכימה עם סדר-העדיפויות של calculateOrderStatus (היא בדקה "הושכר
-              // חלקי" לפני "הוחזר חלקי", בעוד ש-calculateOrderStatus בודק "הוחזר" לפני "הושכר"),
-              // כך שהזמנה עם גם פריט שיצא וגם פריט שהוחזר קיבלה שורה בצבע "הושכר חלקי" למרות
-              // שהתווית שהוצגה לצידה הייתה "הוחזר חלקי" - עכשיו שתיהן תמיד מסכימות.
-              let rowStyle = {};
-              if (hasCustomSpacing) {
-                rowStyle = { background: 'var(--warning-tint)', borderRight: '4px solid var(--warning)' };
-              } else if (totalItems > 0 && ['הושכר', 'הושכר חלקי', 'הוחזר', 'הוחזר חלקי'].includes(statusLabel)) {
-                const { bg, text } = getStatusColor(statusLabel);
-                rowStyle = { background: bg, borderRight: `4px solid ${text}` };
-              }
-
-              return (
-                <Fragment key={ord.orderId}>
-                  <tr onClick={() => openOrder(ord.orderId)} style={{ cursor: 'pointer', ...rowStyle }}>
-                    <td className="cell-primary">
-                      #{ord.orderId}
-                      {hasCustomSpacing && (
-                        <svg className="icon" style={{ color: 'var(--warning)', marginInlineStart: '4px' }} title="מרווח החזרה מותאם אישית להזמנה זו"><use href="#i-alert-tri" /></svg>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{ord.customerName}</span>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-icon-only btn-sm"
-                          title="פתח השכרה/החזרה"
-                          onClick={(e) => { e.stopPropagation(); openOrder(ord.orderId); }}
-                        >
-                          <svg className="icon"><use href="#i-box" /></svg>
-                        </button>
-                      </div>
-                    </td>
-                    <td><strong>{ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין תאריך')}</strong></td>
-                    <td><span className="dot-badge" style={{ color: statusColor }}>{statusLabel}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <strong>סה&quot;כ: {totalItems}</strong>
-                        {rentedItems > 0 && <span className="dot-badge" style={{ color: 'var(--warning)' }}>מושכרים: {rentedItems}</span>}
-                        {returnedItems > 0 && <span className="dot-badge" style={{ color: 'var(--success)' }}>הוחזרו: {returnedItems}</span>}
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedOrders(prev => ({ ...prev, [ord.orderId]: !prev[ord.orderId] }));
-                          }}
-                          title={expandedOrders[ord.orderId] ? 'הסתר רשימה' : 'הצג רשימה'}
-                        >
-                          <svg className="icon" style={{ transform: expandedOrders[ord.orderId] ? 'rotate(180deg)' : 'none' }}><use href="#i-chevron-down" /></svg>
-                          פירוט
-                        </button>
-                      </div>
-                    </td>
-                    <td className="cell-muted" style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ord.notes}>
-                      {ord.notes || '-'}
-                    </td>
-                  </tr>
-                  {expandedOrders[ord.orderId] && (
-                    <tr>
-                      <td colSpan="6" style={{ padding: '14px 24px', background: 'var(--surface-alt)' }}>
-                        {ord.items && ord.items.filter(i => !i.isDeleted).length > 0 ? (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px 28px' }}>
-                            {ord.items.filter(i => !i.isDeleted).map(item => (
-                              <div key={item.id}>
-                                <strong style={{ color: 'var(--primary-solid)' }}>{item.description}</strong>
-                                {item.barcode && <span className="cell-muted"> ({item.barcode})</span>}
-                                <div style={{ marginTop: '4px' }}>
-                                  {item.isReturned ? (
-                                    <span className="dot-badge" style={{ color: 'var(--success)' }}>הוחזר</span>
-                                  ) : item.isTaken ? (
-                                    <span className="dot-badge" style={{ color: 'var(--warning)' }}>מושכר</span>
-                                  ) : (
-                                    <span className="dot-badge" style={{ color: 'var(--text-3)' }}>טרם נלקח</span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="cell-muted">אין פריטים פעילים</span>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+        {/* תת-סינון בתוך הלשונית הפעילה - "הכל" (כולל חלקי) מול "חלקי בלבד" */}
+        <div className="v3-cluster">
+          <Seg
+            label="היקף ההצגה"
+            value={viewMode}
+            onChange={setViewMode}
+            options={activeTabGroup === 'rentals'
+              ? [{ value: 'rented', label: 'כל ההשכרות', icon: 'bag' }, { value: 'rented_partial', label: 'רק חלקיות', icon: 'clock' }]
+              : [{ value: 'returned', label: 'כל ההחזרות', icon: 'check' }, { value: 'returned_partial', label: 'רק חלקיות', icon: 'refresh' }]}
+          />
+          <Tip label="מה ההבדל בין ההצגות">
+            {activeTabGroup === 'rentals'
+              ? 'כל ההשכרות: כל הזמנה שיש בה פריט בחוץ, כולל השכרה חלקית. רק חלקיות: הזמנות שחלק מהפריטים בחוץ וחלק עוד לא נלקח.'
+              : 'כל ההחזרות: כל הזמנה שיש בה פריט שהוחזר, כולל החזרה חלקית. רק חלקיות: הזמנות שחלק מהפריטים הוחזר וחלק עוד לא.'}
+          </Tip>
         </div>
 
-        {/* סיכום הרשומות ועימוד — מוצמד לתחתית הטבלה */}
-        <div className="table-foot">
-          <span>סה&quot;כ רשומות: {loading ? '...' : totalCount}</span>
+        <div className="v3-table__wrap">
+          <table className="v3-table">
+            <thead>
+              <tr>
+                <th scope="col" aria-sort={ariaSort('orderId', 'customerName')}>
+                  <span className="v3-cluster">
+                    {sortHeader('orderId', 'מס׳ הזמנה')}
+                    {sortHeader('customerName', 'לקוח')}
+                  </span>
+                </th>
+                <th scope="col" aria-sort={(sort === 'eventDate' || sort === 'eventDateSmart') ? (order === 'asc' || sort === 'eventDateSmart' ? 'ascending' : 'descending') : 'none'}>
+                  {sortHeader('eventDate', 'תאריך האירוע')}
+                </th>
+                <th scope="col" aria-sort={ariaSort('status')}>{sortHeader('status', 'מצב')}</th>
+                <th scope="col">פריטים</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={4}>
+                    <div className="v3-empty" aria-busy="true">
+                      <Icon name="loader" size="xl" loop />
+                      <b className="v3-h2">טוענים…</b>
+                    </div>
+                  </td>
+                </tr>
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    <Empty icon="search" title="אין כאן תוצאות" text="נסו לשנות את החיפוש או לעבור ללשונית אחרת." />
+                  </td>
+                </tr>
+              ) : orders.map(ord => {
+                const statusLabel = calculateOrderStatus(ord);
+                const statusChip = getStatusChip(statusLabel);
+                const totalItems = ord.items?.filter(i => !i.isDeleted).length || 0;
+                const rentedItems = ord.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
+                const returnedItems = ord.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
+                const hasCustomSpacing = !hideCustomSpacing && ord.customSpacing !== null && ord.customSpacing !== undefined;
+
+                // צבע הרקע נגזר תמיד מ-statusLabel (calculateOrderStatus, מקור האמת היחיד) ולא
+                // מספירה מקומית של rentedItems/returnedItems — כך התווית והצבע תמיד מסכימים.
+                let tone = null;
+                if (hasCustomSpacing) {
+                  tone = SPACING_TONE;
+                } else if (totalItems > 0 && ['הושכר', 'הושכר חלקי', 'הוחזר', 'הוחזר חלקי'].includes(statusLabel)) {
+                  tone = STATUS_TONES[statusLabel];
+                }
+                const rowStyle = tone ? { background: tone.bg } : {};
+                const barStyle = tone ? { borderInlineStart: `var(--v3-sp-1) solid ${tone.bar}` } : {};
+                const isExpanded = !!expandedOrders[ord.orderId];
+                const activeItems = ord.items ? ord.items.filter(i => !i.isDeleted) : [];
+
+                return (
+                  <Fragment key={ord.orderId}>
+                    <tr aria-expanded={isExpanded} onClick={() => openOrder(ord.orderId)} style={{ cursor: 'pointer', ...rowStyle }}>
+                      <td style={barStyle}>
+                        <div className="v3-cluster">
+                          <b>#<bdi>{ord.orderId}</bdi></b>
+                          {hasCustomSpacing && (
+                            <Icon name="alert-tri" size="sm" title="מרווח החזרה מותאם להזמנה זו" />
+                          )}
+                          <button
+                            type="button"
+                            className="v3-btn v3-btn--icon v3-btn--sm"
+                            title="פתיחת השכרה / החזרה"
+                            aria-label={`פתיחת השכרה או החזרה של הזמנה ${ord.orderId}`}
+                            onClick={(e) => { e.stopPropagation(); openOrder(ord.orderId); }}
+                          >
+                            <Icon name="box" />
+                          </button>
+                        </div>
+                        <div className="v3-faint v3-text-sm">{ord.customerName}</div>
+                      </td>
+                      <td><b>{ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין תאריך')}</b></td>
+                      <td><Chip variant={statusChip.variant} icon={statusChip.icon}>{statusLabel}</Chip></td>
+                      <td>
+                        <div className="v3-cluster">
+                          <span>סך הכול <bdi>{totalItems}</bdi></span>
+                          {rentedItems > 0 && <Chip variant="gold" icon="bag">בחוץ <bdi>{rentedItems}</bdi></Chip>}
+                          {returnedItems > 0 && <Chip variant="done" icon="check">הוחזרו <bdi>{returnedItems}</bdi></Chip>}
+                          <button
+                            type="button"
+                            className="v3-btn v3-btn--quiet v3-btn--sm"
+                            aria-expanded={isExpanded}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedOrders(prev => ({ ...prev, [ord.orderId]: !prev[ord.orderId] }));
+                            }}
+                            title={isExpanded ? 'הסתרת הרשימה' : 'הצגת הרשימה'}
+                          >
+                            <Icon name="chevron-down" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }} />
+                            <span>פירוט</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={4}>
+                          <Rows>
+                            <Row label="הערות להזמנה" icon="file">{ord.notes || '—'}</Row>
+                            {activeItems.length > 0 ? activeItems.map(item => (
+                              <Row key={item.id} label={item.description} icon="dress">
+                                {item.barcode && <div className="v3-faint"><bdi>{item.barcode}</bdi></div>}
+                                {item.isReturned ? (
+                                  <Chip variant="done" icon="check">הוחזר</Chip>
+                                ) : item.isTaken ? (
+                                  <Chip variant="gold" icon="bag">בחוץ</Chip>
+                                ) : (
+                                  <Chip icon="clock">עוד לא נלקח</Chip>
+                                )}
+                              </Row>
+                            )) : (
+                              <Row label="פריטים" icon="dress"><span className="v3-faint">אין פריטים פעילים</span></Row>
+                            )}
+                          </Rows>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* סיכום הרשומות ועימוד */}
+        <div className="v3-cluster">
+          <span className="v3-muted"><bdi>{loading ? '…' : totalCount}</bdi> רשומות</span>
           {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => goToPage(page - 1)} title="עמוד קודם">
-                <svg className="icon"><use href="#i-chevron-end" /></svg>
-                הקודם
-              </button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="v3-cluster">
+              <Btn size="sm" icon="chevron-end" disabled={page <= 1} onClick={() => goToPage(page - 1)} title="לעמוד הקודם">הקודם</Btn>
+              <span className="v3-cluster">
                 <label htmlFor="rentalsListPageNum">עמוד</label>
                 <input
                   id="rentalsListPageNum"
                   type="number"
-                  className="input"
+                  className="v3-input"
                   min={1}
                   max={totalPages || 1}
                   value={page}
                   onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) goToPage(v); }}
-                  style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+                  style={{ inlineSize: 'var(--v3-sp-9)', textAlign: 'center' }}
                 />
-                מתוך {totalPages}
+                מתוך <bdi>{totalPages}</bdi>
               </span>
-              <button type="button" className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)} title="עמוד הבא">
-                הבא
-                <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
+              <Btn size="sm" iconEnd="chevron-start" disabled={page >= totalPages} onClick={() => goToPage(page + 1)} title="לעמוד הבא">הבא</Btn>
             </div>
           )}
         </div>
       </div>
+
+      {/* סינון מתקדם — חלונית עם שדות = בהיר בלבד. "החל" לא קורא ל-fetch (חי) למעט מצב AI. */}
+      <Dialog
+        open={showAdvSearch}
+        variant="form"
+        icon="list"
+        title="סינון מתקדם"
+        onClose={() => setShowAdvSearch(false)}
+        actions={(
+          <>
+            <Btn variant="primary" icon="check" onClick={() => {
+              if (advAiMode) {
+                const prompt = buildRentalsAiPrompt(advFilters);
+                setShowAdvSearch(false);
+                if (prompt) handleAiSearch(prompt);
+              } else {
+                setShowAdvSearch(false);
+              }
+            }}>סגירה והחלת הסינון</Btn>
+            <Btn variant="quiet" onClick={() => setAdvFilters(defaultRentalsAdvFilters())}>ניקוי כל השדות</Btn>
+          </>
+        )}
+      >
+        {/* שתי לשוניות (item 33): הזמנה/פריט/דגם מול פרטי לקוח */}
+        <Tabs
+          items={[{ key: 'basic', label: 'הזמנה ופריט' }, { key: 'details', label: 'פרטי הלקוח' }]}
+          value={advTab}
+          onChange={setAdvTab}
+          label="חלקי הסינון"
+        />
+
+        <div className="v3-stack">
+          {advTab === 'basic' && (
+            <>
+              <Field label={getLabel('order_id', 'מספר הזמנה')} value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} />
+              <Field label="ברקוד או פרטי פריט" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} />
+              <div className="v3-field">
+                <span className="v3-label">דגם</span>
+                <OrderModelSelector
+                  value={{ name: advFilters.advModelName }}
+                  onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
+                  placeholder="בחירת דגם…"
+                />
+              </div>
+            </>
+          )}
+
+          {advTab === 'details' && (
+            <>
+              <Field label={getLabel('order_customerName', 'שם הלקוח')} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} />
+              <Field label="טלפון הלקוח" type="tel" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} />
+              <Field label="עיר" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} />
+            </>
+          )}
+
+          {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+          <div className="ai-feature-element">
+            <Switch
+              id="rentals-adv-ai-mode"
+              checked={advAiMode}
+              onChange={(v) => setAdvAiMode(v)}
+              label="חיפוש חכם (AI) לפי השדות שמילאתם"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      {dialogs}
 
       {selectedOrderId && (
         <RentalReturnModal
@@ -760,6 +749,6 @@ export default function RentalsPage() {
         contextQuery={aiQueryUsed}
         position={typeof showStatistics === 'object' ? showStatistics : null}
       />
-    </>
+    </V3Page>
   );
 }

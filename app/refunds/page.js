@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { verifyPin } from '@/components/orders/modern/mocAuth';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { REFUNDS_PAGE_SIZE } from '@/app/lib/prefetchRoutes';
+import { V3Page, Btn, Chip, Tabs, Seg, Tip, Dialog, Field, Empty, Row, Rows, Icon } from '@/app/v3/ui/components';
+import { useListDialogs, IconAction } from '@/components/lists/listKit';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const refundsCache = cacheNamespace('refunds');
@@ -38,28 +40,27 @@ async function fetchDebtOrdersPage(filterStatus, page, searchTerm) {
 /** מציג את הסטטוס האחרון (DEBT_APPROVED/CANCEL_DEBT_APPROVAL) עבור הזמנה אחת בטבלת חובות. */
 function ApprovalCell({ orderId, approval, onUndo, isBusy }) {
   if (!approval || !approval.isApproved) {
-    return <span className="cell-muted" style={{ fontSize: '12.5px' }}>לא אושר</span>;
+    return <span className="v3-faint v3-text-sm">לא אושר</span>;
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-      <span className="badge badge-success">
-        <svg className="icon"><use href="#i-check" /></svg>
-        מאושר לתשלום
-      </span>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
+    <div className="v3-stack">
+      <Chip variant="done" icon="check">מאושר לתשלום</Chip>
+      <Btn
+        variant="quiet"
+        size="sm"
+        icon="refresh"
         onClick={() => onUndo(orderId)}
         disabled={isBusy}
-        title="בטל אישור"
-        style={{ color: 'var(--warning)', padding: 0, height: 'auto' }}
+        title="ביטול האישור"
       >
-        <svg className="icon"><use href="#i-refresh" /></svg>
-        בטל אישור
-      </button>
+        ביטול האישור
+      </Btn>
     </div>
   );
 }
+
+// תיבת סימון — צבעים ומידות מ-tokens בלבד
+const CHECK_STYLE = { inlineSize: 'var(--v3-sp-5)', blockSize: 'var(--v3-sp-5)', accentColor: 'var(--v3-navy)' };
 
 /** טבלת חובות משותפת לטאב "חובות פתוחים" ולטאב "הזמנות מאושרות ללא תשלום מלא" - שני
  * הטאבים שולפים מ-/api/orders עם filterStatus שונה אבל מוצגים באותו עיצוב/עמודות/פעולות. */
@@ -70,132 +71,157 @@ function DebtsTable({
 }) {
   const selectableIds = list.filter(o => !approvals[o.orderId]?.isApproved).map(o => o.orderId);
   const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds.has(id));
+  // הרחבת שורה (סכום ההזמנה + ששולם) — מצב תצוגה בלבד
+  const [expanded, setExpanded] = useState({});
 
   return (
     <>
-      <div className="toolbar">
-        <div className="input-icon-wrap" style={{ flex: 1, maxWidth: '420px' }}>
-          <svg className="icon"><use href="#i-search" /></svg>
+      <div className="v3-filter-bar">
+        <div className="v3-search">
+          <Icon name="search" />
           <input
-            className="input"
             type="text"
+            aria-label="חיפוש חוב"
             placeholder={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => onSearchTermChange(e.target.value)}
           />
+          <button type="button" className={`v3-search__clear${searchTerm ? ' is-on' : ''}`} aria-label="ניקוי החיפוש" onClick={() => onSearchTermChange('')}>
+            <Icon name="x" size="sm" />
+          </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="page-loading">
-          <span className="spinner lg" />
-          טוען נתונים...
+        <div className="v3-empty" aria-busy="true">
+          <Icon name="loader" size="xl" loop />
+          <b className="v3-h2">טוענים…</b>
         </div>
       ) : (
-        <div className="table-wrap">
-          <div className="table-scroll">
-          <table className="data">
-            <thead>
-              <tr>
-                <th style={{ width: '40px', textAlign: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    disabled={selectableIds.length === 0}
-                    onChange={() => onToggleSelectAll(selectableIds)}
-                    title="בחר הכל"
-                  />
-                </th>
-                <th>תאריך אירוע</th>
-                <th>לקוח</th>
-                <th>הזמנה</th>
-                <th>סה&quot;כ להזמנה</th>
-                <th>שולם</th>
-                <th style={{ color: accentColor }}>יתרת חוב</th>
-                <th>סטטוס אישור</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.length === 0 ? (
+        <div className="v3-stack">
+          <div className="v3-table__wrap">
+            <table className="v3-table">
+              <thead>
                 <tr>
-                  <td colSpan="8">
-                    <div className="empty-state">
-                      <svg className="icon"><use href="#i-alert-circle" /></svg>
-                      <p>{emptyText}</p>
-                    </div>
-                  </td>
+                  <th scope="col">
+                    <input
+                      type="checkbox"
+                      style={CHECK_STYLE}
+                      checked={allSelected}
+                      disabled={selectableIds.length === 0}
+                      onChange={() => onToggleSelectAll(selectableIds)}
+                      aria-label="בחירת כל ההזמנות"
+                      title="בחירת הכל"
+                    />
+                  </th>
+                  <th scope="col">תאריך האירוע</th>
+                  <th scope="col">לקוח</th>
+                  <th scope="col">הזמנה</th>
+                  <th scope="col" style={{ color: accentColor }}>יתרת חוב</th>
+                  <th scope="col">אישור מנהל</th>
                 </tr>
-              ) : (
-                list.map(order => {
-                  const debtAmount = (order.totalAmount || 0) - (order.totalPaid || 0);
-                  const approval = approvals[order.orderId];
-                  const hebrewDate = hebrewDateFor(order);
-                  return (
-                    <tr key={order.orderId}>
-                      <td style={{ textAlign: 'center' }}>
-                        {approval?.isApproved ? (
-                          <svg className="icon" style={{ color: 'var(--success)' }}><use href="#i-check-circle" /></svg>
-                        ) : (
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(order.orderId)}
-                            onChange={() => onToggleSelect(order.orderId)}
-                            title={`בחר הזמנה #${order.orderId}`}
-                          />
+              </thead>
+              <tbody>
+                {list.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <Empty icon="alert-circle" title={emptyText} />
+                    </td>
+                  </tr>
+                ) : (
+                  list.map(order => {
+                    const debtAmount = (order.totalAmount || 0) - (order.totalPaid || 0);
+                    const approval = approvals[order.orderId];
+                    const hebrewDate = hebrewDateFor(order);
+                    const isOpen = !!expanded[order.orderId];
+                    return (
+                      <Fragment key={order.orderId}>
+                        <tr aria-expanded={isOpen}>
+                          <td>
+                            {approval?.isApproved ? (
+                              <Icon name="check-circle" title="מאושר" />
+                            ) : (
+                              <input
+                                type="checkbox"
+                                style={CHECK_STYLE}
+                                checked={selectedIds.has(order.orderId)}
+                                onChange={() => onToggleSelect(order.orderId)}
+                                aria-label={`בחירת הזמנה ${order.orderId}`}
+                                title={`בחירת הזמנה #${order.orderId}`}
+                              />
+                            )}
+                          </td>
+                          <td>
+                            <div>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
+                            {hebrewDate && <div className="v3-faint v3-text-sm">{hebrewDate}</div>}
+                          </td>
+                          <td>
+                            <div>
+                              <Link href={`/customers/${order.customerId}`} className="v3-focusable" style={{ color: 'var(--v3-navy)', fontWeight: 'var(--v3-fw-semi)' }}>
+                                {order.customerName || 'לקוח לא ידוע'}
+                              </Link>
+                            </div>
+                            <div className="v3-faint v3-text-sm"><bdi>{order.customerPhone || ''}</bdi></div>
+                          </td>
+                          <td>
+                            <Link href={`/orders/${order.orderId}`} className="v3-chip v3-chip--info">
+                              #<bdi>{order.orderId}</bdi>
+                              <Icon name="link" size="sm" />
+                            </Link>
+                          </td>
+                          <td style={{ color: accentColor, fontWeight: 'var(--v3-fw-bold)' }}><bdi>₪{debtAmount}</bdi></td>
+                          <td>
+                            <div className="v3-cluster">
+                              <ApprovalCell orderId={order.orderId} approval={approval} onUndo={onUndoApproval} isBusy={isBusy} />
+                              <button
+                                type="button"
+                                className="v3-btn v3-btn--icon v3-btn--sm v3-btn--quiet"
+                                aria-expanded={isOpen}
+                                aria-label={isOpen ? 'הסתרת פרטי התשלום' : 'הצגת פרטי התשלום'}
+                                onClick={() => setExpanded(prev => ({ ...prev, [order.orderId]: !prev[order.orderId] }))}
+                              >
+                                <Icon name="chevron-down" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={6}>
+                              <Rows>
+                                <Row label="סכום ההזמנה" icon="card"><bdi>₪{order.totalAmount}</bdi></Row>
+                                <Row label="שולם עד כה" icon="check-circle"><bdi>₪{order.totalPaid}</bdi></Row>
+                              </Rows>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="cell-muted">
-                        <div style={{ fontWeight: 500, color: 'var(--text)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
-                        {hebrewDate && <div style={{ fontSize: '11.5px' }}>{hebrewDate}</div>}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 700, color: 'var(--primary-solid)' }}>
-                          <Link href={`/customers/${order.customerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                            {order.customerName || 'לקוח לא ידוע'}
-                          </Link>
-                        </div>
-                        <div className="hint" style={{ color: 'var(--text-3)' }}>{order.customerPhone || ''}</div>
-                      </td>
-                      <td>
-                        <Link href={`/orders/${order.orderId}`} className="badge badge-info">
-                          #{order.orderId}
-                          <svg className="icon"><use href="#i-link" /></svg>
-                        </Link>
-                      </td>
-                      <td className="cell-primary">₪{order.totalAmount}</td>
-                      <td style={{ color: 'var(--success)' }}>₪{order.totalPaid}</td>
-                      <td style={{ fontWeight: 800, color: accentColor, fontSize: '15px' }}>₪{debtAmount}</td>
-                      <td>
-                        <ApprovalCell orderId={order.orderId} approval={approval} onUndo={onUndoApproval} isBusy={isBusy} />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
 
           {/* סרגל פעולה קבוצתית — מופיע כאשר נבחרו הזמנות לאישור תשלום */}
           {selectedIds.size > 0 && (
-            <div className="bulk-bar">
-              <strong>{selectedIds.size} {selectedIds.size === 1 ? 'הזמנה נבחרה' : 'הזמנות נבחרו'}</strong>
-              <span className="spacer" style={{ flex: 1 }} />
-              <button type="button" className="btn btn-secondary btn-sm" onClick={onClearSelection}>ביטול בחירה</button>
-              <button type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => onOpenApproveModal(list)}>
-                <svg className="icon"><use href="#i-shield" /></svg>
-                אשר תשלום שנבחרו ({selectedIds.size})
-              </button>
+            <div className="v3-note v3-note--dashed">
+              <div className="v3-cluster">
+                <b>{selectedIds.size} {selectedIds.size === 1 ? 'הזמנה נבחרה' : 'הזמנות נבחרו'}</b>
+                <Btn size="sm" onClick={onClearSelection}>ביטול הבחירה</Btn>
+                <Btn variant="primary" size="sm" icon="shield" disabled={isBusy} onClick={() => onOpenApproveModal(list)}>
+                  אישור תשלום ל-<bdi>{selectedIds.size}</bdi>
+                </Btn>
+              </div>
             </div>
           )}
 
-          <div className="table-foot">
-            <span>סה&quot;כ שורות מוצגות: {list.length}</span>
+          <div className="v3-cluster">
+            <span className="v3-muted">מוצגות <bdi>{list.length}</bdi> שורות</span>
             {hasMore && (
-              <button type="button" className="btn btn-secondary btn-sm" disabled={loadingMore} onClick={onLoadMore}>
-                {loadingMore ? 'טוען...' : 'טען עוד'}
-                <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
+              <Btn size="sm" iconEnd="chevron-start" loading={loadingMore} onClick={onLoadMore}>
+                {loadingMore ? 'טוענים…' : 'טעינת עוד'}
+              </Btn>
             )}
           </div>
         </div>
@@ -205,6 +231,9 @@ function DebtsTable({
 }
 
 export default function RefundsPage() {
+  const { confirm: v3Confirm, notify: v3Alert, dialogs } = useListDialogs();
+  // הרחבת שורת זיכוי (סיבה, פרטי בנק, אשראי מקורי, אימייל) — מצב תצוגה בלבד
+  const [expandedRefunds, setExpandedRefunds] = useState({});
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -369,14 +398,14 @@ export default function RefundsPage() {
       setSelectedIds(new Set());
       setConfirmModal({ open: false, orderIds: [], totalAmount: 0 });
     } catch (err) {
-      alert(err.message || 'שגיאה באישור החובות.');
+      v3Alert(err.message || 'אישור החובות נכשל.', { title: 'האישור נכשל', icon: 'alert-circle' });
     } finally {
       setIsApproving(false);
     }
   };
 
   const undoDebtApproval = async (orderId) => {
-    if (!(await window.customConfirm('לבטל את אישור יתרת החוב עבור הזמנה זו? ניתן יהיה לאשר שוב בכל עת.'))) return;
+    if (!(await v3Confirm('אפשר לאשר את החוב שוב בכל רגע.', { title: 'לבטל את אישור החוב?', confirmLabel: 'ביטול האישור', cancelLabel: 'להשאיר מאושר', icon: 'refresh' }))) return;
     const auth = await verifyPin('ביטול אישור חוב דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval');
     if (!auth) return;
     setIsApproving(true);
@@ -389,7 +418,7 @@ export default function RefundsPage() {
       if (!res.ok) throw new Error('שגיאה בביטול אישור החוב');
       await fetchApprovalsForOrders([orderId]);
     } catch (err) {
-      alert(err.message || 'שגיאה בביטול אישור החוב.');
+      v3Alert(err.message || 'ביטול האישור נכשל.', { title: 'הביטול נכשל', icon: 'alert-circle' });
     } finally {
       setIsApproving(false);
     }
@@ -455,7 +484,7 @@ export default function RefundsPage() {
   }, []);
 
   const executeRefund = async (id) => {
-    if (!(await window.customConfirm('האם אתה בטוח שברצונך לסמן זיכוי זה כ"בוצע"?\nפעולה זו תיצור תשלום הפכי (מינוס) בכרטיס ההזמנה המקושר.'))) {
+    if (!(await v3Confirm('בכרטיס ההזמנה המקושר ייווצר תשלום הפוך (מינוס) על סכום הזיכוי.', { title: 'לסמן את הזיכוי כבוצע?', confirmLabel: 'סימון כבוצע', icon: 'check-circle' }))) {
       return;
     }
 
@@ -471,16 +500,16 @@ export default function RefundsPage() {
       if (!res.ok) throw new Error(updatedRefund?.error || 'Failed to execute refund');
 
       setRefunds(prev => prev.map(r => r.id === id ? { ...r, ...updatedRefund } : r));
-      alert('הזיכוי סומן כבוצע בהצלחה והתעדכן בכרטיס ההזמנה.');
+      v3Alert('הזיכוי סומן כבוצע, וכרטיס ההזמנה התעדכן.', { title: 'הזיכוי בוצע', icon: 'check-circle' });
     } catch (err) {
-      alert('שגיאה בביצוע הזיכוי: ' + err.message);
+      v3Alert('סימון הזיכוי נכשל: ' + err.message, { title: 'הפעולה נכשלה', icon: 'alert-circle' });
     } finally {
       setIsProcessing(false);
     }
   };
 
   const undoExecuteRefund = async (id) => {
-    if (!(await window.customConfirm('האם אתה בטוח שברצונך לבטל את אישור ביצוע הזיכוי?\nהפעולה תחזיר את הזיכוי לסטטוס ממתין ותמחק את תנועת ההחזר מכרטיס ההזמנה.'))) {
+    if (!(await v3Confirm('הזיכוי יחזור למצב "ממתין", ותנועת ההחזר תימחק מכרטיס ההזמנה.', { title: 'לבטל את סימון הביצוע?', confirmLabel: 'ביטול הסימון', cancelLabel: 'להשאיר כבוצע', icon: 'refresh' }))) {
       return;
     }
 
@@ -496,9 +525,9 @@ export default function RefundsPage() {
 
       const updatedRefund = await res.json();
       setRefunds(prev => prev.map(r => r.id === id ? { ...r, ...updatedRefund } : r));
-      alert('ביצוע הזיכוי בוטל והתעדכן בכרטיס ההזמנה.');
+      v3Alert('סימון הביצוע בוטל, וכרטיס ההזמנה התעדכן.', { title: 'הסימון בוטל', icon: 'refresh' });
     } catch (err) {
-      alert('שגיאה בביטול ביצוע הזיכוי: ' + err.message);
+      v3Alert('ביטול הסימון נכשל: ' + err.message, { title: 'הפעולה נכשלה', icon: 'alert-circle' });
     } finally {
       setIsProcessing(false);
     }
@@ -507,9 +536,9 @@ export default function RefundsPage() {
   const cancelRefund = async (id) => {
     const refund = refunds.find(r => r.id === id);
     const confirmMessage = refund?.isExecuted
-      ? 'זיכוי זה כבר בוצע ויש תשלום הפכי (זיכוי) רשום בכרטיס ההזמנה. מחיקת הבקשה תמחק גם את תנועת ההחזר הזו מכרטיס ההזמנה. להמשיך?'
-      : 'האם אתה בטוח שברצונך לבטל ולמחוק בקשת זיכוי זו לחלוטין?';
-    if (!(await window.customConfirm(confirmMessage))) {
+      ? 'הזיכוי כבר בוצע, ורשום תשלום הפוך בכרטיס ההזמנה. מחיקת הבקשה תמחק גם את תנועת ההחזר משם. להמשיך?'
+      : 'בקשת הזיכוי תימחק לגמרי.';
+    if (!(await v3Confirm(confirmMessage, { title: 'למחוק את בקשת הזיכוי?', confirmLabel: 'מחיקת הבקשה', cancelLabel: 'להשאיר', danger: true }))) {
       return;
     }
 
@@ -522,9 +551,9 @@ export default function RefundsPage() {
       if (!res.ok) throw new Error('Failed to cancel refund');
 
       setRefunds(prev => prev.filter(r => r.id !== id));
-      alert('בקשת הזיכוי בוטלה.');
+      v3Alert('בקשת הזיכוי נמחקה.', { title: 'הבקשה נמחקה', icon: 'trash' });
     } catch (err) {
-      alert('שגיאה בביטול הזיכוי: ' + err.message);
+      v3Alert('מחיקת הבקשה נכשלה: ' + err.message, { title: 'הפעולה נכשלה', icon: 'alert-circle' });
     } finally {
       setIsProcessing(false);
     }
@@ -585,7 +614,7 @@ export default function RefundsPage() {
       downloadCSV(buildRefundsCSV(json.data || []));
       setShowExportModal(false);
     } catch (err) {
-      alert('שגיאה בייצוא: ' + err.message);
+      v3Alert('הייצוא נכשל: ' + err.message, { title: 'הייצוא נכשל', icon: 'alert-circle' });
     } finally {
       setIsExporting(false);
     }
@@ -605,227 +634,207 @@ export default function RefundsPage() {
     return matchesSearch;
   });
 
+  const closeApproveModal = () => setConfirmModal({ open: false, orderIds: [], totalAmount: 0 });
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>זיכויים וחובות</h1>
-          <div className="page-desc">ניהול זיכויים ומעקב חובות פתוחים</div>
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">זיכויים וחובות</h1>
+          </div>
+          <div className="v3-pagehead__tools">
+            {activeTab === 'refunds' && (
+              <IconAction icon="download" label="ייצוא זיכויים לקובץ" onClick={() => setShowExportModal(true)} />
+            )}
+          </div>
         </div>
-        <div className="page-actions">
-          {activeTab === 'refunds' && (
-            <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא זיכויים לאקסל (טווח תאריכים מלא)" onClick={() => setShowExportModal(true)}>
-              <svg className="icon"><use href="#i-download" /></svg>
-            </button>
-          )}
+
+        <div className="v3-cluster">
+          <Tabs
+            items={[
+              { key: 'refunds', label: 'זיכויים', icon: 'coin' },
+              { key: 'debts', label: 'חובות פתוחים', icon: 'alert-circle' },
+              { key: 'approved', label: 'יצאו וטרם שולמו', icon: 'shield' },
+            ]}
+            value={activeTab}
+            onChange={setActiveTab}
+            label="חלקי העמוד"
+          />
+          <Tip label="מה כל לשונית מציגה">
+            זיכויים: בקשות להחזר כסף ללקוחות. חובות פתוחים: כל הזמנה עם יתרה לתשלום, גם אירועים עתידיים. יצאו וטרם שולמו: רק הזמנות שכבר יצאו בפועל (לפחות פריט אחד נמסר) ועדיין יש בהן חוב.
+          </Tip>
         </div>
-      </div>
 
-      <div className="tabs">
-        <button type="button" className={activeTab === 'refunds' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('refunds')}>
-          <svg className="icon"><use href="#i-coin" /></svg>
-          זיכויים
-        </button>
-        <button type="button" className={activeTab === 'debts' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('debts')}>
-          <svg className="icon"><use href="#i-alert-circle" /></svg>
-          חובות פתוחים
-        </button>
-        <button type="button" className={activeTab === 'approved' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('approved')}>
-          <svg className="icon"><use href="#i-shield" /></svg>
-          הזמנות מאושרות ללא תשלום מלא
-        </button>
-      </div>
-
-      {activeTab === 'refunds' && (
-        <>
-          <div className="toolbar">
-            <div className="input-icon-wrap" style={{ flex: 1, maxWidth: '420px' }}>
-              <svg className="icon"><use href="#i-search" /></svg>
-              <input
-                className="input"
-                type="text"
-                placeholder="חיפוש לפי שם לקוח, טלפון, הזמנה או סכום..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+        {activeTab === 'refunds' && (
+          <>
+            <div className="v3-filter-bar">
+              <div className="v3-search">
+                <Icon name="search" />
+                <input
+                  type="text"
+                  aria-label="חיפוש זיכוי"
+                  placeholder="שם לקוח, טלפון, הזמנה או סכום…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button type="button" className={`v3-search__clear${searchTerm ? ' is-on' : ''}`} aria-label="ניקוי החיפוש" onClick={() => setSearchTerm('')}>
+                  <Icon name="x" size="sm" />
+                </button>
+              </div>
+              <Seg
+                label="סינון לפי מצב"
+                value={filterStatus}
+                onChange={setFilterStatus}
+                options={[
+                  { value: 'all', label: 'הכל' },
+                  { value: 'pending', label: 'ממתינים', icon: 'clock' },
+                  { value: 'executed', label: 'בוצעו', icon: 'check' },
+                ]}
               />
             </div>
-            <div className="pill-tabs">
-              <button type="button" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'}>הכל</button>
-              <button type="button" onClick={() => setFilterStatus('pending')} className={filterStatus === 'pending' ? 'pill-tab active' : 'pill-tab'}>ממתינים</button>
-              <button type="button" onClick={() => setFilterStatus('executed')} className={filterStatus === 'executed' ? 'pill-tab active' : 'pill-tab'}>בוצעו</button>
-            </div>
-            <span className="spacer" />
-          </div>
 
-          {loading ? (
-            <div className="page-loading">
-              <span className="spinner lg" />
-              טוען נתונים...
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <div className="table-scroll">
-              <table className="data">
-                <thead>
-                  <tr>
-                    <th>תאריך</th>
-                    <th>לקוח</th>
-                    <th>הזמנה</th>
-                    <th>סכום</th>
-                    <th>סיבה</th>
-                    <th>פרטי בנק</th>
-                    <th>אשראי מקורי</th>
-                    <th>סטטוס</th>
-                    <th style={{ textAlign: 'center' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRefunds.length === 0 ? (
-                    <tr>
-                      <td colSpan="9">
-                        <div className="empty-state">
-                          <svg className="icon"><use href="#i-search" /></svg>
-                          <p>לא נמצאו זיכויים תואמים.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRefunds.map(refund => (
-                      <tr key={refund.id}>
-                        <td className="cell-muted">
-                          <div style={{ fontWeight: 500, color: 'var(--text)' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
-                          {refund.isExecuted && <div style={{ fontSize: '11.5px' }}>בוצע: {new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
-                        </td>
-                        <td>
-                          <div style={{ fontWeight: 700, color: 'var(--primary-solid)' }}>
-                            <Link href={`/customers/${refund.customerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                              {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
-                            </Link>
-                          </div>
-                          <div className="hint" style={{ color: 'var(--text-3)' }}>{refund.customer?.phone1}</div>
-                          {refund.email && (
-                            <div className="hint" style={{ color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-mail" /></svg>
-                              {refund.email}
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          {refund.orderId ? (
-                            <Link href={`/orders/${refund.orderId}`} className="badge badge-info">
-                              #{refund.orderId}
-                              <svg className="icon"><use href="#i-link" /></svg>
-                            </Link>
-                          ) : '-'}
-                        </td>
-                        <td>
-                          <span style={{ fontWeight: 700, color: 'var(--danger)', fontSize: '15px' }}>₪{refund.amount}</span>
-                        </td>
-                        <td>
-                          {refund.reason ? refund.reason : <span style={{ color: 'var(--text-3)' }}>-</span>}
-                        </td>
-                        <td>
-                          {refund.bankName || refund.bankAccount ? (
-                            <div style={{ fontSize: '12.5px' }}>
-                              <div>{refund.bankName || 'בנק חסר'} {refund.bankBranch ? `(סניף ${refund.bankBranch})` : ''}</div>
-                              <div style={{ fontWeight: 600 }}>{refund.bankAccount || 'חשבון חסר'}</div>
-                              {refund.bankAccountName && <div className="hint" style={{ color: 'var(--text-3)' }}>{refund.bankAccountName}</div>}
-                            </div>
-                          ) : (
-                            <span style={{ color: 'var(--text-3)' }}>לא הוזנו</span>
-                          )}
-                        </td>
-                        <td>
-                          {refund.paymentDetails ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
-                              <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href="#i-card" /></svg>
-                              {refund.paymentDetails}
-                            </div>
-                          ) : <span style={{ color: 'var(--text-3)' }}>-</span>}
-                        </td>
-                        <td>
-                          <span className={refund.isExecuted ? 'badge badge-success' : 'badge badge-warning'}>
-                            <svg className="icon"><use href={refund.isExecuted ? '#i-check-circle' : '#i-clock'} /></svg>
-                            {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="row-actions" style={{ justifyContent: 'center' }}>
-                            {!refund.isExecuted && (
-                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" onClick={() => executeRefund(refund.id)} disabled={isProcessing} title="סמן כבוצע">
-                                <svg className="icon"><use href="#i-check-circle" /></svg>
-                              </button>
-                            )}
-                            {refund.isExecuted && (
-                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" onClick={() => undoExecuteRefund(refund.id)} disabled={isProcessing} title="בטל ביצוע">
-                                <svg className="icon"><use href="#i-refresh" /></svg>
-                              </button>
-                            )}
-                            <button type="button" className="btn btn-danger-ghost btn-icon-only btn-sm" onClick={() => cancelRefund(refund.id)} disabled={isProcessing} title="בטל בקשה">
-                              <svg className="icon"><use href="#i-x-circle" /></svg>
-                            </button>
-                          </div>
-                        </td>
+            {loading ? (
+              <div className="v3-empty" aria-busy="true">
+                <Icon name="loader" size="xl" loop />
+                <b className="v3-h2">טוענים…</b>
+              </div>
+            ) : (
+              <div className="v3-stack">
+                <div className="v3-table__wrap">
+                  <table className="v3-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">תאריך</th>
+                        <th scope="col">לקוח</th>
+                        <th scope="col">הזמנה</th>
+                        <th scope="col">סכום</th>
+                        <th scope="col">מצב</th>
+                        <th scope="col"><span className="v3-sr">פעולות</span></th>
                       </tr>
-                    ))
+                    </thead>
+                    <tbody>
+                      {filteredRefunds.length === 0 ? (
+                        <tr>
+                          <td colSpan={6}>
+                            <Empty icon="search" title="לא נמצאו זיכויים מתאימים" />
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRefunds.map(refund => {
+                          const isOpen = !!expandedRefunds[refund.id];
+                          return (
+                            <Fragment key={refund.id}>
+                              <tr aria-expanded={isOpen}>
+                                <td>
+                                  <div>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
+                                  {refund.isExecuted && <div className="v3-faint v3-text-sm">בוצע ב-{new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
+                                </td>
+                                <td>
+                                  <div>
+                                    <Link href={`/customers/${refund.customerId}`} className="v3-focusable" style={{ color: 'var(--v3-navy)', fontWeight: 'var(--v3-fw-semi)' }}>
+                                      {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
+                                    </Link>
+                                  </div>
+                                  <div className="v3-faint v3-text-sm"><bdi>{refund.customer?.phone1}</bdi></div>
+                                </td>
+                                <td>
+                                  {refund.orderId ? (
+                                    <Link href={`/orders/${refund.orderId}`} className="v3-chip v3-chip--info">
+                                      #<bdi>{refund.orderId}</bdi>
+                                      <Icon name="link" size="sm" />
+                                    </Link>
+                                  ) : '-'}
+                                </td>
+                                <td style={{ color: 'var(--v3-plum)', fontWeight: 'var(--v3-fw-bold)' }}><bdi>₪{refund.amount}</bdi></td>
+                                <td>
+                                  <Chip variant={refund.isExecuted ? 'done' : 'attn'} icon={refund.isExecuted ? 'check-circle' : 'clock'}>
+                                    {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
+                                  </Chip>
+                                </td>
+                                <td>
+                                  <div className="v3-cluster">
+                                    {!refund.isExecuted && (
+                                      <button type="button" className="v3-btn v3-btn--icon v3-btn--sm" onClick={() => executeRefund(refund.id)} disabled={isProcessing} title="סימון כבוצע" aria-label="סימון הזיכוי כבוצע">
+                                        <Icon name="check-circle" />
+                                      </button>
+                                    )}
+                                    {refund.isExecuted && (
+                                      <button type="button" className="v3-btn v3-btn--icon v3-btn--sm" onClick={() => undoExecuteRefund(refund.id)} disabled={isProcessing} title="ביטול הביצוע" aria-label="ביטול סימון הביצוע">
+                                        <Icon name="refresh" />
+                                      </button>
+                                    )}
+                                    <button type="button" className="v3-btn v3-btn--icon v3-btn--sm v3-btn--danger" onClick={() => cancelRefund(refund.id)} disabled={isProcessing} title="מחיקת הבקשה" aria-label="מחיקת בקשת הזיכוי">
+                                      <Icon name="x-circle" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="v3-btn v3-btn--icon v3-btn--sm v3-btn--quiet"
+                                      aria-expanded={isOpen}
+                                      aria-label={isOpen ? 'הסתרת פרטים נוספים' : 'הצגת פרטים נוספים'}
+                                      onClick={() => setExpandedRefunds(prev => ({ ...prev, [refund.id]: !prev[refund.id] }))}
+                                    >
+                                      <Icon name="chevron-down" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {isOpen && (
+                                <tr>
+                                  <td colSpan={6}>
+                                    <Rows>
+                                      <Row label="סיבת הזיכוי" icon="file">{refund.reason ? refund.reason : <span className="v3-faint">-</span>}</Row>
+                                      {refund.email && <Row label="אימייל" icon="mail"><bdi>{refund.email}</bdi></Row>}
+                                      <Row label="פרטי הבנק" icon="card">
+                                        {refund.bankName || refund.bankAccount ? (
+                                          <>
+                                            <div>{refund.bankName || 'שם הבנק חסר'} {refund.bankBranch ? <>(סניף <bdi>{refund.bankBranch}</bdi>)</> : ''}</div>
+                                            <div><b><bdi>{refund.bankAccount || 'מספר חשבון חסר'}</bdi></b></div>
+                                            {refund.bankAccountName && <div className="v3-faint">{refund.bankAccountName}</div>}
+                                          </>
+                                        ) : (
+                                          <span className="v3-faint">לא הוזנו</span>
+                                        )}
+                                      </Row>
+                                      <Row label="אשראי מקורי" icon="card">
+                                        {refund.paymentDetails ? refund.paymentDetails : <span className="v3-faint">-</span>}
+                                      </Row>
+                                    </Rows>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="v3-cluster">
+                  <span className="v3-muted">מוצגות <bdi>{filteredRefunds.length}</bdi> שורות</span>
+                  {refundsHasMore && (
+                    <Btn size="sm" iconEnd="chevron-start" loading={loadingMoreRefunds} onClick={loadMoreRefunds}>
+                      {loadingMoreRefunds ? 'טוענים…' : 'זיכויים ישנים יותר'}
+                    </Btn>
                   )}
-                </tbody>
-              </table>
+                </div>
               </div>
-              <div className="table-foot">
-                <span>סה&quot;כ שורות מוצגות: {filteredRefunds.length}</span>
-                {refundsHasMore && (
-                  <button type="button" className="btn btn-secondary btn-sm" disabled={loadingMoreRefunds} onClick={loadMoreRefunds}>
-                    {loadingMoreRefunds ? 'טוען...' : 'טען זיכויים ישנים יותר'}
-                    <svg className="icon"><use href="#i-chevron-start" /></svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
 
-      {activeTab === 'debts' && (
-        <DebtsTable
-          accentColor="var(--danger)"
-          list={debts}
-          loading={debtsLoading}
-          hasMore={debtsHasMore}
-          loadingMore={loadingMoreDebts}
-          onLoadMore={() => loadDebts(debtsPage + 1, debtsSearchTerm, { append: true })}
-          searchTerm={debtsSearchTerm}
-          onSearchTermChange={setDebtsSearchTerm}
-          searchPlaceholder="חיפוש חוב לפי שם לקוח, טלפון, או הזמנה..."
-          emptyText="לא נמצאו חובות תואמים."
-          approvals={approvalsByOrderId}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-          onClearSelection={clearSelection}
-          onOpenApproveModal={openApproveModal}
-          onUndoApproval={undoDebtApproval}
-          isBusy={isApproving}
-        />
-      )}
-
-      {activeTab === 'approved' && (
-        <>
-          <div className="callout callout-warning" style={{ marginBottom: '18px' }}>
-            <svg className="icon"><use href="#i-alert-tri" /></svg>
-            <div>הזמנות שכבר יצאו בפועל (לפחות פריט אחד נמסר ללקוח) ועדיין נותרת בהן יתרת חוב פתוחה - להבדיל מטאב &quot;חובות פתוחים&quot; שמציג גם הזמנות עתידיות שטרם יצאו.</div>
-          </div>
+        {activeTab === 'debts' && (
           <DebtsTable
-            accentColor="var(--warning)"
-            list={approvedDebts}
-            loading={approvedLoading}
-            hasMore={approvedHasMore}
-            loadingMore={loadingMoreApproved}
-            onLoadMore={() => loadApprovedDebts(approvedPage + 1, approvedSearchTerm, { append: true })}
-            searchTerm={approvedSearchTerm}
-            onSearchTermChange={setApprovedSearchTerm}
-            searchPlaceholder="חיפוש לפי שם לקוח, טלפון, או הזמנה..."
-            emptyText="לא נמצאו הזמנות מאושרות עם יתרת חוב."
+            accentColor="var(--v3-plum)"
+            list={debts}
+            loading={debtsLoading}
+            hasMore={debtsHasMore}
+            loadingMore={loadingMoreDebts}
+            onLoadMore={() => loadDebts(debtsPage + 1, debtsSearchTerm, { append: true })}
+            searchTerm={debtsSearchTerm}
+            onSearchTermChange={setDebtsSearchTerm}
+            searchPlaceholder="שם לקוח, טלפון או מספר הזמנה…"
+            emptyText="לא נמצאו חובות מתאימים"
             approvals={approvalsByOrderId}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
@@ -835,100 +844,87 @@ export default function RefundsPage() {
             onUndoApproval={undoDebtApproval}
             isBusy={isApproving}
           />
-        </>
-      )}
+        )}
 
-      {/* מודל אישור תשלום לחובות שנבחרו */}
-      {confirmModal.open && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget && !isApproving) setConfirmModal({ open: false, orderIds: [], totalAmount: 0 }); }}
-        >
-          <div className="modal confirm-modal">
-            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
-              <svg className="icon"><use href="#i-shield" /></svg>
-            </div>
-            <h3>אישור יתרת חוב לתשלום</h3>
-            <p>
-              מסמן {confirmModal.orderIds.length} {confirmModal.orderIds.length === 1 ? 'הזמנה' : 'הזמנות'} בסך כולל של{' '}
-              <strong>₪{confirmModal.totalAmount.toLocaleString()}</strong> כמאושרות לתשלום ע״י מנהל.
-            </p>
-            <p style={{ fontSize: '11.5px' }}>
-              הפעולה מתעדת אישור מנהל ליתרת החוב ותופיע בהיסטוריית ההזמנה (כמו כל אישור מנהל אחר במערכת). היא אינה יוצרת תשלום בפועל בכרטיס ההזמנה, וניתן לבטל אותה בכל עת.
-            </p>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" disabled={isApproving} onClick={() => setConfirmModal({ open: false, orderIds: [], totalAmount: 0 })}>ביטול</button>
-              <button type="button" className="btn btn-primary" disabled={isApproving} onClick={confirmApproveSelected}>
-                {isApproving ? (
-                  <>
-                    <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
-                    מאשר...
-                  </>
-                ) : (
-                  <>
-                    <svg className="icon"><use href="#i-shield" /></svg>
-                    אשר תשלום
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        {activeTab === 'approved' && (
+          <DebtsTable
+            accentColor="var(--v3-rose-700)"
+            list={approvedDebts}
+            loading={approvedLoading}
+            hasMore={approvedHasMore}
+            loadingMore={loadingMoreApproved}
+            onLoadMore={() => loadApprovedDebts(approvedPage + 1, approvedSearchTerm, { append: true })}
+            searchTerm={approvedSearchTerm}
+            onSearchTermChange={setApprovedSearchTerm}
+            searchPlaceholder="שם לקוח, טלפון או מספר הזמנה…"
+            emptyText="אין הזמנות שיצאו ועדיין יש בהן חוב"
+            approvals={approvalsByOrderId}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+            onClearSelection={clearSelection}
+            onOpenApproveModal={openApproveModal}
+            onUndoApproval={undoDebtApproval}
+            isBusy={isApproving}
+          />
+        )}
+      </div>
 
-      {/* מודל ייצוא זיכויים - טווח תאריכים + סטטוס, שולף מהשרת את כל הטווח (לא רק מה שנטען בדפדפן) */}
-      {showExportModal && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget && !isExporting) setShowExportModal(false); }}
-        >
-          <div className="modal confirm-modal">
-            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
-              <svg className="icon"><use href="#i-download" /></svg>
-            </div>
-            <h3>ייצוא זיכויים להנה"ח</h3>
-            <p style={{ fontSize: '11.5px' }}>
-              הייצוא מביא את כל הזיכויים התואמים ישירות מהשרת (לא רק את מה שכבר נטען בעמוד). ניתן להשאיר את שדות התאריך ריקים כדי לייצא את כל הטווח.
-            </p>
-            <div className="form-grid">
-              <div className="field">
-                <label>מתאריך</label>
-                <input type="date" className="input" value={exportFromDate} onChange={(e) => setExportFromDate(e.target.value)} />
-              </div>
-              <div className="field">
-                <label>עד תאריך</label>
-                <input type="date" className="input" value={exportToDate} onChange={(e) => setExportToDate(e.target.value)} />
-              </div>
-              <div className="field">
-                <label>סטטוס</label>
-                <select className="select" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)}>
-                  <option value="all">הכל</option>
-                  <option value="executed">בוצע בלבד</option>
-                  <option value="pending">ממתין בלבד</option>
-                </select>
-              </div>
-            </div>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" disabled={isExporting} onClick={() => setShowExportModal(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" disabled={isExporting} onClick={runFullExport}>
-                {isExporting ? (
-                  <>
-                    <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
-                    מייצא...
-                  </>
-                ) : (
-                  <>
-                    <svg className="icon"><use href="#i-download" /></svg>
-                    ייצא לאקסל
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+      {/* אישור תשלום לחובות שנבחרו — חלונית אישור (בלי שדות): תומכת בכהה/בהיר */}
+      <Dialog
+        open={confirmModal.open}
+        variant="confirm"
+        icon="shield"
+        title="לאשר את יתרות החוב?"
+        sub={(
+          <>
+            {confirmModal.orderIds.length} {confirmModal.orderIds.length === 1 ? 'הזמנה' : 'הזמנות'} בסך כולל של{' '}
+            <b><bdi>₪{confirmModal.totalAmount.toLocaleString()}</bdi></b> יסומנו כמאושרות לתשלום על ידי מנהל.{' '}
+            <Tip label="מה האישור עושה">
+              האישור נרשם בהיסטוריית ההזמנה כמו כל אישור מנהל. הוא לא יוצר תשלום בכרטיס ההזמנה, ואפשר לבטל אותו בכל עת.
+            </Tip>
+          </>
+        )}
+        closeOnScrim={!isApproving}
+        onClose={() => { if (!isApproving) closeApproveModal(); }}
+        actions={(
+          <>
+            <Btn variant="primary" icon="shield" loading={isApproving} data-autofocus onClick={confirmApproveSelected}>{isApproving ? 'מאשרים…' : 'אישור התשלום'}</Btn>
+            <Btn variant="quiet" disabled={isApproving} onClick={closeApproveModal}>ביטול</Btn>
+          </>
+        )}
+      />
+
+      {/* ייצוא זיכויים — חלונית עם שדות = בהיר בלבד. שולף מהשרת את כל הטווח (לא רק מה שנטען בדפדפן) */}
+      <Dialog
+        open={showExportModal}
+        variant="form"
+        icon="download"
+        title="ייצוא זיכויים להנהלת החשבונות"
+        closeOnScrim={!isExporting}
+        onClose={() => { if (!isExporting) setShowExportModal(false); }}
+        actions={(
+          <>
+            <Btn variant="primary" icon="download" loading={isExporting} onClick={runFullExport}>{isExporting ? 'מייצאים…' : 'ייצוא לקובץ'}</Btn>
+            <Btn variant="quiet" disabled={isExporting} onClick={() => setShowExportModal(false)}>ביטול</Btn>
+          </>
+        )}
+      >
+        <div className="v3-stack">
+          <Tip label="על הייצוא">
+            הייצוא מביא את כל הזיכויים המתאימים ישירות מהשרת, לא רק את מה שנטען בעמוד. אפשר להשאיר את התאריכים ריקים כדי לייצא הכול.
+          </Tip>
+          <Field label="מתאריך" type="date" value={exportFromDate} onChange={(e) => setExportFromDate(e.target.value)} />
+          <Field label="עד תאריך" type="date" value={exportToDate} onChange={(e) => setExportToDate(e.target.value)} />
+          <Field label="מצב הזיכוי" as="select" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)}>
+            <option value="all">הכל</option>
+            <option value="executed">רק שבוצעו</option>
+            <option value="pending">רק ממתינים</option>
+          </Field>
         </div>
-      )}
-    </>
+      </Dialog>
+
+      {dialogs}
+    </V3Page>
   );
 }
