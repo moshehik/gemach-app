@@ -50,11 +50,11 @@ export default function PrintDressCard() {
   }, [id]);
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים להדפסה...</div>;
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>מכינים את הכרטיס להדפסה…</div>;
   }
 
   if (!dress) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>שגיאה: לא ניתן לטעון את נתוני השמלה</div>;
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>לא הצלחנו לטעון את נתוני הדגם</div>;
   }
 
   const formatHebrewDate = (isoString) => {
@@ -127,7 +127,7 @@ export default function PrintDressCard() {
 
       <div className="no-print" style={{ marginBottom: '1rem', textAlign: 'left' }}>
         <button data-element-name="כפתור_page_1" onClick={() => window.print()} style={{ padding: '0.5rem 1rem', background: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          הדפס כרטיס
+          הדפסה
         </button>
       </div>
 
@@ -135,12 +135,12 @@ export default function PrintDressCard() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #333', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ margin: '0 0 0.5rem 0' }}>כרטיס דגם שמלה</h1>
+          <h1 style={{ margin: '0 0 0.5rem 0' }}>כרטיס דגם</h1>
           <h2 style={{ margin: '0 0 0.5rem 0', color: '#555' }}>
             {useModelNames ? dress.name : `דגם ${dress.barcodePrefix}`}
           </h2>
           <div style={{ fontSize: '1.1rem' }}>
-            <strong>קוד:</strong> {dress.barcodePrefix || '-'}
+            <strong>קוד הדגם:</strong> {dress.barcodePrefix || '-'}
           </div>
         </div>
         
@@ -161,22 +161,22 @@ export default function PrintDressCard() {
           <strong>קטגוריית מחיר:</strong> {dress.priceCategory || '-'}
         </div>
         <div>
-          <strong>תאריך כניסה:</strong> {formatHebrewDate(dress.entryDateToRepo)}
+          <strong>נכנס למאגר:</strong> {formatHebrewDate(dress.entryDateToRepo)}
         </div>
         <div>
-          <strong>מצב דגם:</strong> {dress.exitDateFromRepo ? `לא פעיל (הוצא ב-${formatHebrewDate(dress.exitDateFromRepo)})` : 'פעיל'}
+          <strong>סטטוס:</strong> {dress.exitDateFromRepo ? `לא פעיל (יצא ב-${formatHebrewDate(dress.exitDateFromRepo)})` : 'פעיל'}
         </div>
         <div>
-          <strong>סטטוס בדיקה:</strong> {dress.inInspection ? 'בבדיקה' : '-'}
+          <strong>בדיקה:</strong> {dress.inInspection ? 'בבדיקה' : '-'}
         </div>
         <div style={{ gridColumn: '1 / -1' }}>
-          <strong>הערות לדגם:</strong>
-          <p style={{ margin: '0.5rem 0 0 0', whiteSpace: 'pre-wrap' }}>{dress.notes || 'אין הערות'}</p>
+          <strong>הערות:</strong>
+          <p style={{ margin: '0.5rem 0 0 0', whiteSpace: 'pre-wrap' }}>{dress.notes || 'אין'}</p>
         </div>
       </div>
 
       <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '0.5rem' }}>
-        פירוט פריטים במלאי ({activeItems.length})
+        מלאי הדגם ({activeItems.length})
       </h3>
       
       {activeItems.length > 0 ? (
@@ -185,7 +185,7 @@ export default function PrintDressCard() {
             <tr>
               <th>מידה</th>
               <th>מס' סידורי</th>
-              <th>ברקוד פריט</th>
+              <th>ברקוד</th>
               <th>מיקום</th>
               <th>סטטוס</th>
             </tr>
@@ -205,11 +205,11 @@ export default function PrintDressCard() {
           </tbody>
         </table>
       ) : (
-        <p>אין פריטים במלאי עבור דגם זה.</p>
+        <p>אין פריטים במלאי.</p>
       )}
 
       <div style={{ marginTop: '3rem', fontSize: '0.8rem', color: '#888', textAlign: 'center', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-        הודפס מתערכת ניהול הגמ"ח בתאריך: {new Date().toLocaleDateString('he-IL')} בשעה {new Date().toLocaleTimeString('he-IL')}
+        הודפס ב-{new Date().toLocaleDateString('he-IL')}, {new Date().toLocaleTimeString('he-IL')}
       </div>
     </div>
   );

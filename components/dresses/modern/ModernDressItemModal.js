@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { Btn, IconBtn, Dialog, Row, Rows, Tag, Banner, Empty, Icon } from '@/app/v3/ui/components';
 
 const fmtDate = (d) => {
   if (!d) return '—';
@@ -42,119 +42,89 @@ export default function ModernDressItemModal({ item, onClose }) {
 
   const rentals = data?.rentals || [];
 
-  return createPortal(
-    <div
-      className="modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      variant="form"
+      icon="info"
+      title={<>פרטי פריט <bdi>{item.dressBarcode || 'ללא ברקוד'}</bdi></>}
+      actions={<Btn variant="primary" onClick={onClose}>סגירה</Btn>}
     >
-      <div className="modal" style={{ maxWidth: '720px', width: '100%', margin: 0 }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <strong><svg className="icon"><use href="#i-info" /></svg> פרטי פריט — {item.dressBarcode || 'ללא ברקוד'}</strong>
-          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={onClose}>
-            <svg className="icon"><use href="#i-x" /></svg>
-          </button>
+      <Rows>
+        <Row label="מידה" icon="ruler"><bdi>{item.sizeText || '—'}</bdi></Row>
+        <Row label="מס' סידורי" icon="tag"><bdi>{item.serialNumber ?? '—'}</bdi></Row>
+        <Row label="סה&quot;כ השכרות" icon="history"><bdi>{rentals.length}</bdi></Row>
+        <Row label="נכנס למאגר" icon="calendar"><bdi>{fmtDate(data?.entryDateToRepo || item.entryDateToRepo)}</bdi></Row>
+        <Row label="מיקום" icon="pin">{item.location || '—'}</Row>
+      </Rows>
+
+      {item.notInUse && (
+        <Banner
+          kind="warning"
+          icon="x-circle"
+          title="הפריט מסומן כלא בשימוש"
+          text={[
+            item.notInUseSince ? `מאז ${fmtDate(item.notInUseSince)}` : null,
+            item.notInUseReason ? `סיבה: ${item.notInUseReason}` : 'ללא סיבה'
+          ].filter(Boolean).join(' · ')}
+        />
+      )}
+
+      <h3 className="v3-h3">השכרות קודמות</h3>
+
+      {loading ? (
+        <div className="v3-cluster"><Icon name="loader" loop /> טוען</div>
+      ) : error ? (
+        <Banner kind="alert" title={error} />
+      ) : rentals.length === 0 ? (
+        <Empty icon="history" text="הפריט עדיין לא הושכר." />
+      ) : (
+        <div className="v3-table__wrap">
+          <table className="v3-table">
+            <caption className="v3-sr">השכרות הפריט</caption>
+            <thead>
+              <tr>
+                <th scope="col">הזמנה</th>
+                <th scope="col">לקוח</th>
+                <th scope="col">אירוע</th>
+                <th scope="col">מצב</th>
+                <th scope="col"><span className="v3-sr">פתיחת ההזמנה</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rentals.map((r, idx) => (
+                <tr key={idx}>
+                  <td><b><bdi>{r.orderId}</bdi></b></td>
+                  <td>{r.customerName}</td>
+                  <td><bdi>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</bdi></td>
+                  <td>
+                    {!r.isReturned ? (
+                      <Tag variant="attn" icon="clock">טרם הוחזר</Tag>
+                    ) : r.returnedOk === false ? (
+                      <Tag variant="attn" icon="alert-tri">הוחזר עם בעיה</Tag>
+                    ) : (
+                      <Tag variant="done" icon="check">הוחזר תקין</Tag>
+                    )}
+                  </td>
+                  <td>
+                    <IconBtn
+                      icon="external-link"
+                      label="פתיחת ההזמנה בלשונית חדשה"
+                      title="פתיחת ההזמנה"
+                      variant="quiet"
+                      size="sm"
+                      href={`/orders/${r.orderId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        <div className="modal-body">
-          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: '16px' }}>
-            <div className="kpi-card">
-              <div className="kpi-label">מידה</div>
-              <div className="kpi-value">{item.sizeText || '—'}</div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">מס&apos; סידורי</div>
-              <div className="kpi-value">{item.serialNumber ?? '—'}</div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">סה&quot;כ השכרות</div>
-              <div className="kpi-value">{rentals.length}</div>
-            </div>
-          </div>
-
-          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 18px' }}>
-            תאריך כניסה למאגר: <strong style={{ color: 'var(--text)' }}>{fmtDate(data?.entryDateToRepo || item.entryDateToRepo)}</strong>
-            {' · '}מיקום: <strong style={{ color: 'var(--text)' }}>{item.location || '—'}</strong>
-          </p>
-
-          {item.notInUse && (
-            <div className="callout callout-danger" style={{ marginBottom: '18px' }}>
-              <svg className="icon"><use href="#i-x-circle" /></svg>
-              <div>
-                <strong>הפריט מסומן כ&quot;לא בשימוש&quot;</strong>
-                {item.notInUseSince && <> מתאריך {fmtDate(item.notInUseSince)}</>}
-                {item.notInUseReason ? <div>סיבה: {item.notInUseReason}</div> : <div style={{ color: 'var(--text-3)' }}>לא נרשמה סיבה</div>}
-              </div>
-            </div>
-          )}
-
-          <h3 style={{ fontSize: '15px', margin: '0 0 10px' }}>היסטוריית השכרות לפריט</h3>
-
-          {loading ? (
-            <div className="loading-inline"><span className="spinner" /> טוען היסטוריה...</div>
-          ) : error ? (
-            <div className="callout callout-danger">
-              <svg className="icon"><use href="#i-alert-circle" /></svg>
-              {error}
-            </div>
-          ) : rentals.length === 0 ? (
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-history" /></svg>
-              <p>אין היסטוריית השכרות לפריט זה.</p>
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <div className="table-scroll">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>מס&apos; הזמנה</th>
-                      <th>לקוח</th>
-                      <th>תאריך אירוע</th>
-                      <th>סטטוס</th>
-                      <th style={{ textAlign: 'center' }}>הזמנה</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rentals.map((r, idx) => (
-                      <tr key={idx}>
-                        <td className="cell-primary">{r.orderId}</td>
-                        <td>{r.customerName}</td>
-                        <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
-                        <td>
-                          {!r.isReturned ? (
-                            <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
-                          ) : r.returnedOk === false ? (
-                            <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
-                          ) : (
-                            <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <a
-                            href={`/orders/${r.orderId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-ghost btn-icon-only btn-sm"
-                            title="פתח כרטיס הזמנה"
-                          >
-                            <svg className="icon"><use href="#i-link" /></svg>
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="modal-foot">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>סגור</button>
-        </div>
-      </div>
-    </div>,
-    document.body
+      )}
+    </Dialog>
   );
 }

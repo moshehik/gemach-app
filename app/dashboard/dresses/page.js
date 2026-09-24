@@ -8,9 +8,13 @@ import { useLabels } from '@/app/components/LabelsContext';
 import { fetchSharedJson, readCache, TTL } from '@/lib/apiCache';
 import { buildDressesListParams } from '@/app/lib/prefetchRoutes';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
+import { V3Page, Card, Btn, Field, Switch, Seg, Tip, Icon, Tag, Table, Empty } from '@/app/v3/ui/components';
+import { v3Toast } from '@/app/v3/notify';
+import useDressDialogs from '@/components/dresses/useDressDialogs';
 
 export default function DressesManagement() {
   const { getLabel } = useLabels();
+  const { confirm, notice, dialogs } = useDressDialogs();
   const router = useRouter();
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +134,7 @@ export default function DressesManagement() {
   }, [filterStatus, catalogSearch, catalogSort, advancedFilters]);
 
   const handleDeleteModel = async (id) => {
-    if (!await window.customConfirm('האם אתה בטוח שברצונך למחוק דגם זה? לא ניתן למחוק אם יש פריטים מקושרים.')) return;
+    if (!await confirm({ title: 'למחוק את הדגם?', text: 'אי אפשר למחוק דגם שיש לו פריטים מקושרים.', confirmLabel: 'מחיקה', danger: true, mode: 'dark', icon: 'trash' })) return;
 
     try {
       const res = await fetch(`/api/dresses/${id}`, { method: 'DELETE' });
@@ -138,16 +142,16 @@ export default function DressesManagement() {
       if (data.success) {
         fetchDresses();
       } else {
-        alert(data.error || 'שגיאה במחיקת הדגם');
+        await notice({ title: 'המחיקה נכשלה', text: data.error || 'לא הצלחנו למחוק את הדגם.', icon: 'alert-circle' });
       }
     } catch (error) {
       console.error(error);
-      alert('שגיאה בתקשורת');
+      await notice({ title: 'בעיית תקשורת', text: 'הבקשה לא הגיעה לשרת. נסו שוב.', icon: 'alert-circle' });
     }
   };
 
   const handleRestoreModel = async (dress) => {
-    if (!await window.customConfirm(`האם אתה בטוח שברצונך לשחזר את הדגם ${dress.barcodePrefix || dress.name}?`)) return;
+    if (!await confirm({ title: 'לשחזר את הדגם?', text: `הדגם ${dress.barcodePrefix || dress.name} יחזור לקטלוג.`, confirmLabel: 'שחזור', mode: 'dark', icon: 'refresh' })) return;
     try {
       const res = await fetch(`/api/dresses/${dress.id}`, {
         method: 'PUT',
@@ -155,25 +159,25 @@ export default function DressesManagement() {
         body: JSON.stringify({ isDeleted: false })
       });
       if (res.ok) {
-        alert('הדגם שוחזר בהצלחה');
+        v3Toast('הדגם שוחזר', 'success');
         fetchDresses();
       } else {
         const err = await res.json();
-        alert(err.error || 'שגיאה בשחזור הדגם');
+        await notice({ title: 'השחזור נכשל', text: err.error || 'לא הצלחנו לשחזר את הדגם.', icon: 'alert-circle' });
       }
     } catch (error) {
       console.error(error);
-      alert('שגיאה בתקשורת');
+      await notice({ title: 'בעיית תקשורת', text: 'הבקשה לא הגיעה לשרת. נסו שוב.', icon: 'alert-circle' });
     }
   };
 
   const handleReturnToActivity = async (dress) => {
-    if (!await window.customConfirm(`האם אתה בטוח שברצונך להחזיר לפעילות את הדגם ${dress.barcodePrefix || dress.name}?`)) return;
+    if (!await confirm({ title: 'להחזיר לפעילות?', text: `הדגם ${dress.barcodePrefix || dress.name} יחזור להיות פעיל.`, confirmLabel: 'החזרה לפעילות', mode: 'dark', icon: 'refresh' })) return;
 
     // Check if the reason it's inactive is because of items
     const hasActiveItems = dress.items && dress.items.length > 0 && dress.items.some(i => !i.notInUse && !i.isDeleted);
     if (!hasActiveItems) {
-        alert('שימו לב: לדגם זה אין פריטים פעילים במלאי. כדי שהדגם יהיה פעיל לחלוטין, יש להיכנס לכרטיס השמלה ולהוסיף פריטים או להחזירם לשימוש.');
+        await notice({ title: 'שימו לב', text: 'לדגם הזה אין פריטים פעילים במלאי. כדי שיהיה פעיל באמת, פתחו את כרטיס השמלה והוסיפו פריטים או החזירו אותם לשימוש.', icon: 'info' });
     }
 
     try {
@@ -183,15 +187,15 @@ export default function DressesManagement() {
         body: JSON.stringify({ exitDateFromRepo: null })
       });
       if (res.ok) {
-        alert('הדגם חזר לפעילות בהצלחה');
+        v3Toast('הדגם פעיל שוב', 'success');
         fetchDresses();
       } else {
         const err = await res.json();
-        alert(err.error || 'שגיאה בהחזרת הדגם לפעילות');
+        await notice({ title: 'הפעולה נכשלה', text: err.error || 'לא הצלחנו להחזיר את הדגם לפעילות.', icon: 'alert-circle' });
       }
     } catch (error) {
       console.error(error);
-      alert('שגיאה בתקשורת');
+      await notice({ title: 'בעיית תקשורת', text: 'הבקשה לא הגיעה לשרת. נסו שוב.', icon: 'alert-circle' });
     }
   };
 
@@ -220,274 +224,209 @@ export default function DressesManagement() {
     setCatalogSort({ key, direction });
   };
 
-  const renderCatalogSortIcon = (key) => {
-    if (catalogSort.key !== key) {
-      return <svg className="icon"><use href="#i-sort" /></svg>;
-    }
-    return (
-      <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: catalogSort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
-        <use href="#i-chevron-down" />
-      </svg>
-    );
-  };
-
   const useModelNames = settings.useModelNames !== 'false';
   const showImageColumn = settings.hide_dress_images !== 'true';
   const emptyStateColSpan = 4 + (showImageColumn ? 1 : 0) + (useModelNames ? 1 : 0);
 
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>מאגר שמלות - קטלוג ראשי</h1>
-          <div className="page-desc">סה"כ רשומות: {totalDresses}</div>
-        </div>
-        <div className="page-actions">
-          <button
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="btn btn-secondary btn-icon-only"
-            title="סינון מתקדם"
-            style={showAdvancedFilters ? { color: 'var(--primary-solid)', borderColor: 'var(--primary-solid)' } : undefined}
-          >
-            <svg className="icon"><use href="#i-list" /></svg>
-          </button>
-          {isHeadManagement && (
-            <button
-              onClick={() => router.push('/dashboard/dresses/new')}
-              className="btn btn-primary"
+  const clearAdvanced = () => setAdvancedFilters({ name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false });
+
+  const columns = [
+    ...(showImageColumn ? [{
+      key: 'image', header: 'תמונה',
+      render: (dress) => {
+        const imgSrc = getImageSource(dress);
+        // תא של 44px לא צריך את תמונת המקור — מנסים קודם את ה-thumb
+        // (קיים רק להעלאות חדשות); onError נופל חזרה למקור ורק אז מוותר.
+        const thumbSrc = getDressThumbUrl(dress);
+        return (
+          <>
+            {imgSrc && (
+              <img
+                src={thumbSrc || imgSrc}
+                alt={dress.name}
+                loading="lazy"
+                decoding="async"
+                width={44}
+                height={44}
+                onError={(e) => {
+                  const img = e.target;
+                  if (thumbSrc && !img.dataset.fellBack) {
+                    // אין קובץ thumb (תמונה ישנה) — ננסה את המקור
+                    img.dataset.fellBack = '1';
+                    img.src = imgSrc;
+                  } else {
+                    img.style.display = 'none';
+                    img.nextSibling.style.display = 'flex';
+                  }
+                }}
+                style={{ width: 'var(--v3-tap)', height: 'var(--v3-tap)', objectFit: 'cover', borderRadius: 'var(--v3-r-md)' }}
+              />
+            )}
+            <div
+              className="file-icon v3-item__thumb v3-faint"
+              style={{ display: imgSrc ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <svg className="icon"><use href="#i-plus" /></svg>
+              <Icon name="dress" anim={false} />
+              <span className="v3-sr">אין תמונה</span>
+            </div>
+          </>
+        );
+      },
+    }] : []),
+    {
+      key: 'barcodePrefix', header: getLabel('item_barcode', 'קוד'), sortable: true,
+      render: (dress) => (
+        <span className={dress.isDeleted ? 'v3-muted' : undefined}><bdi>{dress.barcodePrefix || '-'}</bdi></span>
+      ),
+    },
+    ...(useModelNames ? [{
+      key: 'name', header: getLabel('item_modelName', 'שם דגם'), sortable: true,
+      render: (dress) => (
+        <span className={dress.isDeleted ? 'v3-muted' : undefined}>{dress.name}</span>
+      ),
+    }] : []),
+    {
+      key: 'entryDateToRepo', header: 'נכנס למאגר', sortable: true,
+      render: (dress) => <span className={dress.isDeleted ? 'v3-muted' : undefined}>{formatHebrewDate(dress.entryDateToRepo)}</span>,
+    },
+    {
+      key: 'itemsCount', header: 'פריטים', sortable: true, num: true,
+      render: (dress) => <span className={dress.isDeleted ? 'v3-muted' : undefined}><bdi>{dress.items?.filter(i => !i.isDeleted).length || 0}</bdi></span>,
+    },
+    {
+      key: 'actions', header: 'פעולות',
+      render: (dress) => {
+        const isInactive = (!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo;
+        return (
+          <div className="v3-cluster">
+            {dress.isDeleted && <Tag variant="attn" icon="trash">מחוק</Tag>}
+            {!dress.isDeleted && isInactive && <Tag variant="attn" icon="x-circle">לא פעיל</Tag>}
+            <Link href={`/dashboard/dresses/${dress.id}`} className="v3-btn v3-btn--primary v3-btn--sm"><Icon name="dress" /><span>לכרטיס</span></Link>
+            {dress.isDeleted ? (
+              isHeadManagement && <Btn size="sm" icon="refresh" onClick={() => handleRestoreModel(dress)}>שחזור</Btn>
+            ) : isInactive ? (
+              <Btn size="sm" icon="refresh" onClick={() => handleReturnToActivity(dress)}>החזרה לפעילות</Btn>
+            ) : (
+              isHeadManagement && <Btn variant="danger" size="sm" icon="trash" onClick={() => handleDeleteModel(dress.id)}>מחיקה</Btn>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <V3Page>
+      <header className="v3-pagehead">
+        <div className="v3-pagehead__title">
+          <h1 className="v3-h1">קטלוג הדגמים</h1>
+          <Tip>כאן מנהלים את דגמי השמלות. הסינון והמיון נשמרים רק עד שעוזבים את העמוד.</Tip>
+        </div>
+        <div className="v3-pagehead__tools">
+          <Btn
+            icon="list"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            aria-pressed={showAdvancedFilters}
+            aria-expanded={showAdvancedFilters}
+          >
+            סינון מפורט
+          </Btn>
+          {isHeadManagement && (
+            <Btn variant="primary" icon="plus" onClick={() => router.push('/dashboard/dresses/new')}>
               דגם חדש
-            </button>
+            </Btn>
           )}
         </div>
-      </div>
+      </header>
+      <p className="v3-muted">נמצאו <bdi>{totalDresses}</bdi> דגמים</p>
 
       {/* סרגל חיפוש: מקביל להתנהגות ה-AISearchBar הישן על הדף הזה — חיפוש טקסט חופשי בלבד
           (ללא חיפוש AI/סטטיסטיקה מחוברים בפועל בדף המקורי), עם ניקוי מיידי */}
-      <div className="toolbar">
-        <div className="search-toolbar">
-          <svg className="icon"><use href="#i-search" /></svg>
+      <div className="v3-filter-bar">
+        <label className="v3-search">
+          <Icon name="search" />
+          <span className="v3-sr">חיפוש דגם</span>
           <input
             type="text"
-            placeholder="חיפוש טקסט חופשי (שם, מקט, מידה)..."
+            placeholder="שם, קוד או מידה"
             value={catalogSearch}
             onChange={e => setCatalogSearch(e.target.value)}
           />
-          <div className="search-toolbar-actions">
-            {catalogSearch && (
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה חיפוש" onClick={() => setCatalogSearch('')}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            )}
-          </div>
-        </div>
+          <button type="button" className={catalogSearch ? 'v3-search__clear is-on' : 'v3-search__clear'} aria-label="ניקוי החיפוש" onClick={() => setCatalogSearch('')}>
+            <Icon name="x" size="sm" />
+          </button>
+        </label>
       </div>
 
       {/* סינון סטטוס: פעילים / לא פעילים / מחוקים / הכל */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
-        <button onClick={() => setFilterStatus('active')} className={filterStatus === 'active' ? 'pill-tab active' : 'pill-tab'} title="דגמים פעילים">
-          <svg className="icon"><use href="#i-check-circle" /></svg>
-          פעילים
-        </button>
-        <button onClick={() => setFilterStatus('inactive')} className={filterStatus === 'inactive' ? 'pill-tab active' : 'pill-tab'} title="לא פעילים">
-          <svg className="icon"><use href="#i-x-circle" /></svg>
-          לא פעילים
-        </button>
-        <button onClick={() => setFilterStatus('deleted')} className={filterStatus === 'deleted' ? 'pill-tab active' : 'pill-tab'} title="מחוקים">
-          <svg className="icon"><use href="#i-trash" /></svg>
-          מחוקים
-        </button>
-        <button onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
-          <svg className="icon"><use href="#i-list" /></svg>
-          הכל
-        </button>
-      </div>
+      <Seg
+        label="סטטוס הדגמים"
+        value={filterStatus}
+        onChange={setFilterStatus}
+        options={[
+          { value: 'active', label: 'פעילים', icon: 'check-circle' },
+          { value: 'inactive', label: 'לא פעילים', icon: 'x-circle' },
+          { value: 'deleted', label: 'מחוקים', icon: 'trash' },
+          { value: 'all', label: 'הכול', icon: 'list' },
+        ]}
+      />
 
       {showAdvancedFilters && (
-        <div className="card card-pad" style={{ marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '14.5px', marginBottom: '14px' }}>סינון מתקדם:</h2>
-
-          <div className="form-grid cols-3">
-            <div className="field">
-              <label htmlFor="dresses-filter-name">שם דגם / קידומת</label>
-              <input id="dresses-filter-name" type="text" className="input" value={advancedFilters.name} onChange={e => setAdvancedFilters({ ...advancedFilters, name: e.target.value })} />
-            </div>
-            <div className="field">
-              <label htmlFor="dresses-filter-size">מידה</label>
-              <input id="dresses-filter-size" type="text" className="input" value={advancedFilters.size} onChange={e => setAdvancedFilters({ ...advancedFilters, size: e.target.value })} />
-            </div>
-            <div className="field">
-              <label htmlFor="dresses-filter-serial">מס' סידורי</label>
-              <input id="dresses-filter-serial" type="number" className="input" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({ ...advancedFilters, serialNumber: e.target.value })} />
+        <Card title="סינון מפורט" icon="list" level={2}>
+          <div className="v3-stack">
+            <Field id="dresses-filter-name" label="שם דגם או קוד" type="text" value={advancedFilters.name} onChange={e => setAdvancedFilters({ ...advancedFilters, name: e.target.value })} />
+            <Field id="dresses-filter-size" label="מידה" type="text" value={advancedFilters.size} onChange={e => setAdvancedFilters({ ...advancedFilters, size: e.target.value })} />
+            <Field id="dresses-filter-serial" label="מספר סידורי" type="number" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({ ...advancedFilters, serialNumber: e.target.value })} />
+            <Field id="dresses-filter-rentals-min" label="לפחות כמה השכרות" type="number" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({ ...advancedFilters, rentalsCountMin: e.target.value })} />
+            <Switch id="dresses-filter-not-in-use" label="פריטים שאינם בשימוש" checked={advancedFilters.notInUse} onChange={(v) => setAdvancedFilters({ ...advancedFilters, notInUse: v })} />
+            <Switch id="dresses-filter-in-repair" label="פריטים בתיקון" checked={advancedFilters.inRepair} onChange={(v) => setAdvancedFilters({ ...advancedFilters, inRepair: v })} />
+            <Switch id="dresses-filter-item-deleted" label="פריטים שנמחקו" checked={advancedFilters.itemDeleted} onChange={(v) => setAdvancedFilters({ ...advancedFilters, itemDeleted: v })} />
+            <div>
+              <Btn variant="quiet" icon="x" onClick={clearAdvanced}>ניקוי הסינון</Btn>
             </div>
           </div>
-          <div className="form-grid cols-3">
-            <div className="field">
-              <label htmlFor="dresses-filter-rentals-min">השכרות מינימום</label>
-              <input id="dresses-filter-rentals-min" type="number" className="input" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({ ...advancedFilters, rentalsCountMin: e.target.value })} />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
-            <div className="checkbox-row">
-              <input id="dresses-filter-not-in-use" type="checkbox" checked={advancedFilters.notInUse} onChange={e => setAdvancedFilters({ ...advancedFilters, notInUse: e.target.checked })} />
-              <label htmlFor="dresses-filter-not-in-use">לא בשימוש (פריט)</label>
-            </div>
-            <div className="checkbox-row">
-              <input id="dresses-filter-in-repair" type="checkbox" checked={advancedFilters.inRepair} onChange={e => setAdvancedFilters({ ...advancedFilters, inRepair: e.target.checked })} />
-              <label htmlFor="dresses-filter-in-repair">בתיקון</label>
-            </div>
-            <div className="checkbox-row">
-              <input id="dresses-filter-item-deleted" type="checkbox" checked={advancedFilters.itemDeleted} onChange={e => setAdvancedFilters({ ...advancedFilters, itemDeleted: e.target.checked })} />
-              <label htmlFor="dresses-filter-item-deleted">פריט מחוק</label>
-            </div>
-          </div>
-
-          <button className="btn btn-secondary btn-sm" onClick={() => setAdvancedFilters({ name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false })}>
-            נקה סינונים
-          </button>
-        </div>
+        </Card>
       )}
 
       {loading ? (
-        <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
+        <div className="v3-empty" role="status"><Icon name="loader" size="xl" loop /><p className="v3-empty__text">טוענים דגמים…</p></div>
       ) : (
-        <div className="table-wrap">
-          <div className="table-scroll">
-            <table className="data">
-              <thead>
-                <tr>
-                  {showImageColumn && <th>תמונה</th>}
-                  <th className={catalogSort.key === 'barcodePrefix' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('barcodePrefix')}>
-                    {getLabel('item_barcode', 'קוד')} {renderCatalogSortIcon('barcodePrefix')}
-                  </th>
-                  {useModelNames && (
-                    <th className={catalogSort.key === 'name' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('name')}>
-                      {getLabel('item_modelName', 'שם דגם')} {renderCatalogSortIcon('name')}
-                    </th>
-                  )}
-                  <th className={catalogSort.key === 'entryDateToRepo' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('entryDateToRepo')}>
-                    תאריך כניסה {renderCatalogSortIcon('entryDateToRepo')}
-                  </th>
-                  <th className={catalogSort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('itemsCount')}>
-                    כמות פריטים {renderCatalogSortIcon('itemsCount')}
-                  </th>
-                  <th style={{ textAlign: 'center' }}>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDresses.length === 0 ? (
-                  <tr>
-                    <td colSpan={emptyStateColSpan} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)', fontSize: '1.2rem' }}>
-                      לא נמצאו דגמים. נסה לשנות את הסינון או הוסף דגם חדש.
-                    </td>
-                  </tr>
-                ) : filteredDresses.map(dress => {
-                  const isInactive = (!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo;
-                  const imgSrc = getImageSource(dress);
-                  // תא של 44px לא צריך את תמונת המקור — מנסים קודם את ה-thumb
-                  // (קיים רק להעלאות חדשות); onError נופל חזרה למקור ורק אז מוותר.
-                  const thumbSrc = getDressThumbUrl(dress);
-                  return (
-                    <tr key={dress.id} className={dress.isDeleted ? 'row-flag' : undefined} style={!dress.isDeleted && isInactive ? { background: 'var(--warning-tint)' } : undefined}>
-                      {showImageColumn && (
-                        <td>
-                          {imgSrc && (
-                            <img
-                              src={thumbSrc || imgSrc}
-                              alt={dress.name}
-                              loading="lazy"
-                              decoding="async"
-                              width={44}
-                              height={44}
-                              onError={(e) => {
-                                const img = e.target;
-                                if (thumbSrc && !img.dataset.fellBack) {
-                                  // אין קובץ thumb (תמונה ישנה) — ננסה את המקור
-                                  img.dataset.fellBack = '1';
-                                  img.src = imgSrc;
-                                } else {
-                                  img.style.display = 'none';
-                                  img.nextSibling.style.display = 'flex';
-                                }
-                              }}
-                              style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
-                            />
-                          )}
-                          <div
-                            className="file-icon"
-                            style={{
-                              display: imgSrc ? 'none' : 'flex', width: '44px', height: '44px', alignItems: 'center', justifyContent: 'center',
-                              borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)', color: 'var(--text-3)', fontSize: '10.5px'
-                            }}
-                          >
-                            אין
-                          </div>
-                        </td>
-                      )}
-                      <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>{dress.barcodePrefix || '-'}</td>
-                      {useModelNames && (
-                        <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>
-                          {dress.name}
-                        </td>
-                      )}
-                      <td className={dress.isDeleted ? 'cell-muted' : undefined}>{formatHebrewDate(dress.entryDateToRepo)}</td>
-                      <td className={dress.isDeleted ? 'cell-muted' : undefined}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
-                      <td>
-                        <div className="row-actions">
-                          <Link href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary btn-sm">כרטיס שמלה</Link>
-                          {dress.isDeleted ? (
-                            isHeadManagement && <button onClick={() => handleRestoreModel(dress)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
-                              <svg className="icon"><use href="#i-refresh" /></svg>
-                            </button>
-                          ) : isInactive ? (
-                            <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
-                              החזר לפעילות
-                            </button>
-                          ) : (
-                            isHeadManagement && <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
-                              <svg className="icon"><use href="#i-trash" /></svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="v3-stack">
+          {filteredDresses.length === 0 ? (
+            <Empty icon="search" title="לא נמצאו דגמים" text="נסו לשנות את הסינון או להוסיף דגם חדש." />
+          ) : (
+            <Table
+              columns={columns}
+              rows={filteredDresses}
+              rowKey="id"
+              sort={{ key: catalogSort.key, dir: catalogSort.direction }}
+              onSort={handleCatalogSort}
+              caption="קטלוג הדגמים"
+            />
+          )}
 
-          <div className="table-foot">
-            <span>סה"כ שורות מוצגות: {loading ? '...' : filteredDresses.length}</span>
+          <div className="v3-cluster">
+            <span className="v3-muted">מוצגים <bdi>{loading ? '...' : filteredDresses.length}</bdi> דגמים</span>
             {totalPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} title="עמוד קודם">
-                  <svg className="icon"><use href="#i-chevron-end" /></svg>הקודם
-                </button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <label htmlFor="dresses-page-num">עמוד</label>
-                  <input
-                    id="dresses-page-num"
-                    type="number"
-                    className="input"
-                    min={1}
-                    max={totalPages || 1}
-                    value={page}
-                    onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
-                    style={{ width: '60px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
-                  />
-                  מתוך {totalPages} (סה"כ {totalDresses} תוצאות)
-                </span>
-                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} title="עמוד הבא">
-                  הבא<svg className="icon"><use href="#i-chevron-start" /></svg>
-                </button>
+              <div className="v3-cluster">
+                <Btn size="sm" icon="chevron-end" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>הקודם</Btn>
+                <Field
+                  id="dresses-page-num"
+                  label="עמוד"
+                  type="number"
+                  min={1}
+                  max={totalPages || 1}
+                  value={page}
+                  onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
+                  hint={<>מתוך <bdi>{totalPages}</bdi> (<bdi>{totalDresses}</bdi> דגמים בסך הכול)</>}
+                />
+                <Btn size="sm" iconEnd="chevron-start" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>הבא</Btn>
               </div>
             )}
           </div>
         </div>
       )}
-    </>
+      {dialogs}
+    </V3Page>
   );
 }

@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { Btn, Chip, Tabs, Banner } from '@/app/v3/ui/components';
 
 const TABS = [
-  { id: 'details', label: 'פרטי דגם', icon: 'i-id' },
-  { id: 'items', label: 'פריטים ומלאי', icon: 'i-box', withCount: true },
-  { id: 'rentals', label: 'השכרות', icon: 'i-refresh' },
-  { id: 'history', label: 'מידע', icon: 'i-history' }
+  { id: 'details', label: 'פרטי הדגם', icon: 'id' },
+  { id: 'items', label: 'מלאי', icon: 'box', withCount: true },
+  { id: 'rentals', label: 'השכרות', icon: 'refresh' },
+  { id: 'history', label: 'יומן', icon: 'history' }
 ];
 
 /**
@@ -44,102 +45,69 @@ export default function ModernDressCard({
     ? `עודכן ${getHebrewDateString(dress.updatedAt)} · ${new Date(dress.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : null;
 
-  const descParts = [
-    `קוד ${dress.barcodePrefix || '—'}`,
-    dress.priceCategory ? `קטגוריית מחיר: ${dress.priceCategory}` : 'ללא קטגוריית מחיר',
-    `${activeItems.length} פריטים`,
-    `${availableItems.length} זמינים`,
-    updatedLabel
-  ].filter(Boolean);
-
   const isErrorMsg = saveMessage && (saveMessage.includes('שגיאה') || saveMessage.includes('בוטל'));
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>{modelTitle}{dress.name ? ` — ${dress.name}` : ''}</h1>
-          <div className="page-desc">{descParts.join(' · ')}</div>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-            {dress.isDeleted ? (
-              <span className="badge badge-danger"><svg className="icon"><use href="#i-trash" /></svg>מחוק</span>
-            ) : isInactive ? (
-              <span className="badge badge-warning"><svg className="icon"><use href="#i-x-circle" /></svg>לא פעיל</span>
-            ) : (
-              <span className="badge badge-success"><svg className="icon"><use href="#i-check-circle" /></svg>פעיל</span>
-            )}
-            {dress.inInspection && (
-              <span className="badge badge-warning"><svg className="icon"><use href="#i-alert-tri" /></svg>בבדיקה (התראה)</span>
-            )}
-            {attentionCount > 0 && (
-              <button
-                type="button"
-                className="badge badge-warning"
-                style={{ border: 'none', cursor: 'pointer' }}
-                title="מעבר לפריטים הדורשים טיפול"
-                onClick={() => onTabChange('items', 'attention')}
-              >
-                <svg className="icon"><use href="#i-alert-tri" /></svg>{attentionCount} פריטים דורשים טיפול
-              </button>
-            )}
-          </div>
+      <header className="v3-pagehead">
+        <div className="v3-pagehead__title">
+          <h1 className="v3-h1">{modelTitle}{dress.name ? ` — ${dress.name}` : ''}</h1>
         </div>
+        <div className="v3-pagehead__tools">
+          <Btn variant="quiet" icon="arrow-end" onClick={onExit}>חזרה לקטלוג</Btn>
+        </div>
+      </header>
 
-        <div className="page-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onPrint('card')}>
-            <svg className="icon"><use href="#i-printer" /></svg>הדפסת כרטיס שמלה
-          </button>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onPrint('export')}>
-            <svg className="icon"><use href="#i-download" /></svg>ייצוא פריטים (CSV)
-          </button>
-          {dress.isDeleted ? (
-            <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--success)' }} onClick={onRestore}>
-              <svg className="icon"><use href="#i-refresh" /></svg>שחזור דגם
-            </button>
-          ) : (
-            <button type="button" className="btn btn-danger-ghost btn-sm" onClick={onDelete}>
-              <svg className="icon"><use href="#i-trash" /></svg>מחיקת דגם
-            </button>
-          )}
-          <button type="button" className="btn btn-secondary" onClick={onCancelChanges} disabled={!hasUnsavedChanges || saving} title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}>
-            <svg className="icon"><use href="#i-refresh" /></svg>ביטול שינויים
-          </button>
-          <button type="button" className="btn btn-primary" onClick={() => onSave()} disabled={saving}>
-            {saving ? <span className="spinner" /> : <svg className="icon"><use href="#i-check" /></svg>}שמור שינויים
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={onExit}>
-            <svg className="icon"><use href="#i-arrow-end" /></svg>חזור לרשימה
-          </button>
-        </div>
+      <div className="v3-cluster">
+        {dress.isDeleted ? (
+          <Chip variant="attn" icon="trash">מחוק</Chip>
+        ) : isInactive ? (
+          <Chip variant="attn" icon="x-circle">לא פעיל</Chip>
+        ) : (
+          <Chip variant="done" icon="check-circle">פעיל</Chip>
+        )}
+        {dress.inInspection && (
+          <Chip variant="attn" icon="alert-tri">בבדיקה</Chip>
+        )}
+        {attentionCount > 0 && (
+          <Chip variant="attn" icon="alert-tri" title="מעבר לפריטים הדורשים טיפול" onClick={() => onTabChange('items', 'attention')}>
+            <bdi>{attentionCount}</bdi> פריטים דורשים טיפול
+          </Chip>
+        )}
+      </div>
+
+      <p className="v3-muted">
+        קוד <bdi>{dress.barcodePrefix || '—'}</bdi>
+        {' · '}{dress.priceCategory ? <>קטגוריית מחיר: {dress.priceCategory}</> : 'ללא קטגוריית מחיר'}
+        {' · '}<bdi>{activeItems.length}</bdi> פריטים, <bdi>{availableItems.length}</bdi> זמינים
+        {updatedLabel && <>{' · '}<bdi>{updatedLabel}</bdi></>}
+      </p>
+
+      <div className="v3-cluster">
+        <Btn variant="primary" icon="check" loading={saving} onClick={() => onSave()}>שמירה</Btn>
+        <Btn icon="refresh" onClick={onCancelChanges} disabled={!hasUnsavedChanges || saving} title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}>ביטול שינויים</Btn>
+        <Btn size="sm" icon="printer" onClick={() => onPrint('card')}>הדפסת כרטיס</Btn>
+        <Btn size="sm" icon="download" onClick={() => onPrint('export')}>ייצוא פריטים ל-CSV</Btn>
+        {dress.isDeleted ? (
+          <Btn size="sm" icon="refresh" onClick={onRestore}>שחזור הדגם</Btn>
+        ) : (
+          <Btn size="sm" variant="danger" icon="trash" onClick={onDelete}>מחיקת הדגם</Btn>
+        )}
       </div>
 
       {saveMessage && (
-        <div className={`callout ${isErrorMsg ? 'callout-danger' : 'callout-success'}`} style={{ marginBottom: '18px' }}>
-          <svg className="icon"><use href={isErrorMsg ? '#i-alert-circle' : '#i-check-circle'} /></svg>
-          {saveMessage}
-        </div>
+        <Banner kind={isErrorMsg ? 'alert' : 'success'} title={saveMessage} />
       )}
 
-      <div className="tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`tab${activeTab === tab.id ? ' active' : ''}`}
-            style={{
-              appearance: 'none', WebkitAppearance: 'none', background: 'none', font: 'inherit',
-              borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none'
-            }}
-            onClick={() => onTabChange(tab.id)}
-          >
-            <svg className="icon"><use href={`#${tab.icon}`} /></svg>
-            {tab.label}{tab.withCount ? ` (${activeItems.length})` : ''}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="חלקי כרטיס הדגם"
+        value={activeTab}
+        onChange={(id) => onTabChange(id)}
+        items={TABS.map(tab => ({ key: tab.id, label: tab.label, icon: tab.icon, count: tab.withCount ? activeItems.length : undefined }))}
+      />
 
       {TABS.map(tab => (
-        <div key={tab.id} className={`tab-panel${activeTab === tab.id ? ' active' : ''}`}>
+        <div key={tab.id} role="tabpanel" aria-labelledby={`tab-${tab.id}`} hidden={activeTab !== tab.id} className="v3-stack">
           {tabContents[tab.id]}
         </div>
       ))}

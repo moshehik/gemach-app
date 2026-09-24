@@ -2,6 +2,8 @@ import prisma from '../lib/prisma';
 import DashboardCharts from './DashboardCharts';
 import { checkPageAccess, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import NoAccessMessage from '@/app/components/NoAccessMessage';
+import { V3Page, Card, Tip } from '@/app/v3/ui/components';
+import './dashboard-v3.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,63 +121,41 @@ export default async function Dashboard() {
     }));
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>אזור ניהול - סיכומים ופילוחים</h1>
+    <V3Page>
+      <header className="v3-pagehead">
+        <div className="v3-pagehead__title">
+          <h1 className="v3-h1">סיכום כספי וניתוח נתונים</h1>
+          <Tip>לוח סיכומים לכל החברה: הכנסות נטו (כולל זיכויים), ומספר הלקוחות, ההזמנות והעובדים.</Tip>
         </div>
-      </div>
+      </header>
 
-      <h2 className="section-title">מדדים מרכזיים</h2>
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}>
-              <svg className="icon"><use href="#i-coin" /></svg>
-            </div>
-          </div>
-          <div className="kpi-label">סה"כ הכנסות</div>
-          <div className="kpi-value">₪{totalRevenue.toLocaleString()}</div>
+      <section className="dv3-section" aria-labelledby="dv3-kpi">
+        <h2 id="dv3-kpi" className="v3-h2">במבט אחד</h2>
+        <div className="dv3-kpis">
+          <Card icon="coin" title="הכנסות" tip="סכום כל התשלומים נטו, אחרי זיכויים והחזרים.">
+            <div className="v3-display"><bdi>₪{totalRevenue.toLocaleString()}</bdi></div>
+          </Card>
+          <Card icon="users" title="לקוחות פעילים">
+            <div className="v3-display"><bdi>{totalCustomers.toLocaleString()}</bdi></div>
+          </Card>
+          <Card icon="bag" title="הזמנות" tip="כל ההזמנות במערכת, כולל מבוטלות.">
+            <div className="v3-display"><bdi>{totalOrders.toLocaleString()}</bdi></div>
+          </Card>
+          <Card icon="user-check" title="עובדים פעילים">
+            <div className="v3-display"><bdi>{totalEmployees}</bdi></div>
+          </Card>
         </div>
+      </section>
 
-        <div className="kpi-card">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
-              <svg className="icon"><use href="#i-users" /></svg>
-            </div>
-          </div>
-          <div className="kpi-label">לקוחות פעילים</div>
-          <div className="kpi-value">{totalCustomers.toLocaleString()}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary)' }}>
-              <svg className="icon"><use href="#i-bag" /></svg>
-            </div>
-          </div>
-          <div className="kpi-label">סה"כ הזמנות</div>
-          <div className="kpi-value">{totalOrders.toLocaleString()}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: 'var(--warning-tint)', color: 'var(--warning)' }}>
-              <svg className="icon"><use href="#i-user-check" /></svg>
-            </div>
-          </div>
-          <div className="kpi-label">עובדים פעילים</div>
-          <div className="kpi-value">{totalEmployees}</div>
-        </div>
-      </div>
-
-      <h2 className="section-title">פילוח נתונים</h2>
-      <DashboardCharts
-        revenueByMethod={revenueByMethod}
-        revenueTrend={revenueTrend}
-        revenueTrendWeekly={revenueTrendWeekly}
-        revenueTrendMonthly={revenueTrendMonthly}
-      />
-    </>
+      <section className="dv3-section" aria-labelledby="dv3-charts">
+        <h2 id="dv3-charts" className="v3-h2">גרפים</h2>
+        <DashboardCharts
+          revenueByMethod={revenueByMethod}
+          revenueTrend={revenueTrend}
+          revenueTrendWeekly={revenueTrendWeekly}
+          revenueTrendMonthly={revenueTrendMonthly}
+        />
+      </section>
+    </V3Page>
   );
 }

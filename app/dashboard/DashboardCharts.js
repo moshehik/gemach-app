@@ -6,62 +6,25 @@
 // התוכן עצמו לא השתנה — הוא עבר כפי-שהוא ל-DashboardChartsImpl.js.
 
 import dynamic from 'next/dynamic';
+import { Card, Icon } from '@/app/v3/ui/components';
+
+function SkeletonCard({ icon, title }) {
+  return (
+    <Card icon={icon} title={title} level={3}>
+      <div className="dv3-chart-load" role="status">
+        <Icon name="loader" loop /> טוענים את הגרף…
+      </div>
+    </Card>
+  );
+}
 
 function ChartsSkeleton() {
   return (
-    <div className="form-grid" style={{ marginTop: '1.5rem' }}>
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-wallet" /></svg>
-            <h3>התפלגות הכנסות לפי אמצעי תשלום</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
-          </div>
-        </div>
-      </div>
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות לפי תאריך תשלום (תקופה אחרונה)</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
-          </div>
-        </div>
-      </div>
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות שבועיות (תקופה אחרונה)</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
-          </div>
-        </div>
-      </div>
-      <div className="card">
-        <div className="card-head">
-          <div className="card-title-row">
-            <svg className="icon"><use href="#i-activity" /></svg>
-            <h3>הכנסות חודשיות (תקופה אחרונה)</h3>
-          </div>
-        </div>
-        <div className="card-pad">
-          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
-          </div>
-        </div>
-      </div>
+    <div className="dv3-charts">
+      <SkeletonCard icon="wallet" title="הכנסות לפי אמצעי תשלום" />
+      <SkeletonCard icon="activity" title="הכנסות לפי יום" />
+      <SkeletonCard icon="activity" title="הכנסות לפי שבוע" />
+      <SkeletonCard icon="activity" title="הכנסות לפי חודש" />
     </div>
   );
 }
