@@ -1,0 +1,18 @@
+version v1
+sha 88633976c673
+N1 reduced-motion media queries re-enabled: 18
+N2 breakpoints: 1020→1023 ×8, 420→479 ×2
+N3 physical properties converted to logical (RTL-exact): 21
+N4 fill-mode removed on undelayed entrances: 42; kept on delayed/staggered: 9
+N1 (JS) reduced-motion checks re-enabled: 2
+N4 kept (delayed/staggered):
+  .sec-h::before,.cart-h::before
+  .hf-sel.on .hf-o
+  .hfe
+  .cb-o
+  #dlg .dbtns .btn.ghost:is(:hover,:focus-visible)::after
+  /* entrance: one-time, class removed on animationend by JS */
+svg.ic.ia-in
+  svg.ic.ia-in.ia-dr
+  :is(#dlg,#dlg2):not(.mailwin)>*
+  :is(#dlg,#dlg2) :is(.btn,.ibtn,.methods button,.opt):is(:hover,:focus-visible)::

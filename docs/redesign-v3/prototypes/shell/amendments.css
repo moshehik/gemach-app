@@ -1,0 +1,39 @@
+/* ==== V3 SHELL AMENDMENTS (not in the sketch) — every rule here is documented in SHELL-BLOCK.md §3 ====
+   Identical in every prototype (part of the shared block). Pages may NOT restyle any shared selector. */
+
+/* A1 · C-1.14 — a history amount is a VALUE, not a status: plain text in its AA colour, no pill.
+   (sketch .hamt = 28px pill with background; same colour/weight/size kept) */
+.hamt,.hamt.chg,.hamt.crd,.hamt.pay{background:none;border:0;padding:0;height:auto;border-radius:0;box-shadow:none}
+.hamt.chg{color:#7a5f14}.hamt.crd{color:var(--navy)}.hamt.pay{color:var(--navy)}
+
+/* A2 · C-1.14 — a count is text in brackets inside the tab / heading ("הזמנות (4)"), never a pill.
+   The sketch .tab .cnt pill is therefore not used; this class renders the bracketed count quietly. */
+.tab .tcount{font-weight:500;color:var(--ink3)}
+.tab.on .tcount{color:var(--navy-500)}
+
+/* A3 · C-1.16 — one field per line: a form is a single column, label above value, max ~720px, full width on phones.
+   Built only from sketch parts (.field / label.lbl / .inp); .grid2 is already 1fr in the sketch (L555). */
+.fcol{display:flex;flex-direction:column;gap:24px;width:100%;max-width:720px}
+.fcol>.field,.fcol>.trow,.fcol>.coll{width:100%}
+.fcol .inp{min-height:48px}
+.fcol .ferr{display:flex;align-items:center;gap:6px;margin-top:8px;color:var(--gold-700);font-size:14px;font-weight:600}
+.fcol .fhint{margin-top:6px;color:var(--ink3);font-size:14px}
+.field.bad .inp{border-color:var(--gold-b);background:var(--gold-50)}
+
+/* A4 · tables — the sketch has no <table>; this table is built from the sketch's list-row values
+   (.li: 16px rows, hairline var(--sky-100); labels = .kv .f small: 14px var(--ink3)) so every archetype shares ONE table. */
+.tbl-wrap{width:100%;overflow-x:auto;border-radius:var(--r)}
+.tbl{width:100%;border-collapse:collapse;font-size:16px;line-height:1.5}
+.tbl th{padding:12px 16px;text-align:start;font-size:14px;font-weight:600;color:var(--ink3);background:var(--sky-50);border-bottom:1px solid var(--sky-200);white-space:nowrap}
+.tbl td{padding:16px;border-bottom:1px solid var(--sky-100);vertical-align:middle;color:var(--ink)}
+.tbl tbody tr{transition:background-color 150ms}
+.tbl tbody tr:hover{background:var(--sky-50)}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.num,.tbl th.num{text-align:end;font-variant-numeric:tabular-nums}
+.tbl tbody tr.enter{animation:rowin .32s var(--ease)}
+
+/* A5 · status text without a chip (C-1.14 "plain text / small icon / AA text colour") */
+.stx{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--ink2)}
+.stx .ic{width:16px;height:16px;color:var(--navy-500)}
+.stx.warn{color:var(--gold-700)}.stx.warn .ic{color:var(--gold-b)}
+.stx.ok{color:var(--navy)}
