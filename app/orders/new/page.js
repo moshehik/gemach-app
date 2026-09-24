@@ -602,7 +602,13 @@ export default function NewOrderPage() {
 
   // לחיצה על "כן, זה הלקוח" נתנה להמשיך גם כשחסרים פרטי חובה אצל הלקוח שנמצא.
   // עכשיו, אם חסר משהו, מבקשים אישור מפורש לדלג במקום להמשיך בשקט.
+  const authBusyRef = useRef(false);
   const handleUseExistingCustomer = async (existingCustomer) => {
+    // v3: בזמן חלונית אישור מנהל (PopupProvider) Esc לא סוגר את חלונית הלקוח הכפול שמתחתיה
+    authBusyRef.current = true;
+    try { await handleUseExistingCustomerInner(existingCustomer); } finally { authBusyRef.current = false; }
+  };
+  const handleUseExistingCustomerInner = async (existingCustomer) => {
     if (!await confirmBlockedCustomerOverride(existingCustomer)) return;
 
     const missingFields = getMissingMandatoryCustomerFields(existingCustomer);
@@ -1545,6 +1551,7 @@ export default function NewOrderPage() {
   useEffect(() => {
     if (!returnToSummary) return;
     if (step === 4) { setReturnToSummary(false); return; }
+    if (step === 2 && editingStepRef.current === 1) { editingStepRef.current = 2; return; } // אחרי עריכת לקוח עוברים דרך שלב התאריכים (שדות משלוח)
     if (step > editingStepRef.current && canNavigateToStep(4)) {
       setReturnToSummary(false);
       setStep(4);
@@ -1629,7 +1636,7 @@ export default function NewOrderPage() {
       <NewOrderShell
         step={step}
         steps={stepsMeta}
-        onStepChange={handleStepChange}
+        onStepChange={(id) => { setReturnToSummary(false); handleStepChange(id); }}
         flash={flash}
         topBar={
           <>
@@ -1658,7 +1665,7 @@ export default function NewOrderPage() {
             {step === 1 ? (
               <Btn variant="quiet" icon="x" onClick={handleExit} disabled={busy}>ביטול</Btn>
             ) : (
-              <Btn variant="quiet" icon="back" onClick={() => setStep(step - 1)} disabled={busy}>{backLabels[step]}</Btn>
+              <Btn variant="quiet" icon="back" onClick={() => { setReturnToSummary(false); setStep(step - 1); }} disabled={busy}>{backLabels[step]}</Btn>
             )}
           </>
         }
@@ -2441,7 +2448,7 @@ export default function NewOrderPage() {
 
       <Dialog
         open={duplicateCustomers.length > 0}
-        onClose={() => setDuplicateCustomers([])}
+        onClose={() => { if (!authBusyRef.current) setDuplicateCustomers([]); }}
         variant="confirm"
         icon="alert-tri"
         title={duplicateCustomers.length > 1 ? 'יש כמה לקוחות עם הטלפון הזה' : 'הלקוח כבר קיים'}
