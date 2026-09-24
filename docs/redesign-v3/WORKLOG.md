@@ -76,3 +76,29 @@ gallery visually), so nothing here claims "verified in a browser."
   - All scratch verification scripts and the temporary `playwright` install were removed before committing — nothing extra was left in the tree (`git status --short` shows only the new `docs/redesign-v3/prototypes/` files).
 - **Not done, stated honestly**: no screenshots were saved into the repo (the task didn't ask for that, and committing binary PNGs of a file the owner can just open directly seemed like clutter) — the verification above was run and its results are reported here, but the artifact to actually look at is the HTML file itself, opened in a real browser. Cross-checking against the **live** org1/org2 settings (CONSTITUTION §ט.4) for the one field that's genuinely org-dependent here (`require_customer_id_number`) was not done for the same no-DB-access reason as M4 — the contract's org-variance table says so explicitly instead of asserting it was checked.
 
+### M7 — Final verification pass before stopping
+Re-ran everything one more time on the final state of the branch (commit `fbef37f`), to make sure nothing regressed across the whole run:
+- `npm run lint:v3` — all 5 scripts, 0 new violations (still exactly the baseline counts recorded in M5).
+- `npx eslint app/v3 app/v3-gallery tools/v3-lint` — same 3 pre-existing errors as M3 found, all in files this session never touched (`notify/V3NotifyProvider.js`, the *old* `ui/Dialog.js`, the *old* `ui/Tip.js`); nothing new.
+- `npx eslint .` (whole repo) — 11 errors / 16 warnings across 19 files, identical to the baseline first measured in M3 — confirms this run introduced zero new lint errors anywhere in the repo, not just in `app/v3`.
+- `npx next build --webpack` — exit 0, clean, same as every previous milestone.
+
+## Summary for the owner
+
+**Look at this first:** `docs/redesign-v3/prototypes/archetype-detail-card.html` — open it in a browser (RTL, works standalone, no server needed). The small dark bar at the top ("בקרות תצוגה לאישור") lets you open every dialog/toast/notice and toggle the mobile rail and the dark-dialog preview without touching devtools. Read `archetype-detail-card.contract.md` alongside it — it numbers every field/action (P-01..P-62) and explicitly calls out the two places (P-04 ID chip, P-59 exit confirm) where the prototype deliberately does something different from what `/customers/[id]` does today, so you can say yes/no to each specifically.
+
+**Then, if useful:** `/v3-gallery` (needs a real dev server + this branch checked out — this run couldn't launch one) now has working, interactive sections for the new LayerManager (confirm/code/form/sheet/busy/toast/notice/popover/tip) and for `strings/`+`config/` (four org profiles shown side by side on one live component).
+
+**What actually shipped, in one line per area:** (A) the three root-cause CSS bugs from `diagnosis-2026-09-24/01` (button-style override, page background, forced Assistant font) are fixed; (B) the token file is split into the layered structure the library map calls for, with zero value changes; (C) a real, working `LayerManager` overlay system exists (not wired into the live app yet — see Q-1); (D) icon aliases are consolidated and three missing icons (undo/redo/cart) were added; (E) `strings/`+`config/` exist with real org-profile-driven usage; (F) 5 of the ~19 mechanical lint rules run for real against the whole `app/v3` tree, with every pre-existing violation they found recorded in a baseline file with a reason, not silently ignored; (G) the pilot prototype above.
+
+**Open questions for you, all logged with recommendation + rationale in `docs/redesign-v3/AGENT-QUESTIONS.md`:**
+- Q-1: `LayerManager` was deliberately *not* wired into `app/layout.js` this run (too broad a blast radius to do blind, without a browser, on the file every page depends on) — it's fully built and demoed in the gallery, ready for someone to add one line to `layout.js` under supervision.
+- Q-2/Q-3: minor, not blocking (topbar needed no CSS change; `legacy-bridge.css` built but not imported, since turning it on would recolor every legacy component nested in an already-converted page, unverifiable without a browser this run).
+- Q-4: covered above (legacy-bridge.css).
+- Q-5: the two prototype deviations (ID chip, exit confirm) — needs your yes/no before Phase 3 touches the real customer page.
+- Also still open from before this run (unchanged, just carried forward): D-4 (bell persistence wording), D-10 (which org gets the `v3.page.*` flag first), D-14 (exact wide-screen container width), D-7 (the change-engine reversibility policy in CONSTITUTION §ז.6 is still only a *proposal* awaiting your review).
+
+**Honest gaps, not attempted this run (all documented at the point they'd matter, not just here):** `app/layout.js` LayerManager wiring (Q-1); the remaining ~14 lint rules and the auto-generating gallery (`tools/v3-lint/README.md`); org1/org2 settings profiles are transcribed from the *documented* variance table in `CONSTITUTION.md`, not read live from either database (no DB credentials exist in this environment by design); the change-engine itself (correctly, per §ז.4 — it needs your decision on §ז.6 first); Playwright/axe as committed CI checks (#17/#18) — a real headless browser *was* used ad hoc for the M6 verification, but installing it as a project dependency and wiring it into `npm run` wasn't attempted, since that's a toolchain decision bigger than this run's scope.
+
+All work is on `redesign/v3-phase2-foundation` (based on `redesign/v3-master-plan` @ `8dbd3c7`), pushed to `origin`, `main` untouched, no deploy attempted.
+
