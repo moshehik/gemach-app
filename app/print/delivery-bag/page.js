@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewWeekdayFullName } from '@/lib/hebrewDate';
+import PrintToolbar from '../PrintToolbar';
 
 // 'YYYY-MM-DD' -> Date מקומי בחצות (בלי הזזת יום של new Date(iso) שמפורש כ-UTC)
 const isoToLocalDate = (iso) => {
@@ -108,6 +109,7 @@ export default function PrintDeliveryBagPage() {
           .bag-label-page:last-child { break-after: auto; page-break-after: auto; }
         }
       `}</style>
+      <PrintToolbar />
       {loading && <p style={{ padding: 20 }}>טוען נתונים...</p>}
       {!loading && error && <p style={{ padding: 20, color: '#c0392b' }}>{error}</p>}
       {!loading && !error && rows.length === 0 && <p style={{ padding: 20 }}>{selectByEventDate ? 'אין משלוחי הלוך לאירועים בתאריך זה.' : 'אין משלוחי הלוך בתאריך זה.'}</p>}

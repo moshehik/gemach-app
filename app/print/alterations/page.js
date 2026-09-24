@@ -3,6 +3,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import PrintToolbar from '../PrintToolbar';
 
 export default function PrintAlterationsPage() {
   const searchParams = useSearchParams();
@@ -213,6 +214,8 @@ export default function PrintAlterationsPage() {
   const showDoneCol = reportType === 'alterations_all' || reportType === 'orders_all';
 
   return (
+    <>
+    <PrintToolbar />
     <div
       data-agy-id="print-alterations-container"
       // Signals to app/api/pdf/route.js's Puppeteer render (page.goto() + waitForSelector)
@@ -709,5 +712,6 @@ export default function PrintAlterationsPage() {
         הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
       </div>
     </div>
+    </>
   );
 }
