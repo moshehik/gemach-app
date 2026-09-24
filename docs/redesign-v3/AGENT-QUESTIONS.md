@@ -26,3 +26,10 @@ LIBRARY-MAP §2 lists a bridge from old CSS variable names (`--primary-color`, `
 **Choice:** the file exists, documented, ready to `@import` from `V3Page.js` (or `tokens.css`) in one line whenever someone reviews it visually and turns it on.
 **Not blocking** — nothing currently imports it, so it has zero effect today.
 
+## Q-5: Customer-card prototype — two deliberate deviations from today's real behavior
+Building `docs/redesign-v3/prototypes/archetype-detail-card.html` (+ its contract), two places genuinely differ from what `/customers/[id]` does *today*, not just cosmetically:
+1. **ID chip**: the real page displays `customer.legacyId || customer.id` — i.e. it falls back to showing the raw internal UUID when `legacyId` is missing. AGENTS.md's ID-display rule says the internal `id` must never be shown for display purposes. The prototype simply omits the chip when `legacyId` is missing, rather than reproducing the fallback-to-UUID bug.
+2. **Exit-with-unsaved-changes**: the real page's `onExit` is a plain `router.back()` with no guard at all (diagnosis 03 §3.6 already flagged this as "silent discard"). The prototype shows a 3-way confirm ("שמירה ויציאה" / "יציאה בלי לשמור" / "המשך עריכה") instead, per CONSTITUTION §ד.2's confirm-3-way pattern for A2 archetypes.
+**Choice:** kept both as the prototype's design (this is exactly what a pre-approval prototype is for — the owner should look at these two specific spots and confirm the fix is wanted before Phase 3 touches the real page). Both are called out by number in `archetype-detail-card.contract.md` (P-04, P-59), not silently baked in.
+**Not blocking** — nothing server-side or data-model-side changes; this is a display-layer prototype only.
+
