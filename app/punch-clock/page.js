@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { V3Page, Btn, IconBtn, Banner, Tip } from '@/app/v3/ui/components';
+import Icon from '@/app/v3/ui/Icon';
+import useAskDialog from '@/app/components/v3misc/useAskDialog';
 
 export default function PunchClockPage() {
   const [employees, setEmployees] = useState(null); // null = loading
@@ -17,6 +20,7 @@ export default function PunchClockPage() {
   // computer a manager marked trusted, the 4-character short code is accepted here too.
   const [deviceTrusted, setDeviceTrusted] = useState(false);
   const passwordInputRef = useRef(null);
+  const { ask, node: askNode } = useAskDialog();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,7 +44,7 @@ export default function PunchClockPage() {
 
   const handlePunch = async (action) => {
     if (!employeeId || !password) {
-      setStatusMessage('אנא בחר עובד והזן סיסמא');
+      setStatusMessage('בחרו עובד מהרשימה והזינו סיסמה.');
       return;
     }
 
@@ -57,8 +61,14 @@ export default function PunchClockPage() {
           }).catch(() => []);
           if (overdue.length > 0) {
             const names = overdue.slice(0, 5).map(o => `${o.customerName || '?'}`).join(', ');
-            const ok = await (window.customConfirm ? window.customConfirm(`יש ${overdue.length} משפחות שלא החזירו (לדוגמה: ${names}). האם לוודא שהן אכן לא החזירו?`) : Promise.resolve(window.confirm(`יש ${overdue.length} שלא החזירו`)));
-            if (!ok) { setStatusMessage('יציאה בוטלה - בדוק החזרות'); return; }
+            const ok = await ask({
+              title: 'יש פריטים שלא הוחזרו',
+              sub: `${overdue.length} משפחות עדיין לא החזירו (למשל: ${names}). לוודא שהן באמת לא החזירו?`,
+              icon: 'alert-tri',
+              okLabel: 'בדקתי, להמשיך',
+              cancelLabel: 'ביטול',
+            });
+            if (!ok) { setStatusMessage('היציאה בוטלה. בדקו את ההחזרות.'); return; }
           }
         }
       } catch {}
@@ -79,7 +89,7 @@ export default function PunchClockPage() {
       if (!res.ok) {
         setStatusMessage(`שגיאה: ${data.error}`);
       } else {
-        setStatusMessage(action === 'IN' ? '✅ כניסה נרשמה בהצלחה' : '✅ יציאה נרשמה בהצלחה');
+        setStatusMessage(action === 'IN' ? 'הכניסה נרשמה' : 'היציאה נרשמה');
         setEmployeeId('');
         setEmployeeSearch('');
         setPassword('');
@@ -87,7 +97,7 @@ export default function PunchClockPage() {
         setTimeout(() => setStatusMessage(''), 3000);
       }
     } catch (e) {
-      setStatusMessage('שגיאת תקשורת, אנא נסה שוב.');
+      setStatusMessage('שגיאת תקשורת. נסו שוב.');
     } finally {
       setIsLoading(false);
     }
@@ -96,35 +106,31 @@ export default function PunchClockPage() {
   const isError = statusMessage.includes('שגיאה');
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>שעון נוכחות</h1>
-          <div className="page-desc">בחירת עובד והזנת סיסמא לרישום כניסה או יציאה מהעבודה</div>
+    <V3Page>
+      <div className="v3-stack">
+        <div className="v3-pagehead">
+          <div className="v3-pagehead__title">
+            <h1 className="v3-h1">שעון נוכחות</h1>
+            <Tip>בוחרים את השם, מקלידים סיסמה, ורושמים כניסה או יציאה.</Tip>
+          </div>
         </div>
-      </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div className="card card-pad" style={{ maxWidth: '420px', width: '100%' }}>
-
-          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-            <div className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)', margin: '0 auto 10px' }}>
-              <svg className="icon"><use href="#i-clock" /></svg>
-            </div>
-            <div className="kpi-value" style={{ fontSize: '40px' }}>{currentTime || '...'}</div>
-            <div className="kpi-label">השעה כעת</div>
+        <section className="v3-card v3-stack">
+          <div className="v3-stack" role="timer" aria-label="השעה כעת">
+            <span className="v3-label"><Icon name="clock" loop /> השעה עכשיו</span>
+            <span className="v3-display"><bdi>{currentTime || '...'}</bdi></span>
           </div>
 
-          <div className="field">
-            <label htmlFor="punch-clock-employeeSearch">עובד</label>
-            <div className="combobox">
+          <div className="v3-field">
+            <label className="v3-label" htmlFor="punch-clock-employeeSearch">שם העובד</label>
+            <div className="v3-combo">
               <input
                 data-element-name="שדה_punch-clock_1"
-                className="input"
+                className="v3-input"
                 id="punch-clock-employeeSearch"
                 type="text"
                 value={employeeSearch}
-                placeholder={employees === null ? 'טוען רשימת עובדים...' : 'הקלד לחיפוש שם...'}
+                placeholder={employees === null ? 'טוען עובדים...' : 'הקלידו שם לחיפוש'}
                 // "new-password" ולא "off" - כרום מתעלם בפועל מ-off בשדות מהסוג הזה,
                 // ובלעדיו הדפדפן מציג dropdown native משלו עם שמות שהוקלדו בעבר, מעל
                 // רשימת ההצעות המותאמת-אישית של הרכיב (אותו באג שכבר תוקן ב-LoginScreen).
@@ -136,25 +142,20 @@ export default function PunchClockPage() {
                 }}
                 onFocus={() => setIsDropdownOpen(true)}
                 onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-                // autoComplete="new-password" (לא "off", שכרום מתעלם ממנו בפועל בשדות
-                // מהסוג הזה) - אותו טריק שכבר קיים בשדה העובד המקביל ב-LoginScreen.js,
-                // בלי זה הדפדפן הציג dropdown native משלו עם שמות עובדים שהוקלדו בעבר
-                // מעל תיבת הבחירה המותאמת-אישית של הרכיב (דיווח 60de1c60).
-                autoComplete="new-password"
               />
               {isDropdownOpen && (
-                <div className="combobox-results">
+                <div className="v3-combo__p">
                   {employees === null ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: 'var(--text-2)', fontSize: '12.5px' }}>
-                      <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
-                      טוען רשימת עובדים...
+                    <div className="v3-combo__empty" role="status">
+                      <span className="v3-spin" aria-hidden="true" />
+                      טוען עובדים...
                     </div>
                   ) : (
-                    <>
+                    <ul className="v3-combo__list">
                       {filteredEmployees.map(emp => (
-                        <div
+                        <li
                           key={emp.id}
-                          className="combobox-option"
+                          className="v3-combo__o"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             setEmployeeId(emp.id.toString());
@@ -163,76 +164,74 @@ export default function PunchClockPage() {
                             passwordInputRef.current?.focus();
                           }}
                         >
-                          <svg className="icon"><use href="#i-user" /></svg>
-                          {emp.firstName} {emp.lastName}
-                        </div>
+                          <span className="v3-combo__oi"><Icon name="user" size="sm" /></span>
+                          <span className="v3-combo__ox"><b>{emp.firstName} {emp.lastName}</b></span>
+                        </li>
                       ))}
                       {filteredEmployees.length === 0 && (
-                        <div className="combobox-option" style={{ cursor: 'default', color: 'var(--text-3)' }}>לא נמצאו תוצאות</div>
+                        <li className="v3-combo__empty">אין עובד בשם הזה</li>
                       )}
-                    </>
+                    </ul>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="field">
-            <label htmlFor="punch-clock-password">{deviceTrusted ? 'סיסמא או קוד מקוצר (4 תווים)' : 'סיסמא'}</label>
-            <div className="password-field">
-              <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+          <div className="v3-field">
+            <label className="v3-label" htmlFor="punch-clock-password">
+              {deviceTrusted ? 'סיסמה או קוד קצר' : 'סיסמה'}
+              {deviceTrusted && <Tip>במחשב מערכת מאושר אפשר להזין גם את הקוד הקצר בן 4 התווים.</Tip>}
+            </label>
+            <div className="v3-cluster" style={{ flexWrap: 'nowrap' }}>
               <input
                 data-element-name="שדה_punch-clock_2"
                 ref={passwordInputRef}
-                className="input"
+                className="v3-input"
+                style={{ flex: 1, minWidth: 0 }}
                 id="punch-clock-password"
                 type={showPassword ? 'text' : 'password'}
                 dir="auto"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="הזן סיסמא"
+                placeholder="הזינו סיסמה"
                 autoComplete="new-password"
               />
-              <button type="button" className="toggle-visibility" title="הצג סיסמה" onClick={() => setShowPassword(v => !v)}>
-                <svg className="icon"><use href="#i-eye" /></svg>
-              </button>
+              <IconBtn icon="eye" label="הצגת הסיסמה" title="הצג סיסמה" aria-pressed={showPassword} onClick={() => setShowPassword(v => !v)} />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-            <button
+          <div className="v3-stack">
+            <Btn
               data-element-name="כפתור_punch-clock_3"
-              type="button"
+              variant="primary"
+              size="lg"
+              block
+              icon="check-circle"
+              loading={isLoading}
               onClick={() => handlePunch('IN')}
-              disabled={isLoading}
-              className="btn btn-primary btn-lg"
-              style={{ flex: 1 }}
             >
-              {isLoading ? <span className="spinner" /> : <svg className="icon"><use href="#i-check-circle" /></svg>}
               כניסה
-            </button>
-            <button
+            </Btn>
+            <Btn
               data-element-name="כפתור_punch-clock_4"
-              type="button"
+              variant="secondary"
+              size="lg"
+              block
+              icon="logout"
+              loading={isLoading}
               onClick={() => handlePunch('OUT')}
-              disabled={isLoading}
-              className="btn btn-danger btn-lg"
-              style={{ flex: 1 }}
             >
-              {isLoading ? <span className="spinner" /> : <svg className="icon"><use href="#i-logout" /></svg>}
               יציאה
-            </button>
+            </Btn>
           </div>
 
           {statusMessage && (
-            <div className={`callout ${isError ? 'callout-danger' : 'callout-success'}`} style={{ marginTop: '18px' }}>
-              <svg className="icon"><use href={isError ? '#i-alert-circle' : '#i-check-circle'} /></svg>
-              <div>{statusMessage}</div>
-            </div>
+            <Banner kind={isError ? 'alert' : 'success'} text={statusMessage} />
           )}
-
-        </div>
+        </section>
       </div>
-    </>
+      {askNode}
+    </V3Page>
   );
 }
