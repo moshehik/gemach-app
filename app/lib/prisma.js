@@ -195,7 +195,11 @@ if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
 }
 
 if (!globalForPrisma.prismaProd) {
-  globalForPrisma.prismaProd = createPrismaClient(process.env.PROD_DATABASE_URL || process.env.DATABASE_URL);
+  // Vercel Preview builds (the redesign branch, PR branches) sometimes have no DATABASE_URL at all
+  // (it is scoped to Production only), which left this client with an undefined URL and every page
+  // empty. Preview-only fallback to the TEST database: never widens access to production data.
+  const previewTestFallback = process.env.VERCEL_ENV === 'preview' ? process.env.TEST_DATABASE_URL : undefined;
+  globalForPrisma.prismaProd = createPrismaClient(process.env.PROD_DATABASE_URL || process.env.DATABASE_URL || previewTestFallback);
 }
 if (!globalForPrisma.prismaTest && process.env.TEST_DATABASE_URL) {
   globalForPrisma.prismaTest = createPrismaClient(process.env.TEST_DATABASE_URL);

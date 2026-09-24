@@ -103,3 +103,6 @@
 - שני בונים (orderitems, ordercard) נתקלו: ה-effect רץ לפני שה-portal הורכב (mounted=false ← ref ריק). תוקן ב-Dialog.js (תלות ב-mounted + guard). ← נעשה. הבונים עקפו בשמירת חלוניות תמיד-מורכבות — לא חובה עוד.
 #31 · 2026-09-24 · user · "אין שמות עובדים בחלון הכניסה" (בתצוגת Vercel)
 - מקומית הרשימה מרונדרת (74 עובדים) אך אפשרויות ה-combobox נשארו opacity:0 בחלונית הדפדפן שקופאת אנימציות. הוסר opacity מאנימציית הכניסה (transform בלבד). לא אומת אצל המשתמש — ממתין לתיאור/צילום מסך. ← תיקון מונע.
+#32 · 2026-09-24 · claude-main · תצוגת Vercel בלי נתונים + תיקון הערכה שגויה
+- שגיאה שלי: אמרתי שה-Preview "נראה מחובר למסד בדיקה". PreviewModeBanner מתעד ש-Preview נועד להשתמש במסד האמיתי; ברשימת ה-env שקראתי ל-Preview הופיע רק TEST_DATABASE_URL (הרשימה אולי חלקית). בפועל בפרויקט הראשי DATABASE_URL לא קיים ב-Preview ⇒ prismaProd עם URL ריק ⇒ אין נתונים.
+- תיקון: app/lib/prisma.js — ב-VERCEL_ENV=preview בלי PROD/DATABASE_URL נופלים ל-TEST_DATABASE_URL (לעולם לא מרחיב גישה לנתונים אמיתיים); הבאנר מציג "מסד הבדיקה" בהתאם. ← נעשה. אם ב-Neve אין TEST_DATABASE_URL ל-Preview — נדרש להוסיף ב-Vercel (Settings→Environment Variables→Preview).
