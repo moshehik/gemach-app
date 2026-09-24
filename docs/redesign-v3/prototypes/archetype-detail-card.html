@@ -654,6 +654,7 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ic = (n, cls = '', anim = '') => `<svg class="ic ${cls}"${anim ? ` data-a="${anim}"` : ''} aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const plural = (n, one, many) => n === 1 ? one : `<bdi>${n}</bdi> ${many}`;
 const money = n => `<bdi dir="ltr">₪${Math.abs(n).toLocaleString('he-IL')}</bdi>`;
 const tip = t => `<button type="button" class="tip" data-tip="${esc(t)}" aria-label="הסבר: ${esc(t)}">${ic('info','sm')}</button>`;
 
@@ -703,7 +704,7 @@ function makeOrders(kind, long){
 function makePayments(kind, long){
   const k = long ? 1000 : 1;
   if (kind === 'none') return [];
-  if (kind === 'sparse') return [{ id:'p1', type:'pay', date:'23.9.2026', amount:250, order:53501, method:'אשראי', note:'מקדמה' }, { id:'r1', type:'refund', date:'23.9.2026', amount:100, order:53501, reason:'החלפת מידה', executed:false }];
+  if (kind === 'sparse') return [{ id:'p1', type:'pay', date:'23.9.2026', amount:250, order:53501, method:'אשראי', note:'מקדמה' }, { id:'r1', type:'refund', date:'23.9.2026', amount:50, order:53501, reason:'החלפת מידה', executed:false }];
   return [
     { id:'p1', type:'pay', date:'23.9.2026', amount:200*k, order:53412, method:'מזומן', note:'מקדמה בהזמנה' },
     { id:'r1', type:'refund', date:'2.9.2026', amount:50*k, order:53120, reason:'יום השכרה שלא נוצל', executed:true, execDate:'10.9.2026' },
@@ -792,7 +793,7 @@ function renderHead(c){
       <h1 data-tip="${esc(fullName(c))}">${esc(fullName(c))}</h1>
       <div class="ph-chips">
         <span class="chip info">${ic('id')}${c.legacyId ? `מספר <bdi>${c.legacyId}</bdi>` : 'ללא מספר לקוח'}</span>
-        <span class="chip">${ic('bag')}<bdi>${n}</bdi>&nbsp;${n === 1 ? 'הזמנה' : 'הזמנות'}</span>
+        <span class="chip">${ic('bag')}${n === 0 ? 'אין הזמנות' : plural(n, 'הזמנה אחת', 'הזמנות')}</span>
         ${c.isBlocked ? `<span class="chip attn">${ic('ban')}חסום להזמנות</span>` : ''}
         <span class="chip" data-tip="מתי נשמר שינוי אחרון בפרטי הלקוח">${ic('clock')}עודכן ${esc(c.updated)}</span>
       </div>
@@ -916,7 +917,7 @@ function renderOrders(){
           <div class="row">${ic('receipt')}<span class="lbl">מצב תשלום</span><span class="val"><span class="chip ${pv}">${ic(pv === 'done' ? 'check' : pv === 'attn' ? 'alert' : 'clock')}${ps}</span></span></div>
         </div></div></div></div>
       </div>`; }).join('')}</div>
-    <div class="foot"><bdi>${S.orders.length}</bdi> הזמנות</div></div>`;
+    <div class="foot">${plural(S.orders.length, 'הזמנה אחת', 'הזמנות')}</div></div>`;
 }
 
 function balTile(m){
@@ -937,7 +938,7 @@ function renderPayments(m){
         <div class="row">${ic(r ? 'info' : 'card')}<span class="lbl">${r ? 'סיבה' : 'אמצעי תשלום'}</span><span class="val">${esc(r ? p.reason : p.method)}</span></div>
         <div class="row">${ic(r ? 'clock' : 'file')}<span class="lbl">${r ? 'ביצוע' : 'הערה'}</span>${r ? `<span class="val">${p.executed ? `בוצע <bdi>${p.execDate}</bdi>` : 'ממתין לביצוע'}</span>` : (p.note ? `<span class="val">${esc(p.note)}</span>` : `<span class="val missing">${ic('info','sm')}אין הערה</span>`)}</div>
       </div></td></tr>` : ''}`; }).join('')}</tbody></table></div>
-    <div class="foot"><bdi>${rows.length}</bdi> רשומות</div>`
+    <div class="foot">${plural(rows.length, 'רשומה אחת', 'רשומות')}</div>`
     : `<div class="empty"><span class="e-ic">${ic('card','xl')}</span><b>עדיין אין תשלומים</b><span>תשלומים וזיכויים מכל ההזמנות יופיעו כאן.</span></div>`;
   return `<div class="card strong"><div class="card-h"><span class="ico">${ic('coin')}</span><h2>מצב החשבון</h2></div>
       <div class="tiles">
@@ -957,7 +958,7 @@ function renderRefunds(c){
     <tbody>${refs.map(r => { const open = S.openRef === r.id; return `<tr class="${open ? 'is-open' : ''}"><td><bdi>${r.date}</bdi></td><td><a href="#"><bdi>${r.order}</bdi></a></td><td class="n"><bdi dir="ltr">₪${r.amount.toLocaleString('he-IL')}</bdi></td>
       <td>${r.executed ? `<span class="chip done">${ic('check')}בוצע</span>` : `<span class="chip pend">${ic('clock')}ממתין</span>`}</td>
       <td class="x"><button type="button" class="ibtn quiet" data-ref="${r.id}" aria-expanded="${open}" aria-label="${open ? 'הסתרת פירוט' : 'הצגת פירוט'}">${ic('down')}</button></td></tr>
-      ${open ? `<tr class="exp"><td colspan="5"><div class="rows"><div class="row">${ic('info')}<span class="lbl">סיבה</span><span class="val">${esc(r.reason)}</span></div><div class="row">${ic('clock')}<span class="lbl">ביצוע</span><span class="val">${r.executed ? `בוצע <bdi>${r.execDate}</bdi>` : 'ממתין לביצוע'}</span></div></div></td></tr>` : ''}`; }).join('')}</tbody></table></div><div class="foot"><bdi>${refs.length}</bdi> זיכויים</div>`
+      ${open ? `<tr class="exp"><td colspan="5"><div class="rows"><div class="row">${ic('info')}<span class="lbl">סיבה</span><span class="val">${esc(r.reason)}</span></div><div class="row">${ic('clock')}<span class="lbl">ביצוע</span><span class="val">${r.executed ? `בוצע <bdi>${r.execDate}</bdi>` : 'ממתין לביצוע'}</span></div></div></td></tr>` : ''}`; }).join('')}</tbody></table></div><div class="foot">${plural(refs.length, 'זיכוי אחד', 'זיכויים')}</div>`
     : `<div class="empty"><span class="e-ic">${ic('refresh','xl')}</span><b>אין זיכויים</b><span>זיכוי שנפתח בהזמנה של הלקוח יופיע כאן.</span></div>`;
   return `<div class="card strong"><div class="card-h"><span class="ico">${ic('bank')}</span><h2>חשבון בנק להחזרים${tip('לשם מעבירים כסף כשהלקוח מקבל זיכוי. נשמר יחד עם שאר השינויים בכרטיס.')}</h2></div>
       <form class="form" autocomplete="off" novalidate>
@@ -985,7 +986,7 @@ function renderHistory(){
   return `<div class="card">${hdr}
     <form class="hfilter" role="search" id="hForm"><label class="search">${ic('search')}<span class="sr-only">חיפוש בהיסטוריה</span><input id="hq" type="search" placeholder="חיפוש: שם עובד, שדה, ערך…" value="${esc(S.hq)}"></label>
       <button type="submit" class="btn">${ic('search','','rise')}חיפוש</button>${S.hq ? `<button type="button" class="btn quiet" data-act="clearHq">${ic('x')}ניקוי</button>` : ''}</form>
-    <div class="foot" style="margin-top:8px"><bdi>${total}</bdi> רשומות</div>${list}
+    <div class="foot" style="margin-top:8px">${total === 0 ? 'אין רשומות' : plural(total, 'רשומה אחת', 'רשומות')}</div>${list}
     <div class="hnote" style="margin-top:16px">${ic('info')}<span>בעתיד אפשר להציג כאן גם תשלומים והזמנות של הלקוח, אחרי שתתווסף לשרת קריאה מתאימה.</span></div></div>`;
 }
 
