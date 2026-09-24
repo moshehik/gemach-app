@@ -318,6 +318,7 @@ body.has-savebar .toasts{bottom:calc(var(--sb-h,96px) + 12px)}
     <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
     <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
@@ -345,8 +346,8 @@ body.has-savebar .toasts{bottom:calc(var(--sb-h,96px) + 12px)}
         <select id="dData" aria-label="נתונים"><option value="full">עובדת עם כל הפרטים</option><option value="sparse">עובדת עם מעט פרטים</option><option value="nodept">בלי מחלקה</option></select>
         <select id="dLoad" aria-label="מצב טעינה"><option value="ok">טעינה תקינה</option><option value="loading">טוען…</option><option value="auth">לא מחוברת</option><option value="error">שגיאת שרת בטעינה</option></select></div>
       <div class="demo-grp"><h3>שרת</h3>
-        <label class="chk"><input type="checkbox" id="dFail"> כשל בשמירה / בהחלפת סיסמה</label>
-        <label class="chk"><input type="checkbox" id="dReset"> אחרי איפוס סיסמה (אפשר בלי הסיסמה הישנה)</label></div>
+        <select id="dFail" aria-label="תשובת השרת בשמירה ובהחלפת סיסמה"><option value="">השרת עונה: הצלחה</option><option value="server">השרת עונה: שגיאה (500)</option><option value="network">אין חיבור לשרת</option><option value="session">החיבור פג (401)</option></select>
+        <label class="chk"><input type="checkbox" id="dReset"> אחרי איפוס סיסמה (השרת מקבל בלי הסיסמה הנוכחית)</label></div>
       <div class="demo-grp"><h3>חלוניות ותנועה</h3>
         <button type="button" class="btn sm" id="dTheme" aria-pressed="true">חלוניות אישור: כהה</button>
         <label class="chk"><input type="checkbox" id="dMotion"> הדמיית "הפחתת תנועה"</label></div>
@@ -366,6 +367,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ic = (n, cls = '', anim = '') => `<svg class="ic ${cls}"${anim ? ` data-a="${anim}"` : ''} aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const tip = t => `<button type="button" class="tip" data-tip="${esc(t)}" aria-label="הסבר: ${esc(t)}">${ic('info','sm')}</button>`;
+const failMode = () => $('#dFail').value;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* config (useOrgConfig מדומה): שורה חסרה = מוצג (FM-38) */
@@ -403,13 +405,13 @@ const disp = (k, v) => FIELDS[k].bool ? (v ? 'פעיל' : 'כבוי') : FIELDS[k
 /* ===== רינדור ===== */
 function renderTopbar(){
   const p = S.orig; const av = $('#tbAv'); if (!p){ av.textContent = ''; $('#tbName').textContent = ''; return; }
-  av.innerHTML = p.profileImage ? `<img src="${p.profileImage}" alt="">` : esc(((p.firstName || '')[0] || '') + ((p.lastName || '')[0] || '') || '?');
+  av.innerHTML = String(p.profileImage || '').startsWith('data:image') ? `<img src="${p.profileImage}" alt="">` : esc(((p.firstName || '')[0] || '') + ((p.lastName || '')[0] || '') || '?');
   $('#tbName').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim();
 }
 function field(k){
   const f = FIELDS[k], v = S.cur[k] ?? '', ch = (S.orig[k] ?? '') !== v, err = S.errors[k];
   return `<div class="field ${ch ? 'is-changed' : ''} ${err ? 'is-err' : ''}"><label for="f-${k}">${f.l}${f.tip ? tip(f.tip) : ''}${ch ? ' <span class="chip pend">לא נשמר</span>' : ''}</label>
-    <input class="input" id="f-${k}" data-f="${k}" type="${f.type || 'text'}" ${f.ltr ? 'dir="ltr"' : ''} value="${esc(v)}" autocomplete="new-password" ${err ? `aria-invalid="true" aria-describedby="e-${k}"` : ch ? `aria-describedby="w-${k}"` : ''} novalidate>
+    <input class="input" id="f-${k}" data-f="${k}" type="${f.type || 'text'}" ${f.ltr ? 'dir="ltr"' : ''} value="${esc(v)}" autocomplete="new-password" ${err ? `aria-invalid="true" aria-describedby="e-${k}"` : ch ? `aria-describedby="w-${k}"` : ''}>
     ${err ? `<span class="ferr" id="e-${k}" role="alert">${ic('alert','sm')}${esc(err)}</span>` : ''}
     ${ch && !err ? `<span class="was" id="w-${k}">היה: <s>${esc(disp(k, S.orig[k]))}</s></span>` : ''}</div>`;
 }
@@ -422,7 +424,7 @@ function render(){
   const page = $('#page'); const sb = $('#savebar');
   if (S.load === 'loading'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col" role="status" aria-label="טוענים את הפרופיל"><div class="sk" style="height:60px;width:60%"></div>${'<div class="sk" style="height:220px"></div>'.repeat(3)}</div></div>`; return; }
   if (S.load === 'auth'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col"><div class="card empty"><span class="e-ic">${ic('lock','xl')}</span><b>צריך להתחבר</b><span>כדי לראות ולעדכן את הפרופיל, נכנסים למערכת עם המשתמש שלך.</span><button type="button" class="btn primary lg" data-act="toLogin">${ic('next','','nudge')}למסך הכניסה</button></div></div></div>`; return; }
-  if (S.load === 'error'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col"><div class="card empty"><span class="e-ic">${ic('cloud-off','xl')}</span><b>לא הצלחנו לטעון את הפרופיל</b><span>זו תקלה בשרת, לא בחשבון שלך. נסו שוב בעוד רגע.</span><button type="button" class="btn primary lg" data-act="retry">${ic('refresh','','spin')}לנסות שוב</button></div></div></div>`; return; }
+  if (S.load === 'error'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col"><div class="card empty"><span class="e-ic">${ic('cloud-off','xl')}</span><b>לא הצלחנו לטעון את הפרופיל</b><span>יש תקלה בחיבור או בשרת. הפרטים שלך לא נפגעו. נסו שוב בעוד רגע.</span><button type="button" class="btn primary lg" data-act="retry">${ic('refresh','','spin')}לנסות שוב</button></div></div></div>`; return; }
   const c = S.cur, ch = changed();
   const toc = `<nav class="toc" aria-label="בעמוד הזה"><h2>בעמוד הזה</h2>${SECTIONS.filter(s => s[0] !== 'photo' || cfg.on('show_employee_profile_image')).map(([id, t, i, keys]) => `<a href="#sec-${id}">${ic(i,'sm')}${t}${keys.some(k => ch.includes(k)) ? '<span class="pd" aria-label="יש שינוי שלא נשמר"></span>' : ''}</a>`).join('')}</nav>`;
   const head = `<div class="pagehead"><button type="button" class="ibtn round" data-act="back" aria-label="חזרה" data-tip="חזרה">${ic('back','','back')}</button>
@@ -440,8 +442,8 @@ function render(){
   cards += sectionCard(SECTIONS[4], `<div class="ro">${ic('lock')}<span class="l">הסיסמה</span><span class="v">מוסתרת</span></div>
       <div class="acts" style="margin-top:12px"><button type="button" class="btn" data-act="pwOpen" aria-expanded="${S.pwOpen}" aria-controls="pwPanel">${ic('edit','','pop')}החלפת סיסמה</button></div>
       <div class="expand ${S.pwOpen ? 'open' : ''}" id="pwPanel"><div><div class="pwbox"><div class="form">
-        <div class="field"><label for="pw-old">הסיסמה הנוכחית${$('#dReset').checked ? ' <span class="fhint">(לא חובה אחרי איפוס)</span>' : ''}</label><div class="pw"><input class="input" id="pw-old" type="${S.pwShow.old ? 'text' : 'password'}" autocomplete="current-password" dir="auto" value="${esc(S.pwv.old)}"><button type="button" class="ibtn quiet" data-pwshow="old" aria-pressed="${S.pwShow.old}" aria-label="${S.pwShow.old ? 'הסתרת' : 'הצגת'} הסיסמה הנוכחית">${ic('eye')}</button></div></div>
-        <div class="field"><label for="pw-new">סיסמה חדשה</label><div class="pw"><input class="input" id="pw-new" type="${S.pwShow.neu ? 'text' : 'password'}" autocomplete="new-password" dir="auto" aria-describedby="pwHint" value="${esc(S.pwv.neu)}"><button type="button" class="ibtn quiet" data-pwshow="neu" aria-pressed="${S.pwShow.neu}" aria-label="${S.pwShow.neu ? 'הסתרת' : 'הצגת'} הסיסמה החדשה">${ic('eye')}</button></div>
+        <div class="field"><label for="pw-old">הסיסמה הנוכחית${tip('אחרי איפוס סיסמה אפשר להשאיר את השדה ריק. בכל מקרה אחר צריך להקליד אותה.')}</label><div class="pw"><input class="input" id="pw-old" type="${S.pwShow.old ? 'text' : 'password'}" autocomplete="current-password" dir="auto" value="${esc(S.pwv.old)}"><button type="button" class="ibtn quiet" data-pwshow="old" aria-pressed="${S.pwShow.old}" aria-label="${S.pwShow.old ? 'הסתרת' : 'הצגת'} הסיסמה הנוכחית">${ic(S.pwShow.old ? 'eye-off' : 'eye')}</button></div></div>
+        <div class="field"><label for="pw-new">סיסמה חדשה</label><div class="pw"><input class="input" id="pw-new" type="${S.pwShow.neu ? 'text' : 'password'}" autocomplete="new-password" dir="auto" aria-describedby="pwHint" value="${esc(S.pwv.neu)}"><button type="button" class="ibtn quiet" data-pwshow="neu" aria-pressed="${S.pwShow.neu}" aria-label="${S.pwShow.neu ? 'הסתרת' : 'הצגת'} הסיסמה החדשה">${ic(S.pwShow.neu ? 'eye-off' : 'eye')}</button></div>
           <span class="fhint" id="pwHint">לפחות 4 תווים. ארבעת התווים האחרונים הם גם הקוד הקצר לשעון הנוכחות.</span></div>
         <div class="ferr" id="pwErr" role="alert">${S.pwErr ? ic('alert','sm') + esc(S.pwErr) : ''}</div>
         <div class="acts"><button type="button" class="btn primary" data-act="pwGo" ${S.pwBusy ? 'disabled' : ''}>${S.pwBusy ? ic('loader','','loop') + 'מחליפים…' : ic('check','','pop') + 'החלפת הסיסמה'}</button><button type="button" class="btn quiet" data-act="pwCancel">ביטול</button></div>
@@ -449,7 +451,7 @@ function render(){
   if (cfg.on('show_employee_profile_image')){
     const imCh = (c.profileImage || '') !== (S.orig.profileImage || '');
     const ini = ((c.firstName || '')[0] || '') + ((c.lastName || '')[0] || '');
-    cards += sectionCard(SECTIONS[5], `<div class="avrow"><span class="avbig ${imCh ? 'changed' : ''}">${c.profileImage ? `<img src="${c.profileImage}" alt="תמונת הפרופיל">` : `<span aria-label="ראשי התיבות">${esc(ini || '?')}</span>`}</span>
+    cards += sectionCard(SECTIONS[5], `<div class="avrow"><span class="avbig ${imCh ? 'changed' : ''}">${String(c.profileImage || '').startsWith('data:image') ? `<img src="${c.profileImage}" alt="תמונת הפרופיל">` : `<span aria-label="ראשי התיבות">${esc(ini || '?')}</span>`}</span>
       <div class="acts"><input type="file" id="avIn" class="file-in" accept="image/*"><label for="avIn" class="btn" role="button">${ic('camera','','pop')}בחירת תמונה</label>
       ${c.profileImage ? `<button type="button" class="btn quiet" data-act="imgRm">${ic('trash','','wig')}הסרה</button>` : ''}</div></div>
       <p class="fhint" style="margin:10px 0 0">PNG או JPG. התמונה נשמרת יחד עם שאר הפרטים${imCh ? ' — <b>עוד לא נשמרה</b>' : ''}.</p>`);
@@ -460,7 +462,7 @@ function render(){
 function renderSavebar(ch){
   const sb = $('#savebar'); sb.hidden = false; document.body.classList.add('has-savebar'); requestAnimationFrame(() => document.body.style.setProperty('--sb-h', sb.offsetHeight + 'px')); const n = ch.length;
   sb.innerHTML = `<div class="sb-in"><div class="sb ${n ? 'dirty' : ''}" role="region" aria-label="שמירה">
-    <div class="stat"><span class="ring">${n ? ic('edit','sm') : ic('check','sm')}</span><span style="min-width:0"><b>${n ? `${n === 1 ? 'שינוי אחד' : `<bdi>${n}</bdi> שינויים`} שלא נשמרו` : 'הכול שמור'}</b><small>${n ? esc(ch.map(k => FIELDS[k].l).join(' · ')) : 'אין שינויים שמחכים לשמירה'}</small></span></div>
+    <div class="stat"><span class="ring">${n ? ic('edit','sm') : ic('check','sm')}</span><span style="min-width:0"><b>${n ? `${n === 1 ? 'שינוי אחד שלא נשמר' : `<bdi>${n}</bdi> שינויים שלא נשמרו`}` : 'הכול שמור'}</b><small>${n ? esc(ch.map(k => FIELDS[k].l).join(' · ')) : 'אין שינויים שמחכים לשמירה'}</small></span></div>
     <button type="button" class="btn quiet" data-act="discard" ${n ? '' : 'disabled'}>${ic('undo','','back')}<span class="long">ביטול השינויים</span><span class="short">ביטול</span></button>
     <button type="button" class="btn primary" data-act="save" ${S.saving ? 'disabled' : ''}>${S.saving ? ic('loader','','loop') + 'שומרים…' : ic('check','','pop') + '<span class="long">שמירת השינויים</span><span class="short">שמירה</span>'}</button></div></div>`;
 }
@@ -519,9 +521,14 @@ async function save(){
   S.errors = validate();
   if (Object.keys(S.errors).length){ render(); const k = Object.keys(S.errors)[0]; $('#f-' + k).focus(); toast('err', 'אי אפשר לשמור עדיין', 'יש שדה אחד לתיקון', 6500); return false; }
   S.saving = true; renderSavebar(changed()); await sleep(800); S.saving = false;
-  if ($('#dFail').checked){ renderSavebar(changed()); toast('err', 'השמירה לא הצליחה', 'שגיאת שרת. השינויים שלך עדיין כאן.', 6500, { label:'לנסות שוב', run:save }); return false; }
+  const fm = failMode();
+  if (fm){ renderSavebar(changed()); /* המימוש: 401/403 → "צריך להתחבר"; שגיאה אחרת מהשרת → "השמירה לא הצליחה"; חריגה (fetch נכשל) → "אין חיבור" */
+    if (fm === 'session') toast('err', 'צריך להתחבר מחדש', 'החיבור שלך הסתיים. השינויים עדיין כאן. מתחברים ושומרים שוב.', 6500, { label:'התחברות', run:() => toast('info', 'נפתח חלון הכניסה', 'בהדגמה נשארים כאן', 2600) });
+    else if (fm === 'network') toast('err', 'אין חיבור לשרת', 'השינויים שלך עדיין כאן. בודקים את החיבור ומנסים שוב.', 6500, { label:'לנסות שוב', run:save });
+    else toast('err', 'השמירה לא הצליחה', 'תקלה בשרת. השינויים שלך עדיין כאן.', 6500, { label:'לנסות שוב', run:save });
+    return false; }
   const n = changed().length; S.orig = JSON.parse(JSON.stringify(S.cur)); render();
-  notice('הפרטים נשמרו', n ? `עודכנו ${n === 1 ? 'פרט אחד' : n + ' פרטים'}. השם והתמונה בסרגל העליון התעדכנו.` : 'הפרטים נשלחו לשמירה.');
+  notice('הפרטים נשמרו', n ? `${n === 1 ? 'עודכן פרט אחד' : `עודכנו ${n} פרטים`}. השם והתמונה בסרגל העליון התעדכנו.` : 'הפרטים נשלחו לשמירה.');
   return true;
 }
 async function discard(){
@@ -539,10 +546,14 @@ async function changePassword(){
   const fail = (m, id) => { S.pwErr = m; render(); const g = $('#' + id).closest('.pw'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); $('#' + id).focus(); };
   if (!neu) return fail('צריך להקליד סיסמה חדשה', 'pw-new');
   if (neu.length < 4) return fail('הסיסמה החדשה קצרה מדי. צריך לפחות 4 תווים.', 'pw-new');
-  if (!old && !reset) return fail('צריך להקליד את הסיסמה הנוכחית', 'pw-old');
   S.pwErr = ''; S.pwBusy = true; const keep = [old, neu]; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1];
   await sleep(700); S.pwBusy = false;
-  if ($('#dFail').checked){ S.pwErr = 'שגיאת שרת. הסיסמה לא הוחלפה.'; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1]; return; }
+  const fm = failMode(); const back = (m, id) => { S.pwErr = m; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1]; if (id) $('#' + id).focus(); };
+  if (fm === 'session') return back('צריך להתחבר מחדש כדי להחליף סיסמה.');
+  if (fm === 'network') return back('אין חיבור לשרת. הסיסמה לא הוחלפה.');
+  if (fm === 'server') return back('תקלה בשרת. הסיסמה לא הוחלפה.');
+  /* תשובת השרת (400): הסיסמה הנוכחית נדרשת אלא אם לעובד יש mustResetPassword — הדף לא יודע זאת מראש */
+  if (!old && !reset) return back('צריך להקליד את הסיסמה הנוכחית.', 'pw-old');
   if (old && old === '0000'){ S.pwErr = 'הסיסמה הנוכחית לא נכונה.'; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1]; $('#pw-old').focus(); return; }
   S.pwOpen = false; S.pwShow = { old:false, neu:false }; S.pwv = { old:'', neu:'' }; render();
   toast('ok', 'הסיסמה הוחלפה', 'גם הקוד הקצר לשעון הנוכחות התעדכן.');
@@ -611,7 +622,7 @@ function load(){
 $('#dProfile').onchange = () => { $('#dImg').checked = PROFILES[$('#dProfile').value].s.show_employee_profile_image !== 'false'; load(); };
 $('#dImg').onchange = () => { if (!$('#dImg').checked) cfg.s.show_employee_profile_image = 'false'; else delete cfg.s.show_employee_profile_image; if (S.cur) render(); };
 $('#dData').onchange = load; $('#dLoad').onchange = load;
-$('#dReset').onchange = () => { if (S.cur && S.pwOpen) render(); };
+
 $('#dMotion').onchange = e => { if (e.target.checked) document.documentElement.setAttribute('data-motion', 'reduced'); else document.documentElement.removeAttribute('data-motion'); };
 $('#dTheme').onclick = e => { S.dark = !S.dark; e.currentTarget.setAttribute('aria-pressed', S.dark); e.currentTarget.textContent = `חלוניות אישור: ${S.dark ? 'כהה' : 'בהיר'}`; };
 load();
