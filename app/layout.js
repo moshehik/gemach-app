@@ -320,6 +320,37 @@ export default async function RootLayout({ children }) {
       originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: payload }).catch(function(){});
     } catch (e) {}
   }
+  var AUTH_EP = /\/api\/(login|logout|auth(\/|$)|attendance|dev\/agent-login|employees\/[^/?]+\/(reset-)?password)|\/api\/history$/i;
+  function isSensitiveKey(key) {
+    var k = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1 || k.indexOf('otp') !== -1 || k === 'code' || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k);
+  }
+  function redactValue(v, d) {
+    if (d > 6) return v;
+    if (Array.isArray(v)) return v.map(function(x) { return redactValue(x, d + 1); });
+    if (v && typeof v === 'object') {
+      var out = {};
+      Object.keys(v).forEach(function(k) { out[k] = isSensitiveKey(k) ? '[מוסתר]' : redactValue(v[k], d + 1); });
+      return out;
+    }
+    return v;
+  }
+  function sanitizeRequestQuery(text, endpoint) {
+    if (AUTH_EP.test(endpoint)) return '';
+    var t = String(text).trim();
+    if (t.charAt(0) === '{' || t.charAt(0) === '[') {
+      try { return JSON.stringify(redactValue(JSON.parse(t), 0)); } catch (e) { return ''; }
+    }
+    if (t.charAt(0) === '?' || t.indexOf('=') !== -1) {
+      try {
+        var p = new URLSearchParams(t.charAt(0) === '?' ? t.slice(1) : t);
+        var ch = false;
+        Array.from(p.keys()).forEach(function(k) { if (isSensitiveKey(k)) { p.set(k, '[מוסתר]'); ch = true; } });
+        return ch ? '?' + p.toString() : t;
+      } catch (e) { return ''; }
+    }
+    return /pass|secret|token|pin|otp|authorization/i.test(t) ? '' : t;
+  }
   window.__queueVisitLog = function(entry) {
     entry.ts = Date.now();
     visitQueue.push(entry);
@@ -344,6 +375,9 @@ export default async function RootLayout({ children }) {
           if (!requestQuery && args[1] && args[1].body) {
             requestQuery = typeof args[1].body === 'string' ? args[1].body : JSON.stringify(args[1].body);
           }
+          // אבטחה: גוף בקשה הוא לא לוג ניטרלי - ב-login/PIN/נוכחות הוא מכיל סיסמאות. לא נרשם כלל שם,
+          // ובשאר הנתיבים שדות רגישים מוסתרים (המקבילה בשרת: lib/redactSensitive.js - לשמור מסונכרנות).
+          if (requestQuery) requestQuery = sanitizeRequestQuery(requestQuery, endpoint);
           window.__GLOBAL_LAST_API_CALL__ = url;
           window.__LAST_API_CALLS__ = window.__LAST_API_CALLS__ || {};
           window.__LAST_API_CALLS__[window.location.pathname] = url;
