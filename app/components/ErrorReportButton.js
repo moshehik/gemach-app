@@ -8,6 +8,7 @@ import useElementPicker, { describeElement, ElementPickerOverlay } from './useEl
 import useActionRecorder from './useActionRecorder';
 import useScreenRecorder from './useScreenRecorder';
 import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
+import { ATTACHMENT_FILE_INPUT_ACCEPT, MAX_ATTACHMENT_FILES_TOTAL_BYTES, isAllowedAttachmentFile, isImageAttachmentName } from '../../lib/attachmentFileTypes';
 import { formatActionSteps, appendStepsToReport, splitReportSteps, stepsCountLabel } from '../../lib/actionRecorderCore';
 
 // כותרת קבועה לזיהוי שרשור "יומן הסוכן האוטומטי" (ר' scripts/agent-log-report.js -
@@ -19,6 +20,17 @@ const AGENT_LOG_TITLE = '🤖 יומן הסוכן האוטומטי (נא לא ל
 // אייקון תמונה שבורה.
 function AttachmentThumb({ url, index }) {
   const [broken, setBroken] = useState(false);
+  // קובץ שצורף מהמחשב (lib/attachmentUpload.js) - הכתובת נושאת ?n=<שם קובץ>. מסמך (וורד/אקסל/PDF...)
+  // מוצג כשבב עם שם, תמונה - כתמונה רגילה.
+  const fileName = (() => { try { return new URL(url, 'http://x').searchParams.get('n'); } catch { return null; } })();
+  if (fileName && !isImageAttachmentName(fileName)) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" title="לחץ להורדה/פתיחה" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', maxWidth: 240, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-alt)', color: 'var(--text)', textDecoration: 'none', fontSize: 12.5, fontWeight: 600 }}>
+        <svg className="icon" style={{ width: 16, height: 16, flexShrink: 0 }}><use href="#i-link" /></svg>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}>{fileName}</span>
+      </a>
+    );
+  }
   const driveId = url.startsWith('gdrive:') ? url.slice(7) : null;
   const isVideo = Boolean(driveId) || /\.(webm|mp4)$/i.test(url);
   const box = { width: 96, height: 96, borderRadius: 8, border: '1px solid var(--border)', flexShrink: 0 };
@@ -67,6 +79,33 @@ function AttachmentGallery({ attachmentUrls }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {urls.map((url, idx) => <AttachmentThumb key={idx} url={url} index={idx} />)}
       </div>
+    </div>
+  );
+}
+
+// תצוגה מקדימה של צרופה ממתינה בטופס: מחרוזת (data URL של צילום) או { name, dataUrl } (קובץ מהמחשב).
+function PendingAttachment({ item, size, onRemove }) {
+  const isFile = item && typeof item === 'object';
+  const box = { width: size, height: size, borderRadius: 6, border: '1px solid var(--border)' };
+  return (
+    <div style={{ position: 'relative' }}>
+      {!isFile && item.startsWith('gdrive:') ? (
+        <div style={{ ...box, background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10, color: 'var(--text-3)', textAlign: 'center' }}>
+          <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-camera" /></svg>הסרטת מסך
+        </div>
+      ) : isFile && !isImageAttachmentName(item.name) ? (
+        <div title={item.name} style={{ ...box, width: size + 30, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: 4, background: 'var(--surface-alt)', fontSize: 10.5, textAlign: 'center', overflow: 'hidden' }}>
+          <svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-link" /></svg>
+          <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+        </div>
+      ) : (
+        <img src={isFile ? item.dataUrl : item} alt="צילום מצורף" style={{ ...box, objectFit: 'cover' }} />
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
+      >×</button>
     </div>
   );
 }
@@ -213,6 +252,44 @@ export default function ErrorReportButton() {
   // מופרד לפי הקשר ('new'/'reply') כמו pickingContextRef.
   const [newAttachments, setNewAttachments] = useState([]);
   const [replyAttachments, setReplyAttachments] = useState([]);
+  // צירוף קבצים מהמחשב (וורד/אקסל/PDF/תמונה...) - קלט קובץ נסתר אחד לשני ההקשרים.
+  const fileInputRef = useRef(null);
+  const filePickContextRef = useRef('new');
+  const openFilePicker = (context) => {
+    filePickContextRef.current = context;
+    fileInputRef.current?.click();
+  };
+  const handleFilesChosen = async (e) => {
+    const chosen = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (chosen.length === 0) return;
+    const context = filePickContextRef.current;
+    const current = context === 'reply' ? replyAttachments : newAttachments;
+    let total = current.reduce((sum, a) => sum + (a && typeof a === 'object' ? a.size || 0 : 0), 0);
+    const added = [];
+    for (const f of chosen) {
+      if (!isAllowedAttachmentFile(f.name)) {
+        showToast(`"${f.name}" - סוג קובץ לא נתמך (מותר: וורד, אקסל, PDF, טקסט, תמונות)`, 'error');
+        continue;
+      }
+      if (total + f.size > MAX_ATTACHMENT_FILES_TOTAL_BYTES) {
+        showToast(`"${f.name}" גדול מדי - סה"כ הקבצים המצורפים מוגבל ל-3MB`, 'error');
+        continue;
+      }
+      const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(f);
+      });
+      if (!dataUrl) { showToast(`קריאת "${f.name}" נכשלה`, 'error'); continue; }
+      total += f.size;
+      added.push({ name: f.name, size: f.size, dataUrl });
+    }
+    if (added.length === 0) return;
+    if (context === 'reply') setReplyAttachments(prev => [...prev, ...added]);
+    else setNewAttachments(prev => [...prev, ...added]);
+  };
 
   // "הקלט את הפעולות שלי" — מקליט פעולות (לחיצות/הקלדות/ניווט) בלי וידאו ובלי הרשאת שיתוף מסך.
   // המודל נסגר, המשתמש משחזר את התקלה, ולוחץ "סיום" בסרגל הצף; הצעדים מתווספים לדיווח.
@@ -799,6 +876,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
 
   return (
     <>
+      <input ref={fileInputRef} type="file" multiple accept={ATTACHMENT_FILE_INPUT_ACCEPT} onChange={handleFilesChosen} style={{ display: 'none' }} />
       <button
         type="button"
         className="icon-btn"
@@ -1038,16 +1116,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   {replyAttachments.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {replyAttachments.map((src, idx) => (
-                        <div key={idx} style={{ position: 'relative' }}>
-                          {src.startsWith('gdrive:')
-                            ? <div style={{ width: 60, height: 60, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10, color: 'var(--text-3)', textAlign: 'center' }}><svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-activity" /></svg>הסרטת מסך</div>
-                            : <img src={src} alt="צילום מצורף" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />}
-                          <button
-                            type="button"
-                            onClick={() => setReplyAttachments(prev => prev.filter((_, i) => i !== idx))}
-                            style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
-                          >×</button>
-                        </div>
+                        <PendingAttachment key={idx} item={src} size={60} onRemove={() => setReplyAttachments(prev => prev.filter((_, i) => i !== idx))} />
                       ))}
                     </div>
                   )}
@@ -1083,6 +1152,14 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       onClick={() => captureFullScreen('reply')}
                     >
                       <svg className="icon"><use href="#i-grid" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-icon-only"
+                      title="צרף קובץ מהמחשב (וורד, אקסל, PDF, תמונה)"
+                      onClick={() => openFilePicker('reply')}
+                    >
+                      <svg className="icon"><use href="#i-upload" /></svg>
                     </button>
                     <input
                       type="text"
@@ -1245,6 +1322,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     {[
                       { key: 'pick', icon: '#i-pin', title: pickedElements.length > 0 ? 'אלמנט נוסף' : 'סימון אלמנט', hint: 'הצבעה על המקום הבעייתי בעמוד', onClick: () => startPicking('new') },
                       { key: 'shot', icon: '#i-grid', title: 'צילום מסך', hint: 'תמונה של כל המסך', onClick: () => captureFullScreen('new') },
+                      { key: 'file', icon: '#i-upload', title: 'קובץ מהמחשב', hint: 'וורד, אקסל, PDF, טקסט או תמונה - עד 3MB בסך הכל', onClick: () => openFilePicker('new') },
                       ...(recordingEnabled ? [{ key: 'video', icon: '#i-camera', title: videoUploading ? 'מעלה...' : 'הסרטת מסך', hint: 'וידאו + הפעולות שלך', onClick: () => startVideoRecording('new'), disabled: videoUploading, spinning: videoUploading }] : []),
                       { key: 'steps', icon: '#i-activity', title: recordedSteps ? 'פעולות מחדש' : 'הקלטת פעולות', hint: 'רישום הלחיצות וההקלדות, בלי וידאו ובלי שיתוף מסך', onClick: () => startStepsRecording('new') },
                     ].map(t => (
@@ -1293,16 +1371,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     {newAttachments.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {newAttachments.map((src, idx) => (
-                          <div key={idx} style={{ position: 'relative' }}>
-                            {src.startsWith('gdrive:')
-                              ? <div style={{ width: 64, height: 64, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10.5, color: 'var(--text-3)', textAlign: 'center' }}><svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-camera" /></svg>הסרטת מסך</div>
-                              : <img src={src} alt="צילום מצורף" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />}
-                            <button
-                              type="button"
-                              onClick={() => setNewAttachments(prev => prev.filter((_, i) => i !== idx))}
-                              style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
-                            >×</button>
-                          </div>
+                          <PendingAttachment key={idx} item={src} size={64} onRemove={() => setNewAttachments(prev => prev.filter((_, i) => i !== idx))} />
                         ))}
                       </div>
                     )}
