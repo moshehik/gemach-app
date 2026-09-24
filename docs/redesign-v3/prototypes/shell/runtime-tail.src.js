@@ -163,7 +163,14 @@ function dismiss(w){
   setTimeout(()=>{ w.remove(); sync(); },300);
 }
 window.nbAdd=(kind,data)=>{ if(data) DEMO[kind]=data; return add(kind); }; /* glue: page API */
-if(!btn||!menu){ window.nbDismissAll=()=>live().forEach(dismiss); return; }
+window.nbDismissAll=()=>live().forEach(dismiss);
+if(!btn||!menu){ /* glue: without the demo menu still wire close / more / chip */
+ document.addEventListener('click',e=>{ const t=e.target.closest?e.target:null; if(!t) return; const g=s=>t.closest(s);
+  const x=g('.nb-x'); if(x){ dismiss(x.closest('.nb-w')); return; }
+  const m=g('.nb-more'); if(m){ const b=m.closest('.nb'), on=!b.classList.contains('open'); b.classList.toggle('open',on); m.setAttribute('aria-expanded',on); m.firstElementChild.textContent=on?'פחות פרטים':'פרטים נוספים'; return; }
+  if(g('.nb-chip')){ all=!all; sync(); } });
+ document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const b=e.target.closest&&e.target.closest('.nb-w'); if(b){ e.preventDefault(); dismiss(b); } } });
+ return; }
 function place(){ const r=btn.getBoundingClientRect(), vw=document.documentElement.clientWidth; const w=240; menu.style.top=(r.bottom+8)+'px'; menu.style.left=Math.max(8,Math.min(vw-w-8,r.right-w))+'px'; }
 function setMenu(on,focus){ if(on){ menu.hidden=false; place(); void menu.offsetWidth; menu.classList.add('on'); if(focus) (menu.querySelector('.nb-mi:not([disabled])')||menu).focus(); } else { menu.classList.remove('on'); setTimeout(()=>{ if(!menu.classList.contains('on')) menu.hidden=true; },170); } btn.setAttribute('aria-expanded',on); }
 menu.innerHTML=[['info','info','הודעת מידע'],['warning','alert','אזהרה: חסר ת״ז'],['success','check','הצלחה'],['alert','bell','התראה דחופה']].map(([k,i,t])=>`<button type="button" class="nb-mi" role="menuitem" data-nb="${k}">${ic(i)}<span>${t}</span></button>`).join('')+

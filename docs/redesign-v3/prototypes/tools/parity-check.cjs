@@ -66,7 +66,7 @@ const C = [
   ['button', '.app .btn:not(.primary):not(.ghost):not(.sm):not(.lg):not(:disabled)', BOX, 1, 1],
   ['button primary', '.app .btn.primary:not(:disabled)', BOX, 0, 1],
   ['button ghost', '.app .btn.ghost:not(:disabled)', BOX, 0, 1],
-  ['button sm', '.app .btn.sm:not(:disabled)', BOX, 1, 1],
+  ['button sm', '.app .btn.sm:not(.primary):not(.ghost):not(:disabled)', BOX, 1, 1],
   ['button lg', '.app .btn.lg:not(:disabled)', BOX, 0, 1],
   ['icon button', '.app .ibtn', ['width', 'height', 'border-top-left-radius', 'background-image', 'border-top-color'], 1, 1],
   ['info tip', '.app .tip:not(.pinm)', ['width', 'height', 'color'], 1, 1],
