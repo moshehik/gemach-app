@@ -12,10 +12,13 @@
 // routes (order/customer/employee/dress detail), print views (opened with
 // context, not browsed standalone), and system pages (404/no-access) are still
 // excluded — a static sidebar link can't target a parameterized route.
+// v3 (סרגל עליון): `tab` = תווית+איקון הלשונית של הקבוצה בסרגל העליון; `sepBefore` = קו מפריד
+// בתפריט הנפתח לפני הפריט. מבנה תצוגה בלבד - אין שינוי בפריטים, בנתיבים או ב-gates.
 // `gate` names a boolean computed in layout.js; omit for always-visible items.
 export const NAV_GROUPS = [
   {
     key: 'general',
+    tab: { label: 'בית וחיפוש', icon: 'i-home' },
     // בלי label גלוי (2026-09-09, בקשת משתמשת - כמו קבוצת 'people' למטה).
     label: '',
     items: [
@@ -24,6 +27,7 @@ export const NAV_GROUPS = [
   },
   {
     key: 'orders',
+    tab: { label: 'הזמנות', icon: 'i-file' },
     // בלי label גלוי (2026-09-09, בקשת משתמשת - כמו קבוצת 'people' למטה).
     label: '',
     items: [
@@ -31,15 +35,16 @@ export const NAV_GROUPS = [
       // כקישור מהיר במרכז דף הבית, זמין תמיד מהסיידבר.
       { href: '/orders/new', label: 'הזמנה חדשה', icon: 'i-plus', gate: 'showOrdersNew' },
       { href: '/orders', label: 'רשימת הזמנות', icon: 'i-file', gate: 'showOrders' },
-      { href: '/rentals#rented', label: 'השכרות', icon: 'i-truck', gate: 'showRentals' },
+      { href: '/rentals#rented', label: 'השכרות', icon: 'i-truck', gate: 'showRentals', sepBefore: true },
       { href: '/rentals#returned', label: 'החזרות', icon: 'i-check', gate: 'showRentals' },
       { href: '/deliveries', label: 'משלוחים', icon: 'i-box', gate: 'showDeliveries' },
-      { href: '/refunds', label: 'זיכויים וחובות', icon: 'i-wallet', gate: 'showRefundsTab' },
+      { href: '/refunds', label: 'זיכויים וחובות', icon: 'i-wallet', gate: 'showRefundsTab', sepBefore: true },
       { href: '/alterations', label: 'תיקונים', icon: 'i-scissors', gate: 'enableAlterations' },
     ],
   },
   {
     key: 'inventory',
+    tab: { label: 'מלאי', icon: 'i-bag' },
     label: 'מלאי',
     items: [
       { href: '/dashboard/dresses', label: 'קטלוג דגמים', icon: 'i-bag', gate: 'showDressesTab' },
@@ -47,6 +52,7 @@ export const NAV_GROUPS = [
   },
   {
     key: 'people',
+    tab: { label: 'אנשים', icon: 'i-users' },
     // בלי label גלוי (2026-09-09, בקשת משתמשת) - עדיין קבוצה נפרדת בסיידבר, רק בלי
     // כותרת "אנשים" מעל הפריטים.
     label: '',
@@ -59,6 +65,7 @@ export const NAV_GROUPS = [
   },
   {
     key: 'admin',
+    tab: { label: 'ניהול', icon: 'i-shield' },
     label: 'ניהול',
     gate: 'showAdminTab',
     items: [
@@ -73,6 +80,7 @@ export function buildNavGroups(flags) {
     .map((group) => ({
       key: group.key,
       label: group.label,
+      tab: group.tab,
       items: group.items
         .filter((item) => !item.gate || flags[item.gate])
         .map((item) => ({ ...item, groupLabel: group.label })),

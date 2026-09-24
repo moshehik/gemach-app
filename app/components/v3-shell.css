@@ -1,0 +1,173 @@
+/* =====================================================================
+   v3 shell — התאמות של מעטפת האתר (סרגל עליון) שאינן חלק מהספרייה המשותפת.
+   הספרייה (app/v3/components.css) מגדירה את .v3-topbar / .v3-topbar__* / .v3-link / .v3-panel-h /
+   .v3-notif / .v3-badge / .v3-drawer. כאן רק: תאימות לעמודים הישנים, תוכן פאנלי חיפוש/פעמון/משתמש,
+   קיצורים מוצמדים, באנרי סביבה. כל הערכים מ-tokens (R2). תיעוד: docs/redesign-v3/SHELL.md
+   ===================================================================== */
+
+/* ---------- תאימות לעמודים שעדיין לא הומרו ---------- */
+/* אין יותר סרגל צד: ווידג'ט ה-AI (inset-inline-start: calc(var(--sidebar-current-w) + 20px)) חוזר לפינה */
+:root { --sidebar-current-w: 0px; }
+/* כותרות טבלה דביקות (StickyTableHeaders) נעצרות מתחת לסרגל העליון (הוא מדד רק את .navbar הישן) */
+html { --navbar-height: var(--v3-topbar-h) !important; }
+html:has(body.hide-global-nav) { --navbar-height: 0px !important; }
+.app-shell.v3-shell { min-height: 100vh; }
+.v3-shell > .main { min-width: 0; flex: 1 1 auto; }
+.v3-shell .content { padding-top: var(--v3-sp-5); }
+
+/* קיוסק נעול: כל ה-chrome של הניווט מוסתר (כמו .main > .topbar הישן) */
+body.hide-global-nav .v3-shell .v3-topbar,
+body.hide-global-nav .v3-shell .v3-drawer-scrim,
+body.hide-global-nav .v3-envbanner { display: none !important; }
+/* מגירת מובייל פתוחה: ווידג'ט ה-AI מוסתר (כמו עם .sidebar.open בעבר; !important כי הוא קובע display inline) */
+body:has(.v3-drawer.is-open) .ai-widget-fab,
+body:has(.v3-drawer.is-open) .ai-widget-panel { display: none !important; }
+
+/* הדפסה: הסרגל לא מודפס */
+@media print { .v3-shell .v3-topbar, .v3-shell .v3-drawer-scrim { display: none !important; } }
+
+/* ---------- סרגל ---------- */
+.v3-topbar { gap: var(--v3-sp-3); }
+.v3-topbar > .v3-brand { min-width: 0; }
+.v3-brand__logo { display: inline-flex; min-width: 44px; justify-content: center; align-items: center; height: 44px; padding-inline: 10px; border-radius: var(--v3-r-md); background: var(--v3-white); box-shadow: 0 4px 12px -4px var(--v3-gold-a70); transition: transform .2s var(--v3-ease); }
+.v3-brand__logo img { display: block; height: 32px; width: auto; max-width: 150px; object-fit: contain; }
+.v3-brand__logo--text { color: var(--v3-navy); }
+.v3-brand__logo .v3-brand__name { font-weight: var(--v3-fw-bold); font-size: var(--v3-fs-md-); color: var(--v3-navy); }
+.v3-brand:hover .v3-brand__logo { transform: rotate(-3deg) scale(1.03); }
+.v3-topbar__nav { flex: 0 1 auto; }
+.v3-topbar__act > .v3-topbar__item, .v3-topbar__act > .v3-clock { flex: none; }
+.v3-topbar__tab:focus-visible, .v3-topbar__ib:focus-visible, .v3-user:focus-visible { outline: 2px solid var(--v3-gold-300); outline-offset: 2px; }
+.v3-topbar__ib.is-active { background: var(--v3-dark-tile); color: var(--v3-gold-300); }
+.v3-topbar__tab .v3-ic { transition: transform .2s var(--v3-ease); }
+
+/* כפתורים ישנים בתוך הסרגל (דיווח שגיאות / היסטוריית הודעות - רכיבים בבעלות אחרת עם .icon-btn) */
+.v3-topbar__act .icon-btn { position: relative; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--v3-r-round); background: transparent; color: var(--v3-white-a92); display: grid; place-items: center; transition: color .2s, background .2s, transform .2s var(--v3-ease); }
+.v3-topbar__act .icon-btn:hover { background: var(--v3-dark-tile); color: var(--v3-gold-300); transform: translateY(-2px); }
+.v3-topbar__act .icon-btn:focus-visible { outline: 2px solid var(--v3-gold-300); outline-offset: 2px; }
+.v3-topbar__act .icon-btn .icon { width: 21px; height: 21px; }
+.v3-topbar__act .icon-btn .dot { top: 8px; inset-inline-end: 8px; inset-inline-start: auto; width: 10px; height: 10px; background: var(--v3-salmon); border: 2px solid var(--v3-navy); }
+
+/* ---------- פאנלים (תוכן משותף) ---------- */
+.v3-tb-panel { max-height: calc(100dvh - var(--v3-topbar-h) - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.v3-tb-search { width: 400px; padding: var(--v3-sp-3); }
+.v3-tb-bell { width: 380px; padding-inline: var(--v3-sp-2); }
+.v3-tb-empty { padding: var(--v3-sp-4) 10px; color: var(--v3-ink-3); font-size: var(--v3-fs-sm); display: flex; align-items: center; gap: var(--v3-sp-2); }
+.v3-tb-empty--ic { flex-direction: column; justify-content: center; text-align: center; padding-block: var(--v3-sp-6); }
+.v3-tb-empty p { margin: 0; }
+.v3-link__t { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.v3-link__t strong { font-size: var(--v3-fs-md-); font-weight: var(--v3-fw-semi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-link__t small { font-size: var(--v3-fs-2xs); color: var(--v3-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v3-linkrow { display: flex; align-items: center; gap: 2px; }
+.v3-linkrow > .v3-link { flex: 1; min-width: 0; width: auto; }
+
+/* חיפוש */
+.v3-sbox { display: flex; align-items: center; gap: var(--v3-sp-2); height: 44px; padding-inline: var(--v3-sp-3); border: var(--v3-bw) solid var(--v3-sky-300); border-radius: var(--v3-r-md); background: var(--v3-sky-50); transition: border-color .15s, box-shadow .15s, background-color .15s; flex: 1; min-width: 0; }
+.v3-sbox:focus-within { border-color: var(--v3-gold); box-shadow: var(--v3-ring-gold-soft); background: var(--v3-white); }
+/* selector כבד בכוונה: design-overrides.css נותן לכל input גבול/רקע/צל-פוקוס משלו; כאן הקופסה (.v3-sbox) מנהלת אותם */
+.v3-topbar .v3-sbox input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.v3-topbar .v3-sbox input:not([type="checkbox"]):not([type="radio"]):focus { flex: 1; min-width: 0; height: auto; padding: 0; border: 0; border-radius: 0; box-shadow: none; outline: 0; background: transparent; font-size: var(--v3-fs-md-); color: var(--v3-navy); }
+.v3-sbox .v3-ic { color: var(--v3-ink-3); }
+.v3-tb-sec { margin-top: var(--v3-sp-3); }
+.v3-tb-st { display: flex; align-items: center; gap: 6px; padding: 6px 10px 4px; font-size: var(--v3-fs-2xs); font-weight: var(--v3-fw-semi); color: var(--v3-gold-d); }
+.v3-tb-st--row { justify-content: space-between; }
+.v3-tb-st--row > span { display: inline-flex; align-items: center; gap: 6px; }
+.v3-tb-scan { display: flex; align-items: center; gap: var(--v3-sp-2); padding-inline: 4px; }
+.v3-tb-go { width: 44px; height: 44px; flex: none; border: var(--v3-bw) solid var(--v3-black); border-radius: var(--v3-r-md); background: var(--v3-grad-gold); color: var(--v3-black); display: grid; place-items: center; transition: transform var(--v3-dur-fast), filter var(--v3-dur-fast); }
+.v3-tb-go:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.v3-tb-go:disabled { opacity: .55; cursor: not-allowed; }
+.v3-tb-all, .v3-tb-clear, .v3-tb-linkbtn, .v3-tb-read { border: 0; background: none; color: var(--v3-navy-500); font-weight: var(--v3-fw-semi); font-size: var(--v3-fs-sm); border-radius: var(--v3-r-sm); text-decoration: none; cursor: pointer; transition: background-color .15s; }
+.v3-tb-all { display: block; width: calc(100% - 8px); margin: 4px; padding: 10px; text-align: center; background: var(--v3-sky-100); }
+.v3-tb-clear, .v3-tb-linkbtn, .v3-tb-read { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding-inline: 10px; }
+.v3-tb-all:hover, .v3-tb-clear:hover, .v3-tb-linkbtn:hover, .v3-tb-read:hover { background: var(--v3-sky-200); }
+.v3-tb-all:focus-visible, .v3-tb-clear:focus-visible, .v3-tb-linkbtn:focus-visible, .v3-tb-read:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--v3-gold); }
+
+/* פעמון */
+.v3-tb-bell .v3-panel-h { align-items: center; }
+.v3-tb-scroll { max-height: 350px; overflow-y: auto; }
+.v3-tb-bell .v3-notif { cursor: default; }
+.v3-tb-bell .v3-notif:hover { background: transparent; }
+.v3-tb-bell .v3-notif.is-unread:hover { background: var(--v3-sky-a55); }
+.v3-notif__ic { font-weight: var(--v3-fw-bold); font-size: var(--v3-fs-md-); }
+.v3-notif__b b { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.v3-notif__txt { font-size: var(--v3-fs-sm); color: var(--v3-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.v3-tb-all-tag { min-height: 0; padding-block: 0; font-size: var(--v3-fs-cap); }
+.v3-tb-read { align-self: flex-start; margin-top: 4px; margin-inline-start: -10px; }
+
+/* משתמש */
+.v3-user { flex: none; }
+.v3-user .v3-topbar__chev { opacity: .8; width: 13px; height: 13px; }
+.v3-user__av { position: relative; }
+.v3-user__av--lg { width: 40px; height: 40px; font-size: var(--v3-fs-base); order: 0; }
+.v3-user__dot { position: absolute; bottom: -1px; inset-inline-end: -1px; width: 10px; height: 10px; border-radius: var(--v3-r-round); border: 2px solid var(--v3-navy); }
+.v3-user__dot.is-online { background: var(--v3-gold); }
+.v3-user__dot.is-offline { background: var(--v3-sky-400); }
+.v3-user:hover .v3-user__dot, .v3-topbar__item.is-open > .v3-user .v3-user__dot { border-color: var(--v3-white); }
+.v3-user--skeleton { width: 78px; border-color: var(--v3-white-a20); animation: v3-shell-skel 1.4s ease-in-out infinite; }
+.v3-user--skeleton .v3-user__av { background: var(--v3-white-a20); }
+@keyframes v3-shell-skel { 50% { opacity: .55; } }
+.v3-uhead { display: flex; align-items: center; gap: var(--v3-sp-3); padding: var(--v3-sp-2) 10px 10px; margin-bottom: var(--v3-sp-1); border-bottom: var(--v3-bw-hair) dashed var(--v3-gold-a45); }
+.v3-uhead strong { display: block; font-size: var(--v3-fs-base); }
+.v3-uhead span { font-size: var(--v3-fs-cap); color: var(--v3-ink-3); }
+.v3-uhead .v3-user__dot { border-color: var(--v3-white); }
+.v3-link:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+/* קיצורים מוצמדים */
+.v3-pins { display: flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; max-width: 240px; overflow-x: auto; overflow-y: hidden; padding: 6px; margin: -6px; scrollbar-width: none; }
+.v3-pin { position: relative; flex: none; display: inline-flex; }
+.v3-pin__x { position: absolute; top: -2px; inset-inline-end: -2px; width: 18px; height: 18px; padding: 0; border-radius: var(--v3-r-round); border: 2px solid var(--v3-navy); background: var(--v3-rose-100); color: var(--v3-navy); display: grid; place-items: center; opacity: 0; transition: opacity .15s; cursor: pointer; }
+.v3-pin:hover .v3-pin__x, .v3-pin__x:focus-visible { opacity: 1; }
+@media (hover: none) { .v3-pin__x { opacity: 1; } }
+.v3-pinbtn { flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--v3-r-round); background: transparent; color: var(--v3-ink-3); display: grid; place-items: center; opacity: .55; transition: opacity .15s, background-color .15s, color .15s; cursor: pointer; }
+.v3-linkrow:hover .v3-pinbtn, .v3-pinbtn:focus-visible, .v3-pinbtn.is-pinned { opacity: 1; }
+.v3-pinbtn:hover { background: var(--v3-gold-a14); color: var(--v3-navy); }
+.v3-pinbtn:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--v3-gold); }
+.v3-pinbtn.is-pinned { color: var(--v3-gold-d); }
+.v3-pinbtn.is-pinned .v3-ic { fill: currentColor; }
+
+/* ---------- טאבלט / מובייל ---------- */
+@media (max-width: 1180px) { .v3-pins { max-width: 150px; } }
+@media (max-width: 1040px) { .v3-user--skeleton { width: 46px; } .v3-pins { display: none; } }
+@media (max-width: 900px) { .v3-tb-search { width: 340px; } }
+@media (max-width: 767px) {
+  /* הסרגל הראשי מוסתר; נשארים בו רק פעולות חיוניות (חיפוש, דיווח שגיאות, פעמון, משתמש) + המבורגר.
+     ניווט/אחורה/קדימה/ריענון/ערכת נושא עוברים למגירה */
+  .v3-topbar__nav, .v3-pins { display: none; }
+  .v3-topbar__act { display: flex; margin-inline-start: auto; gap: 2px; }
+  .v3-topbar__act .v3-hide-m { display: none; }
+  .v3-burger { margin-inline-start: 0; }
+  .v3-brand__logo { height: 40px; } .v3-brand__logo img { height: 28px; max-width: 90px; }
+  .v3-user { padding-inline: 4px 6px; gap: 4px; }
+  .v3-user__name { display: none; }
+  .v3-topbar__act .v3-topbar__item { position: static; }
+  /* פאנלים במובייל: רוחב מלא מתחת לסרגל (לא נחתכים בצדדים) */
+  .v3-topbar__act .v3-topbar__panel { position: fixed; top: calc(var(--v3-topbar-h) + 8px); inset-inline: 8px; width: auto; max-width: none; min-width: 0; }
+  .v3-drawer { z-index: 1; }
+  .v3-acc.is-active .v3-link__ic { background: var(--v3-navy); color: var(--v3-gold-300); }
+  .v3-acc .v3-link__ic { background: var(--v3-sky-100); color: var(--v3-navy-500); }
+  .v3-acc { cursor: pointer; }
+  .v3-acc-body .v3-linkrow > .v3-link { padding-inline-start: 26px; }
+  .v3-dfoot { display: flex; align-items: center; gap: var(--v3-sp-2); padding: var(--v3-sp-3) 10px var(--v3-sp-1); margin-top: 6px; border-top: var(--v3-bw-hair) dashed var(--v3-gold-a45); }
+  .v3-dbtn { color: var(--v3-navy); background: var(--v3-sky-100); }
+  .v3-dbtn:hover { color: var(--v3-navy); background: var(--v3-gold-a14); }
+}
+@media (min-width: 768px) { .v3-dfoot { display: none; } }
+@media (max-width: 380px) { .v3-brand__logo { padding-inline: 6px; } .v3-brand__logo img { max-width: 64px; } }
+
+/* ---------- באנרי סביבה (ישנים: fixed למעלה במרכז) ---------- */
+.v3-envbanner.preview-mode-banner, .v3-envbanner.backup-mode-banner {
+  top: calc(var(--v3-topbar-h) + var(--v3-sp-2)); z-index: var(--v3-z-toast);
+  border: var(--v3-bw) solid var(--v3-gold); border-radius: var(--v3-r-pill); background: var(--v3-grad-navy-panel); color: var(--v3-white);
+  padding: var(--v3-sp-2) var(--v3-sp-4); font-size: var(--v3-fs-sm); font-weight: var(--v3-fw-semi); box-shadow: var(--v3-sh-pop-dark);
+}
+.v3-envbanner .v3-ic { flex: none; color: var(--v3-gold-300); }
+.v3-envbanner--alert.backup-mode-banner { border-color: var(--v3-salmon); }
+.v3-envbanner--alert .v3-ic { color: var(--v3-salmon); }
+.v3-offline.offline-indicator { top: calc(var(--v3-topbar-h) + var(--v3-sp-3)); right: auto; inset-inline-end: var(--v3-sp-4); border: var(--v3-bw) solid var(--v3-gold); background: var(--v3-grad-navy-panel); color: var(--v3-white); box-shadow: var(--v3-sh-pop-dark); font-size: var(--v3-fs-sm); }
+.v3-offline .v3-ic { color: var(--v3-gold-300); }
+/* וידג'ט הפיתוח (dev בלבד) - לא מתנגש עם אזור ההודעות (למטה-שמאל, R21) */
+.v3-devenv.dev-env-container { left: 50%; transform: translateX(-50%); align-items: center; bottom: var(--v3-sp-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-user--skeleton { animation: none; }
+  .v3-topbar__tab .v3-ic { transition: none; }
+}

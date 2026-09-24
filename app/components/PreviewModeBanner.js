@@ -10,8 +10,8 @@ export default function PreviewModeBanner() {
   if (process.env.VERCEL_ENV !== 'preview') return null;
 
   return (
-    <div className="preview-mode-banner" role="alert">
-      <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-alert-tri" /></svg>
+    <div className="preview-mode-banner v3-envbanner v3-envbanner--warn" role="alert">
+      <svg className="v3-ic" aria-hidden="true"><use href="#i-alert-tri" /></svg>
       גרסה זמנית לבדיקת תיקון — הקוד כאן זמני, אבל הנתונים הם הנתונים האמיתיים של הגמ״ח
     </div>
   );

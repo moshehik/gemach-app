@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useDebounce from '@/hooks/useDebounce';
 import { usePopup } from './PopupProvider';
+import { Icon } from '@/app/v3/ui';
+import { useTopbarPanel } from './topbarPanel';
 
 // Ports GlobalSidebar's barcode-return / global-search / recently-viewed logic
 // into the topbar quick-search box + dropdown panel (design-v2 topbar-search pattern).
@@ -11,7 +13,6 @@ export default function TopbarSearch() {
   const router = useRouter();
   const { openRentalModal } = usePopup();
 
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -19,25 +20,14 @@ export default function TopbarSearch() {
   const [isReturning, setIsReturning] = useState(false);
   const [historyItems, setHistoryItems] = useState([]);
 
-  const wrapRef = useRef(null);
   const debouncedQuery = useDebounce(query, 350);
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (wrapRef.current && !wrapRef.current.contains(event.target)) {
-        setOpen(false);
-      }
-    }
-    function handleEscape(event) {
-      if (event.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, []);
+  // v3: פתיחה/סגירה, Esc, לחיצה בחוץ וניווט מקלדת - מהתשתית המשותפת של הסרגל (topbarPanel.js).
+  // ההתנהגות העסקית (חיפוש, החזרה בברקוד, היסטוריה) נשארת כפי שהייתה.
+  const { open, close, itemProps, triggerProps } = useTopbarPanel({
+    hover: false,
+    onOpened: (panel) => setTimeout(() => panel.querySelector('#topbarSearchInput')?.focus(), 30),
+  });
 
   useEffect(() => {
     const loadHistory = () => {
@@ -79,12 +69,12 @@ export default function TopbarSearch() {
   }, [debouncedQuery]);
 
   const handleViewAllResults = () => {
-    setOpen(false);
+    close(false);
     router.push('/?q=' + encodeURIComponent(query.trim()));
   };
 
   const handleResultClick = (item) => {
-    setOpen(false);
+    close(false);
     setQuery('');
     if (item.orderId) router.push('/orders/' + item.id);
     else router.push('/customers/' + item.id);
@@ -92,7 +82,7 @@ export default function TopbarSearch() {
 
   const handleHistoryItemClick = (item, e) => {
     e.preventDefault();
-    setOpen(false);
+    close(false);
     if (item.type === 'rental') {
       if (openRentalModal) openRentalModal(item.id);
       else router.push(`/rentals?orderId=${item.id}`);
@@ -125,7 +115,7 @@ export default function TopbarSearch() {
       const data = await res.json();
       if (res.ok) {
         alert('ההחזרה נקלטה בהצלחה!');
-        setOpen(false);
+        close(false);
         setBarcode('');
         if (openRentalModal) openRentalModal(data.orderId);
         else router.push('/rentals?orderId=' + data.orderId);
@@ -140,117 +130,109 @@ export default function TopbarSearch() {
   };
 
   return (
-    <div className={`topbar-search${open ? ' open' : ''}`} id="topbarSearch" ref={wrapRef}>
-      <div className="search-box" onClick={() => setOpen(true)}>
-        <svg className="icon"><use href="#i-search" /></svg>
-        <input
-          type="text"
-          id="topbarSearchInput"
-          placeholder="חיפוש לקוח, הזמנה, ברקוד…"
-          autoComplete="off"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setOpen(true)}
-        />
-      </div>
-      <div className="topbar-search-panel">
+    <div {...itemProps} id="topbarSearch" data-tb-search>
+      <button
+        type="button"
+        {...triggerProps}
+        className="v3-topbar__ib"
+        aria-label="חיפוש"
+        title="חיפוש לקוח, הזמנה או ברקוד"
+      >
+        <Icon name="search" />
+      </button>
+      <div className="v3-topbar__panel v3-tb-panel v3-tb-search" role="dialog" aria-label="חיפוש">
+        <div className="v3-sbox">
+          <Icon name="search" size="sm" />
+          <input
+            type="search"
+            id="topbarSearchInput"
+            placeholder="חיפוש לקוח, הזמנה, ברקוד…"
+            aria-label="חיפוש לקוח, הזמנה או ברקוד"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+
         {query.trim().length >= 2 && (
-          <div className="topbar-search-panel-section">
-            <div className="topbar-search-panel-title">
-              <svg className="icon"><use href="#i-search" /></svg>
-              תוצאות חיפוש
-            </div>
+          <div className="v3-tb-sec">
+            <div className="v3-tb-st"><Icon name="search" size="xs" />תוצאות חיפוש</div>
             {isSearching ? (
-              <div className="loading-inline"><span className="spinner" /></div>
+              <div className="v3-tb-empty" role="status"><Icon name="loader" size="sm" loop /> מחפשים…</div>
             ) : searchResults.length === 0 ? (
-              <div className="empty-state" style={{ padding: '16px 0' }}>
-                <p>לא נמצאו תוצאות</p>
-              </div>
+              <div className="v3-tb-empty">לא נמצאו תוצאות</div>
             ) : (
               searchResults.map((item, idx) => {
                 const isOrder = !!item.orderId;
                 return (
-                  <div
+                  <button
                     key={idx}
-                    className="topbar-recent-item"
-                    role="button"
-                    tabIndex={0}
+                    type="button"
+                    className="v3-link"
+                    data-tbl
                     onClick={() => handleResultClick(item)}
                   >
-                    <div className="kpi-icon" style={{ background: isOrder ? 'var(--info-tint)' : 'var(--success-tint)', color: isOrder ? 'var(--info)' : 'var(--success)' }}>
-                      <svg className="icon"><use href={isOrder ? '#i-file' : '#i-user'} /></svg>
-                    </div>
-                    <div>
-                      <strong>{isOrder ? 'הזמנה #' + item.orderId : `${item.firstName} ${item.lastName || ''}`}</strong>
-                      <span>{isOrder ? (item.firstName + ' ' + (item.lastName || '')) : (item.phone1 || item.city || '')}</span>
-                    </div>
-                  </div>
+                    <span className="v3-link__ic"><Icon name={isOrder ? 'file' : 'user'} /></span>
+                    <span className="v3-link__t">
+                      <strong>{isOrder ? <>הזמנה <bdi>#{item.orderId}</bdi></> : `${item.firstName} ${item.lastName || ''}`}</strong>
+                      <small>{isOrder ? (item.firstName + ' ' + (item.lastName || '')) : (item.phone1 ? <bdi>{item.phone1}</bdi> : (item.city || ''))}</small>
+                    </span>
+                  </button>
                 );
               })
             )}
             {!isSearching && totalResultCount > 0 && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                style={{ width: '100%', marginTop: '10px' }}
-                onClick={handleViewAllResults}
-              >
-                הצג את כל התוצאות ({totalResultCount}) במסך מלא
+              <button type="button" className="v3-tb-all" data-tbl onClick={handleViewAllResults}>
+                הצג את כל התוצאות (<bdi>{totalResultCount}</bdi>) במסך מלא
               </button>
             )}
           </div>
         )}
-        <div className="topbar-search-panel-section">
-          <div className="topbar-search-panel-title">
-            <svg className="icon"><use href="#i-tag" /></svg>
-            החזרה מהירה בברקוד
-          </div>
-          <form onSubmit={handleReturnSubmit} className="search-toolbar" style={{ maxWidth: 'none' }}>
-            <svg className="icon"><use href="#i-tag" /></svg>
-            <input
-              type="text"
-              placeholder="סרוק או הקלד ברקוד פריט…"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              disabled={isReturning}
-            />
-            <div className="search-toolbar-actions">
-              <button type="submit" className="btn btn-primary btn-icon-only btn-sm" title="בצע החזרה" disabled={isReturning}>
-                <svg className="icon"><use href="#i-arrow-end" /></svg>
-              </button>
+
+        <div className="v3-tb-sec">
+          <div className="v3-tb-st"><Icon name="tag" size="xs" />החזרה מהירה בברקוד</div>
+          <form onSubmit={handleReturnSubmit} className="v3-tb-scan">
+            <div className="v3-sbox">
+              <Icon name="tag" size="sm" />
+              <input
+                type="text"
+                placeholder="סרוק או הקלד ברקוד פריט…"
+                aria-label="ברקוד פריט להחזרה"
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                disabled={isReturning}
+              />
             </div>
+            <button type="submit" className="v3-tb-go" title="בצע החזרה" aria-label="בצע החזרה" disabled={isReturning}>
+              <Icon name="arrow-end" />
+            </button>
           </form>
         </div>
-        <div className="topbar-search-panel-section">
-          <div className="topbar-search-panel-title" style={{ justifyContent: 'space-between', display: 'flex' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <svg className="icon"><use href="#i-history" /></svg>
-              נצפו לאחרונה
-            </span>
+
+        <div className="v3-tb-sec">
+          <div className="v3-tb-st v3-tb-st--row">
+            <span><Icon name="history" size="xs" />נצפו לאחרונה</span>
             {historyItems.length > 0 && (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={clearHistory} style={{ padding: '2px 8px' }}>נקה</button>
+              <button type="button" className="v3-tb-clear" data-tbl onClick={clearHistory}>נקה</button>
             )}
           </div>
           {historyItems.length === 0 ? (
-            <div className="empty-state" style={{ padding: '16px 0' }}>
-              <p>אין היסטוריה זמינה</p>
-            </div>
+            <div className="v3-tb-empty">אין היסטוריה זמינה</div>
           ) : (
             historyItems.map((item, index) => (
-              <a
+              <button
                 key={`${item.type}-${item.id}-${index}`}
-                href="#"
-                className="topbar-recent-item"
+                type="button"
+                className="v3-link"
+                data-tbl
                 onClick={(e) => handleHistoryItemClick(item, e)}
               >
-                <div className="kpi-icon" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>
-                  <svg className="icon"><use href={item.type === 'order' ? '#i-file' : item.type === 'customer' ? '#i-user' : '#i-tag'} /></svg>
-                </div>
-                <div>
+                <span className="v3-link__ic"><Icon name={item.type === 'order' ? 'file' : item.type === 'customer' ? 'user' : 'tag'} /></span>
+                <span className="v3-link__t">
                   <strong>{item.name}</strong>
-                  {item.subtext && <span>{item.subtext}</span>}
-                </div>
-              </a>
+                  {item.subtext && <small>{item.subtext}</small>}
+                </span>
+              </button>
             ))
           )}
         </div>

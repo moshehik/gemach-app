@@ -57,7 +57,7 @@ export default function DevEnvBanner() {
   const modeClass = isTest ? 'test-mode' : 'prod-mode';
 
   return (
-    <div className="dev-env-container">
+    <div className="dev-env-container v3-devenv">
       {/* Links Panel */}
       <div className={`dev-env-links-panel ${showLinks ? 'visible' : 'hidden'}`}>
         <h3 className="dev-env-links-title">

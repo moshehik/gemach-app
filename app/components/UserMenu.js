@@ -1,20 +1,21 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import LoginScreen from './LoginScreen';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { Icon } from '@/app/v3/ui';
+import { useTopbarPanel } from './topbarPanel';
 
 export default function UserMenu({ hideInternalMessaging = false }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [isGlobalFetching, setIsGlobalFetching] = useState(false);
 
-  const menuRef = useRef(null);
+  const { open: dropdownOpen, close: closeMenu, itemProps, triggerProps } = useTopbarPanel({ hover: true });
 
   useEffect(() => {
     const handleFetchStart = () => setIsGlobalFetching(true);
@@ -45,23 +46,6 @@ export default function UserMenu({ hideInternalMessaging = false }) {
       })
       .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    }
-    function handleEscape(event) {
-      if (event.key === 'Escape') setDropdownOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [menuRef]);
 
   const handleLogout = async () => {
     // דיווח משתמשת (749aaf87, 2026-09-09): תזכורת על משפחות באיחור גם ביציאה, לא רק
@@ -95,132 +79,136 @@ export default function UserMenu({ hideInternalMessaging = false }) {
   };
 
   if (loading) {
-    return <div className="avatar skeleton" style={{ width: 34, height: 34 }} />;
+    return <div className="v3-user v3-user--skeleton" aria-hidden="true"><span className="v3-user__av" /></div>;
   }
 
   if (!user) {
     return (
       <>
         {showLoginModal && <LoginScreen isModal={true} onClose={() => setShowLoginModal(false)} />}
-        <div className={`user-menu${dropdownOpen ? ' open' : ''}`} ref={menuRef}>
-          <div
-            className="user-chip"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+        <div {...itemProps}>
+          <button
+            type="button"
+            {...triggerProps}
+            className="v3-user"
+            aria-label="תפריט משתמש - אורח"
             title="אורח — התחברות לא פעילה"
           >
-            <div className="avatar">א</div>
-          </div>
-          {dropdownOpen && (
-            <div className="user-menu-dropdown">
-              <div className="user-menu-head">
-                <div className="avatar">א</div>
-                <div>
-                  <strong>אורח</strong>
-                  <span>התחברות לא פעילה</span>
-                </div>
+            <span className="v3-user__av">א</span>
+            <span className="v3-user__name">אורח</span>
+            <Icon name="chevron-down" className="v3-topbar__chev" anim={false} />
+          </button>
+          <div className="v3-topbar__panel v3-tb-panel" role="menu" aria-label="משתמש">
+            <div className="v3-uhead">
+              <span className="v3-user__av v3-user__av--lg">א</span>
+              <div>
+                <strong>אורח</strong>
+                <span>התחברות לא פעילה</span>
               </div>
-              <button
-                type="button"
-                className="user-menu-item"
-                onClick={() => { setDropdownOpen(false); setShowLoginModal(true); }}
-              >
-                <svg className="icon"><use href="#i-logout" /></svg>
-                היכנס למערכת
-              </button>
             </div>
-          )}
+            <button
+              type="button"
+              className="v3-link"
+              role="menuitem"
+              data-tbl
+              onClick={() => { closeMenu(false); setShowLoginModal(true); }}
+            >
+              <span className="v3-link__ic"><Icon name="logout" /></span>
+              היכנס למערכת
+            </button>
+          </div>
         </div>
       </>
     );
   }
 
-  return (
-    <div className={`user-menu${dropdownOpen ? ' open' : ''}`} id="userMenu" ref={menuRef}>
-      <div
-        className="user-chip"
-        id="userMenuToggle"
-        onClick={() => setDropdownOpen(!dropdownOpen)}
-        title={`${user.firstName} ${user.lastName} — ${activeShift ? 'בעבודה' : 'לא בעבודה'}`}
-      >
-        <div className="avatar">
-          {(user.firstName ? user.firstName.charAt(0) : '') + (user.lastName ? user.lastName.charAt(0) : '') || 'U'}
-          <span className={`status-dot ${activeShift ? 'online' : 'offline'}`} />
-        </div>
-        {isGlobalFetching && <span className="spinner" title="טוען נתונים..." style={{ width: 14, height: 14 }} />}
-      </div>
+  const initials = (user.firstName ? user.firstName.charAt(0) : '') + (user.lastName ? user.lastName.charAt(0) : '') || 'U';
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
 
-      {dropdownOpen && (
-        <div className="user-menu-dropdown">
-          <div className="user-menu-head">
-            <div className="avatar">
-              {(user.firstName ? user.firstName.charAt(0) : '') + (user.lastName ? user.lastName.charAt(0) : '') || 'U'}
-              <span className={`status-dot ${activeShift ? 'online' : 'offline'}`} />
-            </div>
+  return (
+    <>
+      <ShiftClock activeShift={activeShift} />
+      <div {...itemProps} id="userMenu">
+        <button
+          type="button"
+          {...triggerProps}
+          className="v3-user"
+          id="userMenuToggle"
+          aria-label={`תפריט משתמש - ${fullName}`}
+          title={`${fullName} — ${activeShift ? 'בעבודה' : 'לא בעבודה'}`}
+        >
+          <span className="v3-user__av">
+            {initials}
+            <span className={`v3-user__dot ${activeShift ? 'is-online' : 'is-offline'}`} aria-hidden="true" />
+          </span>
+          <span className="v3-user__name">{user.firstName}</span>
+          {isGlobalFetching
+            ? <Icon name="loader" size="xs" loop title="טוען נתונים..." />
+            : <Icon name="chevron-down" className="v3-topbar__chev" anim={false} />}
+        </button>
+
+        <div className="v3-topbar__panel v3-tb-panel" role="menu" aria-label="משתמש">
+          <div className="v3-uhead">
+            <span className="v3-user__av v3-user__av--lg">
+              {initials}
+              <span className={`v3-user__dot ${activeShift ? 'is-online' : 'is-offline'}`} aria-hidden="true" />
+            </span>
             <div>
-              <strong>{user.firstName} {user.lastName}</strong>
+              <strong>{fullName}</strong>
               <span>
-                {activeShift && (
-                  <svg className="icon" style={{ width: '9px', height: '9px', color: 'var(--success)' }}><use href="#i-check-circle" /></svg>
-                )}
-                {' '}{activeShift ? 'בעבודה כעת' : 'לא בעבודה'}{user.department?.name ? ` · ${user.department.name}` : ''}
+                {activeShift ? 'בעבודה כעת' : 'לא בעבודה'}{user.department?.name ? ` · ${user.department.name}` : ''}
               </span>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); router.push('/profile'); }}
-          >
-            <svg className="icon"><use href="#i-user" /></svg>
-            הפרופיל שלי
+          <button type="button" className="v3-link" role="menuitem" data-tbl disabled={actionLoading}
+            onClick={() => { closeMenu(false); router.push('/profile'); }}>
+            <span className="v3-link__ic"><Icon name="user" /></span>הפרופיל שלי
           </button>
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); router.push('/punch-clock'); }}
-          >
-            <svg className="icon"><use href="#i-clock" /></svg>
-            שעון נוכחות
+          <button type="button" className="v3-link" role="menuitem" data-tbl disabled={actionLoading}
+            onClick={() => { closeMenu(false); router.push('/punch-clock'); }}>
+            <span className="v3-link__ic"><Icon name="clock" /></span>שעון נוכחות
           </button>
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); router.push('/my-hours'); }}
-          >
-            <svg className="icon"><use href="#i-calendar" /></svg>
-            שעות העבודה שלי
+          <button type="button" className="v3-link" role="menuitem" data-tbl disabled={actionLoading}
+            onClick={() => { closeMenu(false); router.push('/my-hours'); }}>
+            <span className="v3-link__ic"><Icon name="calendar" /></span>שעות העבודה שלי
           </button>
           {!hideInternalMessaging && (
-            <button
-              type="button"
-              className="user-menu-item"
-              disabled={actionLoading}
-              onClick={() => { setDropdownOpen(false); router.push('/messages'); }}
-            >
-              <svg className="icon"><use href="#i-message" /></svg>
-              הודעות
+            <button type="button" className="v3-link" role="menuitem" data-tbl disabled={actionLoading}
+              onClick={() => { closeMenu(false); router.push('/messages'); }}>
+              <span className="v3-link__ic"><Icon name="message" /></span>הודעות
             </button>
           )}
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); router.push('/display-settings'); }}
-          >
-            <svg className="icon"><use href="#i-settings" /></svg>
-            עיצוב ותצוגה — התאמה אישית
+          <button type="button" className="v3-link" role="menuitem" data-tbl disabled={actionLoading}
+            onClick={() => { closeMenu(false); router.push('/display-settings'); }}>
+            <span className="v3-link__ic"><Icon name="settings" /></span>עיצוב ותצוגה — התאמה אישית
           </button>
-          <div className="user-menu-divider" />
-          <button type="button" className="user-menu-item danger" onClick={handleLogout} disabled={actionLoading}>
-            <svg className="icon"><use href="#i-logout" /></svg>
-            התנתקות
+          <div className="v3-sep" role="separator" />
+          <button type="button" className="v3-link v3-link--danger" role="menuitem" data-tbl onClick={handleLogout} disabled={actionLoading}>
+            <span className="v3-link__ic"><Icon name="logout" /></span>התנתקות
           </button>
         </div>
-      )}
-    </div>
+      </div>
+    </>
+  );
+}
+
+// שעון משמרת (תצוגה בלבד): זמן שחלף מ-activeShift.entryTime שכבר מגיע מ-/api/me. אין קריאת רשת נוספת.
+function ShiftClock({ activeShift }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!activeShift?.entryTime) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, [activeShift?.entryTime]);
+  if (!activeShift?.entryTime) return null;
+  const start = new Date(activeShift.entryTime).getTime();
+  if (!Number.isFinite(start) || start > now + 60000) return null;
+  const mins = Math.max(0, Math.floor((now - start) / 60000));
+  const text = `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`;
+  return (
+    <span className="v3-clock" title="משמרת נוכחית - זמן מתחילת הכניסה">
+      <i aria-hidden="true" />במשמרת <bdi>{text}</bdi>
+    </span>
   );
 }

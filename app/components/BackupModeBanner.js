@@ -7,8 +7,8 @@ export default function BackupModeBanner({ active }) {
   if (!active) return null;
 
   return (
-    <div className="backup-mode-banner" role="alert">
-      <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-alert-tri" /></svg>
+    <div className="backup-mode-banner v3-envbanner v3-envbanner--alert" role="alert">
+      <svg className="v3-ic" aria-hidden="true"><use href="#i-alert-tri" /></svg>
       המערכת פועלת כרגע במצב גיבוי (Test) — הנתונים המוצגים והנשמרים כאן אינם הנתונים האמיתיים
     </div>
   );

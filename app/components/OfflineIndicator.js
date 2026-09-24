@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { WifiOff } from 'lucide-react';
+import { Icon } from '@/app/v3/ui';
 import { useState } from 'react';
 
 export default function OfflineIndicator() {
@@ -9,8 +9,8 @@ export default function OfflineIndicator() {
   if (!isVisible) return null;
 
   return (
-    <div data-element-name="לחיץ_OfflineIndicator_1" className="offline-indicator" title="מערכת אופליין פעילה" onClick={() => setIsVisible(false)}>
-      <WifiOff data-element-name="רכיב_OfflineIndicator_2" size={20} />
+    <div data-element-name="לחיץ_OfflineIndicator_1" className="offline-indicator v3-offline" role="status" title="מערכת אופליין פעילה - לחיצה מסתירה" onClick={() => setIsVisible(false)}>
+      <Icon name="wifi-off" data-element-name="רכיב_OfflineIndicator_2" />
       <span>אופליין</span>
     </div>
   );

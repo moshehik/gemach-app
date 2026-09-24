@@ -1,6 +1,12 @@
 import './globals.css';
 import './design-overrides.css';
 import './design-system.css';
+// v3 (redesign): tokens/components/icons/notify + shell chrome. נטענים אחרי ה-CSS הישן (עדיין נטען, לא מוסר).
+import './v3/tokens.css';
+import './v3/components.css';
+import './v3/icons.css';
+import './v3/notify/notify.css';
+import './components/v3-shell.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
@@ -14,6 +20,8 @@ export const metadata = {
 };
 
 import IconSprite from './components/IconSprite';
+import { IconSpriteV3 } from './v3/ui';
+import V3NotifyHost from './components/V3NotifyHost';
 import AppShell from './components/AppShell';
 import { buildNavGroups } from './components/navConfig';
 import LoginScreen from './components/LoginScreen';
@@ -608,6 +616,7 @@ function cpCssText(vars) {
       </head>
       <body className={bodyClassName}>
         <IconSprite />
+        <IconSpriteV3 />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
           <DevEnvBanner data-element-name="רכיב_layout_3" />
@@ -628,6 +637,7 @@ function cpCssText(vars) {
         ) : (
           <LabelsProvider data-element-name="רכיב_layout_8">
             <PopupProvider data-element-name="רכיב_layout_22">
+              <V3NotifyHost>
               <AppShell
                 navGroups={navGroups}
                 isProgrammer={isProgrammer}
@@ -640,6 +650,7 @@ function cpCssText(vars) {
               >
                 {children}
               </AppShell>
+              </V3NotifyHost>
               <PrefetchManager />
               {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} employeeId={authToken?.value} />}
             </PopupProvider>

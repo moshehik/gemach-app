@@ -85,3 +85,15 @@
 - ב-Tip נמנע requestAnimationFrame (נעצר כשהחלון מוסתר) לטובת setTimeout, כדי שאימות אוטומטי יעבוד. כדאי אותו דבר ברכיבי v3 נוספים. ← הערה.
 #27 · 2026-09-24 · ui-agent · Stepper: כפתור "המשך" חסום
 - StepNav מציג ⓘ ליד "המשך" מנוטרל עם הסיבה (STEPPER-PATTERNS §3); מומלץ לחייב nextTip כש-nextDisabled. ← הצעה.
+#28 · 2026-09-24 · claude-main · שני תיקוני ספרייה שנמצאו בבנייה
+- globals.css כופה serif על h1–h6 → כותרות v3 נראו בסריף. תוקן ב-components.css (fix by main). ← נעשה.
+- גופן Rubik (של הסקיצה) לא נטען באפליקציה → נפל ל-Heebo. נוסף @import ב-tokens.css. ← נעשה. (לשקול self-host לביצועים.)
+#SH1 · 2026-09-24 · shell-agent · מעטפת: סרגל עליון
+- בוצע: סרגל עליון v3 במקום התפריט הצדדי (ראו SHELL.md). התנהגות פאנלים משותפת ב-topbarPanel.js (hover/pin/Esc/חצים). ← נעשה.
+- הצעה: המגירה במובייל מציגה גם ריענון/אחורה/קדימה/ערכת נושא; אפשר להעביר "ריענון וניקוי פילטרים" לכפתור "נקה סינון" בכל עמוד רשימה ולהוריד מהסרגל. ← הצעה.
+- הצעה: קיצורים מוצמדים (gemachPinnedNav) לא מוצגים במובייל (הפריטים נגישים במגירה); אפשר שורת "מוצמדים" ראשונה במגירה. ← הצעה.
+- הצעה: chip "במשמרת H:MM" בסרגל (activeShift.entryTime כבר מגיע מ-/api/me); קליק ← /punch-clock. ← הצעה (התצוגה נעשתה, הקליק לא).
+- מציאה: getServerSnapshot ב-V3NotifyProvider החזיר [] חדש בכל קריאה (אזהרת "should be cached") — תוקן ברפרנס יציב. ← נעשה.
+- מציאה: StickyTableHeaders מודד רק .navbar הישן, לכן כותרות טבלה דביקות היו נעצרות מתחת לסרגל; נפתר ב-CSS (--navbar-height = גובה הסרגל). כשכל הטבלאות יעברו ל-Table של v3 אפשר למחוק אותו. ← הערה.
+- מציאה: agent-login דורש AGENT_LOGIN_SECRET ב-env; אין ב-worktree. אימות המעטפת נעשה בדף בדיקה זמני עם mock (נמחק). כדאי secret מקומי ב-.env.local של ה-worktree. ← הצעה.
+- הצעה: בפעמון — שורה ייעודית (אייקון + href) ל-category==='activity_note' אחרי שה-API patch (reports/notify-api-patch.md) ייושם. ← הצעה.

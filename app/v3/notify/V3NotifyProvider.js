@@ -16,7 +16,8 @@ function getSnapshot() {   // יציבות רפרנס ל-useSyncExternalStore
   if (raw !== cachedRaw) { cachedRaw = raw; cachedList = readQueue(); }
   return cachedList;
 }
-const getServerSnapshot = () => [];
+const EMPTY_LIST = [];   // רפרנס יציב (shell agent: מונע "getServerSnapshot should be cached")
+const getServerSnapshot = () => EMPTY_LIST;
 
 export function useV3Notify() {
   const ctx = useContext(NotifyCtx);

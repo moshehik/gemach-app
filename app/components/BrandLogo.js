@@ -33,23 +33,23 @@ export default function BrandLogo() {
     return () => window.removeEventListener('logoUpdated', handleLogoUpdate);
   }, []);
 
+  // v3: הלוגו יושב על "אריח" בהיר בתוך הסרגל הכהה (הלוגו מועלה ע"י הגמ"ח ואין לדעת אם הוא כהה או בהיר).
   if (hasError) {
     return (
-      <div className="navbar-brand" title={versionText} style={{ display: 'flex', alignItems: 'center', height: '38px', paddingRight: '1rem' }}>
-        <div>גמ"ח שמלות</div>
-      </div>
+      <span className="v3-brand__logo v3-brand__logo--text" title={versionText}>
+        <span className="v3-brand__name">גמ"ח שמלות</span>
+      </span>
     );
   }
 
   return (
-    <div className="navbar-brand" style={{ display: 'flex', alignItems: 'center', height: '38px', paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: '1rem' }}>
+    <span className="v3-brand__logo">
       <img
         src={logoUrl}
         alt="לוגו"
         title={versionText}
-        style={{ maxHeight: '38px', objectFit: 'contain' }}
         onError={() => setHasError(true)}
       />
-    </div>
+    </span>
   );
 }

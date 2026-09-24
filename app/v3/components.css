@@ -1372,3 +1372,10 @@ button.v3-tl-dot:focus-visible, .v3-tl-dot[role="button"]:focus-visible { outlin
 @media (max-width: 640px) {
   .v3-stepnav { position: sticky; bottom: 0; z-index: 5; background: var(--v3-surface); padding: var(--v3-sp-3) 0 calc(var(--v3-sp-3) + env(safe-area-inset-bottom)); }
 }
+
+/* fix by main: globals.css כופה serif (Frank Ruhl) על כל h1-h6 — בתוך v3 הכותרות בגופן v3 */
+:where([data-v3], .v3-dialog, .v3-toast) :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--v3-font);
+  letter-spacing: normal;
+}
+[data-v3] :is(h1, h2, h3, h4, h5, h6), .v3-dialog :is(h1, h2, h3, h4, h5, h6) { font-family: var(--v3-font); }

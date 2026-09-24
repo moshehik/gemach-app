@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-// The "אריג" icon sprite has no sun/moon glyph (the mockup handles theme via a
-// settings page, not a topbar icon) — kept as the only lucide icon in the shell
-// since this real toggle predates the sprite and dropping it isn't an option.
-import { Sun, Moon } from 'lucide-react';
+// v3: sun/moon נמצאים עכשיו בספריית האיקונים של v3 (IconSpriteV3) - כבר לא lucide.
+import { Icon } from '@/app/v3/ui';
 import { DESIGN_PREFS_EVENT, pushPrefsToServer } from '../lib/designPrefs';
 
-export default function ThemeToggle({ employeeId, initialTheme }) {
+export default function ThemeToggle({ employeeId, initialTheme, className = '' }) {
   // Starts from the server-rendered cookie value (matches SSR, avoids a hydration
   // mismatch). For GUESTS a mount-only effect below then defers to an explicit
   // mode saved by the /display-settings page in localStorage; for logged-in
@@ -41,6 +39,18 @@ export default function ThemeToggle({ employeeId, initialTheme }) {
     return () => window.removeEventListener(DESIGN_PREFS_EVENT, onApplied);
   }, []);
 
+  // v3: יש עכשיו שני מופעים (סרגל + מגירת מובייל). מעקב אחרי data-theme שומר את האיקון מסונכרן
+  // בין המופעים ובין כל מקור אחר שמשנה את ההעדפה (DesignPrefsSync / display-settings).
+  useEffect(() => {
+    const el = document.documentElement;
+    const mo = new MutationObserver(() => {
+      const t = el.getAttribute('data-theme');
+      if (t === 'dark' || t === 'light' || t === 'contrast') setTheme((prev) => (prev === t ? prev : t));
+    });
+    mo.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => mo.disconnect();
+  }, []);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     if (employeeId) {
@@ -64,11 +74,12 @@ export default function ThemeToggle({ employeeId, initialTheme }) {
   return (
     <button
       type="button"
-      className="icon-btn"
+      className={`v3-topbar__ib ${className}`.trim()}
       onClick={toggleTheme}
       title={theme === 'light' ? 'עבור למצב כהה' : 'עבור למצב בהיר'}
+      aria-label={theme === 'light' ? 'עבור למצב כהה' : 'עבור למצב בהיר'}
     >
-      {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+      <Icon name={theme === 'light' ? 'moon' : 'sun'} />
     </button>
   );
 }

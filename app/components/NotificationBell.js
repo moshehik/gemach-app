@@ -2,13 +2,14 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Icon } from '@/app/v3/ui';
+import { useTopbarPanel } from './topbarPanel';
 
 export default function NotificationBell({ employeeId }) {
   const [notifications, setNotifications] = useState([]);
   // מונה "לא נקראו" מהבדיקה הקלה (?light=1). הרשימה המלאה נטענת רק בפתיחת הפעמון.
   const [unreadFromPoll, setUnreadFromPoll] = useState(0);
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null);
+  const { open: isOpen, close: closePanel, openPanel, itemProps, triggerProps } = useTopbarPanel({ hover: false }); // בלי פתיחה בריחוף: פתיחה = קריאת GET /api/notifications מלאה (כמו הכפתור הישן - רק בלחיצה)
   const isOpenRef = useRef(false);
   const pathname = usePathname();
 
@@ -84,22 +85,21 @@ export default function NotificationBell({ employeeId }) {
     fetchUnreadCount();
   }, [pathname]);
 
+  // v3: הפרסום 'v3:bell-refresh' (מ-app/v3/notify/store.js אחרי שמירת הערה בפעמון) מרענן את המונה,
+  // והרשימה אם הפעמון פתוח. תוספת בלבד - אותן קריאות API כמו בפולינג.
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }
-    function handleEscape(event) {
-      if (event.key === 'Escape') setIsOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
+    const onRefresh = () => {
+      fetchUnreadCount();
+      if (isOpenRef.current) fetchNotifications();
     };
-  }, [menuRef]);
+    window.addEventListener('v3:bell-refresh', onRefresh);
+    return () => window.removeEventListener('v3:bell-refresh', onRefresh);
+  }, [employeeId]);
+
+  // פתיחת הפעמון (בריחוף/לחיצה/מקלדת) טוענת את הרשימה המלאה - כמו הכפתור הישן
+  useEffect(() => {
+    if (isOpen) fetchNotifications();
+  }, [isOpen]);
 
   const markAsRead = async (id) => {
     try {
@@ -126,65 +126,63 @@ export default function NotificationBell({ employeeId }) {
     ? activeNotifications.filter(n => !n.isRead).length
     : unreadFromPoll;
 
+  const badgeText = unreadCount > 99 ? '99+' : String(unreadCount);
+
   return (
-    <div style={{ position: 'relative' }} ref={menuRef}>
-      <button type="button" className="icon-btn" onClick={() => { if (!isOpen) fetchNotifications(); setIsOpen(!isOpen); }} title="התראות">
-        <svg className="icon"><use href="#i-bell" /></svg>
-        {unreadCount > 0 && <span className="dot" />}
+    <div {...itemProps}>
+      <button
+        type="button"
+        {...triggerProps}
+        className="v3-topbar__ib"
+        aria-label={unreadCount > 0 ? `התראות, ${unreadCount} חדשות` : 'התראות'}
+        title="התראות"
+      >
+        <Icon name="bell" />
+        {unreadCount > 0 && <span className="v3-badge v3-topbar__badge" aria-hidden="true"><bdi>{badgeText}</bdi></span>}
       </button>
 
-      {isOpen && (
-        <div className="user-menu-dropdown" style={{ minWidth: 340, maxWidth: 380, padding: 0, display: 'block' }}>
-          <div className="modal-head" style={{ padding: '12px 16px' }}>
-            <strong>התראות ({unreadCount})</strong>
-            <Link href="/messages" onClick={() => setIsOpen(false)} className="btn btn-secondary btn-sm">
-              <svg className="icon"><use href="#i-mail" /></svg>
-              פתח מרכז הודעות
-            </Link>
-          </div>
-
-          <div style={{ maxHeight: 350, overflowY: 'auto' }}>
-            {activeNotifications.length === 0 ? (
-              <div className="empty-state">
-                <svg className="icon"><use href="#i-message" /></svg>
-                <p>אין הודעות חדשות</p>
-              </div>
-            ) : (
-              activeNotifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  className="skeleton-row"
-                  style={{ background: notif.isRead ? 'transparent' : 'var(--primary-tint)', alignItems: 'flex-start' }}
-                >
-                  <div className="avatar" style={{ background: notif.receiverId ? 'var(--info-tint)' : 'var(--success-tint)', color: notif.receiverId ? 'var(--info)' : 'var(--success)' }}>
-                    {notif.sender ? notif.sender.firstName.charAt(0) : 'מ'}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                      <span style={{ fontWeight: 700, fontSize: '13px' }}>
-                        {notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת'}
-                        {notif.receiverId === null && <span className="badge badge-neutral" style={{ marginInlineStart: 6 }}>לכולם</span>}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-                        {new Date(notif.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '12.5px', color: 'var(--text-2)', marginBottom: 6, whiteSpace: 'pre-wrap' }}>
-                      {notif.content}
-                    </div>
-                    {!notif.isRead && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => markAsRead(notif.id)} style={{ padding: '2px 6px' }}>
-                        <svg className="icon"><use href="#i-check" /></svg>
-                        סמן כנקרא
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+      <div className="v3-topbar__panel v3-tb-panel v3-tb-bell" role="dialog" aria-label="התראות">
+        <div className="v3-panel-h">
+          <strong>התראות (<bdi>{unreadCount}</bdi>)</strong>
+          <Link href="/messages" onClick={() => closePanel(false)} className="v3-tb-linkbtn" data-tbl>
+            <Icon name="mail" size="sm" />
+            פתח מרכז הודעות
+          </Link>
         </div>
-      )}
+
+        <div className="v3-tb-scroll">
+          {activeNotifications.length === 0 ? (
+            <div className="v3-tb-empty v3-tb-empty--ic">
+              <Icon name="message" size="lg" />
+              <p>אין הודעות חדשות</p>
+            </div>
+          ) : (
+            activeNotifications.map((notif) => (
+              <div key={notif.id} className={`v3-notif${notif.isRead ? '' : ' is-unread'}`}>
+                <span className="v3-notif__ic" aria-hidden="true">
+                  {notif.sender ? notif.sender.firstName.charAt(0) : 'מ'}
+                </span>
+                <div className="v3-notif__b">
+                  <b>
+                    {notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת'}
+                    {notif.receiverId === null && <span className="v3-tag v3-tb-all-tag">לכולם</span>}
+                  </b>
+                  <span className="v3-notif__txt">{notif.content}</span>
+                  <small>
+                    <bdi>{new Date(notif.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi>
+                  </small>
+                  {!notif.isRead && (
+                    <button type="button" className="v3-tb-read" data-tbl onClick={() => markAsRead(notif.id)}>
+                      <Icon name="check" size="sm" />
+                      סמן כנקרא
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
