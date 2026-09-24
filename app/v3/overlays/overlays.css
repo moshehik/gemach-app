@@ -105,8 +105,7 @@ textarea.v3ov-input { height: auto; padding-block: var(--v3-sp-2); resize: verti
   display: flex;
   align-items: flex-start;
   gap: var(--v3-sp-3);
-  background: var(--v3-ov-surface, var(--v3-navy));
-  background: linear-gradient(180deg, #12305a, #0a2242);
+  background: var(--v3-grad-navy-float);
   color: var(--v3-on-dark);
   border-radius: var(--v3-r-xl);
   padding: var(--v3-sp-3) var(--v3-sp-4);

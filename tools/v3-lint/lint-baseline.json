@@ -1,0 +1,42 @@
+{
+  "_comment": "CONSTITUTION §ח.1 'הכנסה הדרגתית': הפרות קיימות שכבר היו ב-app/v3/** לפני שכלל הבדיקה נכתב, ולכן לא נכשלות - אבל אסור שהרשימה הזו תגדל (§ח.1 טבלה, שורה תחתונה). כל רשומה חייבת reason.",
+  "no-hex-outside-tokens": {
+    "reason": "#000 בתוך CSS mask (mask/-webkit-mask, linear-gradient(#000 0 0)) - טכניקת מיסוך שקוף/אטום, לא צבע חזותי. diagnosis-2026-09-24/01 §7 כבר תיעד את זה כחריג מקובל ('components.css עצמו כמעט נקי = 8 hex = #000 במסכות'). לא ניגע בזה עד שיהיה token ייעודי לצבע-מיסוך.",
+    "entries": [
+      "app/v3/components.css:455",
+      "app/v3/components.css:456",
+      "app/v3/components.css:1305",
+      "app/v3/components.css:1306"
+    ]
+  },
+  "media-breakpoints-single-set": {
+    "reason": "components.css הישן משתמש עדיין בנקודות-השבירה הישנות (1020/420/641/1180/1040/900/767) שהוחלפו רק ב-tokens/breakpoints.js (D-15). המיגרציה של components.css עצמו לסט החדש היא עבודה נפרדת (Phase 3-4, לפי עמוד) שדורשת בדיקה בדפדפן אמיתי בכל רוחב - לא נעשתה בסבב הזה. app/v3/overlays/overlays.css (הקובץ החדש שנבנה הסבב הזה) כבר משתמש רק בסט החדש - 0 באדג' שם.",
+    "entries": [
+      "app/v3/components.css:589",
+      "app/v3/components.css:611",
+      "app/v3/components.css:917",
+      "app/v3/components.css:1074",
+      "app/v3/components.css:1075",
+      "app/v3/components.css:1076",
+      "app/v3/components.css:1077"
+    ]
+  },
+  "no-hardcoded-font-size": {
+    "reason": "שלושה פיקסלים קשיחים ב-components.css הישן, קדם לסולם ה-tokens: תג-מונה 'redo' (11px), כותרת חלון מייל מהיר (22px, תואם לערך בסקיצה B בדיוק - S:~1200), תגית מותג בסרגל במובייל (11px). המרה ל-token מחייבת לבחור לאיזה --v3-fs-* הם הכי קרובים ולוודא חזותית שזה לא משנה משהו - לא נעשה בסבב הזה בלי דפדפן. app/v3/overlays/overlays.css (החדש) 0 הפרות.",
+    "entries": [
+      "app/v3/components.css:275",
+      "app/v3/components.css:861",
+      "app/v3/components.css:1081"
+    ]
+  },
+  "arrows-only-via-icon-semantic-names": {
+    "reason": "חמש הפרות, שתי קטגוריות: (1) app/v3/notify/store.js:93 הוא false-positive של הסקריפט - תו '←' בתוך תגובת קוד inline (/* ... */) שממוקמת אחרי קוד באותה שורה, לא ב-JSX/מחרוזת; הסקריפט מדלג רק על שורה שמתחילה בתגובה, לא תגובה-בתוך-שורה - תוקן להיות ידני כאן במקום להנדס מנתח-תגובות מלא. (2) history/HistoryFeed.js:77 + history/adapter.js:455/571/590 מציגים 'לפני ← אחרי' במחרוזת טקסט של פיד ההיסטוריה - בדיוק התרחיש שהחוקה מייעדת לרכיב <Range> (§ה.5 חריג מתועד: 'רכיב <Range> להצגת מ ← עד'), אבל <Range> עדיין לא נבנה (LIBRARY-MAP §2 מסמן אותו כ'חסר'). ברגע ש-<Range> ייבנה (Phase 3-4), ארבעת המקומות האלה אמורים לעבור אליו והשורה הזו ב-baseline תתכווץ בהתאם.",
+    "entries": [
+      "app/v3/notify/store.js:93",
+      "app/v3/history/HistoryFeed.js:77",
+      "app/v3/history/adapter.js:455",
+      "app/v3/history/adapter.js:571",
+      "app/v3/history/adapter.js:590"
+    ]
+  }
+}
