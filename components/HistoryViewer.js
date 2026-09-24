@@ -223,8 +223,8 @@ export default function HistoryViewer({ entityType, entityId, order, liveUndo, o
           if (ord) {
             const merged = await loadOrderHistoryRows({ ...ord, orderId: ord.orderId ?? entityId }, withExtra);
             if (cancelled) return;
-            setRows(merged); setTotal(merged.length); setPage(1); setUnified(true);
-            setCtx({ itemsById: itemsIndexFromOrder(ord) });
+            setRows(merged); setTotal(merged.totalAll || merged.length); setPage(1); setUnified(true);
+            setCtx({ itemsById: itemsIndexFromOrder(ord), singleOrder: true });
             return;
           }
         }
@@ -235,7 +235,7 @@ export default function HistoryViewer({ entityType, entityId, order, liveUndo, o
           if (dress) {
             const merged = await loadDressHistoryRows(entityId, (dress.items || []).map((i) => i.id).filter(Boolean), withExtra);
             if (cancelled) return;
-            setRows(merged); setTotal(merged.length); setPage(1); setUnified(true); setCtx({});
+            setRows(merged); setTotal(merged.totalAll || merged.length); setPage(1); setUnified(true); setCtx({});
             return;
           }
         }
@@ -254,7 +254,7 @@ export default function HistoryViewer({ entityType, entityId, order, liveUndo, o
   }, [entityType, entityId, order, filterAction, filterStartDate, filterEndDate, filterSearch]);
 
   // "טעינת עוד": רק במצב הקריאה היחידה (page= קיים בשרת)
-  const hasMore = !unified && total > rows.length;
+  const hasMore = total > rows.length;
   const loadMore = async () => {
     setLoadingMore(true);
     try {
@@ -290,7 +290,7 @@ export default function HistoryViewer({ entityType, entityId, order, liveUndo, o
         <div aria-busy={loading || undefined} style={loading ? { opacity: 0.6, transition: 'opacity var(--v3-dur-fast)' } : undefined}>
           <HistoryFeed
             rows={rows} ctx={feedCtx} total={total} showEntity={global} canShowAll={global}
-            hasMore={hasMore} loadingMore={loadingMore} onLoadMore={hasMore ? loadMore : undefined}
+            hasMore={hasMore} loadingMore={loadingMore} onLoadMore={hasMore && !unified ? loadMore : undefined}
             serverQuery={filterSearch} onServerSearch={(s) => setFilterSearch(s)} onClearServerSearch={() => setFilterSearch('')}
             onUndo={onUndo}
           />

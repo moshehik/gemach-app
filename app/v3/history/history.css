@@ -21,3 +21,7 @@
 .v3-hadv { display: flex; flex-wrap: wrap; gap: var(--v3-sp-3); align-items: flex-end; margin-bottom: var(--v3-sp-4); }
 .v3-hadv > * { flex: 1 1 160px; min-width: 0; }
 .v3-hmore { display: flex; align-items: center; justify-content: center; gap: var(--v3-sp-3); flex-wrap: wrap; padding: var(--v3-sp-3); color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }
+
+/* שדות טכניים: מקופל בפאנל המורחב */
+.v3-hentry .v3-htech { border-top: var(--v3-bw-hair) solid var(--v3-sky-200); padding-block: var(--v3-sp-2); }
+.v3-hentry .v3-htech > summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }

@@ -287,6 +287,8 @@ export const ENUMS = {
 
 /* --------------------------- 1. פענוח וניקוי changesJson --------------------------- */
 
+const TECH_SKIP = new Set(['id', 'legacyId', 'createdAt', 'updatedAt']);
+
 /** שדות/פעולות/ישויות שנתקלנו בהם ואינם במילון -- לגילוי פערים (מוצג ב-console בפיתוח בלבד). */
 export const missingLabels = new Set();
 const noteMissing = (kind, name) => { if (name) missingLabels.add(`${kind}:${name}`); };
@@ -352,18 +354,37 @@ export function replay(parsed) {
     const key = `${row.entityType}:${row.entityId}`;
     const st = state.get(key) || {};
     const fields = {};
+    const inferredSame = []; // שדות שה"לפני" שלהם הוסק (לא נרשם) ושווה ל"אחרי" -- לא מוכח כאי-שינוי (B3)
+    let recordedSame = 0;    // שדות שהשורה עצמה מוכיחה שאינם שונים (from===to מתועד) -- בטוח להשמיט
+    const isUpdate = row.action === 'UPDATE';
     for (const [f, c] of Object.entries(p.fields)) {
       let { from, to, hasFrom } = c;
-      if (!hasFrom && f in st) { from = st[f]; hasFrom = true; }
-      if (hasFrom && String(from ?? '') === String(to ?? '')) continue; // לא שינוי
-      if (!hasFrom && p.shape === 'snapshot' && (to === false || to === 0 || empty(to))) { st[f] = to; continue; } // ברירות מחדל ריקות ביצירה
-      fields[f] = { from, to, hasFrom };
-      st[f] = to;
+      let inferred = false;
+      if (isUpdate) {
+        // השלמת "לפני" והסקת רעש -- רק בעדכוני מצב של ישות (B2: אף פעם לא באירועים/CREATE)
+        if (!hasFrom && f in st) { from = st[f]; hasFrom = true; inferred = true; }
+        if (hasFrom && same(from, to)) {
+          if (inferred) inferredSame.push(f); else recordedSame += 1;
+          st[f] = to; continue;
+        }
+      } else if (hasFrom && row.action !== 'CREATE' && same(from, to) && p.shape === 'diff') {
+        recordedSame += 1; continue;
+      }
+      if (!hasFrom && row.action === 'CREATE' && p.shape === 'snapshot' && (to === false || to === 0 || empty(to))) { st[f] = to; continue; } // ברירות מחדל ריקות ביצירה
+      fields[f] = { from, to, hasFrom, inferred };
+      if (isUpdate || row.action === 'CREATE' || hasFrom) st[f] = to; // אירועים בלי from לא משנים מצב
     }
     state.set(key, st);
-    out.set(row.id, { ...p, fields });
+    out.set(row.id, { ...p, fields, inferredSame, recordedSame });
   }
   return { byRow: out, state };
+}
+
+/** השוואה עמוקה (אובייקטים/מערכים) -- לא "[object Object]". */
+function same(a, b) {
+  const x = a ?? '', y = b ?? '';
+  if (typeof x === 'object' || typeof y === 'object') { try { return JSON.stringify(x) === JSON.stringify(y); } catch { return false; } }
+  return String(x) === String(y);
 }
 
 /* ------------------------------- 3. עיצוב ערכים ------------------------------- */
@@ -371,7 +392,7 @@ export function replay(parsed) {
 const TZ = 'Asia/Jerusalem';
 export const money = (n) => '₪' + Math.abs(Math.round(Number(n) * 100) / 100).toLocaleString('he-IL');
 const dmy = (d) => d.toLocaleDateString('he-IL', { timeZone: TZ, day: 'numeric', month: 'numeric', year: 'numeric' });
-const hm = (d) => d.toLocaleTimeString('he-IL', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false });
+const hm = (d) => d.toLocaleTimeString('he-IL', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 /** ערך -> מחרוזת תצוגה לפי fmt של השדה (מחליף formatValue של ChangesChips/HistoryViewer). */
 export function fmtValue(field, v) {
@@ -412,6 +433,8 @@ export function toFeedEntry(row, p, ctx = {}, stateLookup = () => ({})) {
   const act = ACTIONS[row.action] || null;
   const F = p.fields;
   const visible = Object.keys(F).filter((k) => !(FIELDS[k] && FIELDS[k][4]));
+  // שדות "טכניים" (מוסתרים בשורה, לא בפירוט): שינוי אמיתי שלהם לעולם לא נזרק (B1). רק מזהים/חותמות זמן מושמטים.
+  const tech = Object.keys(F).filter((k) => FIELDS[k] && FIELDS[k][4] && !TECH_SKIP.has(k));
   const st = stateLookup(row) || {};
   const item = row.entityType === 'OrderItem'
     ? ((ctx.itemsById || {})[row.entityId] || {})
@@ -465,8 +488,9 @@ export function toFeedEntry(row, p, ctx = {}, stateLookup = () => ({})) {
     const n = num(F.amount?.to ?? st.amount);
     if (A === 'EXECUTE' || F.isExecuted?.to === true) text = `הזיכוי בוצע${n ? ' ' + money(n) : ''}`;
     else if (A === 'AUTO_CREDIT_REFUND_CLEARED') text = 'זיכוי אוטומטי בוטל';
+    else if (A === 'UPDATE') text = `עודכן זיכוי${n ? ' ' + money(n) : ''}`;
     else text = `נוצר זיכוי ${n ? money(n) : ''}`.trim();
-    if (n && A !== 'EXECUTE') { amt = -Math.abs(n); kind = 'crd'; }
+    if (n && A !== 'EXECUTE' && A !== 'UPDATE') { amt = -Math.abs(n); kind = 'crd'; }
     if (F.reason?.to) sub = F.reason.to;
   } else if (A === 'DEBT_APPROVED') {
     const n = num(F.approvedDebtAmount?.to); text = 'אושרה יתרת חוב'; amt = n || null; kind = 'chg';
@@ -502,10 +526,18 @@ export function toFeedEntry(row, p, ctx = {}, stateLookup = () => ({})) {
     text = genericSentence(E, A, visible, F, ctx, row);
   }
 
-  // רשומת UPDATE שכל שדותיה רעש/זהים -> נדחית (parity: המסך הישן הציג "לא בוצעו שינויים מהותיים")
+  // UPDATE בלי שדות מוצגים: (1) אם ההשמטה מוכחת מהשורה עצמה (from===to מתועד / ריק) -- נדחית;
+  // (2) אם רק הוסקה מהמצב הידוע (משוער, B3) -- נשארת כרשומת "ללא שינוי מזוהה"; (3) שדות טכניים בלבד -- מוצגת (B1).
+  let noise = false, estimated = false;
   if (A === 'UPDATE' && visible.length === 0 && p.shape !== 'unparsable') {
-    if (!ctx.showNoise) return null;
-    text = 'נשמר בלי שינוי מהותי'; sub = ''; cat = 'sys'; icon = 'info'; amt = null; kind = null;
+    if (tech.length) {
+      sub = 'נתונים טכניים: ' + tech.slice(0, 3).map((k) => FIELDS[k]?.[0] || k).join(', ');
+    } else if ((p.inferredSame || []).length) {
+      noise = true; estimated = true; text = 'נשמר בלי שינוי מזוהה (משוער)'; cat = ent.cat; icon = 'info'; amt = null; kind = null;
+      sub = 'ערכים זהים לרשומה הקודמת: ' + p.inferredSame.slice(0, 3).map((k) => FIELDS[k]?.[0] || k).join(', ');
+    } else if (ctx.showNoise) {
+      noise = true; text = 'נשמר בלי שינוי מהותי'; sub = ''; cat = 'sys'; icon = 'info'; amt = null; kind = null;
+    } else return null;
   }
 
   const who = row.employeeId ? (row.employeeName || 'עובד שנמחק') : 'מערכת';
@@ -513,7 +545,7 @@ export function toFeedEntry(row, p, ctx = {}, stateLookup = () => ({})) {
   return {
     id: row.id, ts: tsIso(row.createdAt), rawTs: row.createdAt, cat, icon,
     badge: act?.badge || ent.label, tone: act?.tone || 'neutral', entLabel: ent.label,
-    text, sub, who, amt: amt || undefined, kind: kind || undefined, det,
+    text, sub, who, amt: amt || undefined, kind: kind || undefined, det, tech: buildTech(p, tech), noise, estimated,
     entityType: E, entityId: row.entityId, action: A,
     redo: redoState(row, p, ctx),
     raw: row.changesJson, // לחיפוש (hay) ולכפתור "פירוט גולמי" למנהלים
@@ -533,6 +565,13 @@ function genericSentence(E, A, visible, F, ctx, row) {
   return act?.verb || `${ent} עודכן/ה`;
 }
 
+function buildTech(p, tech) {
+  return tech.map((k) => {
+    const c = p.fields[k];
+    return [(FIELDS[k]?.[0] || k) + (c.inferred ? ' (משוער)' : ''), c.hasFrom ? `${fmtValue(k, c.from)} ← ${fmtValue(k, c.to)}` : fmtValue(k, c.to)];
+  });
+}
+
 /** פירוט מורחב: [[label, value]]; זוג "לפני"/"אחרי" יחיד כשיש שדה אחד עם from/to (כמו הסקיצה). */
 function buildDetails(row, p, visible) {
   const det = [];
@@ -540,9 +579,9 @@ function buildDetails(row, p, visible) {
     const c = p.fields[k]; if (!FIELDS[k]) noteMissing('field', k);
     const lbl = FIELDS[k]?.[0] || k; // שדה לא מוכר: מפתח גולמי (fallback, נרשם ב-missingLabels)
     const long = FIELDS[k]?.[3] === 'long';
-    return { k, lbl, long, c };
+    return { k, lbl: c.inferred ? `${lbl} (משוער)` : lbl, long, c };
   });
-  if (rows.length === 1 && rows[0].c.hasFrom) {
+  if (rows.length === 1 && rows[0].c.hasFrom && !rows[0].c.inferred) {
     // הסקיצה מציגה "שינוי: לפני ← אחרי" כשיש זוג לפני/אחרי
     det.push(['לפני', fmtValue(rows[0].k, rows[0].c.from)], ['אחרי', fmtValue(rows[0].k, rows[0].c.to)]);
     return det;
@@ -586,18 +625,25 @@ export function buildFeed(rows, ctx = {}) {
     for (const r of rows) {
       if (r.action !== 'CANCEL_ORDER' || r.entityType === 'Order') continue;
       const t = new Date(r.createdAt).getTime();
-      const par = cancelParents.find((c) => Math.abs(new Date(c.createdAt).getTime() - t) <= 5000);
+      // קיבוץ לפי הזמנה: ילד מקופל רק כשהוא מזוהה עם אותה הזמנה (orderId ב-changesJson), או כשהפיד כולו של הזמנה אחת
+      const cOrder = byRow.get(r.id)?.extras?.orderId;
+      const par = cancelParents.find((c) => {
+        if (Math.abs(new Date(c.createdAt).getTime() - t) > 5000) return false;
+        if (ctx.singleOrder) return true;
+        const pOrder = byRow.get(c.id)?.extras?.orderId ?? (/^\d+$/.test(String(c.entityId)) ? c.entityId : null);
+        return cOrder != null && pOrder != null && String(cOrder) === String(pOrder);
+      });
       if (par) folded.set(r.id, par.id);
     }
   }
   const childCount = {};
   for (const [rid, pid] of folded) {
     const r = rows.find((x) => x.id === rid);
-    const c = (childCount[pid] = childCount[pid] || { items: [], charges: 0 });
+    const c = (childCount[pid] = childCount[pid] || { items: [], charges: 0, sum: 0 });
     if (r.entityType === 'OrderItem') {
       const it = (ctx.itemsById || {})[r.entityId] || {};
       c.items.push((it.model || 'פריט') + (it.size ? ` · מידה ${it.size}` : ''));
-    } else c.charges += 1;
+    } else { c.charges += 1; c.sum += num(lookup(r)?.amount); }
   }
   for (const row of rows) {
     if (folded.has(row.id)) continue;
@@ -607,7 +653,7 @@ export function buildFeed(rows, ctx = {}) {
     const ch = childCount[row.id];
     if (ch) {
       if (ch.items.length) { e.sub = e.sub ? `${e.sub} · ` : ''; e.sub += ch.items.length === 1 ? 'פריט אחד' : `${ch.items.length} פריטים`; e.det = [...(e.det || []), ['פריטים שבוטלו', ch.items.join(', ')]]; }
-      if (ch.charges) e.det = [...(e.det || []), ['חיובים שבוטלו', String(ch.charges)]];
+      if (ch.charges) e.det = [...(e.det || []), ['חיובים שבוטלו', ch.sum ? `${ch.charges} (${money(ch.sum)})` : String(ch.charges)]];
     }
     entries.push(e);
   }
@@ -668,5 +714,8 @@ export async function loadDressHistoryRows(modelId, itemIds = [], fetchJson = de
 /** איחוד תשובות /api/audit לפי id (בלי כפילויות). */
 export function mergeRows(results) {
   const seen = new Set();
-  return results.flatMap((r) => r.logs || []).filter((l) => !seen.has(l.id) && seen.add(l.id));
+  const merged = results.flatMap((r) => r.logs || []).filter((l) => !seen.has(l.id) && seen.add(l.id));
+  // חיתוך שקט (limit) -> totalAll גדול מהנטען; המסך המארח מציג "יש עוד" (הערת אימות: חיתוך ב-500)
+  merged.totalAll = results.reduce((n, r) => n + (Number.isFinite(r.total) ? r.total : (r.logs || []).length), 0);
+  return merged;
 }

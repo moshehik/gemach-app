@@ -78,6 +78,12 @@ function Entry({ e, i, words, open, onToggle, showEntity, canRaw, onUndo }) {
           {det.map(([a, b], k) => (bf && af && (a === 'לפני' || a === 'אחרי') ? null : (
             <div className="v3-hrow" key={k}><small>{a}</small><b><bdi><Hl text={b} words={words} /></bdi></b></div>
           )))}
+          {e.tech && e.tech.length ? (
+            <details className="v3-htech">
+              <summary>שדות טכניים ({e.tech.length})</summary>
+              {e.tech.map(([a, b], k) => <div className="v3-hrow" key={k}><small>{a}</small><b><bdi><Hl text={b} words={words} /></bdi></b></div>)}
+            </details>
+          ) : null}
           {canRaw && e.raw ? <div className="v3-hrow"><small>גולמי</small><pre className="v3-hraw">{typeof e.raw === 'string' ? e.raw : JSON.stringify(e.raw)}</pre></div> : null}
           {canUndo ? (
             <div className="v3-hrow v3-hrow--acts">
@@ -105,6 +111,7 @@ export default function HistoryFeed({ rows, ctx, showEntity = false, canShowAll 
   const [panel, setPanel] = useState(false);
   const [openMap, setOpenMap] = useState({});
   const [showNoise, setShowNoise] = useState(false);
+  const [hideNoise, setHideNoise] = useState(false);
   const selRef = useRef(null), triggerRef = useRef(null), inputRef = useRef(null);
   const listId = `hfl-${useId().replace(/:/g, '')}`;
 
@@ -125,8 +132,8 @@ export default function HistoryFeed({ rows, ctx, showEntity = false, canShowAll 
   const activeSel = sel.filter((k) => cats.some((c) => c[0] === k));
 
   const visible = useMemo(
-    () => feed.entries.filter((e) => (!activeSel.length || activeSel.some((k) => inCat(e, k))) && hit(e)),
-    [feed, sel, words],
+    () => feed.entries.filter((e) => (!activeSel.length || activeSel.some((k) => inCat(e, k))) && !(hideNoise && e.noise) && hit(e)),
+    [feed, sel, words, hideNoise],
   );
   const days = useMemo(() => {
     const out = [];
@@ -216,6 +223,12 @@ export default function HistoryFeed({ rows, ctx, showEntity = false, canShowAll 
             <button key={k} type="button" className="v3-pill" aria-label={`הסרת סינון ${nameOf[k]}`} onClick={() => toggleCat(k)}>{nameOf[k]}<Icon name="x" size="xs" /></button>
           ))}
         </div>
+        {feed.entries.some((e) => e.estimated) && (
+          <div className="v3-hcnt">
+            <Switch checked={hideNoise} onChange={setHideNoise} label="הסתר שמירות ללא שינוי מזוהה" />
+            <Tip>שמירות שבהן כל הערכים זהים למה שרשום בהיסטוריה. ייתכן ששינוי שלא תועד הסתתר ביניהן, ולכן הן מוצגות כברירת מחדל.</Tip>
+          </div>
+        )}
         {canShowAll && (
           <div className="v3-hcnt">
             <Switch checked={showNoise} onChange={setShowNoise} label="הצג גם שמירות ללא שינוי ופירוט גולמי" />
