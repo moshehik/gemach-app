@@ -1,0 +1,1 @@
+2026-09-24T13:41Z polish done — shell v1 sha:d7c2b5b7b88b in all 7 prototypes; see PARITY-REPORT.md
