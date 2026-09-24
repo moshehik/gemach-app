@@ -366,6 +366,7 @@ html[data-motion=reduced] .b-timer{animation-duration:var(--t-ms,3000ms)!importa
 .appr .ic{margin-inline-start:auto;color:var(--v3-gold-500)}
 .derr{color:var(--v3-rose-300);text-align:center;font-size:var(--v3-fs-base);margin-top:10px;min-height:1.6em}
 .dlg:not([data-v3-mode=dark]) .derr{color:var(--v3-plum)}
+.dlg .opt-note,.dlg .empty{color:var(--d-sub)}.dlg .empty b{color:var(--d-ink)} /* REVIEW-touch-1 M-5: טעינה/ריק/שגיאה בחלונית כהה היו navy על navy */
 .dlg-b > .field + .field{margin-top:var(--v3-sp-4)}
 .ord{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--d-line)}
 .ord:first-child{border-top:0}
@@ -807,7 +808,7 @@ function renderPunch(){
     <div class="card stack" style="gap:20px">
       <div class="field"><label for="pcEmp">השם שלך</label>
         <div class="combo"><input class="input" id="pcEmp" role="combobox" aria-expanded="${P.open}" aria-controls="pcList" aria-autocomplete="list" autocomplete="off" placeholder="${loading ? 'טוענים את השמות…' : 'הקלידו שם לחיפוש'}" value="${esc(P.q)}" ${P.act >= 0 ? `aria-activedescendant="pco-${P.act}"` : ''}>
-        ${P.open ? `<div class="combo-list" id="pcList" role="listbox" aria-label="צוות">${loading ? `<div class="opt-note" role="status">${ic('loader','sm','loop')}טוענים את השמות…</div>` : failed ? `<div class="opt-note" role="alert">${ic('alert','sm')}<span style="flex:1">לא הצלחנו לטעון את השמות.</span><button type="button" class="btn sm" data-act="pcRetry">${ic('refresh','sm','spin')}לנסות שוב</button></div>` : list.length ? list.map((e, i) => `<button type="button" class="opt ${i === P.act ? 'act' : ''}" role="option" id="pco-${i}" aria-selected="${!!(P.emp && P.emp.id === e.id)}" data-emp="${e.id}" tabindex="-1"><span class="oa">${esc(e.name[0])}</span><span class="on">${esc(e.name)}</span></button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין שם כזה ברשימה</div>`}</div>` : ''}</div>
+        ${P.open ? `<div class="combo-list" id="pcList" ${loading || failed || !list.length ? '' : 'role="listbox"'} aria-label="צוות">${loading ? `<div class="opt-note" role="status">${ic('loader','sm','loop')}טוענים את השמות…</div>` : failed ? `<div class="opt-note" role="alert">${ic('alert','sm')}<span style="flex:1">לא הצלחנו לטעון את השמות.</span><button type="button" class="btn sm" data-act="pcRetry">${ic('refresh','sm','spin')}לנסות שוב</button></div>` : list.length ? list.map((e, i) => `<button type="button" class="opt ${i === P.act ? 'act' : ''}" role="option" id="pco-${i}" aria-selected="${!!(P.emp && P.emp.id === e.id)}" data-emp="${e.id}" tabindex="-1"><span class="oa">${esc(e.name[0])}</span><span class="on">${esc(e.name)}</span></button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין שם כזה ברשימה</div>`}</div>` : ''}</div>
         ${P.emp ? `<span class="fhint">${ic('check','sm')} נבחרה: ${esc(P.emp.name)}</span>` : ''}</div>
       <div class="field"><label for="pcPw">${trusted ? 'סיסמה או קוד קצר' : 'סיסמה'}${trusted ? tip('במחשב הזה, שהוגדר כמחשב מערכת, אפשר להקליד גם את הקוד הקצר: ארבעת התווים האחרונים של הסיסמה.') : ''}</label>
         <div class="pw" id="pcPwBox"><input class="input" id="pcPw" type="${P.show ? 'text' : 'password'}" dir="auto" autocomplete="new-password" placeholder="מקלידים כאן" value="${esc(P.pw)}">
@@ -885,8 +886,9 @@ function unlockDlg(intent){
     const q = d.querySelector('#ul-q'), list = d.querySelector('#ul-list'), pw = d.querySelector('#ul-pw'), err = d.querySelector('#ulErr'), go = d.querySelector('[data-go]');
     const draw = () => { if ($('#dLoad').value === 'error'){ /* REVIEW-touch-1 M-6: GET /api/employees נכשל */
         list.innerHTML = `<div class="opt-note" role="alert">${ic('alert','sm')}<span style="flex:1">לא הצלחנו לטעון את רשימת הצוות.</span><button type="button" class="btn sm" data-ul-retry>${ic('refresh','sm','spin')}לנסות שוב</button></div>`;
-        list.querySelector('[data-ul-retry]').onclick = () => { $('#dLoad').value = 'ok'; draw(); q.focus(); }; return; }
+        list.removeAttribute('role'); list.querySelector('[data-ul-retry]').onclick = () => { $('#dLoad').value = 'ok'; draw(); q.focus(); }; return; }
       const f = q.value.trim(); const shown = pool.map((a, i) => [a, i]).filter(([a]) => !f || a.name.includes(f));
+      if (shown.length) list.setAttribute('role', 'listbox'); else list.removeAttribute('role'); /* axe aria-required-children */
       list.innerHTML = shown.length ? shown.map(([a, i]) => `<button type="button" class="appr" role="option" aria-selected="${i === sel}" data-i="${i}" tabindex="-1"><span class="oa">${esc(a.name[0])}</span><span>${esc(a.name)}</span>${i === sel ? ic('check','sm') : ''}</button>`).join('') : `<div class="opt-note">${ic('search','sm')}אין שם כזה ברשימה</div>`;
       list.querySelectorAll('.appr').forEach(b => b.onclick = () => { sel = +b.dataset.i; err.textContent = ''; draw(); pw.focus(); }); };
     draw(); q.oninput = draw; q.focus();

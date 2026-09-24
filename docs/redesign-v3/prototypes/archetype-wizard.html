@@ -565,7 +565,8 @@ details.more>.in{padding:4px 16px 16px}
 .citem .p{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .citem .p .pr{font-weight:700;font-size:var(--v3-fs-md)}
 .citem .ia{display:flex;gap:4px}
-.citem .ia .ibtn{background:var(--v3-surface);border-color:var(--v3-line);width:40px;height:40px}
+.citem .ia .ibtn{background:var(--v3-surface);border-color:var(--v3-line)} /* 44×44 (tap-min) */
+.card-h .acts .btn.sm,.ph-chips a.chip{min-height:var(--v3-tap)}
 .citem .ia .ibtn:hover{background:var(--v3-navy-800);color:#fff}
 @media (max-width:480px){.citem{grid-template-columns:minmax(0,1fr) auto}.citem .th{display:none}}
 .totline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;border-top:2px solid var(--v3-gold-500);margin-top:4px;font-size:var(--v3-fs-lg)}
@@ -605,7 +606,7 @@ details.more>.in{padding:4px 16px 16px}
   .stepnav .go .btn{flex:1;min-width:0}
   .stepnav .btn{padding-inline:12px}
   .stepnav .back .lbl{display:none}
-  .stepnav .why{display:none}
+  .stepnav .why .wt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .page.wiz{padding-bottom:calc(var(--v3-sp-7) + 96px)}
 }
 @media (max-width:1023px){.toasts{bottom:24px}}
@@ -730,6 +731,7 @@ details.more>.in{padding:4px 16px 16px}
         <label class="chk"><input type="checkbox" id="dDup"> השמירה מוצאת הזמנה כפולה</label>
         <label class="chk"><input type="checkbox" id="dStock"> המלאי השתנה לפני השמירה</label>
         <label class="chk"><input type="checkbox" id="dDecline"> חיוב האשראי נדחה</label>
+        <label class="chk"><input type="checkbox" id="dWarn"> השמירה הצליחה עם אזהרה</label>
       </div>
       <div class="demo-grp">
         <h3>תצוגה</h3>
@@ -829,6 +831,7 @@ function openLayer({ type, size = 'm', html, onMount, closeOnScrim = true }){
   const layer = { el:scrim, trigger:document.activeElement, type, busy:false, resolve:null, onEsc:null };
   const p = new Promise(r => { layer.resolve = r; });
   scrim.addEventListener('mousedown', e => { if (e.target === scrim && closeOnScrim && !layer.busy) closeLayer(layer, null); });
+  const sub = scrim.querySelector('.dlg-h p'); if (sub){ sub.id = tid + '-d'; scrim.querySelector('.dlg').setAttribute('aria-describedby', sub.id); } /* §ד.3 */
   $('#layer-root').appendChild(scrim); layers.push(layer); lockSync();
   if (onMount) onMount(scrim.querySelector('.dlg'), layer);
   const af = scrim.querySelector('[data-autofocus]') || scrim.querySelector('button,input,select,textarea');
@@ -870,14 +873,23 @@ function serverFails(){ return !!($('#dFail') && $('#dFail').checked); }
 /* חלון אישור בסיסמה — כמו customAuthPrompt/verify-pin היום (REVIEW-1 B-1):
    withPicker=true: בחירת מאשר מסוננת (employee.approvals[key]) + סיסמה מלאה;
    withPicker=false: סיסמה בלבד (כמו ייצוא מעל התקרה היום — verify-pin בלי employeeId). */
-const APPROVERS = [{ id:'e1', n:'שולמית', r:'הנהלה ראשית', ok:true }, { id:'e2', n:'מרים גולד', r:'הנהלה ראשית', ok:true }, { id:'e3', n:'אסתר ברק', r:'מנהלת סניף', ok:true }, { id:'e4', n:'דבורה שטרן', r:'מנהלת סניף', ok:true }, { id:'e5', n:'נחמה', r:'מזכירות', ok:false }];
-function codeDlg({ title = 'אישור מנהל', purpose, withPicker = true }){
+/* REVIEW-wizard-1 M-1: הרשימה מסוננת לפי הרמה/המפתח, בדיוק כמו PopupProvider.showAuthPrompt:
+   'הנהלה ראשית' = roleId 0/2 בלבד; 'feature:*' = employee.approvals[key] (הנהלה ראשית/מתכנת תמיד, אחרים לפי שורת הרשאה).
+   ap = פריטי "מאשר" שהוגדרו לעובד בעמוד ההרשאות (ערכי דמה). */
+const APPROVERS = [
+  { id:'e1', n:'שולמית', r:'הנהלה ראשית', roleId:0, ap:[] },
+  { id:'e2', n:'מרים גולד', r:'הנהלה ראשית', roleId:0, ap:[] },
+  { id:'e3', n:'אסתר ברק', r:'מנהלת סניף', roleId:1, ap:['feature:missing_contact_approval','feature:special_spacing_approval','feature:payment_exit_approval'] },
+  { id:'e4', n:'דבורה שטרן', r:'מנהלת סניף', roleId:1, ap:['feature:payment_exit_approval'] },
+  { id:'e5', n:'נחמה', r:'מזכירות', roleId:4, ap:[] }];
+const canApprove = (a, level) => level === 'הנהלה ראשית' ? [0, 2].includes(a.roleId) : String(level).startsWith('feature:') ? ([0, 2].includes(a.roleId) || a.ap.includes(level)) : true;
+function codeDlg({ title = 'אישור מנהל', purpose, withPicker = true, level }){
   const me = ($('#tbUser') && $('#tbUser').textContent) || '';
-  const pool = $('#dNoAppr') && $('#dNoAppr').checked ? [] : APPROVERS.filter(a => a.ok);
+  const pool = $('#dNoAppr') && $('#dNoAppr').checked ? [] : APPROVERS.filter(a => canApprove(a, level));
   let sel = pool.findIndex(a => a.n === me); let loaded = !withPicker;
   const html = `<div class="dlg-h"><span class="dlg-badge">${ic('lock','lg')}</span><h2 id="%TID%">${esc(title)}</h2><p>${esc(purpose)}</p></div>
     <div class="dlg-b">
-      ${withPicker ? `<div class="field"><label for="ap-q">מי מאשר${tip('ברשימה מופיעים רק עובדים שמורשים לאשר את הפעולה הזו (עמוד ההרשאות).')}</label>
+      ${withPicker ? `<div class="field"><label for="ap-q">מי מאשר${tip(level === 'הנהלה ראשית' ? 'ברשימה מופיעים רק עובדי הנהלה ראשית.' : 'ברשימה מופיעים רק עובדים שמורשים לאשר את הפעולה הזו (עמוד ההרשאות).')}</label>
         <div class="appr-box"><input class="input" id="ap-q" role="combobox" aria-expanded="true" aria-controls="ap-list" aria-autocomplete="list" autocomplete="off" placeholder="חיפוש לפי שם">
         <div class="approvers" id="ap-list" role="listbox" aria-label="מאשרים"></div></div></div>` : ''}
       <div class="field"><label for="ap-pw">${withPicker ? 'הסיסמה של המאשר' : 'סיסמה של עובד מורשה'}</label>
@@ -1023,6 +1035,7 @@ const fullName = c => [c.firstName, c.lastName].filter(x => x && x !== 'null' &&
 const payMethods = () => { const raw = cfg.raw('ALLOWED_PAYMENT_METHODS') ? cfg.list('ALLOWED_PAYMENT_METHODS') : ['אשראי (דרך נדרים פלוס)','מזומן','יציאה באישור מנהל']; if (!cfg.off('nedarim_plus_enabled')) return raw; const w = raw.filter(o => !(o.includes('אשראי') && !o.includes('חיצונית'))); return w.length ? w : ['יציאה באישור מנהל']; };
 const isCredit = m => m.includes('אשראי') && !m.includes('חיצונית');
 const MGR_EXIT = 'יציאה באישור מנהל';
+const LAST_BRANCH = { v:'' }; /* מדמה localStorage['gemach_last_order_branch'] */
 const active = () => W.cart;
 const datesFilled = () => W.order.isAbroad ? !!(W.order.fromDate && W.order.toDate) : !!W.order.eventDate;
 const effDate = () => W.order.isAbroad ? W.order.fromDate : W.order.eventDate;
@@ -1030,18 +1043,21 @@ const cityPrices = () => cfg.json('delivery_price_by_city', {});
 const hasCityMap = () => Object.keys(cityPrices()).length > 0;
 function deliveryErr(){ /* lib/deliveryValidation.js */
   const o = W.order, c = W.customer || {}; if (!cfg.flag('enable_deliveries') || !o.isDelivery) return {};
-  const e = {}; const cityReq = !c.city || (hasCityMap() && !(c.city in cityPrices()));
-  if (cityReq && !o.deliveryCity) e.city = 'צריך לבחור עיר למשלוח';
+  const e = {};
+  if (cityRequired() && !o.deliveryCity) e.city = 'צריך לבחור עיר למשלוח';
   if (o.deliveryCity && c.city && o.deliveryCity !== c.city && !o.deliveryAddress.trim()) e.addr = 'העיר שונה מהעיר של הלקוח — צריך כתובת למשלוח';
   return e;
 }
+/* REVIEW-wizard-1 M-3: isDeliveryCityRequired — העיר חובה כשעיר הלקוח אינה מפתח ב-delivery_price_by_city (טבלה ריקה = תמיד חובה) */
+const cityRequired = () => { const c = W.customer || {}; return !!(W.order.isDelivery && !(c.city && Object.keys(cityPrices()).includes(c.city))); };
+const perDirPrice = city => { const v = Number(cityPrices()[city]); if (v > 0) return v; const f = Number(cfg.raw('delivery_price')); return f > 0 ? f : 50; }; /* calculate route:134-139 */
 const addrRequired = () => { const o = W.order, c = W.customer || {}; return o.isDelivery && o.deliveryCity && c.city && o.deliveryCity !== c.city; };
 const canNav = n => n === 1 || (n === 2 && !!W.customer) || (n === 3 && !!W.customer && datesFilled()) || (n >= 4 && !!W.customer && datesFilled() && active().length > 0);
 const lockReason = n => !W.customer ? 'קודם בוחרים לקוח' : n === 3 || !datesFilled() ? 'קודם בוחרים תאריך אירוע' : 'קודם מוסיפים לפחות שמלה אחת';
 
 /* ===== תמחור (מדמה POST /api/orders/calculate) ===== */
 function calcItem(it){ const abroad = W.order.isAbroad ? 1.5 : 1; const rep = cfg.off('enable_alterations') ? 0 : (it.neck ? 30 : 0) + (it.sleeve ? 30 : 0) + (it.length ? 40 : 0); return { price:Math.round(basePrice(it.size) * abroad) + rep, rep }; }
-function deliveryAmount(){ const o = W.order; if (!cfg.flag('enable_deliveries') || !o.isDelivery || !o.deliveryCity) return 0; const map = cityPrices(); const per = map[o.deliveryCity] ?? (parseFloat(cfg.raw('delivery_price')) || 50); return per * (o.deliveryDirection === 'הלוך-חזור' ? 2 : 1); }
+function deliveryAmount(){ const o = W.order; if (!cfg.flag('enable_deliveries') || !o.isDelivery || !o.deliveryCity) return 0; return perDirPrice(o.deliveryCity) * (o.deliveryDirection === 'הלוך-חזור' ? 2 : 1); }
 const itemsTotal = () => active().reduce((s, it) => s + calcItem(it).price, 0);
 const total = () => active().length ? itemsTotal() + deliveryAmount() : 0;
 const paid = () => W.payments.reduce((s, p) => s + p.amount, 0);
@@ -1133,7 +1149,7 @@ function s1(){
   } else if (W.custTab === 'name'){
     const all = CUSTOMERS(); const q = W.nameQ.trim(); const res = q ? all.filter(c => fullName(c).includes(q) || c.phone1.includes(q) || (c.city || '').includes(q)) : all;
     body = `<div class="field combo"><label for="nm-q">שם, טלפון או עיר</label><input class="input" id="nm-q" role="combobox" aria-expanded="${W.nameOpen}" aria-controls="nm-list" aria-autocomplete="list" autocomplete="off" value="${esc(W.nameQ)}" placeholder="לדוגמה: פרידמן" data-autofocus>
-      ${W.nameOpen ? `<div class="combo-list" id="nm-list" role="listbox" aria-label="לקוחות">${W.nameLoading ? `<div class="combo-note" role="status">${ic('loader','sm','loop')}מחפשים…</div>` : res.length ? res.map(c => `<button type="button" role="option" aria-selected="false" data-pick="${c.id}" tabindex="-1"><span class="av" aria-hidden="true">${esc(c.firstName[0])}</span><span class="l1">${esc(fullName(c))}${c.isBlocked ? `<span class="chip attn">${ic('ban')}חסומה</span>` : ''}</span><span class="l2"><bdi dir="ltr">${esc(c.phone1)}</bdi>${c.city ? ` · ${esc(c.city)}` : ''}</span></button>`).join('') : `<div class="combo-note">${ic('search','sm')}לא נמצאו לקוחות. <button type="button" class="btn sm quiet" data-ctab="new">לקוח חדש</button></div>`}</div>` : ''}</div>`;
+      ${W.nameOpen ? `<div class="combo-list" id="nm-list" role="listbox" aria-label="לקוחות">${W.nameLoading ? `<div class="combo-note" role="status">${ic('loader','sm','loop')}מחפשים…</div>` : res.length ? res.map(c => `<button type="button" role="option" aria-selected="false" data-pick="${c.id}" tabindex="-1"><span class="av" aria-hidden="true">${esc(c.firstName[0])}</span><span class="l1">${esc(fullName(c))}${c.isBlocked ? `<span class="chip attn">${ic('ban')}חסומה</span>` : ''}</span><span class="l2"><bdi dir="ltr">${esc(c.phone1)}</bdi>${c.city ? ` · ${esc(c.city)}` : ''}</span>${c.phone2 || c.email ? `<span class="l2" style="grid-column:2">${[c.phone2 && `<bdi dir="ltr">${esc(c.phone2)}</bdi>`, c.email && `<bdi dir="ltr">${esc(c.email)}</bdi>`].filter(Boolean).join(' · ')}</span>` : ''}</button>`).join('') : `<div class="combo-note">${ic('search','sm')}לא נמצאו לקוחות. <button type="button" class="btn sm quiet" data-ctab="new">לקוח חדש</button></div>`}</div>` : ''}</div>`;
   } else {
     const c = W.nc, e = W.ncErr, ug = unmetGroups(c);
     const reqAddr = cfg.flag('require_full_address') || cfg.list('mandatory_fields').some(x => /city|street|houseNum/i.test(x));
@@ -1144,7 +1160,7 @@ function s1(){
       <div class="form-grid">${field({ id:'nc-phone1', label:'טלפון', val:c.phone1, req:true, type:'tel', ltr:true, err:e.phone1, hint:'נייד או קווי', attrs:'data-nc="phone1" inputmode="tel"' })}${field({ id:'nc-phone2', label:'טלפון נוסף', val:c.phone2, req:groupReq('phone2', c), type:'tel', ltr:true, err:e.phone2, attrs:'data-nc="phone2" inputmode="tel"' })}</div>
       <div class="field ${e.email ? 'is-err' : ''}"><label for="nc-email">מייל${groupReq('email', c) || cfg.flag('require_customer_email') ? '<span class="req" aria-hidden="true">*</span>' : '<span class="opt-note">(לא חובה)</span>'}</label><input class="input ltr-in" id="nc-email" type="email" value="${esc(c.email)}" data-nc="email" autocomplete="off">
         ${c.email && !c.email.includes('@') ? `<div class="inline-acts"><button type="button" class="btn sm quiet" data-act="gmail">${ic('mail','sm')}השלמה ל-<bdi dir="ltr">@gmail.com</bdi></button></div>` : ''}${e.email ? `<span class="ferr" role="alert">${ic('alert','sm')}${e.email}</span>` : ''}</div>
-      ${ug.length ? `<div class="callout warn" role="status" id="grpMsg">${ic('info','lg')}<div><b>צריך לפחות אחד מבין: ${ug.map(g => g.map(k => FL[k]).join(' / ')).join('; ')}</b>אפשר להמשיך בלי — אבל זה דורש אישור של עובד מורשה.</div></div>` : ''}
+      ${ug.length ? `<div class="callout warn" role="status" id="grpMsg">${ic('info','lg')}<div><b>צריך לפחות אחד מבין: ${ug.map(g => g.map(k => FL[k]).join(' / ')).join('; ')}</b>בלי זה אי אפשר לשמור לקוח חדש.${tip('ההגדרה "שדות חובה — לפחות אחד מהקבוצה" נאכפת גם בשרת, ולכן גם אישור מנהל לא עוקף אותה בלקוח חדש.')}</div></div>` : ''}
       <details class="more" ${openMore || W.moreOpen ? 'open' : ''} id="ncMore"><summary>${ic('pin')}פרטים נוספים${ic('down','chev')}</summary><div class="in form">
         <div class="form-grid">${field({ id:'nc-city', label:'עיר', val:c.city, req:reqAddr, list:'dlCity', err:e.city, attrs:'data-nc="city" autocomplete="new-password"' })}${field({ id:'nc-street', label:'רחוב', val:c.street, req:reqAddr, err:e.street, attrs:'data-nc="street" autocomplete="new-password"' })}${field({ id:'nc-houseNum', label:'מספר בית', val:c.houseNum, req:reqAddr, err:e.houseNum, attrs:'data-nc="houseNum" inputmode="numeric"' })}</div>
         ${field({ id:'nc-zeout', label:'תעודת זהות', val:c.zeout, req:cfg.flag('require_customer_id_number'), ltr:true, err:e.zeout, hint: cfg.flag('require_customer_id_number') ? '' : cfg.flag('require_id_for_edit_cancel') ? 'ישמש לאימות בעריכה או ביטול בעתיד' : '', attrs:'data-nc="zeout" inputmode="numeric" maxlength="9"' })}
@@ -1163,7 +1179,6 @@ function s2(){
   const branches = cfg.list('branch_list');
   const hasPhone = cfg.flag('phone_order_marker_enabled'), hasBranch = cfg.flag('track_branch_on_order'), hasPickup = cfg.flag('branches_enabled'), hasDel = cfg.flag('enable_deliveries');
   const cityOpts = hasCityMap() ? Object.keys(cityPrices()) : CITIES; if (o.deliveryCity && !cityOpts.includes(o.deliveryCity)) cityOpts.push(o.deliveryCity);
-  const gd = v => v && !cfg.flag('hide_gregorian_calendar') ? '' : '';
   const dateBlock = o.isAbroad
     ? `<div class="form-grid"><div class="field ${W.dateErr ? 'is-err' : ''}"><label for="d-from">יוצאת מ-<span class="req" aria-hidden="true">*</span></label><input class="input" type="date" id="d-from" value="${o.fromDate}" data-d="fromDate" aria-required="true"><span class="hdate" aria-live="polite">${o.fromDate ? `${ic('cal','sm')}${esc(hDate(new Date(o.fromDate)))}` : ''}</span></div>
         <div class="field ${W.dateErr ? 'is-err' : ''}"><label for="d-to">חוזרת ב-<span class="req" aria-hidden="true">*</span></label><input class="input" type="date" id="d-to" value="${o.toDate}" data-d="toDate" aria-required="true"><span class="hdate" aria-live="polite">${o.toDate ? `${ic('cal','sm')}${esc(hDate(new Date(o.toDate)))}` : ''}</span></div></div>${W.dateErr ? `<span class="ferr" role="alert">${ic('alert','sm')}${W.dateErr}</span>` : ''}`
@@ -1177,7 +1192,7 @@ function s2(){
       ${hasPickup ? `<div class="field"><label for="o-pick">מאיזה סניף לוקחים<span class="opt-note">(לא חובה)</span></label><select class="input" id="o-pick" data-o="pickupBranch"><option value="">בלי סניף</option>${branches.map(b => `<option ${o.pickupBranch === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></div>` : ''}
       ${hasDel ? `<label class="switch"><input type="checkbox" role="switch" id="o-del" data-o="isDelivery" ${o.isDelivery ? 'checked' : ''}><span>משלוח</span></label>
         ${o.isDelivery ? `<div class="form-grid"><div class="field"><label for="o-dir">כיוון</label><select class="input" id="o-dir" data-o="deliveryDirection">${['הלוך','חזור','הלוך-חזור'].map(x => `<option ${o.deliveryDirection === x ? 'selected' : ''} value="${x}">${x === 'הלוך-חזור' ? 'הלוך וחזור' : x}</option>`).join('')}</select></div>
-          <div class="field ${de.city ? 'is-err' : ''}"><label for="o-city">עיר למשלוח${de.city || (!W.customer?.city) ? '<span class="req" aria-hidden="true">*</span>' : ''}${hasCityMap() ? tip('המחיר נקבע לפי העיר. ערים שאין להן מחיר לא מופיעות.') : ''}</label><select class="input" id="o-city" data-o="deliveryCity" aria-describedby="o-city-h"><option value="">${W.customer?.city ? `כמו אצל הלקוח (${esc(W.customer.city)})` : 'בחירת עיר'}</option>${cityOpts.map(x => `<option ${o.deliveryCity === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>${de.city ? `<span class="ferr" id="o-city-h" role="alert">${ic('alert','sm')}${de.city}</span>` : o.deliveryCity && hasCityMap() ? `<span class="fhint" id="o-city-h">${money(cityPrices()[o.deliveryCity] || 0)} לכל כיוון</span>` : ''}</div></div>
+          <div class="field ${de.city ? 'is-err' : ''}"><label for="o-city">עיר למשלוח${cityRequired() ? '<span class="req" aria-hidden="true">*</span>' : '<span class="opt-note">(לא חובה)</span>'}${tip(hasCityMap() ? 'המחיר נקבע לפי העיר. חובה לבחור עיר כשהעיר של הלקוח לא ברשימת ערי המשלוח.' : 'עוד לא הוגדרו מחירים לפי עיר, לכן חובה לבחור עיר. הרשימה = ערי הלקוחות.')}</label><select class="input" id="o-city" data-o="deliveryCity" aria-describedby="o-city-h"><option value="">בחירת עיר</option>${cityOpts.map(x => `<option ${o.deliveryCity === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>${de.city ? `<span class="ferr" id="o-city-h" role="alert">${ic('alert','sm')}${de.city}</span>` : o.deliveryCity ? `<span class="fhint" id="o-city-h">${money(perDirPrice(o.deliveryCity))} לכל כיוון</span>` : `<span class="fhint" id="o-city-h">בלי עיר למשלוח לא נוסף חיוב משלוח</span>`}</div></div>
           ${cfg.flag('delivery_allow_address_override') || addrRequired() ? field({ id:'o-addr', label:'כתובת למשלוח', val:o.deliveryAddress, req:addrRequired(), err:de.addr, hint:'רחוב ומספר', attrs:'data-o="deliveryAddress" autocomplete="off"' }) : ''}
           ${cfg.flag('delivery_one_day_before_option') ? `<label class="chk2"><input type="checkbox" id="o-1d" data-o="deliveryOneDayBefore" ${o.deliveryOneDayBefore ? 'checked' : ''}>משלוח יום לפני האירוע</label>` : ''}` : ''}` : ''}
       </div></section>` : ''}
@@ -1223,7 +1238,7 @@ function s4(){
   return `<div class="sumgrid">
     ${blk(1, 'user', 'לקוח', `${row('user','שם', esc(fullName(c)))}${row('phone','טלפון', `<bdi dir="ltr">${esc(c.phone1)}</bdi>`)}`)}
     ${blk(2, 'cal', 'תאריכים', `${o.isAbroad ? `${row('flag','יוצאת', esc(hDate(new Date(o.fromDate))))}${row('flag','חוזרת', esc(hDate(new Date(o.toDate))))}` : row('cal','אירוע', esc(hDate(new Date(o.eventDate))))}${!cfg.flag('hide_gregorian_calendar') ? row('cal','תאריך לועזי', `<bdi dir="ltr">${o.isAbroad ? `${gDate(new Date(o.fromDate))} – ${gDate(new Date(o.toDate))}` : gDate(new Date(o.eventDate))}</bdi>`) : ''}${o.customSpacing != null && !cfg.flag('hide_custom_spacing') ? row('gap','ריווח', o.customSpacing === 0 ? 'בלי ריווח' : `${num(o.customSpacing)} ימים`) : ''}${o.notes ? row('edit','הערות', esc(o.notes)) : ''}`)}
-    ${hasBranchInfo ? blk(2, 'truck', 'משלוח וסניף', `${o.isPhoneOrder ? row('phone','סוג', 'הזמנה טלפונית') : ''}${o.branch ? row('home','סניף', esc(o.branch)) : ''}${o.pickupBranch ? row('home','לוקחים מ', esc(o.pickupBranch)) : ''}${o.isDelivery ? `${row('truck','משלוח', `${o.deliveryDirection === 'הלוך-חזור' ? 'הלוך וחזור' : o.deliveryDirection} · ${esc(o.deliveryCity || (c.city || ''))}`)}${o.deliveryAddress ? row('pin','כתובת', esc(o.deliveryAddress)) : ''}${o.deliveryOneDayBefore ? row('clock','מתי', 'יום לפני האירוע') : ''}` : ''}`) : ''}
+    ${hasBranchInfo ? blk(2, 'truck', 'משלוח וסניף', `${o.isPhoneOrder ? row('phone','סוג', 'הזמנה טלפונית') : ''}${o.branch ? row('home','סניף', esc(o.branch)) : ''}${o.pickupBranch ? row('home','לוקחים מ', esc(o.pickupBranch)) : ''}${o.isDelivery ? `${row('truck','משלוח', `${o.deliveryDirection === 'הלוך-חזור' ? 'הלוך וחזור' : o.deliveryDirection} · ${o.deliveryCity ? esc(o.deliveryCity) : 'בלי עיר — אין חיוב משלוח'}`)}${o.deliveryAddress ? row('pin','כתובת', esc(o.deliveryAddress)) : ''}${o.deliveryOneDayBefore ? row('clock','מתי', 'יום לפני האירוע') : ''}` : ''}`) : ''}
   </div>
   <section class="card"><div class="card-h"><span class="ico">${ic('bag')}</span><h2>פריטים <span class="chip">${num(active().length)}</span></h2><div class="acts"><button type="button" class="btn sm quiet" data-edit-from-sum="3">${ic('edit','sm','pop')}עריכה</button></div></div>
     ${active().map(it => { const mm = MODELS.find(x => x.id === it.modelId), cp = calcItem(it); return `<div class="sumline"><span>${esc(modelName(mm))} · מידה <bdi>${it.size}</bdi>${alts && cp.rep ? `<br><small class="cmeta">${ic('ruler','sm')} ${esc(it.repairs)} (+${money(cp.rep)})</small>` : ''}</span><span class="n">${money(cp.price)}</span></div>`; }).join('')}
@@ -1259,7 +1274,7 @@ function renderNav(){
   if (W.fromSummary && s < 4) go = `<button type="button" class="btn primary lg" data-act="toSummary" ${blocked ? 'disabled' : ''}>${ic('next','','nudge')}חזרה לסיכום</button>`;
   else if (s < 5) go = `<button type="button" class="btn primary lg" data-act="next" ${blocked ? `disabled aria-describedby="navWhy"` : ''}>${nextLbl[s]}${ic('next','','nudge')}</button>`;
   else go = `<button type="button" class="btn primary lg" data-act="save">${ic('check','','pop')}יצירת ההזמנה</button>`;
-  if (blocked) why = `<span class="why" id="navWhy">${ic('info','sm')}${blocked}</span>`;
+  if (blocked) why = `<span class="why">${tip(blocked)}<span class="wt" id="navWhy">${blocked}</span></span>`; /* בטלפון: רק ⓘ (הטקסט מוסתר) */
   if (s > 1) back = `<button type="button" class="btn quiet" data-act="prev">${ic('back','','back')}<span class="lbl">חזרה ל${STEPS[s - 2][1]}</span></button>`;
   else back = `<button type="button" class="btn quiet" data-act="exit">${ic('x','','pop')}<span class="lbl">ביטול</span></button>`;
   $('#stepnav').innerHTML = `<div class="go">${go}${why}</div><div class="back">${back}</div>`;
@@ -1276,7 +1291,7 @@ async function goStep(n, { focus = true } = {}){
   W.step = n; W.err = ''; render(); if (focus) { $('#stepq').focus(); window.scrollTo({ top:0, behavior:'smooth' }); }
 }
 async function blockedOverride(c){
-  const r = await codeDlg({ title:'לקוחה חסומה', purpose:`${fullName(c)} חסומה: ${c.blockedReason || 'לא צוינה סיבה'}. כדי להמשיך צריך אישור של הנהלה ראשית.` });
+  const r = await codeDlg({ title:'לקוחה חסומה', purpose:`${fullName(c)} חסומה: ${c.blockedReason || 'לא צוינה סיבה'}. כדי להמשיך צריך אישור של הנהלה ראשית.`, level:'הנהלה ראשית' });
   if (r) W.custApproved = true; return !!r;
 }
 async function pickCustomer(c){
@@ -1285,11 +1300,11 @@ async function pickCustomer(c){
   if (miss.length || ug.length){
     const names = [...miss.map(k => FL[k]), ...ug.map(g => g.map(k => FL[k]).join(' או '))].join(', ');
     if (cfg.flag('strict_mandatory_fields')){ await alertDlg('אי אפשר להמשיך עם הלקוח', `חסר: ${names}. קודם משלימים את הפרטים בכרטיס הלקוח.`, 'lock'); return; }
-    if (ug.length){ const r = await codeDlg({ title:'חסרים פרטי קשר', purpose:`ללקוח חסר ${names}. כדי להמשיך בלי — צריך אישור של עובד מורשה.` }); if (!r) return; }
+    if (ug.length){ const r = await codeDlg({ title:'חסרים פרטי קשר', purpose:`ללקוח חסר ${names}. כדי להמשיך בלי — צריך אישור של עובד מורשה.`, level:'feature:missing_contact_approval' }); if (!r) return; }
     else { const r = await confirmDlg({ icon:'alert', title:'חסרים פרטים ללקוח', text:`חסר: ${esc(names)}. להמשיך בכל זאת?`, buttons:[{ label:'המשך בכל זאת', kind:'primary', value:'y', icon:'check', auto:1 }, { label:'חזרה', kind:'quiet', value:'n' }] }); if (r !== 'y') return; }
   }
   W.customer = c; W.custApproved = c.isBlocked; W.phoneRes = null; W.nameOpen = false;
-  if (cfg.flag('track_branch_on_order') && !W.order.branch && !W.order.isPhoneOrder) W.order.branch = cfg.list('branch_list')[0] || ''; /* הסניף האחרון שנבחר בעמדה (localStorage) */
+  if (cfg.flag('track_branch_on_order') && !W.order.branch && !W.order.isPhoneOrder && LAST_BRANCH.v) W.order.branch = LAST_BRANCH.v; /* רק הסניף האחרון שנבחר בעמדה (localStorage gemach_last_order_branch); אין ברירת מחדל אחרת */
   W.step = 2; render(); $('#stepq').focus(); window.scrollTo({ top:0, behavior:'smooth' });
 }
 async function checkPhone(){
@@ -1308,14 +1323,18 @@ async function saveNewCustomer(){
   if (c.phone1 && !/^0\d{8,9}$/.test(c.phone1.replace(/\D/g, ''))) e.phone1 = 'מספר טלפון לא תקין'; /* בדיקת השרת היום (400) — מוצגת בשדה */
   if (c.phone2 && c.phone2 === c.phone1) e.phone2 = 'זהה לטלפון הראשי';
   if (c.email && c.email.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) e.email = 'כתובת מייל לא תקינה';
+  /* REVIEW-wizard-1 M-4: POST /api/customers דוחה (400) לקוח חדש שלא עומד ב-mandatory_field_groups — תמיד, גם אחרי אישור.
+     לכן אין כאן חלון אישור (היום הוא מוצג ואז השמירה נכשלת בכל מקרה); זו שגיאת שדה, כמו בשרת. */
+  unmetGroups(c).forEach(g => { const msg = `צריך למלא ${g.map(k => FL[k]).join(' או ')}`; g.forEach(k => { if (!e[k]) e[k] = msg; }); });
   W.ncErr = e; if (Object.keys(e).length){ W.moreOpen = ['city','street','houseNum','zeout','marketingConsent'].some(k => e[k]); render(); const first = document.querySelector('.field.is-err .input, .field.is-err input'); first && first.focus(); toast('err', 'חסרים פרטים', `${Object.keys(e).length} שדות צריכים תיקון`, 4000); return; }
-  if (unmetGroups(c).length){ const r = await codeDlg({ title:'לקוח בלי פרטי קשר נוספים', purpose:'צריך טלפון נוסף או מייל. כדי לשמור בלי — צריך אישור של עובד מורשה.' }); if (!r) return; }
   const dups = CUSTOMERS().filter(x => x.phone1 === c.phone1.replace(/\D/g, '') || x.phone2 === c.phone1.replace(/\D/g, ''));
   if (dups.length){
     const r = await dupDlg(dups); if (r && r.pick) return pickCustomer(r.pick); if (r !== 'force') return;
   }
   await new Promise(r => setTimeout(r, 500));
   if (serverFails()){ toast('err', 'הלקוח לא נשמר', 'אין חיבור לשרת. הפרטים נשארו בטופס.'); return; }
+  const zOwner = c.zeout && CUSTOMERS().find(x => x.zeout === c.zeout); /* 400 מהשרת: ת״ז כבר קיימת אצל לקוח פעיל (בהדמיה: 123456782) */
+  if (zOwner){ W.ncErr = { zeout:`תעודת הזהות כבר רשומה אצל ${fullName(zOwner)}` }; W.moreOpen = true; render(); $('#nc-zeout').focus(); toast('err', 'הלקוח לא נשמר', 'השרת החזיר שגיאה — מסומנת בשדה'); return; }
   const nc = { id:'new', legacyId:22400, ...c, isBlocked:false }; W.customer = nc; W.custApproved = false; W.step = 2; render(); $('#stepq').focus(); toast('ok', 'הלקוח נשמר', `${fullName(nc)} — מספר לקוח 22400`, 3000);
 }
 function dupDlg(dups){
@@ -1347,7 +1366,7 @@ async function changeSpacing(v){
     const r = await confirmDlg({ icon:'gap', title:'בדקתם את המלאי?', text:'ציפוף מיוחד משנה את הזמינות של שמלות להזמנות אחרות. כדאי לבדוק תפוסה לפני.', buttons:[{ label:'כן, להמשיך', kind:'primary', value:'y', icon:'check' }, { label:'בדיקת תפוסה', value:'cap', icon:'cal' }, { label:'ביטול', kind:'quiet', value:'n', auto:1 }] });
     if (r === 'cap') return toast('info', 'חיפוש תפוסה', 'חלון נפרד, מחוץ לאב-טיפוס הזה', 3000);
     if (r !== 'y') return;
-    const ok = await codeDlg({ title:'אישור ציפוף מיוחד', purpose:`ריווח של ${nv === 0 ? '0' : nv} ימים בין השכרות.` }); if (!ok) return;
+    const ok = await codeDlg({ title:'אישור ציפוף מיוחד', purpose:`ריווח של ${nv === 0 ? '0' : nv} ימים בין השכרות.`, level:'feature:special_spacing_approval' }); if (!ok) return;
   }
   if (await changeDates('customSpacing', v)){ render(); scheduleDraft(); }
 }
@@ -1421,13 +1440,16 @@ async function preChecks(){ /* WZ-124/129 — רצות לפני כל חיוב א
   if (!W.customer.phone1 && !W.customer.phone2){ await alertDlg('ללקוח אין טלפון', 'קודם מוסיפים טלפון בכרטיס הלקוח.', 'phone'); return false; }
   if (Object.keys(deliveryErr()).length){ W.step = 2; render(); toast('err', 'חסרים פרטי משלוח', Object.values(deliveryErr())[0]); return false; }
   const d = new Date(effDate()); d.setHours(0,0,0,0);
-  if (d < TODAY && !W.pastOk){ const r = await codeDlg({ title:'תאריך שכבר עבר', purpose:`תאריך האירוע (${hDate(d)}) כבר עבר. הזמנה כזו דורשת אישור.` }); if (!r) return false; W.pastOk = true; }
+  if (d < TODAY && !W.pastOk){ const r = await codeDlg({ title:'תאריך שכבר עבר', purpose:`תאריך האירוע (${hDate(d)}) כבר עבר. הזמנה כזו דורשת אישור.`, level:'feature:past_date_order_approval' }); if (!r) return false; W.pastOk = true; }
   return true;
 }
 async function chargeFlow(){
   if (!(await preChecks())) return;
+  /* REVIEW-wizard-1 M-2: התשלום נרשם עם אופן התשלום שבתפריט (payment.method, כמו היום — WZ-150) ולא עם מחרוזת קבועה.
+     כדי שלא יירשם "מזומן" עם אישור חיוב, "חיוב באשראי" קודם מעביר את התפריט לאופן האשראי הראשון ברשימת הארגון (שינוי תצוגה בלבד). */
+  const fc = payMethods().find(isCredit); if (!isCredit(W.pay.method) && fc){ W.pay.method = fc; render(); }
   const r = await creditDlg({ amount:+W.pay.amount || remaining(), note:W.pay.note }); if (!r) return;
-  W.payments.push({ amount:r.amount, method:'אשראי (דרך נדרים פלוס)', conf:r.conf, note:r.note }); W.pay.amount = remaining(); render();
+  W.payments.push({ amount:r.amount, method:W.pay.method, conf:r.conf, note:r.note }); W.pay.amount = remaining(); render();
   if (paid() >= total()) return submit(); /* חיוב שמכסה הכול — ישר לשמירה (WZ-120) */
   toast('ok', 'החיוב עבר', `נשאר לשלם ₪${remaining().toLocaleString('he-IL')}`);
 }
@@ -1440,8 +1462,8 @@ async function saveOrder(){
   }
   if (amt > 0 && credit) return chargeFlow();
   if (mgr || (amt > 0 && !credit)){
-    if (['מנהל','עובד','מנהל סניף ומעלה'].includes(cfg.raw('PAYMENT_APPROVAL_LEVEL'))){ const ok = await codeDlg({ title:'אישור סיום בלי תשלום מלא', purpose:'יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך.' }); if (!ok) return toast('info', 'האישור בוטל', 'ההזמנה לא נשמרה', 2600); }
-    if (mgr) W.payments.push({ amount:0, method:MGR_EXIT, note:`סכום שנשאר: ₪${(total() - paid()).toLocaleString('he-IL')}` });
+    if (['מנהל','עובד','מנהל סניף ומעלה'].includes(cfg.raw('PAYMENT_APPROVAL_LEVEL'))){ const ok = await codeDlg({ title:'אישור סיום בלי תשלום מלא', purpose:'יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך.', level:'feature:payment_exit_approval' }); if (!ok) return toast('info', 'האישור בוטל', 'ההזמנה לא נשמרה', 2600); }
+    if (mgr) W.payments.push({ amount:0, method:MGR_EXIT, note:`${MGR_EXIT} (סכום מבוקש: ₪${W.pay.amount}) | ${W.pay.note}` }); /* אותו notes שנשלח היום (P:1184) */
     else W.payments.push({ amount:amt, method:W.pay.method, note:W.pay.note });
   }
   submit();
@@ -1456,14 +1478,15 @@ async function submit(force){
     if (r === 'force') return submit(true); if (r === 'look') toast('info', 'נפתחת הזמנה 53560', 'בלשונית חדשה', 2600); return;
   }
   if ($('#dStock').checked){ const it = active()[0], mm = MODELS.find(x => x.id === it.modelId); await confirmDlg({ icon:'alert', title:'המלאי השתנה', text:'בזמן המילוי מישהו אחר הזמין שמלה מאותו דגם ומידה. ההזמנה לא נשמרה.', body:`<ul style="margin:0;padding-inline-start:20px"><li>${esc(modelName(mm))}, מידה <bdi>${it.size}</bdi>: חסרה <bdi>1</bdi></li></ul>`, buttons:[{ label:'חזרה לסל', kind:'primary', value:'ok', auto:1 }] }); $('#dStock').checked = false; W.step = 3; render(); return; }
-  W.saved = { orderId: W.draftId || 53581, redirect: cfg.raw('order_new_redirect_screen') || 'order' }; clearTimeout(draftTimer); render();
+  W.saved = { orderId: W.draftId || 53581, redirect: cfg.raw('order_new_redirect_screen') || 'order', warning: $('#dWarn').checked ? 'החיובים לא חושבו — לבדוק בכרטיס ההזמנה' : '' }; /* data.warning (WZ-11) — ההזמנה נשמרה */ clearTimeout(draftTimer); render();
   if (cfg.flag('auto_print_on_order_create')) toast('info', 'נפתחה לשונית הדפסה', `הזמנה ${W.saved.orderId}`, 4000);
 }
 function renderSaved(){
   const dest = { order:'כרטיס ההזמנה', new_order:'הזמנה חדשה נוספת', orders_list:'רשימת ההזמנות', customer:'כרטיס הלקוח', rentals:'מסך ההשכרות', dashboard:'דף הבית' }[W.saved.redirect] || 'כרטיס ההזמנה';
   $('#stepper').innerHTML = ''; $('#anchor').innerHTML = ''; $('#stepq').textContent = ''; $('#stepnav').innerHTML = '';
   $('#stepBody').innerHTML = `<section class="card"><div class="result"><span class="r-ic">${ic('check','xl draw')}</span><h2 style="margin:0" tabindex="-1" id="doneH">עוברים ל${dest}</h2><p class="cmeta" style="margin:0">בהדמיה נשארים כאן. לאן עוברים אחרי שמירה נקבע בהגדרות (עכשיו: ${dest}).</p><button type="button" class="btn" data-act="restart">${ic('plus','','pop')}הזמנה חדשה נוספת</button></div></section>`;
-  notice('success', `הזמנה ${W.saved.orderId} נוצרה`, `${fullName(W.customer)} · ${active().length} פריטים · ${paid() >= total() ? 'שולם במלואו' : 'בלי תשלום מלא'}`, { label:'פתיחת ההזמנה', run(){ toast('info', `פותחים את הזמנה ${W.saved.orderId}`, 'בהדמיה נשארים כאן', 2600); } });
+  notice('success', `הזמנה ${W.saved.orderId} נוצרה`, `${fullName(W.customer)} · ${active().length === 1 ? 'פריט אחד' : `${active().length} פריטים`} · ${calculatePaymentStatus(total(), paid())}`, { label:'פתיחת ההזמנה', run(){ toast('info', `פותחים את הזמנה ${W.saved.orderId}`, 'בהדמיה נשארים כאן', 2600); } });
+  if (W.saved.warning && !W.saved.warned){ W.saved.warned = true; toast('err', 'ההזמנה נשמרה, עם אזהרה', W.saved.warning); }
   $('#doneH').focus();
 }
 async function exitFlow(){
@@ -1527,7 +1550,7 @@ function renderNavOnly(){ renderNav(); }
 document.addEventListener('change', async e => {
   const x = e.target;
   if (x.dataset.d){ if (await changeDates(x.dataset.d, x.value)){ renderKeep(); recalc(); scheduleDraft(); } return; }
-  if (x.dataset.o && x.dataset.o !== 'notes' && x.dataset.o !== 'deliveryAddress'){ const k = x.dataset.o; W.order[k] = x.type === 'checkbox' ? x.checked : x.value; if (k === 'isPhoneOrder' && x.checked) W.order.branch = ''; if (k === 'branch' && x.value) W.order.isPhoneOrder = false; renderKeep(); if (['isDelivery','deliveryCity','deliveryDirection'].includes(k)) recalc(); return; }
+  if (x.dataset.o && x.dataset.o !== 'notes' && x.dataset.o !== 'deliveryAddress'){ const k = x.dataset.o; W.order[k] = x.type === 'checkbox' ? x.checked : x.value; if (k === 'isPhoneOrder' && x.checked) W.order.branch = ''; if (k === 'branch' && x.value){ W.order.isPhoneOrder = false; LAST_BRANCH.v = x.value; } renderKeep(); if (['isDelivery','deliveryCity','deliveryDirection'].includes(k)) recalc(); return; }
   if (x.dataset.p === 'method'){ W.pay.method = x.value; renderKeep(); return; }
 });
 document.addEventListener('focusin', e => { if (e.target.id === 'md-q' && !W.model && !W.modelOpen){ W.modelOpen = true; renderKeep(); } if (e.target.id === 'nm-q' && !W.nameOpen){ W.nameOpen = true; renderKeep(); } });
