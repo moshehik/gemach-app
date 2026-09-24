@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
@@ -11,6 +10,9 @@ import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
+import { V3Page, Btn, Chip, Tag, Tabs, Tip, Dialog, Empty, Banner, Icon } from '@/app/v3/ui/components';
+import { TipBtn, SearchBar, useOpsDialogs, dlgMode } from '@/components/ops-v3/OpsKit';
+import { enqueueNotice } from '@/app/v3/notify/store';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const alterationsCache = cacheNamespace('alterations');
@@ -49,6 +51,13 @@ export default function AlterationsPage() {
   const [aiInputText, setAiInputText] = useState('');
 
   useEffect(() => setMounted(true), []);
+
+  // v3: חלוניות אישור/הודעה במקום window.customConfirm / alert (אותו זרם await)
+  const { ask, tell, node: dialogsNode } = useOpsDialogs();
+  // התראה קלה אחרי הצלחה (NOTIFICATIONS-DESIGN §4, "משניים") — לא נשמרת בפעמון, ולא משפיעה על הזרימה
+  const notifyOk = (title) => {
+    try { enqueueNotice({ kind: 'success', title, persistToBell: false }); } catch { /* התראה היא בונוס בלבד */ }
+  };
 
   const fetchAlterations = async (isPrefetch = false, targetPage = page) => {
     try {
@@ -104,7 +113,7 @@ export default function AlterationsPage() {
   }, [startDate, endDate, filterStatus, page, search, totalPages]);
 
   const markDone = async (orderItemId) => {
-    if (!(await window.customConfirm('האם לאשר ביצוע תיקון?'))) return;
+    if (!(await ask({ title: 'לסמן את התיקון כבוצע?', okLabel: 'כן, בוצע', cancelLabel: 'לא עכשיו', icon: 'scissors' }))) return;
     try {
       const res = await fetch('/api/alterations/mark-done', {
         method: 'POST',
@@ -119,19 +128,20 @@ export default function AlterationsPage() {
       } else {
         setItems(items.map(item => item.id === orderItemId ? { ...item, alterationDone: true } : item));
       }
+      notifyOk('התיקון סומן כבוצע');
     } catch (err) {
-      alert('שגיאה בעדכון התיקון: ' + err.message);
+      tell({ title: 'העדכון נכשל', text: err.message, icon: 'alert-circle' });
     }
   };
 
   const markAllDone = async () => {
     if (!startDate) {
-      alert('יש לבחור תאריך כדי לסמן את כל התיקונים כבוצעו לאותו יום.');
+      tell({ title: 'חסר תאריך', text: 'בחרו תאריך התחלה כדי לסמן יום שלם כבוצע.', icon: 'calendar' });
       return;
     }
     const hebrewDateStr = startDate ? getHebrewDateString(startDate) : '';
     const displayDate = hebrewDateStr ? hebrewDateStr : startDate;
-    if (!(await window.customConfirm(`בטוח שבוצעו כל התיקונים לתאריך ${displayDate}?`))) return;
+    if (!(await ask({ title: 'לסמן את כל התיקונים ליום הזה כבוצעו?', text: displayDate, okLabel: 'כן, הכול בוצע', cancelLabel: 'ביטול', icon: 'check-circle' }))) return;
 
     try {
       const res = await fetch('/api/alterations/mark-done', {
@@ -141,8 +151,9 @@ export default function AlterationsPage() {
       });
       if (!res.ok) throw new Error('Failed to mark all as done');
       fetchAlterations();
+      notifyOk('כל תיקוני היום סומנו כבוצעו');
     } catch (err) {
-      alert('שגיאה בעדכון: ' + err.message);
+      tell({ title: 'העדכון נכשל', text: err.message, icon: 'alert-circle' });
     }
   };
 
@@ -182,11 +193,11 @@ export default function AlterationsPage() {
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        tell({ title: 'החיפוש החכם לא הצליח', text: result.error || undefined, icon: 'alert-circle' });
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      tell({ title: 'אין תקשורת עם השרת', text: 'נסו שוב בעוד רגע.', icon: 'alert-circle' });
     } finally {
       setAiLoading(false);
     }
@@ -276,45 +287,43 @@ export default function AlterationsPage() {
     }
   };
 
+  const exportRows = items.map(item => ({
+    ...item,
+    orderId: item.order?.orderId,
+    customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
+    dressName: item.dressItem?.dress?.name
+      ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+      : (item.description || item.dressItem?.dressName),
+    eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
+    alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין',
+    neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
+    lengthAlterationText: item.lengthAlteration && String(item.lengthAlteration).trim() !== '' && item.lengthAlteration !== 'null' && item.lengthAlteration !== '0' ? item.lengthAlteration : '',
+    sleeveAlterationText: item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '',
+    alterationDetails: item.alterationDetails || ''
+  }));
+
+  const statusTabs = [
+    { key: 'all', label: 'הכל', icon: 'list' },
+    { key: 'pending', label: 'ממתינים', icon: 'clock' },
+    { key: 'done', label: 'בוצעו', icon: 'check-circle' },
+  ];
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>תפירות ותיקונים</h1>
-          <div className="page-desc">סה&quot;כ תיקונים תואמים: {totalCount}</div>
+    <V3Page>
+      {dialogsNode}
+
+      <div className="v3-pagehead ops-head">
+        <div className="v3-pagehead__title ops-head__title">
+          <h1 className="v3-h1"><Icon name="scissors" />תפירות ותיקונים</h1>
+          <div className="v3-muted">תיקונים בסינון: <bdi>{totalCount}</bdi></div>
         </div>
-        <div className="page-actions">
-          <button
-            type="button"
-            onClick={markAllDone}
-            disabled={!startDate}
-            className="btn btn-primary"
-            title="סמן את כל התפירות של היום שנבחר כבוצעו"
-          >
-            <svg className="icon"><use href="#i-check-circle" /></svg>
-            סמן יום כבוצע
-          </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)}>
-            <svg className="icon"><use href="#i-printer" /></svg>
-          </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="מקרא" onClick={() => setIsLegendOpen(true)}>
-            <svg className="icon"><use href="#i-info" /></svg>
-          </button>
+        <div className="v3-pagehead__tools">
+          <Btn variant="primary" icon="check-circle" onClick={markAllDone} disabled={!startDate}>סימון יום כבוצע</Btn>
+          <Tip>מסמן כבוצעו את כל התיקונים של התאריך שנבחר בתחילת הטווח. יש לבחור תאריך קודם.</Tip>
+          <TipBtn icon="printer" label="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)} />
+          <TipBtn icon="info" label="מקרא" onClick={() => setIsLegendOpen(true)} />
           <ExportButtons
-            data={items.map(item => ({
-              ...item,
-              orderId: item.order?.orderId,
-              customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-              dressName: item.dressItem?.dress?.name
-                ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                : (item.description || item.dressItem?.dressName),
-              eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
-              alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין',
-              neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
-              lengthAlterationText: item.lengthAlteration && String(item.lengthAlteration).trim() !== '' && item.lengthAlteration !== 'null' && item.lengthAlteration !== '0' ? item.lengthAlteration : '',
-              sleeveAlterationText: item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '',
-              alterationDetails: item.alterationDetails || ''
-            }))}
+            data={exportRows}
             filename="תפירות"
             columns={[
               { key: 'orderId', label: 'קוד הזמנה' },
@@ -334,11 +343,9 @@ export default function AlterationsPage() {
         </div>
       </div>
 
-      {/* טווח תאריכי אירוע + חיפוש (רגיל / חכם) + שאלות סטטיסטיקה.
-          align-items:stretch + .range-flat: בורר הטווח ושורת החיפוש באותו עיצוב (אותו רדיוס)
-          ובאותו גובה/קו — בלי label צף שמושך את הבורר מעל הקו של שורת החיפוש */}
-      <div className="toolbar" style={{ alignItems: 'stretch' }}>
-        <div title="סינון לפי טווח תאריכי אירוע" style={{ display: 'flex', minWidth: '300px', maxWidth: '400px', flex: '1 1 340px' }}>
+      <div className="ops-toolbar">
+        <div className="v3-field ops-picker">
+          <span className="v3-label">תאריכי אירוע <Tip>מסנן את הרשימה לפי טווח תאריכי האירוע של ההזמנה.</Tip></span>
           <HebrewDateRangePicker
             className="range-flat"
             startDate={startDate}
@@ -347,184 +354,122 @@ export default function AlterationsPage() {
               setStartDate(start);
               setEndDate(end);
             }}
-            placeholderStart="בחר תאריך התחלה"
-            placeholderEnd="בחר תאריך סיום"
+            placeholderStart="מתאריך"
+            placeholderEnd="עד תאריך"
           />
         </div>
 
-        {aiInputMode ? (
-          <form onSubmit={handleAiInputSubmit} className="search-toolbar">
-            {aiLoading
-              ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-              : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
-            <input
-              type="text"
-              value={aiInputText}
-              onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="בקש מה-AI למצוא נתונים..."
-              disabled={aiLoading}
-            />
-            <div className="search-toolbar-actions">
-              {aiInputText && !aiLoading && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
-                <svg className="icon"><use href="#i-star" /></svg>
-              </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSearch} className="search-toolbar">
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
-            />
-            <div className="search-toolbar-actions">
-              {searchInput && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
-              </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
-            </div>
-          </form>
-        )}
+        <SearchBar
+          aiInputMode={aiInputMode}
+          aiLoading={aiLoading}
+          aiInputText={aiInputText}
+          setAiInputText={setAiInputText}
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          onSubmit={handleSearch}
+          onSubmitAi={handleAiInputSubmit}
+          onClear={handleClearSearch}
+          onToggleAi={toggleAiInputMode}
+          onStats={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+          placeholder="הזמנה, לקוח או דגם"
+          placeholderAi="תארו מה לחפש, והמערכת תמצא"
+        />
       </div>
 
-      {/* סינון סטטוס תיקון: הכל / ממתינים / בוצע */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
-        <button type="button" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
-          <svg className="icon"><use href="#i-list" /></svg>
-          הכל
-        </button>
-        <button type="button" onClick={() => { setFilterStatus('pending'); }} className={filterStatus === 'pending' ? 'pill-tab active' : 'pill-tab'} title="ממתינים">
-          <svg className="icon"><use href="#i-clock" /></svg>
-          ממתינים
-        </button>
-        <button type="button" onClick={() => { setFilterStatus('done'); }} className={filterStatus === 'done' ? 'pill-tab active' : 'pill-tab'} title="בוצע">
-          <svg className="icon"><use href="#i-check-circle" /></svg>
-          בוצע
-        </button>
+      <div className="ops-section">
+        <Tabs
+          label="סינון לפי מצב התיקון"
+          items={statusTabs}
+          value={filterStatus}
+          onChange={(k) => { setFilterStatus(k); }}
+        />
       </div>
 
       {loading ? (
-        <div className="page-loading">
-          <span className="spinner lg" />
-          טוען נתונים...
+        <div className="v3-empty" role="status">
+          <span className="v3-spin" aria-hidden="true" />
+          <span>טוען…</span>
         </div>
       ) : error ? (
-        <div className="callout callout-danger">
-          <svg className="icon"><use href="#i-alert-circle" /></svg>
-          <div>
-            <strong>שגיאה בטעינת נתונים</strong>
-            <div>{error}</div>
-          </div>
-        </div>
+        <Banner kind="alert" title="לא הצלחנו לטעון את הרשימה" text={error} />
       ) : (
-        <div className="table-wrap">
-          <div className="table-scroll">
-            <table className="data">
+        <div className="ops-tablecard">
+          <div className="v3-table__wrap">
+            <table className="v3-table ops-table">
               <thead>
                 <tr>
-                  <th>תאריך אירוע</th>
-                  <th>לקוח</th>
-                  <th>דגם שמלה</th>
-                  <th>מידה</th>
-                  <th>פירוט תיקונים</th>
-                  <th>סטטוס</th>
-                  <th></th>
+                  <th scope="col">אירוע</th>
+                  <th scope="col">לקוח</th>
+                  <th scope="col">שמלה</th>
+                  <th scope="col">תיקונים</th>
+                  <th scope="col">מצב</th>
+                  <th scope="col"><span className="v3-sr">פעולות</span></th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan="7">
-                      <div className="empty-state">
-                        <svg className="icon"><use href="#i-search" /></svg>
-                        <p>לא נמצאו תיקונים העונים לחתך החיפוש</p>
-                      </div>
+                    <td colSpan="6">
+                      <Empty icon="search" title="אין תיקונים להצגה" text="נסו לשנות את הסינון או את החיפוש." />
                     </td>
                   </tr>
                 ) : (
                   items.map((item) => {
                     const isDone = item.alterationDone;
-                    const rowStyle = {
-                      background: isDone ? 'var(--success-tint)' : 'var(--warning-tint)',
-                      borderRight: isDone ? '4px solid var(--success)' : '4px solid var(--warning)'
-                    };
 
                     return (
-                      <tr
-                        key={item.id}
-                        style={rowStyle}
-                        onMouseEnter={e => e.currentTarget.style.background = rowStyle.background}
-                        onMouseLeave={e => e.currentTarget.style.background = rowStyle.background}
-                      >
-                        <td className="cell-primary">{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</td>
+                      <tr key={item.id} className={isDone ? 'ops-row ops-row--done' : 'ops-row ops-row--pending'}>
+                        <td className="ops-strong"><bdi>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</bdi></td>
                         <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
                         <td>
-                          {item.dressItem?.dress?.name
-                            ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                            : (item.description || item.dressItem?.dressName)}
+                          <div className="ops-cell-stack">
+                            <span>
+                              {item.dressItem?.dress?.name
+                                ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                                : (item.description || item.dressItem?.dressName)}
+                            </span>
+                            {(item.sizeText || item.size) ? <Chip icon="ruler">מידה <bdi>{item.sizeText || item.size}</bdi></Chip> : null}
+                          </div>
                         </td>
                         <td>
-                          <span className="badge badge-neutral">{item.sizeText || item.size}</span>
-                        </td>
-                        <td style={{ maxWidth: '350px' }}>
-                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            {item.neckAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>צוואר: הצרה {item.neckAlteration}</span>}
-                            {item.sleeveAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
-                            {item.lengthAlteration && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>אורך: {item.lengthAlteration}</span>}
-                            {item.alterationDetails && <span className="chip">{item.alterationDetails}</span>}
-                            {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span className="cell-muted">-</span>}
+                          <div className="ops-chips">
+                            {item.neckAlteration > 0 && <Chip variant="info" icon="scissors">צוואר: הצרה <bdi>{item.neckAlteration}</bdi></Chip>}
+                            {item.sleeveAlteration > 0 && <Chip variant="info" icon="scissors">שרוול: הארכה <bdi>{item.sleeveAlteration}</bdi></Chip>}
+                            {item.lengthAlteration && <Chip variant="info" icon="scissors">אורך: <bdi>{item.lengthAlteration}</bdi></Chip>}
+                            {item.alterationDetails && <Chip>{item.alterationDetails}</Chip>}
+                            {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span className="ops-muted">-</span>}
                           </div>
                         </td>
                         <td>
                           {isDone ? (
-                            <span className="badge badge-success">בוצע</span>
+                            <Tag variant="done" icon="check-circle">בוצע</Tag>
                           ) : (
-                            <span className="badge badge-warning">ממתין</span>
+                            <Tag variant="attn" icon="clock">ממתין</Tag>
                           )}
                         </td>
                         <td>
-                          <div className="row-actions">
+                          <div className="ops-actions">
                             <Link
                               href={`/orders/${item.order?.orderId}`}
-                              className="btn btn-ghost btn-icon-only btn-sm"
+                              className="v3-btn v3-btn--quiet v3-btn--icon v3-btn--sm"
                               title="כרטיס הזמנה"
+                              aria-label="כרטיס הזמנה"
                             >
-                              <svg className="icon"><use href="#i-file" /></svg>
+                              <Icon name="file" />
                             </Link>
                             {isDone ? (
-                              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ visibility: 'hidden' }} tabIndex={-1} aria-hidden="true">
-                                <svg className="icon"><use href="#i-check-circle" /></svg>
+                              <button type="button" className="v3-btn v3-btn--quiet v3-btn--icon v3-btn--sm ops-hidden" tabIndex={-1} aria-hidden="true">
+                                <Icon name="check-circle" />
                               </button>
                             ) : (
                               <button
                                 type="button"
-                                className="btn btn-ghost btn-icon-only btn-sm"
-                                style={{ color: 'var(--success)' }}
+                                className="v3-btn v3-btn--quiet v3-btn--icon v3-btn--sm"
                                 onClick={() => markDone(item.id)}
-                                title="סמן שבוצע"
+                                title="סימון כבוצע"
+                                aria-label="סימון כבוצע"
                               >
-                                <svg className="icon"><use href="#i-check-circle" /></svg>
+                                <Icon name="check-circle" />
                               </button>
                             )}
                           </div>
@@ -537,33 +482,29 @@ export default function AlterationsPage() {
             </table>
           </div>
 
-          {/* סיכום הרשומות ועימוד */}
-          <div className="table-foot">
-            <span>סה&quot;כ מוצג בעמוד: {items.length} &nbsp;·&nbsp; סה&quot;כ תיקונים תואמים: {totalCount}</span>
+          <div className="ops-foot">
+            <span>מוצגים בעמוד: <bdi>{items.length}</bdi> · סה&quot;כ תואמים: <bdi>{totalCount}</bdi></span>
             {totalPages > 1 && (
-              <div className="pager">
-                <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} title="עמוד קודם">
-                  <svg className="icon"><use href="#i-chevron-end" /></svg>
+              <div className="ops-pager">
+                <Btn variant="secondary" size="sm" icon="chevron-end" disabled={page <= 1} onClick={() => setPage(p => p - 1)} title="עמוד קודם">
                   הקודם
-                </button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label htmlFor="alterationsListPageNum">עמוד</label>
+                </Btn>
+                <span className="ops-pager__num">
+                  <label className="v3-label" htmlFor="alterationsListPageNum">עמוד</label>
                   <input
                     id="alterationsListPageNum"
                     type="number"
-                    className="input"
+                    className="v3-input"
                     min={1}
                     max={totalPages || 1}
                     value={page}
                     onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
-                    style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
                   />
-                  מתוך {totalPages}
+                  מתוך <bdi>{totalPages}</bdi>
                 </span>
-                <button type="button" className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} title="עמוד הבא">
+                <Btn variant="secondary" size="sm" iconEnd="chevron-start" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} title="עמוד הבא">
                   הבא
-                  <svg className="icon"><use href="#i-chevron-start" /></svg>
-                </button>
+                </Btn>
               </div>
             )}
           </div>
@@ -579,36 +520,25 @@ export default function AlterationsPage() {
         />
       )}
 
-      {isLegendOpen && mounted && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsLegendOpen(false)}>
-          <div className="modal" style={{ maxWidth: '400px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-info" /></svg>
-                מקרא צבעים
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setIsLegendOpen(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge badge-warning">ממתין</span>
-                  <span><strong>כתום / ממתין:</strong> התיקון טרם בוצע.</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge badge-success">בוצע</span>
-                  <span><strong>ירוק / בוצע:</strong> התיקון בוצע בהצלחה.</span>
-                </div>
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
-            </div>
+      <Dialog
+        open={isLegendOpen && mounted}
+        onClose={() => setIsLegendOpen(false)}
+        mode={dlgMode()}
+        icon="info"
+        title="מקרא"
+        actions={<Btn variant="primary" onClick={() => setIsLegendOpen(false)}>הבנתי</Btn>}
+      >
+        <div className="v3-dlg-rows">
+          <div className="v3-dlg-row">
+            <span className="v3-dlg-row__ico"><Icon name="clock" /></span>
+            <div className="v3-dlg-row__t"><b>ממתין</b><div className="v3-faint">התיקון עדיין לא בוצע. פס אפרסק בצד השורה.</div></div>
           </div>
-        </div>, document.body
-      )}
+          <div className="v3-dlg-row">
+            <span className="v3-dlg-row__ico"><Icon name="check-circle" /></span>
+            <div className="v3-dlg-row__t"><b>בוצע</b><div className="v3-faint">התיקון הושלם. פס כחול בצד השורה.</div></div>
+          </div>
+        </div>
+      </Dialog>
 
       <StatisticsModal
         isOpen={!!showStatistics}
@@ -617,6 +547,6 @@ export default function AlterationsPage() {
         contextQuery={aiQueryUsed}
         position={typeof showStatistics === 'object' ? showStatistics : null}
       />
-    </>
+    </V3Page>
   );
 }

@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import HebrewDateRangePicker from '@/components/HebrewDateRangePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
 import { getHebrewDateString, getHebrewWeekdayFullName } from '@/lib/hebrewDate';
+import { V3Page, Btn, Card, Chip, Tag, Tabs, Seg, Tip, Dialog, Empty, Icon } from '@/app/v3/ui/components';
+import { TipBtn } from '@/components/ops-v3/OpsKit';
 
 const todayIso = () => {
   const d = new Date();
@@ -47,9 +48,10 @@ const formatDispatchHint = (direction, iso) => {
 // תוויות/צבעים/אייקונים לכל כיוון משלוח - עקבי עם שפת ה-badge/dot-badge של design-system.css.
 // הלוך (יוצא ללקוח) מקבל גוון warning (כמו "הושכר"/"בקרוב" - "עוד לא אצלנו"), חזור (חוזר מהלקוח)
 // מקבל גוון info (כמו "הוחזר חלקי" - "בדרך חזרה") - בחירה עיצובית, אין רפרנס מדויק לכיוונים האלו.
+// label = טקסט לייצוא (נשאר כפי שהוא); short/variant/icon = תצוגה בעמוד בלבד.
 const DIRECTION_META = {
-  out: { label: 'משלוח הלוך', badgeClass: 'badge-warning', description: 'משלוח הלוך' },
-  return: { label: 'משלוח חזור', badgeClass: 'badge-info', description: 'משלוח חזור' },
+  out: { label: 'משלוח הלוך', short: 'הלוך', variant: 'attn', icon: 'truck' },
+  return: { label: 'משלוח חזור', short: 'חזור', variant: 'soft', icon: 'box' },
 };
 
 export default function DeliveriesPage() {
@@ -108,10 +110,10 @@ export default function DeliveriesPage() {
         body: JSON.stringify({ direction: printDirection, fromDate: printFrom, toDate: printTo })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'שגיאה בשליחת המייל');
-      setEmailResult({ ok: true, message: `נשלח בהצלחה ל-${data.sentTo}` });
+      if (!res.ok) throw new Error(data.error || 'שליחת המייל נכשלה');
+      setEmailResult({ ok: true, message: `המייל נשלח אל ${data.sentTo}` });
     } catch (err) {
-      setEmailResult({ ok: false, message: err.message || 'שגיאה בשליחת המייל' });
+      setEmailResult({ ok: false, message: err.message || 'שליחת המייל נכשלה' });
     } finally {
       setEmailSending(false);
     }
@@ -194,44 +196,44 @@ export default function DeliveriesPage() {
   const renderDeliveryRow = (row) => (
     <tr key={row.orderId}>
       <td>
-        <div className="cell-primary">{row.customerName}</div>
-        {row.customerPhone && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone}</div>}
-        {row.customerPhone2 && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone2}</div>}
+        <div className="ops-cell-stack">
+          <span className="ops-strong">{row.customerName}</span>
+          <Link href={`/orders/${row.orderId}`} className="ops-link">הזמנה <bdi>#{row.orderId}</bdi></Link>
+          {row.customerPhone && <span className="ops-ltr ops-muted">{row.customerPhone}</span>}
+          {row.customerPhone2 && <span className="ops-ltr ops-muted">{row.customerPhone2}</span>}
+        </div>
       </td>
-      <td className="cell-primary">
-        <Link href={`/orders/${row.orderId}`}>#{row.orderId}</Link>
-      </td>
-      <td>{row.address || <span className="cell-muted">-</span>}</td>
-      <td>{row.dressModelNames.length > 0 ? row.dressModelNames.join(', ') : <span className="cell-muted">-</span>}</td>
-      <td><strong>{row.eventDateHebrew || '-'}</strong></td>
+      <td>{row.address || <span className="ops-muted">-</span>}</td>
+      <td>{row.dressModelNames.length > 0 ? row.dressModelNames.join(', ') : <span className="ops-muted">-</span>}</td>
+      <td className="ops-strong">{row.eventDateHebrew || '-'}</td>
       <td>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div className="ops-dirs">
           {visibleDirections(row).map(d => (
-            <div key={d} style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'flex-start' }}>
-              <span className={`badge ${DIRECTION_META[d].badgeClass}`}>
-                <svg className="icon"><use href="#i-box" /></svg>
-                {DIRECTION_META[d].label}
-              </span>
-              {row.dispatchDates?.[d] && <span className="cell-muted">{formatDispatchHint(d, row.dispatchDates[d])}</span>}
+            <div key={d} className="ops-dir">
+              <Tag variant={DIRECTION_META[d].variant} icon={DIRECTION_META[d].icon}>{DIRECTION_META[d].short}</Tag>
+              {row.dispatchDates?.[d] && <span className="ops-muted v3-text-sm">{formatDispatchHint(d, row.dispatchDates[d])}</span>}
+              {row.chargeExists[d] ? (
+                <Chip variant="done" icon="check">חיוב נוצר</Chip>
+              ) : (
+                <span className="ops-muted v3-text-sm">עדיין בלי חיוב</span>
+              )}
             </div>
           ))}
         </div>
       </td>
-      <td>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {visibleDirections(row).map(d => (
-            row.chargeExists[d] ? (
-              <span key={d} className="badge badge-success">
-                <svg className="icon"><use href="#i-check" /></svg>
-                נוצר חיוב
-              </span>
-            ) : (
-              <span key={d} className="hint" style={{ color: 'var(--text-3)' }}>טרם נוצר חיוב</span>
-            )
-          ))}
-        </div>
-      </td>
     </tr>
+  );
+
+  const tableHead = (
+    <thead>
+      <tr>
+        <th scope="col">לקוח</th>
+        <th scope="col">כתובת</th>
+        <th scope="col">דגמים</th>
+        <th scope="col">אירוע</th>
+        <th scope="col">משלוח</th>
+      </tr>
+    </thead>
   );
 
   const goPrevDay = () => setSelectedDate(d => addDaysToIso(d, -1));
@@ -246,18 +248,38 @@ export default function DeliveriesPage() {
     chargeStatusLabel: visibleDirections(r).map(d => `${DIRECTION_META[d].label}: ${r.chargeExists[d] ? 'נוצר חיוב' : 'טרם נוצר חיוב'}`).join(' | '),
   }));
 
+  const directionTabs = [
+    { key: 'all', label: 'הכל', icon: 'list' },
+    { key: 'out', label: 'הלוך בלבד', icon: 'truck' },
+    { key: 'return', label: 'חזור בלבד', icon: 'box' },
+  ];
+  const rangeTabs = [
+    { key: 'day', label: 'יום' },
+    { key: 'week', label: 'שבוע' },
+    { key: '2weeks', label: 'שבועיים' },
+    { key: 'month', label: 'חודש' },
+  ];
+  const printTabs = [
+    { key: 'courier-print', label: 'הדפסה למשלוחן', icon: 'printer' },
+    { key: 'courier-email', label: 'מייל למשלוחן', icon: 'mail' },
+    { key: 'bag-label', label: 'נתוני שקית', icon: 'bag' },
+  ];
+  const printDirectionOptions = [
+    { value: 'both', label: 'הלוך וחזור' },
+    { value: 'out', label: 'הלוך' },
+    { value: 'return', label: 'חזור' },
+  ];
+  const closePrintModal = () => { if (!emailSending) setShowPrintModal(false); };
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>משלוחים</h1>
-          <div className="page-desc">סה&quot;כ רשומות: {loading ? '...' : filteredRows.length}</div>
+    <V3Page>
+      <div className="v3-pagehead ops-head">
+        <div className="v3-pagehead__title ops-head__title">
+          <h1 className="v3-h1"><Icon name="truck" />משלוחים</h1>
+          <div className="v3-muted">רשומות: <bdi>{loading ? '...' : filteredRows.length}</bdi></div>
         </div>
-        <div className="page-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => openPrintModal('courier-print')}>
-            <svg className="icon"><use href="#i-printer" /></svg>
-            הדפסת משלוחים
-          </button>
+        <div className="v3-pagehead__tools">
+          <Btn variant="primary" icon="printer" onClick={() => openPrintModal('courier-print')}>הדפסה ושליחה</Btn>
           <ExportButtons
             data={exportData}
             filename="משלוחים"
@@ -279,203 +301,154 @@ export default function DeliveriesPage() {
       </div>
 
       {/* ניווט תאריך: קודם/היום/הבא + בורר תאריך עברי מלא */}
-      <div className="toolbar">
-        <button type="button" className="btn btn-secondary btn-icon-only" onClick={goPrevDay} title="יום קודם">
-          <svg className="icon"><use href="#i-chevron-end" /></svg>
-        </button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={goToday}>היום</button>
-        <button type="button" className="btn btn-secondary btn-icon-only" onClick={goNextDay} title="יום הבא">
-          <svg className="icon"><use href="#i-chevron-start" /></svg>
-        </button>
-        <div style={{ width: '260px' }}>
+      <div className="ops-toolbar ops-toolbar--center">
+        <TipBtn icon="chevron-end" label="היום הקודם" onClick={goPrevDay} />
+        <Btn variant="secondary" size="sm" onClick={goToday}>היום</Btn>
+        <TipBtn icon="chevron-start" label="היום הבא" onClick={goNextDay} />
+        <div className="ops-picker ops-picker--sm">
           <HebrewDatePicker value={selectedDate} onChange={setSelectedDate} />
         </div>
-        {byEventDate && <span className="hint">מוצגים משלוחים להזמנות שתאריך האירוע שלהן הוא התאריך שנבחר</span>}
+        {byEventDate && <Tip>התאריך שנבחר הוא תאריך האירוע: מוצגים משלוחים של הזמנות שהאירוע שלהן ביום הזה.</Tip>}
       </div>
 
-      {/* סרגל חיפוש חופשי (הזמנה/לקוח/טלפון) */}
-      <div className="toolbar">
-        <div className="search-toolbar">
-          <svg className="icon"><use href="#i-search" /></svg>
+      <div className="ops-toolbar">
+        <div className="v3-search ops-search ops-search--max">
+          <Icon name="search" />
           <input
             type="text"
+            aria-label="חיפוש משלוח"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="חיפוש (הזמנה, לקוח, טלפון)..."
+            placeholder="הזמנה, לקוח, טלפון או כתובת"
           />
-          <div className="search-toolbar-actions">
-            {search && (
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה חיפוש" onClick={() => setSearch('')}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            )}
+          <div className="ops-search__acts">
+            {search && <TipBtn icon="x" label="ניקוי החיפוש" variant="quiet" size="sm" onClick={() => setSearch('')} />}
           </div>
         </div>
       </div>
 
-      {/* סינון כיוון משלוח + 18 טווח */}
-      <div className="pill-tabs" style={{ marginBottom: '12px' }}>
-        <button type="button" onClick={() => setDirectionFilter('all')} className={directionFilter === 'all' ? 'pill-tab active' : 'pill-tab'}>
-          <svg className="icon"><use href="#i-list" /></svg> הכל
-        </button>
-        <button type="button" onClick={() => setDirectionFilter('out')} className={directionFilter === 'out' ? 'pill-tab active' : 'pill-tab'}>
-          <svg className="icon"><use href="#i-box" /></svg> משלוח הלוך בלבד
-        </button>
-        <button type="button" onClick={() => setDirectionFilter('return')} className={directionFilter === 'return' ? 'pill-tab active' : 'pill-tab'}>
-          <svg className="icon"><use href="#i-box" /></svg> משלוח חזור בלבד
-        </button>
+      <div className="ops-section">
+        <Tabs label="סינון לפי כיוון משלוח" items={directionTabs} value={directionFilter} onChange={setDirectionFilter} />
       </div>
       {rangeEnabled && (
-        <div className="pill-tabs" style={{ marginBottom: '20px' }}>
-          {[{ v: 'day', l: 'יום אחד' }, { v: 'week', l: 'שבוע' }, { v: '2weeks', l: 'שבועיים' }, { v: 'month', l: 'חודש' }].map(o => (
-            <button key={o.v} type="button" onClick={() => setRangeMode(o.v)} className={rangeMode === o.v ? 'pill-tab active' : 'pill-tab'}>{o.l}</button>
-          ))}
+        <div className="ops-section">
+          <Tabs label="טווח תצוגה" items={rangeTabs} value={rangeMode} onChange={setRangeMode} />
         </div>
       )}
+
       {/* §B - פילוח משלוחים לפי עיר, למשל "ירושלים: 3 · קרית ספר: 2 · ביתר: 5" */}
       {!loading && cityBreakdown.length > 0 && (
-        <div className="card card-pad" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: '13px', color: 'var(--text-3)' }}>פילוח לפי ערים:</strong>
-          {cityBreakdown.map(([city, count]) => (
-            <span key={city} className="badge badge-neutral">{city}: {count}</span>
-          ))}
-        </div>
+        <Card icon="pin" title="לפי עיר" variant="quiet" className="ops-section">
+          <div className="ops-chips">
+            {cityBreakdown.map(([city, count]) => (
+              <Chip key={city}>{city}: <bdi>{count}</bdi></Chip>
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* 18 - תצוגת טווח: טבלה מלאה (כל העמודות) לכל יום בטווח, כולל עבר */}
       {rangeEnabled && rangeMode !== 'day' && (
-        <div style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 8px' }}>טבלת משלוחים לטווח ({rangeMode === 'week' ? 'שבוע' : rangeMode === '2weeks' ? 'שבועיים' : 'חודש'})</h3>
+        <div className="ops-section">
+          <h2 className="v3-h2 ops-range-title">משלוחים בטווח: {rangeMode === 'week' ? 'שבוע' : rangeMode === '2weeks' ? 'שבועיים' : 'חודש'}</h2>
           {Object.keys(rangeRows).sort().map(d => {
             const dayRows = (rangeRows[d] || []).filter(r => directionFilter === 'all' || r.directions.includes(directionFilter));
             if (dayRows.length === 0) return null;
             return (
-              <div key={d} className="card card-pad" style={{ marginBottom: 12 }}>
-                <strong style={{ display: 'block', marginBottom: 8 }}>{byEventDate ? 'אירועים ב-' : ''}{formatRangeDayHeader(d)} - {dayRows.length} משלוחים</strong>
-                <div className="table-wrap">
-                  <div className="table-scroll">
-                    <table className="data">
-                      <thead>
-                        <tr>
-                          <th>לקוח</th>
-                          <th>הזמנה</th>
-                          <th>כתובת</th>
-                          <th>דגמים</th>
-                          <th>תאריך אירוע</th>
-                          <th>כיוון משלוח</th>
-                          <th>חיוב משלוח</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dayRows.map(renderDeliveryRow)}
-                      </tbody>
-                    </table>
-                  </div>
+              <Card key={d} level={3} icon="calendar" title={<>{byEventDate ? 'אירועים ב-' : ''}{formatRangeDayHeader(d)} · <bdi>{dayRows.length}</bdi> משלוחים</>} className="ops-section">
+                <div className="v3-table__wrap">
+                  <table className="v3-table">
+                    {tableHead}
+                    <tbody>
+                      {dayRows.map(renderDeliveryRow)}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
       )}
 
-      <div className="table-wrap">
-        <div className="table-scroll">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>לקוח</th>
-                <th>הזמנה</th>
-                <th>כתובת</th>
-                <th>דגמים</th>
-                <th>תאריך אירוע</th>
-                <th>כיוון משלוח</th>
-                <th>חיוב משלוח</th>
-              </tr>
-            </thead>
+      <div className="ops-tablecard">
+        <div className="v3-table__wrap">
+          <table className="v3-table">
+            {tableHead}
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7"><div className="loading-inline"><span className="spinner" />טוען נתונים...</div></td>
+                  <td colSpan="5"><div className="v3-empty" role="status"><span className="v3-spin" aria-hidden="true" /><span>טוען…</span></div></td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan="7">
-                    <div className="empty-state">
-                      <svg className="icon"><use href="#i-box" /></svg>
-                      <h4>{byEventDate ? 'אין משלוחים לאירועים ביום זה' : 'אין משלוחים ליום זה'}</h4>
-                      <p>{byEventDate ? 'לא נמצאו הזמנות עם משלוח שתאריך האירוע שלהן הוא התאריך שנבחר.' : 'לא נמצאו הזמנות עם משלוח הלוך או חזור בתאריך שנבחר.'}</p>
-                    </div>
+                  <td colSpan="5">
+                    <Empty
+                      icon="truck"
+                      title={byEventDate ? 'אין משלוחים לאירועים ביום הזה' : 'אין משלוחים ליום הזה'}
+                      text={byEventDate ? 'לא נמצאו הזמנות עם משלוח שהאירוע שלהן בתאריך שנבחר.' : 'לא נמצאו הזמנות עם משלוח הלוך או חזור בתאריך שנבחר.'}
+                    />
                   </td>
                 </tr>
               ) : filteredRows.map(renderDeliveryRow)}
             </tbody>
           </table>
         </div>
-        <div className="table-foot">
-          <span>סה&quot;כ רשומות: {loading ? '...' : filteredRows.length}</span>
+        <div className="ops-foot">
+          <span>רשומות: <bdi>{loading ? '...' : filteredRows.length}</bdi></span>
         </div>
       </div>
 
-      {/* מודל "הדפסת משלוחים" (§C/§D/§E) - 3 פעולות: הדפסה למשלוחן, שליחה במייל, הדפסת נתונים לשקית */}
-      {showPrintModal && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget && !emailSending) setShowPrintModal(false); }}
-        >
-          <div className="modal" style={{ maxWidth: '480px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>הדפסת משלוחים</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowPrintModal(false)} disabled={emailSending}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
+      {/* חלונית "הדפסה ושליחה" (§C/§D/§E) - 3 פעולות: הדפסה למשלוחן, שליחה במייל, נתוני שקית. יש בה שדות ← בהיר בלבד */}
+      <Dialog
+        open={showPrintModal}
+        onClose={closePrintModal}
+        closeOnScrim={!emailSending}
+        variant="form"
+        icon="printer"
+        title="הדפסה ושליחה"
+        actions={
+          <>
+            <Btn variant="primary" icon={printAction === 'courier-email' ? 'send' : 'printer'} loading={emailSending} onClick={submitPrintModal}>
+              {printAction === 'courier-email' ? (emailSending ? 'שולח…' : 'שליחה') : 'הדפסה'}
+            </Btn>
+            <Btn variant="quiet" onClick={() => setShowPrintModal(false)} disabled={emailSending}>ביטול</Btn>
+          </>
+        }
+      >
+        <div className="ops-form-grid">
+          <Tabs
+            label="סוג פעולה"
+            items={printTabs}
+            value={printAction}
+            onChange={(k) => { setPrintAction(k); setEmailResult(null); }}
+          />
+
+          {printAction === 'bag-label' ? (
+            <div className="v3-field">
+              <span className="v3-label">{byEventDate ? 'תאריך האירוע' : 'תאריך'} <Tip>נתוני שקית מודפסים למשלוחי הלוך בלבד.</Tip></span>
+              <HebrewDatePicker value={printBagDate} onChange={setPrintBagDate} />
             </div>
-            <div className="modal-body">
-              <div className="pill-tabs" style={{ marginBottom: '16px' }}>
-                <button type="button" className={`pill-tab${printAction === 'courier-print' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-print'); setEmailResult(null); }}>הדפסה למשלוחן</button>
-                <button type="button" className={`pill-tab${printAction === 'courier-email' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-email'); setEmailResult(null); }}>שליחה במייל</button>
-                <button type="button" className={`pill-tab${printAction === 'bag-label' ? ' active' : ''}`} onClick={() => { setPrintAction('bag-label'); setEmailResult(null); }}>הדפסת נתונים לשקית</button>
+          ) : (
+            <>
+              <div className="v3-field">
+                <span className="v3-label">כיוון</span>
+                <Seg label="כיוון משלוח" options={printDirectionOptions} value={printDirection} onChange={setPrintDirection} />
               </div>
+              <div className="v3-field">
+                <span className="v3-label">{byEventDate ? 'תאריכי האירוע' : 'תאריכים'}</span>
+                <HebrewDateRangePicker startDate={printFrom} endDate={printTo} onChange={(start, end) => { setPrintFrom(start); setPrintTo(end); }} />
+              </div>
+            </>
+          )}
 
-              {printAction === 'bag-label' ? (
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>{byEventDate ? 'תאריך אירוע (משלוחי הלוך בלבד)' : 'תאריך (משלוחי הלוך בלבד)'}</label>
-                  <HebrewDatePicker value={printBagDate} onChange={setPrintBagDate} />
-                </div>
-              ) : (
-                <>
-                  <div className="field">
-                    <label>כיוון משלוח</label>
-                    <div className="pill-tabs">
-                      <button type="button" className={`pill-tab${printDirection === 'both' ? ' active' : ''}`} onClick={() => setPrintDirection('both')}>הלוך וחזור</button>
-                      <button type="button" className={`pill-tab${printDirection === 'out' ? ' active' : ''}`} onClick={() => setPrintDirection('out')}>הלוך בלבד</button>
-                      <button type="button" className={`pill-tab${printDirection === 'return' ? ' active' : ''}`} onClick={() => setPrintDirection('return')}>חזור בלבד</button>
-                    </div>
-                  </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>{byEventDate ? 'טווח תאריכי אירוע' : 'טווח תאריכים'}</label>
-                    <HebrewDateRangePicker startDate={printFrom} endDate={printTo} onChange={(start, end) => { setPrintFrom(start); setPrintTo(end); }} />
-                  </div>
-                </>
-              )}
-
-              {emailResult && (
-                <p className="hint" style={{ marginTop: '12px', color: emailResult.ok ? 'var(--success)' : 'var(--danger)' }}>
-                  {emailResult.message}
-                </p>
-              )}
+          {emailResult && (
+            <div className={`ops-result ${emailResult.ok ? 'ops-result--ok' : 'ops-result--bad'}`} role="status">
+              <Icon name={emailResult.ok ? 'check-circle' : 'alert-circle'} />
+              <span>{emailResult.message}</span>
             </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowPrintModal(false)} disabled={emailSending}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={submitPrintModal} disabled={emailSending}>
-                {emailSending ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
-                {printAction === 'courier-email' ? (emailSending ? 'שולח...' : 'שליחה') : 'הדפסה'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
+          )}
+        </div>
+      </Dialog>
+    </V3Page>
   );
 }
