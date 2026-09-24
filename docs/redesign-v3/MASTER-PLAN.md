@@ -107,3 +107,7 @@
 
 ## תפקידי סוכנים (סיכום)
 Concept (blind) · Spec (מכני, בלי HTML) · Builder (blind, חוזה+אב-טיפוס) · Reviewer (עצמאי) · Integrator (נתונים אמיתיים, R24) · Lens ×5 · Rethink (הראשי) · Foundation-builder (שלב 1) · Prototype-builder (שלב 2). הסוכן הראשי: מתאם, ממזג, מנהל `IDEAS-LOG`/`DECISIONS`, אחראי על מיזוג ענפים ועל כך שסוכנים לא נוגעים ב-main.
+
+### רשימת ניקיון (נוסף 2026-09-25 — כללי C-1.26..C-1.30)
+- [ ] אחרי שינוי בלוק המעטפת (amendments A7-A15, sha חדש): להריץ `node docs/redesign-v3/prototypes/tools/build-shell.cjs` על כל האב-טיפוסים (רק archetype-dashboard עודכן בענף home-edit) ולהריץ parity.
+- [ ] בכל עמוד: כפתור אחרי תווית -> `.lrow` (C-1.26); `mountSiteFooter` (C-1.25); בלי כפתורי סלמון כטון דומיננטי (C-1.29); אימות S25-S29.

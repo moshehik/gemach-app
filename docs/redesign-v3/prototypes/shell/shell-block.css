@@ -2251,7 +2251,7 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
    Clipping the bar horizontally removes the scroll; open panels are already kept on-screen by the sketch JS. */
 .snav{overflow-x:clip}
 
-/* ==== A7-A15 — owner-requested shared-component rules of 2026-09-25 (CONSTITUTION C-1.17, C-1.18, C-1.25, C-1.26 ... C-1.30).
+/* ==== A7-A15 — owner-requested shared-component rules of 2026-09-25 (CONSTITUTION C-1.17, C-1.18, C-1.25, C-1.26 ... C-1.30 (a=26 rows, b=27 card header, c=28 animated background, d=29 fills, e=30 border)).
    Every value below is an existing sketch value (colours from the sketch palette; bar geometry + easing copied from the floating-window row `.hf-o::before`, sketch L1506/L1456).
    Nothing here is page-specific: a page uses the classes, it never restyles them. ==== */
 
@@ -2275,8 +2275,8 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .card-h h2 .faint,.card-h h2 .tip{color:var(--sky-300)}
 .card-h .ico[class],.card-h .ico.rose,.card-h .ico.plum,.card-h .ico.gold,.card-h .ico.green,.card-h .ico.blue,.card-h .ico.teal,.card-h .ico.gray{background:var(--gold-rich-c) var(--gold-rich);color:var(--navy) !important;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(154,122,31,.55)}
 
-/* A10 · C-1.29/C-1.28 — buttons: primary = rich gold (the one strong fill); every other button = light-gold body that deepens to rich gold;
-   the salmon fill (--pbtn) is RARE: only .danger / opt-in .btn-pink, for the strictly necessary accent action (C-1.29 d). AA: navy/black text on #f4e8c1 / #d4b04a / #ecd074. */
+/* A10 · C-1.29 — buttons: primary = rich gold (the one strong fill); every other button = light-gold body that deepens to rich gold;
+   the salmon fill (--pbtn) is RARE: only .danger / opt-in .btn-pink, for the strictly necessary accent action (C-1.29). AA: navy/black text on #f4e8c1 / #d4b04a / #ecd074. */
 .btn,.ibtn,.back,#toast button,.rcard .btn,.rcard .btn.ghost,.mbar .btn,.btn.navy,.btn.ghost{background:var(--gold-light);color:var(--navy);border:1.5px solid var(--gold-b);box-shadow:none;font-weight:600}
 .btn:hover,.ibtn:hover,.back:hover,#toast button:hover,.rcard .btn:hover,.rcard .btn.ghost:hover,.mbar .btn:hover,.btn.navy:hover,.btn.ghost:hover,.ibtn.danger:hover{background:var(--gold-rich-c);color:var(--navy);border-color:var(--gold-d);box-shadow:0 4px 10px -4px rgba(15,44,82,.35)}
 .btn.primary,.btn.green,.rcard .btn.primary,.mbar .btn.primary{background:var(--gold-rich-c) var(--gold-rich);color:#000;border:1.5px solid #000;box-shadow:inset 0 1px 0 rgba(255,244,196,.7)}
@@ -2311,9 +2311,9 @@ button.lrow,a.lrow:not(.li){display:inline-flex;align-items:center;gap:8px;min-h
 /* A13 · C-1.17 — every field value is right-aligned (start of RTL), also digits/e-mail (bidi keeps their inner order) */
 input,textarea,select{direction:rtl;text-align:right}
 
-/* A14 · C-1.29 — every background-colour change on an interactive element is animated (same duration/easing as the sketch rows).
+/* A14 · C-1.28 — every background-colour change on an interactive element is animated (same duration/easing as the sketch rows).
    Standing state of a search box (hover / focus-within) = light gold, and so is the button next to it (the button under the pointer itself deepens to rich gold). */
-.seg button,.tab,.menu button,.opt,.cb-o,.chip.btnlike,.rlink,.kv .f,.inp,.sizes button,.methods button,summary,[role=tab],[role=option]{transition:background-color var(--bg-dur) var(--ease),color var(--bg-dur) var(--ease),border-color var(--bg-dur) var(--ease),box-shadow var(--bg-dur) var(--ease)}
+.tip,.seg button,.tab,.menu button,.opt,.cb-o,.chip.btnlike,.rlink,.kv .f,.inp,.sizes button,.methods button,summary,[role=tab],[role=option]{transition:background-color var(--bg-dur) var(--ease),color var(--bg-dur) var(--ease),border-color var(--bg-dur) var(--ease),box-shadow var(--bg-dur) var(--ease)}
 .scan{transition:background-color var(--bg-dur) var(--ease),border-color var(--bg-dur) var(--ease),box-shadow var(--bg-dur) var(--ease)}
 .scan:hover,.scan:focus-within{background:var(--gold-light)}
 .scan:hover .btn,.scan:focus-within .btn{background:var(--gold-light);color:var(--navy);border-color:var(--gold-b)}
