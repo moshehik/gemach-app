@@ -1,0 +1,1 @@
+2026-09-24T14:01Z tables done — TABLES-PATTERN.md; archetype-list.html (orders, rebuilt) + archetype-customers-list.html (new) share shell v1 sha:d7c2b5b7b88b and table layer v1 sha:878f219c77cc; contracts, TABLES-QUESTIONS.md, TABLES-REPORT.md (tables-check, tables-flow, parity-check all PASS; see §2 for what was not run)

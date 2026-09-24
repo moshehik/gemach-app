@@ -135,6 +135,7 @@ th[aria-sort=ascending] .tp-sort .ic{transform:rotate(180deg)}
 @media (max-width:639px){
   .tp-tbl-wrap{display:none}
   .tp-cards{display:flex}
+  .tp-sform{flex-basis:100%}
   .tp-sortsel{display:flex}
   .tp-foot{flex-direction:column;align-items:stretch}
   .tp-pager{display:grid;grid-template-columns:1fr 1fr;gap:8px}

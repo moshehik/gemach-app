@@ -123,6 +123,21 @@ const geomFn = () => {
     ok(f, 'I no-results state names the search', /zzzz/.test(nr), nr);
     await go(1440);
     if (await p.locator('[data-tp-bar=ai]').count()) { await p.click('[data-tp-bar=ai]'); await p.fill('#tpQ', 'בית שמש'); await p.press('#tpQ', 'Enter'); await p.waitForTimeout(800); const ai = await p.evaluate(() => ({ note: !!document.querySelector('.tp-note [data-tp-act=exitAi]'), sortOff: [...document.querySelectorAll('.tp-sort')].every(b => b.disabled) })); ok(f, 'I smart search: banner + exit, sort disabled', ai.note && ai.sortOff, JSON.stringify(ai)); if (SHOTS) await p.screenshot({ path: path.join(SHOTS, `${f}-1440-smart.png`) }); }
+    /* C-1.16: dialogs — no two fields in one vertical band (filter + export), phone and desktop */
+    for (const w of [390, 1440]) for (const [btn, name] of [['[data-tp-bar=adv]', 'filter'], ['[data-head-act=export]', 'export']]) {
+      await go(w); const vis = await p.locator(btn).first().isVisible(); if (!vis) { await p.click('[data-tp-hm]'); await p.waitForTimeout(150); }
+      await p.locator(`${btn}:visible`).first().click(); await p.waitForTimeout(450);
+      const fl = await p.evaluate(() => { const L = [...document.querySelectorAll('#dlg input:not([type=checkbox]):not([type=radio]),#dlg select,#dlg textarea')].filter(e => e.getBoundingClientRect().width > 0).map(e => e.getBoundingClientRect()); let bad = 0; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j]; if (Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 4) bad++; } const d = document.querySelector('#dlg'); return { n: L.length, bad, light: d.classList.contains('mailwin') }; });
+      ok(f, `F ${name} dialog @${w}: one field per line, light data-entry window`, fl.n > 0 && fl.bad === 0 && fl.light, JSON.stringify(fl));
+      if (SHOTS && w === 390) await p.screenshot({ path: path.join(SHOTS, `${f}-390-${name}-dialog.png`) });
+      await p.keyboard.press('Escape'); await p.waitForTimeout(250);
+    }
+    /* export above the row limit asks for approval on the second layer (LI-66 / CL-49) */
+    await go(1440); await p.click('[data-head-act=export]'); await p.waitForTimeout(300); await p.fill('#tpExN', '5000'); await p.click('[data-tpx=xlsx]'); await p.waitForTimeout(300);
+    const ap = await p.evaluate(() => ({ on: document.querySelector('#scrim2').classList.contains('on'), appr: document.querySelector('#dlg2').classList.contains('apprwin') }));
+    await p.fill('#tpApPw', '1234'); await p.click('#tpApOk'); await p.waitForTimeout(300);
+    const tst = await p.evaluate(() => (document.querySelector('#toast') || {}).textContent || '');
+    ok(f, 'I export above limit → approval window (2nd layer) → toast', ap.on && ap.appr && /הקובץ ירד/.test(tst), JSON.stringify({ ...ap, toast: tst.trim().slice(0, 40) }));
     /* phone: card expand uses the sketch det-wrap */
     await go(360); await p.locator('.tp-cards .chevb').first().click(); await p.waitForTimeout(450);
     const ce = await p.evaluate(() => { const c = document.querySelector('.tp-cards .itm.open'); return { open: !!c, trans: c ? getComputedStyle(c.querySelector('.det-wrap')).transition : '', h: c ? c.querySelector('.det-wrap').getBoundingClientRect().height : 0 }; });

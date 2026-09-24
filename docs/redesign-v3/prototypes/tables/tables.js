@@ -156,5 +156,53 @@ var TP=(function(){
   document.addEventListener('keydown',e=>{ const m=document.getElementById('tpHm'); if(!m||!m.classList.contains('open')) return; const it=[...m.querySelectorAll('button')], i=it.indexOf(document.activeElement);
     if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); m.classList.remove('open'); const t=document.querySelector('[data-tp-hm]'); if(t){ t.setAttribute('aria-expanded','false'); t.focus(); } }
     else if(e.key==='ArrowDown'){ e.preventDefault(); it[(i+1)%it.length].focus(); } else if(e.key==='ArrowUp'){ e.preventDefault(); it[(i-1+it.length)%it.length].focus(); } },true);
-  return {frame,bar,views,pills,mount,render,slow,toggle,headMenu,esc,num,get state(){return st}};
+  /* ---------- export window (same on every list screen): light data-entry window, approval on the 2nd layer above the limit ---------- */
+  function approve(reason){
+    return new Promise(res=>{
+      $('#dlg2').className='dlg apprwin';
+      $('#dlg2').innerHTML=`<div class="appr"><div class="ashield">${ic('shield','lg')}</div><h2 id="tpApT">אישור ייצוא גדול</h2><div class="sub">${esc(reason)}</div>
+        <div class="fcol" style="text-align:start"><div class="field"><label class="lbl" for="tpApPw">סיסמה של עובד מורשה</label><input class="inp" id="tpApPw" type="password" autocomplete="new-password" dir="ltr"><div class="fhint">בהדגמה: כל סיסמה מ-4 תווים נכונה.</div><div class="ferr" id="tpApE" hidden role="alert">${ic('alert','sm')}הסיסמה לא נכונה</div></div></div>
+        <div class="dbtns"><button type="button" class="btn primary lg block" id="tpApOk">${ic('check')}אישור</button><button type="button" class="btn ghost block" id="tpApNo">${ic('back','sm')}ביטול</button></div></div>`;
+      $('#dlg2').setAttribute('aria-labelledby','tpApT'); $('#scrim2').classList.add('on'); setTimeout(()=>$('#tpApPw').focus(),30);
+      const done=v=>{ $('#scrim2').classList.remove('on'); document.removeEventListener('keydown',k,true); res(v); };
+      const k=e=>{ if(e.key==='Escape'){ e.stopPropagation(); e.preventDefault(); done(false); } else if(e.key==='Enter'&&document.activeElement.id==='tpApPw'){ $('#tpApOk').click(); } };
+      document.addEventListener('keydown',k,true);
+      $('#tpApNo').onclick=()=>done(false);
+      $('#tpApOk').onclick=()=>{ if($('#tpApPw').value.length<4){ $('#tpApE').hidden=false; $('#tpApPw').closest('.field').classList.add('bad'); $('#tpApPw').focus(); return; } done(true); };
+    });
+  }
+  function exportDlg(o){
+    let n=100, ok=false;
+    const hint=()=>n>o.max&&!ok?`מעל ${o.max.toLocaleString('he-IL')} שורות — תתבקש סיסמה של עובד מורשה.`:o.note();
+    openDlg(`<div class="mh"><span class="mico">${ic('file')}</span><h2 id="tpExT">${o.title}</h2><button type="button" class="ibtn mx" data-tpx="x" aria-label="סגירה">${ic('x')}</button></div>
+      <div class="fcol"><div class="field"><label class="lbl" for="tpExN">כמה שורות לייצא ${tip(`עד ${o.max} שורות בלי אישור. מעבר לזה צריך סיסמה של עובד מורשה.`)}</label><input class="inp" id="tpExN" type="number" min="1" inputmode="numeric" dir="ltr" value="${n}"><div class="fhint" id="tpExH">${hint()}</div></div>
+        <div class="fhint">עמודות: ${o.columns}.</div></div>
+      <div class="dbtns mact"><button type="button" class="btn primary lg block" data-tpx="xlsx">${ic('file')}הורדה לאקסל</button><button type="button" class="btn block" data-tpx="print">${ic('print','sm')}הדפסה או PDF</button>${o.aiOn?`<button type="button" class="btn ghost block" data-tpx="ai">${ic('sun','sm')}דוח חכם</button>`:''}</div>`);
+    const d=$('#dlg'); d.className='dlg mailwin'; d.setAttribute('aria-labelledby','tpExT'); setTimeout(()=>$('#tpExN').focus(),30);
+    const close=()=>{ d.oninput=d.onclick=null; document.removeEventListener('keydown',esc1,true); closeDlg(); };
+    const esc1=e=>{ if(e.key==='Escape'&&!$('#scrim2').classList.contains('on')){ e.stopPropagation(); close(); } };
+    document.addEventListener('keydown',esc1,true);
+    d.oninput=e=>{ if(e.target.id==='tpExN'){ n=parseInt(e.target.value,10)||0; ok=false; $('#tpExH').textContent=hint(); } };
+    d.onclick=async e=>{ const b=e.target.closest('[data-tpx]'); if(!b) return; const a=b.dataset.tpx; if(a==='x') return close();
+      if(n<1){ $('#tpExN').focus(); return; }
+      if(n>o.max&&!ok){ ok=await approve(`ייצוא של ${n.toLocaleString('he-IL')} שורות (מעל ${o.max.toLocaleString('he-IL')}).`); if(!ok) return; $('#tpExH').textContent=`${n.toLocaleString('he-IL')} שורות — אושר.`; }
+      close();
+      if(o.fail&&o.fail()) return toast('info','הייצוא נכשל','השרת לא ענה. נסו שוב.');
+      const rows=Math.min(n,o.total()||0);
+      if(!rows) return toast('info',o.emptyText,'אין מה לייצא בחיפוש ובסינון הנוכחיים');
+      toast('info',a==='xlsx'?`הקובץ ירד · ${rows.toLocaleString('he-IL')} שורות`:a==='print'?'חלון ההדפסה נפתח':'הדוח החכם מוכן',a==='xlsx'?o.filename:'');
+    };
+  }
+  /* ---------- statistics entry (the statistics window itself is designed separately) ---------- */
+  function statsDlg(o){
+    openDlg(`<div class="mh"><span class="mico">${ic('list')}</span><h2 id="tpStT">${o.title}</h2><button type="button" class="ibtn mx" data-tps="x" aria-label="סגירה">${ic('x')}</button></div>
+      <div class="fcol"><div class="field"><label class="lbl" for="tpStQ">מה לבדוק?</label><input class="inp" id="tpStQ" placeholder="${esc(o.placeholder)}"></div><div class="fhint">חלון הסטטיסטיקה עצמו מתוכנן בנפרד — כאן רק נקודת הכניסה מהרשימה.</div></div>
+      <div class="dbtns mact"><button type="button" class="btn primary lg block" data-tps="x">${ic('send')}שליחה</button></div>`);
+    const d=$('#dlg'); d.className='dlg mailwin'; d.setAttribute('aria-labelledby','tpStT'); setTimeout(()=>$('#tpStQ').focus(),30);
+    const close=()=>{ d.onclick=null; document.removeEventListener('keydown',k,true); closeDlg(); };
+    const k=e=>{ if(e.key==='Escape'){ e.stopPropagation(); close(); } };
+    document.addEventListener('keydown',k,true);
+    d.onclick=e=>{ if(e.target.closest('[data-tps]')){ const q=$('#tpStQ').value.trim(); close(); if(q) toast('info','השאלה נשלחה',q); } };
+  }
+  return {frame,bar,views,pills,mount,render,slow,toggle,headMenu,exportDlg,statsDlg,esc,num,get state(){return st}};
 })();

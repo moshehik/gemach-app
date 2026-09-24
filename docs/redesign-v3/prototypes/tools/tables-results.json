@@ -1,0 +1,482 @@
+{
+ "when": "2026-09-24T13:59:08.053Z",
+ "results": {
+  "archetype-list": [
+   {
+    "id": "S shell sha same as other lists",
+    "pass": true,
+    "detail": "v1 sha:d7c2b5b7b88b"
+   },
+   {
+    "id": "S tables sha same as other lists",
+    "pass": true,
+    "detail": "v1 sha:878f219c77cc"
+   },
+   {
+    "id": "S @media only allowed widths",
+    "pass": true,
+    "detail": "[]"
+   },
+   {
+    "id": "S no physical properties (page + tables CSS)",
+    "pass": true,
+    "detail": "0"
+   },
+   {
+    "id": "S no .chip class in page markup",
+    "pass": true,
+    "detail": "0"
+   },
+   {
+    "id": "O no page overflow @360",
+    "pass": true,
+    "detail": "360/360"
+   },
+   {
+    "id": "C card mode @360",
+    "pass": true
+   },
+   {
+    "id": "T chips @360: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":0,\"cards\":50,\"maxRow\":0,\"maxCard\":1,\"tagCols\":0,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @768",
+    "pass": true,
+    "detail": "768/768"
+   },
+   {
+    "id": "C table (not cards) @768, no inner scroll",
+    "pass": true,
+    "detail": "inner scroll 0px"
+   },
+   {
+    "id": "T chips @768: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":50,\"cards\":0,\"maxRow\":1,\"maxCard\":0,\"tagCols\":1,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @1024",
+    "pass": true,
+    "detail": "1024/1024"
+   },
+   {
+    "id": "C ≤5 data columns @1024",
+    "pass": true,
+    "detail": "5"
+   },
+   {
+    "id": "C table (not cards) @1024, no inner scroll",
+    "pass": true,
+    "detail": "inner scroll 0px"
+   },
+   {
+    "id": "T chips @1024: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":50,\"cards\":0,\"maxRow\":1,\"maxCard\":0,\"tagCols\":1,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @1440",
+    "pass": true,
+    "detail": "1440/1440"
+   },
+   {
+    "id": "C ≤5 data columns @1440",
+    "pass": true,
+    "detail": "5"
+   },
+   {
+    "id": "C table (not cards) @1440, no inner scroll",
+    "pass": true,
+    "detail": "inner scroll 0px"
+   },
+   {
+    "id": "T chips @1440: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":50,\"cards\":0,\"maxRow\":1,\"maxCard\":0,\"tagCols\":1,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @360 (max)",
+    "pass": true,
+    "detail": "360/360"
+   },
+   {
+    "id": "O no page overflow @768 (max)",
+    "pass": true,
+    "detail": "768/768"
+   },
+   {
+    "id": "O no page overflow @1024 (max)",
+    "pass": true,
+    "detail": "1024/1024"
+   },
+   {
+    "id": "O no page overflow @1440 (max)",
+    "pass": true,
+    "detail": "1440/1440"
+   },
+   {
+    "id": "T chips in view \"soon\"",
+    "pass": true,
+    "detail": "rows 50, max/row 1, tag cols 1"
+   },
+   {
+    "id": "T chips in view \"archive\"",
+    "pass": true,
+    "detail": "rows 49, max/row 1, tag cols 1"
+   },
+   {
+    "id": "T chips in view \"deleted\"",
+    "pass": true,
+    "detail": "rows 8, max/row 1, tag cols 1"
+   },
+   {
+    "id": "T chips in view \"unpaid\"",
+    "pass": true,
+    "detail": "rows 43, max/row 1, tag cols 1"
+   },
+   {
+    "id": "T chips in view \"not_taken\"",
+    "pass": true,
+    "detail": "rows 50, max/row 1, tag cols 1"
+   },
+   {
+    "id": "T chips in view \"all\"",
+    "pass": true,
+    "detail": "rows 50, max/row 1, tag cols 1"
+   },
+   {
+    "id": "I sort header flips aria-sort",
+    "pass": true,
+    "detail": "none → ascending"
+   },
+   {
+    "id": "I expand row (aria-expanded, open, height, sketch .3s transition)",
+    "pass": true,
+    "detail": "{\"a\":\"true\",\"open\":true,\"h\":276,\"trans\":\"grid-template-rows 0.3s cubic-bezier(0.22, 1, 0.36, 1)\"}"
+   },
+   {
+    "id": "I Esc collapses and returns focus to the chevron",
+    "pass": true,
+    "detail": "{\"open\":false,\"focus\":true}"
+   },
+   {
+    "id": "I row menu opens by keyboard, Esc returns focus",
+    "pass": true,
+    "detail": "{\"open\":true,\"focusIn\":true,\"back\":true}"
+   },
+   {
+    "id": "I pager next → page 2",
+    "pass": true,
+    "detail": "2"
+   },
+   {
+    "id": "I error state: inline alert + retry",
+    "pass": true,
+    "detail": "{\"note\":true,\"retry\":true,\"role\":\"alert\"}"
+   },
+   {
+    "id": "I empty state with action",
+    "pass": true,
+    "detail": "{\"empty\":true,\"act\":true}"
+   },
+   {
+    "id": "I no-results state names the search",
+    "pass": true,
+    "detail": "לא נמצא \"zzzz\""
+   },
+   {
+    "id": "I smart search: banner + exit, sort disabled",
+    "pass": true,
+    "detail": "{\"note\":true,\"sortOff\":true}"
+   },
+   {
+    "id": "F filter dialog @390: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":9,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "F export dialog @390: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":1,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "F filter dialog @1440: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":9,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "F export dialog @1440: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":1,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "I export above limit → approval window (2nd layer) → toast",
+    "pass": true,
+    "detail": "{\"on\":true,\"appr\":true,\"toast\":\"הקובץ ירד · 63 שורותהזמנות.xlsx\"}"
+   },
+   {
+    "id": "I phone card expands (sketch .det-wrap .3s)",
+    "pass": true,
+    "detail": "{\"open\":true,\"trans\":\"grid-template-rows 0.3s cubic-bezier(0.22, 1, 0.36, 1)\",\"h\":820.84375}"
+   },
+   {
+    "id": "A text contrast ≥ AA (sampled)",
+    "pass": true,
+    "detail": "0 of 391: "
+   },
+   {
+    "id": "no JS errors",
+    "pass": true,
+    "detail": ""
+   }
+  ],
+  "archetype-customers-list": [
+   {
+    "id": "S shell sha same as other lists",
+    "pass": true,
+    "detail": "v1 sha:d7c2b5b7b88b"
+   },
+   {
+    "id": "S tables sha same as other lists",
+    "pass": true,
+    "detail": "v1 sha:878f219c77cc"
+   },
+   {
+    "id": "S @media only allowed widths",
+    "pass": true,
+    "detail": "[]"
+   },
+   {
+    "id": "S no physical properties (page + tables CSS)",
+    "pass": true,
+    "detail": "0"
+   },
+   {
+    "id": "S no .chip class in page markup",
+    "pass": true,
+    "detail": "0"
+   },
+   {
+    "id": "O no page overflow @360",
+    "pass": true,
+    "detail": "360/360"
+   },
+   {
+    "id": "C card mode @360",
+    "pass": true
+   },
+   {
+    "id": "T chips @360: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":0,\"cards\":50,\"maxRow\":0,\"maxCard\":1,\"tagCols\":0,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @768",
+    "pass": true,
+    "detail": "768/768"
+   },
+   {
+    "id": "C table (not cards) @768, no inner scroll",
+    "pass": true,
+    "detail": "inner scroll 0px"
+   },
+   {
+    "id": "T chips @768: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":50,\"cards\":0,\"maxRow\":1,\"maxCard\":0,\"tagCols\":1,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @1024",
+    "pass": true,
+    "detail": "1024/1024"
+   },
+   {
+    "id": "C ≤5 data columns @1024",
+    "pass": true,
+    "detail": "5"
+   },
+   {
+    "id": "C table (not cards) @1024, no inner scroll",
+    "pass": true,
+    "detail": "inner scroll 0px"
+   },
+   {
+    "id": "T chips @1024: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":50,\"cards\":0,\"maxRow\":1,\"maxCard\":0,\"tagCols\":1,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @1440",
+    "pass": true,
+    "detail": "1440/1440"
+   },
+   {
+    "id": "C ≤5 data columns @1440",
+    "pass": true,
+    "detail": "5"
+   },
+   {
+    "id": "C table (not cards) @1440, no inner scroll",
+    "pass": true,
+    "detail": "inner scroll 0px"
+   },
+   {
+    "id": "T chips @1440: ≤1/row, ≤1/card, ≤1 tag column, 0 outside rows",
+    "pass": true,
+    "detail": "{\"rows\":50,\"cards\":0,\"maxRow\":1,\"maxCard\":0,\"tagCols\":1,\"outside\":0}"
+   },
+   {
+    "id": "O no page overflow @360 (max)",
+    "pass": true,
+    "detail": "360/360"
+   },
+   {
+    "id": "O no page overflow @768 (max)",
+    "pass": true,
+    "detail": "768/768"
+   },
+   {
+    "id": "O no page overflow @1024 (max)",
+    "pass": true,
+    "detail": "1024/1024"
+   },
+   {
+    "id": "O no page overflow @1440 (max)",
+    "pass": true,
+    "detail": "1440/1440"
+   },
+   {
+    "id": "I sort header flips aria-sort",
+    "pass": true,
+    "detail": "descending → ascending"
+   },
+   {
+    "id": "I expand row (aria-expanded, open, height, sketch .3s transition)",
+    "pass": true,
+    "detail": "{\"a\":\"true\",\"open\":true,\"h\":154,\"trans\":\"grid-template-rows 0.3s cubic-bezier(0.22, 1, 0.36, 1)\"}"
+   },
+   {
+    "id": "I Esc collapses and returns focus to the chevron",
+    "pass": true,
+    "detail": "{\"open\":false,\"focus\":true}"
+   },
+   {
+    "id": "I pager next → page 2",
+    "pass": true,
+    "detail": "2"
+   },
+   {
+    "id": "I error state: inline alert + retry",
+    "pass": true,
+    "detail": "{\"note\":true,\"retry\":true,\"role\":\"alert\"}"
+   },
+   {
+    "id": "I empty state with action",
+    "pass": true,
+    "detail": "{\"empty\":true,\"act\":true}"
+   },
+   {
+    "id": "I no-results state names the search",
+    "pass": true,
+    "detail": "לא נמצא \"zzzz\""
+   },
+   {
+    "id": "I smart search: banner + exit, sort disabled",
+    "pass": true,
+    "detail": "{\"note\":true,\"sortOff\":true}"
+   },
+   {
+    "id": "F filter dialog @390: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":5,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "F export dialog @390: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":1,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "F filter dialog @1440: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":5,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "F export dialog @1440: one field per line, light data-entry window",
+    "pass": true,
+    "detail": "{\"n\":1,\"bad\":0,\"light\":true}"
+   },
+   {
+    "id": "I export above limit → approval window (2nd layer) → toast",
+    "pass": true,
+    "detail": "{\"on\":true,\"appr\":true,\"toast\":\"הקובץ ירד · 137 שורותלקוחות.xlsx\"}"
+   },
+   {
+    "id": "I phone card expands (sketch .det-wrap .3s)",
+    "pass": true,
+    "detail": "{\"open\":true,\"trans\":\"grid-template-rows 0.3s cubic-bezier(0.22, 1, 0.36, 1)\",\"h\":332.9375}"
+   },
+   {
+    "id": "A text contrast ≥ AA (sampled)",
+    "pass": true,
+    "detail": "0 of 222: "
+   },
+   {
+    "id": "no JS errors",
+    "pass": true,
+    "detail": ""
+   }
+  ],
+  "shared": [
+   {
+    "id": "P th identical across lists",
+    "pass": true,
+    "detail": "padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(77, 103, 135);background-color=rgb(243, 249, 254);border-bottom-color=rgb(207, 230, 247);height=49  ||  padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(77, 103, 135);background-color=rgb(243, 249, 254);border-bottom-color=rgb(207, 230, 247);height=49"
+   },
+   {
+    "id": "P td identical across lists",
+    "pass": true,
+    "detail": "padding-top=16px;padding-bottom=16px;padding-inline-start=16px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)  ||  padding-top=16px;padding-bottom=16px;padding-inline-start=16px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)"
+   },
+   {
+    "id": "P act identical across lists",
+    "pass": true,
+    "detail": "padding-top=8px;padding-bottom=8px;padding-inline-start=8px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)  ||  padding-top=8px;padding-bottom=8px;padding-inline-start=8px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)"
+   },
+   {
+    "id": "P foot identical across lists",
+    "pass": true,
+    "detail": "padding-top=16px;padding-bottom=0px;padding-inline-start=0px;padding-inline-end=0px;font-size=14px;font-weight=400;color=rgb(47, 74, 107);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(47, 74, 107)  ||  padding-top=16px;padding-bottom=0px;padding-inline-start=0px;padding-inline-end=0px;font-size=14px;font-weight=400;color=rgb(47, 74, 107);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(47, 74, 107)"
+   },
+   {
+    "id": "P sort identical across lists",
+    "pass": true,
+    "detail": "padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(15, 44, 82);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(15, 44, 82);height=48  ||  padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(15, 44, 82);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(15, 44, 82);height=48"
+   },
+   {
+    "id": "P kv identical across lists",
+    "pass": true,
+    "detail": "padding-top=24px;padding-bottom=24px;padding-inline-start=24px;padding-inline-end=24px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgb(243, 249, 254);border-bottom-color=rgb(10, 34, 66)  ||  padding-top=24px;padding-bottom=24px;padding-inline-start=24px;padding-inline-end=24px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgb(243, 249, 254);border-bottom-color=rgb(10, 34, 66)"
+   }
+  ]
+ },
+ "geometry": {
+  "archetype-list": {
+   "th": "padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(77, 103, 135);background-color=rgb(243, 249, 254);border-bottom-color=rgb(207, 230, 247);height=49",
+   "td": "padding-top=16px;padding-bottom=16px;padding-inline-start=16px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)",
+   "act": "padding-top=8px;padding-bottom=8px;padding-inline-start=8px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)",
+   "foot": "padding-top=16px;padding-bottom=0px;padding-inline-start=0px;padding-inline-end=0px;font-size=14px;font-weight=400;color=rgb(47, 74, 107);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(47, 74, 107)",
+   "sort": "padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(15, 44, 82);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(15, 44, 82);height=48",
+   "kv": "padding-top=24px;padding-bottom=24px;padding-inline-start=24px;padding-inline-end=24px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgb(243, 249, 254);border-bottom-color=rgb(10, 34, 66)"
+  },
+  "archetype-customers-list": {
+   "th": "padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(77, 103, 135);background-color=rgb(243, 249, 254);border-bottom-color=rgb(207, 230, 247);height=49",
+   "td": "padding-top=16px;padding-bottom=16px;padding-inline-start=16px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)",
+   "act": "padding-top=8px;padding-bottom=8px;padding-inline-start=8px;padding-inline-end=16px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(228, 241, 251)",
+   "foot": "padding-top=16px;padding-bottom=0px;padding-inline-start=0px;padding-inline-end=0px;font-size=14px;font-weight=400;color=rgb(47, 74, 107);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(47, 74, 107)",
+   "sort": "padding-top=12px;padding-bottom=12px;padding-inline-start=16px;padding-inline-end=16px;font-size=14px;font-weight=600;color=rgb(15, 44, 82);background-color=rgba(0, 0, 0, 0);border-bottom-color=rgb(15, 44, 82);height=48",
+   "kv": "padding-top=24px;padding-bottom=24px;padding-inline-start=24px;padding-inline-end=24px;font-size=16px;font-weight=400;color=rgb(10, 34, 66);background-color=rgb(243, 249, 254);border-bottom-color=rgb(10, 34, 66)"
+  }
+ }
+}

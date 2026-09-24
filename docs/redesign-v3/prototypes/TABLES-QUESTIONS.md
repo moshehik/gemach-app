@@ -1,0 +1,28 @@
+# TABLES-QUESTIONS — owner questions for the table-screen pattern (defaults already applied)
+
+> Autonomous run 2026-09-24, nobody available to answer. Every question has the default the prototypes use. Nothing here changes app code; items marked **behaviour change** would change what staff experience and need a yes before the real pages are built.
+
+| # | Question | Default in the prototypes | Why this default |
+|---|---|---|---|
+| T-Q1 | One chip per row: which status wins on orders — order status or payment status? | **Order status** is the tag; payment status is text under the amount | Order status is the one `lib/orderStatus.js` calls the source of truth; payment state sits next to the money it describes |
+| T-Q2 | Orders table columns (5): number · customer · event date · amount due (+payment text) · status. Models, item count, paid, phone/email/city, spacing → expanded row. OK? | Yes | C-1.5 max 5; "models" and "count" are long/secondary; the old hover card (LI-39) had exactly the expanded set |
+| T-Q3 | **Behaviour change:** advanced filters apply on "הצגת התוצאות" (not every keystroke) and return to page 1 — both screens | Yes (same as Q-L5 / LQ-3 already proposed for orders) | Today every keystroke reloads behind the dialog and can leave you on an empty page (LI-53/55, CL-30/31) |
+| T-Q4 | Customers: first + last name in one "שם" column (sort by first or last still possible from the sort select) | Yes | Frees a column for status; staff read the full name anyway |
+| T-Q5 | Show a Gregorian date line under the Hebrew event date (hidden when `hide_gregorian_calendar`) | Yes | UI-only (`eventDate` already in the response); today the list shows Hebrew only (LI-79) |
+| T-Q6 | Customers: show "חסום" in the list (the only tag) | Yes | `isBlocked` is already returned and is a real status; today a blocked customer is only visible inside the card (CL-39) |
+| T-Q7 | Selection / bulk actions | Not in these prototypes (no real page has them); pattern reserves a checkbox column + sticky bar | Would be inventing behaviour |
+| T-Q8 | Wide screens: keep the 1240 container (D-14 "like today") or give list screens 1440? | 1240; P3 columns only appear from 1440 viewport | Needs a shell amendment to change `.app`; D-14 exact sizes still open |
+| T-Q9 | Customers: e-mail moves to the expanded row; city stays in the table (hidden below 1024, then shown inside the address line) | Yes | City is used to tell namesakes apart at a glance; e-mail is long and rarely scanned |
+| T-Q10 | ID number (ת"ז) in the customers' expanded row shown masked (last 4 digits) | Masked | Privacy on a shared screen; the full number stays in the card |
+| T-Q11 | AI / statistics buttons hidden when AI is not available (today visible and fail with "Forbidden", CL-5) | Hidden | UI-only, same body class the rest of the app already uses |
+| T-Q12 | Customers export: "קוד לקוח" column exports `legacyId` (today the UUID, CL-20) | legacyId | AGENTS.md ID rule; UI-only |
+| T-Q13 | Sort in smart-search mode: disable the headers (today the arrow changes but nothing sorts, CL-44) | Disabled with a tooltip | UI-only; honest |
+| T-Q14 | Orders row actions: the row opens the order; "השכרה או החזרה" and "מחיקת ההזמנה" sit in the row's "עוד" menu at ≥1024 and inside the expanded row below 1024 and on phones (today: three visible icon buttons per row) | Menu + expanded row | C-1.5 "one primary action + more". **Differs from POLISH-QUESTIONS L-2** (the polish pass removed the menu and kept actions only in the expanded row). This pattern keeps the menu on desktop because C-1.5 asks for it and staff delete/rent without expanding; either way the expanded row carries the same actions |
+| T-Q15 | Phone card mode: which line is the title — customer name (orders) / full name (customers)? | Name first, number second | Staff search by name on the phone; the number is still on its own line |
+| T-Q16 | Hidden "last 3 months" default on orders shown as a line above the table with "כל התאריכים" (see T-Q20) | Yes | Explains why orders without an event date never appear (LI-7 re-verified) |
+| T-Q17 | Orders without an event date disappear from every tab while the 3-month default is active (found in re-verification). Fix = server/param change, not UI | Shown as-is + hint in the empty state | R8: not changing data behaviour here |
+| T-Q18 | Where the orders' "item state" filter lives (pending / rented / returned) | In the advanced filter window, as on the real page (LI-51/52) | **Differs from POLISH-QUESTIONS L-3** (moved to the search bar as a `.hf-sel` multi-select). Kept in the window so both screens share one bar layout (search · filter · AI · stats); a quick facet in the bar can be added per screen later if the owner wants it |
+| T-Q19 | Search row, views and filter pills use the sketch's history filter bar (`.hf-bar/.hf-s/.hf-t/.hf-pill`) and `.seg`, not new controls | Yes | C-1.15: the sketch's own search/filter component; matches the polish pass |
+| T-Q20 | The hidden 3-month default on orders is shown as text + "כל התאריכים", not as a removable pill | Text + button | It is a server default, not something the user chose; a pill would look like a user filter |
+| T-Q21 | Row edge marker colours: gold = draft / custom spacing / live cart, rose = debt (today: 4 different stripe colours incl. navy/peri) | Two colours | Fewer meanings to learn; every marker has a text twin in the row |
+| T-Q22 | Header tools order: capacity · print · export, then the primary button; "סינון" moved from the header into the search row | Yes | Filter belongs next to what it filters; header keeps page-level tools only |
