@@ -2276,6 +2276,21 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
 .email-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .ord-list{display:flex;flex-direction:column;gap:14px}
 .foot{margin-top:16px;color:var(--ink3);font-size:14px}
+/* CURATION R1 (from pre-polish): order links = ink, bold, arrow that nudges — not the browser-default blue underline */
+.olink{display:inline-flex;align-items:center;gap:6px;min-height:32px;color:var(--ink);font-weight:700;text-decoration:none;border-radius:8px}
+.olink:hover{text-decoration:underline;text-underline-offset:4px}
+.olink:focus-visible{outline:3px solid var(--navy-500);outline-offset:2px}
+.olink .ic{width:16px;height:16px;transition:transform .2s}
+.olink:hover .ic{transform:translateX(-3px)}
+@media (prefers-reduced-motion:reduce){.olink .ic{transition:none}.olink:hover .ic{transform:none}}
+small .olink{min-height:24px;font-weight:600}
+/* CURATION R2: blocked banner — action inline at ≥481px (pre-polish composition); on phones it falls back to the sketch's own .creditile.stack values */
+@media (max-width:480px){.creditile.blk{flex-wrap:wrap}.creditile.blk>.btn{flex:1 1 100%;justify-content:center}}
+/* CURATION R4: empty states — icon in a gold-ringed circle, more air (pre-polish) */
+.empty .eic{display:grid;place-items:center;width:72px;height:72px;margin:0 auto 12px;border-radius:50%;border:2px solid var(--gold-300);background:var(--surface);color:var(--navy)}
+.empty .eic+b{display:block;font-size:18px;color:var(--ink);margin-bottom:4px}
+/* CURATION R3: copy action sits next to the e-mail value */
+.f .inl{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .appr-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;text-align:start}
 .appr-pick{width:100%}
 .mfiles .mfld-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
@@ -3172,7 +3187,7 @@ function kvRow(k, icon, label, val, o = {}){
   const changed = keys.some(x => JSON.stringify(S.cur[x] ?? '') !== JSON.stringify(S.orig[x] ?? ''));
   const empty = String(val ?? '').trim() === '';
   const was = changed ? `<span class="missv was">${ic('pencil','sm')}לא נשמר · היה: ${esc(o.was ?? fmtVal(k, S.orig[k]))}</span>` : '';
-  return `<div class="f${empty ? ' miss' : ''}">${ic(icon)}<div style="min-width:0"><small>${label}${o.tip ? ' ' + tip(o.tip) : ''}</small>${empty ? `<span class="missv">${ic('alert','sm')}חסר</span>` : `<b>${o.ltr ? `<bdi dir="ltr">${esc(val)}</bdi>` : esc(val)}</b>`}${was}</div></div>`;
+  return `<div class="f${empty ? ' miss' : ''}">${ic(icon)}<div style="min-width:0"><small>${label}${o.tip ? ' ' + tip(o.tip) : ''}</small>${empty ? `<span class="missv">${ic('alert','sm')}חסר</span>` : (v => o.after ? `<div class="inl">${v}${o.after}</div>` : v)(`<b>${o.ltr ? `<bdi dir="ltr">${esc(val)}</bdi>` : esc(val)}</b>`)}${was}</div></div>`;
 }
 function field(k, o = {}){
   const f = FIELDS[k], v = (o.src || S.cur)[k] ?? '', err = (o.errs || S.errors)[k];
@@ -3185,8 +3200,8 @@ function field(k, o = {}){
 }
 function pDetails(){
   const c = S.cur;
-  const blocked = c.isBlocked ? `<div class="creditile stack" role="status">${ic('lock','lg')}<div style="flex:1;min-width:0"><b>הלקוח חסום להזמנות חדשות</b>${c.blockedReason ? `<div class="sm">${esc(c.blockedReason)}</div>` : ''}</div>
-      ${S.head ? `<button class="btn" data-act="unblock">${ic('shield','sm')}ביטול החסימה</button>` : `<span class="stx">${ic('lock')}ביטול החסימה: רק הנהלה ראשית</span>`}</div>` : '';
+  const blocked = c.isBlocked ? `<div class="creditile blk" role="status">${ic('lock','lg')}<div style="flex:1;min-width:0"><b>הלקוח חסום להזמנות חדשות</b>${c.blockedReason ? `<div class="sm">${esc(c.blockedReason)}</div>` : ''}</div>
+      ${S.head ? `<button class="btn sm" data-act="unblock">${ic('shield','sm')}ביטול החסימה</button>` : `<span class="stx">${ic('lock')}ביטול החסימה: רק הנהלה ראשית</span>`}</div>` : '';
   let body;
   if (!S.editing){
     const a = addr(c), hasAny = c.phone1 || c.phone2 || c.email || a;
@@ -3195,14 +3210,14 @@ function pDetails(){
         ${kvRow('legacyId','file','מספר לקוח', c.legacyId ? String(c.legacyId) : 'ללא מספר לקוח')}
         ${kvRow('phone1','phone','טלפון', c.phone1, {ltr:1})}
         ${kvRow('phone2','phone','טלפון נוסף', c.phone2, {ltr:1})}
-        ${kvRow('email','mail','דוא״ל', c.email, {ltr:1})}
+        ${kvRow('email','mail','דוא״ל', c.email, {ltr:1, after:`<button class="btn sm" data-act="copyMail" aria-label="העתקת כתובת המייל">${ic('file','sm')}העתקה</button>`})}
         ${kvRow('city','pin','כתובת', a, {keys:['city','street','houseNum'], was:addr(S.orig) || 'ריק'})}
         ${kvRow('zeout','file','תעודת זהות', c.zeout, {ltr:1, tip:'משמשת לזיהוי הלקוח כשמשנים או מבטלים הזמנה.'})}
         ${consentVisible() ? kvRow('marketingConsent','mail','דיוור', c.marketingConsent ? 'מאשר/ת לקבל עדכונים' : 'לא מאשר/ת') : ''}
         ${kvRow('updated','clock','עודכן לאחרונה', c.updated)}
       </div>
-      ${c.email ? `<div class="kv-acts"><button class="btn sm" data-act="copyMail">${ic('file','sm')}העתקת המייל</button><button class="btn sm" data-act="mail">${ic('send','sm')}שליחת מייל</button></div>` : ''}`
-      : `<div class="empty">${ic('phone','lg')}<br><b>אין פרטי קשר</b><br>לחצו על העיפרון כדי להוסיף טלפון, מייל או כתובת.</div>`}`;
+      ${c.email ? `<div class="kv-acts"><button class="btn sm" data-act="mail">${ic('send','sm')}שליחת מייל</button></div>` : ''}`
+      : `<div class="empty"><span class="eic" aria-hidden="true">${ic('phone','lg')}</span><b>אין פרטי קשר</b>לחצו על העיפרון כדי להוסיף טלפון, מייל או כתובת.</div>`}`;
   } else {
     const noAt = !c.email || !String(c.email).includes('@');
     body = `<form class="fcol" id="detForm" autocomplete="off" novalidate>
@@ -3238,7 +3253,7 @@ function renderNotes(notes){
     const m = line.match(re);
     if (!m) return `<div class="li"><div class="ic-b">${ic('note')}</div><div class="t"><b>${esc(line)}</b></div></div>`;
     const [, d, bc, oid, rest] = m;
-    return `<div class="li"><div class="ic-b">${ic('dress')}</div><div class="t"><b>${esc(rest)}</b><small>נכתב אוטומטית · ה׳ אלול תשפ״ו · דגם <bdi>${bc.slice(0,3)}</bdi> · מידה <bdi>${bc.slice(3,5)}</bdi></small><a href="#" data-order="${oid}">הזמנה <bdi>${oid}</bdi></a></div></div>`;
+    return `<div class="li"><div class="ic-b">${ic('dress')}</div><div class="t"><b>${esc(rest)}</b><small>נכתב אוטומטית · ה׳ אלול תשפ״ו · דגם <bdi>${bc.slice(0,3)}</bdi> · מידה <bdi>${bc.slice(3,5)}</bdi></small><a href="#" class="olink" data-order="${oid}">הזמנה <bdi>${oid}</bdi>${ic('arrl','sm')}</a></div></div>`;
   }).join('');
 }
 
@@ -3250,14 +3265,14 @@ const ST_TAG = { 'הוחזר':['dn','check'], 'הוחזר חלקי':['s','check'
 function calcPayStatus(req, paid){ if (paid > req && req > 0) return 'ממתין לזיכוי'; if (paid > 0 && req === 0) return 'ממתין לזיכוי'; if (req > 0 && paid >= req) return 'שולם'; if (paid > 0 && paid < req) return 'שולם חלקי'; return 'לא שולם'; }
 const PAY_STX = { 'שולם':['ok','check'], 'שולם חלקי':['warn','alert'], 'ממתין לזיכוי':['', 'undo'], 'לא שולם':['warn','alert'] };
 function pOrders(){
-  if (!S.orders.length) return `<div class="card"><div class="card-h"><div class="ico gold">${ic('bag','lg')}</div><h2>ההזמנות של הלקוח <span class="faint">(0)</span></h2></div><div class="empty">${ic('bag','lg')}<br><b>עדיין אין הזמנות</b><br>הזמנות של הלקוח יופיעו כאן, מהחדשה לישנה.</div></div>`;
+  if (!S.orders.length) return `<div class="card"><div class="card-h"><div class="ico gold">${ic('bag','lg')}</div><h2>ההזמנות של הלקוח <span class="faint">(0)</span></h2></div><div class="empty"><span class="eic" aria-hidden="true">${ic('bag','lg')}</span><b>עדיין אין הזמנות</b>הזמנות של הלקוח יופיעו כאן, מהחדשה לישנה.</div></div>`;
   return `<div class="card"><div class="card-h"><div class="ico gold">${ic('bag','lg')}</div><h2>ההזמנות של הלקוח <span class="faint">(<bdi>${S.orders.length}</bdi>)</span> ${tip('לחיצה על שורה פותחת את ההזמנה. החץ מציג סכומים ומצב תשלום.')}</h2></div>
     <div class="ord-list">${S.orders.map((o, n) => {
       const open = !!S.openOrder[o.orderId]; const ps = calcPayStatus(o.total, o.paid); const [pc, pi] = PAY_STX[ps]; const [tc, ti] = ST_TAG[o.status] || ['n','info'];
       return `<div class="itm ${open ? 'open' : ''}" data-order="${o.orderId}" role="link" tabindex="0" aria-label="פתיחת הזמנה ${o.orderId}">
         <div class="top">
           <div class="thumb" style="background:${THUMBS[n % THUMBS.length]}">${ic(o.weekday ? 'cal' : 'bag')}</div>
-          <div class="info"><div class="model"><a href="#" data-order-link="${o.orderId}">הזמנה <bdi>${o.orderId}</bdi></a></div>
+          <div class="info"><div class="model"><a href="#" class="olink" data-order-link="${o.orderId}">הזמנה <bdi>${o.orderId}</bdi>${ic('arrl','sm')}</a></div>
             <div class="meta">${o.weekday ? '' : 'אירוע: '}<bdi>${esc(o.date)}</bdi>${o.greg ? ` · <bdi>${o.greg}</bdi>` : ''}</div>
             <div class="stat">${LIVE_ST.includes(o.status) ? `<span class="tag ${tc}">${ic(ti)}${o.status}</span>` : `<span class="stx">${ic(ti)}${o.status}</span>`}</div></div>
           <button class="ibtn chevb" data-act="opord" data-id="${o.orderId}" aria-expanded="${open}" aria-controls="od-${o.orderId}" aria-label="${open ? 'הסתרת הסכומים' : 'סכומים ומצב תשלום'}">${ic('chev','sm')}</button>
@@ -3279,9 +3294,9 @@ function pPayments(){
   const rows = S.payments;
   const list = rows.length ? `<div class="list">${rows.map(p => { const r = p.type === 'refund'; return `<div class="li"><div class="ic-b">${ic(r ? 'undo' : p.icon)}</div><div class="t">
       <b>${r ? 'זיכוי' : 'תשלום'} · ${esc(r ? p.reason : p.method)}</b>
-      <small><bdi>${p.date}</bdi> · <a href="#" data-order="${p.order}">הזמנה <bdi>${p.order}</bdi></a>${r ? ` · ${p.executed ? `בוצע <bdi>${p.execDate}</bdi>` : 'ממתין לביצוע'}` : (p.note ? ` · ${esc(p.note)}` : '')}</small>
+      <small><bdi>${p.date}</bdi> · <a href="#" class="olink" data-order="${p.order}">הזמנה <bdi>${p.order}</bdi></a>${r ? ` · ${p.executed ? `בוצע <bdi>${p.execDate}</bdi>` : 'ממתין לביצוע'}` : (p.note ? ` · ${esc(p.note)}` : '')}</small>
       <div class="a ${r ? 'cr' : ''}">${r ? smoney(-p.amount) : money(p.amount)}</div></div></div>`; }).join('')}</div><div class="foot">${plural(rows.length, 'רשומה אחת', 'רשומות')}</div>`
-    : `<div class="empty">${ic('card','lg')}<br><b>עדיין אין תשלומים</b><br>תשלומים וזיכויים מכל ההזמנות יופיעו כאן.</div>`;
+    : `<div class="empty"><span class="eic" aria-hidden="true">${ic('card','lg')}</span><b>עדיין אין תשלומים</b>תשלומים וזיכויים מכל ההזמנות יופיעו כאן.</div>`;
   return `<div class="card">
       <div class="card-h"><div class="ico green">${ic('wallet','lg')}</div><h2>מצב החשבון</h2></div>
       <div class="bal"><div><div class="faint sm"><span class="stx ${m.bal > 0 ? 'warn' : 'ok'}">${ic(balIc)}${balLbl}</span></div><div class="n">${money(m.bal)}</div></div>
@@ -3300,9 +3315,9 @@ function pPayments(){
 function pRefunds(){
   const refs = S.payments.filter(p => p.type === 'refund');
   const list = refs.length ? `<div class="list">${refs.map(r => `<div class="li"><div class="ic-b">${ic('undo')}</div><div class="t">
-      <b>${esc(r.reason)}</b><small>בקשה <bdi>${r.date}</bdi> · <a href="#" data-order="${r.order}">הזמנה <bdi>${r.order}</bdi></a> · ${r.executed ? `בוצע <bdi>${r.execDate}</bdi>` : 'ממתין לביצוע'}</small>
+      <b>${esc(r.reason)}</b><small>בקשה <bdi>${r.date}</bdi> · <a href="#" class="olink" data-order="${r.order}">הזמנה <bdi>${r.order}</bdi></a> · ${r.executed ? `בוצע <bdi>${r.execDate}</bdi>` : 'ממתין לביצוע'}</small>
       <div class="a">${money(r.amount)}</div></div>${r.executed ? '' : `<span class="tag at">${ic('clock')}ממתין</span>`}</div>`).join('')}</div><div class="foot">${plural(refs.length, 'זיכוי אחד', 'זיכויים')}</div>`
-    : `<div class="empty">${ic('undo','lg')}<br><b>אין זיכויים</b><br>זיכוי שנפתח בהזמנה של הלקוח יופיע כאן.</div>`;
+    : `<div class="empty"><span class="eic" aria-hidden="true">${ic('undo','lg')}</span><b>אין זיכויים</b>זיכוי שנפתח בהזמנה של הלקוח יופיע כאן.</div>`;
   return `<div class="card"><div class="card-h"><div class="ico blue">${ic('bank','lg')}</div><h2>חשבון בנק להחזרים ${tip('לשם מעבירים כסף כשהלקוח מקבל זיכוי. נשמר יחד עם שאר השינויים בכרטיס.')}</h2></div>
       <form class="fcol" autocomplete="off" novalidate>
         ${field('bankName',{ph:'לדוגמה: לאומי'})}
