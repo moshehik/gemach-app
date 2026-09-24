@@ -2286,6 +2286,8 @@ body.dlg-dark :is(#dlg,#dlg2):not(.mailwin) .cb-ck{color:#f1dc8f}
   .wz-sheet-space{display:block;height:200px}
   .rail:not(.open) .wz-why{display:none}
 }
+/* CURATION W1 (from pre-polish): "step N of 5" orientation line above the step's content */
+.wz-stepof{margin:0 0 10px;color:var(--ink3);font-size:14px;font-weight:600}
 </style>
 </head>
 <body>
@@ -3190,11 +3192,12 @@ function stepValue(n){
 function renderStepper(){
   if (W.saved){ $('#stepper').hidden = true; return; }
   $('#stepper').hidden = false;
+  const firstLocked = (STEPS.find(([n]) => n !== W.step && !canNav(n)) || [])[0];
   const html = STEPS.map(([n, l, icon]) => {
     const done = n < W.step, cur = n === W.step, locked = !cur && !canNav(n);
     const st = done ? 'done' : cur ? 'cur' : 'fut';
     const fresh = done && !W.doneSeen.has(n);
-    const val = locked ? lockReason(n) : (stepValue(n) || (cur ? 'עכשיו' : ''));
+    const val = locked ? (n === firstLocked ? lockReason(n) : '') : (stepValue(n) || (cur ? 'עכשיו' : '')); /* CURATION W2: the lock reason once, not under every locked step (the rich hover still explains each one) */
     return `<div class="tx ${st}${fresh ? ' fresh' : ''}" style="--fill:${done ? 1 : 0}" role="button" tabindex="${locked ? -1 : 0}" data-step="${n}" data-rich="wz|${n}" ${cur ? 'aria-current="step"' : ''} ${locked ? 'aria-disabled="true"' : ''} aria-label="שלב ${n}: ${l}${done ? ', הושלם' : ''}${locked ? `, נעול — ${lockReason(n)}` : ''}${!locked && stepValue(n) ? ` — ${esc(stepValue(n))}` : ''}">
       <div class="dot">${ic(locked ? 'lock' : icon)}${done ? `<span class="ck">${ic('check')}</span>` : ''}</div>
       <div class="tt"><b>${l}</b><span>${esc(val)}</span></div></div>`;
@@ -3495,7 +3498,7 @@ function renderPanel(){
   const el = $('#p-step'); const s = W.saved ? 'saved' : W.step;
   el.setAttribute('aria-label', W.saved ? 'ההזמנה נשמרה' : `שלב ${W.step}: ${STEPS[W.step - 1][1]}`);
   const err = W.err ? `<p class="wz-note" role="alert"><span class="stx warn">${ic('alert')}${esc(W.err)}</span> — הנתונים נשמרו בטופס, אפשר לנסות שוב.</p>` : '';
-  el.innerHTML = W.saved ? renderSaved() : err + [s1, s2, s3, s4, s5][W.step - 1]();
+  el.innerHTML = W.saved ? renderSaved() : `<p class="wz-stepof">שלב <bdi>${W.step}</bdi> מתוך <bdi>${STEPS.length}</bdi> · ${STEPS[W.step - 1][1]}</p>` + err + [s1, s2, s3, s4, s5][W.step - 1]();
   if (lastStep !== s){ el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); lastStep = s; }
   W.freshRow = null;
 }

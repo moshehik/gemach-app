@@ -44,3 +44,19 @@ Screenshots: `archetype-board-month-{1440,390}-*`, `archetype-board-list-1440-*`
 | — | Month / week / list as a compact segmented control | toolbar | Polished: the sketch `.tabs` bar | **replaced by sketch component** (tabs) |
 | — | Order-count pills "3 הזמנות", holiday chips, legend chips | day headers, legend | Polished: "(3)", plain holiday text, legend as colour bars + text | **rejected because C-1.14** (counts and labels are not statuses); nothing lost |
 | — | Search bar with the button and the star/statistics icons inside the same field | toolbar | Polished: field + separate buttons in a row | **replaced by sketch component** (fields/buttons base styles). Composition is acceptable; not restored |
+
+---
+
+## 3. New-order wizard — `archetype-wizard.html`
+
+Screenshots: `archetype-wizard-step1-{1440,390}-*`.
+
+| # | Detail | Where | Original vs polished | Decision |
+|---|---|---|---|---|
+| W1 | **"שלב N מתוך 5" orientation line** | above every step's content | Original: "שלב 1 מתוך 5" eyebrow over the step question. Polished: gone — the only position cue is the timeline, which on a phone is a tall vertical list | **restored** — page-only `.wz-stepof` ("שלב 3 מתוך 5 · פריטים"), plain ink3 text, no chip |
+| W2 | **Lock reason shown once**, not under every locked step | timeline (step 1 and 2) | Original: locked steps showed only a lock + (i). Polished: "קודם בוחרים לקוח" repeated under all 4 locked steps | **restored** — the reason is written under the first locked step only; every locked step still explains itself in its rich hover card and aria-label |
+| — | Big size tiles (number + "2 פנויות" inside a bordered tile, unavailable = dashed + struck) | step 3, size field | Polished: the sketch's `.sizes` buttons with the count under each | **replaced by sketch component** (the add-item panel is copied from the sketch). The original tile is clearer at a glance — promotion candidate (§9) |
+| — | Step question as a large centred h2 ("למי ההזמנה?") above the card | every step | Polished: the question is the card-h heading | **replaced by sketch component** (card header) |
+| — | Footer nav under the content (back / continue) | every step | Polished: navigation lives in the rail (sketch binder actions) | **replaced by sketch component** (rail/binder) |
+| — | Exit as a labelled "יציאה" button in the title row | title row | Polished: "יציאה מההזמנה" in the rail | **replaced by sketch component** (title row + rail) |
+| — | Cart rows with three always-visible icon actions (dates / edit / delete) | step 3, cart | Polished: sketch `.itm` with the actions inside the expander | **replaced by sketch component** (`itemCard`) |
