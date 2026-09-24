@@ -39,7 +39,16 @@ module.exports = { ovf, small };
       await p.screenshot({ path: D + `touch/${tag}-08-unlock-dark-wrong.png` }); r.unlockErr = await p.evaluate(() => document.querySelector('#ulErr').textContent);
       await p.fill('#ul-pw', 'secret1'); await p.click('[data-go]'); await p.waitForTimeout(900);
       r.unlocked = await p.evaluate(() => !document.querySelector('#topbar').hidden && !document.documentElement.hasAttribute('data-v3-lock'));
-      for (const m of ['grid', 'table']) { await p.evaluate(mm => { window.__S = mm; }, m); }
+      for (const m of ['grid', 'table']) {
+        if (w < 1024) { await p.click('[data-act=panel]'); await p.waitForTimeout(350); await p.click(`#layer-root [data-mode=${m}]`); await p.keyboard.press('Escape'); }
+        else { await p.click('[data-act=panel]'); await p.waitForTimeout(150); await p.click(`[data-mode=${m}]`); await p.click('[data-act=panel]'); }
+        await p.waitForTimeout(350); await p.screenshot({ path: D + `touch/${tag}-08b-view-${m}.png` }); r['ov_' + m] = await ovf(p);
+      }
+      await p.evaluate(() => { document.querySelector('#dTheme').click(); });
+      await p.click('[data-act=lock]'); await p.waitForTimeout(300); await p.click('[data-act=print]'); await p.waitForTimeout(350);
+      await p.screenshot({ path: D + `touch/${tag}-08c-print-approve-light.png` }); await p.keyboard.press('Escape'); await p.waitForTimeout(250);
+      r.stillLocked = await p.evaluate(() => document.querySelector('#topbar').hidden);
+      await p.click('[data-act=unlock]'); await p.waitForTimeout(300); await p.click('#ul-list .appr'); await p.fill('#ul-pw', 'secret1'); await p.click('[data-go]'); await p.waitForTimeout(900);
       await p.evaluate(() => { const s = document.querySelector('#dScreen'); s.value = 'punch'; s.dispatchEvent(new Event('change')); });
       await p.waitForTimeout(300); await p.screenshot({ path: D + `touch/${tag}-09-punch.png` }); r.ovPunch = await ovf(p); r.small3 = await small(p);
       await p.click('[data-punch=IN]'); await p.waitForTimeout(200); r.punchNoEmp = await p.evaluate(() => !!document.querySelector('.attnbox'));
