@@ -558,9 +558,10 @@ html[data-long] .tab .tl{overflow:hidden;text-overflow:ellipsis}
 /* רוחב רחב לארכיטיפ לוח */
 .page.wide{max-width:var(--v3-w-wide)}
 /* שדה צף בתחתית (שאלת המשך) */
-.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 6px 6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
+.pill-input{display:flex;align-items:center;gap:8px;min-height:56px;padding:6px 8px;border:2px solid var(--v3-frame);border-radius:var(--v3-r-pill);background:var(--v3-surface);box-shadow:var(--v3-el-3)}
 .pill-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:var(--v3-fs-md);padding-inline:12px}
 .pill-input:focus-within{box-shadow:0 0 0 4px var(--v3-gold-300),var(--v3-el-3)}
+.tbl-wrap{position:relative} /* sr-only בתוך טבלה גוללת לא בורח למסמך */
 
 
 /* =========== A4 לוח / ציר זמן =========== */
@@ -1247,6 +1248,7 @@ function visibleOrders(){
   });
 }
 function byDay(list){ const m = {}; list.forEach(o => (m[o.day] = m[o.day] || []).push(o)); return m; }
+const nOrders = n => n === 1 ? 'הזמנה אחת' : `<bdi>${n}</bdi> הזמנות`;
 const advCount = () => Object.values(S.adv).filter(Boolean).length;
 /* REVIEW-board-1 M-2: מתאריך/עד תאריך נשלחים לשרת אבל לא מסננים (טווח החודש גובר — I-67) */
 const NOEFF = ['from', 'to'];
@@ -1560,7 +1562,7 @@ function rentalDlg(o){
       <span class="acts"><span class="chip ${i.isReturned ? 'done' : i.isTaken ? 'info' : i.pending ? 'pend' : ''}">${itStatus(i)}</span>
       ${i.isReturned ? `<button type="button" class="btn sm quiet" data-undo-ret="${k}">${ic('undo','sm')}ביטול ההחזרה</button>` : i.isTaken ? `<button type="button" class="btn sm quiet" data-undo-rent="${k}">${ic('undo','sm')}ביטול ההשכרה</button>` : ''}
       <button type="button" class="ibtn quiet" data-hist="${k}" aria-label="היסטוריית הפריט" data-tip="היסטוריית הפריט">${ic('history','sm')}</button></span></div>`).join('') : `<div class="empty">${ic('bag','lg')}<b>אין פריטים בהזמנה</b></div>`;
-    const c = d.querySelector('[data-confirm]'); c.disabled = !pendingN(); c.innerHTML = `${ic('check','','pop')}אישור ההשכרה${pendingN() ? ` (<bdi>${pendingN()}</bdi>)` : ''}`;
+    const c = d.querySelector('[data-confirm]'); c.disabled = !pendingN(); c.innerHTML = `${ic('check','','pop')}אישור ההשכרה${pendingN() ? ` · <bdi>${pendingN()}</bdi> פריטים` : ''}`;
     d.querySelector('[data-discard]').hidden = !pendingN();
   };
   const html = `${dlgHead('box', `כרטיס השכרה · הזמנה <bdi>#${o.orderId}</bdi>`, `${esc(o.customerName)} · אירוע ${hebLabel(DAYS[o.day])}`, 'סגירה')}
