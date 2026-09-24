@@ -1,45 +1,51 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import OrderPrintMenu from '../OrderPrintMenu';
+import {
+  Btn, IconBtn, Card, Chip, Badge, Tabs, Tip, Icon, Row, Stepper, Dialog, Banner
+} from '../../../app/v3/ui/components';
+import { TipWrap } from './orderCardDialogs';
+import './orderCardV3.css';
 
 // מיפוי סטטוס טקסטואלי (calculateOrderStatus ב-lib/orderStatus.js, משותף לכמה עמודים) אל
-// מחלקת ה-badge של מערכת העיצוב "אריג" — אותו מיפוי כמו בעמוד רשימת ההזמנות (app/orders/page.js).
-const getStatusBadgeClass = (status) => {
+// וריאנט ה-Chip של v3: סטטוס = ניטרלי/navy, "דורש תשומת לב" = אפרסק (ר' DESIGN-LANGUAGE 1.2).
+// ערכי הסטטוס עצמם מושווים בקוד - לא משנים אותם.
+const getStatusChipVariant = (status) => {
   switch (status) {
     case 'הוחזר':
-      return 'badge-success';
+      return 'done';
     case 'הוחזר חלקי':
-      return 'badge-warning';
+      return 'attn';
     case 'הושכר':
-      return 'badge-info';
     case 'הושכר חלקי':
-      return 'badge-accent';
+      return 'info';
     case 'בקרוב':
-      return 'badge-warning';
+      return 'attn';
     case 'עבר':
     case 'מחוק':
     case 'טיוטה':
     default:
-      return 'badge-neutral';
+      return undefined;
   }
 };
 
 const TABS = [
-  { id: 'details', label: 'פרטים כלליים', icon: 'i-user' },
-  { id: 'items', label: 'פריטים והשכרות', icon: 'i-bag', withCount: true },
-  { id: 'payments', label: 'תשלומים', icon: 'i-card' },
-  { id: 'history', label: 'מידע', icon: 'i-history' }
+  { id: 'details', label: 'פרטים', icon: 'user' },
+  { id: 'items', label: 'פריטים', icon: 'bag', withCount: true },
+  { id: 'payments', label: 'תשלומים', icon: 'card' },
+  { id: 'history', label: 'היסטוריה', icon: 'history' }
 ];
 
+const iconNameFromHref = (href) => String(href || '').replace(/^#?i-/, '') || 'info';
+
 /**
- * המעטפת של כרטיס ההזמנה בעיצוב "אריג": page-head עם פעולות, כרטיס סיכום
- * (לקוח + סטטוס + אירוע + סריקה מהירה), לשוניות ותוכן טאב אחד בכל רגע.
- * כל הטאבים נשארים mounted (tab-panel לא-active מוסתר ב-CSS בלבד) כדי לשמור
- * על סטייט פנימי של המנהלים הקיימים (פריטים/תשלומים).
+ * המעטפת של כרטיס ההזמנה בעיצוב v3: כותרת עם כלים, ציר זמן, כרטיס סיכום (לקוח + סריקה מהירה),
+ * לשוניות ותוכן, ורייל צד (במבט אחד + שינויים ממתינים + חשבון + שמירה).
+ * כל ארבעת הלשוניות נשארים mounted (מוסתרים בסגנון בלבד) כדי לשמור על סטייט פנימי ו-refs של
+ * מנהלי הפריטים/התשלומים - אסור להמיר לרינדור מותנה.
  */
 export default function ModernOrderCard({
   order,
@@ -65,6 +71,8 @@ export default function ModernOrderCard({
   onQuickScan,
   onWalletClick,
   tabContents,
+  // פונקציה שמחזירה שורות "מה השתנה" (אייקון + טקסט) - buildChangeRows בעמוד. להצגה ברייל בלבד.
+  getChangeRows,
   // draft_orders_show_as_deleted (SystemSetting) - see lib/orderStatus.js calculateOrderStatus;
   // when on, an autosaved-but-never-finished order shows this badge as "מחוק" instead of "טיוטה".
   draftsAsDeleted = false
@@ -72,8 +80,11 @@ export default function ModernOrderCard({
   const [scanValue, setScanValue] = useState('');
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  // גיליון הסיכום במובייל/טאבלט (עיצוב בלבד): מקופל כברירת מחדל, נפתח בלחיצה על הכותרת שלו.
+  const [railOpen, setRailOpen] = useState(false);
 
   const activeItems = (items || []).filter(i => !i.isDeleted);
+  const changeRows = (hasUnsavedChanges && getChangeRows) ? getChangeRows() : [];
   const debt = totalRequired - totalPaid;
   // שמירה לא תבקש אישור מנהל אם החוב זהה לזה שהיה כשהכרטיס נטען (ר' handleSave בעמוד) - התג
   // מציג את אותה הבחנה כדי לא להבהיל על אישור שלא באמת ידרש בלחיצה על שמירה.
@@ -91,8 +102,8 @@ export default function ModernOrderCard({
     ? (order.fromDate ? `${getHebrewDateString(order.fromDate)} — ${getHebrewDateString(order.toDate || order.returnDate)}` : 'אירוע חו"ל')
     : (order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'ללא תאריך אירוע'));
 
-  const updatedLabel = order.updatedAt
-    ? `עודכן: ${getHebrewDateString(order.updatedAt)} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+  const updatedValue = order.updatedAt
+    ? `${getHebrewDateString(order.updatedAt)} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
   const isErrorMsg = saveMessage && (saveMessage.includes('שגיאה') || saveMessage.includes('בוטלה'));
@@ -109,226 +120,324 @@ export default function ModernOrderCard({
     if (isLocked) {
       setShowUnlockModal(true);
     } else if (onLock) {
-      const msg = 'האם ברצונך לנעול מחדש את ההזמנה?';
+      const msg = 'לנעול מחדש את ההזמנה?';
       const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
       if (confirmed) onLock();
     }
   };
 
+  const handleWallet = () => (onWalletClick ? onWalletClick() : onTabChange('payments'));
+
+  // ---- ציר זמן: מחושב מנתונים קיימים בלבד (פריטים נלקחו/הוחזרו + תאריכי ההזמנה) ----
+  const isAbroad = !!(order.isAbroad || order.isWeekdayEvent);
+  const takenCount = activeItems.filter(i => i.isTaken).length;
+  const returnedCount = activeItems.filter(i => i.isReturned).length;
+  const createdAt = order.orderDate || order.createdAt;
+  let currentStep = 1;
+  if (activeItems.length > 0 && returnedCount === activeItems.length) currentStep = 3;
+  else if (takenCount > 0) currentStep = 2;
+  const steps = [
+    { key: 'ordered', label: 'הזמנה', icon: 'file', value: createdAt ? getHebrewDateString(createdAt) : undefined },
+    {
+      key: 'pickup', label: 'לקיחה', icon: 'bag',
+      value: isAbroad && order.fromDate ? getHebrewDateString(order.fromDate) : (takenCount > 0 ? `${takenCount}/${activeItems.length}` : undefined)
+    },
+    { key: 'event', label: 'אירוע', icon: 'calendar', value: isAbroad ? undefined : eventDateLabel },
+    {
+      key: 'return', label: 'החזרה', icon: 'refresh',
+      value: isAbroad && (order.toDate || order.returnDate) ? getHebrewDateString(order.toDate || order.returnDate) : (returnedCount > 0 ? `${returnedCount}/${activeItems.length}` : undefined)
+    }
+  ];
+
+  // ---- לשוניות (הפאנלים עצמם תמיד mounted) ----
+  const customerIncomplete = !!customer && (!customer.phone1 || !customer.email);
+  const tabItems = TABS.map(tab => {
+    let label = tab.label;
+    if (tab.id === 'details' && customerIncomplete) {
+      label = (<>{tab.label}<span className="v3-tabmark"><Icon name="alert-circle" /></span><span className="v3-sr">חסרים פרטי לקוח</span></>);
+    }
+    if (tab.id === 'payments' && debt !== 0) {
+      label = (<>{tab.label}<span className={`v3-tabmark${debt > 0 ? ' v3-tabmark--debt' : ''}`}><Icon name={debt > 0 ? 'alert-circle' : 'wallet'} /></span><span className="v3-sr">{debt > 0 ? 'יש חוב' : 'יש זכות'}</span></>);
+    }
+    return { key: tab.id, label, icon: tab.icon, count: tab.withCount ? activeItems.length : undefined };
+  });
+
+  const money = (n) => <bdi dir="ltr">₪{Math.abs(n).toLocaleString('he-IL')}</bdi>;
+
   return (
-    <>
-      <div className="page-head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h1>הזמנה #{order.orderId}</h1>
-          {/* תג עם טקסט ולא אייקון בודד — איקס עירום ליד הכותרת נראה כמו כפתור סגירה
-              ולא מסביר את עצמו; התג מקביל לזה שבטאב "פרטים כלליים" */}
-          <button
-            type="button"
-            className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-warning'}`}
-            style={{ border: 'none', cursor: 'pointer' }}
+    <div className="oc-page">
+      {/* כותרת: חזרה + מספר הזמנה + חתימה + כלים */}
+      <header className="v3-pagehead">
+        <TipWrap content="חזרה לרשימה. אם יש שינויים שלא נשמרו, נשאל אם לשמור אותם קודם.">
+          <IconBtn round icon="back" label="חזרה לרשימת ההזמנות" onClick={() => onExit()} />
+        </TipWrap>
+        <div className="v3-pagehead__title">
+          <h1 className="v3-h1"><small>הזמנה</small><bdi>#{order.orderId}</bdi></h1>
+          <Chip
+            variant={order.hasSignedRegulations ? 'done' : 'attn'}
+            icon={order.hasSignedRegulations ? 'check-circle' : 'x-circle'}
             onClick={onToggleSignature}
-            title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
+            aria-label={order.hasSignedRegulations ? 'הלקוח חתם על התקנון - לחיצה לשינוי' : 'הלקוח לא חתם על התקנון - לחיצה לשינוי'}
           >
-            <svg className="icon"><use href={order.hasSignedRegulations ? '#i-check-circle' : '#i-x-circle'} /></svg>
-            {order.hasSignedRegulations ? 'חתם על תקנון' : 'לא חתם על תקנון'}
-          </button>
+            {order.hasSignedRegulations ? 'חתם על התקנון' : 'לא חתם על התקנון'}
+          </Chip>
         </div>
-        <div className="page-actions">
-          <button
-            type="button"
-            className={debt > 0 ? 'btn btn-danger-ghost' : debt < 0 ? 'btn btn-secondary' : 'btn btn-secondary btn-icon-only'}
-            style={debt < 0 ? { color: 'var(--success)' } : undefined}
-            title={debt > 0
-              ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ למעבר לתשלומים`
-              : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
-            onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
-          >
-            <svg className="icon"><use href="#i-wallet" /></svg>
-            {debt !== 0 && `₪${Math.abs(debt).toLocaleString('he-IL')}`}
-          </button>
+        <div className="v3-pagehead__tools">
+          {debt !== 0 ? (
+            <TipWrap content={debt > 0 ? 'יש חוב פתוח. לחיצה פותחת את התשלומים.' : 'ללקוח מגיע זיכוי. לחיצה פותחת את התשלומים.'}>
+              <Btn icon="wallet" onClick={handleWallet} aria-label={debt > 0 ? 'חוב פתוח - מעבר לתשלומים' : 'יתרת זכות - מעבר לתשלומים'}>
+                {money(debt)}
+              </Btn>
+            </TipWrap>
+          ) : (
+            <TipWrap content="ההזמנה שולמה במלואה.">
+              <IconBtn icon="wallet" label="שולם במלואו - מעבר לתשלומים" onClick={handleWallet} />
+            </TipWrap>
+          )}
 
           {isPastEvent && (
-            <button
-              type="button"
-              className={isLocked ? 'btn btn-danger-ghost btn-icon-only' : 'btn btn-secondary btn-icon-only'}
-              title={isLocked
-                ? 'הזמנה נעולה — תאריך האירוע עבר. ניתן להחזיר בלבד; השכרה ועריכה חסומות. לחץ לשחרור באישור מנהל'
-                : 'ההזמנה שוחררה לעריכה. לחץ לנעילה מחדש'}
-              onClick={handleLockClick}
+            <TipWrap content={isLocked
+              ? 'תאריך האירוע עבר, אז ההזמנה נעולה: אפשר להחזיר בלבד. שחרור לעריכה דורש אישור מנהל.'
+              : 'ההזמנה פתוחה לעריכה. לחיצה נועלת אותה מחדש.'}
             >
-              <svg className="icon"><use href="#i-lock" /></svg>
-            </button>
+              <IconBtn
+                icon={isLocked ? 'lock' : 'unlock'}
+                variant={isLocked ? 'primary' : 'secondary'}
+                label={isLocked ? 'ההזמנה נעולה - שחרור באישור מנהל' : 'נעילה מחדש של ההזמנה'}
+                onClick={handleLockClick}
+              />
+            </TipWrap>
           )}
 
           <OrderPrintMenu
             order={order}
             onOrderUpdate={onOrderUpdate}
-            triggerClassName="btn btn-secondary btn-icon-only"
-            triggerTitle="הדפסה / מייל"
+            triggerClassName="v3-btn v3-btn--icon"
+            triggerTitle="הדפסה ושליחה במייל"
           />
 
-          <button type="button" className="btn btn-ghost btn-icon-only" style={{ color: 'var(--danger)' }} title="מחיקת הזמנה" onClick={onDelete}>
-            <svg className="icon"><use href="#i-trash" /></svg>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary btn-icon-only"
-            title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}
-            onClick={onCancelChanges}
-            disabled={!hasUnsavedChanges || saving}
-          >
-            <svg className="icon"><use href="#i-refresh" /></svg>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-primary"
-            title={saveNeedsApproval ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל` : 'שמור שינויים'}
-            onClick={() => onSave()}
-            disabled={saving}
-          >
-            {saving ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
-            שמור שינויים
-            {!saving && saveNeedsApproval && (
-              <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>
-                <svg className="icon" style={{ width: '10px', height: '10px' }}><use href="#i-shield" /></svg>
-                ₪{debt.toLocaleString('he-IL')}
-              </span>
-            )}
-          </button>
-
-          <button type="button" className="btn btn-ghost" title="שמירה וחזרה לרשימת ההזמנות" onClick={() => onExit()}>
-            <svg className="icon"><use href="#i-arrow-end" /></svg>
-            חזור
-          </button>
+          <TipWrap content="מחיקת ההזמנה">
+            <IconBtn variant="danger" icon="trash" label="מחיקת הזמנה" onClick={onDelete} />
+          </TipWrap>
         </div>
-      </div>
+      </header>
 
       {saveMessage && (
-        <div className={`callout ${isErrorMsg ? 'callout-danger' : 'callout-success'}`} style={{ marginBottom: '18px' }}>
-          <svg className="icon"><use href={isErrorMsg ? '#i-alert-circle' : '#i-check-circle'} /></svg>
-          {saveMessage}
-        </div>
+        <Banner kind={isErrorMsg ? 'alert' : 'success'} title={saveMessage} />
       )}
 
-      {/* כרטיס סיכום: לקוח, סטטוס, אירוע, סריקה מהירה */}
-      <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        <div className="avatar lg">{initials}</div>
-        <div style={{ flex: 1, minWidth: '240px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <strong style={{ fontSize: '16px' }}>{customerName}</strong>
-            <span className={`badge ${getStatusBadgeClass(orderStatus)}`}>
-              <svg className="icon"><use href="#i-clock" /></svg>
-              {orderStatus}
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '5px', fontSize: '13px', color: 'var(--text-2)' }}>
-            {customer?.phone1 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-phone" /></svg>
-                <span style={{ direction: 'ltr' }}>{customer.phone1}</span>
-              </span>
-            )}
-            {customer?.email && (
-              // כתובת מייל בכרטיס סיכום ההזמנה - כדי שיהיה ברור מיד אם יש ללקוח
-              // מייל מעודכן, בלי לפתוח את טאב "פרטי לקוח" (דיווח 26362585).
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-mail" /></svg>
-                <span style={{ direction: 'ltr' }}>{customer.email}</span>
-              </span>
-            )}
-            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-calendar" /></svg>
-              {eventDateLabel}
-            </span>
-            {updatedLabel && <span style={{ color: 'var(--text-3)' }}>{updatedLabel}</span>}
-          </div>
-        </div>
-        <div style={{ maxWidth: '270px', width: '100%' }}>
-          <form className="input-icon-wrap" style={{ width: '100%' }} onSubmit={handleScanSubmit}>
-            <svg className="icon"><use href="#i-tag" /></svg>
-            <input
-              type="text"
-              className="input"
-              value={scanValue}
-              onChange={e => setScanValue(e.target.value)}
-              placeholder="סריקה מהירה — השכרה / החזרה"
-            />
-          </form>
-          {/* השדה מתאפס ונשאר בפוקוס אחרי כל סריקה (handleScanSubmit) - אפשר
-              לסרוק ברקוד אחרי ברקוד ברצף בלי ללחוץ בכל פריט בנפרד על "השכרה". */}
-          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '3px' }}>
-            אפשר לסרוק כאן ברקוד אחרי ברקוד ברצף — כל שמלה תושכר/תוחזר אוטומטית בלי לפתוח אותה בנפרד למטה
-          </div>
-        </div>
-      </div>
+      {/* ציר זמן ההזמנה */}
+      <Stepper steps={steps} current={currentStep} showAnchor={false} label="שלבי ההזמנה" />
 
-      <div className="tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`tab${activeTab === tab.id ? ' active' : ''}`}
-            style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-            onClick={() => onTabChange(tab.id)}
+      <div className="v3-layout">
+        <main className="v3-main">
+          {/* כרטיס סיכום: לקוח, סטטוס, אירוע, סריקה מהירה */}
+          <Card
+            variant="cust"
+            title={(
+              <span className="oc-cust-title">
+                <span className="v3-avatar oc-avatar" aria-hidden="true">{initials}</span>
+                {customerName}
+              </span>
+            )}
+            actions={(
+              <Chip variant={getStatusChipVariant(orderStatus)} icon="clock">{orderStatus}</Chip>
+            )}
           >
-            <svg className="icon"><use href={`#${tab.icon}`} /></svg>
-            {tab.label}
-            {tab.withCount && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{activeItems.length}</span>}
-          </button>
-        ))}
-      </div>
-
-      {TABS.map(tab => (
-        <div key={tab.id} className={`tab-panel${activeTab === tab.id ? ' active' : ''}`}>
-          {tabContents[tab.id]}
-        </div>
-      ))}
-
-      {/* מודל אישור שחרור נעילה (הזמנה שתאריך האירוע שלה עבר) */}
-      {showUnlockModal && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget && !unlocking) setShowUnlockModal(false); }}
-        >
-          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
-              <svg className="icon"><use href="#i-lock" /></svg>
+            <div className="oc-facts">
+              {customer && (
+                <Row icon="phone" label="טלפון" missing={!customer.phone1}>
+                  <bdi dir="ltr">{customer.phone1}</bdi>
+                </Row>
+              )}
+              {customer && (
+                // כתובת מייל בכרטיס סיכום ההזמנה - כדי שיהיה ברור מיד אם יש ללקוח
+                // מייל מעודכן, בלי לפתוח את טאב "פרטי לקוח" (דיווח 26362585).
+                <Row icon="mail" label="מייל" missing={!customer.email}>
+                  <bdi dir="ltr">{customer.email}</bdi>
+                </Row>
+              )}
+              <Row icon="calendar" label="מועד האירוע">{eventDateLabel}</Row>
+              {updatedValue && <Row icon="history" label="עודכן לאחרונה">{updatedValue}</Row>}
             </div>
-            <h3>הזמנה נעולה</h3>
-            <p>
-              תאריך האירוע של הזמנה זו עבר, ולכן השכרה, עריכה ומחיקה של פריטים חסומות.
-              <br />
-              החזרה מהשכרה, תשלומים וזיכויים זמינים כרגיל.
-              <br />
-              <strong>שחרור מלא לעריכה דורש אישור מנהל.</strong>
-            </p>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" disabled={unlocking} onClick={() => setShowUnlockModal(false)}>ביטול</button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={unlocking}
-                onClick={async () => {
-                  setUnlocking(true);
-                  try {
-                    await onUnlock();
-                  } finally {
-                    setUnlocking(false);
-                    setShowUnlockModal(false);
-                  }
-                }}
-              >
-                {unlocking ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-lock" /></svg>}
-                {unlocking ? 'מאמת...' : 'שחרר באישור מנהל'}
-              </button>
+
+            <div className="v3-field" style={{ marginTop: 'var(--v3-sp-5)' }}>
+              <label className="v3-label" htmlFor="oc-quick-scan">
+                <span className="oc-scan-label">
+                  סריקה מהירה
+                  <Tip>סורקים ברקוד אחרי ברקוד ברצף: כל שמלה מושכרת או מוחזרת אוטומטית, בלי לפתוח אותה בנפרד בלשונית הפריטים.</Tip>
+                </span>
+              </label>
+              {/* השדה מתאפס ונשאר בפוקוס אחרי כל סריקה (handleScanSubmit) - אפשר
+                  לסרוק ברקוד אחרי ברקוד ברצף בלי ללחוץ בכל פריט בנפרד על "השכרה". */}
+              <form className="v3-scan" onSubmit={handleScanSubmit}>
+                <Icon name="tag" />
+                <input
+                  id="oc-quick-scan"
+                  type="text"
+                  value={scanValue}
+                  onChange={e => setScanValue(e.target.value)}
+                  placeholder="ברקוד להשכרה או להחזרה"
+                />
+              </form>
+            </div>
+          </Card>
+
+          <div style={{ marginTop: 'var(--v3-gap-panel)' }}>
+            <Tabs items={tabItems} value={activeTab} onChange={onTabChange} label="חלקי ההזמנה" />
+          </div>
+
+          {TABS.map(tab => (
+            <div
+              key={tab.id}
+              role="tabpanel"
+              aria-labelledby={`tab-${tab.id}`}
+              hidden={activeTab !== tab.id}
+              className="v3-panel"
+              style={activeTab === tab.id ? undefined : { display: 'none' }}
+            >
+              {tabContents[tab.id]}
+            </div>
+          ))}
+        </main>
+
+        {/* רייל צד: במבט אחד, שינויים ממתינים, חשבון ופעולות שמירה */}
+        <aside className="v3-rail" aria-label="סיכום ופעולות">
+          <div className={`v3-rail-card oc-rail-card${railOpen ? ' is-open' : ''}`}>
+            <button type="button" className="oc-rail-toggle" aria-expanded={railOpen} onClick={() => setRailOpen(o => !o)}>
+              <Icon name="list" />
+              <span>סיכום ושינויים</span>
+              {hasUnsavedChanges && <Badge variant="gold">{Math.max(changeRows.length, 1)}</Badge>}
+              <Icon name="chevron-down" />
+            </button>
+            <div className="oc-rail-more">
+            <div className="v3-rail__h"><Icon name="list" /><span>במבט אחד</span></div>
+            <div className="v3-glance">
+              <TipWrap className="oc-tipfill" content={order.hasSignedRegulations ? 'הלקוח חתם על התקנון. לחיצה משנה את הסימון.' : 'הלקוח עוד לא חתם על התקנון. לחיצה משנה את הסימון.'}>
+                <button type="button" className={`v3-tile${order.hasSignedRegulations ? '' : ' v3-tile--missing'}`} onClick={onToggleSignature}>
+                  <Icon name={order.hasSignedRegulations ? 'check-circle' : 'x-circle'} />
+                  <span className="v3-tile__v">{order.hasSignedRegulations ? 'חתם' : 'לא חתם'}</span>
+                </button>
+              </TipWrap>
+              {order.isDelivery && (
+                <Tip content={`משלוח ${order.deliveryDirection || 'הלוך-חזור'}${order.deliveryCity ? ` · ${order.deliveryCity}` : ''}`}>
+                  <span className="v3-tile">
+                    <Icon name="truck" />
+                    <span className="v3-tile__v">{order.deliveryDirection || 'הלוך-חזור'}</span>
+                  </span>
+                </Tip>
+              )}
+              <Tip content="מספר הפריטים הפעילים בהזמנה (בלי פריטים שהוסרו).">
+                <span className="v3-tile">
+                  <Icon name="bag" />
+                  <span className="v3-tile__v">{activeItems.length === 1 ? 'פריט אחד' : `${activeItems.length} פריטים`}</span>
+                </span>
+              </Tip>
+              <TipWrap className="oc-tipfill" content="מצב התשלום. לחיצה פותחת את לשונית התשלומים.">
+                <button type="button" className={`v3-tile${debt > 0 ? ' v3-tile--debt' : debt < 0 ? ' v3-tile--credit' : ''}`} onClick={handleWallet}>
+                  <Icon name="card" />
+                  <span className="v3-tile__v">
+                    {debt > 0 ? <>חוב {money(debt)}</> : debt < 0 ? <>זכות {money(debt)}</> : 'שולם'}
+                  </span>
+                </button>
+              </TipWrap>
+            </div>
+
+            <div className="v3-rail__h">
+              <Icon name="list" /><span>שינויים בהזמנה</span>
+              <span className="oc-rail-tip oc-rail-count">
+                <Tip>כאן מופיע כל מה שהשתנה מאז השמירה האחרונה. הסכום הסופי מתעדכן אחרי השמירה.</Tip>
+              </span>
+            </div>
+            <div className="v3-rail__body">
+              {hasUnsavedChanges ? (
+                changeRows.length > 0 ? (
+                  changeRows.map((r, i) => (
+                    <div className="v3-cl" key={i}>
+                      <div className="v3-cl__i"><Icon name={iconNameFromHref(r.icon)} /></div>
+                      <div className="v3-cl__t"><span>{r.text}</span></div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="v3-cl">
+                    <div className="v3-cl__i"><Icon name="edit" /></div>
+                    <div className="v3-cl__t"><span>יש שינויים שלא נשמרו</span></div>
+                  </div>
+                )
+              ) : (
+                <div className="v3-cart-empty"><Icon name="check" size="lg" /><span>אין שינויים ממתינים</span></div>
+              )}
+
+              <div className="oc-status-block">
+                <div className={`v3-status${debt > 0 ? ' v3-status--debt' : debt < 0 ? ' v3-status--credit' : ''}`}>
+                  <Icon name={debt > 0 ? 'alert-circle' : debt < 0 ? 'wallet' : 'check'} size="lg" />
+                  <div>
+                    <small>{debt > 0 ? 'יתרת חוב' : debt < 0 ? 'יתרת זכות' : 'מצב חשבון'}</small>
+                    <div className="v3-status__n">{debt !== 0 ? money(debt) : 'שולם במלואו'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            </div>
+
+            <div className="v3-rail__actions">
+              <div className="oc-save-row">
+                <Btn variant="primary" size="lg" icon="check" loading={saving} onClick={() => onSave()}>
+                  שמור שינויים
+                  {!saving && saveNeedsApproval && (
+                    <> <Chip variant="attn" icon="shield">{money(debt)}</Chip></>
+                  )}
+                </Btn>
+                {saveNeedsApproval && (
+                  <span className="oc-rail-tip">
+                    <Tip label="למה נדרש אישור?">שמירה עם חוב פתוח תדרוש אישור מנהל.</Tip>
+                  </span>
+                )}
+              </div>
+              <Btn variant="on-dark" icon="refresh" onClick={onCancelChanges} disabled={!hasUnsavedChanges || saving}>
+                בטל שינויים
+              </Btn>
+              <Btn variant="on-dark" icon="back" onClick={() => onExit()}>
+                שמירה וחזרה לרשימה
+              </Btn>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
-    </>
+        </aside>
+      </div>
+
+      {/* אישור שחרור נעילה (הזמנה שתאריך האירוע שלה עבר) - חלונית אישור, כהה/בהיר */}
+      <Dialog
+        open={showUnlockModal}
+        variant="confirm"
+        mode="light"
+        icon="lock"
+        title="ההזמנה נעולה"
+        sub="תאריך האירוע עבר, ולכן השכרה, עריכה ומחיקה של פריטים חסומות. החזרות, תשלומים וזיכויים ממשיכים לעבוד כרגיל. שחרור מלא לעריכה דורש אישור מנהל."
+        closeOnScrim={!unlocking}
+        onClose={() => { if (!unlocking) setShowUnlockModal(false); }}
+        actions={(
+          <>
+            <Btn
+              variant="primary"
+              icon="unlock"
+              loading={unlocking}
+              onClick={async () => {
+                setUnlocking(true);
+                try {
+                  await onUnlock();
+                } finally {
+                  setUnlocking(false);
+                  setShowUnlockModal(false);
+                }
+              }}
+            >
+              {unlocking ? 'מאמת...' : 'שחרר באישור מנהל'}
+            </Btn>
+            <Btn variant="quiet" disabled={unlocking} onClick={() => setShowUnlockModal(false)}>ביטול</Btn>
+          </>
+        )}
+      />
+    </div>
   );
 }

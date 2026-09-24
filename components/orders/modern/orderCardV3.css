@@ -1,0 +1,40 @@
+/* פריסת כרטיס ההזמנה (v3) - רק מרווחים/גריד. כל הערכים מ-tokens.css (R2). מחלקות oc-* בלבד. */
+.oc-root { display: flex; flex-direction: column; gap: var(--v3-gap-panel); }
+.oc-page { display: flex; flex-direction: column; gap: var(--v3-gap-panel); min-width: 0; }
+.oc-page .v3-layout { margin-top: 0; }
+.oc-tools { display: flex; align-items: center; gap: var(--v3-sp-2); flex-wrap: wrap; }
+.oc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--v3-sp-4) var(--v3-sp-5); }
+.oc-facts .v3-row { padding-block: 0; border-bottom: 0; }
+.oc-cust-title { display: inline-flex; align-items: center; gap: var(--v3-sp-3); min-width: 0; }
+.oc-avatar { width: 40px; height: 40px; font-size: var(--v3-fs-sm); }
+.oc-scan-label { display: flex; align-items: center; gap: var(--v3-sp-1); }
+.oc-tipfill { display: flex; min-width: 0; }
+.oc-tipfill > * { flex: 1; min-width: 0; }
+.oc-save-row { display: flex; align-items: center; gap: var(--v3-sp-2); }
+.oc-save-row > .v3-btn { flex: 1; }
+.oc-rail-tip .v3-tip-btn { color: var(--v3-on-dark); }
+.oc-rail-count { margin-inline-start: auto; }
+.oc-status-block { margin-top: var(--v3-sp-4); }
+.oc-draft-rows { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); }
+.oc-draft-actions { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); }
+.oc-pending-panel { display: flex; flex-direction: column; gap: var(--v3-sp-3); }
+.oc-mini-list { display: flex; flex-direction: column; gap: var(--v3-sp-2); }
+.oc-sumrow { display: flex; justify-content: space-between; align-items: center; gap: var(--v3-sp-3); }
+.oc-sumrow--total { font-weight: var(--v3-fw-bold); }
+.oc-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--v3-sp-4); }
+@media (max-width: 640px) { .oc-two { grid-template-columns: 1fr; } }
+.oc-inline-edit { display: flex; align-items: center; gap: var(--v3-sp-2); flex-wrap: wrap; }
+.oc-emp { display: flex; align-items: center; gap: var(--v3-sp-3); }
+.oc-emp-list { display: flex; flex-direction: column; gap: var(--v3-sp-3); }
+.oc-file-note { color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }
+.oc-radio-row { display: flex; flex-wrap: wrap; gap: var(--v3-sp-2); }
+.oc-page .v3-pagehead__title { min-width: calc(var(--v3-tap) * 4); }
+/* רייל במובייל/טאבלט = גיליון תחתון: מקופל כברירת מחדל (רק כפתור פתיחה + פעולות), נפתח בלחיצה */
+.oc-rail-toggle { display: none; }
+@media (max-width: 1020px) {
+  .oc-rail-toggle { display: flex; align-items: center; gap: var(--v3-sp-2); width: 100%; min-height: var(--v3-tap); padding: var(--v3-sp-2) var(--v3-sp-4); background: transparent; border: 0; color: var(--v3-champagne-100); font: inherit; font-weight: var(--v3-fw-bold); cursor: pointer; }
+  .oc-rail-toggle .v3-ic { color: var(--v3-gold-300); }
+  .oc-rail-toggle > .v3-ic:last-child { margin-inline-start: auto; transition: transform var(--v3-dur) var(--v3-ease); }
+  .oc-rail-card.is-open .oc-rail-toggle > .v3-ic:last-child { transform: rotate(180deg); }
+  .oc-rail-card:not(.is-open) .oc-rail-more { display: none; }
+}

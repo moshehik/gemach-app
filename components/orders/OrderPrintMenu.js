@@ -1,13 +1,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import '../../app/v3/tokens.css';
+import '../../app/v3/components.css';
+import { Dialog, Btn, Field, Seg, Icon, Tip } from '../../app/v3/ui/components';
+import { useV3Dialogs, TipWrap } from './modern/orderCardDialogs';
+import './modern/orderCardV3.css';
 
 /**
  * Reusable "print / email order" control: a floating menu with the same 4
  * actions available on the order card (print order, print rental, email
  * order, email rental), gated behind the same "customer signed the
  * regulations" confirmation used there.
+ *
+ * עיצוב v3: התפריט הצף = v3-menu; החלונית של "חתימה על תקנון" = חלונית אישור; חלונית שליחת המייל
+ * (כתובת + קבצים + יעד) = חלונית הזנה, בהירה בלבד. כל הלוגיקה והקריאות לשרת נשארו זהות.
  */
 export default function OrderPrintMenu({
   order,
@@ -21,6 +28,7 @@ export default function OrderPrintMenu({
   // RentalReturnModal מעביר את זה true כדי לדלג על השער ולפתוח את התפריט ישירות.
   skipRegulationsCheck = false
 }) {
+  const { v3Alert, dialogs } = useV3Dialogs();
   const [open, setOpen] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -67,12 +75,12 @@ export default function OrderPrintMenu({
         setShowRegulationsModal(false);
         setOpen(true);
       } else {
-        alert('שגיאה בשמירת אישור החתימה');
+        await v3Alert('שמירת אישור החתימה נכשלה.');
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
         console.error(e);
-        alert('שגיאת תקשורת בשמירת אישור החתימה');
+        await v3Alert('בעיית תקשורת בשמירת אישור החתימה.');
       }
     } finally {
       setConfirmingSigned(false);
@@ -160,14 +168,17 @@ export default function OrderPrintMenu({
       const data = await res.json();
       if (data.success) {
         const links = Array.isArray(data.driveLinks) ? data.driveLinks : [];
-        alert(links.length > 0 ? `המייל נשלח בהצלחה! ${links.length} קבצים הועלו לדרייב עם הרשאת הורדה מלאה.` : 'המייל נשלח בהצלחה!');
+        v3Alert(
+          links.length > 0 ? `המייל נשלח, ו-${links.length} קבצים הועלו לדרייב עם הרשאת הורדה מלאה.` : 'המייל נשלח.',
+          { title: 'נשלח', icon: 'check-circle' }
+        );
         setExtraFiles([]);
       } else {
-        alert('שגיאה: ' + (data.error || 'השליחה נכשלה'));
+        v3Alert('שגיאה: ' + (data.error || 'השליחה נכשלה'));
       }
     } catch (err) {
       console.error(err);
-      alert('שגיאה ביצירת ה-PDF או בשליחת המייל');
+      v3Alert('יצירת ה-PDF או שליחת המייל נכשלו.');
     } finally {
       setSending(false);
     }
@@ -176,7 +187,7 @@ export default function OrderPrintMenu({
   const handleEmailSubmit = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailInput.trim())) {
-      alert('כתובת המייל שהוזנה אינה תקינה.');
+      await v3Alert('כתובת המייל אינה תקינה.');
       return;
     }
     const validEmail = emailInput.trim();
@@ -200,122 +211,112 @@ export default function OrderPrintMenu({
     handleSendEmail(emailTypePending, validEmail);
   };
 
+  const iconSizeStyle = { width: `${triggerIconSize}px`, height: `${triggerIconSize}px` };
+
   return (
     <>
       <div ref={containerRef} style={{ position: 'relative' }}>
-        <button type="button" className={triggerClassName} title={triggerTitle} onClick={handleTriggerClick} disabled={sending}>
-          {sending ? (
-            <span className="spinner" style={{ width: `${triggerIconSize}px`, height: `${triggerIconSize}px`, borderWidth: '2px' }} />
-          ) : (
-            <svg className="icon" style={{ width: `${triggerIconSize}px`, height: `${triggerIconSize}px` }}><use href="#i-printer" /></svg>
-          )}
-        </button>
-        {open && (
-          <div className="opm-menu">
-            <button type="button" className="opm-menu-item" onClick={() => openPrint('order')}><svg className="icon"><use href="#i-file" /></svg> הזמנה</button>
-            <button type="button" className="opm-menu-item" onClick={() => openPrint('rental')}><svg className="icon"><use href="#i-list" /></svg> השכרה</button>
-            <button type="button" className="opm-menu-item" onClick={() => handleSendEmail('order')}><svg className="icon"><use href="#i-mail" /></svg> מייל הזמנה</button>
-            <button type="button" className="opm-menu-item" onClick={() => handleSendEmail('rental')}><svg className="icon"><use href="#i-mail" /></svg> מייל השכרה</button>
-          </div>
-        )}
+        <TipWrap content="הדפסה ושליחה במייל">
+          <button
+            type="button"
+            className={triggerClassName}
+            aria-label={triggerTitle}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={handleTriggerClick}
+            disabled={sending}
+          >
+            {sending
+              ? <Icon name="loader" loop style={iconSizeStyle} />
+              : <Icon name="printer" style={iconSizeStyle} />}
+          </button>
+        </TipWrap>
+        <div className={`v3-menu${open ? ' is-open' : ''}`} role="menu" data-v3="" dir="rtl">
+          <button type="button" role="menuitem" className="v3-menu__item" onClick={() => openPrint('order')}><Icon name="file" />הדפסת ההזמנה</button>
+          <button type="button" role="menuitem" className="v3-menu__item" onClick={() => openPrint('rental')}><Icon name="list" />הדפסת ההשכרה</button>
+          <button type="button" role="menuitem" className="v3-menu__item" onClick={() => handleSendEmail('order')}><Icon name="mail" />שליחת ההזמנה במייל</button>
+          <button type="button" role="menuitem" className="v3-menu__item" onClick={() => handleSendEmail('rental')}><Icon name="mail" />שליחת ההשכרה במייל</button>
+        </div>
       </div>
 
-      {showRegulationsModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={cancelSignatureConfirm}>
-          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
-              <svg className="icon"><use href="#i-edit" /></svg>
-            </div>
-            <h3>חתימה על תקנון</h3>
-            <p>האם הלקוח חתם על התקנון?</p>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmSigned} disabled={confirmingSigned}>
-                {confirmingSigned && <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />}
-                כן, חתם
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={cancelSignatureConfirm}>לא (ביטול)</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* שער "חתימה על תקנון" - חלונית אישור */}
+      <Dialog
+        open={showRegulationsModal}
+        variant="confirm"
+        mode="light"
+        icon="edit"
+        badgeKind="write"
+        title="חתימה על התקנון"
+        sub="הלקוח חתם על התקנון?"
+        onClose={cancelSignatureConfirm}
+        actions={(
+          <>
+            <Btn variant="primary" icon="check" loading={confirmingSigned} onClick={confirmSigned}>כן, חתם</Btn>
+            <Btn variant="quiet" onClick={cancelSignatureConfirm}>לא, ביטול</Btn>
+          </>
+        )}
+      />
 
-      {showEmailPrompt && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowEmailPrompt(false)}>
-          <div className="modal confirm-modal" style={{ maxWidth: '480px', width: 'calc(100% - 32px)' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-icon-circle" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
-              <svg className="icon"><use href="#i-mail" /></svg>
-            </div>
-            <h3>שליחת {emailTypePending === 'rental' ? 'מייל השכרה' : 'מייל הזמנה'}</h3>
-            <p>ללקוח זה {order.customer?.email ? 'מעודכנת כתובת מייל' : 'לא מעודכנת כתובת מייל במערכת'}. ניתן לערוך, לצרף קבצים ולבחור יעד (מייל / דרייב / גם וגם). טבלת הוראות מסודרת תצורף אוטומטית למייל.</p>
-            <input
-              type="email"
-              className="input"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="example@gmail.com"
-              dir="ltr"
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(); }}
-              style={{ marginBottom: '12px', textAlign: 'start' }}
-            />
-            <div className="field" style={{ marginBottom: '12px', textAlign: 'right' }}>
-              <label>קבצים נוספים (בנוסף ל-PDF ההזמנה)</label>
-              <input type="file" className="input" multiple onChange={(e) => setExtraFiles(e.target.files ? Array.from(e.target.files) : [])} />
-              {extraFiles.length > 0 && (
-                <div className="hint" style={{ marginTop: '6px' }}>{extraFiles.length} קבצים נבחרו: {extraFiles.map(f => f.name).join(', ')}</div>
-              )}
-            </div>
-            <div className="field" style={{ marginBottom: '18px', textAlign: 'right' }}>
-              <label>יעד הקבצים בהתאמה</label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                {[
-                  { v: 'email', label: 'צרופה למייל' },
-                  { v: 'drive', label: 'דרייב + שיתוף' },
-                  { v: 'both', label: 'גם וגם' }
-                ].map(o => (
-                  <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)', borderRadius: '20px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <input type="radio" name="orderSendMode" value={o.v} checked={orderSendMode === o.v} onChange={() => setOrderSendMode(o.v)} />
-                    {o.label}
-                  </label>
-                ))}
-              </div>
-              {(orderSendMode === 'drive' || orderSendMode === 'both') && (
-                <div className="hint" style={{ marginTop: '6px' }}>הקבצים יועלו לדרייב וישותפו עם הנמען בהרשאת הורדה מלאה.</div>
-              )}
-            </div>
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-primary" onClick={handleEmailSubmit}>שלח</button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowEmailPrompt(false)}>ביטול</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* שליחת מייל: כתובת + קבצים נוספים + יעד - חלונית הזנה (בהיר בלבד) */}
+      <Dialog
+        open={showEmailPrompt}
+        variant="form"
+        icon="mail"
+        title={emailTypePending === 'rental' ? 'שליחת ההשכרה במייל' : 'שליחת ההזמנה במייל'}
+        sub={order.customer?.email ? 'אפשר לעדכן את הכתובת לפני השליחה.' : 'ללקוח אין כתובת מייל בכרטיס. הכתובת שתוזן תישמר בכרטיס הלקוח.'}
+        onClose={() => setShowEmailPrompt(false)}
+        actions={(
+          <>
+            <Btn variant="primary" icon="send" onClick={handleEmailSubmit}>שליחה</Btn>
+            <Btn variant="quiet" onClick={() => setShowEmailPrompt(false)}>ביטול</Btn>
+          </>
+        )}
+      >
+        <Field
+          label="כתובת מייל"
+          type="email"
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
+          placeholder="example@gmail.com"
+          dir="ltr"
+          data-autofocus=""
+          onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(); }}
+        />
+        <div className="v3-field">
+          <label className="v3-label" htmlFor="opm-extra-files">
+            קבצים נוספים
+            <Tip>הקבצים יצורפו בנוסף ל-PDF של ההזמנה. טבלת הוראות מסודרת מצורפת למייל אוטומטית.</Tip>
+          </label>
+          <input
+            id="opm-extra-files"
+            type="file"
+            className="v3-input"
+            multiple
+            onChange={(e) => setExtraFiles(e.target.files ? Array.from(e.target.files) : [])}
+          />
+          {extraFiles.length > 0 && (
+            <div className="oc-file-note">נבחרו <bdi>{extraFiles.length}</bdi> קבצים: {extraFiles.map(f => f.name).join(', ')}</div>
+          )}
+        </div>
+        <div className="v3-field">
+          <span className="v3-label">
+            לאן לשלוח את הקבצים
+            <Tip>בדרייב הקבצים מועלים ומשותפים עם הנמען בהרשאת הורדה מלאה.</Tip>
+          </span>
+          <Seg
+            label="יעד הקבצים"
+            value={orderSendMode}
+            onChange={setOrderSendMode}
+            options={[
+              { value: 'email', label: 'צרופה למייל' },
+              { value: 'drive', label: 'דרייב ושיתוף' },
+              { value: 'both', label: 'שניהם' }
+            ]}
+          />
+        </div>
+      </Dialog>
 
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        .opm-menu {
-          position: absolute; top: 100%; inset-inline-end: 0; margin-top: 8px;
-          background: var(--surface); border-radius: var(--radius-md);
-          box-shadow: var(--shadow-lg);
-          z-index: 1050; min-width: 170px; overflow: hidden; padding: 6px;
-          border: 1px solid var(--border);
-          animation: opm-slide-in 0.15s ease-out forwards;
-        }
-        @keyframes opm-slide-in {
-          from { opacity: 0; transform: translateY(-6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .opm-menu-item {
-          width: 100%; display: flex; align-items: center; gap: 10px;
-          padding: 10px 12px; border: none; background: transparent; cursor: pointer;
-          border-radius: var(--radius-sm); font-weight: 600; font-size: 0.88rem; color: var(--text);
-          transition: background-color 0.15s ease;
-        }
-        .opm-menu-item .icon { width: 16px; height: 16px; color: var(--text-3); }
-        .opm-menu-item:hover { background: var(--surface-alt); }
-      `}} />
+      {dialogs}
     </>
   );
 }

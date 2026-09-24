@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPortal } from 'react-dom';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import ModernOrderCard from '../../../components/orders/modern/ModernOrderCard';
 import ModernGeneralDetails from '../../../components/orders/modern/ModernGeneralDetails';
@@ -15,6 +14,10 @@ import { addHistory } from '../../../lib/historyManager';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
+import { V3Page, Btn, Chip, Dialog, Field, Icon, Tip } from '../../v3/ui/components';
+import { enqueueNotice, v3NoticeSaved } from '../../v3/notify';
+import { useV3Dialogs } from '../../../components/orders/modern/orderCardDialogs';
+import '../../../components/orders/modern/orderCardV3.css';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -167,6 +170,8 @@ export default function OrderDetailsPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
   const id = unwrappedParams.id;
+  // חלוניות v3 במקום alert/confirm/prompt של הדפדפן (אותה זרימת await) - ר' orderCardDialogs.js
+  const { v3Alert, v3Confirm, v3Prompt, dialogs } = useV3Dialogs();
   
   const [order, setOrder] = useState(null);
   const initialLockChecked = useRef(false);
@@ -311,7 +316,7 @@ export default function OrderDetailsPage({ params }) {
     if (typeof window !== 'undefined' && window.customPrompt) {
       zeout = await window.customPrompt(msg, '', 'text');
     } else if (typeof window !== 'undefined') {
-      zeout = window.prompt(msg);
+      zeout = await v3Prompt(msg, { title: 'אימות תעודת זהות', label: 'תעודת זהות של הלקוח', inputMode: 'numeric' });
     }
     return zeout ? String(zeout).trim() : null;
   };
@@ -553,7 +558,7 @@ export default function OrderDetailsPage({ params }) {
   const putOrder = async (payload) => {
     // 27 - חסימת עריכת מושכר חלקי בצד לקוח (גם שרת חוסם, אבל נותן חיווי מידי) - נבדק לפני בקשת ת״ז כדי לא לבקש סתם
     if (!allowEditPartially && items.some(i => !i.isDeleted && i.isTaken)) {
-      if (typeof window !== 'undefined') alert('לא ניתן לערוך הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      if (typeof window !== 'undefined') await v3Alert('הזמנה שהושכרה חלקית נעולה לעריכה לפי הגדרות המערכת.');
       return null;
     }
     // 14 - אם דרוש ת״ז, בקש לפני שליחה וצרף ל-body+header
@@ -563,7 +568,7 @@ export default function OrderDetailsPage({ params }) {
       zeoutForRequest = await requestZeout();
       if (!zeoutForRequest) {
         // ביטול ע״י המשתמש - לא שולחים כלום, מחזירים null כמו ב-409 discard
-        if (typeof window !== 'undefined') alert('עריכה בוטלה - לא הוזנה תעודת זהות.');
+        if (typeof window !== 'undefined') await v3Alert('העריכה לא בוצעה: לא הוזנה תעודת זהות.');
         return null;
       }
       payload = { ...payload, zeout: zeoutForRequest };
@@ -577,14 +582,16 @@ export default function OrderDetailsPage({ params }) {
     const res = await send(payload);
     if (res.status === 401 || res.status === 403 || res.status === 400) {
       const errData = await res.clone().json().catch(() => null);
-      if (typeof window !== 'undefined') alert(errData?.error || 'שגיאת אימות תעודת זהות.');
+      if (typeof window !== 'undefined') await v3Alert(errData?.error || 'אימות תעודת הזהות נכשל.');
       return res;
     }
     if (res.status !== 409) return res;
 
     const conflict = await res.json().catch(() => null);
-    const baseMsg = (conflict && conflict.message) || 'ההזמנה עודכנה בשרת מאז הטעינה האחרונה של הכרטיס.';
-    const overwrite = confirm(`${baseMsg}\n\nאישור = לשמור בכל זאת ולדרוס את הגרסה שבשרת.\nביטול = לטעון מחדש את הנתונים מהשרת (השינויים שלא נשמרו יאבדו).`);
+    const baseMsg = (conflict && conflict.message) || 'מישהו עדכן את ההזמנה מאז שפתחת אותה.';
+    const overwrite = await v3Confirm(`${baseMsg}\n\nאפשר לשמור בכל זאת ולדרוס את הגרסה שבשרת, או לטעון מחדש מהשרת (השינויים שלא נשמרו יימחקו).`, {
+      title: 'ההזמנה השתנתה בינתיים', icon: 'alert-tri', confirmLabel: 'שמור ודרוס', cancelLabel: 'טען מחדש מהשרת', locked: true
+    });
     if (!overwrite) {
       await reloadOrderFromServer();
       return null;
@@ -673,7 +680,7 @@ export default function OrderDetailsPage({ params }) {
     const currentOrder = (overrideOrder && overrideOrder.orderId) ? overrideOrder : order;
     if (!currentOrder) {
       setSaving(false);
-      alert('שגיאה: נתוני ההזמנה לא טוענו כראוי');
+      await v3Alert('נתוני ההזמנה לא נטענו כמו שצריך. אפשר לרענן את הדף ולנסות שוב.');
       return;
     }
 
@@ -683,7 +690,7 @@ export default function OrderDetailsPage({ params }) {
         const hasRepair = item.neckAlteration || item.sleeveAlteration || (item.lengthAlteration && item.lengthAlteration.trim() !== '');
         if (hasRepair && (!item.alterationDetails || item.alterationDetails.trim() === '')) {
           setSaving(false);
-          alert('חובה להזין פירוט תיקון עבור כל פריט שיש לו תיקון מסומן (צוואר, שרוול או אורך).');
+          await v3Alert('יש פריט עם תיקון מסומן (צוואר, שרוול או אורך) בלי פירוט. צריך להוסיף פירוט תיקון לכל פריט כזה.');
           return;
         }
       }
@@ -695,9 +702,9 @@ export default function OrderDetailsPage({ params }) {
 
     if (activeItems.length > 0 && !hasDates) {
       setSaving(false);
-      alert(currentOrder.isAbroad || currentOrder.isWeekdayEvent 
-        ? 'חובה להזין תאריכי התחלה וסיום (אירוע חו"ל/מיוחד) עבור הזמנה הכוללת פריטים.' 
-        : 'חובה לבחור תאריך אירוע עבור הזמנה הכוללת פריטים.');
+      await v3Alert(currentOrder.isAbroad || currentOrder.isWeekdayEvent
+        ? 'חסרים תאריכי לקיחה והחזרה (אירוע חו"ל או אמצע שבוע). הזמנה עם פריטים דורשת אותם.'
+        : 'חסר תאריך אירוע. הזמנה עם פריטים דורשת תאריך.');
       return;
     }
 
@@ -721,25 +728,25 @@ export default function OrderDetailsPage({ params }) {
         const validateData = await validateRes.json();
         if (validateData.error) {
           setSaving(false);
-          alert(`שגיאה: ${validateData.error}`);
+          await v3Alert(`בדיקת המלאי נכשלה: ${validateData.error}`);
           return;
         }
         if (!validateData.valid) {
           setSaving(false);
           const errorLines = validateData.errors.map(e => {
-            const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
-            return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
+            const msg = `• ${e.dressName} (מידה ${e.sizeText}): חסרות ${e.requested - e.available} יחידות`;
+            return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף ימים)` : msg;
           }).join('\n');
           const customSpacingNote = validateData.errors.some(e => e.isCustomSpacingIssue)
-            ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+            ? '\n\nחלק מהבעיות נובעות מציפוף ימים מיוחד. אפשר לנסות ציפוף קטן יותר.'
             : '';
-          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}${customSpacingNote}`);
+          await v3Alert(`אי אפשר לשמור: אין מספיק מלאי בתאריכים שנבחרו.\n\n${errorLines}${customSpacingNote}`, { title: 'המלאי לא מספיק' });
           return;
         }
       } catch (err) {
         console.error('Validation fetch error', err);
         setSaving(false);
-        alert('שגיאה בבדיקת המלאי מול השרת.');
+        await v3Alert('בדיקת המלאי מול השרת נכשלה. אפשר לנסות שוב.');
         return;
       }
     }
@@ -780,7 +787,7 @@ export default function OrderDetailsPage({ params }) {
         setSaving(false);
         // Returning quietly here made the Save button look broken - nothing happened and
         // nothing explained why.
-        setSaveMessage('השמירה בוטלה: נדרש אישור עובד או מנהל בגלל יתרת חוב.');
+        setSaveMessage('השמירה בוטלה: יתרת חוב פתוחה דורשת אישור עובד או מנהל.');
         return;
       }
       try {
@@ -792,14 +799,14 @@ export default function OrderDetailsPage({ params }) {
         const data = await res.json();
         if (!data.success) {
           setSaving(false);
-          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          await v3Alert(data.error || 'הסיסמה שגויה או שאין הרשאה מתאימה.');
           return;
         }
         debtApprovedBy = authResult.employeeId;
         setDebtApproved(authResult.employeeId);
       } catch (err) {
         setSaving(false);
-        alert('שגיאה באימות קוד עובד/מנהל.');
+        await v3Alert('אימות הקוד מול השרת נכשל.');
         return;
       }
     }
@@ -818,7 +825,7 @@ export default function OrderDetailsPage({ params }) {
       const authResult = await window.customAuthPrompt('ביטול פריט מהזמנה קיימת דורש גם אישור מנהל (בנוסף לאימות ת״ז). אנא בחר מנהל והזן סיסמה:', 'feature:item_change_approval');
       if (!authResult || !authResult.pin) {
         setSaving(false);
-        setSaveMessage('השמירה בוטלה: ביטול פריט דורש אישור מנהל.');
+        setSaveMessage('השמירה בוטלה: הסרת פריט דורשת אישור מנהל.');
         return;
       }
       try {
@@ -830,13 +837,13 @@ export default function OrderDetailsPage({ params }) {
         const data = await res.json();
         if (!data.success) {
           setSaving(false);
-          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          await v3Alert(data.error || 'הסיסמה שגויה או שאין הרשאה מתאימה.');
           return;
         }
         managerAuthForItemChange = { employeeId: authResult.employeeId, pin: authResult.pin };
       } catch (err) {
         setSaving(false);
-        alert('שגיאה באימות קוד מנהל.');
+        await v3Alert('אימות הקוד מול השרת נכשל.');
         return;
       }
     }
@@ -892,7 +899,7 @@ export default function OrderDetailsPage({ params }) {
 
       // המשתמש בחר לטעון מחדש מהשרת במקום לדרוס — הנתונים כבר רועננו.
       if (!res) {
-        setSaveMessage('הנתונים נטענו מחדש מהשרת. בדוק את הפרטים ושמור שוב.');
+        setSaveMessage('הנתונים נטענו מחדש מהשרת. כדאי לבדוק את הפרטים ולשמור שוב.');
         return;
       }
 
@@ -951,11 +958,20 @@ export default function OrderDetailsPage({ params }) {
 
       if (!showsPaymentContinuePrompt) {
         setSaveMessage(newDebtCreatedBySave
-          ? `השינויים נשמרו בהצלחה! נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} - עברת אוטומטית לטאב תשלומים להשלמת הגבייה.`
-          : 'השינויים נשמרו בהצלחה!');
+          ? `הכול נשמר. נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')}, ועברנו ללשונית התשלומים לגבייה.`
+          : 'הכול נשמר.');
         setTimeout(() => setSaveMessage(''), newDebtCreatedBySave ? 7000 : 3000);
         setShowSaveSuccessOverlay(true);
         setTimeout(() => setShowSaveSuccessOverlay(false), 5000);
+        // R20 (NOTIFICATIONS-DESIGN #2/#11): הודעת "נשמר" מעוצבת + שמירה בפעמון. נוספת אחרי מסלול
+        // ההצלחה הקיים ולא משנה אותו; כשל בהתראה לא משפיע על השמירה.
+        try {
+          if (newDebtCreatedBySave) {
+            enqueueNotice({ kind: 'warn', title: 'ההזמנה נשמרה, ונוצר חיוב חדש', text: `נותרו ₪${freshDebtNow.toLocaleString('he-IL')} לגבייה בלשונית התשלומים.`, persistToBell: true });
+          } else {
+            v3NoticeSaved({ title: 'ההזמנה נשמרה', text: `הזמנה #${updatedOrder.orderId} עודכנה.` });
+          }
+        } catch { /* התראה היא בונוס בלבד */ }
       }
 
       // דיווח 13eaff88 (נווה יעקב): לאחר שמירת שינוי בהזמנה קיימת (לחיצה מפורשת על
@@ -965,7 +981,7 @@ export default function OrderDetailsPage({ params }) {
       if (promptPrint) {
         const wantsPrint = window.customConfirm
           ? await window.customConfirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?')
-          : window.confirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?');
+          : await v3Confirm('השינויים נשמרו. להדפיס את ההזמנה המעודכנת?', { title: 'הכול נשמר', icon: 'printer', confirmLabel: 'הדפסה', cancelLabel: 'לא עכשיו' });
         if (wantsPrint) {
           window.open(`/print/order?orderId=${updatedOrder.orderId}&type=order`, '_blank');
         }
@@ -1029,19 +1045,25 @@ export default function OrderDetailsPage({ params }) {
 
   if (loading) {
     return (
-      <div className="page-loading">
-        <span className="spinner lg" />
-        טוען נתוני הזמנה...
-      </div>
+      <V3Page>
+        <div className="v3-empty" role="status" aria-live="polite">
+          <Icon name="loader" size="xl" loop />
+          <b className="v3-h2">טוענים את ההזמנה...</b>
+        </div>
+      </V3Page>
     );
   }
 
   if (!order) {
     return (
-      <div className="empty-state">
-        <svg className="icon"><use href="#i-alert-circle" /></svg>
-        <h4>הזמנה לא נמצאה</h4>
-      </div>
+      <V3Page>
+        <div className="v3-empty">
+          <Icon name="alert-circle" size="xl" />
+          <b className="v3-h2">ההזמנה לא נמצאה</b>
+          <p className="v3-empty__text">ייתכן שהיא נמחקה או שהקישור אינו נכון.</p>
+          <Btn href="/orders" icon="back">לרשימת ההזמנות</Btn>
+        </div>
+      </V3Page>
     );
   }
 
@@ -1120,13 +1142,13 @@ export default function OrderDetailsPage({ params }) {
         });
         const data = await res.json();
         if (!data.success) {
-          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          await v3Alert(data.error || 'הסיסמה שגויה או שאין הרשאה מתאימה.');
           return;
         }
         setDebtApproved(authResult.employeeId);
         exitDebtApprovedBy = authResult.employeeId;
       } catch (err) {
-        alert('שגיאה באימות קוד עובד/מנהל.');
+        await v3Alert('אימות הקוד מול השרת נכשל.');
         return;
       }
     }
@@ -1174,14 +1196,14 @@ export default function OrderDetailsPage({ params }) {
       // המשתמש בחר לטעון מחדש מהשרת במקום לדרוס — נשארים בכרטיס כדי שיבדוק ויחליט.
       if (!res) {
         setSaving(false);
-        alert('הנתונים נטענו מחדש מהשרת. בדוק את ההזמנה ושמור שוב לפני היציאה.');
+        await v3Alert('הנתונים נטענו מחדש מהשרת. כדאי לבדוק את ההזמנה ולשמור שוב לפני היציאה.');
         return;
       }
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         setSaving(false);
-        alert((errorData && errorData.message) ? errorData.message : 'שגיאה בשמירה');
+        await v3Alert((errorData && errorData.message) ? errorData.message : 'השמירה נכשלה.');
         return;
       }
 
@@ -1220,7 +1242,7 @@ export default function OrderDetailsPage({ params }) {
           if (enableEditSummaryConfirm) {
             setPaymentContinueAmount(freshDebtNow);
           } else {
-            alert(`השינויים נשמרו, אך נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בטאב תשלומים.`);
+            await v3Alert(`השינויים נשמרו, אבל נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} (למשל משלוח או פריט שנוסף). אי אפשר לצאת לפני שמשלימים את הגבייה, אלא באישור מנהל. עברנו ללשונית התשלומים.`, { title: 'נוצר חיוב חדש' });
           }
           return;
         }
@@ -1256,13 +1278,16 @@ export default function OrderDetailsPage({ params }) {
         // בניסיון יציאה קודם ולא רוצים לפתוח אותו שוב - אבל עדיין שווה להזכיר את הסכום.)
         const creditNow = Math.round((freshPaid - freshRequired) * 100) / 100;
         if (creditNow > 0) {
-          alert(`שים לב: ללקוח מגיע זיכוי של ₪${creditNow.toLocaleString('he-IL')} עבור הזמנה זו.\nבקשת זיכוי ממתינה נרשמה אוטומטית בטאב "זיכויים".`);
+          // מידע בלבד (לא חוסם): בלי חלונית - הודעה שנשמרת בפעמון (NOTIFICATIONS-DESIGN #4)
+          try { enqueueNotice({ kind: 'info', title: `ללקוח מגיע זיכוי של ₪${creditNow.toLocaleString('he-IL')}`, text: 'בקשת זיכוי נרשמה אוטומטית ותופיע בלשונית התשלומים.', persistToBell: true }); } catch { /* התראה היא בונוס בלבד */ }
         }
       } catch (e) {
         console.error('Failed to check debt/credit balance on exit', e);
       }
 
       pendingDebtBlockRef.current = false;
+      // R20 (NOTIFICATIONS-DESIGN #3): הודעת "נשמר" שנשארת גם אחרי המעבר לעמוד הבא, ונשמרת בפעמון.
+      try { v3NoticeSaved({ title: 'ההזמנה נשמרה', text: `הזמנה #${order.orderId} נשמרה לפני היציאה.` }); } catch { /* התראה היא בונוס בלבד */ }
       if (destinationHref) {
         router.push(destinationHref);
       } else {
@@ -1270,7 +1295,7 @@ export default function OrderDetailsPage({ params }) {
       }
     } catch (err) {
       setSaving(false);
-      alert('שגיאה בשמירה: ' + (err.message || 'נסה שוב'));
+      await v3Alert('השמירה נכשלה: ' + (err.message || 'אפשר לנסות שוב'));
     }
   };
   handleExitRef.current = handleExit;
@@ -1303,14 +1328,14 @@ export default function OrderDetailsPage({ params }) {
     setRefunds(d.state.refunds || []);
     setPendingDraft(null);
     setHasUnsavedChanges(true);
-    setSaveMessage('השינויים מהביקור הקודם שוחזרו. לחץ "שמור שינויים" לשמירה, או על כפתור הביטול כדי לוותר עליהם.');
+    setSaveMessage('השינויים מהביקור הקודם שוחזרו. אפשר לשמור אותם, או ללחוץ "בטל שינויים" כדי לוותר עליהם.');
     setTimeout(() => setSaveMessage(''), 7000);
   };
 
   const handleDiscardDraft = async () => {
     const confirmed = window.customConfirm
       ? await window.customConfirm('למחוק את השינויים שלא נשמרו מהביקור הקודם? פעולה זו אינה הפיכה.')
-      : window.confirm('למחוק את השינויים שלא נשמרו מהביקור הקודם?');
+      : await v3Confirm('למחוק את השינויים שלא נשמרו מהביקור הקודם?', { title: 'למחוק את הטיוטה?', icon: 'trash', confirmLabel: 'מחיקה' });
     if (!confirmed) return;
     clearOrderDraft(order.orderId);
     setPendingDraft(null);
@@ -1319,30 +1344,29 @@ export default function OrderDetailsPage({ params }) {
   const handleCancelChanges = async () => {
     const snap = savedSnapshotRef.current;
     if (!hasUnsavedChanges || !snap) {
-      alert('אין שינויים לביטול.');
+      await v3Alert('אין שינויים לבטל.', { icon: 'info' });
       return;
     }
 
     const changes = buildChangeSummary();
     const rows = buildChangeRows();
-    const confirmed = await window.customConfirm(
-      <div>
-        <p style={{ margin: '0 0 14px', color: 'var(--text-2)', fontSize: '0.95rem', lineHeight: 1.5 }}>
-          פעולה זו תבטל את כל השינויים שלא נשמרו בהזמנה זו, ותחזיר אותה למצב האחרון שנשמר:
-        </p>
-        {rows.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+    const confirmed = await v3Confirm(
+      'הפעולה מבטלת את כל מה שלא נשמר ומחזירה את ההזמנה למצב האחרון שנשמר.',
+      {
+        title: 'לבטל את השינויים?',
+        icon: 'refresh',
+        confirmLabel: 'כן, לבטל',
+        cancelLabel: 'חזרה לעריכה',
+        content: rows.length > 0 ? (
+          <div className="oc-draft-rows">
             {rows.map((r, i) => (
-              <span key={i} className="chip" style={{ alignSelf: 'flex-start' }}>
-                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href={r.icon} /></svg>
-                {r.text}
-              </span>
+              <Chip key={i} icon={String(r.icon || '').replace(/^#?i-/, '') || 'info'}>{r.text}</Chip>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: '0.92rem', color: 'var(--text-3)', fontStyle: 'italic' }}>שינויים שלא נשמרו</div>
-        )}
-      </div>
+          <span className="v3-muted">שינויים שלא נשמרו</span>
+        )
+      }
     );
     if (!confirmed) return;
 
@@ -1360,7 +1384,7 @@ export default function OrderDetailsPage({ params }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ changes })
     }).catch(err => console.error('Failed to log cancelled changes', err));
-    setSaveMessage(changes.length > 0 ? `בוטלו השינויים: ${changes.join(', ')}` : 'השינויים בוטלו.');
+    setSaveMessage(changes.length > 0 ? `השינויים בוטלו (${changes.join(', ')})` : 'השינויים בוטלו.');
     setTimeout(() => setSaveMessage(''), 5000);
   };
 
@@ -1368,7 +1392,7 @@ export default function OrderDetailsPage({ params }) {
   const handleDeleteOrder = async () => {
     const status = calculateOrderStatus({ ...order, items }, { draftsAsDeleted });
     if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
-      alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
+      await v3Alert('אי אפשר למחוק הזמנה שכבר הושכרה (חלקית או במלואה) או שהוחזרה.');
       return;
     }
     if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?'))) return;
@@ -1377,11 +1401,11 @@ export default function OrderDetailsPage({ params }) {
     let zeoutForDelete = null;
     if (zeoutVerificationNeeded) {
       zeoutForDelete = await requestZeout();
-      if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
+      if (!zeoutForDelete) { await v3Alert('המחיקה לא בוצעה: לא הוזנה תעודת זהות.'); return; }
     }
     // 27 - חסימת מחיקת מושכר חלקי בצד לקוח
     if (!allowEditPartially && items.some(i => !i.isDeleted && i.isTaken)) {
-      alert('לא ניתן לבטל הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      await v3Alert('אי אפשר לבטל הזמנה שהושכרה חלקית - ההגדרות חוסמות זאת.');
       return;
     }
 
@@ -1392,14 +1416,16 @@ export default function OrderDetailsPage({ params }) {
         ...(zeoutForDelete ? { body: JSON.stringify({ zeout: zeoutForDelete }) } : {})
       });
       if (res.ok) {
+        // R20 (NOTIFICATIONS-DESIGN #5): הודעה שנשארת אחרי המעבר לרשימה ונשמרת בפעמון.
+        try { v3NoticeSaved({ title: 'ההזמנה נמחקה', text: `הזמנה #${order.orderId} הוסרה מהרשימה.` }); } catch { /* התראה היא בונוס בלבד */ }
         router.push('/orders');
       } else {
         const data = await res.json().catch(() => null);
-        alert((data && data.error) || 'שגיאה במחיקת הזמנה');
+        await v3Alert((data && data.error) || 'מחיקת ההזמנה נכשלה.');
       }
     } catch (err) {
       console.error(err);
-      alert('שגיאה במחיקת הזמנה');
+      await v3Alert('מחיקת ההזמנה נכשלה.');
     }
   };
 
@@ -1416,12 +1442,12 @@ export default function OrderDetailsPage({ params }) {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        await v3Alert(data.error || 'הסיסמה שגויה או שאין הרשאה מתאימה.');
         return;
       }
       setIsUnlocked(true);
     } catch (err) {
-      alert('שגיאה באימות קוד מנהל.');
+      await v3Alert('אימות הקוד מול השרת נכשל.');
     }
   };
 
@@ -1432,7 +1458,7 @@ export default function OrderDetailsPage({ params }) {
   const handleToggleSignature = async () => {
     const nowYes = !order.hasSignedRegulations;
     const msg = nowYes ? 'האם הלקוח חתם על תקנון ההשכרה?' : 'האם לסמן שהלקוח לא חתם על התקנון?';
-    const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
+    const confirmed = window.customConfirm ? await window.customConfirm(msg) : await v3Confirm(msg);
     if (!confirmed) return;
     try {
       const res = await fetch(`/api/orders/${id}`, {
@@ -1443,11 +1469,11 @@ export default function OrderDetailsPage({ params }) {
       if (res.ok) {
         handlePrintMenuOrderUpdate({ hasSignedRegulations: nowYes });
       } else {
-        alert('שגיאה בשמירת אישור החתימה');
+        await v3Alert('שמירת אישור החתימה נכשלה.');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת בשמירת אישור החתימה');
+      await v3Alert('בעיית תקשורת בשמירת אישור החתימה.');
     }
   };
 
@@ -1487,11 +1513,11 @@ export default function OrderDetailsPage({ params }) {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+        await v3Alert(data.error || 'הסיסמה שגויה או שאין הרשאה מתאימה.');
         return;
       }
     } catch (err) {
-      alert('שגיאה באימות קוד מאשר.');
+      await v3Alert('אימות קוד המאשר מול השרת נכשל.');
       return;
     }
     setActiveTab('payments');
@@ -1511,9 +1537,9 @@ export default function OrderDetailsPage({ params }) {
       return;
     }
     
-    setSaveMessage('מייצר קובץ PDF...');
+    setSaveMessage('יוצרים קובץ PDF...');
     try {
-      setSaveMessage('שולח מייל (יוצר PDF בענן)...');
+      setSaveMessage('שולחים את המייל...');
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1521,7 +1547,7 @@ export default function OrderDetailsPage({ params }) {
       });
       const data = await res.json();
       if (data.success) {
-        setSaveMessage('המייל נשלח בהצלחה!');
+        setSaveMessage('המייל נשלח.');
       } else {
         setSaveMessage('שגיאה: ' + (data.error || 'השליחה נכשלה'));
       }
@@ -1535,7 +1561,7 @@ export default function OrderDetailsPage({ params }) {
   const handleEmailSubmit = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailInput.trim())) {
-      alert('כתובת המייל שהוזנה אינה תקינה.');
+      await v3Alert('כתובת המייל אינה תקינה.');
       return;
     }
     
@@ -1565,207 +1591,181 @@ export default function OrderDetailsPage({ params }) {
     handleSendEmail(emailTypePending, validEmail);
   };
 
+  const fmtMoney = (n) => <bdi dir="ltr">₪{(Number(n) || 0).toLocaleString('he-IL')}</bdi>;
+
   return (
-    <>
-      {/* הודעת אישור מסך-מלא לאחר שמירת הזמנה בהצלחה - נעלמת מעצמה אחרי 5 שניות */}
+    <V3Page className="oc-root">
+      {/* הודעת "נשמר" קצרה אחרי שמירה מוצלחת - נעלמת מעצמה אחרי 5 שניות. (R20: כשרכיב ההתראות
+          ה-v3 יחובר לעץ, אפשר להסיר את זה ולהשאיר רק את v3NoticeSaved שנקרא ב-handleSave.) */}
       {showSaveSuccessOverlay && (
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}
-        >
-          <div
-            className="modal confirm-modal"
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '32px 48px', pointerEvents: 'none' }}
-          >
-            <div className="modal-icon-circle" style={{ background: 'var(--success-tint)', color: 'var(--success)', width: '56px', height: '56px' }}>
-              <svg className="icon" style={{ width: '32px', height: '32px' }}><use href="#i-check-circle" /></svg>
-            </div>
-            <strong style={{ fontSize: '20px' }}>ההזמנה נשמרה בהצלחה!</strong>
+        <div className="v3-toast is-on" role="status" style={{ '--v3-toast-duration': '5s', pointerEvents: 'none' }}>
+          <span className="v3-toast__icon"><Icon name="check-circle" size="lg" /></span>
+          <div className="v3-toast__body">
+            <span className="v3-toast__title">ההזמנה נשמרה</span>
           </div>
         </div>
       )}
 
       {/* חלון "סיכום ההזמנה" לפני שמירה בפועל - רק כש-enable_order_edit_summary_confirm
-          מופעל (ר' confirmSaveSummaryIfNeeded). בדומה לשלבי סיכום/תשלום באשף הזמנה חדשה. */}
-      {summaryConfirmData && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div className="modal" style={{ margin: 0, maxWidth: '520px', width: '95%' }}>
-            <div className="modal-head">
-              <strong>סיכום ההזמנה לפני שמירה</strong>
-            </div>
-            <div className="modal-body">
-              {/* מציגים ישירות את רשימת החיובים (obligations) ולא את items - החיובים כבר
-                  כוללים שורה לכל פריט (עם שם+מידה, ר' computeOrderObligations) בנוסף
-                  לתיקונים/דמי ביטול/משלוח, ומסתכמים בדיוק לסכום למטה - הצגת items בנפרד
-                  הייתה משכפלת את שורות הפריטים ומחסירה שורות אחרות (תיקון/ביטול). */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                {(() => {
-                  // savedObligationKeys (חיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת, ר'
-                  // confirmSaveSummaryIfNeeded/obligationIdentityKey) מאפשר להבחין "מה היה
-                  // קודם" מ-"מה נוסף עכשיו" (למשל חיוב משלוח שנוצר מהתצוגה המקדימה) - בלי זה
-                  // כל השורות נראות "אותו דבר" (דיווח: "לא ברור מה היה קודם ומה נוסף עכשיו").
-                  const savedKeys = summaryConfirmData.savedObligationKeys || new Set();
-                  return summaryConfirmData.obligations.filter(o => !o.isDeleted).map((o, idx) => {
-                    // "(פריט #<uuid>)" הוא ה-id הפנימי של OrderItem, מוצמד לתיאור רק כדי
-                    // להבחין בין שני פריטים זהים (שם+מידה) באותה הזמנה - לא מיועד לתצוגה
-                    // (ר' כלל תצוגת ה-ID ב-AGENTS.md), בדיוק כמו ב-ModernPaymentsManager.js.
-                    const cleanDesc = (o.description || 'חיוב').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '');
-                    const isNew = !savedKeys.has(obligationIdentityKey(o));
-                    return (
-                      <div key={o.id || `${o.description}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '13.5px' }}>
-                        <span>
-                          {cleanDesc}
-                          {isNew && (
-                            <span style={{ marginRight: '6px', fontSize: '11px', fontWeight: 700, color: 'var(--success)', background: 'var(--success-tint)', borderRadius: '4px', padding: '1px 6px' }}>
-                              נוסף עכשיו
-                            </span>
-                          )}
-                        </span>
-                        <span style={{ direction: 'ltr' }}>₪{(parseFloat(o.amount) || 0).toLocaleString('he-IL')}</span>
-                      </div>
-                    );
-                  });
-                })()}
-                {summaryConfirmData.obligations.filter(o => !o.isDeleted).length === 0 && (
-                  <div className="hint" style={{ color: 'var(--text-3)' }}>אין חיובים בהזמנה זו.</div>
-                )}
-              </div>
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px' }}>
-                  <span>סה&quot;כ לתשלום</span>
-                  <span style={{ direction: 'ltr', fontWeight: 700 }}>₪{summaryConfirmData.totalRequired.toLocaleString('he-IL')}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px' }}>
-                  <span>שולם עד כה</span>
-                  <span style={{ direction: 'ltr' }}>₪{summaryConfirmData.totalPaid.toLocaleString('he-IL')}</span>
-                </div>
-                {(() => {
-                  const balance = Math.round((summaryConfirmData.totalRequired - summaryConfirmData.totalPaid) * 100) / 100;
-                  return (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700, color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                      <span>{balance > 0 ? 'יתרה לתשלום' : 'יתרת זכות/מאוזן'}</span>
-                      <span style={{ direction: 'ltr' }}>₪{Math.abs(balance).toLocaleString('he-IL')}</span>
+          מופעל (ר' confirmSaveSummaryIfNeeded). אינו נסגר בלחיצה על הרקע; Esc = "ביטול" (resolve false),
+          כדי ש-handleSave לא יישאר תקוע על ההבטחה. */}
+      {(() => {
+        const sc = summaryConfirmData;
+        // מציגים ישירות את רשימת החיובים (obligations) ולא את items - החיובים כבר
+        // כוללים שורה לכל פריט (עם שם+מידה, ר' computeOrderObligations) בנוסף
+        // לתיקונים/דמי ביטול/משלוח, ומסתכמים בדיוק לסכום למטה.
+        // savedObligationKeys (חיובים כפי שהיו בגרסה האחרונה שנשמרה בשרת, ר'
+        // confirmSaveSummaryIfNeeded/obligationIdentityKey) מאפשר להבחין "מה היה
+        // קודם" מ-"מה נוסף עכשיו" (למשל חיוב משלוח שנוצר מהתצוגה המקדימה).
+        const savedKeys = sc?.savedObligationKeys || new Set();
+        const shownObligations = (sc?.obligations || []).filter(o => !o.isDeleted);
+        const balance = sc ? Math.round((sc.totalRequired - sc.totalPaid) * 100) / 100 : 0;
+        return (
+          <Dialog
+            open={!!sc}
+            variant="confirm"
+            mode="light"
+            icon="receipt"
+            title="סיכום לפני שמירה"
+            sub="כך ייראה החשבון של ההזמנה אחרי השמירה."
+            closeOnScrim={false}
+            onClose={() => handleSummaryConfirmDecision(false)}
+            actions={(
+              <>
+                <Btn variant="primary" icon="check" onClick={() => handleSummaryConfirmDecision(true)}>אישור ושמירה</Btn>
+                <Btn variant="quiet" onClick={() => handleSummaryConfirmDecision(false)}>ביטול</Btn>
+              </>
+            )}
+          >
+            <div className="v3-dlg-rows">
+              {shownObligations.map((o, idx) => {
+                // "(פריט #<uuid>)" הוא ה-id הפנימי של OrderItem, מוצמד לתיאור רק כדי
+                // להבחין בין שני פריטים זהים (שם+מידה) באותה הזמנה - לא מיועד לתצוגה
+                // (ר' כלל תצוגת ה-ID ב-AGENTS.md), בדיוק כמו ב-ModernPaymentsManager.js.
+                const cleanDesc = (o.description || 'חיוב').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '');
+                const isNew = !savedKeys.has(obligationIdentityKey(o));
+                return (
+                  <div className="v3-dlg-row" key={o.id || `${o.description}-${idx}`}>
+                    <div className="v3-dlg-row__ico"><Icon name="receipt" /></div>
+                    <div className="v3-dlg-row__t">
+                      {cleanDesc}
+                      {isNew && <div className="v3-faint">חדש בשמירה הזו</div>}
                     </div>
-                  );
-                })()}
-                {(summaryConfirmData.totalRequired - summaryConfirmData.totalPaid) > 0.01 && (
-                  <div className="hint" style={{ color: 'var(--text-3)', marginTop: '4px' }}>
-                    לאחר האישור תישמר ההזמנה ותועבר אוטומטית לטאב תשלומים להשלמת הגבייה.
+                    <span className="v3-dlg-amt">{fmtMoney(o.amount)}</span>
                   </div>
-                )}
+                );
+              })}
+              {shownObligations.length === 0 && (
+                <div className="v3-dlg-row"><div className="v3-dlg-row__t v3-faint">אין חיובים בהזמנה.</div></div>
+              )}
+              <div className="v3-dlg-row">
+                <div className="v3-dlg-row__ico"><Icon name="coin" /></div>
+                <div className="v3-dlg-row__t">סך הכול לתשלום</div>
+                <span className="v3-dlg-amt">{fmtMoney((sc?.totalRequired || 0))}</span>
+              </div>
+              <div className="v3-dlg-row">
+                <div className="v3-dlg-row__ico"><Icon name="card" /></div>
+                <div className="v3-dlg-row__t">שולם עד עכשיו</div>
+                <span className="v3-dlg-amt v3-dlg-amt--credit">{fmtMoney((sc?.totalPaid || 0))}</span>
               </div>
             </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => handleSummaryConfirmDecision(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={() => handleSummaryConfirmDecision(true)}>אישור ושמירה</button>
+            <div className={`v3-net ${balance > 0 ? 'v3-net--charge' : balance < 0 ? 'v3-net--credit' : ''}`}>
+              <span className="v3-net__lbl">{balance > 0 ? 'נותר לתשלום' : 'יתרת זכות / מאוזן'}</span>
+              <span className="v3-net__v">{fmtMoney(Math.abs(balance))}</span>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+            {((sc?.totalRequired || 0) - (sc?.totalPaid || 0)) > 0.01 && (
+              <p className="v3-faint v3-text-sm">אחרי האישור ההזמנה נשמרת ועוברים ללשונית התשלומים להשלמת הגבייה.</p>
+            )}
+          </Dialog>
+        );
+      })()}
 
       {/* חלונית "השלמת תשלום" - ר' paymentContinueAmount, מוצגת רק בנווה יעקב אחרי ששמירה/
-          ניסיון יציאה יצרו חוב חדש. קופצת במרכז המסך (כמו חלונית "סיכום ההזמנה" עצמה) מיד
-          אחרי שזו נסגרת ועוד לפני כל הודעת "נשמר" - ר' showsPaymentContinuePrompt ב-handleSave,
-          שמדלג שם על הודעת ההצלחה הרגילה בדיוק כדי שזו תהיה ההודעה הבאה שרואים, לא מתחרה
-          איתה. מציעה ישירות את פעולות התשלום הרלוונטיות במקום להשאיר לעובד לחפש אותן בטאב
-          תשלומים. חסימת היציאה עצמה (כשרלוונטי) כבר קרתה קודם ב-handleExit
-          (pendingDebtBlockRef/return) - זה עוד לפני שהחלונית הזו בכלל נפתחת. */}
-      {paymentContinueAmount !== null && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          ניסיון יציאה יצרו חוב חדש. מיד אחרי חלונית הסיכום ועוד לפני כל הודעת "נשמר" - ר'
+          showsPaymentContinuePrompt ב-handleSave. אינה נסגרת בלחיצה על הרקע או ב-Esc (כמו קודם):
+          הסגירה רק דרך הכפתורים. חסימת היציאה עצמה כבר קרתה קודם ב-handleExit. */}
+      {(
+        <Dialog
+          open={paymentContinueAmount !== null}
+          variant="confirm"
+          mode="light"
+          icon="coin"
+          title="נשמר, ונוצר חיוב חדש"
+          sub="כדי לסגור את החשבון צריך להשלים את הגבייה."
+          closeOnScrim={false}
+          onClose={() => {}}
+          actions={(
+            <>
+              {nedarimPlusEnabled && (
+                <Btn
+                  variant="primary"
+                  icon="card"
+                  onClick={() => {
+                    setPaymentContinueAmount(null);
+                    setActiveTab('payments');
+                    setTimeout(() => paymentsManagerRef.current?.openCreditModal(), 60);
+                  }}
+                >
+                  תשלום בכרטיס אשראי
+                </Btn>
+              )}
+              {allowAdditionalPayment && (
+                <Btn
+                  icon="coin"
+                  onClick={() => {
+                    setPaymentContinueAmount(null);
+                    setActiveTab('payments');
+                    setTimeout(() => paymentsManagerRef.current?.openAdditionalPaymentModal(), 60);
+                  }}
+                >
+                  תשלום נוסף (מזומן ועוד)
+                </Btn>
+              )}
+              <Btn variant="quiet" onClick={() => setPaymentContinueAmount(null)}>
+                אטפל בזה בלשונית התשלומים
+              </Btn>
+            </>
+          )}
         >
-          <div className="modal" style={{ margin: 0, maxWidth: '380px', width: '95%' }}>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingTop: '28px' }}>
-              <div className="modal-icon-circle" style={{ background: 'var(--warning-tint)', color: 'var(--warning)', width: '56px', height: '56px' }}>
-                <svg className="icon" style={{ width: '32px', height: '32px' }}><use href="#i-coin" /></svg>
-              </div>
-              <strong style={{ fontSize: '17px' }}>השינויים נשמרו! נוצר חיוב חדש</strong>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--danger)' }}>
-                ₪{paymentContinueAmount.toLocaleString('he-IL')}
-              </div>
-              <div className="hint" style={{ color: 'var(--text-3)', textAlign: 'center' }}>יש להשלים את הגבייה</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '10px' }}>
-                {nedarimPlusEnabled && (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => {
-                      setPaymentContinueAmount(null);
-                      setActiveTab('payments');
-                      setTimeout(() => paymentsManagerRef.current?.openCreditModal(), 60);
-                    }}
-                  >
-                    <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי
-                  </button>
-                )}
-                {allowAdditionalPayment && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setPaymentContinueAmount(null);
-                      setActiveTab('payments');
-                      setTimeout(() => paymentsManagerRef.current?.openAdditionalPaymentModal(), 60);
-                    }}
-                  >
-                    <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף (מזומן וכו&apos;)
-                  </button>
-                )}
-                <button type="button" className="btn btn-ghost" onClick={() => setPaymentContinueAmount(null)}>
-                  אטפל בזה בטאב תשלומים
-                </button>
-              </div>
-            </div>
+          <div className="v3-net v3-net--charge">
+            <span className="v3-net__lbl">נותר לגבייה</span>
+            <span className="v3-net__v">{fmtMoney(paymentContinueAmount || 0)}</span>
           </div>
-        </div>,
-        document.body
+        </Dialog>
       )}
 
       {/* באנר טיוטה מקומית: שינויים שלא נשמרו מביקור קודם בכרטיס (למשל דפדפן שנסגר).
-          לא חוסם — אפשר לעיין בכרטיס לפני שמחליטים לשחזר או למחוק. */}
+          לא חוסם - אפשר לעיין בכרטיס לפני שמחליטים לשחזר או למחוק. */}
       {pendingDraft && (
-        <div className="callout callout-warning" style={{ marginBottom: '18px', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <svg className="icon"><use href="#i-alert-tri" /></svg>
-            <strong>נמצאו שינויים שלא נשמרו מביקור קודם בכרטיס</strong>
-            {pendingDraft.savedAt && (
-              <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                ({getHebrewDateString(pendingDraft.savedAt)} · {new Date(pendingDraft.savedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
-              </span>
-            )}
+        <section className="v3-note v3-note--dashed oc-pending-panel" aria-label="שינויים שלא נשמרו מביקור קודם">
+          <div className="v3-cluster">
+            <Icon name="alert-tri" />
+            <b>נמצאו שינויים שלא נשמרו מביקור קודם</b>
+            <Tip>זו טיוטה שנשמרה אוטומטית במחשב הזה. אפשר לשחזר אותה ולהמשיך מאותה נקודה, או למחוק אותה.</Tip>
           </div>
+          {pendingDraft.savedAt && (
+            <span className="v3-faint v3-text-sm">
+              נשמרה ב-<bdi>{getHebrewDateString(pendingDraft.savedAt)} · {new Date(pendingDraft.savedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</bdi>
+            </span>
+          )}
           {(pendingDraft.rows || []).length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <div className="oc-draft-rows">
               {pendingDraft.rows.map((r, i) => (
-                <span key={i} className="chip">
-                  <svg className="icon" style={{ width: '12px', height: '12px' }}><use href={r.icon} /></svg>
-                  {r.text}
-                </span>
+                <Chip key={i} icon={String(r.icon || '').replace(/^#?i-/, '') || 'info'}>{r.text}</Chip>
               ))}
             </div>
           )}
           {pendingDraft.baseUpdatedAt && order.updatedAt && pendingDraft.baseUpdatedAt !== order.updatedAt && (
-            <div style={{ fontSize: '12.5px', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-alert-circle" /></svg>
-              שים לב: ההזמנה עודכנה בשרת מאז שהשינויים האלה נערכו — שחזור ושמירה ידרשו אישור דריסה.
-            </div>
+            <p className="v3-error">
+              <Icon name="alert-circle" size="sm" />
+              ההזמנה עודכנה בשרת מאז שהשינויים האלה נערכו. שחזור ושמירה יבקשו אישור לדריסה.
+            </p>
           )}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleRestoreDraft}>
-              <svg className="icon"><use href="#i-refresh" /></svg>
-              שחזר את השינויים
-            </button>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={handleDiscardDraft}>
-              <svg className="icon"><use href="#i-trash" /></svg>
-              מחק אותם
-            </button>
+          <div className="oc-draft-actions">
+            <Btn variant="primary" icon="refresh" onClick={handleRestoreDraft}>שחזר את השינויים</Btn>
+            <Btn icon="trash" onClick={handleDiscardDraft}>מחק</Btn>
           </div>
-        </div>
+        </section>
       )}
 
       <ModernOrderCard
@@ -1780,6 +1780,7 @@ export default function OrderDetailsPage({ params }) {
           saving={saving}
           saveMessage={saveMessage}
           hasUnsavedChanges={hasUnsavedChanges}
+          getChangeRows={buildChangeRows}
           isLocked={isLocked}
           isPastEvent={isPastEvent}
           onUnlock={handleUnlock}
@@ -1797,7 +1798,7 @@ export default function OrderDetailsPage({ params }) {
               <ModernGeneralDetails
                 order={order}
                 onOrderChange={(val) => {
-                  // val יכול להיות אובייקט מלא (עדכון סינכרוני) או פונקציה (prev => ...) —
+                  // val יכול להיות אובייקט מלא (עדכון סינכרוני) או פונקציה (prev => ...) -
                   // הצורה הפונקציונלית נחוצה לעדכונים שמגיעים אחרי await (למשל אישור PIN לציפוף),
                   // כדי לא לדרוס שינויים שקרו בינתיים על בסיס סנאפשוט ישן של order.
                   setOrder(prev => (typeof val === 'function' ? val(prev) : val));
@@ -1818,7 +1819,7 @@ export default function OrderDetailsPage({ params }) {
                 order={order}
                 items={items}
                 onItemsChange={(val) => {
-                  // תומך גם בעדכון פונקציונלי (prev => ...) — נחוץ לפעולות שעוברות דרך await
+                  // תומך גם בעדכון פונקציונלי (prev => ...) - נחוץ לפעולות שעוברות דרך await
                   // (למשל סריקת ברקוד: אישור PIN / בדיקת מלאי / דיאלוג אישור), כדי לא לדרוס
                   // שינויים אחרים בפריטים שקרו בינתיים על בסיס סנאפשוט ישן של items.
                   setItems(prev => (typeof val === 'function' ? val(prev) : val));
@@ -1871,44 +1872,38 @@ export default function OrderDetailsPage({ params }) {
         onClose={() => setShowEmployeesModal(false)}
       />
 
-      {/* חלון "כתובת מייל חסרה" — נפתח מ"מייל מהיר" בטאב פרטים כלליים כשללקוח אין מייל תקין.
-          זהה במבנה/ברוח לחלון המקביל בתוך OrderPrintMenu.js (זרימת "מייל הזמנה/השכרה" מתפריט
-          ההדפסה), רק שמופעל כאן ממסלול נפרד (handleSendEmail) שאינו עובר דרך אותו קומפוננט. */}
-      {showEmailPrompt && typeof document !== 'undefined' && createPortal(
-        <div
-          className="modal-backdrop"
-          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowEmailPrompt(false); }}
-        >
-          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-icon-circle" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
-              <svg className="icon"><use href="#i-mail" /></svg>
-            </div>
-            <h3>כתובת מייל חסרה</h3>
-            <p>
-              ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח).
-            </p>
-            <input
-              type="email"
-              className="input"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="example@gmail.com"
-              dir="ltr"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleEmailSubmit();
-              }}
-              style={{ marginBottom: '18px', textAlign: 'start' }}
-            />
-            <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowEmailPrompt(false)}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={handleEmailSubmit}>שמור ושלח</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
+      {/* חלון "כתובת מייל חסרה" - נפתח מ"מייל מהיר" בלשונית הפרטים כשללקוח אין מייל תקין.
+          חלון הזנה: בהיר בלבד. זהה במבנה לחלון המקביל בתוך OrderPrintMenu.js (זרימת "מייל הזמנה/השכרה"
+          מתפריט ההדפסה), רק שמופעל כאן ממסלול נפרד (handleSendEmail). */}
+      <Dialog
+        open={showEmailPrompt}
+        variant="form"
+        icon="mail"
+        title="חסרה כתובת מייל"
+        sub="הכתובת תישמר בכרטיס הלקוח ותשמש לשליחת המסמך."
+        onClose={() => setShowEmailPrompt(false)}
+        actions={(
+          <>
+            <Btn variant="primary" icon="send" onClick={handleEmailSubmit}>שמור ושלח</Btn>
+            <Btn variant="quiet" onClick={() => setShowEmailPrompt(false)}>ביטול</Btn>
+          </>
+        )}
+      >
+        <Field
+          label="כתובת מייל"
+          type="email"
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
+          placeholder="example@gmail.com"
+          dir="ltr"
+          data-autofocus=""
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleEmailSubmit();
+          }}
+        />
+      </Dialog>
+
+      {dialogs}
+    </V3Page>
   );
 }
