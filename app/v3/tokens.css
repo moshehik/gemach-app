@@ -129,6 +129,46 @@
   --v3-dark-tile-hover: rgba(255, 255, 255, .2);
   --v3-dark-border: rgba(255, 255, 255, .3);
 
+  /* ---------------------------------------------------------------
+     2c. טוקני-תפקיד (role tokens) - הבסיס של מצב כהה.
+     ברכיבים משתמשים ב-tx/bg/ln לפי התפקיד של הצבע ולא בפלטת הבסיס עצמה:
+       tx-*  צבע טקסט/אייקון      bg-*  רקע משטח      ln-*  קו / מסגרת / טבעת
+     בבהיר הערכים זהים לפלטה הקיימת (אין שינוי חזותי). במצב כהה מוגדרים מחדש
+     בבלוק [data-theme="dark"] בסוף הקובץ, ונגזרים מטוקני הפלטה החיים (--surface,
+     --text, --border...) - כך שגם פלטות מותאמות-אישית עובדות בכהה.
+     רכיב חדש שצובע ב-var(--v3-navy) / var(--v3-white) ישירות לא יעבור למצב כהה.
+     --------------------------------------------------------------- */
+  --v3-tx-navy: var(--v3-navy);
+  --v3-tx-navy-900: var(--v3-navy-900);
+  --v3-tx-navy-700: var(--v3-navy-700);
+  --v3-tx-navy-500: var(--v3-navy-500);
+  --v3-tx-plum: var(--v3-plum);
+  --v3-tx-rose: var(--v3-rose-700);
+  --v3-tx-gold-ink: var(--v3-gold-ink);
+  --v3-bg-white: var(--v3-white);
+  --v3-bg-navy: var(--v3-navy);            /* מילוי כהה עם טקסט לבן עליו */
+  --v3-bg-sky-50: var(--v3-sky-50);
+  --v3-bg-sky-100: var(--v3-sky-100);
+  --v3-bg-sky-200: var(--v3-sky-200);
+  --v3-bg-sky-300: var(--v3-sky-300);
+  --v3-bg-rose-50: var(--v3-rose-50);
+  --v3-bg-rose-100: var(--v3-rose-100);
+  --v3-bg-gold-tint: var(--v3-gold-tint);
+  --v3-ln-white: var(--v3-white);
+  --v3-ln-navy: var(--v3-navy);
+  --v3-ln-navy-500: var(--v3-navy-500);
+  --v3-ln-sky-100: var(--v3-sky-100);
+  --v3-ln-sky-200: var(--v3-sky-200);
+  --v3-ln-sky-300: var(--v3-sky-300);
+  --v3-ln-sky-400: var(--v3-sky-400);
+  --v3-ln-rose-100: var(--v3-rose-100);
+  --v3-ln-rose-200: var(--v3-rose-200);
+  --v3-ln-rose-300: var(--v3-rose-300);
+  --v3-ln-rose-500: var(--v3-rose-500);
+  --v3-hover-tint: var(--v3-sky-a60);      /* רקע ריחוף לשורת רשימה */
+  --v3-hover-tint-2: var(--v3-sky-a75);    /* שורה נבחרת */
+  --v3-sticky-bg: var(--v3-white-a96);
+
   /* מצבים */
   --v3-charge-bg: var(--v3-rose-100);   /* חיוב ממתין / דורש תשומת לב */
   --v3-charge-ink: var(--v3-rose-700);
@@ -385,6 +425,138 @@
   --v3-dlg-ic: var(--v3-navy);
   --v3-dlg-err: var(--v3-plum);
   --v3-dlg-shadow: var(--v3-sh-pop);
+}
+
+/* =====================================================================
+   מצב כהה של האתר (data-theme="dark" על <html>) - כל ה-v3.
+   נגזר מטוקני הפלטה החיים של design-system.css (--bg/--surface/--text/--border/...)
+   ולכן עוקב אחרי פלטות מוכנות ומותאמות-אישית. הסלקטור כולל גם [data-v3] כי הבלוק
+   הבהיר למעלה מגדיר את אותם משתנים על [data-v3] - בלי זה הם היו דורסים את הירושה
+   מ-:root (ספציפיות 0,1,0 מול 0,2,0 - הבלוק הזה חייב לנצח).
+   ===================================================================== */
+:root[data-theme="dark"],
+:root[data-theme="dark"] [data-v3] {
+  --v3-page-bg: var(--bg);
+  --v3-bg: var(--bg);
+  --v3-surface: var(--surface);
+  --v3-surface-2: var(--surface-alt);
+  --v3-surface-3: var(--surface-alt);
+  --v3-line: var(--border-strong);
+  --v3-line-soft: var(--border);
+  --v3-line-hair: var(--border);
+  --v3-frame: var(--border-strong);
+  --v3-frame-soft: rgba(255, 255, 255, .10);
+  --v3-ink: var(--text);
+  --v3-ink-2: var(--text-2);
+  --v3-ink-3: var(--text-3);
+  --v3-brand: var(--info);
+  --v3-brand-tint: var(--surface-alt);
+
+  --v3-tx-navy: var(--text);
+  --v3-tx-navy-900: var(--text);
+  --v3-tx-navy-700: var(--text-2);
+  --v3-tx-navy-500: var(--text-2);
+  --v3-tx-plum: var(--danger);
+  --v3-tx-rose: var(--danger);
+  --v3-tx-gold-ink: var(--accent);
+  --v3-bg-white: var(--surface);
+  --v3-bg-navy: var(--v3-navy-500);
+  --v3-bg-sky-50: var(--surface-alt);
+  --v3-bg-sky-100: var(--surface-alt);
+  --v3-bg-sky-200: var(--border);
+  --v3-bg-sky-300: var(--border-strong);
+  --v3-bg-rose-50: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  --v3-bg-rose-100: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --v3-bg-gold-tint: var(--accent-tint);
+  --v3-ln-white: var(--surface);
+  --v3-ln-navy: var(--text-2);
+  --v3-ln-navy-500: var(--text-3);
+  --v3-ln-sky-100: var(--border);
+  --v3-ln-sky-200: var(--border);
+  --v3-ln-sky-300: var(--border-strong);
+  --v3-ln-sky-400: var(--text-3);
+  --v3-ln-rose-100: color-mix(in srgb, var(--danger) 18%, var(--surface));
+  --v3-ln-rose-200: color-mix(in srgb, var(--danger) 26%, var(--surface));
+  --v3-ln-rose-300: color-mix(in srgb, var(--danger) 38%, var(--surface));
+  --v3-ln-rose-500: var(--danger);
+  --v3-hover-tint: color-mix(in srgb, var(--text) 8%, transparent);
+  --v3-hover-tint-2: color-mix(in srgb, var(--text) 13%, transparent);
+  --v3-sticky-bg: color-mix(in srgb, var(--surface-alt) 96%, transparent);
+
+  --v3-charge-bg: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --v3-charge-ink: var(--danger);
+  --v3-charge-line: color-mix(in srgb, var(--danger) 38%, var(--surface));
+  --v3-credit-bg: color-mix(in srgb, var(--info) 16%, var(--surface));
+  --v3-credit-ink: var(--info);
+  --v3-credit-line: color-mix(in srgb, var(--info) 40%, var(--surface));
+  --v3-done-bg: var(--v3-navy-500);
+  --v3-done-ink: #fff;
+  --v3-pending-bg: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  --v3-pending-line: color-mix(in srgb, var(--danger) 38%, var(--surface));
+  --v3-disabled-bg: var(--surface-alt);
+  --v3-disabled-ink: var(--text-3);
+  --v3-disabled-line: var(--border);
+
+  --v3-grad-panel-warm: linear-gradient(180deg, var(--surface-alt) 0, var(--surface) 90px);
+  --v3-grad-light-float: linear-gradient(180deg, var(--surface-alt), var(--surface));
+  --v3-grad-timeline: linear-gradient(180deg, var(--surface-alt) 0%, var(--surface) 100%);
+  --v3-sh-card: 0 1px 2px rgba(0, 0, 0, .3);
+  --v3-sh-raise: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px -10px rgba(0, 0, 0, .55);
+  --v3-sh-tab: 0 1px 3px rgba(0, 0, 0, .4);
+  --v3-sh-pop: var(--v3-sh-pop-dark);
+  --v3-sh-dropdown: 0 20px 48px -12px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 255, 255, .06);
+  --v3-sh-inset: inset 0 2px 6px rgba(0, 0, 0, .3);
+  --v3-sh-panel: 0 22px 50px -14px rgba(0, 0, 0, .7), 0 2px 6px rgba(0, 0, 0, .3);
+  --v3-sh-drawer: 0 24px 40px -12px rgba(0, 0, 0, .7);
+  --v3-ring-navy: 0 0 0 4px rgba(255, 255, 255, .12);
+  --v3-ring-brand: 0 0 0 4px color-mix(in srgb, var(--info) 22%, transparent);
+  --v3-scrim: rgba(0, 0, 0, .62);
+  --v3-scrim-strong: rgba(0, 0, 0, .7);
+
+  /* חלוניות (דיאלוגים): בכהה כל הווריאנטים (כולל form שהיה "תמיד בהיר") עוקבים אחרי האתר */
+  --v3-dlg-bg: var(--surface);
+  --v3-dlg-sheen: rgba(255, 255, 255, .05);
+  --v3-dlg-solid: var(--surface-alt);
+  --v3-dlg-ink: var(--text);
+  --v3-dlg-sub: var(--text-2);
+  --v3-dlg-faint: var(--text-3);
+  --v3-dlg-row: color-mix(in srgb, var(--text) 6%, transparent);
+  --v3-dlg-rowb: var(--border-strong);
+  --v3-dlg-hair: var(--border);
+  --v3-dlg-bd: var(--border-strong);
+  --v3-dlg-chargebg: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --v3-dlg-charge: var(--danger);
+  --v3-dlg-creditbg: color-mix(in srgb, var(--info) 16%, var(--surface));
+  --v3-dlg-credit: var(--info);
+  --v3-dlg-gap: var(--surface);
+  --v3-dlg-ghost: var(--text);
+  --v3-dlg-ic: var(--accent);
+  --v3-dlg-err: var(--danger);
+  --v3-dlg-shadow: var(--v3-sh-pop-dark);
+}
+/* וריאנטי החלונית שנקבעו בבהיר במפורש (mode=light / form) - ספציפיות גבוהה יותר מהבלוק הבהיר
+   שלמעלה, כדי שבכהה יקבלו את ערכי האתר הכהה. mode=dark (אישור/קוד בכחול-כהה) נשאר כמו שהוא. */
+:root[data-theme="dark"] [data-v3-mode="light"],
+:root[data-theme="dark"] .v3-dialog--form {
+  --v3-dlg-bg: var(--surface);
+  --v3-dlg-sheen: rgba(255, 255, 255, .05);
+  --v3-dlg-solid: var(--surface-alt);
+  --v3-dlg-ink: var(--text);
+  --v3-dlg-sub: var(--text-2);
+  --v3-dlg-faint: var(--text-3);
+  --v3-dlg-row: color-mix(in srgb, var(--text) 6%, transparent);
+  --v3-dlg-rowb: var(--border-strong);
+  --v3-dlg-hair: var(--border);
+  --v3-dlg-bd: var(--border-strong);
+  --v3-dlg-chargebg: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  --v3-dlg-charge: var(--danger);
+  --v3-dlg-creditbg: color-mix(in srgb, var(--info) 16%, var(--surface));
+  --v3-dlg-credit: var(--info);
+  --v3-dlg-gap: var(--surface);
+  --v3-dlg-ghost: var(--text);
+  --v3-dlg-ic: var(--accent);
+  --v3-dlg-err: var(--danger);
+  --v3-dlg-shadow: var(--v3-sh-pop-dark);
 }
 
 /* =====================================================================

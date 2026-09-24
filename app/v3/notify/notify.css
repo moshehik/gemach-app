@@ -18,8 +18,8 @@ body:has(.v3-scrim.is-on) .v3n-region { z-index: 90; }
 .v3n-item.is-on { transform: none; opacity: 1; }
 .v3n-item__icon {
   width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: var(--v3-r-round);
-  background: var(--v3-sky-300); color: var(--v3-navy); font-size: var(--v3-fs-xl); font-weight: var(--v3-fw-bold);
-  box-shadow: 0 0 0 2px var(--v3-navy), 0 0 0 4px var(--v3-gold);
+  background: var(--v3-bg-sky-300); color: var(--v3-tx-navy); font-size: var(--v3-fs-xl); font-weight: var(--v3-fw-bold);
+  box-shadow: 0 0 0 2px var(--v3-ln-navy), 0 0 0 4px var(--v3-gold);
 }
 .v3n-item--warn .v3n-item__icon, .v3n-item--error .v3n-item__icon { background: var(--v3-grad-gold); color: var(--v3-black); }
 .v3n-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -36,7 +36,7 @@ body:has(.v3-scrim.is-on) .v3n-region { z-index: 90; }
 .v3n-item__ghost { background: transparent; color: var(--v3-white); border: var(--v3-bw-hair) solid var(--v3-gold-a65); }
 .v3n-item__ghost:hover { background: var(--v3-dark-hair); }
 .v3n-item__action:active, .v3n-item__ghost:active { transform: scale(.98); }
-.v3n-item__action:focus-visible, .v3n-item__ghost:focus-visible, .v3n-item__close:focus-visible { outline: 2px solid var(--v3-white); outline-offset: 2px; box-shadow: 0 0 0 5px var(--v3-gold); }
+.v3n-item__action:focus-visible, .v3n-item__ghost:focus-visible, .v3n-item__close:focus-visible { outline: 2px solid var(--v3-ln-white); outline-offset: 2px; box-shadow: 0 0 0 5px var(--v3-gold); }
 .v3n-item__close {
   position: absolute; top: 10px; inset-inline-end: 10px; width: 30px; height: 30px; padding: 0; border-radius: var(--v3-r-round);
   display: grid; place-items: center; cursor: pointer; font-size: var(--v3-fs-xl); line-height: 1;
@@ -54,7 +54,7 @@ body:has(.v3-scrim.is-on) .v3n-region { z-index: 90; }
 .v3n-item--msg .v3n-item__bar { display: none; }
 .v3n-item.is-paused .v3n-item__bar, .v3n-item:hover .v3n-item__bar, .v3n-item:focus-within .v3n-item__bar { animation-play-state: paused; }
 @keyframes v3n-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-.v3n-more { padding: var(--v3-sp-1) var(--v3-sp-3); border-radius: var(--v3-r-pill); background: var(--v3-navy); color: var(--v3-white); font-size: var(--v3-fs-sm); }
+.v3n-more { padding: var(--v3-sp-1) var(--v3-sp-3); border-radius: var(--v3-r-pill); background: var(--v3-bg-navy); color: var(--v3-white); font-size: var(--v3-fs-sm); }
 .v3n-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 640px) { .v3n-region { left: var(--v3-sp-3); bottom: 88px; } }
 @media (prefers-reduced-motion: reduce) {

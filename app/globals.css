@@ -46,6 +46,12 @@
   /* כינוי לאחור: --text-color היה בשימוש ב-24 מקומות בלי שהוגדר מעולם */
   --text-color: var(--text-main);
 
+  /* כינויים ששימשו בקוד בלי הגדרה (נפלו ל-fallback קשיח בהיר ולכן לא עקבו אחרי מצב כהה) */
+  --surface-2: var(--surface-alt);
+  --text-1: var(--text);
+  --text-4: var(--text-3);
+  --warning-solid: var(--warning);
+
   /* צבעי קטגוריות הלוח (app/board) — היו בשימוש כ-var() בלי הגדרה, כך שתמיד
      נפלו ל-fallback ולא הגיבו כלל למצב כהה. הגוונים הסמנטיים נשמרים. */
   --cat-empty-bg: #fee2e2;      --cat-empty-border: #fecaca;      --cat-empty-text: #991b1b;
@@ -88,6 +94,9 @@
   --cat-completed-bg: rgba(21, 128, 61, 0.2);  --cat-completed-border: rgba(21, 128, 61, 0.4);  --cat-completed-text: #86efac;
   --cat-other-bg: #2b2820;                     --cat-other-border: #4a4437;                     --cat-other-text: #b7ad8f;
 
+  --danger-bg: var(--danger-tint);
+  --success-bg: var(--success-tint);
+  --border-main: rgba(255, 255, 255, 0.12);
   --day-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --day-shadow-hover: 0 6px 16px rgba(212, 175, 55, 0.25);
   --banner-debts-bg: rgba(239, 68, 68, 0.1);
@@ -1755,6 +1764,28 @@ button:disabled {
 [data-theme="dark"] .bg-slate-50\/50 {
   background-color: rgba(30, 30, 30, 0.5) !important;
 }
+
+/* משלים: כל שאר כלי-העזר בסגנון Tailwind שמוגדרים למעלה עם צבע בהיר קשיח (חלוניות ההשכרה
+   הישנות משתמשות בהם) - כדי שלא יישאר אף אחד בלי מקבילה כהה. */
+[data-theme="dark"] .hover\:bg-red-50:hover { background-color: color-mix(in srgb, var(--danger) 16%, var(--surface)) !important; }
+[data-theme="dark"] .hover\:border-red-200:hover { border-color: color-mix(in srgb, var(--danger) 40%, var(--surface)) !important; }
+[data-theme="dark"] .hover\:bg-amber-50:hover { background-color: color-mix(in srgb, var(--warning) 16%, var(--surface)) !important; }
+[data-theme="dark"] .hover\:border-amber-200:hover,
+[data-theme="dark"] .border-amber-200 { border-color: color-mix(in srgb, var(--warning) 40%, var(--surface)) !important; }
+[data-theme="dark"] .hover\:bg-blue-50:hover { background-color: color-mix(in srgb, var(--info) 16%, var(--surface)) !important; }
+[data-theme="dark"] .hover\:border-blue-200:hover,
+[data-theme="dark"] .hover\:border-blue-500:hover,
+[data-theme="dark"] .focus-within\:border-blue-500:focus-within { border-color: color-mix(in srgb, var(--info) 55%, var(--surface)) !important; }
+[data-theme="dark"] .hover\:border-slate-400:hover { border-color: var(--border-strong) !important; }
+[data-theme="dark"] .focus-within\:ring-blue-200:focus-within { --tw-ring-color: color-mix(in srgb, var(--info) 35%, transparent); }
+[data-theme="dark"] .text-slate-300,
+[data-theme="dark"] .hover\:text-slate-600:hover { color: var(--text-3) !important; }
+[data-theme="dark"] .placeholder-slate-400::placeholder { color: var(--text-3) !important; }
+[data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
+[data-theme="dark"] .from-amber-50 { --tw-gradient-from: color-mix(in srgb, var(--warning) 14%, var(--surface)); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, transparent); }
+[data-theme="dark"] .to-orange-50 { --tw-gradient-to: color-mix(in srgb, var(--warning) 8%, var(--surface)); }
+[data-theme="dark"] .text-red-600 { color: #fca5a5 !important; }
+[data-theme="dark"] .bg-blue-100 { background-color: color-mix(in srgb, var(--info) 16%, var(--surface)) !important; }
 
 
 /* Sticky Table Headers Globally */

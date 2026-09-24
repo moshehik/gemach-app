@@ -3,13 +3,13 @@
 /* מיקוד מקלדת לשורת הרשומה (הכפתור הוא ה-.v3-item__top) */
 .v3-hentry .v3-item__top:focus-visible { outline: 0; box-shadow: var(--v3-ring-gold-soft); border-radius: var(--v3-r-lg); }
 .v3-hentry .v3-hrow b { white-space: pre-wrap; }
-.v3-hentry .v3-hrow--acts { border-top: var(--v3-bw-hair) solid var(--v3-sky-200); padding-block: var(--v3-sp-3); }
-.v3-hentry .v3-hraw { margin: 0; padding: var(--v3-sp-3); border-radius: var(--v3-r-md); background: var(--v3-sky-100); font-size: var(--v3-fs-2xs); direction: ltr; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
+.v3-hentry .v3-hrow--acts { border-top: var(--v3-bw-hair) solid var(--v3-ln-sky-200); padding-block: var(--v3-sp-3); }
+.v3-hentry .v3-hraw { margin: 0; padding: var(--v3-sp-3); border-radius: var(--v3-r-md); background: var(--v3-bg-sky-100); font-size: var(--v3-fs-2xs); direction: ltr; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
 .v3-hcnt { margin-inline-start: var(--v3-sp-2); }
 
 /* פאנל הסינון: איפוס + סיום (במובייל בלבד) */
 .v3-filter__rst { height: 36px; padding-inline: var(--v3-sp-3); border: 0; border-radius: var(--v3-r-sm); background: transparent; color: var(--v3-ink-2); font-weight: var(--v3-fw-medium); font-size: var(--v3-fs-sm); cursor: pointer; transition: background-color var(--v3-dur-fast), color var(--v3-dur-fast); }
-.v3-filter__rst:hover, .v3-filter__rst:focus-visible { background: var(--v3-sky-100); color: var(--v3-navy); outline: 0; }
+.v3-filter__rst:hover, .v3-filter__rst:focus-visible { background: var(--v3-bg-sky-100); color: var(--v3-tx-navy); outline: 0; }
 .v3-filter__foot { display: none; padding: var(--v3-sp-2) var(--v3-sp-3) var(--v3-sp-3); }
 .v3-filter__scrim { display: none; }
 @media (max-width: 640px) {
@@ -23,5 +23,5 @@
 .v3-hmore { display: flex; align-items: center; justify-content: center; gap: var(--v3-sp-3); flex-wrap: wrap; padding: var(--v3-sp-3); color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }
 
 /* שדות טכניים: מקופל בפאנל המורחב */
-.v3-hentry .v3-htech { border-top: var(--v3-bw-hair) solid var(--v3-sky-200); padding-block: var(--v3-sp-2); }
+.v3-hentry .v3-htech { border-top: var(--v3-bw-hair) solid var(--v3-ln-sky-200); padding-block: var(--v3-sp-2); }
 .v3-hentry .v3-htech > summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; color: var(--v3-ink-3); font-size: var(--v3-fs-sm); }

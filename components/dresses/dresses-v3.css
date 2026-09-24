@@ -1,7 +1,7 @@
 /* סגנונות מקומיים למשפחת הדגמים - tokens של v3 בלבד (R2) */
 .dr3-photo {
   border-radius: var(--v3-r-lg); overflow: hidden; border: var(--v3-bw-hair) solid var(--v3-line-soft);
-  background: var(--v3-sky-50); height: calc(var(--v3-sp-9) * 4);
+  background: var(--v3-bg-sky-50); height: calc(var(--v3-sp-9) * 4);
   display: flex; align-items: center; justify-content: center;
 }
 .dr3-photo img { max-width: 100%; max-height: 100%; object-fit: contain; }
