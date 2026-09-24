@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>הפרופיל שלי · אב-טיפוס A7</title>
+<meta name="description" content="אב-טיפוס סטטי לאישור: ארכיטיפ טופס/הגדרות (A7) על עמוד הפרופיל, בשפת סקיצה B. נתוני דמה בלבד, בלי API.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* TOKENS — אותם שמות וערכים כמו A2/A6. עמודים בהירים בלבד; כהה רק על שכבה צפה. */
+:root{
+  --v3-navy-900:#0a2242; --v3-navy-800:#0f2c52; --v3-navy-700:#173c6b; --v3-navy-500:#2b5a94;
+  --v3-sky-50:#f3f9fe; --v3-sky-100:#e4f1fb; --v3-sky-200:#cfe6f7; --v3-sky-300:#a9d2f0; --v3-sky-400:#7fb8e6;
+  --v3-gold-100:#fbf1d3; --v3-gold-300:#e0c56e; --v3-gold-500:#c9a227; --v3-gold-600:#b8912f; --v3-gold-700:#9a7a1f; --v3-gold-800:#6f560f;
+  --v3-rose-50:#fff6f2; --v3-rose-100:#ffece5; --v3-rose-200:#fdd9cc; --v3-rose-300:#fbbfa9; --v3-rose-500:#fa9e84; --v3-rose-700:#a8442a;
+  --v3-plum:#a83d6c; --v3-peri:#8fa6e8;
+  --v3-bg:var(--v3-sky-200); --v3-surface:#fff; --v3-surface-2:var(--v3-sky-50); --v3-surface-3:var(--v3-sky-100);
+  --v3-line:var(--v3-sky-300); --v3-line-soft:var(--v3-sky-100); --v3-frame:var(--v3-navy-800); --v3-frame-soft:rgba(15,44,82,.22);
+  --v3-ink:var(--v3-navy-900); --v3-ink-2:#2f4a6b; --v3-ink-3:#4d6787;
+  --v3-brand:var(--v3-navy-800); --v3-brand-tint:var(--v3-sky-100);
+  --v3-accent:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%); --v3-accent-ink:#000; --v3-link:var(--v3-navy-500);
+  --v3-scrim:rgba(10,34,66,.45); --v3-scrim-strong:rgba(10,34,66,.6);
+  --v3-pending-bg:var(--v3-rose-50); --v3-pending-line:var(--v3-rose-500);
+  --v3-disabled-bg:var(--v3-sky-100); --v3-disabled-ink:var(--v3-ink-3); --v3-disabled-line:var(--v3-sky-200);
+  --v3-on-dark:#fff; --v3-on-dark-2:#c9daee; --v3-on-dark-3:#9fb6d2;
+  --v3-topbar-bg:var(--v3-navy-900); --v3-tooltip-bg:var(--v3-navy-900);
+  --v3-font:"Rubik","Heebo",system-ui,sans-serif;
+  --v3-fs-cap:12px; --v3-fs-2xs:13px; --v3-fs-sm:14px; --v3-fs-base:16px; --v3-fs-md:17px; --v3-fs-lg:18px; --v3-fs-xl:20px; --v3-fs-2xl:24px; --v3-fs-h1:28px;
+  --v3-sp-1:4px; --v3-sp-2:8px; --v3-sp-3:12px; --v3-sp-4:16px; --v3-sp-5:24px; --v3-sp-6:32px; --v3-sp-7:40px;
+  --v3-r-sm:10px; --v3-r-md:12px; --v3-r-btn:14px; --v3-r-lg:16px; --v3-r-xl:20px; --v3-r-dlg:24px; --v3-r-pill:999px;
+  --v3-el-1:0 1px 2px rgba(15,44,82,.06),0 8px 24px -10px rgba(15,44,82,.22);
+  --v3-el-3:0 12px 32px -10px rgba(10,34,66,.35); --v3-el-4:0 24px 60px -12px rgba(10,34,66,.5);
+  --v3-z-sticky:10; --v3-z-topbar:40; --v3-z-drawer:80; --v3-z-layer:100; --v3-z-notice:300; --v3-z-toast:310; --v3-z-tip:400; --v3-z-dev:500;
+  --v3-fast:150ms; --v3-base:220ms; --v3-med:300ms; --v3-enter:450ms;
+  --v3-ease:cubic-bezier(.22,1,.36,1); --v3-spring:cubic-bezier(.2,1.3,.3,1);
+  --v3-notice-ms:15000ms;
+  --v3-topbar-h:64px; --v3-w-content:1240px; --v3-w-read:720px; --v3-tap:44px; --v3-tap-dlg:48px;
+  --v3-fs-h1-cur:var(--v3-fs-h1);
+}
+@media (max-width:640px){ :root{ --v3-topbar-h:58px; --v3-fs-h1-cur:23px; } }
+
+*,*::before,*::after{box-sizing:border-box}
+html{scrollbar-gutter:stable;background:var(--v3-bg)}
+html[data-v3-lock]{overflow:hidden}
+*{scrollbar-width:thin;scrollbar-color:var(--v3-line) transparent}
+body{margin:0;font-family:var(--v3-font);font-size:var(--v3-fs-base);line-height:1.6;color:var(--v3-ink);background:var(--v3-bg);min-height:100dvh;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+bdi{unicode-bidi:isolate}
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:3px solid var(--v3-navy-800);outline-offset:2px;box-shadow:0 0 0 6px var(--v3-gold-300);border-radius:6px}
+[hidden]{display:none!important}
+
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle}
+.ic.sm{width:16px;height:16px}.ic.lg{width:24px;height:24px}.ic.xl{width:32px;height:32px}.ic.xxl{width:48px;height:48px}
+@keyframes ia-nudge{0%,100%{transform:none}50%{transform:translateX(-4px)}}
+@keyframes ia-nudge-back{0%,100%{transform:none}50%{transform:translateX(4px)}}
+@keyframes ia-spin{to{transform:rotate(-360deg)}}
+@keyframes ia-pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:none}}
+@keyframes ia-wig{0%,100%{transform:none}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+@keyframes ia-rise{0%,100%{transform:none}50%{transform:translateY(-3px)}}
+@keyframes ia-loop{to{transform:rotate(360deg)}}
+@keyframes ia-draw{from{stroke-dashoffset:30}}
+:is(button,a,label,summary):is(:hover,:focus-visible,:focus-within):not(:disabled) .ic[data-a=nudge]{animation:ia-nudge .6s var(--v3-ease)}
+:is(button,a,label,summary):is(:hover,:focus-visible):not(:disabled) .ic[data-a=back]{animation:ia-nudge-back .6s var(--v3-ease)}
+:is(button,a,label,summary):is(:hover,:focus-visible):not(:disabled) .ic[data-a=spin]{animation:ia-spin .6s var(--v3-ease)}
+:is(button,a,label,summary):is(:hover,:focus-visible,:focus-within):not(:disabled) .ic[data-a=pop]{animation:ia-pop .45s var(--v3-spring)}
+:is(button,a,label,summary):is(:hover,:focus-visible):not(:disabled) .ic[data-a=wig]{animation:ia-wig .5s var(--v3-ease)}
+:is(button,a,label,summary):is(:hover,:focus-visible,:focus-within):not(:disabled) .ic[data-a=rise]{animation:ia-rise .5s var(--v3-ease)}
+.ic[data-a=loop]{animation:ia-loop 1s linear infinite}
+.ic.draw{stroke-dasharray:30;animation:ia-draw .5s var(--v3-ease)}
+.ic.enter{animation:ia-pop .45s var(--v3-spring)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+html[data-motion=reduced] *,html[data-motion=reduced] *::before,html[data-motion=reduced] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--v3-tap);padding:10px 18px;border-radius:var(--v3-r-btn);border:1.5px solid var(--v3-rose-500);background:var(--v3-rose-200);color:#000;font-weight:500;white-space:nowrap;transition:background-color var(--v3-fast),color var(--v3-fast),border-color var(--v3-fast),transform var(--v3-fast)}
+.btn:hover{background:var(--v3-navy-800);border-color:var(--v3-navy-800);color:#fff;transform:translateY(-1px)}
+.btn.primary{background:var(--v3-accent);border-color:var(--v3-gold-700);color:var(--v3-accent-ink);font-weight:600;box-shadow:0 6px 16px -8px rgba(15,44,82,.6)}
+.btn.primary:hover{background:var(--v3-navy-800);color:#fff}
+.btn.quiet{background:transparent;border-color:var(--v3-frame-soft)}
+.btn.quiet:hover{background:var(--v3-navy-800);color:#fff}
+.btn.lg{min-height:52px;padding:12px 24px;font-size:var(--v3-fs-md);border-radius:var(--v3-r-lg)}
+.btn.sm{min-height:44px;padding:6px 12px;font-size:var(--v3-fs-sm);border-radius:var(--v3-r-sm)}
+.btn:disabled,.btn:disabled:hover{background:var(--v3-disabled-bg);color:var(--v3-disabled-ink);border-color:var(--v3-disabled-line);box-shadow:none;transform:none;cursor:not-allowed}
+.ibtn{width:var(--v3-tap);height:var(--v3-tap);display:inline-grid;place-items:center;border-radius:var(--v3-r-btn);border:1.5px solid var(--v3-rose-500);background:var(--v3-rose-200);color:#000;flex:none;transition:background-color var(--v3-fast),color var(--v3-fast)}
+.ibtn:hover{background:var(--v3-navy-800);color:#fff;border-color:var(--v3-navy-800)}
+.ibtn.quiet{background:transparent;border-color:transparent;color:var(--v3-ink-2)}
+.ibtn.quiet:hover{background:var(--v3-surface-3);color:var(--v3-ink)}
+.ibtn.round{border-radius:50%;width:48px;height:48px;background:var(--v3-surface);border:1px solid var(--v3-line);box-shadow:var(--v3-el-1)}
+.ibtn.round:hover{background:var(--v3-navy-800);color:#fff}
+.tip{width:var(--v3-tap);height:var(--v3-tap);margin:-10px;display:inline-grid;place-items:center;border:0;background:none;color:var(--v3-ink-3);border-radius:50%;flex:none}
+.tip:hover,.tip:focus-visible{color:var(--v3-navy-800)}
+
+/* סרגל עליון */
+.topbar{position:sticky;top:0;z-index:var(--v3-z-topbar);height:var(--v3-topbar-h);background:var(--v3-topbar-bg);color:var(--v3-on-dark);display:flex;align-items:center;gap:var(--v3-sp-3);padding:0 var(--v3-sp-5);padding-top:env(safe-area-inset-top);border-bottom:3px solid var(--v3-gold-500)}
+.tb-brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;flex:none;min-height:44px}
+.tb-mark{width:40px;height:40px;border-radius:12px;background:var(--v3-accent);color:#000;display:grid;place-items:center}
+.tb-name{font-weight:700;font-size:var(--v3-fs-lg)}
+.tb-nav{display:flex;gap:4px;flex:1;min-width:0;justify-content:center}
+.tb-nav a{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:12px;color:var(--v3-on-dark-2);text-decoration:none;font-weight:500;white-space:nowrap}
+.tb-nav a:hover{background:rgba(255,255,255,.08);color:#fff}
+.tb-act{display:flex;align-items:center;gap:6px;flex:none;margin-inline-start:auto}
+.tb-user{display:flex;align-items:center;gap:8px;height:44px;min-width:44px;justify-content:center;padding:0 6px 0 12px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;max-width:240px}
+.tb-user .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-av{width:32px;height:32px;border-radius:50%;background:var(--v3-accent);color:#000;display:grid;place-items:center;font-weight:700;flex:none;overflow:hidden}
+.tb-av img{width:100%;height:100%;object-fit:cover}
+.tb-ib{width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:#fff;display:none;place-items:center}
+@media (max-width:1023px){.tb-nav{display:none}.tb-ib{display:grid}.tb-user .n{display:none}}
+@media (max-width:640px){.topbar{padding:0 var(--v3-sp-3)}.tb-name{font-size:var(--v3-fs-base)}.tb-user{padding:0 4px;border:0;background:transparent}}
+.drawer{position:fixed;inset-block:0;inset-inline-start:0;width:min(88vw,360px);background:var(--v3-navy-900);color:#fff;z-index:var(--v3-z-drawer);padding:var(--v3-sp-4);display:flex;flex-direction:column;gap:6px;box-shadow:var(--v3-el-4);animation:dr-in var(--v3-med) var(--v3-ease)}
+@keyframes dr-in{from{transform:translateX(100%)}}
+.drawer a{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;border-radius:12px;color:var(--v3-on-dark-2);text-decoration:none}
+.drawer-scrim{position:fixed;inset:0;background:var(--v3-scrim);z-index:calc(var(--v3-z-drawer) - 1)}
+
+/* NoticeBar עליון */
+.notice-area{position:sticky;top:var(--v3-topbar-h);z-index:var(--v3-z-notice);max-width:var(--v3-w-content);margin:0 auto;padding:0 var(--v3-sp-5)}
+.notice-area:empty{display:none}
+.notice{position:relative;margin-top:var(--v3-sp-2);background:var(--v3-navy-800);color:#fff;border-radius:var(--v3-r-lg);box-shadow:var(--v3-el-4);overflow:hidden;animation:nb-in var(--v3-med) var(--v3-ease)}
+@keyframes nb-in{from{transform:translateY(-14px)}}
+.notice.is-leaving{opacity:0;transform:translateY(-10px);transition:opacity 200ms,transform 200ms}
+.nb-main{display:flex;align-items:center;gap:14px;padding:12px 16px}
+.nb-ic{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--v3-sky-100);color:var(--v3-navy-800);border:2px solid var(--v3-gold-300)}
+.nb-msg{flex:1;min-width:0;display:flex;flex-direction:column}
+.nb-msg b{font-weight:700}
+.nb-msg span{font-size:var(--v3-fs-sm);color:var(--v3-on-dark-2);overflow-wrap:anywhere}
+.nb-x{width:44px;height:44px;border-radius:10px;border:0;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;flex:none}
+.nb-x:hover{background:rgba(255,255,255,.24)}
+.nb-timer{height:4px;background:var(--v3-accent);transform-origin:right center;animation:nb-t var(--v3-notice-ms) linear forwards}
+.notice:is(:hover,:focus-within) .nb-timer{animation-play-state:paused}
+@keyframes nb-t{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+html[data-motion=reduced] .nb-timer{animation-duration:var(--v3-notice-ms)!important}
+@media (prefers-reduced-motion:reduce){.nb-timer{animation-duration:var(--v3-notice-ms)!important}}
+@media (max-width:640px){.notice-area{padding:0 var(--v3-sp-3)}}
+
+/* מעטפת A7: עמודה אחת ברוחב קריאה; ב-≥1024 תוכן עניינים צדדי */
+.page{max-width:var(--v3-w-content);margin:0 auto;padding:var(--v3-sp-5) var(--v3-sp-5) calc(var(--v3-sp-7) + 96px)}
+@media (max-width:640px){.page{padding:var(--v3-sp-4) var(--v3-sp-4) calc(var(--v3-sp-7) + 120px)}}
+.a7{display:grid;grid-template-columns:minmax(0,var(--v3-w-read));justify-content:center;gap:var(--v3-sp-6)}
+@media (min-width:1024px){.a7{grid-template-columns:220px minmax(0,var(--v3-w-read))}}
+.toc{display:none}
+@media (min-width:1024px){.toc{display:flex;flex-direction:column;gap:4px;position:sticky;top:calc(var(--v3-topbar-h) + 24px);align-self:start}}
+.toc h2{margin:0 0 6px;font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:500}
+.toc a{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:12px;color:var(--v3-ink-2);text-decoration:none;font-weight:500}
+.toc a:hover{background:var(--v3-surface);color:var(--v3-ink)}
+.toc a .pd{width:10px;height:10px;border-radius:50%;border:2px dashed var(--v3-rose-700);background:var(--v3-rose-200);margin-inline-start:auto}
+.col{display:flex;flex-direction:column;gap:var(--v3-sp-5);min-width:0}
+
+.pagehead{display:flex;align-items:flex-start;gap:var(--v3-sp-4)}
+.ph-ttl{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.ph-ttl h1{margin:0;font-size:var(--v3-fs-h1-cur);line-height:1.25;font-weight:700;display:flex;align-items:center;gap:8px}
+.ph-ttl p{margin:0;color:var(--v3-ink-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 12px;border-radius:var(--v3-r-pill);font-size:var(--v3-fs-2xs);font-weight:500;background:var(--v3-surface-3);color:var(--v3-ink-2);border:1px solid var(--v3-line);max-width:100%;align-self:flex-start}
+.chip .ic{width:14px;height:14px}
+.chip.info{background:var(--v3-brand-tint);color:var(--v3-navy-800)}
+.chip .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.pend{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line);color:var(--v3-rose-700)}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
+.how div{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--v3-r-lg);background:var(--v3-surface-2);border:1px solid var(--v3-line);font-size:var(--v3-fs-sm);color:var(--v3-ink-2)}
+.how b{display:block;color:var(--v3-ink);font-size:var(--v3-fs-base)}
+
+.card{background:var(--v3-surface);border:1px solid var(--v3-frame-soft);border-radius:var(--v3-r-lg);box-shadow:var(--v3-el-1);padding:var(--v3-sp-5);scroll-margin-top:calc(var(--v3-topbar-h) + 16px)}
+@media (max-width:640px){.card{padding:var(--v3-sp-4)}}
+.card-h{display:flex;align-items:center;gap:12px;margin-bottom:var(--v3-sp-4)}
+.card-h .ico{width:44px;height:44px;border-radius:14px;background:var(--v3-rose-100);color:var(--v3-rose-700);display:grid;place-items:center;flex:none;border:1px solid var(--v3-rose-300)}
+.card-h h2{margin:0;font-size:var(--v3-fs-lg);font-weight:600;flex:1;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card.has-change{border:1.5px dashed var(--v3-pending-line)}
+
+.form{display:flex;flex-direction:column;gap:var(--v3-sp-4)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.flbl{font-size:var(--v3-fs-sm);color:var(--v3-ink-2);font-weight:500;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.input{min-height:48px;border:1.5px solid var(--v3-line);border-radius:var(--v3-r-md);padding:10px 14px;background:var(--v3-surface);font-size:var(--v3-fs-md);width:100%;transition:border-color var(--v3-fast)}
+.input:hover{border-color:var(--v3-sky-400)}
+.input:focus{outline:none;border-color:var(--v3-navy-800);box-shadow:0 0 0 4px var(--v3-gold-300)}
+.field.is-changed .input{border-style:dashed;border-color:var(--v3-pending-line);background:var(--v3-pending-bg)}
+.field.is-err .input{border-color:var(--v3-gold-600);border-width:2px}
+.ferr{color:var(--v3-plum);font-size:var(--v3-fs-sm);display:flex;align-items:center;gap:6px}
+.fhint{color:var(--v3-ink-3);font-size:var(--v3-fs-sm)}
+.was{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.was s{overflow-wrap:anywhere}
+.ro{display:grid;grid-template-columns:28px minmax(0,1fr);gap:2px 12px;padding:12px 14px;border-radius:var(--v3-r-md);background:var(--v3-surface-2);border:1px solid var(--v3-line-soft)}
+.ro>.ic{margin-top:3px;color:var(--v3-ink-3)}
+.ro .l{font-size:var(--v3-fs-sm);color:var(--v3-ink-3);display:flex;align-items:center;gap:4px}
+.ro .v{grid-column:2;font-size:var(--v3-fs-md);font-weight:500}
+.pw{display:flex;gap:8px;align-items:center}
+.pw .input{flex:1;min-width:0}
+.pw.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.switch{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer;border-radius:var(--v3-r-md);padding:0 12px;margin-inline:-12px}
+.switch input{appearance:none;width:52px;height:30px;border-radius:15px;background:var(--v3-sky-300);position:relative;flex:none;border:1.5px solid var(--v3-navy-500);cursor:pointer;transition:background-color var(--v3-fast)}
+.switch input::after{content:"";position:absolute;inset-block-start:3px;inset-inline-start:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform var(--v3-base) var(--v3-ease)}
+.switch input:checked{background:var(--v3-navy-800)}
+.switch input:checked::after{transform:translateX(-22px)}
+.switch .st{margin-inline-start:auto;font-size:var(--v3-fs-sm);color:var(--v3-ink-3)}
+.switch.is-changed{background:var(--v3-pending-bg);border:1.5px dashed var(--v3-pending-line)}
+.expand{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--v3-med) var(--v3-ease)}
+.expand.open{grid-template-rows:1fr}
+.expand>div{overflow:hidden}
+.expand:not(.open)>div{visibility:hidden}
+.pwbox{margin-top:var(--v3-sp-4);padding:var(--v3-sp-4);border-radius:var(--v3-r-lg);background:var(--v3-surface-2);border:1.5px solid var(--v3-navy-500)}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.avrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.avbig{width:88px;height:88px;border-radius:50%;background:var(--v3-navy-800);color:#fff;display:grid;place-items:center;font-size:var(--v3-fs-2xl);font-weight:700;border:3px solid var(--v3-gold-500);overflow:hidden;flex:none}
+.avbig img{width:100%;height:100%;object-fit:cover}
+.avbig.changed{border-style:dashed;border-color:var(--v3-rose-500)}
+.file-in{position:absolute;width:1px;height:1px;opacity:0}
+.file-in:focus-visible + label{outline:3px solid var(--v3-navy-800);outline-offset:2px}
+.okbox,.errbox{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px}
+.errbox{background:var(--v3-gold-100);border:2px solid var(--v3-gold-600)}
+.okbox{background:var(--v3-sky-100);border:1.5px solid var(--v3-navy-500)}
+
+/* פס שמירה דביק (A7) */
+.savebar{position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--v3-z-sticky);padding:10px var(--v3-sp-5) calc(10px + env(safe-area-inset-bottom));background:rgba(207,230,247,.92);backdrop-filter:blur(6px)}
+.sb-in{max-width:calc(var(--v3-w-read) + 220px + var(--v3-sp-6));margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);justify-content:center}
+@media (min-width:1024px){.sb-in{grid-template-columns:220px minmax(0,var(--v3-w-read));gap:var(--v3-sp-6)}.sb-in::before{content:""}}
+.sb{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--v3-navy-800);color:#fff;border-radius:var(--v3-r-xl);padding:10px 12px 10px 16px;box-shadow:var(--v3-el-4);border-top:3px solid var(--v3-gold-500)}
+.sb .stat{flex:1;min-width:180px;display:flex;align-items:center;gap:10px}
+.sb .ring{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08)}
+.sb.dirty .ring{border:2px dashed var(--v3-rose-300);background:rgba(250,158,132,.18);color:var(--v3-rose-200)}
+.sb .stat b{display:block}
+.sb .stat small{display:block;color:var(--v3-on-dark-2);font-size:var(--v3-fs-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48ch}
+.sb .btn.quiet{color:#fff;border-color:rgba(255,255,255,.35)}
+.sb .btn.quiet:hover{background:#fff;color:var(--v3-navy-800)}
+.sb .btn:disabled{background:rgba(255,255,255,.08);color:var(--v3-on-dark-3);border-color:rgba(255,255,255,.14)}
+.sb .short{display:none}
+@media (max-width:640px){.savebar{padding-inline:var(--v3-sp-3)}.sb{gap:8px}.sb .btn{flex:1;padding-inline:10px}.sb .stat{flex-basis:100%}.sb .stat small{display:none}.sb .long{display:none}.sb .short{display:inline}}
+
+/* מצבי טעינה/שגיאה */
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:var(--v3-sp-7) var(--v3-sp-4);color:var(--v3-ink-2)}
+.empty .e-ic{width:72px;height:72px;border-radius:50%;background:var(--v3-sky-100);display:grid;place-items:center;color:var(--v3-navy-800);border:2px solid var(--v3-gold-300)}
+.empty b{font-size:var(--v3-fs-lg);color:var(--v3-ink)}
+.sk{background:linear-gradient(90deg,var(--v3-sky-100) 0%,var(--v3-sky-50) 50%,var(--v3-sky-100) 100%);background-size:200% 100%;border-radius:10px;animation:sk 1.4s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+
+/* שכבות */
+#layer-root{position:relative;z-index:var(--v3-z-layer)}
+.scrim{position:fixed;inset:0;background:var(--v3-scrim);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade var(--v3-base)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.scrim{background:var(--v3-scrim-strong)}}
+@media (prefers-reduced-transparency:reduce){.scrim{backdrop-filter:none;background:var(--v3-scrim-strong)}}
+@keyframes fade{from{background:transparent}}
+.scrim.is-leaving{opacity:0;transition:opacity 200ms}
+.dlg{--d-bg:#fff;--d-ink:var(--v3-ink);--d-sub:var(--v3-ink-2);--d-line:var(--v3-line);--d-ic-bg:var(--v3-sky-100);--d-ic:var(--v3-navy-800);background:var(--d-bg);color:var(--d-ink);border-radius:var(--v3-r-dlg);box-shadow:var(--v3-el-4);width:100%;max-width:min(100vw - 32px,var(--dw,400px));max-height:90dvh;display:flex;flex-direction:column;overflow:hidden;animation:dlg-in var(--v3-base) var(--v3-ease)}
+@keyframes dlg-in{from{transform:scale(.96)}}
+.dlg[data-v3-mode=dark]{--d-bg:#0d2a4f;--d-ink:#fff;--d-sub:#cfe0f2;--d-line:rgba(255,255,255,.16);--d-ic-bg:rgba(224,197,110,.16);--d-ic:#f1dc8f;border:1px solid rgba(255,255,255,.14)}
+.dlg-h{padding:24px 24px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.dlg-badge{width:64px;height:64px;border-radius:50%;background:var(--d-ic-bg);color:var(--d-ic);display:grid;place-items:center;border:2px solid var(--v3-gold-500);box-shadow:0 0 0 6px color-mix(in srgb,var(--v3-gold-300) 30%,transparent)}
+.dlg-h h2{margin:0;font-size:var(--v3-fs-2xl);line-height:1.3}
+.dlg-h p{margin:0;color:var(--d-sub)}
+.dlg-f{padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--d-line);margin-top:12px}
+.dlg-f .btn{min-height:48px;width:100%}
+.dlg[data-v3-mode=dark] .btn.quiet{color:#fff;border-color:rgba(255,255,255,.35)}
+.dlg[data-v3-mode=dark] .btn.quiet:hover{background:#fff;color:var(--v3-navy-800)}
+@media (max-width:640px){.scrim.sheet{align-items:flex-end;padding:0}.scrim.sheet .dlg{max-width:100%;border-radius:var(--v3-r-dlg) var(--v3-r-dlg) 0 0;padding-bottom:env(safe-area-inset-bottom);animation:sheet-up var(--v3-med) var(--v3-ease)}}
+@keyframes sheet-up{from{transform:translateY(40px)}}
+
+/* Toast (פינה שמאלית-תחתונה, פיזית) */
+.toasts{position:fixed;left:24px;bottom:24px;z-index:var(--v3-z-toast);display:flex;flex-direction:column-reverse;gap:10px;width:min(400px,calc(100vw - 32px));pointer-events:none} /* v3-physical: toast */
+.toast{pointer-events:auto;display:flex;align-items:center;gap:14px;background:var(--v3-navy-800);color:#fff;border-radius:18px;padding:12px 12px 12px 14px;box-shadow:var(--v3-el-4);position:relative;overflow:hidden;animation:t-in var(--v3-enter) var(--v3-spring)}
+@keyframes t-in{from{transform:translateX(-110%)}}
+.toast.is-leaving{opacity:0;transform:translateX(-20px);transition:opacity 200ms,transform 200ms}
+.toast .t-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--v3-sky-200);color:var(--v3-navy-700);flex:none;border:2px solid var(--v3-gold-300)}
+.toast.err .t-ic{background:var(--v3-gold-300);color:var(--v3-plum)}
+.toast .t-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.toast .t-t b{font-size:var(--v3-fs-md)}
+.toast .t-t small{color:var(--v3-sky-200);font-size:var(--v3-fs-sm)}
+.toast .t-x{width:44px;height:44px;border-radius:10px;border:0;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;flex:none}
+.toast .t-bar{position:absolute;inset-inline:0;bottom:0;height:3px;background:var(--v3-sky-300);transform-origin:left;animation:nb-t var(--t-ms,6500ms) linear forwards}
+.toast:hover .t-bar,.toast:focus-within .t-bar,html[data-v3-lock] .toast .t-bar{animation-play-state:paused}
+html[data-v3-lock] :is(.toasts,.notice-area){z-index:calc(var(--v3-z-layer) - 1)}
+html[data-v3-lock] .nb-timer{animation-play-state:paused}
+/* הערימה יושבת מעל פס השמירה הדביק ולא מכסה את כפתור השמירה */
+body.has-savebar .toasts{bottom:calc(var(--sb-h,96px) + 12px)}
+@media (max-width:1023px){.toasts{left:16px}}
+
+#tipbox{position:fixed;z-index:var(--v3-z-tip);max-width:290px;background:var(--v3-tooltip-bg);color:#fff;font-size:var(--v3-fs-sm);line-height:1.5;padding:8px 12px;border-radius:14px;box-shadow:var(--v3-el-3);pointer-events:none;animation:tip-in var(--v3-fast) var(--v3-ease)}
+@keyframes tip-in{from{transform:translateY(4px)}}
+
+/* בקרת הדגמה */
+.demo{max-width:var(--v3-w-content);margin:var(--v3-sp-3) auto 0;padding:0 var(--v3-sp-5)}
+.demo details{background:var(--v3-surface);border:1.5px dashed var(--v3-gold-600);border-radius:var(--v3-r-lg)}
+.demo summary{list-style:none;display:flex;align-items:center;gap:10px;padding:10px 16px;font-weight:600;cursor:pointer;min-height:48px}
+.demo summary::-webkit-details-marker{display:none}
+.demo summary small{font-weight:400;color:var(--v3-ink-3)}
+.demo-body{padding:0 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--v3-sp-4)}
+.demo-grp{display:flex;flex-direction:column;gap:8px;min-width:0}
+.demo-grp h3{margin:0;font-size:var(--v3-fs-sm);color:var(--v3-ink-3);font-weight:600}
+.demo select{min-height:40px;border:1.5px solid var(--v3-line);border-radius:var(--v3-r-sm);padding:0 10px;background:#fff;max-width:100%}
+.chk{display:flex;align-items:center;gap:8px;font-size:var(--v3-fs-sm);min-height:32px;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--v3-navy-800)}
+@media (max-width:640px){.demo{padding:0 var(--v3-sp-3)}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-dress" viewBox="0 0 24 24"><path d="M9 3h6l-1 4 4 13H6l4-13z"/><path d="M9 3c0 2 1.5 3 3 3s3-1 3-3"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.7c2 .6 3.5 2.3 3.5 5.3"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.3-7-12a7 7 0 0 1 14 0c0 5.7-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 9v5M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M15 5 20 10l-5 5"/><path d="M20 10H9a5 5 0 0 0 0 10h3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"/><path d="M20 20v-4h-4"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M8 7.5A6 6 0 0 1 18 11a4 4 0 0 1 2.6 6.9"/><path d="M17 18H7a4 4 0 0 1-1.4-7.8"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar" role="banner">
+  <button type="button" class="tb-ib" id="burger" aria-label="פתיחת התפריט" aria-expanded="false"><svg class="ic lg"><use href="#i-menu"/></svg></button>
+  <a class="tb-brand" href="#" aria-label="לדף הבית"><span class="tb-mark"><svg class="ic"><use href="#i-dress"/></svg></span><span class="tb-name">גמ״ח שמלות</span></a>
+  <nav class="tb-nav" aria-label="ניווט ראשי"><a href="#"><svg class="ic"><use href="#i-home"/></svg>בית</a><a href="#"><svg class="ic"><use href="#i-bag"/></svg>הזמנות</a><a href="#"><svg class="ic"><use href="#i-users"/></svg>לקוחות</a><a href="#"><svg class="ic"><use href="#i-dress"/></svg>שמלות</a></nav>
+  <div class="tb-act"><button type="button" class="tb-user" aria-label="תפריט משתמש" data-tip="הפרופיל שלי"><span class="tb-av" id="tbAv"></span><span class="n" id="tbName"></span></button></div>
+</header>
+<div class="notice-area" id="noticeArea" aria-live="polite"></div>
+
+<div class="demo" id="demo">
+  <details><summary><svg class="ic"><use href="#i-info"/></svg>בקרת הדגמה <small>— לא חלק מהעיצוב</small><svg class="ic" style="margin-inline-start:auto"><use href="#i-down"/></svg></summary>
+    <div class="demo-body">
+      <div class="demo-grp"><h3>פרופיל הגדרות (ערכי דמה)</h3>
+        <select id="dProfile" aria-label="פרופיל הגדרות"><option value="org1">ארגון א׳</option><option value="org2">ארגון ב׳</option><option value="min">מינימלי (הכול חסר)</option><option value="max">קיצוני (ערכים ארוכים)</option></select>
+        <label class="chk"><input type="checkbox" id="dImg" checked> אזור תמונת פרופיל מוצג</label></div>
+      <div class="demo-grp"><h3>נתונים ומצב</h3>
+        <select id="dData" aria-label="נתונים"><option value="full">עובדת עם כל הפרטים</option><option value="sparse">עובדת עם מעט פרטים</option><option value="nodept">בלי מחלקה</option></select>
+        <select id="dLoad" aria-label="מצב טעינה"><option value="ok">טעינה תקינה</option><option value="loading">טוען…</option><option value="auth">לא מחוברת</option><option value="error">שגיאת שרת בטעינה</option></select></div>
+      <div class="demo-grp"><h3>שרת</h3>
+        <label class="chk"><input type="checkbox" id="dFail"> כשל בשמירה / בהחלפת סיסמה</label>
+        <label class="chk"><input type="checkbox" id="dReset"> אחרי איפוס סיסמה (אפשר בלי הסיסמה הישנה)</label></div>
+      <div class="demo-grp"><h3>חלוניות ותנועה</h3>
+        <button type="button" class="btn sm" id="dTheme" aria-pressed="true">חלוניות אישור: כהה</button>
+        <label class="chk"><input type="checkbox" id="dMotion"> הדמיית "הפחתת תנועה"</label></div>
+    </div>
+  </details>
+</div>
+
+<main class="page" id="page" tabindex="-1"></main>
+<div class="savebar" id="savebar" hidden></div>
+<div id="layer-root"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<div id="tipbox" role="tooltip" hidden></div>
+<input type="email" id="emailProbe" hidden aria-hidden="true" tabindex="-1">
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ic = (n, cls = '', anim = '') => `<svg class="ic ${cls}"${anim ? ` data-a="${anim}"` : ''} aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const tip = t => `<button type="button" class="tip" data-tip="${esc(t)}" aria-label="הסבר: ${esc(t)}">${ic('info','sm')}</button>`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* config (useOrgConfig מדומה): שורה חסרה = מוצג (FM-38) */
+const REG = { show_employee_profile_image:'true' };
+const cfg = { s:{}, on(k){ return (this.s[k] ?? REG[k]) !== 'false'; } };
+const PROFILES = { org1:{ s:{} }, org2:{ s:{ show_employee_profile_image:'false' } }, min:{ s:{} }, max:{ s:{}, long:true } };
+
+const FIELDS = {
+  firstName:{ l:'שם פרטי', i:'user' }, lastName:{ l:'שם משפחה', i:'user' }, fullName:{ l:'שם מלא', i:'user', tip:'שדה נפרד. הוא לא מתעדכן לבד כשמשנים שם פרטי או שם משפחה.' },
+  phone1:{ l:'טלפון', i:'phone', ltr:1, type:'tel' }, phone2:{ l:'טלפון נוסף', i:'phone', ltr:1, type:'tel' }, email:{ l:'מייל', i:'mail', ltr:1, type:'email' },
+  city:{ l:'עיר', i:'pin' }, street:{ l:'רחוב', i:'pin' }, houseNum:{ l:'מספר בית', i:'pin', ltr:1 },
+  receiveEmailAlerts:{ l:'התראות במייל', i:'bell', bool:1 }, profileImage:{ l:'תמונה', i:'camera', img:1 }
+};
+const SECTIONS = [
+  ['personal','פרטים אישיים','user',['firstName','lastName','fullName']],
+  ['contact','יצירת קשר','phone',['phone1','phone2','email']],
+  ['address','כתובת','pin',['city','street','houseNum']],
+  ['alerts','התראות','bell',['receiveEmailAlerts']],
+  ['password','סיסמה','key',[]],
+  ['photo','תמונה','camera',['profileImage']]
+];
+function makeProfile(kind, long){
+  const p = { id:'u1', firstName:'רבקה', lastName:'פרידמן', fullName:'רבקה פרידמן', phone1:'0527134455', phone2:'', email:'rivka@example.com', emailSuffix:'', city:'ירושלים', street:'הרב קוק', houseNum:'12',
+    joinDate:'2023-03-14', profileImage:'', receiveEmailAlerts:true, department:{ name:'מנהלת סניף' } };
+  if (kind === 'sparse') Object.assign(p, { lastName:'', fullName:'', phone2:'', email:'', city:'', street:'', houseNum:'', joinDate:null, receiveEmailAlerts:false });
+  if (kind === 'nodept') p.department = null;
+  if (long) Object.assign(p, { firstName:'רבקה-חיה-שרה-מלכה', lastName:'פרידמן-גולדשטיין-וייסברג', fullName:'רבקה חיה שרה מלכה פרידמן-גולדשטיין-וייסברג (מנהלת משמרת ערב)', email:'rivka.chaya.friedman.goldstein.weissberg@very-long-domain-example.co.il', street:'שדרות הרב שלמה זלמן אויערבך פינת רחוב המלך דוד', department:{ name:'מחלקת תפירה, תיקונים והתאמות לשמלות ערב וכלה' } });
+  return p;
+}
+
+const S = { load:'ok', orig:null, cur:null, errors:{}, saving:false, pwOpen:false, pwBusy:false, pwErr:'', pwShow:{ old:false, neu:false }, pwv:{ old:'', neu:'' }, dark:true };
+const changed = () => S.cur ? Object.keys(FIELDS).filter(k => (S.cur[k] ?? '') !== (S.orig[k] ?? '')) : [];
+const disp = (k, v) => FIELDS[k].bool ? (v ? 'פעיל' : 'כבוי') : FIELDS[k].img ? (v ? 'תמונה' : 'בלי תמונה') : (String(v || '').trim() ? v : 'ריק');
+
+/* ===== רינדור ===== */
+function renderTopbar(){
+  const p = S.orig; const av = $('#tbAv'); if (!p){ av.textContent = ''; $('#tbName').textContent = ''; return; }
+  av.innerHTML = p.profileImage ? `<img src="${p.profileImage}" alt="">` : esc(((p.firstName || '')[0] || '') + ((p.lastName || '')[0] || '') || '?');
+  $('#tbName').textContent = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+}
+function field(k){
+  const f = FIELDS[k], v = S.cur[k] ?? '', ch = (S.orig[k] ?? '') !== v, err = S.errors[k];
+  return `<div class="field ${ch ? 'is-changed' : ''} ${err ? 'is-err' : ''}"><label for="f-${k}">${f.l}${f.tip ? tip(f.tip) : ''}${ch ? ' <span class="chip pend">לא נשמר</span>' : ''}</label>
+    <input class="input" id="f-${k}" data-f="${k}" type="${f.type || 'text'}" ${f.ltr ? 'dir="ltr"' : ''} value="${esc(v)}" autocomplete="new-password" ${err ? `aria-invalid="true" aria-describedby="e-${k}"` : ch ? `aria-describedby="w-${k}"` : ''} novalidate>
+    ${err ? `<span class="ferr" id="e-${k}" role="alert">${ic('alert','sm')}${esc(err)}</span>` : ''}
+    ${ch && !err ? `<span class="was" id="w-${k}">היה: <s>${esc(disp(k, S.orig[k]))}</s></span>` : ''}</div>`;
+}
+function sectionCard([id, title, icon, keys], body, hasTip){
+  const dirty = keys.some(k => (S.cur[k] ?? '') !== (S.orig[k] ?? ''));
+  return `<section class="card ${dirty ? 'has-change' : ''}" id="sec-${id}" aria-labelledby="h-${id}"><div class="card-h"><span class="ico">${ic(icon,'','pop')}</span><h2 id="h-${id}">${title}</h2>${hasTip ? tip(hasTip) : ''}</div>${body}</section>`;
+}
+function render(){
+  renderTopbar();
+  const page = $('#page'); const sb = $('#savebar');
+  if (S.load === 'loading'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col" role="status" aria-label="טוענים את הפרופיל"><div class="sk" style="height:60px;width:60%"></div>${'<div class="sk" style="height:220px"></div>'.repeat(3)}</div></div>`; return; }
+  if (S.load === 'auth'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col"><div class="card empty"><span class="e-ic">${ic('lock','xl')}</span><b>צריך להתחבר</b><span>כדי לראות ולעדכן את הפרופיל, נכנסים למערכת עם המשתמש שלך.</span><button type="button" class="btn primary lg" data-act="toLogin">${ic('next','','nudge')}למסך הכניסה</button></div></div></div>`; return; }
+  if (S.load === 'error'){ sb.hidden = true; document.body.classList.remove('has-savebar'); page.innerHTML = `<div class="a7"><div></div><div class="col"><div class="card empty"><span class="e-ic">${ic('cloud-off','xl')}</span><b>לא הצלחנו לטעון את הפרופיל</b><span>זו תקלה בשרת, לא בחשבון שלך. נסו שוב בעוד רגע.</span><button type="button" class="btn primary lg" data-act="retry">${ic('refresh','','spin')}לנסות שוב</button></div></div></div>`; return; }
+  const c = S.cur, ch = changed();
+  const toc = `<nav class="toc" aria-label="בעמוד הזה"><h2>בעמוד הזה</h2>${SECTIONS.filter(s => s[0] !== 'photo' || cfg.on('show_employee_profile_image')).map(([id, t, i, keys]) => `<a href="#sec-${id}">${ic(i,'sm')}${t}${keys.some(k => ch.includes(k)) ? '<span class="pd" aria-label="יש שינוי שלא נשמר"></span>' : ''}</a>`).join('')}</nav>`;
+  const head = `<div class="pagehead"><button type="button" class="ibtn round" data-act="back" aria-label="חזרה" data-tip="חזרה">${ic('back','','back')}</button>
+    <div class="ph-ttl"><h1>הפרופיל שלי ${tip('כאן מעדכנים את הפרטים שלך ואת הסיסמה. הגדרות תצוגה נמצאות במסך אחר.')}</h1>
+      ${c.department?.name ? `<span class="chip info" data-tip="${esc(c.department.name)}">${ic('users','sm')}<span class="t">${esc(c.department.name)}</span></span>` : ''}</div></div>
+    <div class="how"><div>${ic('save','lg')}<span><b>פרטים</b>נשמרים יחד בכפתור ״שמירת השינויים״ שלמטה.</span></div><div>${ic('key','lg')}<span><b>סיסמה</b>מתחלפת מיד, בכפתור שלה. לא צריך לשמור.</span></div></div>`;
+  let cards = '';
+  cards += sectionCard(SECTIONS[0], `<div class="form">${field('firstName')}${field('lastName')}${field('fullName')}
+      <div class="ro">${ic('cal')}<span class="l">תאריך הצטרפות ${tip('נקבע על ידי ההנהלה. אי אפשר לשנות אותו כאן.')}</span><span class="v">${c.joinDate ? `<bdi>${new Date(c.joinDate).toLocaleDateString('he-IL')}</bdi>` : 'לא רשום'}</span></div></div>`);
+  cards += sectionCard(SECTIONS[1], `<div class="form">${field('phone1')}${field('phone2')}${field('email')}</div>`);
+  cards += sectionCard(SECTIONS[2], `<div class="form">${field('city')}${field('street')}${field('houseNum')}</div>`);
+  const alCh = !!c.receiveEmailAlerts !== !!S.orig.receiveEmailAlerts;
+  cards += sectionCard(SECTIONS[3], `<label class="switch ${alCh ? 'is-changed' : ''}"><input type="checkbox" role="switch" data-f="receiveEmailAlerts" ${c.receiveEmailAlerts ? 'checked' : ''}><span>לקבל התראות במייל</span><span class="st">${c.receiveEmailAlerts ? 'פעיל' : 'כבוי'}${alCh ? ' · לא נשמר' : ''}</span></label>
+      <p class="fhint" style="margin:6px 0 0">נשמר יחד עם שאר הפרטים.</p>`);
+  cards += sectionCard(SECTIONS[4], `<div class="ro">${ic('lock')}<span class="l">הסיסמה</span><span class="v">מוסתרת</span></div>
+      <div class="acts" style="margin-top:12px"><button type="button" class="btn" data-act="pwOpen" aria-expanded="${S.pwOpen}" aria-controls="pwPanel">${ic('edit','','pop')}החלפת סיסמה</button></div>
+      <div class="expand ${S.pwOpen ? 'open' : ''}" id="pwPanel"><div><div class="pwbox"><div class="form">
+        <div class="field"><label for="pw-old">הסיסמה הנוכחית${$('#dReset').checked ? ' <span class="fhint">(לא חובה אחרי איפוס)</span>' : ''}</label><div class="pw"><input class="input" id="pw-old" type="${S.pwShow.old ? 'text' : 'password'}" autocomplete="current-password" dir="auto" value="${esc(S.pwv.old)}"><button type="button" class="ibtn quiet" data-pwshow="old" aria-pressed="${S.pwShow.old}" aria-label="${S.pwShow.old ? 'הסתרת' : 'הצגת'} הסיסמה הנוכחית">${ic('eye')}</button></div></div>
+        <div class="field"><label for="pw-new">סיסמה חדשה</label><div class="pw"><input class="input" id="pw-new" type="${S.pwShow.neu ? 'text' : 'password'}" autocomplete="new-password" dir="auto" aria-describedby="pwHint" value="${esc(S.pwv.neu)}"><button type="button" class="ibtn quiet" data-pwshow="neu" aria-pressed="${S.pwShow.neu}" aria-label="${S.pwShow.neu ? 'הסתרת' : 'הצגת'} הסיסמה החדשה">${ic('eye')}</button></div>
+          <span class="fhint" id="pwHint">לפחות 4 תווים. ארבעת התווים האחרונים הם גם הקוד הקצר לשעון הנוכחות.</span></div>
+        <div class="ferr" id="pwErr" role="alert">${S.pwErr ? ic('alert','sm') + esc(S.pwErr) : ''}</div>
+        <div class="acts"><button type="button" class="btn primary" data-act="pwGo" ${S.pwBusy ? 'disabled' : ''}>${S.pwBusy ? ic('loader','','loop') + 'מחליפים…' : ic('check','','pop') + 'החלפת הסיסמה'}</button><button type="button" class="btn quiet" data-act="pwCancel">ביטול</button></div>
+      </div></div></div></div>`, 'הסיסמה משמשת לכניסה למערכת וגם לשעון הנוכחות.');
+  if (cfg.on('show_employee_profile_image')){
+    const imCh = (c.profileImage || '') !== (S.orig.profileImage || '');
+    const ini = ((c.firstName || '')[0] || '') + ((c.lastName || '')[0] || '');
+    cards += sectionCard(SECTIONS[5], `<div class="avrow"><span class="avbig ${imCh ? 'changed' : ''}">${c.profileImage ? `<img src="${c.profileImage}" alt="תמונת הפרופיל">` : `<span aria-label="ראשי התיבות">${esc(ini || '?')}</span>`}</span>
+      <div class="acts"><input type="file" id="avIn" class="file-in" accept="image/*"><label for="avIn" class="btn" role="button">${ic('camera','','pop')}בחירת תמונה</label>
+      ${c.profileImage ? `<button type="button" class="btn quiet" data-act="imgRm">${ic('trash','','wig')}הסרה</button>` : ''}</div></div>
+      <p class="fhint" style="margin:10px 0 0">PNG או JPG. התמונה נשמרת יחד עם שאר הפרטים${imCh ? ' — <b>עוד לא נשמרה</b>' : ''}.</p>`);
+  }
+  page.innerHTML = `<div class="a7">${toc}<div class="col">${head}${cards}</div></div>`;
+  renderSavebar(ch);
+}
+function renderSavebar(ch){
+  const sb = $('#savebar'); sb.hidden = false; document.body.classList.add('has-savebar'); requestAnimationFrame(() => document.body.style.setProperty('--sb-h', sb.offsetHeight + 'px')); const n = ch.length;
+  sb.innerHTML = `<div class="sb-in"><div class="sb ${n ? 'dirty' : ''}" role="region" aria-label="שמירה">
+    <div class="stat"><span class="ring">${n ? ic('edit','sm') : ic('check','sm')}</span><span style="min-width:0"><b>${n ? `${n === 1 ? 'שינוי אחד' : `<bdi>${n}</bdi> שינויים`} שלא נשמרו` : 'הכול שמור'}</b><small>${n ? esc(ch.map(k => FIELDS[k].l).join(' · ')) : 'אין שינויים שמחכים לשמירה'}</small></span></div>
+    <button type="button" class="btn quiet" data-act="discard" ${n ? '' : 'disabled'}>${ic('undo','','back')}<span class="long">ביטול השינויים</span><span class="short">ביטול</span></button>
+    <button type="button" class="btn primary" data-act="save" ${S.saving ? 'disabled' : ''}>${S.saving ? ic('loader','','loop') + 'שומרים…' : ic('check','','pop') + '<span class="long">שמירת השינויים</span><span class="short">שמירה</span>'}</button></div></div>`;
+}
+function refreshKeep(){ const a = document.activeElement; const id = a && a.id; const pos = a && typeof a.selectionStart === 'number' ? a.selectionStart : null; render(); if (id && $('#' + id)){ const el = $('#' + id); el.focus(); if (pos !== null && el.setSelectionRange) try { el.setSelectionRange(pos, pos); } catch {} } }
+
+/* ===== שכבות ===== */
+const layers = [];
+function lockSync(){ document.documentElement.toggleAttribute('data-v3-lock', layers.length > 0); ['.topbar','#demo','#page','#savebar','#noticeArea'].forEach(s => { const el = $(s); if (el) el.inert = layers.length > 0; }); layers.forEach((l, i) => { l.el.inert = i !== layers.length - 1; }); }
+function confirmDlg({ icon = 'alert', title, text, buttons, danger = false }){
+  const scrim = document.createElement('div'); scrim.className = 'scrim sheet'; scrim.style.zIndex = 100 + layers.length * 10;
+  scrim.innerHTML = `<div class="dlg" data-v3-mode="${S.dark ? 'dark' : 'light'}" role="${danger ? 'alertdialog' : 'dialog'}" aria-modal="true" aria-labelledby="dt${layers.length}" aria-describedby="dd${layers.length}"><div class="dlg-h"><span class="dlg-badge">${ic(icon,'lg enter')}</span><h2 id="dt${layers.length}">${esc(title)}</h2>${text ? `<p id="dd${layers.length}">${esc(text)}</p>` : ''}</div>
+    <div class="dlg-f">${buttons.map(b => `<button type="button" class="btn ${b.kind || ''}" data-r="${b.value}" ${b.auto ? 'data-autofocus' : ''}>${b.icon ? ic(b.icon,'',b.anim || 'pop') : ''}${esc(b.label)}</button>`).join('')}</div></div>`;
+  const layer = { el:scrim, trigger:document.activeElement }; let res; const p = new Promise(r => res = r);
+  const close = v => { const i = layers.indexOf(layer); if (i < 0) return; layers.splice(i, 1); scrim.classList.add('is-leaving'); setTimeout(() => scrim.remove(), 200); lockSync(); res(v); if (layer.trigger && document.contains(layer.trigger)) layer.trigger.focus(); };
+  layer.close = close;
+  scrim.addEventListener('mousedown', e => { if (e.target === scrim && !danger) close(null); });
+  scrim.querySelectorAll('[data-r]').forEach(b => b.onclick = () => close(b.dataset.r));
+  $('#layer-root').appendChild(scrim); layers.push(layer); lockSync();
+  (scrim.querySelector('[data-autofocus]') || scrim.querySelector('button')).focus();
+  return p;
+}
+document.addEventListener('keydown', e => {
+  const top = layers[layers.length - 1];
+  if (e.key === 'Escape' && top){ e.preventDefault(); top.close(null); return; }
+  if (e.key === 'Tab' && top){ const f = [...top.el.querySelectorAll('button:not(:disabled)')]; if (!f.length) return; const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); } }
+});
+
+/* ===== Toast + NoticeBar ===== */
+function toast(kind, title, text, ms = 6500, action){
+  const box = $('#toasts'); while (box.children.length >= 3) box.firstElementChild.remove();
+  const t = document.createElement('div'); t.className = `toast ${kind === 'err' ? 'err' : ''}`; if (kind === 'err') t.setAttribute('role', 'alert');
+  t.style.setProperty('--t-ms', ms + 'ms');
+  t.innerHTML = `<span class="t-ic">${ic(kind === 'err' ? 'alert' : kind === 'info' ? 'info' : 'check','lg enter')}</span><span class="t-t"><b>${esc(title)}</b>${text ? `<small>${esc(text)}</small>` : ''}</span>${action ? `<button type="button" class="btn sm" data-ta>${ic('refresh','sm','spin')}${esc(action.label)}</button>` : ''}<button type="button" class="t-x" aria-label="סגירת ההודעה">${ic('x','sm')}</button><span class="t-bar" aria-hidden="true"></span>`;
+  const kill = () => { t.classList.add('is-leaving'); setTimeout(() => t.remove(), 200); };
+  t.querySelector('.t-x').onclick = kill; t.querySelector('.t-bar').addEventListener('animationend', kill);
+  if (action) t.querySelector('[data-ta]').onclick = () => { kill(); action.run(); };
+  box.appendChild(t);
+}
+function notice(title, text){
+  const area = $('#noticeArea'); area.innerHTML = '';
+  const n = document.createElement('div'); n.className = 'notice'; n.setAttribute('role', 'status');
+  n.innerHTML = `<div class="nb-main"><span class="nb-ic">${ic('check','draw')}</span><div class="nb-msg"><b>${esc(title)}</b>${text ? `<span>${esc(text)}</span>` : ''}</div><button type="button" class="nb-x" aria-label="סגירת ההודעה">${ic('x','sm')}</button></div><div class="nb-timer" aria-hidden="true"></div>`;
+  const kill = () => { n.classList.add('is-leaving'); setTimeout(() => n.remove(), 200); };
+  n.querySelector('.nb-x').onclick = kill; n.querySelector('.nb-timer').addEventListener('animationend', kill);
+  area.appendChild(n);
+}
+
+/* ===== פעולות ===== */
+function validate(){ /* רק מה שהדפדפן כבר אוכף היום (FM-23): מבנה מייל של type=email. אין שדות חובה (FM-21). */
+  const e = {}; const probe = $('#emailProbe'); probe.value = S.cur.email || '';
+  if (S.cur.email && probe.validity.typeMismatch) e.email = 'כתובת המייל לא תקינה. בדקו שיש בה @ ושם אתר.';
+  return e;
+}
+async function save(){
+  S.errors = validate();
+  if (Object.keys(S.errors).length){ render(); const k = Object.keys(S.errors)[0]; $('#f-' + k).focus(); toast('err', 'אי אפשר לשמור עדיין', 'יש שדה אחד לתיקון', 6500); return false; }
+  S.saving = true; renderSavebar(changed()); await sleep(800); S.saving = false;
+  if ($('#dFail').checked){ renderSavebar(changed()); toast('err', 'השמירה לא הצליחה', 'שגיאת שרת. השינויים שלך עדיין כאן.', 6500, { label:'לנסות שוב', run:save }); return false; }
+  const n = changed().length; S.orig = JSON.parse(JSON.stringify(S.cur)); render();
+  notice('הפרטים נשמרו', n ? `עודכנו ${n === 1 ? 'פרט אחד' : n + ' פרטים'}. השם והתמונה בסרגל העליון התעדכנו.` : 'הפרטים נשלחו לשמירה.');
+  return true;
+}
+async function discard(){
+  const r = await confirmDlg({ icon:'undo', title:'לבטל את כל השינויים?', text:'הפרטים יחזרו למה שנשמר קודם.', danger:true, buttons:[{ label:'להשאיר את השינויים', kind:'primary', value:'n', auto:1 }, { label:'ביטול השינויים', kind:'quiet', value:'y', icon:'undo', anim:'back' }] });
+  if (r === 'y'){ S.cur = JSON.parse(JSON.stringify(S.orig)); S.errors = {}; render(); toast('info', 'השינויים בוטלו', '', 2600); }
+}
+async function goBack(){
+  if (!changed().length) return toast('info', 'חוזרים לעמוד הקודם', 'בהדגמה נשארים כאן', 2600);
+  const r = await confirmDlg({ icon:'alert', title:'יש שינויים שלא נשמרו', text:'מה לעשות איתם לפני שיוצאים?', buttons:[{ label:'שמירה ויציאה', kind:'primary', value:'save', icon:'check', auto:1 }, { label:'יציאה בלי לשמור', value:'drop', icon:'x' }, { label:'להישאר כאן', kind:'quiet', value:'stay' }] });
+  if (r === 'save'){ if (await save()) toast('info', 'חוזרים לעמוד הקודם', 'בהדגמה נשארים כאן', 2600); }
+  else if (r === 'drop'){ S.cur = JSON.parse(JSON.stringify(S.orig)); render(); toast('info', 'יצאת בלי לשמור', 'בהדגמה נשארים כאן', 2600); }
+}
+async function changePassword(){
+  const old = S.pwv.old, neu = S.pwv.neu; const reset = $('#dReset').checked;
+  const fail = (m, id) => { S.pwErr = m; render(); const g = $('#' + id).closest('.pw'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); $('#' + id).focus(); };
+  if (!neu) return fail('צריך להקליד סיסמה חדשה', 'pw-new');
+  if (neu.length < 4) return fail('הסיסמה החדשה קצרה מדי. צריך לפחות 4 תווים.', 'pw-new');
+  if (!old && !reset) return fail('צריך להקליד את הסיסמה הנוכחית', 'pw-old');
+  S.pwErr = ''; S.pwBusy = true; const keep = [old, neu]; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1];
+  await sleep(700); S.pwBusy = false;
+  if ($('#dFail').checked){ S.pwErr = 'שגיאת שרת. הסיסמה לא הוחלפה.'; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1]; return; }
+  if (old && old === '0000'){ S.pwErr = 'הסיסמה הנוכחית לא נכונה.'; render(); $('#pw-old').value = keep[0]; $('#pw-new').value = keep[1]; $('#pw-old').focus(); return; }
+  S.pwOpen = false; S.pwShow = { old:false, neu:false }; S.pwv = { old:'', neu:'' }; render();
+  toast('ok', 'הסיסמה הוחלפה', 'גם הקוד הקצר לשעון הנוכחות התעדכן.');
+}
+
+/* ===== האזנה ===== */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button,a'); if (!t || t.closest('#demo')) return;
+  if (t.matches('.toc a')){ e.preventDefault(); const s = $(t.getAttribute('href')); s.scrollIntoView({ behavior: document.documentElement.dataset.motion ? 'auto' : 'smooth' }); const f = s.querySelector('input,button'); f && setTimeout(() => f.focus({ preventScroll:true }), 300); return; }
+  if (t.matches('a[href="#"]')) e.preventDefault();
+  if (t.dataset.pwshow){ const k = t.dataset.pwshow; const vals = [$('#pw-old').value, $('#pw-new').value]; S.pwShow[k] = !S.pwShow[k]; render(); $('#pw-old').value = vals[0]; $('#pw-new').value = vals[1]; $(k === 'old' ? '#pw-old' : '#pw-new').focus(); return; }
+  const a = t.dataset.act;
+  if (a === 'save') return save();
+  if (a === 'discard') return discard();
+  if (a === 'back') return goBack();
+  if (a === 'pwOpen'){ S.pwOpen = !S.pwOpen; S.pwErr = ''; render(); if (S.pwOpen) setTimeout(() => $('#pw-old').focus(), 50); return; }
+  if (a === 'pwCancel'){ S.pwOpen = false; S.pwErr = ''; S.pwv = { old:'', neu:'' }; render(); $('[data-act=pwOpen]').focus(); return; }
+  if (a === 'pwGo') return changePassword();
+  if (a === 'imgRm'){ S.cur.profileImage = ''; render(); $('label[for=avIn]').focus(); return; }
+  if (a === 'retry'){ S.load = 'loading'; render(); setTimeout(() => { $('#dLoad').value = 'ok'; load(); }, 800); return; }
+  if (a === 'toLogin'){ toast('info', 'עוברים למסך הכניסה', 'בהדגמה נשארים כאן', 2600); return; }
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'pw-old' || e.target.id === 'pw-new'){ S.pwv[e.target.id === 'pw-old' ? 'old' : 'neu'] = e.target.value; return; }
+  const k = e.target.dataset && e.target.dataset.f; if (!k) return;
+  S.cur[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; if (S.errors[k]) delete S.errors[k];
+  refreshKeep();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.f && e.target.type !== 'checkbox'){ e.preventDefault(); save(); } }); /* FM-25: Enter בשדה = שמירה */
+document.addEventListener('change', e => {
+  if (e.target.id !== 'avIn') return; const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader(); r.onloadend = () => { S.cur.profileImage = r.result; render(); $('label[for=avIn]').focus(); }; r.readAsDataURL(f);
+});
+
+/* Tooltip יחיד */
+(() => {
+  const box = $('#tipbox'); let timer, cur;
+  const show = el => { const txt = el.getAttribute('data-tip'); if (!txt) return; cur = el; box.textContent = txt; box.hidden = false;
+    const r = el.getBoundingClientRect(), b = box.getBoundingClientRect(); let top = r.bottom + 8, left = r.left + r.width / 2 - b.width / 2;
+    if (top + b.height > innerHeight - 8) top = r.top - b.height - 8; left = Math.max(8, Math.min(left, innerWidth - b.width - 8));
+    box.style.top = top + 'px'; box.style.left = left + 'px'; };
+  const hide = () => { clearTimeout(timer); box.hidden = true; cur = null; };
+  document.addEventListener('pointerover', e => { if (e.pointerType === 'touch') return; const el = e.target.closest('[data-tip]'); if (el === cur) return; clearTimeout(timer); if (!el) return hide(); timer = setTimeout(() => show(el), 150); });
+  document.addEventListener('focusin', e => { const el = e.target.closest('[data-tip]'); if (el && e.target.matches(':focus-visible')) show(el); else hide(); });
+  document.addEventListener('pointerdown', e => { const el = e.target.closest('.tip'); if (e.pointerType === 'touch' && el){ cur === el ? hide() : show(el); } else if (!el) hide(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
+  addEventListener('scroll', hide, { passive:true });
+})();
+
+/* מגירת ניווט (<1024) */
+$('#burger').onclick = () => {
+  const s = document.createElement('div'); s.className = 'drawer-scrim'; const d = document.createElement('nav'); d.className = 'drawer'; d.setAttribute('aria-label', 'תפריט ראשי');
+  d.innerHTML = [['home','בית'],['bag','הזמנות'],['users','לקוחות'],['dress','שמלות']].map(([i, l]) => `<a href="#">${ic(i)}${l}</a>`).join('');
+  const close = () => { d.remove(); s.remove(); $('#burger').setAttribute('aria-expanded', false); document.documentElement.removeAttribute('data-v3-lock'); $('#burger').focus(); };
+  s.onclick = close; d.addEventListener('keydown', e => { if (e.key === 'Escape') close(); }); d.querySelectorAll('a').forEach(a => a.onclick = ev => { ev.preventDefault(); close(); });
+  document.body.append(s, d); $('#burger').setAttribute('aria-expanded', true); document.documentElement.setAttribute('data-v3-lock', ''); d.querySelector('a').focus();
+};
+
+/* בקרת הדגמה */
+function load(){
+  const k = $('#dLoad').value; cfg.s = { ...PROFILES[$('#dProfile').value].s }; if (!$('#dImg').checked) cfg.s.show_employee_profile_image = 'false';
+  S.errors = {}; S.pwOpen = false; S.pwErr = '';
+  if (k !== 'ok'){ S.load = k; S.orig = S.cur = null; render(); return; }
+  S.load = 'ok'; S.orig = makeProfile($('#dData').value, !!PROFILES[$('#dProfile').value].long); S.cur = JSON.parse(JSON.stringify(S.orig)); render();
+}
+$('#dProfile').onchange = () => { $('#dImg').checked = PROFILES[$('#dProfile').value].s.show_employee_profile_image !== 'false'; load(); };
+$('#dImg').onchange = () => { if (!$('#dImg').checked) cfg.s.show_employee_profile_image = 'false'; else delete cfg.s.show_employee_profile_image; if (S.cur) render(); };
+$('#dData').onchange = load; $('#dLoad').onchange = load;
+$('#dReset').onchange = () => { if (S.cur && S.pwOpen) render(); };
+$('#dMotion').onchange = e => { if (e.target.checked) document.documentElement.setAttribute('data-motion', 'reduced'); else document.documentElement.removeAttribute('data-motion'); };
+$('#dTheme').onclick = e => { S.dark = !S.dark; e.currentTarget.setAttribute('aria-pressed', S.dark); e.currentTarget.textContent = `חלוניות אישור: ${S.dark ? 'כהה' : 'בהיר'}`; };
+load();
+</script>
+</body>
+</html>
