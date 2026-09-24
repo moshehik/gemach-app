@@ -1,0 +1,210 @@
+/* =====================================================================
+   app/v3/overlays/overlays.css — LayerManager (CONSTITUTION §ד).
+   קידומת v3ov- (לא מתנגש עם v3-dialog/v3-scrim הישנים של ui/Dialog.js -
+   שתי המערכות חיות זו לצד זו עד ה-shim, ראו LIBRARY-MAP §7).
+   רק מאפיינים לוגיים (RTL), רק tokens, רק transform/opacity לאנימציה
+   (המחלקות v3-m-* מגיעות מ-app/v3/motion/presets.css).
+   ===================================================================== */
+
+/* ---------- Scrim ---------- */
+.v3ov-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--v3-lz-layer-base) + var(--v3-lz-offset, 0));
+  background: var(--v3-ov-scrim);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--v3-sp-4);
+}
+.v3ov-scrim--nested { background: transparent; }
+@media (prefers-reduced-transparency: reduce) {
+  .v3ov-scrim { background: color-mix(in srgb, var(--v3-ov-scrim) 130%, black 0%); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ---------- Surface (גוף החלונית) ---------- */
+.v3ov-surface {
+  background: var(--v3-ov-surface);
+  color: var(--v3-ov-ink);
+  border-radius: var(--v3-r-dlg);
+  box-shadow: var(--v3-ov-shadow);
+  border: var(--v3-bw-hair) solid var(--v3-ov-line);
+  padding: var(--v3-sp-6);
+  width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--v3-sp-3);
+  text-align: center;
+}
+.v3ov-surface--S { max-width: var(--v3-lyr-w-s); }
+.v3ov-surface--M { max-width: var(--v3-lyr-w-m); }
+.v3ov-surface--L { max-width: var(--v3-lyr-w-l); text-align: start; }
+.v3ov-surface--full { max-width: none; width: 100dvw; height: 100dvh; max-height: 100dvh; border-radius: 0; text-align: start; }
+.v3ov-surface--form { text-align: start; }
+
+.v3ov-badge {
+  width: 56px; height: 56px; border-radius: 50%; margin-inline: auto;
+  display: grid; place-items: center;
+  background: var(--v3-ov-accent); color: var(--v3-ov-accent-ink);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--v3-ov-accent) 20%, transparent);
+}
+.v3ov-badge--danger { background: var(--v3-ov-danger); color: var(--v3-ov-surface); }
+.v3ov-title { margin: 0; font-size: var(--v3-fs-xl); font-weight: var(--v3-fw-semi); }
+.v3ov-sub { margin: 0; color: var(--v3-ov-ink-2); font-size: var(--v3-fs-md-); line-height: var(--v3-lh-snug); }
+.v3ov-body { font-size: var(--v3-fs-base); color: var(--v3-ov-ink-2); }
+.v3ov-purpose { margin: 0; color: var(--v3-ov-ink-2); font-size: var(--v3-fs-sm); }
+
+.v3ov-actions { display: flex; flex-direction: column; gap: var(--v3-sp-2); margin-top: var(--v3-sp-3); }
+.v3ov-surface--L .v3ov-actions, .v3ov-surface--form .v3ov-actions { flex-direction: row; justify-content: flex-end; }
+
+.v3ov-btn {
+  height: var(--v3-control-h-dlg);
+  padding-inline: var(--v3-sp-5);
+  border-radius: var(--v3-r-btn);
+  font-size: var(--v3-fs-md-);
+  font-weight: var(--v3-fw-semi);
+  border: var(--v3-bw) solid transparent;
+  cursor: pointer;
+  transition: transform var(--v3-dur-fast) var(--v3-ease), box-shadow var(--v3-dur-fast) var(--v3-ease);
+}
+.v3ov-btn--primary { background: var(--v3-grad-gold); color: var(--v3-ink-on-gold); box-shadow: var(--v3-sh-btn-gold-dlg); }
+.v3ov-btn--primary:hover { transform: translateY(-1px); }
+.v3ov-btn--danger { background: var(--v3-ov-danger); color: var(--v3-ov-surface); }
+.v3ov-btn--quiet { background: transparent; color: var(--v3-ov-ghost, var(--v3-ov-ink)); border-color: var(--v3-ov-line); }
+.v3ov-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.v3ov-select, .v3ov-input {
+  width: 100%; height: var(--v3-control-h); padding-inline: var(--v3-sp-3);
+  border: var(--v3-bw) solid var(--v3-ov-line); border-radius: var(--v3-r-btn);
+  background: var(--v3-surface); color: var(--v3-ink); font: inherit;
+}
+textarea.v3ov-input { height: auto; padding-block: var(--v3-sp-2); resize: vertical; }
+.v3ov-label { font-size: var(--v3-fs-sm); color: var(--v3-ov-ink-2); text-align: start; }
+
+.v3ov-busy { display: flex; align-items: center; gap: var(--v3-sp-3); justify-content: center; padding: var(--v3-sp-4) 0; }
+.v3ov-spinner { display: inline-flex; }
+
+/* ---------- Toast (§ד.6) — פינה שמאלית-תחתונה פיזית, חריג מתועד (R21) ---------- */
+.v3ov-toastregion {
+  position: fixed;
+  left: var(--v3-sp-5);
+  bottom: var(--v3-sp-5);
+  z-index: var(--v3-lz-toast);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--v3-sp-2);
+  width: min(calc(100vw - 32px), var(--v3-lyr-toast-w));
+  pointer-events: none;
+}
+.v3ov-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--v3-sp-3);
+  background: var(--v3-grad-navy-float);
+  color: var(--v3-on-dark);
+  border-radius: var(--v3-r-xl);
+  padding: var(--v3-sp-3) var(--v3-sp-4);
+  box-shadow: var(--v3-sh-pop-dark);
+}
+.v3ov-toast__ic { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--v3-gold-a30); color: var(--v3-gold-hi); }
+.v3ov-toast__msg { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: var(--v3-fs-sm); }
+.v3ov-toast__msg b { font-size: var(--v3-fs-md-); }
+.v3ov-toast__action { background: none; border: 0; color: var(--v3-gold-hi); font-weight: var(--v3-fw-semi); cursor: pointer; align-self: flex-start; }
+.v3ov-toast__x { background: none; border: 0; color: var(--v3-on-dark-3); cursor: pointer; flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+.v3ov-toast__x:hover { background: var(--v3-dark-tile); color: var(--v3-on-dark); }
+@media (max-width: 640px) {
+  .v3ov-toastregion { left: var(--v3-sp-3); right: var(--v3-sp-3); width: auto; bottom: calc(88px + var(--v3-safe-b)); }
+}
+
+/* ---------- NoticeBar (§ד.7) — מתחת לסרגל העליון, מרכז, פס זהב יורד ---------- */
+.v3ov-notice {
+  position: fixed;
+  top: calc(var(--v3-topbar-h) + var(--v3-sp-3));
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  max-width: min(calc(100vw - 32px), 560px);
+  z-index: var(--v3-lz-notice);
+  display: flex;
+  align-items: center;
+  gap: var(--v3-sp-3);
+  background: var(--v3-surface);
+  color: var(--v3-ink);
+  border: var(--v3-bw-hair) solid var(--v3-line);
+  border-radius: var(--v3-r-lg);
+  padding: var(--v3-sp-3) var(--v3-sp-4);
+  box-shadow: var(--v3-sh-panel);
+  overflow: hidden;
+}
+.v3ov-notice__ic { color: var(--v3-navy); flex: none; }
+.v3ov-notice__text { font-size: var(--v3-fs-md-); flex: 1; }
+.v3ov-notice__action { background: none; border: 0; color: var(--v3-navy-500); font-weight: var(--v3-fw-semi); cursor: pointer; }
+.v3ov-notice__x { background: none; border: 0; color: var(--v3-ink-3); cursor: pointer; }
+.v3ov-notice__bar {
+  position: absolute; inset-inline: 0; bottom: 0; height: 3px;
+  background: var(--v3-grad-gold-bar);
+  transform-origin: right center; /* RTL: המונה "יורד" מימין לשמאל */
+  animation: v3ov-notice-drain linear forwards;
+}
+[dir="ltr"] .v3ov-notice__bar { transform-origin: left center; }
+@keyframes v3ov-notice-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .v3ov-notice__bar { animation: none; transform: scaleX(1); }
+}
+
+/* ---------- Popover (§ד.8) ---------- */
+.v3ov-popover {
+  background: var(--v3-grad-panel-warm), var(--v3-surface);
+  color: var(--v3-ink);
+  border: var(--v3-bw-hair) solid var(--v3-line);
+  border-top: var(--v3-bw-frame) solid var(--v3-gold);
+  border-radius: var(--v3-r-lg);
+  box-shadow: var(--v3-sh-panel);
+  padding: var(--v3-sp-2);
+  min-width: 220px;
+  max-width: min(calc(100vw - 16px), 360px);
+  max-height: min(70dvh, 480px);
+  overflow-y: auto;
+}
+.v3ov-popover--sheet {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: var(--v3-lz-popover);
+  max-width: none; width: 100%; max-height: 85dvh; border-radius: var(--v3-r-dlg) var(--v3-r-dlg) 0 0;
+  padding-bottom: calc(var(--v3-sp-4) + var(--v3-safe-b));
+}
+.v3ov-popover__handle { width: 44px; height: 5px; border-radius: var(--v3-r-pill); background: var(--v3-line); margin: 0 auto var(--v3-sp-3); }
+
+/* ---------- Tip / InfoTip (§ד.9) ---------- */
+.v3ov-tip-anchor { position: relative; display: inline-flex; }
+.v3ov-tip {
+  position: fixed;
+  z-index: var(--v3-lz-tooltip);
+  max-width: var(--v3-tip-max);
+  background: var(--v3-tooltip-bg);
+  color: var(--v3-tooltip-ink);
+  font-size: var(--v3-fs-sm);
+  line-height: var(--v3-lh-snug);
+  border-radius: var(--v3-r-md);
+  padding: var(--v3-sp-2) var(--v3-sp-3);
+  box-shadow: var(--v3-sh-tip);
+  pointer-events: none;
+}
+.v3ov-infobtn {
+  width: var(--v3-tap); height: var(--v3-tap); border-radius: 50%;
+  display: grid; place-items: center; background: none; border: 0; color: var(--v3-ink-3); cursor: pointer;
+}
+.v3ov-infobtn:hover, .v3ov-infobtn:focus-visible { background: var(--v3-surface-2); color: var(--v3-navy); }
+
+/* ---------- Phone: confirm/code = bottom sheet, form/sheet/full = full screen (D-6) ---------- */
+@media (max-width: 640px) {
+  .v3ov-scrim { align-items: flex-end; padding: 0; }
+  .v3ov-surface { border-radius: var(--v3-r-dlg) var(--v3-r-dlg) 0 0; max-height: 90dvh; padding-bottom: calc(var(--v3-sp-6) + var(--v3-safe-b)); }
+  .v3ov-surface--S, .v3ov-surface--M { max-width: none; }
+  .v3ov-surface--L, .v3ov-surface--form, .v3ov-surface--full { width: 100dvw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+  .v3ov-actions { flex-direction: column; }
+  .v3ov-surface--L .v3ov-actions, .v3ov-surface--form .v3ov-actions { flex-direction: column; }
+}

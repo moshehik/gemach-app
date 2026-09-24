@@ -15,7 +15,13 @@
     "cleanup:logs": "node scripts/cleanup_old_logs.js",
     "setup:backup": "powershell -ExecutionPolicy Bypass -File scripts/setup_local_backup.ps1",
     "generate:offline": "prisma generate --schema=prisma/schema.local.prisma",
-    "offline:db-push": "prisma db push --schema=prisma/schema.local.prisma"
+    "offline:db-push": "prisma db push --schema=prisma/schema.local.prisma",
+    "lint:v3-hex": "node tools/v3-lint/check-hex.mjs",
+    "lint:v3-media": "node tools/v3-lint/check-media.mjs",
+    "lint:v3-dialogs": "node tools/v3-lint/check-native-dialogs.mjs",
+    "lint:v3-arrows": "node tools/v3-lint/check-arrows.mjs",
+    "lint:v3-fontsize": "node tools/v3-lint/check-font-size.mjs",
+    "lint:v3": "npm run lint:v3-hex && npm run lint:v3-media && npm run lint:v3-dialogs && npm run lint:v3-arrows && npm run lint:v3-fontsize"
   },
   "dependencies": {
     "@hebcal/core": "^6.6.0",

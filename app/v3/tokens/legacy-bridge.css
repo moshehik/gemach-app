@@ -1,0 +1,58 @@
+/* =====================================================================
+   app/v3/tokens/legacy-bridge.css  —  גשר זמני לעמודים/רכיבים לא-מומרים
+   (CONSTITUTION §ב.3, LIBRARY-MAP §2 "legacy-bridge.css").
+
+   מטרה: הרבה חלונות/רכיבים משותפים עדיין לא הומרו ל-v3 (RentalReturnModal,
+   PopupProvider, date pickers, StatisticsModal...) ומשתמשים במשתני ה-CSS
+   הישנים (--primary-color, --bg-color, --text-main...). כשהם מצטטים בתוך
+   עמוד v3 (למשל ModernItemsManager בתוך V3Page), בלי גשר הם ימשיכו
+   להיראות יין/קרם גם כשהעמוד סביבם navy/sky/gold.
+
+   הכלל: בתוך [data-v3] בלבד, המשתנים הישנים מקבלים ערך מ-L1 (semantic.css).
+   לא הפוך - קוד v3 חדש אף פעם לא קורא את השמות הישנים (§ב.3: "לא משתמשים
+   בגשר בקוד חדש"). נמחק בסוף Phase 5 כשאין יותר צרכנים (5ג, באישור).
+   ===================================================================== */
+
+[data-v3] {
+  /* מותג / accent */
+  --primary-color: var(--v3-brand);
+  --primary-solid: var(--v3-brand);
+  --primary-light: var(--v3-brand-tint);
+  --primary-tint: var(--v3-brand-tint);
+  --primary-hover: var(--v3-navy-700);
+  --accent-color: var(--v3-accent);
+  --accent-tint: var(--v3-gold-a16);
+  --btn-primary-text: var(--v3-ink-inverse);
+  --text-on-primary: var(--v3-ink-inverse);
+
+  /* רקע / משטחים */
+  --bg-color: var(--v3-bg);
+  --bg: var(--v3-bg);
+  --surface: var(--v3-surface);
+  --surface-alt: var(--v3-surface-2);
+  --surface-sunken: var(--v3-surface-3);
+  --card-bg: var(--v3-surface);
+  --element-bg: var(--v3-surface-2);
+  --input-bg: var(--v3-surface);
+  --image-bg: var(--v3-surface-3);
+
+  /* טקסט */
+  --text-main: var(--v3-ink);
+  --text: var(--v3-ink);
+  --text-color: var(--v3-ink);
+  --text-muted: var(--v3-ink-3);
+  --text-2: var(--v3-ink-3);
+  --text-secondary: var(--v3-ink-2);
+
+  /* גבולות */
+  --border-color: var(--v3-line);
+  --border: var(--v3-line);
+  --element-border: var(--v3-line);
+  --divider: var(--v3-line-hair);
+  --glass-border: var(--v3-bw-hair) solid var(--v3-line);
+
+  /* מצבי סמנטיקה (לא נוגעים באדום/ירוק/כתום/כחול האמיתיים - C-1.1 - אלה
+     רק ה"ניטרליים" שכפי הבדיקה הישנה תמיד היו כחול/אפור, לא צבע-משמעות) */
+  --danger-text: var(--v3-danger-ink);
+  --success-text: var(--v3-navy);
+}

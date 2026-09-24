@@ -17,6 +17,11 @@ export default function IconSpriteV3() {
         <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7.5a4 4 0 0 1 7.8-1.3" /></symbol>
         <symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5" /><rect x="4" y="14" width="16" height="6" rx="1.5" /><path d="M8 7h.01M8 17h.01" /></symbol>
         <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9.5 3.5h5M10.5 3.5v6L5 19a1.3 1.3 0 0 0 1.1 2h11.8a1.3 1.3 0 0 0 1.1-2l-5.5-9.5v-6" /><path d="M7.5 15h9" /></symbol>
+        {/* חסרים לפי diagnosis-2026-09-24/02 §1.3 O14 (מנוע השינויים - רייל הזמנה) - undo/redo תלויי-כיוון
+            (מתהפכים ב-RTL דרך --v3-dir כמו שאר אייקוני הכיוון, ראו icons.css/aliases.js) */}
+        <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8 7 4 11l4 4" /><path d="M4 11h10a6 6 0 0 1 0 12h-3" /></symbol>
+        <symbol id="i-redo" viewBox="0 0 24 24"><path d="M16 7l4 4-4 4" /><path d="M20 11H10a6 6 0 0 0 0 12h3" /></symbol>
+        <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9.5" cy="20" r="1.4" /><circle cx="17.5" cy="20" r="1.4" /><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L21 8H6.2" /></symbol>
       </defs>
     </svg>
   );
