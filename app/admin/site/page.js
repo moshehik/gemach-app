@@ -53,6 +53,8 @@ const categories = [
       { href: '/admin/site-settings/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו (מתכנת בלבד)' },
       { href: '/admin/email-test', icon: 'i-mail', label: 'בדיקת מיילים', subLabel: 'שליחת דוגמה מכל סוגי המיילים' },
       { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
+      // דף סטטי (public/design-system/index.html, ראו design-system/README.md) - לא מסלול של האפליקציה, לכן <a> רגיל
+      { href: '/design-system/', icon: 'i-image', label: 'מערכת העיצוב', subLabel: 'פלטת הרכיבים הממוספרת (לחצן 12, אייקון 23...)', external: true },
     ]
   }
 ];
@@ -76,8 +78,10 @@ export default function SiteManagementPage() {
           <p className="page-desc" style={{ marginBottom: '16px' }}>{category.description}</p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
-            {category.items.map((item, itemIndex) => (
-              <Link className="list-card" href={item.href} key={itemIndex}>
+            {category.items.map((item, itemIndex) => {
+              const Card = item.external ? 'a' : Link;
+              return (
+              <Card className="list-card" href={item.href} key={itemIndex}>
                 <div className="kpi-icon" style={{ background: category.tint, color: category.fg }}>
                   <svg className="icon"><use href={`#${item.icon}`} /></svg>
                 </div>
@@ -85,8 +89,9 @@ export default function SiteManagementPage() {
                   <h3 style={{ fontSize: '14.5px', marginBottom: '2px' }}>{item.label}</h3>
                   <p className="page-desc" style={{ marginTop: 0 }}>{item.subLabel}</p>
                 </div>
-              </Link>
-            ))}
+              </Card>
+              );
+            })}
           </div>
         </section>
       ))}
