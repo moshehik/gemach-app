@@ -36,6 +36,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3033"],
       "port": 3033
+    },
+    {
+      "name": "a5-real-quicksearch-3051",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3051"],
+      "port": 3051
     }
   ]
 }

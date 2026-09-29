@@ -20,7 +20,7 @@ export default function RefundPolicyPage() {
       <div className="content-page">
         <div className="content-updated">
           עודכן לאחרונה: 20.09.2026 · כל המספרים והמתגים שמוזכרים כאן נמצאים ב
-          <a href="/admin/settings" style={{ color: 'var(--primary-solid)', fontWeight: 700 }}>הגדרות מערכת → &quot;תשלומים&quot;</a>,
+          <a href="/admin/settings" style={{ color: 'var(--primary-solid)', fontWeight: 700 }}>הגדרות מערכת ← &quot;תשלומים&quot;</a>,
           ויכולים להיות שונים בין גמ&quot;ח לגמ&quot;ח.
         </div>
 

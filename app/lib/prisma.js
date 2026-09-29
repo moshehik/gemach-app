@@ -24,6 +24,7 @@ import path from 'path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runOfflineSync } from '@/lib/offlineSync';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { hebrewPhoneticKey } from '@/lib/hebrewPhonetic';
 
 // Tracks the active interactive-transaction client (if any) for the current
 // async execution context, so writes made inside `prisma.$transaction(async tx => ...)`
@@ -82,6 +83,68 @@ export async function getActingEmployeeId() {
   }
 }
 
+// ---- Phonetic keys for Customer / Employee names, computed on write ----
+// Tier 3 of the spelling-tolerant search (lib/searchUtils.js, app/api/global-search) matches on
+// Customer/Employee.firstNamePhoneticKey / lastNamePhoneticKey. Those columns were backfilled once
+// (scratch/backfill_phonetic_keys.js); this keeps them current for every row created or renamed
+// afterwards, through the one client every route uses. It calls the exact same function as the
+// backfill and the query side, so stored keys always agree with what the search computes -
+// including null for empty / non-Hebrew names. A write that does not touch a name field leaves
+// its key untouched. Skipped in offline mode: prisma/schema.local.prisma has no such columns, and
+// rows synced back to Postgres pass through this same hook on the cloud client anyway.
+const PHONETIC_FIELDS = [
+  ['firstName', 'firstNamePhoneticKey'],
+  ['lastName', 'lastNamePhoneticKey'],
+];
+
+// Fields whose values are masked ('***') in the AuditLog changesJson of the given model.
+// Mirrors redactSecrets() in app/lib/auditLog.js, which masks older rows on the way out.
+const AUDIT_SECRET_FIELDS = {
+  Employee: ['password', 'pinHash'],
+  ApiKey: ['keyHash'],
+};
+
+// A scalar in Prisma write data is either the plain value (create) or `{ set: value }` (update).
+function readWriteScalar(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'set' in value) return value.set;
+  return value;
+}
+
+function addPhoneticKeys(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+  let out = data;
+  for (const [nameField, keyField] of PHONETIC_FIELDS) {
+    if (!(nameField in data)) continue;
+    const raw = readWriteScalar(data[nameField]);
+    // `firstName: undefined` means "not provided" to Prisma (the column is left alone), so the
+    // key must be left alone too - e.g. PUT /api/customers/[id] builds `firstName: body.firstName`
+    // and a partial body would otherwise null the key while the name stays as it was.
+    if (raw === undefined) continue;
+    if (raw !== null && typeof raw !== 'string') continue;
+    if (out === data) out = { ...data };
+    out[keyField] = hebrewPhoneticKey(raw);
+  }
+  return out;
+}
+
+function withPhoneticKeys(operation, args) {
+  if (!args || typeof args !== 'object') return args;
+  switch (operation) {
+    case 'create':
+    case 'update':
+    case 'createMany':
+    case 'createManyAndReturn':
+    case 'updateMany':
+    case 'updateManyAndReturn':
+      if (!('data' in args)) return args;
+      return { ...args, data: Array.isArray(args.data) ? args.data.map(addPhoneticKeys) : addPhoneticKeys(args.data) };
+    case 'upsert':
+      return { ...args, create: addPhoneticKeys(args.create), update: addPhoneticKeys(args.update) };
+    default:
+      return args;
+  }
+}
+
 const createPrismaClient = (url) => {
   const baseClient = (url && process.env.IS_OFFLINE_MODE !== 'true')
     ? new PrismaClient({ datasources: { db: { url } } })
@@ -105,8 +168,15 @@ const createPrismaClient = (url) => {
             delete args.__audit;
           }
 
-          if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift' || model === 'BackupRun') {
+          if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift' || model === 'BackupRun' || model === 'SearchHistory' || model === 'SavedSearch') {
             return query(args);
+          }
+
+          // מפתחות פונטיים ללקוחות/עובדים מחושבים בכתיבה (ר' withPhoneticKeys למעלה). originalArgs
+          // נשמר כדי שרישום ההיסטוריה של update ימשיך להראות רק את מה שהקורא ביקש לשנות.
+          const originalArgs = args;
+          if ((model === 'Customer' || model === 'Employee') && process.env.IS_OFFLINE_MODE !== 'true') {
+            args = withPhoneticKeys(operation, args);
           }
 
           if (['create', 'update', 'delete'].includes(operation)) {
@@ -123,7 +193,7 @@ const createPrismaClient = (url) => {
              if (named && named.changes) {
                changesJson = JSON.stringify(named.changes);
              } else if (operation === 'update') {
-               changesJson = JSON.stringify(args.data || {});
+               changesJson = JSON.stringify(originalArgs.data || {});
              } else if (operation === 'create') {
                changesJson = JSON.stringify(result || {});
              } else if (operation === 'delete') {
@@ -132,12 +202,14 @@ const createPrismaClient = (url) => {
 
              // Never write credential hashes (or, for legacy accounts, the plaintext password) into
              // the audit trail - /api/audit and the employee history tab are readable by every
-             // logged-in employee (found 2026-09-20).
-             if (model === 'Employee') {
+             // logged-in employee (found 2026-09-20). ApiKey.keyHash is the same class of value
+             // (lib/sqlGuard.js already hides it from AI SQL): a CREATE row would otherwise carry it.
+             const auditSecrets = AUDIT_SECRET_FIELDS[model];
+             if (auditSecrets) {
                try {
                  const parsed = JSON.parse(changesJson);
                  if (parsed && typeof parsed === 'object') {
-                   for (const secret of ['password', 'pinHash']) {
+                   for (const secret of auditSecrets) {
                      if (secret in parsed) {
                        parsed[secret] = (parsed[secret] && typeof parsed[secret] === 'object') ? { from: '***', to: '***' } : '***';
                      }
@@ -182,7 +254,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 6;
+const CLIENT_SETUP_VERSION = 8;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {
@@ -195,7 +267,11 @@ if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
 }
 
 if (!globalForPrisma.prismaProd) {
-  globalForPrisma.prismaProd = createPrismaClient(process.env.PROD_DATABASE_URL || process.env.DATABASE_URL);
+  // Vercel Preview builds (PR branches, the fix-report agent's branches) sometimes have no DATABASE_URL at all
+  // (it is scoped to Production only), which left this client with an undefined URL and every page
+  // empty. Preview-only fallback to the TEST database: never widens access to production data.
+  const previewTestFallback = process.env.VERCEL_ENV === 'preview' ? process.env.TEST_DATABASE_URL : undefined;
+  globalForPrisma.prismaProd = createPrismaClient(process.env.PROD_DATABASE_URL || process.env.DATABASE_URL || previewTestFallback);
 }
 if (!globalForPrisma.prismaTest && process.env.TEST_DATABASE_URL) {
   globalForPrisma.prismaTest = createPrismaClient(process.env.TEST_DATABASE_URL);

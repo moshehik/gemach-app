@@ -249,7 +249,7 @@ export default function ModernNewDressWizard({
       <div className="page-head">
         <div>
           <h1>הוספת דגם חדש</h1>
-          <div className="page-desc">גמ&quot;ח שמלות &raquo; <Link href="/dashboard/dresses">מאגר שמלות</Link> &raquo; הוספת דגם חדש</div>
+          <div className="page-desc">גמ&quot;ח שמלות &laquo; <Link href="/dashboard/dresses">מאגר שמלות</Link> &laquo; הוספת דגם חדש</div>
         </div>
         <div className="page-actions">
           <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={saving}>

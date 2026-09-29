@@ -49,6 +49,7 @@ const categories = [
       { href: '/admin/database', icon: 'i-database', label: 'גיבוי בסיס נתונים', subLabel: 'גיבוי ושחזור' },
       { href: '/admin/backups', icon: 'i-database', label: 'גיבוי לדרייב', subLabel: 'גיבוי אוטומטי, לחצן מיידי ולוג' },
       { href: '/admin/site-settings', icon: 'i-settings', label: 'הגדרות אתר', subLabel: 'מסד נתונים, מערכת ומיילים (מתכנת בלבד)' },
+      { href: '/admin/site-settings/api-keys', icon: 'i-shield', label: 'מפתחות API', subLabel: 'כניסה בלי סיסמה לסוכנים וסקריפטים (מתכנת בלבד)' },
       { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/admin/site-settings/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו (מתכנת בלבד)' },
       { href: '/admin/email-test', icon: 'i-mail', label: 'בדיקת מיילים', subLabel: 'שליחת דוגמה מכל סוגי המיילים' },

@@ -52,7 +52,7 @@ export default function BulkEmailPage() {
     return (
       <div className="card card-pad">
         <h1>שליחת מייל לפי תאריך אירוע</h1>
-        <p className="hint">התכונה כבויה. הפעל בהגדרות מערכת → אוטומציה → &quot;שליחת מייל לפי תאריך אירוע&quot;.</p>
+        <p className="hint">התכונה כבויה. הפעל בהגדרות מערכת ← אוטומציה ← &quot;שליחת מייל לפי תאריך אירוע&quot;.</p>
       </div>
     );
   }

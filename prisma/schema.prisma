@@ -30,6 +30,14 @@ model Customer {
   isBlocked        Boolean @default(false) // חסום מהזמנות חדשות
   blockedReason    String? // סיבת החסימה
 
+  // Tier-3 fuzzy-name search (docs/smart-quick-search-plan-2026-09-27.md) - a coarse
+  // phonetic key (lib/hebrewPhonetic.js) computed from firstName/lastName, collapsing
+  // recurring Ashkenazi-surname spelling variants (e.g. שיינועטר/שינוטר/שיינאטר) that
+  // plain LIKE/trigram matching still misses. Computed on write; null when the source
+  // field is empty. Equality lookup only (v1) - no fuzzy match on the key itself yet.
+  firstNamePhoneticKey String?
+  lastNamePhoneticKey  String?
+
   // Bank details for refunds
   bankName        String? // שם בנק
   bankBranch      String? // סניף
@@ -53,6 +61,16 @@ model Customer {
   @@index([phone2])
   @@index([firstName, lastName])
   @@index([isDeleted])
+  @@index([firstNamePhoneticKey])
+  @@index([lastNamePhoneticKey])
+  // pg_trgm GIN indexes behind the tier-2 fuzzy search (lib/searchUtils.js buildFuzzyNameSql:
+  // `"firstName" % $n` / similarity()). Created by hand on both production DBs and TEST
+  // (scratch/apply_trgm_indexes.js); declared here so `prisma migrate diff` / `db push` see
+  // them as part of the schema instead of proposing to DROP them. Requires the pg_trgm extension.
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_firstName_trgm_idx")
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_lastName_trgm_idx")
+  @@index([phone1(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_phone1_trgm_idx")
+  @@index([phone2(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_phone2_trgm_idx")
 }
 
 model AuditLog {
@@ -136,7 +154,13 @@ model Employee {
   receiveEmailAlerts Boolean        @default(false) // קבלת התראות למייל
   showAi             Boolean        @default(false) // הרשאת AI
   canReportErrors    Boolean        @default(false) // אישור פרטני לדווח על שגיאות, בנוסף להרשאה הכללית לפי roleId (ר' app/api/error-report/route.js)
+  // Tier-3 fuzzy-name search (docs/smart-quick-search-plan-2026-09-27.md) - see the
+  // matching Customer fields for the full comment.
+  firstNamePhoneticKey String?
+  lastNamePhoneticKey  String?
   pageVisits         PageVisitLog[]
+  searchHistory      SearchHistory[]
+  savedSearches      SavedSearch[]
 
   shifts Shift[]
 
@@ -154,6 +178,12 @@ model Employee {
 
   @@index([phone1])
   @@index([fullName])
+  @@index([firstNamePhoneticKey])
+  @@index([lastNamePhoneticKey])
+  // pg_trgm GIN indexes - same reasoning as on Customer above.
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Employee_firstName_trgm_idx")
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Employee_lastName_trgm_idx")
+  @@index([fullName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Employee_fullName_trgm_idx")
 }
 
 // A shared physical computer at the gemach that a manager has explicitly marked as
@@ -169,6 +199,24 @@ model TrustedDevice {
   createdAt   DateTime  @default(now())
   lastUsedAt  DateTime?
   revokedAt   DateTime? // soft-revoke: keeps history instead of deleting the row
+
+  @@index([revokedAt])
+}
+
+// מפתחות API להתחברות בלי שם משתמש וסיסמה - ר' lib/apiKeys.js. נשמר רק ה-SHA-256 של המפתח.
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String // שם חופשי שנותן המנפיק, למשל "בדיקות Claude"
+  keyHash     String    @unique // sha256 של המפתח המלא - המפתח עצמו לעולם לא נשמר
+  keyPreview  String // תחילת המפתח לזיהוי ברשימה
+  employeeId  String // עובד השירות הייעודי שהמפתח מתחבר בשמו
+  roleId      Int // התפקיד שנקבע בהנפקה (העתק לתצוגה; ההרשאה בפועל לפי Employee.roleId)
+  createdById String? // Employee.id של המתכנת שהנפיק
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  useCount    Int       @default(0)
+  revokedAt   DateTime? // ביטול רך: נשמר בהיסטוריה במקום מחיקה
 
   @@index([revokedAt])
 }
@@ -517,6 +565,44 @@ model PageVisitLog {
 
   @@index([employeeId])
   @@index([timestamp])
+}
+
+// Smart quick-search `@` trigger (docs/smart-quick-search-plan-2026-09-27.md, Part 2) —
+// the current employee's last free-text queries actually submitted (not every keystroke),
+// server-side per Employee.id since this app runs on shared/kiosk-like workstations where
+// a localStorage-only history would mix different employees' searches together. Mirrors
+// PageVisitLog's employeeId shape. Trimmed to the 20 most recent rows per employee by the
+// API route, not by the DB. Excluded from the AuditLog auto-logging extension (see
+// app/lib/prisma.js) — same reasoning as PageVisitLog/Shift, this is noisy/high-frequency
+// and logging it would flood the audit log for no value.
+model SearchHistory {
+  id         String    @id @default(uuid())
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  query      String // השאילתה החופשית שהוגשה בפועל
+  domain     String? // הקשר החיפוש ממנו זה הוגש (אופציונלי, לא בשימוש עדיין)
+  createdAt  DateTime  @default(now())
+
+  @@index([employeeId])
+}
+
+// Smart quick-search `$` trigger (docs/smart-quick-search-plan-2026-09-27.md, Part 2) —
+// searches the employee explicitly named/saved for reuse ("שמור חיפוש"), same
+// per-employee/server-side reasoning as SearchHistory above. filtersJson is reserved for
+// a future phase-2 full advanced-search filter set (owner decision 27.9.2026) — not used
+// yet, always null in v1 (only free-text query + optional domain are saved). Excluded from
+// the AuditLog auto-logging extension the same way as SearchHistory/PageVisitLog/Shift.
+model SavedSearch {
+  id          String    @id @default(uuid())
+  employeeId  String?
+  employee    Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  label       String // השם שהעובד נתן לחיפוש השמור
+  query       String
+  domain      String?
+  filtersJson String? // שמור לעתיד - קבוצת מסננים מלאה של חיפוש מתקדם (לא בשימוש ב-v1)
+  createdAt   DateTime  @default(now())
+
+  @@index([employeeId])
 }
 
 model EmailLog {

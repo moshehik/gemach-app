@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
-import { buildMultiWordNameSql } from '@/lib/searchUtils';
+import { buildMultiWordNameSql, buildFuzzyNameSql } from '@/lib/searchUtils';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -24,13 +24,33 @@ export async function GET(request) {
     // נוסף ($4+) שדורש שכל מילה תימצא בשם הפרטי או המשפחה, בלי תלות בסדר -
     // ר' lib/searchUtils.js ודיווח "החיפוש במסך הבית גם כן לא עובד".
     const custNameWords = buildMultiWordNameSql(q, 4, '"firstName"', '"lastName"');
+    // Tier 2+3 fuzzy name matching (docs/smart-quick-search-plan-2026-09-27.md) -
+    // pg_trgm similarity + Hebrew phonetic key, so a spelling variant like
+    // שיינווטר surfaces when someone searches שיינועטר. Additive only - never
+    // hides the exact/multi-word matches above, just widens recall and ranks
+    // below them.
+    const custFuzzy = buildFuzzyNameSql(
+      q, 4 + (custNameWords ? custNameWords.params.length : 0),
+      '"firstName"', '"lastName"', '"firstNamePhoneticKey"', '"lastNamePhoneticKey"'
+    );
+
     const orderNameWords = buildMultiWordNameSql(q, 4, 'c."firstName"', 'c."lastName"');
+    const orderFuzzy = buildFuzzyNameSql(
+      q, 4 + (orderNameWords ? orderNameWords.params.length : 0),
+      'c."firstName"', 'c."lastName"', 'c."firstNamePhoneticKey"', 'c."lastNamePhoneticKey"'
+    );
 
     // Run the three independent searches concurrently instead of sequentially.
     const [customers, orders, rentals] = await Promise.all([
       // 1. Search Customers
       prisma.$queryRawUnsafe(`
-        SELECT * FROM "Customer"
+        SELECT *,
+          COALESCE(
+            "firstName" LIKE $1 OR "lastName" LIKE $1 OR phone1 LIKE $1 OR phone2 LIKE $1 OR city LIKE $1 OR id = $3
+            ${custNameWords ? `OR ${custNameWords.clauseSql}` : ''}
+          , false) AS "isExactMatch",
+          ${custFuzzy ? custFuzzy.scoreSql : '0'} AS "fuzzyScore"
+        FROM "Customer"
         WHERE "isDeleted" = false
         AND (
           "firstName" LIKE $1 OR
@@ -40,14 +60,25 @@ export async function GET(request) {
           city LIKE $1 OR
           id = $3
           ${custNameWords ? `OR ${custNameWords.clauseSql}` : ''}
+          ${custFuzzy ? `OR ${custFuzzy.clauseSql}` : ''}
         )
-        ORDER BY "updatedAt" DESC
+        ORDER BY "isExactMatch" DESC, "fuzzyScore" DESC NULLS LAST, "updatedAt" DESC
         LIMIT 50
-      `, likeQ, isNum ? numQ : -1, q, ...(custNameWords ? custNameWords.params : [])),
+      `, likeQ, isNum ? numQ : -1, q,
+        ...(custNameWords ? custNameWords.params : []),
+        ...(custFuzzy ? custFuzzy.params : [])),
 
       // 2. Search Orders
       prisma.$queryRawUnsafe(`
-        SELECT o.*, c."firstName", c."lastName", (SELECT COUNT(*) FROM "OrderItem" oi WHERE oi."orderId" = o."orderId" AND oi."isDeleted" = false) as "itemCount"
+        SELECT o.*, c."firstName", c."lastName",
+          (SELECT COUNT(*) FROM "OrderItem" oi WHERE oi."orderId" = o."orderId" AND oi."isDeleted" = false) as "itemCount",
+          COALESCE(
+            c."firstName" LIKE $1 OR c."lastName" LIKE $1 OR c.phone1 LIKE $1 OR
+            o."eventDateHebrew" LIKE $1 OR TO_CHAR(o."eventDate", 'DD/MM/YYYY') LIKE $1 OR TO_CHAR(o."eventDate", 'DD-MM-YYYY') LIKE $1 OR
+            o."orderId" = $2 OR o.id = $3
+            ${orderNameWords ? `OR ${orderNameWords.clauseSql}` : ''}
+          , false) AS "isExactMatch",
+          ${orderFuzzy ? orderFuzzy.scoreSql : '0'} AS "fuzzyScore"
         FROM "Order" o
         LEFT JOIN "Customer" c ON o."customerId" = c.id
         WHERE o."isDeleted" = false
@@ -61,10 +92,13 @@ export async function GET(request) {
           o."orderId" = $2 OR
           o.id = $3
           ${orderNameWords ? `OR ${orderNameWords.clauseSql}` : ''}
+          ${orderFuzzy ? `OR ${orderFuzzy.clauseSql}` : ''}
         )
-        ORDER BY o."orderId" DESC
+        ORDER BY "isExactMatch" DESC, "fuzzyScore" DESC NULLS LAST, o."orderId" DESC
         LIMIT 50
-      `, likeQ, isNum ? numQ : -1, q, ...(orderNameWords ? orderNameWords.params : [])),
+      `, likeQ, isNum ? numQ : -1, q,
+        ...(orderNameWords ? orderNameWords.params : []),
+        ...(orderFuzzy ? orderFuzzy.params : [])),
 
       // 3. Search Rentals (OrderItems / Dresses) — used by app/page.js's global search results
       // d."dressName"/d."barcodePrefix" are legacy, pre-migration fields (see schema.prisma) —

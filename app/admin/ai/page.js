@@ -274,7 +274,7 @@ export default function AIPage() {
               title="שלח"
               disabled={loading || !activeThreadId}
             >
-              <svg className="icon"><use href="#i-arrow-end" /></svg>
+              <svg className="icon"><use href="#i-arrow-start" /></svg>
             </button>
           </form>
         </div>

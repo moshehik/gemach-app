@@ -216,7 +216,7 @@ export default function TopbarSearch() {
             />
             <div className="search-toolbar-actions">
               <button type="submit" className="btn btn-primary btn-icon-only btn-sm" title="בצע החזרה" disabled={isReturning}>
-                <svg className="icon"><use href="#i-arrow-end" /></svg>
+                <svg className="icon"><use href="#i-arrow-start" /></svg>
               </button>
             </div>
           </form>
