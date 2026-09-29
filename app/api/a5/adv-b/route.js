@@ -13,7 +13,13 @@ import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
 export const dynamic = 'force-dynamic';
 
 const LIMIT = 200;
-const OTHER_DAYS_MAX = 45;
+const OTHER_DAYS_MAX = 31;
+const DAY_CONCURRENCY = 4; // ימי משלוח שנשאלים במקביל (כל יום = שאילתה אחת ב-getDeliveriesForDate)
+const CAPACITY_PAIRS_MAX = 30; // צמדי דגם/מידה לחישוב תפוסה (כל צמד = 3 שאילתות ב-/api/inventory/capacity); לדגם בודד יש עד ~26 מידות
+const CAPACITY_CONCURRENCY = 5;
+// חובות: קודם צמצום ב-SQL להזמנות שבהן שולם פחות מהסכום (אותו כלל כמו filterStatus=unpaid_all),
+// ואז טעינת המועמדות בלבד. טעינת 20,000 הזמנות עם תשלומים ופריטים לזיכרון נמדדה 32-45 שניות.
+const DEBT_CANDIDATES_MAX = 5000;
 
 const json = (body, status = 200) => NextResponse.json(body, { status });
 const isIso = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
@@ -117,12 +123,19 @@ async function deliveries(p, flags, ost, gaps) {
   const today = getIsraelTodayDate();
   const addD = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  // תאריכי חלון: אותה שאילתה בדיוק כמו GET /api/deliveries?date=
+  // תאריכי חלון: אותה שאילתה בדיוק כמו GET /api/deliveries?date=. כל יום נשאל פעם אחת בלבד
+  // (היום/מחר חוזרים גם בסוף הפונקציה) ובמקביל מוגבל - טווח "אחר" של 45 יום נמדד 80 שניות כשרץ יום-אחר-יום.
+  const dayCache = new Map(); // 'YYYY-MM-DD' -> Promise<Set<orderId>>
+  const dayIds = (d) => {
+    const k = iso(d);
+    if (!dayCache.has(k)) dayCache.set(k, getDeliveriesForDate(d).then((r) => new Set(r.data.map((row) => row.orderId))));
+    return dayCache.get(k);
+  };
   const daysOf = async (list) => {
     const out = new Map();
-    for (const d of list) {
-      const r = await getDeliveriesForDate(d);
-      for (const row of r.data) out.set(row.orderId, true);
+    for (let i = 0; i < list.length; i += DAY_CONCURRENCY) {
+      const sets = await Promise.all(list.slice(i, i + DAY_CONCURRENCY).map(dayIds));
+      for (const set of sets) for (const id of set) out.set(id, true);
     }
     return out;
   };
@@ -145,7 +158,7 @@ async function deliveries(p, flags, ost, gaps) {
   let candidate = null;
   if (statusSel) {
     candidate = new Map();
-    if (wanted.length) for (const d of wanted) { const m = await daysOf([d]); for (const k of m.keys()) candidate.set(k, true); }
+    if (wanted.length) { const m = await daysOf(wanted); for (const k of m.keys()) candidate.set(k, true); }
     if (candidate.size === 0) return { rows: [] };
   }
   const AND = commonOrderWhere(p);
@@ -256,10 +269,20 @@ async function finance(p, flags, gaps) {
   const rows = [];
 
   if (includeDebts) {
-    const AND = [...orderAND, { totalAmount: { gt: 0 } }];
+    // מועמדות בלבד: הזמנות לא-מחוקות עם סכום > 0 ששולם עליהן (תשלומים לא-מחוקים) פחות מהסכום, החדשות קודם.
+    // אותו כלל כמו orderDebt() למטה, שעדיין נבדק על כל שורה - ה-SQL רק מצמצם את מה שנטען.
+    const debtRows = await prisma.$queryRaw`
+      SELECT o."orderId" FROM "Order" o
+      LEFT JOIN "Payment" p ON p."orderId" = o."orderId" AND p."isDeleted" = false
+      WHERE o."isDeleted" = false AND COALESCE(o."totalAmount", 0) > 0
+      GROUP BY o."orderId", o."totalAmount", o."eventDate"
+      HAVING COALESCE(SUM(p."amount"), 0) < o."totalAmount"
+      ORDER BY o."eventDate" DESC NULLS LAST
+      LIMIT ${DEBT_CANDIDATES_MAX}`;
+    const AND = [...orderAND, { totalAmount: { gt: 0 } }, { orderId: { in: debtRows.map((r) => r.orderId) } }];
     if (adate) AND.push({ orderDate: { gte: adate.start, lte: adate.end } });
     const orders = await prisma.order.findMany({
-      where: { AND }, take: 20000,
+      where: { AND }, take: DEBT_CANDIDATES_MAX,
       select: { ...orderBase, items: { select: { isDeleted: true, isTaken: true, isReturned: true } } },
     });
     for (const o of orders) {
@@ -329,20 +352,29 @@ async function capacity(p, req, gaps) {
   if (!prefixes.length) return { rows: [], capstats: { stock: 0, busy: 0, res: 0 }, cols: ['שם', 'תאריך אירוע', 'כמות', 'טלפון'] };
   let sizes = s(p.size) ? [s(p.size)] : (await prisma.dressItem.findMany({ where: { barcodePrefix: { in: prefixes }, isDeleted: false, sizeText: { not: null } }, distinct: ['barcodePrefix', 'sizeText'], select: { barcodePrefix: true, sizeText: true } }));
   const pairs = s(p.size) ? prefixes.map((x) => [x, s(p.size)]) : sizes.map((x) => [x.barcodePrefix, x.sizeText]);
-  if (pairs.length > 60) return { error: 'יותר מדי דגמים/מידות תואמים - צמצמו את שם הדגם או הוסיפו מידה', status: 400 };
+  // כל צמד = 3 שאילתות (מלאי/רזרבה/תפוסה על כל פריטי ההזמנה של הדגם); 60 צמדים בזה-אחר-זה נמדדו
+  // למעלה משתי דקות - מעבר לכל timeout של Vercel. לכן תקרה נמוכה יותר וריצה במקביל מוגבל.
+  if (pairs.length > CAPACITY_PAIRS_MAX) return { error: 'יותר מדי דגמים/מידות תואמים - צמצמו את שם הדגם או הוסיפו מידה', status: 400 };
   const stats = { stock: 0, busy: 0, res: 0 };
   const occ = new Map();
-  for (const [prefix, size] of pairs) {
+  const capacityOf = async ([prefix, size]) => {
     const url = new URL('http://local/api/inventory/capacity');
     url.searchParams.set('barcodePrefix', String(prefix)); url.searchParams.set('size', size);
     url.searchParams.set('fromDate', from); url.searchParams.set('toDate', to);
     const res = await capacityGET(new Request(url)); // אותו endpoint וחישוב כמו הטופס החי
-    if (!res.ok) return { error: 'שגיאה בחישוב תפוסה', status: 500 };
-    const d = await res.json();
-    stats.stock += d.inStock; stats.busy += d.occupiedCount; stats.res += d.reserve;
-    for (const o of d.occupiedOrders || []) {
-      const cur = occ.get(o.orderId) || { ...o, quantity: 0 };
-      cur.quantity += o.quantity; occ.set(o.orderId, cur);
+    if (!res.ok) throw new Error('capacity ' + res.status);
+    return res.json();
+  };
+  for (let i = 0; i < pairs.length; i += CAPACITY_CONCURRENCY) {
+    let results;
+    try { results = await Promise.all(pairs.slice(i, i + CAPACITY_CONCURRENCY).map(capacityOf)); }
+    catch (e) { console.error('a5 capacity:', e?.message || e); return { error: 'שגיאה בחישוב תפוסה', status: 500 }; }
+    for (const d of results) {
+      stats.stock += d.inStock; stats.busy += d.occupiedCount; stats.res += d.reserve;
+      for (const o of d.occupiedOrders || []) {
+        const cur = occ.get(o.orderId) || { ...o, quantity: 0 };
+        cur.quantity += o.quantity; occ.set(o.orderId, cur);
+      }
     }
   }
   const ids = [...occ.keys()];

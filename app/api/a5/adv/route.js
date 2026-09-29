@@ -19,6 +19,13 @@ import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 export const dynamic = 'force-dynamic';
 
 const MAX_ROWS = 200;
+// Upper bound on the candidate rows loaded when a status can only be decided in JS ("התראה",
+// rs_/rt_ late/today/tomorrow). Without it, ticking such a status together with a broad one
+// (e.g. rt_all) pulled every non-deleted order with its items and customer into memory - measured
+// 61s on the TEST copy of the data - which on Vercel is a function timeout and on Neon burns the
+// shared compute quota. Newest events first, so the cut only ever drops the oldest candidates;
+// the response says `truncated` when it happened.
+const JS_SCAN_MAX = 3000;
 const ARR = (v) => (Array.isArray(v) ? v : []);
 const S = (v) => (typeof v === 'string' ? v.trim() : '');
 
@@ -361,9 +368,12 @@ async function focusOrders(adv, cfg, unsavedIds) {
   const where = { AND: conds };
   const orderBy = [{ eventDate: { sort: 'desc', nulls: 'last' } }];
   const jsFilter = ost.includes('alert');
-  let rows, total = null;
-  if (jsFilter) rows = await prisma.order.findMany({ where, orderBy, select: ORDER_SELECT });
-  else [rows, total] = await Promise.all([prisma.order.findMany({ where, orderBy, take: MAX_ROWS + 1, select: ORDER_SELECT }), prisma.order.count({ where })]);
+  let rows, total = null, scanTruncated = false;
+  if (jsFilter) {
+    rows = await prisma.order.findMany({ where, orderBy, take: JS_SCAN_MAX + 1, select: ORDER_SELECT });
+    scanTruncated = rows.length > JS_SCAN_MAX;
+    rows = rows.slice(0, JS_SCAN_MAX);
+  } else [rows, total] = await Promise.all([prisma.order.findMany({ where, orderBy, take: MAX_ROWS + 1, select: ORDER_SELECT }), prisma.order.count({ where })]);
 
   const paid = await paidMap(rows.map((o) => o.orderId));
   const ctx = ctxFor(cfg, paid, unsaved);
@@ -382,7 +392,7 @@ async function focusOrders(adv, cfg, unsavedIds) {
     });
   }
   if (total === null) total = rows.length;
-  const truncated = rows.length > MAX_ROWS;
+  const truncated = rows.length > MAX_ROWS || scanTruncated;
   const page = rows.slice(0, MAX_ROWS);
   const todayKey = ilKey(new Date()), tomorrowKey = addKey(todayKey, 1);
   const al = [];
@@ -465,9 +475,12 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const where = { AND: conds };
   const orderBy = [{ eventDate: { sort: 'desc', nulls: 'last' } }];
   const jsFilter = jsPreds.length > 0;
-  let rows, total = null;
-  if (jsFilter) rows = await prisma.order.findMany({ where, orderBy, select: ORDER_SELECT });
-  else [rows, total] = await Promise.all([prisma.order.findMany({ where, orderBy, take: MAX_ROWS + 1, select: ORDER_SELECT }), prisma.order.count({ where })]);
+  let rows, total = null, scanTruncated = false;
+  if (jsFilter) {
+    rows = await prisma.order.findMany({ where, orderBy, take: JS_SCAN_MAX + 1, select: ORDER_SELECT });
+    scanTruncated = rows.length > JS_SCAN_MAX;
+    rows = rows.slice(0, JS_SCAN_MAX);
+  } else [rows, total] = await Promise.all([prisma.order.findMany({ where, orderBy, take: MAX_ROWS + 1, select: ORDER_SELECT }), prisma.order.count({ where })]);
   if (jsFilter) {
     // הסינון המדויק (איחור / מועד החזרה עם דילוג שישי-שבת) ב-JS; מצבי הסטטוס שנבדקו ב-SQL מדויקים ולכן עוברים בלי JS
     const sqlOnly = (o) => {
@@ -483,7 +496,7 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
     rows = rows.filter((o) => sqlOnly(o) || jsPreds.some((f) => f(o)));
   }
   if (total === null) total = rows.length;
-  const truncated = rows.length > MAX_ROWS;
+  const truncated = rows.length > MAX_ROWS || scanTruncated;
   const page = rows.slice(0, MAX_ROWS);
   const paid = await paidMap(page.map((o) => o.orderId));
   const ctx = ctxFor(cfg, paid, unsaved);
