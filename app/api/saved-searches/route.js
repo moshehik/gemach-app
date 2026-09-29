@@ -8,6 +8,7 @@ import { checkAuth } from '@/lib/auth';
 // the employeeId derived from the auth_token cookie server-side - never a client-supplied
 // employee id, same as app/api/me/design-prefs/route.js. Phase 1 only saves a free-text
 // query (+ optional domain); filtersJson is reserved for a future advanced-search phase.
+const SAVED_SEARCH_LIMIT = 50;
 
 async function getEmployeeId() {
   const cookieStore = await cookies();
@@ -28,6 +29,7 @@ export async function GET() {
     const savedSearches = await prisma.savedSearch.findMany({
       where: { employeeId },
       orderBy: { createdAt: 'desc' },
+      take: SAVED_SEARCH_LIMIT,
     });
 
     return NextResponse.json({ savedSearches });
