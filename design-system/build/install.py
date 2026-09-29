@@ -242,7 +242,7 @@ def harvest_sprite(order_html, home_html):
     syms = collections.OrderedDict()
     for m in rx.finditer(order_html):
         # one symbol in the source reads id="i-sliders"viewBox=... (no space); browsers accept it, XML parsers do not
-        s = re.sub(r'^(<symbol[^>]*>)', lambda t: re.sub(r'"(?=[A-Za-z])', '" ', t.group(1)), m.group(0))
+        s = re.sub(r'^(<symbol[^>]*>)', lambda t: re.sub(r'"(?=[A-Za-z][\w:-]*=)', '" ', t.group(1)), m.group(0))
         syms.setdefault(m.group(1), s)
     home_ids = set(m.group(1) for m in rx.finditer(home_html))
     assert set(syms) == home_ids, ('sprite differs between the two pages', set(syms) ^ home_ids)
