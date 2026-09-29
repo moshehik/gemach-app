@@ -24,6 +24,7 @@ import path from 'path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runOfflineSync } from '@/lib/offlineSync';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { hebrewPhoneticKey } from '@/lib/hebrewPhonetic';
 
 // Tracks the active interactive-transaction client (if any) for the current
 // async execution context, so writes made inside `prisma.$transaction(async tx => ...)`
@@ -82,6 +83,57 @@ export async function getActingEmployeeId() {
   }
 }
 
+// ---- Phonetic keys for Customer / Employee names, computed on write ----
+// Tier 3 of the spelling-tolerant search (lib/searchUtils.js, app/api/global-search) matches on
+// Customer/Employee.firstNamePhoneticKey / lastNamePhoneticKey. Those columns were backfilled once
+// (scratch/backfill_phonetic_keys.js); this keeps them current for every row created or renamed
+// afterwards, through the one client every route uses. It calls the exact same function as the
+// backfill and the query side, so stored keys always agree with what the search computes -
+// including null for empty / non-Hebrew names. A write that does not touch a name field leaves
+// its key untouched. Skipped in offline mode: prisma/schema.local.prisma has no such columns, and
+// rows synced back to Postgres pass through this same hook on the cloud client anyway.
+const PHONETIC_FIELDS = [
+  ['firstName', 'firstNamePhoneticKey'],
+  ['lastName', 'lastNamePhoneticKey'],
+];
+
+// A scalar in Prisma write data is either the plain value (create) or `{ set: value }` (update).
+function readWriteScalar(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'set' in value) return value.set;
+  return value;
+}
+
+function addPhoneticKeys(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+  let out = data;
+  for (const [nameField, keyField] of PHONETIC_FIELDS) {
+    if (!(nameField in data)) continue;
+    const raw = readWriteScalar(data[nameField]);
+    if (raw !== null && raw !== undefined && typeof raw !== 'string') continue;
+    if (out === data) out = { ...data };
+    out[keyField] = hebrewPhoneticKey(raw);
+  }
+  return out;
+}
+
+function withPhoneticKeys(operation, args) {
+  if (!args || typeof args !== 'object') return args;
+  switch (operation) {
+    case 'create':
+    case 'update':
+    case 'createMany':
+    case 'createManyAndReturn':
+    case 'updateMany':
+    case 'updateManyAndReturn':
+      if (!('data' in args)) return args;
+      return { ...args, data: Array.isArray(args.data) ? args.data.map(addPhoneticKeys) : addPhoneticKeys(args.data) };
+    case 'upsert':
+      return { ...args, create: addPhoneticKeys(args.create), update: addPhoneticKeys(args.update) };
+    default:
+      return args;
+  }
+}
+
 const createPrismaClient = (url) => {
   const baseClient = (url && process.env.IS_OFFLINE_MODE !== 'true')
     ? new PrismaClient({ datasources: { db: { url } } })
@@ -109,6 +161,13 @@ const createPrismaClient = (url) => {
             return query(args);
           }
 
+          // מפתחות פונטיים ללקוחות/עובדים מחושבים בכתיבה (ר' withPhoneticKeys למעלה). originalArgs
+          // נשמר כדי שרישום ההיסטוריה של update ימשיך להראות רק את מה שהקורא ביקש לשנות.
+          const originalArgs = args;
+          if ((model === 'Customer' || model === 'Employee') && process.env.IS_OFFLINE_MODE !== 'true') {
+            args = withPhoneticKeys(operation, args);
+          }
+
           if (['create', 'update', 'delete'].includes(operation)) {
              const employeeId = await getActingEmployeeId();
 
@@ -123,7 +182,7 @@ const createPrismaClient = (url) => {
              if (named && named.changes) {
                changesJson = JSON.stringify(named.changes);
              } else if (operation === 'update') {
-               changesJson = JSON.stringify(args.data || {});
+               changesJson = JSON.stringify(originalArgs.data || {});
              } else if (operation === 'create') {
                changesJson = JSON.stringify(result || {});
              } else if (operation === 'delete') {
@@ -182,7 +241,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 6;
+const CLIENT_SETUP_VERSION = 7;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {
