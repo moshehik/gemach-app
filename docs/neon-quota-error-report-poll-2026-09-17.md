@@ -100,7 +100,7 @@ const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' &&
    כשאין `SystemSetting` — ור' `scripts/cloud_backup.js:330-345`) מריץ dump מלא
    נוסף על מסד הגמ"ח הראשי בחשבון ב' — תעבורה/compute מבוזבזים בכל ריצה, על
    חשבון נפרד מזה שתוקן כאן. **לא נגעתי בזה** — זו עבודה פעילה ומתועדת (ר'
-   `CLAUDE.md` סעיף "Cloud backup to Drive — code complete, GAS deployment blocked
+   `docs/journal-2026.md` סעיף "Cloud backup to Drive — code complete, GAS deployment blocked
    on an open decision") עם החלטת ארכיטקטורה פתוחה על ה-GAS, ויש שינויים
    לא-committed על הקבצים האלה בעץ המשותף כרגע. אם רוצים לעצור את הדימום המיידי
    בלי לפתור את כל הסוגיה: לכבות `backup_enabled=false` ל-org1 ב-`/admin/backups`

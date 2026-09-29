@@ -74,7 +74,7 @@ once its own "am I actually needed right now" check can get stuck permanently an
 Now that uploads work, this specific case is resolved - but as defense-in-depth against the exact
 same waste pattern if some *other* future failure ever gets a run stuck below `ok` again, the
 `schedule` trigger was reduced to once daily (`cron: '0 1 * * *'`, ~03:00-04:00 Israel time
-depending on DST - see the agent-digest cron entry in [CLAUDE.md](CLAUDE.md) for why a fixed UTC
+depending on DST - see the agent-digest cron entry in [docs/journal-2026.md](docs/journal-2026.md) for why a fixed UTC
 anchor drifts seasonally, same accepted trade-off here). A stuck run can now waste at most one
 extra full dump per day, not up to 96.
 
@@ -93,7 +93,7 @@ immediately, independent of both the schedule and the interval setting.
 
 Merged to `main` on 2026-09-16 ([PR #85](https://github.com/moshehik/gemach-app/pull/85)) still
 routing through the org's own mailer GAS project (`email_link_a`) - but every run failed at the
-final upload step, because (see the "Cloud backup to Drive" entry in [CLAUDE.md](CLAUDE.md) for
+final upload step, because (see the "Cloud backup to Drive" entries in [docs/journal-2026.md](docs/journal-2026.md) for
 the full investigation) the live mailer script doesn't actually have any Drive-upload code
 deployed, only `MailApp` email sending, which hit `Limit Exceeded: Email Total Attachments Size`
 on every attempt; org2 was skipped outright (no GAS URL configured for it at all).
@@ -264,7 +264,7 @@ node scripts/backup_prod_db.js
 Always attempts org1 first, then org2 - a problem with one org doesn't stop the other's backup.
 Org2 needs `DATABASE_URL_ORG2` or `PROD_DATABASE_URL_ORG2` in `.env.local`/`.env` (see
 `scratch/new_gemach_db.env` for org2's current live DB pointer if you need to add/refresh it -
-that pointer moves whenever org2's DB host changes, see CLAUDE.md's Neon-cutover notes).
+that pointer moves whenever org2's DB host changes, see the Neon-cutover entry in docs/journal-2026.md).
 
 ### Provisioning this layer on a machine (or a replacement machine)
 
