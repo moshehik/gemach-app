@@ -2568,6 +2568,27 @@ body.home-bg::before{content:"";position:fixed;top:0;bottom:0;left:0;right:0;z-i
 .hero .cmode-b{height:33px;padding:0 18px;font-size:12px;font-weight:600;border-radius:999px;background:var(--navy);color:#fff;border:1.5px solid #fff;box-shadow:0 3px 8px -4px rgba(15,44,82,.35)}
 .hero .cmode-b:hover,.hero .cmode-b:focus-visible{background:var(--gold-rich-c);color:#000;border-color:#000;box-shadow:0 4px 10px -4px rgba(15,44,82,.4)}
 @media (max-width:479px){.hero .scan input{font-size:16px}}
+/* טריגרים @/#/$ בשורת החיפוש הראשית (חלק 2, docs/smart-quick-search-plan-2026-09-27.md) - חלונית נגללת/הדגשה
+   בזהב זהה בכוונה ל-.advp .advlist/.advo (חיפוש מתקדם, למעלה); כפולה כאן כי אלה מסוגננות תחת הורה .advp
+   שלא קיים בשורת החיפוש הראשית של עמוד הבית. ר' qpicOpen/qpicPaint ב-JS. */
+.hero .scan{position:relative}
+.hero .qlist{position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:40;max-height:280px;overflow-y:auto;margin:0;padding:6px 4px 6px 6px;list-style:none;direction:ltr;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);border:1px solid rgba(15,44,82,.14);border-radius:18px;box-shadow:0 24px 50px -16px rgba(15,44,82,.5),0 2px 8px rgba(15,44,82,.08),inset 0 1px 0 #fff;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c9a227 transparent;animation:advListIn .18s cubic-bezier(.22,1,.36,1)}
+.hero .qlist::-webkit-scrollbar{width:6px}
+.hero .qlist::-webkit-scrollbar-button{display:none;width:0;height:0}
+.hero .qlist::-webkit-scrollbar-track{background:transparent;margin-block:10px}
+.hero .qlist::-webkit-scrollbar-thumb{border-radius:999px;background:linear-gradient(180deg,#e8ca5e,#b8912f)}
+.hero .qlist::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#d9b84a,#9a7a1f)}
+.hero .qo-h{direction:rtl;position:sticky;top:0;z-index:1;padding:10px 14px 8px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink3);background:linear-gradient(180deg,rgba(255,255,255,.98) 70%,rgba(255,255,255,0));pointer-events:none}
+.hero .qo-load{direction:rtl;display:flex;align-items:center;justify-content:center;gap:10px;padding:20px 14px;color:var(--ink2);font-size:14px}
+.hero .qo{direction:rtl;text-align:start;display:flex;align-items:center;gap:10px;padding:10px 14px;margin-block:1px;border-radius:12px;color:var(--navy-900);font-size:15px;cursor:pointer;line-height:1.35;transition:background-color 120ms,transform 120ms}
+.hero .qo::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--sky-300);transition:background-color 120ms,transform 120ms}
+.hero .qo:hover,.hero .qo.act{background:linear-gradient(90deg,rgba(241,220,143,.42),rgba(247,236,196,.3));transform:translateX(-2px)}
+.hero .qo:hover::before,.hero .qo.act::before{background:var(--gold);transform:scale(1.5)}
+.hero .qo mark{background:transparent;color:var(--gold-d);font-weight:700}
+.hero .qo .qo-sub{display:block;font-size:12px;color:var(--ink3);margin-top:2px}
+.hero .qo.none{color:var(--ink3);cursor:default;justify-content:center}
+.hero .qo.none::before{display:none}
+.hero .qo.none:hover{background:transparent;transform:none}
 </style>
 </head>
 <body>
@@ -3853,6 +3874,9 @@ function syncFooter(){
   mountSiteFooter($('#siteFoot'), { name: f.name || 'גמ״ח שמלות', ver: f.ver, date: f.date, groups });
 }
 function render(){
+  /* render() מחליף את כל ה-DOM כולל #sq עצמו - כל בורר טריגר פתוח (qpicOpen) חייב להיסגר לפני זה,
+     אחרת QPX נשאר מצביע על רשימה/תיבה שכבר לא קיימות (למשל אחרי לחיצה על "ניקוי" בזמן שהבורר פתוח) */
+  if (typeof qpicClose === 'function') qpicClose();
   syncTopBar(); syncFooter();
   /* remember where the search bar and greeting were, so the change of state can glide instead of jump */
   const oldScan = document.querySelector('.hero .scan'), r0 = oldScan && oldScan.getBoundingClientRect();
@@ -4478,6 +4502,152 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); advListClose(); }
 }, true);
 
+/* =========================================================
+   טריגרים @/#/$ בתיבת החיפוש הראשית (חלק 2, docs/smart-quick-search-plan-2026-09-27.md).
+   פועלים רק כתו ראשון בתיבה ריקה/שרק נוקתה (החלטת הבעלים 27.9.2026) - לא באמצע טקסט קיים; הבדיקה
+   פשוט בודקת את הערך הנוכחי (v.length===1 && טריגר), בלי תלות בהיסטוריה - נכון תמיד לפי ההגדרה.
+   מנגנון החלונית הנגללת/הדגשה בזהב מכוון-בכוונה להיות זהה למנגנון ה-advList למעלה (הצעות לשדות החיפוש
+   המתקדם) - אותה תבנית בדיוק (qpicOpen/qpicPaint/qpicPick/qpicMove תואמות ל-advListOpen/Paint/Pick/Move),
+   רק עם CSS נפרד (.qlist/.qo) כי .advlist מסוגנן תחת הורה .advp שלא קיים כאן. ========================= */
+let QPX = { type:null, list:null, act:-1, raw:null, items:[] };
+const TRIGGERS = { '@':'recent', '#':'actions', '$':'saved' };
+const TRIG_TITLE = { '@':'חיפושים אחרונים', '#':'פעולות מהירות', '$':'חיפושים שמורים' };
+
+/* --- @ חיפושים אחרונים: התכנית מבקשת מקור שרת אמיתי פר-עובד (SearchHistory) - "בשונה מרשימת 'נצפו
+   לאחרונה' הקיימת (agy_history), ש-@ עוקב אחרי *שאילתות שהוקלדו*, לא ישויות שנלחצו" - ובכוונה לא
+   localStorage, בדיוק כי עמדות עבודה כאן משותפות בין כמה עובדות (ר' "מודל נתונים" בתכנית).
+   GET /api/search-history עדיין לא קיים ב-worktree הזה (נבדק: אין app/api/search-history תחת app/api/).
+   STUB: מערך קבוע קטן, רק כדי לבדוק בדפדפן שהסינון/ההדגשה עובדים - לא חיפושים אמיתיים של אף עובדת.
+   TODO: להחליף ב-await api('/api/search-history?limit=20') (ולמחוק את המערך) ברגע שה-endpoint קיים. */
+const RECENT_SEARCHES_STUB = ['כהן', 'שיינועטר', 'הזמנה 18342', 'שמלת כלה מידה 40', 'מלכה - ירושלים', 'רחל ברקוביץ'];
+async function fetchRecentSearches(){ return RECENT_SEARCHES_STUB.slice(0, 20); }
+
+/* --- $ חיפושים שמורים: התכנית קובעת שני שלבים (החלטת הבעלים 27.9.2026) - קודם כפתור "שמור חיפוש" (לא
+   קיים עדיין בשום מקום), ורק אז הרשימה כאן. אין עדיין טבלה/endpoint (נבדק: אין app/api/saved-searches,
+   ואין SavedSearch ב-prisma/schema.prisma) - מישהו אחר בונה את זה במקביל בצ'קאאוט הראשי לפי התכנית.
+   יום ראשון אמיתי = רשימה ריקה עד שכפתור "שמור חיפוש" קיים, ולכן ה-stub הוא רשימה ריקה (לא מוק) - בדיוק
+   המצב שיהיה בפועל, כולל הודעת "אין עדיין חיפושים שמורים" (נוסח מהתכנית).
+   TODO: להחליף ב-await api('/api/saved-searches') ברגע שכפתור "שמור חיפוש" וה-endpoint קיימים. */
+async function fetchSavedSearches(){ return []; }
+
+/* --- # פעולות מהירות: רשימה קבועה, מסוננת לפי הרשאה - אותה מוסכמה בדיוק כמו advCan/advIsMgr למעלה
+   (roleId מ-BOOT.employee/S.role; בדיקת תצוגה בצד הלקוח בשלב הזה, בדיוק כמו advCan עצמו - לא endpoint
+   חדש). הרשימה עצמה כמו בתכנית: 5 פעולות גלויות לכולן + דוגמה אחת לפעולה ניהולית (הנהלה בלבד), כדי
+   להוכיח בפועל שהשכבה מסננת ולא רק מתעדת. */
+const QUICK_ACTIONS = [
+  { key:'new-order', label:'הזמנה חדשה', icon:'plus',
+    href:() => A5.shell.navHref('הזמנה חדשה') || '/orders/new' },
+  { key:'drafts', label:'טיוטות', icon:'pencil', sub:() => draftsCountLabel(),
+    /* אין ב-/orders (או בכל route אחר בקוד היום) query-param שמסנן רק טיוטות - נבדק, אין
+       searchParams.get בעמוד ההזמנות. listOrderDrafts() עצמה (app/lib/orderDrafts.js) קוראת
+       localStorage פר-עמדה, לא route עם פרמטר - פותח את רשימת ההזמנות המלאה, ששם שורת טיוטה כבר
+       צבועה (תכונה קיימת); המונה כאן (draftsCountLabel) קורא לאותו localStorage prefix ישירות. */
+    href:() => A5.shell.navHref('רשימת הזמנות') || '/orders' },
+  { key:'orders-today', label:'הזמנות של היום', icon:'cal',
+    /* אין route/query-param אמיתי ל"הזמנות של היום" - מפעיל את החיפוש המתקדם האמיתי של אב-הטיפוס עצמו
+       (תחום הזמנות, תאריך אירוע = היום) מול אותו /api/a5/adv כמו כל חיפוש מתקדם אחר - לא ניווט חיצוני */
+    run:() => runAdvToday() },
+  { key:'unpaid', label:'ממתינים לתשלום', icon:'wallet',
+    /* אין דגל "ממתינים לתשלום" נפרד בחיפוש המתקדם היום - "חובות" (ORD_CHECK) הוא הקרוב ביותר שקיים בפועל */
+    run:() => runAdvFlag('orders', 'debts', 'חובות') },
+  { key:'returns-today', label:'החזרות להיום', icon:'undo', run:() => runAdvFlag('returns', 'rt_today', 'החזרה: היום') },
+  { key:'settings', label:'הגדרות מערכת', icon:'gear', mgr:'head',
+    /* דוגמה לפעולה ניהולית שהתכנית מבקשת - "דוחות/הגדרות" גלויים רק לתפקידים מתאימים */
+    href:() => A5.shell.navHref('הגדרות מערכת') || '/admin/settings' },
+];
+const quickActionAllowed = a => !a.mgr || (a.mgr === 'head' ? isHead() : advIsMgr());
+const quickActionsFor = () => loggedIn() ? QUICK_ACTIONS.filter(quickActionAllowed) : [];
+function draftsCountLabel(){
+  try {
+    let n = 0;
+    for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.indexOf('gemachOrderDraft:') === 0) n++; }
+    return n ? n + ' טיוטות ממתינות' : 'אין טיוטות פתוחות כרגע';
+  } catch (e) { return ''; }
+}
+const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+function runAdvToday(){
+  const iso = todayIso();
+  ADV = ADV0(); ADV.focus = 'orders'; ADV.from = iso; ADV.to = iso;
+  ADV_SRC = true; S.advFocus = 'orders'; S.advSum = { label:ADV_FOCI.orders.label, text:'תאריך אירוע ' + hebTxt(iso) };
+  qpicClose(); doSearch('', { adv:true });
+}
+function runAdvFlag(focus, ostVal, label){
+  ADV = ADV0(); ADV.focus = focus; ADV.ost = [ostVal];
+  ADV_SRC = true; S.advFocus = focus; S.advSum = { label:ADV_FOCI[focus].label, text:label };
+  qpicClose(); doSearch('', { adv:true });
+}
+
+function qpicClose(){
+  if (QPX.list) QPX.list.remove();
+  const el = $('#sq');
+  if (el){ el.removeAttribute('aria-controls'); el.removeAttribute('aria-expanded'); el.removeAttribute('aria-activedescendant'); if (el.getAttribute('role') === 'combobox') el.removeAttribute('role'); }
+  QPX = { type:null, list:null, act:-1, raw:null, items:[] };
+}
+async function qpicOpen(type){
+  const el = $('#sq'); if (!el) return;
+  qpicClose();
+  const ul = document.createElement('ul');
+  ul.className = 'qlist'; ul.id = 'qlist'; ul.setAttribute('role', 'listbox'); ul.setAttribute('aria-label', TRIG_TITLE[type]);
+  el.closest('.scan').appendChild(ul);
+  QPX = { type, list:ul, act:-1, raw:null, items:[] };
+  el.setAttribute('role', 'combobox'); el.setAttribute('aria-autocomplete', 'list'); el.setAttribute('aria-controls', 'qlist'); el.setAttribute('aria-expanded', 'true');
+  ul.innerHTML = `<li class="qo-load" role="status" aria-live="polite">${ic('search','lg')}<span>טוענים…</span></li>`;
+  const raw = type === '#' ? quickActionsFor().map(a => ({ v:a.key, t:a.label, sub:a.sub && a.sub() }))
+    : (await (type === '@' ? fetchRecentSearches() : fetchSavedSearches())).map(x => typeof x === 'string' ? { v:x, t:x } : { v:x.query, t:x.label });
+  if (QPX.list !== ul) return; /* המשתמשת כבר סגרה/עברה למצב אחר עד שהתשובה חזרה */
+  QPX.raw = raw; qpicPaint();
+}
+function qpicPaint(){
+  const ul = QPX.list; if (!ul) return;
+  const q = (($('#sq') || {}).value || '').slice(1).trim();
+  const hl = t => { const i = q ? t.indexOf(q) : -1; return i < 0 ? esc(t) : esc(t.slice(0, i)) + '<mark>' + esc(t.slice(i, i + q.length)) + '</mark>' + esc(t.slice(i + q.length)); };
+  const items = q ? QPX.raw.filter(x => x.t.includes(q)) : QPX.raw;
+  QPX.items = items; QPX.act = -1;
+  const emptyMsg = QPX.type === '$' ? 'אין עדיין חיפושים שמורים' : QPX.type === '@' ? 'אין עדיין חיפושים אחרונים' : 'אין פעולות מהירות שתואמות';
+  ul.innerHTML = `<li class="qo-h">${esc(TRIG_TITLE[QPX.type])}</li>` +
+    (items.length ? items.map((x, i) => `<li role="option" id="qo${i}" class="qo" data-i="${i}"><span class="advo-t">${hl(x.t)}${x.sub ? `<small class="qo-sub">${esc(x.sub)}</small>` : ''}</span></li>`).join('')
+      : `<li class="qo none" role="presentation">${emptyMsg}</li>`);
+}
+function qpicPick(i){
+  const it = QPX.items[i], type = QPX.type; if (!it) return;
+  if (type === '#'){
+    const act = QUICK_ACTIONS.find(a => a.key === it.v); qpicClose();
+    const el = $('#sq'); if (el) el.value = ''; S.q = ''; /* אחרי בחירת פעולה התיבה חוזרת ריקה - זו לא הרצת חיפוש טקסט */
+    if (act && act.run) act.run(); else if (act){ const h = act.href(); if (h) location.href = h; }
+    return;
+  }
+  qpicClose(); const el = $('#sq'); if (el) el.value = it.v; S.q = it.v; doSearch(it.v);
+}
+function qpicMove(d){
+  const ul = QPX.list; if (!ul) return; const os = [...ul.querySelectorAll('.qo[data-i]')]; if (!os.length) return;
+  QPX.act = (QPX.act + d + os.length) % os.length;
+  os.forEach((o, i) => o.classList.toggle('act', i === QPX.act));
+  const a = os[QPX.act]; a.scrollIntoView({ block:'nearest' }); const el = $('#sq'); if (el) el.setAttribute('aria-activedescendant', a.id);
+}
+document.addEventListener('input', e => {
+  if (e.target.id !== 'sq') return;
+  /* בודקים רק את התו הראשון של הערך *הנוכחי* (לא היסטוריית הקשות) - זה גם ממש ל"טריגר רק כתו ראשון
+     בתיבה ריקה/שרק נוקתה" וגם עמיד להדבקה/מילוי-אוטומטי שמחליפים את כל הערך במכה אחת (לא רק הקשה-הקשה) */
+  const v = e.target.value;
+  const trig = v && TRIGGERS[v[0]] ? v[0] : null;
+  if (!trig || !loggedIn()){ if (QPX.type) qpicClose(); return; } /* מחיקה אחורה עד לפני הטריגר, או טקסט שלא מתחיל בו */
+  if (QPX.type !== trig){ qpicOpen(trig); return; } /* פתיחה ראשונה, או מעבר ישיר מטריגר לטריגר אחר */
+  qpicPaint();
+});
+document.addEventListener('mousedown', e => {
+  const o = e.target.closest && e.target.closest('.qo[data-i]');
+  if (o){ e.preventDefault(); qpicPick(+o.dataset.i); return; }
+  if (QPX.type && !(e.target.closest && e.target.closest('.qlist')) && e.target.id !== 'sq') qpicClose();
+}, true);
+document.addEventListener('focusout', e => { if (QPX.type && e.target.id === 'sq') setTimeout(() => { if (!document.activeElement || document.activeElement.id !== 'sq') qpicClose(); }, 120); });
+document.addEventListener('keydown', e => {
+  if (!QPX.type || e.target.id !== 'sq') return;
+  if (e.key === 'ArrowDown'){ e.preventDefault(); e.stopImmediatePropagation(); qpicMove(1); }
+  else if (e.key === 'ArrowUp'){ e.preventDefault(); e.stopImmediatePropagation(); qpicMove(-1); }
+  else if (e.key === 'Enter' && QPX.act >= 0){ e.preventDefault(); e.stopImmediatePropagation(); qpicPick(QPX.act); }
+  else if (e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); qpicClose(); }
+}, true);
+
 /* בורר תאריכים עבריים בלבד: כל תאריך בחיפוש המתקדם (אירוע, טווחים) מוצג ונבחר בלוח עברי. הערך נשמר פנימית כתאריך לועזי (ISO) */
 const DP_HEB = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day:'numeric', year:'numeric' });
 const DP_MON = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { month:'long' });
@@ -4804,7 +4974,12 @@ document.addEventListener('keydown', e => {
 }, true);
 document.addEventListener('submit', e => {
   e.preventDefault();
-  if (e.target.id === 'sForm') doSearch($('#sq').value);
+  if (e.target.id === 'sForm'){
+    /* Enter בזמן שהבורר פתוח בלי בחירת חץ מפורשת (QPX.act===-1, למשל הקלדה ומיד Enter) - בוחר את הפריט
+       הראשון המסונן, כמו typeahead רגיל; לא מריצים חיפוש טקסט על "@משהו"/"#משהו" עצמו */
+    if (QPX.type){ if (QPX.items && QPX.items.length) qpicPick(0); return; }
+    doSearch($('#sq').value);
+  }
   if (e.target.id === 'fuForm') followUp($('#fuQ').value);
 });
 let rsz; addEventListener('resize', () => { clearTimeout(rsz); rsz = setTimeout(() => { if (S.page === 'dash') drawTrend(); }, 150); });
