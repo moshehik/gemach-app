@@ -105,7 +105,7 @@ const createPrismaClient = (url) => {
             delete args.__audit;
           }
 
-          if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift' || model === 'BackupRun') {
+          if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift' || model === 'BackupRun' || model === 'SearchHistory' || model === 'SavedSearch') {
             return query(args);
           }
 
