@@ -48,17 +48,16 @@
 
 | ענף | מה יש בו | מצב |
 |---|---|---|
-| `feature/a5-clean-2026-09-29` | שחזור נקי של העבודה שאינה עיצוב מ-`feature/a5-home-dashboard-real`: חיפוש עמיד לאיות עברי (`lib/hebrewPhonetic.js`, `lib/searchUtils.js`, המודלים `SearchHistory`/`SavedSearch`, `/api/saved-searches`, `/api/search-history`, התכנית ב-`docs/smart-quick-search-plan-2026-09-27.md`); מפתחות API `gmk_` לכניסה בלי סיסמה (`/admin/site-settings/api-keys`, `/api/auth/api-key-login`, `lib/apiKeys.js`, טבלת `ApiKey`); דף הבית A5 מחובר לנתוני אמת (`public/a5/index.html` + `/api/a5/*`, טריגרים `@`/`#`/`$` בשורת החיפוש); ותקרה של 50 לרשימת החיפושים השמורים | בעבודה (עץ `wt-a5-clean`) |
-| `chore/v3-cleanup-2026-09-29` | הסרת מסלול התצוגה `/design-preview` וקובצי הסקיצות; התקנת פלטת הרכיבים כ-`design-system/` (+ `/design-system/`, אריח ב-`/admin/site`) | בעבודה (עץ `wt-cleanup-0929`) |
-| `docs/overhaul-2026-09-29` | ארגון מחדש של התיעוד | עץ `wt-docs-0929` |
+| `feature/a5-clean-2026-09-29` | שחזור נקי של העבודה שאינה עיצוב מ-`feature/a5-home-dashboard-real`: חיפוש עמיד לאיות עברי (`lib/hebrewPhonetic.js`, `lib/searchUtils.js`, המודלים `SearchHistory`/`SavedSearch`, `/api/saved-searches`, `/api/search-history`, התכנית ב-`docs/smart-quick-search-plan-2026-09-27.md`); מפתחות API `gmk_` לכניסה בלי סיסמה (`/admin/site-settings/api-keys`, `/api/auth/api-key-login`, `lib/apiKeys.js`, טבלת `ApiKey`); דף הבית A5 מחובר לנתוני אמת (`public/a5/index.html` + `/api/a5/*`, טריגרים `@`/`#`/`$` בשורת החיפוש); ותקרה של 50 לרשימת החיפושים השמורים | מוכן ל-PR (עץ `wt-a5-clean`), נדחף ל-origin |
+| `chore/v3-cleanup-2026-09-29` | הסרת מסלול התצוגה `/design-preview` וקובצי הסקיצות; התקנת פלטת הרכיבים כ-`design-system/` (+ `/design-system/`, אריח ב-`/admin/site`); כולל את `docs/overhaul-2026-09-29` (מוזג פנימה) | PR ל-main (עץ `wt-cleanup-0929`) |
+| `docs/overhaul-2026-09-29` | ארגון מחדש של התיעוד | מוזג לתוך `chore/v3-cleanup-2026-09-29` |
 | PR #188 — `security/redact-visitlog-request-bodies` | לא לשמור פרטי התחברות מגוף הבקשה ב-`PageVisitLog` | PR פתוח |
 | PR #177 — `fix/new-order-redirect-hang-and-double-approval` | ספינר אינסופי אחרי שמירת הזמנה חדשה כשההפניה היא לאותו מסלול + אישור מנהל כפול | PR פתוח |
 
 ### לפני פריסה של `feature/a5-clean-2026-09-29`
 
-הענף מוסיף טבלאות ועמודות. **לפני שהוא נפרס**, הטבלאות `SearchHistory` ו-`SavedSearch` ועמודות ה-phonetic (`firstNamePhoneticKey`, `lastNamePhoneticKey` ב-`Customer` וב-`Employee`) חייבות להתקיים **בשני מסדי הייצור** (הגמ"ח הראשי ונווה יעקב) — אחרת Prisma יבקש עמודות שאינן קיימות, ושאילתות על לקוחות ועובדים ייכשלו (P2022) בשני הגמחים. טבלת `ApiKey` כבר קיימת בשני מסדי הייצור (נוצרה 2026-09-28). אחרי המיזוג יש להוסיף ל-CLAUDE.md את `SearchHistory`/`SavedSearch` לרשימת המודלים שמוחרגים מרישום ההיסטוריה (הענף מוסיף אותם ל-`app/lib/prisma.js`).
+הענף מוסיף טבלאות ועמודות (`SearchHistory`, `SavedSearch`, עמודות ה-phonetic `firstNamePhoneticKey`/`lastNamePhoneticKey` ב-`Customer` וב-`Employee`, אינדקסי trigram, הרחבת `pg_trgm`, וטבלת `ApiKey`). **נבדק ב-2026-09-29 (שאילתות קריאה בלבד על information_schema):** כל אלה **כבר קיימים בשני מסדי הייצור** — org1 (הגמ"ח הראשי) ו-org2 (נווה יעקב), כולל אינדקסים ומפתחות זרים — ולכן **אין צורך ב-DDL לפני הפריסה**. במסד ה-TEST הם נוצרו באותו יום. עמודות phonetic ריקות בייצור הן של שמות שאינם בעברית (ריק בכוונה). הענף גם סוגר פער שנמצא בבדיקה: המפתחות הפונטיים מחושבים עכשיו בכל כתיבה של לקוח/עובד (קודם רק סקריפט backfill מילא אותם). אחרי המיזוג יש להוסיף ל-CLAUDE.md את `SearchHistory`/`SavedSearch` לרשימת המודלים שמוחרגים מרישום ההיסטוריה (הענף מוסיף אותם ל-`app/lib/prisma.js`).
 
-- TODO(owner): מצב ה-DDL במסדי הייצור לפי דוח סוכן השחזור — org1 (הגמ"ח הראשי): ______ ; org2 (נווה יעקב): ______
 - **קונפליקט צפוי ב-`CLAUDE.md`:** הענף מוסיף בסוף `CLAUDE.md` סעיף מתוארך "API keys - login without username/password (2026-09-28)", ואילו `docs/overhaul-2026-09-29` מקצר את `CLAUDE.md`. בפתרון הקונפליקט לוקחים את `CLAUDE.md` החדש (העובדות הקבועות על מפתחות ה-API כבר נמצאות בו, בסעיף "API keys"), ומעבירים את הסעיף המתוארך ליומן `docs/journal-2026.md` לפי התאריך — עם הערה שטבלת `ApiKey` כבר נוצרה בשני מסדי הייצור (בסעיף עצמו כתוב שעדיין לא).
 
 ### ענפים ועצי עבודה נוספים שעדיין קיימים (לא חלק מהניקוי — לבדיקת בעל המערכת)
