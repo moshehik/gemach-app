@@ -424,7 +424,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
         {loading ? (
           <span className="spinner" />
         ) : (
-          <svg data-element-name="רכיב_LoginScreen_11" className="icon"><use href="#i-arrow-end" /></svg>
+          <svg data-element-name="רכיב_LoginScreen_11" className="icon"><use href="#i-arrow-start" /></svg>
         )}
         היכנס למערכת
       </button>

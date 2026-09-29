@@ -1194,7 +1194,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 onClick={handleBypassCreditPayment}
                 style={{ color: 'var(--warning)', marginInlineEnd: 'auto' }}
               >
-                <svg className="icon"><use href="#i-arrow-end" /></svg>
+                <svg className="icon"><use href="#i-arrow-start" /></svg>
               </button>
               <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</button>
               <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={handleProcessCreditCard}>
