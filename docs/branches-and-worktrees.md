@@ -49,7 +49,7 @@
 | ענף | מה יש בו | מצב |
 |---|---|---|
 | `feature/a5-clean-2026-09-29` | שחזור נקי של העבודה שאינה עיצוב מ-`feature/a5-home-dashboard-real`: חיפוש עמיד לאיות עברי (`lib/hebrewPhonetic.js`, `lib/searchUtils.js`, המודלים `SearchHistory`/`SavedSearch`, `/api/saved-searches`, `/api/search-history`, התכנית ב-`docs/smart-quick-search-plan-2026-09-27.md`); מפתחות API `gmk_` לכניסה בלי סיסמה (`/admin/site-settings/api-keys`, `/api/auth/api-key-login`, `lib/apiKeys.js`, טבלת `ApiKey`); דף הבית A5 מחובר לנתוני אמת (`public/a5/index.html` + `/api/a5/*`, טריגרים `@`/`#`/`$` בשורת החיפוש); ותקרה של 50 לרשימת החיפושים השמורים | מוכן ל-PR (עץ `wt-a5-clean`), נדחף ל-origin |
-| `chore/v3-cleanup-2026-09-29` | הסרת מסלול התצוגה `/design-preview` וקובצי הסקיצות; התקנת פלטת הרכיבים כ-`design-system/` (+ `/design-system/`, אריח ב-`/admin/site`); כולל את `docs/overhaul-2026-09-29` (מוזג פנימה) | PR ל-main (עץ `wt-cleanup-0929`) |
+| `chore/v3-cleanup-2026-09-29` | הסרת מסלול התצוגה `/design-preview` וקובצי הסקיצות; התקנת פלטת הרכיבים כ-`design-system/` (+ `/design-system/`, אריח ב-`/admin/site`); כולל את `docs/overhaul-2026-09-29` (מוזג פנימה) | לקראת PR ל-main (עץ `wt-cleanup-0929`; נכון ל-2026-09-29 מקומי בלבד — טרם נדחף ל-origin ואין עדיין PR) |
 | `docs/overhaul-2026-09-29` | ארגון מחדש של התיעוד | מוזג לתוך `chore/v3-cleanup-2026-09-29` |
 | PR #188 — `security/redact-visitlog-request-bodies` | לא לשמור פרטי התחברות מגוף הבקשה ב-`PageVisitLog` | PR פתוח |
 | PR #177 — `fix/new-order-redirect-hang-and-double-approval` | ספינר אינסופי אחרי שמירת הזמנה חדשה כשההפניה היא לאותו מסלול + אישור מנהל כפול | PR פתוח |
