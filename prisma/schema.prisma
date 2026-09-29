@@ -191,6 +191,24 @@ model TrustedDevice {
   @@index([revokedAt])
 }
 
+// מפתחות API להתחברות בלי שם משתמש וסיסמה - ר' lib/apiKeys.js. נשמר רק ה-SHA-256 של המפתח.
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String // שם חופשי שנותן המנפיק, למשל "בדיקות Claude"
+  keyHash     String    @unique // sha256 של המפתח המלא - המפתח עצמו לעולם לא נשמר
+  keyPreview  String // תחילת המפתח לזיהוי ברשימה
+  employeeId  String // עובד השירות הייעודי שהמפתח מתחבר בשמו
+  roleId      Int // התפקיד שנקבע בהנפקה (העתק לתצוגה; ההרשאה בפועל לפי Employee.roleId)
+  createdById String? // Employee.id של המתכנת שהנפיק
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  useCount    Int       @default(0)
+  revokedAt   DateTime? // ביטול רך: נשמר בהיסטוריה במקום מחיקה
+
+  @@index([revokedAt])
+}
+
 model Notification {
   id         String            @id @default(uuid())
   legacyId   Int?              @unique

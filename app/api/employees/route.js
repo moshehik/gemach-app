@@ -4,6 +4,7 @@ import { hashSecret, last4Of } from '../../../lib/passwordAuth';
 import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES, getSessionEmployee, canManageRoles } from '../../../lib/auth';
 import { getEffectiveValueForEmployees } from '../../../lib/permissions';
 import { getApproverKeys } from '../../../lib/permissionsMetadata';
+import { SERVICE_EMPLOYEE_LEGACY_ID_MIN } from '../../../lib/apiKeys';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
 // (app/components/LoginScreen.js) fetches this list to populate the employee
@@ -32,7 +33,8 @@ export async function GET(request) {
     });
 
     if (!requesterIsAuthenticated) {
-      return NextResponse.json(employees.map((e) => ({
+      // עובדי שירות (מפתחות API, כניסת סוכן) אינם בני אדם שמתחברים בטופס - לא מציגים אותם בבורר הציבורי
+      return NextResponse.json(employees.filter((e) => !(e.legacyId >= SERVICE_EMPLOYEE_LEGACY_ID_MIN)).map((e) => ({
         id: e.id, firstName: e.firstName, lastName: e.lastName, fullName: e.fullName, isActive: e.isActive,
       })));
     }
