@@ -63,6 +63,14 @@ model Customer {
   @@index([isDeleted])
   @@index([firstNamePhoneticKey])
   @@index([lastNamePhoneticKey])
+  // pg_trgm GIN indexes behind the tier-2 fuzzy search (lib/searchUtils.js buildFuzzyNameSql:
+  // `"firstName" % $n` / similarity()). Created by hand on both production DBs and TEST
+  // (scratch/apply_trgm_indexes.js); declared here so `prisma migrate diff` / `db push` see
+  // them as part of the schema instead of proposing to DROP them. Requires the pg_trgm extension.
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_firstName_trgm_idx")
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_lastName_trgm_idx")
+  @@index([phone1(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_phone1_trgm_idx")
+  @@index([phone2(ops: raw("gin_trgm_ops"))], type: Gin, map: "Customer_phone2_trgm_idx")
 }
 
 model AuditLog {
@@ -172,6 +180,10 @@ model Employee {
   @@index([fullName])
   @@index([firstNamePhoneticKey])
   @@index([lastNamePhoneticKey])
+  // pg_trgm GIN indexes - same reasoning as on Customer above.
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Employee_firstName_trgm_idx")
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Employee_lastName_trgm_idx")
+  @@index([fullName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Employee_fullName_trgm_idx")
 }
 
 // A shared physical computer at the gemach that a manager has explicitly marked as
