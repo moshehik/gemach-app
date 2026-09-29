@@ -97,6 +97,13 @@ const PHONETIC_FIELDS = [
   ['lastName', 'lastNamePhoneticKey'],
 ];
 
+// Fields whose values are masked ('***') in the AuditLog changesJson of the given model.
+// Mirrors redactSecrets() in app/lib/auditLog.js, which masks older rows on the way out.
+const AUDIT_SECRET_FIELDS = {
+  Employee: ['password', 'pinHash'],
+  ApiKey: ['keyHash'],
+};
+
 // A scalar in Prisma write data is either the plain value (create) or `{ set: value }` (update).
 function readWriteScalar(value) {
   if (value && typeof value === 'object' && !Array.isArray(value) && 'set' in value) return value.set;
@@ -109,7 +116,11 @@ function addPhoneticKeys(data) {
   for (const [nameField, keyField] of PHONETIC_FIELDS) {
     if (!(nameField in data)) continue;
     const raw = readWriteScalar(data[nameField]);
-    if (raw !== null && raw !== undefined && typeof raw !== 'string') continue;
+    // `firstName: undefined` means "not provided" to Prisma (the column is left alone), so the
+    // key must be left alone too - e.g. PUT /api/customers/[id] builds `firstName: body.firstName`
+    // and a partial body would otherwise null the key while the name stays as it was.
+    if (raw === undefined) continue;
+    if (raw !== null && typeof raw !== 'string') continue;
     if (out === data) out = { ...data };
     out[keyField] = hebrewPhoneticKey(raw);
   }
@@ -191,12 +202,14 @@ const createPrismaClient = (url) => {
 
              // Never write credential hashes (or, for legacy accounts, the plaintext password) into
              // the audit trail - /api/audit and the employee history tab are readable by every
-             // logged-in employee (found 2026-09-20).
-             if (model === 'Employee') {
+             // logged-in employee (found 2026-09-20). ApiKey.keyHash is the same class of value
+             // (lib/sqlGuard.js already hides it from AI SQL): a CREATE row would otherwise carry it.
+             const auditSecrets = AUDIT_SECRET_FIELDS[model];
+             if (auditSecrets) {
                try {
                  const parsed = JSON.parse(changesJson);
                  if (parsed && typeof parsed === 'object') {
-                   for (const secret of ['password', 'pinHash']) {
+                   for (const secret of auditSecrets) {
                      if (secret in parsed) {
                        parsed[secret] = (parsed[secret] && typeof parsed[secret] === 'object') ? { from: '***', to: '***' } : '***';
                      }
@@ -241,7 +254,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 7;
+const CLIENT_SETUP_VERSION = 8;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {

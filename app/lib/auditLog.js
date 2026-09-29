@@ -12,14 +12,20 @@ function displayName(employee) {
 // actor's display name in one batched query instead of exposing the id.
 // Older Employee audit rows (written before app/lib/prisma.js started masking them) still hold
 // the password / pinHash values inside changesJson - mask them on the way out so no reader of
-// the history screens ever sees a hash or a legacy plaintext password.
+// the history screens ever sees a hash or a legacy plaintext password. ApiKey CREATE rows
+// written before keyHash was masked at write time get the same treatment.
+const SECRET_FIELDS_BY_ENTITY = {
+  Employee: ['password', 'pinHash'],
+  ApiKey: ['keyHash'],
+};
 function redactSecrets(log) {
-  if (log.entityType !== 'Employee' || !log.changesJson) return log;
+  const secrets = SECRET_FIELDS_BY_ENTITY[log.entityType];
+  if (!secrets || !log.changesJson) return log;
   try {
     const parsed = JSON.parse(log.changesJson);
     if (!parsed || typeof parsed !== 'object') return log;
     let changed = false;
-    for (const secret of ['password', 'pinHash']) {
+    for (const secret of secrets) {
       if (secret in parsed) {
         parsed[secret] = (parsed[secret] && typeof parsed[secret] === 'object') ? { from: '***', to: '***' } : '***';
         changed = true;
