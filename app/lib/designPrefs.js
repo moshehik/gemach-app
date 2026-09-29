@@ -25,10 +25,18 @@ export const STORAGE_KEY = 'gemachDesignPrefs';
 
 export const DESIGN_PREFS_EVENT = 'gemach-design-prefs-applied';
 
+// localStorage משותף לכל העובדים בדפדפן, ולכן `uiVariants` (עקיפות "ישן / A5" פר-עובד, lib/uiVariant.js)
+// אף פעם לא נכתב אליו ולא נקרא ממנו — הוא חי רק ב-DB של העובד וב-designPrefs_<id> cookie שלו.
+function withoutUiVariants(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const { uiVariants: _stripped, ...rest } = raw;
+  return rest;
+}
+
 export function readLocalPrefs() {
   if (typeof localStorage === 'undefined') return {};
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+    return withoutUiVariants(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {});
   } catch (e) {
     return {};
   }
@@ -37,13 +45,32 @@ export function readLocalPrefs() {
 export function writeLocalPrefs(raw) {
   if (typeof localStorage === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutUiVariants(raw)));
   } catch (e) {}
+}
+
+// קורא את uiVariants מהעוגייה הקיימת designPrefs_<employeeId> (או undefined).
+function readCookieUiVariants(employeeId) {
+  if (typeof document === 'undefined' || !employeeId) return undefined;
+  try {
+    const name = `designPrefs_${employeeId}=`;
+    const part = document.cookie.split('; ').find((c) => c.startsWith(name));
+    if (!part) return undefined;
+    const parsed = JSON.parse(decodeURIComponent(part.slice(name.length)));
+    return parsed && parsed.uiVariants ? parsed.uiVariants : undefined;
+  } catch (e) {
+    return undefined;
+  }
 }
 
 // Writes the subset of prefs SSR needs before paint (mode has its own
 // theme_<employeeId> cookie). No-ops for guests (no employeeId to scope by).
-export function writeDesignPrefsCookie(employeeId, raw) {
+//
+// uiVariants (עקיפות "ישן / A5", lib/uiVariant.js) לא נלקח מ-`raw`: localStorage משותף לכל
+// העובדים בדפדפן, ולכן ערך משם היה דולף לעוגייה של עובד אחר. רק DesignPrefsSync, שמחזיק את
+// ערך ה-DB של העובד המחובר, מעביר אותו כארגומנט השלישי (אובייקט = להחליף, null = לנקות).
+// כשלא מועבר (undefined), למשל בשמירה מדף התצוגה, נשמר מה שכבר בעוגייה.
+export function writeDesignPrefsCookie(employeeId, raw, uiVariants) {
   if (typeof document === 'undefined' || !employeeId) return;
   const payload = {
     palette: raw.palette,
@@ -52,6 +79,8 @@ export function writeDesignPrefsCookie(employeeId, raw) {
     textScale: raw.textScale,
     customColors: raw.customColors,
   };
+  const keptVariants = uiVariants === undefined ? readCookieUiVariants(employeeId) : uiVariants;
+  if (keptVariants) payload.uiVariants = keptVariants;
   try {
     document.cookie = `designPrefs_${employeeId}=${encodeURIComponent(JSON.stringify(payload))}; path=/; max-age=31536000; SameSite=Lax`;
   } catch (e) {}

@@ -223,7 +223,9 @@ export default function DisplaySettingsPage() {
         employeeIdRef.current = data.employeeId;
         setEmployeeId(data.employeeId);
         if (data.prefs) {
-          const merged = { ...readLocalPrefs(), ...data.prefs };
+          // uiVariants (עקיפות "ישן / A5") לא נכנס ל-localStorage המשותף — ר' app/lib/designPrefs.js.
+          const { uiVariants: _dbVariants, ...dbPrefs } = data.prefs;
+          const merged = { ...readLocalPrefs(), ...dbPrefs };
           writeLocalPrefs(merged);
           hydrateFrom(merged);
         }

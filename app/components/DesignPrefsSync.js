@@ -10,6 +10,7 @@ import {
   writeLocalPrefs,
   writeThemeCookie,
 } from '../lib/designPrefs';
+import { splitServerPrefs } from '@/lib/designPrefsSchema';
 
 // Mounted once from RootLayout for authenticated sessions. Makes the DB
 // (Employee.themeColor JSON, via /api/me/design-prefs) the source of truth
@@ -29,12 +30,16 @@ export default function DesignPrefsSync() {
       .then((data) => {
         if (cancelled || !data || !data.success || !data.employeeId) return;
         const employeeId = data.employeeId;
-        const local = readLocalPrefs();
-        if (data.prefs) {
+        // uiVariants (דגלי "ישן / A5") מגיעים רק מה-DB של העובד המחובר: ערך מ-localStorage המשותף
+        // לדפדפן היה מדליף עקיפה של עובד אחר, ולכן מסירים אותו מכאן ולא כותבים אותו חזרה לשם.
+        const { uiVariants: _ignoredLocalVariants, ...local } = readLocalPrefs();
+        // prefs שמכיל רק uiVariants (עקיפה שהבעלים קבע) הוא "אין העדפות": לא חוסם את ההגירה החד-פעמית.
+        const server = splitServerPrefs(data.prefs);
+        if (server.hasPrefs) {
           // DB wins over whatever this (possibly shared) browser had.
-          const merged = { ...local, ...data.prefs };
+          const merged = { ...local, ...server.prefs };
           writeLocalPrefs(merged);
-          writeDesignPrefsCookie(employeeId, merged);
+          writeDesignPrefsCookie(employeeId, merged, server.uiVariants);
           if (merged.mode) writeThemeCookie(employeeId, merged.mode);
           applyPrefsToDom(merged);
           try {
@@ -43,9 +48,21 @@ export default function DesignPrefsSync() {
         } else if (local && Object.keys(local).length > 0) {
           // First login since the DB store exists — migrate the legacy
           // browser-local prefs up so they follow the employee everywhere.
+          // (PUT מתמזג על ההעדפות השמורות, ולכן עקיפת uiVariants קיימת נשמרת.)
           pushPrefsToServer(local);
-          writeDesignPrefsCookie(employeeId, local);
+          writeDesignPrefsCookie(employeeId, local, server.uiVariants);
           if (local.mode) writeThemeCookie(employeeId, local.mode);
+        } else {
+          // אין העדפות ואין מה להגר — רק מרעננים את עוגיית העקיפה כדי שהשרת יראה אותה בטעינה הבאה,
+          // ומנקים עוגייה ישנה עם uiVariants אם הבעלים כבר ביטל את העקיפה (אחרת היא נשארת עד שנה).
+          let staleCookie = false;
+          try {
+            const c = decodeURIComponent(document.cookie);
+            staleCookie = c.includes(`designPrefs_${employeeId}=`) && c.includes('"uiVariants"');
+          } catch (e) {}
+          if (server.uiVariants || staleCookie) {
+            writeDesignPrefsCookie(employeeId, {}, server.uiVariants || null);
+          }
         }
       })
       .catch(() => {});

@@ -32,6 +32,8 @@ import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { UiVariantProvider } from './components/UiVariantContext';
+import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
@@ -43,7 +45,8 @@ export default async function RootLayout({ children }) {
   // require_login - middleware.js forwards the path since a server component has
   // no other way to know the current route.
   const headersList = await headers();
-  const isPublicKiosk = (headersList.get('x-pathname') || '').startsWith('/customer-interface');
+  const requestPathname = headersList.get('x-pathname') || '';
+  const isPublicKiosk = requestPathname.startsWith('/customer-interface');
   // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
   // doesn't depend on an existing session - it must stay reachable without first logging
   // in, otherwise an employee can never punch in at all when require_login is on and no
@@ -69,7 +72,7 @@ export default async function RootLayout({ children }) {
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup'].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -277,6 +280,16 @@ export default async function RootLayout({ children }) {
   }
 
   const showLogin = requireLogin && !isAuthenticated && !isPublicKiosk && !isPunchClock;
+
+  // דגלי "ישן / A5" לכל מסך (lib/uiVariant.js): עקיפה אישית (uiVariants בעוגיית designPrefs_<id>,
+  // מראה של Employee.themeColor) > הגדרת הארגון ui_variant_<screen> (מאותה קריאת הגדרות בלי שאילתה
+  // נוספת) > 'legacy'. קיוסק / שעון נוכחות / הדפסה: המעטפת תמיד 'legacy'. בלי אף ערך מוגדר הכול
+  // 'legacy' והאתר נראה בדיוק כמו קודם.
+  const uiVariants = resolveUiVariants({
+    userVariants: sanitizeUiVariants(employeeDesignPrefs?.uiVariants),
+    settings,
+    pathname: requestPathname,
+  });
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -606,7 +619,18 @@ function cpCssText(vars) {
           <style id="custom-palette-style" dangerouslySetInnerHTML={{ __html: customPaletteCss }} />
         )}
       </head>
-      <body className={bodyClassName}>
+      <body
+        className={bodyClassName}
+        /* data-ui-*: נכתבים בשרת פעם אחת לכל טעינה מלאה. ה-root layout לא מרונדר מחדש בניווט רך, ולכן אחרי
+           ניווט מהיר הערכים כאן עלולים להיות ישנים (למשל data-ui-shell="a5" אחרי מעבר ל-/customer-interface
+           או לדף הדפסה). הקורא המותר היחיד: useUiVariant / useUiVariants (app/components/UiVariantContext.js),
+           שמחיל את כלל ה-pathname. אסור ש-CSS או JS ישתמשו ב-data-ui-* כדי להחליט על מראה. */
+        data-ui-shell={uiVariants.shell}
+        data-ui-home={uiVariants.home}
+        data-ui-order-card={uiVariants.order_card}
+        data-ui-customer-card={uiVariants.customer_card}
+      >
+        <UiVariantProvider value={uiVariants}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
@@ -646,6 +670,7 @@ function cpCssText(vars) {
           </LabelsProvider>
         )}
         </UniqueNamesProvider>
+        </UiVariantProvider>
       </body>
     </html>
   );
