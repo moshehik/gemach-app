@@ -31,7 +31,8 @@ fi
 #    app/version.json ו-package.json מתעדכנים אוטומטית בכל קומיט (scripts/update_build_time.js),
 #    לכן app/version.json מוחרג במפורש, ו-package.json לא ברשימה (שינוי תלויות עובר דרך package-lock.json).
 if git rev-parse --verify -q HEAD^ >/dev/null 2>&1; then
-  if git diff --quiet HEAD^ HEAD -- app components lib prisma public package-lock.json next.config.mjs middleware.js jsconfig.json vercel.json ':(exclude)app/version.json'; then
+#    design-system/tokens.css מיובא מ-app/globals.css ו-components.css מיובא מדפים שמשתמשים בו - שניהם נכנסים ל-bundle, לעומת שאר design-system/ (תיעוד וכלי בנייה).
+  if git diff --quiet HEAD^ HEAD -- app components lib prisma public design-system/tokens.css design-system/components.css package-lock.json next.config.mjs middleware.js jsconfig.json vercel.json ':(exclude)app/version.json'; then
     echo "ignore-build: no build-relevant files changed in HEAD -> skip"
     exit 0
   fi
