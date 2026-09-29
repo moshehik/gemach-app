@@ -1,0 +1,645 @@
+{
+ "version": "2026-09-29",
+ "source": "https://claude.ai/artifact/5sG47Yyn1HsjyS6GR6ygqh",
+ "icons": [
+  {
+   "n": 1,
+   "id": "alert",
+   "label": "אזהרה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 2,
+   "id": "arrl",
+   "label": "חץ שמאלה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 3,
+   "id": "arrlr",
+   "label": "שני כיוונים",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 4,
+   "id": "arrr",
+   "label": "חץ ימינה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 5,
+   "id": "back",
+   "label": "חזרה",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 6,
+   "id": "bag",
+   "label": "תיק",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 7,
+   "id": "bank",
+   "label": "העברה בנקאית",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 8,
+   "id": "bell",
+   "label": "התראות",
+   "usage": {
+    "home": 1,
+    "order": 2
+   }
+  },
+  {
+   "n": 9,
+   "id": "bk",
+   "label": "חזרה לאחור",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 10,
+   "id": "box",
+   "label": "הזמנה וחבילה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 11,
+   "id": "cal",
+   "label": "יומן ותאריך",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 12,
+   "id": "card",
+   "label": "כרטיס אשראי",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 13,
+   "id": "cart",
+   "label": "עגלת שינויים",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 14,
+   "id": "cash",
+   "label": "מזומן",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 15,
+   "id": "check",
+   "label": "אישור",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 16,
+   "id": "cheque",
+   "label": "שיק",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 17,
+   "id": "chev",
+   "label": "חץ למטה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 18,
+   "id": "clip",
+   "label": "קובץ מצורף",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 19,
+   "id": "clock",
+   "label": "שעה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 20,
+   "id": "copy",
+   "label": "העתקה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 21,
+   "id": "dress",
+   "label": "שמלה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 22,
+   "id": "eraser",
+   "label": "ניקוי",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 23,
+   "id": "ext",
+   "label": "פתיחה בחלון חדש",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 24,
+   "id": "eye",
+   "label": "תצוגה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 25,
+   "id": "file",
+   "label": "קובץ",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 26,
+   "id": "flag",
+   "label": "דגל",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 27,
+   "id": "gear",
+   "label": "הגדרות",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 28,
+   "id": "gift",
+   "label": "זיכוי ומתנה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 29,
+   "id": "home",
+   "label": "בית",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 30,
+   "id": "info",
+   "label": "מידע",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 31,
+   "id": "list",
+   "label": "רשימה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 32,
+   "id": "lock",
+   "label": "נעילה",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 33,
+   "id": "logout",
+   "label": "יציאה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 34,
+   "id": "mail",
+   "label": "מייל",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 35,
+   "id": "menu",
+   "label": "תפריט",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 36,
+   "id": "minus",
+   "label": "הסרה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 37,
+   "id": "msg",
+   "label": "הודעה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 38,
+   "id": "note",
+   "label": "הערה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 39,
+   "id": "pencil",
+   "label": "עריכה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 40,
+   "id": "phone",
+   "label": "טלפון",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 41,
+   "id": "pin",
+   "label": "מיקום",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 42,
+   "id": "plus",
+   "label": "הוספה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 43,
+   "id": "print",
+   "label": "הדפסה",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 44,
+   "id": "redo",
+   "label": "שחזור",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 45,
+   "id": "refresh",
+   "label": "רענון",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 46,
+   "id": "rows",
+   "label": "שורות",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 47,
+   "id": "scan",
+   "label": "סריקת ברקוד",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 48,
+   "id": "scissors",
+   "label": "תיקון",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 49,
+   "id": "search",
+   "label": "חיפוש",
+   "usage": {
+    "home": 2,
+    "order": 2
+   }
+  },
+  {
+   "n": 50,
+   "id": "searchspark",
+   "label": "חיפוש חכם",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 51,
+   "id": "send",
+   "label": "שליחה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 52,
+   "id": "shield",
+   "label": "אישור והגנה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 53,
+   "id": "sig",
+   "label": "חתימה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 54,
+   "id": "sliders",
+   "label": "סינון והגדרות",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 55,
+   "id": "sparkle",
+   "label": "רעיון",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 56,
+   "id": "sun",
+   "label": "תצוגה ומצב",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 57,
+   "id": "swap",
+   "label": "החלפה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 58,
+   "id": "table",
+   "label": "טבלה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 59,
+   "id": "tag",
+   "label": "תג מחיר",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 60,
+   "id": "trash",
+   "label": "מחיקה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 61,
+   "id": "truck",
+   "label": "משלוח",
+   "usage": {
+    "home": 0,
+    "order": 1
+   }
+  },
+  {
+   "n": 62,
+   "id": "undo",
+   "label": "ביטול פעולה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 63,
+   "id": "user",
+   "label": "לקוחה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 64,
+   "id": "userck",
+   "label": "לקוחה מאושרת",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 65,
+   "id": "users",
+   "label": "לקוחות",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 66,
+   "id": "wallet",
+   "label": "ארנק ויתרה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 67,
+   "id": "x",
+   "label": "סגירה",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 68,
+   "id": "sn-bug",
+   "label": "דיווח תקלה (תפריט)",
+   "usage": {
+    "home": 1,
+    "order": 1
+   }
+  },
+  {
+   "n": 69,
+   "id": "sn-chart",
+   "label": "סטטיסטיקה (תפריט)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 70,
+   "id": "sn-history",
+   "label": "היסטוריה (תפריט)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 71,
+   "id": "sn-inv",
+   "label": "מלאי (תפריט)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  }
+ ]
+}

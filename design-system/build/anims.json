@@ -1,0 +1,4682 @@
+{
+ "anims": [
+  {
+   "name": "advDot",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advdots b"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 1.0,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-5px);opacity:1}",
+   "observed": {}
+  },
+  {
+   "name": "advErase",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advact .lrow:hover .ic,.advp .advact .lrow:focus-visible .ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:none}20%{transform:translateX(-3px) rotate(-14deg)}45%{transform:translateX(3px) rotate(12deg)}70%{transform:translateX(-2px) rotate(-8deg)}",
+   "observed": {}
+  },
+  {
+   "name": "advFlBounce",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advfl:hover[data-adv-flag=\"debts\"] .advfl-i"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "cubic-bezier(.3,1.5,.5,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}35%{transform:translateY(-6px)}65%{transform:translateY(1px)}",
+   "observed": {}
+  },
+  {
+   "name": "advFlFlip",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advfl:hover[data-adv-flag=\"credits\"] .advfl-i"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotateY(0)}100%{transform:rotateY(360deg)}",
+   "observed": {}
+  },
+  {
+   "name": "advFlIn",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp.adv-in .advfl"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "cubic-bezier(.2,1.4,.3,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "backwards",
+   "kf": "from{opacity:0;transform:translateY(10px) scale(.9)}",
+   "observed": {}
+  },
+  {
+   "name": "advFlPop",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advfl.on .advfl-i"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     1
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "cubic-bezier(.2,1.6,.3,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(.4) rotate(-20deg)}100%{transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "advFlRing",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advfl.on"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     1
+    ]
+   ],
+   "dur": 0.55,
+   "ease": "ease-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{box-shadow:inset 0 0 0 2px rgba(255,255,255,.9),0 0 0 0 rgba(244,166,192,.7)}100%{box-shadow:inset 0 0 0 2px rgba(255,255,255,.9),0 0 0 10px rgba(244,166,192,0)}",
+   "observed": {}
+  },
+  {
+   "name": "advFlSpin",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advfl:hover[data-adv-flag=\"badreturn\"] .advfl-i"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "cubic-bezier(.4,0,.2,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(-360deg)}",
+   "observed": {}
+  },
+  {
+   "name": "advFlWave",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advfl:hover[data-adv-flag=\"nodetails\"] .advfl-i"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}50%{transform:rotate(12deg)}75%{transform:rotate(-6deg)}",
+   "observed": {}
+  },
+  {
+   "name": "advIn",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp.adv-in>*"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "cubic-bezier(.22,1,.36,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "backwards",
+   "kf": "from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "advListIn",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advlist"
+    ],
+    [
+     "A",
+     ".advp .advdp"
+    ],
+    [
+     "B",
+     ".advlist"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     3
+    ]
+   ],
+   "dur": 0.18,
+   "ease": "cubic-bezier(.22,1,.36,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:translateY(-6px) scale(.985)}",
+   "observed": {}
+  },
+  {
+   "name": "advOrbit",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advmag"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 1.2,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:translate(0,-5px) rotate(-14deg)}25%{transform:translate(5px,0) rotate(0)}50%{transform:translate(0,5px) rotate(14deg)}75%{transform:translate(-5px,0) rotate(0)}100%{transform:translate(0,-5px) rotate(-14deg)}",
+   "observed": {}
+  },
+  {
+   "name": "advPlusHint",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advplus"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 2.6,
+   "ease": "ease-in-out",
+   "iter": "2",
+   "delay": 1.2,
+   "fill": "",
+   "kf": "0%,60%,100%{box-shadow:0 6px 14px -8px rgba(15,44,82,.6),0 0 0 0 rgba(201,162,39,.55)}80%{box-shadow:0 6px 14px -8px rgba(15,44,82,.6),0 0 0 10px rgba(201,162,39,0)}",
+   "observed": {
+    "A": [
+     "button.advplus"
+    ]
+   }
+  },
+  {
+   "name": "advSwing",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advact .btn.primary:hover .ic,.advp .advact .btn.primary:focus-visible .ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:none}30%{transform:translate(-2px,-2px) rotate(-16deg) scale(1.15)}60%{transform:translate(2px,2px) rotate(14deg) scale(1.15)}100%{transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "advTwinkle",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advact .btn.smart:hover .ic,.advp .advact .btn.smart:focus-visible .ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.8,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:none}35%{transform:scale(1.4) rotate(45deg)}70%{transform:scale(.9) rotate(90deg)}100%{transform:scale(1) rotate(0)}",
+   "observed": {}
+  },
+  {
+   "name": "advWarn",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advs[aria-label=\"דרוש טיפול\"] .advs-i .ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 3.0,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,62%,100%{transform:none}68%{transform:rotate(-12deg) scale(1.1)}74%{transform:rotate(10deg) scale(1.1)}80%{transform:rotate(-7deg)}86%{transform:rotate(4deg)}92%{transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "advWarnRing",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp .advs[aria-label=\"דרוש טיפול\"] .advs-i::after"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 3.0,
+   "ease": "ease-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,62%{box-shadow:0 0 0 0 rgba(244,166,192,.6)}100%{box-shadow:0 0 0 12px rgba(244,166,192,0)}",
+   "observed": {}
+  },
+  {
+   "name": "advpOpen",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp.advp-open"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.4,
+   "ease": "cubic-bezier(.22,1,.36,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:translateY(-18px) scale(.98)}to{opacity:1;transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "aiDot",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".typing span"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 1.1,
+   "ease": "cubic-bezier(.45,0,.35,1)",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,70%,100%{transform:translateY(0) scale(.85);opacity:.6;box-shadow:0 0 0 1px rgba(154,122,31,.3),0 2px 4px -2px rgba(201,162,39,.4)}35%{transform:translateY(-7px) scale(1.2);opacity:1;box-shadow:0 0 0 1px rgba(154,122,31,.45),0 0 12px 2px rgba(224,191,90,.75)}",
+   "observed": {}
+  },
+  {
+   "name": "ashake",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".acodes.shake"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.45,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}",
+   "observed": {}
+  },
+  {
+   "name": "barDraw",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".sec-h::after,.cart-h::after"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{transform:scaleX(0)}to{transform:scaleX(1)}",
+   "observed": {
+    "B": [
+     "div.cart-h",
+     "div.sec-h"
+    ]
+   }
+  },
+  {
+   "name": "barShine",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".sec-h::before,.cart-h::before"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 2.4,
+   "ease": "ease-in-out",
+   "iter": "2",
+   "delay": 0.7,
+   "fill": "both",
+   "kf": "0%{background-position:-120% 0}60%,100%{background-position:220% 0}",
+   "observed": {
+    "B": [
+     "div.cart-h",
+     "div.sec-h"
+    ]
+   }
+  },
+  {
+   "name": "barShine2",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".sec-h:hover::before,.cart-h:hover::before"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 2.4,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{background-position:-120% 0}60%,100%{background-position:220% 0}",
+   "observed": {
+    "B": [
+     "div.cart-h"
+    ]
+   }
+  },
+  {
+   "name": "cartbounce",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "[data-ico=cart]:is(:hover,:focus-visible)>.ic:first-child"
+    ],
+    [
+     "A",
+     ".cart-t.bump>.ic:first-child"
+    ],
+    [
+     "A",
+     ".cb-pin.bounce"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ],
+    [
+     "כניסה / שינוי מצב",
+     2
+    ],
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}40%{transform:translateY(-6px) rotate(-8deg)}70%{transform:translateY(0) rotate(4deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-cart.ic.sm",
+     "svg.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "cbin",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".cb-p"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.18,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:translateY(-8px) scale(.97)}",
+   "observed": {}
+  },
+  {
+   "name": "cbsheet",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".cb-p"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.25,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{transform:translateY(40px);opacity:0}",
+   "observed": {}
+  },
+  {
+   "name": "chevBob",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     "body .app .coll>summary:is(:hover,:focus-visible) .chev"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{translate:0 0}50%{translate:0 3px}",
+   "observed": {}
+  },
+  {
+   "name": "collShine",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     "body .app .coll>summary:is(:hover,:focus-visible)::after"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.8,
+   "ease": "ease-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "to{transform:translateX(-120%)}",
+   "observed": {
+    "B": [
+     "summary"
+    ]
+   }
+  },
+  {
+   "name": "dk-breathe",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".success .big-ck svg"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 3.0,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 1.0,
+   "fill": "",
+   "kf": "0%,100%{transform:scale(1)}50%{transform:scale(1.1)}",
+   "observed": {}
+  },
+  {
+   "name": "dk-float",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".dbadge svg"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 2.8,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 1.0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-3deg)}",
+   "observed": {}
+  },
+  {
+   "name": "dk-lid",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [],
+   "nsel": 0,
+   "icons": [],
+   "trig": [],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,55%,100%{transform:rotate(0)}25%{transform:rotate(-12deg) translateY(-2px)}",
+   "observed": {}
+  },
+  {
+   "name": "dk-ring",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ":is(.dbadge,.big-ck,.ashield,.mico)::after"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 2.4,
+   "ease": "ease-out",
+   "iter": "infinite",
+   "delay": 1.0,
+   "fill": "",
+   "kf": "0%{transform:scale(1);opacity:.6}70%,100%{transform:scale(1.45);opacity:0}",
+   "observed": {
+    "B": [
+     "div.dbadge",
+     "span.ia-bg.mico",
+     "span.mico"
+    ]
+   }
+  },
+  {
+   "name": "dk-tilt",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [],
+   "nsel": 0,
+   "icons": [],
+   "trig": [],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(-6deg) scale(1)}50%{transform:rotate(6deg) scale(1.06)}",
+   "observed": {}
+  },
+  {
+   "name": "dk-write",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [],
+   "nsel": 0,
+   "icons": [],
+   "trig": [],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-2px,1px) rotate(-5deg)}50%{transform:translate(2px,2px) rotate(3deg)}75%{transform:translate(-1px,0) rotate(-3deg)}",
+   "observed": {}
+  },
+  {
+   "name": "dlBob",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".xlbtn:is(:hover,:focus-visible) .dl-arrow"
+    ],
+    [
+     "A",
+     ".advp .card-h .ibtn.hdd:is(:hover,:focus-visible) .dl-arrow"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     3
+    ]
+   ],
+   "dur": 0.8,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(-1px)}50%{transform:translateY(1.6px)}",
+   "observed": {
+    "B": [
+     "g.dl-arrow"
+    ]
+   }
+  },
+  {
+   "name": "dlgDraw",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".dbadge svg"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     4
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0.18,
+   "fill": "forwards",
+   "kf": "0%{stroke-dasharray:60;stroke-dashoffset:60}98%{stroke-dasharray:60;stroke-dashoffset:0}100%{stroke-dasharray:none;stroke-dashoffset:0}",
+   "observed": {
+    "B": [
+     "svg.ia-card.ia-h.ic",
+     "svg.ia-check.ia-h.ic",
+     "svg.ia-h.ia-trash.ic"
+    ]
+   }
+  },
+  {
+   "name": "dlgIn",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".scrim.on :is(#dlg,#dlg2)"
+    ],
+    [
+     "A",
+     ".menu"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ],
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.2,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:scale(.96) translateY(6px)}",
+   "observed": {
+    "B": [
+     "div.dlg#dlg",
+     "div.dlg.mailwin#dlg",
+     "div.menu.open#pmenu"
+    ]
+   }
+  },
+  {
+   "name": "dlgPop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ":is(#dlg,#dlg2):not(.mailwin)>.dbadge"
+    ],
+    [
+     "A",
+     ".success .big-ck"
+    ],
+    [
+     "B",
+     ":is(#dlg,#dlg2)>.dbadge"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     4
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(.5);opacity:0}60%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:1}",
+   "observed": {
+    "B": [
+     "div.dbadge"
+    ]
+   }
+  },
+  {
+   "name": "dlgRow",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ":is(#dlg,#dlg2):not(.mailwin)>*"
+    ],
+    [
+     "A",
+     ":is(#dlg,#dlg2) .chg .c"
+    ],
+    [
+     "B",
+     ":is(#dlg,#dlg2)>*"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     4
+    ]
+   ],
+   "dur": 0.34,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "from{opacity:0;transform:translateY(8px)}",
+   "observed": {
+    "B": [
+     "div.c",
+     "div.chg",
+     "div.credit.net",
+     "div.dbtns",
+     "div.dbtns.mact",
+     "div.mfld"
+    ]
+   }
+  },
+  {
+   "name": "dlgSheet",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".scrim.on :is(#dlg,#dlg2):not(.mailwin)"
+    ],
+    [
+     "B",
+     ".scrim.on :is(#dlg,#dlg2)"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.3,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{transform:translateY(100%)}",
+   "observed": {
+    "B": [
+     "div.dlg.mailwin#dlg"
+    ]
+   }
+  },
+  {
+   "name": "dlgShine",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ":is(#dlg,#dlg2) :is(.btn.primary,.btn.green):hover::before"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.8,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{transform:translateX(130%)}to{transform:translateX(-130%)}",
+   "observed": {}
+  },
+  {
+   "name": "draw",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".success .big-ck svg"
+    ],
+    [
+     "A",
+     ".tx.fresh .ck svg"
+    ],
+    [
+     "A",
+     "#toast.on .tb svg"
+    ],
+    [
+     "A",
+     ".stat.fresh .chip svg"
+    ],
+    [
+     "A",
+     ".dhero.fresh .ico svg"
+    ],
+    [
+     "A",
+     ".stat.fresh .tag svg"
+    ]
+   ],
+   "nsel": 10,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     14
+    ],
+    [
+     "טעינה / הופעה",
+     10
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0.1,
+   "fill": "forwards",
+   "kf": "to{stroke-dashoffset:0}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-info.ic.lg"
+    ],
+    "B": [
+     "svg.ia-check.ia-h.ic",
+     "svg.ia-h.ia-info.ic.lg",
+     "svg.ia-h.ia-plus.ic.lg",
+     "svg.ia-h.ia-undo.ic.lg",
+     "svg.ia-minus.ic",
+     "svg.ia-plus.ic"
+    ]
+   }
+  },
+  {
+   "name": "dtPop",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     "#delToggle.on .dtico"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     1
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "cubic-bezier(.2,1.4,.3,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(.6) rotate(-25deg)}70%{transform:scale(1.2) rotate(6deg)}100%{transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "dtWig",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     "#delToggle:is(:hover,:focus-visible) .dtico"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}20%{transform:rotate(-16deg) translateY(-1px)}50%{transform:rotate(12deg)}80%{transform:rotate(-6deg)}",
+   "observed": {}
+  },
+  {
+   "name": "evDraw",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     "body .app #evType .evck,body .app #delOneBtn .evck,body .app #termsBtn .evck,body .app #delToggle .evck"
+    ],
+    [
+     "B",
+     "body .app .btn[data-act=\"mail-open\"] .evck,body .app #evType .evck,body .app #termsBtn .evck,body .app #delToggle .evck"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.35,
+   "ease": "ease-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "forwards",
+   "kf": "to{stroke-dashoffset:0}",
+   "observed": {
+    "B": [
+     "svg.evck.ia-check.ia-dr.ia-h.ia-in.ia-ov.ic.sm",
+     "svg.evck.ia-check.ia-h.ia-ov.ic.sm",
+     "svg.evck.ia-check.ia-h.ic.sm",
+     "svg.evck.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "extNudge",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp.aiw .bub-acts .lrow[data-open]:is(:hover,:focus-visible) .ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 0.9,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translate(0,0)}50%{transform:translate(-2px,-2px)}",
+   "observed": {}
+  },
+  {
+   "name": "fade",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".panel"
+    ],
+    [
+     "A",
+     ".scrim.on"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ],
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.25,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "fadein",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".tx .now"
+    ],
+    [
+     "A",
+     ".cb.open::after"
+    ],
+    [
+     "A",
+     ".scrim.on"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     4
+    ],
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.2,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0}",
+   "observed": {
+    "B": [
+     "div.on.scrim#scrim"
+    ]
+   }
+  },
+  {
+   "name": "frameIn",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hero-trans .jshell"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.45,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "from{opacity:0}to{opacity:1}",
+   "observed": {
+    "A": [
+     "div.advonly.hero-in.jshell",
+     "div.hero-in.jshell"
+    ]
+   }
+  },
+  {
+   "name": "frameSpin",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".stepper::after"
+    ],
+    [
+     "A",
+     ":is(.card,.itm,.dhero,.creditile):is(:hover,:focus-within)::after,.shine-on::after"
+    ],
+    [
+     "A",
+     ".jshell:is(:hover,:focus-within)::after"
+    ],
+    [
+     "A",
+     ".jshell.advonly.aishell::after"
+    ]
+   ],
+   "nsel": 4,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     7
+    ]
+   ],
+   "dur": 3.2,
+   "ease": "linear",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "to{--a:360deg}",
+   "observed": {
+    "A": [
+     "div.advonly.aishell.hero-in.jshell",
+     "div.card",
+     "div.card.shine-on"
+    ],
+    "B": [
+     "div.card",
+     "div.card.cust",
+     "div.card.shine-on",
+     "div.stepper#stepper"
+    ]
+   }
+  },
+  {
+   "name": "gearSpin",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".advp.aiw .bub-acts .lrow[data-act=\"setting\"]:is(:hover,:focus-visible) .ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     1
+    ]
+   ],
+   "dur": 1.6,
+   "ease": "linear",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "to{transform:rotate(360deg)}",
+   "observed": {}
+  },
+  {
+   "name": "heroIn",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hero-enter .t-hi"
+    ],
+    [
+     "A",
+     ".hero-enter .t-q"
+    ],
+    [
+     "A",
+     ".hero-enter .srch"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     3
+    ]
+   ],
+   "dur": 0.9,
+   "ease": "cubic-bezier(.22,1,.36,1)",
+   "iter": "1",
+   "delay": 0.1,
+   "fill": "both",
+   "kf": "from{opacity:0;transform:translateY(22px);filter:blur(8px)}to{opacity:1;transform:none;filter:blur(0)}",
+   "observed": {
+    "A": [
+     "form.srch#sForm",
+     "span.t-hi",
+     "span.t-q"
+    ]
+   }
+  },
+  {
+   "name": "hf-mk",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hf-mk"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{background:rgba(201,162,39,.7);box-shadow:0 0 0 4px rgba(201,162,39,.35)}",
+   "observed": {}
+  },
+  {
+   "name": "hf-out",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hf-pill.out"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.18,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "to{opacity:0;transform:scale(.8)}",
+   "observed": {}
+  },
+  {
+   "name": "hf-row",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hf-sel.on .hf-o"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.28,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "from{opacity:0;transform:translateY(-6px)}",
+   "observed": {}
+  },
+  {
+   "name": "hfPiPop",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".hf-pill .hf-pi"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.5,
+   "ease": "cubic-bezier(.2,1.4,.3,1)",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "0%{transform:scale(0) rotate(-40deg);opacity:0}70%{transform:scale(1.25) rotate(8deg);opacity:1}100%{transform:none;opacity:1}",
+   "observed": {}
+  },
+  {
+   "name": "hfPiSpin",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".hf-pill:is(:hover,:focus-visible) svg.ic:last-child"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.4,
+   "ease": "ease-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "to{transform:rotate(90deg)}",
+   "observed": {}
+  },
+  {
+   "name": "hfPiWig",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".hf-pill:is(:hover,:focus-visible) .hf-pi"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     1
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}25%{transform:rotate(-16deg) scale(1.15)}75%{transform:rotate(12deg) scale(1.1)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-badge",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ":is(#dlg,#dlg2) :is(.ashield,.mico).ia-bg:not(#_)"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(.6);opacity:0}55%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}",
+   "observed": {
+    "B": [
+     "span.ia-bg.mico"
+    ]
+   }
+  },
+  {
+   "name": "ia-blink",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-eye"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "eye"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:scaleY(1)}45%{transform:scaleY(.15)}",
+   "observed": {
+    "A": [
+     "svg.ia-eye.ia-h.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-bob",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-users"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "users"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}30%{transform:translateY(-3px)}60%{transform:translateY(1px)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-in.ia-users.ic",
+     "svg.ia-h.ia-users.ic",
+     "svg.ia-h.ia-users.ic.sm"
+    ],
+    "B": [
+     "svg.ia-h.ia-in.ia-users.ic",
+     "svg.ia-h.ia-users.ic",
+     "svg.ia-h.ia-users.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-breathe",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".scrim.on .ashield svg.ic:not(.ia-in):not(:hover):not(.ia-err):not(#_)"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 3.4,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:scale(1)}50%{transform:scale(1.09)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-burst",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-burst"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{transform:scale(.6);opacity:.95}to{transform:scale(2.1);opacity:0}",
+   "observed": {
+    "B": [
+     "span.ia-burst"
+    ]
+   }
+  },
+  {
+   "name": "ia-cart",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-cart"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "cart"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}40%{transform:translateY(-5px) rotate(-8deg)}70%{transform:translateY(0) rotate(4deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-clipw",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-clip"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "clip"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}25%{transform:rotate(-22deg)}55%{transform:rotate(16deg)}80%{transform:rotate(-8deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-draw",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hf-o[aria-selected=true] .hf-ck svg.ic"
+    ],
+    [
+     "A",
+     ".ia-check"
+    ],
+    [
+     "A",
+     "svg.ic.ia-in.ia-dr"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [
+    "check"
+   ],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ],
+    [
+     "רחיפה על אייקון",
+     2
+    ],
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.36,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "from{stroke-dasharray:70;stroke-dashoffset:70}to{stroke-dasharray:70;stroke-dashoffset:0}",
+   "observed": {
+    "A": [
+     "svg.ia-check.ia-dr.ia-h.ia-in.ic",
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ia-ov.ic.sn-chev",
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ic.sn-chev",
+     "svg.ia-dr.ia-h.ia-in.ia-ov.ia-x.ic",
+     "svg.ia-dr.ia-h.ia-in.ia-ov.ia-x.ic.sm"
+    ],
+    "B": [
+     "svg.chev.ia-chev.ia-dr.ia-h.ia-in.ic",
+     "svg.evck.ia-check.ia-h.ia-ov.ic.sm",
+     "svg.evck.ia-check.ia-h.ic.sm",
+     "svg.ia-check.ia-dr.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-check.ia-dr.ia-h.ia-in.ia-ov.ic.sm",
+     "svg.ia-check.ia-dr.ia-h.ia-in.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-drive",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-truck"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "truck"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateX(0)}45%{transform:translateX(5px)}",
+   "observed": {
+    "B": [
+     "svg.ia-h.ia-truck.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-drop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-pin"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "pin"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:translateY(-6px)}45%{transform:translateY(0)}65%{transform:translateY(-3px)}100%{transform:translateY(0)}",
+   "observed": {
+    "B": [
+     "svg.ia-h.ia-pin.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-flip",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-cal"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "cal"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:perspective(80px) rotateX(0)}100%{transform:perspective(80px) rotateX(360deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-flipy",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-chev"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "chev"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(360deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ia-ov.ic.sn-chev",
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ic.sn-chev",
+     "svg.ia-chev.ia-h.ia-ov.ic.sn-chev",
+     "svg.ia-chev.ia-h.ic.sn-chev"
+    ],
+    "B": [
+     "svg.chev.ia-chev.ia-h.ic",
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ia-ov.ic.sn-chev",
+     "svg.ia-chev.ia-dr.ia-h.ia-in.ic.sn-chev",
+     "svg.ia-chev.ia-h.ic.sn-chev"
+    ]
+   }
+  },
+  {
+   "name": "ia-float",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".scrim.on .mico svg.ic:not(.ia-in):not(:hover):not(#_)"
+    ],
+    [
+     "A",
+     ".scrim.on #m-send:not(:disabled):not(:hover):not(:focus-visible) svg.ic:not(.ia-in):not(#_)"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     4
+    ]
+   ],
+   "dur": 2.8,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(-3deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-h.ia-mail.ic.lg"
+    ]
+   }
+  },
+  {
+   "name": "ia-hop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-home"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "home"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-4px) scale(1.06)}65%{transform:translateY(0) scale(.96,1.04)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-home.ic"
+    ],
+    "B": [
+     "svg.ia-h.ia-home.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-in",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "svg.ic.ia-in"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.32,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "0%{transform:scale(.5);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:1}",
+   "observed": {
+    "A": [
+     "svg.ia-alert.ia-h.ia-in.ic.lg",
+     "svg.ia-alert.ia-h.ia-in.ic.sm",
+     "svg.ia-back.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-back.ia-h.ia-in.ia-ov.ic.sm",
+     "svg.ia-bag.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-bag.ia-h.ia-in.ic"
+    ],
+    "B": [
+     "svg.ia-alert.ia-h.ia-in.ic",
+     "svg.ia-alert.ia-h.ia-in.ic.sm",
+     "svg.ia-back.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-bag.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-bag.ia-h.ia-in.ic",
+     "svg.ia-bell.ia-h.ia-in.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-lid",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-trash"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "trash"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}35%{transform:rotate(-24deg) translateY(-1px)}65%{transform:rotate(6deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-lift",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-box"
+    ],
+    [
+     "A",
+     ".ia-bag"
+    ],
+    [
+     "A",
+     ".ia-gift"
+    ],
+    [
+     "A",
+     ".ia-file"
+    ],
+    [
+     "A",
+     ".ia-note"
+    ],
+    [
+     "A",
+     ".ia-mail"
+    ]
+   ],
+   "nsel": 6,
+   "icons": [
+    "bag",
+    "box",
+    "file",
+    "gift",
+    "mail",
+    "note"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     12
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}40%{transform:translateY(-4px) rotate(-4deg)}70%{transform:translateY(0) rotate(2deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-bag.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-bag.ia-h.ia-ov.ic",
+     "svg.ia-file.ia-h.ia-in.ic",
+     "svg.ia-file.ia-h.ic",
+     "svg.ia-file.ia-h.ic.sm"
+    ],
+    "B": [
+     "svg.ia-bag.ia-h.ia-in.ia-ov.ic",
+     "svg.ia-file.ia-h.ia-in.ic",
+     "svg.ia-file.ia-h.ic",
+     "svg.ia-file.ia-h.ic.sm",
+     "svg.ia-gift.ia-h.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-nD",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-chev"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "chev"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}45%{transform:translateY(3px)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-nL",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-arrl"
+    ],
+    [
+     "A",
+     ".ia-back"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [
+    "arrl",
+    "back"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     4
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateX(0)}45%{transform:translateX(-4px)}",
+   "observed": {
+    "B": [
+     "svg.ia-back.ia-h.ia-ov.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-nR",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-arrr"
+    ],
+    [
+     "A",
+     ".ia-logout"
+    ],
+    [
+     "A",
+     ".ia-list"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [
+    "arrr",
+    "list",
+    "logout"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     6
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateX(0)}45%{transform:translateX(4px)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-nUR",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-ext"
+    ],
+    [
+     "A",
+     ".ia-send"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [
+    "ext",
+    "send"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     4
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translate(0,0)}45%{transform:translate(2px,-2px)}",
+   "observed": {
+    "B": [
+     "svg.ia-ext.ia-h.ia-ov.ic",
+     "svg.ia-ext.ia-h.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-nod",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-user"
+    ],
+    [
+     "A",
+     ".ia-userck"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [
+    "user",
+    "userck"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     4
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}35%{transform:translateY(2px) rotate(-6deg)}70%{transform:translateY(-1px) rotate(4deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-in.ia-user.ic.sm",
+     "svg.ia-h.ia-user.ic.sm"
+    ],
+    "B": [
+     "svg.ia-h.ia-in.ia-user.ic",
+     "svg.ia-h.ia-user.ic",
+     "svg.ia-h.ia-user.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-pulse",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-info"
+    ],
+    [
+     "A",
+     ".ia-shield"
+    ],
+    [
+     "A",
+     ".ia-msg"
+    ],
+    [
+     "A",
+     ".ia-star"
+    ]
+   ],
+   "nsel": 4,
+   "icons": [
+    "info",
+    "msg",
+    "shield",
+    "star"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     10
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:scale(1)}45%{transform:scale(1.25)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-info.ic.sm",
+     "svg.ia-h.ia-shield.ic.sm"
+    ],
+    "B": [
+     "svg.ia-h.ia-in.ia-shield.ic",
+     "svg.ia-h.ia-info.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-ring",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-bell"
+    ],
+    [
+     "A",
+     ".ia-phone"
+    ],
+    [
+     "A",
+     ".ia-alert"
+    ],
+    [
+     "A",
+     ".ia-lock"
+    ],
+    [
+     "A",
+     ".ia-trash"
+    ]
+   ],
+   "nsel": 5,
+   "icons": [
+    "alert",
+    "bell",
+    "lock",
+    "phone",
+    "trash"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     10
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}20%{transform:rotate(16deg)}40%{transform:rotate(-14deg)}60%{transform:rotate(9deg)}80%{transform:rotate(-5deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-alert.ia-h.ic.sm",
+     "svg.ia-bell.ia-h.ia-in.ic",
+     "svg.ia-bell.ia-h.ic",
+     "svg.ia-bell.ia-h.ic.sm"
+    ],
+    "B": [
+     "svg.ia-alert.ia-h.ic.sm",
+     "svg.ia-bell.ia-h.ia-in.ic",
+     "svg.ia-bell.ia-h.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-send",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-send"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "send"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:translate(0,0);opacity:1}40%{transform:translate(9px,-9px) scale(.85);opacity:0}41%{transform:translate(-9px,9px) scale(.85);opacity:0}100%{transform:translate(0,0);opacity:1}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-send.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-shk",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-shield"
+    ],
+    [
+     "A",
+     ".ia-lock"
+    ],
+    [
+     "A",
+     ".scrim.on .ashield svg.ic.ia-err:not(#_)"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [
+    "lock",
+    "shield"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     4
+    ],
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.55,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateX(0) rotate(0)}15%{transform:translateX(-6px) rotate(-14deg)}35%{transform:translateX(6px) rotate(12deg)}55%{transform:translateX(-4px) rotate(-8deg)}75%{transform:translateX(3px) rotate(5deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-slide",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-print"
+    ],
+    [
+     "A",
+     ".ia-scan"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [
+    "print",
+    "scan"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     4
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}45%{transform:translateY(-4px)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-snip",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-scissors"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "scissors"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}30%{transform:rotate(-14deg)}60%{transform:rotate(8deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-spin",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-gear"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "gear"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(180deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-spin360",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-refresh"
+    ],
+    [
+     "A",
+     ".ia-redo"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [
+    "redo",
+    "refresh"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     6
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(360deg)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-spin90",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-plus"
+    ],
+    [
+     "A",
+     ".ia-x"
+    ],
+    [
+     "A",
+     ".ia-sun"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [
+    "plus",
+    "sun",
+    "x"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     6
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(90deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-sun.ic.sm"
+    ],
+    "B": [
+     "svg.ia-h.ia-sun.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-spinp",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-plus"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "plus"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0) scale(1)}50%{transform:rotate(45deg) scale(1.3)}100%{transform:rotate(90deg) scale(1)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-spinx",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-x"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "x"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0) scale(1)}50%{transform:rotate(90deg) scale(1.25)}100%{transform:rotate(180deg) scale(1)}",
+   "observed": {}
+  },
+  {
+   "name": "ia-squash",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-arrlr"
+    ],
+    [
+     "A",
+     ".ia-minus"
+    ],
+    [
+     "A",
+     ".ia-menu"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [
+    "arrlr",
+    "menu",
+    "minus"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     6
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:scaleX(1)}45%{transform:scaleX(.55)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-in.ia-menu.ic",
+     "svg.ia-h.ia-menu.ic"
+    ],
+    "B": [
+     "svg.ia-h.ia-in.ia-menu.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-swap",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-swap"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "swap"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(180deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-h.ia-ov.ia-swap.ic",
+     "svg.ia-h.ia-swap.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-sway",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-dress"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "dress"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}25%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}85%{transform:rotate(3deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-dress.ia-h.ic",
+     "svg.ia-dress.ia-h.ic.sm"
+    ],
+    "B": [
+     "svg.ia-dress.ia-h.ic",
+     "svg.ia-dress.ia-h.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-tick",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-clock"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "clock"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(90deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-clock.ia-h.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-tilt",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-card"
+    ],
+    [
+     "A",
+     ".ia-cheque"
+    ],
+    [
+     "A",
+     ".ia-cash"
+    ],
+    [
+     "A",
+     ".ia-wallet"
+    ],
+    [
+     "A",
+     ".ia-bank"
+    ],
+    [
+     "A",
+     ".ia-bk"
+    ]
+   ],
+   "nsel": 6,
+   "icons": [
+    "bank",
+    "bk",
+    "card",
+    "cash",
+    "cheque",
+    "wallet"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     12
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}40%{transform:rotate(-14deg) translateY(-1px)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-wallet.ic.sm"
+    ],
+    "B": [
+     "svg.ia-bk.ia-h.ic.sm",
+     "svg.ia-h.ia-wallet.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-tiltf",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-sliders"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "sliders"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}35%{transform:rotate(-20deg) scale(1.12)}70%{transform:rotate(10deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-sliders.ic"
+    ],
+    "B": [
+     "svg.ia-h.ia-sliders.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-undo",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-undo"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [
+    "undo"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     2
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:rotate(0)}100%{transform:rotate(-360deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-h.ia-undo.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-wave",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-flag"
+    ],
+    [
+     "A",
+     ".ia-tag"
+    ],
+    [
+     "A",
+     ".ia-lock"
+    ],
+    [
+     "A",
+     ".ia-trash"
+    ],
+    [
+     "A",
+     ".ia-clip"
+    ]
+   ],
+   "nsel": 5,
+   "icons": [
+    "clip",
+    "flag",
+    "lock",
+    "tag",
+    "trash"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     10
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}65%{transform:rotate(8deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-flag.ia-h.ic.sm"
+    ]
+   }
+  },
+  {
+   "name": "ia-wig",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-search"
+    ],
+    [
+     "A",
+     ".ia-sliders"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [
+    "search",
+    "sliders"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     4
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translate(0,0) rotate(0)}30%{transform:translate(-2px,1px) rotate(-14deg)}65%{transform:translate(2px,-1px) rotate(10deg)}",
+   "observed": {
+    "A": [
+     "svg.ia-h.ia-search.ic"
+    ],
+    "B": [
+     "svg.ia-h.ia-search.ic"
+    ]
+   }
+  },
+  {
+   "name": "ia-write",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".ia-pencil"
+    ],
+    [
+     "A",
+     ".ia-sig"
+    ],
+    [
+     "A",
+     ".ia-list"
+    ]
+   ],
+   "nsel": 3,
+   "icons": [
+    "list",
+    "pencil",
+    "sig"
+   ],
+   "trig": [
+    [
+     "רחיפה על אייקון",
+     6
+    ]
+   ],
+   "dur": null,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-2px,1px) rotate(-12deg)}55%{transform:translate(1px,0) rotate(-4deg)}80%{transform:translate(-1px,1px) rotate(-10deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-h.ia-ov.ia-pencil.ic",
+     "svg.ia-h.ia-pencil.ic"
+    ]
+   }
+  },
+  {
+   "name": "icndrive",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "[data-ico=truck]:is(:hover,:focus-visible)>.ic"
+    ],
+    [
+     "A",
+     ".gl.del:is(:hover,:focus-visible) .ic"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     4
+    ]
+   ],
+   "dur": 0.4,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:translateX(0)}45%{transform:translateX(5px)}100%{transform:translateX(0)}",
+   "observed": {
+    "B": [
+     "svg.ia-truck.ic"
+    ]
+   }
+  },
+  {
+   "name": "icnpop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "[data-ico=check]:is(:hover,:focus-visible)>.ic"
+    ],
+    [
+     "A",
+     ".gl.sig:is(:hover,:focus-visible) .ic"
+    ],
+    [
+     "A",
+     "#toast .tbtn:is(:hover,:focus-visible) .ic"
+    ],
+    [
+     "A",
+     ".tab:is(:hover,:focus-visible) .tabmk .ic"
+    ]
+   ],
+   "nsel": 4,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     8
+    ]
+   ],
+   "dur": 0.35,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(1)}50%{transform:scale(1.28)}100%{transform:scale(1)}",
+   "observed": {
+    "B": [
+     "svg.ia-check.ic",
+     "svg.ia-x.ic"
+    ]
+   }
+  },
+  {
+   "name": "icnshake",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "[data-ico=trash]:is(:hover,:focus-visible)>.ic"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.4,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(12deg)}",
+   "observed": {}
+  },
+  {
+   "name": "icoTilt",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     "body .app .coll>summary:is(:hover,:focus-visible)>.ic:first-child"
+    ],
+    [
+     "B",
+     "body .app .btn:is(:hover,:focus-visible) .ic:not(.evck),body .app .ibtn:is(:hover,:focus-visible) .ic:not(.evck)"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     2
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease-in-out",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}30%{transform:rotate(-14deg) scale(1.12)}70%{transform:rotate(10deg) scale(1.08)}",
+   "observed": {}
+  },
+  {
+   "name": "mspin",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".mspin"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "linear",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "to{transform:rotate(360deg)}",
+   "observed": {
+    "A": [
+     "span.mspin"
+    ]
+   }
+  },
+  {
+   "name": "nb-in",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".nb-w.in"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.32,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{grid-template-rows:0fr;opacity:0;transform:translateY(-12px)}",
+   "observed": {
+    "A": [
+     "div.in.nb-w"
+    ],
+    "B": [
+     "div.in.nb-w"
+    ]
+   }
+  },
+  {
+   "name": "nb-wig",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".nb-ic"
+    ],
+    [
+     "A",
+     ".nb-alert .nb-ic"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     4
+    ]
+   ],
+   "dur": 4.0,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 1.2,
+   "fill": "",
+   "kf": "0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-12deg)}84%{transform:rotate(10deg)}92%{transform:rotate(-5deg)}",
+   "observed": {}
+  },
+  {
+   "name": "nf-in",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".nf-row.nf-new"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.4,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:translateY(-10px) scale(.97)}",
+   "observed": {
+    "B": [
+     "div.nf-new.nf-row.unread"
+    ]
+   }
+  },
+  {
+   "name": "nf-ring",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".sn-ib.nf-ring>svg"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.9,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:rotate(0)}20%{transform:rotate(18deg)}40%{transform:rotate(-16deg)}60%{transform:rotate(10deg)}80%{transform:rotate(-5deg)}",
+   "observed": {
+    "B": [
+     "svg.ia-bell.ia-h.ic"
+    ]
+   }
+  },
+  {
+   "name": "nowpulse",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".tx.cur .dot"
+    ],
+    [
+     "A",
+     ".tx .today .pinm"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     4
+    ]
+   ],
+   "dur": 1.8,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "50%{box-shadow:0 0 0 12px rgba(201,162,39,.12)}",
+   "observed": {}
+  },
+  {
+   "name": "nowpulseG",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".tx.cur .dot"
+    ],
+    [
+     "A",
+     ".tx .today .pinm"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     4
+    ]
+   ],
+   "dur": 1.8,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "50%{box-shadow:0 0 0 10px rgba(201,162,39,.14)}",
+   "observed": {
+    "B": [
+     "button.pinm.tip"
+    ]
+   }
+  },
+  {
+   "name": "nowpulseN",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".tx.cur .dot"
+    ],
+    [
+     "A",
+     ".tx .today .pinm"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     4
+    ]
+   ],
+   "dur": 1.8,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "50%{box-shadow:0 0 0 10px rgba(15,44,82,.1)}",
+   "observed": {}
+  },
+  {
+   "name": "pop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".dlg"
+    ],
+    [
+     "A",
+     ".success .big-ck"
+    ],
+    [
+     "A",
+     ".scrim.on .dlg"
+    ],
+    [
+     "A",
+     ".dpop.on"
+    ]
+   ],
+   "nsel": 4,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     4
+    ],
+    [
+     "כניסה / שינוי מצב",
+     4
+    ]
+   ],
+   "dur": 0.35,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{transform:scale(.92);opacity:0}",
+   "observed": {}
+  },
+  {
+   "name": "popin",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".tx.fresh .ck"
+    ],
+    [
+     "A",
+     ".tx .today b"
+    ],
+    [
+     "A",
+     ".stat.fresh .chip"
+    ],
+    [
+     "A",
+     ".dhero.fresh .ico"
+    ],
+    [
+     "A",
+     ".stat.fresh .tag"
+    ],
+    [
+     "A",
+     ".cl.enter .cl-i"
+    ]
+   ],
+   "nsel": 21,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     26
+    ],
+    [
+     "כניסה / שינוי מצב",
+     18
+    ]
+   ],
+   "dur": 0.45,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(.5);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:1}",
+   "observed": {
+    "A": [
+     "button.tclose",
+     "span.nb-ic"
+    ],
+    "B": [
+     "button.tclose",
+     "div.cl-i",
+     "span.badge",
+     "span.ck",
+     "span.debt.fresh.tabmk",
+     "span.fresh.ok.tabmk"
+    ]
+   }
+  },
+  {
+   "name": "prtFeed",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".xlbtn:is(:hover,:focus-visible) .prt-sheet"
+    ],
+    [
+     "A",
+     ".advp .card-h .ibtn.hdp:is(:hover,:focus-visible) .prt-sheet"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     3
+    ]
+   ],
+   "dur": 0.9,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:translateY(-3px)}50%{transform:translateY(1.6px)}100%{transform:translateY(-3px)}",
+   "observed": {
+    "B": [
+     "g.prt-sheet"
+    ]
+   }
+  },
+  {
+   "name": "prtTop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".xlbtn:is(:hover,:focus-visible) .prt-top"
+    ],
+    [
+     "A",
+     ".advp .card-h .ibtn.hdp:is(:hover,:focus-visible) .prt-top"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     3
+    ]
+   ],
+   "dur": 0.9,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}50%{transform:translateY(-.6px)}",
+   "observed": {
+    "B": [
+     "path.prt-top"
+    ]
+   }
+  },
+  {
+   "name": "pulse",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "#toast.pulse .tb"
+    ],
+    [
+     "A",
+     ".typing span"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ],
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "50%{transform:scale(1.18)}",
+   "observed": {
+    "A": [
+     "div.tb"
+    ],
+    "B": [
+     "div.tb"
+    ]
+   }
+  },
+  {
+   "name": "resIn",
+   "pages": [
+    "A"
+   ],
+   "sels": [
+    [
+     "A",
+     ".hero-trans .jshell .res-one"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     1
+    ]
+   ],
+   "dur": 0.55,
+   "ease": "cubic-bezier(.22,1,.36,1)",
+   "iter": "1",
+   "delay": 0.18,
+   "fill": "both",
+   "kf": "from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}",
+   "observed": {
+    "A": [
+     "div.advp.card.res-one",
+     "div.card.res-one"
+    ]
+   }
+  },
+  {
+   "name": "rowin",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".itm.enter"
+    ],
+    [
+     "A",
+     ".cl.enter"
+    ],
+    [
+     "A",
+     ".cart-actions.enter"
+    ],
+    [
+     "A",
+     ".hf-empty"
+    ],
+    [
+     "A",
+     ".hfe"
+    ],
+    [
+     "A",
+     ".cb-o"
+    ]
+   ],
+   "nsel": 10,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     12
+    ],
+    [
+     "כניסה / שינוי מצב",
+     8
+    ]
+   ],
+   "dur": 0.32,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "both",
+   "kf": "from{opacity:0;transform:translateY(-8px) scale(.98)}",
+   "observed": {
+    "A": [
+     "div.bot.bub",
+     "div.bub.me"
+    ],
+    "B": [
+     "div.cart-actions.enter",
+     "div.cl.enter"
+    ]
+   }
+  },
+  {
+   "name": "rowout",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".itm.leaving"
+    ],
+    [
+     "B",
+     ".cl.leaving"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.22,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "forwards",
+   "kf": "from{max-height:420px}to{opacity:0;transform:scale(.96);max-height:0}",
+   "observed": {}
+  },
+  {
+   "name": "snpulse",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".sn-clock i"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 2.0,
+   "ease": "ease",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "70%{box-shadow:0 0 0 7px rgba(224,191,90,0)}100%{box-shadow:0 0 0 0 rgba(224,191,90,0)}",
+   "observed": {
+    "A": [
+     "i"
+    ],
+    "B": [
+     "i"
+    ]
+   }
+  },
+  {
+   "name": "tabin",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".panel"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "טעינה / הופעה",
+     2
+    ]
+   ],
+   "dur": 0.18,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}",
+   "observed": {
+    "A": [
+     "section.home-p.on.panel",
+     "section.on.panel"
+    ],
+    "B": [
+     "section.on.panel#p-details",
+     "section.on.panel#p-items"
+    ]
+   }
+  },
+  {
+   "name": "tcollapse",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "#toast.out::after"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 0.26,
+   "ease": "ease-in",
+   "iter": "1",
+   "delay": 0,
+   "fill": "forwards",
+   "kf": "to{transform:scaleX(0)}",
+   "observed": {}
+  },
+  {
+   "name": "tdrain",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "#toast.on::after"
+    ]
+   ],
+   "nsel": 1,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     2
+    ]
+   ],
+   "dur": 6.5,
+   "ease": "linear",
+   "iter": "1",
+   "delay": 0,
+   "fill": "forwards",
+   "kf": "from{transform:scaleX(1)}to{transform:scaleX(0)}",
+   "observed": {
+    "A": [
+     "div.info.on.pulse#toast"
+    ],
+    "B": [
+     "div.credit.on.pulse#toast",
+     "div.info.on.pulse#toast"
+    ]
+   }
+  },
+  {
+   "name": "tilepop",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     ".status.pop"
+    ],
+    [
+     "A",
+     ".gl.pop,.gl.pay.pop"
+    ],
+    [
+     "A",
+     ".cart-info.pop"
+    ],
+    [
+     "A",
+     ".gl.pay.pop"
+    ]
+   ],
+   "nsel": 4,
+   "icons": [],
+   "trig": [
+    [
+     "כניסה / שינוי מצב",
+     8
+    ]
+   ],
+   "dur": 0.45,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%{transform:scale(.94)}60%{transform:scale(1.03)}100%{transform:none}",
+   "observed": {}
+  },
+  {
+   "name": "trWig",
+   "pages": [
+    "B"
+   ],
+   "sels": [
+    [
+     "B",
+     ".tools .xlbtn.xld:is(:hover,:focus-visible) .dlic"
+    ],
+    [
+     "B",
+     ".tools .xlbtn.xlg:is(:hover,:focus-visible) .xlic"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "לולאה",
+     2
+    ]
+   ],
+   "dur": 0.6,
+   "ease": "ease-in-out",
+   "iter": "infinite",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px) rotate(-6deg)}",
+   "observed": {
+    "B": [
+     "svg.dlic",
+     "svg.xlic"
+    ]
+   }
+  },
+  {
+   "name": "ubPulse",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "#dlg .dbtns .btn.ghost:active::after"
+    ],
+    [
+     "A",
+     ":is(#dlg,#dlg2) :is(.btn,.ibtn,.methods button,.opt):active::after,#toast .tbtn:active::after"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     4
+    ]
+   ],
+   "dur": 0.25,
+   "ease": "ease",
+   "iter": "1",
+   "delay": 0,
+   "fill": "",
+   "kf": "0%,100%{transform:scaleX(1) scaleY(1)}50%{transform:scaleX(1) scaleY(2.2)}",
+   "observed": {}
+  },
+  {
+   "name": "ubShine",
+   "pages": [
+    "A",
+    "B"
+   ],
+   "sels": [
+    [
+     "A",
+     "#dlg .dbtns .btn.ghost:is(:hover,:focus-visible)::after"
+    ],
+    [
+     "A",
+     ":is(#dlg,#dlg2) :is(.btn,.ibtn,.methods button,.opt):is(:hover,:focus-visible)::after,#toast .tbtn:is(:hover,:focus-visible)::after"
+    ]
+   ],
+   "nsel": 2,
+   "icons": [],
+   "trig": [
+    [
+     "רחיפה / מיקוד",
+     4
+    ]
+   ],
+   "dur": 0.7,
+   "ease": "ease-out",
+   "iter": "1",
+   "delay": 0.2,
+   "fill": "both",
+   "kf": "from{background-position:-130% 0,0 0}to{background-position:230% 0,0 0}",
+   "observed": {}
+  }
+ ],
+ "trans": [
+  [
+   150,
+   "ease",
+   118
+  ],
+  [
+   180,
+   "ease",
+   44
+  ],
+  [
+   200,
+   "ease",
+   38
+  ],
+  [
+   0,
+   "ease",
+   34
+  ],
+  [
+   220,
+   "ease",
+   16
+  ],
+  [
+   260,
+   "ease",
+   14
+  ],
+  [
+   250,
+   "ease",
+   13
+  ],
+  [
+   120,
+   "ease",
+   13
+  ],
+  [
+   300,
+   "ease",
+   6
+  ],
+  [
+   240,
+   "ease",
+   4
+  ],
+  [
+   160,
+   "ease",
+   3
+  ],
+  [
+   450,
+   "cubic-bezier(.22,1,.36,1)",
+   3
+  ],
+  [
+   350,
+   "cubic-bezier(.2,1.3,.3,1)",
+   3
+  ],
+  [
+   180,
+   "ease-in",
+   2
+  ],
+  [
+   100,
+   "ease",
+   2
+  ],
+  [
+   2200,
+   "cubic-bezier(.45,0,.25,1)",
+   2
+  ],
+  [
+   380,
+   "ease",
+   2
+  ],
+  [
+   500,
+   "ease",
+   1
+  ],
+  [
+   500,
+   "cubic-bezier(.2,1.2,.3,1)",
+   1
+  ],
+  [
+   160,
+   "cubic-bezier(.2,.8,.3,1.4)",
+   1
+  ],
+  [
+   550,
+   "ease",
+   1
+  ],
+  [
+   140,
+   "ease",
+   1
+  ],
+  [
+   260,
+   "cubic-bezier(.4,0,1,1)",
+   1
+  ],
+  [
+   350,
+   "ease",
+   1
+  ],
+  [
+   280,
+   "cubic-bezier(.22,1,.36,1)",
+   1
+  ],
+  [
+   220,
+   "cubic-bezier(.2,1.3,.3,1)",
+   1
+  ],
+  [
+   260,
+   "cubic-bezier(.2,1.5,.3,1)",
+   1
+  ],
+  [
+   250,
+   "cubic-bezier(.2,1.4,.3,1)",
+   1
+  ],
+  [
+   220,
+   "cubic-bezier(.22,1,.36,1)",
+   1
+  ],
+  [
+   350,
+   "cubic-bezier(.22,1,.36,1)",
+   1
+  ]
+ ]
+}

@@ -1,0 +1,90 @@
+/* design-system/tokens.css — הטוקנים של פלטת הרכיבים (גרסה 2026-09-29). נוצר אוטומטית ע"י build/install.py — לא לערוך ידנית.
+   המקור: הבלוקים :root של שני הדפים החיים (דף הבית A5, כרטיס הזמנה) כפי שהפלטה מציגה אותם (https://claude.ai/artifact/H6toH2q9ZvL8rrFwZx3SBj).
+   כל שם קיבל את הקידומת --gm- כדי שלא יתנגש באף משתנה של שכבת ה-CSS הישנה (design-v2/אריג: --primary, --surface, --bg, --card-* ...).
+   המספר בהערה הוא המספר הסידורי בפלטה ("צבע 29" = --gm-bg). הקובץ נטען גלובלית מ-app/globals.css ואינו משנה שום דף קיים: הוא רק מגדיר משתנים. */
+:root{
+  --gm-navy-900:#0a2242; /* צבע 1 */
+  --gm-navy:#0f2c52; /* צבע 2 */
+  --gm-navy-700:#173c6b; /* צבע 3 */
+  --gm-navy-500:#2b5a94; /* צבע 4 */
+  --gm-sky-50:#eef0f2; /* צבע 5 */
+  --gm-sky-100:#d3d7dc; /* צבע 6 */
+  --gm-sky-200:#d3d7dc; /* צבע 7 */
+  --gm-sky-300:#bcc2c8; /* צבע 8 */
+  --gm-sky-400:#7fb8e6; /* צבע 9 */
+  --gm-gold-50:#fff6f2; /* צבע 10 */
+  --gm-gold-100:#ffece5; /* צבע 11 */
+  --gm-gold-300:#e0c56e; /* צבע 12 */
+  --gm-gold:#c9a227; /* צבע 13 */
+  --gm-gold-b:#b8912f; /* צבע 14 */
+  --gm-gold-d:#9a7a1f; /* צבע 15 */
+  --gm-gold-700:#a83d6c; /* צבע 16 */
+  --gm-rose-50:#fff6f2; /* צבע 17 */
+  --gm-rose-100:#ffece5; /* צבע 18 */
+  --gm-rose-200:#fdd9cc; /* צבע 19 */
+  --gm-rose-300:#fbbfa9; /* צבע 20 */
+  --gm-rose-500:#e8785a; /* צבע 21 */
+  --gm-rose-700:#a8442a; /* צבע 22 */
+  --gm-pink-300:#fbbfa9; /* צבע 23 */
+  --gm-pink-500:#fa9e84; /* צבע 24 */
+  --gm-pink-d:#f38a6b; /* צבע 25 */
+  --gm-pbtn:#fa9e84; /* צבע 26 */
+  --gm-gbtn:linear-gradient(135deg,#d9b84a 0%,#b8912f 100%); /* צבע 27 */
+  --gm-gbtn-d:#9a7a1f; /* צבע 28 */
+  --gm-bg:var(--gm-sky-200); /* צבע 29 */
+  --gm-surface:#fff; /* צבע 30 */
+  --gm-surface2:var(--gm-sky-50); /* צבע 31 */
+  --gm-line:var(--gm-sky-300); /* צבע 32 */
+  --gm-line2:var(--gm-sky-100); /* צבע 33 */
+  --gm-ink:var(--gm-navy-900); /* צבע 34 */
+  --gm-ink2:#2f4a6b; /* צבע 35 */
+  --gm-ink3:#4d6787; /* צבע 36 */
+  --gm-brand:var(--gm-navy); /* צבע 37 */
+  --gm-brand-d:var(--gm-navy-900); /* צבע 38 */
+  --gm-brand-t:var(--gm-sky-100); /* צבע 39 */
+  --gm-gold-t:var(--gm-gold-100); /* צבע 40 */
+  --gm-green:var(--gm-navy); /* צבע 41 */
+  --gm-green-t:var(--gm-sky-200); /* צבע 42 */
+  --gm-blue:var(--gm-navy-500); /* צבע 43 */
+  --gm-blue-t:var(--gm-sky-100); /* צבע 44 */
+  --gm-amber:var(--gm-rose-700); /* צבע 45 */
+  --gm-amber-t:var(--gm-rose-100); /* צבע 46 */
+  --gm-red:var(--gm-gold-700); /* צבע 47 */
+  --gm-red-t:var(--gm-gold-100); /* צבע 48 */
+  --gm-teal:var(--gm-navy-500); /* צבע 49 */
+  --gm-teal-t:var(--gm-sky-200); /* צבע 50 */
+  --gm-plum:var(--gm-rose-700); /* צבע 51 */
+  --gm-plum-t:var(--gm-rose-100); /* צבע 52 */
+  --gm-navy2:var(--gm-navy-700); /* צבע 53 */
+  --gm-r:16px; /* צבע 54 */
+  --gm-r-sm:12px; /* צבע 55 */
+  --gm-sh:0 1px 2px rgba(15,44,82,.06),0 8px 24px -10px rgba(15,44,82,.22); /* צבע 56 */
+  --gm-sh-lg:0 20px 60px -15px rgba(10,34,66,.5); /* צבע 57 */
+  --gm-s1:8px; /* צבע 58 */
+  --gm-s2:16px; /* צבע 59 */
+  --gm-s3:24px; /* צבע 60 */
+  --gm-s4:32px; /* צבע 61 */
+  --gm-ease:cubic-bezier(.22,1,.36,1); /* צבע 62 */
+  --gm-spring:cubic-bezier(.2,1.3,.3,1); /* צבע 63 */
+  --gm-snav-h:64px; /* צבע 64 */
+  --gm-gold-rich-c:#d4b04a; /* צבע 65 */
+  --gm-gold-rich-h:#ecd074; /* צבע 66 */
+  --gm-gold-rich:linear-gradient(145deg,rgba(255,244,196,.55) 0%,rgba(255,244,196,0) 46%,rgba(120,84,0,.2) 100%); /* צבע 67 */
+  --gm-gold-light:#f4e8c1; /* צבע 68 */
+  --gm-card-bw:2px; /* צבע 69 */
+  --gm-card-line:var(--gm-navy); /* צבע 70 */
+  --gm-bg-dur:180ms; /* צבע 71 */
+}
+@media (max-width:767px){:root{--gm-snav-h:58px;}}
+
+/* טוקנים נגזרים (תיעוד בלבד; components.css לא תלוי בהם): הגופן של שני הדפים ומשכי המעבר הנפוצים ביותר לפי קטלוג ההנפשות. */
+:root{
+  --gm-font:'Rubik','Heebo',system-ui,sans-serif;
+  --gm-t-quick:150ms; /* 118 כללי transition */
+  --gm-t-base:180ms; /* 44 */
+  --gm-t-soft:220ms; /* 16 */
+}
+
+/* גשר תאימות, בהיקף .gm-ds בלבד: ה-HTML שמעתיקים מהפלטה ("העתק HTML") מכיל לפעמים style="color:var(--ink)" בשמות המקוריים.
+   בתוך שורש .gm-ds השמות המקוריים מצביעים על הטוקנים המקודמים; מחוץ לו הם לא קיימים, ולכן שום דף ישן לא מושפע. */
+.gm-ds{--navy-900:var(--gm-navy-900);--navy:var(--gm-navy);--navy-700:var(--gm-navy-700);--navy-500:var(--gm-navy-500);--sky-50:var(--gm-sky-50);--sky-100:var(--gm-sky-100);--sky-200:var(--gm-sky-200);--sky-300:var(--gm-sky-300);--sky-400:var(--gm-sky-400);--gold-50:var(--gm-gold-50);--gold-100:var(--gm-gold-100);--gold-300:var(--gm-gold-300);--gold:var(--gm-gold);--gold-b:var(--gm-gold-b);--gold-d:var(--gm-gold-d);--gold-700:var(--gm-gold-700);--rose-50:var(--gm-rose-50);--rose-100:var(--gm-rose-100);--rose-200:var(--gm-rose-200);--rose-300:var(--gm-rose-300);--rose-500:var(--gm-rose-500);--rose-700:var(--gm-rose-700);--pink-300:var(--gm-pink-300);--pink-500:var(--gm-pink-500);--pink-d:var(--gm-pink-d);--pbtn:var(--gm-pbtn);--gbtn:var(--gm-gbtn);--gbtn-d:var(--gm-gbtn-d);--bg:var(--gm-bg);--surface:var(--gm-surface);--surface2:var(--gm-surface2);--line:var(--gm-line);--line2:var(--gm-line2);--ink:var(--gm-ink);--ink2:var(--gm-ink2);--ink3:var(--gm-ink3);--brand:var(--gm-brand);--brand-d:var(--gm-brand-d);--brand-t:var(--gm-brand-t);--gold-t:var(--gm-gold-t);--green:var(--gm-green);--green-t:var(--gm-green-t);--blue:var(--gm-blue);--blue-t:var(--gm-blue-t);--amber:var(--gm-amber);--amber-t:var(--gm-amber-t);--red:var(--gm-red);--red-t:var(--gm-red-t);--teal:var(--gm-teal);--teal-t:var(--gm-teal-t);--plum:var(--gm-plum);--plum-t:var(--gm-plum-t);--navy2:var(--gm-navy2);--r:var(--gm-r);--r-sm:var(--gm-r-sm);--sh:var(--gm-sh);--sh-lg:var(--gm-sh-lg);--s1:var(--gm-s1);--s2:var(--gm-s2);--s3:var(--gm-s3);--s4:var(--gm-s4);--ease:var(--gm-ease);--spring:var(--gm-spring);--snav-h:var(--gm-snav-h);--gold-rich-c:var(--gm-gold-rich-c);--gold-rich-h:var(--gm-gold-rich-h);--gold-rich:var(--gm-gold-rich);--gold-light:var(--gm-gold-light);--card-bw:var(--gm-card-bw);--card-line:var(--gm-card-line);--bg-dur:var(--gm-bg-dur);}

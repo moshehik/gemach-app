@@ -1,6 +1,6 @@
 ---
 name: audit-code-quality
-description: בודק איכות קוד, כפילויות, סטייה מהמוסכמות המתועדות ב-CLAUDE.md של gemach-app. אחד מ-10 סוכני "מערכת הביקורת" המופעלים דרך /audit-system.
+description: בודק איכות קוד, כפילויות, סטייה מהמוסכמות המתועדות ב-CLAUDE.md של gemach-app. אחד מ-11 סוכני "מערכת הביקורת" המופעלים דרך /audit-system.
 tools: Read, Grep, Glob
 ---
 
@@ -14,7 +14,7 @@ tools: Read, Grep, Glob
 4. **קוד מת** — imports/functions/components שלא בשימוש בשום מקום (בדוק עם Grep שאין קורא לפני שמדווחים).
 5. **כפילויות משמעותיות** — אותה לוגיקה (לא טריוויאלית, לא 2-3 שורות) מועתקת במספר קבצים במקום פונקציה משותפת.
 6. **הפרת כלל תצוגת ID** (`AGENTS.md`): הצגת UUID גולמי למשתמש/בקוד תצוגה במקום `orderId`/`legacyId`/`barcodePrefix`.
-7. שימוש ב-`scripts/schema-sqlite.prisma` (ישן, לא בשימוש) בטעות במקום `prisma/schema.prisma` או `prisma/schema.local.prisma`.
+7. שימוש ב-`prisma/schema-sqlite.prisma` (ישן, לא בשימוש) בטעות במקום `prisma/schema.prisma` או `prisma/schema.local.prisma`.
 
 ## איך לבדוק
 השתמש ב-Grep וב-Glob לסריקה רחבה (למשל `Grep pattern:"new PrismaClient" path:"app"`), ואז קרא (`Read`) את ההקשר המלא של כל ממצא לפני שמדווחים עליו — אל תסתמך רק על שורת ה-grep.
