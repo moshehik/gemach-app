@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Smart quick-search `@` trigger (docs/smart-quick-search-plan-2026-09-27.md, Part 2) -
 // the current employee's own free-text search history, server-side only (shared/kiosk
@@ -9,6 +10,19 @@ import { checkAuth } from '@/lib/auth';
 // scoped to the employeeId derived from the auth_token cookie server-side - never a
 // client-supplied employee id, same as app/api/me/design-prefs/route.js.
 const HISTORY_LIMIT = 20;
+const QUERY_MAX_LENGTH = 300;
+const DOMAIN_MAX_LENGTH = 40;
+
+// VERIFIED auth_token only (signed auth_session naming the same employee) - never the raw
+// cookie, see CLAUDE.md "Auth cookie forgery". checkAuth() passes anonymous requests while
+// require_login is off, so a raw read would let a hand-typed auth_token (any employee id from
+// the public login picker) read and write that employee's history.
+async function getEmployeeId() {
+  const cookieStore = await cookies();
+  return getVerifiedAuthCookie(cookieStore)?.value || null;
+}
+
+const clip = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 
 export async function GET() {
   if (!(await checkAuth())) {
@@ -16,8 +30,7 @@ export async function GET() {
   }
 
   try {
-    const cookieStore = await cookies();
-    const employeeId = cookieStore.get('auth_token')?.value || null;
+    const employeeId = await getEmployeeId();
     if (!employeeId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -52,15 +65,17 @@ export async function POST(request) {
   }
 
   try {
-    const cookieStore = await cookies();
-    const employeeId = cookieStore.get('auth_token')?.value || null;
+    const employeeId = await getEmployeeId();
     if (!employeeId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const query = typeof body?.query === 'string' ? body.query.trim() : '';
-    const domain = typeof body?.domain === 'string' && body.domain.trim() ? body.domain.trim() : null;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
+    }
+    const query = clip(body.query, QUERY_MAX_LENGTH);
+    const domain = clip(body.domain, DOMAIN_MAX_LENGTH) || null;
 
     if (!query) {
       return NextResponse.json({ error: 'query is required' }, { status: 400 });

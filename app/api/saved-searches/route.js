@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Smart quick-search `$` trigger (docs/smart-quick-search-plan-2026-09-27.md, Part 2) -
 // searches the current employee has explicitly named/saved for reuse. Always scoped to
@@ -9,11 +10,21 @@ import { checkAuth } from '@/lib/auth';
 // employee id, same as app/api/me/design-prefs/route.js. Phase 1 only saves a free-text
 // query (+ optional domain); filtersJson is reserved for a future advanced-search phase.
 const SAVED_SEARCH_LIMIT = 50;
+const LABEL_MAX_LENGTH = 80;
+const QUERY_MAX_LENGTH = 300;
+const DOMAIN_MAX_LENGTH = 40;
 
+// The identity is the VERIFIED auth_token (a signed auth_session naming the same employee),
+// never the raw cookie - see CLAUDE.md "Auth cookie forgery". checkAuth() alone is not enough
+// here: while require_login is off it passes anonymous requests too, so a raw read would let
+// a hand-typed auth_token (any employee id from the public login picker) read, create and
+// delete that employee's rows.
 async function getEmployeeId() {
   const cookieStore = await cookies();
-  return cookieStore.get('auth_token')?.value || null;
+  return getVerifiedAuthCookie(cookieStore)?.value || null;
 }
+
+const clip = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 
 export async function GET() {
   if (!(await checkAuth())) {
@@ -50,10 +61,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const label = typeof body?.label === 'string' ? body.label.trim() : '';
-    const query = typeof body?.query === 'string' ? body.query.trim() : '';
-    const domain = typeof body?.domain === 'string' && body.domain.trim() ? body.domain.trim() : null;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
+    }
+    const label = clip(body.label, LABEL_MAX_LENGTH);
+    const query = clip(body.query, QUERY_MAX_LENGTH);
+    const domain = clip(body.domain, DOMAIN_MAX_LENGTH) || null;
 
     if (!label) {
       return NextResponse.json({ error: 'label is required' }, { status: 400 });
