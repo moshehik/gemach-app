@@ -58,7 +58,7 @@ file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // 
 
 ## עדכון (מבוטל) - גיבוי נתונים ענני עבר לגשר נפרד, לא לקובץ הזה (2026-09-17)
 
-**הסעיף הזה תיאר תוכנית שמעולם לא נפרסה בפועל** (ר' "Cloud backup to Drive" ב-CLAUDE.md,
+**הסעיף הזה תיאר תוכנית שמעולם לא נפרסה בפועל** (ר' "Cloud backup to Drive" ב-docs/journal-2026.md,
 2026-09-16) - הפעולות `uploadBackup`/`listBackups`/`deleteBackup` שתוארו כאן נוספו ל-
 `docs/gas-mail-drive.gs` אבל אף פעם לא הודבקו בפועל ל-Code.gs החי, ולכן כל ריצת גיבוי
 נכשלה (הבקשות נפלו לנתיב הכללי `handleGenericEmail`, שניסה לשלוח את הגיבוי כצרופת מייל
