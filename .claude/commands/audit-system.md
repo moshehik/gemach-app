@@ -34,5 +34,5 @@ argument-hint: "[bugs,code-quality,security,orders,attendance,inventory,payments
 
 ## הערות
 - זו הרצה יזומה של המפתח/בעל המערכת — אינה מיועדת להרצה אוטומטית ללא פיקוח, ואינה חשופה למשתמשי קצה של האפליקציה.
-- סוכני ה-DB (orders/attendance/inventory/payments/data-integrity/backups-history) קוראים בלבד מה-DB הפעיל (PROD/TEST לפי `.active-db`) — הם לא כותבים דבר. אל תשנה את מצב ה-DB הפעיל כחלק מהריצה הזו.
+- סוכני ה-DB (orders/attendance/inventory/payments/data-integrity/backups-history) קוראים בלבד — הם לא כותבים דבר. הסקריפטים שלהם (`new PrismaClient()` גולמי, בדפוס `scripts/audit_100_orders.js`) מתחברים ל-DB ש-`DATABASE_URL` ב-`.env` מצביע אליו — בדרך כלל הייצור של הגמ"ח הראשי; הם לא מכבדים את `.active-db` (רק `scripts/insert_audit_report.js` מכבד אותו). אל תשנה את מצב ה-DB הפעיל כחלק מהריצה הזו.
 - `audit-backups-history` גם קורא קבצי לוג מקומיים (`backups/*.log`) ומריץ `schtasks /Query` — קריאה בלבד, אף פעם לא מפעיל/מוחק משימות מתוזמנות או קבצי גיבוי.

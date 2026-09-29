@@ -1,6 +1,6 @@
 ---
 name: audit-data-integrity
-description: סורק את בסיס הנתונים בפועל ומאתר רשומות יתומות, legacyId כפולים, ואי-עקביות soft-delete. אחד מ-10 סוכני "מערכת הביקורת" המופעלים דרך /audit-system.
+description: סורק את בסיס הנתונים בפועל ומאתר רשומות יתומות, legacyId כפולים, ואי-עקביות soft-delete. אחד מ-11 סוכני "מערכת הביקורת" המופעלים דרך /audit-system.
 tools: Read, Grep, Bash
 ---
 

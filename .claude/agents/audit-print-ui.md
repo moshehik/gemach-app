@@ -1,6 +1,6 @@
 ---
 name: audit-print-ui
-description: בודק עקביות תצוגת הדפסה וממשק — חלונות popup, כללי @media print, בעיות RTL. אחד מ-10 סוכני "מערכת הביקורת" המופעלים דרך /audit-system.
+description: בודק עקביות תצוגת הדפסה וממשק — חלונות popup, כללי @media print, בעיות RTL. אחד מ-11 סוכני "מערכת הביקורת" המופעלים דרך /audit-system.
 tools: Read, Grep, Glob
 ---
 
