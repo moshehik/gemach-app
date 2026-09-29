@@ -3632,14 +3632,15 @@ function sync(){
 }
 function add(kind){
   if(live().length>=3) return false; const d=DEMO[kind], k=KINDS[kind], id='nb'+(++seq);
-  const rows=d.rows.map(([i,t])=>`<div class="nb-r"><i>${ic(i)}</i><span>${v(t)}</span></div>`).join('');
+  /* כל שורה עם href משלה (למשל הזמנה משלה) הופכת בעצמה ללחיצה (data-href), בלי לשנות את מחלקת ה-nb-r הקיימת */
+  const rows=d.rows.map(([i,t,h])=>h?`<div class="nb-r" data-href="${escH(h)}" style="cursor:pointer"><i>${ic(i)}</i><span>${v(t)}</span></div>`:`<div class="nb-r"><i>${ic(i)}</i><span>${v(t)}</span></div>`).join('');
   const w=document.createElement('div'); w.className='nb-w in'; w.dataset.href=d.href||'';
   w.innerHTML=`<section class="nb nb-${kind}" role="${k[1]}" aria-live="${k[1]==='alert'?'assertive':'polite'}" aria-labelledby="${id}t">
     <div class="nb-main"><div class="nb-head"><span class="nb-ic" aria-hidden="true">${ic(k[0])}</span>
       <div class="nb-msg"><b id="${id}t">${d.title}</b><span>${v(d.detail)}</span></div><button type="button" class="nb-x" aria-label="סגור" data-tip="סגור">${ic('x')}</button></div>
       <div class="nb-acts"><button type="button" class="nb-more" aria-expanded="false" aria-controls="${id}b"><span>פרטים נוספים</span>${ic('chev')}</button><button type="button" class="nb-chip" aria-expanded="true"><span></span>${ic('chev')}</button></div>
     </div>
-    <div class="nb-bw"><div class="nb-body" id="${id}b"><div class="nb-bi">${rows}${d.go?`<button type="button" class="nb-go">עבור להזמנה</button>`:''}</div></div></div>
+    <div class="nb-bw"><div class="nb-body" id="${id}b"><div class="nb-bi">${rows}${d.go&&d.rows.length===1?`<button type="button" class="nb-go">עבור להזמנה</button>`:''}</div></div></div>
 </section>`;
   area.appendChild(w); all=true; sync();
   w.addEventListener('animationend',e=>{ if(e.target===w) w.classList.remove('in'); }); setTimeout(()=>w.classList.remove('in'),450);
@@ -3657,6 +3658,7 @@ if(!btn||!menu){ /* glue: without the demo menu still wire close / more / chip *
  document.addEventListener('click',e=>{ const t=e.target.closest?e.target:null; if(!t) return; const g=s=>t.closest(s);
   const x=g('.nb-x'); if(x){ dismiss(x.closest('.nb-w')); return; }
   const go=g('.nb-go'); if(go){ const h=go.closest('.nb-w').dataset.href; if(h) location.href=h; return; }
+  const r=g('.nb-r[data-href]'); if(r){ location.href=r.dataset.href; return; }
   const m=g('.nb-more'); if(m){ const b=m.closest('.nb'), on=!b.classList.contains('open'); b.classList.toggle('open',on); m.setAttribute('aria-expanded',on); m.firstElementChild.textContent=on?'פחות פרטים':'פרטים נוספים'; return; }
   if(g('.nb-chip')){ all=!all; sync(); } });
  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ const b=e.target.closest&&e.target.closest('.nb-w'); if(b){ e.preventDefault(); dismiss(b); } } });
@@ -3826,7 +3828,7 @@ let DASH = { K:[0, 0, 0, 0], methods:[], trend:{ daily:[], weekly:[], monthly:[]
 /* ---------- סרגל האתר: שם הסניף והמשתמשת (תוכן, לא עיצוב) ---------- */
 function syncTopBar(){
   const tag = $('.sn-tag'); if (tag){ const n = BRANCH; tag.textContent = n; tag.hidden = !n; }
-  const brand = $('.sn-brand'); if (brand) brand.setAttribute('aria-label', 'גמ״ח שמלות' + (BRANCH ? ' ' + BRANCH : '') + ' - לדף הבית');
+  const brand = $('.sn-brand'); if (brand){ brand.setAttribute('aria-label', 'גמ״ח שמלות' + (BRANCH ? ' ' + BRANCH : '') + ' - לדף הבית'); brand.setAttribute('href', A5.shell.navHref('בית וחיפוש') || '/'); }
   const w = WHO_BY_ROLE[S.role];
   $$('.snav .sn-av').forEach(a => { a.textContent = w[0]; });
   const db = $('.sn-dfoot b'); if (db) db.textContent = w[1];
@@ -3841,9 +3843,12 @@ function syncTopBar(){
 function syncFooter(){
   const f = A5.shell.footer();
   const FI = { orders:'file', customers:'users', dresses:'dress', dashboard:'wallet', guide:'info', report:'alert', profile:'user', display:'sun', privacy:'shield' };
-  /* הסיכום הכספי נפתח בתוך העמוד הזה (?page=dash); קישור בלי כתובת (דיווח על תקלה = חלון באתר הרגיל) לא מוצג */
-  const L = l => [ic(FI[l.key], 'sm') + esc(l.label), `data-label="${esc(l.label)}"`, l.key === 'dashboard' ? '/a5?page=dash' : l.href];
-  const groups = f.groups.map(g => ({ h: g.h, links: g.links.filter(l => l.href).map(L) }));
+  /* הסיכום הכספי נפתח בתוך העמוד הזה (?page=dash); קישור בלי כתובת אמיתית (מדריך למשתמש / דיווח על תקלה) לא מוסתר -
+     מוצג עם תגית "בקרוב" הקיימת (chip rose, C-1.25 + הנחיית הבעלים) ובלי ניווט (data-act="soon" נבלע ע"י ה-handler הקיים) */
+  const L = l => l.href
+    ? [ic(FI[l.key], 'sm') + esc(l.label), `data-label="${esc(l.label)}"`, l.key === 'dashboard' ? '/a5?page=dash' : l.href]
+    : [ic(FI[l.key], 'sm') + esc(l.label) + ' <span class="chip rose">בקרוב</span>', `data-act="soon" data-label="${esc(l.label)}"`];
+  const groups = f.groups.map(g => ({ h: g.h, links: g.links.map(L) }));
   const me = groups.find(g => g.h === 'החשבון שלי'); if (me) me.links.push([ic(FI.privacy, 'sm') + 'מדיניות פרטיות', 'data-act="privacy"']);
   mountSiteFooter($('#siteFoot'), { name: f.name || 'גמ״ח שמלות', ver: f.ver, date: f.date, groups });
 }
@@ -3905,7 +3910,8 @@ function heroView(){
   const compact = S.home !== 'start'; /* results shown: greeting goes away, the search bar moves up */
   const trans = lastCompact !== null && lastCompact !== compact; lastCompact = compact;
   const enter = (!compact && (!heroPlayed || trans)) ? ' hero-enter' : ''; heroPlayed = true;
-  const title = cfg.get('home_welcome_title') || DEFAULT_TITLE;
+  /* owner decision 2026-09-27: הכותרת תמיד כמו בדף הדוגמא ("שלום! מה תרצי לחפש?", עם שם פרטי אם מחוברת) - לא לפי ה-home_welcome_title האמיתי */
+  const title = 'שלום! מה תרצי לחפש?';
   const canAi = aiAllowed(), ai = S.aiMode && canAi;
   const label = ai ? 'חיפוש חכם' : 'חיפוש';
   const aiBtn = canAi ? `<button type="button" class="cmode-b" data-mode="${ai ? 'plain' : 'ai'}">${ai ? ic('search') + 'לחיפוש רגיל' : ic('sparkle') + 'לחיפוש חכם'}</button>` : '';
@@ -3940,9 +3946,18 @@ const avCell = c => { const [t, cls] = Array.isArray(c) ? c : [c, '']; if (!t) r
 const avName = r => { const n = Array.isArray(r[0]) ? r[0][0] : r[0]; return n ? esc(n) : '<span class="faint">ללא שם</span>'; };
 const avList = V => V.rows.map((r, i) => { const [tag, icon] = ADV_TAG[S.advFocus], al = (V.al || []).includes(i);
   return `<a class="li rlink lrow${al ? ' ralert' : ''}" href="${esc(V.links && V.links[i] || '#')}" data-open="${tag}"><div class="ic-b">${ic(icon)}<span class="rlbl">${tag}</span></div><div class="t"><b>${avName(r)}${al ? '<span class="adot" data-tip="יש התראה"></span>' : ''}</b><span class="ln">${r.slice(1).map(avCell).join(' · ')}</span></div>${ic('chev','sm go')}</a>`; });
+/* תצוגה טבלאית של חיפוש מתקדם: עמודות מינימליות ואחידות לכל התחומים (במקום עמודות ה-cols הספציפיות של כל תחום) -
+   שם (הפוך: שם משפחה לפני שם פרטי, מ-V.namesRev כשקיים) + עמודת "פרטים" אחת (כמו שורת ה-ln בתצוגת שורות/avList,
+   בלי תא הצ'יפ שכבר מוצג בעמודת סטטוס נפרדת) + עמודת סטטוס (רק אם יש שורה עם צ'יפ) + פתיחת רשומה (כמו שהיה) */
 const avTable = V => { const tag = ADV_TAG[S.advFocus][0];
-  return `<div class="tblw"><table class="rtbl"><thead><tr>${V.cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${V.rows.slice(0, S.more.a ? undefined : 8).map((r, i) => { const al = (V.al || []).includes(i);
-    return `<tr class="${al ? 'ralert' : ''}">${r.map((c, j) => j === 0 ? `<td><a class="trl" href="${esc(V.links && V.links[i] || '#')}" data-open="${tag}">${avName(r)}${al ? '<span class="adot" data-tip="יש התראה"></span>' : ''}</a></td>` : `<td>${avCell(c)}</td>`).join('')}</tr>`; }).join('')}</tbody></table></div>`; };
+  const info = V.rows.map((r, i) => { const chip = r.slice(1).find(c => Array.isArray(c)); return { r, i, chip }; });
+  const hasStatus = info.some(x => x.chip);
+  const head = `<th>שם</th><th>פרטים</th>${hasStatus ? '<th>סטטוס</th>' : ''}`;
+  const body = info.map(({ r, i, chip }) => { const al = (V.al || []).includes(i);
+    const nameRev = (V.namesRev && V.namesRev[i]) || avName(r);
+    const details = r.slice(1).filter(c => c !== chip).map(avCell).join(' · ');
+    return `<tr class="${al ? 'ralert' : ''}"><td><a class="trl" href="${esc(V.links && V.links[i] || '#')}" data-open="${tag}">${nameRev ? esc(nameRev) : avName(r)}${al ? '<span class="adot" data-tip="יש התראה"></span>' : ''}</a></td><td>${details || '<span class="faint">—</span>'}</td>${hasStatus ? `<td>${chip ? avCell(chip) : '<span class="faint">—</span>'}</td>` : ''}</tr>`; }).join('');
+  return `<div class="tblw"><table class="rtbl"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`; };
 /* מתג התצוגה (שורות/טבלה) - משותף לחיפוש הרגיל, המתקדם והחכם */
 /* לוח שנה: רק בחיפוש מתקדם שיש בו עמודת "תאריך אירוע" (הזמנות, תפוסה, השכרות, החזרות, משלוחים, תיקונים, כספים) */
 const calOK = () => { const V = S.advRes && S.advFocus && ADV_VIEW[S.advFocus]; return !!V && V.cols.includes('תאריך אירוע'); };
@@ -3989,7 +4004,8 @@ function calView(V){
     <div class="dpf"><span class="calsum">${total} ${tag === 'תפוסה' ? 'הזמנות' : 'רשומות'} ב${h.m}</span></div></div>`;
 }
 /* שורות החיפוש הרגיל כטבלה שטוחה (תצוגת טבלה וייצוא): סוג, שם, טלפון, עיר, מזהה/ברקוד, תאריך אירוע, סטטוס/מידה, כתובת */
-const regFlat = () => [...CUSTOMERS.map(x => ['לקוח', x.n, x.p, x.c, '', '', '', x.url]), ...ORDERS.map(x => ['הזמנה', x.n, '', '', '#' + x.id, x.h, x.st || 'פעיל', x.url]), ...RENTALS.map(x => ['פריט', x.n, '', '', x.b, '', 'מידה ' + x.s, x.url])];
+/* t[8] = שם הפוך (שם משפחה לפני שם פרטי) - לתצוגה טבלאית בלבד (C-1.8); שאר האינדקסים (0-7) נשארו כפי שהיו לצרכי ייצוא */
+const regFlat = () => [...CUSTOMERS.map(x => ['לקוח', x.n, x.p, x.c, '', '', '', x.url, x.nr || x.n]), ...ORDERS.map(x => ['הזמנה', x.n, '', '', '#' + x.id, x.h, x.st || 'פעיל', x.url, x.nr || x.n]), ...RENTALS.map(x => ['פריט', x.n, '', '', x.b, '', 'מידה ' + x.s, x.url, x.n])];
 function resultsView(){
   if (S.home === 'error') return emptyCard('alert', 'החיפוש לא הצליח', 'אין חיבור לשרת כרגע.', `<button type="button" class="btn primary" data-act="retry">${ic('refresh')}לנסות שוב</button>`);
   const none = S.home === 'none';
@@ -4013,7 +4029,7 @@ function resultsView(){
   const tdata = none ? [] : regFlat();
   /* חיפוש רגיל: עמודת "סוג" (לקוח/הזמנה/פריט) חשובה. חיפוש מתקדם: הסוג כבר נבחר מראש, ולכן במקומה עמודת סטטוס מושכר/לא מושכר. ההגדרה המדויקת תיקבע בהמשך */
   const rentedChip = t => t[0] === 'הזמנה' ? `<span class="chip ${t[6] === 'מושכר' ? 'green' : 'gray'}">${t[6] === 'מושכר' ? 'מושכר' : 'לא מושכר'}</span>` : '<span class="faint">—</span>';
-  let table = `<div class="tblw"><table class="rtbl"><thead><tr>${S.advRes ? '' : '<th class="tc">סוג</th>'}<th>שם</th><th>טלפון</th><th>עיר</th><th>מזהה / ברקוד</th><th>תאריך אירוע</th>${S.advRes ? '<th>סטטוס</th>' : '<th>סטטוס / מידה</th>'}</tr></thead><tbody>${tdata.slice(0, S.more.a ? undefined : 8).map(t => `<tr>${S.advRes ? '' : `<td class="tc"><span class="chip rtype">${t[0]}</span></td>`}<td><a class="trl" href="${esc(t[7])}" data-open="${t[0] === 'לקוח' ? 'לקוח' : 'הזמנה'}">${esc(t[1])}</a></td><td>${t[2] ? `<bdi dir="ltr">${esc(t[2])}</bdi>` : dash('')}</td><td>${dash(t[3])}</td><td>${t[4] ? `<bdi dir="ltr">${esc(t[4])}</bdi>` : dash('')}</td><td>${dash(t[5])}</td><td>${S.advRes ? rentedChip(t) : dash(t[6])}</td></tr>`).join('')}</tbody></table></div>`;
+  let table = `<div class="tblw"><table class="rtbl"><thead><tr>${S.advRes ? '' : '<th class="tc">סוג</th>'}<th>שם</th><th>טלפון</th><th>עיר</th><th>מזהה / ברקוד</th><th>תאריך אירוע</th>${S.advRes ? '<th>סטטוס</th>' : '<th>סטטוס / מידה</th>'}</tr></thead><tbody>${tdata.slice(0, S.more.a ? undefined : 8).map(t => `<tr>${S.advRes ? '' : `<td class="tc"><span class="chip rtype">${t[0]}</span></td>`}<td><a class="trl" href="${esc(t[7])}" data-open="${t[0] === 'לקוח' ? 'לקוח' : 'הזמנה'}">${esc(t[8])}</a></td><td>${t[2] ? `<bdi dir="ltr">${esc(t[2])}</bdi>` : dash('')}</td><td>${dash(t[3])}</td><td>${t[4] ? `<bdi dir="ltr">${esc(t[4])}</bdi>` : dash('')}</td><td>${dash(t[5])}</td><td>${S.advRes ? rentedChip(t) : dash(t[6])}</td></tr>`).join('')}</tbody></table></div>`;
   if (AV) table = avTable(AV);
   const asum = S.advSum || { label:'', text:'' }, cap = S.advCap || {};
   const advHead = `<div class="card-h"><button type="button" class="ibtn" data-act="clear" aria-label="סגירת התוצאות" data-tip="סגירה">${ic('x','sm')}</button><button type="button" class="ibtn" data-act="adv-edit" aria-label="חזרה לעריכת החיפוש" data-tip="חזרה">${ic('back','sm')}</button><button type="button" class="ibtn" data-act="adv-update" aria-label="עדכן חיפוש">${ic('sliders','sm')}<span>עדכן חיפוש</span></button><button type="button" class="ibtn" data-act="adv-reopen-clear" aria-label="נקה" data-tip="נקה">${ic('eraser','sm')}<span>נקה</span></button></div><div class="advsum"><b id="rc-a">תוצאות חיפוש מתקדם ${esc(asum.label)} <bdi>(${rows.length})</bdi></b><span>${esc(asum.text)}</span></div>${S.advFocus === 'capacity' ? `<div class="capstats" role="group" aria-label="סיכום תפוסה"><div class="capst cs-stock"><span>במלאי</span><b>${cap.stock || 0}</b></div><div class="capst cs-busy"><span>בתפוסה</span><b>${cap.busy || 0}</b></div><div class="capst cs-res"><span>רזרבה</span><b>${cap.res || 0}</b></div></div>` : ''}${rows.length ? `<div class="xlrow xlrow2">${vtogH}${trio}</div>` : ''}`;
@@ -4037,10 +4053,14 @@ function aiTable(m){
   /* אותן שורות כמו תוצאות החיפוש הרגיל: תגית סוג, שם, שורת פרטים וחץ. העמודות משתנות לפי השאלה (השרת מייצר את השאילתה) */
   const line = r => { const v = A5.ai.rowView(r); return v.parts.map(p => `${esc(p.k)} <bdi>${esc(p.v)}</bdi>`).join(' · '); };
   const head = `<div class="xlrow xlrow2">${viewSwitch()}<div class="bub-acts aixl">${xlBtns()}</div></div>`;
+  /* "הצג עוד": אותו רכיב/מצב-מיתוג כמו בתוצאות החיפוש הרגיל (data-more), אבל שמור על ההודעה עצמה (m.more) כדי שכל תשובה בשיחה תיפתח בנפרד */
+  const shown = rows.slice(0, m.more ? undefined : 15);
+  const idx = S.chat.indexOf(m);
+  const more = rows.length > 15 ? `<button type="button" class="lrow block" style="margin-top:8px" data-moreai="${idx}" aria-expanded="${!!m.more}">${ic(m.more ? 'minus' : 'plus','sm')}${m.more ? 'להציג פחות' : `עוד ${rows.length - 15}`}</button>` : '';
   if (S.resTable){
-    return head + `<div class="tblw"><table class="rtbl"><thead><tr><th class="tc">סוג</th>${cols.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${rows.slice(0, 15).map(r => `<tr><td class="tc"><span class="chip rtype">${aiKind(r)[0]}</span></td>${cols.map((k, i) => `<td>${r[k] ? (i === 0 ? `<a class="trl" href="${esc(r._actionUrl || '#')}" data-open="${aiKind(r)[0]}">${esc(r[k])}</a>` : `<bdi>${esc(r[k])}</bdi>`) : '<span class="faint">—</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    return head + `<div class="tblw"><table class="rtbl"><thead><tr><th class="tc">סוג</th>${cols.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${shown.map(r => `<tr><td class="tc"><span class="chip rtype">${aiKind(r)[0]}</span></td>${cols.map((k, i) => `<td>${r[k] ? (i === 0 ? `<a class="trl" href="${esc(r._actionUrl || '#')}" data-open="${aiKind(r)[0]}">${esc(r[k])}</a>` : `<bdi>${esc(r[k])}</bdi>`) : '<span class="faint">—</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` + more;
   }
-  return head + `<div class="list mt" aria-label="תוצאות">${rows.slice(0, 15).map(r => { const v = A5.ai.rowView(r), k = aiKind(r); return `<a class="li rlink lrow" href="${esc(v.url || '#')}" data-open="${k[0]}"><div class="ic-b">${ic(k[1])}<span class="rlbl">${k[0]}</span></div><div class="t"><b>${esc(v.title)}</b><span class="ln">${line(r)}</span></div>${go}</a>`; }).join('')}</div>`;
+  return head + `<div class="list mt" aria-label="תוצאות">${shown.map(r => { const v = A5.ai.rowView(r), k = aiKind(r); return `<a class="li rlink lrow" href="${esc(v.url || '#')}" data-open="${k[0]}"><div class="ic-b">${ic(k[1])}<span class="rlbl">${k[0]}</span></div><div class="t"><b>${esc(v.title)}</b><span class="ln">${line(r)}</span></div>${go}</a>`; }).join('')}</div>` + more;
 }
 function chatView(){
   const bot = S.chat;
@@ -4195,12 +4215,15 @@ const ADV_FOCI = {
 const advIsMgr = () => S.role === '0' || S.role === '1';
 /* עובדים: הנהלה ראשית/מתכנת בלבד (כמו app/employees/layout.js); הגדרות: רק כשהחיפוש החכם מותר */
 const advCan = k => k === 'employees' ? S.role === '0' : k === 'settings' ? advIsMgr() && aiAllowed() : advIsMgr();
+/* תחומים שכבויים ברמת הארגון (כמו navConfig.js): תיקונים תלוי enable_alterations (ברירת מחדל דלוק),
+   משלוחים תלוי enable_deliveries (ברירת מחדל כבוי - הפוך מתיקונים). שאר התחומים תלויים בהרשאה בלבד (advCan/role) */
+const advOrgOk = k => k === 'alterations' ? cfg.get('enable_alterations') !== 'false' : k === 'deliveries' ? cfg.get('enable_deliveries') === 'true' : true;
 let ADV_ANIM = false;
 let ADV_SRC = false; /* החיפוש הנוכחי הגיע מהחיפוש המתקדם */
 let ADV_Q = false; const advQuietFocus = el => { ADV_Q = true; try { el.focus(); } finally { ADV_Q = false; } };
 let ADV_MORE = false; /* מצב הפלוס נשמר בין מעבר בין תחומים */
-const advFoci = () => Object.keys(ADV_FOCI).filter(k => !ADV_FOCI[k].mgr && !ADV_FOCI[k].plus);
-const advExtra = () => Object.keys(ADV_FOCI).filter(k => ADV_FOCI[k].plus || (ADV_FOCI[k].mgr && advCan(k)));
+const advFoci = () => Object.keys(ADV_FOCI).filter(k => !ADV_FOCI[k].mgr && !ADV_FOCI[k].plus && advOrgOk(k));
+const advExtra = () => Object.keys(ADV_FOCI).filter(k => (ADV_FOCI[k].plus || (ADV_FOCI[k].mgr && advCan(k))) && advOrgOk(k));
 const advId = k => 'adv-' + k;
 const advCount = () => (ADV_DATE_KEYS.some(k => ADV[k]) ? 1 : 0) + ADV.st.length + ADV.flags.length + ADV_KEYS.filter(k => !ADV_DATE_KEYS.includes(k) && ADV[k].trim()).length;
 function advSave(){
@@ -4710,6 +4733,7 @@ document.addEventListener('click', e => {
   if (b.dataset.recToggle !== undefined){ S.recentOpen = !S.recentOpen; b.setAttribute('aria-expanded', S.recentOpen); const p = $('#recList'); if (p) p.hidden = !S.recentOpen; return; }
   if (b.dataset.recent){ S.q = b.dataset.recent; S.aiMode = false; S.recentOpen = false; doSearch(S.q); return; }
   if (b.dataset.more){ const k = b.dataset.more; S.more[k] = !S.more[k]; render(); const f = $(`[data-more=${k}]`); f && f.focus(); return; }
+  if (b.dataset.moreai !== undefined){ const m = S.chat[+b.dataset.moreai]; if (m){ m.more = !m.more; render(); const f = $(`[data-moreai="${b.dataset.moreai}"]`); f && f.focus(); } return; }
   if (b.dataset.link === 'advanced'){ e.preventDefault(); advToggle(); return; }
   if (b.dataset.advFocus){ advPick(b.dataset.advFocus); return; }
   if (b.classList.contains('tsb')){ const tb = b.closest('.rtbl'), i = +b.dataset.sortcol, dir = +b.dataset.dir, sig = [...tb.querySelectorAll('thead th')].map(t => t.textContent.trim()).join('|'); const cur = S.tsort; S.tsort = cur && cur.sig === sig && cur.i === i && cur.dir === dir ? null : { sig, i, dir }; tblFx(); const nb = document.querySelector('.rtbl .tsb[data-sortcol="' + i + '"][data-dir="' + dir + '"]'); nb && nb.focus(); return; }
@@ -4743,6 +4767,12 @@ document.addEventListener('click', e => {
   if (a === 'clearChat'){ SEQ++; S.chat = []; S.home = 'start'; S.loading = false; render(); $('#sq').focus(); }
   if (a === 'retry'){ if (S.advRes){ ADV_SRC = true; doSearch('', { adv:true }); } else doSearch(S.q); }
   if (a === 'excel' || a === 'download' || a === 'print'){
+    /* כפתורי הכותרת של חיפוש חכם ("הורד הכל"/"הדפס הכל", .hdx) מייצאים את כל השרשור (כל שאלה+תשובה+טבלה), לא רק ההודעה האחרונה */
+    if (b.classList.contains('hdx')){
+      if (a === 'download'){ A5.ai.downloadThread(S.chat, 'AI_Chat'); toast('info', 'ההורדה החלה', ''); }
+      else if (A5.ai.printThread(S.chat, 'שיחת חיפוש חכם')) toast('info', 'נשלח להדפסה', ''); else toast('info', 'חלון ההדפסה נחסם', 'אפשרו חלונות קופצים');
+      return;
+    }
     const x = exportInfo(b); if (!x) return;
     if (a === 'excel') A5.ai.excel(x.rows, x.name).then(() => toast('info', 'הקובץ ירד', '')).catch(() => toast('info', 'הייצוא נכשל', ''));
     else if (a === 'download'){ A5.ai.download(x.rows, x.name); toast('info', 'ההורדה החלה', ''); }
@@ -4786,7 +4816,7 @@ render();
 if (S.page === 'dash') loadDash();
 { const qp = new URLSearchParams(location.search).get('q'); if (qp && S.page === 'home') doSearch(qp); }
 /* פס הודעות עליון: הודעות אמיתיות בלבד (הזמנות שלא הוחזרו, הודעות בין משמרות) */
-A5.shell.notices().then(l => l.forEach(n => window.nbAdd(n.kind, { title:esc(n.title), detail:esc(n.detail), rows:n.rows.map(([i, t]) => [i, esc(t)]).concat(n.more ? [['user', 'ועוד ' + n.more + ' משפחות']] : []), go:n.go, href:n.href }))).catch(() => {});
+A5.shell.notices().then(l => l.forEach(n => window.nbAdd(n.kind, { title:esc(n.title), detail:esc(n.detail), rows:n.rows.map(([i, t, h]) => [i, esc(t), h]).concat(n.more ? [['user', 'ועוד ' + n.more + ' משפחות']] : []), go:n.go, href:n.href }))).catch(() => {});
 })();
 </script>
 </body>

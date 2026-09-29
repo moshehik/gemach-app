@@ -19,7 +19,7 @@
 
   async function run(focus, ADV) {
     const r = await A5.api('/api/a5/adv-b?' + qs(focus, ADV || {}));
-    const out = { cols: r.cols, rows: r.rows, links: r.links, al: r.al || [], truncated: !!r.truncated };
+    const out = { cols: r.cols, rows: r.rows, links: r.links, al: r.al || [], namesRev: r.namesRev || [], truncated: !!r.truncated };
     if (r.capstats) out.capstats = r.capstats;
     if (r.gaps && r.gaps.length) out.gaps = r.gaps; // סינונים שלא הוחלו (ר' NOTES)
     return out;

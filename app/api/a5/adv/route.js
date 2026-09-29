@@ -48,6 +48,8 @@ function fmtPhone(p) {
   return String(p || '').trim();
 }
 const fullName = (c) => (c ? `${c.firstName || ''} ${c.lastName || ''}`.trim() : '');
+// שם משפחה לפני שם פרטי - לתצוגה טבלאית בלבד (C-1.8); לא מפצלים את fullName בצד הלקוח, מקור נפרד מהשדות הגולמיים
+const fullNameRev = (c) => (c ? `${c.lastName || ''} ${c.firstName || ''}`.trim() : '');
 const fullAddress = (c) => {
   if (!c) return '';
   const street = [c.street, c.houseNum].filter((x) => x !== null && x !== undefined && String(x).trim() !== '').join(' ');
@@ -284,7 +286,7 @@ async function focusCustomers(adv, cfg) {
     if (customerMissing(c, rule)) al.push(i);
     return [fullName(c), fmtPhone(c.phone1 || c.phone2), fullAddress(c), normalizeEmail(c.email, c.emailSuffix) || ''];
   });
-  return { cols: ['שם', 'טלפון', 'כתובת מלאה', 'מייל'], rows: out, links: page.map((c) => `/customers/${c.id}`), al, truncated, total };
+  return { cols: ['שם', 'טלפון', 'כתובת מלאה', 'מייל'], rows: out, links: page.map((c) => `/customers/${c.id}`), al, truncated, total, namesRev: page.map((c) => fullNameRev(c)) };
 }
 
 // ===================== הזמנות =====================
@@ -388,7 +390,7 @@ async function focusOrders(adv, cfg, unsavedIds) {
     if (orderAlerts(o, ctx).length) al.push(i);
     return [fullName(o.customer), eventHeb(o), orderStatusChip(o, todayKey, tomorrowKey), fmtPhone(o.customer?.phone1 || o.customer?.phone2)];
   });
-  return { cols: ['שם', 'תאריך אירוע', 'סטטוס', 'טלפון'], rows: out, links: page.map((o) => `/orders/${o.orderId}`), al, truncated, total };
+  return { cols: ['שם', 'תאריך אירוע', 'סטטוס', 'טלפון'], rows: out, links: page.map((o) => `/orders/${o.orderId}`), al, truncated, total, namesRev: page.map((o) => fullNameRev(o.customer)) };
 }
 
 // ===================== השכרות / החזרות =====================
@@ -514,7 +516,7 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
     }
     return [fullName(o.customer), eventHeb(o), st, fmtPhone(o.customer?.phone1 || o.customer?.phone2)];
   });
-  return { cols: ['שם', 'תאריך אירוע', 'סטטוס', 'טלפון'], rows: out, links: page.map((o) => `/orders/${o.orderId}`), al, truncated, total };
+  return { cols: ['שם', 'תאריך אירוע', 'סטטוס', 'טלפון'], rows: out, links: page.map((o) => `/orders/${o.orderId}`), al, truncated, total, namesRev: page.map((o) => fullNameRev(o.customer)) };
 }
 
 export async function GET(request) {

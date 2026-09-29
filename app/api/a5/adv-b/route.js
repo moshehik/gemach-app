@@ -20,6 +20,8 @@ const isIso = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 const s = (v) => (v == null ? '' : String(v).trim());
 const has = (list, v) => list.includes(v);
 const fullName = (c) => [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim();
+// שם משפחה לפני שם פרטי - לתצוגה טבלאית בלבד (C-1.8)
+const fullNameRev = (c) => [c?.lastName, c?.firstName].filter(Boolean).join(' ').trim();
 
 // השנה היא האסימון האחרון (מתחיל ב-ת/הת: תשפ"ז / תשפז / התשפ"ז); חודש כמו "אדר ב'" לא מתחיל ב-ת
 function stripYear(raw) {
@@ -177,6 +179,7 @@ async function deliveries(p, flags, ost, gaps) {
     return {
       link: `/orders/${o.orderId}`,
       cells: [address, fullName(o.customer), hebNoYear(o), status, o.customer?.phone1 || '', [dir === 'הלוך-חזור' ? 'שניהם' : dir, 'st-mid']],
+      nameRev: fullNameRev(o.customer),
     };
   });
   return { rows: out, truncated, cols: ['כתובת מלאה', 'שם', 'תאריך אירוע', 'סטטוס', 'טלפון', 'כיוון'] };
@@ -231,7 +234,7 @@ async function alterations(p, flags, ost, gaps) {
   const truncated = groups.length > LIMIT;
   groups = groups.slice(0, LIMIT);
   return {
-    rows: groups.map((g) => ({ link: `/orders/${g.order.orderId}`, cells: [fullName(g.order.customer), hebNoYear(g.order), String(g.n), [...g.types].join(' · ')] })),
+    rows: groups.map((g) => ({ link: `/orders/${g.order.orderId}`, cells: [fullName(g.order.customer), hebNoYear(g.order), String(g.n), [...g.types].join(' · ')], nameRev: fullNameRev(g.order.customer) })),
     truncated, cols: ['שם', 'תאריך אירוע', 'כמות לתיקון', 'סוג תיקון'],
   };
 }
@@ -263,7 +266,7 @@ async function finance(p, flags, gaps) {
       const d = orderDebt(o);
       if (d <= 0 || !amtOk(d)) continue;
       if (ordSel && !ordSel.includes(calculateOrderStatus(o))) continue;
-      rows.push({ o, sort: o.eventDate, kind: 'debt', cells: [fullName(o.customer), [`חוב ${money(d)}`, 'amtd'], hebNoYear(o), o.customer?.phone1 || ''], link: `/orders/${o.orderId}` });
+      rows.push({ o, sort: o.eventDate, kind: 'debt', cells: [fullName(o.customer), [`חוב ${money(d)}`, 'amtd'], hebNoYear(o), o.customer?.phone1 || ''], link: `/orders/${o.orderId}`, nameRev: fullNameRev(o.customer) });
     }
   }
   if (includeCredits) {
@@ -299,6 +302,7 @@ async function finance(p, flags, gaps) {
         kind: 'credit', sort: ord?.eventDate || r.createdAt,
         cells: [fullName(r.customer), [`זיכוי ${money(r.amount)}`, 'amtc'], ord ? hebNoYear(ord) : '', r.customer?.phone1 || ''],
         link: r.orderId ? `/orders/${r.orderId}` : `/customers/${r.customerId}`,
+        nameRev: fullNameRev(r.customer),
       });
     }
   }
@@ -342,13 +346,14 @@ async function capacity(p, req, gaps) {
     }
   }
   const ids = [...occ.keys()];
-  const phones = ids.length ? await prisma.order.findMany({ where: { orderId: { in: ids } }, select: { orderId: true, customer: { select: { phone1: true } } } }) : [];
+  const phones = ids.length ? await prisma.order.findMany({ where: { orderId: { in: ids } }, select: { orderId: true, customer: { select: { phone1: true, firstName: true, lastName: true } } } }) : [];
   const phoneBy = new Map(phones.map((o) => [o.orderId, o.customer?.phone1 || '']));
+  const nameRevBy = new Map(phones.map((o) => [o.orderId, fullNameRev(o.customer)]));
   let list = smartSort([...occ.values()], (o) => o.eventDate);
   const truncated = list.length > LIMIT;
   list = list.slice(0, LIMIT);
   return {
-    rows: list.map((o) => ({ link: `/orders/${o.orderId}`, cells: [o.customerName === 'לא ידוע' ? '' : o.customerName, hebNoYear(o), String(o.quantity), phoneBy.get(o.orderId) || ''] })),
+    rows: list.map((o) => ({ link: `/orders/${o.orderId}`, cells: [o.customerName === 'לא ידוע' ? '' : o.customerName, hebNoYear(o), String(o.quantity), phoneBy.get(o.orderId) || ''], nameRev: o.customerName === 'לא ידוע' ? '' : (nameRevBy.get(o.orderId) || '') })),
     capstats: stats, truncated, cols: ['שם', 'תאריך אירוע', 'כמות', 'טלפון'],
   };
 }
@@ -409,7 +414,7 @@ async function employees(p, flags) {
   return {
     rows: list.slice(0, LIMIT).map((e) => {
       const st = [e.street, e.houseNum].filter(Boolean).join(' ');
-      return { link: `/employees/${e.id}`, cells: [e.fullName || [e.firstName, e.lastName].filter(Boolean).join(' '), e.phone1 || '', st && e.city ? `${st}, ${e.city}` : (st || e.city || ''), e.email || ''] };
+      return { link: `/employees/${e.id}`, cells: [e.fullName || [e.firstName, e.lastName].filter(Boolean).join(' '), e.phone1 || '', st && e.city ? `${st}, ${e.city}` : (st || e.city || ''), e.email || ''], nameRev: fullNameRev(e) };
     }),
     truncated, cols: ['שם', 'טלפון', 'כתובת מלאה', 'מייל'],
   };
@@ -450,6 +455,7 @@ export async function GET(request) {
       rows: rows.map((x) => x.cells),
       links: rows.map((x) => x.link),
       al: [],
+      namesRev: rows.map((x) => x.nameRev || ''),
       ...(r.capstats ? { capstats: r.capstats } : {}),
       truncated: !!r.truncated,
       gaps: [...gaps],

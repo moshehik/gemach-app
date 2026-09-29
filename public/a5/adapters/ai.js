@@ -24,6 +24,7 @@
     const d = (await A5.api('/api/global-search?q=' + encodeURIComponent(q))) || {};
     const customers = (d.customers || []).map((c) => ({
       n: [c.firstName, c.lastName].filter(Boolean).join(' '),
+      nr: [c.lastName, c.firstName].filter(Boolean).join(' '), // שם משפחה לפני שם פרטי - לתצוגה טבלאית בלבד
       p: str(c.phone1),
       c: str(c.city),
       id: c.id,
@@ -31,6 +32,7 @@
     }));
     const orders = (d.orders || []).map((o) => ({
       n: [o.firstName, o.lastName].filter(Boolean).join(' '),
+      nr: [o.lastName, o.firstName].filter(Boolean).join(' '), // שם משפחה לפני שם פרטי - לתצוגה טבלאית בלבד
       id: o.orderId,
       h: str(o.eventDateHebrew),
       t: Number(o.totalAmount) || 0,
@@ -214,5 +216,47 @@
     const q = (v) => '"' + cell(v).replace(/"/g, '""') + '"';
     const csv = [c.map(q).join(','), ...data.map((r) => c.map((k) => q(r[k])).join(','))].join('\r\n');
     saveBlob(new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' }), stripExt(filename) + '.csv');
+  };
+
+  /* ---------- (4) ייצוא שרשור חיפוש חכם מלא (כפתורי הכותרת "הורד הכל"/"הדפס הכל") ----------
+     בשונה מ-download/print (הודעה אחת בלבד): כל שאלה ותשובה בשיחה, וכל טבלה שהופיעה בדרך - לא רק האחרונה. */
+  A5.ai.downloadThread = function (chat, filename) {
+    const q = (v) => '"' + cell(v).replace(/"/g, '""') + '"';
+    const lines = [];
+    (chat || []).forEach((m) => {
+      if (m.err) return;
+      lines.push([q(m.me ? 'שאלה' : 'תשובה'), q(m.t || '')].join(','));
+      if (m.rows && m.rows.length) {
+        const data = clean(m.rows), c = cols(data);
+        lines.push(c.map(q).join(','));
+        data.forEach((r) => lines.push(c.map((k) => q(r[k])).join(',')));
+      }
+      lines.push('');
+    });
+    saveBlob(new Blob(['﻿', lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), stripExt(filename) + '.csv');
+  };
+  A5.ai.printThread = function (chat, title) {
+    const w = window.open('', '_blank');
+    if (!w) return false; // חוסם חלונות קופצים
+    const ttl = esc(title || 'שיחת חיפוש חכם');
+    let body = '';
+    (chat || []).forEach((m) => {
+      if (m.err) return;
+      body += '<h2>' + esc(m.me ? 'שאלה' : 'תשובה') + '</h2><p>' + esc(m.t || '') + '</p>';
+      if (m.rows && m.rows.length) {
+        const data = clean(m.rows), c = cols(data);
+        body += '<table><thead><tr>' + c.map((k) => '<th>' + esc(k) + '</th>').join('') + '</tr></thead><tbody>'
+          + data.map((r) => '<tr>' + c.map((k) => '<td>' + esc(r[k]) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+      }
+    });
+    w.document.write('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>' + ttl + '</title><style>'
+      + 'body{font-family:Arial,"Segoe UI",sans-serif;margin:16px;color:#000}h1{font-size:18px;margin:0 0 12px}h2{font-size:15px;margin:20px 0 4px}p{margin:0 0 8px;white-space:pre-wrap}'
+      + 'table{border-collapse:collapse;width:100%;margin-bottom:8px}th,td{border:1px solid #444;padding:4px 8px;text-align:right;font-size:12px}'
+      + 'th{background:#eee}thead{display:table-header-group}tr{page-break-inside:avoid}'
+      + '</style></head><body><h1>' + ttl + '</h1>' + body + '</body></html>');
+    w.document.close();
+    w.focus();
+    setTimeout(() => { try { w.print(); } catch (e) { /* ignore */ } }, 250);
+    return true;
   };
 })();

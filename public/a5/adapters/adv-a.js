@@ -46,6 +46,7 @@
         rows: res.rows || [],
         links: res.links || [],
         al: res.al || [],
+        namesRev: res.namesRev || [], // "שם משפחה שם פרטי" - לתצוגה טבלאית בלבד (C-1.8)
         truncated: !!res.truncated,
       };
     };

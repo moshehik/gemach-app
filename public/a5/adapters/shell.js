@@ -5,7 +5,7 @@
   const api = (p, o) => (A5.api ? A5.api(p, o) : fetch(p, { credentials: 'same-origin' }).then(r => r.json()));
 
   /* ---------- מצב ---------- */
-  const st = { boot: null, me: null, activeShift: null, settings: {}, ready: null, notif: null };
+  const st = { boot: null, me: null, activeShift: null, settings: {}, ready: null, notif: null, version: null };
 
   /* ---------- מפת ניווט: תווית באב-טיפוס -> כתובת אמיתית + כלל תצוגה ----------
      src:'nav'   = מופיע ב-navGroups מ-/api/a5/boot (אותו סינון הרשאות כמו התפריט הצדדי באתר)
@@ -29,8 +29,9 @@
   function navItems() { return ((st.boot && st.boot.navGroups) || []).flatMap(g => g.items || []); }
   function navFind(label) { return navItems().find(i => i.label === label); }
   function navHref(label) {
+    /* בזמן שהענף הזה בתצוגה מקדימה (/a5) - "בית וחיפוש" נשאר בעמוד החדש, לא ל-"/" החי שמגיע מ-boot.navGroups (navConfig.js) */
+    if (label === 'בית וחיפוש') return '/a5';
     const n = navFind(label); if (n) return n.href;
-    if (label === 'בית וחיפוש') return '/';
     return EXTRA[label] ? EXTRA[label].href : null;
   }
   function visible(label) {
@@ -179,10 +180,12 @@
         const d = await api('/api/orders/overdue');
         const os = (d && d.orders) || [];
         if (os.length) {
+          /* כל שורה מקבלת קישור לעצמה (להזמנה שלה); "עבור להזמנה" מוצג רק כשיש הזמנה אחת בלבד (אחרת כל שורה כבר מקושרת) */
+          const shown = os.slice(0, 5);
           out.push({ kind: 'warning', title: os.length === 1 ? 'משפחה אחת עוד לא החזירה שמלות' : os.length + ' משפחות עוד לא החזירו שמלות',
             detail: 'מועד ההחזרה שלהן עבר',
-            rows: os.slice(0, 5).map(o => ['user', 'הזמנה #' + o.orderId + ' · ' + o.customerName + ' · ' + o.daysLate + ' ימי איחור']),
-            go: 1, href: '/orders/' + os[0].orderId, more: Math.max(0, os.length - 5) });
+            rows: shown.map(o => ['user', 'הזמנה #' + o.orderId + ' · ' + o.customerName + ' · ' + o.daysLate + ' ימי איחור', '/orders/' + o.orderId]),
+            go: shown.length === 1 ? 1 : 0, href: '/orders/' + os[0].orderId, more: Math.max(0, os.length - 5) });
         }
       } catch (e) { /* best-effort, כמו באתר */ }
     }
@@ -216,15 +219,19 @@
   /* ---------- תחתית ----------
      קבוצות/מפתחות כמו syncFooter באב-טיפוס. מחזיר רק קישורים שמותרים למשתמש (C-1.25). */
   function footer() {
-    const F = (label, key, href, ok) => (ok ? { label, key, href } : null);
+    const F = (label, key, href, ok) => (ok ? { label, key, href: href || null } : null);
     const hasNav = h => navItems().some(i => i.href === h);
     const nav = [F('הזמנות', 'orders', '/orders', hasNav('/orders')), F('לקוחות', 'customers', '/customers', hasNav('/customers')),
       F('שמלות', 'dresses', '/dashboard/dresses', hasNav('/dashboard/dresses')), F('סיכום כספי', 'dashboard', '/dashboard', head())].filter(Boolean);
-    /* GAP: באתר אין עמוד "מדריך למשתמש"; "דיווח על תקלה" הוא חלון (ErrorReportButton) ללא כתובת - מוצג רק כשההגדרה hide_error_reporting אינה 'true' */
-    const help = [F('דיווח על תקלה', 'report', null, authed() && String(st.settings.hide_error_reporting) !== 'true')].filter(Boolean);
+    /* אין באתר עמוד "מדריך למשתמש", ו"דיווח על תקלה" הוא חלון (ErrorReportButton) בלי כתובת עצמאית לפתיחה -
+       שני הפריטים מוצגים (href:null) והעמוד מסמן אותם "בקרוב" במקום להסתיר; "דיווח על תקלה" מוצג רק כשההגדרה לא כיבתה אותו */
+    const help = [F('מדריך למשתמש', 'guide', null, authed()),
+      F('דיווח על תקלה', 'report', null, authed() && String(st.settings.hide_error_reporting) !== 'true')].filter(Boolean);
     const me = [F('הפרופיל שלי', 'profile', '/profile', authed()), F('הגדרות תצוגה', 'display', '/display-settings', authed())].filter(Boolean);
+    /* גרסה/תאריך אמיתיים (אותו מקור כמו הטולטיפ של הלוגו ב-BrandLogo.js) - נטענים ב-init() מ-/api/a5/version */
+    const v = st.version || {};
     return { groups: [{ h: 'ניווט מהיר', links: nav }, { h: 'עזרה', links: help }, { h: 'החשבון שלי', links: me }],
-      name: st.settings.gmach_name || 'גמ״ח שמלות', ver: null, date: null, privacy: PRIVACY };
+      name: st.settings.gmach_name || 'גמ״ח שמלות', ver: v.version ? 'גרסה ' + v.version : null, date: v.date || null, privacy: PRIVACY };
   }
   /* נוסח "מדיניות פרטיות" החי (חלון ב-app/page.js) - כרגע טקסט זמני באתר עצמו */
   const PRIVACY = { title: 'מדיניות פרטיות', paragraphs: [
@@ -245,6 +252,8 @@
       if (need.some(k => st.settings[k] === undefined)) {
         jobs.push(api('/api/settings').then(a => { (Array.isArray(a) ? a : (a && a.settings) || []).forEach(s => { if (need.includes(s.key)) st.settings[s.key] = s.value; }); }).catch(() => {}));
       }
+      /* גרסה/תאריך לתחתית (C-1.25) - אותו מקור אמיתי כמו הלוגו */
+      jobs.push(api('/api/a5/version').then(v => { if (v) st.version = v; }).catch(() => {}));
       if (authed()) jobs.push(api('/api/me').then(d => { if (d && d.success) { st.me = d.employee; st.activeShift = d.activeShift; } }).catch(() => {}));
       await Promise.all(jobs);
       return st;
