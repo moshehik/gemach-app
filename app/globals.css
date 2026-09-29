@@ -4,6 +4,13 @@
   סריף עברי קלאסי ואלגנטי — ולגוף הטקסט Assistant, סאנס עברי מודרני וקריא.
 */
 @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
+/*
+  שכבת הטוקנים של מערכת העיצוב החדשה (פלטת הרכיבים הממוספרת, design-system/README.md):
+  רק משתני --gm-* על :root, זמינים בכל דף. לא משנה שום דף קיים (אין כללים, רק משתנים; אין
+  חפיפה עם שום משתנה כאן). רכיבי הפלטה עצמם (design-system/components.css) מיובאים רק
+  בדפים שמשתמשים בהם, תחת שורש .gm-ds.
+*/
+@import '../design-system/tokens.css';
 
 :root {
   /*

@@ -105,7 +105,7 @@ customSpacing, extraDay, hokDetails, isWeekdayEvent` — **לוודא ידנית
 עצמו, אלא תוצאה מובנית של דפוס ה-branch-then-cutover: כל דבר שנכתב ישירות ל-DB
 **אחרי** רגע יצירת ה-branch (ולפני שה-cutover באמת קרה) לא קיים ב-branch, גם אם
 הטבלה שלו לא נמחקה בכוונה. פירוט מלא: `neve-yaakov-db-cutover-silent-data-loss`
-בזיכרון (memory), ותיעוד ב-CLAUDE.md תחת אותו כותרת.
+בזיכרון (memory), ותיעוד ב-docs/journal-2026.md תחת אותו כותרת.
 
 **לפני שמבצעים cutover בפועל (שלב 2 סוף / מעבר `DATABASE_URL`):**
 1. לבדוק ב-Neon את זמן יצירת ה-branch המבודד.

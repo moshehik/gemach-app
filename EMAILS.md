@@ -129,7 +129,7 @@
 
 בעבר תועד כ"לא מאומת" אם הפעולה הרגילה של הסקריפט מכבדת `htmlBody`. נבדק מול הקוד החי: **כן** -
 `if (data.htmlBody) mailOptions.htmlBody = data.htmlBody`. (`docs/gas-mail-drive.gs` הוא סקריפט אחר, מורחב עם דרייב,
-שאינו פרוס - ר' CLAUDE.md, "Cloud backup to Drive".)
+שאינו פרוס - ר' docs/journal-2026.md, "Cloud backup to Drive".)
 
 ## פערים ידועים (לא טופלו)
 

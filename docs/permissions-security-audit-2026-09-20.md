@@ -34,7 +34,7 @@ the fixes. Nothing was tested by reading code alone.
 
 ## What was fixed
 
-See CLAUDE.md → "Permissions system" → "Live verification + security hardening" and CHANGELOG.md
+See docs/journal-2026.md → "Permissions — live verification + security hardening (2026-09-20)" and CHANGELOG.md
 (2026-09-20). Short version: signed-session verification for every read of the auth cookie
 (`getVerifiedAuthCookie`), head-management-only employee APIs + role-rank ladder
 (`roleRank`/`canManageRoles`), `SAFE_EMPLOYEE_SELECT` for every employee join, audit masking,
@@ -97,7 +97,7 @@ the audit rows the sample users generated were deleted from both databases after
 
 ## Second pass: pages connected
 
-The catalog's page items are now enforced (layout guards + sidebar), see CLAUDE.md → "Pages connected". Results of the
+The catalog's page items are now enforced (layout guards + sidebar), see docs/journal-2026.md → "Permissions — pages connected". Results of the
 live sample-user run are appended below.
 
 Live results of the second pass (fresh sample users, deployed commit `040fbed`):

@@ -265,7 +265,7 @@ reset-workaround` בזיכרון) ולא דרך כפתור ה-Merge ב-GitHub. �
 מוצג "Open" למרות שהתוכן שלו כבר בפרודקשן.
 
 זו לא רק בעיה קוסמטית: ה-digest האימייל הפעמיים-ביום שנוסף באותו יום
-(`lib/agentDigest.js`, ר' CLAUDE.md "Agent PR-approval digest email") קורא בדיוק את
+(`lib/agentDigest.js`, ר' docs/journal-2026.md "Agent PR-approval digest email") קורא בדיוק את
 רשימת ה-PR-ים הפתוחים דרך GitHub API כדי לדווח "מה מחכה למיזוג ידני" - בלי תיקון,
 הוא ימשיך לדווח על PR-ים ישנים כ"ממתינים" גם אחרי שהם כבר חיים בפרודקשן.
 
@@ -289,7 +289,7 @@ reset-workaround` בזיכרון) ולא דרך כפתור ה-Merge ב-GitHub. �
 
 ## 11. סבב בדיקת ענפים ממתינים 2026-09-14 - 4 מוזגו, 2 ענפים מיותרים אותרו, 1 דורש טיפול ייעודי
 
-**תקלת `desktop.ini` חזרה** (ר' CLAUDE.md "Windows desktop.ini pollution breaks git") -
+**תקלת `desktop.ini` חזרה** (ר' docs/journal-2026.md "Windows desktop.ini pollution breaks git"; הכלל העדכני ב-CLAUDE.md) -
 הפעם Google Drive File Stream כתב את הקובץ לתוך `.git/refs/**` (heads/remotes/tags,
 כולל תתי-תיקיות `claude/`, `fix/`, `redesign/`) ומנע `git fetch --prune` לגמרי
 (`fatal: bad object refs/desktop.ini`). תוקן באותו ניקוי מתועד + נוספה שורת
@@ -352,7 +352,7 @@ reset-workaround` בזיכרון) ולא דרך כפתור ה-Merge ב-GitHub. �
   משפיע (מוסיף רזרבה למאגר הזמין), אבל **לא** הוסבר על ידו לבד - גם עם/בלי המתג
   התוצאה לא התיישבה עם 21/56 המדווחים. המשתמשת דחתה את ההסבר הזה במפורש ("זה לא
   זה, אל תטיח") - וצדקה.
-- **פריטי DressItem "רפאים"** (הבאג שתוקן ב-2026-09-14, ר' CLAUDE.md) - נבדק
+- **פריטי DressItem "רפאים"** (הבאג שתוקן ב-2026-09-14, ר' docs/journal-2026.md) - נבדק
   ישירות מול Access ונשלל: 549/551 תואמים ל-Access שורה-שורה, אין רפאים חדשים.
 - אין ספירה כפולה בשאילתה, אין הזמנות תקועות כ-isTaken בטעות, אוצר המילים של שדה
   `location` בכל נווה יעקב הוא בדיוק 4 ערכים (`חנות`/`null`/`רזרבה`/`מחסן`) ותואם
