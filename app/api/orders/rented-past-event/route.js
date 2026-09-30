@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { getIsraelTodayRange, getIsraelDaysUntil } from '@/lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,9 +12,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(23, 59, 59, 999);
+    // סוף "אתמול" לפי שעון ישראל (לא setHours על new Date() - השרת ב-UTC, ובין 00:00 ל-03:00
+    // שעון ישראל "אתמול" שם הוא עדיין שלשום).
+    const yesterday = new Date(getIsraelTodayRange().start.getTime() - 1);
 
     const candidates = await prisma.order.findMany({
       where: {
@@ -29,12 +30,8 @@ export async function GET() {
       orderBy: { eventDate: 'asc' },
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const orders = candidates.map((o) => {
-      const eventDay = new Date(o.eventDate);
-      eventDay.setHours(0, 0, 0, 0);
-      const daysSinceEvent = Math.floor((today - eventDay) / (1000 * 60 * 60 * 24));
+      const daysSinceEvent = 0 - getIsraelDaysUntil(o.eventDate);
       return {
         orderId: o.orderId,
         customerName: `${o.customer?.firstName || ''} ${o.customer?.lastName || ''}`.trim() || 'לקוח ללא שם',

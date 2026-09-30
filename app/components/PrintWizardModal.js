@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import { downloadPdf as downloadGeneratedPdf } from '../lib/pdfClient';
+import { getIsraelTodayKey } from '../../lib/hebrewDate';
 
 // Mirrors getReportTitle() in app/print/alterations/page.js - kept as a small local copy
 // here since it's only used to name the downloaded file, not to render anything.
@@ -94,9 +95,9 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
       }
       query = `from=${startDate}&to=${endDate}&mode=event`;
     } else {
-      // 'prep_today' - תואם את הפורמט (en-CA = YYYY-MM-DD) שכבר משמש לקיבוץ הזמנות
-      // לפי תאריך ב-app/board/page.js.
-      query = `date=${new Date().toLocaleDateString('en-CA')}`;
+      // 'prep_today' - YYYY-MM-DD, אותו פורמט שכבר משמש לקיבוץ הזמנות לפי תאריך ב-
+      // app/board/page.js, אבל "היום" לפי שעון ישראל ולא לפי אזור הזמן של המכשיר.
+      query = `date=${getIsraelTodayKey()}`;
     }
 
     setIsPreparing(true);

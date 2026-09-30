@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { getDeliveriesForDate } from '@/lib/deliveries';
+import { getIsraelTodayDate } from '@/lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
 
 // 'YYYY-MM-DD' -> local midnight Date (avoids the UTC-parse day-shift you'd get
 // from `new Date('YYYY-MM-DD')` in negative-offset timezones); falls back to
-// today (server-local) when missing/malformed, per the route's contract.
+// today in Israel (not server-local: Vercel runs in UTC, so setHours(0,0,0,0) on
+// new Date() gave "yesterday" between 00:00 and 03:00 Israel time) when missing/malformed.
 function parseDateParam(dateParam) {
   if (dateParam) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateParam);
@@ -16,9 +18,7 @@ function parseDateParam(dateParam) {
       if (!isNaN(parsed.getTime())) return parsed;
     }
   }
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now;
+  return getIsraelTodayDate();
 }
 
 // GET /api/deliveries?date=YYYY-MM-DD — orders whose event date puts them in the

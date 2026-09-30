@@ -3,7 +3,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
-import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
 import { addDaysSkippingWeekends } from '../../../lib/clientInventory';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
@@ -460,7 +460,7 @@ export default function PrintOrderPage() {
                     </thead>
                     <tbody>
                       {activePayments.map((p, idx) => {
-                        const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(new Date());
+                        const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(getIsraelTodayDate());
                         return (
                           <tr key={idx}>
                             <td>{hebrewPaymentDate}</td>
@@ -509,7 +509,7 @@ export default function PrintOrderPage() {
               )}
 
               <div className="print-footer">
-                הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
+                הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(getIsraelTodayDate())}
               </div>
             </td>
           </tr>

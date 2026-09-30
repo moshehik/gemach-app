@@ -209,7 +209,7 @@ export default function PrintDressCard() {
       )}
 
       <div style={{ marginTop: '3rem', fontSize: '0.8rem', color: '#888', textAlign: 'center', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-        הודפס מתערכת ניהול הגמ"ח בתאריך: {new Date().toLocaleDateString('he-IL')} בשעה {new Date().toLocaleTimeString('he-IL')}
+        הודפס מתערכת ניהול הגמ"ח בתאריך: {new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })} בשעה {new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' })}
       </div>
     </div>
   );

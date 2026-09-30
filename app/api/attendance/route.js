@@ -5,6 +5,7 @@ import { checkAuth } from '../../../lib/auth';
 import { verifySecret } from '../../../lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '../../../lib/trustedDevice';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { toIsraelCalendarDate } from '@/lib/hebrewDate';
 
 
 
@@ -114,8 +115,11 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    // Normalize date to start of day for the 'date' field
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Normalize date to start of day for the 'date' field: midnight UTC of the ISRAELI calendar
+    // day (the same form as a manually added shift's 'YYYY-MM-DD'). Using now.getDate() on
+    // the server (UTC on Vercel) dated a punch-in between 00:00 and 03:00 Israel time to
+    // the previous day - and /api/me's "active shift today" lookup must use the same day.
+    const todayStart = toIsraelCalendarDate(now);
 
     // עובד שנכנס לפני חצות ועדיין לא יצא נשאר עם משמרת פתוחה מתוארכת ל"אתמול" -
     // בדיקת "כבר נכנס" חייבת לחפש משמרת פתוחה בכל תאריך (לא רק היום), אחרת

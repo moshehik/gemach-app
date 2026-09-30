@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { getEmployeeEffectiveValue } from '@/lib/permissions';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { toIsraelCalendarDate } from '@/lib/hebrewDate';
 
 export async function GET(request) {
   try {
@@ -49,8 +50,9 @@ export async function GET(request) {
 
     // Check for active shift today
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    // Same Israeli-calendar-day form as Shift.date written by POST /api/attendance.
+    const todayStart = toIsraelCalendarDate(now);
+    const todayEnd = new Date(todayStart.getTime() + (24 * 60 * 60 - 1) * 1000);
 
     const activeShift = await prisma.shift.findFirst({
       where: {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { getHebrewDateString, getIsraelTodayDate, getIsraelTodayKey } from '../../../lib/hebrewDate';
 
 export default function PrintAlterationsPage() {
   const searchParams = useSearchParams();
@@ -24,7 +24,9 @@ export default function PrintAlterationsPage() {
   const orderIds = searchParams.get('orderIds');
 
   if (dateMode === 'today') {
-    const todayStr = new Date().toISOString().split('T')[0];
+    // היום לפי שעון ישראל - לא toISOString (UTC, "אתמול" בין 00:00 ל-03:00); הדף גם מרונדר
+    // בשרת ע"י Chrome headless (app/api/pdf/route.js, אזור זמן UTC) ולכן אסור להסתמך על שעון המכונה.
+    const todayStr = getIsraelTodayKey();
     startDate = todayStr;
     endDate = todayStr;
   }
@@ -521,7 +523,7 @@ export default function PrintAlterationsPage() {
                 <h2>{getReportTitle()}</h2>
                 <h3>
                   {dateMode === 'today'
-                    ? `תאריך: ${getHebrewDateString(new Date().toISOString())}`
+                    ? `תאריך: ${getHebrewDateString(getIsraelTodayDate())}`
                     : orderIds
                       ? 'הנתונים המוצגים כעת (לפי הסינון הנוכחי)'
                       : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
@@ -706,7 +708,7 @@ export default function PrintAlterationsPage() {
       </table>
       
       <div className="print-footer">
-        הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
+        הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(getIsraelTodayDate())}
       </div>
     </div>
   );
