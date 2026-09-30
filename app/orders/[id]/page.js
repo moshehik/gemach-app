@@ -1501,7 +1501,12 @@ export default function OrderDetailsPage({ params }) {
     }, 60);
   };
 
-  const handleSendEmail = async (type, forcedEmail = null) => {
+  // approval = { employeeId, pin } של מאשר שהקליד סיסמה בחלון "קוד מאשר" (ModernGeneralDetails.handleQuickEmail);
+  // השרת מאמת אותו מול feature:customer_email_approval. נשמר ב-ref כדי לשרוד את חלון "הזנת כתובת מייל".
+  const emailApprovalRef = useRef(null);
+
+  const handleSendEmail = async (type, forcedEmail = null, approval = null) => {
+    if (approval) emailApprovalRef.current = approval;
     let targetEmail = forcedEmail || order.customer?.email;
     
     if (!targetEmail || !targetEmail.includes('@')) {
@@ -1517,8 +1522,14 @@ export default function OrderDetailsPage({ params }) {
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type: type })
+        body: JSON.stringify({
+          email: targetEmail,
+          type: type,
+          emailApproverId: emailApprovalRef.current?.employeeId,
+          emailApproverPin: emailApprovalRef.current?.pin
+        })
       });
+      emailApprovalRef.current = null;
       const data = await res.json();
       if (data.success) {
         setSaveMessage('המייל נשלח בהצלחה!');
@@ -1805,7 +1816,7 @@ export default function OrderDetailsPage({ params }) {
                 }}
                 onSaveRequest={handleSave}
                 onToggleSignature={handleToggleSignature}
-                onQuickEmail={() => handleSendEmail('order')}
+                onQuickEmail={(approval) => handleSendEmail('order', null, approval)}
                 showManualPaymentCreditButton={consolidateManualPaymentCredit}
                 onOpenManualPaymentCredit={handleOpenManualPaymentCredit}
               />
