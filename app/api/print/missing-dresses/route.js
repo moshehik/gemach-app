@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { canUsePrintSurface, PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccess';
 import { checkMissingDressForItem } from '@/lib/inventory';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Same permission as the /print/order page that calls it (lib/printAccess.js).
+  if (!(await canUsePrintSurface(PRINT_ORDER_PAGE_KEYS))) {
+    return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 });
   }
   try {
     const { searchParams } = new URL(request.url);
