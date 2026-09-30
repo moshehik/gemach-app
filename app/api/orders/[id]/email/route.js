@@ -7,6 +7,7 @@ import { renderOrderCardEmailHtml } from '../../../../../lib/emailTemplates';
 import { normalizeAttachments, postToMailer } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
 import { addDaysSkippingWeekends } from '../../../../../lib/inventory';
+import { checkAuth } from '@/lib/auth';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
@@ -51,7 +52,11 @@ const renderRepairChipsHtml = (item) => {
   return html;
 };
 
+// שליחה דרך גשר Apps Script/Drive - ברירת המחדל של Hobby (10 שניות) הורגת קריאה קרה.
+export const maxDuration = 60;
+
 export async function POST(request, { params }) {
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const resolvedParams = await params;
     const id = parseInt(resolvedParams.id, 10);
