@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SettingQuickPanel from '../SettingQuickPanel';
 import { getHistory } from '@/lib/historyManager';
-import { Ic } from './HomeParts';
+import { Ic, HomeSprite } from './HomeParts';
 import HomeResults from './HomeResults';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
@@ -394,6 +394,7 @@ export default function HomeA5() {
 
   return (
     <div className="gm-ds gm-home home-bg">
+      <HomeSprite />
       <section className={`hero${heroEnter && !compact ? ' hero-enter' : ''}${compact ? ' hero-compact' : ''}`} aria-label="חיפוש">
         <div className={`hero-in${joined ? ' jshell' : ''}${noBar ? ' advonly' : ''}${view === 'ai' ? ' aishell' : ''}`}>
           {compact && <h1 className="sr-only">חיפוש</h1>}

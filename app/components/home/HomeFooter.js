@@ -4,23 +4,47 @@
 // (חלון 18/20 div.dlg + חלון 9/10 scrim). קישורי התחתית לפי מה שמותר למשתמשת (footerGroups ב-homeLogic).
 // החלון נפתח מהקישור "מדיניות פרטיות" בעמודה "החשבון שלי" ונסגר ב-Escape / לחיצה על הרקע / "הבנתי".
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Ic } from './HomeParts';
 import { PRIVACY_TITLE, PRIVACY_SUB, PRIVACY_SECTIONS, splitPlaceholders } from './privacyPolicyText';
+import { hebrewVersionStamp } from '@/lib/hebrewStamp';
 
-const LINK_ICON = { orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', profile: 'user', display: 'sun' };
+const LINK_ICON = { orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', guide: 'info', report: 'alert', profile: 'user', display: 'sun' };
+
+// כפתור "דיווח על תקלה" של הסרגל החדש (MenuA5Shell: button#snErr[data-sn-err]). בדף הבית עם סרגל ישן אין לו כפתור כזה -
+// אז הפריט מוצג "בקרוב" (לא קישור) במקום כפתור שלא עושה כלום.
+const REPORT_SELECTOR = '[data-sn-err]';
+
+function SoonItem({ link }) {
+  // שורה כבויה: span (לא <a> ולא <button>), בלי tabindex, בלי href - לעולם לא מובילה לשום מקום.
+  return (
+    <span className="sf-soon" aria-disabled="true">
+      <Ic id={LINK_ICON[link.key] || 'file'} size="sm" />{link.label}<span className="sf-badge">בקרוב</span>
+    </span>
+  );
+}
 
 export function HomeFooter({ groups, name, version, date, onPrivacy }) {
+  const [canReport, setCanReport] = useState(false);
+  useEffect(() => { setCanReport(!!document.querySelector(REPORT_SELECTOR)); }, []);
+  const openReport = () => { const b = document.querySelector(REPORT_SELECTOR); if (b) b.click(); };
+  const stamp = hebrewVersionStamp(date);
   return (
     <footer className="site-foot" role="contentinfo">
       <div className="sf-in">
         {groups.filter((g) => g.links.length > 0 || g.privacy).map((g) => (
           <nav key={g.h} className="sf-col" aria-label={g.h}>
             <h3>{g.h}</h3>
-            {g.links.map((l) => (
-              <Link key={l.key} href={l.href}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</Link>
-            ))}
+            {g.links.map((l) => {
+              if (l.action === 'report') {
+                return canReport
+                  ? <button key={l.key} type="button" className="lnk" onClick={openReport}><Ic id={LINK_ICON[l.key]} size="sm" />{l.label}</button>
+                  : <SoonItem key={l.key} link={l} />;
+              }
+              if (l.soon || !l.href) return <SoonItem key={l.key} link={l} />;
+              return <Link key={l.key} href={l.href}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</Link>;
+            })}
             {g.privacy && (
               <button type="button" className="lnk" onClick={onPrivacy}><Ic id="shield" size="sm" />מדיניות פרטיות</button>
             )}
@@ -30,7 +54,7 @@ export function HomeFooter({ groups, name, version, date, onPrivacy }) {
       <div className="sf-meta">
         <b><Ic id="dress" size="sm" />{name || 'גמ״ח שמלות'}</b>
         {version ? <span>{`גרסה ${version}`}</span> : null}
-        {date ? <span>{date}</span> : null}
+        {stamp ? <span>{stamp}</span> : null}
       </div>
     </footer>
   );

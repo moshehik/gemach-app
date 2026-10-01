@@ -6,13 +6,25 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { sortRecords } from './homeLogic';
+import { MenuSprite } from '../menu/menuParts';
+import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
+import { useA5Shell } from '../menu/A5ShellContext';
 
-// אייקון מה-sprite של הפלטה (הפניה חיצונית: 30 מזהי #i-* קיימים גם ב-IconSprite הישן)
+// אייקון מה-sprite של הפלטה, בהפניה פנימית (#gmi-<שם>) ל-sprite שמוטמע בתוך הדף (ר' HomeSprite).
+// לא הפניה חיצונית לקובץ sprite.svg: מסנני תוכן של אינטרנט מסונן (Netspark וכד') מחליפים את
+// קובץ ה-SVG בריבוע לבן 2x2 והאייקונים נעלמים (אותה בעיה והסבר מלא ב-app/components/menu/menuParts.js).
 export function Ic({ id, size, className }) {
   const cls = 'ic' + (size ? ' ' + size : '') + (className ? ' ' + className : '');
   return (
-    <svg className={cls} aria-hidden="true"><use href={`/design-system/sprite.svg#i-${id}`} /></svg>
+    <svg className={cls} aria-hidden="true" focusable="false"><use href={`#${SPRITE_ID_PREFIX}${id}`} /></svg>
   );
+}
+
+// ה-sprite המוטמע חייב להיות בדף בדיוק פעם אחת. במעטפת החדשה (MenuA5Shell) הוא כבר שם; כשהמעטפת 'legacy'
+// (דף הבית החדש עם תפריט ישן) או שה-layout נפל חזרה ל-AppShell (למשל מסך כניסה: menuTree=null) אין מי שמטמיע אותו,
+// ולכן הדף מטמיע בעצמו. ההכרעה לפי ה-A5ShellContext שהמעטפת החדשה מספקת בפועל, לא לפי דגל, כדי שלא יהיה כפול ולא חסר.
+export function HomeSprite() {
+  return useA5Shell() ? null : <MenuSprite />;
 }
 
 // מתג תצוגה: שורות / טבלה (בית 13)

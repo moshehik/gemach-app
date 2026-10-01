@@ -16,6 +16,8 @@ import {
   mergeRecents, toLegacyItem, RECENTS_CAP,
 } from '../lib/menu/recents.js';
 import { buildNavGroups, NAV_GROUPS } from '../app/components/navConfig.js';
+import { shiftClockInfo, MAX_PLAUSIBLE_SHIFT_MS } from '../lib/menu/shiftClock.js';
+import { hebrewVersionStamp, hebrewDateOfInstant } from '../lib/hebrewStamp.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
 import { buildModuleText, isSpriteInSync, normalizeEol, SPRITE_OUT } from './build_menu_sprite.mjs';
 import { readFileSync } from 'node:fs';
@@ -88,16 +90,18 @@ t('settingsToMap: מערך / מפה / זבל', () => {
 
 console.log('buildMenuTree — לפי תפקיד');
 const HEAD_TREE = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ management_messages: 'true', gmach_name: 'גמ״ח שמלות נווה יעקב' }), version: { version: '0.1.434', date: '29/09/2026 12:56' } });
-t('הנהלה ראשית: ארבע לשוניות (בית, לוח חודשי, ניהול, הזמנה) — אין לשונית "לוז" (P01 נדחה)', () => {
-  assert.deepEqual(HEAD_TREE.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
-  assert.ok(!TAB_IDS.includes('sched'));
+t('הנהלה ראשית: חמש לשוניות (בית, לוז, לוח חודשי, ניהול, הזמנה) — "לוז" אחרי "בית", כמו בעיצוב', () => {
+  assert.deepEqual(HEAD_TREE.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
+  assert.ok(TAB_IDS.includes('sched'));
+  const sched = tab(HEAD_TREE, 'sched');
+  assert.equal(sched.href, '/schedule'); assert.equal(sched.label, 'לוז'); assert.equal(sched.soon, undefined, 'page:schedule=true → לשונית פעילה');
 });
-t('הנהלה ראשית: תפריט בית לפי העיצוב + "לוז" אחרי החיפוש (page:schedule נטען ו-true), בלי "שינויים אחרונים" ו"חיפוש מתקדם"', () => {
+t('הנהלה ראשית: תפריט בית לפי העיצוב — "שינויים אחרונים" ו"חיפוש מתקדם" מוצגים כשורות "בקרוב" (kind:soon), "לוז" כבר לא שורה בתוך בית', () => {
   const home = tab(HEAD_TREE, 'home');
-  assert.deepEqual(home.items.map((x) => x.kind === 'link' ? x.id : x.kind === 'heading' ? `h:${x.label}` : '-'),
-    ['home-search', 'sched', '-', 'h:אחרונים', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations']);
+  assert.deepEqual(home.items.map((x) => x.kind === 'link' ? x.id : x.kind === 'heading' ? `h:${x.label}` : x.kind === 'soon' ? `soon:${x.id}` : '-'),
+    ['home-search', '-', 'h:אחרונים', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'soon:recent-all', '-', 'soon:home-adv']);
   assert.equal(home.href, '/');
-  assert.equal(home.items.find((x) => x.id === 'sched').href, '/schedule');
+  for (const x of home.items.filter((i) => i.kind === 'soon')) { assert.equal(x.href, undefined); assert.equal(x.action, undefined); }
 });
 t('הנהלה ראשית: תפריט ניהול מלא — עם זיכויים (החלטת הבעלים 1.10) ובלי הקבוצה התחתונה (R11); משלוחים רק עם ההגדרה', () => {
   const admin = tab(HEAD_TREE, 'admin');
@@ -136,14 +140,14 @@ t('הנהלה ראשית: סרגל צד — חיפוש, דיווח שגיאה, "
 });
 t('מותג: לוגו מ-/api/logo, שם מההגדרות, גרסה בטולטיפ', () => {
   assert.equal(HEAD_TREE.brand.logoUrl, '/api/logo'); assert.equal(HEAD_TREE.brand.name, 'גמ״ח שמלות נווה יעקב');
-  assert.equal(HEAD_TREE.brand.tooltip, 'גירסא 0.1.434 | 29/09/2026 12:56'); assert.equal(HEAD_TREE.brand.hasLogoSetting, false);
+  assert.equal(HEAD_TREE.brand.tooltip, 'גירסא 0.1.434 | יח תשרי תשפ"ז, 12:56', 'תאריך הגרסה עברי בלבד (בלי תאריך לועזי)'); assert.equal(HEAD_TREE.brand.hasLogoSetting, false);
   const withLogo = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ BRAND_LOGO: 'data:image/png;base64,AAAA' }) });
   assert.equal(withLogo.brand.hasLogoSetting, true); assert.equal(withLogo.brand.name, 'גמ"ח שמלות'); assert.equal(withLogo.brand.tooltip, '');
 });
 
 const PROG_TREE = buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: [] });
 t('מתכנת: כמו הנהלה + "היסטוריית הודעות מערכת" בפאנל המשתמש (R05)', () => {
-  assert.deepEqual(PROG_TREE.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
+  assert.deepEqual(PROG_TREE.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.deepEqual(ids(PROG_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-display', 'u-hist', 'u-logout']);
   assert.equal(PROG_TREE.user.items.find((x) => x.id === 'u-hist').action, 'system-messages-history');
   assert.equal(PROG_TREE.meta.prog, true);
@@ -170,24 +174,38 @@ t('מנהלת סניף בלי הרשאת דגמים/זיכויים/משלוחי�
 });
 t('עובדת בלי הרשאות (הכול סגור): רק בית (חיפוש כללי) והזמנה (עמדת לקוח); אין לוח חודשי', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_CLOSED, settings: [] });
-  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'order']);
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'order']);
   assert.deepEqual(ids(tab(tree, 'home').items), ['home-search']);
-  assert.equal(tab(tree, 'home').items.some((x) => x.kind === 'heading' || x.kind === 'separator'), false, 'אין כותרת/מפריד יתומים');
+  // שורות "בקרוב" (שינויים אחרונים / חיפוש מתקדם) מוצגות לכולן, ולכן הכותרת "אחרונים" אינה יתומה; לא קישורים
+  assert.deepEqual(tab(tree, 'home').items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'home-adv']);
+  assert.equal(tab(tree, 'sched').soon, true, 'אין page:schedule → "לוז" בקרוב');
   assert.deepEqual(ids(tab(tree, 'order').items), ['order-kiosk']);
   assert.equal(tab(tree, 'order').href, null); // אין הרשאה להזמנה חדשה → הלשונית רק פותחת תפריט
 });
 t('עובדת עם הרשאות עמוד פתוחות: בית מלא, לוח לפי page:board, "ניהול" רק עם דגמים/זיכויים (D10: לפי ההרשאה לכל שורה)', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: [] });
-  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-models', 'ad-refunds']); assert.equal(tab(tree, 'admin').href, null);
   assert.deepEqual(ids(tab(tree, 'order').items), ['order-new', 'order-kiosk']);
   const noDresses = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:dresses_catalog': false, 'page:refunds': false }, settings: [] });
-  assert.deepEqual(noDresses.tabs.map((x) => x.id), ['home', 'month', 'order']);
+  assert.deepEqual(noDresses.tabs.map((x) => x.id), ['home', 'sched', 'month', 'order']);
 });
-t('עובדת: הודעות פנימיות מוסתרות (hide_internal_messaging) → אין פעמון, אבל פאנל המשתמש נשאר', () => {
+t('עובדת: הודעות פנימיות מוסתרות (hide_internal_messaging) → הפעמון נשאר (לא קשור להודעות), בלי "הודעה למנהל", ופאנל המשתמש לא משתנה', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true', management_messages: 'true' }) });
-  assert.deepEqual(tree.rail.bell, { show: false });
+  assert.equal(tree.rail.bell.show, true);
+  assert.deepEqual(tree.rail.bell.tools, { markAllRead: true, clearAll: true });
+  assert.ok(!ids(tree.rail.bell.rows).includes('n-manager-message'), 'הודעה למנהל נשארת תלויה ב-msgs');
   assert.deepEqual(ids(tree.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-display', 'u-logout']);
+  // גם הנהלה ראשית: פעמון קיים, "הודעה למנהל" מוסתרת כשההודעות הפנימיות מוסתרות
+  const head = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true', management_messages: 'true' }) });
+  assert.equal(head.rail.bell.show, true); assert.deepEqual(ids(head.rail.bell.rows), ['n-center']);
+  // עם הודעות פנימיות פעילות ו-management_messages — השורה חוזרת
+  const on = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'false', management_messages: 'true' }) });
+  assert.deepEqual(ids(on.rail.bell.rows), ['n-center', 'n-manager-message']);
+});
+t('אורח (לא מחובר): אין פעמון, גם כשהודעות פנימיות פעילות', () => {
+  const g = buildMenuTree({ user: null, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'false', management_messages: 'true' }) });
+  assert.deepEqual(g.rail.bell, { show: false });
 });
 t('"הודעה למנהל" מופיע רק כשההגדרה management_messages פעילה (השרת מסרב אחרת); " True" = לא פעילה', () => {
   const off = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] });
@@ -236,7 +254,7 @@ t('תיקונים נעלמים כש-enable_alterations=false או כשההרשא
 console.log('buildMenuTree — אורח');
 t('אורח במצב פתוח (require_login כבוי): כל הלשוניות כמו הנהלה, פאנל משתמש = "היכנס למערכת" בלבד (כמו בעיצוב), בלי פעמון/שעון/האתר הישן', () => {
   const tree = buildMenuTree({ user: null, settings: rows({ require_login: 'false', management_messages: 'true' }) });
-  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   // זיכויים: במצב פתוח התפריט הישן מציג /refunds לאורח (showRefundsTab = !requireLogin) → גם כאן
   assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-settings', 'ad-stats', 'ad-info']);
   assert.ok(!ids(tab(tree, 'home').items).includes('sched'), 'לוז למחוברים בלבד');
@@ -249,7 +267,7 @@ t('אורח במצב פתוח (require_login כבוי): כל הלשוניות כ
 });
 t('אורח כשההתחברות חובה: אין ניהול/לוח; העמודים הפתוחים נשארים (המסך עצמו ננעל ע"י ה-layout)', () => {
   const tree = buildMenuTree({ user: null, settings: rows({ require_login: 'true' }) });
-  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'order']);
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'order']);
   assert.equal(tree.meta.requireLogin, true);
 });
 
@@ -322,29 +340,38 @@ t('זיכויים וחובות (ad-refunds): לפי page:refunds בלבד — ת
   assert.equal(where(buildMenuTree({ user: null, settings: rows({ require_login: 'true' }) })), undefined);
   assert.equal(flattenMenuTree(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] })).find((x) => x.id === 'ad-refunds').href, '/refunds');
 });
-t('"לוז" (sched): תת-פריט של "בית" → /schedule, רק כש-page:schedule נטען ואומר true — גם להנהלה (strict)', () => {
+t('"לוז" (sched): לשונית אחרי "בית" → /schedule רק כש-page:schedule נטען ואומר true (גם להנהלה, strict); בכל מצב אחר "בקרוב" בלי קישור', () => {
   assert.ok(!NOT_BUILT_ITEM_IDS.includes('sched')); assert.ok(NAV_PAGE_KEYS.includes('page:schedule')); assert.ok(MENU_PAGE_KEYS.includes('page:schedule'));
-  const sched = (tree) => flattenMenuTree(tree).find((x) => x.id === 'sched');
+  const sched = (tree) => tab(tree, 'sched');
+  const live = (tree) => { const t0 = sched(tree); return !!t0 && t0.href === '/schedule' && !t0.soon; };
+  const soon = (tree) => { const t0 = sched(tree); return !!t0 && t0.soon === true && t0.href === null && Array.isArray(t0.items) && t0.items.length === 0; };
   const staff = buildMenuTree({ user: STAFF, permissions: { ...ALL_CLOSED, 'page:schedule': true }, settings: [] });
-  assert.deepEqual(ids(tab(staff, 'home').items), ['home-search', 'sched']);
-  assert.equal(sched(staff).href, '/schedule'); assert.equal(sched(staff).group, 'בית'); assert.equal(sched(staff).kind, 'link');
-  assert.equal(sched(buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] })), undefined);
-  assert.equal(sched(buildMenuTree({ user: HEAD, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] })), undefined, 'שורת false מסתירה גם להנהלה');
-  // המפתח לא נטען / permissions=null: מוסתר לכולם, כולל הנהלה ראשית ומתכנת (הדף אולי עוד לא בפריסה)
+  assert.ok(live(staff)); assert.equal(sched(staff).label, 'לוז'); assert.deepEqual(staff.tabs.map((x) => x.id), ['home', 'sched', 'order']);
+  assert.ok(soon(buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] })));
+  assert.ok(soon(buildMenuTree({ user: HEAD, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] })), 'שורת false מסתירה (בקרוב) גם להנהלה');
+  // המפתח לא נטען / permissions=null: "בקרוב" לכולם, כולל הנהלה ראשית ומתכנת (הדף אולי עוד לא בפריסה)
   const { 'page:schedule': _omit, ...withoutKey } = ALL_OPEN;
   for (const u of [STAFF, BRANCH, HEAD, PROG]) {
-    assert.equal(sched(buildMenuTree({ user: u, permissions: withoutKey, settings: [] })), undefined, `${u.id} בלי המפתח`);
-    assert.equal(sched(buildMenuTree({ user: u, permissions: null, settings: [] })), undefined, `${u.id} permissions=null`);
+    assert.ok(soon(buildMenuTree({ user: u, permissions: withoutKey, settings: [] })), `${u.id} בלי המפתח`);
+    assert.ok(soon(buildMenuTree({ user: u, permissions: null, settings: [] })), `${u.id} permissions=null`);
   }
-  assert.equal(sched(buildMenuTree({ user: HEAD, permissions: { ...ALL_OPEN, 'page:schedule': 'yes' }, settings: [] })), undefined, 'רק true בדיוק');
-  // אורח: אף פעם (גם במצב פתוח)
-  assert.equal(sched(buildMenuTree({ user: null, settings: rows({ require_login: 'false' }) })), undefined);
+  assert.ok(soon(buildMenuTree({ user: HEAD, permissions: { ...ALL_OPEN, 'page:schedule': 'yes' }, settings: [] })), 'רק true בדיוק');
+  // אורח: תמיד "בקרוב" (גם במצב פתוח) - לא קישור
+  assert.ok(soon(buildMenuTree({ user: null, settings: rows({ require_login: 'false' }) })));
+  assert.ok(soon(buildMenuTree({ user: null, settings: rows({ require_login: 'true' }) })));
+  // "בקרוב" לעולם לא נכנס לרשימת יעדי הניווט (חיפוש בתפריט / כרטיסי /admin) ואינו מסומן כנוכחי
+  for (const t0 of [HEAD_TREE, buildMenuTree({ user: HEAD, permissions: null, settings: [] }), buildMenuTree({ user: null, settings: [] })]) {
+    const flat = flattenMenuTree(t0);
+    for (const tb of t0.tabs.filter((x) => x.soon)) assert.ok(!flat.some((x) => x.id === tb.id), 'לשונית soon לא ב-flatten');
+    for (const tb of t0.tabs) for (const it of tb.items) if (it.kind === 'soon') assert.ok(!flat.some((x) => x.id === it.id), 'שורת soon לא ב-flatten');
+  }
+  assert.deepEqual(findActive(buildMenuTree({ user: HEAD, permissions: null, settings: [] }), '/schedule'), { tabId: null, itemId: null }, 'לשונית בקרוב לא מסומנת');
   // "פתח מרכז הודעות" לא השתנה: הנהלה בלי המפתח עדיין רואה (fail-closed רק לשאר) — ההקשחה היא ל-sched בלבד
   assert.deepEqual(ids(buildMenuTree({ user: HEAD, permissions: withoutKey, settings: [] }).rail.bell.rows), ['n-center']);
-  // סימון העמוד הנוכחי
-  assert.deepEqual(findActive(HEAD_TREE, '/schedule'), { tabId: 'home', itemId: 'sched' });
-  assert.deepEqual(findActive(HEAD_TREE, '/schedule?date=2026-10-02'), { tabId: 'home', itemId: 'sched' });
-  assert.deepEqual(findActive(staff, '/schedule/'), { tabId: 'home', itemId: 'sched' });
+  // סימון העמוד הנוכחי כשהלשונית פעילה
+  assert.deepEqual(findActive(HEAD_TREE, '/schedule'), { tabId: 'sched', itemId: null });
+  assert.deepEqual(findActive(HEAD_TREE, '/schedule?date=2026-10-02'), { tabId: 'sched', itemId: null });
+  assert.deepEqual(findActive(staff, '/schedule/'), { tabId: 'sched', itemId: null });
 });
 t('NAV_PAGE_KEYS: מכיל את 9 המפתחות שהיו ב-app/layout.js + page:messages + page:schedule (ה-layout מייבא מכאן)', () => {
   const legacyLayoutKeys = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];
@@ -352,22 +379,28 @@ t('NAV_PAGE_KEYS: מכיל את 9 המפתחות שהיו ב-app/layout.js + pag
   assert.deepEqual([...NAV_PAGE_KEYS].filter((k) => !legacyLayoutKeys.includes(k)), ['page:messages', 'page:schedule']);
   assert.equal(new Set(NAV_PAGE_KEYS).size, NAV_PAGE_KEYS.length);
 });
-t('פריטים "עדיין לא קיימים" מוסתרים, ומופיעים רק עם available[id]=true', () => {
+t('פריטים "עדיין לא קיימים": שורה כבויה "בקרוב" (kind:soon, בלי href/action), ורגילים רק עם available[id]=true', () => {
+  const tabsOf = (tree) => tree.tabs.flatMap((x) => x.items);
+  const soonIds = (tree) => tabsOf(tree).filter((x) => x.kind === 'soon').map((x) => x.id);
+  assert.deepEqual(soonIds(HEAD_TREE).sort(), [...NOT_BUILT_ITEM_IDS].sort());
   const all = flattenMenuTree(HEAD_TREE).map((x) => x.id);
-  for (const id of NOT_BUILT_ITEM_IDS) assert.ok(!all.includes(id), id);
+  for (const id of NOT_BUILT_ITEM_IDS) assert.ok(!all.includes(id), `${id} לא יעד ניווט`);
+  for (const x of tabsOf(HEAD_TREE).filter((i) => i.kind === 'soon')) { assert.ok(!('href' in x) && !('action' in x), x.id); assert.ok(x.label && x.icon); }
+  assert.deepEqual(tab(HEAD_TREE, 'order').items.map((x) => `${x.kind}:${x.id}`), ['link:order-new', 'link:order-kiosk', 'soon:order-stock']);
   const withStock = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], available: { 'order-stock': true, 'recent-all': true, 'home-adv': true } });
   assert.deepEqual(ids(tab(withStock, 'order').items), ['order-new', 'order-kiosk', 'order-stock']);
-  assert.deepEqual(withStock.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
+  assert.deepEqual(withStock.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.ok(ids(tab(withStock, 'home').items).includes('recent-all')); assert.ok(ids(tab(withStock, 'home').items).includes('home-adv'));
+  assert.deepEqual(soonIds(withStock), []);
   // available לא יכול "להדליק" את לוז — הוא נשלט רק ע"י page:schedule
   const forced = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [], available: { sched: true } });
-  assert.ok(!ids(tab(forced, 'home').items).includes('sched'));
+  assert.equal(tab(forced, 'sched').soon, true);
 });
 t('דגלים מה-layout (flags) גוברים על הנגזרים: showBoardTab=false מסתיר לוח חודשי גם להנהלה; undefined לא דורס', () => {
   const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], flags: { showBoardTab: false } });
   assert.equal(tab(tree, 'month'), undefined);
   const u = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true' }), flags: { hideInternalMessaging: undefined, showBoardTab: undefined } });
-  assert.deepEqual(u.rail.bell, { show: false }); assert.ok(tab(u, 'month'));
+  assert.equal(u.rail.bell.show, true); assert.ok(!ids(u.rail.bell.rows).includes('n-manager-message')); assert.ok(tab(u, 'month'));
 });
 t('חוזה a5Shell.flags מ-app/layout.js: עם flags בלבד (בלי settings/permissions) העץ מציג משלוחים/זיכויים/לוח בדיוק לפי הדגלים', () => {
   // אותו אובייקט שה-layout בונה (legacyNavFlags + 6 הנוספים) — אם buildMenuTree יתחיל לקרוא דגל חדש, הבדיקה הזאת תיפול.
@@ -377,13 +410,13 @@ t('חוזה a5Shell.flags מ-app/layout.js: עם flags בלבד (בלי settings
     isHeadManagement: false, isProgrammer: false, hideInternalMessaging: false, hideErrorReporting: false, requireLogin: true, isAuthenticated: true,
   };
   const tree = buildMenuTree({ user: STAFF, permissions: { 'page:schedule': true }, flags: layoutFlags, settings: { management_messages: 'true', gmach_name: 'נווה' } });
-  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-refunds', 'ad-deliveries']); assert.equal(tab(tree, 'admin').href, null);
-  assert.ok(ids(tab(tree, 'home').items).includes('sched')); assert.ok(ids(tab(tree, 'home').items).includes('recent-alterations'));
+  assert.equal(tab(tree, 'sched').href, '/schedule'); assert.ok(ids(tab(tree, 'home').items).includes('recent-alterations'));
   assert.deepEqual(ids(tree.rail.bell.rows), ['n-manager-message'], 'page:messages לא נטען → מרכז הודעות מוסתר לעובדת; הודעה למנהל לפי ההגדרה');
   assert.equal(tree.rail.errorReport.show, true); assert.equal(tree.brand.name, 'נווה');
   const off = buildMenuTree({ user: STAFF, permissions: {}, flags: { ...layoutFlags, showDeliveries: false, showRefundsTab: false, showBoardTab: false, hideErrorReporting: true }, settings: {} });
-  assert.deepEqual(off.tabs.map((x) => x.id), ['home', 'order']); assert.equal(off.rail.errorReport.show, false);
+  assert.deepEqual(off.tabs.map((x) => x.id), ['home', 'sched', 'order']); assert.equal(off.rail.errorReport.show, false);
   // הדגלים שהעץ קורא — כולם ברשימה (אם deriveLegacyFlags יחזיר מפתח חדש, ה-layout צריך להעביר גם אותו)
   assert.deepEqual(Object.keys(deriveLegacyFlags({ logged: true, roleId: 3, permissions: {}, settings: [] })).sort(), Object.keys(layoutFlags).sort());
 });
@@ -695,6 +728,51 @@ t('כל אייקון שהעץ פולט קיים ב-sprite המוטמע', () => {
   for (const [id, viewBox, shapes] of SPRITE_SYMBOLS) {
     assert.match(id, /^[a-z0-9-]+$/); assert.match(viewBox, /^0 0 \d+ \d+$/); assert.ok(shapes.length > 0, `empty symbol ${id}`);
   }
+});
+
+// --- שעון "במשמרת": משמרת פתוחה ישנה לא מציגה מונה שעות ענק ---------------------------------------
+t('shiftClockInfo: משמרת סבירה → H:MM; מעל 16 שעות → "משמרת פתוחה · <תאריך עברי>" עם טולטיפ; קלט לא תקין → null', () => {
+  const now = Date.parse('2026-10-01T10:00:00Z');
+  assert.deepEqual(shiftClockInfo('2026-10-01T06:18:00Z', now), { kind: 'ok', text: '3:42' });
+  assert.deepEqual(shiftClockInfo('2026-10-01T10:00:00Z', now), { kind: 'ok', text: '0:00' });
+  assert.equal(shiftClockInfo('2026-10-01T10:00:30Z', now).text, '0:00', 'סטייה קטנה של שעונים לא מפילה');
+  assert.equal(shiftClockInfo(new Date(now - MAX_PLAUSIBLE_SHIFT_MS).toISOString(), now).kind, 'ok', 'בדיוק 16 שעות עדיין סבירה');
+  const stale = shiftClockInfo('2022-11-22T06:52:05.000Z', now); // המשמרת הפתוחה מ-2022 שהראתה 33819:46
+  assert.equal(stale.kind, 'stale');
+  assert.equal(stale.since, hebrewDateOfInstant('2022-11-22T06:52:05.000Z'));
+  assert.ok(stale.text.startsWith('משמרת פתוחה') && stale.text.includes(stale.since));
+  assert.ok(!/\d{1,2}\/\d{1,2}\/\d{2,4}/.test(stale.text + stale.tip), 'אין תאריך לועזי');
+  assert.ok(!/\d{4,}:\d{2}/.test(stale.text), 'אין מונה שעות ענק');
+  assert.equal(shiftClockInfo(null, now), null); assert.equal(shiftClockInfo('garbage', now), null);
+  assert.equal(shiftClockInfo('2027-01-01T00:00:00Z', now), null, 'שעת כניסה עתידית');
+});
+
+// --- תאריך עברי בלבד (כלל קבוע): תאריך הגרסה בטולטיפ הלוגו ובתחתית הבית ---------------------------
+t('hebrewVersionStamp: "DD/MM/YYYY HH:MM" → תאריך עברי + שעה; בלי תאריך לועזי; לא ניתן לפירוש → ""', () => {
+  assert.equal(hebrewVersionStamp('01/10/2026 12:47'), 'כ תשרי תשפ"ז, 12:47');
+  assert.equal(hebrewVersionStamp('29/09/2026 12:56'), 'יח תשרי תשפ"ז, 12:56');
+  assert.equal(hebrewVersionStamp('1/10/2026 4:05'), 'כ תשרי תשפ"ז, 04:05');
+  assert.equal(hebrewVersionStamp('01/10/2026'), 'כ תשרי תשפ"ז');
+  for (const bad of ['', null, undefined, 'x', '31/02/2026 10:00', '2026-10-01 12:47', '01/13/2026 10:00']) assert.equal(hebrewVersionStamp(bad), '', String(bad));
+  assert.ok(!/\d{4}/.test(hebrewVersionStamp('01/10/2026 12:47')), 'אין שנה לועזית');
+});
+t('hebrewDateOfInstant: היום האזרחי בישראל (לא UTC): 22:30Z ב-30.9 כבר 1.10 בישראל; בלי תלות באזור הזמן של המכונה', () => {
+  assert.equal(hebrewDateOfInstant('2026-09-30T22:30:00Z'), hebrewVersionStamp('01/10/2026'));
+  assert.equal(hebrewDateOfInstant('2026-10-01T10:00:00Z'), hebrewVersionStamp('01/10/2026'));
+  assert.equal(hebrewDateOfInstant('nope'), '');
+});
+t('טולטיפ הלוגו: תאריך הגרסה עברי; תאריך שלא ניתן לפירוש לא מוצג כלועזי', () => {
+  const tip = (date) => buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], version: { version: '0.1.446', date } }).brand.tooltip;
+  assert.equal(tip('01/10/2026 04:54'), 'גירסא 0.1.446 | כ תשרי תשפ"ז, 04:54');
+  assert.equal(tip('לא תאריך'), 'גירסא 0.1.446');
+  assert.equal(tip(''), 'גירסא 0.1.446');
+});
+t('"האתר הישן": התווית "זמני" נשארת בנתוני העץ (לטולטיפ) אבל לא מצוירת כתג על האייקון', () => {
+  assert.equal(HEAD_TREE.rail.oldSite.temporary, true);
+  const src = readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8');
+  const btn = src.slice(src.indexOf('id="snOld"'), src.indexOf('</button>', src.indexOf('id="snOld"')));
+  assert.ok(!btn.includes('sn-badge') && !btn.includes('זמני</'), 'אין תג על האייקון');
+  assert.ok(/data-tip="האתר הישן \(זמני\)/.test(btn), 'הניסוח בטולטיפ');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
