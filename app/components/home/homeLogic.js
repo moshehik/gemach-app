@@ -46,6 +46,76 @@ export function buildGreeting(rawTitle, firstName) {
   return { hi: null, q: t };
 }
 
+/* ---------- קישורים מתפריט "בית" (2.10.2026): פרמטרים בטוחים ---------- */
+
+// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes (ר' lib/menu/buildMenuTree.js).
+// הפרמטרים נבדקים מול רשימה סגורה: ערך לא מוכר נזרק ולעולם לא מוצג/מוחדר לדף (הכותרת והתוויות נלקחות מהטבלה למטה, לא מהכתובת).
+// via: 'search' = החיפוש הכללי (/api/global-search מחזיר לקוחות / הזמנות / פריטי השכרה) והסינון נעשה על התשובה;
+//      'adv' = אין קטגוריה כזאת בחיפוש הכללי — מריצים את תחום החיפוש המתקדם המתאים (/api/a5/adv, adv-b) לפי שם / טלפון / קוד הזמנה.
+export const HOME_SCOPES = Object.freeze({
+  customers: Object.freeze({ label: 'לקוחות', only: 'בלקוחות', icon: 'user', via: 'search', pick: 'customers' }),
+  orders: Object.freeze({ label: 'הזמנות', only: 'בהזמנות', icon: 'file', via: 'search', pick: 'orders' }),
+  rentals: Object.freeze({ label: 'השכרות', only: 'בהשכרות', icon: 'bag', via: 'search', pick: 'rentals' }),
+  returns: Object.freeze({ label: 'החזרות', only: 'בהחזרות', icon: 'undo', via: 'adv', focus: 'returns' }),
+  alterations: Object.freeze({ label: 'תיקונים', only: 'בתיקונים', icon: 'scissors', via: 'adv', focus: 'alterations' }),
+});
+export const HOME_RECENT_VALUES = Object.freeze(['changes']);
+const MAX_PARAMS_CHARS = 2000;
+const MAX_Q_CHARS = 200;
+
+/**
+ * פרמטרי הכתובת של דף הבית → { scope, adv, recent, q, any }. רשימה סגורה: scope = אחד ממפתחות HOME_SCOPES, adv = '1' בדיוק,
+ * recent = 'changes' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
+ * @param {string|URLSearchParams} search מחרוזת query (עם או בלי '?')
+ */
+export function parseHomeParams(search) {
+  const out = { scope: null, adv: false, recent: null, q: null, any: false };
+  let params;
+  try {
+    params = search instanceof URLSearchParams ? search : new URLSearchParams(str(search).slice(0, MAX_PARAMS_CHARS).replace(/^\?/, ''));
+  } catch { return out; }
+  const scope = params.get('scope');
+  if (scope !== null && Object.prototype.hasOwnProperty.call(HOME_SCOPES, scope)) out.scope = scope;
+  if (params.get('adv') === '1') out.adv = true;
+  const recent = params.get('recent');
+  if (recent !== null && HOME_RECENT_VALUES.includes(recent)) out.recent = recent;
+  const q = params.get('q');
+  if (q !== null && q.trim()) out.q = q.slice(0, MAX_Q_CHARS);
+  // הוראה אחת בכל פעם: adv עדיף על recent, ו-recent על scope (כדי שהכתובת, הכותרת והדגשת התפריט יתאימו זה לזה)
+  if (out.adv) { out.recent = null; out.scope = null; } else if (out.recent) out.scope = null;
+  out.any = !!(out.scope || out.adv || out.recent);
+  return out;
+}
+
+/** כותרת הקטגוריה: { label, rest } = "<קטגוריה> - מה תרצי לחפש?"; null לקטגוריה לא מוכרת. התווית רק מהטבלה, לא מהקלט. */
+/** מפתח יציב להוראה (לזיהוי "אותה הוראה שכבר הוחלה"). */
+export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' : dir.recent ? 'recent:' + dir.recent : dir.scope ? 'scope:' + dir.scope : '');
+
+export const SCOPE_TITLE_REST = 'מה תרצי לחפש?';
+export function homeScopeTitle(scope) {
+  const def = typeof scope === 'string' && Object.prototype.hasOwnProperty.call(HOME_SCOPES, scope) ? HOME_SCOPES[scope] : null;
+  return def ? { label: def.label, rest: SCOPE_TITLE_REST, text: def.label + ' - ' + SCOPE_TITLE_REST } : null;
+}
+
+/** תשובת החיפוש הכללי (אחרי normalizeSearch) מוגבלת לקטגוריה; קטגוריה בלי via:'search' או לא מוכרת — התשובה כמות שהיא. לא משנה את הקלט. */
+export function applyScope(res, scope) {
+  const def = typeof scope === 'string' && Object.prototype.hasOwnProperty.call(HOME_SCOPES, scope) ? HOME_SCOPES[scope] : null;
+  if (!res || !def || def.via !== 'search') return res;
+  return { customers: [], orders: [], rentals: [], [def.pick]: res[def.pick] || [] };
+}
+
+/**
+ * טקסט חופשי → שדות החיפוש המתקדם לקטגוריות "החזרות" / "תיקונים" (אין להן חיפוש כללי): ספרות בלבד, 7 ויותר = טלפון (פרטי לקוח),
+ * פחות מזה = קוד הזמנה; אחרת שם לקוח. מחזיר null לטקסט ריק. (חיפוש לפי ברקוד/דגם בקטגוריות האלה — דרך "חיפוש מתקדם".)
+ */
+export function scopedAdvFields(text) {
+  const t = str(text).trim().slice(0, MAX_Q_CHARS);
+  if (!t) return null;
+  const digits = t.replace(/[\s-]/g, '');
+  if (/^\d+$/.test(digits)) return digits.length >= 7 ? { cinfo: digits } : { oid: digits };
+  return { name: t };
+}
+
 /* ---------- חיפוש כללי: נרמול התשובה ---------- */
 
 // כמו A5.search ב-public/a5/adapters/ai.js. השרת כבר מגביל ל-50 לכל סוג; החיתוך ל"עוד N" נעשה בתצוגה.
@@ -353,7 +423,7 @@ export function recentRows(history) {
   const out = [];
   history.forEach((x) => {
     if (!x || typeof x !== 'object') return;
-    const kind = RECENT_KIND[x.type];
+    const kind = typeof x.type === 'string' && Object.prototype.hasOwnProperty.call(RECENT_KIND, x.type) ? RECENT_KIND[x.type] : null; // 'constructor' / '__proto__' לא נחשבים סוג
     const id = x.id === undefined || x.id === null ? '' : String(x.id);
     if (!kind || !SAFE_ID.test(id)) return;
     out.push({

@@ -29,7 +29,7 @@ function RowLine({ r }) {
   );
 }
 
-export default function HomeResults({ res, none, table, onTable, onExport }) {
+export default function HomeResults({ res, none, table, onTable, onExport, note }) {
   const [more, setMore] = useState(false);
   const rows = useMemo(() => (none ? [] : unifiedRows(res)), [res, none]);
   const records = useMemo(() => tableRecords(rows), [rows]);
@@ -55,7 +55,7 @@ export default function HomeResults({ res, none, table, onTable, onExport }) {
         <div className="vbar"><ViewSwitch table={table} onChange={onTable} /></div>
       )}
       {rows.length === 0 ? (
-        <div className="empty"><Ic id="search" size="lg" /><div>אין תוצאות לחיפוש הזה</div></div>
+        <div className="empty"><Ic id="search" size="lg" /><div>אין תוצאות לחיפוש הזה</div>{note ? <div className="muted">{note}</div> : null}</div>
       ) : (
         <>
           {table ? (
