@@ -6,6 +6,7 @@ import { verifySecret } from '../../../lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '../../../lib/trustedDevice';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { toIsraelCalendarDate } from '@/lib/hebrewDate';
+import { findLatestOpenShift } from '@/lib/openShift';
 
 
 
@@ -125,13 +126,8 @@ export async function POST(request) {
     // בדיקת "כבר נכנס" חייבת לחפש משמרת פתוחה בכל תאריך (לא רק היום), אחרת
     // אחרי חצות הבדיקה לא מוצאת כלום והעובד יכול "להיכנס" שוב ולפתוח משמרת
     // כפולה/חופפת בזמן שהראשונה נשארת פתוחה לצמיתות.
-    let currentShift = await prisma.shift.findFirst({
-      where: {
-        employeeId: employee.id,
-        exitTime: null
-      },
-      orderBy: { id: 'desc' }
-    });
+    // כשיש כמה משמרות פתוחות (למשל ישנות מ-Access) רושמים יציאה לעדכנית לפי שעת כניסה - לא ל-id אקראי (ר' lib/openShift.js).
+    let currentShift = await findLatestOpenShift(prisma, employee.id);
 
     if (action === 'IN') {
       if (currentShift) {
