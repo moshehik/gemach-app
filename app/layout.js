@@ -315,6 +315,7 @@ export default async function RootLayout({ children }) {
       settings,
       flags: { ...legacyNavFlags, isHeadManagement, isProgrammer, hideInternalMessaging, hideErrorReporting, requireLogin, isAuthenticated },
       version: { version: versionData.version, date: versionData.date },
+      homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
     })
     : null;
 

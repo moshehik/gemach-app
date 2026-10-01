@@ -68,9 +68,10 @@ function writeStorage(state) {
 
 /**
  * @param {object} tree  עץ התפריט (buildMenuTree)
+ * @param {string} [queryString]  מחרוזת ה-query של הכתובת; שינוי שלה (בלי שינוי נתיב: /?scope=a -> /?scope=b) נרשם כביקור חדש
  * @returns {{ state, labels, view, canBack, canForward, goBack, goForward, goTo, clearAll, clearOnLogout, navigate }}
  */
-export default function useNavHistory(tree) {
+export default function useNavHistory(tree, queryString = '') {
   const pathname = usePathname();
   const router = useRouter();
   const [state, setState] = useState(createNavHistory);
@@ -106,7 +107,7 @@ export default function useNavHistory(tree) {
       pendingKey.current = null;
       if (expected === key) return; // הגענו לעמוד שהמחסנית כבר מצביעה עליו
     }
-    const act = findActive(tree, pathname, hash);
+    const act = findActive(tree, pathname, hash, search); // כולל ?scope= — אחרת כל פריטי "בית" נרשמים כ"חיפוש כללי"
     let label = '';
     let icon = 'file';
     if (act.itemId || act.tabId) {
@@ -129,7 +130,7 @@ export default function useNavHistory(tree) {
     }
     if (!label) label = EXTRA_LABELS[pathname] || pathname;
     commit(navVisit(ref.current, { path: href, label, icon }));
-  }, [pathname, tree, commit]);
+  }, [pathname, queryString, tree, commit]); // queryString רק מפעיל ביקור חדש; הערך נקרא מ-window.location
 
   useEffect(() => {
     visitHere();

@@ -5,27 +5,29 @@
 // לוגיקה (קריאות API, פורמט תוצאות): public/a5/adapters + public/a5/index.html, בקוד טהור ב-homeLogic.js.
 //
 // מה כלול: ברכה אישית, חיפוש כללי (רשימה מאוחדת / טבלה, ייצוא), חיפוש חכם (AI) בתוך כרטיס, חיפוש מתקדם,
-// "אחרונים", תחתית אתר + מדיניות פרטיות, ?q= (הרצה מיידית וניקוי הכתובת — כמו LegacyHome).
+// תחתית אתר + מדיניות פרטיות, ?q= (הרצה מיידית וניקוי הכתובת — כמו LegacyHome).
 // מה לא כלול כאן: סרגל עליון, "הודעה למנהל" ושעון משמרת — הם חלק מהמעטפת החדשה (ShellSwitch / UI-1) ולכן לא
 // מוכפלים בדף; מתחת למעטפת הישנה (shell=legacy) אין אותם (כמו היום). "הזמנות שלא הוחזרו" נשאר במעטפת.
 
 import '@/design-system/components.css';
 import './home.css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SettingQuickPanel from '../SettingQuickPanel';
-import { getHistory } from '@/lib/historyManager';
 import { Ic, HomeSprite } from './HomeParts';
 import HomeResults from './HomeResults';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
-import HomeRecents from './HomeRecents';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
+import { QuickPrefixList, useLocalRecentRows, useQuickPrefix } from '../search/QuickPrefix';
+import SearchKeySync from '../search/SearchKeySync';
+import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import {
   AI_CONTEXT, buildGreeting, normalizeSearch, resultsCount, unifiedRows, exportRecordsForRows,
   botMessageFromResponse, botErrorMessage, chatToHistory, withoutActionKeys, rowsToCsv, threadToCsv,
-  printRowsHtml, printThreadHtml, recentRows, footerGroups,
+  printRowsHtml, printThreadHtml, footerGroups,
+  HOME_SCOPES, parseHomeParams, homeDirectiveKey, homeScopeTitle, applyScope, scopedAdvFields, safeInternalRoute,
 } from './homeLogic';
 import {
   ADV_FOCI, emptyAdv, advSummaryParts, advAiPrompt, buildAdvRequest, normalizeAdvResponse, navPathSet, visibleFoci,
@@ -65,6 +67,11 @@ function printHtml(html) {
   return true;
 }
 
+// החלפת הכתובת בלי ניווט (Next מסנכרן את usePathname / useSearchParams); qs בלי '?'
+function replaceUrl(qs) {
+  try { window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '')); } catch { /* ignore */ }
+}
+
 export default function HomeA5() {
   const router = useRouter();
   const [boot, setBoot] = useState(null);
@@ -83,13 +90,17 @@ export default function HomeA5() {
   const [adv, setAdv] = useState(() => emptyAdv());
   const [advPrev, setAdvPrev] = useState('start');
   const [advEnter, setAdvEnter] = useState(false);
-  const [recentOpen, setRecentOpen] = useState(false);
-  const [recents, setRecents] = useState([]);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [errStatus, setErrStatus] = useState(0);
   const [openSettingKey, setOpenSettingKey] = useState(null);
   const [toast, setToast] = useState(null);
   const [heroEnter, setHeroEnter] = useState(true);
+  // סינון לקטגוריה (קישורי תפריט "בית": /?scope=customers...). תמיד אחד ממפתחות HOME_SCOPES (רשימה סגורה), לעולם לא טקסט מהכתובת.
+  const [scope, setScope] = useState(null);
+  const [wantAdv, setWantAdv] = useState(false); // /?adv=1: נפתח ישר לחיפוש המתקדם ברגע שההרשאות נטענו
+  const scopeRef = useRef(null);
+  const urlMode = useRef(null); // { kind: 'adv'|'recent', open } — הפרמטר נשאר בכתובת כל עוד המצב פעיל (להדגשת פריט התפריט)
+  const appliedKey = useRef('');
   const seq = useRef(0);
   const toastTimer = useRef(null);
   const inputRef = useRef(null);
@@ -154,6 +165,34 @@ export default function HomeA5() {
     }
   }, []);
 
+  /* ---------- חיפוש מוגבל ל"החזרות" / "תיקונים" ----------
+     אין להן קטגוריה בחיפוש הכללי (/api/global-search מחזיר רק לקוחות, הזמנות ופריטי השכרה), ולכן מריצים את תחום החיפוש
+     המתקדם שלהן (אותו שרת, אותה הרשאה) לפי הטקסט: שם לקוח / טלפון / קוד הזמנה (scopedAdvFields). לא חיפוש לפי ברקוד או דגם. */
+  const runScopedAdv = useCallback(async (query, sc, my) => {
+    const focus = HOME_SCOPES[sc].focus;
+    const fields = scopedAdvFields(query);
+    if (!fields) { setLoading(false); return; }
+    const form = { ...emptyAdv(focus), ...fields };
+    try {
+      const d = await getJson(buildAdvRequest(focus, form, window.localStorage));
+      if (my !== seq.current) return;
+      const data = normalizeAdvResponse(d);
+      setAdv(form); // "עדכן חיפוש" פותח את טופס התחום ממולא
+      setAdvPrev('start');
+      setAdvRes({ focus, data, summary: { label: ADV_FOCI[focus].label, text: advSummaryParts(form, focus).join(', ') } });
+      setChat([]);
+      setAsTable(false);
+      setLoading(false);
+      setView('results');
+    } catch (e) {
+      if (my !== seq.current) return;
+      setLoading(false);
+      if (e.status === 403) { setView('start'); showToast('אין הרשאה לחיפוש הזה'); return; }
+      setErrStatus(e && e.status ? e.status : 0);
+      setView('error');
+    }
+  }, [showToast]);
+
   /* ---------- חיפוש ---------- */
   const runSearch = useCallback(async (text, { ai = false } = {}) => {
     const query = String(text || '').trim();
@@ -171,15 +210,17 @@ export default function HomeA5() {
       setView('ai');
       return;
     }
+    const sc = scopeRef.current;
+    if (sc && HOME_SCOPES[sc].via === 'adv') { runScopedAdv(query, sc, my); return; }
     try {
       const d = await getJson('/api/global-search?q=' + encodeURIComponent(query));
       if (my !== seq.current) return;
       const norm = normalizeSearch(d);
-      setRes(norm);
+      setRes(norm); // התשובה המלאה; הסינון לקטגוריה מוחל בתצוגה (applyScope), כדי שהסרת הסינון תחשוף את שאר התוצאות בלי חיפוש חדש
       setChat([]);
       setResKey((k) => k + 1);
       setLoading(false);
-      setView(resultsCount(norm) ? 'results' : 'none');
+      setView(resultsCount(applyScope(norm, sc)) ? 'results' : 'none');
       persist(query, norm);
     } catch (e) {
       if (my !== seq.current) return;
@@ -187,7 +228,7 @@ export default function HomeA5() {
       setErrStatus(e && e.status ? e.status : 0);
       setView('error');
     }
-  }, [askAi, persist]);
+  }, [askAi, persist, runScopedAdv]);
 
   const followUp = useCallback(async (text) => {
     const my = ++seq.current;
@@ -211,20 +252,104 @@ export default function HomeA5() {
     forget();
   }, [forget]);
 
-  /* ---------- פתיחה: ?q= (כמו LegacyHome), ?recent=, או שחזור החיפוש האחרון ---------- */
+  /* ---------- קישורי תפריט "בית": ?scope= / ?adv=1 / ?recent=changes (רשימה סגורה — ר' parseHomeParams) ----------
+     המצב מתחיל נקי (בלי לשחזר חיפוש קודם תחת כותרת הקטגוריה). הפרמטר נשאר בכתובת כל עוד המצב פעיל, כדי שהתפריט
+     יסמן את הפריט שנלחץ (findActive); יציאה מהמצב מחזירה את הכתובת ל-"/". ?q= (אם יש) מורץ ונמחק מהכתובת. */
+  const applyDirective = useCallback((dir, params) => {
+    seq.current++;
+    setLoading(false);
+    setAdvRes(null);
+    setChat([]);
+    setRes(null);
+    setAdvPrev('start');
+    setView('start');
+    setQ('');
+    scopeRef.current = dir.scope;
+    setScope(dir.scope);
+    appliedKey.current = homeDirectiveKey(dir);
+    urlMode.current = null;
+    if (dir.adv) {
+      urlMode.current = { kind: 'adv', open: false };
+      setWantAdv(true);
+      return;
+    }
+    if (dir.recent === 'changes') {
+      urlMode.current = { kind: 'recent', open: false };
+      setQ('@'); // אותה תוצאה בדיוק כמו הקלדת '@' בשורת החיפוש
+    } else if (dir.q) {
+      setQ(dir.q);
+      runSearch(dir.q);
+      if (params) { params.delete('q'); replaceUrl(params.toString()); }
+    }
+    if (inputRef.current) inputRef.current.focus();
+  }, [runSearch]);
+
+  // ניווט לתוך הדף כשהוא כבר פתוח (לחיצה על פריט תפריט "בית" מדף הבית עצמו): הכתובת משתנה והדף לא נטען מחדש
+  const [spKey, setSpKey] = useState(null); // מחרוזת ה-query של הכתובת (מדווחת מ-SearchKeySync); null עד הדיווח הראשון
+  const spFirst = useRef(true);
+  useEffect(() => {
+    if (spKey === null) return;
+    if (spFirst.current) { spFirst.current = false; return; } // הדיווח הראשון = הכתובת שבה הדף נפתח (מטופלת באפקט הפתיחה)
+    const dir = parseHomeParams(spKey);
+    if (dir.any) {
+      // אותה הוראה שכבר הוחלה (למשל אחרי שהדף מחק את ?q= מהכתובת) — לא מאפסים
+      if (appliedKey.current !== homeDirectiveKey(dir)) applyDirective(dir, null);
+      return;
+    }
+    appliedKey.current = '';
+    // כתובת בלי הוראה (לחיצה על "חיפוש כללי"): אם המצב נולד מהוראה וטרם נסגר — חוזרים לדף הרגיל
+    if (scopeRef.current || (urlMode.current && urlMode.current.open)) {
+      scopeRef.current = null;
+      urlMode.current = null;
+      setScope(null);
+      resetAll();
+    }
+  }, [spKey]);
+
+  // לחיצה חוזרת על פריט "בית" בתפריט (הכתובת לא משתנה ולכן אפקט spKey לא רץ): מאפסים את הדף להוראה של הפריט שנלחץ.
+  // כשהכתובת כן משתנה, appliedKey כבר מעודכן וה-spKey לא יחיל פעם שנייה.
+  useEffect(() => {
+    const onMenuNav = (e) => {
+      const t = homeNavTarget(e && e.detail && e.detail.href);
+      if (!t.isHome) return;
+      const dir = parseHomeParams(t.query);
+      if (dir.any) { applyDirective(dir, null); return; }
+      scopeRef.current = null;
+      urlMode.current = null;
+      appliedKey.current = '';
+      setScope(null);
+      resetAll();
+    };
+    window.addEventListener(HOME_NAV_EVENT, onMenuNav);
+    return () => window.removeEventListener(HOME_NAV_EVENT, onMenuNav);
+  }, [applyDirective, resetAll]);
+
+  // הפרמטר נשאר בכתובת רק כל עוד המצב שהוא פתח פעיל (adv = שלב החיפוש המתקדם פתוח; recent = שורת החיפוש מתחילה ב-'@')
+  useEffect(() => {
+    const m = urlMode.current;
+    if (!m) return;
+    if (m.kind === 'adv' ? view === 'adv' : q.startsWith('@')) { m.open = true; return; }
+    if (m.open) { urlMode.current = null; appliedKey.current = ''; replaceUrl(''); }
+  }, [view, q]);
+
+  // /?adv=1 — ברגע שההרשאות נטענו: ישר לשלב החיפוש המתקדם (אם אין תחום מותר — נשארים בדף הרגיל)
+  useEffect(() => {
+    if (!wantAdv || !bootDone) return;
+    setWantAdv(false);
+    if (advAvailable) { setAdvPrev('start'); setAdv(emptyAdv()); setAdvEnter(false); setView('adv'); }
+    else { urlMode.current = null; replaceUrl(''); }
+  }, [wantAdv, bootDone, advAvailable]);
+
+  /* ---------- פתיחה: ?q= (כמו LegacyHome), או שחזור החיפוש האחרון ---------- */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const dir = parseHomeParams(params);
+    if (dir.any) { applyDirective(dir, params); return; }
     const qParam = params.get('q');
-    if (params.has('recent')) setRecentOpen(true);
     if (qParam && qParam.trim()) {
       setQ(qParam);
       runSearch(qParam);
       // מנקים מהכתובת כדי שרענון/חזרה לא יריצו שוב מאליהם
-      window.history.replaceState(null, '', window.location.pathname);
-      return;
-    }
-    if (params.has('recent')) {
-      // הקישור "אחרונים" מהמעטפת: פותחים את הכרטיס ולא משחזרים חיפוש קודם
       window.history.replaceState(null, '', window.location.pathname);
       return;
     }
@@ -239,18 +364,6 @@ export default function HomeA5() {
     } catch { /* פגום */ }
   }, []);
   useEffect(() => { const t = setTimeout(() => setHeroEnter(false), 2000); return () => clearTimeout(t); }, []);
-
-  /* ---------- אחרונים ---------- */
-  const reloadRecents = useCallback(() => { setRecents(recentRows(getHistory())); }, []);
-  useEffect(() => {
-    reloadRecents();
-    window.addEventListener('agy_history_updated', reloadRecents);
-    return () => window.removeEventListener('agy_history_updated', reloadRecents);
-  }, [reloadRecents]);
-  const clearRecents = () => {
-    try { localStorage.removeItem('agy_history'); } catch { /* ignore */ }
-    reloadRecents();
-  };
 
   /* ---------- חיפוש מתקדם ---------- */
   const leaveAdv = () => { seq.current++; setLoading(false); setView(['start', 'results', 'none'].includes(advPrev) ? advPrev : 'start'); };
@@ -338,7 +451,7 @@ export default function HomeA5() {
     }
   }, [showToast]);
 
-  const onExportGeneral = (kind) => exportRows(kind, exportRecordsForRows(unifiedRows(res)), 'תוצאות חיפוש', 'Search_Export');
+  const onExportGeneral = (kind) => exportRows(kind, exportRecordsForRows(unifiedRows(shownRes)), 'תוצאות חיפוש', 'Search_Export');
   const onExportAdv = (kind) => {
     if (!advRes) return;
     const { data, summary } = advRes;
@@ -367,8 +480,47 @@ export default function HomeA5() {
   const ai = aiMode && canAi;
   const label = ai ? 'חיפוש חכם' : 'חיפוש';
 
-  const modeButtons = (
+  // סינון לקטגוריה חל על החיפוש הרגיל בלבד (לא על החיפוש החכם — שם השאלה חופשית)
+  const scopeDef = scope && !ai ? HOME_SCOPES[scope] : null;
+  const scopeTitle = scopeDef ? homeScopeTitle(scope) : null;
+  const shownRes = applyScope(res, scopeDef ? scope : null);
+  const removeScope = () => {
+    scopeRef.current = null;
+    appliedKey.current = '';
+    setScope(null);
+    replaceUrl('');
+    const text = lastQuery.current.text;
+    if (advRes) {
+      // תוצאות "החזרות"/"תיקונים" (חיפוש מתקדם) לא שייכות יותר לחיפוש הכללי: מנקים ומריצים את אותו טקסט בחיפוש הכללי
+      setAdvRes(null);
+      if (view === 'results' && text && !lastQuery.current.ai) { setQ(text); runSearch(text); } else if (view === 'results') setView('start');
+    } else if (view === 'error' && text && !lastQuery.current.ai) {
+      runSearch(text);
+    } else if (res && view !== 'adv') {
+      // תוצאות שכבר הגיעו (חיפוש כללי מסונן) — מציגים את כולן בלי חיפוש חדש
+      setView(resultsCount(res) ? 'results' : 'none');
+    }
+    if (inputRef.current) inputRef.current.focus();
+  };
+  // '@' בתחילת השורה = רשימת האחרונים שלי (ההיסטוריה המקומית); "שינויים אחרונים" בתפריט פותח את אותה תוצאה בדיוק
+  const recentList = useLocalRecentRows();
+  const qp = useQuickPrefix({ q, rows: recentList, enabled: !ai, onPick: (row) => { const u = safeInternalRoute(row.url); if (u) router.push(u); } });
+
+  // בלי חיפוש חכם, בלי חיפוש מתקדם ובלי סינון לקטגוריה אין מה להציג: לא מרנדרים מיכל ריק
+  const modeButtons = !canAi && !advAvailable && !scopeDef ? null : (
     <div className="cmode">
+      {scopeDef && (
+        <button
+          type="button"
+          className="cmode-b"
+          aria-pressed="true"
+          aria-label={`סינון פעיל: חיפוש רק ${scopeDef.only}. לחיצה מסירה את הסינון`}
+          data-tip="הסרת הסינון"
+          onClick={removeScope}
+        >
+          <Ic id={scopeDef.icon} />רק {scopeDef.only}<Ic id="x" size="sm" />
+        </button>
+      )}
       {canAi && (
         <button type="button" className="cmode-b" onClick={() => { setAiMode((v) => !v); if (inputRef.current) inputRef.current.focus(); }}>
           {ai ? <><Ic id="search" />לחיפוש רגיל</> : <><Ic id="sparkle" />לחיפוש חכם</>}
@@ -379,9 +531,6 @@ export default function HomeA5() {
           <Ic id="sliders" />לחיפוש מתקדם
         </button>
       )}
-      <button type="button" className="cmode-b cmode-i" aria-pressed={recentOpen} aria-label="אחרונים" data-tip="אחרונים" onClick={() => { setRecentOpen((v) => !v); if (view !== 'start') resetAll(); }}>
-        <Ic id="sn-history" />
-      </button>
     </div>
   );
 
@@ -395,13 +544,15 @@ export default function HomeA5() {
   return (
     <div className="gm-ds gm-home home-bg">
       <HomeSprite />
+      <Suspense fallback={null}><SearchKeySync onKey={setSpKey} /></Suspense>
       <section className={`hero${heroEnter && !compact ? ' hero-enter' : ''}${compact ? ' hero-compact' : ''}`} aria-label="חיפוש">
         <div className={`hero-in${joined ? ' jshell' : ''}${noBar ? ' advonly' : ''}${view === 'ai' ? ' aishell' : ''}`}>
           {compact && <h1 className="sr-only">חיפוש</h1>}
           {!compact && (
             <h1 className="hero-t">
               <bdi>
-                {bootDone && (greeting.hi ? <><span className="t-hi">{greeting.hi}</span><span className="t-q">{greeting.q}</span></> : <span className="t-q">{greeting.q}</span>)}
+                {scopeTitle && <span className="t-q"><span className="t-sc">{scopeTitle.label}</span>{' - ' + scopeTitle.rest}</span>}
+                {!scopeTitle && bootDone && (greeting.hi ? <><span className="t-hi">{greeting.hi}</span><span className="t-q">{greeting.q}</span></> : <span className="t-q">{greeting.q}</span>)}
               </bdi>
             </h1>
           )}
@@ -409,13 +560,13 @@ export default function HomeA5() {
             <form
               className="srch"
               role="search"
-              onSubmit={(e) => { e.preventDefault(); if (!loading) runSearch(q, { ai }); }}
+              onSubmit={(e) => { e.preventDefault(); if (!loading && !qp.open) runSearch(q, { ai }); }}
             >
               <div className="scan">
                 <input
                   ref={inputRef}
                   id="sq"
-                  aria-label={ai ? 'שאלה לחיפוש החכם' : 'חיפוש לקוח, הזמנה או פריט'}
+                  aria-label={ai ? 'שאלה לחיפוש החכם' : scopeDef ? `חיפוש רק ${scopeDef.only}` : 'חיפוש לקוח, הזמנה או פריט'}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   disabled={loading}
@@ -423,6 +574,10 @@ export default function HomeA5() {
                   data-lpignore="true"
                   data-1p-ignore
                   data-form-type="other"
+                  {...qp.inputProps}
+                  onKeyDown={qp.onKeyDown}
+                  onFocus={qp.onFocus}
+                  onBlur={qp.onBlur}
                 />
                 {q && !loading && (
                   <button type="button" className="ibtn" aria-label="ניקוי החיפוש" data-tip="ניקוי הכול" onClick={() => { resetAll(); if (inputRef.current) inputRef.current.focus(); }}><Ic id="x" size="sm" /></button>
@@ -431,8 +586,9 @@ export default function HomeA5() {
                 <button type="submit" className="btn primary" aria-label={loading ? (ai ? 'חושבים' : 'מחפשים') : label} data-tip={label} disabled={loading}>
                   {loading ? <span className="mspin" aria-hidden="true" /> : <Ic id={ai ? 'send' : 'search'} />}
                 </button>
+                <QuickPrefixList qp={qp} />
               </div>
-              {!joined && <div className="hero-row">{modeButtons}</div>}
+              {!joined && modeButtons && <div className="hero-row">{modeButtons}</div>}
             </form>
           )}
           {view === 'adv' && (
@@ -481,16 +637,21 @@ export default function HomeA5() {
             />
           )}
           {(view === 'results' && !advRes) || view === 'none' ? (
-            <HomeResults key={resKey} res={res} none={view === 'none'} table={asTable} onTable={setAsTable} onExport={onExportGeneral} />
+            <HomeResults
+              key={resKey}
+              res={shownRes}
+              none={view === 'none'}
+              table={asTable}
+              onTable={setAsTable}
+              onExport={onExportGeneral}
+              note={scopeDef && resultsCount(res) > 0 && resultsCount(shownRes) === 0 ? 'יש תוצאות בקטגוריות אחרות. כדי לראות אותן יש להסיר את הסינון.' : ''}
+            />
           ) : null}
         </div>
       </section>
 
       <div className="app" id="app">
         <section className="panel on home-p" aria-label="תוכן עמוד הבית">
-          {view === 'start' && recentOpen && (
-            <HomeRecents rows={recents} onClear={clearRecents} onClose={() => setRecentOpen(false)} />
-          )}
           {view === 'error' && (
             <div className="card">
               <div className="empty" role="status">

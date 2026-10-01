@@ -8,12 +8,13 @@
 
 import '@/design-system/components.css';
 import './menu.css';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
+import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import { shiftClockInfo } from '@/lib/menu/shiftClock';
 import { usePopup } from '../PopupProvider';
 import LoginScreen from '../LoginScreen';
@@ -29,6 +30,7 @@ import BellBody, { useNotifications } from './MenuBell';
 import { UserButton, UserPanelBody, userDisplay } from './MenuUserPanel';
 import ManagerMessageDialog from './ManagerMessageDialog';
 import useNavHistory from './useNavHistory';
+import SearchKeySync from '../search/SearchKeySync';
 
 const CLOSED = { id: null, pin: false, peek: false };
 export default function MenuA5Shell({
@@ -40,6 +42,7 @@ export default function MenuA5Shell({
   children,
 }) {
   const pathname = usePathname();
+  const [queryString, setQueryString] = useState(''); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
   const popup = usePopup();
   const showAlert = popup && popup.showAlert;
   const rail = tree.rail || {};
@@ -79,7 +82,7 @@ export default function MenuA5Shell({
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, [pathname]);
-  const act = useMemo(() => findActive(tree, pathname, hash), [tree, pathname, hash]);
+  const act = useMemo(() => findActive(tree, pathname, hash, queryString), [tree, pathname, hash, queryString]);
 
   // ---- מצב פתיחה של פאנלים (אחד בכל רגע): id, הצמדה (pin), הצצה (peek, רק בחיפוש) ----
   const [ui, setUi] = useState(CLOSED);
@@ -100,7 +103,7 @@ export default function MenuA5Shell({
   const [loginOpen, setLoginOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const nav = useNavHistory(tree);
+  const nav = useNavHistory(tree, queryString);
   const search = useMenuSearch();
   const notify = useCallback((message, type = 'info') => { if (showAlert) showAlert(message, type); }, [showAlert]);
   const bellOn = !!(rail.bell && rail.bell.show && authToken);
@@ -134,6 +137,8 @@ export default function MenuA5Shell({
   const onNavigate = useCallback((e, href) => {
     closeAll();
     setDrawerOpen(false);
+    // לחיצה חוזרת על פריט "בית" (אותה כתובת): דף הבית מאפס את עצמו להוראה (ר' lib/menu/homeNav.js)
+    if (homeNavTarget(href).isHome) window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href } }));
     const i = href.indexOf('#');
     if (i === -1) return;
     const targetPath = href.slice(0, i);
@@ -287,7 +292,14 @@ export default function MenuA5Shell({
     }
   }, [closeAll, openItem]);
 
-  // חיפוש: ריחוף/מיקוד = "נצפו לאחרונה" (peek); לחיצה = שורת החיפוש, ממוקדת ומוצמדת; מגע: לחיצה ארוכה = peek.
+  // הצצה (ריחוף) מציגה גם את שורת החיפוש; לחיצה בתוכה = הצמדה, כדי שהפאנל לא ייסגר כשהעכבר יוצא ממנו באמצע הקלדה.
+  const onSearchFieldFocus = (e) => {
+    if (!e.target.matches || !e.target.matches('input')) return;
+    const cur = uiRef.current;
+    if (cur.id === 'search' && (cur.peek || !cur.pin)) { clearTimeout(timers.current.leave); setUi({ id: 'search', pin: true, peek: false }); }
+  };
+
+  // חיפוש: ריחוף/מיקוד = הצצה (peek): שורת חיפוש + "נצפו לאחרונה"; לחיצה = שורת החיפוש, ממוקדת ומוצמדת; מגע: לחיצה ארוכה = peek.
   const searchBtn = {
     onClick: () => {
       if (longFired.current) { longFired.current = false; return; }
@@ -466,6 +478,7 @@ export default function MenuA5Shell({
 
         <div className="gm-ds gm-menu" ref={wrapRef}>
           <MenuSprite />
+          <Suspense fallback={null}><SearchKeySync onKey={setQueryString} /></Suspense>
           <header className="snav" id="snav" role="banner" ref={headerRef} data-sticky-nav onBlur={(e) => {
             if (uiRef.current.id && e.relatedTarget && !e.relatedTarget.closest('.sn-item')) closeAll();
           }}>
@@ -509,6 +522,7 @@ export default function MenuA5Shell({
                   onPointerEnter={(e) => handlers.enter(e, 'search')}
                   onPointerLeave={(e) => handlers.leave(e, 'search')}
                   onKeyDown={(e) => handlers.key(e, 'search')}
+                  onFocus={onSearchFieldFocus}
                 >
                   <button
                     type="button"
@@ -517,7 +531,7 @@ export default function MenuA5Shell({
                     aria-haspopup="true"
                     aria-expanded={ui.id === 'search' ? 'true' : 'false'}
                     aria-label="חיפוש"
-                    data-tip="חיפוש · ריחוף: נצפו לאחרונה"
+                    data-tip="חיפוש"
                     {...searchBtn}
                   >
                     <Ic n="search" />
