@@ -4,7 +4,7 @@
 // לא נוגעת ב-DB (לקוח prisma מזויף) ולא ב-Next. הרצה: node scripts/test_shell_endpoints.mjs (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import {
-  parseIdList, addIdToList, removeIdFromList, planIdListUpdates, parseNotificationActionBody, NOTIFICATIONS_LIST_WINDOW,
+  parseIdList, addIdToList, removeIdFromList, planIdListUpdates, parseNotificationActionBody, parseArchiveFlag, NOTIFICATIONS_LIST_WINDOW,
 } from '../lib/notificationLists.js';
 import { markAllNotificationsRead, archiveAllNotifications, BULK_MAX_ATTEMPTS, BULK_CONCURRENCY } from '../lib/notificationsBulk.js';
 import { buildLegacyShellOverride, mergeDesignPrefs, parseStoredDesignPrefs, SHELL_OVERRIDE_ALLOWED_VALUES } from '../lib/designPrefsSchema.js';
@@ -64,6 +64,15 @@ t('parseNotificationActionBody: { notificationId } כמו קודם, { all: true 
   // שניהם יחד = דו-משמעי
   assert.match(parseNotificationActionBody({ all: true, notificationId: 'abc' }).error, /not both/);
   assert.equal(NOTIFICATIONS_LIST_WINDOW, 150, 'אותו חלון כמו GET /api/notifications (take: 150)');
+});
+t('parseArchiveFlag (archive ב-{all:true}): חסר = ארכיון; בוליאני בלבד; "false" כמחרוזת / 0 / null = 400 בעברית', () => {
+  assert.deepEqual(parseArchiveFlag(undefined), { archive: true });
+  assert.deepEqual(parseArchiveFlag(true), { archive: true });
+  assert.deepEqual(parseArchiveFlag(false), { archive: false });
+  for (const bad of ['false', 'true', 'no', '', 0, 1, null, {}, [], 'False']) {
+    const r = parseArchiveFlag(bad);
+    assert.equal(r.archive, undefined, JSON.stringify(bad)); assert.match(r.error, /true או false/); assert.match(r.error, /[א-ת]/);
+  }
 });
 
 // --- לקוח prisma מזויף: רק notification.findMany / updateMany, רושם כל קריאה -----------------------------

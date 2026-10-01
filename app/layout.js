@@ -228,7 +228,9 @@ export default async function RootLayout({ children }) {
     ? (pageAccess ? pageAccess['page:board'] : isHeadManagement)
     : !requireLogin;
 
-  const navGroups = buildNavGroups({
+  // אותו אובייקט דגלים בדיוק שהתפריט הישן מקבל (buildNavGroups) — הוצא למשתנה כדי שהמעטפת החדשה תקבל
+  // את אותם ערכים (ולא תחשב אותם מחדש). הערכים עצמם לא השתנו.
+  const legacyNavFlags = {
     showAdminTab,
     showEmployeesTab,
     showRefundsTab,
@@ -241,19 +243,33 @@ export default async function RootLayout({ children }) {
     showOrders: pageVisible('page:orders'),
     showRentals: pageVisible('page:rentals'),
     showCustomers: pageVisible('page:customers'),
-  });
+  };
+  const navGroups = buildNavGroups(legacyNavFlags);
 
-  // נתונים למעטפת החדשה (ShellSwitch / MenuA5Shell, PR 2.A) — מחושבים כאן כבר עכשיו, מאותם settings/pageAccess
-  // שנטענו למעלה, ומועברים כ-prop אחד ש-AppShell הישן מתעלם ממנו (לא מפורק בחתימה שלו). הגדרות נבדקות בקפדנות
-  // `=== 'true'` כמו שאר הדגלים בקובץ הזה. BRAND_LOGO: רק האם קיים (!!value) — לא ה-base64.
+  // נתונים למעטפת החדשה (ShellSwitch / MenuA5Shell, PR 2.A) — מחושבים מאותם settings/pageAccess שנטענו למעלה
+  // (בלי שאילתה נוספת), ומועברים ל-AppShell רק כשהמעטפת 'a5' (ר' a5Shell למטה) — באתר הישן ה-prop הוא undefined
+  // והמטען זהה לקודם. הגדרות נבדקות בקפדנות `=== 'true'`. BRAND_LOGO: רק האם קיים (!!value) — לא ה-base64.
+  // `flags` = בדיוק מה ש-buildMenuTree קורא ב-ctx.flags (lib/menu/buildMenuTree.js deriveLegacyFlags): דגלי התפריט
+  // הישן + isHeadManagement / isProgrammer / hideInternalMessaging / hideErrorReporting / requireLogin / isAuthenticated.
+  // כך "משלוחים" (showDeliveries) ושאר הפריטים המותנים מוצגים בחדש בדיוק כמו בישן.
   const settingValue = (key) => settings.find(s => s.key === key)?.value;
   const a5ShellProps = {
     managementMessages: settingValue('management_messages') === 'true',
+    enableDeliveries: showDeliveries, // enable_deliveries === 'true' (קפדני), בלי ההרשאה; עם ההרשאה = flags.showDeliveries
     gmachName: typeof settingValue('gmach_name') === 'string' ? settingValue('gmach_name').trim() : '',
     gmachSubtitle: typeof settingValue('gmach_subtitle') === 'string' ? settingValue('gmach_subtitle').trim() : '',
     hasBrandLogo: !!settingValue('BRAND_LOGO'),
     pageAccess, // { 'page:x': boolean } לכל NAV_PAGE_KEYS, או null לאורח / תקלה (buildMenuTree מטפל ב-null)
     roleId: emp ? emp.roleId : null,
+    flags: {
+      ...legacyNavFlags,
+      isHeadManagement,
+      isProgrammer,
+      hideInternalMessaging,
+      hideErrorReporting,
+      requireLogin,
+      isAuthenticated,
+    },
   };
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
@@ -682,7 +698,7 @@ function cpCssText(vars) {
                 showOverdueRemindersPopup={showOverdueRemindersPopup}
                 authToken={authToken?.value}
                 themePreference={themePreference}
-                a5Shell={a5ShellProps}
+                a5Shell={uiVariants.shell === 'a5' ? a5ShellProps : undefined}
               >
                 {children}
               </AppShell>

@@ -35,18 +35,23 @@ async function getSessionEmployee() {
     },
     select: { id: true, themeColor: true, isActive: true }
   });
-  return employee ? { employee, cookieKey: token.value } : null;
+  return employee ? { employee, cookieKey: token.value, cookieStore } : null;
 }
 
 // אותו payload שהלקוח כותב ב-writeDesignPrefsCookie (רק מה ש-SSR צריך לפני הציור + uiVariants).
-function cookiePayloadFromPrefs(prefs) {
-  const payload = {
-    palette: prefs.palette,
-    font: prefs.font,
-    density: prefs.density,
-    textScale: prefs.textScale,
-    customColors: prefs.customColors,
-  };
+// השדות החזותיים נלקחים מה-DB, ואם שם הם חסרים (עובד/ת שעדיין לא עבר/ה את ההגירה החד-פעמית של DesignPrefsSync)
+// — מהעוגייה הקיימת, כדי שהכתיבה מהשרת לא תמחק פלטה/גופן שחיים רק בדפדפן. uiVariants: תמיד מה-DB (המקור).
+const COOKIE_VISUAL_FIELDS = ['palette', 'font', 'density', 'textScale', 'customColors'];
+function cookiePayloadFromPrefs(prefs, existingCookieRaw) {
+  let existing = {};
+  if (typeof existingCookieRaw === 'string' && existingCookieRaw) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(existingCookieRaw));
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) existing = parsed;
+    } catch (e) { existing = {}; }
+  }
+  const payload = {};
+  for (const k of COOKIE_VISUAL_FIELDS) payload[k] = prefs[k] !== undefined ? prefs[k] : existing[k];
   if (prefs.uiVariants) payload.uiVariants = prefs.uiVariants;
   return payload;
 }
@@ -57,7 +62,7 @@ export async function POST(request) {
     if (!session) {
       return NextResponse.json({ success: false, error: 'לא מחובר/ת' }, { status: 401 });
     }
-    const { employee, cookieKey } = session;
+    const { employee, cookieKey, cookieStore } = session;
     if (!employee.isActive) {
       return NextResponse.json({ success: false, error: 'העובד/ת אינו פעיל/ה' }, { status: 403 });
     }
@@ -98,9 +103,10 @@ export async function POST(request) {
     // המפתח של העוגייה הוא ערך ה-auth_token (כך ה-layout קורא אותה: designPrefs_${authToken.value}).
     // Next מקודד את הערך (encodeURIComponent) בכתיבה ומפענח בקריאה — אותו פורמט כמו document.cookie בלקוח.
     try {
+      const cookieName = `designPrefs_${cookieKey}`;
       res.cookies.set({
-        name: `designPrefs_${cookieKey}`,
-        value: JSON.stringify(cookiePayloadFromPrefs(built.next)),
+        name: cookieName,
+        value: JSON.stringify(cookiePayloadFromPrefs(built.next, cookieStore.get(cookieName)?.value)),
         path: '/',
         sameSite: 'lax',
         maxAge: DESIGN_PREFS_COOKIE_MAX_AGE,

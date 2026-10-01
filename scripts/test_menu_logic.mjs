@@ -366,6 +366,24 @@ t('דגלים מה-layout (flags) גוברים על הנגזרים: showBoardTab
   const u = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true' }), flags: { hideInternalMessaging: undefined, showBoardTab: undefined } });
   assert.deepEqual(u.rail.bell, { show: false }); assert.ok(tab(u, 'month'));
 });
+t('חוזה a5Shell.flags מ-app/layout.js: עם flags בלבד (בלי settings/permissions) העץ מציג משלוחים/זיכויים/לוח בדיוק לפי הדגלים', () => {
+  // אותו אובייקט שה-layout בונה (legacyNavFlags + 6 הנוספים) — אם buildMenuTree יתחיל לקרוא דגל חדש, הבדיקה הזאת תיפול.
+  const layoutFlags = {
+    showAdminTab: false, showEmployeesTab: false, showRefundsTab: true, showDressesTab: false, showBoardTab: true,
+    enableAlterations: true, showMessages: true, showDeliveries: true, showOrdersNew: true, showOrders: true, showRentals: true, showCustomers: true,
+    isHeadManagement: false, isProgrammer: false, hideInternalMessaging: false, hideErrorReporting: false, requireLogin: true, isAuthenticated: true,
+  };
+  const tree = buildMenuTree({ user: STAFF, permissions: { 'page:schedule': true }, flags: layoutFlags, settings: { management_messages: 'true', gmach_name: 'נווה' } });
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'month', 'admin', 'order']);
+  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-refunds', 'ad-deliveries']); assert.equal(tab(tree, 'admin').href, null);
+  assert.ok(ids(tab(tree, 'home').items).includes('sched')); assert.ok(ids(tab(tree, 'home').items).includes('recent-alterations'));
+  assert.deepEqual(ids(tree.rail.bell.rows), ['n-manager-message'], 'page:messages לא נטען → מרכז הודעות מוסתר לעובדת; הודעה למנהל לפי ההגדרה');
+  assert.equal(tree.rail.errorReport.show, true); assert.equal(tree.brand.name, 'נווה');
+  const off = buildMenuTree({ user: STAFF, permissions: {}, flags: { ...layoutFlags, showDeliveries: false, showRefundsTab: false, showBoardTab: false, hideErrorReporting: true }, settings: {} });
+  assert.deepEqual(off.tabs.map((x) => x.id), ['home', 'order']); assert.equal(off.rail.errorReport.show, false);
+  // הדגלים שהעץ קורא — כולם ברשימה (אם deriveLegacyFlags יחזיר מפתח חדש, ה-layout צריך להעביר גם אותו)
+  assert.deepEqual(Object.keys(deriveLegacyFlags({ logged: true, roleId: 3, permissions: {}, settings: [] })).sort(), Object.keys(layoutFlags).sort());
+});
 t('העץ הוא JSON נקי (בלי פונקציות) — ניתן לשלוח מהשרת ללקוח', () => {
   for (const [, ctx] of CASES) assert.equal(isJsonSafe(buildMenuTree(ctx)), true);
   assert.equal(JSON.stringify(HEAD_TREE).includes('function'), false);

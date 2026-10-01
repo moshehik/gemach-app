@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
-import { parseIdList, parseNotificationActionBody } from '../../../../lib/notificationLists';
+import { parseIdList, parseNotificationActionBody, parseArchiveFlag } from '../../../../lib/notificationLists';
 import { archiveAllNotifications } from '../../../../lib/notificationsBulk';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
@@ -9,7 +9,8 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 //   { notificationId, archive }   — הודעה אחת (ההתנהגות המקורית, ללא שינוי; archive=true לארכיון, false להחזרה)
 //   { all: true, archive: true }  — "ניקוי" (פעמון התפריט החדש): כל ההודעות של העובד המחובר בלבד עוברות לארכיון
 //                                   (לא נמחקות — נשארות בלשונית "ארכיון" ב-/messages). archive חסר = true;
-//                                   { all: true, archive: false } מחזיר את כולן מהארכיון.
+//                                   { all: true, archive: false } מחזיר את כולן מהארכיון. archive שאינו בוליאני
+//                                   (למשל "false" כמחרוזת) → 400, כדי שלא יארכב בטעות.
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
@@ -31,7 +32,11 @@ export async function POST(request) {
     }
 
     if (parsed.mode === 'all') {
-      const doArchive = body.archive !== false;
+      const flag = parseArchiveFlag(body.archive);
+      if (flag.error) {
+        return NextResponse.json({ success: false, error: flag.error }, { status: 400 });
+      }
+      const doArchive = flag.archive;
       const result = await archiveAllNotifications(prisma, employeeId, doArchive);
       return NextResponse.json({ success: true, all: true, archived: doArchive, updated: { personal: result.personal, global: result.global }, conflicts: result.conflicts });
     }
