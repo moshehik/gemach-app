@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
-import { checkAuth, getSessionEmployee } from '@/lib/auth';
+import { checkAuth, checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
+import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getSettingDisplayName } from '@/lib/settingsMetadata';
 
@@ -159,6 +160,33 @@ const FOCUS_Q = {
   settings: [settingNames],
 };
 
+// שערי הרשאה - אותם מפתחות כמו /api/a5/adv ו-/api/a5/adv-b. ההצעות מחזירות שמות/טלפונים/עיר של
+// לקוחות ומספרי הזמנה אמיתיים (גם בלי טקסט: 50 האחרונים), לכן אסור לתת אותן לעובד בלי הרשאת העמוד.
+// 1) לפי התחום (focus) שהחיפוש המתקדם פתוח עליו; 2) לפי סוג המידע המבוקש (key), כדי שתחום אחד
+// (למשל דגמים) לא ישמש לשליפת נתוני לקוחות. תחום ריק/settings: רק שער הסוג.
+const FOCUS_PAGE = {
+  customers: 'page:customers', orders: 'page:orders', rentals: 'page:rentals', returns: 'page:rentals',
+  deliveries: 'page:deliveries', alterations: 'page:alterations', finance: 'page:refunds',
+  capacity: 'page:orders', models: 'page:dresses_catalog',
+};
+const CUSTOMER_KEYS = ['first', 'last', 'name', 'phone', 'city'];
+const CUSTOMER_PAGES = ['page:customers', 'page:orders', 'page:rentals', 'page:deliveries', 'page:alterations', 'page:refunds'];
+const ORDER_PAGES = ['page:orders', 'page:rentals', 'page:deliveries', 'page:alterations', 'page:refunds'];
+const forbidden = () => NextResponse.json({ error: 'אין הרשאה להצעות בתחום זה' }, { status: 403 });
+
+async function allowed(key, focus) {
+  if (focus === 'employees') {
+    if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) return false;
+  } else if (FOCUS_PAGE[focus]) {
+    if (!(await canOpenPage(FOCUS_PAGE[focus]))) return false;
+  } else if (focus && focus !== 'settings') {
+    return false; // תחום לא מוכר - נכשלים סגור
+  }
+  if (CUSTOMER_KEYS.includes(key)) return canOpenAnyPage(CUSTOMER_PAGES);
+  if (key === 'oid') return canOpenAnyPage(ORDER_PAGES);
+  return true;
+}
+
 export async function GET(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
@@ -166,6 +194,7 @@ export async function GET(request) {
     const key = sp.get('key') || '';
     const focus = sp.get('focus') || '';
     const typed = (sp.get('typed') || '').trim().slice(0, 60);
+    if (!(await allowed(key, focus))) return forbidden();
     let out = [];
     if (key === 'q') {
       const fns = FOCUS_Q[focus] || [];

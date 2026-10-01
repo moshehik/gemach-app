@@ -40,11 +40,15 @@ export async function GET(request) {
       'c."firstName"', 'c."lastName"', 'c."firstNamePhoneticKey"', 'c."lastNamePhoneticKey"'
     );
 
+    // SECURITY: explicit column lists only (never SELECT * / o.* / oi.*). Any employee can call this
+    // endpoint, and the full rows carry zeout (ID number), bank*/hok* details, email, addresses,
+    // internalNotes/officeNotes/notes, blockedReason, hokDetails. Add a column here only if a
+    // consumer (app/page.js, TopbarSearch, public/a5 adapters) actually renders it.
     // Run the three independent searches concurrently instead of sequentially.
     const [customers, orders, rentals] = await Promise.all([
       // 1. Search Customers
       prisma.$queryRawUnsafe(`
-        SELECT *,
+        SELECT "id", "firstName", "lastName", "phone1", "phone2", "city",
           COALESCE(
             "firstName" LIKE $1 OR "lastName" LIKE $1 OR phone1 LIKE $1 OR phone2 LIKE $1 OR city LIKE $1 OR id = $3
             ${custNameWords ? `OR ${custNameWords.clauseSql}` : ''}
@@ -70,7 +74,8 @@ export async function GET(request) {
 
       // 2. Search Orders
       prisma.$queryRawUnsafe(`
-        SELECT o.*, c."firstName", c."lastName",
+        SELECT o."id", o."orderId", o."customerId", o."status", o."totalAmount",
+          o."eventDate", o."eventDateHebrew", c."firstName", c."lastName",
           (SELECT COUNT(*) FROM "OrderItem" oi WHERE oi."orderId" = o."orderId" AND oi."isDeleted" = false) as "itemCount",
           COALESCE(
             c."firstName" LIKE $1 OR c."lastName" LIKE $1 OR c.phone1 LIKE $1 OR
@@ -105,7 +110,7 @@ export async function GET(request) {
       // post-migration items carry their name/barcode on DressModel via dressModelId instead,
       // so we join DressModel too and COALESCE both, same relation app/api/orders/route.js uses.
       prisma.$queryRawUnsafe(`
-        SELECT oi.*,
+        SELECT oi."id", oi."orderId", oi."barcode", oi."sizeText", oi."description",
           COALESCE(d."dressName", dm."name") as "catalogName",
           COALESCE(d."barcodePrefix", dm."barcodePrefix") as "catalogBarcode"
         FROM "OrderItem" oi
