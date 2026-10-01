@@ -14,8 +14,26 @@ const str = (v) => (v === null || v === undefined ? '' : String(v));
 //  - הגדרה בצורת "שלום! מה תרצי לחפש?" → מפוצלת בסימן הקריאה; "שלום" הופך ל"שלום [שם פרטי]," כשיש עובדת מחוברת
 //    (כמו homeTitleHtml בעיצוב).
 //  - הגדרה אחרת (בלי "!") ועובדת מחוברת → "שלום [שם]," ומתחת טקסט ההגדרה (ר' V1-RELEASE-PLAN, החלטה על פריט 11).
-export function buildGreeting(title, firstName) {
-  const t = str(title).trim();
+//  - נוסח ברירת המחדל הישן של האתר ("ברוכים הבאים למערכת ניהול הגמ"ח", home_welcome_title שנשמר בהגדרות) נחשב "לא הותאם":
+//    מוצג הנוסח המוסכם ("שלום [שם]," + "מה תרצי לחפש?"), בלי לשנות את ההגדרה עצמה ובלי לגעת בדף הבית הישן. השוואה אחרי
+//    נרמול גרשיים/גרש/רווחים (", ״, ”, “, ''), רווח קשיח ורווחים כפולים.
+export const LEGACY_DEFAULT_TITLE = 'ברוכים הבאים למערכת ניהול הגמ"ח';
+export const DESIGNED_TITLE = 'שלום! מה תרצי לחפש?';
+export function normalizeTitleForCompare(v) {
+  return str(v)
+    .replace(/[\u00a0\u2000-\u200b\u202f\u205f\u3000\u200e\u200f]/g, ' ') // רווח קשיח / רווחים צרים / סימני כיוון
+    .replace(/[\u05f4\u201c\u201d\u201e\u201f\u2033\u02ba\uff02\u2018\u2019\u05f3']/g, '"') // ״ " " „ ‟ ″ ʺ ＂ ' ' ׳ '
+    .replace(/"{2,}/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+const LEGACY_DEFAULT_NORMALIZED = normalizeTitleForCompare(LEGACY_DEFAULT_TITLE);
+export function isLegacyDefaultTitle(title) {
+  return normalizeTitleForCompare(title) === LEGACY_DEFAULT_NORMALIZED;
+}
+
+export function buildGreeting(rawTitle, firstName) {
+  const t = isLegacyDefaultTitle(rawTitle) ? DESIGNED_TITLE : str(rawTitle).trim();
   const name = str(firstName).trim();
   if (!t) return { hi: null, q: DEFAULT_TITLE };
   const m = /^([^!]*)!\s*(.*)$/.exec(t);
@@ -354,19 +372,26 @@ export function recentRows(history) {
 /* ---------- תחתית האתר ---------- */
 
 // קבוצות הקישורים בתחתית לפי מה שמותר למשתמשת (navGroups מ-/api/a5/boot) — אותם כללים כמו public/a5/adapters/shell.js footer().
-// אין קבוצת "עזרה": אין באתר מדריך למשתמש, ודיווח תקלה הוא כפתור צף (ErrorReportButton) בלי כתובת — לא מציגים קישור שלא עובד.
+// החלטת הבעלים 1.10.2026: כל הפריטים של העיצוב מופיעים (כולל קבוצת "עזרה"); מה שלא קיים / לא מותר מוצג כבוי עם "בקרוב".
 export function footerGroups({ navGroups, isHead, authenticated }) {
   const hrefs = new Set((navGroups || []).flatMap((g) => (g.items || []).map((i) => i.href)));
-  const L = (label, key, href, ok) => (ok ? { label, key, href } : null);
+  // כל פריט מהעיצוב מופיע תמיד (#siteFoot ב-דף-הבית.html): פריט שהדף שלו קיים ומותר למשתמשת — קישור רגיל;
+  // אחרת (דף שלא נבנה / אין הרשאה) — soon:true, כלומר שורה כבויה עם "בקרוב" (בלי href, לא קישור, לא ניתן למיקוד).
+  const L = (label, key, href, ok) => (ok ? { label, key, href } : { label, key, soon: true });
   const nav = [
     L('הזמנות', 'orders', '/orders', hrefs.has('/orders')),
     L('לקוחות', 'customers', '/customers', hrefs.has('/customers')),
     L('שמלות', 'dresses', '/dashboard/dresses', hrefs.has('/dashboard/dresses')),
     L('סיכום כספי', 'dashboard', '/dashboard', !!isHead),
-  ].filter(Boolean);
+  ];
+  // "מדריך למשתמש": אין עדיין דף כזה באתר. "דיווח על תקלה": פעולה (לא קישור) - הרכיב מפעיל את כפתור הדיווח של הסרגל כשהוא קיים, אחרת "בקרוב".
+  const help = [
+    { label: 'מדריך למשתמש', key: 'guide', soon: true },
+    { label: 'דיווח על תקלה', key: 'report', action: 'report' },
+  ];
   const me = [
     L('הפרופיל שלי', 'profile', '/profile', !!authenticated),
     L('הגדרות תצוגה', 'display', '/display-settings', !!authenticated),
-  ].filter(Boolean);
-  return [{ h: 'ניווט מהיר', links: nav }, { h: 'החשבון שלי', links: me, privacy: true }];
+  ];
+  return [{ h: 'ניווט מהיר', links: nav }, { h: 'עזרה', links: help }, { h: 'החשבון שלי', links: me, privacy: true }];
 }

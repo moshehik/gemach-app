@@ -51,6 +51,9 @@ export function SnLi({ n }) {
 
 // טולטיפים שהם הערות תכנון מתצוגת העיצוב ולא טקסט למשתמשת: לא מציגים אותם באתר.
 const HIDE_TIP_IDS = new Set(['ad-models', 'ad-refunds', 'ad-deliveries', 'sched']);
+
+/** התווית של פריט שעדיין לא נבנה (kind:'soon'): שורה כבויה, לא קישור ולא ניתנת למיקוד. */
+export const SOON_LABEL = 'בקרוב';
 export function tipOf(item) {
   if (!item || !item.tip || HIDE_TIP_IDS.has(item.id)) return undefined;
   // הסרת סוגריים טכניים כמו "(page:orders)" אם נשארו בטקסט.
@@ -79,6 +82,16 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
     </>
   );
   const cls = `sn-link${item.danger ? ' danger' : ''}`;
+  if (item.kind === 'soon') {
+    // "בקרוב": אלמנט כבוי (span) - לא <a>, לא <button>, בלי tabindex; מתעלם מלחיצות.
+    return (
+      <span className="sn-link is-miss" role={menu ? 'menuitem' : undefined} aria-disabled="true" data-tip={tip} data-menu-id={item.id}>
+        <SnLi n={item.icon} />
+        {item.label}
+        <span className="sn-k">{SOON_LABEL}</span>
+      </span>
+    );
+  }
   if (item.kind === 'action' || !item.href) {
     return (
       <button
