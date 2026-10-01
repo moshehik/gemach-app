@@ -21,7 +21,7 @@ import MessageHistoryButton from '../MessageHistoryButton';
 import OverdueRemindersWatcher from '../OverdueRemindersWatcher';
 import ShiftMessageWatcher from '../ShiftMessageWatcher';
 import { A5ShellProvider } from './A5ShellContext';
-import { Ic, MenuRows, SnLi } from './menuParts';
+import { Ic, MenuRows, MenuSprite, SnLi } from './menuParts';
 import MenuTabItem from './MenuTabPanel';
 import SearchBody, { useMenuSearch } from './MenuSearchPanel';
 import BellBody, { useNotifications } from './MenuBell';
@@ -466,6 +466,7 @@ export default function MenuA5Shell({
         {loginOpen && <LoginScreen isModal onClose={() => setLoginOpen(false)} />}
 
         <div className="gm-ds gm-menu" ref={wrapRef}>
+          <MenuSprite />
           <header className="snav" id="snav" role="banner" ref={headerRef} data-sticky-nav onBlur={(e) => {
             if (uiRef.current.id && e.relatedTarget && !e.relatedTarget.closest('.sn-item')) closeAll();
           }}>

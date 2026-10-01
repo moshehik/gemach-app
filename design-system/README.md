@@ -33,11 +33,15 @@
    <div className="gm-ds gm-home">…רכיבי דף הבית…</div>
    ```
    ואז מדביקים את ה-HTML של הרכיב מהפלטה ("העתק HTML") או מ-`COMPONENTS.md`, **עם שמות המחלקות כפי שהם** (`btn primary`, `card`, `seg pill`, `article.hrow.irow`). הקטלוג אומר לכל פריט באיזה עור הוא נתפס.
-3. **אייקונים** — בתוך האפליקציה תמיד הפניה חיצונית ל-sprite, כי 30 מזהי `#i-*` של הפלטה (`i-mail`, `i-search`, `i-users`, `i-file`, `i-x` …) קיימים גם ב-`IconSprite.js` של ה-legacy ו-`<use href="#i-mail">` היה תופס את הישן:
+3. **אייקונים** — בתוך האפליקציה ה-sprite **מוטמע בדף** פעם אחת (`MenuSprite` ב-`app/components/menu/menuParts.js`, מתוך `spriteSymbols.js` שנוצר אוטומטית מ-`sprite.svg`), תחת המזהים `gmi-<שם>`:
    ```jsx
-   <svg className="ic ia-mail ia-h"><use href="/design-system/sprite.svg#i-mail" /></svg>
+   import { Ic } from '@/app/components/menu/menuParts';   // <svg class="ic ia-mail ia-h"><use href="#gmi-mail"/></svg>
+   <Ic n="mail" />
    ```
+   הקידומת `gmi-` נחוצה כי 30 מזהי `#i-*` של הפלטה (`i-mail`, `i-search`, `i-users`, `i-file`, `i-x` …) קיימים גם ב-`IconSprite.js` של ה-legacy ו-`<use href="#i-mail">` היה תופס את הישן.
+   **לא** להפנות לקובץ החיצוני `<use href="/design-system/sprite.svg#i-mail">` (כך היה עד 1.10.2026): מסנני תוכן של אינטרנט מסונן (Netspark/רימון/נטפרי) מיירטים HTTPS ומחליפים קובצי "תמונה" שלא אושרו בריבוע לבן 2x2 — כולל קובץ ה-sprite — והמעטפת עלתה בלי אייקונים בכלל. ה-HTML עובר במסנן ללא שינוי, ולכן ההטמעה בדף. דף שמשתמש ב-`Ic` מחוץ ל-`MenuA5Shell` חייב לרנדר `<MenuSprite />` בעצמו פעם אחת.
    בדף סטטי שמטמיע את ה-sprite (כמו `index.html`) — `<use href="#i-mail"/>`. המחלקות `ia-<id> ia-h` נותנות את הנפשת הריחוף של האייקון (הנפשה N בקטלוג).
+   אחרי כל `install.py` מריצים `node scripts/build_menu_sprite.mjs` (ו-`scripts/test_menu_logic.mjs` נכשל אם `spriteSymbols.js` לא מסונכרן).
 4. **התנהגויות** — הטולטיפ (`data-tip` / `data-rich`), הגלולה עם המחוון (`.seg.pill` + `--i`), הלשוניות, מתג התצוגה (`.vsw`) ולחצני הבחירה דורשים JS. המימוש המינימלי נמצא ב-`build/pl2.js` (הסקריפט של דף הפלטה); המימוש המלא — בשני דפי המקור.
 5. **גופן** — `components.css` טוען את Rubik מ-Google Fonts (בכוונה לא `tokens.css`, כדי ששום דף ישן לא יטען גופן חדש).
 
@@ -61,7 +65,7 @@
 
 ## איך מחדשים (כשהפלטה או הדפים משתנים)
 
-הצינור המלא (פירוט ב-`build/README.md`): `crawl.mjs` (סריקת הדפים החיים ב-Edge headless) → `mkcss.py` (CSS נקי ומוגדר-היקף לכל דף) → `extract.py` (בחירת הרכיבים) → `anim_data.py` → `build2.py` (הרכבת דף הפלטה + `numbers.json`) → `install.py` (הקבצים שבתיקייה הזו). הצינור דורש עותקים מקומיים של שני דפי המקור בשם `pageA.html` / `pageB.html` (ה-Artifact tool שומר אותם בקריאת `read`; הם לא בריפו — 1MB כל אחד). כשמשנים רק את דף הפלטה (הארטיפקט) מספיק להריץ את `install.py` על שלושת הקבצים השמורים. אחרי כל בנייה: `python design-system/build/check_collisions.py`, עדכון `VERSION` ב-`install.py`, וקומיט של כל התיקייה יחד עם `public/design-system/`.
+הצינור המלא (פירוט ב-`build/README.md`): `crawl.mjs` (סריקת הדפים החיים ב-Edge headless) → `mkcss.py` (CSS נקי ומוגדר-היקף לכל דף) → `extract.py` (בחירת הרכיבים) → `anim_data.py` → `build2.py` (הרכבת דף הפלטה + `numbers.json`) → `install.py` (הקבצים שבתיקייה הזו). הצינור דורש עותקים מקומיים של שני דפי המקור בשם `pageA.html` / `pageB.html` (ה-Artifact tool שומר אותם בקריאת `read`; הם לא בריפו — 1MB כל אחד). כשמשנים רק את דף הפלטה (הארטיפקט) מספיק להריץ את `install.py` על שלושת הקבצים השמורים. אחרי כל בנייה: `python design-system/build/check_collisions.py`, `node scripts/build_menu_sprite.mjs` (ה-sprite המוטמע של המעטפת), עדכון `VERSION` ב-`install.py`, וקומיט של כל התיקייה יחד עם `public/design-system/` ו-`app/components/menu/spriteSymbols.js`.
 
 ## פערים ידועים
 

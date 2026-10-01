@@ -69,7 +69,8 @@ export async function PUT(request) {
     // מיזוג רדוד של העדכון על ההעדפות הקיימות — שדות לא-מוכרים/לא-תקינים
     // נזרקים בשקט (sanitize), כך שהעמודה לעולם לא מכילה JSON שרירותי.
     // uiVariants (דגלי "ישן / A5", lib/uiVariant.js) נקבעים רק ע"י הבעלים דרך
-    // scripts/set-ui-variant.js — עובד לא יכול להדליק לעצמו מסך חדש דרך ה-API הזה. הערך הקיים
+    // scripts/set-ui-variant.js, או ע"י הנהלה/מתכנת על עצמם דרך POST /api/me/ui-variant/<shell|home> (2026-10-01) —
+    // עובד לא יכול להדליק לעצמו מסך חדש דרך ה-API הזה. הערך הקיים
     // נשמר כי mergeDesignPrefs מתחיל מההעדפות השמורות. (זה חוסם רק את המסלול הזה: העוגייה
     // designPrefs_<id> שה-layout קורא ניתנת לעריכה בדפדפן — ר' ההערה ב-lib/uiVariant.js.)
     const safeBody = (body && typeof body === 'object') ? { ...body } : body;

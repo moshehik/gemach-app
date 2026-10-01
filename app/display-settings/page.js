@@ -16,6 +16,7 @@ import {
   writeLocalPrefs,
   writeThemeCookie,
 } from '../lib/designPrefs';
+import { useUiVariant } from '../components/UiVariantContext';
 
 // עמוד "עיצוב ותצוגה" — גרסה קומפקטית ומאורגנת (סעיפים ברורים, רוחב מוגבל):
 //   1. מצב תצוגה (בהיר/כהה/ניגודיות/אוטומטי)
@@ -182,6 +183,88 @@ function PreviewStrip({ colors }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// מעבר עצמאי בין העיצוב הישן לחדש (הנהלה ראשית / מתכנת בלבד, לעצמם בלבד). הסעיף מוצג רק כש-GET /api/me/ui-variant
+// אישר canSelfSwitch (ההחלטה בשרת לפי Employee.roleId, וה-POST אוכף אותה מחדש). הבחירה נשמרת כעקיפה אישית
+// (Employee.themeColor.uiVariants) ואז טעינה מלאה, כדי שה-layout יקרא את העוגייה המרוענת.
+const DESIGN_SWITCH_ROWS = [
+  { screen: 'shell', label: 'תפריט עליון' },
+  { screen: 'home', label: 'דף הבית' },
+];
+const DESIGN_SWITCH_CHOICES = [
+  { value: 'legacy', label: 'ישן' },
+  { value: 'a5', label: 'חדש' },
+];
+
+function DesignSwitchCard() {
+  const shellVariant = useUiVariant('shell');
+  const homeVariant = useUiVariant('home');
+  const current = { shell: shellVariant, home: homeVariant };
+  const [canSelfSwitch, setCanSelfSwitch] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/me/ui-variant')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (alive && data && data.success && data.canSelfSwitch) setCanSelfSwitch(true); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  if (!canSelfSwitch) return null;
+
+  async function choose(screen, value) {
+    if (busy || current[screen] === value) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/me/ui-variant/${screen}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      window.location.reload();
+    } catch (e) {
+      setBusy(false);
+      setError('המעבר נכשל. נסו שוב.');
+    }
+  }
+
+  return (
+    <div className="card card-pad settings-card" id="design-switch-card">
+      <div className="section-title">מעבר בין העיצוב הישן לחדש</div>
+      <div className="settings-two-col">
+        {DESIGN_SWITCH_ROWS.map((row) => (
+          <div key={row.screen} className="field" style={{ marginBottom: 0 }}>
+            <label>{row.label}</label>
+            <div className="density-row">
+              {DESIGN_SWITCH_CHOICES.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  data-design-switch={`${row.screen}:${c.value}`}
+                  className={`density-btn${current[row.screen] === c.value ? ' active' : ''}`}
+                  aria-pressed={current[row.screen] === c.value}
+                  disabled={busy}
+                  onClick={() => choose(row.screen, c.value)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hint" style={{ marginTop: 10 }}>
+        {busy ? 'מחליף… העמוד יטען מחדש.' : 'חל עליך בלבד, ואפשר להחליף בכל רגע. העמוד נטען מחדש אחרי הבחירה.'}
+      </div>
+      {error && <div className="hint" style={{ marginTop: 6 }} role="alert">{error}</div>}
     </div>
   );
 }
@@ -362,6 +445,9 @@ export default function DisplaySettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* 0 — מעבר בין העיצוב הישן לחדש (הנהלה / מתכנת בלבד; לאחרים לא מרונדר כלל) */}
+      <DesignSwitchCard />
 
       {/* 1 — מצב תצוגה */}
       <div className="card card-pad settings-card">
