@@ -6,7 +6,7 @@ import Link from 'next/link';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
-import { getHebrewDateString } from '../../lib/hebrewDate';
+import { getHebrewDateString, getIsraelTodayKey, addDaysToDateKey } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
@@ -152,9 +152,8 @@ export default function AlterationsPage() {
   };
 
   const setQuickDate = (daysOffset) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysOffset);
-    const dateStr = d.toISOString().split('T')[0];
+    // היום (+offset) לפי שעון ישראל - toISOString נותן תאריך UTC, "אתמול" בין 00:00 ל-03:00.
+    const dateStr = addDaysToDateKey(getIsraelTodayKey(), daysOffset);
     setStartDate(dateStr);
     setEndDate(dateStr);
   };

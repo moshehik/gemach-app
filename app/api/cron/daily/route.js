@@ -6,7 +6,7 @@ import {
   renderPickupReminderEmailHtml, renderLateReturnEmailHtml, renderManualBarcodesEmailHtml,
 } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
-import { getHebrewDateString } from '@/lib/hebrewDate';
+import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 
 export const dynamic = 'force-dynamic';
@@ -33,9 +33,15 @@ export async function GET(request) {
 
   const results = { pickupReminders: 0, dailyReport: false, lateEmails: 0, manualBarcodes: 0, errors: [] };
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowEnd = new Date(tomorrow); tomorrowEnd.setHours(23,59,59,999);
+  // "היום/מחר/אתמול" לפי לוח השנה בישראל - לא setHours(0,0,0,0) על new Date(): Vercel רץ ב-UTC,
+  // שם התאריך בין 00:00 ל-03:00 שעון ישראל הוא עדיין אתמול. הגבולות (today/tomorrow/yesterday
+  // + *End) הם רגעים ב-UTC לשאילתות מול eventDate/orderDate/createdAt (ר' getIsraelDayRange);
+  // todayDisplay הוא Date מקומי בחצות שמיועד רק להצגת התאריך העברי בכותרות (getHebrewDateString).
+  const todayKey = getIsraelTodayKey();
+  const todayDisplay = getIsraelTodayDate();
+  const { start: today, end: todayEnd } = getIsraelDayRange(todayKey);
+  const { start: tomorrow, end: tomorrowEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, 1));
+  const { start: yesterday, end: yesterdayEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, -1));
 
   // 6 - תזכורת יום לפני איסוף
   if (get('pickup_reminder_enabled') === 'true') {
@@ -78,9 +84,6 @@ export async function GET(request) {
         // הזמנות חדשות שנפתחו אתמול (יום שלם, כמו שהתבקש), והזמנות שהאירוע שלהן היום.
         // (שים לב: renderDailyReportEmailHtml החדשה מהספרייה המאוחדת מניחה רשימת
         // הזמנות אחת ולא מתאימה לפורמט שני-המספרים הזה - נשאר HTML ידני כאן בכוונה.)
-        const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayEnd = new Date(yesterday); yesterdayEnd.setHours(23,59,59,999);
-        const todayEnd = new Date(today); todayEnd.setHours(23,59,59,999);
         const [openedYesterday, reservedToday] = await Promise.all([
           prisma.order.findMany({
             where: { isDeleted: false, orderDate: { gte: yesterday, lte: yesterdayEnd } },
@@ -98,13 +101,13 @@ export async function GET(request) {
         const formatLine = (o) => `#${o.orderId} - ${o.customer?.firstName || ''} ${o.customer?.lastName || ''} - ${o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : '')} - ${o.items.length} פריטים`;
         const openedLines = openedYesterday.map(formatLine).join('\n');
         const reservedLines = reservedToday.map(formatLine).join('\n');
-        const body = `דוח יומי - ${getHebrewDateString(today)}\n\nהזמנות חדשות שנפתחו אתמול: ${openedYesterday.length}\n${openedLines || 'אין'}\n\nהזמנות עם אירוע היום: ${reservedToday.length}\n${reservedLines || 'אין'}`;
-        const html = `<div dir="rtl" style="font-family:Arial"><h2>דוח יומי - ${getHebrewDateString(today)}</h2>` +
+        const body = `דוח יומי - ${getHebrewDateString(todayDisplay)}\n\nהזמנות חדשות שנפתחו אתמול: ${openedYesterday.length}\n${openedLines || 'אין'}\n\nהזמנות עם אירוע היום: ${reservedToday.length}\n${reservedLines || 'אין'}`;
+        const html = `<div dir="rtl" style="font-family:Arial"><h2>דוח יומי - ${getHebrewDateString(todayDisplay)}</h2>` +
           `<p><strong>הזמנות חדשות שנפתחו אתמול:</strong> ${openedYesterday.length}</p>` +
           `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${openedLines || 'אין'}</pre>` +
           `<p><strong>הזמנות עם אירוע היום:</strong> ${reservedToday.length}</p>` +
           `<pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${reservedLines || 'אין'}</pre></div>`;
-        const r = await sendSystemEmail({ to: managerEmail, subject: `דוח יומי ${getHebrewDateString(today)} - ${openedYesterday.length} הזמנות חדשות אתמול, ${reservedToday.length} עם אירוע היום`, body, html });
+        const r = await sendSystemEmail({ to: managerEmail, subject: `דוח יומי ${getHebrewDateString(todayDisplay)} - ${openedYesterday.length} הזמנות חדשות אתמול, ${reservedToday.length} עם אירוע היום`, body, html });
         results.dailyReport = !!r.success;
         if (!r.success) results.errors.push(`dailyReport: ${r.message}`);
       }
@@ -240,12 +243,12 @@ export async function GET(request) {
       results.manualBarcodes = items.length;
       if (managerEmail && managerEmail.includes('@') && items.length > 0) {
         const lines = items.map(i => `#${i.order?.orderId ?? '?'} - ברקוד: ${i.barcode || '?'} - ${i.description || i.sizeText || ''}`).join('\n');
-        const body = `ברקודים שהוקלדו ידנית היום (${getHebrewDateString(today)}): ${items.length}\n\n${lines}`;
+        const body = `ברקודים שהוקלדו ידנית היום (${getHebrewDateString(todayDisplay)}): ${items.length}\n\n${lines}`;
         const html = renderManualBarcodesEmailHtml({
-          dateHebrew: getHebrewDateString(today), gmachName: get('gmach_name') || 'גמ"ח שמלות',
+          dateHebrew: getHebrewDateString(todayDisplay), gmachName: get('gmach_name') || 'גמ"ח שמלות',
           items: items.map(i => ({ orderId: i.order?.orderId ?? '?', barcode: i.barcode || '?', description: i.description || i.sizeText || '' })),
         });
-        const r = await sendSystemEmail({ to: managerEmail, subject: emailSubject('manualBarcodesReport', { hebrewDate: getHebrewDateString(today), count: items.length }), body, html });
+        const r = await sendSystemEmail({ to: managerEmail, subject: emailSubject('manualBarcodesReport', { hebrewDate: getHebrewDateString(todayDisplay), count: items.length }), body, html });
         if (!r.success) results.errors.push(`manualBarcodes: ${r.message}`);
       }
     } catch (e) { results.errors.push(`manualBarcodes: ${e.message}`); }

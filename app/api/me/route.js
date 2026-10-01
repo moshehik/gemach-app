@@ -47,18 +47,12 @@ export async function GET(request) {
     // לפי המחלקה של העובד או חריגה פרטנית לו - ר' lib/permissionsMetadata.js feature:export_max_rows
     employee.exportMaxRows = await getEmployeeEffectiveValue(employee, 'feature:export_max_rows');
 
-    // Check for active shift today
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-
+    // משמרת פתוחה (exitTime: null) בכל תאריך - לא רק היום: עובד שנכנס לפני חצות ועדיין לא יצא
+    // נשאר עם משמרת מתוארכת ל"אתמול" (ר' הערה ב-/api/attendance), וסינון לפי תאריך היה
+    // מכבה את "בעבודה כעת" בחצות.
     const activeShift = await prisma.shift.findFirst({
       where: {
         employeeId: employee.id,
-        date: {
-          gte: todayStart,
-          lte: todayEnd
-        },
         exitTime: null
       },
       orderBy: { id: 'desc' }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../lib/auth';
-import { getIsraelDayRange } from '@/lib/hebrewDate';
+import { getIsraelDayRange, getIsraelDaysUntil } from '@/lib/hebrewDate';
 
 
 export async function GET(request) {
@@ -174,13 +174,9 @@ export async function GET(request) {
     const sortedItems = items.sort((a, b) => {
       const getPriority = (date) => {
         if (!date) return 2;
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const diffTime = d.getTime() - today.getTime();
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
-        if (diffDays >= 0 && diffDays <= 7) return 1; // This coming week (including today)
+        // ימי-לוח ישראליים מהיום (לא setHours על אזור הזמן של השרת - UTC ב-Vercel)
+        const diffDays = getIsraelDaysUntil(date);
+        if (diffDays !== null && diffDays >= 0 && diffDays <= 7) return 1; // This coming week (including today)
         return 2;
       };
 
