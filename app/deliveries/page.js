@@ -7,12 +7,10 @@ import HebrewDatePicker from '@/components/HebrewDatePicker';
 import HebrewDateRangePicker from '@/components/HebrewDateRangePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
-import { getHebrewDateString, getHebrewWeekdayFullName } from '@/lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayFullName, getIsraelTodayKey } from '@/lib/hebrewDate';
 
-const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// "היום" לפי שעון ישראל (לא לפי אזור הזמן של המכשיר) - תואם את /api/deliveries.
+const todayIso = () => getIsraelTodayKey();
 
 const addDaysToIso = (iso, days) => {
   const [y, m, d] = iso.split('-').map(Number);

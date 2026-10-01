@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import HebrewDateRangePicker from './HebrewDateRangePicker';
-import { getHebrewDateString } from '@/lib/hebrewDate';
+import { getHebrewDateString, getIsraelTodayKey, addMonthsToDateKey } from '@/lib/hebrewDate';
 import { CapacityCalendar } from './CapacityCalendar';
 
 export default function CapacitySearchModal({ isOpen, onClose }) {
@@ -124,13 +124,11 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
     }
 
     if (!pFromDate) {
-      pFromDate = new Date().toISOString().split('T')[0];
+      pFromDate = getIsraelTodayKey();
       if (!searchParams) setFromDate(pFromDate);
     }
     if (!pToDate) {
-      const d = new Date();
-      d.setMonth(d.getMonth() + 6);
-      pToDate = d.toISOString().split('T')[0];
+      pToDate = addMonthsToDateKey(getIsraelTodayKey(), 6);
       if (!searchParams) setToDate(pToDate);
     }
 
@@ -520,8 +518,8 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               {/* Calendar View */}
               {viewMode === 'calendar' && (
                 <CapacityCalendar
-                  fromDate={fromDate || new Date().toISOString().split('T')[0]}
-                  toDate={toDate || new Date().toISOString().split('T')[0]}
+                  fromDate={fromDate || getIsraelTodayKey()}
+                  toDate={toDate || getIsraelTodayKey()}
                   occupiedOrders={results.occupiedOrders}
                 />
               )}

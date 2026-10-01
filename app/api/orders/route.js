@@ -5,7 +5,7 @@ import { recalculateOrderObligations, applyDeliveryCharge } from '../../../lib/p
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
-import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag, getIsraelDayRange, getIsraelTodayKey, addDaysToDateKey, getIsraelDaysUntil } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, addDaysSkippingWeekends, reconcileDressItemIds } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
@@ -86,14 +86,15 @@ export async function GET(request) {
     // a future booking still sitting in "בקרוב" with a balance.
     const isUnpaidQuery = filterStatus === 'unpaid' || filterStatus === 'unpaid_all' || filterStatus === 'unpaid_approved';
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // תחילת "היום" לפי שעון ישראל (לא setHours על new Date() - השרת ב-UTC, ובין 00:00 ל-03:00
+    // שעון ישראל זה היה "אתמול": הזמנה של אתמול נשארה בטאב "בקרוב" ולא ירדה לארכיון).
+    const todayKey = getIsraelTodayKey();
+    const today = getIsraelDayRange(todayKey).start;
 
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    const smartSortCutoff = new Date(today);
-    smartSortCutoff.setDate(smartSortCutoff.getDate() + RENTALS_SMART_SORT_WINDOW_DAYS);
+    const smartSortCutoff = getIsraelDayRange(addDaysToDateKey(todayKey, RENTALS_SMART_SORT_WINDOW_DAYS)).end;
 
     const itemStatuses = [];
     if (pendingOnly) {
@@ -358,14 +359,12 @@ export async function GET(request) {
         select: { orderId: true, eventDate: true }
       });
 
-      const todayTime = today.getTime();
       const upcoming = [];
       const past = [];
       const noDate = [];
       minimalOrders.forEach(o => {
         if (o.eventDate == null) { noDate.push(o); return; }
-        const eventTime = new Date(o.eventDate).setHours(0, 0, 0, 0);
-        (eventTime >= todayTime ? upcoming : past).push(o);
+        (getIsraelDaysUntil(o.eventDate) >= 0 ? upcoming : past).push(o);
       });
       // קרוב-לרחוק קדימה (היום ראשון), ואז אחורה בעבר (האחרון שהיה ראשון, הישן ביותר אחרון)
       upcoming.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
