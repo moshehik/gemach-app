@@ -318,6 +318,8 @@ export default async function RootLayout({ children }) {
       flags: { ...legacyNavFlags, isHeadManagement, isProgrammer, hideInternalMessaging, hideErrorReporting, requireLogin, isAuthenticated },
       version: { version: versionData.version, date: versionData.date },
       homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
+      // דפים שהיו "בקרוב" בעיצוב ונבנו בפועל (lib/menu/buildMenuTree.js, notBuilt): בדיקת מלאי - /stock-check (2.10.2026).
+      available: { 'order-stock': true },
     })
     : null;
 

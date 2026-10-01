@@ -56,7 +56,7 @@
 | **הזמנה** (לשונית) | `navConfig.js:32` | `/orders/new` (כש-`showOrdersNew`; אחרת `href:null`) | מוצגת כשיש תת-פריט מותר | — | — |
 | הזמנה › הזמנה חדשה | `navConfig.js:32` | `/orders/new` | `legacy:/orders/new` = `page:orders` ∧ `page:orders_new` (`layout.js:232`) | — | — |
 | הזמנה › עמדת לקוח | `navConfig.js:57` | `/customer-interface` | `legacy:/customer-interface` (תמיד, כמו היום) | — | — |
-| הזמנה › בדיקת מלאי (P03) | אין (רק מצב ב-`/a5`) | — | **מוסתר** | לא בשלב זה | — |
+| הזמנה › בדיקת מלאי (P03) | `app/stock-check` (נבנה 2.10.2026, `docs/stock-check-logic-spec.md`) | `/stock-check` | `legacy:/orders` = `page:orders` (GQ-06a) + `available['order-stock']` מ-`app/layout.js` | — | — |
 
 ### 3.2 סרגל הצד (אייקונים)
 

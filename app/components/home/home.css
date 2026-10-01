@@ -165,3 +165,7 @@
 .gm-ds.gm-home .hero-t .t-sc { color: #e8785a; }
 /* רשימת '@' (ul.advlist מהפלטה) נפתחת מתחת לכדור החיפוש עצמו, לא מתחת לשורת הכפתורים */
 .gm-ds.gm-home .hero .scan { position: relative; }
+
+/* 13) טבלת התוצאות (.rtbl): design-overrides.css כופה Assistant על th/td (כמו על לחצנים ושדות בכלל 4) - בעיצוב הטבלה ב-Rubik כמו שאר הדף.
+       משותף לדף הבית ולבדיקת מלאי (שניהם מייבאים את הקובץ הזה). */
+.gm-ds.gm-home .rtbl :is(th, td) { font-family: inherit !important; }

@@ -52,6 +52,7 @@
 | קובץ | מה יש בו | סטטוס |
 |---|---|---|
 | [docs/journal-2026.md](journal-2026.md) | כל הרשומות המתוארכות שהיו ב-CLAUDE.md (אוגוסט–ספטמבר 2026), לפי סדר כרונולוגי, מילה במילה | היסטורי |
+| [docs/stock-check-logic-spec.md](stock-check-logic-spec.md) | דף "בדיקת מלאי" (`/stock-check`): החוזה של `GET /api/stock-check` ו-`/options`, כללי המידות (±2, "וגם", נרמול כתיב), הרשאה, הבדיקות | פעיל |
 | [docs/perf-round-a-summary-2026-08-26.md](perf-round-a-summary-2026-08-26.md) | סבב ביצועים א': מטמון הגדרות, אינדקסים ב-DB | היסטורי |
 | [docs/perf-round-b-instructions-2026-08-26.md](perf-round-b-instructions-2026-08-26.md) | הוראות סבב ביצועים ב' (מצב הביצוע לא מתועד — לבדוק מול הקוד) | תכנית |
 | [docs/neve-yaakov-full-reimport-2026-09-15.md](neve-yaakov-full-reimport-2026-09-15.md) | הריצה של מחיקה והעלאה מחדש בנווה יעקב וה-cutover | היסטורי |

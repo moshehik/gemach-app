@@ -1,0 +1,51 @@
+/* דף "בדיקת מלאי" (StockCheckPage) — CSS מקומי לדף, בהיקף .gm-ds.gm-home.stock-page בלבד (לא נוגע ב-design-system/).
+   נטרול הכללים הגלובליים הישנים (גופן, כרטיס שקוף במסגרת, גבול זהב לשדות, כותרת טבלה כחולה, שדה בלי טבעת) מגיע מ-
+   app/components/home/home.css שהדף מייבא (אותם כללים בדיוק כמו דף הבית, בהיקף .gm-ds.gm-home) - לא מכפילים אותם כאן.
+   כאן רק מה שאין בפלטה (design-system/components.css) ולא ב-home.css: פריסת עמודה אחת (טופס מעל תוצאות, כמו בעיצוב
+   המאושר תצוגות-עיצוב/סיימתי-לעבוד/בדיקת-מלאי.html: .pgwrap/.pgcol), קוד הדגם בשורת הצעה, שבב גמישות כבוי, מצבי ריק/שגיאה.
+   שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "בדיקת מלאי"). */
+
+/* פריסה: עמודה אחת ברוחב 760 (כמו .pgcol בעיצוב), על רקע הפלטה שממלא את אזור התוכן של המעטפת. המעטפת (הישנה והחדשה)
+   עוטפת כל דף ב-.app-shell > .main > .content עם padding - home.css (כלל 1) מבטל אותו לכל .gm-ds.gm-home ישיר, גם לדף הזה. */
+.gm-ds.gm-home.stock-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+  padding: 20px 16px 48px;
+}
+.gm-ds.gm-home.stock-page > .hero-in {
+  margin: 0 auto;
+  width: 100%;
+}
+.gm-ds.gm-home.stock-page .tblw { max-width: 100%; }
+
+/* הכרטיסים בתוך המסגרת (.hero-in.jshell .card): בעיצוב המאושר של הדף הזה הם "זכוכית" - לבן 30% עם טשטוש (כלל הפלטה
+   .gm-ds .card), ולא שקופים כמו בדף הבית (home.css כלל 9 מכוון לדף הבית, ששם המסגרת היא הרקע). אותם ערכים בדיוק כמו הפלטה.
+   אומת מול בדיקת-מלאי.html ב-scripts/stock-bg-audit (1280 ו-390: אין הבדלי סגנון, רק הבדלי מבנה של נתוני הדוגמה). */
+.gm-ds.gm-home.stock-page .hero-in.jshell .card {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* בדיקת מלאי: כפתור ההסבר (tip) צמוד לכותרת "בדיקה גמישה" ולא בקצה השורה (כמו בעיצוב) */
+.gm-ds.gm-home.stock-page .advp .advs-h h3:has(+ .tip) { flex: 0 1 auto; }
+
+/* שורת הצעה של דגם: קוד הדגם (span.faint, כמו בעיצוב) בקצה השני של השורה */
+.gm-ds.gm-home.stock-page .advp .advo > .faint { margin-inline-start: auto; }
+
+/* שבב גמישות של מידה שאינה מספר (כללי, 38-40): לא ניתן להפעלה (B07) */
+.gm-ds.gm-home.stock-page .advp .advfl[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* שדה התאריך + שורת "תאריך שעבר" מתחתיו (GQ-06d) - אותו pg-sub של הפלטה, בתוך תא הרשת */
+.gm-ds.gm-home.stock-page .advp .stock-datew { min-width: 0; }
+.gm-ds.gm-home.stock-page .advp .stock-datew > .pg-sub.stock-past { margin-top: 6px; font-size: 13px; }
+
+/* מצבי "ריק" / שגיאה: הכותרת והכפתור בתוך .empty (כמו בעיצוב ובדף הבית) */
+.gm-ds.gm-home.stock-page .empty .stock-empty-t { font-size: 19px; margin-top: 8px; color: var(--gm-ink); }
+.gm-ds.gm-home.stock-page .empty .stock-empty-s { margin-top: 6px; }
+.gm-ds.gm-home.stock-page .empty .stock-retry { margin-top: 16px; }
+.gm-ds.gm-home.stock-page .res-one > .stock-sum { margin: 0; padding: 0 4px 10px; }
+.gm-ds.gm-home.stock-page .res-one > .stock-warn { margin: 0; padding: 0 4px 10px; }

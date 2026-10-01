@@ -429,6 +429,14 @@ t('פריטים "עדיין לא קיימים": שורה כבויה "בקרוב"
   assert.deepEqual(tab(HEAD_TREE, 'order').items.map((x) => `${x.kind}:${x.id}`), ['link:order-new', 'link:order-kiosk', 'soon:order-stock']);
   const withStock = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], available: { 'order-stock': true, 'recent-all': true, 'home-adv': true } });
   assert.deepEqual(ids(tab(withStock, 'order').items), ['order-new', 'order-kiosk', 'order-stock']);
+  // בדיקת מלאי (2.10.2026): עם available - קישור אמיתי ל-/stock-check; הנראות לפי page:orders (GQ-06a), כמו "הזמנות"
+  const stockRow = tab(withStock, 'order').items.find((x) => x.id === 'order-stock');
+  assert.deepEqual([stockRow.kind, stockRow.href, stockRow.icon], ['link', '/stock-check', 'sn-inv']);
+  assert.deepEqual(findActive(withStock, '/stock-check'), { tabId: 'order', itemId: 'order-stock' });
+  const noOrders = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders': false }, settings: [], available: { 'order-stock': true } });
+  assert.deepEqual(ids(tab(noOrders, 'order').items), ['order-kiosk'], 'בלי page:orders אין בדיקת מלאי (ולא הזמנה חדשה) - נשארת רק עמדת לקוח');
+  const noNew = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders_new': false }, settings: [], available: { 'order-stock': true } });
+  assert.deepEqual(ids(tab(noNew, 'order').items), ['order-kiosk', 'order-stock'], 'page:orders בלי page:orders_new: בדיקת מלאי כן, הזמנה חדשה לא');
   assert.deepEqual(withStock.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.ok(ids(tab(withStock, 'home').items).includes('recent-all')); assert.ok(ids(tab(withStock, 'home').items).includes('home-adv'));
   assert.deepEqual(soonIds(withStock), []);
