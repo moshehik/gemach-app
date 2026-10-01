@@ -2,13 +2,40 @@
 
 // חלקים קטנים משותפים למעטפת החדשה (MenuA5Shell). אין כאן לוגיקה עסקית.
 
+import { createElement } from 'react';
 import Link from 'next/link';
+import { SPRITE_ID_PREFIX, SPRITE_SYMBOLS } from './spriteSymbols';
 
-/** אייקון מה-sprite של הפלטה (design-system/sprite.svg). הפניה חיצונית בכוונה - ר' design-system/README.md. */
+/**
+ * ספריית האייקונים של הפלטה (design-system/sprite.svg), מוטמעת פעם אחת בתוך הדף תחת המזהים gmi-<שם>.
+ * מוצגת ב-MenuA5Shell; Ic מפנה אליה בהפניה פנימית (#gmi-x).
+ *
+ * למה מוטמע ולא <use href="/design-system/sprite.svg#i-x"> כמו שהיה: מסנני תוכן של אינטרנט מסונן
+ * (Netspark/רימון/נטפרי וכד') מיירטים HTTPS ומחליפים קובצי "תמונה" שלא אושרו בריבוע לבן 2x2 - וכך גם
+ * את קובץ ה-sprite (image/svg+xml, 10KB). התוצאה: המעטפת עלתה בלי אייקונים בכלל אצל מי שגולש דרך מסנן.
+ * ה-HTML עצמו עובר במסנן ללא שינוי, בדיוק כמו ה-IconSprite של האתר הישן. הקידומת gmi- מונעת התנגשות עם
+ * 30 המזהים i-* שקיימים גם ב-app/components/IconSprite.js (ר' design-system/README.md, "אייקונים").
+ * spriteSymbols.js נוצר אוטומטית: node scripts/build_menu_sprite.mjs (נבדק ב-scripts/test_menu_logic.mjs).
+ */
+export function MenuSprite() {
+  return (
+    <svg style={{ display: 'none' }} aria-hidden="true" focusable="false" data-gm-sprite="">
+      <defs>
+        {SPRITE_SYMBOLS.map(([id, viewBox, shapes]) => (
+          <symbol key={id} id={`${SPRITE_ID_PREFIX}${id}`} viewBox={viewBox}>
+            {shapes.map(([tag, attrs], i) => createElement(tag, { key: i, ...attrs }))}
+          </symbol>
+        ))}
+      </defs>
+    </svg>
+  );
+}
+
+/** אייקון מספריית הפלטה: הפניה פנימית ל-MenuSprite (#gmi-<שם>), בלי בקשת רשת. */
 export function Ic({ n, cls = '' }) {
   return (
     <svg className={`ic ia-${n} ia-h${cls ? ` ${cls}` : ''}`} aria-hidden="true" focusable="false">
-      <use href={`/design-system/sprite.svg#i-${n}`} />
+      <use href={`#${SPRITE_ID_PREFIX}${n}`} />
     </svg>
   );
 }
