@@ -13,7 +13,11 @@ import {
   ADV_FOCI, ADV_KEYS,
 } from '../app/components/home/homeAdvConfig.js';
 import { hebText, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
+import * as advConfig from '../app/components/home/homeAdvConfig.js';
+import { ORDER_STATUS_STYLE } from '../app/components/home/homeLogic.js';
 import { PRIVACY_SECTIONS, splitPlaceholders, PRIVACY_PLACEHOLDER_COUNT } from '../app/components/home/privacyPolicyText.js';
+import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
+import { readFileSync, readdirSync } from 'node:fs';
 
 let passed = 0;
 let failed = 0;
@@ -396,6 +400,73 @@ t('הנוסח: כל הסעיפים, שדות המילוי מזוהים ומסו�
   const all = JSON.stringify(PRIVACY_SECTIONS);
   assert.ok(!all.includes('טקסט זמני'), 'לא הנוסח הזמני הישן');
   assert.ok(all.includes('נדרים פלוס') && all.includes('בינה מלאכותית'));
+});
+
+console.log('אייקונים (sprite מוטמע)');
+const HOME_DIR = new URL('../app/components/home/', import.meta.url);
+const homeSource = (name) => readFileSync(new URL(name, HOME_DIR), 'utf8');
+const SPRITE_IDS = new Set(SPRITE_SYMBOLS.map(([id]) => id));
+// literals של תנאים (kind === 'ret') אינם שמות אייקונים
+const literals = (expr) => [...String(expr).replace(/[=!]==?\s*(?:'[^']*'|"[^"]*")/g, '').matchAll(/'([a-z][a-z0-9-]*)'|"([a-z][a-z0-9-]*)"/g)].map((m) => m[1] || m[2]);
+// כל שמות האייקונים שמופיעים כמחרוזת בקוד של דף הבית: <Ic id="x"/{...}>, icon="x"/{...}/: 'x', LINK_ICON
+function iconNamesInSource() {
+  const names = new Map(); // name -> file
+  const add = (n, f) => { if (!names.has(n)) names.set(n, f); };
+  for (const f of readdirSync(HOME_DIR).filter((x) => x.endsWith('.js') && x !== 'LegacyHome.js')) {
+    const src = homeSource(f);
+    for (const m of src.matchAll(/<Ic\s+id=(?:"([^"]+)"|\{([^}]*)\})/g)) (m[1] ? [m[1]] : literals(m[2])).forEach((n) => add(n, f));
+    for (const m of src.matchAll(/\bicon=(?:"([^"]+)"|\{([^}]*)\})/g)) (m[1] ? [m[1]] : literals(m[2])).forEach((n) => add(n, f));
+    for (const m of src.matchAll(/\bicon:\s*'([a-z][a-z0-9-]*)'/g)) add(m[1], f);
+    const li = src.match(/const LINK_ICON = \{([^}]*)\}/);
+    if (li) literals(li[1].replace(/[a-z]+:/g, '')).forEach((n) => add(n, f));
+  }
+  return names;
+}
+// אייקונים שמגיעים מטבלאות הנתונים (הרשימות הן [ערך, תווית, אייקון, ...]; ADV_TAG = [תווית, אייקון])
+function iconNamesInData() {
+  const names = new Set();
+  for (const v of Object.values(advConfig)) {
+    if (Array.isArray(v)) for (const row of v) if (Array.isArray(row) && typeof row[2] === 'string' && row.length >= 3) names.add(row[2]);
+  }
+  for (const spec of Object.values(advConfig.F)) names.add(spec[2]);
+  for (const [, icon] of Object.values(advConfig.ADV_TAG)) names.add(icon);
+  for (const f of Object.values(advConfig.ADV_FOCI)) {
+    names.add(f.icon);
+    for (const b of f.blocks) if (b.icon) names.add(b.icon);
+  }
+  for (const list of Object.values(advConfig.advFlagsFor(true))) for (const row of list) names.add(row[2]);
+  for (const [, icon] of Object.values(ORDER_STATUS_STYLE)) names.add(icon);
+  names.add(orderStatus('').icon);
+  for (const u of ['/orders/1', '/customers/1', '/dashboard/dresses/1', '/employees/1', '/x']) names.add(aiRowKind({ _actionUrl: u })[1]);
+  for (const r of unifiedRows({ customers: [{ id: 1 }], orders: [{ id: 1, uuid: 'u' }], rentals: [{ orderId: 1, b: 'b' }] })) names.add(r.icon);
+  for (const r of recentRows([{ type: 'customer', id: '1', name: 'א', timestamp: 1 }, { type: 'order', id: '2', name: 'ב', timestamp: 2 }, { type: 'dress', id: '3', name: 'ג', timestamp: 3 }, { type: 'rental', id: '4', name: 'ד', timestamp: 4 }])) names.add(r.icon);
+  return names;
+}
+t('כל אייקון בדף הבית החדש קיים ב-sprite המוטמע (71 סמלים, gmi-)', () => {
+  assert.equal(SPRITE_ID_PREFIX, 'gmi-');
+  const src = iconNamesInSource();
+  const data = iconNamesInData();
+  // הסריקה לא יכולה "להצליח" בשקט כשהיא לא מוצאת כלום
+  assert.ok(src.size >= 20, `found only ${src.size} icon names in source`);
+  assert.ok(data.size >= 20, `found only ${data.size} icon names in data tables`);
+  for (const n of ['search', 'sparkle', 'sliders', 'sn-history', 'x', 'send', 'alert', 'refresh', 'info', 'chev', 'rows', 'table', 'plus', 'minus', 'check', 'copy', 'user', 'file', 'dress']) assert.ok(src.has(n) || data.has(n), `scan missed ${n}`);
+  for (const [n, f] of src) assert.ok(SPRITE_IDS.has(n), `icon "${n}" used in ${f} is missing from spriteSymbols.js`);
+  for (const n of data) assert.ok(SPRITE_IDS.has(n), `icon "${n}" from the home data tables is missing from spriteSymbols.js`);
+});
+t('דף הבית לא מפנה יותר לקובץ sprite חיצוני (מסנני תוכן מחליפים אותו בריבוע לבן)', () => {
+  for (const f of readdirSync(HOME_DIR).filter((x) => x.endsWith('.js'))) {
+    assert.ok(!homeSource(f).includes('sprite.svg#'), `${f} still references an external sprite.svg#...`);
+  }
+  assert.ok(homeSource('HomeParts.js').includes('`#${SPRITE_ID_PREFIX}${id}`'), 'Ic must reference the inline #gmi-<name> symbol');
+});
+t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSprite מוותר כש-MenuA5Shell כבר מספק אותו', () => {
+  assert.equal((homeSource('HomeA5.js').match(/<HomeSprite \/>/g) || []).length, 1);
+  const parts = homeSource('HomeParts.js');
+  assert.match(parts, /export function HomeSprite\(\) \{\s*return useA5Shell\(\) \? null : <MenuSprite \/>;\s*\}/);
+  // MenuSprite מרונדר במקום אחד בלבד במעטפת, ובתוך ה-A5ShellProvider שמספק את ההקשר ש-HomeSprite קורא
+  const shell = readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8');
+  assert.equal((shell.match(/<MenuSprite \/>/g) || []).length, 1);
+  assert.ok(shell.indexOf('<A5ShellProvider') < shell.indexOf('<MenuSprite />'));
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
