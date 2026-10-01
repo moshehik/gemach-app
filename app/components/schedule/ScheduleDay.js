@@ -8,7 +8,6 @@ import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { addDays, hebrewLong, toKey } from './hebrewCalendar';
 import { STAGE_ORDER, nonWorkingDayText } from './scheduleMeta';
-import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 // דף "לו״ז יומי" - קריאה בלבד (V1). מקור העיצוב: תצוגות-עיצוב/לוז-יומי.html. הנתונים: GET /api/schedule
 // (docs/schedule-page-logic-spec.md). אין סימון "בוצע", אין הדפסה/ייצוא, אין הגדרות שלבים, אין ברקוד.
@@ -53,7 +52,6 @@ export default function ScheduleDay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tick, setTick] = useState(0);
-  const [branches, setBranches] = useState([]);
   const [ready, setReady] = useState(false);
   // "היום" לפי השרת (שעון ישראל) - נשמר גם כשהטעינה נכשלת, כדי שבורר התאריך ימשיך לעבוד;
   // localToday = גיבוי מהדפדפן (רק עד שיש תשובה ראשונה, מחושב אחרי הטעינה כדי לא ליצור הבדל ב-hydration)
@@ -108,21 +106,10 @@ export default function ScheduleDay() {
     return () => ctrl.abort();
   }, [ready, date, branch, tick]);
 
-  // רשימת הסניפים (branch_list) - רק כשהארגון עובד עם סניפים
+  // רשימת הסניפים (branch_list) מגיעה בתשובת /api/schedule (settings.branches) - רק כשהארגון עובד עם סניפים;
+  // אין קריאה נפרדת ל-/api/settings רק בשבילה.
   const branchesEnabled = !!(data && data.settings && data.settings.branchesEnabled);
-  useEffect(() => {
-    if (!branchesEnabled) return undefined;
-    let alive = true;
-    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
-      .then((rows) => {
-        if (!alive || !Array.isArray(rows)) return;
-        const row = rows.find((r) => r.key === 'branch_list');
-        const list = String((row && row.value) || '').split(',').map((s) => s.trim()).filter(Boolean);
-        setBranches(list);
-      })
-      .catch(() => {});
-    return () => { alive = false; };
-  }, [branchesEnabled]);
+  const branches = (branchesEnabled && Array.isArray(data.settings.branches)) ? data.settings.branches : [];
 
   const changeDate = useCallback((key) => {
     setDate(key);

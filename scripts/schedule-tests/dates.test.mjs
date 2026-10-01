@@ -111,7 +111,7 @@ test('instantToKey: 00:30 Israel time belongs to the NEXT Israeli day, not the U
 
 test('the schedule has NO calendar rule of its own: dates.js exports no weekday/holiday check, only wrappers over lib/businessDays.js', () => {
   for (const gone of ['isFridayOrShabbat', 'isChagKey', 'isBusinessDay', 'weekdayOf']) assert.equal(gone in D, false, gone + ' must not exist');
-  for (const kept of ['isNonWorkingDay', 'dayStatus', 'addBusinessDays', 'sourceKeysForDay']) assert.equal(typeof D[kept], 'function', kept);
+  for (const kept of ['isNonWorkingDay', 'dayStatus', 'addBusinessDays', 'sourceKeysForDay', 'rollForwardToWorkingDay', 'rolledSourceKeysForDay']) assert.equal(typeof D[kept], 'function', kept);
 });
 
 test('isNonWorkingDay / dayStatus come from the unified helper: Fri, Shabbat, chag, erev chag (owner: "the gemach does not work on erev chag") - timezone independent', () => {
@@ -246,6 +246,48 @@ test('sourceKeysForDay: which event dates land on the requested day (inverse of 
   for (const k of D.sourceKeysForDay('2026-10-06', 1, cfg)) assert.equal(D.addBusinessDays(k, 1, cfg), '2026-10-06');
   // the helper's own inverse is the source of truth: dates.js only expands its range to a list
   assert.deepEqual(B.inverseBusinessDays('2026-10-06', 1, cfg), { startKey: '2026-10-04', endKey: '2026-10-05' });
+});
+
+test('owner decision 2.10.2026: a return never lands on a closed day - rollForwardToWorkingDay / rolledSourceKeysForDay', () => {
+  // a working day is itself
+  assert.equal(D.rollForwardToWorkingDay('2026-10-15'), '2026-10-15', 'Thu 15.10');
+  assert.equal(D.rollForwardToWorkingDay('2026-10-01'), '2026-10-01');
+  // Fri / Shabbat -> Sunday
+  assert.equal(D.rollForwardToWorkingDay('2026-10-16'), '2026-10-18', 'Fri 16.10 -> Sun 18.10');
+  assert.equal(D.rollForwardToWorkingDay('2026-10-17'), '2026-10-18', 'Shabbat 17.10 -> Sun 18.10');
+  // erev Yom Kippur (Sun 20.9) and Yom Kippur (Mon 21.9) -> Tue 22.9
+  assert.equal(D.rollForwardToWorkingDay('2026-09-20'), '2026-09-22');
+  assert.equal(D.rollForwardToWorkingDay('2026-09-21'), '2026-09-22');
+  // Shabbat 26.9 = Sukkot I -> Sun 27.9 (chol hamoed, working under rule v1)
+  assert.equal(D.rollForwardToWorkingDay('2026-09-26'), '2026-09-27');
+  // owner-marked day
+  const cfg = owner([{ date: '2026-10-13', note: 'ספירת מלאי' }]);
+  assert.equal(D.rollForwardToWorkingDay('2026-10-13', cfg), '2026-10-14');
+  assert.equal(D.rollForwardToWorkingDay('2026-10-13'), '2026-10-13', '(same day without the owner list)');
+  assert.equal(D.rollForwardToWorkingDay('garbage'), null);
+
+  // the inverse: the day itself + the closed run before it; [] on a closed day
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-18'), ['2026-10-16', '2026-10-17', '2026-10-18']);
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-04'), ['2026-10-02', '2026-10-03', '2026-10-04'], 'Hoshana Raba + Shmini Atzeret roll to Sunday');
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-15'), ['2026-10-15']);
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-17'), [], 'Shabbat');
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-13', cfg), []);
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-14', cfg), ['2026-10-13', '2026-10-14']);
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-09-22'), ['2026-09-18', '2026-09-19', '2026-09-20', '2026-09-21', '2026-09-22'], 'Fri + Shabbat + erev YK + YK all roll to Tue 22.9');
+  assert.deepEqual(D.rolledSourceKeysForDay('garbage'), []);
+  // invariant Sep-Dec 2026 (with and without the owner list): every key is in the list of its own rolled day,
+  // the lists of working days partition the calendar, and no list contains a closed day as its target
+  for (const c of [null, cfg]) {
+    const seen = new Set();
+    let k = '2026-09-01';
+    while (k <= '2026-12-31') {
+      const target = D.rollForwardToWorkingDay(k, c);
+      assert.equal(D.isNonWorkingDay(target, c), false, 'target of ' + k + ' is a working day');
+      assert.ok(D.rolledSourceKeysForDay(target, c).includes(k), k + ' is in the source list of ' + target);
+      if (!D.isNonWorkingDay(k, c)) for (const s of D.rolledSourceKeysForDay(k, c)) { assert.equal(seen.has(s), false, s + ' listed twice'); seen.add(s); }
+      k = D.addCalendarDays(k, 1);
+    }
+  }
 });
 
 test('unionRange / daysBetween / addCalendarDays', () => {

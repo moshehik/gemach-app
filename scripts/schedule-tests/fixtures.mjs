@@ -57,6 +57,15 @@ export const ORDERS = [
   order(1021, { orderDate: d('2026-09-29T07:00:00Z'), eventDate: d('2026-10-20T21:00:00Z'), status: 'חדש', isPaid: false, totalAmount: 500, customer: cust('לא', 'שולם') }),
   // --- סקירת WP1 ממצא 1: טיוטת משלוח (עגלה שנשמרה אוטומטית) - אירוע 2.10 -> היתה מופיעה כמשלוח הלוך ב-1.10 ---
   order(9001, { orderDate: d('2026-09-25T07:00:00Z'), status: 'טיוטה', eventDate: d('2026-10-01T21:00:00Z'), isDelivery: true, deliveryDirection: 'הלוך', customer: cust('טיוטת', 'משלוח', { street: '', houseNum: null }), items: [item()] }),
+  // --- סקירה 2.10 חוסם 2: הזמנת חו"ל שה-fromDate שלה (ג' 13.10) רחוק מה-eventDate (ג' 27.10): הכנה ה' 8.10, איסוף א' 11.10,
+  //     תיקון ביום ההתחלה 13.10 - ה-WHERE חייב לסנן גם לפי fromDate ---
+  order(1023, { eventDate: d('2026-10-27T00:00:00Z'), fromDate: d('2026-10-13T00:00:00Z'), toDate: d('2026-10-29T00:00:00Z'), isAbroad: true, customer: cust('חו״ל', 'רחוקה'), items: [item({ neckAlteration: 1 })] }),
+  // --- החלטת הבעלים 2.10.2026: החזרה נוחתת תמיד על יום עובד (שלב 8) ---
+  order(2002, { eventDate: d('2026-10-14T00:00:00Z'), fromDate: d('2026-10-14T00:00:00Z'), toDate: d('2026-10-16T00:00:00Z'), isAbroad: true, customer: cust('שישי', 'מפורש'), items: [item({ isTaken: true })] }),   // toDate שישי 16.10 -> ראשון 18.10
+  order(2003, { eventDate: d('2026-10-15T00:00:00Z'), returnDate: d('2026-10-17T00:00:00Z'), customer: cust('שבת', 'מפורשת'), items: [item({ isTaken: true })] }),                                            // returnDate שבת 17.10 -> ראשון 18.10
+  order(2004, { eventDate: d('2026-09-17T00:00:00Z'), toDate: d('2026-09-20T00:00:00Z'), customer: cust('ערב', 'כיפור'), items: [item({ isTaken: true })] }),                                                  // toDate ערב יו"כ (א' 20.9) -> ג' 22.9
+  order(2005, { eventDate: d('2026-10-12T00:00:00Z'), toDate: d('2026-10-13T00:00:00Z'), customer: cust('יום', 'בעלים'), items: [item({ isTaken: true })] }),                                                  // toDate ג' 13.10; אם הבעלים סוגר את 13.10 -> ד' 14.10
+  order(2006, { eventDate: d('2026-10-16T00:00:00Z'), customer: cust('אירוע', 'בשישי'), items: [item({ isTaken: true })] }),                                                                                   // אירוע שישי 16.10, בלי תאריך מפורש: offset 0 -> ראשון 18.10
 ];
 
 export const SHIFTS = [
@@ -90,11 +99,11 @@ export function installDb({ settings = SETTINGS_ORG2, extra = {} } = {}) {
     employee: [
       { id: 'emp-worker', roleId: 5, isActive: true, firstName: 'עובדת', lastName: 'רגילה' },          // מחלקה 5: שורת הרשאה true
       { id: 'emp-worker-blocked', roleId: 6, isActive: true, firstName: 'עובדת', lastName: 'חסומה' },  // מחלקה 6: שורת הרשאה false
-      { id: 'emp-no-row', roleId: 7, isActive: true, firstName: 'עובדת', lastName: 'בלי שורה' },        // מחלקה 7: אין שורה -> סגור (B1)
+      { id: 'emp-no-row', roleId: 7, isActive: true, firstName: 'עובדת', lastName: 'בלי שורה' },        // מחלקה 7: אין שורה -> פתוח (GQ-04, ברירת המחדל של הקטלוג)
       { id: 'emp-head', roleId: 0, isActive: true, firstName: 'הנהלה', lastName: 'ראשית' },
       { id: 'emp-inactive', roleId: 5, isActive: false, firstName: 'לא', lastName: 'פעילה' },
     ],
-    // page:schedule סגור כברירת מחדל כמו שאר הדפים (החלטת הבעלים B1) - גישה רק דרך שורת הרשאה
+    // page:schedule פתוח כברירת מחדל לכל עובד (החלטת הבעלים GQ-04, 2.10.2026); שורת false סוגרת
     departmentPermission: [
       { roleId: 5, key: 'page:schedule', value: 'true' },
       { roleId: 6, key: 'page:schedule', value: 'false' },

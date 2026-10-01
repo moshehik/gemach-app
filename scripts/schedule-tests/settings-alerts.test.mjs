@@ -59,6 +59,12 @@ test('non_working_days_extra is read from the same settings map into a NonWorkin
   assert.equal(S.resolveScheduleSettings({ non_working_days_extra: '' }).nonWorkingDays.closed.size, 0);
 });
 
+test('branches: branch_list is parsed only when branches_enabled (sent with /api/schedule for the filter)', () => {
+  assert.deepEqual(S.resolveScheduleSettings({ branches_enabled: 'true', branch_list: ' נווה יעקב ,גב״ש,,' }).branches, ['נווה יעקב', 'גב״ש']);
+  assert.deepEqual(S.resolveScheduleSettings({ branches_enabled: 'true' }).branches, []);
+  assert.deepEqual(S.resolveScheduleSettings({ branch_list: 'א,ב' }).branches, [], 'branches off => no list');
+});
+
 test('A2: stage 1 has no "days from event" - schedule_stage_order_days is ignored, no offset', () => {
   assert.equal(STAGE_BY_KEY.order.offsetConfigurable, false);
   assert.equal(STAGE_BY_KEY.order.defaultOffset, null);

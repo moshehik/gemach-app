@@ -22,7 +22,8 @@ export async function GET(request) {
     if (date && !isValidKey(date)) {
       return NextResponse.json({ error: 'תאריך לא תקין - נדרש YYYY-MM-DD' }, { status: 400 });
     }
-    const branch = searchParams.get('branch') || '';
+    // שם סניף: סינון תצוגה בלבד (השוואה ב-JS); חיתוך אורך כדי שערך ענק לא ישוכפל לכל שורה/לוג
+    const branch = (searchParams.get('branch') || '').slice(0, 100);
     const user = await getSessionEmployee();
     const result = await getScheduleDay({ date: date || undefined, branch, user });
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });

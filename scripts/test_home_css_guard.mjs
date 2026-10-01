@@ -214,6 +214,29 @@ t('אין כלל גלובלי חדש (globals/design-overrides/design-system) ש
     + '\n          הוסיפו נטרול ב-app/components/home/home.css בהיקף .gm-ds.gm-home, בדקו מול העיצוב, והוסיפו את ה-selector ל-KNOWN_GLOBAL כאן.');
 });
 
+/* ---------- 6ב. דף הלו״ז (app/schedule/schedule.css) - אותה משפחת דליפות: היקף + נטרול הגופנים של design-overrides.css ---------- */
+// הדף נטען בלי home.css, ולכן הנטרולים של דף הבית לא עוזרים לו. נבדק כאן רק מה שמשותף: היקף .gm-ds, אין @media לפני
+// הכלל הרגיל, וכללי הגופן (!important על לחצנים/שדות וכותרות) שבלעדיהם הדף מוצג ב-Frank Ruhl/Assistant.
+// רקעים/צבעים של הלו״ז מגיעים מהעיצוב המאושר (לוז-יומי.html) ולא נבדקים כאן מול רשימת הלבנים של דף הבית.
+const SCHEDULE_CSS = read('../app/schedule/schedule.css');
+const scheduleRules = parseCss(SCHEDULE_CSS);
+const hasSched = (selRe, propRe, { important = false, valueRe } = {}) => scheduleRules.some((r) => selRe.test(r.sel)
+  && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('schedule.css: כל הכללים בהיקף .gm-ds.gm-lz (לא דולפים לשאר האתר)', () => {
+  const bad = [];
+  for (const r of scheduleRules) for (const s of splitSel(r.sel)) if (!/\.gm-ds\.gm-lz/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללי schedule.css בלי .gm-ds.gm-lz: ' + bad.join(' | '));
+});
+t('schedule.css: אין דריסת @media שמוגדרת לפני הכלל הלא-מותנה לאותו selector', () => {
+  assert.deepEqual(mediaBeforeBase(scheduleRules, 'schedule.css'), []);
+});
+t('נטרול דליפה בלו״ז: design-overrides.css כופה גופן Assistant על button/input ו-Frank Ruhl על כותרות => schedule.css מנטרל ב-!important', () => {
+  const globalFonts = /button,\s*input,\s*select,\s*textarea[\s\S]{0,200}font-family:[^;]*!important/.test(OVERRIDES) || /h1, h2, h3, h4, h5, h6\s*\{\s*font-family:[^;]*!important/.test(OVERRIDES);
+  if (!globalFonts) return; // הכלל הגלובלי כבר לא קיים (תוקן במקור) - אין מה לנטרל
+  assert.ok(hasSched(/\.gm-ds\.gm-lz :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'schedule.css: חסר font-family:inherit!important ללחצנים/שדות');
+  assert.ok(hasSched(/\.gm-ds\.gm-lz :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'schedule.css: חסר font-family:inherit!important לכותרות');
+});
+
 /* ---------- 7. אין עוד כפתור/אייקון "אחרונים" בשורת החיפוש (החלטת הבעלים 2.10.2026) ---------- */
 t('בשורת החיפוש של דף הבית אין כפתור "אחרונים" (cmode-i) ואין קוד מת שלו', () => {
   const a5 = read('../app/components/home/HomeA5.js');

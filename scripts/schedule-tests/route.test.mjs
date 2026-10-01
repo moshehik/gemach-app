@@ -1,6 +1,7 @@
 // GET /api/schedule עם lib/auth.js ו-lib/permissions.js האמיתיים (רק next/headers ו-prisma מוחלפים):
-// 401 בלי התחברות, 403 למחלקה בלי שורת הרשאה (page:schedule סגור כברירת מחדל - החלטת הבעלים B1) ולמחלקה
-// עם שורת false, 200 למחלקה עם שורת true, 400 לתאריך שגוי/קיצוני. וגם resolvePageAccess ישירות.
+// 401 בלי התחברות, 200 למחלקה בלי שורת הרשאה (page:schedule פתוח לכל העובדות כברירת מחדל - החלטת הבעלים
+// GQ-04, 2.10.2026, שמחליפה את B1 "כמו בשאר הדפים"), 403 למחלקה עם שורת false, 200 למחלקה עם שורת true,
+// 400 לתאריך שגוי/קיצוני. וגם resolvePageAccess ישירות.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -23,14 +24,15 @@ beforeEach(() => {
   globalThis.__AUTH_TOKEN = null;
 });
 
-test('catalog: page:schedule exists, enforced, CLOSED by default like every other page (owner decision B1)', () => {
+test('catalog: page:schedule exists, enforced, OPEN to every employee by default (owner decision GQ-04, 2.10.2026)', () => {
   const item = getCatalogItem('page:schedule');
   assert.ok(item);
   assert.equal(item.enforced, true);
   assert.equal(item.route, '/schedule');
   assert.equal(item.group, 'pages');
-  for (const roleId of [1, 3, 4, 5, 6, 7]) assert.equal(item.defaultForRoleId(roleId), false, 'roleId ' + roleId);
-  // same default as the sibling pages the schedule draws from
+  for (const roleId of [1, 3, 4, 5, 6, 7]) assert.equal(item.defaultForRoleId(roleId), true, 'roleId ' + roleId);
+  assert.match(item.note, /GQ-04/);
+  // unlike the sibling pages the schedule draws from, which stay closed by default (policy 2026-09-22)
   assert.equal(getCatalogItem('page:deliveries').defaultForRoleId(5), false);
   assert.equal(getCatalogItem('page:alterations').defaultForRoleId(5), false);
 });
@@ -56,10 +58,11 @@ test('200 for a regular employee whose department has a page:schedule=true row',
   assert.deepEqual(fri.__json.dayStatus.reasons, ['friday', 'erev_chag']);
 });
 
-test('403 for a department WITHOUT any page:schedule row (closed by default, B1)', async () => {
+test('200 for a department WITHOUT any page:schedule row (open by default, GQ-04) - internal notes still hidden', async () => {
   globalThis.__AUTH_TOKEN = 'emp-no-row';
   const r = await call('?date=2026-10-01');
-  assert.equal(r.status, 403);
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(r.__json.settings.includeInternalNotes, false);
 });
 
 test('403 for a department with an explicit page:schedule=false row', async () => {
@@ -117,12 +120,20 @@ test('open mode (require_login off): anonymous caller may read the schedule', as
   assert.equal(r.__json.settings.includeInternalNotes, false);
 });
 
-test('resolvePageAccess: default false, department row true/false wins, employee override true wins over department', async () => {
-  assert.equal((await resolvePageAccess(7, 'emp-no-row', ['page:schedule']))['page:schedule'], false, 'no row => closed');
+test('resolvePageAccess: default true (GQ-04), department row true/false wins, employee override true wins over department', async () => {
+  assert.equal((await resolvePageAccess(7, 'emp-no-row', ['page:schedule']))['page:schedule'], true, 'no row => open (catalog default)');
   assert.equal((await resolvePageAccess(5, 'emp-worker', ['page:schedule']))['page:schedule'], true, 'row true => open');
   assert.equal((await resolvePageAccess(6, 'emp-worker-blocked', ['page:schedule']))['page:schedule'], false);
   assert.equal((await resolvePageAccess(0, 'emp-head', ['page:schedule']))['page:schedule'], true, 'head management always');
-  installDb({ extra: { employeePermissionOverride: [{ employeeId: 'emp-x', key: 'page:schedule', value: 'true' }] } });
+  installDb({ extra: { employeePermissionOverride: [{ employeeId: 'emp-x', key: 'page:schedule', value: 'true' }, { employeeId: 'emp-y', key: 'page:schedule', value: 'false' }] } });
   invalidatePermissionCache();
   assert.equal((await resolvePageAccess(6, 'emp-x', ['page:schedule']))['page:schedule'], true);
+  assert.equal((await resolvePageAccess(7, 'emp-y', ['page:schedule']))['page:schedule'], false, 'an employee-level false row closes the page even with the open default');
+});
+
+test('branch param is capped at 100 characters', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const r = await call('?date=2026-10-01&branch=' + 'א'.repeat(300));
+  assert.equal(r.status, 200);
+  assert.equal(r.__json.settings.branchFilter.length, 100);
 });

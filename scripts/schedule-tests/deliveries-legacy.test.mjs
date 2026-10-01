@@ -17,7 +17,10 @@ const LEGACY_ROW_KEYS = [
   'orderId', 'customerFirstName', 'customerLastName', 'customerName', 'customerPhone', 'customerPhone2',
   'address', 'city', 'eventDate', 'eventDateHebrew', 'dressModelNames', 'directions', 'notes', 'chargeExists',
 ];
-const NEW_OPTIONAL_KEYS = ['internalNotes'];
+// opt-in only (includeInternalNotes / withScheduleFields): never on a legacy row (review 2.10, blocker 3 -
+// scripts/business-days-tests/deliveries-parity.test.mjs test D checks the row shape byte-for-byte against the old code)
+const NEW_OPTIONAL_KEYS = ['internalNotes', 'street', 'dressCount', 'branch', 'pickupBranch', 'isAbroad', 'isWeekdayEvent', 'extraDay', 'customSpacing', 'fromDate', 'toDate', 'returnCondition'];
+const SCHEDULE_KEYS = NEW_OPTIONAL_KEYS.filter((k) => k !== 'internalNotes');
 const SETTINGS_LEGACY = SETTINGS_ORG2.map((s) => (s.key === 'deliveries_select_by_event_date' ? { ...s, value: 'false' } : s));
 const ids = (res) => res.data.map((r) => r.orderId).sort();
 const deliveriesQuery = () => globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args?.where?.isDelivery === true);
@@ -59,9 +62,24 @@ test('default mode (deliveries_select_by_event_date off), NO options: same query
     { eventDate: { gte: win('2026-09-30').start, lte: win('2026-09-30').end } }, // return: date - delivery_days_after
   ]);
   assert.deepEqual(q.args.orderBy, { eventDate: 'asc' });
-  assert.deepEqual(q.args.include.items.where, { isDeleted: false });
-  assert.equal(q.args.include.items.select.description, true, 'legacy item field still selected');
+  assert.deepEqual(q.args.include.items, { where: { isDeleted: false }, select: { description: true } }, 'legacy item select, byte-for-byte');
   assert.deepEqual(q.args.include.obligations, { where: { isDeleted: false }, select: { description: true } });
+  assert.deepEqual(Object.keys(res.data[0]).sort(), [...LEGACY_ROW_KEYS].sort(), 'no key beyond the legacy contract');
+});
+
+test('withScheduleFields (only lib/schedule/loaders.js passes it): adds the schedule fields + the return-state item columns; byDispatchDate alone does not', async () => {
+  installDb({ settings: SETTINGS_LEGACY });
+  const plain = await getDeliveriesForDate(D.keyToLocalMidnight(DAY), { byDispatchDate: true, excludeDrafts: true });
+  for (const row of plain.data) for (const k of SCHEDULE_KEYS) assert.equal(k in row, false, `${k} must stay opt-in (order ${row.orderId})`);
+  assert.deepEqual(deliveriesQuery().args.include.items.select, { description: true });
+  invalidateSettingsCache();
+  globalThis.__MOCK_CALLS = [];
+  const sched = await getDeliveriesForDate(D.keyToLocalMidnight(DAY), { byDispatchDate: true, excludeDrafts: true, withScheduleFields: true });
+  for (const row of sched.data) for (const k of SCHEDULE_KEYS) assert.ok(k in row, `${k} missing on order ${row.orderId}`);
+  assert.deepEqual(deliveriesQuery().args.include.items.select, { description: true, isReturned: true, returnDate: true, returnedOk: true });
+  assert.equal(sched.data.find((r) => r.orderId === 1022).returnCondition, 'ok');
+  assert.equal(sched.data.find((r) => r.orderId === 1009).street, '', 'missing street is visible to the schedule alert');
+  assert.deepEqual(ids(sched), ids(plain), 'same rows either way');
 });
 
 test('"select by event date" mode (org2 setting), NO options: event-day query, dispatchDates kept (legacy behaviour of that mode), drafts included', async () => {

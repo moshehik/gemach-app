@@ -7,6 +7,10 @@
 /* ===== גוף הדף ===== */
 /* הגופן של הפלטה (Rubik) בכל הדף - כללי הכותרות והטקסט של ה-legacy מחליפים אחרת ל-Frank Ruhl / Assistant */
 .gm-ds.gm-lz *{font-family:var(--gm-font)}
+/* app/design-overrides.css כופה !important על לחצנים/שדות (Assistant) ועל כותרות (Frank Ruhl) - בלי הכללים
+   האלה הם גוברים על השורה שלמעלה (אותו תיקון כמו home.css / menu.css; דף הבית לא נטען ב-/schedule) */
+.gm-ds.gm-lz :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-lz :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
 .gm-ds.gm-lz .pg-ttl{color:var(--navy-900)}
 .gm-ds.gm-lz .lz-app .topbar{background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
 .gm-ds.gm-lz .lz-app{padding-bottom:40px}
