@@ -74,7 +74,12 @@ export async function PUT(request) {
     // נשמר כי mergeDesignPrefs מתחיל מההעדפות השמורות. (זה חוסם רק את המסלול הזה: העוגייה
     // designPrefs_<id> שה-layout קורא ניתנת לעריכה בדפדפן — ר' ההערה ב-lib/uiVariant.js.)
     const safeBody = (body && typeof body === 'object') ? { ...body } : body;
-    if (safeBody && typeof safeBody === 'object') delete safeBody.uiVariants;
+    if (safeBody && typeof safeBody === 'object') {
+      delete safeBody.uiVariants;
+      // "רישום התחלת עבודה אוטומטי" נכתב רק דרך PUT /api/me/auto-clock-in (lib/autoClockPref.js) - עותק ישן
+      // של ההעדפות מהדפדפן (DesignPrefsSync / דף העיצוב) לא ידרוס ערך שנשמר במסך הכניסה או בתפריט.
+      delete safeBody.autoClockIn;
+    }
     const existing = parseStoredDesignPrefs(employee.themeColor);
     const next = mergeDesignPrefs(existing || {}, safeBody);
     const serialized = JSON.stringify(next);

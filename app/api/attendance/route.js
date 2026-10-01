@@ -5,11 +5,7 @@ import { checkAuth } from '../../../lib/auth';
 import { verifySecret } from '../../../lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '../../../lib/trustedDevice';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
-import { toIsraelCalendarDate } from '@/lib/hebrewDate';
-import { findLatestOpenShift } from '@/lib/openShift';
-
-
-
+import { findOpenShift, punchIn, punchOut } from '@/lib/shiftPunch';
 
 // Get attendance records, optionally filter by month and year
 export async function GET(request) {
@@ -116,34 +112,22 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    // Normalize date to start of day for the 'date' field: midnight UTC of the ISRAELI calendar
-    // day (the same form as a manually added shift's 'YYYY-MM-DD'). Using now.getDate() on
-    // the server (UTC on Vercel) dated a punch-in between 00:00 and 03:00 Israel time to
-    // the previous day - and /api/me's "active shift today" lookup must use the same day.
-    const todayStart = toIsraelCalendarDate(now);
 
     // עובד שנכנס לפני חצות ועדיין לא יצא נשאר עם משמרת פתוחה מתוארכת ל"אתמול" -
     // בדיקת "כבר נכנס" חייבת לחפש משמרת פתוחה בכל תאריך (לא רק היום), אחרת
     // אחרי חצות הבדיקה לא מוצאת כלום והעובד יכול "להיכנס" שוב ולפתוח משמרת
     // כפולה/חופפת בזמן שהראשונה נשארת פתוחה לצמיתות.
-    // כשיש כמה משמרות פתוחות (למשל ישנות מ-Access) רושמים יציאה לעדכנית לפי שעת כניסה - לא ל-id אקראי (ר' lib/openShift.js).
-    let currentShift = await findLatestOpenShift(prisma, employee.id);
+    // החישובים עצמם (שדה date לפי היום הישראלי, סגירה עם דקות/שכר/נסיעות) עברו ל-lib/shiftPunch.js -
+    // משותפים לדף הכניסה החדש (רישום התחלת עבודה אוטומטי בכניסה) ולסגירת משמרת פתוחה מאתמול
+    // (POST /api/attendance/previous-shift), בלי שינוי בהתנהגות כאן.
+    let currentShift = await findOpenShift(employee.id);
 
     if (action === 'IN') {
       if (currentShift) {
         return NextResponse.json({ error: 'כבר נרשמה כניסה - יש לרשום יציאה קודם' }, { status: 400 });
       }
 
-      // Create new shift
-      const newShift = await prisma.shift.create({
-        data: {
-          employeeId: employee.id,
-          date: todayStart,
-          entryTime: now,
-          hourlyWageSnapshot: employee.hourlyWage || 0,
-          travelExpensesSnapshot: typeof employee.travelExpenses === 'number' ? employee.travelExpenses : 0
-        }
-      });
+      const newShift = await punchIn(employee, now);
       return NextResponse.json({ message: 'Punched IN successfully', shift: newShift });
 
     } else if (action === 'OUT') {
@@ -151,43 +135,7 @@ export async function POST(request) {
         return NextResponse.json({ error: 'לא נמצאה משמרת פתוחה לרישום יציאה' }, { status: 400 });
       }
 
-      const entryTime = new Date(currentShift.entryTime);
-      const diffMs = now - entryTime;
-      const totalMinutes = Math.floor(diffMs / 60000);
-
-      // Calculate total pay: (minutes / 60) * hourly wage
-      const hourlyWage = currentShift.hourlyWageSnapshot || employee.hourlyWage || 0;
-      const travelEligible = currentShift.travelExpensesSnapshot || (typeof employee.travelExpenses === 'number' ? employee.travelExpenses : 0);
-      let totalCalculated = (totalMinutes / 60) * hourlyWage;
-
-      // Travel expense is a daily allowance, not a per-punch one: only credit it on the
-      // employee's earliest shift of the calendar day, so splitting a day into several
-      // punches (e.g. a lunch break) doesn't pay travel more than once.
-      let travelForThisShift = 0;
-      if (travelEligible) {
-        const earlierShiftToday = await prisma.shift.findFirst({
-          where: {
-            employeeId: employee.id,
-            date: currentShift.date,
-            isDeleted: false,
-            id: { not: currentShift.id },
-            entryTime: { lt: currentShift.entryTime }
-          }
-        });
-        if (!earlierShiftToday) {
-          travelForThisShift = travelEligible;
-        }
-      }
-      totalCalculated += travelForThisShift;
-
-      const updatedShift = await prisma.shift.update({
-        where: { id: currentShift.id },
-        data: {
-          exitTime: now,
-          totalMinutes,
-          totalCalculated: parseFloat(totalCalculated.toFixed(2))
-        }
-      });
+      const updatedShift = await punchOut(employee, currentShift, now);
       return NextResponse.json({ message: 'Punched OUT successfully', shift: updatedShift });
     }
 

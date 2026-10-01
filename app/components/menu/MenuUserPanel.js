@@ -4,6 +4,7 @@
 // הפעולות (התנתקות, כניסה, היסטוריית הודעות מערכת) מבוצעות במעטפת; כאן רק התצוגה.
 
 import { Ic, MenuRows } from './menuParts';
+import AutoClockSwitch from '../login/AutoClockSwitch';
 
 export function userDisplay(tree, me) {
   const u = tree.user || {};
@@ -36,6 +37,7 @@ export function UserButton({ info, open, onClick, tip }) {
 
 /** תוכן הפאנל: כותרת + שורות. */
 export function UserPanelBody({ tree, info, items, activeItemId, onNavigate, onAction }) {
+  // דף הכניסה החדש (Q05/L16): המתג "רשום לי התחלת עבודה אוטומטית בכניסה" גם בתפריט המשתמש, רק למחובר.
   return (
     <>
       <div className="sn-uhead">
@@ -47,6 +49,7 @@ export function UserPanelBody({ tree, info, items, activeItemId, onNavigate, onA
       </div>
       <div className="hf-l" role="group" aria-label="משתמש">
         <MenuRows items={items} menu activeItemId={activeItemId} onNavigate={onNavigate} onAction={onAction} />
+        {info.logged ? <AutoClockSwitch variant="a5" /> : null}
       </div>
     </>
   );

@@ -16,7 +16,9 @@ export const metadata = {
 import IconSprite from './components/IconSprite';
 import ShellSwitch from './components/menu/ShellSwitch';
 import { buildNavGroups } from './components/navConfig';
-import LoginScreen from './components/LoginScreen';
+import LoginGate, { LoginVariantProvider } from './components/login/LoginGate';
+import { brandBar } from '@/lib/loginFlow';
+import { isMainGemach } from '@/lib/orgIdentity';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
@@ -77,7 +79,7 @@ export default async function RootLayout({ children }) {
   // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
   // גדול ולכן נשלח ללקוח רק כ-!!value (ר' menuTree למטה), לעולם לא הערך עצמו.
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -318,6 +320,18 @@ export default async function RootLayout({ children }) {
       homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
     })
     : null;
+
+  // דף הכניסה החדש (feature/login-new-2026-10-02, החלטות הבעלים 1.10.2026): מוצג לכל העובדים כברירת מחדל.
+  // מתג חזרה בלי פריסה: SystemSetting login_page_new = 'false' מחזיר את מסך הכניסה הישן (LoginScreen).
+  // הפס העליון של הדף: שם הגמ"ח מההגדרה + תגית לפי הארגון (lib/loginFlow.js brandBar, lib/orgIdentity.js).
+  const settingValue = (key) => settings.find(s => s.key === key)?.value;
+  const loginVariant = {
+    useNew: settingValue('login_page_new') !== 'false',
+    brand: {
+      ...brandBar({ gmachName: settingValue('gmach_name'), gmachSubtitle: settingValue('gmach_subtitle'), isMainGemach: isMainGemach() }),
+      hasLogo: typeof settingValue('BRAND_LOGO') === 'string' && settingValue('BRAND_LOGO').length > 0,
+    },
+  };
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -659,6 +673,7 @@ function cpCssText(vars) {
         data-ui-customer-card={uiVariants.customer_card}
       >
         <UiVariantProvider value={uiVariants}>
+        <LoginVariantProvider value={loginVariant}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
@@ -676,7 +691,7 @@ function cpCssText(vars) {
             on load (and migrates legacy local-only prefs into the DB once). */}
         {!showLogin && isAuthenticated && <DesignPrefsSync />}
         {showLogin ? (
-          <LoginScreen data-element-name="רכיב_layout_7" />
+          <LoginGate data-element-name="רכיב_layout_7" />
         ) : (
           <LabelsProvider data-element-name="רכיב_layout_8">
             <PopupProvider data-element-name="רכיב_layout_22">
@@ -699,6 +714,7 @@ function cpCssText(vars) {
           </LabelsProvider>
         )}
         </UniqueNamesProvider>
+        </LoginVariantProvider>
         </UiVariantProvider>
       </body>
     </html>

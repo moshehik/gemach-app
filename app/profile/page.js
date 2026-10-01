@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { invalidate } from '@/lib/apiCache';
+import AutoClockSwitch from '@/app/components/login/AutoClockSwitch';
 
 // כרטיס "הפרופיל שלי" — גרסה מצומצמת של כרטיס העובד, לעובד המחובר בלבד.
 // מציג ומעדכן פרטים אישיים בלבד דרך /api/me/profile (בלי שכר, תפקיד, AI
@@ -300,6 +301,8 @@ export default function MyProfilePage() {
               <label htmlFor="receiveEmailAlerts">קבלת התראות למייל</label>
             </div>
           </div>
+          {/* דף הכניסה החדש (Q05): אותה הגדרה כמו המתג במסך הכניסה ובתפריט המשתמש */}
+          <AutoClockSwitch variant="profile" />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
