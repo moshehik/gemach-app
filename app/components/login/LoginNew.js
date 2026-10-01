@@ -284,6 +284,7 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          loginPage: true, // סימון לשרת: דף הכניסה החדש (רישום מכשיר, משמרת אוטומטית, "זכור אותי") - המסך הישן והקיוסק לא שולחים אותו
           employeeId: emp.id,
           ...(pinMode ? { pin: credential } : { password: credential }),
           rememberMe: !shared && rememberMe,
@@ -559,7 +560,17 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
     <div
       className="scrim on lg-dscrim"
       onClick={(e) => { if (dialog === 'forgot' && e.target === e.currentTarget) setDialog(null); }}
-      onKeyDown={(e) => { if (e.key === 'Escape' && dialog === 'forgot') setDialog(null); }}
+      onKeyDown={(e) => {
+        // Escape סוגר רק את "שכחתי סיסמה" (שאר החלונות הם חובה, כמו בעיצוב); Tab נשאר בתוך החלון (focus trap)
+        if (e.key === 'Escape' && dialog === 'forgot') { setDialog(null); return; }
+        if (e.key === 'Tab' && dialogRef.current) {
+          const items = [...dialogRef.current.querySelectorAll('input, button, [tabindex="0"]')].filter((el) => !el.disabled && el.offsetParent !== null);
+          if (!items.length) { e.preventDefault(); return; }
+          const first = items[0]; const last = items[items.length - 1];
+          if (e.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }}
     >
       <div className="dlg dk" role="dialog" aria-modal="true" aria-labelledby="lg-dlg-t" tabIndex={-1} ref={dialogRef}>
         {dialog === 'forgot' ? (

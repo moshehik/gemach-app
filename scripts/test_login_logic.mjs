@@ -16,6 +16,11 @@ import {
 } from '../lib/loginFlow.js';
 import { detectOrgFromHost, currentOrg, isMainGemach, ORG_MAIN, ORG_NEVE_YAAKOV } from '../lib/orgIdentity.js';
 import { parseStoredDesignPrefs, mergeDesignPrefs, sanitizeDesignPrefs } from '../lib/designPrefsSchema.js';
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+const require = createRequire(import.meta.url);
+const { createSessionToken, verifySessionToken, checkAuthCore, SESSION_FRESH_MS } = require('../lib/authTokens.js');
+const src = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
 const TIMEZONES = ['UTC', 'America/Los_Angeles', 'Asia/Jerusalem', 'Pacific/Kiritimati'];
 
@@ -36,6 +41,11 @@ if (!process.env.LOGIN_LOGIC_CHILD) {
 let passed = 0;
 function t(name, fn) {
   try { fn(); passed++; console.log('  ok   -', name); }
+  catch (e) { console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
+}
+// בדיקה אסינכרונית אחת (checkAuthCore) - נקראת עם await ברמה העליונה כדי שהסיכום יודפס אחריה.
+async function ta(name, fn) {
+  try { await fn(); passed++; console.log('  ok   -', name); }
   catch (e) { console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
 }
 
@@ -268,6 +278,92 @@ t('כותרת הסיום והודעות שלא טופלו', () => {
   assert.equal(doneTitle(null), 'התחברת בהצלחה');
   assert.equal(unreadMessagesText(3), 'יש 3 הודעות חדשות שלא טופלו');
   assert.equal(unreadMessagesText(1), 'יש הודעה חדשה אחת שלא טופלה');
+});
+
+
+console.log('משמרת legacy בלי שעת כניסה (ביקורת #5)');
+t('classifyOpenShift: בלי entryTime = כאילו אין משמרת; decideAutoShift לא שואל ולא נתקע', () => {
+  const legacy = { id: 'old', entryTime: null, date: new Date(Date.UTC(2024, 0, 1)), exitTime: null };
+  assert.equal(classifyOpenShift(legacy, todayNoon), null);
+  assert.equal(classifyOpenShift({ id: 'x', entryTime: 'not a date', exitTime: null }, todayNoon), null);
+  assert.equal(decideAutoShift({ autoClockIn: true, openShift: legacy, now: todayNoon }).action, SHIFT_ACTION.PUNCH_IN);
+  assert.equal(decideAutoShift({ autoClockIn: false, openShift: legacy, now: todayNoon }).action, SHIFT_ACTION.NONE);
+});
+t('resolvePreviousShiftExit: בלי entryTime / 1970 - שגיאה, לעולם לא שעת יציאה מ-1970', () => {
+  for (const bad of [null, undefined, '', 0, new Date(0), 'garbage']) {
+    const r = resolvePreviousShiftExit({ entryTime: bad, hhmm: '17:30', now: todayNoon });
+    assert.equal(r.ok, false, `entryTime=${String(bad)}`);
+    assert.equal(r.error, PREVIOUS_SHIFT_MESSAGES.badTime);
+  }
+});
+
+console.log('טוקן ההתחברות: "זכור אותי" שורד הנפקה-מחדש (ביקורת #3)');
+t('createSessionToken עם remember מסמן rm:true, בלי - אין rm', () => {
+  const secret = 'test-secret';
+  const tok = createSessionToken({ id: 'e1', roleId: 1 }, secret, 1000, { remember: true });
+  const payload = verifySessionToken(tok, secret, 2000);
+  assert.equal(payload.rm, true);
+  const plain = verifySessionToken(createSessionToken({ id: 'e1', roleId: 1 }, secret, 1000), secret, 2000);
+  assert.equal(plain.rm, undefined);
+});
+await ta('checkAuthCore: טוקן ישן עם rm מעביר remember:true ל-reissueSession, בלי rm - false', async () => {
+  const secret = 'test-secret';
+  const run = async (remember) => {
+    const now = 10_000_000;
+    const stale = createSessionToken({ id: 'e1', roleId: 1 }, secret, now - SESSION_FRESH_MS - 1000, { remember });
+    let got = null;
+    const ok = await checkAuthCore({
+      requiredRole: 'מנהל', authTokenValue: 'e1', sessionTokenValue: stale, secret, roleLevels: { 'מנהל': [1, 2] },
+      getRequireLogin: async () => true, findEmployeeRoleById: async () => ({ roleId: 1, showAi: false }),
+      reissueSession: (emp, opts) => { got = opts; }, now,
+    });
+    assert.equal(ok, true);
+    return got;
+  };
+  assert.deepEqual(await run(true), { remember: true });
+  assert.deepEqual(await run(false), { remember: false });
+});
+
+console.log('שומרי מקור (ביקורת #1, #2, #4): עוגיות, שומר ה-legacyId, סימון דף הכניסה, CSS של השדות');
+t('app/api/login/route.js: עוגיית auth_token עם sameSite lax + secure בייצור, ושומר legacyId של ספרות בלבד', () => {
+  const route = src('../app/api/login/route.js');
+  const cookieBlock = route.slice(route.indexOf("name: 'auth_token'"), route.indexOf("name: 'auth_token'") + 400);
+  assert.ok(/sameSite:\s*'lax'/.test(cookieBlock), 'sameSite lax');
+  assert.ok(/secure:\s*process\.env\.NODE_ENV === 'production'/.test(cookieBlock), 'secure in production');
+  assert.ok(route.includes("/^\\d+$/.test(String(employeeId)) ? parseInt(employeeId, 10) : NaN"), 'legacyId guard (7c750b9f)');
+  assert.ok(!/const parsedLegacyId = parseInt\(employeeId, 10\);/.test(route), 'no unguarded parseInt');
+});
+t('UUID שמתחיל בספרות לא נחשב legacyId (אותו ביטוי כמו במסלול)', () => {
+  const guard = (employeeId) => (/^\d+$/.test(String(employeeId)) ? parseInt(employeeId, 10) : NaN);
+  assert.ok(Number.isNaN(guard('609d1d9d-d209-4a6d-9a93-b39352293bce')));
+  assert.ok(Number.isNaN(guard('12abc')));
+  assert.equal(guard('125'), 125);
+  assert.equal(guard(125), 125);
+});
+t('רישום מכשיר / משמרת אוטומטית / זכור-אותי רק עם loginPage:true (המסך הישן והקיוסק לא שולחים אותו)', () => {
+  const route = src('../app/api/login/route.js');
+  assert.ok(route.includes("const isNewLoginPage = body.loginPage === true;"));
+  assert.ok(route.includes("isNewLoginPage ? await recordLoginOnDevice(cookieStore, employee.id) : { shared: false }"));
+  assert.ok(route.includes("const rememberMe = isNewLoginPage && body.rememberMe === true && !shared;"));
+  assert.ok(route.includes("const shared = !!device.shared || !!trustedDevice;"), 'trusted computer = shared (rollout rule)');
+  assert.ok(route.includes("if (!isNewLoginPage) throw Object.assign(new Error('skip'), { skip: true });"));
+  assert.ok(src('../app/components/login/LoginNew.js').includes('loginPage: true,'));
+  assert.ok(!src('../app/components/LoginScreen.js').includes('loginPage'), 'old screen untouched');
+  assert.ok(!src('../app/customer-interface/page.js').includes('loginPage'), 'kiosk untouched');
+});
+t('login.css: שדות הקלט מנצחים את design-overrides.css input:not(x4) (0,4,1) - ברירת מחדל, פוקוס, שגיאה, חלון כהה', () => {
+  const css = src('../app/components/login/login.css');
+  const sel = 'input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])';
+  const need = [
+    `.gm-ds.gm-login ${sel}{`, `.gm-ds.gm-login ${sel}:focus{`, `.gm-ds.gm-login ${sel}[aria-invalid="true"]{`,
+    `.gm-ds.gm-login .dlg.dk ${sel}{`, `.gm-ds.gm-login .dlg.dk ${sel}:focus{`,
+  ];
+  for (const n of need) assert.ok(css.includes(n), `missing: ${n}`);
+  const base = css.slice(css.indexOf(`.gm-ds.gm-login ${sel}{`), css.indexOf('\n', css.indexOf(`.gm-ds.gm-login ${sel}{`)));
+  assert.ok(base.includes('background-color:rgba(255,255,255,.72)') && base.includes('border-radius:14px') && base.includes('font-size:16px') && base.includes('border:1.5px solid var(--gm-line)'), base);
+  assert.ok(!/\.gm-ds\.gm-login \.inp\{/.test(css), 'no low-specificity .inp base rule left');
+  assert.ok(!src('../app/components/login/AutoClockSwitch.js').includes("background: '#fff'"), 'no inline white knob');
+  assert.ok(css.includes('.gm-autoclock-knob{'));
 });
 
 console.log(`\n[TZ=${process.env.TZ}] ${passed} בדיקות עברו${process.exitCode ? ', יש כישלונות' : ''}`);

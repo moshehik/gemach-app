@@ -28,6 +28,10 @@ export async function POST(request) {
     if (!openShift || (body.shiftId && body.shiftId !== openShift.id)) {
       return NextResponse.json({ success: false, message: 'לא נמצאה משמרת פתוחה לסגירה' }, { status: 404 });
     }
+    if (!openShift.entryTime) {
+      // משמרת legacy בלי שעת כניסה: אין ממה לחשב יציאה - לא נוגעים בה (ולא כותבים 1970).
+      return NextResponse.json({ success: false, message: 'למשמרת הפתוחה אין שעת כניסה - יש לפנות למנהל לסגירה ידנית' }, { status: 400 });
+    }
     if (classifyOpenShift(openShift, now) !== 'previous-day') {
       return NextResponse.json({ success: false, message: 'המשמרת הפתוחה היא של היום - אפשר לסגור אותה בשעון הנוכחות' }, { status: 400 });
     }

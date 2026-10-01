@@ -49,18 +49,22 @@
 .gm-ds.gm-login .forgot:hover{color:var(--gm-navy-900);border-bottom-color:var(--gm-gold-d)}
 .gm-ds.gm-login .ctl{position:relative;display:flex;align-items:center}
 .gm-ds.gm-login .ctl>.ic{position:absolute;inset-inline-start:14px;color:var(--gm-ink3);pointer-events:none}
-.gm-ds.gm-login .inp{width:100%;min-height:50px;background:rgba(255,255,255,.72);border:1.5px solid var(--gm-line);border-radius:14px;padding:12px 14px;padding-inline-start:44px;font-size:16px;color:var(--gm-ink);outline:0;transition:border-color .15s,box-shadow .15s}
-.gm-ds.gm-login .inp::placeholder{color:#7a8ca3}
-.gm-ds.gm-login .inp:hover{border-color:#9aa3ad}
-.gm-ds.gm-login .inp:focus{background:#fff;border-color:var(--gm-navy);box-shadow:0 0 0 4px var(--gm-sky-100)}
-.gm-ds.gm-login .inp[aria-invalid="true"]{border-color:var(--lg-danger);box-shadow:0 0 0 4px var(--lg-danger-soft)}
-.gm-ds.gm-login .inp.has-end{padding-inline-end:48px}
-.gm-ds.gm-login .inp.pin{letter-spacing:.6em;text-align:center}
+/* ה-CSS הגלובלי הישן (app/design-overrides.css §5: input:not(x4) = ספציפיות (0,4,1), ו-app/globals.css input{...}) דורס
+   שדות קלט בכל דף: רקע --input-bg לבן, רדיוס 10, גבול 1px, טבעת פוקוס ורדרדה. בדיוק הדליפה שתוקנה בדף הבית (PR #214,
+   docs/ui-fidelity-search-backgrounds.md #1/#5). לכן השדות כאן נבחרים ב-input.inp:not(x4) בתוך .gm-ds.gm-login = (0,7,1),
+   גבוה מכל כלל גלובלי, והערכים הם של העיצוב (login-page.html .inp). נשמר ע"י scripts/test_login_logic.mjs. */
+.gm-ds.gm-login input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]){width:100%;min-height:50px;background:rgba(255,255,255,.72);background-color:rgba(255,255,255,.72);border:1.5px solid var(--gm-line);border-radius:14px;padding:12px 14px;padding-inline-start:44px;font-size:16px;color:var(--gm-ink);outline:0;box-shadow:none;transition:border-color .15s,box-shadow .15s}
+.gm-ds.gm-login input.inp::placeholder{color:#7a8ca3}
+.gm-ds.gm-login input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):hover{border-color:#9aa3ad}
+.gm-ds.gm-login input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus{background:#fff;background-color:#fff;border-color:var(--gm-navy);box-shadow:0 0 0 4px var(--gm-sky-100);outline:0}
+.gm-ds.gm-login input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])[aria-invalid="true"]{border-color:var(--lg-danger);box-shadow:0 0 0 4px var(--lg-danger-soft)}
+.gm-ds.gm-login input.inp.has-end:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]){padding-inline-end:48px}
+.gm-ds.gm-login input.inp.pin{letter-spacing:.6em;text-align:center}
 .gm-ds.gm-login .eye{position:absolute;inset-inline-end:6px;width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--gm-ink3);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,color .15s}
 .gm-ds.gm-login .eye:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
 
 /* ---- G04: שדה בחירה עם הקלדה, סינון ורשימה נפתחת ---- */
-.gm-ds.gm-login .cbx .inp{padding-inline-end:48px}
+.gm-ds.gm-login .cbx input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]){padding-inline-end:48px}
 .gm-ds.gm-login .cbx-t{position:absolute;inset-inline-end:6px;width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--gm-ink3);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,color .15s}
 .gm-ds.gm-login .cbx-t:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
 .gm-ds.gm-login .cbx-t .ic{transition:transform .2s}
@@ -145,10 +149,10 @@
 .gm-ds.gm-login .dlg.dk .dbadge{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin:0 auto 12px;background:radial-gradient(circle at 30% 22%,#fff 0,var(--gm-sky-100) 100%);color:var(--gm-navy);box-shadow:0 0 0 2px var(--k-gap),0 0 0 4px var(--gm-gold),0 10px 22px -8px rgba(201,162,39,.7),inset 0 0 14px rgba(201,162,39,.28)}
 .gm-ds.gm-login .dlg.dk .dbadge .ic{width:26px;height:26px;stroke-width:2}
 .gm-ds.gm-login .dlg.dk .lbl{color:var(--k-sub)}
-.gm-ds.gm-login .dlg.dk .inp{background:var(--gm-sky-50);color:var(--gm-navy-900);border-color:var(--gm-line)}
-.gm-ds.gm-login .dlg.dk .inp::placeholder{color:#5b7391}
-.gm-ds.gm-login .dlg.dk .inp:focus{background:#fff;border-color:var(--gm-gold);box-shadow:0 0 0 4px rgba(201,162,39,.28)}
-.gm-ds.gm-login .dlg.dk .inp[aria-invalid="true"]{border-color:var(--k-err);box-shadow:0 0 0 4px rgba(251,191,169,.25)}
+.gm-ds.gm-login .dlg.dk input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]){background:var(--gm-sky-50);background-color:var(--gm-sky-50);color:var(--gm-navy-900);border-color:var(--gm-line);color-scheme:light}
+.gm-ds.gm-login .dlg.dk input.inp::placeholder{color:#5b7391}
+.gm-ds.gm-login .dlg.dk input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus{background:#fff;background-color:#fff;border-color:var(--gm-gold);box-shadow:0 0 0 4px rgba(201,162,39,.28)}
+.gm-ds.gm-login .dlg.dk input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])[aria-invalid="true"]{border-color:var(--k-err);box-shadow:0 0 0 4px rgba(251,191,169,.25)}
 .gm-ds.gm-login .dlg.dk .msg{background:rgba(251,191,169,.12);border-color:rgba(251,191,169,.38);color:var(--k-err)}
 .gm-ds.gm-login .dlg.dk .msg.ok{background:var(--k-row);border-color:var(--k-rowb);color:var(--k-ink)}
 .gm-ds.gm-login .dlg.dk .msg.ok .ic{color:var(--k-ic)}
@@ -167,3 +171,7 @@
   .gm-ds.gm-login .mdl>.card.lg-card{padding:14px 16px 20px}
 }
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-login *{transition:none!important;animation-duration:.01ms!important}}
+
+/* הכפתור הלבן של המתג בתפריט המשתמש הישן (AutoClockSwitch variant="legacy"), מחוץ להיקף .gm-login בכוונה:
+   design-overrides.css מחליף רקע לבן שנכתב inline ([style*="background: #fff"]) - לכן מחלקה ולא style. */
+.gm-autoclock-knob{position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:inset-inline-start .2s}

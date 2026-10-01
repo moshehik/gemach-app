@@ -12,6 +12,9 @@ import { decideAutoShift, SHIFT_ACTION, formatIsraelHHMM, previousShiftPrompt } 
 
 // גוף הבקשה (דף הכניסה החדש, app/components/login/LoginNew.js; המסך הישן שולח רק employeeId + password/pin):
 //   employeeId, password | pin        - כמו תמיד. pin רק ממחשב מערכת מהימן (lib/trustedDevice.js).
+//   loginPage (true)                  - סימון מפורש של דף הכניסה החדש. בלעדיו (המסך הישן, שחרור הקיוסק ב-
+//                                       app/customer-interface/page.js) המסלול מתנהג בדיוק כמו קודם: בלי רישום
+//                                       מכשיר, בלי משמרת אוטומטית, בלי "זכור אותי", עוגיות session בלבד.
 //   rememberMe (bool)                 - "זכור אותי במכשיר הזה" (L09): עוגיות ההתחברות נשמרות שבוע גם אחרי
 //                                       סגירת הדפדפן. מתעלמים ממנו במחשב משותף (יותר מ-3 עובדים שונים,
 //                                       lib/loginDeviceRegistry.js) - השרת מכריע, לא הלקוח.
@@ -28,7 +31,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'נא להזין קוד עובד וסיסמה' }, { status: 400 });
     }
 
-    const parsedLegacyId = parseInt(employeeId, 10);
+    const parsedLegacyId = /^\d+$/.test(String(employeeId)) ? parseInt(employeeId, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
     const employee = await prisma.employee.findFirst({
       where: {
         OR: [
@@ -47,13 +50,16 @@ export async function POST(request) {
     }
 
     const cookieStore = await cookies();
+    const isNewLoginPage = body.loginPage === true;
+    // Trusted-device lookup: needed for the PIN path (as before) and, on the new page, for the rollout rule
+    // "a trusted work computer is treated as shared" (no remember-me) - one lookup either way.
+    const trustedDevice = (pin || isNewLoginPage) ? await getTrustedDeviceFromCookieStore(cookieStore) : null;
 
     if (pin) {
       // Fast path: only ever valid on a computer a manager has explicitly marked trusted.
       // The trust check happens first and is independent of anything the client claims -
       // a request that merely *says* "this is a trusted device" without holding the actual
       // cookie is rejected before the PIN is even looked at.
-      const trustedDevice = await getTrustedDeviceFromCookieStore(cookieStore);
       if (!trustedDevice) {
         return NextResponse.json({ success: false, message: 'מחשב זה אינו מוגדר כמערכת מהימנה - יש להזין את הסיסמה המלאה', requireFullPassword: true }, { status: 401 });
       }
@@ -96,9 +102,12 @@ export async function POST(request) {
       }
     }
 
-    // --- מחשב משותף (L09/L17): רישום העובד למחשב הזה, והכרעה אם "זכור אותי" מכובד ---
-    const device = await recordLoginOnDevice(cookieStore, employee.id);
-    const rememberMe = body.rememberMe === true && !device.shared;
+    // --- מחשב משותף (L09/L17): רישום העובד למחשב הזה, והכרעה אם "זכור אותי" מכובד. רק מדף הכניסה החדש. ---
+    // כלל פריסה שמרני (לאישור הבעלים): מחשב מערכת מהימן (עמדות העבודה) נחשב משותף מההתחלה - "זכור אותי"
+    // לא מוצע ולא מכובד בו; ברירת המחדל "מסומן" של העיצוב נשארת רק למחשב פרטי לא-מהימן.
+    const device = isNewLoginPage ? await recordLoginOnDevice(cookieStore, employee.id) : { shared: false };
+    const shared = !!device.shared || !!trustedDevice;
+    const rememberMe = isNewLoginPage && body.rememberMe === true && !shared;
 
     // Set cookie — a session cookie (no maxAge) on purpose: closing the browser
     // entirely should require logging in again (2026-08-24, per user-role bug
@@ -112,6 +121,8 @@ export async function POST(request) {
       value: employee.id, // Ensure we store the UUID string
       httpOnly: true,
       path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
       ...(rememberMe ? { maxAge: SESSION_MAX_AGE_SECONDS } : {}),
     });
 
@@ -120,14 +131,14 @@ export async function POST(request) {
     // AUTH_SECRET isn't configured (or signing fails) the login still
     // succeeds and everything falls back to the legacy auth_token-only path.
     try {
-      issueSessionCookie(cookieStore, employee, rememberMe ? { maxAge: SESSION_MAX_AGE_SECONDS } : {});
+      issueSessionCookie(cookieStore, employee, rememberMe ? { maxAge: SESSION_MAX_AGE_SECONDS, remember: true } : {});
     } catch (e) {
       console.warn('issueSessionCookie failed (continuing with legacy auth only):', e?.message || e);
     }
 
     // --- רישום התחלת עבודה אוטומטי (L14, Q01-Q04, Q09) ---
     let autoClockIn = getAutoClockIn(employee);
-    if (typeof body.autoClockIn === 'boolean' && body.autoClockIn !== autoClockIn) {
+    if (isNewLoginPage && typeof body.autoClockIn === 'boolean' && body.autoClockIn !== autoClockIn) {
       try {
         autoClockIn = await setAutoClockIn(employee, body.autoClockIn);
       } catch (e) {
@@ -138,6 +149,7 @@ export async function POST(request) {
     const now = new Date();
     let shift = { action: SHIFT_ACTION.NONE };
     try {
+      if (!isNewLoginPage) throw Object.assign(new Error('skip'), { skip: true });
       const openShift = await findOpenShift(employee.id);
       const decision = decideAutoShift({ autoClockIn, openShift, now });
       if (decision.action === SHIFT_ACTION.PUNCH_IN) {
@@ -157,15 +169,17 @@ export async function POST(request) {
         shift = { action: decision.action };
       }
     } catch (e) {
-      // רישום המשמרת לעולם לא מפיל כניסה - הכניסה כבר הצליחה.
-      console.warn('Auto clock-in on login failed:', e?.message || e);
-      shift = { action: SHIFT_ACTION.NONE, error: true };
+      // רישום המשמרת לעולם לא מפיל כניסה - הכניסה כבר הצליחה. (המסך הישן / הקיוסק: בלי משמרת, בלי שגיאה.)
+      if (!e?.skip) {
+        console.warn('Auto clock-in on login failed:', e?.message || e);
+        shift = { action: SHIFT_ACTION.NONE, error: true };
+      }
     }
 
     return NextResponse.json({
       success: true,
       mustResetPassword: !!employee.mustResetPassword,
-      shared: !!device.shared,
+      shared,
       rememberMe,
       autoClockIn,
       employee: { id: employee.id, firstName: employee.firstName || '' },

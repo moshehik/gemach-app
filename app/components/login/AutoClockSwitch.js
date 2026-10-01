@@ -127,10 +127,8 @@ export default function AutoClockSwitch({ variant = 'legacy' }) {
           background: checked ? 'var(--primary-solid)' : 'var(--border-strong)', transition: 'background .2s',
         }}
       >
-        <span style={{
-          position: 'absolute', top: '2px', insetInlineStart: checked ? '16px' : '2px', width: '16px', height: '16px', borderRadius: '50%',
-          background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.3)', transition: 'inset-inline-start .2s',
-        }} />
+        {/* הכפתור הלבן כמחלקה (gm-autoclock-knob ב-login.css) ולא כ-style: design-overrides.css דורס רקע לבן inline */}
+        <span className="gm-autoclock-knob" style={{ insetInlineStart: checked ? '16px' : '2px' }} />
       </span>
       <input type="checkbox" checked={checked} disabled={disabled} onChange={toggle} aria-label={AUTO_CLOCK_LABEL} style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px', margin: 0 }} />
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
