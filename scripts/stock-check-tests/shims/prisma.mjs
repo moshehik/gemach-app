@@ -95,6 +95,19 @@ function model(name) {
     findMany: async (args) => all(args),
     findFirst: async (args) => all({ ...args, take: 1 })[0] || null,
     findUnique: async (args) => { (globalThis.__QUERIES ||= []).push(`${name}.findUnique`); return rows().find((r) => match(r, args.where)) || null; },
+    // groupBy מינימלי (app/api/stock-check/options/route.js): by + _count._all; orderBy/take מתעלמים.
+    groupBy: async (args) => {
+      (globalThis.__QUERIES ||= []).push(`${name}.groupBy`);
+      const by = args.by || [];
+      const groups = new Map();
+      for (const r of rows().filter((x) => match(x, args.where))) {
+        const key = by.map((f) => JSON.stringify(r[f] ?? null)).join('|');
+        const g = groups.get(key) || Object.assign(Object.fromEntries(by.map((f) => [f, r[f] ?? null])), { _count: { _all: 0 } });
+        g._count._all += 1;
+        groups.set(key, g);
+      }
+      return [...groups.values()];
+    },
     count: async (args) => all(args).length,
     create: blocked('create'), createMany: blocked('createMany'), update: blocked('update'), updateMany: blocked('updateMany'),
     upsert: blocked('upsert'), delete: blocked('delete'), deleteMany: blocked('deleteMany'),

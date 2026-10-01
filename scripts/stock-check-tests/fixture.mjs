@@ -15,6 +15,8 @@ export function buildDb() {
     { id: 'mC', name: 'שמלת תחרה', barcodePrefix: 811, isDeleted: false },
     { id: 'mD', name: 'דגם מחוק', barcodePrefix: 999, isDeleted: true },
     { id: 'mE', name: 'שמלת ערב סגולה', barcodePrefix: 550, isDeleted: false },
+    // כתיבי מידה כמו בנתונים האמיתיים (2.10.2026): אפס מוביל, "8" לצד "08", רווחים, עשרוני, אות עברית
+    { id: 'mF', name: 'שמלת ילדה', barcodePrefix: 700, isDeleted: false },
   ];
   const item = (id, dressModelId, sizeText, over = {}) => ({
     id, dressModelId, sizeText, quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false,
@@ -29,6 +31,8 @@ export function buildDb() {
     item('c1', 'mC', '12', { quantity: 2 }), item('c2', 'mC', '38-40'),
     item('d1', 'mD', '12'),
     item('e1', 'mE', '12'), item('e2', 'mE', '36'), item('e3', 'mE', '40', { quantity: 2 }),
+    item('f1', 'mF', '04'), item('f2', 'mF', '06'), item('f3', 'mF', '06'), item('f4', 'mF', '08'), item('f5', 'mF', '8'),
+    item('f6', 'mF', '  2'), item('f7', 'mF', '06.1'), item('f8', 'mF', '36א'),
   ];
   const di = (id) => { const x = dressItem.find((i) => i.id === id); return { id: x.id, dressModelId: x.dressModelId, sizeText: x.sizeText }; };
   const booking = (id, itemId, over = {}) => ({
@@ -77,3 +81,4 @@ export function buildDb() {
 // זמינות צפויה ביום היעד (חציצה 3, דילוג סופ"ש), לפי הנתונים למעלה:
 //   A: 10→1, 12→0, 14→1, 36→1, כללי→1     B: 34→0, 36→1, 38→1, 40→0
 //   C: 12→2, 38-40→1                        E: 12→0, 36→0, 40→0 (חו"ל, ר' למעלה)   D: דגם מחוק - לא קיים
+//   F (בלי הזמנות): 04→1, 06→2, 08→1 + 8→1 (יחד מידה 8 = 2), "  2"→1 (מידה 2), 06.1→1, 36א→1

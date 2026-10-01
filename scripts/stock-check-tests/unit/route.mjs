@@ -58,6 +58,15 @@ eq('unknown model -> 200 with warning', [res.status, res.__json.results.length, 
 res = await get(`?date=2026-13-01&sizes=36`);
 eq('invalid month', [res.status, res.__json.code], [400, 'invalid_date']);
 
+// החלטות הבעלים 2.10.2026 + כתיבי מידה
+res = await get('?date=2020-01-01&model=549');
+eq('GQ-06d: past date allowed through the route', [res.status, res.__json.date, res.__json.results.length], [200, '2020-01-01', 1]);
+res = await get(`?date=${TARGET}&sizes=06,6,%2008&flex=06`);
+eq('"06"/"6" collapse, " 08" trimmed, flex by spelling', res.__json.query.sizes.map((s) => [s.size, s.flexible, s.candidates]), [['06', true, ['4', '6', '8']], ['08', false, ['8']]]);
+eq('padded sizes find model F', res.__json.results.map((r) => [r.modelCode, r.free]), [[700, 2]]);
+res = await get(`?date=${TARGET}&sizes=38-40&flex=all`);
+eq('flex=all on a non-numeric size -> exact, flexible:false', [res.__json.query.sizes[0].flexible, res.__json.results.map((r) => r.modelCode)], [false, [811]]);
+
 // שגיאה פנימית (DB נופל) -> 500 בלי דליפת פרטים (השגיאה נרשמת ללוג בכוונה - זה הרעש שמודפס כאן)
 globalThis.__DB = null;
 res = await get(`?date=${TARGET}&sizes=36`);

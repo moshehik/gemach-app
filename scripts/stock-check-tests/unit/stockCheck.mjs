@@ -267,5 +267,58 @@ for (const [label, day, before, after] of [['DST start Fri', '2026-03-27', '2026
   eq(`${label} ${day}: date echoed unchanged`, r.date, after);
 }
 
+/* ---------- נרמול מפתח המידה (אפס מוביל / רווחים / "8" לצד "08") - אחרי בדיקת הנתונים האמיתיים 2.10.2026 ---------- */
+eq('normalizeSizeKey', ['06', '6', ' 06 ', '00', '100', '06.1', '36א', '38-40', '', null, undefined, 'כללי'].map(sc.normalizeSizeKey),
+  ['6', '6', '6', '0', '100', '06.1', '36א', '38-40', 'כללי', 'כללי', 'כללי', 'כללי']);
+eq('candidates 06 flex -> normalized 4/6/8', sc.candidateSizes('06', true), ['4', '6', '8']);
+eq('candidates 100 flex', sc.candidateSizes('100', true), ['98', '100', '102']);
+eq('candidates " 08" exact -> key 8', sc.candidateSizes(' 08', false), ['8']);
+eq('normalizeSizeRequests: "06" and "6" are one request; flex by either spelling', sc.normalizeSizeRequests(['06', '6', ' 8'], ['6']).map((r) => [r.size, r.key, r.flexible, r.candidates]),
+  [['06', '6', true, ['4', '6', '8']], ['8', '8', false, ['8']]]);
+const padded = { '04': { available: 1 }, '06': { available: 2 }, '08': { available: 1 }, '8': { available: 1 }, ' 10': { available: 1 }, '06.1': { available: 1 }, '': { available: 1 } };
+eq('bucketAvailability: merged keys, display = DB spelling when unique', [...sc.bucketAvailability(padded).values()].map((b) => [b.key, b.free, b.display]),
+  [['8', 2, '8'], ['4', 1, '04'], ['6', 2, '06'], ['10', 1, '10'], ['06.1', 1, '06.1'], ['כללי', 1, 'כללי']]); // '8' ראשון: מפתח שלם של אובייקט JS
+eq('evaluateModel: "6" flex on padded data = 04+06+08/8', sc.evaluateModel(padded, sc.normalizeSizeRequests(['6'], true)),
+  { sizes: [{ size: '6', free: 5, flexible: true, candidates: [{ size: '04', free: 1 }, { size: '06', free: 2 }, { size: '8', free: 2 }] }], free: 5 });
+eq('evaluateModel: "08" exact counts "08" and "8" together', sc.evaluateModel(padded, sc.normalizeSizeRequests(['08'])).free, 2);
+eq('evaluateModel: "06.1" flex -> exact (not an integer)', sc.evaluateModel(padded, sc.normalizeSizeRequests(['06.1'], true)), { sizes: [{ size: '06.1', free: 1, flexible: false, candidates: [{ size: '06.1', free: 1 }] }], free: 1 });
+
+reset();
+r = await run({ sizes: ['8'] });
+eq('size "8" by size only: finds padded "08" + "8" of F (2 together); nothing else', brief(r), [[700, 2, '8:2']]);
+r = await run({ sizes: ['06'] });
+eq('size "06" exact: F 06 = 2, displayed as in DB', [brief(r), r.results[0].sizes[0].candidates], [[[700, 2, '06:2']], [{ size: '06', free: 2 }]]);
+r = await run({ sizes: ['6'] });
+eq('size "6" = same as "06"', brief(r), [[700, 2, '6:2']]);
+r = await run({ sizes: ['06'], flexible: true });
+eq('size "06" flex: 04(1)+06(2)+8(2) = 5', brief(r), [[700, 5, '06:5[04=1,06=2,8=2]']]);
+r = await run({ sizes: ['2'] });
+eq('size "2" matches "  2" (spaces trimmed)', brief(r), [[700, 1, '2:1']]);
+r = await run({ sizes: ['36א'] });
+eq('hebrew-suffixed size exact', brief(r), [[700, 1, '36א:1']]);
+r = await run({ sizes: ['06.1'], flexible: true });
+eq('decimal size: flex ignored, exact match', [brief(r), r.query.sizes[0].flexible], [[[700, 1, '06.1:1']], false]);
+r = await run({ models: ['700'] });
+eq('model F only: all sizes, merged "8", sum', brief(r), [[700, 8, '2:1', '04:1', '06:2', '06.1:1', '8:2', '36א:1']]);
+r = await run({ sizes: ['06', '8'], flexible: ['8'] });
+eq('two sizes (and), one flex: 06 exact(2), 8 flex = 06(2)+8(2)+10(0) = 4 -> min 2', brief(r), [[700, 2, '06:2', '8:4[06=2,8=2]']]);
+r = await run({ sizes: ['6', '06'] });
+eq('"6" and "06" collapse to one requested size', [r.query.sizes.length, brief(r)], [1, [[700, 2, '6:2']]]);
+
+/* ---------- החלטות הבעלים 2.10.2026 (GQ-06b/d) + "וגם" בשלוש מידות ---------- */
+reset();
+r = await sc.checkStock({ date: '2020-01-01', models: ['549'] });
+eq('GQ-06d: a past date is allowed and computed (no bookings there -> all active A items free)', [r.date, brief(r)], ['2020-01-01', [[549, 7, '10:2', '12:1', '14:1', '36:2', 'כללי:1']]]);
+r = await sc.checkStock({ date: '2020-01-01', sizes: ['36'] });
+eq('GQ-06d: past date by size only', brief(r), [[549, 2, '36:2'], [550, 1, '36:1'], [622, 1, '36:1']]);
+r = await run({ models: ['549'] });
+eq('GQ-06b: model only -> row "free" = sum over all sizes', r.results[0].free, r.results[0].sizes.reduce((a, s) => a + s.free, 0));
+r = await run({ models: ['549'], sizes: ['10', '14', '36'] });
+eq('three sizes AND: all three free on A -> min', brief(r), [[549, 1, '10:1', '14:1', '36:1']]);
+r = await run({ models: ['549'], sizes: ['10', '14', '12'] });
+eq('three sizes AND: one of them (12) not free -> model dropped', brief(r), []);
+r = await run({ models: ['549'], sizes: ['10', '14', '12'], flexible: ['12'] });
+eq('three sizes AND, 12 flex rescues via 10/14', brief(r), [[549, 1, '10:1', '14:1', '12:2[10=1,14=1]']]);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
