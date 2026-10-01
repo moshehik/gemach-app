@@ -1,26 +1,40 @@
+// FROZEN COPY of lib/deliveries.js as of origin/main 4cd89a6f (2026-10-01), BEFORE the non-working-days change.
+// Used only by deliveries-parity.test.mjs as the 'before' reference. Do not edit, do not import from app code.
+
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { calculateOrderStatus } from '@/lib/orderStatus';
-import { getHebrewDateString, getIsraelDayRange, getIsraelDateKey } from '@/lib/hebrewDate';
-import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, addBusinessDays, inverseBusinessDays, keyFromLocalDate } from '@/lib/businessDays';
+import { getHebrewDateString, getIsraelDayRange, toIsraelCalendarDate } from '@/lib/hebrewDate';
 
 // הועבר מ-app/api/deliveries/route.js (2026-09-16, §C/§D במסמך docs/deliveries-feature-plan-2026-09-16.md)
 // כדי שגם שליחת נתונים למשלוחן במייל (courier-email route) תוכל להשתמש באותה שאילתה
 // בדיוק - בלי לשכפל את חישוב חלונות ההלוך/חזור. ההתנהגות של app/api/deliveries/route.js
 // עצמו לא השתנתה, רק פוצלה לכאן. שרת-בלבד (מייבא prisma) - לוגיקת הקיבוץ/כותרות
 // שגם הדפסה (client-side) צריכה יושבת ב-lib/deliveryCourier.js, בלי תלות בפריזמה.
-//
-// ספירת "ימים לפני/אחרי האירוע" (2026-10-01, החלטת הבעלים - DECISIONS-לוז-יומי.md סעיפים 1/3/4):
-// דרך הכלל האחיד של lib/businessDays.js. חג, ערב חג והימים שהבעלים סימן "ללא פעילות" מדולגים
-// תמיד (אין משלוח ביום טוב - בשני הגמ"חים); שישי/שבת מדולגים רק כש-delivery_skip_weekends דולק,
-// בדיוק כמו קודם (דיווח a74ffa6d). בלי ימים כאלה בטווח התוצאה זהה לחלוטין לקוד הקודם
-// (הוכח ב-scripts/business-days-tests/deliveries-parity.test.mjs).
-//
-// תיקון האי-סימטריה (אותה החלטה): במצב הרגיל התאריך המבוקש הוא יום היציאה/האיסוף, והקוד
-// הקודם חיפש רק את האירוע ש"N ימי עסקים קדימה" נוחת עליו - כך שאירוע שנופל בעצמו על יום לא
-// עובד (שבת, חג) לא נמצא לעולם, למרות שההדפסה/המייל (שמחשבים אחורה מהאירוע) כן נותנים לו יום
-// יציאה. עכשיו החלון הוא ההופכי המלא (inverseBusinessDays): כל האירועים שיום היציאה המחושב
-// אחורה מהם הוא התאריך המבוקש. כשאין ימים לא-עובדים בדרך החלון מתכווץ ליום אחד, כמו קודם.
+
+function addDays(date, days, skipWeekends = false) {
+  if (!skipWeekends) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+  // מדלג על שישי (5) ושבת (6) - דיווח a74ffa6d (נווה יעקב, 2026-09-22): תאריך
+  // ההוצאה/איסוף של משלוח צריך להיספר בימי-עסקים בלבד, לא ימים קלנדריים.
+  const result = new Date(date);
+  let remaining = Math.abs(days);
+  const direction = days > 0 ? 1 : -1;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + direction);
+    const day = result.getDay();
+    if (day === 5 || day === 6) continue;
+    remaining--;
+  }
+  return result;
+}
+
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 // גבולות היום לפי אזור הזמן של ישראל, לא לפי setHours (שתלוי באזור הזמן של השרת
 // שמריץ את הקוד - UTC ב-Vercel, לא ישראל). דיווח e179c090 (משלוחים מציג הזמנות של
@@ -28,13 +42,27 @@ import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, addBusinessDa
 // UTC, אז גבול לפי setHours היה מפספס אותן ליום הלועזי הלא-נכון. ר' getIsraelDayRange
 // ב-lib/hebrewDate.js לתיעוד המלא (וגם toIsraelCalendarDate/toIsraelDateKey לאותה בעיה
 // במקומות אחרים בקוד).
-function windowRange(win) {
-  if (!win) return null;
-  return { start: getIsraelDayRange(win.startKey).start, end: getIsraelDayRange(win.endKey).end };
+function dayRange(date) {
+  return getIsraelDayRange(dateKey(date));
 }
 
-function inWindow(eventTime, range) {
-  return !!range && eventTime >= range.start.getTime() && eventTime <= range.end.getTime();
+// 'YYYY-MM-DD' של יום קלנדרי ישראלי (עוגן UTC מ-toIsraelCalendarDate) פלוס/מינוס ימים.
+function anchorPlusDaysIso(anchor, days, skipWeekends = false) {
+  if (!skipWeekends) {
+    const d = new Date(anchor);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+  const result = new Date(anchor);
+  let remaining = Math.abs(days);
+  const direction = days > 0 ? 1 : -1;
+  while (remaining > 0) {
+    result.setUTCDate(result.getUTCDate() + direction);
+    const day = result.getUTCDay();
+    if (day === 5 || day === 6) continue;
+    remaining--;
+  }
+  return result.toISOString().slice(0, 10);
 }
 
 /**
@@ -54,7 +82,7 @@ function inWindow(eventTime, range) {
  */
 export async function getDeliveriesForDate(requestedDate) {
   const allSettings = await getAllCachedSettings();
-  const settingsRows = allSettings.filter(s => ['delivery_days_before', 'delivery_days_after', 'deliveries_select_by_event_date', 'delivery_skip_weekends', NON_WORKING_DAYS_SETTING_KEY].includes(s.key));
+  const settingsRows = allSettings.filter(s => ['delivery_days_before', 'delivery_days_after', 'deliveries_select_by_event_date', 'delivery_skip_weekends'].includes(s.key));
   const settingsMap = settingsRows.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
   const parsedBefore = parseInt(settingsMap.delivery_days_before, 10);
   const parsedAfter = parseInt(settingsMap.delivery_days_after, 10);
@@ -62,37 +90,21 @@ export async function getDeliveriesForDate(requestedDate) {
   const daysAfter = isNaN(parsedAfter) ? 1 : parsedAfter;
   // fallback כשהשורה חסרה ב-DB: כבוי = ההתנהגות הישנה
   const selectByEventDate = settingsMap.deliveries_select_by_event_date === 'true';
-  // fallback כשהשורה חסרה ב-DB: כבוי = שישי/שבת נספרים כימים רגילים (ההתנהגות הישנה);
-  // חג/ערב חג/רשימת הבעלים מדולגים בכל מקרה (ר' הערת הכותרת).
+  // fallback כשהשורה חסרה ב-DB: כבוי = ימים קלנדריים כרגיל (ההתנהגות הישנה)
   const skipWeekends = settingsMap.delivery_skip_weekends === 'true';
-  const nonWorking = parseNonWorkingDaysSetting(settingsMap[NON_WORKING_DAYS_SETTING_KEY] ?? null);
-  const countOpts = { skipWeekend: skipWeekends };
-  const plusBusiness = (key, n) => addBusinessDays(key, n, nonWorking, countOpts);
-  const inverse = (key, n) => inverseBusinessDays(key, n, nonWorking, countOpts);
 
-  // requestedDate הוא Date בחצות מקומית (ר' parseDateParam בנתיב) - המפתח לפי הרכיבים המקומיים, כמו קודם.
-  const requestedKey = keyFromLocalDate(requestedDate);
+  const outboundRange = dayRange(addDays(requestedDate, daysBefore, skipWeekends));
+  const outboundOneDayBeforeRange = daysBefore !== 1 ? dayRange(addDays(requestedDate, 1, skipWeekends)) : null;
+  const returnRange = dayRange(addDays(requestedDate, -daysAfter, skipWeekends));
 
-  // חלונות תאריכי-אירוע שיום היציאה/האיסוף שלהם הוא התאריך המבוקש (ר' הערת הכותרת על הסימטריה).
-  const outboundRange = windowRange(inverse(requestedKey, -daysBefore));
-  // חלון נפרד להזמנות "משלוח יום לפני" רק כש-delivery_days_before אינו 1 (אחרת זה אותו חלון, ואין
-  // להוסיף אותו פעמיים לשאילתה). null = אין יום כזה (התאריך המבוקש אינו יום עובד) - לא נופלים לחלון
-  // הרגיל, אחרת הזמנת "יום לפני" הייתה מופיעה ביום הלא נכון.
-  const outboundOneDayBeforeRange = daysBefore !== 1 ? windowRange(inverse(requestedKey, -1)) : null;
-  const oneDayBeforeEffectiveRange = daysBefore !== 1 ? outboundOneDayBeforeRange : outboundRange;
-  const returnRange = windowRange(inverse(requestedKey, daysAfter));
-
-  const eventDayRange = selectByEventDate ? getIsraelDayRange(requestedKey) : null;
+  const eventDayRange = selectByEventDate ? dayRange(requestedDate) : null;
   const eventDateWhere = selectByEventDate
     ? [{ eventDate: { gte: eventDayRange.start, lte: eventDayRange.end } }]
     : [
-        ...(outboundRange ? [{ eventDate: { gte: outboundRange.start, lte: outboundRange.end } }] : []),
+        { eventDate: { gte: outboundRange.start, lte: outboundRange.end } },
         ...(outboundOneDayBeforeRange ? [{ eventDate: { gte: outboundOneDayBeforeRange.start, lte: outboundOneDayBeforeRange.end } }] : []),
-        ...(returnRange ? [{ eventDate: { gte: returnRange.start, lte: returnRange.end } }] : [])
+        { eventDate: { gte: returnRange.start, lte: returnRange.end } }
       ];
-
-  // יום לא עובד במצב הרגיל: שום משלוח לא יוצא ולא נאסף בו (אין חלון בכלל) - בלי שאילתה.
-  if (eventDateWhere.length === 0) return { daysBefore, daysAfter, selectByEventDate, data: [] };
 
   const orders = await prisma.order.findMany({
     where: {
@@ -114,25 +126,25 @@ export async function getDeliveriesForDate(requestedDate) {
     if (!order.eventDate) continue;
 
     const eventTime = new Date(order.eventDate).getTime();
-    const effectiveOutboundRange = order.deliveryOneDayBefore ? oneDayBeforeEffectiveRange : outboundRange;
+    const effectiveOutboundRange = order.deliveryOneDayBefore ? (outboundOneDayBeforeRange || outboundRange) : outboundRange;
     const orderDirection = order.deliveryDirection || 'הלוך-חזור';
     const directions = [];
     let dispatchDates;
     if (selectByEventDate) {
       // האירוע כבר נבחר לפי היום הישראלי בשאילתה - כאן רק כיוונים + ימי יציאה/איסוף מחושבים
-      const eventKey = getIsraelDateKey(order.eventDate);
+      const eventAnchor = toIsraelCalendarDate(order.eventDate);
       dispatchDates = {};
       if (orderDirection !== 'חזור') {
         directions.push('out');
-        dispatchDates.out = plusBusiness(eventKey, -(order.deliveryOneDayBefore ? 1 : daysBefore));
+        dispatchDates.out = anchorPlusDaysIso(eventAnchor, -(order.deliveryOneDayBefore ? 1 : daysBefore), skipWeekends);
       }
       if (orderDirection !== 'הלוך') {
         directions.push('return');
-        dispatchDates.return = plusBusiness(eventKey, daysAfter);
+        dispatchDates.return = anchorPlusDaysIso(eventAnchor, daysAfter, skipWeekends);
       }
     } else {
-      if (orderDirection !== 'חזור' && inWindow(eventTime, effectiveOutboundRange)) directions.push('out');
-      if (orderDirection !== 'הלוך' && inWindow(eventTime, returnRange)) directions.push('return');
+      if (orderDirection !== 'חזור' && eventTime >= effectiveOutboundRange.start.getTime() && eventTime <= effectiveOutboundRange.end.getTime()) directions.push('out');
+      if (orderDirection !== 'הלוך' && eventTime >= returnRange.start.getTime() && eventTime <= returnRange.end.getTime()) directions.push('return');
     }
     if (directions.length === 0) continue;
 

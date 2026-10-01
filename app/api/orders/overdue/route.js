@@ -3,18 +3,22 @@ import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { getCachedSetting } from '@/lib/settingsCache';
+import { getNonWorkingDaysConfig } from '@/lib/businessDaysServer';
 
 export const dynamic = 'force-dynamic';
 
 // משפחות שעדיין לא החזירו והאיחור עבר את הסף (אותה נוסחה בדיוק כמו בר ההחזרה המהיר
 // ב-app/rentals/page.js וב-RentalReturnModal - ר' lib/lateReturn.js). המסנן ב-DB
-// רחב-בכוונה (עוד יום מעבר לסף) כדי לכסות דילוג שישי-שבת בלי לסרוק את כל ההזמנות;
-// הסינון המדויק (כולל הדילוג) קורה ב-JS דרך getLateReturnInfo על קבוצת המועמדים.
+// רחב-בכוונה (עוד יום מעבר לסף) כדי לכסות דילוג ימים לא-עובדים בלי לסרוק את כל ההזמנות -
+// מועד ההחזרה הוא תמיד לפחות יום אחרי האירוע, ולכן כל הזמנה מאחרת עומדת גם במסנן הרחב;
+// הסינון המדויק (כולל דילוג שישי/שבת/חג/ערב חג/ימים ללא פעילות) קורה ב-JS דרך
+// getLateReturnInfo על קבוצת המועמדים.
 export async function GET() {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const thresholdSetting = await getCachedSetting('late_return_threshold_days');
     const thresholdDays = Number(thresholdSetting?.value) || LATE_RETURN_THRESHOLD_DAYS;
+    const nonWorkingDays = await getNonWorkingDaysConfig();
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - (thresholdDays - 1));
 
@@ -38,7 +42,7 @@ export async function GET() {
     });
 
     const orders = candidates
-      .map((o) => ({ order: o, late: getLateReturnInfo(o, thresholdDays) }))
+      .map((o) => ({ order: o, late: getLateReturnInfo(o, thresholdDays, { nonWorkingDays }) }))
       .filter((o) => o.late.isLate)
       .map((o) => ({
         orderId: o.order.orderId,
