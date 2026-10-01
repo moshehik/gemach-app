@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { getEmployeeEffectiveValue } from '@/lib/permissions';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { findLatestOpenShift } from '@/lib/openShift';
 
 export async function GET(request) {
   try {
@@ -50,13 +51,8 @@ export async function GET(request) {
     // משמרת פתוחה (exitTime: null) בכל תאריך - לא רק היום: עובד שנכנס לפני חצות ועדיין לא יצא
     // נשאר עם משמרת מתוארכת ל"אתמול" (ר' הערה ב-/api/attendance), וסינון לפי תאריך היה
     // מכבה את "בעבודה כעת" בחצות.
-    const activeShift = await prisma.shift.findFirst({
-      where: {
-        employeeId: employee.id,
-        exitTime: null
-      },
-      orderBy: { id: 'desc' }
-    });
+    // כשיש כמה משמרות פתוחות (למשל ישנות מ-Access) מחזירים את העדכנית לפי שעת כניסה - לא id אקראי (ר' lib/openShift.js).
+    const activeShift = await findLatestOpenShift(prisma, employee.id);
 
     return NextResponse.json({ 
       success: true, 
