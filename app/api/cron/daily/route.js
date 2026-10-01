@@ -8,6 +8,7 @@ import {
 import { emailSubject } from '@/lib/emailCatalog';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,7 +139,9 @@ export async function GET(request) {
         take: 200
       });
       const lateReturnThresholdDays = Number(get('late_return_threshold_days')) || LATE_RETURN_THRESHOLD_DAYS;
-      const overdueOrders = candidates.filter(o => getLateReturnInfo(o, lateReturnThresholdDays).isLate);
+      // אותו כלל "יום לא עובד" כמו בכל המערכת (שישי/שבת/חג/ערב חג + ימים ללא פעילות) - lib/businessDays.js
+      const nonWorkingDays = parseNonWorkingDaysSetting(get(NON_WORKING_DAYS_SETTING_KEY) ?? null);
+      const overdueOrders = candidates.filter(o => getLateReturnInfo(o, lateReturnThresholdDays, { nonWorkingDays }).isLate);
       for (const o of overdueOrders) {
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;

@@ -13,6 +13,7 @@ import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG } from '@/lib/businessDays';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import RentedPastEventWidget from '@/app/components/RentedPastEventWidget';
 
@@ -147,6 +148,7 @@ export default function RentalsPage() {
   const [order, setOrder] = useState('desc');
   const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף
   const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
+  const [nonWorkingDays, setNonWorkingDays] = useState(EMPTY_NON_WORKING_CONFIG);
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(arr => {
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'rentals_sort_recent_first')?.value : null;
@@ -155,6 +157,9 @@ export default function RentalsPage() {
       if (hide === 'true') setHideCustomSpacing(true);
       const threshold = Array.isArray(arr) ? arr.find(s => s.key === 'late_return_threshold_days')?.value : null;
       if (threshold) setLateReturnThresholdDays(Number(threshold) || LATE_RETURN_THRESHOLD_DAYS);
+      // ימים ללא פעילות שהבעלים סימן (ניהול היומן) - משלימים את שישי/שבת/חג/ערב חג במועד ההחזרה הצפוי
+      const nonWorkingRaw = Array.isArray(arr) ? arr.find(s => s.key === NON_WORKING_DAYS_SETTING_KEY)?.value : null;
+      setNonWorkingDays(parseNonWorkingDaysSetting(nonWorkingRaw ?? null));
     }).catch(()=>{});
   }, []);
 
@@ -318,7 +323,7 @@ export default function RentalsPage() {
         const lookupRes = await fetch(`/api/returns/scan?barcode=${encodeURIComponent(cleanBarcode)}`);
         if (lookupRes.ok) {
           const lookupData = await lookupRes.json();
-          const { isLate, daysLate } = getLateReturnInfo(lookupData.order, lateReturnThresholdDays);
+          const { isLate, daysLate } = getLateReturnInfo(lookupData.order, lateReturnThresholdDays, { nonWorkingDays });
           if (isLate) {
             const wantsFullCard = await window.customConfirm(
               `ההחזרה מאוחרת ב-${daysLate} ימים ממועד ההחזרה הצפוי. יש לטפל בהחזרה זו דרך כרטיס ההשכרה המלא (כדי לתעד ולסמן במידת הצורך כלא תקין). לפתוח את כרטיס ההזמנה?`,
