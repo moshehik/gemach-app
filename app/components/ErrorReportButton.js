@@ -204,7 +204,9 @@ function SketchBlock({ reply, onDecided }) {
   );
 }
 
-export default function ErrorReportButton() {
+// trigger (אופציונלי): פונקציה ({ onOpen, unreadCount }) => JSX שמחליפה את כפתור ה-icon-btn הישן. משמש את
+// המעטפת החדשה (app/components/menu/MenuA5Shell.js); בלעדיו הכפתור הישן מרונדר בדיוק כמו קודם.
+export default function ErrorReportButton({ trigger } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'archive' or 'new' or 'thread'
   const [userText, setUserText] = useState('');
@@ -877,6 +879,10 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
   return (
     <>
       <input ref={fileInputRef} type="file" multiple accept={ATTACHMENT_FILE_INPUT_ACCEPT} onChange={handleFilesChosen} style={{ display: 'none' }} />
+      {typeof trigger === 'function' ? trigger({
+        onOpen: () => { setIsOpen(true); setActiveTab('list'); fetchReports(); },
+        unreadCount,
+      }) : (
       <button
         type="button"
         className="icon-btn"
@@ -886,6 +892,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
         <svg className="icon"><use href="#i-alert-circle" /></svg>
         {unreadCount > 0 && <span className="dot" />}
       </button>
+      )}
 
       {isOpen && mounted && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
