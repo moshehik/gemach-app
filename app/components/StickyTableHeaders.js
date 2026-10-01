@@ -27,7 +27,8 @@ function isScrollable(el) {
 /* גובה הנאב-בר האמיתי — כדי שכותרות טבלה בעמודים שנגללים עם הדפדפן
    ייעצרו בדיוק מתחת לכותרת המערכת ולא יתחבאו מאחוריה. */
 function syncNavbarHeight() {
-  const nav = document.querySelector('.navbar');
+  // [data-sticky-nav]: הסרגל העליון של המעטפת החדשה (app/components/menu/MenuA5Shell.js). במעטפת הישנה אין אלמנט כזה.
+  const nav = document.querySelector('.navbar, [data-sticky-nav]');
   const height = nav && nav.offsetParent !== null ? nav.getBoundingClientRect().height : 0;
   const next = `${Math.round(height)}px`;
   const root = document.documentElement;
