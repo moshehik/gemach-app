@@ -12,7 +12,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
 import { shiftClockInfo } from '@/lib/menu/shiftClock';
 import { usePopup } from '../PopupProvider';
@@ -50,13 +50,19 @@ export default function MenuA5Shell({
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!tree.user || !tree.user.logged) return;
+    const apply = (data) => {
+      if (data && data.success) { setMe(data.employee); setShift(data.activeShift || null); }
+    };
     fetchSharedJson('/api/me', { ttl: TTL.STATIC })
-      .then((data) => {
-        if (data && data.success) { setMe(data.employee); setShift(data.activeShift || null); }
-      })
+      .then(apply)
       .catch((err) => {
         if (!((err && err.message) || '').includes('HTTP 401')) console.warn('menu: /api/me failed', err && err.message);
       });
+    // מנוי למטמון: רישום כניסה/יציאה (POST ל-/api/attendance, מכל מסך כולל /punch-clock באותו דפדפן) מבטל את /api/me
+    // במטמון, ו-apiCache טוען אותו מחדש מיד רק אם יש לו מנוי פעיל - בלי המנוי הזה השעון נשאר על המשמרת הישנה.
+    // גם חזרה לחלון (focus) מרעננת את הערך דרך אותו מנגנון.
+    const unsubscribe = subscribe('/api/me', () => apply(readCache('/api/me')));
+    return unsubscribe;
   }, [tree.user]);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
