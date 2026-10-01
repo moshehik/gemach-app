@@ -495,7 +495,7 @@ t('כל אייקון בדף הבית החדש קיים ב-sprite המוטמע (7
   // הסריקה לא יכולה "להצליח" בשקט כשהיא לא מוצאת כלום
   assert.ok(src.size >= 20, `found only ${src.size} icon names in source`);
   assert.ok(data.size >= 20, `found only ${data.size} icon names in data tables`);
-  for (const n of ['search', 'sparkle', 'sliders', 'sn-history', 'x', 'send', 'alert', 'refresh', 'info', 'chev', 'rows', 'table', 'plus', 'minus', 'check', 'copy', 'user', 'file', 'dress']) assert.ok(src.has(n) || data.has(n), `scan missed ${n}`);
+  for (const n of ['search', 'sparkle', 'sliders', 'x', 'send', 'alert', 'refresh', 'info', 'chev', 'rows', 'table', 'plus', 'minus', 'check', 'copy', 'user', 'file', 'dress']) assert.ok(src.has(n) || data.has(n), `scan missed ${n}`);
   for (const [n, f] of src) assert.ok(SPRITE_IDS.has(n), `icon "${n}" used in ${f} is missing from spriteSymbols.js`);
   for (const n of data) assert.ok(SPRITE_IDS.has(n), `icon "${n}" from the home data tables is missing from spriteSymbols.js`);
 });
@@ -513,6 +513,26 @@ t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSpri
   const shell = readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8');
   assert.equal((shell.match(/<MenuSprite \/>/g) || []).length, 1);
   assert.ok(shell.indexOf('<A5ShellProvider') < shell.indexOf('<MenuSprite />'));
+});
+
+console.log('שורת החיפוש: בלי כפתור "אחרונים"');
+t('אין כפתור/אייקון "אחרונים" באף שלב של שורת החיפוש (פתיחה, אחרי חיפוש, חכם, מתקדם) ואין קוד מת שלו', () => {
+  const a5 = homeSource('HomeA5.js');
+  // כפתורי מצב החיפוש: רק "לחיפוש חכם / לחיפוש רגיל" ו"לחיפוש מתקדם"; השורה מרונדרת אחת ומשותפת לכל השלבים (modeButtons)
+  assert.equal((a5.match(/className="cmode-b/g) || []).length, 2, 'cmode-b buttons: smart/plain + advanced only');
+  assert.ok(!/aria-label="אחרונים"|data-tip="אחרונים"/.test(a5), 'recent button label found');
+  assert.ok(!/cmode-i|recentOpen|setRecentOpen|HomeRecents|getHistory|agy_history|recentRows/.test(a5), 'HomeA5.js still has recent-searches code');
+  assert.ok(!/cmode-i/.test(homeSource('home.css')), 'home.css still styles the recent button');
+  assert.ok(!readdirSync(HOME_DIR).includes('HomeRecents.js'), 'HomeRecents.js should be gone');
+  // אף אחד מקבצי הדף לא מרנדר אייקון היסטוריה בשורת החיפוש
+  for (const f of readdirSync(HOME_DIR).filter((x) => x.endsWith('.js') && x !== 'LegacyHome.js')) {
+    assert.ok(!/<Ic\s+id="(sn-history|clock|history)"/.test(homeSource(f)), `${f} renders a history icon`);
+  }
+});
+t('נתוני "אחרונים" (recentRows ו-agy_history ב-lib/historyManager) נשארים לשימוש התפריט העליון', () => {
+  assert.equal(typeof recentRows, 'function');
+  const hm = readFileSync(new URL('../lib/historyManager.js', import.meta.url), 'utf8');
+  assert.ok(/export const getHistory/.test(hm));
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
