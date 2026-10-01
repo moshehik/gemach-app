@@ -3,8 +3,9 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
-import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
-import { addDaysSkippingWeekends } from '../../../lib/clientInventory';
+import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate } from '../../../lib/hebrewDate';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG, subtractBusinessDays } from '../../../lib/businessDays';
+import { getExpectedReturnDate } from '../../../lib/lateReturn';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
@@ -18,16 +19,16 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 // ever populated for the abroad/multi-day flow (see Order.toDate), and there's no
 // SystemSetting for a standard return hour. Best-effort: use the order's actual
 // toDate/returnDate when set (abroad/long-term orders), otherwise fall back to the
-// day after the event (skipping Fri/Sat, via lib/clientInventory.js's client-safe
-// addDaysSkippingWeekends - same helper components/orders/RentalReturnModal.js uses
-// for the late-return check, so both stay in sync with one implementation).
+// first working day after the event (Fri/Sat/holiday/erev chag/owner-marked days - the
+// unified rule of lib/businessDays.js via getExpectedReturnDate in lib/lateReturn.js, the
+// same computation as the late-return check, so both stay in sync).
 
 // שעת ההחזרה נשלפת מהגדרת standard_return_hour (הגדרות מערכת > הדפסה);
 // זהו רק ה-fallback לשעה שמוצגת אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_RETURN_HOUR = '13:00';
 
 // יום/שעת קבלת השמלות מראש (בקשה בדיווח 4d4456ce, 2026-09-09): 2 ימי-עסקים לפני
-// האירוע (מדלג שישי/שבת/חג - subtractSkippingWeekendsAndChag ב-lib/hebrewDate.js),
+// האירוע (מדלג שישי/שבת/חג/ערב חג/ימים שהבעלים סימן - subtractBusinessDays ב-lib/businessDays.js),
 // בטווח שעות קבוע שנשלף מהגדרת standard_pickup_hours (הגדרות מערכת > הדפסה); זהו
 // רק ה-fallback אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_PICKUP_HOURS = '20:00-21:30';
@@ -41,6 +42,8 @@ export default function PrintOrderPage() {
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [printSettings, setPrintSettings] = useState(null);
+  // ימים שהבעלים סימן "ללא פעילות" (ניהול היומן) - משלימים שישי/שבת/חג/ערב חג בחישוב מועדי האיסוף וההחזרה
+  const [nonWorkingDays, setNonWorkingDays] = useState(EMPTY_NON_WORKING_CONFIG);
   // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
   const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
   const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
@@ -101,6 +104,7 @@ export default function PrintOrderPage() {
           beltNotice: settingsData.find(s => s.key === 'rental_belt_notice')?.value || ''
         };
         setPrintSettings(pSettings);
+        setNonWorkingDays(parseNonWorkingDaysSetting(settingsData.find(s => s.key === NON_WORKING_DAYS_SETTING_KEY)?.value ?? null));
       }
 
       // 21 - בדיקת "שמלה חסרה" לכל הזמנה שנטענה, במקביל - רק כשההגדרה מופעלת
@@ -245,12 +249,10 @@ export default function PrintOrderPage() {
     const balance = Math.max(0, totalObligations - totalPayments);
     const activeItems = ord?.items ? ord.items.filter(i => !i.isDeleted) : [];
     const activePayments = ord?.payments ? ord.payments.filter(p => !p.isDeleted) : [];
-    const returnByDate = ord
-      ? (ord.toDate || ord.returnDate
-        ? new Date(ord.toDate || ord.returnDate)
-        : (ord.eventDate ? addDaysSkippingWeekends(ord.eventDate, 1) : null))
-      : null;
-    const pickupDate = ord?.eventDate ? subtractSkippingWeekendsAndChag(ord.eventDate, 2) : null;
+    // מועד החזרה = toDate/returnDate, או יום העבודה הראשון אחרי האירוע (שישי/שבת/חג/ערב חג/ימים
+    // שהבעלים סימן - הכלל האחיד של lib/businessDays.js, אותו כלל של התראת האיחור); האיסוף = 2 ימי עסקים לפני.
+    const returnByDate = ord ? getExpectedReturnDate(ord, nonWorkingDays) : null;
+    const pickupDate = ord?.eventDate ? subtractBusinessDays(ord.eventDate, 2, nonWorkingDays) : null;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table

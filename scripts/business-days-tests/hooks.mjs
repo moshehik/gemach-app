@@ -19,5 +19,6 @@ export async function resolve(specifier, context, nextResolve) {
   if (specifier.startsWith('@/')) specifier = pathToFileURL(path.join(PROJ, specifier.slice(2))).href;
   const r = await tryResolve(specifier, context, nextResolve);
   if (r.url.endsWith('/app/lib/prisma.js')) return { url: SH('prisma.mjs'), shortCircuit: true };
+  if (r.url.endsWith('/lib/auth.js') && !r.url.includes('node_modules')) return { url: SH('auth.mjs'), shortCircuit: true }; // route tests: always logged in
   return r;
 }

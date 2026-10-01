@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getPrintPrepDate, getIsraelDayRange } from '@/lib/hebrewDate';
+import { getIsraelDayRange } from '@/lib/hebrewDate';
+import { getPrintPrepDateWithConfig, printPrepWindowEndKey } from '@/lib/businessDays';
+import { getNonWorkingDaysConfig } from '@/lib/businessDaysServer';
 
 export const dynamic = 'force-dynamic';
 
 // כמה ימי-לוח קדימה מספיק לחפש אירועים מ"תאריך ההכנה" המבוקש - 3 ימי עסקים
-// יכולים "להימתח" עד כדי כ-7-8 ימי לוח כשיש חג ברצף לשישי/שבת; 12 יום נותן
-// מרווח ביטחון בלי לסרוק את כל בסיס הנתונים.
+// יכולים "להימתח" עד כדי 10 ימי לוח בכלל ברירת המחדל (שישי/שבת/חג/ערב חג), ויותר כשהבעלים
+// סימן ימים סגורים ביומן. לכן החלון נגזר מהכלל והרשימה הנוכחיים (eventRangeForOffset -
+// ההופכי של ספירת ימי העסקים); המספר הקבוע כאן הוא רק רצפה, ולעולם לא צר מהחלון שהיה קודם.
 const LOOKAHEAD_DAYS = 12;
 
 // מנרמל מחרוזת "YYYY-MM-DD" ל-Date בחצות, באותה שיטה בדיוק כמו
@@ -71,10 +74,17 @@ export async function GET(request) {
       });
       orderIds = orders.map(o => o.orderId);
     } else {
+      const nonWorkingDays = await getNonWorkingDaysConfig();
       const eventWindowStart = new Date(targetFrom);
       const eventWindowEnd = new Date(targetTo);
       eventWindowEnd.setDate(eventWindowEnd.getDate() + LOOKAHEAD_DAYS);
       eventWindowEnd.setHours(23, 59, 59, 999);
+      // החלון הנגזר מהכלל (n ימי עסקים אחורה מהאירוע = תאריך ההכנה): מרחיב את הסוף אם צריך, לעולם לא מצמצם
+      const derivedEndKey = printPrepWindowEndKey(fromStr, toStr, nonWorkingDays);
+      if (derivedEndKey) {
+        const derivedEnd = getIsraelDayRange(derivedEndKey).end;
+        if (derivedEnd > eventWindowEnd) eventWindowEnd.setTime(derivedEnd.getTime());
+      }
 
       const candidates = await prisma.order.findMany({
         where: {
@@ -85,9 +95,11 @@ export async function GET(request) {
         orderBy: { eventDate: 'asc' }
       });
 
+      // אותו כלל "יום לא עובד" כמו מועד האיסוף בדף המודפס (כולל ימים שהבעלים סימן סגורים)
       const matches = candidates.filter(o => {
         if (!o.eventDate) return false;
-        const prepDate = getPrintPrepDate(o.eventDate);
+        const prepDate = getPrintPrepDateWithConfig(o.eventDate, nonWorkingDays);
+        if (!prepDate) return false;
         return prepDate.getTime() >= targetFrom.getTime() && prepDate.getTime() <= targetTo.getTime();
       });
       orderIds = matches.map(o => o.orderId);

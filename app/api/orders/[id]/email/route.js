@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../../lib/prisma';
-import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
+import { subtractBusinessDays, israelLocalDate } from '../../../../../lib/businessDays';
+import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
+import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 import { renderOrderCardEmailHtml } from '../../../../../lib/emailTemplates';
 import { normalizeAttachments, postToMailer } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
-import { addDaysSkippingWeekends } from '../../../../../lib/inventory';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
@@ -15,16 +17,16 @@ import { verifyManagerPin } from '@/lib/managerAuth';
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
 
 // "פרטי החזרה" top-of-rental-report line - same best-effort logic as app/print/order/page.js
-// (no dedicated return-deadline field/SystemSetting exists for the standard flow); this is a
-// server-only route so it imports the same lib/inventory.js helper directly, no bundle-size
-// concern the client-side print page has (which uses the lib/clientInventory.js copy instead).
+// (no dedicated return-deadline field/SystemSetting exists for the standard flow); the
+// fallback is the first working day after the event - getExpectedReturnDate in
+// lib/lateReturn.js (unified rule of lib/businessDays.js), shared with the print page.
 // שעת ההחזרה נשלפת מהגדרת standard_return_hour (אותה הגדרה שמזינה את app/print/order/page.js) -
 // זהו רק ה-fallback לשעה שמוצגת אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_RETURN_HOUR = '13:00';
 
 // יום/שעת קבלת השמלות מראש (דיווח 11cd3ecf, 2026-09-10): אותו חישוב בדיוק כמו
-// app/print/order/page.js - 2 ימי-עסקים לפני האירוע (מדלג שישי/שבת/חג, ר'
-// subtractSkippingWeekendsAndChag ב-lib/hebrewDate.js), בטווח שעות קבוע שנשלף
+// app/print/order/page.js - 2 ימי-עסקים לפני האירוע (מדלג שישי/שבת/חג/ערב חג/ימים שהבעלים
+// סימן, ר' subtractBusinessDays ב-lib/businessDays.js), בטווח שעות קבוע שנשלף
 // מהגדרת standard_pickup_hours (הגדרות מערכת > הדפסה); זהו רק ה-fallback אם השורה
 // עוד לא נוצרה ב-DB.
 const STANDARD_PICKUP_HOURS = '20:00-21:30';
@@ -282,12 +284,13 @@ export async function POST(request, { params }) {
       </div>
     `;
 
-    const returnByDate = order.toDate || order.returnDate
-      ? new Date(order.toDate || order.returnDate)
-      : (order.eventDate ? addDaysSkippingWeekends(order.eventDate, 1) : null);
+    // מועד החזרה/איסוף לפי הכלל האחיד "יום לא עובד" (שישי/שבת/חג/ערב חג/ימים שהבעלים סימן) - אותו
+    // כלל כמו הדף המודפס והתראת האיחור (lib/businessDays.js).
+    const nonWorkingDays = await getNonWorkingDaysConfig();
+    const returnByDate = getExpectedReturnDate(order, nonWorkingDays);
     // מועד איסוף השמלות (דיווח 11cd3ecf) - אותו חישוב בדיוק כמו app/print/order/page.js:
     // 2 ימי-עסקים לפני האירוע, מדלג שישי/שבת/חג.
-    const pickupDate = order.eventDate ? subtractSkippingWeekendsAndChag(order.eventDate, 2) : null;
+    const pickupDate = order.eventDate ? subtractBusinessDays(order.eventDate, 2, nonWorkingDays) : null;
 
     // Visual design mirrors app/print/order/page.js exactly (same "style_19" mockup the owner
     // picked) so the emailed report and the in-app printed report look identical. Colors are
@@ -370,7 +373,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
-                ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
+                ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
             </tr>
@@ -492,7 +495,7 @@ export async function POST(request, { params }) {
       orderId: order.orderId,
       printType,
       customerName: [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' '),
-      eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : ''),
+      eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : ''),
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
       gmachPhone: printSettings.gmachPhone
