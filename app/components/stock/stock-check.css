@@ -1,0 +1,52 @@
+/* דף "בדיקת מלאי" (StockCheckPage) — CSS מקומי לדף, בהיקף .gm-ds.gm-home.stock-page בלבד (לא נוגע ב-design-system/).
+   כאן רק מה שאין בפלטה (design-system/components.css): פריסת עמודה אחת (טופס מעל תוצאות, כמו בעיצוב המאושר
+   תצוגות-עיצוב/סיימתי-לעבוד/בדיקת-מלאי.html: .pgwrap/.pgcol), ההתאמות שה-CSS הישן של האתר דורס בתוך .gm-ds.gm-home
+   (אותן התאמות כמו app/components/home/home.css, סעיפים 4 ו-6), וקוד הדגם בשורת הצעה. */
+
+/* פריסה: עמודה אחת ברוחב 760 (כמו .pgcol בעיצוב), על רקע הפלטה שממלא את אזור התוכן של המעטפת (הישנה והחדשה
+   עוטפות כל דף ב-.app-shell > .main > .content עם padding 22px 24px 60px). */
+.app-shell .main .content:has(> .gm-ds.stock-page) {
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+}
+.gm-ds.gm-home.stock-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+  padding: 20px 16px 48px;
+}
+.gm-ds.gm-home.stock-page > .hero-in {
+  margin: 0 auto;
+  width: 100%;
+}
+.gm-ds.gm-home.stock-page .tblw { max-width: 100%; }
+
+/* גופן: design-overrides.css כופה Assistant ב-!important על button/input/select/textarea, ו-globals.css כופה
+   "Frank Ruhl Libre" על h1-h6 — גם ב-!important, ולכן גם כאן (כמו home.css סעיף 4). */
+.gm-ds.gm-home.stock-page :is(button, input, select, textarea) { font-family: inherit !important; }
+.gm-ds.gm-home.stock-page :is(h1, h2, h3, h4, h5, h6) { font-family: inherit !important; letter-spacing: normal; }
+
+/* הכרטיסים: כלל "זכוכית" של כרטיס ההזמנה (.gm-ds .card עם !important בפלטה) דולף ל-gm-home; בעיצוב הכרטיסים לבנים (home.css סעיף 6). */
+.gm-ds.gm-home.stock-page .card {
+  background: var(--gm-surface) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* בדיקת מלאי: כפתור ההסבר (tip) צמוד לכותרת "בדיקה גמישה" ולא בקצה השורה (כמו בעיצוב) */
+.gm-ds.gm-home.stock-page .advp .advs-h h3:has(+ .tip) { flex: 0 1 auto; }
+
+/* שורת הצעה של דגם: קוד הדגם בקצה השני של השורה */
+.gm-ds.gm-home.stock-page .advp .advo .advo-code { margin-inline-start: auto; }
+
+/* שבב גמישות של מידה שאינה מספר (כללי, 38-40): לא ניתן להפעלה (B07) */
+.gm-ds.gm-home.stock-page .advp .advfl[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+/* מצבי "ריק" / שגיאה: הכותרת והכפתור בתוך .empty (כמו בעיצוב ובדף הבית) */
+.gm-ds.gm-home.stock-page .empty .stock-empty-t { font-size: 19px; margin-top: 8px; color: var(--gm-ink); }
+.gm-ds.gm-home.stock-page .empty .stock-empty-s { margin-top: 6px; }
+.gm-ds.gm-home.stock-page .empty .stock-retry { margin-top: 16px; }
+.gm-ds.gm-home.stock-page .res-one > .stock-sum { margin: 0; padding: 0 4px 10px; }
+.gm-ds.gm-home.stock-page .res-one > .stock-warn { margin: 0; padding: 0 4px 10px; color: var(--gm-rose-700); }

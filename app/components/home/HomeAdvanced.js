@@ -146,12 +146,14 @@ function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
   );
 }
 
-// בחירת תאריך עברי: הערך נשמר כ-ISO לועזי, מוצג ונבחר בעברית
-function DateField({ dkey, label, value, onChange, rangeKeys, adv }) {
+// בחירת תאריך עברי: הערך נשמר כ-ISO לועזי, מוצג ונבחר בעברית.
+// מיוצא גם לדף "בדיקת מלאי" (app/components/stock/StockCheckPage.js) — אותו בורר בדיוק; שם בלי לחצן ניקוי
+// (clearable=false, כמו בעיצוב המאושר של הדף: Backspace מנקה).
+export function DateField({ dkey, label, value, onChange, rangeKeys, adv, clearable = true, idPrefix = 'adv-' }) {
   const [open, setOpen] = useState(false);
   const [first, setFirst] = useState(null);
   const boxRef = useRef(null);
-  const id = 'adv-' + dkey;
+  const id = idPrefix + dkey;
   const lo = rangeKeys ? adv[rangeKeys[0]] : '';
   const hi = rangeKeys ? adv[rangeKeys[1]] : '';
   const todayIso = isoOf(new Date());
@@ -197,7 +199,7 @@ function DateField({ dkey, label, value, onChange, rangeKeys, adv }) {
             else if (e.key === 'Escape' && open) { e.preventDefault(); e.stopPropagation(); setOpen(false); }
           }}
         />
-        <ClearX show={!!value} onClick={() => onChange('')} />
+        {clearable && <ClearX show={!!value} onClick={() => onChange('')} />}
         {grid && (
           <div className="advdp" id={id + '-dp'} role="dialog" aria-label="בחירת תאריך עברי">
             <div className="dph">
