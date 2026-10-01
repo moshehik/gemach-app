@@ -206,16 +206,66 @@ const r2 = await run({ sizes: ['36'], flexible: true });
 eq('deterministic: identical output twice', JSON.stringify(r1), JSON.stringify(r2));
 eq('sorted: free desc then code asc', r1.results.map((x) => [x.free, x.modelCode]), [[2, 622], [1, 549]]);
 
-// מקרה קצה: 320 דגמים תואמים - לפי מידה מוגבל ל-200 שורות; לפי שם מוגבל ל-300 דגמים + אזהרה
+// מקרה קצה: 320 דגמים תואמים - אין תקרה על מספר הדגמים בחישוב (כולם נכנסים לקריאה אחת
+// למנוע), רק על התצוגה (200 שורות). הדגמים נדחפים בסדר הפוך כדי להוכיח שה-200 שמוצגים
+// נקבעים לפי המיון (קוד עולה) ולא לפי הסדר שבו ה-DB החזיר אותם.
 reset();
-for (let i = 0; i < 320; i++) {
+for (let i = 319; i >= 0; i--) {
   globalThis.__DB.dressModel.push({ id: 'z' + i, name: 'דגם המוני ' + i, barcodePrefix: 10000 + i, isDeleted: false });
   globalThis.__DB.dressItem.push({ id: 'zi' + i, dressModelId: 'z' + i, sizeText: '77', quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 10000 + i });
 }
+globalThis.__QUERIES = [];
 r = await run({ sizes: ['77'] });
-eq('many models: capped at 200 results, truncated', [r.results.length, r.truncated], [200, true]);
+eq('many models by size: 200 rows shown, truncated, no warning', [r.results.length, r.truncated, r.warnings], [200, true, []]);
+eq('many models by size: the 200 shown are the lowest codes (stable, not DB order)', r.results.map((x) => x.modelCode), Array.from({ length: 200 }, (_, i) => 10000 + i));
+eq('many models by size: still one bookings query (no chunking)', globalThis.__QUERIES.filter((q) => q === 'orderItem.findMany').length, 1);
+// הדגם עם הקוד הגבוה ביותר (האחרון במיון) עדיין נבדק: עם מידה נדירה רק הוא מופיע
+globalThis.__DB.dressItem.push({ id: 'zi-top', dressModelId: 'z319', sizeText: '78', quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 10319 });
+r = await run({ sizes: ['78'] });
+eq('many models by size: model #320 is evaluated too (no 300 cap)', brief(r), [[10319, 1, '78:1']]);
+globalThis.__QUERIES = [];
 r = await run({ models: ['דגם המוני'] });
-eq('many models by name: >300 matches -> truncated + warning', [r.truncated, r.warnings.length, r.results.length], [true, 1, 200]);
+// דגם 10319 (פנוי 2 אחרי הפריט הנוסף) ראשון במיון, אחריו 10000..10198 - כולם נבדקו, לא רק 300
+eq('many models by name: all 320 evaluated, 200 shown, truncated, no warning', [r.truncated, r.warnings, r.results.length, r.results[0].modelCode, r.results[199].modelCode], [true, [], 200, 10319, 10198]);
+eq('many models by name: one bookings query', globalThis.__QUERIES.filter((q) => q === 'orderItem.findMany').length, 1);
+r = await run({ models: ['דגם המוני 319'] });
+eq('many models by name: exact name beyond #300 found', brief(r), [[10319, 2, '77:1', '78:1']]);
+
+/* ---------- ביטוי דגם מספרי מחוץ לטווח Int ---------- */
+reset();
+r = await run({ models: ['99999999999'] });
+eq('huge numeric token: treated as text -> not found, no 500', [brief(r), r.warnings], [[], ['הדגם "99999999999" לא נמצא']]);
+r = await run({ models: ['2147483648'] });
+eq('Int32 max + 1: text -> not found', [brief(r), r.warnings], [[], ['הדגם "2147483648" לא נמצא']]);
+globalThis.__DB.dressModel.push({ id: 'mMax', name: 'דגם קצה', barcodePrefix: 2147483647, isDeleted: false });
+globalThis.__DB.dressItem.push({ id: 'mMax1', dressModelId: 'mMax', sizeText: '10', quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 2147483647 });
+r = await run({ models: ['2147483647'] });
+eq('Int32 max exactly: still a prefix search', brief(r), [[2147483647, 1, '10:1']]);
+globalThis.__DB.dressModel.push({ id: 'mBig', name: 'דגם 99999999999', barcodePrefix: 7, isDeleted: false });
+globalThis.__DB.dressItem.push({ id: 'mBig1', dressModelId: 'mBig', sizeText: '10', quantity: 1, location: null, inRepair: false, notInUse: false, isDeleted: false, barcodePrefix: 7 });
+r = await run({ models: ['99999999999'] });
+eq('huge numeric token: still matches a model whose name contains it', brief(r), [[7, 1, '10:1']]);
+
+/* ---------- ימי מעבר שעון הקיץ: התאריך המבוקש חייב להישאר אותו יום ---------- */
+// 27.3.2026 (שישי, כניסת שעון הקיץ ב-02:00) ו-25.10.2026 (ראשון, יציאתו). חציצה 0 כדי שרק
+// היום עצמו ייספר: הזמנה ביום X חוסמת רק בבדיקה ל-X, ולא ל-X-1 / X+1.
+const dstBooking = (id, iso) => ({
+  id, dressItemId: 'a1', dressItem: { id: 'a1', dressModelId: 'mA', sizeText: '10' }, sizeText: '10', barcodePrefix: 549, quantity: 1,
+  isDeleted: false, isReturned: false, isTaken: false, barcode: null, cartStatus: 'confirmed', cartStatusDate: new Date(Date.now() - 600 * 60 * 1000),
+  order: { orderId: 900, legacyId: 7, isDeleted: false, isAbroad: false, fromDate: null, toDate: null, eventDate: new Date(iso) },
+});
+for (const [label, day, before, after] of [['DST start Fri', '2026-03-27', '2026-03-26', '2026-03-28'], ['DST end Sun', '2026-10-25', '2026-10-24', '2026-10-26']]) {
+  reset();
+  setSetting('inventory_buffer_days', '0');
+  globalThis.__DB.orderItem = [dstBooking('dst1', day + 'T00:00:00.000Z')];
+  r = await sc.checkStock({ date: day, models: ['549'], sizes: ['10'] });
+  eq(`${label} ${day}: booking that day blocks 1 of 2`, brief(r), [[549, 1, '10:1']]);
+  r = await sc.checkStock({ date: before, models: ['549'], sizes: ['10'] });
+  eq(`${label} ${before}: day before unaffected`, brief(r), [[549, 2, '10:2']]);
+  r = await sc.checkStock({ date: after, models: ['549'], sizes: ['10'] });
+  eq(`${label} ${after}: day after unaffected`, brief(r), [[549, 2, '10:2']]);
+  eq(`${label} ${day}: date echoed unchanged`, r.date, after);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

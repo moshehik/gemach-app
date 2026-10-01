@@ -63,9 +63,23 @@ function match(row, where) {
   return true;
 }
 
+// Prisma האמיתי זורק על ערך מחוץ לטווח Int (32 ביט) בשדה barcodePrefix - כאן מחקים את זה
+// כדי שבדיקה עם מספר ענק תיתפס גם בלי DB.
+const INT32_MAX = 2147483647;
+function assertInt32(where) {
+  if (!isPlain(where) && !Array.isArray(where)) return;
+  for (const [k, v] of Object.entries(where)) {
+    if (k === 'barcodePrefix') {
+      const nums = isPlain(v) ? Object.values(v).flat() : [v];
+      for (const n of nums) if (typeof n === 'number' && (n > INT32_MAX || n < -INT32_MAX - 1)) throw new Error(`prisma shim: Int out of range (barcodePrefix=${n})`);
+    } else if (isPlain(v) || Array.isArray(v)) assertInt32(v);
+  }
+}
+
 function model(name) {
   const rows = () => globalThis.__DB[name] || [];
   const all = (args = {}) => {
+    assertInt32(args.where);
     let out = rows().filter((r) => match(r, args.where));
     if (args.distinct) {
       const seen = new Set();
