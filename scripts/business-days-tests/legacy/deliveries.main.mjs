@@ -1,8 +1,9 @@
+// FROZEN COPY of origin/main 00104dc4 lib/deliveries.js - "before" oracle for deliveries-parity.test.mjs. Imports rewritten only.
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getHebrewDateString, getIsraelDayRange, getIsraelDateKey } from '@/lib/hebrewDate';
-import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, addBusinessDays, inverseBusinessDays, keyFromLocalDate, rollForwardToWorkingDay, rolledSourceRange } from '@/lib/businessDays';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, addBusinessDays, inverseBusinessDays, keyFromLocalDate, rollForwardToWorkingDay, rolledSourceRange } from './businessDays.main.mjs';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 
 // הועבר מ-app/api/deliveries/route.js (2026-09-16, §C/§D במסמך docs/deliveries-feature-plan-2026-09-16.md)
@@ -12,7 +13,7 @@ import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 // שגם הדפסה (client-side) צריכה יושבת ב-lib/deliveryCourier.js, בלי תלות בפריזמה.
 //
 // ספירת "ימים לפני/אחרי האירוע" (2026-10-01, החלטת הבעלים - DECISIONS-לוז-יומי.md סעיפים 1/3/4):
-// דרך הכלל האחיד של lib/businessDays.js. חג, חול המועד (מגרסה 2, 1.10.2026), ערב חג והימים שהבעלים סימן "ללא פעילות" מדולגים
+// דרך הכלל האחיד של lib/businessDays.js. חג, ערב חג והימים שהבעלים סימן "ללא פעילות" מדולגים
 // תמיד (אין משלוח ביום טוב - בשני הגמ"חים); שישי/שבת מדולגים רק כש-delivery_skip_weekends דולק,
 // בדיוק כמו קודם (דיווח a74ffa6d). בלי ימים כאלה בטווח התוצאה זהה לחלוטין לקוד הקודם
 // (הוכח ב-scripts/business-days-tests/deliveries-parity.test.mjs).
@@ -97,7 +98,7 @@ export async function getDeliveriesForDate(requestedDate, { byDispatchDate = fal
   // fallback כשהשורה חסרה ב-DB: כבוי = ההתנהגות הישנה
   const selectByEventDate = !byDispatchDate && settingsMap.deliveries_select_by_event_date === 'true';
   // fallback כשהשורה חסרה ב-DB: כבוי = שישי/שבת נספרים כימים רגילים (ההתנהגות הישנה);
-  // חג/חול המועד/ערב חג/רשימת הבעלים מדולגים בכל מקרה (ר' הערת הכותרת).
+  // חג/ערב חג/רשימת הבעלים מדולגים בכל מקרה (ר' הערת הכותרת).
   const skipWeekends = settingsMap.delivery_skip_weekends === 'true';
   const nonWorking = parseNonWorkingDaysSetting(settingsMap[NON_WORKING_DAYS_SETTING_KEY] ?? null);
   const countOpts = { skipWeekend: skipWeekends };

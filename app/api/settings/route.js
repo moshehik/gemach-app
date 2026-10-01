@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
+import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES, getSessionEmployee } from '@/lib/auth';
 import { invalidateSettingsCache } from '@/lib/settingsCache';
 import { validateNumericSetting, validateSelectSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
 import { SECRET_SETTING_KEYS, SECRET_MASK } from '../../lib/secretSettingKeys';
+import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWorkingDaysOnlySettingsBatch, validateNonWorkingDaysSettingValue } from '@/lib/businessDays';
+import { hasPermission } from '@/lib/permissions';
+import { SETTINGS_HEBREW_NAMES } from '@/lib/settingsMetadata';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +67,19 @@ export async function POST(request) {
         (await verifySecret(body.pin, employee.password))
       );
     }
+    // ימים ללא פעילות (lib/businessDays.js, החלטת הבעלים 1.10.2026 NWD-Q08): מנת שמירה שכולה המפתח
+    // non_working_days_extra מותרת גם למי שאינו הנהלה ראשית כשיש לו את ההרשאה
+    // feature:non_working_days_manage (קטלוג ההרשאות - ברירת מחדל סגורה, נפתחת בשורת הרשאה).
+    // רק המפתח הזה: כל מפתח אחר במנה מחזיר את המסלול להנהלה ראשית בלבד. השם של השורה נקבע
+    // מהקטלוג (לא מהלקוח) במסלול הזה.
+    let viaNonWorkingDaysPermission = false;
+    if (!authorized && isNonWorkingDaysOnlySettingsBatch(data)) {
+      const employee = await getSessionEmployee();
+      if (employee && (await hasPermission(employee, NON_WORKING_DAYS_PERMISSION_KEY))) {
+        authorized = true;
+        viaNonWorkingDaysPermission = true;
+      }
+    }
     if (!authorized) {
       return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
     }
@@ -74,7 +90,9 @@ export async function POST(request) {
 
     for (const item of data) {
       if (!item.key) continue;
-      const validationError = validateNumericSetting(item.key, item.value) || validateSelectSetting(item.key, item.value);
+      if (viaNonWorkingDaysPermission) item.name = SETTINGS_HEBREW_NAMES[item.key] || item.key;
+      const validationError = validateNumericSetting(item.key, item.value) || validateSelectSetting(item.key, item.value)
+        || (item.key === NON_WORKING_DAYS_SETTING_KEY ? validateNonWorkingDaysSettingValue(item.value === undefined ? undefined : String(item.value)) : null);
       if (validationError) {
         return NextResponse.json({ error: `${item.key}: ${validationError}` }, { status: 400 });
       }

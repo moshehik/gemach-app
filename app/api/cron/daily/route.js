@@ -43,7 +43,7 @@ export async function GET(request) {
   const { start: today, end: todayEnd } = getIsraelDayRange(todayKey);
   const { start: tomorrow, end: tomorrowEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, 1));
   const { start: yesterday, end: yesterdayEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, -1));
-  // רשימת הימים של הבעלים (ניהול היומן) - אותו כלל "יום לא עובד" כמו בכל המערכת (שישי/שבת/חג/ערב חג + ימים ללא
+  // רשימת הימים של הבעלים (ניהול היומן) - אותו כלל "יום לא עובד" כמו בכל המערכת (שישי/שבת/חג/חול המועד/ערב חג + ימים ללא
   // פעילות, lib/businessDays.js); משמש את מייל האיחור (9) ואת הגביה האוטומטית בהו"ק (3).
   const nonWorkingDays = parseNonWorkingDaysSetting(get(NON_WORKING_DAYS_SETTING_KEY) ?? null);
 

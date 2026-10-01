@@ -1,5 +1,6 @@
-import { getIsraelDaysUntil, getIsraelDateKey } from './hebrewDate';
-import { nextWorkingDay, rollForwardToWorkingDay, localDateFromKey } from './businessDays';
+// FROZEN COPY of origin/main 00104dc4 lib/lateReturn.js - "before" oracle for late-return-parity.test.mjs and return-dates.test.mjs. Imports rewritten only.
+import { getIsraelDaysUntil, getIsraelDateKey } from '@/lib/hebrewDate';
+import { nextWorkingDay, rollForwardToWorkingDay, localDateFromKey } from './businessDays.main.mjs';
 
 // איחור בהחזרה: אם עברו X+ ימים ממועד ההחזרה הצפוי של ההזמנה (toDate/returnDate עבור
 // הזמנות חו"ל/ריבוי-ימים; להזמנות רגילות שני השדות ריקים, ואז נופלים ל-eventDate + יום
@@ -11,7 +12,7 @@ import { nextWorkingDay, rollForwardToWorkingDay, localDateFromKey } from './bus
 // קורא אמור להעביר את הערך בפועל מההגדרות (ר' דיווח 0d0a15e2-3016-...).
 //
 // "יום העבודה הראשון אחרי האירוע" (2026-10-01, החלטת הבעלים סעיף 3 - DECISIONS-לוז-יומי.md):
-// הכלל האחיד של lib/businessDays.js - שישי, שבת, חג, חול המועד (מגרסה 2), ערב חג והימים שסומנו "ללא פעילות"
+// הכלל האחיד של lib/businessDays.js - שישי, שבת, חג, ערב חג והימים שסומנו "ללא פעילות"
 // בניהול היומן (non_working_days_extra). עד כה דולגו רק שישי/שבת (addDaysSkippingWeekends);
 // בלי חג/ערב חג/יום מסומן בדרך התוצאה זהה (scripts/business-days-tests/late-return-parity.test.mjs).
 // אותו כלל משמש את שלב "החזרה ידנית" בלו״ז ואת כרטיס ההזמנה.
