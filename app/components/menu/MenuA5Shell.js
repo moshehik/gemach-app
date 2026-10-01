@@ -289,7 +289,14 @@ export default function MenuA5Shell({
     }
   }, [closeAll, openItem]);
 
-  // חיפוש: ריחוף/מיקוד = "נצפו לאחרונה" (peek); לחיצה = שורת החיפוש, ממוקדת ומוצמדת; מגע: לחיצה ארוכה = peek.
+  // הצצה (ריחוף) מציגה גם את שורת החיפוש; לחיצה בתוכה = הצמדה, כדי שהפאנל לא ייסגר כשהעכבר יוצא ממנו באמצע הקלדה.
+  const onSearchFieldFocus = (e) => {
+    if (!e.target.matches || !e.target.matches('input')) return;
+    const cur = uiRef.current;
+    if (cur.id === 'search' && (cur.peek || !cur.pin)) { clearTimeout(timers.current.leave); setUi({ id: 'search', pin: true, peek: false }); }
+  };
+
+  // חיפוש: ריחוף/מיקוד = הצצה (peek): שורת חיפוש + "נצפו לאחרונה"; לחיצה = שורת החיפוש, ממוקדת ומוצמדת; מגע: לחיצה ארוכה = peek.
   const searchBtn = {
     onClick: () => {
       if (longFired.current) { longFired.current = false; return; }
@@ -512,6 +519,7 @@ export default function MenuA5Shell({
                   onPointerEnter={(e) => handlers.enter(e, 'search')}
                   onPointerLeave={(e) => handlers.leave(e, 'search')}
                   onKeyDown={(e) => handlers.key(e, 'search')}
+                  onFocus={onSearchFieldFocus}
                 >
                   <button
                     type="button"
@@ -520,7 +528,7 @@ export default function MenuA5Shell({
                     aria-haspopup="true"
                     aria-expanded={ui.id === 'search' ? 'true' : 'false'}
                     aria-label="חיפוש"
-                    data-tip="חיפוש · ריחוף: נצפו לאחרונה"
+                    data-tip="חיפוש"
                     {...searchBtn}
                   >
                     <Ic n="search" />

@@ -810,5 +810,16 @@ t('"האתר הישן": התווית "זמני" נשארת בנתוני העץ (
   assert.ok(!btn.includes('sn-badge') && !btn.includes('זמני</'), 'אין תג על האייקון');
   assert.ok(/data-tip="האתר הישן \(זמני\)/.test(btn), 'הניסוח בטולטיפ');
 });
+t('פאנל החיפוש: אין חיצי אחורה/קדימה ולא "עמוד X מתוך Y"; הריחוף מציג את שורת החיפוש; פוקוס בשדה מצמיד', () => {
+  const dir = '../app/components/menu/';
+  const panel = readFileSync(new URL(dir + 'MenuSearchPanel.js', import.meta.url), 'utf8');
+  const shell = readFileSync(new URL(dir + 'MenuA5Shell.js', import.meta.url), 'utf8');
+  const css = readFileSync(new URL(dir + 'menu.css', import.meta.url), 'utf8');
+  assert.ok(!/sn-hist|sn-hpos|data-hist|positionText/.test(panel), 'אין שורת אחורה/קדימה בפאנל');
+  assert.ok(!/\.sn-hist|\.sn-hpos/.test(css), 'אין CSS של השורה');
+  assert.ok(!/\.sn-item\.peek[^{]*\.sn-sbox/.test(css), 'שורת החיפוש לא מוסתרת בהצצה');
+  assert.ok(shell.includes('onFocus={onSearchFieldFocus}'), 'פוקוס בשדה מצמיד את הפאנל');
+  assert.ok(/\.sn-sbox input:focus[^{]*\{[^}]*outline:0!important[^}]*box-shadow:none!important/.test(css), 'אין טבעת פוקוס של האתר הישן על השדה');
+});
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
