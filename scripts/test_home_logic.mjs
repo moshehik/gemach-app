@@ -9,8 +9,10 @@ import {
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
   HOME_SCOPES, HOME_RECENT_VALUES, parseHomeParams, homeDirectiveKey, homeScopeTitle, SCOPE_TITLE_REST, applyScope, scopedAdvFields,
 } from '../app/components/home/homeLogic.js';
+import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
 import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, splitMatch } from '../lib/quickPrefix.js';
-import { buildMenuTree } from '../lib/menu/buildMenuTree.js';
+import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js';
+const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
   ADV_FOCI, ADV_KEYS,
@@ -657,6 +659,43 @@ t('נתוני "אחרונים" (recentRows ו-agy_history ב-lib/historyManager)
   assert.equal(typeof recentRows, 'function');
   const hm = readFileSync(new URL('../lib/historyManager.js', import.meta.url), 'utf8');
   assert.ok(/export const getHistory/.test(hm));
+});
+
+
+console.log('תיקוני סקירה (2.10.2026)');
+t('recentRows: סוג שמור כמו "constructor" / "__proto__" / "toString" לא זורק ונזרק', () => {
+  const rows = recentRows([{ type: 'constructor', id: '1' }, { type: '__proto__', id: '2' }, { type: 'toString', id: '3' }, { type: 5, id: '4' }, { type: 'customer', id: 'c1', name: 'רחל' }]);
+  assert.deepEqual(rows.map((r) => r.key), ['customer:c1']);
+});
+t('homeNavTarget: רק "/" הוא דף הבית; query בלי #hash; הוראה חוזרת מנותחת כמו בכתובת', () => {
+  assert.deepEqual(homeNavTarget('/?scope=orders'), { isHome: true, query: 'scope=orders' });
+  assert.deepEqual(homeNavTarget('/'), { isHome: true, query: '' });
+  assert.deepEqual(homeNavTarget('/?adv=1#x'), { isHome: true, query: 'adv=1' });
+  for (const no of ['/orders', '/orders?x=1', '/rentals#returned', '', null, undefined, 5]) assert.equal(homeNavTarget(no).isHome, no === '' || no === null || no === undefined || no === 5 ? true : false, String(no));
+  assert.equal(parseHomeParams(homeNavTarget('/?scope=customers').query).scope, 'customers');
+  assert.equal(HOME_NAV_EVENT, 'gm-home-nav');
+});
+t('לחיצה חוזרת על פריט בית: המעטפת משדרת HOME_NAV_EVENT לקישורי "/" ודף הבית מאזין ומחיל מחדש את ההוראה', () => {
+  const shell = readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8');
+  assert.ok(/homeNavTarget\(href\)\.isHome\) window\.dispatchEvent\(new CustomEvent\(HOME_NAV_EVENT/.test(shell));
+  const home = homeSource('HomeA5.js');
+  assert.ok(home.includes('addEventListener(HOME_NAV_EVENT') && home.includes('removeEventListener(HOME_NAV_EVENT'));
+  assert.match(home, /if \(dir\.any\) \{ applyDirective\(dir, null\); return; \}/);
+});
+t('removeScope: מנקה גם תוצאות advRes (החזרות/תיקונים) ומריץ מחדש בחיפוש הכללי', () => {
+  const home = homeSource('HomeA5.js');
+  const body = home.slice(home.indexOf('const removeScope = () => {'), home.indexOf("// '@' בתחילת השורה"));
+  assert.ok(/if \(advRes\) \{[\s\S]*setAdvRes\(null\)[\s\S]*runSearch\(text\)/.test(body), 'advRes נוקה והחיפוש הכללי רץ');
+  assert.ok(/view === 'error'/.test(body));
+});
+t('useNavHistory: שינוי query בלבד (/?scope=a → /?scope=b) מפעיל ביקור חדש', () => {
+  const h = readFileSync(new URL('../app/components/menu/useNavHistory.js', import.meta.url), 'utf8');
+  assert.ok(/\[pathname, queryString, tree, commit\]/.test(h));
+  assert.ok(/useNavHistory\(tree, queryString\)/.test(readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8')));
+});
+t('app/layout.js מעביר homeA5 מהדגל ui_variant_home (דגלי shell ו-home עצמאיים)', () => {
+  const layout = readFileSync(new URL('../app/layout.js', import.meta.url), 'utf8');
+  assert.ok(layout.includes("homeA5: uiVariants.home === 'a5'"));
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

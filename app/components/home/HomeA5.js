@@ -22,6 +22,7 @@ import HomeAdvResults from './HomeAdvResults';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
 import { QuickPrefixList, useLocalRecentRows, useQuickPrefix } from '../search/QuickPrefix';
 import SearchKeySync from '../search/SearchKeySync';
+import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import {
   AI_CONTEXT, buildGreeting, normalizeSearch, resultsCount, unifiedRows, exportRecordsForRows,
   botMessageFromResponse, botErrorMessage, chatToHistory, withoutActionKeys, rowsToCsv, threadToCsv,
@@ -305,6 +306,24 @@ export default function HomeA5() {
     }
   }, [spKey]);
 
+  // לחיצה חוזרת על פריט "בית" בתפריט (הכתובת לא משתנה ולכן אפקט spKey לא רץ): מאפסים את הדף להוראה של הפריט שנלחץ.
+  // כשהכתובת כן משתנה, appliedKey כבר מעודכן וה-spKey לא יחיל פעם שנייה.
+  useEffect(() => {
+    const onMenuNav = (e) => {
+      const t = homeNavTarget(e && e.detail && e.detail.href);
+      if (!t.isHome) return;
+      const dir = parseHomeParams(t.query);
+      if (dir.any) { applyDirective(dir, null); return; }
+      scopeRef.current = null;
+      urlMode.current = null;
+      appliedKey.current = '';
+      setScope(null);
+      resetAll();
+    };
+    window.addEventListener(HOME_NAV_EVENT, onMenuNav);
+    return () => window.removeEventListener(HOME_NAV_EVENT, onMenuNav);
+  }, [applyDirective, resetAll]);
+
   // הפרמטר נשאר בכתובת רק כל עוד המצב שהוא פתח פעיל (adv = שלב החיפוש המתקדם פתוח; recent = שורת החיפוש מתחילה ב-'@')
   useEffect(() => {
     const m = urlMode.current;
@@ -470,8 +489,17 @@ export default function HomeA5() {
     appliedKey.current = '';
     setScope(null);
     replaceUrl('');
-    // תוצאות שכבר הגיעו (חיפוש כללי מסונן) — מציגים את כולן בלי חיפוש חדש
-    if (res && view !== 'adv') setView(resultsCount(res) ? 'results' : 'none');
+    const text = lastQuery.current.text;
+    if (advRes) {
+      // תוצאות "החזרות"/"תיקונים" (חיפוש מתקדם) לא שייכות יותר לחיפוש הכללי: מנקים ומריצים את אותו טקסט בחיפוש הכללי
+      setAdvRes(null);
+      if (view === 'results' && text && !lastQuery.current.ai) { setQ(text); runSearch(text); } else if (view === 'results') setView('start');
+    } else if (view === 'error' && text && !lastQuery.current.ai) {
+      runSearch(text);
+    } else if (res && view !== 'adv') {
+      // תוצאות שכבר הגיעו (חיפוש כללי מסונן) — מציגים את כולן בלי חיפוש חדש
+      setView(resultsCount(res) ? 'results' : 'none');
+    }
     if (inputRef.current) inputRef.current.focus();
   };
   // '@' בתחילת השורה = רשימת האחרונים שלי (ההיסטוריה המקומית); "שינויים אחרונים" בתפריט פותח את אותה תוצאה בדיוק

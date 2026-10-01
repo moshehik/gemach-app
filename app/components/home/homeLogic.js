@@ -423,7 +423,7 @@ export function recentRows(history) {
   const out = [];
   history.forEach((x) => {
     if (!x || typeof x !== 'object') return;
-    const kind = RECENT_KIND[x.type];
+    const kind = typeof x.type === 'string' && Object.prototype.hasOwnProperty.call(RECENT_KIND, x.type) ? RECENT_KIND[x.type] : null; // 'constructor' / '__proto__' לא נחשבים סוג
     const id = x.id === undefined || x.id === null ? '' : String(x.id);
     if (!kind || !SAFE_ID.test(id)) return;
     out.push({

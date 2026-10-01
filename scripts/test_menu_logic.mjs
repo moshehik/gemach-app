@@ -2,7 +2,7 @@
 // הרצה: node scripts/test_menu_logic.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import {
-  buildMenuTree, deriveLegacyFlags, findActive, flattenMenuTree, isJsonSafe,
+  buildMenuTree as buildMenuTreeRaw, deriveLegacyFlags, findActive, flattenMenuTree, isJsonSafe,
   REMOVED_HREFS, RESTORED_ITEMS, NOT_BUILT_ITEM_IDS, NAV_PAGE_KEYS, MENU_PAGE_KEYS, ITEM_IDS, TAB_IDS, settingsToMap,
 } from '../lib/menu/buildMenuTree.js';
 import {
@@ -21,6 +21,9 @@ import { hebrewVersionStamp, hebrewDateOfInstant } from '../lib/hebrewStamp.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
 import { buildModuleText, isSpriteInSync, normalizeEol, SPRITE_OUT } from './build_menu_sprite.mjs';
 import { readFileSync } from 'node:fs';
+
+// ברירת המחדל של הבדיקות: דף הבית החדש (a5) פעיל; הצירוף "מעטפת a5 + בית legacy" נבדק במפורש למטה (homeA5:false)
+const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 
 let passed = 0;
 function t(name, fn) {
@@ -307,6 +310,30 @@ t('כל href שקיים בתפריט הישן מופיע בעץ החדש אם ו
       if (!legacy.has(h)) assert.ok(!mine.has(h), `${name}: ${h} מוסתר בישן אבל מוצג בחדש`);
     }
   }
+});
+t('מעטפת a5 + דף בית legacy (דגלים עצמאיים): אין קישורי ?scope/?adv/?recent — חוזרים ל-href הישנים, ושורות "שינויים אחרונים"/"חיפוש מתקדם" "בקרוב" כמו קודם', () => {
+  const legacyHome = (ctx) => buildMenuTreeRaw({ ...ctx, homeA5: false });
+  for (const [name, ctx] of CASES) {
+    const settings = ctx.settings || rows({ enable_deliveries: 'true' });
+    const lt = legacyHome({ ...ctx, settings });
+    const nt = buildMenuTree({ ...ctx, settings });
+    assert.ok(!flattenMenuTree(lt).some((x) => x.href && x.href.includes('?')), `${name}: אין href עם query`);
+    // אותן שורות בדיוק (נראות זהה); רק ה-href וסוג שתי השורות החדשות משתנים
+    assert.deepEqual(ids(tab(lt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), ids(tab(nt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), name);
+    if (tab(lt, 'home')) assert.ok(!tab(lt, 'home').items.some((x) => x.kind === 'heading'));
+  }
+  const lt = legacyHome({ user: HEAD, permissions: ALL_OPEN, settings: [] });
+  const home = tab(lt, 'home');
+  assert.deepEqual(Object.fromEntries(home.items.filter((x) => x.kind === 'link').map((x) => [x.id, x.href])),
+    { 'home-search': '/', 'recent-orders': '/orders', 'recent-customers': '/customers', 'recent-rentals': '/rentals#rented', 'recent-returns': '/rentals#returned', 'recent-alterations': '/alterations' });
+  assert.deepEqual(home.items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'home-adv']);
+  for (const x of home.items.filter((i) => i.kind === 'soon')) { assert.equal(x.href, undefined); assert.equal(x.action, undefined); }
+  assert.ok(!home.items.some((x) => 'match' in x), 'בלי match כשהקישור הוא הדף הישן עצמו');
+  // ברירת מחדל (בלי הדגל) = בטוח: קישורים ישנים
+  assert.deepEqual(hrefs(buildMenuTreeRaw({ user: HEAD, permissions: ALL_OPEN, settings: [] })).filter((h) => h.includes('?')), []);
+  // עם הדגל — הקישורים החדשים; ולא משפיע על נראות
+  assert.ok(hrefs(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] })).includes('/?scope=customers'));
+  assert.equal(isJsonSafe(lt), true);
 });
 t('הפריטים שהוסרו (R11) לעולם לא בעץ; /deliveries ו-/refunds כבר לא ברשימת ההסרה (הוחזרו 1.10)', () => {
   const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) });

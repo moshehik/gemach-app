@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
+import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import { shiftClockInfo } from '@/lib/menu/shiftClock';
 import { usePopup } from '../PopupProvider';
 import LoginScreen from '../LoginScreen';
@@ -102,7 +103,7 @@ export default function MenuA5Shell({
   const [loginOpen, setLoginOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const nav = useNavHistory(tree);
+  const nav = useNavHistory(tree, queryString);
   const search = useMenuSearch();
   const notify = useCallback((message, type = 'info') => { if (showAlert) showAlert(message, type); }, [showAlert]);
   const bellOn = !!(rail.bell && rail.bell.show && authToken);
@@ -136,6 +137,8 @@ export default function MenuA5Shell({
   const onNavigate = useCallback((e, href) => {
     closeAll();
     setDrawerOpen(false);
+    // לחיצה חוזרת על פריט "בית" (אותה כתובת): דף הבית מאפס את עצמו להוראה (ר' lib/menu/homeNav.js)
+    if (homeNavTarget(href).isHome) window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href } }));
     const i = href.indexOf('#');
     if (i === -1) return;
     const targetPath = href.slice(0, i);
