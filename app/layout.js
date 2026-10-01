@@ -315,6 +315,8 @@ export default async function RootLayout({ children }) {
       settings,
       flags: { ...legacyNavFlags, isHeadManagement, isProgrammer, hideInternalMessaging, hideErrorReporting, requireLogin, isAuthenticated },
       version: { version: versionData.version, date: versionData.date },
+      // דפים שהיו "בקרוב" בעיצוב ונבנו בפועל (lib/menu/buildMenuTree.js, notBuilt): בדיקת מלאי - /stock-check (2.10.2026).
+      available: { 'order-stock': true },
     })
     : null;
 
