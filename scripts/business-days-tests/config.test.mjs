@@ -71,6 +71,69 @@ test('invalid entries are skipped and counted; valid ones still apply', () => {
   assert.equal(cfg.notes.get('2026-10-18').length, 200);
 });
 
+test('status is case/whitespace-insensitive; unknown values are ignored', () => {
+  const cfg = B.parseNonWorkingDaysSetting('[{"date":"2026-11-03","status":"Open"},{"date":"2026-11-04","status":" closed "},{"date":"2026-11-05","status":"CLOSED"},{"date":"2026-11-06","status":"  "},{"date":"2026-11-09","status":"opened"},{"date":"2026-11-10","status":7}]');
+  assert.deepEqual([...cfg.open], ['2026-11-03']);
+  assert.deepEqual([...cfg.closed].sort(), ['2026-11-04', '2026-11-05', '2026-11-06']); // blank status = closed
+  assert.equal(cfg.invalid, 2);
+  assert.equal(B.isNonWorkingDay('2026-11-03', cfg), false, 'Tuesday opened (no-op) - still working');
+  assert.equal(B.isNonWorkingDay('2026-11-04', cfg), true);
+});
+
+test('EMPTY_NON_WORKING_CONFIG is immutable; cloneNonWorkingConfig gives an editable copy', () => {
+  const E = B.EMPTY_NON_WORKING_CONFIG;
+  assert.throws(() => E.closed.add('2026-11-03'), TypeError);
+  assert.throws(() => E.open.add('2026-11-03'), TypeError);
+  assert.throws(() => E.notes.set('2026-11-03', 'x'), TypeError);
+  assert.throws(() => E.closed.clear(), TypeError);
+  assert.throws(() => E.open.delete('x'), TypeError);
+  assert.throws(() => { E.invalid = 5; }, TypeError); // frozen object in strict (ESM) mode
+  assert.equal(E.closed.size, 0);
+  assert.equal(E.open.size, 0);
+  assert.equal(E.notes.size, 0);
+  assert.equal(B.isNonWorkingDay('2026-11-03', E), false, 'defaults still work with the frozen config');
+  assert.equal(B.isNonWorkingDay('2026-11-06', E), true);
+  const c = B.cloneNonWorkingConfig(E);
+  c.closed.add('2026-11-03');
+  c.notes.set('2026-11-03', 'x');
+  assert.equal(B.isNonWorkingDay('2026-11-03', c), true);
+  assert.equal(E.closed.size, 0, 'the default is untouched');
+  // clone of a parsed config is independent of its source
+  const src = B.parseNonWorkingDaysSetting('[{"date":"2026-11-04"}]');
+  const c2 = B.cloneNonWorkingConfig(src);
+  c2.closed.delete('2026-11-04');
+  assert.equal(src.closed.has('2026-11-04'), true);
+  assert.equal(B.cloneNonWorkingConfig(null).closed.size, 0);
+  assert.deepEqual([...B.cloneNonWorkingConfig('[{"date":"2026-11-05"}]').closed], ['2026-11-05']);
+});
+
+test('caps: at most 2000 entries are read (rest counted as invalid); listNonWorkingDays returns at most 800 days', () => {
+  const days = [];
+  for (let i = 0; i < 2500; i++) days.push({ date: new Date(Date.UTC(2030, 0, 1 + i)).toISOString().slice(0, 10) });
+  const cfg = B.parseNonWorkingDaysSetting(JSON.stringify({ days }));
+  assert.equal(cfg.closed.size, 2000);
+  assert.equal(cfg.invalid, 500);
+  assert.equal(cfg.closed.has('2030-01-01'), true);
+  assert.equal(cfg.closed.has(new Date(Date.UTC(2030, 0, 1 + 1999)).toISOString().slice(0, 10)), true);
+  assert.equal(cfg.closed.has(new Date(Date.UTC(2030, 0, 1 + 2000)).toISOString().slice(0, 10)), false, 'entry 2001 dropped');
+  assert.equal(B.MAX_SETTING_ENTRIES, 2000);
+  // a 1e5-entry setting parses quickly and never hangs
+  const big = JSON.stringify({ days: new Array(100000).fill({ date: '2030-05-05' }) });
+  const t0 = Date.now();
+  const bigCfg = B.parseNonWorkingDaysSetting(big);
+  assert.ok(Date.now() - t0 < 2000, 'parse under 2s');
+  assert.equal(bigCfg.closed.size, 1);
+  assert.equal(bigCfg.invalid, 98000);
+  // listNonWorkingDays range cap
+  assert.equal(B.MAX_LIST_RANGE_DAYS, 800);
+  const all = B.listNonWorkingDays('2026-01-01', '2036-12-31', cfg); // 11 years asked, 800 days served
+  const last = all.at(-1).key;
+  assert.ok(last <= '2028-03-10' && last >= '2028-03-01', `last listed day ${last}`); // 2026-01-01 + 799 days = 2028-03-10
+  assert.ok(all.length > 200 && all.length < 300, `count ${all.length}`); // ~2/7 weekends + holidays over 800 days
+  assert.equal(B.listNonWorkingDays('2026-01-01', '2026-01-01', cfg).length, 0, 'Thursday 1.1.2026');
+  assert.equal(B.listNonWorkingDays('2026-01-02', '2026-01-03', cfg).length, 2, 'Fri+Sat');
+});
+
 test('duplicate dates: closed wins over open (either order); last note wins within a status', () => {
   const openThenClosed = B.parseNonWorkingDaysSetting('[{"date":"2026-11-03","status":"open"},{"date":"2026-11-03","status":"closed","note":"a"}]');
   assert.equal(B.isNonWorkingDay('2026-11-03', openThenClosed), true);

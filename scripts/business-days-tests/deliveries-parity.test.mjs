@@ -234,6 +234,38 @@ test('C. known answers: Shabbat event (symmetry fix) and owner-closed days', asy
   assert.ok(a2.data.length > 0);
 });
 
+test('E. a huge delivery_days_before/after setting (100000000) does not hang: capped at 366 business days, answers in well under a second', async () => {
+  for (const skip of [false, true]) {
+    for (const byEvent of [false, true]) {
+      installDb({ settings: settings({ skip, byEvent, before: 100000000, after: 100000000 }), orders: ORDERS });
+      invalidateSettingsCache();
+      const t0 = Date.now();
+      const res = await NEW(localMidnight('2026-11-03'));
+      assert.ok(Date.now() - t0 < 1000, `skip=${skip} byEvent=${byEvent} took ${Date.now() - t0}ms`);
+      assert.equal(res.daysBefore, 100000000, 'the setting value itself is echoed unchanged');
+      assert.equal(res.daysAfter, 100000000);
+      if (byEvent) {
+        // the 3.11 events are listed, with dispatch dates 366 business days away
+        assert.ok(res.data.length > 0);
+        const row = res.data.find((r) => r.directions.includes('out'));
+        assert.equal(row.dispatchDates.out, B.addBusinessDays('2026-11-03', -366, null, { skipWeekend: skip }));
+        assert.equal(row.dispatchDates.return, B.addBusinessDays('2026-11-03', 366, null, { skipWeekend: skip }));
+      } else {
+        // windows 366 business days away from 3.11 fall outside the fixture range (events 1.8.2026-31.7.2027):
+        // outbound ~ early 2028, return ~ mid 2025 => nothing from them. Only the separate "one day before" window
+        // (daysBefore != 1 => n=-1 => Wed 4.11) still matches: the deliveryOneDayBefore orders of 4.11, as before.
+        assert.ok(res.data.length > 0);
+        for (const r of res.data) {
+          assert.deepEqual(r.directions, ['out']);
+          const o = BY_ID.get(r.orderId);
+          assert.equal(o.deliveryOneDayBefore, true);
+          assert.equal(o.eventKey, '2026-11-04');
+        }
+      }
+    }
+  }
+});
+
 test('D. result/row shape and the Prisma where clause are unchanged when nothing is skipped', async () => {
   const combo = { skip: false, byEvent: false, before: 1, after: 1 };
   const [a, b] = await runBoth(combo, '2026-11-03');

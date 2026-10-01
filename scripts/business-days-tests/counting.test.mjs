@@ -131,6 +131,37 @@ test('inverse examples from the contract', () => {
   assert.equal(B.inverseBusinessDays('garbage', 1), null);
 });
 
+test('offset cap: n is clamped to +-366 (100000000, -1e8, Infinity, 1e308, strings) and returns within milliseconds', () => {
+  assert.equal(B.MAX_BUSINESS_DAY_OFFSET, 366);
+  const base = '2026-11-03';
+  const plus366 = B.addBusinessDays(base, 366);
+  const minus366 = B.addBusinessDays(base, -366);
+  assert.ok(plus366 > '2027-11-01' && plus366 < '2028-05-01', `366 business days ahead = ${plus366}`);
+  assert.ok(minus366 < '2025-12-01' && minus366 > '2025-05-01', `366 business days back = ${minus366}`);
+  for (const huge of [100000000, 1e8 + 1, Number.MAX_SAFE_INTEGER, 1e308, '100000000', 367, 1000]) {
+    const t0 = Date.now();
+    assert.equal(B.addBusinessDays(base, huge), plus366, `n=${huge}`);
+    assert.equal(B.addBusinessDays(base, -huge), minus366, `n=-${huge}`);
+    assert.ok(Date.now() - t0 < 500, `n=${huge} took too long`);
+  }
+  for (const bad of [Infinity, -Infinity, NaN, 'abc', null, undefined, {}]) {
+    assert.equal(B.addBusinessDays(base, bad), base, `n=${String(bad)} behaves like 0`);
+    assert.deepEqual(B.inverseBusinessDays(base, bad), { startKey: base, endKey: base });
+  }
+  assert.equal(B.addBusinessDays(base, 1.9), B.addBusinessDays(base, 1), 'fractions truncated');
+  assert.equal(B.addBusinessDays(base, -1.9), B.addBusinessDays(base, -1));
+  // inverse: same cap, both directions, still a contiguous window ending/starting at the capped walk
+  const t1 = Date.now();
+  const invOut = B.inverseBusinessDays(base, -100000000);
+  const invRet = B.inverseBusinessDays(base, 100000000);
+  assert.ok(Date.now() - t1 < 500);
+  assert.deepEqual(invOut, B.inverseBusinessDays(base, -366));
+  assert.deepEqual(invRet, B.inverseBusinessDays(base, 366));
+  assert.equal(invOut.endKey, plus366);
+  assert.equal(invRet.startKey, minus366);
+  assert.equal(B.inverseBusinessDays('2026-11-07', 100000000), null, 'non-working target stays null');
+});
+
 test('runaway guard: 400+ consecutive closed days do not hang; counting resumes afterwards', () => {
   const days = [];
   for (const k of eachKey('2026-01-02', '2027-03-01')) days.push({ date: k });
