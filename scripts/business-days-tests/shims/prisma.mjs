@@ -20,6 +20,9 @@ function inRange(value, cond) {
 function matchOrder(o, where) {
   if (where.isDeleted !== undefined && !!o.isDeleted !== where.isDeleted) return false;
   if (where.isDelivery !== undefined && !!o.isDelivery !== where.isDelivery) return false;
+  if (where.eventDate) {
+    if (!o.eventDate || !inRange(o.eventDate, where.eventDate)) return false;
+  }
   if (where.OR) {
     const any = where.OR.some((c) => {
       if (c.eventDate) return o.eventDate ? inRange(o.eventDate, c.eventDate) : false;

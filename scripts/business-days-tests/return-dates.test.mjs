@@ -366,8 +366,9 @@ test('the old fixed windows really would drop orders under these configs; the de
 test('routes use the derived windows; #202 permission gate on a5/adv is intact', () => {
   const read = (f) => fs.readFileSync(path.join(process.env.PROJ, f), 'utf8');
   const pp = read('app/api/orders/print-prep/route.js');
-  assert.match(pp, /eventRangeForOffset\(/);
-  assert.match(pp, /PRINT_PREP_BUSINESS_DAYS_BEFORE_EVENT/);
+  // behaviour of the print-prep window is proven by print-prep-route.test.mjs (real handler); here only the wiring
+  assert.match(pp, /printPrepWindowEndKey\(fromStr, toStr, nonWorkingDays\)/);
+  assert.doesNotMatch(pp, /\.test\(fromStr\)/, 'no hand-written date regex in the route');
   const adv = read('app/api/a5/adv/route.js');
   assert.match(adv, /inverseBusinessDays\(key, 1, nonWorkingDays\)/);
   assert.match(adv, /dueEventStart\(key\)/);

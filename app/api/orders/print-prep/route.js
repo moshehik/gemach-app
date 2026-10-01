@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getIsraelDayRange, PRINT_PREP_BUSINESS_DAYS_BEFORE_EVENT } from '@/lib/hebrewDate';
-import { getPrintPrepDateWithConfig, eventRangeForOffset } from '@/lib/businessDays';
+import { getIsraelDayRange } from '@/lib/hebrewDate';
+import { getPrintPrepDateWithConfig, printPrepWindowEndKey } from '@/lib/businessDays';
 import { getNonWorkingDaysConfig } from '@/lib/businessDaysServer';
 
 export const dynamic = 'force-dynamic';
@@ -80,11 +80,9 @@ export async function GET(request) {
       eventWindowEnd.setDate(eventWindowEnd.getDate() + LOOKAHEAD_DAYS);
       eventWindowEnd.setHours(23, 59, 59, 999);
       // החלון הנגזר מהכלל (n ימי עסקים אחורה מהאירוע = תאריך ההכנה): מרחיב את הסוף אם צריך, לעולם לא מצמצם
-      const derived = /^d{4}-d{2}-d{2}$/.test(fromStr) && /^d{4}-d{2}-d{2}$/.test(toStr)
-        ? eventRangeForOffset(fromStr, toStr, -PRINT_PREP_BUSINESS_DAYS_BEFORE_EVENT, nonWorkingDays)
-        : null;
-      if (derived) {
-        const derivedEnd = getIsraelDayRange(derived.endKey).end;
+      const derivedEndKey = printPrepWindowEndKey(fromStr, toStr, nonWorkingDays);
+      if (derivedEndKey) {
+        const derivedEnd = getIsraelDayRange(derivedEndKey).end;
         if (derivedEnd > eventWindowEnd) eventWindowEnd.setTime(derivedEnd.getTime());
       }
 
