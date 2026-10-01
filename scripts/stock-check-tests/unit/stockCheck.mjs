@@ -28,7 +28,10 @@ const run = (p) => sc.checkStock({ date: TARGET, ...p });
 eq('isNumericSize', ['12', '36', ' 8 ', 'כללי', '38-40', '12.5', '', '1234'].map(sc.isNumericSize), [true, true, true, false, false, false, false, false]);
 eq('candidates 12 flex', sc.candidateSizes('12', true), ['10', '12', '14']);
 eq('candidates 36 flex', sc.candidateSizes('36', true), ['34', '36', '38']);
-eq('candidates 1 flex (no non-positive)', sc.candidateSizes('1', true), ['1', '3']);
+eq('candidates 1 flex (no negative)', sc.candidateSizes('1', true), ['1', '3']);
+eq('candidates 00 flex: 0 is a real size (exists on both orgs)', sc.candidateSizes('00', true), ['0', '2']);
+eq('candidates 02 flex includes 0', sc.candidateSizes('02', true), ['0', '2', '4']);
+eq('candidates 0 exact', sc.candidateSizes('0', false), ['0']);
 eq('candidates כללי flex -> exact', sc.candidateSizes('כללי', true), ['כללי']);
 eq('candidates 38-40 flex -> exact', sc.candidateSizes('38-40', true), ['38-40']);
 eq('candidates 12 not flex', sc.candidateSizes('12', false), ['12']);
@@ -64,6 +67,8 @@ let r = await run({ sizes: ['36'] });
 eq('size 36 exact: A(1), B(1); E dropped (0)', brief(r), [[549, 1, '36:1'], [622, 1, '36:1']]);
 eq('size 36 exact: query echo', r.query, { models: [], sizes: [{ size: '36', flexible: false, candidates: ['36'] }] });
 eq('size 36 exact: one bookings query, no N+1', globalThis.__QUERIES.filter((q) => q === 'orderItem.findMany').length, 1);
+eq('size-only prefilter uses groupBy (GROUP BY in the DB), never findMany+distinct on dressItem', [globalThis.__QUERIES.filter((q) => q === 'dressItem.groupBy').length, globalThis.__QUERIES.filter((q) => q === 'dressItem.findMany').length > 1], [2, false]);
+eq('STOCK_CHECK_PAGE_KEY lives in lib (GQ-06a)', [sc.STOCK_CHECK_PAGE_KEY, sc.MODEL_CARD_PAGE_KEY, sc.MODEL_CARD_PATH], ['page:orders', 'page:dresses_catalog', '/dashboard/dresses/']);
 
 r = await run({ sizes: ['36', '38'] });
 eq('sizes 36+38 (and): only B, free=min=1', brief(r), [[622, 1, '36:1', '38:1']]);
@@ -281,6 +286,8 @@ eq('bucketAvailability: merged keys, display = DB spelling when unique', [...sc.
 eq('evaluateModel: "6" flex on padded data = 04+06+08/8', sc.evaluateModel(padded, sc.normalizeSizeRequests(['6'], true)),
   { sizes: [{ size: '6', free: 5, flexible: true, candidates: [{ size: '04', free: 1 }, { size: '06', free: 2 }, { size: '8', free: 2 }] }], free: 5 });
 eq('evaluateModel: "08" exact counts "08" and "8" together', sc.evaluateModel(padded, sc.normalizeSizeRequests(['08'])).free, 2);
+eq('evaluateModel: "00" free counts, and flex "02" reaches it', [sc.evaluateModel({ '00': { available: 3 }, '04': { available: 1 } }, sc.normalizeSizeRequests(['00'])).free, sc.evaluateModel({ '00': { available: 3 }, '04': { available: 1 } }, sc.normalizeSizeRequests(['02'], true))],
+  [3, { sizes: [{ size: '02', free: 4, flexible: true, candidates: [{ size: '00', free: 3 }, { size: '04', free: 1 }] }], free: 4 }]);
 eq('evaluateModel: "06.1" flex -> exact (not an integer)', sc.evaluateModel(padded, sc.normalizeSizeRequests(['06.1'], true)), { sizes: [{ size: '06.1', free: 1, flexible: false, candidates: [{ size: '06.1', free: 1 }] }], free: 1 });
 
 reset();

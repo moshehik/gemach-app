@@ -10,17 +10,19 @@
 // החלטות הבעלים: scratch/schedule-build/DECISIONS-בדיקת-מלאי.md + החלטות-general-questions (GQ-06a..d).
 
 import '@/design-system/components.css';
+import '../home/home.css'; // נטרול הכללים הגלובליים הישנים בתוך .gm-ds.gm-home (כרטיס שקוף במסגרת, גבול זהב לשדות, כותרת טבלה כחולה) - אותו קובץ כמו דף הבית
 import './stock-check.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Ic, HomeSprite, ViewSwitch, ResultsTable, Dash } from '../home/HomeParts';
 import { DateField } from '../home/HomeAdvanced';
 import { hebText, isoOf } from '../home/homeDates';
+import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { useA5Shell } from '../menu/A5ShellContext';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import {
   STOCK_CHECK_STORE_KEY, FLEX_TIP, isNumericSize, addSizes, toggleFlex, validateForm, buildStockCheckUrl, buildOptionsUrl,
-  freeChipClass, freeLabel, flexNote, summaryParts, filterSizeOptions, lastSizeToken, sanitizeStoredState,
+  freeChipClass, freeLabel, flexNote, summaryParts, filterSizeOptions, lastSizeToken, sanitizeStoredState, PAST_DATE_NOTE, isPastDate, safeModelLink,
 } from '@/lib/stockCheckUi';
 
 const OPT_TTL = 60 * 1000;
@@ -133,7 +135,7 @@ function SuggestField({ id, kind, label, icon, placeholder, value, onChange, cho
             {shown !== null && !failed && shown.map((o, i) => (
               <li key={o.v + '|' + (o.c ?? '')} role="option" aria-selected={i === act} id={id + '-o' + i} className={`advo${i === act ? ' act' : ''}`} onMouseDown={(e) => { e.preventDefault(); pick(o); }}>
                 <span className="advo-t"><Highlight text={o.v} q={typed} /></span>
-                {o.c != null && <span className="faint advo-code"><bdi>#{o.c}</bdi></span>}
+                {o.c != null && <span className="faint"><bdi>#{o.c}</bdi></span>}
               </li>
             ))}
           </ul>
@@ -319,7 +321,7 @@ export default function StockCheckPage() {
   const results = res ? res.results : [];
   const columns = useMemo(() => ['תאריך', 'דגם', 'מידות', 'פנוי', ...(branches ? ['סניפים'] : [])], [branches]);
   const records = useMemo(() => results.map((r) => ({
-    url: r.link,
+    url: safeModelLink(r.link),
     r,
     cells: [hebText(r.date || (res && res.date)), r.modelName || '', r.sizes.map((z) => `${z.size} (${z.free})`).join(' · '), r.free, ...(branches ? [(r.branches || []).map((b) => `${b.name} ${b.free}`).join(' · ')] : [])],
   })), [results, res, branches]);
@@ -353,7 +355,10 @@ export default function StockCheckPage() {
           <section className="advs" aria-label="מה לבדוק">
             <div className="advs-h"><span className="advs-i"><Ic id="box" /></span><h3>מה לבדוק</h3></div>
             <div className="advgrid">
-              {restored && <DateField dkey="date" idPrefix="stock-" label="תאריך" value={date} onChange={onDate} adv={{}} clearable={false} />}
+              <div className="stock-datew">
+                {restored && <DateField dkey="date" idPrefix="stock-" label="תאריך" value={date} onChange={onDate} adv={{}} clearable={false} />}
+                {restored && isPastDate(date, getIsraelTodayKey()) && <div className="pg-sub stock-past" id="stock-past-note" role="note">{PAST_DATE_NOTE}</div>}
+              </div>
               <SuggestField
                 id="stock-model"
                 kind="model"
@@ -433,8 +438,9 @@ export default function StockCheckPage() {
             )}
           </section>
           <div className="advact">
-            <button type="button" className="btn primary lg" id="stock-go" onClick={() => run()} disabled={phase === 'loading'}>
-              {phase === 'loading' ? <span className="mspin" aria-hidden="true" /> : <Ic id="search" />}בדיקת מלאי
+            {/* בזמן טעינה הלחצן נשאר כמו בעיצוב (לא מנוטרל, בלי מסתובב); לחיצה חוזרת פשוט מחליפה את הבקשה (seq) */}
+            <button type="button" className="btn primary lg" id="stock-go" aria-busy={phase === 'loading' || undefined} onClick={() => run()}>
+              <Ic id="search" />בדיקת מלאי
             </button>
             <button type="button" className="lrow" onClick={clearAll}><Ic id="eraser" size="sm" />נקה</button>
           </div>
@@ -520,8 +526,9 @@ export default function StockCheckPage() {
                         <Ic id="chev" size="sm" className="go" />
                       </>
                     );
-                    return r.link
-                      ? <Link key={r.modelId} className="li rlink lrow" href={r.link}>{inner}</Link>
+                    const link = safeModelLink(r.link);
+                    return link
+                      ? <Link key={r.modelId} className="li rlink lrow" href={link}>{inner}</Link>
                       : <div key={r.modelId} className="li rlink lrow">{inner}</div>;
                   })}
                 </div>

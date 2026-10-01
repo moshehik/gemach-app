@@ -12,6 +12,7 @@ const GLOBALS = read('../app/globals.css');
 const OVERRIDES = read('../app/design-overrides.css');
 const DS_GLOBAL = read('../app/design-system.css');
 const PALETTE = read('../design-system/components.css');
+const STOCK_CSS = read('../app/components/stock/stock-check.css'); // דף בדיקת מלאי - אותו משטר (מייבא את home.css ומוסיף רק את שלו)
 
 let passed = 0;
 let failed = 0;
@@ -78,7 +79,7 @@ function splitSel(sel) {
 const homeRules = parseCss(HOME_CSS);
 const globalRules = [...parseCss(GLOBALS), ...parseCss(OVERRIDES), ...parseCss(DS_GLOBAL)];
 // אזור החיפוש בלבד (שורת החיפוש, הלוח המשותף, הטופס המתקדם, התוצאות, השיחה): שאר הפלטה (stepper/calc/tx...) לא באחריות הדף הזה
-const SEARCH_AREA = /\.(hero|hero-in|hero-row|jshell|advonly|aishell|scan|srch|cmode|cmode-b|advp|advs|advq|advfb|advfl|advplus|advlist|advo|advdp|advgrid|inp|inpw|res-one|fu|bub|li|rtbl|tblw|vsw|vopt|xlbtn|aixl|xlrow)/;
+const SEARCH_AREA = /\.(hero|hero-in|hero-row|jshell|advonly|aishell|scan|srch|cmode|cmode-b|advp|advs|advq|advfb|advfl|advplus|advlist|advo|advdp|advgrid|inp|inpw|res-one|fu|bub|li|rtbl|tblw|vsw|vopt|xlbtn|aixl|xlrow)/; // (עד 2.10.2026 הייתה כאן תו backspace במקום , והבדיקה על הפלטה רצה על רשימה ריקה)
 const paletteHome = parseCss(PALETTE).filter((r) => r.sel.includes('.gm-home') && SEARCH_AREA.test(r.sel));
 
 /* ---------- 1. כל כלל ב-home.css בהיקף .gm-ds / .gm-home (לא נוגע בשאר האתר) ---------- */
@@ -219,6 +220,46 @@ t('בשורת החיפוש של דף הבית אין כפתור "אחרונים"
   const a5 = read('../app/components/home/HomeA5.js');
   assert.ok(!/cmode-i/.test(a5) && !/cmode-i/.test(HOME_CSS), 'cmode-i חזר');
   assert.ok(!/recentOpen|HomeRecents|getHistory/.test(a5), 'HomeA5.js עדיין תלוי באחרונים');
+});
+
+/* ---------- 8. דף בדיקת מלאי (app/components/stock/stock-check.css): אותו משטר כמו home.css ---------- */
+const stockRules = parseCss(STOCK_CSS);
+const STOCK_IMPORTANT_BG_OK = new Set([
+  '.gm-ds.gm-home.stock-page .hero-in.jshell .card', // זכוכית (לבן 30% + טשטוש) כמו בעיצוב המאושר של הדף (בדיקת-מלאי.html), ערכי הפלטה
+]);
+t('stock-check.css: כל כלל בהיקף .gm-ds.gm-home.stock-page (לא דולף לדף הבית ולא לשאר האתר)', () => {
+  const bad = [];
+  for (const r of stockRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-home\.stock-page(\s|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('stock-check.css: אין רקע לבן קשיח / var(--gm-surface) (הכרטיסים בעיצוב הם זכוכית, לא לבן מלא)', () => {
+  const bad = [];
+  for (const r of stockRules) for (const d of setsProp(r, /^background(-color)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('stock-check.css: !important על רקע רק בכלל הזכוכית המאושר', () => {
+  const bad = [];
+  for (const r of stockRules) {
+    if (!setsProp(r, /^background(-color|-image)?$/).some(isImportant)) continue;
+    for (const s of splitSel(r.sel)) if (!STOCK_IMPORTANT_BG_OK.has(s.replace(/\s+/g, ' '))) bad.push(s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('stock-check.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(stockRules, 'stock-check.css'), []);
+});
+t('stock-check.css לא מכפיל את נטרולי home.css (גופן / כרטיס / מלא-רוחב) - הדף מייבא את home.css', () => {
+  const page = read('../app/components/stock/StockCheckPage.js');
+  assert.ok(/import '\.\.\/home\/home\.css'/.test(page), 'StockCheckPage.js חייב לייבא ../home/home.css');
+  const dup = stockRules.filter((r) => /font-family|\.app-shell \.main \.content/.test(r.sel + r.body)).map((r) => r.sel);
+  assert.deepEqual(dup, [], 'כללים שכבר ב-home.css: ' + dup.join(' | '));
+});
+t('הפלטה: .advgrid של הטופס המתקדם נערם לעמודה אחת ברוחב צר (max-width 640px) - גם לבדיקת מלאי', () => {
+  const stacked = parseCss(PALETTE).find((r) => r.media && /max-width:\s*640px/.test(r.media) && /\.gm-home \.advp \.advgrid$/.test(r.sel) && /grid-template-columns:\s*1fr\s*$/.test(r.body.trim().replace(/;$/, '')));
+  assert.ok(stacked, 'חסר כלל @media שמערים את .advgrid');
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

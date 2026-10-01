@@ -6,6 +6,7 @@ import { buildDb, TARGET } from '../fixture.mjs';
 
 const load = (rel) => import(pathToFileURL(path.join(process.env.PROJ, rel)).href);
 const route = await load('app/api/stock-check/route.js');
+const lib = await load('lib/stockCheck.js');
 const { invalidateSettingsCache } = await load('lib/settingsCache.js');
 
 let pass = 0, fail = 0;
@@ -15,9 +16,9 @@ const eq = (name, got, want) => {
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : '\n   got : ' + JSON.stringify(got) + '\n   want: ' + JSON.stringify(want)));
 };
 const get = (qs) => route.GET(new Request('http://local/api/stock-check' + qs));
-const reset = () => { globalThis.__DB = buildDb(); invalidateSettingsCache(); globalThis.__AUTH_OK = true; globalThis.__PAGE_OK = true; globalThis.__PAGE_KEYS = []; };
+const reset = () => { globalThis.__DB = buildDb(); invalidateSettingsCache(); globalThis.__AUTH_OK = true; globalThis.__PAGE_OK = true; globalThis.__PAGE_ALLOW = null; globalThis.__PAGE_KEYS = []; };
 
-eq('route exports', [route.dynamic, route.maxDuration, route.STOCK_CHECK_PAGE_KEY], ['force-dynamic', 30, 'page:orders']);
+eq('route exports: only Next handler exports (page key lives in lib/stockCheck.js)', [route.dynamic, route.maxDuration, 'STOCK_CHECK_PAGE_KEY' in route, lib.STOCK_CHECK_PAGE_KEY], ['force-dynamic', 30, false, 'page:orders']);
 
 reset();
 globalThis.__AUTH_OK = false;
@@ -28,6 +29,15 @@ reset();
 globalThis.__PAGE_OK = false;
 res = await get(`?date=${TARGET}&sizes=36`);
 eq('403 when page gate closed; asked page:orders', [res.status, res.__json, globalThis.__PAGE_KEYS], [403, { error: 'Forbidden' }, ['page:orders']]);
+
+// results[].link only for callers who may open the model card (page:dresses_catalog)
+reset();
+globalThis.__PAGE_ALLOW = { 'page:orders': true, 'page:dresses_catalog': false };
+res = await get(`?date=${TARGET}&sizes=36`);
+eq('no page:dresses_catalog -> rows without link; both keys asked once', [res.status, res.__json.results.map((r) => 'link' in r), globalThis.__PAGE_KEYS], [200, [false, false], ['page:orders', 'page:dresses_catalog']]);
+reset();
+res = await get(`?date=${TARGET}&model=xyz`);
+eq('empty results -> catalog key not even asked', globalThis.__PAGE_KEYS, ['page:orders']);
 
 reset();
 res = await get('?sizes=36');
@@ -40,7 +50,7 @@ eq('sizes="," -> treated as no sizes -> missing_filter', [res.status, res.__json
 res = await get(`?date=${TARGET}&sizes=36`);
 eq('200 size only', [res.status, res.__json.results.map((r) => [r.modelCode, r.free, r.link])], [200, [[549, 1, '/dashboard/dresses/mA'], [622, 1, '/dashboard/dresses/mB']]]);
 eq('200 body shape', Object.keys(res.__json).sort(), ['branchesEnabled', 'date', 'dateHebrew', 'query', 'results', 'truncated', 'warnings']);
-eq('200 result row shape', Object.keys(res.__json.results[0]).sort(), ['branches', 'free', 'link', 'modelCode', 'modelId', 'modelName', 'sizes']);
+eq('200 result row shape (with link: caller may open the model card)', Object.keys(res.__json.results[0]).sort(), ['branches', 'free', 'link', 'modelCode', 'modelId', 'modelName', 'sizes']);
 
 res = await get(`?date=${TARGET}&sizes=12,%2036&flex=12`);
 eq('sizes with spaces + flex list', res.__json.query.sizes.map((s) => [s.size, s.flexible]), [['12', true], ['36', false]]);

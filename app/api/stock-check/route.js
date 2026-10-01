@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
-import { checkStock, StockCheckError } from '@/lib/stockCheck';
+import { checkStock, StockCheckError, STOCK_CHECK_PAGE_KEY, MODEL_CARD_PAGE_KEY, MODEL_CARD_PATH } from '@/lib/stockCheck';
 
 // GET /api/stock-check?date=YYYY-MM-DD&model=<שם או קידומת>&sizes=12,36&flex=12
 // בדיקת מלאי לתאריך (דף "בדיקת מלאי"). קריאה בלבד; הלוגיקה כולה ב-lib/stockCheck.js.
@@ -17,15 +17,13 @@ import { checkStock, StockCheckError } from '@/lib/stockCheck';
 //   flex   אופציונלי: 'all' או רשימת מידות (מתוך sizes) שנבדקות ±2
 //   חובה model או sizes (או שניהם).
 //
-// הרשאה: מחובר (checkAuth) + page:orders - אותו שער כמו בדיקת "תפוסה" לפי דגם/מידה/תאריך
-// בחיפוש המתקדם (app/api/a5/adv-b/route.js, GATE.capacity). כשיוחלט על פריט קטלוג
-// ייעודי (page:stock_check) משנים רק את הקבוע כאן.
+// הרשאה: מחובר (checkAuth) + page:orders (STOCK_CHECK_PAGE_KEY ב-lib/stockCheck.js; החלטת הבעלים GQ-06a) - אותו
+// שער כמו בדיקת "תפוסה" לפי דגם/מידה/תאריך בחיפוש המתקדם (app/api/a5/adv-b/route.js, GATE.capacity).
+// results[].link (כרטיס הדגם, page:dresses_catalog) נשלח רק למי שרשאית לפתוח את הכרטיס - אחרת השדה חסר והדף מציג שורה בלי קישור.
 export const dynamic = 'force-dynamic';
 // בדיקה לפי מידה בלבד עוברת על כל הדגמים (מלאי + הזמנות ±14 יום) - בקריאה קרה מול Neon
 // זה יכול לעבור את 10 השניות של ברירת המחדל ב-Hobby.
 export const maxDuration = 30;
-
-export const STOCK_CHECK_PAGE_KEY = 'page:orders';
 
 const json = (body, status = 200) => NextResponse.json(body, { status });
 const splitList = (v) => String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -41,10 +39,11 @@ export async function GET(request) {
     const flexible = flexRaw === 'all' ? true : splitList(flexRaw);
 
     const result = await checkStock({ date: (sp.get('date') || '').trim(), models, sizes, flexible });
+    const canOpenCard = result.results.length ? await canOpenPage(MODEL_CARD_PAGE_KEY) : false;
     return json({
       ...result,
       // קישור לכרטיס הדגם (הנתיב הזה דורש את ה-UUID); לתצוגה משתמשים ב-modelCode/modelName
-      results: result.results.map((r) => ({ ...r, link: `/dashboard/dresses/${r.modelId}` })),
+      results: result.results.map((r) => (canOpenCard ? { ...r, link: `${MODEL_CARD_PATH}${r.modelId}` } : r)),
     });
   } catch (error) {
     if (error instanceof StockCheckError) return json({ error: error.message, code: error.code }, error.status);

@@ -54,6 +54,11 @@ eq('FLEX_TIP is the Q06 explanation', ui.FLEX_TIP.includes('סכום') && ui.FLE
 eq('sanitizeStoredState: valid', ui.sanitizeStoredState({ date: '2026-10-14', model: '549', sizes: [{ v: '12', flex: true }, { v: 'כללי', flex: true }], view: 'table', res: { results: [] } }),
   { date: '2026-10-14', model: '549', sizes: [{ v: '12', flex: true }, { v: 'כללי', flex: false }], view: 'table', res: { results: [] } });
 eq('sanitizeStoredState: garbage -> null', [ui.sanitizeStoredState(null), ui.sanitizeStoredState('x'), ui.sanitizeStoredState({ date: 'bad', sizes: 'no' })], [null, null, null]);
+eq('sanitizeStoredState: links from storage validated (model-card path only)', ui.sanitizeStoredState({ model: 'a', res: { results: [{ modelId: 'x', link: '/dashboard/dresses/abc' }, { modelId: 'y', link: 'https://evil/x' }, { modelId: 'z', link: '/dashboard/dresses/' }, { modelId: 'w', link: '/dashboard/dresses/a b' }, null] } }).res.results,
+  [{ modelId: 'x', link: '/dashboard/dresses/abc' }, { modelId: 'y' }, { modelId: 'z' }, { modelId: 'w' }]);
+eq('safeModelLink', ['/dashboard/dresses/abc', '/dashboard/dresses/abc?x=1', '/orders/1', '', null, '/dashboard/dresses/'].map(ui.safeModelLink), ['/dashboard/dresses/abc', null, null, null, null, null]);
+eq('isPastDate (GQ-06d note only, never blocks)', [ui.isPastDate('2026-10-01', '2026-10-02'), ui.isPastDate('2026-10-02', '2026-10-02'), ui.isPastDate('2026-10-03', '2026-10-02'), ui.isPastDate('', '2026-10-02'), ui.isPastDate('2020-01-01', '')], [true, false, false, false, false]);
+eq('PAST_DATE_NOTE plain Hebrew', /הוחזרו/.test(ui.PAST_DATE_NOTE) && /פנויות/.test(ui.PAST_DATE_NOTE), true);
 eq('sanitizeStoredState: bad res dropped, bad view -> rows', ui.sanitizeStoredState({ model: 'a', res: { foo: 1 }, view: 'cards' }), { date: '', model: 'a', sizes: [], view: 'rows', res: null });
 
 console.log(`\n${pass} passed, ${fail} failed`);

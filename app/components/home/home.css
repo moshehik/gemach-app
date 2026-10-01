@@ -159,3 +159,7 @@
 
 /* 12) כותרת הברכה: globals.css נותן ל-h1 צבע טקסט חום; בעיצוב היא יורשת את הכחול של הדף (שני חלקיה, t-hi ו-t-q, קובעים צבע בעצמם). */
 .gm-ds.gm-home .hero .hero-t { color: inherit; }
+
+/* 13) טבלת התוצאות (.rtbl): design-overrides.css כופה Assistant על th/td (כמו על לחצנים ושדות בכלל 4) - בעיצוב הטבלה ב-Rubik כמו שאר הדף.
+       משותף לדף הבית ולבדיקת מלאי (שניהם מייבאים את הקובץ הזה). */
+.gm-ds.gm-home .rtbl :is(th, td) { font-family: inherit !important; }
