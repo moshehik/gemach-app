@@ -182,4 +182,43 @@ test('getIsraelDayRange - גבולות מדויקים, כולל ימי מעבר 
   assert.equal(fall.end - fall.start + 1, 25 * 3600000);
 });
 
+// lib/lateReturn.js (וה-lib/clientInventory.js שהוא מייבא) משתמשים בייבוא יחסי בלי סיומת (תקין ב-webpack,
+// לא ב-node ESM) - hook קטן מוסיף '.js' רק בשביל הבדיקה הזו.
+const { register } = await import('node:module');
+register('data:text/javascript,' + encodeURIComponent([
+  'export async function resolve(specifier, context, next) {',
+  '  try { return await next(specifier, context); }',
+  '  catch (err) {',
+  "    if (specifier.startsWith('.') && !specifier.endsWith('.js')) return next(specifier + '.js', context);",
+  '    throw err;',
+  '  }',
+  '}'
+].join(String.fromCharCode(10))), import.meta.url);
+const { getLateReturnInfo } = await import('../lib/lateReturn.js');
+
+test('getLateReturnInfo - eventDate ריק/לא תקין => לא מאחרת (כמו ב-main), לא 1970', () => {
+  const now = new Date('2026-10-01T09:00:00Z');
+  for (const bad of ['garbage', '', null, undefined, new Date('x')]) {
+    const info = getLateReturnInfo({ eventDate: bad }, 7, now);
+    assert.equal(info.isLate, false, `eventDate=${String(bad)}`);
+    assert.equal(info.daysLate, undefined, `eventDate=${String(bad)}`);
+  }
+  assert.equal(getLateReturnInfo(null, 7, now).isLate, false);
+  assert.equal(getLateReturnInfo({}, 7, now).isLate, false);
+});
+
+test('getLateReturnInfo - eventDate תקין (ללא שינוי התנהגות)', () => {
+  const now = new Date('2026-10-01T09:00:00Z'); // 12:00 שעון ישראל
+  // אירוע ב-15/9 (שלישי) => מועד החזרה 16/9, 15 ימים אחורה
+  const late = getLateReturnInfo({ eventDate: '2026-09-15T00:00:00.000Z' }, 7, now);
+  assert.equal(late.isLate, true);
+  assert.equal(late.daysLate, 15);
+  // אירוע ב-27/9 => החזרה 28/9, 3 ימים - מתחת לסף
+  const recent = getLateReturnInfo({ eventDate: '2026-09-27T00:00:00.000Z' }, 7, now);
+  assert.equal(recent.isLate, false);
+  assert.equal(recent.daysLate, 3);
+  // toDate מפורש גובר
+  assert.equal(getLateReturnInfo({ eventDate: 'garbage', toDate: '2026-09-20T00:00:00.000Z' }, 7, now).isLate, true);
+});
+
 console.log(`[TZ=${process.env.TZ}] ${count} assertions-blocks ran${process.exitCode ? ' - WITH FAILURES' : ' - ok'}`);

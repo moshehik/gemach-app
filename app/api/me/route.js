@@ -3,7 +3,6 @@ import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { getEmployeeEffectiveValue } from '@/lib/permissions';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
-import { toIsraelCalendarDate } from '@/lib/hebrewDate';
 
 export async function GET(request) {
   try {
@@ -48,19 +47,12 @@ export async function GET(request) {
     // לפי המחלקה של העובד או חריגה פרטנית לו - ר' lib/permissionsMetadata.js feature:export_max_rows
     employee.exportMaxRows = await getEmployeeEffectiveValue(employee, 'feature:export_max_rows');
 
-    // Check for active shift today
-    const now = new Date();
-    // Same Israeli-calendar-day form as Shift.date written by POST /api/attendance.
-    const todayStart = toIsraelCalendarDate(now);
-    const todayEnd = new Date(todayStart.getTime() + (24 * 60 * 60 - 1) * 1000);
-
+    // משמרת פתוחה (exitTime: null) בכל תאריך - לא רק היום: עובד שנכנס לפני חצות ועדיין לא יצא
+    // נשאר עם משמרת מתוארכת ל"אתמול" (ר' הערה ב-/api/attendance), וסינון לפי תאריך היה
+    // מכבה את "בעבודה כעת" בחצות.
     const activeShift = await prisma.shift.findFirst({
       where: {
         employeeId: employee.id,
-        date: {
-          gte: todayStart,
-          lte: todayEnd
-        },
         exitTime: null
       },
       orderBy: { id: 'desc' }

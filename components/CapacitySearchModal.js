@@ -518,8 +518,8 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               {/* Calendar View */}
               {viewMode === 'calendar' && (
                 <CapacityCalendar
-                  fromDate={fromDate || new Date().toISOString().split('T')[0]}
-                  toDate={toDate || new Date().toISOString().split('T')[0]}
+                  fromDate={fromDate || getIsraelTodayKey()}
+                  toDate={toDate || getIsraelTodayKey()}
                   occupiedOrders={results.occupiedOrders}
                 />
               )}
