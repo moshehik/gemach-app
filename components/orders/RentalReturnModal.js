@@ -12,6 +12,7 @@ import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { verifyPin } from './modern/mocAuth';
 import { describeMismatch } from '../../lib/rentalBarcodeMatch';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../lib/lateReturn';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG } from '../../lib/businessDays';
 import { postReturnScan } from './returnScanClient';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
@@ -21,6 +22,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const [loading, setLoading] = useState(true);
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
+  const [nonWorkingDays, setNonWorkingDays] = useState(EMPTY_NON_WORKING_CONFIG);
 
   const [modalBarcode, setModalBarcode] = useState('');
   const modalBarcodeRef = useRef(null);
@@ -115,6 +117,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         }
         const thresholdSetting = Array.isArray(data) ? data.find(s => s.key === 'late_return_threshold_days') : null;
         if (thresholdSetting?.value) setLateReturnThresholdDays(Number(thresholdSetting.value) || LATE_RETURN_THRESHOLD_DAYS);
+        // ימים ללא פעילות שהבעלים סימן (ניהול היומן) - משלימים את שישי/שבת/חג/ערב חג במועד ההחזרה הצפוי
+        const nonWorkingSetting = Array.isArray(data) ? data.find(s => s.key === NON_WORKING_DAYS_SETTING_KEY) : null;
+        setNonWorkingDays(parseNonWorkingDaysSetting(nonWorkingSetting?.value ?? null));
       })
       .catch(console.error);
   }, []);
@@ -291,7 +296,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   // בזרימת ההחזרה הרגילה).
   const checkLateReturnPrompt = async (item) => {
     if (!selectedOrder || !item) return false;
-    const { isLate, daysLate } = getLateReturnInfo(selectedOrder, lateReturnThresholdDays);
+    const { isLate, daysLate } = getLateReturnInfo(selectedOrder, lateReturnThresholdDays, { nonWorkingDays });
     if (!isLate) return false;
 
     const wantsBad = await window.customConfirm(

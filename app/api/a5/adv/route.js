@@ -7,6 +7,7 @@ import { buildMultiWordRelationNameCondition, buildMultiWordNameCondition } from
 import { getHebrewDateString, getIsraelDayRange, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 import { addDaysSkippingWeekends } from '@/lib/clientInventory';
 import { parseFieldGroups, getUnsatisfiedFieldGroups } from '@/lib/customerValidation';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
@@ -191,7 +192,7 @@ const soonSql = (cfg) => ({
 function orderAlerts(o, ctx) {
   const list = [];
   if (customerMissing(o.customer, ctx.rule)) list.push('פרטים חסרים');
-  const late = getLateReturnInfo(o, ctx.threshold);
+  const late = getLateReturnInfo(o, ctx.threshold, { nonWorkingDays: ctx.nonWorkingDays });
   const active = (o.items || []).filter((i) => !i.isDeleted);
   if (late.isLate && active.some((i) => i.isTaken && !i.isReturned)) list.push('לא חזר');
   if (ctx.packingOn && o.customSpacing !== null && o.customSpacing !== undefined) list.push('ציפוף');
@@ -205,6 +206,8 @@ function ctxFor(cfg, paid, unsaved) {
   return {
     rule: missingRule(cfg),
     threshold: Number(cfg.late_return_threshold_days) || LATE_RETURN_THRESHOLD_DAYS,
+    // הכלל האחיד "יום לא עובד" (lib/businessDays.js) למועד ההחזרה הצפוי של getLateReturnInfo
+    nonWorkingDays: parseNonWorkingDaysSetting(cfg[NON_WORKING_DAYS_SETTING_KEY] ?? null),
     packingOn: cfg.packing_enabled === 'true' && cfg.hide_custom_spacing !== 'true',
     paid, unsaved,
   };
@@ -415,6 +418,7 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const unsaved = new Set(unsavedIds);
   const todayKey = ilKey(new Date()), tomorrowKey = addKey(todayKey, 1);
   const threshold = Number(cfg.late_return_threshold_days) || LATE_RETURN_THRESHOLD_DAYS;
+  const nonWorkingDays = parseNonWorkingDaysSetting(cfg[NON_WORKING_DAYS_SETTING_KEY] ?? null);
   const P = ret ? 'rt_' : 'rs_';
   const conds = [
     { isDeleted: false },
@@ -458,7 +462,7 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
     if (ret) stSql.push({ AND: [{ items: { some: { isDeleted: false } } }, { items: { none: { isDeleted: false, isReturned: false } } }] });
     else stSql.push({ AND: [{ items: { some: { isDeleted: false } } }, { items: { none: { isDeleted: false, isTaken: false } } }, { items: { none: { isDeleted: false, isReturned: true } } }] });
   }
-  if (ost.includes(P + 'late')) { stSql.push(lateSql); jsPreds.push((o) => getLateReturnInfo(o, threshold).isLate && active(o).some((i) => i.isTaken && !i.isReturned)); }
+  if (ost.includes(P + 'late')) { stSql.push(lateSql); jsPreds.push((o) => getLateReturnInfo(o, threshold, { nonWorkingDays }).isLate && active(o).some((i) => i.isTaken && !i.isReturned)); }
   if (stSql.length) conds.push({ OR: stSql });
 
   // דרוש בדיקה (OR): בסניף אחר / החזרה מאירוע אחר / חסר במלאי / חוב
@@ -504,7 +508,7 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const out = page.map((o, i) => {
     if (orderAlerts(o, ctx).length) al.push(i);
     const a = active(o), n = a.length, taken = a.filter((x) => x.isTaken).length, back = a.filter((x) => x.isReturned).length;
-    const late = getLateReturnInfo(o, threshold).isLate && a.some((x) => x.isTaken && !x.isReturned);
+    const late = getLateReturnInfo(o, threshold, { nonWorkingDays }).isLate && a.some((x) => x.isTaken && !x.isReturned);
     const evKey = o.eventDate ? ilKey(new Date(o.eventDate)) : null;
     let st;
     if (ret) {
