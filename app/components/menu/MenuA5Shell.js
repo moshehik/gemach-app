@@ -8,10 +8,10 @@
 
 import '@/design-system/components.css';
 import './menu.css';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
 import { shiftClockInfo } from '@/lib/menu/shiftClock';
@@ -29,6 +29,7 @@ import BellBody, { useNotifications } from './MenuBell';
 import { UserButton, UserPanelBody, userDisplay } from './MenuUserPanel';
 import ManagerMessageDialog from './ManagerMessageDialog';
 import useNavHistory from './useNavHistory';
+import SearchKeySync from '../search/SearchKeySync';
 
 const CLOSED = { id: null, pin: false, peek: false };
 export default function MenuA5Shell({
@@ -40,8 +41,7 @@ export default function MenuA5Shell({
   children,
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams(); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
-  const queryString = searchParams ? searchParams.toString() : '';
+  const [queryString, setQueryString] = useState(''); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
   const popup = usePopup();
   const showAlert = popup && popup.showAlert;
   const rail = tree.rail || {};
@@ -468,6 +468,7 @@ export default function MenuA5Shell({
 
         <div className="gm-ds gm-menu" ref={wrapRef}>
           <MenuSprite />
+          <Suspense fallback={null}><SearchKeySync onKey={setQueryString} /></Suspense>
           <header className="snav" id="snav" role="banner" ref={headerRef} data-sticky-nav onBlur={(e) => {
             if (uiRef.current.id && e.relatedTarget && !e.relatedTarget.closest('.sn-item')) closeAll();
           }}>

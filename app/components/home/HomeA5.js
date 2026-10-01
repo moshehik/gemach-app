@@ -11,8 +11,8 @@
 
 import '@/design-system/components.css';
 import './home.css';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import SettingQuickPanel from '../SettingQuickPanel';
 import { getHistory } from '@/lib/historyManager';
 import { Ic, HomeSprite } from './HomeParts';
@@ -23,6 +23,7 @@ import HomeAdvResults from './HomeAdvResults';
 import HomeRecents from './HomeRecents';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
 import { QuickPrefixList, useLocalRecentRows, useQuickPrefix } from '../search/QuickPrefix';
+import SearchKeySync from '../search/SearchKeySync';
 import {
   AI_CONTEXT, buildGreeting, normalizeSearch, resultsCount, unifiedRows, exportRecordsForRows,
   botMessageFromResponse, botErrorMessage, chatToHistory, withoutActionKeys, rowsToCsv, threadToCsv,
@@ -287,11 +288,11 @@ export default function HomeA5() {
   }, [runSearch]);
 
   // ניווט לתוך הדף כשהוא כבר פתוח (לחיצה על פריט תפריט "בית" מדף הבית עצמו): הכתובת משתנה והדף לא נטען מחדש
-  const searchParams = useSearchParams();
-  const spKey = searchParams ? searchParams.toString() : '';
+  const [spKey, setSpKey] = useState(null); // מחרוזת ה-query של הכתובת (מדווחת מ-SearchKeySync); null עד הדיווח הראשון
   const spFirst = useRef(true);
   useEffect(() => {
-    if (spFirst.current) { spFirst.current = false; return; }
+    if (spKey === null) return;
+    if (spFirst.current) { spFirst.current = false; return; } // הדיווח הראשון = הכתובת שבה הדף נפתח (מטופלת באפקט הפתיחה)
     const dir = parseHomeParams(spKey);
     if (dir.any) {
       // אותה הוראה שכבר הוחלה (למשל אחרי שהדף מחק את ?q= מהכתובת) — לא מאפסים
@@ -539,6 +540,7 @@ export default function HomeA5() {
   return (
     <div className="gm-ds gm-home home-bg">
       <HomeSprite />
+      <Suspense fallback={null}><SearchKeySync onKey={setSpKey} /></Suspense>
       <section className={`hero${heroEnter && !compact ? ' hero-enter' : ''}${compact ? ' hero-compact' : ''}`} aria-label="חיפוש">
         <div className={`hero-in${joined ? ' jshell' : ''}${noBar ? ' advonly' : ''}${view === 'ai' ? ' aishell' : ''}`}>
           {compact && <h1 className="sr-only">חיפוש</h1>}

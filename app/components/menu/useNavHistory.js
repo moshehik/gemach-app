@@ -106,7 +106,7 @@ export default function useNavHistory(tree) {
       pendingKey.current = null;
       if (expected === key) return; // הגענו לעמוד שהמחסנית כבר מצביעה עליו
     }
-    const act = findActive(tree, pathname, hash);
+    const act = findActive(tree, pathname, hash, search); // כולל ?scope= — אחרת כל פריטי "בית" נרשמים כ"חיפוש כללי"
     let label = '';
     let icon = 'file';
     if (act.itemId || act.tabId) {
