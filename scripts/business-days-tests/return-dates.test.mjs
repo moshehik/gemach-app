@@ -169,7 +169,7 @@ test('RETURN / PICKUP: owner-closed days move the dates; explicit toDate/returnD
   const holiday = '2026-09-21T00:00:00.000Z';
   for (const field of ['toDate', 'returnDate']) {
     const o = { eventDate: stored('2026-09-01'), [field]: holiday };
-    assert.equal(LR.getExpectedReturnDate(o, cfg).getTime(), new Date(holiday).getTime());
+    assert.equal(localKey(LR.getExpectedReturnDate(o, cfg)), '2026-09-21'); // shown as the Israeli day, local midnight (see the round-2 test for 21:00Z storage)
     assert.equal(LR.getExpectedReturnKey(o, cfg), '2026-09-21');
   }
   // missing / invalid input
@@ -270,4 +270,110 @@ test('lib/inventory.js: owner-closed day from the setting row moves "מחר"; ex
   globalThis.__ORDER_ITEMS[0].order.toDate = new Date('2026-09-21T00:00:00.000Z');
   assert.deepEqual(await missingOn('2026-09-20T10:00:00Z'), { familyName: 'כהן', returnOrderId: 77 });
   assert.equal(await missingOn('2026-09-19T10:00:00Z'), null);
+});
+
+// ---- round 2: explicit dates read as the Israeli day; lookup windows derived from the rule ----
+const cfgOf = (...ranges) => {
+  const days = [];
+  for (const [a, b] of ranges) for (const k of eachKey(a, b ?? a)) days.push({ date: k });
+  return B.parseNonWorkingDaysSetting(JSON.stringify(days));
+};
+
+test('explicit toDate/returnDate and event-date fallbacks are read as the ISRAELI day in every timezone (21:00Z / 22:00Z storage)', () => {
+  const cases = [
+    ['2026-09-20T21:00:00.000Z', '2026-09-21'], // summer Israel midnight of 21.9 (previous UTC day)
+    ['2026-11-04T22:00:00.000Z', '2026-11-05'], // winter Israel midnight of 5.11
+    ['2026-09-21T00:00:00.000Z', '2026-09-21'], // usual storage
+    ['2026-09-21T12:00:00.000Z', '2026-09-21'],
+    ['2026-03-26T22:00:00.000Z', '2026-03-27'], // day before the spring DST change
+    ['2026-10-24T21:00:00.000Z', '2026-10-25'], // fall-back day, 00:00 Israel (still summer time)
+  ];
+  for (const [iso, want] of cases) {
+    for (const field of ['toDate', 'returnDate']) {
+      const d = LR.getExpectedReturnDate({ eventDate: stored('2026-09-01'), [field]: iso }, null);
+      assert.equal(localKey(d), want, `${field} ${iso} TZ=${process.env.TZ}`);
+      assert.equal(d.getHours(), 0);
+      assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-09-01'), [field]: iso }, null), want);
+    }
+    assert.equal(localKey(B.israelLocalDate(iso)), want, `israelLocalDate ${iso}`);
+    assert.equal(localKey(B.israelLocalDate(new Date(iso))), want);
+    // the weekday letter and Hebrew date shown to the customer are the Israeli ones
+    const [y, m, day] = want.split('-').map(Number);
+    assert.equal(H.getHebrewWeekdayLabel(B.israelLocalDate(iso)), H.getHebrewWeekdayLabel(new Date(y, m - 1, day)));
+    assert.equal(H.getHebrewDateString(B.israelLocalDate(iso)), H.getHebrewDateString(new Date(y, m - 1, day)));
+  }
+  // an explicit date is still never shifted to a working day (21.9 = Yom Kippur)
+  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-09-20T21:00:00.000Z' }, null), '2026-09-21');
+  for (const bad of [null, undefined, '', 'garbage', new Date('x')]) assert.equal(B.israelLocalDate(bad), null);
+  assert.equal(LR.getExpectedReturnDate({ eventDate: stored('2026-09-01'), toDate: 'garbage' }, null), null);
+});
+
+// brute force: every event E whose counted date lands in [from, to] must lie inside eventRangeForOffset(from, to, n)
+const CLOSED_WEEK = cfgOf(['2026-11-02', '2026-11-08']);
+const TWO_WEEKS = cfgOf(['2026-11-01', '2026-11-16']);
+// hypothetical "version 2": chol hamoed closed as well (Sukkot 2026 and Pesach 2027 weeks)
+const V2_CHOL_HAMOED = cfgOf(['2026-09-27', '2026-10-01'], ['2026-10-04', '2026-10-09'], ['2027-04-04', '2027-04-06'], ['2027-04-09', '2027-04-13']);
+const CONFIGS = { empty: null, closedWeek: CLOSED_WEEK, twoWeeks: TWO_WEEKS, v2CholHamoed: V2_CHOL_HAMOED };
+
+test('eventRangeForOffset: derived window contains EVERY matching event (prep n=-3, due n=+1; single days and ranges; closed weeks / chol hamoed)', () => {
+  let checks = 0, widest = 0;
+  for (const [name, cfg] of Object.entries(CONFIGS)) {
+    for (const n of [-3, 1]) {
+      const evs = [...eachKey('2026-08-15', '2027-05-15')];
+      const counted = new Map(evs.map((e) => [e, B.addBusinessDays(e, n, cfg)]));
+      for (const [from, len] of [['2026-09-01', 1], ['2026-09-20', 1], ['2026-10-11', 1], ['2026-11-03', 1], ['2026-11-09', 1], ['2026-11-10', 1], ['2027-04-14', 1], ['2026-09-20', 7], ['2026-11-01', 9], ['2026-12-01', 3], ['2027-04-02', 12]]) {
+        const to = addKey(from, len - 1);
+        const w = B.eventRangeForOffset(from, to, n, cfg);
+        const matching = evs.filter((e) => { const x = counted.get(e); return x >= from && x <= to; });
+        if (!w) { assert.equal(matching.length, 0, `${name} n=${n} ${from}..${to}: null window but ${matching.length} matches`); checks++; continue; }
+        for (const e of matching) assert.ok(e >= w.startKey && e <= w.endKey, `${name} n=${n} ${from}..${to}: event ${e} outside ${w.startKey}..${w.endKey}`);
+        widest = Math.max(widest, (Date.parse(w.endKey) - Date.parse(w.startKey)) / 86400000);
+        checks++;
+      }
+    }
+  }
+  assert.ok(widest < 45, `windows stay small (widest ${widest} days)`);
+  console.log(`# INFO eventRangeForOffset: ${checks} window checks, widest window ${widest} days`);
+  // degenerate inputs
+  assert.equal(B.eventRangeForOffset('garbage', '2026-11-03', -3, null), null);
+  assert.equal(B.eventRangeForOffset('2026-11-05', '2026-11-03', -3, null), null);
+  assert.deepEqual(B.eventRangeForOffset('2026-11-03', '2026-11-05', 0, null), { startKey: '2026-11-03', endKey: '2026-11-05' });
+  assert.equal(B.eventRangeForOffset('2026-11-06', '2026-11-07', -3, null), null, 'Fri+Sat only: no working target day');
+});
+
+test('the old fixed windows really would drop orders under these configs; the derived ones do not', () => {
+  // print-prep used a fixed +12 days from the target: event -> prep gap under the rule
+  const gap = (cfg) => { let max = 0; for (const e of eachKey('2025-09-01', '2027-12-31')) { const p = localKey(B.getPrintPrepDateWithConfig(e, cfg)); max = Math.max(max, (Date.parse(e) - Date.parse(p)) / 86400000); } return max; };
+  assert.ok(gap(null) <= 12, `default max gap ${gap(null)} fits the old +12`);
+  assert.ok(gap(TWO_WEEKS) > 12, `a closed fortnight pushes the gap to ${gap(TWO_WEEKS)} (> 12): the old fixed window dropped these orders`);
+  // a5/adv used a fixed -7 days: event -> due gap
+  const dueGap = (cfg) => { let max = 0; for (const e of eachKey('2026-08-01', '2027-06-30')) { max = Math.max(max, (Date.parse(LR.getExpectedReturnKey({ eventDate: stored(e) }, cfg)) - Date.parse(e)) / 86400000); } return max; };
+  assert.ok(dueGap(null) <= 7);
+  assert.ok(dueGap(V2_CHOL_HAMOED) > 7, `chol hamoed closed -> due gap ${dueGap(V2_CHOL_HAMOED)} (> 7): a fixed 7-day window would drop orders`);
+  assert.ok(dueGap(TWO_WEEKS) > 7);
+  // ...and the derived start covers every event (the a5/adv formula: min(inverse start, key-7))
+  for (const cfg of [TWO_WEEKS, V2_CHOL_HAMOED, CLOSED_WEEK, null]) {
+    for (const e of eachKey('2026-08-01', '2027-06-30')) {
+      const due = LR.getExpectedReturnKey({ eventDate: stored(e) }, cfg);
+      const inv = B.inverseBusinessDays(due, 1, cfg);
+      assert.ok(inv, `due ${due} is a working day`);
+      const start = inv.startKey < addKey(due, -7) ? inv.startKey : addKey(due, -7);
+      assert.ok(e >= start && e <= due, `event ${e} due ${due} start ${start}`);
+    }
+  }
+});
+
+test('routes use the derived windows; #202 permission gate on a5/adv is intact', () => {
+  const read = (f) => fs.readFileSync(path.join(process.env.PROJ, f), 'utf8');
+  const pp = read('app/api/orders/print-prep/route.js');
+  assert.match(pp, /eventRangeForOffset\(/);
+  assert.match(pp, /PRINT_PREP_BUSINESS_DAYS_BEFORE_EVENT/);
+  const adv = read('app/api/a5/adv/route.js');
+  assert.match(adv, /inverseBusinessDays\(key, 1, nonWorkingDays\)/);
+  assert.match(adv, /dueEventStart\(key\)/);
+  assert.match(adv, /import \{ canOpenPage \} from '@\/lib\/permissions'/);
+  assert.match(adv, /const FOCUS_PAGE = \{/);
+  assert.match(adv, /if \(!\(await canOpenPage\(FOCUS_PAGE\[focus\]\)\)\) return NextResponse\.json\(/);
+  assert.match(adv, /if \(!FOCUS_PAGE\[focus\]\) return NextResponse\.json\(/);
+  assert.match(adv, /status: 403/);
 });

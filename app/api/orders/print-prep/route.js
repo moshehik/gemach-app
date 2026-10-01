@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getIsraelDayRange } from '@/lib/hebrewDate';
-import { getPrintPrepDateWithConfig } from '@/lib/businessDays';
+import { getIsraelDayRange, PRINT_PREP_BUSINESS_DAYS_BEFORE_EVENT } from '@/lib/hebrewDate';
+import { getPrintPrepDateWithConfig, eventRangeForOffset } from '@/lib/businessDays';
 import { getNonWorkingDaysConfig } from '@/lib/businessDaysServer';
 
 export const dynamic = 'force-dynamic';
 
 // כמה ימי-לוח קדימה מספיק לחפש אירועים מ"תאריך ההכנה" המבוקש - 3 ימי עסקים
-// יכולים "להימתח" עד כדי כ-7-8 ימי לוח כשיש חג ברצף לשישי/שבת; 12 יום נותן
-// מרווח ביטחון בלי לסרוק את כל בסיס הנתונים.
+// יכולים "להימתח" עד כדי 10 ימי לוח בכלל ברירת המחדל (שישי/שבת/חג/ערב חג), ויותר כשהבעלים
+// סימן ימים סגורים ביומן. לכן החלון נגזר מהכלל והרשימה הנוכחיים (eventRangeForOffset -
+// ההופכי של ספירת ימי העסקים); המספר הקבוע כאן הוא רק רצפה, ולעולם לא צר מהחלון שהיה קודם.
 const LOOKAHEAD_DAYS = 12;
 
 // מנרמל מחרוזת "YYYY-MM-DD" ל-Date בחצות, באותה שיטה בדיוק כמו
@@ -73,10 +74,19 @@ export async function GET(request) {
       });
       orderIds = orders.map(o => o.orderId);
     } else {
+      const nonWorkingDays = await getNonWorkingDaysConfig();
       const eventWindowStart = new Date(targetFrom);
       const eventWindowEnd = new Date(targetTo);
       eventWindowEnd.setDate(eventWindowEnd.getDate() + LOOKAHEAD_DAYS);
       eventWindowEnd.setHours(23, 59, 59, 999);
+      // החלון הנגזר מהכלל (n ימי עסקים אחורה מהאירוע = תאריך ההכנה): מרחיב את הסוף אם צריך, לעולם לא מצמצם
+      const derived = /^d{4}-d{2}-d{2}$/.test(fromStr) && /^d{4}-d{2}-d{2}$/.test(toStr)
+        ? eventRangeForOffset(fromStr, toStr, -PRINT_PREP_BUSINESS_DAYS_BEFORE_EVENT, nonWorkingDays)
+        : null;
+      if (derived) {
+        const derivedEnd = getIsraelDayRange(derived.endKey).end;
+        if (derivedEnd > eventWindowEnd) eventWindowEnd.setTime(derivedEnd.getTime());
+      }
 
       const candidates = await prisma.order.findMany({
         where: {
@@ -88,7 +98,6 @@ export async function GET(request) {
       });
 
       // אותו כלל "יום לא עובד" כמו מועד האיסוף בדף המודפס (כולל ימים שהבעלים סימן סגורים)
-      const nonWorkingDays = await getNonWorkingDaysConfig();
       const matches = candidates.filter(o => {
         if (!o.eventDate) return false;
         const prepDate = getPrintPrepDateWithConfig(o.eventDate, nonWorkingDays);

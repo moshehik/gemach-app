@@ -8,7 +8,7 @@ import { buildMultiWordRelationNameCondition, buildMultiWordNameCondition } from
 import { getHebrewDateString, getIsraelDayRange, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getLateReturnInfo, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
-import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays } from '@/lib/businessDays';
 import { parseFieldGroups, getUnsatisfiedFieldGroups } from '@/lib/customerValidation';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 
@@ -434,9 +434,12 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const anyItemsOut = { items: { some: { isDeleted: false, isTaken: true, isReturned: false } } };
   const cutoff = new Date(Date.now() - (threshold - 1) * 86400000);
   const lateSql = { AND: [anyItemsOut, { OR: [{ toDate: { lte: cutoff } }, { returnDate: { lte: cutoff } }, { AND: [{ toDate: null }, { returnDate: null }, { eventDate: { lte: cutoff } }] }] }] };
+  // אירועים שמועד ההחזרה הצפוי שלהם (יום העבודה הראשון אחריהם) הוא key - חלון נגזר מההופכי של הכלל והרשימה
+  // הנוכחיים (לא מספר ימים קבוע), כדי שימים סגורים ביומן לא יפילו הזמנות בשקט; בנוסף לרצפה של 7 ימים אחורה.
+  const dueEventStart = (key) => { const inv = inverseBusinessDays(key, 1, nonWorkingDays); const floor = addKey(key, -7); return inv && inv.startKey < floor ? inv.startKey : floor; };
   const dueWindow = (key) => ({
     OR: [
-      { eventDate: { gte: dayRange(addKey(key, -7)).start, lte: dayRange(key).end } },
+      { eventDate: { gte: dayRange(dueEventStart(key)).start, lte: dayRange(key).end } },
       { toDate: { gte: dayRange(key).start, lte: dayRange(key).end } },
       { returnDate: { gte: dayRange(key).start, lte: dayRange(key).end } },
     ],

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../../lib/prisma';
 import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
-import { subtractBusinessDays } from '../../../../../lib/businessDays';
+import { subtractBusinessDays, israelLocalDate } from '../../../../../lib/businessDays';
 import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
@@ -373,7 +373,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
-                ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
+                ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
             </tr>
@@ -495,7 +495,7 @@ export async function POST(request, { params }) {
       orderId: order.orderId,
       printType,
       customerName: [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' '),
-      eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : ''),
+      eventDate: order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : ''),
       gmachName: printSettings.gmachName,
       gmachAddress: printSettings.gmachAddress,
       gmachPhone: printSettings.gmachPhone

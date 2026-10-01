@@ -7,7 +7,7 @@ import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelDayRange, getIsraelTodayKey, addDaysToDateKey, getIsraelDaysUntil } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, reconcileDressItemIds } from '../../../lib/inventory';
-import { subtractBusinessDays } from '../../../lib/businessDays';
+import { subtractBusinessDays, israelLocalDate } from '../../../lib/businessDays';
 import { getNonWorkingDaysConfig } from '../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
@@ -1013,7 +1013,7 @@ export async function POST(request) {
         ? String(updatedOrder.customer.email)
         : null;
       if (autoEmailSetting?.value === 'true' && email) {
-          const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(updatedOrder.eventDate) : '');
+          const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(israelLocalDate(updatedOrder.eventDate) ?? updatedOrder.eventDate) : '');
           const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
           const gmachAddress = (await getCachedSetting('gmach_address'))?.value || '';
           const gmachPhone = (await getCachedSetting('gmach_phone'))?.value || '';
