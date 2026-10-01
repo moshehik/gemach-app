@@ -14,7 +14,7 @@ export const metadata = {
 };
 
 import IconSprite from './components/IconSprite';
-import AppShell from './components/AppShell';
+import ShellSwitch from './components/menu/ShellSwitch';
 import { buildNavGroups } from './components/navConfig';
 import LoginScreen from './components/LoginScreen';
 import PageTracker from './components/PageTracker';
@@ -34,7 +34,8 @@ import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
-import { NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
+import { buildMenuTree, NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
+import versionData from './version.json';
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
@@ -74,7 +75,7 @@ export default async function RootLayout({ children }) {
   // exactly as before).
   // management_messages / gmach_name / gmach_subtitle / BRAND_LOGO: מפתחות שהמעטפת החדשה (lib/menu/buildMenuTree.js)
   // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
-  // גדול ולכן נשלח ללקוח רק כ-!!value (ר' a5ShellProps למטה), לעולם לא הערך עצמו.
+  // גדול ולכן נשלח ללקוח רק כ-!!value (ר' menuTree למטה), לעולם לא הערך עצמו.
   const settingsPromise = getAllCachedSettings().then(all =>
     all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
@@ -246,32 +247,6 @@ export default async function RootLayout({ children }) {
   };
   const navGroups = buildNavGroups(legacyNavFlags);
 
-  // נתונים למעטפת החדשה (ShellSwitch / MenuA5Shell, PR 2.A) — מחושבים מאותם settings/pageAccess שנטענו למעלה
-  // (בלי שאילתה נוספת), ומועברים ל-AppShell רק כשהמעטפת 'a5' (ר' a5Shell למטה) — באתר הישן ה-prop הוא undefined
-  // והמטען זהה לקודם. הגדרות נבדקות בקפדנות `=== 'true'`. BRAND_LOGO: רק האם קיים (!!value) — לא ה-base64.
-  // `flags` = בדיוק מה ש-buildMenuTree קורא ב-ctx.flags (lib/menu/buildMenuTree.js deriveLegacyFlags): דגלי התפריט
-  // הישן + isHeadManagement / isProgrammer / hideInternalMessaging / hideErrorReporting / requireLogin / isAuthenticated.
-  // כך "משלוחים" (showDeliveries) ושאר הפריטים המותנים מוצגים בחדש בדיוק כמו בישן.
-  const settingValue = (key) => settings.find(s => s.key === key)?.value;
-  const a5ShellProps = {
-    managementMessages: settingValue('management_messages') === 'true',
-    enableDeliveries: showDeliveries, // enable_deliveries === 'true' (קפדני), בלי ההרשאה; עם ההרשאה = flags.showDeliveries
-    gmachName: typeof settingValue('gmach_name') === 'string' ? settingValue('gmach_name').trim() : '',
-    gmachSubtitle: typeof settingValue('gmach_subtitle') === 'string' ? settingValue('gmach_subtitle').trim() : '',
-    hasBrandLogo: !!settingValue('BRAND_LOGO'),
-    pageAccess, // { 'page:x': boolean } לכל NAV_PAGE_KEYS, או null לאורח / תקלה (buildMenuTree מטפל ב-null)
-    roleId: emp ? emp.roleId : null,
-    flags: {
-      ...legacyNavFlags,
-      isHeadManagement,
-      isProgrammer,
-      hideInternalMessaging,
-      hideErrorReporting,
-      requireLogin,
-      isAuthenticated,
-    },
-  };
-
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
   const themePreference = themeCookie?.value || 'light';
 
@@ -327,6 +302,21 @@ export default async function RootLayout({ children }) {
     settings,
     pathname: requestPathname,
   });
+
+  // עץ התפריט של המעטפת החדשה (lib/menu/buildMenuTree.js): נבנה רק כשהמעטפת 'a5' - בלי דגל אין כאן שום עבודה
+  // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות
+  // שכבר נטענו למעלה (בלי שאילתה נוספת). BRAND_LOGO: העץ מכיל רק האם קיים (hasLogoSetting), לא את ה-base64.
+  // שמות העובד / המחלקה / המשמרת מגיעים בלקוח מ-/api/me (כמו UserMenu), כדי לא להוסיף שאילתת DB לכל בקשה.
+  const menuTree = uiVariants.shell === 'a5' && !showLogin
+    ? buildMenuTree({
+      user: isAuthenticated ? { id: authToken.value, roleId: emp ? emp.roleId : null } : null,
+      roleId: emp ? emp.roleId : null,
+      permissions: pageAccess,
+      settings,
+      flags: { ...legacyNavFlags, isHeadManagement, isProgrammer, hideInternalMessaging, hideErrorReporting, requireLogin, isAuthenticated },
+      version: { version: versionData.version, date: versionData.date },
+    })
+    : null;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -689,7 +679,8 @@ function cpCssText(vars) {
         ) : (
           <LabelsProvider data-element-name="רכיב_layout_8">
             <PopupProvider data-element-name="רכיב_layout_22">
-              <AppShell
+              <ShellSwitch
+                menuTree={menuTree}
                 navGroups={navGroups}
                 isProgrammer={isProgrammer}
                 isHeadManagement={isHeadManagement}
@@ -698,10 +689,9 @@ function cpCssText(vars) {
                 showOverdueRemindersPopup={showOverdueRemindersPopup}
                 authToken={authToken?.value}
                 themePreference={themePreference}
-                a5Shell={uiVariants.shell === 'a5' ? a5ShellProps : undefined}
               >
                 {children}
-              </AppShell>
+              </ShellSwitch>
               <PrefetchManager />
               {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} employeeId={authToken?.value} />}
             </PopupProvider>
