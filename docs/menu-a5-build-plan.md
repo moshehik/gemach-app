@@ -8,9 +8,9 @@
 | קובץ | מה זה |
 |---|---|
 | `lib/menu/buildMenuTree.js` | `buildMenuTree({ user, roleId, permissions, settings, flags, org, available, version, status })` → עץ התפריט הסופי כ-JSON נקי. עוטף את `buildNavGroups` מ-`app/components/navConfig.js` (מקור האמת לנראות של כל מה שיש לו שורה בתפריט הישן) ואת אותם דגלים ש-`app/layout.js` כבר מחשב (`deriveLegacyFlags` משחזר אותם אחד-לאחד). גם `findActive(tree, pathname, hash)`, `flattenMenuTree`, `isJsonSafe`, `REMOVED_ITEMS`, `NOT_BUILT_ITEM_IDS`, `NAV_PAGE_KEYS`. |
-| `lib/menu/navHistory.js` | מחסנית צפייה אחורה/קדימה לפי כללי דפדפן (`visit / back / forward / go / clear / relabel`, `recentsView`, `buttonLabels`, `serializeNavHistory / deserializeNavHistory` ל-sessionStorage, `shouldRecordPath`). אי-שינוי קלט, תקרה 10. |
-| `lib/menu/recents.js` | "נצפו לאחרונה": זיהוי ישות מנתיב (`parseEntityPath`), המרה משלושת המקורות (מחסנית הניווט, `agy_history` הישן, שורות `PageVisitLog`) ו-`mergeRecents` עם ביטול כפילויות. בלי DDL. |
-| `scripts/test_menu_logic.mjs` | 57 בדיקות יחידה בסגנון `scripts/test_ui_variant.mjs` (`node scripts/test_menu_logic.mjs`). |
+| `lib/menu/navHistory.js` | מחסנית צפייה אחורה/קדימה לפי כללי דפדפן (`visit / back / forward / go / clear / relabel`, `recentsView`, `buttonLabels`, `serializeNavHistory / deserializeNavHistory` ל-sessionStorage, `shouldRecordPath`, `clearNavHistoryStorage` להתנתקות). אי-שינוי קלט, תקרה 10; קריאה מאחסון חסינה לקלט ענק/פגום, `\` ו-`//` בתחילת נתיב מנורמלים (open redirect). |
+| `lib/menu/recents.js` | "נצפו לאחרונה": זיהוי ישות מנתיב (`parseEntityPath`), המרה משלושת המקורות (מחסנית הניווט, `agy_history` הישן, שורות `PageVisitLog`) ו-`mergeRecents` עם ביטול כפילויות. בלי DDL. קידוד פגום (`orderId=%`) לא זורק — הרשומה נזרקת. |
+| `scripts/test_menu_logic.mjs` | 62 בדיקות יחידה בסגנון `scripts/test_ui_variant.mjs` (`node scripts/test_menu_logic.mjs`). |
 
 **לא נגעו:** `app/components/AppShell.js`, `navConfig.js`, `UserMenu.js`, `TopbarSearch.js`, `NotificationBell.js`, `BrandLogo.js`, `app/layout.js`, `prisma/schema.prisma`, שום API.
 
@@ -73,7 +73,7 @@
 | רשימת ההתראות | `NotificationBell.js:19-29` `GET /api/notifications` בפתיחה | אותו API; שורה = שולח/מערכת, זמן, תוכן, "סמן כנקרא" (`POST /api/notifications/read {notificationId}`) | | — | ה-GET מחזיר עד 150 + outgoing 100 — כבד; לא לקרוא אותו בטעינה, רק בפתיחה (כמו היום) |
 | "סמן הכל כנקרא" (Q6) | רק פר-הודעה (`api/notifications/read/route.js`) | **חסר endpoint.** תכנון: `POST /api/notifications/read` עם `{ all: true }` — אישי: `updateMany({ where:{ receiverId: me, isRead:false }, data:{ isRead:true } })`; כללי (receiverId null): לכל שורה שלא כוללת אותי ב-`readBy` — הוספה (לולאה על עד 150 השורות של ה-GET, או `findMany`+`update`); `updateMany` עוקף את הרחבת ה-AuditLog — זו אחת מהמקרים שבהם שורת AuditLog ידנית **מותרת**, אבל הודעות כבר לא נרשמות ממילא (`Notification` לא מוחרג — לבדוק: אם כן נרשם, להשתמש ב-`auditAs`) | `rail.bell.tools.markAllRead` | endpoint | ללא דיווח ב-AuditLog על "קריאה" — מקובל |
 | "ניקוי" (Q6) | רק פר-הודעה (`api/notifications/archive/route.js`) | **חסר endpoint.** תכנון: `POST /api/notifications/archive` עם `{ all: true, archive: true }` — אישי: `isArchived=true`; כללי: הוספה ל-`archivedBy`. **משמעות:** "ניקוי" = העברה לארכיון (פר-משתמש), ההודעות נשארות במרכז ההודעות בלשונית ארכיון. לא מחיקה. | `rail.bell.tools.clearAll` | endpoint | לאשר עם הבעלים שניקוי = ארכיון ולא מחיקה (ברירת מחדל שנבחרה: ארכיון) |
-| "פתח מרכז הודעות" | `NotificationBell.js:140-143` → `/messages` | `/messages` | `logged` ∧ `!hide_internal_messaging` ∧ (`permissions['page:messages']` אם נטען, אחרת מוצג כמו היום) | להוסיף `page:messages` ל-`NAV_PAGE_KEYS` ב-`layout.js:202` (כבר ב-`lib/menu/buildMenuTree.js NAV_PAGE_KEYS`) | היום הקישור מוצג גם למי שה-layout של `/messages` (`canOpenPage('page:messages')`) חוסם — העץ החדש מתקן זאת |
+| "פתח מרכז הודעות" | `NotificationBell.js:140-143` → `/messages` | `/messages` | `logged` ∧ `!hide_internal_messaging` ∧ **כשל-סגור**: עובדת/מנהלת סניף רק כש-`permissions['page:messages'] === true` נטען; הנהלה ראשית/מתכנת גם בלי מידע (resolvePageAccess מחזיר להם true תמיד); שורת הרשאה `false` מסתירה לכולם | **חובה** להוסיף `page:messages` ל-`NAV_PAGE_KEYS` ב-`layout.js:202` (עדיף: לייבא `NAV_PAGE_KEYS` מ-`lib/menu/buildMenuTree.js`) — אחרת השורה לא תופיע לאף עובדת שאינה הנהלה | היום הקישור מוצג גם למי שה-layout של `/messages` (`canOpenPage('page:messages')`) חוסם — העץ החדש מתקן זאת. `page:messages` סגור כברירת מחדל (`permissionsMetadata.js`), לכן בלי שורת הרשאה עובדת לא תראה את השורה — תואם את העמוד עצמו |
 | "הודעה למנהל" (P02) | רק טופס בדף ההודעות: לשונית "הודעות להנהלה" (`app/messages/page.js:598, 705-712`) → `POST /api/notifications { receiverId:'all', title:'הודעה להנהלה', content, category:'management' }` (`page.js:183-191`); השרת מסרב כש-`management_messages!=='true'` (`api/notifications/route.js:134-143`) | פעולה `message-to-manager`: חלון קטן (חלון 2/… מהפלטה) עם שדה טקסט ו"שליחה למנהל" שקורא לאותו POST בדיוק | `logged` ∧ `!hide_internal_messaging` ∧ `management_messages==='true'` | חלון בלקוח (בלי API חדש) | הבעלים כתב "פותחת את חלון ההודעה הקיים" — אין חלון קיים, יש לשונית בדף. ברירת המחדל שנבחרה: חלון קטן על אותו API. חלופה: ניווט ל-`/messages` (ללא פרמטר ללשונית — צריך להוסיף `?tab=management`). ראו שאלה 3 |
 
 ### 3.4 פאנל המשתמש
@@ -85,11 +85,11 @@
 | שעון נוכחות | `UserMenu.js:179-187` | `/punch-clock` | `logged` | העמוד כופה מעטפת `legacy` (`isForcedLegacyPath`) — מעבר אליו מציג את הסרגל הישן; זה מכוון |
 | שעות העבודה שלי | `UserMenu.js:188-196` | `/my-hours` | `logged` | |
 | ~~הודעות~~ (R08) | `UserMenu.js:197-207` | — | **הוסר** (מכוסה בפעמון) | נשאר בישן |
-| עיצוב ותצוגה | `UserMenu.js:208-216` | `/display-settings` | תמיד (גם אורח, לפי העיצוב `userItems`) | היום לאורח אין את זה; העיצוב מציג — אושר כחלק מהעיצוב |
+| עיצוב ותצוגה | `UserMenu.js:208-216` | `/display-settings` | `logged` | בעיצוב המאושר (`תפריט-חדש.html`, `u-display` עם `logged:1`) אורח רואה **רק** "היכנס למערכת" — כמו היום. (גרסה קודמת של התוכנית טענה "גם אורח" — תוקן 1.10) |
 | היסטוריית הודעות מערכת (R05) | `MessageHistoryButton` כאייקון בסרגל (`AppShell.js:239`, `isProgrammer`), נתונים מ-`PopupProvider.alertsHistory` (`PopupProvider.js:26,211`) | פעולה `system-messages-history` שפותחת את אותו חלון | `prog` | להוציא את החלון מ-`MessageHistoryButton.js` לרכיב שניתן לפתוח מבחוץ (או לרנדר אותו עם כפתור מוסתר) |
 | ~~ריענון וניקוי פילטרים~~ (R03) | `AppShell.js:114-116, 235-237` | — | **הוסר** | |
 | ~~מתג ערכת נושא~~ (R04) | `ThemeToggle` (`AppShell.js:238`) | — | **הוסר** | `theme_<id>` cookie ו-`data-theme` נשארים כפי שהם; מי שכבר במצב כהה נשאר בו עד ששינה ב-`/display-settings` |
-| התנתקות | `UserMenu.js:66-95` (בדיקת איחורים → `POST /api/logout` → `location.href='/'`) | פעולה `logout` — **אותה פונקציה** (להוציא `handleLogout` ל-hook משותף) | `logged` | |
+| התנתקות | `UserMenu.js:66-95` (בדיקת איחורים → `POST /api/logout` → `location.href='/'`) | פעולה `logout` — **אותה פונקציה** (להוציא `handleLogout` ל-hook משותף) | `logged` | ה-hook המשותף חייב לקרוא ל-`clearNavHistoryStorage()` (`lib/menu/navHistory.js`) לפני `location.href='/'`, אחרת עובדת שנכנסת באותו טאב רואה תוויות (שמות לקוחות) מההיסטוריה של הקודמת. `agy_history` ב-localStorage כבר היום לא מתנקה — לשקול למחוק גם אותו באותו מקום |
 | אורח: "היכנס למערכת" | `UserMenu.js:101-134` (`LoginScreen isModal`) | פעולה `login` | `!logged` | |
 
 ### 3.5 מותג (לוגו)
@@ -107,8 +107,8 @@
 | R02 | חצים ליד הלוגו | `AppShell.js:183-194` (`router.back/forward`) | עברו לפאנל החיפוש על `lib/menu/navHistory.js` |
 | R03 | ריענון וניקוי פילטרים | `AppShell.js:114-116, 235-237` | לא מוצג |
 | R04 | מתג ערכת נושא | `ThemeToggle.js`, `AppShell.js:238` | לא מוצג |
-| R09 | משלוחים | `navConfig.js:36` (`enable_deliveries` ∧ `page:deliveries`) | לא בעץ. הדף `/deliveries` נשאר נגיש מכרטיסי `/admin`/בית ומקישורים; **לנווה יעקב (שם המשלוחים פעילים) זה פריט שנעלם מהתפריט** — ראו שאלה 4 |
-| R10 | זיכויים וחובות | `navConfig.js:37` | לא בעץ. `/refunds` נגיש דרך "כספים"? **לא** — `/dashboard` לא מקשר ל-`/refunds` היום. ראו שאלה 5 |
+| R09 | משלוחים | `navConfig.js:36` (`enable_deliveries` ∧ `page:deliveries`) | לא בעץ. **אין שום כניסה אחרת ל-`/deliveries`:** `grep` על `app/` ו-`lib/` (1.10) מראה שהקישור היחיד הוא `navConfig.js:36` (הכרטיסים ב-`app/admin/page.js` הם הגדרות/אתר/הרשאות/מחירון; ב-`app/page.js` לוח בקרה/מחירון/נוכחות/הודעות/שעון). אחרי המעבר ל-A5 העמוד נגיש רק בהקלדת כתובת. **נווה יעקב משתמשת במשלוחים יומית** — חוסם להדלקה שם, ראו שאלה 4 |
+| R10 | זיכויים וחובות | `navConfig.js:37` | לא בעץ. **אין כניסה אחרת ל-`/refunds`** (אותו grep; `/dashboard` לא מקשר אליו). ראו שאלה 5 |
 | R11 | הרשאות / מחירון / ניהול אתר / דוח נוכחות | כרטיסים ב-`/admin` (לא בסיידבר הישן) | לא בעץ; נגישים מ-`/admin` כמו היום |
 
 `REMOVED_HREFS` ב-`buildMenuTree.js` + הבדיקה "הפריטים שהוסרו לעולם לא בעץ" מבטיחים שלא יחזרו בטעות.
@@ -118,13 +118,13 @@
 | צורך | קיים | חסר (שלב 2) |
 |---|---|---|
 | מי מחובר + משמרת | `GET /api/me` | — |
-| הגדרות + הרשאות לעץ | מחושב בשרת ב-`app/layout.js` (settings 74–79, `resolvePageAccess` 205) | להוסיף `management_messages`, `gmach_name`, `gmach_subtitle`, `BRAND_LOGO` לרשימת המפתחות ב-`layout.js:75` (`BRAND_LOGO` רק כ-`!!value`, לא לשלוח את ה-base64 ללקוח!) ו-`page:messages` ל-`NAV_PAGE_KEYS` |
+| הגדרות + הרשאות לעץ | מחושב בשרת ב-`app/layout.js` (settings 74–79, `resolvePageAccess` 205) | להוסיף `management_messages`, `gmach_name`, `gmach_subtitle`, `BRAND_LOGO` לרשימת המפתחות ב-`layout.js:75` (`BRAND_LOGO` רק כ-`!!value`, לא לשלוח את ה-base64 ללקוח!) ו-**`page:messages` ל-`NAV_PAGE_KEYS` (חובה — חוזה הקלט מתועד מעל `NAV_PAGE_KEYS`/`MENU_PAGE_KEYS` ב-`buildMenuTree.js`; בלי המפתח "פתח מרכז הודעות" מוסתר לכל מי שאינה הנהלה)** |
 | חיפוש | `GET /api/global-search?q=` | — |
 | התראות | `GET /api/notifications[?light=1]`, `POST read`, `POST archive` | `{ all:true }` בשני ה-POST (סעיף 3.3) |
 | הודעה למנהל | `POST /api/notifications` + `category:'management'` | — |
 | נצפו לאחרונה | `localStorage agy_history` (`lib/historyManager.js`) + `PageVisitLog` נכתב כבר (`PageTracker.js`, `api/log-visit`) | אופציונלי: `GET /api/me/recent-pages?limit=10` לפי `SERVER_RECENTS_CONTRACT` ב-`recents.js` (קריאה בלבד; שאילתת `PageVisitLog` של העובד + העשרת שמות). **לא חובה לשלב 2** — המיזוג של מחסנית הניווט + `agy_history` מספיק בלי קריאת שרת |
 | היסטוריית ניווט | — (sessionStorage בלבד) | — |
-| מעבר ל"אתר הישן" | `scripts/set-ui-variant.js` (CLI בלבד) | אם הבעלים יבחר "מעבר לוריאנט legacy": `PUT /api/me/design-prefs` כבר שומר `uiVariants` (`sanitizeDesignPrefs`) — צריך רק קריאה מהלקוח `{ uiVariants: { shell: 'legacy' } }` + טעינה מלאה |
+| מעבר ל"אתר הישן" | `scripts/set-ui-variant.js` (CLI בלבד) | **`PUT /api/me/design-prefs` לא שומר `uiVariants`** — `app/api/me/design-prefs/route.js:71-75` מוחק את השדה במפורש (החלטת אבטחה: "עובד לא יכול להדליק לעצמו מסך חדש"). גרסה קודמת של התוכנית טענה אחרת — תוקן 1.10. אם הבעלים יבחר "מעבר לוריאנט legacy" צריך **endpoint ייעודי** (הצעה, לא נבנה): `POST /api/me/ui-variant/shell` שמקבל רק `{ value: 'legacy' }` (או `null` לביטול העקיפה) — לעולם לא `a5` — וכותב `themeColor.uiVariants.shell` דרך `mergeDesignPrefs` עם `uiVariants` מותר רק במסלול הזה; מחובר בלבד; מחזיר `{ ok }`, הלקוח עושה טעינה מלאה. עד שיוחלט: האייקון "האתר הישן" מוצג עם `action: 'switch-to-legacy-shell'` ואין לו מימוש — ראו שאלה 1 |
 
 ## 5. שלב 2 — הנחיות לסוכן הממשק (Sonnet)
 
@@ -141,7 +141,7 @@
 | `app/components/menu/MenuA5Shell.js` | הסרגל העליון: מותג, לשוניות (`tree.tabs`), סרגל צד (`tree.rail`), מגירה בנייד, `findActive` לסימון הנוכחי, `handleNavClick` ל-hash (העתק מ-`AppShell.js:124-133`); מרנדר `OverdueRemindersWatcher`/`ShiftMessageWatcher` כמו `AppShell.js:140-141` |
 | `app/components/menu/MenuTabPanel.js` | פאנל לשונית: ריחוף לעכבר, חץ ללחיצה/מקלדת, ArrowDown/Up/Home/End, Escape, סגירה בלחיצה בחוץ (אותה התנהגות כמו `script2.js` בעיצוב, שורות 373–423) |
 | `app/components/menu/MenuSearchPanel.js` | שדה חיפוש → `/api/global-search` (דיבאונס 350, מינימום 2 תווים, 15 תוצאות, "הצג את כל התוצאות") — להעביר מ-`TopbarSearch.js:54-91`; שורת חצים (`buttonLabels`), "נצפו לאחרונה" (`mergeRecents({ nav: recentsView(state), legacy: getHistory() })`) + נקה (`clear` + `localStorage.removeItem('agy_history')`); peek בריחוף 150ms / מיקוד / לחיצה ארוכה 500ms |
-| `app/components/menu/useNavHistory.js` | hook: טוען מ-`sessionStorage[NAV_HISTORY_STORAGE_KEY]`, `visit` על כל שינוי `usePathname()+hash` אלא אם הניווט הגיע מ-`back/forward/go` (ref `fromHistory`), שומר אחרי כל שינוי; תווית = `findActive` → תווית הפריט, אחרת `document.title`; `relabel` כשדפים משדרים `agy_history_updated` (מ-`addHistory`) |
+| `app/components/menu/useNavHistory.js` | hook: טוען מ-`sessionStorage[NAV_HISTORY_STORAGE_KEY]`, `visit` על כל שינוי `usePathname()+hash` אלא אם הניווט הגיע מ-`back/forward/go` (ref `fromHistory`), שומר אחרי כל שינוי; תווית = `findActive` → תווית הפריט, אחרת `document.title`; `relabel` כשדפים משדרים `agy_history_updated` (מ-`addHistory`). ניווט מההיסטוריה: `router.push(entry.path)` — הנתיב כבר מנורמל (`normalizeNavPath` חוסם `//`/`/\`), לא להעביר כתובת גולמית מהאחסון. ב-hook ההתנתקות: `clearNavHistoryStorage()` |
 | `app/components/menu/MenuBell.js` | פעמון: להעביר את הלוגיקה מ-`NotificationBell.js` (polling 120 שנ', visibilitychange, רענון בניווט) כפי שהיא; כותרת עם "סמן הכל כנקרא"/"ניקוי"; שורות `tree.rail.bell.rows` |
 | `app/components/menu/MenuUserPanel.js` | כותרת + `tree.user.items`; פעולות `logout` (העתק `handleLogout`), `login` (`LoginScreen isModal`), `system-messages-history` |
 | `app/components/menu/ManagerMessageDialog.js` | "הודעה למנהל" (סעיף 3.3) |
@@ -157,21 +157,25 @@
 3. לשונית שתפריטה ריק לא מוצגת; לשונית שדף הבסיס שלה אסור (ניהול למנהלת סניף, הזמנה לעובדת בלי `page:orders_new`) מקבלת `href:null` ורק פותחת תפריט.
 4. "ניקוי" בפעמון = ארכיון פר-משתמש (לא מחיקה).
 5. "הודעה למנהל" = חלון קטן על ה-API הקיים (`category:'management'`), מוצג רק כשההגדרה פעילה.
-6. "פתח מרכז הודעות" מכבד `page:messages` כשההרשאות נטענו.
+6. "פתח מרכז הודעות" — כשל-סגור על `page:messages`: בלי מידע הרשאה מוצג רק להנהלה ראשית/מתכנת (עודכן 1.10 אחרי הסקירה).
 7. "נצפו לאחרונה" = מיזוג מחסנית הניווט (sessionStorage) + `agy_history` (localStorage); בלי קריאת שרת בשלב 2; סריקות ברקוד לא נרשמות.
-8. "עיצוב ותצוגה" מוצג גם לאורח (לפי `userItems` בעיצוב).
+8. "עיצוב ותצוגה" רק למחובר — אורח רואה רק "היכנס למערכת", כמו בעיצוב המאושר (`u-display` עם `logged:1`). (עודכן 1.10; הניסוח הקודם "גם לאורח" היה שגוי.)
 9. ברקוד בשורת החיפוש והחזרה מהירה **לא** בוריאנט החדש בשלב 2 (ממתין לסעיף 8 ב-SPEC).
+10. הגדרות נבדקות בקפדנות `=== 'true'` / `=== 'false'` כמו `app/layout.js` ו-`api/notifications` — ערך כמו `' True'` לא מדליק שורה שהשרת יסרב לה.
 
 ## 7. שאלות פתוחות לבעלים
 
-1. **"האתר הישן" — לאן מקשר?** אין כתובת של "אתר ישן": אותו אתר, שתי מעטפות. הצעה: לחיצה שומרת עקיפה אישית `shell=legacy` (`PUT /api/me/design-prefs`) וטוענת מחדש — העובד חוזר לתפריט הישן, וחזרה דרך `/display-settings` (או סקריפט). לאשר, או לתת יעד אחר.
+1. **"האתר הישן" — לאן מקשר?** אין כתובת של "אתר ישן": אותו אתר, שתי מעטפות. הצעה: לחיצה שומרת עקיפה אישית `shell=legacy` וטוענת מחדש — העובד חוזר לתפריט הישן, וחזרה דרך `/display-settings` (או סקריפט). **דורש endpoint חדש** (ראו סעיף 4, שורת "מעבר לאתר הישן"): `PUT /api/me/design-prefs` מוחק `uiVariants` בכוונה (`route.js:75`), ואין היום דרך לעובד לשנות את זה בעצמו. ההצעה: endpoint שמאפשר *רק* `legacy`/ביטול, כדי לא לפתוח לעובדים הדלקה עצמית של A5. לאשר את ההצעה (ובכך לרכך את ההחלטה "רק הבעלים משנה וריאנט" לכיוון אחד בלבד), או להשאיר את האייקון בלי פעולה / להסירו.
 2. **ברקוד מהסרגל בינתיים:** בוריאנט החדש אין "החזרה מהירה בברקוד" עד שזרם הברקוד ברצף ייבנה (10 שאלות ב-SPEC סעיף 8). מקובל להשיק כך (החזרה נשארת בדף השכרות ובחלון ההזמנה), או להעביר את הטופס הישן כפי שהוא לפאנל החדש כגשר?
 3. **"הודעה למנהל":** חלון קטן (ברירת המחדל כאן) או מעבר לדף ההודעות ללשונית "להנהלה"?
-4. **משלוחים (R09) בנווה יעקב:** הוסר מהתפריט לפי ההחלטה; הדף `/deliveries` יישאר נגיש רק מכרטיסים/קישורים. לאשר שזה בסדר גם לנווה יעקב, שם המשלוחים בשימוש יומי.
-5. **זיכויים וחובות (R10) "שייך לכספים":** דף "כספים" (`/dashboard`) לא מקשר היום ל-`/refunds`. להוסיף שם קישור/אריח "זיכויים וחובות"? (שינוי בדף `/dashboard`, לא בתפריט.)
+4. **משלוחים (R09) — חוסם להדלקה בנווה יעקב.** הוסר מהתפריט לפי ההחלטה, אבל **אין שום קישור אחר ל-`/deliveries` באתר** (הקישור היחיד הוא `navConfig.js:36`; אומת ב-grep 1.10) — אחרי המעבר ל-A5 העובדות בנווה יעקב, שמשתמשות במשלוחים יומית, יגיעו לדף רק בהקלדת כתובת. **אין להדליק `shell=a5` בנווה יעקב לפני החלטה.** חלופות:
+   - (א) להשאיר שורת "משלוחים" בתפריט החדש (למשל תחת "הזמנה" או "בית › אחרונים"), מוצגת רק כש-`enable_deliveries=true` ∧ `page:deliveries` — כלומר בגמ"ח הראשי (ההגדרה כבויה) היא לא תופיע בכלל, וההחלטה R09 נשמרת שם. שינוי קטן ב-`ITEM_DEFS`.
+   - (ב) כניסה מדף אחר: אריח "משלוחים להיום" בדף הבית / בלוח החודשי / בכרטיס ההזמנה (קישור לדף עם תאריך). שינוי בדפים, לא בתפריט; פחות נגיש ("יומי" = צריך להיות בלחיצה אחת).
+   - (ג) להשאיר את נווה יעקב על הוריאנט `legacy` (ברירת המחדל) עד שתוכרע חלופה — בלי שינוי קוד; הגמ"ח הראשי עובר ל-A5 לבד.
+5. **זיכויים וחובות (R10) "שייך לכספים":** גם ל-`/refunds` **אין היום שום קישור חוץ מ-`navConfig.js:37`** (`/dashboard` לא מקשר אליו). אחרי המעבר העמוד נגיש רק בהקלדת כתובת. חלופות: (א) אריח/קישור "זיכויים וחובות" בדף "כספים" (`/dashboard`) — שינוי בדף, מתאים להחלטה "שייך לכספים"; (ב) תת-פריט "זיכויים" תחת "ניהול › כספים" בתפריט (מוצג לפי `page:refunds`, כמו היום); (ג) להשאיר בלי כניסה זמנית — לא מומלץ: אומת (grep על `href=`/`router.push` ב-`app/`) שגם כרטיס ההזמנה וכרטיס הלקוח לא מקשרים לדף `/refunds` (כרטיס הלקוח רק קורא ל-`/api/refunds?customerId=`).
 6. **"ניקוי" בפעמון = ארכיון** (ההודעות נשארות בלשונית ארכיון במרכז ההודעות) — לאשר.
 7. **פערי פלטה (D11):** להוסיף לפלטה "חץ לשונית" (`sn-cv`) ו"שורת קבוצה במגירה" (`sn-accrow`) כרכיבים ממוספרים לפני הבנייה?
-8. **"עיצוב ותצוגה" לאורח** — בעיצוב מוצג גם למי שלא מחובר (היום לא). לאשר.
+8. ~~"עיצוב ותצוגה" לאורח~~ — **נסגר 1.10:** בדיקה חוזרת של העיצוב המאושר מראה `logged:1` על הפריט, כלומר אורח רואה רק "היכנס למערכת" (כמו היום). הקוד והבדיקה יושרו לעיצוב; אין שאלה.
 9. **הודעות "ניהול" למנהלת סניף:** בעיצוב "ניהול" מוצג למנהלת סניף עם "דגמים" בלבד; הלשונית לא מנווטת ל-`/admin` (אסור לה). לאשר את ההתנהגות "לחיצה פותחת את התפריט".
 
 ## 8. סיכונים
