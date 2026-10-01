@@ -16,9 +16,10 @@ import { hebText, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters,
 import { PRIVACY_SECTIONS, splitPlaceholders, PRIVACY_PLACEHOLDER_COUNT } from '../app/components/home/privacyPolicyText.js';
 
 let passed = 0;
+let failed = 0;
 function t(name, fn) {
   try { fn(); passed++; console.log('  ok   -', name); }
-  catch (e) { console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
+  catch (e) { failed++; console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
 }
 
 console.log('כותרת');
@@ -237,7 +238,7 @@ t('עמודות רגישות בתוצאות AI לא מוצגות ולא מיוצ
   assert.deepEqual(aiRowView(rows[0]).parts, []);
 });
 t('קישורי תוצאות מחיפוש מתקדם: רק פנימיים', () => {
-  const r = normalizeAdvResponse({ links: ['/orders/1', '/\evil.com', 'https://evil.com', '//evil.com', ''] });
+  const r = normalizeAdvResponse({ links: ['/orders/1', '/\\evil.com', 'https://evil.com', '//evil.com', ''] });
   assert.deepEqual(r.links, ['/orders/1', '', '', '', '']);
 });
 
@@ -397,4 +398,5 @@ t('הנוסח: כל הסעיפים, שדות המילוי מזוהים ומסו�
   assert.ok(all.includes('נדרים פלוס') && all.includes('בינה מלאכותית'));
 });
 
-console.log('\n' + passed + ' passed');
+console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
+if (failed) process.exit(1);
