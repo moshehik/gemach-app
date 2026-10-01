@@ -7,7 +7,9 @@ import { renderOrderCardEmailHtml } from '../../../../../lib/emailTemplates';
 import { normalizeAttachments, postToMailer } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
 import { addDaysSkippingWeekends } from '../../../../../lib/inventory';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, getSessionEmployee } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
+import { verifyManagerPin } from '@/lib/managerAuth';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
@@ -457,6 +459,20 @@ export async function POST(request, { params }) {
 
     if (body.returnHtmlOnly) {
       return NextResponse.json({ success: true, html: htmlBody });
+    }
+
+    // שליחה בפועל ללקוח מחייבת את feature:customer_email_approval (אותו פריט מאשר כמו POST /api/send-email):
+    // או שהעובד המחובר עצמו מורשה (אין צורך להקליד סיסמה שוב - הזהות מגיעה מהעוגייה החתומה),
+    // או שמאשר מורשה אחר הקליד סיסמה בחלון "קוד מאשר" והלקוח שלח אותה לכאן (emailApproverId/emailApproverPin) -
+    // בדיוק כמו orderDateApproverId/Pin ב-PUT /api/orders/[id]. החזרת ה-HTML בלבד (למעלה) לא שולחת כלום ולכן לא מחויבת.
+    const sessionEmployee = await getSessionEmployee();
+    const approved = (sessionEmployee && (await hasPermission(sessionEmployee, 'feature:customer_email_approval')))
+      || (await verifyManagerPin(body.emailApproverId, body.emailApproverPin, 'feature:customer_email_approval'));
+    if (!approved) {
+      return NextResponse.json(
+        { success: false, code: 'approval_required', error: 'שליחת מייל ללקוח דורשת אישור של מי שהוגדר כמאשר שליחת מייל. יש להזין סיסמת מאשר.' },
+        { status: 403 }
+      );
     }
 
     const { pdfBase64 } = body;

@@ -118,7 +118,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const handleQuickEmail = async () => {
     const ok = await verifyPin('שליחת מייל מהיר ללקוח דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:customer_email_approval');
     if (!ok) return;
-    onQuickEmail();
+    // ok = { employeeId, pin } של המאשר - נשלח גם לשרת, שמאמת אותו מחדש (POST /api/orders/[id]/email)
+    onQuickEmail(ok);
   };
 
   // PUT קטן משלו דרך onToggleSignature (ר' handleToggleSignature ב-app/orders/[id]/page.js) -

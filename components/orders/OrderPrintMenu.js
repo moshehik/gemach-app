@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { verifyPin } from './modern/mocAuth';
 
 /**
  * Reusable "print / email order" control: a floating menu with the same 4
@@ -152,12 +153,25 @@ export default function OrderPrintMenu({
         });
       }
 
-      const res = await fetch(`/api/orders/${order.orderId}/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type, pdfBase64, extraAttachments, sendMode: orderSendMode })
-      });
-      const data = await res.json();
+      const sendOrderEmail = async (approval) => {
+        const r = await fetch(`/api/orders/${order.orderId}/email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: targetEmail, type, pdfBase64, extraAttachments, sendMode: orderSendMode,
+            emailApproverId: approval?.employeeId, emailApproverPin: approval?.pin
+          })
+        });
+        return { status: r.status, data: await r.json() };
+      };
+      // עובד שמוגדר כמאשר שליחת מייל (feature:customer_email_approval) שולח בלי חלון נוסף; לכל עובד אחר השרת
+      // עונה 403 approval_required ואז מבקשים סיסמת מאשר ומנסים שוב (אותו PDF, בלי ליצור אותו מחדש).
+      let { status, data } = await sendOrderEmail(null);
+      if (status === 403 && data.code === 'approval_required') {
+        const approval = await verifyPin('שליחת מייל ללקוח דורשת אישור מנהל. אנא בחר מאשר והזן סיסמה:', 'feature:customer_email_approval');
+        if (!approval) return;
+        ({ status, data } = await sendOrderEmail(approval));
+      }
       if (data.success) {
         const links = Array.isArray(data.driveLinks) ? data.driveLinks : [];
         alert(links.length > 0 ? `המייל נשלח בהצלחה! ${links.length} קבצים הועלו לדרייב עם הרשאת הורדה מלאה.` : 'המייל נשלח בהצלחה!');

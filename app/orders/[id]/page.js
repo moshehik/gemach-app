@@ -198,6 +198,8 @@ export default function OrderDetailsPage({ params }) {
   // מחזיק את פונקציית ה-resolve של ה-Promise שמחזירה confirmSaveSummaryIfNeeded, כדי
   // שכפתורי החלון (שמעבר לרינדור הזה) יוכלו "לענות" לקריאה שממתינה ב-handleSave/handleExit.
   const summaryConfirmResolverRef = useRef(null);
+  // סיסמת מאשר זמנית לשליחת מייל הזמנה (ראה handleSendEmail) - חייב להיות כאן, לפני כל return מוקדם.
+  const emailApprovalRef = useRef(null);
   const [isPastEvent, setIsPastEvent] = useState(false);
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
@@ -1501,7 +1503,16 @@ export default function OrderDetailsPage({ params }) {
     }, 60);
   };
 
-  const handleSendEmail = async (type, forcedEmail = null) => {
+  // approval = { employeeId, pin } של מאשר שהקליד סיסמה בחלון "קוד מאשר" (ModernGeneralDetails.handleQuickEmail);
+  // השרת מאמת אותו מול feature:customer_email_approval. ה-ref מוגדר בראש הקומפוננט (emailApprovalRef).
+  // ביטול חלון "הזנת כתובת מייל" מאפס אותו כדי שהסיסמה לא תישאר בזיכרון.
+  const cancelEmailPrompt = () => {
+    emailApprovalRef.current = null;
+    setShowEmailPrompt(false);
+  };
+
+  const handleSendEmail = async (type, forcedEmail = null, approval = null) => {
+    if (approval) emailApprovalRef.current = approval;
     let targetEmail = forcedEmail || order.customer?.email;
     
     if (!targetEmail || !targetEmail.includes('@')) {
@@ -1517,8 +1528,14 @@ export default function OrderDetailsPage({ params }) {
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type: type })
+        body: JSON.stringify({
+          email: targetEmail,
+          type: type,
+          emailApproverId: emailApprovalRef.current?.employeeId,
+          emailApproverPin: emailApprovalRef.current?.pin
+        })
       });
+      emailApprovalRef.current = null;
       const data = await res.json();
       if (data.success) {
         setSaveMessage('המייל נשלח בהצלחה!');
@@ -1805,7 +1822,7 @@ export default function OrderDetailsPage({ params }) {
                 }}
                 onSaveRequest={handleSave}
                 onToggleSignature={handleToggleSignature}
-                onQuickEmail={() => handleSendEmail('order')}
+                onQuickEmail={(approval) => handleSendEmail('order', null, approval)}
                 showManualPaymentCreditButton={consolidateManualPaymentCredit}
                 onOpenManualPaymentCredit={handleOpenManualPaymentCredit}
               />
@@ -1878,7 +1895,7 @@ export default function OrderDetailsPage({ params }) {
         <div
           className="modal-backdrop"
           style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowEmailPrompt(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) cancelEmailPrompt(); }}
         >
           <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-icon-circle" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
@@ -1902,7 +1919,7 @@ export default function OrderDetailsPage({ params }) {
               style={{ marginBottom: '18px', textAlign: 'start' }}
             />
             <div className="confirm-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowEmailPrompt(false)}>ביטול</button>
+              <button type="button" className="btn btn-secondary" onClick={cancelEmailPrompt}>ביטול</button>
               <button type="button" className="btn btn-primary" onClick={handleEmailSubmit}>שמור ושלח</button>
             </div>
           </div>
