@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/auth';
 import { getAvailableInventoryWithComparison } from '../../../../lib/inventory';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  // /api/* לא עובר דרך middleware.js, ולכן בלי בדיקה כאן ראוט זה היה פתוח לגולש אנונימי.
+  // אותה בדיקה ואותה תשובת 401 כמו שאר ראוטי ההזמנות (למשל [id]/email).
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const { searchParams } = new URL(request.url);
     const dressModelId = searchParams.get('dressModelId');
