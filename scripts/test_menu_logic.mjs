@@ -324,6 +324,50 @@ t('הקשחה: "/\\evil.com", "//evil.com", "\\\\evil.com" הופכים לנתי
   for (const p of ['/\\evil.com', '//evil.com', '\\\\evil.com']) assert.ok(!/^\/[\\/]/.test(normalizeNavPath(p)), p);
   let s = createNavHistory(); s = visit(s, { path: '/\\evil.com', label: 'x' }); assert.equal(current(s).path, '/evil.com');
 });
+const SITE = 'https://gemach.example';
+const resolvedOrigin = (p) => new URL(p, SITE).origin;
+t('הקשחה: תווי בקרה (Tab / LF / CR / \\u2028 / NUL / BOM) באמצע הנתיב — הנתיב נדחה כולו', () => {
+  // דפדפן מסיר את התווים האלה לפני הפענוח: '/\t/evil.com' הופך ל-//evil.com = אתר חיצוני. אומת מול new URL.
+  assert.equal(resolvedOrigin('/\t/evil.com'), 'https://evil.com', 'הנחת הבדיקה: URL מסיר Tab');
+  for (const p of ['/\t/evil.com', '/\n/evil.com', '/\r/evil.com', '/\r\n/evil.com', '/\u2028/evil.com', '/\u2029/evil.com',
+    '/orders\u0000', '/\u0001orders', '/orders/\u007f', '/\ufeff/evil.com', '/or\tders', '/x?q=\n1', '/x#a\tb', '/x\r?q=1']) {
+    assert.equal(normalizeNavPath(p), '', JSON.stringify(p));
+    assert.equal(shouldRecordPath(p), false, JSON.stringify(p));
+  }
+  // תווים כאלה בקצוות נחתכים (trim) כמו קודם — '\t//evil.com' נשאר נתיב פנימי, '/x?q=\n' הוא '/x?q='
+  assert.equal(normalizeNavPath('\t//evil.com'), '/evil.com'); assert.equal(normalizeNavPath('  /orders \n'), '/orders');
+  assert.equal(normalizeNavPath('/x?q=\n'), '/x?q='); assert.equal(normalizeNavPath('\t/x#\t'), '/x');
+  // visit / deserialize לא רושמים נתיב כזה
+  let s = createNavHistory(); s = visit(s, { path: '/\t/evil.com', label: 'x' }); assert.equal(s.list.length, 0);
+  const raw = JSON.stringify({ v: 1, cur: 1, list: [{ path: '/orders', label: 'a' }, { path: '/\t/evil.com', label: 'b' }] });
+  const d = deserializeNavHistory(raw); assert.deepEqual(d.list.map((e) => e.path), ['/orders']); assert.equal(d.cur, 0);
+});
+t('הקשחה: %09 מקודד הוא נתיב רגיל (נשאר באותו origin) — מותר בכוונה', () => {
+  assert.equal(normalizeNavPath('/%09/evil.com'), '/%09/evil.com'); assert.equal(resolvedOrigin('/%09/evil.com'), SITE);
+  assert.equal(normalizeNavPath('/%0a/evil.com'), '/%0a/evil.com'); assert.equal(normalizeNavPath('/%2F%2Fevil.com'), '/%2F%2Fevil.com');
+  assert.equal(resolvedOrigin('/%2F%2Fevil.com'), SITE);
+});
+t('הקשחה: סכימות (javascript: / data: / https:evil) נדחות; https://host/path מפושט לנתיב', () => {
+  for (const p of ['javascript:alert(1)', 'JavaScript:alert(1)', ' javascript:alert(1)', 'data:text/html,x', 'mailto:a@b.c',
+    'https:evil.com', 'https:/evil.com', 'vbscript:x', 'blob:https://evil.com/x']) {
+    assert.equal(normalizeNavPath(p), '', p);
+  }
+  assert.equal(normalizeNavPath('https://evil.com'), '/'); assert.equal(normalizeNavPath('javascript://evil/%0aalert(1)'), '/%0aalert(1)');
+  assert.equal(normalizeNavPath('/javascript:alert(1)'), '/javascript:alert(1)'); // נתיב פנימי, לא סכימה
+  assert.equal(resolvedOrigin('/javascript:alert(1)'), SITE);
+});
+t('הקשחה: כל פלט לא-ריק מתפענח לאותו origin (רשת ביטחון) — גם לוכסנים הפוכים, //, @, query ו-hash', () => {
+  const inputs = ['//evil.com', '/\\evil.com', '\\\\evil.com', '/\\\\evil.com', '////evil.com', '/\\/\\evil.com', '//evil.com:443/x',
+    '/@evil.com', '//user:pw@evil.com/x', '/x?u=//evil.com', '/x#//evil.com', '/x?u=https://evil.com', '/לקוחות/12', '/orders 1',
+    '/ /evil.com', '/orders/52103', '/rentals#rented', '/board?m=1#top', 'https://x.y/board'];
+  for (const p of inputs) {
+    const out = normalizeNavPath(p);
+    assert.ok(out === '' || resolvedOrigin(out) === SITE, `${JSON.stringify(p)} -> ${JSON.stringify(out)}`);
+  }
+  assert.equal(normalizeNavPath('//user:pw@evil.com/x'), '/user:pw@evil.com/x'); // נתיב פנימי, בלי credentials
+  assert.equal(new URL(normalizeNavPath('//user:pw@evil.com/x'), SITE).username, '');
+  assert.equal(normalizeNavPath('/x?u=//evil.com'), '/x?u=//evil.com'); assert.equal(normalizeNavPath('/לקוחות/12'), '/לקוחות/12');
+});
 t('מה נרשם: לא API, לא _next, לא קיוסק / שעון / הדפסה', () => {
   for (const p of ['/', '/orders/1', '/board', '/rentals#rented', '/admin/settings']) assert.equal(shouldRecordPath(p), true, p);
   for (const p of ['/api/me', '/api', '/_next/x', '/customer-interface', '/punch-clock', '/print/order?id=1', '/dashboard/dresses/1/print', '', null]) assert.equal(shouldRecordPath(p), false, String(p));

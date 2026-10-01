@@ -17,11 +17,21 @@
  *   --dry-run מדפיס מה היה משתנה, בלי לכתוב
  *   --confirm-host  חובה: שם ה-host המלא של ה-DB, או מזהה ה-endpoint המלא שלו (ep-xxxx, עם או בלי -pooler).
  *                   לפחות 8 תווים; התאמה מדויקת בלבד (לא תת-מחרוזת כמו "neon"). בלי התאמה הסקריפט מסרב לרוץ.
- *   --i-know-this-is-prod  נדרש רק כשה-DB שנבחר הוא אחד מ-PROD_DATABASE_URL / PROD_DATABASE_URL_ORG2 (ייצור).
+ *   --i-know-this-is-prod  נדרש לכל DB שלא זוהה בוודאות כ"לא ייצור" (ר' למטה) — כלומר כמעט תמיד.
+ *   --not-prod  מצהיר שה-DB מקומי (localhost / 127.0.0.1 / ::1 / *.localhost / *.test / *.local). מתקבל רק כשה-host
+ *               באמת כזה; לא מתקבל ל-host של Neon, ולא יחד עם --i-know-this-is-prod.
  *
  * ה-DB: DATABASE_URL מהסביבה (נטען מ-.env.local/.env של הריפו אם לא הוגדר בתהליך). שני הגמ"חים הם שני
  * DB נפרדים — כדי לפנות ל-org2 מייצאים DATABASE_URL של org2 לפני ההרצה (ר' CLAUDE.md, "Settings & the two orgs").
- * הסקריפט מדפיס את שם השרת שאליו יכתוב, ומסרב אם --confirm-host לא מתאים (כלל בדיקת ה-host), ומסרב לכתוב ל-DB של ייצור בלי --i-know-this-is-prod.
+ * הסקריפט מדפיס את שם השרת שאליו יכתוב, ומסרב אם --confirm-host לא מתאים (כלל בדיקת ה-host).
+ *
+ * זיהוי ייצור — סגור-בכישלון (fail-closed): כל DB נחשב ייצור, אלא אם זוהה בוודאות כלא-ייצור:
+ *   (א) ה-endpoint שלו שווה לזה של TEST_DATABASE_URL בסביבה, או
+ *   (ב) ניתן --not-prod וה-host הוא host מקומי (ר' LOCAL_DEV_HOST_RE).
+ * כל מקרה אחר — כולל worktree נקי שבו יש רק DATABASE_URL בלי PROD_DATABASE_URL*, host של Neon שאינו ברשימה,
+ * ו-localhost בלי --not-prod — דורש --i-know-this-is-prod (גם ל---dry-run). DATABASE_URL עצמו לעולם לא
+ * נחשב "מוכר": העובדה שהוא מוגדר לא אומרת כלום על זהותו. PROD_DATABASE_URL / _ORG2 / DATABASE_URL_ORG2
+ * רק מוסיפים תווית ברורה ("PROD (main gemach)") ומונעים --not-prod בטעות.
  *
  * הכתיבה עוברת דרך Prisma client רגיל. שים לב: הרחבת ה-AuditLog של האפליקציה (app/lib/prisma.js) נטענת
  * רק בתוך Next (היא תלויה ב-@/ וב-next/headers), ולכן כתיבה מסקריפט עצמאי לא נרשמת ביומן — הסקריפט
@@ -38,8 +48,8 @@ const ROOT = path.join(__dirname, '..');
 const SCREENS = ['shell', 'home', 'order_card', 'customer_card'];
 const VALUES = ['legacy', 'a5'];
 const SCOPES = ['org', 'user'];
-const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'clear', 'help', 'i-know-this-is-prod']);
-const BOOLEAN_FLAGS = new Set(['dry-run', 'clear', 'help', 'i-know-this-is-prod']);
+const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
+const BOOLEAN_FLAGS = new Set(['dry-run', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
 const MIN_CONFIRM_HOST = 8; // מחרוזת אישור קצרה מדי ("ep", "neon") לא מזהה שרת
 const MAX_CAS_ATTEMPTS = 3; // ניסיונות compare-and-swap לכתיבת themeColor של עובד
 // משתני הסביבה שמצביעים על DB-ים מוכרים: [שם משתנה, תווית, האם ייצור].
@@ -49,6 +59,9 @@ const KNOWN_DB_ENV = [
   ['DATABASE_URL_ORG2', 'org2 (Neve Yaakov)', true], // יכול להיות ה-DB החי של נווה יעקב (scripts/lib/db-env.js)
   ['TEST_DATABASE_URL', 'TEST', false],
 ];
+// hosts שמותר להצהיר עליהם --not-prod: מקומיים בלבד. host של Neon (ep-xxxx…neon.tech) לעולם לא עובר כאן —
+// ענף TEST של Neon מזוהה רק דרך TEST_DATABASE_URL בסביבה.
+const LOCAL_DEV_HOST_RE = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\]|::1|[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:localhost|test|local))$/i;
 const MAX_PREFS_BYTES = 8192; // אותה מגבלה כמו PUT /api/me/design-prefs
 
 const USAGE = [
@@ -57,7 +70,8 @@ const USAGE = [
   '  node scripts/set-ui-variant.js --screen <...> --value <legacy|a5> --scope user --employee <id|legacyId> --confirm-host <...> [--dry-run]',
   '  node scripts/set-ui-variant.js --screen <...> --clear --scope user --employee <id|legacyId> --confirm-host <...>',
   'Reads DATABASE_URL from the environment; refuses to run unless --confirm-host EXACTLY matches the DB host (or its full ep-xxxx endpoint id, min 8 chars).',
-  'Writing to a PROD database additionally needs --i-know-this-is-prod. See the header of this file.',
+  'Every database is treated as PRODUCTION and needs --i-know-this-is-prod, unless it is the TEST_DATABASE_URL host',
+  'or a local host (localhost / 127.0.0.1 / *.test / *.local) declared with --not-prod. See the header of this file.',
 ].join('\n');
 
 function settingKey(screen) {
@@ -106,7 +120,13 @@ function parseArgs(argv) {
     throw new Error('--employee is only valid with --scope user');
   }
   if (!opts['confirm-host']) throw new Error('--confirm-host <full DB host or ep-xxxx endpoint id> is required');
+  if (opts['not-prod'] && opts['i-know-this-is-prod']) throw new Error('--not-prod and --i-know-this-is-prod are mutually exclusive');
   return opts;
+}
+
+/** host מקומי (Postgres על המחשב / docker) — היחיד שמותר להצהיר עליו --not-prod. */
+function isLocalDevHost(host) {
+  return LOCAL_DEV_HOST_RE.test(String(host || '').trim().toLowerCase());
 }
 
 /** מחלץ host/db מתוך connection string בלי לחשוף סיסמה. */
@@ -144,8 +164,11 @@ function collectKnownDbs(env = process.env) {
  * כלל בדיקת ה-host (מחמיר): --confirm-host חייב להיות ה-host המלא של ה-DB, או מזהה ה-endpoint המלא שלו
  * (עם או בלי -pooler) — שוויון מדויק, לא תת-מחרוזת. לפחות 8 תווים.
  *  - מסרב אם המחרוזת מזהה יותר מ-DB מוכר אחד (endpoint שונים) — כשהיא דו-משמעית.
- *  - מסרב אם ה-DB שנבחר הוא של ייצור (PROD_DATABASE_URL / _ORG2), אלא אם opts.allowProd.
+ *  - זיהוי ייצור סגור-בכישלון: prod=true תמיד, אלא אם ה-endpoint הוא של TEST_DATABASE_URL (ולא גם של PROD —
+ *    סביבה סותרת = ייצור), או opts.notProd עם host מקומי (isLocalDevHost). opts.notProd על host לא-מקומי או על
+ *    DB ייצור מוכר — סירוב. prod בלי opts.allowProd — סירוב. knownDbs ריק (worktree נקי) = הכול ייצור.
  * knownDbs: תוצאת collectKnownDbs(); ברירת מחדל [] (בלי סביבה).
+ * @returns {{ok:boolean, prod?:boolean, label?:string|null, reason?:string}}
  */
 function checkHost(host, confirm, knownDbs = [], opts = {}) {
   const f = String(confirm || '').trim().toLowerCase();
@@ -166,11 +189,26 @@ function checkHost(host, confirm, knownDbs = [], opts = {}) {
     return { ok: false, reason: `--confirm-host "${confirm}" matches more than one known database - use the full host` };
   }
   const prodHit = knownDbs.find((k) => k.prod && k.endpoint === ep);
-  if (prodHit && !opts.allowProd) {
-    return { ok: false, reason: `the target DB is PRODUCTION (${prodHit.label}, from ${prodHit.env}). Re-run with --i-know-this-is-prod if that is really intended`, prod: true };
+  const testHit = prodHit ? null : knownDbs.find((k) => !k.prod && k.endpoint === ep);
+  if (opts.notProd && prodHit) {
+    return { ok: false, reason: `--not-prod was given but the target DB is a known PRODUCTION database (${prodHit.label}, from ${prodHit.env})`, prod: true };
   }
-  const known = knownDbs.find((k) => k.endpoint === ep);
-  return { ok: true, prod: !!prodHit, label: known ? known.label : null };
+  if (opts.notProd && !testHit && !isLocalDevHost(h)) {
+    return { ok: false, reason: `--not-prod is only accepted for a local host (localhost / 127.0.0.1 / *.test / *.local); "${host}" is not one and is treated as PRODUCTION. If it is the TEST branch, set TEST_DATABASE_URL to it; otherwise re-run with --i-know-this-is-prod`, prod: true };
+  }
+  // סגור-בכישלון: ייצור אלא אם זוהה בוודאות אחרת.
+  let prod = true;
+  let label = prodHit ? prodHit.label : null;
+  if (testHit) { prod = false; label = testHit.label; }
+  else if (opts.notProd) { prod = false; label = 'local dev (--not-prod)'; }
+  if (prod && !opts.allowProd) {
+    const why = prodHit
+      ? `${prodHit.label}, from ${prodHit.env}`
+      : 'not positively identified as non-production, so it is treated as production - fail-closed';
+    const hint = prodHit ? '' : '; for the TEST branch set TEST_DATABASE_URL to this host, for a local DB add --not-prod';
+    return { ok: false, reason: `the target DB is PRODUCTION (${why}). Re-run with --i-know-this-is-prod if that is really intended${hint}`, prod: true };
+  }
+  return { ok: true, prod, label };
 }
 
 /**
@@ -240,8 +278,8 @@ async function main() {
 
   const knownDbs = collectKnownDbs();
   console.log(`DB target: host=${target.host} database=${target.database}`);
-  const hostCheck = checkHost(target.host, opts['confirm-host'], knownDbs, { allowProd: !!opts['i-know-this-is-prod'] });
-  if (hostCheck.ok) console.log(`DB identity: ${hostCheck.label || '(not one of the known PROD/TEST/org2 env URLs)'}${hostCheck.prod ? '  ** PRODUCTION **' : ''}`);
+  const hostCheck = checkHost(target.host, opts['confirm-host'], knownDbs, { allowProd: !!opts['i-know-this-is-prod'], notProd: !!opts['not-prod'] });
+  if (hostCheck.ok) console.log(`DB identity: ${hostCheck.label || '(not one of the known PROD/TEST/org2 env URLs - treated as production)'}${hostCheck.prod ? '  ** PRODUCTION **' : ''}`);
   if (!hostCheck.ok) {
     console.error(`REFUSING TO RUN: ${hostCheck.reason}`);
     process.exit(2);
@@ -284,7 +322,7 @@ async function main() {
   }
 }
 
-module.exports = { parseArgs, describeDbTarget, checkHost, endpointId, collectKnownDbs, buildUserThemeColor, applyUserVariant, settingKey };
+module.exports = { parseArgs, describeDbTarget, checkHost, endpointId, collectKnownDbs, isLocalDevHost, buildUserThemeColor, applyUserVariant, settingKey };
 
 if (require.main === module) {
   main().catch((err) => {

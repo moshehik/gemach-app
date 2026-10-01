@@ -131,6 +131,7 @@ t('parseArgs: קלט תקין (גם --flag=value)', () => {
   assert.equal(u.employee, '123');
   assert.equal(u['dry-run'], true);
   assert.equal(cli.parseArgs([...base, '--i-know-this-is-prod'])['i-know-this-is-prod'], true);
+  assert.equal(cli.parseArgs([...base, '--not-prod'])['not-prod'], true);
   assert.equal(cli.parseArgs(['--screen', 'home', '--clear', '--scope', 'user', '--employee', 'abc', '--confirm-host', 'ep-cool']).clear, true);
 });
 t('parseArgs: קלט שגוי נדחה', () => {
@@ -146,6 +147,7 @@ t('parseArgs: קלט שגוי נדחה', () => {
     ['--screen', 'shell', '--clear', '--scope', 'org', '--confirm-host', 'ep-cool'],
     ['--screen', 'shell', '--clear', '--value', 'a5', '--scope', 'user', '--employee', '5', '--confirm-host', 'ep-cool'],
     ['--screen', 'shell', '--value', 'a5', '--scope', 'user', '--employee', "5'; drop", '--confirm-host', 'ep-cool'],
+    [...base, '--not-prod', '--i-know-this-is-prod'], // סותרים זה את זה
   ];
   for (const argv of bad) assert.throws(() => cli.parseArgs(argv), Error, argv.join(' '));
 });
@@ -174,7 +176,61 @@ t('checkHost (R1): התאמה מדויקת ל-host המלא או ל-endpoint id 
   assert.equal(cli.checkHost(TEST_HOST, 'ep-test-moon-222222', known).ok, true); // בלי -pooler
   assert.equal(cli.checkHost(TEST_HOST, `  ${TEST_HOST}  `, known).ok, true);
   assert.equal(cli.checkHost(TEST_HOST, 'ep-test-moon-222222', known).label, 'TEST');
-  assert.equal(cli.checkHost('ep-dev-x-999999.neon.tech', 'ep-dev-x-999999', known).label, null); // DB לא מוכר - מותר
+  assert.equal(cli.checkHost(TEST_HOST, 'ep-test-moon-222222', known).prod, false);
+});
+t('checkHost (fail-closed): DB לא מוכר = ייצור — נדחה בלי --i-know-this-is-prod, גם עם סביבה מלאה', () => {
+  const r = cli.checkHost('ep-dev-x-999999.neon.tech', 'ep-dev-x-999999', known);
+  assert.equal(r.ok, false); assert.equal(r.prod, true); assert.match(r.reason, /--i-know-this-is-prod/); assert.match(r.reason, /fail-closed/);
+  const allowed = cli.checkHost('ep-dev-x-999999.neon.tech', 'ep-dev-x-999999', known, { allowProd: true });
+  assert.equal(allowed.ok, true); assert.equal(allowed.prod, true); assert.equal(allowed.label, null);
+});
+t('checkHost (fail-closed): תרחיש הסקירה — worktree נקי, רק DATABASE_URL של ייצור, בלי PROD_DATABASE_URL*', () => {
+  // collectKnownDbs לא מכיר את DATABASE_URL עצמו: העובדה שהוא מוגדר לא אומרת כלום על זהותו.
+  const cleanEnv = { DATABASE_URL: `postgresql://u:SECRETPASS@${PROD_HOST}/db` };
+  const none = cli.collectKnownDbs(cleanEnv);
+  assert.deepEqual(none, []);
+  for (const conf of [PROD_HOST, 'ep-prod-wind-111111', 'ep-prod-wind-111111-pooler']) {
+    const denied = cli.checkHost(PROD_HOST, conf, none);
+    assert.equal(denied.ok, false, conf); assert.equal(denied.prod, true, conf); assert.match(denied.reason, /PRODUCTION/);
+    // --dry-run לא עוקף: הבדיקה רצה לפני ה-dry-run ב-main (אין פרמטר dry ב-checkHost)
+    const allowed = cli.checkHost(PROD_HOST, conf, none, { allowProd: true });
+    assert.equal(allowed.ok, true, conf); assert.equal(allowed.prod, true, conf);
+  }
+  // גם ה-host של org2 בלי DATABASE_URL_ORG2 בסביבה — ייצור
+  assert.equal(cli.checkHost(ORG2_PROD_HOST, 'ep-org2-star-333333', []).ok, false);
+  // --not-prod לא עוזר ל-host של Neon
+  const np = cli.checkHost(PROD_HOST, PROD_HOST, none, { notProd: true });
+  assert.equal(np.ok, false); assert.equal(np.prod, true); assert.match(np.reason, /--not-prod is only accepted for a local host/);
+  assert.equal(cli.checkHost('ep-dev-x-999999.neon.tech', 'ep-dev-x-999999', known, { notProd: true }).ok, false);
+});
+t('checkHost (fail-closed): host מקומי — ייצור בלי --not-prod, מותר איתו; --not-prod על DB ייצור מוכר נדחה', () => {
+  for (const host of ['localhost', '127.0.0.1', 'db.gemach.test', 'pg.localhost', 'postgres.local']) {
+    const denied = cli.checkHost(host, host, []);
+    assert.equal(denied.ok, false, host); assert.equal(denied.prod, true, host); assert.match(denied.reason, /--not-prod/);
+    const ok = cli.checkHost(host, host, [], { notProd: true });
+    assert.equal(ok.ok, true, host); assert.equal(ok.prod, false, host); assert.match(ok.label, /not-prod/);
+    assert.equal(cli.checkHost(host, host, known, { notProd: true }).ok, true, host); // גם עם סביבה מלאה
+  }
+  assert.equal(cli.checkHost('localhost', 'localhost', [], { allowProd: true }).ok, true); // הדרך השנייה (מצהיר ייצור) גם עובדת
+  for (const [host, conf] of [[PROD_HOST, PROD_HOST], [ORG2_PROD_HOST, 'ep-org2-star-333333']]) {
+    const r = cli.checkHost(host, conf, known, { notProd: true });
+    assert.equal(r.ok, false, host); assert.match(r.reason, /known PRODUCTION/);
+  }
+  // TEST מוכר: מותר גם בלי דגלים וגם עם --not-prod
+  assert.equal(cli.checkHost(TEST_HOST, TEST_HOST, known, { notProd: true }).ok, true);
+  assert.equal(cli.checkHost(TEST_HOST, TEST_HOST, known, { notProd: true }).prod, false);
+  // --not-prod לא עוקף אי-התאמה של האישור
+  assert.equal(cli.checkHost('localhost', 'localhost!', [], { notProd: true }).ok, false);
+});
+t('checkHost (fail-closed): סביבה סותרת — אותו endpoint גם ב-PROD וגם ב-TEST = ייצור', () => {
+  const both = cli.collectKnownDbs({ PROD_DATABASE_URL: `postgresql://u:x@${PROD_HOST}/db`, TEST_DATABASE_URL: `postgresql://u:x@${PROD_HOST}/db` });
+  const r = cli.checkHost(PROD_HOST, PROD_HOST, both);
+  assert.equal(r.ok, false); assert.equal(r.prod, true);
+  assert.equal(cli.checkHost(PROD_HOST, PROD_HOST, both, { notProd: true }).ok, false);
+});
+t('isLocalDevHost', () => {
+  for (const h of ['localhost', 'LOCALHOST', '127.0.0.1', '127.1.2.3', '[::1]', '::1', 'a.localhost', 'db.gemach.test', 'x.y.local']) assert.equal(cli.isLocalDevHost(h), true, h);
+  for (const h of ['', null, undefined, 'ep-x-1.neon.tech', 'localhost.evil.com', 'test', 'local', '128.0.0.1', 'neon.tech', 'my.test.com', 'localhost2']) assert.equal(cli.isLocalDevHost(h), false, String(h));
 });
 t('checkHost (R1): תת-מחרוזות גנריות נדחות (neon, neon.tech, aws, חלק מה-endpoint)', () => {
   for (const frag of ['neon', 'neon.tech', 'aws', '.tech', 'ep-test-moon', 'test-moon-222222', 'c-2.eu-central-1.aws.neon.tech', 'moon-222222-pooler']) {
@@ -183,8 +239,8 @@ t('checkHost (R1): תת-מחרוזות גנריות נדחות (neon, neon.tech,
   }
 });
 t('checkHost (R1): מחרוזת אישור קצרה מ-8 תווים נדחית, גם אם היא ה-host המלא', () => {
-  assert.equal(cli.checkHost('ep-a1.io', 'ep-a1.io', []).ok, true); // 8 תווים בדיוק => מותר
-  assert.equal(cli.checkHost('ep-a.io', 'ep-a.io', []).ok, false); // 7 => נדחה
+  assert.equal(cli.checkHost('ep-a1.io', 'ep-a1.io', [], { allowProd: true }).ok, true); // 8 תווים בדיוק => מותר (DB לא מוכר = ייצור, לכן allowProd)
+  assert.equal(cli.checkHost('ep-a.io', 'ep-a.io', [], { allowProd: true }).ok, false); // 7 => נדחה
   assert.equal(cli.checkHost(TEST_HOST, 'ep', known).ok, false);
   assert.equal(cli.checkHost(TEST_HOST, '', known).ok, false);
   assert.equal(cli.checkHost(TEST_HOST, undefined, known).ok, false);
