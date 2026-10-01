@@ -6,9 +6,21 @@
 // ההתנהגות (ריחוף, הצמדה, חצים) מנוהלת במעטפת ומועברת ב-props; כאן רק ה-DOM.
 
 import Link from 'next/link';
-import { Ic, MenuRows } from './menuParts';
+import { Ic, MenuRows, SOON_LABEL } from './menuParts';
 
 export default function MenuTabItem({ tab, active, activeItemId, open, handlers, onNavigate, onAction }) {
+  if (tab.soon) {
+    // לשונית "בקרוב" (למשל "לוז" כשאין הרשאה / הדף עוד לא קיים): לא קישור, לא ניתנת למיקוד, בלי תפריט.
+    return (
+      <div className="sn-item" data-sn={tab.id} data-soon="">
+        <span className="sn-tab is-miss" aria-disabled="true" data-tip={tab.tip || undefined}>
+          <Ic n={tab.icon} />
+          {tab.label}
+          <span className="sn-soon">{SOON_LABEL}</span>
+        </span>
+      </div>
+    );
+  }
   const hasMenu = Array.isArray(tab.items) && tab.items.some((x) => x.kind === 'link' || x.kind === 'action');
   const menuOnly = !tab.href;
   const cls = `sn-tab${hasMenu && !menuOnly ? ' hasm' : ''}${menuOnly ? ' hasm' : ''}${active ? ' active' : ''}`;

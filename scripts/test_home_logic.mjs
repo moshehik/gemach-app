@@ -3,7 +3,7 @@
 // הרצה: node scripts/test_home_logic.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import {
-  buildGreeting, DEFAULT_TITLE, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
+  buildGreeting, DEFAULT_TITLE, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
   TABLE_COLUMNS, sortRecords, exportRecordsForRows, parseAiTags, safeInternalRoute, botMessageFromResponse,
   botErrorMessage, chatToHistory, chatCopyText, aiRowView, aiRowKind, aiRowHref, richSegments, rowsToCsv,
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
@@ -43,6 +43,41 @@ t('סימן קריאה בסוף בלי המשך = שורה אחת', () => {
 });
 t('"בוקר טוב! מה תרצי לחפש?" שומר את הפתיחה כמו שהיא', () => {
   assert.deepEqual(buildGreeting('בוקר טוב! מה תרצי לחפש?', 'דינה'), { hi: 'בוקר טוב', q: 'מה תרצי לחפש?' });
+});
+
+t('נוסח ברירת המחדל הישן ("ברוכים הבאים למערכת ניהול הגמ"ח") = לא הותאם → הנוסח המוסכם "שלום [שם]," + "מה תרצי לחפש?"', () => {
+  const want = { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' };
+  const variants = [
+    'ברוכים הבאים למערכת ניהול הגמ"ח',          // " ASCII
+    'ברוכים הבאים למערכת ניהול הגמ״ח',     // ״ גרשיים
+    'ברוכים הבאים למערכת ניהול הגמ”ח',     // ”
+    'ברוכים הבאים למערכת ניהול הגמ“ח',     // “
+    'ברוכים הבאים למערכת ניהול הגמ„ח',     // „
+    "ברוכים הבאים למערכת ניהול הגמ''ח",         // שני גרשים
+    "ברוכים הבאים למערכת ניהול הגמ'ח",          // גרש יחיד
+    'ברוכים הבאים למערכת ניהול הגמ’ח',
+    '  ברוכים הבאים  למערכת ניהול הגמ"ח  ', // רווח קשיח, רווחים כפולים, רווחים בקצוות
+    'ברוכים הבאים למערכת ניהול הגמ"ח‏',
+  ];
+  for (const v of variants) {
+    assert.ok(isLegacyDefaultTitle(v), JSON.stringify(v));
+    assert.deepEqual(buildGreeting(v, 'שולמית'), want, JSON.stringify(v));
+  }
+  assert.ok(isLegacyDefaultTitle(LEGACY_DEFAULT_TITLE));
+  // בלי עובדת מחוברת: "שלום" + השורה השנייה (כמו "שלום! מה תרצי לחפש?" בעיצוב)
+  assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח', ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+});
+t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → "ברוכים הבאים לגמ״ח"', () => {
+  assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת ניהול הגמ"ח של נווה'), false);
+  assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת'), false);
+  assert.equal(isLegacyDefaultTitle(''), false); assert.equal(isLegacyDefaultTitle(null), false);
+  assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח של נווה', 'אסתר'), { hi: 'שלום אסתר,', q: 'ברוכים הבאים למערכת ניהול הגמ"ח של נווה' });
+  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: null, q: DEFAULT_TITLE });
+  assert.deepEqual(buildGreeting(null, ''), { hi: null, q: 'ברוכים הבאים לגמ״ח' });
+});
+t('המחרוזת המדויקת של העיצוב "שלום! מה תרצי לחפש?" מתפצלת כמו בעיצוב', () => {
+  assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
+  assert.equal(normalizeTitleForCompare('א  ב'), 'א ב');
 });
 
 console.log('חיפוש כללי');
@@ -261,18 +296,29 @@ t('agy_history → שורות: סוגים מוכרים, מזהה בטוח, שם 
 });
 
 console.log('תחתית');
-t('קישורי תחתית לפי הרשאות', () => {
+t('קישורי תחתית: כל פריטי העיצוב מופיעים; לא נבנה / לא מותר = soon (בלי href), מותר = קישור', () => {
   const nav = [{ items: [{ href: '/orders' }, { href: '/customers' }] }];
+  const keys = (g) => g.links.map((l) => l.key);
+  const soonKeys = (g) => g.links.filter((l) => l.soon).map((l) => l.key);
   let g = footerGroups({ navGroups: nav, isHead: false, authenticated: true });
-  assert.deepEqual(g[0].links.map((l) => l.key), ['orders', 'customers']);
-  assert.deepEqual(g[1].links.map((l) => l.key), ['profile', 'display']);
-  assert.equal(g[1].privacy, true);
+  assert.deepEqual(g.map((x) => x.h), ['ניווט מהיר', 'עזרה', 'החשבון שלי']);
+  assert.deepEqual(keys(g[0]), ['orders', 'customers', 'dresses', 'dashboard']);
+  assert.deepEqual(soonKeys(g[0]), ['dresses', 'dashboard'], 'שמלות (אין הרשאה) וסיכום כספי (לא הנהלה) = בקרוב');
+  assert.equal(g[0].links[0].href, '/orders'); assert.equal(g[0].links[0].soon, undefined);
+  assert.deepEqual(keys(g[1]), ['guide', 'report']);
+  assert.equal(g[1].links[0].soon, true, 'מדריך למשתמש: אין דף');
+  assert.equal(g[1].links[1].action, 'report'); assert.equal(g[1].links[1].href, undefined);
+  assert.deepEqual(keys(g[2]), ['profile', 'display']); assert.deepEqual(soonKeys(g[2]), []);
+  assert.equal(g[2].privacy, true);
   g = footerGroups({ navGroups: [...nav, { items: [{ href: '/dashboard/dresses' }] }], isHead: true, authenticated: true });
-  assert.deepEqual(g[0].links.map((l) => l.key), ['orders', 'customers', 'dresses', 'dashboard']);
+  assert.deepEqual(soonKeys(g[0]), []);
+  assert.equal(g[0].links[3].href, '/dashboard');
   g = footerGroups({ navGroups: null, isHead: false, authenticated: false });
-  assert.deepEqual(g[0].links, []);
-  assert.deepEqual(g[1].links, []);
-  assert.equal(g[1].privacy, true, 'מדיניות פרטיות תמיד זמינה');
+  assert.deepEqual(soonKeys(g[0]), ['orders', 'customers', 'dresses', 'dashboard']);
+  assert.deepEqual(soonKeys(g[2]), ['profile', 'display']);
+  assert.equal(g[2].privacy, true, 'מדיניות פרטיות תמיד זמינה');
+  // שורת "בקרוב" לעולם לא נושאת href (לא קישור)
+  for (const grp of g) for (const l of grp.links) if (l.soon) assert.ok(!('href' in l), l.key);
 });
 
 console.log('חיפוש מתקדם');

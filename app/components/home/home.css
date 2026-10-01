@@ -64,3 +64,77 @@
 .gm-ds.gm-home .hero-t bdi:empty {
   min-height: 1.2em;
 }
+
+/* ---- התאמה לעיצוב המאושר (1.10.2026): מה שה-CSS הישן של האתר דורס בתוך .gm-ds.gm-home ----
+   כל הכללים כאן בהיקף .gm-ds.gm-home בלבד; ה-CSS הגלובלי הישן (globals.css / design-overrides.css / design-system.css) לא שונה. */
+
+/* 1) מלא-רוחב: המעטפת (הישנה והחדשה) עוטפת כל דף ב-.content עם padding 22px 24px 60px ו-max-width 1680px (מרווחים בצדדים
+      ובתחתית). דף הבית בעיצוב הוא מלא-רוחב (אזור ה-hero, התחתית והרקע נוגעים בקצוות), ולכן מבטלים את העטיפה רק כשהיא מכילה אותו. */
+.app-shell .main .content:has(> .gm-ds.gm-home) {
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+}
+
+/* 2) הרצועה הלבנה מתחת לחיפוש: .hero הישן (globals.css) מצייר מעבר צבע שקוף->קרם (--bg-color) והופך את אזור החיפוש לקופסה בהירה
+      מעל תמונת הפרחים. בעיצוב ה-hero שקוף. גם text-align:center הישן והגדלת ה-h1/p שלו לא קיימים בעיצוב. */
+.gm-ds.gm-home .hero {
+  background: none;
+  text-align: start;
+}
+.gm-ds.gm-home .hero h1 { font-size: 2em; }
+.gm-ds.gm-home .hero p { font-size: inherit; color: inherit; max-width: none; }
+
+/* 3) שדה החיפוש: כלל ה-input הישן (globals.css) נותן רקע לבן וגבול 1px ב-specificity גבוה מכלל הפלטה, ולכן בתוך הכדור השקוף
+      נראה "פס לבן". בעיצוב השדה שקוף בלי גבול. */
+.gm-ds.gm-home .scan input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+}
+
+/* 4) גופן: design-overrides.css כופה Assistant ב-!important על button/input/select/textarea, ו-globals.css כופה "Frank Ruhl Libre" על h1-h6
+      (הכותרת "שלום ..." והכותרות בתחתית יצאו בסריף) - גם הוא ב-!important (app/design-overrides.css), ולכן גם כאן. מחזירים לירושה מ-Rubik של העיצוב. */
+.gm-ds.gm-home :is(button,input,select,textarea) { font-family: inherit !important; }
+.gm-ds.gm-home :is(h1,h2,h3,h4,h5,h6) { font-family: inherit !important; letter-spacing: normal; }
+
+/* 5) תחתית: פריט שעדיין אין לו דף / לא מותר (מדריך למשתמש, וכד') - שורה כבויה עם "בקרוב" (span, לא קישור, לא ניתן למיקוד) */
+.gm-ds.gm-home .site-foot .sf-soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: default;
+}
+.gm-ds.gm-home .site-foot .sf-soon .ic { color: rgba(255, 255, 255, 0.4); }
+.gm-ds.gm-home .site-foot .sf-badge {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 220, 143, 0.55);
+  color: var(--gm-gold-300);
+}
+
+/* 6) כדור החיפוש והכרטיסים: כלל "זכוכית" של כרטיס ההזמנה (.gm-ds .card/.scan/... עם !important בפלטה) דולף לדף הבית.
+      README של הפלטה מגביל אותו ל-.gm-ds:not(.gm-home), אבל הכלל הזה לא הוגבל. בעיצוב הכדור לבן מלא (בלי טשטוש) והכרטיסים לבנים. */
+.gm-ds.gm-home .hero .scan,
+.gm-ds.gm-home .hero .scan:hover {
+  background: #fff !important;
+  border-color: #fff !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.gm-ds.gm-home .hero .scan:focus-within { border-color: var(--gm-gold-b) !important; }
+.gm-ds.gm-home :is(.card,.stepper,.itm,.coll[open],.dhero) {
+  background: var(--gm-surface) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* 7) תחתית: כפתור (מדיניות פרטיות / דיווח על תקלה) באותו מרווח אייקון-טקסט כמו הקישורים */
+.gm-ds.gm-home .site-foot .sf-col button.lnk { gap: 10px; }

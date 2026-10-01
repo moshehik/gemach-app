@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
+import { shiftClockInfo } from '@/lib/menu/shiftClock';
 import { usePopup } from '../PopupProvider';
 import LoginScreen from '../LoginScreen';
 import ErrorReportButton from '../ErrorReportButton';
@@ -21,7 +22,7 @@ import MessageHistoryButton from '../MessageHistoryButton';
 import OverdueRemindersWatcher from '../OverdueRemindersWatcher';
 import ShiftMessageWatcher from '../ShiftMessageWatcher';
 import { A5ShellProvider } from './A5ShellContext';
-import { Ic, MenuRows, MenuSprite, SnLi } from './menuParts';
+import { Ic, MenuRows, MenuSprite, SnLi, SOON_LABEL } from './menuParts';
 import MenuTabItem from './MenuTabPanel';
 import SearchBody, { useMenuSearch } from './MenuSearchPanel';
 import BellBody, { useNotifications } from './MenuBell';
@@ -30,15 +31,6 @@ import ManagerMessageDialog from './ManagerMessageDialog';
 import useNavHistory from './useNavHistory';
 
 const CLOSED = { id: null, pin: false, peek: false };
-const pad2 = (n) => String(n).padStart(2, '0');
-
-function shiftText(entryTime, now) {
-  const t = entryTime ? Date.parse(entryTime) : NaN;
-  if (!Number.isFinite(t)) return '';
-  const m = Math.max(0, Math.floor((now - t) / 60000));
-  return `${Math.floor(m / 60)}:${pad2(m % 60)}`;
-}
-
 export default function MenuA5Shell({
   menuTree: tree,
   authToken,
@@ -71,7 +63,7 @@ export default function MenuA5Shell({
     return () => clearInterval(t);
   }, []);
   const info = useMemo(() => userDisplay(tree, me), [tree, me]);
-  const shiftStr = shift ? shiftText(shift.entryTime, now) : '';
+  const shiftInfo = shift ? shiftClockInfo(shift.entryTime, now) : null;
 
   // ---- איזה פריט "נוכחי" ----
   const [hash, setHash] = useState('');
@@ -270,7 +262,8 @@ export default function MenuA5Shell({
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     const item = e.target.closest('.sn-item');
     if (!item) return;
-    const tabs = [...e.currentTarget.querySelectorAll('.sn-item')];
+    // לשונית "בקרוב" לא ניתנת למיקוד - מדלגים עליה בחיצים
+    const tabs = [...e.currentTarget.querySelectorAll('.sn-item')].filter((el) => !el.hasAttribute('data-soon'));
     const idx = tabs.indexOf(item);
     if (idx < 0) return;
     e.preventDefault();
@@ -560,11 +553,10 @@ export default function MenuA5Shell({
                   id="snOld"
                   disabled={busy}
                   aria-label="האתר הישן (קישור זמני)"
-                  data-tip="האתר הישן · קישור זמני, עד שכל המסכים יעברו לאתר החדש"
+                  data-tip="האתר הישן (זמני) · קישור זמני, עד שכל המסכים יעברו לאתר החדש"
                   onClick={() => onAction({ action: rail.oldSite.action })}
                 >
                   <Ic n="ext" />
-                  <span className="sn-badge">{rail.oldSite.badge || 'זמני'}</span>
                 </button>
               )}
 
@@ -595,10 +587,16 @@ export default function MenuA5Shell({
                 </div>
               )}
 
-              {tree.user && tree.user.logged && shiftStr && rail.shiftClock && rail.shiftClock.show && (
-                <span className="sn-clock" data-tip="מצב עבודה · שעות מתחילת המשמרת">
-                  <i />במשמרת <bdi>{shiftStr}</bdi>
-                </span>
+              {tree.user && tree.user.logged && shiftInfo && rail.shiftClock && rail.shiftClock.show && (
+                shiftInfo.kind === 'stale' ? (
+                  <span className="sn-clock warn" data-tip={shiftInfo.tip}>
+                    <i />{shiftInfo.text}
+                  </span>
+                ) : (
+                  <span className="sn-clock" data-tip="מצב עבודה · שעות מתחילת המשמרת">
+                    <i />במשמרת <bdi>{shiftInfo.text}</bdi>
+                  </span>
+                )
               )}
 
               <div
@@ -664,6 +662,13 @@ export default function MenuA5Shell({
                 {tabs.map((tab) => {
                   const hasMenu = (tab.items || []).some((x) => x.kind === 'link' || x.kind === 'action');
                   const isAct = act.tabId === tab.id;
+                  if (tab.soon) {
+                    return (
+                      <span key={tab.id} className="sn-acc is-miss" aria-disabled="true" data-tip={tab.tip || undefined}>
+                        <SnLi n={tab.icon} />{tab.label}<span className="sn-k">{SOON_LABEL}</span>
+                      </span>
+                    );
+                  }
                   if (!hasMenu) {
                     return (
                       <Link key={tab.id} className={`sn-acc${isAct ? ' active' : ''}`} href={tab.href || '/'} onClick={(e) => onNavigate(e, tab.href || '/')}>
@@ -710,8 +715,8 @@ export default function MenuA5Shell({
                     </button>
                   )}
                   {rail.oldSite && rail.oldSite.show && (
-                    <button type="button" className="sn-link" disabled={busy} onClick={() => onAction({ action: rail.oldSite.action })}>
-                      <SnLi n="ext" />האתר הישן<span className="sn-k">זמני</span>
+                    <button type="button" className="sn-link" disabled={busy} data-tip="האתר הישן (זמני) · קישור זמני, עד שכל המסכים יעברו לאתר החדש" onClick={() => onAction({ action: rail.oldSite.action })}>
+                      <SnLi n="ext" />האתר הישן
                     </button>
                   )}
                 </div>
@@ -719,7 +724,7 @@ export default function MenuA5Shell({
                   <span className="sn-av">{info.initials || <Ic n="user" cls="sm" />}</span>
                   <div>
                     <b>{info.logged ? info.name : 'אורח'}</b>
-                    {shiftStr ? <small>במשמרת <bdi className="snShiftM">{shiftStr}</bdi></small> : null}
+                    {shiftInfo ? (shiftInfo.kind === 'stale' ? <small className="snShiftWarn" data-tip={shiftInfo.tip}>{shiftInfo.text}</small> : <small>במשמרת <bdi className="snShiftM">{shiftInfo.text}</bdi></small>) : null}
                   </div>
                 </div>
               </div>
