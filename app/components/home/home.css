@@ -1,26 +1,6 @@
 /* דף הבית החדש (HomeA5) — CSS מקומי לדף, בהיקף .gm-ds.gm-home בלבד (לא נוגע ב-design-system/).
-   כאן רק מה שאין בפלטה (design-system/components.css): כפתור "אחרונים" בלי כיתוב, חלון מדיניות הפרטיות
-   (טקסט ארוך + סימון שדות מילוי), ושלד/ריווחים קטנים. אחרי V1 אפשר להעביר לפלטה עם מספרים. */
-
-/* פריט 24: כפתור "אחרונים" — אייקון בלבד, בלי כיתוב (החלטת הבעלים) */
-.gm-ds.gm-home .hero .cmode-b.cmode-i {
-  width: 33px;
-  padding: 0;
-  display: inline-grid;
-  place-items: center;
-}
-.gm-ds.gm-home .hero .cmode-b.cmode-i[aria-pressed="true"] {
-  background: var(--gm-gold-rich-c);
-  color: #000;
-  border-color: #000;
-}
-
-/* כרטיס "אחרונים" שמוצג מתחת לחיפוש */
-.gm-ds.gm-home .app > .panel > .card.recent {
-  max-width: 760px;
-  width: 100%;
-  margin-inline: auto;
-}
+   כאן רק מה שאין בפלטה (design-system/components.css): חלון מדיניות הפרטיות
+   (טקסט ארוך + סימון שדות מילוי), ושלד/ריווחים קטנים, ו"נטרול" של כללים גלובליים שדולפים לדף. אחרי V1 אפשר להעביר לפלטה עם מספרים. */
 
 /* חלון מדיניות הפרטיות */
 .gm-ds .dlg.priv-dlg {
@@ -92,6 +72,10 @@
   border: 0;
   border-radius: 0;
   color: inherit;
+  /* בלחיצה בשדה design-overrides.css (input:not(...):focus) מוסיף טבעת box-shadow בצבע --primary-light: מלבן ורדרד/בהיר
+     בתוך הכדור ("רקע לבן שמופיע בלחיצה"). בעיצוב אין טבעת על השדה — הטבעת היחידה היא של הכדור כולו (.scan:focus-within). */
+  box-shadow: none;
+  outline: 0;
 }
 
 /* 4) גופן: design-overrides.css כופה Assistant ב-!important על button/input/select/textarea, ו-globals.css כופה "Frank Ruhl Libre" על h1-h6
@@ -138,6 +122,43 @@
 
 /* 7) תחתית: כפתור (מדיניות פרטיות / דיווח על תקלה) באותו מרווח אייקון-טקסט כמו הקישורים */
 .gm-ds.gm-home .site-foot .sf-col button.lnk { gap: 10px; }
+
+/* 8) כדור החיפוש בתוך המסגרת המשותפת (.jshell — אחרי חיפוש / חיפוש חכם / מתקדם): בעיצוב הגבול כחול-בהיר (sky-300) ולא לבן;
+      כלל 6 למעלה (border-color:#fff !important) נכון רק לכדור שבמסך הפתיחה. בפוקוס הגבול זהב (כמו בעיצוב). */
+.gm-ds.gm-home .hero .hero-in.jshell .scan,
+.gm-ds.gm-home .hero .hero-in.jshell .scan:hover {
+  border-color: var(--gm-sky-300) !important;
+}
+.gm-ds.gm-home .hero .hero-in.jshell .scan:focus-within {
+  border-color: var(--gm-gold-b) !important;
+}
+
+/* 9) הכרטיס שבתוך המסגרת המשותפת (.card.res-one: תוצאות / שיחה חכמה / טופס מתקדם) שקוף בעיצוב — המסגרת עצמה (rgba לבן 60%)
+      היא הרקע, והתמונה נראית דרכה. כלל 6 (background: surface !important לכל .card) צבע אותו לבן מלא, ולכן החלק העליון (המסגרת)
+      נראה "כחלחל-שקוף" והתוצאות לבנות. */
+.gm-ds.gm-home .hero-in.jshell .card {
+  background: transparent !important;
+}
+
+/* 10) כותרות טבלה (.rtbl th): globals.css (table thead tr th) כופה ב-!important רקע/צל/גבול של "כותרת דביקה" (קרם), ו-design-overrides.css
+       כופה צבע טקסט (table thead th) — בעיצוב הכותרת כחולה כהה עם טקסט זהב. */
+.gm-ds.gm-home .rtbl thead tr th {
+  background-color: var(--gm-navy) !important;
+  color: var(--gm-gold-300) !important;
+  box-shadow: none !important;
+  border-bottom: 0 !important;
+  outline: 0;
+}
+
+/* 11) שדות הטופס המתקדם (input.inp): design-overrides.css (input:not(x4), specificity 0,4,1) גבוה ב"אלמנט" אחד מכלל הפלטה
+       (.advp .inp, 0,4,0) ולכן גבול הזהב 2px של העיצוב הוחלף בגבול קרם 1px וצבע הטקסט בחום. כפל .gm-home מעלה את הכלל מעליו. */
+.gm-ds.gm-home.gm-home .advp input.inp {
+  border: 2px solid var(--gm-gold-b);
+  color: inherit;
+}
+
+/* 12) כותרת הברכה: globals.css נותן ל-h1 צבע טקסט חום; בעיצוב היא יורשת את הכחול של הדף (שני חלקיה, t-hi ו-t-q, קובעים צבע בעצמם). */
+.gm-ds.gm-home .hero .hero-t { color: inherit; }
 
 /* ---- קישורי תפריט "בית" (2.10.2026): כותרת קטגוריה + רשימת '@' ---- */
 /* "<קטגוריה> - מה תרצי לחפש?": שם הקטגוריה באותו גוון של "שלום [שם]," בכותרת הרגילה (#e8785a, components.css .t-hi) */
