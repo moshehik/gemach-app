@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import LoginScreen from './LoginScreen';
+import LoginGate from './login/LoginGate';
+import AutoClockSwitch from './login/AutoClockSwitch';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function UserMenu({ hideInternalMessaging = false }) {
@@ -101,7 +102,7 @@ export default function UserMenu({ hideInternalMessaging = false }) {
   if (!user) {
     return (
       <>
-        {showLoginModal && <LoginScreen isModal={true} onClose={() => setShowLoginModal(false)} />}
+        {showLoginModal && <LoginGate isModal={true} onClose={() => setShowLoginModal(false)} />}
         <div className={`user-menu${dropdownOpen ? ' open' : ''}`} ref={menuRef}>
           <div
             className="user-chip"
@@ -214,6 +215,8 @@ export default function UserMenu({ hideInternalMessaging = false }) {
             <svg className="icon"><use href="#i-settings" /></svg>
             עיצוב ותצוגה — התאמה אישית
           </button>
+          {/* דף הכניסה החדש (Q05/L16): אותה הגדרה כמו המתג במסך הכניסה */}
+          <AutoClockSwitch variant="legacy" />
           <div className="user-menu-divider" />
           <button type="button" className="user-menu-item danger" onClick={handleLogout} disabled={actionLoading}>
             <svg className="icon"><use href="#i-logout" /></svg>

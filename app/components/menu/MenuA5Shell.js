@@ -16,7 +16,7 @@ import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
 import { shiftClockInfo } from '@/lib/menu/shiftClock';
 import { usePopup } from '../PopupProvider';
-import LoginScreen from '../LoginScreen';
+import LoginGate from '../login/LoginGate';
 import ErrorReportButton from '../ErrorReportButton';
 import MessageHistoryButton from '../MessageHistoryButton';
 import OverdueRemindersWatcher from '../OverdueRemindersWatcher';
@@ -27,6 +27,7 @@ import MenuTabItem from './MenuTabPanel';
 import SearchBody, { useMenuSearch } from './MenuSearchPanel';
 import BellBody, { useNotifications } from './MenuBell';
 import { UserButton, UserPanelBody, userDisplay } from './MenuUserPanel';
+import AutoClockSwitch from '../login/AutoClockSwitch';
 import ManagerMessageDialog from './ManagerMessageDialog';
 import useNavHistory from './useNavHistory';
 
@@ -462,7 +463,7 @@ export default function MenuA5Shell({
       <div className="a5-shell">
         {showOverdueRemindersPopup && <OverdueRemindersWatcher authToken={authToken} />}
         {!hideInternalMessaging && <ShiftMessageWatcher authToken={authToken} />}
-        {loginOpen && <LoginScreen isModal onClose={() => setLoginOpen(false)} />}
+        {loginOpen && <LoginGate isModal onClose={() => setLoginOpen(false)} />}
 
         <div className="gm-ds gm-menu" ref={wrapRef}>
           <MenuSprite />
@@ -712,7 +713,7 @@ export default function MenuA5Shell({
                       <Ic n="chev" />
                     </button>
                   </div>
-                  <div className="sn-ab"><div><MenuRows items={userItems} activeItemId={act.itemId} onNavigate={onNavigate} onAction={onAction} /></div></div>
+                  <div className="sn-ab"><div><MenuRows items={userItems} activeItemId={act.itemId} onNavigate={onNavigate} onAction={onAction} />{info.logged ? <AutoClockSwitch variant="a5" /> : null}</div></div>
                 </div>
                 <div className="sn-dtools">
                   {rail.errorReport && rail.errorReport.show && (

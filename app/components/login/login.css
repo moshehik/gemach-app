@@ -1,0 +1,169 @@
+/* דף הכניסה החדש (LoginNew.js) - רק מה שחסר בפלטה (design-system/COMPONENTS.md) וההרכבות המקומיות.
+   הכול בהיקף .gm-ds.gm-login כך שאין שום השפעה על שאר האתר. ה-CSS של הפלטה עצמה מיובא ב-LoginNew.js (components.css).
+   מקור: תצוגות-עיצוב\סיימתי-לעבוד\login-page.html (העיצוב המאושר, 1.10.2026). הערכים הועתקו משם אחד-לאחד.
+   פערי פלטה מאושרים (G01-G09, "כן" לכולם): עין להצגת סיסמה, שדה סיסמה עם כפתור בתוכו, שדה בחירה עם הקלדה
+   וסינון, מתג עם טקסט והסבר, שורת קישור לשעון נוכחות, תג "מחשב מהימן", תיבת שגיאה בטופס, שדה קוד של 4 תווים.
+   הגופן של הברכה (Gveret Levin) הוא גופן העיצוב המאושר; Rubik נטען כבר ב-components.css. */
+@import url('https://fonts.googleapis.com/css2?family=Gveret+Levin&display=swap');
+
+.gm-ds.gm-login{--lg-petal:#f6d9cb;--lg-glass:rgba(255,255,255,.48);--lg-gold-soft:#f6edcf;--lg-gold-ink:#654c0b;
+  --lg-danger:#8f2a2a;--lg-danger-soft:#fbe9e7;--lg-danger-line:#e3a9a3;--lg-ok:#1f6b45;--lg-ok-soft:#e3f3ea;
+  --lg-sh:0 1px 2px rgba(15,44,82,.06),0 24px 60px -24px rgba(15,44,82,.45);
+  --lg-f-hand:'Gveret Levin','Playpen Sans Hebrew','Segoe Print','Comic Sans MS',cursive;
+  color:var(--gm-ink);font-size:16px;line-height:1.55;position:relative;isolation:isolate}
+.gm-ds.gm-login.is-modal{display:contents;min-height:0;background:none!important;background-image:none!important}
+.gm-ds.gm-login [hidden]{display:none!important}
+.gm-ds.gm-login :focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px;border-radius:10px}
+.gm-ds.gm-login bdi{unicode-bidi:isolate}
+
+/* ---- הגנה מפני ה-CSS הישן של האתר (כמו ב-menu.css): גופנים כפויים ב-!important על body/button/input ו-h1 ---- */
+.gm-ds.gm-login :is(button,input,select,textarea){font-family:inherit!important;font-size:inherit}
+.gm-ds.gm-login :is(h1,h2,h3){font-family:inherit!important;letter-spacing:normal}
+.gm-ds.gm-login .lg-hero h1{font-family:var(--lg-f-hand)!important}
+
+/* ---- הפס העליון: .snav של הפלטה, בלי ניווט ---- */
+.gm-ds.gm-login .lg-bar{position:sticky;top:env(safe-area-inset-top,0px);min-height:64px;justify-content:flex-start}
+.gm-ds.gm-login .lg-bar .sn-brand{cursor:default}
+.gm-ds.gm-login .lg-bar .sn-brand:hover .sn-name{color:#fff}
+.gm-ds.gm-login .lg-bar .sn-brand:hover .sn-mark{transform:none}
+.gm-ds.gm-login .sn-mark.ph{width:58px;background:none;box-shadow:none;color:rgba(255,255,255,.9)}
+.gm-ds.gm-login .sn-mark.ph img{width:100%;height:100%;object-fit:contain;display:block}
+
+/* ---- הבמה ---- */
+.gm-ds.gm-login .lg-stage{min-height:calc(100vh - 64px);display:grid;place-items:center;padding:32px 16px 48px}
+.gm-ds.gm-login .lg-wrap{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch;gap:20px;min-width:0}
+.gm-ds.gm-login .lg-hero{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.85)}
+.gm-ds.gm-login .lg-hero h1{margin:0;font-size:clamp(46px,11vw,64px);line-height:1.05;font-weight:400;color:var(--gm-navy-900);text-wrap:balance;min-height:1.05em}
+.gm-ds.gm-login .lg-hero p{margin:0;font-size:17px;color:var(--gm-ink2);font-weight:500}
+
+/* ---- הכרטיס (זכוכית על תמונת הרקע) ---- */
+.gm-ds.gm-login .card.lg-card{background:var(--lg-glass);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);border:1px solid rgba(255,255,255,.75);border-radius:16px;box-shadow:var(--lg-sh);padding:24px;min-width:0}
+.gm-ds.gm-login .lg-form{display:flex;flex-direction:column;gap:16px}
+.gm-ds.gm-login .field{display:flex;flex-direction:column;min-width:0;gap:0}
+.gm-ds.gm-login .lbl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:var(--gm-ink2);font-weight:500;font-size:15px}
+.gm-ds.gm-login .lblrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+.gm-ds.gm-login .lblrow .lbl{margin-bottom:0}
+.gm-ds.gm-login .pinbtn{background:none;border:0;padding:0 0 2px;font-size:13px;font-weight:600;color:var(--gm-navy-700);cursor:pointer;border-bottom:2px solid var(--gm-gold)}
+.gm-ds.gm-login .pinbtn:hover{color:var(--gm-navy-900)}
+.gm-ds.gm-login .forgot{align-self:flex-start;margin-top:10px;padding:0 0 2px;background:none;border:0;border-bottom:2px solid var(--gm-gold);font-size:14px;font-weight:500;color:var(--gm-navy-700);cursor:pointer;transition:color .2s,border-color .2s}
+.gm-ds.gm-login .forgot:hover{color:var(--gm-navy-900);border-bottom-color:var(--gm-gold-d)}
+.gm-ds.gm-login .ctl{position:relative;display:flex;align-items:center}
+.gm-ds.gm-login .ctl>.ic{position:absolute;inset-inline-start:14px;color:var(--gm-ink3);pointer-events:none}
+.gm-ds.gm-login .inp{width:100%;min-height:50px;background:rgba(255,255,255,.72);border:1.5px solid var(--gm-line);border-radius:14px;padding:12px 14px;padding-inline-start:44px;font-size:16px;color:var(--gm-ink);outline:0;transition:border-color .15s,box-shadow .15s}
+.gm-ds.gm-login .inp::placeholder{color:#7a8ca3}
+.gm-ds.gm-login .inp:hover{border-color:#9aa3ad}
+.gm-ds.gm-login .inp:focus{background:#fff;border-color:var(--gm-navy);box-shadow:0 0 0 4px var(--gm-sky-100)}
+.gm-ds.gm-login .inp[aria-invalid="true"]{border-color:var(--lg-danger);box-shadow:0 0 0 4px var(--lg-danger-soft)}
+.gm-ds.gm-login .inp.has-end{padding-inline-end:48px}
+.gm-ds.gm-login .inp.pin{letter-spacing:.6em;text-align:center}
+.gm-ds.gm-login .eye{position:absolute;inset-inline-end:6px;width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--gm-ink3);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,color .15s}
+.gm-ds.gm-login .eye:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
+
+/* ---- G04: שדה בחירה עם הקלדה, סינון ורשימה נפתחת ---- */
+.gm-ds.gm-login .cbx .inp{padding-inline-end:48px}
+.gm-ds.gm-login .cbx-t{position:absolute;inset-inline-end:6px;width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--gm-ink3);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,color .15s}
+.gm-ds.gm-login .cbx-t:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
+.gm-ds.gm-login .cbx-t .ic{transition:transform .2s}
+.gm-ds.gm-login .cbx-t[aria-expanded="true"] .ic{transform:rotate(180deg)}
+.gm-ds.gm-login .cbx-l{position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:20;margin:0;padding:6px;list-style:none;max-height:232px;overflow:auto;background:#fff;border:1px solid var(--gm-line);border-radius:14px;box-shadow:0 18px 40px -14px rgba(15,44,82,.45)}
+.gm-ds.gm-login .cbx-o{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--gm-ink);font-size:16px;border-inline-start:3px solid transparent}
+.gm-ds.gm-login .cbx-o .ic{color:var(--gm-ink3)}
+.gm-ds.gm-login .cbx-o.act,.gm-ds.gm-login .cbx-o:hover{background:var(--gm-sky-50)}
+.gm-ds.gm-login .cbx-o[aria-selected="true"]{font-weight:600;border-inline-start-color:var(--gm-gold)}
+.gm-ds.gm-login .cbx-o mark{background:var(--lg-gold-soft);color:inherit;border-radius:4px;padding:0 1px}
+.gm-ds.gm-login .cbx-n{padding:10px 12px;font-size:14px;line-height:1.5;color:var(--gm-ink2)}
+
+/* ---- G05: מתג עם טקסט והסבר; שורת "זכור אותי" ---- */
+.gm-ds.gm-login .row{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap}
+.gm-ds.gm-login .chk{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;color:var(--gm-ink2);min-height:32px;user-select:none;position:relative}
+.gm-ds.gm-login .chk input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.gm-ds.gm-login .chk .sw{position:relative;display:inline-block;width:48px;height:28px;border-radius:999px;background:#9aa6b4;border:1.5px solid transparent;flex:none;transition:background-color .2s}
+.gm-ds.gm-login .chk .sw::after{content:"";position:absolute;top:2px;inset-inline-start:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(10,34,66,.4);transition:inset-inline-start .2s}
+.gm-ds.gm-login .chk input:checked+.sw{background:var(--gm-navy)}
+.gm-ds.gm-login .chk input:checked+.sw::after{inset-inline-start:22px;background:var(--gm-gold-300)}
+.gm-ds.gm-login .chk input:focus-visible+.sw{outline:3px solid var(--gm-gold);outline-offset:2px}
+.gm-ds.gm-login .chk:hover .sw{filter:brightness(1.08)}
+.gm-ds.gm-login .auto{display:flex;flex-direction:column;gap:2px}
+.gm-ds.gm-login .chk .tx{display:flex;flex-direction:column}
+.gm-ds.gm-login .auto-note{margin:0;padding-inline-start:58px;font-size:13px;color:var(--gm-ink3);line-height:1.45}
+
+/* ---- G06: שורת הקישור לשעון הנוכחות; G07: תג מחשב מהימן; G08: תיבת שגיאה ---- */
+.gm-ds.gm-login .punch{margin-top:18px;padding-top:16px;border-top:1px solid rgba(188,194,200,.75);display:flex;justify-content:center}
+.gm-ds.gm-login .punch a{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 14px;border-radius:12px;font-size:14px;font-weight:500;color:var(--gm-navy-700);text-decoration:none;transition:background-color .15s,color .15s}
+.gm-ds.gm-login .punch a:hover{background:rgba(255,255,255,.7);color:var(--gm-navy-900)}
+.gm-ds.gm-login .punch a u{text-decoration-color:var(--gm-gold);text-decoration-thickness:2px;text-underline-offset:4px}
+.gm-ds.gm-login .lg-trusted{display:flex;align-items:center;gap:8px;width:fit-content;max-width:100%;margin:0 auto 14px;padding:4px 14px;border-radius:999px;background:var(--lg-ok-soft);color:var(--lg-ok);font-size:13px;font-weight:600}
+.gm-ds.gm-login .msg{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:12px;font-size:14px;line-height:1.45;background:var(--lg-danger-soft);border:1px solid var(--lg-danger-line);color:var(--lg-danger)}
+.gm-ds.gm-login .msg .ic{margin-top:1px}
+.gm-ds.gm-login .msg.ok{background:var(--lg-ok-soft);border-color:#a8d5bc;color:var(--lg-ok)}
+
+/* ---- כפתורים: הזהב של הפלטה (.gbtn) וכפתור משני ---- */
+.gm-ds.gm-login .gbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;padding:12px 22px;border-radius:14px;background:var(--gm-gbtn);color:#0a0a0a;border:1.5px solid var(--gm-gold-d);font-size:17px;font-weight:600;cursor:pointer;transition:background .2s,color .2s,border-color .2s,transform .15s}
+.gm-ds.gm-login .gbtn:hover{background:var(--gm-navy);color:#fff;border-color:var(--gm-navy);transform:translateY(-1px)}
+.gm-ds.gm-login .gbtn:active{transform:none}
+.gm-ds.gm-login .gbtn[disabled]{opacity:.75;cursor:progress;transform:none}
+.gm-ds.gm-login .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-inline-end-color:transparent;animation:lg-sp .7s linear infinite}
+@keyframes lg-sp{to{transform:rotate(360deg)}}
+.gm-ds.gm-login .ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-radius:12px;background:#fff;color:var(--gm-navy);border:1px solid var(--gm-line);font-weight:500;cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
+.gm-ds.gm-login .ghost:hover{background:var(--gm-navy);color:#fff;border-color:var(--gm-navy)}
+
+/* ---- אחרי הכניסה ---- */
+.gm-ds.gm-login .done{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:12px 0 4px}
+.gm-ds.gm-login .done .ok{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--lg-ok-soft);color:var(--lg-ok)}
+.gm-ds.gm-login .done .ok .ic{width:28px;height:28px;stroke-width:2.2}
+.gm-ds.gm-login .done h2{margin:0;font-size:22px;letter-spacing:-.2px}
+.gm-ds.gm-login .done p{margin:0;color:var(--gm-ink2);font-size:15px;max-width:34ch}
+.gm-ds.gm-login .done .clk{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:var(--lg-gold-soft);color:var(--lg-gold-ink);font-size:15px;font-weight:500}
+.gm-ds.gm-login .done .clk.note{background:var(--gm-sky-50);color:var(--gm-ink2)}
+
+/* ---- הכניסה כחלון על דף מבוקש (L06) ---- */
+.gm-ds.gm-login .scrim{z-index:9999;padding:16px}
+.gm-ds.gm-login .scrim.lg-dscrim{z-index:10001}
+.gm-ds.gm-login .mdl{width:100%;max-width:440px;max-height:calc(100dvh - 32px);overflow:auto;border-radius:24px;background:#fff;border:1px solid rgba(15,44,82,.18);box-shadow:0 24px 60px -12px rgba(15,44,82,.45);animation:lg-dlgIn .2s ease}
+@keyframes lg-dlgIn{from{opacity:0;transform:scale(.96) translateY(6px)}}
+.gm-ds.gm-login .mhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 18px;border-bottom:1px solid var(--gm-sky-100);font-weight:600;font-size:17px;color:var(--gm-navy-900)}
+.gm-ds.gm-login .mhead strong{display:flex;align-items:center;gap:8px;font-weight:600}
+.gm-ds.gm-login .mx{width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--gm-ink3);display:grid;place-items:center;cursor:pointer}
+.gm-ds.gm-login .mx:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
+.gm-ds.gm-login .msub{margin:16px 18px 0;text-align:center;color:var(--gm-ink2);font-size:15px}
+.gm-ds.gm-login .mdl>.card.lg-card{border:0;box-shadow:none;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:0;padding:16px 24px 24px}
+
+/* ---- החלונות הכהים (L03, L04, L05, L15): הערכים של החלון הכהה של הפלטה (.dlg-dark #dlg) ---- */
+.gm-ds.gm-login .dlg{width:100%;max-width:420px;max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;padding:28px;border-radius:24px;animation:lg-dlgIn .2s ease;overscroll-behavior:contain}
+.gm-ds.gm-login .dlg:focus{outline:none}
+.gm-ds.gm-login .dlg h2{margin:0 0 4px;font-size:20px;font-weight:700;line-height:1.3;text-align:center;letter-spacing:-.2px}
+.gm-ds.gm-login .dlg .sub{margin:0 0 18px;font-size:15px;line-height:1.6;text-align:center}
+.gm-ds.gm-login .dform{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+.gm-ds.gm-login .dbtns{display:flex;flex-direction:column;gap:10px}
+.gm-ds.gm-login .dbtns .r2{display:flex;gap:10px}
+.gm-ds.gm-login .dbtns .r2>*{flex:1}
+.gm-ds.gm-login .dlg .msg{margin-bottom:14px}
+.gm-ds.gm-login .dlg.dk{--k-bg:#0d2a4f;--k-sheen:rgba(188,194,200,.20);--k-solid:#0a2242;--k-ink:#fff;--k-sub:#cfe0f2;--k-row:rgba(188,194,200,.12);--k-rowb:rgba(188,194,200,.20);--k-bd:rgba(255,255,255,.14);--k-gap:#0f2c52;--k-ghost:#f7ecc4;--k-ic:#f1dc8f;--k-err:#fbbfa9;--k-sh:0 24px 60px -12px rgba(2,10,24,.65),0 2px 8px rgba(2,10,24,.35),inset 0 1px 0 rgba(255,255,255,.09);
+  background:radial-gradient(130% 55% at 50% -8%,var(--k-sheen),transparent 62%),linear-gradient(180deg,var(--k-bg),var(--k-solid));color:var(--k-ink);border:1px solid var(--k-bd);box-shadow:var(--k-sh)}
+.gm-ds.gm-login .dlg.dk h2{color:var(--k-ink)}
+.gm-ds.gm-login .dlg.dk .sub{color:var(--k-sub)}
+.gm-ds.gm-login .dlg.dk .dbadge{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;margin:0 auto 12px;background:radial-gradient(circle at 30% 22%,#fff 0,var(--gm-sky-100) 100%);color:var(--gm-navy);box-shadow:0 0 0 2px var(--k-gap),0 0 0 4px var(--gm-gold),0 10px 22px -8px rgba(201,162,39,.7),inset 0 0 14px rgba(201,162,39,.28)}
+.gm-ds.gm-login .dlg.dk .dbadge .ic{width:26px;height:26px;stroke-width:2}
+.gm-ds.gm-login .dlg.dk .lbl{color:var(--k-sub)}
+.gm-ds.gm-login .dlg.dk .inp{background:var(--gm-sky-50);color:var(--gm-navy-900);border-color:var(--gm-line)}
+.gm-ds.gm-login .dlg.dk .inp::placeholder{color:#5b7391}
+.gm-ds.gm-login .dlg.dk .inp:focus{background:#fff;border-color:var(--gm-gold);box-shadow:0 0 0 4px rgba(201,162,39,.28)}
+.gm-ds.gm-login .dlg.dk .inp[aria-invalid="true"]{border-color:var(--k-err);box-shadow:0 0 0 4px rgba(251,191,169,.25)}
+.gm-ds.gm-login .dlg.dk .msg{background:rgba(251,191,169,.12);border-color:rgba(251,191,169,.38);color:var(--k-err)}
+.gm-ds.gm-login .dlg.dk .msg.ok{background:var(--k-row);border-color:var(--k-rowb);color:var(--k-ink)}
+.gm-ds.gm-login .dlg.dk .msg.ok .ic{color:var(--k-ic)}
+.gm-ds.gm-login .dlg.dk .gbtn:hover{background:#fff;color:var(--gm-navy);border-color:#fff}
+.gm-ds.gm-login .dlg.dk .ghost{background:transparent;color:var(--k-ghost);border:1.5px solid var(--k-rowb)}
+.gm-ds.gm-login .dlg.dk .ghost:hover{background:var(--k-row);color:var(--k-ghost);border-color:var(--gm-gold)}
+.gm-ds.gm-login .dlg.dk :focus-visible{outline-color:var(--gm-gold)}
+.gm-ds.gm-login .dlg.dk bdi{color:var(--k-ink);font-weight:600}
+.gm-ds.gm-login .dlg.dk input[type="time"]{color-scheme:light}
+
+@media (max-width:520px){
+  .gm-ds.gm-login .card.lg-card{padding:20px 16px}
+  .gm-ds.gm-login .lg-stage{padding-top:24px;place-items:start center}
+  .gm-ds.gm-login .dlg{padding:22px 18px;border-radius:22px}
+  .gm-ds.gm-login .scrim{align-items:flex-end;padding:8px}
+  .gm-ds.gm-login .mdl>.card.lg-card{padding:14px 16px 20px}
+}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-login *{transition:none!important;animation-duration:.01ms!important}}
