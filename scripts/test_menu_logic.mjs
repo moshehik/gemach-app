@@ -16,6 +16,9 @@ import {
   mergeRecents, toLegacyItem, RECENTS_CAP,
 } from '../lib/menu/recents.js';
 import { buildNavGroups, NAV_GROUPS } from '../app/components/navConfig.js';
+import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
+import { buildModuleText, isSpriteInSync, normalizeEol, SPRITE_OUT } from './build_menu_sprite.mjs';
+import { readFileSync } from 'node:fs';
 
 let passed = 0;
 function t(name, fn) {
@@ -673,6 +676,25 @@ t('toLegacyItem: תאימות לאחור לצורת agy_history', () => {
   const r = legacyItemToRecent({ type: 'dress', id: '4512', name: 'שמלה 4512', timestamp: 7 });
   assert.deepEqual(toLegacyItem(r), { type: 'dress', id: '4512', name: 'שמלה 4512', subtext: '', timestamp: 7 });
   assert.equal(toLegacyItem({ type: 'page', key: 'page:/board' }), null);
+});
+
+// --- ה-sprite המוטמע (MenuSprite) ----------------------------------------------------------------
+t('spriteSymbols.js מסונכרן עם design-system/sprite.svg (node scripts/build_menu_sprite.mjs)', () => {
+  // נרמול CRLF: checkout של Windows (core.autocrlf=true) מחזיק את הקובץ עם סופי שורה CRLF, המחולל פולט LF.
+  assert.equal(normalizeEol(readFileSync(SPRITE_OUT, 'utf8')), buildModuleText());
+  assert.ok(isSpriteInSync());
+});
+t('כל אייקון שהעץ פולט קיים ב-sprite המוטמע', () => {
+  const ids = new Set(SPRITE_SYMBOLS.map(([id]) => id));
+  assert.equal(SPRITE_ID_PREFIX, 'gmi-');
+  assert.ok(ids.size >= 71);
+  for (const n of ['bell', 'chev', 'ext', 'menu', 'search', 'sn-bug', 'user', 'x', 'arrl', 'arrr', 'msg']) assert.ok(ids.has(n), `missing ${n}`);
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true', management_messages: 'true' }) });
+  for (const it of flattenMenuTree(tree)) if (it.icon) assert.ok(ids.has(it.icon), `tree icon "${it.icon}" (${it.id}) missing from sprite`);
+  for (const tab of tree.tabs) if (tab.icon) assert.ok(ids.has(tab.icon), `tab icon "${tab.icon}" missing from sprite`);
+  for (const [id, viewBox, shapes] of SPRITE_SYMBOLS) {
+    assert.match(id, /^[a-z0-9-]+$/); assert.match(viewBox, /^0 0 \d+ \d+$/); assert.ok(shapes.length > 0, `empty symbol ${id}`);
+  }
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
