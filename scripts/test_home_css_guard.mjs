@@ -79,7 +79,7 @@ function splitSel(sel) {
 const homeRules = parseCss(HOME_CSS);
 const globalRules = [...parseCss(GLOBALS), ...parseCss(OVERRIDES), ...parseCss(DS_GLOBAL)];
 // אזור החיפוש בלבד (שורת החיפוש, הלוח המשותף, הטופס המתקדם, התוצאות, השיחה): שאר הפלטה (stepper/calc/tx...) לא באחריות הדף הזה
-const SEARCH_AREA = /\.(hero|hero-in|hero-row|jshell|advonly|aishell|scan|srch|cmode|cmode-b|advp|advs|advq|advfb|advfl|advplus|advlist|advo|advdp|advgrid|inp|inpw|res-one|fu|bub|li|rtbl|tblw|vsw|vopt|xlbtn|aixl|xlrow)/; // (עד 2.10.2026 הייתה כאן תו backspace במקום , והבדיקה על הפלטה רצה על רשימה ריקה)
+const SEARCH_AREA = /\.(hero|hero-in|hero-row|jshell|advonly|aishell|scan|srch|cmode|cmode-b|advp|advs|advq|advfb|advfl|advplus|advlist|advo|advdp|advgrid|inp|inpw|res-one|fu|bub|li|rtbl|tblw|vsw|vopt|xlbtn|aixl|xlrow)\b/; // (עד 2.10.2026 הייתה כאן תו backspace במקום סימן גבול-מילה, והבדיקה על הפלטה רצה על רשימה ריקה)
 const paletteHome = parseCss(PALETTE).filter((r) => r.sel.includes('.gm-home') && SEARCH_AREA.test(r.sel));
 
 /* ---------- 1. כל כלל ב-home.css בהיקף .gm-ds / .gm-home (לא נוגע בשאר האתר) ---------- */
