@@ -68,8 +68,14 @@ export async function PUT(request) {
 
     // מיזוג רדוד של העדכון על ההעדפות הקיימות — שדות לא-מוכרים/לא-תקינים
     // נזרקים בשקט (sanitize), כך שהעמודה לעולם לא מכילה JSON שרירותי.
+    // uiVariants (דגלי "ישן / A5", lib/uiVariant.js) נקבעים רק ע"י הבעלים דרך
+    // scripts/set-ui-variant.js — עובד לא יכול להדליק לעצמו מסך חדש דרך ה-API הזה. הערך הקיים
+    // נשמר כי mergeDesignPrefs מתחיל מההעדפות השמורות. (זה חוסם רק את המסלול הזה: העוגייה
+    // designPrefs_<id> שה-layout קורא ניתנת לעריכה בדפדפן — ר' ההערה ב-lib/uiVariant.js.)
+    const safeBody = (body && typeof body === 'object') ? { ...body } : body;
+    if (safeBody && typeof safeBody === 'object') delete safeBody.uiVariants;
     const existing = parseStoredDesignPrefs(employee.themeColor);
-    const next = mergeDesignPrefs(existing || {}, body);
+    const next = mergeDesignPrefs(existing || {}, safeBody);
     const serialized = JSON.stringify(next);
     if (serialized.length > 8192) {
       return NextResponse.json({ success: false, error: 'Prefs too large' }, { status: 413 });

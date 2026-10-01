@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
-import { parseIdList } from '../../../../lib/notificationLists';
+import { parseIdList, parseNotificationActionBody } from '../../../../lib/notificationLists';
+import { markAllNotificationsRead } from '../../../../lib/notificationsBulk';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
+// POST /api/notifications/read
+//   { notificationId }  — הודעה אחת (ההתנהגות המקורית, ללא שינוי)
+//   { all: true }       — "סמן הכל כנקרא" (פעמון התפריט החדש): כל ההודעות של העובד המחובר בלבד —
+//                         האישיות שלו + הכלליות שבחלון התצוגה (lib/notificationsBulk.js). אין פרמטר של עובד אחר.
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
@@ -19,11 +24,17 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { notificationId } = body;
-
-    if (!notificationId) {
-      return NextResponse.json({ success: false, error: 'notificationId is required' }, { status: 400 });
+    const parsed = parseNotificationActionBody(body);
+    if (parsed.error) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+
+    if (parsed.mode === 'all') {
+      const result = await markAllNotificationsRead(prisma, employeeId);
+      return NextResponse.json({ success: true, all: true, updated: { personal: result.personal, global: result.global }, conflicts: result.conflicts });
+    }
+
+    const { notificationId } = parsed;
 
     const notification = await prisma.notification.findUnique({
       where: { id: notificationId }

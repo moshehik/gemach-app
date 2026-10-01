@@ -1,0 +1,185 @@
+import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
+import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
+import { attachEmployeeNames } from '@/app/lib/auditLog';
+import { buildOrderHistory, filterByCategory, paginateEntries, decodeCursor, normalizeLimit, resolveOrderRef, ORDER_HISTORY_CATEGORIES } from '@/lib/history/orderHistory';
+
+export const dynamic = 'force-dynamic';
+
+// GET /api/orders/[id]/history - the order card's history feed, one chronological list in the shape
+// the A5 history tab expects (mapping, wording, dedupe rules: lib/history/orderHistory.js).
+//
+//   ?limit=100      entries per page, 1..200 (default 100)
+//   ?cursor=...     the nextCursor of the previous page
+//   ?category=a,b   items | pay | del | dates | docs | sig | print | mail | fix (filters the page only;
+//                   counts always describe the whole feed so a filter menu can show every total)
+//   ?system=1       also return engine bookkeeping entries (automatic charge recalculation ...)
+//   ?prints=1       also return print visits (PageVisitLog has no index on the URL: opt-in)
+//
+// Returns { entries, nextCursor, counts, dedupedCount, dedupedBy, noopCount, hiddenSystemCount,
+//           unmappedCount, truncated }.  Read-only; the AuditLog is never written from here.
+
+// One order has a handful of audit rows; the caps only stop a runaway record from turning one call into
+// a table scan. Hitting the audit cap sets `truncated` (the oldest rows are the ones left out).
+const MAX_AUDIT_ROWS = 1500;
+const MAX_ITEM_ROWS = 500;
+const MAX_PAYMENT_ROWS = 500;
+const MAX_REFUND_ROWS = 200;
+const MAX_OBLIGATION_ROWS = 1000;
+const MAX_EMAIL_ROWS = 30;
+const MAX_PRINT_ROWS = 50;
+const PRINT_LOG_RETENTION_DAYS = 90; // scripts/cleanup_old_logs.js
+const PRINT_LOG_PREFIX = '[הדפסת כרטיס השכרה]';
+
+const VALID_CATEGORY_FILTERS = new Set([...ORDER_HISTORY_CATEGORIES.map(c => c[0]), 'sig', 'print', 'mail', 'fix']);
+
+const json = (body, status = 200) => NextResponse.json(body, { status });
+
+export async function GET(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+
+    const limit = normalizeLimit(searchParams.get('limit'));
+    const cursorParam = searchParams.get('cursor');
+    const cursor = cursorParam ? decodeCursor(cursorParam) : null;
+    if (cursor === undefined) return json({ error: 'cursor לא תקין' }, 400);
+    const categories = (searchParams.get('category') || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (categories.some(c => !VALID_CATEGORY_FILTERS.has(c))) return json({ error: 'קטגוריה לא מוכרת' }, 400);
+    const includeSystem = searchParams.get('system') === '1';
+    const includePrints = searchParams.get('prints') === '1';
+
+    // same lookup as GET /api/orders/[id]: a UUID or the order number - but strict (ID-1): any other path
+    // segment (NUL byte, letters, "12abc", 0, above INT4) is a 404 before Prisma sees it
+    const ref = resolveOrderRef(id);
+    if (!ref) return json({ error: 'Order not found' }, 404);
+    const order = await prisma.order.findUnique({
+      where: ref.id ? { id: ref.id } : { orderId: ref.orderId },
+      select: { id: true, orderId: true, orderDate: true, employeeId: true, customerId: true, isDeleted: true, deletedAt: true },
+    });
+    if (!order) return json({ error: 'Order not found' }, 404);
+
+    // Round 1: every record of the order (one query each, all capped). Payment.notes is read only so the
+    // mapper can keep the last card digits - it never leaves the server as text.
+    const [itemRows, payments, refunds, obligations, failedEmails] = await Promise.all([
+      prisma.$queryRaw(Prisma.sql`
+        SELECT oi."id", oi."sizeText", oi."description", oi."barcodePrefix" AS oi_prefix,
+               oi."isDeleted", oi."isTaken", oi."takenDate", oi."isReturned", oi."returnDate", oi."returnedOk",
+               di."barcodePrefix" AS di_prefix, dm."barcodePrefix" AS dm_prefix, dm."name" AS dm_name
+        FROM "OrderItem" oi
+        LEFT JOIN "DressItem" di ON di."id" = oi."dressItemId"
+        LEFT JOIN "DressModel" dm ON dm."id" = di."dressModelId"
+        WHERE oi."orderId" = ${order.orderId}
+        LIMIT ${MAX_ITEM_ROWS}
+      `),
+      prisma.payment.findMany({
+        where: { orderId: order.orderId },
+        select: { id: true, amount: true, paymentMethod: true, notes: true, paymentDate: true, isDeleted: true, isRefund: true },
+        take: MAX_PAYMENT_ROWS,
+      }),
+      // bank details are deliberately not selected
+      prisma.refund.findMany({
+        where: { orderId: order.orderId },
+        select: { id: true, amount: true, reason: true, isExecuted: true, executionDate: true, isAutoGenerated: true, isDeleted: true, createdAt: true, paymentId: true },
+        take: MAX_REFUND_ROWS,
+      }),
+      prisma.paymentObligation.findMany({
+        where: { orderId: order.orderId },
+        select: { id: true, description: true, amount: true, isManual: true, isDeleted: true },
+        take: MAX_OBLIGATION_ROWS,
+      }),
+      // only failed sends: a successful one already has its EMAIL_SENT audit row
+      order.customerId
+        ? prisma.emailLog.findMany({
+            where: { customerId: order.customerId, status: 'error', subject: { startsWith: `הזמנה #${order.orderId} ` } },
+            select: { id: true, to: true, subject: true, status: true, errorMessage: true, sentAt: true },
+            orderBy: { sentAt: 'desc' },
+            take: MAX_EMAIL_ROWS,
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const items = itemRows.map(r => ({
+      id: r.id,
+      sizeText: r.sizeText,
+      description: r.description,
+      prefix: r.dm_prefix ?? r.di_prefix ?? r.oi_prefix ?? null,
+      modelName: r.dm_name || null,
+      isDeleted: r.isDeleted,
+      isTaken: r.isTaken,
+      takenDate: r.takenDate,
+      isReturned: r.isReturned,
+      returnDate: r.returnDate,
+      returnedOk: r.returnedOk,
+    }));
+
+    // Round 2: the audit rows. An Order sits under its UUID (automatic rows) and its number (hand-written
+    // rows); everything else under the record's own id, so the ids read above are the lookup keys.
+    const or = [{ entityType: 'Order', entityId: { in: [order.id, String(order.orderId)] } }];
+    if (items.length) or.push({ entityType: 'OrderItem', entityId: { in: items.map(i => i.id) } });
+    if (payments.length) or.push({ entityType: 'Payment', entityId: { in: payments.map(p => p.id) } });
+    if (refunds.length) or.push({ entityType: 'Refund', entityId: { in: refunds.map(r => r.id) } });
+    if (obligations.length) or.push({ entityType: 'PaymentObligation', entityId: { in: obligations.map(o => o.id) } });
+
+    const since = new Date(Date.now() - PRINT_LOG_RETENTION_DAYS * 24 * 3600 * 1000);
+    const [auditFetched, printFetched] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: { OR: or },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: MAX_AUDIT_ROWS + 1,
+        select: { id: true, entityType: true, entityId: true, action: true, changesJson: true, createdAt: true, employeeId: true },
+      }),
+      includePrints
+        ? prisma.pageVisitLog.findMany({
+            where: { timestamp: { gte: since }, pageUrl: { startsWith: PRINT_LOG_PREFIX, contains: `#${order.orderId}` } },
+            orderBy: { timestamp: 'desc' },
+            take: MAX_PRINT_ROWS,
+            select: { id: true, pageUrl: true, timestamp: true, employeeName: true, isGuest: true },
+          })
+        : Promise.resolve([]),
+    ]);
+    const truncated = auditFetched.length > MAX_AUDIT_ROWS;
+    const auditRows = truncated ? auditFetched.slice(0, MAX_AUDIT_ROWS) : auditFetched;
+
+    // "...#123" also matches "#1234" in the DB; keep only the exact number
+    const exactOrder = new RegExp(`#${order.orderId}(?!\\d)`);
+    const printVisits = printFetched
+      .filter(v => exactOrder.test(v.pageUrl))
+      .map(v => ({ id: v.id, timestamp: v.timestamp, employeeName: v.isGuest ? null : v.employeeName }));
+
+    // Round 3: actor names (one batched employee query, safe columns only - never the raw employeeId)
+    const named = await attachEmployeeNames([{ employeeId: order.employeeId }, ...auditRows]);
+    const orderEmployeeName = named[0].employeeName || null;
+    const namedRows = named.slice(1);
+
+    const result = buildOrderHistory({
+      order: { orderId: order.orderId, orderDate: order.orderDate, employeeId: order.employeeId, employeeName: orderEmployeeName, isDeleted: order.isDeleted, deletedAt: order.deletedAt },
+      auditRows: namedRows,
+      items,
+      payments,
+      refunds,
+      obligations,
+      emailLogs: failedEmails,
+      printVisits,
+    }, { includeSystem });
+
+    const page = paginateEntries(filterByCategory(result.entries, categories), { limit, cursor });
+
+    return NextResponse.json({
+      entries: page.entries,
+      nextCursor: page.nextCursor,
+      counts: result.counts,
+      dedupedCount: result.dedupedCount,
+      dedupedBy: result.dedupedBy,
+      noopCount: result.noopCount,
+      hiddenSystemCount: result.hiddenSystemCount,
+      unmappedCount: result.unmappedCount,
+      truncated,
+    });
+  } catch (error) {
+    console.error('Error fetching order history:', error);
+    return NextResponse.json({ error: 'Failed to fetch order history' }, { status: 500 });
+  }
+}

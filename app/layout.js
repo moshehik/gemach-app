@@ -32,6 +32,9 @@ import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { UiVariantProvider } from './components/UiVariantContext';
+import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
+import { NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
@@ -43,7 +46,8 @@ export default async function RootLayout({ children }) {
   // require_login - middleware.js forwards the path since a server component has
   // no other way to know the current route.
   const headersList = await headers();
-  const isPublicKiosk = (headersList.get('x-pathname') || '').startsWith('/customer-interface');
+  const requestPathname = headersList.get('x-pathname') || '';
+  const isPublicKiosk = requestPathname.startsWith('/customer-interface');
   // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
   // doesn't depend on an existing session - it must stay reachable without first logging
   // in, otherwise an employee can never punch in at all when require_login is on and no
@@ -68,8 +72,11 @@ export default async function RootLayout({ children }) {
   // is skipped entirely — roleId comes from the token (see
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
+  // management_messages / gmach_name / gmach_subtitle / BRAND_LOGO: מפתחות שהמעטפת החדשה (lib/menu/buildMenuTree.js)
+  // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
+  // גדול ולכן נשלח ללקוח רק כ-!!value (ר' a5ShellProps למטה), לעולם לא הערך עצמו.
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup'].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -196,7 +203,11 @@ export default async function RootLayout({ children }) {
   // resolvePageAccess: head management always, else employee override -> department row -> catalog
   // default, which for refunds / dress catalog / board follows the org's restrict_* setting). When the
   // lookup fails we fall back to the old role/setting rules below.
-  const NAV_PAGE_KEYS = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];
+  // NAV_PAGE_KEYS מיובא מ-lib/menu/buildMenuTree.js (אותם 9 מפתחות שהיו כאן + page:messages + page:schedule,
+  // שהמעטפת החדשה בודקת ישירות). אותה קריאה אחת ל-resolvePageAccess — מפתח נוסף הוא עוד איבר בלולאה בזיכרון,
+  // לא שאילתה (lib/permissions.js: getExplicitValues נטען פעם אחת לכל בקשה; לאף פריט אין settingKeys). AppShell
+  // (הישן) לא קורא את pageAccess בכלל, ולכן ההתנהגות שלו לא משתנה. מפתח שאינו בקטלוג (page:schedule עד שענף
+  // הלוז ימוזג) מקבל false לכולם — כשל-סגור.
   let pageAccess = null;
   if (isAuthenticated && emp) {
     pageAccess = await resolvePageAccess(emp.roleId, authToken.value, NAV_PAGE_KEYS).catch(() => null);
@@ -217,7 +228,9 @@ export default async function RootLayout({ children }) {
     ? (pageAccess ? pageAccess['page:board'] : isHeadManagement)
     : !requireLogin;
 
-  const navGroups = buildNavGroups({
+  // אותו אובייקט דגלים בדיוק שהתפריט הישן מקבל (buildNavGroups) — הוצא למשתנה כדי שהמעטפת החדשה תקבל
+  // את אותם ערכים (ולא תחשב אותם מחדש). הערכים עצמם לא השתנו.
+  const legacyNavFlags = {
     showAdminTab,
     showEmployeesTab,
     showRefundsTab,
@@ -230,7 +243,34 @@ export default async function RootLayout({ children }) {
     showOrders: pageVisible('page:orders'),
     showRentals: pageVisible('page:rentals'),
     showCustomers: pageVisible('page:customers'),
-  });
+  };
+  const navGroups = buildNavGroups(legacyNavFlags);
+
+  // נתונים למעטפת החדשה (ShellSwitch / MenuA5Shell, PR 2.A) — מחושבים מאותם settings/pageAccess שנטענו למעלה
+  // (בלי שאילתה נוספת), ומועברים ל-AppShell רק כשהמעטפת 'a5' (ר' a5Shell למטה) — באתר הישן ה-prop הוא undefined
+  // והמטען זהה לקודם. הגדרות נבדקות בקפדנות `=== 'true'`. BRAND_LOGO: רק האם קיים (!!value) — לא ה-base64.
+  // `flags` = בדיוק מה ש-buildMenuTree קורא ב-ctx.flags (lib/menu/buildMenuTree.js deriveLegacyFlags): דגלי התפריט
+  // הישן + isHeadManagement / isProgrammer / hideInternalMessaging / hideErrorReporting / requireLogin / isAuthenticated.
+  // כך "משלוחים" (showDeliveries) ושאר הפריטים המותנים מוצגים בחדש בדיוק כמו בישן.
+  const settingValue = (key) => settings.find(s => s.key === key)?.value;
+  const a5ShellProps = {
+    managementMessages: settingValue('management_messages') === 'true',
+    enableDeliveries: showDeliveries, // enable_deliveries === 'true' (קפדני), בלי ההרשאה; עם ההרשאה = flags.showDeliveries
+    gmachName: typeof settingValue('gmach_name') === 'string' ? settingValue('gmach_name').trim() : '',
+    gmachSubtitle: typeof settingValue('gmach_subtitle') === 'string' ? settingValue('gmach_subtitle').trim() : '',
+    hasBrandLogo: !!settingValue('BRAND_LOGO'),
+    pageAccess, // { 'page:x': boolean } לכל NAV_PAGE_KEYS, או null לאורח / תקלה (buildMenuTree מטפל ב-null)
+    roleId: emp ? emp.roleId : null,
+    flags: {
+      ...legacyNavFlags,
+      isHeadManagement,
+      isProgrammer,
+      hideInternalMessaging,
+      hideErrorReporting,
+      requireLogin,
+      isAuthenticated,
+    },
+  };
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
   const themePreference = themeCookie?.value || 'light';
@@ -277,6 +317,16 @@ export default async function RootLayout({ children }) {
   }
 
   const showLogin = requireLogin && !isAuthenticated && !isPublicKiosk && !isPunchClock;
+
+  // דגלי "ישן / A5" לכל מסך (lib/uiVariant.js): עקיפה אישית (uiVariants בעוגיית designPrefs_<id>,
+  // מראה של Employee.themeColor) > הגדרת הארגון ui_variant_<screen> (מאותה קריאת הגדרות בלי שאילתה
+  // נוספת) > 'legacy'. קיוסק / שעון נוכחות / הדפסה: המעטפת תמיד 'legacy'. בלי אף ערך מוגדר הכול
+  // 'legacy' והאתר נראה בדיוק כמו קודם.
+  const uiVariants = resolveUiVariants({
+    userVariants: sanitizeUiVariants(employeeDesignPrefs?.uiVariants),
+    settings,
+    pathname: requestPathname,
+  });
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -606,7 +656,18 @@ function cpCssText(vars) {
           <style id="custom-palette-style" dangerouslySetInnerHTML={{ __html: customPaletteCss }} />
         )}
       </head>
-      <body className={bodyClassName}>
+      <body
+        className={bodyClassName}
+        /* data-ui-*: נכתבים בשרת פעם אחת לכל טעינה מלאה. ה-root layout לא מרונדר מחדש בניווט רך, ולכן אחרי
+           ניווט מהיר הערכים כאן עלולים להיות ישנים (למשל data-ui-shell="a5" אחרי מעבר ל-/customer-interface
+           או לדף הדפסה). הקורא המותר היחיד: useUiVariant / useUiVariants (app/components/UiVariantContext.js),
+           שמחיל את כלל ה-pathname. אסור ש-CSS או JS ישתמשו ב-data-ui-* כדי להחליט על מראה. */
+        data-ui-shell={uiVariants.shell}
+        data-ui-home={uiVariants.home}
+        data-ui-order-card={uiVariants.order_card}
+        data-ui-customer-card={uiVariants.customer_card}
+      >
+        <UiVariantProvider value={uiVariants}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
@@ -637,6 +698,7 @@ function cpCssText(vars) {
                 showOverdueRemindersPopup={showOverdueRemindersPopup}
                 authToken={authToken?.value}
                 themePreference={themePreference}
+                a5Shell={uiVariants.shell === 'a5' ? a5ShellProps : undefined}
               >
                 {children}
               </AppShell>
@@ -646,6 +708,7 @@ function cpCssText(vars) {
           </LabelsProvider>
         )}
         </UniqueNamesProvider>
+        </UiVariantProvider>
       </body>
     </html>
   );

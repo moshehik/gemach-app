@@ -44,6 +44,7 @@
 | [docs/permissions-settings-mapping-2026-09-22.md](permissions-settings-mapping-2026-09-22.md) | מיפוי ההגדרות להרשאות, ושורות `DepartmentPermission` שנכתבו לשני מסדי הייצור (לא למחוק בלי לקרוא) | עדכני |
 | [docs/gas-mailer-live.gs](gas-mailer-live.gs) | העתק של סקריפט המייל החי ב-Apps Script ("מערכת מייל פתוח") | עדכני |
 | `docs/smart-quick-search-plan-2026-09-27.md` | תכנית החיפוש העמיד לאיות עברי וטריגרי `@`/`#`/`$` — אחרי מיזוג `feature/a5-clean-2026-09-29` | תכנית (אחרי מיזוג) |
+| `docs/menu-a5-build-plan.md` | התפריט החדש (A5): טבלת מיפוי של כל פריט בעיצוב המאושר למה שקיים בקוד, הדגל `ui_variant_shell`, המודולים הטהורים `lib/menu/*`, הנחיות לבניית הממשק, שאלות פתוחות — ענף `feature/menu-a5-2026-10-01` | תכנית (אחרי מיזוג) |
 | `docs/api-key-table.sql` | ה-SQL של טבלת `ApiKey` — אחרי מיזוג `feature/a5-clean-2026-09-29` | עדכני (אחרי מיזוג) |
 
 ## היסטוריה

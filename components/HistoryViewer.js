@@ -1,7 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { CUSTOMER_ONLY_FIELD_LABELS } from '../lib/history/labels';
 
 export const FIELD_TRANSLATIONS = {
+  // תוויות שדות לקוח שלא היו כאן (תעודת זהות, דיוורים, בנק, הוראת קבע, חסימה) - מוגדרות ב-lib/history/labels.js
+  ...CUSTOMER_ONLY_FIELD_LABELS,
   firstName: 'שם פרטי',
   lastName: 'שם משפחה',
   phone1: 'טלפון 1',
