@@ -97,7 +97,7 @@ export default function MenuA5Shell({
   const nav = useNavHistory(tree);
   const search = useMenuSearch();
   const notify = useCallback((message, type = 'info') => { if (showAlert) showAlert(message, type); }, [showAlert]);
-  const bellOn = !!(rail.bell && rail.bell.show && authToken && !hideInternalMessaging);
+  const bellOn = !!(rail.bell && rail.bell.show && authToken);
   const nf = useNotifications({
     enabled: bellOn,
     employeeId: authToken,
