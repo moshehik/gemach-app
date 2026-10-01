@@ -7,7 +7,7 @@ import StageSection from './StageSection';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { addDays, hebrewLong, toKey } from './hebrewCalendar';
-import { STAGE_ORDER } from './scheduleMeta';
+import { STAGE_ORDER, nonWorkingDayText } from './scheduleMeta';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 // דף "לו״ז יומי" - קריאה בלבד (V1). מקור העיצוב: תצוגות-עיצוב/לוז-יומי.html. הנתונים: GET /api/schedule
@@ -150,7 +150,6 @@ export default function ScheduleDay() {
   const visible = stages.filter((s) => s.counts.total > 0 && (!filter || s.key === filter));
   const allTotal = stages.reduce((a, s) => a + s.counts.total, 0);
   const shownDate = data ? data.date : date;
-  const flags = data ? data.dayFlags : null;
   // בורר התאריך חייב להישאר זמין גם בשגיאה (למשל ?date= לא תקין) כדי שיהיה אפשר לבחור יום אחר
   const pickerDate = (data && data.date) || date || localToday;
   const pickerToday = (clock && clock.today) || localToday;
@@ -183,11 +182,7 @@ export default function ScheduleDay() {
                   <ScheduleIcon name="table" />
                 </button>
               </div>
-              {/* TODO(ימים לא עובדים): כשהכלל המאוחד "יום לא עובד" ימומש (lib/businessDays.js, ענף non-working-days),
-                  ה-API יחזיר דגל אחד (למשל dayFlags.isNonWorking + סיבה, כולל ימים שהבעלים סימן) והדף יציג אותו
-                  במקום שתי התגיות הבאות. הדף לא מחשב חגים/ימים לא עובדים בעצמו - רק מציג דגלים מה-API. */}
-              {flags && flags.isChag ? <span className="chip st-today"><ScheduleIcon name="gift" />חג או ערב חג - יום לא עובד</span> : null}
-              {flags && flags.isFridayOrShabbat ? <span className="chip st-today"><ScheduleIcon name="cal" />{(data.weekday || 'שישי / שבת') + ' - יום לא עובד'}</span> : null}
+              <NonWorkingChip data={data} />
               {branchesEnabled && branches.length ? (
                 <div className="lz-dtools">
                   <BranchSeg branches={branches} value={branch} onChange={changeBranch} />
@@ -234,6 +229,34 @@ export default function ScheduleDay() {
         </div>
       </div>
     </div>
+  );
+}
+
+// תגית "יום לא עובד" - רק מה שה-API אומר (nonWorkingDay + dayStatus מהכלל האחיד ב-lib/businessDays.js:
+// שישי, שבת, חג, ערב חג, והימים שהבעלים סימן בניהול היומן). הדף לא מחשב חגים או ימים בשבוע בעצמו.
+// גיבוי מפורש: תשובה ישנה בלי השדה nonWorkingDay (למשל שרת שעדיין לא עודכן) - מוצג לפי dayFlags הישן,
+// ובלי שניהם לא מוצג כלום (לא מנחשים).
+function NonWorkingChip({ data }) {
+  if (!data) return null;
+  if (data.nonWorkingDay === undefined) {
+    const f = data.dayFlags;
+    if (!f || !(f.isChag || f.isFridayOrShabbat)) return null;
+    return (
+      <span className="chip st-today lz-nwd">
+        <ScheduleIcon name={f.isChag ? 'gift' : 'cal'} />
+        {(f.isChag ? 'חג או ערב חג' : (data.weekday || 'שישי / שבת')) + ' - יום לא עובד'}
+      </span>
+    );
+  }
+  if (!data.nonWorkingDay) return null;
+  const reasons = (data.dayStatus && data.dayStatus.reasons) || [];
+  const holiday = reasons.some((r) => r === 'chag' || r === 'erev_chag' || r === 'chol_hamoed');
+  const text = nonWorkingDayText(data.dayStatus);
+  return (
+    <span className="chip st-today lz-nwd" title={text}>
+      <ScheduleIcon name={holiday ? 'gift' : 'cal'} />
+      {text}
+    </span>
   );
 }
 

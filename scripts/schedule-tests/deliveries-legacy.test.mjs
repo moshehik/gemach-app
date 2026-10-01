@@ -49,8 +49,13 @@ test('default mode (deliveries_select_by_event_date off), NO options: same query
   assert.equal(q.args.where.isDeleted, false);
   assert.equal(q.args.where.isDelivery, true);
   const win = (k) => D.dayRange(k);
+  // החלונות לפי הכלל האחיד (main אחרי #200, lib/businessDays.js): יום היציאה = אירוע פחות delivery_days_before
+  // ימי עסקים, והחלון הוא ההופכי המלא. חמישי 1.10.2026 + 1 יום עסקים: שישי 2.10 הוא הושענא רבה = ערב שמיני
+  // עצרת ושבת 3.10 הוא החג - שניהם לא ימי עבודה (delivery_skip_weekends כבוי כאן, אבל חג/ערב חג מדולגים
+  // תמיד), ולכן כל אירוע מ-2.10 עד ראשון 4.10 יוצא ביום חמישי. (לפני #200 החלון היה 2.10 בלבד - אירוע
+  // ב-3.10/4.10 לא היה נמצא לעולם, האי-סימטריה שהבעלים אישר לתקן.) חזור: 1.10 פחות יום עסקים = רביעי 30.9.
   assert.deepEqual(q.args.where.OR, [
-    { eventDate: { gte: win('2026-10-02').start, lte: win('2026-10-02').end } }, // outbound: date + delivery_days_before
+    { eventDate: { gte: win('2026-10-02').start, lte: win('2026-10-04').end } }, // outbound: every event whose dispatch day is 1.10
     { eventDate: { gte: win('2026-09-30').start, lte: win('2026-09-30').end } }, // return: date - delivery_days_after
   ]);
   assert.deepEqual(q.args.orderBy, { eventDate: 'asc' });
@@ -95,4 +100,48 @@ test('the options are opt-in: only byDispatchDate changes the mode, only include
   const noDrafts = await getDeliveriesForDate(D.keyToLocalMidnight(DAY), { byDispatchDate: true, excludeDrafts: true });
   assert.deepEqual(ids(noDrafts), [1009, 1010, 1022]);
   assert.deepEqual(deliveriesQuery().args.where.AND, [{ OR: [{ status: null }, { status: { not: 'טיוטה' } }] }]);
+});
+
+test('byDispatchDate: dispatchDates are computed with the unified rule (same helper as the schedule and the print pages)', async () => {
+  installDb({ settings: SETTINGS_LEGACY });
+  const res = await getDeliveriesForDate(D.keyToLocalMidnight(DAY), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(res.data.find((r) => r.orderId === 1009).dispatchDates, { out: '2026-10-01' }, 'event Fri 2.10 (erev chag) - 1 business day = Thu 1.10');
+  assert.deepEqual(res.data.find((r) => r.orderId === 1010).dispatchDates, { return: '2026-10-01' }, 'event Wed 30.9 + 1 business day = Thu 1.10');
+});
+
+test('owner-marked closed day (non_working_days_extra): no delivery leaves or is collected on it - empty result, no DB query; the dispatches move to the neighbouring working days', async () => {
+  const closedThursday = [...SETTINGS_LEGACY, { key: 'non_working_days_extra', value: JSON.stringify({ version: 1, days: [{ date: DAY, note: 'ספירת מלאי' }] }) }];
+  installDb({ settings: closedThursday });
+  const res = await getDeliveriesForDate(D.keyToLocalMidnight(DAY), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(res.data, []);
+  assert.equal(deliveriesQuery(), undefined, 'no deliveries query at all on a closed day');
+
+  // Outbound is counted BACKWARDS from the event (event - delivery_days_before business days), so a delivery that
+  // would have left on the closed Thursday leaves EARLIER - on Wed 30.9, the last working day before it. Order 1009
+  // (event Fri 2.10, erev chag): 2.10 - 1 business day = Thu 1.10 (closed) -> Wed 30.9.
+  invalidateSettingsCache();
+  const wednesday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-09-30'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(wednesday), [1009], 'event 2.10 now goes out on Wed 30.9; no return is collected that day (no delivery event on Tue 29.9)');
+  assert.deepEqual(wednesday.data[0].directions, ['out']);
+  assert.deepEqual(wednesday.data[0].dispatchDates, { out: '2026-09-30' });
+  // the outbound window on 30.9 is the full inverse: every event from the closed Thursday through Sun 4.10
+  const win = (k) => D.dayRange(k);
+  assert.deepEqual(deliveriesQuery().args.where.OR[0], { eventDate: { gte: win('2026-10-01').start, lte: win('2026-10-04').end } });
+
+  // Returns are counted FORWARDS (event + delivery_days_after), so the collections that were due on the closed
+  // Thursday move LATER - to Sun 4.10 (Fri 2.10 erev chag + Sat 3.10 chag are closed anyway). Orders 1010 + 1022
+  // (event Wed 30.9, הלוך-חזור): 30.9 + 1 business day = Sun 4.10. 1008 (event Mon 5.10) goes out on Sunday as before.
+  invalidateSettingsCache();
+  const sunday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-04'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(sunday), [1008, 1010, 1022]);
+  assert.deepEqual(sunday.data.find((r) => r.orderId === 1010).directions, ['return']);
+  assert.deepEqual(sunday.data.find((r) => r.orderId === 1010).dispatchDates, { return: '2026-10-04' });
+  assert.deepEqual(sunday.data.find((r) => r.orderId === 1008).dispatchDates, { out: '2026-10-04' });
+  assert.ok(!ids(sunday).includes(1009), 'an outbound delivery never moves to after its event');
+
+  // without the closed Thursday the same Sunday collects nothing from 30.9 (those returns are on Thu 1.10 - see the default-mode test)
+  installDb({ settings: SETTINGS_LEGACY });
+  invalidateSettingsCache();
+  const sundayOpen = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-04'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(sundayOpen), [1008]);
 });

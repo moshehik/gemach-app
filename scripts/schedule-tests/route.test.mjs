@@ -48,6 +48,12 @@ test('200 for a regular employee whose department has a page:schedule=true row',
   assert.equal(r.headers['Cache-Control'], 'no-store');
   assert.equal(r.__json.settings.includeInternalNotes, false);
   assert.ok(Array.isArray(r.__json.stages) && r.__json.stages.length === 8);
+  assert.equal(r.__json.nonWorkingDay, false);
+  assert.deepEqual(r.__json.dayStatus.reasons, []);
+  const fri = await call('?date=2026-10-02');
+  assert.equal(fri.status, 200);
+  assert.equal(fri.__json.nonWorkingDay, true, 'Fri 2.10.2026 (erev Shmini Atzeret) is flagged by the unified rule');
+  assert.deepEqual(fri.__json.dayStatus.reasons, ['friday', 'erev_chag']);
 });
 
 test('403 for a department WITHOUT any page:schedule row (closed by default, B1)', async () => {

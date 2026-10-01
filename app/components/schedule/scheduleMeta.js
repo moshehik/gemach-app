@@ -125,6 +125,38 @@ export function flagLabels(flags) {
   return out;
 }
 
+// "יום לא עובד": תוויות לסיבות שה-API מחזיר (dayStatus.reasons של הכלל האחיד ב-lib/businessDays.js). הדף לא
+// מחשב חגים או ימים בשבוע בעצמו - רק מתרגם. סיבה לא מוכרת (כשהכלל יתרחב) לא נזרקת ולא מנוחשת: מוצג
+// "יום לא עובד" עם שאר הסיבות המוכרות. לחג/ערב חג מועדף שם החג (titles) על פני התווית הכללית.
+export const NON_WORKING_REASON_LABELS = {
+  friday: 'יום שישי',
+  shabbat: 'שבת',
+  chag: 'חג',
+  erev_chag: 'ערב חג',
+  chol_hamoed: 'חול המועד',
+  closed: 'סומן בניהול היומן',
+  range: 'סומן בניהול היומן',
+  recurring: 'סומן בניהול היומן',
+};
+
+export function nonWorkingDayText(status) {
+  const reasons = (status && Array.isArray(status.reasons) ? status.reasons : []).filter((r) => r !== 'open');
+  const titles = status && Array.isArray(status.titles) ? status.titles.filter(Boolean) : [];
+  const parts = [];
+  let titlesUsed = false;
+  for (const r of reasons) {
+    let label = NON_WORKING_REASON_LABELS[r];
+    if ((r === 'chag' || r === 'erev_chag') && titles.length) {
+      if (titlesUsed) continue;
+      titlesUsed = true;
+      label = titles.join(' · ');
+    }
+    if (label && !parts.includes(label)) parts.push(label);
+  }
+  const note = status && status.note ? String(status.note).trim() : '';
+  return 'יום לא עובד' + (parts.length ? ' - ' + parts.join(' · ') : '') + (note ? ' (' + note + ')' : '');
+}
+
 export function alertText(alert) {
   if (!alert) return '';
   if (alert.code === 'late_not_done' && alert.daysLate > 0) {

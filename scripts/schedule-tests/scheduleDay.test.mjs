@@ -31,12 +31,75 @@ test('header: date, hebrew label, today/tomorrow computed in Israel time', async
   assert.equal(res.tomorrow, '2026-10-02');
   assert.equal(res.weekday, 'יום חמישי');
   assert.match(res.dateHebrew, /תשרי/);
-  assert.deepEqual(res.dayFlags, { isFridayOrShabbat: false, isChag: false });
+  assert.equal(res.nonWorkingDay, false);
+  assert.deepEqual(res.dayStatus, { working: true, reasons: [], titles: [], note: null });
+  assert.equal('dayFlags' in res, false, 'the old Fri/Sat + chag pair is gone - one unified flag with reasons');
   assert.equal(res.truncated, false);
   assert.deepEqual(res.stages.map((s) => s.number), [1, 2, 4, 5, 6, 7, 8, 9]);
+  for (const s of res.stages) assert.equal('skipChag' in s, false, 'no per-stage calendar switch (unified rule)');
+  assert.equal('skipChagAllStages' in res.settings, false);
   const r2 = await getScheduleDay({ user: manager, now: new Date('2026-10-01T21:30:00Z'), settings: resolveScheduleSettings({}) });
   assert.equal(r2.date, '2026-10-02', 'no date param + 00:30 Israel => tomorrow\'s Israeli date, not the UTC date');
-  assert.equal(r2.dayFlags.isFridayOrShabbat, true);
+  assert.equal(r2.nonWorkingDay, true, 'Fri 2.10.2026 = Hoshana Raba = erev Shmini Atzeret');
+  assert.deepEqual(r2.dayStatus.reasons, ['friday', 'erev_chag']);
+  assert.match(r2.dayStatus.titles[0], /שמיני עצרת/);
+  assert.equal(r2.dayStatus.note, null);
+});
+
+test('owner-marked closed day (non_working_days_extra): flagged with reason "closed" + note; no prep/pickup/returns/deliveries on it; registrations, repairs (offset 0) and events still listed', async () => {
+  const closed = JSON.stringify({ version: 1, days: [{ date: DAY, note: 'ספירת מלאי' }] });
+  // The owner's list is ONE SystemSetting row: stages 2/4/6/8 get it through the resolved settings (ctx.nonWorkingDays),
+  // stages 5/9 through lib/deliveries.js, which reads the same row from the settings cache itself. So the row must be
+  // in the (mock) DB as well as in the injected settings - injecting it into the schedule settings alone would leave
+  // the deliveries on the closed day (and would not represent production, where both read the same cache).
+  const closedSettings = [...SETTINGS_ORG2, { key: 'non_working_days_extra', value: closed }];
+  installDb({ settings: closedSettings });
+  invalidateSettingsCache();
+  const res = await day(DAY, { settings: resolveScheduleSettings(settingsMap(closedSettings)) });
+  assert.equal(res.nonWorkingDay, true);
+  assert.deepEqual(res.dayStatus, { working: false, reasons: ['closed'], titles: [], note: 'ספירת מלאי' });
+  assert.deepEqual(ids(res, 'prep'), [], 'nothing is prepared on a closed day');
+  assert.deepEqual(ids(res, 'pick'), []);
+  // event-based returns (1013/1015, event 30.9) move to the next working day - exactly what lib/lateReturn.js
+  // (getExpectedReturnKey) computes for the order card and the late list. 1014 stays: its toDate is an EXPLICIT
+  // 1.10 (abroad order), and explicit toDate/returnDate are never shifted - that is the date agreed with the
+  // customer, shown unshifted on the order card too (lateReturn.js: "even if they fall on a non-working day").
+  assert.deepEqual(ids(res, 'manret'), [1014], 'only the explicit toDate stays on the closed day; event-based returns move');
+  assert.equal(stageOf(res, 'manret').items[0].dueKey, DAY);
+  assert.deepEqual(ids(res, 'dout'), [], 'lib/deliveries.js: no dispatch window on a closed day');
+  assert.deepEqual(ids(res, 'dback'), []);
+  assert.deepEqual(ids(res, 'order'), [1001, 1002], 'orders registered that day are a fact, not a plan');
+  assert.deepEqual(ids(res, 'event'), [1011, 1012, 1014, 1016], 'events are the customer\'s dates');
+  assert.deepEqual(ids(res, 'repair'), [1011], 'repair offset 0 = the event day itself');
+  // the returns that were due on the closed Thursday are due on Sunday 4.10 (Fri/Sat closed anyway), together with Thu-Sat events
+  invalidateSettingsCache();
+  const sunday = await day('2026-10-04', { settings: resolveScheduleSettings(settingsMap(closedSettings)) });
+  assert.equal(sunday.nonWorkingDay, false);
+  // 1013/1015 (event 30.9, moved from the closed Thursday) + 1011/1016 (event 1.10) + 1009 (event Fri 2.10, outbound-only
+  // delivery => comes back by hand; due Sunday with or without the closed Thursday). 1014 has an explicit toDate (1.10) and
+  // 1012 an explicit toDate on Fri 2.10 - explicit dates stay where the customer agreed, so neither is on Sunday.
+  assert.deepEqual(ids(sunday, 'manret'), [1009, 1011, 1013, 1015, 1016]);
+  assert.ok(!ids(sunday, 'dback').includes(1009) && !ids(sunday, 'dout').includes(1009), '1009 is a manual return, not a courier row');
+  // stages 5/9 follow the same rule through lib/deliveries.js: the courier collections of Thursday (1010/1022, event 30.9)
+  // move to Sunday too; the outbound of 1009 (event Fri 2.10) moved EARLIER, to Wed 30.9 (see deliveries-legacy.test.mjs)
+  assert.deepEqual(ids(sunday, 'dback'), [1010, 1022]);
+  assert.deepEqual(ids(sunday, 'dout'), [1008], 'event Mon 5.10 goes out on Sunday as before; 1009 never moves past its event');
+  for (const row of stageOf(sunday, 'dback').items) assert.equal(row.dispatchDate, '2026-10-04');
+});
+
+test('owner-marked closed Monday 5.10 shifts the pickup (stage 6) and prep (stage 4) windows of Thu 1.10 through the helper', async () => {
+  const closed = JSON.stringify({ version: 1, days: ['2026-10-05'] });
+  const res = await day(DAY, { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), non_working_days_extra: closed }) });
+  assert.equal(res.nonWorkingDay, false, 'Thursday itself is open');
+  // pickup 2 business days before: events on the closed Monday AND on Tuesday are both picked up on Thursday
+  assert.deepEqual(ids(res, 'pick'), [1005, 1006, 1007]);
+  // prep 3 business days before: Wed 7.10 events - none in the fixture
+  assert.deepEqual(ids(res, 'prep'), []);
+  const monday = await day('2026-10-05', { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), non_working_days_extra: closed }) });
+  assert.equal(monday.nonWorkingDay, true);
+  assert.deepEqual(monday.dayStatus.reasons, ['closed']);
+  assert.deepEqual(ids(monday, 'pick'), []);
+  assert.deepEqual(ids(monday, 'manret'), []);
 });
 
 test('stage 1: orders registered on the Israeli day only; drafts/deleted excluded; registered-by name without wage', async () => {
@@ -323,9 +386,18 @@ test('WP1 review #4: a well-formed date far outside +-3 years is a 400, not a Ra
   await assert.rejects(() => day('0100-01-01'), (e) => e.status === 400);
   await assert.rejects(() => day('2023-09-30'), (e) => e.status === 400, '3 years + 1 day back');
   await assert.rejects(() => day('2029-10-02'), (e) => e.status === 400, '3 years + 1 day ahead');
-  assert.equal((await day('2029-10-01')).date, '2029-10-01', 'exactly 3 years ahead works');
-  assert.equal((await day('2023-10-01')).date, '2023-10-01');
-  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 6, 'rejected dates never reach the DB');
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 0, 'rejected dates never reach the DB');
+  const edgeAhead = await day('2029-10-01');
+  assert.equal(edgeAhead.date, '2029-10-01', 'exactly 3 years ahead works');
+  // 1.10.2029 = 22 Tishrei 5790 = Shmini Atzeret: the unified rule flags it, and lib/deliveries.js skips its query
+  // on a non-working day (2 order queries instead of 3) - the schedule still answers, it is just empty of plans.
+  assert.equal(edgeAhead.nonWorkingDay, true);
+  assert.deepEqual(edgeAhead.dayStatus.reasons, ['chag']);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 2, 'orderDate query + event query; no deliveries query on a chag');
+  const edgeBack = await day('2023-10-01');
+  assert.equal(edgeBack.date, '2023-10-01');
+  assert.equal(edgeBack.nonWorkingDay, false, 'Sun 1.10.2023 = chol hamoed Sukkot, a working day under rule v1');
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 5, 'a working day adds all 3 queries');
 });
 
 test('WP1 review #5: "who is on shift" for a FUTURE or PAST day never includes today\'s open shifts', async () => {

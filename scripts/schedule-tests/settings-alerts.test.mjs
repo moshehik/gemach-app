@@ -26,7 +26,6 @@ test('resolveScheduleSettings: empty map keeps today\'s behaviour', () => {
   assert.equal(r.lateReturnThresholdDays, 7);
   assert.equal(r.pickupHours, '20:00-21:30');
   assert.equal(r.maxScanRows, 3000);
-  assert.equal(r.skipChagAllStages, true, 'B4: chag skipped in all stages by default');
   assert.equal(r.stages.dout.enabled, false, 'deliveries stages follow enable_deliveries');
   assert.equal(r.stages.dback.enabled, false);
   assert.equal(r.stages.repair.enabled, true);
@@ -34,21 +33,30 @@ test('resolveScheduleSettings: empty map keeps today\'s behaviour', () => {
   assert.equal(r.stages.prep.offset, -3);
   assert.equal(r.stages.pick.offset, -2);
   assert.equal(r.stages.manret.offset, 1);
-  assert.equal(r.stages.manret.skipChag, true, 'B4: manual return now skips chag too (was Fri/Sat only in lib/lateReturn.js)');
-  assert.equal(r.stages.prep.skipChag, true);
-  assert.equal(r.stages.pick.skipChag, true);
-  assert.equal(r.stages.repair.skipChag, true);
-  assert.equal(r.stages.dout.skipChag, false, 'delivery dates come from lib/deliveries.js (delivery_skip_weekends, no chag) - reported as applied');
-  assert.equal(r.stages.dback.skipChag, false);
   for (const s of STAGES) assert.equal(r.stages[s.key].shift, 'none');
+  // the owner's list: missing row = empty config (defaults only), never throws
+  assert.equal(r.nonWorkingDays.closed.size, 0);
+  assert.equal(r.nonWorkingDays.invalid, 0);
 });
 
-test('B4 off switch: schedule_skip_chag_all_stages=false restores each stage\'s legacy calendar', () => {
+test('one calendar for every stage (owner decisions B4 + 3): no per-stage chag switch, schedule_skip_chag_all_stages is not a setting any more', () => {
   const r = S.resolveScheduleSettings({ schedule_skip_chag_all_stages: 'false' });
-  assert.equal(r.skipChagAllStages, false);
-  assert.equal(r.stages.manret.skipChag, false, 'legacy: Fri/Sat only (lib/lateReturn.js)');
-  assert.equal(r.stages.prep.skipChag, true, 'legacy: getPrintPrepDate already skips chag');
-  assert.equal(r.stages.dout.skipChag, false);
+  assert.equal('skipChagAllStages' in r, false);
+  for (const s of STAGES) {
+    assert.equal('skipChag' in r.stages[s.key], false, s.key);
+    assert.equal('skipChagDefault' in STAGE_BY_KEY[s.key], false, s.key);
+  }
+});
+
+test('non_working_days_extra is read from the same settings map into a NonWorkingConfig (broken JSON = defaults + invalid counter)', () => {
+  const r = S.resolveScheduleSettings({ non_working_days_extra: JSON.stringify({ version: 1, days: [{ date: '2026-10-07', note: 'ספירת מלאי' }, { date: 'nope' }] }) });
+  assert.equal(r.nonWorkingDays.closed.has('2026-10-07'), true);
+  assert.equal(r.nonWorkingDays.notes.get('2026-10-07'), 'ספירת מלאי');
+  assert.equal(r.nonWorkingDays.invalid, 1);
+  const broken = S.resolveScheduleSettings({ non_working_days_extra: '{not json' });
+  assert.equal(broken.nonWorkingDays.closed.size, 0);
+  assert.equal(broken.nonWorkingDays.invalid, 1);
+  assert.equal(S.resolveScheduleSettings({ non_working_days_extra: '' }).nonWorkingDays.closed.size, 0);
 });
 
 test('A2: stage 1 has no "days from event" - schedule_stage_order_days is ignored, no offset', () => {
@@ -84,8 +92,7 @@ test('resolveScheduleSettings: existing org keys + new schedule_* keys', () => {
   assert.equal(r.stages.event.enabled, false);
   assert.equal(r.stages.prep.shift, 'am');
   assert.equal(r.stages.pick.shift, 'none');
-  assert.equal(r.stages.manret.skipChag, true);
-  assert.equal(r.stages.dout.skipChag, false, 'delivery stages never claim a chag rule they do not apply');
+  assert.equal('skipChag' in r.stages.manret, false, 'schedule_skip_chag_all_stages above is ignored - one unified calendar (see the dedicated test)');
   assert.equal(r.lateReturnThresholdDays, 3);
   assert.equal(r.pickupHours, '18:00-19:00');
   assert.equal(r.maxScanRows, 100, 'clamped to the minimum');
