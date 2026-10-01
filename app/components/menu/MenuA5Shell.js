@@ -11,7 +11,7 @@ import './menu.css';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { findActive } from '@/lib/menu/buildMenuTree';
 import { shiftClockInfo } from '@/lib/menu/shiftClock';
@@ -40,6 +40,8 @@ export default function MenuA5Shell({
   children,
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams(); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
+  const queryString = searchParams ? searchParams.toString() : '';
   const popup = usePopup();
   const showAlert = popup && popup.showAlert;
   const rail = tree.rail || {};
@@ -79,7 +81,7 @@ export default function MenuA5Shell({
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, [pathname]);
-  const act = useMemo(() => findActive(tree, pathname, hash), [tree, pathname, hash]);
+  const act = useMemo(() => findActive(tree, pathname, hash, queryString), [tree, pathname, hash, queryString]);
 
   // ---- מצב פתיחה של פאנלים (אחד בכל רגע): id, הצמדה (pin), הצצה (peek, רק בחיפוש) ----
   const [ui, setUi] = useState(CLOSED);

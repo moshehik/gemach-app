@@ -39,6 +39,8 @@ const ALL_CLOSED = Object.fromEntries(NAV_PAGE_KEYS.map((k) => [k, false]));
 const tab = (tree, id) => tree.tabs.find((x) => x.id === id);
 const ids = (list) => (list || []).filter((x) => x.kind === 'link' || x.kind === 'action').map((x) => x.id);
 const hrefs = (tree) => flattenMenuTree(tree).map((x) => x.href).filter(Boolean);
+// כמו hrefs, אבל כולל גם את העמוד הישן של פריט "בית" (match) — השוואת נראות מול navConfig.js נעשית לפיו
+const legacyEquivHrefs = (tree) => flattenMenuTree(tree).flatMap((x) => [x.href, x.match]).filter(Boolean);
 const legacyHrefsOf = (flags) => buildNavGroups(flags).flatMap((g) => g.items.map((i) => i.href));
 
 console.log('deriveLegacyFlags — אותם כללים כמו app/layout.js');
@@ -96,12 +98,23 @@ t('הנהלה ראשית: חמש לשוניות (בית, לוז, לוח חודש
   const sched = tab(HEAD_TREE, 'sched');
   assert.equal(sched.href, '/schedule'); assert.equal(sched.label, 'לוז'); assert.equal(sched.soon, undefined, 'page:schedule=true → לשונית פעילה');
 });
-t('הנהלה ראשית: תפריט בית לפי העיצוב — "שינויים אחרונים" ו"חיפוש מתקדם" מוצגים כשורות "בקרוב" (kind:soon), "לוז" כבר לא שורה בתוך בית', () => {
+t('הנהלה ראשית: תפריט בית — בלי הכותרת הקטנה "אחרונים"; כל הפריטים פותחים את דף החיפוש הראשי ("/") עם פרמטר (2.10.2026)', () => {
   const home = tab(HEAD_TREE, 'home');
   assert.deepEqual(home.items.map((x) => x.kind === 'link' ? x.id : x.kind === 'heading' ? `h:${x.label}` : x.kind === 'soon' ? `soon:${x.id}` : '-'),
-    ['home-search', '-', 'h:אחרונים', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'soon:recent-all', '-', 'soon:home-adv']);
+    ['home-search', '-', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'recent-all', '-', 'home-adv']);
   assert.equal(home.href, '/');
-  for (const x of home.items.filter((i) => i.kind === 'soon')) { assert.equal(x.href, undefined); assert.equal(x.action, undefined); }
+  assert.ok(!home.items.some((x) => x.kind === 'heading'), 'אין כותרת קבוצה בתפריט בית');
+  assert.ok(!home.items.some((x) => x.kind === 'soon'), '"שינויים אחרונים" ו"חיפוש מתקדם" כבר לא "בקרוב"');
+  const byId = Object.fromEntries(home.items.filter((x) => x.kind === 'link').map((x) => [x.id, x]));
+  assert.deepEqual(Object.fromEntries(Object.entries(byId).map(([k, v]) => [k, v.href])), {
+    'home-search': '/', 'recent-orders': '/?scope=orders', 'recent-customers': '/?scope=customers', 'recent-rentals': '/?scope=rentals',
+    'recent-returns': '/?scope=returns', 'recent-alterations': '/?scope=alterations', 'recent-all': '/?recent=changes', 'home-adv': '/?adv=1',
+  });
+  assert.deepEqual(['recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations'].map((k) => byId[k].label), ['הזמנות', 'לקוחות', 'השכרות', 'החזרות', 'תיקונים']);
+  assert.equal(byId['recent-all'].label, 'שינויים אחרונים'); assert.equal(byId['home-adv'].label, 'חיפוש מתקדם');
+  // הפריט נשאר "נוכח" גם בעמוד הישן של הקטגוריה (match), כדי שההדגשה לא תיעלם בעמוד /orders וכו'
+  assert.deepEqual(Object.fromEntries(['recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations'].map((k) => [k, byId[k].match])),
+    { 'recent-orders': '/orders', 'recent-customers': '/customers', 'recent-rentals': '/rentals#rented', 'recent-returns': '/rentals#returned', 'recent-alterations': '/alterations' });
 });
 t('הנהלה ראשית: תפריט ניהול מלא — עם זיכויים (החלטת הבעלים 1.10) ובלי הקבוצה התחתונה (R11); משלוחים רק עם ההגדרה', () => {
   const admin = tab(HEAD_TREE, 'admin');
@@ -175,9 +188,9 @@ t('מנהלת סניף בלי הרשאת דגמים/זיכויים/משלוחי�
 t('עובדת בלי הרשאות (הכול סגור): רק בית (חיפוש כללי) והזמנה (עמדת לקוח); אין לוח חודשי', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_CLOSED, settings: [] });
   assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'order']);
-  assert.deepEqual(ids(tab(tree, 'home').items), ['home-search']);
-  // שורות "בקרוב" (שינויים אחרונים / חיפוש מתקדם) מוצגות לכולן, ולכן הכותרת "אחרונים" אינה יתומה; לא קישורים
-  assert.deepEqual(tab(tree, 'home').items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'home-adv']);
+  // "שינויים אחרונים" (האחרונים של העובדת, מקומי) מוצג לכולן; "חיפוש מתקדם" רק כשמותר לפחות תחום אחד (אין כאן — הכול סגור)
+  assert.deepEqual(ids(tab(tree, 'home').items), ['home-search', 'recent-all']);
+  assert.ok(!tab(tree, 'home').items.some((x) => x.kind === 'soon' || x.kind === 'heading'));
   assert.equal(tab(tree, 'sched').soon, true, 'אין page:schedule → "לוז" בקרוב');
   assert.deepEqual(ids(tab(tree, 'order').items), ['order-kiosk']);
   assert.equal(tab(tree, 'order').href, null); // אין הרשאה להזמנה חדשה → הלשונית רק פותחת תפריט
@@ -285,7 +298,7 @@ t('כל href שקיים בתפריט הישן מופיע בעץ החדש אם ו
     const flags = deriveLegacyFlags({ logged, roleId: ctx.user ? ctx.user.roleId : null, permissions: ctx.permissions, settings });
     const legacy = new Set(legacyHrefsOf(flags));
     const tree = buildMenuTree({ ...ctx, settings });
-    const mine = new Set(hrefs(tree));
+    const mine = new Set(legacyEquivHrefs(tree));
     for (const h of legacy) {
       if (REMOVED_HREFS.includes(h)) { assert.ok(!mine.has(h), `${name}: ${h} הוסר ולא אמור להופיע`); continue; }
       assert.ok(mine.has(h), `${name}: ${h} מוצג בישן אבל חסר בחדש`);
@@ -396,6 +409,18 @@ t('פריטים "עדיין לא קיימים": שורה כבויה "בקרוב"
   const forced = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [], available: { sched: true } });
   assert.equal(tab(forced, 'sched').soon, true);
 });
+t('"חיפוש מתקדם" (home-adv): מוצג רק כשמותר לפחות תחום אחד שהחיפוש יכול לעבוד עליו; "שינויים אחרונים" תמיד', () => {
+  assert.ok(!NOT_BUILT_ITEM_IDS.includes('recent-all') && !NOT_BUILT_ITEM_IDS.includes('home-adv'));
+  assert.deepEqual([...NOT_BUILT_ITEM_IDS], ['order-stock']);
+  assert.ok(ids(tab(HEAD_TREE, 'home').items).includes('home-adv'));
+  const onlyCustomers = buildMenuTree({ user: STAFF, permissions: { ...ALL_CLOSED, 'page:customers': true }, settings: [] });
+  assert.ok(ids(tab(onlyCustomers, 'home').items).includes('home-adv'));
+  const none = buildMenuTree({ user: STAFF, permissions: ALL_CLOSED, settings: [] });
+  assert.ok(!ids(tab(none, 'home').items).includes('home-adv')); assert.ok(ids(tab(none, 'home').items).includes('recent-all'));
+  // קטגוריות לפי אותה הרשאה בדיוק כמו קודם (legacy לא השתנה): בלי page:customers אין "לקוחות"
+  const noCust = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:customers': false }, settings: [] });
+  assert.ok(!ids(tab(noCust, 'home').items).includes('recent-customers')); assert.ok(ids(tab(noCust, 'home').items).includes('recent-orders'));
+});
 t('דגלים מה-layout (flags) גוברים על הנגזרים: showBoardTab=false מסתיר לוח חודשי גם להנהלה; undefined לא דורס', () => {
   const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], flags: { showBoardTab: false } });
   assert.equal(tab(tree, 'month'), undefined);
@@ -449,6 +474,17 @@ t('כללי isActive של AppShell: "/" רק מדויק, אחרת תחילית, 
   assert.deepEqual(findActive(HEAD_TREE, '/customers/abc'), { tabId: 'home', itemId: 'recent-customers' });
   assert.deepEqual(findActive(HEAD_TREE, '/profile'), { tabId: null, itemId: null });
   assert.deepEqual(findActive(null, '/orders'), { tabId: null, itemId: null });
+  // פריטי בית עם פרמטר (2.10.2026): הכתובת "/" עם ?scope / ?adv / ?recent מסמנת את הפריט המתאים; בלי פרמטר — "חיפוש כללי"
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?scope=customers'), { tabId: 'home', itemId: 'recent-customers' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', 'scope=orders'), { tabId: 'home', itemId: 'recent-orders' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', 'scope=returns'), { tabId: 'home', itemId: 'recent-returns' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?adv=1'), { tabId: 'home', itemId: 'home-adv' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?recent=changes'), { tabId: 'home', itemId: 'recent-all' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', ''), { tabId: 'home', itemId: 'home-search' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?q=כהן'), { tabId: 'home', itemId: 'home-search' }, 'פרמטר לא מוכר = חיפוש כללי');
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?scope=evil'), { tabId: 'home', itemId: 'home-search' }, 'ערך לא מוכר לא מסמן שום פריט');
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?scope=customers&x=1'), { tabId: 'home', itemId: 'recent-customers' });
+  assert.deepEqual(findActive(HEAD_TREE, '/orders/5', '', '?scope=customers'), { tabId: 'home', itemId: 'recent-orders' }, 'פרמטר לא משפיע מחוץ ל-"/"');
 });
 
 console.log('navHistory — כללי דפדפן');
