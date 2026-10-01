@@ -1,0 +1,91 @@
+'use client';
+
+// תחתית האתר (ניווט 5/46 footer.site-foot, 110/123 nav.sf-col, 40/111 sf-meta) + חלון מדיניות הפרטיות
+// (חלון 18/20 div.dlg + חלון 9/10 scrim). קישורי התחתית לפי מה שמותר למשתמשת (footerGroups ב-homeLogic).
+// החלון נפתח מהקישור "מדיניות פרטיות" בעמודה "החשבון שלי" ונסגר ב-Escape / לחיצה על הרקע / "הבנתי".
+
+import { useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { Ic } from './HomeParts';
+import { PRIVACY_TITLE, PRIVACY_SUB, PRIVACY_SECTIONS, splitPlaceholders } from './privacyPolicyText';
+
+const LINK_ICON = { orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', profile: 'user', display: 'sun' };
+
+export function HomeFooter({ groups, name, version, date, onPrivacy }) {
+  return (
+    <footer className="site-foot" role="contentinfo">
+      <div className="sf-in">
+        {groups.filter((g) => g.links.length > 0 || g.privacy).map((g) => (
+          <nav key={g.h} className="sf-col" aria-label={g.h}>
+            <h3>{g.h}</h3>
+            {g.links.map((l) => (
+              <Link key={l.key} href={l.href}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</Link>
+            ))}
+            {g.privacy && (
+              <button type="button" className="lnk" onClick={onPrivacy}><Ic id="shield" size="sm" />מדיניות פרטיות</button>
+            )}
+          </nav>
+        ))}
+      </div>
+      <div className="sf-meta">
+        <b><Ic id="dress" size="sm" />{name || 'גמ״ח שמלות'}</b>
+        {version ? <span>{`גרסה ${version}`}</span> : null}
+        {date ? <span>{date}</span> : null}
+      </div>
+    </footer>
+  );
+}
+
+function Marked({ text }) {
+  return splitPlaceholders(text).map((s, i) => (s.ph ? <mark key={i} className="priv-ph">{s.text}</mark> : <span key={i}>{s.text}</span>));
+}
+
+export function PrivacyDialog({ onClose }) {
+  const boxRef = useRef(null);
+  const closeRef = useRef(null);
+  const lastFocus = useRef(null);
+
+  useEffect(() => {
+    lastFocus.current = document.activeElement;
+    if (closeRef.current) closeRef.current.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      if (e.key !== 'Tab' || !boxRef.current) return;
+      // מלכודת מיקוד בתוך החלון
+      const f = [...boxRef.current.querySelectorAll('button:not([disabled]),a[href]')];
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (!boxRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('keydown', onKey, true);
+      const prev = lastFocus.current;
+      if (prev && typeof prev.focus === 'function') prev.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div className="scrim on" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={boxRef} className="dlg priv-dlg" role="dialog" aria-modal="true" aria-labelledby="pv-t">
+        <h2 id="pv-t">{PRIVACY_TITLE}</h2>
+        <div className="sub">{PRIVACY_SUB}</div>
+        <div className="priv-body">
+          {PRIVACY_SECTIONS.map((sec) => (
+            <section key={sec.h}>
+              <h3>{sec.h}</h3>
+              {sec.ul && <ul>{sec.ul.map((li) => <li key={li}><Marked text={li} /></li>)}</ul>}
+              {sec.p && <p><Marked text={sec.p} /></p>}
+            </section>
+          ))}
+        </div>
+        <div className="dbtns">
+          <button ref={closeRef} type="button" className="btn primary lg block" onClick={onClose}><Ic id="check" />הבנתי</button>
+        </div>
+      </div>
+    </div>
+  );
+}
