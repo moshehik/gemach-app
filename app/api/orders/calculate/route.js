@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/auth';
 
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { findPriceRowForSize, normalizeGapRule } from '@/lib/priceRows';
 
 export async function POST(request) {
+  // /api/* לא עובר דרך middleware.js, ולכן בלי בדיקה כאן ראוט זה היה פתוח לגולש אנונימי.
+  // אותה בדיקה ואותה תשובת 401 כמו שאר ראוטי ההזמנות (למשל [id]/email).
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const data = await request.json();
     const { items, eventDate, isAbroad, isDelivery, deliveryCity, deliveryDirection } = data;
