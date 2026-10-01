@@ -1,0 +1,66 @@
+/* דף הבית החדש (HomeA5) — CSS מקומי לדף, בהיקף .gm-ds.gm-home בלבד (לא נוגע ב-design-system/).
+   כאן רק מה שאין בפלטה (design-system/components.css): כפתור "אחרונים" בלי כיתוב, חלון מדיניות הפרטיות
+   (טקסט ארוך + סימון שדות מילוי), ושלד/ריווחים קטנים. אחרי V1 אפשר להעביר לפלטה עם מספרים. */
+
+/* פריט 24: כפתור "אחרונים" — אייקון בלבד, בלי כיתוב (החלטת הבעלים) */
+.gm-ds.gm-home .hero .cmode-b.cmode-i {
+  width: 33px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+.gm-ds.gm-home .hero .cmode-b.cmode-i[aria-pressed="true"] {
+  background: var(--gm-gold-rich-c);
+  color: #000;
+  border-color: #000;
+}
+
+/* כרטיס "אחרונים" שמוצג מתחת לחיפוש */
+.gm-ds.gm-home .app > .panel > .card.recent {
+  max-width: 760px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+/* חלון מדיניות הפרטיות */
+.gm-ds .dlg.priv-dlg {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.gm-ds .priv-dlg .priv-body {
+  overflow-y: auto;
+  max-height: min(56vh, 520px);
+  padding-inline-end: 6px;
+  margin-bottom: 16px;
+  line-height: 1.65;
+}
+.gm-ds .priv-dlg .priv-body h3 {
+  margin: 16px 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gm-navy);
+}
+.gm-ds .priv-dlg .priv-body p,
+.gm-ds .priv-dlg .priv-body ul {
+  margin: 0 0 8px;
+  color: var(--gm-ink2);
+}
+.gm-ds .priv-dlg .priv-body ul {
+  padding-inline-start: 20px;
+}
+/* שדה מילוי שטרם הושלם בנוסח — מסומן בולט כדי שלא יפורסם כטקסט סופי */
+.gm-ds .priv-ph {
+  background: var(--gm-gold-300, #f1dc8f);
+  color: #000;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+/* שלד טעינה לכותרת הברכה (עד שהגדרות הארגון נטענו) — שומר על גובה הכותרת בלי קפיצה */
+.gm-ds.gm-home .hero-t:empty,
+.gm-ds.gm-home .hero-t bdi:empty {
+  min-height: 1.2em;
+}
