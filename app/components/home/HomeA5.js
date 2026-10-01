@@ -5,7 +5,7 @@
 // לוגיקה (קריאות API, פורמט תוצאות): public/a5/adapters + public/a5/index.html, בקוד טהור ב-homeLogic.js.
 //
 // מה כלול: ברכה אישית, חיפוש כללי (רשימה מאוחדת / טבלה, ייצוא), חיפוש חכם (AI) בתוך כרטיס, חיפוש מתקדם,
-// "אחרונים", תחתית אתר + מדיניות פרטיות, ?q= (הרצה מיידית וניקוי הכתובת — כמו LegacyHome).
+// תחתית אתר + מדיניות פרטיות, ?q= (הרצה מיידית וניקוי הכתובת — כמו LegacyHome).
 // מה לא כלול כאן: סרגל עליון, "הודעה למנהל" ושעון משמרת — הם חלק מהמעטפת החדשה (ShellSwitch / UI-1) ולכן לא
 // מוכפלים בדף; מתחת למעטפת הישנה (shell=legacy) אין אותם (כמו היום). "הזמנות שלא הוחזרו" נשאר במעטפת.
 
@@ -14,18 +14,16 @@ import './home.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SettingQuickPanel from '../SettingQuickPanel';
-import { getHistory } from '@/lib/historyManager';
 import { Ic, HomeSprite } from './HomeParts';
 import HomeResults from './HomeResults';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
-import HomeRecents from './HomeRecents';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
 import {
   AI_CONTEXT, buildGreeting, normalizeSearch, resultsCount, unifiedRows, exportRecordsForRows,
   botMessageFromResponse, botErrorMessage, chatToHistory, withoutActionKeys, rowsToCsv, threadToCsv,
-  printRowsHtml, printThreadHtml, recentRows, footerGroups,
+  printRowsHtml, printThreadHtml, footerGroups,
 } from './homeLogic';
 import {
   ADV_FOCI, emptyAdv, advSummaryParts, advAiPrompt, buildAdvRequest, normalizeAdvResponse, navPathSet, visibleFoci,
@@ -83,8 +81,6 @@ export default function HomeA5() {
   const [adv, setAdv] = useState(() => emptyAdv());
   const [advPrev, setAdvPrev] = useState('start');
   const [advEnter, setAdvEnter] = useState(false);
-  const [recentOpen, setRecentOpen] = useState(false);
-  const [recents, setRecents] = useState([]);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [errStatus, setErrStatus] = useState(0);
   const [openSettingKey, setOpenSettingKey] = useState(null);
@@ -211,20 +207,14 @@ export default function HomeA5() {
     forget();
   }, [forget]);
 
-  /* ---------- פתיחה: ?q= (כמו LegacyHome), ?recent=, או שחזור החיפוש האחרון ---------- */
+  /* ---------- פתיחה: ?q= (כמו LegacyHome), או שחזור החיפוש האחרון ---------- */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const qParam = params.get('q');
-    if (params.has('recent')) setRecentOpen(true);
     if (qParam && qParam.trim()) {
       setQ(qParam);
       runSearch(qParam);
       // מנקים מהכתובת כדי שרענון/חזרה לא יריצו שוב מאליהם
-      window.history.replaceState(null, '', window.location.pathname);
-      return;
-    }
-    if (params.has('recent')) {
-      // הקישור "אחרונים" מהמעטפת: פותחים את הכרטיס ולא משחזרים חיפוש קודם
       window.history.replaceState(null, '', window.location.pathname);
       return;
     }
@@ -239,18 +229,6 @@ export default function HomeA5() {
     } catch { /* פגום */ }
   }, []);
   useEffect(() => { const t = setTimeout(() => setHeroEnter(false), 2000); return () => clearTimeout(t); }, []);
-
-  /* ---------- אחרונים ---------- */
-  const reloadRecents = useCallback(() => { setRecents(recentRows(getHistory())); }, []);
-  useEffect(() => {
-    reloadRecents();
-    window.addEventListener('agy_history_updated', reloadRecents);
-    return () => window.removeEventListener('agy_history_updated', reloadRecents);
-  }, [reloadRecents]);
-  const clearRecents = () => {
-    try { localStorage.removeItem('agy_history'); } catch { /* ignore */ }
-    reloadRecents();
-  };
 
   /* ---------- חיפוש מתקדם ---------- */
   const leaveAdv = () => { seq.current++; setLoading(false); setView(['start', 'results', 'none'].includes(advPrev) ? advPrev : 'start'); };
@@ -367,7 +345,8 @@ export default function HomeA5() {
   const ai = aiMode && canAi;
   const label = ai ? 'חיפוש חכם' : 'חיפוש';
 
-  const modeButtons = (
+  // בלי חיפוש חכם ובלי חיפוש מתקדם אין מה להציג: לא מרנדרים מיכל ריק
+  const modeButtons = !canAi && !advAvailable ? null : (
     <div className="cmode">
       {canAi && (
         <button type="button" className="cmode-b" onClick={() => { setAiMode((v) => !v); if (inputRef.current) inputRef.current.focus(); }}>
@@ -379,9 +358,6 @@ export default function HomeA5() {
           <Ic id="sliders" />לחיפוש מתקדם
         </button>
       )}
-      <button type="button" className="cmode-b cmode-i" aria-pressed={recentOpen} aria-label="אחרונים" data-tip="אחרונים" onClick={() => { setRecentOpen((v) => !v); if (view !== 'start') resetAll(); }}>
-        <Ic id="sn-history" />
-      </button>
     </div>
   );
 
@@ -432,7 +408,7 @@ export default function HomeA5() {
                   {loading ? <span className="mspin" aria-hidden="true" /> : <Ic id={ai ? 'send' : 'search'} />}
                 </button>
               </div>
-              {!joined && <div className="hero-row">{modeButtons}</div>}
+              {!joined && modeButtons && <div className="hero-row">{modeButtons}</div>}
             </form>
           )}
           {view === 'adv' && (
@@ -488,9 +464,6 @@ export default function HomeA5() {
 
       <div className="app" id="app">
         <section className="panel on home-p" aria-label="תוכן עמוד הבית">
-          {view === 'start' && recentOpen && (
-            <HomeRecents rows={recents} onClear={clearRecents} onClose={() => setRecentOpen(false)} />
-          )}
           {view === 'error' && (
             <div className="card">
               <div className="empty" role="status">
