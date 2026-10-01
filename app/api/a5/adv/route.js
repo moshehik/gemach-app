@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { canOpenPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { buildMultiWordRelationNameCondition, buildMultiWordNameCondition } from '@/lib/searchUtils';
@@ -536,6 +537,10 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   return { cols: ['שם', 'תאריך אירוע', 'סטטוס', 'טלפון'], rows: out, links: page.map((o) => `/orders/${o.orderId}`), al, truncated, total, namesRev: page.map((o) => fullNameRev(o.customer)) };
 }
 
+// שער הרשאת עמוד לפי התחום - אותם מפתחות כמו adv-b/route.js ו-NAV_PAGE_KEYS ב-/api/a5/boot.
+// בלי זה כל עובד מחובר היה יכול לקרוא ישירות ל-API ולקבל לקוחות/הזמנות/השכרות בלי הרשאת העמוד.
+const FOCUS_PAGE = { customers: 'page:customers', orders: 'page:orders', rentals: 'page:rentals', returns: 'page:rentals' };
+
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
@@ -545,6 +550,8 @@ export async function GET(request) {
     try { adv = JSON.parse(sp.get('adv') || '{}') || {}; } catch { adv = {}; }
     // טיוטות "לא נשמר" נשמרות בדפדפן בלבד (localStorage); המתאם שולח את מספרי ההזמנות
     const unsavedIds = (sp.get('unsaved') || '').split(',').map((x) => parseInt(x, 10)).filter((n) => !isNaN(n)).slice(0, 500);
+    if (!FOCUS_PAGE[focus]) return NextResponse.json({ error: 'תחום לא נתמך' }, { status: 400 });
+    if (!(await canOpenPage(FOCUS_PAGE[focus]))) return NextResponse.json({ error: 'אין הרשאה לחיפוש בתחום זה' }, { status: 403 });
     const cfg = await loadCfg();
     let res;
     if (focus === 'customers') res = await focusCustomers(adv, cfg);
