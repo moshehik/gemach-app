@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import EmailListCard from './EmailListCard';
+import AdminHubA5Cards from '../components/menu/AdminHubA5Cards';
 
 const cards = [
   {
@@ -56,6 +57,8 @@ export default function AdminHubPage() {
           </Link>
         ))}
         <EmailListCard />
+        {/* משלוחים / זיכויים וחובות: רק במעטפת החדשה (ui variant shell=a5), לפי אותה נראות כמו שורות "ניהול" בתפריט. */}
+        <AdminHubA5Cards />
       </div>
     </>
   );

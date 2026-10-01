@@ -1,0 +1,88 @@
+/* מעטפת התפריט החדשה (MenuA5Shell) - רק מה שחסר בפלטה (design-system/COMPONENTS.md) וההרכבות המקומיות.
+   הכול בהיקף .gm-ds.gm-menu כך שאין שום השפעה על שאר האתר. ה-CSS של הפלטה עצמה מיובא ב-MenuA5Shell.js (components.css).
+   מקור: תצוגות-עיצוב\סיימתי-לעבוד\תפריט-חדש.html, הבלוקים v3-menu-css / menu-search-css (שורות 2568-2660).
+   פערי פלטה ידועים (J07, מאושרים כ-CSS מקומי עד שייכנסו לפלטה): .sn-cv חץ לשונית, .sn-accrow שורת קבוצה במגירה,
+   .sn-k תווית צדדית, .sn-hist/.sn-hpos שורת אחורה/קדימה, .sn-msg הודעת מצב, .sn-res רשימת תוצאות, חלון "הודעה למנהל". */
+
+/* העטיפה לא מציירת רקע ולא תופסת מקום (ב-.gm-ds הבסיס יש min-height:100vh, display:flex ורקע): רק נושאת את משתני הפלטה והגופן. */
+.gm-ds.gm-menu{display:contents;background:none!important;background-image:none!important;min-height:0}
+
+/* הסרגל מעל כפתור ה-AI הצף (z-index:900) ומעל אלמנטים דביקים של דפים, ומתחת לחלונות הקופצים של האתר (1000 ומעלה). */
+.gm-ds.gm-menu .snav{z-index:950}
+.gm-ds.gm-menu #snScrim{z-index:940}
+
+/* מקום לסרגל העליון: אזור התוכן (שמשתמש ב-class-ים של המעטפת הישנה) מתחיל מתחתיו. */
+.a5-shell .app-shell.a5-body{min-height:calc(100vh - var(--gm-snav-h,64px));min-height:calc(100dvh - var(--gm-snav-h,64px))}
+
+.gm-ds.gm-menu .snav [hidden],.gm-ds.gm-menu .sn-drawer [hidden]{display:none!important}
+
+/* לשונית = קישור אמיתי + חץ קטן (.sn-cv) שפותח את התפריט בריחוף / מגע / מקלדת */
+.gm-ds.gm-menu .sn-tab.hasm{padding-inline-end:6px}
+.gm-ds.gm-menu .sn-cv{width:26px;height:40px;margin-inline-start:-4px;padding:0;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.75);display:grid;place-items:center;cursor:pointer;transition:color .2s,transform .2s var(--gm-ease)}
+.gm-ds.gm-menu .sn-cv .ic{width:14px;height:14px;transition:transform .2s var(--gm-ease)}
+.gm-ds.gm-menu .sn-item.open>.sn-cv .ic{transform:rotate(180deg)}
+.gm-ds.gm-menu .sn-item:is(:hover,.open)>:is(.sn-tab,.sn-cv){color:var(--gm-gold-300);transform:translateY(-2px)}
+.gm-ds.gm-menu .sn-cv:focus-visible{outline:2px solid var(--gm-gold-300);outline-offset:2px}
+.gm-ds.gm-menu .sn-item.open>.sn-tab:not(.active){background:rgba(255,255,255,.06)}
+
+/* פאנל לשונית מתאים את גובהו לתוכן (ב-"ניהול" 8 שורות ויותר מ-420px של הפלטה) ונגלל רק כשהמסך נמוך מדי */
+.gm-ds.gm-menu .sn-panel .hf-l{max-height:calc(100vh - var(--gm-snav-h,64px) - 32px);max-height:calc(100dvh - var(--gm-snav-h,64px) - 32px)}
+
+/* שורות פאנל: כותרות קבוצה שקטות, תווית צדדית */
+.gm-ds.gm-menu .sn-panel .sn-st{padding:8px 12px 2px}
+.gm-ds.gm-menu .sn-link .sn-k,.gm-ds.gm-menu .sn-k{margin-inline-start:auto;font-size:12px;color:var(--gm-ink3);font-weight:400}
+.gm-ds.gm-menu .sn-panel .sn-link,.gm-ds.gm-menu .sn-panel .sn-link .sn-k{white-space:nowrap}
+.gm-ds.gm-menu .sn-search .sn-link,.gm-ds.gm-menu .sn-search .sn-link .sn-k{white-space:normal}
+.gm-ds.gm-menu .sn-search .sn-link{min-width:0}
+.gm-ds.gm-menu .sn-link:disabled{opacity:.55;cursor:default}
+
+/* אייקוני הסרגל */
+.gm-ds.gm-menu #snErr,.gm-ds.gm-menu #snOld{flex:none}
+.gm-ds.gm-menu #snOld .sn-badge{top:auto;bottom:-3px;inset-inline-start:auto;left:50%;right:auto;transform:translateX(-50%);height:16px;min-width:0;padding:0 6px;font-size:10px;line-height:12px;opacity:.85;white-space:nowrap}
+.gm-ds.gm-menu #snOld:disabled{opacity:.6}
+
+/* לוגו אמיתי של הארגון (Q4) במקום סמל הדגימה */
+.gm-ds.gm-menu .sn-mark.ph{width:58px;background:none;box-shadow:none;color:rgba(255,255,255,.9)}
+.gm-ds.gm-menu .sn-mark.ph img{width:100%;height:100%;object-fit:contain;display:block}
+
+/* פאנל החיפוש: שורת אחורה/קדימה, הודעת מצב, רשימת תוצאות */
+.gm-ds.gm-menu .sn-search{width:392px}
+.gm-ds.gm-menu .sn-hist{display:flex;align-items:center;gap:8px;padding:0 2px 8px;margin-bottom:8px;border-bottom:1px dashed rgba(184,145,47,.45)}
+.gm-ds.gm-menu .sn-hist .ibtn{width:38px;height:38px;border-radius:12px}
+.gm-ds.gm-menu .sn-hist .ibtn[aria-disabled="true"]{opacity:.38;cursor:not-allowed;box-shadow:none;transform:none}
+.gm-ds.gm-menu .sn-hist .ibtn[aria-disabled="true"]:hover{background:var(--gm-surface);transform:none}
+.gm-ds.gm-menu .sn-hpos{font-size:13px;color:var(--gm-ink2);font-variant-numeric:tabular-nums;padding-inline:4px}
+.gm-ds.gm-menu .sn-msg{font-size:13.5px;font-weight:600;padding:0 10px;min-height:0}
+.gm-ds.gm-menu .sn-msg:not(:empty){padding-block:6px 0}
+.gm-ds.gm-menu .sn-msg.err{color:var(--gm-red)}
+.gm-ds.gm-menu .sn-res{max-height:min(42vh,300px);overflow-y:auto;overscroll-behavior:contain}
+.gm-ds.gm-menu .sn-item.peek .sn-sbox,.gm-ds.gm-menu .sn-item.peek .sn-msg{display:none}
+.gm-ds.gm-menu .sn-drawer>.sn-hist{padding-bottom:10px;margin-bottom:10px}
+.gm-ds.gm-menu .sn-drawer .sn-msg{padding-inline:4px}
+.gm-ds.gm-menu .sn-drawer .sn-res{max-height:none}
+.gm-ds.gm-menu:has(.sn-item[data-sn=search].open) .pl-tt{display:none!important}
+
+/* מונה על ההמבורגר */
+.gm-ds.gm-menu .sn-burger{position:relative}
+.gm-ds.gm-menu .sn-burger .sn-badge{top:4px;inset-inline-start:4px}
+
+/* מגירת נייד: שורת קבוצה = קישור + מרחיב */
+@media (max-width:767px){
+  .gm-ds.gm-menu .sn-accrow{display:flex;align-items:center;gap:4px}
+  .gm-ds.gm-menu .sn-accrow .sn-acc{flex:1;width:auto;min-width:0}
+  .gm-ds.gm-menu .sn-accx{width:46px;height:46px;flex:none;border:0;border-radius:12px;background:transparent;color:var(--gm-navy);display:grid;place-items:center}
+  .gm-ds.gm-menu .sn-accx:hover,.gm-ds.gm-menu .sn-accx[aria-expanded="true"]{background:rgba(201,162,39,.14)}
+  .gm-ds.gm-menu .sn-accx .ic{transition:transform .2s var(--gm-ease)}
+  .gm-ds.gm-menu .sn-accx[aria-expanded="true"] .ic{transform:rotate(180deg)}
+  .gm-ds.gm-menu .sn-accrow.open+.sn-ab{grid-template-rows:1fr}
+  .gm-ds.gm-menu .sn-dtools{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(184,145,47,.45)}
+  .gm-ds.gm-menu .nf-list{max-height:none;overflow:visible}
+}
+
+/* חלון "הודעה למנהל" (חלון נתונים: בהיר בלבד) */
+.gm-ds.gm-menu #sndScrim{z-index:960}
+.gm-ds.gm-menu .pl-tt{z-index:970}
+.gm-ds.gm-menu #sndDlg .lbl{display:block;margin:16px 0 8px;color:var(--gm-ink2);font-weight:500;font-size:15px}
+.gm-ds.gm-menu #sndDlg textarea{width:100%;min-height:132px;resize:vertical;line-height:1.6;background:#fff;border:1.5px solid var(--gm-sky-300);border-radius:14px;padding:12px 14px;outline:0;color:var(--gm-ink);transition:border-color .15s,box-shadow .15s}
+.gm-ds.gm-menu #sndDlg textarea:focus{border-color:var(--gm-navy);box-shadow:0 0 0 4px rgba(201,162,39,.25)}
+.gm-ds.gm-menu #sndDlg .dbtns{margin-top:24px}

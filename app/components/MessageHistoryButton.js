@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePopup } from './PopupProvider';
 
-export default function MessageHistoryButton({ 'data-element-name': dataElementName }) {
+// trigger (אופציונלי): ({ onOpen, count }) => JSX במקום כפתור ה-icon-btn הישן (המעטפת החדשה). בלעדיו - כמו קודם.
+export default function MessageHistoryButton({ 'data-element-name': dataElementName, trigger }) {
   const [isOpen, setIsOpen] = useState(false);
   const popupContext = usePopup();
   const alertsHistory = popupContext?.alertsHistory || [];
 
   return (
     <>
+      {typeof trigger === 'function' ? trigger({ onOpen: () => setIsOpen(true), count: alertsHistory.length }) : (
       <button
         type="button"
         data-element-name={dataElementName || 'כפתור_היסטוריית_הודעות'}
@@ -21,6 +23,7 @@ export default function MessageHistoryButton({ 'data-element-name': dataElementN
         <svg className="icon"><use href="#i-message" /></svg>
         {alertsHistory.length > 0 && <span className="dot" />}
       </button>
+      )}
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
