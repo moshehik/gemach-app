@@ -7,7 +7,12 @@ import {
   TABLE_COLUMNS, sortRecords, exportRecordsForRows, parseAiTags, safeInternalRoute, botMessageFromResponse,
   botErrorMessage, chatToHistory, chatCopyText, aiRowView, aiRowKind, aiRowHref, richSegments, rowsToCsv,
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
+  HOME_SCOPES, HOME_RECENT_VALUES, parseHomeParams, homeDirectiveKey, homeScopeTitle, SCOPE_TITLE_REST, applyScope, scopedAdvFields,
 } from '../app/components/home/homeLogic.js';
+import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
+import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, splitMatch } from '../lib/quickPrefix.js';
+import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js';
+const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
   ADV_FOCI, ADV_KEYS,
@@ -515,11 +520,132 @@ t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSpri
   assert.ok(shell.indexOf('<A5ShellProvider') < shell.indexOf('<MenuSprite />'));
 });
 
+
+console.log('קישורי תפריט "בית" (scope / adv / recent) — 2.10.2026');
+t('parseHomeParams: רשימה סגורה — רק scope מוכר, adv=1 בדיוק, recent=changes בדיוק', () => {
+  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, recent: null, q: null, any: true });
+  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, recent: null, q: null, any: true });
+  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, any: true });
+  assert.deepEqual(Object.keys(HOME_SCOPES), ['customers', 'orders', 'rentals', 'returns', 'alterations']);
+  assert.deepEqual([...HOME_RECENT_VALUES], ['changes']);
+  assert.equal(parseHomeParams('').any, false); assert.equal(parseHomeParams(undefined).any, false); assert.equal(parseHomeParams(null).any, false);
+});
+t('parseHomeParams: ערכים לא מוכרים נזרקים (בלי prototype, XSS, redirect, רישיות)', () => {
+  for (const bad of ['?scope=evil', '?scope=__proto__', '?scope=constructor', '?scope=toString', '?scope=Customers', '?scope=customers%20', '?scope=', '?scope=<script>alert(1)</script>',
+    '?scope=https://evil.example', '?scope=//evil.example', '?scope=customers,orders', '?adv=true', '?adv=0', '?adv=', '?adv=11', '?recent=1', '?recent=', '?recent=all', '?recent=Changes']) {
+    const r = parseHomeParams(bad);
+    assert.equal(r.any, false, bad); assert.equal(r.scope, null, bad); assert.equal(r.adv, false, bad); assert.equal(r.recent, null, bad);
+  }
+  assert.equal(parseHomeParams('?scope=customers&scope=evil').scope, 'customers', 'הערך הראשון');
+  assert.equal(parseHomeParams('?scope[]=customers').scope, null);
+});
+t('parseHomeParams: מקבל גם URLSearchParams; קלט ענק נחתך; q נחתך ל-200 ורווחים בלבד = null', () => {
+  assert.equal(parseHomeParams(new URLSearchParams('scope=rentals')).scope, 'rentals');
+  assert.equal(parseHomeParams('?q=%20%20').q, null);
+  assert.equal(parseHomeParams('?q=' + 'א'.repeat(500)).q.length, 200);
+  const big = '?x=' + 'a'.repeat(100000) + '&scope=orders';
+  assert.equal(parseHomeParams(big).scope, null, 'מעבר לתקרת האורך — לא נקרא');
+});
+t('parseHomeParams: הוראה אחת — adv עדיף על recent על scope (כתובת, כותרת והדגשת תפריט תואמות)', () => {
+  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
+  assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').q, 'כ'); assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').scope, 'orders');
+  assert.equal(homeDirectiveKey(parseHomeParams('?scope=orders')), 'scope:orders');
+  assert.equal(homeDirectiveKey(parseHomeParams('?adv=1')), 'adv');
+  assert.equal(homeDirectiveKey(parseHomeParams('?recent=changes')), 'recent:changes');
+  assert.equal(homeDirectiveKey(parseHomeParams('?q=x')), '');
+});
+t('homeScopeTitle: "<קטגוריה> - מה תרצי לחפש?" לכל קטגוריה, מהטבלה בלבד; לא מוכר = null', () => {
+  assert.equal(SCOPE_TITLE_REST, 'מה תרצי לחפש?');
+  assert.deepEqual(['customers', 'orders', 'rentals', 'returns', 'alterations'].map((k) => homeScopeTitle(k).text),
+    ['לקוחות - מה תרצי לחפש?', 'הזמנות - מה תרצי לחפש?', 'השכרות - מה תרצי לחפש?', 'החזרות - מה תרצי לחפש?', 'תיקונים - מה תרצי לחפש?']);
+  for (const bad of ['evil', '__proto__', 'constructor', 'toString', '<b>x</b>', '', null, undefined, 5, {}, ['customers']]) assert.equal(homeScopeTitle(bad), null, String(bad));
+});
+t('אין השתקפות של טקסט גולמי מהכתובת: התוויות בטבלה סגורה, ו-HomeA5 לא משתמש ב-dangerouslySetInnerHTML ולא מציג את הפרמטר', () => {
+  for (const def of Object.values(HOME_SCOPES)) { assert.ok(Object.isFrozen(def)); assert.match(def.label, /^[א-ת]+$/); assert.match(def.only, /^ב[א-ת]+$/); }
+  assert.ok(Object.isFrozen(HOME_SCOPES));
+  const src = homeSource('HomeA5.js');
+  assert.ok(!src.includes('dangerouslySetInnerHTML'));
+  assert.ok(!/params\.get\('scope'\)|searchParams\.get\('scope'\)/.test(src), 'scope נקרא רק דרך parseHomeParams (רשימה סגורה)');
+  assert.ok(!/router\.(push|replace)\(\s*(dir|params|scope)/.test(src), 'אין ניווט לפי ערך מהכתובת');
+});
+t('applyScope: חיפוש כללי מסונן לקטגוריה (לקוחות / הזמנות / השכרות); החזרות/תיקונים וללא קטגוריה — כמות שהוא; לא משנה את הקלט', () => {
+  const res = normalizeSearch({ customers: [{ id: 'c1', firstName: 'רחל', lastName: 'כהן' }], orders: [{ id: 'u1', orderId: 5, firstName: 'רחל', lastName: 'כהן' }], rentals: [{ orderId: 5, barcode: '12', catalogName: 'שמלה' }] });
+  const c = applyScope(res, 'customers'); assert.equal(c.customers.length, 1); assert.equal(c.orders.length, 0); assert.equal(c.rentals.length, 0);
+  const o = applyScope(res, 'orders'); assert.equal(o.customers.length, 0); assert.equal(o.orders.length, 1); assert.equal(o.rentals.length, 0);
+  const r = applyScope(res, 'rentals'); assert.equal(r.rentals.length, 1); assert.equal(r.customers.length + r.orders.length, 0);
+  assert.equal(applyScope(res, 'returns'), res); assert.equal(applyScope(res, 'alterations'), res);
+  assert.equal(applyScope(res, null), res); assert.equal(applyScope(res, 'evil'), res); assert.equal(applyScope(null, 'customers'), null);
+  assert.equal(res.customers.length, 1); assert.equal(res.orders.length, 1); assert.equal(res.rentals.length, 1);
+  assert.equal(resultsCount(applyScope(res, 'customers')), 1);
+  assert.equal(resultsCount(applyScope({ customers: [], orders: res.orders, rentals: [] }, 'customers')), 0, 'יש רק הזמנות → בקטגוריית לקוחות "אין תוצאות"');
+});
+t('scopedAdvFields (החזרות / תיקונים): שם לקוח / טלפון (7 ספרות ומעלה) / קוד הזמנה; ריק = null', () => {
+  assert.deepEqual(scopedAdvFields('כהן רחל'), { name: 'כהן רחל' });
+  assert.deepEqual(scopedAdvFields('052-1234567'), { cinfo: '0521234567' });
+  assert.deepEqual(scopedAdvFields('52103'), { oid: '52103' });
+  assert.equal(scopedAdvFields('  '), null); assert.equal(scopedAdvFields(undefined), null);
+  assert.equal(HOME_SCOPES.returns.via, 'adv'); assert.equal(HOME_SCOPES.returns.focus, 'returns'); assert.equal(HOME_SCOPES.alterations.focus, 'alterations');
+  assert.ok(ADV_FOCI.returns && ADV_FOCI.alterations, 'תחומי החיפוש המתקדם קיימים');
+  // הבקשה לשרת נבנית כמו בחיפוש מתקדם רגיל (אותו נתיב, אותה הרשאה)
+  const form = { ...emptyAdv('returns'), ...scopedAdvFields('כהן') };
+  assert.match(buildAdvRequest('returns', form, { length: 0, key: () => null, getItem: () => null }), /^\/api\/a5\/adv\?focus=returns&adv=/);
+  assert.match(buildAdvRequest('alterations', { ...emptyAdv('alterations'), ...scopedAdvFields('כהן') }, null), /^\/api\/a5\/adv-b\?focus=alterations&name=/);
+  assert.deepEqual(advSummaryParts(form, 'returns'), ['שם לקוח כהן']);
+});
+t('אייקוני הקטגוריות קיימים ב-sprite המוטמע', () => {
+  for (const def of Object.values(HOME_SCOPES)) assert.ok(SPRITE_IDS.has(def.icon), def.icon);
+});
+t('התפריט והדף מסכימים: כל href של scope בתפריט הוא קטגוריה חוקית ב-parseHomeParams, ו-adv/recent גם הם', () => {
+  const keys = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations', 'page:messages', 'page:schedule'];
+  const tree = buildMenuTree({ user: { id: 'e0', firstName: 'ש', lastName: 'כ', roleId: 0 }, permissions: Object.fromEntries(keys.map((k) => [k, true])), settings: [] });
+  const items = tree.tabs.find((x) => x.id === 'home').items.filter((x) => x.kind === 'link' && x.href.includes('?'));
+  assert.equal(items.length, 7);
+  for (const it of items) {
+    const p = parseHomeParams(it.href.slice(it.href.indexOf('?')));
+    assert.ok(p.any, it.href);
+    if (it.id === 'home-adv') assert.equal(p.adv, true); else if (it.id === 'recent-all') assert.equal(p.recent, 'changes');
+    else { assert.ok(p.scope, it.href); assert.equal(it.label, HOME_SCOPES[p.scope].label, 'תווית הפריט = תווית הקטגוריה'); }
+  }
+});
+
+console.log("קידומות חיפוש מהיר ('@') — lib/quickPrefix.js");
+t("detectQuickPrefix: רק '@' כתו ראשון; '#' ו-'$' טרם נבנו; באמצע הטקסט לא", () => {
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@']);
+  assert.equal(detectQuickPrefix('@').prefix, '@'); assert.equal(detectQuickPrefix('@').term, '');
+  assert.equal(detectQuickPrefix('@ כהן ').term, 'כהן');
+  for (const no of ['', ' @', 'כהן@', 'a@b.co', '#', '$', '!', '#x', '$x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
+});
+t('filterPrefixRows / splitMatch: סינון לפי כותרת / סוג / טקסט משנה, בלי לשנות את הקלט', () => {
+  const rows = [{ key: 'a', kind: 'לקוח', title: 'רחל כהן', sub: 'ירושלים' }, { key: 'b', kind: 'הזמנה', title: 'דנה לוי', sub: '' }];
+  assert.equal(filterPrefixRows(rows, '').length, 2); assert.notEqual(filterPrefixRows(rows, ''), rows);
+  assert.deepEqual(filterPrefixRows(rows, 'כהן').map((r) => r.key), ['a']);
+  assert.deepEqual(filterPrefixRows(rows, 'הזמנה').map((r) => r.key), ['b']);
+  assert.deepEqual(filterPrefixRows(rows, 'ירוש').map((r) => r.key), ['a']);
+  assert.deepEqual(filterPrefixRows(rows, 'zzz'), []); assert.deepEqual(filterPrefixRows(null, 'x'), []);
+  assert.deepEqual(splitMatch('רחל כהן', 'כהן'), ['רחל ', 'כהן', '']); assert.deepEqual(splitMatch('רחל', 'x'), ['רחל', '', '']); assert.deepEqual(splitMatch(null, 'x'), ['', '', '']);
+});
+t("רשימת '@' = אותם נתונים כמו כרטיס 'האחרונים' הישן (recentRows של agy_history), שורות עם kind; כשיתווספו סוגים — אותו רכיב", () => {
+  const rows = recentRows([{ type: 'customer', id: 'c1', name: 'רחל כהן', subtext: 'ירושלים' }, { type: 'order', id: 5, name: 'הזמנה 5' }]);
+  assert.deepEqual(rows.map((r) => r.kind), ['לקוח', 'הזמנה']);
+  assert.equal(filterPrefixRows(rows, 'ירושלים').length, 1);
+  const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
+  assert.ok(comp.includes('getHistory') && comp.includes('recentRows'), 'מקור הנתונים: ההיסטוריה המקומית');
+  assert.ok(/advlist/.test(comp) && /advo/.test(comp), 'רשימת הפלטה הנגללת (advlist/advo)');
+  assert.ok(!/fetch\(/.test(comp), 'בלי רישום/קריאת חיפושים בשרת (לא נבנה עדיין)');
+  const home = homeSource('HomeA5.js');
+  assert.ok(home.includes('useQuickPrefix') && home.includes('<QuickPrefixList'), 'HomeA5 משתמש ברכיב המשותף');
+  assert.match(home, /setQ\('@'\)/, "'שינויים אחרונים' (?recent=changes) ממלא '@' — אותה תוצאה בדיוק");
+});
+
 console.log('שורת החיפוש: בלי כפתור "אחרונים"');
 t('אין כפתור/אייקון "אחרונים" באף שלב של שורת החיפוש (פתיחה, אחרי חיפוש, חכם, מתקדם) ואין קוד מת שלו', () => {
   const a5 = homeSource('HomeA5.js');
   // כפתורי מצב החיפוש: רק "לחיפוש חכם / לחיפוש רגיל" ו"לחיפוש מתקדם"; השורה מרונדרת אחת ומשותפת לכל השלבים (modeButtons)
-  assert.equal((a5.match(/className="cmode-b/g) || []).length, 2, 'cmode-b buttons: smart/plain + advanced only');
+  // (+ כפתור הסינון לקטגוריה "רק ב..." של קישורי התפריט — מוצג רק כשיש סינון פעיל; אינו כפתור "אחרונים")
+  assert.equal((a5.match(/className="cmode-b/g) || []).length, 3, 'cmode-b buttons: smart/plain + advanced + scope chip only');
   assert.ok(!/aria-label="אחרונים"|data-tip="אחרונים"/.test(a5), 'recent button label found');
   assert.ok(!/cmode-i|recentOpen|setRecentOpen|HomeRecents|getHistory|agy_history|recentRows/.test(a5), 'HomeA5.js still has recent-searches code');
   assert.ok(!/cmode-i/.test(homeSource('home.css')), 'home.css still styles the recent button');
@@ -533,6 +659,43 @@ t('נתוני "אחרונים" (recentRows ו-agy_history ב-lib/historyManager)
   assert.equal(typeof recentRows, 'function');
   const hm = readFileSync(new URL('../lib/historyManager.js', import.meta.url), 'utf8');
   assert.ok(/export const getHistory/.test(hm));
+});
+
+
+console.log('תיקוני סקירה (2.10.2026)');
+t('recentRows: סוג שמור כמו "constructor" / "__proto__" / "toString" לא זורק ונזרק', () => {
+  const rows = recentRows([{ type: 'constructor', id: '1' }, { type: '__proto__', id: '2' }, { type: 'toString', id: '3' }, { type: 5, id: '4' }, { type: 'customer', id: 'c1', name: 'רחל' }]);
+  assert.deepEqual(rows.map((r) => r.key), ['customer:c1']);
+});
+t('homeNavTarget: רק "/" הוא דף הבית; query בלי #hash; הוראה חוזרת מנותחת כמו בכתובת', () => {
+  assert.deepEqual(homeNavTarget('/?scope=orders'), { isHome: true, query: 'scope=orders' });
+  assert.deepEqual(homeNavTarget('/'), { isHome: true, query: '' });
+  assert.deepEqual(homeNavTarget('/?adv=1#x'), { isHome: true, query: 'adv=1' });
+  for (const no of ['/orders', '/orders?x=1', '/rentals#returned', '', null, undefined, 5]) assert.equal(homeNavTarget(no).isHome, no === '' || no === null || no === undefined || no === 5 ? true : false, String(no));
+  assert.equal(parseHomeParams(homeNavTarget('/?scope=customers').query).scope, 'customers');
+  assert.equal(HOME_NAV_EVENT, 'gm-home-nav');
+});
+t('לחיצה חוזרת על פריט בית: המעטפת משדרת HOME_NAV_EVENT לקישורי "/" ודף הבית מאזין ומחיל מחדש את ההוראה', () => {
+  const shell = readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8');
+  assert.ok(/homeNavTarget\(href\)\.isHome\) window\.dispatchEvent\(new CustomEvent\(HOME_NAV_EVENT/.test(shell));
+  const home = homeSource('HomeA5.js');
+  assert.ok(home.includes('addEventListener(HOME_NAV_EVENT') && home.includes('removeEventListener(HOME_NAV_EVENT'));
+  assert.match(home, /if \(dir\.any\) \{ applyDirective\(dir, null\); return; \}/);
+});
+t('removeScope: מנקה גם תוצאות advRes (החזרות/תיקונים) ומריץ מחדש בחיפוש הכללי', () => {
+  const home = homeSource('HomeA5.js');
+  const body = home.slice(home.indexOf('const removeScope = () => {'), home.indexOf("// '@' בתחילת השורה"));
+  assert.ok(/if \(advRes\) \{[\s\S]*setAdvRes\(null\)[\s\S]*runSearch\(text\)/.test(body), 'advRes נוקה והחיפוש הכללי רץ');
+  assert.ok(/view === 'error'/.test(body));
+});
+t('useNavHistory: שינוי query בלבד (/?scope=a → /?scope=b) מפעיל ביקור חדש', () => {
+  const h = readFileSync(new URL('../app/components/menu/useNavHistory.js', import.meta.url), 'utf8');
+  assert.ok(/\[pathname, queryString, tree, commit\]/.test(h));
+  assert.ok(/useNavHistory\(tree, queryString\)/.test(readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8')));
+});
+t('app/layout.js מעביר homeA5 מהדגל ui_variant_home (דגלי shell ו-home עצמאיים)', () => {
+  const layout = readFileSync(new URL('../app/layout.js', import.meta.url), 'utf8');
+  assert.ok(layout.includes("homeA5: uiVariants.home === 'a5'"));
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

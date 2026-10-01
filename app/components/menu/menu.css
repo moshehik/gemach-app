@@ -2,7 +2,7 @@
    הכול בהיקף .gm-ds.gm-menu כך שאין שום השפעה על שאר האתר. ה-CSS של הפלטה עצמה מיובא ב-MenuA5Shell.js (components.css).
    מקור: תצוגות-עיצוב\סיימתי-לעבוד\תפריט-חדש.html, הבלוקים v3-menu-css / menu-search-css (שורות 2568-2660).
    פערי פלטה ידועים (J07, מאושרים כ-CSS מקומי עד שייכנסו לפלטה): .sn-cv חץ לשונית, .sn-accrow שורת קבוצה במגירה,
-   .sn-k תווית צדדית, .sn-hist/.sn-hpos שורת אחורה/קדימה, .sn-msg הודעת מצב, .sn-res רשימת תוצאות, חלון "הודעה למנהל". */
+   .sn-k תווית צדדית, .sn-msg הודעת מצב, .sn-res רשימת תוצאות, חלון "הודעה למנהל". */
 
 /* העטיפה לא מציירת רקע ולא תופסת מקום (ב-.gm-ds הבסיס יש min-height:100vh, display:flex ורקע): רק נושאת את משתני הפלטה והגופן. */
 .gm-ds.gm-menu{display:contents;background:none!important;background-image:none!important;min-height:0}
@@ -44,19 +44,18 @@
 .gm-ds.gm-menu .sn-mark.ph{width:58px;background:none;box-shadow:none;color:rgba(255,255,255,.9)}
 .gm-ds.gm-menu .sn-mark.ph img{width:100%;height:100%;object-fit:contain;display:block}
 
-/* פאנל החיפוש: שורת אחורה/קדימה, הודעת מצב, רשימת תוצאות */
+/* פאנל החיפוש: הודעת מצב ורשימת תוצאות. שורת החיפוש מוצגת גם בריחוף (בעיצוב המקורי היא הוסתרה בהצצה - לא מה שהבעלים רוצה). */
 .gm-ds.gm-menu .sn-search{width:392px}
-.gm-ds.gm-menu .sn-hist{display:flex;align-items:center;gap:8px;padding:0 2px 8px;margin-bottom:8px;border-bottom:1px dashed rgba(184,145,47,.45)}
-.gm-ds.gm-menu .sn-hist .ibtn{width:38px;height:38px;border-radius:12px}
-.gm-ds.gm-menu .sn-hist .ibtn[aria-disabled="true"]{opacity:.38;cursor:not-allowed;box-shadow:none;transform:none}
-.gm-ds.gm-menu .sn-hist .ibtn[aria-disabled="true"]:hover{background:var(--gm-surface);transform:none}
-.gm-ds.gm-menu .sn-hpos{font-size:13px;color:var(--gm-ink2);font-variant-numeric:tabular-nums;padding-inline:4px}
+/* שדה החיפוש: אין מסגרת / טבעת כחולה של הדפדפן / של האתר הישן, לא בלחיצה ולא במנוחה. הסיבה: app/design-overrides.css מצייר על כל input גבול, רקע לבן וצל פוקוס
+   בצבע --primary-color בספציפיות 0,4,1 ומעלה, וגובר על הכלל של הפלטה (.gm-ds .sn-sbox input, 0,2,1) - בתוך תיבת החיפוש נוצר "שדה בתוך שדה".
+   לכן !important (כמו הגנת הגופן למטה). הסימון הנראה נשאר: טבעת הזהב של העטיפה (.sn-sbox:focus-within בפלטה). */
+.gm-ds.gm-menu .sn-sbox input,.gm-ds.gm-menu .sn-sbox input:focus,.gm-ds.gm-menu .sn-sbox input:focus-visible{border:0!important;border-radius:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}
+/* ה-X הכחול של הדפדפן בשדה search: מוסתר (כמו בפלטה ב-.hf-s) */
+.gm-ds.gm-menu .sn-sbox input::-webkit-search-cancel-button{display:none}
 .gm-ds.gm-menu .sn-msg{font-size:13.5px;font-weight:600;padding:0 10px;min-height:0}
 .gm-ds.gm-menu .sn-msg:not(:empty){padding-block:6px 0}
 .gm-ds.gm-menu .sn-msg.err{color:var(--gm-red)}
 .gm-ds.gm-menu .sn-res{max-height:min(42vh,300px);overflow-y:auto;overscroll-behavior:contain}
-.gm-ds.gm-menu .sn-item.peek .sn-sbox,.gm-ds.gm-menu .sn-item.peek .sn-msg{display:none}
-.gm-ds.gm-menu .sn-drawer>.sn-hist{padding-bottom:10px;margin-bottom:10px}
 .gm-ds.gm-menu .sn-drawer .sn-msg{padding-inline:4px}
 .gm-ds.gm-menu .sn-drawer .sn-res{max-height:none}
 .gm-ds.gm-menu:has(.sn-item[data-sn=search].open) .pl-tt{display:none!important}

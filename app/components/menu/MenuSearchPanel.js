@@ -1,7 +1,7 @@
 'use client';
 
 // פאנל החיפוש של המעטפת החדשה (פלטה: ניווט 12/28/53 .sn-sbox, לחצן 54 .ibtn, לחצן 12 a.lnk "נקה", ניווט 24 .sn-link).
-// שלושה חלקים: שורת אחורה/קדימה (R02), שדה חיפוש, ורשימה - "נצפו לאחרונה" כשהשדה ריק, אחרת תוצאות.
+// שני חלקים: שדה חיפוש, ורשימה - "נצפו לאחרונה" כשהשדה ריק, אחרת תוצאות.
 // הרשת מועתקת מ-TopbarSearch.js (// COPIED FROM): GET /api/global-search?q=, מינימום 2 תווים, דיבאונס 350, 15 תוצאות,
 // "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד לא נכללת בגרסה הזאת (החלטה 12 בתוכנית השחרור).
 
@@ -54,16 +54,8 @@ export function useMenuSearch() {
 }
 
 export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer = false, onGo, onClearRecents, inputRef }) {
-  const [note, setNote] = useState('');
   const q = search.q;
   const term = q.trim();
-  const labels = nav.labels;
-
-  useEffect(() => {
-    if (!note) return undefined;
-    const t = setTimeout(() => setNote(''), 1800);
-    return () => clearTimeout(t);
-  }, [note]);
 
   const pages = useMemo(() => {
     if (!term) return [];
@@ -74,10 +66,6 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   }, [tree, term]);
 
   const role = menu ? 'menuitem' : undefined;
-  const step = (dir) => {
-    if (dir < 0) { if (nav.canBack) nav.goBack(); else setNote(labels.noBackMessage); }
-    else if (nav.canForward) nav.goForward(); else setNote(labels.noForwardMessage);
-  };
 
   let list;
   if (!term) {
@@ -167,31 +155,6 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
 
   return (
     <>
-      <div className="sn-hist" role="group" aria-label="ניווט בהיסטוריית הצפייה">
-        <button
-          type="button"
-          className="ibtn"
-          data-hist="back"
-          aria-label={labels.back}
-          aria-disabled={labels.backDisabled ? 'true' : 'false'}
-          data-tip={nav.canBack ? labels.back.replace('אחורה:', 'אחורה ·') : labels.noBackMessage}
-          onClick={() => step(-1)}
-        >
-          <Ic n="arrr" cls="sm" />
-        </button>
-        <button
-          type="button"
-          className="ibtn"
-          data-hist="fwd"
-          aria-label={labels.forward}
-          aria-disabled={labels.forwardDisabled ? 'true' : 'false'}
-          data-tip={nav.canForward ? labels.forward.replace('קדימה:', 'קדימה ·') : labels.noForwardMessage}
-          onClick={() => step(1)}
-        >
-          <Ic n="arrl" cls="sm" />
-        </button>
-        <span className="sn-hpos" role="status" aria-live="polite">{note || labels.positionText}</span>
-      </div>
       <div className={`sn-sbox${drawer ? ' sn-dsearch' : ''}`}>
         <Ic n="search" cls="sm" />
         <input
