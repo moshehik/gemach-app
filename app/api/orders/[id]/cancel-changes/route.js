@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '../../../../lib/prisma';
+import { checkAuth } from '../../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,9 @@ export const dynamic = 'force-dynamic';
  * לא זז ולא נוצרת התנגשות נתונים בשמירה הבאה.
  */
 export async function POST(request, { params }) {
+  // כמו שאר ראוטי ההזמנה: בלי בדיקה כאן אפשר היה לכתוב שורות יומן חופשיות להיסטוריית כל הזמנה
+  // ולגלות אילו מספרי הזמנה קיימים (404 מול 200). /api/* לא עובר דרך middleware.js.
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { id } = await params;
     const { changes } = await request.json().catch(() => ({}));
