@@ -71,15 +71,23 @@ export function buildModuleText() {
   return renderModule(parseSprite(fs.readFileSync(SPRITE_SRC, 'utf8')));
 }
 
+// השוואה עמידה לסופי שורה: ב-checkout של Windows עם core.autocrlf=true הקובץ בדיסק הוא CRLF בעוד
+// שהמחולל פולט LF - בלי הנרמול הבדיקה נכשלת בכל worktree טרי למרות שהתוכן מסונכרן.
+export const normalizeEol = (s) => (typeof s === 'string' ? s.replace(/\r\n/g, '\n') : s);
+export function isSpriteInSync() {
+  if (!fs.existsSync(SPRITE_OUT)) return false;
+  return normalizeEol(fs.readFileSync(SPRITE_OUT, 'utf8')) === buildModuleText();
+}
+
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const text = buildModuleText();
   const check = process.argv.includes('--check');
-  const current = fs.existsSync(SPRITE_OUT) ? fs.readFileSync(SPRITE_OUT, 'utf8') : null;
+  const inSync = isSpriteInSync();
   if (check) {
-    if (current === text) { console.log('spriteSymbols.js is in sync with design-system/sprite.svg'); }
+    if (inSync) { console.log('spriteSymbols.js is in sync with design-system/sprite.svg'); }
     else { console.error('spriteSymbols.js is OUT OF SYNC - run: node scripts/build_menu_sprite.mjs'); process.exit(1); }
-  } else if (current === text) {
+  } else if (inSync) {
     console.log('spriteSymbols.js unchanged');
   } else {
     fs.writeFileSync(SPRITE_OUT, text);

@@ -17,7 +17,7 @@ import {
 } from '../lib/menu/recents.js';
 import { buildNavGroups, NAV_GROUPS } from '../app/components/navConfig.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
-import { buildModuleText, SPRITE_OUT } from './build_menu_sprite.mjs';
+import { buildModuleText, isSpriteInSync, normalizeEol, SPRITE_OUT } from './build_menu_sprite.mjs';
 import { readFileSync } from 'node:fs';
 
 let passed = 0;
@@ -680,7 +680,9 @@ t('toLegacyItem: תאימות לאחור לצורת agy_history', () => {
 
 // --- ה-sprite המוטמע (MenuSprite) ----------------------------------------------------------------
 t('spriteSymbols.js מסונכרן עם design-system/sprite.svg (node scripts/build_menu_sprite.mjs)', () => {
-  assert.equal(readFileSync(SPRITE_OUT, 'utf8'), buildModuleText());
+  // נרמול CRLF: checkout של Windows (core.autocrlf=true) מחזיק את הקובץ עם סופי שורה CRLF, המחולל פולט LF.
+  assert.equal(normalizeEol(readFileSync(SPRITE_OUT, 'utf8')), buildModuleText());
+  assert.ok(isSpriteInSync());
 });
 t('כל אייקון שהעץ פולט קיים ב-sprite המוטמע', () => {
   const ids = new Set(SPRITE_SYMBOLS.map(([id]) => id));
