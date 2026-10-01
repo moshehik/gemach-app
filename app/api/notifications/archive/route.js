@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
-import { parseIdList } from '../../../../lib/notificationLists';
+import { parseIdList, parseNotificationActionBody } from '../../../../lib/notificationLists';
+import { archiveAllNotifications } from '../../../../lib/notificationsBulk';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
+// POST /api/notifications/archive
+//   { notificationId, archive }   — הודעה אחת (ההתנהגות המקורית, ללא שינוי; archive=true לארכיון, false להחזרה)
+//   { all: true, archive: true }  — "ניקוי" (פעמון התפריט החדש): כל ההודעות של העובד המחובר בלבד עוברות לארכיון
+//                                   (לא נמחקות — נשארות בלשונית "ארכיון" ב-/messages). archive חסר = true;
+//                                   { all: true, archive: false } מחזיר את כולן מהארכיון.
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
@@ -19,11 +25,19 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { notificationId, archive } = body; // archive is a boolean (true to archive, false to unarchive)
-
-    if (!notificationId) {
-      return NextResponse.json({ success: false, error: 'notificationId is required' }, { status: 400 });
+    const parsed = parseNotificationActionBody(body);
+    if (parsed.error) {
+      return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }
+
+    if (parsed.mode === 'all') {
+      const doArchive = body.archive !== false;
+      const result = await archiveAllNotifications(prisma, employeeId, doArchive);
+      return NextResponse.json({ success: true, all: true, archived: doArchive, updated: { personal: result.personal, global: result.global }, conflicts: result.conflicts });
+    }
+
+    const { notificationId } = parsed;
+    const { archive } = body; // archive is a boolean (true to archive, false to unarchive)
 
     // Find the notification to check if it's global or personal
     const notification = await prisma.notification.findUnique({

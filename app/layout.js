@@ -34,6 +34,7 @@ import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
+import { NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
@@ -71,8 +72,11 @@ export default async function RootLayout({ children }) {
   // is skipped entirely — roleId comes from the token (see
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
+  // management_messages / gmach_name / gmach_subtitle / BRAND_LOGO: מפתחות שהמעטפת החדשה (lib/menu/buildMenuTree.js)
+  // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
+  // גדול ולכן נשלח ללקוח רק כ-!!value (ר' a5ShellProps למטה), לעולם לא הערך עצמו.
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -199,7 +203,11 @@ export default async function RootLayout({ children }) {
   // resolvePageAccess: head management always, else employee override -> department row -> catalog
   // default, which for refunds / dress catalog / board follows the org's restrict_* setting). When the
   // lookup fails we fall back to the old role/setting rules below.
-  const NAV_PAGE_KEYS = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];
+  // NAV_PAGE_KEYS מיובא מ-lib/menu/buildMenuTree.js (אותם 9 מפתחות שהיו כאן + page:messages + page:schedule,
+  // שהמעטפת החדשה בודקת ישירות). אותה קריאה אחת ל-resolvePageAccess — מפתח נוסף הוא עוד איבר בלולאה בזיכרון,
+  // לא שאילתה (lib/permissions.js: getExplicitValues נטען פעם אחת לכל בקשה; לאף פריט אין settingKeys). AppShell
+  // (הישן) לא קורא את pageAccess בכלל, ולכן ההתנהגות שלו לא משתנה. מפתח שאינו בקטלוג (page:schedule עד שענף
+  // הלוז ימוזג) מקבל false לכולם — כשל-סגור.
   let pageAccess = null;
   if (isAuthenticated && emp) {
     pageAccess = await resolvePageAccess(emp.roleId, authToken.value, NAV_PAGE_KEYS).catch(() => null);
@@ -234,6 +242,19 @@ export default async function RootLayout({ children }) {
     showRentals: pageVisible('page:rentals'),
     showCustomers: pageVisible('page:customers'),
   });
+
+  // נתונים למעטפת החדשה (ShellSwitch / MenuA5Shell, PR 2.A) — מחושבים כאן כבר עכשיו, מאותם settings/pageAccess
+  // שנטענו למעלה, ומועברים כ-prop אחד ש-AppShell הישן מתעלם ממנו (לא מפורק בחתימה שלו). הגדרות נבדקות בקפדנות
+  // `=== 'true'` כמו שאר הדגלים בקובץ הזה. BRAND_LOGO: רק האם קיים (!!value) — לא ה-base64.
+  const settingValue = (key) => settings.find(s => s.key === key)?.value;
+  const a5ShellProps = {
+    managementMessages: settingValue('management_messages') === 'true',
+    gmachName: typeof settingValue('gmach_name') === 'string' ? settingValue('gmach_name').trim() : '',
+    gmachSubtitle: typeof settingValue('gmach_subtitle') === 'string' ? settingValue('gmach_subtitle').trim() : '',
+    hasBrandLogo: !!settingValue('BRAND_LOGO'),
+    pageAccess, // { 'page:x': boolean } לכל NAV_PAGE_KEYS, או null לאורח / תקלה (buildMenuTree מטפל ב-null)
+    roleId: emp ? emp.roleId : null,
+  };
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
   const themePreference = themeCookie?.value || 'light';
@@ -661,6 +682,7 @@ function cpCssText(vars) {
                 showOverdueRemindersPopup={showOverdueRemindersPopup}
                 authToken={authToken?.value}
                 themePreference={themePreference}
+                a5Shell={a5ShellProps}
               >
                 {children}
               </AppShell>
