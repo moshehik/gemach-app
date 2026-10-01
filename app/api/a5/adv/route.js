@@ -7,9 +7,8 @@ import { normalizeEmail } from '@/lib/emailUtils';
 import { buildMultiWordRelationNameCondition, buildMultiWordNameCondition } from '@/lib/searchUtils';
 import { getHebrewDateString, getIsraelDayRange, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { calculateOrderStatus } from '@/lib/orderStatus';
-import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
-import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
-import { addDaysSkippingWeekends } from '@/lib/clientInventory';
+import { getLateReturnInfo, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays } from '@/lib/businessDays';
 import { parseFieldGroups, getUnsatisfiedFieldGroups } from '@/lib/customerValidation';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 
@@ -408,10 +407,8 @@ async function focusOrders(adv, cfg, unsavedIds) {
 }
 
 // ===================== השכרות / החזרות =====================
-const dueDate = (o) => {
-  const raw = o.toDate || o.returnDate || (o.eventDate ? addDaysSkippingWeekends(o.eventDate, 1) : null);
-  return raw ? ilKey(new Date(raw)) : null;
-};
+// מועד ההחזרה הצפוי = אותו כלל כמו דגל "איחור" (getLateReturnInfo): יום העבודה הראשון אחרי האירוע.
+const dueDate = (o, nonWorkingDays) => getExpectedReturnKey(o, nonWorkingDays);
 
 async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const ret = kind === 'returns';
@@ -437,9 +434,12 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const anyItemsOut = { items: { some: { isDeleted: false, isTaken: true, isReturned: false } } };
   const cutoff = new Date(Date.now() - (threshold - 1) * 86400000);
   const lateSql = { AND: [anyItemsOut, { OR: [{ toDate: { lte: cutoff } }, { returnDate: { lte: cutoff } }, { AND: [{ toDate: null }, { returnDate: null }, { eventDate: { lte: cutoff } }] }] }] };
+  // אירועים שמועד ההחזרה הצפוי שלהם (יום העבודה הראשון אחריהם) הוא key - חלון נגזר מההופכי של הכלל והרשימה
+  // הנוכחיים (לא מספר ימים קבוע), כדי שימים סגורים ביומן לא יפילו הזמנות בשקט; בנוסף לרצפה של 7 ימים אחורה.
+  const dueEventStart = (key) => { const inv = inverseBusinessDays(key, 1, nonWorkingDays); const floor = addKey(key, -7); return inv && inv.startKey < floor ? inv.startKey : floor; };
   const dueWindow = (key) => ({
     OR: [
-      { eventDate: { gte: dayRange(addKey(key, -4)).start, lte: dayRange(key).end } },
+      { eventDate: { gte: dayRange(dueEventStart(key)).start, lte: dayRange(key).end } },
       { toDate: { gte: dayRange(key).start, lte: dayRange(key).end } },
       { returnDate: { gte: dayRange(key).start, lte: dayRange(key).end } },
     ],
@@ -448,11 +448,11 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   const jsPreds = [];
   const active = (o) => (o.items || []).filter((i) => !i.isDeleted);
   if (ost.includes(P + 'today')) {
-    if (ret) { stSql.push({ AND: [anyItemsOut, dueWindow(todayKey)] }); jsPreds.push((o) => active(o).some((i) => i.isTaken && !i.isReturned) && dueDate(o) === todayKey); }
+    if (ret) { stSql.push({ AND: [anyItemsOut, dueWindow(todayKey)] }); jsPreds.push((o) => active(o).some((i) => i.isTaken && !i.isReturned) && dueDate(o, nonWorkingDays) === todayKey); }
     else { stSql.push({ AND: [{ eventDate: { gte: dayRange(todayKey).start, lte: dayRange(todayKey).end } }, { items: { some: { isDeleted: false, isTaken: false } } }] }); }
   }
   if (ost.includes(P + 'tomorrow')) {
-    if (ret) { stSql.push({ AND: [anyItemsOut, dueWindow(tomorrowKey)] }); jsPreds.push((o) => active(o).some((i) => i.isTaken && !i.isReturned) && dueDate(o) === tomorrowKey); }
+    if (ret) { stSql.push({ AND: [anyItemsOut, dueWindow(tomorrowKey)] }); jsPreds.push((o) => active(o).some((i) => i.isTaken && !i.isReturned) && dueDate(o, nonWorkingDays) === tomorrowKey); }
     else { stSql.push({ AND: [{ eventDate: { gte: dayRange(tomorrowKey).start, lte: dayRange(tomorrowKey).end } }, { items: { some: { isDeleted: false, isTaken: false } } }] }); }
   }
   if (ost.includes(P + 'partial')) {
@@ -513,7 +513,7 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
     const evKey = o.eventDate ? ilKey(new Date(o.eventDate)) : null;
     let st;
     if (ret) {
-      const due = dueDate(o);
+      const due = dueDate(o, nonWorkingDays);
       if (n > 0 && back === n) st = chip(`הוחזר הכל · ${n} מתוך ${n}`, 'st-good');
       else if (back > 0) st = chip(`הוחזר חלקי · ${back} הוחזרו מתוך ${n}`, 'st-mid');
       else if (late) st = chip(`איחור · 0 הוחזרו מתוך ${n}`, 'st-bad');

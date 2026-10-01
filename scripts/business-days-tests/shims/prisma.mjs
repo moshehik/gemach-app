@@ -20,6 +20,9 @@ function inRange(value, cond) {
 function matchOrder(o, where) {
   if (where.isDeleted !== undefined && !!o.isDeleted !== where.isDeleted) return false;
   if (where.isDelivery !== undefined && !!o.isDelivery !== where.isDelivery) return false;
+  if (where.eventDate) {
+    if (!o.eventDate || !inRange(o.eventDate, where.eventDate)) return false;
+  }
   if (where.OR) {
     const any = where.OR.some((c) => {
       if (c.eventDate) return o.eventDate ? inRange(o.eventDate, c.eventDate) : false;
@@ -35,6 +38,9 @@ const prisma = {
     findMany: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'findMany', args }); return [...globalThis.__SETTINGS]; },
     findUnique: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'findUnique', args }); return globalThis.__SETTINGS.find((s) => s.key === args.where.key) || null; },
   },
+  // lib/inventory.js checkMissingDressForItem (return-dates.test.mjs): stock units + units currently out
+  dressItem: { findMany: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'dressItem', op: 'findMany', args }); return [...(globalThis.__DRESS_ITEMS || [])]; } },
+  orderItem: { findMany: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'orderItem', op: 'findMany', args }); return [...(globalThis.__ORDER_ITEMS || [])]; } },
   order: {
     findMany: async (args) => {
       globalThis.__MOCK_CALLS.push({ model: 'order', op: 'findMany', args });

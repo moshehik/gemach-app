@@ -38,7 +38,6 @@
 
 /* אייקוני הסרגל */
 .gm-ds.gm-menu #snErr,.gm-ds.gm-menu #snOld{flex:none}
-.gm-ds.gm-menu #snOld .sn-badge{top:auto;bottom:-3px;inset-inline-start:auto;left:50%;right:auto;transform:translateX(-50%);height:16px;min-width:0;padding:0 6px;font-size:10px;line-height:12px;opacity:.85;white-space:nowrap}
 .gm-ds.gm-menu #snOld:disabled{opacity:.6}
 
 /* לוגו אמיתי של הארגון (Q4) במקום סמל הדגימה */
@@ -86,3 +85,26 @@
 .gm-ds.gm-menu #sndDlg textarea{width:100%;min-height:132px;resize:vertical;line-height:1.6;background:#fff;border:1.5px solid var(--gm-sky-300);border-radius:14px;padding:12px 14px;outline:0;color:var(--gm-ink);transition:border-color .15s,box-shadow .15s}
 .gm-ds.gm-menu #sndDlg textarea:focus{border-color:var(--gm-navy);box-shadow:0 0 0 4px rgba(201,162,39,.25)}
 .gm-ds.gm-menu #sndDlg .dbtns{margin-top:24px}
+
+/* ---- גופן: הגנה מפני CSS הישן של האתר ----
+   app/design-overrides.css כופה Assistant ב-!important על body/button/input/select/textarea, ו-app/globals.css כופה "Frank Ruhl Libre" על h1-h6.
+   שני הכללים חלים גם בתוך .gm-ds (לחצנים, שדות וכותרות בסרגל ובחלונות שלו) ומשנים את הגופן מ-Rubik של העיצוב. מחזירים לירושה מהעטיפה, בהיקף הסרגל בלבד. */
+.gm-ds.gm-menu :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-menu :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+
+/* ---- "בקרוב": פריט שעדיין אין לו דף (לשונית "לוז", שינויים אחרונים, חיפוש מתקדם, בדיקת מלאי) ----
+   מראה השורה העמומה של העיצוב (.is-miss), אלמנט כבוי (span): לא קישור, לא ניתן למיקוד, בלי ריחוף. */
+.gm-ds.gm-menu .sn-link.is-miss{color:var(--gm-ink3);cursor:default}
+.gm-ds.gm-menu .sn-link.is-miss:hover,.gm-ds.gm-menu .sn-link.is-miss:active{background:transparent;transform:none;box-shadow:none}
+.gm-ds.gm-menu .sn-link.is-miss .sn-li,.gm-ds.gm-menu .sn-link.is-miss:hover .sn-li{background:var(--gm-sky-50);color:var(--gm-ink3)}
+.gm-ds.gm-menu .sn-link.is-miss .sn-k{font-size:11px;font-weight:600;line-height:1;padding:3px 8px;border-radius:999px;background:var(--gm-sky-100);color:var(--gm-ink3)}
+.gm-ds.gm-menu .sn-tab.is-miss{opacity:.62;cursor:default}
+.gm-ds.gm-menu .sn-item[data-soon]:hover>.sn-tab{color:inherit;transform:none}
+.gm-ds.gm-menu .sn-soon{margin-inline-start:2px;font-size:10px;font-weight:600;line-height:1;padding:3px 7px;border-radius:999px;border:1px solid rgba(224,197,110,.75);color:var(--gm-gold-300);white-space:nowrap}
+.gm-ds.gm-menu .sn-acc.is-miss{opacity:.6;cursor:default}
+.gm-ds.gm-menu .sn-acc.is-miss .sn-k{margin-inline-start:auto;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--gm-sky-100);color:var(--gm-ink3)}
+
+/* שעון "במשמרת": משמרת פתוחה ישנה (לא נרשמה יציאה) במקום מונה שעות ענק */
+.gm-ds.gm-menu .sn-clock.warn{background:rgba(240,163,94,.2);color:#ffe2c4}
+.gm-ds.gm-menu .sn-clock.warn i{background:#f0a35e;animation:none;box-shadow:none}
+.gm-ds.gm-menu .sn-dfoot .snShiftWarn{color:var(--gm-gold-300)}
