@@ -5,8 +5,11 @@ import { recalculateOrderObligations, applyDeliveryCharge } from '../../../lib/p
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
-import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag, getIsraelDayRange, getIsraelTodayKey, addDaysToDateKey, getIsraelDaysUntil } from '../../../lib/hebrewDate';
-import { validateOrderItemsAvailability, addDaysSkippingWeekends, reconcileDressItemIds } from '../../../lib/inventory';
+import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelDayRange, getIsraelTodayKey, addDaysToDateKey, getIsraelDaysUntil } from '../../../lib/hebrewDate';
+import { validateOrderItemsAvailability, reconcileDressItemIds } from '../../../lib/inventory';
+import { subtractBusinessDays } from '../../../lib/businessDays';
+import { getNonWorkingDaysConfig } from '../../../lib/businessDaysServer';
+import { getExpectedReturnDate } from '../../../lib/lateReturn';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
@@ -1019,11 +1022,11 @@ export async function POST(request) {
 
           // מועד לקיחה/החזרה - אותו חישוב בדיוק כמו app/api/orders/[id]/email/route.js
           // ו-app/print/order/page.js: לקיחה = יומיים-עסקים לפני האירוע (מדלג שישי/שבת/חג),
-          // החזרה = toDate/returnDate או יום אחרי האירוע (מדלג סופ"ש).
-          const pickupDate = updatedOrder.eventDate ? subtractSkippingWeekendsAndChag(updatedOrder.eventDate, 2) : null;
-          const returnByDate = updatedOrder.toDate || updatedOrder.returnDate
-            ? new Date(updatedOrder.toDate || updatedOrder.returnDate)
-            : (updatedOrder.eventDate ? addDaysSkippingWeekends(updatedOrder.eventDate, 1) : null);
+          // החזרה = toDate/returnDate או יום העבודה הראשון אחרי האירוע. הלקיחה והחזרה לפי הכלל האחיד
+          // "יום לא עובד" (שישי/שבת/חג/ערב חג/ימים שהבעלים סימן - lib/businessDays.js).
+          const nonWorkingDays = await getNonWorkingDaysConfig();
+          const pickupDate = updatedOrder.eventDate ? subtractBusinessDays(updatedOrder.eventDate, 2, nonWorkingDays) : null;
+          const returnByDate = getExpectedReturnDate(updatedOrder, nonWorkingDays);
           const pickupLine = pickupDate ? `ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${pickupHours}` : '';
           const returnLine = returnByDate ? `${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${returnHour}` : '';
 

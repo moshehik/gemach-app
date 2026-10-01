@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getPrintPrepDate, getIsraelDayRange } from '@/lib/hebrewDate';
+import { getIsraelDayRange } from '@/lib/hebrewDate';
+import { getPrintPrepDateWithConfig } from '@/lib/businessDays';
+import { getNonWorkingDaysConfig } from '@/lib/businessDaysServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,9 +87,12 @@ export async function GET(request) {
         orderBy: { eventDate: 'asc' }
       });
 
+      // אותו כלל "יום לא עובד" כמו מועד האיסוף בדף המודפס (כולל ימים שהבעלים סימן סגורים)
+      const nonWorkingDays = await getNonWorkingDaysConfig();
       const matches = candidates.filter(o => {
         if (!o.eventDate) return false;
-        const prepDate = getPrintPrepDate(o.eventDate);
+        const prepDate = getPrintPrepDateWithConfig(o.eventDate, nonWorkingDays);
+        if (!prepDate) return false;
         return prepDate.getTime() >= targetFrom.getTime() && prepDate.getTime() <= targetTo.getTime();
       });
       orderIds = matches.map(o => o.orderId);
