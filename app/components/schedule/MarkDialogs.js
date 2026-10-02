@@ -58,12 +58,16 @@ export function ConfirmDialog({ open, icon = 'check', heading, sub, effect, body
   const yesRef = useRef(null);
   const noRef = useRef(null);
   const returnTo = useRef(null);
+  // onNo מגיע כפונקציה חדשה בכל רינדור - דרך ref, כדי שה-effect ירוץ רק בפתיחה/סגירה (אחרת כל רינדור בזמן שהחלון פתוח
+  // היה מחזיר את הפוקוס ל"כן" ושומר את "החזר לאן" כרכיב שבתוך החלון - והפוקוס לא היה חוזר ללחצן שפתח)
+  const noRef2 = useRef(onNo);
+  useEffect(() => { noRef2.current = onNo; }, [onNo]);
   useEffect(() => {
     if (!open) return undefined;
     returnTo.current = typeof document !== 'undefined' ? document.activeElement : null;
     const t = setTimeout(() => yesRef.current && yesRef.current.focus(), 80);
     const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onNo(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); noRef2.current(); return; }
       if (e.key === 'Tab') {
         const a = yesRef.current;
         const b = noRef.current;
@@ -79,7 +83,7 @@ export function ConfirmDialog({ open, icon = 'check', heading, sub, effect, body
       const el = returnTo.current;
       if (el && typeof el.focus === 'function' && document.contains(el)) el.focus();
     };
-  }, [open, onNo]);
+  }, [open]);
   if (!open) return null;
   // ב-portal לשורש הדף (אח של .app, כמו בעיצוב); אירועי React עדיין עולים לשורה - עוצרים אותם כאן
   const stop = (e) => e.stopPropagation();

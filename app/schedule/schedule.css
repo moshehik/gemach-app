@@ -129,8 +129,7 @@
  .gm-ds.gm-lz .lz-dwrap, .gm-ds.gm-lz .lz-dpanel, .gm-ds.gm-lz .lz-dpanel .lz-dnav{min-width:0;max-width:100%}
  .gm-ds.gm-lz .lz-dpanel .lz-pickw{flex:1 1 auto;min-width:0}
  .gm-ds.gm-lz .lz-dpanel :is(#dPrev,#dNext){flex:none}
- .gm-ds.gm-lz .lz-dpanel .lz-dnav{gap:6px}
- .gm-ds.gm-lz .lz-dpanel .btn.lz-date{width:100%;min-width:0;white-space:normal;line-height:1.2;padding-inline:10px;gap:6px}
+ .gm-ds.gm-lz .lz-dpanel .btn.lz-date{width:100%;min-width:0;white-space:normal;line-height:1.2}
 }
 @media (prefers-reduced-motion:reduce){
 .gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn,.lz-pickw){transition:none!important;transform:none!important}
