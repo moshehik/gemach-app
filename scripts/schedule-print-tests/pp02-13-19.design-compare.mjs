@@ -128,9 +128,9 @@ try {
   for (const page of payload.pages) {
     const id = page.key.slice(3);
     const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload: { meta: payload.meta, pages: [page] } }));
-    const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}">
-<link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}"><link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">
-<link rel="stylesheet" href="${css('app/components/schedule/print/pages/pp02.css')}"><link rel="stylesheet" href="${css('app/components/schedule/print/pages/pp19.css')}">
+    const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
+<link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
+<link rel="stylesheet" href="${css('app/components/schedule/print/pages/pp02.css')}"><link rel="stylesheet" href="${css('app/components/schedule/print/pages/pp19.css')}"><link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">
 <style>/* screen-preview only: print.css sets border-collapse:collapse on .pp-sheet, which makes the sheet padding (12mm sides) a no-op on screen (print uses @page margins). Restore it so the screen sheet = the design's A4 box. */.pp-paper .pp-sheet{border-collapse:separate}</style></head><body class="hide-global-nav pp-print-mode">${body}</body></html>`;
     const f = path.join(OUT, `g1-cmp-${id}.html`);
     fs.writeFileSync(f, html);

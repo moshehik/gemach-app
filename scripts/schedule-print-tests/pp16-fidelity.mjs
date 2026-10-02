@@ -77,7 +77,7 @@ try {
   const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload }));
   const pageCss = fs.readdirSync(path.join(PROJ, 'app/components/schedule/print/pages')).filter((f) => /^pp.*\.css$/i.test(f)).map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f)}">`).join('');
   const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
-<link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}"><link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${pageCss}</head>
+<link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}"></head>
 <body class="hide-global-nav pp-print-mode">${body}</body></html>`;
   const htmlPath = path.join(OUT, 'PP-16-fidelity-ours.html');
   fs.writeFileSync(htmlPath, html);
