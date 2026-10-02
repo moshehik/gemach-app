@@ -8,6 +8,7 @@ import { getScheduleDay } from '@/lib/schedule';
 import { isValidKey } from '@/lib/schedule/dates';
 import { parsePageList, parseVersions, getPrintPage } from '@/lib/schedule/print/registry';
 import { loadExtras, buildPrintPayload, payloadToRows } from '@/lib/schedule/print/data';
+import { parseExportLimit } from '@/lib/schedule/print/exportLimit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // כמו GET /api/schedule (אותן שאילתות + שאילתת extras אחת)
@@ -96,7 +97,7 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
     const sheets = payloadToRows(payload);
     const total = sheets.reduce((s, sh) => s + sh.rows.length, 0);
     const limitRaw = user ? await getEmployeeEffectiveValue(user, 'feature:export_max_rows') : null;
-    const limit = Number.isFinite(Number(limitRaw)) && Number(limitRaw) > 0 ? Number(limitRaw) : DEFAULT_EXPORT_LIMIT;
+    const limit = parseExportLimit(limitRaw);
     if (total > limit) {
       const ok = approvalPin ? await verifyExportApproval(approvalPin) : false;
       if (!ok) {
@@ -113,9 +114,6 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
     return NextResponse.json({ error: 'שגיאה בהכנת נתוני ההדפסה' }, { status: 500 });
   }
 }
-
-// ברירת מחדל כשלעובד אין ערך (אותה ברירת מחדל כמו components/ExportButtons.js לפני טעינת /api/me)
-const DEFAULT_EXPORT_LIMIT = 200;
 
 // אותה בדיקה כמו POST /api/auth/verify-pin עם requiredLevel feature:export_over_limit_approval: הסיסמה של
 // עובד/ת פעיל/ה (bcrypt, verifySecret) שמחזיק/ה את פריט האישור בקטלוג ההרשאות.

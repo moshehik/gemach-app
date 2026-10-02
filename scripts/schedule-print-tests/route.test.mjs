@@ -158,4 +158,20 @@ test('format=rows: flat Hebrew-column rows per sheet; server-side export limit (
   assert.equal(bad.__json.code, 'EXPORT_LIMIT');
   // json format is never limited (it is the print page, not an export)
   assert.equal((await get('?page=PP-15&date=2026-10-01')).status, 200);
+
+  // limit 0 stays 0 ("every export needs approval", like ExportButtons) - it used to fall back to 200
+  setup({ departmentPermission: [{ roleId: 5, key: 'page:schedule', value: 'true' }, { roleId: 5, key: 'feature:export_max_rows', value: '0' }] });
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const zero = await get('?page=PP-15&date=2026-10-01&format=rows');
+  assert.equal(zero.status, 403, JSON.stringify(zero.__json));
+  assert.equal(zero.__json.code, 'EXPORT_LIMIT');
+  assert.equal(zero.__json.limit, 0);
+});
+
+test('parseExportLimit: 0 is a real limit, default only for missing / invalid values', async () => {
+  const { parseExportLimit, DEFAULT_EXPORT_LIMIT } = await L('lib/schedule/print/exportLimit.js');
+  assert.equal(parseExportLimit(0), 0);
+  assert.equal(parseExportLimit('0'), 0);
+  assert.equal(parseExportLimit('350'), 350);
+  for (const v of [null, undefined, '', '  ', 'abc', -5]) assert.equal(parseExportLimit(v), DEFAULT_EXPORT_LIMIT, String(v));
 });
