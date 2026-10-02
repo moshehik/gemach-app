@@ -36,7 +36,8 @@ function optimisticPatch(row, { done, outcome }) {
   if (done) {
     return {
       done: true, doneVia: 'mark', doneBy: 'את/ה', doneAt: new Date().toISOString(), outcome: outcome || null,
-      returnCondition: row.returnCondition || outcome || row.returnCondition,
+      // שלבי ההחזרה: המצב שנבחר מוצג מיד (השרת מחזיר את המצב הסופי לפי הפריטים)
+      ...(outcome ? { returnCondition: row.returnCondition || outcome } : {}),
       alerts: (row.alerts || []).filter((a) => a.code !== 'late_not_done'),
       items: row.items,
     };

@@ -20,7 +20,8 @@ export function StatusChips({ stage, row, doneState, onMarkDone }) {
         : <span key="rc" className="chip rose lz-rc">לא תקין</span>,
     );
   }
-  if (doneState && doneState.available && onMarkDone) {
+  // אורח במצב פתוח (canMark=false) רואה את הצ'יפים לקריאה בלבד, לא לחצן מושבת
+  if (doneState && doneState.available && doneState.canMark && onMarkDone) {
     out.push(<MarkButton key="mk" stage={stage} row={row} doneState={doneState} onMarkDone={onMarkDone} />);
     return out;
   }
