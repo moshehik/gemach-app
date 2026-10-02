@@ -17,6 +17,13 @@ export const addDays = (s, n) => {
 };
 // 0 = ראשון ... 6 = שבת
 export const dow = (s) => fromKey(s).getDay();
+// "היום" לפי שעון ישראל בדפדפן (Intl, לא לפי אזור הזמן של המכשיר) - רק כגיבוי לפענוח ?date=today|tomorrow עד שהשרת
+// עונה (data.today הוא המקור); en-CA מחזיר YYYY-MM-DD.
+export const israelTodayKey = (now = new Date()) => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  } catch { return toKey(now); }
+};
 
 export const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 export const WEEKDAYS_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];

@@ -8,7 +8,7 @@ import StageSection from './StageSection';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { PageTools } from './ScheduleToolbarSlots';
-import { addDays, toKey } from './hebrewCalendar';
+import { addDays, israelTodayKey } from './hebrewCalendar';
 import { STAGE_ORDER } from './scheduleMeta';
 import { useStageMarks } from './useStageMarks';
 import { MarkToast } from './MarkDialogs';
@@ -28,12 +28,22 @@ import { MarkToast } from './MarkDialogs';
 //   = הנהלה ראשית / מנהלת סניף / מתכנת (INTERNAL_NOTES_ROLE_IDS ב-lib/schedule/index.js).
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// ?date= מקבל גם מילת יחס (הקישורים "היום"/"מחר" בתפריט, lib/menu/buildMenuTree.js): מפוענחת כאן לפי "היום" הישראלי של
+// השרת (data.today) ולא ברגע בניית התפריט - כך "היום" נכון גם אחרי חצות בלי טעינה מחדש (סקירה 2.10, C). רשימה סגורה.
+const DATE_TOKENS = { today: 0, tomorrow: 1 };
+const isToken = (d) => Object.prototype.hasOwnProperty.call(DATE_TOKENS, d);
+// מילת יחס -> מפתח יום: לפי שעון השרת כשיש, אחרת לפי שעון ישראל בדפדפן (גיבוי עד התשובה הראשונה)
+function resolveDate(date, clock) {
+  if (!date) return null;
+  if (!isToken(date)) return date;
+  return addDays((clock && clock.today) || israelTodayKey(), DATE_TOKENS[date]);
+}
 
 function readUrlState() {
   try {
     const p = new URLSearchParams(window.location.search);
     const d = p.get('date');
-    return { date: d && DATE_RE.test(d) ? d : null, branch: p.get('branch') || '' };
+    return { date: d && (DATE_RE.test(d) || isToken(d)) ? d : null, branch: p.get('branch') || '' };
   } catch {
     return { date: null, branch: '' };
   }
@@ -148,6 +158,8 @@ export default function ScheduleDay({
   const [clock, setClock] = useState(null);
   const [localToday, setLocalToday] = useState(null);
   const reqId = useRef(0);
+  const clockRef = useRef(null); // שעון השרת לקריאה בתוך ה-effect בלי להוסיף אותו לתלויות (לא טוענים מחדש על כל תשובה)
+  const retried = useRef(false);
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   const inA5Shell = useA5Shell();
@@ -164,7 +176,7 @@ export default function ScheduleDay({
     try {
       if (localStorage.getItem('lz_view') === 'table') setView('table');
     } catch { /* אחסון חסום - ברירת מחדל שורות */ }
-    setLocalToday(toKey(new Date()));
+    setLocalToday(israelTodayKey());
     setReady(true);
   }, []);
 
@@ -175,7 +187,9 @@ export default function ScheduleDay({
     setLoading(true);
     setError(null);
     const qs = new URLSearchParams();
-    if (date) qs.set('date', date);
+    // "היום" (מילת יחס) בלי שעון מהשרת: לא שולחים תאריך - השרת עונה ביום הישראלי שלו (המקור)
+    const key = date === 'today' && !clockRef.current ? null : resolveDate(date, clockRef.current);
+    if (key) qs.set('date', key);
     if (branch) qs.set('branch', branch);
     fetch('/api/schedule' + (qs.toString() ? '?' + qs.toString() : ''), { signal: ctrl.signal, credentials: 'same-origin', cache: 'no-store' })
       .then(async (res) => {
@@ -190,7 +204,12 @@ export default function ScheduleDay({
           return;
         }
         setData(body);
-        if (body && body.today) setClock({ today: body.today, tomorrow: body.tomorrow });
+        if (body && body.today) {
+          setClock({ today: body.today, tomorrow: body.tomorrow });
+          clockRef.current = { today: body.today, tomorrow: body.tomorrow };
+          // מילת יחס שפוענחה לפי שעון הדפדפן ויצאה שונה מהיום הישראלי של השרת (למשל שעון מחשב שגוי) - טעינה אחת מחדש
+          if (isToken(date) && body.date !== resolveDate(date, clockRef.current) && !retried.current) { retried.current = true; setTick((t) => t + 1); }
+        }
         setLoading(false);
       })
       .catch((e) => {
@@ -239,7 +258,7 @@ export default function ScheduleDay({
   const visible = stages.filter((s) => s.counts.total > 0 && (!filter || s.key === filter));
   const allTotal = stages.reduce((a, s) => a + s.counts.total, 0);
   // בורר התאריך חייב להישאר זמין גם בשגיאה (למשל ?date= לא תקין) כדי שיהיה אפשר לבחור יום אחר
-  const pickerDate = (data && data.date) || date || localToday;
+  const pickerDate = (data && data.date) || resolveDate(date, clock) || localToday;
   const pickerToday = (clock && clock.today) || localToday;
   const pickerTomorrow = (clock && clock.tomorrow) || (pickerToday ? addDays(pickerToday, 1) : null);
   const tools = { onExport, onDownload, onPrint, canExport: allowExport };

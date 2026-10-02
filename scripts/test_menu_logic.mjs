@@ -417,22 +417,27 @@ t('"לוז" (sched): לשונית אחרי "בית" → /schedule רק כש-page
 t('"לוז": תפריט הריחוף "היום" / "מחר" (תפריט-חדש.html, SCH-S01) - קישורים ל-/schedule?date= לפי שעון ישראל, לא לאורח ולא כשהלשונית "בקרוב"', () => {
   const live = buildMenuTree({ user: STAFF, permissions: { ...ALL_CLOSED, 'page:schedule': true }, settings: [], todayKey: '2026-10-04' });
   const items = tab(live, 'sched').items;
-  assert.deepEqual(items.map((x) => [x.kind, x.id, x.label, x.icon, x.href]), [
-    ['link', 'sched-today', 'היום', 'cal', '/schedule?date=2026-10-04'],
-    ['link', 'sched-tomorrow', 'מחר', 'arrl', '/schedule?date=2026-10-05'],
+  // הקישורים הם מילות יחס (today/tomorrow) שהדף מפענח לפי שעון ישראל של השרת - לא תאריך שחושב פעם אחת ב-layout
+  // ומתיישן אחרי חצות (סקירה 2.10, C). match = התאריך המוחלט של רגע הבנייה, רק להדגשה כשהכתובת היא ISO.
+  assert.deepEqual(items.map((x) => [x.kind, x.id, x.label, x.icon, x.href, x.match]), [
+    ['link', 'sched-today', 'היום', 'cal', '/schedule?date=today', '/schedule?date=2026-10-04'],
+    ['link', 'sched-tomorrow', 'מחר', 'arrl', '/schedule?date=tomorrow', '/schedule?date=2026-10-05'],
   ]);
-  // מעבר חודש/שנה בחשבון לוח-שנה טהור
-  assert.equal(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: '2026-12-31' }), 'sched').items[1].href, '/schedule?date=2027-01-01');
-  // בלי todayKey: היום לפי שעון ישראל (YYYY-MM-DD), לא Invalid Date
+  // מעבר חודש/שנה בחשבון לוח-שנה טהור (ב-match)
+  assert.equal(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: '2026-12-31' }), 'sched').items[1].match, '/schedule?date=2027-01-01');
+  // בלי todayKey: היום לפי שעון ישראל (YYYY-MM-DD), לא Invalid Date; ה-href לא תלוי בתאריך בכלל
   const auto = tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] }), 'sched').items;
-  assert.match(auto[0].href, /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/);
-  assert.notEqual(auto[0].href, auto[1].href);
+  assert.equal(auto[0].href, '/schedule?date=today'); assert.equal(auto[1].href, '/schedule?date=tomorrow');
+  assert.match(auto[0].match, /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/);
+  assert.notEqual(auto[0].match, auto[1].match);
   // todayKey לא תקין מתעלמים ממנו
-  assert.match(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: 'מחר' }), 'sched').items[0].href, /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/);
+  assert.match(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: 'מחר' }), 'sched').items[0].match, /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/);
   // "בקרוב": בלי שורות; אורח: בלי לשונית פעילה
   assert.deepEqual(tab(buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] }), 'sched').items, []);
   assert.deepEqual(tab(buildMenuTree({ user: null, settings: rows({ require_login: 'false' }) }), 'sched').items, []);
-  // סימון הנוכחי: הכתובת של "היום" מסמנת את שורת "היום"; תאריך אחר - רק את הלשונית
+  // סימון הנוכחי: מילת היחס מסמנת את השורה שלה; גם התאריך המוחלט של היום/מחר (דרך match); תאריך אחר - רק את הלשונית
+  assert.deepEqual(findActive(live, '/schedule', '', 'date=today'), { tabId: 'sched', itemId: 'sched-today' });
+  assert.deepEqual(findActive(live, '/schedule', '', '?date=tomorrow'), { tabId: 'sched', itemId: 'sched-tomorrow' });
   assert.deepEqual(findActive(live, '/schedule', '', 'date=2026-10-04'), { tabId: 'sched', itemId: 'sched-today' });
   assert.deepEqual(findActive(live, '/schedule', '', '?date=2026-10-05'), { tabId: 'sched', itemId: 'sched-tomorrow' });
   assert.deepEqual(findActive(live, '/schedule', '', 'date=2026-10-06'), { tabId: 'sched', itemId: null });
