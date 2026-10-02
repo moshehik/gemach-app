@@ -147,8 +147,8 @@
 .gm-ds.gm-lz .lz-stools{display:flex;align-items:center;gap:6px;margin-inline-start:auto}
 /* "הכל בוצע": לחצן וי כפול עגול ליד כותרת השלב (לחצן 34/54/72) */
 .gm-ds.gm-lz .lz-hrow .lz-all{width:36px;height:36px;border-radius:999px;flex:none;min-height:0}
-/* עד שהלוגיקה מחוברת הלחצן כבוי - אותו מראה (הפלטה צובעת ibtn:disabled באפור) */
-.gm-ds.gm-lz .lz-hrow .lz-all:disabled{background:var(--gold-light);color:var(--navy);border-color:var(--gold-b);box-shadow:none}
+/* כבוי (בלי הרשאה / בקשה בדרך) - אותו מראה כמו בעיצוב; מוגבל למנוחה כדי שהריחוף/המיקוד של הפלטה ימשיכו לעבוד (סקירה B) */
+.gm-ds.gm-lz .lz-hrow .lz-all:disabled:not(:hover):not(:focus-visible){background:var(--gold-light);color:var(--navy);border-color:var(--gold-b);box-shadow:none}
 .gm-ds.gm-lz .lz-hrow .lz-all .ic{width:18px;height:18px}
 .gm-ds.gm-lz .chip.st-today{background:#ebdfd3;border:1px solid #d6c4b0;color:var(--navy-900);font-weight:700}
 /* הכרטיס: מסגרת כחולה כהה ופנים פנינה (עיצוב 1144-1145; ה-!important דורס את כלל ה"זכוכית" הלבנה של הפלטה) */
@@ -187,10 +187,14 @@
 .gm-ds.gm-lz .btn.lz-mark .ic.evck{color:#f38a6b!important;stroke:#f38a6b!important;stroke-width:3;stroke-dasharray:24;stroke-dashoffset:24;animation:evDraw .35s ease-out forwards}
 @keyframes evDraw{to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .btn.lz-mark .ic.evck{animation:none;stroke-dashoffset:0}}
-/* לחצן שעדיין לא חובר ללוגיקת הסימון: אותו מראה, רק הסמן (globals.css: button:disabled{opacity:.7} - מנוטרל) */
-.gm-ds.gm-lz .btn.lz-mark:disabled, .gm-ds.gm-lz .lz-all:disabled, .gm-ds.gm-lz .xlbtn:disabled{opacity:1;cursor:not-allowed}
-.gm-ds.gm-lz .btn.lz-mark:disabled:not(.on){background:transparent;color:var(--navy);border-color:var(--navy)}
-.gm-ds.gm-lz .btn.lz-mark:disabled:not(.on) .ic{color:var(--navy)!important;stroke:var(--navy)!important}
+/* לחצן כבוי (בלי הרשאה / בקשה בדרך / האשף עוד לא מחובר): אותו מראה, רק הסמן (globals.css: button:disabled{opacity:.7}
+   - מנוטרל). "הוחזר לא תקין" (lz-bad) לא מקבל opacity:1 - הוא מופיע בריחוף דרך opacity (סקירה B). איפוס המראה הכבוי
+   מוגבל למנוחה (:not(:hover):not(:focus-visible)) כדי שהריחוף/המיקוד יראו כמו בעיצוב גם כשהלחצן כבוי */
+.gm-ds.gm-lz .btn.lz-mark:disabled:not(.lz-bad), .gm-ds.gm-lz .lz-all:disabled, .gm-ds.gm-lz .xlbtn:disabled{opacity:1;cursor:not-allowed}
+.gm-ds.gm-lz .btn.lz-mark.lz-bad:disabled{cursor:not-allowed}
+.gm-ds.gm-lz .btn.lz-mark:disabled:not(.on):not(:hover):not(:focus-visible){background:transparent;color:var(--navy);border-color:var(--navy)}
+.gm-ds.gm-lz .btn.lz-mark:disabled:not(.on):not(:hover):not(:focus-visible) .ic{color:var(--navy)!important;stroke:var(--navy)!important}
+.gm-ds.gm-lz .btn.lz-mark.lz-bad:disabled:not(:hover):not(:focus-visible){color:var(--rose-700,#9b3b5a);border-color:var(--rose-700,#9b3b5a)}
 /* שלבי ההחזרה (עיצוב 2238-2244): "הוחזר לא תקין" צף ליד "בוצע" בריחוף / מיקוד / מגע; בטבלה המקום שמור */
 .gm-ds.gm-lz .lz-retw{display:inline-flex;align-items:center;gap:8px}
 .gm-ds.gm-lz .lz-retw .lz-bad{overflow:hidden;white-space:nowrap;max-width:0;opacity:0;visibility:hidden;margin-inline-end:-8px;padding-inline:0!important;border-width:0!important;transition:max-width .22s ease,opacity .18s ease,padding .22s ease,margin .22s ease,visibility 0s linear .22s}
@@ -198,6 +202,19 @@
 .gm-ds.gm-lz .rtbl .lz-retw .lz-bad{max-width:220px;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important;transition:opacity .18s ease,visibility 0s linear .18s}
 .gm-ds.gm-lz .rtbl .lz-retw:is(:hover,:focus-within,.open) .lz-bad{transition-delay:0s}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .lz-retw .lz-bad{transition:none}}
+/* ===== חלון "בטוח?" (S03/S04; L.confirm בעיצוב, שורות 1207-1210) וטוסט (L.say) - על רכיבי הפלטה ===== */
+.gm-ds.gm-lz .dlg.lz-cf{max-width:520px}
+.gm-ds.gm-lz .lz-cf .lz-cf-effect{display:block;margin-top:6px;font-size:14px;color:var(--navy-700)}
+.gm-ds.gm-lz .lz-det{display:flex;flex-direction:column;gap:6px;margin:14px 0 4px;text-align:start}
+.gm-ds.gm-lz .lz-det .li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08)}
+.gm-ds.gm-lz .lz-det .li .t{min-width:0}
+.gm-ds.gm-lz .lz-det .li .t b{display:block}
+.gm-ds.gm-lz .lz-det .li .t small{display:block;color:var(--ink3)}
+.gm-ds.gm-lz .lz-more{font-size:14px;opacity:.8;padding:4px 10px}
+.gm-ds.gm-lz #toast .tclose{display:grid;place-items:center;padding:8px}
+.gm-ds.gm-lz #toast .tclose .ic{width:14px;height:14px;color:#fff;stroke:#fff}
+.gm-ds.gm-lz #toast.lz-toast-error .tb, .gm-ds.gm-lz #toast.lz-toast-warn .tb{background:#fde8df;color:var(--navy-900)}
+.gm-ds.gm-lz #toast.lz-toast-error .tb .ic, .gm-ds.gm-lz #toast.lz-toast-warn .tb .ic{color:var(--navy-900);stroke:var(--navy-900)}
 .gm-ds.gm-lz .lz-go{display:inline-grid;place-items:center;flex:none;color:var(--navy-500);text-decoration:none;transform:rotate(90deg);padding:8px;border-radius:10px}
 .gm-ds.gm-lz .lz-go:is(:hover,:focus-visible){color:var(--navy);outline:0}
 .gm-ds.gm-lz .lz-go:focus-visible{box-shadow:0 0 0 2px var(--gold)}
@@ -208,7 +225,7 @@
 .gm-ds.gm-lz .hres .lz-r .hdet-in .hv-r small{width:90px}
 /* טבלה: כותרת כחולה כהה וזהב (הפלטה) - globals.css כופה רקע קרם וצל על th ("thead th, th", כותרת דביקה),
    ו-design-overrides.css כופה צבע וגופן Assistant ב-!important ("table thead th") */
-.gm-ds.gm-lz .rtbl thead tr th{position:static!important;background-color:var(--navy)!important;color:var(--gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;outline:0;z-index:auto;transition:none}
+.gm-ds.gm-lz .rtbl thead tr th{position:static!important;background-color:var(--navy)!important;color:var(--gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;border-bottom:0!important;outline:0;z-index:auto;transition:none}
 /* ברק חולף על שורת טבלה בריחוף (עיצוב 37-38) */
 .gm-ds.gm-lz .rtbl tbody tr{background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}
 .gm-ds.gm-lz .rtbl tbody tr:hover, .gm-ds.gm-lz .rtbl tbody tr:focus-within{background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(90deg,rgba(241,220,143,.34),rgba(212,176,74,.26) 55%,rgba(247,236,196,.38));background-position:-120% 0,0 0;transition:background-position 2.2s cubic-bezier(.45,0,.25,1)}

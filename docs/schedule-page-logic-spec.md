@@ -172,7 +172,7 @@
 | `app/api/schedule/marks/route.js` | `POST` סימון / ביטול / הכל-בוצע; `GET ?orderId=` הסימונים של הזמנה. |
 | `lib/permissionsMetadata.js` | פריט חדש `feature:schedule_mark_all_done` (ברירת מחדל: הנהלה ראשית + מנהלת סניף). |
 | `app/components/schedule/useStageMarks.js` | ה-hook בלקוח: עדכון אופטימי, החזרה לאחור, טוסט, ספירה מחדש. |
-| `app/components/schedule/MarkControls.js` + `marks.css` | לחצן "בוצע" בשורה, "הוחזר לא תקין" בריחוף, "הכל בוצע", חלון "בטוח?", טוסט — מינימלי על רכיבי הפלטה. |
+| `app/components/schedule/MarkControls.js` + `MarkDialogs.js` | לחצן "בוצע" בשורה, "הוחזר לא תקין" בריחוף, "הכל בוצע" (ה-markup של העיצוב, CSS ב-`app/schedule/schedule.css`), חלון "בטוח?" וטוסט על רכיבי הפלטה. |
 | `app/api/audit/route.js` | היסטוריית הזמנה (`entityType=Order`) כוללת גם את שורות היומן של הסימונים של אותה הזמנה. |
 | `scripts/schedule-tests/marks.test.mjs` | 22 בדיקות × 3 אזורי זמן (כולל "הטבלה חסרה"). |
 
