@@ -302,7 +302,7 @@ export default function MyProfilePage() {
             </div>
           </div>
           {/* דף הכניסה החדש (Q05): אותה הגדרה כמו המתג במסך הכניסה ובתפריט המשתמש */}
-          <AutoClockSwitch variant="profile" />
+          <AutoClockSwitch />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>

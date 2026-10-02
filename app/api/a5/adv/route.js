@@ -8,7 +8,7 @@ import { buildMultiWordRelationNameCondition, buildMultiWordNameCondition } from
 import { getHebrewDateString, getIsraelDayRange, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getLateReturnInfo, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
-import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays } from '@/lib/businessDays';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays, rolledSourceRange } from '@/lib/businessDays';
 import { parseFieldGroups, getUnsatisfiedFieldGroups } from '@/lib/customerValidation';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 
@@ -437,13 +437,21 @@ async function focusRentRet(adv, cfg, unsavedIds, kind) {
   // אירועים שמועד ההחזרה הצפוי שלהם (יום העבודה הראשון אחריהם) הוא key - חלון נגזר מההופכי של הכלל והרשימה
   // הנוכחיים (לא מספר ימים קבוע), כדי שימים סגורים ביומן לא יפילו הזמנות בשקט; בנוסף לרצפה של 7 ימים אחורה.
   const dueEventStart = (key) => { const inv = inverseBusinessDays(key, 1, nonWorkingDays); const floor = addKey(key, -7); return inv && inv.startKey < floor ? inv.startKey : floor; };
-  const dueWindow = (key) => ({
-    OR: [
-      { eventDate: { gte: dayRange(dueEventStart(key)).start, lte: dayRange(key).end } },
-      { toDate: { gte: dayRange(key).start, lte: dayRange(key).end } },
-      { returnDate: { gte: dayRange(key).start, lte: dayRange(key).end } },
-    ],
-  });
+  // תאריך מפורש (toDate/returnDate) שנופל על יום סגור מתגלגל ליום העובד הבא (getExpectedReturnKey, החלטת הבעלים
+  // 2.10.2026), לכן חלון ה-SQL שלו = היום + רצף הימים הסגורים שלפניו (rolledSourceRange: ראשון אוסף את שישי ושבת;
+  // אותו חלון כמו שלב 8 בלו״ז); ביום סגור אין סעיף כזה בכלל - שום החזרה לא נוחתת עליו. הסינון המדויק ב-JS.
+  const dueWindow = (key) => {
+    const explicitWin = rolledSourceRange(key, nonWorkingDays);
+    return {
+      OR: [
+        { eventDate: { gte: dayRange(dueEventStart(key)).start, lte: dayRange(key).end } },
+        ...(explicitWin ? [
+          { toDate: { gte: dayRange(explicitWin.startKey).start, lte: dayRange(explicitWin.endKey).end } },
+          { returnDate: { gte: dayRange(explicitWin.startKey).start, lte: dayRange(explicitWin.endKey).end } },
+        ] : []),
+      ],
+    };
+  };
   const stSql = [];
   const jsPreds = [];
   const active = (o) => (o.items || []).filter((i) => !i.isDeleted);

@@ -329,11 +329,20 @@ export default async function RootLayout({ children }) {
   const settingValue = (key) => settings.find(s => s.key === key)?.value;
   const loginVariant = {
     useNew: settingValue('login_page_new') !== 'false',
+    isAuthenticated, // שעון הנוכחות: "חזרה למערכת" לעובד מחובר, "חזרה לכניסה למערכת" לאורח (בלי שאילתה נוספת)
     brand: {
       ...brandBar({ gmachName: settingValue('gmach_name'), gmachSubtitle: settingValue('gmach_subtitle'), isMainGemach: isMainGemach() }),
       hasLogo: typeof settingValue('BRAND_LOGO') === 'string' && settingValue('BRAND_LOGO').length > 0,
     },
   };
+
+  // שעון הנוכחות בעיצוב דף הכניסה החדש (app/components/login/PunchClockNew.js): דף מלא משלו, בלי מעטפת האתר ובלי
+  // תפריט הניווט (כמו דף הכניסה), ובעיצוב הבהיר של הפלטה. אותו מתג כמו הכניסה: login_page_new = 'false' -> הדף הישן
+  // נשאר בתוך המעטפת כמו קודם. הדף עצמו (app/punch-clock/page.js) בוחר גרסה לפי אותו ערך מה-context.
+  // התאמה מדויקת לנתיב (לא תחילית גולמית): רק /punch-clock ותת-נתיביו. isPunchClock (פטור הכניסה למעלה) נשאר כמו שהיה.
+  const isPunchClockPage = requestPathname === '/punch-clock' || requestPathname.startsWith('/punch-clock/');
+  const punchBare = isPunchClockPage && loginVariant.useNew;
+  const lightChrome = showLogin || punchBare;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
@@ -345,11 +354,11 @@ export default async function RootLayout({ children }) {
     <html
       lang="he"
       dir="rtl"
-      data-theme={!showLogin ? themePreference : 'light'}
-      data-palette={!showLogin ? paletteAttr : undefined}
-      data-font={!showLogin ? fontAttr : undefined}
-      data-density={!showLogin ? densityAttr : undefined}
-      data-text-scale={!showLogin ? textScaleAttr : undefined}
+      data-theme={!lightChrome ? themePreference : 'light'}
+      data-palette={!lightChrome ? paletteAttr : undefined}
+      data-font={!lightChrome ? fontAttr : undefined}
+      data-density={!lightChrome ? densityAttr : undefined}
+      data-text-scale={!lightChrome ? textScaleAttr : undefined}
       suppressHydrationWarning
     >
       <head>
@@ -659,7 +668,7 @@ function cpCssText(vars) {
 `
           }}
         />
-        {!showLogin && customPaletteCss && (
+        {!lightChrome && customPaletteCss && (
           <style id="custom-palette-style" dangerouslySetInnerHTML={{ __html: customPaletteCss }} />
         )}
       </head>
@@ -694,6 +703,12 @@ function cpCssText(vars) {
         {!showLogin && isAuthenticated && <DesignPrefsSync />}
         {showLogin ? (
           <LoginGate data-element-name="רכיב_layout_7" />
+        ) : punchBare ? (
+          <LabelsProvider>
+            <PopupProvider>
+              {children}
+            </PopupProvider>
+          </LabelsProvider>
         ) : (
           <LabelsProvider data-element-name="רכיב_layout_8">
             <PopupProvider data-element-name="רכיב_layout_22">
