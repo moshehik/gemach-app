@@ -61,7 +61,10 @@ test('toRows: one row per sticker; empty day empty; queries: orderInfo once + it
   assert.equal(r.rows.length, 18);
   assert.deepEqual(Object.keys(r.rows[0]), ['הזמנה', 'לקוחה', 'דגם', 'מידה', 'אירוע', 'שמלה', 'מתוך', 'משלוח / איסוף', 'יש תיקון', 'ברקוד פריט']);
   assert.equal(calls.filter((c) => c.model === 'orderItem').length, 1);
-  assert.equal(calls.filter((c) => c.model === 'order' && c.args.select && c.args.select.payments).length, 1);
+  // orderInfo once (delivery + city only): PP-08 shows no money, so the payments relation is not loaded
+  const orderInfoCalls = calls.filter((c) => c.model === 'order' && c.args.select && Object.keys(c.args.select).sort().join(',') === 'customer,deliveryDirection,isDelivery,orderId');
+  assert.equal(orderInfoCalls.length, 1);
+  assert.equal(calls.filter((c) => c.model === 'order' && c.args.select && c.args.select.payments).length, 0, 'no payments for a page without money');
   const empty = await g2Payload(['PP-08'], { orders: [] });
   assert.equal(empty.payload.pages[0].data.empty, true);
 });
