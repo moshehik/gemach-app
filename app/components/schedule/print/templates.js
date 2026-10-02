@@ -3,10 +3,12 @@
 // התבנית מקבלת { meta, page } מהמטען של GET /api/schedule/print ומחזירה <Sheet> אחד או כמה (הזמנה בכל עמוד).
 import PP01 from './pages/PP01';
 import PP15 from './pages/PP15';
+import PP16 from './pages/PP16';
 
 const TEMPLATES = {
   'PP-01': PP01,
   'PP-15': PP15,
+  'PP-16': PP16,
 };
 
 export function getTemplate(key) {

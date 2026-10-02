@@ -1,0 +1,9 @@
+/* app/components/schedule/print/pages/pp16.css — עיצוב מקומי לדף 16 (דף קבלת החזרות). הכללים המשותפים של בלוק
+   משפחה (.pp-ob / .pp-ob-h / .pp-ob-n / .pp-dg) כבר ב-print.css; כאן רק מה שהתצוגה כתבה inline ב-p16():
+   ברקוד בכותרת הבלוק בעמודה (ברקוד + הקוד מתחתיו, גופן 7.5px) ועמודת "מה הבעיה" ברוחב 42 מ"מ.
+   צבעים קבועים בלבד (בלי משתני ערכת נושא), הכול תחום ל-.pp-sheet[data-pid="PP-16"]. */
+.pp-sheet[data-pid="PP-16"] .pp-ob-h .sp.pp-mrt-bc{display:flex;flex-direction:column;align-items:center}
+.pp-sheet[data-pid="PP-16"] .pp-ob-h .sp.pp-mrt-bc small{font-size:7.5px;line-height:1.1}
+.pp-sheet[data-pid="PP-16"] .pp-prob .pp-ul{min-width:42mm}
+/* הערת מצב קיים של פריט שכבר הוחזר (הלשון של סימון הלו״ז: "הוחזר" / "הוחזר לא תקין") */
+.pp-sheet[data-pid="PP-16"] .pp-t td small.pp-st{display:block;margin-top:.3mm;font-weight:700;color:#111}
