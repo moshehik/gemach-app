@@ -362,8 +362,17 @@ t('login.css: שדות הקלט מנצחים את design-overrides.css input:not
   const base = css.slice(css.indexOf(`.gm-ds.gm-login ${sel}{`), css.indexOf('\n', css.indexOf(`.gm-ds.gm-login ${sel}{`)));
   assert.ok(base.includes('background-color:rgba(255,255,255,.72)') && base.includes('border-radius:14px') && base.includes('font-size:16px') && base.includes('border:1.5px solid var(--gm-line)'), base);
   assert.ok(!/\.gm-ds\.gm-login \.inp\{/.test(css), 'no low-specificity .inp base rule left');
-  assert.ok(!src('../app/components/login/AutoClockSwitch.js').includes("background: '#fff'"), 'no inline white knob');
-  assert.ok(css.includes('.gm-autoclock-knob{'));
+  assert.ok(!css.includes('.gm-autoclock-knob'), 'no leftover user-menu knob rule');
+});
+
+
+console.log('המתג "רישום אוטומטי" רק בכרטיס הפרופיל (הבעלים 2.10.2026)');
+t('AutoClockSwitch מיובא רק מדף הפרופיל - לא מתפריט המשתמש הישן, לא מהסרגל החדש ולא ממגירת הנייד', () => {
+  for (const f of ['../app/components/UserMenu.js', '../app/components/menu/MenuA5Shell.js', '../app/components/menu/MenuUserPanel.js', '../app/components/menu/MenuTabPanel.js']) {
+    assert.ok(!src(f).includes('AutoClockSwitch'), `${f} must not render the switch`);
+  }
+  assert.ok(src('../app/profile/page.js').includes('<AutoClockSwitch />'));
+  assert.ok(!src('../app/components/login/AutoClockSwitch.js').includes("variant"), 'single profile-card variant only');
 });
 
 console.log(`\n[TZ=${process.env.TZ}] ${passed} בדיקות עברו${process.exitCode ? ', יש כישלונות' : ''}`);

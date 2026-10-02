@@ -1,10 +1,8 @@
 'use client';
 
-// המתג "רשום לי התחלת עבודה אוטומטית בכניסה" בתפריט "הפרופיל שלי" (Q05/L16) ובדף הפרופיל - אותה הגדרה
-// כמו במסך הכניסה (GET/PUT /api/me/auto-clock-in, נשמרת בהעדפות העובד). variant:
-//   'legacy'  - שורה בתפריט המשתמש הישן (UserMenu.js, מחלקות .user-menu-item)
-//   'a5'      - שורה בפאנל המשתמש של הסרגל החדש (MenuA5Shell, מחלקות .sn-link + המתג .sw של הפלטה)
-//   'profile' - שורת תיבת סימון בדף הפרופיל (app/profile/page.js, .checkbox-row)
+// המתג "רשום לי התחלת עבודה אוטומטית בכניסה" בכרטיס הפרופיל של העובד בלבד (דף /profile, "הפרופיל שלי") - אותה
+// הגדרה כמו במסך הכניסה (GET/PUT /api/me/auto-clock-in, נשמרת בהעדפות העובד). הבעלים (2.10.2026): לא בתפריט
+// המשתמש הנפתח (הישן, הסרגל החדש, מגירת הנייד) - רק בתוך כרטיס הפרופיל. Q05 התפרש כדף הפרופיל.
 // העתק מקומי בדפדפן (gm-login-autoclock:<id>) מעודכן גם כאן, כדי שהמתג במסך הכניסה ישקף את הערך האחרון.
 
 import { useEffect, useState } from 'react';
@@ -29,7 +27,7 @@ export function readAutoClockMirror(employeeId) {
   }
 }
 
-export default function AutoClockSwitch({ variant = 'legacy' }) {
+export default function AutoClockSwitch() {
   const [enabled, setEnabled] = useState(null); // null = טוען / לא מחובר
   const [employeeId, setEmployeeId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -82,59 +80,15 @@ export default function AutoClockSwitch({ variant = 'legacy' }) {
   const checked = enabled === true;
   const disabled = enabled === null || saving;
 
-  if (variant === 'profile') {
-    return (
-      <div className="field" style={{ gridColumn: '1 / -1' }}>
-        <div className="checkbox-row">
-          <input type="checkbox" id="profile-autoClockIn" checked={checked} disabled={disabled} onChange={toggle} />
-          <label htmlFor="profile-autoClockIn">{AUTO_CLOCK_LABEL}</label>
-        </div>
-        <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-          {error || 'נשמר מיד, בלי לחיצה על "שמירת פרטים". פועל בכל מחשב שבו נכנסים.'}
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === 'a5') {
-    return (
-      <label className="sn-link" role="menuitemcheckbox" aria-checked={checked ? 'true' : 'false'} style={{ cursor: disabled ? 'default' : 'pointer', alignItems: 'flex-start', gap: '10px' }} title={error || AUTO_CLOCK_HINT}>
-        <span className="sw" style={{ marginTop: '2px' }}>
-          <input type="checkbox" checked={checked} disabled={disabled} onChange={toggle} aria-label={AUTO_CLOCK_LABEL} />
-          <i aria-hidden="true" />
-        </span>
-        <span style={{ display: 'flex', flexDirection: 'column', whiteSpace: 'normal', minWidth: 0 }}>
-          <span>{AUTO_CLOCK_LABEL}</span>
-          <small style={{ fontSize: '12px', color: error ? 'var(--gm-red)' : 'var(--gm-ink3)', lineHeight: 1.35 }}>{error || AUTO_CLOCK_HINT}</small>
-        </span>
-      </label>
-    );
-  }
-
-  // legacy: תפריט המשתמש הישן (UserMenu.js)
   return (
-    <label
-      className="user-menu-item"
-      role="menuitemcheckbox"
-      aria-checked={checked ? 'true' : 'false'}
-      title={error || AUTO_CLOCK_HINT}
-      style={{ cursor: disabled ? 'default' : 'pointer', alignItems: 'flex-start', gap: '10px', whiteSpace: 'normal' }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          position: 'relative', flex: 'none', width: '34px', height: '20px', borderRadius: '999px', marginTop: '2px',
-          background: checked ? 'var(--primary-solid)' : 'var(--border-strong)', transition: 'background .2s',
-        }}
-      >
-        {/* הכפתור הלבן כמחלקה (gm-autoclock-knob ב-login.css) ולא כ-style: design-overrides.css דורס רקע לבן inline */}
-        <span className="gm-autoclock-knob" style={{ insetInlineStart: checked ? '16px' : '2px' }} />
-      </span>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={toggle} aria-label={AUTO_CLOCK_LABEL} style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px', margin: 0 }} />
-      <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <span>{AUTO_CLOCK_LABEL}</span>
-        <small style={{ fontSize: '11px', color: error ? 'var(--danger)' : 'var(--text-3)', lineHeight: 1.35 }}>{error || AUTO_CLOCK_HINT}</small>
-      </span>
-    </label>
+    <div className="field" style={{ gridColumn: '1 / -1' }}>
+      <div className="checkbox-row">
+        <input type="checkbox" id="profile-autoClockIn" checked={checked} disabled={disabled} onChange={toggle} />
+        <label htmlFor="profile-autoClockIn">{AUTO_CLOCK_LABEL}</label>
+      </div>
+      <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
+        {error || 'נשמר מיד, בלי לחיצה על "שמירת פרטים". פועל בכל מחשב שבו נכנסים.'}
+      </div>
+    </div>
   );
 }
