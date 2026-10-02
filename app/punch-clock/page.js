@@ -9,7 +9,7 @@ import PunchClockNew from '@/app/components/login/PunchClockNew';
 import PunchClockLegacy from './PunchClockLegacy';
 
 export default function PunchClockPage() {
-  const { useNew, brand } = useLoginVariant();
+  const { useNew, brand, isAuthenticated } = useLoginVariant();
   if (useNew === false) return <PunchClockLegacy />;
-  return <PunchClockNew brand={brand} />;
+  return <PunchClockNew brand={brand} isAuthenticated={!!isAuthenticated} />;
 }

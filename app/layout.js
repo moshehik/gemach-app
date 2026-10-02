@@ -329,6 +329,7 @@ export default async function RootLayout({ children }) {
   const settingValue = (key) => settings.find(s => s.key === key)?.value;
   const loginVariant = {
     useNew: settingValue('login_page_new') !== 'false',
+    isAuthenticated, // שעון הנוכחות: "חזרה למערכת" לעובד מחובר, "חזרה לכניסה למערכת" לאורח (בלי שאילתה נוספת)
     brand: {
       ...brandBar({ gmachName: settingValue('gmach_name'), gmachSubtitle: settingValue('gmach_subtitle'), isMainGemach: isMainGemach() }),
       hasLogo: typeof settingValue('BRAND_LOGO') === 'string' && settingValue('BRAND_LOGO').length > 0,
@@ -338,7 +339,9 @@ export default async function RootLayout({ children }) {
   // שעון הנוכחות בעיצוב דף הכניסה החדש (app/components/login/PunchClockNew.js): דף מלא משלו, בלי מעטפת האתר ובלי
   // תפריט הניווט (כמו דף הכניסה), ובעיצוב הבהיר של הפלטה. אותו מתג כמו הכניסה: login_page_new = 'false' -> הדף הישן
   // נשאר בתוך המעטפת כמו קודם. הדף עצמו (app/punch-clock/page.js) בוחר גרסה לפי אותו ערך מה-context.
-  const punchBare = isPunchClock && loginVariant.useNew;
+  // התאמה מדויקת לנתיב (לא תחילית גולמית): רק /punch-clock ותת-נתיביו. isPunchClock (פטור הכניסה למעלה) נשאר כמו שהיה.
+  const isPunchClockPage = requestPathname === '/punch-clock' || requestPathname.startsWith('/punch-clock/');
+  const punchBare = isPunchClockPage && loginVariant.useNew;
   const lightChrome = showLogin || punchBare;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';

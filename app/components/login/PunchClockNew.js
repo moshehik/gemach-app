@@ -42,7 +42,7 @@ function NowClock() {
   );
 }
 
-export default function PunchClockNew({ brand }) {
+export default function PunchClockNew({ brand, isAuthenticated = false }) {
   const [greeting, setGreeting] = useState('');
   const [employees, setEmployees] = useState([]);
   const [listLoaded, setListLoaded] = useState(false);
@@ -234,7 +234,7 @@ export default function PunchClockNew({ brand }) {
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/">
           <I n="back" sm />
-          <span>חזרה לכניסה למערכת</span>
+          <span>{isAuthenticated ? 'חזרה למערכת' : 'חזרה לכניסה למערכת'}</span>
         </a>
       </div>
     </>
@@ -248,10 +248,10 @@ export default function PunchClockNew({ brand }) {
         <div className="lg-wrap">
           <div className="lg-hero">
             <h1 id="pc-ttl">{greeting}</h1>
-            <p>רישום כניסה ויציאה למשמרת</p>
+            <p id="pc-sub">רישום כניסה ויציאה למשמרת</p>
             <NowClock />
           </div>
-          <section className="card lg-card" aria-labelledby="pc-ttl">{formBody}</section>
+          <section className="card lg-card" aria-labelledby="pc-sub">{formBody}</section>
         </div>
       </main>
       {confirm ? (

@@ -6,7 +6,8 @@
    הגופן של הברכה (Gveret Levin) הוא גופן העיצוב המאושר; Rubik נטען כבר ב-components.css. */
 @import url('https://fonts.googleapis.com/css2?family=Gveret+Levin&display=swap');
 
-.gm-ds.gm-login{--lg-petal:#f6d9cb;--lg-glass:rgba(255,255,255,.48);--lg-gold-soft:#f6edcf;--lg-gold-ink:#654c0b;
+/* --lg-base = הרקע הבהיר של האתר (--bg בערכה הבהירה, body בבסיס העיצוב): שכבת בסיס מתחת לתמונת הרקע כשה-html כהה (שעון נוכחות בניווט פנימי, punch-clock.css) */
+.gm-ds.gm-login{--lg-petal:#f6d9cb;--lg-base:#faf7f2;--lg-glass:rgba(255,255,255,.48);--lg-gold-soft:#f6edcf;--lg-gold-ink:#654c0b;
   --lg-danger:#8f2a2a;--lg-danger-soft:#fbe9e7;--lg-danger-line:#e3a9a3;--lg-ok:#1f6b45;--lg-ok-soft:#e3f3ea;
   --lg-sh:0 1px 2px rgba(15,44,82,.06),0 24px 60px -24px rgba(15,44,82,.45);
   --lg-f-hand:'Gveret Levin','Playpen Sans Hebrew','Segoe Print','Comic Sans MS',cursive;

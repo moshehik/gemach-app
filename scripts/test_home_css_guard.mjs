@@ -305,6 +305,21 @@ t('punch-clock.css: אין רקע לבן קשיח, אין !important על רקע
 t('punch-clock.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
   assert.deepEqual(mediaBeforeBase(punchRules, 'punch-clock.css'), []);
 });
+t('login.css / punch-clock.css: משתני CSS (custom properties) עם צבע קשיח - רק מרשימה מאושרת (צבע חדש = אישור והשוואה לעיצוב)', () => {
+  // הבדיקות על background* לא רואות צבע שמוגדר כמשתנה ומשמש אחר כך; לכן נסרקות גם הגדרות --x: #hex / rgb(a) עצמן.
+  // --lg-* = ערכי login-page.html (:root), --k-* = החלון הכהה של הפלטה. punch-clock.css: אסור בו שום צבע קשיח במשתנה.
+  const APPROVED = new Set(['--lg-petal', '--lg-base', '--lg-glass', '--lg-gold-soft', '--lg-gold-ink', '--lg-danger', '--lg-danger-soft', '--lg-danger-line',
+    '--lg-ok', '--lg-ok-soft', '--lg-sh', '--k-bg', '--k-sheen', '--k-solid', '--k-ink', '--k-sub', '--k-row', '--k-rowb', '--k-bd', '--k-gap', '--k-ghost', '--k-ic', '--k-err', '--k-sh']);
+  const COLOR = /#[0-9a-f]{3,8}\b|rgba?\(/i;
+  const check = (file, rules, allowed) => rules.flatMap((r) => decls(r.body)
+    .filter((d) => d.prop.startsWith('--') && COLOR.test(d.value) && !(allowed && allowed.has(d.prop)))
+    .map((d) => `${file}: ${r.sel} { ${d.prop}: ${d.value} }`));
+  const LOGIN_CSS2 = read('../app/components/login/login.css');
+  const bad = [...check('login.css', parseCss(LOGIN_CSS2), APPROVED), ...check('punch-clock.css', punchRules, null)];
+  assert.deepEqual(bad, [], 'משתנה צבע חדש: ' + bad.join(' | '));
+  // והמשתנה שמשמש את שכבת הבסיס של המסך המלא מוגדר ב-login.css (לא ב-punch-clock.css)
+  assert.ok(/--lg-base:#faf7f2/.test(LOGIN_CSS2) && /background:var\(--lg-base\)!important/.test(PUNCH_CSS), 'שכבת הבסיס צריכה להשתמש ב-var(--lg-base)');
+});
 t('login.css: הפלטה כופה על כל .gm-ds .card רקע לבן 30% ב-!important => כרטיס הדף המלא (כניסה + שעון נוכחות) חייב לדרוס ל-48% של העיצוב', () => {
   const LOGIN_CSS = read('../app/components/login/login.css');
   const paletteForcesCard = parseCss(PALETTE).some((r) => /^\.gm-ds \.card\b/.test(splitSel(r.sel)[0]) && setsProp(r, /^background$/).some(isImportant));
