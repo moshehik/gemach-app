@@ -33,6 +33,7 @@ const worker = { id: 'emp-worker', roleId: 5 };
 function installWithTable(opts = {}) {
   installDb({ ...opts, extra: { scheduleStageMark: [], ...(opts.extra || {}) } });
   globalThis.__MOCK_WRITABLE = ['scheduleStageMark', 'orderItem'];
+  M.resetMarksTableState(); // a "missing table" seen earlier in the same test is memoised for 5 minutes
 }
 
 beforeEach(() => {
@@ -415,6 +416,23 @@ test('late alerts follow the mark: marking a past-day return clears late_not_don
   assert.equal(u.results[0].row.alerts[0].daysLate, 7);
   const order = ORDERS.find((o) => o.orderId === 1017);
   order.items[0].isReturned = false; order.items[0].returnDate = null; order.items[0].returnedOk = false;
+});
+
+test('late_not_done for stages without an existing field (4/5/9) exists only once the mark table exists; marking clears it', async () => {
+  // Thu 24.9.2026 viewed from 1.10: prep rows of that day (events Tue 29.9 -> 3 business days back over Sukkot)
+  let res = await day('2026-09-24');
+  const prepAbsent = stageOf(res, 'prep').items;
+  assert.ok(prepAbsent.length > 0);
+  assert.ok(prepAbsent.every((r) => r.done === null && !r.alerts.some((a) => a.code === 'late_not_done')), 'table absent: unknown, no late alert');
+  installWithTable();
+  res = await day('2026-09-24');
+  const prep = stageOf(res, 'prep').items;
+  assert.ok(prep.every((r) => r.done === false && r.alerts.some((a) => a.code === 'late_not_done' && a.daysLate === 7)), 'table present: not marked on a past day = late');
+  const r = await apply({ action: 'mark', stageKey: 'prep', dayKey: '2026-09-24', orderId: prep[0].orderId, outcome: null, source: 'row' });
+  assert.deepEqual(r.results[0].row.alerts, []);
+  res = await day('2026-09-24');
+  assert.deepEqual(rowOf(res, 'prep', prep[0].orderId).alerts, []);
+  assert.equal(stageOf(res, 'prep').counts.alerts, prep.length - 1);
 });
 
 // ---- הנתיב: שערים -----------------------------------------------------------------------------------

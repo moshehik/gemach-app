@@ -1,4 +1,6 @@
-# לו״ז יומי — שכבת הנתונים והלוגיקה (שלב 1: קריאה בלבד)
+# לו״ז יומי — שכבת הנתונים והלוגיקה
+
+> **שלב 2 (2.10.2026, ענף `feature/schedule-marks-2026-10-02`): סימון "בוצע"** — ר' הסעיף "סימון בוצע (ScheduleStageMark)" בסוף המסמך. השאר מתאר את שלב 1 (קריאה).
 
 **מצב (2026-10-02, אחרי סקירה עצמאית של PR #212):** `GET /api/schedule?date=YYYY-MM-DD[&branch=…]` + `lib/schedule/*` + דף `/schedule` (קריאה בלבד). אין "סימון בוצע" (שלב 2 של הבנייה), אין שינוי סכימה, אין זריעת הגדרות.
 **מקור האמת להחלטות:** `scratch/schedule-build/DECISIONS-לוז-יומי.md` (מחוץ לריפו), כולל "החלטות מדף שאלות פתוחות" (A1–A7, B1–B5), "החלטות הבעלים 1.10.2026" (1–4: חג במשלוחים, כלל אחיד, ימים ללא פעילות) ושתי החלטות מ-2.10.2026: **החזרה נוחתת תמיד על יום עובד** ו-**GQ-04: הלו״ז גלוי לכל העובדות**. מיפוי הנתונים הקיימים: `scratch/schedule-build/INVENTORY-stage-data.md`.
@@ -157,3 +159,53 @@
 - `OrderItem.isTaken/isReturned` לא תמיד מנורמלים אחרי הייבוא מ-Access — נבדק `דגל ‖ תאריך` כמו בכרטיס ההזמנה.
 - `Shift.date` נכתב לפי שעון השרת — הלו״ז מסנן לפי `entryTime` ולא לפי `date`.
 - לא נבדק מול DB אמיתי (רק מוק); מספרי השורות האמיתיים בנווה יעקב (2,174 הזמנות משלוח) לא נמדדו.
+
+## סימון "בוצע" (ScheduleStageMark) — שלב 2 של הבנייה (2.10.2026)
+
+**החלטות:** C1 (טבלה חדשה ל"בוצע, מי ומתי"; יצירתה בשני הגמ"חים אושרה 2.10.2026), C2 (איסוף מקומי = סימון חדש ופשוט), A4 ("בוצע" = הוחזר תקין, בריחוף "הוחזר לא תקין", שלבים 8 ו-9), S03/S04 (סימון + חלון "בטוח?" + ביטול, "הכל בוצע" לשלב, לא בשלבים 1 ו-7), B18 (מי סימן ומתי בהיסטוריה), JDG-04 (עובדת רגילה בלי "הכל בוצע"), B2 (בלי שיוך סניף — אין סינון לפי העובדת).
+
+| קובץ | תפקיד |
+|---|---|
+| `prisma/schema.prisma` → `model ScheduleStageMark` | שורה לכל (הזמנה, שלב, יום ישראלי): `done`, `outcome` (`ok`/`not_ok`, שלבים 8/9), `source` (`row`/`all`), `markedById/markedAt`, `undoneById/undoneAt`. ייחודיות `(orderId, stageKey, dayKey)`, אינדקסים `(dayKey, stageKey)`, `(orderId)`. `orderId` סקלרי בלי `@relation`. |
+| `prisma/migrations-pending/2026-10-02-schedule-stage-mark.sql` | ה-SQL (idempotent, `IF NOT EXISTS`) — **לא הורץ**; להריץ ידנית על שני ה-DB (+TEST) עם בדיקת host. עד אז הסימון מוסתר. |
+| `lib/schedule/marks.js` | קריאה (`loadDayMarks`, `applyMarksToRows`), אימות קלט (`validateMarkInput`), כתיבה (`applyStageMark`, `writeMark`), היסטוריה להזמנה (`listOrderMarks`). |
+| `app/api/schedule/marks/route.js` | `POST` סימון / ביטול / הכל-בוצע; `GET ?orderId=` הסימונים של הזמנה. |
+| `lib/permissionsMetadata.js` | פריט חדש `feature:schedule_mark_all_done` (ברירת מחדל: הנהלה ראשית + מנהלת סניף). |
+| `app/components/schedule/useStageMarks.js` | ה-hook בלקוח: עדכון אופטימי, החזרה לאחור, טוסט, ספירה מחדש. |
+| `app/components/schedule/MarkControls.js` + `marks.css` | לחצן "בוצע" בשורה, "הוחזר לא תקין" בריחוף, "הכל בוצע", חלון "בטוח?", טוסט — מינימלי על רכיבי הפלטה. |
+| `app/api/audit/route.js` | היסטוריית הזמנה (`entityType=Order`) כוללת גם את שורות היומן של הסימונים של אותה הזמנה. |
+| `scripts/schedule-tests/marks.test.mjs` | 22 בדיקות × 3 אזורי זמן (כולל "הטבלה חסרה"). |
+
+### מה "בוצע" עושה בכל שלב
+| שלב | סימון | ביטול |
+|---|---|---|
+| 2 תיקונים | שורת סימון + `OrderItem.alterationDone=true` לפריטי התיקון שעוד לא סומנו (`ALTERATION_DONE`, כמו מסך התיקונים) | `alterationDone=false` לכולם (`ALTERATION_UNDONE`) + הסימון `done=false` |
+| 4 הכנה | שורת סימון בלבד | `done=false` |
+| 5 משלוח הלוך | שורת סימון בלבד ("יצא בשליח" ≠ הושכר; `isTaken` לא נוגעים) | `done=false` |
+| 6 איסוף מקומי | שורת סימון בלבד (C2). שורה שכל פריטיה כבר נלקחו (`isTaken`) נחשבת "בוצע" גם בלי סימון (`doneVia: 'isTaken'`) | `done=false`; אם הפריטים נלקחו השורה נשארת "בוצע" לפי ההשכרה |
+| 8 החזרה ידנית | "בוצע" = החזרה **תקינה** של כל הפריטים שעוד לא הוחזרו (`isReturned/returnedOk/returnDate`, `RETURN_RENTAL`, אותם שדות כמו `POST /api/rentals/toggle`), "הוחזר לא תקין" = `returnedOk=false`. **עובר דרך הגנת ההחזרה המוקדמת** (`checkEarlyReturn`): כשההגדרה דולקת והאירוע עוד לא הגיע — 409 `earlyReturn:true` ולא נכתב דבר (עקיפת מנהל אפשרית ב-`overridePin`/`overrideEmployeeId`, אין לה עדיין UI בלו״ז — מהכרטיס). פריט שכבר הוחזר קודם שומר את המצב שנקבע לו; `returnCondition` של השורה נגזר מהפריטים. | `CANCEL_RETURN` לכל פריט שהוחזר + `done=false`. (כמו ביטול החזרה מהכרטיס: `DressItem.location` לא משתנה.) |
+| 9 משלוח חזור | שורת סימון בלבד + `outcome` על הסימון (A4). ההחזרה הפיזית נרשמת בסריקת ההחזרות; כשהפריטים כבר הוחזרו — מצב הפריטים גובר על הסימון. | `done=false` |
+| 1, 7 | אין סימון (שלבי מידע) — הנתיב מחזיר 400 | — |
+
+### שורה בתשובת `GET /api/schedule` (תוספות)
+`done` (`true`/`false`; `null` רק כשהטבלה חסרה **וגם** אין שדה קיים), `doneVia` (`'mark'` | `'alterationDone'` | `'isTaken'` | `'isReturned'` | `null`), `doneBy` (שם, לא מזהה), `doneAt`, `outcome`, `mark` (`{done, outcome, source, markedBy, markedAt, undoneBy, undoneAt}` או `null`), `canMark`. בשלבים 8/9 `returnCondition` מקבל את `outcome` של הסימון רק כשהפריטים עצמם עוד לא "הוחזרו". ברמת התשובה: `marks: { available, canMark, canMarkAll }` — `available=false` כשהטבלה חסרה (אז הדף מציג את צ'יפי הקריאה-בלבד של V1, בלי לחצנים, ו-`warnings` מסביר).
+**התראת "באיחור"** לשלבים 4/5/9 קיימת מרגע שיש טבלה (`row.canMark`): יום שעבר ולא סומן = `late_not_done` (כמו 2/6). שלב 8 נשאר לפי `late_return_threshold_days` מהיום המגולגל.
+עלות: שאילתת `ScheduleStageMark` אחת ליום (אינדקס `dayKey`) + שאילתת שמות עובדים קטנה לפי מזהים (רק כשיש סימונים). הטבלה חסרה: `P2021`/`42P01` נתפס, `console.warn` אחד, ולא שואלים שוב 5 דקות.
+
+### `POST /api/schedule/marks`
+שער: `checkAuth()` (401) → `canOpenPage('page:schedule')` (403) → עובדת מחוברת ופעילה (`getSessionEmployee`, אחרת 401 — גם אורח במצב פתוח רואה אבל לא מסמן). גוף:
+- `{ action: 'mark' | 'unmark', stageKey, dayKey: 'YYYY-MM-DD', orderId, outcome?: 'ok' | 'not_ok', source?: 'row' }`
+- `{ action: 'mark_all', stageKey, dayKey, orderIds?: number[] }` — דורש `feature:schedule_mark_all_done` (403). `orderIds` = מה שהמשתמשת ראתה (סינון סניף); בלעדיו כל השורות הממתינות של השלב ביום. עד 200.
+- `outcome` רק לשלבי 8/9 (ברירת מחדל `'ok'`); בשלב אחר — 400.
+תשובה: `{ ok, status: 'marked'|'unmarked'|'unchanged', row }` / `{ ok, rows, skipped: [{orderId, reason:'early_return'}], counts: {marked, unchanged, blocked} }`. `row` = טלאי לשורה: `orderId, stage, done, doneVia, doneBy, doneAt, outcome, returnCondition, mark, alerts, items?`.
+שגיאות: 400 קלט (שלב לא בר-סימון, תאריך לא תקין / מחוץ ל-±3 שנים, מזהה), 409 `notInStage:true` (השרת מריץ מחדש את אותו סיווג — `classifyEventOrder` / `getDeliveriesForDate` — ולא סומך על הלקוח), 409 שלב כבוי, 409 `earlyReturn:true`, 503 `unavailable:true` (הטבלה חסרה), 500 רק לשגיאה לא צפויה.
+**אידמפוטנטיות ומקביליות:** אותו מצב = `unchanged` בלי כתיבה. `create` שנופל על `P2002` (שתי עובדות באותו רגע) ממשיך כ-`update` של השורה שהאחרת יצרה; הראשונה נשארת "מי סימן". בלי `$transaction`; "הכל בוצע" כותב הזמנה-הזמנה (כישלון באמצע משאיר חלק מסומן, ריצה חוזרת משלימה). AuditLog אוטומטי דרך `auditAs` (`SCHEDULE_STAGE_DONE` / `SCHEDULE_STAGE_UNDONE` עם `scheduleStage`, `scheduleDay`, `done`, `outcome`), בלי כתיבה ידנית.
+
+### `GET /api/schedule/marks?orderId=` ושילוב בכרטיס ההזמנה (טאב "מידע")
+מחזיר `{ available, marks: [{ stageKey, stageNumber, stageLabel, dayKey, done, outcome, markedBy, markedAt, undoneBy, undoneAt }] }` (שער: `page:schedule` או `page:orders`). בנוסף, `/api/audit?entityType=Order&entityId=<orderId>` כולל מעכשיו גם את שורות היומן של הסימונים (`entityType='ScheduleStageMark'`, מיפוי דרך `ScheduleStageMark.orderId`), כך שהטאב "מידע" הקיים מציג "סומן "בוצע" בלו״ז · שלב בלו״ז: הכנה · יום בלו״ז: 2026-10-01" בלי שינוי ב-UI. **רכיב השלבים עם לחצן בכרטיס** (החלטת הבעלים לשלב 4) — ממתין לאישור עיצוב כרטיס ההזמנה; צד הנתונים מוכן.
+
+### בלקוח (`useStageMarks.js` ↔ `StageSection`/`StageRow`)
+`ScheduleDay` יוצר `marks = useStageMarks({ data, setData })` ומעביר `marks` ל-`StageSection`; המקטע מחשב לכל שורה `doneState = marks.doneState(stage, row)` ומעביר `doneState` + `onMarkDone` ל-`StageRow`/`StageTableRow` (ול-`StatusChips`), ו-`MarkAllButton` בכותרת. בלי `marks.available` הכל נראה כמו V1. לחיצה → חלון "בטוח?" → `onMarkDone(stage, row, { done, outcome })` → עדכון אופטימי → `POST` → טלאי מהשרת (או החזרה לאחור + טוסט). המונים והסיכומים מחושבים מחדש מהשורות (`recount`).
+
+### לא בגרסה הזו (שלב הבא)
+שורת ברקוד בלו״ז + ברקוד הזמנה חדש (D1/D2, Code 39, פענוח נפרד מ-`parseBarcode`), התראות לו״ז בפעמון (S12/C3), UI לעקיפת מנהל בהחזרה מוקדמת מתוך הלו״ז, רכיב השלבים בכרטיס ההזמנה.
