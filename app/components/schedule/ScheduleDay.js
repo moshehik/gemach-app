@@ -378,6 +378,7 @@ export default function ScheduleDay({
           mode={wiz.mode}
           format={wiz.format}
           initialTab={wiz.initialTab}
+          canExport={allowExport}
           date={(data && data.date) || pickerDate}
           branch={branch}
           stageData={data}

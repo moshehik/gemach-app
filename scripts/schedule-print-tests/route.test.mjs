@@ -33,6 +33,14 @@ function setup(extra = {}) {
 }
 beforeEach(() => setup());
 
+// מנהלת סניף (roleId 1): רואה את ה-XL (isScheduleManager) אבל אינה "מותרת תמיד" כמו 0/2 - שורות המחלקה חלות עליה
+const BRANCH = { id: 'emp-branch', roleId: 1, isActive: true, firstName: 'מנהלת', lastName: 'סניף' };
+function setupBranch(departmentPermission) {
+  setup({ departmentPermission });
+  globalThis.__MOCK_DB.employee.push(BRANCH);
+  globalThis.__AUTH_TOKEN = 'emp-branch';
+}
+
 test('401 when nobody is logged in', async () => {
   const r = await get('?page=PP-15&date=2026-10-01');
   assert.equal(r.status, 401);
@@ -144,9 +152,8 @@ test('format=rows: flat Hebrew-column rows per sheet; server-side export limit (
   assert.equal(ok.__json.total, ok.__json.sheets.reduce((n, s) => n + s.rows.length, 0));
   assert.equal(ok.__json.limit, 200, 'catalog default for feature:export_max_rows');
 
-  // limit 1 for department 5 -> the worker is over the limit
-  setup({ departmentPermission: [{ roleId: 5, key: 'page:schedule', value: 'true' }, { roleId: 5, key: 'feature:export_max_rows', value: '1' }] });
-  globalThis.__AUTH_TOKEN = 'emp-worker';
+  // limit 1 for department 1 -> the branch manager is over the limit
+  setupBranch([{ roleId: 1, key: 'feature:export_max_rows', value: '1' }]);
   const over = await get('?page=PP-15&date=2026-10-01&format=rows');
   assert.equal(over.status, 403);
   assert.equal(over.__json.code, 'EXPORT_LIMIT');
@@ -160,8 +167,7 @@ test('format=rows: flat Hebrew-column rows per sheet; server-side export limit (
   assert.equal((await get('?page=PP-15&date=2026-10-01')).status, 200);
 
   // limit 0 stays 0 ("every export needs approval", like ExportButtons) - it used to fall back to 200
-  setup({ departmentPermission: [{ roleId: 5, key: 'page:schedule', value: 'true' }, { roleId: 5, key: 'feature:export_max_rows', value: '0' }] });
-  globalThis.__AUTH_TOKEN = 'emp-worker';
+  setupBranch([{ roleId: 1, key: 'feature:export_max_rows', value: '0' }]);
   const zero = await get('?page=PP-15&date=2026-10-01&format=rows');
   assert.equal(zero.status, 403, JSON.stringify(zero.__json));
   assert.equal(zero.__json.code, 'EXPORT_LIMIT');
@@ -174,10 +180,18 @@ test('a forbidden page is skipped (meta.skipped), not a 403 for the whole reques
   assert.equal(mixed.status, 200, JSON.stringify(mixed.__json));
   assert.deepEqual(mixed.__json.pages.map((p) => p.key), ['PP-15']);
   assert.deepEqual(mixed.__json.meta.skipped.map((x) => x.key), ['PP-01']);
+  // Excel: a worker has no XL (JDG-04) -> 403 EXPORT_FORBIDDEN; a branch manager without the order pages gets the
+  // allowed sheet + the skipped notice
+  const wrows = await get('?page=PP-01,PP-15&date=2026-10-01&format=rows');
+  assert.equal(wrows.status, 403);
+  assert.equal(wrows.__json.code, 'EXPORT_FORBIDDEN');
+  setupBranch(['page:orders', 'page:rentals', 'page:board'].map((key) => ({ roleId: 1, key, value: 'false' })));
   const rows = await get('?page=PP-01,PP-15&date=2026-10-01&format=rows');
-  assert.equal(rows.status, 200);
+  assert.equal(rows.status, 200, JSON.stringify(rows.__json));
   assert.deepEqual(rows.__json.sheets.map((x) => x.key), ['PP-15']);
   assert.deepEqual(rows.__json.meta.skipped.map((x) => x.key), ['PP-01']);
+  setup(); // back to the default department rows (worker / blocked department)
+  globalThis.__AUTH_TOKEN = 'emp-worker';
   // every requested page forbidden -> still 403
   const all = await get('?page=PP-01,PP-02&date=2026-10-01');
   assert.equal(all.status, 403);
@@ -204,4 +218,19 @@ test('parseExportLimit: 0 is a real limit, default only for missing / invalid va
   assert.equal(parseExportLimit('0'), 0);
   assert.equal(parseExportLimit('350'), 350);
   for (const v of [null, undefined, '', '  ', 'abc', -5]) assert.equal(parseExportLimit(v), DEFAULT_EXPORT_LIMIT, String(v));
+});
+
+test('Excel (format=rows) only for the roles that see the XL button (JDG-04); PDF/print data stays open to page:schedule', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const g = await get('?page=PP-15&date=2026-10-01&format=rows');
+  assert.equal(g.status, 403);
+  assert.equal(g.__json.code, 'EXPORT_FORBIDDEN');
+  const p = await post({ page: 'PP-15', date: '2026-10-01', format: 'rows' });
+  assert.equal(p.status, 403);
+  assert.equal(p.__json.code, 'EXPORT_FORBIDDEN');
+  assert.equal((await get('?page=PP-15&date=2026-10-01')).status, 200, 'json (print / PDF) is not an Excel export');
+  setupBranch([]);
+  assert.equal((await get('?page=PP-15&date=2026-10-01&format=rows')).status, 200, 'branch manager');
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  assert.equal((await get('?page=PP-15&date=2026-10-01&format=rows')).status, 200, 'head management');
 });

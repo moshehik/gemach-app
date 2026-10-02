@@ -263,6 +263,9 @@ test('API: any employee with page:schedule may print it (no money, no extra page
   // JSON-safe (functions never ride the payload)
   assert.doesNotThrow(() => JSON.stringify(p.data));
   assert.ok(!('lateText' in p.data));
+  // Excel = management only (JDG-04, same rule as the XL button); the worker gets 403, head management the rows
+  assert.equal((await get('?page=PP-16&date=2026-10-01&format=rows')).status, 403);
+  globalThis.__AUTH_TOKEN = 'emp-head';
   const rows = await get('?page=PP-16&date=2026-10-01&format=rows');
   assert.equal(rows.status, 200);
   assert.equal(rows.__json.sheets[0].sheetName, 'קבלת החזרות');

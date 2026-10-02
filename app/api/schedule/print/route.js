@@ -4,7 +4,7 @@ import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { canOpenPage, canOpenAnyPage, getEmployeeEffectiveValue, hasPermission } from '@/lib/permissions';
 import { verifySecret } from '@/lib/passwordAuth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { getScheduleDay } from '@/lib/schedule';
+import { getScheduleDay, isScheduleManager } from '@/lib/schedule';
 import { isValidKey } from '@/lib/schedule/dates';
 import { PRINT_PAGES, parsePageList, parseVersions, getPrintPage } from '@/lib/schedule/print/registry';
 import { loadExtras, buildPrintPayload, payloadToRows } from '@/lib/schedule/print/data';
@@ -94,6 +94,11 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
 
   try {
     const user = await getSessionEmployee();
+    // Excel (format=rows) = ה-XL של הלו״ז: רק למי שרואה את לחצן ה-XL (JDG-04 - הנהלה ראשית / מנהלת סניף / מתכנת,
+    // isScheduleManager). בלי זה עובדת הייתה מקבלת Excel דרך "הורדה" באשף. PDF והדפסה פתוחים לכל מי שיש לו page:schedule.
+    if (format === 'rows' && !isScheduleManager(user)) {
+      return NextResponse.json({ error: 'ייצוא ל-Excel זמין להנהלה בלבד. אפשר להוריד PDF או להדפיס.', code: 'EXPORT_FORBIDDEN' }, { status: 403 });
+    }
     const branchParam = (branch || '').toString().slice(0, 100);
     const [day, settingsRows, me] = await Promise.all([
       getScheduleDay({ date: date || undefined, branch: branchParam, user }),

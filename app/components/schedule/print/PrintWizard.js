@@ -15,7 +15,7 @@ import './PrintWizard.css';
 //   הדפסה: חלון חדש /schedule/print/<keys>?date&branch&version - window.print() נפתח שם לבד.
 //   הורדה: Excel (גיליון לכל דף, RTL; המגבלה נבדקת בשרת - מעל המגבלה נדרשת סיסמת מאשר/ת) או PDF (POST /api/pdf
 //   במצב path על אותו דף הדפסה, דרך השער של lib/printAccess.js).
-// props: mode ('print'|'download'), format ('xlsx'|'pdf', למצב הורדה), initialTab (מפתח שלב: פותח על הלשונית שלו ובוחר
+// props: mode ('print'|'download'), format ('xlsx'|'pdf', למצב הורדה), canExport (false = בלי Excel), initialTab (מפתח שלב: פותח על הלשונית שלו ובוחר
 //   רק את דפי השלב), date (YYYY-MM-DD), branch, stageData (תשובת /api/schedule - למונים בלבד), onClose.
 // הרשאות: GET /api/schedule/print?format=access מחזיר אילו דפים מותר להדפיס; דף אסור מוצג מנוטרל עם "אין הרשאה" ולא
 //   נבחר (גם לא ב"כל דפי היום"). השרת בודק שוב ומדלג על דף אסור (meta.skipped) - האשף רק חוסך את הניסיון.
@@ -31,7 +31,7 @@ function pagesByStage() {
   return map;
 }
 
-export default function PrintWizard({ mode: initialMode = 'print', format: initialFormat = 'xlsx', initialTab = null, date, branch = '', stageData = null, onClose }) {
+export default function PrintWizard({ mode: initialMode = 'print', format: initialFormat = 'xlsx', initialTab = null, canExport = true, date, branch = '', stageData = null, onClose }) {
   const byStage = useMemo(() => pagesByStage(), []);
   const stageKeys = STAGE_ORDER.filter((k) => byStage[k] && byStage[k].length);
   const counts = useMemo(() => {
@@ -41,7 +41,8 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   }, [stageData]);
 
   const [mode, setMode] = useState(initialMode === 'download' ? 'download' : 'print');
-  const [format, setFormat] = useState(initialFormat === 'pdf' ? 'pdf' : 'xlsx');
+  // canExport=false (עובדת, JDG-04 - אותו דגל שמסתיר את לחצן ה-XL): בלי Excel, הורדה = PDF בלבד (השרת אוכף גם הוא)
+  const [format, setFormat] = useState(initialFormat === 'pdf' || !canExport ? 'pdf' : 'xlsx');
   const startTab = initialTab && stageKeys.includes(initialTab) ? initialTab : 'all';
   const [tab, setTab] = useState(startTab);
   // ברירת מחדל: הדפים הבנויים של שלבים שיש בהם פריטים היום (נפתח משלב מסוים -> רק דפי השלב); דפים אסורים יוצאים
@@ -209,7 +210,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
             <button type="button" role="radio" aria-checked={mode === 'download'} className={mode === 'download' ? 'on' : ''} onClick={() => { setMode('download'); setMsg(null); }}>הורדה</button>
           </div>
         </div>
-        {mode === 'download' ? (
+        {mode === 'download' && canExport ? (
           <div className="lz-wm lz-wfmt">
             <span className="lz-wfl">קובץ:</span>
             <div className="seg pill" role="radiogroup" aria-label="סוג הקובץ" style={{ '--n': 2, '--i': format === 'xlsx' ? 0 : 1 }}>
