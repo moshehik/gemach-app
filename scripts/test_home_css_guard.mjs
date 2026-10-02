@@ -247,7 +247,7 @@ t('לוז: השורש בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה
   assert.ok(!/gm-home/.test(schedSrc('ScheduleDay.js')), 'gm-home חזר לשורש הלוז');
 });
 t('לוז: טולטיפים רק דרך data-tip (הטולטיפ של המערכת, כמו בעיצוב) - אין title= על רכיבי הדף', () => {
-  for (const f of SCHED_FILES) assert.ok(!/title=/.test(schedSrc(f)), f + ' משתמש ב-title= (טולטיפ דפדפן) במקום data-tip');
+  for (const f of SCHED_FILES) assert.ok(!/\btitle=/.test(schedSrc(f)), f + ' משתמש ב-title= (טולטיפ דפדפן) במקום data-tip');
 });
 t('לוז: אין טקסטים שהבעלים לא הגדיר (כיתוב "לקריאה בלבד", "יסומן בגרסה הבאה", "אין נוכחות רשומה", תאריך מעל הכותרת, תגיות ספירה)', () => {
   const all = SCHED_FILES.map(schedSrc).join(String.fromCharCode(10));
@@ -258,7 +258,7 @@ t('לוז: אין טקסטים שהבעלים לא הגדיר (כיתוב "לק�
 t('לוז: הרכיבים של העיצוב קיימים - לחצן "בוצע" (btn tgl lz-mark), "הוחזר לא תקין" (lz-retw), "הכל בוצע" (lz-all), כלי XL/הורדה/הדפסה (lz-dtools/lz-stools), שורת ברקוד (sbar)', () => {
   // המראה של לחצני הסימון יושב ב-MarkControls.js (אותו markup כמו בעיצוב), ההתנהגות ב-useStageMarks.js - חוזה אחד
   const mk = schedSrc('MarkControls.js'), row = schedSrc('StageRow.js'), sec = schedSrc('StageSection.js'), rail = schedSrc('StageRail.js'), day = schedSrc('ScheduleDay.js'), slots = schedSrc('ScheduleToolbarSlots.js');
-  assert.ok(mk.includes('className="btn tgl lz-mark"') && mk.includes('className="btn tgl lz-mark on"') && mk.includes('className="lz-retw"') && mk.includes('lz-mark lz-bad'));
+  assert.ok(mk.includes('className="btn tgl lz-mark"') && mk.includes('className="btn tgl lz-mark on"') && mk.includes("className={'lz-retw' + (pairOpen ? ' open' : '')}") && mk.includes('lz-mark lz-bad'));
   assert.ok(mk.includes('className="ibtn lz-all"') && row.includes('<MarkButton') && sec.includes('<MarkAllButton') && sec.includes('<SectionTools'));
   assert.ok(day.includes('useStageMarks({ data, setData })') && day.includes('<MarkToast'), 'ScheduleDay מחבר את ה-hook ואת הטוסט');
   assert.ok(/onMarkDone\(stage, row, \{ done/.test(mk) && !/onMarkDone\(row, stage/.test(mk + row + sec + day) && !/condition: 'bad'/.test(mk + row), 'חוזה אחד: onMarkDone(stage, row, { done, outcome })');
@@ -291,6 +291,14 @@ t('schedule.css: לחצן כבוי ("בוצע" / "הכל בוצע") שומר ע�
   assert.ok(hasSched(/\.dlg\.lz-cf$/, /^max-width$/), 'חסר כלל החלון lz-cf');
   assert.ok(hasSched(/\.lz-det \.li$/, /^background$/), 'חסרות שורות הפירוט lz-det (עיצוב 1209)');
   assert.ok(hasSched(/#toast \.tclose$/, /^display$/), 'חסר לחצן הסגירה של הטוסט');
+  // החלון ב-portal לשורש הדף (אח של .app, כמו L.modal בעיצוב) - בתוך השורה הוא ירש סמן/משקל/צבע; הטוסט תמיד info כמו L.say
+  const dlg = schedSrc('MarkDialogs.js');
+  assert.ok(/<LzPortal>/.test(dlg) && schedSrc('ScheduleDay.js').includes('<LzPortalRoot.Provider'), 'חלון "בטוח?" לא ב-portal לשורש הדף');
+  assert.ok(dlg.includes('className="info pulse on"') && !hasSched(/lz-toast-(error|warn)/, /^background$/), 'טוסט בצבע שלא בעיצוב');
+  // "הוחזר לא תקין": בלי transition משלו (בעיצוב הכלל שלו מפסיד לכלל הלחצן - מופיע מיד, .15s כמו "בוצע"); בלי צבע ורוד מומצא
+  assert.ok(!hasSched(/\.lz-bad/, /^transition$/) && !hasSched(/\.lz-bad/, /^(color|border-color)$/), 'lz-bad עם transition/צבע שלא בעיצוב');
+  // מגע: הקשה ראשונה פותחת את הזוג (lz-retw.open) כמו בעיצוב
+  assert.ok(/setPairOpen\(true\)/.test(schedSrc('MarkControls.js')) && hasSched(/\.lz-retw:is\([^)]*\.open\) \.lz-bad$/, /^visibility$/), 'חסרה פתיחת הזוג במגע');
 });
 
 /* ---------- 7. אין עוד כפתור/אייקון "אחרונים" בשורת החיפוש (החלטת הבעלים 2.10.2026) ---------- */

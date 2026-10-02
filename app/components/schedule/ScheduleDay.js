@@ -12,6 +12,7 @@ import { addDays, israelTodayKey } from './hebrewCalendar';
 import { STAGE_ORDER } from './scheduleMeta';
 import { useStageMarks } from './useStageMarks';
 import { MarkToast } from './MarkDialogs';
+import { LzPortalRoot } from './LzPortal';
 
 // דף "לו״ז יומי". המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, ה-HTML בשורות 1627-1642): כותרת "לוח זמנים" +
 // אייקון בורר היום; כלי XL/הורדה/הדפסה בקצה השמאלי של שורת הכותרת; ציר השלבים מימין; בעמודת התוכן מתג שורות/טבלה
@@ -167,6 +168,9 @@ export default function ScheduleDay({
   useRailFit(rootRef);
   // סימון "בוצע" (עדכון אופטימי, החזרה לאחור בשגיאה, טוסט) - הלוגיקה ב-useStageMarks.js
   const marks = useStageMarks({ data, setData });
+  // שורש הדף לחלונות "בטוח?" (LzPortal.js) - כמו L.modal בעיצוב: scrim אח של .app ולא בתוך השורה
+  const [portalRoot, setPortalRoot] = useState(null);
+  useEffect(() => { setPortalRoot(rootRef.current); }, []);
 
   // מצב התחלתי מהכתובת (?date=&branch=) ומהעדפת התצוגה (שורות/טבלה) של המשתמשת בדפדפן הזה
   useEffect(() => {
@@ -264,6 +268,7 @@ export default function ScheduleDay({
   const tools = { onExport, onDownload, onPrint, canExport: allowExport };
 
   return (
+    <LzPortalRoot.Provider value={portalRoot}>
     <div className="gm-ds gm-lz home-bg" ref={rootRef}>
       <LocalSprite />
       <div className="app lz-app">
@@ -337,10 +342,12 @@ export default function ScheduleDay({
             </div>
           </div>
         </div>
-        <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
       </div>
+      {/* הטוסט אח של .app (#toast בעיצוב, שורה 1654) */}
+      <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
       <div className="pl-tt" role="tooltip" ref={ttRef} />
     </div>
+    </LzPortalRoot.Provider>
   );
 }
 

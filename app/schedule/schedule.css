@@ -125,6 +125,11 @@
  .gm-ds.gm-lz .lz-dwrap.open .lz-dpanel{display:flex;visibility:visible;pointer-events:auto}
  .gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn,.lz-pickw){opacity:1;transform:none}
  .gm-ds.gm-lz .lz-pop{inset-inline-start:0;translate:none}
+ /* 375: שורת הניווט (קודם / תאריך / הבא) לא חורגת משמאל - כפתור התאריך מתכווץ (סקירה, NIT: -21px מול -3px בעיצוב) */
+ .gm-ds.gm-lz .lz-dwrap, .gm-ds.gm-lz .lz-dpanel, .gm-ds.gm-lz .lz-dpanel .lz-dnav{min-width:0;max-width:100%}
+ .gm-ds.gm-lz .lz-dpanel .lz-pickw{flex:1 1 auto;min-width:0}
+ .gm-ds.gm-lz .lz-dpanel :is(#dPrev,#dNext){flex:none}
+ .gm-ds.gm-lz .lz-dpanel .btn.lz-date{width:100%;min-width:0;white-space:normal;line-height:1.2}
 }
 @media (prefers-reduced-motion:reduce){
 .gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn,.lz-pickw){transition:none!important;transform:none!important}
@@ -194,16 +199,17 @@
 .gm-ds.gm-lz .btn.lz-mark.lz-bad:disabled{cursor:not-allowed}
 .gm-ds.gm-lz .btn.lz-mark:disabled:not(.on):not(:hover):not(:focus-visible){background:transparent;color:var(--navy);border-color:var(--navy)}
 .gm-ds.gm-lz .btn.lz-mark:disabled:not(.on):not(:hover):not(:focus-visible) .ic{color:var(--navy)!important;stroke:var(--navy)!important}
-.gm-ds.gm-lz .btn.lz-mark.lz-bad:disabled:not(:hover):not(:focus-visible){color:var(--rose-700,#9b3b5a);border-color:var(--rose-700,#9b3b5a)}
-/* שלבי ההחזרה (עיצוב 2238-2244): "הוחזר לא תקין" צף ליד "בוצע" בריחוף / מיקוד / מגע; בטבלה המקום שמור */
+/* שלבי ההחזרה (עיצוב 2238-2244): "הוחזר לא תקין" צף ליד "בוצע" בריחוף / מיקוד / מגע (.open, MarkControls.js); בטבלה
+   המקום שמור. בלי transition משלו: בעיצוב כלל ה-transition של lz-bad מפסיד לכלל הלחצן (body .app .btn) ולכן בפועל הוא
+   מופיע מיד, עם אותו transition של "בוצע" (.15s) - כך גם כאן (סקירה, NIT) */
 .gm-ds.gm-lz .lz-retw{display:inline-flex;align-items:center;gap:8px}
-.gm-ds.gm-lz .lz-retw .lz-bad{overflow:hidden;white-space:nowrap;max-width:0;opacity:0;visibility:hidden;margin-inline-end:-8px;padding-inline:0!important;border-width:0!important;transition:max-width .22s ease,opacity .18s ease,padding .22s ease,margin .22s ease,visibility 0s linear .22s}
-.gm-ds.gm-lz .lz-retw:is(:hover,:focus-within,.open) .lz-bad{max-width:220px;opacity:1;visibility:visible;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important;transition-delay:0s}
-.gm-ds.gm-lz .rtbl .lz-retw .lz-bad{max-width:220px;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important;transition:opacity .18s ease,visibility 0s linear .18s}
-.gm-ds.gm-lz .rtbl .lz-retw:is(:hover,:focus-within,.open) .lz-bad{transition-delay:0s}
-@media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .lz-retw .lz-bad{transition:none}}
+.gm-ds.gm-lz .lz-retw .lz-bad{overflow:hidden;white-space:nowrap;max-width:0;opacity:0;visibility:hidden;margin-inline-end:-8px;padding-inline:0!important;border-width:0!important}
+.gm-ds.gm-lz .lz-retw:is(:hover,:focus-within,.open) .lz-bad{max-width:220px;opacity:1;visibility:visible;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important}
+.gm-ds.gm-lz .rtbl .lz-retw .lz-bad{max-width:220px;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important}
 /* ===== חלון "בטוח?" (S03/S04; L.confirm בעיצוב, שורות 1207-1210) וטוסט (L.say) - על רכיבי הפלטה ===== */
 .gm-ds.gm-lz .dlg.lz-cf{max-width:520px}
+/* הכותרת יורשת את צבע החלון כמו בעיצוב (כלל ה-h2 הגלובלי צובע בחום) */
+.gm-ds.gm-lz .dlg.lz-cf h2{color:inherit}
 .gm-ds.gm-lz .lz-cf .lz-cf-effect{display:block;margin-top:6px;font-size:14px;color:var(--navy-700)}
 .gm-ds.gm-lz .lz-det{display:flex;flex-direction:column;gap:6px;margin:14px 0 4px;text-align:start}
 .gm-ds.gm-lz .lz-det .li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08)}
@@ -211,10 +217,7 @@
 .gm-ds.gm-lz .lz-det .li .t b{display:block}
 .gm-ds.gm-lz .lz-det .li .t small{display:block;color:var(--ink3)}
 .gm-ds.gm-lz .lz-more{font-size:14px;opacity:.8;padding:4px 10px}
-.gm-ds.gm-lz #toast .tclose{display:grid;place-items:center;padding:8px}
-.gm-ds.gm-lz #toast .tclose .ic{width:14px;height:14px;color:#fff;stroke:#fff}
-.gm-ds.gm-lz #toast.lz-toast-error .tb, .gm-ds.gm-lz #toast.lz-toast-warn .tb{background:#fde8df;color:var(--navy-900)}
-.gm-ds.gm-lz #toast.lz-toast-error .tb .ic, .gm-ds.gm-lz #toast.lz-toast-warn .tb .ic{color:var(--navy-900);stroke:var(--navy-900)}
+.gm-ds.gm-lz #toast .tclose{display:grid;place-items:center}
 .gm-ds.gm-lz .lz-go{display:inline-grid;place-items:center;flex:none;color:var(--navy-500);text-decoration:none;transform:rotate(90deg);padding:8px;border-radius:10px}
 .gm-ds.gm-lz .lz-go:is(:hover,:focus-visible){color:var(--navy);outline:0}
 .gm-ds.gm-lz .lz-go:focus-visible{box-shadow:0 0 0 2px var(--gold)}
@@ -253,8 +256,7 @@
 .gm-ds.gm-lz .lz-sk .sk-b{height:13px;width:82%;margin-top:9px}
 .gm-ds.gm-lz .lz-sk .sk-btn{height:36px;width:92px;border-radius:999px;flex:none}
 .gm-ds.gm-lz .lz-sk .sk-bar{height:8px;border-radius:999px;margin-bottom:17px}
-/* מצב ריק / שגיאה (כרטיס 19 empty, כמו בעיצוב ובמצב האורח שלו) */
-.gm-ds.gm-lz .lz-empty-t{font-size:19px;margin-top:8px;color:var(--ink)}
+/* מצב ריק / שגיאה (כרטיס 19 empty): הטקסט יורש את .empty של הפלטה (ink3, 16px) בדיוק כמו בעיצוב (renderList, שורה 2000) */
 .gm-ds.gm-lz .lz-retry{margin-top:14px}
 /* ===== מסכים צרים ===== */
 @media (max-width:1023px){

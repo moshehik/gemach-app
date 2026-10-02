@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import ScheduleIcon from './ScheduleIcon';
 import { MARK_TIPS, subText } from './scheduleMeta';
+import { LzPortal } from './LzPortal';
 
 // חלון "בטוח?" (S03/S04) והטוסט של סימון "בוצע" - המראה הוא בדיוק של העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html):
 // L.confirm (שורה 1872: scrim > dlg.lz-cf > dbadge / h2 / .sub / lz-det / dbtns [btn primary lg block, btn ghost block])
@@ -53,7 +54,7 @@ export function DetailRows({ stage, row, dayLabel }) {
 }
 
 // חלון "בטוח?": Enter = כן (הפוקוס על "כן"), Esc = ביטול, Tab נלכד בין שני הלחצנים, והפוקוס חוזר ללחצן שפתח.
-export function ConfirmDialog({ open, icon = 'check', title, sub, effect, body, yes, onYes, onNo }) {
+export function ConfirmDialog({ open, icon = 'check', heading, sub, effect, body, yes, onYes, onNo }) {
   const yesRef = useRef(null);
   const noRef = useRef(null);
   const returnTo = useRef(null);
@@ -80,29 +81,34 @@ export function ConfirmDialog({ open, icon = 'check', title, sub, effect, body, 
     };
   }, [open, onNo]);
   if (!open) return null;
+  // ב-portal לשורש הדף (אח של .app, כמו בעיצוב); אירועי React עדיין עולים לשורה - עוצרים אותם כאן
+  const stop = (e) => e.stopPropagation();
   return (
-    <div className="scrim on lz-cf-scrim" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onNo(); }}>
-      <div className="dlg lz-cf" role="dialog" aria-modal="true" aria-labelledby="lz-cf-title">
-        <div className="dbadge" aria-hidden="true"><ScheduleIcon name={icon} /></div>
-        <h2 id="lz-cf-title">{title}</h2>
-        <div className="sub">{sub}{effect ? <span className="lz-cf-effect">{effect}</span> : null}</div>
-        {body}
-        <div className="dbtns">
-          <button ref={yesRef} type="button" className="btn primary lg block" onClick={onYes}><ScheduleIcon name={icon} />{yes}</button>
-          <button ref={noRef} type="button" className="btn ghost block" onClick={onNo}><ScheduleIcon name="x" />ביטול</button>
+    <LzPortal>
+      <div className="scrim on lz-cf-scrim" role="presentation" onClick={stop} onMouseDown={(e) => { stop(e); if (e.target === e.currentTarget) onNo(); }}>
+        <div className="dlg lz-cf" role="dialog" aria-modal="true" aria-labelledby="lz-cf-title">
+          <div className="dbadge" aria-hidden="true"><ScheduleIcon name={icon} /></div>
+          <h2 id="lz-cf-title">{heading}</h2>
+          <div className="sub">{sub}{effect ? <span className="lz-cf-effect">{effect}</span> : null}</div>
+          {body}
+          <div className="dbtns">
+            <button ref={yesRef} type="button" className="btn primary lg block" onClick={onYes}><ScheduleIcon name={icon} />{yes}</button>
+            <button ref={noRef} type="button" className="btn ghost block" onClick={onNo}><ScheduleIcon name="x" />ביטול</button>
+          </div>
         </div>
       </div>
-    </div>
+    </LzPortal>
   );
 }
 
-// הטוסט (L.say בעיצוב): #toast.info.on של הפלטה, אייקון לפי סוג ההודעה
+// הטוסט (L.say בעיצוב, שורה 1853): תמיד #toast.info.pulse.on של הפלטה - גם הודעת שגיאה (העיצוב לא מגדיר צבע אחר);
+// רק האייקון משתנה לפי סוג ההודעה (check / undo / alert, כמו בעיצוב)
 const TOAST_ICON = { ok: 'check', undo: 'undo', warn: 'alert', error: 'alert' };
 export function MarkToast({ toast, onClose }) {
   if (!toast) return null;
   const kind = toast.kind || 'ok';
   return (
-    <div id="toast" className={'info on lz-toast lz-toast-' + kind} role="status" aria-live="polite" key={toast.n}>
+    <div id="toast" className="info pulse on" role="status" aria-live="polite" key={toast.n}>
       <span className="tb"><ScheduleIcon name={TOAST_ICON[kind] || 'check'} /></span>
       <div><b>{toast.title}</b><small>{toast.text}</small></div>
       <button type="button" className="tclose" aria-label="סגירה" onClick={onClose}><ScheduleIcon name="x" /></button>
