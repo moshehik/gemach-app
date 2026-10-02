@@ -1,0 +1,6 @@
+/* app/components/schedule/print/pages/pp09.css — צ׳ק ליסט הכנה (09). pp-* בלבד, בלי משתני ערכת נושא. */
+/* הזמנה עם יותר מ-5 שמלות: התיבות עוברות לשורה שנייה במקום לדחוף את העמודה (ב-print.css .pp-cks הוא nowrap) */
+.pp-root .pp09 .pp09-many .pp-cks{white-space:normal;display:inline-flex;flex-wrap:wrap;justify-content:center;gap:.8mm;max-width:27mm}
+.pp-root .pp09 .pp09-many .pp-cks i+i{margin-inline-start:0}
+/* globals.css: div:has(> table){max-height:75vh;overflow-y:auto} - אין לאפשר גלילה/חיתוך בתוך הדף המודפס */
+.pp-root .pp09{max-height:none;overflow:visible}

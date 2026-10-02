@@ -1,0 +1,8 @@
+/* app/components/schedule/print/pages/pp03.css — דף תיקונים לביצוע (03). צבעים קבועים בלבד (pp-*), בלי משתני ערכת נושא.
+   רוב הדף משתמש בכללי המעטפת (print.css: .pp-ob, .pp-dg, .pp-dsum, .pp-t); כאן רק מה שמיוחד לשתי הגרסאות. */
+/* כותרת תאריך + בלוקים של הזמנה + שורת סיכום: אותו מרווח כמו בעיצוב (style="margin-top:3mm" בגרסה ב) */
+.pp-root .pp03b .pp-dsum.pp03-total{margin-top:3mm}
+/* שורת הסיכום נשארת צמודה לבלוק האחרון בתאריך ולא לבדה בעמוד */
+.pp-root .pp03a .pp03-day>.pp-ob:last-of-type{break-after:avoid;page-break-after:avoid}
+/* globals.css: div:has(> table){max-height:75vh;overflow-y:auto} - בלוק הזמנה (.pp-ob) מכיל טבלה ישירות, ובלי איפוס הוא היה נגלל/נחתך */
+.pp-root .pp-ob,.pp-root .pp03a,.pp-root .pp03b,.pp-root .pp09{max-height:none;overflow:visible}
