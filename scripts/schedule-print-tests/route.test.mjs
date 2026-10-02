@@ -49,7 +49,13 @@ test('400 / 404 / 501 parameter errors (after the gates)', async () => {
   assert.equal((await get('?date=2026-10-01')).status, 400, 'missing page');
   assert.equal((await get('?page=XX-01&date=2026-10-01')).status, 404);
   assert.equal((await get('?page=PP-14&date=2026-10-01')).status, 404, 'removed page');
-  const r = await get('?page=PP-16&date=2026-10-01');
+  // "registered but not built yet": once every page is built no page stays 'todo', so flip one for the check
+  // (the registry objects are shared module state - restored right after, also when the assertion fails)
+  const reg = (await L('lib/schedule/print/registry.js')).getPrintPage('PP-16');
+  const was = reg.status;
+  reg.status = 'todo';
+  let r;
+  try { r = await get('?page=PP-16&date=2026-10-01'); } finally { reg.status = was; }
   assert.equal(r.status, 501, 'registered but not built yet');
   assert.deepEqual(r.__json.pages, ['PP-16']);
   assert.equal((await get('?page=PP-15&date=2026-10-01&format=csv')).status, 400);
