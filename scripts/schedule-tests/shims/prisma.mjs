@@ -1,13 +1,23 @@
-// In-memory, READ-ONLY Prisma stand-in for the schedule tests. No database connection at all.
+// In-memory Prisma stand-in for the schedule tests. No database connection at all.
 //   globalThis.__MOCK_DB  = { order: [...], shift: [...], systemSetting: [...], dressModel: [...], employee: [...], departmentPermission: [...], employeePermissionOverride: [...] }
-//   globalThis.__MOCK_CALLS = every findMany/findUnique/findFirst call ({ model, method, args }) - tests assert the `where` windows.
+//   globalThis.__MOCK_CALLS = every call ({ model, method, args, audit }) - tests assert the `where` windows and the audit action names.
 // A small evaluator applies the common Prisma `where` shapes the schedule layer uses (equality, null,
 // not, in, gte/lte/gt/lt, AND/OR/NOT); relation filters are treated as "match" (superset is fine - the
 // loaders re-check day keys in JS). Nested `items: { where: { isDeleted } }` selects are applied.
-// Any write, $transaction or raw query throws - the data layer under test must never write.
+//
+// Writes: the READ-ONLY data layer must never write - any write throws unless the test opted in with
+//   globalThis.__MOCK_WRITABLE = ['scheduleStageMark', 'orderItem']   (models the marks tests write)
+// Writes are then applied in memory (create / update / updateMany / delete) with Prisma-like semantics:
+// a compound unique (orderId, stageKey, dayKey) on scheduleStageMark raises P2002, update by id/unique,
+// `__audit` from auditAs() is stripped and recorded on the call. No audit rows are written (the real
+// extension is not under test here).
+// Missing table: a model that is NOT a key of __MOCK_DB throws P2021 ("does not exist") - the same shape
+// Prisma raises when the SQL for a new table has not been applied yet (the schedule marks must degrade).
+// $transaction / raw queries always throw.
 
 const db = () => globalThis.__MOCK_DB || {};
 const calls = () => (globalThis.__MOCK_CALLS ||= []);
+const writable = () => globalThis.__MOCK_WRITABLE || [];
 
 function cmp(a, b) {
   const av = a instanceof Date ? a.getTime() : a;
@@ -77,9 +87,25 @@ function applyOrderBy(rows, orderBy) {
   });
 }
 
+function prismaError(code, message) {
+  const e = new Error(message);
+  e.code = code;
+  return e;
+}
+
+// Prisma raises P2021 ("The table `public.X` does not exist in the current database.") for a missing table
+function table(model) {
+  const d = db();
+  // OrderItem rows live nested inside each mock order (order.items) - the same objects, so an
+  // orderItem.update from the marks layer is visible through the order loaders in the same test
+  if (model === 'orderItem' && !(model in d) && Array.isArray(d.order)) return d.order.flatMap((o) => o.items || []);
+  if (!(model in d)) throw prismaError('P2021', `The table \`public.${model[0].toUpperCase()}${model.slice(1)}\` does not exist in the current database.`);
+  return d[model];
+}
+
 const READS = {
   findMany: (model, args = {}) => {
-    let rows = (db()[model] || []).filter((r) => matchWhere(r, args.where)).map((r) => project(r, args));
+    let rows = table(model).filter((r) => matchWhere(r, args.where)).map((r) => project(r, args));
     rows = applyOrderBy(rows, args.orderBy);
     if (args.take) rows = rows.slice(0, args.take);
     return rows;
@@ -87,15 +113,72 @@ const READS = {
   findFirst: (model, args = {}) => READS.findMany(model, { ...args, take: 1 })[0] || null,
   findUnique: (model, args = {}) => {
     const where = flattenUnique(args.where);
-    return (db()[model] || []).find((r) => matchWhere(r, where)) || null;
+    return table(model).find((r) => matchWhere(r, where)) || null;
   },
   count: (model, args = {}) => READS.findMany(model, { ...args, take: undefined }).length,
+};
+
+// compound uniques the marks tests rely on (model -> field lists)
+const UNIQUES = { scheduleStageMark: [['orderId', 'stageKey', 'dayKey']] };
+let idSeq = 0;
+const newId = (model) => `${model}-${++idSeq}`;
+const unset = (v) => (v && typeof v === 'object' && !(v instanceof Date) && 'set' in v ? v.set : v);
+
+const WRITES = {
+  create: (model, args = {}) => {
+    const rows = table(model);
+    const data = Object.fromEntries(Object.entries(args.data || {}).map(([k, v]) => [k, unset(v)]));
+    for (const fields of UNIQUES[model] || []) {
+      if (rows.some((r) => fields.every((f) => r[f] === data[f]))) throw prismaError('P2002', `Unique constraint failed on the fields: (${fields.join(',')})`);
+    }
+    const now = new Date();
+    const row = { id: newId(model), createdAt: now, updatedAt: now, ...(model === 'scheduleStageMark' ? { done: true, markedAt: now } : {}), ...data };
+    rows.push(row);
+    return { ...row };
+  },
+  update: (model, args = {}) => {
+    const rows = table(model);
+    const where = flattenUnique(args.where);
+    const row = rows.find((r) => matchWhere(r, where));
+    if (!row) throw prismaError('P2025', 'Record to update not found.');
+    for (const [k, v] of Object.entries(args.data || {})) row[k] = unset(v);
+    row.updatedAt = new Date();
+    return { ...row };
+  },
+  updateMany: (model, args = {}) => {
+    let n = 0;
+    for (const row of table(model)) {
+      if (!matchWhere(row, args.where)) continue;
+      for (const [k, v] of Object.entries(args.data || {})) row[k] = unset(v);
+      n++;
+    }
+    return { count: n };
+  },
+  delete: (model, args = {}) => {
+    const rows = table(model);
+    const where = flattenUnique(args.where);
+    const i = rows.findIndex((r) => matchWhere(r, where));
+    if (i < 0) throw prismaError('P2025', 'Record to delete does not exist.');
+    return rows.splice(i, 1)[0];
+  },
 };
 
 const modelProxy = (model) => new Proxy({}, {
   get(_, method) {
     if (READS[method]) {
       return async (args) => { calls().push({ model, method, args }); return READS[method](model, args); };
+    }
+    if (WRITES[method]) {
+      return async (rawArgs) => {
+        let args = rawArgs;
+        let audit = null;
+        if (args && args.__audit) { audit = args.__audit; args = { ...args }; delete args.__audit; }
+        calls().push({ model, method, args, audit });
+        if (!writable().includes(model)) throw new Error(`BLOCKED write in schedule tests: ${model}.${String(method)}`);
+        // test hook: runs right before the write is applied (e.g. to simulate a competing writer -> P2002)
+        if (typeof globalThis.__MOCK_BEFORE_WRITE === 'function') globalThis.__MOCK_BEFORE_WRITE(model, method, args);
+        return WRITES[method](model, args);
+      };
     }
     return async () => { throw new Error(`BLOCKED write in schedule tests: ${model}.${String(method)}`); };
   },
@@ -111,5 +194,9 @@ const proxy = new Proxy({}, {
 
 export default proxy;
 export const prisma = proxy;
-export function auditAs(action, args) { return args; }
+// same contract as app/lib/prisma.js: the write args carry __audit (stripped and recorded by the shim above)
+export function auditAs(action, args, changes) {
+  if (!action) return args;
+  return { ...args, __audit: { action, changes } };
+}
 export async function getActingEmployeeId() { return null; }

@@ -8,9 +8,12 @@ import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { addDays, hebrewLong, toKey } from './hebrewCalendar';
 import { STAGE_ORDER, nonWorkingDayText } from './scheduleMeta';
+import { useStageMarks } from './useStageMarks';
+import { MarkToast } from './MarkControls';
 
-// דף "לו״ז יומי" - קריאה בלבד (V1). מקור העיצוב: תצוגות-עיצוב/לוז-יומי.html. הנתונים: GET /api/schedule
-// (docs/schedule-page-logic-spec.md). אין סימון "בוצע", אין הדפסה/ייצוא, אין הגדרות שלבים, אין ברקוד.
+// דף "לו״ז יומי". מקור העיצוב: תצוגות-עיצוב/לוז-יומי.html. הנתונים: GET /api/schedule
+// (docs/schedule-page-logic-spec.md). סימון "בוצע": useStageMarks.js (POST /api/schedule/marks) דרך הפרופ
+// marks של StageSection. אין הדפסה/ייצוא, אין הגדרות שלבים, אין ברקוד (שלב 2 של הבנייה).
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,6 +61,8 @@ export default function ScheduleDay() {
   const [clock, setClock] = useState(null);
   const [localToday, setLocalToday] = useState(null);
   const reqId = useRef(0);
+  // סימון "בוצע" (עדכון אופטימי, החזרה לאחור בשגיאה, טוסט) - הלוגיקה ב-useStageMarks.js
+  const marks = useStageMarks({ data, setData });
 
   // מצב התחלתי מהכתובת (?date=&branch=) ומהעדפת התצוגה (שורות/טבלה) של המשתמשת בדפדפן הזה
   useEffect(() => {
@@ -178,7 +183,11 @@ export default function ScheduleDay() {
             </div>
             <p className="lz-note">
               <ScheduleIcon name="info" className="sm" />
-              <span>תצוגה לקריאה בלבד. סימון &quot;בוצע&quot; יתווסף בגרסה הבאה. התראת &quot;באיחור&quot; מוצגת רק בימים שכבר עברו.</span>
+              <span>
+                {marks.available
+                  ? 'סימון "בוצע" נשמר עם שם המסמנת והשעה ומופיע גם בכרטיס ההזמנה. התראת "באיחור" מוצגת רק בימים שכבר עברו.'
+                  : 'תצוגה לקריאה בלבד. סימון "בוצע" יהיה זמין אחרי עדכון המסד. התראת "באיחור" מוצגת רק בימים שכבר עברו.'}
+              </span>
             </p>
 
             {data && data.truncated ? (
@@ -203,7 +212,7 @@ export default function ScheduleDay() {
                 <ScheduleSkeleton />
               ) : visible.length ? (
                 visible.map((s) => (
-                  <StageSection key={s.key} stage={s} view={view} pickupHours={data.settings && data.settings.pickupHours} />
+                  <StageSection key={s.key} stage={s} view={view} pickupHours={data.settings && data.settings.pickupHours} marks={marks} />
                 ))
               ) : (
                 <div className="empty" role="status">
@@ -214,6 +223,7 @@ export default function ScheduleDay() {
             </div>
           </div>
         </div>
+        <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
       </div>
     </div>
   );

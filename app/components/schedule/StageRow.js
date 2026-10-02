@@ -2,13 +2,15 @@
 
 import { memo, useState } from 'react';
 import ScheduleIcon, { CheckCircleIcon } from './ScheduleIcon';
+import { MarkButton } from './MarkControls';
 import {
   STAGE_META, NOT_MARKED_TIP, subText, subParts, flagLabels, alertText, itemText, alterationSummary, formatAddress,
 } from './scheduleMeta';
 
-// סטטוס "בוצע" לקריאה בלבד (V1): אין לחצנים ואין סימון. done=null (שלבים 4/5/9 - אין עדיין שדה "בוצע")
-// מוצג כ"—" עם הסבר, לא כ"לא בוצע" (אין המצאה).
-export function StatusChips({ stage, row }) {
+// סטטוס "בוצע": עם סימון (doneState.available + onMarkDone מ-useStageMarks.js) - לחצן "בוצע" (MarkControls.js);
+// בלי (הטבלה עדיין לא נוצרה / אין hook) - צ'יפים לקריאה בלבד כמו ב-V1. done=null (אין שום מקור) מוצג כ"—"
+// עם הסבר, לא כ"לא בוצע" (אין המצאה).
+export function StatusChips({ stage, row, doneState, onMarkDone }) {
   if (stage.infoOnly) return null;
   const out = [];
   if ((stage.key === 'manret' || stage.key === 'dback') && row.returnCondition) {
@@ -17,6 +19,10 @@ export function StatusChips({ stage, row }) {
         ? <span key="rc" className="chip green lz-rc">תקין</span>
         : <span key="rc" className="chip rose lz-rc">לא תקין</span>,
     );
+  }
+  if (doneState && doneState.available && onMarkDone) {
+    out.push(<MarkButton key="mk" stage={stage} row={row} doneState={doneState} onMarkDone={onMarkDone} />);
+    return out;
   }
   if (row.done === true) {
     out.push(<span key="d" className="chip green lz-done-chip"><CheckCircleIcon className="sm" />בוצע</span>);
@@ -125,7 +131,8 @@ export function GoLink({ orderId }) {
   );
 }
 
-function StageRow({ stage, row }) {
+// doneState / onMarkDone: אופציונליים - מגיעים מ-StageSection (useStageMarks.js); בלעדיהם השורה לקריאה בלבד.
+function StageRow({ stage, row, doneState, onMarkDone }) {
   const [open, setOpen] = useState(false);
   const meta = STAGE_META[stage.key] || STAGE_META.order;
   const late = (row.alerts || []).some((a) => a.code === 'late_not_done');
@@ -147,7 +154,7 @@ function StageRow({ stage, row }) {
         <div className="lz-act">
           <AlertChips row={row} />
           <InfoChips stage={stage} row={row} />
-          <StatusChips stage={stage} row={row} />
+          <StatusChips stage={stage} row={row} doneState={doneState} onMarkDone={onMarkDone} />
         </div>
         <GoLink orderId={row.orderId} />
       </div>
@@ -159,7 +166,7 @@ function StageRow({ stage, row }) {
 export default memo(StageRow);
 
 // שורת טבלה (תצוגת "טבלה"): מציגה גם את פרטי הדגמים בתא "פרטים"
-function StageTableRowImpl({ stage, row }) {
+function StageTableRowImpl({ stage, row, doneState, onMarkDone }) {
   const late = (row.alerts || []).some((a) => a.code === 'late_not_done');
   const items = row.items || [];
   const itemLines = items.map((it) => {
@@ -183,7 +190,7 @@ function StageTableRowImpl({ stage, row }) {
         {row.internalNotes ? <small className="lz-sm">הערה פנימית (הנהלה בלבד): {row.internalNotes}</small> : null}
       </td>
       <td><AlertChips row={row} /><InfoChips stage={stage} row={row} /></td>
-      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><StatusChips stage={stage} row={row} /></div></td>}
+      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><StatusChips stage={stage} row={row} doneState={doneState} onMarkDone={onMarkDone} /></div></td>}
       <td className="tc"><GoLink orderId={row.orderId} /></td>
     </tr>
   );

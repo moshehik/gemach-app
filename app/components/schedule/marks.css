@@ -1,0 +1,38 @@
+/* app/components/schedule/marks.css - פקדי "בוצע" של הלו״ז (MarkControls.js). מינימלי, על רכיבי הפלטה; הכללים
+   לקוחים מהעיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html: .lz-mark, .lz-retw, .lz-all) ומוגבלים ל-.gm-ds.gm-lz.
+   הסוכן שאחראי על נאמנות העיצוב רשאי להעביר/להחליף אותם; הלוגיקה (useStageMarks.js) לא תלויה בקובץ הזה. */
+.gm-ds.gm-lz .btn.lz-mark{background:transparent;border:1.5px solid var(--navy);color:var(--navy);box-shadow:none;min-height:34px!important;height:34px;padding:0 14px;font-size:14px;font-weight:600;gap:6px;transform:none;border-radius:12px}
+.gm-ds.gm-lz .btn.lz-mark .ic{width:16px;height:16px;color:var(--navy);stroke:var(--navy);transition:color .18s,stroke .18s}
+.gm-ds.gm-lz .btn.lz-mark:is(:hover,:focus-visible),.gm-ds.gm-lz .btn.lz-mark.on{background:var(--navy);border-color:var(--navy);color:#fff;transform:none;box-shadow:none}
+.gm-ds.gm-lz .btn.lz-mark:is(:hover,:focus-visible) .ic:not(.evck),.gm-ds.gm-lz .btn.lz-mark.on .ic:not(.evck){color:#fff!important;stroke:#fff!important}
+.gm-ds.gm-lz .btn.lz-mark .ic.evck{color:#f38a6b!important;stroke:#f38a6b!important;stroke-width:3;stroke-dasharray:24;stroke-dashoffset:24;animation:lzEvDraw .35s ease-out forwards}
+.gm-ds.gm-lz .btn.lz-mark:disabled{opacity:.6;cursor:default}
+.gm-ds.gm-lz .lz-busy{opacity:.6;pointer-events:none}
+@keyframes lzEvDraw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .btn.lz-mark .ic.evck{animation:none;stroke-dashoffset:0}}
+/* "הוחזר לא תקין" צף מימין ל"בוצע" בריחוף / פוקוס (A4) - גם בטבלה */
+.gm-ds.gm-lz .lz-retw{display:inline-flex;align-items:center;gap:8px}
+.gm-ds.gm-lz .lz-retw .lz-bad{overflow:hidden;white-space:nowrap;max-width:0;opacity:0;visibility:hidden;margin-inline-end:-8px;padding-inline:0!important;border-width:0!important;transition:max-width .22s ease,opacity .18s ease,padding .22s ease,margin .22s ease,visibility 0s linear .22s}
+.gm-ds.gm-lz .lz-retw:is(:hover,:focus-within) .lz-bad{max-width:220px;opacity:1;visibility:visible;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important;transition-delay:0s}
+.gm-ds.gm-lz .btn.lz-mark.lz-bad{border-color:var(--rose-700,#9b3b5a);color:var(--rose-700,#9b3b5a)}
+.gm-ds.gm-lz .btn.lz-mark.lz-bad .ic{color:var(--rose-700,#9b3b5a);stroke:var(--rose-700,#9b3b5a)}
+.gm-ds.gm-lz .btn.lz-mark.lz-bad:is(:hover,:focus-visible){background:var(--rose-700,#9b3b5a);border-color:var(--rose-700,#9b3b5a);color:#fff}
+/* "הכל בוצע" - לחצן עגול עם וי כפול בכותרת המקטע */
+.gm-ds.gm-lz .ibtn.lz-all{width:36px;height:36px;border-radius:50%;flex:none;margin-inline-start:auto;color:var(--navy);border-color:var(--navy)}
+.gm-ds.gm-lz .ibtn.lz-all .ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gm-ds.gm-lz .ibtn.lz-all:is(:hover,:focus-visible){background:var(--navy);color:#fff}
+/* חלון "בטוח?" */
+.gm-ds.gm-lz .lz-mk-dlg{max-width:440px;text-align:center}
+.gm-ds.gm-lz .lz-mk-dlg h2{font-size:20px;margin-bottom:6px}
+.gm-ds.gm-lz .lz-mk-dlg .sub{margin-bottom:16px}
+.gm-ds.gm-lz .lz-mk-badge.bad{background:var(--gm-red-t);color:var(--gm-red)}
+.gm-ds.gm-lz .lz-mk-badge.bad svg{color:var(--gm-red);stroke:var(--gm-red)}
+.gm-ds.gm-lz .lz-mk-btns{flex-direction:row;justify-content:center;gap:10px;flex-wrap:wrap}
+.gm-ds.gm-lz .lz-mk-btns .btn{min-width:150px}
+/* טוסט */
+.gm-ds.gm-lz #toast.lz-toast .tb{background:var(--sky-200);color:var(--navy-700)}
+.gm-ds.gm-lz #toast.lz-toast .tb .ic{color:var(--navy-700);stroke:var(--navy-700)}
+.gm-ds.gm-lz #toast.lz-toast-error .tb,.gm-ds.gm-lz #toast.lz-toast-warn .tb{background:var(--gm-red-t);color:var(--gm-red)}
+.gm-ds.gm-lz #toast.lz-toast-error .tb .ic,.gm-ds.gm-lz #toast.lz-toast-warn .tb .ic{color:var(--gm-red);stroke:var(--gm-red)}
+.gm-ds.gm-lz #toast .tclose{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:11px;padding:8px;display:grid;place-items:center}
+.gm-ds.gm-lz #toast .tclose .ic{width:14px;height:14px;color:#fff;stroke:#fff}

@@ -63,6 +63,23 @@ export async function GET(request) {
       });
       if (order) {
         where.entityId = { in: [order.id, String(order.orderId)] };
+        // סימוני "בוצע" של הלו״ז היומי (ScheduleStageMark, lib/schedule/marks.js) נרשמים ביומן עם
+        // entityType='ScheduleStageMark' ו-entityId של שורת הסימון; הטאב "מידע" של ההזמנה צריך לראות אותם
+        // (החלטת הבעלים B18 "מי סימן ומתי"). המיפוי סימון→הזמנה דרך ScheduleStageMark.orderId - שאילתה אחת
+        // קטנה; הטבלה חסרה (עדיין לא נוצרה) -> מתעלמים בשקט.
+        const markIds = await prisma.scheduleStageMark
+          .findMany({ where: { orderId: order.orderId }, select: { id: true } })
+          .then((rows) => rows.map((r) => r.id))
+          .catch(() => []);
+        if (markIds.length) {
+          const orderIds = where.entityId;
+          delete where.entityType;
+          delete where.entityId;
+          where.OR = [
+            { entityType: 'Order', entityId: orderIds },
+            { entityType: 'ScheduleStageMark', entityId: { in: markIds } },
+          ];
+        }
       }
     }
     

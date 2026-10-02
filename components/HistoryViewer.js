@@ -118,7 +118,13 @@ export const FIELD_TRANSLATIONS = {
   totalMinutes: 'סה"כ דקות',
   totalCalculated: 'סה"כ לתשלום',
   hourlyWageSnapshot: 'שכר שעה (בעת המשמרת)',
-  travelExpensesSnapshot: 'נסיעות (בעת המשמרת)'
+  travelExpensesSnapshot: 'נסיעות (בעת המשמרת)',
+  // ScheduleStageMark (סימון "בוצע" בלו״ז היומי, lib/schedule/marks.js)
+  scheduleStage: 'שלב בלו״ז',
+  scheduleDay: 'יום בלו״ז',
+  done: 'בוצע',
+  outcome: 'מצב ההחזרה',
+  orderId: 'מספר הזמנה',
 };
 
 export const ACTION_TRANSLATIONS = {
@@ -149,7 +155,13 @@ export const ACTION_TRANSLATIONS = {
   CANCEL_PAYMENT: 'ביטול תשלום',
   RESTORE_PAYMENT: 'שחזור תשלום',
   CANCEL_ORDER: 'ביטול הזמנה',
-  CANCEL_CHANGES: 'ביטול שינויים שלא נשמרו'
+  CANCEL_CHANGES: 'ביטול שינויים שלא נשמרו',
+  // תיקונים (POST /api/alterations/mark-done וסימון מהלו״ז היומי)
+  ALTERATION_DONE: 'תיקון סומן כבוצע',
+  ALTERATION_UNDONE: 'ביטול סימון תיקון',
+  // לו״ז יומי - סימון "בוצע" לשלב (ScheduleStageMark, lib/schedule/marks.js)
+  SCHEDULE_STAGE_DONE: 'סומן "בוצע" בלו״ז',
+  SCHEDULE_STAGE_UNDONE: 'בוטל סימון "בוצע" בלו״ז'
 };
 
 export default function HistoryViewer({ entityType, entityId }) {
