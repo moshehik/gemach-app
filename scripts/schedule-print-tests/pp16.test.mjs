@@ -14,7 +14,7 @@ const { getScheduleDay } = await L('lib/schedule/index.js');
 const { loadExtras, buildPrintPayload } = await L('lib/schedule/print/data.js');
 const { getPrintPage } = await L('lib/schedule/print/registry.js');
 const PP16 = await L('lib/schedule/print/pages/PP-16.js');
-const { loadManretDetail, LATE_WINDOW_DAYS, LATE_MAX } = await L('lib/schedule/print/extras/manretDetail.js');
+const { loadManretDetail, LATE_WINDOW_DAYS, LATE_MAX, LATE_SCAN_MAX } = await L('lib/schedule/print/extras/manretDetail.js');
 const { parseScheduleCode } = await L('lib/schedule/print/barcode.js');
 const { buildScheduleWorkbook } = await L('lib/schedule/print/xlsx.js');
 const route = await L('app/api/schedule/print/route.js');
@@ -93,7 +93,7 @@ test('item state uses the schedule marks wording: "הוחזר" / "הוחזר ל�
   assert.equal(again.items.every((i) => i.of === 3), true);
 });
 
-test('extras: ONE OrderItem query (orderId in the stage rows, isDeleted=false), ONE late Order query, ONE dressModel query; no writes, no transactions', async () => {
+test('extras: ONE OrderItem query (orderId in the stage rows, isDeleted=false), late = ONE light candidate query + ONE detail query, ONE dressModel query; no writes, no transactions', async () => {
   const { day } = await payloadFor();
   globalThis.__MOCK_CALLS.length = 0;
   const x = await loadManretDetail(day);
@@ -104,11 +104,16 @@ test('extras: ONE OrderItem query (orderId in the stage rows, isDeleted=false), 
   assert.equal(itemQ[0].args.where.isDeleted, false);
   assert.ok(itemQ[0].args.take > 0, 'capped');
   const late = calls.filter((c) => c.model === 'order');
-  assert.equal(late.length, 1);
+  assert.equal(late.length, 2, 'candidates + details of the top LATE_MAX');
   const w = JSON.stringify(late[0].args.where);
   assert.ok(w.includes('"isDeleted":false') && w.includes('"status":null') && w.includes('"not":"טיוטה"'), 'NULL-safe draft filter');
   assert.ok(!/notIn|"<>"/.test(w), 'never a bare notIn/<> on Order.status');
-  assert.equal(late[0].args.take, LATE_MAX + 1);
+  assert.ok(w.includes('"takenDate":{"not":null}') && w.includes('"isTaken":true'), 'taken = isTaken OR takenDate');
+  assert.ok(w.includes('"returnDate":null') && w.includes('"isReturned":false'), 'not returned = neither isReturned nor returnDate');
+  assert.ok(w.includes('"deliveryDirection":"הלוך"'), 'delivery returns excluded in SQL');
+  assert.equal(late[0].args.take, LATE_SCAN_MAX + 1);
+  assert.equal(late[0].args.select.customer, undefined, 'candidate query is light (no customer)');
+  assert.deepEqual(late[1].args.where.orderId.in.sort(), [1017, 2004]);
   assert.equal(calls.filter((c) => c.model === 'dressModel').length, 1, 'prefix -> model name: one query');
   assert.equal(Object.keys(x.items).length, 3);
   assert.equal(x.lateWindowDays, LATE_WINDOW_DAYS);
@@ -118,7 +123,7 @@ test('late: not for a printed day in the past; not for delivery returns (stage 9
   // a day before "today": no late query at all (return state is of now, "late then" is unknowable)
   const past = await payloadFor('2026-09-30');
   assert.deepEqual(past.payload.pages[0].data.sections.map((s) => s.key), ['today']);
-  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args.take === LATE_MAX + 1).length, 0);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args.take === LATE_SCAN_MAX + 1).length, 0);
   // 1018 never taken, 1010 delivery round trip, 2002/2003/2006 due in the future: none of them is late on 1.10
   const { payload } = await payloadFor();
   const lateIds = payload.pages[0].data.sections[1].blocks.map((b) => b.orderId);
@@ -132,8 +137,52 @@ test('late: not for a printed day in the past; not for delivery returns (stage 9
   const branchOrders = ORDERS.map((o) => (o.orderId === 1017 ? { ...o, branch: 'נווה יעקב' } : o));
   setup({ orders: branchOrders });
   const day = await getScheduleDay({ date: '2026-10-01', branch: 'נווה יעקב', user: { id: 'emp-head', roleId: 0 }, now: NOW });
+  globalThis.__MOCK_CALLS.length = 0;
   const x = await loadManretDetail(day);
   assert.deepEqual(x.late.map((l) => l.orderId), [1017]);
+  // the branch filter is part of the SQL where (applied BEFORE take), not only a JS filter after it
+  const cand = globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args.take === LATE_SCAN_MAX + 1);
+  assert.ok(JSON.stringify(cand.args.where).includes('"branch":"נווה יעקב"'));
+});
+
+test('late: an item taken only by takenDate (isTaken false) counts; due date + days late come from lib/lateReturn.js', async () => {
+  const orders = ORDERS.map((o) => (o.orderId === 1017 ? { ...o, items: [{ ...o.items[0], isTaken: false, takenDate: new Date('2026-09-20T08:00:00Z') }] } : o));
+  setup({ orders });
+  const { day } = await payloadFor();
+  const x = await loadManretDetail(day);
+  const l = x.late.find((r) => r.orderId === 1017);
+  assert.ok(l, 'takenDate alone = taken');
+  const { getLateReturnInfo } = await L('lib/lateReturn.js');
+  const info = getLateReturnInfo(ORDERS.find((o) => o.orderId === 1017), 1, { now: new Date('2026-10-01T09:00:00Z') });
+  assert.equal(l.dueKey, info.dueKey);
+  assert.equal(l.daysLate, info.daysLate);
+});
+
+test('late: more than LATE_MAX late orders -> the most late are kept, lateTruncated is set and printed as a notice', async () => {
+  const extraLate = [];
+  for (let i = 0; i < LATE_MAX + 20; i++) {
+    // events on Israel days 25.9 back to 27.8 (21:00Z = Israel midnight of the NEXT day); all taken, none returned -> all late
+    const ev = new Date(Date.UTC(2026, 8, 24 - (i % 30), 21, 0, 0));
+    extraLate.push({ ...ORDERS.find((o) => o.orderId === 1017), orderId: 50000 + i, eventDate: ev, items: [{ ...ORDERS.find((o) => o.orderId === 1017).items[0], id: 'x' + i }] });
+  }
+  setup({ orders: [...ORDERS, ...extraLate] });
+  const { payload, extras } = await payloadFor();
+  const x = extras.manretDetail;
+  assert.equal(x.late.length, LATE_MAX);
+  assert.equal(x.lateTruncated, true);
+  const days = x.late.map((l) => l.daysLate);
+  assert.deepEqual(days, [...days].sort((a, b) => b - a), 'most late first');
+  // every dropped order is at most as late as the least-late one kept
+  const kept = new Set(x.late.map((l) => l.orderId));
+  const minKept = Math.min(...days);
+  const { getLateReturnInfo } = await L('lib/lateReturn.js');
+  for (const o of [...ORDERS, ...extraLate]) {
+    if (kept.has(o.orderId) || !(o.orderId >= 50000)) continue;
+    const info = getLateReturnInfo(o, 1, { now: new Date('2026-10-01T09:00:00Z') });
+    assert.ok(info.daysLate <= minKept, `dropped ${o.orderId} (${info.daysLate}) is not later than kept min ${minKept}`);
+  }
+  const { printNotices } = await L('lib/schedule/print/notices.js');
+  assert.ok(printNotices(payload).some((n) => n.includes(String(LATE_MAX))), 'notice printed');
 });
 
 test('late: items already returned stay listed with their state; an order with every item returned is not late', async () => {
