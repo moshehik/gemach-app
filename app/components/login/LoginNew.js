@@ -33,7 +33,6 @@ import {
 
 const PLACEHOLDER_USER = 'בחרו מהרשימה או הקלידו חלק מהשם';
 const PLACEHOLDER_PASS = 'הקלידו את הסיסמה';
-const AUTO_NOTE = 'ההגדרה נשמרת לכל משתמש בנפרד, פועלת בכל מחשב שבו נכנסים, ואפשר לשנות אותה גם כאן וגם ב״הפרופיל שלי״.';
 const DONE_PANEL_MS = 1800;
 
 function I({ n, sm = false }) {
@@ -528,14 +527,12 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
             <input
               type="checkbox"
               role="switch"
-              aria-describedby="lg-auto-n"
               checked={autoClock}
               onChange={(e) => { setAutoClock(e.target.checked); setAutoTouched(true); }}
             />
             <span className="sw" aria-hidden="true" />
             <span className="tx">רשום לי התחלת עבודה אוטומטית בכניסה</span>
           </label>
-          <p className="auto-note" id="lg-auto-n">{AUTO_NOTE}</p>
         </div>
 
         <button className="gbtn" type="submit" disabled={loading}>

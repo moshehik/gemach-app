@@ -89,7 +89,6 @@
 .gm-ds.gm-login .chk:hover .sw{filter:brightness(1.08)}
 .gm-ds.gm-login .auto{display:flex;flex-direction:column;gap:2px}
 .gm-ds.gm-login .chk .tx{display:flex;flex-direction:column}
-.gm-ds.gm-login .auto-note{margin:0;padding-inline-start:58px;font-size:13px;color:var(--gm-ink3);line-height:1.45}
 
 /* ---- G06: שורת הקישור לשעון הנוכחות; G07: תג מחשב מהימן; G08: תיבת שגיאה ---- */
 .gm-ds.gm-login .punch{margin-top:18px;padding-top:16px;border-top:1px solid rgba(188,194,200,.75);display:flex;justify-content:center}
@@ -172,6 +171,3 @@
 }
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-login *{transition:none!important;animation-duration:.01ms!important}}
 
-/* הכפתור הלבן של המתג בתפריט המשתמש הישן (AutoClockSwitch variant="legacy"), מחוץ להיקף .gm-login בכוונה:
-   design-overrides.css מחליף רקע לבן שנכתב inline ([style*="background: #fff"]) - לכן מחלקה ולא style. */
-.gm-autoclock-knob{position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:inset-inline-start .2s}
