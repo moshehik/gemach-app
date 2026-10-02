@@ -15,6 +15,7 @@ const addDays = (key, n) => { const [y, m, d] = key.split('-').map(Number); cons
 // עם עד שלושה אבות בתוך השורש. אותו מפתח בשני הצדדים = אותו רכיב.
 const DUMP = (rootSel) => {
   const root = document.querySelector(rootSel);
+  if (!root) return null;
   const out = [];
   const SKIP = /^(on|open|t|fut|z|today|sh|is-miss|lz-flash|hasm|active|done|foc|lz-loading|rv-hl|lz-unstick|ia-h|ia-[a-z]+|ltr|pl-tt-on)$/;
   const key = (el) => {
@@ -23,10 +24,12 @@ const DUMP = (rootSel) => {
   };
   const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { p.unshift(key(e)); e = e.parentElement; } return p.join('>'); };
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,\/]+/).map(Number); return { a: p.length > 3 ? p[3] : 1 }; };
-  const SIZED = /(^|\.)(btn|ibtn|chip|xlbtn|vsw|st-stab|lz-mark|lz-all|adm-hi|ic-b|st-sic|sn-badge|lz-dicon|hc-d|hc-n|lz-go|pg-ttl|adm-h)(\.|$|>)/;
+  const SIZED = /(^|\.)(btn|ibtn|chip|xlbtn|vsw|st-stab|lz-mark|lz-all|adm-hi|ic-b|st-sic|sn-badge|lz-dicon|hc-d|hc-n|lz-go|pg-ttl|adm-h|dbadge|dlg|tb|tclose)(\.|$|>)/;
   root.querySelectorAll('*').forEach((el) => {
     if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
-    if (el.closest('.rv-scope,#rvLayer,#tt,.pl-tt,#toast') || /^rv-/.test(el.id)) return;
+    if (el.closest('.rv-scope,#rvLayer,#tt,.pl-tt') || /^rv-/.test(el.id)) return;
+    // חלון "בטוח?" והטוסט נבדקים במצבים משלהם (root = .scrim / #toast), לא כחלק מהדף
+    if (rootSel === '.lz-app' && el.closest('.scrim,#toast')) return;
     const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;
     if (cs.visibility === 'hidden') return;
@@ -38,7 +41,8 @@ const DUMP = (rootSel) => {
     const o = { sel: k, bg: has ? bg.replace(/ /g, '') : '', bi: bi === 'none' ? '' : bi.replace(/ /g, '').replace(/url\([^)]*\)/g, 'url(…)').slice(0, 90), bf: bf && bf !== 'none' ? bf : '',
       col: cs.color.replace(/ /g, ''), bd: bsty === 'none' || bw === '0px' ? '' : cs.borderTopColor.replace(/ /g, '') + '/' + bw, bs: cs.boxShadow === 'none' ? '' : cs.boxShadow.replace(/ /g, '').slice(0, 90),
       rad: cs.borderTopLeftRadius, op: cs.opacity === '1' ? '' : cs.opacity, ff: cs.fontFamily.split(',')[0].replace(/"/g, ''), fs: cs.fontSize, fw: cs.fontWeight,
-      pad: cs.padding, cur: cs.cursor === 'auto' ? '' : cs.cursor, tr: cs.transitionDuration.split(',')[0].trim() === '0s' ? '' : cs.transitionDuration.split(',').slice(0, 2).join(',').replace(/ /g, '') };
+      pad: cs.padding, cur: cs.cursor === 'auto' ? '' : cs.cursor, tr: cs.transitionDuration.split(',')[0].trim() === '0s' ? '' : cs.transitionDuration.split(',').slice(0, 2).join(',').replace(/ /g, ''),
+      dis: el.disabled ? 1 : '' }; // כבוי? (cmp.mjs: הבדל סמן על רכיב כבוי = רעש, לא הבדל עיצוב)
     if (SIZED.test(k.split('>').pop())) o.ht = Math.round(r.height) + 'px';
     out.push(o);
   });
@@ -62,6 +66,8 @@ const LAYOUT = () => {
   add('main', document.querySelector('.lz-main'));
   add('hb', document.querySelector('.lz-hb'));
   add('vsw', document.querySelector('.vsw'));
+  add('dpanel', document.querySelector('.lz-dpanel')); add('dnav', document.querySelector('.lz-dnav')); add('quick', document.querySelector('.lz-quick'));
+  add('dlg', document.querySelector('.scrim .dlg')); add('dbtns', document.querySelector('.scrim .dbtns')); add('toast', document.querySelector('#toast.on'));
   add('note', document.querySelector('.lz-note'));
   add('nwd', document.querySelector('.lz-nwd'));
   add('branches', document.querySelector('.lz-branches'));
@@ -80,15 +86,18 @@ const b = await launch(); const p = await b.newPage();
 await p.setViewport({ width, height: 900, deviceScaleFactor: 1 });
 p.on('pageerror', (e) => console.log('PAGEERR', e.message));
 const results = {}; const layout = {};
-const snap = async (name, { full = false, wait = 650 } = {}) => {
+const snap = async (name, { full = false, wait = 650, root = '.lz-app' } = {}) => {
   await sleep(wait);
   if (full && width >= 768) { const app = await p.$('.lz-app'); if (app) await app.screenshot({ path: `${OUT}/${which}-${width}-${name}.png` }); else await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: true }); }
   else await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png` });
-  results[name] = await p.evaluate(DUMP, '.lz-app');
+  results[name] = (await p.evaluate(DUMP, root)) || [];
   layout[name] = await p.evaluate(LAYOUT);
   console.log('  ', which, name, results[name].length, 'elements');
 };
-const url = (date, mock) => D ? DEMO : `http://127.0.0.1:${PORT}/schedule${date ? '?date=' + date : ''}#m=${encodeURIComponent(JSON.stringify(mock || {}))}`;
+// nav=<n>: כתובת שונה בכל טעינה - בלעדיו מעבר שמשנה רק את ה-#m הוא ניווט בתוך אותו מסמך (בלי טעינה), והמצבים 24/25
+// צולמו בטעות על הדף של מצב הטעינה (23) - שלד במקום "אין הרשאה" / תצוגת עובדת
+let nav = 0;
+const url = (date, mock) => D ? DEMO : `http://127.0.0.1:${PORT}/schedule?${date ? 'date=' + date + '&' : ''}nav=${++nav}#m=${encodeURIComponent(JSON.stringify(mock || {}))}`;
 const blur = () => p.evaluate(() => document.activeElement && document.activeElement.blur());
 const park = async () => { await p.mouse.move(2, 2); await blur(); await sleep(200); };
 const hover = async (selector) => { const el = await p.$(selector); if (!el) { console.log('   (no element for hover:', selector + ')'); return false; } await el.evaluate((e) => e.scrollIntoView({ block: 'center' })); await sleep(120); const bb = await el.boundingBox(); if (!bb) { console.log('   (not visible for hover:', selector + ')'); return false; } await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); return true; };
@@ -111,14 +120,30 @@ await hover('#stages .hres .li'); await snap('02-row-hover');
 await park(); await hover('#stages .lz-go'); await snap('03-go-hover');
 await park(); if (await hover('#stages .lz-mark')) await snap('04-mark-hover');
 await park(); await p.evaluate(() => { const b = document.querySelector('#stages .lz-mark'); if (b) b.focus(); }); await snap('05-mark-focus');
-{ const el = await p.$('#stages .lz-mark'); if (el) { const bb = await el.boundingBox(); await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.mouse.down(); await snap('06-mark-active'); await p.mouse.up(); await sleep(300); await p.keyboard.press('Escape'); await sleep(400); } } // (בעיצוב הלחיצה פותחת חלון "בטוח?" - סוגרים)
+// לחיצה על "בוצע" -> חלון "בטוח?" (S03) -> "כן" -> טוסט + השורה דלוקה (lz-mark.on) -> ריחוף על הלחצן הדלוק
+{ const el = await p.$('#stages .lz-mark'); if (el) { const bb = await el.boundingBox(); await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.mouse.down(); await snap('06-mark-active'); await p.mouse.up(); await sleep(500);
+  await snap('06b-mark-confirm', { root: '.scrim', wait: 200 });
+  await jsClick('.scrim .dbtns .btn.primary'); await sleep(450);
+  await snap('06c-mark-toast', { root: '#toast', wait: 200 });
+  await park(); await snap('06d-marked-row');
+  if (await hover('#stages .lz-mark.on')) await snap('06e-done-hover');
+  await park(); await sleep(3600); } }
+// "הכל בוצע": ריחוף, ואז לחיצה -> חלון "בטוח?" (S04) -> ביטול
 await park(); if (await hover('#stages .lz-all')) await snap('07-all-hover');
+if (await jsClick('#stages .lz-all')) { await sleep(500); await snap('07c-all-confirm', { root: '.scrim', wait: 200 }); await jsClick('.scrim .dbtns .btn.ghost'); await sleep(450); }
 await park(); if (await hover('#stages .lz-stools .xlbtn')) await snap('07b-stool-hover');
 await park(); await hover('.st-stab:nth-child(2)'); await snap('08-rail-hover');
 await park(); await jsClick('.st-stab:nth-child(3)'); await park(); await snap('09-rail-filter-on');
 await jsClick('.st-stab:nth-child(1)'); await park();
 await hover('.vsw'); await snap('10-vsw-hover');
 await park(); if (await hover('#stages .lz-retw')) await snap('11-retw-hover');
+// "הוחזר לא תקין" (A4): ריחוף עליו, לחיצה -> חלון "בטוח?" (אדום) -> "כן" -> טוסט + שבב "לא תקין" + "בוצע" דלוק (B17)
+if (await hover('#stages .lz-retw .lz-bad')) {
+  await snap('11b-bad-hover');
+  await jsClick('#stages .lz-retw .lz-bad'); await sleep(500); await snap('11c-bad-confirm', { root: '.scrim', wait: 200 });
+  await jsClick('.scrim .dbtns .btn.primary'); await sleep(450); await snap('11d-bad-toast', { root: '#toast', wait: 200 });
+  await park(); await snap('11e-bad-row'); await sleep(3600);
+}
 await park();
 // 2. תצוגת טבלה
 await jsClick(D ? '#vsw .vopt[data-view=table]' : '.vsw .vopt[aria-label="תצוגת טבלה"]'); await park(); await snap('12-table', { full: true });
@@ -161,6 +186,11 @@ if (!D) {
   await fresh({ date: TODAY, mock: { err: 500 } }); await snap('26-error500-real-only', { full: true });
   await fresh({ date: '2026-10-03' }); await snap('27-nonworking-real-only', { full: true });
   await fresh({ date: TODAY, mock: { branches: true } }); await snap('28-branches-real-only', { full: true });
+  // טבלת הסימונים חסרה (שרת ישן): שלבים בלי מקור "בוצע" בלי לחצן ובלי פס; אורח במצב פתוח: לחצן כבוי באותו מראה
+  await fresh({ date: TODAY, mock: { marks: false } }); await snap('29-marks-unavailable-real-only', { full: true });
+  await fresh({ date: TODAY, mock: { canMark: false } }); await snap('30-cannot-mark-real-only', { full: true });
+  if (await hover('#stages .lz-mark')) await snap('30b-cannot-mark-hover');
+  await park();
 }
 fs.writeFileSync(`${OUT}/${which}-${width}.json`, JSON.stringify(results, null, 1));
 fs.writeFileSync(`${OUT}/${which}-${width}-layout.json`, JSON.stringify(layout, null, 1));
