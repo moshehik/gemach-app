@@ -61,3 +61,11 @@ test('the page does not pull /api/settings just for the branch list (it comes wi
   assert.ok(!src('ScheduleDay.js').includes("'/api/settings'"));
   assert.ok(src('ScheduleDay.js').includes('data.settings.branches'));
 });
+
+test('?date= tokens: ScheduleDay reads/validates them through hebrewCalendar.js and follows menu clicks on the same page', () => {
+  const day = src('ScheduleDay.js');
+  assert.ok(day.includes('parseDateParam(d)') && day.includes('resolveDateParam('), 'URL date must go through the whitelist');
+  assert.ok(!/DATE_RE\.test\(/.test(day), 'no second, looser date check in ScheduleDay');
+  // לחיצה על "היום"/"מחר" בתפריט כשהדף כבר פתוח: הרכיב לא נטען מחדש - חייב לעקוב אחרי ?date=
+  assert.ok(day.includes('useSearchParams()') && day.includes('parseDateParam(urlDate)'), 'same-page menu navigation is ignored');
+});

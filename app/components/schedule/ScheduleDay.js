@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ScheduleIcon, { LocalSprite } from './ScheduleIcon';
 import { useA5Shell } from '@/app/components/menu/A5ShellContext';
 import StageRail from './StageRail';
@@ -8,7 +9,7 @@ import StageSection from './StageSection';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { PageTools } from './ScheduleToolbarSlots';
-import { addDays, israelTodayKey } from './hebrewCalendar';
+import { addDays, israelTodayKey, isDateToken as isToken, parseDateParam, resolveDateParam } from './hebrewCalendar';
 import { STAGE_ORDER } from './scheduleMeta';
 import { useStageMarks } from './useStageMarks';
 import { MarkToast } from './MarkDialogs';
@@ -28,23 +29,16 @@ import { LzPortalRoot } from './LzPortal';
 //   (data.marks.canMarkAll, MARK_ALL_PERMISSION ב-lib/schedule/marks.js) גוברת; XL: ברירת המחדל settings.includeInternalNotes
 //   = הנהלה ראשית / מנהלת סניף / מתכנת (INTERNAL_NOTES_ROLE_IDS ב-lib/schedule/index.js).
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // ?date= מקבל גם מילת יחס (הקישורים "היום"/"מחר" בתפריט, lib/menu/buildMenuTree.js): מפוענחת כאן לפי "היום" הישראלי של
-// השרת (data.today) ולא ברגע בניית התפריט - כך "היום" נכון גם אחרי חצות בלי טעינה מחדש (סקירה 2.10, C). רשימה סגורה.
-const DATE_TOKENS = { today: 0, tomorrow: 1 };
-const isToken = (d) => Object.prototype.hasOwnProperty.call(DATE_TOKENS, d);
-// מילת יחס -> מפתח יום: לפי שעון השרת כשיש, אחרת לפי שעון ישראל בדפדפן (גיבוי עד התשובה הראשונה)
-function resolveDate(date, clock) {
-  if (!date) return null;
-  if (!isToken(date)) return date;
-  return addDays((clock && clock.today) || israelTodayKey(), DATE_TOKENS[date]);
-}
+// השרת (data.today) ולא ברגע בניית התפריט - כך "היום" נכון גם אחרי חצות בלי טעינה מחדש (סקירה 2.10, C). רשימה סגורה
+// (parseDateParam / resolveDateParam ב-hebrewCalendar.js, נבדקות ב-scripts/schedule-tests/dates.test.mjs).
+const resolveDate = (date, clock) => resolveDateParam(date, clock && clock.today);
 
 function readUrlState() {
   try {
     const p = new URLSearchParams(window.location.search);
     const d = p.get('date');
-    return { date: d && (DATE_RE.test(d) || isToken(d)) ? d : null, branch: p.get('branch') || '' };
+    return { date: parseDateParam(d), branch: p.get('branch') || '' };
   } catch {
     return { date: null, branch: '' };
   }
@@ -183,6 +177,22 @@ export default function ScheduleDay({
     setLocalToday(israelTodayKey());
     setReady(true);
   }, []);
+
+  // לחיצה על "היום"/"מחר" בתפריט כשכבר נמצאים בדף: Next מחליף את הכתובת (?date=today|tomorrow) אבל הרכיב נשאר טעון,
+  // כך שהמצב ההתחלתי לא נקרא שוב - עוקבים אחרי ?date= (useSearchParams; Next מסנכרן אותו גם עם replaceState של הדף
+  // עצמו, ואז הערך שווה למצב ואין שינוי). dateRef ולא date בתלויות: אחרת שינוי תאריך מהבורר, לפני שהכתובת מסונכרנת,
+  // היה מחזיר את התאריך הישן.
+  const searchParams = useSearchParams();
+  const urlDate = searchParams ? searchParams.get('date') : null;
+  const dateRef = useRef(null);
+  useEffect(() => { dateRef.current = date; }, [date]);
+  useEffect(() => {
+    if (!ready) return;
+    const d = parseDateParam(urlDate);
+    if (d === dateRef.current) return;
+    setDate(d);
+    setFilter(null);
+  }, [ready, urlDate]);
 
   useEffect(() => {
     if (!ready) return undefined;
