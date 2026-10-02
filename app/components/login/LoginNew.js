@@ -24,50 +24,14 @@ import './login.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { MenuSprite } from '../menu/menuParts';
 import { readAutoClockMirror, writeAutoClockMirror } from './AutoClockSwitch';
+import { I, LoginSprites, LoginBar, EmployeeCombobox, PasswordField, DarkDialog, PLACEHOLDER_PASS } from './loginParts';
 import {
-  greetingNow, sanitizeReturnPath, validateLoginForm, filterEmployees, matchEmployeeByName, employeeDisplayName,
+  greetingNow, sanitizeReturnPath, validateLoginForm, matchEmployeeByName, employeeDisplayName,
   LOGIN_MESSAGES, PREVIOUS_SHIFT_MESSAGES, SHIFT_ACTION, punchInMessage, doneTitle, unreadMessagesText,
 } from '@/lib/loginFlow';
 
-const PLACEHOLDER_USER = 'בחרו מהרשימה או הקלידו חלק מהשם';
-const PLACEHOLDER_PASS = 'הקלידו את הסיסמה';
 const DONE_PANEL_MS = 1800;
-
-function I({ n, sm = false }) {
-  const local = n === 'eyeoff';
-  return (
-    <svg className={`ic${sm ? ' sm' : ''}`} aria-hidden="true" focusable="false">
-      <use href={local ? `#gml-${n}` : `#gmi-${n}`} />
-    </svg>
-  );
-}
-
-/** סמלים שחסרים בספריית הפלטה (G01 עין חצויה), מוטמעים בדף. */
-function LocalSprite() {
-  return (
-    <svg style={{ display: 'none' }} aria-hidden="true" focusable="false">
-      <defs>
-        <symbol id="gml-eyeoff" viewBox="0 0 24 24">
-          <path d="M3 3l18 18M10.6 5.1A9.7 9.7 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.5 6.6C3.7 8.4 2 12 2 12s3.5 7 10 7c1.6 0 3-.4 4.3-1M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-        </symbol>
-      </defs>
-    </svg>
-  );
-}
-
-function Highlight({ text, query }) {
-  const q = (query || '').trim();
-  if (!q) return text;
-  const i = text.toLowerCase().indexOf(q.toLowerCase());
-  if (i < 0) return text;
-  return (
-    <>
-      {text.slice(0, i)}<mark>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}
-    </>
-  );
-}
 
 export default function LoginNew({ isModal = false, onClose, brand }) {
   const [mounted, setMounted] = useState(false);
@@ -78,9 +42,7 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
   const [listLoaded, setListLoaded] = useState(false);
   const [userText, setUserText] = useState('');
   const [selectedId, setSelectedId] = useState('');
-  const [listOpen, setListOpen] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(-1);
-  const cbxRef = useRef(null);
+  const comboRef = useRef(null); // { close() } של שדה בחירת העובד (loginParts.js) - נסגר בשליחה
   const userInputRef = useRef(null);
   const passInputRef = useRef(null);
 
@@ -116,7 +78,6 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
   const [prevError, setPrevError] = useState('');
   const [prevSaving, setPrevSaving] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const dialogRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -140,26 +101,7 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
       .catch(() => {});
   }, []);
 
-  // סגירת הרשימה בלחיצה מחוץ לשדה
-  useEffect(() => {
-    const onDown = (e) => { if (cbxRef.current && !cbxRef.current.contains(e.target)) setListOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, []);
-
-  useEffect(() => {
-    if (dialog && dialogRef.current) {
-      const first = dialogRef.current.querySelector('input, button');
-      try { (first || dialogRef.current).focus({ preventScroll: true }); } catch (e) { /* ignore */ }
-    }
-  }, [dialog]);
-
   const selectedEmployee = useMemo(() => employees.find((e) => e.id === selectedId) || null, [employees, selectedId]);
-  const filtered = useMemo(() => {
-    // כשהשדה מציג את השם שנבחר - הרשימה המלאה (כמו במסך הישן), אחרת סינון לפי ההקלדה
-    const showingSelected = selectedEmployee && userText.trim() === employeeDisplayName(selectedEmployee);
-    return showingSelected ? employees : filterEmployees(employees, userText);
-  }, [employees, userText, selectedEmployee]);
 
   const resolveEmployee = () => selectedEmployee || matchEmployeeByName(employees, userText);
 
@@ -168,8 +110,6 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
   const pick = (emp) => {
     setSelectedId(emp.id);
     setUserText(employeeDisplayName(emp));
-    setListOpen(false);
-    setActiveIdx(-1);
     setError(null);
     const mirror = readAutoClockMirror(emp.id);
     setAutoClock(mirror === true);
@@ -177,30 +117,10 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
     setTimeout(() => passInputRef.current && passInputRef.current.focus(), 0);
   };
 
-  const onUserChange = (e) => {
-    setUserText(e.target.value);
+  const onUserChange = (value) => {
+    setUserText(value);
     setSelectedId('');
-    setListOpen(true);
-    setActiveIdx(-1);
     if (error && error.field === 'user') setError(null);
-  };
-
-  const onUserKey = (e) => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!listOpen) setListOpen(true);
-      if (!filtered.length) return;
-      const d = e.key === 'ArrowDown' ? 1 : -1;
-      setActiveIdx((cur) => (cur + d + filtered.length) % filtered.length);
-    } else if (e.key === 'Enter' && listOpen && activeIdx >= 0 && filtered[activeIdx]) {
-      e.preventDefault();
-      pick(filtered[activeIdx]);
-    } else if (e.key === 'Escape' && listOpen) {
-      e.stopPropagation();
-      setListOpen(false);
-    } else if (e.key === 'Tab') {
-      setListOpen(false);
-    }
   };
 
   const togglePin = () => {
@@ -266,7 +186,7 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setListOpen(false);
+    if (comboRef.current) comboRef.current.close();
     const emp = resolveEmployee();
     const credential = pinMode ? pin : password;
     const invalid = validateLoginForm({ userText, employeeId: emp ? emp.id : null, credential, pinMode, listLoaded });
@@ -374,11 +294,6 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
   };
 
   // ---- תצוגה ----
-  const brandName = (brand && brand.name) || 'גמ״ח שמלות';
-  const brandTag = (brand && brand.tag) || '';
-  const [logoOk, setLogoOk] = useState(true);
-  const showLogo = !!(brand && brand.hasLogo) && logoOk;
-
   const userInvalid = error && error.field === 'user';
   const passInvalid = error && error.field === 'pass';
 
@@ -400,66 +315,17 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
 
         <div className="field">
           <label className="lbl" htmlFor="lg-user">שם עובד</label>
-          <div className="ctl cbx" ref={cbxRef}>
-            <I n="user" />
-            <input
-              ref={userInputRef}
-              className="inp"
-              id="lg-user"
-              type="text"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={listOpen ? 'true' : 'false'}
-              aria-controls="lg-userList"
-              aria-invalid={userInvalid ? 'true' : undefined}
-              aria-activedescendant={listOpen && activeIdx >= 0 && filtered[activeIdx] ? `lg-uo-${filtered[activeIdx].id}` : undefined}
-              // "new-password" ולא "off": כרום מתעלם מ-off ומציג dropdown משלו מעל הרשימה (דיווח 2a4a2af4)
-              autoComplete="new-password"
-              autoCapitalize="off"
-              spellCheck={false}
-              placeholder={listLoaded ? PLACEHOLDER_USER : LOGIN_MESSAGES.loading}
-              value={userText}
-              onChange={onUserChange}
-              onFocus={() => setListOpen(true)}
-              onClick={() => setListOpen(true)}
-              onKeyDown={onUserKey}
-            />
-            <button
-              type="button"
-              className="cbx-t"
-              aria-label="פתיחת רשימת העובדים"
-              aria-expanded={listOpen ? 'true' : 'false'}
-              aria-controls="lg-userList"
-              tabIndex={-1}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { if (listOpen) setListOpen(false); else { userInputRef.current?.focus(); setListOpen(true); } }}
-            >
-              <I n="chev" />
-            </button>
-            {listOpen ? (
-              <ul className="cbx-l" id="lg-userList" role="listbox" aria-label="עובדים" onMouseDown={(e) => e.preventDefault()}>
-                {!listLoaded ? (
-                  <li className="cbx-n" role="presentation">{LOGIN_MESSAGES.loading}</li>
-                ) : filtered.length ? filtered.map((emp, i) => {
-                  const name = employeeDisplayName(emp);
-                  return (
-                    <li
-                      key={emp.id}
-                      id={`lg-uo-${emp.id}`}
-                      role="option"
-                      className={`cbx-o${i === activeIdx ? ' act' : ''}`}
-                      aria-selected={emp.id === selectedId ? 'true' : 'false'}
-                      onClick={() => pick(emp)}
-                    >
-                      <I n="user" sm /><span><Highlight text={name} query={selectedEmployee ? '' : userText} /></span>
-                    </li>
-                  );
-                }) : (
-                  <li className="cbx-n" role="presentation">{LOGIN_MESSAGES.listEmpty}</li>
-                )}
-              </ul>
-            ) : null}
-          </div>
+          <EmployeeCombobox
+            ref={comboRef}
+            employees={employees}
+            listLoaded={listLoaded}
+            userText={userText}
+            selectedId={selectedId}
+            invalid={userInvalid}
+            onTextChange={onUserChange}
+            onPick={pick}
+            inputRef={userInputRef}
+          />
         </div>
 
         <div className="field">
@@ -471,44 +337,19 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
               </button>
             ) : null}
           </div>
-          <div className="ctl">
-            <I n="lock" />
-            {pinMode ? (
-              <input
-                ref={passInputRef}
-                className="inp pin has-end"
-                id="lg-pass"
-                type={showPass ? 'text' : 'password'}
-                maxLength={4}
-                placeholder="••••"
-                autoComplete="new-password"
-                aria-invalid={passInvalid ? 'true' : undefined}
-                value={pin}
-                onChange={(e) => { setPin(e.target.value.slice(0, 4)); if (passInvalid) setError(null); }}
-              />
-            ) : (
-              <input
-                ref={passInputRef}
-                className="inp has-end"
-                id="lg-pass"
-                type={showPass ? 'text' : 'password'}
-                placeholder={PLACEHOLDER_PASS}
-                autoComplete="new-password"
-                aria-invalid={passInvalid ? 'true' : undefined}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); if (passInvalid) setError(null); }}
-              />
-            )}
-            <button
-              type="button"
-              className="eye"
-              aria-label={showPass ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
-              aria-pressed={showPass ? 'true' : 'false'}
-              onClick={() => { setShowPass((v) => !v); passInputRef.current?.focus(); }}
-            >
-              <I n={showPass ? 'eyeoff' : 'eye'} />
-            </button>
-          </div>
+          <PasswordField
+            id="lg-pass"
+            inputRef={passInputRef}
+            pin={pinMode}
+            placeholder={pinMode ? '••••' : PLACEHOLDER_PASS}
+            invalid={passInvalid}
+            value={pinMode ? pin : password}
+            onChange={pinMode
+              ? (e) => { setPin(e.target.value.slice(0, 4)); if (passInvalid) setError(null); }
+              : (e) => { setPassword(e.target.value); if (passInvalid) setError(null); }}
+            showPass={showPass}
+            onToggle={() => { setShowPass((v) => !v); passInputRef.current?.focus(); }}
+          />
           <button type="button" className="forgot" onClick={openForgot}>שכחתי סיסמה</button>
         </div>
 
@@ -553,106 +394,90 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
 
   const forgotName = (() => { const emp = resolveEmployee(); return emp ? employeeDisplayName(emp) : ''; })();
 
+  // Escape/לחיצה על הרקע סוגרים רק את "שכחתי סיסמה" (שאר החלונות הם חובה, כמו בעיצוב); Tab נשאר בתוך החלון (focus trap)
   const dialogs = dialog ? (
-    <div
-      className="scrim on lg-dscrim"
-      onClick={(e) => { if (dialog === 'forgot' && e.target === e.currentTarget) setDialog(null); }}
-      onKeyDown={(e) => {
-        // Escape סוגר רק את "שכחתי סיסמה" (שאר החלונות הם חובה, כמו בעיצוב); Tab נשאר בתוך החלון (focus trap)
-        if (e.key === 'Escape' && dialog === 'forgot') { setDialog(null); return; }
-        if (e.key === 'Tab' && dialogRef.current) {
-          const items = [...dialogRef.current.querySelectorAll('input, button, [tabindex="0"]')].filter((el) => !el.disabled && el.offsetParent !== null);
-          if (!items.length) { e.preventDefault(); return; }
-          const first = items[0]; const last = items[items.length - 1];
-          if (e.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { e.preventDefault(); last.focus(); }
-          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-        }
-      }}
+    <DarkDialog
+      focusKey={dialog}
+      onEscape={dialog === 'forgot' ? () => setDialog(null) : undefined}
+      onBackdrop={dialog === 'forgot' ? () => setDialog(null) : undefined}
     >
-      <div className="dlg dk" role="dialog" aria-modal="true" aria-labelledby="lg-dlg-t" tabIndex={-1} ref={dialogRef}>
-        {dialog === 'forgot' ? (
-          <>
-            <div className="dbadge"><I n="mail" /></div>
-            <h2 id="lg-dlg-t">שכחתי סיסמה</h2>
-            <div className="sub">
-              תישלח סיסמה זמנית לכתובת המייל השמורה במערכת עבור העובד שנבחר (<bdi>{forgotName || 'לא נבחר עובד'}</bdi>). לאחר ההתחברות עם הסיסמה הזמנית תתבקש/י להגדיר סיסמה חדשה.
+      {dialog === 'forgot' ? (
+        <>
+          <div className="dbadge"><I n="mail" /></div>
+          <h2 id="lg-dlg-t">שכחתי סיסמה</h2>
+          <div className="sub">
+            תישלח סיסמה זמנית לכתובת המייל השמורה במערכת עבור העובד שנבחר (<bdi>{forgotName || 'לא נבחר עובד'}</bdi>). לאחר ההתחברות עם הסיסמה הזמנית תתבקש/י להגדיר סיסמה חדשה.
+          </div>
+          {forgotResult ? (
+            <div className={`msg${forgotResult.success ? ' ok' : ''}`} role="status">
+              <I n={forgotResult.success ? 'check' : 'alert'} /><span>{forgotResult.message}</span>
             </div>
-            {forgotResult ? (
-              <div className={`msg${forgotResult.success ? ' ok' : ''}`} role="status">
-                <I n={forgotResult.success ? 'check' : 'alert'} /><span>{forgotResult.message}</span>
-              </div>
-            ) : null}
+          ) : null}
+          <div className="dbtns">
+            <div className="r2">
+              <button type="button" className="ghost" onClick={() => setDialog(null)}>סגור</button>
+              <button type="button" className="gbtn" disabled={forgotSending} onClick={sendForgot}>
+                {forgotSending ? <span className="spin" aria-hidden="true" /> : null}
+                {forgotSending ? 'שולח…' : 'שלח סיסמה זמנית'}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {dialog === 'reset' ? (
+        <>
+          <div className="dbadge"><I n="shield" /></div>
+          <h2 id="lg-dlg-t">יש להגדיר סיסמה חדשה</h2>
+          <div className="sub">התחברת עם סיסמה זמנית. יש להגדיר סיסמה קבועה חדשה כדי להמשיך.</div>
+          {resetError ? <div className="msg" role="alert"><I n="alert" /><span>{resetError}</span></div> : null}
+          <form className="dform" noValidate onSubmit={saveNewPassword}>
+            <div className="field">
+              <label className="lbl" htmlFor="lg-np1">סיסמה חדשה</label>
+              <div className="ctl"><I n="lock" /><input className="inp" id="lg-np1" type="password" autoComplete="new-password" value={np1} onChange={(e) => setNp1(e.target.value)} /></div>
+            </div>
+            <div className="field">
+              <label className="lbl" htmlFor="lg-np2">אימות סיסמה חדשה</label>
+              <div className="ctl"><I n="lock" /><input className="inp" id="lg-np2" type="password" autoComplete="new-password" value={np2} onChange={(e) => setNp2(e.target.value)} /></div>
+            </div>
+            <button type="submit" className="gbtn" disabled={resetSaving}>{resetSaving ? 'שומר…' : 'שמור והמשך'}</button>
+          </form>
+        </>
+      ) : null}
+
+      {dialog === 'previous' ? (
+        <>
+          <div className="dbadge"><I n="clock" /></div>
+          <h2 id="lg-dlg-t">לא נרשמה יציאה אתמול</h2>
+          <div className="sub">{prevPrompt || 'המשמרת הקודמת עדיין פתוחה. באיזו שעה סיימת?'}</div>
+          {prevError ? <div className="msg" role="alert"><I n="alert" /><span>{prevError}</span></div> : null}
+          <form className="dform" noValidate onSubmit={(e) => { e.preventDefault(); closePrevious(false); }}>
+            <div className="field">
+              <label className="lbl" htmlFor="lg-ytime">שעת סיום המשמרת של אתמול</label>
+              <div className="ctl"><I n="clock" /><input className="inp" id="lg-ytime" type="time" value={prevTime} onChange={(e) => { setPrevTime(e.target.value); setPrevError(''); }} /></div>
+            </div>
             <div className="dbtns">
-              <div className="r2">
-                <button type="button" className="ghost" onClick={() => setDialog(null)}>סגור</button>
-                <button type="button" className="gbtn" disabled={forgotSending} onClick={sendForgot}>
-                  {forgotSending ? <span className="spin" aria-hidden="true" /> : null}
-                  {forgotSending ? 'שולח…' : 'שלח סיסמה זמנית'}
-                </button>
-              </div>
+              <button type="submit" className="gbtn" disabled={prevSaving}>{prevSaving ? 'שומר…' : 'שמור והמשך'}</button>
+              <button type="button" className="ghost" disabled={prevSaving} onClick={() => closePrevious(true)}>לא זוכר/ת, להשאיר פתוחה</button>
             </div>
-          </>
-        ) : null}
+          </form>
+        </>
+      ) : null}
 
-        {dialog === 'reset' ? (
-          <>
-            <div className="dbadge"><I n="shield" /></div>
-            <h2 id="lg-dlg-t">יש להגדיר סיסמה חדשה</h2>
-            <div className="sub">התחברת עם סיסמה זמנית. יש להגדיר סיסמה קבועה חדשה כדי להמשיך.</div>
-            {resetError ? <div className="msg" role="alert"><I n="alert" /><span>{resetError}</span></div> : null}
-            <form className="dform" noValidate onSubmit={saveNewPassword}>
-              <div className="field">
-                <label className="lbl" htmlFor="lg-np1">סיסמה חדשה</label>
-                <div className="ctl"><I n="lock" /><input className="inp" id="lg-np1" type="password" autoComplete="new-password" value={np1} onChange={(e) => setNp1(e.target.value)} /></div>
-              </div>
-              <div className="field">
-                <label className="lbl" htmlFor="lg-np2">אימות סיסמה חדשה</label>
-                <div className="ctl"><I n="lock" /><input className="inp" id="lg-np2" type="password" autoComplete="new-password" value={np2} onChange={(e) => setNp2(e.target.value)} /></div>
-              </div>
-              <button type="submit" className="gbtn" disabled={resetSaving}>{resetSaving ? 'שומר…' : 'שמור והמשך'}</button>
-            </form>
-          </>
-        ) : null}
-
-        {dialog === 'previous' ? (
-          <>
-            <div className="dbadge"><I n="clock" /></div>
-            <h2 id="lg-dlg-t">לא נרשמה יציאה אתמול</h2>
-            <div className="sub">{prevPrompt || 'המשמרת הקודמת עדיין פתוחה. באיזו שעה סיימת?'}</div>
-            {prevError ? <div className="msg" role="alert"><I n="alert" /><span>{prevError}</span></div> : null}
-            <form className="dform" noValidate onSubmit={(e) => { e.preventDefault(); closePrevious(false); }}>
-              <div className="field">
-                <label className="lbl" htmlFor="lg-ytime">שעת סיום המשמרת של אתמול</label>
-                <div className="ctl"><I n="clock" /><input className="inp" id="lg-ytime" type="time" value={prevTime} onChange={(e) => { setPrevTime(e.target.value); setPrevError(''); }} /></div>
-              </div>
-              <div className="dbtns">
-                <button type="submit" className="gbtn" disabled={prevSaving}>{prevSaving ? 'שומר…' : 'שמור והמשך'}</button>
-                <button type="button" className="ghost" disabled={prevSaving} onClick={() => closePrevious(true)}>לא זוכר/ת, להשאיר פתוחה</button>
-              </div>
-            </form>
-          </>
-        ) : null}
-
-        {dialog === 'notify' ? (
-          <>
-            <div className="dbadge"><I n="bell" /></div>
-            <h2 id="lg-dlg-t">הודעות שלא טופלו</h2>
-            <div className="sub">{unreadMessagesText(unreadCount)}</div>
-            <div className="dbtns">
-              <button type="button" className="gbtn" onClick={() => { setDialog(null); advance(); }}>הבנתי</button>
-            </div>
-          </>
-        ) : null}
-      </div>
-    </div>
+      {dialog === 'notify' ? (
+        <>
+          <div className="dbadge"><I n="bell" /></div>
+          <h2 id="lg-dlg-t">הודעות שלא טופלו</h2>
+          <div className="sub">{unreadMessagesText(unreadCount)}</div>
+          <div className="dbtns">
+            <button type="button" className="gbtn" onClick={() => { setDialog(null); advance(); }}>הבנתי</button>
+          </div>
+        </>
+      ) : null}
+    </DarkDialog>
   ) : null;
 
-  const sprites = (
-    <>
-      <MenuSprite />
-      <LocalSprite />
-    </>
-  );
+  const sprites = <LoginSprites />;
 
   if (isModal) {
     const modal = (
@@ -681,18 +506,7 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
   return (
     <div className="gm-ds gm-login home-bg" dir="rtl">
       {sprites}
-      <header className="snav lg-bar" role="banner">
-        <div className="sn-brand" aria-label={brandName}>
-          <span className={`sn-mark${showLogo ? ' ph' : ''}`}>
-            {showLogo
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src="/api/logo" alt="לוגו הארגון" onError={() => setLogoOk(false)} />
-              : <I n="dress" />}
-          </span>
-          <span className="sn-name">{brandName}</span>
-          {brandTag ? <span className="sn-tag">{brandTag}</span> : null}
-        </div>
-      </header>
+      <LoginBar brand={brand} />
       <main className="lg-stage">
         <div className="lg-wrap">
           <div className="lg-hero">
