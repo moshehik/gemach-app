@@ -285,5 +285,24 @@ t('הפלטה: .advgrid של הטופס המתקדם נערם לעמודה אח�
   assert.ok(stacked, 'חסר כלל @media שמערים את .advgrid');
 });
 
+/* ---------- 9. כפתור הורדת PDF + דף ההדפסה של התוצאות (searchPdf.js): בלי CSS חדש בדף הבית, בלי דליפת רקע ---------- */
+// כפתור ה-PDF הוא כפתור ההורדה הקיים של הפלטה (xlbtn xld) — רק התווית והפעולה השתנו. כל עיצוב חדש לכפתור = כלל חדש ב-home.css = סיכון דליפה.
+t('כפתור הורדת PDF: אותו כפתור פלטה (xlbtn xld), בלי מחלקה/סגנון חדש ובלי כלל xld ב-home.css', () => {
+  const parts = read('../app/components/home/HomeParts.js');
+  const m = /className="xlbtn xld"[\s\S]{0,300}?onClick=\{onPdf \|\| onDownload\}/.exec(parts);
+  assert.ok(m, 'הכפתור השלישי ב-XlButtons חייב להישאר xlbtn xld עם onPdf');
+  assert.ok(!/xlpdf|xlbtn pdf/i.test(parts + HOME_CSS), 'נוספה מחלקת כפתור PDF חדשה');
+  assert.deepEqual(homeRules.filter((r) => /\.xl(btn|d|p|g)/.test(r.sel)).map((r) => r.sel), [], 'home.css לא אמור לעצב את כפתורי הייצוא (הם מהפלטה)');
+});
+// דף ההדפסה נכתב לחלון/שרת נפרד: צבעים קבועים בלבד, בלי משתני ערכת נושא, ורקע יחיד מאושר (אפור בהיר לכותרת קטגוריה + לבן)
+t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם רקעים מאושרים בלבד (#fff / #f3f3f3 / #e9ebee למסך הדפדפן)', () => {
+  const src = read('../app/components/home/searchPdf.js');
+  assert.ok(!/var\(--/.test(src), 'משתנה CSS בדף ההדפסה');
+  const bgs = [...src.matchAll(/background(?:-color)?:\s*([^;'+]+)/g)].map((x) => x[1].trim());
+  const bad = bgs.filter((v) => !/^(#fff|#f3f3f3|#e9ebee)$/i.test(v));
+  assert.deepEqual(bad, [], 'רקע לא מאושר בדף ההדפסה: ' + bad.join(' | '));
+  assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

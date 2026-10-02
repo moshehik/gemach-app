@@ -16,9 +16,11 @@ await esbuild.build({
   entryPoints: [here('entry.jsx')], bundle: true, outdir: here('dist'), format: 'iife', jsx: 'automatic',
   loader: { '.js': 'jsx', '.svg': 'text' },
   define: { 'process.env.NODE_ENV': '"development"' },
-  external: ['/design-system/*', '/fonts/*'],
   alias: { '@': root, 'next/navigation': here('stubs.js'), 'next/link': here('stubs.js'), 'next/image': here('stubs.js') },
-  plugins: [{ name: 'stub-setting-panel', setup(b) { b.onResolve({ filter: /SettingQuickPanel$/ }, () => ({ path: here('sqp.js') })); } }],
+  plugins: [
+    // רק כתובות url(/design-system/...) / url(/fonts/...) (שמתחילות בסלאש) נשארות חיצוניות; '@/design-system/components.css' (import) נארז
+    { name: 'public-urls-external', setup(b) { b.onResolve({ filter: /^\/(design-system|fonts)\// }, (a) => ({ path: a.path, external: true })); } },
+    { name: 'stub-setting-panel', setup(b) { b.onResolve({ filter: /SettingQuickPanel$/ }, () => ({ path: here('sqp.js') })); } }],
   logLevel: 'warning',
   nodePaths: [path.join(root, 'node_modules')],
 });

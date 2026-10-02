@@ -20,13 +20,14 @@ import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
+import { buildSearchSheet, sectionsFromGeneral, sectionFromRecords } from './searchPdf';
 import { QuickPrefixList, useLocalRecentRows, useQuickPrefix } from '../search/QuickPrefix';
 import SearchKeySync from '../search/SearchKeySync';
 import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import {
   AI_CONTEXT, buildGreeting, normalizeSearch, resultsCount, unifiedRows, exportRecordsForRows,
   botMessageFromResponse, botErrorMessage, chatToHistory, withoutActionKeys, rowsToCsv, threadToCsv,
-  printRowsHtml, printThreadHtml, footerGroups,
+  printThreadHtml, footerGroups,
   HOME_SCOPES, parseHomeParams, homeDirectiveKey, homeScopeTitle, applyScope, scopedAdvFields, safeInternalRoute,
 } from './homeLogic';
 import {
@@ -122,6 +123,7 @@ export default function HomeA5() {
   }, []);
 
   const settings = useMemo(() => (boot && boot.settings) || {}, [boot]);
+  const gmachName = settings.gmach_name || 'גמ״ח שמלות';
   const employee = boot && boot.employee;
   const isManager = !!(boot && boot.isManager);
   const aiAllowed = settings.hide_ai_features !== 'true' && !!(boot && boot.aiAllowed);
@@ -429,8 +431,19 @@ export default function HomeA5() {
   }, [adv, aiAllowed, askAi, showToast]);
 
   /* ---------- ייצוא / הדפסה / הורדה ---------- */
-  const exportRows = useCallback(async (kind, rows, title, name) => {
+  // sheet = { title, sections?, query, queryLabel, scopeChip } — תיאור דף ההדפסה / ה-PDF המעוצב (searchPdf.js). בלי sections:
+  // מקטע אחד מהשורות עצמן (חיפוש מתקדם / חכם). אותו דף בדיוק גם להדפסה וגם להורדת PDF; אותן שורות כמו ב-Excel (לא נשלף שום מידע נוסף).
+  const exportRows = useCallback(async (kind, rows, title, name, sheet = {}) => {
     if (!rows || !rows.length) return;
+    const buildSheet = (forServer) => buildSearchSheet({
+      sections: sheet.sections || [sectionFromRecords(rows)].filter(Boolean),
+      title: sheet.title || title,
+      gmach: gmachName,
+      query: sheet.query,
+      queryLabel: sheet.queryLabel,
+      scopeChip: sheet.scopeChip,
+      forServer,
+    });
     if (kind === 'excel') {
       try {
         // xlsx (~900KB) נטען רק בלחיצה — לא חלק מה-bundle של הדף (כמו LegacyHome)
@@ -444,21 +457,47 @@ export default function HomeA5() {
     } else if (kind === 'download') {
       saveBlob(new Blob(['﻿', rowsToCsv(rows)], { type: 'text/csv;charset=utf-8' }), name + '.csv');
       showToast('ההורדה החלה');
-    } else if (printHtml(printRowsHtml(title, rows))) {
+    } else if (kind === 'pdf') {
+      // PDF אמיתי (טקסט נבחר, עמודים, כותרת ומספרי עמוד) דרך אותו שרת PDF של הזמנות (/api/pdf, מצב html). נטען רק בלחיצה.
+      // אין הרשאה / השרת לא זמין → נפתח אותו דף בדיוק בחלון הדפסה ("שמירה כ-PDF" שם), בלי לאבד את התוצאות.
+      showToast('מכינים קובץ PDF…');
+      try {
+        const out = buildSheet(true);
+        const { downloadPdf } = await import('@/app/lib/pdfClient');
+        await downloadPdf({ html: out.html, landscape: out.landscape, filename: 'search-results' }, out.fileName + '.pdf');
+        showToast('ה-PDF ירד');
+      } catch {
+        if (printHtml(buildSheet(false).html)) showToast('הורדת ה-PDF לא זמינה כרגע', 'נפתח דף הדפסה. אפשר לבחור בו "שמירה כ-PDF"');
+        else showToast('חלון ההדפסה נחסם', 'אפשרו חלונות קופצים');
+      }
+    } else if (printHtml(buildSheet(false).html)) {
       showToast('נשלח להדפסה');
     } else {
       showToast('חלון ההדפסה נחסם', 'אפשרו חלונות קופצים');
     }
-  }, [showToast]);
+  }, [showToast, gmachName]);
 
-  const onExportGeneral = (kind) => exportRows(kind, exportRecordsForRows(unifiedRows(shownRes)), 'תוצאות חיפוש', 'Search_Export');
+  const onExportGeneral = (kind) => exportRows(kind, exportRecordsForRows(unifiedRows(shownRes)), 'תוצאות חיפוש', 'Search_Export', {
+    sections: sectionsFromGeneral(shownRes),
+    query: lastQuery.current.text || q,
+    scopeChip: scopeDef ? 'רק ' + scopeDef.only : '',
+  });
   const onExportAdv = (kind) => {
     if (!advRes) return;
     const { data, summary } = advRes;
     const rows = data.rows.map((r) => Object.fromEntries(data.cols.map((c, i) => [c, Array.isArray(r[i]) ? r[i][0] : r[i]])));
-    exportRows(kind, rows, 'תוצאות חיפוש מתקדם ' + summary.label, 'Advanced_Search');
+    exportRows(kind, rows, 'תוצאות חיפוש מתקדם ' + summary.label, 'Advanced_Search', {
+      title: 'תוצאות חיפוש מתקדם',
+      query: summary.text,
+      queryLabel: 'סינון',
+      scopeChip: 'תחום: ' + summary.label,
+    });
   };
-  const onExportChat = (kind, m) => exportRows(kind, m.rows, 'תוצאות חיפוש חכם', 'AI_Export');
+  const onExportChat = (kind, m) => {
+    const at = chat.indexOf(m);
+    const asked = at > 0 && chat[at - 1] && chat[at - 1].me ? chat[at - 1].t : '';
+    exportRows(kind, m.rows, 'תוצאות חיפוש חכם', 'AI_Export', { title: 'תוצאות חיפוש חכם', query: asked, queryLabel: 'שאלה' });
+  };
   const onThread = (kind) => {
     if (kind === 'download') {
       saveBlob(new Blob(['﻿', threadToCsv(chat)], { type: 'text/csv;charset=utf-8' }), 'AI_Chat.csv');
@@ -539,7 +578,6 @@ export default function HomeA5() {
     isHead: boot && boot.isHead,
     authenticated: boot && boot.authenticated,
   }), [boot]);
-  const gmachName = settings.gmach_name || 'גמ״ח שמלות';
 
   return (
     <div className="gm-ds gm-home home-bg">

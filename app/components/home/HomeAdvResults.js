@@ -68,7 +68,7 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
       {rows.length > 0 && (
         <div className="xlrow xlrow2">
           <ViewSwitch table={table} onChange={onTable} />
-          <div className="aixl"><XlButtons onExcel={() => onExport('excel')} onPrint={() => onExport('print')} onDownload={() => onExport('download')} /></div>
+          <div className="aixl"><XlButtons onExcel={() => onExport('excel')} onPrint={() => onExport('print')} onPdf={() => onExport('pdf')} /></div>
         </div>
       )}
       {rows.length === 0 ? (

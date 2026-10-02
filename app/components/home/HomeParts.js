@@ -38,8 +38,9 @@ export function ViewSwitch({ table, onChange }) {
   );
 }
 
-// Excel / הדפסה / הורדה לתוצאות (לחצן 8/9/63)
-export function XlButtons({ onExcel, onPrint, onDownload }) {
+// Excel / הדפסה / הורדה לתוצאות (לחצן 8/9/63). כשמועבר onPdf, לחצן ההורדה (63) הוא הורדת PDF של דף ההדפסה המעוצב
+// (searchPdf.js) — אותו לחצן ואותו עיצוב, רק התווית והפעולה משתנות; בלי onPdf = הורדת קובץ (CSV) כמו קודם.
+export function XlButtons({ onExcel, onPrint, onDownload, onPdf }) {
   return (
     <>
       <button type="button" className="xlbtn xlg" aria-label="ייצוא ל-Excel" data-tip="ייצוא לקובץ Excel" onClick={onExcel}>
@@ -48,7 +49,13 @@ export function XlButtons({ onExcel, onPrint, onDownload }) {
       <button type="button" className="xlbtn xlp" aria-label="הדפסה" data-tip="הדפסת התוצאות" onClick={onPrint}>
         <PrintGlyph />
       </button>
-      <button type="button" className="xlbtn xld" aria-label="הורדה" data-tip="הורדת התוצאות כקובץ" onClick={onDownload}>
+      <button
+        type="button"
+        className="xlbtn xld"
+        aria-label={onPdf ? 'הורדת PDF' : 'הורדה'}
+        data-tip={onPdf ? 'הורדת התוצאות כקובץ PDF' : 'הורדת התוצאות כקובץ'}
+        onClick={onPdf || onDownload}
+      >
         <DownloadGlyph />
       </button>
     </>

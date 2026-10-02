@@ -34,7 +34,7 @@ function AiTable({ m, table, onTable, onExport }) {
     <div className="xlrow xlrow2">
       <ViewSwitch table={table} onChange={onTable} />
       <div className="bub-acts aixl">
-        <XlButtons onExcel={() => onExport('excel', m)} onPrint={() => onExport('print', m)} onDownload={() => onExport('download', m)} />
+        <XlButtons onExcel={() => onExport('excel', m)} onPrint={() => onExport('print', m)} onPdf={() => onExport('pdf', m)} />
       </div>
     </div>
   );
