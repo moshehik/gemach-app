@@ -8,7 +8,6 @@
 import { useEffect, useState } from 'react';
 
 export const AUTO_CLOCK_LABEL = 'רשום לי התחלת עבודה אוטומטית בכניסה';
-export const AUTO_CLOCK_HINT = 'אותה הגדרה כמו במסך הכניסה. אפשר לכבות בלי להתנתק.';
 export const AUTO_CLOCK_MIRROR_PREFIX = 'gm-login-autoclock:';
 
 export function writeAutoClockMirror(employeeId, enabled) {
