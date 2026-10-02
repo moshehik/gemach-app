@@ -285,5 +285,35 @@ t('הפלטה: .advgrid של הטופס המתקדם נערם לעמודה אח�
   assert.ok(stacked, 'חסר כלל @media שמערים את .advgrid');
 });
 
+/* ---------- 9. שעון הנוכחות (app/components/login/punch-clock.css): תוספת קטנה ל-login.css, אותו היקף ואותו משטר ---------- */
+const PUNCH_CSS = read('../app/components/login/punch-clock.css');
+const punchRules = parseCss(PUNCH_CSS);
+t('punch-clock.css: כל כלל בהיקף .gm-ds.gm-login.gm-punch (לא דולף לדף הכניסה ולא לשאר האתר)', () => {
+  const bad = [];
+  for (const r of punchRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-login\.gm-punch(\s|\.|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('punch-clock.css: אין רקע לבן קשיח, אין !important על רקע, ואין צבע שאינו משתנה פלטה', () => {
+  const bad = [];
+  for (const r of punchRules) for (const d of setsProp(r, /^background(-color|-image)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v) || isImportant(d)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/#[0-9a-f]{3,8}|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (צבע קשיח)`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('punch-clock.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(punchRules, 'punch-clock.css'), []);
+});
+t('שעון הנוכחות משתמש בשדות של login.css (input.inp בהיקף .gm-login) ולא בשדות הגלובליים של האתר', () => {
+  const page = read('../app/components/login/PunchClockNew.js');
+  const parts = read('../app/components/login/loginParts.js');
+  assert.ok(/import '\.\/login\.css'/.test(page), 'PunchClockNew.js חייב לייבא login.css');
+  assert.ok(/className=\{`inp\$\{pin/.test(parts) && /className="inp"/.test(parts), 'שדות העובד והסיסמה חייבים להיות .inp');
+  assert.ok(!/className="input"|className="btn |className="card card-pad"|className="callout/.test(page + parts), 'מחלקות הרכיבים הישנים של האתר דולפות לדף החדש');
+  assert.ok(!/<use[^>]*sprite\.svg/.test(page + parts), 'אסור להפנות ל-sprite.svg חיצוני - האייקונים מוטמעים (#gmi-*)');
+  assert.ok(!/font-family/.test(PUNCH_CSS), 'punch-clock.css לא נוגע בגופנים (login.css כבר מנטרל את design-overrides.css)');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
