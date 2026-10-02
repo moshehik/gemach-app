@@ -15,7 +15,8 @@ import './PrintWizard.css';
 //   הדפסה: חלון חדש /schedule/print/<keys>?date&branch&version - window.print() נפתח שם לבד.
 //   הורדה: Excel (גיליון לכל דף, RTL; המגבלה נבדקת בשרת - מעל המגבלה נדרשת סיסמת מאשר/ת) או PDF (POST /api/pdf
 //   במצב path על אותו דף הדפסה, דרך השער של lib/printAccess.js).
-// quick: חלונית מהירה לשלב אחד (נפתחת מלחצני המקטע): רק דפי השלב, בלי לשוניות / תצוגה מקדימה / "כל דפי היום" והמצב קבוע לפי הלחצן שנלחץ.
+// quick: חלונית מהירה לשלב אחד (נפתחת מלחצני המקטע): רק דפי השלב, בלי לשוניות / תצוגה מקדימה / "כל דפי היום" / בחירת פעולה -
+//   הפעולה נקבעת לפי האיקון שנלחץ (הדפסה / הורדת PDF / ייצוא Excel) ויש לחצן אחד שמבצע אותה.
 //   האשף המלא נפתח רק מלחצני הכותרת של הדף.
 // props: quick (bool), mode ('print'|'download'), format ('xlsx'|'pdf', למצב הורדה), canExport (false = בלי Excel), initialTab (מפתח שלב: פותח על הלשונית שלו ובוחר
 //   רק את דפי השלב), date (YYYY-MM-DD), branch, stageData (תשובת /api/schedule - למונים בלבד), onClose.
@@ -206,7 +207,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
     <div className="scrim on lz-wscrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={'dlg lz-wiz' + (isQuick ? ' lz-quick' : '')} id={isQuick ? 'dlg' : undefined} role="dialog" aria-modal="true" aria-labelledby="lz-wiz-title" ref={dlgRef}>
         <div className="dbadge" aria-hidden="true"><ScheduleIcon name={mode === 'print' ? 'print' : 'ext'} /></div>
-        <h2 id="lz-wiz-title">{isQuick ? 'הדפסה והורדה · ' + stageLabel : 'הדפסות והורדות' + (dayTitle ? ' · ' + dayTitle : '')}</h2>
+        <h2 id="lz-wiz-title">{isQuick ? (mode === 'print' ? 'הדפסה' : format === 'pdf' || !canExport ? 'הורדת PDF' : 'ייצוא Excel') + ' · ' + stageLabel : 'הדפסות והורדות' + (dayTitle ? ' · ' + dayTitle : '')}</h2>
         <div className="sub">{date ? hebrewLong(date) + ' · ' : ''}{isQuick ? 'בחרו דפים מהשלב' : 'בחרו דפים, ואז הדפיסו או הורידו'}</div>
 
         {isQuick ? null : <div className="lz-wm">
@@ -300,22 +301,9 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
         ) : null}
 
         <div className="dbtns mact lz-wf">
-          {isQuick ? (
-            // חלונית מהירה: הדפסה / PDF / Excel תמיד זמינים; הלחצן שממנו נפתחה החלונית מודגש
-            [{ act: 'print', label: 'הדפס', icon: 'print' }, { act: 'pdf', label: 'הורד PDF', icon: 'ext' }, ...(canExport ? [{ act: 'xlsx', label: 'הורד Excel', icon: 'table' }] : [])].map((b) => {
-              const cur = mode === 'print' ? 'print' : format;
-              return (
-                <button key={b.act} type="button" className={'btn lg' + (cur === b.act ? ' primary' : '')} disabled={!n || busy}
-                  onClick={() => { setMode(b.act === 'print' ? 'print' : 'download'); if (b.act !== 'print') setFormat(b.act); run(selected, b.act); }}>
-                  <ScheduleIcon name={b.icon} />{busy && cur === b.act ? 'מכין…' : b.label + ' (' + n + ')'}
-                </button>
-              );
-            })
-          ) : (
-            <button type="button" className="btn primary lg" disabled={!n || busy} onClick={() => run(selected)}>
-              <ScheduleIcon name={mode === 'print' ? 'print' : format === 'pdf' ? 'ext' : 'table'} />{busy ? 'מכין…' : goLabel}
-            </button>
-          )}
+          <button type="button" className="btn primary lg" disabled={!n || busy} onClick={() => run(selected)}>
+            <ScheduleIcon name={mode === 'print' ? 'print' : format === 'pdf' ? 'ext' : 'table'} />{busy ? 'מכין…' : goLabel}
+          </button>
           {isQuick ? null : <button type="button" className="btn" disabled={!allDay.length || busy} onClick={() => run(allDay)}>{allLabel}</button>}
           <button type="button" className="btn ghost" onClick={onClose}>סגירה<ScheduleIcon name="x" className="sm" /></button>
         </div>

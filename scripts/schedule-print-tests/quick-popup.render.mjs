@@ -33,21 +33,26 @@ ok('quick prep: only the prep pages, no tabs / mode switch / preview / all-day b
   assert.ok(!h.includes('aria-label="סוג הפעולה"'));
   assert.ok(!h.includes('lz-wp"'));
   assert.ok(!h.includes('הדפס את כל דפי היום'));
-  assert.ok(h.includes('הדפסה והורדה · הכנה'));
-  assert.ok(h.includes('הדפס (') && h.includes('הורד PDF (') && h.includes('הורד Excel ('));
+  assert.ok(h.includes('הדפסה · הכנה'));
+  assert.ok(h.includes('הדפס נבחרים (') && !h.includes('הורד PDF (') && !h.includes('הורד Excel ('));
 });
 
-ok('quick popup always offers print + PDF + Excel; the opener is highlighted', () => {
-  const h = html({ quick: true, initialTab: 'dout', mode: 'download', format: 'pdf', canExport: true });
-  assert.ok(h.includes('הדפס (') && h.includes('הורד PDF (') && h.includes('הורד Excel ('));
-  assert.ok(!h.includes('aria-label="סוג הקובץ"'));
-  assert.match(h, /class="btn lg primary"[^>]*>(?:(?!<\/button>).)*הורד PDF/);
+ok('quick popup: ONE action button, decided by the icon that opened it (print / PDF / Excel)', () => {
+  const pr = html({ quick: true, initialTab: 'dout', mode: 'print', canExport: true });
+  assert.ok(pr.includes('הדפס נבחרים (') && !pr.includes('הורד PDF (') && !pr.includes('הורד Excel ('));
+  const pdf = html({ quick: true, initialTab: 'dout', mode: 'download', format: 'pdf', canExport: true });
+  assert.ok(pdf.includes('הורד PDF (') && !pdf.includes('הדפס נבחרים (') && !pdf.includes('הורד Excel ('));
+  assert.ok(pdf.includes('הורדת PDF · משלוח הלוך'));
+  const xl = html({ quick: true, initialTab: 'dout', mode: 'download', format: 'xlsx', canExport: true });
+  assert.ok(xl.includes('הורד Excel (') && !xl.includes('הורד PDF (') && !xl.includes('הדפס נבחרים ('));
+  assert.ok(xl.includes('ייצוא Excel · משלוח הלוך'));
+  for (const h of [pr, pdf, xl]) assert.ok(!h.includes('aria-label="סוג הקובץ"') && !h.includes('aria-label="סוג הפעולה"'));
 });
 
-ok('quick popup without export right = print + PDF only', () => {
-  const h = html({ quick: true, initialTab: 'dout', mode: 'print', canExport: false });
-  assert.ok(h.includes('הדפס (') && h.includes('הורד PDF ('));
-  assert.ok(!h.includes('הורד Excel ('));
+ok('quick popup without export right: Excel request degrades to PDF only', () => {
+  const h = html({ quick: true, initialTab: 'dout', mode: 'download', format: 'xlsx', canExport: false });
+  assert.ok(h.includes('הורד PDF (') && !h.includes('הורד Excel ('));
+  assert.ok(h.includes('הורדת PDF · משלוח הלוך'));
 });
 
 ok('quick without a valid stage falls back to the full wizard', () => {
