@@ -35,7 +35,7 @@ const specArg = (process.argv[2] && !process.argv[2].startsWith('long') ? proces
 const long = process.argv.includes('long');
 const specs = specArg.map((s) => { const [key, version] = s.split(':'); return { key, version: version || null, name: key + (version || '') + (long ? '-long' : '') }; });
 const DAY = '2026-10-01';
-const PAGE_CSS = ['ppTables.css', 'pp03.css', 'pp09.css', 'pp0408.css'];
+const PAGE_CSS = ['pp03.css', 'pp09.css'];
 
 // ---- 1. payloads (one per spec) -----------------------------------------------------------------
 const { PrintDocument } = await L('app/components/schedule/print/PrintShell.js');

@@ -72,7 +72,7 @@ try {
     const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${page.def.label}</title>
 <link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
-<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${['pp-table-theme-leaks', 'pp02', 'pp19'].map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f + '.css')}">`).join('')}${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
+<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${['pp02', 'pp19'].map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f + '.css')}">`).join('')}${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
 <body class="hide-global-nav pp-print-mode"><nav class="navbar">תפריט (מדמה את המעטפת)</nav><div data-print-ready="true">${body}</div></body></html>`;
     const htmlPath = path.join(OUT, name + '.html');
     fs.writeFileSync(htmlPath, html);

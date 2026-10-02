@@ -1,5 +1,5 @@
 // Render harness for the schedule print pages - no dev server, no DB, no port 3000.
-//   node --import ./scripts/schedule-print-tests/register-render.mjs scripts/schedule-print-tests/render.mjs [PP-01,PP-15] [long]
+//   node --import ./scripts/schedule-print-tests/register-render.mjs scripts/schedule-print-tests/render.mjs [PP-01,PP-15 | all] [long] [combined]
 // 1. Builds the real payload: fixtures (scripts/schedule-tests/fixtures.mjs) -> real getScheduleDay (mock prisma) ->
 //    loadExtras -> buildPrintPayload. With "long" the stage rows are multiplied (~90 rows) to force several pages.
 // 2. Renders the real React templates (PrintDocument + PrintShell + pages/*) to static HTML with react-dom/server,
@@ -37,6 +37,10 @@ if (keysArg[0] === 'all') {
 const pageSpecs = keysArg.map((k) => { const [key, v] = k.split(':'); return { key, version: v || null }; });
 keysArg = [...new Set(pageSpecs.map((x) => x.key))];
 const long = process.argv.includes('long');
+// combined: ONE document with every selected page (what the wizard prints for "all pages of the day") -> out/ALL[-long].{html,pdf};
+// checks that the sheet/page-break/@page rules of table pages, sticker pages (named page) and per-order pages coexist: page counters
+// run 1..N through the whole document, the footer is on every page, and every selected page's title is in the PDF
+const combined = process.argv.includes('combined');
 const DAY = '2026-10-01';
 
 // Leak scan, run in the page under BOTH media (screen = the wizard's preview/iframe, print = paper): the sheet must stay black on white
@@ -116,12 +120,75 @@ const css = (rel) => pathToFileURL(path.join(PROJ, rel)).href;
 const FONT_FREE = process.env.NO_WEBFONTS === '1';
 // PP_THEME=dark: the live app's dark theme tokens (app/design-system.css [data-theme=dark]) - the print sheet must not follow them
 const THEME = process.env.PP_THEME === 'dark' ? 'dark' : 'light';
-// page-local stylesheets (app/components/schedule/print/pages/pp*.css): the live page gets them through the templates' own imports
+// page-local stylesheets (app/components/schedule/print/pages/pp*.css): the live page gets them through the templates' own imports,
+// which run BEFORE page.js imports print.css - so they are linked before print.css here too (same cascade order as the live page)
 const pageCss = fs.readdirSync(path.join(PROJ, 'app/components/schedule/print/pages')).filter((f) => /^pp.*\.css$/i.test(f))
   .map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f)}">`).join('');
 const results = [];
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--no-sandbox'] });
 try {
+  if (combined) {
+    const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload }));
+    const name = 'ALL' + (long ? '-long' : '');
+    const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8"><title>${name}</title>
+<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
+<link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
+${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}"></head>
+<body class="hide-global-nav pp-print-mode"><nav class="navbar">תפריט (מדמה את המעטפת)</nav><div data-print-ready="true">${body}</div></body></html>`;
+    const htmlPath = path.join(OUT, name + '.html');
+    fs.writeFileSync(htmlPath, html);
+    const tab = await browser.newPage();
+    await tab.setViewport({ width: 1000, height: 1200, deviceScaleFactor: 1 });
+    await tab.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
+    await tab.emulateMediaType('print');
+    const pdfPath = path.join(OUT, name + '.pdf');
+    await tab.pdf({ path: pdfPath, preferCSSPageSize: true, printBackground: true });
+    const jsonPath = path.join(OUT, name + '.pdf.json');
+    const py = spawnSync('python', [path.join(HERE, 'pdfcheck.py'), pdfPath, jsonPath], { encoding: 'utf8' });
+    const pdf = py.status === 0 && fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : { pages: null, text: [] };
+    await tab.close();
+    const texts = pdf.text.map((t) => t.replace(/\s+/g, ' '));
+    const counters = texts.map((t) => { let m = t.match(/עמוד\s*(\d+)\s*מתוך\s*(\d+)/); if (m) return [Number(m[1]), Number(m[2])]; m = t.match(/(\d+)\s*מתוך\s*(\d+)\s*עמוד/); return m ? [Number(m[2]), Number(m[1])] : null; });
+    const problems = [];
+    if (!pdf.pages) problems.push('no pdf');
+    if (!counters.every((c, i) => c && c[0] === i + 1 && c[1] === pdf.pages)) problems.push('counters not continuous: ' + JSON.stringify(counters));
+    if (!texts.every((t) => t.includes('הופק מהמערכת'))) problems.push('footer missing on page ' + (texts.findIndex((t) => !t.includes('הופק מהמערכת')) + 1));
+    // informational: how many PDF pages mention each selected page's title/label (pypdf glues RTL words with their neighbours, so a 0 here
+    // is not a failure - the authoritative per-sheet check is the pixel diff against the standalone PDF below)
+    const norm = (t) => String(t).replace(/[^א-ת0-9A-Za-z]/g, '');
+    const perPage = {};
+    for (const p of payload.pages) {
+      const title = norm((p.data && p.data.title) || p.def.label);
+      const label = norm(p.def.label);
+      perPage[p.key + (p.version ? ':' + p.version : '')] = texts.filter((t) => { const n = norm(t); return n.includes(title) || n.includes(label); }).length;
+    }
+    // the combined document must be the standalone PDFs laid end to end: page count = sum of the singles (from the last non-combined run's
+    // summary), and each sheet's first page pixel-identical to its standalone first page apart from the footer page number (<0.6%) -
+    // this is what proves the sticker pages' named @page (8/9mm margins) and the per-order pages keep their layout inside a mixed document
+    const sumPath = path.join(OUT, 'summary' + (long ? '-long' : '') + '.json');
+    const pageDiffs = {};
+    if (fs.existsSync(sumPath)) {
+      const singles = JSON.parse(fs.readFileSync(sumPath, 'utf8'));
+      let offset = 0; let sum = 0;
+      for (const p of payload.pages) {
+        const sName = p.key + (p.version && p.def.versions ? '-' + p.version : '') + (long ? '-long' : '');
+        const s = singles.find((x) => x.name === sName);
+        if (!s || !s.pdfPages) { pageDiffs[sName] = 'no single'; continue; }
+        const r = spawnSync('python', [path.join(HERE, 'pdf-pagediff.py'), pdfPath, String(offset + 1), path.join(OUT, sName + '.pdf'), '1'], { encoding: 'utf8' });
+        let dp = null; try { dp = JSON.parse(r.stdout).diffPct; } catch { dp = 'err ' + (r.stderr || '').slice(0, 80); }
+        pageDiffs[sName] = dp;
+        if (typeof dp !== 'number' || dp > 0.6) problems.push(`sheet ${sName} differs from its standalone page (${dp}%)`);
+        offset += s.pdfPages; sum += s.pdfPages;
+      }
+      if (sum !== pdf.pages) problems.push(`page count ${pdf.pages} != sum of singles ${sum}`);
+    } else problems.push('run the non-combined pass first (summary json missing) to compare pages with the standalone PDFs');
+    console.log(`${problems.length ? 'FAIL' : 'OK  '} ${name.padEnd(12)} sheets=${payload.pages.length} pdfPages=${pdf.pages} ${problems.join(' | ')}`);
+    console.log('  PDF pages per selected page: ' + JSON.stringify(perPage));
+    console.log('  pixel diff vs standalone first page (%): ' + JSON.stringify(pageDiffs));
+    fs.writeFileSync(path.join(OUT, name + '.summary.json'), JSON.stringify({ pdfPages: pdf.pages, counters, perPage, pageDiffs, problems }, null, 2));
+    await browser.close();
+    process.exit(problems.length ? 1 : 0);
+  }
   for (const page of payload.pages) {
     const single = { meta: payload.meta, pages: [page] };
     const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload: single }));
@@ -129,7 +196,7 @@ try {
     const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8"><title>${page.def.label}</title>
 <link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
-<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${pageCss}${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
+${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
 <body class="hide-global-nav pp-print-mode"><nav class="navbar">תפריט (מדמה את המעטפת)</nav><div data-print-ready="true">${body}</div></body></html>`;
     const htmlPath = path.join(OUT, name + '.html');
     fs.writeFileSync(htmlPath, html);
@@ -157,7 +224,7 @@ try {
       return {
         bodyBg: cs(document.body).backgroundColor,
         rootBg: cs(root).backgroundColor, rootColor: cs(root).color, rootFont: cs(root).fontFamily, rootDir: cs(root).direction,
-        sheetBg: sheet ? cs(sheet).backgroundColor : null,
+        sheetBg: sheet ? cs(sheet).backgroundColor : null, slim: !!(sheet && sheet.classList.contains('slim')),
         h1Font: h1 ? cs(h1).fontFamily : null, h1Color: h1 ? cs(h1).color : null, h1Size: h1 ? cs(h1).fontSize : null,
         thBg: th ? cs(th).backgroundColor : null, thBorderBottom: th ? cs(th).borderBottomWidth : null, thPosition: th ? cs(th).position : null,
         tdPaddingTop: td ? cs(td).paddingTop : null, tdBreak: td ? cs(td.parentElement).breakInside : null,
@@ -195,7 +262,7 @@ for (const r of results) {
   if (s.rootColor !== 'rgb(17, 17, 17)') problems.push('root color ' + s.rootColor);
   if (!/Segoe UI|Noto Sans Hebrew/.test(s.rootFont)) problems.push('root font ' + s.rootFont);
   if (s.h1Font && !/Segoe UI|Noto Sans Hebrew/.test(s.h1Font)) problems.push('h1 font leak ' + s.h1Font);
-  if (s.h1Size !== '21px') problems.push('h1 size ' + s.h1Size);
+  if (s.h1Size !== (s.slim ? '16px' : '21px')) problems.push('h1 size ' + s.h1Size + (s.slim ? ' (slim)' : ''));
   if (s.rootDir !== 'rtl') problems.push('dir ' + s.rootDir);
   if (s.thBg && s.thBg !== 'rgba(0, 0, 0, 0)') problems.push('th bg ' + s.thBg);
   if (s.thPosition && s.thPosition !== 'static') problems.push('th position (sticky leak) ' + s.thPosition);
@@ -219,7 +286,10 @@ function checkPdf(pdf, page) {
   if (!pdf.pages) return { parsed: 'no pdf text (pypdf missing?)' };
   const texts = pdf.text.map((t) => t.replace(/\s+/g, ' '));
   // header (gmach name + page title) and footer on every page
-  out.headerOnEveryPage = texts.every((t) => t.includes('גמ״ח שמלות') && t.includes(page.def.label.split(' ')[0])) || 'missing on page ' + (texts.findIndex((t) => !t.includes('גמ״ח שמלות')) + 1);
+  // the title bar shows data.title when the page sets one (03: "רשימת תיקונים…", 10/18: "משלוחים…", 12: "תעודת משלוח"), else the registry label
+  const titleWord = String((page.data && page.data.title) || page.def.label).split(' ')[0];
+  const hasHead = (t) => t.includes('גמ״ח שמלות') && (t.includes(titleWord) || t.includes(page.def.label.split(' ')[0]));
+  out.headerOnEveryPage = texts.every(hasHead) || 'missing on page ' + (texts.findIndex((t) => !hasHead(t)) + 1);
   out.footerOnEveryPage = texts.every((t) => t.includes('הופק מהמערכת')) || 'missing on page ' + (texts.findIndex((t) => !t.includes('הופק מהמערכת')) + 1);
   // page counters from @page margin box (Chrome 131+); report as a value, not a failure, when absent
   // pypdf emits the RTL margin box reversed ("1 מתוך1עמוד"); accept both orders

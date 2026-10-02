@@ -104,15 +104,23 @@ for (const def of READY) {
         assert.ok(B.isValidCode39(page.pageCode));
         assert.deepEqual(B.parseScheduleCode(page.pageCode), { kind: 'day', stage: def.stages[0], prefix: def.barcode.prefix, day: '2026-10-01' });
       }
+      // rows='order': every row code is PFX-<order>; rows='item': item codes PFX-<order>-<n> (plus, as in the design, an order code on the
+      // block header of PP-03 version a); rows=null: only the per-sheet header code of a "one order per page" page (PP-12: DOT-<order>)
+      const kinds = new Set();
       for (const c of codes.filter((x) => CODE_LIKE.test(x))) {
         assert.ok(B.isValidCode39(c), `${c} is valid Code 39`);
         const parsed = B.parseScheduleCode(c);
+        kinds.add(parsed.kind);
         assert.equal(parsed.prefix, def.barcode.prefix, `${c}: page prefix`);
         assert.equal(parsed.stage, def.stages[0], `${c}: prefix stage = page stage`);
         if (def.barcode.rows === 'order') assert.equal(parsed.kind, 'order', `${c}: order code`);
-        if (def.barcode.rows === 'item') assert.equal(parsed.kind, 'item', `${c}: item code`);
-        if (def.barcode.rows === null) assert.fail(`${def.key}: no row barcodes expected, got ${c}`);
+        if (def.barcode.rows === 'item') assert.ok(parsed.kind === 'item' || parsed.kind === 'order', `${c}: item (or block-header order) code`);
+        if (def.barcode.rows === null) {
+          assert.ok(def.perOrderPage, `${def.key}: no row barcodes expected, got ${c}`);
+          assert.equal(parsed.kind, 'order', `${c}: per-order page header code`);
+        }
       }
+      if (def.barcode.rows === 'item' && !page.data.empty) assert.ok(kinds.has('item'), `${def.key}: at least one item code`);
     }
   });
 
