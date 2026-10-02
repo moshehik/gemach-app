@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import ScheduleIcon, { CheckCircleIcon } from './ScheduleIcon';
+import ScheduleIcon, { CheckCircleIcon, DoubleCheckIcon } from './ScheduleIcon';
 import './marks.css';
 
 // פקדי "בוצע" של הלו״ז: לחצן בשורה (+ "הוחזר לא תקין" שצף בריחוף בשלבי ההחזרה - החלטה A4), לחצן "הכל בוצע"
@@ -27,15 +27,43 @@ export function doneTip(state) {
   return 'בוצע ' + (VIA_TEXT[state.doneVia] || '') + ' · לחיצה לביטול';
 }
 
-// חלון "בטוח?" - חלון קטן על רכיבי הפלטה (scrim + dlg + dbadge). Enter = כן, Esc = ביטול.
-export function ConfirmDialog({ open, title, sub, yes, kind = 'check', onYes, onNo }) {
+// מה הסימון/הביטול עושה בפועל בשלב הזה - מוצג בחלון "בטוח?" (בלי הפתעות: בשלבים 2/8 נוגעים בפריטים)
+export function confirmEffect(stageKey, { done, outcome, all }) {
+  if (stageKey === 'manret') {
+    if (!done) return 'יבטל את ההחזרה של הפריטים בהזמנה (רק פריטים שהוחזרו מהלו״ז)';
+    return all ? 'הפריטים יירשמו כהוחזרו תקין' : (outcome === 'not_ok' ? 'הפריטים יירשמו כהוחזרו - לא תקין' : 'הפריטים יירשמו כהוחזרו תקין');
+  }
+  if (stageKey === 'repair') return done ? 'יסמן "תיקון בוצע" בפריטי ההזמנה' : 'יבטל "תיקון בוצע" בפריטים';
+  return '';
+}
+
+// חלון "בטוח?" - חלון קטן על רכיבי הפלטה (scrim + dlg + dbadge). Enter = כן, Esc = ביטול. הפוקוס נלכד
+// בתוך החלון (Tab בין שני הלחצנים) וחוזר ללחצן שפתח אותו בסגירה.
+export function ConfirmDialog({ open, title, sub, effect, yes, kind = 'check', onYes, onNo }) {
   const yesRef = useRef(null);
+  const noRef = useRef(null);
+  const returnTo = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
+    returnTo.current = typeof document !== 'undefined' ? document.activeElement : null;
     const t = setTimeout(() => yesRef.current && yesRef.current.focus(), 30);
-    const onKey = (e) => { if (e.key === 'Escape') onNo(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); onNo(); return; }
+      if (e.key === 'Tab') {
+        const a = yesRef.current;
+        const b = noRef.current;
+        if (!a || !b) return;
+        e.preventDefault();
+        (document.activeElement === a ? b : a).focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => { clearTimeout(t); window.removeEventListener('keydown', onKey); };
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('keydown', onKey);
+      const el = returnTo.current;
+      if (el && typeof el.focus === 'function' && document.contains(el)) el.focus();
+    };
   }, [open, onNo]);
   if (!open) return null;
   const icon = kind === 'undo' ? 'undo' : kind === 'alert' ? 'alert' : 'check';
@@ -45,11 +73,12 @@ export function ConfirmDialog({ open, title, sub, yes, kind = 'check', onYes, on
         <div className={'dbadge lz-mk-badge' + (kind === 'alert' ? ' bad' : '')}><ScheduleIcon name={icon} /></div>
         <h2 id="lz-mk-title">{title}</h2>
         {sub ? <div className="sub">{sub}</div> : null}
+        {effect ? <div className="sub lz-mk-effect">{effect}</div> : null}
         <div className="dbtns lz-mk-btns">
           <button ref={yesRef} type="button" className={'btn ' + (kind === 'alert' ? 'ghost lz-mk-yes-bad' : 'primary')} onClick={onYes}>
             <ScheduleIcon name={icon} className="sm" />{yes}
           </button>
-          <button type="button" className="btn ghost" onClick={onNo}>לא, חזרה</button>
+          <button ref={noRef} type="button" className="btn ghost" onClick={onNo}>לא, חזרה</button>
         </div>
       </div>
     </div>
@@ -81,6 +110,7 @@ export function MarkButton({ stage, row, doneState, onMarkDone }) {
         ? (ask.outcome === 'not_ok' ? 'בטוח שהשמלה הוחזרה לא תקינה?' : 'בטוח שהשלב "' + stage.label + '" בוצע' + (retStage ? ' (הוחזר תקין)' : '') + '?')
         : 'לבטל את סימון הביצוע?'}
       sub={sub}
+      effect={confirmEffect(stage.key, ask)}
       yes={ask.done ? (ask.outcome === 'not_ok' ? 'כן, סמן כלא תקין' : 'כן, סמן כבוצע') : 'כן, בטל סימון'}
       onYes={run}
       onNo={() => setAsk(null)}
@@ -153,13 +183,14 @@ export function MarkAllButton({ stage, pending, canMarkAll, busy, onMarkAll }) {
         disabled={busy}
         onClick={() => setAsk(true)}
       >
-        <svg className="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m2.5 12.5 4 4L13 10M9.5 16.5l2 2L21.5 8" /></svg>
+        <DoubleCheckIcon />
       </button>
       <ConfirmDialog
         open={ask}
         kind="check"
         title={'בטוח שכל "' + stage.label + '" בוצע?'}
         sub={pending + ' שורות יסומנו כבוצעו'}
+        effect={confirmEffect(stage.key, { done: true, outcome: 'ok', all: true })}
         yes="כן, סמן הכל"
         onYes={() => { setAsk(false); onMarkAll && onMarkAll(stage); }}
         onNo={() => setAsk(false)}

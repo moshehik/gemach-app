@@ -187,6 +187,8 @@ const modelProxy = (model) => new Proxy({}, {
 const proxy = new Proxy({}, {
   get(_, prop) {
     if (prop === 'then') return undefined;
+    // stale generated client: a model that is not in the Prisma client at all (prisma.x === undefined)
+    if (Array.isArray(globalThis.__MOCK_NO_MODEL) && globalThis.__MOCK_NO_MODEL.includes(prop)) return undefined;
     if (typeof prop === 'string' && prop.startsWith('$')) return async () => { throw new Error(`BLOCKED ${prop} in schedule tests`); };
     return modelProxy(prop);
   },

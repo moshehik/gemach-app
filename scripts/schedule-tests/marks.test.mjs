@@ -31,10 +31,14 @@ const head = { id: 'emp-head', roleId: 0 };
 const worker = { id: 'emp-worker', roleId: 5 };
 
 function installWithTable(opts = {}) {
-  installDb({ ...opts, extra: { scheduleStageMark: [], ...(opts.extra || {}) } });
-  globalThis.__MOCK_WRITABLE = ['scheduleStageMark', 'orderItem'];
+  installDb({ ...opts, extra: { scheduleStageMark: [], dressItem: [], ...(opts.extra || {}) } });
+  globalThis.__MOCK_WRITABLE = ['scheduleStageMark', 'orderItem', 'dressItem'];
   M.resetMarksTableState(); // a "missing table" seen earlier in the same test is memoised for 5 minutes
 }
+const d = (iso) => new Date(iso);
+const bareItem = (over = {}) => ({ id: 'it-' + Math.random().toString(36).slice(2, 8), isTaken: true, takenDate: null, isReturned: false, returnDate: null, returnedOk: false, isDeleted: false, neckAlteration: 0, lengthAlteration: null, sleeveAlteration: 0, alterationDone: false, dressItem: null, dressItemId: null, ...over });
+// an extra order that lands in stage 8 (manual return) on DAY: event Tue 29.9 -> due Thu 1.10
+const manretOrder = (orderId, items) => ({ ...ORDERS.find((o) => o.orderId === 1013), orderId, customer: { firstName: 'בדיקה', lastName: String(orderId), phone1: '050', city: 'ירושלים', street: 'א', houseNum: 1 }, items });
 
 beforeEach(() => {
   installDb();
@@ -232,6 +236,8 @@ test('validateMarkInput: whitelist of stages/actions/outcomes, day format and ra
   bad({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1, outcome: 'broken' });
   bad({ action: 'mark_all', stageKey: 'prep', dayKey: DAY, orderIds: 'x' });
   bad({ action: 'mark_all', stageKey: 'prep', dayKey: DAY, orderIds: Array.from({ length: 201 }, (_, i) => i + 1) });
+  // the cap is enforced BEFORE the ids are mapped: a huge list of garbage fails on the cap, not on item validation
+  assert.throws(() => M.validateMarkInput({ action: 'mark_all', stageKey: 'prep', dayKey: DAY, orderIds: Array.from({ length: 5000 }, () => 'abc') }, { today: DAY }), (e) => e.status === 400 && /עד 200/.test(e.message));
   bad(null);
   const ret = M.validateMarkInput({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 7 }, { today: DAY });
   assert.equal(ret.outcome, 'ok', '"בוצע" on a return stage = returned OK (A4)');
@@ -418,21 +424,169 @@ test('late alerts follow the mark: marking a past-day return clears late_not_don
   order.items[0].isReturned = false; order.items[0].returnDate = null; order.items[0].returnedOk = false;
 });
 
-test('late_not_done for stages without an existing field (4/5/9) exists only once the mark table exists; marking clears it', async () => {
+test('late_not_done for stages without an existing field (4/5/9): only from the Israel day of the EARLIEST mark in the table (self-activating, no flood of old days)', async () => {
   // Thu 24.9.2026 viewed from 1.10: prep rows of that day (events Tue 29.9 -> 3 business days back over Sukkot)
   let res = await day('2026-09-24');
   const prepAbsent = stageOf(res, 'prep').items;
   assert.ok(prepAbsent.length > 0);
   assert.ok(prepAbsent.every((r) => r.done === null && !r.alerts.some((a) => a.code === 'late_not_done')), 'table absent: unknown, no late alert');
+  const noLate = (r) => !r.alerts.some((a) => a.code === 'late_not_done');
+  // empty table: nothing was ever marked -> no "late" on past days
   installWithTable();
   res = await day('2026-09-24');
-  const prep = stageOf(res, 'prep').items;
-  assert.ok(prep.every((r) => r.done === false && r.alerts.some((a) => a.code === 'late_not_done' && a.daysLate === 7)), 'table present: not marked on a past day = late');
+  let prep = stageOf(res, 'prep').items;
+  assert.ok(prep.every((r) => r.done === false && noLate(r)), 'empty table: not done, but no late alert');
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' && c.method === 'findFirst').length, 1, 'min(markedAt) asked once (past day only)');
+  globalThis.__MOCK_CALLS = [];
+  await day(DAY);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' && c.method === 'findFirst').length, 0, 'today: no min(markedAt) query');
+  // first mark ever on 28.9 (Israel) -> 24.9 is before that -> still no alerts
+  const mk = (id, markedAt) => ({ id, orderId: 9999, stageKey: 'dout', dayKey: '2026-09-28', done: true, outcome: null, source: 'row', markedById: 'emp-head', markedAt: d(markedAt), undoneById: null, undoneAt: null });
+  installWithTable({ extra: { scheduleStageMark: [mk('m1', '2026-09-27T21:30:00Z')] } }); // 00:30 Israel 28.9
+  res = await day('2026-09-24');
+  assert.ok(stageOf(res, 'prep').items.every(noLate), 'marks exist only from 28.9: the 24.9 is not flagged');
+  // first mark on 20.9 -> 24.9 >= 20.9 -> late (7 days from 1.10)
+  installWithTable({ extra: { scheduleStageMark: [mk('m2', '2026-09-20T10:00:00Z'), mk('m1', '2026-09-27T21:30:00Z')] } });
+  res = await day('2026-09-24');
+  prep = stageOf(res, 'prep').items;
+  assert.ok(prep.every((r) => r.done === false && r.alerts.some((a) => a.code === 'late_not_done' && a.daysLate === 7)), 'from the first mark on: not marked on a past day = late');
+  // the boundary day itself counts (>=), stages with an existing field are unaffected by the rule
+  assert.equal(M.marksSinceKey(d('2026-09-20T10:00:00Z')), '2026-09-20');
+  assert.equal(M.marksSinceKey(null), null);
+  const A = await L('lib/schedule/alerts.js');
+  const prepStage = STAGE_BY_KEY.prep;
+  const base = { done: false, canMark: true };
+  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-09-20', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: '2026-09-20' }).length, 1);
+  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-09-19', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: '2026-09-20' }).length, 0);
+  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-09-19', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: null }).length, 0);
+  assert.equal(A.alertsForRow({ done: false }, STAGE_BY_KEY.pick, { dayKey: '2026-09-19', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: null }).length, 1, 'stage 6 (isTaken) keeps its late rule regardless');
+  // marking clears it (patch == reload)
   const r = await apply({ action: 'mark', stageKey: 'prep', dayKey: '2026-09-24', orderId: prep[0].orderId, outcome: null, source: 'row' });
   assert.deepEqual(r.results[0].row.alerts, []);
   res = await day('2026-09-24');
   assert.deepEqual(rowOf(res, 'prep', prep[0].orderId).alerts, []);
   assert.equal(stageOf(res, 'prep').counts.alerts, prep.length - 1);
+  // unmarking it again on that past day brings the alert back, in the patch and on reload
+  const u = await apply({ action: 'unmark', stageKey: 'prep', dayKey: '2026-09-24', orderId: prep[0].orderId, outcome: null, source: 'row' });
+  assert.equal(u.results[0].row.alerts[0].code, 'late_not_done');
+  res = await day('2026-09-24');
+  assert.equal(rowOf(res, 'prep', prep[0].orderId).alerts[0].code, 'late_not_done');
+});
+
+// ---- קליינט Prisma מיושן (המודל לא בקליינט) ---------------------------------------------------------
+
+test('stale Prisma client (prisma.scheduleStageMark === undefined): day loads, POST 503, GET available:false, /api/audit 200 - no TypeError', async () => {
+  installWithTable({ extra: { auditLog: [] } });
+  globalThis.__MOCK_NO_MODEL = ['scheduleStageMark'];
+  try {
+    assert.equal(M.isMarksModelAvailable(), false);
+    const warned = [];
+    const orig = console.warn;
+    console.warn = (...a) => warned.push(a.join(' '));
+    let res;
+    try { res = await day(); } finally { console.warn = orig; }
+    assert.deepEqual(res.marks, { available: false, canMark: false, canMarkAll: false });
+    assert.equal(rowOf(res, 'prep', 1005).done, null);
+    assert.ok(warned.some((w) => /generated Prisma client/.test(w)));
+    globalThis.__AUTH_TOKEN = 'emp-head';
+    const p = await post({ action: 'mark', stageKey: 'prep', dayKey: DAY, orderId: 1005 });
+    assert.equal(p.status, 503);
+    M.resetMarksTableState();
+    const g = await marksRoute.GET({ url: 'http://localhost/api/schedule/marks?orderId=1005' });
+    assert.equal(g.status, 200);
+    assert.deepEqual(g.__json, { available: false, marks: [] });
+    M.resetMarksTableState();
+    globalThis.__MOCK_DB.order = ORDERS.map((o) => ({ ...o, id: 'uuid-' + o.orderId }));
+    const a = await auditRoute.GET({ url: 'http://localhost/api/audit?entityType=Order&entityId=1005' });
+    assert.equal(a.status, 200, JSON.stringify(a.__json));
+    assert.deepEqual(await M.listOrderMarkIds(1005), []);
+  } finally {
+    globalThis.__MOCK_NO_MODEL = null;
+  }
+});
+
+// ---- ביטול = מה שטעינה מחדש תראה ---------------------------------------------------------------------
+
+test('unmark on stage 9 (dback): the patch equals a reload - returnCondition back to the items (null), done false', async () => {
+  installWithTable();
+  await apply({ action: 'mark', stageKey: 'dback', dayKey: DAY, orderId: 1010, outcome: 'not_ok', source: 'row' });
+  const u = await apply({ action: 'unmark', stageKey: 'dback', dayKey: DAY, orderId: 1010, outcome: null, source: 'row' });
+  const patch = u.results[0].row;
+  const res = await day();
+  const row = rowOf(res, 'dback', 1010);
+  for (const k of ['done', 'doneVia', 'doneBy', 'doneAt', 'outcome', 'returnCondition']) assert.deepEqual(patch[k], row[k], k);
+  assert.equal(patch.returnCondition, null);
+  assert.equal(patch.done, false);
+  assert.equal('fact' in JSON.parse(JSON.stringify(row)), false, 'row.fact is internal, not in the JSON');
+});
+
+test('unmark on a fact-done row (stage 6, all items taken): the mark is undone but the row stays done via isTaken, with a note - equal to a reload', async () => {
+  const order = ORDERS.find((o) => o.orderId === 1007);
+  const was = order.items.map((it) => it.isTaken);
+  order.items.forEach((it) => { it.isTaken = true; });
+  try {
+    installWithTable();
+    await apply({ action: 'mark', stageKey: 'pick', dayKey: DAY, orderId: 1007, outcome: null, source: 'row' });
+    const u = await apply({ action: 'unmark', stageKey: 'pick', dayKey: DAY, orderId: 1007, outcome: null, source: 'row' });
+    const patch = u.results[0].row;
+    assert.equal(u.results[0].status, 'unmarked');
+    assert.equal(patch.done, true);
+    assert.equal(patch.doneVia, 'isTaken');
+    assert.match(patch.note, /נלקחו בהשכרה/);
+    const row = rowOf(await day(), 'pick', 1007);
+    for (const k of ['done', 'doneVia', 'doneBy', 'doneAt', 'outcome']) assert.deepEqual(patch[k], row[k], k);
+    assert.equal(row.mark.done, false);
+    assert.equal(writes('orderItem').length, 0, 'C2: isTaken is never touched from the schedule');
+  } finally {
+    order.items.forEach((it, i) => { it.isTaken = was[i]; });
+  }
+});
+
+test('stage 8 unmark cancels ONLY the items the schedule itself returned (returnDate == markedAt); scan-returned items keep their state; DressItem.location follows /api/returns/scan', async () => {
+  const byScan = bareItem({ id: 'it-scan', isReturned: true, returnedOk: true, returnDate: d('2026-09-30T10:00:00Z'), dressItemId: 'di-scan' });
+  const pending = bareItem({ id: 'it-pend', dressItemId: 'di-pend' });
+  const noDress = bareItem({ id: 'it-nodress' }); // before a barcode was assigned: no DressItem to move
+  installWithTable({ extra: {
+    order: [...ORDERS, manretOrder(3002, [byScan, pending, noDress]), manretOrder(3003, [bareItem({ id: 'it-s1', isReturned: true, returnedOk: true, returnDate: d('2026-09-30T10:00:00Z') })])],
+    dressItem: [{ id: 'di-scan', location: 'חנות' }, { id: 'di-pend', location: 'מושכר' }],
+  } });
+  const di = (id) => globalThis.__MOCK_DB.dressItem.find((x) => x.id === id);
+  // mark: only the two pending items are returned; their dresses move to the store
+  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: 'ok', source: 'row' });
+  assert.equal(r.results[0].status, 'marked');
+  assert.deepEqual(writes('orderItem', 'update').map((c) => c.args.where.id).sort(), ['it-nodress', 'it-pend']);
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), [['di-pend', 'חנות']]);
+  assert.equal(di('di-pend').location, 'חנות');
+  assert.equal(r.results[0].row.done, true);
+  assert.equal(r.results[0].row.returnCondition, 'ok');
+  let row = rowOf(await day(), 'manret', 3002);
+  assert.equal(row.done, true); assert.equal(row.returnCondition, 'ok'); assert.equal(row.returnedCount, 3);
+  // unmark: only it-pend / it-nodress (returnDate == markedAt) go back; it-scan stays returned; di-pend -> מושכר, di-scan untouched
+  globalThis.__MOCK_CALLS = [];
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: null, source: 'row' });
+  assert.deepEqual(writes('orderItem', 'update').map((c) => c.args.where.id).sort(), ['it-nodress', 'it-pend']);
+  assert.ok(writes('orderItem', 'update').every((c) => c.audit.action === 'CANCEL_RETURN'));
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), [['di-pend', 'מושכר']]);
+  assert.equal(di('di-scan').location, 'חנות');
+  assert.equal(byScan.isReturned, true, 'returned by scan earlier: untouched');
+  assert.equal(pending.isReturned, false);
+  const patch = u.results[0].row;
+  assert.equal(patch.done, false);
+  assert.equal(patch.returnCondition, null);
+  row = rowOf(await day(), 'manret', 3002);
+  for (const k of ['done', 'doneVia', 'doneBy', 'doneAt', 'outcome', 'returnCondition']) assert.deepEqual(patch[k], row[k], k);
+  assert.equal(row.returnedCount, 1);
+  // a row that is done only by facts (all returned by scan, no mark): unmark cancels nothing, the row stays done, note explains
+  globalThis.__MOCK_CALLS = [];
+  const f = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3003, outcome: null, source: 'row' });
+  assert.equal(writes('orderItem').length, 0);
+  assert.equal(writes('dressItem').length, 0);
+  assert.equal(f.results[0].row.done, true);
+  assert.equal(f.results[0].row.doneVia, 'isReturned');
+  assert.equal(f.results[0].row.returnCondition, 'ok');
+  assert.match(f.results[0].row.note, /הוחזרו בסריקה/);
+  row = rowOf(await day(), 'manret', 3003);
+  for (const k of ['done', 'doneVia', 'returnCondition']) assert.deepEqual(f.results[0].row[k], row[k], k);
 });
 
 // ---- הנתיב: שערים -----------------------------------------------------------------------------------

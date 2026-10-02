@@ -33,9 +33,21 @@ export function LocalSprite() {
             <circle cx="12" cy="12" r="9" />
             <path d="m8 12.5 2.7 2.7L16 9.5" />
           </symbol>
+          {/* וי כפול (i-checks) - "הכל בוצע" לשלב; גם הוא אייקון דגימה בלי מספר בפלטה (החלטה J09) */}
+          <symbol id="lz-i-checks" viewBox="0 0 24 24">
+            <path d="m2.5 12.5 4 4L13 10M9.5 16.5l2 2L21.5 8" />
+          </symbol>
         </defs>
       </svg>
     </>
+  );
+}
+
+export function DoubleCheckIcon({ className = '' }) {
+  return (
+    <svg className={'ic' + (className ? ' ' + className : '')} aria-hidden="true" focusable="false">
+      <use href="#lz-i-checks" />
+    </svg>
   );
 }
 

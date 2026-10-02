@@ -163,10 +163,12 @@ export function useStageMarks({ data, setData }) {
       const res = await postMarks({ action: done ? 'mark' : 'unmark', stageKey: stage.key, dayKey, orderId: row.orderId, ...(done && outcome ? { outcome } : {}), source: 'row' });
       if (res && res.row) patchRows(stage.key, [res.row]);
       const who = (row.customer && row.customer.name) || '';
+      // note מהשרת: ביטול שלא שינה את "בוצע" כי העובדה (נלקח/הוחזר בכרטיס) עדיין תקפה
+      const note = res && res.row && res.row.note ? ' · ' + res.row.note : '';
       say(
         done ? (outcome === 'not_ok' ? 'סומן כהוחזר לא תקין' : 'סומן כבוצע') : 'הסימון בוטל',
-        stage.label + ' · #' + row.orderId + (who ? ' · ' + who : ''),
-        done ? (outcome === 'not_ok' ? 'warn' : 'ok') : 'undo',
+        stage.label + ' · #' + row.orderId + (who ? ' · ' + who : '') + note,
+        done ? (outcome === 'not_ok' ? 'warn' : 'ok') : (note ? 'warn' : 'undo'),
       );
       return true;
     } catch (e) {

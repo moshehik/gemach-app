@@ -25,6 +25,7 @@
 .gm-ds.gm-lz .lz-mk-dlg{max-width:440px;text-align:center}
 .gm-ds.gm-lz .lz-mk-dlg h2{font-size:20px;margin-bottom:6px}
 .gm-ds.gm-lz .lz-mk-dlg .sub{margin-bottom:16px}
+.gm-ds.gm-lz .lz-mk-dlg .sub+.lz-mk-effect{margin-top:-8px;font-size:14px;color:var(--navy-700)}
 .gm-ds.gm-lz .lz-mk-badge.bad{background:var(--gm-red-t);color:var(--gm-red)}
 .gm-ds.gm-lz .lz-mk-badge.bad svg{color:var(--gm-red);stroke:var(--gm-red)}
 .gm-ds.gm-lz .lz-mk-btns{flex-direction:row;justify-content:center;gap:10px;flex-wrap:wrap}
