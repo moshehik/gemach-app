@@ -293,13 +293,14 @@ test('manret (stage 8): "בוצע" returns the taken items OK (RETURN_RENTAL), "
   assert.equal(row.returnCondition, 'not_ok');
   assert.equal(row.returnedCount, 1);
   assert.equal(row.doneBy, 'הנהלה ראשית');
-  // flipping to "בוצע" (ok) on an order whose items are already back: no item write, the mark outcome changes
+  // flipping to "בוצע" (ok) on a row that is already marked: refused (409 alreadyMarked) - a rewrite would orphan the
+  // undo (markedAt moves) and lose the "not OK" (review 2.10, MUST-FIX 1). The way to change it: undo, then mark again.
   globalThis.__MOCK_CALLS = [];
-  const flip = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'ok', source: 'row' });
-  assert.equal(flip.results[0].status, 'marked');
-  assert.equal(writes('orderItem').length, 0, 'an item returned earlier keeps the condition set then');
-  assert.equal(flip.results[0].row.returnCondition, 'not_ok', 'the row condition still reflects the items');
-  assert.equal(writes('scheduleStageMark', 'update')[0].args.data.outcome, 'ok');
+  await assert.rejects(
+    () => apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'ok', source: 'row' }),
+    (e) => e.status === 409 && e.extra && e.extra.alreadyMarked === true && /כבר סומן ע״י הנהלה ראשית/.test(e.message),
+  );
+  assert.equal(writes('orderItem').length + writes('scheduleStageMark').length, 0, 'nothing written');
   // unmark = cancel the return of every returned item
   globalThis.__MOCK_CALLS = [];
   const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: null, source: 'row' });
@@ -674,6 +675,60 @@ test('/api/audit?entityType=Order&entityId=<orderId> also returns the ScheduleSt
 
 // ---- הלוגיקה בלקוח (useStageMarks.js): פונקציות טהורות --------------------------------------------
 
+test('stage 8 stale screen: A marks OK, B (old screen) marks "not OK" -> 409 with A\'s name, nothing changes, undo still cancels the return', async () => {
+  installWithTable();
+  const order = ORDERS.find((o) => o.orderId === 1013);
+  const a = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'ok', source: 'row' }, { user: worker });
+  assert.equal(a.results[0].status, 'marked');
+  assert.equal(order.items[0].returnedOk, true);
+  globalThis.__MOCK_CALLS = [];
+  await assert.rejects(
+    () => apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'not_ok', source: 'row' }, { user: head, now: new Date(NOW.getTime() + 60000) }),
+    (e) => e.status === 409 && e.extra.alreadyMarked && e.extra.markedBy === 'עובדת רגילה' && e.message === 'כבר סומן ע״י עובדת רגילה - רעננו את הדף',
+  );
+  assert.equal(writes('orderItem').length + writes('scheduleStageMark').length, 0);
+  // the route answers the same 409 with alreadyMarked in the body
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const r = await post({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'not_ok', source: 'row' });
+  assert.equal(r.status, 409);
+  assert.equal(r.__json.alreadyMarked, true);
+  // undo (by B, after a refresh) still finds the items the schedule returned (returnDate == markedAt)
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: null, source: 'row' });
+  assert.equal(u.results[0].status, 'unmarked');
+  assert.equal(writes('orderItem', 'update').filter((c) => c.audit.action === 'CANCEL_RETURN').length, 1);
+  assert.equal(order.items[0].isReturned, false);
+});
+
+test('stage 8 stale screen, reverse order: A marks "not OK", B marks OK -> 409, the "not OK" is kept, undo works', async () => {
+  installWithTable();
+  const order = ORDERS.find((o) => o.orderId === 1013);
+  await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'not_ok', source: 'row' }, { user: worker });
+  assert.equal(order.items[0].returnedOk, false);
+  await assert.rejects(
+    () => apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: 'ok', source: 'row' }, { user: head }),
+    (e) => e.status === 409 && e.extra.alreadyMarked && e.extra.outcome === 'not_ok',
+  );
+  assert.equal(order.items[0].returnedOk, false, 'damage flag kept');
+  const res = await day();
+  assert.equal(rowOf(res, 'manret', 1013).returnCondition, 'not_ok');
+  globalThis.__MOCK_CALLS = [];
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 1013, outcome: null, source: 'row' });
+  assert.equal(u.results[0].status, 'unmarked');
+  assert.equal(order.items[0].isReturned, false);
+});
+
+test('writeMark: rewriting a done mark keeps its original markedAt / markedById (stage-8 undo stays linked)', async () => {
+  installWithTable();
+  const t1 = new Date('2026-10-01T08:00:00Z');
+  const t2 = new Date('2026-10-01T09:00:00Z');
+  const first = await M.writeMark({ orderId: 1013, stageKey: 'manret', dayKey: DAY, wanted: true, outcome: 'ok', source: 'row', userId: 'emp-worker', now: t1, stageLabel: 'x' });
+  assert.equal(first.mark.markedAt.getTime(), t1.getTime());
+  const second = await M.writeMark({ orderId: 1013, stageKey: 'manret', dayKey: DAY, wanted: true, outcome: 'not_ok', source: 'row', userId: 'emp-head', now: t2, stageLabel: 'x' });
+  assert.equal(second.unchanged, false);
+  assert.equal(new Date(second.mark.markedAt).getTime(), t1.getTime(), 'markedAt not moved');
+  assert.equal(second.mark.markedById, 'emp-worker');
+});
+
 test('client: applyRowPatches merges a server patch into the right stage/row and recounts done/pending/alerts/totals', () => {
   const data = {
     stages: [
@@ -689,4 +744,20 @@ test('client: applyRowPatches merges a server patch into the right stage/row and
   assert.deepEqual(next.stages[1].counts, { total: 1, done: 0, pending: 0, unknown: 0, alerts: 0 });
   assert.deepEqual(next.totals, { total: 2, done: 1, pending: 1, unknown: 0, alerts: 0 });
   assert.equal(H.applyRowPatches(null, 'prep', []), null);
+});
+
+test('client: a patch for another day is ignored (the user switched days while the request was in flight)', () => {
+  const data = { date: '2026-10-02', stages: [{ key: 'prep', infoOnly: false, items: [{ orderId: 1005, done: false, alerts: [] }] }] };
+  assert.equal(H.applyRowPatches(data, 'prep', [{ orderId: 1005, done: true }], '2026-10-01'), data, 'other day: untouched');
+  assert.equal(H.applyRowPatches(data, 'prep', [{ orderId: 1005, done: true }], '2026-10-02').stages[0].items[0].done, true);
+  assert.equal(H.applyRowPatches(data, 'prep', [{ orderId: 1005, done: true }]).stages[0].items[0].done, true, 'no day given: applied');
+});
+
+test('client source: 409 alreadyMarked -> rollback + refresh of the day + a toast; ScheduleDay passes refresh', async () => {
+  const fs = await import('node:fs');
+  const hook = fs.readFileSync(process.env.PROJ + '/app/components/schedule/useStageMarks.js', 'utf8');
+  assert.match(hook, /e\.status === 409 && e\.body && e\.body\.alreadyMarked/);
+  assert.match(hook, /refresh\(\)/);
+  const page = fs.readFileSync(process.env.PROJ + '/app/components/schedule/ScheduleDay.js', 'utf8');
+  assert.match(page, /useStageMarks\(\{ data, setData, refresh: refreshDay \}\)/);
 });

@@ -170,7 +170,8 @@ export default function ScheduleDay({
   usePageTooltip(rootRef, ttRef, !!inA5Shell);
   useRailFit(rootRef);
   // סימון "בוצע" (עדכון אופטימי, החזרה לאחור בשגיאה, טוסט) - הלוגיקה ב-useStageMarks.js
-  const marks = useStageMarks({ data, setData });
+  const refreshDay = useCallback(() => setTick((t) => t + 1), []);
+  const marks = useStageMarks({ data, setData, refresh: refreshDay });
   // שורש הדף לחלונות "בטוח?" (LzPortal.js) - כמו L.modal בעיצוב: scrim אח של .app ולא בתוך השורה
   const [portalRoot, setPortalRoot] = useState(null);
   useEffect(() => { setPortalRoot(rootRef.current); }, []);

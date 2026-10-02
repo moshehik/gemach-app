@@ -69,8 +69,10 @@ export function recount(data) {
   return { ...data, stages, totals };
 }
 
-export function applyRowPatches(data, stageKey, patches) {
+// dayKey (אופציונלי): היום שהבקשה נשלחה עליו - אם בינתיים נטען יום אחר, הטלאי לא נוגע בו (סקירה 2.10, NIT)
+export function applyRowPatches(data, stageKey, patches, dayKey = null) {
   if (!data) return data;
+  if (dayKey && data.date && data.date !== dayKey) return data;
   const byId = new Map(patches.map((p) => [p.orderId, p]));
   const stages = data.stages.map((stage) => {
     if (stage.key !== stageKey) return stage;
@@ -117,9 +119,10 @@ function errorText(e) {
 }
 
 /**
- * @param {{ data: object|null, setData: Function }} params  data = תשובת GET /api/schedule; setData = ה-setter של הדף
+ * @param {{ data: object|null, setData: Function, refresh?: Function }} params  data = תשובת GET /api/schedule;
+ *   setData = ה-setter של הדף; refresh = טעינה מחדש של היום (409 alreadyMarked: השורה כבר סומנה ממסך אחר)
  */
-export function useStageMarks({ data, setData }) {
+export function useStageMarks({ data, setData, refresh = null }) {
   const [busy, setBusy] = useState({});
   const [toast, setToast] = useState(null);
   const busyRef = useRef({});
@@ -147,8 +150,8 @@ export function useStageMarks({ data, setData }) {
 
   const isBusy = useCallback((stageKey, orderId) => !!busy[rowKey(stageKey, orderId)] || !!busy['all:' + stageKey], [busy]);
 
-  const patchRows = useCallback((stageKey, patches) => {
-    setData((prev) => applyRowPatches(prev, stageKey, patches));
+  const patchRows = useCallback((stageKey, patches, forDay = null) => {
+    setData((prev) => applyRowPatches(prev, stageKey, patches, forDay));
   }, [setData]);
 
   // סימון / ביטול שורה אחת. outcome רק לשלבי ההחזרה (8/9): 'ok' (ברירת מחדל, "בוצע" = הוחזר תקין) / 'not_ok'.
@@ -158,10 +161,11 @@ export function useStageMarks({ data, setData }) {
     if (busyRef.current[key] || busyRef.current['all:' + stage.key]) return false;
     const before = snapshot(row);
     setBusyKey(key, true);
-    patchRows(stage.key, [{ orderId: row.orderId, ...optimisticPatch(row, { done, outcome }) }]);
+    const forDay = dayKey;
+    patchRows(stage.key, [{ orderId: row.orderId, ...optimisticPatch(row, { done, outcome }) }], forDay);
     try {
       const res = await postMarks({ action: done ? 'mark' : 'unmark', stageKey: stage.key, dayKey, orderId: row.orderId, ...(done && outcome ? { outcome } : {}), source: 'row' });
-      if (res && res.row) patchRows(stage.key, [res.row]);
+      if (res && res.row) patchRows(stage.key, [res.row], forDay);
       const who = (row.customer && row.customer.name) || '';
       // note מהשרת: ביטול שלא שינה את "בוצע" כי העובדה (נלקח/הוחזר בכרטיס) עדיין תקפה
       const note = res && res.row && res.row.note ? ' · ' + res.row.note : '';
@@ -172,13 +176,19 @@ export function useStageMarks({ data, setData }) {
       );
       return true;
     } catch (e) {
-      patchRows(stage.key, [{ orderId: row.orderId, ...before }]);
+      patchRows(stage.key, [{ orderId: row.orderId, ...before }], forDay);
+      if (e && e.status === 409 && e.body && e.body.alreadyMarked) {
+        // מסך ישן: מישהי אחרת כבר סימנה (או במצב החזרה אחר) - השרת לא שינה דבר; טוענים את היום מחדש
+        say('כבר סומן', errorText(e), 'warn');
+        if (typeof refresh === 'function') refresh();
+        return false;
+      }
       say(done ? 'הסימון לא נשמר' : 'הביטול לא נשמר', errorText(e), 'error');
       return false;
     } finally {
       setBusyKey(key, false);
     }
-  }, [canMark, dayKey, patchRows, say, setBusyKey]);
+  }, [canMark, dayKey, patchRows, say, setBusyKey, refresh]);
 
   // "הכל בוצע" לשלב: רק השורות שעדיין לא בוצעו ושהמשתמשת רואה (orderIds נשלחים לשרת, שמאמת מחדש כל אחת).
   const onMarkAll = useCallback(async (stage) => {
@@ -189,13 +199,14 @@ export function useStageMarks({ data, setData }) {
     if (!pending.length) return false;
     const befores = pending.map((r) => ({ orderId: r.orderId, ...snapshot(r) }));
     setBusyKey(key, true);
-    patchRows(stage.key, pending.map((r) => ({ orderId: r.orderId, ...optimisticPatch(r, { done: true, outcome: 'ok' }) })));
+    const forDay = dayKey;
+    patchRows(stage.key, pending.map((r) => ({ orderId: r.orderId, ...optimisticPatch(r, { done: true, outcome: 'ok' }) })), forDay);
     try {
       const res = await postMarks({ action: 'mark_all', stageKey: stage.key, dayKey, orderIds: pending.map((r) => r.orderId) });
       const got = new Set((res.rows || []).map((r) => r.orderId));
       // שורות שהשרת לא סימן (נחסמו / כבר לא בשלב) חוזרות למצב הקודם
       const rollback = befores.filter((b) => !got.has(b.orderId));
-      patchRows(stage.key, [...(res.rows || []), ...rollback]);
+      patchRows(stage.key, [...(res.rows || []), ...rollback], forDay);
       const n = (res.counts && res.counts.marked) || 0;
       const skipped = (res.skipped || []).length;
       say(
@@ -205,7 +216,7 @@ export function useStageMarks({ data, setData }) {
       );
       return true;
     } catch (e) {
-      patchRows(stage.key, befores);
+      patchRows(stage.key, befores, forDay);
       say('"הכל בוצע" לא נשמר', errorText(e), 'error');
       return false;
     } finally {
