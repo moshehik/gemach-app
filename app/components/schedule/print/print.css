@@ -10,7 +10,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;600;700&display=swap');
 
 .pp-root{--rp:2.3mm;--pp-page-body:220mm;--pp-ink:#111;--pp-mut:#555;--pp-rule:#111;--pp-acc:#111;--pp-thbg:transparent;--pp-ttl:#111;--pp-soft:#f3f3f3;
-  direction:rtl;color:var(--pp-ink);background:#fff;
+  direction:rtl;text-align:start;color:var(--pp-ink);background:#fff;
   font:12px/1.4 "Segoe UI","Noto Sans Hebrew",Arial,"Helvetica Neue",sans-serif;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* app/design-overrides.css כופה !important על גופני לחצנים/כותרות - בתוך הדף המודפס הגופן אחיד */

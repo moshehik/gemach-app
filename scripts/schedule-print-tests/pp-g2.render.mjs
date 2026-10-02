@@ -29,7 +29,8 @@ const L = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 // usage: node --import ./scripts/schedule-print-tests/register-render.mjs scripts/schedule-print-tests/pp-g2.render.mjs [PP-03:a,PP-03:b,PP-04,PP-08,PP-09] [long]
 // Same pipeline as render.mjs (real getScheduleDay on the mock DB -> loadExtras -> buildPrintPayload -> real React templates
 // -> headless Chrome: screenshot, print-media computed styles, page.pdf() + pypdf) but on the group-2 fixtures
-// (pp-g2.fixtures.mjs) and with the page-local CSS files of 03/04/08/09 linked (the harness stubs CSS imports).
+// (pp-g2.fixtures.mjs) and with the page-local CSS files of 03/09 linked BEFORE print.css (the live page's order; the harness stubs CSS imports).
+// Output: out/g2-<name>[-long].{html,png,pdf,pdf.json} + out/g2-summary[-long].json.
 // Extra checks for this group: sticker pages = exactly 18 stickers per full page (3x6), versions of PP-03, per-page barcode text.
 const specArg = (process.argv[2] && !process.argv[2].startsWith('long') ? process.argv[2] : 'PP-03:a,PP-03:b,PP-04,PP-08,PP-09').split(',');
 const long = process.argv.includes('long');
@@ -57,11 +58,11 @@ try {
     const page = payload.pages[0];
     const single = sp.key === 'ALL' ? payload : { meta: payload.meta, pages: [page] };
     const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload: single }));
-    const name = sp.name;
+    const name = 'g2-' + sp.name; // g2- prefix: render.mjs writes out/PP-04|08|09.* and out/summary.json (its combined pass reads them)
     const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${page.def.label}</title>
-<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}">
+<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
-<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${PAGE_CSS.map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f)}">`).join('')}${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
+${PAGE_CSS.map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f)}">`).join('')}<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
 <body class="hide-global-nav pp-print-mode"><nav class="navbar">תפריט (מדמה את המעטפת)</nav><div data-print-ready="true">${body}</div></body></html>`;
     const htmlPath = path.join(OUT, name + '.html');
     fs.writeFileSync(htmlPath, html);
@@ -122,7 +123,7 @@ try {
 } finally {
   await browser.close();
 }
-fs.writeFileSync(path.join(OUT, 'summary' + (long ? '-long' : '') + '.json'), JSON.stringify(results, null, 2));
+fs.writeFileSync(path.join(OUT, 'g2-summary' + (long ? '-long' : '') + '.json'), JSON.stringify(results, null, 2));
 
 let failed = 0;
 for (const r of results) {

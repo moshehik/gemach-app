@@ -2,7 +2,7 @@
 // (תצוגות-עיצוב/סיימתי-לעבוד/דפי-הדפסה-עיצוב.html) element by element: the design's own page builders (PAGES[i].build) are executed in
 // the design file, then for every selector pair (design selector -> shipped selector) the first matches are compared on font,
 // colour, background, borders, padding, margin, line-height and rendered size (mm).
-//   node scripts/schedule-print-tests/pp-g2.design-compare.mjs   (needs out/PP-03a|PP-03b|PP-04|PP-08|PP-09.html from pp-g2.render.mjs, and
+//   node scripts/schedule-print-tests/pp-g2.design-compare.mjs   (needs out/g2-PP-03a|g2-PP-03b|g2-PP-04|g2-PP-08|g2-PP-09.html from pp-g2.render.mjs, and
 //   out/PP-01.html, out/PP-15.html from render.mjs - the shell's two reference pages are compared here too)
 // Output: out/design-compare.json + a console summary of every difference. Exit 1 on a difference that is not on the allow-list.
 import fs from 'node:fs';
@@ -91,7 +91,7 @@ try {
     // built side under PRINT media at the printable width (A4 minus 12mm side margins = 186mm = 703px) - the on-screen preview differs by design (table padding is ignored in the collapsed shell table)
     await mtab.setViewport({ width: 703, height: 1400 });
     await mtab.emulateMediaType('print');
-    await mtab.goto(pathToFileURL(path.join(OUT, c.name + '.html')).href, { waitUntil: 'networkidle0', timeout: 60000 });
+    await mtab.goto(pathToFileURL(path.join(OUT, (/^PP-(01|15)$/.test(c.name) ? '' : 'g2-') + c.name + '.html')).href, { waitUntil: 'networkidle0', timeout: 60000 });
     const m = await measure(mtab, c.pairs.map((p) => p[1]));
     await mtab.close();
     const diffs = [];
