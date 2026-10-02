@@ -7,7 +7,8 @@
 //     new due date is later (never earlier) - i.e. fewer/later "late" flags, never new ones.
 //  3. The function is timezone-independent (Los Angeles / Kiritimati give the same answer as the key walk),
 //     while the old formula was not (documented, not asserted as parity there).
-//  4. Old call signatures still work; toDate/returnDate still win; invalid eventDate => not late.
+//  4. Old call signatures still work; toDate/returnDate still win (rolled to the next working day when they fall on a
+//     closed day - owner decision 2.10.2026, proven in return-roll-forward.test.mjs); invalid eventDate => not late.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { L, eachKey, addKey, allHolidaysOpen, makeRef } from './fixtures.mjs';
@@ -130,8 +131,11 @@ test('unchanged behaviour: toDate/returnDate win, invalid eventDate => not late,
   assert.equal(getLateReturnInfo(null, 7, now).isLate, false);
   assert.equal(getLateReturnInfo({}, 7, now).isLate, false);
   assert.equal(getLateReturnInfo({ eventDate: 'garbage', toDate: '2026-09-20T00:00:00.000Z' }, 7, now).isLate, true);
-  // toDate on a holiday is NOT moved (explicit dates are the customer's contract): due 21.9, 10 days late on 1.10
-  assert.equal(dueOf(getLateReturnInfo({ eventDate: '2026-09-01T00:00:00.000Z', toDate: '2026-09-21T00:00:00.000Z' }, 7, now), now), '2026-09-21');
+  // toDate on a holiday (Mon 21.9 = Yom Kippur) rolls to the next working day, Tue 22.9 (owner decision 2.10.2026):
+  // 9 days late on 1.10, not 10; a toDate on a working day (Tue 15.9) is unchanged
+  assert.equal(dueOf(getLateReturnInfo({ eventDate: '2026-09-01T00:00:00.000Z', toDate: '2026-09-21T00:00:00.000Z' }, 7, now), now), '2026-09-22');
+  assert.equal(getLateReturnInfo({ eventDate: '2026-09-01T00:00:00.000Z', toDate: '2026-09-21T00:00:00.000Z' }, 7, now).daysLate, 9);
+  assert.equal(dueOf(getLateReturnInfo({ eventDate: '2026-09-01T00:00:00.000Z', toDate: '2026-09-15T00:00:00.000Z' }, 7, now), now), '2026-09-15');
   // existing test from scripts/test_israel_dates.mjs (event 15.9 => due 16.9, 15 days late on 1.10; 27.9 => 28.9, 3 days)
   assert.equal(getLateReturnInfo({ eventDate: '2026-09-15T00:00:00.000Z' }, 7, now).daysLate, 15);
   assert.equal(getLateReturnInfo({ eventDate: '2026-09-27T00:00:00.000Z' }, 7, now).daysLate, 3);

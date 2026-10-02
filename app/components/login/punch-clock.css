@@ -1,0 +1,22 @@
+/* שעון הנוכחות בעיצוב דף הכניסה (PunchClockNew.js) - רק מה שחסר ב-login.css. הכול בהיקף .gm-ds.gm-login.gm-punch, כך שאין
+   שום השפעה על דף הכניסה או על שאר האתר. כל הצבעים והרדיוסים הם משתני הפלטה / משתני login.css (אין צבע חדש). */
+
+/* השעה הנוכחית (שעון ישראל) בכותרת: אותו מראה כמו שורת השעה במסך הסיום של הכניסה (.done .clk) */
+.gm-ds.gm-login.gm-punch .pc-now{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:8px 14px;border-radius:12px;background:var(--lg-gold-soft);color:var(--lg-gold-ink);font-size:17px;font-weight:500;text-shadow:none;font-variant-numeric:tabular-nums}
+.gm-ds.gm-login.gm-punch .pc-now bdi{unicode-bidi:isolate;letter-spacing:.04em}
+
+/* שני כפתורי הפעולה זה לצד זה (באותו מראה זהב של כפתור הכניסה); במובייל אחד מתחת לשני */
+.gm-ds.gm-login.gm-punch .pc-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+.gm-ds.gm-login.gm-punch .pc-actions .gbtn{min-width:0}
+
+/* מסך האישור: הכפתור "חזרה לטופס" בתוך .done (flex עמודה) */
+.gm-ds.gm-login.gm-punch .done .ghost{margin-top:4px}
+
+/* נפתח בניווט פנימי מתוך מעטפת האתר: מסך מלא מעל המעטפת (מתחת לחלונות הקופצים של האתר, 9999+) */
+/* הרקע הבהיר של האתר (--bg של ערכת הנושא הבהירה) נשאר מתחת לתמונה (שקיפות 65% בפלטה): בעיצוב כהה של העובד ה-html כהה, והתמונה הייתה "מעומעמת" -
+   לכן שכבת בסיס בהירה משלנו, רק במסך המלא שמכסה את המעטפת (בטעינה מלאה ה-layout מכריח ערכת בהירה, כמו בדף הכניסה). */
+.gm-ds.gm-login.gm-punch.is-overlay{position:fixed;inset:0;z-index:1000;overflow:auto;overscroll-behavior:contain;background:var(--lg-base)!important}
+
+@media (max-width:520px){
+  .gm-ds.gm-login.gm-punch .pc-actions{grid-template-columns:1fr}
+}

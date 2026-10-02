@@ -61,8 +61,8 @@ test('owner-marked closed day (non_working_days_extra): flagged with reason "clo
   assert.deepEqual(ids(res, 'prep'), [], 'nothing is prepared on a closed day');
   assert.deepEqual(ids(res, 'pick'), []);
   // event-based returns (1013/1015, event 30.9) move to the next working day, and so does 1014 whose EXPLICIT toDate
-  // is the closed Thursday: owner decision 2.10.2026 - a return never lands on a closed day (lib/lateReturn.js still
-  // shows the explicit date unshifted on the order card - documented divergence, pending the owner's yes).
+  // is the closed Thursday: owner decision 2.10.2026 - a return never lands on a closed day (the same roll in
+  // lib/lateReturn.js: order card, late list, print, e-mails - business-days-tests/return-roll-forward.test.mjs).
   assert.deepEqual(ids(res, 'manret'), [], 'nothing comes back on a closed day, not even an explicit toDate');
   assert.deepEqual(ids(res, 'dout'), [], 'lib/deliveries.js: no dispatch window on a closed day');
   assert.deepEqual(ids(res, 'dback'), []);
@@ -345,7 +345,7 @@ test('owner decision 2.10: an explicit toDate on an owner-closed day moves to th
   assert.ok(!ids(await day('2026-10-14'), 'manret').includes(2005));
 });
 
-test('owner decision 2.10: late_not_done counts from the ROLLED due day (documented divergence from lib/lateReturn.js, which counts from the explicit date)', async () => {
+test('owner decision 2.10: late_not_done counts from the ROLLED due day, and lib/lateReturn.js (order card / late list / cron) counts the same', async () => {
   // 2002: toDate Fri 16.10 -> due Sun 18.10. Seen on 25.10: 7 days late (threshold 7) => alert; on 24.10: 6 days => none.
   const late = await day('2026-10-18', { now: new Date('2026-10-25T06:00:00Z') });
   const row = stageOf(late, 'manret').items.find((r) => r.orderId === 2002);
@@ -353,10 +353,15 @@ test('owner decision 2.10: late_not_done counts from the ROLLED due day (documen
   assert.equal(row.alerts[0].daysLate, 7);
   const notYet = await day('2026-10-18', { now: new Date('2026-10-24T06:00:00Z') });
   assert.deepEqual(stageOf(notYet, 'manret').items.find((r) => r.orderId === 2002).alerts, []);
-  // lib/lateReturn.js (order card / late list / cron) still counts from the explicit Friday: 9 days on 25.10
+  // lib/lateReturn.js rolls the explicit Friday to Sunday as well (unified 2.10.2026): 7 days on 25.10, same as the schedule
   const LR = await L('lib/lateReturn.js');
-  const info = LR.getLateReturnInfo({ eventDate: '2026-10-14T00:00:00.000Z', toDate: '2026-10-16T00:00:00.000Z' }, 7, new Date('2026-10-25T06:00:00Z'));
-  assert.equal(info.daysLate, 9, 'documented gap: the order card counts 9, the schedule 7 - pending the owner\'s decision on rolling there too');
+  const order = { eventDate: '2026-10-14T00:00:00.000Z', toDate: '2026-10-16T00:00:00.000Z' };
+  const info = LR.getLateReturnInfo(order, 7, new Date('2026-10-25T06:00:00Z'));
+  assert.equal(info.daysLate, row.alerts[0].daysLate, 'order card and schedule count the same number of late days');
+  assert.equal(info.isLate, true);
+  assert.equal(info.dueKey, row.dueKey);
+  assert.equal(LR.getLateReturnInfo(order, 7, new Date('2026-10-24T06:00:00Z')).isLate, false, '6 days on 24.10 - not late, like the schedule');
+  assert.equal(LR.getExpectedReturnKey(order, null), '2026-10-18');
 });
 
 test('review 2.10 blocker 2: an abroad/weekday order whose fromDate differs from eventDate is found by prep/pickup/repair (fromDate in the SQL window)', async () => {

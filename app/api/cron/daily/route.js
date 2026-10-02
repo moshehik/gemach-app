@@ -7,7 +7,7 @@ import {
 } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
-import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { getLateReturnInfo, getExpectedReturnDate, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +43,9 @@ export async function GET(request) {
   const { start: today, end: todayEnd } = getIsraelDayRange(todayKey);
   const { start: tomorrow, end: tomorrowEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, 1));
   const { start: yesterday, end: yesterdayEnd } = getIsraelDayRange(addDaysToDateKey(todayKey, -1));
+  // רשימת הימים של הבעלים (ניהול היומן) - אותו כלל "יום לא עובד" כמו בכל המערכת (שישי/שבת/חג/ערב חג + ימים ללא
+  // פעילות, lib/businessDays.js); משמש את מייל האיחור (9) ואת הגביה האוטומטית בהו"ק (3).
+  const nonWorkingDays = parseNonWorkingDaysSetting(get(NON_WORKING_DAYS_SETTING_KEY) ?? null);
 
   // 6 - תזכורת יום לפני איסוף
   if (get('pickup_reminder_enabled') === 'true') {
@@ -139,8 +142,6 @@ export async function GET(request) {
         take: 200
       });
       const lateReturnThresholdDays = Number(get('late_return_threshold_days')) || LATE_RETURN_THRESHOLD_DAYS;
-      // אותו כלל "יום לא עובד" כמו בכל המערכת (שישי/שבת/חג/ערב חג + ימים ללא פעילות) - lib/businessDays.js
-      const nonWorkingDays = parseNonWorkingDaysSetting(get(NON_WORKING_DAYS_SETTING_KEY) ?? null);
       const overdueOrders = candidates.filter(o => getLateReturnInfo(o, lateReturnThresholdDays, { nonWorkingDays }).isLate);
       for (const o of overdueOrders) {
         const email = o.customer?.email;
@@ -148,9 +149,12 @@ export async function GET(request) {
         const subject = emailSubject('lateReturnReminder', { orderId: o.orderId });
         const alreadySent = await prisma.emailLog.findFirst({ where: { subject, status: 'success' } });
         if (alreadySent) continue;
-        const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${getHebrewDateString(o.returnDate)}\n`;
+        // תאריך ההחזרה במייל = אותו מועד שנספר כאיחור (getExpectedReturnDate): תאריך מפורש שנופל על יום סגור
+        // מוצג כיום העבודה הבא (החלטת הבעלים 2.10.2026), ונקרא לפי היום הישראלי של הרגע השמור (לא לפי UTC של השרת).
+        const returnDateLabel = getHebrewDateString(getExpectedReturnDate(o, nonWorkingDays) ?? o.returnDate);
+        const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${returnDateLabel}\n`;
         const html = renderLateReturnEmailHtml({
-          customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: getHebrewDateString(o.returnDate), message: text,
+          customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: returnDateLabel, message: text,
           gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: get('gmach_address') || '', gmachPhone: get('gmach_phone') || '',
         });
         const r = await sendSystemEmail({ to: email, subject, body, html });
@@ -173,6 +177,7 @@ export async function GET(request) {
         // ריק = ברירת המחדל ההיסטורית (מחיר ההשכרה המקורי); "0" מפורש = ללא גביה כלל
         // (לא רק ליפול לברירת המחדל, כמו שקרה לפני התיקון הזה).
         const fixedAmount = parseFloat(hokChargeAmountRaw || '');
+        // המסנן ב-DB (returnDate גולמי) הוא רק קבוצת-על של המועמדים; המועד הקובע מחושב למטה.
         const overdue = await prisma.order.findMany({
           where: {
             isDeleted: false,
@@ -184,6 +189,11 @@ export async function GET(request) {
         });
         for (const o of overdue) {
           try {
+            // מועד ההחזרה הקובע = אותו מועד שהלקוחה קיבלה בהדפסה/במייל (getExpectedReturnKey): תאריך מפורש שנופל על
+            // יום סגור מתגלגל ליום העבודה הבא (החלטת הבעלים 2.10.2026). returnDate שישי -> הגביה רק מיום ראשון אחרי
+            // שעת הגביה, לא ביום שישי. "עד השעה ביום ההחזרה": ביום המועד עצמו, אחרי השעה - כן (כמו קודם); לפני המועד - לא.
+            const dueKey = getExpectedReturnKey(o, nonWorkingDays);
+            if (!dueKey || dueKey > todayKey) continue;
             const perDress = !isNaN(fixedAmount) && fixedAmount >= 0
               ? fixedAmount
               : Math.round(((o.totalAmount || 0) / Math.max(1, o.items.length)) * 100) / 100;

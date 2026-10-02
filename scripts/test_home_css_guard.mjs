@@ -322,5 +322,59 @@ t('הפלטה: .advgrid של הטופס המתקדם נערם לעמודה אח�
   assert.ok(stacked, 'חסר כלל @media שמערים את .advgrid');
 });
 
+/* ---------- 9. שעון הנוכחות (app/components/login/punch-clock.css): תוספת קטנה ל-login.css, אותו היקף ואותו משטר ---------- */
+const PUNCH_CSS = read('../app/components/login/punch-clock.css');
+const punchRules = parseCss(PUNCH_CSS);
+t('punch-clock.css: כל כלל בהיקף .gm-ds.gm-login.gm-punch (לא דולף לדף הכניסה ולא לשאר האתר)', () => {
+  const bad = [];
+  for (const r of punchRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-login\.gm-punch(\s|\.|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('punch-clock.css: אין רקע לבן קשיח, אין !important על רקע (חוץ משכבת הבסיס של המסך המלא), ואין צבע קשיח ברקע', () => {
+  const bad = [];
+  for (const r of punchRules) for (const d of setsProp(r, /^background(-color|-image)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v) || (isImportant(d) && r.sel !== '.gm-ds.gm-login.gm-punch.is-overlay')) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/#[0-9a-f]{3,8}\b|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (צבע קשיח)`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('punch-clock.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(punchRules, 'punch-clock.css'), []);
+});
+t('login.css / punch-clock.css: משתני CSS (custom properties) עם צבע קשיח - רק מרשימה מאושרת (צבע חדש = אישור והשוואה לעיצוב)', () => {
+  // הבדיקות על background* לא רואות צבע שמוגדר כמשתנה ומשמש אחר כך; לכן נסרקות גם הגדרות --x: #hex / rgb(a) עצמן.
+  // --lg-* = ערכי login-page.html (:root), --k-* = החלון הכהה של הפלטה. punch-clock.css: אסור בו שום צבע קשיח במשתנה.
+  const APPROVED = new Set(['--lg-petal', '--lg-base', '--lg-glass', '--lg-gold-soft', '--lg-gold-ink', '--lg-danger', '--lg-danger-soft', '--lg-danger-line',
+    '--lg-ok', '--lg-ok-soft', '--lg-sh', '--k-bg', '--k-sheen', '--k-solid', '--k-ink', '--k-sub', '--k-row', '--k-rowb', '--k-bd', '--k-gap', '--k-ghost', '--k-ic', '--k-err', '--k-sh']);
+  const COLOR = /#[0-9a-f]{3,8}\b|rgba?\(/i;
+  const check = (file, rules, allowed) => rules.flatMap((r) => decls(r.body)
+    .filter((d) => d.prop.startsWith('--') && COLOR.test(d.value) && !(allowed && allowed.has(d.prop)))
+    .map((d) => `${file}: ${r.sel} { ${d.prop}: ${d.value} }`));
+  const LOGIN_CSS2 = read('../app/components/login/login.css');
+  const bad = [...check('login.css', parseCss(LOGIN_CSS2), APPROVED), ...check('punch-clock.css', punchRules, null)];
+  assert.deepEqual(bad, [], 'משתנה צבע חדש: ' + bad.join(' | '));
+  // והמשתנה שמשמש את שכבת הבסיס של המסך המלא מוגדר ב-login.css (לא ב-punch-clock.css)
+  assert.ok(/--lg-base:#faf7f2/.test(LOGIN_CSS2) && /background:var\(--lg-base\)!important/.test(PUNCH_CSS), 'שכבת הבסיס צריכה להשתמש ב-var(--lg-base)');
+});
+t('login.css: הפלטה כופה על כל .gm-ds .card רקע לבן 30% ב-!important => כרטיס הדף המלא (כניסה + שעון נוכחות) חייב לדרוס ל-48% של העיצוב', () => {
+  const LOGIN_CSS = read('../app/components/login/login.css');
+  const paletteForcesCard = parseCss(PALETTE).some((r) => /^\.gm-ds \.card\b/.test(splitSel(r.sel)[0]) && setsProp(r, /^background$/).some(isImportant));
+  if (!paletteForcesCard) return; // הכלל בפלטה כבר לא קיים - אין מה לדרוס
+  const rule = parseCss(LOGIN_CSS).find((r) => r.sel === '.gm-ds.gm-login:not(.is-modal) .card.lg-card');
+  assert.ok(rule, 'חסר כלל הדריסה של כרטיס הדף המלא ב-login.css');
+  assert.ok(setsProp(rule, /^background$/).some((d) => isImportant(d) && /--lg-glass/.test(d.value)), 'הרקע חייב להיות var(--lg-glass) ב-!important');
+  assert.ok(setsProp(rule, /^border-color$/).some((d) => isImportant(d) && /\.75/.test(d.value)), 'גבול 75% ב-!important');
+});
+t('שעון הנוכחות משתמש בשדות של login.css (input.inp בהיקף .gm-login) ולא בשדות הגלובליים של האתר', () => {
+  const page = read('../app/components/login/PunchClockNew.js');
+  const parts = read('../app/components/login/loginParts.js');
+  assert.ok(/import '\.\/login\.css'/.test(page), 'PunchClockNew.js חייב לייבא login.css');
+  assert.ok(/className=\{`inp\$\{pin/.test(parts) && /className="inp"/.test(parts), 'שדות העובד והסיסמה חייבים להיות .inp');
+  assert.ok(!/className="input"|className="btn |className="card card-pad"|className="callout/.test(page + parts), 'מחלקות הרכיבים הישנים של האתר דולפות לדף החדש');
+  assert.ok(!/<use[^>]*sprite\.svg/.test(page + parts), 'אסור להפנות ל-sprite.svg חיצוני - האייקונים מוטמעים (#gmi-*)');
+  assert.ok(!/font-family/.test(PUNCH_CSS), 'punch-clock.css לא נוגע בגופנים (login.css כבר מנטרל את design-overrides.css)');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
