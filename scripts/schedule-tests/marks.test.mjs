@@ -794,3 +794,59 @@ test('repair (stage 2) undo without a schedule mark: alterations marked on the a
     order.items.forEach((it, i) => { it.alterationDone = saved[i]; });
   }
 });
+
+test('marking writes the mark row BEFORE the items (stage 8 and 2): an interrupted request leaves an undoable mark, never returned items without one', async () => {
+  installWithTable({ extra: { order: [...ORDERS, manretOrder(3101, [bareItem({ id: 'it-a' }), bareItem({ id: 'it-b' })])] } });
+  await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3101, outcome: 'ok', source: 'row' });
+  const seq = globalThis.__MOCK_CALLS.filter((c) => WRITE_METHODS.includes(c.method)).map((c) => c.model);
+  assert.equal(seq[0], 'scheduleStageMark', 'mark first: ' + seq.join(','));
+  assert.ok(seq.indexOf('orderItem') > 0);
+  // the items' returnDate is exactly the mark's markedAt (the undo link)
+  const mark = globalThis.__MOCK_DB.scheduleStageMark.find((m) => m.orderId === 3101);
+  const o = globalThis.__MOCK_DB.order.find((x) => x.orderId === 3101);
+  assert.ok(o.items.every((it) => new Date(it.returnDate).getTime() === new Date(mark.markedAt).getTime()));
+
+  // interruption after the first item (timeout / crash): the mark exists, undo cancels what was returned
+  installWithTable({ extra: { order: [...ORDERS, manretOrder(3102, [bareItem({ id: 'it-c' }), bareItem({ id: 'it-d' })])] } });
+  let n = 0;
+  globalThis.__MOCK_BEFORE_WRITE = (model, method) => { if (model === 'orderItem' && method === 'update' && ++n === 2) throw new Error('timeout'); };
+  await assert.rejects(() => apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3102, outcome: 'ok', source: 'row' }));
+  globalThis.__MOCK_BEFORE_WRITE = null;
+  const m2 = globalThis.__MOCK_DB.scheduleStageMark.find((m) => m.orderId === 3102);
+  assert.equal(m2 && m2.done, true, 'mark written before the items');
+  const o2 = globalThis.__MOCK_DB.order.find((x) => x.orderId === 3102);
+  assert.equal(o2.items.filter((it) => it.isReturned).length, 1);
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3102, outcome: null, source: 'row' });
+  assert.equal(u.results[0].status, 'unmarked');
+  assert.equal(o2.items.filter((it) => it.isReturned).length, 0, 'the half-done return is undone');
+
+  // stage 2 too
+  installWithTable();
+  const order = ORDERS.find((x) => x.orderId === 1011);
+  const saved = order.items.map((it) => it.alterationDone);
+  try {
+    await apply({ action: 'mark', stageKey: 'repair', dayKey: DAY, orderId: 1011, outcome: null, source: 'row' });
+    const seq2 = globalThis.__MOCK_CALLS.filter((c) => WRITE_METHODS.includes(c.method)).map((c) => c.model);
+    assert.equal(seq2[0], 'scheduleStageMark');
+  } finally {
+    order.items.forEach((it, i) => { it.alterationDone = saved[i]; });
+  }
+});
+
+test('mark_all on stage 8 is capped at 60 orders per click (MARK_ALL_MAX_BY_STAGE); the rest stay pending and "remaining" tells the client', async () => {
+  assert.equal(M.markAllMax('manret'), 60);
+  assert.equal(M.markAllMax('prep'), M.MARK_ALL_MAX);
+  const many = Array.from({ length: 65 }, (_, i) => manretOrder(4000 + i, [bareItem({ id: 'm' + i })]));
+  installWithTable({ extra: { order: [...ORDERS, ...many] } });
+  const r = await apply({ action: 'mark_all', stageKey: 'manret', dayKey: DAY, orderIds: null, source: 'all' });
+  const marked = r.results.filter((x) => x.status === 'marked').length;
+  assert.equal(marked, 60);
+  assert.ok(r.remaining >= 5, 'remaining ' + r.remaining);
+  // the route passes remaining through
+  installWithTable({ extra: { order: [...ORDERS, ...many.map((o) => ({ ...o, items: o.items.map((it) => ({ ...it, isReturned: false, returnDate: null })) }))] } });
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const res = await post({ action: 'mark_all', stageKey: 'manret', dayKey: DAY, source: 'all' });
+  assert.equal(res.status, 200, JSON.stringify(res.__json));
+  assert.equal(res.__json.counts.marked, 60);
+  assert.ok(res.__json.remaining >= 5);
+});

@@ -55,7 +55,8 @@ export async function POST(request) {
       if (r.status === 'unchanged') counts.unchanged++; else counts.marked++;
       rows.push(r.row);
     }
-    return NextResponse.json({ ok: true, rows, skipped, counts }, { headers: NO_STORE });
+    // remaining = שורות ממתינות שלא נכנסו לפעולה הזו (תקרת "הכל בוצע" לשלב, markAllMax) - הלקוח מציע ללחוץ שוב
+    return NextResponse.json({ ok: true, rows, skipped, counts, remaining: result.remaining || 0 }, { headers: NO_STORE });
   } catch (error) {
     if (error instanceof MarkError) {
       return NextResponse.json({ error: error.message, ...(error.extra || {}) }, { status: error.status, headers: NO_STORE });

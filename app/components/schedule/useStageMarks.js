@@ -211,10 +211,11 @@ export function useStageMarks({ data, setData, refresh = null }) {
       patchRows(stage.key, [...(res.rows || []), ...rollback], forDay);
       const n = (res.counts && res.counts.marked) || 0;
       const skipped = (res.skipped || []).length;
+      const remaining = res.remaining || 0; // תקרת "הכל בוצע" לשלב (60 בהחזרה ידנית) - לחיצה נוספת ממשיכה
       say(
-        n ? 'כל "' + stage.label + '" סומנו כבוצעו' : 'לא סומן דבר',
-        n + ' שורות סומנו' + (skipped ? ' · ' + skipped + ' לא סומנו (דורשות אישור מנהל)' : ''),
-        n ? 'ok' : 'warn',
+        n && !remaining ? 'כל "' + stage.label + '" סומנו כבוצעו' : n ? 'חלק מ"' + stage.label + '" סומנו' : 'לא סומן דבר',
+        n + ' שורות סומנו' + (skipped ? ' · ' + skipped + ' לא סומנו (דורשות אישור מנהל)' : '') + (remaining ? ' · ' + remaining + ' נותרו - לחצו שוב על "הכל בוצע"' : ''),
+        n && !remaining ? 'ok' : 'warn',
       );
       return true;
     } catch (e) {
