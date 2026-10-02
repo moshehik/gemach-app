@@ -6,6 +6,7 @@ import StageRail from './StageRail';
 import StageSection from './StageSection';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
+import ScheduleToolbarActions from './ScheduleToolbarActions';
 import { addDays, hebrewLong, toKey } from './hebrewCalendar';
 import { STAGE_ORDER, nonWorkingDayText } from './scheduleMeta';
 
@@ -154,6 +155,7 @@ export default function ScheduleDay() {
             </h1>
             {pickerDate && pickerToday ? <HebrewDayPicker date={pickerDate} today={pickerToday} tomorrow={pickerTomorrow} onChange={changeDate} /> : null}
           </div>
+          <ScheduleToolbarActions date={pickerDate} branch={branch} stageData={data} />
         </div>
 
         <div className="lz-layout">
