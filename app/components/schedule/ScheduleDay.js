@@ -10,17 +10,22 @@ import ScheduleSkeleton from './ScheduleSkeleton';
 import { PageTools } from './ScheduleToolbarSlots';
 import { addDays, toKey } from './hebrewCalendar';
 import { STAGE_ORDER } from './scheduleMeta';
+import { useStageMarks } from './useStageMarks';
+import { MarkToast } from './MarkDialogs';
 
 // דף "לו״ז יומי". המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, ה-HTML בשורות 1627-1642): כותרת "לוח זמנים" +
 // אייקון בורר היום; כלי XL/הורדה/הדפסה בקצה השמאלי של שורת הכותרת; ציר השלבים מימין; בעמודת התוכן מתג שורות/טבלה
 // ואז מקטעי השלבים. אין בדף שום טקסט שהעיצוב לא מגדיר. הנתונים: GET /api/schedule (docs/schedule-page-logic-spec.md).
 //
+// סימון "בוצע" (מחובר): marks = useStageMarks({ data, setData }) - עדכון אופטימי, POST /api/schedule/marks, החזרה לאחור
+//   בשגיאה, טוסט (MarkDialogs.js). עובר ל-StageSection כאובייקט אחד; החוזה המלא בראש StageSection.js / StageRow.js /
+//   MarkControls.js: onMarkDone(stage, row, { done, outcome: 'ok'|'not_ok' }), doneState(stage, row), onMarkAll(stage).
 // חיבורים לסוכנים האחרים (props בלבד; ה-markup לא משתנה):
-//   סימון "בוצע":  onMarkDone(row, stage, { done, condition }) / onMarkAll(stage) / marks { [orderId]: { done, returnCondition, busy } }
-//                  / onScan(code) לשורת הברקוד (ר' StageRow.js, StageSection.js, StageRail.js).
+//   onScan(code) לשורת הברקוד (ר' StageRail.js).
 //   הדפסה/הורדה/XL: onExport / onDownload / onPrint / onSettings ({ stageKey, mode }) (ר' ScheduleToolbarSlots.js).
-//   הרשאות (JDG-04, מאושר): עובדת בלי "הכל בוצע" ובלי XL - canMarkAll / canExport; ברירת המחדל נגזרת מהשרת:
-//   settings.includeInternalNotes = הנהלה ראשית / מנהלת סניף / מתכנת (INTERNAL_NOTES_ROLE_IDS ב-lib/schedule/index.js).
+//   הרשאות (JDG-04, מאושר): עובדת בלי "הכל בוצע" ובלי XL - canMarkAll / canExport. "הכל בוצע": ההרשאה מהשרת
+//   (data.marks.canMarkAll, MARK_ALL_PERMISSION ב-lib/schedule/marks.js) גוברת; XL: ברירת המחדל settings.includeInternalNotes
+//   = הנהלה ראשית / מנהלת סניף / מתכנת (INTERNAL_NOTES_ROLE_IDS ב-lib/schedule/index.js).
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -125,7 +130,7 @@ function useRailFit(rootRef) {
 }
 
 export default function ScheduleDay({
-  onMarkDone, onMarkAll, marks, onScan,
+  onScan,
   onExport, onDownload, onPrint, onSettings,
   canMarkAll, canExport,
 }) {
@@ -148,6 +153,8 @@ export default function ScheduleDay({
   const inA5Shell = useA5Shell();
   usePageTooltip(rootRef, ttRef, !!inA5Shell);
   useRailFit(rootRef);
+  // סימון "בוצע" (עדכון אופטימי, החזרה לאחור בשגיאה, טוסט) - הלוגיקה ב-useStageMarks.js
+  const marks = useStageMarks({ data, setData });
 
   // מצב התחלתי מהכתובת (?date=&branch=) ומהעדפת התצוגה (שורות/טבלה) של המשתמשת בדפדפן הזה
   useEffect(() => {
@@ -202,7 +209,8 @@ export default function ScheduleDay({
   const branches = (branchesEnabled && Array.isArray(data.settings.branches)) ? data.settings.branches : [];
   // הנהלה (JDG-04): "הכל בוצע" ו-XL. ברירת המחדל מהשרת; prop מפורש גובר.
   const mgmt = !!(data && data.settings && data.settings.includeInternalNotes);
-  const allowMarkAll = canMarkAll === undefined ? mgmt : canMarkAll;
+  // "הכל בוצע": ההרשאה מהשרת (marks.canMarkAll); prop מפורש יכול רק לצמצם
+  const allowMarkAll = canMarkAll === undefined ? marks.canMarkAll : (canMarkAll && marks.canMarkAll);
   const allowExport = canExport === undefined ? mgmt : canExport;
 
   const changeDate = useCallback((key) => {
@@ -295,10 +303,9 @@ export default function ScheduleDay({
                     stage={s}
                     view={view}
                     pickupHours={data.settings && data.settings.pickupHours}
-                    onMarkDone={onMarkDone}
-                    onMarkAll={onMarkAll}
                     marks={marks}
                     canMarkAll={allowMarkAll}
+                    dayLabel={data.dateHebrew}
                     {...tools}
                   />
                 ))
@@ -311,6 +318,7 @@ export default function ScheduleDay({
             </div>
           </div>
         </div>
+        <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
       </div>
       <div className="pl-tt" role="tooltip" ref={ttRef} />
     </div>

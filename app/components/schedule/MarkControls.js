@@ -1,213 +1,124 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import ScheduleIcon, { CheckCircleIcon, DoubleCheckIcon } from './ScheduleIcon';
-import './marks.css';
+import { useState } from 'react';
+import ScheduleIcon, { CheckCircleIcon, ChecksIcon } from './ScheduleIcon';
+import { MARK_TIPS, RETURN_STAGES, STAGE_META } from './scheduleMeta';
+import { ConfirmDialog, DetailRows, confirmEffect, doneTip } from './MarkDialogs';
 
-// פקדי "בוצע" של הלו״ז: לחצן בשורה (+ "הוחזר לא תקין" שצף בריחוף בשלבי ההחזרה - החלטה A4), לחצן "הכל בוצע"
-// לשלב (וי כפול, i-checks - החלטה J09), חלון "בטוח?" (S03) וטוסט רגוע. העיצוב מינימלי ועל רכיבי הפלטה
-// (btn.tgl, chip, scrim/dlg, #toast) - הסוכן שאחראי על נאמנות העיצוב רשאי להחליף את המראה; הלוגיקה
-// (useStageMarks.js) לא תלויה בו. כל הפעולות עוברות דרך onMarkDone / onMarkAll שהדף מעביר.
+// לחצני "בוצע" של הלו״ז. המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, statusHTML שורות 1976-1978 ו-allBtn
+// שורה 1996): btn tgl lz-mark (+ on), lz-retw עם "הוחזר לא תקין" שצף בריחוף (A4), שבב "תקין"/"לא תקין" (B17),
+// ibtn lz-all עם וי כפול. ה-CSS ב-app/schedule/schedule.css. ההתנהגות = useStageMarks.js (עדכון אופטימי, API, טוסט).
+//
+// החוזה האחיד (אותו חוזה ב-StageRow.js / StageSection.js / ScheduleDay.js):
+//   onMarkDone(stage, row, { done: boolean, outcome?: 'ok'|'not_ok' })   - נקרא אחרי אישור בחלון "בטוח?" (S03)
+//   doneState = marks.doneState(stage, row) -> { available, canMark, done, doneVia, doneBy, doneAt, outcome, busy }
+//   onMarkAll(stage)                                                     - אחרי אישור בחלון "בטוח?" (S04)
+// מצבי הלחצן: אין מקור "בוצע" לשלב (stage.doneSource) ואין טבלת סימונים (doneState.available) - אין לחצן (אין מה לסמן,
+// ואין מה להציג; החלטה D בסקירה). יש מקור אבל אין hook / אין הרשאה (canMark=false) / בקשה בדרך (busy) - הלחצן כבוי
+// (disabled) באותו מראה בדיוק - לא נעלם ולא מוחלף בטקסט או בשבב (הבעלים דחה כיתובים ושבבים שלא בעיצוב).
 
-function fmtWhen(iso) {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString('he-IL') + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-  } catch { return ''; }
-}
-
-const VIA_TEXT = { alterationDone: 'לפי מסך התיקונים', isTaken: 'לפי ההשכרה (הפריטים נלקחו)', isReturned: 'לפי החזרת הפריטים' };
-
-export function doneTip(state) {
-  if (!state || state.done !== true) return 'סמן כבוצע';
-  if (state.doneVia === 'mark' || state.doneBy) {
-    return 'סומן ע״י ' + (state.doneBy || 'עובדת') + (state.doneAt ? ' ב-' + fmtWhen(state.doneAt) : '') + ' · לחיצה לביטול הסימון';
-  }
-  return 'בוצע ' + (VIA_TEXT[state.doneVia] || '') + ' · לחיצה לביטול';
-}
-
-// מה הסימון/הביטול עושה בפועל בשלב הזה - מוצג בחלון "בטוח?" (בלי הפתעות: בשלבים 2/8 נוגעים בפריטים)
-export function confirmEffect(stageKey, { done, outcome, all }) {
-  if (stageKey === 'manret') {
-    if (!done) return 'יבטל את ההחזרה של הפריטים בהזמנה (רק פריטים שהוחזרו מהלו״ז)';
-    return all ? 'הפריטים יירשמו כהוחזרו תקין' : (outcome === 'not_ok' ? 'הפריטים יירשמו כהוחזרו - לא תקין' : 'הפריטים יירשמו כהוחזרו תקין');
-  }
-  if (stageKey === 'repair') return done ? 'יסמן "תיקון בוצע" בפריטי ההזמנה' : 'יבטל "תיקון בוצע" בפריטים';
-  return '';
-}
-
-// חלון "בטוח?" - חלון קטן על רכיבי הפלטה (scrim + dlg + dbadge). Enter = כן, Esc = ביטול. הפוקוס נלכד
-// בתוך החלון (Tab בין שני הלחצנים) וחוזר ללחצן שפתח אותו בסגירה.
-export function ConfirmDialog({ open, title, sub, effect, yes, kind = 'check', onYes, onNo }) {
-  const yesRef = useRef(null);
-  const noRef = useRef(null);
-  const returnTo = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    returnTo.current = typeof document !== 'undefined' ? document.activeElement : null;
-    const t = setTimeout(() => yesRef.current && yesRef.current.focus(), 30);
-    const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); onNo(); return; }
-      if (e.key === 'Tab') {
-        const a = yesRef.current;
-        const b = noRef.current;
-        if (!a || !b) return;
-        e.preventDefault();
-        (document.activeElement === a ? b : a).focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('keydown', onKey);
-      const el = returnTo.current;
-      if (el && typeof el.focus === 'function' && document.contains(el)) el.focus();
-    };
-  }, [open, onNo]);
-  if (!open) return null;
-  const icon = kind === 'undo' ? 'undo' : kind === 'alert' ? 'alert' : 'check';
-  return (
-    <div className="scrim on lz-mk-scrim" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onNo(); }}>
-      <div className="dlg lz-mk-dlg" role="dialog" aria-modal="true" aria-labelledby="lz-mk-title">
-        <div className={'dbadge lz-mk-badge' + (kind === 'alert' ? ' bad' : '')}><ScheduleIcon name={icon} /></div>
-        <h2 id="lz-mk-title">{title}</h2>
-        {sub ? <div className="sub">{sub}</div> : null}
-        {effect ? <div className="sub lz-mk-effect">{effect}</div> : null}
-        <div className="dbtns lz-mk-btns">
-          <button ref={yesRef} type="button" className={'btn ' + (kind === 'alert' ? 'ghost lz-mk-yes-bad' : 'primary')} onClick={onYes}>
-            <ScheduleIcon name={icon} className="sm" />{yes}
-          </button>
-          <button ref={noRef} type="button" className="btn ghost" onClick={onNo}>לא, חזרה</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// לחצן "בוצע" בשורה. שלבי ההחזרה (8/9): בריחוף/פוקוס צף מימין לו "הוחזר לא תקין" (A4).
-export function MarkButton({ stage, row, doneState, onMarkDone }) {
+export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
   const [ask, setAsk] = useState(null); // { done, outcome }
-  if (!stage || stage.infoOnly || !doneState || !doneState.available) return null;
-  const state = doneState;
-  const name = (row.customer && row.customer.name) || '';
-  const sub = 'הזמנה #' + row.orderId + (name ? ' · ' + name : '');
-  const retStage = stage.key === 'manret' || stage.key === 'dback';
-  const disabled = !state.canMark || state.busy;
+  if (!stage || stage.infoOnly) return null;
+  const available = !!(doneState && doneState.available);
+  if (!stage.doneSource && !available) return null;
+  const done = doneState && doneState.done !== undefined && doneState.done !== null ? doneState.done === true : row.done === true;
+  const cond = row.returnCondition;
+  const rk = !!RETURN_STAGES[stage.key];
+  const live = !!(onMarkDone && available && doneState.canMark);
+  const busy = !!(doneState && doneState.busy);
+  const disabled = !live || busy;
+  const meta = STAGE_META[stage.key] || STAGE_META.order;
+  const stageInfo = { key: stage.key, label: stage.label, icon: meta.icon };
 
-  const confirm = (done, outcome) => setAsk({ done, outcome });
+  const confirm = (next, outcome) => () => { if (live) setAsk({ done: next, outcome }); };
   const run = () => {
     const a = ask;
     setAsk(null);
     if (a && onMarkDone) onMarkDone(stage, row, a);
   };
-
+  const name = (row.customer && row.customer.name) || '';
   const dialog = ask ? (
     <ConfirmDialog
       open
-      kind={ask.done ? (ask.outcome === 'not_ok' ? 'alert' : 'check') : 'undo'}
+      icon={ask.done ? (ask.outcome === 'not_ok' ? 'alert' : 'check') : 'undo'}
       title={ask.done
-        ? (ask.outcome === 'not_ok' ? 'בטוח שהשמלה הוחזרה לא תקינה?' : 'בטוח שהשלב "' + stage.label + '" בוצע' + (retStage ? ' (הוחזר תקין)' : '') + '?')
+        ? (ask.outcome === 'not_ok' ? 'בטוח שהשמלה הוחזרה לא תקינה?' : 'בטוח שהשלב "' + stage.label + '" בוצע' + (rk ? ' (הוחזר תקין)' : '') + '?')
         : 'לבטל את סימון הביצוע?'}
-      sub={sub}
+      sub={'הזמנה #' + row.orderId + (name ? ' · ' + name : '')}
       effect={confirmEffect(stage.key, ask)}
+      body={<DetailRows stage={stageInfo} row={row} dayLabel={dayLabel} />}
       yes={ask.done ? (ask.outcome === 'not_ok' ? 'כן, סמן כלא תקין' : 'כן, סמן כבוצע') : 'כן, בטל סימון'}
       onYes={run}
       onNo={() => setAsk(null)}
     />
   ) : null;
 
-  if (state.done === true) {
+  if (done) {
     return (
       <>
-        <button
-          type="button"
-          className={'btn tgl lz-mark on' + (state.busy ? ' lz-busy' : '')}
-          aria-pressed="true"
-          disabled={disabled}
-          title={doneTip(state)}
-          aria-label={'בוצע - ' + doneTip(state)}
-          onClick={() => confirm(false)}
-        >
+        {rk && cond ? (cond === 'ok' ? <span className="chip green lz-rc">תקין</span> : <span className="chip rose lz-rc">לא תקין</span>) : null}
+        <button type="button" className="btn tgl lz-mark on" aria-pressed="true" data-tip={doneTip(doneState)} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(false)}>
           <ScheduleIcon name="check" className="sm evck" />בוצע
         </button>
         {dialog}
       </>
     );
   }
-
-  const mainBtn = (
-    <button
-      type="button"
-      className={'btn tgl lz-mark' + (state.busy ? ' lz-busy' : '')}
-      aria-pressed="false"
-      disabled={disabled}
-      title={retStage ? 'סמן כבוצע (הוחזר תקין)' : 'סמן כבוצע'}
-      onClick={() => confirm(true, retStage ? 'ok' : undefined)}
-    >
+  const markBtn = (
+    <button type="button" className="btn tgl lz-mark" aria-pressed="false" data-tip={rk ? MARK_TIPS.markReturn : MARK_TIPS.mark} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(true, rk ? 'ok' : undefined)}>
       <CheckCircleIcon className="sm" />בוצע
     </button>
   );
-  if (!retStage) return <>{mainBtn}{dialog}</>;
+  if (!rk) return <>{markBtn}{dialog}</>;
   return (
     <>
       <span className="lz-retw">
-        <button
-          type="button"
-          className="btn tgl lz-mark lz-bad"
-          aria-pressed="false"
-          disabled={disabled}
-          title="סמן כהוחזר לא תקין"
-          onClick={() => confirm(true, 'not_ok')}
-        >
+        <button type="button" className="btn tgl lz-mark lz-bad" aria-pressed="false" data-tip={MARK_TIPS.markBad} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(true, 'not_ok')}>
           <ScheduleIcon name="alert" className="sm" />הוחזר לא תקין
         </button>
-        {mainBtn}
+        {markBtn}
       </span>
       {dialog}
     </>
   );
 }
 
-// "הכל בוצע" לשלב (לחצן עגול עם וי כפול בכותרת המקטע). מוצג רק עם הרשאה (canMarkAll) וכשיש מה לסמן.
-export function MarkAllButton({ stage, pending, canMarkAll, busy, onMarkAll }) {
+// "הכל בוצע" (לחצן 34/54/72 עם וי כפול, J09) בכותרת המקטע. בלי handler (אין hook) - כבוי באותו מראה.
+// החלון (confirmAll בעיצוב, שורה 2021): כותרת, "N פריטים ב<יום> יסומנו כבוצעו", עד 5 שורות + "ועוד N פריטים".
+export function MarkAllButton({ stage, pending, busy, onMarkAll, dayLabel }) {
   const [ask, setAsk] = useState(false);
-  if (!canMarkAll || !stage || stage.infoOnly || !pending) return null;
+  if (!stage || stage.infoOnly) return null;
+  const meta = STAGE_META[stage.key] || STAGE_META.order;
+  const rows = pending || [];
+  const n = rows.length;
+  const live = !!onMarkAll && n > 0;
   return (
     <>
-      <button
-        type="button"
-        className={'ibtn lz-all' + (busy ? ' lz-busy' : '')}
-        aria-label={'הכל בוצע - ' + stage.label}
-        title={'הכל בוצע (' + pending + ')'}
-        disabled={busy}
-        onClick={() => setAsk(true)}
-      >
-        <DoubleCheckIcon />
+      <button type="button" className="ibtn lz-all" aria-label={MARK_TIPS.all} data-tip={MARK_TIPS.all} disabled={!live || busy} aria-busy={busy || undefined} onClick={live ? () => setAsk(true) : undefined}>
+        <ChecksIcon />
       </button>
       <ConfirmDialog
         open={ask}
-        kind="check"
+        icon="check"
         title={'בטוח שכל "' + stage.label + '" בוצע?'}
-        sub={pending + ' שורות יסומנו כבוצעו'}
+        sub={n + ' פריטים' + (dayLabel ? ' ב' + dayLabel : '') + ' יסומנו כבוצעו'}
         effect={confirmEffect(stage.key, { done: true, outcome: 'ok', all: true })}
-        yes="כן, סמן הכל"
-        onYes={() => { setAsk(false); onMarkAll && onMarkAll(stage); }}
+        body={(
+          <div className="lz-det">
+            {rows.slice(0, 5).map((r) => (
+              <div className="li" key={r.orderId}>
+                <div className="ic-b"><ScheduleIcon name={meta.icon} /></div>
+                <div className="t"><b>{(r.customer && r.customer.name) || 'לא ידוע'} <bdi>#{r.orderId}</bdi></b></div>
+              </div>
+            ))}
+            {n > 5 ? <div className="lz-more">ועוד {n - 5} פריטים</div> : null}
+          </div>
+        )}
+        yes="כן, סמן הכל כבוצע"
+        onYes={() => { setAsk(false); if (onMarkAll) onMarkAll(stage); }}
         onNo={() => setAsk(false)}
       />
     </>
-  );
-}
-
-// טוסט רגוע (רכיב #toast מהפלטה), כמו בדף הבית (HomeA5.js).
-export function MarkToast({ toast, onClose }) {
-  if (!toast) return null;
-  const icon = toast.kind === 'error' ? 'alert' : toast.kind === 'warn' ? 'alert' : toast.kind === 'undo' ? 'undo' : 'check';
-  return (
-    <div id="toast" className={'info on lz-toast lz-toast-' + (toast.kind || 'ok')} role="status" aria-live="polite" key={toast.n}>
-      <button type="button" className="tclose" aria-label="סגירה" onClick={onClose}><ScheduleIcon name="x" className="sm" /></button>
-      <div className="tb"><ScheduleIcon name={icon} /></div>
-      <div><b>{toast.title}</b><small>{toast.text}</small></div>
-    </div>
   );
 }

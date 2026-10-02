@@ -1,54 +1,25 @@
 'use client';
 
 import { memo, useState } from 'react';
-import ScheduleIcon, { CheckCircleIcon } from './ScheduleIcon';
+import ScheduleIcon from './ScheduleIcon';
+import { MarkButton } from './MarkControls';
 import {
-  STAGE_META, MARK_TIPS, RETURN_STAGES, subText, subParts, flagLabels, alertText, itemText, alterationSummary, formatAddress,
+  STAGE_META, subText, subParts, flagLabels, alertText, itemText, alterationSummary, formatAddress,
 } from './scheduleMeta';
 
 // שורת לו״ז אחת (שורות / טבלה). המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, rowHTML/trHTML/statusHTML, שורות
-// 1975-1986): אייקון השלב, שם + מספר הזמנה, שורת פרטים, ואז בקצה (lz-act) התראה אדומה ולחצן "בוצע" (btn tgl lz-mark).
+// 1975-1986): אייקון השלב, שם + מספר הזמנה, שורת פרטים, ואז בקצה (lz-act) התראה אדומה ולחצן "בוצע" (MarkControls.js).
 //
-// חוזה לסוכן סימון "בוצע" (לוגיקה ו-API; כאן רק המראה):
-//   <StageRow stage row onMarkDone={fn} doneState={{ done, returnCondition, busy }} />
-//   onMarkDone(row, stage, { done: true|false, condition: 'ok'|'bad'|undefined }) - נקרא בלחיצה על "בוצע" / "הוחזר לא
-//   תקין" / ביטול (לחיצה על לחצן שכבר "on"). חלון ה"בטוח?" (S03) הוא של הסוכן ההוא - הלחצן רק קורא ל-handler.
-//   doneState (אופציונלי) דורס את row.done / row.returnCondition מהשרת (סימון אופטימי). busy=true מנטרל זמנית.
-//   בלי onMarkDone הלחצן מרונדר כבוי (disabled) באותו מראה - לא נעלם ולא מוחלף בטקסט - והטולטיפ הוא טקסט העיצוב.
+// החוזה האחיד של סימון "בוצע" (useStageMarks.js דרך StageSection.js):
+//   <StageRow stage row doneState={marks.doneState(stage, row)} onMarkDone={marks.onMarkDone} dayLabel />
+//   onMarkDone(stage, row, { done: boolean, outcome?: 'ok'|'not_ok' }) - נקרא אחרי אישור בחלון "בטוח?" (S03).
+//   doneState: { available, canMark, done, doneVia, doneBy, doneAt, outcome, busy } (null = אין hook / אין טבלה);
+//   השורה עצמה (row.done / row.returnCondition) כבר מעודכנת אופטימית ע״י ה-hook.
 // שלבי המידע (1 הזמנה, 7 אירוע) בלי לחצן בכלל (החלטת הבעלים: בלי "בוצע"). שלבי ההחזרה (8, 9): לחצן "בוצע" (= הוחזר
 // תקין), ובריחוף/מיקוד/מגע צף מימינו "הוחזר לא תקין" (A4); אחרי הסימון: שבב "תקין" / "לא תקין" + "בוצע" דלוק (B17).
-function MarkControls({ stage, row, onMarkDone, doneState }) {
-  if (stage.infoOnly) return null;
-  const done = doneState && doneState.done !== undefined ? doneState.done : row.done === true;
-  const cond = doneState && doneState.returnCondition !== undefined ? doneState.returnCondition : row.returnCondition;
-  const busy = !!(doneState && doneState.busy);
-  const disabled = !onMarkDone || busy;
-  const rk = !!RETURN_STAGES[stage.key];
-  const call = (opts) => () => { if (onMarkDone) onMarkDone(row, stage, opts); };
-  if (done) {
-    return (
-      <>
-        {rk && cond ? (cond === 'ok' ? <span className="chip green lz-rc">תקין</span> : <span className="chip rose lz-rc">לא תקין</span>) : null}
-        <button type="button" className="btn tgl lz-mark on" aria-pressed="true" data-tip={MARK_TIPS.unmark} disabled={disabled} onClick={call({ done: false })}>
-          <ScheduleIcon name="check" className="sm evck" />בוצע
-        </button>
-      </>
-    );
-  }
-  const markBtn = (
-    <button type="button" className="btn tgl lz-mark" aria-pressed="false" data-tip={rk ? MARK_TIPS.markReturn : MARK_TIPS.mark} disabled={disabled} onClick={call({ done: true, condition: rk ? 'ok' : undefined })}>
-      <CheckCircleIcon className="sm" />בוצע
-    </button>
-  );
-  if (!rk) return markBtn;
-  return (
-    <span className="lz-retw">
-      <button type="button" className="btn tgl lz-mark lz-bad" aria-pressed="false" data-tip={MARK_TIPS.markBad} disabled={disabled} onClick={call({ done: true, condition: 'bad' })}>
-        <ScheduleIcon name="alert" className="sm" />הוחזר לא תקין
-      </button>
-      {markBtn}
-    </span>
-  );
+// שלב בלי מקור "בוצע" (stage.doneSource) ובלי טבלת סימונים (doneState.available) - בלי לחצן ובלי מחלקת done/todo.
+function rowKnown(stage, doneState) {
+  return !stage.infoOnly && !!(stage.doneSource || (doneState && doneState.available));
 }
 
 function AlertChip({ row }) {
@@ -150,11 +121,11 @@ export function GoLink({ orderId }) {
 
 // מחלקות המצב של השורה כמו בעיצוב (cls(), שורה 1980): lz-done / lz-todo (לא בשלבי המידע) + lz-late כשיש התראה
 function rowClass(stage, row, doneState) {
-  const done = doneState && doneState.done !== undefined ? doneState.done : row.done === true;
-  return 'lz-r' + (stage.infoOnly ? '' : (done ? ' lz-done' : ' lz-todo')) + (row.alerts && row.alerts.length ? ' lz-late' : '');
+  const known = rowKnown(stage, doneState);
+  return 'lz-r' + (!known ? '' : (row.done === true ? ' lz-done' : ' lz-todo')) + (row.alerts && row.alerts.length ? ' lz-late' : '');
 }
 
-function StageRow({ stage, row, onMarkDone, doneState }) {
+function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
   const [open, setOpen] = useState(false);
   const meta = STAGE_META[stage.key] || STAGE_META.order;
   const name = row.customer?.name || 'לא ידוע';
@@ -175,7 +146,7 @@ function StageRow({ stage, row, onMarkDone, doneState }) {
         <div className="lz-act">
           <AlertChip row={row} />
           <InfoChips stage={stage} row={row} />
-          <MarkControls stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} />
+          <MarkButton stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} dayLabel={dayLabel} />
         </div>
         <GoLink orderId={row.orderId} />
       </div>
@@ -187,7 +158,7 @@ function StageRow({ stage, row, onMarkDone, doneState }) {
 export default memo(StageRow);
 
 // שורת טבלה (תצוגת "טבלה", trHTML בעיצוב): עמודות הזמנה / לקוחה / פרטים / התראה / ביצוע / כרטיס
-function StageTableRowImpl({ stage, row, onMarkDone, doneState }) {
+function StageTableRowImpl({ stage, row, onMarkDone, doneState, dayLabel }) {
   const items = row.items || [];
   const itemLines = items.map((it) => {
     const parts = [itemText(it)];
@@ -210,7 +181,7 @@ function StageTableRowImpl({ stage, row, onMarkDone, doneState }) {
         {row.internalNotes ? <small className="lz-sm">הערה פנימית (הנהלה בלבד): {row.internalNotes}</small> : null}
       </td>
       <td><AlertChip row={row} /><InfoChips stage={stage} row={row} /></td>
-      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><MarkControls stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} /></div></td>}
+      {stage.infoOnly ? null : <td className="tc"><div className="lz-act"><MarkButton stage={stage} row={row} onMarkDone={onMarkDone} doneState={doneState} dayLabel={dayLabel} /></div></td>}
       <td className="tc"><GoLink orderId={row.orderId} /></td>
     </tr>
   );
