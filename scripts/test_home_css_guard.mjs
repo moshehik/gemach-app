@@ -238,6 +238,43 @@ t('נטרול דליפה בלו״ז: design-overrides.css כופה גופן Assi
   assert.ok(hasSched(/\.gm-ds\.gm-lz :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'schedule.css: חסר font-family:inherit!important לכותרות');
 });
 
+/* ---------- 6ג. דף הלו״ז - נאמנות לעיצוב (ביקורת הבעלים 2.10.2026, docs/ui-fidelity-schedule.md) ---------- */
+const SCHED_DIR = new URL('../app/components/schedule/', import.meta.url);
+const schedSrc = (f) => readFileSync(new URL(f, SCHED_DIR), 'utf8');
+const SCHED_FILES = ['ScheduleDay.js', 'StageRow.js', 'StageSection.js', 'StageRail.js', 'HebrewDayPicker.js', 'ScheduleToolbarSlots.js', 'ScheduleIcon.js', 'ScheduleSkeleton.js', 'scheduleMeta.js'];
+t('לוז: השורש בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה = CSS של דף הבית, דורס שורות/מתג/טבלה של הלוז)', () => {
+  assert.match(schedSrc('ScheduleDay.js'), /className="gm-ds gm-lz home-bg"/);
+  assert.ok(!/gm-home/.test(schedSrc('ScheduleDay.js')), 'gm-home חזר לשורש הלוז');
+});
+t('לוז: טולטיפים רק דרך data-tip (הטולטיפ של המערכת, כמו בעיצוב) - אין title= על רכיבי הדף', () => {
+  for (const f of SCHED_FILES) assert.ok(!/title=/.test(schedSrc(f)), f + ' משתמש ב-title= (טולטיפ דפדפן) במקום data-tip');
+});
+t('לוז: אין טקסטים שהבעלים לא הגדיר (כיתוב "לקריאה בלבד", "יסומן בגרסה הבאה", "אין נוכחות רשומה", תאריך מעל הכותרת, תגיות ספירה)', () => {
+  const all = SCHED_FILES.map(schedSrc).join(String.fromCharCode(10));
+  for (const bad of ['לקריאה בלבד', 'יסומן בגרסה', 'אין נוכחות', '>במשמרת', 'chip st-bad', 'chip st-mid', 'lz-note', 'lz-staff', 'lz-nwd', 'NOT_MARKED_TIP']) assert.ok(!all.includes(bad), 'הטקסט/הרכיב "' + bad + '" חזר לדף');
+  assert.ok(!/<small>\{[^}]*hebrewLong/.test(schedSrc('ScheduleDay.js')), 'שורת התאריך מעל "לוח זמנים" חזרה');
+  assert.ok(!/\{total\} \{stage\.plural\}/.test(schedSrc('StageSection.js')), 'תגית "N אירועים" חזרה לכותרת השלב');
+});
+t('לוז: הרכיבים של העיצוב קיימים - לחצן "בוצע" (btn tgl lz-mark), "הוחזר לא תקין" (lz-retw), "הכל בוצע" (lz-all), כלי XL/הורדה/הדפסה (lz-dtools/lz-stools), שורת ברקוד (sbar)', () => {
+  const row = schedSrc('StageRow.js'), sec = schedSrc('StageSection.js'), rail = schedSrc('StageRail.js'), day = schedSrc('ScheduleDay.js'), slots = schedSrc('ScheduleToolbarSlots.js');
+  assert.ok(row.includes('className="btn tgl lz-mark"') && row.includes('className="btn tgl lz-mark on"') && row.includes('className="lz-retw"') && row.includes('lz-mark lz-bad'));
+  assert.ok(sec.includes('className="ibtn lz-all"') && sec.includes('<SectionTools'));
+  assert.ok(day.includes('<PageTools') && slots.includes('className="tools lz-dtools"') && slots.includes('className="tools lz-stools"'));
+  assert.ok(rail.includes('className="sbar"') && rail.includes('id="scanIn"'));
+  // הטולטיפים של לחצני הסימון הם בדיוק טקסטי העיצוב
+  const meta = schedSrc('scheduleMeta.js');
+  for (const tip of ["'סמן כבוצע'", "'סמן כבוצע (הוחזר תקין)'", "'סמן כהוחזר לא תקין'", "'לחיצה לביטול סימון הביצוע'", "'הכל בוצע'"]) assert.ok(meta.includes(tip), 'חסר טקסט עיצוב ' + tip);
+});
+t('schedule.css: הכרטיס עם רקע הפנינה של העיצוב ב-!important (הפלטה כופה זכוכית לבנה), וכותרת הטבלה מנטרלת את globals/design-overrides', () => {
+  assert.ok(hasSched(/\.gm-ds\.gm-lz \.lz-st$/, /^background$/, { important: true, valueRe: /linear-gradient\(135deg,rgba\(255,252,247,\.62\)/ }), 'חסר רקע הכרטיס מהעיצוב (1145)');
+  assert.ok(hasSched(/\.rtbl thead tr th/, /^background-color$/, { important: true, valueRe: /navy/ }));
+  assert.ok(hasSched(/\.rtbl thead tr th/, /^color$/, { important: true, valueRe: /gold-300/ }));
+  assert.ok(hasSched(/\.rtbl thead tr th/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasSched(/\.rtbl thead tr th/, /^box-shadow$/, { important: true, valueRe: /^none/ }));
+  assert.ok(hasSched(/\.lz-snav \.sbar$/, /^display$/, { important: true, valueRe: /^flex/ }), 'שורת הברקוד: הפלטה מסתירה .sbar ב-!important');
+  assert.ok(hasSched(/#scanIn/, /^background$/, { important: true, valueRe: /^transparent/ }), 'שדה הברקוד: הפלטה צובעת .inp בלבן ב-!important');
+});
+
 /* ---------- 7. אין עוד כפתור/אייקון "אחרונים" בשורת החיפוש (החלטת הבעלים 2.10.2026) ---------- */
 t('בשורת החיפוש של דף הבית אין כפתור "אחרונים" (cmode-i) ואין קוד מת שלו', () => {
   const a5 = read('../app/components/home/HomeA5.js');

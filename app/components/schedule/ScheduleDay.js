@@ -2,15 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ScheduleIcon, { LocalSprite } from './ScheduleIcon';
+import { useA5Shell } from '@/app/components/menu/A5ShellContext';
 import StageRail from './StageRail';
 import StageSection from './StageSection';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
-import { addDays, hebrewLong, toKey } from './hebrewCalendar';
-import { STAGE_ORDER, nonWorkingDayText } from './scheduleMeta';
+import { PageTools } from './ScheduleToolbarSlots';
+import { addDays, toKey } from './hebrewCalendar';
+import { STAGE_ORDER } from './scheduleMeta';
 
-// דף "לו״ז יומי" - קריאה בלבד (V1). מקור העיצוב: תצוגות-עיצוב/לוז-יומי.html. הנתונים: GET /api/schedule
-// (docs/schedule-page-logic-spec.md). אין סימון "בוצע", אין הדפסה/ייצוא, אין הגדרות שלבים, אין ברקוד.
+// דף "לו״ז יומי". המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, ה-HTML בשורות 1627-1642): כותרת "לוח זמנים" +
+// אייקון בורר היום; כלי XL/הורדה/הדפסה בקצה השמאלי של שורת הכותרת; ציר השלבים מימין; בעמודת התוכן מתג שורות/טבלה
+// ואז מקטעי השלבים. אין בדף שום טקסט שהעיצוב לא מגדיר. הנתונים: GET /api/schedule (docs/schedule-page-logic-spec.md).
+//
+// חיבורים לסוכנים האחרים (props בלבד; ה-markup לא משתנה):
+//   סימון "בוצע":  onMarkDone(row, stage, { done, condition }) / onMarkAll(stage) / marks { [orderId]: { done, returnCondition, busy } }
+//                  / onScan(code) לשורת הברקוד (ר' StageRow.js, StageSection.js, StageRail.js).
+//   הדפסה/הורדה/XL: onExport / onDownload / onPrint / onSettings ({ stageKey, mode }) (ר' ScheduleToolbarSlots.js).
+//   הרשאות (JDG-04, מאושר): עובדת בלי "הכל בוצע" ובלי XL - canMarkAll / canExport; ברירת המחדל נגזרת מהשרת:
+//   settings.includeInternalNotes = הנהלה ראשית / מנהלת סניף / מתכנת (INTERNAL_NOTES_ROLE_IDS ב-lib/schedule/index.js).
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -34,16 +44,91 @@ function writeUrlState(date, branch) {
   } catch { /* history לא זמין - לא קריטי */ }
 }
 
-function safeHebrewLong(key) {
-  try { return hebrewLong(key); } catch { return key; }
-}
-
 const ERROR_TEXT = {
   401: 'יש להתחבר מחדש כדי לצפות בלו״ז.',
   403: 'אין הרשאה לצפות בלו״ז היומי.',
 };
 
-export default function ScheduleDay() {
+// הטולטיפ של המערכת (.pl-tt, טולטיפ 1-6 בפלטה; #tt בעיצוב): ריחוף/מיקוד על [data-tip]. במעטפת החדשה המעטפת
+// מטפלת בזה לכל התוכן; בלעדיה (מעטפת legacy / AppShell) הדף מטפל בעצמו - אותו דפוס כמו בדף בדיקת המלאי.
+function usePageTooltip(rootRef, ttRef, shellHandlesHover) {
+  useEffect(() => {
+    const root = rootRef.current;
+    const tt = ttRef.current;
+    if (!root || !tt || shellHandlesHover) return undefined;
+    let cur = null;
+    const hide = () => { tt.classList.remove('on'); cur = null; };
+    const show = (el) => {
+      cur = el;
+      tt.textContent = el.getAttribute('data-tip');
+      tt.classList.add('on');
+      const r = el.getBoundingClientRect();
+      const w = tt.offsetWidth;
+      const h = tt.offsetHeight;
+      let x = r.left + r.width / 2 - w / 2;
+      x = Math.max(10, Math.min(window.innerWidth - w - 10, x));
+      let y = r.top - h - 10;
+      if (y < 8) y = r.bottom + 10;
+      tt.style.left = `${x}px`;
+      tt.style.top = `${y}px`;
+    };
+    const over = (e) => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t && t !== cur) show(t); else if (!t && cur) hide(); };
+    const out = (e) => { if (e.target.closest && e.target.closest('[data-tip]')) hide(); };
+    const fin = (e) => { const t = e.target.closest && e.target.closest('[data-tip]'); if (t && t.matches(':focus-visible')) show(t); };
+    const key = (e) => { if (e.key === 'Escape' && cur) hide(); };
+    root.addEventListener('mouseover', over);
+    root.addEventListener('mouseout', out);
+    root.addEventListener('focusin', fin);
+    root.addEventListener('focusout', out);
+    document.addEventListener('keydown', key);
+    window.addEventListener('scroll', hide, { passive: true });
+    return () => {
+      root.removeEventListener('mouseover', over);
+      root.removeEventListener('mouseout', out);
+      root.removeEventListener('focusin', fin);
+      root.removeEventListener('focusout', out);
+      document.removeEventListener('keydown', key);
+      window.removeEventListener('scroll', hide);
+    };
+  }, [rootRef, ttRef, shellHandlesHover]);
+}
+
+// הציר (fit בעיצוב, שורות 2154-2171): במסך רחב מתחיל בגובה האייקון של המקטע הראשון (--rail-off), ואם הוא גבוה
+// מהמסך הוא נצמד עם top שלילי כך שתחתיתו נראית (--rail-top) - בלי גלילה פנימית. נמדד מחדש בכל שינוי תוכן/גודל.
+function useRailFit(rootRef) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof window === 'undefined') return undefined;
+    const mq = window.matchMedia('(min-width:1024px)');
+    let raf = 0;
+    const fit = () => {
+      raf = 0;
+      const rail = root.querySelector('.lz-rail');
+      const lay = root.querySelector('.lz-layout');
+      const side = rail && rail.querySelector('.st-sidenav');
+      if (!rail || !lay) return;
+      if (!side || !mq.matches) { rail.style.removeProperty('--rail-off'); rail.style.removeProperty('--rail-top'); return; }
+      const ic = root.querySelector('#stages .lz-sec .adm-hi');
+      if (ic) rail.style.setProperty('--rail-off', Math.max(0, Math.round(ic.getBoundingClientRect().top - lay.getBoundingClientRect().top)) + 'px');
+      else rail.style.removeProperty('--rail-off');
+      const snav = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gm-snav-h') || getComputedStyle(root).getPropertyValue('--snav-h'), 10) || 64;
+      rail.style.setProperty('--rail-top', Math.min(snav + 12, Math.round(window.innerHeight - side.offsetHeight - 12)) + 'px');
+    };
+    const sched = () => { if (!raf) raf = window.requestAnimationFrame(fit); };
+    const mo = new MutationObserver(sched);
+    mo.observe(root, { childList: true, subtree: true });
+    window.addEventListener('resize', sched);
+    mq.addEventListener && mq.addEventListener('change', sched);
+    fit();
+    return () => { mo.disconnect(); window.removeEventListener('resize', sched); mq.removeEventListener && mq.removeEventListener('change', sched); if (raf) window.cancelAnimationFrame(raf); };
+  }, [rootRef]);
+}
+
+export default function ScheduleDay({
+  onMarkDone, onMarkAll, marks, onScan,
+  onExport, onDownload, onPrint, onSettings,
+  canMarkAll, canExport,
+}) {
   const [date, setDate] = useState(null); // null = "היום" לפי השרת (שעון ישראל)
   const [branch, setBranch] = useState('');
   const [filter, setFilter] = useState(null);
@@ -58,6 +143,11 @@ export default function ScheduleDay() {
   const [clock, setClock] = useState(null);
   const [localToday, setLocalToday] = useState(null);
   const reqId = useRef(0);
+  const rootRef = useRef(null);
+  const ttRef = useRef(null);
+  const inA5Shell = useA5Shell();
+  usePageTooltip(rootRef, ttRef, !!inA5Shell);
+  useRailFit(rootRef);
 
   // מצב התחלתי מהכתובת (?date=&branch=) ומהעדפת התצוגה (שורות/טבלה) של המשתמשת בדפדפן הזה
   useEffect(() => {
@@ -86,7 +176,7 @@ export default function ScheduleDay() {
         try { body = await res.json(); } catch { /* לא JSON */ }
         if (id !== reqId.current) return;
         if (!res.ok) {
-          // אחרי שגיאה לא משאירים את נתוני היום הקודם (כותרת, ציר ומונים) - הם היו מטעים
+          // אחרי שגיאה לא משאירים את נתוני היום הקודם (ציר ומונים) - הם היו מטעים
           setData(null);
           setError({ status: res.status, message: ERROR_TEXT[res.status] || (body && body.error) || 'שגיאה בטעינת הלו״ז היומי' });
           setLoading(false);
@@ -110,6 +200,10 @@ export default function ScheduleDay() {
   // אין קריאה נפרדת ל-/api/settings רק בשבילה.
   const branchesEnabled = !!(data && data.settings && data.settings.branchesEnabled);
   const branches = (branchesEnabled && Array.isArray(data.settings.branches)) ? data.settings.branches : [];
+  // הנהלה (JDG-04): "הכל בוצע" ו-XL. ברירת המחדל מהשרת; prop מפורש גובר.
+  const mgmt = !!(data && data.settings && data.settings.includeInternalNotes);
+  const allowMarkAll = canMarkAll === undefined ? mgmt : canMarkAll;
+  const allowExport = canExport === undefined ? mgmt : canExport;
 
   const changeDate = useCallback((key) => {
     setDate(key);
@@ -136,50 +230,43 @@ export default function ScheduleDay() {
 
   const visible = stages.filter((s) => s.counts.total > 0 && (!filter || s.key === filter));
   const allTotal = stages.reduce((a, s) => a + s.counts.total, 0);
-  const shownDate = data ? data.date : date;
   // בורר התאריך חייב להישאר זמין גם בשגיאה (למשל ?date= לא תקין) כדי שיהיה אפשר לבחור יום אחר
   const pickerDate = (data && data.date) || date || localToday;
   const pickerToday = (clock && clock.today) || localToday;
   const pickerTomorrow = (clock && clock.tomorrow) || (pickerToday ? addDays(pickerToday, 1) : null);
+  const tools = { onExport, onDownload, onPrint, canExport: allowExport };
 
   return (
-    <div className="gm-ds gm-home gm-lz home-bg">
+    <div className="gm-ds gm-lz home-bg" ref={rootRef}>
       <LocalSprite />
       <div className="app lz-app">
         <div className="topbar">
           <div className="ttl">
-            <h1 className="pg-ttl">
-              <small>{shownDate ? hebrewLong(shownDate) : ' '}</small>
-              <bdi>לוח זמנים</bdi>
-            </h1>
+            <h1 className="pg-ttl"><bdi>לוח זמנים</bdi></h1>
             {pickerDate && pickerToday ? <HebrewDayPicker date={pickerDate} today={pickerToday} tomorrow={pickerTomorrow} onChange={changeDate} /> : null}
           </div>
+          <PageTools onExport={onExport} onDownload={onDownload} onPrint={onPrint} onSettings={onSettings} canExport={allowExport} canSettings={mgmt} />
         </div>
 
         <div className="lz-layout">
-          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} />
+          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan} />
           <div className="lz-main">
             <div className="hres-bar lz-hb" id="hb">
-              <div className={'vsw' + (view === 'table' ? ' t' : '')} role="group" aria-label="מצב תצוגה">
+              <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" role="group" aria-label="מצב תצוגה">
                 <span className="vknob" aria-hidden="true" />
-                <button type="button" className={'vopt' + (view === 'rows' ? ' on' : '')} aria-label="תצוגת שורות" aria-pressed={view === 'rows'} title="שורות" onClick={() => changeView('rows')}>
+                <button type="button" className={'vopt' + (view === 'rows' ? ' on' : '')} aria-label="תצוגת שורות" aria-pressed={view === 'rows'} data-tip="שורות" onClick={() => changeView('rows')}>
                   <ScheduleIcon name="rows" />
                 </button>
-                <button type="button" className={'vopt' + (view === 'table' ? ' on' : '')} aria-label="תצוגת טבלה" aria-pressed={view === 'table'} title="טבלה" onClick={() => changeView('table')}>
+                <button type="button" className={'vopt' + (view === 'table' ? ' on' : '')} aria-label="תצוגת טבלה" aria-pressed={view === 'table'} data-tip="טבלה" onClick={() => changeView('table')}>
                   <ScheduleIcon name="table" />
                 </button>
               </div>
-              <NonWorkingChip data={data} />
               {branchesEnabled && branches.length ? (
                 <div className="lz-dtools">
                   <BranchSeg branches={branches} value={branch} onChange={changeBranch} />
                 </div>
               ) : null}
             </div>
-            <p className="lz-note">
-              <ScheduleIcon name="info" className="sm" />
-              <span>תצוגה לקריאה בלבד. סימון &quot;בוצע&quot; יתווסף בגרסה הבאה. התראת &quot;באיחור&quot; מוצגת רק בימים שכבר עברו.</span>
-            </p>
 
             {data && data.truncated ? (
               <div className="lz-banner" role="alert">
@@ -191,7 +278,7 @@ export default function ScheduleDay() {
             <div id="stages">
               {error ? (
                 <div className="empty" role="alert">
-                  <ScheduleIcon name={error.status === 403 || error.status === 401 ? 'lock' : 'alert'} className="lg" />
+                  <ScheduleIcon name={error.status === 403 || error.status === 401 ? 'shield' : 'alert'} className="lg" />
                   <div className="lz-empty-t">{error.message}</div>
                   {error.status !== 403 && error.status !== 401 ? (
                     <button type="button" className="btn lz-retry" onClick={() => setTick((t) => t + 1)}>
@@ -203,51 +290,35 @@ export default function ScheduleDay() {
                 <ScheduleSkeleton />
               ) : visible.length ? (
                 visible.map((s) => (
-                  <StageSection key={s.key} stage={s} view={view} pickupHours={data.settings && data.settings.pickupHours} />
+                  <StageSection
+                    key={s.key}
+                    stage={s}
+                    view={view}
+                    pickupHours={data.settings && data.settings.pickupHours}
+                    onMarkDone={onMarkDone}
+                    onMarkAll={onMarkAll}
+                    marks={marks}
+                    canMarkAll={allowMarkAll}
+                    {...tools}
+                  />
                 ))
               ) : (
                 <div className="empty" role="status">
                   <ScheduleIcon name="cal" className="lg" />
-                  <div className="lz-empty-t">{allTotal === 0 ? 'אין פעולות מתוכננות ביום הזה' : 'אין פריטים בשלב שנבחר'}</div>
+                  <div className="lz-empty-t">{allTotal === 0 ? 'אין פעולות מתוכננות ביום הזה' : 'אין פריטים שתואמים לסינון'}</div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+      <div className="pl-tt" role="tooltip" ref={ttRef} />
     </div>
   );
 }
 
-// תגית "יום לא עובד" - רק מה שה-API אומר (nonWorkingDay + dayStatus מהכלל האחיד ב-lib/businessDays.js:
-// שישי, שבת, חג, ערב חג, והימים שהבעלים סימן בניהול היומן). הדף לא מחשב חגים או ימים בשבוע בעצמו.
-// גיבוי מפורש: תשובה ישנה בלי השדה nonWorkingDay (למשל שרת שעדיין לא עודכן) - מוצג לפי dayFlags הישן,
-// ובלי שניהם לא מוצג כלום (לא מנחשים).
-function NonWorkingChip({ data }) {
-  if (!data) return null;
-  if (data.nonWorkingDay === undefined) {
-    const f = data.dayFlags;
-    if (!f || !(f.isChag || f.isFridayOrShabbat)) return null;
-    return (
-      <span className="chip st-today lz-nwd">
-        <ScheduleIcon name={f.isChag ? 'gift' : 'cal'} />
-        {(f.isChag ? 'חג או ערב חג' : (data.weekday || 'שישי / שבת')) + ' - יום לא עובד'}
-      </span>
-    );
-  }
-  if (!data.nonWorkingDay) return null;
-  const reasons = (data.dayStatus && data.dayStatus.reasons) || [];
-  const holiday = reasons.some((r) => r === 'chag' || r === 'erev_chag' || r === 'chol_hamoed');
-  const text = nonWorkingDayText(data.dayStatus);
-  return (
-    <span className="chip st-today lz-nwd" title={text}>
-      <ScheduleIcon name={holiday ? 'gift' : 'cal'} />
-      {text}
-    </span>
-  );
-}
-
-// סינון סניף (בורר 40/41: pill.seg) - סינון תצוגה בלבד, לא אכיפה (החלטה B2: אין שיוך עובדת לסניף)
+// סינון סניף (בורר 40/41: pill.seg) - סינון תצוגה בלבד, לא אכיפה (החלטה B2: אין שיוך עובדת לסניף). מוצג רק בארגון
+// שעובד עם סניפים (branches_enabled). אין לו מקבילה בעיצוב - לאישור הבעלים (docs/ui-fidelity-schedule.md).
 function BranchSeg({ branches, value, onChange }) {
   const opts = [{ v: '', label: 'כל הסניפים' }, ...branches.map((b) => ({ v: b, label: b }))];
   const idx = Math.max(0, opts.findIndex((o) => o.v === value));

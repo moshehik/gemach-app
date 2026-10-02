@@ -317,7 +317,8 @@ t('מעטפת a5 + דף בית legacy (דגלים עצמאיים): אין קיש
     const settings = ctx.settings || rows({ enable_deliveries: 'true' });
     const lt = legacyHome({ ...ctx, settings });
     const nt = buildMenuTree({ ...ctx, settings });
-    assert.ok(!flattenMenuTree(lt).some((x) => x.href && x.href.includes('?')), `${name}: אין href עם query`);
+    // (קישורי "היום"/"מחר" של הלוז (/schedule?date=) אינם תלויים בדף הבית - הדף עצמו קורא את הפרמטר)
+    assert.ok(!flattenMenuTree(lt).some((x) => x.href && x.href.includes('?') && !x.href.startsWith('/schedule?')), `${name}: אין href עם query`);
     // אותן שורות בדיוק (נראות זהה); רק ה-href וסוג שתי השורות החדשות משתנים
     assert.deepEqual(ids(tab(lt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), ids(tab(nt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), name);
     if (tab(lt, 'home')) assert.ok(!tab(lt, 'home').items.some((x) => x.kind === 'heading'));
@@ -330,7 +331,7 @@ t('מעטפת a5 + דף בית legacy (דגלים עצמאיים): אין קיש
   for (const x of home.items.filter((i) => i.kind === 'soon')) { assert.equal(x.href, undefined); assert.equal(x.action, undefined); }
   assert.ok(!home.items.some((x) => 'match' in x), 'בלי match כשהקישור הוא הדף הישן עצמו');
   // ברירת מחדל (בלי הדגל) = בטוח: קישורים ישנים
-  assert.deepEqual(hrefs(buildMenuTreeRaw({ user: HEAD, permissions: ALL_OPEN, settings: [] })).filter((h) => h.includes('?')), []);
+  assert.deepEqual(hrefs(buildMenuTreeRaw({ user: HEAD, permissions: ALL_OPEN, settings: [] })).filter((h) => h.includes('?') && !h.startsWith('/schedule?')), []);
   // עם הדגל — הקישורים החדשים; ולא משפיע על נראות
   assert.ok(hrefs(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] })).includes('/?scope=customers'));
   assert.equal(isJsonSafe(lt), true);
@@ -410,8 +411,36 @@ t('"לוז" (sched): לשונית אחרי "בית" → /schedule רק כש-page
   assert.deepEqual(ids(buildMenuTree({ user: HEAD, permissions: withoutKey, settings: [] }).rail.bell.rows), ['n-center']);
   // סימון העמוד הנוכחי כשהלשונית פעילה
   assert.deepEqual(findActive(HEAD_TREE, '/schedule'), { tabId: 'sched', itemId: null });
-  assert.deepEqual(findActive(HEAD_TREE, '/schedule?date=2026-10-02'), { tabId: 'sched', itemId: null });
+  assert.deepEqual(findActive(HEAD_TREE, '/schedule?date=2026-01-02'), { tabId: 'sched', itemId: null }, 'תאריך שאינו היום/מחר: הלשונית בלבד');
   assert.deepEqual(findActive(staff, '/schedule/'), { tabId: 'sched', itemId: null });
+});
+t('"לוז": תפריט הריחוף "היום" / "מחר" (תפריט-חדש.html, SCH-S01) - קישורים ל-/schedule?date= לפי שעון ישראל, לא לאורח ולא כשהלשונית "בקרוב"', () => {
+  const live = buildMenuTree({ user: STAFF, permissions: { ...ALL_CLOSED, 'page:schedule': true }, settings: [], todayKey: '2026-10-04' });
+  const items = tab(live, 'sched').items;
+  assert.deepEqual(items.map((x) => [x.kind, x.id, x.label, x.icon, x.href]), [
+    ['link', 'sched-today', 'היום', 'cal', '/schedule?date=2026-10-04'],
+    ['link', 'sched-tomorrow', 'מחר', 'arrl', '/schedule?date=2026-10-05'],
+  ]);
+  // מעבר חודש/שנה בחשבון לוח-שנה טהור
+  assert.equal(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: '2026-12-31' }), 'sched').items[1].href, '/schedule?date=2027-01-01');
+  // בלי todayKey: היום לפי שעון ישראל (YYYY-MM-DD), לא Invalid Date
+  const auto = tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] }), 'sched').items;
+  assert.match(auto[0].href, /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/);
+  assert.notEqual(auto[0].href, auto[1].href);
+  // todayKey לא תקין מתעלמים ממנו
+  assert.match(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], todayKey: 'מחר' }), 'sched').items[0].href, /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/);
+  // "בקרוב": בלי שורות; אורח: בלי לשונית פעילה
+  assert.deepEqual(tab(buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] }), 'sched').items, []);
+  assert.deepEqual(tab(buildMenuTree({ user: null, settings: rows({ require_login: 'false' }) }), 'sched').items, []);
+  // סימון הנוכחי: הכתובת של "היום" מסמנת את שורת "היום"; תאריך אחר - רק את הלשונית
+  assert.deepEqual(findActive(live, '/schedule', '', 'date=2026-10-04'), { tabId: 'sched', itemId: 'sched-today' });
+  assert.deepEqual(findActive(live, '/schedule', '', '?date=2026-10-05'), { tabId: 'sched', itemId: 'sched-tomorrow' });
+  assert.deepEqual(findActive(live, '/schedule', '', 'date=2026-10-06'), { tabId: 'sched', itemId: null });
+  assert.deepEqual(findActive(live, '/schedule'), { tabId: 'sched', itemId: null });
+  // יעדי ניווט (חיפוש בתפריט) כוללים את שתי השורות; JSON נקי
+  assert.ok(flattenMenuTree(live).some((x) => x.id === 'sched-today') && flattenMenuTree(live).some((x) => x.id === 'sched-tomorrow'));
+  assert.ok(isJsonSafe(live));
+  assert.ok(ITEM_IDS.includes('sched-today') && ITEM_IDS.includes('sched-tomorrow'));
 });
 t('NAV_PAGE_KEYS: מכיל את 9 המפתחות שהיו ב-app/layout.js + page:messages + page:schedule (ה-layout מייבא מכאן)', () => {
   const legacyLayoutKeys = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];

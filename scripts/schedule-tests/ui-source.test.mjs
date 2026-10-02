@@ -41,7 +41,7 @@ test('no schedule component references an external sprite.svg# (content filters 
 test('every icon name used by the schedule page exists in the inline sprite (spriteSymbols.js)', () => {
   const names = iconNames();
   assert.ok(names.size >= 15, 'scan found only ' + names.size + ' icon names');
-  for (const n of ['rows', 'table', 'info', 'alert', 'lock', 'refresh', 'cal', 'gift', 'chev', 'arrr', 'arrl', 'users', 'wallet', 'pin']) assert.ok(names.has(n), 'scan missed ' + n);
+  for (const n of ['rows', 'table', 'alert', 'shield', 'refresh', 'cal', 'gift', 'chev', 'arrr', 'arrl', 'scan', 'wallet', 'pin', 'check', 'gear']) assert.ok(names.has(n), 'scan missed ' + n);
   for (const [n, f] of names) assert.ok(SPRITE_IDS.has(n), `icon "${n}" used in ${f} is missing from spriteSymbols.js`);
 });
 
@@ -51,6 +51,7 @@ test('the sprite is embedded once: ScheduleDay renders LocalSprite, which yields
   assert.match(icon, /const inA5Shell = useA5Shell\(\);/);
   assert.match(icon, /\{inA5Shell \? null : <MenuSprite \/>\}/);
   assert.ok(icon.includes('id="lz-i-checkc"'), 'the local check-circle symbol (J09) is kept');
+  assert.ok(icon.includes('id="lz-i-checks"'), 'the local double-check symbol (J09, "הכל בוצע") is kept');
   const shell = readFileSync(path.join(process.env.PROJ, 'app', 'components', 'menu', 'MenuA5Shell.js'), 'utf8');
   assert.equal((shell.match(/<MenuSprite \/>/g) || []).length, 1);
   assert.ok(shell.indexOf('<A5ShellProvider') < shell.indexOf('<MenuSprite />'));
