@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { installDb, ORDERS, NOW } from '../schedule-tests/fixtures.mjs';
+import { blocksIntact } from './pp16-pdfcheck.mjs';
 
 const PROJ = process.env.PROJ;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -26,9 +27,52 @@ const { renderToStaticMarkup } = require('react-dom/server');
 const React = require('react');
 const L = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 
-const keysArg = (process.argv[2] || 'PP-15,PP-01').split(',');
+// pages: "PP-15,PP-01" | "PP-03:b" (a version) | "all" (every page that is 'ready' in this checkout, both versions of 03/07)
+let keysArg = (process.argv[2] || 'PP-15,PP-01').split(',');
+const versionMap = {};
+if (keysArg[0] === 'all') {
+  const reg = await L('lib/schedule/print/registry.js');
+  keysArg = reg.PRINT_PAGES.filter((p) => p.status === 'ready').flatMap((p) => (p.versions ? p.versions.map((v) => `${p.key}:${v.k}`) : [p.key]));
+}
+const pageSpecs = keysArg.map((k) => { const [key, v] = k.split(':'); return { key, version: v || null }; });
+keysArg = [...new Set(pageSpecs.map((x) => x.key))];
 const long = process.argv.includes('long');
 const DAY = '2026-10-01';
+
+// Leak scan, run in the page under BOTH media (screen = the wizard's preview/iframe, print = paper): the sheet must stay black on white
+// with greys only - a saturated background/border/text colour, light text on white, or a gradient image is a theme token leaking in
+// (app/design-overrides.css / globals.css rules like "table tbody td{border-bottom-color:var(--divider)!important}").
+const leakScan = () => {
+  const bad = [];
+  const parse = (c) => c.match(/rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/);
+  const sat = (m) => Math.max(m[1], m[2], m[3]) - Math.min(m[1], m[2], m[3]);
+  const lum = (m) => 0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3];
+  const bgLum = (el) => {
+    for (let e = el; e; e = e.parentElement) { const m = parse(getComputedStyle(e).backgroundColor); if (m && m[4] !== '0') return lum(m); }
+    return 255;
+  };
+  for (const el of document.querySelectorAll('.pp-root, .pp-root *')) {
+    const s = getComputedStyle(el);
+    const cls = String(el.className && el.className.baseVal === undefined ? el.className : '');
+    const m = parse(s.backgroundColor);
+    if (m && m[4] !== '0' && sat(m) > 12) bad.push({ tag: el.tagName, cls, bg: s.backgroundColor });
+    if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) {
+      const c = parse(s.color);
+      if (c && (sat(c) > 12 || (lum(c) > 150 && bgLum(el) >= 150))) bad.push({ tag: el.tagName, cls, color: s.color });
+    }
+    for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+      if (parseFloat(s['border' + side + 'Width']) > 0 && s['border' + side + 'Style'] !== 'none') {
+        const c = parse(s['border' + side + 'Color']);
+        if (c && sat(c) > 12) bad.push({ tag: el.tagName, cls, ['border' + side]: s['border' + side + 'Color'] });
+      }
+    }
+    // outlines and shadows are never part of the sheet (the on-screen paper shadow belongs to .pp-sheet only)
+    if (parseFloat(s.outlineWidth) > 0 && s.outlineStyle !== 'none') bad.push({ tag: el.tagName, cls, outline: s.outline });
+    if (s.boxShadow && s.boxShadow !== 'none' && !el.classList.contains('pp-sheet')) bad.push({ tag: el.tagName, cls, shadow: s.boxShadow.slice(0, 60) });
+    if (s.backgroundImage && s.backgroundImage !== 'none' && !/repeating-linear-gradient/.test(s.backgroundImage) && el.tagName !== 'rect') bad.push({ tag: el.tagName, cls, bgi: s.backgroundImage.slice(0, 60) });
+  }
+  return bad;
+};
 
 // ---- 1. payload ---------------------------------------------------------------------------------
 let orders = ORDERS.map((o) => (o.orderId === 1001
@@ -44,42 +88,63 @@ if (long) {
     orders.push({ ...b1, orderId: 6000 + i, totalAmount: 800 + i * 10, payments: [{ amount: 300, isDeleted: false }], customer: { ...b1.customer, firstName: 'רשומה' + String.fromCharCode(0x5d0 + (i % 22)), lastName: 'היום' }, orderDate: d('2026-10-01T06:00:00Z') });
   }
 }
-installDb({ extra: { order: orders } });
+if (long && keysArg.includes('PP-16')) {
+  // PP-16 long: 22 manual-return families due on the day (1-4 dresses each) + 8 late ones (due 1-9 days before) -> several pages
+  const base = ORDERS.find((o) => o.orderId === 1013);
+  const mk = (id, over, nItems) => ({ ...base, orderId: id, ...over, customer: { ...base.customer, firstName: 'לקוחה' + String.fromCharCode(0x5d0 + (id % 22)), lastName: 'משפחה' + String.fromCharCode(0x5d0 + ((id * 7) % 22)), street: id % 5 ? 'הרצל ' + (id % 40) : '', phone2: '' },
+    items: Array.from({ length: nItems }, (_, k) => ({ ...base.items[0], id: `it-${id}-${k}`, sizeText: String(36 + 2 * ((id + k) % 6)), barcodePrefix: k % 2 ? 555 : 123, returnedOk: false })) });
+  for (let i = 0; i < 22; i++) orders.push(mk(7000 + i, {}, 1 + (i % 4)));
+  const lateDays = [30, 29, 28, 24, 23, 22, 30, 29];
+  for (let i = 0; i < 8; i++) orders.push(mk(7100 + i, { eventDate: new Date(Date.UTC(2026, 8, lateDays[i] - 1)), toDate: new Date(Date.UTC(2026, 8, lateDays[i])) }, 1 + (i % 3)));
+}
+// OrderItem rows for the extras that query items directly (PP-16): derived from the orders' embedded items
+const orderItems = orders.flatMap((o) => (o.items || []).map((it) => ({ ...it, orderId: o.orderId })));
+installDb({ extra: { order: orders, orderItem: orderItems } });
 const { getScheduleDay } = await L('lib/schedule/index.js');
 const { loadExtras, buildPrintPayload } = await L('lib/schedule/print/data.js');
 const { getPrintPage } = await L('lib/schedule/print/registry.js');
 const day = await getScheduleDay({ date: DAY, user: { id: 'emp-head', roleId: 0 }, now: NOW });
 const defs = keysArg.map(getPrintPage);
 const extras = await loadExtras(day, defs);
-const payload = buildPrintPayload({ day, keys: keysArg, extras, gmach: { name: 'גמ״ח שמלות', address: 'רחוב הדוגמה 12, ירושלים', phone: '02-555-0100' }, printedBy: 'מנהלת (דוגמה)', now: NOW });
+// one payload per (page, version): the same page may be rendered in several versions in one run
+const payloads = pageSpecs.map((sp) => buildPrintPayload({ day, keys: [sp.key], versions: sp.version ? { [sp.key]: sp.version } : {}, extras, gmach: { name: 'גמ״ח שמלות', address: 'רחוב הדוגמה 12, ירושלים', phone: '02-555-0100' }, printedBy: 'מנהלת (דוגמה)', now: NOW }));
+const payload = { meta: payloads[0].meta, pages: payloads.flatMap((x) => x.pages) };
 
 // ---- 2. static HTML with the live page's global CSS + print.css -------------------------------
 const { PrintDocument } = await L('app/components/schedule/print/PrintShell.js');
 const css = (rel) => pathToFileURL(path.join(PROJ, rel)).href;
 const FONT_FREE = process.env.NO_WEBFONTS === '1';
+// PP_THEME=dark: the live app's dark theme tokens (app/design-system.css [data-theme=dark]) - the print sheet must not follow them
+const THEME = process.env.PP_THEME === 'dark' ? 'dark' : 'light';
+// page-local stylesheets (app/components/schedule/print/pages/pp*.css): the live page gets them through the templates' own imports
+const pageCss = fs.readdirSync(path.join(PROJ, 'app/components/schedule/print/pages')).filter((f) => /^pp.*\.css$/i.test(f))
+  .map((f) => `<link rel="stylesheet" href="${css('app/components/schedule/print/pages/' + f)}">`).join('');
 const results = [];
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--no-sandbox'] });
 try {
   for (const page of payload.pages) {
     const single = { meta: payload.meta, pages: [page] };
     const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload: single }));
-    const name = page.key + (long ? '-long' : '');
-    const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${page.def.label}</title>
-<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}">
+    const name = page.key + (page.version && page.def.versions ? '-' + page.version : '') + (long ? '-long' : '');
+    const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8"><title>${page.def.label}</title>
+<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
-<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
+<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${pageCss}${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>
 <body class="hide-global-nav pp-print-mode"><nav class="navbar">תפריט (מדמה את המעטפת)</nav><div data-print-ready="true">${body}</div></body></html>`;
     const htmlPath = path.join(OUT, name + '.html');
     fs.writeFileSync(htmlPath, html);
 
     const tab = await browser.newPage();
+    if (THEME === 'dark') await tab.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
     if (FONT_FREE) await tab.setRequestInterception(true), tab.on('request', (r) => (/fonts\.g/.test(r.url()) ? r.abort() : r.continue()));
     await tab.setViewport({ width: 1000, height: 1200, deviceScaleFactor: 1 });
     await tab.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
     await tab.screenshot({ path: path.join(OUT, name + '.png'), fullPage: true });
 
+    const leaksScreen = await tab.evaluate(leakScan);
     // ---- 3. computed styles under print media ----
     await tab.emulateMediaType('print');
+    const leaksPrint = await tab.evaluate(leakScan);
     const styles = await tab.evaluate(() => {
       const cs = (el) => getComputedStyle(el);
       const root = document.querySelector('.pp-root');
@@ -89,15 +154,6 @@ try {
       const h1 = document.querySelector('.pp-tb h1');
       const nav = document.querySelector('.navbar');
       const trs = [...document.querySelectorAll('.pp-t tbody tr')];
-      const bad = [];
-      for (const el of document.querySelectorAll('.pp-root, .pp-root *')) {
-        const s = cs(el);
-        const bg = s.backgroundColor;
-        // allowed: transparent, white, the soft greys of the design; anything saturated = leak
-        const m = bg.match(/rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/);
-        if (m && m[4] !== '0' && (Math.max(m[1], m[2], m[3]) - Math.min(m[1], m[2], m[3]) > 12)) bad.push({ tag: el.tagName, cls: el.className && el.className.baseVal === undefined ? el.className : '', bg });
-        if (s.backgroundImage && s.backgroundImage !== 'none' && !/repeating-linear-gradient/.test(s.backgroundImage) && el.tagName !== 'rect') bad.push({ tag: el.tagName, cls: el.className, bgi: s.backgroundImage.slice(0, 60) });
-      }
       return {
         bodyBg: cs(document.body).backgroundColor,
         rootBg: cs(root).backgroundColor, rootColor: cs(root).color, rootFont: cs(root).fontFamily, rootDir: cs(root).direction,
@@ -109,7 +165,6 @@ try {
         navDisplay: nav ? cs(nav).display : null,
         rows: trs.length,
         theadDisplay: sheet ? cs(sheet.tHead).display : null, tfootDisplay: sheet ? cs(sheet.tFoot).display : null,
-        leaks: bad.slice(0, 10), leakCount: bad.length,
       };
     });
 
@@ -121,6 +176,7 @@ try {
     let pdf = { pages: null, text: [] };
     if (py.status === 0 && fs.existsSync(jsonPath)) pdf = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
     const pdfChecks = checkPdf(pdf, page);
+    styles.leaks = leaksPrint.slice(0, 6); styles.leakCount = leaksPrint.length; styles.leaksScreen = leaksScreen.slice(0, 6); styles.leakCountScreen = leaksScreen.length;
     const r = { key: page.key, name, rows: styles.rows, pdfPages: pdf.pages, styles, pdfChecks, pyError: py.status === 0 ? null : (py.stderr || '').slice(0, 200) };
     results.push(r);
     await tab.close();
@@ -148,7 +204,8 @@ for (const r of results) {
   if (s.navDisplay !== 'none') problems.push('navbar visible in print: ' + s.navDisplay);
   if (s.theadDisplay !== 'table-header-group') problems.push('thead ' + s.theadDisplay);
   if (s.tfootDisplay !== 'table-footer-group') problems.push('tfoot ' + s.tfootDisplay);
-  if (s.leakCount) problems.push('coloured backgrounds: ' + s.leakCount + ' ' + JSON.stringify(s.leaks.slice(0, 3)));
+  if (s.leakCount) problems.push('theme leaks (print): ' + s.leakCount + ' ' + JSON.stringify(s.leaks.slice(0, 3)));
+  if (s.leakCountScreen) problems.push('theme leaks (screen): ' + s.leakCountScreen + ' ' + JSON.stringify(s.leaksScreen.slice(0, 3)));
   for (const [k, v] of Object.entries(r.pdfChecks)) if (v !== true) problems.push('pdf ' + k + ': ' + v);
   if (r.pyError) problems.push('pypdf: ' + r.pyError);
   if (problems.length) failed++;
@@ -169,7 +226,7 @@ function checkPdf(pdf, page) {
   const counters = texts.map((t) => { let m = t.match(/עמוד\s*(\d+)\s*מתוך\s*(\d+)/); if (m) return [Number(m[1]), Number(m[2])]; m = t.match(/(\d+)\s*מתוך\s*(\d+)\s*עמוד/); return m ? [Number(m[2]), Number(m[1])] : null; });
   out.pageCounters = counters.every((c, i) => c && c[0] === i + 1 && c[1] === pdf.pages) ? true : 'counters: ' + JSON.stringify(counters);
   // no row split: each "#id" must be on the same page as the customer name that follows it in the row
-  const rows = page.key === 'PP-15' ? page.data.groups.flatMap((g) => g.rows) : page.data.rows;
+  const rows = page.data.rows || (page.data.groups || []).flatMap((g) => g.rows) || [];
   let split = [];
   for (const r of rows) {
     const idx = texts.findIndex((t) => t.includes(String(r.orderId))); // '#' is dropped by the extractor
@@ -178,6 +235,7 @@ function checkPdf(pdf, page) {
     if (nameFirst && !texts[idx].includes(nameFirst)) split.push(r.orderId + ':name-on-other-page');
   }
   out.noRowSplit = split.length ? split.slice(0, 5).join(',') : true;
+  if (page.key === 'PP-16') out.blocksIntact = blocksIntact(pdf.text, rows);
   out.allRowsPrinted = rows.every((r) => texts.some((t) => t.includes(String(r.orderId)))) || 'some rows missing';
   return out;
 }

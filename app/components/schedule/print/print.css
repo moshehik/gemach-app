@@ -16,6 +16,9 @@
 .pp-root table{border-spacing:0}
 .pp-root[data-tone=color]{--pp-rule:#0f2c52;--pp-acc:#9a7a1f;--pp-thbg:#e8edf4;--pp-ttl:#0f2c52;--pp-soft:#eef2f7}
 
+/* QA 2.10: טבלה עם border-collapse:collapse מתעלמת מ-padding - במסך (ובתצוגה המקדימה באשף) הטקסט יצא קצה לקצה בלי שולי 12 מ"מ
+   של הדף. במסך בלבד עוברים למודל separate (border-spacing:0 כבר מוגדר) כדי שה-padding של הגיליון יחול; בהדפסה השוליים מ-@page */
+@media screen{.pp-paper .pp-sheet{border-collapse:separate}}
 /* ===== מסך: גיליונות A4 על רקע אפור (תצוגה מקדימה לפני ההדפסה) ===== */
 .pp-paper{background:#e9ebee;min-height:100vh;padding:14px 0 40px}
 .pp-paper .pp-sheet{width:210mm;min-height:297mm;margin:0 auto 14px;background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.35);padding:10mm 12mm 9mm}
@@ -75,9 +78,17 @@
 /* ===== גוף: טבלאות ===== */
 .pp-t{width:100%;border-collapse:collapse;font-size:11.5px}
 .pp-t thead{display:table-header-group}
-.pp-root .pp-t th{background:var(--pp-thbg)!important;position:static!important;top:auto!important;box-shadow:none!important;text-align:start;font-weight:700;font-size:10.5px;padding:1.3mm 1.4mm;border-top:.3mm solid var(--pp-rule);border-bottom:.5mm solid var(--pp-rule);white-space:nowrap;color:var(--pp-ink);position:static}
+.pp-root .pp-t th{background:var(--pp-thbg)!important;position:static!important;top:auto!important;box-shadow:none!important;text-align:start;font-weight:700;font-size:10.5px;padding:1.3mm 1.4mm;border-top:.3mm solid var(--pp-rule);border-bottom:.5mm solid var(--pp-rule)!important;white-space:nowrap;color:var(--pp-ink)!important;position:static}
+/* QA 2.10: app/globals.css ("table thead tr th") כופה border-bottom: 2px solid <זהב> !important על כל כותרת טבלה באתר - בלי !important כאן
+   קו כותרת הטבלה בדפי ההדפסה יצא זהוב ודק במקום שחור .5mm (נתפס רק בהשוואת סגנונות מחושבים מול התצוגה) */
 .pp-root .pp-t td{padding:var(--rp) 1.4mm;border-bottom:.2mm solid #b9b9b9;vertical-align:middle;color:var(--pp-ink);background:transparent;font-size:inherit;line-height:inherit}
 .pp-root .pp-t th{line-height:1.4}
+/* QA 2.10: app/design-overrides.css §9 "table tbody td{border-bottom-color:var(--divider)!important}" צבע את קווי השורות בצבע ערכת הנושא (חם / כהה) -
+   בדפי ההדפסה הקו אפור קבוע; ובאותו כלל "table thead th{color:var(--text-muted)!important}" (במסך) - לכן גם color!important בכותרת למעלה */
+/* ובנוסף: כלל גלובלי "thead th, th{outline:1px solid var(--sticky-header-bg)}" ציור מסגרת בצבע ערכת הנושא סביב כל תא כותרת */
+.pp-root .pp-t th{outline:0!important;z-index:auto!important}
+.pp-root .pp-t tbody td{border-bottom-color:#b9b9b9!important}
+.pp-root .pp-t tbody tr.g td{border-bottom-color:#888!important}
 .pp-t tr{break-inside:avoid;page-break-inside:avoid}
 .pp-t td.c,.pp-t th.c{text-align:center}
 .pp-t td small{display:block;color:var(--pp-mut);font-size:10px;line-height:1.25}

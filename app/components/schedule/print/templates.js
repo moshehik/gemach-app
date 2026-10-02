@@ -13,6 +13,7 @@ import PP11 from './pages/PP11';
 import PP12 from './pages/PP12';
 import PP13 from './pages/PP13';
 import PP15 from './pages/PP15';
+import PP16 from './pages/PP16';
 import PP18 from './pages/PP18';
 import PP19 from './pages/PP19';
 
@@ -29,6 +30,7 @@ const TEMPLATES = {
   'PP-12': PP12,
   'PP-13': PP13,
   'PP-15': PP15,
+  'PP-16': PP16,
   'PP-18': PP18,
   'PP-19': PP19,
 };
