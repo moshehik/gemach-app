@@ -50,7 +50,8 @@
 .gm-ds.gm-login .lblrow .lbl{margin-bottom:0}
 .gm-ds.gm-login .pinbtn{background:none;border:0;padding:0 0 2px;font-size:13px;font-weight:600;color:var(--gm-navy-700);cursor:pointer;border-bottom:2px solid var(--gm-gold)}
 .gm-ds.gm-login .pinbtn:hover{color:var(--gm-navy-900)}
-.gm-ds.gm-login .forgot{align-self:flex-start;margin-top:10px;padding:0 0 2px;background:none;border:0;border-bottom:2px solid var(--gm-gold);font-size:14px;font-weight:500;color:var(--gm-navy-700);cursor:pointer;transition:color .2s,border-color .2s}
+.gm-ds.gm-login .lblacts{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;justify-content:flex-end}
+.gm-ds.gm-login .forgot{padding:0 0 2px;background:none;border:0;border-bottom:2px solid var(--gm-gold);font-size:13px;font-weight:600;color:var(--gm-navy-700);cursor:pointer;transition:color .2s,border-color .2s}
 .gm-ds.gm-login .forgot:hover{color:var(--gm-navy-900);border-bottom-color:var(--gm-gold-d)}
 .gm-ds.gm-login .ctl{position:relative;display:flex;align-items:center}
 .gm-ds.gm-login .ctl>.ic{position:absolute;inset-inline-start:14px;color:var(--gm-ink3);pointer-events:none}
@@ -69,11 +70,7 @@
 .gm-ds.gm-login .eye:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
 
 /* ---- G04: שדה בחירה עם הקלדה, סינון ורשימה נפתחת ---- */
-.gm-ds.gm-login .cbx input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]){padding-inline-end:48px}
-.gm-ds.gm-login .cbx-t{position:absolute;inset-inline-end:6px;width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--gm-ink3);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,color .15s}
-.gm-ds.gm-login .cbx-t:hover{background:var(--gm-sky-50);color:var(--gm-navy-900)}
-.gm-ds.gm-login .cbx-t .ic{transition:transform .2s}
-.gm-ds.gm-login .cbx-t[aria-expanded="true"] .ic{transform:rotate(180deg)}
+.gm-ds.gm-login .cbx input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]){padding-inline-end:14px}
 .gm-ds.gm-login .cbx-l{position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:20;margin:0;padding:6px;list-style:none;max-height:232px;overflow:auto;background:#fff;border:1px solid var(--gm-line);border-radius:14px;box-shadow:0 18px 40px -14px rgba(15,44,82,.45)}
 .gm-ds.gm-login .cbx-o{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:10px;cursor:pointer;color:var(--gm-ink);font-size:16px;border-inline-start:3px solid transparent}
 .gm-ds.gm-login .cbx-o .ic{color:var(--gm-ink3)}

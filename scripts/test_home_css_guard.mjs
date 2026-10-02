@@ -243,7 +243,7 @@ const SCHED_DIR = new URL('../app/components/schedule/', import.meta.url);
 const schedSrc = (f) => readFileSync(new URL(f, SCHED_DIR), 'utf8');
 const SCHED_FILES = ['ScheduleDay.js', 'StageRow.js', 'StageSection.js', 'StageRail.js', 'HebrewDayPicker.js', 'ScheduleToolbarSlots.js', 'ScheduleIcon.js', 'ScheduleSkeleton.js', 'scheduleMeta.js', 'MarkControls.js', 'MarkDialogs.js', 'useStageMarks.js'];
 t('לוז: השורש בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה = CSS של דף הבית, דורס שורות/מתג/טבלה של הלוז)', () => {
-  assert.match(schedSrc('ScheduleDay.js'), /className="gm-ds gm-lz home-bg"/);
+  assert.match(schedSrc('ScheduleDay.js'), /className="gm-ds gm-lz home-bg dlg-dark"/);
   assert.ok(!/gm-home/.test(schedSrc('ScheduleDay.js')), 'gm-home חזר לשורש הלוז');
 });
 t('לוז: טולטיפים רק דרך data-tip (הטולטיפ של המערכת, כמו בעיצוב) - אין title= על רכיבי הדף', () => {

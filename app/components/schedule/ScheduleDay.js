@@ -288,14 +288,15 @@ export default function ScheduleDay({
   // אשף ההדפסות/ההורדות: { mode:'print'|'download', format:'xlsx'|'pdf', initialTab:stageKey|null } | null
   const [wiz, setWiz] = useState(null);
   const closeWiz = useCallback(() => setWiz(null), []);
-  const openPrint = useCallback(({ stageKey } = {}) => setWiz({ mode: 'print', format: 'xlsx', initialTab: stageKey || null }), []);
-  const openDownload = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: 'xlsx', initialTab: stageKey || null }), []);
-  const openExport = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: 'xlsx', initialTab: stageKey || null }), []);
+  // לחצני הכותרת (בלי stageKey) = האשף המלא; לחצני המקטע (עם stageKey) = חלונית מהירה לדפי אותו שלב בלבד
+  const openPrint = useCallback(({ stageKey } = {}) => setWiz({ mode: 'print', format: 'xlsx', initialTab: stageKey || null, quick: !!stageKey }), []);
+  const openDownload = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: stageKey ? 'pdf' : 'xlsx', initialTab: stageKey || null, quick: !!stageKey }), []);
+  const openExport = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: 'xlsx', initialTab: stageKey || null, quick: !!stageKey }), []);
   const tools = { onExport: onExport || openExport, onDownload: onDownload || openDownload, onPrint: onPrint || openPrint, canExport: allowExport };
 
   return (
     <LzPortalRoot.Provider value={portalRoot}>
-    <div className="gm-ds gm-lz home-bg" ref={rootRef}>
+    <div className="gm-ds gm-lz home-bg dlg-dark" ref={rootRef}>
       <LocalSprite />
       <div className="app lz-app">
         <div className="topbar">
@@ -374,7 +375,8 @@ export default function ScheduleDay({
       {/* האשף בתוך .gm-ds.gm-lz (ה-CSS שלו תחום לשם - print/PrintWizard.css); היום והסניף = מה שמוצג בדף */}
       {wiz ? (
         <PrintWizard
-          key={(wiz.initialTab || 'all') + wiz.mode + wiz.format}
+          key={(wiz.initialTab || 'all') + wiz.mode + wiz.format + (wiz.quick ? 'q' : '')}
+          quick={!!wiz.quick}
           mode={wiz.mode}
           format={wiz.format}
           initialTab={wiz.initialTab}

@@ -90,7 +90,7 @@ export function ConfirmDialog({ open, icon = 'check', heading, sub, effect, body
   return (
     <LzPortal>
       <div className="scrim on lz-cf-scrim" role="presentation" onClick={stop} onMouseDown={(e) => { stop(e); if (e.target === e.currentTarget) onNo(); }}>
-        <div className="dlg lz-cf" role="dialog" aria-modal="true" aria-labelledby="lz-cf-title">
+        <div className="dlg lz-cf" id="dlg" role="dialog" aria-modal="true" aria-labelledby="lz-cf-title">
           <div className="dbadge" aria-hidden="true"><ScheduleIcon name={icon} /></div>
           <h2 id="lz-cf-title">{heading}</h2>
           <div className="sub">{sub}{effect ? <span className="lz-cf-effect">{effect}</span> : null}</div>

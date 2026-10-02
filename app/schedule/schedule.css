@@ -207,6 +207,10 @@
 .gm-ds.gm-lz .lz-retw:is(:hover,:focus-within,.open) .lz-bad{max-width:220px;opacity:1;visibility:visible;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important}
 .gm-ds.gm-lz .rtbl .lz-retw .lz-bad{max-width:220px;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important}
 /* ===== חלון "בטוח?" (S03/S04; L.confirm בעיצוב, שורות 1207-1210) וטוסט (L.say) - על רכיבי הפלטה ===== */
+/* חלונות כהים (ה-body בעיצוב נושא dlg-dark; כאן שורש הדף) - ברירת הפלטה ללחצן "ביטול" (.btn.ghost) היא כחול כהה על רקע כהה,
+   אז הצבע נלקח מהמשתנה הכהה של הפלטה (--k-ghost) */
+.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost,.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost .ic,.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost:hover{color:var(--k-ghost)}
+.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost :is(svg,.ic){color:var(--k-ghost)!important;stroke:currentColor}
 .gm-ds.gm-lz .dlg.lz-cf{max-width:520px}
 /* הכותרת יורשת את צבע החלון כמו בעיצוב (כלל ה-h2 הגלובלי צובע בחום) */
 .gm-ds.gm-lz .dlg.lz-cf h2{color:inherit}

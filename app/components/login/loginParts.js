@@ -167,18 +167,6 @@ export const EmployeeCombobox = forwardRef(function EmployeeCombobox(
         onClick={() => setListOpen(true)}
         onKeyDown={onKey}
       />
-      <button
-        type="button"
-        className="cbx-t"
-        aria-label="פתיחת רשימת העובדים"
-        aria-expanded={listOpen ? 'true' : 'false'}
-        aria-controls={ids.list}
-        tabIndex={-1}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => { if (listOpen) setListOpen(false); else { userInputRef.current?.focus(); setListOpen(true); } }}
-      >
-        <I n="chev" />
-      </button>
       {listOpen ? (
         <ul className="cbx-l" id={ids.list} role="listbox" aria-label="עובדים" onMouseDown={(e) => e.preventDefault()}>
           {!listLoaded ? (

@@ -331,11 +331,14 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
         <div className="field">
           <div className="lblrow">
             <label className="lbl" htmlFor="lg-pass">{pinMode ? '4 התווים האחרונים בסיסמה' : 'סיסמה'}</label>
-            {trusted ? (
-              <button type="button" className="pinbtn" onClick={togglePin}>
-                {pinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 תווים)'}
-              </button>
-            ) : null}
+            <div className="lblacts">
+              {trusted ? (
+                <button type="button" className="pinbtn" onClick={togglePin}>
+                  {pinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 תווים)'}
+                </button>
+              ) : null}
+              <button type="button" className="forgot" onClick={openForgot}>שכחתי סיסמה</button>
+            </div>
           </div>
           <PasswordField
             id="lg-pass"
@@ -350,7 +353,6 @@ export default function LoginNew({ isModal = false, onClose, brand }) {
             showPass={showPass}
             onToggle={() => { setShowPass((v) => !v); passInputRef.current?.focus(); }}
           />
-          <button type="button" className="forgot" onClick={openForgot}>שכחתי סיסמה</button>
         </div>
 
         {!shared ? (

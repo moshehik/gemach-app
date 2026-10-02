@@ -40,7 +40,28 @@
 .gm-ds.gm-lz .lz-wf{margin-top:14px;flex-wrap:wrap}
 .gm-ds.gm-lz .lz-wiz .dbtns{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:10px}
 .gm-ds.gm-lz .lz-wiz .dbtns .btn{flex:1 1 200px;width:auto;margin:0}
+/* חלונית מהירה לשלב אחד (נפתחת מלחצני המקטע) */
+.gm-ds.gm-lz .lz-wiz.lz-quick{width:min(520px,96vw)}
+.gm-ds.gm-lz .lz-quick .lz-wb{grid-template-columns:1fr}
+.gm-ds.gm-lz .lz-quick .lz-wl{max-height:50vh}
+.gm-ds.gm-lz .lz-quick .lz-wm{margin:8px 0}
+.gm-ds.gm-lz .lz-quick .lz-wf{margin-top:10px}
 @media (max-width:760px){
   .gm-ds.gm-lz .lz-wb{grid-template-columns:1fr}
   .gm-ds.gm-lz .lz-wps{display:none}
 }
+
+/* החלונית המהירה כהה כמו חלונות האישור (#dlg + dlg-dark של שורש הדף): טקסט, רשימה וכפתורי עזר על הרקע הכהה */
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .t b{color:var(--k-ink)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .t small{color:var(--k-faint)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .li{background:var(--k-row);border:1px solid var(--k-rowb);box-shadow:none}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .lz-wr.foc{box-shadow:none}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .hf-allb{color:var(--k-ghost);background:transparent;border-color:var(--k-bd)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .lz-wmsg{background:var(--k-row);color:var(--k-ink)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .lz-wmsg.err{color:var(--k-err)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .lz-wpin label{color:var(--k-sub)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .lz-wl{padding-inline-end:6px}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .lz-wf .btn.ghost{flex:1 1 100%}
+/* מתג בחירה: על רקע כהה המסלול הכחול של הפלטה כמעט בלתי נראה - מסלול זהב כשנבחר, אפור-כסוף כשלא */
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .sw i{background:rgba(188,194,200,.35)}
+.gm-ds.gm-lz.dlg-dark #dlg.lz-quick .sw input:checked + i{background:var(--gm-gold)}

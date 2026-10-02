@@ -15,7 +15,9 @@ import './PrintWizard.css';
 //   הדפסה: חלון חדש /schedule/print/<keys>?date&branch&version - window.print() נפתח שם לבד.
 //   הורדה: Excel (גיליון לכל דף, RTL; המגבלה נבדקת בשרת - מעל המגבלה נדרשת סיסמת מאשר/ת) או PDF (POST /api/pdf
 //   במצב path על אותו דף הדפסה, דרך השער של lib/printAccess.js).
-// props: mode ('print'|'download'), format ('xlsx'|'pdf', למצב הורדה), canExport (false = בלי Excel), initialTab (מפתח שלב: פותח על הלשונית שלו ובוחר
+// quick: חלונית מהירה לשלב אחד (נפתחת מלחצני המקטע): רק דפי השלב, בלי לשוניות / תצוגה מקדימה / "כל דפי היום" והמצב קבוע לפי הלחצן שנלחץ.
+//   האשף המלא נפתח רק מלחצני הכותרת של הדף.
+// props: quick (bool), mode ('print'|'download'), format ('xlsx'|'pdf', למצב הורדה), canExport (false = בלי Excel), initialTab (מפתח שלב: פותח על הלשונית שלו ובוחר
 //   רק את דפי השלב), date (YYYY-MM-DD), branch, stageData (תשובת /api/schedule - למונים בלבד), onClose.
 // הרשאות: GET /api/schedule/print?format=access מחזיר אילו דפים מותר להדפיס; דף אסור מוצג מנוטרל עם "אין הרשאה" ולא
 //   נבחר (גם לא ב"כל דפי היום"). השרת בודק שוב ומדלג על דף אסור (meta.skipped) - האשף רק חוסך את הניסיון.
@@ -31,7 +33,7 @@ function pagesByStage() {
   return map;
 }
 
-export default function PrintWizard({ mode: initialMode = 'print', format: initialFormat = 'xlsx', initialTab = null, canExport = true, date, branch = '', stageData = null, onClose }) {
+export default function PrintWizard({ mode: initialMode = 'print', format: initialFormat = 'xlsx', initialTab = null, quick = false, canExport = true, date, branch = '', stageData = null, onClose }) {
   const byStage = useMemo(() => pagesByStage(), []);
   const stageKeys = STAGE_ORDER.filter((k) => byStage[k] && byStage[k].length);
   const counts = useMemo(() => {
@@ -44,6 +46,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   // canExport=false (עובדת, JDG-04 - אותו דגל שמסתיר את לחצן ה-XL): בלי Excel, הורדה = PDF בלבד (השרת אוכף גם הוא)
   const [format, setFormat] = useState(initialFormat === 'pdf' || !canExport ? 'pdf' : 'xlsx');
   const startTab = initialTab && stageKeys.includes(initialTab) ? initialTab : 'all';
+  const isQuick = quick && startTab !== 'all';
   const [tab, setTab] = useState(startTab);
   // ברירת מחדל: הדפים הבנויים של שלבים שיש בהם פריטים היום (נפתח משלב מסוים -> רק דפי השלב); דפים אסורים יוצאים
   // מהבחירה כשתשובת ההרשאות מגיעה (ר' forbidden למטה)
@@ -125,7 +128,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   const selected = PRINT_PAGES.filter((p) => sel[p.key] && usable(p));
   // התצוגה המקדימה נטענת רק לדף שהמשתמש/ת בחר/ה (לחיצה על שורה / מתג / גרסה) - לא אוטומטית בפתיחה:
   // כל טעינה של ה-iframe היא getScheduleDay מלא בשרת
-  const focused = PRINT_PAGES.find((p) => p.key === focus && usable(p)) || null;
+  const focused = isQuick ? null : (PRINT_PAGES.find((p) => p.key === focus && usable(p)) || null);
 
   const qs = useCallback((keys) => {
     const u = new URLSearchParams();
@@ -140,11 +143,13 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
 
   const setAll = (on) => setSel((s) => { const n = { ...s }; for (const p of listed) if (usable(p)) n[p.key] = on; return n; });
 
-  const run = async (pages) => {
+  const run = async (pages, act) => {
+    // act = פעולה מפורשת (החלונית המהירה: שלושת הלחצנים תמיד זמינים); בלעדיה - לפי המצב והקובץ שנבחרו באשף
+    const how = act || (mode === 'print' ? 'print' : format);
     const keys = pages.map((p) => p.key);
     if (!keys.length) return;
     setMsg(null);
-    if (mode === 'print') {
+    if (how === 'print') {
       const w = window.open(printUrl(keys), '_blank');
       if (!w) setMsg({ kind: 'err', text: 'הדפדפן חסם את חלון ההדפסה. אפשרו חלונות קופצים לאתר ונסו שוב.' });
       else onClose();
@@ -152,7 +157,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
     }
     setBusy(true);
     try {
-      if (format === 'pdf') {
+      if (how === 'pdf') {
         await downloadPdf({ path: printUrl(keys, '&downloadPdf=true'), filename: `luz-${date || 'today'}` }, `luz-${date || 'today'}.pdf`);
         setMsg({ kind: 'ok', text: `קובץ ה-PDF ירד (${keys.length} דפים).` });
       } else {
@@ -193,24 +198,25 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
   const n = selected.length;
   const allDay = PRINT_PAGES.filter((p) => usable(p) && (counts[p.stages[0]] || 0) > 0);
   const goLabel = mode === 'print' ? `הדפס נבחרים (${n})` : format === 'pdf' ? `הורד PDF (${n})` : `הורד Excel (${n})`;
+  const stageLabel = isQuick ? STAGE_META[startTab].label : '';
   const allLabel = mode === 'print' ? 'הדפס את כל דפי היום' : 'הורד את כל דפי היום';
   const dayTitle = date ? (() => { const h = hebrewParts(date); return h.dl + ' ' + h.m; })() : '';
 
   return (
     <div className="scrim on lz-wscrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="dlg lz-wiz" role="dialog" aria-modal="true" aria-labelledby="lz-wiz-title" ref={dlgRef}>
+      <div className={'dlg lz-wiz' + (isQuick ? ' lz-quick' : '')} id={isQuick ? 'dlg' : undefined} role="dialog" aria-modal="true" aria-labelledby="lz-wiz-title" ref={dlgRef}>
         <div className="dbadge" aria-hidden="true"><ScheduleIcon name={mode === 'print' ? 'print' : 'ext'} /></div>
-        <h2 id="lz-wiz-title">הדפסות והורדות{dayTitle ? ' · ' + dayTitle : ''}</h2>
-        <div className="sub">{date ? hebrewLong(date) + ' · ' : ''}בחרו דפים, ואז הדפיסו או הורידו</div>
+        <h2 id="lz-wiz-title">{isQuick ? 'הדפסה והורדה · ' + stageLabel : 'הדפסות והורדות' + (dayTitle ? ' · ' + dayTitle : '')}</h2>
+        <div className="sub">{date ? hebrewLong(date) + ' · ' : ''}{isQuick ? 'בחרו דפים מהשלב' : 'בחרו דפים, ואז הדפיסו או הורידו'}</div>
 
-        <div className="lz-wm">
+        {isQuick ? null : <div className="lz-wm">
           <div className="seg pill" role="radiogroup" aria-label="סוג הפעולה" style={{ '--n': 2, '--i': mode === 'print' ? 0 : 1 }}>
             <span className="pth" aria-hidden="true" />
             <button type="button" role="radio" aria-checked={mode === 'print'} className={mode === 'print' ? 'on' : ''} onClick={() => { setMode('print'); setMsg(null); }}>הדפסה</button>
             <button type="button" role="radio" aria-checked={mode === 'download'} className={mode === 'download' ? 'on' : ''} onClick={() => { setMode('download'); setMsg(null); }}>הורדה</button>
           </div>
-        </div>
-        {mode === 'download' && canExport ? (
+        </div>}
+        {mode === 'download' && canExport && !isQuick ? (
           <div className="lz-wm lz-wfmt">
             <span className="lz-wfl">קובץ:</span>
             <div className="seg pill" role="radiogroup" aria-label="סוג הקובץ" style={{ '--n': 2, '--i': format === 'xlsx' ? 0 : 1 }}>
@@ -221,7 +227,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
           </div>
         ) : null}
 
-        <nav className="tabs lz-wt" role="tablist" aria-label="שלב">
+        {isQuick ? null : <nav className="tabs lz-wt" role="tablist" aria-label="שלב">
           <button type="button" role="tab" aria-selected={tab === 'all'} className={'tab' + (tab === 'all' ? ' on' : '')} onClick={() => { setTab('all'); setFocus(null); }}>
             <span className="tico"><ScheduleIcon name="list" /></span>כל דפי היום
           </button>
@@ -230,7 +236,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
               <span className="tico"><ScheduleIcon name={STAGE_META[k].icon} />{counts[k] ? <span className="cnt">{counts[k]}</span> : null}</span>{STAGE_META[k].label}
             </button>
           ))}
-        </nav>
+        </nav>}
 
         <div className="lz-wb">
           <div className="lz-wl">
@@ -269,7 +275,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
               );
             })}
           </div>
-          <div className="lz-wp">
+          {isQuick ? null : <div className="lz-wp">
             <div className="lz-wph">{focused ? 'תצוגה מקדימה · ' + focused.label : 'בחרו דף לתצוגה מקדימה'}</div>
             <div className="lz-wps">
               {focused ? (
@@ -281,7 +287,7 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
                 />
               ) : null}
             </div>
-          </div>
+          </div>}
         </div>
 
         {msg ? <div className={'lz-wmsg ' + msg.kind} role={msg.kind === 'err' ? 'alert' : 'status'}>{msg.text}</div> : null}
@@ -294,10 +300,23 @@ export default function PrintWizard({ mode: initialMode = 'print', format: initi
         ) : null}
 
         <div className="dbtns mact lz-wf">
-          <button type="button" className="btn primary lg" disabled={!n || busy} onClick={() => run(selected)}>
-            <ScheduleIcon name={mode === 'print' ? 'print' : format === 'pdf' ? 'ext' : 'table'} />{busy ? 'מכין…' : goLabel}
-          </button>
-          <button type="button" className="btn" disabled={!allDay.length || busy} onClick={() => run(allDay)}>{allLabel}</button>
+          {isQuick ? (
+            // חלונית מהירה: הדפסה / PDF / Excel תמיד זמינים; הלחצן שממנו נפתחה החלונית מודגש
+            [{ act: 'print', label: 'הדפס', icon: 'print' }, { act: 'pdf', label: 'הורד PDF', icon: 'ext' }, ...(canExport ? [{ act: 'xlsx', label: 'הורד Excel', icon: 'table' }] : [])].map((b) => {
+              const cur = mode === 'print' ? 'print' : format;
+              return (
+                <button key={b.act} type="button" className={'btn lg' + (cur === b.act ? ' primary' : '')} disabled={!n || busy}
+                  onClick={() => { setMode(b.act === 'print' ? 'print' : 'download'); if (b.act !== 'print') setFormat(b.act); run(selected, b.act); }}>
+                  <ScheduleIcon name={b.icon} />{busy && cur === b.act ? 'מכין…' : b.label + ' (' + n + ')'}
+                </button>
+              );
+            })
+          ) : (
+            <button type="button" className="btn primary lg" disabled={!n || busy} onClick={() => run(selected)}>
+              <ScheduleIcon name={mode === 'print' ? 'print' : format === 'pdf' ? 'ext' : 'table'} />{busy ? 'מכין…' : goLabel}
+            </button>
+          )}
+          {isQuick ? null : <button type="button" className="btn" disabled={!allDay.length || busy} onClick={() => run(allDay)}>{allLabel}</button>}
           <button type="button" className="btn ghost" onClick={onClose}>סגירה<ScheduleIcon name="x" className="sm" /></button>
         </div>
       </div>
