@@ -67,10 +67,14 @@ function usePageTooltip(rootRef, ttRef, shellHandlesHover) {
     const tt = ttRef.current;
     if (!root || !tt || shellHandlesHover) return undefined;
     let cur = null;
-    const hide = () => { tt.classList.remove('on'); cur = null; };
+    let linked = null; // הרכיב שקיבל מאיתנו aria-describedby (קוראי מסך מקריאים את הטולטיפ; סקירה, NIT)
+    const unlink = () => { if (linked) { linked.removeAttribute('aria-describedby'); linked = null; } };
+    const hide = () => { tt.classList.remove('on'); cur = null; unlink(); };
     const show = (el) => {
+      unlink();
       cur = el;
       tt.textContent = el.getAttribute('data-tip');
+      if (tt.id && !el.hasAttribute('aria-describedby')) { el.setAttribute('aria-describedby', tt.id); linked = el; }
       tt.classList.add('on');
       const r = el.getBoundingClientRect();
       const w = tt.offsetWidth;
@@ -99,6 +103,7 @@ function usePageTooltip(rootRef, ttRef, shellHandlesHover) {
       root.removeEventListener('focusout', out);
       document.removeEventListener('keydown', key);
       window.removeEventListener('scroll', hide);
+      unlink();
     };
   }, [rootRef, ttRef, shellHandlesHover]);
 }
@@ -355,7 +360,7 @@ export default function ScheduleDay({
       </div>
       {/* הטוסט אח של .app (#toast בעיצוב, שורה 1654) */}
       <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
-      <div className="pl-tt" role="tooltip" ref={ttRef} />
+      <div className="pl-tt" role="tooltip" id="lz-tt" ref={ttRef} />
     </div>
     </LzPortalRoot.Provider>
   );
