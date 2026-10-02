@@ -210,16 +210,16 @@
 /* חלונות כהים (ה-body בעיצוב נושא dlg-dark; כאן שורש הדף) - ברירת הפלטה ללחצן "ביטול" (.btn.ghost) היא כחול כהה על רקע כהה,
    אז הצבע נלקח מהמשתנה הכהה של הפלטה (--k-ghost) */
 .gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost,.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost .ic,.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost:hover{color:var(--k-ghost)}
-.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost :is(svg,.ic){color:var(--k-ghost)!important;stroke:currentColor}
+.gm-ds.gm-lz.dlg-dark #dlg .dbtns .btn.ghost :is(svg,.ic){color:var(--k-ghost)!important;stroke:currentColor!important}
 .gm-ds.gm-lz .dlg.lz-cf{max-width:520px}
 /* הכותרת יורשת את צבע החלון כמו בעיצוב (כלל ה-h2 הגלובלי צובע בחום) */
 .gm-ds.gm-lz .dlg.lz-cf h2{color:inherit}
-.gm-ds.gm-lz .lz-cf .lz-cf-effect{display:block;margin-top:6px;font-size:14px;color:var(--navy-700)}
+.gm-ds.gm-lz .lz-cf .lz-cf-effect{display:block;margin-top:6px;font-size:14px;color:var(--k-sub)}
 .gm-ds.gm-lz .lz-det{display:flex;flex-direction:column;gap:6px;margin:14px 0 4px;text-align:start}
-.gm-ds.gm-lz .lz-det .li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08)}
+.gm-ds.gm-lz .lz-det .li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08);border:0}
 .gm-ds.gm-lz .lz-det .li .t{min-width:0}
 .gm-ds.gm-lz .lz-det .li .t b{display:block}
-.gm-ds.gm-lz .lz-det .li .t small{display:block;color:var(--ink3)}
+.gm-ds.gm-lz .lz-det .li .t small{display:block;color:var(--k-faint)}
 .gm-ds.gm-lz .lz-more{font-size:14px;opacity:.8;padding:4px 10px}
 .gm-ds.gm-lz #toast .tclose{display:grid;place-items:center}
 .gm-ds.gm-lz .lz-go{display:inline-grid;place-items:center;flex:none;color:var(--navy-500);text-decoration:none;transform:rotate(90deg);padding:8px;border-radius:10px}
