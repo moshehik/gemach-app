@@ -27,7 +27,12 @@ const ACTION_BADGE_CLASS = {
   CONFIRM_RENTAL: 'badge-success',
   RETURN_RENTAL: 'badge-success',
   DEBT_APPROVED: 'badge-success',
-  CANCEL_DEBT_APPROVAL: 'badge-danger'
+  CANCEL_DEBT_APPROVAL: 'badge-danger',
+  // לו״ז יומי - סימון "בוצע" / ביטולו (שורות ScheduleStageMark מגיעות דרך /api/audit?entityType=Order)
+  ALTERATION_DONE: 'badge-success',
+  ALTERATION_UNDONE: 'badge-danger',
+  SCHEDULE_STAGE_DONE: 'badge-success',
+  SCHEDULE_STAGE_UNDONE: 'badge-danger'
 };
 const badgeClassFor = (action) => ACTION_BADGE_CLASS[action] || 'badge-neutral';
 

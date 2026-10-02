@@ -863,3 +863,30 @@ model NedarimHok {
   @@index([customerId])
   @@index([createdAt])
 }
+
+// סימוני "בוצע" של הלו״ז היומי (/schedule). החלטת הבעלים C1 (1.10.2026): טבלה חדשה ל"בוצע, מי ומתי";
+// יצירת הטבלה בשני הגמ"חים אושרה במפורש ב-2.10.2026. שורה אחת לכל (הזמנה, שלב, יום ישראלי);
+// ביטול סימון לא מוחק את השורה אלא מסמן done=false (ההיסטוריה נשמרת, סימון חוזר = update).
+// orderId סקלרי בלי @relation (כמו NedarimHok) - תוספת בלבד, בלי לגעת בטבלאות קיימות.
+// שלבים עם שדה "בוצע" קיים (2 תיקונים, 8 החזרה ידנית) מעדכנים גם את OrderItem דרך lib/schedule/marks.js;
+// שלבים 4/5/6/9 נשענים על הטבלה הזו בלבד. הקוד עובד גם כשהטבלה חסרה (הסימון מוסתר, אין 500).
+// SQL ידני: prisma/migrations-pending/2026-10-02-schedule-stage-mark.sql
+model ScheduleStageMark {
+  id         String    @id @default(uuid())
+  orderId    Int // Order.orderId (מספר הזמנה קריא), לא UUID
+  stageKey   String // lib/schedule/stages.js: repair | prep | dout | pick | manret | dback (לא order/event - שלבי מידע)
+  dayKey     String // YYYY-MM-DD - היום הישראלי שהסימון שייך לו (ר' lib/schedule/dates.js)
+  done       Boolean   @default(true) // false = הסימון בוטל (השורה נשמרת להיסטוריה)
+  outcome    String? // 'ok' | 'not_ok' - מצב ההחזרה בשלבים 8/9 (החלטה A4); null לשאר השלבים
+  source     String? // 'row' (לחצן בשורה) | 'all' ("הכל בוצע")
+  markedById String? // Employee.id של מי שסימן לאחרונה (שם מוצג דרך שאילתה נפרדת, לא נשמר כאן)
+  markedAt   DateTime  @default(now())
+  undoneById String?
+  undoneAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([orderId, stageKey, dayKey])
+  @@index([dayKey, stageKey])
+  @@index([orderId])
+}

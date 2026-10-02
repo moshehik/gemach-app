@@ -2,6 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
 import { attachEmployeeNames } from '@/app/lib/auditLog';
+import { listOrderMarkIds } from '@/lib/schedule/marks';
 
 
 export async function GET(request) {
@@ -63,6 +64,20 @@ export async function GET(request) {
       });
       if (order) {
         where.entityId = { in: [order.id, String(order.orderId)] };
+        // סימוני "בוצע" של הלו״ז היומי (ScheduleStageMark, lib/schedule/marks.js) נרשמים ביומן עם
+        // entityType='ScheduleStageMark' ו-entityId של שורת הסימון; הטאב "מידע" של ההזמנה צריך לראות אותם
+        // (החלטת הבעלים B18 "מי סימן ומתי"). המיפוי סימון→הזמנה דרך ScheduleStageMark.orderId - שאילתה אחת
+        // קטנה; הטבלה חסרה / המודל לא בקליינט (עדיין לא נוצרה) -> רשימה ריקה, לעולם לא זורק.
+        const markIds = await listOrderMarkIds(order.orderId);
+        if (markIds.length) {
+          const orderIds = where.entityId;
+          delete where.entityType;
+          delete where.entityId;
+          where.OR = [
+            { entityType: 'Order', entityId: orderIds },
+            { entityType: 'ScheduleStageMark', entityId: { in: markIds } },
+          ];
+        }
       }
     }
     
