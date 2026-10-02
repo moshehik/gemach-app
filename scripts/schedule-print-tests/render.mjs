@@ -78,6 +78,12 @@ const leakScan = () => {
   return bad;
 };
 
+// @page margins must be white on every PDF page (a dark color-scheme paints them dark and hides the margin-box page counter)
+const marginCheck = (pdfPath) => {
+  const r = spawnSync('python', [path.join(HERE, 'pdf-margin.py'), pdfPath], { encoding: 'utf8' });
+  try { const j = JSON.parse(r.stdout); return j.dark.length ? 'dark page margin ' + JSON.stringify(j.dark.slice(0, 4)) : null; } catch { return 'pdf-margin.py: ' + (r.stderr || '').slice(0, 80); }
+};
+
 // ---- 1. payload ---------------------------------------------------------------------------------
 let orders = ORDERS.map((o) => (o.orderId === 1001
   ? { ...o, totalAmount: 1200, isPaid: false, isDelivery: true, deliveryDirection: 'הלוך-חזור', payments: [{ amount: 400, isDeleted: false }] }
@@ -151,6 +157,7 @@ ${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/prin
     const counters = texts.map((t) => { let m = t.match(/עמוד\s*(\d+)\s*מתוך\s*(\d+)/); if (m) return [Number(m[1]), Number(m[2])]; m = t.match(/(\d+)\s*מתוך\s*(\d+)\s*עמוד/); return m ? [Number(m[2]), Number(m[1])] : null; });
     const problems = [];
     if (!pdf.pages) problems.push('no pdf');
+    const mc = marginCheck(pdfPath); if (mc) problems.push(mc);
     if (!counters.every((c, i) => c && c[0] === i + 1 && c[1] === pdf.pages)) problems.push('counters not continuous: ' + JSON.stringify(counters));
     if (!texts.every((t) => t.includes('הופק מהמערכת'))) problems.push('footer missing on page ' + (texts.findIndex((t) => !t.includes('הופק מהמערכת')) + 1));
     // informational: how many PDF pages mention each selected page's title/label (pypdf glues RTL words with their neighbours, so a 0 here
@@ -243,6 +250,7 @@ ${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/prin
     let pdf = { pages: null, text: [] };
     if (py.status === 0 && fs.existsSync(jsonPath)) pdf = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
     const pdfChecks = checkPdf(pdf, page);
+    pdfChecks.whiteMargins = marginCheck(pdfPath) || true;
     styles.leaks = leaksPrint.slice(0, 6); styles.leakCount = leaksPrint.length; styles.leaksScreen = leaksScreen.slice(0, 6); styles.leakCountScreen = leaksScreen.length;
     const r = { key: page.key, name, rows: styles.rows, pdfPages: pdf.pages, styles, pdfChecks, pyError: py.status === 0 ? null : (py.stderr || '').slice(0, 200) };
     results.push(r);

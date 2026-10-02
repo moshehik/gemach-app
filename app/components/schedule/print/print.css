@@ -10,7 +10,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;600;700&display=swap');
 
 .pp-root{--rp:2.3mm;--pp-page-body:220mm;--pp-ink:#111;--pp-mut:#555;--pp-rule:#111;--pp-acc:#111;--pp-thbg:transparent;--pp-ttl:#111;--pp-soft:#f3f3f3;
-  direction:rtl;text-align:start;color:var(--pp-ink);background:#fff;
+  direction:rtl;text-align:start;color-scheme:light;color:var(--pp-ink);background:#fff;
   font:12px/1.4 "Segoe UI","Noto Sans Hebrew",Arial,"Helvetica Neue",sans-serif;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
 /* app/design-overrides.css כופה !important על גופני לחצנים/כותרות - בתוך הדף המודפס הגופן אחיד */
@@ -187,7 +187,9 @@
     /* מספור עמודים ממונה העמודים (Chrome 131+ תומך בתיבות השוליים; בדפדפן ישן יותר השורה פשוט לא מודפסת) */
     @bottom-left{content:"עמוד " counter(page) " מתוך " counter(pages);font:700 10px "Segoe UI","Noto Sans Hebrew",Arial,sans-serif;color:#111;direction:rtl}
   }
-  html,body{margin:0!important;padding:0!important;background:#fff!important;height:auto!important;overflow:visible!important}
+  /* color-scheme:light - ערכת הנושא הכהה (data-theme=dark, או מצב כהה של מערכת ההפעלה) מגדירה color-scheme:dark על :root, וכרום צובע
+     בה את שולי @page בשחור: הרקע הלבן של html/body לא מגיע לשוליים, ו"עמוד X מתוך Y" (#111) נעלם על שחור (QA 2.10, render.mjs PP_THEME=dark) */
+  html,body{margin:0!important;padding:0!important;background:#fff!important;color-scheme:light!important;height:auto!important;overflow:visible!important}
   /* מה שהמעטפת משאירה על המסך (body.hide-global-nav כבר מסתיר תפריט/סרגל) - גם בהדפסה */
   body.pp-print-mode :is(.navbar,.topbar,.sidebar,.sidebar-backdrop,.dev-env-container,.offline-indicator,.ai-floating-widget,.ai-widget-fab,.ai-widget-panel,.page-footer-bar){display:none!important}
   .pp-paper{background:#fff!important;padding:0!important;min-height:0;max-height:none!important;overflow:visible!important}
