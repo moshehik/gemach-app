@@ -16,7 +16,16 @@ export const STAGE_META = {
   dback: { label: 'משלוח חזור', plural: 'משלוחי חזור', icon: 'truck', color: '--c-dback' },
 };
 
-export const NOT_MARKED_TIP = 'יסומן בגרסה הבאה';
+// טקסטי הטולטיפ של לחצני הסימון - בדיוק כמו בעיצוב (לוז-יומי.html, שורות 1976-1978, 1996). אין טקסטים אחרים.
+export const MARK_TIPS = {
+  mark: 'סמן כבוצע',
+  markReturn: 'סמן כבוצע (הוחזר תקין)',
+  markBad: 'סמן כהוחזר לא תקין',
+  unmark: 'לחיצה לביטול סימון הביצוע',
+  all: 'הכל בוצע',
+};
+// שלבי ההחזרה (8, 9): בשורה לחצן "בוצע" בלבד, ובריחוף עליו צף מימינו "הוחזר לא תקין" (החלטה A4)
+export const RETURN_STAGES = { manret: true, dback: true };
 
 export function dressCountText(n) {
   const c = Number(n) || 0;
@@ -123,38 +132,6 @@ export function flagLabels(flags) {
   else if (flags.extraDay) out.push('יום נוסף');
   if (flags.customSpacing != null && flags.customSpacing !== '' && flags.customSpacing !== false) out.push('ריווח מותאם');
   return out;
-}
-
-// "יום לא עובד": תוויות לסיבות שה-API מחזיר (dayStatus.reasons של הכלל האחיד ב-lib/businessDays.js). הדף לא
-// מחשב חגים או ימים בשבוע בעצמו - רק מתרגם. סיבה לא מוכרת (כשהכלל יתרחב) לא נזרקת ולא מנוחשת: מוצג
-// "יום לא עובד" עם שאר הסיבות המוכרות. לחג/ערב חג מועדף שם החג (titles) על פני התווית הכללית.
-export const NON_WORKING_REASON_LABELS = {
-  friday: 'יום שישי',
-  shabbat: 'שבת',
-  chag: 'חג',
-  erev_chag: 'ערב חג',
-  chol_hamoed: 'חול המועד',
-  closed: 'סומן בניהול היומן',
-  range: 'סומן בניהול היומן',
-  recurring: 'סומן בניהול היומן',
-};
-
-export function nonWorkingDayText(status) {
-  const reasons = (status && Array.isArray(status.reasons) ? status.reasons : []).filter((r) => r !== 'open');
-  const titles = status && Array.isArray(status.titles) ? status.titles.filter(Boolean) : [];
-  const parts = [];
-  let titlesUsed = false;
-  for (const r of reasons) {
-    let label = NON_WORKING_REASON_LABELS[r];
-    if ((r === 'chag' || r === 'erev_chag') && titles.length) {
-      if (titlesUsed) continue;
-      titlesUsed = true;
-      label = titles.join(' · ');
-    }
-    if (label && !parts.includes(label)) parts.push(label);
-  }
-  const note = status && status.note ? String(status.note).trim() : '';
-  return 'יום לא עובד' + (parts.length ? ' - ' + parts.join(' · ') : '') + (note ? ' (' + note + ')' : '');
 }
 
 export function alertText(alert) {

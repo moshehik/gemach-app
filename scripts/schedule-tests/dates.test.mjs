@@ -324,3 +324,26 @@ test('hebrew labels are built from the key, not from the server clock', () => {
   assert.equal(D.weekdayLabel('2026-10-01'), 'יום חמישי');
   assert.equal(D.weekdayLabel('2026-10-03'), 'שבת');
 });
+
+// ?date= של הדף: "היום"/"מחר" בתפריט הם מילות יחס (סקירה 2.10, C) - מפוענחות בדף לפי היום הישראלי ולא נקבעות פעם אחת
+// בבניית ה-layout (אחרי חצות "היום" נשאר אתמול עד טעינה קשיחה). רשימה סגורה; ISO ממשיך לעבוד.
+test('?date= tokens: whitelist, ISO passthrough, resolution from the Israeli today key (incl. month/year/DST edges)', async () => {
+  const C = await L('app/components/schedule/hebrewCalendar.js');
+  for (const ok of ['today', 'tomorrow', '2026-10-04']) assert.equal(C.parseDateParam(ok), ok);
+  for (const bad of ['yesterday', 'Today', 'TODAY', 'today ', 'now', '2026-1-1', '<script>', '', null, undefined, 'constructor', '__proto__', 'hasOwnProperty']) {
+    assert.equal(C.parseDateParam(bad), null, String(bad));
+  }
+  assert.equal(C.resolveDateParam('today', '2026-10-04'), '2026-10-04');
+  assert.equal(C.resolveDateParam('tomorrow', '2026-10-04'), '2026-10-05');
+  assert.equal(C.resolveDateParam('tomorrow', '2026-10-31'), '2026-11-01');
+  assert.equal(C.resolveDateParam('tomorrow', '2026-12-31'), '2027-01-01');
+  assert.equal(C.resolveDateParam('tomorrow', '2026-10-24'), '2026-10-25', 'Israel DST ends 25.10.2026');
+  assert.equal(C.resolveDateParam('tomorrow', '2027-03-25'), '2027-03-26', 'Israel DST starts 26.3.2027');
+  assert.equal(C.resolveDateParam('2026-10-07', '2026-10-04'), '2026-10-07', 'ISO is not shifted');
+  assert.equal(C.resolveDateParam(null, '2026-10-04'), null, 'no param => server decides (its Israeli today)');
+  // בלי שעון מהשרת: לפי שעון ישראל בדפדפן, לא לפי אזור הזמן של המכשיר (00:30 ישראל = 21:30 UTC של אתמול)
+  const t = Date.UTC(2026, 9, 3, 21, 30); // 4.10 00:30 ישראל
+  assert.equal(C.israelTodayKey(new Date(t)), '2026-10-04');
+  assert.equal(C.israelTodayKey(new Date(Date.UTC(2026, 9, 4, 20, 59))), '2026-10-04', '23:59 ישראל');
+  assert.equal(C.israelTodayKey(new Date(Date.UTC(2026, 9, 4, 21, 0))), '2026-10-05', '00:00 ישראל');
+});

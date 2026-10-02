@@ -20,8 +20,9 @@ export default function ScheduleIcon({ name, className = '', style }) {
 // ה-sprite המוטמע חייב להיות בדף בדיוק פעם אחת. במעטפת החדשה (MenuA5Shell) הוא כבר שם; כשה-layout נפל חזרה
 // ל-AppShell או למעטפת ה-legacy אין מי שמטמיע אותו, ולכן הדף מטמיע בעצמו - לפי ה-A5ShellContext שהמעטפת
 // החדשה מספקת בפועל (אותו דפוס כמו HomeSprite בדף הבית, #207), לא לפי דגל, כדי שלא יהיה כפול ולא חסר.
-// בנוסף: וי בעיגול (lz-i-checkc) - אייקון דגימה שאין לו מספר בפלטה (החלטה J09, נשאר כמו בעיצוב), symbol
-// מקומי של הדף ולא ב-sprite הגלובלי. LocalSprite מרונדר פעם אחת ב-ScheduleDay.js.
+// בנוסף: וי בעיגול (lz-i-checkc, לחצן "בוצע") ווי כפול (lz-i-checks, לחצן "הכל בוצע") - שני אייקוני הדגימה שאין
+// להם מספר בפלטה (החלטה J09: נשארים כמו בעיצוב, לא מוחלפים באייקון 15), symbol-ים מקומיים של הדף ולא ב-sprite
+// הגלובלי (הצורות מועתקות מה-sprite המוטמע של לוז-יומי.html). LocalSprite מרונדר פעם אחת ב-ScheduleDay.js.
 export function LocalSprite() {
   const inA5Shell = useA5Shell();
   return (
@@ -33,6 +34,9 @@ export function LocalSprite() {
             <circle cx="12" cy="12" r="9" />
             <path d="m8 12.5 2.7 2.7L16 9.5" />
           </symbol>
+          <symbol id="lz-i-checks" viewBox="0 0 24 24">
+            <path d="m2.5 12.5 4.5 4.5L14 8.5M11 15.5l1.5 1.5L21.5 7.5" />
+          </symbol>
         </defs>
       </svg>
     </>
@@ -43,6 +47,14 @@ export function CheckCircleIcon({ className = '' }) {
   return (
     <svg className={'ic' + (className ? ' ' + className : '')} aria-hidden="true" focusable="false">
       <use href="#lz-i-checkc" />
+    </svg>
+  );
+}
+
+export function ChecksIcon({ className = '' }) {
+  return (
+    <svg className={'ic' + (className ? ' ' + className : '')} aria-hidden="true" focusable="false">
+      <use href="#lz-i-checks" />
     </svg>
   );
 }

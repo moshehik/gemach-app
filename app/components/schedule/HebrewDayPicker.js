@@ -7,8 +7,10 @@ import {
   nextMonthStart, prevMonthStart, WEEKDAYS_SHORT,
 } from './hebrewCalendar';
 
-// בורר היום (העיצוב המאושר, שורות 1505-1531): אייקון יומן אחד ליד הכותרת; ריחוף/מיקוד פותח לשמאלו את
-// "יום קודם / התאריך העברי (לוח חודשי נפתח) / יום הבא / היום / מחר". בנייד לחיצה על האייקון פותחת.
+// בורר היום (העיצוב המאושר, לוז-יומי.html שורות 1629 ו-1505-1538): אייקון יומן אחד ליד הכותרת; ריחוף/מיקוד פותח
+// לשמאלו את "יום קודם / התאריך העברי (לוח חודשי נפתח) / יום הבא / היום / מחר" - כולם לחצני הפלטה העגולים (לחצן
+// 34/54/72 ibtn, בורר 7/13/36 btn.tgl; "היום"/"מחר" הנבחר = זהב ראשי). התאריך העברי מוצג רק כאן, לא מעל הכותרת.
+// הטולטיפים הם data-tip (הטולטיפ של המערכת, כמו בעיצוב) ולא title. בנייד לחיצה על האייקון פותחת.
 export default function HebrewDayPicker({ date, today, tomorrow, onChange }) {
   const [open, setOpen] = useState(false);
   const [popOpen, setPopOpen] = useState(false);
@@ -62,30 +64,30 @@ export default function HebrewDayPicker({ date, today, tomorrow, onChange }) {
   }
 
   return (
-    <div className={'lz-dwrap' + (open ? ' open' : '')} ref={wrapRef}>
+    <div className={'lz-dwrap' + (open ? ' open' : '')} id="dWrap" ref={wrapRef}>
       <button
         type="button"
-        className="ibtn lz-dicon"
+        className="ibtn lz-dicon" id="dIcon"
         aria-label="בחירת תאריך"
         aria-expanded={open || popOpen}
-        title="בחירת תאריך"
+        data-tip="בחירת תאריך"
         onClick={() => setOpen((v) => !v)}
       >
         <ScheduleIcon name="cal" className="ia-cal" />
       </button>
       <div className="lz-dpanel">
         <div className="lz-dnav">
-          <button type="button" className="ibtn" aria-label="היום הקודם" title="היום הקודם" onClick={() => pick(addDays(date, -1))}>
+          <button type="button" className="ibtn" id="dPrev" aria-label="היום הקודם" data-tip="היום הקודם" onClick={() => pick(addDays(date, -1))}>
             <ScheduleIcon name="arrr" />
           </button>
           <div className="lz-pickw">
-            <button type="button" className="btn lz-date" aria-haspopup="dialog" aria-expanded={popOpen} onClick={togglePop}>
+            <button type="button" className="btn lz-date" id="dPick" aria-haspopup="dialog" aria-expanded={popOpen} onClick={togglePop}>
               <ScheduleIcon name="cal" />
               <span>{hebrewLong(date)}</span>
               <ScheduleIcon name="chev" className="hf-chv" />
             </button>
             {popOpen ? (
-              <div className="lz-pop" role="dialog" aria-label="בחירת יום בלוח עברי">
+              <div className="lz-pop" id="hcPop" role="dialog" aria-label="בחירת יום בלוח עברי">
                 <div className="hc">
                   <div className="hc-h">
                     <button type="button" className="hc-n" aria-label="החודש הקודם" onClick={() => setMonth(prevMonthStart(month))}>
@@ -104,13 +106,13 @@ export default function HebrewDayPicker({ date, today, tomorrow, onChange }) {
               </div>
             ) : null}
           </div>
-          <button type="button" className="ibtn" aria-label="היום הבא" title="היום הבא" onClick={() => pick(addDays(date, 1))}>
+          <button type="button" className="ibtn" id="dNext" aria-label="היום הבא" data-tip="היום הבא" onClick={() => pick(addDays(date, 1))}>
             <ScheduleIcon name="arrl" />
           </button>
         </div>
         <div className="lz-quick">
-          <button type="button" className={'btn tgl' + (date === today ? ' on' : '')} aria-pressed={date === today} onClick={() => pick(today)}>היום</button>
-          <button type="button" className={'btn tgl' + (date === tomorrow ? ' on' : '')} aria-pressed={date === tomorrow} onClick={() => pick(tomorrow)}>מחר</button>
+          <button type="button" id="qToday" className={'btn tgl' + (date === today ? ' on' : '')} aria-pressed={date === today} onClick={() => pick(today)}>היום</button>
+          <button type="button" id="qTom" className={'btn tgl' + (date === tomorrow ? ' on' : '')} aria-pressed={date === tomorrow} onClick={() => pick(tomorrow)}>מחר</button>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { hebrewLong, hebrewParts } from '../hebrewCalendar';
 import { PRINT_PAGES, defaultVersion, versionsParam } from '@/lib/schedule/print/registry';
 import { downloadScheduleXlsx } from '@/lib/schedule/print/xlsx';
 import { downloadPdf } from '@/app/lib/pdfClient';
+import './PrintWizard.css';
 
 // אשף "הדפסות והורדות" של הלו״ז (openWiz/wizRender/runWiz בתצוגה המאושרת תצוגות-עיצוב/לוז-יומי.html):
 // מצב (הדפסה / הורדה) · לשוניות שלב · רשימת דפים עם מתג בחירה וגרסה (03, 07) · תצוגה מקדימה של הדף שבפוקוס

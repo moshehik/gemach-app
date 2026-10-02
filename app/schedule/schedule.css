@@ -1,7 +1,9 @@
-/* app/schedule/schedule.css - CSS מקומי לדף הלו״ז (V1, קריאה בלבד).
-   מכיל רק את מה שאין עדיין בפלטה הגלובלית (design-system/components.css): ציר השלבים, כותרות מקטעים,
-   בורר היום, שורות הלו״ז, שלד הטעינה. הכללים נשארו בשמות המקוריים של העיצוב המאושר
-   (תצוגות-עיצוב/לוז-יומי.html) ומוגבלים להיקף .gm-ds.gm-lz - אפס השפעה על דפים אחרים.
+/* app/schedule/schedule.css - CSS מקומי לדף הלו״ז.
+   מכיל רק את מה שאין בפלטה הגלובלית (design-system/components.css): ציר השלבים, כותרות מקטעים, בורר היום, לחצני
+   הסימון, שורות הלו״ז, שלד הטעינה, ונטרולי דליפות של ה-CSS הגלובלי של האתר. הכללים נשארו בשמות ובערכים של העיצוב
+   המאושר (תצוגות-עיצוב/לוז-יומי.html; מספרי השורות בהערות מפנים לשם) ומוגבלים להיקף .gm-ds.gm-lz - אפס השפעה על
+   דפים אחרים. השורש של הדף הוא .gm-ds.gm-lz.home-bg - בלי .gm-home: הבלוק .gm-ds.gm-home של הפלטה הוא ה-CSS של דף
+   הבית ודורס את שורות התוצאות, המתג והטבלה בערכים שאינם של הלו״ז (נמצא בבדיקת scripts/schedule-bg-audit).
    לא משנים את design-system/. אחרי V1 יועברו לפלטה עם מספרים (TODO-palette-additions). */
 .gm-ds.gm-lz{--c-order:var(--navy);--c-repair:var(--gold-700);--c-prep:var(--gold);--c-dout:var(--navy-500);--c-pick:var(--rose-500);--c-event:var(--rose-700);--c-manret:var(--sky-300);--c-dback:var(--pink-500)}
 /* ===== גוף הדף ===== */
@@ -12,23 +14,46 @@
 .gm-ds.gm-lz :is(button,input,select,textarea){font-family:inherit!important}
 .gm-ds.gm-lz :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
 .gm-ds.gm-lz .pg-ttl{color:var(--navy-900)}
-.gm-ds.gm-lz .lz-app .topbar{background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
-.gm-ds.gm-lz .lz-app{padding-bottom:40px}
-.gm-ds.gm-lz .lz-app .topbar{position:relative;display:flex;align-items:center;gap:14px;flex-wrap:nowrap}
+/* 72px אוויר מתחת לסרגל העליון כמו בעיצוב (1164: padding-top:72px מתחת לסרגל ההדגמה; כאן המעטפת כבר נותנת 22px) */
+.gm-ds.gm-lz .lz-app{padding-top:50px;padding-bottom:40px}
+@media (max-width:640px){.gm-ds.gm-lz .lz-app{padding-top:18px}}
+/* לחצני אייקון: הריפוד הדיפולטי של הדפדפן (1px 6px) כמו בעיצוב - globals.css מאפס padding לכל אלמנט */
+.gm-ds.gm-lz .ibtn{padding:1px 6px}
+.gm-ds.gm-lz .lz-app .topbar{position:relative;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;display:flex;align-items:center;gap:14px;flex-wrap:nowrap}
 .gm-ds.gm-lz .lz-app .topbar .ttl{position:relative;flex:0 1 auto;display:flex;align-items:center;flex-wrap:nowrap;gap:12px;min-width:0}
-.gm-ds.gm-lz .lz-hb .lz-dtools{margin-inline-start:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* כלי XL / הורדה / הדפסה בקצה השמאלי של שורת הכותרת (עיצוב 1091, 1485, 1492: grid [1fr auto] במסך רחב) */
+.gm-ds.gm-lz .lz-dtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+@media (min-width:641px){
+ .gm-ds.gm-lz .lz-app .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:16px}
+ .gm-ds.gm-lz .lz-app .topbar .lz-dtools{justify-self:end}
+}
 .gm-ds.gm-lz .lz-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:32px;align-items:start;margin-top:24px}
 .gm-ds.gm-lz .lz-main{min-width:0}
 .gm-ds.gm-lz .lz-main>.lz-hb{margin-top:0}
 .gm-ds.gm-lz .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* ===== ציר השלבים (צד ימין) ===== */
-.gm-ds.gm-lz .rail.lz-rail{position:sticky;top:calc(var(--snav-h,64px) + 12px);max-height:none;overflow:visible;padding:0;border-radius:18px}
+/* הציר מתחיל בגובה האייקון של המקטע הראשון ונשאר צף בגלילה (עיצוב 2154-2188: --rail-off / --rail-top מחושבים ב-ScheduleDay) */
+.gm-ds.gm-lz .rail.lz-rail{position:sticky;top:calc(var(--snav-h,64px) + 12px);max-height:none;overflow:visible;padding:0}
+@media (min-width:1024px){
+ .gm-ds.gm-lz .rail.lz-rail{margin-top:var(--rail-off,0px);position:sticky!important;top:var(--rail-top,calc(var(--snav-h,64px) + 12px))!important;border-radius:18px}
+}
 .gm-ds.gm-lz .st-sidenav{display:flex;flex-direction:column;padding:10px;border-radius:18px;color:#fff;
   background:linear-gradient(180deg,rgba(10,34,66,.97),rgba(15,44,82,.97));
   border:1px solid rgba(224,191,90,.3);box-shadow:0 8px 22px -14px rgba(10,34,66,.7)}
 .gm-ds.gm-lz .st-sidenav.lz-loading .st-slb small, .gm-ds.gm-lz .st-sidenav.lz-loading .sn-badge{visibility:hidden}
 .gm-ds.gm-lz .lz-rh{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--gold-300);padding:6px 12px 12px;margin-bottom:8px;border-bottom:1px dashed rgba(224,191,90,.3)}
-.gm-ds.gm-lz .st-stabs{display:flex;flex-direction:column;gap:18px;margin-top:10px}
+/* שורת הברקוד בתוך הציר (עיצוב 1581-1588): שקופה, הילה זהובה, בלי מסגרת כהה; הקו המקווקו מתחתיה (1542) */
+.gm-ds.gm-lz .lz-snav .sbar{position:static;inset:auto;margin:6px 4px 14px;width:auto;height:46px;z-index:1;display:flex!important;align-items:center;pointer-events:auto}
+.gm-ds.gm-lz .lz-snav .sbar .inpw{position:relative;width:100%}
+.gm-ds.gm-lz .lz-snav .sbar .inpw>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;color:var(--gold-300);stroke:var(--gold-300);pointer-events:none;z-index:1}
+/* (הפלטה צובעת כל input.inp בתוך .app בלבן-שקוף ב-!important, והסלקטור שלה נושא ספציפיות של מזהה דרך :not(:is(#dlg…)) -
+   לכן כאן מזהה + ארבע מחלקות) */
+.gm-ds.gm-lz .lz-snav .sbar #scanIn, .gm-ds.gm-lz .lz-snav .sbar #scanIn:hover, .gm-ds.gm-lz .lz-snav .sbar #scanIn:focus, .gm-ds.gm-lz .lz-snav .sbar #scanIn:disabled, .gm-ds.gm-lz .lz-snav .sbar .inp{width:100%;min-height:44px;height:44px;padding-block:0;padding-inline-start:46px;padding-inline-end:14px;border:0!important;border-radius:999px!important;background:transparent!important;-webkit-backdrop-filter:none;backdrop-filter:none;color:#fff;outline:0;box-shadow:0 0 0 2px rgba(224,197,110,.55)!important;opacity:1}
+.gm-ds.gm-lz .lz-snav .sbar #scanIn:focus{box-shadow:0 0 0 3px var(--gold-300),0 0 0 7px rgba(201,162,39,.28)!important}
+.gm-ds.gm-lz .lz-snav .sbar .inp::placeholder{color:transparent}
+.gm-ds.gm-lz .lz-snav .sbar .inp:-webkit-autofill{-webkit-box-shadow:0 0 0 100px transparent inset;transition:background-color 9999s}
+.gm-ds.gm-lz .lz-snav .st-stabs{margin-top:10px;padding-top:22px;border-top:1px dashed rgba(224,191,90,.3)}
+.gm-ds.gm-lz .st-stabs{display:flex;flex-direction:column;gap:18px}
 .gm-ds.gm-lz .st-stab{position:relative;display:flex;align-items:center;gap:10px;width:100%;min-height:clamp(36px,calc((100vh - 440px)/10),50px);
   padding:8px 14px;padding-inline-start:20px;border:0;border-radius:12px;background:transparent;color:rgba(255,255,255,.92);
   font:inherit;font-size:15px;font-weight:500;cursor:pointer;text-align:start;overflow:visible;isolation:isolate;
@@ -43,7 +68,7 @@
 .gm-ds.gm-lz .st-stab:hover::after, .gm-ds.gm-lz .st-stab:focus-visible::after{opacity:1}
 .gm-ds.gm-lz .st-stab .st-sic{position:relative;display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:10px;overflow:visible;
   background:linear-gradient(135deg,#eaf5fd 0%,#d6ebfa 100%);box-shadow:inset 0 0 0 1px rgba(127,184,230,.55);transition:background .2s,box-shadow .2s}
-.gm-ds.gm-lz .st-stab .st-sic .ic{width:19px;height:19px;color:var(--navy)!important;stroke:var(--navy)!important}
+.gm-ds.gm-lz .st-stab .st-sic .ic{width:19px;height:19px;color:var(--navy)!important;stroke:var(--navy)!important;transition:color .2s,stroke .2s}
 .gm-ds.gm-lz .st-stab:hover .st-sic, .gm-ds.gm-lz .st-stab:focus-visible .st-sic, .gm-ds.gm-lz .st-stab.on .st-sic{background:var(--gold-rich-c) var(--gold-rich);box-shadow:inset 0 0 0 1px rgba(154,122,31,.55)}
 .gm-ds.gm-lz .st-stab.fut .st-sic{opacity:.8}
 .gm-ds.gm-lz .st-stab .st-slb{flex:1;min-width:0;display:flex;flex-wrap:nowrap;align-items:center;gap:8px;line-height:1.3}
@@ -62,32 +87,33 @@
   background:var(--navy)!important;color:var(--navy-900)!important;font-size:11.5px;font-weight:700;line-height:1;text-align:center;
   clip-path:polygon(50% 0,100% 100%,0 100%);filter:none}
 .gm-ds.gm-lz .st-stab .sn-badge.lz-al2::before{content:"";position:absolute;z-index:-1;left:0;top:0;width:100%;height:100%;background:#fa9e84;clip-path:polygon(50% 12%,90.5% 90%,9.5% 90%)}
-/* מי במשמרת */
-.gm-ds.gm-lz .lz-staff{padding:2px 12px 12px;margin-bottom:2px;border-bottom:1px dashed rgba(224,191,90,.3)}
-.gm-ds.gm-lz .lz-staff-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold-300);margin-bottom:8px}
-.gm-ds.gm-lz .lz-staff-h .ic{width:15px;height:15px;color:var(--gold-300);stroke:var(--gold-300)}
-.gm-ds.gm-lz .lz-staff-l{display:flex;flex-wrap:wrap;gap:6px}
-.gm-ds.gm-lz .lz-staff-c{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.18);padding:2px 10px;font-size:13px;gap:6px}
-.gm-ds.gm-lz .lz-staff-c i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);flex:none}
-.gm-ds.gm-lz .lz-staff-c.on i{background:#6fd49b;box-shadow:0 0 0 3px rgba(111,212,155,.25)}
-.gm-ds.gm-lz .lz-staff-e{font-size:12.5px;color:rgba(255,255,255,.6)}
-/* ===== כותרת הדף + בורר היום ===== */
-.gm-ds.gm-lz .lz-app .topbar .pg-ttl small{display:block;font-size:14px;font-weight:500;opacity:.8}
+/* ===== כותרת הדף + בורר היום (עיצוב 1505-1538) ===== */
 .gm-ds.gm-lz .lz-dwrap{position:relative;display:flex;align-items:center;flex:none}
-.gm-ds.gm-lz .lz-dicon{width:44px;height:44px;border-radius:999px;padding:0}
+.gm-ds.gm-lz .lz-dicon{width:44px;height:44px}
 .gm-ds.gm-lz .lz-dwrap:hover .lz-dicon, .gm-ds.gm-lz .lz-dwrap:focus-within .lz-dicon, .gm-ds.gm-lz .lz-dwrap.open .lz-dicon{background:var(--gold-rich-c) var(--gold-rich);color:var(--navy);border-color:var(--gold-d);transform:translateY(-1px);box-shadow:0 6px 12px -8px rgba(154,122,31,.8)}
 .gm-ds.gm-lz .lz-dpanel{position:absolute;top:50%;inset-inline-start:100%;translate:0 -50%;z-index:40;display:flex;align-items:center;gap:12px;padding-inline-start:12px;white-space:nowrap;visibility:hidden;pointer-events:none;transition:visibility 0s .3s}
 .gm-ds.gm-lz .lz-dwrap:hover .lz-dpanel, .gm-ds.gm-lz .lz-dwrap:focus-within .lz-dpanel, .gm-ds.gm-lz .lz-dwrap.open .lz-dpanel{visibility:visible;pointer-events:auto;transition-delay:0s}
 .gm-ds.gm-lz .lz-dpanel .lz-dnav, .gm-ds.gm-lz .lz-dpanel .lz-quick{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
-.gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn){opacity:0;transform:translateX(-26px) scale(.86);transition:opacity .28s ease,transform .42s cubic-bezier(.2,1.25,.3,1)}
-.gm-ds.gm-lz .lz-dwrap:hover .lz-dpanel :is(.ibtn,.btn), .gm-ds.gm-lz .lz-dwrap:focus-within .lz-dpanel :is(.ibtn,.btn), .gm-ds.gm-lz .lz-dwrap.open .lz-dpanel :is(.ibtn,.btn){opacity:1;transform:none}
+/* הלחצנים "עפים" החוצה בזה אחר זה: הקודם, בורר התאריך, הבא, היום, מחר (עיצוב 1513-1517) */
+.gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn,.lz-pickw){opacity:0;transform:translateX(-26px) scale(.86);transition:opacity .28s ease,transform .42s cubic-bezier(.2,1.25,.3,1)}
+.gm-ds.gm-lz .lz-dpanel .lz-pickw .btn{opacity:1;transform:none;transition:none}
+.gm-ds.gm-lz .lz-dwrap:hover .lz-dpanel :is(.ibtn,.btn,.lz-pickw), .gm-ds.gm-lz .lz-dwrap:focus-within .lz-dpanel :is(.ibtn,.btn,.lz-pickw), .gm-ds.gm-lz .lz-dwrap.open .lz-dpanel :is(.ibtn,.btn,.lz-pickw){opacity:1;transform:none}
+/* ארבעת הלחצנים עם המזהים בעיצוב (#dPrev/#dNext/#qToday/#qTom) מקבלים בפועל את מעבר הלחצן הרגיל של הפלטה (2182) - ככה זה מחושב בעיצוב */
+.gm-ds.gm-lz .lz-dpanel :is(#dPrev,#dNext,#qToday,#qTom){transition:transform .15s,box-shadow .15s,background-color .18s,border-color .18s}
+.gm-ds.gm-lz .lz-dpanel #dPrev{transition-delay:.02s}
+.gm-ds.gm-lz .lz-dpanel .lz-pickw{transition-delay:.07s;flex:none}
+.gm-ds.gm-lz .lz-dpanel #dNext{transition-delay:.12s}
+.gm-ds.gm-lz .lz-dpanel #qToday{transition-delay:.17s}
+.gm-ds.gm-lz .lz-dpanel #qTom{transition-delay:.22s}
 .gm-ds.gm-lz .lz-dpanel .lz-pop .hc-d, .gm-ds.gm-lz .lz-dpanel .lz-pop .hc-n{opacity:1;transform:none}
+.gm-ds.gm-lz .lz-dpanel .lz-pop .hc-d{transition:background-color 120ms,color 120ms,transform 120ms}
+.gm-ds.gm-lz .lz-dpanel .lz-pop .hc-n{transition:border-color 150ms}
 .gm-ds.gm-lz .lz-dpanel .lz-pop .hc-d:hover{transform:scale(1.06)}
-.gm-ds.gm-lz .lz-dpanel, .gm-ds.gm-lz .lz-dpanel .lz-dnav, .gm-ds.gm-lz .lz-dpanel .lz-quick{flex-wrap:nowrap}
-.gm-ds.gm-lz .lz-pickw{position:relative;flex:none}
-.gm-ds.gm-lz .lz-date{min-width:0;justify-content:center;gap:10px;padding-inline:14px;font-size:15px;font-weight:600}
+.gm-ds.gm-lz .lz-pickw{position:relative}
+.gm-ds.gm-lz .lz-dpanel .btn.lz-date{min-width:0;justify-content:center;gap:10px;padding-inline:14px;font-size:15px;font-weight:600}
 .gm-ds.gm-lz .lz-date .hf-chv{width:16px;height:16px}
 .gm-ds.gm-lz .lz-dpanel .btn.tgl.on{background:var(--gbtn);color:#000;border-color:var(--gold-d)}
+.gm-ds.gm-lz .lz-dpanel .btn.tgl.on svg{color:#000;stroke:#000}
 .gm-ds.gm-lz .lz-pop{position:absolute;top:calc(100% + 8px);inset-inline-start:50%;translate:50% 0;z-index:80;width:min(360px,92vw);filter:drop-shadow(0 18px 30px rgba(10,34,66,.35));white-space:normal}
 .gm-ds.gm-lz .lz-pop .hc{margin-top:0;background:#fff}
 .gm-ds.gm-lz .hc-e{min-height:42px}
@@ -97,32 +123,41 @@
  .gm-ds.gm-lz .lz-dwrap{flex-wrap:wrap;flex:1 1 100%}
  .gm-ds.gm-lz .lz-dpanel{position:static;translate:none;flex-basis:100%;padding:0;margin-top:8px;display:none;flex-wrap:wrap;white-space:normal}
  .gm-ds.gm-lz .lz-dwrap.open .lz-dpanel{display:flex;visibility:visible;pointer-events:auto}
- .gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn){opacity:1;transform:none}
+ .gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn,.lz-pickw){opacity:1;transform:none}
  .gm-ds.gm-lz .lz-pop{inset-inline-start:0;translate:none}
+ /* 375: שורת הניווט (קודם / תאריך / הבא) לא חורגת משמאל - כפתור התאריך מתכווץ (סקירה, NIT: -21px מול -3px בעיצוב) */
+ .gm-ds.gm-lz .lz-dwrap, .gm-ds.gm-lz .lz-dpanel, .gm-ds.gm-lz .lz-dpanel .lz-dnav{min-width:0;max-width:100%}
+ .gm-ds.gm-lz .lz-dpanel .lz-pickw{flex:1 1 auto;min-width:0}
+ .gm-ds.gm-lz .lz-dpanel :is(#dPrev,#dNext){flex:none}
+ .gm-ds.gm-lz .lz-dpanel .btn.lz-date{width:100%;min-width:0;white-space:normal;line-height:1.2}
 }
 @media (prefers-reduced-motion:reduce){
-.gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn){transition:none!important;transform:none!important}
+.gm-ds.gm-lz .lz-dpanel :is(.ibtn,.btn,.lz-pickw){transition:none!important;transform:none!important}
 }
-/* ===== סרגל תצוגה (שורות / טבלה) והערות ===== */
+/* ===== סרגל תצוגה (שורות / טבלה) ===== */
 .gm-ds.gm-lz .lz-hb{margin-top:0;display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:flex-start}
-.gm-ds.gm-lz .lz-note{display:flex;align-items:center;gap:8px;margin:0 0 16px;font-size:13.5px;color:var(--ink3)}
-.gm-ds.gm-lz .lz-note .ic{flex:none;color:var(--ink3);stroke:var(--ink3)}
+.gm-ds.gm-lz .lz-hb .lz-dtools{margin-inline-start:auto}
 .gm-ds.gm-lz .lz-banner{display:flex;align-items:center;gap:10px;margin:0 0 16px;padding:12px 16px;border-radius:14px;background:#fde8df;border:1px solid #f4a68c;color:var(--navy-900);font-weight:500}
 .gm-ds.gm-lz .lz-banner .ic{flex:none;color:var(--navy-900);stroke:var(--navy-900)}
-/* ===== מקטע שלב ===== */
+/* ===== מקטע שלב (עיצוב 1359-1368, 1546-1547) ===== */
 .gm-ds.gm-lz .lz-sec{scroll-margin-top:calc(var(--snav-h,64px) + 16px)}
 .gm-ds.gm-lz .lz-sec+.lz-sec{margin-top:44px}
+.gm-ds.gm-lz #stages>.lz-sec:first-child .lz-hrow{margin-top:24px}
 .gm-ds.gm-lz .adm-h{margin:0;font-size:22px;font-weight:600;color:var(--navy-900);display:flex;align-items:center;gap:12px}
 .gm-ds.gm-lz .adm-hi{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--gold-rich-c) var(--gold-rich);color:var(--navy);box-shadow:inset 0 0 0 1px rgba(154,122,31,.55);flex:none}
 .gm-ds.gm-lz .adm-hi .ic{width:20px;height:20px;color:var(--navy);stroke:var(--navy)}
 .gm-ds.gm-lz .lz-hrow{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin:0 0 16px}
-.gm-ds.gm-lz .lz-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gm-ds.gm-lz .lz-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0}
 .gm-ds.gm-lz .lz-chips .chip{margin:0}
-.gm-ds.gm-lz .chip.st-mid{background:#d3d7dc;border:1px solid #bcc2c8;color:var(--navy);font-weight:600}
-.gm-ds.gm-lz .chip.st-bad{background:#f4a68c;border:1px solid #e8785a;color:var(--navy-900);font-weight:600}
+.gm-ds.gm-lz .lz-stools{display:flex;align-items:center;gap:6px;margin-inline-start:auto}
+/* "הכל בוצע": לחצן וי כפול עגול ליד כותרת השלב (לחצן 34/54/72) */
+.gm-ds.gm-lz .lz-hrow .lz-all{width:36px;height:36px;border-radius:999px;flex:none;min-height:0}
+/* כבוי (בלי הרשאה / בקשה בדרך) - אותו מראה כמו בעיצוב; מוגבל למנוחה כדי שהריחוף/המיקוד של הפלטה ימשיכו לעבוד (סקירה B) */
+.gm-ds.gm-lz .lz-hrow .lz-all:disabled:not(:hover):not(:focus-visible){background:var(--gold-light);color:var(--navy);border-color:var(--gold-b);box-shadow:none}
+.gm-ds.gm-lz .lz-hrow .lz-all .ic{width:18px;height:18px}
 .gm-ds.gm-lz .chip.st-today{background:#ebdfd3;border:1px solid #d6c4b0;color:var(--navy-900);font-weight:700}
-.gm-ds.gm-lz .chip.st-bad .ic{color:inherit}
-.gm-ds.gm-lz .lz-st{margin-top:0;--cpx:28px;--cpy:20px;padding:var(--cpy) var(--cpx);overflow:visible;background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)}
+/* הכרטיס: מסגרת כחולה כהה ופנים פנינה (עיצוב 1144-1145; ה-!important דורס את כלל ה"זכוכית" הלבנה של הפלטה) */
+.gm-ds.gm-lz .lz-st{margin-top:0;--cpx:28px;--cpy:20px;padding:var(--cpy) var(--cpx);overflow:visible;background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
 .gm-ds.gm-lz .lz-st>.lz-pbar{margin:0 0 17px;height:8px;border-radius:999px;background:color-mix(in srgb,var(--navy) 14%,#fff);overflow:hidden;position:relative}
 .gm-ds.gm-lz .lz-st>.lz-pbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(to left,var(--gold-300),var(--gold) 55%,var(--gold-b));box-shadow:0 0 10px rgba(201,162,39,.55);transition:width .5s var(--ease);position:relative;overflow:hidden}
 .gm-ds.gm-lz .lz-st>.lz-pbar i::after{content:"";position:absolute;inset:0;width:100%;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.85) 50%,transparent 70%);transform:translateX(130%);animation:lzPbShine 2.8s cubic-bezier(.45,0,.25,1) infinite}
@@ -130,13 +165,17 @@
 @media (prefers-reduced-motion:reduce){
 .gm-ds.gm-lz .lz-st>.lz-pbar i::after{animation:none;display:none}
 }
-/* ===== שורות ===== */
+/* ===== שורות (עיצוב 1188-1205, 1490-1491) ===== */
 .gm-ds.gm-lz .lz-r .li{border-radius:14px;flex-wrap:wrap;row-gap:8px}
 .gm-ds.gm-lz .lz-r .li .t{min-width:0;flex:1 1 260px}
 .gm-ds.gm-lz .lz-r .t b{font-weight:600}
 .gm-ds.gm-lz .lz-r .ic-b, .gm-ds.gm-lz .hres .lz-r .li .ic-b{display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:12px;background:var(--sky-100);color:var(--navy);flex:none}
 .gm-ds.gm-lz .lz-r .li .ic-b .ic, .gm-ds.gm-lz .hres .lz-r .li .ic-b .ic{width:20px;height:20px;color:var(--navy)!important;stroke:var(--navy)!important}
-.gm-ds.gm-lz .lz-r.lz-late{background:transparent}
+.gm-ds.gm-lz .lz-r .li:hover .ic-b, .gm-ds.gm-lz .lz-r .li:focus-visible .ic-b, .gm-ds.gm-lz .hres .lz-r .li:hover .ic-b{background:var(--sky-100)}
+/* לשורות אין גוון במנוחה - הצבע מופיע רק בריחוף (הפלטה, hres .li:hover); שורה שבוצעה מעומעמת */
+.gm-ds.gm-lz .lz-r.lz-done, .gm-ds.gm-lz .lz-r.lz-todo, .gm-ds.gm-lz .lz-r.lz-late{background:transparent}
+.gm-ds.gm-lz tr.lz-r.lz-done td, .gm-ds.gm-lz tr.lz-r.lz-todo td, .gm-ds.gm-lz tr.lz-r.lz-late td{background:transparent}
+.gm-ds.gm-lz .lz-r.lz-done .t b, .gm-ds.gm-lz .lz-r.lz-done .t .ln{opacity:.72}
 .gm-ds.gm-lz .lz-tbtn{display:block;width:100%;margin:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;text-align:start;cursor:pointer;border-radius:10px}
 .gm-ds.gm-lz .lz-tbtn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .gm-ds.gm-lz .lz-tbtn b{display:block}
@@ -144,9 +183,41 @@
 .gm-ds.gm-lz .lz-pn{display:inline-block;max-width:100%}
 .gm-ds.gm-lz .lz-act{display:flex;align-items:center;gap:8px;margin-inline-start:auto;flex:0 1 auto;min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-end}
 .gm-ds.gm-lz .lz-act .chip{margin:0;max-width:100%}
-.gm-ds.gm-lz .lz-act .chip.lz-al{white-space:normal}
-.gm-ds.gm-lz .lz-nd{min-width:34px;justify-content:center;cursor:help}
-.gm-ds.gm-lz .lz-done-chip .ic{width:15px;height:15px}
+.gm-ds.gm-lz .lz-rc{margin-inline-end:2px}
+/* לחצן "בוצע" (עיצוב 1130-1136, 1551-1552): מתאר כחול כהה, וי אלמוגי שמצטייר; דלוק = מילוי כחול כהה; גובה 34px */
+.gm-ds.gm-lz .btn.lz-mark{background:transparent;border:1.5px solid var(--navy);color:var(--navy);box-shadow:none;min-height:34px!important;height:34px;padding:0 14px;font-size:14px;gap:6px;font-weight:600;transform:none}
+.gm-ds.gm-lz .btn.lz-mark .ic{width:16px;height:16px;color:var(--navy);stroke:var(--navy);transition:color .18s,stroke .18s}
+.gm-ds.gm-lz .btn.lz-mark:is(:hover,:focus-visible), .gm-ds.gm-lz .btn.lz-mark.on, .gm-ds.gm-lz .btn.lz-mark.on:is(:hover,:focus-visible){background:var(--navy);border-color:var(--navy);color:#fff;transform:none;box-shadow:none}
+.gm-ds.gm-lz .btn.lz-mark:is(:hover,:focus-visible) .ic:not(.evck), .gm-ds.gm-lz .btn.lz-mark.on .ic:not(.evck), .gm-ds.gm-lz .btn.lz-mark[aria-pressed="true"] .ic:not(.evck){color:#fff!important;stroke:#fff!important}
+.gm-ds.gm-lz .btn.lz-mark .ic.evck{color:#f38a6b!important;stroke:#f38a6b!important;stroke-width:3;stroke-dasharray:24;stroke-dashoffset:24;animation:evDraw .35s ease-out forwards}
+@keyframes evDraw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-lz .btn.lz-mark .ic.evck{animation:none;stroke-dashoffset:0}}
+/* לחצן כבוי (בלי הרשאה / בקשה בדרך / האשף עוד לא מחובר): אותו מראה, רק הסמן (globals.css: button:disabled{opacity:.7}
+   - מנוטרל). "הוחזר לא תקין" (lz-bad) לא מקבל opacity:1 - הוא מופיע בריחוף דרך opacity (סקירה B). איפוס המראה הכבוי
+   מוגבל למנוחה (:not(:hover):not(:focus-visible)) כדי שהריחוף/המיקוד יראו כמו בעיצוב גם כשהלחצן כבוי */
+.gm-ds.gm-lz .btn.lz-mark:disabled:not(.lz-bad), .gm-ds.gm-lz .lz-all:disabled, .gm-ds.gm-lz .xlbtn:disabled{opacity:1;cursor:not-allowed}
+.gm-ds.gm-lz .btn.lz-mark.lz-bad:disabled{cursor:not-allowed}
+.gm-ds.gm-lz .btn.lz-mark:disabled:not(.on):not(:hover):not(:focus-visible){background:transparent;color:var(--navy);border-color:var(--navy)}
+.gm-ds.gm-lz .btn.lz-mark:disabled:not(.on):not(:hover):not(:focus-visible) .ic{color:var(--navy)!important;stroke:var(--navy)!important}
+/* שלבי ההחזרה (עיצוב 2238-2244): "הוחזר לא תקין" צף ליד "בוצע" בריחוף / מיקוד / מגע (.open, MarkControls.js); בטבלה
+   המקום שמור. בלי transition משלו: בעיצוב כלל ה-transition של lz-bad מפסיד לכלל הלחצן (body .app .btn) ולכן בפועל הוא
+   מופיע מיד, עם אותו transition של "בוצע" (.15s) - כך גם כאן (סקירה, NIT) */
+.gm-ds.gm-lz .lz-retw{display:inline-flex;align-items:center;gap:8px}
+.gm-ds.gm-lz .lz-retw .lz-bad{overflow:hidden;white-space:nowrap;max-width:0;opacity:0;visibility:hidden;margin-inline-end:-8px;padding-inline:0!important;border-width:0!important}
+.gm-ds.gm-lz .lz-retw:is(:hover,:focus-within,.open) .lz-bad{max-width:220px;opacity:1;visibility:visible;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important}
+.gm-ds.gm-lz .rtbl .lz-retw .lz-bad{max-width:220px;margin-inline-end:0;padding-inline:14px!important;border-width:1.5px!important}
+/* ===== חלון "בטוח?" (S03/S04; L.confirm בעיצוב, שורות 1207-1210) וטוסט (L.say) - על רכיבי הפלטה ===== */
+.gm-ds.gm-lz .dlg.lz-cf{max-width:520px}
+/* הכותרת יורשת את צבע החלון כמו בעיצוב (כלל ה-h2 הגלובלי צובע בחום) */
+.gm-ds.gm-lz .dlg.lz-cf h2{color:inherit}
+.gm-ds.gm-lz .lz-cf .lz-cf-effect{display:block;margin-top:6px;font-size:14px;color:var(--navy-700)}
+.gm-ds.gm-lz .lz-det{display:flex;flex-direction:column;gap:6px;margin:14px 0 4px;text-align:start}
+.gm-ds.gm-lz .lz-det .li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08)}
+.gm-ds.gm-lz .lz-det .li .t{min-width:0}
+.gm-ds.gm-lz .lz-det .li .t b{display:block}
+.gm-ds.gm-lz .lz-det .li .t small{display:block;color:var(--ink3)}
+.gm-ds.gm-lz .lz-more{font-size:14px;opacity:.8;padding:4px 10px}
+.gm-ds.gm-lz #toast .tclose{display:grid;place-items:center}
 .gm-ds.gm-lz .lz-go{display:inline-grid;place-items:center;flex:none;color:var(--navy-500);text-decoration:none;transform:rotate(90deg);padding:8px;border-radius:10px}
 .gm-ds.gm-lz .lz-go:is(:hover,:focus-visible){color:var(--navy);outline:0}
 .gm-ds.gm-lz .lz-go:focus-visible{box-shadow:0 0 0 2px var(--gold)}
@@ -155,7 +226,12 @@
 .gm-ds.gm-lz .lz-itm .chip, .gm-ds.gm-lz .lz-mgt{margin:0}
 .gm-ds.gm-lz .lz-sm{display:block;color:var(--ink3);font-size:13px;font-weight:400}
 .gm-ds.gm-lz .hres .lz-r .hdet-in .hv-r small{width:90px}
-/* טבלה */
+/* טבלה: כותרת כחולה כהה וזהב (הפלטה) - globals.css כופה רקע קרם וצל על th ("thead th, th", כותרת דביקה),
+   ו-design-overrides.css כופה צבע וגופן Assistant ב-!important ("table thead th") */
+.gm-ds.gm-lz .rtbl thead tr th{position:static!important;background-color:var(--navy)!important;color:var(--gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;border-bottom:0!important;outline:0;z-index:auto;transition:none}
+/* ברק חולף על שורת טבלה בריחוף (עיצוב 37-38) */
+.gm-ds.gm-lz .rtbl tbody tr{background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}
+.gm-ds.gm-lz .rtbl tbody tr:hover, .gm-ds.gm-lz .rtbl tbody tr:focus-within{background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(90deg,rgba(241,220,143,.34),rgba(212,176,74,.26) 55%,rgba(247,236,196,.38));background-position:-120% 0,0 0;transition:background-position 2.2s cubic-bezier(.45,0,.25,1)}
 .gm-ds.gm-lz .lz-st .tblw{margin:0}
 .gm-ds.gm-lz .lz-st .rtbl{white-space:normal}
 .gm-ds.gm-lz .lz-st .rtbl th{white-space:nowrap}
@@ -164,10 +240,9 @@
 .gm-ds.gm-lz .lz-st .rtbl td:nth-child(3){min-width:150px;overflow-wrap:break-word}
 .gm-ds.gm-lz .lz-st .rtbl td:nth-child(4){min-width:110px}
 .gm-ds.gm-lz .lz-st .rtbl td:nth-child(4) .chip{margin:2px 0 2px 4px}
-.gm-ds.gm-lz .lz-st .rtbl .lz-al{white-space:nowrap}
-.gm-ds.gm-lz .rtbl .lz-r.lz-late td{background:transparent}
+.gm-ds.gm-lz .lz-st .rtbl td:nth-child(4) .chip.red{white-space:nowrap}
 .gm-ds.gm-lz .lz-st .rtbl .lz-act{justify-content:center;margin-inline-start:0}
-/* ===== שלד טעינה ===== */
+/* ===== שלד טעינה (J08; מבנה העיצוב, שורה 2530) ===== */
 .gm-ds.gm-lz .lz-sk .skel{display:block;border-radius:12px;background:var(--sky-100)}
 @media (prefers-reduced-motion:no-preference){
 .gm-ds.gm-lz .lz-sk .skel{animation:lzpulse 1.3s ease-in-out infinite}
@@ -181,8 +256,7 @@
 .gm-ds.gm-lz .lz-sk .sk-b{height:13px;width:82%;margin-top:9px}
 .gm-ds.gm-lz .lz-sk .sk-btn{height:36px;width:92px;border-radius:999px;flex:none}
 .gm-ds.gm-lz .lz-sk .sk-bar{height:8px;border-radius:999px;margin-bottom:17px}
-/* מצב ריק / שגיאה */
-.gm-ds.gm-lz .lz-empty-t{font-size:19px;margin-top:8px;color:var(--ink)}
+/* מצב ריק / שגיאה (כרטיס 19 empty): הטקסט יורש את .empty של הפלטה (ink3, 16px) בדיוק כמו בעיצוב (renderList, שורה 2000) */
 .gm-ds.gm-lz .lz-retry{margin-top:14px}
 /* ===== מסכים צרים ===== */
 @media (max-width:1023px){
@@ -190,21 +264,23 @@
  .gm-ds.gm-lz .rail.lz-rail{position:static}
  .gm-ds.gm-lz .st-stabs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 }
-@media (min-width:1024px) and (max-height:900px){
-.gm-ds.gm-lz .rail.lz-rail{position:static}
-}
 @media (max-width:640px){
+ .gm-ds.gm-lz .lz-st{--cpx:20px}
  .gm-ds.gm-lz .adm-h{font-size:19px}
  .gm-ds.gm-lz .st-stabs{grid-template-columns:repeat(2,minmax(0,1fr))}
- .gm-ds.gm-lz .st-stab{padding:8px 10px;padding-inline-start:16px;gap:8px;font-size:14px}
+ .gm-ds.gm-lz .st-stab{padding:8px 10px;padding-inline-start:20px;gap:8px;font-size:14px}
  .gm-ds.gm-lz .st-stab .st-sgo{display:none}
  .gm-ds.gm-lz .st-stab .st-slb{flex-wrap:wrap}
  .gm-ds.gm-lz .st-stab .lz-nm{flex:1 0 100%}
  .gm-ds.gm-lz .st-stab .st-slb small{margin-inline-start:0}
- .gm-ds.gm-lz .st-stab .lz-nm{white-space:normal;overflow:visible;text-overflow:clip}
- .gm-ds.gm-lz .st-stab .sn-badge.lz-al2{position:absolute;top:-8px;inset-inline-end:-4px}
- .gm-ds.gm-lz .lz-act{margin-inline-start:0;flex:1 1 100%;justify-content:flex-start}
- .gm-ds.gm-lz .lz-r .li .t{flex-basis:150px}
+}
+/* נייד (עיצוב 1307-1312): אזור הלחצנים יורד לשורה משלו - השבבים לא נחתכים */
+@media (max-width:720px){
+ .gm-ds.gm-lz .lz-r .li .t{flex:1 1 55%}
+ .gm-ds.gm-lz .lz-act{flex:1 1 100%;justify-content:flex-start}
+}
+@media (max-width:820px){
+ .gm-ds.gm-lz .lz-act{margin-inline-start:0}
 }
 @media print{
 .gm-ds.gm-lz .lz-rail{display:none}

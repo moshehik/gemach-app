@@ -1,25 +1,7 @@
-/* app/components/schedule/print/ScheduleToolbarActions.css - כפתורי ההורדה/ההדפסה של הלו״ז + אשף ההדפסות.
-   מקור: הכללים .xlbtn / .lz-w* בתצוגה המאושרת (תצוגות-עיצוב/לוז-יומי.html), במצבם הסופי (אנימציות האייקונים
-   כבויות שם ב-!important, ולכן אינן כאן). תחום ל-.gm-ds.gm-lz - אפס השפעה על דפים אחרים. schedule.css (העיצוב של
-   הדף) לא נוגע בקבצים האלה. */
-.gm-ds.gm-lz .lz-ptools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-inline-start:auto;justify-self:end}
-.gm-ds.gm-lz .xlbtn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0!important;border-radius:999px;
-  border:1px solid var(--gm-gold-d);background:var(--gm-gbtn);color:#000;cursor:pointer;line-height:1;
-  transition:transform .15s,box-shadow .15s,background-color .18s,border-color .18s}
-.gm-ds.gm-lz .xlbtn:hover{transform:translateY(-1px);box-shadow:0 6px 12px -8px rgba(154,122,31,.8)}
-.gm-ds.gm-lz .xlbtn:active{transform:none}
-.gm-ds.gm-lz .xlbtn:focus-visible{outline:2px solid var(--navy);outline-offset:2px;box-shadow:none}
-.gm-ds.gm-lz .xlbtn.xlp{background:#d3d7dc;border-color:#7fb8e6}
-.gm-ds.gm-lz .xlbtn.xlp:hover,.gm-ds.gm-lz .xlbtn.xlp:focus-visible{background:#8fc5ee;border-color:#4f97d3;box-shadow:0 6px 12px -8px rgba(30,99,196,.7)}
-.gm-ds.gm-lz .xlbtn.xld{background:#f8c3d5;border-color:#e58fae}
-.gm-ds.gm-lz .xlbtn.xld:hover,.gm-ds.gm-lz .xlbtn.xld:focus-visible{background:#f091b3;border-color:#d0678f;box-shadow:0 6px 12px -8px rgba(168,61,108,.7)}
-.gm-ds.gm-lz .xlbtn .prtic,.gm-ds.gm-lz .xlbtn .dlic{width:18px;height:18px;flex:none;overflow:visible;display:block}
-.gm-ds.gm-lz .xlbtn .prt-sheet{transform-box:fill-box;transform-origin:center}
-.gm-ds.gm-lz .xlbtn .prt-sheet,.gm-ds.gm-lz .xlbtn .prt-top,.gm-ds.gm-lz .xlbtn .dl-arrow,.gm-ds.gm-lz .xlbtn .dlic{animation:none!important}
-.gm-ds.gm-lz .xlbtn span{display:none}
-/* הסרגל העליון של הדף: הכפתורים בקצה (שמאל ב-RTL), כמו בתצוגה (.topbar .lz-dtools{margin-inline-start:auto}) */
-.gm-ds.gm-lz .lz-app .topbar .lz-ptools{margin-inline-start:auto;flex:none}
-
+/* app/components/schedule/print/PrintWizard.css - אשף ההדפסות/ההורדות של הלו״ז (PrintWizard.js).
+   מקור: הכללים .lz-w* בתצוגה המאושרת (תצוגות-עיצוב/לוז-יומי.html). תחום ל-.gm-ds.gm-lz - אפס השפעה על דפים אחרים.
+   לחצני הפתיחה (.xlbtn בכותרת הדף ובכל שלב) הם PageTools/SectionTools של ScheduleToolbarSlots.js ומעוצבים ע"י
+   design-system/components.css + app/schedule/schedule.css - לא כאן. */
 /* ===== האשף ===== */
 .gm-ds.gm-lz .lz-wscrim{z-index:140}
 .gm-ds.gm-lz .lz-wiz{width:min(1060px,96vw);max-width:none;max-height:92vh;overflow:auto;text-align:center}

@@ -49,8 +49,8 @@
 | `app/components/schedule/print/pages/ppStickers.js` · `ppCode.js` | עזרים משותפים: גיליונות מדבקות (04, 08) · ברקוד שורה/מדבקה כמו `rowbc()` בעיצוב. |
 | `app/components/schedule/print/templates.js` | מפת התבניות (`getTemplate`). |
 | `app/schedule/print/[page]/page.js` + `layout.js` | דף ההדפסה (לקוח): מושך את ה-API, מרנדר, `window.print()`. |
-| `app/components/schedule/ScheduleToolbarActions.js` (+`.css`) | שני הכפתורים (הורדה, הדפסה) + פתיחת האשף. |
-| `app/components/schedule/print/PrintWizard.js` | האשף (בחירת דפים/גרסה, תצוגה מקדימה, הדפסה, הורדה Excel/PDF). |
+| `app/components/schedule/ScheduleToolbarSlots.js` (PageTools / SectionTools, של קו הלו״ז) + `ScheduleDay.js` | לחצני XL / הורדה / הדפסה בכותרת הדף ובכל שלב; ScheduleDay מחבר אותם לאשף. |
+| `app/components/schedule/print/PrintWizard.js` (+`PrintWizard.css`) | האשף (בחירת דפים/גרסה, תצוגה מקדימה, הדפסה, הורדה Excel/PDF). |
 | `scripts/schedule-print-tests/` | בדיקות (`run.mjs`) + harness רינדור (`render.mjs`). |
 
 ### 2. רשומת דף ב-registry
@@ -202,17 +202,18 @@
   מקוננים) עם `page:schedule`; ה-API של הנתונים בודק שוב את ההרשאות של כל דף בתוך ה-Chromium. לא נבדק על Vercel.
 - ללא שינוי ב-`lib/schedule/*`, ב-`app/api/schedule/route.js`, ב-`schedule.css` או ב-`app/api/schedule/marks/*`.
 
-### 10. האשף והכפתורים (`ScheduleToolbarActions.js`, `print/PrintWizard.js`, `print/ScheduleToolbarActions.css`)
+### 10. האשף והכפתורים (`ScheduleToolbarSlots.js` + `ScheduleDay.js`, `print/PrintWizard.js`, `print/PrintWizard.css`)
 
-- `<ScheduleToolbarActions date branch stageData />` - שני לחצנים עגולים 36px (`.xlbtn.xld` ורוד/חץ, `.xlbtn.xlp`
-  תכלת/מדפסת, אייקוני SVG מוטמעים כמו בתצוגה, `title`+`data-tip`), ממוקמים בקצה סרגל הכותרת של הדף
-  (`.lz-app .topbar > .lz-ptools`, `margin-inline-start:auto` = שמאל ב-RTL, כמו `.topbar .lz-dtools` בתצוגה).
-  נקודת ההטמעה: שורה אחת ב-`ScheduleDay.js` אחרי `.ttl` (+ import). ה-CSS בקובץ נפרד תחום ל-`.gm-ds.gm-lz`;
-  `schedule.css` לא נוגע. נבדק מול התצוגה ב-`toolbar-check.mjs` (גודל, רדיוס, צבעים, גבול, אייקון, טולטיפ, סדר).
+- הכפתורים (מאוחד 2.10.2026 במיזוג עם קו הלו״ז): `PageTools` בכותרת הדף ו-`SectionTools` בכותרת כל שלב
+  (`ScheduleToolbarSlots.js`, נאמנים לתצוגה המאושרת - 36px, אייקונים 18px; נבדק ב-`toolbar-check.mjs`). `ScheduleDay.js`
+  מחבר את `onPrint` / `onDownload` / `onExport` (`{ stageKey, mode }`) לאשף: הדפסה -> מצב הדפסה, הורדה -> מצב הורדה,
+  XL -> מצב הורדה עם Excel; מכותרת שלב - `initialTab` = אותו שלב ורק דפי השלב מסומנים; מכותרת הדף - "כל דפי היום".
+  handler מבחוץ (props של ScheduleDay) גובר. `ScheduleToolbarActions.js` (שני הכפתורים הכפולים של ענף ההדפסה) הוסר;
+  כללי האשף עברו ל-`print/PrintWizard.css` (תחום ל-`.gm-ds.gm-lz`, האשף מרונדר בתוך שורש הדף).
 - האשף: `mode` (הדפסה/הורדה, `seg.pill`), בהורדה גם `Excel`/`PDF`; לשוניות (`כל דפי היום` + שלבים עם מונה
   מ-`stageData.counts.total`); רשימת `li.lz-wr` עם מתג `.sw`, תיאור, "N פריטים", "עם ברקוד", צ'יפ "בבנייה" לדפי
   `todo` (לא ניתנים לבחירה), בורר גרסה ל-03/07; תצוגה מקדימה = `iframe` ל-`/schedule/print/<key>?…&preview=1`
-  (נטען רק לדף שבפוקוס); "הדפס נבחרים (n)" / "הדפס את כל דפי היום" (= כל דף `ready` של שלב עם פריטים).
+  (נטען רק לדף שהמשתמש/ת בחר/ה - לא אוטומטית בפתיחה); דפים שאין הרשאה להם (`format=access`) מנוטרלים עם "אין הרשאה"; "הדפס נבחרים (n)" / "הדפס את כל דפי היום" (= כל דף `ready` של שלב עם פריטים).
 - הדפסה: `window.open('/schedule/print/<keys>?date&branch&version')`. Excel: `POST /api/schedule/print format=rows`
   → `403 EXPORT_LIMIT` → שדה סיסמת מאשר/ת באשף → אותו POST עם `approvalPin` → `downloadScheduleXlsx` (xlsx נטען
   בעצלתיים בלחיצה בלבד). PDF: `downloadPdf({ path })` מ-`app/lib/pdfClient.js`.

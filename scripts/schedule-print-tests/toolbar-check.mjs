@@ -1,7 +1,8 @@
 // Toolbar + wizard fidelity check against the approved demo (תצוגות-עיצוב/לוז-יומי.html), headless Chrome, no server.
 //   node --import ./scripts/schedule-print-tests/register-render.mjs scripts/schedule-print-tests/toolbar-check.mjs
-// Renders the real ScheduleToolbarActions (initial state) and PrintWizard (open, print mode) to static HTML inside the
-// page's real CSS (globals, design-overrides, components.css, schedule.css, ScheduleToolbarActions.css), screenshots
+// Renders the real PageTools (ScheduleToolbarSlots.js - the page header's XL / download / print buttons that open the wizard,
+// handlers wired as in ScheduleDay.js) and PrintWizard (open, print mode) to static HTML inside the page's real CSS
+// (globals, design-overrides, components.css, schedule.css, print/PrintWizard.css), screenshots
 // them, and compares the computed style of the two round buttons (size, radius, background, border, icon size) with
 // the demo's .xlbtn.xld / .xlbtn.xlp. Output: scripts/schedule-print-tests/out/toolbar-*.png + a diff list.
 import fs from 'node:fs';
@@ -20,20 +21,21 @@ const React = require('react');
 const L = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 const DEMO = process.env.DEMO_HTML || 'file:///C:/Users/moshe/Desktop/' + encodeURI('גמח שמלות חדש/תצוגות-עיצוב/לוז-יומי.html');
 
-const { default: ScheduleToolbarActions } = await L('app/components/schedule/ScheduleToolbarActions.js');
+const { PageTools } = await L('app/components/schedule/ScheduleToolbarSlots.js');
 const { default: PrintWizard } = await L('app/components/schedule/print/PrintWizard.js');
 const { MenuSprite } = await L('app/components/menu/menuParts.js').catch(() => ({ MenuSprite: null }));
 
 const stageData = { stages: [{ key: 'order', counts: { total: 2 } }, { key: 'repair', counts: { total: 3 } }, { key: 'prep', counts: { total: 4 } }, { key: 'dout', counts: { total: 1 } }, { key: 'pick', counts: { total: 2 } }, { key: 'event', counts: { total: 5 } }, { key: 'manret', counts: { total: 2 } }, { key: 'dback', counts: { total: 1 } }] };
-const toolbar = renderToStaticMarkup(React.createElement(ScheduleToolbarActions, { date: '2026-10-14', branch: '', stageData }));
+const noop = () => {};
+const toolbar = renderToStaticMarkup(React.createElement(PageTools, { onExport: noop, onDownload: noop, onPrint: noop, canExport: true, canSettings: false }));
 const wizard = renderToStaticMarkup(React.createElement(PrintWizard, { mode: 'print', date: '2026-10-14', branch: '', stageData, onClose() {} }));
 const sprite = MenuSprite ? renderToStaticMarkup(React.createElement(MenuSprite)) : '';
 const css = (rel) => pathToFileURL(path.join(PROJ, rel)).href;
 const html = `<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">
-<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}">
+<link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
-<link rel="stylesheet" href="${css('app/components/schedule/print/ScheduleToolbarActions.css')}"></head>
-<body><div class="gm-ds gm-home gm-lz home-bg">${sprite}<div class="app lz-app"><div class="topbar"><div class="ttl"><h1 class="pg-ttl"><small>יום רביעי · כ״ג תשרי תשפ״ז</small><bdi>לוח זמנים</bdi></h1></div>${toolbar}</div>
+<link rel="stylesheet" href="${css('app/components/schedule/print/PrintWizard.css')}"></head>
+<body><div class="gm-ds gm-lz home-bg">${sprite}<div class="app lz-app"><div class="topbar"><div class="ttl"><h1 class="pg-ttl"><small>יום רביעי · כ״ג תשרי תשפ״ז</small><bdi>לוח זמנים</bdi></h1></div>${toolbar}</div>
 <div id="wiz" style="position:relative;min-height:900px">${wizard}</div></div></div></body></html>`;
 const htmlPath = path.join(OUT, 'toolbar.html');
 fs.writeFileSync(htmlPath, html);

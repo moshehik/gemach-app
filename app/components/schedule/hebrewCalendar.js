@@ -17,6 +17,27 @@ export const addDays = (s, n) => {
 };
 // 0 = ראשון ... 6 = שבת
 export const dow = (s) => fromKey(s).getDay();
+// "היום" לפי שעון ישראל בדפדפן (Intl, לא לפי אזור הזמן של המכשיר) - רק כגיבוי לפענוח ?date=today|tomorrow עד שהשרת
+// עונה (data.today הוא המקור); en-CA מחזיר YYYY-MM-DD.
+export const israelTodayKey = (now = new Date()) => {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  } catch { return toKey(now); }
+};
+
+// ?date= של הדף: תאריך ISO (YYYY-MM-DD) או מילת יחס מרשימה סגורה (הקישורים "היום"/"מחר" בתפריט,
+// lib/menu/buildMenuTree.js). מילת היחס מפוענחת ברגע הטעינה לפי "היום" הישראלי - לא ברגע בניית התפריט.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+export const DATE_TOKENS = Object.freeze({ today: 0, tomorrow: 1 });
+export const isDateToken = (d) => typeof d === 'string' && Object.prototype.hasOwnProperty.call(DATE_TOKENS, d);
+// ערך ?date= תקין (ISO או מילת יחס) -> הוא עצמו; כל דבר אחר -> null (לא משקפים קלט חופשי)
+export const parseDateParam = (d) => (typeof d === 'string' && (DATE_RE.test(d) || isDateToken(d)) ? d : null);
+// מפתח יום לשליחה לשרת: ISO כמו שהוא; מילת יחס לפי todayKey (שעון השרת), ובלעדיו לפי שעון ישראל בדפדפן
+export const resolveDateParam = (d, todayKey) => {
+  if (!d) return null;
+  if (!isDateToken(d)) return d;
+  return addDays(todayKey || israelTodayKey(), DATE_TOKENS[d]);
+};
 
 export const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 export const WEEKDAYS_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
