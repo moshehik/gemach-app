@@ -2,7 +2,8 @@
 // (תצוגות-עיצוב/סיימתי-לעבוד/דפי-הדפסה-עיצוב.html) element by element: the design's own page builders (PAGES[i].build) are executed in
 // the design file, then for every selector pair (design selector -> shipped selector) the first matches are compared on font,
 // colour, background, borders, padding, margin, line-height and rendered size (mm).
-//   node scripts/schedule-print-tests/pp-g2.design-compare.mjs   (needs out/PP-03a|PP-03b|PP-04|PP-08|PP-09.html: run pp-g2.render.mjs first)
+//   node scripts/schedule-print-tests/pp-g2.design-compare.mjs   (needs out/PP-03a|PP-03b|PP-04|PP-08|PP-09.html from pp-g2.render.mjs, and
+//   out/PP-01.html, out/PP-15.html from render.mjs - the shell's two reference pages are compared here too)
 // Output: out/design-compare.json + a console summary of every difference. Exit 1 on a difference that is not on the allow-list.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,6 +25,10 @@ const CASES = [
   { name: 'PP-04', id: '04', version: null, pairs: [...SHELL, ['.lab-grid', '.pp-lab-grid'], ['.lab', '.pp-lab'], ['.lab .l1', '.pp-lab .l1'], ['.lab .nm', '.pp-lab .nm'], ['.lab .md', '.pp-lab .md'], ['.lab .fx', '.pp-lab .fx'], ['.lab .bcw', '.pp-lab .bcw'], ['.lab .bcw svg', '.pp-lab .bcw svg'], ['.lab .bcw small', '.pp-lab .bcw small']] },
   { name: 'PP-08', id: '08', version: null, pairs: [...SHELL, ['.lab-grid', '.pp-lab-grid'], ['.lab', '.pp-lab'], ['.lab .row', '.pp-lab .row'], ['.lab .big', '.pp-lab .big'], ['.lab .fl', '.pp-lab .pp-fl'], ['.lab .nm', '.pp-lab .nm'], ['.lab .md', '.pp-lab .md'], ['.lab .bcw', '.pp-lab .bcw'], ['.lab .bcw svg', '.pp-lab .bcw svg'], ['.lab .bcw small', '.pp-lab .bcw small']] },
   { name: 'PP-09', id: '09', version: null, pairs: [...SHELL.slice(1), ...TABLE, ['.note', '.pp-note'], ['.signs', '.pp-signs'], ['.signs div', '.pp-signs div']] },
+  // the two reference pages of the shell (01 summary + table with a total row, 15 simple table with group rows): built by render.mjs
+  // (node --import ./scripts/schedule-print-tests/register-render.mjs scripts/schedule-print-tests/render.mjs PP-01,PP-15), same design page
+  { name: 'PP-01', id: '01', version: null, pairs: [['.sheet .sh-head', '.pp-sheet .pp-head'], ...SHELL.slice(1), ...TABLE, ['.stats', '.pp-stats'], ['.stats div', '.pp-stats div'], ['.stats b', '.pp-stats b'], ['.t tr.tot td', '.pp-t tr.tot td']] },
+  { name: 'PP-15', id: '15', version: null, pairs: [['.sheet .sh-head', '.pp-sheet .pp-head'], ...SHELL.slice(1), ...TABLE, ['.stats', '.pp-stats'], ['.stats div', '.pp-stats div'], ['.stats b', '.pp-stats b'], ['.t tr.g td span', '.pp-t tr.g td span']] },
 ];
 // known, intentional / environment differences (listed in the report); key = "<design selector> -> <built selector>|<property>"
 const ALLOW = new Set([
@@ -52,6 +57,9 @@ async function measure(tab, selectors) {
           const r = e.getBoundingClientRect();
           const o = { w: mm(r.width), h: mm(r.height) };
           for (const k of PROPS) o[k] = s[k];
+          // in RTL 'start' and 'right' are the same edge: the live page inherits globals.css text-align:right (dir=rtl body rules)
+          // while the design says text-align:start on the same elements - same rendering, different keyword
+          if (s.direction === 'rtl' && o.textAlign === 'start') o.textAlign = 'right';
           return o;
         }),
       };
