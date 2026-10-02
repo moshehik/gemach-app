@@ -1,0 +1,21 @@
+/* app/components/schedule/print/pages/pp07.css — דף הכנה (07). צבעים קבועים בלבד (כמו print.css), מחלקות בקידומת pp-p7.
+   מרווחי גרסה ב (גיליון לכל הזמנה) לפי p07b() בתצוגה: הערה 3mm, "שלבי הכנה" 4mm, חתימות 8mm. */
+/* .pp-root: print.css נטען אחרי קובץ זה (הוא מיובא בדף ההדפסה) וקובע margin לאותן מחלקות - הסלקטור החזק יותר מנצח */
+.pp-root .pp-p7-notes{margin-top:3mm}
+.pp-root .pp-p7-steps{margin-top:4mm}
+.pp-root .pp-p7-signs{margin-top:8mm}
+/* ברקוד שורה: כמו rowbc() בתצוגה (svg + small בלי מרווח) - ר' pp10.css */
+.pp-t td.bcc .pp-bc{gap:0}
+/* globals.css כופה על כל `table thead tr th` קו תחתון זהוב 2px ב-!important (תכונת "כותרת דביקה") ו-print.css לא מנטרל את הקו -
+   בתצוגה זה קו .5mm שחור. מנטרלים כאן (עד שהתיקון יעבור ל-print.css עצמו). */
+.pp-root .pp-t th{border-bottom:.5mm solid var(--pp-rule)!important}
+/* גרסה ב: עמוד לכל הזמנה - התחתית יושבת בתחתית העמוד כמו בתצוגה (גיליון בגובה קבוע). 220mm = כמו pp12.css (גוף העמוד כ-228mm);
+   הזמנה ארוכה יותר ממשיכה לעמוד הבא והמספור "עמוד X מתוך Y" ממשיך נכון. הסימון .pp-p7-mark הוא הילד הראשון של הגוף (אין div עוטף -
+   ר' PP07.js), ולכן ה-min-height מוצמד לגוף עצמו דרך :has. */
+.pp-p7-mark{display:none}
+.pp-root .pp-body:has(> .pp-p7-mark){min-height:220mm}
+/* כותרת קבוצה לא נשארת לבד בתחתית עמוד: print.css מציב break-after:avoid על ה-td בלבד, ובכרום זה צריך להיות על ה-tr */
+.pp-t tr.g{break-after:avoid;page-break-after:avoid}
+/* הזמנה עם הרבה שמלות (כמו 26): תיבות הסימון בעמודות "שלבי הכנה" עוברות שורה בתוך העמודה במקום להרחיב את הטבלה ולדחוק את שאר העמודות */
+.pp-root .pp-p7-steps .pp-cks{white-space:normal;line-height:1}
+.pp-root .pp-p7-steps .pp-cks i{margin-bottom:.8mm}
