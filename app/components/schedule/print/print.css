@@ -3,10 +3,13 @@
    (thead/tfoot של טבלת המעטפת), שורות שלא נחתכות (break-inside: avoid), כותרת טבלה חוזרת בכל עמוד
    (display: table-header-group) ומספור "עמוד X מתוך Y" ממונה העמודים של @page.
    צבעים קבועים בלבד - שום משתנה ערכת נושא של האתר (כלל CLAUDE.md להדפסה). כל הכללים תחומים ל-.pp-root.
-   משתנה אחד בלבד: --rp = ריווח השורות בטבלאות (הוגדל לפי בקשת הבעלים PP-01: 2.3 מ"מ במקום 1.15). */
+   משתנים: --rp = ריווח השורות בטבלאות (הוגדל לפי בקשת הבעלים PP-01: 2.3 מ"מ במקום 1.15);
+   --pp-page-body = גובה מינימלי של גוף דף "הזמנה בכל עמוד" (07ב, 12) - ר' הערה ליד .pp-dn-wrap.
+   סדר הטעינה בדף החי: ה-CSS של הדפים (pages/pp*.css, מיובא מהתבניות) נטען לפני הקובץ הזה (מיובא אחרון ב-app/schedule/print/[page]/page.js) -
+   כלל של דף שרוצה לדרוס כלל כאן צריך סלקטור חזק יותר, לא רק סדר. */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;600;700&display=swap');
 
-.pp-root{--rp:2.3mm;--pp-ink:#111;--pp-mut:#555;--pp-rule:#111;--pp-acc:#111;--pp-thbg:transparent;--pp-ttl:#111;--pp-soft:#f3f3f3;
+.pp-root{--rp:2.3mm;--pp-page-body:220mm;--pp-ink:#111;--pp-mut:#555;--pp-rule:#111;--pp-acc:#111;--pp-thbg:transparent;--pp-ttl:#111;--pp-soft:#f3f3f3;
   direction:rtl;color:var(--pp-ink);background:#fff;
   font:12px/1.4 "Segoe UI","Noto Sans Hebrew",Arial,"Helvetica Neue",sans-serif;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -19,6 +22,10 @@
 /* QA 2.10: טבלה עם border-collapse:collapse מתעלמת מ-padding - במסך (ובתצוגה המקדימה באשף) הטקסט יצא קצה לקצה בלי שולי 12 מ"מ
    של הדף. במסך בלבד עוברים למודל separate (border-spacing:0 כבר מוגדר) כדי שה-padding של הגיליון יחול; בהדפסה השוליים מ-@page */
 @media screen{.pp-paper .pp-sheet{border-collapse:separate}}
+/* globals.css: `div:has(> table){max-height:75vh;overflow-y:auto}` ("כותרת דביקה" לטבלאות האתר) תופס כל div שהילד הישיר שלו טבלה - גם
+   .pp-paper (עוטף את גיליונות .pp-sheet), בלוקי הזמנה/משפחה (.pp-ob) ועטיפות הגוף של הדפים - ובהדפסה זה חותך גוף ארוך לגובה 75vh עם
+   גלילה. מנוטרל כאן פעם אחת לכל מה שבתוך .pp-root (מסך והדפסה), כך שתבנית רשאית לעטוף טבלה ב-div. */
+.pp-root div:has(> table){max-height:none;overflow:visible}
 /* ===== מסך: גיליונות A4 על רקע אפור (תצוגה מקדימה לפני ההדפסה) ===== */
 .pp-paper{background:#e9ebee;min-height:100vh;padding:14px 0 40px}
 .pp-paper .pp-sheet{width:210mm;min-height:297mm;margin:0 auto 14px;background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.35);padding:10mm 12mm 9mm}
@@ -86,6 +93,7 @@
 /* QA 2.10: app/design-overrides.css §9 "table tbody td{border-bottom-color:var(--divider)!important}" צבע את קווי השורות בצבע ערכת הנושא (חם / כהה) -
    בדפי ההדפסה הקו אפור קבוע; ובאותו כלל "table thead th{color:var(--text-muted)!important}" (במסך) - לכן גם color!important בכותרת למעלה */
 /* ובנוסף: כלל גלובלי "thead th, th{outline:1px solid var(--sticky-header-bg)}" ציור מסגרת בצבע ערכת הנושא סביב כל תא כותרת */
+/* (ארבע הדליפות האלה נמצאו בנפרד בקבוצות 1, 2, 3 ו-4 - הן מתוקנות כאן פעם אחת לכל 15 הדפים; אין קובץ תיקון לכל דף) */
 .pp-root .pp-t th{outline:0!important;z-index:auto!important}
 .pp-root .pp-t tbody td{border-bottom-color:#b9b9b9!important}
 .pp-root .pp-t tbody tr.g td{border-bottom-color:#888!important}
@@ -95,8 +103,14 @@
 .pp-t td.bcc{text-align:center;padding-top:calc(var(--rp) - .3mm);padding-bottom:calc(var(--rp) - .3mm)}
 .pp-t td.bcc svg{display:inline-block;vertical-align:middle}
 .pp-t td.bcc small{font-size:7.5px;color:#222}
+/* ברקוד שורה עם כיתוב (<Code39 label>) בתוך td.bcc: בעיצוב rowbc() = svg ואחריו small ישירות בתא, בלי מרווח - העטיפה .pp-bc של ברקוד
+   הכותרת (gap .4mm, ריווח אותיות, nowrap) הייתה מוסיפה ~1.5px לכל שורה ושוברת את גובה השורות של העיצוב (דפים 07, 10, 11, 13, 18, 19) */
+.pp-t td.bcc .pp-bc{gap:0}
+.pp-t td.bcc .pp-bc small{letter-spacing:normal;white-space:normal}
 .pp-t td.nowrap{white-space:nowrap}
-.pp-t tr.g td,.pp-t tr.g th{background:var(--pp-soft);font-weight:700;border-top:.3mm solid var(--pp-rule);border-bottom:.3mm solid #888;padding:1.2mm 1.4mm;font-size:11.5px;color:var(--pp-ttl);break-after:avoid;page-break-after:avoid}
+.pp-t tr.g td,.pp-t tr.g th{background:var(--pp-soft);font-weight:700;border-top:.3mm solid var(--pp-rule);border-bottom:.3mm solid #888;padding:1.2mm 1.4mm;font-size:11.5px;color:var(--pp-ttl)}
+/* שורת קבוצה לא נשארת לבד בתחתית עמוד: כרום מכבד break-after:avoid רק על ה-tr (על ה-td הוא מתעלם) */
+.pp-t tr.g{break-after:avoid;page-break-after:avoid}
 .pp-t tr.g td span{font-weight:400;color:var(--pp-mut);font-size:10.5px;margin-inline-start:2mm}
 .pp-t tr.tot td{font-weight:700;border-top:.5mm solid var(--pp-rule);border-bottom:0;background:var(--pp-thbg)}
 .pp-t tr.warn td{background:repeating-linear-gradient(135deg,transparent 0 2mm,rgba(0,0,0,.04) 2mm 2.4mm)}
@@ -147,8 +161,10 @@
 .pp-lab .bcw small{font-size:7.5px;color:#222;line-height:1}
 .pp-lab .big{font-size:17px;font-weight:700;line-height:1;color:var(--pp-ttl)}
 .pp-lab .row{display:flex;justify-content:space-between;align-items:center;gap:2mm}
-/* תעודת משלוח (12) - עמוד שלם לתעודה */
-.pp-dn-wrap{display:flex;flex-direction:column;min-height:240mm}
+/* תעודת משלוח (12) - עמוד שלם לתעודה. גובה הגוף של דף "הזמנה בכל עמוד" (--pp-page-body, גם 07ב): שטח העמוד הפנימי 275 מ"מ
+   (297 פחות שולי @page 10+12) פחות הכותרת (~37.5 מ"מ) ותחתית (~9.6 מ"מ) = ~228 מ"מ; 240 גלש וכל תעודה יצאה על שני עמודים.
+   220 משאיר מקום לכותרת גבוהה יותר (כתובת ארוכה, גופן אחר); הזמנה ארוכה יותר ממשיכה לעמוד הבא והמספור ממשיך נכון. */
+.pp-dn-wrap{display:flex;flex-direction:column;min-height:var(--pp-page-body)}
 .pp-dn{flex:1 1 0;border:.35mm solid #222;border-radius:2mm;padding:6mm 7mm;display:flex;flex-direction:column;gap:7mm}
 .pp-dn .dn-h{display:flex;align-items:center;gap:4mm;border-bottom:.5mm solid var(--pp-rule);padding-bottom:2mm}
 .pp-dn .dn-h b{font-size:21px;color:var(--pp-ttl)}
@@ -183,8 +199,19 @@
   .pp-sheet>tbody>tr,.pp-sheet>tbody>tr>td{break-inside:auto!important;page-break-inside:auto!important}
   .pp-sheet>thead{display:table-header-group}
   .pp-sheet>tfoot{display:table-footer-group}
-  .pp-sheet+.pp-sheet{break-before:page;page-break-before:always}
+  /* כל גיליון מתחיל עמוד חדש - גם כשגיליון מדבקות (section.pp-sticker-sheet) בא לפני/אחרי גיליון רגיל במסמך משולב של כמה דפים */
+  :is(.pp-sheet,.pp-sticker-sheet)+:is(.pp-sheet,.pp-sticker-sheet){break-before:page;page-break-before:always}
   .pp-sheet[data-break=page]+.pp-sheet{break-before:page}
   .pp-foot .pp-pn{display:none} /* במסך: מקום שמור; בהדפסה המספור מגיע מ-@page */
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  /* ===== דף נקוב לגיליונות המדבקות (04, 08): שוליים כמו הגיליון בעיצוב (8 מ"מ למעלה, 9 מ"מ למטה) =====
+     6 שורות x 39.6 מ"מ + 5 רווחים = 247.6 מ"מ, כותרת צרה 21.4 מ"מ ותחתית 9.6 מ"מ = 278.6 מ"מ. בשוליים הכלליים (10/12 מ"מ) נשארים 275 מ"מ
+     ורק 5 שורות נכנסות; בשוליים האלה 280 מ"מ. התבנית עוטפת כל גיליון מדבקות ב-<section class="pp-sticker-sheet"> (pages/ppStickers.js);
+     שינוי שם הדף הנקוב בין גיליון רגיל למדבקות הוא בעצמו מעבר עמוד, והכלל שלמעלה מכסה גם מדבקות אחרי מדבקות. מונה העמודים
+     (counter(page)/counter(pages)) הוא של המסמך כולו - במסמך משולב המספור "עמוד X מתוך Y" ממשיך ברצף דרך גיליונות המדבקות. */
+  @page pp-sticker{size:A4 portrait;margin:8mm 12mm 9mm;
+    @bottom-left{content:"עמוד " counter(page) " מתוך " counter(pages);font:700 10px "Segoe UI","Noto Sans Hebrew",Arial,sans-serif;color:#111;direction:rtl}
+  }
+  .pp-sticker-sheet{page:pp-sticker}
 }

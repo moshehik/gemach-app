@@ -3,7 +3,6 @@
 // יתרה לתשלום, סימון (ברקוד PCK-<הזמנה>). בלי עמודת סניף (החלטת הבעלים).
 import { Sheet, SheetTable, Note, Money, Phone, Check, Flag, EmptyBody } from '../PrintShell';
 import Code39 from '../Code39';
-import './pp-table-theme-leaks.css';
 
 const COLUMNS = [
   { key: 'done', label: 'נאסף', c: true, render: (r) => (r.done ? <Flag>נאסף</Flag> : <Check lg />) },

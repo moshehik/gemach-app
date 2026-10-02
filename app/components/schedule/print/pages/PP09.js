@@ -2,7 +2,6 @@
 // עיצוב: p09() בדפי-הדפסה-עיצוב.html - הערה "איך ממלאים", טבלה (תיבה לכל שמלה בכל עמודת שלב), "הוכן על ידי / נבדק על ידי".
 import { Sheet, SheetTable, Note, Check, EmptyBody } from '../PrintShell';
 import RowCode from './ppCode';
-import './ppTables.css';
 import './pp09.css';
 
 const COLUMNS = [

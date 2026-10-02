@@ -5,7 +5,6 @@
 import { Sheet, SheetTable, GroupRow, Phone, Flag, EmptyBody } from '../PrintShell';
 import Code39 from '../Code39';
 import { cnt } from '@/lib/schedule/print/format';
-import './pp10.css';
 
 export function Address({ row }) {
   if (row.street) return <>{[row.street, row.city].filter(Boolean).join(', ')}</>;

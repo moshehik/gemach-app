@@ -2,7 +2,6 @@
 // עיצוב: p02() בתצוגה (פס סיכומים; עמודות: הזמנה, לקוחה, טלפון, תאריך אירוע, ימים לאירוע, חיוב, שולם, יתרה לגבייה,
 // הערת גבייה (קו לכתיבה), נגבה (תיבה); שורת סה״כ גדולה בסוף; סכום הלגבייה בפס הכותרת). בלי ברקוד ובלי חתימה (לידיעה בלבד).
 import { Sheet, SheetTable, Stats, Money, Phone, Check, EmptyBody } from '../PrintShell';
-import './pp-table-theme-leaks.css';
 import './pp02.css';
 
 function daysCell(r) {

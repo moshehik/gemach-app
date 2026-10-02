@@ -8,8 +8,8 @@
 // הערה: העטיפה היא <section> ולא <div> בכוונה - globals.css מגדיר `div:has(> table){max-height:75vh;overflow-y:auto}` לכל div שהילד הישיר
 // שלו הוא טבלה, וזה חותך את הדף בהדפסה (השורה האחרונה של המדבקות נופלת). בכל תבנית: אין <div> שהילד הישיר שלו הוא <table>.
 //
-// התוסף היחיד מעבר למעטפת הקיימת (PrintShell/print.css לא שונו): העטיפה .pp-sticker-sheet מצמידה לגיליון את הדף הנקוב
-// `pp-sticker` (שוליים 8/9 מ"מ כמו הגיליון בעיצוב במקום 10/12) - ראו pp0408.css. כך 6 שורות x 39.6 מ"מ נכנסות בעמוד.
+// העטיפה .pp-sticker-sheet מצמידה לגיליון את הדף הנקוב `pp-sticker` של המעטפת (print.css, @page pp-sticker: שוליים 8/9 מ"מ כמו
+// הגיליון בעיצוב במקום 10/12) - כך 6 שורות x 39.6 מ"מ נכנסות בעמוד; מעבר העמוד בין גיליונות (רגיל/מדבקות בכל שילוב) גם הוא שם.
 import { Sheet, EmptyBody } from '../PrintShell';
 import { chunk } from '@/lib/schedule/print/repairItems';
 

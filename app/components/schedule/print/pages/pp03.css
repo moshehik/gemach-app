@@ -4,5 +4,3 @@
 .pp-root .pp03b .pp-dsum.pp03-total{margin-top:3mm}
 /* שורת הסיכום נשארת צמודה לבלוק האחרון בתאריך ולא לבדה בעמוד */
 .pp-root .pp03a .pp03-day>.pp-ob:last-of-type{break-after:avoid;page-break-after:avoid}
-/* globals.css: div:has(> table){max-height:75vh;overflow-y:auto} - בלוק הזמנה (.pp-ob) מכיל טבלה ישירות, ובלי איפוס הוא היה נגלל/נחתך */
-.pp-root .pp-ob,.pp-root .pp03a,.pp-root .pp03b,.pp-root .pp09{max-height:none;overflow:visible}

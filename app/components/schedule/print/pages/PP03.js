@@ -5,7 +5,6 @@
 import { Sheet, SheetTable, GroupRow, Note, Check, Phone, EmptyBody } from '../PrintShell';
 import Code39 from '../Code39';
 import RowCode from './ppCode';
-import './ppTables.css';
 import './pp03.css';
 
 const A_COLUMNS = [

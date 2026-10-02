@@ -3,7 +3,6 @@
 
 import RowCode from './ppCode';
 import { StickerSheets } from './ppStickers';
-import './pp0408.css';
 
 export default function PP04({ meta, page }) {
   return (

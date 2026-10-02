@@ -1,5 +1,3 @@
-/* app/components/schedule/print/pages/pp12.css — תעודת משלוח (12). צבעים קבועים בלבד. הקלאסים .pp-dn* הכלליים ב-print.css. */
+/* app/components/schedule/print/pages/pp12.css — תעודת משלוח (12). צבעים קבועים בלבד. הקלאסים .pp-dn* הכלליים ב-print.css
+   (וגובה הגוף של "עמוד לכל תעודה" = --pp-page-body שם). */
 .pp-dn .nts.pp-dn-none{color:#777}
-/* print.css נותן 240mm, אבל שטח הגוף בעמוד A4 (275mm פנימי פחות כותרת 37.5mm ותחתית 9.6mm) הוא כ-228mm: 240 גולש וכל תעודה
-   יוצאת על שני עמודים. 220mm משאיר שוליים לשינוי גובה הכותרת (כתובת ארוכה, גופן אחר). הסלקטור חזק יותר מ-print.css כי הוא נטען אחריו. */
-.pp-root .pp-dn-wrap{min-height:220mm}

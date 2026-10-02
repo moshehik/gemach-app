@@ -4,7 +4,6 @@
 import { Sheet, SheetTable, GroupRow, Note, Phone, Check, Flag, EmptyBody } from '../PrintShell';
 import Code39 from '../Code39';
 import { cnt } from '@/lib/schedule/print/format';
-import './pp-table-theme-leaks.css';
 import './pp19.css';
 
 const COLUMNS = [
