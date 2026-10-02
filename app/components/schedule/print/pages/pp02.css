@@ -1,0 +1,3 @@
+/* app/components/schedule/print/pages/pp02.css — "סיכום יתרות לגבייה": הקו של "הערת גבייה" צר מהקו הרגיל (24 מ"מ, כמו בעיצוב).
+   צבעים/מידות קבועים בלבד; תחום ל-.pp-root (המעטפת המשותפת ב-print.css נשארת כמו שהיא). */
+.pp-root .pp-ul.w.pp02-note{min-width:24mm}

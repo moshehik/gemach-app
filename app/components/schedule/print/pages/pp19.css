@@ -1,0 +1,3 @@
+/* app/components/schedule/print/pages/pp19.css — "רשימת איסוף מלקוחות": קו ההערה צר מהקו הרגיל (20 מ"מ, כמו בעיצוב).
+   צבעים/מידות קבועים בלבד; תחום ל-.pp-root. */
+.pp-root .pp-ul.pp19-note{min-width:20mm}
