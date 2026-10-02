@@ -7,13 +7,16 @@
 
 /* שני כפתורי הפעולה זה לצד זה (באותו מראה זהב של כפתור הכניסה); במובייל אחד מתחת לשני */
 .gm-ds.gm-login.gm-punch .pc-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
-.gm-ds.gm-login.gm-punch .pc-actions .gbtn{min-width:0;padding-inline:12px}
+.gm-ds.gm-login.gm-punch .pc-actions .gbtn{min-width:0}
 
 /* מסך האישור: הכפתור "חזרה לטופס" בתוך .done (flex עמודה) */
 .gm-ds.gm-login.gm-punch .done .ghost{margin-top:4px}
 
 /* נפתח בניווט פנימי מתוך מעטפת האתר: מסך מלא מעל המעטפת (מתחת לחלונות הקופצים של האתר, 9999+) */
-.gm-ds.gm-login.gm-punch.is-overlay{position:fixed;inset:0;z-index:1000;overflow:auto;overscroll-behavior:contain}
+/* הרקע הבהיר של האתר (--bg של ערכת הנושא הבהירה) נשאר מתחת לתמונה (שקיפות 65% בפלטה): בעיצוב כהה של העובד ה-html כהה, והתמונה הייתה "מעומעמת" -
+   לכן שכבת בסיס בהירה משלנו, רק במסך המלא שמכסה את המעטפת (בטעינה מלאה ה-layout מכריח ערכת בהירה, כמו בדף הכניסה). */
+.gm-ds.gm-login.gm-punch{--pc-base:#faf7f2}
+.gm-ds.gm-login.gm-punch.is-overlay{position:fixed;inset:0;z-index:1000;overflow:auto;overscroll-behavior:contain;background:var(--pc-base)!important}
 
 @media (max-width:520px){
   .gm-ds.gm-login.gm-punch .pc-actions{grid-template-columns:1fr}

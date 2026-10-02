@@ -293,17 +293,26 @@ t('punch-clock.css: כל כלל בהיקף .gm-ds.gm-login.gm-punch (לא דול
   for (const r of punchRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-login\.gm-punch(\s|\.|$)/.test(s)) bad.push(s);
   assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
 });
-t('punch-clock.css: אין רקע לבן קשיח, אין !important על רקע, ואין צבע שאינו משתנה פלטה', () => {
+t('punch-clock.css: אין רקע לבן קשיח, אין !important על רקע (חוץ משכבת הבסיס של המסך המלא), ואין צבע קשיח ברקע', () => {
   const bad = [];
   for (const r of punchRules) for (const d of setsProp(r, /^background(-color|-image)?$/)) {
     const v = d.value.replace(/!important/i, '').trim();
-    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v) || isImportant(d)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
-    if (/#[0-9a-f]{3,8}|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (צבע קשיח)`);
+    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v) || (isImportant(d) && r.sel !== '.gm-ds.gm-login.gm-punch.is-overlay')) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/#[0-9a-f]{3,8}\b|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (צבע קשיח)`);
   }
   assert.deepEqual(bad, []);
 });
 t('punch-clock.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
   assert.deepEqual(mediaBeforeBase(punchRules, 'punch-clock.css'), []);
+});
+t('login.css: הפלטה כופה על כל .gm-ds .card רקע לבן 30% ב-!important => כרטיס הדף המלא (כניסה + שעון נוכחות) חייב לדרוס ל-48% של העיצוב', () => {
+  const LOGIN_CSS = read('../app/components/login/login.css');
+  const paletteForcesCard = parseCss(PALETTE).some((r) => /^\.gm-ds \.card\b/.test(splitSel(r.sel)[0]) && setsProp(r, /^background$/).some(isImportant));
+  if (!paletteForcesCard) return; // הכלל בפלטה כבר לא קיים - אין מה לדרוס
+  const rule = parseCss(LOGIN_CSS).find((r) => r.sel === '.gm-ds.gm-login:not(.is-modal) .card.lg-card');
+  assert.ok(rule, 'חסר כלל הדריסה של כרטיס הדף המלא ב-login.css');
+  assert.ok(setsProp(rule, /^background$/).some((d) => isImportant(d) && /--lg-glass/.test(d.value)), 'הרקע חייב להיות var(--lg-glass) ב-!important');
+  assert.ok(setsProp(rule, /^border-color$/).some((d) => isImportant(d) && /\.75/.test(d.value)), 'גבול 75% ב-!important');
 });
 t('שעון הנוכחות משתמש בשדות של login.css (input.inp בהיקף .gm-login) ולא בשדות הגלובליים של האתר', () => {
   const page = read('../app/components/login/PunchClockNew.js');

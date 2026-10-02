@@ -38,6 +38,10 @@
 
 /* ---- הכרטיס (זכוכית על תמונת הרקע) ---- */
 .gm-ds.gm-login .card.lg-card{background:var(--lg-glass);-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);border:1px solid rgba(255,255,255,.75);border-radius:16px;box-shadow:var(--lg-sh);padding:24px;min-width:0}
+/* הפלטה (design-system/components.css) כופה על כל .card בתוך .gm-ds רקע לבן 30% וגבול 70% ב-!important - כלומר הכרטיס יצא שקוף יותר מהעיצוב
+   (login-page.html: .card = --lg-glass 48%, גבול 75%). דריסה ב-!important באותה חומרה, רק לכרטיס של הדף המלא (לא לכרטיס שבתוך החלון, is-modal, שמוצג
+   על רקע לבן ו"מבוטל" ב-.mdl>.card.lg-card). משותף גם לשעון הנוכחות (PunchClockNew). נשמר ע"י scripts/test_home_css_guard.mjs. */
+.gm-ds.gm-login:not(.is-modal) .card.lg-card{background:var(--lg-glass)!important;border-color:rgba(255,255,255,.75)!important}
 .gm-ds.gm-login .lg-form{display:flex;flex-direction:column;gap:16px}
 .gm-ds.gm-login .field{display:flex;flex-direction:column;min-width:0;gap:0}
 .gm-ds.gm-login .lbl{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:var(--gm-ink2);font-weight:500;font-size:15px}
@@ -115,7 +119,7 @@
 .gm-ds.gm-login .done{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:12px 0 4px}
 .gm-ds.gm-login .done .ok{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--lg-ok-soft);color:var(--lg-ok)}
 .gm-ds.gm-login .done .ok .ic{width:28px;height:28px;stroke-width:2.2}
-.gm-ds.gm-login .done h2{margin:0;font-size:22px;letter-spacing:-.2px}
+.gm-ds.gm-login .done h2{margin:0;font-size:22px;letter-spacing:-.2px;color:var(--gm-ink)} /* globals.css צובע כל h1-h6 בחום (--text); בעיצוב הכותרת בצבע הדיו כמו שאר הטקסט */
 .gm-ds.gm-login .done p{margin:0;color:var(--gm-ink2);font-size:15px;max-width:34ch}
 .gm-ds.gm-login .done .clk{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:var(--lg-gold-soft);color:var(--lg-gold-ink);font-size:15px;font-weight:500}
 .gm-ds.gm-login .done .clk.note{background:var(--gm-sky-50);color:var(--gm-ink2)}
