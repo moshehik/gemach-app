@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { PrintDocument } from '@/app/components/schedule/print/PrintShell';
 import { parsePageList, parseVersions, versionsParam } from '@/lib/schedule/print/registry';
+import { PRINT_FONT_CSS } from '@/lib/schedule/print/font';
 import '@/app/components/schedule/print/print.css';
 
 // /schedule/print/<PP-01 | PP-01,PP-15>?date=YYYY-MM-DD[&branch=..][&version=b | PP-03:b,PP-07:a][&downloadPdf=true][&preview=1]
@@ -81,6 +82,8 @@ export default function SchedulePrintPage() {
   const title = payload ? payload.pages.map((p) => p.def.label).join(' · ') : 'הדפסה';
   return (
     <div data-print-ready={ready ? 'true' : undefined} data-print-title={title}>
+      {/* הגופן העברי - גיליון נפרד שה-@import בראשו (ר' lib/schedule/print/font.js; אותו דפוס כמו app/print/order) */}
+      <style>{PRINT_FONT_CSS}</style>
       {!preview && !downloadPdf ? (
         <div className="pp-toolbar pp-root" dir="rtl">
           <button type="button" onClick={() => window.print()}>הדפסה</button>

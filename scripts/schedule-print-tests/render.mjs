@@ -124,6 +124,9 @@ const payload = { meta: payloads[0].meta, pages: payloads.flatMap((x) => x.pages
 const { PrintDocument } = await L('app/components/schedule/print/PrintShell.js');
 const css = (rel) => pathToFileURL(path.join(PROJ, rel)).href;
 const FONT_FREE = process.env.NO_WEBFONTS === '1';
+// the web font is loaded the way the live page does it (its own <style>@import</style>, lib/schedule/print/font.js) - not via print.css
+const { PRINT_FONT_CSS } = await L('lib/schedule/print/font.js');
+const fontStyle = FONT_FREE ? '' : `<style>${PRINT_FONT_CSS}</style>`;
 // PP_THEME=dark: the live app's dark theme tokens (app/design-system.css [data-theme=dark]) - the print sheet must not follow them
 const THEME = process.env.PP_THEME === 'dark' ? 'dark' : 'light';
 // page-local stylesheets (app/components/schedule/print/pages/pp*.css): the live page gets them through the templates' own imports,
@@ -136,7 +139,7 @@ try {
   if (combined) {
     const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload }));
     const name = 'ALL' + (long ? '-long' : '');
-    const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8"><title>${name}</title>
+    const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8">${fontStyle}<title>${name}</title>
 <link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
 ${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}"></head>
@@ -200,7 +203,7 @@ ${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/prin
     const single = { meta: payload.meta, pages: [page] };
     const body = renderToStaticMarkup(React.createElement(PrintDocument, { payload: single }));
     const name = page.key + (page.version && page.def.versions ? '-' + page.version : '') + (long ? '-long' : '');
-    const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8"><title>${page.def.label}</title>
+    const html = `<!doctype html><html lang="he" dir="rtl"${THEME === 'dark' ? ' data-theme="dark"' : ''}><head><meta charset="utf-8">${fontStyle}<title>${page.def.label}</title>
 <link rel="stylesheet" href="${css('app/globals.css')}"><link rel="stylesheet" href="${css('app/design-overrides.css')}"><link rel="stylesheet" href="${css('app/design-system.css')}">
 <link rel="stylesheet" href="${css('design-system/components.css')}"><link rel="stylesheet" href="${css('app/schedule/schedule.css')}">
 ${pageCss}<link rel="stylesheet" href="${css('app/components/schedule/print/print.css')}">${process.env.PDF_FONT ? `<style>@media print{.pp-root,.pp-root *{font-family:${process.env.PDF_FONT}!important}}</style>` : ''}</head>

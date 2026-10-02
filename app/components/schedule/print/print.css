@@ -7,7 +7,8 @@
    --pp-page-body = גובה מינימלי של גוף דף "הזמנה בכל עמוד" (07ב, 12) - ר' הערה ליד .pp-dn-wrap.
    סדר הטעינה בדף החי: ה-CSS של הדפים (pages/pp*.css, מיובא מהתבניות) נטען לפני הקובץ הזה (מיובא אחרון ב-app/schedule/print/[page]/page.js) -
    כלל של דף שרוצה לדרוס כלל כאן צריך סלקטור חזק יותר, לא רק סדר. */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@400;600;700&display=swap');
+/* הגופן העברי (Noto Sans Hebrew) נטען ב-<style>@import</style> נפרד בדף עצמו (lib/schedule/print/font.js) - לא כאן:
+   בבנייה לייצור הקובץ הזה מתמזג לצ'אנק אחד אחרי כללי pages/pp*.css, ו-@import שאינו בראש גיליון נזרק ע"י הדפדפן. */
 
 .pp-root{--rp:2.3mm;--pp-page-body:220mm;--pp-ink:#111;--pp-mut:#555;--pp-rule:#111;--pp-acc:#111;--pp-thbg:transparent;--pp-ttl:#111;--pp-soft:#f3f3f3;
   direction:rtl;text-align:start;color-scheme:light;color:var(--pp-ink);background:#fff;
