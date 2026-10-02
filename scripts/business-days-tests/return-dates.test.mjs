@@ -11,7 +11,8 @@
 //     With every holiday marked "open" the new date equals the old one on every day (full parity).
 //  2. Pickup / prep date: with an empty config, identical to the old functions on every day (no exceptions).
 //  3. Known answers: Friday, Saturday, day before Yom Kippur, Sukkot, Pesach, Rosh Hashana, DST days.
-//  4. Owner-closed days move both dates; explicit toDate/returnDate are untouched.
+//  4. Owner-closed days move both dates; an explicit toDate/returnDate that falls on a closed day rolls to the next
+//     working day (owner decision 2.10.2026 - full proof in return-roll-forward.test.mjs), on a working day it is kept.
 //  5. a5/adv: the widest event->due gap under the new rule is <= 7 days (the new dueWindow lower bound).
 //  6. lib/inventory.js checkMissingDressForItem ("אמור לחזור מחר") uses the new rule (mocked DB + clock).
 //  7. Display strings (weekday letter + Hebrew date) are the same in every process timezone.
@@ -149,7 +150,7 @@ test('RETURN date known answers (both storage forms of eventDate; every timezone
   assert.deepEqual(changed, ['2026-09-10', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20', '2026-03-31', '2026-05-20']);
 });
 
-test('RETURN / PICKUP: owner-closed days move the dates; explicit toDate/returnDate are never moved', () => {
+test('RETURN / PICKUP: owner-closed days move the dates; explicit toDate/returnDate roll forward only off a closed day', () => {
   // Thu 5.11.2026 normally returns Sun 8.11. Owner closes Sun 8.11 and Mon 9.11 -> Tue 10.11
   const cfg = B.parseNonWorkingDaysSetting('[{"date":"2026-11-08"},{"date":"2026-11-09","status":"closed","note":"x"}]');
   assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-11-05') }, cfg), '2026-11-10');
@@ -165,12 +166,17 @@ test('RETURN / PICKUP: owner-closed days move the dates; explicit toDate/returnD
   // prep date (3 working days): Tue 10.11 -> Mon 9.11, Sun 8.11, Thu 5.11  /  with Sun closed: Mon 9.11, Thu 5.11, Wed 4.11
   assert.equal(localKey(B.getPrintPrepDateWithConfig(stored('2026-11-10'), null)), '2026-11-05');
   assert.equal(localKey(B.getPrintPrepDateWithConfig(stored('2026-11-10'), sun)), '2026-11-04');
-  // explicit dates win and are not shifted, even onto a closed day (the customer's own agreement)
+  // explicit dates win; one that falls on a closed day (Mon 21.9 = Yom Kippur) rolls to the next working day, Tue 22.9
+  // (owner decision 2.10.2026); one on a working day (Tue 15.9) is shown as is; one on an owner-closed day (Sun 8.11,
+  // closed in cfg together with Mon 9.11) rolls to Tue 10.11
   const holiday = '2026-09-21T00:00:00.000Z';
   for (const field of ['toDate', 'returnDate']) {
     const o = { eventDate: stored('2026-09-01'), [field]: holiday };
-    assert.equal(localKey(LR.getExpectedReturnDate(o, cfg)), '2026-09-21'); // shown as the Israeli day, local midnight (see the round-2 test for 21:00Z storage)
-    assert.equal(LR.getExpectedReturnKey(o, cfg), '2026-09-21');
+    assert.equal(localKey(LR.getExpectedReturnDate(o, cfg)), '2026-09-22'); // shown as the Israeli day, local midnight (see the round-2 test for 21:00Z storage)
+    assert.equal(LR.getExpectedReturnKey(o, cfg), '2026-09-22');
+    assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-09-01'), [field]: stored('2026-09-15') }, cfg), '2026-09-15');
+    assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-11-05'), [field]: stored('2026-11-08') }, cfg), '2026-11-10');
+    assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-11-05'), [field]: stored('2026-11-08') }, null), '2026-11-08', 'Sunday is a working day without the owner list');
   }
   // missing / invalid input
   for (const bad of [null, undefined, {}, { eventDate: null }, { eventDate: 'garbage' }, { eventDate: '' }]) {
@@ -265,11 +271,17 @@ test('lib/inventory.js: owner-closed day from the setting row moves "מחר"; ex
     setupMissing({ eventKey: '2026-11-05', settings: closedSetting(broken) });
     assert.deepEqual(await missingOn('2026-11-07T10:00:00Z'), { familyName: 'כהן', returnOrderId: 77 }, `broken setting ${JSON.stringify(broken)} = defaults`);
   }
-  // explicit toDate: returns on the stated day even if it is a holiday
+  // explicit toDate on a holiday (Mon 21.9 = Yom Kippur) is due on the next working day, Tue 22.9 (owner decision
+  // 2.10.2026): "back tomorrow" on Mon 21.9, not on Sun 20.9
   setupMissing({ eventKey: '2026-09-01' });
   globalThis.__ORDER_ITEMS[0].order.toDate = new Date('2026-09-21T00:00:00.000Z');
-  assert.deepEqual(await missingOn('2026-09-20T10:00:00Z'), { familyName: 'כהן', returnOrderId: 77 });
+  assert.deepEqual(await missingOn('2026-09-21T10:00:00Z'), { familyName: 'כהן', returnOrderId: 77 });
+  assert.equal(await missingOn('2026-09-20T10:00:00Z'), null);
   assert.equal(await missingOn('2026-09-19T10:00:00Z'), null);
+  // explicit toDate on a working day (Tue 15.9): unchanged - "back tomorrow" on Mon 14.9
+  globalThis.__ORDER_ITEMS[0].order.toDate = new Date('2026-09-15T00:00:00.000Z');
+  assert.deepEqual(await missingOn('2026-09-14T10:00:00Z'), { familyName: 'כהן', returnOrderId: 77 });
+  assert.equal(await missingOn('2026-09-15T10:00:00Z'), null);
 });
 
 // ---- round 2: explicit dates read as the Israeli day; lookup windows derived from the rule ----
@@ -280,20 +292,23 @@ const cfgOf = (...ranges) => {
 };
 
 test('explicit toDate/returnDate and event-date fallbacks are read as the ISRAELI day in every timezone (21:00Z / 22:00Z storage)', () => {
+  // [stored instant, the Israeli day it denotes, the due day shown everywhere = that day rolled to a working day
+  // (owner decision 2.10.2026): Mon 21.9 = Yom Kippur -> Tue 22.9, Fri 27.3 -> Sun 29.3; Thu 5.11 / Sun 25.10 kept]
   const cases = [
-    ['2026-09-20T21:00:00.000Z', '2026-09-21'], // summer Israel midnight of 21.9 (previous UTC day)
-    ['2026-11-04T22:00:00.000Z', '2026-11-05'], // winter Israel midnight of 5.11
-    ['2026-09-21T00:00:00.000Z', '2026-09-21'], // usual storage
-    ['2026-09-21T12:00:00.000Z', '2026-09-21'],
-    ['2026-03-26T22:00:00.000Z', '2026-03-27'], // day before the spring DST change
-    ['2026-10-24T21:00:00.000Z', '2026-10-25'], // fall-back day, 00:00 Israel (still summer time)
+    ['2026-09-20T21:00:00.000Z', '2026-09-21', '2026-09-22'], // summer Israel midnight of 21.9 (previous UTC day)
+    ['2026-11-04T22:00:00.000Z', '2026-11-05', '2026-11-05'], // winter Israel midnight of 5.11
+    ['2026-09-21T00:00:00.000Z', '2026-09-21', '2026-09-22'], // usual storage
+    ['2026-09-21T12:00:00.000Z', '2026-09-21', '2026-09-22'],
+    ['2026-03-26T22:00:00.000Z', '2026-03-27', '2026-03-29'], // day before the spring DST change (27.3 is a Friday)
+    ['2026-10-24T21:00:00.000Z', '2026-10-25', '2026-10-25'], // fall-back day, 00:00 Israel (still summer time)
   ];
-  for (const [iso, want] of cases) {
+  for (const [iso, want, wantDue] of cases) {
+    assert.equal(B.rollForwardToWorkingDay(want, null), wantDue);
     for (const field of ['toDate', 'returnDate']) {
       const d = LR.getExpectedReturnDate({ eventDate: stored('2026-09-01'), [field]: iso }, null);
-      assert.equal(localKey(d), want, `${field} ${iso} TZ=${process.env.TZ}`);
+      assert.equal(localKey(d), wantDue, `${field} ${iso} TZ=${process.env.TZ}`);
       assert.equal(d.getHours(), 0);
-      assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-09-01'), [field]: iso }, null), want);
+      assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-09-01'), [field]: iso }, null), wantDue);
     }
     assert.equal(localKey(B.israelLocalDate(iso)), want, `israelLocalDate ${iso}`);
     assert.equal(localKey(B.israelLocalDate(new Date(iso))), want);
@@ -302,8 +317,10 @@ test('explicit toDate/returnDate and event-date fallbacks are read as the ISRAEL
     assert.equal(H.getHebrewWeekdayLabel(B.israelLocalDate(iso)), H.getHebrewWeekdayLabel(new Date(y, m - 1, day)));
     assert.equal(H.getHebrewDateString(B.israelLocalDate(iso)), H.getHebrewDateString(new Date(y, m - 1, day)));
   }
-  // an explicit date is still never shifted to a working day (21.9 = Yom Kippur)
-  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-09-20T21:00:00.000Z' }, null), '2026-09-21');
+  // an explicit date is read as the Israeli day FIRST and only then rolled (21:00Z of 20.9 = Israel midnight of
+  // Mon 21.9 = Yom Kippur -> Tue 22.9; on a UTC server the raw instant would have read as Sun 20.9, erev YK)
+  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-09-20T21:00:00.000Z' }, null), '2026-09-22');
+  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-09-14T21:00:00.000Z' }, null), '2026-09-15', 'Israel midnight of a working day: unchanged');
   for (const bad of [null, undefined, '', 'garbage', new Date('x')]) assert.equal(B.israelLocalDate(bad), null);
   assert.equal(LR.getExpectedReturnDate({ eventDate: stored('2026-09-01'), toDate: 'garbage' }, null), null);
 });
