@@ -1,0 +1,10 @@
+/* app/components/schedule/print/pages/pp11.css — רשימת שליח לפי עיר (11). צבעים קבועים בלבד.
+   עמודת "הערה" בעיצוב: קו למילוי ברוחב 20mm (style="min-width:20mm" על ה-span של .ul). */
+.pp-ul.pp-p11-rm{min-width:20mm}
+/* ברקוד שורה: כמו rowbc() בתצוגה (svg + small בלי מרווח) - ר' pp10.css */
+.pp-t td.bcc .pp-bc{gap:0}
+/* globals.css כופה על כל `table thead tr th` קו תחתון זהוב 2px ב-!important (תכונת "כותרת דביקה") ו-print.css לא מנטרל את הקו -
+   בתצוגה זה קו .5mm שחור. מנטרלים כאן (עד שהתיקון יעבור ל-print.css עצמו). */
+.pp-root .pp-t th{border-bottom:.5mm solid var(--pp-rule)!important}
+/* כותרת קבוצה לא נשארת לבד בתחתית עמוד: print.css מציב break-after:avoid על ה-td בלבד, ובכרום זה צריך להיות על ה-tr */
+.pp-t tr.g{break-after:avoid;page-break-after:avoid}
