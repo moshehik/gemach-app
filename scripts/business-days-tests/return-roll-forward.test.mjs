@@ -210,9 +210,29 @@ test('wiring: one helper behind lib/lateReturn.js and lib/schedule/dates.js; a5/
   const cron = read('app/api/cron/daily/route.js');
   assert.match(cron, /getExpectedReturnDate\(o, nonWorkingDays\) \?\? o\.returnDate/, 'customer e-mail shows the rolled date');
   assert.doesNotMatch(cron, /returnDate: getHebrewDateString\(o\.returnDate\)/);
+  // section 3 (הו"ק auto-charge): the raw returnDate SQL filter is only a superset; the gate is the rolled due day
+  assert.match(cron, /const dueKey = getExpectedReturnKey\(o, nonWorkingDays\);\s*\r?\n\s*if \(!dueKey \|\| dueKey > todayKey\) continue;/, 'auto-charge waits for the rolled due day');
+  assert.equal((cron.match(/parseNonWorkingDaysSetting\(/g) || []).length, 1, 'owner list parsed once, shared by sections 9 and 3');
+  assert.ok(cron.indexOf('const nonWorkingDays = parseNonWorkingDaysSetting(') < cron.indexOf("get('late_return_email_enabled')"), 'parsed before both blocks');
   // lib/lateReturn.js stays browser-safe (RentalReturnModal / app/rentals import it): relative imports only, no prisma/server modules
   assert.doesNotMatch(lr, /prisma|businessDaysServer|settingsCache|next\/headers/);
   assert.match(lr, /from '\.\/businessDays'/);
+});
+
+test('הו"ק auto-charge gate (cron section 3): returnDate Fri 16.10.2026 is charged from Sunday 18.10, not on Friday/Shabbat; working-day returnDate charged on its own day (as before)', () => {
+  // the gate as written in the route: skip while the rolled due day is after today's Israeli key
+  const charges = (o, todayIso, cfg) => { const dueKey = LR.getExpectedReturnKey(o, cfg ?? null); return !(!dueKey || dueKey > H.getIsraelDateKey(new Date(todayIso))); };
+  const fri = { eventDate: stored('2026-10-14'), returnDate: stored('2026-10-16') };
+  assert.equal(charges(fri, '2026-10-16T17:30:00Z'), false, 'Friday 20:30 Israel: not yet - the customer was told Sunday');
+  assert.equal(charges(fri, '2026-10-17T17:30:00Z'), false, 'Shabbat: no');
+  assert.equal(charges(fri, '2026-10-18T17:30:00Z'), true, 'Sunday (the due day) after the hour: yes');
+  assert.equal(charges(fri, '2026-10-19T17:30:00Z'), true);
+  assert.equal(charges(fri, '2026-10-18T17:30:00Z', owner(['2026-10-18'])), false, 'owner closed Sunday -> due Monday');
+  assert.equal(charges(fri, '2026-10-19T17:30:00Z', owner(['2026-10-18'])), true);
+  const thu = { eventDate: stored('2026-10-14'), returnDate: stored('2026-10-15') };
+  assert.equal(charges(thu, '2026-10-15T17:30:00Z'), true, 'working-day returnDate: charged on that day after the hour, as before');
+  assert.equal(charges(thu, '2026-10-14T17:30:00Z'), false);
+  assert.equal(charges({ eventDate: stored('2026-10-14'), returnDate: 'garbage' }, '2026-12-01T17:30:00Z'), false, 'invalid date: never charged');
   // weekday sanity for the owner's example used throughout this file
   assert.equal(weekday('2026-10-16'), 5, 'Friday');
   assert.equal(weekday('2026-10-18'), 0, 'Sunday');
