@@ -1,7 +1,7 @@
 # הדפסה והורדה בלו״ז היומי: ארכיטקטורה וחוזה
 
-**קומיט התשתית (תשתית + 2 דפי ייחוס, ענף מקומי `feature/schedule-print-core-2026-10-02`):** `INFRA_COMMIT_PLACEHOLDER`
-**קומיטים נוספים (אשף, הורדה):** ראו בסוף המסמך.
+**קומיט התשתית (תשתית + 2 דפי ייחוס, ענף מקומי `feature/schedule-print-core-2026-10-02`):** `76a548ac`
+**הורדה (xlsx + שער PDF):** `007245fc` · **אשף + כפתורים:** `ace0625e` (פירוט בסוף המסמך).
 
 מסמך זה הוא החוזה בין תשתית ההדפסה של הלו״ז לבין 13 הדפים שעדיין נבנים. מי שבונה דף חדש קורא את החלק
 "איך מוסיפים דף" ומעתיק את אחד משני דפי הייחוס. שום דבר כאן לא דורש DB, שרת פיתוח או פריסה.
@@ -146,12 +146,28 @@
 
 - דף 12 מחליף את "נתונים לשקית" ודפים 03/04/10/18 את `/print/alterations`/`/print/delivery-courier` **בעיצוב בלבד**:
   המשטחים הישנים לא הוסרו (ראו `replaces` ב-registry).
-- PDF בשרת (`POST /api/pdf` במצב `path`) דורש הוספת `/schedule/print` ל-`PRINT_PATH_PAGE_KEYS` + התאמת
-  ההשוואה לקידומת - ר' סעיף הקומיטים בסוף.
+- PDF בשרת: `POST /api/pdf { path:'/schedule/print/PP-01,PP-15?date=…&downloadPdf=true' }` - `lib/printAccess.js`
+  `printPathPageKeys()` מתיר בדיוק `/schedule/print/<מקטע אחד של מפתחות>` (לא `/schedule/print` עצמו, לא נתיבים
+  מקוננים) עם `page:schedule`; ה-API של הנתונים בודק שוב את ההרשאות של כל דף בתוך ה-Chromium. לא נבדק על Vercel.
 - ללא שינוי ב-`lib/schedule/*`, ב-`app/api/schedule/route.js`, ב-`schedule.css` או ב-`app/api/schedule/marks/*`.
 
-## קומיטים
+### 10. האשף והכפתורים (`ScheduleToolbarActions.js`, `print/PrintWizard.js`, `print/ScheduleToolbarActions.css`)
 
-- תשתית + PP-01 + PP-15 + בדיקות: `INFRA_COMMIT_PLACEHOLDER`
-- אשף + כפתורים: (יתעדכן)
-- הורדה (Excel/PDF): (יתעדכן)
+- `<ScheduleToolbarActions date branch stageData />` - שני לחצנים עגולים 36px (`.xlbtn.xld` ורוד/חץ, `.xlbtn.xlp`
+  תכלת/מדפסת, אייקוני SVG מוטמעים כמו בתצוגה, `title`+`data-tip`), ממוקמים בקצה סרגל הכותרת של הדף
+  (`.lz-app .topbar > .lz-ptools`, `margin-inline-start:auto` = שמאל ב-RTL, כמו `.topbar .lz-dtools` בתצוגה).
+  נקודת ההטמעה: שורה אחת ב-`ScheduleDay.js` אחרי `.ttl` (+ import). ה-CSS בקובץ נפרד תחום ל-`.gm-ds.gm-lz`;
+  `schedule.css` לא נוגע. נבדק מול התצוגה ב-`toolbar-check.mjs` (גודל, רדיוס, צבעים, גבול, אייקון, טולטיפ, סדר).
+- האשף: `mode` (הדפסה/הורדה, `seg.pill`), בהורדה גם `Excel`/`PDF`; לשוניות (`כל דפי היום` + שלבים עם מונה
+  מ-`stageData.counts.total`); רשימת `li.lz-wr` עם מתג `.sw`, תיאור, "N פריטים", "עם ברקוד", צ'יפ "בבנייה" לדפי
+  `todo` (לא ניתנים לבחירה), בורר גרסה ל-03/07; תצוגה מקדימה = `iframe` ל-`/schedule/print/<key>?…&preview=1`
+  (נטען רק לדף שבפוקוס); "הדפס נבחרים (n)" / "הדפס את כל דפי היום" (= כל דף `ready` של שלב עם פריטים).
+- הדפסה: `window.open('/schedule/print/<keys>?date&branch&version')`. Excel: `POST /api/schedule/print format=rows`
+  → `403 EXPORT_LIMIT` → שדה סיסמת מאשר/ת באשף → אותו POST עם `approvalPin` → `downloadScheduleXlsx` (xlsx נטען
+  בעצלתיים בלחיצה בלבד). PDF: `downloadPdf({ path })` מ-`app/lib/pdfClient.js`.
+
+## קומיטים (ענף מקומי, לא נדחף)
+
+- תשתית + PP-01 + PP-15 + בדיקות + harness: `76a548ac`
+- הורדה: xlsx רב-גיליוני RTL + שער הנתיב ל-PDF: `007245fc`
+- אשף + כפתורי הדפסה/הורדה + הטמעה ב-ScheduleDay: `ace0625e`

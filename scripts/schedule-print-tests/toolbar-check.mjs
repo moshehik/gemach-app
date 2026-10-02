@@ -66,6 +66,8 @@ try {
   await top.screenshot({ path: path.join(OUT, 'toolbar-real-hover-dl.png') });
   await real.hover('.topbar .xlbtn.xlp');
   await top.screenshot({ path: path.join(OUT, 'toolbar-real-hover-print.png') });
+  await real.mouse.move(0, 0); // leave the hover state (and let the .18s colour transition finish) before reading the resting styles
+  await new Promise((r) => setTimeout(r, 400));
   const mine = await real.evaluate(grab);
 
   const demo = await browser.newPage();
