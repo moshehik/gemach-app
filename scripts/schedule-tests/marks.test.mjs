@@ -761,3 +761,36 @@ test('client source: 409 alreadyMarked -> rollback + refresh of the day + a toas
   const page = fs.readFileSync(process.env.PROJ + '/app/components/schedule/ScheduleDay.js', 'utf8');
   assert.match(page, /useStageMarks\(\{ data, setData, refresh: refreshDay \}\)/);
 });
+
+test('repair (stage 2) undo without a schedule mark: alterations marked on the alterations screen are NOT cleared - unchanged + note, nothing written', async () => {
+  installWithTable();
+  const order = ORDERS.find((o) => o.orderId === 1011);
+  const saved = order.items.map((it) => it.alterationDone);
+  for (const it of order.items) it.alterationDone = true; // the seamstress finished both on the alterations screen
+  try {
+    const res = await day();
+    assert.equal(rowOf(res, 'repair', 1011).done, true, 'done via the existing field');
+    globalThis.__MOCK_CALLS = [];
+    const u = await apply({ action: 'unmark', stageKey: 'repair', dayKey: DAY, orderId: 1011, outcome: null, source: 'row' });
+    assert.equal(u.results[0].status, 'unchanged');
+    assert.equal(u.results[0].row.done, true);
+    assert.match(u.results[0].row.note, /לא סומן מהלו״ז/);
+    assert.equal(writes('orderItem').length + writes('scheduleStageMark').length, 0, 'nothing written');
+    assert.ok(order.items.every((it) => it.alterationDone === true), 'alterations kept');
+    // with a schedule mark, undo still reverts (the existing behaviour)
+    for (const it of order.items) it.alterationDone = false;
+    await apply({ action: 'mark', stageKey: 'repair', dayKey: DAY, orderId: 1011, outcome: null, source: 'row' });
+    globalThis.__MOCK_CALLS = [];
+    const u2 = await apply({ action: 'unmark', stageKey: 'repair', dayKey: DAY, orderId: 1011, outcome: null, source: 'row' });
+    assert.equal(u2.results[0].status, 'unmarked');
+    assert.ok(writes('orderItem', 'update').length > 0);
+    // an UNDONE mark (marked then undone earlier) is not a schedule "done" either
+    for (const it of order.items) it.alterationDone = true;
+    globalThis.__MOCK_CALLS = [];
+    const u3 = await apply({ action: 'unmark', stageKey: 'repair', dayKey: DAY, orderId: 1011, outcome: null, source: 'row' });
+    assert.equal(u3.results[0].status, 'unchanged');
+    assert.equal(writes('orderItem').length, 0);
+  } finally {
+    order.items.forEach((it, i) => { it.alterationDone = saved[i]; });
+  }
+});

@@ -169,8 +169,10 @@ export function useStageMarks({ data, setData, refresh = null }) {
       const who = (row.customer && row.customer.name) || '';
       // note מהשרת: ביטול שלא שינה את "בוצע" כי העובדה (נלקח/הוחזר בכרטיס) עדיין תקפה
       const note = res && res.row && res.row.note ? ' · ' + res.row.note : '';
+      // ביטול שהשרת לא ביצע (שלב 2: התיקונים סומנו במסך התיקונים, לא מהלו״ז) - status 'unchanged' + note
+      const notUndone = !done && res && res.status === 'unchanged' && note;
       say(
-        done ? (outcome === 'not_ok' ? 'סומן כהוחזר לא תקין' : 'סומן כבוצע') : 'הסימון בוטל',
+        done ? (outcome === 'not_ok' ? 'סומן כהוחזר לא תקין' : 'סומן כבוצע') : (notUndone ? 'לא בוטל' : 'הסימון בוטל'),
         stage.label + ' · #' + row.orderId + (who ? ' · ' + who : '') + note,
         done ? (outcome === 'not_ok' ? 'warn' : 'ok') : (note ? 'warn' : 'undo'),
       );
