@@ -80,8 +80,14 @@ export default function SchedulePrintPage() {
   }, [ready, payload, downloadPdf, preview]);
 
   const title = payload ? payload.pages.map((p) => p.def.label).join(' · ') : 'הדפסה';
+  // רינדור ל-PDF (downloadPdf): כשאין מה להדפיס, או שדף שנבחר דולג (אין הרשאה), הדף מסמן data-print-error
+  // ו-POST /api/pdf נכשל עם ההודעה הזאת (lib/pdf.js) במקום להחזיר PDF שכל תוכנו הודעת שגיאה / PDF חלקי.
+  const skipped = (payload && payload.meta && payload.meta.skipped) || [];
+  const printError = !ready ? null
+    : status && status.kind === 'err' ? status.text
+      : downloadPdf && skipped.length ? `אין הרשאה להדפיס: ${skipped.map((x) => x.label).join(', ')}` : null;
   return (
-    <div data-print-ready={ready ? 'true' : undefined} data-print-title={title}>
+    <div data-print-ready={ready ? 'true' : undefined} data-print-title={title} data-print-error={printError || undefined}>
       {/* הגופן העברי - גיליון נפרד שה-@import בראשו (ר' lib/schedule/print/font.js; אותו דפוס כמו app/print/order) */}
       <style>{PRINT_FONT_CSS}</style>
       {!preview && !downloadPdf ? (

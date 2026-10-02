@@ -13,14 +13,27 @@
 import Code39 from './Code39';
 import { money as fmtMoney } from '@/lib/schedule/print/format';
 import { getTemplate } from './templates';
+import { printNotices } from '@/lib/schedule/print/notices';
 
 export function PrintDocument({ payload, status = null, preview = false }) {
   return (
     <div className={'pp-root' + (preview ? ' pp-preview' : '')} dir="rtl" lang="he" data-tone="bw">
       <div className="pp-paper">
         {status ? <div className={'pp-status ' + (status.kind || 'info')} role={status.kind === 'err' ? 'alert' : 'status'}>{status.text}</div> : null}
+        {payload ? <PrintNotices notices={printNotices(payload)} /> : null}
         {payload ? payload.pages.map((page) => <PageSheets key={page.key} meta={payload.meta} page={page} />) : null}
       </div>
+    </div>
+  );
+}
+
+// "הרשימה עלולה להיות חלקית" - במסך ובהדפסה, מעל הגיליון הראשון (lib/schedule/print/notices.js)
+function PrintNotices({ notices }) {
+  if (!notices.length) return null;
+  return (
+    <div className="pp-notices" role="alert">
+      <b>שימו לב:</b>
+      <ul>{notices.map((n, i) => <li key={i}>{n}</li>)}</ul>
     </div>
   );
 }

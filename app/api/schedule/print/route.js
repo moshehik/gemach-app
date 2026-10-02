@@ -6,9 +6,10 @@ import { verifySecret } from '@/lib/passwordAuth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getScheduleDay } from '@/lib/schedule';
 import { isValidKey } from '@/lib/schedule/dates';
-import { parsePageList, parseVersions, getPrintPage } from '@/lib/schedule/print/registry';
+import { PRINT_PAGES, parsePageList, parseVersions, getPrintPage } from '@/lib/schedule/print/registry';
 import { loadExtras, buildPrintPayload, payloadToRows } from '@/lib/schedule/print/data';
 import { parseExportLimit } from '@/lib/schedule/print/exportLimit';
+import { printNotices } from '@/lib/schedule/print/notices';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // כמו GET /api/schedule (אותן שאילתות + שאילתת extras אחת)
@@ -21,7 +22,9 @@ export const maxDuration = 30; // כמו GET /api/schedule (אותן שאילת�
 //     403 { code:'EXPORT_LIMIT', total, limit } - ואז POST עם approvalPin (ר' למטה).
 // שערים (סגור כברירת מחדל, כמו /api/schedule): התחברות + page:schedule; ולכל דף גם extraPageKeys שלו
 // (lib/schedule/print/registry.js - אותן הרשאות שההדפסות הקיימות דורשות: מחירים -> page:orders/…,
-// משלוחים -> page:deliveries, תיקונים -> page:alterations/…) - חסר אחד מהם = 403 לכל הבקשה.
+// משלוחים -> page:deliveries, תיקונים -> page:alterations/…) - דף שאסור לעובד/ת מדולג ומדווח ב-meta.skipped
+// (הדפים האחרים מודפסים); רק כשכל הדפים שנבחרו אסורים -> 403.
+// format=access (בלי page): { allowed:[keys], forbidden:[keys] } - האשף מנטרל את הדפים האסורים מראש.
 // 400 = פרמטר שגוי, 404 = מפתח דף לא קיים/הוסר, 501 = דף רשום שעדיין לא נבנה.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -56,20 +59,34 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await canOpenPage('page:schedule'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { keys, bad, removed } = parsePageList(page);
+  // format=access: אילו דפים העובד/ת רשאי/ת להדפיס (האשף מנטרל את השאר) - בלי שאילתת נתונים
+  if (format === 'access') {
+    const allowed = [];
+    const forbidden = [];
+    for (const def of PRINT_PAGES) (await pageAllowed(def) ? allowed : forbidden).push(def.key);
+    return NextResponse.json({ allowed, forbidden }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  const { keys: requestedKeys, bad, removed } = parsePageList(page);
   if (bad.length) return NextResponse.json({ error: `דף לא מוכר: ${bad.join(', ')}` }, { status: 404 });
-  if (removed.length && !keys.length) return NextResponse.json({ error: `הדף הוסר מהסט: ${removed.join(', ')}` }, { status: 404 });
-  if (!keys.length) return NextResponse.json({ error: 'נדרש פרמטר page (למשל PP-15)' }, { status: 400 });
+  if (removed.length && !requestedKeys.length) return NextResponse.json({ error: `הדף הוסר מהסט: ${removed.join(', ')}` }, { status: 404 });
+  if (!requestedKeys.length) return NextResponse.json({ error: 'נדרש פרמטר page (למשל PP-15)' }, { status: 400 });
   if (date && !isValidKey(date)) return NextResponse.json({ error: 'תאריך לא תקין - נדרש YYYY-MM-DD' }, { status: 400 });
   if (format !== 'json' && format !== 'rows') return NextResponse.json({ error: 'format לא נתמך' }, { status: 400 });
 
-  const defs = keys.map(getPrintPage);
-  // הרשאה נוספת לכל דף (any-of בתוך הדף; כולם חייבים לעבור) - נבדקת לפני כל שאילתה
-  for (const def of defs) {
-    if (def.extraPageKeys && def.extraPageKeys.length && !(await canOpenAnyPage(def.extraPageKeys))) {
-      return NextResponse.json({ error: `אין הרשאה להדפיס את "${def.label}"`, page: def.key }, { status: 403 });
-    }
+  // הרשאה נוספת לכל דף (any-of בתוך הדף) - נבדקת לפני כל שאילתה. דף אסור מדולג (meta.skipped) ולא מפיל את
+  // כל הבקשה; רק כשכל הדפים שנבחרו אסורים -> 403.
+  const defs = [];
+  const skipped = [];
+  for (const def of requestedKeys.map(getPrintPage)) {
+    if (await pageAllowed(def)) defs.push(def);
+    else skipped.push({ key: def.key, label: def.label, reason: 'אין הרשאה' });
   }
+  if (!defs.length) {
+    const first = skipped[0];
+    return NextResponse.json({ error: skipped.length === 1 ? `אין הרשאה להדפיס את "${first.label}"` : `אין הרשאה להדפיס את הדפים שנבחרו: ${skipped.map((x) => x.label).join(', ')}`, page: first.key, pages: skipped.map((x) => x.key) }, { status: 403 });
+  }
+  const keys = defs.map((d) => d.key);
   const notBuilt = defs.filter((d) => d.status !== 'ready');
   if (notBuilt.length) {
     return NextResponse.json({ error: `הדף עדיין לא נבנה: ${notBuilt.map((d) => d.label).join(', ')}`, pages: notBuilt.map((d) => d.key) }, { status: 501 });
@@ -90,6 +107,7 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
     const printedBy = me ? (me.fullName || [me.firstName, me.lastName].filter(Boolean).join(' ')) : '';
     const extras = await loadExtras(day, defs);
     const payload = buildPrintPayload({ day, keys, versions: parseVersions(version, keys), extras, gmach, printedBy });
+    payload.meta.skipped = skipped;
 
     if (format === 'json') return NextResponse.json(payload, { headers: { 'Cache-Control': 'no-store' } });
 
@@ -107,7 +125,8 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
         );
       }
     }
-    return NextResponse.json({ meta: payload.meta, sheets, total, limit }, { headers: { 'Cache-Control': 'no-store' } });
+    // notices = "הרשימה עלולה להיות חלקית" (קיצוץ / אזהרות / דפים שדולגו) - האשף כותב אותן לגיליון "הערות" בקובץ
+    return NextResponse.json({ meta: payload.meta, sheets, total, limit, notices: printNotices(payload) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error && error.status === 400) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('GET /api/schedule/print error:', error);
@@ -117,6 +136,10 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
 
 // אותה בדיקה כמו POST /api/auth/verify-pin עם requiredLevel feature:export_over_limit_approval: הסיסמה של
 // עובד/ת פעיל/ה (bcrypt, verifySecret) שמחזיק/ה את פריט האישור בקטלוג ההרשאות.
+async function pageAllowed(def) {
+  return !(def.extraPageKeys && def.extraPageKeys.length) || canOpenAnyPage(def.extraPageKeys);
+}
+
 async function verifyExportApproval(pin) {
   try {
     const candidates = await prisma.employee.findMany({ where: { isActive: true } });

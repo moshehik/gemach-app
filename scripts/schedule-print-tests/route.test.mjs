@@ -168,6 +168,36 @@ test('format=rows: flat Hebrew-column rows per sheet; server-side export limit (
   assert.equal(zero.__json.limit, 0);
 });
 
+test('a forbidden page is skipped (meta.skipped), not a 403 for the whole request; format=access lists the printable pages', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const mixed = await get('?page=PP-01,PP-15&date=2026-10-01');
+  assert.equal(mixed.status, 200, JSON.stringify(mixed.__json));
+  assert.deepEqual(mixed.__json.pages.map((p) => p.key), ['PP-15']);
+  assert.deepEqual(mixed.__json.meta.skipped.map((x) => x.key), ['PP-01']);
+  const rows = await get('?page=PP-01,PP-15&date=2026-10-01&format=rows');
+  assert.equal(rows.status, 200);
+  assert.deepEqual(rows.__json.sheets.map((x) => x.key), ['PP-15']);
+  assert.deepEqual(rows.__json.meta.skipped.map((x) => x.key), ['PP-01']);
+  // every requested page forbidden -> still 403
+  const all = await get('?page=PP-01,PP-02&date=2026-10-01');
+  assert.equal(all.status, 403);
+  assert.deepEqual(all.__json.pages, ['PP-01', 'PP-02']);
+
+  const acc = await get('?format=access');
+  assert.equal(acc.status, 200);
+  assert.ok(acc.__json.forbidden.includes('PP-01') && acc.__json.forbidden.includes('PP-02'));
+  assert.ok(acc.__json.allowed.includes('PP-15') && acc.__json.allowed.includes('PP-07'));
+  assert.equal(acc.__json.allowed.length + acc.__json.forbidden.length, 15);
+
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const head = await get('?format=access');
+  assert.deepEqual(head.__json.forbidden, []);
+  assert.equal((await get('?page=PP-01,PP-15&date=2026-10-01')).__json.meta.skipped.length, 0);
+
+  globalThis.__AUTH_TOKEN = 'emp-worker-blocked';
+  assert.equal((await get('?format=access')).status, 403, 'access needs page:schedule too');
+});
+
 test('parseExportLimit: 0 is a real limit, default only for missing / invalid values', async () => {
   const { parseExportLimit, DEFAULT_EXPORT_LIMIT } = await L('lib/schedule/print/exportLimit.js');
   assert.equal(parseExportLimit(0), 0);

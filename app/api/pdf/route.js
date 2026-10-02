@@ -107,6 +107,11 @@ export async function POST(request) {
       },
     });
   } catch (err) {
+    // the print page itself reported that it has nothing to print (lib/pdf.js, data-print-error) - a clear
+    // 422 with the page's own message, not a PDF that contains the error text
+    if (err && err.printPageError) {
+      return NextResponse.json({ error: err.message }, { status: 422 });
+    }
     console.error('PDF generation failed:', err);
     // detail is intentionally included: Vercel function logs aren't reachable from the
     // owner's usual workflow, and this authed endpoint's launch errors (Chromium binary /

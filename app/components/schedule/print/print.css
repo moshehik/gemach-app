@@ -35,6 +35,9 @@
 .pp-sheet>thead>tr>td,.pp-sheet>tbody>tr>td,.pp-sheet>tfoot>tr>td{padding:0;border:0;vertical-align:top;background:transparent}
 .pp-status{max-width:210mm;margin:0 auto 14px;padding:12px 16px;background:#fff;border:1px solid #d3d7dc;border-radius:10px;font-size:14px;color:#333}
 .pp-status.err{border-color:#b3412e;color:#7a2416}
+/* "הרשימה עלולה להיות חלקית" (PrintShell PrintNotices) - נשאר גם בהדפסה, בשחור-לבן עם מסגרת עבה כדי שלא יפוספס */
+.pp-root .pp-notices{max-width:210mm;margin:0 auto 4mm;padding:2.5mm 4mm;border:.6mm solid #111;border-radius:2mm;background:#fff;color:#111;font-size:12px;line-height:1.45;break-inside:avoid}
+.pp-root .pp-notices ul{margin:1mm 0 0;padding-inline-start:5mm}
 .pp-toolbar{max-width:210mm;margin:0 auto 10px;display:flex;gap:8px;align-items:center;font-size:13px;color:#333}
 .pp-toolbar button{font:inherit;border:1px solid #0f2c52;background:#0f2c52;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;min-height:34px}
 .pp-toolbar button.sec{background:#fff;color:#0f2c52}

@@ -14,7 +14,11 @@ import { downloadPdf } from '@/app/lib/pdfClient';
 //   הדפסה: חלון חדש /schedule/print/<keys>?date&branch&version - window.print() נפתח שם לבד.
 //   הורדה: Excel (גיליון לכל דף, RTL; המגבלה נבדקת בשרת - מעל המגבלה נדרשת סיסמת מאשר/ת) או PDF (POST /api/pdf
 //   במצב path על אותו דף הדפסה, דרך השער של lib/printAccess.js).
-// props: mode ('print'|'download'), date (YYYY-MM-DD), branch, stageData (תשובת /api/schedule - למונים בלבד), onClose.
+// props: mode ('print'|'download'), format ('xlsx'|'pdf', למצב הורדה), initialTab (מפתח שלב: פותח על הלשונית שלו ובוחר
+//   רק את דפי השלב), date (YYYY-MM-DD), branch, stageData (תשובת /api/schedule - למונים בלבד), onClose.
+// הרשאות: GET /api/schedule/print?format=access מחזיר אילו דפים מותר להדפיס; דף אסור מוצג מנוטרל עם "אין הרשאה" ולא
+//   נבחר (גם לא ב"כל דפי היום"). השרת בודק שוב ומדלג על דף אסור (meta.skipped) - האשף רק חוסך את הניסיון.
+// נגישות: מלכודת פוקוס (Tab נשאר בחלון), החזרת הפוקוס לכפתור שפתח בסגירה, חיצים בין לשוניות / כפתורי בחירה.
 const PRINT_BASE = '/schedule/print/';
 
 function pagesByStage() {
@@ -26,7 +30,7 @@ function pagesByStage() {
   return map;
 }
 
-export default function PrintWizard({ mode: initialMode = 'print', date, branch = '', stageData = null, onClose }) {
+export default function PrintWizard({ mode: initialMode = 'print', format: initialFormat = 'xlsx', initialTab = null, date, branch = '', stageData = null, onClose }) {
   const byStage = useMemo(() => pagesByStage(), []);
   const stageKeys = STAGE_ORDER.filter((k) => byStage[k] && byStage[k].length);
   const counts = useMemo(() => {
@@ -36,13 +40,32 @@ export default function PrintWizard({ mode: initialMode = 'print', date, branch 
   }, [stageData]);
 
   const [mode, setMode] = useState(initialMode === 'download' ? 'download' : 'print');
-  const [format, setFormat] = useState('xlsx');
-  const [tab, setTab] = useState('all');
+  const [format, setFormat] = useState(initialFormat === 'pdf' ? 'pdf' : 'xlsx');
+  const startTab = initialTab && stageKeys.includes(initialTab) ? initialTab : 'all';
+  const [tab, setTab] = useState(startTab);
+  // ברירת מחדל: הדפים הבנויים של שלבים שיש בהם פריטים היום (נפתח משלב מסוים -> רק דפי השלב); דפים אסורים יוצאים
+  // מהבחירה כשתשובת ההרשאות מגיעה (ר' forbidden למטה)
   const [sel, setSel] = useState(() => {
     const s = {};
-    for (const p of PRINT_PAGES) s[p.key] = p.status === 'ready' && (counts[p.stages[0]] || 0) > 0;
+    for (const p of PRINT_PAGES) s[p.key] = p.status === 'ready' && (startTab === 'all' ? (counts[p.stages[0]] || 0) > 0 : p.stages[0] === startTab);
     return s;
   });
+  // null = עדיין לא ידוע (הכל פתוח; השרת בודק בכל מקרה), אחרת Set של מפתחות אסורים
+  const [forbidden, setForbidden] = useState(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch('/api/schedule/print?format=access', { credentials: 'same-origin', cache: 'no-store', signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d || !Array.isArray(d.forbidden)) return;
+        const f = new Set(d.forbidden);
+        setForbidden(f);
+        if (f.size) setSel((s) => { const n = { ...s }; for (const k of f) n[k] = false; return n; });
+      })
+      .catch(() => { /* השרת עדיין מדלג על דף אסור */ });
+    return () => ctrl.abort();
+  }, []);
+  const usable = useCallback((p) => p.status === 'ready' && !(forbidden && forbidden.has(p.key)), [forbidden]);
   const [versions, setVersions] = useState(() => {
     const v = {};
     for (const p of PRINT_PAGES) if (p.versions) v[p.key] = defaultVersion(p);
@@ -56,15 +79,51 @@ export default function PrintWizard({ mode: initialMode = 'print', date, branch 
   const dlgRef = useRef(null);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    // הפוקוס חוזר בסגירה לאלמנט שפתח את האשף (כפתור בסרגל / בשלב)
+    const opener = typeof document !== 'undefined' ? document.activeElement : null;
+    const onKey = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      const dlg = dlgRef.current;
+      if (!dlg) return;
+      if (e.key === 'Tab') {
+        // מלכודת פוקוס: Tab / Shift+Tab מסתובבים בתוך החלון
+        const els = [...dlg.querySelectorAll('button, input, select, textarea, iframe, [tabindex]:not([tabindex="-1"])')].filter((el) => !el.disabled && el.offsetParent !== null);
+        if (!els.length) return;
+        const first = els[0];
+        const last = els[els.length - 1];
+        if (!dlg.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+        else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        return;
+      }
+      // חיצים בין לשוניות / כפתורי בחירה של אותה קבוצה (RTL: שמאלה = הבא)
+      const tgt = e.target;
+      const role = tgt && tgt.getAttribute ? tgt.getAttribute('role') : null;
+      if ((role === 'tab' || role === 'radio') && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) && dlg.contains(tgt)) {
+        const group = [...tgt.parentElement.children].filter((el) => el.getAttribute('role') === role && !el.disabled);
+        const i = group.indexOf(tgt);
+        if (i < 0 || group.length < 2) return;
+        const next = e.key === 'Home' ? 0 : e.key === 'End' ? group.length - 1
+          : (e.key === 'ArrowLeft' || e.key === 'ArrowDown') ? (i + 1) % group.length : (i - 1 + group.length) % group.length;
+        e.preventDefault();
+        group[next].focus();
+        group[next].click();
+      }
+    };
     document.addEventListener('keydown', onKey);
     const t = setTimeout(() => { try { dlgRef.current && dlgRef.current.querySelector('button') && dlgRef.current.querySelector('button').focus(); } catch { /* */ } }, 50);
-    return () => { document.removeEventListener('keydown', onKey); clearTimeout(t); };
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      clearTimeout(t);
+      try { if (opener && opener.focus && document.contains(opener)) opener.focus(); } catch { /* */ }
+    };
   }, [onClose]);
 
   const listed = useMemo(() => PRINT_PAGES.filter((p) => tab === 'all' || p.stages[0] === tab), [tab]);
-  const selected = PRINT_PAGES.filter((p) => sel[p.key] && p.status === 'ready');
-  const focused = PRINT_PAGES.find((p) => p.key === focus && p.status === 'ready') || selected.find((p) => tab === 'all' || p.stages[0] === tab) || listed.find((p) => p.status === 'ready') || null;
+  const selected = PRINT_PAGES.filter((p) => sel[p.key] && usable(p));
+  // התצוגה המקדימה נטענת רק לדף שהמשתמש/ת בחר/ה (לחיצה על שורה / מתג / גרסה) - לא אוטומטית בפתיחה:
+  // כל טעינה של ה-iframe היא getScheduleDay מלא בשרת
+  const focused = PRINT_PAGES.find((p) => p.key === focus && usable(p)) || null;
 
   const qs = useCallback((keys) => {
     const u = new URLSearchParams();
@@ -77,7 +136,7 @@ export default function PrintWizard({ mode: initialMode = 'print', date, branch 
 
   const printUrl = useCallback((keys, extra = '') => PRINT_BASE + keys.join(',') + '?' + qs(keys) + extra, [qs]);
 
-  const setAll = (on) => setSel((s) => { const n = { ...s }; for (const p of listed) if (p.status === 'ready') n[p.key] = on; return n; });
+  const setAll = (on) => setSel((s) => { const n = { ...s }; for (const p of listed) if (usable(p)) n[p.key] = on; return n; });
 
   const run = async (pages) => {
     const keys = pages.map((p) => p.key);
@@ -120,12 +179,17 @@ export default function PrintWizard({ mode: initialMode = 'print', date, branch 
     if (!res.ok) throw new Error((data && data.error) || 'שגיאה בהכנת הייצוא');
     setPinNeeded(null);
     setPin('');
-    const ok = await downloadScheduleXlsx(data.sheets, `luz-${date || 'today'}`);
-    setMsg(ok ? { kind: 'ok', text: `קובץ ה-Excel ירד: ${data.sheets.length} גיליונות, ${data.total} שורות.` } : { kind: 'err', text: 'אין נתונים לייצוא' });
+    const notices = Array.isArray(data.notices) ? data.notices : [];
+    const ok = await downloadScheduleXlsx(data.sheets, `luz-${date || 'today'}`, notices);
+    if (!ok) { setMsg({ kind: 'err', text: 'אין נתונים לייצוא' }); return; }
+    // קובץ חלקי (קיצוץ / דף שדולג) - ההודעה מופיעה גם כאן וגם בגיליון "הערות" שבקובץ
+    setMsg(notices.length
+      ? { kind: 'info', text: `קובץ ה-Excel ירד (${data.sheets.length} גיליונות, ${data.total} שורות) - שימו לב: ${notices.join(' ')}` }
+      : { kind: 'ok', text: `קובץ ה-Excel ירד: ${data.sheets.length} גיליונות, ${data.total} שורות.` });
   }
 
   const n = selected.length;
-  const allDay = PRINT_PAGES.filter((p) => p.status === 'ready' && (counts[p.stages[0]] || 0) > 0);
+  const allDay = PRINT_PAGES.filter((p) => usable(p) && (counts[p.stages[0]] || 0) > 0);
   const goLabel = mode === 'print' ? `הדפס נבחרים (${n})` : format === 'pdf' ? `הורד PDF (${n})` : `הורד Excel (${n})`;
   const allLabel = mode === 'print' ? 'הדפס את כל דפי היום' : 'הורד את כל דפי היום';
   const dayTitle = date ? (() => { const h = hebrewParts(date); return h.dl + ' ' + h.m; })() : '';
@@ -175,13 +239,15 @@ export default function PrintWizard({ mode: initialMode = 'print', date, branch 
             {listed.map((p, i) => {
               const k = p.stages[0];
               const showHead = tab === 'all' && (i === 0 || listed[i - 1].stages[0] !== k);
-              const ready = p.status === 'ready';
+              const built = p.status === 'ready';
+              const denied = built && !!(forbidden && forbidden.has(p.key));
+              const ready = built && !denied;
               return (
                 <PageRowGroup key={p.key} showHead={showHead} stageKey={k} count={counts[k] || 0}>
-                  <div className={'li lz-wr' + (focused && focused.key === p.key ? ' foc' : '') + (ready ? '' : ' lz-wtodo')} onClick={() => ready && setFocus(p.key)}>
+                  <div className={'li lz-wr' + (focused && focused.key === p.key ? ' foc' : '') + (ready ? '' : ' lz-wtodo')} title={denied ? 'אין לך הרשאה להדפיס את הדף הזה' : undefined} onClick={() => ready && setFocus(p.key)}>
                     <div className="ic-b"><ScheduleIcon name={STAGE_META[k].icon} /></div>
                     <div className="t">
-                      <b>{p.label}{ready ? null : <span className="chip gray lz-wchip">בבנייה</span>}</b>
+                      <b>{p.label}{!built ? <span className="chip gray lz-wchip">בבנייה</span> : denied ? <span className="chip gray lz-wchip">אין הרשאה</span> : null}</b>
                       <small>{p.desc} · {counts[k] || 0} פריטים{p.barcode ? ' · עם ברקוד' : ''}</small>
                       {p.versions && ready ? (
                         <div className="seg pill lz-wver" role="radiogroup" aria-label={'גרסה: ' + p.label} style={{ '--n': p.versions.length, '--i': Math.max(0, p.versions.findIndex((v) => v.k === versions[p.key])) }} onClick={(e) => e.stopPropagation()}>
@@ -220,7 +286,7 @@ export default function PrintWizard({ mode: initialMode = 'print', date, branch 
         {pinNeeded && mode === 'download' && format === 'xlsx' ? (
           <div className="lz-wpin">
             <label htmlFor="lz-wpin-in">סיסמת מאשר/ת לייצוא מעל המגבלה</label>
-            <input id="lz-wpin-in" className="inp" type="password" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && pin) run(PRINT_PAGES.filter((p) => pinNeeded.keys.includes(p.key))); }} />
+            <input id="lz-wpin-in" className="inp" type="password" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && pin && !busy) run(PRINT_PAGES.filter((p) => pinNeeded.keys.includes(p.key))); }} />
             <button type="button" className="btn" disabled={!pin || busy} onClick={() => run(PRINT_PAGES.filter((p) => pinNeeded.keys.includes(p.key)))}>אישור וייצוא</button>
           </div>
         ) : null}
