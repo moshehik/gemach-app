@@ -188,6 +188,24 @@ test('stage 8 parity: addBusinessDays(event, 1, cfg) === getExpectedReturnKey (l
   }
 });
 
+test('stage 8 parity for EXPLICIT dates: rollForwardToWorkingDay(toDate) === getExpectedReturnKey (lib/lateReturn.js) on 120 consecutive days, with and without owner-marked days (owner decision 2.10.2026)', () => {
+  const cfg = owner(['2026-10-05', '2026-11-17', '2026-11-18', { date: '2026-10-16', status: 'open' }]);
+  let key = '2026-09-01';
+  for (let i = 0; i < 120; i++) {
+    for (const field of ['toDate', 'returnDate']) {
+      const order = { eventDate: '2026-08-20T00:00:00.000Z', [field]: key + 'T00:00:00.000Z' };
+      assert.equal(LR.getExpectedReturnKey(order, cfg), D.rollForwardToWorkingDay(key, cfg), field + ' ' + key + ' (owner list)');
+      assert.equal(LR.getExpectedReturnKey(order), D.rollForwardToWorkingDay(key), field + ' ' + key);
+      assert.equal(D.isNonWorkingDay(LR.getExpectedReturnKey(order, cfg), cfg), false, 'never lands on a closed day');
+    }
+    key = D.addCalendarDays(key, 1);
+  }
+  // the owner's "open" override on Fri 16.10 keeps the explicit date in both places
+  assert.equal(D.rollForwardToWorkingDay('2026-10-16', cfg), '2026-10-16');
+  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-10-16T00:00:00.000Z' }, cfg), '2026-10-16');
+  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-10-16T00:00:00.000Z' }), '2026-10-18');
+});
+
 test('addBusinessDays backward 3 days equals the existing getPrintPrepDate rule (no owner list) on 90 consecutive days', () => {
   let key = '2026-09-01';
   for (let i = 0; i < 90; i++) {

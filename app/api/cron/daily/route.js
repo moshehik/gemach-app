@@ -7,7 +7,7 @@ import {
 } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate, getIsraelTodayKey, addDaysToDateKey } from '@/lib/hebrewDate';
-import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { getLateReturnInfo, getExpectedReturnDate, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 
 export const dynamic = 'force-dynamic';
@@ -148,9 +148,12 @@ export async function GET(request) {
         const subject = emailSubject('lateReturnReminder', { orderId: o.orderId });
         const alreadySent = await prisma.emailLog.findFirst({ where: { subject, status: 'success' } });
         if (alreadySent) continue;
-        const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${getHebrewDateString(o.returnDate)}\n`;
+        // תאריך ההחזרה במייל = אותו מועד שנספר כאיחור (getExpectedReturnDate): תאריך מפורש שנופל על יום סגור
+        // מוצג כיום העבודה הבא (החלטת הבעלים 2.10.2026), ונקרא לפי היום הישראלי של הרגע השמור (לא לפי UTC של השרת).
+        const returnDateLabel = getHebrewDateString(getExpectedReturnDate(o, nonWorkingDays) ?? o.returnDate);
+        const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${returnDateLabel}\n`;
         const html = renderLateReturnEmailHtml({
-          customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: getHebrewDateString(o.returnDate), message: text,
+          customerName: o.customer.firstName || '', orderId: o.orderId, returnDate: returnDateLabel, message: text,
           gmachName: get('gmach_name') || 'גמ"ח שמלות', gmachAddress: get('gmach_address') || '', gmachPhone: get('gmach_phone') || '',
         });
         const r = await sendSystemEmail({ to: email, subject, body, html });
