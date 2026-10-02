@@ -4,7 +4,7 @@
 // הרצה: node scripts/test_home_css_guard.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 // בדיקה חזותית מלאה מול העיצוב: scripts/home-bg-audit/README.md
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const HOME_CSS = read('../app/components/home/home.css');
@@ -241,7 +241,7 @@ t('נטרול דליפה בלו״ז: design-overrides.css כופה גופן Assi
 /* ---------- 6ג. דף הלו״ז - נאמנות לעיצוב (ביקורת הבעלים 2.10.2026, docs/ui-fidelity-schedule.md) ---------- */
 const SCHED_DIR = new URL('../app/components/schedule/', import.meta.url);
 const schedSrc = (f) => readFileSync(new URL(f, SCHED_DIR), 'utf8');
-const SCHED_FILES = ['ScheduleDay.js', 'StageRow.js', 'StageSection.js', 'StageRail.js', 'HebrewDayPicker.js', 'ScheduleToolbarSlots.js', 'ScheduleIcon.js', 'ScheduleSkeleton.js', 'scheduleMeta.js'];
+const SCHED_FILES = ['ScheduleDay.js', 'StageRow.js', 'StageSection.js', 'StageRail.js', 'HebrewDayPicker.js', 'ScheduleToolbarSlots.js', 'ScheduleIcon.js', 'ScheduleSkeleton.js', 'scheduleMeta.js', 'MarkControls.js', 'MarkDialogs.js', 'useStageMarks.js'];
 t('לוז: השורש בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה = CSS של דף הבית, דורס שורות/מתג/טבלה של הלוז)', () => {
   assert.match(schedSrc('ScheduleDay.js'), /className="gm-ds gm-lz home-bg"/);
   assert.ok(!/gm-home/.test(schedSrc('ScheduleDay.js')), 'gm-home חזר לשורש הלוז');
@@ -256,9 +256,13 @@ t('לוז: אין טקסטים שהבעלים לא הגדיר (כיתוב "לק�
   assert.ok(!/\{total\} \{stage\.plural\}/.test(schedSrc('StageSection.js')), 'תגית "N אירועים" חזרה לכותרת השלב');
 });
 t('לוז: הרכיבים של העיצוב קיימים - לחצן "בוצע" (btn tgl lz-mark), "הוחזר לא תקין" (lz-retw), "הכל בוצע" (lz-all), כלי XL/הורדה/הדפסה (lz-dtools/lz-stools), שורת ברקוד (sbar)', () => {
-  const row = schedSrc('StageRow.js'), sec = schedSrc('StageSection.js'), rail = schedSrc('StageRail.js'), day = schedSrc('ScheduleDay.js'), slots = schedSrc('ScheduleToolbarSlots.js');
-  assert.ok(row.includes('className="btn tgl lz-mark"') && row.includes('className="btn tgl lz-mark on"') && row.includes('className="lz-retw"') && row.includes('lz-mark lz-bad'));
-  assert.ok(sec.includes('className="ibtn lz-all"') && sec.includes('<SectionTools'));
+  // המראה של לחצני הסימון יושב ב-MarkControls.js (אותו markup כמו בעיצוב), ההתנהגות ב-useStageMarks.js - חוזה אחד
+  const mk = schedSrc('MarkControls.js'), row = schedSrc('StageRow.js'), sec = schedSrc('StageSection.js'), rail = schedSrc('StageRail.js'), day = schedSrc('ScheduleDay.js'), slots = schedSrc('ScheduleToolbarSlots.js');
+  assert.ok(mk.includes('className="btn tgl lz-mark"') && mk.includes('className="btn tgl lz-mark on"') && mk.includes('className="lz-retw"') && mk.includes('lz-mark lz-bad'));
+  assert.ok(mk.includes('className="ibtn lz-all"') && row.includes('<MarkButton') && sec.includes('<MarkAllButton') && sec.includes('<SectionTools'));
+  assert.ok(day.includes('useStageMarks({ data, setData })') && day.includes('<MarkToast'), 'ScheduleDay מחבר את ה-hook ואת הטוסט');
+  assert.ok(/onMarkDone\(stage, row, \{ done/.test(mk) && !/onMarkDone\(row, stage/.test(mk + row + sec + day) && !/condition: 'bad'/.test(mk + row), 'חוזה אחד: onMarkDone(stage, row, { done, outcome })');
+  assert.ok(!existsSync(new URL('marks.css', SCHED_DIR)) && !/lz-busy|StatusChips|lz-done-chip|lz-todo-chip/.test(mk + row + sec), 'שאריות של פקדי הסימון הישנים');
   assert.ok(day.includes('<PageTools') && slots.includes('className="tools lz-dtools"') && slots.includes('className="tools lz-stools"'));
   assert.ok(rail.includes('className="sbar"') && rail.includes('id="scanIn"'));
   // הטולטיפים של לחצני הסימון הם בדיוק טקסטי העיצוב
@@ -273,6 +277,20 @@ t('schedule.css: הכרטיס עם רקע הפנינה של העיצוב ב-!imp
   assert.ok(hasSched(/\.rtbl thead tr th/, /^box-shadow$/, { important: true, valueRe: /^none/ }));
   assert.ok(hasSched(/\.lz-snav \.sbar$/, /^display$/, { important: true, valueRe: /^flex/ }), 'שורת הברקוד: הפלטה מסתירה .sbar ב-!important');
   assert.ok(hasSched(/#scanIn/, /^background$/, { important: true, valueRe: /^transparent/ }), 'שדה הברקוד: הפלטה צובעת .inp בלבן ב-!important');
+  assert.ok(hasSched(/\.rtbl thead tr th/, /^border-bottom$/, { important: true, valueRe: /^0/ }), 'כותרת הטבלה: globals.css כופה border-bottom זהוב בערכת כהה');
+});
+t('schedule.css: לחצן כבוי ("בוצע" / "הכל בוצע") שומר על הריחוף והמיקוד של העיצוב - איפוסי המראה הכבוי מוגבלים למנוחה (סקירה 2.10, B)', () => {
+  const resets = scheduleRules.filter((r) => /(lz-mark|lz-all)[^,]*:disabled/.test(r.sel) && setsProp(r, /^(background|color|border-color)$/).length);
+  assert.ok(resets.length >= 2, 'חסרים כללי המראה הכבוי');
+  for (const r of resets) for (const s of splitSel(r.sel)) if (/(lz-mark|lz-all)[^,]*:disabled/.test(s)) assert.match(s, /:not\(:hover\):not\(:focus-visible\)/, 'כלל כבוי שמבטל ריחוף/מיקוד: ' + s);
+  // opacity:1 לכבוי לא חל על "הוחזר לא תקין" (lz-bad) - הוא מופיע בריחוף דרך opacity
+  const op1 = scheduleRules.filter((r) => /:disabled/.test(r.sel) && setsProp(r, /^opacity$/).some((d) => /^1$/.test(d.value.trim())));
+  assert.ok(op1.length, 'חסר opacity:1 ללחצן כבוי');
+  for (const r of op1) for (const s of splitSel(r.sel)) if (/lz-mark/.test(s)) assert.match(s, /:not\(\.lz-bad\)/, 'opacity:1 חל גם על lz-bad: ' + s);
+  // חלון "בטוח?" והטוסט על רכיבי הפלטה (scrim/dlg/#toast), בלי קובץ CSS נפרד לסימון
+  assert.ok(hasSched(/\.dlg\.lz-cf$/, /^max-width$/), 'חסר כלל החלון lz-cf');
+  assert.ok(hasSched(/\.lz-det \.li$/, /^background$/), 'חסרות שורות הפירוט lz-det (עיצוב 1209)');
+  assert.ok(hasSched(/#toast \.tclose$/, /^display$/), 'חסר לחצן הסגירה של הטוסט');
 });
 
 /* ---------- 7. אין עוד כפתור/אייקון "אחרונים" בשורת החיפוש (החלטת הבעלים 2.10.2026) ---------- */
