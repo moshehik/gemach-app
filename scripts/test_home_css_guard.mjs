@@ -318,10 +318,10 @@ t('בדיקת מלאי: שורש הדף נושא home-bg (תמונת הרקע ש
 });
 t('בדיקת מלאי: "נקה" מנקה גם את התאריך (לא רק דגם ומידות)', () => {
   const src = read('../app/components/stock/StockCheckPage.js');
-  const m = src.match(/const clearAll = \(\) => \{([\s\S]*?)
-  \};/);
-  assert.ok(m, 'clearAll לא נמצא');
-  assert.ok(/setDate\(''\)/.test(m[1]), 'clearAll לא מאפס את התאריך');
+  const i = src.indexOf('const clearAll = () => {');
+  assert.ok(i >= 0, 'clearAll לא נמצא');
+  const body = src.slice(i, src.indexOf('};', i));
+  assert.ok(body.includes("setDate('')"), 'clearAll לא מאפס את התאריך');
 });
 t('stock-check.css: כל כלל בהיקף .gm-ds.gm-home.stock-page (לא דולף לדף הבית ולא לשאר האתר)', () => {
   const bad = [];
