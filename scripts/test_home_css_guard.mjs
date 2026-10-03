@@ -215,6 +215,30 @@ t('אין כלל גלובלי חדש (globals/design-overrides/design-system) ש
     + '\n          הוסיפו נטרול ב-app/components/home/home.css בהיקף .gm-ds.gm-home, בדקו מול העיצוב, והוסיפו את ה-selector ל-KNOWN_GLOBAL כאן.');
 });
 
+/* ---------- 6א. עטיפת הטבלה (.tblw) לא חתוכה (באג 4.10.2026: "עוד N" בתצוגת טבלה - אי אפשר לגלול לשורות התחתונות) ---------- */
+// globals.css: `div:has(> table){max-height:75vh;overflow-y:auto}` ("כותרת דביקה") תופס גם את .gm-ds .tblw, והפלטה קובעת לו overflow:hidden =>
+// גוף הטבלה נחתך ב-75vh בלי גלילה פנימית. התיקון: max-height:none ל-.gm-ds .tblw (ספציפיות גבוהה מ-div:has(> table)), כך שהדף הוא שגולל.
+// בדיקה בדפדפן אמיתי (גלגלת + מגע): scripts/home-scroll-audit/README.md.
+t('globals.css: .gm-ds .tblw פטור ממגבלת ה-75vh של div:has(> table) (אחרת "עוד N" בטבלה חותך שורות)', () => {
+  assert.ok(globalRules.some((r) => r.sel === 'div:has(> table)' && setsProp(r, /^max-height$/).length), 'הכלל הגלובלי div:has(> table){max-height} נעלם - אפשר להסיר את הפטור והבדיקה הזו');
+  const ex = globalRules.filter((r) => splitSel(r.sel).includes('.gm-ds .tblw') && setsProp(r, /^max-height$/).some((d) => /^none\b/.test(d.value)));
+  assert.ok(ex.length, 'חסר `.gm-ds .tblw { max-height: none }` ב-app/globals.css (אחרי הכלל div:has(> table))');
+  const all = globalRules.map((r, i) => ({ r, i }));
+  const gi = all.find((x) => x.r.sel === 'div:has(> table)' && setsProp(x.r, /^max-height$/).length).i;
+  assert.ok(all.find((x) => x.r === ex[0]).i > gi, 'הפטור של .tblw חייב לבוא אחרי הכלל הגלובלי (ובספציפיות גבוהה ממנו)');
+});
+t('אף כלל בפלטה / home.css / stock-check.css / schedule.css לא מגביל גובה לעטיפת הטבלה (.tblw) - הדף גולל, לא העטיפה', () => {
+  const bad = [];
+  for (const [label, rules] of [['components.css', parseCss(PALETTE)], ['home.css', homeRules], ['stock-check.css', parseCss(STOCK_CSS)], ['schedule.css', parseCss(read('../app/schedule/schedule.css'))]]) {
+    for (const r of rules) {
+      if (!splitSel(r.sel).some((s) => /\.tblw\b(?!\s+\S)/.test(s) || /\.tblw$/.test(s))) continue;
+      for (const d of setsProp(r, /^(max-height|height)$/)) if (!/^(none|auto|unset|initial)\b/.test(d.value)) bad.push(`${label}: ${r.sel} { ${d.prop}: ${d.value} }`);
+      for (const d of setsProp(r, /^overflow(-y)?$/)) if (/\b(auto|scroll)\b/.test(d.prop === 'overflow' ? d.value.split(/\s+/).pop() : d.value)) bad.push(`${label}: ${r.sel} { ${d.prop}: ${d.value} } (גלילה אנכית פנימית)`);
+    }
+  }
+  assert.deepEqual(bad, [], 'עטיפת הטבלה מוגבלת בגובה: ' + bad.join(' | '));
+});
+
 /* ---------- 6ב. דף הלו״ז (app/schedule/schedule.css) - אותה משפחת דליפות: היקף + נטרול הגופנים של design-overrides.css ---------- */
 // הדף נטען בלי home.css, ולכן הנטרולים של דף הבית לא עוזרים לו. נבדק כאן רק מה שמשותף: היקף .gm-ds, אין @media לפני
 // הכלל הרגיל, וכללי הגופן (!important על לחצנים/שדות וכותרות) שבלעדיהם הדף מוצג ב-Frank Ruhl/Assistant.
