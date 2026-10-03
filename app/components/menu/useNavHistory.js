@@ -27,6 +27,7 @@ import {
 import { defaultLabel, parseEntityPath, legacyItemToRecent } from '@/lib/menu/recents';
 import { findActive } from '@/lib/menu/buildMenuTree';
 import { getHistory } from '@/lib/historyManager';
+import { pageLabel } from '@/lib/menu/pageLabels';
 
 // עמודים שאינם בעץ התפריט החדש אבל אפשר להגיע אליהם (תווית קריאה במקום נתיב גולמי).
 const EXTRA_LABELS = {
@@ -128,7 +129,7 @@ export default function useNavHistory(tree, queryString = '') {
       const hit = ENTITY_PREFIX_LABELS.find(([pre]) => pathname.startsWith(pre));
       if (hit) { label = hit[1]; icon = hit[2]; }
     }
-    if (!label) label = EXTRA_LABELS[pathname] || pathname;
+    if (!label) label = EXTRA_LABELS[pathname] || pageLabel(pathname); // לעולם לא נתיב גולמי באנגלית
     commit(navVisit(ref.current, { path: href, label, icon }));
   }, [pathname, queryString, tree, commit]); // queryString רק מפעיל ביקור חדש; הערך נקרא מ-window.location
 

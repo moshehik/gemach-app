@@ -891,4 +891,48 @@ t('פאנל החיפוש: אין חיצי אחורה/קדימה ולא "עמוד
   assert.ok(/\.sn-sbox input:focus[^{]*\{[^}]*outline:0!important[^}]*box-shadow:none!important/.test(css), 'אין טבעת פוקוס של האתר הישן על השדה');
 });
 
+// ---- תוויות עבריות ל"נצפו לאחרונה" (תיקון רוחבי: אף נתיב גולמי באנגלית) ----
+import { pageLabel, hebrewLabelOr, hasPageLabel, ROUTE_LABELS, FALLBACK_PAGE_LABEL } from '../lib/menu/pageLabels.js';
+import { makeEntry } from '../lib/menu/navHistory.js';
+import { readdirSync, statSync } from 'node:fs';
+const HEB = /[\u05d0-\u05ea]/;
+function pageRoutes(dir = 'app', base = '') {
+  const out = [];
+  for (const name of readdirSync(new URL('../' + dir, import.meta.url))) {
+    const rel = dir + '/' + name;
+    const st = statSync(new URL('../' + rel, import.meta.url));
+    if (st.isDirectory()) { out.push(...pageRoutes(rel, base + '/' + name)); }
+    else if (name === 'page.js') out.push(base || '/');
+  }
+  return out;
+}
+t('כל עמוד באתר (app/**/page.js) מקבל תווית עברית - לא נתיב ולא "עמוד במערכת" (נוסף עמוד? צריך להוסיף ל-lib/menu/pageLabels.js)', () => {
+  const missing = [];
+  for (const route of pageRoutes()) {
+    const sample = route.replace(/\[[^\]]+\]/g, 'x1');
+    if (!hasPageLabel(sample) || !HEB.test(pageLabel(sample))) missing.push(route); // תווית מפורשת בלבד - לא אב קרוב ולא ברירת מחדל
+  }
+  assert.deepEqual(missing, [], 'עמודים בלי תווית עברית: ' + missing.join(', '));
+});
+t('pageLabel: מדויק, דינמי, אב קרוב, וברירת מחדל עברית', () => {
+  assert.equal(pageLabel('/stock-check'), 'בדיקת מלאי');
+  assert.equal(pageLabel('/my-hours?x=1#a'), 'השעות שלי');
+  assert.equal(pageLabel('/employees/abc123'), 'כרטיס עובד');
+  assert.equal(pageLabel('/admin/new-future-page'), 'לוח ניהול');
+  assert.equal(pageLabel('/totally/unknown'), FALLBACK_PAGE_LABEL);
+  assert.ok(Object.values(ROUTE_LABELS).every((l) => HEB.test(l)));
+});
+t('רשומת ניווט / פריט "נצפו לאחרונה" בלי תווית עברית (נתיב, אנגלית, ריק) מקבלים תווית עברית; תווית עברית נשמרת', () => {
+  assert.equal(makeEntry({ path: '/stock-check', label: '/stock-check' }, 1).label, 'בדיקת מלאי');
+  assert.equal(makeEntry({ path: '/profile', label: 'profile' }, 1).label, 'הפרופיל שלי');
+  assert.equal(makeEntry({ path: '/profile' }, 1).label, 'הפרופיל שלי');
+  assert.equal(makeEntry({ path: '/schedule', label: 'לוז' }, 1).label, 'לוז');
+  const r = navEntryToRecent({ key: '/my-hours', path: '/my-hours', label: '/my-hours', icon: 'file', ts: 5 });
+  assert.equal(r.label, 'השעות שלי');
+  assert.equal(hebrewLabelOr('הזמנה #123', '/orders/123'), 'הזמנה #123');
+  assert.equal(hebrewLabelOr('52103', '/orders/52103'), '52103'); // תווית ישות מועשרת לא מוחלפת
+  assert.equal(hebrewLabelOr('Sarah Cohen', '/customers/abc'), 'Sarah Cohen');
+  assert.equal(hebrewLabelOr('', '/customers/abc'), 'לקוח');
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

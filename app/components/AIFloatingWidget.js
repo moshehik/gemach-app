@@ -61,6 +61,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [isListening, setIsListening] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [chatSessions, setChatSessions] = useState([]);
+  // כותרת השיחה = `title` שהשרת מצרף לתשובה הראשונה (נשמר על הודעת ה-assistant, ולכן גם ב-localStorage ובמסד, בלי שדה חדש)
+  const chatTitle = (msgs) => ((msgs || []).find((m) => m && m.title) || {}).title || '';
 
   // צילום/הקלטה מצורפים להודעה הבאה - ר' תוכנית Phase 3/4.
   const [pendingImage, setPendingImage] = useState(null); // data URL
@@ -231,7 +233,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       try {
         const parsed = JSON.parse(saved);
         if (parsed.length > 1) {
-          const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...parsed] };
+          const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), title: chatTitle(parsed), messages: [...parsed] };
           sessions = [newSession, ...sessions].slice(0, 10);
           localStorage.setItem(sessionsKey, JSON.stringify(sessions));
         }
@@ -257,7 +259,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const startNewChat = () => {
     if (messages.length > 1) {
       // Save current to sessions before clearing
-      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), title: chatTitle(messages), messages: [...messages] };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
       localStorage.setItem(sessionsKey, JSON.stringify(updatedSessions));
@@ -321,6 +323,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         body: JSON.stringify({
           prompt: userMsg,
           history: historyContext,
+          // השאלה הראשונה בשיחה (קיימת רק הודעת הפתיחה של ה-AI): השרת מצרף לתשובה כותרת לשיחה
+          firstQuestion: messages.filter((m) => m.role === 'assistant').length <= 1 && !imageToSend && !recordingMetaToSend,
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`,
           image: imageToSend,
           recordingFileId: recordingMetaToSend?.fileId || null,
@@ -331,7 +335,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       const data = await res.json();
 
       const assistantMessage = res.ok
-        ? { role: 'assistant', content: data.response, tableData: data.data }
+        ? { role: 'assistant', content: data.response, tableData: data.data, ...(data.title ? { title: String(data.title).slice(0, 60) } : {}) }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       const finalMessages = [...newMessages, assistantMessage];
@@ -444,7 +448,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const loadSession = (session) => {
     if (messages.length > 1 && !chatSessions.find(s => s.id === session.id)) {
       // eslint-disable-next-line react-hooks/purity -- runs inside the loadSession click handler, never during render
-      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), title: chatTitle(messages), messages: [...messages] };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
       localStorage.setItem(sessionsKey, JSON.stringify(updatedSessions));
@@ -529,6 +533,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               <use href="#i-star" />
             </svg>
             <span style={{ fontWeight: 'bold' }}>עוזר AI</span>
+            {chatTitle(messages) ? <span data-testid="ai-chat-title" style={{ opacity: 0.85, fontSize: '0.85rem', maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {chatTitle(messages)}</span> : null}
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
             <button data-element-name="כפתור_AIFloatingWidget_5"
@@ -605,9 +610,9 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                       className="list-card"
                       style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}
                     >
-                      <span style={{ fontWeight: 'bold', color: 'var(--text)', fontSize: '0.9rem' }}>{session.date}</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--text)', fontSize: '0.9rem' }}>{session.title || chatTitle(session.messages) || session.date}</span>
                       <span style={{ color: 'var(--text-3)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
+                        {(session.title || chatTitle(session.messages)) ? session.date : (session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה')}
                       </span>
                     </div>
                   ))}

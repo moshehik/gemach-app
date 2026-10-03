@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
+import { generateChatTitle } from '../../../lib/ai/chatTitle';
+
+const TITLE_GRACE_MS = 1500;
 import { checkAuth } from '../../../lib/auth';
 import { checkAiAccess } from '../../../lib/permissions';
 import { verifiedCookieStore } from '@/lib/authTokens';
@@ -88,7 +91,30 @@ IMPORTANT: If the user explicitly asks to SEE OR FIND ORDERS (e.g., "When was it
     - If the website's number and the Access file's number differ, that is NOT automatically a bug: it is usually because time passed and new bookings were made between checking Access and checking the website (they are two separate systems, not checked at the same instant), or because "allow_renting_reserve_items" is turned on (Access always excludes reserve-location items; the website only excludes them when this setting is off).
     - Full technical writeup of this investigation, including exactly how it was verified against Access: docs/fix-protocol-error-reports.md, section 12. If the user wants the precise cause of a specific mismatch they are seeing right now, tell them it needs to be checked live (both systems compared at the same moment) rather than guessed.`;
 
+// עטיפה: מריצה את הטיפול הרגיל, ובשאלה הראשונה בשיחה (firstQuestion מהלקוח) מוסיפה לתשובה `title` - כותרת קצרה
+// שנוצרת במקביל (קריאת Gemini קלה על נוסח השאלה) ולא מעכבת את התשובה. כל כשל = בלי title (הלקוח נופל לתצוגה הקיימת).
 export async function POST(req) {
+  let firstPrompt = null;
+  try {
+    const b = await req.clone().json();
+    if (b && b.firstQuestion === true && typeof b.prompt === 'string' && b.prompt.trim() && !b.image && !b.recordingFileId && !b.recordingSteps) firstPrompt = b.prompt;
+  } catch { /* גוף לא תקין - הטיפול הרגיל יחזיר שגיאה */ }
+  if (firstPrompt && !((await checkAuth()) && (await checkAiAccess()))) firstPrompt = null; // בלי קריאת Gemini לבקשה לא מורשית
+  const titlePromise = firstPrompt ? generateChatTitle(firstPrompt, (p) => generateContent(p)) : null;
+  const res = await handleAiPost(req);
+  if (!titlePromise || !res.ok) return res;
+  // הכותרת לא מעכבת את התשובה: ממתינים לה רק זמן קצר אחרי שהתשובה מוכנה (אחרת השיחה נשארת בלי כותרת והלקוח מציג את תחילת השאלה)
+  const title = await Promise.race([titlePromise, new Promise((r) => setTimeout(() => r(null), TITLE_GRACE_MS))]);
+  if (!title) return res;
+  try {
+    const data = await res.json();
+    return NextResponse.json({ ...data, title }, { status: res.status });
+  } catch {
+    return res;
+  }
+}
+
+async function handleAiPost(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
