@@ -402,5 +402,51 @@ t('שעון הנוכחות משתמש בשדות של login.css (input.inp בה�
   assert.ok(!/font-family/.test(PUNCH_CSS), 'punch-clock.css לא נוגע בגופנים (login.css כבר מנטרל את design-overrides.css)');
 });
 
+/* ---------- 10. דף "הפרופיל שלי" (app/components/profile/profile.css): אותו משטר היקף כמו הלו״ז ---------- */
+// הדף נטען בלי home.css (שורש .gm-ds.gm-pf, בלי .gm-home), ולכן נבדק כאן: היקף, אין לבן קשיח, !important על רקע רק בכרטיס "פנינה" המאושר,
+// נטרולי הדליפה שנמצאו בבדיקת scripts/profile-bg-audit (גופן, margin של .field, צבע טקסט שדה, ריפוד לחצן חזרה, רקע ה-input של המתג).
+const PROFILE_CSS = read('../app/components/profile/profile.css');
+const profileRules = parseCss(PROFILE_CSS);
+const PROFILE_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-pf)']); // ביטול ריפוד המעטפת לדף מלא-רוחב, כמו home.css כלל 1
+const PROFILE_IMPORTANT_BG_OK = new Set(['.gm-ds.gm-pf .card']); // גרדיאנט "פנינה" של העיצוב (פרופיל-עובד.html: body .app :is(.card,...)) מול זכוכית הפלטה
+t('profile.css: כל כלל בהיקף .gm-ds.gm-pf (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of profileRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-pf(\s|$)/.test(s) && !PROFILE_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('profile.css: אין רקע לבן קשיח; !important על רקע רק בכרטיס הפנינה', () => {
+  const bad = [];
+  for (const r of profileRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!PROFILE_IMPORTANT_BG_OK.has(s.replace(/\s+/g, ' '))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('profile.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(profileRules, 'profile.css'), []);
+});
+const hasProfile = (selRe, propRe, { important = false, valueRe } = {}) => profileRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('profile.css: נטרול דליפות - גופן Rubik (!important על לחצנים/שדות/כותרות), field margin, צבע טקסט שדה, ריפוד לחצן חזרה', () => {
+  assert.ok(hasProfile(/\.gm-ds\.gm-pf :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'חסר font-family:inherit!important ללחצנים/שדות');
+  assert.ok(hasProfile(/\.gm-ds\.gm-pf :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'חסר font-family:inherit!important לכותרות');
+  assert.ok(hasProfile(/^\.gm-ds\.gm-pf \.field$/, /^margin-bottom$/, { valueRe: /^0/ }), 'חסר איפוס margin-bottom של .field (globals.css)');
+  assert.ok(hasProfile(/\.gm-ds\.gm-pf \.dfields input\.inp:not\(:disabled\)/, /^color$/), 'חסר צבע טקסט לשדה (design-overrides.css צובע בחום)');
+  assert.ok(hasProfile(/^\.gm-ds\.gm-pf \.back$/, /^padding$/), 'חסר ריפוד ברירת מחדל ללחצן החזרה');
+});
+t('הדליפות שנוטרלו בפרופיל עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
+  assert.ok(/\.field\s*\{[^}]*margin-bottom/.test(DS_GLOBAL), 'design-system.css: .field{margin-bottom} כבר לא קיים');
+});
+t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שורת העזר של הכניסה האוטומטית (החלטת הבעלים 3.10.2026)', () => {
+  const page = read('../app/components/profile/ProfilePage.js');
+  const auto = read('../app/components/login/AutoClockSwitch.js');
+  assert.ok(!/pf-side|<aside|className="rail/.test(page + PROFILE_CSS), 'עמודה צדדית חזרה');
+  assert.ok(!/בלי לחיצה על/.test(page + auto), 'שורת העזר של מתג הכניסה האוטומטית חזרה');
+  assert.ok(!/window\.alert/.test(page), 'window.alert חזר (הודעות בטוסט)');
+  assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

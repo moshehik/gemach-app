@@ -79,15 +79,16 @@ export default function AutoClockSwitch() {
   const checked = enabled === true;
   const disabled = enabled === null || saving;
 
+  // עיצוב הפרופיל החדש (תצוגות-עיצוב/פרופיל-עובד.html): מתג הפעלה/כיבוי של הפלטה (שדה 9, בורר 19) בשורת trow, בלי שורת עזר
+  // (הבעלים 3.10.2026: כיתוב ההסבר מתחת למתג הוסר). ההתנהגות לא השתנתה - השמירה מיידית ב-PUT.
+  // שורת הודעה מופיעה רק כשהשמירה נכשלה (לא כיתוב קבוע).
   return (
-    <div className="field" style={{ gridColumn: '1 / -1' }}>
-      <div className="checkbox-row">
-        <input type="checkbox" id="profile-autoClockIn" checked={checked} disabled={disabled} onChange={toggle} />
-        <label htmlFor="profile-autoClockIn">{AUTO_CLOCK_LABEL}</label>
+    <div className="pf-pref">
+      <div className="trow">
+        <label className="sw"><input type="checkbox" id="profile-autoClockIn" checked={checked} disabled={disabled} onChange={toggle} /><i /></label>
+        <label htmlFor="profile-autoClockIn" className="pf-pl">{AUTO_CLOCK_LABEL}</label>
       </div>
-      <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
-        {error || 'נשמר מיד, בלי לחיצה על "שמירת פרטים". פועל בכל מחשב שבו נכנסים.'}
-      </div>
+      {error ? <div className="sm faint pf-hint" role="alert">{error}</div> : null}
     </div>
   );
 }

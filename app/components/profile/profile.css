@@ -1,0 +1,80 @@
+/* "הפרופיל שלי" (ProfilePage) — CSS מקומי לדף, בהיקף .gm-ds.gm-pf בלבד (לא נוגע ב-design-system/).
+   מכיל רק מה שאין בפלטה (design-system/components.css): הרכבה של רכיבי כרטיס ההזמנה לדף פרופיל (בלוק #pf-profile בעיצוב המאושר
+   תצוגות-עיצוב/פרופיל-עובד.html, שמות ובערכים כמו שם, מוגבל להיקף הדף) ונטרולי דליפה של ה-CSS הגלובלי של האתר
+   (app/globals.css / design-overrides.css, ר' docs/ui-fidelity-search-backgrounds.md ו-docs/ui-fidelity-schedule.md).
+   הבעלים 3.10.2026: עמודה אחת (אין עמודה צדדית), כפתור השמירה בתחתית. שורש הדף .gm-ds.gm-pf.home-bg - בלי .gm-home
+   (הבלוק .gm-ds.gm-home של הפלטה הוא ה-CSS של דף הבית ודורס שדות/כפתורים בערכים אחרים).
+   שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "הפרופיל שלי"). בדיקת נאמנות: scripts/profile-bg-audit. */
+
+/* ===== גוף הדף ===== */
+/* הגופן של הפלטה (Rubik) בכל הדף; design-overrides.css כופה !important על לחצנים/שדות (Assistant) ועל כותרות (Frank Ruhl) */
+.gm-ds.gm-pf *{font-family:var(--gm-font)}
+.gm-ds.gm-pf :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-pf :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+
+/* מלא-רוחב: המעטפת (הישנה והחדשה) עוטפת כל דף ב-.app-shell > .main > .content עם padding (22px 24px 60px; 14px בנייד) ו-max-width.
+   בעיצוב המאושר הרווחים בצדדים מגיעים מ-.app של הפלטה (24px; 16px בנייד), ולכן מבטלים את העטיפה רק כשהיא מכילה את הדף הזה
+   (אותו דפוס כמו home.css כלל 1 לדף הבית). בלי זה הכרטיסים צרים ב-28px בנייד (375px: 315 במקום 343). */
+.app-shell .main .content:has(> .gm-ds.gm-pf){max-width:none;margin-inline:0;padding:0}
+
+/* עמודה אחת ברוחב כמו עמודת התוכן בעיצוב (~750px). 72px אוויר מתחת לסרגל העליון (כמו הלו״ז). אין עגלת שינויים קבועה בתחתית
+   (ה-150px של .app בנייד שמורים בפלטה לסרגל .rail של כרטיס ההזמנה), ולכן תחתית רגילה */
+.gm-ds.gm-pf .pf-app{max-width:800px;padding-top:72px;padding-bottom:64px}
+@media (max-width:640px){.gm-ds.gm-pf .pf-app{padding-top:32px;padding-bottom:48px}}
+.gm-ds.gm-pf .pf-app .ttl>div{min-width:0}
+.gm-ds.gm-pf .pf-sub{margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* כותרת הדף (h1 הגלובלי של האתר צובע בחום) */
+.gm-ds.gm-pf .pf-app .ttl h1{color:var(--gm-navy-900)}
+/* בעיצוב ה-topbar שקוף; globals.css / design-overrides.css יכולים לצבוע אותו */
+.gm-ds.gm-pf .pf-app .topbar{position:relative;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+
+/* ===== נטרול דליפות של ה-CSS הגלובלי של האתר (נמצאו בבדיקת scripts/profile-bg-audit מול העיצוב) ===== */
+/* app/design-system.css: .field{margin-bottom:14px} - בעיצוב המרווח בין שדות בא רק מ-gap של הרשת (+28px לכל כרטיס) */
+.gm-ds.gm-pf .field{margin-bottom:0}
+/* design-overrides.css: input:not(checkbox..) צובע טקסט בחום (0,4,1); בעיצוב טקסט השדה בצבע הדיו (navy-900). שדה מנוטרל נשאר ink3 (כלל הפלטה למעלה) */
+.gm-ds.gm-pf .dfields input.inp:not(:disabled){color:var(--gm-ink)}
+/* globals.css מאפס padding לכל אלמנט: לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן (1px 6px) */
+.gm-ds.gm-pf .back{padding:1px 6px}
+/* מתג הפעלה: ה-input מוסתר (opacity:0) אך globals/design-overrides נותנים לו רקע לבן */
+.gm-ds.gm-pf .sw input{background:transparent}
+/* הכרטיס: בעיצוב המאושר (גרדיאנט "פנינה" - כלל body .app :is(.card,...) בקובץ העיצוב) ולא זכוכית לבנה 30% של הפלטה; אותם ערכים בדיוק */
+.gm-ds.gm-pf .card{background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+
+/* ===== פריסה: אין לשוניות מעל הלוחות, לכן בלי המרווח הכפול; שדות בשתי עמודות כשיש מקום ===== */
+.gm-ds.gm-pf .pf-layout{grid-template-columns:minmax(0,1fr);margin-top:40px}
+.gm-ds.gm-pf .pf-layout .panel.on{margin-top:0}
+.gm-ds.gm-pf .pf-app .dfields .grid2{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));justify-items:start}
+@media (max-width:1023px){.gm-ds.gm-pf .pf-layout{margin-top:28px}}
+
+/* ===== תמונת פרופיל ===== */
+.gm-ds.gm-pf .pf-avwrap{margin-bottom:22px}
+.gm-ds.gm-pf .pf-avrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.gm-ds.gm-pf .pf-av{width:64px;height:64px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--gm-gbtn);color:#1a1200;font-size:22px;font-weight:700;border:1.5px solid #000;background-size:cover;background-position:center}
+.gm-ds.gm-pf .pf-av.photo{color:transparent}
+.gm-ds.gm-pf .pf-up{flex:1;min-width:220px;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:14px 16px;border:2px dashed var(--gm-gold-b);border-radius:16px;background:rgba(255,255,255,.3);color:var(--gm-navy);cursor:pointer;transition:background-color 150ms,border-color 150ms}
+.gm-ds.gm-pf .pf-up .ic{color:var(--gm-navy-500)}
+.gm-ds.gm-pf .pf-up:hover,.gm-ds.gm-pf .pf-up.drag{background:var(--gm-gold-100);border-color:var(--gm-navy)}
+.gm-ds.gm-pf .pf-up:focus-within{box-shadow:0 0 0 3px rgba(201,162,39,.3)}
+/* שדה מנוטרל: אותו עיצוב, רק דהוי */
+.gm-ds.gm-pf .dfields .inp:disabled{color:var(--gm-ink3);cursor:not-allowed}
+
+/* ===== אבטחה ===== */
+.gm-ds.gm-pf .pf-pwact{margin-top:14px}
+.gm-ds.gm-pf .pf-pwbox{margin-top:16px;padding-top:16px;border-top:1px solid var(--gm-sky-300);display:flex;flex-direction:column;gap:16px;animation:gm-fade .25s ease}
+.gm-ds.gm-pf .pf-pwbtns{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.gm-ds.gm-pf .inpx[aria-pressed="true"]{background:var(--gm-gbtn);color:#000}
+
+/* ===== העדפות ===== */
+.gm-ds.gm-pf .pf-prefs{display:flex;flex-direction:column;gap:18px}
+.gm-ds.gm-pf .pf-prefs .trow{align-items:center}
+.gm-ds.gm-pf .pf-pl{font-weight:500;cursor:pointer}
+/* הודעת שגיאה של מתג הכניסה האוטומטית (מופיעה רק בשגיאה) מיושרת לתחילת התווית (מתג 54px + רווח 12px) */
+.gm-ds.gm-pf .pf-hint{margin-top:6px;margin-inline-start:66px}
+@media (max-width:640px){.gm-ds.gm-pf .pf-up{max-width:none}.gm-ds.gm-pf .pf-hint{margin-inline-start:0}}
+
+/* ===== שמירה: לחצן ראשי ברוחב מלא בתחתית הדף ===== */
+.gm-ds.gm-pf .pf-save{display:flex}
+.gm-ds.gm-pf .pf-save .btn{width:100%}
+
+/* ===== מצב "אין התחברות" ===== */
+.gm-ds.gm-pf .empty .pf-empty-t{font-size:19px;margin-top:8px;color:var(--gm-ink)}

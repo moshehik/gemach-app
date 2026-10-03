@@ -371,7 +371,7 @@ t('AutoClockSwitch מיובא רק מדף הפרופיל - לא מתפריט ה�
   for (const f of ['../app/components/UserMenu.js', '../app/components/menu/MenuA5Shell.js', '../app/components/menu/MenuUserPanel.js', '../app/components/menu/MenuTabPanel.js']) {
     assert.ok(!src(f).includes('AutoClockSwitch'), `${f} must not render the switch`);
   }
-  assert.ok(src('../app/profile/page.js').includes('<AutoClockSwitch />'));
+  assert.ok(src('../app/components/profile/ProfilePage.js').includes('<AutoClockSwitch />'));
   assert.ok(!src('../app/components/login/AutoClockSwitch.js').includes("variant"), 'single profile-card variant only');
 });
 
