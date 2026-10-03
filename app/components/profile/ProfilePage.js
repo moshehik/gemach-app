@@ -100,7 +100,9 @@ export default function ProfilePage() {
   // הוסרה תמונת הפרופיל לגמרי; ברירת מחדל true כשהשורה עוד לא נוצרה ב-DB.
   const [showProfileImage, setShowProfileImage] = useState(true);
 
-  usePageTooltip(rootRef, ttRef, !!shell);
+  const pwBtnRef = useRef(null);
+  // הטולטיפ של המעטפת האחידה (A5) מאזין רק לאזור הכותרת ולא לתוכן הדף - הדף מטפל בטולטיפים שלו תמיד
+  usePageTooltip(rootRef, ttRef, false);
 
   const say = useCallback((title, kind = 'ok') => {
     setToast({ title, kind, n: Date.now() });
@@ -171,11 +173,16 @@ export default function ProfilePage() {
     setShowNewPassword(false);
   };
 
+  const pwBusyRef = useRef(false);
+  const [pwBusy, setPwBusy] = useState(false);
   const handlePasswordConfirm = async () => {
+    if (pwBusyRef.current) return; // בלי שליחה כפולה (Enter מוחזק / לחיצה כפולה)
     if (!newPasswordInput) {
       say('יש להזין סיסמא חדשה', 'error');
       return;
     }
+    pwBusyRef.current = true;
+    setPwBusy(true);
     try {
       const res = await fetch(`/api/employees/${profile.id}/password`, {
         method: 'POST',
@@ -191,13 +198,18 @@ export default function ProfilePage() {
       }
     } catch (err) {
       say('שגיאה בשינוי הסיסמה', 'error');
+    } finally {
+      pwBusyRef.current = false;
+      setPwBusy(false);
     }
   };
 
   // Enter בשדות הסיסמא מאשר את השינוי (ולא שולח את כל הטופס), Escape מבטל - כמו בעיצוב המאושר
   const onPasswordKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); handlePasswordConfirm(); }
-    else if (e.key === 'Escape') { e.stopPropagation(); closePasswordBox(); }
+    // Enter מאשר רק משדה טקסט (לא מלחצן "ביטול" / עין) ולא כשהמקש מוחזק
+    if (e.key === 'Enter') {
+      if (e.target.tagName === 'INPUT') { e.preventDefault(); if (!e.repeat) handlePasswordConfirm(); }
+    } else if (e.key === 'Escape') { e.stopPropagation(); closePasswordBox(); pwBtnRef.current && pwBtnRef.current.focus(); }
   };
 
   const readAvatar = (file) => {
@@ -279,7 +291,7 @@ export default function ProfilePage() {
                         <span className="sm faint">PNG או JPG · עד 5MB</span>
                       </label>
                       <input data-element-name="שדה_profile_15" ref={fileRef} type="file" id="profile-avatarInput" accept="image/*" onChange={handleAvatarUpload} hidden />
-                      {hasPhoto && (
+                      {profile.profileImage && (
                         <button data-element-name="כפתור_profile_img_rm" type="button" className="btn danger sm" data-ico="trash" title="הסרת תמונת הפרופיל" onClick={removeAvatar}>
                           <Ic id="trash" size="sm" />הסר
                         </button>
@@ -328,7 +340,7 @@ export default function ProfilePage() {
                   <div className="inpw"><Ic id="lock" size="sm" /><input data-element-name="שדה_profile_11" className="inp" type="password" id="profile-pwDisplay" value="********" disabled readOnly /></div>
                 </div>
                 <div className="pf-pwact">
-                  <button data-element-name="כפתור_profile_pw" type="button" className="btn" onClick={() => setShowChangePassword(true)} aria-expanded={showChangePassword} aria-controls="pf-pwbox">שינוי סיסמא</button>
+                  <button data-element-name="כפתור_profile_pw" ref={pwBtnRef} type="button" className="btn" onClick={() => setShowChangePassword(true)} aria-expanded={showChangePassword} aria-controls="pf-pwbox">שינוי סיסמא</button>
                 </div>
 
                 {showChangePassword && (
@@ -337,7 +349,7 @@ export default function ProfilePage() {
                     <PasswordField id="profile-newPassword" label="סיסמא חדשה" dataName="שדה_profile_13" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} shown={showNewPassword} onToggle={() => setShowNewPassword(v => !v)} />
                     <div className="pf-pwbtns">
                       <button data-element-name="כפתור_profile_pw_cancel" type="button" className="btn ghost" onClick={closePasswordBox}>ביטול</button>
-                      <button data-element-name="כפתור_profile_pw_ok" type="button" className="btn primary" onClick={handlePasswordConfirm}>אשר שינוי</button>
+                      <button data-element-name="כפתור_profile_pw_ok" type="button" className="btn primary" disabled={pwBusy} onClick={handlePasswordConfirm}>אשר שינוי</button>
                     </div>
                   </div>
                 )}
