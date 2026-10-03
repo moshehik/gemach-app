@@ -109,5 +109,13 @@ t('השורש .gm-ds.gm-pf.home-bg בלי gm-home, ועם RTL; האייקוני�
   has(PAGE, /<HomeSprite \/>/, 'הטמעת ה-sprite כשאין מעטפת A5');
 });
 
+t('תיבת הסיסמא: Enter מאשר רק משדה טקסט (לא מ"ביטול"/עין), בלי שליחה כפולה, והסר-תמונה מופיע לכל ערך תמונה', () => {
+  assert.ok(PAGE.includes("e.target.tagName === 'INPUT'"), 'Enter לא מוגבל לשדה טקסט');
+  assert.ok(PAGE.includes('e.repeat'), 'אין התעלמות ממקש מוחזק');
+  assert.ok(PAGE.includes('pwBusyRef.current'), 'אין הגנה משליחה כפולה');
+  assert.ok(PAGE.includes('disabled={pwBusy}'), 'אשר שינוי לא מנוטרל בזמן שליחה');
+  assert.ok(PAGE.includes('{profile.profileImage && ('), 'הסר-תמונה תלוי ב-hasPhoto');
+});
+
 console.log(`\n${passed} passed`);
 if (process.exitCode) process.exit(1);
