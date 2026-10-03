@@ -37,11 +37,12 @@ t('חוזה ה-API: GET/PUT /api/me/profile (גוף = אובייקט הפרופ�
   has(PAGE, /invalidate\(\['\/api\/me'\]\)/, 'invalidate([\'/api/me\']) אחרי שמירה');
 });
 
-t('שדות הטופס: אותם name כמו בדף הישן (כולל receiveEmailAlerts) ותאריך הכניסה מנוטרל', () => {
-  for (const n of ['firstName', 'lastName', 'fullName', 'phone1', 'phone2', 'email', 'city', 'street', 'houseNum', 'receiveEmailAlerts']) {
+t('שדות הטופס: אותם name כמו בדף הישן (כולל receiveEmailAlerts); בלי "שם מלא" (נגזר מפרטי+משפחה) ובלי תאריך כניסה (רק בניהול)', () => {
+  for (const n of ['firstName', 'lastName', 'phone1', 'phone2', 'email', 'city', 'street', 'houseNum', 'receiveEmailAlerts']) {
     has(PAGE, new RegExp(`name="${n}"`), `חסר שדה ${n}`);
   }
-  has(PAGE, /id="profile-joinDate"[^>]*disabled/, 'תאריך הכניסה חייב להישאר מנוטרל');
+  assert.ok(!/name="fullName"|profile-fullName/.test(PAGE), 'שדה שם מלא חזר');
+  assert.ok(!/joinDate/.test(PAGE), 'תאריך כניסה חזר לדף האישי (החלטת הבעלים 4.10.2026: רק בכרטיס הניהול)');
   has(PAGE, /checked=\{!!profile\.receiveEmailAlerts\}/, 'receiveEmailAlerts נשלט מהפרופיל');
   has(PAGE, /className="sw"><input[^>]*name="receiveEmailAlerts"/, '"קבלת התראות למייל" הוא מתג הפעלה/כיבוי של הפלטה');
 });

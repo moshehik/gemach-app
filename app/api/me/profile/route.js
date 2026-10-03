@@ -76,9 +76,15 @@ export async function PUT(request) {
     // רשימה סגורה של שדות שעובד רשאי לעדכן על עצמו. שדה שלא הגיע בגוף הבקשה
     // נשאר undefined ו-Prisma מדלג עליו — אין דריסת ערכים קיימים בשמירה חלקית.
     const data = {};
-    for (const field of ['firstName', 'lastName', 'fullName', 'phone1', 'phone2',
+    for (const field of ['firstName', 'lastName', 'phone1', 'phone2',
       'email', 'emailSuffix', 'city', 'street', 'houseNum', 'profileImage']) {
       if (typeof body[field] === 'string') data[field] = body[field];
+    }
+    // "שם מלא" אינו שדה נפרד: תמיד שם פרטי + שם משפחה (נגזר בשמירה; הלקוח כבר לא שולח/עורך אותו)
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const first = (data.firstName !== undefined ? data.firstName : employee.firstName) || '';
+      const last = (data.lastName !== undefined ? data.lastName : employee.lastName) || '';
+      data.fullName = `${first.trim()} ${last.trim()}`.trim();
     }
     if (typeof body.receiveEmailAlerts === 'boolean') {
       data.receiveEmailAlerts = body.receiveEmailAlerts;

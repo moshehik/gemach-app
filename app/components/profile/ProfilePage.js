@@ -303,11 +303,6 @@ export default function ProfilePage() {
                 <div className="grid2">
                   <div className="field"><label className="lbl" htmlFor="profile-firstName">שם פרטי</label><input data-element-name="שדה_profile_1" className="inp" type="text" id="profile-firstName" name="firstName" value={profile.firstName || ''} onChange={handleChange} autoComplete="new-password" {...NO_FILL} /></div>
                   <div className="field"><label className="lbl" htmlFor="profile-lastName">שם משפחה</label><input data-element-name="שדה_profile_2" className="inp" type="text" id="profile-lastName" name="lastName" value={profile.lastName || ''} onChange={handleChange} autoComplete="new-password" {...NO_FILL} /></div>
-                  <div className="field"><label className="lbl" htmlFor="profile-fullName">שם מלא</label><input data-element-name="שדה_profile_3" className="inp" type="text" id="profile-fullName" name="fullName" value={profile.fullName || ''} onChange={handleChange} autoComplete="new-password" {...NO_FILL} /></div>
-                  <div className="field">
-                    <label className="lbl" htmlFor="profile-joinDate">תאריך כניסה לארגון</label>
-                    <div className="inpw"><Ic id="cal" size="sm" /><input data-element-name="שדה_profile_4" className="inp" type="text" id="profile-joinDate" value={profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('he-IL') : '—'} disabled /></div>
-                  </div>
                 </div>
               </section>
 

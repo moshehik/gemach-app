@@ -359,12 +359,8 @@ export default function EmployeePage({ params }) {
               <input data-element-name="שדה_page_7" className="input" type="text" id="employee-detail-lastName" name="lastName" value={employee.lastName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
-              <label htmlFor="employee-detail-fullName">שם מלא (מחושב/לתצוגה)</label>
-              <input data-element-name="שדה_page_8" className="input" type="text" id="employee-detail-fullName" name="fullName" value={employee.fullName || ''} onChange={handleChange} />
-            </div>
-            <div className="field">
               <label htmlFor="employee-detail-joinDate">תאריך כניסה לארגון</label>
-              <input data-element-name="שדה_page_9" className="input" type="date" id="employee-detail-joinDate" name="joinDate" value={employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : ''} onChange={handleChange} />
+              <HebrewDatePicker data-element-name="שדה_page_9" selectedDate={employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : ''} onChange={(dateStr) => setEmployee(prev => ({ ...prev, joinDate: dateStr }))} />
             </div>
             <div className="field">
               <label htmlFor="employee-detail-phone1">טלפון נייד *</label>

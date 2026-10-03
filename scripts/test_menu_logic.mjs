@@ -137,7 +137,7 @@ t('הנהלה ראשית: תפריט הזמנה בלי משלוחים (הם תח
   assert.deepEqual(ids(tab(neve, 'order').items), ['order-new', 'order-kiosk']);
 });
 t('הנהלה ראשית: פאנל משתמש בלי "הודעות" (R08), בלי ריענון (R03), בלי ערכת נושא (R04); בלי היסטוריית הודעות (לא מתכנת)', () => {
-  assert.deepEqual(ids(HEAD_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-display', 'u-logout']);
+  assert.deepEqual(ids(HEAD_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-logout']);
   assert.equal(HEAD_TREE.user.items.filter((x) => x.kind === 'separator').length, 1);
   assert.equal(HEAD_TREE.user.name, 'שרה כהן'); assert.equal(HEAD_TREE.user.initials, 'שכ'); assert.equal(HEAD_TREE.user.roleLabel, 'הנהלה ראשית'); assert.equal(HEAD_TREE.user.department, 'הנהלה');
 });
@@ -164,7 +164,7 @@ t('מותג: לוגו מ-/api/logo, שם מההגדרות, גרסה בטולטי
 const PROG_TREE = buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: [] });
 t('מתכנת: כמו הנהלה + "היסטוריית הודעות מערכת" בפאנל המשתמש (R05)', () => {
   assert.deepEqual(PROG_TREE.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
-  assert.deepEqual(ids(PROG_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-display', 'u-hist', 'u-logout']);
+  assert.deepEqual(ids(PROG_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-hist', 'u-logout']);
   assert.equal(PROG_TREE.user.items.find((x) => x.id === 'u-hist').action, 'system-messages-history');
   assert.equal(PROG_TREE.meta.prog, true);
 });
@@ -211,7 +211,7 @@ t('עובדת: הודעות פנימיות מוסתרות (hide_internal_messagi
   assert.equal(tree.rail.bell.show, true);
   assert.deepEqual(tree.rail.bell.tools, { markAllRead: true, clearAll: true });
   assert.ok(!ids(tree.rail.bell.rows).includes('n-manager-message'), 'הודעה למנהל נשארת תלויה ב-msgs');
-  assert.deepEqual(ids(tree.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-display', 'u-logout']);
+  assert.deepEqual(ids(tree.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-logout']);
   // גם הנהלה ראשית: פעמון קיים, "הודעה למנהל" מוסתרת כשההודעות הפנימיות מוסתרות
   const head = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true', management_messages: 'true' }) });
   assert.equal(head.rail.bell.show, true); assert.deepEqual(ids(head.rail.bell.rows), ['n-center']);
@@ -276,8 +276,8 @@ t('אורח במצב פתוח (require_login כבוי): כל הלשוניות כ
   assert.ok(!ids(tab(tree, 'home').items).includes('sched'), 'לוז למחוברים בלבד');
   assert.equal(tree.user.logged, false); assert.equal(tree.user.name, 'אורח'); assert.equal(tree.user.initials, 'א');
   assert.deepEqual(ids(tree.user.items), ['u-login']);
-  assert.ok(!hrefs(tree).includes('/display-settings'), 'אורח לא רואה "עיצוב ותצוגה" (u-display logged:1 בעיצוב)');
-  assert.ok(ids(HEAD_TREE.user.items).includes('u-display'), 'מחובר כן רואה');
+  assert.ok(!hrefs(tree).includes('/display-settings'), 'אורח לא רואה "עיצוב ותצוגה"');
+  assert.ok(!ids(HEAD_TREE.user.items).includes('u-display'), '"עיצוב ותצוגה" הוסר מתפריט הפרופיל (בקשת הבעלים 4.10.2026)');
   assert.deepEqual(tree.rail.bell, { show: false }); assert.equal(tree.rail.shiftClock.show, false); assert.deepEqual(tree.rail.oldSite, { show: false });
   assert.equal(tree.rail.errorReport.show, true);
 });

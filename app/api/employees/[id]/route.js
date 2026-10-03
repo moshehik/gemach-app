@@ -94,7 +94,8 @@ export async function PUT(request, { params }) {
         houseNum: body.houseNum,
         email: body.email,
         joinDate: body.joinDate ? new Date(body.joinDate) : null,
-        fullName: body.fullName,
+        // שם מלא = שם פרטי + שם משפחה (לא שדה עצמאי)
+        fullName: [body.firstName, body.lastName].map((x) => String(x || '').trim()).filter(Boolean).join(' ') || body.fullName,
         notes: body.notes,
         emailSuffix: body.emailSuffix,
         paymentMethod: body.paymentMethod,

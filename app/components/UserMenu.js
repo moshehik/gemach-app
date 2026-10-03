@@ -205,15 +205,6 @@ export default function UserMenu({ hideInternalMessaging = false }) {
               הודעות
             </button>
           )}
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); router.push('/display-settings'); }}
-          >
-            <svg className="icon"><use href="#i-settings" /></svg>
-            עיצוב ותצוגה — התאמה אישית
-          </button>
           <div className="user-menu-divider" />
           <button type="button" className="user-menu-item danger" onClick={handleLogout} disabled={actionLoading}>
             <svg className="icon"><use href="#i-logout" /></svg>
