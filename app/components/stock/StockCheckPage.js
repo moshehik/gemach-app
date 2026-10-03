@@ -331,7 +331,7 @@ export default function StockCheckPage() {
   );
 
   return (
-    <div className="gm-ds gm-home stock-page" ref={rootRef} dir="rtl">
+    <div className="gm-ds gm-home stock-page home-bg" ref={rootRef} dir="rtl">
       <HomeSprite />
       <div className="hero-in jshell advonly">
         <div className="card res-one advp" id="stock-form">

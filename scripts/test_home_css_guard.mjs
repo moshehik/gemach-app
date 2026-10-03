@@ -313,6 +313,9 @@ const stockRules = parseCss(STOCK_CSS);
 const STOCK_IMPORTANT_BG_OK = new Set([
   '.gm-ds.gm-home.stock-page .hero-in.jshell .card', // זכוכית (לבן 30% + טשטוש) כמו בעיצוב המאושר של הדף (בדיקת-מלאי.html), ערכי הפלטה
 ]);
+t('בדיקת מלאי: שורש הדף נושא home-bg (תמונת הרקע של המערכת, כמו בדף הבית)', () => {
+  assert.match(read('../app/components/stock/StockCheckPage.js'), /className="gm-ds gm-home stock-page home-bg"/);
+});
 t('stock-check.css: כל כלל בהיקף .gm-ds.gm-home.stock-page (לא דולף לדף הבית ולא לשאר האתר)', () => {
   const bad = [];
   for (const r of stockRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-home\.stock-page(\s|$)/.test(s)) bad.push(s);
