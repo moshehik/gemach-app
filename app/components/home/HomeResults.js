@@ -37,7 +37,7 @@ export default function HomeResults({ res, none, table, onTable, onExport, note 
   const trio = rows.length
     ? (
       <div className="aixl">
-        <XlButtons onExcel={() => onExport('excel')} onPrint={() => onExport('print')} onDownload={() => onExport('download')} />
+        <XlButtons onExcel={() => onExport('excel')} onPrint={() => onExport('print')} onPdf={() => onExport('pdf')} />
       </div>
     )
     : null;
