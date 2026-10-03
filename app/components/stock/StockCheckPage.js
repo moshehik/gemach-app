@@ -292,7 +292,7 @@ export default function StockCheckPage() {
 
   const clearAll = () => {
     seq.current++;
-    setModel(''); setSizeIn(''); setSizes([]); setInvalid(null); setPhase('idle'); setRes(null);
+    setDate(''); setModel(''); setSizeIn(''); setSizes([]); setInvalid(null); setPhase('idle'); setRes(null);
     try { sessionStorage.removeItem(STOCK_CHECK_STORE_KEY); } catch { /* ignore */ }
     focusField('model');
   };
