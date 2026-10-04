@@ -1,0 +1,8 @@
+/* הדף המודפס של "סיכום נוכחות" - רק מה שאין במעטפת המשותפת (app/components/schedule/print/print.css, נטען אחרי הקובץ הזה).
+   מקור: כללי .sheet בתצוגה המאושרת תצוגות-עיצוב/סיכום-נוכחות.html. צבעים קבועים בלבד (כלל ההדפסה), תחום ל-.pp-root. */
+/* פס הסיכומים בסוף דוח העובד (בתצוגה: .sheet .stats{margin:4mm 0 0}) - במעטפת הוא מעל הטבלה (margin 0 0 3mm) */
+.pp-root .pp-stats.pp-at-stats{margin:4mm 0 0}
+/* שורת הסה״כ: רקע אפור בהיר כמו בתצוגה (.sheet .sht tr.tot td{background:var(--soft)}) */
+.pp-root .pp-t.pp-at tr.tot td{background:var(--pp-soft)}
+/* התצוגה המקדימה (preview=1) מקטינה את .pp-paper ב-zoom לרוחב ה-iframe - בהדפסה מתוך התצוגה המקדימה בגודל מלא */
+@media print{.pp-root .pp-paper{zoom:1!important}}
