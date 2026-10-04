@@ -561,7 +561,12 @@ export function createItemActions(env) {
     }
     if (!item.isReturned) {
       const own = itemBarcode(item);
-      if (own && barcode && own !== barcode) {
+      // Enter בשדה ריק לא מחזיר פריט שיש לו ברקוד — ההחזרה דורשת סריקת הברקוד של הפריט
+      if (own && !barcode) {
+        fail('יש לסרוק את ברקוד הפריט');
+        return { ok: false };
+      }
+      if (own && barcode !== own) {
         fail(`ברקוד ${barcode} אינו הברקוד של ${itemName(item)} (${own}).`);
         return { ok: false };
       }

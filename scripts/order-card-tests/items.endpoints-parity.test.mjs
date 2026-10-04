@@ -334,6 +334,21 @@ test('R25 שורת הברקוד: פריט מושכר → החזרה רק עם ה
   await me.act.barcodeForItem(me.state.items[0], '4538010');
   assert.deepEqual(nonPin(me.srv.calls), ['POST /api/rentals/toggle {"itemId":"a1","action":"return"}']);
 });
+test('R25 (ביקורת #1): Enter בשדה ברקוד ריק על פריט מושכר שיש לו ברקוד → הודעה, בלי החזרה', async () => {
+  const me = mine({ items: [it('a1', { isTaken: true, barcode: '4538010' })], queues: { '/api/rentals/toggle': [OK] } });
+  for (const empty of ['', '   ', null, undefined]) {
+    const r = await me.act.barcodeForItem(me.state.items[0], empty);
+    assert.equal(r.ok, false);
+  }
+  assert.equal(me.srv.calls.length, 0, 'אין קריאה לשרת');
+  assert.equal(me.errors().length, 4);
+  assert.equal(me.errors()[0], 'יש לסרוק את ברקוד הפריט');
+  assert.equal(me.state.items[0].isReturned, false);
+  // פריט מושכר שלא נרשם לו ברקוד (כללי) — עדיין מחזירים בלי ברקוד
+  const me2 = mine({ items: [it('a2', { isTaken: true, barcode: null })], queues: { '/api/rentals/toggle': [OK] } });
+  await me2.act.barcodeForItem(me2.state.items[0], '');
+  assert.deepEqual(nonPin(me2.srv.calls), ['POST /api/rentals/toggle {"itemId":"a2","action":"return"}']);
+});
 test('R25: בהזמנה נעולה שדה הברקוד לא משכיר (הודעת הנעילה של הישן)', async () => {
   const me = mine({ items: [it('a1')], isLocked: true, queues: {} });
   await me.act.barcodeForItem(me.state.items[0], '4538010');
