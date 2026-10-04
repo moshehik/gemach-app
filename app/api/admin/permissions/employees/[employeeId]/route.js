@@ -121,7 +121,7 @@ export async function PUT(request, { params }) {
     if (refusal) return refusal;
     // no free-text note from the client: a note starting with the row prefix would make a personal
     // override look row-owned (hidden from /admin/permissions and deleted by the next row sync)
-    await setEmployeeOverride(employeeId, key, item.type === 'boolean' ? value : parseInt(value, 10));
+    await setEmployeeOverride(employeeId, key, item.type === 'boolean' ? value : parseInt(value, 10), { audit: true });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error setting employee permission override:', error);
@@ -149,7 +149,7 @@ export async function DELETE(request, { params }) {
     // override), but never for a grant the central window owns.
     const refusal = await refuseIfOwnedElsewhere(employee, item, { forWrite: false });
     if (refusal) return refusal;
-    await clearEmployeeOverride(employeeId, key);
+    await clearEmployeeOverride(employeeId, key, { audit: true });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error clearing employee permission override:', error);
