@@ -27,13 +27,31 @@ function permissionLabel(v) {
   return item ? (item.approverLabel || item.label) : null;
 }
 
-// true = this key is shown at all
+export const REASSIGNED_LABEL = 'הוחלף';
+export const ASSIGNED_LABEL = 'נקבע';
+export const UNASSIGNED_LABEL = 'הוסר';
+
+const isFromTo = (v) => v && typeof v === 'object' && !Array.isArray(v) && ('from' in v || 'to' in v);
+const isEmpty = (v) => v === null || v === undefined || v === '';
+
+/**
+ * A {from,to} change of a UUID-valued key (dressItemId, dressModelId, customerId...) is a REAL change
+ * (a reassignment) - it is shown with a placeholder instead of the ids: {from:null, to:'הוחלף'|'נקבע'|'הוסר'}.
+ * Anything else is returned as is.
+ */
+export function normalizeChange(key, change) {
+  if (!isFromTo(change) || !(isUuid(change.from) || isUuid(change.to))) return change;
+  if (String(change.from) === String(change.to)) return change; // no change - the caller drops it
+  if (isEmpty(change.from)) return { from: null, to: ASSIGNED_LABEL };
+  if (isEmpty(change.to)) return { from: null, to: UNASSIGNED_LABEL };
+  return { from: null, to: REASSIGNED_LABEL };
+}
+
+// true = this key is shown at all (pass the RAW change; reassignments of UUID keys stay visible)
 export function isVisibleChangeKey(key, value) {
   if (HIDDEN_KEYS.has(key)) return false;
   if (isUuid(value)) return false;
-  if (value && typeof value === 'object' && !Array.isArray(value) && ('from' in value || 'to' in value)) {
-    if (isUuid(value.from) || isUuid(value.to)) return false;
-  }
+  if (isFromTo(value) && (isUuid(value.from) || isUuid(value.to))) return String(value.from) !== String(value.to);
   return true;
 }
 

@@ -5,7 +5,7 @@ import { HEAD_MANAGEMENT_ROLES, checkAuth } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { getCatalogItem } from '@/lib/permissionsMetadata';
 import { writeOrderEvents } from '@/app/lib/auditLog';
-import { parseApprovalContext, buildApprovalMeta } from '@/lib/history/orderEvents';
+import { parseApprovalContext, buildApprovalMeta, isLoggableApprovalLevel } from '@/lib/history/orderEvents';
 
 // Optional `context: { orderId, reason }` (new order card, D12): a SUCCESSFUL approval is recorded as one
 // MANAGER_APPROVAL row on that order - employeeId = the logged-in employee who asked, meta.approverId = the
@@ -47,6 +47,11 @@ export async function POST(request) {
     const approvalCtx = parseApprovalContext(context);
     if (approvalCtx.present && !approvalCtx.ok) {
       return NextResponse.json({ success: false, error: approvalCtx.error }, { status: 400 });
+    }
+    // a MANAGER_APPROVAL row only for a real approval: a manager tier or an approver catalog key - never
+    // 'עובד' (not checked below at all) or a free string
+    if (approvalCtx.present && !isLoggableApprovalLevel(requiredLevel, getCatalogItem)) {
+      return NextResponse.json({ success: false, error: 'רמת אישור לא מוכרת לאישור מנהל' }, { status: 400 });
     }
 
     // Note: despite the field name, this is the employee's full real password re-entered

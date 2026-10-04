@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { CUSTOMER_ONLY_FIELD_LABELS } from '../lib/history/labels';
-import { isVisibleChangeKey, labelChangeValue } from './modern/changesDisplay';
+import { isVisibleChangeKey, labelChangeValue, normalizeChange } from './modern/changesDisplay';
 
 export const FIELD_TRANSLATIONS = {
   // תוויות שדות לקוח שלא היו כאן (תעודת זהות, דיוורים, בנק, הוראת קבע, חסימה) - מוגדרות ב-lib/history/labels.js
@@ -307,7 +307,7 @@ export default function HistoryViewer({ entityType, entityId }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
           {filteredKeys.map(key => {
             const label = FIELD_TRANSLATIONS[key] || key;
-            const change = changes[key];
+            const change = normalizeChange(key, changes[key]); // UUID reassignment -> placeholder
             const isLongText = key === 'body' || key === 'notes' || key === 'orderNotes';
 
             if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {

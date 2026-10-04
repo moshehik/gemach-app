@@ -17,9 +17,16 @@ export async function writeOrderEvents({ orderIds, action, meta, actorId, client
   const ids = (orderIds || []).filter((n) => Number.isInteger(n) && n > 0);
   if (ids.length === 0) return 0;
   const data = ids.map((orderId) => buildOrderEventRow({ orderId, action, meta, actorId, clientEventId }));
-  // eslint-disable-next-line no-restricted-syntax -- an order event with no model write behind it (print/PDF/export/approval/email); the extension never sees it, so this is not a duplicate
-  const res = await prisma.auditLog.createMany({ data });
-  return (res && typeof res.count === 'number') ? res.count : data.length;
+  try {
+    // eslint-disable-next-line no-restricted-syntax -- an order event with no model write behind it (print/PDF/export/approval/email); the extension never sees it, so this is not a duplicate
+    const res = await prisma.auditLog.createMany({ data });
+    return (res && typeof res.count === 'number') ? res.count : data.length;
+  } catch (e) {
+    // a clientEventId gives every row a deterministic key: P2002 = a concurrent request already wrote this
+    // exact batch (one INSERT statement, all or nothing) -> nothing new written, not an error
+    if (clientEventId && e && e.code === 'P2002') return 0;
+    throw e;
+  }
 }
 
 function displayName(employee) {

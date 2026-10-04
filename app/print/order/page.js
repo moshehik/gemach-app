@@ -73,7 +73,7 @@ export default function PrintOrderPage() {
   const isBatch = orderIdList.length > 1 || searchParams.get('batch') === '1';
   // downloadPdf=1: the page is being rendered into a PDF file by POST /api/pdf (download, mail attachment) -
   // no print dialog and no print history row (whoever asked for the file logs ORDER_PDF_DOWNLOADED).
-  const isPdfRender = searchParams.get('downloadPdf') === '1';
+  const isPdfRender = ['1', 'true'].includes(searchParams.get('downloadPdf'));
   const [printEventId] = useState(newPrintEventId);
   const printLoggedRef = useRef(false);
 

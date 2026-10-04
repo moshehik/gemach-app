@@ -53,7 +53,15 @@ function match(row, where) {
 }
 const logModel = (m) => ({
   async create({ data }) { globalThis.__MOCK_CALLS.push({ model: m, method: 'create', args: { data } }); const r = { id: m + '-' + (++seq), createdAt: new Date(), ...data }; rows(m).push(r); return r; },
-  async createMany({ data }) { globalThis.__MOCK_CALLS.push({ model: m, method: 'createMany', args: { data } }); if (globalThis.__FAIL_AUDIT && m === 'auditLog') throw new Error('db down'); for (const d of data) rows(m).push({ id: m + '-' + (++seq), createdAt: new Date(), ...d }); return { count: data.length }; },
+  async createMany({ data }) {
+    globalThis.__MOCK_CALLS.push({ model: m, method: 'createMany', args: { data } });
+    if (globalThis.__FAIL_AUDIT && m === 'auditLog') throw new Error('db down');
+    await new Promise((r) => setTimeout(r, 1)); // let concurrent requests interleave (race tests)
+    // one INSERT statement: a duplicate primary key fails the whole batch (Postgres semantics)
+    if (data.some((d) => d.id && rows(m).some((r) => r.id === d.id))) { const e = new Error('Unique constraint failed on the fields: (id)'); e.code = 'P2002'; throw e; }
+    for (const d of data) rows(m).push({ id: m + '-' + (++seq), createdAt: new Date(), ...d });
+    return { count: data.length };
+  },
   async findFirst({ where } = {}) { globalThis.__MOCK_CALLS.push({ model: m, method: 'findFirst', args: { where } }); return rows(m).find((r) => match(r, where)) || null; },
   async findMany({ where } = {}) { return rows(m).filter((r) => match(r, where)); },
 });
@@ -257,19 +265,31 @@ test('diffOrderUpdate (AMB-19, H01-H07, H32): only real changes, before/after, n
   assert.deepEqual(d.deliveryCity, { from: null, to: 'ירושלים' });
   assert.deepEqual(d.hasSignedRegulations, { from: false, to: true });
   assert.ok(!('totalAmount' in d), 'float noise is not a change');
-  assert.deepEqual(d.hokDetails, { from: '[מוסתר]', to: '[מוסתר]' });
+  assert.deepEqual(d.hokDetails, { from: '[הוסתר]', to: '[עודכן]' }, 'distinct markers - viewers drop from===to as "no change"');
+  assert.notEqual(d.hokDetails.from, d.hokDetails.to);
   assert.ok(!JSON.stringify(d).includes('4580'), 'standing-order payment data never reaches the row');
 });
 
-test('detectManualChargeChanges (R35/H16): new rows, deletion of stored manual rows only', () => {
-  const stored = [{ id: 'm1', isManual: true, isDeleted: false }, { id: 'a1', isManual: false, isDeleted: false }, { id: 'm2', isManual: true, isDeleted: true }];
-  assert.deepEqual(OE.detectManualChargeChanges(undefined, stored), { added: 0, removed: 0 });
-  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: false }, { id: 'a1', isDeleted: false }], stored), { added: 0, removed: 0 });
-  assert.deepEqual(OE.detectManualChargeChanges([{ isNew: true, description: 'x', amount: 10 }], stored), { added: 1, removed: 0 });
-  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: true }], stored), { added: 0, removed: 1 });
-  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'a1', isDeleted: true }], stored), { added: 0, removed: 0 }, 'automatic obligation');
-  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm2', isDeleted: true }], stored), { added: 0, removed: 0 }, 'already deleted');
-  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'gone', isDeleted: true }, null], stored), { added: 0, removed: 0 });
+test('detectManualChargeChanges (R35/H16): new, edited, deleted and restored STORED manual rows; automatic rows ignored', () => {
+  const stored = [
+    { id: 'm1', isManual: true, isDeleted: false, amount: 50, description: 'חיוב ידני' },
+    { id: 'a1', isManual: false, isDeleted: false, amount: 120, description: 'השכרה' },
+    { id: 'm2', isManual: true, isDeleted: true, amount: 30, description: 'ישן' },
+  ];
+  const Z = { added: 0, removed: 0, restored: 0, edited: 0 };
+  assert.deepEqual(OE.detectManualChargeChanges(undefined, stored), Z);
+  // the legacy-shaped "send everything back unchanged" body is not a change
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: false, amount: 50, description: 'חיוב ידני' }, { id: 'a1', isDeleted: false, amount: 999 }, { id: 'm2', isDeleted: true, amount: '30', description: 'ישן' }], stored), Z);
+  assert.deepEqual(OE.detectManualChargeChanges([{ isNew: true, description: 'x', amount: 10 }], stored), { ...Z, added: 1 });
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: true, amount: 50 }], stored), { ...Z, removed: 1 });
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm2', isDeleted: false, amount: 30 }], stored), { ...Z, restored: 1 });
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: false, amount: 500 }], stored), { ...Z, edited: 1 }, 'amount');
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: false, amount: 50, description: 'אחר' }], stored), { ...Z, edited: 1 }, 'description');
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'm1', isDeleted: false }], stored), { ...Z, edited: 1 }, 'a missing amount is written as 0 by the route - a change');
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'a1', isDeleted: true, amount: 0 }], stored), Z, 'automatic obligation');
+  assert.deepEqual(OE.detectManualChargeChanges([{ id: 'gone', isDeleted: true }, null], stored), Z);
+  assert.equal(OE.hasManualChargeChange(Z), false);
+  for (const k of ['added', 'removed', 'restored', 'edited']) assert.equal(OE.hasManualChargeChange({ ...Z, [k]: 1 }), true, k);
 });
 
 test('approval helpers: context validation, feature key normalization, reason cleaned', () => {
@@ -586,7 +606,8 @@ test('PUT /api/orders/[id] (static): STOCK_SHORTAGE / CONFLICT codes on the SAME
   assert.match(s, /if \(data\.cardVariant === A5_CARD_VARIANT\) \{\s*const manualCharges = detectManualChargeChanges\(data\.obligations, storedObligations\);/);
   assert.match(s, /hasPermission\(sessionEmployee, MANUAL_CHARGE_PERMISSION\)\)\)\s*\|\| \(await verifyManagerPin\(data\.manualChargeApproverId, data\.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION\)\)/);
   assert.match(s, /code: MANUAL_CHARGE_APPROVAL_REQUIRED_CODE[\s\S]{0,200}status: 403/);
-  assert.match(s, /select: \{ id: true, isDeleted: true, isManual: true \}/);
+  assert.match(s, /select: \{ id: true, isDeleted: true, isManual: true, amount: true, description: true \}/);
+  assert.match(s, /if \(hasManualChargeChange\(manualCharges\)\) \{/);
   // the gate runs BEFORE the transaction (no reads inside $transaction)
   assert.ok(s.indexOf('detectManualChargeChanges(data.obligations') < s.indexOf('prisma.$transaction(async (tx)'));
   // the signature-only PUT (legacy + new card) still skips the id checks when the new card tags its body
@@ -603,7 +624,7 @@ test('print page (static): logs ORDER_PRINTED once per load via the events route
   assert.match(s, /if \(isPdfRender \|\| headless\) return undefined;/);
   assert.ok(s.indexOf('if (isPdfRender || headless) return undefined;') < s.indexOf('window.print()'), 'no print dialog for a PDF render');
   assert.match(s, /if \(!printLoggedRef\.current\) \{\s*printLoggedRef\.current = true;/);
-  assert.match(s, /searchParams\.get\('downloadPdf'\) === '1'/);
+  assert.match(s, /const isPdfRender = \['1', 'true'\]\.includes\(searchParams\.get\('downloadPdf'\)\);/);
 });
 
 test('single manual AuditLog site: only the helper (+ the two pre-existing documented sites) write AuditLog by hand', () => {
@@ -631,7 +652,9 @@ test('PageVisitLog redaction (risk #5): verify-pin / login bodies dropped, pin-l
   assert.deepEqual(JSON.parse(ev).meta, { doc: 'order' });
   const layout = src('app/layout.js');
   const serverRe = src('lib/redactSensitive.js').match(/const AUTH_ENDPOINT_RE = (\/.*\/i);/)[1];
-  assert.ok(layout.includes('var AUTH_EP = ' + serverRe + ';'), 'client interceptor uses the same endpoint list');
+  // the interceptor lives inside a template literal (__html: `...`), where "\/" renders as "/" and turns the regex
+  // into a "//" line comment - so the SOURCE must carry doubled backslashes for the RENDERED script to match.
+  assert.ok(layout.includes('var AUTH_EP = ' + serverRe.replace(/\\/g, '\\\\') + ';'), 'client interceptor uses the same endpoint list (escaped for the template literal)');
   assert.match(layout, /if \(requestQuery\) requestQuery = sanitizeRequestQuery\(requestQuery, endpoint\);/);
   assert.match(src('app/api/log-visit/route.js'), /redactRequestQuery\(String\(e\.requestQuery\)\.slice\(0, 4000\), e\.pageUrl\)/);
 });
@@ -660,7 +683,7 @@ test('changesDisplay: UUID-valued keys, approverId and clientEventId are hidden;
   assert.equal(CD.isVisibleChangeKey('approverId', 'emp-mgr'), false);
   assert.equal(CD.isVisibleChangeKey('clientEventId', 'p1abc-0'), false);
   assert.equal(CD.isVisibleChangeKey('employeeId', UUID), false);
-  assert.equal(CD.isVisibleChangeKey('customerId', { from: UUID, to: null }), false);
+  assert.equal(CD.isVisibleChangeKey('customerId', { from: UUID, to: UUID }), false, 'unchanged reference');
   assert.equal(CD.isVisibleChangeKey('debtApprovedBy', UUID.toUpperCase()), false);
   for (const [k, v] of [['notes', 'x'], ['approverName', 'מנהלת סניף'], ['doc', 'order'], ['eventDate', { from: '2026-01-01T00:00:00Z', to: '2026-02-01T00:00:00Z' }], ['amount', 50], ['orderId', 501]]) {
     assert.equal(CD.isVisibleChangeKey(k, v), true, k);
@@ -721,4 +744,117 @@ test('lib/apiCache: POST /api/orders/events does not clear order/inventory cache
   assert.equal(isMutationSkipped('/api/orders/501'), false);
   assert.equal(isMutationSkipped('/api/orders/501/items'), false);
   assert.equal(isMutationSkipped('/api/orders'), false);
+});
+
+// ======================================================== reviewer round: rendered script, tiers, race, etc.
+const vm = await import('node:vm');
+
+// The interceptor is the FIRST `__html: \`...\`` template literal in app/layout.js. Evaluate it exactly the way
+// JavaScript does at render time (escape processing included) to get what the browser receives.
+function renderedInterceptorScript() {
+  const layout = src('app/layout.js');
+  const start = layout.indexOf('__html: `') + '__html: `'.length;
+  const end = layout.indexOf('\n`', start);
+  const raw = layout.slice(start, end + 1);
+  assert.ok(!raw.includes('${'), 'the interceptor template has no interpolations');
+  return new Function('return `' + raw + '`;')();
+}
+
+test('layout interceptor (RENDERED script): AUTH_EP regex is real code identical to the server list, script parses', () => {
+  const html = renderedInterceptorScript();
+  const serverRe = src('lib/redactSensitive.js').match(/const AUTH_ENDPOINT_RE = (\/.*\/i);/)[1];
+  assert.ok(html.includes('var AUTH_EP = ' + serverRe + ';'), 'the browser receives the same regex literal as lib/redactSensitive.js');
+  assert.ok(!/var AUTH_EP = \/\//.test(html), 'not collapsed into a // comment');
+  assert.doesNotThrow(() => new vm.Script(html), 'rendered script is valid JavaScript');
+});
+
+test('layout interceptor (RENDERED script, executed): sanitize drops auth bodies, masks pins, keeps ordinary bodies', () => {
+  const html = renderedInterceptorScript();
+  const from = html.indexOf('var AUTH_EP');
+  const to = html.indexOf('window.__queueVisitLog');
+  const sanitize = new Function(html.slice(from, to) + '\nreturn sanitizeRequestQuery;')();
+  assert.equal(sanitize(JSON.stringify({ pin: PIN, requiredLevel: 'מנהל' }), '/api/auth/verify-pin'), '');
+  assert.equal(sanitize(JSON.stringify({ username: 'a', password: 'b' }), '/api/login'), '');
+  assert.equal(sanitize('{"pin":"1"}', '/api/attendance'), '');
+  const put = JSON.parse(sanitize(JSON.stringify({ notes: 'x', managerPin: PIN, manualChargeApproverPin: PIN, items: [{ id: 'i1', approverPin: PIN }] }), '/api/orders/501'));
+  assert.deepEqual(put, { notes: 'x', managerPin: '[מוסתר]', manualChargeApproverPin: '[מוסתר]', items: [{ id: 'i1', approverPin: '[מוסתר]' }] });
+  assert.equal(sanitize('?pin=1234&orderId=5', '/api/x'), '?pin=%5B%D7%9E%D7%95%D7%A1%D7%AA%D7%A8%5D&orderId=5');
+  assert.equal(sanitize('?orderId=5', '/api/x'), '?orderId=5');
+  assert.equal(sanitize(JSON.stringify({ orderId: 501, action: 'ORDER_PRINTED' }), '/api/orders/events'), JSON.stringify({ orderId: 501, action: 'ORDER_PRINTED' }));
+  assert.equal(sanitize('{"pin": "12', '/api/x'), '', 'unparseable JSON is dropped');
+});
+
+test('layout interceptor (RENDERED script, whole IIFE in a sandbox): every /api call is still queued, auth bodies empty', async () => {
+  const html = renderedInterceptorScript();
+  const queued = [];
+  const fakeFetch = async () => ({ headers: { get: (h) => (h === 'content-length' ? '12' : null) }, json: async () => ({}), text: async () => '' });
+  const win = {
+    location: { origin: 'http://localhost', pathname: '/orders/501' },
+    addEventListener() {}, dispatchEvent() {}, fetch: fakeFetch,
+  };
+  const ctx = vm.createContext({
+    window: win, document: { addEventListener() {}, visibilityState: 'visible' }, navigator: {},
+    performance: { now: () => 0 }, URL, URLSearchParams, Blob, JSON, Date, Math, Array, Object, String,
+    CustomEvent: class { constructor(t, o) { this.type = t; this.detail = o && o.detail; } },
+    setTimeout: () => 0, clearTimeout() {},
+  });
+  vm.runInContext(html, ctx);
+  assert.equal(win.__apiInterceptorInstalled, true);
+  assert.equal(typeof win.__queueVisitLog, 'function');
+  win.__queueVisitLog = (e) => { queued.push(e); };
+  await win.fetch('/api/auth/verify-pin', { method: 'POST', body: JSON.stringify({ pin: PIN, requiredLevel: 'מנהל', context: { orderId: 501 } }) });
+  await win.fetch('/api/orders/501', { method: 'PUT', body: JSON.stringify({ notes: 'n', managerPin: PIN }) });
+  await win.fetch('/api/orders/501?light=0');
+  assert.equal(queued.length, 3, 'every /api call is logged (the regression made the whole script dead code)');
+  assert.equal(queued[0].pageUrl, '/api/auth/verify-pin');
+  assert.ok(!queued[0].requestQuery, 'no auth body');
+  assert.equal(JSON.parse(queued[1].requestQuery).managerPin, '[מוסתר]');
+  assert.ok(!JSON.stringify(queued).includes(PIN));
+});
+
+test('verify-pin + context: 400 for "עובד" / free strings / non-approver catalog keys, before the code is checked', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  for (const level of ['עובד', 'whatever', undefined, 'page:orders', 'feature:export_max_rows', 'feature:nope']) {
+    globalThis.__MOCK_CALLS = [];
+    const r = await pinReq({ pin: PIN, requiredLevel: level, employeeId: 'emp-mgr', context: { orderId: 501 } });
+    assert.equal(r.status, 400, String(level));
+    assert.ok(!globalThis.__MOCK_CALLS.some((c) => c.model === 'employee' && c.method === 'findMany'), 'pin not checked: ' + level);
+  }
+  assert.equal(audit().length, 0);
+  // the same level WITHOUT context keeps the legacy behavior ('עובד' = any valid password)
+  const legacy = await pinReq({ pin: PIN, requiredLevel: 'עובד', employeeId: 'emp-mgr' });
+  assert.equal(legacy.status, 200);
+  assert.deepEqual([...OE.MANAGER_APPROVAL_TIERS], ['מנהל', 'מתכנת', 'הנהלה ראשית', 'מנהל סניף ומעלה', 'מאשר הזמנה ללא תשלום']);
+  for (const t of OE.MANAGER_APPROVAL_TIERS) assert.ok(src('app/api/auth/verify-pin/route.js').includes(`requiredLevel === '${t}'`), t + ' is a tier the route enforces');
+});
+
+test('events: clientEventId is race-safe - two concurrent identical posts write the batch once', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const body = { orderIds: [501, 502], action: 'ORDER_PRINTED', meta: { doc: 'order', batch: true, count: 2 }, clientEventId: 'race-12345678' };
+  const [a, b] = await Promise.all([postEvent(body), postEvent(body)]);
+  assert.equal(a.status, 200, JSON.stringify(a.__json)); assert.equal(b.status, 200, JSON.stringify(b.__json));
+  assert.equal(audit().length, 2, 'one row per order, not two');
+  assert.deepEqual([a.__json.duplicate, b.__json.duplicate].sort(), [false, true]);
+  assert.deepEqual(audit().map((r) => r.id).sort(), ['oe:ORDER_PRINTED:501:race-12345678', 'oe:ORDER_PRINTED:502:race-12345678']);
+  // without a clientEventId rows keep the default random key
+  await postEvent({ orderId: 501, action: 'ORDER_PRINTED', meta: { doc: 'order' } });
+  assert.ok(!audit().at(-1).id.startsWith('oe:'));
+});
+
+test('changesDisplay: a UUID foreign-key reassignment is shown as a placeholder, never hidden and never the ids', () => {
+  const U2 = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+  assert.equal(CD.isVisibleChangeKey('dressItemId', { from: UUID, to: U2 }), true);
+  assert.deepEqual(CD.normalizeChange('dressItemId', { from: UUID, to: U2 }), { from: null, to: 'הוחלף' });
+  assert.deepEqual(CD.normalizeChange('dressModelId', { from: null, to: U2 }), { from: null, to: 'נקבע' });
+  assert.deepEqual(CD.normalizeChange('customerId', { from: UUID, to: null }), { from: null, to: 'הוסר' });
+  assert.equal(CD.isVisibleChangeKey('customerId', { from: UUID, to: null }), true);
+  assert.deepEqual(CD.normalizeChange('notes', { from: 'a', to: 'b' }), { from: 'a', to: 'b' });
+  assert.equal(CD.isVisibleChangeKey('dressItemId', UUID), false, 'a plain UUID value (CREATE row) stays hidden');
+  for (const f of ['components/modern/ChangesChips.js', 'components/HistoryViewer.js']) {
+    assert.ok(src(f).includes('const change = normalizeChange(key, changes[key]);'), f);
+  }
+});
+
+test('admin history filter "עדכון" also matches UPDATE_ORDER (GET /api/audit)', () => {
+  assert.ok(src('app/api/audit/route.js').includes("where.action = action === 'UPDATE' ? { in: ['UPDATE', 'UPDATE_ORDER'] } : action;"));
 });

@@ -68,7 +68,7 @@ import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
 import { canApproveDebt, hasPermission } from '@/lib/permissions';
 import {
   STOCK_SHORTAGE_CODE, CONFLICT_CODE, MANUAL_CHARGE_PERMISSION, MANUAL_CHARGE_APPROVAL_REQUIRED_CODE,
-  A5_CARD_VARIANT, detectManualChargeChanges, diffOrderUpdate
+  A5_CARD_VARIANT, detectManualChargeChanges, hasManualChargeChange, diffOrderUpdate
 } from '@/lib/history/orderEvents';
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
@@ -583,7 +583,7 @@ export async function PUT(request, { params }) {
       // המצב הקודם של ההתחייבויות — כדי לזהות ביטול/שחזור ולרשום אותו ביומן בשם מפורש
       prisma.paymentObligation.findMany({
         where: { orderId: parsedOrderId },
-        select: { id: true, isDeleted: true, isManual: true }
+        select: { id: true, isDeleted: true, isManual: true, amount: true, description: true }
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
@@ -610,14 +610,15 @@ export async function PUT(request, { params }) {
         }
       }
     }
-    // R35 / AMB-16 (new order card only): adding a manual charge, or deleting a stored manual one, needs
+    // R35 / AMB-16 (new order card only): adding a manual charge, or editing / deleting / restoring a stored
+    // manual one (amount, description or isDeleted changes), needs
     // feature:manual_charge_add - the logged-in employee holds it, or an approver typed their code
     // (manualChargeApproverId/manualChargeApproverPin, re-verified here like managerPin/orderDateApproverPin).
     // Bodies WITHOUT cardVariant:'a5' are the legacy card ("הוסף חיוב" / delivery-charge buttons, no approval
     // step) and keep today's behavior until that card is retired.
     if (data.cardVariant === A5_CARD_VARIANT) {
       const manualCharges = detectManualChargeChanges(data.obligations, storedObligations);
-      if (manualCharges.added > 0 || manualCharges.removed > 0) {
+      if (hasManualChargeChange(manualCharges)) {
         const sessionEmployee = await getSessionEmployee();
         const allowed = (sessionEmployee && (await hasPermission(sessionEmployee, MANUAL_CHARGE_PERMISSION)))
           || (await verifyManagerPin(data.manualChargeApproverId, data.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION));

@@ -3,7 +3,7 @@
 import React from 'react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { FIELD_TRANSLATIONS } from '../HistoryViewer';
-import { isVisibleChangeKey, labelChangeValue } from './changesDisplay';
+import { isVisibleChangeKey, labelChangeValue, normalizeChange } from './changesDisplay';
 
 const DANGER_TONE = { bg: 'var(--danger-tint)', color: 'var(--danger)' };
 const SUCCESS_TONE = { bg: 'var(--success-tint)', color: 'var(--success)' };
@@ -76,7 +76,7 @@ export function ChangesChips({ changesJson }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
         {keys.map(key => {
           const label = FIELD_TRANSLATIONS[key] || key;
-          const change = changes[key];
+          const change = normalizeChange(key, changes[key]); // UUID reassignment -> placeholder
           const isFromTo = change && typeof change === 'object' && ('from' in change || 'to' in change);
           const isLongText = key === 'body' || key === 'notes' || key === 'orderNotes' || key === 'officeNotes';
 

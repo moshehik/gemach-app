@@ -47,7 +47,8 @@ export async function POST(request) {
 
     const actorId = await getActingEmployeeId();
     const written = await writeOrderEvents({ orderIds, action, meta, actorId, clientEventId });
-    return NextResponse.json({ ok: true, action, orderIds, written, duplicate: false });
+    // 0 written with a clientEventId = a concurrent repeat won the race on the deterministic row key
+    return NextResponse.json({ ok: true, action, orderIds, written, duplicate: !!clientEventId && written === 0 });
   } catch (error) {
     console.error('POST /api/orders/events failed:', error);
     return fail(500, 'SERVER_ERROR', 'שגיאה ברישום הפעולה');

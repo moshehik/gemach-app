@@ -386,7 +386,7 @@ export default async function RootLayout({ children }) {
       originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: payload }).catch(function(){});
     } catch (e) {}
   }
-  var AUTH_EP = /\/api\/(login|logout|auth(\/|$)|attendance|dev\/agent-login|employees\/[^/?]+\/(reset-)?password)|\/api\/history$/i;
+  var AUTH_EP = /\\/api\\/(login|logout|auth(\\/|$)|attendance|dev\\/agent-login|employees\\/[^/?]+\\/(reset-)?password)|\\/api\\/history$/i;
   function isSensitiveKey(key) {
     var k = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
     return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1 || k.indexOf('otp') !== -1 || k === 'code' || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k);
