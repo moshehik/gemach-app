@@ -4,7 +4,7 @@
 // (ModernSendEmailModal): POST /api/send-email { to, subject, emailBody, username, password, customerId, fileName, fileContent,
 // attachments[], sendMode, driveFolderId } - נבנה ב-buildMailPayload. ההבדלים מהישן (מאושרים): הנושא ממולא מראש "כרטיס לקוח · שם"
 // (mailpre), אישור המנהל נשאל בלחיצה על "שלח" ולא לפני פתיחת החלון (העיצוב), ו"דפים לצירוף" - רק מסמכים שקיימים במערכת היום
-// (כרטיס לקוחה / דף חשבון / סיכומי הזמנות, PDF מדף ההדפסה דרך POST /api/pdf). "תקנון חתום" ו"קבלות" לא קיימים ולא מוצגים.
+// (כרטיס לקוחה / דף חשבון / דף פרטי קשר / סיכומי הזמנות, PDF מדף ההדפסה דרך POST /api/pdf). "תקנון חתום" ו"קבלות" לא קיימים ולא מוצגים.
 // קבצים נוספים + יעד (צרופה / דרייב / גם וגם) + תיקיית דרייב - כמו בישן (mailfiles).
 
 import { useEffect, useRef, useState } from 'react';

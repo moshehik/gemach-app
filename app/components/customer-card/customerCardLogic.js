@@ -317,12 +317,13 @@ export function filterApprovers(employees, level) {
 }
 
 // ---------- מסמכים לצירוף במייל: רק מה שקיים היום (הבעלים: "הצג כרגע רק דפים קיימים") ----------
-// כל מסמך כאן מיוצר כ-PDF בשרת (POST /api/pdf, path) מדף הדפסה קיים. "תקנון חתום" ו"קבלות" לא קיימים - לא מוצגים.
+// כל מסמך כאן מיוצר כ-PDF בשרת (POST /api/pdf, path) מדף הדפסה קיים. "דף פרטי קשר" נוסף ברשימה לפי תשובת הבעלים CC-O9 (4.10.2026). "תקנון חתום" ו"קבלות" לא קיימים - לא מוצגים.
 export function mailDocuments(customer) {
   const cid = encodeURIComponent(customer.id);
   const docs = [
     { id: 'card', name: 'כרטיס לקוחה', path: `/print/customer?customerId=${cid}&type=card&downloadPdf=true`, preview: `/print/customer?customerId=${cid}&type=card&preview=1`, file: `כרטיס לקוחה - ${displayName(customer)}` },
     { id: 'account', name: 'דף חשבון', path: `/print/customer?customerId=${cid}&type=account&downloadPdf=true`, preview: `/print/customer?customerId=${cid}&type=account&preview=1`, file: `דף חשבון - ${displayName(customer)}` },
+    { id: 'contact', name: 'דף פרטי קשר', path: `/print/customer?customerId=${cid}&type=contact&downloadPdf=true`, preview: `/print/customer?customerId=${cid}&type=contact&preview=1`, file: `דף פרטי קשר - ${displayName(customer)}` },
   ];
   for (const o of sortOrders(customer.orders || []).filter((x) => !x.isDeleted).slice(0, 6)) {
     const p = `/print/order?orderId=${o.orderId}&type=order&downloadPdf=true`;
