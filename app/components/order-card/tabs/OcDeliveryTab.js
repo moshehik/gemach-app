@@ -11,7 +11,7 @@
 // כתובת שונה (רק כש-delivery_allow_address_override או כשחובה) + חובה + הודעה ← MGD:482-492
 // יוצא יום לפני (רק כש-delivery_one_day_before_option) ← MGD:494-510 ; כל שינוי = edit.setOrder(prev => ({...prev, ...updates})) ← MGD:51-53
 // הגדרות ← MGD:199-216 (deliverySettingsOf) ; חישוב החובה ← lib/deliveryValidation (deliveryFieldState). השמירה עצמה - ה-PUT של הבקר.
-// נקודות הרחבה ל-W2b (R49, לא ממומש כאן): SLOTS.DeliveryJoinPicker (בורר הצטרפות למשלוח, אחרי כרטיס "יעד"). ר' W2a-NOTES.
+// נקודות הרחבה ל-W2b (R49; ממומש ב-parts/OcDeliveryJoinPicker.js): SLOTS.DeliveryJoinPicker (בורר הצטרפות למשלוח, אחרי כרטיס "יעד"). ר' W2a-NOTES.
 import { useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import { SLOTS } from '../slots';
@@ -144,6 +144,7 @@ export function OcDeliveryCards({ oc, ui }) {
   const dir = order.deliveryDirection || DEFAULT_DIRECTION;
   const di = Math.max(0, DELIVERY_DIRECTIONS.findIndex(([v]) => v === dir));
   const JoinPicker = SLOTS.DeliveryJoinPicker; // W2b (R49) - נקודת הרחבה; לא קיים עד שהזרם שלו ירשום אותו ב-slots.js
+  const joined = !!order.deliveryJoinedTo; // R49: בהצטרפות למשלוח קיים העיר/הכתובת נלקחות מהמשלוח שנבחר (כמו בנווה: השדות מנוטרלים)
 
   return (
     <>
@@ -180,7 +181,7 @@ export function OcDeliveryCards({ oc, ui }) {
           <div className="field">
             <label className="lbl" htmlFor="delCityIn">עיר משלוח{fs.cityRequired ? <span className="oc-req" aria-hidden="true"> *</span> : null}</label>
             <SuggestInput id="delCityIn" name="delcity-nofill" icon="pin" value={order.deliveryCity || ''} options={cityOptions} closed
-              placeholder="עיר..." required={fs.cityRequired} describedBy={fs.cityMsg ? 'oc-del-city-msg' : undefined}
+              placeholder="עיר..." disabled={joined} required={fs.cityRequired} describedBy={fs.cityMsg ? 'oc-del-city-msg' : undefined}
               onCommit={(v) => set({ deliveryCity: v })} />
             {fs.cityMsg ? <p className="amsg oc-fmsg" id="oc-del-city-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.cityMsg}</p> : null}
           </div>
@@ -188,7 +189,7 @@ export function OcDeliveryCards({ oc, ui }) {
             <div className="field">
               <label className="lbl" htmlFor="delAddr">כתובת שונה ממגורים{fs.addressRequired ? <span className="oc-req" aria-hidden="true"> *</span> : null} <Tip text="רק אם שונה מכתובת הלקוח" /></label>
               <SuggestInput id="delAddr" name="deladdr-nofill" icon="pin" value={order.deliveryAddress || ''} options={loc.streets}
-                placeholder="רחוב ומספר..." required={fs.addressRequired} describedBy={fs.addressMsg ? 'oc-del-addr-msg' : undefined}
+                placeholder="רחוב ומספר..." disabled={joined} required={fs.addressRequired} describedBy={fs.addressMsg ? 'oc-del-addr-msg' : undefined}
                 onCommit={(v) => set({ deliveryAddress: v })} />
               {fs.addressMsg ? <p className="amsg oc-fmsg" id="oc-del-addr-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.addressMsg}</p> : null}
             </div>

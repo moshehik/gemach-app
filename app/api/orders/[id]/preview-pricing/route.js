@@ -3,6 +3,7 @@ import { checkAuth } from '@/lib/auth';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { computeOrderObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
+import { isOrderJoined } from '@/lib/deliveryJoin';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,9 @@ const SETTING_KEYS = [
   'instant_undo_minutes',
   'gap_size_price_rule',
   'delivery_price_by_city',
-  'delivery_price'
+  'delivery_price',
+  'enable_delivery_join',
+  'delivery_join_price'
 ];
 
 /**
@@ -109,12 +112,23 @@ export async function POST(request, { params }) {
     // שמסמנים בה משלוח (או משנים בה עיר/כיוון משלוח) לא כללה את החיוב הזה כלל, כך שהסכום
     // שהוצג לפני שמירה היה נמוך מהאמת - בדיוק הבאג שגרם לחוב לא-ידוע על משלוח (ר' דיווח
     // 6124472b). מוסיפים אותו כאן מאותו חישוב טהור ומשותף (computeDeliveryObligationPreview).
+    // הצטרפות למשלוח קיים (R49, enable_delivery_join): מחיר הצטרפות לצד כשההזמנה מצטרפת - לפי ה-state הלא-שמור אם נשלח
+    // (order.deliveryJoinedTo: מספר = מצטרפת, null = לא), אחרת לפי הטבלה. כבוי / טבלה חסרה = המחיר הרגיל.
+    let joinPrice = null;
+    if (settings.find(s => s.key === 'enable_delivery_join')?.value === 'true') {
+      const parsedJoinPrice = parseFloat(settings.find(s => s.key === 'delivery_join_price')?.value);
+      if (Number.isFinite(parsedJoinPrice) && parsedJoinPrice > 0) {
+        const joined = orderOverrides.deliveryJoinedTo !== undefined ? !!orderOverrides.deliveryJoinedTo : await isOrderJoined(parsedOrderId);
+        if (joined) joinPrice = parsedJoinPrice;
+      }
+    }
     const deliveryPreview = computeDeliveryObligationPreview({
       isDelivery: effectiveOrder.isDelivery,
       deliveryCity: effectiveOrder.deliveryCity,
       deliveryDirection: effectiveOrder.deliveryDirection,
       deliveryPriceByCity: settings.find(s => s.key === 'delivery_price_by_city')?.value,
       deliveryPrice: settings.find(s => s.key === 'delivery_price')?.value,
+      joinPrice,
       // חיוב "משלוח" קיים ולא נמחק בהזמנה האמיתית - נבדק בנפרד מ-newObligations (שמכיל רק
       // חיובים אוטומטיים מ-computeOrderObligations, לא כולל משלוח מלכתחילה, כך שאין סיכון
       // לספור פעמיים).

@@ -223,7 +223,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
       }
     }, 400);
     return () => { clearTimeout(timer); previewSeqRef.current += 1; };
-  }, [previewActive, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId]);
+  }, [previewActive, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.deliveryJoinedTo, order?.orderId]);
 
 
   // ---------- הגנות יציאה ----------

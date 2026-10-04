@@ -1,0 +1,253 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
+
+// "רצף ברקודים" (enable_barcode_sequence_mode): שדה סריקה אחד שנשאר בפוקוס - הסורק שולח
+// ברקוד + Enter וה-Enter הבא כבר מחכה. הרכיב אינו יודע מה עושים עם הברקוד: הקורא מעביר
+// onScan(code) שמבצע את הפעולה הקיימת של אותו מסך (השכרה/החזרה, עם כל האימותים הקיימים)
+// ומחזיר { status: 'ok' | 'error' | 'info', message, undo? }.
+//   * סריקות שמגיעות בזמן שהקודמת עוד מעובדת נכנסות לתור (השדה אף פעם לא נעול) ומעובדות לפי הסדר.
+//   * אחרי כל ברקוד: צפצוף (הצלחה / שגיאה), הבהוב ירוק/אדום, והפוקוס חוזר לשדה בלי עכבר.
+//   * "בטל סריקה אחרונה" מפעיל את undo של ההצלחה האחרונה; יש סיכום נסרקו/נכשלו עם הברקודים שנכשלו.
+// ההגדרה חסרה/כבויה = ההתנהגות הישנה, ר' useBarcodeSequenceMode.
+
+let audioCtx = null;
+function beep(kind) {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const tones = kind === 'ok' ? [[880, 0, 0.09]] : [[220, 0, 0.14], [220, 0.19, 0.14]];
+    for (const [freq, start, dur] of tones) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = freq;
+      osc.type = kind === 'ok' ? 'sine' : 'square';
+      gain.gain.value = 0.08;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + start);
+      osc.stop(audioCtx.currentTime + start + dur);
+    }
+  } catch { /* אין קול - לא קריטי */ }
+}
+
+/** האם מצב "רצף ברקודים" פעיל (enable_barcode_sequence_mode). ברירת מחדל: כבוי. */
+export function useBarcodeSequenceMode() {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
+      .then(data => {
+        const s = Array.isArray(data) ? data.find(x => x.key === 'enable_barcode_sequence_mode') : null;
+        if (!cancelled && s?.value === 'true') setEnabled(true);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  return enabled;
+}
+
+const MUTE_KEY = 'barcodeSequenceMuted';
+
+export default function BarcodeSequencePanel({ onScan, placeholder = 'סריקה ברצף — ברקוד + Enter', hint, compact = false }) {
+  const [value, setValue] = useState('');
+  const [entries, setEntries] = useState([]); // החדש ראשון
+  const [busy, setBusy] = useState(false);
+  const [queued, setQueued] = useState(0);
+  const [flash, setFlash] = useState(null); // 'ok' | 'error' | null
+  const [muted, setMuted] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const inputRef = useRef(null);
+  const queueRef = useRef([]);
+  const runningRef = useRef(false);
+  const onScanRef = useRef(onScan);
+  const mutedRef = useRef(false);
+  const seqRef = useRef(0);
+  const flashTimer = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => { onScanRef.current = onScan; });
+  useEffect(() => () => { mountedRef.current = false; clearTimeout(flashTimer.current); }, []);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(MUTE_KEY) === '1') { setMuted(true); mutedRef.current = true; }
+    } catch { /* ללא אחסון מקומי */ }
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  const focusInput = useCallback(() => {
+    if (!mountedRef.current) return;
+    const el = inputRef.current;
+    if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+  }, []);
+
+  const record = useCallback((code, result) => {
+    const status = result?.status === 'ok' || result?.status === 'info' ? result.status : 'error';
+    const entry = {
+      id: ++seqRef.current,
+      code,
+      status,
+      message: result?.message || (status === 'ok' ? 'נקלט' : 'הסריקה נכשלה'),
+      undo: typeof result?.undo === 'function' ? result.undo : null,
+      undone: false,
+      at: new Date(),
+    };
+    setEntries(prev => [entry, ...prev].slice(0, 300));
+    if (status !== 'info' && !mutedRef.current) beep(status === 'ok' ? 'ok' : 'error');
+    setFlash(status === 'ok' ? 'ok' : (status === 'error' ? 'error' : null));
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => { if (mountedRef.current) setFlash(null); }, 700);
+  }, []);
+
+  const runQueue = useCallback(async () => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    if (mountedRef.current) setBusy(true);
+    try {
+      while (queueRef.current.length > 0 && mountedRef.current) {
+        const code = queueRef.current.shift();
+        if (mountedRef.current) setQueued(queueRef.current.length);
+        let result;
+        try {
+          result = await onScanRef.current(code);
+        } catch (err) {
+          console.error(err);
+          result = { status: 'error', message: 'שגיאת רשת - הסריקה לא נשמרה' };
+        }
+        if (!mountedRef.current) break;
+        record(code, result);
+        // מאפשר ל-React לפרוס את השינוי של הסריקה הקודמת לפני שהברקוד הבא מעובד.
+        await new Promise(r => setTimeout(r, 0));
+        focusInput();
+      }
+    } finally {
+      runningRef.current = false;
+      if (mountedRef.current) { setBusy(false); setQueued(0); focusInput(); }
+    }
+  }, [record, focusInput]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const code = value.replace(/\s+/g, '');
+    if (!code) return;
+    setValue('');
+    queueRef.current.push(code);
+    setQueued(queueRef.current.length);
+    runQueue();
+  };
+
+  const lastUndoable = entries.find(en => en.status === 'ok' && en.undo && !en.undone);
+
+  const handleUndo = async () => {
+    if (!lastUndoable || busy) return;
+    const target = lastUndoable;
+    setBusy(true);
+    try {
+      await target.undo();
+      setEntries(prev => prev.map(en => en.id === target.id ? { ...en, undone: true, message: `${en.message} (בוטל)` } : en));
+    } catch (err) {
+      console.error(err);
+      setEntries(prev => [{ id: ++seqRef.current, code: target.code, status: 'error', message: 'ביטול הסריקה נכשל', undo: null, undone: false, at: new Date() }, ...prev]);
+    } finally {
+      setBusy(false);
+      focusInput();
+    }
+  };
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    mutedRef.current = next;
+    try { localStorage.setItem(MUTE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+    focusInput();
+  };
+
+  const okCount = entries.filter(en => en.status === 'ok' && !en.undone).length;
+  const failed = entries.filter(en => en.status === 'error');
+  const feed = entries.slice(0, compact ? 3 : 5);
+
+  const borderColor = flash === 'ok' ? 'var(--success, #2e7d32)' : flash === 'error' ? 'var(--danger, #c62828)' : 'var(--border)';
+
+  return (
+    <div
+      data-element-name="רצף_ברקודים"
+      style={{ border: `2px solid ${borderColor}`, borderRadius: 'var(--radius-md)', padding: compact ? '8px' : '12px', background: 'var(--surface-alt)', transition: 'border-color 0.2s' }}
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="input-icon-wrap">
+          <svg className="icon"><use href="#i-tag" /></svg>
+          <input
+            ref={inputRef}
+            type="text"
+            className="input"
+            value={value}
+            onChange={e => setValue(e.target.value.replace(/\s+/g, ''))}
+            placeholder={placeholder}
+            autoComplete="off"
+            inputMode="numeric"
+            aria-label="סריקת ברקוד ברצף"
+          />
+        </div>
+        <button type="submit" style={{ display: 'none' }}>סרוק</button>
+      </form>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '12px', color: 'var(--text-2)' }}>
+        <span className="badge badge-success">נסרקו: {okCount}</span>
+        <span className={`badge ${failed.length ? 'badge-danger' : 'badge-neutral'}`}>נכשלו: {failed.length}</span>
+        {(busy || queued > 0) && <span className="spinner" aria-label="מעבד..." />}
+        {queued > 0 && <span>בתור: {queued}</span>}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn btn-ghost btn-sm" onClick={handleUndo} disabled={!lastUndoable || busy} title="מבטל את הסריקה המוצלחת האחרונה">
+          בטל סריקה אחרונה
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowSummary(s => !s); focusInput(); }}>
+          {showSummary ? 'הסתר סיכום' : 'סיכום'}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={toggleMute} title="מתג הפעלה/כיבוי לצפצוף">
+          {muted ? 'צפצוף: כבוי' : 'צפצוף: פעיל'}
+        </button>
+      </div>
+
+      {feed.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }} aria-live="polite">
+          {feed.map(en => (
+            <li
+              key={en.id}
+              style={{
+                fontSize: '12.5px', padding: '4px 8px', borderRadius: 'var(--radius-sm, 6px)',
+                background: en.status === 'ok' ? 'var(--success-bg, rgba(46,125,50,0.10))' : en.status === 'error' ? 'var(--danger-bg, rgba(198,40,40,0.10))' : 'var(--surface)',
+                color: en.status === 'error' ? 'var(--danger, #c62828)' : 'var(--text)',
+                textDecoration: en.undone ? 'line-through' : 'none',
+              }}
+            >
+              <strong style={{ direction: 'ltr', unicodeBidi: 'embed' }}>{en.code}</strong> — {en.message}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {showSummary && (
+        <div style={{ marginTop: '8px', fontSize: '12.5px', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+          <div>נסרקו בהצלחה: <strong>{okCount}</strong> · נכשלו: <strong>{failed.length}</strong></div>
+          {failed.length > 0 && (
+            <ul style={{ margin: '6px 0 0', paddingInlineStart: '18px' }}>
+              {failed.map(en => (
+                <li key={en.id}><span style={{ direction: 'ltr', unicodeBidi: 'embed' }}>{en.code}</span> — {en.message}</li>
+              ))}
+            </ul>
+          )}
+          {entries.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: '6px' }} onClick={() => { setEntries([]); focusInput(); }}>
+              נקה רשימה
+            </button>
+          )}
+        </div>
+      )}
+
+      {hint && <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '6px' }}>{hint}</div>}
+    </div>
+  );
+}

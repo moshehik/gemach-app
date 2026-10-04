@@ -46,7 +46,7 @@ p.on('response', (r) => { if (r.status() === 404 && !/\/api\//.test(r.url())) co
 p.on('pageerror', (e) => console.log('PAGEERR', which, e.message));
 // כשיש שינויים שלא נשמרו הכרטיס מגן ביציאה (beforeunload) - בהרתמה מאשרים כדי לעבור לשלב הבא
 p.on('dialog', (dl) => dl.accept().catch(() => {}));
-p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', which, m.text().slice(0, 200)); });
+p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', which, globalThis.__st || '-', m.text().slice(0, 200)); });
 const results = {};
 const snap = async (name, roots = rootsFor(name)) => { await sleep(600); await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: false }); results[name] = await p.evaluate(DUMP, roots); }; // ITEMS (W3) רק בשלבי הפריטים
 // לחיצה אמיתית בעכבר; כשהאלמנט מכוסה (בעיצוב: סרגל ההדגמה / כפתור השאלות הצף במסך צר) - el.click() במקום
@@ -397,6 +397,81 @@ STAGES.push(
   } },
 );
 
+// ===== W2b (R49, פורט נווה יעקב): בורר "הצטרפות למשלוח", באנר מיקום שמלה, רצף ברקודים =====
+// בעיצוב המאושר אין חלקים כאלה (D11: רק רכיבי פלטה) - לכן רק בדף האמיתי: צילום + JSON + בדיקות התנהגות מקצה לקצה עם ה-API המדומה.
+// "TOTAL 0 מול העיצוב" נבדק בשלבים הקיימים (40-42 משלוח, 01 כותרת וכו') שמורצים בתרחיש neve (כל ההגדרות של W2b כבויות) - החלקים לא משנים אותם.
+const W2B_DEL = [['DEL', '#p-delivery']];
+const calls = async (re) => p.evaluate((src) => (window.__calls || []).filter((c) => new RegExp(src).test(c.url)).map((c) => ({ url: c.url, method: c.method, body: c.body })), re.source);
+const delTab = async () => { await clickAt('#tabs .tab[data-tab="delivery"]'); await sleep(500); };
+STAGES.push(
+  { name: '70-join-picker', roots: W2B_DEL, real: async () => { await fresh('join'); await delTab(); await away(); } },
+  { name: '71-join-open', roots: W2B_DEL, real: async () => { await fresh('join'); await delTab(); await clickAt('#oc-join [data-join="join"]'); await sleep(700); await away(); } },
+  { name: '72-join-picked', roots: W2B_DEL, real: async () => { await fresh('join'); await delTab(); await clickAt('#oc-join [data-join="join"]'); await sleep(600); await clickAt('#oc-join .oc-join-row'); await sleep(700); await away(); } },
+  { name: '73-join-flow', roots: W2B_DEL, real: async () => {
+    await fresh('join'); await delTab();
+    const hasPicker = await p.evaluate(() => !!document.getElementById('oc-join'));
+    const before = await p.evaluate(() => ({ joinCalls: (window.__calls || []).filter((c) => /deliveries\/join/.test(c.url)).map((c) => c.url) }));
+    await clickAt('#oc-join [data-join="join"]'); await sleep(600);
+    const rows = await p.$$eval('#oc-join .oc-join-row', (xs) => xs.map((x) => x.textContent));
+    await clickAt('#oc-join .oc-join-row'); await sleep(700);
+    const st = await p.evaluate(() => ({ city: document.getElementById('delCityIn').value, cityOff: document.getElementById('delCityIn').disabled, addr: document.getElementById('delAddr') ? document.getElementById('delAddr').value : null, addrOff: document.getElementById('delAddr') ? document.getElementById('delAddr').disabled : null, checked: [...document.querySelectorAll('#oc-join .oc-join-row[aria-checked="true"]')].map((x) => x.textContent), badge: (document.querySelector('#rail .cart .badge') || {}).textContent }));
+    await clickAt('#oc-join .oc-join-pane:last-of-type .oc-join-row:nth-child(2)'); await sleep(400);
+    await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(1200);
+    const pv = (await calls(/preview-pricing/)).map((c) => JSON.parse(c.body)).pop();
+    await clickAt('#rail .btn.primary'); await sleep(900);
+    if (await p.evaluate(() => document.getElementById('scrim').classList.contains('on'))) { await clickAt('#dlg .btn.primary'); await sleep(900); }
+    const puts = (await calls(/^\/api\/orders\/53375$/)).filter((c) => c.method === 'PUT').map((c) => JSON.parse(c.body));
+    const b = puts[puts.length - 1] || {};
+    checks.push(['join: הבורר מוצג כשההגדרה דלוקה והשרת מאשר (info)', hasPicker && before.joinCalls.some((u) => /mode=info/.test(u))],
+      ['join: "הצטרפות" טוען מועמדים (2) לפי יום האירוע והכיוון', rows.length === 2 && /#53301/.test(rows[0]) && /שרה כהן/.test(rows[0])],
+      ['join: בחירת משלוח: עיר/כתובת נלקחות ממנו ומנוטרלות, השורה מסומנת, ההזמנה "מלוכלכת"', st.city === 'בית שמש' && st.cityOff && st.addr === 'הרב קוק 4' && st.addrOff && st.checked.length >= 1 && Number(st.badge) > 0],
+      ['join: התצוגה המקדימה מקבלת deliveryJoinedTo', !!pv && pv.order.deliveryJoinedTo === 53301],
+      ['join: PUT עם deliveryJoin {joinedToOrderId, primaryOrderId} + עיר/כתובת של המשלוח', puts.length >= 1 && b.deliveryJoin && b.deliveryJoin.joinedToOrderId === 53301 && b.deliveryJoin.primaryOrderId === 53301 && b.deliveryCity === 'בית שמש' && b.deliveryAddress === 'הרב קוק 4']);
+  } },
+  { name: '74-join-table-missing', roots: W2B_DEL, real: async () => {
+    await fresh('joinoff'); await delTab(); await away();
+    const st = await p.evaluate(() => ({ picker: !!document.getElementById('oc-join'), cards: document.querySelectorAll('#p-delivery .card').length }));
+    checks.push(['join: הטבלה חסרה / enabled:false מהשרת => הבורר לא מוצג, שאר כרטיסי המשלוח כרגיל', !st.picker && st.cards === 2]);
+  } },
+  { name: '75-join-off-setting', roots: W2B_DEL, real: async () => {
+    await fresh('neve'); await delTab(); await away();
+    const st = await p.evaluate(() => ({ picker: !!document.getElementById('oc-join'), joinCalls: (window.__calls || []).filter((c) => /deliveries\/join|dress-location/.test(c.url)).length, seq: !!document.querySelector('#sbar .oc-seq'), scan: !!document.getElementById('scanIn'), banner: !!document.querySelector('.oc-dressloc') }));
+    checks.push(['W2b כבוי בהגדרות (ברירת מחדל): אין בורר, אין באנר, אין רצף ברקודים, ואפס קריאות API של W2b', !st.picker && st.joinCalls === 0 && !st.seq && st.scan && !st.banner]);
+  } },
+  { name: '76-dress-location', roots: [['BAN', '.oc-dressloc']], real: async () => {
+    await fresh('dressloc'); await sleep(600); await away();
+    const st = await p.evaluate(() => { const el = document.querySelector('.oc-dressloc'); return { has: !!el, text: el ? el.textContent : '', role: el ? el.querySelector('section').getAttribute('role') : null, ym: el ? /20\d\d/.test(el.textContent) : null, rows: el ? el.querySelectorAll('.nb-r').length : 0 }; });
+    const cl = await calls(/dress-location-alerts/);
+    checks.push(['dress-location: באנר פלטה (.nb-warning) מעל הלשוניות עם כותרת חומרה (critical)', st.has && st.role === 'alert' && /שים לב: שמלות מההזמנה עדיין לא בבית - לא צפויות להגיע בזמן ללא טיפול/.test(st.text)],
+      ['dress-location: שורת דגם + יחידות (באירוע אחר / בסניף), תאריכים עבריים בלבד', st.rows === 2 && /דגם 4512 · מידה 38/.test(st.text) && /נמצאת בסניף "בני ברק"/.test(st.text) && /עבר מועד ההחזרה - טרם הוחזרה!/.test(st.text) && st.ym === false],
+      ['dress-location: GET עם orderId (קריאה בלבד)', cl.length >= 1 && /orderId=53375/.test(cl[0].url) && cl.every((c) => c.method === 'GET')]);
+  } },
+  { name: '77-sequence', roots: [['TOP', '#app > .topbar']], real: async () => {
+    await fresh('seq'); await sleep(500);
+    const init = await p.evaluate(() => ({ seq: !!document.querySelector('#sbar .oc-seq'), focus: document.activeElement && document.activeElement.id, pop: !!document.querySelector('#sbar .oc-seq-pop') }));
+    await p.type('#scanIn', '45123801'); await p.keyboard.press('Enter'); await sleep(1100);
+    const s1 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), focus: document.activeElement && document.activeElement.id, val: document.getElementById('scanIn').value, tab: document.querySelector('#tabs .tab.on') ? document.querySelector('#tabs .tab.on').dataset.tab : null }));
+    const c1 = (await calls(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
+    await p.type('#scanIn', '99900001'); await p.keyboard.press('Enter'); await sleep(1000);
+    const s2 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), toast: document.getElementById('toast') ? document.getElementById('toast').className : '', flash: document.querySelector('#sbar .oc-seq').className, liCls: (document.querySelector('#sbar .oc-seq-feed li') || {}).className || '' }));
+    await p.type('#scanIn', '27644001'); await p.keyboard.press('Enter'); await sleep(1000);
+    const s3 = await p.evaluate(() => ({ feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent) }));
+    await clickAt('#sbar .oc-seq-bar .btn:first-of-type'); await sleep(900); // בטל סריקה אחרונה (החזרת a3)
+    const s4 = await p.evaluate(() => ({ feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent) }));
+    const c2 = (await calls(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
+    await clickAt('#sbar .oc-seq-bar .btn:nth-of-type(2)'); await sleep(300);
+    const sum = await p.evaluate(() => (document.querySelector('#sbar .oc-seq-sum') || {}).textContent || '');
+    await away();
+    checks.push(['sequence: #sbar מציג את הפאנל במקום השדה הרגיל (enable_barcode_sequence_mode), הפוקוס בשדה', init.seq && init.focus === 'scanIn' && !init.pop],
+      ['sequence: ברקוד + Enter = השכרה אוטומטית (verify-item ואז toggle rent), השדה התאפס ובפוקוס, עובר ללשונית פריטים', c1.length === 2 && c1[0].url === '/api/rentals/verify-item' && c1[1].body.action === 'rent' && c1[1].body.barcode === '45123801' && s1.val === '' && s1.focus === 'scanIn' && s1.tab === 'items'],
+      ['sequence: יומן "נלקחה", מונה נסרקו 1', s1.chips[0] === 'נסרקו: 1' && /נלקחה/.test(s1.feed[0]) && /45123801/.test(s1.feed[0])],
+      ['sequence: ברקוד לא תקף = שגיאה ביומן (נכשלו: 1) ולא כטוסט אדום חוסם', s2.chips[1] === 'נכשלו: 1' && /אינו תקף להשכרה/.test(s2.feed[0]) && !/\bon\b/.test(s2.toast) && /oc-seq-error/.test(s2.liCls)],
+      ['sequence: ברקוד של פריט מושכר = החזרה "הוחזרה"', /הוחזרה/.test(s3.feed[0]) && s3.chips[0] === 'נסרקו: 2'],
+      ['sequence: "בטל סריקה אחרונה" שולח undoReturn בלי חלון אישור; הרשומה נחצית; המונה יורד', c2.some((c) => c.body && c.body.action === 'undoReturn' && c.body.itemId === 'a3') && s4.chips[0] === 'נסרקו: 1' && s4.feed.some((t) => /בוטל/.test(t))],
+      ['sequence: סיכום נסרקו / נכשלו עם הברקוד שנכשל', /נסרקו בהצלחה: 1/.test(sum) && /נכשלו: 1/.test(sum) && /99900001/.test(sum)]);
+  } },
+);
+
 
 // W6: לשונית היסטוריה - אותם שלבים בשני הצדדים (הכרטיס עם API מדומה = הרישומים של הדגימה, ר' entry.jsx)
 const openHistory = async () => { await (D ? fresh() : fresh('neve')); await clickAt('#tabs .tab[data-tab="history"]'); await sleep(500); await away(); };
@@ -433,6 +508,7 @@ STAGES.push(
 for (const st of STAGES) {
   const fn = D ? st.demo : st.real;
   if (!fn) continue;
+  globalThis.__st = st.name;
   if (process.env.STAGES && !new RegExp(process.env.STAGES).test(st.name)) continue; // סינון שלבים (למשל STAGES=^P)
   try { await fn(); await snap(st.name, st.roots || rootsFor(st.name)); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
 }

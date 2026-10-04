@@ -90,6 +90,8 @@ test('כל fetch מתוך רשימת ה-endpoints המותרת של הכרטיס
     /^`\/api\/orders\/\$\{[^}]+\}\/cancel-changes`$/, /^`\/api\/inventory\/preload\?\$\{queryParams\.toString\(\)\}`$/, /^'\/api\/auth\/verify-pin'$/, /^ORDER_EVENTS_URL$/,
     /^`\/api\/orders\/\$\{[^}]+\}\/(items|email|history|journal|prep-mark|employees)[^`]*`$/, /^'\/api\/(payments|nedarim|refunds|rentals\/[a-z-]+|returns\/report-issue|admin\/recalculations|pdf|customers|orders\/events)'$/,
     /^`\/api\/(refunds|customers|orders\/[^`]+\/items|audit\/order-item|inventory\/(capacity|models|sizes)|orders\/availability|schedule\/(marks|print))[^`]*`$/, // W7: schedule\/print = בדיקת הרשאות להדפסת דפי לו״ז (format=access) מ-parts/OcPrintMenu.js
+    // W2b (R49): בורר ההצטרפות למשלוח + באנר מיקום שמלה (שניהם כבויים בהגדרות / הטבלה חסרה = תשובה ריקה)
+    /^`\/api\/(deliveries\/join|orders\/dress-location-alerts)[^`]*`$/,
   ];
   const bad = [];
   for (const [f, s] of Object.entries(CODE)) {

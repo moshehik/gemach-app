@@ -17,7 +17,8 @@ const CSS = read('css/oc-items.css');
 test('כל קובצי W3 קיימים; הלשונית רשומה ב-tabs/index.js ושורת הסריקה ב-slots.js', () => {
   for (const f of W3_FILES) assert.ok(fs.existsSync(path.join(OC, f)), f);
   assert.match(read('tabs/index.js'), /import OcItemsTab from '\.\/OcItemsTab';[\s\S]*items: OcItemsTab,/);
-  assert.match(read('slots.js'), /import OcScanBar from '\.\/parts\/OcScanBar';[\s\S]*ScanBar: OcScanBar,/);
+  // W2b מחליף את הרישום ב-OcScanBarWithSequence (עוטף את OcScanBar של W3 עם SequencePanel) - שניהם תקינים
+  assert.match(read('slots.js'), /import OcScanBar(WithSequence)? from '\.\/parts\/OcScanBar(WithSequence)?';[\s\S]*ScanBar: OcScanBar(WithSequence)?,/);
   assert.match(CODE['parts/OcScanBar.js'], /className="sbar" id="sbar"/, 'R42: חוזה W1 — #sbar.sbar');
 });
 

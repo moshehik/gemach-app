@@ -1,0 +1,176 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+
+// "הצטרפות למשלוח קיים" - חלק מכרטיס המשלוח בהזמנה (app/orders/new/page.js וגם
+// components/orders/modern/ModernGeneralDetails.js, אותו רכיב לשניהם). מוצג רק כש-enable_delivery_join
+// דלוק (ההורה מחליט). מאפשר לבחור: משלוח חדש (כמו תמיד) או הצטרפות למשלוח קיים של אותו יום ואותו כיוון,
+// ולסמן מי מלקוחות הכתובת הוא ה"ראשי". השמירה בפועל (טבלת DeliveryJoin, מחיר הצטרפות, דריסת כתובת/עיר)
+// נעשית בשרת ב-POST/PUT של ההזמנה (lib/deliveryJoin.js saveDeliveryJoin) - כאן רק מעדכנים את ה-state של
+// ההזמנה: order.deliveryJoin = { joinedToOrderId, primaryOrderId } (+ deliveryAddress/deliveryCity של המשלוח שנבחר).
+
+// 'YYYY-MM-DD' של יום האירוע (לפי היום הישראלי כשמגיע ISO מלא, אחרת החלק התאריכי)
+function eventDateToIso(value) {
+  if (!value) return '';
+  const str = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+}
+
+export default function DeliveryJoinPicker({ order, orderId, onPatch }) {
+  const eventIso = eventDateToIso(order.eventDate || order.fromDate);
+  const direction = order.deliveryDirection || 'הלוך-חזור';
+  const oneDayBefore = !!order.deliveryOneDayBefore;
+
+  // מצב שמור בשרת להזמנה קיימת (לא נדחף ל-state של ההזמנה עד שהמשתמש משנה משהו - כדי לא לסמן "שינויים
+  // שלא נשמרו" רק מעצם פתיחת הכרטיס)
+  const [info, setInfo] = useState(null);
+  const [candidates, setCandidates] = useState(null); // null = טרם נטען
+  const [group, setGroup] = useState([]); // חברי הקבוצה של השורש שנבחר (בלי ההזמנה הזו)
+  const [mode, setMode] = useState(null); // 'new' | 'join' - null עד שנקבע מהמצב השמור
+
+  useEffect(() => {
+    if (!orderId) { setInfo({ joinedToOrderId: null, isPrimary: false, group: [] }); return; }
+    let cancelled = false;
+    fetch(`/api/deliveries/join?mode=info&orderId=${orderId}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => { if (!cancelled) setInfo(data.info || { joinedToOrderId: null, isPrimary: false, group: [] }); })
+      .catch(() => { if (!cancelled) setInfo({ joinedToOrderId: null, isPrimary: false, group: [] }); });
+    return () => { cancelled = true; };
+  }, [orderId]);
+
+  const joinedTo = order.deliveryJoin !== undefined ? (order.deliveryJoin?.joinedToOrderId || null) : (info?.joinedToOrderId || null);
+  const effectiveMode = mode || (joinedTo ? 'join' : 'new');
+
+  // משלוחים זמינים להצטרפות - רק במצב "הצטרפות" (או כשכבר מצורף), לפי יום האירוע והכיוון
+  useEffect(() => {
+    if (effectiveMode !== 'join' || !eventIso) return;
+    let cancelled = false;
+    const qs = new URLSearchParams({ mode: 'candidates', eventDate: eventIso, direction, oneDayBefore: String(oneDayBefore) });
+    if (orderId) qs.set('exclude', String(orderId));
+    fetch(`/api/deliveries/join?${qs}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => { if (!cancelled) setCandidates(data.candidates || []); })
+      .catch(() => { if (!cancelled) setCandidates([]); });
+    return () => { cancelled = true; };
+  }, [effectiveMode, eventIso, direction, oneDayBefore, orderId]);
+
+  // חברי הקבוצה של המשלוח שנבחר / של ההזמנה עצמה כשהיא שורש עם מצטרפים - לבחירת "ראשי"
+  const rootForGroup = joinedTo || (info?.group?.length ? info.rootOrderId : null);
+  useEffect(() => {
+    if (!rootForGroup) { setGroup([]); return; }
+    let cancelled = false;
+    fetch(`/api/deliveries/join?mode=group&root=${rootForGroup}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => { if (!cancelled) setGroup((data.group || []).filter(g => g.orderId !== Number(orderId))); })
+      .catch(() => { if (!cancelled) setGroup([]); });
+    return () => { cancelled = true; };
+  }, [rootForGroup, orderId]);
+
+  // ה"ראשי" הנוכחי: ערך שנבחר עכשיו, אחרת מה שנשמר (self כשההזמנה הזו סומנה)
+  const savedPrimary = info?.isPrimary ? 'self' : (group.find(g => g.isPrimary)?.orderId ?? null);
+  const currentPrimary = order.deliveryJoin?.primaryOrderId !== undefined && order.deliveryJoin?.primaryOrderId !== null
+    ? order.deliveryJoin.primaryOrderId
+    : savedPrimary;
+
+  const patchJoin = (patch, extra = {}) => onPatch({
+    deliveryJoin: {
+      joinedToOrderId: joinedTo,
+      primaryOrderId: currentPrimary,
+      ...patch
+    },
+    ...extra
+  });
+
+  const chooseCandidate = (value) => {
+    if (!value) {
+      patchJoin({ joinedToOrderId: null });
+      return;
+    }
+    const cand = (candidates || []).find(c => String(c.orderId) === String(value));
+    if (!cand) return;
+    patchJoin({ joinedToOrderId: cand.orderId, primaryOrderId: null }, { deliveryAddress: cand.street || '', deliveryCity: cand.city || '' });
+  };
+
+  const setModeAndPatch = (next) => {
+    setMode(next);
+    if (next === 'new' && joinedTo) patchJoin({ joinedToOrderId: null });
+  };
+
+  const candidateMissing = joinedTo && candidates && !candidates.some(c => c.orderId === joinedTo);
+  const showMembers = joinedTo || group.length > 0;
+  const members = useMemo(() => [{ orderId: 'self', customerName: 'הזמנה זו', self: true }, ...group], [group]);
+
+  return (
+    <div className="field" style={{ gridColumn: '1 / -1', marginTop: 4, paddingTop: 10, borderTop: '1px dashed var(--border)' }}>
+      <label>סוג המשלוח</label>
+      <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+        <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+          <input type="radio" name={`delivery-join-mode-${orderId || 'new'}`} checked={effectiveMode === 'new'} onChange={() => setModeAndPatch('new')} />
+          <span>משלוח חדש</span>
+        </label>
+        <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+          <input type="radio" name={`delivery-join-mode-${orderId || 'new'}`} checked={effectiveMode === 'join'} onChange={() => setModeAndPatch('join')} />
+          <span>הצטרפות למשלוח קיים</span>
+        </label>
+      </div>
+
+      {effectiveMode === 'join' && (
+        <div style={{ marginTop: 10 }}>
+          {!eventIso ? (
+            <p className="hint" style={{ margin: 0 }}>יש לבחור קודם תאריך אירוע כדי לראות את המשלוחים של אותו יום.</p>
+          ) : candidates === null ? (
+            <p className="hint" style={{ margin: 0 }}>טוען משלוחים...</p>
+          ) : (
+            <>
+              <select className="select" value={joinedTo || ''} onChange={e => chooseCandidate(e.target.value)}>
+                <option value="">בחר/י משלוח להצטרפות…</option>
+                {candidates.map(c => (
+                  <option key={c.orderId} value={c.orderId}>
+                    {`#${c.orderId} · ${c.customerName} · ${c.address || '-'}${c.joinedCount ? ` · (${c.joinedCount} מצטרפים)` : ''}`}
+                  </option>
+                ))}
+              </select>
+              {candidates.length === 0 && (
+                <p className="hint" style={{ margin: '6px 0 0' }}>
+                  אין משלוחים קיימים באותו יום אירוע ובאותו כיוון ({direction}) להצטרפות.
+                </p>
+              )}
+              {candidateMissing && (
+                <p className="hint" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>
+                  המשלוח שנבחר כבר אינו מתאים לתאריך/כיוון הנוכחיים - יש לבחור משלוח אחר.
+                </p>
+              )}
+              {joinedTo && (
+                <p className="hint" style={{ margin: '6px 0 0' }}>
+                  כתובת ועיר המשלוח נלקחות מהמשלוח שנבחר, והחיוב מחושב לפי מחיר ההצטרפות.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {showMembers && (
+        <div style={{ marginTop: 12 }}>
+          <label>מי ה&quot;ראשי&quot; בכתובת זו? (יסומן &quot;ראשי&quot; בהדפסה למשלוחן ועל השקית)</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {members.map(m => (
+              <label key={m.orderId} className="checkbox-row" style={{ cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name={`delivery-join-primary-${orderId || 'new'}`}
+                  checked={String(currentPrimary) === String(m.orderId)}
+                  onChange={() => patchJoin({ primaryOrderId: m.orderId })}
+                />
+                <span>{m.self ? m.customerName : `#${m.orderId} · ${m.customerName}`}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
