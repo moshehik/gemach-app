@@ -29,6 +29,9 @@
 
 /* ===== אפשרויות מנהל (R22 / R33) ===== */
 .gm-ds.gm-oc .oc-mgr{gap:10px}
+.gm-ds.gm-oc [data-oc-pay="manual-legacy"]{margin-top:12px}
+.gm-ds.gm-oc .card-h .oc-add-charge{margin-inline-start:auto}
+.gm-ds.gm-oc .card-h .oc-calc + .oc-add-charge{margin-inline-start:12px}
 .gm-ds.gm-oc .oc-mgr .spinner{width:14px;height:14px;border-width:2px}
 
 /* ===== חלונות ===== */
@@ -51,5 +54,4 @@
 .gm-ds.gm-oc .oc-notes-t{white-space:pre-wrap;line-height:1.6;font-size:13px}
 .gm-ds.gm-oc .oc-notes .amt{word-break:break-word;max-width:60%}
 .gm-ds.gm-oc .dbtns .btn .spinner{width:14px;height:14px;border-width:2px}
-.gm-ds.gm-oc .oc-confirm-row{display:flex;align-items:center;gap:10px;margin:12px 0 6px;font-weight:600;cursor:pointer}
-.gm-ds.gm-oc .oc-confirm-row input{width:20px;height:20px;accent-color:var(--gm-navy-900);flex:none}
+.gm-ds.gm-oc .oc-confirm-row{display:flex;align-items:center;gap:10px;margin:12px 0 6px;font-weight:600}

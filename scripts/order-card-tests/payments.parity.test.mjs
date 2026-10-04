@@ -228,7 +228,7 @@ test('תשלום נוסף (מזומן/העברה/צ׳ק): POST /api/payments ע�
     const respond = (u) => (u === '/api/payments' ? { body: { id: 'np', amount: parseFloat(data.amount) } } : {});
     const leg = legacyScope({ additionalPaymentData: data }, respond);
     await evalLegacy(arrowText('submitAdditionalPayment'), leg.scope)();
-    const neu = newEnv({ respond });
+    const neu = newEnv({ respond, approve: async () => ({ employeeId: 'm1' }) }); // W4-MANUAL: אישור גם בגמ"ח הראשי
     const r = await neu.actions.addManualPayment(data);
     assert.deepEqual(writes(neu.calls), writes(leg.calls), JSON.stringify(data));
     if (writes(leg.calls).length) { assert.equal(r.ok, true); assert.deepEqual(neu.lists.payments, leg.cap.payments); }
@@ -486,14 +486,16 @@ test('אופני "תשלום נוסף" מ-ALLOWED_PAYMENT_METHODS זהים לי�
   assert.deepEqual(A.payMethodsFor(S([['allow_additional_payment_on_order', 'true']]), { manualOnly: true }), ['מזומן', 'העברה בנקאית', "צ'ק"]);
 });
 
-test('R22/AMB-17: אישור feature:manual_payment_credit_add לתשלום/זיכוי ידני רק כש-consolidate_manual_payment_credit_ui (כמו בישן)', () => {
+test('W4-MANUAL: אישור feature:manual_payment_credit_add לתשלום/זיכוי ידני בשני הגמ"חים; AMB-17: הלחצן המאוחד רק בנווה (מתג consolidate_manual_payment_credit_ui)', () => {
   const S = (r) => L.parseSettings(r.map(([key, value]) => ({ key, value })));
   assert.equal(A.manualMoneyNeedsApproval(S([['consolidate_manual_payment_credit_ui', 'true']])), true);
-  assert.equal(A.manualMoneyNeedsApproval(S([])), false);
+  assert.equal(A.manualMoneyNeedsApproval(S([])), true, 'גמ"ח ראשי: גם כן (החלטת הבעלים)');
+  assert.equal(A.isUnifiedManualButton(S([['consolidate_manual_payment_credit_ui', 'true']])), true);
+  assert.equal(A.isUnifiedManualButton(S([])), false);
   const legacyPage = fs.readFileSync(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js'), 'utf8');
   assert.ok(legacyPage.includes("'feature:manual_payment_credit_add'"));
   assert.equal(A.MANUAL_PAYMENT_CREDIT_KEY, 'feature:manual_payment_credit_add');
-  assert.ok(MPM.includes("settings.consolidate_manual_payment_credit_ui !== 'true'"), 'בישן הכפתורים הפתוחים מוצגים רק כשהמתג כבוי');
+  assert.ok(MPM.includes("settings.consolidate_manual_payment_credit_ui !== 'true'"), 'בישן הכפתורים הנפרדים מוצגים רק כשהמתג כבוי');
 });
 
 test('פרטי תשלום: פענוח ההערות זהה לישן (JSON → שורות; טקסט " | " → שורות; ריק → אין הערות)', () => {

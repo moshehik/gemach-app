@@ -6,6 +6,9 @@
 //   R37 פרטי תשלום מלאים + מחק תשלום · R38 זיכויים ממתינים (פרטי בנק, אשר ביצוע) · R22 לחצן אחד "חיוב / זיכוי ידני" ב"אפשרויות מנהל"
 //   R33 "חישוב מחדש" רק להנהלה ראשית · R35 אין "הוסף חיוב"/"מחק"/"פרטי חיוב" בכרטיס החיובים · R34 אין חיוב משלוח ידני
 //   A14/AMB-15 אין לוחית זיכוי ואין אריח "זיכוי ביטול זמין לניצול" - הספירה נשארת בשורת דמי הביטול.
+//   AMB-17: הלחצן המאוחד "חיוב / זיכוי ידני" רק בנווה (consolidate_manual_payment_credit_ui); בגמ"ח הראשי נשארים שני הלחצנים הנפרדים
+//   של הישן ("תשלום נוסף" / "בקשת זיכוי ללקוח" בכרטיס התשלומים) + "הוסף חיוב" בכרטיס החיובים (feature:manual_charge_add).
+//   W4-MANUAL/AMB-22: תשלום/זיכוי ידני, מחיקת תשלום וביצוע זיכוי - באישור מנהל בשני הגמ"חים.
 // אירועי הבקר (debtCreated / autoRefundNeedsBank) ובקשות תשלום מבחוץ (R4, requestPayment) - ב-usePaymentActions.
 // props: {oc, ui, active}
 
@@ -15,7 +18,7 @@ import { fmtMoney, fmtSignedMoney, hebDateOf } from '../orderCardLogic';
 import { formatIsraelHHMM } from '@/lib/loginFlow';
 import usePaymentActions, {
   amountOf, cancellationCreditInfo, countdownText, creditWindowMinutes, money2, obligationIconName, obligationLabel, obligationRows,
-  paymentIconName, pendingRefundsOf, refundNeedsBank
+  isUnifiedManualButton, paymentIconName, pendingRefundsOf, refundNeedsBank
 } from '../hooks/usePaymentActions';
 import OcPayDialog from '../dialogs/OcPayDialog';
 import OcCreditDialog from '../dialogs/OcCreditDialog';
@@ -75,6 +78,7 @@ export default function OcPaymentsTab({ oc, ui }) {
   const rows = obligationRows(oc.obligations, (oc.snapshot && oc.snapshot.obligations) || []);
   const payments = [...oc.payments.filter(p => !p.isDeleted)].sort((a, b) => new Date(b.paymentDate || 0) - new Date(a.paymentDate || 0));
   const pending = pendingRefundsOf(oc.refunds);
+  const unified = isUnifiedManualButton(oc.settings);
 
   return (
     <>
@@ -120,7 +124,9 @@ export default function OcPaymentsTab({ oc, ui }) {
 
       {/* חיובים (A13 + R39; R34/R35: בלי לחצני הוספה/מחיקה) */}
       <div className="card" data-oc-pay="charges">
-        <div className="card-h"><div className="ico rose"><OcIcon name="file" size="lg" /></div><h2>חיובים <Tip text="מתעדכן אוטומטית" /></h2>{oc.preview.isPreviewing ? <span className="faint oc-calc" role="status"><span className="spinner" aria-hidden="true" />מחשב מחדש ברקע…</span> : null}</div>
+        <div className="card-h"><div className="ico rose"><OcIcon name="file" size="lg" /></div><h2>חיובים <Tip text="מתעדכן אוטומטית" /></h2>{oc.preview.isPreviewing ? <span className="faint oc-calc" role="status"><span className="spinner" aria-hidden="true" />מחשב מחדש ברקע…</span> : null}
+          {unified ? null : <button type="button" className="btn sm oc-add-charge" data-act="add-charge" disabled={oc.saving} onClick={pay.openAddCharge}><OcIcon name="plus" size="sm" />הוסף חיוב</button>}
+        </div>
         <div className="list">
           {rows.length ? rows.map(({ o, pend }, i) => (
             <ObligationRow key={o.id || o._localId || `p${i}`} o={o} pend={pend} credit={pend ? null : cancellationCreditInfo(o, { obligations: oc.obligations, items: oc.items, minutes })} />
@@ -148,30 +154,35 @@ export default function OcPaymentsTab({ oc, ui }) {
                 </div>
                 <button type="button" className="ibtn oc-ib" aria-label="פרטים נוספים" data-tip="פרטים נוספים" onClick={() => pay.openPaymentDetails(p)}><OcIcon name="info" size="sm" /></button>
                 {/* שורה שעוד לא נשמרה (חיוב אשראי שלא נשמר בשרת / מעקף) לא נמחקת מכאן - כסף שכבר זז לא נעלם בלחיצה; ביטול השינוי ברייל */}
-                {fresh ? null : <button type="button" className="ibtn oc-ib" aria-label="מחק תשלום" data-tip="מחק תשלום" onClick={async () => {
-                  const ok = await ui.confirm({ title: 'מחיקת תשלום', sub: `למחוק את התשלום ב${p.paymentMethod || 'תשלום'} בסך ${fmtMoney(amt)}? הפעולה נשמרת עם שמירת ההזמנה.`, okText: 'מחק', icon: 'trash', danger: true });
-                  if (ok) { const res = pay.actions.deletePayment(p); if (!res.ok) ui.toast('error', res.error, ''); }
-                }}><OcIcon name="trash" size="sm" /></button>}
+                {fresh ? null : <button type="button" className="ibtn oc-ib" aria-label="מחק תשלום" data-tip="מחק תשלום" onClick={() => pay.deletePayment(p)}><OcIcon name="trash" size="sm" /></button>}
               </div>
             );
           }) : <div className="empty oc-empty"><OcIcon name="cash" size="lg" /><span>לא בוצעו תשלומים</span></div>}
         </div>
+        {unified ? null : (
+          <div className="row wrap oc-mgr" data-oc-pay="manual-legacy">
+            {oc.settings.allowAdditionalPayment ? <button type="button" className="btn sm" data-act="extra-payment" disabled={oc.saving} onClick={pay.openManualPayment}><OcIcon name="cash" size="sm" />תשלום נוסף</button> : null}
+            <button type="button" className="btn sm" data-act="refund-request" disabled={oc.saving} onClick={pay.openManualRefund}><OcIcon name="undo" size="sm" />בקשת זיכוי ללקוח</button>
+          </div>
+        )}
       </div>
 
-      {/* אפשרויות מנהל: R22 (לחצן אחד) + R33 (הנהלה ראשית בלבד) */}
-      <details className="coll" data-oc-pay="manager">
-        <summary><OcIcon name="lock" />אפשרויות מנהל<OcIcon name="chev" className="chev" /></summary>
-        <div className="in">
-          <div className="row wrap oc-mgr">
-            <button type="button" className="btn" data-act="manual-money" onClick={pay.openManual}><OcIcon name="cash" size="sm" />חיוב / זיכוי ידני</button>
-            {pay.canRecalc ? (
-              <button type="button" className="btn" data-act="recalc" disabled={pay.busy === 'recalc' || oc.saving} onClick={pay.runRecalc}>
-                {pay.busy === 'recalc' ? <span className="spinner" aria-hidden="true" /> : <OcIcon name="refresh" size="sm" />}חישוב מחדש
-              </button>
-            ) : null}
+      {/* אפשרויות מנהל: R22 (לחצן אחד, נווה בלבד - AMB-17) + R33 (הנהלה ראשית בלבד) */}
+      {unified || pay.canRecalc ? (
+        <details className="coll" data-oc-pay="manager">
+          <summary><OcIcon name="lock" />אפשרויות מנהל<OcIcon name="chev" className="chev" /></summary>
+          <div className="in">
+            <div className="row wrap oc-mgr">
+              {unified ? <button type="button" className="btn" data-act="manual-money" onClick={pay.openManual}><OcIcon name="cash" size="sm" />חיוב / זיכוי ידני</button> : null}
+              {pay.canRecalc ? (
+                <button type="button" className="btn" data-act="recalc" disabled={pay.busy === 'recalc' || oc.saving} onClick={pay.runRecalc}>
+                  {pay.busy === 'recalc' ? <span className="spinner" aria-hidden="true" /> : <OcIcon name="refresh" size="sm" />}חישוב מחדש
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </details>
+        </details>
+      ) : null}
     </>
   );
 }

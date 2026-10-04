@@ -90,7 +90,7 @@ test('1: חלון "פרטי תשלום" - "מחק תשלום" רק כש-canDelet
 // ===================================================================================================
 // 2 (MED-HIGH) - אישור תשלום ידני ב-D3 בנווה
 // ===================================================================================================
-test('2: addManualPayment בנווה (consolidate_manual_payment_credit_ui) דורש approve(feature:manual_payment_credit_add) לפני ה-POST', async () => {
+test('2: addManualPayment (בשני הגמ"חים) דורש approve(feature:manual_payment_credit_add) לפני ה-POST', async () => {
   const NEVE = [['consolidate_manual_payment_credit_ui', 'true'], ['allow_additional_payment_on_order', 'true']];
   // לא אושר → אין POST
   let env = mkEnv({ settings: NEVE, approve: async () => null });
@@ -110,11 +110,15 @@ test('2: addManualPayment בנווה (consolidate_manual_payment_credit_ui) דו
   r = await env.actions.addManualPayment({ amount: '40', paymentMethod: 'מזומן', notes: '', approved: true });
   assert.equal(r.ok, true);
   assert.equal(env.approvals.length, 0);
-  // גמ"ח ראשי (מתג כבוי) - ללא שינוי: אין אישור
+  // גמ"ח ראשי (מתג כבוי): W4-MANUAL - גם שם נדרש אישור (החלטת הבעלים 2026-10-04)
+  env = mkEnv({ settings: [['allow_additional_payment_on_order', 'true']], approve: async () => null });
+  r = await env.actions.addManualPayment({ amount: '40', paymentMethod: 'מזומן', notes: '' });
+  assert.equal(r.cancelled, true);
+  assert.equal(writes(env.calls).length, 0);
   env = mkEnv({ settings: [['allow_additional_payment_on_order', 'true']], respond: () => ({ body: saved('n3', { amount: 40 }) }) });
   r = await env.actions.addManualPayment({ amount: '40', paymentMethod: 'מזומן', notes: '' });
   assert.equal(r.ok, true);
-  assert.equal(env.approvals.length, 0);
+  assert.deepEqual(env.approvals, [A.MANUAL_PAYMENT_CREDIT_KEY]);
 });
 
 test('2: מסלול האשראי (chargeCard) לא דורש את אישור התשלום הידני גם בנווה', async () => {
@@ -241,8 +245,8 @@ test('5: "תשלום נוסף" (source manual) עם שינויים פתוחים 
   assert.ok(/ctx\.source === 'manual' && ocRef\.current\.dirty/.test(pay));
   assert.ok(pay.indexOf("ctx.source === 'manual'") < pay.indexOf('ui.openDialog(D.Pay'));
   assert.ok(/יש לשמור את ההזמנה לפני רישום תשלום נוסף/.test(pay));
-  const man = hook.slice(hook.indexOf('const openManual = useCallback'), hook.indexOf('const openPaymentDetails'));
-  assert.ok(man.indexOf("key === 'payment' && ocRef.current.dirty") > -1 && man.indexOf("key === 'payment' && ocRef.current.dirty") < man.indexOf('o.approve(MANUAL_PAYMENT_CREDIT_KEY'));
+  const man = hook.slice(hook.indexOf('const openManualPayment = useCallback'), hook.indexOf('const openManualRefund = useCallback'));
+  assert.ok(man.indexOf('ocRef.current.dirty') > -1 && man.indexOf('ocRef.current.dirty') < man.indexOf('manualMoneyGate()'), 'הודעת "לשמור קודם" לפני בקשת האישור (גם בלחצן הנפרד של הגמ"ח הראשי)');
   const payNow = hook.slice(hook.indexOf('const payNow = useCallback'), hook.indexOf('const creditNow = useCallback'));
   assert.ok(/if \(o\.dirty\)[\s\S]*o\.save\(\{ intent: 'pay' \}\)/.test(payNow));
 });
@@ -250,14 +254,12 @@ test('5: "תשלום נוסף" (source manual) עם שינויים פתוחים 
 // ===================================================================================================
 // 6 (MED) - D4 "אשר ביצוע" דורש אישור מפורש
 // ===================================================================================================
-test('6: D4 - "בוצעה העברה בנקאית?" חייב סימון לפני שכפתור "אשר ביצוע" נפתח, וה-PUT לא נשלח בלי סימון; בלי הרשאה חדשה', () => {
+test('6: D4 - "אשר ביצוע" הוא "כן, בוצעה העברה" (אחרי שורת "בוצעה העברה בנקאית?"), נחסם בלי בנק/סניף; האישור בפעולה (AMB-22)', () => {
   const dlg = strip(read('dialogs/OcCreditDialog.js'));
   assert.ok(/בוצעה העברה בנקאית\?/.test(dlg));
-  assert.ok(/type="checkbox" checked=\{confirmed\}/.test(dlg));
-  assert.ok(/const \[confirmed, setConfirmed\] = useState\(false\)/.test(dlg), 'ברירת מחדל: לא מסומן');
-  assert.ok(/if \(busy \|\| noBank \|\| !confirmed\) return;/.test(dlg), 'גם Enter/קריאה ישירה לא עוברים');
-  assert.ok(/disabled=\{busy \|\| noBank \|\| !confirmed\} onClick=\{execute\}/.test(dlg));
-  assert.ok(!/approve\(/.test(dlg), 'לא נוספה הרשאה');
+  assert.ok(/if \(busy \|\| noBank\) return;/.test(dlg), 'גם Enter/קריאה ישירה לא עוברים בלי בנק');
+  assert.ok(/disabled=\{busy \|\| noBank\} onClick=\{execute\}/.test(dlg));
+  assert.ok(!/approve\(/.test(dlg), 'האישור בתוך executeRefundApproved');
 });
 
 // ===================================================================================================
@@ -389,4 +391,52 @@ test('9: BankFields מדווח את ה-IBAN התקין (onIban) והחלונות
   assert.ok(/createRefund\(data, \{ iban \}\)/.test(rf));
   // ה-IBAN לא נכנס לגוף דרך ה-state של הטופס (data) - רק דרך הפרמטר
   assert.ok(!/iban/.test(strip(read('hooks/usePaymentActions.js')).match(/export const refundBody[^\n]*/)[0]));
+});
+
+// ===================================================================================================
+// AMB-22 / W4-MANUAL - אישורי מנהל בפעולות (התנהגות)
+// ===================================================================================================
+test('AMB-22: executeRefundApproved - בלי אישור אין PUT; עם אישור PUT {isExecuted:true}; חיוב אשראי שלא נשמר חוסם לפני בקשת האישור', async () => {
+  let env = mkEnv({ approve: async () => null });
+  let r = await env.actions.executeRefundApproved('r1');
+  assert.equal(r.cancelled, true);
+  assert.deepEqual(env.approvals, [A.REFUND_EXECUTE_APPROVAL_KEY]);
+  assert.equal(writes(env.calls).length, 0);
+  env = mkEnv({ respond: (u, o) => (o.method === 'PUT' ? { body: { id: 'r1' } } : { body: { orderId: ORDER_ID } }) });
+  r = await env.actions.executeRefundApproved('r1');
+  assert.equal(r.ok, true);
+  assert.deepEqual(writes(env.calls).map(c => [c.method, c.url, c.body]), [['PUT', '/api/refunds/r1', JSON.stringify({ isExecuted: true })]]);
+  env = mkEnv({ payments: [unsavedCard()] });
+  r = await env.actions.executeRefundApproved('r1');
+  assert.equal(r.ok, false);
+  assert.equal(env.approvals.length, 0, 'לא מבקשים אישור לפעולה שתיחסם');
+});
+
+test('AMB-22: deletePaymentApproved - בלי אישור התשלום נשאר; עם אישור מסומן isDeleted; שורה שלא נשמרה נדחית בלי בקשת אישור; מעקף מתכנת מאושר', async () => {
+  let env = mkEnv({ payments: [saved('p1'), saved('p2')], approve: async () => null });
+  let r = await env.actions.deletePaymentApproved(env.lists.payments[0]);
+  assert.equal(r.cancelled, true);
+  assert.deepEqual(env.approvals, [A.PAYMENT_DELETE_APPROVAL_KEY]);
+  assert.equal(env.lists.payments[0].isDeleted, false);
+  env = mkEnv({ payments: [saved('p1'), saved('p2')] });
+  r = await env.actions.deletePaymentApproved(env.lists.payments[1]);
+  assert.equal(r.ok, true);
+  assert.equal(env.lists.payments[1].isDeleted, true);
+  assert.equal(env.lists.payments[0].isDeleted, false);
+  env = mkEnv({ payments: [unsavedCard()] });
+  r = await env.actions.deletePaymentApproved(env.lists.payments[0]);
+  assert.equal(r.ok, false);
+  assert.equal(env.approvals.length, 0);
+  env = mkEnv({ payments: [bypassRow()] });
+  r = await env.actions.deletePaymentApproved(env.lists.payments[0]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(env.approvals, [A.PAYMENT_DELETE_APPROVAL_KEY]);
+  assert.equal(env.lists.payments.length, 0);
+});
+
+test('AMB-22/W4-MANUAL: המפתחות הם הרשאה קיימת בקטלוג (אין הרשאה חדשה שחוסמת את העבודה)', async () => {
+  const { PERMISSION_CATALOG } = await P('lib/permissionsMetadata.js').then(m => ({ PERMISSION_CATALOG: m.PERMISSION_CATALOG || m.PERMISSIONS_CATALOG || m.PERMISSIONS || m.default }));
+  const src = fs.readFileSync(path.join(PROJ, 'lib/permissionsMetadata.js'), 'utf8');
+  for (const k of [A.PAYMENT_DELETE_APPROVAL_KEY, A.REFUND_EXECUTE_APPROVAL_KEY, A.MANUAL_PAYMENT_CREDIT_KEY, A.MANUAL_CHARGE_KEY]) assert.ok(src.includes(`key: '${k}'`), k);
+  void PERMISSION_CATALOG;
 });

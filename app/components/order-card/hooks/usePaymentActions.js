@@ -127,11 +127,18 @@ export function payMethodsFor(settings, { manualOnly = false } = {}) {
   return out;
 }
 
-/** R22/AMB-17: רישום תשלום ידני ובקשת זיכוי דורשים אישור feature:manual_payment_credit_add כמו בישן - רק כשהמתג המאוחד דלוק (נווה).
- * בגמ"ח הראשי (המתג כבוי) שני הכפתורים היו פתוחים לכל עובד - נשמר (ר' W4-NOTES, AMB-17). */
-export const manualMoneyNeedsApproval = (settings) => !!(settings && settings.consolidateManualPaymentCredit);
+/** W4-MANUAL (החלטת הבעלים 2026-10-04): תשלום ידני ובקשת זיכוי דורשים אישור feature:manual_payment_credit_add בשני הגמ"חים
+ * (עד אז: רק בנווה, כשהמתג המאוחד דלוק). מי שכבר מורשה לא מתבקש - זה בחלון האישור של הבקר. הפרמטר נשמר לחתימה היציבה. */
+export const manualMoneyNeedsApproval = (settings) => true;
+/** AMB-17: הלחצן המאוחד "חיוב / זיכוי ידני" רק כשהמתג consolidate_manual_payment_credit_ui דלוק (נווה יעקב).
+ * בגמ"ח הראשי נשארים שני הלחצנים הנפרדים של הישן ("תשלום נוסף" / "בקשת זיכוי ללקוח") + "הוסף חיוב" בכרטיס החיובים. */
+export const isUnifiedManualButton = (settings) => !!(settings && settings.consolidateManualPaymentCredit);
 export const MANUAL_PAYMENT_CREDIT_KEY = 'feature:manual_payment_credit_add';
 export const MANUAL_CHARGE_KEY = 'feature:manual_charge_add';
+/** AMB-22 (החלטת הבעלים): מחיקת תשלום וסימון זיכוי כבוצע דורשים אישור מנהל בכרטיס החדש. אין הרשאה ייעודית בקטלוג - משתמשים באותה
+ * הרשאת "כסף ידני" כדי שהמאשרים יהיו אותם אנשים ולא תיווצר הרשאה סגורה-כברירת-מחדל שתחסום את העבודה; פיצול להרשאות נפרדות = שינוי שני הקבועים. */
+export const PAYMENT_DELETE_APPROVAL_KEY = MANUAL_PAYMENT_CREDIT_KEY;
+export const REFUND_EXECUTE_APPROVAL_KEY = MANUAL_PAYMENT_CREDIT_KEY;
 /** R33: חישוב מחדש - השרת מתיר רק הנהלה ראשית (checkAuth('הנהלה ראשית') = roleId 0 או 2) - הכפתור מוסתר מכל השאר. */
 export const canRecalcRole = (roleId) => roleId === 0 || roleId === 2;
 
@@ -605,6 +612,16 @@ export function createPaymentActions(env) {
     }
   }
 
+  /** AMB-22: "אשר ביצוע" אחרי אישור מנהל (REFUND_EXECUTE_APPROVAL_KEY). חסימת "חיוב אשראי שלא נשמר" קודם - לא מבקשים אישור לפעולה שתיחסם.
+   * → {ok, error?, cancelled?}. (השרת עדיין לא אוכף - בקשה ל-PR הקשחה נפרד, ר' W4-NOTES.) */
+  async function executeRefundApproved(refundId) {
+    const blocked = unsavedCardBlock();
+    if (blocked) return blocked;
+    const auth = await env.approve(REFUND_EXECUTE_APPROVAL_KEY, 'סימון זיכוי כבוצע יוצר תשלום הפכי בהזמנה ושולח הודעה ללקוח - נדרש אישור מנהל.');
+    if (!auth) return { ok: false, cancelled: true };
+    return executeRefund(refundId);
+  }
+
   /** R33 חישוב מחדש (הנהלה ראשית). → {ok, error?} */
   async function recalc() {
     const blocked = unsavedCardBlock();
@@ -635,6 +652,14 @@ export function createPaymentActions(env) {
     return { ok: true };
   }
 
+  /** AMB-22: מחיקת תשלום אחרי אישור מנהל (PAYMENT_DELETE_APPROVAL_KEY). שורה שאי אפשר למחוק (בלי id וזה לא מעקף) נדחית לפני בקשת האישור. */
+  async function deletePaymentApproved(p) {
+    if (!p.id && !isBypassRow(p)) return deletePayment(p);
+    const auth = await env.approve(PAYMENT_DELETE_APPROVAL_KEY, 'מחיקת תשלום מההזמנה דורשת אישור מנהל.');
+    if (!auth) return { ok: false, cancelled: true };
+    return deletePayment(p);
+  }
+
   /** R35 חיוב ידני (מקומי, נשמר ב-PUT; השרת דורש feature:manual_charge_add). */
   function addManualCharge({ description, amount }, nowIso = new Date().toISOString()) {
     const added = { isNew: true, description, amount: parseFloat(amount), isManual: true, createdAt: nowIso };
@@ -651,7 +676,7 @@ export function createPaymentActions(env) {
     return env.toggleSignature({ confirmed: true });
   }
 
-  return { isBusy: () => chargeInFlight || manualInFlight, refetchApply, syncSavedPayment, chargeCard, bypassCard, addManualPayment, createRefund, saveRefundBank, executeRefund, recalc, deletePayment, addManualCharge, deleteManualCharge, signRegulations };
+  return { isBusy: () => chargeInFlight || manualInFlight, refetchApply, syncSavedPayment, chargeCard, bypassCard, addManualPayment, createRefund, saveRefundBank, executeRefund, executeRefundApproved, recalc, deletePayment, deletePaymentApproved, addManualCharge, deleteManualCharge, signRegulations };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -780,31 +805,53 @@ export default function usePaymentActions(oc, ui, D) {
     return r;
   }, [ui, D, api, actions]);
 
-  /** R22 הלחצן המאוחד "חיוב / זיכוי ידני". */
+  /** W4-MANUAL: שער האישור לתשלום/זיכוי ידני (בשני הגמ"חים; מי שכבר מורשה לא מתבקש). true = אושר */
+  const manualMoneyGate = useCallback(async () => {
+    if (!manualMoneyNeedsApproval(ocRef.current.settings)) return true;
+    const a = await ocRef.current.approve(MANUAL_PAYMENT_CREDIT_KEY, 'הוספת תשלום/זיכוי ידני דורשת קוד מאשר.');
+    return !!a;
+  }, []);
+
+  /** "תשלום נוסף" (הלחצן הנפרד של הגמ"ח הראשי, וגם מתוך הלחצן המאוחד של נווה). */
+  const openManualPayment = useCallback(async () => {
+    if (ocRef.current.dirty) return openPay({ source: 'manual' }); // מציג את ההודעה "לשמור קודם" לפני בקשת אישור
+    if (!(await manualMoneyGate())) return null;
+    return openPay({ source: 'manual', approved: true });
+  }, [openPay, manualMoneyGate]);
+
+  /** "בקשת זיכוי ללקוח" (כנ"ל). */
+  const openManualRefund = useCallback(async () => {
+    if (!(await manualMoneyGate())) return null;
+    return openRefundRequest();
+  }, [openRefundRequest, manualMoneyGate]);
+
+  /** R22 הלחצן המאוחד "חיוב / זיכוי ידני" - רק בנווה (AMB-17). */
   const openManual = useCallback(async () => {
     const o = ocRef.current;
-    const needs = manualMoneyNeedsApproval(o.settings);
-    const key = await ui.openDialog(D.Manual, { api, needsApproval: needs, allowPayment: !!o.settings.allowAdditionalPayment }, { labelledBy: 'oc-manual-t', className: 'oc-manual' });
+    const key = await ui.openDialog(D.Manual, { api, needsApproval: manualMoneyNeedsApproval(o.settings), allowPayment: !!o.settings.allowAdditionalPayment }, { labelledBy: 'oc-manual-t', className: 'oc-manual' });
     if (!key) return null;
     if (key === 'charge') return openAddCharge();
-    if (key === 'payment' && ocRef.current.dirty) return openPay({ source: 'manual' }); // מציג את ההודעה "לשמור קודם" לפני בקשת אישור
-    if (needs) {
-      const a = await o.approve(MANUAL_PAYMENT_CREDIT_KEY, 'הוספת תשלום/זיכוי ידני דורשת קוד מאשר.');
-      if (!a) return null;
-    }
-    if (key === 'payment') return openPay({ source: 'manual', approved: true });
-    if (key === 'refund') return openRefundRequest();
+    if (key === 'payment') return openManualPayment();
+    if (key === 'refund') return openManualRefund();
     return null;
-  }, [ui, D, api, openAddCharge, openPay, openRefundRequest]);
+  }, [ui, D, api, openAddCharge, openManualPayment, openManualRefund]);
+
+  /** AMB-22: מחיקת תשלום = אישור (confirm) → אישור מנהל → מחיקה מקומית (נשמרת עם שמירת ההזמנה). */
+  const deletePayment = useCallback(async (p) => {
+    const ok = await ui.confirm({ title: 'מחיקת תשלום', sub: `למחוק את התשלום ב${p.paymentMethod || 'תשלום'} בסך ${fmtMoney(amountOf(p.amount))}? הפעולה נשמרת עם שמירת ההזמנה.`, okText: 'מחק', icon: 'trash', danger: true });
+    if (!ok) return null;
+    const res = await actions.deletePaymentApproved(p);
+    if (!res.ok && !res.cancelled) ui.toast('error', res.error, '');
+    return res;
+  }, [ui, actions]);
 
   /** R37 פרטי תשלום מלאים + מחיקה. */
   const openPaymentDetails = useCallback(async (p) => {
     const r = await ui.openDialog(D.PaymentDetails, { payment: p, canDelete: !!p.id }, { labelledBy: 'oc-paydet-t', className: 'oc-paydet' });
     if (r !== 'delete') return;
     if (!p.id) { ui.toast('error', 'תשלום שעוד לא נשמר לא נמחק מכאן', 'יש לשמור את ההזמנה קודם.'); return; }
-    const ok = await ui.confirm({ title: 'מחיקת תשלום', sub: `למחוק את התשלום ב${p.paymentMethod || 'תשלום'} בסך ${fmtMoney(amountOf(p.amount))}? הפעולה נשמרת עם שמירת ההזמנה.`, okText: 'מחק', icon: 'trash', danger: true });
-    if (ok) { const res = actions.deletePayment(p); if (!res.ok) ui.toast('error', res.error, ''); }
-  }, [ui, D, actions]);
+    await deletePayment(p);
+  }, [ui, D, deletePayment]);
 
   /** R33 */
   const runRecalc = useCallback(async () => {
@@ -889,6 +936,6 @@ export default function usePaymentActions(oc, ui, D) {
   return {
     api, actions, busy,
     canRecalc: canRecalcRole(roleId),
-    payNow, creditNow, openPay, openBank, openCredit, openRefundRequest, openManual, openAddCharge, openPaymentDetails, runRecalc,
+    payNow, creditNow, openPay, openBank, openCredit, openRefundRequest, openManual, openManualPayment, openManualRefund, openAddCharge, deletePayment, openPaymentDetails, runRecalc,
   };
 }

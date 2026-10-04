@@ -107,12 +107,12 @@ export function payStages(h) {
       check('R33: POST /api/admin/recalculations {orderIds:[53375]} → GET', r && r.body === '{"orderIds":[53375]}' && c.at(-1).method === 'GET');
     } },
     { name: 'P26-flow-refund-request', real: async () => {
-      await realTab('paycredit'); await clickAt('#p-payments [data-act="credit-now"]'); await sleep(400);
+      await realTab('paycredit'); await clickAt('#p-payments [data-act="credit-now"]'); await sleep(400); await approveWith('1234'); // W4-MANUAL: אישור גם בגמ"ח הראשי
       await typeIn('#oc-rf-bank', 'לאומי'); await typeIn('#oc-rf-branch', '800');
       await clickAt('#dlg [data-act="refund-ok"]'); await sleep(700);
       const c = await calls(); const post = c.find(x => x.method === 'POST' && x.url === '/api/refunds');
       const b = post ? JSON.parse(post.body) : {};
-      check('refund (ראשי, בלי אישור כמו בישן): POST /api/refunds עם הסכום (יתרת הזכות) ופרטי הלקוח', post && b.customerId === 'c1' && b.orderId === 53375 && b.amount === 150 && b.bankName === 'לאומי' && b.bankBranch === '800' && 'paymentDetails' in b && 'email' in b);
+      check('refund (ראשי, באישור מנהל - W4-MANUAL): POST /api/refunds עם הסכום (יתרת הזכות) ופרטי הלקוח', post && b.customerId === 'c1' && b.orderId === 53375 && b.amount === 150 && b.bankName === 'לאומי' && b.bankBranch === '800' && 'paymentDetails' in b && 'email' in b);
     } },
   ];
 }
