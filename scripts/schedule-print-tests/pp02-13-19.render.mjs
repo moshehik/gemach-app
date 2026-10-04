@@ -30,7 +30,7 @@ const L = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 
 const keysArg = (process.argv[2] && process.argv[2].startsWith('PP-') ? process.argv[2] : 'PP-02,PP-13,PP-19').split(',');
 const long = process.argv.includes('long');
-const DAY = '2026-10-01';
+const DAY = '2026-10-15'; // = DAY of scripts/schedule-tests/fixtures.mjs
 
 // ---- 1. payload ---------------------------------------------------------------------------------
 let orders = allOrders();

@@ -35,7 +35,7 @@ const L = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 const specArg = (process.argv[2] && !process.argv[2].startsWith('long') ? process.argv[2] : 'PP-03:a,PP-03:b,PP-04,PP-08,PP-09').split(',');
 const long = process.argv.includes('long');
 const specs = specArg.map((s) => { const [key, version] = s.split(':'); return { key, version: version || null, name: key + (version || '') + (long ? '-long' : '') }; });
-const DAY = '2026-10-01';
+const DAY = '2026-10-15'; // = DAY of scripts/schedule-tests/fixtures.mjs
 const PAGE_CSS = ['pp03.css', 'pp09.css'];
 
 // ---- 1. payloads (one per spec) -----------------------------------------------------------------

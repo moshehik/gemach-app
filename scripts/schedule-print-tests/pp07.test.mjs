@@ -1,5 +1,5 @@
 // PP-07 "דף הכנה": שתי הגרסאות (א מרוכז, ב הזמנה בעמוד), בלי שדה "יעד", משלוחים קודם, ברקוד PRP-<הזמנה>, תיקונים מה-extra 'prepInfo'
-// (שאילתה אחת, בלי תשלומים), הרשאה (page:schedule מספיק), toRows (שורה לשמלה), גיליון Excel. מול נתוני הדמה של הלו״ז (1.10.2026) ונתוני סינתטיים.
+// (שאילתה אחת, בלי תשלומים), הרשאה (page:schedule מספיק), toRows (שורה לשמלה), גיליון Excel. מול נתוני הדמה של הלו״ז (15.10.2026) ונתוני סינתטיים.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -36,13 +36,13 @@ test('registry: ready, versions א/ב, per-order only in version ב, no extra pa
   assert.deepEqual(p.barcode, { prefix: 'PRP', page: true, rows: 'order' });
 });
 
-test('route: any employee with page:schedule gets 200; prep stage rows of 1.10 (1005, 1006); one lean extras query', async () => {
+test('route: any employee with page:schedule gets 200; prep stage rows of 15.10 (1005, 1006); one lean extras query', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const r = await get('?page=PP-07&date=2026-10-01');
+  const r = await get('?page=PP-07&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const p = r.__json.pages[0];
   assert.equal(p.version, 'a');
-  assert.equal(p.pageCode, 'ALL-PRP-261001');
+  assert.equal(p.pageCode, 'ALL-PRP-261015');
   assert.deepEqual(p.data.rows.map((x) => x.orderId), [1005, 1006]);
   assert.equal(p.data.rows[1].dresses.length, 2);
   assert.equal(p.data.rows[0].dresses[0].model, 'ורד');
@@ -60,7 +60,7 @@ test('route: any employee with page:schedule gets 200; prep stage rows of 1.10 (
 test('no "יעד" (destination) field anywhere - not in version א, not in version ב', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
   for (const v of ['a', 'b']) {
-    const r = await get('?page=PP-07&date=2026-10-01&version=' + v);
+    const r = await get('?page=PP-07&date=2026-10-15&version=' + v);
     assert.equal(r.status, 200);
     assert.equal(r.__json.pages[0].version, v);
     const json = JSON.stringify(r.__json.pages[0].data);

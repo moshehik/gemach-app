@@ -38,6 +38,16 @@ const YES = {
   // 4.10.2026 (תפריט "ניהול" מקוצר): מה שיצא מהשורות הקבועות של התפריט חייב להיות במסך — "כל השאר בתוך דף הניהול"
   '/refunds': 'head', '/dashboard/dresses': 'head', '/employees': 'head', '/deliveries': 'head',
 };
+// אריחים שנוספו אחרי תשובות מסך הניהול, כל אחד עם ההחלטה שלו. השער בדף עצמו שונה מ-head (ר' OWN_PAGE_GATE).
+const ADDED_LATER = {
+  '/non-working-days': 'head', // "ימי אי-פעילות" - החלטות-non-working-days.json NWD-Q01 "פריט בניהול" (1.10.2026), נבנה 4.10.2026
+};
+// דפים שהשער שלהם אינו checkPageAccess(הנהלה) בכוונה, והשער שהם כן אוכפים
+const OWN_PAGE_GATE = {
+  // פתוח למחוברים (צפייה); עריכה לפי feature:non_working_days_manage (פירוש 9) - נאכף ב-GET /api/non-working-days (canEdit) וב-POST /api/settings
+  '/non-working-days': /if \(!\(await checkAuth\(\)\)\) return <NoAccessMessage \/>/,
+};
+Object.assign(YES, ADDED_LATER);
 const NO = ['/api/customers/emails', '/admin/refund-planner', '/admin/audit-system', '/management/database',
   '/admin/refund-simulator', '/admin/settings/help'];
 const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה', 'עבודה שוטפת'];
@@ -226,6 +236,7 @@ t('השערים בדפים עצמם: כל אריח "מתכנת בלבד" מוב�
   // (גם כאן /design-system פטור — AH-02: קובץ סטטי ציבורי בכוונה; השער הוא רק על האריח)
   for (const x of TOOLS.filter((y) => y.href !== '/design-system')) {
     const srcs = [...layoutsFor(x.href), ...(x.href === '/dashboard' ? [read('../app/dashboard/page.js')] : [])];
+    if (OWN_PAGE_GATE[x.href]) { assert.ok(srcs.some((src) => OWN_PAGE_GATE[x.href].test(src)), `${x.href}: השער של הדף חסר`); continue; }
     // דף בשער הרשאות (PageGate page:*): הנהלה ראשית / מתכנת תמיד עוברים (ALWAYS_ALLOWED_ROLE_IDS = שער head), אז האריח בשער head מדויק
     if (x.pageKey) { assert.equal(x.gate, 'head'); assert.ok(srcs.some((src) => src.includes(`<PageGate pageKey="${x.pageKey}">`)), `${x.href}: אין PageGate ${x.pageKey}`); continue; }
     assert.ok(srcs.some((src) => /checkPageAccess\((HEAD_MANAGEMENT_ROLES|DEVELOPER_ONLY_ROLES)\)/.test(src)), `${x.href}: הדף בלי שער הנהלה`);

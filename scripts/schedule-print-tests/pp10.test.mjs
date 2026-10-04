@@ -1,5 +1,5 @@
 // PP-10 "דף משלוח הלוך (למשלוחן)": שער משלוחים (page:deliveries), נתוני שלב 5 בלי שאילתה נוספת, קיבוץ לפי תאריך אירוע עם כותרת
-// המשלוחן, "חסרה כתובת", ברקוד DOT-<הזמנה>, צורת courierGroups של מייל השליח, toRows. מול נתוני הדמה (1.10.2026) וסינתטיים.
+// המשלוחן, "חסרה כתובת", ברקוד DOT-<הזמנה>, צורת courierGroups של מייל השליח, toRows. מול נתוני הדמה (15.10.2026) וסינתטיים.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -35,27 +35,27 @@ test('registry: ready, deliveries gate, DOT barcode on page + rows, replaces the
 
 test('route gate: a regular employee without page:deliveries gets 403, with the permission 200, head management 200', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const denied = await get('?page=PP-10&date=2026-10-01');
+  const denied = await get('?page=PP-10&date=2026-10-15');
   assert.equal(denied.status, 403);
   assert.equal(denied.__json.page, 'PP-10');
   setup({ departmentPermission: [{ roleId: 5, key: 'page:schedule', value: 'true' }, { roleId: 5, key: 'page:deliveries', value: 'true' }] });
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  assert.equal((await get('?page=PP-10&date=2026-10-01')).status, 200);
+  assert.equal((await get('?page=PP-10&date=2026-10-15')).status, 200);
   setup();
   globalThis.__AUTH_TOKEN = 'emp-head';
-  assert.equal((await get('?page=PP-10&date=2026-10-01')).status, 200);
+  assert.equal((await get('?page=PP-10&date=2026-10-15')).status, 200);
 });
 
 test('route: dispatch-day rows of stage 5 (order 1009, no street -> missing address), courier group title, DOT code, no extra query', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-10&date=2026-10-01');
+  const r = await get('?page=PP-10&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const p = r.__json.pages[0];
-  assert.equal(p.pageCode, 'ALL-DOT-261001');
+  assert.equal(p.pageCode, 'ALL-DOT-261015');
   assert.equal(p.data.title, 'נתוני משלוחים למשלוחן · הלוך');
   assert.equal(p.data.groups.length, 1);
   const g = p.data.groups[0];
-  assert.equal(g.title, 'משלוח הלוך אירועים יום שישי כ״א תשרי תשפ״ז (משלוח יוצא יום חמישי)');
+  assert.equal(g.title, 'משלוח הלוך אירועים יום שישי ה׳ חשוון תשפ״ז (משלוח יוצא יום חמישי)');
   assert.deepEqual(g.rows.map((x) => x.orderId), [1009]);
   const row = g.rows[0];
   assert.equal(row.code, 'DOT-1009');
@@ -74,7 +74,7 @@ test('route: dispatch-day rows of stage 5 (order 1009, no street -> missing addr
 
 test('courierGroups keeps the shape of renderCourierDeliveryEmailHtml (title + customerName/address/customerPhone/customerPhone2)', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-10&date=2026-10-01');
+  const r = await get('?page=PP-10&date=2026-10-15');
   const cg = r.__json.pages[0].data.courierGroups;
   assert.equal(cg.length, 1);
   assert.deepEqual(Object.keys(cg[0]), ['title', 'rows']);

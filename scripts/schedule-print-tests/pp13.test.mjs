@@ -32,7 +32,7 @@ test('registry: ready, PCK barcode (page + per order), money permission, orderBa
 test('rows from stage 6: no branch anywhere, balance / paid-in-full / unknown, "done" for fully collected, PCK-<order> codes', async () => {
   const { payload } = await payloadFor(['PP-13']);
   const pg = payload.pages[0];
-  assert.equal(pg.pageCode, 'ALL-PCK-261001', 'page barcode in the header');
+  assert.equal(pg.pageCode, 'ALL-PCK-261015', 'page barcode in the header');
   const d = pg.data;
   assert.deepEqual(d.rows.map((r) => r.orderId).sort(), [1007, 7011, 7012, 7013].sort());
   assert.equal(d.rows.find((r) => r.orderId === 1008), undefined, 'delivery-out orders are not local pickups');
@@ -61,7 +61,7 @@ test('pickup hours come from standard_pickup_hours (default 20:00-21:30) and rea
 });
 
 test('a day that is not today does not say "today"', async () => {
-  const { payload } = await payloadFor(['PP-13'], { date: '2026-10-05' });
+  const { payload } = await payloadFor(['PP-13'], { date: '2026-10-19' });
   const d = payload.pages[0].data;
   assert.equal(d.pickupLabel, 'קבלת השמלות:');
   assert.equal(d.sub, 'מי מגיעה לקחת את השמלות ביום זה');
@@ -85,16 +85,16 @@ test('toRows: Hebrew columns without a branch column; amounts as numbers; "נא�
   const r7013 = rows.find((r) => r['הזמנה'] === 7013);
   assert.equal(r7013['יתרה לתשלום'], 300);
   assert.equal(r7013['נאסף'], 'כן');
-  assert.equal(r7013['תאריך אירוע'], '05/10/2026');
+  assert.equal(r7013['תאריך אירוע'], '19/10/2026');
 });
 
 test('API: 403 without the orders permission; 200 for head management; header barcode in the payload', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  assert.equal((await get('?page=PP-13&date=2026-10-01')).status, 403);
+  assert.equal((await get('?page=PP-13&date=2026-10-15')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-13&date=2026-10-01');
+  const r = await get('?page=PP-13&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
-  assert.equal(r.__json.pages[0].pageCode, 'ALL-PCK-261001');
+  assert.equal(r.__json.pages[0].pageCode, 'ALL-PCK-261015');
   assert.equal(r.__json.pages[0].def.chip, 'איסוף מקומי');
   assert.equal(r.__json.pages[0].data.rows.length, 4);
 });

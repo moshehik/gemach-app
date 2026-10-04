@@ -213,10 +213,14 @@ test('getLateReturnInfo - eventDate תקין (ללא שינוי התנהגות)'
   const late = getLateReturnInfo({ eventDate: '2026-09-15T00:00:00.000Z' }, 7, now);
   assert.equal(late.isLate, true);
   assert.equal(late.daysLate, 15);
-  // אירוע ב-27/9 => החזרה 28/9, 3 ימים - מתחת לסף
+  // אירוע ב-27/9 (ראשון, חול המועד סוכות תשפ"ז) => מועד ההחזרה הצפוי הוא יום העבודה הראשון אחרי החג:
+  // ראשון 4/10 (חול המועד, הושענא רבה ושמחת תורה סגורים - החלטת הבעלים 1.10.2026, lib/businessDays.js),
+  // כלומר ב-1/10 עוד לא הגיע מועד ההחזרה: daysLate שלילי. (עד גרסה 2 של הכלל: החזרה 28/9, 3 ימים.)
   const recent = getLateReturnInfo({ eventDate: '2026-09-27T00:00:00.000Z' }, 7, now);
   assert.equal(recent.isLate, false);
-  assert.equal(recent.daysLate, 3);
+  assert.equal(recent.daysLate, -3);
+  // אירוע ב-8/9 (שלישי, בלי חג בדרך) => החזרה 9/9, 22 ימים - הנוסחה הרגילה ללא שינוי
+  assert.equal(getLateReturnInfo({ eventDate: '2026-09-08T00:00:00.000Z' }, 7, now).daysLate, 22);
   // toDate מפורש גובר
   assert.equal(getLateReturnInfo({ eventDate: 'garbage', toDate: '2026-09-20T00:00:00.000Z' }, 7, now).isLate, true);
 });

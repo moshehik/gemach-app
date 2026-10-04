@@ -6,7 +6,7 @@
 //     'item' -> עם; דפי מידע (info) ודפים בלי ברקוד - אף קוד במטען;
 //   * הרשאות (ה-API, fail-closed): בלי התחברות 401, מחלקה חסומה 403, עובדת רגילה 403 לדף עם extraPageKeys ו-200 בלעדיו,
 //     הנהלה ראשית 200; format=rows מחזיר גיליון עם SHEET_NAME.
-// נתוני הדמה: scripts/schedule-tests/fixtures.mjs (+ orderItem נגזר מהפריטים) - יום חמישי 1.10.2026.
+// נתוני הדמה: scripts/schedule-tests/fixtures.mjs (+ orderItem נגזר מהפריטים) - יום חמישי 15.10.2026.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -44,7 +44,7 @@ function walk(v, visit, path = '$') {
 }
 
 async function buildAll(def, version) {
-  const day = await getScheduleDay({ date: '2026-10-01', user: { id: 'emp-head', roleId: 0 }, now: NOW });
+  const day = await getScheduleDay({ date: '2026-10-15', user: { id: 'emp-head', roleId: 0 }, now: NOW });
   const extras = await loadExtras(day, [def]);
   const payload = buildPrintPayload({ day, keys: [def.key], versions: version ? { [def.key]: version } : {}, extras, gmach: { name: 'ג', address: '', phone: '' }, printedBy: 'ט', now: NOW });
   return { day, extras, payload, page: payload.pages[0] };
@@ -100,9 +100,9 @@ for (const def of READY) {
       assert.equal(!!page.pageCode, !!def.barcode.page, 'pageCode only when barcode.page');
       if (page.pageCode) {
         assert.match(page.pageCode, ALL_CODE);
-        assert.equal(page.pageCode, `ALL-${def.barcode.prefix}-261001`);
+        assert.equal(page.pageCode, `ALL-${def.barcode.prefix}-261015`);
         assert.ok(B.isValidCode39(page.pageCode));
-        assert.deepEqual(B.parseScheduleCode(page.pageCode), { kind: 'day', stage: def.stages[0], prefix: def.barcode.prefix, day: '2026-10-01' });
+        assert.deepEqual(B.parseScheduleCode(page.pageCode), { kind: 'day', stage: def.stages[0], prefix: def.barcode.prefix, day: '2026-10-15' });
       }
       // rows='order': every row code is PFX-<order>; rows='item': item codes PFX-<order>-<n> (plus, as in the design, an order code on the
       // block header of PP-03 version a); rows=null: only the per-sheet header code of a "one order per page" page (PP-12: DOT-<order>)
@@ -126,7 +126,7 @@ for (const def of READY) {
 
   test(`${def.key} permission gate: 401 / 403 / ${def.extraPageKeys.length ? '403 for an employee without ' + def.extraPageKeys.join(' or ') : '200 for a regular employee'} / 200 for head management; rows export has the sheet`, async () => {
     const get = (qs) => route.GET({ url: 'http://localhost/api/schedule/print' + qs });
-    const q = `?page=${def.key}&date=2026-10-01`;
+    const q = `?page=${def.key}&date=2026-10-15`;
     assert.equal((await get(q)).status, 401);
     globalThis.__AUTH_TOKEN = 'emp-worker-blocked';
     assert.equal((await get(q)).status, 403, 'department with page:schedule=false');

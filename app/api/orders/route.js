@@ -1021,7 +1021,7 @@ export async function POST(request) {
           // מועד לקיחה/החזרה - אותו חישוב בדיוק כמו app/api/orders/[id]/email/route.js
           // ו-app/print/order/page.js: לקיחה = יומיים-עסקים לפני האירוע (מדלג שישי/שבת/חג),
           // החזרה = toDate/returnDate או יום העבודה הראשון אחרי האירוע. הלקיחה והחזרה לפי הכלל האחיד
-          // "יום לא עובד" (שישי/שבת/חג/ערב חג/ימים שהבעלים סימן - lib/businessDays.js).
+          // "יום לא עובד" (שישי/שבת/חג/חול המועד/ערב חג/ימים שהבעלים סימן - lib/businessDays.js).
           const nonWorkingDays = await getNonWorkingDaysConfig();
           const pickupDate = updatedOrder.eventDate ? subtractBusinessDays(updatedOrder.eventDate, 2, nonWorkingDays) : null;
           const returnByDate = getExpectedReturnDate(updatedOrder, nonWorkingDays);

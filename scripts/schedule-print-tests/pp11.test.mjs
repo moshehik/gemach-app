@@ -1,5 +1,5 @@
 // PP-11 "רשימת שליח לפי עיר": קיבוץ לפי עיר (הכי הרבה עצירות קודם, "ללא עיר" אחרון), מספור עצירות רציף, תיבת "נמסר", ברקוד DOT,
-// שער page:deliveries, toRows. נתוני הדמה (1.10.2026: 1009 בית שמש בלי רחוב) וסינתטיים.
+// שער page:deliveries, toRows. נתוני הדמה (15.10.2026: 1009 בית שמש בלי רחוב) וסינתטיים.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -31,9 +31,9 @@ test('registry: ready, deliveries gate, DOT barcode', () => {
 
 test('route: 403 without page:deliveries; 200 for head management with the city grouping of order 1009', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  assert.equal((await get('?page=PP-11&date=2026-10-01')).status, 403);
+  assert.equal((await get('?page=PP-11&date=2026-10-15')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-11&date=2026-10-01');
+  const r = await get('?page=PP-11&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const p = r.__json.pages[0];
   assert.equal(p.data.title, 'רשימת שליח לפי עיר');

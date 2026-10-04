@@ -1,4 +1,4 @@
-// נתוני דמה לדפי 03, 04, 08, 09 (קבוצה 2): הזמנות עם תיקונים (שלב 2, אירוע ב-1.10 = "היום") והזמנות להכנה (שלב 4, אירוע ב-6.10).
+// נתוני דמה לדפי 03, 04, 08, 09 (קבוצה 2): הזמנות עם תיקונים (שלב 2, אירוע ב-15.10 = "היום") והזמנות להכנה (שלב 4, אירוע ב-20.10).
 // בנוי על scripts/schedule-tests/fixtures.mjs (אותו מוק Prisma, אותו getScheduleDay אמיתי) ומוסיף:
 //   - orderItem במוק (ה-extra 'itemInfo' קורא OrderItem שטוח) - נגזר מהפריטים של ההזמנות, עם id ו-orderId
 //   - דגמי השמלות והלקוחות של העיצוב (דפי-הדפסה-עיצוב.html: MOD, PPL, REP) כדי שהשוואה לעיצוב תהיה על אותם נתונים
@@ -37,8 +37,8 @@ function order(orderId, i, n, { repair, event, branch = null, delivery = false, 
   };
 }
 
-const EV_REPAIR = '2026-09-30T21:00:00Z'; // 1.10 בשעון ישראל = היום -> שלב 2 (offset 0)
-const EV_PREP = '2026-10-05T21:00:00Z';   // 6.10 -> הכנה חמישי 1.10 (-3 ימי עסקים)
+const EV_REPAIR = '2026-10-14T21:00:00Z'; // 15.10 בשעון ישראל = היום -> שלב 2 (offset 0)
+const EV_PREP = '2026-10-19T21:00:00Z';   // 20.10 -> הכנה חמישי 15.10 (-3 ימי עסקים)
 
 /** 12 הזמנות תיקונים + 12 הזמנות הכנה (כמו 12 הלקוחות של העיצוב); long = הרבה יותר, כדי לקבל כמה עמודים */
 export function g2Orders({ long = false } = {}) {
@@ -64,7 +64,7 @@ export function installG2Db({ long = false, orders = null, base = true } = {}) {
 import { pathToFileURL } from 'node:url';
 import { NOW } from '../schedule-tests/fixtures.mjs';
 const L = (rel) => import(pathToFileURL(process.env.PROJ + '/' + rel).href);
-export const DAY = '2026-10-01';
+export const DAY = '2026-10-15'; // = DAY של scripts/schedule-tests/fixtures.mjs
 export const GMACH = { name: 'גמ״ח שמלות', address: 'רחוב הדוגמה 12, ירושלים', phone: '02-555-0100' };
 
 export async function g2Payload(keys, { versions = {}, long = false, base = false, orders = null } = {}) {
