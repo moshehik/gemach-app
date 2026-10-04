@@ -52,6 +52,19 @@ export function hebText(iso) {
   return gershayim(GDAY[n.day]) + ' ' + HEB_MON.format(d) + ' ' + hebrewYearLetters(n.year);
 }
 
+// eventDate גולמי מה-DB (Date / מחרוזת ISO) → "ט״ו תשרי תשפ״ז" לפי היום הקלנדרי בישראל, לא לפי אזור הזמן של
+// המחשב: eventDate נשמר לפעמים כחצות UTC ולפעמים כ-...T21:00:00Z של היום הישראלי הבא (ר' getIsraelDayRange
+// ב-lib/hebrewDate.js). ריק כשאין תאריך / תאריך לא תקין. עברי בלבד — אין כאן נפילה לתאריך לועזי.
+const IL_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' });
+export function hebFromInstant(v) {
+  if (v === null || v === undefined || v === '') return '';
+  const d = v instanceof Date ? v : new Date(v);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = {};
+  IL_DAY.formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+  return hebText(p.year + '-' + p.month + '-' + p.day);
+}
+
 // יום ראשון בחודש העברי שמכיל את d
 export function hebMonthStart(d) {
   const x = new Date(d);

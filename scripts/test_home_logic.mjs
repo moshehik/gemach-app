@@ -8,7 +8,9 @@ import {
   botErrorMessage, chatToHistory, chatCopyText, aiRowView, aiRowKind, aiRowHref, richSegments, rowsToCsv,
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
   HOME_SCOPES, HOME_RECENT_VALUES, parseHomeParams, homeDirectiveKey, homeScopeTitle, SCOPE_TITLE_REST, applyScope, scopedAdvFields,
+  RENTAL_STATE_STYLE, rentalStatus,
 } from '../app/components/home/homeLogic.js';
+import { isBarcodeLikeQuery } from '../lib/quickSearchResults.js';
 import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
 import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, splitMatch } from '../lib/quickPrefix.js';
 import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js';
@@ -17,7 +19,7 @@ import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
   ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES,
 } from '../app/components/home/homeAdvConfig.js';
-import { hebText, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
+import { hebText, hebFromInstant, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
 import { ORDER_STATUS_STYLE } from '../app/components/home/homeLogic.js';
 import { PRIVACY_SECTIONS, splitPlaceholders, PRIVACY_PLACEHOLDER_COUNT } from '../app/components/home/privacyPolicyText.js';
@@ -142,14 +144,76 @@ t('רשימה מאוחדת: סדר לקוחות, הזמנות, פריטים וכ
   assert.equal(rows[3].status.label, 'הוחזר');
   assert.deepEqual(unifiedRows(null), []);
 });
-t('טבלה: 7 עמודות ותאי כל סוג', () => {
+t('טבלה: 9 עמודות ותאי כל סוג', () => {
   const rec = tableRecords(unifiedRows(normalizeSearch(RAW)));
-  assert.equal(TABLE_COLUMNS.length, 7);
-  assert.ok(rec.every((r) => r.cells.length === 7));
-  assert.deepEqual(rec[0].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '']);
-  assert.deepEqual(rec[2].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', 'י״ג תשרי', 'פעיל']);
-  assert.deepEqual(rec[4].cells, ['פריט', 'שמלת ורד', '', '', '1024038', '', 'מידה 38']);
-  assert.equal(rec[5].cells[6], '', 'אין מידה = ריק');
+  assert.deepEqual(TABLE_COLUMNS, ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס / מידה']);
+  assert.ok(rec.every((r) => r.cells.length === TABLE_COLUMNS.length));
+  assert.deepEqual(rec[0].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '', '', '']);
+  assert.deepEqual(rec[2].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', '', '', 'י״ג תשרי', 'פעיל']);
+  assert.deepEqual(rec[4].cells, ['פריט', 'שמלת ורד', '', '', '1024038', '#48131', '', '', 'מידה 38']);
+  assert.equal(rec[5].cells[8], '', 'אין מידה = ריק');
+});
+
+console.log('חיפוש ברקוד: כל השכרה של אותו פריט בשורה משלה (4.10.2026)');
+// אותו ברקוד בשלוש השכרות שונות — כמו שהשרת מחזיר אחרי ה-JOIN ל-Order/Customer
+const BC = {
+  rentals: [
+    { id: 'i1', orderId: 52001, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: true, isReturned: false, firstName: 'רחל', lastName: 'כהן', eventDateHebrew: 'ט״ו תשרי תשפ״ז', eventDate: '2026-10-03T00:00:00.000Z' },
+    { id: 'i2', orderId: 47310, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: true, isReturned: true, firstName: 'לאה', lastName: null, eventDateHebrew: null, eventDate: '2025-06-11T21:00:00.000Z' },
+    { id: 'i3', orderId: 39002, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: false, isReturned: false, firstName: null, lastName: null, eventDateHebrew: '', eventDate: null },
+  ],
+};
+t('נרמול: לקוחה ותאריך אירוע לכל השכרה; תאריך עברי בלבד (שמור, או מחושב לפי יום ישראלי)', () => {
+  const r = normalizeSearch(BC).rentals;
+  assert.deepEqual(r.map((x) => x.cn), ['רחל כהן', 'לאה', '']);
+  assert.equal(r[0].h, 'ט״ו תשרי תשפ״ז', 'הטקסט השמור בהזמנה קודם');
+  // 2025-06-11T21:00Z = 12.6.2025 בישראל (לא 11.6 לפי UTC)
+  assert.equal(r[1].h, hebText('2025-06-12'));
+  assert.notEqual(r[1].h, hebText('2025-06-11'));
+  assert.equal(r[2].h, '', 'אין תאריך = ריק, בלי מקף');
+  for (const x of r) assert.ok(!/\d|[./]/.test(x.h), 'תאריך לועזי דלף: ' + x.h);
+});
+t('hebFromInstant: יום ישראלי, ריק לערך חסר/לא תקין', () => {
+  assert.equal(hebFromInstant('2026-10-03T00:00:00.000Z'), hebText('2026-10-03'));
+  assert.equal(hebFromInstant('2026-10-02T21:30:00.000Z'), hebText('2026-10-03'), 'אחרי חצות בישראל = היום הבא');
+  assert.equal(hebFromInstant(new Date('2026-10-03T09:00:00Z')), hebText('2026-10-03'));
+  for (const v of [null, undefined, '', 'לא תאריך']) assert.equal(hebFromInstant(v), '');
+});
+t('שורות פריט: הזמנה, לקוחה, תאריך עברי ותגית מצב; חלק חסר = ריק (בלי מקף)', () => {
+  const rows = unifiedRows(normalizeSearch(BC));
+  assert.equal(new Set(rows.map((x) => x.key)).size, 3, 'שלוש שורות נפרדות');
+  assert.deepEqual(rows.map((x) => x.orderId), [52001, 47310, 39002]);
+  assert.deepEqual(rows.map((x) => x.customer), ['רחל כהן', 'לאה', '']);
+  assert.deepEqual(rows.map((x) => x.eventHeb), ['ט״ו תשרי תשפ״ז', hebText('2025-06-12'), '']);
+  assert.deepEqual(rows.map((x) => x.status), [
+    { cls: '', icon: 'bag', label: 'מושכר עכשיו' },
+    { cls: 'ok', icon: 'check', label: 'הוחזר' },
+    { cls: '', icon: 'clock', label: 'טרם נלקח' },
+  ]);
+  assert.equal(unifiedRows(normalizeSearch({ rentals: [{ orderId: 1, barcode: 'B' }] }))[0].status, null, 'בלי דגלים — בלי תגית');
+});
+t('מצב פריט → תגית: שלושת המצבים בלבד; ערך לא מוכר (גם constructor) = null', () => {
+  assert.deepEqual(Object.keys(RENTAL_STATE_STYLE), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח']);
+  for (const k of ['', 'constructor', '__proto__', 'מושכר', undefined]) assert.equal(rentalStatus(k), null, String(k));
+  // תווית התגית = התווית של rentalStateLabel (אותו ניסוח בכל המסכים)
+  assert.deepEqual([{ isTaken: true, isReturned: false }, { isTaken: true, isReturned: true }, { isTaken: false, isReturned: false }].map((x) => rentalStatus(normalizeSearch({ rentals: [{ orderId: 1, ...x }] }).rentals[0].rs).label), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח']);
+});
+t('טבלה + Excel של השכרות: הזמנה, לקוח, תאריך עברי, מצב ומידה', () => {
+  const rec = tableRecords(unifiedRows(normalizeSearch(BC)));
+  assert.deepEqual(rec[0].cells, ['פריט', '551', '', '', '5511205', '#52001', 'רחל כהן', 'ט״ו תשרי תשפ״ז', 'מושכר עכשיו · מידה 12']);
+  assert.deepEqual(rec[2].cells, ['פריט', '551', '', '', '5511205', '#39002', '', '', 'טרם נלקח · מידה 12']);
+  const ex = exportRecordsForRows(unifiedRows(normalizeSearch(BC)));
+  assert.equal(ex[1]['הזמנה'], '#47310');
+  assert.equal(ex[1]['לקוח'], 'לאה');
+  assert.equal(ex[1]['תאריך אירוע'], hebText('2025-06-12'));
+  assert.equal(ex[1]['סטטוס / מידה'], 'הוחזר · מידה 12');
+  // רק שדות תצוגה — לא eventDate גולמי ולא שדות לא מוכרים מהשרת
+  const json = JSON.stringify(normalizeSearch({ rentals: [{ ...BC.rentals[1], zeout: '123456789', phone1: '050' }] }));
+  for (const bad of ['zeout', '123456789', 'eventDate', '2025-06-11', 'phone1']) assert.ok(!json.includes(bad), 'דלף: ' + bad);
+});
+t('זיהוי חיפוש-ברקוד (משותף לשרת ולחיפוש המהיר): ספרות בלבד, 5 ומעלה', () => {
+  for (const yes of ['5511205', '12345', ' 5511205 ']) assert.equal(isBarcodeLikeQuery(yes), true, yes);
+  for (const no of ['1234', 'ddddd', 'd{5,}', '55112a5', '551 1205', '', null, 'כהן']) assert.equal(isBarcodeLikeQuery(no), false, String(no));
 });
 t('מיון: מספרים לפי ערך, טקסט בעברית, לא משנה את המקור', () => {
   const recs = [{ cells: ['x', '#10'] }, { cells: ['y', '#9'] }, { cells: ['z', '#100'] }];

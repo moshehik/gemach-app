@@ -84,13 +84,14 @@ const cnt = (n, one, many) => (n === 1 ? one : n + ' ' + many);
 const GENERAL_SECTIONS = [
   { kind: 'לקוח', key: 'customers', label: 'לקוחות', one: 'לקוח אחד', many: 'לקוחות', cols: [{ h: 'שם', w: 42 }, { h: 'טלפון', w: 30, ltr: true }, { h: 'עיר', w: 28 }] },
   { kind: 'הזמנה', key: 'orders', label: 'הזמנות', one: 'הזמנה אחת', many: 'הזמנות', cols: [{ h: 'שם', w: 34 }, { h: 'מס׳ הזמנה', w: 16, ltr: true }, { h: 'תאריך אירוע', w: 30 }, { h: 'סטטוס', w: 20 }] },
-  { kind: 'פריט', key: 'items', label: 'פריטים', one: 'פריט אחד', many: 'פריטים', cols: [{ h: 'דגם', w: 44 }, { h: 'ברקוד', w: 30, ltr: true }, { h: 'מידה', w: 26 }] },
+  // פריט = השכרה אחת של פריט (ברקוד חוזר בהשכרות רבות): גם ההזמנה, הלקוחה, תאריך האירוע (עברי) ומצב הפריט — כמו בשורה על המסך
+  { kind: 'פריט', key: 'items', label: 'פריטים', one: 'פריט אחד', many: 'פריטים', cols: [{ h: 'דגם', w: 28 }, { h: 'ברקוד', w: 17, ltr: true }, { h: 'מידה', w: 10 }, { h: 'מס׳ הזמנה', w: 14, ltr: true }, { h: 'לקוח', w: 27 }, { h: 'תאריך אירוע', w: 25 }, { h: 'סטטוס', w: 20 }] },
 ];
 
 function generalCells(kind, r) {
   if (kind === 'לקוח') return [r.title, r.phone, r.city];
   if (kind === 'הזמנה') return [r.title, '#' + r.orderId, r.eventHeb, r.status ? r.status.label : ''];
-  return [r.title, r.barcode, r.size];
+  return [r.title, r.barcode, r.size, r.orderId ? '#' + r.orderId : '', r.customer, r.eventHeb, r.status ? r.status.label : ''];
 }
 
 /** תשובת החיפוש הכללי (אחרי normalizeSearch + applyScope) → מקטעים: לקוחות / הזמנות / פריטים, רק מה שיש בו שורות. */
