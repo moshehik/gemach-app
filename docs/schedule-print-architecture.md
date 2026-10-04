@@ -197,6 +197,9 @@
 
 - דף 12 מחליף את "נתונים לשקית" ודפים 03/04/10/18 את `/print/alterations`/`/print/delivery-courier` **בעיצוב בלבד**:
   המשטחים הישנים לא הוסרו (ראו `replaces` ב-registry).
+- מסך `/deliveries` (4.10.2026, PQ-06): "הדפסת תעודות משלוח" פותח את PP-12, והדפסה למשלוחן את PP-10 (הלוך) / PP-18 (חזור) /
+  `PP-10,PP-18` (שניהם) - `/schedule/print/<keys>?date=<יום>` (`lib/deliveriesPrint.js`, בדיקה: `scripts/test_deliveries_print.mjs`).
+  הדפים הישנים נשארים חיים ונפתחים לטווח של יותר מיום, להדפסת משלוחן בבחירה לפי תאריך אירוע, ולמי שאין לו/ה את הרשאת הלו״ז.
 - PDF בשרת: `POST /api/pdf { path:'/schedule/print/PP-01,PP-15?date=…&downloadPdf=true' }` - `lib/printAccess.js`
   `printPathPageKeys()` מתיר בדיוק `/schedule/print/<מקטע אחד של מפתחות>` (לא `/schedule/print` עצמו, לא נתיבים
   מקוננים) עם `page:schedule`; ה-API של הנתונים בודק שוב את ההרשאות של כל דף בתוך ה-Chromium. לא נבדק על Vercel.
