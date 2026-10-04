@@ -298,11 +298,13 @@ function TimeCtl({ row, raw, onChange, portalRoot }) {
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', key);
     window.addEventListener('scroll', scroll, true);
-    window.addEventListener('resize', () => setOpen(false));
+    const onResize = () => setOpen(false);
+    window.addEventListener('resize', onResize);
     return () => {
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', key);
       window.removeEventListener('scroll', scroll, true);
+      window.removeEventListener('resize', onResize);
     };
   }, [open]);
   const commit = () => {
@@ -327,7 +329,7 @@ function TimeCtl({ row, raw, onChange, portalRoot }) {
         role="combobox"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={`st-tp-${row.key}`}
+        aria-controls={open ? `st-tp-${row.key}` : undefined}
         aria-label={row.label}
         value={text}
         onClick={() => setOpen(true)}

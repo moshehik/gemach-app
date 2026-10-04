@@ -20,11 +20,11 @@ try {
       await p.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
       await p.goto(`http://127.0.0.1:${PORT}/index.html?view=${view}`, { waitUntil: 'networkidle0' });
       await sleep(600);
-      const tabs = await p.$$eval(tag === 'desk' ? '.st-stab' : '.st-toptabs .tab', (b) => b.map((x) => x.getAttribute('aria-controls')));
+      const tabs = await p.$$eval(tag === 'desk' ? '.st-stab' : '.st-toptabs .tab', (b) => b.map((x) => x.getAttribute('data-tab')));
       for (const t of tabs) {
-        await p.evaluate((sel) => { const b = document.querySelector(sel); if (b) b.click(); window.scrollTo(0, 0); }, `${tag === 'desk' ? '.st-stab' : '.st-toptabs .tab'}[aria-controls="${t}"]`);
+        await p.evaluate((sel) => { const b = document.querySelector(sel); if (b) b.click(); window.scrollTo(0, 0); }, `${tag === 'desk' ? '.st-stab' : '.st-toptabs .tab'}[data-tab="${t}"]`);
         await sleep(250);
-        await p.screenshot({ path: path.join(OUT, `${tag}-${view}-${t.replace(/^p-[a-z]+-/, '')}.png`), fullPage: true });
+        await p.screenshot({ path: path.join(OUT, `${tag}-${view}-${t}.png`), fullPage: true });
       }
       await p.close();
     }

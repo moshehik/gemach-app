@@ -621,6 +621,24 @@ export default function SettingsSimPage({ view = 'sys' }) {
   const title = TITLES[view] || TITLES.sys;
   const rowHidden = (r, s) => !!q && !rowMatches(r, s.title, q);
   const visibleTab = tabs.find((t) => t.id === activeTab);
+  const panelId = `p-${view}-${activeTab}`; // רק הפאנל הפעיל קיים ב-DOM, לכן רק ללשונית הפעילה aria-controls
+  // ניווט במקלדת בין לשוניות (role=tab): חצים (בסרגל האנכי ובשורה האופקית, RTL), Home / End. הפוקוס עובר והלשונית נפתחת.
+  const onTabKey = (e) => {
+    const k = e.key;
+    const n = tabs.length;
+    const i = tabs.findIndex((t) => t.id === activeTab);
+    let to = -1;
+    if (k === 'ArrowDown' || k === 'ArrowLeft') to = (i + 1) % n;
+    else if (k === 'ArrowUp' || k === 'ArrowRight') to = (i - 1 + n) % n;
+    else if (k === 'Home') to = 0;
+    else if (k === 'End') to = n - 1;
+    if (to < 0 || !n) return;
+    e.preventDefault();
+    const id = tabs[to].id;
+    setTab(id);
+    const btn = e.currentTarget.querySelector(`[data-tab="${id}"]`);
+    if (btn) btn.focus();
+  };
   const nChanged = changedKeys.length + (resetAll && !changedKeys.length ? 1 : 0);
 
   const renderRow = (r, s) => {
@@ -758,7 +776,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
           <div className="layout">
             <aside className="rail" aria-label="מקטעים ושינויים לשמירה">
               <div className="st-sidenav">
-                <nav className="st-stabs" role="tablist" aria-label={title}>
+                <nav className="st-stabs" role="tablist" aria-label={title} aria-orientation="vertical" onKeyDown={onTabKey}>
                   {tabs.map((t) => {
                     const on = t.id === activeTab;
                     const cnt = q ? hits.per[t.id] : tabChanged(t.id);
@@ -770,7 +788,9 @@ export default function SettingsSimPage({ view = 'sys' }) {
                         role="tab"
                         aria-selected={on}
                         aria-current={on ? 'page' : undefined}
-                        aria-controls={`p-${view}-${t.id}`}
+                        aria-controls={on ? panelId : undefined}
+                        tabIndex={on ? 0 : -1}
+                        data-tab={t.id}
                         onClick={() => setTab(t.id)}
                         data-element-name={`כפתור_settings_tab_${t.id}`}
                       >
@@ -823,12 +843,12 @@ export default function SettingsSimPage({ view = 'sys' }) {
 
             <div className="st-main">
               <div className="st-toptabs">
-                <nav className="tabs" role="tablist" aria-label="מקטעי הגדרות">
+                <nav className="tabs" role="tablist" aria-label="מקטעי הגדרות" onKeyDown={onTabKey}>
                   {tabs.map((t) => {
                     const on = t.id === activeTab;
                     const cnt = q ? hits.per[t.id] : tabChanged(t.id);
                     return (
-                      <button key={t.id} type="button" className={`tab${on ? ' on' : ''}`} role="tab" data-ico={t.top} aria-selected={on} aria-controls={`p-${view}-${t.id}`} onClick={() => setTab(t.id)}>
+                      <button key={t.id} type="button" className={`tab${on ? ' on' : ''}`} role="tab" data-ico={t.top} aria-selected={on} aria-controls={on ? panelId : undefined} tabIndex={on ? 0 : -1} data-tab={t.id} onClick={() => setTab(t.id)}>
                         <span className="tico"><Ic id={t.top} plain />{cnt ? <span className="cnt st-cnt">{cnt}</span> : null}</span>{t.label}
                       </button>
                     );
@@ -836,7 +856,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
                 </nav>
               </div>
               {visibleTab ? (
-                <section className={`panel on${visibleTab.dim ? ' st-dim' : ''}`} id={`p-${view}-${visibleTab.id}`} role="tabpanel" data-panel={visibleTab.id}>
+                <section className={`panel on${visibleTab.dim ? ' st-dim' : ''}`} id={panelId} role="tabpanel" aria-label={visibleTab.label} data-panel={visibleTab.id}>
                   {visibleTab.sections.map(renderSection)}
                   {visibleTab.id === 'unused' && !q ? (
                     <p className="st-note">המפתחות בלשונית הזו אינם נקראים היום בשום קוד פעיל (נבדק מול הקוד; הערות ותיעוד לא נחשבים). חלקם עברו למסך ההרשאות. הם נשמרים לתיעוד בלבד.</p>

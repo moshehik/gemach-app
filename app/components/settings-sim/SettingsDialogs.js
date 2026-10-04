@@ -119,7 +119,7 @@ export function AuthDialog({ open, root, error, busy, onSubmit, onCancel }) {
   const [pin, setPin] = useState('');
   useDialogKeys(open, dlgRef, onCancel, '.sizes button, input');
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) { setPin(''); return undefined; } // אחרי הצלחה / ביטול הסיסמה לא נשארת בזיכרון הרכיב
     setPin('');
     setLoadErr(null);
     const ctrl = new AbortController();
@@ -165,7 +165,8 @@ export function AuthDialog({ open, root, error, busy, onSubmit, onCancel }) {
               className="inp"
               type="password"
               dir="ltr"
-              autoComplete="current-password"
+              autoComplete="off"
+              data-lpignore="true"
               placeholder="סיסמה"
               aria-label="סיסמת המנהל"
               value={pin}

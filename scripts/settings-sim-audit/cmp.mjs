@@ -55,7 +55,7 @@ try {
   await real.goto(`http://127.0.0.1:${PORT}/index.html?view=${view}`, { waitUntil: 'networkidle0' });
   await sleep(500);
   await real.evaluate((t, st) => {
-    const b = document.querySelector(`.st-stab[aria-controls$="-${t}"]`) || document.querySelector(`.st-toptabs .tab[aria-controls$="-${t}"]`); if (b) b.click();
+    const b = document.querySelector(`.st-stab[data-tab="${t}"]`) || document.querySelector(`.st-toptabs .tab[data-tab="${t}"]`); if (b) b.click();
     if (st === 'dirty') setTimeout(() => { const i = document.querySelector('.panel.on .sw input'); if (i) i.click(); }, 50);
   }, tab, state);
   await sleep(700);

@@ -27,7 +27,7 @@ async function t(name, fn) {
   catch (e) { failed++; console.error('  FAIL -', name, '\n        ', e.message); }
 }
 const clickText = (p, sel, text) => p.evaluate((sel, text) => { const b = [...document.querySelectorAll(sel)].find((x) => x.textContent.includes(text)); if (!b) throw new Error('no ' + text); b.click(); }, sel, text);
-const tab = (p, id) => p.evaluate((id) => document.querySelector(`.st-stab[aria-controls$="-${id}"]`).click(), id);
+const tab = (p, id) => p.evaluate((id) => document.querySelector(`.st-stab[data-tab="${id}"]`).click(), id);
 const click = (p, sel) => p.$eval(sel, (e) => { e.scrollIntoView({ block: 'center' }); e.click(); });
 async function typeIn(p, sel, text) { await p.$eval(sel, (e) => { e.scrollIntoView({ block: 'center' }); e.focus(); e.select(); }); await p.keyboard.type(text); }
 const posts = (p) => p.evaluate(() => window.__posts);
@@ -335,7 +335,7 @@ try {
 
   await t('#3 web_backup_mode (דגל המעבר החי) לא מוצג כמתג רגיל באף לשונית', async () => {
     const p = await page('view=site');
-    const ids = await p.$$eval('.st-stab', (x) => x.map((e) => e.getAttribute('aria-controls').replace(/^p-site-/, '')));
+    const ids = await p.$$eval('.st-stab', (x) => x.map((e) => e.getAttribute('data-tab')));
     assert.ok(ids.length >= 3);
     for (const id of ids) {
       await tab(p, id);
@@ -496,6 +496,80 @@ try {
     await sleep(300);
     const v = (await posts(p))[0].body.items[0].value;
     assert.equal(v, 'אשראי (דרך נדרים פלוס)', 'האחרון נשאר');
+    await p.close();
+  });
+
+  await t('#10 לשוניות: חצים/Home/End מזיזים פוקוס ופותחים לשונית; aria-controls רק על הפעילה ומצביע על פאנל קיים; tabindex מתגלגל', async () => {
+    const p = await page('view=sys');
+    const info = () => p.evaluate(() => {
+      const tabs = [...document.querySelectorAll('.st-stab')];
+      const on = tabs.filter((b) => b.getAttribute('aria-selected') === 'true');
+      const withCtl = tabs.filter((b) => b.hasAttribute('aria-controls'));
+      return {
+        on: on.map((b) => b.dataset.tab), ctl: withCtl.map((b) => !!document.getElementById(b.getAttribute('aria-controls'))),
+        tabindex0: tabs.filter((b) => b.tabIndex === 0).length, focus: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.tab : null,
+        top: [...document.querySelectorAll('.st-toptabs .tab[aria-controls]')].map((b) => !!document.getElementById(b.getAttribute('aria-controls'))),
+      };
+    });
+    let i = await info();
+    assert.deepEqual(i.on, ['cfg']);
+    assert.deepEqual(i.ctl, [true], 'aria-controls רק על הפעילה ותקין');
+    assert.deepEqual(i.top, [true]);
+    assert.equal(i.tabindex0, 1);
+    await p.focus('.st-stab[data-tab="cfg"]');
+    await p.keyboard.press('ArrowDown');
+    await sleep(100);
+    i = await info();
+    assert.deepEqual(i.on, ['brand']);
+    assert.equal(i.focus, 'brand');
+    await p.keyboard.press('End');
+    await sleep(100);
+    i = await info();
+    assert.equal(i.focus, i.on[0]);
+    assert.equal(i.on[0], 'unused');
+    await p.keyboard.press('ArrowDown'); // עוטף להתחלה
+    await sleep(100);
+    assert.deepEqual((await info()).on, ['cfg']);
+    await p.keyboard.press('ArrowUp'); // עוטף לסוף
+    await sleep(100);
+    assert.deepEqual((await info()).on, ['unused']);
+    await p.close();
+  });
+
+  await t('#10 חלון אישור הנהלה: שדה הסיסמה autocomplete=off והסיסמה לא נשארת אחרי הצלחה', async () => {
+    const p = await page('view=sys&nosession=1');
+    await click(p, '#setting-row-require_login .sw input');
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(500);
+    assert.equal(await p.$eval('#dlg input[type=password]', (e) => e.autocomplete), 'off');
+    await clickText(p, '#dlg .st-auth-emps button', 'יוסף');
+    await p.type('#dlg input[type=password]', '1234');
+    await p.click('#dlg button[type=submit]');
+    await sleep(500);
+    assert.equal(await p.$('.scrim.on'), null, 'נסגר');
+    await click(p, '#setting-row-require_login .sw input');
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(500);
+    assert.equal(await p.$eval('#dlg input[type=password]', (e) => e.value), '', 'הסיסמה הקודמת לא נשארה');
+    await p.close();
+  });
+
+  await t('#10 בוחר שעה: אין האזנת resize שנשארת אחרי סגירה', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'msg');
+    await p.evaluate(() => {
+      window.__rs = 0;
+      const add = window.addEventListener.bind(window); const rem = window.removeEventListener.bind(window);
+      window.addEventListener = (t, ...a) => { if (t === 'resize') window.__rs++; return add(t, ...a); };
+      window.removeEventListener = (t, ...a) => { if (t === 'resize') window.__rs--; return rem(t, ...a); };
+    });
+    for (let n = 0; n < 3; n++) {
+      await click(p, '#setting-row-pickup_reminder_hour input');
+      await sleep(150);
+      await p.keyboard.press('Escape');
+      await sleep(150);
+    }
+    assert.equal(await p.evaluate(() => window.__rs), 0, 'מאזיני resize שדלפו');
     await p.close();
   });
 } finally {
