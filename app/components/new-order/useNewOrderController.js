@@ -726,10 +726,11 @@ export default function useNewOrderController({ router }) {
       if (e.key !== 'Escape' || isProcessingCredit || saving) return;
       if (dlg[2] && dlg[2].type !== 'busy') answer(2, null);
       else if (dlg[1]) answer(1, null);
+      else if (capacityItem) setCapacityItem(null);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [dlg, answer, isProcessingCredit, saving]);
+  }, [dlg, answer, isProcessingCredit, saving, capacityItem]);
 
   // ---------- ניווט שלבים ----------
   const activeItems = (order.items || []).filter(i => !i.isDeleted);
