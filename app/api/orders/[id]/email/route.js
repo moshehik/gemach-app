@@ -6,8 +6,9 @@ import { subtractBusinessDays, israelLocalDate } from '../../../../../lib/busine
 import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
-import { renderOrderCardEmailHtml } from '../../../../../lib/emailTemplates';
-import { normalizeAttachments, postToMailer } from '@/lib/mailer';
+import { renderOrderCardEmailHtml, renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
+import { parseQuickMail } from '@/lib/orderQuickMail';
+import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
@@ -78,6 +79,11 @@ export async function POST(request, { params }) {
 
     if (!email) {
       return NextResponse.json({ error: 'כתובת מייל חסרה' }, { status: 400 });
+    }
+    // מייל מהיר מכרטיס ההזמנה החדש (A8): נושא ותוכן חופשיים + צרופות לפי kind, בלי דוח ההזמנה כ-PDF. בלי body.quick - בלי שינוי.
+    const quick = body.returnHtmlOnly ? null : parseQuickMail(body.quick);
+    if (quick && !quick.ok) {
+      return NextResponse.json({ error: quick.error }, { status: 400 });
     }
 
     const order = await prisma.order.findUnique({
@@ -490,7 +496,7 @@ export async function POST(request, { params }) {
 
     // רשימת קבצים מלאה: ה-PDF של ההזמנה + קבצים נוספים שהמשתמש צרף,
     // כל אחד עם יעד בהתאמה (מייל / דרייב / גם וגם) + טבלת הוראות מסודרת.
-    const pdfEntry = pdfBase64 ? [{
+    const pdfEntry = (pdfBase64 && !quick) ? [{
       fileName: `הזמנה ${order.orderId}.pdf`,
       fileContent: pdfBase64,
       mimeType: 'application/pdf',
@@ -512,12 +518,28 @@ export async function POST(request, { params }) {
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
     const driveFolderId = (driveFolderIdRaw || driveFolderDefault || '').trim();
 
+    // הנושא בפועל: מייל מהיר = מה שהעובדת הקלידה (נוקה בשרת); אחרת נושא הקטלוג
+    const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId });
+
     // Use the generic email script OR our new PDF generator action
-    const googlePayload = {
+    const googlePayload = quick ? buildGasPayload({
+      to: email,
+      subject: subjectUsed,
+      body: quick.bodyText,
+      htmlBody: renderGenericEmailHtml({
+        title: quick.subject, bodyText: quick.bodyText, gmachName: printSettings.gmachName, subtitle: `הזמנה #${order.orderId}`,
+        gmachAddress: printSettings.gmachAddress, gmachPhone: printSettings.gmachPhone
+      }),
+      attachments: allFiles,
+      sendMode,
+      driveFolderId,
+      driveShareEmail: email,
+      grantFullDownload: true
+    }) : {
       action: "sendGemachOrderEmail",
       to: email,
       cc: '',
-      subject: emailSubject('orderCard', { orderId: order.orderId }),
+      subject: subjectUsed,
       htmlBody: htmlBody,
       bodyText: accompanyingHtml,
       fileName: `הזמנה ${order.orderId}.pdf`,
@@ -548,8 +570,8 @@ export async function POST(request, { params }) {
       data: {
         to: email,
         cc: null,
-        subject: emailSubject('orderCard', { orderId: order.orderId }),
-        body: 'HTML body sent to App Script for PDF conversion',
+        subject: subjectUsed,
+        body: quick ? quick.bodyText : 'HTML body sent to App Script for PDF conversion',
         fileName: allFiles.map(a => a.fileName).join(', ') || `הזמנה ${order.orderId}.pdf`,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess
@@ -570,7 +592,7 @@ export async function POST(request, { params }) {
       action: isSuccess ? 'EMAIL_SENT' : 'EMAIL_FAILED',
       meta: emailEventMeta({
         base: {
-          subject: emailSubject('orderCard', { orderId: order.orderId }),
+          subject: subjectUsed,
           to: email,
           type: printType,
           sendMode,

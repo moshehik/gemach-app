@@ -858,3 +858,67 @@ test('changesDisplay: a UUID foreign-key reassignment is shown as a placeholder,
 test('admin history filter "עדכון" also matches UPDATE_ORDER (GET /api/audit)', () => {
   assert.ok(src('app/api/audit/route.js').includes("where.action = action === 'UPDATE' ? { in: ['UPDATE', 'UPDATE_ORDER'] } : action;"));
 });
+
+// ============================================ W7: quick mail (A8) through POST /api/orders/[id]/email
+test('email quick (A8): the typed subject/body are what is sent, no order-report PDF action; attachments keep their kinds in EMAIL_SENT; EmailLog has the typed subject', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const sent = stubMailer({ status: 'success' });
+  const r = await emailReq({
+    email: 'sara@example.com', type: 'order', pdfBase64: 'SHOULD-BE-IGNORED', sendMode: 'both',
+    quick: { subject: 'תזכורת לקיחה\r\nBcc: evil@example.com', bodyText: 'שלום שרה,\r\nהלקיחה ביום ראשון.' },
+    extraAttachments: [{ fileName: 'משלוח 501.pdf', fileContent: 'QUJD', mimeType: 'application/pdf', sizeBytes: 3, dest: 'both', kind: 'delivery' }, { fileName: 'תשלומים 501.pdf', fileContent: 'QUJD', kind: 'payments' }],
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(sent.length, 1);
+  const p = sent[0].body;
+  assert.ok(!p.action, 'not the order-report PDF action');
+  assert.equal(p.subject, 'תזכורת לקיחה Bcc: evil@example.com', 'a header-injection attempt is flattened to one line of text');
+  assert.ok(p.body.includes('הלקיחה ביום ראשון'));
+  assert.ok(p.htmlBody.includes('תזכורת לקיחה') && p.htmlBody.includes('הלקיחה ביום ראשון'));
+  assert.deepEqual(p.attachments.map((a) => a.fileName), ['משלוח 501.pdf', 'תשלומים 501.pdf'], 'only the chosen files; the ignored pdfBase64 is not attached');
+  assert.equal(p.sendMode, 'both');
+  assert.equal(p.to, 'sara@example.com');
+  const row = audit().find((a) => a.action === 'EMAIL_SENT');
+  const meta = JSON.parse(row.changesJson);
+  assert.equal(meta.subject, 'תזכורת לקיחה Bcc: evil@example.com');
+  assert.deepEqual(meta.attachments, [{ kind: 'delivery', name: 'משלוח 501.pdf' }, { kind: 'payments', name: 'תשלומים 501.pdf' }]);
+  assert.equal(meta.attachmentCount, 2);
+  assert.equal(meta.approverId, 'emp-head');
+  assert.equal(globalThis.__MOCK_DB.emailLog[0].subject, 'תזכורת לקיחה Bcc: evil@example.com');
+  assert.ok(globalThis.__MOCK_DB.emailLog[0].body.includes('שלום שרה'));
+});
+
+test('email quick: invalid quick body = 400 and nothing is sent or logged; missing approval = the unchanged 403', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const sent = stubMailer({ status: 'success' });
+  for (const quick of [{ subject: '', bodyText: 'x' }, { subject: 'x', bodyText: '   ' }, 'text', [], { subject: 5, bodyText: {} }]) {
+    const r = await emailReq({ email: 'sara@example.com', type: 'order', quick });
+    assert.equal(r.status, 400, JSON.stringify(quick));
+  }
+  assert.equal(sent.length, 0);
+  assert.equal(audit().length, 0);
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const r = await emailReq({ email: 'sara@example.com', type: 'order', quick: { subject: 'נושא', bodyText: 'תוכן' } });
+  assert.equal(r.status, 403);
+  assert.equal(r.__json.code, 'approval_required');
+  assert.equal(sent.length, 0);
+});
+
+test('email quick: a send failure writes EMAIL_FAILED with the typed subject; returnHtmlOnly ignores quick; a normal send is unchanged (PDF action + catalog subject)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  stubMailer({ status: 'error', message: 'quota' });
+  const failed = await emailReq({ email: 'sara@example.com', type: 'order', quick: { subject: 'נושא חופשי', bodyText: 'תוכן' } });
+  assert.equal(failed.status, 500);
+  assert.equal(JSON.parse(audit().find((a) => a.action === 'EMAIL_FAILED').changesJson).subject, 'נושא חופשי');
+
+  const html = await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true, quick: { subject: '', bodyText: '' } });
+  assert.equal(html.status, 200, 'returnHtmlOnly does not look at quick');
+  assert.equal(html.__json.success, true);
+
+  const sent = stubMailer({ status: 'success' });
+  const normal = await emailReq({ email: 'sara@example.com', type: 'order', pdfBase64: 'JVBERi0x' });
+  assert.equal(normal.status, 200);
+  assert.equal(sent[0].body.action, 'sendGemachOrderEmail');
+  assert.match(sent[0].body.subject, /הזמנה #501/);
+  assert.equal(sent[0].body.fileContent, 'JVBERi0x');
+});

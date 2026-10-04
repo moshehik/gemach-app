@@ -2,14 +2,18 @@
 // בלי לגעת בקבצים אחרים של W1. כל רכיב מקבל {oc, ui} (חלקי דף) או {...props, close} (חלונות, נפתחים ב-ui.openDialog).
 // החוזה המלא: scratch/order-card-build/W1-NOTES.md.
 import * as D from './OcDefaultParts';
+import OcExports from './parts/OcExports';
+import OcPrintMenu from './parts/OcPrintMenu';
+import OcQuickMailButton from './parts/OcMailSheet';
 
 export const SLOTS = {
   Rail: D.DefaultRail, //                     W5 → parts/OcRail.js            (<aside class="rail">)
   DraftBanner: D.DefaultDraftBanner, //       W5 → parts/OcDraftBanner.js     (R11, מעל הלשוניות)
   MoneyToast: D.NoPart, //                    W5 → parts/OcMoneyToast.js      (A23, מאזין ל-oc.totals.pendingNet)
   ScanBar: D.NoPart, //                       W3 → parts/OcScanBar.js         (R42, בתוך .topbar; רצף ברקודים של W2b מחליף אותו בתוכו)
-  Exports: D.PlaceholderExports, //           W7 → parts/OcExports.js         (A1/A2: xlbtn.xlg + xlbtn.xld בתוך .tools)
-  PrintMenu: D.PlaceholderPrintMenu, //       W7 → parts/OcPrintMenu.js       (R6/A3/A4/R7: xlbtn.xlp + .menu בתוך .tools)
+  Exports: OcExports, //                      W7 → parts/OcExports.js         (A1/A2: xlbtn.xlg + xlbtn.xld בתוך .tools)
+  PrintMenu: OcPrintMenu, //                  W7 → parts/OcPrintMenu.js       (R6/A3/A4/R7: xlbtn.xlp + .menu בתוך .tools)
+  QuickMailButton: OcQuickMailButton, //      W7 → parts/OcMailSheet.js       (A8: לחצן "מייל מהיר" בשורת המייל של כרטיס הלקוח; W2a מרנדר אותו עם {oc, ui}; מסתיר את עצמו בלי order_quick_mail_enabled)
   TopBanners: D.NoPart, //                    W2b → parts/OcDressLocationBanner.js (מעל הלשוניות)
   ConflictDialog: D.DefaultConflictDialog, // W5 → dialogs/OcConflictDialog.js (R12) close('overwrite'|'reload'|null)
   StockDialog: D.DefaultStockDialog, //       W5 → dialogs/OcStockDialog.js    (R48) close(any)
