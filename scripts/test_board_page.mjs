@@ -180,7 +180,8 @@ t('E16/UNV-6: חלון ההשכרה בעיצוב חדש עם כל הפונקצי
   for (const api of ['/api/rentals/scan', '/api/rentals/confirm', '/api/rentals/cancel', '/api/rentals/toggle', '/api/returns/scan', '/api/returns/report-issue', '/api/audit/order-item/', '/api/customers/', '/api/orders/']) assert.ok(HOOK.includes(api), 'חסר ' + api);
   for (const fn of ['handleGlobalBarcodeScan', 'confirmInlineRent', 'confirmManualEntry', 'cancelManualEntry', 'selectDuplicate', 'confirmRental', 'handleMarkReturnGood', 'handleMarkReturnBad', 'undoRental', 'undoReturn', 'reportIssue', 'markReturnGoodAgain', 'showItemDetails', 'handleHeaderSave', 'handleHeaderCancel', 'attemptCloseCard', 'handlePrintPreConfirm']) assert.ok(new RegExp('\\b' + fn + '\\b').test(RENT), 'החלון החדש לא משתמש ב-' + fn);
   has(RENT, /<OrderPrintMenu/);
-  has(PAGE, /onUpdate=\{reloadAll\}/, 'אחרי עדכון הלוח נטען מחדש');
+  has(PAGE, /onUpdate=\{fetchOrdersForMonth\}/, 'אחרי עדכון בחלון - רק ההזמנות נטענות מחדש (ממצא 2)');
+  has(PAGE, /onClose=\{\(\) => \{ setRentalId\(null\); fetchStages\(\{ fresh: true \}\); \}\}/, 'המונים - כשהחלון נסגר');
   hasNot(code(HOOK), /window\.(alert|confirm|customConfirm|customPrompt)\(|[^.\w]alert\(/, 'ה-hook לא קורא ישירות לחלונות הדפדפן');
 });
 
@@ -260,9 +261,15 @@ t('לוגיקה: ניווט חודשים, 13 חודשי הקפיצה, טווח �
 t('API חדש GET /api/board/stages: מספרים בלבד, אותו חישוב כמו הלו״ז (getScheduleDay), טווח עד 31 יום', () => {
   has(RANGE, /import \{ getScheduleDay \} from '\.\/index'/);
   has(RANGE, /MAX_RANGE_DAYS = 31/);
+  has(RANGE, /RANGE_CONCURRENCY = [23];/, '2-3 ימים במקביל');
+  has(API, /maxDuration = 60/);
+  has(API, /createRangeCache/, 'מטמון קצר בשרת');
+  has(API, /rangeCacheKey\(\{ dbTag: dbTag\(\), host: request\.headers\.get\('host'\) \|\| '', from, to, branch \}\)/, 'מפתח המטמון כולל DB, מארח, טווח וסניף');
+  has(PAGE, /setTimeout\(\(\) => fetchStages\(\), STAGES_DEBOUNCE_MS\)/, 'בקשת המונים במעבר חודש - אחרי השהיה');
+  has(PAGE, /STAGES_DEBOUNCE_MS = 300/);
   has(RANGE, /user: null/);
   has(RANGE, /skipStaff: true/);
-  hasNot(RANGE + API, /\.create\(|\.update\(|\.delete\(|\$executeRaw/, 'אין כתיבה');
+  hasNot(RANGE + API + read('../lib/schedule/rangeCache.js'), /prisma\.\w+\.(create|update|upsert|delete)|\$executeRaw/, 'אין כתיבה');
   has(API, /checkAuth\(\)/);
   const days = { a: { s: { prep: { t: 2, a: 1 }, event: { t: 1, a: 0 } } } };
   const stages = [{ key: 'prep', enabled: true }, { key: 'event', enabled: true }, { key: 'dout', enabled: false }];

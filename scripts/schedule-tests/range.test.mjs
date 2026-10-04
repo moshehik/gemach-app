@@ -69,3 +69,24 @@ test('skipStaff=false (the daily page) still loads who is on shift; skipStaff=tr
   assert.deepEqual(without.staff, []);
   assert.deepEqual(without.stages.map((s) => s.counts), withStaff.stages.map((s) => s.counts));
 });
+
+test('rangeCache: key = DB identity + host + from + to + branch (nothing leaks across orgs/branches/ranges); TTL; bounded size', async () => {
+  const { createRangeCache, rangeCacheKey, RANGE_CACHE_TTL_MS, RANGE_CACHE_MAX } = await L('lib/schedule/rangeCache.js');
+  const base = { dbTag: 'db1:prod:prod', host: 'a.example', from: '2026-09-12', to: '2026-10-11', branch: '' };
+  const k = rangeCacheKey(base);
+  for (const [f, v] of [['dbTag', 'db2:prod:prod'], ['dbTag', 'db1:test:prod'], ['host', 'b.example'], ['from', '2026-09-13'], ['to', '2026-10-10'], ['branch', 'נווה יעקב']]) {
+    assert.notEqual(rangeCacheKey({ ...base, [f]: v }), k, 'key must depend on ' + f);
+  }
+  assert.equal(rangeCacheKey({ ...base, host: 'A.EXAMPLE' }), k, 'host is case-insensitive');
+  let t = 0;
+  const c = createRangeCache({ now: () => t });
+  c.set(k, { n: 1 });
+  assert.deepEqual(c.get(k), { n: 1 });
+  t = RANGE_CACHE_TTL_MS + 1;
+  assert.equal(c.get(k), null, 'expired');
+  for (let i = 0; i < RANGE_CACHE_MAX + 5; i++) c.set('k' + i, i);
+  assert.equal(c.size, RANGE_CACHE_MAX);
+  assert.equal(c.get('k0'), null, 'oldest evicted');
+  assert.equal(c.get('k' + (RANGE_CACHE_MAX + 4)), RANGE_CACHE_MAX + 4);
+  assert.ok(RANGE_CACHE_TTL_MS >= 30000 && RANGE_CACHE_TTL_MS <= 60000);
+});

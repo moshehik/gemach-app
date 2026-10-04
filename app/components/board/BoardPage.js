@@ -43,6 +43,7 @@ const boardCache = cacheNamespace('board');
 const stagesCache = cacheNamespace('board-stages');
 const MOBILE_MQ = '(max-width:720px)';
 const TOAST_MS = 3200;
+const STAGES_DEBOUNCE_MS = 300;
 
 export default function BoardPage() {
   const router = useRouter();
@@ -138,18 +139,19 @@ export default function BoardPage() {
   }, [selectedDate, search]);
   useEffect(() => { fetchOrdersForMonth(); }, [fetchOrdersForMonth]);
 
-  // מוני השלבים לחודש (S01/S02/S10) - אותו דפוס: מטמון מיידי + ביטול הבקשה הקודמת. כשל = הלוח בלי מונים (לא חוסם).
+  // מוני השלבים לחודש (S01/S02/S10). הבקשה יקרה (חישוב הלו״ז לכל יום בחודש), ולכן (ממצא הסקירה 2): מה שבמטמון מוצג מיד,
+  // הבקשה עצמה יוצאת רק אחרי STAGES_DEBOUNCE_MS בלי מעבר חודש נוסף (דפדוף מהיר = בקשה אחת), בקשה קודמת מבוטלת, והשרת
+  // שומר תשובה ל-45 שניות (lib/schedule/rangeCache.js). אחרי עדכון בחלון ההשכרה נטענות רק ההזמנות; המונים - כשהחלון נסגר
+  // (fresh=1 עוקף את המטמון של השרת). כשל = הלוח בלי מונים (לא חוסם).
   const range = useMemo(() => monthRangeKeys(selectedDate), [selectedDate]);
   const activeStagesRef = useRef(null);
-  const fetchStages = useCallback(async () => {
+  const fetchStages = useCallback(async ({ fresh = false } = {}) => {
     if (activeStagesRef.current) activeStagesRef.current.abort();
     const controller = new AbortController();
     activeStagesRef.current = controller;
     const key = range.from + '_' + range.to;
-    if (stagesCache.has(key)) setStagesData(stagesCache.get(key));
-    else setStagesData((cur) => (cur && cur.from === range.from ? cur : null));
     try {
-      const res = await fetch(`/api/board/stages?from=${range.from}&to=${range.to}`, { signal: controller.signal, cache: 'no-store' });
+      const res = await fetch(`/api/board/stages?from=${range.from}&to=${range.to}${fresh ? '&fresh=1' : ''}`, { signal: controller.signal, cache: 'no-store' });
       if (!res.ok) { if (activeStagesRef.current === controller) setStagesData((cur) => (stagesCache.has(key) ? cur : null)); return; }
       const data = await res.json();
       if (data && data.days) {
@@ -162,9 +164,16 @@ export default function BoardPage() {
       if (activeStagesRef.current === controller) activeStagesRef.current = null;
     }
   }, [range.from, range.to]);
-  useEffect(() => { fetchStages(); }, [fetchStages]);
-
-  const reloadAll = useCallback(() => { fetchOrdersForMonth(); fetchStages(); }, [fetchOrdersForMonth, fetchStages]);
+  useEffect(() => {
+    const key = range.from + '_' + range.to;
+    if (stagesCache.has(key)) setStagesData(stagesCache.get(key));
+    else setStagesData((cur) => (cur && cur.from === range.from ? cur : null));
+    const t = setTimeout(() => fetchStages(), STAGES_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(t);
+      if (activeStagesRef.current) { activeStagesRef.current.abort(); activeStagesRef.current = null; }
+    };
+  }, [fetchStages, range.from, range.to]);
 
   const ordersByDate = useMemo(() => groupOrdersByDate(orders), [orders]);
   const today = useMemo(() => new Date(), []);
@@ -311,7 +320,7 @@ export default function BoardPage() {
         <InfoHint hint={hint} enableAlterations={enableAlterations} hideCustomSpacing={hideCustomSpacing} />
 
         {rentalId ? (
-          <BoardRentalModal orderId={rentalId} onClose={() => setRentalId(null)} onUpdate={reloadAll} ui={rentalUi} />
+          <BoardRentalModal orderId={rentalId} onClose={() => { setRentalId(null); fetchStages({ fresh: true }); }} onUpdate={fetchOrdersForMonth} ui={rentalUi} />
         ) : null}
         {dialogs.node}
 
