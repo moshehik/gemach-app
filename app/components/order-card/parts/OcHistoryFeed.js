@@ -10,13 +10,13 @@ import OcIcon, { XlGlyph } from '../OcIcon';
 import { fmtMoney, fmtSignedMoney } from '../orderCardLogic';
 import { downloadRowsAsXlsx } from '@/lib/xlsxExport';
 import {
-  filterCategories, visibleEntries, categoryCount, searchWords, shortHebrew, ROW_CATEGORY_LABEL,
+  filterCategories, visibleEntries, categoryCount, searchWords, shortHebrew, ROW_CATEGORY_LABEL, sortTableRows,
   exportRows, EXPORT_COLUMNS, historyPrintPath, historyFileBase,
 } from './ocHistoryModel';
 import OcHistoryTable from './OcHistoryTable';
 import Hl from './OcHighlight';
 
-export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry }) {
+export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry, truncated }) {
   const [q, setQ] = useState('');
   const [sel, setSel] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,7 +24,9 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   const [sort, setSort] = useState({ col: 'date', dir: -1 });
   const [open, setOpen] = useState({});
   const [busy, setBusy] = useState('');
+  const [cur, setCur] = useState(0); // roving-focus index of the filter listbox
   const selRef = useRef(null);
+  const trigRef = useRef(null);
   const all = useMemo(() => entries || [], [entries]);
   const cats = useMemo(() => filterCategories(all), [all]);
   const words = useMemo(() => searchWords(q), [q]);
@@ -35,10 +37,24 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   useEffect(() => {
     if (!menuOpen) return undefined;
     const onDoc = (e) => { if (selRef.current && !selRef.current.contains(e.target)) setMenuOpen(false); };
-    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      const inside = selRef.current && selRef.current.contains(document.activeElement);
+      setMenuOpen(false);
+      if (inside && trigRef.current) trigRef.current.focus(); // keyboard users land back on the trigger
+    };
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
+
+  // opening the filter menu: focus the first option (the panel turns visible in the same commit)
+  const optionEls = () => (selRef.current ? Array.from(selRef.current.querySelectorAll('[role="option"]')) : []);
+  useEffect(() => {
+    if (!menuOpen) return;
+    setCur(0);
+    const first = optionEls()[0];
+    if (first) first.focus();
   }, [menuOpen]);
 
   const toggle = useCallback((k) => setSel((s) => (k === 'all' ? [] : (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]))), []);
@@ -46,13 +62,34 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   const allOn = allKeys.length > 0 && allKeys.every((k) => sel.includes(k));
   const resetAll = () => { setSel([]); setQ(''); };
 
+  const focusOption = (n) => {
+    const els = optionEls();
+    if (!els.length) return;
+    const i = Math.max(0, Math.min(els.length - 1, n));
+    setCur(i);
+    els[i].focus();
+  };
+  // listbox keys: ArrowUp/Down move (roving focus), Home/End jump, Space/Enter toggle the focused option, Tab leaves + closes
+  const onListKey = (e) => {
+    const els = optionEls();
+    const i = els.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); focusOption(i < 0 ? 0 : i + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); focusOption(i < 0 ? 0 : i - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); focusOption(0); }
+    else if (e.key === 'End') { e.preventDefault(); focusOption(els.length - 1); }
+    else if ((e.key === 'Enter' || e.key === ' ') && i >= 0 && cats[i]) { e.preventDefault(); toggle(cats[i][0]); }
+    else if (e.key === 'Tab') setMenuOpen(false);
+  };
+
   const exportAs = async (kind) => {
     if (busy) return;
     if (!list.length) { ui.toast('info', 'אין רישומים לייצוא'); return; }
     setBusy(kind);
     try {
       if (kind === 'excel') {
-        const ok = await downloadRowsAsXlsx(exportRows(list), historyFileBase(orderId), { sheetName: 'היסטוריה', columns: EXPORT_COLUMNS });
+        // exactly what is on screen: in the table view the column sort applies too
+        const shownList = view === 'table' ? sortTableRows(list, sort) : list;
+        const ok = await downloadRowsAsXlsx(exportRows(shownList), historyFileBase(orderId), { sheetName: 'היסטוריה', columns: EXPORT_COLUMNS });
         if (!ok) throw new Error('empty');
         ui.toast('info', 'קובץ Excel של ההיסטוריה יורד');
         oc.logEvent('HISTORY_EXPORTED', { format: 'xlsx', rows: list.length });
@@ -99,16 +136,16 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
           <input id="hfQ" type="search" autoComplete="off" data-lpignore="true" data-1p-ignore placeholder="חיפוש בהיסטוריה" aria-label="חיפוש בהיסטוריה" value={q} onChange={(e) => setQ(e.target.value)} />
           <button type="button" className={`hf-cl${q ? ' on' : ''}`} aria-label="ניקוי חיפוש" onClick={() => setQ('')}><OcIcon name="x" /></button>
           <div className={`hf-sel${menuOpen ? ' on' : ''}`} ref={selRef}>
-            <button type="button" className="hf-t" aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls="hfList" onClick={() => setMenuOpen((v) => !v)}>
+            <button type="button" className="hf-t" ref={trigRef} aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls="hfList" onClick={() => setMenuOpen((v) => !v)}>
               <OcIcon name="sliders" /><span className="hf-lbl">סינון</span><span className={`hf-bdg${sel.length ? ' has' : ''}`}>{sel.length || ''}</span><OcIcon name="chev" className="hf-chv" />
             </button>
             <div className="hf-scrim" onClick={() => setMenuOpen(false)} />
             <div className="hf-p">
               <div className="hf-all"><button type="button" className="hf-allb" onClick={() => setSel(allOn ? [] : allKeys.slice())}>{allOn ? 'הסר הכל' : 'סמן הכל'}</button></div>
-              <div className="hf-l" id="hfList" role="listbox" aria-multiselectable="true" aria-label="סינון היסטוריה">
+              <div className="hf-l" id="hfList" role="listbox" aria-multiselectable="true" aria-label="סינון היסטוריה" onKeyDown={onListKey}>
                 {cats.map(([k, l, i], n) => (
-                  <div key={k} className="hf-o" role="option" id={`hfo-${k}`} tabIndex={-1} style={{ '--k': n }} aria-selected={sel.includes(k)}
-                    onClick={() => toggle(k)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(k); } }}>
+                  <div key={k} className="hf-o" role="option" id={`hfo-${k}`} tabIndex={n === cur ? 0 : -1} style={{ '--k': n }} aria-selected={sel.includes(k)}
+                    onClick={() => { setCur(n); toggle(k); }} onFocus={() => setCur(n)}>
                     <span className="hf-ck"><OcIcon name="check" /></span><span className="hf-oi"><OcIcon name={i} /></span><span className="hf-ol">{l}</span><span className="hf-oc">{categoryCount(all, k, q)}</span>
                   </div>
                 ))}
@@ -138,6 +175,7 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
           <button type="button" className="xlbtn xlp" data-hx="print" aria-label="הדפסה" data-tip="הדפסת ההיסטוריה" disabled={!!busy} onClick={() => exportAs('print')}><XlGlyph kind="print" /></button>
         </span>
       </div>
+      {truncated ? <div className="faint sm" role="note">מוצגים 2000 הרישומים האחרונים</div> : null}
       <div className="hfeed hres" id="hfeed" aria-busy={loading ? 'true' : undefined}>
         {error ? (
           <div className="hf-empty" role="status"><OcIcon name="alert" size="lg" /><b>טעינת ההיסטוריה נכשלה</b><button type="button" onClick={onRetry}>נסו שוב</button></div>

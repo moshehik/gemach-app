@@ -26,7 +26,7 @@ test('הלשונית רשומה ב-tabs/index.js (שורת W6) ונטענת מח
 test('A21: כל ייצוא (Excel / הורדה PDF / הדפסה) נרשם HISTORY_EXPORTED עם הפורמט ומספר השורות', () => {
   const feed = strip(read('app/components/order-card/parts/OcHistoryFeed.js'));
   for (const f of ['xlsx', 'pdf', 'print']) assert.match(feed, new RegExp(`oc\\.logEvent\\('HISTORY_EXPORTED', \\{ format: '${f}', rows: list\\.length \\}\\)`), f);
-  assert.match(feed, /downloadRowsAsXlsx\(exportRows\(list\)/, 'Excel = the same rows that are shown');
+  assert.match(feed, /downloadRowsAsXlsx\(exportRows\(shownList\)/, 'Excel = the same rows that are shown');
   assert.match(feed, /fetch\('\/api\/pdf'/);
   assert.match(feed, /historyPrintPath\(orderId, \{ selected: sel, q, pdf: true \}\)/);
   assert.match(feed, /window\.open\(historyPrintPath\(orderId, \{ selected: sel, q \}\)/);
@@ -82,4 +82,24 @@ test('CSS oc-history.css: היקף .gm-ds.gm-oc, בלי @media לפני הבסי
   for (const sel of body.split('}').map((r) => r.split('{')[0].trim()).filter((x) => x && !x.startsWith('@'))) {
     for (const s of sel.split(',')) assert.match(s.trim(), /^\.gm-ds\.gm-oc[\s.:#[>]/, s);
   }
+});
+
+test('review: Excel מיוצא בסדר שעל המסך (מיון עמודות הטבלה), ומוצגת שורת "2000 הרישומים האחרונים" כשהייצוא נחתך', () => {
+  const feed = strip(read('app/components/order-card/parts/OcHistoryFeed.js'));
+  assert.match(feed, /sortTableRows\(list, sort\)/);
+  assert.match(feed, /view === 'table' \? sortTableRows\(list, sort\) : list/, 'the sort applies only where the table is what is on screen');
+  assert.match(feed, /truncated \? <div[^>]*>מוצגים 2000 הרישומים האחרונים<\/div>/);
+  const tab = strip(read('app/components/order-card/tabs/OcHistoryTab.js'));
+  assert.match(tab, /truncated=\{!!\(feed && feed\.exportTruncated\)\}/);
+  assert.match(strip(read('app/print/order-history/page.js')), /מוצגים 2000 הרישומים האחרונים/, 'the print page says the same');
+});
+
+test('review a11y: תפריט הסינון - roving focus (חצים / Home / End), פוקוס לאפשרות הראשונה בפתיחה, רווח/Enter מחליפים, Esc סוגר ומחזיר פוקוס', () => {
+  const feed = strip(read('app/components/order-card/parts/OcHistoryFeed.js'));
+  for (const k of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Escape']) assert.ok(feed.includes(`'${k}'`), k);
+  assert.match(feed, /onKeyDown=\{onListKey\}/, 'one key handler on the listbox');
+  assert.match(feed, /tabIndex=\{n === cur \? 0 : -1\}/, 'roving tabindex: exactly the current option is tabbable');
+  assert.match(feed, /\(e\.key === 'Enter' \|\| e\.key === ' '\)[^)]*toggle\(cats\[i\]\[0\]\)|toggle\(cats\[i\]\[0\]\)/);
+  assert.match(feed, /first\.focus\(\)/, 'opening focuses the first option');
+  assert.match(feed, /trigRef\.current\.focus\(\)/, 'Escape returns focus to the trigger');
 });

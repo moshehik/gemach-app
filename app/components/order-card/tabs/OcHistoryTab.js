@@ -103,7 +103,7 @@ export default function OcHistoryTab({ oc, ui, active }) {
         <div className="ico gold"><OcIcon name="sliders" size="lg" /></div>
         <div><b className="big oc-sect-t">מותאם</b><div className="faint sm">הפרטים המלאים של כל השינויים בהזמנה</div></div>
       </div>
-      <OcHistoryFeed oc={oc} ui={ui} entries={feed ? feed.entries : null} loading={loading} error={error && !feed} onRetry={load} />
+      <OcHistoryFeed oc={oc} ui={ui} entries={feed ? feed.entries : null} loading={loading} error={error && !feed} onRetry={load} truncated={!!(feed && feed.exportTruncated)} />
     </>
   );
 }

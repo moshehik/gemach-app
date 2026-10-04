@@ -20,9 +20,10 @@ export const dynamic = 'force-dynamic';
 // אין בתשובה מזהי עובדים (UUID) - רק שמות; אין תאריך לועזי - מפתחות יום 'YYYY-MM-DD' + תוויות עבריות.
 
 const MAX_AUDIT_ROWS = 1000;
+const MAX_ITEM_UPDATE_ROWS = 200;
 const MAX_SHIFT_ROWS = 400;
 const DAY_MS = 24 * 3600 * 1000;
-const JOURNAL_ACTIONS = ['CREATE', 'UPDATE', 'ALTERATION_DONE', 'CONFIRM_RENTAL', 'RETURN_RENTAL'];
+const JOURNAL_ACTIONS = ['ALTERATION_DONE', 'CONFIRM_RENTAL', 'RETURN_RENTAL'];
 
 const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 const intOr = (v, d) => { const n = parseInt(String(v ?? ''), 10); return Number.isFinite(n) ? n : d; };
@@ -73,12 +74,22 @@ export async function GET(request, { params }) {
     const or = [{ entityType: 'Order', entityId: { in: [order.id, String(order.orderId)] }, action: 'CREATE' }];
     if (items.length) or.push({ entityType: 'OrderItem', entityId: { in: items.map((i) => i.id) }, action: { in: JOURNAL_ACTIONS } });
     if (payments.length) or.push({ entityType: 'Payment', entityId: { in: payments.map((p) => p.id) }, action: 'CREATE' });
-    const audit = await prisma.auditLog.findMany({
-      where: { OR: or },
-      orderBy: [{ createdAt: 'asc' }],
-      take: MAX_AUDIT_ROWS,
-      select: { id: true, entityType: true, entityId: true, action: true, changesJson: true, createdAt: true, employeeId: true },
-    });
+    const auditSelect = { id: true, entityType: true, entityId: true, action: true, changesJson: true, createdAt: true, employeeId: true };
+    // two small independent reads (no $transaction): the named actions, NEWEST first so a heavy order that hits the
+    // cap loses its oldest rows, never the latest RETURN_RENTAL / CONFIRM_RENTAL / payment; and the generic item
+    // UPDATE rows, only those that touch alterationDone (the old "repair done" form) with their own small cap
+    const [mainRows, itemUpdateRows] = await Promise.all([
+      prisma.auditLog.findMany({ where: { OR: or }, orderBy: [{ createdAt: 'desc' }], take: MAX_AUDIT_ROWS, select: auditSelect }),
+      items.length
+        ? prisma.auditLog.findMany({
+          where: { entityType: 'OrderItem', entityId: { in: items.map((i) => i.id) }, action: 'UPDATE', changesJson: { contains: 'alterationDone' } },
+          orderBy: [{ createdAt: 'desc' }],
+          take: MAX_ITEM_UPDATE_ROWS,
+          select: auditSelect,
+        })
+        : [],
+    ]);
+    const audit = [...mainRows, ...itemUpdateRows].reverse(); // oldest first, as the journal builder expects
     const named = await attachEmployeeNames([{ employeeId: order.employeeId }, ...audit]);
     const orderEmployeeName = named[0].employeeName || null;
     const auditRows = named.slice(1);

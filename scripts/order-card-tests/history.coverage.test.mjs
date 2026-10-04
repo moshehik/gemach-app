@@ -5,7 +5,7 @@
 // טקסט פעולה גולמי, אפס UUID, אפס תאריך לועזי (גם בשורות הייצוא). רץ ב-3 אזורי זמן (run.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOrderHistory, publicEntry, KNOWN_ACTIONS, searchEntries } from '@/lib/history/orderHistory.js';
+import { buildOrderHistory, publicEntry, KNOWN_ACTIONS, searchEntries, SCHEDULE_MARK_CAT } from '@/lib/history/orderHistory.js';
 import { diffOrderUpdate, sanitizeEventMeta, buildOrderEventRow, buildApprovalMeta, emailEventMeta, emailAttachmentSummary, parseEventsRequest } from '@/lib/history/orderEvents.js';
 import { inCategory, filterCategories, categoryCount, visibleEntries, exportRows, tableRow } from '@/app/components/order-card/parts/ocHistoryModel.js';
 
@@ -499,7 +499,7 @@ test('H29 סימון / ביטול "הכנה בוצעה" (ScheduleStageMark): doc
   const r = feed(H.h29);
   assertClean(r, 'H29');
   const d = one(r, "סומן 'בוצע' בלו״ז · הכנה", 'H29');
-  assertBucket(r, d, 'docs');
+  assertBucket(r, d, SCHEDULE_MARK_CAT);
   assert.ok(/תשרי/.test(det(d, 'יום בלו״ז')), det(d, 'יום בלו״ז'));
   one(r, "בוטל סימון 'בוצע' בלו״ז · הכנה", 'H29');
   assert.equal(det(one(r, "סומן 'בוצע' בלו״ז · החזרה ידנית", 'H29'), 'מצב החזרה'), 'לא תקין');

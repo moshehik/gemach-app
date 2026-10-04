@@ -215,3 +215,34 @@ test('journal: בלי page:schedule - אין לחצן סימון; טבלת סי�
   assert.equal(r.__json.canMark, false);
   assert.equal(r.__json.stages.find((s) => s.key === 'prep').done, false);
 });
+
+test('journal: הזמנה כבדה - הקריאה לא מאבדת את שורות ה-audit החדשות (RETURN_RENTAL / CONFIRM_RENTAL), עדכוני פריט כלליים בשאילתה נפרדת וקטנה', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const it = globalThis.__MOCK_DB.order[0].items[0];
+  Object.assign(it, { isTaken: true, takenDate: IL('2026-10-06', '10:00'), isReturned: true, returnDate: IL('2026-10-12', '11:00'), returnedOk: true, sleeveAlteration: 2, alterationDone: true });
+  const rows = globalThis.__MOCK_DB.auditLog;
+  const mk = (id, action, changesJson, createdAt, employeeId) => rows.push({ id, entityType: 'OrderItem', entityId: 'it-1', action, changesJson, createdAt, employeeId });
+  // 1100 old rows of every kind (the old query: createdAt asc, take 1000 over ALL item rows - the newest ones never came back)
+  for (let i = 0; i < 1100; i++) mk(`f-ret-${i}`, 'RETURN_RENTAL', '{"isReturned":{"from":false,"to":true}}', new Date(IL('2026-09-24', '08:00').getTime() + i * 1000), 'emp-worker');
+  for (let i = 0; i < 1100; i++) mk(`f-upd-${i}`, 'UPDATE', JSON.stringify({ sizeText: { from: '36', to: '38' } }), new Date(IL('2026-09-25', '08:00').getTime() + i * 1000), 'emp-worker');
+  mk('n-conf', 'CONFIRM_RENTAL', '{"isTaken":{"from":false,"to":true}}', IL('2026-10-06', '10:00'), 'emp-worker');
+  mk('n-ret', 'RETURN_RENTAL', '{"isReturned":{"from":false,"to":true}}', IL('2026-10-12', '11:00'), 'emp-mgr');
+  mk('n-alt', 'UPDATE', JSON.stringify({ alterationDone: { from: false, to: true } }), IL('2026-10-03', '15:00'), 'emp-mgr');
+  const r = await getJournal(ORDER_UUID);
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  const n = Object.fromEntries(r.__json.journal.map((x) => [x.key, x]));
+  assert.equal(n.manret.who, 'מנהלת סניף', 'the NEWEST RETURN_RENTAL row survives the cap');
+  assert.equal(n.manret.when.time, '11:00');
+  assert.equal(n.pick.who, 'עובדת רגילה');
+  assert.equal(n.repair && n.repair.who, 'מנהלת סניף', 'the alterationDone→true UPDATE row comes from its own query');
+  const q = globalThis.__MOCK_CALLS.filter((c) => c.model === 'auditLog' && c.method === 'findMany');
+  assert.equal(q.length, 2, 'named actions + item UPDATE rows, two independent reads');
+  const upd = q.find((c) => JSON.stringify(c.args.where).includes('"action":"UPDATE"'));
+  assert.deepEqual(upd.args.where.changesJson, { contains: 'alterationDone' });
+  assert.ok(upd.args.take <= 200);
+  const main = q.find((c) => c !== upd);
+  assert.deepEqual(main.args.orderBy, [{ createdAt: 'desc' }], 'newest first under the cap');
+  assert.ok(!JSON.stringify(main.args.where).includes('"UPDATE"'), 'no generic item UPDATE rows in the capped query');
+  assert.ok(!globalThis.__MOCK_CALLS.some((c) => c.model === '$transaction'));
+  noWrites();
+});
