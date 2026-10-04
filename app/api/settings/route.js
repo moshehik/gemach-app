@@ -6,7 +6,8 @@ import { validateNumericSetting, validateSelectSetting } from '../../lib/setting
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
 import { SECRET_SETTING_KEYS, SECRET_MASK } from '../../lib/secretSettingKeys';
-import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWorkingDaysOnlySettingsBatch, validateNonWorkingDaysSettingValue } from '@/lib/businessDays';
+import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWorkingDaysOnlySettingsBatch, validateNonWorkingDaysSettingValue, pastClosedDayChanges, stripNonWorkingDaysNotes, hebrewDateOfKey } from '@/lib/businessDays';
+import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { hasPermission } from '@/lib/permissions';
 import { SETTINGS_HEBREW_NAMES } from '@/lib/settingsMetadata';
 
@@ -29,9 +30,15 @@ export async function GET() {
         { id: 'asc' }
       ]
     });
-    const masked = settings.map(s =>
+    let masked = settings.map(s =>
       SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s
     );
+    // ההערות החופשיות של ימי אי-הפעילות (non_working_days_extra) יכולות להכיל פרטים פנימיים, וה-GET הזה ציבורי (דפי הדפסה/הזמנה/החזרות
+    // צריכים רק את הימים). בלי session תקף מסירים את שדה ה-note מהערך; הדף עצמו (/non-working-days) קורא את הערך המלא מ-/api/non-working-days.
+    const nwd = masked.find(s => s.key === NON_WORKING_DAYS_SETTING_KEY);
+    if (nwd && typeof nwd.value === 'string' && nwd.value.includes('"note"') && !(await checkAuth())) {
+      masked = masked.map(s => (s === nwd ? { ...s, value: stripNonWorkingDaysNotes(s.value) } : s));
+    }
     return NextResponse.json(masked);
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -95,6 +102,16 @@ export async function POST(request) {
         || (item.key === NON_WORKING_DAYS_SETTING_KEY ? validateNonWorkingDaysSettingValue(item.value === undefined ? undefined : String(item.value)) : null);
       if (validationError) {
         return NextResponse.json({ error: `${item.key}: ${validationError}` }, { status: 400 });
+      }
+      // נעילת ימים שעברו גם בשרת (הבעלים NWD-Q05; עד עכשיו נאכף רק ב-UI): אסור להוסיף או להסיר יום (בודד או מתוך טווח) שקדם להיום הישראלי.
+      // תאריכים עבריים קבועים נשארים מותרים. נבדק מול הערך השמור, גם להנהלה ראשית.
+      if (item.key === NON_WORKING_DAYS_SETTING_KEY && item.value !== undefined) {
+        const stored = await prisma.systemSetting.findUnique({ where: { key: NON_WORKING_DAYS_SETTING_KEY } });
+        const locked = pastClosedDayChanges(stored ? stored.value : null, String(item.value), getIsraelTodayKey());
+        if (locked.length) {
+          const labels = locked.slice(0, 3).map((k) => (hebrewDateOfKey(k) || { label: k }).label).join(', ') + (locked.length > 3 ? ` ועוד ${locked.length - 3}` : '');
+          return NextResponse.json({ error: `${item.key}: אי אפשר להוסיף או להסיר ימי אי-פעילות שכבר עברו (${labels}).` }, { status: 400 });
+        }
       }
     }
 
