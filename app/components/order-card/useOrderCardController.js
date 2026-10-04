@@ -213,7 +213,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [tab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId, dirty]);
+  }, [tab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.deliveryJoinedTo, order?.orderId, dirty]);
 
   // ---------- הגנות יציאה ----------
   // פעילות כשיש שינויים שלא נשמרו וגם כשהיציאה חסומה בגלל חוב חדש שלא שולם/אושר (A18; סקירה, סעיף 1) - אחרת אפשר היה לעזוב

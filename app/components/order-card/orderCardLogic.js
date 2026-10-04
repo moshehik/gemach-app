@@ -85,7 +85,7 @@ export const summarizeListDiffCounts = (snapList = [], currList = []) => {
 };
 
 // + extraDay: יום השכרה נוסף משנה את המחיר (pricingCalc.js:222) ולכן מפעיל תצוגה מקדימה (A26).
-export const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection', 'extraDay'];
+export const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection', 'extraDay', 'deliveryJoinedTo'];
 export const pricingInputsChanged = (snap, currItems, currOrder) => {
   if (!snap) return false;
   if (JSON.stringify(snap.items || []) !== JSON.stringify(currItems || [])) return true;
@@ -334,7 +334,9 @@ export const buildPreviewBody = (items, o) => ({
     isDelivery: o.isDelivery,
     deliveryCity: o.deliveryCity,
     deliveryDirection: o.deliveryDirection,
-    extraDay: o.extraDay !== undefined ? o.extraDay : null
+    extraDay: o.extraDay !== undefined ? o.extraDay : null,
+    // R49 (W2b): הצטרפות למשלוח קיים משנה את מחיר המשלוח. undefined = לא נגעו (השרת קורא מהטבלה) ולכן לא נשלח
+    deliveryJoinedTo: o.deliveryJoinedTo
   }
 });
 
@@ -437,6 +439,13 @@ export function buildPutPayload(currentOrder, { items, obligations, payments, mo
     };
   // G13: יום השכרה נוסף נשמר (route.js:687 תומך; הישן מעולם לא שלח). null = "ללא".
   body.extraDay = o.extraDay !== undefined ? o.extraDay : null;
+  // R49 (W2b): הצטרפות למשלוח קיים / ה"ראשי" בכתובת - נשמר בטבלת DeliveryJoin בשרת. נשלח רק אחרי שהבורר נגע בו (undefined = לא נשלח),
+  // בשני המסלולים (שמירה ויציאה; בענף נווה המסלול של היציאה השמיט אותו). joinedToOrderId חסר = ההצטרפות לא משתנה.
+  if (o.deliveryJoinedTo !== undefined || o.deliveryPrimaryOrderId !== undefined) {
+    body.deliveryJoin = {};
+    if (o.deliveryJoinedTo !== undefined) body.deliveryJoin.joinedToOrderId = o.deliveryJoinedTo || null;
+    if (o.deliveryPrimaryOrderId !== undefined) body.deliveryJoin.primaryOrderId = o.deliveryPrimaryOrderId;
+  }
   // חוזה W0 (W0-NOTES §1.4): גוף מהכרטיס החדש מסומן - השרת אוכף feature:manual_charge_add על חיוב ידני חדש / מחיקת חיוב ידני
   // שמור רק כשהסימון קיים (הישן לא שולח אותו ולכן לא מושפע).
   body.cardVariant = CARD_VARIANT;
@@ -568,7 +577,8 @@ export const ORDER_CHANGE_KEYS = [
   { key: 'delone', fields: ['deliveryOneDayBefore'], group: 'delivery', icon: 'truck', text: (s, c) => (c.deliveryOneDayBefore ? 'משלוח יוצא יום לפני' : 'משלוח יוצא יומיים לפני'), note: () => '' },
 ];
 // שדות PUT שלא שייכים לקבוצה (field:<f>). orderDate לא נערך בכרטיס החדש (R17) אך נבדק כדי שלא "ייעלם".
-export const LOOSE_ORDER_FIELDS = ['orderDate', 'status', 'deliveryJoinedTo'];
+export const LOOSE_ORDER_FIELDS = ['orderDate', 'status', 'deliveryJoinedTo', 'deliveryPrimaryOrderId'];
+const LOOSE_FIELD_LABELS = { deliveryJoinedTo: 'הצטרפות למשלוח', deliveryPrimaryOrderId: 'ה"ראשי" בכתובת המשלוח' };
 const ALT_FIELDS = ['neckAlteration', 'sleeveAlteration', 'lengthAlteration', 'alterationDetails'];
 const fieldsOfKey = (key, forCapture = false) => {
   const g = ORDER_CHANGE_KEYS.find(x => x.key === key);
@@ -592,7 +602,7 @@ export function changesOf(snap, cur) {
     if (g.fields.some(f => !sameOrderField(f, s[f], c[f]))) out.push({ key: g.key, group: g.group, icon: g.icon, text: g.text(s, c), note: g.note(s, c), amt: 0 });
   });
   LOOSE_ORDER_FIELDS.forEach(f => {
-    if (!sameOrderField(f, s[f], c[f])) out.push({ key: `field:${f}`, group: 'order', icon: 'pencil', text: `עודכן שדה: ${ORDER_FIELD_LABELS[f] || f}`, note: '', amt: 0 });
+    if (!sameOrderField(f, s[f], c[f])) out.push({ key: `field:${f}`, group: 'order', icon: 'pencil', text: `עודכן שדה: ${ORDER_FIELD_LABELS[f] || LOOSE_FIELD_LABELS[f] || f}`, note: '', amt: 0 });
   });
   // פריטים
   const sItems = snap.items || [], cItems = cur.items || [];
