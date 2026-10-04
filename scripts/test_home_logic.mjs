@@ -13,6 +13,7 @@ import {
 import { isBarcodeLikeQuery } from '../lib/quickSearchResults.js';
 import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
 import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, splitMatch } from '../lib/quickPrefix.js';
+import { buildMineModel, whenLabelHe, MINE_POPOVER_LIMIT, MINE_URL } from '../lib/myRecentActivityView.js';
 import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js';
 const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
@@ -698,12 +699,13 @@ t('parseHomeParams: רשימה סגורה — רק scope מוכר, adv=1 בדי�
   assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
   assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, any: true });
   assert.deepEqual(Object.keys(HOME_SCOPES), ['customers', 'orders', 'rentals', 'returns', 'alterations']);
-  assert.deepEqual([...HOME_RECENT_VALUES], ['changes']);
+  assert.deepEqual([...HOME_RECENT_VALUES], ['changes', 'mine']);
+  assert.deepEqual(parseHomeParams('?recent=mine'), { scope: null, adv: false, recent: 'mine', q: null, any: true });
   assert.equal(parseHomeParams('').any, false); assert.equal(parseHomeParams(undefined).any, false); assert.equal(parseHomeParams(null).any, false);
 });
 t('parseHomeParams: ערכים לא מוכרים נזרקים (בלי prototype, XSS, redirect, רישיות)', () => {
   for (const bad of ['?scope=evil', '?scope=__proto__', '?scope=constructor', '?scope=toString', '?scope=Customers', '?scope=customers%20', '?scope=', '?scope=<script>alert(1)</script>',
-    '?scope=https://evil.example', '?scope=//evil.example', '?scope=customers,orders', '?adv=true', '?adv=0', '?adv=', '?adv=11', '?recent=1', '?recent=', '?recent=all', '?recent=Changes']) {
+    '?scope=https://evil.example', '?scope=//evil.example', '?scope=customers,orders', '?adv=true', '?adv=0', '?adv=', '?adv=11', '?recent=1', '?recent=', '?recent=all', '?recent=Changes', '?recent=Mine', '?recent=mine%20', '?recent=mine,changes']) {
     const r = parseHomeParams(bad);
     assert.equal(r.any, false, bad); assert.equal(r.scope, null, bad); assert.equal(r.adv, false, bad); assert.equal(r.recent, null, bad);
   }
@@ -725,6 +727,9 @@ t('parseHomeParams: הוראה אחת — adv עדיף על recent על scope (�
   assert.equal(homeDirectiveKey(parseHomeParams('?scope=orders')), 'scope:orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?adv=1')), 'adv');
   assert.equal(homeDirectiveKey(parseHomeParams('?recent=changes')), 'recent:changes');
+  assert.equal(homeDirectiveKey(parseHomeParams('?recent=mine')), 'recent:mine');
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=mine'), { scope: null, adv: false, recent: 'mine', q: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=mine&adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
   assert.equal(homeDirectiveKey(parseHomeParams('?q=x')), '');
 });
 t('homeScopeTitle: "<קטגוריה> - מה תרצי לחפש?" לכל קטגוריה, מהטבלה בלבד; לא מוכר = null', () => {
@@ -772,18 +777,21 @@ t('התפריט והדף מסכימים: כל href של scope בתפריט הו�
   const keys = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations', 'page:messages', 'page:schedule'];
   const tree = buildMenuTree({ user: { id: 'e0', firstName: 'ש', lastName: 'כ', roleId: 0 }, permissions: Object.fromEntries(keys.map((k) => [k, true])), settings: [] });
   const items = tree.tabs.find((x) => x.id === 'home').items.filter((x) => x.kind === 'link' && x.href.includes('?'));
-  assert.equal(items.length, 7);
+  assert.equal(items.length, 8);
   for (const it of items) {
     const p = parseHomeParams(it.href.slice(it.href.indexOf('?')));
     assert.ok(p.any, it.href);
-    if (it.id === 'home-adv') assert.equal(p.adv, true); else if (it.id === 'recent-all') assert.equal(p.recent, 'changes');
+    if (it.id === 'home-adv') assert.equal(p.adv, true); else if (it.id === 'recent-all') assert.equal(p.recent, 'changes'); else if (it.id === 'recent-mine') assert.equal(p.recent, 'mine');
     else { assert.ok(p.scope, it.href); assert.equal(it.label, HOME_SCOPES[p.scope].label, 'תווית הפריט = תווית הקטגוריה'); }
   }
 });
 
-console.log("קידומות חיפוש מהיר ('@') — lib/quickPrefix.js");
-t("detectQuickPrefix: רק '@' כתו ראשון; '#' ו-'$' טרם נבנו; באמצע הטקסט לא", () => {
-  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@']);
+console.log("קידומות חיפוש מהיר ('@', '&') — lib/quickPrefix.js");
+t("detectQuickPrefix: '@' ו-'&' כתו ראשון; '#' ו-'$' טרם נבנו; באמצע הטקסט לא", () => {
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&']);
+  assert.equal(QUICK_PREFIXES['@'].source, 'local'); assert.equal(QUICK_PREFIXES['&'].source, 'mine');
+  assert.equal(detectQuickPrefix('&').prefix, '&'); assert.equal(detectQuickPrefix('&').def.id, 'mine'); assert.equal(detectQuickPrefix('& רחל ').term, 'רחל');
+  for (const no of [' &', 'רחל&', 'a&b', 'Q&A']) assert.equal(detectQuickPrefix(no), null, no);
   assert.equal(detectQuickPrefix('@').prefix, '@'); assert.equal(detectQuickPrefix('@').term, '');
   assert.equal(detectQuickPrefix('@ כהן ').term, 'כהן');
   for (const no of ['', ' @', 'כהן@', 'a@b.co', '#', '$', '!', '#x', '$x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
@@ -804,10 +812,75 @@ t("רשימת '@' = אותם נתונים כמו כרטיס 'האחרונים' �
   const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
   assert.ok(comp.includes('getHistory') && comp.includes('recentRows'), 'מקור הנתונים: ההיסטוריה המקומית');
   assert.ok(/advlist/.test(comp) && /advo/.test(comp), 'רשימת הפלטה הנגללת (advlist/advo)');
-  assert.ok(!/fetch\(/.test(comp), 'בלי רישום/קריאת חיפושים בשרת (לא נבנה עדיין)');
+  assert.equal((comp.match(/fetch\(/g) || []).length, 1, 'הקריאה היחידה לשרת: "השינויים שלי" (GET /api/me/recent-activity); בלי רישום/קריאת חיפושים בשרת');
+  assert.ok(comp.includes("fetch('/api/me/recent-activity'"));
   const home = homeSource('HomeA5.js');
   assert.ok(home.includes('useQuickPrefix') && home.includes('<QuickPrefixList'), 'HomeA5 משתמש ברכיב המשותף');
   assert.match(home, /setQ\('@'\)/, "'שינויים אחרונים' (?recent=changes) ממלא '@' — אותה תוצאה בדיוק");
+});
+
+console.log('"השינויים שלי" (&) — lib/myRecentActivityView.js + חיווט HomeA5 / QuickPrefix');
+const NOW = new Date('2026-10-04T10:00:00Z'); // 13:00 שעון ישראל, 23 בתשרי
+const agoMin = (m) => new Date(NOW.getTime() - m * 60000).toISOString();
+const mk = (n, label, ago) => ({ orderId: '00000000-0000-4000-8000-' + String(n).padStart(12, '0'), orderNumber: n, customerName: 'רחל כהן' + n, createdAt: agoMin(ago), lastChangeLabelHe: label, lastChangeAt: agoMin(ago) });
+const MINE_DATA = {
+  created: [1, 2, 3, 4, 5, 6, 7].map((n) => mk(n, '', n * 100)),
+  changed: [11, 12, 13].map((n, i) => mk(n, 'עודכן תאריך האירוע', 30 + i * 500)),
+};
+t('whenLabelHe: דקות / שעה / היום / אתמול / יומיים / תאריך עברי (בלי תאריך לועזי); לא תלוי באזור הזמן של התהליך', () => {
+  assert.equal(whenLabelHe(agoMin(12), NOW), 'לפני 12 דק׳');
+  assert.equal(whenLabelHe(agoMin(0.2), NOW), 'לפני 1 דק׳');
+  assert.equal(whenLabelHe(agoMin(75), NOW), 'לפני שעה');
+  assert.equal(whenLabelHe('2026-10-04T05:40:00Z', NOW), 'היום, 08:40');
+  assert.equal(whenLabelHe('2026-10-03T08:00:00Z', NOW), 'אתמול');
+  assert.equal(whenLabelHe('2026-10-02T08:00:00Z', NOW), 'לפני יומיים');
+  assert.equal(whenLabelHe('2026-09-30T08:00:00Z', NOW), 'יט תשרי');
+  assert.ok(!/\d{4}|\d+\/\d+/.test(whenLabelHe('2026-09-20T08:00:00Z', NOW)), 'בלי ספרות של תאריך לועזי');
+  assert.equal(whenLabelHe('nope', NOW), ''); assert.equal(whenLabelHe(null, NOW), '');
+  // סביב חצות שעון ישראל: היום לפי יום ישראלי, לא לפי UTC
+  assert.equal(whenLabelHe('2026-10-03T21:30:00Z', NOW), 'היום, 00:30');
+  assert.equal(whenLabelHe('2026-10-02T21:30:00Z', NOW), 'אתמול');
+});
+t('buildMineModel: שני חלקים (חדשות / שינויים), עד 5 בכל חלק + שורת "הצג הכל" עם הספירה; החדש ראשון; items = השורות לניווט במקלדת', () => {
+  const m = buildMineModel({ state: 'ok', data: MINE_DATA }, { now: NOW });
+  assert.equal(MINE_POPOVER_LIMIT, 5);
+  assert.deepEqual(m.sections.map((x) => [x.key, x.head, x.count, x.rows.length]), [['created', 'הזמנות חדשות שיצרתי', 7, 5], ['changed', 'שינויים שעשיתי', 3, 3]]);
+  assert.equal(m.items.length, 9); assert.equal(m.items[8].type, 'all'); assert.equal(m.items[8].url, MINE_URL); assert.equal(m.more.tail, '10');
+  assert.equal(m.more.sub, 'עוד 2 ברשימה המלאה');
+  const r = m.sections[1].rows[0];
+  assert.deepEqual([r.type, r.icon, r.title, r.orderNumber, r.detail, r.when], ['order', 'pencil', 'רחל כהן11', 11, 'עודכן תאריך האירוע', 'לפני 30 דק׳']);
+  assert.equal(r.url, '/orders/00000000-0000-4000-8000-000000000011');
+  assert.equal(m.sections[0].rows[0].icon, 'plus'); assert.equal(m.sections[0].rows[0].detail, 'הזמנה חדשה');
+});
+t('buildMineModel: בלי תקרה (התצוגה המלאה) כל הרשימה ובלי "הצג הכל"; סינון לפי שם / מספר / נוסח; אין התאמה', () => {
+  const all = buildMineModel({ state: 'ok', data: MINE_DATA }, { limit: null, now: NOW });
+  assert.equal(all.items.length, 10); assert.equal(all.more, null);
+  const byName = buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'כהן12', now: NOW });
+  assert.deepEqual(byName.sections.map((x) => x.rows.map((r) => r.orderNumber)), [[12]]);
+  assert.deepEqual(buildMineModel({ state: 'ok', data: MINE_DATA }, { term: '13', now: NOW }).items.map((r) => r.orderNumber), [13]);
+  assert.equal(buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'תאריך', now: NOW }).sections.length, 1);
+  const none = buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'zzz', now: NOW });
+  assert.equal(none.items.length, 0); assert.match(none.none, /אין התאמה/);
+});
+t('buildMineModel: מצבים - טוען / ריק / שגיאה (עם "נסי שוב") / degraded; פריט עם מזהה לא תקין נזרק', () => {
+  assert.equal(buildMineModel({ state: 'loading' }).state, 'loading'); assert.equal(buildMineModel({ state: 'idle' }).state, 'loading'); assert.equal(buildMineModel(null).state, 'loading');
+  const empty = buildMineModel({ state: 'ok', data: { created: [], changed: [] } });
+  assert.equal(empty.none, 'עוד לא יצרת או שינית הזמנות'); assert.equal(empty.items.length, 0);
+  const err = buildMineModel({ state: 'error' }); assert.equal(err.state, 'error'); assert.deepEqual(err.items.map((x) => x.type), ['retry']);
+  assert.equal(buildMineModel({ state: 'ok', data: { created: [], changed: [], degraded: true } }).state, 'error');
+  const bad = buildMineModel({ state: 'ok', data: { created: [{ orderId: '../x', orderNumber: 1, customerName: 'a' }, { orderId: 'ok-1', orderNumber: 2, customerName: 'b', createdAt: agoMin(5) }], changed: [] } }, { now: NOW });
+  assert.deepEqual(bad.items.map((x) => x.orderNumber), [2]);
+});
+t("'&' חווט בדף הבית ובתפריט: useMyActivity (מטמון + denied), HomeMine בתצוגת mine, /?recent=mine, ו-pick של 'הצג הכל'", () => {
+  const home = homeSource('HomeA5.js'); const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
+  assert.ok(home.includes('useMyActivity') && home.includes('mine,') && home.includes('<HomeMine'), 'HomeA5 משתמש ב-useMyActivity וב-HomeMine');
+  assert.match(home, /dir\.recent === 'mine'[\s\S]{0,200}setView\('mine'\)/);
+  assert.match(home, /m\.kind === 'mine' \? view === 'mine'/);
+  assert.ok(/state: 'denied'/.test(comp) && /res\.status === 403/.test(comp), '403 = "&" היא סתם טקסט');
+  assert.ok(/MINE_TTL_MS/.test(comp) && /mine-list/.test(comp) && /row\.type === 'retry'/.test(comp));
+  assert.ok(!/useMyActivity|recent-activity/.test(homeSource('LegacyHome.js')), 'הדף הישן לא נגע');
+  const menu = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  assert.ok(menu.includes('useQuickPrefix') && menu.includes('MineRowBody') && menu.includes('useMyActivity'), 'חיפוש התפריט משתמש באותו מנגנון');
 });
 
 console.log('שורת החיפוש: בלי כפתור "אחרונים"');

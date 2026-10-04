@@ -68,8 +68,9 @@ export function useMyActivity() {
   return useMemo(() => ({ state: s.state, data: s.data, load, reload }), [s, load, reload]);
 }
 
-export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-list', mine = null }) {
+export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-list', mine = null, prefixes = null }) {
   let hit = enabled ? detectQuickPrefix(q) : null;
+  if (hit && Array.isArray(prefixes) && !prefixes.includes(hit.prefix)) hit = null; // prefixes: אילו קידומות פעילות במקום הזה (ברירת מחדל: כולן)
   if (hit && hit.def.source === 'mine' && (!mine || mine.state === 'denied')) hit = null; // אין מקור / אין הרשאה: '&' היא סתם טקסט
   const term = hit ? hit.term : '';
   const isMine = !!hit && hit.def.source === 'mine';

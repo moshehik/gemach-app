@@ -109,3 +109,24 @@
 .gm-ds.gm-menu .sn-clock.warn{background:rgba(240,163,94,.2);color:#ffe2c4}
 .gm-ds.gm-menu .sn-clock.warn i{background:#f0a35e;animation:none;box-shadow:none}
 .gm-ds.gm-menu .sn-dfoot .snShiftWarn{color:var(--gm-gold-300)}
+
+/* "השינויים שלי" ('&' בחיפוש התפריט, 4.10.2026): הרשימה במקום .sn-res, באותם רכיבי sn-st / sn-link / sn-li / sn-k של הפלטה. אותו מראה כמו תצוגות-עיצוב\השינויים-שלי.html
+   (ובדף הבית: home.css בלוק 15). בלי צבע / גופן חדשים. */
+.gm-ds.gm-menu .mine-menu{max-height:min(58vh,440px);overflow-y:auto;overscroll-behavior:contain}
+.gm-ds.gm-menu .sn-drawer .mine-menu{max-height:none}
+.gm-ds.gm-menu .mine-menu .sn-st{padding:8px 12px 2px;display:flex;align-items:center;gap:8px}
+.gm-ds.gm-menu .mine-menu .sn-cnt{margin-inline-start:8px;font-weight:600}
+.gm-ds.gm-menu .mine-menu .sn-link{white-space:normal}
+.gm-ds.gm-menu .mine-menu .sn-link .sn-k{white-space:nowrap}
+.gm-ds.gm-menu .mine-menu .sn-link.act{background:rgba(201,162,39,.14);box-shadow:inset 0 0 0 2px var(--gm-gold)}
+.gm-ds.gm-menu .mine-menu .sn-link.act .sn-li{background:var(--gm-gbtn);color:var(--gm-navy-900)}
+.gm-ds.gm-menu .mine-menu .sn-link.mine-more .sn-li{background:var(--gm-sky-100);color:var(--gm-navy-700)}
+.gm-ds.gm-menu .mine-menu .sn-empty{padding:12px 12px 6px;text-align:center}
+.gm-ds.gm-menu .mine-menu .sn-empty small{display:block;font-size:12.5px;line-height:1.5;margin-top:2px}
+.gm-ds.gm-menu .mine-t{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;text-align:start}
+.gm-ds.gm-menu .mine-t b{font-weight:600;line-height:1.35}
+.gm-ds.gm-menu .mine-t small{font-size:12.5px;line-height:1.4;color:var(--gm-ink3);font-weight:400;overflow-wrap:anywhere}
+.gm-ds.gm-menu .mine-t bdi{unicode-bidi:isolate}
+.gm-ds.gm-menu .mine-t mark{background:transparent;color:var(--gm-gold-d);font-weight:700}
+.gm-ds.gm-menu .mine-note{direction:rtl;display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--gm-ink3);padding:8px 12px 4px;margin-top:6px;border-top:1px dashed rgba(184,145,47,.45)}
+.gm-ds.gm-menu .mine-note .ic{width:16px;height:16px;flex:none;margin-top:1px;color:var(--gm-navy-500)}

@@ -9,6 +9,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
+import { detectQuickPrefix } from '@/lib/quickPrefix';
+import { MINE_URL } from '@/lib/myRecentActivityView';
+import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
+import { MineRowBody, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
@@ -28,7 +32,9 @@ export function useMenuSearch() {
   // COPIED FROM TopbarSearch.js
   useEffect(() => {
     const term = debounced.trim();
-    if (term.length < MIN_CHARS) {
+    // '&' כתו ראשון = "השינויים שלי" (רשימה אישית, ר' SearchBody) - לא חיפוש טקסט
+    const mineTerm = detectQuickPrefix(term);
+    if (term.length < MIN_CHARS || (mineTerm && mineTerm.def.source === 'mine')) {
       setResults([]);
       setTotal(0);
       setSearching(false);
@@ -57,10 +63,69 @@ export function useMenuSearch() {
   return { q, setQ, results, total, searching, pending: q.trim() !== debounced.trim(), reset: () => setQ('') };
 }
 
+// קידומת '&' בשורת החיפוש = "השינויים שלי": ההזמנות שיצרתי והשינויים שעשיתי (אותה רשימה כמו בדף הבית: hook ומודל משותפים ב-
+// components/search/QuickPrefix.js ו-lib/myRecentActivityView.js). בחיפוש התפריט רק '&' פעילה ('@' נשארת בדף הבית).
+const MENU_PREFIXES = ['&'];
+
+function MineMenuList({ qp }) {
+  const m = qp.mineModel;
+  if (!m) return null;
+  let n = -1;
+  const row = (r) => {
+    n += 1;
+    const i = n;
+    return (
+      <a
+        key={r.key}
+        id={`${qp.listId}-o${i}`}
+        className={`sn-link mine-o${r.type === 'all' ? ' mine-more' : ''}${i === qp.act ? ' act' : ''}`}
+        role="option"
+        aria-selected={i === qp.act}
+        href={r.url || '#'}
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => { e.preventDefault(); qp.pick(r); }}
+      ><MineRowBody r={r} term={qp.term} /></a>
+    );
+  };
+  return (
+    <div className="mine-menu" id={qp.listId} role="listbox" aria-label={qp.def.listLabel}>
+      {m.state === 'loading' && <div className="sn-empty" role="status">{m.none}</div>}
+      {m.state === 'error' && <div className="sn-empty" role="alert">{m.none}<small>{m.sub}</small></div>}
+      {m.state === 'error' && m.items.map(row)}
+      {m.state !== 'loading' && m.state !== 'error' && m.sections.map((s) => (
+        <div key={s.key}>
+          <div className="sn-st" role="presentation">{s.head}<bdi className="sn-cnt">{s.count}</bdi></div>
+          {s.rows.map(row)}
+        </div>
+      ))}
+      {m.state === 'ok' && m.more && row(m.more)}
+      {m.state === 'ok' && m.none && <div className="sn-empty" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</div>}
+      <div className="mine-note" role="note"><Ic n="lock" /><span>{m.note}</span></div>
+    </div>
+  );
+}
+
 export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer = false, onGo, onClearRecents, inputRef }) {
   const q = search.q;
   const term = q.trim();
   const popup = usePopup();
+  const mineData = useMyActivity();
+  const qp = useQuickPrefix({
+    q,
+    rows: [],
+    mine: mineData,
+    prefixes: MENU_PREFIXES,
+    listId: `${idPrefix}-qp`,
+    onPick: (row) => {
+      if (row.type === 'all') {
+        onGo(() => { nav.navigate(MINE_URL); window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href: MINE_URL } })); }, true);
+      } else if (row.url) {
+        onGo(() => nav.navigate(row.url), true);
+      }
+    },
+  });
+  const mineOn = qp.open && !!qp.def && qp.def.source === 'mine';
   const isBarcode = /^\d{7}$/.test(term); // ברקוד תקין = בדיוק 7 ספרות (מס' הזמנה 5 ספרות, טלפון 9+)
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
 
@@ -92,17 +157,19 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   };
 
   const pages = useMemo(() => {
-    if (!term) return [];
+    if (!term || mineOn) return [];
     return flattenMenuTree(tree).filter((x) => (
       x.kind === 'link' && x.href && x.group !== 'משתמש' && x.group !== 'התראות'
       && menuRowMatchesTerm(x, term)
     ));
-  }, [tree, term]);
+  }, [tree, term, mineOn]);
 
   const role = menu ? 'menuitem' : undefined;
 
   let list;
-  if (!term) {
+  if (mineOn) {
+    list = null; // "השינויים שלי" מצויירת במקום .sn-res (MineMenuList)
+  } else if (!term) {
     list = (
       <>
         <div className="sn-st" style={{ display: 'flex', alignItems: 'center' }}>
@@ -203,7 +270,12 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
           data-form-type="other"
           aria-label="חיפוש עמוד, הזמנה או לקוח"
           onChange={(e) => { if (qr.text) setQr({ busy: false, text: '', err: false }); search.setQ(e.target.value); }}
+          {...qp.inputProps}
+          onFocus={qp.onFocus}
+          onBlur={qp.onBlur}
           onKeyDown={(e) => {
+            qp.onKeyDown(e); // '&': חצים / Enter / Esc של הרשימה (Enter עליה לא מריץ חיפוש)
+            if (e.defaultPrevented) return;
             if (e.key !== 'Enter') return;
             if (isBarcode) {
               e.preventDefault();
@@ -218,7 +290,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
       <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
         {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${term}` : ''))}
       </div>
-      <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>
+      {mineOn ? <MineMenuList qp={qp} /> : <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>}
     </>
   );
 }

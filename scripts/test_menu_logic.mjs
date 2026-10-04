@@ -942,6 +942,22 @@ t('פאנל החיפוש: אין חיצי אחורה/קדימה ולא "עמוד
   assert.ok(/\.sn-sbox input:focus[^{]*\{[^}]*outline:0!important[^}]*box-shadow:none!important/.test(css), 'אין טבעת פוקוס של האתר הישן על השדה');
 });
 
+t('"השינויים שלי" בחיפוש התפריט: ה-CSS בהיקף .gm-ds.gm-menu בלבד, רק משתני --gm-*, והפאנל עושה את שלושת הדברים: אין בקשת חיפוש ל-&, רק '&' פעילה, Enter על הרשימה לא מריץ חיפוש', () => {
+  const css = readFileSync(new URL('../app/components/menu/menu.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = css.split('}').map((x) => x.trim()).filter((x) => /\.mine-/.test(x.split('{')[0]));
+  assert.ok(rules.length >= 15, 'נמצאו ' + rules.length);
+  for (const r of rules) {
+    const [sel, body] = r.split('{');
+    for (const one of sel.split(',')) assert.ok(/^\s*\.gm-ds\.gm-menu /.test(one), 'מחוץ להיקף: ' + one);
+    for (const m of body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה לא gm-: ' + m[1]);
+    assert.ok(!/!important/.test(body), r);
+  }
+  const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  assert.ok(/mineTerm\.def\.source === 'mine'/.test(panel), 'useMenuSearch לא שולח & לחיפוש');
+  assert.ok(/MENU_PREFIXES = \['&'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט רק '&'");
+  assert.ok(/qp\.onKeyDown\(e\);[\s\S]{0,120}if \(e\.defaultPrevented\) return;/.test(panel), 'Enter על רשימת & לא מריץ חיפוש');
+  assert.ok(/nav\.navigate\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הצג הכל" פותח /?recent=mine');
+});
 // ---- תוויות עבריות ל"נצפו לאחרונה" (תיקון רוחבי: אף נתיב גולמי באנגלית) ----
 import { pageLabel, hebrewLabelOr, hasPageLabel, ROUTE_LABELS, FALLBACK_PAGE_LABEL } from '../lib/menu/pageLabels.js';
 import { makeEntry } from '../lib/menu/navHistory.js';
