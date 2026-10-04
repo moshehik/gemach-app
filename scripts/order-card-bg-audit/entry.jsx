@@ -72,13 +72,13 @@ const SCENARIOS = {
   stock: { draft: true, put409stock: true, settings: ORG2.filter(([k]) => k !== 'enable_order_edit_summary_confirm') },
   notfound: { notfound: true },
   loading: { hang: true },
-  // W2a: אירוע חו"ל עם יום השכרה נוסף (enable_rental_extension) וציפוף ברירת מחדל 2 (5 גלולות כמו בעיצוב); משלוח בתוך "פרטים"
-  xday: { settings: [...ORG2, ['enable_rental_extension', 'true'], ['inventory_buffer_days', '2']], order: { isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z', extraDay: null } },
-  inline: { settings: ORG2.filter(([k]) => k !== 'delivery_separate_tab') },
-  // W3 — מצבי פריטים: מושכר (עם ברקוד), הוחזר לא תקין; מכסה מלאה (R32)
-  items: { items: 'states' },
-  quota: { settings: [...ORG2.filter(([k]) => k !== 'max_items_per_order'), ['max_items_per_order', '3']] },
-  ...payScenarios({ ITEMS, OBL, PAY, ORG1, ORG2 }), // W4
+  // W2a: אירוע חו"ל עם יום השכרה נוסף (enable_rental_extension) וציפוף ברירת מחדל 2 (5 גלולות כמו בעיצוב); משלוח בתוך "פרטים"
+  xday: { settings: [...ORG2, ['enable_rental_extension', 'true'], ['inventory_buffer_days', '2']], order: { isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z', extraDay: null } },
+  inline: { settings: ORG2.filter(([k]) => k !== 'delivery_separate_tab') },
+  // W3 — מצבי פריטים: מושכר (עם ברקוד), הוחזר לא תקין; מכסה מלאה (R32)
+  items: { items: 'states' },
+  quota: { settings: [...ORG2.filter(([k]) => k !== 'max_items_per_order'), ['max_items_per_order', '3']] },
+  ...payScenarios({ ITEMS, OBL, PAY, ORG1, ORG2 }), // W4
 };
 // W3: מצבי פריטים נוספים (תרחיש items) — אותם 4 פריטים של העיצוב + מושכר / הוחזר
 const ITEMS_STATES = [

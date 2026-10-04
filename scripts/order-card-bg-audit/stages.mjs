@@ -259,7 +259,7 @@ for (const st of STAGES) {
   const fn = D ? st.demo : st.real;
   if (!fn) continue;
   if (process.env.STAGES && !new RegExp(process.env.STAGES).test(st.name)) continue; // סינון שלבים (למשל STAGES=^P)
-  try { await fn(); await snap(st.name, st.roots || ROOTS); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
+  try { await fn(); await snap(st.name, st.roots || ROOTS); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
 }
 fs.writeFileSync(`${OUT}/${which}-${width}.json`, JSON.stringify(results, null, 1));
 if (checks.length) { checks.forEach(([n, ok]) => console.log(ok ? 'CHECK ok  ' : 'CHECK FAIL', n)); if (checks.some(([, ok]) => !ok)) process.exitCode = 1; }
