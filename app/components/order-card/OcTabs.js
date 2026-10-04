@@ -4,7 +4,7 @@
 // <nav class="tabs" role="tablist"><button class="tab [tdel] [on]" role="tab"><span class="tico">אייקון + מונה/סמן</span>שם</button>…
 // הסמן: <span class="tabmk debt|ok|cred [fresh]" data-tip role="img">; "fresh" רק בהופעה הראשונה של הסמן (הנפשת הכניסה).
 // לשונית "משלוח" רק כש-enable_deliveries וגם delivery_separate_tab (R49/W2b; אחרת המשלוח בתוך "פרטים"). תוכן הלשוניות מ-tabs/index.js.
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import OcIcon from './OcIcon';
 import { tabMarkers } from './orderCardLogic';
 
@@ -21,20 +21,21 @@ export const visibleTabIds = (settings) => TAB_DEFS
   .map(t => t.id);
 
 export default function OcTabs({ oc, ui, tabs }) {
-  const seen = useRef({});
+  const [seen, setSeen] = useState({});
   const visible = visibleTabIds(oc.settings);
   const markers = tabMarkers({ order: oc.order, totals: oc.totals, settings: oc.settings });
   const activeCount = oc.items.filter(i => !i.isDeleted).length;
   const current = visible.includes(oc.tab) ? oc.tab : visible[0];
 
   // סמן "חדש" רק פעם אחת לכל מפתח; כשהסמן נעלם הוא יקבל fresh שוב בהופעה הבאה (כמו __tabMk בעיצוב)
+  const markerKeys = Object.values(markers).map(m => m.key).sort().join('|');
   const freshNow = {};
-  Object.values(markers).forEach(m => { freshNow[m.key] = !seen.current[m.key]; });
+  Object.values(markers).forEach(m => { freshNow[m.key] = !seen[m.key]; });
   useEffect(() => {
     const next = {};
-    Object.values(markers).forEach(m => { next[m.key] = 1; });
-    seen.current = next;
-  });
+    markerKeys.split('|').filter(Boolean).forEach(k => { next[k] = 1; });
+    setSeen(prev => (Object.keys(prev).sort().join('|') === markerKeys ? prev : next));
+  }, [markerKeys]);
 
   const onKey = (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;

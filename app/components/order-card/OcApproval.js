@@ -26,7 +26,7 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
   const [code, setCode] = useState('');
   const [msg, setMsg] = useState(null); // {icon, text}
   const [busy, setBusy] = useState(false);
-  const [lockedUntil, setLockedUntil] = useState(0);
+  const [locked, setLocked] = useState(false);
   const tries = useRef(0);
   const codeRef = useRef(null);
   const listRef = useRef(null);
@@ -47,12 +47,11 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
   }, [level.pickerLevel]);
 
   useEffect(() => {
-    if (!lockedUntil) return undefined;
-    const t = setTimeout(() => { setLockedUntil(0); tries.current = 0; setMsg(null); codeRef.current && codeRef.current.focus(); }, Math.max(0, lockedUntil - Date.now()));
+    if (!locked) return undefined;
+    const t = setTimeout(() => { setLocked(false); tries.current = 0; setMsg(null); codeRef.current && codeRef.current.focus(); }, APPROVAL_LOCK_MS);
     return () => clearTimeout(t);
-  }, [lockedUntil]);
+  }, [locked]);
 
-  const locked = lockedUntil > Date.now();
   const canSubmit = !busy && !locked && !!sel && code.trim().length > 0;
 
   const submit = async () => {
@@ -76,7 +75,7 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
       tries.current += 1;
       setCode('');
       if (tries.current >= APPROVAL_MAX_TRIES) {
-        setLockedUntil(Date.now() + APPROVAL_LOCK_MS);
+        setLocked(true);
         setMsg({ icon: 'lock', text: 'ניסיונות רבים · נסו שוב בעוד 30 שניות' });
       } else {
         setMsg({ icon: 'alert', text: (data && data.error) || 'קוד שגוי' });

@@ -14,7 +14,7 @@
 //
 // ===== הממשק (oc) — ר' JSDoc של OrderCardController למטה ו-W1-NOTES.md =====
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { addHistory } from '@/lib/historyManager';
@@ -60,7 +60,7 @@ import OcApprovalDialog from './OcApproval';
  * @property {(type:string, fn:Function)=>()=>void} on   אירועים: 'debtCreated' {amount,source,href?}, 'autoRefundNeedsBank' {source,href?}
  * @property {boolean} pendingDebtBlock
  */
-export default function useOrderCardController(orderRef, ui) {
+export default function useOrderCardController(orderRef, ui, { dialogs = {} } = {}) {
   const router = useRouter();
   const [status, setStatus] = useState('loading');
   const [order, setOrder] = useState(null);
@@ -98,9 +98,11 @@ export default function useOrderCardController(orderRef, ui) {
   const bumpHistory = useCallback(() => setHistoryVersion(v => v + 1), []);
   const clearRedo = useCallback(() => { if (redoRef.current.length) { redoRef.current = []; setRedoCount(0); } }, []);
 
-  // מצב עדכני לזרימות async (נקרא אחרי await) - מתעדכן בכל רינדור
+  // מצב עדכני לזרימות async (נקרא אחרי await) - מתעדכן אחרי כל רינדור (layout effect: לפני כל handler של המשתמש)
   const stateRef = useRef({});
-  stateRef.current = { order, items, obligations, payments, refunds, snapshot: snapshotRef.current, openedDebt, settings, debtApproved, isUnlocked, isPastEvent };
+  useLayoutEffect(() => {
+    stateRef.current = { order, items, obligations, payments, refunds, snapshot: snapshotRef.current, openedDebt, settings, debtApproved, isUnlocked, isPastEvent };
+  });
 
   const emit = useCallback((type, payload) => {
     const set = listenersRef.current.get(type);
@@ -166,7 +168,7 @@ export default function useOrderCardController(orderRef, ui) {
       .then(res => { if (!res.ok) throw new Error('Failed to load cache'); return res.json(); })
       .then(data => setInventoryCache(data))
       .catch(err => console.error('Failed to preload inventory cache', err));
-  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.isWeekdayEvent, order?.orderId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.isWeekdayEvent, order?.orderId]);
 
   // ---------- נגזרות ----------
   const totals = useMemo(() => computeTotals({ items, obligations, payments, snapshot, openedDebt }), [items, obligations, payments, snapshot, openedDebt]);
@@ -208,7 +210,7 @@ export default function useOrderCardController(orderRef, ui) {
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [tab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId, dirty]);
 
   // ---------- הגנות יציאה ----------
   useEffect(() => {
@@ -277,12 +279,11 @@ export default function useOrderCardController(orderRef, ui) {
     set bankPromptedOnExit(v) { flagsRef.current.bankPromptedOnExit = !!v; },
   }), [setPendingDebtBlock]);
 
-  const slotsRef = useRef(null);
   const flows = useMemo(() => {
     const f = createOrderCardFlows({
       fetch: (...a) => fetch(...a),
       ui,
-      get dialogs() { return slotsRef.current || {}; },
+      dialogs,
       routeId: orderRef,
       get: () => stateRef.current,
       set: { order: setOrder, items: setItems, obligations: setObligations, payments: setPayments, refunds: setRefunds, tab: setTab, saving: setSaving },
@@ -298,8 +299,8 @@ export default function useOrderCardController(orderRef, ui) {
     });
     flowsRef.current = f;
     return f;
-  }, [ui, orderRef, setSnapshot, flagsProxy, approve, navigate, emit, bumpHistory, clearRedo]);
-  exitRef.current = flows.exit;
+  }, [ui, dialogs, orderRef, setSnapshot, flagsProxy, approve, navigate, emit, bumpHistory, clearRedo]);
+  useEffect(() => { exitRef.current = flows.exit; }, [flows]);
 
   // ---------- עריכה ----------
   const markEdited = clearRedo;
@@ -404,8 +405,6 @@ export default function useOrderCardController(orderRef, ui) {
     tab, setTab, goPayments, saving, inventoryCache, on, pendingDebtBlock,
     requestZeout: flows.requestZeout,
     orderRef,
-    /** @internal OrderCardA5 מעביר את ה-slots (חלונות הזרימה) */
-    _setSlots: (s) => { slotsRef.current = s; },
   };
   return oc;
 }
@@ -413,7 +412,7 @@ export default function useOrderCardController(orderRef, ui) {
 // עזר ל-React: מנוי לאירוע של הבקר (debtCreated / autoRefundNeedsBank) לאורך חיי הרכיב.
 export function useOcEvent(oc, type, fn) {
   const fnRef = useRef(fn);
-  fnRef.current = fn;
+  useLayoutEffect(() => { fnRef.current = fn; });
   const subscribe = oc && oc.on;
   useEffect(() => {
     if (!subscribe) return undefined;

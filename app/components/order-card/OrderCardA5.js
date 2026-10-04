@@ -70,8 +70,7 @@ function StateBanner({ oc }) {
 
 function OrderCardBody({ orderRef }) {
   const ui = useOcUi();
-  const oc = useOrderCardController(orderRef, ui);
-  oc._setSlots(SLOTS);
+  const oc = useOrderCardController(orderRef, ui, { dialogs: SLOTS });
   const { Rail, DraftBanner, MoneyToast, TopBanners } = SLOTS;
   return (
     <div className="app oc-app" id="app">
