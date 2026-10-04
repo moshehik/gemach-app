@@ -9,7 +9,7 @@ import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { missingRule, customerMissing, customerMissingWhere } from '@/lib/customerMissing';
 import {
-  ALERT_COLS, ALERT_LIMITS as L, parseAlertFlags, parseUnsavedIds, orderFilterAnd, classifyOutOrder, mergeReasons, buildAlertRows,
+  ALERT_COLS, ALERT_LIMITS as L, parseAlertFlags, parseUnsavedIds, orderFilterAnd, classifyOutOrder, mergeReasons, buildAlertRows, capAlertEntries, countAlertTypes,
 } from '@/lib/advAlerts';
 
 // מיקוד "התראות" בחיפוש המתקדם של דף הבית (F23, החלטת הבעלים HM-04 = א): הזמנות והחזרות עם דגל שדורש טיפול.
@@ -39,21 +39,24 @@ async function loadOut(p, ctx, want) {
   const { todayStart } = ctx;
   // כמו /api/orders/overdue: המסנן ב-DB רחב ביום אחד מעבר לסף (דילוג ימים לא עובדים), הסינון המדויק ב-JS
   const cutoff = new Date(ctx.now.getTime() - (ctx.threshold - 1) * 86400000);
-  const rows = await prisma.order.findMany({
-    where: {
-      AND: [
-        ...orderFilterAnd(p, DRAFT_ORDER_STATUS),
-        { items: { some: { isDeleted: false, isTaken: true, isReturned: false } } },
-        { OR: [{ eventDate: { lt: todayStart } }, { toDate: { lte: cutoff } }, { returnDate: { lte: cutoff } }] },
-      ],
-    },
-    orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
-    take: L.OUT_SCAN + 1,
-    select: { ...orderSelect, items: { where: { isDeleted: false }, select: { isDeleted: true, isTaken: true, isReturned: true } } },
-  });
+  const where = {
+    AND: [
+      ...orderFilterAnd(p, DRAFT_ORDER_STATUS),
+      { items: { some: { isDeleted: false, isTaken: true, isReturned: false } } },
+      { OR: [{ eventDate: { lt: todayStart } }, { toDate: { lte: cutoff } }, { returnDate: { lte: cutoff } }] },
+    ],
+  };
+  const select = { ...orderSelect, items: { where: { isDeleted: false }, select: { isDeleted: true, isTaken: true, isReturned: true } } };
+  // קודם הישנים ביותר (האיחורים החמורים לא נופלים): אם יש יותר מהתקרה, מוסיפים גם חלון של החדשים ביותר (שמלות שלא חזרו)
+  let rows = await prisma.order.findMany({ where, orderBy: { eventDate: { sort: 'asc', nulls: 'last' } }, take: L.OUT_SCAN + 1, select });
   const truncated = rows.length > L.OUT_SCAN;
+  if (truncated) {
+    const newest = await prisma.order.findMany({ where, orderBy: { eventDate: { sort: 'desc', nulls: 'last' } }, take: L.OUT_SCAN, select });
+    const seen = new Set();
+    rows = [...rows.slice(0, L.OUT_SCAN), ...newest].filter((o) => (seen.has(o.orderId) ? false : seen.add(o.orderId)));
+  }
   const out = [];
-  for (const o of rows.slice(0, L.OUT_SCAN)) {
+  for (const o of rows) {
     const c = classifyOutOrder(o, ctx);
     if (c && want.has(c.flag)) out.push({ order: o, reason: c });
   }
@@ -157,8 +160,13 @@ export async function GET(request) {
     });
     if (jobs.length && failed === jobs.length) return json({ error: 'שגיאה בחיפוש ההתראות' }, 500);
 
-    let rows = buildAlertRows(mergeReasons(all));
-    if (rows.length > L.ROWS) { truncated = true; rows = rows.slice(0, L.ROWS); }
+    // מיזוג לפי הזמנה, ספירה לפי סוג (לפני התקרה), ותקרה הוגנת לפי סוג: כל סוג שנבחר שומר שורות (ר' capAlertEntries)
+    const merged = mergeReasons(all);
+    const counts = countAlertTypes(merged);
+    const { kept, capped } = capAlertEntries(merged, L.ROWS);
+    const scanTruncated = truncated;
+    if (capped) truncated = true;
+    const rows = buildAlertRows(kept);
     return json({
       cols: ALERT_COLS,
       rows: rows.map((x) => x.cells),
@@ -167,6 +175,10 @@ export async function GET(request) {
       namesRev: rows.map((x) => x.nameRev),
       tags: rows.map((x) => x.tag),
       truncated,
+      scanTruncated, // תקרת סריקה/שאילתה (הספירות הן 'לפחות'), בנפרד מחיתוך השורות לתקרה
+      cap: L.ROWS,
+      total: merged.length, // הזמנות שנמצאו לפני התקרה
+      counts, // { late, notReturned, debt, missing, unsaved }
       gaps: [],
       failed: failedSections, // סוגים שלא נטענו (שאילתה נכשלה); שאר הסוגים חזרו — הלקוח מציג הודעה
     });

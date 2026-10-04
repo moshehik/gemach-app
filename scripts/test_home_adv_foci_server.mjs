@@ -402,6 +402,9 @@ await t('שאילתות חסומות: take לכל אחת, והתשובה עד 20
   assert.equal(body.truncated, true);
   const f = T.calls.find((c) => c.name === 'order.findMany');
   assert.equal(f.args.take, L.OUT_SCAN + 1);
+  assert.equal(body.cap, L.ROWS);
+  assert.equal(body.total, 260);
+  assert.equal(body.counts.late, 260);
 });
 await t('כל סוגי השאילתות נושאות take ויש רק מספר קבוע של שאילתות', async () => {
   allow('page:orders');
@@ -410,7 +413,7 @@ await t('כל סוגי השאילתות נושאות take ויש רק מספר �
   await call('/api/a5/adv-alerts?focus=alerts&unsaved=1,2,3');
   const finds = T.calls.filter((c) => c.name === 'order.findMany');
   assert.ok(finds.length <= 4, 'לא יותר מ-4 שאילתות הזמנות (איחורים / חוב / חסר / לא נשמר): ' + finds.length);
-  for (const f of finds) assert.ok(Number.isInteger(f.args.take) && f.args.take <= 501, 'חסר take: ' + JSON.stringify(f.args.take));
+  for (const f of finds) assert.ok(Number.isInteger(f.args.take) && f.args.take <= lib.ALERT_LIMITS.OUT_SCAN + 1, 'חסר take: ' + JSON.stringify(f.args.take));
   assert.equal(T.calls.filter((c) => c.name === '$queryRaw').length, 1);
 });
 await t('חוב: מעל 2000 מועמדות מה-SQL -> truncated', async () => {
@@ -418,6 +421,77 @@ await t('חוב: מעל 2000 מועמדות מה-SQL -> truncated', async () => 
   T.rawRows = Array.from({ length: lib.ALERT_LIMITS.DEBT_IDS + 1 }, (_, i) => ({ orderId: 5000 + i, total: 10, paid: 0 }));
   const { body } = await call('/api/a5/adv-alerts?focus=alerts&flags=ar_debt');
   assert.equal(body.truncated, true);
+});
+
+console.log('adv-alerts: מכסה הוגנת לפי סוג, ספירות, סדר איחורים');
+await t('419 איחורים + 205 חובות + 30 חסרים + 5 טיוטות: כל סוג שומר שורות, הספירות מלאות, סך הכל נכון', async () => {
+  allow('page:orders');
+  const L = lib.ALERT_LIMITS;
+  const late = Array.from({ length: 419 }, (_, i) => order({ eventDate: dayStart(-40 - i) }));
+  const debt = Array.from({ length: 205 }, (_, i) => order({ eventDate: dayStart(-10 - (i % 300)), totalAmount: 100, items: [item({ isTaken: true, isReturned: true })] }));
+  const miss = Array.from({ length: 30 }, (_, i) => order({ eventDate: dayStart(5 + i), items: [item()], customer: cust({ phone1: '' }) }));
+  const drafts = Array.from({ length: 5 }, (_, i) => order({ eventDate: dayStart(8 + i), items: [item()] }));
+  T.orders = [...late, ...debt, ...miss, ...drafts];
+  T.rawRows = debt.map((o) => ({ orderId: o.orderId, total: 100, paid: 0 }));
+  const { body } = await call('/api/a5/adv-alerts?focus=alerts&unsaved=' + drafts.map((o) => o.orderId).join(','));
+  assert.equal(body.rows.length, L.ROWS);
+  assert.equal(body.truncated, true);
+  assert.equal(body.cap, 200);
+  assert.equal(body.total, 419 + 205 + 30 + 5);
+  assert.deepEqual(body.counts, { late: 419, notReturned: 0, debt: 205, missing: 30, unsaved: 5 });
+  const byLink = new Map([...late.map((o) => [o.orderId, 'late']), ...debt.map((o) => [o.orderId, 'debt']), ...miss.map((o) => [o.orderId, 'missing']), ...drafts.map((o) => [o.orderId, 'unsaved'])]);
+  const got = { late: 0, debt: 0, missing: 0, unsaved: 0 };
+  for (const l of body.links) got[byLink.get(Number(l.split('/').pop()))]++;
+  // 200 / 4 סוגים = 50; הטיוטות (5) ו"חסרים" (30) נשמרים במלואם, והשאר מתחלקים בין איחורים לחובות
+  assert.equal(got.unsaved, 5);
+  assert.equal(got.missing, 30);
+  assert.equal(got.late + got.debt, 165);
+  assert.ok(got.late >= 80 && got.debt >= 80, JSON.stringify(got));
+  assert.ok(body.links.length === new Set(body.links).size);
+});
+await t('סוג אחד נבחר: כל 200 השורות שלו, והספירה והסך נכונים', async () => {
+  allow('page:orders');
+  T.orders = Array.from({ length: 300 }, (_, i) => order({ eventDate: dayStart(-40 - i) }));
+  const { body } = await call('/api/a5/adv-alerts?focus=alerts&flags=ar_late');
+  assert.equal(body.rows.length, 200);
+  assert.equal(body.total, 300);
+  assert.equal(body.counts.late, 300);
+});
+await t('איחורים ממוינים מהכי מאחרת: הזמנה בת 400 יום לפני בת 41', async () => {
+  allow('page:orders');
+  const a = order({ eventDate: dayStart(-41) });
+  const b = order({ eventDate: dayStart(-400) });
+  const c = order({ eventDate: dayStart(-120) });
+  T.orders = [a, b, c];
+  const { body } = await call('/api/a5/adv-alerts?focus=alerts&flags=ar_late');
+  assert.deepEqual(body.links, [b, c, a].map((o) => '/orders/' + o.orderId));
+});
+await t('סריקה: מעל OUT_SCAN מועמדות — האיחורים הישנים ביותר לא נופלים, וגם ה"לא חזרו" החדשים נשארים; scanTruncated', async () => {
+  allow('page:orders');
+  const L = lib.ALERT_LIMITS;
+  const lates = Array.from({ length: L.OUT_SCAN + 50 }, (_, i) => order({ eventDate: dayStart(-30 - i) }));
+  const oldest = lates[lates.length - 1];
+  const unret = order({ eventDate: dayStart(-1) });
+  T.orders = [unret, ...lates];
+  const late = await call('/api/a5/adv-alerts?focus=alerts&flags=ar_late');
+  assert.equal(late.body.links[0], '/orders/' + oldest.orderId, 'הכי מאחרת ראשונה');
+  assert.equal(late.body.scanTruncated, true);
+  const both = await call('/api/a5/adv-alerts?focus=alerts&flags=ar_late,ar_unret');
+  assert.ok(both.body.links.includes('/orders/' + unret.orderId), 'שמלה שלא חזרה (חדשה) נשארת');
+  assert.equal(both.body.counts.notReturned, 1);
+});
+await t('lib: capAlertEntries — מכסה הוגנת, השארית עוברת לסוגים הגדולים, סדר נשמר', () => {
+  const mk = (flag, i) => ({ order: { orderId: i, eventDate: new Date(2026, 0, 1 + (i % 300)) }, reasons: [{ flag, daysLate: 1000 - i }] });
+  const es = [];
+  let id = 1;
+  for (const [f, n] of [['ar_late', 419], ['ar_debt', 205], ['ar_missing', 30], ['ar_unsaved', 5]]) for (let k = 0; k < n; k++) es.push(mk(f, id++));
+  const { kept, capped } = lib.capAlertEntries(es, 200);
+  assert.equal(capped, true);
+  assert.equal(kept.length, 200);
+  const n = (f) => kept.filter((e) => e.reasons[0].flag === f).length;
+  assert.deepEqual([n('ar_unsaved'), n('ar_missing'), n('ar_late'), n('ar_debt')], [5, 30, 83, 82]);
+  assert.deepEqual(lib.capAlertEntries(es.slice(0, 10), 200).capped, false);
+  assert.deepEqual(lib.countAlertTypes(es), { late: 419, notReturned: 0, debt: 205, missing: 30, unsaved: 5 });
 });
 
 console.log('adv-alerts: רכות-כשל');
