@@ -30,7 +30,7 @@ async function t(name, fn) {
   catch (e) { console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
 }
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
-const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report'];
+const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board'];
 const BOTH = ['shell', 'home', ...NEW_SCREENS];
 
 console.log('1. הרשומה המרכזית');
@@ -49,7 +49,7 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
   assert.deepEqual(UI_SCREENS, UI_SCREEN_IDS, 'lib/uiVariant.js נגזר מהרשומה');
   assert.equal(UI_VARIANT_SETTING_KEY_LIST.length, UI_SCREEN_IDS.length);
 });
-await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report; order_card / customer_card עוד לא', () => {
+await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board; order_card / customer_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
   for (const id of ['order_card', 'customer_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
@@ -219,6 +219,7 @@ const NEW_PLACES = [
   ['app/components/admin-hub/AdminHubPage.js', 'admin_hub', 'header'],
   ['app/components/attendance/AttendancePage.js', 'attendance', 'header'],
   ['app/components/errorReport/ErrorReportWindow.js', 'error_report', 'window'],
+  ['app/components/board/BoardPage.js', 'board', 'header'],
   ['app/components/home/HomeA5.js', 'home', 'hero'],
   ['app/components/AppShell.js', 'shell', 'topbar'],
 ];
@@ -242,6 +243,7 @@ await t('האייקון בגרסה הישנה: VariantFrame (פינה) סביב 
     ['app/employees/report/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyReportPage \/>/],
     ['app/employees/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyEmployeesPage \/>/],
     ['app/components/home/HomeSwitch.js', /<VariantFrame screen="home" variant="legacy"><LegacyHome \/><\/VariantFrame>/],
+    ['app/board/page.js', /<VariantFrame screen="board" variant=\{variant\}>[\s\S]*<LegacyBoardPage \/>/],
   ];
   for (const [f, re] of legacyMounts) assert.match(code(read(f)), re, f);
   assert.match(code(read('app/employees/attendance/page.js')), /=== 'legacy'\) redirect\('\/employees'\)/);
@@ -333,6 +335,7 @@ const RESTORED = [
   ['f3b1f771^1', 'app/employees/report/page.js', 'app/employees/report/LegacyReportPage.js'],
   ['f3b1f771^1', 'app/my-hours/page.js', 'app/my-hours/LegacyMyHoursPage.js'],
   ['c944cb95', 'app/components/ErrorReportButton.js', 'app/components/LegacyErrorReportButton.js'],
+  ['c944cb95', 'app/board/page.js', 'app/board/LegacyBoardPage.js'], // הלוח החודשי הישן (feature/board-new-design-2026-10-04)
 ];
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 let gitOk = true;

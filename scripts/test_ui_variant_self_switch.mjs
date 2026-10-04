@@ -40,13 +40,13 @@ await ta('isManagementRole: 0 ו-2 בלבד (כמו isHeadManagement ב-layout);
 });
 // 4.10.2026: הרשימה נגזרת מ-lib/uiVariantScreens.js (selfSwitch + שתי הגרסאות קיימות) - נוספו 4 המסכים של אותו יום.
 await ta('מסכים מותרים: shell, home + המסכים של 4.10.2026 (מהרשומה)', () => {
-  assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report']);
-  for (const s of ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report']) assert.equal(isSelfSwitchScreen(s), true);
+  assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board']);
+  for (const s of ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board']) assert.equal(isSelfSwitchScreen(s), true);
   for (const s of ['order_card', 'customer_card', '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
 });
 await ta('describeSelfSwitch: הנהלה / מתכנת רואים את הסעיף; מנהל סניף, עובד, אורח לא', () => {
-  assert.deepEqual(describeSelfSwitch(emp({ roleId: 0 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report'] });
-  assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report'] });
+  assert.deepEqual(describeSelfSwitch(emp({ roleId: 0 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board'] });
+  assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board'] });
   for (const e of [emp({ roleId: 1 }), emp({ roleId: 5 }), emp({ roleId: null }), null]) assert.deepEqual(describeSelfSwitch(e), { canSelfSwitch: false, screens: [] });
 });
 

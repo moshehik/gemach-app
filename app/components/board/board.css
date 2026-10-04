@@ -1,0 +1,236 @@
+/* app/components/board/board.css - CSS מקומי ללוח החודשי (/board, BoardPage.js).
+   השורש: .gm-ds.gm-lz.gm-bd.home-bg.dlg-dark - הלוח הוא המשך של דף הלו״ז בעיצוב המאושר (לוח-חודשי.html נבנה על אותה
+   מעטפת lz-*), ולכן schedule.css חל עליו (lz-app, topbar, lz-rail/st-stab, שורות lz-r, lz-st, lz-pop, toast, "בטוח?").
+   כאן רק מה שאין בפלטה ובלו״ז: גריד החודש (lz-hc / lz-day / lz-pr - ערכי העיצוב, שורות 1019-1085 של המעטפת שם), שורת
+   החיפוש + מסנן השלבים (hf-* בערכים המחושבים של כרטיס-הזמנה.html #hfBar, כולל השכבות hf-inside / hf-popup / hf-adv-look
+   / hf-t-clear), בורר החודשים, תצוגת הרשימה. כל כלל בהיקף .gm-ds.gm-bd.
+   הבעלים 4.10.2026: S02 - כל מוני השלבים באותו גוון, רק מונה עם התראה בגוון אחר; S04 - "החודש הנוכחי" בגובה מתג התצוגה;
+   BD-O3 - אין חלונות בלוח (חלון היום נמחק). שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "הלוח החודשי"). */
+
+.gm-ds.gm-bd{--bd-pc:var(--navy-500);--bd-pc-al:#f38a6b}
+
+/* ===== גוף הדף ===== */
+/* מלא-רוחב: מבטלים את ריפוד העטיפה של המעטפת רק כשהיא מכילה את הדף (כמו home.css כלל 1 / profile.css) */
+.app-shell .main .content:has(> .gm-ds.gm-bd){max-width:none;margin-inline:0;padding:0}
+.gm-ds.gm-bd .bd-app{padding-top:50px}
+@media (max-width:640px){.gm-ds.gm-bd .bd-app{padding-top:18px}}
+
+/* ===== שורת החיפוש + מסנן השלבים (E01 + S01): בדיוק חיפוש ההיסטוריה בכרטיס ההזמנה ===== */
+.gm-ds.gm-bd .hf-bar.bd-search{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin:14px 0 0;max-width:720px}
+.gm-ds.gm-bd .bd-search .hf-s{position:relative;display:flex;align-items:center;flex:none;width:100%;height:60px;min-width:0;padding:0;padding-inline-end:0;overflow:visible;border:2px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.3);box-shadow:none;transition:border-color 150ms,box-shadow 150ms}
+.gm-ds.gm-bd .bd-search .hf-s:hover{border-color:var(--gold-b)}
+.gm-ds.gm-bd .bd-search .hf-s:focus-within{border-color:var(--gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3)}
+.gm-ds.gm-bd .bd-search .hf-s>svg.ic{position:absolute;inset-inline-start:20px;top:18px;width:20px;height:20px;color:var(--navy-500);pointer-events:none;transition:color 150ms,transform 250ms var(--spring)}
+.gm-ds.gm-bd .bd-search .hf-s:focus-within>svg.ic{color:var(--navy);transform:scale(1.12)}
+/* ה-input: design-overrides.css (input:not(x4) = 0,4,1) ו-globals.css צובעים רקע/גבול/טבעת לכל שדה - נטרול בספציפיות גבוהה יותר */
+.gm-ds.gm-bd .bd-search .hf-s input#bdQ:not([type="checkbox"]):not([type="radio"]){flex:1;min-width:0;height:100%;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;outline:0;padding-block:0;padding-inline:52px 20px;font-size:17px;color:var(--navy-900)}
+.gm-ds.gm-bd .bd-search .hf-s input::placeholder{color:var(--ink3)}
+.gm-ds.gm-bd .bd-search .hf-s input::-webkit-search-cancel-button{display:none}
+.gm-ds.gm-bd .bd-search .hf-cl{position:static;flex:none;width:32px;height:32px;margin-inline-end:6px;padding:1px 6px;border-radius:50%;border:0;background:var(--sky-100);color:var(--navy);display:grid;place-items:center;cursor:pointer;opacity:0;transform:scale(.5);visibility:hidden;transition:opacity 160ms,transform 220ms var(--spring),background-color 150ms,visibility 0s 160ms}
+.gm-ds.gm-bd .bd-search .hf-cl.on{opacity:1;transform:none;visibility:visible;transition-delay:0s}
+.gm-ds.gm-bd .bd-search .hf-cl:hover,.gm-ds.gm-bd .bd-search .hf-cl:focus-visible{background:var(--navy);color:#fff;outline:0}
+.gm-ds.gm-bd .bd-search .hf-cl svg.ic{width:16px;height:16px}
+.gm-ds.gm-bd .bd-search .hf-sel{position:relative;flex:none;align-self:stretch;display:flex;padding:4px;border-inline-start:0}
+.gm-ds.gm-bd .bd-search .hf-t{position:relative;width:auto;height:100%;display:flex;align-items:center;gap:10px;padding:0 16px;border:1.5px solid var(--gold-b);border-radius:999px;background:transparent;color:var(--navy);font-weight:600;font-size:17px;white-space:nowrap;cursor:pointer;text-align:start;transition:border-color 150ms,box-shadow 150ms}
+.gm-ds.gm-bd .bd-search .hf-t:hover,.gm-ds.gm-bd .bd-search .hf-t:focus-visible{background:var(--navy);color:#fff;outline:0}
+.gm-ds.gm-bd .bd-search .hf-t:hover .ic,.gm-ds.gm-bd .bd-search .hf-t:focus-visible .ic{color:#fff;stroke:#fff}
+.gm-ds.gm-bd .bd-search .hf-t:disabled{cursor:not-allowed;opacity:.6;background:transparent;color:var(--navy)}
+.gm-ds.gm-bd .bd-search .hf-t>svg.ic{width:20px;height:20px;color:var(--navy-500)}
+.gm-ds.gm-bd .bd-search .hf-t .hf-lbl{flex:1}
+.gm-ds.gm-bd .bd-search .hf-t .hf-chv{width:20px;height:20px;margin-inline-start:auto;color:var(--navy-500);transition:transform 220ms var(--ease)}
+.gm-ds.gm-bd .bd-search .hf-sel.on .hf-t .hf-chv{transform:rotate(180deg)}
+.gm-ds.gm-bd .bd-search .hf-bdg{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--gbtn);color:#000;font-size:13px;font-weight:700;display:none;place-items:center}
+.gm-ds.gm-bd .bd-search .hf-bdg.has{display:grid}
+.gm-ds.gm-bd .bd-search .hf-scrim{display:none}
+.gm-ds.gm-bd .bd-search .hf-p{position:absolute;z-index:30;top:calc(100% + 8px);inset-inline-start:auto;inset-inline-end:0;width:min(360px,calc(100vw - 32px));min-width:240px;max-width:none;padding:8px;overflow:hidden;background:#fff;border:1px solid var(--navy);border-radius:16px;box-shadow:0 24px 60px -12px rgba(15,44,82,.35),0 2px 8px rgba(15,44,82,.08);opacity:0;visibility:hidden;transform:translateY(-8px) scale(.98);transform-origin:50% 0;transition:opacity 180ms var(--ease),transform 180ms var(--ease),visibility 0s 180ms}
+.gm-ds.gm-bd .bd-search .hf-sel.on .hf-p{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.gm-ds.gm-bd .bd-search .hf-all{display:flex;justify-content:flex-start;padding:4px 6px 8px;border-bottom:1px solid var(--sky-200);margin-bottom:6px}
+.gm-ds.gm-bd .bd-search .hf-allb{background:none;border:0;padding:6px 8px;font:inherit;font-weight:600;font-size:16px;color:var(--navy);cursor:pointer;border-radius:8px;min-height:36px}
+.gm-ds.gm-bd .bd-search .hf-allb:hover,.gm-ds.gm-bd .bd-search .hf-allb:focus-visible{background:var(--sky-100);outline:0}
+.gm-ds.gm-bd .bd-search .hf-l{display:flex;flex-direction:column;gap:4px;padding:0 8px 8px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;background:#fff}
+.gm-ds.gm-bd .bd-search .hf-o{position:relative;display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 10px;border-radius:14px;cursor:pointer;color:var(--navy-900);font-size:16px;font-weight:500;user-select:none;transition:background-color 140ms}
+.gm-ds.gm-bd .bd-search .hf-sel.on .hf-o{animation:gm-hf-row .28s var(--ease) both;animation-delay:calc(var(--k,0)*25ms)}
+.gm-ds.gm-bd .bd-search .hf-o::before{content:"";position:absolute;inset-inline-start:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:var(--gold);transform:scaleY(0);transition:transform 180ms var(--ease)}
+.gm-ds.gm-bd .bd-search .hf-o:hover,.gm-ds.gm-bd .bd-search .hf-o:focus-visible{background:var(--sky-50);outline:0}
+.gm-ds.gm-bd .bd-search .hf-o:focus-visible{box-shadow:inset 0 0 0 2px var(--gold)}
+.gm-ds.gm-bd .bd-search .hf-o[aria-selected=true]{background:var(--sky-50)}
+.gm-ds.gm-bd .bd-search .hf-o[aria-selected=true]::before{transform:none}
+.gm-ds.gm-bd .bd-search .hf-oi{width:36px;height:36px;flex:none;border-radius:50%;background:#fff;color:var(--navy);display:grid;place-items:center;transition:transform 220ms var(--spring),background-color 150ms}
+.gm-ds.gm-bd .bd-search .hf-oi svg.ic{width:20px;height:20px}
+.gm-ds.gm-bd .bd-search .hf-o:hover .hf-oi{transform:scale(1.14)}
+.gm-ds.gm-bd .bd-search .hf-o[aria-selected=true] .hf-oi{background:var(--sky-100)}
+.gm-ds.gm-bd .bd-search .hf-ol{flex:1;min-width:0}
+.gm-ds.gm-bd .bd-search .hf-oc{min-width:28px;height:24px;padding:0 8px;border-radius:999px;background:var(--sky-100);color:var(--navy);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;display:grid;place-items:center}
+.gm-ds.gm-bd .bd-search .hf-ck{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--sky-400);background:#fff;color:#fff;display:grid;place-items:center;transition:border-color 150ms,background-color 150ms}
+.gm-ds.gm-bd .bd-search .hf-ck svg.ic{width:14px;height:14px;opacity:0;stroke-width:3}
+.gm-ds.gm-bd .bd-search .hf-o[aria-selected=true] .hf-ck{background:var(--navy);border-color:var(--navy);animation:gm-popin .32s var(--spring)}
+.gm-ds.gm-bd .bd-search .hf-o[aria-selected=true] .hf-ck svg.ic{opacity:1}
+.gm-ds.gm-bd .bd-search .hf-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:0}
+.gm-ds.gm-bd .bd-search .hf-pill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 8px 0 12px;border-radius:999px;border:1.5px solid var(--gold-b);background:rgba(255,255,255,.3);color:var(--navy);font-size:14px;font-weight:500;cursor:pointer;animation:gm-popin .3s var(--spring)}
+.gm-ds.gm-bd .bd-search .hf-pill svg.ic{width:14px;height:14px}
+.gm-ds.gm-bd .bd-search .hf-pill .hf-pi{display:inline-grid;place-items:center;color:var(--navy-500)}
+.gm-ds.gm-bd .bd-search .hf-pill .hf-pi .ic{width:16px;height:16px}
+.gm-ds.gm-bd .bd-search .hf-pill:hover,.gm-ds.gm-bd .bd-search .hf-pill:focus-visible{background:var(--navy);color:#fff;border-color:var(--gold-b);outline:0}
+.gm-ds.gm-bd .bd-search .hf-pill:hover .hf-pi,.gm-ds.gm-bd .bd-search .hf-pill:focus-visible .hf-pi{color:var(--gold-300)}
+@media (max-width:640px){
+ .gm-ds.gm-bd .bd-search .hf-t{width:auto;min-width:0;padding:0 16px;justify-content:center}
+ .gm-ds.gm-bd .bd-search .hf-t .hf-lbl,.gm-ds.gm-bd .bd-search .hf-t .hf-chv{display:none}
+ .gm-ds.gm-bd .bd-search .hf-bdg{position:absolute;top:-7px;inset-inline-end:-7px}
+ .gm-ds.gm-bd .bd-search .hf-scrim{display:block;position:fixed;inset:0;z-index:118;background:rgba(10,34,66,.5);opacity:0;visibility:hidden;transition:opacity 180ms,visibility 0s 180ms}
+ .gm-ds.gm-bd .bd-search .hf-sel.on .hf-scrim{opacity:1;visibility:visible;transition-delay:0s}
+ .gm-ds.gm-bd .bd-search .hf-p{position:fixed;inset:auto 0 0 0;width:auto;min-width:0;max-width:none;z-index:120;top:auto;border-radius:16px;padding:8px;max-height:80dvh;transform:translateY(100%);transition:transform 240ms var(--ease),opacity 180ms,visibility 0s 240ms}
+ .gm-ds.gm-bd .bd-search .hf-p::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--sky-300);margin:0 auto 10px}
+ .gm-ds.gm-bd .bd-search .hf-sel.on .hf-p{transform:none}
+ .gm-ds.gm-bd .bd-search .hf-l{max-height:calc(80dvh - 120px)}
+}
+@media (max-width:479px){.gm-ds.gm-bd .bd-search .hf-lbl{display:none}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .bd-search :is(.hf-p,.hf-scrim,.hf-cl,.hf-chv){transition-duration:.01ms!important}.gm-ds.gm-bd .bd-search :is(.hf-o,.hf-pill,.hf-ck){animation:none!important}}
+
+/* ===== סרגל "החודש הנוכחי" + מתג לוח/רשימה (S03 + S04) ===== */
+.gm-ds.gm-bd .lz-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 4px}
+.gm-ds.gm-bd .lz-quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* S04: "בגובה של לחצני בורר תצוגת הטבלה" - הגלולה בגובה המתג (28px) במקום 44px של בורר 7/13 */
+.gm-ds.gm-bd #mToday{min-height:28px;height:28px;padding:0 14px;font-size:14px;line-height:1}
+
+/* ===== גריד החודש (לוח 1-6 של הפלטה + ערכי העיצוב) ===== */
+.gm-ds.gm-bd .lz-hc{margin-top:8px;background:rgba(255,255,255,.55)}
+.gm-ds.gm-bd .lz-hc .hc-g{gap:6px;padding:10px}
+.gm-ds.gm-bd .lz-hc .hc-w{padding:8px 10px;gap:6px}
+.gm-ds.gm-bd .lz-jw{position:relative;display:inline-block}
+.gm-ds.gm-bd .lz-jump{background:transparent;border:0;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;padding:4px 8px;border-radius:10px}
+.gm-ds.gm-bd .lz-jump:hover,.gm-ds.gm-bd .lz-jump:focus-visible{background:rgba(255,255,255,.12);outline:0}
+.gm-ds.gm-bd .lz-jump .ic{width:15px;height:15px;color:var(--gold-300);stroke:var(--gold-300);transform:none}
+.gm-ds.gm-bd .lz-hc .hc-e.bd-empty{min-height:100px;border-radius:12px;border:1px dashed var(--sky-300);background:transparent}
+.gm-ds.gm-bd .hc-d.lz-day{display:flex;flex-direction:column;align-items:stretch;gap:6px;text-align:start;min-height:100px;padding:8px 8px 10px;border:1px solid var(--sky-300);background:rgba(255,255,255,.7);font-weight:400;font-size:13px;line-height:1.25;border-radius:12px;color:var(--navy);cursor:pointer;min-width:0;transition:background-color 120ms,box-shadow 120ms}
+.gm-ds.gm-bd .hc-d.lz-day:hover{transform:none;background:#fff;box-shadow:0 8px 20px -12px rgba(15,44,82,.55)}
+.gm-ds.gm-bd .bd-dlink{display:inline-flex;align-items:center;gap:6px;min-width:0;color:inherit;font-weight:400;text-decoration:none;border-radius:8px;padding:0 2px}
+.gm-ds.gm-bd .bd-dlink:hover b{text-decoration:underline;text-decoration-color:var(--gold);text-underline-offset:3px}
+.gm-ds.gm-bd .bd-dlink:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.gm-ds.gm-bd .hc-d.lz-day.sh{background:rgba(251,178,156,.3)}
+.gm-ds.gm-bd .hc-d.lz-day.today{box-shadow:inset 0 0 0 2px var(--gold)}
+/* GAP-4 ("כן"): איחור החזרה - מסגרת אדומה לתא כולו (צבע ההתראה של הפלטה, אותה מסגרת כמו שורת ההזמנה בעיצוב: inset 2px),
+   בנוסף לסימן ההתראה האחד (JDG-5). תא של היום שגם באיחור: אדום בחוץ וזהב בפנים */
+.gm-ds.gm-bd .hc-d.lz-day.bd-latecell{box-shadow:inset 0 0 0 2px var(--red)}
+.gm-ds.gm-bd .hc-d.lz-day.today.bd-latecell{box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 4px var(--gold)}
+.gm-ds.gm-bd .lz-dh{display:flex;align-items:center;gap:6px;min-height:24px}
+.gm-ds.gm-bd .lz-dh b{font-size:17px;font-weight:700}
+.gm-ds.gm-bd .lz-dh em{font-style:normal;font-size:12px;font-weight:400;color:var(--ink3)}
+.gm-ds.gm-bd .bd-dhx{display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto}
+.gm-ds.gm-bd .lz-dh .lz-al{position:static}
+/* E10: פרשה וחגים - טקסט פשוט בלי תגית */
+.gm-ds.gm-bd .bd-notes{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.35;color:var(--ink2)}
+/* S02: מונים לפי שלב - אותו גוון לכולם; רק מונה של שלב עם התראה בגוון ההתראה */
+.gm-ds.gm-bd .lz-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.gm-ds.gm-bd .lz-pr{--pc:var(--bd-pc);display:flex;align-items:center;justify-content:flex-start;gap:6px;padding:3px 8px;border-radius:8px;background:color-mix(in srgb,var(--pc) 20%,#fff);border-inline-start:4px solid var(--pc);font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--navy-900);min-width:0}
+.gm-ds.gm-bd .lz-pr.al{--pc:var(--bd-pc-al)}
+.gm-ds.gm-bd .lz-pr .ic{width:16px;height:16px;flex:none;color:var(--navy-900)}
+.gm-ds.gm-bd .lz-pr b{font-weight:700;font-size:15px}
+/* במסך צר רק הגופן קטן (בעיצוב גם ריפוד 2px 5px, אבל כלל ה-@media שם מוגדר לפני הכלל הרגיל ולכן מפסיד - הערכים המחושבים בעיצוב: 3px 8px) */
+@media (max-width:1100px){.gm-ds.gm-bd .lz-pr{font-size:11.5px}}
+
+/* ===== בורר החודשים (E08 + S07): לוח הפלטה (.hc) בחלונית lz-pop של הלו״ז ===== */
+.gm-ds.gm-bd .bd-mp{width:min(340px,86vw);text-align:start}
+.gm-ds.gm-bd .bd-mp .hc-h .hc-t{font-size:16px}
+.gm-ds.gm-bd .bd-mp .hc-g.bd-mpg{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:12px}
+.gm-ds.gm-bd .bd-mp .hc-d.bd-mpd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-height:52px;padding:4px 2px;line-height:1.2;font-size:15px}
+.gm-ds.gm-bd .bd-mp .hc-d.bd-mpd small{font-size:12px;font-weight:500;color:var(--ink3)}
+.gm-ds.gm-bd .bd-mp .hc-d.bd-mpd.on small{color:var(--gold-300)}
+
+/* ===== תצוגת רשימה (S03): כל יום = שורה בדיוק כמו שורת תוצאה בחיפוש של דף הבית ===== */
+/* החלטת הבעלים 5.10.2026: "בתצוגת השורות העיצוב כמו שורה בתוצאות החיפוש, והאייקונים עם המספרים בתוך השורה". הסימון (card.res-one >
+   .list > a.li.rlink.lrow: ic-b, .t עם b + .ln, .go) הוא של HomeResults.js; כללי השורה שלו (components.css, כללי ".res-one .li" של דף הבית) מועתקים
+   כאן כמות שהם, רק עם הקידומת .gm-bd (הלוח אינו דף הבית). שומר סטטי: scripts/test_board_page.mjs (הכללים זהים לכללי הבית). */
+.gm-ds.gm-bd .res-one .li{align-items:center;gap:16px;padding:28px 12px;overflow:hidden;clip-path:inset(0 round 14px);contain:paint}
+.gm-ds.gm-bd .res-one .li.lrow::before{display:none}
+.gm-ds.gm-bd .res-one .li:hover,.gm-ds.gm-bd .res-one .li:focus-visible{background:linear-gradient(90deg,rgba(241,220,143,.34),rgba(212,176,74,.26) 55%,rgba(247,236,196,.38))}
+.gm-ds.gm-bd .res-one .li::after{content:"";position:absolute;top:0;bottom:0;right:0;left:auto;width:40%;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);transform:translateX(110%) skewX(-25deg);opacity:0;transition:opacity .15s,transform 0s .15s}
+.gm-ds.gm-bd .res-one .li:hover::after,.gm-ds.gm-bd .res-one .li:focus-visible::after{transform:translateX(-370%) skewX(-25deg);opacity:1;transition:opacity .1s,transform 2.2s cubic-bezier(.45,0,.25,1)}
+.gm-ds.gm-bd .res-one .li .t{display:flex;flex-direction:column;gap:6px}
+.gm-ds.gm-bd .res-one .li .t b{font-size:21px;font-weight:600;line-height:1.3;color:var(--gm-navy-900)}
+.gm-ds.gm-bd .res-one .li .t .ln{font-size:14px;font-weight:400;color:var(--gm-ink3)}
+.gm-ds.gm-bd .res-one .li .a{align-self:center;margin-inline-start:auto;padding-inline:8px}
+.gm-ds.gm-bd .res-one .li .go{transform:rotate(90deg);color:var(--gm-navy-500)}
+.gm-ds.gm-bd .res-one .li .ic-b{display:flex;align-items:center;width:75px;height:48px;padding:0 6px;gap:4px;justify-content:center;flex-direction:row;border-radius:14px;background:var(--gm-navy);color:#e8785a;align-self:center}
+.gm-ds.gm-bd .res-one .li .ic-b .ic{width:20px;height:20px;color:#f38a6b}
+.gm-ds.gm-bd .res-one .li .rlbl{flex:none;font-size:14px;font-weight:600;color:#fff}
+.gm-ds.gm-bd .res-one .li.rlink .ic-b .ic{color:#f4a68c!important;stroke:#f4a68c!important}
+.gm-ds.gm-bd .res-one .li:hover .ic-b{background:var(--gm-navy-700)}
+.gm-ds.gm-bd .res-one .li .t b,.gm-ds.gm-bd .res-one .li .t .ln,.gm-ds.gm-bd .res-one .li .a{transition:color 250ms ease}
+.gm-ds.gm-bd .res-one .li:hover .t b,.gm-ds.gm-bd .res-one .li:focus-visible .t b{color:#8a6a12}
+.gm-ds.gm-bd .res-one .li:hover .t .ln,.gm-ds.gm-bd .res-one .li:focus-visible .t .ln,.gm-ds.gm-bd .res-one .li:hover .a,.gm-ds.gm-bd .res-one .li:focus-visible .a{color:#9a7a1f}
+.gm-ds.gm-bd .rlink{color:inherit;text-decoration:none}
+.gm-ds.gm-bd .li .t .ln{display:block;color:var(--gm-ink3);font-size:14px;overflow-wrap:anywhere}
+.gm-ds.gm-bd .res-one .list{padding-inline:4px}
+.gm-ds.gm-bd .res-one .li .ic-b .ic{color:#fff!important;stroke:#fff!important}
+.gm-ds.gm-bd .bd-lcard{margin-top:8px;padding:0;overflow:hidden;background:rgba(255,255,255,.55)}
+.gm-ds.gm-bd .bd-lcard>.hc-h{margin:0;border-radius:0}
+.gm-ds.gm-bd .bd-lcard .bd-list{padding:6px 12px 14px}
+.gm-ds.gm-bd .bd-lrow{flex-wrap:wrap;row-gap:12px}
+.gm-ds.gm-bd .bd-lrow .t{flex:1 1 200px;min-width:0}
+/* האייקונים עם המספרים בתוך השורה (BD-O5 + החלטת 5.10): אותם lz-pr של התא, בסוף השורה לפני סימן ההתראה והחץ */
+.gm-ds.gm-bd .bd-lrow .bd-lc{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;flex:0 1 auto;min-width:0;margin-inline-start:auto}
+.gm-ds.gm-bd .bd-lc .lz-pr{padding:4px 12px}
+.gm-ds.gm-bd .bd-lrow .lz-al{position:static;flex:none}
+.gm-ds.gm-bd .bd-lrow.bd-ltoday{box-shadow:inset 0 0 0 2px var(--gold)}
+.gm-ds.gm-bd .bd-lrow.bd-latecell{box-shadow:inset 0 0 0 2px var(--red)}
+.gm-ds.gm-bd .bd-lrow.bd-ltoday.bd-latecell{box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 4px var(--gold)}
+.gm-ds.gm-bd .bd-lrow:focus-visible{box-shadow:inset 0 0 0 2px var(--gold)}
+/* ===== טלפון (<=720px; החלטת הבעלים 5.10 "ותקן לטלפון"): שורת היום בשתי שורות בתוך השורה - למעלה לוחית + כותרת (התאריך העברי בשורה אחת) + חץ,
+   למטה המונים (+ סימן ההתראה בסופה). גריד ולא flex-wrap כדי שהשורה לא תקרוס ל"תאריך בשתי שורות" כשהמסך צר. הגודל קטן מ-21px של
+   תוצאות החיפוש (שם יש 1280px); במחשב (>720px) כל הכללים שלמעלה נשארים כמות שהם. אזורי מגע >=44px. ===== */
+@media (max-width:720px){
+ .gm-ds.gm-bd .res-one .li.bd-lrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"tile ttl go" "cnt cnt mark";align-items:center;gap:8px 10px;padding:12px 10px;min-height:64px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .ic-b{grid-area:tile;width:52px;height:40px;padding:0 4px;gap:3px;border-radius:12px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .ic-b .ic{width:16px;height:16px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .rlbl{font-size:13px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .t{grid-area:ttl;flex:none;min-width:0;gap:2px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .t b{font-size:clamp(13px,4.2vw,16px);line-height:1.3;white-space:nowrap}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .t .ln{font-size:12.5px;line-height:1.3}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .go{grid-area:go}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .bd-lc{grid-area:cnt;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px;margin:0;min-width:0}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .lz-al{grid-area:mark;justify-self:end}
+ .gm-ds.gm-bd .bd-lc .lz-pr{padding:3px 10px}
+ .gm-ds.gm-bd .bd-lcard .bd-list{padding:2px 6px 10px}
+ .gm-ds.gm-bd .res-one .list{padding-inline:0}
+ /* אזורי מגע >=44px בסרגל, בכותרת החודש ובמסנן */
+ .gm-ds.gm-bd #mToday{min-height:44px;height:44px;padding:0 16px}
+ .gm-ds.gm-bd #mvsw{width:100px;height:46px;padding:0}
+ .gm-ds.gm-bd #mvsw .vknob{top:0;bottom:0;inset-inline-start:0;width:50%}
+ .gm-ds.gm-bd #mvsw.t .vknob{inset-inline-start:50%}
+ .gm-ds.gm-bd #mvsw .vopt .ic{width:18px;height:18px}
+ .gm-ds.gm-bd .lz-bar{gap:10px}
+ .gm-ds.gm-bd .bd-lcard>.hc-h{gap:8px;padding:10px 8px}
+ .gm-ds.gm-bd .hc-h .hc-n{width:44px;height:44px;flex:none}
+ .gm-ds.gm-bd .lz-jump{min-height:44px;padding:4px 8px;white-space:nowrap;font-size:16px}
+ /* בורר החודשים ממורכז מתחת לשם החודש (כותרת הכרטיס ממורכזת), לא מיושר לקצה - בטלפון הקצה היה גולש מחוץ למסך */
+ .gm-ds.gm-bd .lz-pop.bd-mp{inset-inline-start:50%;translate:50% 0}
+ .gm-ds.gm-bd .bd-search .hf-cl{width:44px;height:44px;margin-inline-end:4px}
+ .gm-ds.gm-bd .bd-search .hf-pill{height:44px;padding:0 10px 0 14px}
+ .gm-ds.gm-bd .bd-search .hf-allb{min-height:44px}
+ .gm-ds.gm-bd .bd-search .hf-s input::placeholder{text-overflow:ellipsis}
+}
+
+/* תצוגת הלוח (גריד) בטלפון: 7 עמודות של ~40px - אות היום, סימן התראה ומוני השלבים כמספרים בלבד (בלי אייקון ובלי פרשה/חג; הפירוט המלא ברשימה) */
+@media (max-width:720px){
+ .gm-ds.gm-bd .lz-hc .hc-g{gap:3px;padding:6px}
+ .gm-ds.gm-bd .lz-hc .hc-w{padding:8px 6px;gap:3px}
+ .gm-ds.gm-bd .lz-hc .hc-e.bd-empty{min-height:84px;border-radius:8px}
+ .gm-ds.gm-bd .hc-d.lz-day{min-height:84px;padding:4px 3px 6px;gap:4px;border-radius:8px}
+ .gm-ds.gm-bd .lz-day .lz-dh{flex-wrap:wrap;justify-content:center;gap:2px;min-height:22px}
+ .gm-ds.gm-bd .lz-day .lz-dh em,.gm-ds.gm-bd .lz-day .bd-notes{display:none}
+ .gm-ds.gm-bd .lz-day .lz-dh b{font-size:15px}
+ .gm-ds.gm-bd .lz-day .bd-dhx{margin-inline-start:0}
+ .gm-ds.gm-bd .lz-day .lz-rows{grid-template-columns:minmax(0,1fr);gap:2px}
+ .gm-ds.gm-bd .lz-day .lz-pr{justify-content:center;gap:0;padding:1px 2px;border-inline-start-width:3px;border-radius:6px;font-size:12px}
+ .gm-ds.gm-bd .lz-day .lz-pr .ic{display:none}
+ .gm-ds.gm-bd .lz-day .lz-pr b{font-size:13px}
+}
+
+/* הדף בלי חלונות (BD-O3): רק הסימן הצף של הטולטיפ של הדף מעל המעטפת */
+.gm-ds.gm-bd .pl-tt{z-index:1250}
+
+/* ===== מצב טעינה (E18): כרטיס ריק עם מחוון הפלטה ===== */
+.gm-ds.gm-bd .card.bd-loading{margin-top:8px}
+.gm-ds.gm-bd .card.bd-loading .empty{padding:56px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.gm-ds.gm-bd .card.bd-loading .mspin{border-color:rgba(15,44,82,.25);border-top-color:var(--navy)}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .hc-d.lz-day{transition:none}}
