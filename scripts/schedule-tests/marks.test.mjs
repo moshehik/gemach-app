@@ -5,6 +5,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { installDb, NOW, DAY, SETTINGS_ORG2, ORDERS } from './fixtures.mjs';
 
 const L = (rel) => import(pathToFileURL(process.env.PROJ + '/' + rel).href);
@@ -543,7 +544,18 @@ test('unmark on a fact-done row (stage 6, all items taken): the mark is undone b
   }
 });
 
-test('stage 8 unmark cancels ONLY the items the schedule itself returned (returnDate == markedAt); scan-returned items keep their state; DressItem.location follows /api/returns/scan', async () => {
+// SCH-RET-LOC (החלטת הבעלים 4.10.2026 = ב'): הלו״ז לא נוגע ב-DressItem.location. אותו תרחיש רץ פעמיים - עם המתג
+// כפי שהוא בקוד (false: אף כתיבה על DressItem, לא בסימון ולא בביטול), ועם updateDressLocation:true שמוכיח שההתנהגות
+// הקודמת (כמו /api/returns/scan) עדיין נמצאת במרחק הקבוע האחד ולא נשברה.
+test('SCH-RET-LOC: the switch is OFF in code and the marks route does not override it', () => {
+  assert.equal(M.SCHEDULE_RETURN_UPDATES_DRESS_LOCATION, false);
+  const route = readFileSync(new URL('app/api/schedule/marks/route.js', pathToFileURL(process.env.PROJ + '/')), 'utf8');
+  assert.ok(route.includes('applyStageMark(input, { user })') && !route.includes('updateDressLocation'), 'the route must use the code default');
+});
+
+async function stage8LocationScenario(updateDressLocation) {
+  const moves = updateDressLocation === true;
+  const opts = updateDressLocation === undefined ? {} : { updateDressLocation };
   const byScan = bareItem({ id: 'it-scan', isReturned: true, returnedOk: true, returnDate: d('2026-09-30T10:00:00Z'), dressItemId: 'di-scan' });
   const pending = bareItem({ id: 'it-pend', dressItemId: 'di-pend' });
   const noDress = bareItem({ id: 'it-nodress' }); // before a barcode was assigned: no DressItem to move
@@ -553,21 +565,24 @@ test('stage 8 unmark cancels ONLY the items the schedule itself returned (return
   } });
   const di = (id) => globalThis.__MOCK_DB.dressItem.find((x) => x.id === id);
   // mark: only the two pending items are returned; their dresses move to the store
-  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: 'ok', source: 'row' });
+  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: 'ok', source: 'row' }, opts);
   assert.equal(r.results[0].status, 'marked');
   assert.deepEqual(writes('orderItem', 'update').map((c) => c.args.where.id).sort(), ['it-nodress', 'it-pend']);
-  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), [['di-pend', 'חנות']]);
-  assert.equal(di('di-pend').location, 'חנות');
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), moves ? [['di-pend', 'חנות']] : []);
+  assert.equal(writes('dressItem').length, moves ? 1 : 0, 'no other DressItem write of any kind');
+  assert.equal(di('di-pend').location, moves ? 'חנות' : 'מושכר');
   assert.equal(r.results[0].row.done, true);
   assert.equal(r.results[0].row.returnCondition, 'ok');
   let row = rowOf(await day(), 'manret', 3002);
   assert.equal(row.done, true); assert.equal(row.returnCondition, 'ok'); assert.equal(row.returnedCount, 3);
   // unmark: only it-pend / it-nodress (returnDate == markedAt) go back; it-scan stays returned; di-pend -> מושכר, di-scan untouched
   globalThis.__MOCK_CALLS = [];
-  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: null, source: 'row' });
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: null, source: 'row' }, opts);
   assert.deepEqual(writes('orderItem', 'update').map((c) => c.args.where.id).sort(), ['it-nodress', 'it-pend']);
   assert.ok(writes('orderItem', 'update').every((c) => c.audit.action === 'CANCEL_RETURN'));
-  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), [['di-pend', 'מושכר']]);
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), moves ? [['di-pend', 'מושכר']] : [], 'unmark never "reverts" a location it did not set');
+  assert.equal(writes('dressItem').length, moves ? 1 : 0);
+  assert.equal(di('di-pend').location, 'מושכר');
   assert.equal(di('di-scan').location, 'חנות');
   assert.equal(byScan.isReturned, true, 'returned by scan earlier: untouched');
   assert.equal(pending.isReturned, false);
@@ -579,7 +594,7 @@ test('stage 8 unmark cancels ONLY the items the schedule itself returned (return
   assert.equal(row.returnedCount, 1);
   // a row that is done only by facts (all returned by scan, no mark): unmark cancels nothing, the row stays done, note explains
   globalThis.__MOCK_CALLS = [];
-  const f = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3003, outcome: null, source: 'row' });
+  const f = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3003, outcome: null, source: 'row' }, opts);
   assert.equal(writes('orderItem').length, 0);
   assert.equal(writes('dressItem').length, 0);
   assert.equal(f.results[0].row.done, true);
@@ -588,6 +603,22 @@ test('stage 8 unmark cancels ONLY the items the schedule itself returned (return
   assert.match(f.results[0].row.note, /הוחזרו בסריקה/);
   row = rowOf(await day(), 'manret', 3003);
   for (const k of ['done', 'doneVia', 'returnCondition']) assert.deepEqual(f.results[0].row[k], row[k], k);
+  // "הכל בוצע" בשלב 8 עובר באותו setReturned - אותו מתג
+  installWithTable({ extra: {
+    order: [...ORDERS, manretOrder(3004, [bareItem({ id: 'it-a1', dressItemId: 'di-a1' })])],
+    dressItem: [{ id: 'di-a1', location: 'מושכר' }],
+  } });
+  const all = await apply({ action: 'mark_all', stageKey: 'manret', dayKey: DAY, orderIds: [3004], source: 'all' }, opts);
+  assert.ok(all.results.some((x) => x.orderId === 3004 && x.status === 'marked'));
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), moves ? [['di-a1', 'חנות']] : []);
+}
+
+test('stage 8 unmark cancels ONLY the items the schedule itself returned (returnDate == markedAt); scan-returned items keep their state; DressItem.location is NOT touched (SCH-RET-LOC = B, code default)', async () => {
+  await stage8LocationScenario(undefined);
+});
+
+test('SCH-RET-LOC: the old behaviour is one constant away - with the switch on, DressItem.location follows /api/returns/scan (mark -> חנות, unmark -> מושכר)', async () => {
+  await stage8LocationScenario(true);
 });
 
 // ---- הנתיב: שערים -----------------------------------------------------------------------------------

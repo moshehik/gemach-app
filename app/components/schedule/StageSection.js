@@ -8,7 +8,7 @@ import { SectionTools } from './ScheduleToolbarSlots';
 import { STAGE_META } from './scheduleMeta';
 
 // מקטע שלב אחד - כמו cardHTML בעיצוב (לוז-יומי.html, שורות 1990-1998): כותרת (אייקון זהב + שם), לחצן "הכל בוצע"
-// (וי כפול, לחצן 34/54/72), שבבים (משמרת, שעות איסוף), כלי הדפסה/הורדה/XL בקצה השמאלי; מתחת כרטיס עם פס התקדמות
+// (וי כפול, לחצן 34/54/72), שבבים ("N התראות", משמרת, שעות איסוף), כלי הדפסה/הורדה/XL בקצה השמאלי; מתחת כרטיס עם פס התקדמות
 // ושורות / טבלה. שורות עם התראה ראשונות (visibleItems בעיצוב), אחריהן לביצוע, ובסוף מה שבוצע; הסדר של השרת נשמר
 // בתוך כל קבוצה.
 //
@@ -38,6 +38,9 @@ function StageSection({ stage, view, pickupHours, marks, canMarkAll = true, dayL
   const pct = known && total ? Math.round((100 * done) / total) : 0;
   const pending = known ? rows.filter((row) => row.done !== true) : [];
   const showAll = known && pending.length > 0 && canMarkAll && (!marking || marks.canMarkAll);
+  // שבב "N התראות" (החלטת הבעלים 4.10.2026, SCH-CHIP-ALERTS = א'; עיצוב cardHTML שורה 1992): מספר השורות עם התראה
+  // במקטע - נספר מהשורות המוצגות, כך שהוא מתעדכן יחד איתן אחרי סימון "בוצע". "N אירועים" לא חוזר (SCH-CHIP-EVENTS = ב').
+  const alertRows = rows.filter((row) => row.alerts && row.alerts.length).length;
   return (
     <section className="lz-sec" id={'st-' + stage.key} data-k={stage.key} style={{ '--pc': 'var(' + meta.color + ')' }}>
       <div className="lz-hrow">
@@ -49,6 +52,7 @@ function StageSection({ stage, view, pickupHours, marks, canMarkAll = true, dayL
           <MarkAllButton stage={stage} pending={pending} busy={marking && marks.isBusy(stage.key, 'all')} onMarkAll={marking ? marks.onMarkAll : null} dayLabel={dayLabel} />
         ) : null}
         <div className="lz-chips">
+          {alertRows ? <span className="chip st-bad"><ScheduleIcon name="alert" />{alertRows} התראות</span> : null}
           {stage.shiftLabel ? <span className="chip st-today">{'משמרת ' + stage.shiftLabel}</span> : null}
           {stage.key === 'pick' && pickupHours ? <span className="chip st-today">{'שעות איסוף ' + pickupHours}</span> : null}
         </div>

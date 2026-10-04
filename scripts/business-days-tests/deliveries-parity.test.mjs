@@ -299,3 +299,46 @@ test('D. result/row shape and the Prisma where clause are unchanged when nothing
   assert.ok(res0.data.some((r) => r.directions.includes('out')));
   assert.ok(!res0.data.some((r) => r.directions.includes('return')), 'return window (n=1) still empty on Shabbat');
 });
+
+// F. SCH-DELIV-0 (owner decision 4.10.2026, option B): delivery_days_after = 0 is NOT a parity case any more. The old
+// code collected on the event day itself even when it was closed; now a closed event day (Fri / Shabbat / chag / erev
+// chag / owner-closed - the full rule, like manual returns, whatever delivery_skip_weekends says) rolls the return
+// pick-up to the next working day. The outbound direction must be untouched by the return setting, and on a working
+// day with no closed day right before it the result equals the old code exactly.
+const D_PREV = (k) => { const [y, m, d] = k.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d - 1)); return t.toISOString().slice(0, 10); };
+test('F. days_after=0 (SCH-DELIV-0): returns follow rollForwardToWorkingDay; outbound untouched; working days without a closed run before them = old code', async () => {
+  const dirSet = (res, dir) => res.data.filter((r) => r.directions.includes(dir)).map((r) => r.orderId).sort((x, y) => x - y);
+  let checks = 0, rolled = 0;
+  for (const skip of [false, true]) {
+    for (const byEvent of [false, true]) {
+      const combo0 = { skip, byEvent, before: 1, after: 0 };
+      for (const day of eachKey(...DAYS)) {
+        const [a, b] = await runBoth(combo0, day);
+        installDb({ settings: settings({ ...combo0, after: 1 }), orders: ORDERS });
+        invalidateSettingsCache();
+        const b1 = await NEW(localMidnight(day));
+        const tag = `${JSON.stringify(combo0)} ${day}`;
+        assert.deepEqual(dirSet(b, 'out'), dirSet(b1, 'out'), `${tag}: outbound must not depend on delivery_days_after`);
+        if (byEvent) {
+          // by-event page = the event day: same orders/directions as the old code, only the return pick-up day may move
+          assert.deepEqual(b.data.map((r) => r.orderId), a.data.map((r) => r.orderId), tag);
+          for (const r of b.data) {
+            if (!r.directions.includes('return')) continue;
+            const ev = BY_ID.get(r.orderId).eventKey;
+            assert.equal(r.dispatchDates.return, B.rollForwardToWorkingDay(ev), `${tag} order ${r.orderId}`);
+            if (r.dispatchDates.return !== ev) { rolled++; assert.ok(B.isNonWorkingDay(ev), `${tag}: only a closed event day moves`); }
+          }
+        } else {
+          const want = ORDERS.filter((o) => o.deliveryDirection !== 'הלוך' && B.rollForwardToWorkingDay(o.eventKey) === day).map((o) => o.orderId).sort((x, y) => x - y);
+          assert.deepEqual(dirSet(b, 'return'), want, `${tag}: return = every event whose rolled pick-up day is this day`);
+          if (B.isNonWorkingDay(day)) assert.equal(dirSet(b, 'return').length, 0, `${tag}: a closed day collects nothing`);
+          else if (!B.isNonWorkingDay(D_PREV(day))) assert.deepEqual(dirSet(b, 'return'), dirSet(a, 'return'), `${tag}: no closed day before -> same as the old code`);
+          else rolled++;
+        }
+        checks++;
+      }
+    }
+  }
+  console.log(`# INFO deliveries F (days_after=0): ${checks} day/combo runs checked, ${rolled} roll-forward cases`);
+  assert.ok(rolled > 0);
+});
