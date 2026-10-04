@@ -1,4 +1,4 @@
-// צילומי מסך של כל החלונות/המצבים של הלוח האמיתי (API מדומה): לוח, מסנן פתוח, בורר חודשים, חלון יום, חלונית פרטים,
+// צילומי מסך של כל החלונות/המצבים של הלוח האמיתי (API מדומה): לוח, מסנן פתוח, בורר חודשים, חלון יום (בסצנה בלי הרשאה ללו״ז), חלונית פרטים,
 // תפריט, חלון השכרה, "בטוח?", פרטי פריט, רשימה, טעינה, שער. שימוש: node views.mjs <רוחב> <תיקיית פלט>
 import { serve, launch, sleep, PORT } from './lib.mjs';
 const width = Number(process.argv[2] || 1280);
@@ -22,7 +22,7 @@ await go('');
 await click('#mJump'); await shot('04-month-picker');
 await p.keyboard.press('Escape');
 if (width > 720) {
-  await click('.lz-day .bd-ex'); await shot('05-day-dialog');
+  await go('noschedule'); await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(500); await shot('05-day-dialog');
   await hover('.bd-day .bd-info'); await shot('06-info-hint');
   await click('.bd-day .bd-or .li'); await shot('07-menu');
   await p.evaluate(() => [...document.querySelectorAll('.bd-menu-w .menu button')].find((x) => /השכרה/.test(x.textContent)).click());
@@ -39,6 +39,6 @@ await go('loading'); await shot('13-loading');
 await go('gate'); await shot('14-gate');
 await go('guest'); await shot('15-guest');
 await go('bpp');
-if (width > 720) { await click('.lz-day .bd-ex'); await shot('16-day-bpp'); }
+if (width > 720) { await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(500); await shot('16-day-bpp'); }
 console.log(errs.join('\n') || 'no errors');
 await b.close(); s.close(); process.exit(0);
