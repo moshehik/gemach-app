@@ -7,6 +7,7 @@ import HebrewDatePicker from '@/components/HebrewDatePicker';
 import HebrewDateRangePicker from '@/components/HebrewDateRangePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
+import { deliveryPrintWantsNew, planDeliveryPrint, distinctDispatchDates, deliveryPrintHint } from '@/lib/deliveriesPrint';
 import { getHebrewDateString, getHebrewWeekdayFullName, getIsraelTodayKey } from '@/lib/hebrewDate';
 
 // "היום" לפי שעון ישראל (לא לפי אזור הזמן של המכשיר) - תואם את /api/deliveries.
@@ -74,6 +75,7 @@ export default function DeliveriesPage() {
   const [printTo, setPrintTo] = useState(selectedDate);
   const [printBagDate, setPrintBagDate] = useState(selectedDate);
   const [emailSending, setEmailSending] = useState(false);
+  const [printOpening, setPrintOpening] = useState(false); // בדיקת הרשאה/תאריך לפני פתיחת דף ההדפסה החדש
   const [emailResult, setEmailResult] = useState(null); // { ok, message }
 
   const openPrintModal = (action) => {
@@ -85,17 +87,47 @@ export default function DeliveriesPage() {
     setShowPrintModal(true);
   };
 
+  // הדפסה: דפי הלו״ז החדשים (תעודות משלוח PP-12 במקום "נתונים לשקית", PP-10/PP-18 למשלוחן - lib/deliveriesPrint.js) כשאפשר,
+  // והדפים הישנים (/print/delivery-bag, /print/delivery-courier - נשארו חיים) לטווח, לבחירה לפי תאריך אירוע ולמי שאין לו/ה
+  // הרשאת הלו״ז. כשצריך בדיקת רשת לפני שיודעים לאן, החלון נפתח מיד (בתוך הלחיצה, נגד חוסם חלונות) ומנווטים אליו אחר כך.
+  const openDeliveryPrint = async (kind) => {
+    const base = { kind, direction: printDirection, from: printFrom, to: printTo, bagDate: printBagDate, byEventDate };
+    const pre = deliveryPrintWantsNew(base);
+    if (!pre.wantsNew) {
+      window.open(planDeliveryPrint({ ...base, allowedKeys: [] }).url, '_blank');
+      setShowPrintModal(false);
+      return;
+    }
+    const w = window.open('', '_blank');
+    if (!w) {
+      setEmailResult({ ok: false, message: 'הדפדפן חסם את חלון ההדפסה. אפשרו חלונות קופצים לאתר ונסו שוב.' });
+      return;
+    }
+    try { w.document.title = 'טוען…'; w.document.body.dir = 'rtl'; w.document.body.textContent = 'טוען את דף ההדפסה…'; } catch { /* חלון בלי גישה - לא קריטי */ }
+    setPrintOpening(true);
+    setEmailResult(null);
+    let plan;
+    try {
+      const accessRes = await fetch('/api/schedule/print?format=access', { credentials: 'same-origin', cache: 'no-store' });
+      const access = accessRes.ok ? await accessRes.json() : null;
+      let eventModeDispatchDates = null;
+      if (kind === 'bag' && byEventDate) {
+        const r = await fetch(`/api/deliveries?date=${printBagDate}`, { cache: 'no-store' });
+        const j = r.ok ? await r.json() : null;
+        eventModeDispatchDates = distinctDispatchDates(j && j.data, 'out');
+      }
+      plan = planDeliveryPrint({ ...base, allowedKeys: access && Array.isArray(access.allowed) ? access.allowed : null, eventModeDispatchDates });
+    } catch {
+      plan = planDeliveryPrint({ ...base, allowedKeys: null });
+    }
+    try { w.location.href = plan.url; } catch { w.close(); setEmailResult({ ok: false, message: 'לא ניתן לפתוח את דף ההדפסה.' }); setPrintOpening(false); return; }
+    setPrintOpening(false);
+    setShowPrintModal(false);
+  };
+
   const submitPrintModal = async () => {
-    if (printAction === 'bag-label') {
-      window.open(`/print/delivery-bag?date=${printBagDate}`, '_blank');
-      setShowPrintModal(false);
-      return;
-    }
-    if (printAction === 'courier-print') {
-      window.open(`/print/delivery-courier?direction=${printDirection}&from=${printFrom}&to=${printTo}`, '_blank');
-      setShowPrintModal(false);
-      return;
-    }
+    if (printAction === 'bag-label') { await openDeliveryPrint('bag'); return; }
+    if (printAction === 'courier-print') { await openDeliveryPrint('courier'); return; }
     // courier-email
     setEmailSending(true);
     setEmailResult(null);
@@ -432,13 +464,16 @@ export default function DeliveriesPage() {
               <div className="pill-tabs" style={{ marginBottom: '16px' }}>
                 <button type="button" className={`pill-tab${printAction === 'courier-print' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-print'); setEmailResult(null); }}>הדפסה למשלוחן</button>
                 <button type="button" className={`pill-tab${printAction === 'courier-email' ? ' active' : ''}`} onClick={() => { setPrintAction('courier-email'); setEmailResult(null); }}>שליחה במייל</button>
-                <button type="button" className={`pill-tab${printAction === 'bag-label' ? ' active' : ''}`} onClick={() => { setPrintAction('bag-label'); setEmailResult(null); }}>הדפסת נתונים לשקית</button>
+                <button type="button" className={`pill-tab${printAction === 'bag-label' ? ' active' : ''}`} onClick={() => { setPrintAction('bag-label'); setEmailResult(null); }}>הדפסת תעודות משלוח</button>
               </div>
 
               {printAction === 'bag-label' ? (
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label>{byEventDate ? 'תאריך אירוע (משלוחי הלוך בלבד)' : 'תאריך (משלוחי הלוך בלבד)'}</label>
                   <HebrewDatePicker value={printBagDate} onChange={setPrintBagDate} />
+                  {deliveryPrintHint({ kind: 'bag', bagDate: printBagDate, byEventDate }) && (
+                    <p className="hint" style={{ marginTop: '8px', marginBottom: 0 }}>{deliveryPrintHint({ kind: 'bag', bagDate: printBagDate, byEventDate })}</p>
+                  )}
                 </div>
               ) : (
                 <>
@@ -453,6 +488,9 @@ export default function DeliveriesPage() {
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label>{byEventDate ? 'טווח תאריכי אירוע' : 'טווח תאריכים'}</label>
                     <HebrewDateRangePicker startDate={printFrom} endDate={printTo} onChange={(start, end) => { setPrintFrom(start); setPrintTo(end); }} />
+                    {printAction === 'courier-print' && deliveryPrintHint({ kind: 'courier', from: printFrom, to: printTo, byEventDate }) && (
+                      <p className="hint" style={{ marginTop: '8px', marginBottom: 0 }}>{deliveryPrintHint({ kind: 'courier', from: printFrom, to: printTo, byEventDate })}</p>
+                    )}
                   </div>
                 </>
               )}
@@ -465,8 +503,8 @@ export default function DeliveriesPage() {
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => setShowPrintModal(false)} disabled={emailSending}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={submitPrintModal} disabled={emailSending}>
-                {emailSending ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+              <button type="button" className="btn btn-primary" onClick={submitPrintModal} disabled={emailSending || printOpening}>
+                {emailSending || printOpening ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
                 {printAction === 'courier-email' ? (emailSending ? 'שולח...' : 'שליחה') : 'הדפסה'}
               </button>
             </div>
