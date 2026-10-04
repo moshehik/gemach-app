@@ -501,5 +501,58 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+/* ---------- 11. חלון "דיווח על שגיאות" (app/components/errorReport/errorReport.css + launcher.css): אותו משטר היקף ---------- */
+// החלון מוצג מעל כל דף (portal ל-body) בשתי המעטפות, ולכן דליפה ממנו = דליפה לכל האתר. בדיקת נאמנות: scripts/error-report-audit.
+const ER_CSS = read('../app/components/errorReport/errorReport.css');
+const ER_LAUNCH_CSS = read('../app/components/errorReport/launcher.css');
+const erRules = parseCss(ER_CSS);
+const erLaunchRules = parseCss(ER_LAUNCH_CSS);
+const ER_OUT_OF_SCOPE_OK = new Set(['body.gm-er-picking', 'body.gm-er-picking *']); // סמן כוונת בזמן סימון אלמנט בעמוד
+// לבן קשיח מהסקיצה המאושרת: רקע התמונות הממוזערות, תיבת הכתיבה והשדות בחלון הבהיר
+const ER_WHITE_OK = new Set(['.gm-ds.gm-er .er-shot', '.gm-ds.gm-er .er-elt', '.gm-ds.gm-er .er-fileb', '.gm-ds.gm-er .er-vid', '.gm-ds.gm-er.dlg-dark #dlg.er-light .er-composer', '.gm-ds.gm-er.dlg-dark #dlg.er-light :is(input,textarea):not([type=checkbox])', '.gm-ds.gm-er .er-lbel', '.gm-ds.gm-er .er-lbfr']);
+// !important על רקע - רק הכללים של הסקיצה (תיבת הטקסט שקופה בתוך תיבת הכתיבה, שדה החיפוש, "פניות שלי" / "+ דיווח חדש" במצב נוכחי)
+const ER_IMPORTANT_BG_OK = new Set(['.gm-ds.gm-er #dlg.er-win .er-composer textarea.inp', '.gm-ds.gm-er #dlg.er-win .er3-s input', '.gm-ds.gm-er #dlg.er-win .er-newb.cur', '.gm-ds.gm-er #dlg.er-win .er-inb']);
+t('errorReport.css: כל כלל בהיקף .gm-ds.gm-er (חוץ מסמן הסימון על body), בלי .gm-home', () => {
+  const bad = [];
+  for (const r of erRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-er(?![\w-])/.test(s) && !ER_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+  assert.ok(!/gm-home/.test(ER_CSS), 'gm-home בחלון');
+});
+t('launcher.css (הכפתור הצף, נטען בכל דף): כל כלל בהיקף .gm-er-launch ובלי הפלטה', () => {
+  const bad = [];
+  for (const r of erLaunchRules) for (const s of splitSel(r.sel)) if (!/^\.gm-er-launch(\s|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+  assert.ok(!/\.gm-ds/.test(ER_LAUNCH_CSS.replace(/\/\*[\s\S]*?\*\//g, '')), 'הכפתור הצף לא תלוי בפלטה (components.css נטען רק עם החלון)');
+});
+t('errorReport.css: אין רקע לבן קשיח מחוץ לרשימה; !important על רקע רק בכללי הסקיצה', () => {
+  const bad = [];
+  for (const r of erRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if ((WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) && !splitSel(r.sel).every((s) => ER_WHITE_OK.has(s))) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!ER_IMPORTANT_BG_OK.has(s)) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('errorReport.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(erRules, 'errorReport.css'), []);
+});
+const hasEr = (selRe, propRe, { important = false, valueRe } = {}) => erRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('errorReport.css: נטרול דליפות (נמצאו ב-error-report-audit) - גופן, צבע כותרות, ריפוד לחצנים, כפתור שליחה מנוטרל, שורש בלי רקע/גובה של .gm-ds', () => {
+  assert.ok(hasEr(/\.gm-ds\.gm-er :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'גופן ללחצנים/שדות (design-overrides.css)');
+  assert.ok(hasEr(/\.gm-ds\.gm-er :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'גופן לכותרות');
+  assert.ok(hasEr(/\.gm-ds\.gm-er :where\(h1,h2,h3,h4,h5,h6\)/, /^color$/, { valueRe: /^inherit/ }), 'צבע כותרות (globals.css חום)');
+  assert.ok(hasEr(/:where\(\.er-x0,\.er-cb,\.er-send/, /^padding$/, { valueRe: /^1px 6px/ }), 'ריפוד ברירת המחדל של לחצנים (globals.css מאפס)');
+  assert.ok(hasEr(/\.er-send:disabled/, /^opacity$/, { valueRe: /^1/ }), 'כפתור שליחה מנוטרל אטום (globals.css)');
+  assert.ok(hasEr(/^\.gm-ds\.gm-er$/, /^display$/, { valueRe: /^contents/ }), 'השורש display:contents (הפלטה נותנת ל-.gm-ds רקע וגובה מסך)');
+});
+t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגולים כחולים (.xlbtn.xlp), שמות בזהב (טוקן), בלי תפריט ⋯', () => {
+  assert.ok(hasEr(/\.er3-acts \.xlbtn \.ic/, /^color$/, { valueRe: /#1e63c4/ }), 'אייקון בכחול של הכפתור');
+  assert.ok(!erRules.some((r) => /\.er3-acts/.test(r.sel) && setsProp(r, /^(width|height|border-radius|background|border)$/).length && !/\.on|:disabled/.test(r.sel)), 'הכפתור העגול לא מעוצב מחדש - רק הפלטה (.tools .xlbtn.xlp)');
+  assert.ok(hasEr(/\.er3-bh b/, /^color$/, { valueRe: /var\(--er-name\)/ }) && /--er-name:var\(--gm-gold-d\)/.test(ER_CSS) && /--er-name:var\(--gm-gold-300\)/.test(ER_CSS), 'שמות בזהב של הפלטה');
+  assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
