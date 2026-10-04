@@ -277,6 +277,7 @@ await t('הכפתור הצף: שקט כברירת מחדל, נחשף בריחו�
   has(LCSS, /\.er-fab\{[^}]*opacity:\.5/, 'שקט');
   has(LCSS, /\.er-fab:hover,\.gm-er-launch \.er-fab:focus-within,\.gm-er-launch \.er-fab\.reveal\{transform:translateX\(-14px\);opacity:1\}/, 'נחשף');
   has(BTN, /if \(touch && !fabReveal\)/, 'נגיעה ראשונה');
+  has(BTN, /\{mounted && perms\.known && !authFailed && createPortal\(/, 'הכפתור הצף מוצג רק אחרי שהבדיקה הקלה אישרה משתמש (בלי הבזק בדפים בלי משתמש)');
 });
 
 console.log('הרכבה בשתי המעטפות, CSS, אייקונים');

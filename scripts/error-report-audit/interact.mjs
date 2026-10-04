@@ -34,6 +34,10 @@ const openRow = async (id) => { await click(`.er3-r[data-id="${id}"]`, 600); };
 const attach = async (file) => { const [fc] = await Promise.all([p.waitForFileChooser(), click('.er-cb[data-act="file"]', 50)]); await fc.accept([F(file)]); await sleep(500); };
 const tip = async (sel) => { await hover(sel); return p.evaluate(() => { const t = document.querySelector('.gm-er .pl-tt.on'); return t ? t.textContent : null; }); };
 
+// ---------- בלי משתמש מחובר (401): הכפתור הצף לא מוצג בכלל ----------
+await go('auth=0');
+ok(!(await exists('#erFab')), 'בלי משתמש מחובר (401 בבדיקה הקלה): אין כפתור צף');
+
 // ---------- מונה לא נקראו + פתיחה בטופס ----------
 await go();
 ok((await text('#snErr .sn-badge')) === '2', 'מונה "לא נקראו" על האייקון (בדיקה קלה ?light=1): 2');

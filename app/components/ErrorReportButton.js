@@ -165,7 +165,8 @@ export default function ErrorReportButton({ trigger } = {}) {
         </button>
       )}
 
-      {mounted && !authFailed && createPortal(
+      {/* רק אחרי שהבדיקה הקלה אישרה משתמש מחובר (perms.known) - בלי הבזק של הכפתור בדפים בלי משתמש (401) */}
+      {mounted && perms.known && !authFailed && createPortal(
         <div className="gm-er-launch" dir="rtl">
           <div className={`er-fab${isOpen ? ' hide' : ''}${fabReveal ? ' reveal' : ''}`} id="erFab">
             <span className="er-tip">דיווח על שגיאה</span>
