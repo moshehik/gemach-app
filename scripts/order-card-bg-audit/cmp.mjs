@@ -24,6 +24,13 @@ const APPROVED_STAGE = [
   ['10-conflict', /^DLG>div\.dbtns>button\.block\.btn\.ghost/, 'R12: לחצן שלישי "חזרה לעריכה" (החלטת הבעלים: 3 בחירות; בעיצוב רק 2)'],
   ['10-conflict', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
   ['11-stock', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
+  // W7 (מסמכים): בעיצוב שכבת הסקירה מסמנת "דף הכנה למחסן"/"דף משלוח" כשורות מקווקוות חצי שקופות ("עוד לא אושר"); הבעלים אישר את שתיהן (A3/A4)
+  ['41-print-menu', /^TOP>div\.tools>div\.menu\.open>button \[op\]$/, 'A3/A4: שורות מקווקוות בשכבת הסקירה = לא מאושר עדיין; בכרטיס החדש הן שורות רגילות'],
+  ['42-print-menu-hover', /^TOP>div\.tools>div\.menu\.open>button \[op\]$/, 'A3/A4: כנ"ל'],
+  // AMB-11 (בעלים: לבנות את כולם): "תמונות דגמים" נבנה כ-PDF ולא כ-ZIP - בלי הצ'יפ הזהוב של סוג ZIP
+  ['44-mail-quick', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
+  ['45-mail-filled', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
+  ['46-mail-preview', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
 ];
 const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => s2 === st && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };

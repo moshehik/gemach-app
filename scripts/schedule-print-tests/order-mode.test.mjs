@@ -172,17 +172,70 @@ test('ייצוא שורות (format=rows) של דף הכנה ללא orderId נש
   assert.equal(typeof payloadToRows, 'function');
 });
 
-// ---------- דף ההדפסה ----------
-test('דף ההדפסה: רושם ORDER_PRINTED רק עם orderId, ולא ב-downloadPdf / preview / דפדפן ראש-חסר; לא מדפיס יום שלם כשה-orderId שגוי', () => {
+// ---------- דף ההדפסה + רישום הדפסת יום (AMB-20, החלטת הבעלים) ----------
+test('דף ההדפסה: רושם ORDER_PRINTED רק כשמדפיס (לא downloadPdf / preview / ראש-חסר); orderId = אירוע להזמנה, בלי orderId = הדפסת יום לכל הזמנה בדף; orderId שגוי = שגיאה', () => {
   const src = fs.readFileSync(path.join(process.env.PROJ, 'app/schedule/print/[page]/page.js'), 'utf8').replace(/\/\/.*$/gm, '');
   assert.ok(/schedulePrintEventBody\(\{ orderId, pageKey: p\.key, loadId \}\)/.test(src));
-  assert.ok(/if \(!ready \|\| !payload \|\| !orderId \|\| downloadPdf \|\| preview \|\| printLoggedRef\.current\) return;/.test(src));
+  assert.ok(/scheduleDayPrintEventBodies\(\{ orderIds: collectPrintedOrderIds\(p\.data\), pageKey: p\.key, loadId \}\)/.test(src));
+  assert.ok(/if \(!ready \|\| !payload \|\| downloadPdf \|\| preview \|\| printLoggedRef\.current \|\| badOrderId\) return;/.test(src));
   assert.ok(/navigator\.webdriver === true/.test(src));
-  assert.ok(/fetch\('\/api\/orders\/events'/.test(src));
   assert.ok(/badOrderId/.test(src) && /מספר הזמנה לא תקין/.test(src));
   assert.ok(/qs\.set\('orderId', String\(orderId\)\)/.test(src));
-  // לא נרשם לכל הזמנה בהדפסת יום: אין שום לולאה על שורות הדף שרושמת אירוע
+  // כל הרישום בלולאה אחת של bodies ובקריאה אחת ל-/api/orders/events (בלי כתיבה ידנית אחרת)
   assert.equal((src.match(/orders\/events/g) || []).length, 1);
+  assert.ok(!/auditLog|AuditLog/.test(src));
+});
+
+test('collectPrintedOrderIds: כל ההזמנות שמופיעות בדף (rows / orders / groups[].rows / late), בלי כפילויות, לפי סדר; לכל 15 הדפים ביום הדמה', async () => {
+  assert.deepEqual(om.collectPrintedOrderIds({ rows: [{ orderId: 3, dresses: [{ n: 1 }] }, { orderId: 1 }], groups: [{ rows: [{ orderId: 3 }, { orderId: 9 }] }], late: [{ orderId: 7, items: [{ id: 'x', orderId: 7 }] }], totals: { orders: 5 } }), [3, 1, 9, 7]);
+  assert.deepEqual(om.collectPrintedOrderIds({ rows: [{ orderId: '5' }, { orderId: 0 }, { orderId: -2 }, { orderId: 1.5 }, {}] }), [], 'רק מספרים שלמים וחיוביים');
+  assert.deepEqual(om.collectPrintedOrderIds(null), []);
+  assert.deepEqual(om.collectPrintedOrderIds({ deep: { a: { b: { c: { d: { e: { f: { g: { h: { i: { orderId: 4 } } } } } } } } } } }), [], 'עומק מוגבל');
+  const { PRINT_PAGES } = await L('lib/schedule/print/registry.js');
+  const { ORDERS } = await import(pathToFileURL(process.env.PROJ + '/scripts/schedule-tests/fixtures.mjs').href);
+  const known = new Set(ORDERS.map((o) => o.orderId));
+  const keys = PRINT_PAGES.filter((p) => p.status === 'ready').map((p) => p.key);
+  assert.equal(keys.length, 15);
+  const r = await get('?page=' + keys.join(',') + '&date=2026-10-01');
+  assert.equal(r.status, 200, JSON.stringify(r.__json).slice(0, 300));
+  let withOrders = 0;
+  for (const p of r.__json.pages) {
+    const ids = om.collectPrintedOrderIds(p.data);
+    assert.ok(ids.every((id) => known.has(id)), p.key + ': רק הזמנות קיימות');
+    if (ids.length) withOrders++;
+    // כל אחת מההזמנות שנאספו מופיעה באמת בטקסט הדף (JSON) - אין "הזמנה" שלא מודפסת
+    assert.ok(ids.every((id) => JSON.stringify(p.data).includes('"orderId":' + id)), p.key);
+  }
+  assert.ok(withOrders >= 10, 'רוב הדפים עם הזמנות ביום הדמה: ' + withOrders);
+  const prep = r.__json.pages.find((p) => p.key === 'PP-07');
+  assert.deepEqual(om.collectPrintedOrderIds(prep.data), prep.data.rows.map((x) => x.orderId));
+  const dout = r.__json.pages.find((p) => p.key === 'PP-12');
+  assert.deepEqual(om.collectPrintedOrderIds(dout.data), dout.data.orders.map((x) => x.orderId));
+});
+
+test('scheduleDayPrintEventBodies: אירוע לכל הזמנה בקבוצות של 200 (batch, count, source print-page), doc לפי הדף, clientEventId ייחודי; עומד בחוזה W0', async () => {
+  const OE = await L('lib/history/orderEvents.js');
+  const ids = Array.from({ length: 450 }, (_, i) => 5000 + i);
+  const bodies = OE.scheduleDayPrintEventBodies({ orderIds: [...ids, 5000, 0, -1, 'x'], pageKey: 'PP-07', loadId: 'pLoad12345' });
+  assert.deepEqual(bodies.map((b) => b.orderIds.length), [200, 200, 50]);
+  assert.equal(new Set(bodies.map((b) => b.clientEventId)).size, 3);
+  for (const b of bodies) {
+    const p = parseEventsRequest(b);
+    assert.equal(p.ok, true, JSON.stringify(p));
+    assert.deepEqual(p.meta, { source: 'print-page', batch: true, doc: 'prep', sheet: 'PP-07', count: 450 });
+  }
+  assert.deepEqual(bodies.flatMap((b) => b.orderIds), ids, 'כפילויות ומספרים לא תקינים נזרקים');
+  assert.equal(OE.scheduleDayPrintEventBodies({ orderIds: [1], pageKey: 'PP-12', loadId: 'x' })[0].meta.doc, 'delivery');
+  const other = OE.scheduleDayPrintEventBodies({ orderIds: [1], pageKey: 'PP-10', loadId: 'x' })[0];
+  assert.deepEqual(other.meta, { doc: 'schedule', sheet: 'PP-10', source: 'print-page', batch: true, count: 1 });
+  assert.equal(parseEventsRequest(other).ok, true);
+  assert.deepEqual(OE.scheduleDayPrintEventBodies({ orderIds: [], pageKey: 'PP-07', loadId: 'x' }), []);
+  assert.deepEqual(OE.scheduleDayPrintEventBodies({ orderIds: [1], pageKey: 'PP-99', loadId: 'x' }), []);
+  // כל דף רשום ב-registry ניתן לרישום, והמפה הליטרלית ב-orderEvents זהה לרישום
+  const { PRINT_PAGES } = await L('lib/schedule/print/registry.js');
+  assert.deepEqual(Object.keys(OE.SCHEDULE_SHEET_LABELS).sort(), PRINT_PAGES.map((p) => p.key).sort());
+  for (const p of PRINT_PAGES) assert.equal(OE.SCHEDULE_SHEET_LABELS[p.key], p.label, p.key);
+  for (const p of PRINT_PAGES) assert.equal(parseEventsRequest(OE.scheduleDayPrintEventBodies({ orderIds: [1], pageKey: p.key, loadId: 'abcdefgh' })[0]).ok, true, p.key);
 });
 
 test('PDF: /api/pdf מתיר את נתיב דף ההדפסה להזמנה בודדת (path + query) עם page:schedule', async () => {

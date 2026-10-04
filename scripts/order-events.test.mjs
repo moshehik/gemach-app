@@ -922,3 +922,50 @@ test('email quick: a send failure writes EMAIL_FAILED with the typed subject; re
   assert.match(sent[0].body.subject, /הזמנה #501/);
   assert.equal(sent[0].body.fileContent, 'JVBERi0x');
 });
+
+// ======================================= W7 / AMB-20 (owner decision): whole-day schedule prints are recorded per order
+test('events W7: a whole-day schedule print (doc schedule / prep, batch) is logged for every order, in ONE insert; page:schedule is enough; an order print still is not', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-sched';
+  const ids = Array.from({ length: 60 }, (_, i) => 1000 + i);
+  const r = await postEvent({ orderIds: ids, action: 'ORDER_PRINTED', meta: { doc: 'schedule', sheet: 'PP-10', source: 'print-page', batch: true, count: 60 }, clientEventId: 'day-load-PP-10-0' });
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(r.__json.written, 60);
+  assert.equal(audit().length, 60);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'auditLog' && c.method === 'createMany').length, 1, 'one batched INSERT for the 60 orders');
+  assert.deepEqual(JSON.parse(audit()[0].changesJson), { source: 'print-page', batch: true, count: 60, doc: 'schedule', sheet: 'PP-10', clientEventId: 'day-load-PP-10-0' });
+  assert.ok(audit().every((a) => a.entityType === 'Order' && a.action === 'ORDER_PRINTED' && a.employeeId === 'emp-sched'));
+  // the same load posted again is a duplicate (no second set of rows)
+  const again = await postEvent({ orderIds: ids, action: 'ORDER_PRINTED', meta: { doc: 'schedule', sheet: 'PP-10', source: 'print-page', batch: true, count: 60 }, clientEventId: 'day-load-PP-10-0' });
+  assert.equal(again.__json.duplicate, true);
+  assert.equal(audit().length, 60);
+  // a prep day print uses the existing doc
+  const prep = await postEvent({ orderIds: ids.slice(0, 3), action: 'ORDER_PRINTED', meta: { doc: 'prep', sheet: 'PP-07', source: 'print-page', batch: true, count: 3 }, clientEventId: 'day-load-PP-07-0' });
+  assert.equal(prep.status, 200, JSON.stringify(prep.__json));
+  assert.equal(audit().length, 63);
+  const order = await postEvent({ orderIds: ids.slice(0, 2), action: 'ORDER_PRINTED', meta: { doc: 'order', batch: true, count: 2 } });
+  assert.equal(order.status, 403, 'page:schedule does not allow logging an order print');
+  globalThis.__AUTH_TOKEN = 'emp-blocked';
+  assert.equal((await postEvent({ orderIds: [1000], action: 'ORDER_PRINTED', meta: { doc: 'schedule', sheet: 'PP-10' } })).status, 403);
+});
+
+test('events W7: doc schedule needs a sheet that is not PP-07/PP-12; prep/delivery keep their own sheet; the label maps cover every sheet', () => {
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule' }).ok, false, 'sheet required');
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-07' }).ok, false, 'PP-07 is doc prep');
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-12' }).ok, false, 'PP-12 is doc delivery');
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-99' }).ok, false);
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'prep', sheet: 'PP-01' }).ok, false);
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'order', sheet: 'PP-01' }).ok, false);
+  assert.deepEqual(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-16', batch: true, count: 12, source: 'print-page' }).meta, { source: 'print-page', batch: true, doc: 'schedule', sheet: 'PP-16', count: 12 });
+  assert.ok(OE.eventPageKeys('ORDER_PRINTED', { doc: 'schedule' }).includes('page:schedule'));
+  for (const k of OE.SCHEDULE_SHEET_KEYS) assert.ok(CD.labelChangeValue('sheet', k), k);
+  // email attachment kinds added for the quick mail (W7)
+  assert.ok(OE.EMAIL_ATTACHMENT_KINDS.includes('receipt') && OE.EMAIL_ATTACHMENT_KINDS.includes('model-photos'));
+  assert.deepEqual(OE.emailAttachmentSummary({ hasOrderPdf: false, extraRaw: [{ fileName: 'קבלה.pdf', fileContent: 'QQ==', kind: 'receipt' }, { fileName: 'תמונות.pdf', fileContent: 'QQ==', kind: 'model-photos' }] }), [{ kind: 'receipt', name: 'קבלה.pdf' }, { kind: 'model-photos', name: 'תמונות.pdf' }]);
+});
+
+test('customer feed W7: a day print reads "הודפס … (הדפסת יום)", a schedule-page print names its sheet, a single print has no suffix', () => {
+  // the mapper itself is exercised by scripts/customer-history.test.mjs; the label rule is pinned in source
+  const s = src('lib/history/customerHistory.js');
+  assert.match(s, /value\.doc === 'schedule' \? \(SCHEDULE_SHEET_LABELS\[value\.sheet\] \|\| 'דף לו״ז'\)/);
+  assert.match(s, /const dayPrint = !!value\.batch && value\.source === 'print-page' && \['prep', 'delivery', 'schedule'\]\.includes\(value\.doc\);/);
+});

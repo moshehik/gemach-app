@@ -5,7 +5,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { PrintDocument } from '@/app/components/schedule/print/PrintShell';
 import { parsePageList, parseVersions, versionsParam } from '@/lib/schedule/print/registry';
 import { PRINT_FONT_CSS } from '@/lib/schedule/print/font';
-import { hasOrderIdParam, orderModeVersions, parseOrderIdParam, schedulePrintEventBody } from '@/lib/schedule/print/orderMode';
+import { collectPrintedOrderIds, hasOrderIdParam, orderModeVersions, parseOrderIdParam, schedulePrintEventBody } from '@/lib/schedule/print/orderMode';
+import { scheduleDayPrintEventBodies } from '@/lib/history/orderEvents';
 import '@/app/components/schedule/print/print.css';
 
 // /schedule/print/<PP-01 | PP-01,PP-15>?date=YYYY-MM-DD[&branch=..][&version=b | PP-03:b,PP-07:a][&downloadPdf=true][&preview=1]
@@ -16,8 +17,8 @@ import '@/app/components/schedule/print/print.css';
 //     אומר ל-lib/pdf.js שהדף מוכן.
 //   - preview=1: תצוגה מקדימה בתוך האשף (iframe) - בלי הדפסה אוטומטית ובלי סרגל הכפתורים.
 //   - orderId=N (כרטיס ההזמנה, W7): PP-07 / PP-12 להזמנה אחת, בלי date (ר' lib/schedule/print/orderMode.js). הדף רושם בהיסטוריית ההזמנה
-//     ORDER_PRINTED {doc:'prep'|'delivery', sheet, source:'print-page'} פעם אחת בטעינה שמדפיסה (לא ב-downloadPdf / preview / דפדפן ראש-חסר);
-//     הדפסות יום מרוכזות (בלי orderId) לא נרשמות לכל הזמנה (AMB-20).
+//     ORDER_PRINTED {doc:'prep'|'delivery', sheet, source:'print-page'} פעם אחת בטעינה שמדפיסה (לא ב-downloadPdf / preview / דפדפן ראש-חסר).
+//     הדפסת יום (בלי orderId; החלטת הבעלים, AMB-20): אירוע ORDER_PRINTED בהיסטוריית כל הזמנה שמופיעה בדף (batch:true, count) - ר' ה-useEffect למטה.
 // הרשאות: app/schedule/layout.js (page:schedule) + ה-API בודק לכל דף את extraPageKeys שלו (403 -> הודעה).
 // המעטפת הגלובלית (תפריט/סרגל) מוסתרת דרך body.hide-global-nav (אותו מנגנון כמו עמדת הלקוח).
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -95,19 +96,30 @@ export default function SchedulePrintPage() {
     return () => clearTimeout(t);
   }, [ready, payload, downloadPdf, preview]);
 
-  // רישום ORDER_PRINTED להזמנה בודדת (חוזה W0 §1.1/§1.5): רק כשהדף באמת מדפיס - לא ב-PDF, לא בתצוגה מקדימה, לא בדפדפן ראש-חסר
-  // (מי שהפיק את הקובץ רושם ORDER_PDF_DOWNLOADED). פעם אחת בטעינה, לכל דף clientEventId משלו.
+  // רישום ORDER_PRINTED (חוזה W0 §1.1/§1.5; AMB-20 בהחלטת הבעלים) - רק כשהדף באמת מדפיס: לא ב-PDF, לא בתצוגה מקדימה, לא בדפדפן ראש-חסר
+  // (מי שהפיק את הקובץ רושם ORDER_PDF_DOWNLOADED). פעם אחת בטעינה.
+  //   - orderId (כרטיס ההזמנה): אירוע אחד להזמנה, doc prep/delivery, batch:false.
+  //   - הדפסת יום (בלי orderId): אירוע לכל הזמנה שמופיעה בכל דף שבמסמך - batch:true, count = מספר ההזמנות בדף; PP-07 = prep, PP-12 = delivery,
+  //     כל דף אחר = doc 'schedule' + sheet. בקבוצות של עד 200 הזמנות לבקשה (השרת כותב כל קבוצה ב-INSERT אחד).
   useEffect(() => {
-    if (!ready || !payload || !orderId || downloadPdf || preview || printLoggedRef.current) return;
+    if (!ready || !payload || downloadPdf || preview || printLoggedRef.current || badOrderId) return;
     if (typeof navigator !== 'undefined' && navigator.webdriver === true) return;
-    if (payload.meta && payload.meta.orderId && payload.meta.orderId !== orderId) return;
+    if (orderId && payload.meta && payload.meta.orderId && payload.meta.orderId !== orderId) return;
     printLoggedRef.current = true;
+    const bodies = [];
     for (const p of payload.pages) {
-      const body = schedulePrintEventBody({ orderId, pageKey: p.key, loadId });
-      if (!body || p.notBuilt) continue;
+      if (p.notBuilt || !p.data) continue;
+      if (orderId) {
+        const body = schedulePrintEventBody({ orderId, pageKey: p.key, loadId });
+        if (body) bodies.push(body);
+      } else {
+        bodies.push(...scheduleDayPrintEventBodies({ orderIds: collectPrintedOrderIds(p.data), pageKey: p.key, loadId }));
+      }
+    }
+    for (const body of bodies) {
       fetch('/api/orders/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify(body) }).catch(() => {});
     }
-  }, [ready, payload, orderId, downloadPdf, preview, loadId]);
+  }, [ready, payload, orderId, badOrderId, downloadPdf, preview, loadId]);
 
   const title = payload ? payload.pages.map((p) => p.def.label).join(' · ') : 'הדפסה';
   // רינדור ל-PDF (downloadPdf): כשאין מה להדפיס, או שדף שנבחר דולג (אין הרשאה), הדף מסמן data-print-error

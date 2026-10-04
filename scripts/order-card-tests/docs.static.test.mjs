@@ -33,11 +33,18 @@ test('לחצן המייל המהיר בודק את order_quick_mail_enabled בע
   assert.match(s, /if \(!oc\.settings \|\| !oc\.settings\.orderQuickMailEnabled\) return null;/);
 });
 
-test('AMB-11: אין "חשבונית/קבלה" ו"תמונות דגמים (ZIP)" בממשק המייל (מוסתרים עד אישור מקור)', () => {
-  const ui = strip(read('parts/OcMailSheet.js')) + strip(read('parts/OcPrintMenu.js'));
-  assert.ok(!/חשבונית|קבלה|ZIP|תמונות דגמים/.test(ui));
+test('AMB-11 (החלטת הבעלים: לבנות את כולם): כל ששת סוגי הצרופות קיימים ומטופלים - קבלה ותמונות דגמים נבנים מקומית ל-PDF, לא ZIP', () => {
   const logic = strip(read('parts/ocDocsLogic.js'));
-  assert.ok(!/name: '(חשבונית|תמונות)/.test(logic));
+  for (const name of ['פרטי ההזמנה', 'תקנון חתום', 'דף תשלומים', 'דף משלוח', 'חשבונית/קבלה', 'תמונות דגמים']) assert.ok(logic.includes(`name: '${name}'`), name);
+  assert.ok(!/HIDDEN_MAIL_FILES/.test(logic));
+  assert.ok(!/ZIP/.test(strip(read('parts/OcMailSheet.js'))));
+  const actions = strip(read('parts/ocDocsActions.js'));
+  assert.match(actions, /kind === 'receipt'/);
+  assert.match(actions, /kind === 'model-photos'/);
+  // התמונות מוטמעות כ-data URI (/api/pdf חוסם רשת) ומוקטנות
+  const imgs = strip(read('parts/ocDocsImages.js'));
+  assert.match(imgs, /toDataURL\('image\/jpeg'/);
+  assert.match(imgs, /createImageBitmap/);
 });
 
 test('אישור מנהל במייל דרך oc.approve (feature:customer_email_approval) - לא חלון ישן ולא PIN בקוד', () => {

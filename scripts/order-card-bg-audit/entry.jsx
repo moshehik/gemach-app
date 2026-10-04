@@ -13,7 +13,7 @@ const qs = new URLSearchParams(location.search);
 const scn = qs.get('scn') || 'neve';
 
 const CUSTOMER = { id: 'c1', firstName: 'מרים', lastName: 'אברמוביץ', phone1: '050-7123456', phone2: '02-5810044', email: 'miriam.abr@example.com', city: 'ירושלים', street: 'עמוס', houseNum: 14, zeout: '' };
-const dress = (id, name) => ({ id: `di-${id}`, dressModelId: `m-${name}`, dress: { id: `m-${name}`, name } });
+const dress = (id, name) => ({ id: `di-${id}`, dressModelId: `m-${name}`, dress: { id: `m-${name}`, name, imageUrl: `/api/attachment/img-${name}`, thumbnailUrl: `/api/attachment/thumb-${name}` } });
 const ITEMS = [
   { id: 'a1', dressItem: dress('a1', '4512'), sizeText: '38', price: 150, finalPrice: 150, isDeleted: false, isTaken: false, isReturned: false, createdAt: '2026-09-23T07:13:00.000Z' },
   { id: 'a2', dressItem: dress('a2', '3087'), sizeText: '36', price: 120, finalPrice: 120, isDeleted: false, isTaken: false, isReturned: false, sleeveAlteration: 1, alterationDetails: 'קיצור שרוול' },
@@ -48,8 +48,8 @@ const ORG2 = [
   ['require_manager_code_for_item_changes', 'true'], ['max_items_per_order', '6'],
 ];
 const EMPLOYEES = [
-  { id: 'e1', firstName: 'שרה', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:manual_charge_add': true } },
-  { id: 'e2', firstName: 'רחל', lastName: 'כהן', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true } },
+  { id: 'e1', firstName: 'שרה', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:manual_charge_add': true, 'feature:customer_email_approval': true } },
+  { id: 'e2', firstName: 'רחל', lastName: 'כהן', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:customer_email_approval': true } },
   { id: 'e3', firstName: 'דנה', lastName: 'אברהם', roleId: 0, department: { name: 'הנהלה' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true } },
   { id: 'e4', firstName: 'דוד', lastName: 'לוי', roleId: 1, department: { name: 'מנהל משמרת' }, canApproveWithoutPayment: false, approvals: { 'feature:locked_order_edit': true } },
   { id: 'e5', firstName: 'מיכל', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true } },
@@ -117,6 +117,11 @@ window.fetch = async (url, opts) => {
   if (u.startsWith('/api/orders/events')) return j({ ok: true, written: 1 });
   // W7: הרשאות הדפסת דפי לו״ז, דוח ההזמנה (HTML), PDF, שמירת מייל בכרטיס הלקוח, שליחת מייל
   if (u.startsWith('/api/schedule/print')) return S.noScheduleAccess ? j({ error: 'Forbidden' }, 403) : j({ allowed: ['PP-01', 'PP-07', 'PP-12'], forbidden: [] });
+  // תמונת דגם (A8: דף "תמונות דגמים"): PNG 1x1 אמיתי כדי ש-createImageBitmap + canvas יעבדו
+  if (u.startsWith('/api/attachment/')) {
+    const bin = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    return new Response(Uint8Array.from(bin, (c) => c.charCodeAt(0)), { status: 200, headers: { 'Content-Type': 'image/png' } });
+  }
   if (u === '/api/pdf') return new Response(new Blob(['%PDF-1.4 fake'], { type: 'application/pdf' }), { status: 200 });
   if (/^\/api\/customers\/c1$/.test(u) && method === 'PUT') return j(JSON.parse(opts.body));
   if (u === '/api/orders/53375/email' && method === 'POST') {

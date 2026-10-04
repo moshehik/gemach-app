@@ -150,7 +150,7 @@ const STAGES = [
     for (const act of ['pm-order', 'pm-rental', 'pm-prep', 'pm-delivery']) { await p.$eval('#pmenu [data-act="' + act + '"]', (el) => el.click()); await sleep(150); await openMenu(); }
     const opened = await p.evaluate(() => window.__opened);
     const evs = (await calls()).filter((c) => c.url === '/api/orders/events');
-    checks.push(['print menu: שש שורות לפי R6 (הזמנה עם משלוח, משלוחים דלוקים)', JSON.stringify(labels) === JSON.stringify(['הדפסת סיכום ללקוח', 'הדפסת דף השכרה', 'דף הכנה למחסן', 'דף משלוח', 'שליחה במייל', 'מייל השכרה'])],
+    checks.push(['print menu: שש שורות לפי R6 (הזמנה עם משלוח, משלוחים דלוקים)', JSON.stringify(labels) === JSON.stringify(['הדפסת סיכום ללקוח', 'הדפסת השכרה', 'דף הכנה למחסן', 'דף משלוח', 'שליחה במייל', 'שליחת מייל השכרה'])],
       ['print: כתובות ההדפסה (סיכום/השכרה/PP-07 גרסה ב׳/PP-12 עם orderId)', JSON.stringify(opened) === JSON.stringify(['/print/order?orderId=53375&type=order', '/print/order?orderId=53375&type=rental', '/schedule/print/PP-07?orderId=53375&version=PP-07%3Ab', '/schedule/print/PP-12?orderId=53375'])],
       ['print: הכרטיס לא רושם ORDER_PRINTED (הדפים רושמים בעצמם)', evs.length === 0]);
   } },
@@ -193,13 +193,14 @@ const STAGES = [
   { name: '55-mail-quick-send', real: async () => {
     await openQuick('signed'); await p.$eval('#m-sub', (e) => { e.select(); }); await p.type('#m-sub', 'תזכורת לקיחה'); await p.type('#m-body', 'שלום, נשמח לראותך.');
     const disabledBefore = await p.$eval('#m-send', (b) => b.disabled);
-    await clickAt('.mfile[data-id="ord"]'); await clickAt('.mfile[data-id="pay"]'); await clickAt('.mfile[data-id="del"]');
+    await clickAt('.mfile[data-id="ord"]'); await clickAt('.mfile[data-id="pay"]'); await clickAt('.mfile[data-id="del"]'); await clickAt('.mfile[data-id="inv"]'); await clickAt('.mfile[data-id="img"]');
     const input = await p.$('#dlg input[type=file]'); await input.uploadFile(SHEET_TMP); await sleep(300); await clickAt('#dlg [data-dest="drive"]');
     await clickAt('#m-send'); await sleep(2500);
     const posts = await emailPosts(); const toast = await toastText(); const pdfs = (await calls()).filter((c) => c.url === '/api/pdf').map((c) => JSON.parse(c.body));
     const b = posts[0] || {};
     checks.push(['quick: שלח זמין כשיש נושא + תוכן', disabledBefore === false], ['quick: quick:{subject,bodyText} בלי pdfBase64', !!b.quick && b.quick.subject === 'תזכורת לקיחה' && b.quick.bodyText === 'שלום, נשמח לראותך.' && !('pdfBase64' in b)],
-      ['quick: צרופות לפי kind (order-pdf, payments, delivery + קובץ נוסף) כולן ב-dest drive', JSON.stringify((b.extraAttachments || []).map((a) => [a.kind, a.dest])) === JSON.stringify([['order-pdf', 'drive'], ['payments', 'drive'], ['delivery', 'drive'], ['file', 'drive']]) && b.sendMode === 'drive'],
+      ['quick: צרופות לפי kind (כל ששת הסוגים + קובץ נוסף) כולן ב-dest drive', JSON.stringify((b.extraAttachments || []).map((a) => [a.kind, a.dest])) === JSON.stringify([['order-pdf', 'drive'], ['payments', 'drive'], ['delivery', 'drive'], ['receipt', 'drive'], ['model-photos', 'drive'], ['file', 'drive']]) && b.sendMode === 'drive'],
+      ['quick: תמונות הדגמים הוטמעו כ-data URI בדף ה-PDF, הקבלה נבנתה מהתשלומים', pdfs.some((x) => x.html && /^<!DOCTYPE/.test(x.html) && x.html.includes('תמונות הדגמים') && /<img src="data:image\/jpeg;base64,/.test(x.html)) && pdfs.some((x) => x.html && x.html.includes('אישור קבלת תשלום'))],
       ['quick: משלוח נוצר מדף הלו״ז של ההזמנה (path עם orderId ו-downloadPdf)', pdfs.some((x) => x.path === '/schedule/print/PP-12?orderId=53375&downloadPdf=true')],
       ['quick: טוסט "נשלח ל-…"', /^נשלח ל-miriam/.test(toast)]);
   } },

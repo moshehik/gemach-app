@@ -46,7 +46,7 @@ test('שורות התפריט: סדר ותוויות R6 (סיכום · השכר�
   const settingsOn = { enableDeliveries: true };
   const noDel = D.printMenuItems({ order: ORDER, settings: settingsOn });
   assert.deepEqual(noDel.map((i) => i.key), ['order', 'rental', 'prep', 'mail-order', 'mail-rental']);
-  assert.deepEqual(noDel.map((i) => i.label), ['הדפסת סיכום ללקוח', 'הדפסת דף השכרה', 'דף הכנה למחסן', 'שליחה במייל', 'מייל השכרה']);
+  assert.deepEqual(noDel.map((i) => i.label), ['הדפסת סיכום ללקוח', 'הדפסת השכרה', 'דף הכנה למחסן', 'שליחה במייל', 'שליחת מייל השכרה']);
   const withDel = D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך-חזור' }, settings: settingsOn });
   assert.deepEqual(withDel.map((i) => i.key), ['order', 'rental', 'prep', 'delivery', 'mail-order', 'mail-rental']);
   assert.equal(withDel.find((i) => i.key === 'delivery').label, 'דף משלוח');
@@ -90,25 +90,69 @@ test('שער התקנון (R7): נדרש כשהלקוח לא חתם', () => {
 });
 
 // ---------- קבצי המייל (A8, AMB-11) ----------
-test('קבצי המייל המהיר: ארבעה מסמכים קיימים; חשבונית/קבלה ו-ZIP תמונות מוסתרים (AMB-11); סוגי kind מתוך הרשימה של W0', async () => {
+test('קבצי המייל המהיר: כל ששת הסוגים (AMB-11, החלטת הבעלים); kind מתוך הרשימה של W0; הכול PDF (לא ZIP)', async () => {
   const { EMAIL_ATTACHMENT_KINDS } = await L('lib/history/orderEvents.js');
-  assert.deepEqual(D.MAIL_FILES.map((f) => f.id), ['ord', 'reg', 'pay', 'del']);
-  assert.deepEqual([...D.HIDDEN_MAIL_FILES], ['inv', 'img']);
+  assert.deepEqual(D.MAIL_FILES.map((f) => f.id), ['ord', 'reg', 'pay', 'del', 'inv', 'img']);
+  assert.deepEqual(D.MAIL_FILES.map((f) => f.name), ['פרטי ההזמנה', 'תקנון חתום', 'דף תשלומים', 'דף משלוח', 'חשבונית/קבלה', 'תמונות דגמים']);
+  assert.deepEqual(D.MAIL_FILES.map((f) => f.kind), ['order-pdf', 'rental-pdf', 'payments', 'delivery', 'receipt', 'model-photos']);
   for (const f of D.MAIL_FILES) assert.ok(EMAIL_ATTACHMENT_KINDS.includes(f.kind), f.kind);
-  const names = D.MAIL_FILES.map((f) => f.name).join('|');
-  assert.ok(!/חשבונית|קבלה|ZIP|תמונות/.test(names));
   assert.ok(D.MAIL_FILES.every((f) => f.ext === 'PDF'));
+  assert.equal(D.HIDDEN_MAIL_FILES, undefined, 'שום סוג לא מוסתר יותר');
 });
 
-test('mailFilesFor: תקנון חתום רק כשנחתם, דף משלוח רק עם משלוח הלוך ו-enable_deliveries', () => {
-  const byId = (o, s) => Object.fromEntries(D.mailFilesFor({ order: o, settings: s }).map((f) => [f.id, f.exists]));
-  assert.deepEqual(byId({ ...ORDER, hasSignedRegulations: false }, { enableDeliveries: true }), { ord: true, reg: false, pay: true, del: false });
-  assert.deepEqual(byId(ORDER, { enableDeliveries: true }), { ord: true, reg: true, pay: true, del: false });
-  assert.deepEqual(byId({ ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, { enableDeliveries: true }), { ord: true, reg: true, pay: true, del: true });
-  assert.deepEqual(byId({ ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, { enableDeliveries: false }), { ord: true, reg: true, pay: true, del: false });
+const IMG_ITEMS = [
+  { id: 'a', description: 'שמלה', sizeText: '38', dressItem: { dress: { id: 'm1', name: '4512', imageUrl: '/api/attachment/u1', thumbnailUrl: '/api/attachment/t1' } } },
+  { id: 'b', sizeText: '40', dressItem: { dress: { id: 'm1', name: '4512', imageUrl: '/api/attachment/u1', thumbnailUrl: '/api/attachment/t1' } } },
+  { id: 'c', sizeText: '36', dressItem: { dress: { id: 'm2', name: '3087', thumbnailUrl: '/api/attachment/t2' } } },
+  { id: 'd', sizeText: '36', isDeleted: true, dressItem: { dress: { id: 'm3', name: '1893', imageUrl: '/api/attachment/u3' } } },
+  { id: 'e', sizeText: '36', dressItem: { dress: { id: 'm4', name: 'ללא תמונה' } } },
+  { id: 'f', sizeText: '36', dressItem: null },
+];
+
+test('mailFilesFor: תקנון חתום רק כשנחתם, משלוח רק עם משלוח הלוך ו-enable_deliveries, קבלה רק עם תשלום, תמונות רק כשיש תמונת דגם', () => {
+  const byId = (o, s, items = [], payments = []) => Object.fromEntries(D.mailFilesFor({ order: o, settings: s, items, payments }).map((f) => [f.id, f.exists]));
+  assert.deepEqual(byId({ ...ORDER, hasSignedRegulations: false }, { enableDeliveries: true }), { ord: true, reg: false, pay: true, del: false, inv: false, img: false });
+  assert.deepEqual(byId(ORDER, { enableDeliveries: true }), { ord: true, reg: true, pay: true, del: false, inv: false, img: false });
+  assert.deepEqual(byId({ ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, { enableDeliveries: true }, IMG_ITEMS, [{ amount: 50 }]), { ord: true, reg: true, pay: true, del: true, inv: true, img: true });
+  assert.deepEqual(byId({ ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, { enableDeliveries: false }), { ord: true, reg: true, pay: true, del: false, inv: false, img: false });
+  assert.equal(byId(ORDER, {}, [], [{ amount: 50, isDeleted: true }, { amount: 0 }]).inv, false, 'תשלום מחוק / אפס אינו קבלה');
+  assert.equal(byId(ORDER, {}, [{ id: 'x', isDeleted: true, dressItem: { dress: { imageUrl: '/a' } } }], []).img, false, 'פריט מחוק');
   const miss = D.mailFilesFor({ order: { ...ORDER, hasSignedRegulations: false }, settings: {} });
-  assert.equal(miss.find((f) => f.id === 'reg').miss, 'טרם נחתם');
-  assert.equal(miss.find((f) => f.id === 'del').miss, 'ללא משלוח');
+  assert.deepEqual(Object.fromEntries(miss.filter((f) => !f.exists).map((f) => [f.id, f.miss])), { reg: 'טרם נחתם', del: 'ללא משלוח', inv: 'אין תשלומים', img: 'אין תמונות דגמים' });
+});
+
+test('modelPhotosOf: דגם ייחודי עם תמונה, מידות מכל הפריטים, imageUrl לפני thumbnailUrl, בלי מחוקים / בלי תמונה; תקרה', () => {
+  const m = D.modelPhotosOf(IMG_ITEMS);
+  assert.deepEqual(m.map((x) => [x.name, x.sizes, x.urls]), [['4512', ['38', '40'], ['/api/attachment/u1', '/api/attachment/t1']], ['3087', ['36'], ['/api/attachment/t2']]]);
+  assert.deepEqual(D.modelPhotosOf([]), []);
+  assert.deepEqual(D.modelPhotosOf(null === 1 ? [] : undefined), []);
+  const many = Array.from({ length: 40 }, (_, i) => ({ id: 'i' + i, dressItem: { dress: { id: 'm' + i, name: 'd' + i, imageUrl: '/u' + i } } }));
+  assert.equal(D.modelPhotosOf(many).length, D.MAX_MODEL_PHOTOS);
+});
+
+test('receiptPageHtml: אישור קבלת תשלום (לא חשבונית מס): רק תשלומים פעילים, סה״כ שהתקבל, תאריך עברי, בלי פרטי כרטיס, עצמאי וכולל בריחת HTML', () => {
+  const html = D.receiptPageHtml({
+    order: { ...ORDER, eventDateHebrew: 'כ״ו תשרי תשפ״ז', customer: { firstName: '<i>x</i>', lastName: 'ל' } },
+    payments: [{ amount: 150, paymentMethod: 'אשראי', paymentDate: '2026-09-23T07:18:00.000Z', notes: '{"Confirmation":"Q9","CardNumber":"4580123456789012"}' }, { amount: '50', paymentMethod: 'מזומן', paymentDate: '2026-09-24T07:18:00.000Z' }, { amount: 999, isDeleted: true }],
+    gmachName: 'גמ"ח',
+  });
+  assert.ok(html.includes('אישור קבלת תשלום'));
+  assert.ok(html.includes('התקבל סך <b>₪200</b>'), 'סכום התשלומים הפעילים');
+  assert.ok(!html.includes('₪999'), 'תשלום מחוק לא נספר');
+  assert.ok(html.includes('אישור: Q9') && !html.includes('4580123456789012'));
+  assert.ok(html.includes('&lt;i&gt;x&lt;/i&gt;') && !html.includes('<i>x</i>'));
+  assert.ok(html.includes('כ״ו תשרי תשפ״ז'));
+  assert.ok(!/var\(--/.test(html) && !/\d{4}-\d{2}-\d{2}/.test(html));
+  assert.ok(!/חשבונית מס/.test(html), 'לא מציג את עצמו כחשבונית מס');
+  assert.ok(D.receiptPageHtml({ order: ORDER, payments: [] }).includes('לא התקבלו תשלומים'));
+});
+
+test('modelPhotosPageHtml: תמונה לכל דגם עם data URI, שם ומידות; בריחת HTML; בלי כתובות רשת חיצוניות (חוסמים ב-/api/pdf)', () => {
+  const html = D.modelPhotosPageHtml({ order: ORDER, photos: [{ name: '4512 <b>', sizes: ['38', '40'], dataUri: 'data:image/jpeg;base64,AAAA' }, { name: '3087', sizes: [], dataUri: 'data:image/jpeg;base64,BBBB' }], gmachName: 'גמ"ח' });
+  assert.equal((html.match(/<img src="data:image\/jpeg;base64,/g) || []).length, 2);
+  assert.ok(html.includes('דגם 4512 &lt;b&gt;') && html.includes('מידה 38, 40'));
+  assert.ok(!/src="(?!data:)/.test(html) && !/url\(/.test(html) && !/https?:\/\//.test(html));
+  assert.ok(html.includes('תמונות הדגמים · הזמנה #53375'));
 });
 
 test('quickMailValid: כתובת תקינה + נושא + תוכן, בתוך המגבלות', () => {

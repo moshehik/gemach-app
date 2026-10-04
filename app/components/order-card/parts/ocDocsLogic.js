@@ -6,7 +6,8 @@
 // isValidEmail ← handleEmailSubmit :193 (אותה ביטוי) ; hasUsableEmail ← handleSendEmail :113 (`includes('@')`, כאן מחמיר יותר: ביטוי מלא)
 // printOrderUrl ← openPrint :95-99 (`/print/order?orderId=..&type=..`) ; mailRequestBody ← sendOrderEmail :150-162
 // EXTRA_DEST_OPTIONS ← :270-274 (צרופה למייל / דרייב + שיתוף / גם וגם) ; extraAttachmentOf ← :140-148
-// קבצי המייל המהיר (A8, AMB-11): ארבעה מסמכים קיימים; "חשבונית/קבלה" ו"תמונות דגמים (ZIP)" אינם קיימים כמסמך ולכן מוסתרים (HIDDEN_MAIL_FILES).
+// קבצי המייל המהיר (A8, AMB-11 - החלטת הבעלים: לבנות את כל שישת הסוגים): פרטי ההזמנה, תקנון חתום (דוח ההשכרה), דף תשלומים, דף משלוח (PP-12),
+// חשבונית/קבלה (אין באתר מסמך קבלה קיים - נבנה אישור תשלומים להדפסה/PDF מתשלומי ההזמנה) ותמונות דגמים (PDF מתמונות הדגמים השמורות, לא ZIP).
 import { hebDateOf } from '../orderCardLogic';
 import { isDeliveryOut } from '../../../../lib/schedule/deliveryDirection';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
@@ -35,13 +36,13 @@ export const printOrderUrl = (orderId, type) => `/print/order?orderId=${encodeUR
 export function printMenuItems({ order, settings, access = {} } = {}) {
   const out = [
     { key: 'order', kind: 'print', icon: 'print', label: 'הדפסת סיכום ללקוח', target: 'order' },
-    { key: 'rental', kind: 'print', icon: 'list', label: 'הדפסת דף השכרה', target: 'rental' },
+    { key: 'rental', kind: 'print', icon: 'list', label: 'הדפסת השכרה', target: 'rental' },
   ];
   if (access.prep !== false) out.push({ key: 'prep', kind: 'print', icon: 'file', label: 'דף הכנה למחסן', target: 'PP-07' });
   const deliverable = !!(settings && settings.enableDeliveries) && isDeliveryOut(order);
   if (deliverable && access.delivery !== false) out.push({ key: 'delivery', kind: 'print', icon: 'truck', label: 'דף משלוח', target: 'PP-12' });
   out.push({ key: 'mail-order', kind: 'mail', icon: 'mail', label: 'שליחה במייל', target: 'order' });
-  out.push({ key: 'mail-rental', kind: 'mail', icon: 'mail', label: 'מייל השכרה', target: 'rental' });
+  out.push({ key: 'mail-rental', kind: 'mail', icon: 'mail', label: 'שליחת מייל השכרה', target: 'rental' });
   return out;
 }
 
@@ -67,22 +68,25 @@ export const needsRegulationsGate = (order) => !(order && order.hasSignedRegulat
 // ---------------------------------------------------------------------------------------------
 // קבצי המייל המהיר (A8, AMB-11)
 // ---------------------------------------------------------------------------------------------
-// kind = EMAIL_ATTACHMENT_KINDS של W0 (lib/history/orderEvents.js): order-pdf | rental-pdf | delivery | regulations | payments | file
+// kind = EMAIL_ATTACHMENT_KINDS של W0 (lib/history/orderEvents.js): order-pdf | rental-pdf | delivery | regulations | payments | receipt | model-photos | file
 export const MAIL_FILES = Object.freeze([
   { id: 'ord', kind: 'order-pdf', name: 'פרטי ההזמנה', ext: 'PDF' },
   { id: 'reg', kind: 'rental-pdf', name: 'תקנון חתום', ext: 'PDF', need: 'sig', miss: 'טרם נחתם' },
   { id: 'pay', kind: 'payments', name: 'דף תשלומים', ext: 'PDF' },
   { id: 'del', kind: 'delivery', name: 'דף משלוח', ext: 'PDF', need: 'del', miss: 'ללא משלוח' },
+  { id: 'inv', kind: 'receipt', name: 'חשבונית/קבלה', ext: 'PDF', need: 'receipt', miss: 'אין תשלומים' },
+  { id: 'img', kind: 'model-photos', name: 'תמונות דגמים', ext: 'PDF', need: 'photos', miss: 'אין תמונות דגמים' },
 ]);
-// AMB-11: שני סוגי הצרופות של הדגימה שאין להם מסמך במערכת - מוסתרים עד שהבעלים יאשר מקור ("חשבונית/קבלה", "תמונות דגמים (ZIP)")
-export const HIDDEN_MAIL_FILES = Object.freeze(['inv', 'img']);
 
-/** הקבצים כפי שמוצגים: exists=false כשהמסמך לא רלוונטי להזמנה (טרם נחתם / ללא משלוח) */
-export function mailFilesFor({ order, settings }) {
+/** הקבצים כפי שמוצגים: exists=false כשהמסמך לא רלוונטי להזמנה (טרם נחתם / ללא משלוח / אין תשלומים / אין תמונות דגמים) */
+export function mailFilesFor({ order, settings, items = [], payments = [] }) {
   const delivery = !!(settings && settings.enableDeliveries) && isDeliveryOut(order);
+  const hasPayments = payments.some((p) => !p.isDeleted && num(p.amount) !== 0);
+  const hasPhotos = modelPhotosOf(items).length > 0;
   return MAIL_FILES.map((f) => ({
     ...f,
-    exists: !((f.need === 'sig' && !(order && order.hasSignedRegulations)) || (f.need === 'del' && !delivery)),
+    exists: !((f.need === 'sig' && !(order && order.hasSignedRegulations)) || (f.need === 'del' && !delivery)
+      || (f.need === 'receipt' && !hasPayments) || (f.need === 'photos' && !hasPhotos)),
   }));
 }
 
@@ -116,7 +120,7 @@ export function docAttachmentOf({ kind, fileName, base64 }, dest) {
 
 /** שם קובץ ה-PDF/Excel שמורד/מצורף */
 export const docFileName = (kind, orderId, ext) => {
-  const base = { 'order-pdf': 'הזמנה', 'rental-pdf': 'השכרה', delivery: 'משלוח', payments: 'תשלומים', xlsx: 'הזמנה' }[kind] || 'מסמך';
+  const base = { 'order-pdf': 'הזמנה', 'rental-pdf': 'השכרה', delivery: 'משלוח', payments: 'תשלומים', receipt: 'קבלה', 'model-photos': 'תמונות דגמים', xlsx: 'הזמנה' }[kind] || 'מסמך';
   return `${base} ${orderId}.${ext}`;
 };
 
@@ -239,5 +243,72 @@ th,td{padding:11px 12px;text-align:right;border-bottom:1px solid #eee;font-size:
 <table><thead><tr><th>תאריך (עברי)</th><th>אופן תשלום</th><th>סכום</th><th>הערות</th></tr></thead><tbody>${rows}</tbody></table>
 <table class="sum" style="width:320px;border:0;margin-inline-start:auto"><tr><td>סה"כ לחיוב:</td><td>${escapeHtml(shekel(required))}</td></tr><tr><td>סה"כ שולם:</td><td>${escapeHtml(shekel(paid))}</td></tr><tr class="tot"><td>יתרה לתשלום:</td><td>${escapeHtml(shekel(Math.max(0, required - paid)))}</td></tr></table>
 <div style="text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:10px">הופק על ידי מערכת גמ"ח שמלות</div>
+</body></html>`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// "חשבונית/קבלה" (A8, AMB-11): באתר אין מסמך קבלה קיים (יש רק אייקון), לכן נבנה אישור תשלומים: מה התקבל, מתי ובאיזה אופן + סה״כ שהתקבל.
+// זהו אישור קבלת תשלום של הגמ״ח ללקוחה - לא חשבונית מס ולא קבלה לפי פקודת מס הכנסה (אין באתר מספור קבלות). HTML עצמאי ל-/api/pdf.
+// ---------------------------------------------------------------------------------------------
+export function receiptPageHtml({ order, payments = [], gmachName = 'גמ"ח שמלות' }) {
+  const o = order || {};
+  const activePay = payments.filter((p) => !p.isDeleted && num(p.amount) !== 0);
+  const paid = activePay.reduce((s, p) => s + num(p.amount), 0);
+  const rows = activePay.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(hebDateOf(p.paymentDate))}</td><td>${escapeHtml(methodOf(p) || '-')}</td><td style="font-weight:bold">${escapeHtml(shekel(p.amount))}</td><td>${escapeHtml(paymentNoteOf(p.notes))}</td></tr>`).join('');
+  return `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><style>
+body{font-family:Arial,'Segoe UI',sans-serif;margin:0;padding:28px;color:#333;direction:rtl}
+h1{font-size:26px;margin:0 0 4px;color:#222}h2{font-size:20px;margin:18px 0 6px;color:#222}.sub{color:#777;font-size:14px;margin-bottom:20px}
+.box{border:1.5px solid #333;border-radius:6px;padding:14px 18px;margin:16px 0;background:#f7f7f7;font-size:16px}
+table{width:100%;border-collapse:collapse;margin-bottom:22px;border:1px solid #e5e5e5}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid #eee;font-size:14px}th{background:#f4f4f4;color:#333}
+.sign{display:flex;justify-content:space-between;margin-top:46px;font-size:14px;color:#555}.sign div{width:220px;border-top:1px solid #aaa;padding-top:8px;text-align:center}
+</style></head><body>
+<div style="font-size:13px;color:#999;margin-bottom:6px">בס"ד</div>
+<h1>${escapeHtml(gmachName)}</h1>
+<h2>אישור קבלת תשלום</h2>
+<div class="sub">קבלה · הזמנה #${escapeHtml(o.orderId)} · על שם ${escapeHtml(customerNameOf(o))}</div>
+<div class="box">התקבל סך <b>${escapeHtml(shekel(paid))}</b> עבור הזמנה #${escapeHtml(o.orderId)}${o.eventDateHebrew ? ` (אירוע: ${escapeHtml(o.eventDateHebrew)})` : ''}.</div>
+<table><thead><tr><th>#</th><th>תאריך (עברי)</th><th>אופן תשלום</th><th>סכום</th><th>הערות</th></tr></thead><tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#999;padding:24px">לא התקבלו תשלומים</td></tr>'}</tbody></table>
+<div class="sign"><div>חתימת הגמ"ח</div><div>הופק במערכת הגמ"ח</div></div>
+</body></html>`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// "תמונות דגמים" (A8, AMB-11): PDF של תמונות הדגמים של פריטי ההזמנה (DressModel.imageUrl / thumbnailUrl, נשמרות ב-DB כ-Attachment).
+// ה-HTML נשלח ל-/api/pdf שחוסם כל בקשת רשת חוץ מ-data: - לכן כל תמונה מוטמעת כ-data URI (ocDocsImages.js, מוקטנת).
+// ---------------------------------------------------------------------------------------------
+export const MAX_MODEL_PHOTOS = 24;
+
+/** דגמים ייחודיים עם תמונה בפריטים הפעילים: [{key, name, urls:[imageUrl, thumbnailUrl], sizes:[...]}] (עד MAX_MODEL_PHOTOS) */
+export function modelPhotosOf(items = []) {
+  const byModel = new Map();
+  for (const it of items) {
+    if (!it || it.isDeleted) continue;
+    const dress = it.dressItem && it.dressItem.dress;
+    const urls = [dress && dress.imageUrl, dress && dress.thumbnailUrl].filter((u) => typeof u === 'string' && u.trim());
+    if (!urls.length) continue;
+    const key = String(dress.id || dress.name || urls[0]);
+    if (!byModel.has(key)) byModel.set(key, { key, name: String(dress.name || it.description || 'דגם'), urls, sizes: [] });
+    const size = it.sizeText || (it.dressItem && it.dressItem.sizeText);
+    const entry = byModel.get(key);
+    if (size && !entry.sizes.includes(String(size))) entry.sizes.push(String(size));
+  }
+  return [...byModel.values()].slice(0, MAX_MODEL_PHOTOS);
+}
+
+/** photos = [{name, sizes, dataUri}] (רק תמונות שנטענו) */
+export function modelPhotosPageHtml({ order, photos = [], gmachName = 'גמ"ח שמלות' }) {
+  const o = order || {};
+  const cells = photos.map((p) => `<figure><img src="${escapeHtml(p.dataUri)}" alt="${escapeHtml(p.name)}"><figcaption><b>דגם ${escapeHtml(p.name)}</b>${p.sizes && p.sizes.length ? `<br>מידה ${escapeHtml(p.sizes.join(', '))}` : ''}</figcaption></figure>`).join('');
+  return `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><style>
+body{font-family:Arial,'Segoe UI',sans-serif;margin:0;padding:24px;color:#333;direction:rtl}
+h1{font-size:24px;margin:0 0 4px;color:#222}.sub{color:#777;font-size:14px;margin-bottom:18px}
+.grid{display:flex;flex-wrap:wrap;gap:18px}figure{margin:0;width:calc(50% - 9px);break-inside:avoid;text-align:center}
+img{max-width:100%;max-height:340px;object-fit:contain;border:1px solid #ddd;border-radius:6px}figcaption{font-size:14px;margin-top:6px}
+</style></head><body>
+<div style="font-size:13px;color:#999;margin-bottom:6px">בס"ד</div>
+<h1>${escapeHtml(gmachName)}</h1>
+<div class="sub">תמונות הדגמים · הזמנה #${escapeHtml(o.orderId)} · ${escapeHtml(customerNameOf(o))}</div>
+<div class="grid">${cells}</div>
 </body></html>`;
 }

@@ -122,25 +122,53 @@ test('doc: קבצים נוספים (R8) נשלחים עם kind:file וה-dest ש
 });
 
 // ---------- מייל מהיר (A8) ----------
-test('quick: quick:{subject,bodyText}, בלי pdfBase64, צרופה לכל kind שנבחר (הזמנה/תשלומים מ-HTML, משלוח מדף הלו״ז PP-12 עם orderId)', async () => {
+test('quick: quick:{subject,bodyText}, בלי pdfBase64, צרופה לכל kind שנבחר (הזמנה/השכרה מ-HTML של השרת, תשלומים/קבלה/תמונות מ-HTML מקומי, משלוח מדף הלו״ז PP-12 עם orderId)', async () => {
   const f = makeFetch(); const pdf = makePdf(); const oc = makeOc();
-  const docData = { order: ORDER, obligations: [{ amount: 100, isDeleted: false }], payments: [{ amount: 40, paymentMethod: 'מזומן', paymentDate: '2026-09-23T07:18:00.000Z', isDeleted: false }] };
-  const r = await A.sendOrderMail({ oc, orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 'אישור הזמנה', bodyText: 'שלום', kinds: ['order-pdf', 'payments', 'delivery', 'rental-pdf'], sendMode: 'drive', docData, fetchImpl: f, pdf, readFile: async () => '' });
-  assert.deepEqual({ ok: r.ok, fileCount: r.fileCount }, { ok: true, fileCount: 4 });
+  const docData = {
+    order: ORDER, obligations: [{ amount: 100, isDeleted: false }], payments: [{ amount: 40, paymentMethod: 'מזומן', paymentDate: '2026-09-23T07:18:00.000Z', isDeleted: false }],
+    items: [{ id: 'a', sizeText: '38', dressItem: { dress: { id: 'm1', name: '4512', imageUrl: '/api/attachment/u1' } } }],
+  };
+  const loaded = [];
+  const images = async (items) => { loaded.push(items.length); return [{ name: '4512', sizes: ['38'], dataUri: 'data:image/jpeg;base64,QQ==' }]; };
+  const r = await A.sendOrderMail({ oc, orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 'אישור הזמנה', bodyText: 'שלום', kinds: ['order-pdf', 'payments', 'delivery', 'rental-pdf', 'receipt', 'model-photos'], sendMode: 'drive', docData, fetchImpl: f, pdf, images, readFile: async () => '' });
+  assert.deepEqual({ ok: r.ok, fileCount: r.fileCount }, { ok: true, fileCount: 6 });
   const body = posts(f)[0].body;
   assert.deepEqual(body.quick, { subject: 'אישור הזמנה', bodyText: 'שלום' });
   assert.ok(!('pdfBase64' in body));
   assert.deepEqual(body.extraAttachments.map((a) => [a.kind, a.fileName, a.dest]), [
     ['order-pdf', 'הזמנה 53375.pdf', 'drive'], ['payments', 'תשלומים 53375.pdf', 'drive'], ['delivery', 'משלוח 53375.pdf', 'drive'], ['rental-pdf', 'השכרה 53375.pdf', 'drive'],
+    ['receipt', 'קבלה 53375.pdf', 'drive'], ['model-photos', 'תמונות דגמים 53375.pdf', 'drive'],
   ]);
   assert.ok(body.extraAttachments.every((a) => a.mimeType === 'application/pdf' && a.sizeBytes > 0));
-  // המסמכים נוצרו: הזמנה + השכרה מ-HTML של השרת, תשלומים מ-HTML מקומי, משלוח מנתיב דף ההדפסה של הלו״ז עם orderId ו-downloadPdf
-  assert.equal(pdf.calls.length, 4);
-  const byPath = pdf.calls.find((c) => c.path);
-  assert.equal(byPath.path, '/schedule/print/PP-12?orderId=53375&downloadPdf=true');
-  const pay = pdf.calls.find((c) => c.html && c.html.includes('דף תשלומים'));
-  assert.ok(pay, 'דף התשלומים נבנה מקומית');
+  assert.equal(pdf.calls.length, 6);
+  assert.equal(pdf.calls.find((c) => c.path).path, '/schedule/print/PP-12?orderId=53375&downloadPdf=true');
+  assert.ok(pdf.calls.find((c) => c.html && c.html.includes('דף תשלומים')), 'דף התשלומים נבנה מקומית');
+  assert.ok(pdf.calls.find((c) => c.html && c.html.includes('אישור קבלת תשלום')), 'הקבלה נבנתה מקומית');
+  const photosHtml = pdf.calls.find((c) => c.html && c.html.includes('תמונות הדגמים'));
+  assert.ok(photosHtml && photosHtml.html.includes('data:image/jpeg;base64,QQ=='), 'תמונות הדגמים מוטמעות כ-data URI');
+  assert.deepEqual(loaded, [1]);
   assert.equal(f.calls.filter((c) => c.body && c.body.returnHtmlOnly).length, 2, 'HTML מהשרת רק להזמנה ולהשכרה');
+});
+
+test('model-photos: אין אף תמונה שנטענה = שגיאה בעברית ולא נשלח מייל; loadModelPhotos: imageUrl אז thumbnailUrl, מדלג על שגיאות, תקרת גודל', async () => {
+  const f = makeFetch(); const oc = makeOc();
+  const r = await A.sendOrderMail({ oc, orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 'נושא', bodyText: 'תוכן', kinds: ['model-photos'], docData: { order: ORDER, items: [] }, fetchImpl: f, pdf: makePdf(), images: async () => [], readFile: async () => '' });
+  assert.deepEqual(r, { ok: false, error: 'לא ניתן לטעון את תמונות הדגמים' });
+  assert.equal(posts(f).length, 0);
+
+  const { loadModelPhotos } = await L('app/components/order-card/parts/ocDocsImages.js');
+  const items = [
+    { id: 'a', sizeText: '38', dressItem: { dress: { id: 'm1', name: '4512', imageUrl: '/big1', thumbnailUrl: '/thumb1' } } },
+    { id: 'b', sizeText: '36', dressItem: { dress: { id: 'm2', name: '3087', imageUrl: '/big2' } } },
+    { id: 'c', sizeText: '40', dressItem: { dress: { id: 'm3', name: '2764', imageUrl: '/big3' } } },
+  ];
+  const tried = [];
+  const toDataUri = async (url) => { tried.push(url); if (url === '/big1') throw new Error('404'); if (url === '/big2') throw new Error('404'); return 'data:image/jpeg;base64,' + 'A'.repeat(100); };
+  const photos = await loadModelPhotos(items, { toDataUri });
+  assert.deepEqual(photos.map((p) => [p.name, p.sizes]), [['4512', ['38']], ['2764', ['40']]], 'דגם 3087 נזרק כי אין לו תמונה שנטענה');
+  assert.deepEqual(tried, ['/big1', '/thumb1', '/big2', '/big3']);
+  const capped = await loadModelPhotos(items, { toDataUri: async () => 'data:image/jpeg;base64,' + 'A'.repeat(100), maxTotal: 250 });
+  assert.equal(capped.length, 2, 'תקרת גודל כולל: השלישית לא נכנסת');
 });
 
 test('quick: בלי צרופות - רק נושא ותוכן; fileCount 0; אישור מנהל כמו במצב doc', async () => {

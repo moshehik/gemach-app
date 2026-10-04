@@ -7,8 +7,9 @@
 // שמירת כתובת מייל חדשה בכרטיס הלקוח (PUT /api/customers/:id עם כל שדות הלקוח). כאן במקום window.alert/customAuthPrompt: ui.* / oc.approve.
 // רישום להיסטוריה: הדפסה נרשמת ע"י דף ההדפסה עצמו (חוזה W0 §1.5) - לא כאן; הורדת PDF / ייצוא Excel = oc.logEvent; מייל = השרת (EMAIL_SENT / EMAIL_FAILED).
 import {
-  mailRequestBody, docAttachmentOf, extraAttachmentOf, docFileName, paymentsPageHtml, orderExportSheets, orderEmailOf, isValidEmail,
+  mailRequestBody, docAttachmentOf, extraAttachmentOf, docFileName, paymentsPageHtml, receiptPageHtml, modelPhotosPageHtml, orderExportSheets, orderEmailOf, isValidEmail,
 } from './ocDocsLogic';
+import { loadModelPhotos } from './ocDocsImages';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
 
 const jsonOf = async (res) => { try { return await res.json(); } catch { return {}; } };
@@ -28,10 +29,11 @@ export async function fetchReportHtml({ fetchImpl = fetch, orderId, type, email 
 }
 
 /**
- * PDF (base64) של מסמך מערכת לפי kind (EMAIL_ATTACHMENT_KINDS של W0): order-pdf / rental-pdf (דוחות ההזמנה/ההשכרה), payments (דף תשלומים,
- * מ-HTML מקומי), delivery (תעודת משלוח PP-12 של הלו״ז להזמנה זו). שגיאה = Error עם הודעה בעברית.
+ * PDF (base64) של מסמך מערכת לפי kind (EMAIL_ATTACHMENT_KINDS של W0): order-pdf / rental-pdf (דוחות ההזמנה/ההשכרה), payments (דף תשלומים) ו-receipt
+ * (אישור תשלומים) - שניהם מ-HTML מקומי, model-photos (תמונות הדגמים מוטמעות כ-data URI), delivery (תעודת משלוח PP-12 של הלו״ז להזמנה זו).
+ * שגיאה = Error עם הודעה בעברית.
  */
-export async function makeDocPdf({ kind, orderId, email, data, fetchImpl = fetch, pdf, gmachName }) {
+export async function makeDocPdf({ kind, orderId, email, data, fetchImpl = fetch, pdf, gmachName, images }) {
   const client = pdf || (await defaultPdf());
   if (kind === 'order-pdf' || kind === 'rental-pdf') {
     const html = await fetchReportHtml({ fetchImpl, orderId, type: kind === 'rental-pdf' ? 'rental' : 'order', email });
@@ -40,6 +42,16 @@ export async function makeDocPdf({ kind, orderId, email, data, fetchImpl = fetch
   if (kind === 'payments') {
     const html = paymentsPageHtml({ order: data && data.order, obligations: data && data.obligations, payments: data && data.payments, gmachName });
     return client.fetchPdfBase64({ html, filename: docFileName('payments', orderId, 'pdf').replace(/\.pdf$/, '') });
+  }
+  if (kind === 'receipt') {
+    const html = receiptPageHtml({ order: data && data.order, payments: data && data.payments, gmachName });
+    return client.fetchPdfBase64({ html, filename: docFileName('receipt', orderId, 'pdf').replace(/\.pdf$/, '') });
+  }
+  if (kind === 'model-photos') {
+    const photos = await (images || loadModelPhotos)(data && data.items);
+    if (!photos.length) throw new Error('לא ניתן לטעון את תמונות הדגמים');
+    const html = modelPhotosPageHtml({ order: data && data.order, photos, gmachName });
+    return client.fetchPdfBase64({ html, filename: docFileName('model-photos', orderId, 'pdf').replace(/\.pdf$/, '') });
   }
   if (kind === 'delivery') {
     const path = orderPrintPath('PP-12', orderId, { downloadPdf: true });
@@ -62,7 +74,7 @@ const readFileBase64 = (file) => new Promise((resolve, reject) => {
  */
 export async function sendOrderMail({
   oc, orderId, mode, to, type = 'order', subject, bodyText, kinds = [], extraFiles = [], sendMode = 'email', docData, email,
-  fetchImpl = fetch, pdf, readFile = readFileBase64, gmachName, onStep,
+  fetchImpl = fetch, pdf, readFile = readFileBase64, gmachName, onStep, images,
 }) {
   if (!isValidEmail(to)) return { ok: false, error: 'כתובת המייל אינה תקינה' };
   try {
@@ -70,11 +82,11 @@ export async function sendOrderMail({
     let pdfBase64 = null;
     if (mode === 'doc') {
       onStep && onStep('pdf');
-      pdfBase64 = await makeDocPdf({ kind: type === 'rental' ? 'rental-pdf' : 'order-pdf', orderId, email: to, data: docData, fetchImpl, pdf, gmachName });
+      pdfBase64 = await makeDocPdf({ kind: type === 'rental' ? 'rental-pdf' : 'order-pdf', orderId, email: to, data: docData, fetchImpl, pdf, gmachName, images });
     } else {
       for (const kind of kinds) {
         onStep && onStep('pdf', kind);
-        const base64 = await makeDocPdf({ kind, orderId, email: to, data: docData, fetchImpl, pdf, gmachName });
+        const base64 = await makeDocPdf({ kind, orderId, email: to, data: docData, fetchImpl, pdf, gmachName, images });
         attachments.push(docAttachmentOf({ kind, fileName: docFileName(kind, orderId, 'pdf'), base64 }, sendMode));
       }
     }

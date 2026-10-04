@@ -1,12 +1,12 @@
 'use client';
 
 // OcMailSheet — חלון המייל של כרטיס ההזמנה החדש (גיליון תחתון, העיצוב: #dlg.mailwin.fx-sheet): שני מצבים באותו רכיב.
-//   mode 'quick' (A8, "מייל מהיר" בכרטיס הלקוח, מאחורי order_quick_mail_enabled): נושא, תוכן, "דפים לצירוף" (תקנון/פרטי הזמנה/תשלומים/משלוח - AMB-11:
-//     "חשבונית/קבלה" ו"תמונות דגמים (ZIP)" מוסתרים כי אין להם מסמך), תצוגה מקדימה סכמטית לכל קובץ, ואישור מנהל (feature:customer_email_approval) רק כשהשרת דורש.
+//   mode 'quick' (A8, "מייל מהיר" בכרטיס הלקוח, מאחורי order_quick_mail_enabled): נושא, תוכן, "דפים לצירוף" (כל ששת הסוגים, AMB-11 בהחלטת הבעלים: פרטי הזמנה,
+//     תקנון חתום, דף תשלומים, דף משלוח, חשבונית/קבלה, תמונות דגמים), תצוגה מקדימה סכמטית לכל קובץ, ואישור מנהל (feature:customer_email_approval) רק כשהשרת דורש.
 //   mode 'doc' (R6, "שליחה במייל" / "מייל השכרה" מתפריט ההדפסה): הזמנה/השכרה כ-PDF ראשי, כתובת ניתנת לעריכה - כמו חלון האפשרויות של הישן.
 // בשניהם (R8): "קבצים נוספים" + "יעד הקבצים" (צרופה למייל / דרייב + שיתוף / גם וגם). שליחה: ocDocsActions.sendOrderMail (POST /api/orders/:id/email).
 // כשאין מייל ללקוח: "כתובת מייל חסרה" (OcMissingEmail) לפני החלון. סגירה עם תוכן שנערך: "לזרוק את המייל?" (שכבה 2). אין window.alert/confirm.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { ensureCustomerEmail } from './OcMissingEmail';
@@ -17,7 +17,10 @@ import {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fmtSize = (bytes) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
-const PREVIEW_NOTE = { ord: 'דוח ההזמנה המלא, כקובץ PDF', reg: 'דף ההשכרה עם תנאי התקנון, כקובץ PDF', pay: 'התשלומים שהתקבלו והיתרה, כקובץ PDF', del: 'תעודת המשלוח של ההזמנה, כקובץ PDF' };
+const PREVIEW_NOTE = {
+  ord: 'דוח ההזמנה המלא, כקובץ PDF', reg: 'דף ההשכרה עם תנאי התקנון, כקובץ PDF', pay: 'התשלומים שהתקבלו והיתרה, כקובץ PDF',
+  del: 'תעודת המשלוח של ההזמנה, כקובץ PDF', inv: 'אישור קבלת התשלומים, כקובץ PDF', img: 'תמונות הדגמים שבהזמנה, כקובץ PDF',
+};
 const DOC_TITLE = { order: 'שליחת מייל הזמנה', rental: 'שליחת מייל השכרה' };
 
 function DiscardMailDialog({ close }) {
@@ -33,52 +36,51 @@ function DiscardMailDialog({ close }) {
 }
 DiscardMailDialog.ocLayer = 2;
 
-// R8: קבצים נוספים + יעד הקבצים (משותף לשני המצבים)
-function MailExtras({ extraFiles, setExtraFiles, dest, setDest, disabled, markDirty }) {
+// R8: קבצים נוספים + יעד הקבצים (משותף לשני המצבים). המבנה כמו בעיצוב: mfld אחד עם כותרת, שורת לחצן "הוספת קובץ" (btn sm), כותרת יעד ובורר pill.
+function MailExtras({ extraFiles, setExtraFiles, dest, setDest, disabled, markDirty, filesLabel }) {
   const idx = Math.max(0, MAIL_DEST_OPTIONS.findIndex((o) => o.v === dest));
   const note = driveModeNote(dest);
+  const pickRef = useRef(null);
   return (
-    <>
-      <div className="mfld oc-mx" data-oc-part="r8-files">
-        <span className="lbl" id="oc-mx-l"><OcIcon name="clip" size="sm" />קבצים נוספים</span>
-        <label className="btn sm oc-mx-pick" aria-disabled={disabled || undefined}>
-          <OcIcon name="plus" size="sm" />בחירת קבצים
-          <input type="file" multiple hidden disabled={disabled} aria-labelledby="oc-mx-l" onChange={(e) => {
-            const picked = e.target.files ? Array.from(e.target.files) : [];
-            if (picked.length) { setExtraFiles((prev) => [...prev, ...picked]); markDirty(); }
-            e.target.value = '';
-          }} />
-        </label>
-        {extraFiles.length ? (
-          <div className="oc-mx-list">
-            {extraFiles.map((file, i) => (
-              <div className="oc-mx-row" key={`${file.name}-${i}`}>
-                <span className="mft"><OcIcon name="file" size="sm" /></span>
-                <span className="mfx"><b>{file.name}</b><small>{fmtSize(file.size || 0)}</small></span>
-                <button type="button" className="mfe" data-act="mail-rm" aria-label={`הסרת ${file.name}`} data-tip="הסר" disabled={disabled} onClick={() => { setExtraFiles((prev) => prev.filter((_, j) => j !== i)); markDirty(); }}>
-                  <OcIcon name="x" size="sm" />
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
+    <div className="mfld oc-mx" data-oc-part="r8">
+      <span className="lbl"><OcIcon name="clip" size="sm" />{filesLabel}</span>
+      <div className="row wrap oc-mx-add">
+        <button type="button" className="btn sm" data-act="mail-addfile" disabled={disabled} onClick={() => pickRef.current && pickRef.current.click()}>
+          <OcIcon name="plus" size="sm" />הוספת קובץ
+        </button>
+        <input ref={pickRef} type="file" multiple hidden tabIndex={-1} aria-label="בחירת קבצים לצירוף" onChange={(e) => {
+          const picked = e.target.files ? Array.from(e.target.files) : [];
+          if (picked.length) { setExtraFiles((prev) => [...prev, ...picked]); markDirty(); }
+          e.target.value = '';
+        }} />
       </div>
-      <div className="mfld oc-mx" data-oc-part="r8-dest">
-        <span className="lbl" id="oc-dest-l"><OcIcon name="sliders" size="sm" />יעד הקבצים</span>
-        <div className="seg pill" role="radiogroup" aria-labelledby="oc-dest-l" style={{ '--n': MAIL_DEST_OPTIONS.length, '--i': idx }}>
-          <span aria-hidden="true" className="pth" />
-          {MAIL_DEST_OPTIONS.map((o) => (
-            <button key={o.v} type="button" role="radio" aria-checked={dest === o.v} className={dest === o.v ? 'on' : ''} data-dest={o.v} disabled={disabled} onClick={() => { setDest(o.v); markDirty(); }}>{o.label}</button>
+      {extraFiles.length ? (
+        <div className="oc-mx-list">
+          {extraFiles.map((file, i) => (
+            <div className="oc-mx-row" key={`${file.name}-${i}`}>
+              <span className="mft"><OcIcon name="file" size="sm" /></span>
+              <span className="mfx"><b>{file.name}</b><small>{fmtSize(file.size || 0)}</small></span>
+              <button type="button" className="mfe" data-act="mail-rm" aria-label={`הסרת ${file.name}`} data-tip="הסר" disabled={disabled} onClick={() => { setExtraFiles((prev) => prev.filter((_, j) => j !== i)); markDirty(); }}>
+                <OcIcon name="x" size="sm" />
+              </button>
+            </div>
           ))}
         </div>
-        {note ? <small className="faint oc-mx-note">{note}</small> : null}
+      ) : null}
+      <span className="lbl oc-mx-dest-l" id="oc-dest-l">יעד הקבצים בהתאמה</span>
+      <div className="seg pill" role="radiogroup" aria-labelledby="oc-dest-l" style={{ '--n': MAIL_DEST_OPTIONS.length, '--i': idx }}>
+        <span aria-hidden="true" className="pth" />
+        {MAIL_DEST_OPTIONS.map((o) => (
+          <button key={o.v} type="button" role="radio" aria-checked={dest === o.v} className={dest === o.v ? 'on' : ''} data-dest={o.v} disabled={disabled} onClick={() => { setDest(o.v); markDirty(); }}>{o.label}</button>
+        ))}
       </div>
-    </>
+      {note ? <small className="faint oc-mx-note">{note}</small> : null}
+    </div>
   );
 }
 
 export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot, close }) {
-  const { order, obligations, payments } = snapshot;
+  const { order, obligations, payments, items } = snapshot;
   const name = customerNameOf(order);
   const orderId = order.orderId;
   const [to, setTo] = useState(toInit || '');
@@ -93,7 +95,7 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
   const [dirty, setDirty] = useState(false);
   const bodyRef = useRef(null);
   const quick = mode === 'quick';
-  const files = useMemo(() => mailFilesFor({ order, settings: oc.settings }), [order, oc.settings]);
+  const files = useMemo(() => mailFilesFor({ order, settings: oc.settings, items, payments }), [order, oc.settings, items, payments]);
   const idle = state === 'idle';
   const valid = quick ? quickMailValid({ to, subject, bodyText }) : isValidEmail(to);
   const markDirty = () => setDirty(true);
@@ -137,7 +139,7 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
     const r = await sendOrderMail({
       oc, orderId, mode, to: to.trim(), type, subject, bodyText,
       kinds: quick ? files.filter((file) => picked.includes(file.id)).map((file) => file.kind) : [],
-      extraFiles, sendMode: dest, docData: { order, obligations, payments }, gmachName: oc.settings.get('gmach_name', 'גמ"ח שמלות'),
+      extraFiles, sendMode: dest, docData: { order, obligations, payments, items }, gmachName: oc.settings.get('gmach_name', 'גמ"ח שמלות'),
     });
     if (r.cancelled) { setState('idle'); return; }
     if (!r.ok) { setState('idle'); setErr(r.error || 'השליחה נכשלה'); return; }
@@ -185,7 +187,7 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
                 {files.map((file) => {
                   const on = picked.includes(file.id);
                   return (
-                    <div key={file.id}>
+                    <Fragment key={file.id}>
                       <div className={`mfile${on ? ' on' : ''}${file.exists ? '' : ' off'}`} role="checkbox" aria-checked={on} aria-disabled={!file.exists} tabIndex={file.exists ? 0 : -1} data-act="mail-file" data-id={file.id}
                         onClick={() => toggleFile(file)} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFile(file); } }}>
                         <span className="mft"><OcIcon name="file" /></span>
@@ -194,13 +196,13 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
                         <span className="mfk"><OcIcon name="check" size="sm" /></span>
                       </div>
                       {prev === file.id && file.exists ? <div className="mprev"><span className="mft"><OcIcon name="file" /></span><div><b>{file.name}</b><small>{PREVIEW_NOTE[file.id]}</small><i /><i /><i /></div></div> : null}
-                    </div>
+                    </Fragment>
                   );
                 })}
               </div>
             </div>
           ) : null}
-          <MailExtras extraFiles={extraFiles} setExtraFiles={setExtraFiles} dest={dest} setDest={setDest} disabled={!idle} markDirty={markDirty} />
+          <MailExtras extraFiles={extraFiles} setExtraFiles={setExtraFiles} dest={dest} setDest={setDest} disabled={!idle} markDirty={markDirty} filesLabel={quick ? 'קבצים נוספים' : `קבצים נוספים (בנוסף ל-PDF ${type === 'rental' ? 'ההשכרה' : 'ההזמנה'})`} />
         </div>
       </div>
       <div className="amsg oc-mail-err" aria-live="polite">{err ? <><OcIcon name="alert" size="sm" />{err}</> : null}</div>
@@ -224,7 +226,7 @@ export async function openMailSheet({ oc, ui, mode, type = 'order' }) {
   if (!to) return null;
   const res = await ui.openDialog(
     OcMailSheet,
-    { oc, ui, mode, type, to, snapshot: { order: { ...order, customer: { ...(order.customer || {}), email: to } }, obligations: snap.obligations || oc.obligations || [], payments: snap.payments || oc.payments || [] } },
+    { oc, ui, mode, type, to, snapshot: { order: { ...order, customer: { ...(order.customer || {}), email: to } }, obligations: snap.obligations || oc.obligations || [], payments: snap.payments || oc.payments || [], items: snap.items || oc.items || [] } },
     { className: 'mailwin fx-sheet', labelledBy: 'oc-mail-t', dismissable: false, badge: false },
   );
   if (res && res.sent) {

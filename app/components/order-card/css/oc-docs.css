@@ -25,9 +25,12 @@
 .gm-ds.gm-oc #dlg.fx-sheet .fx-actions .btn{width:auto;flex:0 0 auto}
 .gm-ds.gm-oc #dlg.fx-sheet .fx-actions .btn.primary{min-width:200px}
 
+/* דליפה: globals.css מאפס padding לכל אלמנט - לחצן הסגירה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן (כמו .back ב-oc-base) */
+.gm-ds.gm-oc #dlg.fx-sheet .mh .ibtn.mx{padding:1px 6px}
+
 /* ===== R8 בתוך חלון המייל: קבצים נוספים + יעד הקבצים (רכיבי פלטה: btn sm, שורת קובץ כמו mfile, בורר pill) ===== */
-.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-pick{align-self:flex-start;cursor:pointer}
-.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-pick[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-add{gap:10px}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-dest-l{margin-top:6px}
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mx-list{display:flex;flex-direction:column;gap:8px}
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mx-row{display:flex;align-items:center;gap:12px;padding:6px 12px;border:1.5px solid var(--gm-sky-200);border-radius:14px;background:var(--gm-sky-50)}
 .gm-ds.gm-oc.dlg-dark #dlg.fx-sheet .oc-mx-row{background:var(--k-row);border-color:var(--k-rowb)}

@@ -30,7 +30,7 @@ export function OcMissingEmailDialog({ oc, initial = '', close, fetchImpl }) {
           onChange={(e) => { setValue(e.target.value); setMsg(''); }}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }} />
       </Field>
-      <div className="amsg" aria-live="polite">{msg ? <><OcIcon name="alert" size="sm" />{msg}</> : null}</div>
+      {msg ? <div className="amsg" role="alert"><OcIcon name="alert" size="sm" />{msg}</div> : null}
       <DlgButtons>
         <DlgBtn kind="primary" icon="send" disabled={busy} onClick={submit}>שמור ושלח</DlgBtn>
         <DlgBtn kind="ghost" icon="x" onClick={() => close(null)}>ביטול</DlgBtn>

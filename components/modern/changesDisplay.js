@@ -5,15 +5,17 @@
 //   app/lib/auditLog.js attachEmployeeNames adds meta.approverName next to meta.approverId.
 // - Machine values of the order events (lib/history/orderEvents.js) are shown as Hebrew labels.
 import { getCatalogItem } from '../../lib/permissionsMetadata';
+import { SCHEDULE_SHEET_LABELS } from '../../lib/history/orderEvents';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HIDDEN_KEYS = new Set(['clientEventId', 'approverId']);
 
 export const VALUE_LABELS = {
-  doc: { order: 'סיכום הזמנה', rental: 'דף השכרה', prep: 'דף הכנה', delivery: 'תעודת משלוח' },
+  doc: { order: 'סיכום הזמנה', rental: 'דף השכרה', prep: 'דף הכנה', delivery: 'תעודת משלוח', schedule: 'דף לו״ז' },
   format: { xlsx: 'Excel', pdf: 'PDF', print: 'הדפסה' },
   source: { 'print-page': 'דף ההדפסה', card: 'כרטיס ההזמנה' },
-  sheet: { 'PP-07': 'דף הכנה (PP-07)', 'PP-12': 'תעודת משלוח (PP-12)' },
+  // every schedule print page (a whole-day print is recorded per order, W7 / AMB-20); PP-12 keeps its historical label
+  sheet: { ...Object.fromEntries(Object.entries(SCHEDULE_SHEET_LABELS).map(([k, v]) => [k, `${v} (${k})`])), 'PP-12': 'תעודת משלוח (PP-12)' },
   sendMode: { email: 'מייל', drive: 'דרייב', both: 'מייל ודרייב' },
   // EMAIL_SENT.type - only these two values are rewritten (the key `type` exists on other entities too)
   type: { order: 'הזמנה', rental: 'השכרה' },
