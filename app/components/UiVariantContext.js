@@ -49,10 +49,23 @@ export function useUiVariants() {
   return useContext(UiVariantContext);
 }
 
+// הכרעה מקומית של מסך בתוך עץ מסוים (VariantFrame, app/components/variant/VariantFrame.js): דף שרת שבחר בשרת בין Legacy* לחדש
+// (getRequestUiVariant) עוטף את מה שבחר, כך שכל רכיב בפנים (האייקון, AutoClockSwitch) רואה בדיוק את אותה הכרעה — גם אם ערכי
+// ה-layout ישנים (ה-root layout לא מרונדר מחדש בניווט רך).
+const ScreenVariantScopeContext = createContext(null);
+
+export function ScreenVariantScope({ screen, variant, children }) {
+  const parent = useContext(ScreenVariantScopeContext);
+  const value = isUiScreen(screen) && (variant === 'a5' || variant === 'legacy') ? { ...(parent || {}), [screen]: variant } : parent;
+  return <ScreenVariantScopeContext.Provider value={value}>{children}</ScreenVariantScopeContext.Provider>;
+}
+
 export function useUiVariant(screen) {
   const values = useContext(UiVariantContext);
+  const scoped = useContext(ScreenVariantScopeContext);
   const pathname = usePathname();
   if (!isUiScreen(screen)) return DEFAULT_UI_VARIANT;
+  if (screen !== 'shell' && scoped && Object.prototype.hasOwnProperty.call(scoped, screen)) return scoped[screen];
   // ה-layout הראשי לא מרונדר מחדש בניווט רך, ולכן גם אם נכנסים מדף רגיל לקיוסק / הדפסה בלי טעינה
   // מלאה, המעטפת נשארת 'legacy' — אותו כלל כמו בשרת.
   if (screen === 'shell' && isForcedLegacyPath(pathname)) return DEFAULT_UI_VARIANT;

@@ -372,7 +372,12 @@ t('AutoClockSwitch מיובא רק מדף הפרופיל - לא מתפריט ה�
     assert.ok(!src(f).includes('AutoClockSwitch'), `${f} must not render the switch`);
   }
   assert.ok(src('../app/components/profile/ProfilePage.js').includes('<AutoClockSwitch />'));
-  assert.ok(!src('../app/components/login/AutoClockSwitch.js').includes("variant"), 'single profile-card variant only');
+  // בלי prop של מיקום (variant / placement): רק כרטיס הפרופיל. 4.10.2026 ("ישן / חדש"): המראה הישן של אותו כרטיס מוצג רק בדף
+  // הפרופיל הישן (LegacyProfilePage), ונבחר אך ורק לפי useUiVariant('profile') - לא לפי prop.
+  const auto = src('../app/components/login/AutoClockSwitch.js');
+  assert.match(auto, /export default function AutoClockSwitch\(\) \{/, 'no props - single profile-card switch');
+  assert.ok(!/variant[=:]/.test(auto), 'no variant prop / placement option');
+  assert.match(auto, /useUiVariant\('profile'\)/, 'old look only on the old profile page');
 });
 
 console.log(`\n[TZ=${process.env.TZ}] ${passed} בדיקות עברו${process.exitCode ? ', יש כישלונות' : ''}`);
