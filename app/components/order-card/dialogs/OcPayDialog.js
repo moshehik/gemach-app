@@ -65,7 +65,8 @@ export default function OcPayDialog({ api, source = 'pay-now', amount, approved 
   const manualOnly = source === 'manual';
   const methods = useMemo(() => payMethodsFor(oc.settings, { manualOnly }), [oc.settings, manualOnly]);
   const debtFlow = DEBT_SOURCES.includes(source);
-  const allowLeaveDebt = source === 'save' || source === 'exit';
+  // AMB-06: הלחצן מוסתר כשההגדרה allow_leave_debt_with_approval כבויה ('false'); חסר = מותר (כמו היום)
+  const allowLeaveDebt = (source === 'save' || source === 'exit') && oc.settings.allowLeaveDebtWithApproval !== false;
   const start = money2(amount !== undefined && amount !== null ? amount : oc.totals.balance);
   const [amt, setAmt] = useState(start > 0 ? String(start) : '');
   const [method, setMethod] = useState(methods[0] || '');

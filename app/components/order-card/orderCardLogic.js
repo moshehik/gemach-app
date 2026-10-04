@@ -184,6 +184,8 @@ export function parseSettings(rows) {
     consolidateManualPaymentCredit: bool('consolidate_manual_payment_credit_ui', false),
     nedarimPlusEnabled: notFalse('nedarim_plus_enabled', true),
     allowAdditionalPayment: bool('allow_additional_payment_on_order', false),
+    // AMB-06: "השאר חוב (באישור מנהל)" בחלון התשלום. חסר = מותר (כמו היום); רק 'false' מסתיר את הלחצן.
+    allowLeaveDebtWithApproval: notFalse('allow_leave_debt_with_approval', true),
     orderEditRedirectScreen: (has('order_edit_redirect_screen') && raw.order_edit_redirect_screen) ? raw.order_edit_redirect_screen : 'orders_list',
     // ---- מפתחות נוספים שהכרטיס החדש קורא (A.5). ברירות המחדל = כמו ברכיבי הישן (MGD/MIM) / "חסר = כבוי" ----
     enableDeliveries: bool('enable_deliveries', false),
