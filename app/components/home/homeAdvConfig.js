@@ -2,7 +2,8 @@
 // ועיצוב התשובה. מודול טהור (בלי DOM/React/רשת) — נבדק ב-scripts/test_home_logic.mjs.
 // מקור: public/a5/index.html (ADV_FOCI, ADV_KEYS, advApply) ו-public/a5/adapters/adv-a.js / adv-b.js.
 //
-// V1: התחומים האיטיים (כספים, תפוסה, התראות) וה"הגדרות" (חיפוש AI בלבד) והבדיקת מלאי לא נבנו — V1-RELEASE-PLAN §3 UI-2.
+// V1: התחומים האיטיים (כספים, התראות) וה"הגדרות" (חיפוש AI בלבד) לא נבנו — V1-RELEASE-PLAN §3 UI-2. בדיקת מלאי = דף נפרד (/stock-check).
+// תפוסה נוספה ב-4.10.2026 לבקשת הבעלים (בעיצוב המאושר: capacity, בלוק 'cap', סיכום "במלאי / בתפוסה / רזרבה") — ר' docs/home-adv-capacity.md.
 
 import { hebText } from './homeDates.js';
 import { safeInternalRoute } from './homeLogic.js';
@@ -59,13 +60,16 @@ export const ADV_FOCI = {
   returns: { label: 'החזרות', icon: 'undo', ai: true, api: 'adv', blocks: [{ t: 'rstat', kind: 'ret' }, { t: 'rdet', kind: 'ret' }, { t: 'rchk' }, { t: 'rcust' }] },
   alterations: { label: 'תיקונים', icon: 'scissors', api: 'advb', needs: 'alterations', blocks: [{ t: 'apart' }, { t: 'sstat', list: 'alt' }, { t: 'rchk', noDebt: true }, { t: 'rcust' }] },
   deliveries: { label: 'משלוחים', icon: 'truck', api: 'advb', needs: 'deliveries', blocks: [{ t: 'dpart' }, { t: 'sstat', list: 'dlv' }, { t: 'rchk' }, { t: 'rcust' }] },
+  // תפוסה: דגם (חובה — השרת מחזיר 400 בלעדיו), מידה, טווח תאריכי אירוע. keys = רק מה שהשרת קורא לתחום הזה
+  capacity: { label: 'תפוסה', icon: 'box', api: 'advb', keys: ['model', 'size', 'from', 'to'], required: [['model', 'נדרש דגם לחיפוש תפוסה']], blocks: [{ t: 'cap' }] },
   models: { label: 'דגמים', icon: 'dress', api: 'advb', mgr: true, blocks: [{ t: 'mgen' }] },
   employees: { label: 'עובדים', icon: 'users', api: 'advb', mgr: true, blocks: [{ t: 'fields', icon: 'user', title: 'פרטים כלליים', keys: CUSTOMER_FIELDS }, { t: 'estat' }] },
 };
 
 // העמוד שמאחורי כל תחום — העובדת רואה את התחום רק אם העמוד הזה מותר לה (אותו סינון הרשאות כמו התפריט ב-/api/a5/boot).
 // למנהלות-על (דגמים/עובדים) ההגבלה נאכפת בשרת; כאן הם נשארים לפי תפקיד.
-const FOCUS_PAGE = { customers: '/customers', orders: '/orders', rentals: '/rentals', returns: '/rentals', alterations: '/alterations', deliveries: '/deliveries' };
+// תפוסה = page:orders (GATE.capacity ב-app/api/a5/adv-b/route.js; אותו שער כמו /stock-check — STOCK_CHECK_PAGE_KEY), ולכן נתיב '/orders'.
+const FOCUS_PAGE = { customers: '/customers', orders: '/orders', rentals: '/rentals', returns: '/rentals', alterations: '/alterations', deliveries: '/deliveries', capacity: '/orders' };
 const pathOf = (href) => String(href || '').split(/[?#]/)[0];
 export function navPathSet(navGroups) {
   if (!Array.isArray(navGroups)) return null;
@@ -138,10 +142,25 @@ export function buildAdvRequest(focus, adv, storage) {
   }
   const p = new URLSearchParams();
   p.set('focus', focus);
-  ADV_KEYS.forEach((k) => { const v = A[k]; if (v != null && typeof v === 'string' && v.trim() !== '') p.set(k, v.trim()); });
-  if (A.flags && A.flags.length) p.set('flags', A.flags.join(','));
-  if (A.ost && A.ost.length) p.set('ost', A.ost.join(','));
+  (f.keys || ADV_KEYS).forEach((k) => { const v = A[k]; if (v != null && typeof v === 'string' && v.trim() !== '') p.set(k, v.trim()); });
+  if (!f.keys && A.flags && A.flags.length) p.set('flags', A.flags.join(','));
+  if (!f.keys && A.ost && A.ost.length) p.set('ost', A.ost.join(','));
   return '/api/a5/adv-b?' + p.toString();
+}
+
+// שדה חובה שחסר בטופס (לפני שליחה לשרת): ההודעה של השרת לאותו מקרה, או '' כשהכל מלא
+export function advMissing(focus, adv) {
+  const f = ADV_FOCI[focus];
+  const A = adv || {};
+  const miss = ((f && f.required) || []).find(([k]) => !(typeof A[k] === 'string' && A[k].trim()));
+  return miss ? miss[1] : '';
+}
+
+// סיכום התפוסה (capstats): שלושה מספרים שלמים לא שליליים, או null כשהשרת לא שלח
+const capNum = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.round(n) : 0; };
+export function normalizeCapstats(c) {
+  if (!c || typeof c !== 'object') return null;
+  return { stock: capNum(c.stock), busy: capNum(c.busy), res: capNum(c.res) };
 }
 
 // נרמול תשובת השרת לתצוגה: עמודות, שורות, קישורים, שורות עם התראה
@@ -155,6 +174,7 @@ export function normalizeAdvResponse(r) {
     namesRev: d.namesRev || [],
     truncated: !!d.truncated,
     gaps: d.gaps && d.gaps.length ? d.gaps : [],
+    capstats: normalizeCapstats(d.capstats), // תפוסה בלבד: במלאי / בתפוסה / רזרבה
   };
 }
 
@@ -162,7 +182,7 @@ export function normalizeAdvResponse(r) {
 const OLBL = { amount: 'סכום משוער', cemp: 'עובד (זיכוי)', ordst: 'סטטוס הזמנה', branch: 'סניף', city: 'עיר משלוח', oid: 'קוד הזמנה', name: 'שם לקוח', phone: 'טלפון', cinfo: 'פרטי לקוח', emp: 'עובד מבצע', model: 'דגם', size: 'מידה', item: 'ברקוד' };
 const ALL_FLAGS = [...ADV_FLAGS, ...ORD_CHECK, ...RCHK, ...DFLAGS, ...AFLAGS, ...MFLAGS, ...EFLAGS, ['holiday', 'אירוע חול'], ['packing', 'ציפוף ימים'], ['delivery', 'משלוח'], ['repairs', 'תיקונים'], ['itRepairs', 'תיקונים']];
 const ALL_OST = [...OST, ...RST, ...RTN, ...DST, ...AST];
-const SUMMARY_FOCI = ['orders', 'rentals', 'returns', 'deliveries', 'alterations', 'models'];
+const SUMMARY_FOCI = ['orders', 'rentals', 'returns', 'deliveries', 'alterations', 'capacity', 'models'];
 
 // שורת הסיכום של הסינונים ("שם פרטי רחל, חובות"); ריקה = לא נבחר שום מסנן
 export function advSummaryParts(adv, focus) {
@@ -191,8 +211,10 @@ export const advAiPrompt = (focus, parts) => 'חפש ' + ADV_FOCI[focus].label +
 export const advFlagsFor = (packing) => ({ oevent: OEVENT_FLAGS(packing), oitems: OITEM_FLAGS });
 
 /* ---------- תצוגת תוצאות ---------- */
-export const ADV_TAG = { customers: ['לקוח', 'user'], orders: ['הזמנה', 'file'], rentals: ['השכרה', 'bag'], returns: ['החזרה', 'undo'], deliveries: ['משלוח', 'truck'], alterations: ['תיקון', 'scissors'], employees: ['עובד', 'users'], models: ['דגם', 'dress'] };
+export const ADV_TAG = { customers: ['לקוח', 'user'], orders: ['הזמנה', 'file'], rentals: ['השכרה', 'bag'], returns: ['החזרה', 'undo'], deliveries: ['משלוח', 'truck'], alterations: ['תיקון', 'scissors'], capacity: ['תפוסה', 'box'], employees: ['עובד', 'users'], models: ['דגם', 'dress'] };
 
 // תא: מחרוזת או [טקסט, מחלקת-צ'יפ]
 export const cellParts = (c) => (Array.isArray(c) ? [c[0], c[1]] : [c, '']);
+// סיכום התפוסה מעל התוצאות (בעיצוב: .capstats, שלושה אריחים). אובייקטים ולא [ערך, תווית, אייקון] — אין כאן אייקונים
+export const CAP_TILES = [{ cls: 'cs-stock', label: 'במלאי', key: 'stock' }, { cls: 'cs-busy', label: 'בתפוסה', key: 'busy' }, { cls: 'cs-res', label: 'רזרבה', key: 'res' }];
 export const looksLikePhoneOrMail = (t) => /^\d{2,3}-?\d{7}$|@/.test(String(t));
