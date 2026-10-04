@@ -203,11 +203,11 @@ export default function BoardPage() {
   const handleSearch = () => setSearch(searchInput);
   const handleClearSearch = () => { setSearchInput(''); setSearch(''); };
 
-  // S06: לחיצה על יום = הלו״ז היומי של אותו יום. בלי הרשאה ללו״ז (canOpenSchedule=false מהשרת) - חלון "הזמנות ליום".
+  // S06: לחיצה על יום = הלו״ז היומי של אותו יום - רק כשהשרת אישר הרשאה ללו״ז (canOpenSchedule=true). לא ידוע (המונים עוד
+  // לא נטענו / נכשלו) או בלי הרשאה = חלון "הזמנות ליום" (ממצא הסקירה 4: לא שולחים עובדת בלי הרשאה לדף "אין הרשאה").
   const openDay = useCallback((cell) => {
-    if (stagesData && stagesData.canOpenSchedule === false) {
-      const list = ordersByDate[cell.key] || [];
-      if (list.length) setDayDlg({ cell, orders: list });
+    if (!stagesData || stagesData.canOpenSchedule !== true) {
+      setDayDlg({ cell, orders: ordersByDate[cell.key] || [] });
       return;
     }
     router.push('/schedule?date=' + cell.key);

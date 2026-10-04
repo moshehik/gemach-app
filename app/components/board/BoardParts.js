@@ -200,17 +200,22 @@ export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay, o
   };
   return (
     <div
-      className={'hc-d lz-day' + (cell.isShabbat ? ' sh' : '') + (cell.isToday ? ' today' : '')}
-      role="link"
-      tabIndex={0}
+      className={'hc-d lz-day' + (cell.isShabbat ? ' sh' : '') + (cell.isToday ? ' today' : '') + (lateCount ? ' bd-latecell' : '')}
+      role="listitem"
       data-d={cell.key}
-      aria-label={label}
       onClick={open}
-      onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onOpenDay(cell); } }}
     >
       <span className="lz-dh">
-        <b>{cell.letter}</b>
-        {cell.monthName ? <em>{cell.monthName}</em> : null}
+        {/* הקישור הסמנטי של התא (ממצא נגישות 3): רק כותרת היום. לחיצה בעכבר בכל שטח התא עושה אותו דבר (S06) */}
+        <a
+          className="bd-dlink"
+          href={'/schedule?date=' + cell.key}
+          aria-label={label}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenDay(cell); }}
+        >
+          <b>{cell.letter}</b>
+          {cell.monthName ? <em>{cell.monthName}</em> : null}
+        </a>
         <span className="bd-dhx">
           {orders.length > 2 ? (
             <button type="button" className="ibtn bd-ex" aria-label={'תצוגה מורחבת ליום זה (' + orders.length + ' הזמנות)'} data-tip="תצוגה מורחבת ליום זה" onClick={(e) => { e.stopPropagation(); onExpand(cell); }}>
@@ -265,7 +270,7 @@ export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selec
     <div className="hc lz-hc">
       {head}
       <div className="hc-w" aria-hidden="true">{WD_SHORT.map((x) => <span key={x}>{x}</span>)}</div>
-      <div className="hc-g lz-g" role="grid" aria-label="ימי החודש">
+      <div className="hc-g lz-g" role="list" aria-label="ימי החודש">
         {weeks.flat().map((cell, i) => (cell ? (
           <DayCell
             key={cell.key}
@@ -293,17 +298,18 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
   const days = weeks.flat().filter(Boolean).map((cell) => {
     const orders = ordersByDate[cell.key] || [];
     const rows = dayStageRows(stagesDays ? stagesDays[cell.key] : null, stages, selected);
-    const alert = cellAlert(rows.reduce((a, r) => a + r.alerts, 0), orders.filter((o) => isOrderLate(o, lateCfg)).length);
-    return { cell, orders, alert };
+    const late = orders.filter((o) => isOrderLate(o, lateCfg)).length;
+    const alert = cellAlert(rows.reduce((a, r) => a + r.alerts, 0), late);
+    return { cell, orders, alert, late };
   }).filter((d) => d.orders.length || d.alert);
   return (
     <div className="card items-card lz-lcard bd-lcard">
       {head}
       <div className="hres">
         <div className="hgrp">
-          {days.length ? days.map(({ cell, orders, alert }) => (
+          {days.length ? days.map(({ cell, orders, alert, late }) => (
             <section key={cell.key} className={'bd-lday' + (cell.isToday ? ' lz-today' : '')} aria-label={cell.hebrewLong}>
-              <button type="button" className="hday bd-hday" onClick={() => onOpenDay(cell)} data-tip="ללו״ז של היום הזה">
+              <button type="button" className={'hday bd-hday' + (late ? ' bd-latecell' : '')} onClick={() => onOpenDay(cell)} data-tip="ללו״ז של היום הזה">
                 <b>{cell.hebrewLong}</b>
                 {cell.notes.length ? <small>{cell.notes.join(' · ')}</small> : null}
                 {alert ? <span className="tabmk debt lz-al" role="img" aria-label={alert.tip} data-tip={alert.tip}><Ic name="alert" className="sm" /></span> : null}

@@ -114,6 +114,12 @@ ok(!!(await p.$('.dlg.bd-day')), 'S06: בלי page:schedule - לחיצה על י
 // בלי מונים (403) - הלוח עובד
 await go('nostages');
 ok((await p.$$('.lz-day')).length >= 29 && (await p.$$('.lz-pr')).length === 0, 'כשל במונים: הלוח מוצג בלי מונים');
+await p.evaluate(() => document.querySelector('.lz-day .bd-dlink').click()); await sleep(400);
+ok(!!(await p.$('.dlg.bd-day')) && !(await nav()).some((u) => u.startsWith('/schedule')), 'ממצא 4: הרשאה ללו״ז לא ידועה (המונים נכשלו) - לחיצה על יום פותחת את חלון היום, לא /schedule');
+await go('');
+ok(await p.evaluate(() => !document.querySelector('[role=grid],[role=link]') && document.querySelectorAll('.hc-g [role=listitem]').length >= 29 && !!document.querySelector('.lz-day a.bd-dlink[href^="/schedule?date="]')), 'נגישות: list/listitem, קישור רק בכותרת היום');
+ok(await p.evaluate(() => { const c = document.querySelector('.lz-day.bd-latecell'); return !!c && getComputedStyle(c).boxShadow.includes('inset') && !!c.querySelector('.lz-al'); }), 'GAP-4: תא עם איחור החזרה - מסגרת אדומה + סימן ההתראה');
+ok(await p.evaluate(() => [...document.querySelectorAll('.lz-day.bd-latecell')].every((c) => c.querySelector('.bd-co.bd-late') || c.querySelector('.bd-ex'))), 'GAP-4: מסגרת רק בימים עם הזמנה באיחור');
 // טעינה
 await go('loading');
 ok(await p.evaluate(() => document.body.textContent.includes('טוען נתונים...') && !!document.querySelector('.bd-loading .mspin')), 'E18: "טוען נתונים..."');

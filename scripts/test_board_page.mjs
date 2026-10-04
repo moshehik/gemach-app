@@ -130,10 +130,24 @@ t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז של הי
   has(PAGE, /<bdi>לוח חודשי<\/bdi>/, 'JDG-1: שם הדף "לוח חודשי"');
 });
 
-t('S06: לחיצה על יום = /schedule?date=<היום>; בלי הרשאה ללו״ז - חלון "הזמנות ליום"', () => {
+t('S06: לחיצה על יום = /schedule?date=<היום> רק כשההרשאה ללו״ז ידועה; לא ידוע / בלי הרשאה - חלון "הזמנות ליום" (ממצא 4)', () => {
   has(PAGE, /router\.push\('\/schedule\?date=' \+ cell\.key\)/);
-  has(PAGE, /stagesData\.canOpenSchedule === false/);
+  has(PAGE, /if \(!stagesData \|\| stagesData\.canOpenSchedule !== true\) \{/);
   has(API, /canOpenPage\('page:schedule'\)/);
+});
+
+t('נגישות (ממצא 3): הגריד הוא list/listitem (לא grid בלי שורות), הקישור הוא כותרת היום בלבד, אין role=link עם לחצנים בתוכו', () => {
+  hasNot(code(PARTS), /role="grid"|role="link"/);
+  has(PARTS, /className="hc-g lz-g" role="list"/);
+  has(PARTS, /role="listitem"/);
+  has(PARTS, /className="bd-dlink"\s+href=\{'\/schedule\?date=' \+ cell\.key\}/);
+});
+
+t('GAP-4: איחור החזרה = מסגרת אדומה לתא כולו (ולכותרת היום ברשימה) בנוסף לסימן האחד ולמסגרת השורה', () => {
+  has(PARTS, /\(lateCount \? ' bd-latecell' : ''\)/);
+  has(CSS, /\.gm-ds\.gm-bd \.hc-d\.lz-day\.bd-latecell\{box-shadow:inset 0 0 0 2px var\(--red\)\}/);
+  has(CSS, /\.gm-ds\.gm-bd \.bd-or\.bd-late \.li\{box-shadow:inset 0 0 0 2px var\(--red\)\}/);
+  has(CSS, /\.hday\.bd-hday\.bd-latecell/);
 });
 
 t('S09: חצי המקלדת מחליפים חודש (לא בתוך שדה ולא כשחלון פתוח)', () => {
