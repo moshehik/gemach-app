@@ -30,8 +30,6 @@
 /* ===== אפשרויות מנהל (R22 / R33) ===== */
 .gm-ds.gm-oc .oc-mgr{gap:10px}
 .gm-ds.gm-oc [data-oc-pay="manual-legacy"]{margin-top:12px}
-.gm-ds.gm-oc .card-h .oc-add-charge{margin-inline-start:auto}
-.gm-ds.gm-oc .card-h .oc-calc + .oc-add-charge{margin-inline-start:12px}
 .gm-ds.gm-oc .oc-mgr .spinner{width:14px;height:14px;border-width:2px}
 
 /* ===== חלונות ===== */

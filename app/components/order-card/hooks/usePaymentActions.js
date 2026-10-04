@@ -131,7 +131,7 @@ export function payMethodsFor(settings, { manualOnly = false } = {}) {
  * (עד אז: רק בנווה, כשהמתג המאוחד דלוק). מי שכבר מורשה לא מתבקש - זה בחלון האישור של הבקר. הפרמטר נשמר לחתימה היציבה. */
 export const manualMoneyNeedsApproval = (settings) => true;
 /** AMB-17: הלחצן המאוחד "חיוב / זיכוי ידני" רק כשהמתג consolidate_manual_payment_credit_ui דלוק (נווה יעקב).
- * בגמ"ח הראשי נשארים שני הלחצנים הנפרדים של הישן ("תשלום נוסף" / "בקשת זיכוי ללקוח") + "הוסף חיוב" בכרטיס החיובים. */
+ * בגמ"ח הראשי נשארים שני הלחצנים הנפרדים של הישן ("תשלום נוסף" / "בקשת זיכוי ללקוח") - בלי "הוסף חיוב" (F6, בעלים 2026-10-05). */
 export const isUnifiedManualButton = (settings) => !!(settings && settings.consolidateManualPaymentCredit);
 export const MANUAL_PAYMENT_CREDIT_KEY = 'feature:manual_payment_credit_add';
 export const MANUAL_CHARGE_KEY = 'feature:manual_charge_add';

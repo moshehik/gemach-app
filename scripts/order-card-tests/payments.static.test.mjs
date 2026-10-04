@@ -25,10 +25,12 @@ test('הלשונית רשומה ב-tabs/index.js (W4 החליף את השורה 
 test('הסרות: R34 (חיוב משלוח ידני), R35 ("הוסף חיוב"/"מחק"/"פרטי חיוב" בכרטיס החיובים), A14/AMB-15 (לוחית/אריח זיכוי, "ביטול זיכוי")', () => {
   assert.ok(!/הוסף חיוב משלוח|addDeliveryObligation|delivery_price/.test(ALL), 'R34');
   assert.ok(!/פרטי חיוב|selectedObligationDetails/.test(ALL), 'R35: פרטי חיוב');
-  // AMB-17: "הוסף חיוב" בלשונית רק בענף של הגמ"ח הראשי (בלי הלחצן המאוחד) - ובכל מקרה דרך openAddCharge (אישור feature:manual_charge_add)
+  // F6 (בעלים 2026-10-05): בגמ"ח הראשי אין לחצן "הוסף חיוב" נפרד - לא בכותרת כרטיס החיובים ולא בשום מקום בלשונית;
+  // חיוב ידני רק דרך הלחצן המאוחד "חיוב / זיכוי ידני" (נווה) → openManual → openAddCharge באישור feature:manual_charge_add
   assert.ok(!/הוספת חיוב/.test(TAB), 'R35: "הוספת חיוב" רק בחלון');
-  assert.ok(/\{unified \? null : <button[^>]*data-act="add-charge"[^>]*onClick=\{pay\.openAddCharge\}/.test(TAB), 'AMB-17: "הוסף חיוב" רק כשאין לחצן מאוחד');
+  assert.ok(!/הוסף חיוב/.test(TAB) && !/data-act="add-charge"/.test(TAB) && !/onClick=\{pay\.openAddCharge\}/.test(TAB), 'F6: אין לחצן "הוסף חיוב" בלשונית');
   const charges = TAB.slice(TAB.indexOf('data-oc-pay="charges"'), TAB.indexOf('data-oc-pay="payments"'));
+  assert.ok(!/<button/.test(charges.slice(0, charges.indexOf('<div className="list">'))), 'F6: כותרת כרטיס החיובים בלי לחצנים');
   assert.ok(!/trash|deleteManualCharge/.test(charges), 'R35: אין מחיקה בכרטיס החיובים');
   assert.ok(!/creditile|CreditWindowTile|זיכוי ביטול זמין לניצול|ביטול זיכוי|credit-undo/.test(ALL), 'A14/AMB-15');
   assert.ok(!/זיכוי לניצול על פריט חלופי/.test(ALL), 'A14: אין בחירת "זיכוי לניצול" (כלל מנוע, לא פעולה)');

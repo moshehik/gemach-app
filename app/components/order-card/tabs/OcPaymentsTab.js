@@ -7,7 +7,8 @@
 //   R33 "חישוב מחדש" רק להנהלה ראשית · R35 אין "הוסף חיוב"/"מחק"/"פרטי חיוב" בכרטיס החיובים · R34 אין חיוב משלוח ידני
 //   A14/AMB-15 אין לוחית זיכוי ואין אריח "זיכוי ביטול זמין לניצול" - הספירה נשארת בשורת דמי הביטול.
 //   AMB-17: הלחצן המאוחד "חיוב / זיכוי ידני" רק בנווה (consolidate_manual_payment_credit_ui); בגמ"ח הראשי נשארים שני הלחצנים הנפרדים
-//   של הישן ("תשלום נוסף" / "בקשת זיכוי ללקוח" בכרטיס התשלומים) + "הוסף חיוב" בכרטיס החיובים (feature:manual_charge_add).
+//   של הישן ("תשלום נוסף" / "בקשת זיכוי ללקוח" בכרטיס התשלומים). F6 (בעלים 2026-10-05): בגמ"ח הראשי אין לחצן "הוסף חיוב" נפרד - לא בכותרת כרטיס החיובים
+//   ולא ב"אפשרויות מנהל"; חיוב ידני נוסף רק דרך הלחצן המאוחד "חיוב / זיכוי ידני" (נווה) באישור feature:manual_charge_add.
 //   W4-MANUAL/AMB-22: תשלום/זיכוי ידני, מחיקת תשלום וביצוע זיכוי - באישור מנהל בשני הגמ"חים.
 // אירועי הבקר (debtCreated / autoRefundNeedsBank) ובקשות תשלום מבחוץ (R4, requestPayment) - ב-usePaymentActions.
 // props: {oc, ui, active}
@@ -125,7 +126,6 @@ export default function OcPaymentsTab({ oc, ui }) {
       {/* חיובים (A13 + R39; R34/R35: בלי לחצני הוספה/מחיקה) */}
       <div className="card" data-oc-pay="charges">
         <div className="card-h"><div className="ico rose"><OcIcon name="file" size="lg" /></div><h2>חיובים <Tip text="מתעדכן אוטומטית" /></h2>{oc.preview.isPreviewing ? <span className="faint oc-calc" role="status"><span className="spinner" aria-hidden="true" />מחשב מחדש ברקע…</span> : null}
-          {unified ? null : <button type="button" className="btn sm oc-add-charge" data-act="add-charge" disabled={oc.saving} onClick={pay.openAddCharge}><OcIcon name="plus" size="sm" />הוסף חיוב</button>}
         </div>
         <div className="list">
           {rows.length ? rows.map(({ o, pend }, i) => (
