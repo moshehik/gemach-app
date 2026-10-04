@@ -137,8 +137,8 @@
 /* בורר התאריך הקבוע: לוח עברי של הפלטה (.hc) על רקע לבן בתוך העמודה הכהה, ננעל על שנה אחת (בלי שורת ימי שבוע) */
 .gm-ds.gm-nw .cl-fxcal{margin:6px 0 10px;background:#fff}
 .gm-ds.gm-nw .cl-fxcal .hc-g{gap:4px;padding:10px}
-.gm-ds.gm-nw .cl-fxcal .hc-n:disabled{opacity:.35;cursor:default;border-color:#fff}
-.gm-ds.gm-nw .cl-fxcal .hc-n:disabled:hover{transform:none}
+.gm-ds.gm-nw .cl-fxcal .hc-n[aria-disabled=true]{opacity:.35;cursor:default;border-color:#fff}
+.gm-ds.gm-nw .cl-fxcal .hc-n[aria-disabled=true]:hover{transform:none}
 .gm-ds.gm-nw .cl-side .cl-add .inpw{margin-bottom:10px}
 
 /* ===== החלון הכהה (פורטל לשורש הדף: .gm-ds.dlg-dark #dlg) - "ביטול" כקישור בלי מסגרת, כמו בעיצוב ===== */
