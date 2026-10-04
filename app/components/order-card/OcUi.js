@@ -156,6 +156,11 @@ function DlgBadge({ boxId, dlgKey }) {
 const canDismiss = (opts) => (typeof opts.dismissable === 'function' ? !!opts.dismissable() : opts.dismissable !== false);
 const isDynamicDismiss = (opts) => typeof opts.dismissable === 'function';
 
+// C4: יעד מיקוד תקין = אלמנט מחובר, גלוי, לא מנוטרל ולא ה-body
+export const isFocusableTarget = (el) => !!el && typeof el.focus === 'function' && el !== (typeof document !== 'undefined' ? document.body : null)
+  && el.isConnected !== false && !el.disabled && !el.hidden && (typeof el.getClientRects !== 'function' || el.getClientRects().length > 0);
+export const focusFallback = () => { const fb = typeof document !== 'undefined' ? document.querySelector('[data-oc-focus-fallback]') : null; if (fb && typeof fb.focus === 'function') { fb.focus(); return true; } return false; };
+
 // ---------- ספק ----------
 export function OcUiProvider({ children }) {
   const [stack, setStack] = useState([]); // [{id, layer, Component, props, resolve, opts}]
@@ -172,14 +177,16 @@ export function OcUiProvider({ children }) {
       return prev.filter(x => x.id !== id);
     });
     const back = focusBack.current.pop();
-    // הלחצן שפתח את החלון יכול להיעלם בזמן שהחלון פתוח (למשל "שמור" ברייל אחרי שמירה מוצלחת) - אז המיקוד חוזר ללחצן-גיבוי (data-oc-focus-fallback)
-    if (back && typeof back.focus === 'function') {
-      setTimeout(() => {
-        try {
-          if (back.isConnected === false) { const fb = document.querySelector('[data-oc-focus-fallback]'); if (fb) fb.focus(); } else back.focus();
-        } catch { /* noop */ }
-      }, 0);
-    }
+    // C4: הלחצן שפתח את החלון חסר כשהוא null / body / מנותק / מנוטרל / מוסתר (קורה, למשל, אחרי "שמור" ברייל) - אז המיקוד עובר ללחצן-גיבוי
+    // ([data-oc-focus-fallback]), אבל רק אם בזמן ההחלפה המיקוד עדיין ב-body (חלון אחר שנפתח מיד אחרי הסגירה כבר לקח אותו - לא גונבים)
+    setTimeout(() => {
+      try {
+        if (isFocusableTarget(back)) { back.focus(); return; }
+        const ae = document.activeElement;
+        if (ae && ae !== document.body && ae.isConnected !== false) return;
+        focusFallback();
+      } catch { /* noop */ }
+    }, isFocusableTarget(back) ? 0 : 40);
   }, []);
 
   const openDialog = useCallback((Component, props = {}, opts = {}) => new Promise((resolve) => {

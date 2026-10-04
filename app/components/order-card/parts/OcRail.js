@@ -138,8 +138,20 @@ export default function OcRail({ oc, ui }) {
     if (leavingRef.current) return;
     leavingRef.current = true;
     setLeaving(key);
-    setTimeout(() => { leavingRef.current = false; setLeaving(null); ocRef.current.undoChange(key); }, UNDO_LEAVE_MS);
+    setTimeout(() => { leavingRef.current = false; setLeaving(null); undoFocusRef.current = true; ocRef.current.undoChange(key); }, UNDO_LEAVE_MS);
   };
+  // C4: אחרי ביטול שורה (גם יחיד) השורה - והלחצן שהיה בפוקוס - נעלמת והמיקוד נופל ל-body: עובר ללחצן הביטול של השורה הבאה, ואם אין - ל"שינויים בהזמנה"
+  const undoFocusRef = useRef(false);
+  useEffect(() => {
+    if (!undoFocusRef.current) return;
+    undoFocusRef.current = false;
+    const ae = document.activeElement;
+    if (ae && ae !== document.body && ae.isConnected !== false && !(rootRef.current && rootRef.current.contains(ae) && ae.closest('.cl.leaving'))) return;
+    const root = rootRef.current;
+    const next = root && root.querySelector('.cart-list .cl-u:not([disabled])');
+    const target = next || (root && root.querySelector('.cart-t'));
+    if (target) target.focus();
+  }, [changes, count]);
 
   // הלחצן הראשי נעלם אחרי שמירה (אין שינויים) - המיקוד לא הולך לאיבוד אל ה-body: עובר ללחצן "שינויים בהזמנה"
   const hadPrimary = useRef(false);

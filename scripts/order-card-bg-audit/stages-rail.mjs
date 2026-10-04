@@ -129,6 +129,22 @@ export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) 
       check('integration: הטוסט "חיוב ממתין" מופיע בלשונית פרטים (preview בכל לשונית)', /חיוב ממתין/.test(toast0));
       check('integration: שורת preview מוצגת בתשלומים לפני הביטול ונעלמת אחריו (בלי שורת רפאים)', pend0 > 0 && pend1 === 0);
     } },
+    // C4 (סקירת אינטגרציה 2): המיקוד לא נופל ל-body אחרי חלון שנפתח בלי מיקוד (Esc) ואחרי ביטול שורה בודדת ברייל
+    { name: 'R33-flow-focus-not-lost', real: async () => {
+      await fresh('railadd'); await restore(); await sleep(500);
+      await p.evaluate(() => { if (document.activeElement) document.activeElement.blur(); const b = document.querySelector('.tools .xlbtn[data-act="delete"]'); b.click(); });
+      await sleep(500);
+      const open = await p.evaluate(() => document.getElementById('scrim').classList.contains('on'));
+      await p.keyboard.press('Escape'); await sleep(400);
+      const f1 = await p.evaluate(() => { const a = document.activeElement; return { body: a === document.body, inRail: !!(a && a.closest && a.closest('#rail')), fb: !!(a && a.hasAttribute && a.hasAttribute('data-oc-focus-fallback')) }; });
+      await p.type('#notes', ' x'); await sleep(500);
+      await openCart();
+      const rows0 = await p.evaluate(() => document.querySelectorAll('#rail .cart-list .cl').length);
+      await clickAt('#rail .cl[data-key="notes"] .cl-u'); await sleep(900);
+      const f2 = await p.evaluate(() => { const a = document.activeElement; return { body: a === document.body, inRail: !!(a && a.closest && a.closest('#rail')), rows: document.querySelectorAll('#rail .cart-list .cl').length }; });
+      check('C4: חלון שנפתח בלי מיקוד (body) ונסגר ב-Esc - המיקוד עובר ללחצן הגיבוי ברייל, לא נופל ל-body', open && !f1.body && f1.inRail && f1.fb);
+      check('C4: אחרי ביטול שורה בודדת (נשארה שורה אחת) המיקוד נשאר ברייל ולא ב-body', rows0 === 2 && f2.rows === 1 && !f2.body && f2.inRail);
+    } },
     // C1 (סקירת אינטגרציה 2): ביטול שינוי מחיר אחרי שה-preview החליף את החיובים האוטומטיים - החיובים השמורים והסכומים חוזרים בדיוק
     { name: 'R32-flow-undo-restores-charges', real: async () => {
       await fresh('railrm'); await restore(); await sleep(900);
