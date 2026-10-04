@@ -129,7 +129,7 @@ STAGES.push(
   { name: '46-history-shift', real: async () => { await openHistory(); await hover('.card.proc .prc-sh'); }, demo: async () => { await openHistory(); await hover('.card.proc .prc-sh'); } },
   { name: '47-history-prep-dlg', real: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); } },
   { name: '48-history-scrolled', real: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); }, demo: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); } },
-  // בדיקות התנהגות (רק בדף האמיתי): ייצוא נרשם HISTORY_EXPORTED, סימון הכנה שולח POST /api/schedule/marks וטוען מחדש
+  // בדיקות התנהגות (רק בדף האמיתי): ייצוא נרשם HISTORY_EXPORTED, סימון הכנה שולח POST /api/orders/53375/prep-mark וטוען מחדש
   { name: '49-history-exports', real: async () => {
     await openHistory();
     await p.evaluate(() => { window.open = () => ({}); });
@@ -140,11 +140,11 @@ STAGES.push(
     const ev = calls.filter((c) => c.url === '/api/orders/events').map((c) => JSON.parse(c.body));
     const fmts = ev.filter((b) => b.action === 'HISTORY_EXPORTED').map((b) => b.meta.format);
     const pdf = calls.find((c) => c.url === '/api/pdf');
-    const mark = calls.find((c) => c.url === '/api/schedule/marks');
+    const mark = calls.find((c) => c.url === '/api/orders/53375/prep-mark');
     const reloads = calls.filter((c) => /\/api\/orders\/53375\/journal/.test(c.url)).length;
     checks.push(['history: הדפסה והורדה נרשמו HISTORY_EXPORTED (print, pdf) עם מספר השורות', fmts.join(',') === 'print,pdf' && ev.every((b) => b.meta.rows === 12)],
       ['history: הורדה = POST /api/pdf עם /print/order-history?orderId=53375&downloadPdf=1', !!pdf && JSON.parse(pdf.body).path === '/print/order-history?orderId=53375&downloadPdf=1'],
-      ['history: סימון הכנה = POST /api/schedule/marks {mark, prep, 2026-10-05, 53375}', !!mark && (() => { const b = JSON.parse(mark.body); return b.action === 'mark' && b.stageKey === 'prep' && b.dayKey === '2026-10-05' && b.orderId === 53375; })()],
+      ['history: סימון הכנה = POST /api/orders/53375/prep-mark {mark, 2026-10-05} (AMB-08 B: בלי stageKey/orderId בגוף)', !!mark && (() => { const b = JSON.parse(mark.body); return b.action === 'mark' && b.dayKey === '2026-10-05' && !('stageKey' in b) && !('orderId' in b); })() && !calls.some((c) => c.url === '/api/schedule/marks')],
       ['history: אחרי סימון / ייצוא היומן נטען מחדש (historyVersion)', reloads >= 2]);
   } },
 );

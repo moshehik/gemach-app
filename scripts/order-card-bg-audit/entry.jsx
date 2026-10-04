@@ -73,7 +73,7 @@ const HISTORY = [
   hEntry(11, '2026-09-24T09:05', { cat: 'docs', icon: 'mail', text: 'נשלח מייל אישור ללקוחה', sub: 'miriam.abr@example.com', who: 'דוד לוי', det: [['נמען', 'miriam.abr@example.com']] }),
   hEntry(12, '2026-09-24T09:40', { cat: 'items', icon: 'scissors', text: 'נוספה בקשת תיקון', sub: 'דגם 3087 · שרוול', who: 'דוד לוי', det: [['פריט', 'דגם 3087'], ['תיקון', 'שרוול']] }),
 ].reverse();
-const counts = { all: HISTORY.length, categories: { items: 6, pay: 2, del: 1, dates: 1, docs: 2 }, extras: { sig: 0, print: 1, mail: 1, fix: 1 } };
+const counts = { all: HISTORY.length, categories: { items: 6, pay: 2, del: 1, dates: 1, docs: 2, gen: 0 }, extras: { sig: 0, print: 1, mail: 1, fix: 1 } };
 // "שלבי ההזמנה" + "יומן הזמנה" כמו stageList()/pProcess() בדגימה (נווה: משלוח הלוך-חזור; היום = 24.9)
 const DAY = (k, he, heShort, wd, wdFull) => ({ dayKey: k, he, heShort, wd, wdFull });
 const D = {
@@ -158,7 +158,7 @@ window.fetch = async (url, opts) => {
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
   if (/\/api\/orders\/53375\/journal/.test(u)) return j(JOURNAL);
   if (/\/api\/orders\/53375\/history/.test(u)) return j({ entries: HISTORY, nextCursor: null, total: HISTORY.length, counts, unmappedCount: 0, exportTruncated: false });
-  if (u.startsWith('/api/schedule/marks')) return j({ ok: true, status: 'marked' });
+  if (u.startsWith('/api/schedule/marks') || /\/api\/orders\/53375\/prep-mark/.test(u)) return j({ ok: true, status: 'marked' });
   if (u.startsWith('/api/pdf')) return new Response(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), { status: 200 });
   if (/^\/api\/orders\/53375$/.test(u)) {
     if (S.notfound) return j({ error: 'Order not found' }, 404);

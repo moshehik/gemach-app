@@ -47,6 +47,8 @@ const assert = (await import('node:assert/strict')).default;
 const L = (rel) => import(fileUrl(path.join(PROJ, rel)));
 const historyRoute = await L('app/api/orders/[id]/history/route.js');
 const journalRoute = await L('app/api/orders/[id]/journal/route.js');
+const prepMarkRoute = await L('app/api/orders/[id]/prep-mark/route.js');
+const scheduleMarksRoute = await L('app/api/schedule/marks/route.js');
 const { invalidatePermissionCache } = await L('lib/permissions.js');
 const { invalidateSettingsCache } = await L('lib/settingsCache.js');
 const { invalidateRequireLoginCache } = await L('lib/auth.js');
@@ -201,10 +203,10 @@ test('journal: 401 / 403 / 404, ואז שלבים + יומן: הכנה בוצע�
   noWrites();
 });
 
-test('journal: בלי page:schedule - אין לחצן סימון; טבלת סימונים חסרה - marksAvailable=false, עדיין 200', async () => {
+test('journal: AMB-08 (B) - כל מי שיש לה page:orders יכולה לסמן גם בלי page:schedule (canMark); טבלת סימונים חסרה - marksAvailable=false, canMark=false, עדיין 200', async () => {
   globalThis.__AUTH_TOKEN = 'emp-nosched';
   const a = (await getJournal('53375')).__json;
-  assert.equal(a.canMark, false);
+  assert.equal(a.canMark, true, 'page:orders + הטבלה קיימת מספיק');
   assert.equal(a.stages.find((s) => s.key === 'prep').done, true, 'still shows the done state');
   globalThis.__AUTH_TOKEN = 'emp-worker';
   delete globalThis.__MOCK_DB.scheduleStageMark;
@@ -245,4 +247,114 @@ test('journal: הזמנה כבדה - הקריאה לא מאבדת את שורו�
   assert.ok(!JSON.stringify(main.args.where).includes('"UPDATE"'), 'no generic item UPDATE rows in the capped query');
   assert.ok(!globalThis.__MOCK_CALLS.some((c) => c.model === '$transaction'));
   noWrites();
+});
+
+
+// ---------------- AMB-08 (B): POST /api/orders/[id]/prep-mark ----------------
+const postPrep = (id, body) => prepMarkRoute.POST({ url: `http://localhost/api/orders/${id}/prep-mark`, json: async () => body }, { params: Promise.resolve({ id }) });
+const postScheduleMark = (body) => scheduleMarksRoute.POST({ url: 'http://localhost/api/schedule/marks', json: async () => body });
+const markWrites = () => globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' && /create|update|upsert|delete/i.test(String(c.method)));
+function freshMarks() {
+  globalThis.__MOCK_DB.scheduleStageMark = [];
+  globalThis.__MOCK_CALLS = [];
+  globalThis.__MOCK_WRITABLE = ['scheduleStageMark', 'orderItem'];
+  resetMarksTableState();
+}
+
+test('prep-mark: שער - 401 בלי התחברות, 403 בלי page:orders, 404 לא קיימת, 400 לפעולה לא מוכרת / dayKey לא תקין; בלי כתיבות', async () => {
+  freshMarks();
+  assert.equal((await postPrep('53375', { action: 'mark' })).status, 401);
+  globalThis.__AUTH_TOKEN = 'emp-noorders';
+  assert.equal((await postPrep('53375', { action: 'mark' })).status, 403);
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  assert.equal((await postPrep('12abc', { action: 'mark' })).status, 404);
+  assert.equal((await postPrep('777', { action: 'mark' })).status, 404);
+  assert.equal((await postPrep('53375', { action: 'mark_all' })).status, 400);
+  assert.equal((await postPrep('53375', { action: 'bogus' })).status, 400);
+  assert.equal((await postPrep('53375', null)).status, 400);
+  assert.equal((await postPrep('53375', { action: 'mark', dayKey: '05/10/2026' })).status, 400);
+  assert.equal(markWrites().length, 0);
+});
+
+test('prep-mark: עובדת בלי page:schedule (אבל עם page:orders) מסמנת הכנה - וה-API של הלו״ז נשאר 403 לאותה עובדת (לא רופף)', async () => {
+  freshMarks();
+  globalThis.__AUTH_TOKEN = 'emp-nosched';
+  const denied = await postScheduleMark({ action: 'mark', stageKey: 'prep', dayKey: '2026-10-05', orderId: 53375 });
+  assert.equal(denied.status, 403, 'POST /api/schedule/marks נשאר סגור בלי page:schedule');
+  assert.equal(markWrites().length, 0);
+  const r = await postPrep('53375', { action: 'mark', dayKey: '2026-10-05' });
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(r.__json.ok, true);
+  assert.equal(r.__json.status, 'marked');
+  assert.equal(r.headers['Cache-Control'], 'no-store');
+  const rows = globalThis.__MOCK_DB.scheduleStageMark;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].stageKey, 'prep');
+  assert.equal(rows[0].orderId, 53375);
+  assert.equal(rows[0].dayKey, '2026-10-05');
+  assert.equal(rows[0].done, true);
+  assert.equal(rows[0].markedById, 'emp-nosched', 'המסמנת = העובדת המחוברת');
+  // אותה כתיבה מסוגנת כמו הלו״ז (audit SCHEDULE_STAGE_DONE על ScheduleStageMark) - מופיעה בהיסטוריה כ"סומן 'בוצע' בלו״ז"
+  const audited = globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' && c.audit);
+  assert.ok(audited.some((c) => c.audit && c.audit.action === 'SCHEDULE_STAGE_DONE'), JSON.stringify(markWrites().map((c) => [c.method, c.audit && c.audit.action])));
+  // ביטול
+  const un = await postPrep('53375', { action: 'unmark', dayKey: '2026-10-05' });
+  assert.equal(un.status, 200, JSON.stringify(un.__json));
+  assert.equal(un.__json.status, 'unmarked');
+  assert.equal(globalThis.__MOCK_DB.scheduleStageMark[0].done, false);
+  assert.ok(globalThis.__MOCK_CALLS.some((c) => c.model === 'scheduleStageMark' && c.audit && c.audit.action === 'SCHEDULE_STAGE_UNDONE'));
+});
+
+test('prep-mark: השרת קובע את השלב, היום וההזמנה - stageKey / orderId בגוף מתעלמים; dayKey שונה = 409; מזהה uuid עובד', async () => {
+  freshMarks();
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  // שלב אחר / הזמנה אחרת בגוף - לא משפיעים
+  const sneaky = await postPrep(ORDER_UUID, { action: 'mark', stageKey: 'manret', orderId: 99999, dayKey: '2026-10-05', outcome: 'not_ok' });
+  assert.equal(sneaky.status, 200, JSON.stringify(sneaky.__json));
+  const rows = globalThis.__MOCK_DB.scheduleStageMark;
+  assert.deepEqual(rows.map((x) => [x.orderId, x.stageKey]), [[53375, 'prep']]);
+  // יום אחר = הנתונים השתנו
+  freshMarks();
+  const stale = await postPrep('53375', { action: 'mark', dayKey: '2026-10-06' });
+  assert.equal(stale.status, 409);
+  assert.equal(stale.__json.stale, true);
+  assert.equal(markWrites().length, 0);
+});
+
+test('prep-mark: כבר סומן ע״י אחרת = 409 עם השם (אותה הגנה כמו הלו״ז); טבלה חסרה = 503 unavailable; שלב הכנה כבוי = 409', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-nosched';
+  globalThis.__MOCK_WRITABLE = ['scheduleStageMark', 'orderItem'];
+  resetMarksTableState();
+  const taken = await postPrep('53375', { action: 'mark', dayKey: '2026-10-05' }); // fixture: emp-mgr already marked it
+  assert.equal(taken.status, 409, JSON.stringify(taken.__json));
+  assert.match(taken.__json.error, /סומן ע״י/);
+  assert.equal(taken.__json.alreadyMarked, true);
+  delete globalThis.__MOCK_DB.scheduleStageMark;
+  resetMarksTableState();
+  const missing = await postPrep('53375', { action: 'mark', dayKey: '2026-10-05' });
+  assert.equal(missing.status, 503);
+  assert.equal(missing.__json.unavailable, true);
+  freshMarks();
+  globalThis.__MOCK_DB.systemSetting.push({ key: 'schedule_stage_prep_enabled', value: 'false' });
+  invalidateSettingsCache();
+  const off = await postPrep('53375', { action: 'mark', dayKey: '2026-10-05' });
+  assert.equal(off.status, 409, `disabled stage: ${JSON.stringify(off.__json)}`);
+  assert.match(off.__json.error, /כבוי|לא רלוונטי/);
+  assert.equal(markWrites().length, 0);
+});
+
+test('prep-mark: סטטית - נקודת הקצה חדשה, שער page:orders בלבד (בלי page:schedule), רק prep, אותה applyStageMark, והלשונית קוראת לה במקום ל-/api/schedule/marks', async () => {
+  const fs = await import('node:fs');
+  const route = fs.readFileSync(path.join(PROJ, 'app/api/orders/[id]/prep-mark/route.js'), 'utf8');
+  assert.ok(/canOpenPage\('page:orders'\)/.test(route));
+  assert.ok(!/page:schedule/.test(route.replace(/\/\/.*$/gm, '')), 'לא נשען על page:schedule בקוד');
+  assert.ok(/stageKey: 'prep'/.test(route) && /applyStageMark\(/.test(route));
+  assert.ok(!/MARK_ALL|mark_all|overridePin|outcome/.test(route.replace(/\/\/.*$/gm, '')), 'בלי mark_all / עקיפת מנהל / outcome');
+  const sched = fs.readFileSync(path.join(PROJ, 'app/api/schedule/marks/route.js'), 'utf8');
+  assert.ok(/canOpenPage\('page:schedule'\)/.test(sched), 'הלו״ז נשאר שמור ב-page:schedule');
+  const tab = fs.readFileSync(path.join(PROJ, 'app/components/order-card/tabs/OcHistoryTab.js'), 'utf8');
+  assert.ok(/\/api\/orders\/\$\{o\.orderId\}\/prep-mark/.test(tab));
+  assert.ok(!/\/api\/schedule\/marks/.test(tab.replace(/\/\/.*$/gm, '')), 'הלשונית לא קוראת ל-API של הלו״ז');
+  const journal = fs.readFileSync(path.join(PROJ, 'app/api/orders/[id]/journal/route.js'), 'utf8');
+  assert.ok(/canMark: !!marksRes\.available/.test(journal));
 });

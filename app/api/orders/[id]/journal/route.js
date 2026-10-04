@@ -5,7 +5,7 @@ import { canOpenPage } from '@/lib/permissions';
 import { attachEmployeeNames } from '@/app/lib/auditLog';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { resolveOrderRef } from '@/lib/history/orderHistory';
-import { buildOrderJournal } from '@/lib/history/orderJournal';
+import { buildOrderJournal, parseShiftDefinitions } from '@/lib/history/orderJournal';
 import { computeOrderStages, dayKeyOf, dayLabels } from '@/lib/schedule/orderStages';
 import { resolveScheduleSettings } from '@/lib/schedule/settings';
 import { listOrderMarks } from '@/lib/schedule/marks';
@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic';
 // GET /api/orders/[id]/journal — כרטיס ההזמנה החדש, לשונית היסטוריה (W6, PLAN §C.1/§C.4):
 //   stages   "שלבי ההזמנה" (A5) - השלבים של ההזמנה לפי הגדרות הלו״ז (lib/schedule/orderStages.js), בוצע / טרם בוצע
 //   journal  "יומן הזמנה" (A20) - לכל שלב שבוצע + תשלום: מתי, מי, ומי היה במשמרת (lib/history/orderJournal.js)
-//   canMark  האם העובדת רשאית לסמן "הכנה בוצעה" מהכרטיס (page:schedule + טבלת הסימונים קיימת, AMB-08)
+//   canMark  האם אפשר לסמן "הכנה בוצעה" מהכרטיס: כל מי שפתחה הזמנה (page:orders - השער של הנקודה הזו) + טבלת הסימונים קיימת (AMB-08 (B),
+//            החלטת הבעלים 2026-10-04; הסימון עצמו ב-POST /api/orders/[id]/prep-mark, לא ב-/api/schedule/marks שנשאר סגור בלי page:schedule)
 // קריאה בלבד, בלי $transaction. שער: כמו GET /api/orders/[id]/history - checkAuth + page:orders (PLAN §C.5).
 // אין בתשובה מזהי עובדים (UUID) - רק שמות; אין תאריך לועזי - מפתחות יום 'YYYY-MM-DD' + תוויות עבריות.
 
@@ -58,10 +59,9 @@ export async function GET(request, { params }) {
     const now = new Date();
     const todayKey = dayKeyOf(now);
 
-    const [settingsRows, marksRes, canSchedule] = await Promise.all([
+    const [settingsRows, marksRes] = await Promise.all([
       getAllCachedSettings().catch(() => []),
       listOrderMarks(order.orderId).catch(() => ({ available: false, marks: [] })),
-      canOpenPage('page:schedule'),
     ]);
     const map = {};
     for (const r of settingsRows || []) if (r && r.key) map[r.key] = r.value;
@@ -94,7 +94,9 @@ export async function GET(request, { params }) {
     const orderEmployeeName = named[0].employeeName || null;
     const auditRows = named.slice(1);
 
-    const base = { order: { orderId: order.orderId, orderDate: order.orderDate, employeeName: orderEmployeeName }, stages, auditRows, items, payments, todayKey };
+    // AMB-18 (B): שמות משמרות לפי שעה (SystemSetting shift_definitions; ריק = הכותרת הרגילה "משמרת · HH:MM–HH:MM")
+    const shiftDefinitions = parseShiftDefinitions(map.shift_definitions);
+    const base = { order: { orderId: order.orderId, orderDate: order.orderDate, employeeName: orderEmployeeName }, stages, auditRows, items, payments, todayKey, shiftDefinitions };
     // pass 1 (without shifts) -> the instants of the done nodes -> ONE Shift query (a window per instant) -> pass 2
     const first = buildOrderJournal(base);
     const instants = first.nodes.map((n) => n.when && !n.when.dateOnly && n.when.ts).filter(Boolean).map((t) => new Date(t));
@@ -117,7 +119,7 @@ export async function GET(request, { params }) {
       currentKey,
       journal: journal.nodes,
       marksAvailable: !!marksRes.available,
-      canMark: !!(canSchedule && marksRes.available),
+      canMark: !!marksRes.available,
     });
   } catch (error) {
     console.error('Error building order journal:', error);

@@ -88,8 +88,8 @@ test('כל fetch מתוך רשימת ה-endpoints המותרת של הכרטיס
   const ALLOWED = [
     /^`\/api\/orders\/\$\{[^}]+\}`$/, /^'\/api\/orders\/validate-inventory'$/, /^`\/api\/orders\/\$\{[^}]+\}\/preview-pricing`$/,
     /^`\/api\/orders\/\$\{[^}]+\}\/cancel-changes`$/, /^`\/api\/inventory\/preload\?\$\{queryParams\.toString\(\)\}`$/, /^'\/api\/auth\/verify-pin'$/, /^ORDER_EVENTS_URL$/,
-    /^`\/api\/orders\/\$\{[^}]+\}\/(items|email|history|journal|employees)[^`]*`$/, /^'\/api\/(payments|nedarim|refunds|rentals\/[a-z-]+|returns\/report-issue|admin\/recalculations|pdf|customers|orders\/events)'$/,
-    /^`\/api\/(refunds|customers|orders\/[^`]+\/items|audit\/order-item|inventory\/(capacity|models|sizes)|orders\/availability|schedule\/marks)[^`]*`$/,
+    /^`\/api\/orders\/\$\{[^}]+\}\/(items|email|history|journal|prep-mark|employees)[^`]*`$/, /^'\/api\/(payments|nedarim|refunds|rentals\/[a-z-]+|returns\/report-issue|admin\/recalculations|pdf|customers|orders\/events)'$/,
+    /^`\/api\/(refunds|customers|orders\/[^`]+\/items|audit\/order-item|inventory\/(capacity|models|sizes)|orders\/availability)[^`]*`$/,
   ];
   const bad = [];
   for (const [f, s] of Object.entries(CODE)) {

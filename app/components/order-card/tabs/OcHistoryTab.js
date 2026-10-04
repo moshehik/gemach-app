@@ -6,7 +6,7 @@
 //   3. כותרת המקטע "מותאם" + "פעולות ושינויים" (R41/A21/A22) parts/OcHistoryFeed.js ← GET /api/orders/[id]/history?all=1
 // טעינה: בפעם הראשונה שהלשונית מוצגת (כל הלשוניות מורכבות תמיד - לא טוענים היסטוריה לכל פתיחת כרטיס), ומחדש בכל שינוי של
 // oc.historyVersion (עולה אחרי כל כתיבה בשרת - שמירה, פעולה מיידית, תשלום, אישור, ייצוא; W1) - כשהלשונית מוצגת, ואם לא - בפעם
-// הבאה שתוצג. סימון "הכנה בוצעה" (AMB-08) → POST /api/schedule/marks → oc.bumpHistory() (הפיד והיומן נטענים מחדש).
+// הבאה שתוצג. סימון "הכנה בוצעה" (AMB-08) → POST /api/orders/[id]/prep-mark → oc.bumpHistory() (הפיד והיומן נטענים מחדש).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import OcStagesCard from '../parts/OcStagesCard';
@@ -76,9 +76,10 @@ export default function OcHistoryTab({ oc, ui, active }) {
     if (!ok) return;
     setMarkBusy(stage.key);
     try {
-      const res = await fetch(`/api/schedule/marks`, {
+      // נקודת קצה צרה של ההזמנה (שער page:orders), לא /api/schedule/marks (page:schedule) - AMB-08 (B); השרת קובע את השלב (הכנה) ואת היום
+      const res = await fetch(`/api/orders/${o.orderId}/prep-mark`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: wanted ? 'mark' : 'unmark', stageKey: stage.key, dayKey: stage.dayKey, orderId: o.orderId, source: 'row' }),
+        body: JSON.stringify({ action: wanted ? 'mark' : 'unmark', dayKey: stage.dayKey }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { ui.toast('error', data.error || 'הסימון נכשל', 'נסו שוב'); return; }

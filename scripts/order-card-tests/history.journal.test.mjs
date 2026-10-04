@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeOrderStages, dayKeyOf, dayLabels, returnDueKey, effectiveStartKey } from '@/lib/schedule/orderStages.js';
-import { buildOrderJournal, shiftAt, timeOf } from '@/lib/history/orderJournal.js';
+import { buildOrderJournal, shiftAt, timeOf, parseShiftDefinitions, shiftDefinitionAt } from '@/lib/history/orderJournal.js';
 import { resolveScheduleSettings } from '@/lib/schedule/settings.js';
 import { relativeDayLabel } from '@/app/components/order-card/parts/ocHistoryModel.js';
 
@@ -201,4 +201,73 @@ test('תווית יום יחסית: היום / מחר / אתמול / יום + ת
   assert.equal(relativeDayLabel('2026-10-07', '2026-10-08', l), 'אתמול');
   assert.equal(relativeDayLabel('2026-10-08', '2026-10-01', l), 'יום חמישי כז תשרי');
   assert.equal(relativeDayLabel('2026-12-31', '2027-01-01', dayLabels('2026-12-31')), 'אתמול', 'across a year end');
+});
+
+// ---------- AMB-18 (B): שמות משמרות לפי הגדרה (shift_definitions) ----------
+const DEFS = parseShiftDefinitions([{ name: 'בוקר', from: '08:00', to: '16:00' }, { name: 'ערב', from: '16:00', to: '24:00' }]);
+const SHIFTS_1120 = [
+  { name: 'רחל כהן', entryTime: IL('2026-10-05', '08:00'), exitTime: IL('2026-10-05', '16:00') },
+  { name: 'שרה לוי', entryTime: IL('2026-10-05', '09:30'), exitTime: IL('2026-10-05', '14:00') },
+];
+
+test('שמות משמרות: parseShiftDefinitions מנקה (JSON / מערך, שעות מרופדות, פריט לא תקין מדולג, עד 12), ריק/שבור = []', () => {
+  assert.deepEqual(parseShiftDefinitions('[{"name":" בוקר ","from":"8:00","to":"16:00"}]'), [{ name: 'בוקר', from: '08:00', to: '16:00' }]);
+  assert.deepEqual(parseShiftDefinitions([{ name: 'א', from: '08:00', to: '08:00' }, { name: '', from: '08:00', to: '09:00' }, { name: 'ב', from: '25:00', to: '09:00' }, { name: 'ג', from: '09:00' }, null, 5, { name: 'ד', from: '09:00', to: '10:61' }]), []);
+  assert.deepEqual(parseShiftDefinitions(''), []);
+  assert.deepEqual(parseShiftDefinitions(undefined), []);
+  assert.deepEqual(parseShiftDefinitions('not json'), []);
+  assert.deepEqual(parseShiftDefinitions('{"name":"x"}'), [], 'לא מערך');
+  assert.equal(parseShiftDefinitions(Array.from({ length: 30 }, (_, i) => ({ name: `מ${i}`, from: '01:00', to: '02:00' }))).length, 12);
+});
+
+test('שמות משמרות: הגדרה לפי שעת הרישום (גבול כלול בהתחלה, לא בסוף), הראשונה מנצחת, טווח שחוצה חצות', () => {
+  const at = (hhmm) => shiftDefinitionAt(DEFS, IL('2026-10-05', hhmm));
+  assert.equal(at('08:00').name, 'בוקר');
+  assert.equal(at('15:59').name, 'בוקר');
+  assert.equal(at('16:00').name, 'ערב', 'גבול הסיום של בוקר = תחילת ערב');
+  assert.equal(at('07:59'), null);
+  const night = parseShiftDefinitions([{ name: 'לילה', from: '22:00', to: '06:00' }, { name: 'כללי', from: '00:00', to: '23:59' }]);
+  const n = (hhmm) => shiftDefinitionAt(night, IL('2026-10-05', hhmm));
+  assert.equal(n('23:30').name, 'לילה');
+  assert.equal(n('02:15').name, 'לילה', 'אחרי חצות, באותו טווח');
+  assert.equal(n('06:00').name, 'כללי', 'סוף הטווח לא כלול - נופל להגדרה הבאה');
+  assert.equal(n('12:00').name, 'כללי');
+  const overlap = parseShiftDefinitions([{ name: 'א', from: '08:00', to: '12:00' }, { name: 'ב', from: '10:00', to: '14:00' }]);
+  assert.equal(shiftDefinitionAt(overlap, IL('2026-10-05', '11:00')).name, 'א', 'כמה התאמות = הראשונה');
+  assert.equal(shiftDefinitionAt([], IL('2026-10-05', '11:00')), null);
+});
+
+test('שמות משמרות: כותרת הטולטיפ "משמרת בוקר · 08:00–16:00" (שעות ההגדרה) + שמות העובדים; בלי הגדרות / בלי התאמה = הכותרת הרגילה', () => {
+  const T = IL('2026-10-05', '11:20');
+  const named = shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: DEFS });
+  assert.equal(named.title, 'משמרת בוקר · 08:00–16:00');
+  assert.equal(named.name, 'בוקר');
+  assert.deepEqual(named.names, ['רחל כהן', 'שרה לוי']);
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09' }).title, 'משמרת · 08:00–16:00', 'בלי הגדרות: כמו היום');
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: [] }).title, 'משמרת · 08:00–16:00');
+  const evening = parseShiftDefinitions([{ name: 'ערב', from: '16:00', to: '23:00' }]);
+  const noMatch = shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: evening });
+  assert.equal(noMatch.title, 'משמרת · 08:00–16:00', 'השעה לא באף הגדרה - נפילה לכותרת הרגילה');
+  assert.equal(noMatch.name, undefined);
+  assert.equal(shiftAt(SHIFTS_1120, IL('2026-10-05', '06:00'), { definitions: DEFS }), null, 'אין עובדים במשמרת = אין משמרת (גם עם הגדרה)');
+  assert.equal(shiftAt(SHIFTS_1120, new Date('2026-10-04T21:00:00Z'), { definitions: DEFS }), null, 'תאריך בלבד (ייבוא) - בלי משמרת');
+});
+
+test('שמות משמרות: buildOrderJournal מעביר את ההגדרות לצומתי היומן (שלב מסומן + תשלום) - ובלי הגדרות הפלט זהה להיום', () => {
+  const o = { ...ORDER, items: [{ id: 'a1', sleeveAlteration: 0 }] };
+  const marks = [{ stageKey: 'prep', dayKey: '2026-10-05', done: true, markedAt: IL('2026-10-05', '11:20'), markedBy: 'רחל כהן' }];
+  const stages = computeOrderStages(o, { schedule: ORG_MAIN, marks, todayKey: '2026-10-07' }).stages;
+  const payments = [{ id: 'p1', amount: 300, paymentDate: IL('2026-09-23', '17:30'), isDeleted: false, isRefund: false }];
+  const shifts = [
+    { name: 'רחל כהן', entryTime: IL('2026-10-05', '08:00'), exitTime: IL('2026-10-05', '16:00') },
+    { name: 'דוד לוי', entryTime: IL('2026-09-23', '16:00'), exitTime: IL('2026-09-23', '23:30') },
+  ];
+  const base = { order: { orderId: 53375, orderDate: o.orderDate, employeeName: 'רחל כהן' }, stages, auditRows: [], items: o.items, payments, shifts, todayKey: '2026-10-07' };
+  const plain = buildOrderJournal(base);
+  const named = buildOrderJournal({ ...base, shiftDefinitions: DEFS });
+  const nodes = (j) => Object.fromEntries(j.nodes.map((n) => [n.key, n]));
+  assert.equal(nodes(plain).prep.shift.title, 'משמרת · 08:00–16:00');
+  assert.equal(nodes(named).prep.shift.title, 'משמרת בוקר · 08:00–16:00');
+  assert.equal(nodes(named).pay.shift.title, 'משמרת ערב · 16:00–24:00', 'צומת התשלום (17:30) = ערב');
+  assert.deepEqual(buildOrderJournal({ ...base, shiftDefinitions: [] }), plain, 'הגדרות ריקות = בדיוק כמו בלי');
 });
