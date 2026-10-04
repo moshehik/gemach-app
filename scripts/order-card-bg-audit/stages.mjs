@@ -401,7 +401,7 @@ STAGES.push(
 // בעיצוב המאושר אין חלקים כאלה (D11: רק רכיבי פלטה) - לכן רק בדף האמיתי: צילום + JSON + בדיקות התנהגות מקצה לקצה עם ה-API המדומה.
 // "TOTAL 0 מול העיצוב" נבדק בשלבים הקיימים (40-42 משלוח, 01 כותרת וכו') שמורצים בתרחיש neve (כל ההגדרות של W2b כבויות) - החלקים לא משנים אותם.
 const W2B_DEL = [['DEL', '#p-delivery']];
-const calls = async (re) => p.evaluate((src) => (window.__calls || []).filter((c) => new RegExp(src).test(c.url)).map((c) => ({ url: c.url, method: c.method, body: c.body })), re.source);
+const callsMatch = async (re) => p.evaluate((src) => (window.__calls || []).filter((c) => new RegExp(src).test(c.url)).map((c) => ({ url: c.url, method: c.method, body: c.body })), re.source);
 const delTab = async () => { await clickAt('#tabs .tab[data-tab="delivery"]'); await sleep(500); };
 STAGES.push(
   { name: '70-join-picker', roots: W2B_DEL, real: async () => { await fresh('join'); await delTab(); await away(); } },
@@ -417,10 +417,10 @@ STAGES.push(
     const st = await p.evaluate(() => ({ city: document.getElementById('delCityIn').value, cityOff: document.getElementById('delCityIn').disabled, addr: document.getElementById('delAddr') ? document.getElementById('delAddr').value : null, addrOff: document.getElementById('delAddr') ? document.getElementById('delAddr').disabled : null, checked: [...document.querySelectorAll('#oc-join .oc-join-row[aria-checked="true"]')].map((x) => x.textContent), badge: (document.querySelector('#rail .cart .badge') || {}).textContent }));
     await clickAt('#oc-join .oc-join-pane:last-of-type .oc-join-row:nth-child(2)'); await sleep(400);
     await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(1200);
-    const pv = (await calls(/preview-pricing/)).map((c) => JSON.parse(c.body)).pop();
+    const pv = (await callsMatch(/preview-pricing/)).map((c) => JSON.parse(c.body)).pop();
     await clickAt('#rail .btn.primary'); await sleep(900);
     if (await p.evaluate(() => document.getElementById('scrim').classList.contains('on'))) { await clickAt('#dlg .btn.primary'); await sleep(900); }
-    const puts = (await calls(/^\/api\/orders\/53375$/)).filter((c) => c.method === 'PUT').map((c) => JSON.parse(c.body));
+    const puts = (await callsMatch(/^\/api\/orders\/53375$/)).filter((c) => c.method === 'PUT').map((c) => JSON.parse(c.body));
     const b = puts[puts.length - 1] || {};
     checks.push(['join: הבורר מוצג כשההגדרה דלוקה והשרת מאשר (info)', hasPicker && before.joinCalls.some((u) => /mode=info/.test(u))],
       ['join: "הצטרפות" טוען מועמדים (2) לפי יום האירוע והכיוון', rows.length === 2 && /#53301/.test(rows[0]) && /שרה כהן/.test(rows[0])],
@@ -441,7 +441,7 @@ STAGES.push(
   { name: '76-dress-location', roots: [['BAN', '.oc-dressloc']], real: async () => {
     await fresh('dressloc'); await sleep(600); await away();
     const st = await p.evaluate(() => { const el = document.querySelector('.oc-dressloc'); return { has: !!el, text: el ? el.textContent : '', role: el ? el.querySelector('section').getAttribute('role') : null, ym: el ? /20\d\d/.test(el.textContent) : null, rows: el ? el.querySelectorAll('.nb-r').length : 0 }; });
-    const cl = await calls(/dress-location-alerts/);
+    const cl = await callsMatch(/dress-location-alerts/);
     checks.push(['dress-location: באנר פלטה (.nb-warning) מעל הלשוניות עם כותרת חומרה (critical)', st.has && st.role === 'alert' && /שים לב: שמלות מההזמנה עדיין לא בבית - לא צפויות להגיע בזמן ללא טיפול/.test(st.text)],
       ['dress-location: שורת דגם + יחידות (באירוע אחר / בסניף), תאריכים עבריים בלבד', st.rows === 2 && /דגם 4512 · מידה 38/.test(st.text) && /נמצאת בסניף "בני ברק"/.test(st.text) && /עבר מועד ההחזרה - טרם הוחזרה!/.test(st.text) && st.ym === false],
       ['dress-location: GET עם orderId (קריאה בלבד)', cl.length >= 1 && /orderId=53375/.test(cl[0].url) && cl.every((c) => c.method === 'GET')]);
@@ -451,14 +451,14 @@ STAGES.push(
     const init = await p.evaluate(() => ({ seq: !!document.querySelector('#sbar .oc-seq'), focus: document.activeElement && document.activeElement.id, pop: !!document.querySelector('#sbar .oc-seq-pop') }));
     await p.type('#scanIn', '45123801'); await p.keyboard.press('Enter'); await sleep(1100);
     const s1 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), focus: document.activeElement && document.activeElement.id, val: document.getElementById('scanIn').value, tab: document.querySelector('#tabs .tab.on') ? document.querySelector('#tabs .tab.on').dataset.tab : null }));
-    const c1 = (await calls(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
+    const c1 = (await callsMatch(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
     await p.type('#scanIn', '99900001'); await p.keyboard.press('Enter'); await sleep(1000);
     const s2 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), toast: document.getElementById('toast') ? document.getElementById('toast').className : '', flash: document.querySelector('#sbar .oc-seq').className, liCls: (document.querySelector('#sbar .oc-seq-feed li') || {}).className || '' }));
     await p.type('#scanIn', '27644001'); await p.keyboard.press('Enter'); await sleep(1000);
     const s3 = await p.evaluate(() => ({ feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent) }));
     await clickAt('#sbar .oc-seq-bar .btn:first-of-type'); await sleep(900); // בטל סריקה אחרונה (החזרת a3)
     const s4 = await p.evaluate(() => ({ feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent) }));
-    const c2 = (await calls(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
+    const c2 = (await callsMatch(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
     await clickAt('#sbar .oc-seq-bar .btn:nth-of-type(2)'); await sleep(300);
     const sum = await p.evaluate(() => (document.querySelector('#sbar .oc-seq-sum') || {}).textContent || '');
     await away();
