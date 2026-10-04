@@ -4286,7 +4286,7 @@ function advOrderBlock(b){
   if (b.t === 'ocheck') return advSec('alert', 'דרוש בדיקה', advTogs(ORD_CHECK));
   if (b.t === 'ordinfo') return advSec('file', 'פרטי הזמנה', `<div class="advgrid">${advF2('oid','קוד הזמנה','file','קוד הזמנה...')}${advF2('name','שם לקוח','user','שם פרטי ומשפחה...','כולל שם פרטי ומשפחה')}${advF2('phone','טלפון','phone','מספר טלפון...')}${advF2('cinfo','פרטי לקוח','mail','מייל, כתובת...','מייל, כתובת')}${advF2('emp','עובד מבצע','users','בחר עובד...','רשימת עובדים פעילים. אפשר להגדיר בכרטיס עובד שלא יופיע ברשימות')}</div>`);
   if (b.t === 'oevent') return advSec('cal', 'פרטי אירוע', `<div class="advgrid" data-tip="אפשר לבחור טווח תאריכי אירוע">${[['from','תאריך אירוע'],['to','עד תאריך']].map(([k,l]) => `<div class="field"><label class="lbl" for="adv-${k}">${l}</label><div class="inpw">${ic('cal','sm')}<input class="inp advdate" id="adv-${k}" name="adv-${k}-nofill" data-dp="${k}" readonly role="combobox" aria-haspopup="dialog" value="${esc(hebTxt(ADV[k]))}" placeholder="בחר תאריך עברי" autocomplete="nope" data-lpignore="true" data-1p-ignore data-form-type="other"></div></div>`).join('')}</div>`
-    + advTogs([['holiday','אירוע חול','cal'], ...(cfg.flag('packing_enabled') ? [['packing','ציפוף ימים','list','כמות ימים']] : []), ['delivery','משלוח','truck'], ['repairs','תיקונים','scissors']], true));
+    + advTogs([['abroad','חו״ל / תפוסה ארוכה','cal'], ...(cfg.flag('packing_enabled') ? [['packing','ציפוף ימים','list','כמות ימים']] : []), ['delivery','משלוח','truck'], ['repairs','תיקונים','scissors']], true));
   if (b.t === 'oitems') return advSec('dress', 'פריטים', `<div class="advgrid g3">${advF2('model','דגם','dress','בחר דגם...')}${advF2('size','מידה','sliders','מידה...')}${advF2('item','ברקוד','scan','ברקוד...','אפשרות העברה')}</div>` + advTogs([['itRepairs','תיקונים','scissors']], true));
 }
 const advSec = (icon, title, inner, extra='', sub='') => `<section class="advs" aria-label="${title}"><div class="advs-h"><span class="advs-i">${ic(icon)}</span><h3>${title}${sub ? `<small>${sub}</small>` : ''}</h3>${extra}</div>${inner}</section>`;
@@ -4377,7 +4377,7 @@ function advApply(withAi){
   if (A.cdate) p.push('תאריך זיכוי ' + hebTxt(A.cdate));
   if (A.rdate) p.push((A.focus === 'returns' ? 'תאריך החזרה ' : 'תאריך השכרה ') + hebTxt(A.rdate));
   if (A.from || A.to) p.push('תאריכים ' + [A.from, A.to].filter(Boolean).map(hebTxt).join(' עד '));
-  if (A.flags.length) p.push(A.flags.map(v => (ADV_FLAGS.concat(ORD_CHECK, RCHK, DFLAGS, AFLAGS, FFLAGS, FDONE, FCHK, MFLAGS, EFLAGS, [['holiday','אירוע חול'], ['packing','ציפוף ימים'], ['delivery','משלוח'], ['repairs','תיקונים'], ['itRepairs','תיקונים']]).find(x => x[0] === v) || [0, v])[1]).join(', '));
+  if (A.flags.length) p.push(A.flags.map(v => (ADV_FLAGS.concat(ORD_CHECK, RCHK, DFLAGS, AFLAGS, FFLAGS, FDONE, FCHK, MFLAGS, EFLAGS, [['abroad','חו״ל / תפוסה ארוכה'], ['packing','ציפוף ימים'], ['delivery','משלוח'], ['repairs','תיקונים'], ['itRepairs','תיקונים']]).find(x => x[0] === v) || [0, v])[1]).join(', '));
   if (A.ost.length) p.push((A.focus === 'orders' ? 'סטטוס הזמנה ' : 'סטטוס ') + A.ost.map(v => OST.concat(RST, RTN, DST, AST).find(x => x[0] === v)[1]).join(' או '));
   if (A.st.length) p.push('סטטוס ' + A.st.map(v => ADV_ST.find(x => x[0] === v)[1]).join(' או '));
   f.blocks.filter(b => b.t === 'one').forEach(b => { const o = ADV_ONE[b.key], d = o.opts[0][0]; if (A[b.key] !== d) p.push(o.title + ' ' + o.opts.find(x => x[0] === A[b.key])[1]); });

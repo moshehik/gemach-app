@@ -335,7 +335,7 @@ export default function PrintOrderPage() {
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
                   )}
-                  {(!ord.isWeekdayEvent && !ord.isAbroad) ? (
+                  {!ord.isAbroad ? (
                     <>תאריך אירוע: {ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין')}</>
                   ) : (
                     <>סוג אירוע: אירוע חו&quot;ל</>

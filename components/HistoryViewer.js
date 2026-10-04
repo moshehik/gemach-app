@@ -50,7 +50,6 @@ export const FIELD_TRANSLATIONS = {
   eventDate: 'תאריך אירוע',
   eventDateHebrew: 'תאריך אירוע (עברי)',
   returnDate: 'תאריך החזרה',
-  isWeekdayEvent: 'אירוע חו"ל',
   orderDate: 'תאריך הזמנה',
   isAbroad: 'אירוע חו"ל',
   fromDate: 'מתאריך',
