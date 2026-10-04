@@ -59,6 +59,7 @@ async function fetchOrderItemsWithDress(orderId) {
   });
 }
 import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
+import { isDeliveryJoinEnabled, saveDeliveryJoin, clearOrderJoin } from '../../../../lib/deliveryJoin';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
@@ -689,9 +690,8 @@ export async function PUT(request, { params }) {
       const parsedOrderDate = parseSafeDate(data.orderDate);
 
       // 1. Update general order details
-      // TODO(W2b, R49): `deliveryJoinedTo` is NOT passed through here - it lives in the DeliveryJoin table
-      // (DDL-1, PENDING-DDL.md, not approved/applied), not an Order column. W2b adds it (outside this tx's
-      // reads) after DDL-1 is approved, as a patch to this file. W0-NOTES.md.
+      // R49 (W2b): הצטרפות למשלוח קיים (`deliveryJoin`) לא עמודה ב-Order - היא נשמרת בטבלת DeliveryJoin אחרי הטרנזקציה הזו
+      // (ר' lib/deliveryJoin.js ו"הצטרפות למשלוח קיים" ליד applyDeliveryCharge למטה), ולכן לא עוברת כאן.
       // UPDATE_ORDER with {field:{from,to}} against the row loaded before the transaction (AMB-19) instead of
       // the extension's generic UPDATE (new values only, a row on every save). A save that changes no column
       // writes no history row at all (auditAs with empty changes - see app/lib/prisma.js).
@@ -950,6 +950,21 @@ export async function PUT(request, { params }) {
     // אחרי recalculateOrderObligations: ה-diff שם מוחק כל התחייבות לא-ידנית שאינה חלק
     // מ-computeOrderObligations (שלא מכיר משלוחים בכלל), כולל התחייבות משלוח שכבר קיימת -
     // כך שהקריאה כאן גם יוצרת אותה כשחסרה וגם משחזרת אותה בכל שמירה אחרי שנמחקה.
+    // הצטרפות למשלוח קיים (enable_delivery_join, R49 - W2b): נשמרת לפני חישוב החיוב כדי שיחושב במחיר ההצטרפות. כיבוי המשלוח
+    // בהזמנה מסיר גם את ההצטרפות שלה. הטבלה חסרה (DDL-1 טרם הורץ) = no-op בשקט (lib/deliveryJoin.js); כישלון לא מפיל את השמירה.
+    if (data.deliveryJoin !== undefined || data.isDelivery === false) {
+      try {
+        if (await isDeliveryJoinEnabled()) {
+          if (data.isDelivery === false) await clearOrderJoin(parsedOrderId);
+          else if (data.deliveryJoin) {
+            const joinResult = await saveDeliveryJoin(parsedOrderId, data.deliveryJoin);
+            if (!joinResult.ok) console.error(`Order ${parsedOrderId}: delivery join not saved:`, joinResult.error);
+          }
+        }
+      } catch (joinError) {
+        console.error(`Order ${parsedOrderId}: delivery join failed:`, joinError);
+      }
+    }
     await applyDeliveryCharge(parsedOrderId);
 
     // Fetch the fully updated order to return to the client.
