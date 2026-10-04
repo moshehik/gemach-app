@@ -858,8 +858,12 @@ t('buildMineModel: שני חלקים (חדשות / שינויים), עד 5 בכ�
   assert.equal(m.items.length, 9); assert.equal(m.items[8].type, 'all'); assert.equal(m.items[8].url, MINE_URL); assert.equal(m.more.tail, '10');
   assert.equal(m.more.sub, 'עוד 2 ברשימה המלאה'); assert.equal(m.more.title, 'הכל', 'MY-01: הכפתור בכותרת נקרא "הכל"');
   assert.equal(buildMineModel({ state: 'ok', data: MINE_DATA }, { now: NOW, whoId: 'emp-9' }).more.url, '/?recent=mine&emp=emp-9', 'הבחירה של הנהלה נשמרת בכתובת');
-  const few = buildMineModel({ state: 'ok', data: { created: [mk(1, '', 5)], changed: [] } }, { now: NOW });
-  assert.equal(few.more && few.more.type, 'all', '"הכל" קיים גם כשהכל כבר בחלונית'); assert.equal(few.items[few.items.length - 1].type, 'all', 'הפריט האחרון לניווט במקלדת');
+  const few = buildMineModel({ state: 'ok', data: { created: [1, 2, 3, 4, 5].map((n) => mk(n, '', n)), changed: [] } }, { now: NOW });
+  assert.equal(few.more, null, 'MY-07 ב: 5 בחלק אחד ואין עוד - אין כפתור "הכל"'); assert.ok(few.items.every((x) => x.type !== 'all'), 'ואין פריט "הכל" לניווט במקלדת');
+  const six = buildMineModel({ state: 'ok', data: { created: [1, 2, 3, 4, 5, 6].map((n) => mk(n, '', n)), changed: [] } }, { now: NOW });
+  assert.equal(six.more && six.more.type, 'all', 'MY-07 ב: יותר מ-5 באחד החלקים - הכפתור מופיע'); assert.equal(six.items[six.items.length - 1].type, 'all', 'הפריט האחרון לניווט במקלדת');
+  const two = buildMineModel({ state: 'ok', data: { created: [1, 2, 3, 4, 5].map((n) => mk(n, '', n)), changed: [21, 22, 23, 24, 25].map((n) => mk(n, 'עודכן', n)) } }, { now: NOW });
+  assert.equal(two.more, null, 'שני חלקים של 5 כל אחד - אין כפתור');
   const r = m.sections[1].rows[0];
   assert.deepEqual([r.type, r.icon, r.title, r.orderNumber, r.detail, r.when], ['order', 'pencil', 'רחל כהן11', 11, 'עודכן תאריך האירוע', 'לפני 30 דק׳']);
   assert.equal(r.url, '/orders/11', 'הקישור לפי מספר הזמנה, לא uuid');
