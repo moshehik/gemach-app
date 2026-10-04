@@ -132,9 +132,9 @@
 .gm-ds.gm-menu .mine-note .ic{width:16px;height:16px;flex:none;margin-top:1px;color:var(--gm-navy-500)}
 /* "הכל" בצד שמאל של כותרת הרשימה (MY-01) ובורר העובדת להנהלה (MY-04 ב): direction:rtl = השבבים מימין והכפתור משמאל */
 .gm-ds.gm-menu .mine-menu .mine-head{direction:rtl;position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 8px 8px;background:var(--gm-surface,#fff);border-bottom:1px solid rgba(15,44,82,.08)}
-.gm-ds.gm-menu .mine-menu .mine-who{display:flex;flex-wrap:wrap;gap:6px;min-width:0;flex:1;max-height:76px;overflow-y:auto}
-.gm-ds.gm-menu .mine-menu .mine-who .chip{font-size:13px;padding:3px 11px;cursor:pointer}
+.gm-ds.gm-menu .mine-menu .mine-who{display:flex;flex-wrap:wrap;gap:6px;min-width:0;flex:1;max-height:92px;overflow-y:auto}
+.gm-ds.gm-menu .mine-menu .mine-who .chip{box-sizing:border-box;min-height:40px;height:40px;padding:0 16px;font-size:14px;border-radius:999px;cursor:pointer}
 .gm-ds.gm-menu .mine-menu .mine-who .chip.gold{border-color:var(--gm-gold);font-weight:600}
-.gm-ds.gm-menu .mine-menu .mine-all{margin-inline-start:auto;flex:none}
+.gm-ds.gm-menu .mine-menu .mine-all{margin-inline-start:auto;flex:none;width:auto;min-height:40px;height:40px;box-sizing:border-box;padding:0 18px;border-radius:999px;font-size:15px;font-weight:600;gap:8px}
 .gm-ds.gm-menu .mine-menu .mine-all .ic{width:16px;height:16px}
 .gm-ds.gm-menu .mine-menu .mine-all.act{outline:3px solid var(--gm-navy);outline-offset:2px}
