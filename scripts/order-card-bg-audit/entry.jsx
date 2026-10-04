@@ -6,6 +6,7 @@ import '../../app/design-system.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import OrderCardA5 from '../../app/components/order-card/OrderCardA5.js';
+import { payScenarios, payMock } from './pay-mock.js'; // W4: תרחישי תשלומים
 
 const qs = new URLSearchParams(location.search);
 const scn = qs.get('scn') || 'neve';
@@ -71,12 +72,13 @@ const SCENARIOS = {
   stock: { draft: true, put409stock: true, settings: ORG2.filter(([k]) => k !== 'enable_order_edit_summary_confirm') },
   notfound: { notfound: true },
   loading: { hang: true },
-  // W2a: אירוע חו"ל עם יום השכרה נוסף (enable_rental_extension) וציפוף ברירת מחדל 2 (5 גלולות כמו בעיצוב); משלוח בתוך "פרטים"
-  xday: { settings: [...ORG2, ['enable_rental_extension', 'true'], ['inventory_buffer_days', '2']], order: { isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z', extraDay: null } },
-  inline: { settings: ORG2.filter(([k]) => k !== 'delivery_separate_tab') },
-  // W3 — מצבי פריטים: מושכר (עם ברקוד), הוחזר לא תקין; מכסה מלאה (R32)
-  items: { items: 'states' },
-  quota: { settings: [...ORG2.filter(([k]) => k !== 'max_items_per_order'), ['max_items_per_order', '3']] },
+  // W2a: אירוע חו"ל עם יום השכרה נוסף (enable_rental_extension) וציפוף ברירת מחדל 2 (5 גלולות כמו בעיצוב); משלוח בתוך "פרטים"
+  xday: { settings: [...ORG2, ['enable_rental_extension', 'true'], ['inventory_buffer_days', '2']], order: { isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z', extraDay: null } },
+  inline: { settings: ORG2.filter(([k]) => k !== 'delivery_separate_tab') },
+  // W3 — מצבי פריטים: מושכר (עם ברקוד), הוחזר לא תקין; מכסה מלאה (R32)
+  items: { items: 'states' },
+  quota: { settings: [...ORG2.filter(([k]) => k !== 'max_items_per_order'), ['max_items_per_order', '3']] },
+  ...payScenarios({ ITEMS, OBL, PAY, ORG1, ORG2 }), // W4
 };
 // W3: מצבי פריטים נוספים (תרחיש items) — אותם 4 פריטים של העיצוב + מושכר / הוחזר
 const ITEMS_STATES = [
@@ -93,7 +95,7 @@ const MODELS = [
 ];
 const STOCK = { stock: { 'm-4519': { 34: { total: 2 }, 36: { total: 3 }, 38: { total: 2 }, 40: { total: 1 }, 42: { total: 0 }, 44: { total: 2 } }, 'm-4512': { 36: { total: 1 }, 38: { total: 2 }, 40: { total: 2 } } }, bookings: [], settings: { bufferDays: 3, skipWeekends: true } };
 const S = SCENARIOS[scn] || {};
-const order = { ...ORDER, ...(S.order || {}), items: S.items === 'states' ? ITEMS_STATES : ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: [] };
+const order = { ...ORDER, ...(S.order || {}), items: S.items === 'states' ? ITEMS_STATES : (S.items || ITEMS), obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: S.refunds || [] };
 const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
 
 if (S.draft) {
@@ -120,6 +122,7 @@ window.fetch = async (url, opts) => {
   if (u.startsWith('/api/settings')) return j(settings);
   if (u.startsWith('/api/employees')) return j(EMPLOYEES);
   // העובדת המחוברת לא מורשית לאשר (כמו בעיצוב: אף שם לא מסומן מראש). me=e2 בכתובת = מנהלת מורשית (מסומנת מראש, כמו בישן)
+  if (u.startsWith('/api/me') && qs.get('me') === 'e3') return j({ success: true, employee: { id: 'e3', firstName: 'דנה', lastName: 'אברהם', roleId: 0 } }); // W4: הנהלה ראשית (R33)
   if (u.startsWith('/api/me')) return j(qs.get('me') === 'e2' ? { success: true, employee: { id: 'e2', firstName: 'רחל', lastName: 'כהן' } } : { success: true, employee: { id: 'e7', firstName: 'עובדת', lastName: 'רגילה' } });
   // W2a: ערי/רחובות לקוחות, חיפוש לקוח, יצירת לקוח (ת״ז חובה כש-require_customer_id_number, כמו השרת)
   if (u.startsWith('/api/customers/locations')) return j({ cities: ['ירושלים', 'בית שמש', 'בני ברק', 'אלעד'], streets: ['עמוס', 'הרב קוק', 'יפו', 'בן יהודה', 'הנביאים'] });
@@ -149,6 +152,7 @@ window.fetch = async (url, opts) => {
     return j({ newObligations: order.obligations.filter(o => o.isManual === false) });
   }
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
+  { const pm = payMock(u, method, { S, order, j, body: opts && opts.body }); if (pm) return pm; } // W4
   if (/^\/api\/orders\/53375$/.test(u)) {
     if (S.notfound) return j({ error: 'Order not found' }, 404);
     if (method === 'PUT') {

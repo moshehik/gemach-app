@@ -189,6 +189,8 @@ export function parseSettings(rows) {
     consolidateManualPaymentCredit: bool('consolidate_manual_payment_credit_ui', false),
     nedarimPlusEnabled: notFalse('nedarim_plus_enabled', true),
     allowAdditionalPayment: bool('allow_additional_payment_on_order', false),
+    // AMB-06: "השאר חוב (באישור מנהל)" בחלון התשלום. חסר = מותר (כמו היום); רק 'false' מסתיר את הלחצן.
+    allowLeaveDebtWithApproval: notFalse('allow_leave_debt_with_approval', true),
     orderEditRedirectScreen: (has('order_edit_redirect_screen') && raw.order_edit_redirect_screen) ? raw.order_edit_redirect_screen : 'orders_list',
     // ---- מפתחות נוספים שהכרטיס החדש קורא (A.5). ברירות המחדל = כמו ברכיבי הישן (MGD/MIM) / "חסר = כבוי" ----
     enableDeliveries: bool('enable_deliveries', false),
@@ -668,6 +670,31 @@ export function changesOf(snap, cur) {
 const listOfKey = (key) => (key.startsWith('item:') ? 'items' : key.startsWith('obl:') ? 'obligations' : key.startsWith('pay:') ? 'payments' : null);
 const identFromKey = (key) => { const p = key.split(':'); return p[p.length - 1]; };
 const findIdx = (list, ident) => list.findIndex((x, i) => identOf(x, i) === ident);
+
+/**
+ * חיוב אשראי שכבר זז בנדרים אבל עוד לא נשמר בשרת (שורה בלי id, לא נמחקה, אופן "אשראי" ולא מעקף מתכנת). כל פעולה שמאפסת את מצב
+ * התשלומים המקומי (ביטול שינויים, "בטל" ברייל, סנכרון מהשרת) היתה מעלימה את הרישום היחיד של כסף אמיתי - לכן נחסמת כשיש שורה כזו.
+ */
+export const isUnsavedCardCharge = (p) => {
+  if (!p || p.id || p.isDeleted) return false;
+  const m = String(p.paymentMethod || '');
+  return m.includes('אשראי') && !m.includes('מעקף');
+};
+export const unsavedCardCharges = (payments = []) => (payments || []).filter(isUnsavedCardCharge);
+export const unsavedCardChargeMessage = (payments = []) => {
+  const rows = unsavedCardCharges(payments);
+  if (!rows.length) return '';
+  const sum = rows.reduce((t, p) => t + (parseFloat(p.amount) || 0), 0);
+  return `הכרטיס חויב בסך ${fmtMoney(sum)} אבל התשלום עדיין לא נשמר בהזמנה. יש ללחוץ על "שמור" קודם - הפעולה הזו הייתה מוחקת את רישום החיוב.`;
+};
+/** האם ביטול שורה בודדת (undo ברייל) יסיר חיוב אשראי שלא נשמר. */
+export const undoDropsUnsavedCardCharge = (cur, key) => {
+  if (listOfKey(key) !== 'payments') return false;
+  const arr = (cur && cur.payments) || [];
+  const i = findIdx(arr, identFromKey(key));
+  return i >= 0 && isUnsavedCardCharge(arr[i]);
+};
+
 
 /**
  * לוכד את הערך הנוכחי של שינוי (לפני ביטולו) כדי ש"החזר ביטול" (redo) יחזיר אותו.
