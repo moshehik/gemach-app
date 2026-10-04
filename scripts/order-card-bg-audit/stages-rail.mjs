@@ -129,5 +129,17 @@ export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) 
       check('integration: הטוסט "חיוב ממתין" מופיע בלשונית פרטים (preview בכל לשונית)', /חיוב ממתין/.test(toast0));
       check('integration: שורת preview מוצגת בתשלומים לפני הביטול ונעלמת אחריו (בלי שורת רפאים)', pend0 > 0 && pend1 === 0);
     } },
+    // C1 (סקירת אינטגרציה 2): ביטול שינוי מחיר אחרי שה-preview החליף את החיובים האוטומטיים - החיובים השמורים והסכומים חוזרים בדיוק
+    { name: 'R32-flow-undo-restores-charges', real: async () => {
+      await fresh('railrm'); await restore(); await sleep(900);
+      const pre = await p.evaluate(() => (document.querySelector('#rail').textContent || ''));
+      await openCart(); await clickAt('#rail .cl-u'); await sleep(1200);
+      await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(500);
+      const st = await p.evaluate(() => ({ pay: document.getElementById('p-payments').textContent, rail: document.getElementById('rail').textContent, rows: document.querySelectorAll('#p-payments .li').length, pend: document.querySelectorAll('#p-payments .li.pend').length, badge: (document.querySelector('#rail .badge') || {}).textContent }));
+      check('C1: לפני הביטול הרייל מציג זיכוי ממתין (preview החליף את החיובים)', /זיכוי ממתין/.test(pre));
+      check('C1: אחרי ביטול השורה חיובי הפריטים השמורים חוזרים ("אין חיובים מתועדים" לא מופיע)', !/אין חיובים מתועדים/.test(st.pay) && st.rows >= 4 && st.pend === 0);
+      check('C1: אחרי הביטול אין "זיכוי ממתין" ואין שינויים ברייל (0 שינויים)', !/זיכוי ממתין/.test(st.rail) && st.badge === '0');
+      check('C1: הסכומים חוזרים: נדרש ₪530 / שולם ₪530 ולא זיכוי זמין', /530/.test(st.pay) && !/זיכוי זמין/.test(st.pay));
+    } },
   ];
 }

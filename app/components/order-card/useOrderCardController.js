@@ -24,7 +24,7 @@ import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/order
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
   zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
-  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, undoDropsUnsavedCardCharge, unsavedCardChargeMessage, debtBlockShouldClear
+  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, restoreSavedAutoObligations, undoDropsUnsavedCardCharge, unsavedCardChargeMessage, debtBlockShouldClear
 } from './orderCardLogic';
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
@@ -199,7 +199,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     const mySeq = ++previewSeqRef.current;
     if (!previewActive) {
       setIsLivePreviewing(false);
-      setObligations(prev => (prev.some(o => o.isPreview) ? prev.filter(o => !o.isPreview) : prev));
+      setObligations(prev => restoreSavedAutoObligations(prev, snapshotRef.current && snapshotRef.current.obligations));
       return undefined;
     }
     const timer = setTimeout(async () => {

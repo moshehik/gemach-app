@@ -739,8 +739,28 @@ export function captureChange(cur, key) {
   return { key, kind: 'list', list, ident, value: idx >= 0 ? arr[idx] : null, index: idx };
 }
 
+/**
+ * תצוגה מקדימה מחליפה את החיובים האוטומטיים השמורים בשורות isPreview. כשהתצוגה כבר לא פעילה (ביטול שורה / ביטול שינויים) השורות האוטומטיות
+ * השמורות חוזרות מה-snapshot - אחרת "אין חיובים מתועדים" ו"זיכוי ממתין" שגוי (סקירת אינטגרציה C1). בלי שורות preview - לא נוגעים.
+ */
+export function restoreSavedAutoObligations(obligations, snapObligations) {
+  const list = obligations || [];
+  const kept = list.filter(o => !o.isPreview);
+  if (kept.length === list.length) return obligations;
+  const ids = new Set(kept.filter(o => o.id).map(o => String(o.id)));
+  const autos = (snapObligations || []).filter(o => o.isManual === false && !o.isPreview && !(o.id && ids.has(String(o.id))));
+  return [...kept, ...autos];
+}
+
 /** מבטל שינוי אחד: מחזיר את החלק הרלוונטי לערכי ה-snapshot. מחזיר state חדש (לא משנה את הקלט). */
 export function revertChange(cur, snap, key) {
+  const next = revertChangeRaw(cur, snap, key);
+  // אחרי הביטול אין שינוי שמשפיע על המחיר ⇒ החיובים האוטומטיים השמורים חוזרים (בלי להמתין ל-effect של הבקר)
+  if (snap && !pricingInputsChanged(snap, next.items, next.order)) next.obligations = restoreSavedAutoObligations(next.obligations, snap.obligations);
+  return next;
+}
+
+function revertChangeRaw(cur, snap, key) {
   const next = { ...cur };
   // "יום השכרה נוסף" הזיז את הלקיחה/ההחזרה ביום - הביטול מזיז בחזרה (כמו בחירה ב"ללא"/בערך השמור), אחרת נשאר יום חינם או הזזה כפולה.
   // בלי תאריכים בהזמנה הנוכחית - חוזרים לערכי ה-snapshot (עקביים זה עם זה).
