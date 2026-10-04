@@ -13,11 +13,12 @@
 //   await ui.prompt({title, sub, label, icon, type, inputMode, dir, placeholder, defaultValue, okText, cancelText, validate}) → string | null
 //   await ui.alert({title, sub, body, okText, kind:'info'|'error'})                     → undefined
 //   ui.toast(kind:'info'|'charge'|'credit'|'error', big, small?, action?:{text, icon?, onClick})   ; ui.hideToast()
-//   await ui.openDialog(Component, props, {layer:1|2, className, dismissable})          → מה שהרכיב העביר ל-close(result)
+//   await ui.openDialog(Component, props, {layer:1|2, className, dismissable, badge})   → מה שהרכיב העביר ל-close(result)
+//        badge:false = בלי תג האייקון העגול בראש החלון (ברירת מחדל: יש, כמו בעיצוב)
 //        הרכיב מקבל {...props, close}. Escape / לחיצה על הרקע = close(null) (אלא אם dismissable:false).
 //   רכיבי עזר לבניית חלון באותו מבנה של העיצוב: <DlgHead/>, <DlgButtons/>, <DlgBtn kind/>, <Field/>, <Inp/>.
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import OcIcon from './OcIcon';
 import OcPortal from './OcPortal';
 
@@ -129,6 +130,26 @@ function AlertDlg({ title, sub, body, okText = 'הבנתי', kind, close }) {
       </DlgButtons>
     </>
   );
+}
+
+// ---------- תג האייקון בראש החלון (בלוק DLG-MODERN בעיצוב: decorate) ----------
+// לכל חלון עם h2 ישיר: עיגול 56px עם האייקון של הלחצן הראשי (או לפי data-act), ו-data-k שבוחר את הנפשת ההמתנה. לא בחלון שיש בו
+// כבר "גיבור" משלו (.ashield/.big-ck/.mico) ולא כש-opts.badge===false. האייקון נקרא מה-DOM אחרי ההרכבה (כמו בעיצוב).
+const BADGE_BY_ACT = { 'confirm-pay': 'card', 'confirm-pay-only': 'card', 'confirm-credit': 'undo', 'discard-close': 'trash' };
+function DlgBadge({ boxId, dlgKey }) {
+  const [b, setB] = useState(null);
+  useLayoutEffect(() => {
+    const d = document.getElementById(boxId);
+    if (!d || !d.querySelector(':scope > h2') || d.querySelector('.ashield,.big-ck,.mico')) { setB(null); return; }
+    const p = d.querySelector('.btn.primary,.btn.green');
+    const href = p && p.querySelector('use') ? p.querySelector('use').getAttribute('href') || '' : '';
+    const act = p && p.dataset.act;
+    const icon = (act && BADGE_BY_ACT[act]) || href.replace(/^#gmi-/, '') || 'info';
+    const k = act === 'confirm-credit' ? 'coin' : act === 'do-save' ? 'write' : icon === 'trash' ? 'lid' : icon === 'card' ? 'tilt' : icon === 'check' ? 'breathe' : 'float';
+    setB({ icon, k });
+  }, [boxId, dlgKey]);
+  if (!b) return null;
+  return <div className="dbadge" aria-hidden="true" data-k={b.k}><OcIcon name={b.icon} /></div>;
 }
 
 // ---------- ספק ----------
@@ -246,6 +267,7 @@ export function OcUiProvider({ children }) {
         onMouseDown={(e) => { if (top && e.target === e.currentTarget && top.opts.dismissable !== false) close(top.id, null); }}
       >
         <div className={`dlg${top && top.opts.className ? ` ${top.opts.className}` : ''}`} id={did} role="dialog" aria-modal="true" aria-labelledby={top ? (top.opts.labelledBy || 'oc-dlg-t') : undefined}>
+          {top && top.opts.badge !== false ? <DlgBadge key={`b${top.id}`} boxId={did} dlgKey={top.id} /> : null}
           {top ? <top.Component key={top.id} {...top.props} close={(r) => close(top.id, r)} /> : null}
         </div>
       </div>

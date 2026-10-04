@@ -107,7 +107,18 @@ export function createOrderCardFlows(env) {
       headers: { 'Content-Type': 'application/json', ...(zeoutForRequest ? { 'x-zeout': zeoutForRequest } : {}) },
       body: JSON.stringify(body)
     });
-    const res = await send(payload);
+    let res = await send(payload);
+    // חוזה W0 §1.4: חיוב ידני חדש / מחיקת חיוב ידני שמור בכרטיס החדש דורש feature:manual_charge_add (R35/AMB-16). כשלעובד המחובר
+    // אין את ההרשאה השרת מחזיר 403 MANUAL_CHARGE_APPROVAL_REQUIRED → אישור מנהל ושליחה חוזרת עם המאשר (השרת מאמת את הקוד שוב).
+    if (res.status === 403) {
+      const errData = await jsonOf(res);
+      if (errData && errData.code === 'MANUAL_CHARGE_APPROVAL_REQUIRED') {
+        const a = await env.approve('feature:manual_charge_add', 'הוספה או מחיקה של חיוב ידני דורשת אישור מנהל.');
+        if (!a) { ui.toast('error', 'השמירה בוטלה: חיוב ידני דורש אישור מנהל.', ''); return { cancelled: true }; }
+        payload = { ...payload, manualChargeApproverId: a.employeeId, manualChargeApproverPin: a.pin };
+        res = await send(payload);
+      }
+    }
     if (res.status === 401 || res.status === 403 || res.status === 400) {
       const errData = await jsonOf(res);
       await ui.alert({ title: 'השמירה נכשלה', sub: errData?.error || 'שגיאת אימות תעודת זהות.', kind: 'error' });
@@ -115,8 +126,8 @@ export function createOrderCardFlows(env) {
     }
     if (res.status !== 409) return { res };
     const body = await jsonOf(res);
-    // G12: חוסר מלאי מחזיר גם הוא 409 (route.js:542-547) - מבחינים לפי code (W0) או validationErrors
-    if (body && (body.code === 'STOCK_SHORTAGE' || Array.isArray(body.validationErrors))) {
+    // G12: חוסר מלאי מחזיר גם הוא 409 (route.js:542-547) - מבחינים לפי code (W0: 'STOCK_SHORTAGE' / 'CONFLICT') או validationErrors
+    if (body && body.code !== 'CONFLICT' && (body.code === 'STOCK_SHORTAGE' || Array.isArray(body.validationErrors))) {
       await ui.openDialog(env.dialogs.StockDialog, { message: body.error || 'אחד או יותר מהפריטים אינם זמינים במלאי בתאריכים החדשים.', ...formatStockErrors(body.validationErrors || []) });
       return { stock: true };
     }
@@ -396,7 +407,7 @@ export function createOrderCardFlows(env) {
       await ui.alert({ title: 'לא ניתן למחוק', sub: 'לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר', kind: 'error' });
       return false;
     }
-    if (!(await ui.confirm({ title: 'מחיקת הזמנה', sub: 'האם אתה בטוח שברצונך למחוק הזמנה זו?', okText: 'מחק', icon: 'trash', danger: true }))) return false;
+    if (!(await ui.confirm({ title: 'מחיקת הזמנה', sub: 'האם אתה בטוח שברצונך למחוק הזמנה זו?', okText: 'מחק הזמנה', icon: 'trash' }))) return false;
     let zeoutForDelete = null;
     if (zeoutVerificationNeeded(st.settings, order)) {
       zeoutForDelete = await requestZeout();

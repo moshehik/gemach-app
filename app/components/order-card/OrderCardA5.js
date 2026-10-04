@@ -51,15 +51,19 @@ function StateBanner({ oc }) {
   const deleted = oc.flags.isDeletedOrder;
   return (
     <div className="nb-area oc-banner" data-oc-banner={deleted ? 'deleted' : 'draft'}>
-      <section className={`nb ${deleted ? 'nb-warning' : 'nb-info'}`} role="status">
-        <div className="nb-head">
-          <span className="nb-ic" aria-hidden="true"><OcIcon name={deleted ? 'trash' : 'file'} /></span>
-          <div className="nb-msg">
-            <b>{deleted ? 'הזמנה זו מחוקה' : 'הזמנה זו היא טיוטה'}</b>
-            <span>{deleted ? 'ההזמנה בוטלה או שכל הפריטים בה הוסרו.' : 'ההזמנה נשמרה אוטומטית במסך הזמנה חדשה ולא הושלמה.'}</span>
+      <div className="nb-w">
+        <section className={`nb ${deleted ? 'nb-warning' : 'nb-info'}`} role="status" aria-labelledby="oc-state-t">
+          <div className="nb-main">
+            <div className="nb-head">
+              <span className="nb-ic" aria-hidden="true"><OcIcon name={deleted ? 'trash' : 'file'} /></span>
+              <div className="nb-msg">
+                <b id="oc-state-t">{deleted ? 'הזמנה זו מחוקה' : 'הזמנה זו היא טיוטה'}</b>
+                <span>{deleted ? 'ההזמנה בוטלה או שכל הפריטים בה הוסרו.' : 'ההזמנה נשמרה אוטומטית במסך הזמנה חדשה ולא הושלמה.'}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

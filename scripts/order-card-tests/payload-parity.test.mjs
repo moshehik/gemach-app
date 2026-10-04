@@ -1,5 +1,6 @@
 // זוגיות גוף ה-PUT (ו-preview-pricing / validate-inventory) בין הכרטיס החדש לישן (PLAN §D.3.3, §E.1).
-// האורקל = הליטרלים מתוך LegacyOrderPage.js עצמו (legacy.mjs). הציפייה: גוף החדש = גוף הישן + "extraDay" בסוף (G13), בייט-בייט.
+// האורקל = הליטרלים מתוך LegacyOrderPage.js עצמו (legacy.mjs). הציפייה: גוף החדש = גוף הישן + "extraDay" (G13) + "cardVariant":"a5"
+// (חוזה W0 §1.4) בסוף, בייט-בייט.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -8,11 +9,11 @@ import { legacySaveBody, legacyExitBody, legacyPreviewLiveBody, legacyPreviewSum
 
 const L = await import(pathToFileURL(process.env.PROJ + '/app/components/order-card/orderCardLogic.js').href);
 
-const withoutExtraDay = (o) => { const c = { ...o }; delete c.extraDay; return c; };
+const withoutExtraDay = (o) => { const c = { ...o }; delete c.extraDay; delete c.cardVariant; return c; };
 const expectSerialized = (newer, legacy, extraDay) => {
   const a = JSON.stringify(newer);
   const b = JSON.stringify(legacy);
-  const suffix = `,"extraDay":${JSON.stringify(extraDay)}}`;
+  const suffix = `,"extraDay":${JSON.stringify(extraDay)},"cardVariant":"a5"}`;
   assert.ok(a.endsWith(suffix), `new body must end with ${suffix}`);
   assert.equal(a.slice(0, -suffix.length) + '}', b, 'new body (without extraDay) must equal legacy body byte for byte');
 };
@@ -21,15 +22,16 @@ const states = payloadStates();
 test('20 מצבים בדיוק', () => assert.equal(states.length, 20));
 
 for (const { name, st, opts } of states) {
-  test(`PUT שמירה = handleSave + extraDay · ${name}`, () => {
+  test(`PUT שמירה = handleSave + extraDay + cardVariant · ${name}`, () => {
     const legacy = legacySaveBody(st.order, st, opts);
     const neu = L.buildPutPayload(st.order, { items: st.items, obligations: st.obligations, payments: st.payments, mode: 'save', debtApprovedBy: opts.debtApprovedBy || null, managerAuth: opts.managerAuth || null, orderDateApproval: opts.orderDateApproval || null });
     assert.deepEqual(withoutExtraDay(neu), legacy);
     const xd = st.order.extraDay !== undefined ? st.order.extraDay : null;
     assert.equal(neu.extraDay, xd);
+    assert.equal(neu.cardVariant, 'a5');
     expectSerialized(neu, legacy, xd);
   });
-  test(`PUT יציאה = handleExit + extraDay · ${name}`, () => {
+  test(`PUT יציאה = handleExit + extraDay + cardVariant · ${name}`, () => {
     const legacy = legacyExitBody(st.order, st, { debtApprovedBy: opts.debtApprovedBy || null });
     const neu = L.buildPutPayload(st.order, { items: st.items, obligations: st.obligations, payments: st.payments, mode: 'exit', debtApprovedBy: opts.debtApprovedBy || null });
     const xd = st.order.extraDay !== undefined ? st.order.extraDay : null;

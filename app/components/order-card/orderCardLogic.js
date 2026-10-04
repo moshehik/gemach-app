@@ -18,7 +18,7 @@
 // buildValidateInventoryBody ← :708-720
 // formatStockErrors ← :729-738 (טקסט ההודעה, לחלון R48)
 // validateRepairs ← :683-692
-// buildPutPayload(mode:'save') ← :853-893 ; (mode:'exit') ← :1144-1174 ; + extraDay בסוף (G13)
+// buildPutPayload(mode:'save') ← :853-893 ; (mode:'exit') ← :1144-1174 ; + extraDay (G13) + cardVariant:'a5' (חוזה W0) בסוף
 // computeItemsTotalAmount ← :888-892 / :1169-1173
 // submittedLocalIdsOf ← :848-850 / :1140-1142
 // mergePendingItems ← :985-988
@@ -331,6 +331,8 @@ export function cancelledItemNow(settings, snapshotItems = [], items = []) {
 // ---------------------------------------------------------------------------------------------
 // גוף ה-PUT — סדר המפתחות זהה לישן; extraDay מצורף בסוף (G13). mode: 'save' (:853-893) | 'exit' (:1144-1174)
 // ---------------------------------------------------------------------------------------------
+export const CARD_VARIANT = 'a5';
+
 export function computeItemsTotalAmount(items, obligations, currentOrder) {
   const itemsSum = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
   const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
@@ -405,6 +407,9 @@ export function buildPutPayload(currentOrder, { items, obligations, payments, mo
     };
   // G13: יום השכרה נוסף נשמר (route.js:687 תומך; הישן מעולם לא שלח). null = "ללא".
   body.extraDay = o.extraDay !== undefined ? o.extraDay : null;
+  // חוזה W0 (W0-NOTES §1.4): גוף מהכרטיס החדש מסומן - השרת אוכף feature:manual_charge_add על חיוב ידני חדש / מחיקת חיוב ידני
+  // שמור רק כשהסימון קיים (הישן לא שולח אותו ולכן לא מושפע).
+  body.cardVariant = CARD_VARIANT;
   return body;
 }
 
@@ -718,3 +723,12 @@ export const ROLE_LABELS = { 0: 'הנהלה ראשית', 1: 'מנהל', 2: 'מת
 export const employeeRoleLabel = (e) => (e && (e.department?.name || ROLE_LABELS[e.roleId])) || 'עובד';
 export const APPROVAL_MAX_TRIES = 3;
 export const APPROVAL_LOCK_MS = 30000;
+
+// גוף verify-pin (חוזה W0 §1.2): {pin, employeeId, requiredLevel} כמו הישן + context {orderId, reason≤200} רק כשיש מספר הזמנה תקין
+// (context לא תקין = 400 לפני בדיקת הקוד). בלי context = בדיוק ההתנהגות הישנה.
+export function verifyPinBody({ pin, employeeId, requiredLevel, orderId, reason }) {
+  const body = { pin, employeeId, requiredLevel };
+  const oid = Number(orderId);
+  if (Number.isInteger(oid) && oid > 0) body.context = { orderId: oid, reason: String(reason || '').slice(0, 200) };
+  return body;
+}

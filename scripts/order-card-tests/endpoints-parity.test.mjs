@@ -64,7 +64,7 @@ test('שמירה רגילה: validate-inventory ואז PUT /api/orders/<id> עם
   assert.deepEqual(h.calls.map(c => `${c.method} ${c.url}`), ['POST /api/orders/validate-inventory', `PUT /api/orders/${ROUTE_ID}`]);
   const cur = { ...st, order: { ...st.order, notes: 'שונה' } };
   assert.equal(JSON.stringify(h.calls[0].body), JSON.stringify(legacyValidateBody(cur.items.filter(i => !i.isDeleted), cur.order)));
-  const expected = { ...legacySaveBody(cur.order, cur, {}), extraDay: null };
+  const expected = { ...legacySaveBody(cur.order, cur, {}), extraDay: null, cardVariant: 'a5' };
   assert.equal(h.calls[1].rawBody, JSON.stringify(expected));
   assert.deepEqual(h.calls[1].headers, { 'Content-Type': 'application/json' });
 });
@@ -106,7 +106,7 @@ test('R47 ביטול פריט שנשמר: approve(feature:item_change_approval) 
   assert.equal(put.body.managerEmployeeId, 'm1');
   assert.equal(put.body.managerPin, 'pw');
   const cur = { ...st, items: [st.items[0], { ...st.items[1], isDeleted: true }] };
-  assert.equal(put.rawBody, JSON.stringify({ ...legacySaveBody(cur.order, cur, { managerAuth: { employeeId: 'm1', pin: 'pw' } }), extraDay: null }));
+  assert.equal(put.rawBody, JSON.stringify({ ...legacySaveBody(cur.order, cur, { managerAuth: { employeeId: 'm1', pin: 'pw' } }), extraDay: null, cardVariant: 'a5' }));
 });
 
 test('R12 409 התנגשות: חלון 3 בחירות; "דרוס" = PUT שני עם overwriteConflict; "טען מחדש" = GET; "חזרה" = כלום', async () => {
@@ -207,7 +207,7 @@ test('יציאה עם שינויים: D2 "שמור" → PUT בגוף handleExit 
   const r = await h.flows.exit();
   assert.equal(r.left, true);
   const cur = { ...st, order: { ...st.order, notes: 'שונה' } };
-  assert.equal(h.calls[0].rawBody, JSON.stringify({ ...legacyExitBody(cur.order, cur, {}), extraDay: null }));
+  assert.equal(h.calls[0].rawBody, JSON.stringify({ ...legacyExitBody(cur.order, cur, {}), extraDay: null, cardVariant: 'a5' }));
   assert.deepEqual(h.nav, ['/orders']);
   const h2 = harness(st, { edit: withNotes, answers: { Exit: 'discard' } });
   await h2.flows.exit('/x');
@@ -304,10 +304,37 @@ test('applyServerOrder (= handleOrderUpdate): שורת פריט לוקאלית �
 test('אישורי מנהל: OcApproval שולח ל-verify-pin את {pin, employeeId, requiredLevel} של הישן + context; אין window.customAuthPrompt', () => {
   const src = fs.readFileSync(process.env.PROJ + '/app/components/order-card/OcApproval.js', 'utf8');
   assert.ok(src.includes("'/api/auth/verify-pin'"));
-  assert.ok(/JSON\.stringify\(\{ pin, employeeId: sel, requiredLevel: level\.requiredLevel, context: \{ orderId/.test(src));
+  assert.ok(/JSON\.stringify\(verifyPinBody\(\{ pin, employeeId: sel, requiredLevel: level\.requiredLevel, orderId, reason \}\)\)/.test(src));
+  assert.deepEqual(L.verifyPinBody({ pin: 'x', employeeId: 'e', requiredLevel: 'feature:locked_order_edit', orderId: 53375, reason: 'ר'.repeat(250) }), { pin: 'x', employeeId: 'e', requiredLevel: 'feature:locked_order_edit', context: { orderId: 53375, reason: 'ר'.repeat(200) } });
+  assert.deepEqual(L.verifyPinBody({ pin: 'x', employeeId: 'e', requiredLevel: 'עובד', orderId: undefined, reason: 'r' }), { pin: 'x', employeeId: 'e', requiredLevel: 'עובד' }, 'בלי מספר הזמנה תקין - בלי context (W0: context לא תקין = 400)');
   for (const lvl of ["'feature:locked_order_edit'", "'feature:item_change_approval'", "'feature:manual_payment_credit_add'"]) assert.ok(LEGACY_SRC.includes(`requiredLevel: ${lvl}`), `הישן מאמת ${lvl}`);
   const ctl = fs.readFileSync(process.env.PROJ + '/app/components/order-card/useOrderCardController.js', 'utf8');
   assert.ok(ctl.includes("approve('feature:locked_order_edit'"), 'unlock = feature:locked_order_edit כמו handleUnlock');
   const flows = fs.readFileSync(process.env.PROJ + '/app/components/order-card/orderCardFlows.js', 'utf8');
   assert.ok(flows.includes("env.approve('feature:item_change_approval'"), 'ביטול פריט = feature:item_change_approval כמו handleSave');
+});
+
+test('חוזה W0: 403 MANUAL_CHARGE_APPROVAL_REQUIRED → אישור feature:manual_charge_add ושליחה חוזרת עם manualChargeApproverId/Pin', async () => {
+  const st = baseState();
+  let asked = null;
+  const h = harness(st, {
+    edit: (s) => { s.obligations = [...s.obligations, { amount: 40, description: 'ידני', isManual: true, isNew: true }]; },
+    approve: async (kind) => { asked = kind; return { employeeId: 'mg', employeeName: 'מ', pin: 'k' }; },
+    respond: (u, o, n) => (u.includes('validate') ? { body: { valid: true } } : (o.method === 'PUT' && n === 2 ? { status: 403, body: { code: 'MANUAL_CHARGE_APPROVAL_REQUIRED', error: 'x' } } : serverOk(st))),
+  });
+  const r = await h.flows.save();
+  assert.equal(r.ok, true);
+  assert.equal(asked, 'feature:manual_charge_add');
+  const puts = h.calls.filter(c => c.method === 'PUT');
+  assert.equal(puts.length, 2);
+  assert.deepEqual([puts[1].body.manualChargeApproverId, puts[1].body.manualChargeApproverPin, puts[1].body.cardVariant], ['mg', 'k', 'a5']);
+  assert.ok(!h.opened.some(x => x[0] === 'alert'), 'בלי חלון שגיאה כשהאישור הצליח');
+});
+
+test('חוזה W0: 409 code CONFLICT הוא התנגשות גם אם יש בגוף validationErrors', async () => {
+  const st = baseState();
+  const h = harness(st, { edit: withNotes, respond: (u, o) => (u.includes('validate') ? { body: { valid: true } } : (o.method === 'PUT' ? { status: 409, body: { code: 'CONFLICT', validationErrors: [] } } : {})) });
+  await h.flows.save();
+  assert.ok(h.opened.some(x => x[0] === 'Conflict'));
+  assert.ok(!h.opened.some(x => x[0] === 'Stock'));
 });

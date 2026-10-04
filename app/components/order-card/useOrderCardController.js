@@ -262,7 +262,7 @@ export default function useOrderCardController(orderRef, ui) {
   }, [dirty, order, items, obligations, payments, refunds, pendingDraft, settings.enableLocalDrafts]);
 
   // ---------- אישור מנהל ----------
-  const approve = useCallback((kind, reason) => ui.openDialog(OcApprovalDialog, { kind, reason, orderId: stateRef.current.order?.orderId }, { layer: 2, labelledBy: 'oc-appr-t' })
+  const approve = useCallback((kind, reason) => ui.openDialog(OcApprovalDialog, { kind, reason, orderId: stateRef.current.order?.orderId }, { layer: 2, labelledBy: 'oc-appr-t', className: 'oc-appr' })
     .then(r => { if (r) bumpHistory(); return r || null; }), [ui, bumpHistory]);
 
   // ---------- זרימות ----------

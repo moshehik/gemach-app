@@ -112,6 +112,8 @@ test('logEvent: כל פעולה שנשלחת קיימת ב-ORDER_EVENT_ACTIONS (
   for (const [f, s] of Object.entries(CODE)) for (const m of s.matchAll(/logEvent\(\s*'([A-Z_]+)'/g)) if (!allowed.includes(m[1])) bad.push(`${f}: ${m[1]}`);
   assert.deepEqual(bad, []);
   assert.deepEqual(grepAll(/action:\s*'MANAGER_APPROVAL'/), []);
+  // חוזה W0 §1.5: /print/order רושם ORDER_PRINTED בעצמו - הכרטיס לא רושם הדפסה שוב
+  assert.deepEqual(grepAll(/logEvent\(\s*'ORDER_PRINTED'/), []);
 });
 
 test('קוד אישור המנהל לא נרשם: אין console.* עם pin, אין localStorage/sessionStorage בחלון האישור', () => {

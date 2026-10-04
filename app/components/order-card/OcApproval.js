@@ -3,7 +3,7 @@
 // OcApproval — חלון "אישור מנהל" של הכרטיס החדש (D12, בגרסת הבעלים מהעיצוב: pv-main askManagerApproval): רשימה נגללת של העובדים
 // המורשים להרשאה המבוקשת לפי מסך ההרשאות (אותה הכרעה כמו customAuthPrompt: approvals[key] / canApproveWithoutPayment מ-GET
 // /api/employees) + שדה קוד (אותו סוד ש-verify-pin מקבל היום, כמו בכניסה לאתר) → POST /api/auth/verify-pin עם context
-// {orderId, reason, featureKey} (W0 רושם MANAGER_APPROVAL; השרת בודק את ההרשאה מחדש). בלי 4 תיבות ספרות. נעילה בצד לקוח אחרי
+// {orderId, reason} (חוזה W0 §1.2: השרת רושם MANAGER_APPROVAL ובודק את ההרשאה מחדש; לחוב featureKey='feature:debt_approval' בשרת). בלי 4 תיבות ספרות. נעילה בצד לקוח אחרי
 // 3 ניסיונות כושלים ל-30 שניות (AMB-07). שכבה 2 (#dlg2) כמו בעיצוב. הקוד לא נשמר, לא נרשם ולא נשלח לשום מקום אחר.
 //
 // מפת פורט: PopupProvider.js:133-196 (טעינת הרשימה, ברירת מחדל = המשתמש הנוכחי כשמורשה) ; LegacyOrderPage.js:780-806, :820-843,
@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import OcIcon from './OcIcon';
 import { DlgBtn, DlgButtons, Field, Inp } from './OcUi';
-import { approvalLevelOf, employeeRoleLabel, filterApprovers, APPROVAL_LOCK_MS, APPROVAL_MAX_TRIES } from './orderCardLogic';
+import { approvalLevelOf, employeeRoleLabel, filterApprovers, verifyPinBody, APPROVAL_LOCK_MS, APPROVAL_MAX_TRIES } from './orderCardLogic';
 
 export default function OcApprovalDialog({ kind, reason, orderId, close, fetchImpl }) {
   const level = useMemo(() => approvalLevelOf(kind), [kind]);
@@ -65,7 +65,7 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
       const res = await f('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin, employeeId: sel, requiredLevel: level.requiredLevel, context: { orderId: orderId ?? null, reason: reason || '', featureKey: level.featureKey } })
+        body: JSON.stringify(verifyPinBody({ pin, employeeId: sel, requiredLevel: level.requiredLevel, orderId, reason }))
       });
       const data = await res.json().catch(() => ({}));
       if (data && data.success) {
@@ -101,7 +101,7 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
   };
 
   return (
-    <div className="oc-appr">
+    <>
       <h2 id="oc-appr-t">אישור מנהל</h2>
       <div className="sub">{reason || 'נדרש אישור מנהל'}</div>
       <div className="mfld">
@@ -152,7 +152,9 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
         <DlgBtn kind="primary" icon="check" disabled={!canSubmit} onClick={submit}>אשר</DlgBtn>
         <DlgBtn kind="ghost" icon="back" onClick={() => close(null)}>חזרה</DlgBtn>
       </DlgButtons>
-    </div>
+    </>
   );
 }
 OcApprovalDialog.ocLayer = 2;
+// החלון נפתח עם className 'oc-appr' על #dlg2 (ר' approve ב-useOrderCardController) - כך ה-h2 הוא ילד ישיר של החלון ומקבל את
+// תג האייקון של העיצוב (.dbadge, OcUi).

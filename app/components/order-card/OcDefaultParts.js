@@ -81,21 +81,31 @@ export function DefaultDraftBanner({ oc }) {
   const d = oc.drafts.pending;
   if (!d) return null;
   const stale = d.baseUpdatedAt && oc.order?.updatedAt && d.baseUpdatedAt !== oc.order.updatedAt;
+  // באנר 35 בפלטה (.nb-w > section.nb.open > .nb-main + .nb-bw > .nb-body > .nb-bi > .nb-r + .nb-go)
   return (
     <div className="nb-area oc-banner" data-oc-default="draft">
-      <section className="nb nb-warning" role="status">
-        <div className="nb-head">
-          <span className="nb-ic" aria-hidden="true"><OcIcon name="alert" /></span>
-          <div className="nb-msg">
-            <b>נמצאו שינויים שלא נשמרו מביקור קודם בכרטיס</b>
-            <span>{d.savedAt ? hebDateOf(d.savedAt) : ''}{(d.summary || []).length ? ` · ${(d.summary || []).join(', ')}` : ''}{stale ? ' · ההזמנה עודכנה בשרת מאז - שחזור ושמירה ידרשו אישור דריסה' : ''}</span>
+      <div className="nb-w">
+        <section className="nb nb-warning open" role="status" aria-labelledby="oc-draft-t">
+          <div className="nb-main">
+            <div className="nb-head">
+              <span className="nb-ic" aria-hidden="true"><OcIcon name="alert" /></span>
+              <div className="nb-msg"><b id="oc-draft-t">נמצאו שינויים שלא נשמרו מביקור קודם בכרטיס</b><span>{d.savedAt ? hebDateOf(d.savedAt) : ''}</span></div>
+            </div>
           </div>
-        </div>
-        <div className="oc-banner-acts">
-          <button type="button" className="nb-go" onClick={oc.drafts.restore}>שחזר את השינויים</button>
-          <button type="button" className="nb-go" onClick={oc.drafts.discard}>מחק אותם</button>
-        </div>
-      </section>
+          <div className="nb-bw">
+            <div className="nb-body">
+              <div className="nb-bi">
+                {(d.summary || []).map((t, i) => <div className="nb-r" key={i}><i><OcIcon name="pencil" /></i><span>{t}</span></div>)}
+                {stale ? <div className="nb-r"><i><OcIcon name="alert" /></i><span>ההזמנה עודכנה בשרת מאז שהשינויים האלה נערכו — שחזור ושמירה ידרשו אישור דריסה.</span></div> : null}
+                <div className="oc-banner-acts">
+                  <button type="button" className="nb-go" onClick={oc.drafts.restore}>שחזר את השינויים</button>
+                  <button type="button" className="nb-go" onClick={oc.drafts.discard}>מחק אותם</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -153,7 +163,7 @@ export function DefaultStockDialog({ message, lines = [], spacingHint, close }) 
   return (
     <>
       <DlgHead id="oc-dlg-t" title="חוסר במלאי" sub={message} />
-      <div className="chg">{lines.map((l, i) => <Row key={i} icon="dress">{l.text}</Row>)}</div>
+      <div className="chg">{lines.map((l, i) => <Row key={i} icon="dress">{l.text}<div className="faint oc-sub">{l.spacing ? 'היחידה תפוסה בגלל ציפוף הימים' : 'אין יחידה פנויה בתאריכים המבוקשים'}</div></Row>)}</div>
       {spacingHint ? <div className="faint oc-hint">רמז: ציפוף הימים בין הזמנות יכול לתפוס יחידה. נסו לבחור ציפוף קטן יותר.</div> : null}
       <DlgButtons><DlgBtn kind="primary" icon="pencil" onClick={() => close(true)}>חזרה לעריכה</DlgBtn></DlgButtons>
     </>
