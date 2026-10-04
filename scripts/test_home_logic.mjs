@@ -20,7 +20,8 @@ import {
 import { hebText, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
 import { ORDER_STATUS_STYLE } from '../app/components/home/homeLogic.js';
-import { PRIVACY_SECTIONS, splitPlaceholders, PRIVACY_PLACEHOLDER_COUNT } from '../app/components/home/privacyPolicyText.js';
+import { PRIVACY_SECTIONS, buildPrivacySections, privacyContactLine } from '../app/components/home/privacyPolicyText.js';
+import { hebrewUpdatedDate } from '../lib/hebrewStamp.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
 import { readFileSync, readdirSync } from 'node:fs';
 
@@ -551,15 +552,47 @@ t('חודש עברי: התחלה, רשת, הזזה קדימה ואחורה', () 
 });
 
 console.log('מדיניות פרטיות');
-t('הנוסח: כל הסעיפים, שדות המילוי מזוהים ומסומנים', () => {
+const flatPrivacy = (secs) => secs.map((s) => [s.h, ...(s.ul || []), s.p || ''].join(' | ')).join(' | ');
+t('הנוסח: כל הסעיפים, בלי שדות מילוי ובלי טקסט זמני', () => {
   assert.ok(PRIVACY_SECTIONS.length >= 9);
   assert.ok(PRIVACY_SECTIONS.every((s) => s.h && (s.p || s.ul)));
-  assert.equal(PRIVACY_PLACEHOLDER_COUNT, 6, 'מי אנחנו, שרתים, פניות, זמן מענה, עוגיות, תאריך');
-  assert.deepEqual(splitPlaceholders('א [[ב]] ג'), [{ text: 'א ', ph: false }, { text: '[ב]', ph: true }, { text: ' ג', ph: false }]);
-  assert.deepEqual(splitPlaceholders(''), []);
-  const all = JSON.stringify(PRIVACY_SECTIONS);
+  const all = flatPrivacy(PRIVACY_SECTIONS);
+  assert.ok(!all.includes('[['), 'אין שדה מילוי [[...]]');
+  assert.ok(!/להשלים|יושלם|\[לאימות/.test(all), 'אין סימוני "להשלים/לאימות"');
   assert.ok(!all.includes('טקסט זמני'), 'לא הנוסח הזמני הישן');
   assert.ok(all.includes('נדרים פלוס') && all.includes('בינה מלאכותית'));
+});
+t('הנוסח נבנה מהגדרות הארגון: שם משפטי = gmach_name, טלפון = gmach_phone, 30 ימי מענה, שרתים ארה"ב / אירופה, תאריך עברי', () => {
+  const a = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח נווה יעקב', phone: '02-1234567', updatedDate: 'כ תשרי תשפ"ז' }));
+  assert.ok(a.includes('גמ״ח נווה יעקב (להלן'), 'שם הגוף המשפטי מההגדרה');
+  assert.ok(a.includes('02-1234567'), 'הטלפון מההגדרה');
+  assert.ok(a.includes('נשיב תוך 30 ימים'));
+  assert.ok(a.includes('בארה"ב ובאירופה'));
+  assert.ok(a.includes('איננו משתמשים בעוגיות פרסום או מעקב.'));
+  assert.ok(a.includes('כ תשרי תשפ"ז'));
+  // ארגון אחר -> טקסט אחר (לא קשיח)
+  const b = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח אחר', phone: '03-7654321' }));
+  assert.ok(b.includes('גמ״ח אחר') && b.includes('03-7654321') && !b.includes('02-1234567') && !b.includes('נווה יעקב'));
+  // בלי הגדרות: שם ברירת מחדל, שורת פנייה כללית בלי מספר ובלי תאריך, ועדיין בלי שדות מילוי
+  const c = flatPrivacy(buildPrivacySections({}));
+  assert.ok(c.includes('גמ״ח שמלות (להלן') && c.includes('ניתן לפנות אלינו ישירות בגמ"ח') && !c.includes('[['));
+  assert.equal(privacyContactLine('  '), privacyContactLine(''));
+  assert.ok(privacyContactLine(' 050-1112222 ').includes('050-1112222.'));
+});
+t('תאריך העדכון: תאריך עברי בלבד (תאריך הגרסה בלי שעה; נפילה ליום הנוכחי), בלי ספרות לועזיות', () => {
+  assert.equal(hebrewUpdatedDate('01/10/2026 12:47'), 'כ תשרי תשפ"ז');
+  assert.equal(hebrewUpdatedDate('לא תאריך', Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
+  assert.equal(hebrewUpdatedDate(null, Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
+  assert.ok(!/\d{4}/.test(hebrewUpdatedDate('01/10/2026 12:47')));
+});
+t('HomeFooter: אין שדות מילוי, הדיאלוג מקבל settings ומחשב את הנוסח בזמן ההצגה', () => {
+  const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');
+  assert.ok(!/splitPlaceholders|priv-ph/.test(src));
+  assert.ok(/buildPrivacySections\(\{[\s\S]*gmach_name[\s\S]*gmach_phone/.test(src));
+  const a5 = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
+  assert.ok(/<PrivacyDialog[\s\S]*?settings=\{settings\}/.test(a5));
+  const boot = readFileSync(new URL('../app/api/a5/boot/route.js', import.meta.url), 'utf8');
+  assert.ok(/'gmach_phone'/.test(boot), 'gmach_phone מוחזר מ-/api/a5/boot');
 });
 
 console.log('אייקונים (sprite מוטמע)');

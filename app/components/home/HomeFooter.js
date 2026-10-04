@@ -4,11 +4,11 @@
 // (חלון 18/20 div.dlg + חלון 9/10 scrim). קישורי התחתית לפי מה שמותר למשתמשת (footerGroups ב-homeLogic).
 // החלון נפתח מהקישור "מדיניות פרטיות" בעמודה "החשבון שלי" ונסגר ב-Escape / לחיצה על הרקע / "הבנתי".
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Ic } from './HomeParts';
-import { PRIVACY_TITLE, PRIVACY_SUB, PRIVACY_SECTIONS, splitPlaceholders } from './privacyPolicyText';
-import { hebrewVersionStamp } from '@/lib/hebrewStamp';
+import { PRIVACY_TITLE, PRIVACY_SUB, buildPrivacySections } from './privacyPolicyText';
+import { hebrewVersionStamp, hebrewUpdatedDate } from '@/lib/hebrewStamp';
 
 const LINK_ICON = { orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', guide: 'info', report: 'alert', profile: 'user', display: 'sun' };
 
@@ -60,11 +60,14 @@ export function HomeFooter({ groups, name, version, date, onPrivacy }) {
   );
 }
 
-function Marked({ text }) {
-  return splitPlaceholders(text).map((s, i) => (s.ph ? <mark key={i} className="priv-ph">{s.text}</mark> : <span key={i}>{s.text}</span>));
-}
-
-export function PrivacyDialog({ onClose }) {
+// settings = הגדרות הארגון מ-/api/a5/boot: gmach_name (שם הגוף המשפטי) ו-gmach_phone (שורת הפנייה) - נבנה בזמן ההצגה, לא קשיח לכל גמ"ח.
+// versionDate = תאריך הגרסה (app/version.json) - ממנו מחושב תאריך העדכון העברי.
+export function PrivacyDialog({ onClose, settings, versionDate }) {
+  const sections = useMemo(() => buildPrivacySections({
+    legalName: settings && settings.gmach_name,
+    phone: settings && settings.gmach_phone,
+    updatedDate: hebrewUpdatedDate(versionDate),
+  }), [settings, versionDate]);
   const boxRef = useRef(null);
   const closeRef = useRef(null);
   const lastFocus = useRef(null);
@@ -98,11 +101,11 @@ export function PrivacyDialog({ onClose }) {
         <h2 id="pv-t">{PRIVACY_TITLE}</h2>
         <div className="sub">{PRIVACY_SUB}</div>
         <div className="priv-body">
-          {PRIVACY_SECTIONS.map((sec) => (
+          {sections.map((sec) => (
             <section key={sec.h}>
               <h3>{sec.h}</h3>
-              {sec.ul && <ul>{sec.ul.map((li) => <li key={li}><Marked text={li} /></li>)}</ul>}
-              {sec.p && <p><Marked text={sec.p} /></p>}
+              {sec.ul && <ul>{sec.ul.map((li) => <li key={li}>{li}</li>)}</ul>}
+              {sec.p && <p>{sec.p}</p>}
             </section>
           ))}
         </div>
