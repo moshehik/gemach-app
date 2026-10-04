@@ -47,7 +47,8 @@ test('A27 / R23: בלי "לפי הגדרות הגמ״ח", בלי "ס״מ", בל�
   const add = CODE['parts/OcAddItemPanel.js'];
   assert.match(add, /fetch\(`\/api\/orders\/\$\{orderId\}\/preview-pricing`/);
   assert.match(add, /מחיר השכרה: /);
-  assert.match(add, /דמי ביטול כרגע/);
+  assert.match(add, /דמי ביטול <b>/, 'AMB-14: התווית "דמי ביטול" (הרגילים)');
+  assert.ok(!/דמי ביטול כרגע/.test(ALL + CSS), 'AMB-14: בלי "כרגע"');
   assert.match(add, /placeholder="אורך"/, 'R23: "אורך" בלי סוגריים');
 });
 

@@ -131,7 +131,7 @@ const STAGES = [
     const price = await p.$eval('#p-items .oc-addprice', (e) => e.textContent);
     await clickAt('#p-items [data-act="additem"]'); await sleep(1200); await away();
     const st = await p.evaluate(() => ({ posts: (window.__calls || []).filter((c) => c.url === '/api/orders/53375/items').map((c) => JSON.parse(c.body)), vp: (window.__calls || []).filter((c) => c.url === '/api/auth/verify-pin').length, dlg2: document.getElementById('scrim2').classList.contains('on') }));
-    checks.push(['A27: מחיר השכרה ודמי ביטול מהמנוע (preview-pricing), בלי "לפי הגדרות הגמ״ח"', /מחיר השכרה: ₪120/.test(price) && /דמי ביטול כרגע ₪40/.test(price) && !/לפי הגדרות/.test(price)],
+    checks.push(['A27: מחיר השכרה ודמי ביטול מהמנוע (preview-pricing), בלי "לפי הגדרות הגמ״ח"', /מחיר השכרה: ₪120/.test(price) && /דמי ביטול ₪40/.test(price) && !/לפי הגדרות/.test(price)],
       ['R47 הוספה (נווה: require_manager_code_for_item_changes) → חלון אישור מנהל לפני POST', st.dlg2 && st.posts.length === 0]);
   } },
   { name: '53-quota-full', real: async () => {

@@ -2,7 +2,7 @@
 
 // OcAddItemPanel — חלונית "הוספת שמלה" בלשונית הפריטים (העיצוב: .addpanel; A27, R23). דגם (שדה עם הצעות כמו בעיצוב, data-sug →
 // .advlist), מידה (לחצני .sizes עם הזמינות של הישן), תיקונים כש-enable_alterations פעיל (צוואר / שרוול / "אורך" בלי "ס״מ" /
-// "פירוט התיקון הנדרש"), "מחיר השכרה" ו"דמי ביטול כרגע" מהמנוע (POST preview-pricing — לא ערכים קבועים; AMB-14) ו"הוסף להזמנה"
+// "פירוט התיקון הנדרש"), "מחיר השכרה" ו"דמי ביטול" (הרגילים, AMB-14) מהמנוע (POST preview-pricing — לא ערכים קבועים; AMB-14) ו"הוסף להזמנה"
 // (= "אישור" של שורה חדשה בישן: POST מיידי, R47 לפי ההגדרה).
 //
 // מפת פורט: ModelInput ← components/orders/OrderModelSelector.js (חיפוש /api/inventory/models?q=…&hasActiveItems=true, 300ms,
@@ -276,7 +276,7 @@ export default function OcAddItemPanel({ oc, ui, actions, open, onClose, altEnab
       <div className="row spread wrap">
         <span className="muted oc-addprice">
           מחיר השכרה: <b><bdi dir="ltr">{price !== null ? fmtMoney(price) : '—'}</bdi></b>
-          {fee !== null ? <> · דמי ביטול כרגע <b><bdi dir="ltr">{fmtMoney(fee)}</bdi></b></> : null}
+          {fee !== null ? <> · דמי ביטול <b><bdi dir="ltr">{fmtMoney(fee)}</bdi></b></> : null}
         </span>
         <button type="button" className="btn navy" data-act="additem" disabled={!canAdd} onClick={add}>
           <OcIcon name="plus" />{busy ? 'מוסיף...' : 'הוסף להזמנה'}
