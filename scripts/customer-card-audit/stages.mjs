@@ -41,7 +41,13 @@ p.on('pageerror', (e) => console.log('PAGEERR', which, e.message));
 p.on('dialog', (d) => d.accept().catch(() => {}));
 const base = D ? DEMO : `http://127.0.0.1:${PORT}/`;
 const results = {};
-const snap = async (name, opts = {}) => { await sleep(opts.wait || 650); await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: !opts.viewport }); results[name] = await p.evaluate(DUMP, ROOTS); };
+const snap = async (name, opts = {}) => {
+  await sleep(opts.wait || 650);
+  // העיצוב: רק אזור הכרטיס (#app) - בלי טבלאות שכבת הסקירה שמתחתיו
+  const clip = D && !opts.viewport ? await p.evaluate(() => { const r = document.querySelector('#app').getBoundingClientRect(); return { x: 0, y: Math.max(0, r.top + scrollY - 10), width: document.documentElement.clientWidth, height: r.height + 20 }; }) : null;
+  await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, ...(clip ? { clip, captureBeyondViewport: true } : { fullPage: !opts.viewport }) });
+  results[name] = await p.evaluate(DUMP, ROOTS);
+};
 const exists = (sel) => p.$(sel).then((h) => !!h);
 const clickAt = async (sel) => {
   if (!(await exists(sel))) { console.log('MISSING', which, sel); return false; }

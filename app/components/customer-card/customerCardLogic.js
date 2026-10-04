@@ -281,12 +281,12 @@ export const orderEventIso = (o) => eventSortDate(o) || null;
 // "דגם 4512" לכל פריט פעיל: קידומת הברקוד (barcodePrefix של הפריט / של השמלה), אחרת התיאור
 export const orderItemModels = (o) => (o.items || []).filter((i) => !i.isDeleted).map((i) => {
   const prefix = i.barcodePrefix ?? i.dressItem?.barcodePrefix;
-  if (prefix !== null && prefix !== undefined && prefix !== '') return `דגם ${prefix}${i.size ? ` · ${i.size}` : ''}`;
+  if (prefix !== null && prefix !== undefined && prefix !== '') return `דגם ${prefix}${i.size ? ` מידה ${i.size}` : ''}`;
   return i.description || i.dressItem?.dressName || '';
 }).filter(Boolean);
 export function deliveryText(o) {
   if (!o.isDelivery) return '';
-  return ['משלוח', o.deliveryDirection, o.deliveryCity || o.deliveryAddress].filter(Boolean).join(' · ');
+  return [o.deliveryDirection || 'משלוח', o.deliveryCity || o.deliveryAddress].filter(Boolean).join(' · ');
 }
 
 // ---------- חתימה (נגזרת מההזמנות עד שתהיה עמודה ב-Customer) ----------

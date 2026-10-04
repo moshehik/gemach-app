@@ -43,6 +43,8 @@
 .gm-ds.gm-cc .layout > .main{order:0;display:block;flex:none}
 /* דליפה: app/design-system.css .tab{margin-inline-end:22px} - הלשוניות לא ממלאות את הסרגל (160 במקום 181 פיקסל) */
 .gm-ds.gm-cc .tabs .tab{margin-inline-end:0}
+/* דליפה: app/design-system.css .tabs{margin-bottom:18px} */
+.gm-ds.gm-cc .tabs{margin:0}
 /* דליפה: app/design-system.css .field{margin-bottom:14px} - בעיצוב המרווח בין שדות בא מ-gap */
 .gm-ds.gm-cc .field{margin-bottom:0}
 /* דליפה: design-overrides.css צובע טקסט בשדה בחום (0,4,1); בעיצוב טקסט השדה בצבע הדיו */
@@ -70,7 +72,7 @@
 .gm-ds.gm-cc .cc-mt24.row{gap:14px}
 
 /* כוכבית שדה חובה (customer_required_fields) */
-.gm-ds.gm-cc .cc-req{color:#2f4a6b;font-weight:500;margin-inline-start:3px}
+.gm-ds.gm-cc .cc-req{color:#2f4a6b;font-weight:500}
 .gm-ds.gm-cc .field.cc-bad .inpw{border-color:var(--gm-rose-500)}
 
 /* העתקת מייל (הבעלים cp): לחצן נקי בתוך השורה, בלי רקע ובלי מסגרת, שצף ליד ה-X רק בריחוף / מיקוד על השדה */
@@ -141,7 +143,6 @@
 .gm-ds.gm-cc .appr .cc-appr-q{margin-bottom:10px}
 .gm-ds.gm-cc .appr .cc-appr-code{margin-top:14px}
 .gm-ds.gm-cc .appr .amsg{margin-top:6px}
-.gm-ds.gm-cc .appr .ahint{margin:8px 0 12px}
 .gm-ds.gm-cc .cc-payorders{margin:4px 0 14px}
 
 /* ===== "מייל מהיר": גיליון תחתון בשתי עמודות (בלוק mail-sheet-css בעיצוב, design 18) ===== */

@@ -14,7 +14,7 @@ export function Tip({ text }) {
 }
 
 export function Req({ on }) {
-  return on ? <span className="cc-req" aria-hidden="true">*</span> : null;
+  return on ? <span className="cc-req" aria-hidden="true"> *</span> : null;
 }
 
 /** שדה טקסט אחד. key = שם השדה ב-Customer; value/onChange שולטים בו. */

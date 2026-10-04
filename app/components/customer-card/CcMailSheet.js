@@ -134,7 +134,7 @@ export default function CcMailSheet({ customer, ui, guard, onSent, close, fetchI
             </div>
           </div>
           <div className="mfld">
-            <span className="lbl"><CcIcon name="plus" size="sm" />קבצים נוספים</span>
+            <span className="lbl"><CcIcon name="clip" size="sm" />קבצים נוספים</span>
             <div className="mfiles">
               {files.map((f, i) => (
                 <div key={`${f.name}-${i}`} className="mfile on cc-xfile">
@@ -144,10 +144,9 @@ export default function CcMailSheet({ customer, ui, guard, onSent, close, fetchI
                 </div>
               ))}
             </div>
-            <div><button type="button" className="btn sm cc-addfile" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}><CcIcon name="clip" size="sm" />הוספת קבצים</button></div>
+            <div><button type="button" className="btn sm cc-addfile" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}><CcIcon name="plus" size="sm" />הוספת קובץ</button></div>
             <input ref={fileRef} type="file" multiple hidden onChange={(e) => { const l = e.target.files ? Array.from(e.target.files) : []; if (l.length) { dirty.current = true; setFiles((prev) => [...prev, ...l]); } e.target.value = ''; }} />
           </div>
-          {(docs.length + files.length) > 0 ? (
             <div className="mfld">
               <span className="lbl" id="cc-dest-l">יעד הקבצים</span>
               <div className="seg pill" role="radiogroup" aria-labelledby="cc-dest-l" style={{ '--n': 3, '--i': destIdx }}>
@@ -158,13 +157,13 @@ export default function CcMailSheet({ customer, ui, guard, onSent, close, fetchI
               </div>
               {sendMode !== 'email' ? (
                 <>
-                  <input className="inp cc-drive" dir="ltr" placeholder="מזהה תיקיית דרייב (רשות)" aria-label="מזהה תיקיית דרייב" value={driveFolderId} disabled={busy} onChange={(e) => setDriveFolderId(e.target.value)} {...NO_FILL} />
+                  <label className="lbl cc-drive-l" htmlFor="m-drive">מזהה תיקיית דרייב</label>
+                  <input className="inp cc-drive" id="m-drive" dir="ltr" placeholder="מזהה תיקייה (רשות)" value={driveFolderId} disabled={busy} onChange={(e) => setDriveFolderId(e.target.value)} {...NO_FILL} />
                   <div className="faint sm">הקבצים ישותפו עם הנמען בהרשאת הורדה מלאה.</div>
                 </>
               ) : null}
-              <div className="faint sm">{plural(docs.length + files.length)} · טבלת הוראות תצורף אוטומטית למייל.</div>
+              {(docs.length + files.length) > 0 ? <div className="faint sm">{plural(docs.length + files.length)} · טבלת הוראות תצורף אוטומטית למייל.</div> : null}
             </div>
-          ) : null}
         </div>
       </div>
       <div className="dbtns mact fx-actions">
