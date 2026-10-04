@@ -21,20 +21,36 @@ export function describeElement(el) {
 // גם ע"י AIFloatingWidget לצילום אלמנט): קליק בעמוד נחסם ונאסף במקום להפעיל את
 // הפעולה האמיתית שלו, עם מלבן-הדגשה שעוקב אחרי העכבר.
 // onPick(el) נקרא עם האלמנט שנבחר; startPicking() מפעיל את המצב.
-export default function useElementPicker(onPick) {
+// options (לא חובה, נוסף 4.10.2026 לחלון דיווח השגיאות החדש שנשאר פתוח בזמן הסימון):
+//   ignore   - selector: תנועה מעל אלמנט כזה לא מסמנת אותו, ולחיצה עליו מבטלת את הסימון בלי לבחור (הלחיצה עוברת כרגיל).
+//   onCancel - נקרא כשהסימון בוטל (Esc או לחיצה על אלמנט ב-ignore).
+// בלי options ההתנהגות זהה בדיוק לקודם (AIFloatingWidget).
+export default function useElementPicker(onPick, options) {
   const [isPicking, setIsPicking] = useState(false);
   const [hoverRect, setHoverRect] = useState(null);
   const hoveredElRef = useRef(null);
   const onPickRef = useRef(onPick);
+  const optsRef = useRef(options || null);
   useEffect(() => {
     onPickRef.current = onPick;
   }, [onPick]);
+  useEffect(() => {
+    optsRef.current = options || null;
+  });
 
   useEffect(() => {
     if (!isPicking) return;
 
+    const ignored = (el) => {
+      const sel = optsRef.current && optsRef.current.ignore;
+      return !!(sel && el && el.closest && el.closest(sel));
+    };
     const handleMove = (e) => {
       const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (ignored(el)) {
+        if (hoveredElRef.current) { hoveredElRef.current = null; setHoverRect(null); }
+        return;
+      }
       if (el && el !== hoveredElRef.current) {
         hoveredElRef.current = el;
         setHoverRect(el.getBoundingClientRect());
@@ -46,6 +62,11 @@ export default function useElementPicker(onPick) {
       hoveredElRef.current = null;
     };
     const handleClick = (e) => {
+      if (ignored(e.target)) {
+        stopPicking();
+        optsRef.current?.onCancel?.();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       const el = hoveredElRef.current || e.target;
@@ -56,6 +77,7 @@ export default function useElementPicker(onPick) {
       if (e.key === 'Escape') {
         e.preventDefault();
         stopPicking();
+        optsRef.current?.onCancel?.();
       }
     };
 

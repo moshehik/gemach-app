@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { computeShiftTotals } from '@/lib/shiftCalc';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { authorizeShiftWrite } from '@/lib/attendance/server';
+import { stripWages } from '@/lib/attendance/access';
 
 export async function PUT(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -21,6 +23,9 @@ export async function PUT(request, { params }) {
     if (!oldShift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
     }
+    // בדיקת בעלות (AT-13): המשמרת חייבת להיות של העובד שבנתיב (אחרת 404 - גם להנהלה), והנהלה עורכת כל עובד; עובד רגיל רק את שלו
+    const guard = await authorizeShiftWrite({ routeEmployeeId: employeeId, shiftEmployeeId: oldShift.employeeId });
+    if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
     const entryTime = body.entryTime !== undefined ? (body.entryTime ? new Date(body.entryTime) : null) : oldShift.entryTime;
     const exitTime = body.exitTime !== undefined ? (body.exitTime ? new Date(body.exitTime) : null) : oldShift.exitTime;
@@ -94,12 +99,12 @@ export async function PUT(request, { params }) {
           entityId: shiftId,
           action: 'UPDATE',
           changesJson: JSON.stringify(changes),
-          employeeId: employeeId
+          employeeId: guard.actorId // מי ערך (לא בעל המשמרת) - ר' ההערה בהוספה
         }
       });
     }
 
-    return NextResponse.json(updatedShift);
+    return NextResponse.json(guard.wages ? updatedShift : stripWages(updatedShift));
   } catch (error) {
     console.error('Error updating shift:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -121,6 +126,8 @@ export async function DELETE(request, { params }) {
     if (!oldShift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
     }
+    const guard = await authorizeShiftWrite({ routeEmployeeId: employeeId, shiftEmployeeId: oldShift.employeeId });
+    if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
     // Soft delete
     const deletedShift = await prisma.shift.update({
@@ -135,7 +142,7 @@ export async function DELETE(request, { params }) {
         entityId: shiftId,
         action: 'DELETE',
         changesJson: JSON.stringify({ isDeleted: { from: oldShift?.isDeleted ?? false, to: true } }),
-        employeeId: employeeId
+        employeeId: guard.actorId
       }
     });
 

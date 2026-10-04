@@ -640,6 +640,78 @@
     "home": 0,
     "order": 0
    }
+  },
+  {
+   "n": 72,
+   "id": "camera",
+   "label": "מצלמה (צילום מסך)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 73,
+   "id": "video",
+   "label": "וידאו (הסרטת מסך)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 74,
+   "id": "cursor-rec",
+   "label": "סמן + הקלטה (הקלטת פעולות)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 75,
+   "id": "archive",
+   "label": "ארכיון",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 76,
+   "id": "inbox",
+   "label": "תיבת פניות (פניות שלי)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 77,
+   "id": "sparkles",
+   "label": "ניצוצות (תוכן שנוצר אוטומטית)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 78,
+   "id": "crosshair",
+   "label": "כוונה (סימון אלמנט)",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
+  },
+  {
+   "n": 80,
+   "id": "download",
+   "label": "הורדה",
+   "usage": {
+    "home": 0,
+    "order": 0
+   }
   }
  ]
 }

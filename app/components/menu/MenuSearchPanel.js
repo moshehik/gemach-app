@@ -3,11 +3,15 @@
 // פאנל החיפוש של המעטפת החדשה (פלטה: ניווט 12/28/53 .sn-sbox, לחצן 54 .ibtn, לחצן 12 a.lnk "נקה", ניווט 24 .sn-link).
 // שני חלקים: שדה חיפוש, ורשימה - "נצפו לאחרונה" כשהשדה ריק, אחרת תוצאות.
 // הרשת מועתקת מ-TopbarSearch.js (// COPIED FROM): GET /api/global-search?q=, מינימום 2 תווים, דיבאונס 350, 15 תוצאות,
-// "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד לא נכללת בגרסה הזאת (החלטה 12 בתוכנית השחרור).
+// "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד: ברקוד בן 7 ספרות + Enter מחזיר את הפריט המושכר (כמו תיבת "החזרה מהירה"
+// של העיצוב הישן, TopbarSearch.js); אם אין פריט מושכר בברקוד - נשארים בחיפוש ומוצגות התוצאות עם הסיבה (דיווח df035847).
 
 import { useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
+import { combineQuickSearchResults } from '@/lib/quickSearchResults';
+import { postReturnScan } from '@/components/orders/returnScanClient';
+import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
 
 const TOPBAR_PANEL_RESULT_CAP = 15; // COPIED FROM TopbarSearch.js
@@ -37,7 +41,7 @@ export function useMenuSearch() {
       .then((data) => {
         if (cancelled) return;
         if (data && (data.customers || data.orders)) {
-          const combined = [...(data.orders || []), ...(data.customers || [])];
+          const combined = combineQuickSearchResults(data, term);
           setTotal(combined.length);
           setResults(combined.slice(0, TOPBAR_PANEL_RESULT_CAP));
         } else {
@@ -56,6 +60,36 @@ export function useMenuSearch() {
 export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer = false, onGo, onClearRecents, inputRef }) {
   const q = search.q;
   const term = q.trim();
+  const popup = usePopup();
+  const isBarcode = /^\d{7}$/.test(term); // ברקוד תקין = בדיוק 7 ספרות (מס' הזמנה 5 ספרות, טלפון 9+)
+  const [qr, setQr] = useState({ busy: false, text: '', err: false });
+
+  // החזרה מהירה בברקוד - אותו מנגנון כמו TopbarSearch.js (postReturnScan מטפל גם באישור מנהל להחזרה מוקדמת)
+  const quickReturn = async () => {
+    if (qr.busy) return;
+    setQr({ busy: true, text: '', err: false });
+    try {
+      const { res, data } = await postReturnScan({ barcode: term });
+      if (res.ok) {
+        setQr({ busy: false, text: '', err: false });
+        onGo(() => {
+          if (popup?.openRentalModal) popup.openRentalModal(data.orderId);
+          else nav.navigate(`/orders/${data.orderId}`);
+        }, true);
+        return;
+      }
+      if (data?.cancelled) {
+        setQr({ busy: false, text: '', err: false });
+      } else if (res.status === 404) {
+        // אין פריט מושכר בברקוד - נשארים בחיפוש (התוצאות לפי ברקוד מוצגות למטה) ומסבירים למה
+        setQr({ busy: false, text: `${data?.error || 'לא נמצא פריט מושכר בברקוד הזה'} - מוצגות תוצאות חיפוש`, err: false });
+      } else {
+        setQr({ busy: false, text: data?.error || 'שגיאה בהחזרה', err: true });
+      }
+    } catch (e) {
+      setQr({ busy: false, text: 'שגיאת תקשורת', err: true });
+    }
+  };
 
   const pages = useMemo(() => {
     if (!term) return [];
@@ -127,7 +161,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             >
               <SnLi n={isOrder ? 'file' : 'user'} />
               {isOrder ? `הזמנה #${item.orderId}` : name}
-              <span className="sn-k">{isOrder ? name : (item.phone1 || item.city || '')}</span>
+              <span className="sn-k">{item.fromBarcode ? `ברקוד ${item.barcode}${item.stateLabel ? ` · ${item.stateLabel}` : ''}` : isOrder ? name : (item.phone1 || item.city || '')}</span>
             </a>
           );
         })}
@@ -168,16 +202,22 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
           data-1p-ignore
           data-form-type="other"
           aria-label="חיפוש עמוד, הזמנה או לקוח"
-          onChange={(e) => search.setQ(e.target.value)}
+          onChange={(e) => { if (qr.text) setQr({ busy: false, text: '', err: false }); search.setQ(e.target.value); }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && term.length >= MIN_CHARS) {
+            if (e.key !== 'Enter') return;
+            if (isBarcode) {
+              e.preventDefault();
+              quickReturn();
+            } else if (term.length >= MIN_CHARS) {
               e.preventDefault();
               onGo(() => nav.navigate(`/?q=${encodeURIComponent(term)}`), true);
             }
           }}
         />
       </div>
-      <div className="sn-msg" role="status" aria-live="polite" />
+      <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
+        {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${term}` : ''))}
+      </div>
       <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>
     </>
   );

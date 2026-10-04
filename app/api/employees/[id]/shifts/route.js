@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { computeShiftTotals } from '@/lib/shiftCalc';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { authorizeShiftWrite } from '@/lib/attendance/server';
+import { stripWages } from '@/lib/attendance/access';
 
 export async function POST(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -13,6 +15,11 @@ export async function POST(request, { params }) {
     if (!employeeId) {
       return NextResponse.json({ error: 'Invalid Employee ID' }, { status: 400 });
     }
+
+    // בדיקת בעלות (AT-13, 4.10.2026): עד עכשיו מספיק היה להיות מחובר - כל עובד יכול היה להוסיף משמרת לכל עובד בבקשה ישירה.
+    // הנהלה (אותו שער כמו /employees) - לכל עובד, כמו בכרטיס העובד; עובד רגיל - רק לעצמו (ה-id שלו מהעוגייה המאומתת, לא מהלקוח).
+    const guard = await authorizeShiftWrite({ routeEmployeeId: employeeId });
+    if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
     const body = await request.json();
 
@@ -94,11 +101,14 @@ export async function POST(request, { params }) {
         entityId: newShift.id,
         action: 'CREATE',
         changesJson: JSON.stringify(newShift),
-        employeeId: employeeId
+        // מי הוסיף (העובד המחובר) - עד 4.10.2026 נרשם כאן בעל המשמרת, ולכן "מי ערך" בהיסטוריה הצביע תמיד על העובד עצמו.
+        // אורח (מצב פתוח, בלי התחברות) = null, כמו בתוסף היומן האוטומטי.
+        employeeId: guard.actorId
       }
     });
 
-    return NextResponse.json(newShift);
+    // עובד רגיל מקבל את המשמרת בלי שדות השכר (כמו /api/me/shifts)
+    return NextResponse.json(guard.wages ? newShift : stripWages(newShift));
   } catch (error) {
     console.error('Error creating shift:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
