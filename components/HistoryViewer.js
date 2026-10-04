@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CUSTOMER_ONLY_FIELD_LABELS } from '../lib/history/labels';
+import { CUSTOMER_ONLY_FIELD_LABELS, isHiddenAuditKey } from '../lib/history/labels';
 
 export const FIELD_TRANSLATIONS = {
   // תוויות שדות לקוח שלא היו כאן (תעודת זהות, דיוורים, בנק, הוראת קבע, חסימה) - מוגדרות ב-lib/history/labels.js
@@ -250,6 +250,7 @@ export default function HistoryViewer({ entityType, entityId }) {
       if (allKeys.length === 0) return <div style={{ color: 'var(--text-3)', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '0.9rem' }}>אין פירוט שינויים זמין.</div>;
 
       const filteredKeys = allKeys.filter(key => {
+         if (isHiddenAuditKey(key)) return false;
          const change = changes[key];
          if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {
             const isEmptyFrom = change.from === null || change.from === undefined || change.from === '';

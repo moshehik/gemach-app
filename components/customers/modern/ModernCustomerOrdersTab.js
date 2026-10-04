@@ -91,7 +91,7 @@ export default function ModernCustomerOrdersTab({ orders = [] }) {
                       </Link>
                     </td>
                     <td>
-                      {order.isAbroad ? (
+                      {order.isAbroad && order.fromDate && order.toDate ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12.5px' }}>
                           <span><strong>לקיחה:</strong> {order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</span>
                           <span><strong>החזרה:</strong> {order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</span>

@@ -9,6 +9,7 @@ import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import OrderPrintMenu from './OrderPrintMenu';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
+import { isHiddenAuditKey } from '../../lib/history/labels';
 import { verifyPin } from './modern/mocAuth';
 import { describeMismatch } from '../../lib/rentalBarcodeMatch';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../lib/lateReturn';
@@ -648,6 +649,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     if (!changes || typeof changes !== 'object') return null;
 
     const keys = Object.keys(changes).filter(key => {
+      if (isHiddenAuditKey(key)) return false;
       const c = changes[key];
       if (c && typeof c === 'object' && ('from' in c || 'to' in c)) {
         return String(c.from) !== String(c.to);
