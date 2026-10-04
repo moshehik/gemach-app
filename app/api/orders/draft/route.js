@@ -61,7 +61,7 @@ export async function POST(request) {
       const validationResult = await validateOrderItemsAvailability(
         data.items,
         data.eventDate,
-        data.isAbroad || data.isWeekdayEvent,
+        !!data.isAbroad,
         data.fromDate,
         data.toDate,
         orderId || null,
@@ -93,7 +93,6 @@ export async function POST(request) {
       returnDate: data.returnDate ? new Date(data.returnDate) : null,
       employeeId: data.employeeId || loggedInEmployeeId || null,
       isAbroad: data.isAbroad ?? false,
-      isWeekdayEvent: data.isWeekdayEvent ?? false,
       fromDate: data.fromDate ? new Date(data.fromDate) : null,
       toDate: data.toDate ? new Date(data.toDate) : null,
       customSpacing: data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null,
