@@ -1,9 +1,15 @@
-import SettingsClient from '../settings/SettingsClient';
+// /admin/site-settings — "הגדרות אתר" (מתכנת בלבד, השער ב-layout.js). אותו מסך "ישן / חדש" כמו /admin/settings (מסך 'settings').
+import { getRequestUiVariant } from '@/app/lib/uiVariantServer';
+import SettingsSimSwitch from '@/app/components/settings-sim/SettingsSimSwitch';
+import LegacySiteSettingsPage from './LegacySiteSettingsPage';
 
 export const metadata = {
   title: 'הגדרות אתר',
 };
 
-export default function SiteSettingsPage() {
-  return <SettingsClient mode="developer" />;
+export const dynamic = 'force-dynamic';
+
+export default async function SiteSettingsPage() {
+  const variant = await getRequestUiVariant('settings');
+  return variant === 'legacy' ? <LegacySiteSettingsPage /> : <SettingsSimSwitch view="site" />;
 }
