@@ -3,7 +3,7 @@
 // "מסך ניהול ראשי" (/admin) — עיצוב מאושר: תצוגות-עיצוב/ניהול-ראשי-כרטיסים.html (4.10.2026), רכיבי פלטה בלבד
 // (design-system/COMPONENTS.md) בתוך .gm-ds.gm-adm, כמו "הפרופיל שלי". החלטות הבעלים (answers-admin-cards.json):
 // שורת חיפוש בלי מונה, מתג תצוגה שורות / טבלה / אריחים עם ברירת מחדל אריחים (הבחירה נזכרת לכל משתמש בנפרד),
-// 9 קטגוריות עם תגית קטגוריה בכל שורה. מה מוצג נקבע בשרת (app/admin/page.js): הרכיב מקבל רק את הכלים המותרים והקטגוריות שלהם,
+// 10 קטגוריות עם תגית קטגוריה בכל שורה. מה מוצג נקבע בשרת (app/admin/page.js): הרכיב מקבל רק את הכלים המותרים והקטגוריות שלהם,
 // ולעולם לא מייבא את הקטלוג (lib/adminHubCatalog.js, צד שרת בלבד) — רק את העזרים הטהורים של lib/adminHubView.js.
 // כל רכיב כאן קיים בעיצוב: סרגל .hf-bar + .hf-s + .vsw.v3, כרטיס .card.items-card עם שורות .hres > .hgrp > article.hrow.irow >
 // a.li.rlink.lrow, טבלה .tblw > table.rtbl עם .trl, אריחים a.creditile.adm-tile, ומצב ריק .empty.
@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { HomeSprite } from '../home/HomeParts';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import usePageTooltip from '../profile/usePageTooltip';
+import PageVariantToggle from '../variant/PageVariantToggle';
 import { VIEWS, VIEW_LABELS, VIEW_ICONS, DEFAULT_VIEW, normalizeView, viewStorageKey, groupTools } from '@/lib/adminHubView';
 
 // אייקון מה-sprite המוטמע. plain = בתוך רכיב עם data-ico (לחצני המתג / ניקוי), שם האנימציה היא של הלחצן ולא של האייקון — כמו בעיצוב.
@@ -116,7 +117,11 @@ export default function AdminHubPage({ tools, categories, userKey }) {
     <div className="gm-ds gm-adm home-bg" ref={rootRef} dir="rtl">
       <HomeSprite />
       <div className="app adm-app">
-        <div className="topbar"><div className="ttl"><h1 className="pg-ttl"><small>הנהלה</small><bdi>מסך ניהול ראשי</bdi></h1></div></div>
+        <div className="topbar">
+          <div className="ttl"><h1 className="pg-ttl"><small>הנהלה</small><bdi>מסך ניהול ראשי</bdi></h1></div>
+          {/* "חזרה לתצוגה הישנה" (4.10.2026): רק להנהלה ראשית / מתכנת; הטולטיפ - usePageTooltip של הדף (data-tip) */}
+          <PageVariantToggle screen="admin_hub" placement="header" systemTip />
+        </div>
 
         <div className="hf-bar adm-bar">
           <div className="hf-s">

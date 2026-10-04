@@ -6,12 +6,14 @@
 // החלון עצמו (עיצוב B שאושר 4.10.2026: כרטיס צף + פאנל "פניות שלי", בנייד גיליון תחתון) נמצא ב-errorReport/ErrorReportWindow.js
 // ונטען בעצלות בפתיחה הראשונה. כאן נשארים רק: הכפתור, הכפתור הצף השקט בשולי המסך, הבדיקה התקופתית הקלה של "לא נקראו"
 // (?light=1 כל 120 שנ', רק כשהחלון סגור והטאב גלוי) ורישום 5 הלחצנים האחרונים (lastButtons שנשלח בדיווח).
-// החלון הישן (1441 שורות, עד 4.10.2026) נשאר בהיסטוריית git בלבד - שתי המעטפות משתמשות ברכיב החדש.
+// החלון הישן (1441 שורות, עד 4.10.2026) שוחזר כ-LegacyErrorReportButton.js ומוצג לפי מסך "ישן / חדש" error_report (ר' למטה).
 import './errorReport/launcher.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { unreadCount as countUnread } from './errorReport/erModel';
+import { useUiVariant } from './UiVariantContext';
+import LegacyErrorReportFrame from './variant/LegacyErrorReportFrame';
 
 const ErrorReportWindow = dynamic(() => import('./errorReport/ErrorReportWindow'), { ssr: false });
 
@@ -28,7 +30,16 @@ function BugIcon() {
 
 // trigger (אופציונלי): פונקציה ({ onOpen, unreadCount }) => JSX שמחליפה את כפתור ה-icon-btn הישן. משמש את
 // המעטפת החדשה (app/components/menu/MenuA5Shell.js); בלעדיו הכפתור הישן מרונדר בדיוק כמו קודם.
+// "ישן / חדש" (4.10.2026, lib/uiVariantScreens.js מסך 'error_report'): בגרסה הישנה - החלון הקודם (LegacyErrorReportButton.js =
+// c944cb95:app/components/ErrorReportButton.js כפי שהוא, אותו API של trigger), עטוף ב-LegacyErrorReportFrame שמוסיף את אייקון
+// "מעבר לתצוגה החדשה" כשהחלון הישן פתוח. ההכרעה: useUiVariant (עקיפה אישית > ui_variant_error_report > תפקיד: מתכנת חדש, השאר ישן).
 export default function ErrorReportButton({ trigger } = {}) {
+  const variant = useUiVariant('error_report');
+  if (variant === 'legacy') return <LegacyErrorReportFrame trigger={trigger} />;
+  return <ErrorReportButtonNew trigger={trigger} />;
+}
+
+function ErrorReportButtonNew({ trigger } = {}) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);

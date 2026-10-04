@@ -49,11 +49,11 @@ await p.type('.hf-s input', 'גיבוי'); await sleep(200);
 ok(await p.evaluate(() => [...document.querySelectorAll('.adm-sec')].map((x) => x.dataset.cat).join() === 'backup'), 'חיפוש "גיבוי": רק קטגוריית הגיבוי');
 ok(await p.evaluate(() => document.querySelector('.hf-cl').classList.contains('on')), 'לחצן הניקוי מופיע');
 await click(p, '.hf-cl');
-ok((await p.$$('.adm-sec')).length === 9 && (await p.evaluate(() => document.activeElement === document.querySelector('.hf-s input'))), 'ניקוי: כל 9 הקטגוריות, הפוקוס חוזר לשדה');
+ok((await p.$$('.adm-sec')).length === CATEGORIES.length && (await p.evaluate(() => document.activeElement === document.querySelector('.hf-s input'))), 'ניקוי: כל הקטגוריות, הפוקוס חוזר לשדה');
 await p.type('.hf-s input', 'zzzz'); await sleep(200);
 ok((await p.$$('.adm-sec')).length === 0 && (await p.evaluate(() => document.querySelector('.empty').textContent.includes('לא נמצאו כלים התואמים לחיפוש'))), 'אין תוצאות: מצב ריק');
 await p.keyboard.press('Escape'); await sleep(200);
-ok((await p.$$('.adm-sec')).length === 9, 'Escape מנקה את החיפוש');
+ok((await p.$$('.adm-sec')).length === CATEGORIES.length, 'Escape מנקה את החיפוש');
 await p.type('.hf-s input', 'נדרים פלוס'); await sleep(200);
 ok((await p.$$('.adm-tile')).length === 5, 'חיפוש לפי שם קטגוריה מחזיר את כל הקטגוריה');
 await p.evaluate(() => { document.querySelector('.hf-s input').select(); }); await p.type('.hf-s input', 'הו"ק'); await sleep(200);
@@ -70,14 +70,14 @@ for (const role of ['0', '2', 'anon']) {
   const want = visibleToolIds(acc).map((id) => TOOLS.find((x) => x.id === id).href);
   const got = await hrefsShown(p);
   ok(JSON.stringify(got) === JSON.stringify(want), `תפקיד ${role}: ${got.length} אריחים בדיוק לפי הקטלוג`);
-  if (role === '0') ok(!got.includes('/admin/site') && !got.includes('/admin/labels') && got.includes('/admin/nedarim-hok-list'), 'הנהלה ראשית: בלי כלי מתכנת, עם רשימת הו״ק');
-  if (role === '2') ok(got.includes('/admin/site') && got.includes('/admin/ai-restrictions') && !got.includes('/admin/nedarim-hok-list'), 'מתכנת: עם כלי מתכנת, בלי רשימת הו״ק');
+  if (role === '0') ok(!got.includes('/admin/site') && !got.includes('/admin/labels') && !got.includes('/design-system') && got.includes('/admin/nedarim-hok-list'), 'הנהלה ראשית: בלי כלי מתכנת, עם רשימת הו״ק');
+  if (role === '2') ok(got.includes('/admin/site') && got.includes('/admin/ai-restrictions') && got.includes('/design-system') && got.includes('/admin/nedarim-hok-list'), 'מתכנת: עם כלי מתכנת (כולל מערכת העיצוב) וגם רשימת הו״ק');
   await p.close();
 }
 
 // 5b. nedarim_plus_enabled === 'false': אין קטגוריית נדרים
 p = await page(); await go(p, '0', '&ned=off');
-ok(!(await p.$('.adm-sec[data-cat="nedarim"]')) && !(await hrefsShown(p)).some((h) => h.includes('nedarim')) && (await p.$$('.adm-sec')).length === 8, 'נדרים כבוי: בלי הקטגוריה ובלי האריחים');
+ok(!(await p.$('.adm-sec[data-cat="nedarim"]')) && !(await hrefsShown(p)).some((h) => h.includes('nedarim')) && (await p.$$('.adm-sec')).length === CATEGORIES.length - 1, 'נדרים כבוי: בלי הקטגוריה ובלי האריחים');
 await p.close();
 
 // 5c. עמודת המעבר בטבלה: טקסט נסתר לקורא מסך; מיקוד מקלדת על אריח נותן טבעת זהב

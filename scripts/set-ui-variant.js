@@ -2,19 +2,24 @@
 /**
  * מדליק / מכבה גרסת מסך "ישן / A5" (lib/uiVariant.js) בלי שום ממשק גלוי באתר.
  *
+ *   4.10.2026: בלי --apply הסקריפט רק מדפיס מה היה משתנה (dry-run הוא ברירת המחדל). כדי לכתוב מוסיפים --apply.
+ *
  *   ארגון (SystemSetting ui_variant_<screen>, משפיע על כל העובדים של אותו גמ"ח):
- *     node scripts/set-ui-variant.js --screen order_card --value a5 --scope org --confirm-host <host-מלא | ep-xxxx> [--dry-run]
+ *     node scripts/set-ui-variant.js --screen order_card --value a5 --scope org --confirm-host <host-מלא | ep-xxxx> [--apply]
  *
  *   עובד בודד (Employee.themeColor JSON, מפתח uiVariants; עוקף את הארגון):
- *     node scripts/set-ui-variant.js --screen shell --value a5 --scope user --employee <id|legacyId> --confirm-host <...> [--dry-run]
- *     node scripts/set-ui-variant.js --screen shell --clear   --scope user --employee <id|legacyId> --confirm-host <...>   (הסרת העקיפה)
+ *     node scripts/set-ui-variant.js --screen shell --value a5 --scope user --employee <id|legacyId> --confirm-host <...> [--apply]
+ *     node scripts/set-ui-variant.js --screen shell --clear   --scope user --employee <id|legacyId> --confirm-host <...> --apply  (הסרת העקיפה)
  *
- *   --screen  shell | home | order_card | customer_card
+ *   --screen  shell | home | order_card | customer_card | profile | admin_hub | attendance | error_report
+ *             (= המסכים ברשומה lib/uiVariantScreens.js; scripts/test_page_variant_switch.mjs בודק שהרשימות זהות)
+ *   בלי שורה בארגון ובלי עקיפה אישית: ברירת המחדל לפי תפקיד (מתכנת - חדש, כל השאר - ישן; החלטת הבעלים 4.10.2026).
  *   --value   legacy | a5
  *   --scope   org | user
  *   --employee  מזהה העובד: UUID, או legacyId (ספרות בלבד)
  *   --clear   (scope=user בלבד) מסיר את העקיפה האישית של המסך במקום לקבוע ערך
- *   --dry-run מדפיס מה היה משתנה, בלי לכתוב
+ *   --dry-run מדפיס מה היה משתנה, בלי לכתוב (ברירת המחדל; נשאר לתאימות)
+ *   --apply   כותב בפועל (בלעדיו - dry-run). לא יחד עם --dry-run.
  *   --confirm-host  חובה: שם ה-host המלא של ה-DB, או מזהה ה-endpoint המלא שלו (ep-xxxx, עם או בלי -pooler).
  *                   לפחות 8 תווים; התאמה מדויקת בלבד (לא תת-מחרוזת כמו "neon"). בלי התאמה הסקריפט מסרב לרוץ.
  *   --i-know-this-is-prod  נדרש לכל DB שלא זוהה בוודאות כ"לא ייצור" (ר' למטה) — כלומר כמעט תמיד.
@@ -45,11 +50,12 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 
-const SCREENS = ['shell', 'home', 'order_card', 'customer_card'];
+// אותה רשימה כמו UI_SCREEN_IDS ב-lib/uiVariantScreens.js (הסקריפט CommonJS סינכרוני; הבדיקה משווה בין השתיים).
+const SCREENS = ['shell', 'home', 'order_card', 'customer_card', 'profile', 'admin_hub', 'attendance', 'error_report'];
 const VALUES = ['legacy', 'a5'];
 const SCOPES = ['org', 'user'];
-const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
-const BOOLEAN_FLAGS = new Set(['dry-run', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
+const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'apply', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
+const BOOLEAN_FLAGS = new Set(['dry-run', 'apply', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
 const MIN_CONFIRM_HOST = 8; // מחרוזת אישור קצרה מדי ("ep", "neon") לא מזהה שרת
 const MAX_CAS_ATTEMPTS = 3; // ניסיונות compare-and-swap לכתיבת themeColor של עובד
 // משתני הסביבה שמצביעים על DB-ים מוכרים: [שם משתנה, תווית, האם ייצור].
@@ -66,9 +72,10 @@ const MAX_PREFS_BYTES = 8192; // אותה מגבלה כמו PUT /api/me/design-p
 
 const USAGE = [
   'Usage:',
-  '  node scripts/set-ui-variant.js --screen <shell|home|order_card|customer_card> --value <legacy|a5> --scope org --confirm-host <full DB host | ep-xxxx> [--dry-run]',
-  '  node scripts/set-ui-variant.js --screen <...> --value <legacy|a5> --scope user --employee <id|legacyId> --confirm-host <...> [--dry-run]',
-  '  node scripts/set-ui-variant.js --screen <...> --clear --scope user --employee <id|legacyId> --confirm-host <...>',
+  `  node scripts/set-ui-variant.js --screen <${SCREENS.join('|')}> --value <legacy|a5> --scope org --confirm-host <full DB host | ep-xxxx> [--apply]`,
+  '  node scripts/set-ui-variant.js --screen <...> --value <legacy|a5> --scope user --employee <id|legacyId> --confirm-host <...> [--apply]',
+  '  node scripts/set-ui-variant.js --screen <...> --clear --scope user --employee <id|legacyId> --confirm-host <...> [--apply]',
+  'DRY RUN by default: nothing is written unless --apply is given.',
   'Reads DATABASE_URL from the environment; refuses to run unless --confirm-host EXACTLY matches the DB host (or its full ep-xxxx endpoint id, min 8 chars).',
   'Every database is treated as PRODUCTION and needs --i-know-this-is-prod, unless it is the TEST_DATABASE_URL host',
   'or a local host (localhost / 127.0.0.1 / *.test / *.local) declared with --not-prod. See the header of this file.',
@@ -121,6 +128,7 @@ function parseArgs(argv) {
   }
   if (!opts['confirm-host']) throw new Error('--confirm-host <full DB host or ep-xxxx endpoint id> is required');
   if (opts['not-prod'] && opts['i-know-this-is-prod']) throw new Error('--not-prod and --i-know-this-is-prod are mutually exclusive');
+  if (opts.apply && opts['dry-run']) throw new Error('--apply and --dry-run are mutually exclusive');
   return opts;
 }
 
@@ -287,15 +295,15 @@ async function main() {
 
   const { PrismaClient } = require('@prisma/client');
   const prisma = new PrismaClient({ datasourceUrl: url });
-  const dry = !!opts['dry-run'];
+  const dry = !opts.apply; // dry-run הוא ברירת המחדל (4.10.2026); --apply כותב
   const newValue = opts.clear ? null : opts.value;
 
   try {
     if (opts.scope === 'org') {
       const key = settingKey(opts.screen);
       const row = await prisma.systemSetting.findUnique({ where: { key } });
-      console.log(`[org] ${key}: ${row ? JSON.stringify(row.value) : '(no row => legacy)'} -> ${JSON.stringify(newValue)}`);
-      if (dry) return console.log('DRY RUN - nothing written.');
+      console.log(`[org] ${key}: ${row ? JSON.stringify(row.value) : '(no row => role default: programmer a5, everyone else legacy)'} -> ${JSON.stringify(newValue)}`);
+      if (dry) return console.log('DRY RUN - nothing written. Add --apply to write.');
       // category נשאר ריק בכוונה: מסך ההגדרות מציג רק שורות עם category, כך שלא מתווסף אף פקד גלוי.
       await prisma.systemSetting.upsert({
         where: { key },
@@ -314,7 +322,7 @@ async function main() {
     console.log(`[user] employee legacyId=${employee.legacyId ?? '-'} "${label}"${employee.isActive ? '' : ' (INACTIVE)'}`);
     console.log(`[user] uiVariants.${opts.screen}: ${built.previous === undefined ? '(no override)' : JSON.stringify(built.previous)} -> ${newValue === null ? '(no override)' : JSON.stringify(newValue)}`);
     if (result.status === 'nothing') return console.log('Nothing to clear - no override is set. Nothing written.');
-    if (result.status === 'dry') return console.log('DRY RUN - nothing written.');
+    if (result.status === 'dry') return console.log('DRY RUN - nothing written. Add --apply to write.');
     if (result.attempts > 1) console.log(`(prefs changed concurrently; succeeded on attempt ${result.attempts})`);
     console.log('OK: written. It reaches the employee\'s browser cookie on their next full page load (DesignPrefsSync), i.e. the second load after a fresh login.');
   } finally {
@@ -322,7 +330,7 @@ async function main() {
   }
 }
 
-module.exports = { parseArgs, describeDbTarget, checkHost, endpointId, collectKnownDbs, isLocalDevHost, buildUserThemeColor, applyUserVariant, settingKey };
+module.exports = { SCREENS, parseArgs, describeDbTarget, checkHost, endpointId, collectKnownDbs, isLocalDevHost, buildUserThemeColor, applyUserVariant, settingKey };
 
 if (require.main === module) {
   main().catch((err) => {

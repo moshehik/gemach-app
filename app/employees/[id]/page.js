@@ -6,10 +6,17 @@ import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHistoryTab';
 import EmployeePermissionsPanel from '@/app/components/permissions/EmployeePermissionsPanel';
+import { usePopup } from '@/app/components/PopupProvider';
+import { requestJson, describeFailure } from '@/lib/employeeCardSave';
 
 export default function EmployeePage({ params }) {
   const router = useRouter();
   const { id } = use(params);
+  // הודעות מערכת (טוסט) - שגיאה / הצלחה. כל שמירה בכרטיס בודקת res.ok (requestJson) ומציגה את סיבת השרת;
+  // הודעת הצלחה מוצגת רק אחרי תשובה תקינה.
+  const popup = usePopup();
+  const notifyError = (message) => popup?.showAlert?.(message, 'error');
+  const notifySuccess = (message) => popup?.showAlert?.(message, 'success');
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details'); // details, attendance, history
@@ -37,6 +44,16 @@ export default function EmployeePage({ params }) {
   const [showSetPassword, setShowSetPassword] = useState(false);
   const [setPasswordInput, setSetPasswordInput] = useState('');
   const [setPasswordAuth, setSetPasswordAuth] = useState(null);
+  const [managerPasswordInput, setManagerPasswordInput] = useState('');
+  // מי המשתמש המחובר: בכרטיס של עובד אחר, "שינוי סיסמא" דורש את סיסמת המנהל עצמו ולא את הסיסמה הישנה של העובד
+  const [sessionEmployeeId, setSessionEmployeeId] = useState(null);
+  useEffect(() => {
+    fetch('/api/me')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data?.employee?.id) setSessionEmployeeId(data.employee.id); })
+      .catch(() => {});
+  }, []);
+  const isOwnCard = sessionEmployeeId !== null && sessionEmployeeId === id;
 
   // רשימת המחלקות האמיתית (טבלת Department) עבור בורר המחלקה - null = עדיין נטען
   const [departments, setDepartments] = useState(null);
@@ -86,10 +103,16 @@ export default function EmployeePage({ params }) {
     }
     const query = showDeletedShifts ? '?includeDeleted=true' : '';
     fetch(`/api/employees/${id}${query}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) router.push('/employees');
-        else setEmployee(data);
+      .then(async res => ({ ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) }))
+      .then(({ ok, status, data }) => {
+        if (!ok || data.error) {
+          notifyError(describeFailure('טעינת כרטיס העובד נכשלה', { ok: false, status, data, networkError: false }));
+          router.push('/employees');
+        } else setEmployee(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        notifyError('טעינת כרטיס העובד נכשלה: אין תקשורת עם השרת - בדוק את החיבור ונסה שוב');
         setLoading(false);
       });
   };
@@ -114,20 +137,22 @@ export default function EmployeePage({ params }) {
     const method = id === 'new' ? 'POST' : 'PUT';
 
     try {
-      const res = await fetch(url, {
+      const result = await requestJson(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(employee)
       });
-      const data = await res.json();
-      if (id === 'new' && data.id) {
-        router.push(`/employees/${data.id}`);
+      if (!result.ok) {
+        notifyError(describeFailure('שמירת הפרטים נכשלה', result));
+        return;
+      }
+      if (id === 'new') {
+        if (result.data.id) router.push(`/employees/${result.data.id}`);
+        else notifyError('שמירת הפרטים נכשלה: השרת לא החזיר מזהה לעובד החדש');
       } else {
         setPermissionsRefresh((n) => n + 1); // a changed department changes the department defaults shown below
-        alert('הפרטים נשמרו בהצלחה!');
+        notifySuccess('הפרטים נשמרו בהצלחה!');
       }
-    } catch (e) {
-      alert('שגיאה בשמירת נתונים');
     } finally {
       setSaving(false);
     }
@@ -191,13 +216,13 @@ export default function EmployeePage({ params }) {
     // בודקים את זה כאן (לפני הבקשה לשרת) כדי לתת הודעה ברורה ולחסום מיד.
     if (isAddingShift) {
       if (!editShiftData.date) {
-        alert('יש לבחור תאריך למשמרת');
+        notifyError('יש לבחור תאריך למשמרת');
         return;
       }
       const [dY, dM] = editShiftData.date.split('-').map(Number);
       if ((dM - 1) !== filterMonth || dY !== filterYear) {
         const displayedLabel = new Date(filterYear, filterMonth).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
-        alert(`לא ניתן להוסיף משמרת בתאריך שאינו בחודש המוצג (${displayedLabel}). יש לבחור תאריך בתוך החודש המוצג, או לעבור לחודש הרצוי ואז להוסיף את המשמרת.`);
+        notifyError(`לא ניתן להוסיף משמרת בתאריך שאינו בחודש המוצג (${displayedLabel}). יש לבחור תאריך בתוך החודש המוצג, או לעבור לחודש הרצוי ואז להוסיף את המשמרת.`);
         return;
       }
     }
@@ -227,49 +252,35 @@ export default function EmployeePage({ params }) {
         payload.exitTime = exit.toISOString();
     } else { payload.exitTime = null; }
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        cancelEditShift();
-        fetchEmployee();
-      } else {
-        alert(data.error || 'שגיאה בשמירת משמרת');
-      }
-    } catch (e) {
-      alert('שגיאה בתקשורת');
+    const result = await requestJson(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (result.ok) {
+      cancelEditShift();
+      fetchEmployee();
+    } else {
+      notifyError(describeFailure('שמירת המשמרת נכשלה', result));
     }
   };
 
   const deleteShift = async (shiftId) => {
     if (!await window.customConfirm('האם אתה בטוח שברצונך למחוק משמרת זו? ההיסטוריה תישמר במערכת אך השורה תוסתר.')) return;
-    try {
-      const res = await fetch(`/api/employees/${id}/shifts/${shiftId}`, { method: 'DELETE' });
-      if (res.ok) fetchEmployee();
-      else alert('שגיאה במחיקת משמרת');
-    } catch (e) {
-      alert('שגיאה בתקשורת');
-    }
+    const result = await requestJson(`/api/employees/${id}/shifts/${shiftId}`, { method: 'DELETE' });
+    if (result.ok) fetchEmployee();
+    else notifyError(describeFailure('מחיקת המשמרת נכשלה', result));
   };
 
   const restoreShift = async (shift) => {
     if (!await window.customConfirm('האם לשחזר משמרת זו?')) return;
-    try {
-      const res = await fetch(`/api/employees/${id}/shifts/${shift.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isDeleted: false })
-      });
-      const data = await res.json();
-      if (res.ok) fetchEmployee();
-      else alert(data.error || 'שגיאה בשחזור המשמרת');
-    } catch (e) {
-      alert('שגיאה בתקשורת');
-    }
+    const result = await requestJson(`/api/employees/${id}/shifts/${shift.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isDeleted: false })
+    });
+    if (result.ok) fetchEmployee();
+    else notifyError(describeFailure('שחזור המשמרת נכשל', result));
   };
 
   const calculateMonthlySalary = () => {
@@ -433,21 +444,13 @@ export default function EmployeePage({ params }) {
                     <button data-element-name="כפתור_page_23" type="button" onClick={async () => {
                       const authResult = await window.customAuthPrompt("הזן קוד מנהל לאיפוס הסיסמה ושליחתה למייל העובד:", "מנהל");
                       if (!authResult) return;
-                      try {
-                        const res = await fetch(`/api/employees/${id}/reset-password`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ authPin: authResult.pin, authEmployeeId: authResult.employeeId })
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          window.alert(data.message || 'סיסמה זמנית נשלחה למייל העובד');
-                        } else {
-                          window.alert(data.message || 'איפוס הסיסמה נכשל');
-                        }
-                      } catch (e) {
-                        window.alert('שגיאה באיפוס הסיסמה');
-                      }
+                      const result = await requestJson(`/api/employees/${id}/reset-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ authPin: authResult.pin, authEmployeeId: authResult.employeeId })
+                      });
+                      if (result.ok) notifySuccess(result.data.message || 'סיסמה זמנית נשלחה למייל העובד');
+                      else notifyError(describeFailure('איפוס הסיסמה נכשל', result));
                     }} className="btn btn-secondary" style={{ whiteSpace: 'nowrap' }}>
                       <svg className="icon"><use href="#i-refresh" /></svg>אפס ושלח למייל
                     </button>
@@ -460,17 +463,28 @@ export default function EmployeePage({ params }) {
                       <svg className="icon"><use href="#i-lock" /></svg>קבע סיסמה ידנית
                     </button>
                   </div>
-                  <span className="hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית), לאפס ולשלוח סיסמה זמנית לעובד במייל, או שמנהל יקבע סיסמה חדשה ישירות (לעובד בלי מייל שמור, או בלי גישה אליו כרגע).</span>
+                  <span className="hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית, או בכרטיס של עובד אחר - הנהלה ראשית / מתכנת באימות הסיסמה שלהם), לאפס ולשלוח סיסמה זמנית לעובד במייל, או שמנהל יקבע סיסמה חדשה ישירות (לעובד בלי מייל שמור, או בלי גישה אליו כרגע).</span>
 
                   {showChangePassword && (
                     <div className="card card-pad" style={{ marginTop: '12px', maxWidth: '460px' }}>
-                      <div className="field">
-                        <label htmlFor="employee-detail-oldPassword">סיסמא ישנה</label>
-                        <div className="password-field">
-                          <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                          <input data-element-name="שדה_page_25" className="input" type="password" id="employee-detail-oldPassword" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} />
+                      {isOwnCard ? (
+                        <div className="field">
+                          <label htmlFor="employee-detail-oldPassword">סיסמא ישנה</label>
+                          <div className="password-field">
+                            <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+                            <input data-element-name="שדה_page_25" className="input" type="password" id="employee-detail-oldPassword" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} />
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="field">
+                          <label htmlFor="employee-detail-managerPassword">הסיסמא שלך (לאימות המנהל)</label>
+                          <div className="password-field">
+                            <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+                            <input data-element-name="שדה_page_25m" className="input" type="password" id="employee-detail-managerPassword" autoComplete="current-password" value={managerPasswordInput} onChange={e => setManagerPasswordInput(e.target.value)} />
+                          </div>
+                          <span className="hint">שינוי סיסמה לעובד אחר מותר להנהלה ראשית ולמתכנת, באימות הסיסמה שלך. הסיסמה הנוכחית של העובד אינה נדרשת.</span>
+                        </div>
+                      )}
                       <div className="field">
                         <label htmlFor="employee-detail-newPassword">סיסמא חדשה</label>
                         <div className="password-field">
@@ -479,29 +493,32 @@ export default function EmployeePage({ params }) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn btn-secondary">ביטול</button>
+                        <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); setManagerPasswordInput(''); }} className="btn btn-secondary">ביטול</button>
                         <button data-element-name="כפתור_page_28" type="button" onClick={async () => {
                           if (!newPasswordInput) {
-                              window.alert('יש להזין סיסמא חדשה');
+                              notifyError('יש להזין סיסמא חדשה');
                               return;
                           }
-                          try {
-                            const res = await fetch(`/api/employees/${id}/password`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ oldPassword: oldPasswordInput, newPassword: newPasswordInput })
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              setShowChangePassword(false);
-                              setOldPasswordInput('');
-                              setNewPasswordInput('');
-                              window.alert('הסיסמא שונתה בהצלחה');
-                            } else {
-                              window.alert(data.message || 'שינוי הסיסמה נכשל');
-                            }
-                          } catch (e) {
-                            window.alert('שגיאה בשינוי הסיסמה');
+                          if (sessionEmployeeId === null) {
+                              notifyError('לא ניתן לזהות את המשתמש המחובר - רענן את הדף ונסה שוב');
+                              return;
+                          }
+                          const result = await requestJson(`/api/employees/${id}/password`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            // בכרטיס של עובד אחר (הנהלה ראשית / מתכנת): סיסמת המנהל עצמו לאימות; בכרטיס של עצמי: הסיסמה הישנה
+                            body: JSON.stringify(isOwnCard
+                              ? { oldPassword: oldPasswordInput, newPassword: newPasswordInput }
+                              : { managerPassword: managerPasswordInput, newPassword: newPasswordInput })
+                          });
+                          if (result.ok) {
+                            setShowChangePassword(false);
+                            setOldPasswordInput('');
+                            setNewPasswordInput('');
+                            setManagerPasswordInput('');
+                            notifySuccess('הסיסמא שונתה בהצלחה');
+                          } else {
+                            notifyError(describeFailure('שינוי הסיסמה נכשל', result));
                           }
                         }} className="btn btn-primary">אשר שינוי</button>
                       </div>
@@ -521,26 +538,21 @@ export default function EmployeePage({ params }) {
                         <button data-element-name="כפתור_page_27b" type="button" onClick={() => { setShowSetPassword(false); setSetPasswordInput(''); setSetPasswordAuth(null); }} className="btn btn-secondary">ביטול</button>
                         <button data-element-name="כפתור_page_28b" type="button" onClick={async () => {
                           if (!setPasswordInput || setPasswordInput.length < 4) {
-                            window.alert('הסיסמה חייבת להכיל לפחות 4 תווים');
+                            notifyError('הסיסמה חייבת להכיל לפחות 4 תווים');
                             return;
                           }
-                          try {
-                            const res = await fetch(`/api/employees/${id}/set-password`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ authPin: setPasswordAuth?.pin, authEmployeeId: setPasswordAuth?.employeeId, newPassword: setPasswordInput })
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              setShowSetPassword(false);
-                              setSetPasswordInput('');
-                              setSetPasswordAuth(null);
-                              window.alert(data.message || 'הסיסמה נקבעה בהצלחה');
-                            } else {
-                              window.alert(data.message || 'קביעת הסיסמה נכשלה');
-                            }
-                          } catch (e) {
-                            window.alert('שגיאה בקביעת הסיסמה');
+                          const result = await requestJson(`/api/employees/${id}/set-password`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ authPin: setPasswordAuth?.pin, authEmployeeId: setPasswordAuth?.employeeId, newPassword: setPasswordInput })
+                          });
+                          if (result.ok) {
+                            setShowSetPassword(false);
+                            setSetPasswordInput('');
+                            setSetPasswordAuth(null);
+                            notifySuccess(result.data.message || 'הסיסמה נקבעה בהצלחה');
+                          } else {
+                            notifyError(describeFailure('קביעת הסיסמה נכשלה', result));
                           }
                         }} className="btn btn-primary">אשר קביעה</button>
                       </div>

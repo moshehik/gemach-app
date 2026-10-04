@@ -15,6 +15,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useRouter } from 'next/navigation';
 import SettingQuickPanel from '../SettingQuickPanel';
 import { Ic, HomeSprite } from './HomeParts';
+import PageVariantToggle from '../variant/PageVariantToggle';
 import HomeResults from './HomeResults';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
@@ -592,6 +593,8 @@ export default function HomeA5() {
       <HomeSprite />
       <Suspense fallback={null}><SearchKeySync onKey={setSpKey} /></Suspense>
       <section className={`hero${heroEnter && !compact ? ' hero-enter' : ''}${compact ? ' hero-compact' : ''}`} aria-label="חיפוש">
+        {/* "חזרה לתצוגה הישנה" (4.10.2026): רק להנהלה ראשית / מתכנת. לדף הבית אין סרגל כותרת - פינה עליונה של אזור החיפוש */}
+        <PageVariantToggle screen="home" placement="hero" />
         <div className={`hero-in${joined ? ' jshell' : ''}${noBar ? ' advonly' : ''}${view === 'ai' ? ' aishell' : ''}`}>
           {compact && <h1 className="sr-only">חיפוש</h1>}
           {!compact && (
