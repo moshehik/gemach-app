@@ -591,3 +591,25 @@ test('הכל יחד בהזמנה אחת: כל H01–H31 בפיד אחד - אפס
   assert.deepEqual(searchEntries(r.entries, 'הודפס דף').map((e) => e.text).sort(), visibleEntries(r.entries, { q: 'הודפס דף' }).map((e) => e.text).sort());
   assert.ok(visibleEntries(r.entries, { q: 'תשרי' }).length === r.entries.length, 'every line carries its Hebrew date');
 });
+
+test('ייצוא Excel (A21): גיליון RTL, עמודות עבריות לפי PLAN §C.4, אין תא תאריך לועזי (Excel date) ואין ISO', async () => {
+  const XLSX = (await import('xlsx')).default || (await import('xlsx'));
+  const { buildRowsWorkbook } = await import('@/lib/xlsxExport.js');
+  const { EXPORT_COLUMNS } = await import('@/app/components/order-card/parts/ocHistoryModel.js');
+  const rows = Object.entries(H).filter(([k]) => !k.endsWith('x')).flatMap(([, v]) => v).filter(Boolean);
+  const r = feed(rows, { ...H.h06x, ...H.h27x });
+  const wb = buildRowsWorkbook(XLSX, exportRows(r.entries), { sheetName: 'היסטוריה', columns: EXPORT_COLUMNS });
+  assert.equal(wb.Workbook.Views[0].RTL, true);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const header = EXPORT_COLUMNS.map((_, c) => ws[XLSX.utils.encode_cell({ r: 0, c })].v);
+  assert.deepEqual(header, ['פעולה', 'תאריך', 'שעה', 'קודם', 'חדש', 'עובד מבצע', 'קטגוריה', 'סכום', 'פרטים']);
+  for (const [ref, cell] of Object.entries(ws)) {
+    if (ref.startsWith('!')) continue;
+    assert.notEqual(cell.t, 'd', `${ref} is a Gregorian date cell`);
+    assert.ok(!GREG_RE.test(String(cell.v)) && !UUID_RE.test(String(cell.v)), `${ref}: ${cell.v}`);
+  }
+  const amt = exportRows(r.entries).find((x) => x['פעולה'] === 'נוסף חיוב ידני: ניקוי כתם');
+  assert.equal(amt['סכום'], 50, 'amounts are numbers (sortable / summable in Excel)');
+  const pay = exportRows(r.entries).find((x) => x['פעולה'].startsWith('התקבל תשלום') && x['סכום'] === 300);
+  assert.ok(pay && /תשרי/.test(pay['תאריך']) && /^\d{2}:\d{2}$/.test(pay['שעה']));
+});
