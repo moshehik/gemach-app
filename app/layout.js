@@ -36,7 +36,7 @@ import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
-import { buildMenuTree, NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
+import { buildMenuTree, NAV_PAGE_KEYS, MENU_FEATURE_KEYS } from '@/lib/menu/buildMenuTree';
 import versionData from './version.json';
 
 export default async function RootLayout({ children }) {
@@ -213,7 +213,8 @@ export default async function RootLayout({ children }) {
   // הלוז ימוזג) מקבל false לכולם — כשל-סגור.
   let pageAccess = null;
   if (isAuthenticated && emp) {
-    pageAccess = await resolvePageAccess(emp.roleId, authToken.value, NAV_PAGE_KEYS).catch(() => null);
+    // + MENU_FEATURE_KEYS (feature:non_working_days_manage - הפריט "ימי אי-פעילות" בניהול): עוד איבר באותה לולאה, בלי שאילתה נוספת
+    pageAccess = await resolvePageAccess(emp.roleId, authToken.value, [...NAV_PAGE_KEYS, ...MENU_FEATURE_KEYS]).catch(() => null);
   }
   const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;

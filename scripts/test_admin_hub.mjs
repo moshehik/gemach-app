@@ -36,6 +36,16 @@ const YES = {
   '/admin/bulk-email': 'head', '/admin/nedarim-hok-list': 'headOnly', '/admin/nedarim-hok-search': 'head', '/admin/nedarim-hok-edit': 'head',
   '/admin/nedarim-payments-recent': 'head', '/admin/nedarim-hok-test': 'head',
 };
+// אריחים שנוספו אחרי תשובות מסך הניהול, כל אחד עם ההחלטה שלו. השער בדף עצמו שונה מ-head (ר' OWN_PAGE_GATE).
+const ADDED_LATER = {
+  '/non-working-days': 'head', // "ימי אי-פעילות" - החלטות-non-working-days.json NWD-Q01 "פריט בניהול" (1.10.2026), נבנה 4.10.2026
+};
+// דפים שהשער שלהם אינו checkPageAccess(הנהלה) בכוונה, והשער שהם כן אוכפים
+const OWN_PAGE_GATE = {
+  // פתוח למחוברים (צפייה); עריכה לפי feature:non_working_days_manage (פירוש 9) - נאכף ב-GET /api/non-working-days (canEdit) וב-POST /api/settings
+  '/non-working-days': /if \(!\(await checkAuth\(\)\)\) return <NoAccessMessage \/>/,
+};
+Object.assign(YES, ADDED_LATER);
 const NO = ['/api/customers/emails', '/admin/refund-planner', '/admin/audit-system', '/management/database', '/design-system/',
   '/admin/refund-simulator', '/admin/settings/help'];
 const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה'];
@@ -192,6 +202,7 @@ t('השערים בדפים עצמם: כל אריח "מתכנת בלבד" מוב�
   // /dashboard: השער בתוך page.js עצמו (layout משותף היה חוסם גם את /dashboard/dresses)
   for (const x of TOOLS) {
     const srcs = [...layoutsFor(x.href), ...(x.href === '/dashboard' ? [read('../app/dashboard/page.js')] : [])];
+    if (OWN_PAGE_GATE[x.href]) { assert.ok(srcs.some((src) => OWN_PAGE_GATE[x.href].test(src)), `${x.href}: השער של הדף חסר`); continue; }
     assert.ok(srcs.some((src) => /checkPageAccess\((HEAD_MANAGEMENT_ROLES|DEVELOPER_ONLY_ROLES)\)/.test(src)), `${x.href}: הדף בלי שער הנהלה`);
   }
   const site = read('../app/admin/site/layout.js');
