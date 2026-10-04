@@ -240,6 +240,7 @@ export function capacityPrecheck(item, order) {
   return '';
 }
 // חיובי הפריט (MIM :1305-1342)
+const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
 export function itemObligations(obligations, itemId) {
   const searchStr = `(פריט #${itemId})`;
   return (obligations || []).filter(o => !o.isDeleted && o.description && o.description.includes(searchStr)).map(o => {

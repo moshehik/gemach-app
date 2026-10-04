@@ -14,7 +14,6 @@ import { addedAtOf, dedupeAuditLogs, isLegacyItem, israelTimeOf, itemName, itemO
 
 // שדות פנימיים של עגלת הקניות — לא מעניינים ביומן (MIM :18)
 const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
-const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
 
 
 const dayTime = (v, withTime = true) => {
