@@ -80,27 +80,14 @@ export default function useNewOrderController({ router }) {
 
   // ---------- חלונות (שתי שכבות: #dlg, #dlg2) ----------
   const [dlg, setDlg] = useState({ 1: null, 2: null });
-  const resolvers = useRef({ 1: null, 2: null });
-  const occupied = useRef({ 1: false, 2: false }); // מי פתוח כרגע (סינכרוני, בלי לחכות לרינדור)
-  const ask = useCallback((type, props = {}, layer) => new Promise((resolve) => {
-    const L = layer || (occupied.current[1] ? 2 : 1);
-    const prevResolve = resolvers.current[L];
-    resolvers.current[L] = resolve;
-    occupied.current[L] = true;
-    if (prevResolve) prevResolve(undefined);
-    setDlg(prev => ({ ...prev, [L]: { type, props } }));
-  }), []);
-  const answer = useCallback((L, result) => {
-    const r = resolvers.current[L];
-    resolvers.current[L] = null;
-    occupied.current[L] = false;
-    setDlg(prev => ({ ...prev, [L]: null }));
-    if (r) r(result);
-  }, []);
+  // מנהל החלונות (NL.createDialogManager): תשובה מתוייגת-id של חלון שנסגר לא משפיעה על החלון הבא (ממצא סקירה 6)
+  const [dlgMgr] = useState(() => NL.createDialogManager((L, value) => setDlg(prev => ({ ...prev, [L]: value }))));
+  const ask = useCallback((type, props = {}, layer) => dlgMgr.ask(type, props, layer), [dlgMgr]);
+  const answer = useCallback((L, result, id) => { dlgMgr.answer(L, result, id); }, [dlgMgr]);
   const showBusy = useCallback((on, kind) => {
-    occupied.current[2] = on;
+    dlgMgr.setBusy(on);
     setDlg(prev => ({ ...prev, 2: on ? { type: 'busy', props: { kind } } : (prev[2] && prev[2].type === 'busy' ? null : prev[2]) }));
-  }, []);
+  }, [dlgMgr]);
   // אישור הרשאה (במקום verifyPin / customAuthPrompt): הבדיקה מול /api/auth/verify-pin נעשית בתוך החלון
   const verifyPin = useCallback((message, level) => ask('approval', { message, level }), [ask]);
 
@@ -418,18 +405,20 @@ export default function useNewOrderController({ router }) {
     const t = setTimeout(async () => {
       try {
         const post = (body) => fetch('/api/orders/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
-        const [sum, probe] = await Promise.all([
-          post(NL.buildAddPreviewBody(order, newItem)),
+        const bodies = NL.buildAddPreviewBodies(order, newItem);
+        const [sum, base, probe] = await Promise.all([
+          post(bodies.withCart),
+          bodies.base ? post(bodies.base) : Promise.resolve(null),
           settings.enable_alterations !== 'false' ? post(NL.buildAltProbeBody(order, newItem, newItem.selectedSizes[0])) : Promise.resolve(null),
         ]);
         if (off) return;
         const ci = (probe && probe.calculatedItems) || [];
-        setAddPreview({ total: Number(sum && sum.totalAmount) || 0, alt: { neck: ci[0] ? ci[0].repairsCost || 0 : 0, sleeve: ci[1] ? ci[1].repairsCost || 0 : 0, len: ci[2] ? ci[2].repairsCost || 0 : 0 } });
+        setAddPreview({ total: NL.addPreviewTotal(sum && sum.totalAmount, base && base.totalAmount), alt: { neck: ci[0] ? ci[0].repairsCost || 0 : 0, sleeve: ci[1] ? ci[1].repairsCost || 0 : 0, len: ci[2] ? ci[2].repairsCost || 0 : 0 } });
       } catch { if (!off) setAddPreview(null); }
     }, 300);
     return () => { off = true; clearTimeout(t); };
      
-  }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.isWeekdayEvent, settings.enable_alterations]);
+  }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.items, order.isDelivery, order.deliveryCity, order.deliveryDirection, settings.enable_alterations]);
 
   const addItemToOrder = async () => {
     setAddError('');
@@ -442,8 +431,9 @@ export default function useNewOrderController({ router }) {
     if (maxErr) { say('info', maxErr); return; }
     const prices = await Promise.all(validSizes.map(({ sizeText }) =>
       fetch(NL.buildPricingUrl(newItem.dressModelId, sizeText, order.eventDate)).then(res => res.json()).catch(() => ({ basePrice: 0 }))));
-    // כמו בישן: הפריטים נבנים מ-newItem (itemToAdd עם פירוט ברירת המחדל לא נכנס לגוף - ר' NOTES.md, Q8)
-    const itemsToAdd = NL.buildItemsToAdd(newItem, validSizes, prices);
+    // Q8 - סטייה מכוונת מהישן: הישן בונה את הפריטים מ-newItem, ולכן הפירוט האוטומטי מהתיקונים שסומנו (describeAlterations,
+    // alteration_details_optional='true') לא נכנס לגוף ו-repairs נשלח ריק. כאן נבנה מ-prep.itemToAdd כדי שההערה האוטומטית כן תישלח.
+    const itemsToAdd = NL.buildItemsToAdd(prep.itemToAdd, validSizes, prices);
     setOrder(prev => ({ ...prev, items: [...prev.items, ...itemsToAdd] }));
     setNewItem(prev => ({ ...prev, selectedSizes: [], repairs: '', neckAlteration: false, sleeveAlteration: false, lengthAlteration: '' }));
     if (unavailable.length > 0) say('info', `שימו לב: המידות הבאות אזלו מהמלאי ולא נוספו: ${unavailable.join(', ')}`);
@@ -489,7 +479,7 @@ export default function useNewOrderController({ router }) {
   const totalAmount = calculatedData.totalAmount;
 
   useEffect(() => {
-    const remainder = Math.max(0, totalAmount - NL.sumPaid(paymentsList));
+    const remainder = Math.max(0, NL.roundMoney(totalAmount - NL.sumPaid(paymentsList)));
     setPayment(prev => ({ ...prev, amount: remainder }));
   }, [totalAmount, paymentsList]);
 
@@ -537,10 +527,14 @@ export default function useNewOrderController({ router }) {
       window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
     }
   }, [order.customerId, order.items, newCustomer, phoneSearchInput, saved]);
+  // ממצא סקירה 7: בזמן חיוב אשראי / שמירה לא מציעים לצאת - יציאה אז משאירה כרטיס שחויב בלי הזמנה שנשמרה
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = saving || isProcessingCredit; }, [saving, isProcessingCredit]);
   useEffect(() => {
     const handlePopState = async () => {
       if (!backGuardArmedRef.current || !hasStartedOrderRef.current) return;
       window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
+      if (busyRef.current) { say('info', 'לא ניתן לצאת כרגע', 'מתבצע חיוב / שמירה של ההזמנה. יש להמתין לסיומם.'); return; }
       const leave = await ask('backGuard', {});
       if (!leave) return;
       backGuardArmedRef.current = false;
@@ -548,19 +542,28 @@ export default function useNewOrderController({ router }) {
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [ask]);
+  }, [ask, say]);
 
   // ---------- תשלום ----------
-  const handleAddPaymentClick = () => {
-    const pAmount = parseFloat(payment.amount) || 0;
-    if (pAmount <= 0) { say('info', 'יש להזין סכום גדול מ-0'); return; }
-    if (NL.isCreditMethod(payment.method)) {
-      openCredit(payment.notes);
-    } else {
-      setPaymentsList(prev => [...prev, { amount: pAmount, method: payment.method, notes: payment.notes }]);
-      setPayment(prev => ({ ...prev, notes: '' }));
-      say('ok', 'התשלום נרשם', `${NL.moneyTxt(pAmount)} · ${payment.method}`);
+  // ממצאי סקירה 1: "יציאה באישור מנהל" אינה תשלום ₪ (נרשמת רק בסיום ההזמנה, בסכום 0); תשלום מפוצל (גם מזומן) עובר דרך
+  // אישור PAYMENT_APPROVAL_LEVEL כמו הרישום הסופי. ההכרעה: NL.paymentAddDecision.
+  const handleAddPaymentClick = async () => {
+    const decision = NL.paymentAddDecision(settings, payment.method, payment.amount);
+    if (decision.action === 'reject') {
+      if (decision.reason === 'manager-exit') say('info', '"יציאה באישור מנהל" אינה תשלום', 'כדי לסיים בלי תשלום מלא בחר בה וסיים בלחיצה על "סיום ויצירת ההזמנה" (תתבקש לאשר). לרישום תשלום בחר אמצעי אחר.');
+      else say('info', 'יש להזין סכום גדול מ-0');
+      return;
     }
+    if (decision.action === 'credit') { openCredit(payment.notes); return; }
+    const method = payment.method;
+    const notes = payment.notes;
+    if (decision.action === 'approve') {
+      const auth = await verifyPin('רישום תשלום דורש אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
+      if (!auth) { say('info', 'אישור תשלום בוטל.'); return; }
+    }
+    setPaymentsList(prev => [...prev, { amount: decision.amount, method, notes }]);
+    setPayment(prev => ({ ...prev, notes: '' }));
+    say('ok', 'התשלום נרשם', `${NL.moneyTxt(decision.amount)} · ${method}`);
   };
   const removePayment = (index) => {
     const target = paymentsList[index];
@@ -605,7 +608,7 @@ export default function useNewOrderController({ router }) {
       if (data.success) {
         const conf = data.confirmation || 'בוצע';
         answer(1, undefined); // סוגר את חלון האשראי
-        const newPayment = { amount: paymentAmount, method: payment.method, notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes };
+        const newPayment = { amount: paymentAmount, method: NL.creditPaymentMethod(paymentMethodOptions), notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes };
         const updatedList = [...paymentsList, newPayment];
         setPaymentsList(updatedList);
         const newTotalPaid = updatedList.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
@@ -739,7 +742,7 @@ export default function useNewOrderController({ router }) {
   const deliveryCityRequired = isDeliveryCityRequired(order, order.selectedCustomer && order.selectedCustomer.city, deliveryPriceCities);
   const deliveryError = validateDeliveryFields(order, order.selectedCustomer && order.selectedCustomer.city, deliveryPriceCities);
   const totalPaid = NL.sumPaid(paymentsList);
-  const remaining = Math.max(0, totalAmount - totalPaid);
+  const remaining = Math.max(0, NL.roundMoney(totalAmount - totalPaid));
   const openInfo = NL.stepOpenInfo(order);
 
   const go = (idx) => {

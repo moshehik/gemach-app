@@ -127,7 +127,7 @@ function SaveError({ err }) {
 function Dialog({ ctl, layer }) {
   const d = ctl.dlg[layer];
   if (!d) return null;
-  const close = (r) => ctl.answer(layer, r);
+  const close = (r) => ctl.answer(layer, r, d.id); // d.id: תשובה מאוחרת של חלון שנסגר לא משפיעה על החלון הבא
   const p = d.props || {};
   let body = null;
   let cls = '';
@@ -172,7 +172,7 @@ function Dialog({ ctl, layer }) {
     }
     default: return null;
   }
-  return <DialogFrame layer={layer} cls={cls} onBackdrop={backdrop}>{body}</DialogFrame>;
+  return <DialogFrame key={d.id} layer={layer} cls={cls} onBackdrop={backdrop}>{body}</DialogFrame>;
 }
 
 export default function NewOrderA5() {

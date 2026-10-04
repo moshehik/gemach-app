@@ -2,17 +2,17 @@
 
 // שלב 3 "איך תרצו לקבל את ההזמנה?" (B2: משלוח כשלב נפרד) - R.delivery בעיצוב.
 // אותם שערים כמו בישן: "אופן ההזמנה" לפי phone_order_marker_enabled / track_branch_on_order / branches_enabled; המשלוח לפי
-// enable_deliveries; כתובת שונה לפי delivery_allow_address_override או כשהיא חובה; "יום לפני" לפי delivery_one_day_before_option.
+// enable_deliveries (ובתנאי שכרטיס "משלוח / סניף / טלפוני" מוצג: דגלי טלפוני/סניף או delivery_show_in_order !== 'false'); כתובת שונה לפי delivery_allow_address_override או כשהיא חובה; "יום לפני" לפי delivery_one_day_before_option.
 // S04 (לא להכניס): אין שורת "דמי משלוח" כאן. R15 (אושר): סניף הביצוע נזכר במחשב הזה (localStorage, ב-controller ובשינוי כאן).
 import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, Tip, NO_FILL } from './NoUi';
 import NoSuggest from './NoSuggest';
-import { DELIVERY_DIRECTIONS, branchListOf } from './newOrderLogic';
+import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility } from './newOrderLogic';
 
 export default function StepDelivery({ ctl }) {
   const s = ctl.settings;
   const o = ctl.order;
-  const showMode = s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true';
-  const showDelivery = s.enable_deliveries === 'true';
+  // כמו הישן: "הזמנת משלוח" גם תחת delivery_show_in_order (שער הכרטיס) - deliveryStepVisibility
+  const { showMode, showDelivery } = deliveryStepVisibility(s);
   const branches = branchListOf(s);
   const set = (patch) => ctl.setOrder(prev => ({ ...prev, ...patch }));
   const cityOptions = [...new Set([...(o.deliveryCity ? [o.deliveryCity] : []), ...ctl.deliveryCityOptions])];

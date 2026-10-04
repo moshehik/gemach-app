@@ -31,7 +31,7 @@ export default function StepPayment({ ctl }) {
       <Blk>
         <SubH icon="card" tone="blue" title="רישום תשלום" />
           <label className="lbl" htmlFor="noPayAmt">סכום לתשלום כעת (₪)</label>
-          <div className="amtin"><span>₪</span><input id="noPayAmt" type="number" inputMode="numeric" value={p.amount} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, amount: e.target.value }))} /></div>
+          <div className="amtin"><span>₪</span><input id="noPayAmt" type="number" inputMode="decimal" step="any" value={p.amount} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, amount: e.target.value }))} /></div>
           <div className="lbl" style={{ marginTop: 14 }}>אופן תשלום</div>
           <div className="methods" id="methods" role="radiogroup" aria-label="אופן תשלום">
             {ctl.paymentMethodOptions.map(m => (

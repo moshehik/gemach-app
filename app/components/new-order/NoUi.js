@@ -6,6 +6,7 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
+import { moneyAmount } from './newOrderLogic';
 
 export const NO_FILL = { 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
@@ -114,7 +115,8 @@ export function Note({ icon = 'alert', children, className = 'empty', style }) {
   );
 }
 
-export const money = (n) => <bdi dir="ltr">₪{Math.abs(Math.round(Number(n) || 0)).toLocaleString('he-IL')}</bdi>;
+// אגורות מוצגות כשיש (moneyAmount): מחיר/תשלום לא שלם לא מעוגל בשקט לשקל שלם
+export const money = (n) => <bdi dir="ltr">₪{moneyAmount(n)}</bdi>;
 
 // ---------- פורטל לשורש הדף ----------
 export const NoPortalRoot = createContext(null);

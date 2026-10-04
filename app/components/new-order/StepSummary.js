@@ -2,26 +2,13 @@
 
 // שלב 5 "הכול נכון?" - R.summary בעיצוב: "פרטי ההזמנה" (.kv) + "פריטים" (.list) + סה"כ (.status.ok).
 // S07 (להכניס): שורות שלא היו בסיכום האתר - לקיחה / החזרה, סוג הזמנה (טלפונית), סניף ביצוע / איסוף, ושורת משלוח עם מחירה
-// (deliveryAmount מאותה תשובת /api/orders/calculate שכבר נכנסה לסה"כ). מועדי הלקיחה/ההחזרה כאן הם הערכה בצד הלקוח
-// (שישי/שבת/חג מדולגים; "ימים ללא פעילות" שהבעלים סימן ב-lib/businessDays.js לא ידועים כאן) - ר' NOTES.md.
-import { isChagDay } from '@/lib/hebrewDate';
+// (deliveryAmount מאותה תשובת /api/orders/calculate שכבר נכנסה לסה"כ). מועדי הלקיחה/ההחזרה: pickupReturnKeys (newOrderLogic) -
+// אותם כללים כמו השרת (lib/businessDays, lib/lateReturn, delivery_days_before, ימים שהבעלים סגר ב-non_working_days_extra).
 import { Blk, Ic, OneCard, SubH, money } from './NoUi';
-import { alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, spacingLabel } from './newOrderLogic';
-import { addDays, dow, fromKey, hebrewLong, hebrewParts } from '../schedule/hebrewCalendar';
+import { alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, pickupReturnKeys, spacingLabel } from './newOrderLogic';
+import { hebrewLong, hebrewParts } from '../schedule/hebrewCalendar';
 
-const nonWorking = (k) => { const w = dow(k); return w === 5 || w === 6 || isChagDay(fromKey(k)); };
 const short = (k) => { const h = hebrewParts(k); return `${h.dl} ${h.m}`; };
-export function pickupReturnKeys(order) {
-  const ev = order.isAbroad ? order.fromDate : order.eventDate;
-  if (!ev) return null;
-  let pickup;
-  if (order.isDelivery && order.deliveryDirection !== 'חזור') pickup = addDays(ev, order.deliveryOneDayBefore ? -1 : -2);
-  else { pickup = ev; let n = 0; while (n < 2) { pickup = addDays(pickup, -1); if (!nonWorking(pickup)) n++; } }
-  let ret;
-  if (order.isAbroad && order.toDate) ret = order.toDate;
-  else { ret = addDays(ev, 1); while (nonWorking(ret)) ret = addDays(ret, 1); }
-  return { pickup, ret };
-}
 
 function F({ icon, l, children }) {
   return <div className="f"><Ic n={icon} /><div><small>{l}</small><b>{children}</b></div></div>;
@@ -32,7 +19,7 @@ export default function StepSummary({ ctl }) {
   const s = ctl.settings;
   const c = o.selectedCustomer;
   if (!c || !ctl.datesFilled || !ctl.activeItems.length) return null;
-  const pr = pickupReturnKeys(o);
+  const pr = pickupReturnKeys(o, s);
   return (
     <OneCard>
       <Blk>

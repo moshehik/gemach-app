@@ -2,7 +2,9 @@
 // כל פונקציה כאן היא העתקה נאמנה של הלוגיקה של האשף הישן (app/orders/new/LegacyNewOrderPage.js) כדי שגופי הבקשות לשרת
 // יישארו זהים בדיוק: scripts/new-order-tests/payload-parity.test.mjs מחלץ את הליטרלים מהקובץ הישן בזמן הבדיקה ומשווה.
 // אם משנים כאן בנייה של גוף בקשה - הבדיקה תיכשל עד שגם הישן משתנה (או שהשינוי מתועד כסטייה מכוונת).
-// בלי '@/' imports - חייב להיטען ב-node רגיל (הבדיקות).
+// בלי '@/' imports - חייב להיטען ב-node רגיל (הבדיקות). ייבוא יחסי מ-lib הטהור (businessDays / lateReturn - בלי prisma) מותר.
+import { parseNonWorkingDaysSetting, addBusinessDays } from '../../../lib/businessDays';
+import { getExpectedReturnKey } from '../../../lib/lateReturn';
 
 // ---------- לקוח ----------
 export const getCustomerFullName = (c) => {
@@ -69,6 +71,40 @@ export function getMissingMandatoryCustomerFields(settings, customerObj) {
 // "פרטים נוספים" נפתח לבד כשיש בו שדה חובה (בעיצוב B2 אין מגירה - כל השדות גלויים; נשאר לשימוש התוויות)
 export const requiresFullAddress = (s, key) => s.require_full_address === 'true' || isFieldMandatoryFromPicker(s, key);
 
+// ---------- חלונות (שתי שכבות) ----------
+// מנהל החלונות של האשף (טהור, נבדק ב-scripts/new-order-tests/review-fixes.test.mjs). כל חלון נושא מזהה (id): תשובה מאוחרת
+// של חלון שכבר נסגר (למשל תגובת verify-pin איטית אחרי Escape) נושאת את המזהה הישן ולכן לא נוגעת בחלון הבא באותה שכבה -
+// בלי זה היא הייתה מאשרת בקשת אישור אחרת (ממצא סקירה 6). setSlot(layer, {type, props, id} | null) מעדכן את ה-state של React.
+export function createDialogManager(setSlot) {
+  const resolvers = { 1: null, 2: null };
+  const occupied = { 1: false, 2: false }; // מי פתוח כרגע (סינכרוני, בלי לחכות לרינדור)
+  let seq = 0;
+  return {
+    occupied,
+    setBusy(on) { occupied[2] = on; }, // חלון "busy" (חיוב / שמירה) תופס את שכבה 2 בלי resolver
+    ask(type, props = {}, layer) {
+      return new Promise((resolve) => {
+        const L = layer || (occupied[1] ? 2 : 1);
+        const prev = resolvers[L];
+        const id = ++seq;
+        resolvers[L] = { resolve, id };
+        occupied[L] = true;
+        if (prev) prev.resolve(undefined);
+        setSlot(L, { type, props, id });
+      });
+    },
+    answer(L, result, id) {
+      const r = resolvers[L];
+      if (id !== undefined && (!r || r.id !== id)) return false; // תשובה מתוייגת של חלון שכבר נסגר / הוחלף - מתעלמים
+      resolvers[L] = null;
+      occupied[L] = false;
+      setSlot(L, null);
+      if (r) r.resolve(result);
+      return true;
+    },
+  };
+}
+
 // ---------- אמצעי תשלום ----------
 // זהה ל-computePaymentMethodOptions בישן
 export const computePaymentMethodOptions = (settingsObj) => {
@@ -92,6 +128,23 @@ export function paymentApprovalRequired(settings, method, amount) {
   if (!(isManagerExitPayment || (amount > 0 && !isCredit))) return false;
   const level = (settings && settings.PAYMENT_APPROVAL_LEVEL) || 'כולם';
   return level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה';
+}
+
+// אמצעי התשלום שנרשם בחיוב אשראי שעבר: תמיד אמצעי האשראי (הראשון ברשימה המותרת), לא האמצעי שנבחר בבורר -
+// אחרת "חיוב אשראי" כשנבחר "מזומן" נשמר כתשלום מזומן (ממצא סקירה 2). בלי אמצעי אשראי ברשימה - השם הרגיל.
+export const DEFAULT_CREDIT_METHOD = 'אשראי (דרך נדרים פלוס)';
+export const creditPaymentMethod = (options) => (options || []).find(isCreditMethod) || DEFAULT_CREDIT_METHOD;
+
+// מה עושה "אישור תשלום / פיצול" (ממצא סקירה 1). "יציאה באישור מנהל" אינה תשלום - היא נרשמת רק בסיום ההזמנה, בסכום 0
+// (buildFinalPayments); כתשלום ₪ אמיתי השרת היה סופר אותה ככסף ששולם. אשראי - חלון החיוב. כל השאר (גם מזומן) - דרך אישור
+// PAYMENT_APPROVAL_LEVEL כמו ברישום הסופי: בפיצול הסכום שנשאר ב-payment.amount אחרי הרישום הוא 0, ולכן בדיקת השמירה לא
+// הייתה מתעוררת אף פעם.
+export function paymentAddDecision(settings, method, amount) {
+  const amt = parseFloat(amount) || 0;
+  if (amt <= 0) return { action: 'reject', reason: 'amount', amount: amt };
+  if (method === MANAGER_EXIT_METHOD) return { action: 'reject', reason: 'manager-exit', amount: amt };
+  if (isCreditMethod(method)) return { action: 'credit', amount: amt };
+  return { action: paymentApprovalRequired(settings, method, amt) ? 'approve' : 'add', amount: amt };
 }
 
 // הרשימה הסופית שנשלחת בשמירה (זהה ל-finalPayments ב-saveOrder בישן)
@@ -282,6 +335,17 @@ export function buildAddPreviewBody(order, newItem) {
     eventDate: order.eventDate, isAbroad: order.isAbroad, isWeekdayEvent: order.isWeekdayEvent,
   };
 }
+// S06 (ממצא סקירה 8): "להוספה: ₪N" כולל את הסל - הפרש בין חישוב (סל + פריטים חדשים) לחישוב הסל לבד, באותם שדות משלוח/חו"ל
+// (הנחות סט / דמי משלוח תלויים בסל כולו). סל ריק: הגוף הקודם (פריטים חדשים בלבד, בלי משלוח - אין מה להפחית).
+export function buildAddPreviewBodies(order, newItem) {
+  const add = buildAddPreviewBody(order, newItem);
+  const cart = order.items || [];
+  if (!cart.length) return { withCart: add, base: null };
+  const base = buildCalculateBody(order);
+  return { withCart: { ...base, items: [...cart, ...add.items] }, base };
+}
+export const addPreviewTotal = (withCartTotal, baseTotal) => Math.round(((Number(withCartTotal) || 0) - (Number(baseTotal) || 0)) * 100) / 100;
+export const roundMoney = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // S06: מחיר כל אפשרות תיקון בנפרד (שלושה פריטי בדיקה למידה הראשונה המסומנת, ההפרש = repairsCost)
 export function buildAltProbeBody(order, newItem, sizeText) {
   const base = { dressModelId: newItem.dressModelId, sizeText, quantity: 1 };
@@ -434,6 +498,14 @@ export function deliveryCityOptionsOf(settings, customerCities) {
   return cities.length ? cities : (customerCities || []);
 }
 export const branchListOf = (settings) => String((settings || {}).branch_list || '').split(',').map(s => s.trim()).filter(Boolean);
+// כמו בישן (LegacyNewOrderPage ~2030): כל הכרטיס "משלוח / סניף / טלפוני" מוצג כשאחד מדגלי הטלפוני/סניף דלוק או
+// delivery_show_in_order !== 'false'; "הזמנת משלוח" בתוכו דורשת גם enable_deliveries === 'true'. אופן ההזמנה - לפי הדגלים עצמם.
+export function deliveryStepVisibility(s) {
+  const st = s || {};
+  const showMode = st.phone_order_marker_enabled === 'true' || st.track_branch_on_order === 'true' || st.branches_enabled === 'true';
+  const cardVisible = showMode || st.delivery_show_in_order !== 'false';
+  return { showMode, showDelivery: cardVisible && st.enable_deliveries === 'true' };
+}
 export const showOrderModeCard = (s) => s.phone_order_marker_enabled === 'true' || s.track_branch_on_order === 'true' || s.branches_enabled === 'true' || s.delivery_show_in_order !== 'false';
 export const DELIVERY_DIRECTIONS = [
   { v: 'הלוך', icon: 'arrr' }, { v: 'חזור', icon: 'arrl' }, { v: 'הלוך-חזור', icon: 'arrlr' }
@@ -468,5 +540,36 @@ export function stepOpenInfo(order) {
   };
 }
 
-export const moneyTxt = (n) => '₪' + Math.abs(Math.round(Number(n) || 0)).toLocaleString('he-IL');
+// סכום כספי לתצוגה: שקלים שלמים בלי אגורות; כשיש אגורות (מחיר/תשלום לא שלם) - שתי ספרות אחרי הנקודה, כדי שלא יוסתרו
+export const moneyAmount = (n) => {
+  const v = Math.abs(Number(n) || 0);
+  const whole = Math.abs(v - Math.round(v)) < 0.005;
+  return whole
+    ? Math.round(v).toLocaleString('he-IL')
+    : v.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+export const moneyTxt = (n) => '₪' + moneyAmount(n);
 export const plural = (n, one, many) => (n === 1 ? one : `${n} ${many}`);
+
+// ---------- מועדי לקיחה / החזרה (S07, ממצא סקירה 4) ----------
+// אותם כללים כמו השרת, על אותה הגדרות (/api/settings): הדפסה / מייל / שמירת ההזמנה (app/api/orders/route.js) מחשבים
+// לקיחה = subtractBusinessDays(אירוע, 2) והחזרה = getExpectedReturnKey; משלוח יוצא = delivery_days_before ימי עסקים
+// לפני האירוע (יום אחד כשסומן "יום לפני"), עם delivery_skip_weekends (חג/ערב חג/ימי הבעלים מדולגים תמיד) - lib/deliveries.js.
+// lib/deliveries.js עצמו מייבא prisma ולכן הכלל משוכפל כאן על הפונקציות הטהורות; scripts/new-order-tests מוכיחים שוויון.
+export function pickupReturnKeys(order, settings) {
+  const s = settings || {};
+  const useRange = !!(order.isAbroad || order.isWeekdayEvent);
+  const ev = useRange && order.fromDate ? order.fromDate : order.eventDate; // כמו effectiveEventDateRaw בשרת
+  if (!ev) return null;
+  const nonWorking = parseNonWorkingDaysSetting(s.non_working_days_extra ?? null);
+  let pickup;
+  if (order.isDelivery && order.deliveryDirection !== 'חזור') {
+    const parsed = parseInt(s.delivery_days_before, 10);
+    const daysBefore = isNaN(parsed) ? 1 : parsed; // כמו getDeliveriesForDate: שורה חסרה = 1
+    pickup = addBusinessDays(ev, -(order.deliveryOneDayBefore ? 1 : daysBefore), nonWorking, { skipWeekend: s.delivery_skip_weekends === 'true' });
+  } else {
+    pickup = addBusinessDays(ev, -2, nonWorking);
+  }
+  const ret = getExpectedReturnKey({ eventDate: ev, toDate: order.toDate || '', returnDate: order.returnDate || '' }, nonWorking);
+  return pickup && ret ? { pickup, ret } : null;
+}

@@ -74,6 +74,9 @@ test('הוספה לסל: פיצול מידות זמינות/אזלו, פריטי
     const a = N.splitSizesByAvailability(sizes, avail);
     assert.deepStrictEqual(a, L.legacySplitSizes(newItem, avail));
     const prices = a.validSizes.map((_, i) => (i ? {} : { basePrice: 130 }));
+    // buildItemsToAdd עצמה זהה לישן. סטייה מכוונת (Q8, 2026-10): הקורא בחדש (useNewOrderController.addItemToOrder) מעביר לה את
+    // prep.itemToAdd - עם הפירוט האוטומטי describeAlterations - ולא את newItem הגולמי כמו בישן (שם repairs נשלח ריק כשהפירוט אוטומטי;
+    // commit 97ea96be הוסיף את ההערה האוטומטית בכוונה). כשהפירוט ידני/אין תיקון - זהה לישן. ההוכחה: review-fixes.test.mjs (Q8).
     assert.deepStrictEqual(N.buildItemsToAdd(newItem, a.validSizes, prices), L.legacyItemsToAdd(newItem, a.validSizes, prices));
   }
   // eslint-disable-next-line no-new-func

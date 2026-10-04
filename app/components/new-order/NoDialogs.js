@@ -62,14 +62,14 @@ export function ApprovalDialog({ message, level, close, fetchImpl }) {
       const list = filterApprovers(all, level);
       setEmps(list);
       const cur = me && me.success ? me.employee : null;
+      // כמו customAuthPrompt בישן: המשתמש המחובר נבחר מראש רק אם הוא עצמו מאשר; אחרת הבחירה נשארת ריקה (לא המאשר הראשון ברשימה)
       if (cur && list.some(e => e.id === cur.id)) setSel(String(cur.id));
-      else if (list[0]) setSel(String(list[0].id));
     });
     return () => { off = true; };
   }, [level]);
   const submit = async () => {
     if (busy) return;
-    if (!sel) { setErr('אין עובד מורשה לבחירה.'); return; }
+    if (!sel) { setErr(emps && emps.length ? 'יש לבחור מאשר.' : 'אין עובד מורשה לבחירה.'); return; }
     if (!code) { setErr('יש להזין סיסמה.'); return; }
     setBusy(true); setErr('');
     try {
@@ -94,7 +94,7 @@ export function ApprovalDialog({ message, level, close, fetchImpl }) {
         <div className="inpw">
           <select className="inp" id="noPinWho" value={sel} onChange={(e) => setSel(e.target.value)} disabled={emps === null || emps.length === 0}>
             {emps === null ? <option value="">טוען רשימת עובדים...</option> : emps.length === 0 ? <option value="">אין עובדים מורשים לפי מסך ההרשאות</option>
-              : emps.map(e => <option key={e.id} value={String(e.id)}>{`${e.firstName || ''} ${e.lastName || ''}`.trim()}</option>)}
+              : [<option key="" value="">{`בחר ${noun}...`}</option>, ...emps.map(e => <option key={e.id} value={String(e.id)}>{`${e.firstName || ''} ${e.lastName || ''}`.trim()}</option>)]}
           </select>
         </div>
       </div>
