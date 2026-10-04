@@ -576,7 +576,21 @@ export function createItemActions(env) {
   }
 
   // ---- אישור פריט: POST לפריט חדש / PUT לפריט קיים (MIM.handleConfirmItem) ----
+  // לחיצה כפולה על "אישור" (או אישור בזמן שה-POST רץ) = POST אחד בלבד, לפי _localId (או id לפריט קיים)
+  const confirmingKeys = new Set();
   async function confirmItem(item) {
+    const key = item && (item._localId || item.id);
+    if (key) {
+      if (confirmingKeys.has(key)) return { ok: false, busy: true };
+      confirmingKeys.add(key);
+    }
+    try {
+      return await confirmItemNow(item);
+    } finally {
+      if (key) confirmingKeys.delete(key);
+    }
+  }
+  async function confirmItemNow(item) {
     const st = env.get();
     const hasModelIdentity = !!(item.dressModelId || item.barcodePrefix || item.dressItem?.dressModelId || item.dressItem?.barcodePrefix);
     if (!item.sizeText || !hasModelIdentity) { fail('יש לבחור דגם ומידה לפני האישור'); return { ok: false }; }
@@ -596,15 +610,17 @@ export function createItemActions(env) {
     const url = isEditing ? `/api/orders/${orderId}/items/${item.id}` : `/api/orders/${orderId}/items`;
     const method = isEditing ? 'PUT' : 'POST';
     const body = itemRequestBody(item, { forceFullEdit: !!(item.id && st.forceEditableIds && st.forceEditableIds.has(item.id)), managerAuth });
+    let status = 0;
     try {
       const res = await f(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      status = res.status;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת הפריט');
       env.applyServerOrder(data, { savedLocalId: item._localId });
       return { ok: true, order: data };
     } catch (error) {
       fail(error.message);
-      return { ok: false, error: error.message };
+      return { ok: false, error: error.message, status };
     }
   }
 
@@ -626,6 +642,9 @@ export function createItemActions(env) {
     const assigned = env.addLocalItem(newItem) || localId;
     const saved = assigned === localId ? newItem : { ...newItem, _localId: assigned };
     const r = await confirmItem(saved);
+    // אישור המנהל נדחה, או שהשרת דחה את ההוספה בכלל עסקי (4xx): לא משאירים שורה "רפאים" שתחסום את שמירת ההזמנה (403 על hasNewAdd).
+    // תקלת רשת/5xx משאירה את השורה — "אישור" בשורה = ניסיון חוזר (כמו הישן).
+    if (!r.ok && !r.busy && (r.cancelled || (r.status >= 400 && r.status < 500))) env.removeLocalItem(assigned);
     return { ...r, localId: assigned };
   }
 

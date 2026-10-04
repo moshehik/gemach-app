@@ -4,6 +4,7 @@
 // בשורה הפתוחה (R26): פרטים (דגם, מידה, סטטוס, תיקון, אורך/פירוט כשתיקונים פעילים, מחיר, "פרטי הוספה" A11), שורת ברקוד
 // (OcBarcodeRow: R25/R26/R27) ושורת "פרטים ועריכה": ⓘ פרטים והיסטוריה (R28) ו-📅 תפוסה (R29) — לחצני אייקון עגולים, "סמן תיקון
 // בוצע", עריכה, הסרה. בלי קישור לכרטיס דגם (R30). שורת פריט מחוק: "שחזור" בלבד. פריט שטרם נשמר: "אישור" (POST) / הסרה.
+import { useState } from 'react';
 import OcIcon from '../OcIcon';
 import { fmtMoney } from '../orderCardLogic';
 import OcBarcodeRow from './OcBarcodeRow';
@@ -12,6 +13,8 @@ import { altText, hasRepairOf, isPendingItem, itemName, itemPrice, statusText, a
 
 export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle, locked, quotaFull, altEnabled, altShow, creatorName, onDetails, onCapacity, onEdit }) {
   const pending = isPendingItem(item);
+  const [confirming, setConfirming] = useState(false);
+  const confirm = async () => { if (confirming) return; setConfirming(true); try { await actions.confirmItem(item); } finally { setConfirming(false); } };
   const key = item.id || item._localId;
   const status = statusText(item, oc.order, mode);
   const alt = altEnabled ? altText(item) : '';
@@ -60,7 +63,7 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
                 <b className="hv-btns">
                   {pending ? (
                     <>
-                      <button type="button" className="btn sm" data-act="confirmitem" onClick={() => actions.confirmItem(item)}><OcIcon name="check" size="sm" />אישור</button>
+                      <button type="button" className="btn sm" data-act="confirmitem" disabled={confirming} aria-busy={confirming} onClick={confirm}><OcIcon name="check" size="sm" />אישור</button>
                       <button type="button" className="ibtn" data-act="rmitem" aria-label="הסרת פריט" data-tip="הסרת פריט" onClick={() => actions.toggleDeleted(item)}><OcIcon name="trash" size="sm" /></button>
                     </>
                   ) : (

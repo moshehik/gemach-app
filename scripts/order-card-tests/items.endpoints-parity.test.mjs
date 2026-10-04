@@ -418,6 +418,46 @@ test('הוספה מחלונית "הוספת שמלה": שורה מקומית ד�
   void legacyNew;
 });
 
+// ביקורת W3 #2: הוספה שנדחתה/נכשלה בכלל עסקי לא משאירה שורה "רפאים" (בגללה ה-PUT של ההזמנה היה מקבל 403 על hasNewAdd)
+test('הוספה: אישור המנהל נדחה → אין POST והשורה המקומית מוסרת', async () => {
+  const me = mine({ items: [], settings: [{ key: 'require_manager_code_for_item_changes', value: 'true' }], approve: null, queues: { '/api/orders/53375/items': [{ body: SERVER_ORDER }] } });
+  const r = await me.act.addItem({ model: { id: 'm-4512', name: '4512', barcodePrefix: 45 }, sizeText: '38' });
+  assert.equal(r.ok, false);
+  assert.equal(r.cancelled, true);
+  assert.equal(me.srv.calls.length, 0);
+  assert.equal(me.state.items.length, 0, 'אין שורה רפאים');
+  assert.equal(me.state.removed.length, 1);
+});
+test('הוספה: שרת דוחה בכלל עסקי (4xx) → השורה מוסרת; שגיאת רשת/5xx → השורה נשארת לניסיון חוזר', async () => {
+  const model = { id: 'm-4512', name: '4512', barcodePrefix: 45 };
+  const rej = mine({ items: [], queues: { '/api/orders/53375/items': [{ status: 400, body: { error: 'המידה לא זמינה' } }] } });
+  const r = await rej.act.addItem({ model, sizeText: '38' });
+  assert.equal(r.ok, false);
+  assert.equal(rej.state.items.length, 0);
+  assert.deepEqual(rej.errors(), ['המידה לא זמינה']);
+  const srv500 = mine({ items: [], queues: { '/api/orders/53375/items': [{ status: 500, body: { error: 'תקלה' } }] } });
+  await srv500.act.addItem({ model, sizeText: '38' });
+  assert.equal(srv500.state.items.length, 1, 'ניסיון חוזר דרך "אישור" בשורה');
+});
+
+// ביקורת W3 #3: לחיצה כפולה על "אישור" = POST אחד
+test('אישור שורה חדשה בלחיצה כפולה: POST אחד בלבד; אחרי שהסתיים אפשר שוב', async () => {
+  const me = mine({ items: [newLocal()], queues: { '/api/orders/53375/items': [{ status: 500, body: { error: 'x' } }] } });
+  const item = me.state.items[0];
+  const [a, b] = await Promise.all([me.act.confirmItem(item), me.act.confirmItem(item)]);
+  assert.equal(me.srv.calls.length, 1);
+  assert.equal(b.busy, true);
+  assert.equal(a.ok, false);
+  await me.act.confirmItem(item);
+  assert.equal(me.srv.calls.length, 2, 'המפתח משתחרר בסיום (ניסיון חוזר אחרי כשל)');
+});
+test('אישור שורה חדשה: לחיצה כפולה גם בזמן שחלון אישור המנהל פתוח → אישור אחד', async () => {
+  const me = mine({ items: [newLocal()], settings: [{ key: 'require_manager_code_for_item_changes', value: 'true' }], queues: { '/api/orders/53375/items': [{ body: SERVER_ORDER }] } });
+  await Promise.all([me.act.confirmItem(me.state.items[0]), me.act.confirmItem(me.state.items[0])]);
+  assert.equal(me.out.approvals.length, 1);
+  assert.equal(me.srv.calls.length, 1);
+});
+
 test('R32 הוספה כשהמכסה מלאה: בלי הודעה ובלי שורה (בישן: alert "הגבלת מערכת")', async () => {
   const me = mine({ items: [it('a1'), it('a2')], settings: [{ key: 'max_items_per_order', value: '2' }], queues: {} });
   const r = await me.act.addItem({ model: { id: 'm', name: 'x' }, sizeText: '38' });
