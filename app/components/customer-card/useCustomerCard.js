@@ -318,7 +318,7 @@ export default function useCustomerCard(customerId, ui) {
     await ui.openDialog(CcMailSheet, {
       customer: saved,
       ui,
-      guard: mailGuard,
+      onGuard: (fn) => { mailGuard.current = fn; },
       onSent: ({ to, count, links }) => {
         ui.toast('info', `נשלח ל-${to} · ${count === 0 ? 'ללא קבצים' : count === 1 ? 'קובץ אחד' : `${count} קבצים`}`, links.length ? `${links.length} קבצים בדרייב עם הרשאת הורדה מלאה` : '');
         setHistoryTick((t) => t + 1);

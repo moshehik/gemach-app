@@ -5,6 +5,7 @@
 // "שלם ₪" כשאין שינויים ויש חוב. זו הדרך היחידה לשמור את הכרטיס (בלי כפתור שמירה בתחתית הטופס - הבעלים save2).
 
 import { useEffect, useRef, useState } from 'react';
+import useFreshKeys from './useFreshKeys';
 import CcIcon from './CcIcon';
 import { signatureState } from './customerCardLogic';
 import { missingRequiredFields } from '@/lib/customerRequiredFields';
@@ -14,7 +15,6 @@ const ordersText = (n) => (n === 1 ? 'הזמנה אחת' : `${n} הזמנות`);
 
 export default function CcRail({ cc, open, setOpen }) {
   const { cur, changes, dirty, account } = cc;
-  const prevKeys = useRef(new Set());
   const [leaving, setLeaving] = useState(null);
   const prevCount = useRef(changes.length);
   const [bump, setBump] = useState(false);
@@ -23,8 +23,7 @@ export default function CcRail({ cc, open, setOpen }) {
     prevCount.current = changes.length;
     return undefined;
   }, [changes.length]);
-  const fresh = new Set(changes.map((c) => c.key).filter((k) => !prevKeys.current.has(k)));
-  useEffect(() => { prevKeys.current = new Set(changes.map((c) => c.key)); });
+  const [fresh, clearFresh] = useFreshKeys(changes.map((c) => c.key));
 
   const sig = signatureState(cur);
   const nOrd = (cur.orders || []).length;
@@ -59,7 +58,7 @@ export default function CcRail({ cc, open, setOpen }) {
       <div className="cart-body">
         <div className="cart-list">
           {changes.length ? changes.map((c) => (
-            <div key={c.key} className={`cl${fresh.has(c.key) ? ' enter' : ''}${leaving === c.key ? ' leaving' : ''}`} data-key={c.key} data-rich={`chg|${c.key}`} tabIndex={0}>
+            <div key={c.key} className={`cl${fresh.has(c.key) ? ' enter' : ''}${leaving === c.key ? ' leaving' : ''}`} data-key={c.key} data-rich={`chg|${c.key}`} tabIndex={0} onAnimationEnd={(e) => { if (e.target === e.currentTarget) clearFresh(c.key); }}>
               <div className="cl-i"><CcIcon name={c.icon} anim={false} /></div>
               <div className="cl-t"><span><b>{c.label}</b> {c.verb}</span><small><bdi>{c.note}</bdi></small></div>
               <button type="button" className="cl-u" data-act="undo" data-k={c.key} aria-label="ביטול השינוי" data-tip="ביטול" onClick={() => undo(c.key, c.field)}><CcIcon name="bk" size="sm" /></button>

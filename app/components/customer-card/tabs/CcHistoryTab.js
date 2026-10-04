@@ -64,7 +64,7 @@ export default function CcHistoryTab({ cc, ui, active }) {
     if (!active || loaded.current === cc.historyTick) return;
     loaded.current = cc.historyTick;
     fetchPage(null);
-  }, [active, cc.historyTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, cc.historyTick]);
 
   useEffect(() => {
     if (!popOpen) return undefined;
@@ -141,8 +141,8 @@ export default function CcHistoryTab({ cc, ui, active }) {
           const pairs = (e.details || []).filter(([k]) => !(e.from !== undefined && (k === 'לפני' || k === 'אחרי')));
           const toggle2 = () => setOpen((s) => ({ ...s, [e.id]: !o }));
           return (
-            <article key={e.id} className={`hrow${o ? ' open' : ''}`} data-hv={e.id} aria-expanded={o} style={{ '--i': Math.min(i, 12) }}>
-              <div className="li rlink lrow" role="button" tabIndex={0} onClick={toggle2} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle2(); } }}>
+            <article key={e.id} className={`hrow${o ? ' open' : ''}`} data-hv={e.id} style={{ '--i': Math.min(i, 12) }}>
+              <div className="li rlink lrow" role="button" tabIndex={0} aria-expanded={o} onClick={toggle2} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggle2(); } }}>
                 <div className="ic-b"><CcIcon name={e.icon || 'clock'} /><span className="rlbl">{CAT_LABEL[e.category] || 'רישום'}</span></div>
                 <div className="t"><b><Hl text={e.title} words={words} /></b><span className="ln">{e.hebrewDate} · <bdi>{e.time}</bdi> · <Hl text={who} words={words} />{e.detail ? <> · <Hl text={e.detail} words={words} /></> : null}{amt ? <> · <bdi dir="ltr">{amt}</bdi></> : null}</span></div>
                 <span className="go" aria-hidden="true"><CcIcon name="chev" size="sm" /></span>

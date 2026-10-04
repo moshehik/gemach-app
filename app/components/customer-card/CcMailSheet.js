@@ -35,7 +35,7 @@ function DiscardMailDialog({ close }) {
 }
 DiscardMailDialog.ccLayer = 2;
 
-export default function CcMailSheet({ customer, ui, guard, onSent, close, fetchImpl, pdfImpl }) {
+export default function CcMailSheet({ customer, ui, onGuard, onSent, close, fetchImpl, pdfImpl }) {
   const [subject, setSubject] = useState(() => mailSubjectFor(customer));
   const [body, setBody] = useState('');
   const [docs, setDocs] = useState([]); // מזהי מסמכים שנבחרו
@@ -57,7 +57,8 @@ export default function CcMailSheet({ customer, ui, guard, onSent, close, fetchI
     const yes = await ui.openDialog(DiscardMailDialog, {}, { layer: 2, labelledBy: 'disc-t' });
     if (yes) close(false); else if (bodyRef.current) bodyRef.current.focus();
   };
-  useEffect(() => { if (guard) guard.current = tryClose; });
+  // Escape / לחיצה על הרקע עוברים דרך "לזרוק את המייל?" - ההורה מקבל את הפונקציה דרך onGuard
+  useEffect(() => { if (onGuard) onGuard(tryClose); });
 
   // גובה תיבת התוכן גדל עם הטקסט (כמו בעיצוב)
   useEffect(() => { const ta = bodyRef.current; if (ta) { ta.style.height = 'auto'; ta.style.height = `${Math.max(ta.scrollHeight, 150)}px`; } }, [body]);

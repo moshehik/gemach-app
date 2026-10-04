@@ -59,7 +59,8 @@ export default function CcApprovalDialog({ level, reason, customerId, close }) {
     return w ? emps.filter((e) => `${e.firstName || ''} ${e.lastName || ''}`.includes(w)) : emps;
   }, [emps, q]);
 
-  const locked = lockedUntil > Date.now();
+  // lockedUntil חוזר ל-0 בסוף הנעילה (האפקט למעלה) - בלי Date.now() בזמן רינדור
+  const locked = lockedUntil > 0;
   const canSubmit = !busy && !locked && !!sel && code.trim().length > 0;
 
   const submit = async () => {

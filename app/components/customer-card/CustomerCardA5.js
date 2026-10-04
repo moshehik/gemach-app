@@ -19,6 +19,7 @@ import CcTopbar from './CcTopbar';
 import CcRail from './CcRail';
 import CcRich, { RichLine } from './CcRich';
 import useCustomerCard from './useCustomerCard';
+import useFreshKeys from './useFreshKeys';
 import { orderEventIso, orderRequired, signatureState, sortOrders } from './customerCardLogic';
 import CcDetailsTab from './tabs/CcDetailsTab';
 import CcOrdersTab from './tabs/CcOrdersTab';
@@ -94,10 +95,8 @@ function DeletedBanner({ cc }) {
 }
 
 function Tabs({ cc, ui }) {
-  const seen = useRef({});
-  const freshNow = {};
-  Object.values(cc.markers).forEach((m) => { freshNow[m.key] = !seen.current[m.key]; });
-  useEffect(() => { const n = {}; Object.values(cc.markers).forEach((m) => { n[m.key] = 1; }); seen.current = n; });
+  // סמן "fresh" רק בהופעה הראשונה של כל סמן (כמו __tabMk בעיצוב); נעלם ומופיע שוב = fresh שוב
+  const [freshMk, clearMk] = useFreshKeys(Object.values(cc.markers).map((m) => m.key), { initialFresh: true });
   const ids = TAB_DEFS.map((t) => t.id);
   const onKey = (e) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
@@ -122,7 +121,7 @@ function Tabs({ cc, ui }) {
               <span className="tico">
                 <CcIcon name={t.icon} />
                 {t.id === 'orders' ? <span className="cnt">{(cc.cur.orders || []).length}</span> : null}
-                {m ? <span className={`tabmk ${m.cls}${freshNow[m.key] ? ' fresh' : ''}`} data-tip={m.tip} role="img" aria-label={m.tip}><CcIcon name={m.icon} size="sm" anim={false} /></span> : null}
+                {m ? <span className={`tabmk ${m.cls}${freshMk.has(m.key) ? ' fresh' : ''}`} data-tip={m.tip} role="img" aria-label={m.tip} onAnimationEnd={(e) => { if (e.target === e.currentTarget) clearMk(m.key); }}><CcIcon name={m.icon} size="sm" anim={false} /></span> : null}
               </span>
               {t.label}
             </button>
@@ -144,7 +143,7 @@ function Tabs({ cc, ui }) {
 
 // כרטיסי הריחוף העשירים (railrich): חתימה, הזמנות, תשלום, פרטים, ושורת שינוי במסילה
 function useRichRender(cc) {
-  return (spec) => {
+  return function renderRichSpec(spec) {
     if (!cc.cur) return null;
     const k = spec.indexOf('|');
     const t = k < 0 ? spec : spec.slice(0, k);
