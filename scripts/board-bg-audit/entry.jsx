@@ -1,7 +1,7 @@
 // הלוח החודשי האמיתי (BoardPage + board.css + schedule.css + כל ה-CSS הגלובלי של האתר) עם API מדומה - בלי DB ובלי שרת פיתוח.
-// תרחישים לפי ?scn=: (ריק) לוח רגיל | loading (ההזמנות לא חוזרות) | nostages (403 על המונים) | noschedule (בלי הרשאה ללו״ז)
-// | gate (חלון "אין הרשאה" לעובדת) | guest (חלון "אין הרשאה" לאורח) | legacy (חלון ההשכרה הקיים RentalReturnModal - בדיקת ה-hook)
-// | bpp (ארגון עם enable_batch_print_prep, בלי הרשאה ללו״ז) | noalt (enable_alterations=false).
+// תרחישים לפי ?scn=: (ריק) לוח רגיל | loading (ההזמנות לא חוזרות) | nostages (403 על המונים) | noschedule (המדומה: עובדת בלי הרשאה
+// ללו״ז - ללוח זה לא משנה, BD-O3) | gate (חלון "אין הרשאה" לעובדת) | guest (חלון "אין הרשאה" לאורח) | legacy (חלון ההשכרה הקיים
+// RentalReturnModal - בדיקת ה-hook המשותף) | bpp (enable_batch_print_prep - לא בשימוש בלוח) | noalt (enable_alterations=false).
 import '../../app/globals.css';
 import '../../app/design-overrides.css';
 import '../../app/design-system.css';
@@ -106,7 +106,7 @@ window.fetch = async (url, opts) => {
   ]);
   if (u.startsWith('/api/board/stages')) {
     if (scn === 'nostages') return j({ error: 'Forbidden' }, 403);
-    return j({ from: range.from, to: range.to, today: todayKey, stages: STAGES, days: DAYS, truncated: false, canOpenSchedule: scn !== 'noschedule' && scn !== 'bpp' });
+    return j({ from: range.from, to: range.to, today: todayKey, stages: STAGES, days: DAYS, truncated: false });
   }
   if (/^\/api\/orders\/\d+/.test(u)) return j(RENTAL(u.split('/')[3].split('?')[0]));
   if (u.startsWith('/api/orders?')) return j({ data: ORDERS });

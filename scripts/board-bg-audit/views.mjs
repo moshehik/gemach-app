@@ -1,5 +1,5 @@
-// צילומי מסך של כל החלונות/המצבים של הלוח האמיתי (API מדומה): לוח, מסנן פתוח, בורר חודשים, חלון יום (בסצנה בלי הרשאה ללו״ז), חלונית פרטים,
-// תפריט, חלון השכרה, "בטוח?", פרטי פריט, רשימה, טעינה, שער. שימוש: node views.mjs <רוחב> <תיקיית פלט>
+// צילומי מסך של המצבים של הלוח האמיתי (API מדומה): לוח, מסנן פתוח, בורר חודשים, רשימה, טעינה, שער (אין חלונות נוספים - BD-O3).
+// שימוש: node views.mjs <רוחב> <תיקיית פלט>
 import { serve, launch, sleep, PORT } from './lib.mjs';
 const width = Number(process.argv[2] || 1280);
 const out = process.argv[3];
@@ -21,24 +21,10 @@ await click('#bdSearch .hf-o:nth-child(3)'); await click('#bdSearch .hf-o:nth-ch
 await go('');
 await click('#mJump'); await shot('04-month-picker');
 await p.keyboard.press('Escape');
-if (width > 720) {
-  await go('noschedule'); await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(500); await shot('05-day-dialog');
-  await hover('.bd-day .bd-info'); await shot('06-info-hint');
-  await click('.bd-day .bd-or .li'); await shot('07-menu');
-  await p.evaluate(() => [...document.querySelectorAll('.bd-menu-w .menu button')].find((x) => /השכרה/.test(x.textContent)).click());
-  await sleep(900); await shot('08-rental');
-  await click('.bd-rent .bd-ri:nth-child(3) .bd-danger'); await shot('09-confirm');
-  await p.keyboard.press('Escape'); await sleep(300);
-  await click('.bd-rent .bd-ri:nth-child(1) .bd-info'); await sleep(500); await shot('10-item-details');
-  await p.keyboard.press('Escape'); await sleep(300);
-  await click('.bd-rent .bd-ri:nth-child(1) .btn.primary'); await click('.bd-rent .bd-link'); await shot('11-manual-entry');
-}
 await go('');
-await click('#mvsw .vopt:nth-child(3)'); await shot('12-list', true);
-await go('loading'); await shot('13-loading');
-await go('gate'); await shot('14-gate');
-await go('guest'); await shot('15-guest');
-await go('bpp');
-if (width > 720) { await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(500); await shot('16-day-bpp'); }
+await click('#mvsw .vopt:nth-child(3)'); await shot('05-list', true);
+await go('loading'); await shot('06-loading');
+await go('gate'); await shot('07-gate');
+await go('guest'); await shot('08-guest');
 console.log(errs.join('\n') || 'no errors');
 await b.close(); s.close(); process.exit(0);

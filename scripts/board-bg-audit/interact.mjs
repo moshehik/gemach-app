@@ -1,7 +1,7 @@
 // בדיקת התנהגות של הלוח האמיתי בדפדפן (API מדומה מ-entry.jsx): חיפוש (search לשרת) וניקוי, ניווט חודשים (חצים במסך
-// ובמקלדת, "החודש הנוכחי", בורר החודשים), מתג לוח/רשימה, מסנן השלבים, לחיצה על יום (לו״ז), בתא וברשימה רק מונים וסמנים (BD-O4 /
-// BD-O5), חלון היום (נפתח רק בלי הרשאה ללו״ז, F12; בלי סטטוס ובלי הדפסה), תפריט הפעולות, חלונית הפרטים, חלון ההשכרה
-// (ביטול השכרה -> "בטוח?" -> PUT), החלון הקיים (אותו hook), השער. OK/FAIL; יוצא 1 בכישלון.
+// ובמקלדת, "החודש הנוכחי", בורר החודשים), מתג לוח/רשימה, מסנן השלבים, לחיצה על יום = הלו״ז היומי בעכבר / Enter / Ctrl (BD-O3,
+// בלי חלון בשום מצב, גם בלי הרשאה ללו״ז), בתא וברשימה רק מונים וסמנים (BD-O4 / BD-O5), הגדרות איחור, השער, והחלון הקיים של
+// ההשכרה והחזרה (אותו hook, נשאר ב-/orders ו-/rentals). OK/FAIL; יוצא 1 בכישלון.
 // שימוש: node scripts/board-bg-audit/interact.mjs   (אחרי build.mjs)
 import { serve, launch, sleep, PORT } from './lib.mjs';
 let fails = 0;
@@ -68,76 +68,53 @@ await click('#bdSearch .hf-allb');
 ok((await p.$$eval('.lz-pr', (x) => x.length)) === before, 'S01: "הצג הכל" מחזיר את כל המונים');
 await p.keyboard.press('Escape'); await sleep(200);
 
-// לחיצה על יום / מורחב / תפריט
+// לחיצה על יום (BD-O3): תמיד -> דף הלו״ז של היום, בלי חלון, בעכבר ובמקלדת (Enter על הקישור)
+const noDlg = () => p.evaluate(() => !document.querySelector('.scrim, [role=dialog]:not(.bd-mp), .dlg, #dlg, .bd-day, .bd-rent, .bd-menu-w'));
 await p.evaluate(() => document.querySelector('.lz-day .lz-dh b').click()); await sleep(200);
-ok(/^\/schedule\?date=\d{4}-\d{2}-\d{2}$/.test((await nav()).slice(-1)[0] || ''), 'S06: לחיצה על יום -> /schedule?date=');
-// F12: חלון "הזמנות ליום" נפתח רק כשאין הרשאה ללו״ז (בלי אייקון בתא). יום 4 בחודש במדומה = 4 הזמנות
-await go('noschedule');
-await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(400);
-ok(!!(await p.$('.dlg.bd-day')) && !(await nav()).some((u) => u.startsWith('/schedule')), 'E17/F12: בלי הרשאה ללו״ז - לחיצה על יום פותחת את חלון "הזמנות ליום"');
-ok(!(await p.$('.bd-day .chip:not(.bd-latechip)')) && !(await p.$('.bd-day .bd-rb[aria-label*="הדפסת"]')), 'BD-O7 + BD-O6: בחלון היום אין תגית סטטוס ואין לחצן הדפסה');
-ok((await p.$$eval('.bd-day .st-stab', (x) => x.map((b) => b.textContent.trim()))).every((t) => /הכל|באיחור החזרה/.test(t)), 'BD-O7: בציר חלון היום רק "הכל" / "באיחור החזרה" - בלי ציר סטטוס');
-const n0 = await p.$$eval('.bd-day .bd-or', (x) => x.length);
-await p.type('#bdDayQ', '510'); await sleep(200);
-ok((await p.$$eval('.bd-day .bd-or', (x) => x.length)) <= n0, 'E17: שדה הסינון בחלון');
-await p.$eval('#bdDayQ', (e) => { e.value = ''; }); await click('.bd-day .inpx');
-await p.hover('.bd-day .bd-info'); await sleep(300);
-ok(!!(await p.$('.pl-rt.bd-rt')) && !(await p.evaluate(() => document.querySelector('.pl-rt.bd-rt').textContent.includes('לועזי'))), 'E14: חלונית פרטים בריחוף, בלי תאריך לועזי');
-ok(await p.$eval('.bd-day .bd-info', (e) => getComputedStyle(e).borderRadius === '50%'), 'E14: לחצן המידע עגול');
-await p.mouse.move(2, 2); await sleep(200);
-await click('.bd-day .bd-or .li');
-ok((await p.$$eval('.bd-menu-w .menu button', (x) => x.map((b) => b.textContent.trim()))).join('|').includes('כרטיס הזמנה'), 'E15: תפריט פעולות');
-await p.evaluate(() => [...document.querySelectorAll('.bd-menu-w .menu button')].find((x) => /כרטיס הזמנה/.test(x.textContent)).click()); await sleep(200);
-ok(/^\/orders\/\d+$/.test((await nav()).slice(-1)[0]), 'E15: "כרטיס הזמנה" -> /orders/<id>');
-await click('.bd-day .bd-or .li');
-await p.evaluate(() => [...document.querySelectorAll('.bd-menu-w .menu button')].find((x) => /כרטיס השכרה/.test(x.textContent)).click()); await sleep(900);
-ok(!!(await p.$('.dlg.bd-rent')) && !(await p.$('.dlg.bd-day')), 'E16: "כרטיס השכרה" פותח את חלון ההשכרה (וסוגר את חלון היום)');
-ok((await calls()).some((x) => /^\/api\/orders\/\d+$/.test(x.url)), 'E16: טעינת ההזמנה /api/orders/<id>');
-await click('.bd-rent .bd-ri:nth-child(3) .bd-danger'); // ביטול השכרה
-ok(!!(await p.$('#dlg.bd-cf')), 'E16: "ביטול השכרה" -> חלון "בטוח?" של הפלטה (לא confirm של הדפדפן)');
-await click('#dlg.bd-cf .btn.primary'); await sleep(400);
-ok((await calls()).some((x) => x.url === '/api/rentals/cancel' && x.method === 'PUT' && /orderItemId/.test(x.body)), 'E16: אישור -> PUT /api/rentals/cancel');
-await click('.bd-rent .bd-ri:nth-child(1) .btn.primary'); // השכרה
-await p.type('.bd-rin input', '4512380001'); await p.keyboard.press('Enter'); await sleep(500);
-ok((await calls()).some((x) => x.url === '/api/rentals/scan' && /itemIdToForce/.test(x.body)), 'E16: השכרה לפריט -> POST /api/rentals/scan עם itemIdToForce');
-await p.type('.bd-scan input', '189310002'); await p.keyboard.press('Enter'); await sleep(600);
-ok(!!(await p.$('#dlg.bd-cf')) || (await calls()).some((x) => x.url.startsWith('/api/returns/scan')), 'E16: סריקה מהירה של פריט מושכר -> החזרה (או שאלת איחור)');
-if (await p.$('#dlg.bd-cf')) { await click('#dlg.bd-cf .btn.ghost'); await sleep(500); }
-// חלון קופץ של האתר מעל (אישור מנהל / הדפסה ומייל = .modal-backdrop): Esc שלו לא סוגר את חלון ההשכרה
-await p.evaluate(() => { const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'fakePop'; d.innerHTML = '<input id="fakePin">'; document.body.appendChild(d); document.getElementById('fakePin').focus(); });
-await p.keyboard.press('Escape'); await sleep(400);
-ok(!!(await p.$('.dlg.bd-rent')) && !(await p.$('#dlg.bd-cf')), 'Esc בחלון קופץ מעל (modal-backdrop) לא סוגר את חלון ההשכרה');
-await p.evaluate(() => document.getElementById('fakePop').remove());
-await p.focus('.bd-scan input');
-await p.keyboard.press('Escape'); await sleep(500);
-if (await p.$('#dlg.bd-cf')) { await click('#dlg.bd-cf .btn.primary'); await sleep(500); }
-ok(!(await p.$('.dlg.bd-rent')) || !!(await p.$('#dlg.bd-cf')), 'E16: Esc = סגירת החלון (עם בדיקת שינויים)');
-
-// בלי הרשאה ללו״ז: לחיצה על יום פותחת את חלון היום
-await go('noschedule');
-await p.evaluate(() => { document.querySelectorAll('.lz-day')[3].querySelector('.lz-dh b').click(); }); await sleep(400);
-ok(!!(await p.$('.dlg.bd-day')), 'S06: בלי page:schedule - לחיצה על יום פותחת את חלון "הזמנות ליום"');
-// בלי מונים (403) - הלוח עובד
-await go('nostages');
-ok((await p.$$('.lz-day')).length >= 29 && (await p.$$('.lz-pr')).length === 0, 'כשל במונים: הלוח מוצג בלי מונים');
-await p.evaluate(() => document.querySelector('.lz-day .bd-dlink').click()); await sleep(400);
-ok(!!(await p.$('.dlg.bd-day')) && !(await nav()).some((u) => u.startsWith('/schedule')), 'ממצא 4: הרשאה ללו״ז לא ידועה (המונים נכשלו) - לחיצה על יום פותחת את חלון היום, לא /schedule');
+ok(/^\/schedule\?date=\d{4}-\d{2}-\d{2}$/.test((await nav()).slice(-1)[0] || '') && await noDlg(), 'S06 / BD-O3: לחיצה על אות היום -> /schedule?date= (בלי חלון)');
+const navN0 = (await nav()).length;
+await p.evaluate(() => document.querySelectorAll('.lz-day')[10].click()); await sleep(200);
+const navA = await nav();
+ok(navA.length === navN0 + 1 && navA[navA.length - 1] === '/schedule?date=' + await p.evaluate(() => document.querySelectorAll('.lz-day')[10].getAttribute('data-d')) && await noDlg(), 'BD-O3: לחיצה על שטח התא (לא על הקישור) -> אותו יום, בלי חלון');
+await p.focus('.lz-day .bd-dlink'); await p.keyboard.press('Enter'); await sleep(200);
+const navB = await nav();
+ok(navB.length === navA.length + 1 && /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/.test(navB[navB.length - 1]), 'BD-O3: Enter על קישור היום במקלדת -> /schedule?date= (a11y: קישור אמיתי)');
+ok(await p.evaluate(() => { const a = document.querySelector('.lz-day .bd-dlink'); return a.tagName === 'A' && /^\/schedule\?date=\d{4}-\d{2}-\d{2}$/.test(a.getAttribute('href')) && !!a.getAttribute('aria-label'); }), 'BD-O3: כל יום = <a href="/schedule?date=..."> עם aria-label');
+// Ctrl+לחיצה = התנהגות קישור רגילה: הקוד לא מבטל את ברירת המחדל (אחרת הדפדפן לא פותח טאב חדש) ולא מנווט בצד הלקוח.
+// מאזין על שורש האפליקציה (אחרי React) רושם אם ברירת המחדל עדיין פעילה, ואז מבטל אותה כדי שהבדיקה לא תפתח טאב אמיתי.
+const navC0 = (await nav()).length;
+const ctrlDefault = await p.evaluate(() => new Promise((res) => {
+  const a = document.querySelector('.lz-day .bd-dlink');
+  const root = document.getElementById('root');
+  const h = (e) => { root.removeEventListener('click', h); res(!e.defaultPrevented); e.preventDefault(); };
+  root.addEventListener('click', h); // אחרי המאזין של React על אותו צומת (נרשם ראשון)
+  a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+}));
+await sleep(150);
+ok(ctrlDefault === true && (await nav()).length === navC0, 'BD-O3: Ctrl+לחיצה לא מנווט בצד הלקוח וברירת המחדל של הקישור נשמרת (נפתח בטאב חדש כמו כל קישור)');
+// אין יותר ערוץ לחלון היום / תפריט הזמנה / חלון השכרה: אותה התנהגות גם בלי הרשאה ללו״ז ובלי מונים
+for (const scn of ['noschedule', 'bpp', 'nostages']) {
+  await go(scn);
+  const k0 = (await nav()).length;
+  await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(300);
+  const nv = await nav();
+  ok(nv.length === k0 + 1 && /^\/schedule\?date=/.test(nv[nv.length - 1]) && await noDlg(), 'BD-O3: ' + scn + ' - לחיצה על יום עדיין /schedule?date= ובלי חלון (אין חלופה לפי הרשאה)');
+}
 await go('');
-ok(await p.evaluate(() => !document.querySelector('[role=grid],[role=link]') && document.querySelectorAll('.hc-g [role=listitem]').length >= 29 && !!document.querySelector('.lz-day a.bd-dlink[href^="/schedule?date="]')), 'נגישות: list/listitem, קישור רק בכותרת היום');
-ok(await p.evaluate(() => { const c = document.querySelector('.lz-day.bd-latecell'); return !!c && getComputedStyle(c).boxShadow.includes('inset') && !!c.querySelector('.lz-al'); }), 'GAP-4: תא עם איחור החזרה - מסגרת אדומה + סימן ההתראה (נשארים כסמנים)');
-ok(await p.evaluate(() => [...document.querySelectorAll('.lz-day.bd-latecell')].every((c) => c.querySelector('.lz-al'))), 'GAP-4: לכל תא עם מסגרת אדומה יש סימן התראה');
+ok(await p.evaluate(() => !document.querySelector('.bd-or, .bd-info, .pl-rt, .bd-menu-w, .bd-rent, .bd-day, [aria-haspopup=menu]')), 'BD-O3: אין בדף שורות הזמנה / לחצן מידע / תפריט הזמנה / חלון השכרה / חלון יום');
+ok(!(await calls()).some((x) => /^\/api\/orders\/\d+/.test(x.url) || /\/api\/(rentals|returns)\//.test(x.url)), 'BD-O3: הלוח לא קורא לשום API של השכרה / החזרה / הזמנה בודדת');
+ok(await p.evaluate(() => !!document.querySelector('.gm-pvt') === false), 'מתג ישן/חדש: לא מוצג בלי הרשאת מעבר (בהרצה זו אין UiVariantContext)');
+ok(await p.evaluate(() => document.querySelector('.topbar .ttl .pg-ttl')?.textContent.trim() === 'לוח חודשי'), 'JDG-1: כותרת "לוח חודשי"');
 // BD-O5: תצוגת רשימה = כותרת יום + מונים בלבד (בלי שורות הזמנה)
-await go(''); await click('#mvsw .vopt:nth-child(3)');
+await click('#mvsw .vopt:nth-child(3)');
 ok(await p.evaluate(() => document.querySelectorAll('.bd-lday').length > 5 && [...document.querySelectorAll('.bd-lday')].every((d) => !!d.querySelector('.hday.bd-hday') && !d.querySelector('.bd-or, article, .chip')) && [...document.querySelectorAll('.bd-lday')].filter((d) => d.querySelectorAll('.bd-lc .lz-pr').length > 0).length > 5), 'BD-O5: ברשימה לכל יום כותרת, מוני שלבים מתחת, בלי שורות הזמנה');
 ok(await p.evaluate(() => { const d = document.querySelector('.bd-lday'); return d.querySelectorAll('.bd-lc .lz-pr').length === d.querySelectorAll('.lz-pr').length; }), 'BD-O5: המונים ברשימה הם אותם lz-pr של התא');
-await p.evaluate(() => document.querySelector('.bd-lday .hday').click()); await sleep(200);
-ok(/^\/schedule\?date=\d{4}-\d{2}-\d{2}$/.test((await nav()).slice(-1)[0] || ''), 'S06: לחיצה על כותרת יום ברשימה -> /schedule?date=');
+ok(await p.evaluate(() => [...document.querySelectorAll('.bd-lday .hday')].every((a) => a.tagName === 'A' && /^\/schedule\?date=/.test(a.getAttribute('href')))), 'BD-O3: כותרת יום ברשימה = קישור <a href="/schedule?date=...">');
+await p.focus('.bd-lday .hday'); await p.keyboard.press('Enter'); await sleep(200);
+ok(/^\/schedule\?date=\d{4}-\d{2}-\d{2}$/.test((await nav()).slice(-1)[0] || '') && await noDlg(), 'S06 / BD-O3: Enter על כותרת יום ברשימה -> /schedule?date=');
 // טעינה
 await go('loading');
 ok(await p.evaluate(() => document.body.textContent.includes('טוען נתונים...') && !!document.querySelector('.bd-loading .mspin')), 'E18: "טוען נתונים..."');
-// BD-O6: גם בארגון עם enable_batch_print_prep (בלי הרשאה ללו״ז, כדי שהחלון ייפתח) אין הדפסת יום בחלון
-await go('bpp'); await p.evaluate(() => document.querySelectorAll('.lz-day')[3].querySelector('.bd-dlink').click()); await sleep(400);
-ok(!!(await p.$('.dlg.bd-day')) && !(await p.$('.bd-day [aria-label*="הדפסת"]')) && (await p.evaluate(() => window.__opened)).length === 0, 'BD-O6: בארגון עם enable_batch_print_prep אין לחצן הדפסת יום בחלון');
 // שער
 await go('gate');
 ok(await p.evaluate(() => document.body.textContent.includes('אין הרשאת גישה') && !!document.querySelector('.gm-gate .dlg.dk')), 'E19: חלון "אין הרשאה" בעיצוב החדש');
