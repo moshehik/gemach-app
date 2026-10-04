@@ -153,10 +153,12 @@ export function createOrderCardFlows(env) {
       });
       if (res.ok) {
         const data = await res.json();
-        const manual = st.obligations.filter(o => o.isManual !== false && !o.isDeleted);
+        // חיוב ידני שנמחק מקומית (isDeleted) נשאר ברשימה - שמירה שבוטלה אחרי החלון (אישור מנהל / התנגשות) לא מאבדת את המחיקה (סקירה, C7);
+        // הוא לא נספר בסכום
+        const manual = st.obligations.filter(o => o.isManual !== false);
         const autoPreview = (data.newObligations || []).map(o => ({ ...o, isPreview: true }));
         previewObligations = [...manual, ...autoPreview];
-        previewTotal = previewObligations.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+        previewTotal = previewObligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       }
     } catch (err) {
       console.error('Failed to compute pre-save summary preview', err);
@@ -483,7 +485,7 @@ export function createOrderCardFlows(env) {
     return { ok: true, overwrote, order: data };
   }
 
-  async function toggleSignature({ confirmed = false } = {}) {
+  async function toggleSignatureCore({ confirmed = false } = {}) {
     const order = env.get().order;
     const nowYes = !order.hasSignedRegulations;
     if (!confirmed) {
@@ -501,6 +503,9 @@ export function createOrderCardFlows(env) {
       return false;
     }
   }
+
+  // לחיצה כפולה על "חתימה" פתחה שני חלונות אישור בתור - רק אחד בכל רגע (סקירה, C7)
+  const toggleSignature = exclusive('sign', toggleSignatureCore, false);
 
   return { requestZeout, reload, putOrder, confirmSummaryIfNeeded, save, applyServerOrder, exit, discardAll, deleteOrder, toggleSignature, patchServer, isBusy: () => inFlight };
 }
