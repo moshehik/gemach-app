@@ -43,7 +43,7 @@ export async function resolve(spec, ctx, next) {
 export async function load(url, ctx, next) {
   if (url === 'mock:prisma') return { format: 'module', shortCircuit: true, source: 'export default globalThis.__T.prisma; export const getActingEmployeeId = async () => globalThis.__T.me;' };
   if (url === 'mock:auth') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const checkAuth=async()=>T.authed; export const getSessionEmployee=async()=>T.session;' };
-  if (url === 'mock:permissions') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const canOpenPage=async(k)=>{T.asked.push(k);return T.pages.has(k);}; export const hasPermission=async(e,k)=>{T.asked.push(k);return !!e&&(([0,2].includes(e.roleId))||T.grants.has(e.id+"|"+k));};' };
+  if (url === 'mock:permissions') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const canOpenPage=async(k)=>{T.asked.push(k);return T.pages.has(k);}; export const hasPermission=async(e,k)=>{T.asked.push(k);return !!e&&(([0,1,2].includes(e.roleId))||T.grants.has(e.id+"|"+k));};' };
   if (url === 'mock:next-server') return { format: 'module', shortCircuit: true, source: 'export class NextResponse { static json(body, init){ return new Response(JSON.stringify(body), { status:(init&&init.status)||200, headers:{"content-type":"application/json"} }); } }' };
   if (url === 'mock:next-headers') return { format: 'module', shortCircuit: true, source: 'export const cookies=async()=>({get(){return undefined}});' };
   return next(url, ctx);
@@ -243,22 +243,22 @@ await t('?employeeId של עובדת אחרת: עובדת רגילה 403 (בלי
   assert.equal((await call('/api/me/recent-activity?employeeId=emp-me')).status, 200);
 });
 console.log('MY-04: הנהלה עוברת לעובדת אחרת');
-await t('המפתח הוא feature:view_others_recent_activity: enforced, ברירת מחדל הנהלה ראשית ומתכנת בלבד', () => {
+await t('המפתח הוא feature:view_others_recent_activity: enforced, ברירת מחדל הנהלה ראשית, מנהלות סניף ומתכנת', () => {
   const item = PERMISSION_CATALOG.find((i) => i.key === 'feature:view_others_recent_activity');
   assert.ok(item && item.group === 'features' && item.type === 'boolean' && item.enforced === true);
-  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((r) => defaultValueForRoleId(item, r)), [true, false, true, false, false, false, false]);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((r) => defaultValueForRoleId(item, r)), [true, true, true, false, false, false, false]);
 });
-await t('מנהלת סניף (roleId 1) -> עובדת אחרת: 403, בלי שאילתות', async () => {
-  reset(); as('emp-me', 1); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403); assert.equal(T.calls.length, 0);
+await t('מנהלת סניף (roleId 1) -> עובדת אחרת: 200 עם הרשימות של האחרת (החלטת הבעלים MY-06, אפשרות ב)', async () => {
+  reset(); as('emp-me', 1); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 200); assert.deepEqual(r.body.created.map((x) => x.orderNumber), [1007, 1006, 1002]);
 });
 await t('עובדת רגילה -> עובדת אחרת: 403 גם כשהיא שולחת מזהה קיים', async () => {
   reset(); as('emp-me', 3); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403); assert.equal(T.calls.length, 0);
 });
-await t('הרשאה שניתנה במפורש (שורת הרשאה) למנהלת סניף: 200 - הנאכף הוא המפתח, לא התפקיד', async () => {
-  reset(); as('emp-me', 1); T.grants.add('emp-me|feature:view_others_recent_activity'); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 200);
+await t('הרשאה שניתנה במפורש (שורת הרשאה) לעובדת רגילה: 200 - הנאכף הוא המפתח, לא התפקיד', async () => {
+  reset(); as('emp-me', 3); T.grants.add('emp-me|feature:view_others_recent_activity'); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 200);
 });
-await t('הנהלה ראשית (0) ומתכנת (2) -> עובדת אחרת: 200 עם הרשימות של האחרת, לא שלי', async () => {
-  for (const role of [0, 2]) {
+await t('הנהלה ראשית (0), מנהלת סניף (1) ומתכנת (2) -> עובדת אחרת: 200 עם הרשימות של האחרת, לא שלי', async () => {
+  for (const role of [0, 1, 2]) {
     reset(); as('emp-me', role);
     const r = await call('/api/me/recent-activity?employeeId=emp-other');
     assert.equal(r.status, 200, 'role ' + role);
@@ -304,9 +304,9 @@ await t('הנהלה: שמות ומזהים בלבד, פעילות בלבד, בל
   const q = T.calls.find((c) => c.model === 'employee'); assert.ok(q.take > 0 && q.where.isActive === true);
   assert.ok(!('wage' in q.select) && !('pinHash' in q.select) && !('password' in q.select));
 });
-await t('מנהלת סניף / עובדת רגילה: 403 בלי שאילתת עובדים; לא מחוברת 401; בלי זהות (עוגייה מזויפת) 403', async () => {
-  reset(); as('emp-me', 1); let r = await callEmp(); assert.equal(r.status, 403); assert.ok(!T.calls.some((c) => c.model === 'employee'));
-  reset(); as('emp-me', 3); r = await callEmp(); assert.equal(r.status, 403);
+await t('מנהלת סניף: 200 עם רשימת העובדות; עובדת רגילה: 403 בלי שאילתת עובדים; לא מחוברת 401; בלי זהות (עוגייה מזויפת) 403', async () => {
+  reset(); as('emp-me', 1); let r = await callEmp(); assert.equal(r.status, 200); assert.ok(r.body.employees.length > 0);
+  reset(); as('emp-me', 3); r = await callEmp(); assert.equal(r.status, 403); assert.ok(!T.calls.some((c) => c.model === 'employee'));
   reset(); T.authed = false; r = await callEmp(); assert.equal(r.status, 401);
   reset(); T.me = null; T.session = null; r = await callEmp(); assert.equal(r.status, 403);
   reset(); as('emp-me', 0); T.pages = new Set(); r = await callEmp(); assert.equal(r.status, 403);

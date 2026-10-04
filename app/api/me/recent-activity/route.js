@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
 // createdAt של הזמנה שנוצרה דרך טיוטה = רגע השמירה הסופית (לא תחילת הטיוטה), ור' lib/myRecentActivity.js pickCandidates.
 //
 // פרטיות: ברירת המחדל = הפעולות של העובדת המחוברת עצמה (employeeId נלקח מהעוגייה המאומתת, לא מהבקשה).
-// ?employeeId=<אחרת> (MY-04 ב): רק עם feature:view_others_recent_activity (ברירת מחדל הנהלה ראשית / מתכנת, נבדק מהעוגייה החתומה: lib/recentActivityAccess.js);
+// ?employeeId=<אחרת> (MY-04 ב): רק עם feature:view_others_recent_activity (ברירת מחדל הנהלה ראשית / מנהלות סניף / מתכנת, נבדק מהעוגייה החתומה: lib/recentActivityAccess.js);
 // בלי ההרשאה = 403, מזהה שאינו של עובדת פעילה = 404. הנתיב קריאה בלבד: לא כותב ל-AuditLog ולא לשום טבלה (גם לא "מי הציץ").
 // הרשאה: אותה כמו דפי ההזמנות (page:orders). ההפרדה בין שני הגמ"חים היא ה-DB עצמו (כל גמ"ח בסיס נתונים נפרד).
 // ביצועים: סבבים ממוקדים ובלי N+1 (יומן של העובדת: שאילתה אחת -> שיוך להזמנות -> שורות Order של העובדת לפי entityId ->
