@@ -138,8 +138,8 @@
 
 /* ===== תצוגת רשימה (S03): כל יום = שורה בדיוק כמו שורת תוצאה בחיפוש של דף הבית ===== */
 /* החלטת הבעלים 5.10.2026: "בתצוגת השורות העיצוב כמו שורה בתוצאות החיפוש, והאייקונים עם המספרים בתוך השורה". הסימון (card.res-one >
-   .list > a.li.rlink.lrow: ic-b, .t עם b + .ln, .go) הוא של HomeResults.js; כללי השורה שלו (components.css, "gm-home .res-one") מועתקים
-   כאן כמות שהם, רק עם .gm-bd במקום .gm-home (הלוח אינו דף הבית). שומר סטטי: scripts/test_board_page.mjs (הכללים זהים לכללי הבית). */
+   .list > a.li.rlink.lrow: ic-b, .t עם b + .ln, .go) הוא של HomeResults.js; כללי השורה שלו (components.css, כללי ".res-one .li" של דף הבית) מועתקים
+   כאן כמות שהם, רק עם הקידומת .gm-bd (הלוח אינו דף הבית). שומר סטטי: scripts/test_board_page.mjs (הכללים זהים לכללי הבית). */
 .gm-ds.gm-bd .res-one .li{align-items:center;gap:16px;padding:28px 12px;overflow:hidden;clip-path:inset(0 round 14px);contain:paint}
 .gm-ds.gm-bd .res-one .li.lrow::before{display:none}
 .gm-ds.gm-bd .res-one .li:hover,.gm-ds.gm-bd .res-one .li:focus-visible{background:linear-gradient(90deg,rgba(241,220,143,.34),rgba(212,176,74,.26) 55%,rgba(247,236,196,.38))}
