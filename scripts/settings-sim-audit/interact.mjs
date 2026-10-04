@@ -316,6 +316,35 @@ try {
     assert.deepEqual((await posts(p))[0].body.items, [{ key: 'nedarim_plus_token', value: '__CLEAR_SECRET__' }]);
     await p.close();
   });
+
+  await t('#2 חיפוש: שורות שלא תואמות באמת מוסתרות (display בפועל), לא רק [hidden]', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'dlv');
+    await p.type('.st-q', 'משלוחן');
+    await sleep(250);
+    const r = await p.evaluate(() => {
+      const rows = [...document.querySelectorAll('.panel.on .st-row')];
+      const shown = rows.filter((e) => getComputedStyle(e).display !== 'none');
+      return { total: rows.length, shown: shown.map((e) => e.dataset.set || e.id), hiddenAttrButVisible: rows.filter((e) => e.hidden && getComputedStyle(e).display !== 'none').length };
+    });
+    assert.ok(r.total > 3, 'יש שורות בלשונית');
+    assert.equal(r.hiddenAttrButVisible, 0, 'שורה עם hidden נשארה גלויה');
+    assert.ok(r.shown.length >= 1 && r.shown.length < r.total, 'רק התוצאות מוצגות: ' + r.shown.join(','));
+    await p.close();
+  });
+
+  await t('#3 web_backup_mode (דגל המעבר החי) לא מוצג כמתג רגיל באף לשונית', async () => {
+    const p = await page('view=site');
+    const ids = await p.$$eval('.st-stab', (x) => x.map((e) => e.getAttribute('aria-controls').replace(/^p-site-/, '')));
+    assert.ok(ids.length >= 3);
+    for (const id of ids) {
+      await tab(p, id);
+      await sleep(80);
+      assert.equal(await p.$('#setting-row-web_backup_mode'), null, 'לשונית ' + id);
+    }
+    assert.ok((await p.content()).includes('data-set') && !(await p.content()).includes('web_backup_mode'));
+    await p.close();
+  });
 } finally {
   await browser.close();
   server.close();

@@ -46,6 +46,7 @@ if (!sp.get('empty')) {
   rows.push(
     { id: id++, key: 'NEDARIM_MOSAD', value: '7001234', category: 'תשלומים', name: 'NEDARIM_MOSAD' },
     { id: id++, key: 'email_drive_folder_id', value: '', category: 'מיילים', name: 'email_drive_folder_id' },
+    { id: id++, key: 'web_backup_mode', value: 'false', category: 'מסד נתונים', name: 'מצב גיבוי פעיל באתר', type: 'boolean' },
     { id: id++, key: 'neon_api_key', value: '••••••••', category: 'מסד נתונים', name: 'neon_api_key' },
     { id: id++, key: 'inventory_hold_minutes', value: '30', category: 'מלאי', name: 'inventory_hold_minutes' },
     { id: id++, key: 'standard_pickup_hours', value: '20:00-21:30', category: 'הדפסה', name: 'standard_pickup_hours' },

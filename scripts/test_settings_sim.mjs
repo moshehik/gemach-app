@@ -387,4 +387,15 @@ t('#1 שרת: secretWriteAction - ריק/מסכה/undefined מדולגים, סי
   assert.ok(/action === 'clear' \? ''/.test(route), 'סימן המחיקה נשמר כריק');
 });
 
+t('#2 CSS: .st-row[hidden] מנצח את display:flex של הפלטה', () => {
+  const css = read('../app/components/settings-sim/settings-sim.css');
+  assert.ok(/\.gm-ds\.gm-st \.st-row\[hidden\]\{display:none!important\}/.test(css.replace(/\s+/g, ' ').replace(/ ?([{};]) ?/g, '$1')));
+});
+t('#3 web_backup_mode (דגל המעבר החי) מוסתר: לא מוצב באף מסך', () => {
+  assert.ok(L.HIDDEN_KEYS.includes('web_backup_mode'));
+  assert.equal(L.placeRow({ key: 'web_backup_mode', category: 'מסד נתונים' }), null);
+  const vm = L.buildViewModel('site', [{ id: 1, key: 'web_backup_mode', value: 'false', category: 'מסד נתונים', type: 'boolean' }]);
+  assert.ok(!JSON.stringify(vm).includes('web_backup_mode'));
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
