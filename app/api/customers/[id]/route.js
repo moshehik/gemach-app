@@ -7,6 +7,7 @@ import { validateCustomerFieldFormats } from '@/lib/customerValidation';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
+import { deleteBlockers } from '@/lib/customerAccount';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -249,10 +250,10 @@ export async function PATCH(request, { params }) {
 }
 
 // מחיקת כרטיס לקוח (רכה: Customer.isDeleted=true) - מהכרטיס החדש בלבד (לחצן "מחיקת לקוחה", תשובת הבעלים 4.10.2026: del).
-// דורש אישור מנהל בהרשאת feature:customer_delete_approval (lib/permissionsMetadata.js): העובד המחובר מורשה בעצמו, או
-// approverId + approverPin שנבדקים כאן שוב מול ה-DB (verifyManagerPin) - לא סומכים על אישור שנעשה רק בדפדפן.
-// חסום כשללקוח יש הזמנה פעילה (לא מחוקה, שתאריך האירוע / ההחזרה שלה היום או בעתיד) או יתרת חוב פתוחה - כדי שלא תיעלם
-// לקוחה עם השכרה בתהליך. שורת ההיסטוריה נרשמת ע"י תוסף היומן (auditAs DELETE) - בלי שורה ידנית.
+// תמיד דורש approverId + approverPin של מאשר בהרשאת feature:customer_delete_approval (lib/permissionsMetadata.js), שנבדקים כאן
+// שוב מול ה-DB (verifyManagerPin) - לא סומכים על אישור שנעשה רק בדפדפן, וגם עובד מורשה מקליד את הסיסמה שלו.
+// חסום לפי deleteBlockers (lib/customerAccount.js, אותו מודול שהכרטיס מציג ממנו): הזמנה פעילה, שמלה שלא הוחזרה (גם בהשכרה
+// באיחור), יתרת חוב, זיכוי שלא בוצע. שורת ההיסטוריה נרשמת ע"י תוסף היומן (auditAs DELETE) - בלי שורה ידנית.
 export async function DELETE(request, { params }) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
@@ -270,34 +271,24 @@ export async function DELETE(request, { params }) {
       where: { id },
       select: {
         id: true, isDeleted: true,
+        // כל ההזמנות (גם מחוקות - דמי ביטול נכנסים ליתרה, כמו בכרטיס); deleteBlockers מסנן מחוקות לבדיקת פעילות/שמלות
         orders: {
-          where: { isDeleted: false },
           select: {
-            orderId: true, eventDate: true, toDate: true, returnDate: true, totalAmount: true,
+            orderId: true, isDeleted: true, eventDate: true, toDate: true, returnDate: true, totalAmount: true,
+            items: { select: { barcode: true, isReturned: true } },
             payments: { where: { isDeleted: false }, select: { amount: true } },
             obligations: { where: { isDeleted: false }, select: { amount: true } },
           },
         },
+        refunds: { where: { isDeleted: false }, select: { amount: true, isExecuted: true, orderId: true } },
       },
     });
     if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     if (customer.isDeleted) return NextResponse.json({ success: true, alreadyDeleted: true });
 
-    const today = getIsraelTodayKey();
-    const active = customer.orders.filter((o) => {
-      const last = o.toDate || o.returnDate || o.eventDate;
-      return last && getIsraelDateKey(last) >= today;
-    }).map((o) => o.orderId);
-    const debt = customer.orders.reduce((sum, o) => {
-      const required = o.obligations.length > 0 ? o.obligations.reduce((a, b) => a + (b.amount || 0), 0) : (o.totalAmount || 0);
-      const paid = o.payments.reduce((a, b) => a + (b.amount || 0), 0);
-      return sum + Math.max(0, required - paid);
-    }, 0);
-    if (active.length || debt > 0) {
-      const parts = [];
-      if (active.length) parts.push(`יש הזמנות פעילות (${active.map((n) => `#${n}`).join(', ')})`);
-      if (debt > 0) parts.push(`יש יתרת חוב של ₪${Math.round(debt * 100) / 100}`);
-      return NextResponse.json({ error: `לא ניתן למחוק את הלקוחה: ${parts.join(' ו')}`, code: 'HAS_ACTIVE', activeOrders: active, debt }, { status: 409 });
+    const b = deleteBlockers({ orders: customer.orders, refunds: customer.refunds, todayKey: getIsraelTodayKey(), dateKey: getIsraelDateKey });
+    if (b.blocked) {
+      return NextResponse.json({ error: `לא ניתן למחוק את הלקוחה: ${b.messages.join(' · ')}`, code: 'HAS_ACTIVE', activeOrders: b.activeOrders, holdingOrders: b.holdingOrders, debt: b.debt, pendingRefunds: b.pendingRefunds }, { status: 409 });
     }
 
     await prisma.customer.update(auditAs('DELETE', { where: { id }, data: { isDeleted: true } }, { isDeleted: { from: false, to: true } }));

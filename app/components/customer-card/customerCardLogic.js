@@ -112,6 +112,10 @@ export function buildPaymentPayload({ orderId, amount, paymentMethod, notes }) {
   return { orderId, amount, paymentMethod: paymentMethod || 'מזומן', notes: notes || '' };
 }
 
+/** האישור שתשלום ידני מהכרטיס דורש: בנווה יעקב (consolidate_manual_payment_credit_ui) - feature:manual_payment_credit_add, כמו
+ * הכפתור המאוחד "הוספת תשלום/זיכוי ידני" בכרטיס ההזמנה הישן; אחרת אין אישור (כמו "תשלום נוסף" הישן). */
+export const paymentApprovalLevel = (settings = {}) => (settings.consolidate_manual_payment_credit_ui === 'true' ? 'feature:manual_payment_credit_add' : null);
+
 /** אופני התשלום לתשלום ידני - בדיוק כמו additionalPaymentMethodOptions בכרטיס ההזמנה הישן (בלי אשראי). */
 export function manualPaymentMethods(settings = {}) {
   const raw = settings.ALLOWED_PAYMENT_METHODS
@@ -236,23 +240,10 @@ export function joinNotes(originalNotes, manualText) {
   return [m, ...auto.map((a) => a.line)].filter((x, i) => i > 0 || x !== '').join('\n');
 }
 
-// ---------- כספים (אותה נוסחה כמו ModernCustomerPaymentsTab: חוב = חיובים − (תשלומים − זיכויים)) ----------
-export const orderRequired = (o) => (o.obligations?.length > 0
-  ? o.obligations.reduce((s, x) => s + (x.isDeleted ? 0 : (x.amount || 0)), 0)
-  : (o.totalAmount || 0));
-export const orderPaid = (o) => (o.payments || []).reduce((s, p) => s + (p.isDeleted ? 0 : (p.amount || 0)), 0);
+// ---------- כספים: מודול משותף עם השרת (lib/customerAccount.js) - אותה נוסחה כמו הכרטיס הישן ----------
+import { orderRequired, orderPaid, accountSummary, deleteBlockers } from '../../../lib/customerAccount.js';
+export { orderRequired, orderPaid, accountSummary, deleteBlockers };
 const orderRefunds = (o, refunds) => (refunds || []).filter((r) => r.orderId === o.orderId).reduce((s, r) => s + (r.amount || 0), 0);
-
-export function accountSummary(customer, refunds = []) {
-  const orders = customer?.orders || [];
-  const required = orders.reduce((s, o) => s + orderRequired(o), 0);
-  const paid = orders.reduce((s, o) => s + orderPaid(o), 0);
-  const refundTotal = (refunds || []).reduce((s, r) => s + (r.amount || 0), 0);
-  const effectivePaid = paid - refundTotal;
-  const balance = required - effectivePaid; // > 0 חוב, < 0 זכות
-  const pct = required > 0 ? Math.max(0, Math.min(100, Math.round((Math.max(0, effectivePaid) / required) * 100))) : 100;
-  return { required, paid, refunds: refundTotal, effectivePaid, balance, pct };
-}
 
 /** חיובים פתוחים: הזמנות (לא מחוקות) שנשאר בהן לתשלום, החדשה ראשונה. */
 export function openCharges(customer, refunds = []) {
