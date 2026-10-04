@@ -234,9 +234,9 @@ await t('34 השורות הניתנות להגדרה: כל אחת בקטגורי
   for (const k of seen.keys()) assert.ok(PERMISSION_CATALOG.some((i) => i.key === k), `${k} אינו בקטלוג`);
   assert.equal(configurable.filter((i) => categoryOfKey(i.key) === OTHER_CATEGORY.id).length, 0);
 });
-await t('groupPermissionItems: 6-7 קבוצות (החלטת הבעלים), כל הפריטים פעם אחת, בלי קבוצה ריקה, פריט חדש -> "אחר"', () => {
+await t('groupPermissionItems: 8-10 קבוצות (החלטת הבעלים המעודכנת: יותר קבוצות), כל הפריטים פעם אחת, בלי קבוצה ריקה, פריט חדש -> "אחר"', () => {
   const groups = groupPermissionItems(configurable);
-  assert.ok(groups.length >= 6 && groups.length <= 7, `קבוצות: ${groups.length}`);
+  assert.ok(groups.length >= 8 && groups.length <= 10, `קבוצות: ${groups.length}`);
   const flat = groups.flatMap((g) => g.items.map((i) => i.key));
   assert.equal(flat.length, 34); assert.equal(new Set(flat).size, 34);
   assert.ok(groups.every((g) => g.items.length > 0 && g.title && g.icon));
