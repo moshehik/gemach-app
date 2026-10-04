@@ -148,6 +148,7 @@ const SOURCES = {
   item: items,
   model: models,
   emp: employees,
+  cemp: employees, // כספים > פרטי זיכוי > עובד מבצע (אותה רשימת עובדים פעילים)
   size: sizes,
 };
 
@@ -167,7 +168,7 @@ const FOCUS_Q = {
 const FOCUS_PAGE = {
   customers: 'page:customers', orders: 'page:orders', rentals: 'page:rentals', returns: 'page:rentals',
   deliveries: 'page:deliveries', alterations: 'page:alterations', finance: 'page:refunds',
-  capacity: 'page:orders', models: 'page:dresses_catalog',
+  capacity: 'page:orders', models: 'page:dresses_catalog', alerts: 'page:orders',
 };
 const CUSTOMER_KEYS = ['first', 'last', 'name', 'phone', 'city'];
 const CUSTOMER_PAGES = ['page:customers', 'page:orders', 'page:rentals', 'page:deliveries', 'page:alterations', 'page:refunds'];
