@@ -106,6 +106,7 @@ const OE = await L('lib/history/orderEvents.js');
 const eventsRoute = await L('app/api/orders/events/route.js');
 const verifyPin = await L('app/api/auth/verify-pin/route.js');
 const emailRoute = await L('app/api/orders/[id]/email/route.js');
+const itemsRoute = await L('app/api/orders/[id]/items/route.js');
 const { invalidatePermissionCache } = await L('lib/permissions.js');
 const { invalidateSettingsCache } = await L('lib/settingsCache.js');
 const { invalidateRequireLoginCache } = await L('lib/auth.js');
@@ -857,4 +858,38 @@ test('changesDisplay: a UUID foreign-key reassignment is shown as a placeholder,
 
 test('admin history filter "עדכון" also matches UPDATE_ORDER (GET /api/audit)', () => {
   assert.ok(src('app/api/audit/route.js').includes("where.action = action === 'UPDATE' ? { in: ['UPDATE', 'UPDATE_ORDER'] } : action;"));
+});
+
+// ===================================================================== POST /api/orders/[id]/items: max_items_per_order
+const addItemReq = (id = '501') => itemsRoute.POST(req({ dressModelId: 'm1', sizeText: '38' }), { params: Promise.resolve({ id }) });
+const withItems = (items) => { globalThis.__MOCK_DB.order.find((o) => o.orderId === 501).items = items; };
+const LIMIT_MSG = /לא ניתן לשמור יותר מ-2 פריטים בהזמנה/;
+test('POST items: max_items_per_order מלא (פריטים לא מחוקים) -> 400 ruleError, בלי כתיבה', async () => {
+  installDb([{ key: 'max_items_per_order', value: '2' }]);
+  invalidateSettingsCache();
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  withItems([{ id: 'i1', isDeleted: false, cartStatus: 'confirmed' }, { id: 'i2', isDeleted: false, cartStatus: 'pending' }, { id: 'i3', isDeleted: true, cartStatus: 'confirmed' }]);
+  const errSpy = console.error; console.error = () => {};
+  try {
+    const r = await addItemReq();
+    assert.equal(r.status, 400, JSON.stringify(r.__json));
+    assert.match(r.__json.error, LIMIT_MSG);
+    assert.ok(!globalThis.__MOCK_CALLS.some((c) => c.model === 'orderItem' && c.method === 'create'), 'לא נוצר פריט');
+    // מעל המגבלה (נתונים ישנים) — גם נחסם
+    withItems([{ id: 'i1', isDeleted: false }, { id: 'i2', isDeleted: false }, { id: 'i4', isDeleted: false }]);
+    assert.equal((await addItemReq()).status, 400);
+  } finally { console.error = errSpy; }
+});
+test('POST items: מתחת למגבלה / בלי מגבלה / 0 / לא מספר — הבדיקה לא חוסמת (ההמשך מגיע למלאי, לא להודעת המכסה)', async () => {
+  const errSpy = console.error; console.error = () => {};
+  try {
+    for (const [value, items] of [['2', [{ id: 'i1', isDeleted: false }, { id: 'i2', isDeleted: true }]], [undefined, [{ id: 'i1' }, { id: 'i2' }, { id: 'i3' }]], ['0', [{ id: 'i1' }, { id: 'i2' }, { id: 'i3' }]], ['abc', [{ id: 'i1' }, { id: 'i2' }, { id: 'i3' }]]]) {
+      installDb(value === undefined ? [] : [{ key: 'max_items_per_order', value }]);
+      invalidateSettingsCache();
+      globalThis.__AUTH_TOKEN = 'emp-worker';
+      withItems(items);
+      const r = await addItemReq();
+      assert.doesNotMatch(String(r.__json?.error || ''), /יותר מ-\d+ פריטים/, `value=${value}`);
+    }
+  } finally { console.error = errSpy; }
 });

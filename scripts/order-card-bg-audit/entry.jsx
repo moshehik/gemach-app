@@ -74,9 +74,26 @@ const SCENARIOS = {
   // W2a: אירוע חו"ל עם יום השכרה נוסף (enable_rental_extension) וציפוף ברירת מחדל 2 (5 גלולות כמו בעיצוב); משלוח בתוך "פרטים"
   xday: { settings: [...ORG2, ['enable_rental_extension', 'true'], ['inventory_buffer_days', '2']], order: { isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z', extraDay: null } },
   inline: { settings: ORG2.filter(([k]) => k !== 'delivery_separate_tab') },
+  // W3 — מצבי פריטים: מושכר (עם ברקוד), הוחזר לא תקין; מכסה מלאה (R32)
+  items: { items: 'states' },
+  quota: { settings: [...ORG2.filter(([k]) => k !== 'max_items_per_order'), ['max_items_per_order', '3']] },
 };
+// W3: מצבי פריטים נוספים (תרחיש items) — אותם 4 פריטים של העיצוב + מושכר / הוחזר
+const ITEMS_STATES = [
+  { ...ITEMS[0], dressItem: { ...ITEMS[0].dressItem, barcodePrefix: 4512, dress: { ...ITEMS[0].dressItem.dress, barcodePrefix: 4512 } } },
+  ITEMS[1],
+  { ...ITEMS[2], isTaken: true, takenDate: '2026-10-01T08:00:00.000Z', barcode: '27644001', dressItem: { ...ITEMS[2].dressItem, barcodePrefix: 2764, dress: { ...ITEMS[2].dressItem.dress, barcodePrefix: 2764 } } },
+  ITEMS[3],
+  { id: 'a5', dressItem: dress('a5', '5120'), sizeText: '42', price: 160, finalPrice: 160, isDeleted: false, isTaken: true, isReturned: true, returnedOk: false, takenDate: '2026-10-01T08:00:00.000Z', returnDate: '2026-10-03T08:00:00.000Z', barcode: '51204201', createdAt: '2026-09-24T09:40:00.000Z' },
+];
+const MODELS = [
+  { id: 'm-4519', name: '4519', barcodePrefix: 4519, priceCategory: 'שמלה', isPremium: false },
+  { id: 'm-4512', name: '4512', barcodePrefix: 4512, priceCategory: 'שמלה', isPremium: false },
+  { id: 'm-4510', name: '4510', barcodePrefix: 4510, priceCategory: 'שמלה', isPremium: false },
+];
+const STOCK = { stock: { 'm-4519': { 34: { total: 2 }, 36: { total: 3 }, 38: { total: 2 }, 40: { total: 1 }, 42: { total: 0 }, 44: { total: 2 } }, 'm-4512': { 36: { total: 1 }, 38: { total: 2 }, 40: { total: 2 } } }, bookings: [], settings: { bufferDays: 3, skipWeekends: true } };
 const S = SCENARIOS[scn] || {};
-const order = { ...ORDER, ...(S.order || {}), items: ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: [] };
+const order = { ...ORDER, ...(S.order || {}), items: S.items === 'states' ? ITEMS_STATES : ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: [] };
 const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
 
 if (S.draft) {
@@ -104,18 +121,33 @@ window.fetch = async (url, opts) => {
   if (u.startsWith('/api/employees')) return j(EMPLOYEES);
   // העובדת המחוברת לא מורשית לאשר (כמו בעיצוב: אף שם לא מסומן מראש). me=e2 בכתובת = מנהלת מורשית (מסומנת מראש, כמו בישן)
   if (u.startsWith('/api/me')) return j(qs.get('me') === 'e2' ? { success: true, employee: { id: 'e2', firstName: 'רחל', lastName: 'כהן' } } : { success: true, employee: { id: 'e7', firstName: 'עובדת', lastName: 'רגילה' } });
-  if (u.startsWith('/api/inventory/preload')) return j({});
+  if (u.startsWith('/api/inventory/preload')) return j(STOCK);
   // W2a: ערי/רחובות לקוחות, חיפוש לקוח, יצירת לקוח (ת״ז חובה כש-require_customer_id_number, כמו השרת)
   if (u.startsWith('/api/customers/locations')) return j({ cities: ['ירושלים', 'בית שמש', 'בני ברק', 'אלעד'], streets: ['עמוס', 'הרב קוק', 'יפו', 'בן יהודה', 'הנביאים'] });
   if (u.startsWith('/api/customers?')) return j({ data: [CUSTOMER, { id: 'c2', firstName: 'מרים', lastName: 'אברהם', phone1: '052-4331290', email: 'm.avraham@example.com', city: 'בני ברק' }] });
   if (u === '/api/customers' && method === 'POST') { const b = JSON.parse(opts.body); return b.zeout || !settings.some(x => x.key === 'require_customer_id_number' && x.value === 'true') ? j({ id: 'c-new', ...b }) : j({ error: 'תעודת זהות חובה' }, 400); }
+  // W3 — לשונית פריטים
+  if (u.startsWith('/api/inventory/models')) return j({ models: MODELS });
+  if (u.startsWith('/api/inventory/capacity')) return j({ inStock: 4, occupiedCount: 2, reserve: 2, occupiedOrders: [{ id: 'x1', orderId: 53375, eventDate: ORDER.eventDate, customerName: 'מרים אברמוביץ', quantity: 1 }, { id: 'x2', orderId: 53311, eventDate: '2026-10-12T21:00:00.000Z', customerName: 'לאה כץ', quantity: 1 }] });
+  if (u.startsWith('/api/audit/order-item/')) return j([{ id: 'l1', action: 'CREATE', employeeId: 'e2', createdAt: '2026-09-23T07:13:00.000Z', changesJson: JSON.stringify({ sizeText: '38', price: 150, dressItemId: 'di-a1' }) }, { id: 'l2', action: 'CONFIRM_RENTAL', employeeId: 'e1', createdAt: '2026-10-01T08:00:00.000Z', changesJson: JSON.stringify({ isTaken: { from: false, to: true } }) }]);
+  if (u.startsWith('/api/rentals/verify-item')) { const b = JSON.parse(opts.body); return j({ valid: true, dressItem: { barcodePrefix: Number(String(b.barcode).slice(0, -4)), sizeText: String(b.barcode).slice(-4, -2) } }); }
+  if (u.startsWith('/api/rentals/') || u.startsWith('/api/returns/')) return j({ success: true });
+  if (u.startsWith('/api/orders/53375/items')) {
+    const b = JSON.parse(opts.body);
+    return j({ ...order, items: [...order.items, { ...b, id: `n${Date.now()}`, isNew: undefined, _localId: undefined, dressItem: { id: 'dn', dressModelId: b.dressModelId, dress: { id: b.dressModelId, name: b.description } }, price: 120, finalPrice: 120 }] });
+  }
   if (u.startsWith('/api/orders/validate-inventory')) return j({ valid: true, errors: [] });
   if (u.startsWith('/api/orders/events')) return j({ ok: true, written: 1 });
   if (u.startsWith('/api/auth/verify-pin')) {
     const b = JSON.parse(opts.body);
     return b.pin === '1234' ? j({ success: true, employeeId: b.employeeId, employeeName: (EMPLOYEES.find(e => e.id === b.employeeId) || {}).firstName || '' }) : j({ success: false, error: 'סיסמה שגויה או משתמש לא פעיל' }, 401);
   }
-  if (/\/api\/orders\/53375\/(preview-pricing)/.test(u)) return j({ newObligations: order.obligations.filter(o => o.isManual === false) });
+  if (/\/api\/orders\/53375\/(preview-pricing)/.test(u)) {
+    // W3 A27: פריט היפותטי של חלונית ההוספה → מחיר 120 / דמי ביטול 40 ("המנוע" המדומה)
+    const hypo = (JSON.parse(opts.body).items || []).find(i => i.id === 'oc-add-preview');
+    if (hypo) return j({ newObligations: hypo.isDeleted ? [{ orderItemId: hypo.id, amount: 120, description: 'חיוב מקורי' }, { orderItemId: hypo.id, amount: -120, description: 'זיכוי בגין ביטול' }, { orderItemId: hypo.id, amount: 40, description: 'דמי ביטול ותיקונים' }] : [{ orderItemId: hypo.id, amount: 120, description: 'השכרת שמלה' }] });
+    return j({ newObligations: order.obligations.filter(o => o.isManual === false) });
+  }
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
   if (/^\/api\/orders\/53375$/.test(u)) {
     if (S.notfound) return j({ error: 'Order not found' }, 404);

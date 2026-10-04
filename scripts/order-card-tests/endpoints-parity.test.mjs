@@ -110,6 +110,28 @@ test('R47 ביטול פריט שנשמר: approve(feature:item_change_approval) 
   assert.equal(put.rawBody, JSON.stringify({ ...legacySaveBody(cur.order, cur, { managerAuth: { employeeId: 'm1', pin: 'pw' } }), extraDay: null, cardVariant: 'a5' }));
 });
 
+test('R47 הוספה שנכשלה (שורה מקומית isNew) + require_manager_code → approve לפני ה-PUT; ביטול האישור = אין PUT (ביקורת W3 #2)', async () => {
+  const st = baseState();
+  const failedAdd = { _localId: 'L1', isNew: true, dressModelId: 'm2', sizeText: '42', price: 120, finalPrice: 0, isDeleted: false };
+  const settings = [{ key: 'require_manager_code_for_item_changes', value: 'true' }];
+  const edit = (s) => { s.items = [...s.items, failedAdd]; };
+  let asked = null;
+  const h = harness(st, { settings, edit, approve: async (kind, reason) => { asked = { kind, reason }; return { employeeId: 'm1', employeeName: 'שרה', pin: 'pw' }; }, respond: (u) => (u.includes('validate') ? { body: { valid: true } } : serverOk(st)) });
+  await h.flows.save();
+  assert.equal(asked.kind, 'feature:item_change_approval');
+  assert.match(asked.reason, /הוספה/);
+  const put = h.calls.find(c => c.method === 'PUT');
+  assert.equal(put.body.managerEmployeeId, 'm1');
+  assert.equal(put.body.managerPin, 'pw');
+  const h2 = harness(st, { settings, edit, approve: async () => null, respond: () => ({ body: { valid: true } }) });
+  const r2 = await h2.flows.save();
+  assert.equal(r2.ok, false);
+  assert.equal(h2.calls.filter(c => c.method === 'PUT').length, 0);
+  // בלי ההגדרה — לא מבקשים אישור
+  const h3 = harness(st, { edit, approve: async () => { throw new Error('לא אמור לבקש'); }, respond: (u) => (u.includes('validate') ? { body: { valid: true } } : serverOk(st)) });
+  assert.equal((await h3.flows.save()).ok, true);
+});
+
 test('R12 409 התנגשות: חלון 3 בחירות; "דרוס" = PUT שני עם overwriteConflict; "טען מחדש" = GET; "חזרה" = כלום', async () => {
   const st = baseState();
   const respond409 = (u, o, n) => (u.includes('validate') ? { body: { valid: true } } : (o.method === 'PUT' && n === 2 ? { status: 409, body: { message: 'עודכנה בשרת' } } : serverOk(st)));

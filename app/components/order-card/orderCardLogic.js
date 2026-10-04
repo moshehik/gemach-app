@@ -349,6 +349,15 @@ export function cancelledItemNow(settings, snapshotItems = [], items = []) {
   });
 }
 
+// syncItems: פעולה שכבר נשמרה בשרת (השכרה/החזרה/מצב החזרה) מוחלת גם על ה-snapshot — אחרת changesOf מציג אותה כ"שינוי שלא נשמר"
+export const syncSnapshotItems = (snapshot, fn) => (snapshot ? { ...snapshot, items: fn(snapshot.items || []) } : snapshot);
+
+// שורה מקומית שטרם נשמרה (isNew + דגם + מידה — למשל POST הוספה שנכשל/נדחה): השרת (PUT /api/orders/[id], hasNewAdd) דורש עבורה
+// אישור מנהל כש-require_manager_code_for_item_changes דלוק — אחרת השמירה נחסמת ב-403.
+export function pendingAddNow(settings, items = []) {
+  return !!settings.requireManagerCodeForItems && items.some(i => i.isNew && i.dressModelId && i.sizeText);
+}
+
 // ---------------------------------------------------------------------------------------------
 // גוף ה-PUT — סדר המפתחות זהה לישן; extraDay מצורף בסוף (G13). mode: 'save' (:853-893) | 'exit' (:1144-1174)
 // ---------------------------------------------------------------------------------------------
