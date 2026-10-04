@@ -141,14 +141,14 @@ test('H02 חו״ל + טווח / אמצע שבוע: dates · סוג אירוע + 
   assertBucket(r, one(r, 'האירוע סומן כאירוע חול', 'H02'), 'dates');
 });
 
-test('H03 הערות / הערות פנימיות: docs', () => {
+test('H03 הערות / הערות פנימיות: gen (כללי)', () => {
   H.h03 = [putRow(EXISTING, { notes: 'ניילון + קולב', internalNotes: 'לקוחה ותיקה' })];
   const r = feed(H.h03);
   assertClean(r, 'H03');
   const a = one(r, 'הערות ההזמנה עודכנו', 'H03');
-  assertBucket(r, a, 'docs');
+  assertBucket(r, a, 'gen');
   assert.equal(det(a, 'אחרי'), 'ניילון + קולב');
-  assertBucket(r, one(r, 'הערות פנימיות עודכנו', 'H03'), 'docs');
+  assertBucket(r, one(r, 'הערות פנימיות עודכנו', 'H03'), 'gen');
 });
 
 test('H04 ציפוף / יום השכרה נוסף: dates', () => {
@@ -185,13 +185,13 @@ test('H05 משלוח: הפעלה / כיוון / עיר / כתובת / יום ל�
   assert.equal(charge.amt, 80);
 });
 
-test('H06 החלפת לקוח: docs · "הוחלף לקוח" עם שמות, בלי מזהים', () => {
+test('H06 החלפת לקוח: gen (כללי) · "הוחלף לקוח" עם שמות, בלי מזהים', () => {
   H.h06 = [putRow(EXISTING, { customerId: CUST_B })];
   H.h06x = { customers: [{ id: CUST_A, name: 'מרים אברמוביץ' }, { id: CUST_B, name: 'רבקה לוין' }] };
   const r = feed(H.h06, H.h06x);
   assertClean(r, 'H06');
   const e = one(r, 'הוחלף לקוח', 'H06');
-  assertBucket(r, e, 'docs');
+  assertBucket(r, e, 'gen');
   assert.deepEqual([det(e, 'לפני'), det(e, 'אחרי')], ['מרים אברמוביץ', 'רבקה לוין']);
   const unknown = feed(H.h06);
   assert.equal(det(one(unknown, 'הוחלף לקוח', 'H06b'), 'אחרי'), 'לקוח שנמחק', 'an unknown customer is never shown by id');
@@ -218,7 +218,7 @@ test('H08 הוספת פריט (+ אישור מנהל R47): items · "נוסף פ
   assert.equal(e.amt, 120);
   assert.equal(det(e, 'תיקון'), 'שרוול');
   const a = one(r, `אישור מנהל: ${MGR.name} · שינוי פריטים בהזמנה`, 'H08');
-  assertBucket(r, a, 'docs');
+  assertBucket(r, a, 'gen');
   assert.equal(a.who, EMP.name, 'who = the employee who asked; the approver is in the text');
   assert.equal(det(a, 'מאשר'), MGR.name);
 });
@@ -377,7 +377,7 @@ test('H19 שמירה עם חוב (השאר חוב): DEBT_APPROVED + MANAGER_APPR
   assertClean(r, 'H19');
   assert.equal(r.entries.length, 1);
   const e = one(r, `אישור מנהל: ${MGR.name} · הזמנה ללא תשלום ₪120`, 'H19');
-  assertBucket(r, e, 'docs');
+  assertBucket(r, e, 'gen');
   assert.equal(e.who, EMP.name);
   assert.equal(r.dedupedBy.D8, 1);
   // more than 2 minutes apart: two separate events
@@ -391,7 +391,7 @@ test('H20 שחרור נעילה: docs · "אישור מנהל: <שם> · ערי�
   const r = feed(H.h20);
   assertClean(r, 'H20');
   const e = one(r, `אישור מנהל: ${MGR.name} · עריכת הזמנה נעולה`, 'H20');
-  assertBucket(r, e, 'docs');
+  assertBucket(r, e, 'gen');
   assert.equal(e.icon, 'shield');
 });
 
@@ -403,7 +403,7 @@ test('H21 ציפוף בהקטנה / מייל מהיר / תשלום-זיכוי י
   ];
   const r = feed(H.h21);
   assertClean(r, 'H21');
-  for (const w of ['שינוי ציפוף ימים', 'שליחת מייל ללקוח', 'תשלום / זיכוי ידני']) assertBucket(r, one(r, `אישור מנהל: ${MGR.name} · ${w}`, 'H21'), 'docs');
+  for (const w of ['שינוי ציפוף ימים', 'שליחת מייל ללקוח', 'תשלום / זיכוי ידני']) assertBucket(r, one(r, `אישור מנהל: ${MGR.name} · ${w}`, 'H21'), 'gen');
   const gone = feed([row({ entityId: String(ORDER_NO), action: 'MANAGER_APPROVAL', changesJson: named(buildApprovalMeta({ requiredLevel: 'מנהל', reason: '', approverId: 'deadbeef-0000-4000-8000-000000000000' })) })]);
   assertClean(gone, 'H21 deleted approver');
   one(gone, 'אישור מנהל: עובד שנמחק · פעולה באישור מנהל', 'H21');
@@ -526,7 +526,7 @@ test('H30 ביטול כל השינויים: docs · "בוטלו שינויים �
   H.h30 = [row({ entityId: String(ORDER_NO), action: 'CANCEL_CHANGES', changesJson: JSON.stringify({ discarded: 'תאריך האירוע, הערות' }) })];
   const r = feed(H.h30);
   assertClean(r, 'H30');
-  assertBucket(r, one(r, 'בוטלו שינויים שלא נשמרו', 'H30'), 'docs');
+  assertBucket(r, one(r, 'בוטלו שינויים שלא נשמרו', 'H30'), 'gen');
 });
 
 test('H31 מחיקת הזמנה: "ההזמנה בוטלה" - שורה אחת (D1 + D2)', () => {
@@ -629,4 +629,19 @@ test('ייצוא Excel (A21): גיליון RTL, עמודות עבריות לפי
   assert.equal(amt['סכום'], 50, 'amounts are numbers (sortable / summable in Excel)');
   const pay = exportRows(r.entries).find((x) => x['פעולה'].startsWith('התקבל תשלום') && x['סכום'] === 300);
   assert.ok(pay && /תשרי/.test(pay['תאריך']) && /^\d{2}:\d{2}$/.test(pay['שעה']));
+});
+
+// F2 (בעלים 2026-10-05): סינון "כללי" = סימוני לו״ז + כל שורה כללית אחרת שלא שייכת לסינון אחר (יצירת הזמנה, סטטוס, הערות, ביטול/שחזור)
+test('F2 "כללי": יצירת הזמנה / סטטוס / הערות / ביטול / סימון לו״ז - כולם ב-gen; פריט / תשלום / תאריך / מסמך נשארים בסינונים שלהם', () => {
+  const create = row({ action: 'CREATE', changesJson: JSON.stringify({ orderId: ORDER_NO, totalAmount: 530 }) });
+  const status = row({ action: 'UPDATE', changesJson: JSON.stringify({ status: { from: 'חדש', to: 'פעיל' } }) });
+  const notes = putRow(EXISTING, { notes: 'הערה חדשה לגמרי' });
+  const cancel = row({ action: 'CANCEL_ORDER', changesJson: JSON.stringify({ isDeleted: true }) });
+  const gen = feed([create, status, notes, cancel]);
+  assert.ok(gen.entries.length >= 3, gen.entries.map((e) => e.text).join(' | '));
+  for (const e of gen.entries) assert.equal(e.cat, SCHEDULE_MARK_CAT, `"${e.text}" belongs to the general filter`);
+  assert.equal(gen.counts.categories.gen, gen.entries.length);
+  const other = feed([putRow(EXISTING, { eventDate: new Date(EXISTING.eventDate.getTime() + 86400000 * 3) }), eventRow('ORDER_PRINTED', { doc: 'order' })]);
+  assert.ok(other.entries.length >= 2 && other.entries.every((e) => e.cat !== 'gen'));
+  assert.equal(other.counts.categories.gen, 0);
 });
