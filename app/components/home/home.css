@@ -30,14 +30,6 @@
 .gm-ds .priv-dlg .priv-body ul {
   padding-inline-start: 20px;
 }
-/* שדה מילוי שטרם הושלם בנוסח — מסומן בולט כדי שלא יפורסם כטקסט סופי */
-.gm-ds .priv-ph {
-  background: var(--gm-gold-300, #f1dc8f);
-  color: #000;
-  border-radius: 4px;
-  padding: 0 4px;
-  font-weight: 600;
-}
 
 /* שלד טעינה לכותרת הברכה (עד שהגדרות הארגון נטענו) — שומר על גובה הכותרת בלי קפיצה */
 .gm-ds.gm-home .hero-t:empty,

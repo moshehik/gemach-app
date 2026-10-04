@@ -726,7 +726,7 @@ export default function HomeA5() {
 
       <HomeFooter groups={groups} name={gmachName} version={version && version.version} date={version && version.date} onPrivacy={() => setPrivacyOpen(true)} />
 
-      {privacyOpen && <PrivacyDialog onClose={() => setPrivacyOpen(false)} />}
+      {privacyOpen && <PrivacyDialog onClose={() => setPrivacyOpen(false)} settings={settings} />}
       {openSettingKey && <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />}
       {toast && (
         <div id="toast" className="info on pulse" data-kind="info" role="status" aria-live="polite" key={toast.n}>

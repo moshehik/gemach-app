@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
-<!-- design-system/sprite.svg — ספריית האייקונים של הפלטה, 79 סמלים, גרסה 2026-09-29. נוצר אוטומטית ע"י build/install.py מכרטיס ההזמנה.
+<!-- design-system/sprite.svg — ספריית האייקונים של הפלטה, 80 סמלים, גרסה 2026-09-29. נוצר אוטומטית ע"י build/install.py מכרטיס ההזמנה.
      בתוך האפליקציה: <svg class="ic"><use href="/design-system/sprite.svg#i-mail"/></svg> (הפניה חיצונית - כך אין התנגשות עם ה-ids של app/components/IconSprite.js). -->
 <defs>
 <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
@@ -80,6 +80,7 @@
 <symbol id="i-inbox" viewBox="0 0 24 24"><path d="m3 13 3-8h12l3 8v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1 2.500h6l1-2.500h5"/></symbol>
 <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M10 4c.6 3.600 2.400 5.400 6 6-3.600.6-5.400 2.400-6 6-.6-3.600-2.400-5.400-6-6 3.600-.6 5.400-2.400 6-6z"/><path d="M18 15c.3 1.800 1.200 2.700 3 3-1.800.3-2.700 1.200-3 3-.3-1.800-1.200-2.700-3-3 1.800-.3 2.700-1.200 3-3z"/></symbol>
 <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.500"/><path d="M12 2.500v5M12 16.500v5M2.500 12h5M16.500 12h5"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.500" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18.500" cy="12" r="1"/></symbol>
 <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.500M7.500 10.500 12 15l4.500-4.500M4.500 19.500h15"/></symbol>
 </defs>
 </svg>

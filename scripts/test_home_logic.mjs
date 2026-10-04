@@ -3,7 +3,7 @@
 // הרצה: node scripts/test_home_logic.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import {
-  buildGreeting, DEFAULT_TITLE, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
+  buildGreeting, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
   TABLE_COLUMNS, sortRecords, exportRecordsForRows, parseAiTags, safeInternalRoute, botMessageFromResponse,
   botErrorMessage, chatToHistory, chatCopyText, aiRowView, aiRowKind, aiRowHref, richSegments, rowsToCsv,
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
@@ -22,7 +22,8 @@ import {
 import { hebText, hebFromInstant, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
 import { ORDER_STATUS_STYLE } from '../app/components/home/homeLogic.js';
-import { PRIVACY_SECTIONS, splitPlaceholders, PRIVACY_PLACEHOLDER_COUNT } from '../app/components/home/privacyPolicyText.js';
+import { PRIVACY_SECTIONS, buildPrivacySections, privacyContactLine, POLICY_UPDATED, policyUpdatedHebrew } from '../app/components/home/privacyPolicyText.js';
+import { hebrewUpdatedDate } from '../lib/hebrewStamp.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
 import { readFileSync, readdirSync } from 'node:fs';
 
@@ -34,10 +35,13 @@ function t(name, fn) {
 }
 
 console.log('כותרת');
-t('הגדרה ריקה → "ברוכים הבאים לגמ״ח" בשורה אחת, גם כשיש שם', () => {
-  assert.deepEqual(buildGreeting('', 'רחל'), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting(undefined, ''), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting('   ', 'רחל'), { hi: null, q: DEFAULT_TITLE });
+t('הגדרה ריקה → הברכה המעוצבת המותאמת אישית ("שלום [שם]," + "מה תרצי לחפש?"), לא "ברוכים הבאים לגמ״ח"', () => {
+  assert.deepEqual(buildGreeting('', 'רחל'), { hi: 'שלום רחל,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting('   ', 'רחל'), { hi: 'שלום רחל,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(undefined, ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(null, null), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+  // בדיוק כמו ההגדרה שנשמרה בפועל (GQ-02b)
+  assert.deepEqual(buildGreeting('', 'רחל'), buildGreeting('שלום! מה תרצי לחפש?', 'רחל'));
 });
 t('"שלום! מה תרצי לחפש?" → "שלום [שם]," + שורה שנייה', () => {
   assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
@@ -78,13 +82,13 @@ t('נוסח ברירת המחדל הישן ("ברוכים הבאים למערכ�
   // בלי עובדת מחוברת: "שלום" + השורה השנייה (כמו "שלום! מה תרצי לחפש?" בעיצוב)
   assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח', ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
 });
-t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → "ברוכים הבאים לגמ״ח"', () => {
+t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → הברכה המעוצבת', () => {
   assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת ניהול הגמ"ח של נווה'), false);
   assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת'), false);
   assert.equal(isLegacyDefaultTitle(''), false); assert.equal(isLegacyDefaultTitle(null), false);
   assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח של נווה', 'אסתר'), { hi: 'שלום אסתר,', q: 'ברוכים הבאים למערכת ניהול הגמ"ח של נווה' });
-  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting(null, ''), { hi: null, q: 'ברוכים הבאים לגמ״ח' });
+  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: 'שלום אסתר,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(null, ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
 });
 t('המחרוזת המדויקת של העיצוב "שלום! מה תרצי לחפש?" מתפצלת כמו בעיצוב', () => {
   assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
@@ -612,15 +616,65 @@ t('חודש עברי: התחלה, רשת, הזזה קדימה ואחורה', () 
 });
 
 console.log('מדיניות פרטיות');
-t('הנוסח: כל הסעיפים, שדות המילוי מזוהים ומסומנים', () => {
+const flatPrivacy = (secs) => secs.map((s) => [s.h, ...(s.ul || []), s.p || ''].join(' | ')).join(' | ');
+t('הנוסח: כל הסעיפים, בלי שדות מילוי ובלי טקסט זמני', () => {
   assert.ok(PRIVACY_SECTIONS.length >= 9);
   assert.ok(PRIVACY_SECTIONS.every((s) => s.h && (s.p || s.ul)));
-  assert.equal(PRIVACY_PLACEHOLDER_COUNT, 6, 'מי אנחנו, שרתים, פניות, זמן מענה, עוגיות, תאריך');
-  assert.deepEqual(splitPlaceholders('א [[ב]] ג'), [{ text: 'א ', ph: false }, { text: '[ב]', ph: true }, { text: ' ג', ph: false }]);
-  assert.deepEqual(splitPlaceholders(''), []);
-  const all = JSON.stringify(PRIVACY_SECTIONS);
+  const all = flatPrivacy(PRIVACY_SECTIONS);
+  assert.ok(!all.includes('[['), 'אין שדה מילוי [[...]]');
+  assert.ok(!/להשלים|יושלם|\[לאימות/.test(all), 'אין סימוני "להשלים/לאימות"');
   assert.ok(!all.includes('טקסט זמני'), 'לא הנוסח הזמני הישן');
   assert.ok(all.includes('נדרים פלוס') && all.includes('בינה מלאכותית'));
+});
+t('הנוסח נבנה מהגדרות הארגון: שם משפטי = gmach_name, טלפון = gmach_phone, 30 ימי מענה, שרתים ארה"ב / אירופה, תאריך עברי', () => {
+  const a = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח נווה יעקב', phone: '02-1234567' }));
+  assert.ok(a.includes('גמ״ח נווה יעקב (להלן'), 'שם הגוף המשפטי מההגדרה');
+  assert.ok(a.includes('02-1234567'), 'הטלפון מההגדרה');
+  assert.ok(a.includes('נשיב תוך 30 ימים'));
+  assert.ok(a.includes('בארה"ב ובאירופה'));
+  assert.ok(a.includes('איננו משתמשים בעוגיות פרסום או מעקב.'));
+  assert.ok(a.includes(policyUpdatedHebrew()), 'תאריך העדכון (קבוע) מוצג');
+  // ארגון אחר -> טקסט אחר (לא קשיח)
+  const b = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח אחר', phone: '03-7654321' }));
+  assert.ok(b.includes('גמ״ח אחר') && b.includes('03-7654321') && !b.includes('02-1234567') && !b.includes('נווה יעקב'));
+  // בלי הגדרות: שם ברירת מחדל, שורת פנייה כללית בלי מספר ובלי תאריך, ועדיין בלי שדות מילוי
+  const c = flatPrivacy(buildPrivacySections({}));
+  assert.ok(c.includes('גמ״ח שמלות (להלן') && c.includes('ניתן לפנות אלינו ישירות בגמ"ח') && !c.includes('[['));
+  assert.equal(privacyContactLine('  '), privacyContactLine(''));
+  assert.ok(privacyContactLine(' 050-1112222 ').includes('050-1112222.'));
+});
+t('hebrewUpdatedDate (עזר כללי ב-lib/hebrewStamp): תאריך עברי בלבד (תאריך הגרסה בלי שעה; נפילה ליום הנוכחי), בלי ספרות לועזיות', () => {
+  assert.equal(hebrewUpdatedDate('01/10/2026 12:47'), 'כ תשרי תשפ"ז');
+  assert.equal(hebrewUpdatedDate('לא תאריך', Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
+  assert.equal(hebrewUpdatedDate(null, Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
+  assert.ok(!/\d{4}/.test(hebrewUpdatedDate('01/10/2026 12:47')));
+});
+t('תאריך "שינויים בנוסח" קבוע (POLICY_UPDATED, לא תאריך הפריסה): עברי בלבד ולא תלוי בגרסה / בשעון', () => {
+  assert.equal(POLICY_UPDATED, '2026-10-04');
+  assert.equal(policyUpdatedHebrew(), 'כג תשרי תשפ"ז'); // 4.10.2026 = כ"ג בתשרי תשפ"ז
+  const sec = (x) => x.find((q) => q.h === 'שינויים בנוסח').p;
+  const text = sec(buildPrivacySections({ legalName: 'א' }));
+  assert.ok(text.includes('כג תשרי תשפ"ז') && !/\d{4}/.test(text), 'עברי בלבד, בלי שנה לועזית');
+  assert.equal(text, sec(PRIVACY_SECTIONS), 'אותו תאריך בכל ארגון ובכל קריאה');
+  const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');
+  assert.ok(!/hebrewUpdatedDate|versionDate/.test(src), 'התאריך כבר לא נגזר מתאריך הגרסה');
+});
+t('נוסח: מרכאות מסולסלות + גרשיים בהגדרת "הגמ״ח"; ספק הבינה המלאכותית (Google Gemini) וגופני Google מוזכרים', () => {
+  const all = flatPrivacy(PRIVACY_SECTIONS);
+  assert.ok(all.includes('(להלן: “הגמ״ח”)'), 'מרכאות מקוננות בנוסח הגבוה');
+  assert.ok(!all.includes('"הגמ"ח"'), 'אין מרכאות ישרות מקוננות');
+  assert.ok(all.includes('Google Gemini'), 'ספק ה-AI');
+  assert.ok(all.includes('Google Fonts'), 'גופנים מ-Google');
+  assert.ok(!/ייתכן שחלק מהמידע הנדרש לכך מועבר למערכות אלה/.test(all), 'לא הניסוח הכללי הישן');
+});
+t('HomeFooter: אין שדות מילוי, הדיאלוג מקבל settings ומחשב את הנוסח בזמן ההצגה', () => {
+  const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');
+  assert.ok(!/splitPlaceholders|priv-ph/.test(src));
+  assert.ok(/buildPrivacySections\(\{[\s\S]*gmach_name[\s\S]*gmach_phone/.test(src));
+  const a5 = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
+  assert.ok(/<PrivacyDialog[\s\S]*?settings=\{settings\}/.test(a5));
+  const boot = readFileSync(new URL('../app/api/a5/boot/route.js', import.meta.url), 'utf8');
+  assert.ok(/'gmach_phone'/.test(boot), 'gmach_phone מוחזר מ-/api/a5/boot');
 });
 
 console.log('אייקונים (sprite מוטמע)');
