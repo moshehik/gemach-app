@@ -1,8 +1,9 @@
 'use client';
 
 // החיפוש המתקדם בדף הבית (בית 3/19/20/21 advp/advfb/advplus/advextra): שלב 1 "במה נתמקד?" (בחירת תחום),
-// שלב 2 טופס הסינונים של התחום. תחומים ב-V1: לקוחות, הזמנות, השכרות, החזרות, תיקונים, משלוחים (לפי הגדרות הגמ"ח)
-// ולמנהלות גם דגמים ועובדים. כספים / תפוסה / התראות לא נבנו (איטיים — V1-RELEASE-PLAN §3 UI-2).
+// שלב 2 טופס הסינונים של התחום. תחומים: לקוחות, הזמנות, השכרות, החזרות, תיקונים, משלוחים (לפי הגדרות הגמ"ח), תפוסה
+// (הרשאת הזמנות) ולמנהלות גם דגמים ועובדים. כספים / התראות לא נבנו (איטיים — V1-RELEASE-PLAN §3 UI-2).
+// loading: החיפוש נשלח וטרם חזר (תפוסה יכולה לקחת כמה שניות) — כפתורי החיפוש נעולים ומציגים את הספינר של שורת החיפוש.
 // הסינון עצמו נעשה בשרת (/api/a5/adv, /api/a5/adv-b); כאן רק הטופס. הלוגיקה בבורר התאריכים
 // ובהצעות לשדות מועתקת מ-public/a5/index.html.
 
@@ -263,7 +264,7 @@ function Toggles({ list, selected, onToggle, more, label, tipFor }) {
   );
 }
 
-export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead, navPaths, aiAllowed, onPick, onBack, onClose, onApply, onClear, entering }) {
+export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead, navPaths, aiAllowed, onPick, onBack, onClose, onApply, onClear, entering, loading = false }) {
   const [more, setMore] = useState(false);
   const packing = settings && settings.packing_enabled === 'true';
   const branches = settings && settings.branches_enabled === 'true';
@@ -277,7 +278,7 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
     return n;
   });
   const toggle = (arr, v) => setAdv((a) => ({ ...a, [arr]: a[arr].includes(v) ? a[arr].filter((x) => x !== v) : [...a[arr], v] }));
-  const apply = () => onApply(false);
+  const apply = () => { if (!loading) onApply(false); };
   const fld = (spec, tip) => (
     <OptionField key={spec[0] + (tip || '')} spec={spec} tip={tip} value={adv[spec[0]]} onChange={(v) => set(spec[0], v)} focus={adv.focus} onEnter={apply} idPrefix="adv-" />
   );
@@ -398,6 +399,17 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
             {ofl(MFLAGS, 'פרטים כלליים', true)}
           </Sec>
         );
+      case 'cap':
+        return (
+          <Sec key={bi} icon="box" title="פרטי תפוסה">
+            <div className="advgrid">
+              {fld(['model', 'דגם', 'dress', 'בחר דגם...'])}
+              {fld(['size', 'מידה', 'sliders', 'מידה...'])}
+              {dt('from', 'תאריך אירוע', ['from', 'to'])}
+              {dt('to', 'עד תאריך', ['from', 'to'])}
+            </div>
+          </Sec>
+        );
       case 'estat':
         return <Sec key={bi} icon="users" title="סטטוס עובד">{ofl(EFLAGS, 'סטטוס עובד')}</Sec>;
       default:
@@ -441,20 +453,20 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
   }
 
   const smart = f.ai && aiAllowed
-    ? <button type="button" className="btn smart" onClick={() => onApply(true)}><Ic id="sparkle" />חיפוש חכם</button>
+    ? <button type="button" className="btn smart" disabled={loading} onClick={() => onApply(true)}><Ic id="sparkle" />חיפוש חכם</button>
     : null;
   return (
-    <div className={`card res-one advp${enter}`}>
+    <div className={`card res-one advp${enter}`} aria-busy={loading || undefined}>
       <div className="card-h">
         {close}
         <button type="button" className="ibtn" aria-label="חזרה לבחירת תחום" data-tip="חזרה" onClick={onBack}><Ic id="back" size="sm" /></button>
         <h2 id="adv-h">{'חיפוש ' + f.label}</h2>
-        <button type="button" className="ibtn" data-act="adv-apply" aria-label="חיפוש" data-tip="חיפוש" onClick={apply}><Ic id="search" size="sm" /><span>חיפוש</span></button>
+        <button type="button" className="ibtn" data-act="adv-apply" aria-label="חיפוש" data-tip="חיפוש" disabled={loading} onClick={apply}><Ic id="search" size="sm" /><span>חיפוש</span></button>
         <button type="button" className="ibtn" data-act="adv-clear" aria-label="נקה" data-tip="נקה" onClick={onClear}><Ic id="eraser" size="sm" /><span>נקה</span></button>
       </div>
       {f.blocks.map(block)}
       <div className="advact">
-        <button type="button" className="btn primary lg" onClick={apply}><Ic id="search" />חיפוש</button>
+        <button type="button" className="btn primary lg" aria-label={loading ? 'מחפשים' : undefined} disabled={loading} onClick={apply}>{loading ? <span className="mspin" aria-hidden="true" /> : <Ic id="search" />}חיפוש</button>
         {smart}
         <button type="button" className="lrow" onClick={onClear}><Ic id="eraser" size="sm" />נקה</button>
       </div>

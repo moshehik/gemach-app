@@ -31,7 +31,7 @@ import {
   HOME_SCOPES, parseHomeParams, homeDirectiveKey, homeScopeTitle, applyScope, scopedAdvFields, safeInternalRoute,
 } from './homeLogic';
 import {
-  ADV_FOCI, emptyAdv, advSummaryParts, advAiPrompt, buildAdvRequest, normalizeAdvResponse, navPathSet, visibleFoci,
+  ADV_FOCI, emptyAdv, advSummaryParts, advAiPrompt, buildAdvRequest, normalizeAdvResponse, navPathSet, visibleFoci, advMissing,
 } from './homeAdvConfig';
 
 const STORE_KEY = 'a5HomeSearch'; // sessionStorage: החיפוש האחרון (כדי שחזרה מהזמנה תחזיר את התוצאות)
@@ -106,6 +106,7 @@ export default function HomeA5() {
   const toastTimer = useRef(null);
   const inputRef = useRef(null);
   const lastQuery = useRef({ text: '', ai: false });
+  const advFailed = useRef(false); // כרטיס השגיאה נולד מחיפוש מתקדם — "לנסות שוב" מריץ אותו שוב (ולא את החיפוש הכללי האחרון)
 
   /* ---------- אתחול: מי מחובר, הגדרות, גרסה ---------- */
   useEffect(() => {
@@ -200,6 +201,7 @@ export default function HomeA5() {
     const query = String(text || '').trim();
     if (!query) return;
     lastQuery.current = { text: query, ai };
+    advFailed.current = false;
     const my = ++seq.current;
     setLoading(true);
     setAdvRes(null);
@@ -378,8 +380,9 @@ export default function HomeA5() {
     setAdvEnter(false);
     setView('adv');
   };
-  const advPick = (focus) => { setAdvEnter(true); setAdv(emptyAdv(focus)); };
-  const advBack = () => { setAdvEnter(true); setAdv(emptyAdv()); };
+  // מעבר תחום / חזרה לבחירת תחום מבטלים חיפוש שעוד בטעינה (תשובה מאוחרת לא תקפיץ תוצאות של טופס שכבר נעזב)
+  const advPick = (focus) => { seq.current++; setLoading(false); setAdvEnter(true); setAdv(emptyAdv(focus)); };
+  const advBack = () => { seq.current++; setLoading(false); setAdvEnter(true); setAdv(emptyAdv()); };
   const advClose = leaveAdv;
   const advClear = () => setAdv((a) => emptyAdv(a.focus));
 
@@ -388,6 +391,9 @@ export default function HomeA5() {
     if (!f) return;
     const parts = advSummaryParts(adv, adv.focus);
     if (!parts.length) { showToast('לא נבחרו מסננים', 'מלאו לפחות שדה אחד'); return; }
+    // שדה חובה (תפוסה: דגם) — אותה הודעה שהשרת מחזיר ב-400, בלי לשלוח בקשה
+    const missing = advMissing(adv.focus, adv);
+    if (missing) { showToast('חסר שדה חובה', missing); return; }
     const useAi = !!withAi && f.ai && aiAllowed;
     const summary = { label: f.label, text: parts.join(', ') };
     const my = ++seq.current;
@@ -405,6 +411,7 @@ export default function HomeA5() {
       return;
     }
     setLoading(true);
+    advFailed.current = false;
     try {
       const url = buildAdvRequest(adv.focus, adv, window.localStorage);
       const d = await getJson(url);
@@ -425,6 +432,7 @@ export default function HomeA5() {
         return;
       }
       setAdvRes(null);
+      advFailed.current = true;
       setErrStatus(e && e.status ? e.status : 0);
       setView('error');
     }
@@ -644,6 +652,7 @@ export default function HomeA5() {
               onClose={advClose}
               onApply={applyAdv}
               onClear={advClear}
+              loading={loading}
             />
           )}
           {view === 'ai' && (
@@ -701,7 +710,7 @@ export default function HomeA5() {
                     type="button"
                     className="btn primary"
                     onClick={() => {
-                      if (advRes) { applyAdv(false); return; }
+                      if (advRes || advFailed.current) { applyAdv(false); return; }
                       runSearch(lastQuery.current.text || q, { ai: lastQuery.current.ai });
                     }}
                   ><Ic id="refresh" />לנסות שוב</button>

@@ -2,11 +2,12 @@
 
 // תוצאות החיפוש המתקדם: כרטיס res-one.advp עם סיכום הסינונים, עריכה/עדכון/ניקוי, מתג שורות/טבלה,
 // ייצוא/הדפסה/הורדה, "עוד N" והתראות שורה (adot). התצוגה בשורות כמו החיפוש הכללי.
+// תפוסה: מתחת לסיכום — שלושה אריחי .capstats (במלאי / בתפוסה / רזרבה), מוצגים גם כשאין הזמנות תופסות (כמו בעיצוב).
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ic, ViewSwitch, XlButtons, MoreButton, ResultsTable, Dash } from './HomeParts';
-import { ADV_TAG, cellParts, looksLikePhoneOrMail } from './homeAdvConfig';
+import { ADV_TAG, CAP_TILES, cellParts, looksLikePhoneOrMail } from './homeAdvConfig';
 
 const LIMIT = 8;
 
@@ -47,9 +48,10 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
       alert: alerts.has(i),
       details,
       chip,
-      cells: [nm, details.map((c) => (Array.isArray(c) ? c[0] : c)).join(' · '), chip ? chip[0] : ''],
+      // עמודת סטטוס רק כשיש לפחות שורה אחת עם צ'יפ — אחרת תא שלישי בלי כותרת (תפוסה, תיקונים, דגמים, עובדים)
+      cells: [nm, details.map((c) => (Array.isArray(c) ? c[0] : c)).join(' · '), ...(hasStatus ? [chip ? chip[0] : ''] : [])],
     };
-  }), [info, data.namesRev, data.links, alerts]);
+  }), [info, hasStatus, data.namesRev, data.links, alerts]);
   const columns = ['שם', 'פרטים', ...(hasStatus ? ['סטטוס'] : [])];
 
   const sumText = summary.text + (data.truncated ? ' · מוצגות 200 הראשונות' : '');
@@ -65,6 +67,13 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
         <b id="rc-a">תוצאות חיפוש מתקדם {summary.label} <bdi>({rows.length})</bdi></b>
         <span>{sumText}</span>
       </div>
+      {focus === 'capacity' && (
+        <div className="capstats" role="group" aria-label="סיכום תפוסה">
+          {CAP_TILES.map(({ cls, label, key }) => (
+            <div key={key} className={`capst ${cls}`}><span>{label}</span><b>{(data.capstats && data.capstats[key]) || 0}</b></div>
+          ))}
+        </div>
+      )}
       {rows.length > 0 && (
         <div className="xlrow xlrow2">
           <ViewSwitch table={table} onChange={onTable} />

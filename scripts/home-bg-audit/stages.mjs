@@ -97,6 +97,25 @@ await fresh(); await clickText(p, 'לחיפוש מתקדם'); await sleep(500);
 await fresh(); await p.evaluate(() => { window.__delay = 3500; }); await type('כהן'); await p.keyboard.press('Enter'); await sleep(900); await snap('24-loading-disabled-input'); await sleep(3500);
 await fresh(); await type('אין'); await p.keyboard.press('Enter'); await sleep(2200); await p.mouse.move(5,5); await snap('25-no-results');
 if (which === 'real') { await fresh(); await type('שגיאה'); await p.keyboard.press('Enter'); await sleep(2200); await p.mouse.move(5,5); await snap('26-error-card'); }
+// תפוסה (4.10.2026): טופס, טופס ממולא, תוצאות + סיכום (capstats), טבלה; ובדף האמיתי בלבד — טעינה, דגם חובה, מגבלת צמדים, שגיאה
+const capOpen = async () => { await fresh(); await clickText(p, 'לחיפוש מתקדם'); await sleep(500); await clickText(p, 'תפוסה', '.advfb'); await sleep(700); };
+const capFill = async (model) => {
+  const m = await p.$('#adv-model'); if (m) { await m.click(); await m.type(model); await sleep(300); await p.keyboard.press('Escape'); }
+  const z = await p.$('#adv-size'); if (z) { await z.click(); await z.type('36'); await sleep(300); await p.keyboard.press('Escape'); }
+  await p.mouse.move(5, 5);
+};
+const capGo = () => clickText(p, 'חיפוש', '.advp .advact .btn.primary');
+await capOpen(); await p.mouse.move(5, 5); await snap('27-cap-form');
+await capFill('שמלת תחרה'); await snap('28-cap-form-filled');
+await capGo(); await sleep(2200); await p.mouse.move(5, 5); await snap('29-cap-results');
+await clickText(p, '', '.vopt[aria-label="מצב טבלה"]'); await sleep(500); await p.mouse.move(5, 5); await snap('30-cap-table');
+if (which === 'real') {
+  await capOpen(); await capFill('שמלת תחרה'); await p.evaluate(() => { window.__delay = 3500; }); await capGo(); await sleep(700); await snap('31-cap-loading'); await sleep(3500); await p.evaluate(() => { window.__delay = 30; });
+  await capOpen(); { const z = await p.$('#adv-size'); if (z) { await z.click(); await z.type('36'); await p.keyboard.press('Escape'); } } await capGo(); await sleep(300); await snap('32-cap-model-required');
+  await capOpen(); await capFill('הרבה'); await capGo(); await sleep(900); await snap('33-cap-pair-limit');
+  await capOpen(); await capFill('תקלה'); await capGo(); await sleep(900); await p.mouse.move(5, 5); await snap('34-cap-error');
+  await p.evaluate(() => { window.__capOk = true; }); await clickText(p, 'לנסות שוב'); await sleep(1500); await p.mouse.move(5, 5); await snap('35-cap-retry-ok'); await p.evaluate(() => { window.__capOk = false; });
+}
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}.json`, JSON.stringify(results, null, 1));
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-layout.json`, JSON.stringify(layout, null, 1));
 console.log('done', which, Object.keys(results).length);

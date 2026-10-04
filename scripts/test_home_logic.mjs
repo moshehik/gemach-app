@@ -15,7 +15,7 @@ import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js'
 const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
-  ADV_FOCI, ADV_KEYS,
+  ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES,
 } from '../app/components/home/homeAdvConfig.js';
 import { hebText, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
@@ -334,19 +334,19 @@ console.log('חיפוש מתקדם');
 t('תחומים לפי הגדרות ותפקיד', () => {
   const all = navPathSet([{ items: ['/customers', '/orders', '/rentals#rented', '/alterations', '/deliveries', '/dashboard/dresses'].map((href) => ({ href })) }]);
   let v = visibleFoci({ settings: {}, isManager: false, navPaths: all });
-  assert.deepEqual(v.main, ['customers', 'orders', 'rentals', 'returns', 'alterations']);
+  assert.deepEqual(v.main, ['customers', 'orders', 'rentals', 'returns', 'alterations', 'capacity']);
   assert.deepEqual(v.extra, []);
   v = visibleFoci({ settings: { enable_deliveries: 'true', enable_alterations: 'false' }, isManager: true, isHead: true, navPaths: all });
-  assert.deepEqual(v.main, ['customers', 'orders', 'rentals', 'returns', 'deliveries']);
+  assert.deepEqual(v.main, ['customers', 'orders', 'rentals', 'returns', 'deliveries', 'capacity']);
   assert.deepEqual(v.extra, ['models', 'employees']);
-  assert.ok(!('finance' in ADV_FOCI) && !('capacity' in ADV_FOCI) && !('stock' in ADV_FOCI) && !('settings' in ADV_FOCI), 'תחומים איטיים לא ב-V1');
+  assert.ok(!('finance' in ADV_FOCI) && !('stock' in ADV_FOCI) && !('settings' in ADV_FOCI), 'כספים / בדיקת מלאי / הגדרות לא בחיפוש המתקדם');
 });
 t('תחומים לפי הרשאות התפריט (navPaths): עובדת בלי "הזמנות" לא רואה את התחום', () => {
   const nav = [{ items: [{ href: '/' }, { href: '/customers' }, { href: '/rentals#rented' }, { href: '/rentals#returned' }, { href: '/alterations' }] }];
   const paths = navPathSet(nav);
   assert.ok(paths.has('/rentals') && paths.has('/customers') && !paths.has('/orders'));
   let v = visibleFoci({ settings: {}, isManager: false, navPaths: paths });
-  assert.deepEqual(v.main, ['customers', 'rentals', 'returns', 'alterations']);
+  assert.deepEqual(v.main, ['customers', 'rentals', 'returns', 'alterations'], 'בלי "הזמנות" גם תפוסה מוסתרת');
   v = visibleFoci({ settings: { enable_deliveries: 'true' }, isManager: false, navPaths: paths });
   assert.ok(!v.main.includes('deliveries'), 'משלוחים דורש גם עמוד מותר');
   assert.deepEqual(visibleFoci({ settings: {}, isManager: false, navPaths: navPathSet([{ items: [] }]) }).main, []);
@@ -408,9 +408,110 @@ t('סיכום סינונים: תוויות, תאריכים עבריים, סימ�
   assert.deepEqual(advSummaryParts(r, 'returns'), ['תאריך החזרה ' + hebText('2026-10-06')]);
 });
 t('נרמול תשובת adv', () => {
-  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, gaps: [] });
+  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, gaps: [], capstats: null });
   assert.equal(normalizeAdvResponse({ truncated: 1, gaps: ['x'] }).truncated, true);
   assert.deepEqual(normalizeAdvResponse({ gaps: ['x'] }).gaps, ['x']);
+});
+
+console.log('חיפוש מתקדם: תפוסה');
+const ADVB_ROUTE = readFileSync(new URL('../app/api/a5/adv-b/route.js', import.meta.url), 'utf8');
+const ADVB_CAP = ADVB_ROUTE.slice(ADVB_ROUTE.indexOf('async function capacity'), ADVB_ROUTE.indexOf('async function models'));
+t('תפוסה: מקום בשורת התחומים כמו בעיצוב (אחרי משלוחים, לפני דגמים), תווית/אייקון, לא תחום AI ולא תחום מנהלות', () => {
+  const keys = Object.keys(ADV_FOCI);
+  assert.equal(keys.indexOf('capacity'), keys.indexOf('deliveries') + 1);
+  assert.equal(keys.indexOf('models'), keys.indexOf('capacity') + 1);
+  const c = ADV_FOCI.capacity;
+  assert.equal(c.label, 'תפוסה');
+  assert.equal(c.icon, 'box');
+  assert.equal(c.api, 'advb');
+  assert.ok(!c.ai && !c.mgr && !c.needs);
+  assert.deepEqual(c.blocks, [{ t: 'cap' }]);
+  assert.deepEqual(ADV_TAG.capacity, ['תפוסה', 'box']);
+});
+t('תפוסה: אותו שער כמו השרת — page:orders (GATE.capacity) = נתיב "/orders" בתפריט', () => {
+  assert.ok(/const GATE = \{[^}]*capacity: 'page:orders'/.test(ADVB_ROUTE), 'GATE.capacity בשרת');
+  const only = (hrefs, settings = {}) => visibleFoci({ settings, isManager: false, navPaths: navPathSet([{ items: hrefs.map((href) => ({ href })) }]) });
+  assert.ok(only(['/orders']).main.includes('capacity'));
+  assert.ok(only(['/orders?x=1']).main.includes('capacity'), 'query בכתובת לא משנה');
+  assert.ok(!only(['/customers', '/rentals', '/alterations', '/deliveries', '/dashboard/dresses']).main.includes('capacity'), 'בלי הזמנות — אין תפוסה, גם לא דרך עמודים אחרים');
+  assert.ok(!visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: null }).main.includes('capacity'), 'נעילה סגורה בלי boot');
+  assert.ok(only(['/orders'], { enable_alterations: 'false', enable_deliveries: 'false' }).main.includes('capacity'), 'הגדרות תיקונים/משלוחים לא נוגעות בתפוסה');
+  // אותו שער גם להצעות (/api/a5/options) ול-/stock-check
+  assert.ok(readFileSync(new URL('../app/api/a5/options/route.js', import.meta.url), 'utf8').includes("capacity: 'page:orders'"));
+  assert.ok(readFileSync(new URL('../lib/stockCheck.js', import.meta.url), 'utf8').includes("STOCK_CHECK_PAGE_KEY = 'page:orders'"));
+});
+t('תפוסה: בקשה ל-adv-b רק עם model/size/from/to (שאר שדות הטופס לא נשלחים)', () => {
+  const a = { ...emptyAdv('capacity'), model: ' שמלת תחרה ', size: '36', from: '2026-10-06', to: '2026-10-08', name: 'לא שייך', flags: ['debts'], ost: ['soon'] };
+  const url = buildAdvRequest('capacity', a);
+  assert.ok(url.startsWith('/api/a5/adv-b?'));
+  const qs = new URL('http://x' + url).searchParams;
+  assert.deepEqual([...qs.keys()], ['focus', 'model', 'size', 'from', 'to']);
+  assert.equal(qs.get('focus'), 'capacity');
+  assert.equal(qs.get('model'), 'שמלת תחרה');
+  assert.equal(qs.get('from'), '2026-10-06');
+  const b = buildAdvRequest('capacity', { ...emptyAdv('capacity'), model: '549' });
+  assert.deepEqual([...new URL('http://x' + b).searchParams.keys()], ['focus', 'model'], 'בלי מידה/תאריך — השרת משלים (כל המידות, היום)');
+  for (const k of ADV_FOCI.capacity.keys) assert.ok(new RegExp('p\\.' + k + '\\b').test(ADVB_CAP), 'השרת קורא ' + k);
+});
+t('תפוסה: דגם חובה — ההודעה זהה לשרת, נבדק לפני שליחה', () => {
+  assert.equal(advMissing('capacity', emptyAdv('capacity')), 'נדרש דגם לחיפוש תפוסה');
+  assert.equal(advMissing('capacity', { ...emptyAdv('capacity'), size: '36', from: '2026-10-06' }), 'נדרש דגם לחיפוש תפוסה');
+  assert.equal(advMissing('capacity', { ...emptyAdv('capacity'), model: '   ' }), 'נדרש דגם לחיפוש תפוסה');
+  assert.equal(advMissing('capacity', { ...emptyAdv('capacity'), model: '549' }), '');
+  assert.ok(ADVB_CAP.includes("error: '" + advMissing('capacity', {}) + "'"), 'אותו נוסח כמו בשרת');
+  for (const k of Object.keys(ADV_FOCI).filter((x) => x !== 'capacity')) assert.equal(advMissing(k, emptyAdv(k)), '', k + ': אין שדה חובה');
+  assert.equal(advMissing('nope', {}), '');
+  const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
+  assert.ok(/const missing = advMissing\(adv\.focus, adv\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
+  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(adv.focus'));
+});
+t('תפוסה: מגבלת צמדי דגם/מידה בשרת מוחזרת כ-400 עם הודעה שהטופס מציג', () => {
+  assert.ok(/CAPACITY_PAIRS_MAX = \d+/.test(ADVB_ROUTE));
+  assert.ok(/pairs\.length > CAPACITY_PAIRS_MAX\) return \{ error: '[^']+', status: 400 \}/.test(ADVB_CAP));
+  const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
+  assert.ok(/e\.status === 403 \|\| e\.status === 400/.test(home) && home.includes("e.status === 403 ? '' : e.message"), '400 = טוסט עם הודעת השרת, הטופס נשאר פתוח');
+});
+t('תפוסה: שורת הסיכום — דגם, מידה ותאריכים עבריים (כמו advApply בעיצוב)', () => {
+  const a = { ...emptyAdv('capacity'), model: 'שמלת תחרה', size: '36', from: '2026-10-06', to: '2026-10-08' };
+  assert.deepEqual(advSummaryParts(a, 'capacity'), ['דגם שמלת תחרה', 'מידה 36', 'תאריכים ' + hebText('2026-10-06') + ' עד ' + hebText('2026-10-08')]);
+  assert.deepEqual(advSummaryParts({ ...emptyAdv('capacity'), model: '549' }, 'capacity'), ['דגם 549']);
+  assert.deepEqual(advSummaryParts(emptyAdv('capacity'), 'capacity'), []);
+  assert.ok(!/\d{4}-\d{2}/.test(advSummaryParts(a, 'capacity').join(' ')), 'בלי תאריך לועזי');
+});
+t('תפוסה: נרמול התשובה — capstats (במלאי / בתפוסה / רזרבה), שורות ועמודות של השרת', () => {
+  const d = normalizeAdvResponse({
+    cols: ['שם', 'תאריך אירוע', 'כמות', 'טלפון'],
+    rows: [['רחל כהן', 'ט״ו תשרי', '2', '052-4418210'], ['', 'כ״ב תשרי', '1', '']],
+    links: ['/orders/48133', 'https://evil.com'], al: [], namesRev: ['כהן רחל', ''], capstats: { stock: 4, busy: 3, res: 1 }, truncated: false, gaps: [],
+  });
+  assert.deepEqual(d.capstats, { stock: 4, busy: 3, res: 1 });
+  assert.deepEqual(d.cols, ['שם', 'תאריך אירוע', 'כמות', 'טלפון']);
+  assert.deepEqual(d.links, ['/orders/48133', '']);
+  assert.equal(normalizeAdvResponse({ rows: [] }).capstats, null, 'תחום אחר — אין סיכום');
+  assert.deepEqual(normalizeAdvResponse({ rows: [], capstats: { stock: 0, busy: 0, res: 0 } }).capstats, { stock: 0, busy: 0, res: 0 }, 'אין תפוסה — אפסים');
+  assert.deepEqual(normalizeCapstats({ stock: '5', busy: -2, res: 'x' }), { stock: 5, busy: 0, res: 0 });
+  assert.equal(normalizeCapstats('x'), null);
+  assert.deepEqual(CAP_TILES.map((x) => x.label), ['במלאי', 'בתפוסה', 'רזרבה']);
+  assert.deepEqual(CAP_TILES.map((x) => x.cls), ['cs-stock', 'cs-busy', 'cs-res']);
+  assert.deepEqual(CAP_TILES.map((x) => x.key), ['stock', 'busy', 'res']);
+  assert.ok(/capstats: \{ stock: 0, busy: 0, res: 0 \}/.test(ADVB_CAP) && /stats\.stock \+= d\.inStock; stats\.busy \+= d\.occupiedCount; stats\.res \+= d\.reserve/.test(ADVB_CAP), 'אותם שמות שדות כמו בשרת');
+});
+t('תפוסה: הטופס (בלוק cap) — דגם, מידה עם הצעות, "תאריך אירוע" + "עד תאריך" כטווח; כפתור החיפוש נעול בזמן טעינה', () => {
+  const adv = readFileSync(new URL('../app/components/home/HomeAdvanced.js', import.meta.url), 'utf8');
+  const cap = adv.slice(adv.indexOf("case 'cap':"), adv.indexOf("case 'estat':"));
+  assert.ok(cap.includes('title="פרטי תפוסה"') && cap.includes('icon="box"'));
+  assert.ok(cap.includes("fld(['model', 'דגם', 'dress', 'בחר דגם...'])") && cap.includes("fld(['size', 'מידה', 'sliders', 'מידה...'])"));
+  assert.ok(cap.includes("dt('from', 'תאריך אירוע', ['from', 'to'])") && cap.includes("dt('to', 'עד תאריך', ['from', 'to'])"));
+  assert.ok(/const OPT_KEYS = \[[^\]]*'model'[^\]]*'size'/.test(adv), 'דגם ומידה עם הצעות מהשרת');
+  assert.ok(/className="btn primary lg"[^>]*disabled=\{loading\}/.test(adv) && adv.includes('<span className="mspin" aria-hidden="true" />'));
+  const res = readFileSync(new URL('../app/components/home/HomeAdvResults.js', import.meta.url), 'utf8');
+  assert.ok(res.includes("focus === 'capacity'") && res.includes('className="capstats"') && res.includes('aria-label="סיכום תפוסה"'));
+  assert.ok(res.includes("...(hasStatus ? [chip ? chip[0] : ''] : [])"), 'בטבלה: מספר התאים בשורה = מספר הכותרות (בלי עמודה שלישית ריקה)');
+});
+t('חיפוש מתקדם שנכשל: "לנסות שוב" מריץ אותו שוב (לא את החיפוש הכללי האחרון)', () => {
+  const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
+  assert.ok(home.includes('advFailed.current = true;') && home.includes('if (advRes || advFailed.current) { applyAdv(false); return; }'));
+  assert.ok(/lastQuery\.current = \{ text: query, ai \};\s*advFailed\.current = false;/.test(home), 'חיפוש כללי מאפס');
 });
 
 console.log('תאריכים עבריים');
