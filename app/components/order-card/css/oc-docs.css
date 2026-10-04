@@ -29,7 +29,7 @@
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mx-pick{align-self:flex-start;cursor:pointer}
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mx-pick[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mx-list{display:flex;flex-direction:column;gap:8px}
-.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-row{display:flex;align-items:center;gap:12px;padding:6px 12px;border:1.5px solid var(--gm-sky-200);border-radius:14px;background:#fff}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-row{display:flex;align-items:center;gap:12px;padding:6px 12px;border:1.5px solid var(--gm-sky-200);border-radius:14px;background:var(--gm-sky-50)}
 .gm-ds.gm-oc.dlg-dark #dlg.fx-sheet .oc-mx-row{background:var(--k-row);border-color:var(--k-rowb)}
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mx-note{font-size:13px}
 .gm-ds.gm-oc #dlg.fx-sheet .oc-mail-err{min-height:0;margin-top:2px}
