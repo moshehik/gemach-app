@@ -6,8 +6,9 @@ import { readFileSync } from 'node:fs';
 import { QUICK_PREFIXES, detectQuickPrefix, resolveQuickPrefix } from '../lib/quickPrefix.js';
 import {
   SAVED_SEARCH_LIMIT, SAVED_LABEL_MAX, SAVED_QUERY_MAX, SHORTCUT_GUIDE, guideRows, QUICK_ACTIONS, actionTarget, draftTail, buildActionsModel,
-  saveCandidate, defaultSaveLabel, isQuerySaved, buildSavedModel, savePayload, SAVED_TEXT, ACTIONS_TEXT,
+  menuAllowedPaths, saveCandidate, defaultSaveLabel, isQuerySaved, buildSavedModel, savePayload, SAVED_TEXT, ACTIONS_TEXT,
 } from '../lib/quickShortcuts.js';
+import { buildMenuTree, flattenMenuTree, NAV_PAGE_KEYS } from '../lib/menu/buildMenuTree.js';
 import { parseHomeParams, homeDirectiveKey, HOME_RUN_VALUES } from '../app/components/home/homeLogic.js';
 import { buildAdvRequest, emptyAdv, advSummaryParts, unsavedOrderIds } from '../app/components/home/homeAdvConfig.js';
 
@@ -65,6 +66,16 @@ t('הקלדה אחרי # מסננת לפי הכותרת; אין התאמה = ה�
   const m = buildActionsModel({ allowed: HEAD, term: 'zzz' });
   assert.equal(m.items.length, 0); assert.equal(m.none, 'אין פעולה מהירה שמתאימה ל“zzz”'); assert.equal(m.sub, '');
   assert.equal(buildActionsModel({ allowed: WORKER, term: 'טיוט' }).none, 'אין פעולה מהירה שמתאימה ל“טיוט”', 'פעולה בלי הרשאה לא מוצגת גם בחיפוש');
+});
+t('menuAllowedPaths: מעץ התפריט האמיתי - הנהלה = שניהם; בלי page:orders_new = רק /orders; בלי page:orders = כלום', () => {
+  const open = Object.fromEntries(NAV_PAGE_KEYS.map((k) => [k, true]));
+  const paths = (perm, roleId = 3) => [...menuAllowedPaths(flattenMenuTree(buildMenuTree({ homeA5: true, user: { id: 'e', firstName: 'א', lastName: 'ב', roleId }, permissions: perm, settings: [] })))].sort();
+  assert.deepEqual(paths(open, 0), ['/orders', '/orders/new']);
+  assert.deepEqual(paths({ ...open, 'page:orders_new': false }), ['/orders']);
+  assert.deepEqual(paths({ ...open, 'page:orders': false }), []);
+  assert.deepEqual([...menuAllowedPaths(null)], []);
+  const w = buildActionsModel({ allowed: menuAllowedPaths(flattenMenuTree(buildMenuTree({ homeA5: true, user: { id: 'e', firstName: 'א', lastName: 'ב', roleId: 3 }, permissions: { ...open, 'page:orders_new': false }, settings: [] }))) });
+  assert.deepEqual(w.items.map((r) => r.action), ['unpaid'], 'PFX-01 מקצה לקצה: עובדת בלי הזמנה חדשה רואה רק ממתינים לתשלום');
 });
 t('draftTail: ספירה / "אין"', () => { assert.equal(draftTail(0), 'אין'); assert.equal(draftTail(1), '1 בעמדה'); assert.equal(draftTail(NaN), 'אין'); assert.equal(draftTail(undefined), 'אין'); });
 t('actionTarget: הזמנה חדשה = ניווט; טיוטות / ממתינים = הרצה בדף הבית (/?run=unsaved | debts); לא מוכר = null', () => {
