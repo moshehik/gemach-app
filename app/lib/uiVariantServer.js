@@ -2,13 +2,14 @@ import { cookies, headers } from 'next/headers';
 import prisma from './prisma';
 import { readVerifiedSession } from '@/lib/auth';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { readSignedDesignPrefs } from './designPrefsCookie';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { resolveUiVariant, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
 
 // הכרעת "ישן / חדש" של מסך בתוך דף שרת (page.js) — לדפים שבוחרים בשרת בין Legacy* לחדש (פרופיל, מסך ניהול ראשי, נוכחות),
 // כדי שהפניה בשרת (/employees/report -> /employees/attendance) תישאר הפניית שרת ושלא ירונדרו שתי הגרסאות.
 //
-// אותם קלטים בדיוק כמו app/layout.js (resolveUiVariants שם): עקיפה אישית מעוגיית designPrefs_<id>, הגדרות הארגון מ-getAllCachedSettings
+// אותם קלטים בדיוק כמו app/layout.js (resolveUiVariants שם): עקיפה אישית מעוגיית designPrefs_<id> (חתומה, GQ-01b), הגדרות הארגון מ-getAllCachedSettings
 // (מטמון 30 שנ' — בלי שאילתה נוספת ברוב הבקשות), ה-roleId מעוגיית auth_session המאומתת (ובלעדיה — אותה שאילתת roleId כמו ב-layout),
 // וה-pathname מ-x-pathname. כך ההכרעה כאן זהה להכרעה של ה-layout באותה בקשה (useUiVariant בלקוח).
 // הערה: דגל תצוגה בלבד — לא גבול הרשאות (ר' lib/uiVariant.js). ההרשאות נשארות בשערים של הדפים וה-API.
@@ -37,10 +38,8 @@ export async function getRequestUiVariant(screen) {
   const authToken = getVerifiedAuthCookie(cookieStore);
   let userVariants;
   if (authToken && authToken.value) {
-    const raw = cookieStore.get(`designPrefs_${authToken.value}`)?.value;
-    if (raw) {
-      try { userVariants = sanitizeUiVariants(JSON.parse(decodeURIComponent(raw))?.uiVariants); } catch (e) { userVariants = undefined; }
-    }
+    // עוגייה חתומה בלבד (lib/designPrefsSig.js): חסרה / לא חתומה / מזויפת / של עובד אחר = אין עקיפה אישית.
+    userVariants = sanitizeUiVariants(readSignedDesignPrefs(cookieStore, authToken.value)?.uiVariants);
   }
   const [settings, roleId] = await Promise.all([
     getAllCachedSettings()
