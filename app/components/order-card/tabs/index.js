@@ -4,11 +4,12 @@
 // כל הלשוניות מורכבות תמיד (כמו בכרטיס הישן) - כדי שמאזיני oc.on(...) שלהן יהיו פעילים גם כשהן מוסתרות.
 // המטא-דאטה (שם, אייקון, נראות, סמנים A6) נשארת ב-OcTabs.js (W1).
 import makeTabPlaceholder from './OcTabPlaceholder';
+import OcHistoryTab from './OcHistoryTab';
 
 export const TABS = {
   details: makeTabPlaceholder('details'), //   W2a → import OcDetailsTab from './OcDetailsTab';
   items: makeTabPlaceholder('items'), //       W3  → import OcItemsTab from './OcItemsTab';
   delivery: makeTabPlaceholder('delivery'), // W2a → import OcDeliveryTab from './OcDeliveryTab';
   payments: makeTabPlaceholder('payments'), // W4  → import OcPaymentsTab from './OcPaymentsTab';
-  history: makeTabPlaceholder('history'), //   W6  → import OcHistoryTab from './OcHistoryTab';
+  history: OcHistoryTab, //                    W6
 };

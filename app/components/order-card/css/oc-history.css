@@ -1,2 +1,10 @@
 /* oc-history.css — כרטיס ההזמנה החדש: לשונית היסטוריה: שלבי ההזמנה, יומן הזמנה, פיד, טבלה. בבעלות W6 (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
-   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build). */
+   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build).
+   רוב הרכיבים כבר בפלטה (design-system/components.css: .prc, .hf-*, .hrow/.hdet/.hv-r, .hres-bar, .vsw, .rtbl, .pl-rt) - כאן רק מה
+   שהדגימה (כרטיס-הזמנה.html) מוסיפה מעבר לפלטה, ונטרולי דליפה של ה-CSS הגלובלי של האתר (מסומנים "דליפה"). */
+
+/* שכבת הסקירה (מאושר): מטא של שורת שלב - צ'יפ + לחצן בשורה אחת */
+.gm-ds.gm-oc .card.stg .prc-m{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* כותרת המקטע "מותאם" (בדגימה style מוטבע font-size:19px) */
+.gm-ds.gm-oc .sect-h .oc-sect-t{font-size:19px}
