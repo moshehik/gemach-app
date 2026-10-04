@@ -20,9 +20,10 @@ import HomeResults from './HomeResults';
 import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
+import HomeMine from './HomeMine';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
 import { buildSearchSheet, sectionsFromGeneral, sectionFromRecords } from './searchPdf';
-import { QuickPrefixList, useLocalRecentRows, useQuickPrefix } from '../search/QuickPrefix';
+import { QuickPrefixList, useLocalRecentRows, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import SearchKeySync from '../search/SearchKeySync';
 import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import {
@@ -80,7 +81,7 @@ export default function HomeA5() {
   const [bootDone, setBootDone] = useState(false);
   const [version, setVersion] = useState(null);
 
-  const [view, setView] = useState('start'); // start | results | none | error | ai | adv
+  const [view, setView] = useState('start'); // start | results | none | error | ai | adv | mine ("השינויים שלי")
   const [q, setQ] = useState('');
   const [aiMode, setAiMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -101,7 +102,7 @@ export default function HomeA5() {
   const [scope, setScope] = useState(null);
   const [wantAdv, setWantAdv] = useState(false); // /?adv=1: נפתח ישר לחיפוש המתקדם ברגע שההרשאות נטענו
   const scopeRef = useRef(null);
-  const urlMode = useRef(null); // { kind: 'adv'|'recent', open } — הפרמטר נשאר בכתובת כל עוד המצב פעיל (להדגשת פריט התפריט)
+  const urlMode = useRef(null); // { kind: 'adv'|'recent'|'mine', open } — הפרמטר נשאר בכתובת כל עוד המצב פעיל (להדגשת פריט התפריט)
   const appliedKey = useRef('');
   const seq = useRef(0);
   const toastTimer = useRef(null);
@@ -281,6 +282,9 @@ export default function HomeA5() {
     if (dir.recent === 'changes') {
       urlMode.current = { kind: 'recent', open: false };
       setQ('@'); // אותה תוצאה בדיוק כמו הקלדת '@' בשורת החיפוש
+    } else if (dir.recent === 'mine') {
+      urlMode.current = { kind: 'mine', open: false };
+      setView('mine'); // "השינויים שלי": כרטיס התוצאות המלא (HomeMine); הקלדת '&' בשורה פותחת את החלונית הקצרה של אותם נתונים
     } else if (dir.q) {
       setQ(dir.q);
       runSearch(dir.q);
@@ -329,11 +333,11 @@ export default function HomeA5() {
     return () => window.removeEventListener(HOME_NAV_EVENT, onMenuNav);
   }, [applyDirective, resetAll]);
 
-  // הפרמטר נשאר בכתובת רק כל עוד המצב שהוא פתח פעיל (adv = שלב החיפוש המתקדם פתוח; recent = שורת החיפוש מתחילה ב-'@')
+  // הפרמטר נשאר בכתובת רק כל עוד המצב שהוא פתח פעיל (adv = שלב החיפוש המתקדם פתוח; recent = שורת החיפוש מתחילה ב-'@'; mine = כרטיס "השינויים שלי" פתוח)
   useEffect(() => {
     const m = urlMode.current;
     if (!m) return;
-    if (m.kind === 'adv' ? view === 'adv' : q.startsWith('@')) { m.open = true; return; }
+    if (m.kind === 'adv' ? view === 'adv' : m.kind === 'mine' ? view === 'mine' : q.startsWith('@')) { m.open = true; return; }
     if (m.open) { urlMode.current = null; appliedKey.current = ''; replaceUrl(''); }
   }, [view, q]);
 
@@ -551,8 +555,10 @@ export default function HomeA5() {
     if (inputRef.current) inputRef.current.focus();
   };
   // '@' בתחילת השורה = רשימת האחרונים שלי (ההיסטוריה המקומית); "שינויים אחרונים" בתפריט פותח את אותה תוצאה בדיוק
+  // '&' בתחילת השורה = "השינויים שלי" (ההזמנות שיצרתי והשינויים שעשיתי; GET /api/me/recent-activity, נטען רק כשצריך)
   const recentList = useLocalRecentRows();
-  const qp = useQuickPrefix({ q, rows: recentList, enabled: !ai, onPick: (row) => { const u = safeInternalRoute(row.url); if (u) router.push(u); } });
+  const mine = useMyActivity();
+  const qp = useQuickPrefix({ q, rows: recentList, mine, enabled: !ai, onPick: (row) => { const u = safeInternalRoute(row.url); if (row.type === 'all') setQ(''); if (u) router.push(u); } });
 
   // בלי חיפוש חכם, בלי חיפוש מתקדם ובלי סינון לקטגוריה אין מה להציג: לא מרנדרים מיכל ריק
   const modeButtons = !canAi && !advAvailable && !scopeDef ? null : (
@@ -673,6 +679,7 @@ export default function HomeA5() {
               onOpenRoute={(r) => router.push(r)}
             />
           )}
+          {view === 'mine' && <HomeMine mine={mine} onClose={resetAll} />}
           {advResults && (
             <HomeAdvResults
               data={advRes.data}

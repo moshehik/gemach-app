@@ -1,6 +1,6 @@
 'use client';
 
-// קידומות חיפוש מהיר בשורת החיפוש ('@' = האחרונים שלי) — רכיב משותף (דף הבית היום; חיפוש התפריט בהמשך).
+// קידומות חיפוש מהיר בשורת החיפוש ('@' = האחרונים שלי, '&' = השינויים שלי) — רכיב משותף (דף הבית וחיפוש התפריט).
 // לוגיקה טהורה: lib/quickPrefix.js (נבדקת ב-scripts/test_home_logic.mjs). התצוגה היא רשימת הפלטה הנגללת
 // ul.advlist / li.advo (אותה רשימה כמו הצעות החיפוש המתקדם — design-system/components.css), בלי עיצוב חדש.
 //
@@ -13,9 +13,11 @@
 // שורה: { key, kind, icon, title, sub?, url } — `kind` הוא סוג הרשומה; סוגים חדשים (חיפוש חכם, טיוטות) נכנסים כשורות עם kind משלהם.
 // מקור הנתונים היום: ההיסטוריה המקומית agy_history (lib/historyManager.js) — אותם נתונים שהיו בכרטיס "אחרונים" הישן.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getHistory } from '@/lib/historyManager';
 import { detectQuickPrefix, filterPrefixRows, splitMatch } from '@/lib/quickPrefix';
+import { buildMineModel } from '@/lib/myRecentActivityView';
+import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import { recentRows } from '../home/homeLogic';
 
 /** שורות "האחרונים שלי" מההיסטוריה המקומית; מתעדכן כשההיסטוריה משתנה (גם מלשונית אחרת). */
@@ -35,9 +37,42 @@ export function useLocalRecentRows(enabled = true) {
   return rows;
 }
 
-export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-list' }) {
-  const hit = enabled ? detectQuickPrefix(q) : null;
+/* ---------- "השינויים שלי" ('&'): נתוני GET /api/me/recent-activity ----------
+   נטענים רק כשצריך (הקלדת & / פתיחת /?recent=mine), עם מטמון קצר ברמת המודול (חלונית התפריט וחלונית הבית חולקות אותו) ורענון בכל פתיחה אחרי 20 שניות.
+   state: idle | loading | ok | error | denied (403: אין page:orders - ואז & היא סתם טקסט). נתונים ישנים נשארים מוצגים בזמן רענון. */
+const MINE_TTL_MS = 20000;
+let mineCache = { at: 0, data: null };
+export function resetMyActivityCache() { mineCache = { at: 0, data: null }; }
+
+export function useMyActivity() {
+  const [s, setS] = useState(() => (mineCache.data ? { state: 'ok', data: mineCache.data } : { state: 'idle', data: null }));
+  const seq = useRef(0);
+  const run = useCallback(async (force) => {
+    if (!force && mineCache.data && Date.now() - mineCache.at < MINE_TTL_MS) { setS({ state: 'ok', data: mineCache.data }); return; }
+    const my = ++seq.current;
+    setS((p) => ({ state: p.data && !force ? 'ok' : 'loading', data: p.data }));
+    try {
+      const res = await fetch('/api/me/recent-activity', { cache: 'no-store' });
+      if (res.status === 403) { if (my === seq.current) setS({ state: 'denied', data: null }); return; }
+      if (!res.ok) throw new Error('status ' + res.status);
+      const d = await res.json();
+      if (!d || d.degraded) throw new Error('degraded');
+      mineCache = { at: Date.now(), data: d };
+      if (my === seq.current) setS({ state: 'ok', data: d });
+    } catch {
+      if (my === seq.current) setS({ state: 'error', data: null });
+    }
+  }, []);
+  const load = useCallback(() => run(false), [run]);
+  const reload = useCallback(() => run(true), [run]);
+  return useMemo(() => ({ state: s.state, data: s.data, load, reload }), [s, load, reload]);
+}
+
+export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-list', mine = null }) {
+  let hit = enabled ? detectQuickPrefix(q) : null;
+  if (hit && hit.def.source === 'mine' && (!mine || mine.state === 'denied')) hit = null; // אין מקור / אין הרשאה: '&' היא סתם טקסט
   const term = hit ? hit.term : '';
+  const isMine = !!hit && hit.def.source === 'mine';
   const [dismissedFor, setDismissedFor] = useState(null); // הטקסט שעבורו הרשימה נסגרה (Escape / יציאה מהשדה)
   const [actState, setActState] = useState({ q: null, i: -1 });
   const qRef = useRef(q);
@@ -46,7 +81,12 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const open = !!hit && dismissedFor !== q;
-  const items = useMemo(() => (hit ? filterPrefixRows(rows, term) : []), [hit, rows, term]);
+  const mineLoad = mine ? mine.load : null;
+  useEffect(() => { if (isMine && open && mineLoad) mineLoad(); }, [isMine, open, mineLoad]);
+  const mineData = mine ? mine.data : null;
+  const mineState = mine ? mine.state : 'idle';
+  const mineModel = useMemo(() => (isMine ? buildMineModel({ state: mineState, data: mineData }, { term }) : null), [isMine, mineState, mineData, term]);
+  const items = useMemo(() => (isMine ? mineModel.items : hit ? filterPrefixRows(rows, term) : []), [isMine, mineModel, hit, rows, term]);
   const act = open && actState.q === q && actState.i < items.length ? actState.i : -1;
 
   useEffect(() => {
@@ -55,11 +95,13 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }, [act, listId]);
 
+  const mineReload = mine ? mine.reload : null;
   const pick = useCallback((row) => {
     if (!row) return;
+    if (row.type === 'retry') { if (mineReload) mineReload(); return; } // "נסי שוב": הרשימה נשארת פתוחה
     setDismissedFor(qRef.current);
     if (onPick) onPick(row);
-  }, [onPick]);
+  }, [onPick, mineReload]);
 
   const onKeyDown = useCallback((e) => {
     if (!open) return;
@@ -93,7 +135,7 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
       'aria-activedescendant': open && act >= 0 ? `${listId}-o${act}` : undefined,
     }
     : {};
-  return { open, items, act, term, rows, def: hit ? hit.def : null, listId, pick, onKeyDown, onFocus, onBlur, inputProps };
+  return { open, items, act, term, rows, def: hit ? hit.def : null, mineModel, listId, pick, onKeyDown, onFocus, onBlur, inputProps };
 }
 
 function Marked({ text, term }) {
@@ -101,8 +143,63 @@ function Marked({ text, term }) {
   return m ? <>{a}<mark>{m}</mark>{b}</> : a;
 }
 
+function QIc({ id }) {
+  return <svg className="ic" aria-hidden="true" focusable="false"><use href={`#${SPRITE_ID_PREFIX}${id}`} /></svg>;
+}
+
+// שורת "השינויים שלי" (אותו מראה בחלונית הבית וב"אחרונים" של התפריט): אריח אייקון + שם הלקוחה + "הזמנה #N · מה השתנה · מתי".
+export function MineRowBody({ r, term }) {
+  return (
+    <>
+      <span className="sn-li"><QIc id={r.icon} /></span>
+      <span className="mine-t">
+        <b><Marked text={r.title} term={term} /></b>
+        <small>{r.type === 'order' ? <>הזמנה <bdi>#{r.orderNumber}</bdi> · {r.detail}{r.when ? ' · ' + r.when : ''}</> : r.sub}</small>
+      </span>
+      {r.tail ? <span className="sn-k">{r.tail}</span> : null}
+    </>
+  );
+}
+
+function MineList({ qp }) {
+  const m = qp.mineModel;
+  if (!m) return null;
+  let n = -1;
+  const row = (r) => {
+    n += 1;
+    const i = n;
+    return (
+      <li
+        key={r.key}
+        id={`${qp.listId}-o${i}`}
+        role="option"
+        aria-selected={i === qp.act}
+        className={`advo mine-o${r.type === 'all' ? ' mine-more' : ''}${i === qp.act ? ' act' : ''}`}
+        onMouseDown={(e) => { e.preventDefault(); qp.pick(r); }}
+      ><MineRowBody r={r} term={qp.term} /></li>
+    );
+  };
+  return (
+    <ul className="advlist mine-list" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
+      {m.state === 'loading' && <li className="advo none" role="status">{m.none}</li>}
+      {m.state === 'error' && <li className="advo none" role="alert">{m.none}<small>{m.sub}</small></li>}
+      {m.state === 'error' && m.items.map(row)}
+      {m.state !== 'loading' && m.state !== 'error' && m.sections.map((s) => (
+        <Fragment key={s.key}>
+          <li className="advo-h" role="presentation">{s.head}<b>{s.count}</b></li>
+          {s.rows.map(row)}
+        </Fragment>
+      ))}
+      {m.state === 'ok' && m.more && row(m.more)}
+      {m.state === 'ok' && m.none && <li className="advo none" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</li>}
+      <li className="mine-note" role="note"><QIc id="lock" /><span>{m.note}</span></li>
+    </ul>
+  );
+}
+
 export function QuickPrefixList({ qp }) {
   if (!qp || !qp.open || !qp.def) return null;
+  if (qp.def.source === 'mine') return <MineList qp={qp} />;
   return (
     <ul className="advlist" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
       {qp.items.length === 0 && (

@@ -50,7 +50,7 @@ export function buildGreeting(rawTitle, firstName) {
 
 /* ---------- קישורים מתפריט "בית" (2.10.2026): פרמטרים בטוחים ---------- */
 
-// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes (ר' lib/menu/buildMenuTree.js).
+// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes | /?recent=mine (ר' lib/menu/buildMenuTree.js).
 // הפרמטרים נבדקים מול רשימה סגורה: ערך לא מוכר נזרק ולעולם לא מוצג/מוחדר לדף (הכותרת והתוויות נלקחות מהטבלה למטה, לא מהכתובת).
 // via: 'search' = החיפוש הכללי (/api/global-search מחזיר לקוחות / הזמנות / פריטי השכרה) והסינון נעשה על התשובה;
 //      'adv' = אין קטגוריה כזאת בחיפוש הכללי — מריצים את תחום החיפוש המתקדם המתאים (/api/a5/adv, adv-b) לפי שם / טלפון / קוד הזמנה.
@@ -61,13 +61,13 @@ export const HOME_SCOPES = Object.freeze({
   returns: Object.freeze({ label: 'החזרות', only: 'בהחזרות', icon: 'undo', via: 'adv', focus: 'returns' }),
   alterations: Object.freeze({ label: 'תיקונים', only: 'בתיקונים', icon: 'scissors', via: 'adv', focus: 'alterations' }),
 });
-export const HOME_RECENT_VALUES = Object.freeze(['changes']);
+export const HOME_RECENT_VALUES = Object.freeze(['changes', 'mine']); // changes = רשימת '@' (האחרונים שלי); mine = "השינויים שלי" (תצוגת התוצאות של '&')
 const MAX_PARAMS_CHARS = 2000;
 const MAX_Q_CHARS = 200;
 
 /**
  * פרמטרי הכתובת של דף הבית → { scope, adv, recent, q, any }. רשימה סגורה: scope = אחד ממפתחות HOME_SCOPES, adv = '1' בדיוק,
- * recent = 'changes' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
+ * recent = 'changes' | 'mine' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
  * @param {string|URLSearchParams} search מחרוזת query (עם או בלי '?')
  */
 export function parseHomeParams(search) {
