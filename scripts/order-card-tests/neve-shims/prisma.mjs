@@ -73,8 +73,11 @@ function delegate(table, pk) {
 }
 // מיון/join של customer: ההזמנות בדמה נושאות customer מוטבע
 const order = delegate('order', 'orderId');
+// paymentObligation: רק create (applyDeliveryCharge) - נרשם ב-db.paymentObligation
+const paymentObligation = { async create(args) { (F().db.paymentObligation ||= []).push({ ...args.data }); return { ...args.data }; } };
 const prisma = {
   order,
+  paymentObligation,
   get deliveryJoin() { return F().noModel ? undefined : delegate('deliveryJoin', 'orderId'); },
 };
 export default prisma;

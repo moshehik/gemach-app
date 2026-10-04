@@ -3,7 +3,7 @@ import { checkAuth } from '@/lib/auth';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { computeOrderObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
-import { isOrderJoined } from '@/lib/deliveryJoin';
+import { isOrderJoinValid } from '@/lib/deliveryJoin';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,7 +118,10 @@ export async function POST(request, { params }) {
     if (settings.find(s => s.key === 'enable_delivery_join')?.value === 'true') {
       const parsedJoinPrice = parseFloat(settings.find(s => s.key === 'delivery_join_price')?.value);
       if (Number.isFinite(parsedJoinPrice) && parsedJoinPrice > 0) {
-        const joined = orderOverrides.deliveryJoinedTo !== undefined ? !!orderOverrides.deliveryJoinedTo : await isOrderJoined(parsedOrderId);
+        // הצטרפות שמורה נבדקת מול השדות הלא שמורים (S1): תאריך/כיוון/משלוח שהשתנו בכרטיס מבטלים את מחיר ההצטרפות גם בתצוגה המקדימה
+        const joined = orderOverrides.deliveryJoinedTo !== undefined
+          ? !!orderOverrides.deliveryJoinedTo
+          : await isOrderJoinValid(parsedOrderId, { overrides: { isDelivery: effectiveOrder.isDelivery, eventDate: effectiveOrder.eventDate, fromDate: effectiveOrder.fromDate, deliveryDirection: effectiveOrder.deliveryDirection } });
         if (joined) joinPrice = parsedJoinPrice;
       }
     }
