@@ -200,3 +200,8 @@
 /* "סכום לתשלום כעת": השדה בתוך .amtin שקוף כמו בעיצוב (design-overrides צובע רקע/גבול/רדיוס לכל input) */
 .gm-ds.gm-no .no-app .amtin>input:not(.x){border:0;background:transparent;border-radius:0;padding:1px 2px;color:var(--gm-ink);box-shadow:none}
 .gm-ds.gm-no .no-app .inp.inp:focus{border-color:var(--gm-brand)}
+/* שאלת השלב (.hero-t) ממורכזת עם הילה לבנה - הכלל של דף הבית שהעיצוב מכיל (ב-components.css רק תחת gm-home) */
+.gm-ds.gm-no .hero-t{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.8);overflow-wrap:anywhere}
+/* אייקון השורה ברשימות הלקוחות / הדגם שנבחר (page glue של העיצוב) */
+.gm-ds.gm-no .hres .li .ic-b{width:48px}
+.gm-ds.gm-no .hres .hrow.open .go:has(use[href$="check"]){transform:none}
