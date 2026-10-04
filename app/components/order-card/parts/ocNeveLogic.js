@@ -88,6 +88,22 @@ export function joinPatch(kind, value, eff) {
   return null;
 }
 
+/**
+ * ניווט במקלדת בתוך קבוצת role="radio" עם roving tabindex (סקירה, סעיף 9): מחזיר את האינדקס שאליו עוברים (פוקוס בלבד - הבחירה נשארת
+ * ב-Enter / רווח כי בחירה משנה כתובת ומחיר) או null כשהמקש לא רלוונטי. רשימה אנכית: למטה/מעלה; בעברית (RTL) שמאלה = הבא, ימינה = הקודם
+ * (כמו רדיו native); Home / End. עוטף בקצוות.
+ */
+export function rovingNext(key, index, count, rtl = true) {
+  if (!count || count < 1) return null;
+  const next = rtl ? 'ArrowLeft' : 'ArrowRight';
+  const prev = rtl ? 'ArrowRight' : 'ArrowLeft';
+  if (key === 'ArrowDown' || key === next) return (index + 1) % count;
+  if (key === 'ArrowUp' || key === prev) return (index - 1 + count) % count;
+  if (key === 'Home') return 0;
+  if (key === 'End') return count - 1;
+  return null;
+}
+
 export function candidateLabel(c) {
   return `#${c.orderId} · ${c.customerName} · ${c.address || '-'}${c.joinedCount ? ` · (${c.joinedCount} מצטרפים)` : ''}`;
 }

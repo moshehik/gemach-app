@@ -167,3 +167,19 @@ test('סקירה 7: /api/deliveries/join קריאה בלבד - אין POST (הה
     assert.ok(!/deliveries\/join[^\n]*method:\s*'POST'/.test(read(f)), f);
   }
 });
+
+test('סקירה 2/8/9 (ממשק): ביטול הצטרפות לא מתאימה, roving tabindex בשתי רשימות הרדיו, יומן הסריקות נסגר, ההצטרפות השמורה מנעילה את הכתובת', () => {
+  const pk = read(`${OC}/parts/OcDeliveryJoinPicker.js`);
+  assert.match(pk, /data-join-clear/); assert.match(pk, /oc-join-missing/);
+  assert.ok(!/tabIndex=\{0\}/.test(pk), 'אין tabIndex קבוע 0 בשורות - roving tabindex');
+  assert.equal((pk.match(/rovingTab\(/g) || []).length, 2, 'מופעל בשתי הרשימות');
+  assert.equal((pk.match(/rovingKeyDown\(e,/g) || []).length, 2);
+  assert.match(pk, /savedJoinSyncPatch\(/); assert.match(pk, /oc\.patchOrder\(syncPatch\)/);
+  const sq = read(`${OC}/parts/OcBarcodeSequencePanel.js`);
+  assert.match(sq, /aria-label="סגירת יומן הסריקות"/); assert.match(sq, /setPopOpen\(false\)/); assert.match(sq, /e\.key === 'Escape'/);
+  // סעיף 8: העיר/הכתובת מנוטרלות לפי order.deliveryJoinedTo - שהבורר מסנכרן מההצטרפות השמורה (info.joinedToOrderId) ל-order בטעינה;
+  // false (ביטול) לא נועל
+  const tab = read(`${OC}/tabs/OcDeliveryTab.js`);
+  assert.match(tab, /const joined = !!order\.deliveryJoinedTo;/);
+  assert.equal((tab.match(/disabled=\{joined\}/g) || []).length, 2);
+});

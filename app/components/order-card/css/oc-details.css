@@ -68,6 +68,8 @@
 .gm-ds.gm-oc .card.oc-join .oc-join-row{cursor:pointer}
 .gm-ds.gm-oc .card.oc-join .oc-join-row:focus-visible{outline:2px solid var(--gm-gold);outline-offset:-2px}
 .gm-ds.gm-oc .card.oc-join .amsg.oc-fmsg{margin:8px 0 0;font-size:14px;min-height:0;align-items:flex-start}
+.gm-ds.gm-oc .card.oc-join .amsg.oc-join-missing{flex-wrap:wrap;gap:8px;align-items:center}
+.gm-ds.gm-oc #sbar .oc-seq-bar .oc-seq-close{flex:none}
 /* באנר מיקום שמלה: שורת דגם + רשימת היחידות שאינן בבית (בלי תבליטי דפדפן; הטקסט הלבן של .nb) */
 .gm-ds.gm-oc .nb.nb-warning .oc-dl-model > span{display:block;line-height:1.5}
 .gm-ds.gm-oc .nb.nb-warning .oc-dl-away{margin:4px 0 0;padding-inline-start:18px;font-weight:400;list-style:disc}

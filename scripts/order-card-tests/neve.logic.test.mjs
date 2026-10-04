@@ -257,6 +257,21 @@ test('סקירה 1: savedJoinSyncPatch לא מסנכרן כשהמשתמש נגע
   assert.equal(N.savedJoinSyncPatch({ order: null, info, infoVersion: 1, historyVersion: 1 }), null);
 });
 
+test('סקירה 9: rovingNext - חיצים/Home/End בקבוצת radio (RTL: שמאלה=הבא), עטיפה בקצוות, מקשים אחרים = null', () => {
+  assert.equal(N.rovingNext('ArrowDown', 0, 3), 1);
+  assert.equal(N.rovingNext('ArrowDown', 2, 3), 0, 'עטיפה');
+  assert.equal(N.rovingNext('ArrowUp', 0, 3), 2, 'עטיפה');
+  assert.equal(N.rovingNext('ArrowUp', 2, 3), 1);
+  assert.equal(N.rovingNext('ArrowLeft', 0, 3, true), 1, 'RTL: שמאלה = הבא');
+  assert.equal(N.rovingNext('ArrowRight', 1, 3, true), 0, 'RTL: ימינה = הקודם');
+  assert.equal(N.rovingNext('ArrowRight', 0, 3, false), 1, 'LTR: ימינה = הבא');
+  assert.equal(N.rovingNext('Home', 2, 3), 0);
+  assert.equal(N.rovingNext('End', 0, 3), 2);
+  for (const k of ['Enter', ' ', 'Tab', 'a', 'Escape']) assert.equal(N.rovingNext(k, 1, 3), null, k);
+  assert.equal(N.rovingNext('ArrowDown', 0, 0), null, 'רשימה ריקה');
+  assert.equal(N.rovingNext('ArrowDown', 0, 1), 0, 'פריט יחיד');
+});
+
 test('רצף ברקודים: sequenceEntry / scanResultToSequence = record של נווה (סטטוס, הודעת ברירת מחדל, undo)', () => {
   // record של נווה: status = ok|info כמות שהוא, אחרת error; הודעה ברירת מחדל 'נקלט' / 'הסריקה נכשלה'; undo רק אם פונקציה
   for (const [r, st, msg] of [[{ status: 'ok', message: 'x' }, 'ok', 'x'], [{ status: 'ok' }, 'ok', 'נקלט'], [{ status: 'info', message: 'i' }, 'info', 'i'], [{ status: 'weird' }, 'error', 'הסריקה נכשלה'], [null, 'error', 'הסריקה נכשלה'], [{ status: 'error', message: 'e' }, 'error', 'e']]) {

@@ -56,6 +56,7 @@ export default function OcBarcodeSequencePanel({ oc, ui }) {
   const [flash, setFlash] = useState(null); // 'ok' | 'error' | null
   const [muted, setMuted] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [popOpen, setPopOpen] = useState(true); // סגירת יומן הסריקות הצף (סקירה, סעיף 9) - נפתח מחדש בסריקה חדשה
   const inputRef = useRef(null);
   const queueRef = useRef([]);
   const runningRef = useRef(false);
@@ -126,10 +127,13 @@ export default function OcBarcodeSequencePanel({ oc, ui }) {
     }
   }, [scanOne, record, focusInput]);
 
+  const closePop = () => { setPopOpen(false); focusInput(); };
+
   const submit = () => {
     const code = cleanBarcode(value);
     if (!code) return;
     setValue('');
+    setPopOpen(true);
     queueRef.current.push(code);
     setQueued(queueRef.current.length);
     runQueue();
@@ -179,15 +183,15 @@ export default function OcBarcodeSequencePanel({ oc, ui }) {
           aria-busy={busy}
           value={value}
           onChange={(e) => setValue(cleanBarcode(e.target.value))}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); submit(); } else if (e.key === 'Escape' && popOpen && (entries.length > 0 || busy || queued > 0)) { e.preventDefault(); closePop(); } }}
           autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"
         />
       </div>
-      {entries.length > 0 || busy || queued > 0 ? (
-      <div className="card oc-seq-pop">
+      {(entries.length > 0 || busy || queued > 0) && popOpen ? (
+      <div className="card oc-seq-pop" role="region" aria-label="יומן סריקות" onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); closePop(); } }}>
       <div className="oc-seq-bar">
         <span className="chip green">נסרקו: {okCount}</span>
         <span className={`chip ${failed.length ? 'amber' : 'gray'}`}>נכשלו: {failed.length}</span>
@@ -197,6 +201,7 @@ export default function OcBarcodeSequencePanel({ oc, ui }) {
         <button type="button" className="btn sm" data-tip="מבטל את הסריקה המוצלחת האחרונה" disabled={!lastUndoable || busy} onClick={undoLast}><OcIcon name="undo" size="sm" />בטל סריקה אחרונה</button>
         <button type="button" className={`btn sm tgl${showSummary ? ' on' : ''}`} aria-pressed={showSummary} onClick={() => { setShowSummary(s => !s); focusInput(); }}>סיכום</button>
         <button type="button" className={`btn sm tgl${muted ? '' : ' on'}`} aria-pressed={!muted} data-tip="מתג הפעלה/כיבוי לצפצוף" onClick={toggleMute}><OcIcon name="bell" size="sm" />{muted ? 'צפצוף: כבוי' : 'צפצוף: פעיל'}</button>
+        <button type="button" className="ibtn oc-seq-close" aria-label="סגירת יומן הסריקות" data-tip="סגירה (Esc)" onClick={closePop}><OcIcon name="x" size="sm" /></button>
       </div>
       {feed.length > 0 ? (
         <ul className="oc-seq-feed" aria-live="polite">

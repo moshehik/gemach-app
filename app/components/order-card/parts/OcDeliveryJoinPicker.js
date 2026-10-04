@@ -11,9 +11,20 @@
 // הטבלה חסרה / ההגדרה כבויה: GET /api/deliveries/join מחזיר enabled:false והבורר לא מוצג בכלל.
 import { useEffect, useMemo, useState } from 'react';
 import OcIcon from '../OcIcon';
-import { candidateLabel, effectiveJoin, eventIsoOf, joinCandidatesQuery, joinPatch, savedJoinSyncPatch } from './ocNeveLogic';
+import { candidateLabel, effectiveJoin, eventIsoOf, joinCandidatesQuery, joinPatch, rovingNext, savedJoinSyncPatch } from './ocNeveLogic';
 
 const getJson = (url) => fetch(url, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null));
+
+// roving tabindex + חיצים לקבוצת role="radio" (סקירה, סעיף 9): חץ מזיז פוקוס בין השורות, Enter / רווח בוחרים. שורה אחת בלבד ב-Tab.
+const isRtl = () => (typeof document !== 'undefined' ? document.documentElement.dir !== 'ltr' : true);
+const rovingKeyDown = (e, index, count) => {
+  const to = rovingNext(e.key, index, count, isRtl());
+  if (to === null) return false;
+  e.preventDefault();
+  const rows = e.currentTarget.parentElement ? e.currentTarget.parentElement.querySelectorAll(':scope > [role="radio"]') : [];
+  if (rows[to]) rows[to].focus();
+  return true;
+};
 
 export default function OcDeliveryJoinPicker({ oc }) {
   const order = oc.order || {};
@@ -31,6 +42,8 @@ export default function OcDeliveryJoinPicker({ oc }) {
   const [candidates, setCandidates] = useState(null); // null = טרם נטען
   const [group, setGroup] = useState([]); // חברי הקבוצה של השורש (בלי ההזמנה הזו)
   const [modeState, setModeState] = useState(null); // 'new' | 'join' | null (עד שנקבע מהמצב השמור)
+  const [candFocus, setCandFocus] = useState(null); // אינדקס השורה שעליה הפוקוס (roving tabindex), null = הנבחרת / הראשונה
+  const [memFocus, setMemFocus] = useState(null);
 
   // נטען מחדש אחרי כל כתיבה בשרת (שמירה = historyVersion עולה)
   useEffect(() => {
@@ -89,6 +102,7 @@ export default function OcDeliveryJoinPicker({ oc }) {
 
   const joinedTo = eff.joinedTo;
   const candidateMissing = !!(joinedTo && candidates && !candidates.some(c => c.orderId === joinedTo));
+  const rovingTab = (focus, selIdx, n, i) => i === (focus !== null && focus < n ? focus : (selIdx >= 0 ? selIdx : 0)) ? 0 : -1;
   const showMembers = !!joinedTo || group.length > 0;
   const direction = order.deliveryDirection || 'הלוך-חזור';
   const mi = eff.mode === 'join' ? 1 : 0;
@@ -115,12 +129,14 @@ export default function OcDeliveryJoinPicker({ oc }) {
           ) : (
             <>
               <div className="chg oc-join-list" role="radiogroup" aria-label="משלוחים להצטרפות">
-                {candidates.map(c => {
+                {candidates.map((c, i) => {
                   const sel = joinedTo === c.orderId;
                   return (
-                    <div key={c.orderId} className={`c oc-join-row${sel ? ' oc-sel' : ''}`} role="radio" aria-checked={sel} tabIndex={0}
+                    <div key={c.orderId} className={`c oc-join-row${sel ? ' oc-sel' : ''}`} role="radio" aria-checked={sel}
+                      tabIndex={rovingTab(candFocus, candidates.findIndex(x => x.orderId === joinedTo), candidates.length, i)}
+                      onFocus={() => setCandFocus(i)}
                       onClick={() => chooseCandidate(sel ? null : c)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseCandidate(sel ? null : c); } }}>
+                      onKeyDown={(e) => { if (rovingKeyDown(e, i, candidates.length)) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseCandidate(sel ? null : c); } }}>
                       <div className="t"><bdi>{candidateLabel(c)}</bdi></div>
                       {sel ? <OcIcon name="check" size="sm" /> : null}
                     </div>
@@ -128,7 +144,12 @@ export default function OcDeliveryJoinPicker({ oc }) {
                 })}
               </div>
               {candidates.length === 0 ? <p className="faint oc-join-hint">אין משלוחים קיימים באותו יום אירוע ובאותו כיוון ({direction}) להצטרפות.</p> : null}
-              {candidateMissing ? <p className="amsg oc-fmsg" role="alert"><OcIcon name="alert" size="sm" />המשלוח שנבחר כבר אינו מתאים לתאריך/כיוון הנוכחיים - יש לבחור משלוח אחר.</p> : null}
+              {candidateMissing ? (
+                <p className="amsg oc-fmsg oc-join-missing" role="alert">
+                  <OcIcon name="alert" size="sm" />המשלוח שנבחר כבר אינו מתאים לתאריך/כיוון הנוכחיים - יש לבחור משלוח אחר, או לבטל את ההצטרפות (השרת לא ישמור הצטרפות שאינה מתאימה).
+                  <button type="button" className="btn sm" data-join-clear onClick={() => chooseCandidate(null)}>בטל הצטרפות</button>
+                </p>
+              ) : null}
               {joinedTo ? <p className="faint oc-join-hint">כתובת ועיר המשלוח נלקחות מהמשלוח שנבחר, והחיוב מחושב לפי מחיר ההצטרפות.</p> : null}
             </>
           )}
@@ -139,12 +160,14 @@ export default function OcDeliveryJoinPicker({ oc }) {
         <div className="oc-join-pane">
           <div className="lbl" id="oc-join-primary-l">מי ה&quot;ראשי&quot; בכתובת זו? (יסומן &quot;ראשי&quot; בהדפסה למשלוחן ועל השקית)</div>
           <div className="chg oc-join-list" role="radiogroup" aria-labelledby="oc-join-primary-l">
-            {members.map(m => {
+            {members.map((m, i) => {
               const sel = String(eff.currentPrimary) === String(m.orderId);
               return (
-                <div key={m.orderId} className={`c oc-join-row${sel ? ' oc-sel' : ''}`} role="radio" aria-checked={sel} tabIndex={0}
+                <div key={m.orderId} className={`c oc-join-row${sel ? ' oc-sel' : ''}`} role="radio" aria-checked={sel}
+                  tabIndex={rovingTab(memFocus, members.findIndex(x => String(x.orderId) === String(eff.currentPrimary)), members.length, i)}
+                  onFocus={() => setMemFocus(i)}
                   onClick={() => choosePrimary(m.orderId)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choosePrimary(m.orderId); } }}>
+                  onKeyDown={(e) => { if (rovingKeyDown(e, i, members.length)) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choosePrimary(m.orderId); } }}>
                   <div className="t"><bdi>{m.self ? m.customerName : `#${m.orderId} · ${m.customerName}`}</bdi></div>
                   {sel ? <OcIcon name="check" size="sm" /> : null}
                 </div>
