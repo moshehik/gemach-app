@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
+import { SECRET_MASK, SECRET_CLEAR_MARKER, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import {
   toggleShownOn, toggleNextRaw, selectOptions, selectShownValue,
@@ -17,7 +17,7 @@ import {
   cleanNumberInput, stepNumber, numberLimit, numberPlaceholder, validationError,
   normTime, commitTime,
 } from '@/lib/settingsSimLayout';
-import { Ic } from './SettingsDialogs';
+import { Ic, ConfirmDialog } from './SettingsDialogs';
 
 // אייקונים לכרטיסי האפשרויות — כמו בעיצוב (users / user / shield / lock), ולניתוב המיילים send
 const OPT_ICONS = {
@@ -363,27 +363,56 @@ function TimeCtl({ row, raw, onChange, portalRoot }) {
   );
 }
 
-function SecretCtl({ row, raw, onChange }) {
+function SecretCtl({ row, raw, saved, onChange, portalRoot }) {
   const link = SECRET_SETTING_LINKS[row.key];
+  const [askClear, setAskClear] = useState(false);
+  const isSet = saved === SECRET_MASK;
+  const clearing = raw === SECRET_CLEAR_MARKER;
   return (
     <div className="st-numcol st-secret">
       <input
         className="inp"
         type="password"
         dir="ltr"
-        value={raw || ''}
-        autoComplete="off"
+        value={clearing ? '' : (raw || '')}
+        disabled={clearing}
+        autoComplete="new-password"
         aria-label={row.label}
-        onFocus={() => { if (raw === SECRET_MASK) onChange(''); }}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={raw === SECRET_MASK ? 'מוגדר — לחץ כדי להחליף' : 'הדבק ערך חדש...'}
+        // לא מנקים בפוקוס (פעם ניקינו — ושמירת הגדרה אחרת מחקה את האישור): מסמנים הכל, והקלדה מחליפה את הסימון.
+        onFocus={(e) => { if (raw === SECRET_MASK) e.target.select(); }}
+        onChange={(e) => {
+          // הסימון עצמו אינו ערך: כל מה שנשאר ממנו אחרי עריכה חלקית נזרק, וריק = ללא שינוי
+          const v = raw === SECRET_MASK ? e.target.value.split(SECRET_MASK[0]).join('') : e.target.value;
+          onChange(v === '' && isSet ? saved : v);
+        }}
+        placeholder={clearing ? 'הערך יימחק בשמירה' : raw === SECRET_MASK ? 'מוגדר — לחץ כדי להחליף' : 'הדבק ערך חדש...'}
         data-lpignore="true"
         data-1p-ignore
         data-form-type="other"
+        data-element-name={`שדה_settings_${row.key}`}
       />
+      {isSet ? (
+        clearing ? (
+          <button type="button" className="btn ghost sm" onClick={() => onChange(saved)} data-element-name={`כפתור_settings_unclear_${row.key}`}><Ic id="undo" />בטל מחיקה</button>
+        ) : (
+          <button type="button" className="btn ghost sm" onClick={() => setAskClear(true)} data-act="clear-secret" data-element-name={`כפתור_settings_clear_${row.key}`}><Ic id="trash" />נקה ערך</button>
+        )
+      ) : null}
       {link ? (
         <small className="st-note-in">{link.prefix} <a className="lnk" href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></small>
       ) : null}
+      <ConfirmDialog
+        open={askClear}
+        root={portalRoot}
+        heading={`למחוק את הערך של "${row.label}"?`}
+        sub="הערך השמור יימחק ולא ניתן יהיה לשחזר אותו מהמסך הזה (תצטרכו להדביק אותו מחדש). המחיקה תתבצע רק אחרי לחיצה על שמירה."
+        okLabel="נקה ערך"
+        okIcon="trash"
+        icon="trash"
+        k="tilt"
+        onYes={() => { setAskClear(false); onChange(SECRET_CLEAR_MARKER); }}
+        onNo={() => setAskClear(false)}
+      />
     </div>
   );
 }
@@ -419,7 +448,7 @@ export default function SettingRow({ row, raw, saved, dirty, onChange, departmen
   else if (ctl === 'methods') control = <Methods row={row} raw={raw} saved={saved} onChange={onChange} />;
   else if (ctl === 'number') control = <NumberCtl row={row} raw={raw} onChange={onChange} error={error} />;
   else if (ctl === 'time') control = <TimeCtl row={row} raw={raw} onChange={onChange} portalRoot={portalRoot} />;
-  else if (ctl === 'secret') control = <SecretCtl row={row} raw={raw} onChange={onChange} />;
+  else if (ctl === 'secret') control = <SecretCtl row={row} raw={raw} saved={saved} onChange={onChange} portalRoot={portalRoot} />;
   else if (ctl === 'timestamp') control = <input className="inp" type="text" value={hebrewDateTime(raw)} disabled readOnly aria-label={row.label} />;
   else if (ctl === 'textarea') {
     control = (

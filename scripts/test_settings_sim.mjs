@@ -364,4 +364,27 @@ t('settings-sim.css: כל כלל בהיקף .gm-ds.gm-st (או .tpop של בוח
   assert.deepEqual(bad, []);
 });
 
+console.log('review fixes (2026-10-04)');
+const SK = await import('../app/lib/secretSettingKeys.js');
+t('#1 סוד ריק = ללא שינוי: לא נשמר ב-pruneUnchanged ולא במטען; מחיקה רק עם הסימן המפורש', () => {
+  const orig = { nedarim_plus_token: SECRET_MASK, gmach_name: 'א' };
+  assert.deepEqual(L.pruneUnchanged({ nedarim_plus_token: '' }, orig), {});
+  assert.deepEqual(L.pruneUnchanged({ nedarim_plus_token: SK.SECRET_CLEAR_MARKER }, orig), { nedarim_plus_token: SK.SECRET_CLEAR_MARKER });
+  assert.deepEqual(L.buildPayload({ yemot_api_token: '', neon_api_key: SECRET_MASK, gmach_name: '' }), [{ key: 'gmach_name', value: '' }], 'שדה רגיל ריק כן נשלח');
+  assert.equal(L.shownValue({ secret: true, ctl: 'secret' }, SK.SECRET_CLEAR_MARKER), 'יימחק');
+});
+t('#1 שרת: secretWriteAction - ריק/מסכה/undefined מדולגים, סימן מחיקה מנקה, ערך אמיתי נכתב; מפתח רגיל תמיד נכתב', () => {
+  for (const k of SECRET_SETTING_KEYS) {
+    assert.equal(SK.secretWriteAction(k, ''), 'skip');
+    assert.equal(SK.secretWriteAction(k, SECRET_MASK), 'skip');
+    assert.equal(SK.secretWriteAction(k, undefined), 'skip');
+    assert.equal(SK.secretWriteAction(k, SK.SECRET_CLEAR_MARKER), 'clear');
+    assert.equal(SK.secretWriteAction(k, 'abc'), 'write');
+  }
+  assert.equal(SK.secretWriteAction('gmach_name', ''), 'write');
+  const route = read('../app/api/settings/route.js');
+  assert.ok(/secretWriteAction\(item\.key, item\.value\) !== 'skip'/.test(route), 'הנתיב משתמש ב-secretWriteAction לסינון');
+  assert.ok(/action === 'clear' \? ''/.test(route), 'סימן המחיקה נשמר כריק');
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

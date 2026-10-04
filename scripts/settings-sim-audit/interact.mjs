@@ -22,6 +22,7 @@ async function page(q, w = 1440, h = 900) {
   return p;
 }
 async function t(name, fn) {
+  if (process.env.ONLY && !name.includes(process.env.ONLY)) return; // ONLY=#1 node interact.mjs — מריץ רק בדיקות שהשם שלהן מכיל את המחרוזת
   try { await fn(); passed++; console.log('  ok   -', name); }
   catch (e) { failed++; console.error('  FAIL -', name, '\n        ', e.message); }
 }
@@ -248,6 +249,71 @@ try {
     await sleep(200);
     assert.equal(await p.$eval('.rail', (e) => getComputedStyle(e).display), 'none', 'בלי שינויים אין פס תחתון ריק');
     await p.screenshot({ path: path.join(OUT, 'i-dirty-mob.png') });
+    await p.close();
+  });
+
+  /* ================= סבב תיקוני ביקורת 4.10.2026 ================= */
+
+  await t('#1 סוד: פוקוס+עזיבה לא מוחקים את האישור; שמירת הגדרה אחרת לא שולחת את הסוד', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'pay');
+    await p.focus('#setting-row-nedarim_plus_token input');
+    assert.equal(await p.$eval('#setting-row-nedarim_plus_token input', (e) => e.value), '••••••••', 'הפוקוס לא מנקה');
+    await p.keyboard.press('Backspace'); // הכל מסומן בפוקוס, מחיקה = ריק
+    await p.$eval('#setting-row-nedarim_plus_token input', (e) => e.blur());
+    await sleep(100);
+    assert.equal(await p.$eval('#setting-row-nedarim_plus_token input', (e) => e.value), '••••••••', 'ריק חוזר לסימון');
+    assert.equal(await p.$('.st-chgs:not([hidden])'), null, 'אין שינוי ממתין');
+    await click(p, '#setting-row-allow_additional_payment_on_order .sw input');
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(300);
+    const items = (await posts(p))[0].body.items;
+    assert.equal(items.length, 1);
+    assert.equal(items[0].key, 'allow_additional_payment_on_order');
+    await p.close();
+  });
+
+  await t('#1 סוד: הקלדת ערך חדש מחליפה את הסימון ונשלחת; סימון חלקי לא נשלח כערך', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'pay');
+    await p.focus('#setting-row-nedarim_plus_token input');
+    await p.keyboard.type('abc123');
+    assert.equal(await p.$eval('#setting-row-nedarim_plus_token input', (e) => e.value), 'abc123');
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(300);
+    assert.deepEqual((await posts(p))[0].body.items, [{ key: 'nedarim_plus_token', value: 'abc123' }]);
+    await p.close();
+    const q = await page('view=sys');
+    await tab(q, 'pay');
+    await q.focus('#setting-row-nedarim_plus_token input');
+    await q.$eval('#setting-row-nedarim_plus_token input', (e) => e.setSelectionRange(8, 8));
+    await q.keyboard.press('Backspace');
+    await q.keyboard.press('Backspace');
+    await sleep(100);
+    const v = await q.$eval('#setting-row-nedarim_plus_token input', (e) => e.value);
+    assert.ok(!v.includes('•') || v === '••••••••', 'לעולם לא ערך של נקודות חלקיות: ' + v);
+    assert.equal(await q.$('.st-chgs:not([hidden])'), null);
+    await q.close();
+  });
+
+  await t('#1 סוד: "נקה ערך" עם חלון אישור שולח סימן מחיקה מפורש; ביטול החלון לא משנה כלום', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'pay');
+    assert.equal(await p.$('#setting-row-yemot_api_token [data-act="clear-secret"]'), null, 'סוד ריק — אין מה לנקות');
+    await click(p, '#setting-row-nedarim_plus_token [data-act="clear-secret"]');
+    await sleep(200);
+    assert.ok(await p.$('.scrim.on #dlg'));
+    await clickText(p, '#dlg .btn', 'ביטול');
+    await sleep(150);
+    assert.equal(await p.$('.st-chgs:not([hidden])'), null);
+    await click(p, '#setting-row-nedarim_plus_token [data-act="clear-secret"]');
+    await sleep(200);
+    await clickText(p, '#dlg .btn', 'נקה ערך');
+    await sleep(150);
+    assert.ok(await p.$('.st-chgs:not([hidden])'));
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(300);
+    assert.deepEqual((await posts(p))[0].body.items, [{ key: 'nedarim_plus_token', value: '__CLEAR_SECRET__' }]);
     await p.close();
   });
 } finally {

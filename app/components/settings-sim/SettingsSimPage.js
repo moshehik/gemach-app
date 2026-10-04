@@ -19,7 +19,7 @@ import { HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import { useLabels } from '../LabelsContext';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
-import { SECRET_SETTING_KEYS, SECRET_MASK } from '@/app/lib/secretSettingKeys';
+import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_CLEAR_MARKER } from '@/app/lib/secretSettingKeys';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import {
   buildViewModel, NAMES_TABS, DEFAULT_LABELS, applyChange, revertChange, pruneUnchanged, buildPayload,
@@ -441,7 +441,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
       const next = (prev || []).map((s) => {
         if (modified[s.key] === undefined) return s;
         const v = modified[s.key];
-        return { ...s, value: SECRET_SETTING_KEYS.includes(s.key) ? (v ? SECRET_MASK : '') : v };
+        return { ...s, value: SECRET_SETTING_KEYS.includes(s.key) ? (v && v !== SECRET_CLEAR_MARKER ? SECRET_MASK : '') : v };
       });
       simCache.set(view, next);
       return next;
