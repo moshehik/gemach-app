@@ -305,6 +305,17 @@ await t('אייקונים חדשים בפלטה ובספרייה המוטמעת 
   assert.ok(read('../design-system/sprite.svg').includes('79 סמלים'));
 });
 
+await t('עמדת לקוחות נעולה (body.hide-global-nav): globals.css מסתיר את הכפתור הצף ואת החלון (שניהם portal ל-body)', () => {
+  const G = read('../app/globals.css');
+  const m = /((?:body\.hide-global-nav [^,{]+,\s*)*body\.hide-global-nav [^,{]+)\{\s*display:\s*none\s*!important;?\s*\}/.exec(G);
+  assert.ok(m, 'חסר כלל ההסתרה של hide-global-nav');
+  const sels = m[1].split(',').map((x) => x.trim());
+  assert.ok(sels.includes('body.hide-global-nav .gm-er-launch'), 'הכפתור הצף לא מוסתר בעמדת הלקוחות');
+  assert.ok(sels.includes('body.hide-global-nav .gm-ds.gm-er'), 'החלון לא מוסתר בעמדת הלקוחות');
+  has(BTN, /createPortal\([\s\S]*?className="gm-er-launch"/, 'הכפתור הצף הוא .gm-er-launch');
+  has(WIN, /className="gm-ds gm-er dlg-dark"/, 'שורש החלון הוא .gm-ds.gm-er');
+});
+
 console.log('כותרת AI (מוכנה, כבויה עד DDL + הגדרה)');
 const fakePrisma = (o = {}) => {
   const calls = [];
