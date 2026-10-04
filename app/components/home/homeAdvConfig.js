@@ -77,8 +77,8 @@ export const ADV_FOCI = {
   deliveries: { label: 'משלוחים', icon: 'truck', api: 'advb', needs: 'deliveries', blocks: [{ t: 'dpart' }, { t: 'sstat', list: 'dlv' }, { t: 'rchk' }, { t: 'rcust' }] },
   // תפוסה: דגם (חובה — השרת מחזיר 400 בלעדיו), מידה, טווח תאריכי אירוע. keys = רק מה שהשרת קורא לתחום הזה
   capacity: { label: 'תפוסה', icon: 'box', api: 'advb', keys: ['model', 'size', 'from', 'to'], required: [['model', 'נדרש דגם לחיפוש תפוסה']], blocks: [{ t: 'cap' }] },
-  // כספים: בעיצוב מאחורי כפתור ה"+" (plus). בלי keys — השרת קורא את כל שדות הכספים (amount/adate/emp/cemp/cdate/oid/from/name/cinfo/ordst) והסימונים
-  finance: { label: 'כספים', icon: 'wallet', plus: true, api: 'advb', blocks: [{ t: 'fgen' }, { t: 'fcred' }, { t: 'fchk' }, { t: 'fcust' }] },
+  // כספים: בעיצוב מאחורי כפתור ה"+" (plus). keys = בדיוק מה ש-finance() ב-adv-b קורא (ו-withFlags: גם הסימונים, כי keys לבדו משמיט אותם — תפוסה בלי סימונים)
+  finance: { label: 'כספים', icon: 'wallet', plus: true, api: 'advb', keys: ['amount', 'adate', 'emp', 'cemp', 'cdate', 'oid', 'from', 'to', 'name', 'cinfo', 'ordst'], withFlags: true, blocks: [{ t: 'fgen' }, { t: 'fcred' }, { t: 'fchk' }, { t: 'fcust' }] },
   // התראות: נתיב שרת משלו (/api/a5/adv-alerts); בלי סימון = כל הסוגים; keys = רק מה שהשרת קורא
   alerts: { label: 'התראות', icon: 'bell', plus: true, api: 'alerts', keys: ['oid', 'from', 'name', 'cinfo'], blocks: [{ t: 'alrt' }, { t: 'rcust' }] },
   models: { label: 'דגמים', icon: 'dress', api: 'advb', mgr: true, blocks: [{ t: 'mgen' }] },
@@ -174,7 +174,7 @@ export function buildAdvRequest(focus, adv, storage) {
     return '/api/a5/adv-alerts?' + p.toString();
   }
   (f.keys || ADV_KEYS).forEach((k) => { const v = A[k]; if (v != null && typeof v === 'string' && v.trim() !== '') p.set(k, v.trim()); });
-  if (!f.keys && A.flags && A.flags.length) p.set('flags', A.flags.join(','));
+  if ((!f.keys || f.withFlags) && A.flags && A.flags.length) p.set('flags', A.flags.join(','));
   if (!f.keys && A.ost && A.ost.length) p.set('ost', A.ost.join(','));
   return '/api/a5/adv-b?' + p.toString();
 }
