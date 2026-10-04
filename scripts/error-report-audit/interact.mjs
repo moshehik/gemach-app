@@ -140,7 +140,7 @@ ok((await p.$$('.er3-acts .xlbtn')).length === 2, 'מדווח: רק "טופל" �
 ok((await tip('.er3-acts [data-act="handled"]')) === 'סמן כטופל', 'טולטיפ "סמן כטופל"');
 ok((await tip('.er3-acts [data-act="archive"]')) === 'העבר לארכיון', 'טולטיפ "העבר לארכיון"');
 const nameCol = await p.$eval('.er3-bh b', (e) => getComputedStyle(e).color);
-ok(nameCol === 'rgb(154, 122, 31)', `שם השולח בזהב של הפלטה --gm-gold-d (${nameCol})`);
+ok(nameCol === 'rgb(122, 93, 18)', `שם השולח בזהב (--eg-tx #7a5d12, ניגודיות 4.6:1) (${nameCol})`);
 ok((await p.$eval('.er3-b', (e) => e.getAttribute('data-tip'))) && !(await p.$eval('.er3-b', (e) => /\d\d:\d\d/.test(e.querySelector('.er3-bh').textContent))), 'תאריך ושעה רק בטולטיפ של הבועה');
 await click('.er-human', 500);
 const ph = await lastCall((c) => c.method === 'PATCH');

@@ -550,7 +550,7 @@ t('errorReport.css: נטרול דליפות (נמצאו ב-error-report-audit) -
 t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגולים כחולים (.xlbtn.xlp), שמות בזהב (טוקן), בלי תפריט ⋯', () => {
   assert.ok(hasEr(/\.er3-acts \.xlbtn \.ic/, /^color$/, { valueRe: /#1e63c4/ }), 'אייקון בכחול של הכפתור');
   assert.ok(!erRules.some((r) => /\.er3-acts/.test(r.sel) && setsProp(r, /^(width|height|border-radius|background|border)$/).length && !/\.on|:disabled/.test(r.sel)), 'הכפתור העגול לא מעוצב מחדש - רק הפלטה (.tools .xlbtn.xlp)');
-  assert.ok(hasEr(/\.er3-bh b/, /^color$/, { valueRe: /var\(--er-name\)/ }) && /--er-name:var\(--gm-gold-d\)/.test(ER_CSS) && /--er-name:var\(--gm-gold-300\)/.test(ER_CSS), 'שמות בזהב של הפלטה');
+  assert.ok(hasEr(/\.er3-bh b/, /^color$/, { valueRe: /var\(--er-name\)/ }) && /--er-name:var\(--eg-tx\)/.test(ER_CSS) && /--er-name:var\(--gm-gold-300\)/.test(ER_CSS), 'שמות בזהב של הפלטה');
   assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
 });
 

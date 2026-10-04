@@ -330,10 +330,10 @@ body.gm-er-picking,body.gm-er-picking *{cursor:crosshair!important}
 .gm-ds.gm-er #dlg2.er-lb:focus{outline:0}
 
 /* ===================== חלק 2: תוספות ===================== */
-/* שם השולח בבועה בזהב של הפלטה (הוראת הבעלים 4.10.2026): על משטח בהיר --gm-gold-d (הזהב הכהה שהפלטה משתמשת בו לטקסט, .sn-st),
-   על משטח כהה --gm-gold-300 (כמו כותרות הזהב בחלונות הכהים) */
+/* שם השולח בבועה בזהב (הוראת הבעלים 4.10.2026). על משטח בהיר: טקסט הזהב של החלון עצמו (--eg-tx = #7a5d12, הסקיצה סבב 2) -
+   ניגודיות 4.6:1 על הבועה ו-5.4:1 על הכרטיס (--gm-gold-d נתן רק 3.0:1 - סקירה עצמאית). על משטח כהה --gm-gold-300 */
 .gm-ds.gm-er #dlg.er-win{--er-name:var(--gm-gold-300)}
-.gm-ds.gm-er #dlg.er-win.er-light{--er-name:var(--gm-gold-d)}
+.gm-ds.gm-er #dlg.er-win.er-light{--er-name:var(--eg-tx)}
 /* הצעדים שהוקלטו בטופס/בתגובה: רק "נרשמו N צעדים" + הסר (אותו מראה כמו ה-summary בסקיצה, בלי השורות עצמן) */
 .gm-ds.gm-er .er-stp-h{display:flex;align-items:center;gap:8px;padding:6px 10px;font-weight:600;font-size:14px}
 .gm-ds.gm-er .er-stp-h .ic{width:16px;height:16px;color:#f1dc8f}

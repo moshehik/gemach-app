@@ -245,9 +245,14 @@ await t('X תמיד ראשון בכותרת (קצה ימין ב-RTL) בכרטי�
   assert.ok(!card.includes('er-newb'), '"+ דיווח חדש" בטופס הדיווח');
   has(WIN, /\{canNew \? <button type="button" className="btn primary er-newb"[^\n]*דיווח חדש<\/button> : null\}\s*<\/div>\s*<div className="er3-g">/, '"+ דיווח חדש" אחרון בכותרת הפאנל');
 });
-await t('שמות השולחים בזהב של הפלטה (טוקן, לא צבע חדש): --gm-gold-d על משטח בהיר, --gm-gold-300 על כהה', () => {
+await t('שמות השולחים בזהב (משתנה, לא צבע חדש): טקסט הזהב של החלון --eg-tx (#7a5d12, ניגודיות ≥4.5) על בהיר, --gm-gold-300 על כהה', () => {
   has(CSS, /\.gm-ds\.gm-er \.er3-bh b\{[^}]*color:var\(--er-name\)/, 'שם בבועה');
-  has(CSS, /\.gm-ds\.gm-er #dlg\.er-win\.er-light\{--er-name:var\(--gm-gold-d\)\}/, 'בהיר');
+  has(CSS, /\.gm-ds\.gm-er #dlg\.er-win\.er-light\{--er-name:var\(--eg-tx\)\}/, 'בהיר');
+  has(CSS, /#dlg\.er-win\.er-light\{--eg-bg:[^}]*--eg-tx:#7a5d12/, '--eg-tx בהיר = #7a5d12');
+  // ניגודיות: #7a5d12 על הבועה (k-row מעל רקע החלון ~#d9dde1) ועל הכרטיס (#eef0f2) - לפחות 4.5:1
+  const lum = (hex) => { const c = hex.match(/\w\w/g).map((x) => parseInt(x, 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  assert.ok(ratio('7a5d12', 'd9dde1') >= 4.5 && ratio('7a5d12', 'eef0f2') >= 4.5, `ניגודיות ${ratio('7a5d12', 'd9dde1').toFixed(2)}`);
   has(CSS, /\.gm-ds\.gm-er #dlg\.er-win\{--er-name:var\(--gm-gold-300\)\}/, 'כהה');
 });
 await t('הצעדים שהוקלטו: בטופס רק "נרשמו N צעדים" + הסר (בלי השורות); בבועה - רק למתכנת, מקופל "צעדים שהוקלטו"', () => {
