@@ -9,6 +9,7 @@ import UserMenu from './UserMenu';
 import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
 import ErrorReportButton from './ErrorReportButton';
+import PageVariantToggle from './variant/PageVariantToggle';
 import MessageHistoryButton from './MessageHistoryButton';
 import OverdueRemindersWatcher from './OverdueRemindersWatcher';
 import ShiftMessageWatcher from './ShiftMessageWatcher';
@@ -237,6 +238,8 @@ export default function AppShell({
             </button>
             <ThemeToggle employeeId={authToken} initialTheme={themePreference} />
             {isProgrammer && <MessageHistoryButton />}
+            {/* "מעבר לתצוגה החדשה" של התפריט (4.10.2026) - הדרך חזרה אחרי "האתר הישן"; רק להנהלה ראשית / מתכנת */}
+            <PageVariantToggle screen="shell" placement="topbar" />
             {!hideErrorReporting && <ErrorReportButton />}
             {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
             <UserMenu hideInternalMessaging={hideInternalMessaging} />

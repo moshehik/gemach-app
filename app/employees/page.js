@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StatisticsModal from '../components/StatisticsModal';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
+import { useUiVariant } from '../components/UiVariantContext';
+import VariantFrame from '../components/variant/VariantFrame';
+import LegacyEmployeesPage from './LegacyEmployeesPage';
 
 // מיון בצד הלקוח לשתי הטבלאות בעמוד זה (רשימת עובדים + סיכום נוכחות) - שתיהן טוענות
 // את כל הנתונים למקשה אחת בלי pagination בשרת, אז אין צורך במיון צד-שרת. אותו דפוס
@@ -34,7 +37,24 @@ const SortIcon = ({ sort, colKey }) => {
   );
 };
 
-export default function EmployeesPage() {
+// "ישן / חדש" (4.10.2026, lib/uiVariantScreens.js מסך 'attendance'): בגרסה הישנה /employees הוא הדף הקודם במלואו, כולל לשונית
+// "נוכחות" הישנה (LegacyEmployeesPage.js = f3b1f771^1:app/employees/page.js כפי שהוא; הנתונים מנתיב התאימות המוקשח
+// של הנוכחות הישנה, ר' docs/page-variant-switch-2026-10-04.md). בגרסה החדשה - הדף הזה, שהלשונית בו מובילה ל-/employees/attendance. ההכרעה: useUiVariant
+// (אותם קלטים כמו בשרת - app/layout.js). בישן האייקון "מעבר לתצוגה החדשה" בפינה (VariantFrame); בחדש אין אייקון בדף הזה
+// (רשימת העובדים זהה בשתי הגרסאות) - הוא בכותרת "סיכום נוכחות".
+export default function EmployeesRoute() {
+  const variant = useUiVariant('attendance');
+  if (variant === 'legacy') {
+    return (
+      <VariantFrame screen="attendance" variant="legacy">
+        <LegacyEmployeesPage />
+      </VariantFrame>
+    );
+  }
+  return <EmployeesPage />;
+}
+
+function EmployeesPage() {
   const router = useRouter();
 
   // Tab State

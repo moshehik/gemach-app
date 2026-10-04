@@ -6,6 +6,7 @@
 // העתק מקומי בדפדפן (gm-login-autoclock:<id>) מעודכן גם כאן, כדי שהמתג במסך הכניסה ישקף את הערך האחרון.
 
 import { useEffect, useState } from 'react';
+import { useUiVariant } from '../UiVariantContext';
 
 export const AUTO_CLOCK_LABEL = 'רשום לי התחלת עבודה אוטומטית בכניסה';
 export const AUTO_CLOCK_MIRROR_PREFIX = 'gm-login-autoclock:';
@@ -27,6 +28,9 @@ export function readAutoClockMirror(employeeId) {
 }
 
 export default function AutoClockSwitch() {
+  // "ישן / חדש" (4.10.2026): הדף הישן /profile (app/profile/LegacyProfilePage.js, משוחזר כפי שהוא) מרנדר את הרכיב הזה - שם מוצג
+  // המראה הקודם (תיבת סימון + שורת עזר, 7917382f^). ההתנהגות והשמירה זהות בשתי הגרסאות.
+  const profileVariant = useUiVariant('profile');
   const [enabled, setEnabled] = useState(null); // null = טוען / לא מחובר
   const [employeeId, setEmployeeId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -82,6 +86,20 @@ export default function AutoClockSwitch() {
   // עיצוב הפרופיל החדש (תצוגות-עיצוב/פרופיל-עובד.html): מתג הפעלה/כיבוי של הפלטה (שדה 9, בורר 19) בשורת trow, בלי שורת עזר
   // (הבעלים 3.10.2026: כיתוב ההסבר מתחת למתג הוסר). ההתנהגות לא השתנתה - השמירה מיידית ב-PUT.
   // שורת הודעה מופיעה רק כשהשמירה נכשלה (לא כיתוב קבוע).
+  if (profileVariant === 'legacy') {
+    return (
+      <div className="field" style={{ gridColumn: '1 / -1' }}>
+        <div className="checkbox-row">
+          <input type="checkbox" id="profile-autoClockIn" checked={checked} disabled={disabled} onChange={toggle} />
+          <label htmlFor="profile-autoClockIn">{AUTO_CLOCK_LABEL}</label>
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>
+          {error || 'נשמר מיד, בלי לחיצה על "שמירת פרטים". פועל בכל מחשב שבו נכנסים.'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pf-pref">
       <div className="trow">

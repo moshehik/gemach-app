@@ -51,8 +51,14 @@ t('הנתיב /admin דק: השרת מחשב את השערים עם checkPageAcc
   has(SWITCH, /dynamic\(\(\) => import\('\.\/AdminHubPage'\), \{ ssr: false \}\)/, 'dynamic');
   assert.ok(!/components\.css/.test(ROUTE + SWITCH), 'ה-CSS של הפלטה נטען רק מתוך AdminHubPage');
   has(PAGE, /import '@\/design-system\/components\.css'/, 'AdminHubPage מייבא את הפלטה');
-  assert.ok(!/EmailListCard|AdminHubA5Cards|list-card/.test(ROUTE + PAGE), 'שרידי המסך הישן');
-  assert.ok(!exists('../app/admin/EmailListCard.js') && !exists('../app/components/menu/AdminHubA5Cards.js'), 'קבצי המסך הישן נמחקו');
+  // 4.10.2026 ("ישן / חדש", docs/page-variant-switch-2026-10-04.md): המסך הישן שוחזר כ-LegacyAdminPage.js (+ EmailListCard /
+  // AdminHubA5Cards בנתיבים המקוריים) ונבחר בשרת לפי getRequestUiVariant('admin_hub'). המסך החדש עצמו בלי שרידים ישנים,
+  // והנתיב מייבא את הישן רק דרך LegacyAdminPage. השחזור זהה ל-git (scripts/test_page_variant_switch.mjs).
+  assert.ok(!/EmailListCard|AdminHubA5Cards|list-card/.test(PAGE), 'שרידי המסך הישן במסך החדש');
+  const routeCode = ROUTE.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/EmailListCard|AdminHubA5Cards|list-card/.test(routeCode), 'הנתיב מייבא את הישן רק דרך LegacyAdminPage');
+  has(ROUTE, /import LegacyAdminPage from '\.\/LegacyAdminPage'/, 'המסך הישן המשוחזר');
+  has(ROUTE, /getRequestUiVariant\('admin_hub'\)/, 'בחירה בשרת');
 });
 
 t('מערכי התפקיד של השערים זהים ל-lib/auth.js (HEAD_MANAGEMENT_ROLES / DEVELOPER_ONLY_ROLES)', () => {
@@ -79,7 +85,14 @@ t('כל נתיב "לא" / "להסיר" / "לא להכניס" לא מופיע ב�
     assert.ok(EXCLUDED_ROUTES[h], `${h} חסר בתיעוד EXCLUDED_ROUTES`);
   }
   assert.ok(!/FullEmailListModal|customers\/emails/.test(PAGE), 'חלון רשימת המיילים');
-  assert.ok(!exists('../components/FullEmailListModal.js') && !exists('../app/api/customers/emails/route.js'), 'חלון רשימת המיילים וה-API שלו (בלי שימוש) נמחקו');
+  // 4.10.2026: החלון חזר רק כחלק מהמסך הישן המשוחזר; ה-API הוא נתיב תאימות מוקשח (הנהלה ראשית / מתכנת בלבד, נכשל סגור) -
+  // לא המטפל הישן שאפשר לכל עובד מחובר (checkAuth בלבד).
+  if (exists('../app/api/customers/emails/route.js')) {
+    const api = read('../app/api/customers/emails/route.js');
+    has(api, /getSessionEmployee\(\)/, 'emails API: עובד מחובר פעיל');
+    has(api, /HEAD_MANAGEMENT_ROLES\.includes\(me\.roleId\)/, 'emails API: הנהלה ראשית / מתכנת בלבד');
+    assert.ok(!/checkAuth/.test(api), 'emails API: לא השער הישן (checkAuth בלבד)');
+  }
   // אריח מחירון אחד (שני האריחים הישנים הובילו לאותו דף), התיאור מאחד את שני הכיתובים הקיימים
   assert.equal(TOOLS.filter((x) => x.href === '/dashboard/pricelist').length, 1);
   assert.match(byHref('/dashboard/pricelist').desc, /צפייה והדפסה/);

@@ -87,8 +87,11 @@ t('עמודה אחת: אין עמודה צדדית; סדר הכרטיסים: א�
 });
 
 t('מתג הכניסה האוטומטית: בלי שורת העזר, אותה תווית ואותה התנהגות (נשמר מיד ב-PUT /api/me/auto-clock-in)', () => {
-  assert.ok(!/בלי לחיצה על/.test(PAGE + AUTO), 'שורת העזר חזרה');
-  assert.ok(!/נשמר מיד/.test(PAGE + AUTO), 'שורת העזר חזרה');
+  // 4.10.2026 ("ישן / חדש"): שורת העזר קיימת רק בענף של הדף הישן (useUiVariant('profile') === 'legacy'), לא במראה החדש
+  const AUTO_NEW = AUTO.slice(AUTO.indexOf('<div className="pf-pref">'));
+  assert.ok(AUTO.includes('<div className="pf-pref">') && /profileVariant === 'legacy'/.test(AUTO), 'המראה החדש / ענף הישן');
+  assert.ok(!/בלי לחיצה על/.test(PAGE + AUTO_NEW), 'שורת העזר חזרה');
+  assert.ok(!/נשמר מיד/.test(PAGE + AUTO_NEW), 'שורת העזר חזרה');
   has(AUTO, /export const AUTO_CLOCK_LABEL = 'רשום לי התחלת עבודה אוטומטית בכניסה'/, 'התווית השתנתה');
   has(AUTO, /fetch\('\/api\/me\/auto-clock-in', \{\s*method: 'PUT'/, 'שמירה מיידית');
   has(AUTO, /className="sw"><input type="checkbox" id="profile-autoClockIn"/, 'מתג הפלטה');

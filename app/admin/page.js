@@ -10,6 +10,9 @@ import { checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES, DEVELOPER_O
 import { getCachedSetting } from '@/lib/settingsCache';
 import { selectHub } from '@/lib/adminHubCatalog';
 import AdminHubSwitch from '@/app/components/admin-hub/AdminHubSwitch';
+import VariantFrame from '@/app/components/variant/VariantFrame';
+import { getRequestUiVariant } from '@/app/lib/uiVariantServer';
+import LegacyAdminPage from './LegacyAdminPage';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +34,19 @@ async function deliveriesEnabled() {
   }
 }
 
+// "ישן / חדש" (4.10.2026, lib/uiVariantScreens.js מסך 'admin_hub'): ההכרעה בשרת (getRequestUiVariant — עקיפה אישית > הגדרת ארגון
+// ui_variant_admin_hub > ברירת מחדל לפי תפקיד: מתכנת חדש, כל השאר ישן). הישן: LegacyAdminPage.js (079fc226^1:app/admin/page.js כפי
+// שהוא, עם EmailListCard / AdminHubA5Cards / FullEmailListModal בנתיבים המקוריים). בישן לא מחושבים השערים של המסך החדש.
 export default async function AdminHubPage() {
+  if ((await getRequestUiVariant('admin_hub')) === 'legacy') {
+    // כרטיס "ניהול אתר" רק למתכנת - אותו שער כמו app/admin/site/layout.js (אחרת הוא מחזיר את ההנהלה ל-/admin: קישור מת).
+    const showSite = await checkPageAccess(DEVELOPER_ONLY_ROLES);
+    return (
+      <VariantFrame screen="admin_hub" variant="legacy">
+        <LegacyAdminPage showSite={showSite} />
+      </VariantFrame>
+    );
+  }
   const [head, dev, me, nedarim, deliveries] = await Promise.all([
     checkPageAccess(HEAD_MANAGEMENT_ROLES),
     checkPageAccess(DEVELOPER_ONLY_ROLES),
@@ -40,5 +55,9 @@ export default async function AdminHubPage() {
     deliveriesEnabled(),
   ]);
   const { tools, categories } = selectHub({ head, dev }, { nedarimEnabled: nedarim, deliveriesEnabled: deliveries });
-  return <AdminHubSwitch tools={tools} categories={categories} userKey={me ? me.id : null} />;
+  return (
+    <VariantFrame screen="admin_hub" variant="a5">
+      <AdminHubSwitch tools={tools} categories={categories} userKey={me ? me.id : null} />
+    </VariantFrame>
+  );
 }
