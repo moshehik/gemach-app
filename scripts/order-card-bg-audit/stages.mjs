@@ -9,7 +9,9 @@ const width = Number(process.argv[3] || 1280);
 const OUT = path.join(HERE, 'out'); fs.mkdirSync(OUT, { recursive: true });
 const D = which === 'demo';
 // אזורי המעטפת (W1): שורת הכותרת, הלשוניות, הטוסט, שני החלונות. התוכן של הלשוניות והרייל - של הזרמים האחרים (W8 מרחיב).
-const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2']];
+const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2'],
+  // W6: לשונית היסטוריה (שלבים, יומן, פיד/טבלה, סינון) + הטולטיפ העשיר של המשמרת (#rt בעיצוב = .pl-rt של הפלטה בכרטיס)
+  ['HIST', '#p-history'], ['RT', D ? '#rt.on' : '.oc-portal .pl-rt.on']];
 const DUMP = (roots) => {
   const out = [];
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).map(Number); return { a: p.length > 3 ? p[3] : 1 }; };
@@ -114,6 +116,38 @@ const STAGES = [
   } },
 ];
 const checks = [];
+
+// W6: לשונית היסטוריה - אותם שלבים בשני הצדדים (הכרטיס עם API מדומה = הרישומים של הדגימה, ר' entry.jsx)
+const openHistory = async () => { await (D ? fresh() : fresh('neve')); await clickAt('#tabs .tab[data-tab="history"]'); await sleep(500); await away(); };
+STAGES.push(
+  { name: '40-history', real: openHistory, demo: openHistory },
+  { name: '41-history-row-open', real: async () => { await openHistory(); await clickAt('#hfeed .hrow:first-child .lrow'); await away(); }, demo: async () => { await openHistory(); await clickAt('#hfeed .hrow:first-child .lrow'); await away(); } },
+  { name: '42-history-table', real: async () => { await openHistory(); await clickAt('.hres-bar .vsw .vopt:last-child'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hres-bar .vsw .vopt:last-child'); await away(); } },
+  { name: '43-history-filter', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(300); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(300); } },
+  { name: '44-history-filtered', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await p.keyboard.press('Escape'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await clickAt('.hf-bar .hf-t'); await away(); } },
+  { name: '45-history-search', real: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); } },
+  { name: '46-history-shift', real: async () => { await openHistory(); await hover('.card.proc .prc-sh'); }, demo: async () => { await openHistory(); await hover('.card.proc .prc-sh'); } },
+  { name: '47-history-prep-dlg', real: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); } },
+  { name: '48-history-scrolled', real: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); }, demo: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); } },
+  // בדיקות התנהגות (רק בדף האמיתי): ייצוא נרשם HISTORY_EXPORTED, סימון הכנה שולח POST /api/schedule/marks וטוען מחדש
+  { name: '49-history-exports', real: async () => {
+    await openHistory();
+    await p.evaluate(() => { window.open = () => ({}); });
+    await clickAt('.hres-x .xlbtn.xlp'); await sleep(400);
+    await clickAt('.hres-x .xlbtn.xld'); await sleep(600);
+    await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(700);
+    const calls = await p.evaluate(() => window.__calls || []);
+    const ev = calls.filter((c) => c.url === '/api/orders/events').map((c) => JSON.parse(c.body));
+    const fmts = ev.filter((b) => b.action === 'HISTORY_EXPORTED').map((b) => b.meta.format);
+    const pdf = calls.find((c) => c.url === '/api/pdf');
+    const mark = calls.find((c) => c.url === '/api/schedule/marks');
+    const reloads = calls.filter((c) => /\/api\/orders\/53375\/journal/.test(c.url)).length;
+    checks.push(['history: הדפסה והורדה נרשמו HISTORY_EXPORTED (print, pdf) עם מספר השורות', fmts.join(',') === 'print,pdf' && ev.every((b) => b.meta.rows === 12)],
+      ['history: הורדה = POST /api/pdf עם /print/order-history?orderId=53375&downloadPdf=1', !!pdf && JSON.parse(pdf.body).path === '/print/order-history?orderId=53375&downloadPdf=1'],
+      ['history: סימון הכנה = POST /api/schedule/marks {mark, prep, 2026-10-05, 53375}', !!mark && (() => { const b = JSON.parse(mark.body); return b.action === 'mark' && b.stageKey === 'prep' && b.dayKey === '2026-10-05' && b.orderId === 53375; })()],
+      ['history: אחרי סימון / ייצוא היומן נטען מחדש (historyVersion)', reloads >= 2]);
+  } },
+);
 
 for (const st of STAGES) {
   const fn = D ? st.demo : st.real;

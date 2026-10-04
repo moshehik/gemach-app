@@ -5,7 +5,7 @@
 // מבנה: pProcess() בדגימה (.card.proc, החדש למעלה). הנתונים מנתוני אמת: GET /api/orders/[id]/journal (lib/history/orderJournal.js),
 // לא PROC_WHO/PROC_SHIFT הקבועים של הדגימה. צ׳יפי meta שהדגימה מחשבת ולא מציגה - לא מוצגים (כמו בדגימה).
 // R40: "בוצעה על ידי" / "עובדים פעילים בהזמנה" לא קיימים בכרטיס החדש - המידע כאן.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import OcPortal from '../OcPortal';
 import { fmtMoney } from '../orderCardLogic';
@@ -51,56 +51,70 @@ function JournalRow({ n, todayKey }) {
   );
 }
 
-// לחצן "עובדים במשמרת" + טולטיפ עשיר של הפלטה (.pl-rt, כמו #rt בדגימה: data-rich="shift|…") ב-portal לשורש הכרטיס
+// לחצן "עובדים במשמרת" + טולטיפ עשיר של הפלטה (.pl-rt, כמו #rt בדגימה: data-rich="shift|…", מיקום כמו placeRich - מימין/משמאל
+// לכפתור במסך רחב, אחרת מעל/מתחת; חץ .ra) ב-portal לשורש הכרטיס
 function ShiftButton({ shift }) {
   const ref = useRef(null);
-  const [pos, setPos] = useState(null);
-  const show = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setPos({ top: r.bottom + 10, left: r.left + r.width / 2 });
-  }, []);
-  const hide = useCallback(() => setPos(null), []);
+  const [anchor, setAnchor] = useState(null);
+  const show = useCallback(() => { if (ref.current) setAnchor(ref.current.getBoundingClientRect()); }, []);
+  const hide = useCallback(() => setAnchor(null), []);
   useEffect(() => {
-    if (!pos) return undefined;
-    const close = () => setPos(null);
-    window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
-    return () => { window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
-  }, [pos]);
+    if (!anchor) return undefined;
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+    return () => { window.removeEventListener('scroll', hide, true); window.removeEventListener('resize', hide); };
+  }, [anchor, hide]);
   return (
     <>
       <button
-        type="button" ref={ref} className="tip prc-sh" aria-label="עובדים במשמרת" aria-expanded={!!pos}
+        type="button" ref={ref} className="tip prc-sh" aria-label="עובדים במשמרת" aria-expanded={!!anchor}
         onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
-        onClick={() => (pos ? hide() : show())}
+        onClick={() => (anchor ? hide() : show())}
         onKeyDown={(e) => { if (e.key === 'Escape') hide(); }}
       >
         <OcIcon name="users" />
       </button>
-      {pos ? (
+      {anchor ? (
         <OcPortal>
-          <ShiftTip shift={shift} pos={pos} />
+          <ShiftTip shift={shift} anchor={anchor} />
         </OcPortal>
       ) : null}
     </>
   );
 }
 
-function ShiftTip({ shift, pos }) {
+function placeTip(r, w, h) {
+  const vw = document.documentElement.clientWidth;
+  const vh = window.innerHeight;
+  const g = 12;
+  let x;
+  let y;
+  let side;
+  const wide = vw >= 700;
+  if (wide && r.right + g + w <= vw - 8) { x = r.right + g; y = r.top + r.height / 2 - h / 2; side = 'r'; }
+  else if (wide && r.left - g - w >= 8) { x = r.left - g - w; y = r.top + r.height / 2 - h / 2; side = 'l'; }
+  else { x = r.left + r.width / 2 - w / 2; if (r.top - g - h >= 8) { y = r.top - g - h; side = 't'; } else { y = r.bottom + g; side = 'b'; } }
+  x = Math.max(8, Math.min(vw - w - 8, x));
+  y = Math.max(8, Math.min(vh - h - 8, y));
+  const arrow = side === 'r' || side === 'l'
+    ? { top: Math.max(14, Math.min(h - 14, r.top + r.height / 2 - y)) }
+    : { left: Math.max(14, Math.min(w - 14, r.left + r.width / 2 - x)) };
+  return { x, y, side, arrow };
+}
+
+function ShiftTip({ shift, anchor }) {
   const ref = useRef(null);
-  const [left, setLeft] = useState(null);
-  useEffect(() => {
+  const [pos, setPos] = useState(null);
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const w = el.offsetWidth;
-    setLeft(Math.max(8, Math.min(window.innerWidth - w - 8, pos.left - w / 2)));
-  }, [pos]);
+    setPos(placeTip(anchor, el.offsetWidth, el.offsetHeight));
+  }, [anchor]);
   return (
-    <div ref={ref} className={`pl-rt${left === null ? '' : ' on'}`} role="tooltip" data-side="b" style={{ top: pos.top, left: left === null ? pos.left : left }}>
+    <div ref={ref} className={`pl-rt${pos ? ' on' : ''}`} role="tooltip" data-side={pos ? pos.side : undefined} style={{ left: pos ? pos.x : 0, top: pos ? pos.y : 0 }}>
       <div className="rr1"><OcIcon name="clock" size="sm" /><span>{shift.title}</span></div>
       {(shift.names || []).map((nm) => <div className="rr1" key={nm}><OcIcon name="user" size="sm" /><span>{nm}</span></div>)}
+      <i className="ra" style={pos ? pos.arrow : undefined} />
     </div>
   );
 }
