@@ -5,6 +5,7 @@
 // נמצאת ב-HomeA5 (כמו הדף הישן); כאן רק תצוגה.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Ic, ViewSwitch, XlButtons, MoreButton, ResultsTable, Dash, PrintGlyph, DownloadGlyph } from './HomeParts';
 import { rowColumns, aiRowView, aiRowKind, aiRowHref, richSegments, cellText, chatCopyText } from './homeLogic';
@@ -101,16 +102,71 @@ function CopyMessageButton({ message }) {
   );
 }
 
+// הכותרת הצפה של חיפוש חכם (כמו בדף הדמו, "חלון החיפוש החכם: כשהכותרת צפה בגלילה, 'חיפוש חכם' עולה לשורת הכפתורים"):
+// כשכותרת כרטיס השיחה יוצאת מתחת לסרגל העליון מופיע עותק מכווץ שלה (position:fixed) 8px מתחת לסרגל, צר ב-34px מכל צד, והוא נעלם בסוף הכרטיס.
+// העותק יושב ישירות ב-body (דרך portal): אבות עם transform/backdrop-filter (הכרטיס עצמו) הופכים position:fixed ליחסי להם.
+// שני עוטפים עם display:contents (בלי קופסה, לא משנים את פריסת הדף ולא מוסיפים את ה-min-height/רקע של .gm-ds): החיצוני gm-ds gm-home והפנימי advp aiw,
+// כי כלל הפלטה הוא .gm-ds.gm-home .advp.aiw>.card-h.aibar (צאצא, לא אותו אלמנט).
+const FLOAT_WRAP_STYLE = { display: 'contents' };
+
+function FloatingTitle({ headRef, cardRef, watch, onClose, onThread }) {
+  const [mounted, setMounted] = useState(false);
+  const barRef = useRef(null);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!mounted) return undefined;
+    let raf = 0;
+    const upd = () => {
+      raf = 0;
+      const bar = barRef.current, ch = headRef.current, card = cardRef.current;
+      if (!bar || !ch || !card) return;
+      const cr = card.getBoundingClientRect(), hr = ch.getBoundingClientRect();
+      const nav = document.querySelector('.snav');
+      const nb = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+      const inset = 14, side = 34, bh = bar.offsetHeight || 52;
+      bar.style.width = Math.max(0, hr.width - side * 2) + 'px'; // צרה מהכותרת הרגילה, עם שוליים סימטריים
+      // בדפי RTL פס הגלילה משמאל, ולכן left של fixed נמדד מקצה אחר מזה של getBoundingClientRect: מודדים את ההפרש בפועל ומקזזים
+      bar.style.left = '0px';
+      bar.style.left = (hr.left + side - bar.getBoundingClientRect().left) + 'px';
+      bar.style.top = Math.min(nb + 8, cr.bottom - bh - inset) + 'px';
+      bar.classList.toggle('on', hr.bottom < nb + 4 && cr.bottom > nb + bh + inset + 8);
+    };
+    const sched = () => { if (!raf) raf = requestAnimationFrame(upd); };
+    upd();
+    window.addEventListener('scroll', sched, { passive: true });
+    window.addEventListener('resize', sched);
+    const ro = typeof ResizeObserver !== 'undefined' && cardRef.current ? new ResizeObserver(sched) : null;
+    if (ro) ro.observe(cardRef.current);
+    return () => { window.removeEventListener('scroll', sched); window.removeEventListener('resize', sched); if (ro) ro.disconnect(); if (raf) cancelAnimationFrame(raf); };
+  }, [mounted, headRef, cardRef, watch]);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="gm-ds gm-home" style={FLOAT_WRAP_STYLE} data-ai-float="">
+      <div className="advp aiw" style={FLOAT_WRAP_STYLE}>
+        <div className="card-h aibar" ref={barRef}>
+          <button type="button" className="ibtn" aria-label="סגירת השיחה" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>
+          <h2>חיפוש חכם</h2>
+          <button type="button" className="ibtn hdx hdd" aria-label="הורד הכל" data-tip="הורד הכל" onClick={() => onThread('download')}><DownloadGlyph /></button>
+          <button type="button" className="ibtn hdx hdp" aria-label="הדפס הכל" data-tip="הדפס הכל" onClick={() => onThread('print')}><PrintGlyph /></button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function HomeChat({ chat, loading, table, onTable, onClose, onFollowUp, onExport, onThread, onCopyValue, onOpenSetting, onOpenRoute }) {
   const [fu, setFu] = useState('');
   const endRef = useRef(null);
+  const cardRef = useRef(null);
+  const headRef = useRef(null);
   useEffect(() => {
     if (endRef.current && chat.length > 1) endRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [chat.length]);
 
   return (
-    <div className="card res-one advp aiw">
-      <div className="card-h">
+    <div className="card res-one advp aiw" ref={cardRef}>
+      <div className="card-h" ref={headRef}>
         <button type="button" className="ibtn" aria-label="סגירת השיחה" data-tip="סגירה" onClick={onClose}><Ic id="x" size="sm" /></button>
         <h2 id="ai-h">חיפוש חכם</h2>
         <button type="button" className="ibtn hdx hdd" aria-label="הורד הכל" data-tip="הורד הכל" onClick={() => onThread('download')}><DownloadGlyph /></button>
@@ -151,6 +207,7 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
           <button type="submit" className="btn primary" aria-label="שליחה" data-tip="שליחה" disabled={loading}><Ic id="send" /></button>
         </div>
       </form>
+      <FloatingTitle headRef={headRef} cardRef={cardRef} watch={chat.length + (loading ? 1 : 0)} onClose={onClose} onThread={onThread} />
     </div>
   );
 }

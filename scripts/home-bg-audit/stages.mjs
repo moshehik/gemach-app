@@ -146,6 +146,8 @@ const floatRun = async (label, followUps) => {
   if (which === 'real') await p.evaluate(() => { const h = document.createElement('header'); h.className = 'snav'; h.style.cssText = 'position:sticky;top:0;z-index:950;height:var(--gm-snav-h,64px);background:#0a2242'; document.body.prepend(h); });
   await clickText(p, 'לחיפוש חכם'); await type('הזמנות של כהן'); await p.keyboard.press('Enter'); await sleep(2500);
   for (let i = 0; i < followUps; i++) { const fi = await p.$('#fuQ'); if (!fi) break; await fi.click(); await fi.type('עוד הזמנות ' + i); await p.keyboard.press('Enter'); await sleep(2300); }
+  // בדף הדמו יש מתחת לכרטיס תוכן (לוח בקרה, כותרת תחתונה) ולכן אפשר לגלול אל מעבר לסוף הכרטיס; ב-harness של הדף האמיתי אין, מוסיפים מרווח
+  if (which === 'real') await p.evaluate(() => { const sp = document.createElement('div'); sp.style.cssText = 'height:1800px'; document.body.appendChild(sp); });
   await p.mouse.move(5, 5); await p.evaluate(() => document.activeElement && document.activeElement.blur());
   // מיקומי גלילה ביחס לכותרת ולתחתית הכרטיס: למעלה / הכותרת עוד גלויה / הכותרת יצאה / אמצע / ממש לפני סוף הכרטיס / אחרי הסוף
   const abs = await p.evaluate(() => { const ch = document.querySelector('.advp.aiw>.card-h'); const nav = document.querySelector('.snav'); const nh = nav ? nav.getBoundingClientRect().height : 0;
