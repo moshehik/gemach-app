@@ -57,15 +57,15 @@ export default function NewOrderPage() {
     if (targetStep === 1) return true;
     if (targetStep === 2) return !!order.customerId;
     if (targetStep === 3) {
-      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled;
     }
     if (targetStep === 4) {
-      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled && order.items.length > 0;
     }
     if (targetStep === 5) {
-      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled && order.items.length > 0;
     }
     return false;
@@ -82,7 +82,6 @@ export default function NewOrderPage() {
     eventDateHebrew: '',
     returnDate: '',
     isAbroad: false,
-    isWeekdayEvent: false,
     fromDate: '',
     toDate: '',
     notes: '',
@@ -784,7 +783,6 @@ export default function NewOrderPage() {
             items: activeItems,
             eventDate: proposedOrder.eventDate,
             isAbroad: proposedOrder.isAbroad,
-            isWeekdayEvent: proposedOrder.isWeekdayEvent,
             fromDate: proposedOrder.fromDate,
             toDate: proposedOrder.toDate,
             customSpacing: proposedOrder.customSpacing,
@@ -971,7 +969,6 @@ export default function NewOrderPage() {
         items: order.items,
         eventDate: order.eventDate,
         isAbroad: order.isAbroad,
-        isWeekdayEvent: order.isWeekdayEvent,
         isDelivery: order.isDelivery,
         deliveryCity: order.deliveryCity,
         deliveryDirection: order.deliveryDirection
@@ -986,7 +983,7 @@ export default function NewOrderPage() {
         setCalculating(false);
       })
       .catch(() => setCalculating(false));
-  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
 
   const totalAmount = calculatedData.totalAmount;
 
@@ -1002,7 +999,7 @@ export default function NewOrderPage() {
   // draft is a safety net, and blocking the screen over it would be worse than losing it.
   useEffect(() => {
     const activeItems = (order.items || []).filter(i => !i.isDeleted);
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     if (draftSealedRef.current || !order.customerId || !hasDates || activeItems.length === 0) return;
 
     const timer = setTimeout(() => {
@@ -1019,7 +1016,6 @@ export default function NewOrderPage() {
               eventDateHebrew: order.eventDateHebrew,
               returnDate: order.returnDate,
               isAbroad: order.isAbroad,
-              isWeekdayEvent: order.isWeekdayEvent,
               fromDate: order.fromDate,
               toDate: order.toDate,
               notes: order.notes,
@@ -1041,7 +1037,7 @@ export default function NewOrderPage() {
 
     return () => clearTimeout(timer);
   }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad,
-      order.isWeekdayEvent, order.fromDate, order.toDate, order.notes, order.customSpacing,
+      order.fromDate, order.toDate, order.notes, order.customSpacing,
       order.items, totalAmount]);
 
   // מגן מפני איבוד נתונים בלחיצת "אחורה" בדפדפן (דיווח לקוח: "כשעושים אחורה בדפדפן הוא
@@ -1128,12 +1124,12 @@ export default function NewOrderPage() {
   };
 
   const saveOrder = async () => {
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     if (!order.customerId) return alert('יש לבחור לקוח');
     if (!String(order.selectedCustomer?.phone1 || '').trim() && !String(order.selectedCustomer?.phone2 || '').trim()) {
       return alert('לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון. יש להשלים מספר טלפון בכרטיס הלקוח.');
     }
-    if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
+    if (!hasDates) return alert(order.isAbroad ? 'יש לבחור תאריכים עבור אירוע חו"ל / תפוסה ארוכה' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
     // שדות חובה של משלוח (כתובת כשעיר המשלוח שונה מעיר הלקוח / עיר משלוח כשעיר הלקוח
     // לא ברשימת ערי המשלוח) - נאכף תמיד, לא רק כש-delivery_allow_address_override דולק
@@ -1144,7 +1140,7 @@ export default function NewOrderPage() {
 
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
-    const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
+    const relevantDate = order.isAbroad ? order.fromDate : order.eventDate;
     if (relevantDate && new Date(relevantDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)) {
       const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:past_date_order_approval');
       if (!auth) return;
@@ -1270,7 +1266,6 @@ export default function NewOrderPage() {
         eventDateHebrew: order.eventDateHebrew,
         returnDate: order.returnDate,
         isAbroad: order.isAbroad,
-        isWeekdayEvent: order.isWeekdayEvent,
         fromDate: order.fromDate,
         toDate: order.toDate,
         notes: order.notes,
@@ -1390,7 +1385,7 @@ export default function NewOrderPage() {
   }, [flash]);
 
   const activeItems = (order.items || []).filter(i => !i.isDeleted);
-  const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+  const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
   // f82e76c1 - כתובת משלוח הופכת לשדה חובה כשעיר המשלוח שונה מעיר הלקוח (כלומר לא מסתפקים
   // בכתובת המגורים הרגילה שלו) - כדי שלא יישלח משלוח בלי כתובת מדויקת ליעד אחר.
   const deliveryAddressRequired = isDeliveryAddressRequired(order, order.selectedCustomer?.city);

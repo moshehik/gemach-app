@@ -6,6 +6,7 @@ import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
 import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
+import { isHiddenAuditKey } from '../../../lib/history/labels';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../lib/orderItemEditWindow';
 import { normalizeGapRule } from '../../../lib/priceRows';
@@ -1390,7 +1391,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                       const rows = [];
                       for (const [key, value] of Object.entries(changes)) {
                         if (value === null || value === undefined || value === '') continue;
-                        if (HIDDEN_HISTORY_FIELDS.includes(key)) continue;
+                        if (HIDDEN_HISTORY_FIELDS.includes(key) || isHiddenAuditKey(key)) continue;
                         if (typeof value === 'boolean' && value === false && log.action === 'CREATE') continue;
                         const label = FIELD_TRANSLATIONS[key] || key;
                         if (value && typeof value === 'object' && ('from' in value || 'to' in value)) {

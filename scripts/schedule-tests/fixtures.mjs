@@ -10,7 +10,7 @@ const item = (over = {}) => ({
 });
 const order = (orderId, over = {}) => ({
   orderId, status: null, isDeleted: false, orderDate: d('2026-09-01T08:00:00Z'), eventDate: null, eventDateHebrew: null,
-  fromDate: null, toDate: null, returnDate: null, isAbroad: false, isWeekdayEvent: false, extraDay: null, customSpacing: null,
+  fromDate: null, toDate: null, returnDate: null, isAbroad: false, extraDay: null, customSpacing: null,
   branch: null, pickupBranch: null, notes: '', internalNotes: 'פנימי', isDelivery: false, deliveryDirection: null,
   deliveryAddress: null, deliveryCity: null, deliveryOneDayBefore: false,
   customer: cust('שרה', 'כהן'), employee: { id: 'emp-1', firstName: 'רחלי', lastName: 'לוי', fullName: 'רחלי לוי', roleId: 1, isActive: true, hourlyWage: 50 },

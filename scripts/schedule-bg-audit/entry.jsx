@@ -48,7 +48,7 @@ function row(stage, i, kind) {
   const r = {
     orderId: id, stage: stage.key, customer: { name, firstName: name.split(' ')[0], lastName: name.split(' ')[1], phone1: '052-' + (4000000 + i * 1111), phone2: i % 3 ? '' : '02-6543210' },
     eventDate: '2026-10-05T21:00:00.000Z', eventKey: '2026-10-06', eventDateHebrew: 'כ״ה תשרי תשפ״ז', dressCount, branch: M.branches ? (i % 2 ? 'נווה יעקב' : 'בית שמש') : '', pickupBranch: '',
-    flags: { isAbroad: i % 5 === 0, isWeekdayEvent: false, extraDay: i % 7 === 0 ? 'before' : null, customSpacing: null },
+    flags: { isAbroad: i % 5 === 0, extraDay: i % 7 === 0 ? 'before' : null, customSpacing: null },
     notes: i % 2 ? 'להתקשר לפני' : '', internalNotes: M.mgmt && i % 3 === 0 ? 'הנחה מיוחדת אושרה' : undefined,
     done: stage.infoOnly ? null : (src ? (past ? i % 6 !== 0 : (!future && i % 3 === 0)) : null), doneSource: stage.doneSource, alerts: [],
   };

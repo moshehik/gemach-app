@@ -72,7 +72,7 @@ const ilMidnight = (k) => new Date(D.dayRange(k).start); // צורת האחסו�
 const utcMidnight = (k) => new Date(`${k}T00:00:00.000Z`);
 const delivery = (orderId, eventDate) => ({
   orderId, status: null, isDeleted: false, orderDate: new Date('2026-09-01T08:00:00Z'), eventDate, eventDateHebrew: null,
-  fromDate: null, toDate: null, returnDate: null, isAbroad: false, isWeekdayEvent: false, extraDay: null, customSpacing: null,
+  fromDate: null, toDate: null, returnDate: null, isAbroad: false, extraDay: null, customSpacing: null,
   branch: null, pickupBranch: null, notes: '', internalNotes: '', isDelivery: true, deliveryDirection: 'חזור',
   deliveryAddress: 'הרצל 5', deliveryCity: 'ירושלים', deliveryOneDayBefore: false, customer: cust,
   employee: null, items: [{ id: 'i' + orderId, description: 'שמלה', isDeleted: false, isTaken: true, isReturned: false, returnDate: null, returnedOk: false }],

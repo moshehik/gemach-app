@@ -356,9 +356,9 @@ async function focusOrders(adv, cfg, unsavedIds) {
   if (flags.includes('unsaved')) chk.push({ orderId: { in: [...unsaved] } });
   if (flags.includes('nobranch')) chk.push(cfg.branches_enabled === 'true' ? { OR: [{ branch: null }, { branch: '' }] } : { orderId: -1 });
   if (chk.length) conds.push({ OR: chk });
-  // פרטי אירוע (OR פנימי): אירוע חול / ציפוף / משלוח / תיקונים
+  // פרטי אירוע (OR פנימי): חו״ל / תפוסה ארוכה / ציפוף / משלוח / תיקונים
   const ev = [];
-  if (flags.includes('holiday')) ev.push({ isWeekdayEvent: true });
+  if (flags.includes('abroad')) ev.push({ isAbroad: true });
   if (flags.includes('packing')) {
     const days = parseInt(S(adv.days), 10);
     ev.push(cfg.hide_custom_spacing === 'true' ? { orderId: -1 } : { customSpacing: isNaN(days) ? { not: null } : days });
