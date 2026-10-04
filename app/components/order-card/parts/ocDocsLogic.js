@@ -123,7 +123,7 @@ export function docAttachmentOf({ kind, fileName, base64 }, dest) {
 
 /** שם קובץ ה-PDF/Excel שמורד/מצורף */
 export const docFileName = (kind, orderId, ext) => {
-  const base = { 'order-pdf': 'הזמנה', 'rental-pdf': 'השכרה', delivery: 'משלוח', payments: 'תשלומים', receipt: 'קבלה', 'model-photos': 'תמונות דגמים', xlsx: 'הזמנה' }[kind] || 'מסמך';
+  const base = { 'order-pdf': 'הזמנה', 'rental-pdf': 'השכרה', delivery: 'משלוח', payments: 'תשלומים', receipt: 'אישור תשלום', 'model-photos': 'תמונות דגמים', xlsx: 'הזמנה' }[kind] || 'מסמך';
   return `${base} ${orderId}.${ext}`;
 };
 
@@ -212,18 +212,30 @@ export const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(
 const shekel = (n) => `₪${Math.round(num(n) * 100) / 100}`;
 
 function paymentNoteOf(raw) {
-  // אותה הסתרה של JSON סליקה כמו בדוח ההזמנה: רק "אישור: XYZ" / "סליקת אשראי", לעולם לא גוף גולמי של סליקה
+  // אותה הסתרה של JSON סליקה כמו בדוח ההזמנה (app/api/orders/[id]/email/route.js): רק "אישור: XYZ" / "סליקת אשראי".
+  // כל הערה שמכילה { או " (גם כשאינה מתחילה ב-{, למשל טקסט + JSON) מציגה אך ורק את מספר האישור - לעולם לא גוף גולמי של סליקה.
   const s = String(raw || '').trim();
   if (!s) return '-';
-  if (s.startsWith('{')) {
-    try {
-      const p = JSON.parse(s);
-      const approval = p.Confirmation || p.TransactionId || p['אישור'];
-      return approval ? `אישור: ${approval}` : 'סליקת אשראי';
-    } catch { return 'סליקת אשראי'; }
+  const approvalMatch = s.match(/אישור:\s*([a-zA-Z0-9]+)/);
+  if (/[{"]/.test(s)) {
+    let approval = approvalMatch && approvalMatch[1];
+    if (!approval && s.startsWith('{')) {
+      try {
+        const p = JSON.parse(s);
+        approval = p.Confirmation || p.TransactionId || p['אישור'];
+      } catch { /* נמשיך לחילוץ בביטוי */ }
+    }
+    if (!approval) {
+      const m = s.match(/"(?:Confirmation|TransactionId|אישור)"\s*:\s*"?([a-zA-Z0-9]+)/);
+      approval = m && m[1];
+    }
+    return approval ? `אישור: ${String(approval).replace(/[^a-zA-Z0-9]/g, '')}` : 'סליקת אשראי';
   }
+  if (approvalMatch) return `אישור: ${approvalMatch[1]}`;
   return s.length > 50 ? `${s.slice(0, 50)}...` : s;
 }
+/** לבדיקות */
+export const paymentNoteForCustomer = paymentNoteOf;
 
 export function paymentsPageHtml({ order, obligations = [], payments = [], gmachName = 'גמ"ח שמלות' }) {
   const o = order || {};
@@ -251,7 +263,7 @@ th,td{padding:11px 12px;text-align:right;border-bottom:1px solid #eee;font-size:
 
 // ---------------------------------------------------------------------------------------------
 // "חשבונית/קבלה" (A8, AMB-11): באתר אין מסמך קבלה קיים (יש רק אייקון), לכן נבנה אישור תשלומים: מה התקבל, מתי ובאיזה אופן + סה״כ שהתקבל.
-// זהו אישור קבלת תשלום של הגמ״ח ללקוחה - לא חשבונית מס ולא קבלה לפי פקודת מס הכנסה (אין באתר מספור קבלות). HTML עצמאי ל-/api/pdf.
+// זהו אישור קבלת תשלום של הגמ״ח ללקוחה - לא חשבונית מס ולא קבלה לפי פקודת מס הכנסה (אין באתר מספור קבלות), ולכן המסמך נושא שורת הבהרה קבועה, בלי חתימה ובלי המילה "קבלה" ככותרת. HTML עצמאי ל-/api/pdf.
 // ---------------------------------------------------------------------------------------------
 export function receiptPageHtml({ order, payments = [], gmachName = 'גמ"ח שמלות' }) {
   const o = order || {};
@@ -264,15 +276,16 @@ h1{font-size:26px;margin:0 0 4px;color:#222}h2{font-size:20px;margin:18px 0 6px;
 .box{border:1.5px solid #333;border-radius:6px;padding:14px 18px;margin:16px 0;background:#f7f7f7;font-size:16px}
 table{width:100%;border-collapse:collapse;margin-bottom:22px;border:1px solid #e5e5e5}
 th,td{padding:10px 12px;text-align:right;border-bottom:1px solid #eee;font-size:14px}th{background:#f4f4f4;color:#333}
-.sign{display:flex;justify-content:space-between;margin-top:46px;font-size:14px;color:#555}.sign div{width:220px;border-top:1px solid #aaa;padding-top:8px;text-align:center}
+.disc{margin-top:34px;padding:10px 14px;border:1px solid #999;border-radius:6px;font-size:15px;font-weight:700;color:#333;text-align:center}.gen{margin-top:14px;font-size:12px;color:#888;text-align:center}
 </style></head><body>
 <div style="font-size:13px;color:#999;margin-bottom:6px">בס"ד</div>
 <h1>${escapeHtml(gmachName)}</h1>
 <h2>אישור קבלת תשלום</h2>
-<div class="sub">קבלה · הזמנה #${escapeHtml(o.orderId)} · על שם ${escapeHtml(customerNameOf(o))}</div>
+<div class="sub">הזמנה #${escapeHtml(o.orderId)} · על שם ${escapeHtml(customerNameOf(o))}</div>
 <div class="box">התקבל סך <b>${escapeHtml(shekel(paid))}</b> עבור הזמנה #${escapeHtml(o.orderId)}${o.eventDateHebrew ? ` (אירוע: ${escapeHtml(o.eventDateHebrew)})` : ''}.</div>
 <table><thead><tr><th>#</th><th>תאריך (עברי)</th><th>אופן תשלום</th><th>סכום</th><th>הערות</th></tr></thead><tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#999;padding:24px">לא התקבלו תשלומים</td></tr>'}</tbody></table>
-<div class="sign"><div>חתימת הגמ"ח</div><div>הופק במערכת הגמ"ח</div></div>
+<div class="disc">מסמך זה אישור קבלת תשלום בלבד ואינו חשבונית מס / קבלה</div>
+<div class="gen">הופק במערכת הגמ"ח</div>
 </body></html>`;
 }
 

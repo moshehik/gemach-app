@@ -148,7 +148,10 @@ test('receiptPageHtml: אישור קבלת תשלום (לא חשבונית מס)
   assert.ok(html.includes('&lt;i&gt;x&lt;/i&gt;') && !html.includes('<i>x</i>'));
   assert.ok(html.includes('כ״ו תשרי תשפ״ז'));
   assert.ok(!/var\(--/.test(html) && !/\d{4}-\d{2}-\d{2}/.test(html));
-  assert.ok(!/חשבונית מס/.test(html), 'לא מציג את עצמו כחשבונית מס');
+  assert.ok(html.includes('מסמך זה אישור קבלת תשלום בלבד ואינו חשבונית מס / קבלה'), 'שורת הבהרה גלויה: לא חשבונית מס / קבלה');
+  assert.ok(!/<div class="sub">[^<]*קבלה/.test(html), 'תת-הכותרת לא קוראת לעצמה "קבלה"');
+  assert.ok(!html.includes('חתימת הגמ'), 'אין בלוק חתימה');
+  assert.equal(D.docFileName('receipt', 53375, 'pdf'), 'אישור תשלום 53375.pdf');
   assert.ok(D.receiptPageHtml({ order: ORDER, payments: [] }).includes('לא התקבלו תשלומים'));
 });
 
@@ -293,4 +296,25 @@ test('parseQuickMail: null בלי quick; נושא בשורה אחת (הזרקת 
   assert.equal(long.bodyText.length, Q.QUICK_MAIL_MAX_BODY);
   assert.equal(D.MAX_QUICK_SUBJECT, Q.QUICK_MAIL_MAX_SUBJECT);
   assert.equal(D.MAX_QUICK_BODY, Q.QUICK_MAIL_MAX_BODY);
+});
+
+test('paymentNoteForCustomer: הערה עם { או " מציגה רק מספר אישור - גם כשאינה מתחילה ב-{ - לעולם לא JSON סליקה גולמי', () => {
+  const f = D.paymentNoteForCustomer;
+  assert.equal(f(''), '-');
+  assert.equal(f('מזומן ביד'), 'מזומן ביד');
+  assert.equal(f('x'.repeat(60)), 'x'.repeat(50) + '...');
+  assert.equal(f('{"Confirmation":"Q9","CardNumber":"4580123456789012"}'), 'אישור: Q9');
+  assert.equal(f('{"TransactionId":77}'), 'אישור: 77');
+  assert.equal(f('{"foo":1}'), 'סליקת אשראי');
+  assert.equal(f('{broken json "CardNumber":"4580123456789012"'), 'סליקת אשראי');
+  assert.equal(f('תשלום בטלפון אישור: AB12 {"CardNumber":"4580123456789012","Tashloumim":"3"}'), 'אישור: AB12');
+  assert.equal(f('שולם. {"Confirmation":"ZZ1","Last4":"9012"}'), 'אישור: ZZ1');
+  assert.equal(f('פעימה "Tashloumim":"3" ללא אישור'), 'סליקת אשראי');
+  assert.equal(f('אישור: XYZ'), 'אישור: XYZ');
+  for (const raw of ['שולם. {"Confirmation":"ZZ1","CardNumber":"4580123456789012"}', 'a "CardNumber":"4580123456789012"', '{"CardNumber":"4580123456789012"']) {
+    const out = f(raw);
+    assert.ok(!/[{}"]/.test(out) && !out.includes('4580123456789012'), raw);
+  }
+  const html = D.paymentsPageHtml({ order: ORDER, payments: [{ amount: 5, paymentMethod: 'אשראי', paymentDate: '2026-09-23T07:18:00.000Z', notes: 'ת {"Confirmation":"K3","CardNumber":"4580123456789012"}' }] });
+  assert.ok(html.includes('אישור: K3') && !html.includes('4580123456789012') && !html.includes('CardNumber'));
 });

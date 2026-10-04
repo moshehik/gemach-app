@@ -137,7 +137,7 @@ test('quick: quick:{subject,bodyText}, בלי pdfBase64, צרופה לכל kind 
   assert.ok(!('pdfBase64' in body));
   assert.deepEqual(body.extraAttachments.map((a) => [a.kind, a.fileName, a.dest]), [
     ['order-pdf', 'הזמנה 53375.pdf', 'drive'], ['payments', 'תשלומים 53375.pdf', 'drive'], ['delivery', 'משלוח 53375.pdf', 'drive'], ['rental-pdf', 'השכרה 53375.pdf', 'drive'],
-    ['receipt', 'קבלה 53375.pdf', 'drive'], ['model-photos', 'תמונות דגמים 53375.pdf', 'drive'],
+    ['receipt', 'אישור תשלום 53375.pdf', 'drive'], ['model-photos', 'תמונות דגמים 53375.pdf', 'drive'],
   ]);
   assert.ok(body.extraAttachments.every((a) => a.mimeType === 'application/pdf' && a.sizeBytes > 0));
   assert.equal(pdf.calls.length, 6);
