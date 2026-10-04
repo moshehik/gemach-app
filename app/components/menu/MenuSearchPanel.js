@@ -137,15 +137,12 @@ function ShortcutMenuList({ qp }) {
   if (!m) return null;
   const saved = qp.saved;
   const isSaved = qp.def.source === 'saved';
-  let n = -1;
   return (
     <div className="mine-menu pfx-menu" id={qp.listId} role="listbox" aria-label={qp.def.listLabel}>
       <div className="sn-st" role="presentation">{m.head}{isSaved && m.state === 'ok' ? <bdi className="sn-cnt">{m.count}</bdi> : null}</div>
       {m.state === 'loading' && <div className="sn-empty" role="status">{m.none}</div>}
       {(m.state === 'error' || m.state === 'unavailable') && <div className="sn-empty" role="status">{m.none}<small>{m.sub}</small></div>}
-      {m.items.map((r) => {
-        n += 1;
-        const i = n;
+      {m.items.map((r, i) => {
         if (r.type === 'save' && saved && saved.saving) return <div key="form"><SaveForm qp={qp} menu /></div>;
         const row = (
           <a

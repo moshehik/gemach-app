@@ -191,5 +191,92 @@ t('QuickPrefix.js: PREFIX_SOURCES כולל actions ו-saved; אין fetch חדש
   assert.equal((comp.match(/fetch\(/g) || []).length, 2, 'רק שתי הקריאות של "השינויים שלי"');
 });
 
+t('דף הבית: "#" ו-"$" מחווטים (actions + saved), פעולות מנותבות ל-actionTarget, חיפוש שמור רץ מיד, הרשאות = navPaths (כשל-סגור עד שנטענו)', () => {
+  const home = src('../app/components/home/HomeA5.js');
+  assert.ok(/useQuickPrefix\(\{[\s\S]*mine, actions, saved/.test(home), 'HomeA5 מעביר actions ו-saved');
+  assert.ok(/useMemo\(\(\) => \(\{ allowed: navPaths, draftCount \}\), \[navPaths, draftCount\]\)/.test(home), 'ההרשאות = navPaths (null עד שה-boot נטען)');
+  assert.ok(/row\.type === 'action'[\s\S]{0,260}actionTarget\(row\.action\)[\s\S]{0,200}router\.push\(tg\.url\)[\s\S]{0,60}runQuick\(tg\.run\)/.test(home));
+  assert.ok(/row\.type === 'saved'\) \{ setQ\(row\.query\); runSearch\(row\.query\)/.test(home), 'חיפוש שמור רץ בלחיצה');
+  assert.ok(/const runQuick = useCallback\(\(kind\) => \{[\s\S]{0,200}emptyAdv\('orders'\), flags: \[kind\][\s\S]{0,200}applyAdv\(false, a\)/.test(home), 'חובות / טיוטות = חיפוש מתקדם בתחום הזמנות');
+  assert.ok(/if \(dir\.run\) \{[\s\S]{0,260}runQuickRef\.current\(dir\.run\)[\s\S]{0,200}replaceUrl/.test(home), '/?run= מופעל ונמחק מהכתובת');
+  assert.ok(/if \(!ai\) rememberSearch\(query\)/.test(home), 'החיפוש האחרון + היסטוריה נרשמים בהרצת חיפוש רגיל (לא חכם)');
+  assert.ok(!/fetch\(['"`]\/api\/(saved-searches|search-history)/.test(home), 'HomeA5 לא קורא לנתיבים ישירות');
+});
+t('מדריך הקיצורים: כפתור רק בדף הבית, לפני חיפוש (שדה ריק, בלי תוצאות, לא בחיפוש חכם), ראשון בשורה (= ימין ב-RTL); בתפריט אין אותו (PFX-08)', () => {
+  const home = src('../app/components/home/HomeA5.js');
+  assert.ok(/const showGuide = !compact && !q && !loading && !ai;/.test(home));
+  assert.ok(/<div className="cmode">\s*\{showGuide && <GuideButton/.test(home), 'הכפתור הוא הילד הראשון של .cmode');
+  assert.ok(/guideOpen && <GuideDialog rows=\{guideRows\(\{ mineUsable: mine\.state !== 'denied' \}\)\}/.test(home));
+  assert.ok(/const tryChar = \(ch\) => \{[\s\S]{0,80}setGuideOpen\(false\);[\s\S]{0,40}setQ\(ch\)/.test(home), '"נסה" מכניס את הסימן לשדה');
+  const menu = src('../app/components/menu/MenuSearchPanel.js');
+  assert.ok(!/GuideButton|GuideDialog/.test(menu), 'בחיפוש התפריט אין מדריך');
+  const ui = src('../app/components/search/ShortcutsUi.js');
+  assert.ok(/pfxwin \$\{cls\}/.test(ui) && /id="dlg"/.test(ui) && /dlg-dark/.test(ui), 'החלון הכהה של הפלטה (#dlg + dlg-dark)');
+  assert.ok(/createPortal\(/.test(ui) && /e\.key === 'Escape'/.test(ui) && /e\.key !== 'Tab'/.test(ui), 'portal, Esc, מלכודת מיקוד');
+  assert.ok(!/window\.(alert|confirm)|\balert\(|window\.customConfirm/.test(ui + src('../app/components/search/QuickPrefix.js') + src('../app/components/search/savedSearches.js')), 'בלי alert / confirm של הדפדפן');
+});
+t('אייקון שמירה (PFX-09): i-archive מהפלטה (אין "שמירה" בפלטה), נעלם לקידומת / ריק / unavailable; הודעת "החיפוש נשמר"; דגל ✓ לרגע', () => {
+  const ui = src('../app/components/search/ShortcutsUi.js');
+  assert.ok(/QIcon id=\{st === 'done' \? 'check' : 'archive'\}/.test(ui));
+  assert.ok(/saved\.state === 'unavailable'\) return null/.test(ui) && /saveCandidate\(text\)/.test(ui));
+  assert.equal(SAVED_TEXT.savedToast, 'החיפוש נשמר');
+  const store = src('../app/components/search/savedSearches.js');
+  assert.ok(/say\(SAVED_TEXT\.savedToast, '“' \+ payload\.label \+ '”'\)/.test(store), 'הודעה אחרי שמירה');
+  assert.ok(/id="archive"|'archive'/.test(ui));
+  const sprite = src('../app/components/menu/spriteSymbols.js');
+  for (const id of ['archive', 'check', 'info', 'trash', 'x', 'plus', 'pencil', 'wallet', 'search', 'lock']) assert.ok(sprite.includes(`["${id}",`), 'חסר אייקון בספרייט: ' + id);
+  const home = src('../app/components/home/HomeA5.js');
+  assert.ok(/!loading && <SaveIconButton text=\{q\} saved=\{saved\} ibtn \/>/.test(home), 'ליד ה-X בשדה הבית');
+  assert.ok(/<SaveIconButton text=\{q\} saved=\{saved\} \/>/.test(src('../app/components/menu/MenuSearchPanel.js')), 'בשדה התפריט / המגירה (אותו SearchBody)');
+});
+t('מחיקה: X לכל שורה, אישור בחלון כהה, "אל תשאל שוב" עד רענון (tooltip), מקש Delete על שורה מסומנת', () => {
+  const qp = src('../app/components/search/QuickPrefix.js');
+  assert.ok(/e\.key === 'Delete' && askDelete && act >= 0 && items\[act\] && items\[act\]\.type === 'saved'/.test(qp));
+  assert.ok(/selectionStart === el\.value\.length/.test(qp), 'Delete רק כשהסמן בסוף השורה (לא מוחק טקסט שמוקלד)');
+  assert.ok(/className="inpx pfx-del"/.test(qp) && /data-tip="מחיקה"/.test(qp));
+  const ui = src('../app/components/search/ShortcutsUi.js');
+  assert.ok(/data-tip=\{SAVED_TEXT\.noAskTip\}/.test(ui) && SAVED_TEXT.noAskTip === 'יישמר עד לרענון' && /role="switch"/.test(ui));
+  const menu = src('../app/components/menu/MenuSearchPanel.js');
+  assert.ok(/saved\.confirm && <DeleteDialog/.test(menu) && /saved\.confirm && <DeleteDialog/.test(src('../app/components/home/HomeA5.js')));
+});
+t('חיפוש התפריט והמגירה: אותן קידומות (& # $), הרשאות מעץ התפריט, ניווט ל-/?run= ול-/?q=, השעיית חיפוש השרת כשהרשימה מוצגת; בלי קוד ל-@', () => {
+  const menu = src('../app/components/menu/MenuSearchPanel.js');
+  assert.ok(/menuAllowedPaths\(flattenMenuTree\(tree\)\)/.test(menu));
+  assert.ok(/actionTarget\(row\.action\)/.test(menu) && /HOME_NAV_EVENT, \{ detail: \{ href: tg\.url \}/.test(menu));
+  assert.ok(/\/\?q=\$\{encodeURIComponent\(row\.query\)\}/.test(menu), 'חיפוש שמור בתפריט נפתח כ-/?q=');
+  assert.ok(/const prefixOn = qp\.open && !!qp\.def;/.test(menu));
+  assert.ok(/ShortcutMenuList/.test(menu) && /SaveForm qp=\{qp\} menu/.test(menu) && /SavedDelButton/.test(menu));
+  assert.ok(/usePopup\(\)/.test(menu) && /showToast\(text \? `\$\{title\}: \$\{text\}` : title, kind === 'error' \? 'error' : 'success'\)/.test(menu), 'הודעות דרך ה-popup של האתר (לא window.alert)');
+});
+t('CSS: כללי .pfx-* ב-home.css בהיקף .gm-ds.gm-home, ב-menu.css בהיקף .gm-ds.gm-menu (או עטיפת החלון .gm-ds.pfx-dlg-root), בלי font-family ובלי צבע hex', () => {
+  const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+  const rulesOf = (css) => strip(css).split('}').map((x) => x.trim()).filter((x) => /\.pfx-/.test(x.split('{')[0]));
+  const home = rulesOf(src('../app/components/home/home.css'));
+  const menu = rulesOf(src('../app/components/menu/menu.css'));
+  assert.ok(home.length >= 25 && menu.length >= 20, 'כללים: ' + home.length + ' / ' + menu.length);
+  for (const r of home) {
+    const [sel, body] = r.split('{');
+    for (const one of sel.split(',')) assert.ok(/^\s*(@media[^{]*\{\s*)?\.gm-ds\.gm-home[ .]/.test(one) || /^\s*\.gm-ds\.gm-home\.pfx-dlg-root/.test(one), 'מחוץ להיקף (home): ' + one);
+    assert.ok(!/font-family|#[0-9a-f]{3,8}\b/i.test(body), 'גופן / hex ב-' + sel);
+    assert.ok(!/!important/.test(body), '!important ב-' + sel);
+    for (const m of body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-') || m[1] === 'k-ghost', 'משתנה לא gm-: --' + m[1]);
+  }
+  for (const r of menu) {
+    const [sel, body] = r.split('{');
+    for (const one of sel.split(',')) assert.ok(/^\s*(@media[^{]*\{\s*)?\.gm-ds\.(gm-menu|pfx-dlg-root)/.test(one), 'מחוץ להיקף (menu): ' + one);
+    assert.ok(!/font-family|#[0-9a-f]{3,8}\b/i.test(body), 'גופן / hex ב-' + sel);
+    assert.ok(!/!important/.test(body), '!important ב-' + sel);
+    for (const m of body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-') || m[1] === 'k-ghost', 'משתנה לא gm-: --' + m[1]);
+  }
+});
+t('CSS: בטלפון כפתור "קיצורים" אייקון בלבד (PFX-11 ב) - @media (max-width: 767px) אחרי הכלל הלא-מותנה; X מחיקה תמיד גלוי במגע', () => {
+  const home = src('../app/components/home/home.css');
+  const i = home.indexOf('.pfx-help');
+  assert.ok(i > 0 && /@media \(max-width: 767px\) \{\s*\.gm-ds\.gm-home \.hero \.cmode \.pfx-help/.test(home));
+  assert.ok(/pfx-help-t \{ display: none; \}/.test(home));
+  const menu = src('../app/components/menu/menu.css');
+  assert.ok(/@media \(hover:none\),\(max-width:767px\)\{\.gm-ds\.gm-menu \.pfx-menu \.pfx-del\{opacity:1\}\}/.test(menu));
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

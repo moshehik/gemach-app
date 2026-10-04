@@ -85,11 +85,10 @@ function Win({ skin, cls, labelId, onClose, initialRef, children }) {
   );
 }
 
-/** מדריך הקיצורים. rows = guideRows(); onTry(ch) מכניס את הסימן לשדה החיפוש וסוגר. */
-export function GuideDialog({ rows, onTry, onClose, skin = 'home' }) {
-  const firstRef = useRef(null);
+/** תוכן מדריך הקיצורים (נפרד מה-portal כדי שאפשר לצייר אותו גם בבדיקות / תצוגה סטטית). */
+export function GuideBody({ rows, onTry, onClose, firstRef }) {
   return (
-    <Win skin={skin} cls="pfxhelp" labelId="pfx-ht" onClose={onClose} initialRef={firstRef}>
+    <>
       <h2 id="pfx-ht">{GUIDE_TEXT.title}</h2>
       <div className="sub">{GUIDE_TEXT.sub}</div>
       <div className="chg" role="list">
@@ -102,19 +101,24 @@ export function GuideDialog({ rows, onTry, onClose, skin = 'home' }) {
         ))}
       </div>
       <div className="dbtns"><button type="button" className="btn primary lg block" onClick={onClose}>{GUIDE_TEXT.close}</button></div>
+    </>
+  );
+}
+
+/** מדריך הקיצורים. rows = guideRows(); onTry(ch) מכניס את הסימן לשדה החיפוש וסוגר. */
+export function GuideDialog({ rows, onTry, onClose, skin = 'home' }) {
+  const firstRef = useRef(null);
+  return (
+    <Win skin={skin} cls="pfxhelp" labelId="pfx-ht" onClose={onClose} initialRef={firstRef}>
+      <GuideBody rows={rows} onTry={onTry} onClose={onClose} firstRef={firstRef} />
     </Win>
   );
 }
 
-/** אישור מחיקה של חיפוש שמור. confirm = { id, name }; onConfirm(noAsk) / onCancel. */
-export function DeleteDialog({ confirm, onConfirm, onCancel, skin = 'home' }) {
-  const yesRef = useRef(null);
-  const [noAsk, setNoAsk] = useState(false);
-  const uid = useId();
-  const descId = `${uid}-nd`;
-  if (!confirm) return null;
+/** תוכן אישור המחיקה (נפרד מה-portal, כמו GuideBody). */
+export function DeleteBody({ confirm, noAsk, setNoAsk, onConfirm, onCancel, yesRef, descId }) {
   return (
-    <Win skin={skin} cls="pfxdel" labelId="pfx-dt" onClose={onCancel} initialRef={yesRef}>
+    <>
       <h2 id="pfx-dt">{'למחוק את החיפוש השמור “'}<bdi>{confirm.name}</bdi>{'”?'}</h2>
       <label className="trow pfx-tg" data-tip={SAVED_TEXT.noAskTip}>
         <span className="sw">
@@ -128,6 +132,19 @@ export function DeleteDialog({ confirm, onConfirm, onCancel, skin = 'home' }) {
         <button ref={yesRef} type="button" className="btn primary lg" onClick={() => onConfirm(noAsk)}><QIcon id="trash" />{SAVED_TEXT.delete}</button>
         <button type="button" className="btn ghost lg" onClick={onCancel}>{SAVED_TEXT.cancel}</button>
       </div>
+    </>
+  );
+}
+
+/** אישור מחיקה של חיפוש שמור. confirm = { id, name }; onConfirm(noAsk) / onCancel. */
+export function DeleteDialog({ confirm, onConfirm, onCancel, skin = 'home' }) {
+  const yesRef = useRef(null);
+  const [noAsk, setNoAsk] = useState(false);
+  const uid = useId();
+  if (!confirm) return null;
+  return (
+    <Win skin={skin} cls="pfxdel" labelId="pfx-dt" onClose={onCancel} initialRef={yesRef}>
+      <DeleteBody confirm={confirm} noAsk={noAsk} setNoAsk={setNoAsk} onConfirm={onConfirm} onCancel={onCancel} yesRef={yesRef} descId={`${uid}-nd`} />
     </Win>
   );
 }
