@@ -3,7 +3,7 @@
 // תגית קטגוריה בכל שורה, RTL (getBoundingClientRect), בלי גלילה אופקית ב-375, בלי שגיאות קונסול.
 // שימוש: node scripts/admin-hub-audit/interact.mjs   (אחרי build.mjs). יוצא 1 בכישלון.
 import { serve, launch, sleep, PORT } from './lib.mjs';
-import { TOOLS, CATEGORIES, visibleToolIds, accessForRole } from '../../lib/adminHub.js';
+import { TOOLS, CATEGORIES, visibleToolIds, accessForRole } from '../../lib/adminHubCatalog.js';
 let fails = 0;
 const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) fails++; };
 const s = await serve();
@@ -17,7 +17,7 @@ const page = async (w = 1280, opts = {}) => {
   if (opts.blockStorage) await p.evaluateOnNewDocument(() => { const f = () => { throw new Error('blocked'); }; Storage.prototype.getItem = f; Storage.prototype.setItem = f; });
   return p;
 };
-const go = async (p, role = '0') => { await p.goto(`http://127.0.0.1:${PORT}/?role=${role}`, { waitUntil: 'load' }); await sleep(900); };
+const go = async (p, role = '0', extra = '') => { await p.goto(`http://127.0.0.1:${PORT}/?role=${role}${extra}`, { waitUntil: 'load' }); await sleep(900); };
 const view = (p) => p.evaluate(() => document.querySelector('#admSecs').className);
 const hrefsShown = (p) => p.evaluate(() => [...document.querySelectorAll('#admSecs a[href]')].map((a) => a.getAttribute('href')));
 const click = async (p, sel) => { await p.click(sel); await sleep(250); };
@@ -36,7 +36,7 @@ await go(p, '2');
 ok((await view(p)) === 'v-tiles', 'משתמש אחר באותו דפדפן: ברירת המחדל (אריחים)');
 await go(p, '0'); await click(p, '.vopt[data-view="table"]');
 ok((await view(p)) === 'v-table' && (await p.$$('.adm-table table.rtbl')).length > 0, 'מעבר לטבלה');
-ok(await p.evaluate(() => [...document.querySelectorAll('.adm-table thead th')].slice(0, 3).map((x) => x.textContent).join('|') === 'כלי|תיאור|'), 'עמודות הטבלה כמו בעיצוב');
+ok(await p.evaluate(() => [...document.querySelectorAll('.adm-table thead th')].slice(0, 3).map((x) => [...x.childNodes].filter((n) => !(n.classList && n.classList.contains('hf-sr'))).map((n) => n.textContent).join('')).join('|') === 'כלי|תיאור|'), 'עמודות הטבלה כמו בעיצוב');
 await click(p, '.vopt[data-view="tiles"]');
 
 // 2. תגית קטגוריה בכל שורה
@@ -56,6 +56,8 @@ await p.keyboard.press('Escape'); await sleep(200);
 ok((await p.$$('.adm-sec')).length === 9, 'Escape מנקה את החיפוש');
 await p.type('.hf-s input', 'נדרים פלוס'); await sleep(200);
 ok((await p.$$('.adm-tile')).length === 5, 'חיפוש לפי שם קטגוריה מחזיר את כל הקטגוריה');
+await p.evaluate(() => { document.querySelector('.hf-s input').select(); }); await p.type('.hf-s input', 'הו"ק'); await sleep(200);
+ok(await p.evaluate(() => [...document.querySelectorAll('.adm-tile b')].some((b) => b.textContent.includes('הו״ק'))), 'חיפוש עם מירכאות רגילות ("הו\"ק") מוצא "הו״ק"');
 
 // 4. RTL: שדה החיפוש מימין, המתג בקצה השמאלי; הכותרת מימין
 ok(await p.evaluate(() => { const a = document.querySelector('.hf-s').getBoundingClientRect(), v = document.querySelector('.vsw').getBoundingClientRect(), app = document.querySelector('.adm-app').getBoundingClientRect(); return a.left > v.right && v.left - app.left < 40 && app.right - a.right < 40; }), 'RTL: חיפוש בימין, מתג תצוגה בשמאל (getBoundingClientRect)');
@@ -72,6 +74,19 @@ for (const role of ['0', '2', 'anon']) {
   if (role === '2') ok(got.includes('/admin/site') && got.includes('/admin/ai-restrictions') && !got.includes('/admin/nedarim-hok-list'), 'מתכנת: עם כלי מתכנת, בלי רשימת הו״ק');
   await p.close();
 }
+
+// 5b. nedarim_plus_enabled === 'false': אין קטגוריית נדרים
+p = await page(); await go(p, '0', '&ned=off');
+ok(!(await p.$('.adm-sec[data-cat="nedarim"]')) && !(await hrefsShown(p)).some((h) => h.includes('nedarim')) && (await p.$$('.adm-sec')).length === 8, 'נדרים כבוי: בלי הקטגוריה ובלי האריחים');
+await p.close();
+
+// 5c. עמודת המעבר בטבלה: טקסט נסתר לקורא מסך; מיקוד מקלדת על אריח נותן טבעת זהב
+p = await page(); await go(p, '0'); await click(p, '.vopt[data-view="table"]');
+ok(await p.evaluate(() => { const s = document.querySelector('.adm-table th.tc .hf-sr'); return !!s && s.textContent === 'מעבר לכלי' && s.getBoundingClientRect().width <= 1; }), 'th ריק: טקסט נסתר "מעבר לכלי"');
+await click(p, '.vopt[data-view="tiles"]');
+await p.focus('.adm-tile'); await p.keyboard.press('Shift'); await p.keyboard.down('Shift'); await p.keyboard.press('Tab'); await p.keyboard.up('Shift'); await p.keyboard.press('Tab'); await sleep(150);
+ok(await p.evaluate(() => { const a = document.activeElement; const cs = getComputedStyle(a); return a.classList.contains('adm-tile') && cs.outlineStyle === 'solid' && cs.outlineWidth === '3px'; }), 'מיקוד מקלדת על אריח: טבעת 3px');
+await p.close();
 
 // 6. localStorage חסום: הדף עובד, ברירת מחדל אריחים, ומעבר תצוגה עדיין עובד
 p = await page(1280, { blockStorage: true }); await go(p, '0');

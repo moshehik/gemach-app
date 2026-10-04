@@ -6,6 +6,6 @@ import dynamic from 'next/dynamic';
 // אין בחירה "ישן / חדש": אין מתג עיצוב למסך הניהול, והמסך החדש מחליף את הישן בתוך אזור התוכן של כל מעטפת (ישנה או A5).
 const AdminHubPage = dynamic(() => import('./AdminHubPage'), { ssr: false });
 
-export default function AdminHubSwitch({ toolIds, userKey }) {
-  return <AdminHubPage toolIds={toolIds} userKey={userKey} />;
+export default function AdminHubSwitch({ tools, categories, userKey }) {
+  return <AdminHubPage tools={tools} categories={categories} userKey={userKey} />;
 }

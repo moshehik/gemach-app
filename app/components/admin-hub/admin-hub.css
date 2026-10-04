@@ -62,13 +62,14 @@
 /* קישור טבלה (.trl) — בפלטה רק בעור דף הבית */
 .gm-ds.gm-adm .rtbl .trl{color:var(--gm-navy);font-weight:600;text-decoration:underline;text-decoration-color:var(--gm-gold-b);text-underline-offset:3px}
 .gm-ds.gm-adm .rtbl .trl:hover{text-decoration:underline}
-.gm-ds.gm-adm .rtbl tbody tr:has(.trl){cursor:pointer}
 
 /* ===== אריחים ===== */
 .gm-ds.gm-adm .adm-tiles{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));grid-auto-rows:168px}
 .gm-ds.gm-adm a.adm-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:12px;text-align:start;text-decoration:none;font:inherit;cursor:pointer;height:100%;padding:20px;width:100%}
 .gm-ds.gm-adm .adm-tile{background:var(--gm-rose-100);border:1px solid var(--gm-rose-300)}
 .gm-ds.gm-adm .adm-tile:hover{background:var(--gm-rose-200)}
+/* מיקוד מקלדת: אותה טבעת כמו לחצני הפלטה (.gm-ds .btn:focus-visible — 3px זהב) */
+.gm-ds.gm-adm .adm-tile:focus-visible{outline:3px solid var(--gm-gold);outline-offset:3px}
 .gm-ds.gm-adm .adm-tile .ico{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none;background:#fff;color:var(--gm-rose-700);border:1px solid var(--gm-rose-300)}
 .gm-ds.gm-adm .adm-tile .ico .ic{width:24px;height:24px}
 .gm-ds.gm-adm .adm-tt{display:flex;flex-direction:column;gap:4px;min-width:0}

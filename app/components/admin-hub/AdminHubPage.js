@@ -3,7 +3,8 @@
 // "מסך ניהול ראשי" (/admin) — עיצוב מאושר: תצוגות-עיצוב/ניהול-ראשי-כרטיסים.html (4.10.2026), רכיבי פלטה בלבד
 // (design-system/COMPONENTS.md) בתוך .gm-ds.gm-adm, כמו "הפרופיל שלי". החלטות הבעלים (answers-admin-cards.json):
 // שורת חיפוש בלי מונה, מתג תצוגה שורות / טבלה / אריחים עם ברירת מחדל אריחים (הבחירה נזכרת לכל משתמש בנפרד),
-// 9 קטגוריות עם תגית קטגוריה בכל שורה. הקטלוג והשערים: lib/adminHub.js; מה מוצג נקבע בשרת (app/admin/page.js).
+// 9 קטגוריות עם תגית קטגוריה בכל שורה. מה מוצג נקבע בשרת (app/admin/page.js): הרכיב מקבל רק את הכלים המותרים והקטגוריות שלהם,
+// ולעולם לא מייבא את הקטלוג (lib/adminHubCatalog.js, צד שרת בלבד) — רק את העזרים הטהורים של lib/adminHubView.js.
 // כל רכיב כאן קיים בעיצוב: סרגל .hf-bar + .hf-s + .vsw.v3, כרטיס .card.items-card עם שורות .hres > .hgrp > article.hrow.irow >
 // a.li.rlink.lrow, טבלה .tblw > table.rtbl עם .trl, אריחים a.creditile.adm-tile, ומצב ריק .empty.
 
@@ -14,7 +15,7 @@ import Link from 'next/link';
 import { HomeSprite } from '../home/HomeParts';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import usePageTooltip from '../profile/usePageTooltip';
-import { VIEWS, VIEW_LABELS, VIEW_ICONS, DEFAULT_VIEW, normalizeView, viewStorageKey, groupTools } from '@/lib/adminHub';
+import { VIEWS, VIEW_LABELS, VIEW_ICONS, DEFAULT_VIEW, normalizeView, viewStorageKey, groupTools } from '@/lib/adminHubView';
 
 // אייקון מה-sprite המוטמע. plain = בתוך רכיב עם data-ico (לחצני המתג / ניקוי), שם האנימציה היא של הלחצן ולא של האייקון — כמו בעיצוב.
 function Ic({ id, size, plain }) {
@@ -61,7 +62,7 @@ function ToolsTable({ tools }) {
   return (
     <div className="tblw adm-table">
       <table className="rtbl">
-        <thead><tr><th>כלי</th><th>תיאור</th><th className="tc" /></tr></thead>
+        <thead><tr><th>כלי</th><th>תיאור</th><th className="tc"><span className="hf-sr">מעבר לכלי</span></th></tr></thead>
         <tbody>
           {tools.map((t) => (
             <tr key={t.id}>
@@ -89,7 +90,7 @@ function Tiles({ tools }) {
   );
 }
 
-export default function AdminHubPage({ toolIds, userKey }) {
+export default function AdminHubPage({ tools, categories, userKey }) {
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   const inputRef = useRef(null);
@@ -103,7 +104,7 @@ export default function AdminHubPage({ toolIds, userKey }) {
   // משתמש אחר באותו דפדפן (החלפת משתמש בלי רענון): קוראים שוב את הבחירה שלו
   useEffect(() => { setView(readView(storageKey)); }, [storageKey]);
 
-  const groups = useMemo(() => groupTools(toolIds, query), [toolIds, query]);
+  const groups = useMemo(() => groupTools(tools, categories, query), [tools, categories, query]);
 
   const pickView = (v) => {
     setView(v);

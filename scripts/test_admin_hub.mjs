@@ -4,11 +4,9 @@
 // בלי DB, רשת ודפדפן. הרצה: node scripts/test_admin_hub.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 // בדיקה חזותית מול העיצוב: scripts/admin-hub-audit (run.mjs = השוואת computed style, interact.mjs = התנהגות ותפקידים בדפדפן).
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import {
-  CATEGORIES, TOOLS, GATE_ROLES, GATES, EXCLUDED_ROUTES, VIEWS, DEFAULT_VIEW, normalizeView, viewStorageKey,
-  visibleToolIds, accessForRole, groupTools, toolMatches,
-} from '../lib/adminHub.js';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { CATEGORIES, TOOLS, GATE_ROLES, GATES, EXCLUDED_ROUTES, visibleToolIds, accessForRole, selectHub } from '../lib/adminHubCatalog.js';
+import { VIEWS, DEFAULT_VIEW, normalizeView, viewStorageKey, groupTools, toolMatches, normSearch } from '../lib/adminHubView.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const exists = (p) => existsSync(new URL(p, import.meta.url));
@@ -42,12 +40,12 @@ const NO = ['/api/customers/emails', '/admin/refund-planner', '/admin/audit-syst
   '/admin/refund-simulator', '/admin/settings/help'];
 const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה'];
 
-t('הנתיב /admin דק: השרת מחשב את השערים עם checkPageAccess ומעביר רק מזהי כלים; הדף נטען ב-dynamic', () => {
+t('הנתיב /admin דק: השרת מחשב את השערים עם checkPageAccess ומעביר רק את הכלים המותרים; הדף נטען ב-dynamic', () => {
   has(ROUTE, /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/, 'שער הנהלה');
   has(ROUTE, /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/, 'שער מתכנת');
   has(ROUTE, /checkPageAccess\(GATE_ROLES\.headOnly\)/, 'שער "רק מנהל ראשי"');
-  has(ROUTE, /visibleToolIds\(\{ head, dev, headOnly \}\)/, 'visibleToolIds על תוצאות השערים');
-  has(ROUTE, /<AdminHubSwitch toolIds=\{ids\}/, 'מעביר רק את המזהים');
+  has(ROUTE, /selectHub\(\{ head, dev, headOnly \}, \{ nedarimEnabled: nedarim \}\)/, 'selectHub על תוצאות השערים');
+  has(ROUTE, /<AdminHubSwitch tools=\{tools\} categories=\{categories\}/, 'מעביר רק את הכלים והקטגוריות המותרים');
   has(SWITCH, /dynamic\(\(\) => import\('\.\/AdminHubPage'\), \{ ssr: false \}\)/, 'dynamic');
   assert.ok(!/components\.css/.test(ROUTE + SWITCH), 'ה-CSS של הפלטה נטען רק מתוך AdminHubPage');
   has(PAGE, /import '@\/design-system\/components\.css'/, 'AdminHubPage מייבא את הפלטה');
@@ -79,6 +77,7 @@ t('כל נתיב "לא" / "להסיר" / "לא להכניס" לא מופיע ב�
     assert.ok(EXCLUDED_ROUTES[h], `${h} חסר בתיעוד EXCLUDED_ROUTES`);
   }
   assert.ok(!/FullEmailListModal|customers\/emails/.test(PAGE), 'חלון רשימת המיילים');
+  assert.ok(!exists('../components/FullEmailListModal.js') && !exists('../app/api/customers/emails/route.js'), 'חלון רשימת המיילים וה-API שלו (בלי שימוש) נמחקו');
   // אריח מחירון אחד (שני האריחים הישנים הובילו לאותו דף), התיאור מאחד את שני הכיתובים הקיימים
   assert.equal(TOOLS.filter((x) => x.href === '/dashboard/pricelist').length, 1);
   assert.match(byHref('/dashboard/pricelist').desc, /צפייה והדפסה/);
@@ -119,6 +118,67 @@ t('מטריצת תפקידים: הנהלה ראשית / מתכנת / מנהלת 
   assert.deepEqual(visibleToolIds(null), [], 'בלי מידע — כלום');
 });
 
+t('מה שנשלח לדפדפן: רק הכלים המותרים, בלי שדה השער, ורק הקטגוריות שיש בהן כלי', () => {
+  const head = selectHub(accessForRole(0));
+  assert.deepEqual(head.tools.map((x) => x.id), visibleToolIds(accessForRole(0)));
+  assert.ok(head.tools.every((x) => !('gate' in x)), 'שדה gate נשלח');
+  assert.ok(!head.tools.some((x) => TOOLS.find((y) => y.id === x.id).gate === 'dev'), 'כלי מתכנת נשלח להנהלה');
+  assert.equal(head.categories.length, 9);
+  assert.deepEqual(selectHub(accessForRole(1)), { tools: [], categories: [] });
+});
+
+t('nedarim_plus_enabled === "false" מסתיר את קטגוריית נדרים פלוס (בשרת); כל ערך אחר — מוצגת', () => {
+  const off = selectHub(accessForRole(0), { nedarimEnabled: false });
+  assert.ok(!off.tools.some((x) => x.cat === 'nedarim') && !off.categories.some((c) => c.id === 'nedarim'));
+  assert.equal(off.categories.length, 8);
+  assert.ok(selectHub(accessForRole(0), {}).tools.some((x) => x.cat === 'nedarim'), 'ברירת מחדל: מוצגת');
+  has(ROUTE, /getCachedSetting\('nedarim_plus_enabled'\)/, 'קריאת ההגדרה בשרת');
+  has(ROUTE, /return !\(s && s\.value === 'false'\)/, 'רק "false" מפורש מכבה (כמו app/orders/new/page.js)');
+});
+
+// גרף הייבוא של כל קובץ 'use client' של המסך (כמו scripts/schedule-print-tests/client-imports.test.mjs): אסור שיגיע לקטלוג
+// (lib/adminHubCatalog.js — כלי מתכנת ושערים) או למודול צד-שרת.
+t('קוד הלקוח לא מייבא (גם לא בעקיפין) את הקטלוג או מודול צד-שרת', () => {
+  const root = new URL('../', import.meta.url);
+  const src = (rel) => readFileSync(new URL(rel, root), 'utf8');
+  const isFile = (rel) => { try { return statSync(new URL(rel, root)).isFile(); } catch { return false; } };
+  const specs = (code) => {
+    const c = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/[^\n]*/g, '$1');
+    const out = new Set(); const re = /(?:^|[;\s])(?:import|export)\s[^'";]*?from\s*['"]([^'"]+)['"]|(?:^|[;\s])import\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/gm;
+    let m; while ((m = re.exec(c))) out.add(m[1] || m[2] || m[3]); return [...out];
+  };
+  const resolve = (from, spec) => {
+    let base;
+    if (spec.startsWith('@/')) base = spec.slice(2);
+    else if (spec.startsWith('.')) { const parts = from.split('/'); parts.pop(); for (const seg of spec.split('/')) { if (seg === '..') parts.pop(); else if (seg !== '.') parts.push(seg); } base = parts.join('/'); }
+    else return null;
+    return [base, `${base}.js`, `${base}.jsx`, `${base}.mjs`, `${base}/index.js`].find(isFile);
+  };
+  const FORBIDDEN_FILES = ['lib/adminHubCatalog.js', 'lib/auth.js', 'lib/authTokens.js', 'lib/settingsCache.js', 'app/lib/prisma.js', 'lib/prisma.js', 'lib/permissions.js'];
+  const FORBIDDEN_SPECS = [/^next\/headers$/, /^@prisma\/client/, /^server-only$/, /^node:/];
+  const entries = ['app/components/admin-hub/AdminHubSwitch.js', 'app/components/admin-hub/AdminHubPage.js'];
+  for (const e of entries) assert.ok(/^\s*'use client'/.test(src(e)), `${e} אמור להיות 'use client'`);
+  const problems = [];
+  for (const entry of entries) {
+    const seen = new Set([entry]); const stack = [[entry, [entry]]];
+    while (stack.length) {
+      const [file, chain] = stack.pop();
+      for (const sp of specs(src(file))) {
+        if (FORBIDDEN_SPECS.some((re) => re.test(sp))) { problems.push(`${chain.join(' -> ')} -> ${sp}`); continue; }
+        const rel = resolve(file, sp);
+        if (!rel) continue;
+        if (FORBIDDEN_FILES.includes(rel)) { problems.push(`${chain.join(' -> ')} -> ${rel}`); continue; }
+        if (!seen.has(rel)) { seen.add(rel); stack.push([rel, [...chain, rel]]); }
+      }
+    }
+    if (entry.endsWith('AdminHubSwitch.js')) assert.ok(seen.has('lib/adminHubView.js'), 'הגרף הגיע לעזרים הטהורים (בדיקת שפיות של הסורק)');
+  }
+  assert.deepEqual(problems, []);
+  // והעזרים הטהורים לא מחזיקים שום נתון על כלים / שערים
+  const view = src('lib/adminHubView.js').replace(/\/\/[^\n]*/g, '');
+  assert.ok(!/\/admin\/|gate|roleId|GATE_ROLES|TOOLS/.test(view), 'נתוני קטלוג ב-lib/adminHubView.js');
+});
+
 t('השערים בדפים עצמם: כל אריח "מתכנת בלבד" מוביל לדף עם שער DEVELOPER_ONLY_ROLES; /admin/site מעביר ל-/admin', () => {
   const layoutsFor = (href) => {
     const parts = href.split('/').filter(Boolean);
@@ -155,13 +215,20 @@ t('תצוגות: שורות / טבלה / אריחים, ברירת מחדל אר�
 t('חיפוש בלי מונה: שדה .hf-s מסנן לפי כותרת, תיאור או שם קטגוריה; קטגוריה בלי תוצאות נעלמת', () => {
   assert.ok(!/hres-n|adm-cnt|admCount|כלי ניהול <|\{groups\.reduce|tools\.length\}/.test(PAGE), 'מונה חזר');
   has(PAGE, /placeholder="חיפוש כלי ניהול"/, 'שדה החיפוש');
-  const all = TOOLS.map((x) => x.id);
-  assert.deepEqual(groupTools(all, 'גיבוי').map((g) => g.category.id), ['backup']);
-  assert.deepEqual(groupTools(all, 'נדרים פלוס').flatMap((g) => g.tools).length, 5, 'שם קטגוריה מחזיר את כל הקטגוריה');
-  assert.deepEqual(groupTools(all, 'overbooking').flatMap((g) => g.tools.map((x) => x.id)), ['inventory-alerts'], 'בלי תלות ברישיות');
-  assert.deepEqual(groupTools(all, 'zzzz'), []);
-  assert.equal(groupTools(['permissions'], '').length, 1, 'רק כלים מותרים');
+  const all = selectHub(accessForRole(2));
+  const g = (q) => groupTools(all.tools, all.categories, q);
+  assert.deepEqual(g('גיבוי').map((x) => x.category.id), ['backup']);
+  assert.deepEqual(g('נדרים פלוס').flatMap((x) => x.tools).length, 4, 'שם קטגוריה מחזיר את כל הקטגוריה (מתכנת: בלי רשימת הו״ק)');
+  assert.deepEqual(g('overbooking').flatMap((x) => x.tools.map((y) => y.id)), ['inventory-alerts'], 'בלי תלות ברישיות');
+  assert.deepEqual(g('zzzz'), []);
+  assert.equal(groupTools([all.tools[0]], all.categories, '').length, 1, 'רק הכלים שהועברו');
   assert.ok(toolMatches(byHref('/admin/permissions'), '  '), 'חיפוש ריק = הכל');
+  // גרשיים: ״ = " ו-׳ = ' (גם מירכאות מעוגלות)
+  assert.equal(normSearch('הו"ק'), normSearch('הו״ק'));
+  assert.equal(normSearch("ת'ז"), normSearch('ת׳ז'));
+  assert.equal(normSearch('“הו”ק'), normSearch('"הו"ק'));
+  assert.deepEqual(g('הו"ק').flatMap((x) => x.tools.map((y) => y.id)), ['nedarim-hok-search', 'nedarim-hok-edit']);
+  assert.ok(toolMatches({ title: 'בדיקה', desc: 'ת׳ז' }, "ת'ז"), 'גרש עברי מול גרש רגיל');
   has(PAGE, /לא נמצאו כלים התואמים לחיפוש/, 'מצב ריק');
 });
 
@@ -187,6 +254,12 @@ t('אייקונים: כל אייקון של כלי/קטגוריה קיים ב-sp
   for (const id of new Set([...TOOLS.map((x) => x.icon), ...CATEGORIES.map((c) => c.icon), 'search', 'x', 'arrl', 'rows', 'table', 'box'])) {
     assert.ok(sprite.includes(`id="i-${id}"`), `אייקון ${id} לא בפלטה`);
   }
+});
+
+t('נגישות: טקסט נסתר בעמודת המעבר, טבעת מיקוד לאריח, ובלי סמן "לחיץ" על שורת טבלה שאינה לחיצה', () => {
+  has(PAGE, /<th className="tc"><span className="hf-sr">מעבר לכלי<\/span><\/th>/, 'th ריק בלי טקסט נסתר');
+  has(CSS, /\.gm-ds\.gm-adm \.adm-tile:focus-visible\{outline:3px solid var\(--gm-gold\)/, 'טבעת מיקוד לאריח');
+  assert.ok(!/tr:has\(\.trl\)\{cursor:pointer/.test(CSS), 'cursor:pointer על שורה שלמה בלי שהשורה לחיצה');
 });
 
 t('admin-hub.css: כל כלל בהיקף .gm-ds.gm-adm (חוץ מביטול ריפוד המעטפת)', () => {
