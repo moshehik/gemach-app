@@ -747,7 +747,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <svg className="icon"><use href="#i-calendar" /></svg>
                     <span>
-                      {(selectedOrder.isAbroad || selectedOrder.isWeekdayEvent)
+                      {selectedOrder.isAbroad
                         ? (selectedOrder.fromDate ? `${getHebrewDateString(selectedOrder.fromDate)} — ${getHebrewDateString(selectedOrder.toDate || selectedOrder.returnDate)}` : 'אירוע חו"ל')
                         : (selectedOrder.eventDateHebrew || getHebrewDateString(selectedOrder.eventDate))}
                     </span>
