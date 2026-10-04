@@ -77,6 +77,11 @@ const SCENARIOS = {
   // W3 — מצבי פריטים: מושכר (עם ברקוד), הוחזר לא תקין; מכסה מלאה (R32)
   items: { items: 'states' },
   quota: { settings: [...ORG2.filter(([k]) => k !== 'max_items_per_order'), ['max_items_per_order', '3']] },
+  // W2b (R49, נווה): הצטרפות למשלוח / הטבלה חסרה (enabled:false מהשרת) / התראת מיקום שמלה / רצף ברקודים
+  join: { settings: [...ORG2, ['enable_delivery_join', 'true'], ['delivery_join_price', '20']] },
+  joinoff: { settings: [...ORG2, ['enable_delivery_join', 'true']], joinTableMissing: true },
+  dressloc: { settings: [...ORG2, ['enable_dress_location_alert', 'true']] },
+  seq: { items: 'states', settings: [...ORG2, ['enable_barcode_sequence_mode', 'true']] },
 };
 // W3: מצבי פריטים נוספים (תרחיש items) — אותם 4 פריטים של העיצוב + מושכר / הוחזר
 const ITEMS_STATES = [
@@ -130,6 +135,19 @@ window.fetch = async (url, opts) => {
   if (u.startsWith('/api/inventory/models')) return j({ models: MODELS });
   if (u.startsWith('/api/inventory/capacity')) return j({ inStock: 4, occupiedCount: 2, reserve: 2, occupiedOrders: [{ id: 'x1', orderId: 53375, eventDate: ORDER.eventDate, customerName: 'מרים אברמוביץ', quantity: 1 }, { id: 'x2', orderId: 53311, eventDate: '2026-10-12T21:00:00.000Z', customerName: 'לאה כץ', quantity: 1 }] });
   if (u.startsWith('/api/audit/order-item/')) return j([{ id: 'l1', action: 'CREATE', employeeId: 'e2', createdAt: '2026-09-23T07:13:00.000Z', changesJson: JSON.stringify({ sizeText: '38', price: 150, dressItemId: 'di-a1' }) }, { id: 'l2', action: 'CONFIRM_RENTAL', employeeId: 'e1', createdAt: '2026-10-01T08:00:00.000Z', changesJson: JSON.stringify({ isTaken: { from: false, to: true } }) }]);
+  // W2b: הצטרפות למשלוח (info / candidates / group), הטבלה חסרה = enabled:false, התראות מיקום שמלה
+  if (u.startsWith('/api/deliveries/join')) {
+    if (S.joinTableMissing) return j({ enabled: false, candidates: [], group: [], info: null });
+    const m = new URL(u, location.origin).searchParams;
+    if (m.get('mode') === 'info') return j({ enabled: true, info: { orderId: 53375, joinedToOrderId: null, rootOrderId: 53375, isPrimary: false, group: [] } });
+    if (m.get('mode') === 'candidates') return j({ enabled: true, candidates: [{ orderId: 53301, customerName: 'שרה כהן', direction: 'הלוך-חזור', street: 'הרב קוק 4', city: 'בית שמש', address: 'הרב קוק 4, בית שמש', joinedCount: 1 }, { orderId: 53288, customerName: 'רבקה לוי', direction: 'הלוך-חזור', street: 'יפו 12', city: 'ירושלים', address: 'יפו 12, ירושלים', joinedCount: 0 }] });
+    if (m.get('mode') === 'group') return j({ enabled: true, group: [{ orderId: 53301, customerName: 'שרה כהן', isPrimary: true, isRoot: true, street: 'הרב קוק 4', city: 'בית שמש' }, { orderId: 53299, customerName: 'מרים גולד', isPrimary: false, isRoot: false, street: 'הרב קוק 4', city: 'בית שמש' }] });
+    return j({ enabled: true });
+  }
+  if (u.startsWith('/api/orders/dress-location-alerts')) return j({ enabled: true, orders: [{ orderId: 53375, eventDate: ORDER.eventDate, customerName: 'מרים אברמוביץ', alerts: [
+    { key: '4512|38|model', modelName: 'דגם 4512', size: '38', needed: 1, homeCount: 0, shortage: 1, severity: 'critical', assigned: false, away: [{ barcode: '45123801', kind: 'out', orderId: 53190, expectedReturn: '2026-10-05T09:00:00.000Z', overdue: false, backBeforeEvent: true }, { barcode: '45123802', kind: 'branch', branch: 'בני ברק', backBeforeEvent: true }] },
+    { key: '3087|36|assigned', modelName: 'דגם 3087', size: '36', needed: 1, homeCount: null, shortage: 1, severity: 'warning', assigned: true, away: [{ barcode: '30873601', kind: 'out', orderId: 53201, expectedReturn: '2026-10-03T09:00:00.000Z', overdue: true, backBeforeEvent: false }] }] }] });
+  if (u.startsWith('/api/rentals/verify-item') && String(JSON.parse(opts.body).barcode).startsWith('999')) return j({ valid: false, error: 'ברקוד 99900001 אינו תקף להשכרה.' }, 400);
   if (u.startsWith('/api/rentals/verify-item')) { const b = JSON.parse(opts.body); return j({ valid: true, dressItem: { barcodePrefix: Number(String(b.barcode).slice(0, -4)), sizeText: String(b.barcode).slice(-4, -2) } }); }
   if (u.startsWith('/api/rentals/') || u.startsWith('/api/returns/')) return j({ success: true });
   if (u.startsWith('/api/orders/53375/items')) {
