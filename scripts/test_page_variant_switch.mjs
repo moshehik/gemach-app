@@ -30,7 +30,7 @@ async function t(name, fn) {
   catch (e) { console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
 }
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
-const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board'];
+const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
 const BOTH = ['shell', 'home', ...NEW_SCREENS];
 
 console.log('1. הרשומה המרכזית');

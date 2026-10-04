@@ -5,7 +5,7 @@ import { invalidateSettingsCache } from '@/lib/settingsCache';
 import { validateNumericSetting, validateSelectSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
-import { SECRET_SETTING_KEYS, SECRET_MASK } from '../../lib/secretSettingKeys';
+import { SECRET_SETTING_KEYS, SECRET_MASK, secretWriteAction } from '../../lib/secretSettingKeys';
 import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWorkingDaysOnlySettingsBatch, validateNonWorkingDaysSettingValue, pastClosedDayChanges, stripNonWorkingDaysNotes, hebrewDateOfKey } from '@/lib/businessDays';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { hasPermission } from '@/lib/permissions';
@@ -118,11 +118,15 @@ export async function POST(request) {
     // The masked placeholder coming back unchanged means "admin didn't touch this
     // field" - drop it from the batch entirely so the upsert below never overwrites
     // the real encrypted value with the mask string itself.
-    const writableData = data.filter(item => !(SECRET_SETTING_KEYS.includes(item.key) && item.value === SECRET_MASK));
+    // An EMPTY value for a secret key also means "not touched" (a password field that was only
+    // focused must never blank a stored credential) - clearing needs the explicit
+    // SECRET_CLEAR_MARKER (see secretWriteAction in app/lib/secretSettingKeys.js).
+    const writableData = data.filter(item => secretWriteAction(item.key, item.value) !== 'skip');
 
     const updatePromises = writableData.map(item => {
       if (item.key && item.value !== undefined) {
-        const storedValue = SECRET_SETTING_KEYS.includes(item.key) && item.value
+        const action = secretWriteAction(item.key, item.value);
+        const storedValue = action === 'clear' ? '' : action === 'write' && SECRET_SETTING_KEYS.includes(item.key)
           ? encryptSecret(item.value)
           : String(item.value);
         return prisma.systemSetting.upsert({
