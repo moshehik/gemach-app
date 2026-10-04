@@ -14,7 +14,7 @@ const ROUTE = read('../app/admin/page.js');
 const SWITCH = read('../app/components/admin-hub/AdminHubSwitch.js');
 const PAGE = read('../app/components/admin-hub/AdminHubPage.js');
 const CSS = read('../app/components/admin-hub/admin-hub.css');
-const AUTH = read('../lib/auth.js');
+const AUTH = read('../lib/roles.js');
 
 let passed = 0;
 function t(name, fn) {
