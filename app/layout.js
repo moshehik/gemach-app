@@ -34,6 +34,7 @@ import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { readSignedDesignPrefs } from './lib/designPrefsCookie';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
 import { isManagementRole } from '@/lib/uiVariantSelfSwitch';
@@ -259,16 +260,11 @@ export default async function RootLayout({ children }) {
   // whichever employee last edited /display-settings silently override the
   // next employee's own choices (previously these lived only in the
   // browser-wide `gemachDesignPrefs` localStorage key). Written by
-  // app/display-settings/page.js as `designPrefs_<employeeId>`, JSON-encoded.
-  const designPrefsCookie = authToken?.value ? cookieStore.get(`designPrefs_${authToken.value}`) : null;
-  let employeeDesignPrefs = null;
-  if (designPrefsCookie?.value) {
-    try {
-      employeeDesignPrefs = JSON.parse(decodeURIComponent(designPrefsCookie.value));
-    } catch (e) {
-      employeeDesignPrefs = null;
-    }
-  }
+  // the server (GET/PUT /api/me/design-prefs, POST /api/me/ui-variant/*) as the httpOnly cookie `designPrefs_<employeeId>`,
+  // HMAC-signed and bound to the employee id (lib/designPrefsSig.js, GQ-01b 2026-10-04). A missing / unsigned legacy /
+  // forged / foreign / expired cookie reads as null ("no cookie" -> defaults, never an error); DesignPrefsSync then
+  // rebuilds a signed cookie from the DB (Employee.themeColor).
+  const employeeDesignPrefs = authToken?.value ? readSignedDesignPrefs(cookieStore, authToken.value) : null;
   // Same "off value = omit the attribute" convention as applyAttr() in
   // app/display-settings/page.js and the no-FOUC bootstrap script below.
   const paletteAttr = employeeDesignPrefs?.palette && employeeDesignPrefs.palette !== 'wine' ? employeeDesignPrefs.palette : undefined;
