@@ -523,7 +523,8 @@ await t('החלטות הבעלים בממשק: XL ושכר להנהלה בלבד
   assert.match(PAGE, /'עריכת הנוכחות שלי'|עריכת הנוכחות שלי/);
   assert.match(WIZ, /downloadPdf\(/);
   assert.match(WIZ, /printNow\(\);\n/, 'גיבוי: הדפסה רגילה כשה-PDF נכשל');
-  assert.match(read('app/employees/[id]/page.js'), /get\('tab'\)/, 'כרטיס העובד נפתח על לשונית ההיסטוריה');
+  // כרטיס העובד: ה-page.js רק מחליף בין הישן לחדש (EmployeeCardSwitch) - קריאת ?tab= נמצאת בשני הכרטיסים
+  for (const f of ['app/employees/[id]/LegacyEmployeeCardPage.js', 'app/components/employee-card/EmployeeCardA5.js']) assert.match(read(f), /get\('tab'\)/, `כרטיס העובד נפתח על לשונית ההיסטוריה (${f})`);
 });
 await t('CSS: כל כלל בהיקף .gm-ds.gm-at (חוץ מהמעטפת :has) ובלי */ בתוך הערה', () => {
   const rules = CSS.replace(/\/\*[\s\S]*?\*\//g, '').split('}').map((r) => r.split('{')[0].trim()).filter((sel) => sel && !sel.startsWith('@'));
