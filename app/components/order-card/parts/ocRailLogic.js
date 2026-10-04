@@ -20,6 +20,11 @@ export const EPS = 0.005;
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const nz = (n) => Math.abs(r2(n)) > EPS;
 
+// ---------- אנימציות ריחוף של אייקונים (ICON-ANIM בעיצוב) ----------
+/** אייקונים שהחוק הקיים [data-ico] בפלטה כבר מטפל בהם בריחוף כשההורה נושא data-ico - מקבלים גם ia-ov (כמו prep() בעיצוב) */
+export const ICON_COVERED = new Set('check card print plus x trash undo bk back chev truck pencil scissors lock swap ext mail bag cart'.split(' '));
+export const iconClass = (name) => (ICON_COVERED.has(name) ? 'ia-ov' : '');
+
 // ---------- אירועי DOM בין הרייל לחלקים אחרים ----------
 // בקשת תשלום (W4: hooks/usePaymentActions.js requestPayment) - אותו שם אירוע ואותו detail; הרייל לא מייבא את קובץ W4 כדי שיעבוד גם
 // לפני המיזוג (כשאין מאזין - אין חלון; הבקר עצמו מציג טוסט חוב בלי מאזין debtCreated).

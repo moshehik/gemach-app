@@ -18,7 +18,7 @@ import { useOcEvent } from '../useOrderCardController';
 import { Money, Emph } from '../dialogs/ocDialogParts';
 import OcSuccessDialog from '../dialogs/OcSuccessDialog';
 import {
-  displayLine, railPrimary, railShowActions, payChip, cartTotals, cartSum, successHead, successTargets, printUrl,
+  displayLine, iconClass, railPrimary, railShowActions, payChip, cartTotals, cartSum, successHead, successTargets, printUrl,
   createRailActions, requestPaymentEvent, OC_PAYMENT_DONE_EVENT, OC_RAIL_PRIMARY_EVENT,
 } from './ocRailLogic';
 
@@ -112,8 +112,8 @@ export default function OcRail({ oc, ui }) {
   };
 
   const primaryBtn = pr.kind === 'none' ? null : (
-    <button type="button" className="btn primary lg block" data-act={pr.kind === 'pay-now' ? 'pay-now' : pr.kind === 'credit-now' ? 'credit-now' : 'save'} disabled={busy} onClick={() => actions.primary()}>
-      <OcIcon name={pr.icon} />{pr.text}{pr.amount ? <> <Money n={pr.amount} /></> : null}
+    <button type="button" className="btn primary lg block" data-act={pr.kind === 'pay-now' ? 'pay-now' : pr.kind === 'credit-now' ? 'credit-now' : 'save'} data-ico={pr.icon} disabled={busy} onClick={() => actions.primary()}>
+      <OcIcon name={pr.icon} anim className={iconClass(pr.icon)} />{pr.text}{pr.amount ? <> <Money n={pr.amount} /></> : null}
     </button>
   );
 
@@ -138,8 +138,8 @@ export default function OcRail({ oc, ui }) {
           <span className="cart-sum">{sum ? <Money n={sum.value} signed={sum.signed} /> : null}</span><OcIcon name="chev" size="sm" />
         </button>
         {oc.redoCount ? (
-          <button type="button" className="redo fresh" data-act="redo" data-tip="החזר ביטול" aria-label="החזר ביטול" onClick={oc.redo}>
-            <OcIcon name="redo" size="sm" />{oc.redoCount > 1 ? <i>{oc.redoCount}</i> : null}
+          <button type="button" className="redo fresh" data-act="redo" data-ico="redo" data-tip="החזר ביטול" aria-label="החזר ביטול" onClick={oc.redo}>
+            <OcIcon name="redo" size="sm" anim />{oc.redoCount > 1 ? <i>{oc.redoCount}</i> : null}
           </button>
         ) : null}
       </div>
@@ -153,7 +153,7 @@ export default function OcRail({ oc, ui }) {
                   <div className={`cl enter${leaving === c.key ? ' leaving' : ''}`} key={c.key} data-key={c.key} tabIndex={0}>
                     <div className="cl-i"><OcIcon name={c.icon} /></div>
                     <div className="cl-t"><span><Emph text={line.text} /></span>{line.note ? <small>{line.note}</small> : null}{c.amt ? <em className={c.amt > 0 ? 'p' : 'm'}><Money n={c.amt} signed /></em> : null}</div>
-                    <button type="button" className="cl-u" data-act="undo" data-k={c.key} data-tip="ביטול השינוי" aria-label="ביטול השינוי" disabled={busy} onClick={() => undo(c.key)}><OcIcon name="bk" size="sm" /></button>
+                    <button type="button" className="cl-u" data-act="undo" data-k={c.key} data-ico="bk" data-tip="ביטול השינוי" aria-label="ביטול השינוי" disabled={busy} onClick={() => undo(c.key)}><OcIcon name="bk" size="sm" anim className={iconClass('bk')} /></button>
                   </div>
                 );
               })}
@@ -177,7 +177,7 @@ export default function OcRail({ oc, ui }) {
       {showAct ? (
         <div className="cart-actions enter">
           {primaryBtn}
-          {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" disabled={busy} onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" />בטל שינויים</button> : null}
+          {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" data-ico="undo" disabled={busy} onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" anim className={iconClass('undo')} />בטל שינויים</button> : null}
         </div>
       ) : null}
     </div>

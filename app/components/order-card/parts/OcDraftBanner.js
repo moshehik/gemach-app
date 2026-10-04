@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import OcIcon, { OC_ICON_NAMES } from '../OcIcon';
-import { draftIconName, draftTimeLabel, draftIsStale } from './ocRailLogic';
+import { draftIconName, draftTimeLabel, draftIsStale, iconClass } from './ocRailLogic';
 
 const iconOf = (icon) => { const n = draftIconName(icon); return OC_ICON_NAMES.has(n) ? n : 'pencil'; };
 
@@ -26,7 +26,7 @@ export default function OcDraftBanner({ oc }) {
             <div className="nb-head">
               <span className="nb-ic" aria-hidden="true"><OcIcon name="alert" /></span>
               <div className="nb-msg"><b id="oc-draft-t">נמצאו שינויים שלא נשמרו מביקור קודם בכרטיס</b>{when ? <span>({when})</span> : null}</div>
-              <button type="button" className="nb-x" aria-label="סגור" data-tip="סגור" onClick={() => setClosedAt(d.savedAt)}><OcIcon name="x" /></button>
+              <button type="button" className="nb-x" aria-label="סגור" data-ico="x" data-tip="סגור" onClick={() => setClosedAt(d.savedAt)}><OcIcon name="x" anim className={iconClass('x')} /></button>
             </div>
           </div>
           <div className="nb-bw">
@@ -35,8 +35,8 @@ export default function OcDraftBanner({ oc }) {
                 {rows.map((r, i) => <div className="nb-r" key={i}><i><OcIcon name={r.icon} /></i><span>{r.text}</span></div>)}
                 {stale ? <div className="nb-r"><i><OcIcon name="alert" /></i><span>שים לב: ההזמנה עודכנה בשרת מאז שהשינויים האלה נערכו. שחזור ושמירה ידרשו אישור דריסה.</span></div> : null}
                 <div className="oc-banner-acts">
-                  <button type="button" className="nb-go" data-act="draft-restore" onClick={oc.drafts.restore}><OcIcon name="refresh" size="sm" /> שחזר את השינויים</button>
-                  <button type="button" className="nb-go" data-act="draft-drop" onClick={oc.drafts.discard}><OcIcon name="trash" size="sm" /> מחק אותם</button>
+                  <button type="button" className="nb-go" data-act="draft-restore" data-ico="refresh" onClick={oc.drafts.restore}><OcIcon name="refresh" size="sm" anim className={iconClass('refresh')} /> שחזר את השינויים</button>
+                  <button type="button" className="nb-go" data-act="draft-drop" data-ico="trash" onClick={oc.drafts.discard}><OcIcon name="trash" size="sm" anim className={iconClass('trash')} /> מחק אותם</button>
                 </div>
               </div>
             </div>
