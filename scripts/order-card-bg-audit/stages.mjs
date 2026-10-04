@@ -121,7 +121,7 @@ const W2A_DET = [['DET', '#p-details']];
 const W2A_DEL = [['DEL', '#p-delivery']];
 const W2A_DLG = [['DLG', '#dlg']];
 // בעיצוב: מסירים את תגיות "לפי הגדרות" של שכבת הסקירה (pv-cfg - לא נבנות, החלטת הבעלים) ואת לחצן "מייל מהיר" (A8 - slot של W7, נבדק בשלב שלו)
-const demoStrip = async () => { if (D) await p.evaluate(() => { document.querySelectorAll('.pv-cfg').forEach((x) => x.remove()); const m = document.querySelector('.card.cust [data-act="mail-open"]'); if (m && m.parentElement) m.parentElement.remove(); }); await sleep(100); };
+const demoStrip = async () => { if (D) await p.evaluate(() => { if (document.getElementById('w2a-strip')) return; const st = document.createElement('style'); st.id = 'w2a-strip'; st.textContent = '.pv-cfg{display:none!important}.card.cust .kv .f div:has(> [data-act="mail-open"]){display:none!important}.card.cust .kv .f div:has(> .pv-cfg){display:none!important}'; document.head.append(st); }); await sleep(100); };
 const openEdit = async () => { await clickAt('#p-details [data-act="editdate"]'); await sleep(300); };
 STAGES.push(
   { name: '30-details', roots: W2A_DET, real: async () => { await fresh('neve'); await away(); }, demo: async () => { await fresh(); await demoStrip(); await away(); } },

@@ -19,6 +19,8 @@
 /* R16 (שכבת הסקירה, מאושר): טווח לקיחה/החזרה - <div style="margin-top:16px"> מעל "חו״ל" */
 .gm-ds.gm-oc .card.oc-evt .oc-range{margin-top:16px}
 .gm-ds.gm-oc .card.oc-evt .oc-range .inp{cursor:default}
+/* דליפה: design-overrides.css (input:not(...), 0,4,1) צובע טקסט בחום וגבול בבז' - בעיצוב: טקסט כחול כהה, גבול --gm-line */
+.gm-ds.gm-oc .card.oc-evt .oc-range .inpw > input.inp{color:var(--gm-navy-900);border-color:var(--gm-line)}
 /* A9 + R16: ימים בתוך טווח שנבחר (בין הלקיחה להחזרה) - גוון כחול כהה חלש, בלי גבול (הקצוות .on מהפלטה) */
 .gm-ds.gm-oc .hc.oc-hc-range .hc-d.oc-rng{background:rgba(15,44,82,.14);border-radius:6px}
 .gm-ds.gm-oc .hc.oc-hc-range .hc-d.oc-rng.sh{background:rgba(15,44,82,.2)}
@@ -49,6 +51,8 @@
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-pane{margin-top:16px}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-gap{margin-top:12px}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-gm{margin:8px 0 0}
+/* דליפה: design-overrides.css input:not(...){border-radius:10px} - בעיצוב שדה בחלון מעוגל 14px (כמו .mfld > input.inp ב-oc-base) */
+.gm-ds.gm-oc #dlg.oc-cs .mfld .inpw > input.inp{border-radius:14px}
 /* רשימת הלקוחות (תוצאות עד 50): גלילה פנימית; שורה נבחרת מסומנת ב-✓ כמו בעיצוב */
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-list{max-height:280px;overflow-y:auto}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-row{cursor:pointer}
