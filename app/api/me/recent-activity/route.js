@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
+import { canViewOthersActivity, isViewableEmployee } from '@/lib/recentActivityAccess';
 import {
   MY_ACTIVITY_LIMITS as L, MY_ENTITY_TYPES, activitySince, collectRefs, attachOrderNumbers, mergeAuditRows, pickCandidates,
   detailOrderNumbers, historyOrderNumbers, composeMyActivity,
@@ -17,8 +18,9 @@ export const dynamic = 'force-dynamic';
 // החדש ראשון, הזמנה אחת פעם אחת בכל רשימה, עד 20 בכל רשימה. הזמנה שבוטלה או טיוטה לא מופיעה.
 // createdAt של הזמנה שנוצרה דרך טיוטה = רגע השמירה הסופית (לא תחילת הטיוטה), ור' lib/myRecentActivity.js pickCandidates.
 //
-// פרטיות: רק הפעולות של העובדת המחוברת עצמה (employeeId נלקח מהעוגייה המאומתת, לא מהבקשה). ?employeeId=<אחרת> = 403
-// (צפייה ברשימה של עובדת אחרת, גם להנהלה, טרם הוחלט - ר' NOTES). הנתיב קריאה בלבד: לא כותב ל-AuditLog ולא לשום טבלה.
+// פרטיות: ברירת המחדל = הפעולות של העובדת המחוברת עצמה (employeeId נלקח מהעוגייה המאומתת, לא מהבקשה).
+// ?employeeId=<אחרת> (MY-04 ב): רק עם feature:view_others_recent_activity (ברירת מחדל הנהלה ראשית / מתכנת, נבדק מהעוגייה החתומה: lib/recentActivityAccess.js);
+// בלי ההרשאה = 403, מזהה שאינו של עובדת פעילה = 404. הנתיב קריאה בלבד: לא כותב ל-AuditLog ולא לשום טבלה (גם לא "מי הציץ").
 // הרשאה: אותה כמו דפי ההזמנות (page:orders). ההפרדה בין שני הגמ"חים היא ה-DB עצמו (כל גמ"ח בסיס נתונים נפרד).
 // ביצועים: סבבים ממוקדים ובלי N+1 (יומן של העובדת: שאילתה אחת -> שיוך להזמנות -> שורות Order של העובדת לפי entityId ->
 // פרטי הזמנות -> פריטים/תשלומים -> יומן ההזמנות), כולן עם take, בלי $transaction. החלון (60 ימי-לוח ישראליים) + take הם התקרה של
@@ -34,9 +36,18 @@ export async function GET(request) {
   if (!(await checkAuth())) return json({ error: 'Unauthorized' }, 401);
   if (!(await canOpenPage('page:orders'))) return json({ error: 'Forbidden' }, 403);
   const me = await getActingEmployeeId();
-  if (!me) return json({ ...EMPTY, anonymous: true }); // מצב פתוח (בלי התחברות): אין "אני"
+  if (!me) return json({ ...EMPTY, anonymous: true }); // מצב פתוח (בלי התחברות) / עוגייה מזויפת: אין "אני"
   const asked = new URL(request.url).searchParams.get('employeeId');
-  if (asked && asked !== me) return json({ error: 'Forbidden' }, 403);
+  // רשימות של עובדת אחרת (MY-04 ב): רק מי שיש לה feature:view_others_recent_activity (ברירת מחדל הנהלה ראשית / מתכנת), לפי העוגייה החתומה בשרת.
+  // המזהה חייב להיות של עובדת פעילה (לא עובד שירות); אחרת 404. הכל שאילתות קריאה בלבד, אותן תקרות.
+  let who = me;
+  if (asked && asked !== me) {
+    if (!(await canViewOthersActivity(me))) return json({ error: 'Forbidden' }, 403);
+    let target = null;
+    try { target = await prisma.employee.findUnique({ where: { id: asked }, select: { id: true, isActive: true, legacyId: true } }); } catch { return json({ ...EMPTY, degraded: true }); }
+    if (!isViewableEmployee(target)) return json({ error: 'Not found' }, 404);
+    who = target.id;
+  }
 
   try {
     const since = activitySince(new Date());
@@ -45,7 +56,7 @@ export async function GET(request) {
 
     // סבב 1: מה העובדת כתבה ביומן - שאילתה אחת (Order / OrderItem / Payment, כל הפעולות); CREATE של פריט / תשלום בהזמנה
     // שלא נוצרה עכשיו הוא שינוי ("נוסף פריט"), והסינון בין סוגי השורות נעשה בזיכרון (pickCandidates)
-    const rows = await prisma.auditLog.findMany({ where: { employeeId: me, entityType: { in: [...MY_ENTITY_TYPES] }, createdAt: { gte: since } }, orderBy, take: L.auditRows, select });
+    const rows = await prisma.auditLog.findMany({ where: { employeeId: who, entityType: { in: [...MY_ENTITY_TYPES] }, createdAt: { gte: since } }, orderBy, take: L.auditRows, select });
     if (!rows.length) return json(EMPTY);
 
     // סבב 2: שיוך כל שורה להזמנה (מזהה uuid / מזהה פריט / מזהה תשלום -> מספר הזמנה + uuid של ההזמנה)
@@ -68,7 +79,7 @@ export async function GET(request) {
     for (const x of [...items, ...pays]) if (x.order && x.order.id) { knownUuids.add(x.order.id); lookups.uuidToNumber.set(x.order.id, x.orderId); }
     const orderRows = knownUuids.size
       ? await prisma.auditLog.findMany({
-        where: { employeeId: me, entityType: 'Order', action: { in: ['CREATE', 'UPDATE'] }, entityId: { in: [...knownUuids] }, createdAt: { gte: since } },
+        where: { employeeId: who, entityType: 'Order', action: { in: ['CREATE', 'UPDATE'] }, entityId: { in: [...knownUuids] }, createdAt: { gte: since } },
         orderBy, take: L.extraAuditRows, select: { ...select, changesJson: true },
       })
       : [];
@@ -130,7 +141,7 @@ export async function GET(request) {
       for (const n of histNums) historyByNumber.set(n, { auditRows: auditBy.get(n) || [], items: itemsBy.get(n) || [], payments: paysBy.get(n) || [] });
     }
 
-    return json(composeMyActivity({ candidates, ordersByNumber, historyByNumber, me }));
+    return json(composeMyActivity({ candidates, ordersByNumber, historyByNumber, me: who }));
   } catch (error) {
     console.error('recent-activity error:', error);
     return json({ ...EMPTY, degraded: true });

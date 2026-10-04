@@ -42,8 +42,8 @@ export async function resolve(spec, ctx, next) {
 }
 export async function load(url, ctx, next) {
   if (url === 'mock:prisma') return { format: 'module', shortCircuit: true, source: 'export default globalThis.__T.prisma; export const getActingEmployeeId = async () => globalThis.__T.me;' };
-  if (url === 'mock:auth') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const checkAuth=async()=>T.authed;' };
-  if (url === 'mock:permissions') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const canOpenPage=async(k)=>{T.asked.push(k);return T.pages.has(k);};' };
+  if (url === 'mock:auth') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const checkAuth=async()=>T.authed; export const getSessionEmployee=async()=>T.session;' };
+  if (url === 'mock:permissions') return { format: 'module', shortCircuit: true, source: 'const T=globalThis.__T; export const canOpenPage=async(k)=>{T.asked.push(k);return T.pages.has(k);}; export const hasPermission=async(e,k)=>{T.asked.push(k);return !!e&&(([0,2].includes(e.roleId))||T.grants.has(e.id+"|"+k));};' };
   if (url === 'mock:next-server') return { format: 'module', shortCircuit: true, source: 'export class NextResponse { static json(body, init){ return new Response(JSON.stringify(body), { status:(init&&init.status)||200, headers:{"content-type":"application/json"} }); } }' };
   if (url === 'mock:next-headers') return { format: 'module', shortCircuit: true, source: 'export const cookies=async()=>({get(){return undefined}});' };
   return next(url, ctx);
@@ -52,7 +52,7 @@ export async function load(url, ctx, next) {
 register('data:text/javascript;base64,' + Buffer.from(hooks).toString('base64'), pathToFileURL(root + path.sep));
 
 // ---------------------------------------------------------------- prisma בזיכרון
-const T = (globalThis.__T = { authed: true, me: 'emp-me', pages: new Set(['page:orders']), asked: [], calls: [], db: {}, fail: false });
+const T = (globalThis.__T = { authed: true, me: 'emp-me', session: { id: 'emp-me', roleId: 3, isActive: true }, grants: new Set(), pages: new Set(['page:orders']), asked: [], calls: [], db: {}, fail: false });
 const cmp = (a, b) => { const x = a instanceof Date ? a.getTime() : a; const y = b instanceof Date ? b.getTime() : b; return x < y ? -1 : x > y ? 1 : 0; };
 function matchField(v, c) {
   if (c === null) return v == null;
@@ -92,6 +92,10 @@ T.prisma = new Proxy({}, {
   get: (_t, p) => {
     if (p === 'then') return undefined;
     if (['auditLog', 'order', 'orderItem', 'payment'].includes(p)) return model(p);
+    if (p === 'employee') return {
+      findUnique: async (args) => { T.calls.push({ model: 'employee', method: 'findUnique', where: args.where }); if (T.fail) throw new Error('db down'); const e = (T.db.employee || []).find((x) => x.id === args.where.id); return e ? { ...e } : null; },
+      findMany: async (args) => { T.calls.push({ model: 'employee', method: 'findMany', where: args.where, take: args.take, select: args.select }); if (!T.db.employee) throw new Error('db down'); const rows = T.db.employee.filter((e) => match(e, args.where)).slice(0, args.take); return rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !!args.select[k]))); },
+    };
     throw new Error('mock: אסור לגשת ל-' + String(p) + ' (כתיבה / טרנזקציה / מודל לא צפוי)');
   },
 });
@@ -102,6 +106,8 @@ async function t(name, fn) {
 }
 const lib = await import('../lib/myRecentActivity.js');
 const route = await import('../app/api/me/recent-activity/route.js');
+const empRoute = await import('../app/api/me/recent-activity/employees/route.js');
+const { PERMISSION_CATALOG, defaultValueForRoleId } = await import('../lib/permissionsMetadata.js');
 
 // ---------------------------------------------------------------- נתונים
 const NOW = new Date();
@@ -152,7 +158,10 @@ function seed() {
   T.db = { order: orders, auditLog: audit, orderItem: items, payment: pays };
 }
 const call = async (url = '/api/me/recent-activity') => { T.calls = []; T.asked = []; const res = await route.GET(new Request('http://localhost' + url)); return { status: res.status, body: await res.json() }; };
-const reset = () => { T.authed = true; T.me = 'emp-me'; T.pages = new Set(['page:orders']); T.fail = false; seed(); };
+const reset = () => { T.authed = true; T.me = 'emp-me'; T.session = { id: 'emp-me', roleId: 3, isActive: true }; T.grants = new Set(); T.pages = new Set(['page:orders']); T.fail = false; seed(); T.db.employee = [{ id: 'emp-other', firstName: 'שרה', lastName: 'לוי', fullName: 'שרה לוי', isActive: true, legacyId: 12, wage: 55, pinHash: 'x' }, { id: 'emp-me', firstName: 'דנה', lastName: 'כהן', fullName: 'דנה כהן', isActive: true, legacyId: 11 }, { id: 'emp-gone', firstName: 'נטשה', lastName: 'ישנה', fullName: 'נטשה ישנה', isActive: false, legacyId: 13 }, { id: 'emp-svc', firstName: 'מפתח', lastName: 'API', fullName: 'מפתח API', isActive: true, legacyId: 900001 }]; };
+// מנהלת סניף / הנהלה ראשית כמחוברת (העוגייה החתומה): me = המזהה, session = העובדת מהעוגייה
+const as = (id, roleId) => { T.me = id; T.session = { id, roleId, isActive: true }; };
+const callEmp = async () => { T.calls = []; T.asked = []; const res = await empRoute.GET(); return { status: res.status, body: await res.json() }; };
 
 // ---------------------------------------------------------------- 1) הלוגיקה הטהורה
 console.log('lib/myRecentActivity.js');
@@ -229,9 +238,81 @@ console.log('GET /api/me/recent-activity');
 await t('לא מחוברת: 401, בלי שאילתות', async () => { reset(); T.authed = false; const r = await call(); assert.equal(r.status, 401); assert.equal(T.calls.length, 0); });
 await t('בלי page:orders: 403, בלי שאילתות; ההרשאה שנבדקת היא page:orders', async () => { reset(); T.pages = new Set(); const r = await call(); assert.equal(r.status, 403); assert.equal(T.calls.length, 0); assert.deepEqual(T.asked, ['page:orders']); });
 await t('מצב פתוח (אין זהות): 200, רשימות ריקות, anonymous, בלי שאילתות', async () => { reset(); T.me = null; const r = await call(); assert.equal(r.status, 200); assert.deepEqual(r.body, { created: [], changed: [], anonymous: true }); assert.equal(T.calls.length, 0); });
-await t('?employeeId של עובדת אחרת: 403 (self-only); ?employeeId של עצמי: 200', async () => {
+await t('?employeeId של עובדת אחרת: עובדת רגילה 403 (בלי שאילתות); ?employeeId של עצמי: 200', async () => {
   reset(); assert.equal((await call('/api/me/recent-activity?employeeId=emp-other')).status, 403); assert.equal(T.calls.length, 0);
   assert.equal((await call('/api/me/recent-activity?employeeId=emp-me')).status, 200);
+});
+console.log('MY-04: הנהלה עוברת לעובדת אחרת');
+await t('המפתח הוא feature:view_others_recent_activity: enforced, ברירת מחדל הנהלה ראשית ומתכנת בלבד', () => {
+  const item = PERMISSION_CATALOG.find((i) => i.key === 'feature:view_others_recent_activity');
+  assert.ok(item && item.group === 'features' && item.type === 'boolean' && item.enforced === true);
+  assert.deepEqual([0, 1, 2, 3, 4, 5, 6].map((r) => defaultValueForRoleId(item, r)), [true, false, true, false, false, false, false]);
+});
+await t('מנהלת סניף (roleId 1) -> עובדת אחרת: 403, בלי שאילתות', async () => {
+  reset(); as('emp-me', 1); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403); assert.equal(T.calls.length, 0);
+});
+await t('עובדת רגילה -> עובדת אחרת: 403 גם כשהיא שולחת מזהה קיים', async () => {
+  reset(); as('emp-me', 3); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403); assert.equal(T.calls.length, 0);
+});
+await t('הרשאה שניתנה במפורש (שורת הרשאה) למנהלת סניף: 200 - הנאכף הוא המפתח, לא התפקיד', async () => {
+  reset(); as('emp-me', 1); T.grants.add('emp-me|feature:view_others_recent_activity'); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 200);
+});
+await t('הנהלה ראשית (0) ומתכנת (2) -> עובדת אחרת: 200 עם הרשימות של האחרת, לא שלי', async () => {
+  for (const role of [0, 2]) {
+    reset(); as('emp-me', role);
+    const r = await call('/api/me/recent-activity?employeeId=emp-other');
+    assert.equal(r.status, 200, 'role ' + role);
+    assert.deepEqual(r.body.created.map((x) => x.orderNumber), [1007, 1006, 1002]);
+    assert.deepEqual(r.body.changed.map((x) => x.orderNumber), [1007]);
+    assert.ok(!JSON.stringify(r.body).includes('emp-'), 'אין מזהי עובדות בתשובה');
+  }
+});
+await t('הנהלה: כל שאילתות היומן מסוננות לפי העובדת שנבחרה (לא לפי הנהלה), ורק קריאות', async () => {
+  reset(); as('emp-me', 0); await call('/api/me/recent-activity?employeeId=emp-other');
+  const audit = T.calls.filter((c) => c.model === 'auditLog' && c.where && c.where.employeeId);
+  assert.ok(audit.length >= 1); for (const c of audit) assert.equal(c.where.employeeId, 'emp-other');
+  for (const c of T.calls) assert.ok(c.method === 'findMany' || (c.model === 'employee' && c.method === 'findUnique'));
+  assert.ok(T.asked.includes('page:orders') && T.asked.includes('feature:view_others_recent_activity'));
+});
+await t('הנהלה בלי page:orders: 403 עוד לפני ההרשאה לצפות באחרות', async () => {
+  reset(); as('emp-me', 0); T.pages = new Set(); const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403); assert.equal(T.calls.length, 0);
+});
+await t('הנהלה: מזהה לא מוכר / עובדת לא פעילה / עובד שירות: 404', async () => {
+  for (const id of ['emp-nobody', 'emp-gone', 'emp-svc']) { reset(); as('emp-me', 0); const r = await call('/api/me/recent-activity?employeeId=' + id); assert.equal(r.status, 404, id); }
+});
+await t('הנהלה: ?employeeId של עצמה = הרשימה שלה (בלי בדיקת עובדת אחרת)', async () => {
+  reset(); as('emp-me', 0); const r = await call('/api/me/recent-activity?employeeId=emp-me'); assert.equal(r.status, 200); assert.ok(!T.calls.some((c) => c.model === 'employee'));
+  assert.deepEqual(r.body.created.map((x) => x.orderNumber), [1001, 1005]);
+});
+await t('עוגייה מזויפת (getActingEmployeeId = null): תשובת anonymous גם עם ?employeeId, בלי שאילתות', async () => {
+  reset(); T.me = null; T.session = null; const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 200); assert.deepEqual(r.body, { created: [], changed: [], anonymous: true }); assert.equal(T.calls.length, 0);
+});
+await t('העוגייה החתומה לא של אותה זהות (session אחר מ-me): נסגר ל-403, גם אם ה-session הנהלה', async () => {
+  reset(); T.me = 'emp-me'; T.session = { id: 'emp-boss', roleId: 0, isActive: true }; const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403);
+});
+await t('אין session (getSessionEmployee = null) עם זהות: 403 לעובדת אחרת', async () => {
+  reset(); T.session = null; const r = await call('/api/me/recent-activity?employeeId=emp-other'); assert.equal(r.status, 403);
+});
+console.log('GET /api/me/recent-activity/employees');
+await t('הנהלה: שמות ומזהים בלבד, פעילות בלבד, בלי עובדי שירות, בלי שכר / קוד', async () => {
+  reset(); as('emp-me', 0); const r = await callEmp();
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.employees.map((e) => e.id).sort(), ['emp-me', 'emp-other']);
+  for (const e of r.body.employees) assert.deepEqual(Object.keys(e).sort(), ['id', 'name']);
+  const text = JSON.stringify(r.body); assert.ok(!/wage|pin|55|900001|API/.test(text));
+  const q = T.calls.find((c) => c.model === 'employee'); assert.ok(q.take > 0 && q.where.isActive === true);
+  assert.ok(!('wage' in q.select) && !('pinHash' in q.select) && !('password' in q.select));
+});
+await t('מנהלת סניף / עובדת רגילה: 403 בלי שאילתת עובדים; לא מחוברת 401; בלי זהות (עוגייה מזויפת) 403', async () => {
+  reset(); as('emp-me', 1); let r = await callEmp(); assert.equal(r.status, 403); assert.ok(!T.calls.some((c) => c.model === 'employee'));
+  reset(); as('emp-me', 3); r = await callEmp(); assert.equal(r.status, 403);
+  reset(); T.authed = false; r = await callEmp(); assert.equal(r.status, 401);
+  reset(); T.me = null; T.session = null; r = await callEmp(); assert.equal(r.status, 403);
+  reset(); as('emp-me', 0); T.pages = new Set(); r = await callEmp(); assert.equal(r.status, 403);
+});
+await t('כשל DB ברשימת העובדות: 200 עם רשימה ריקה ו-degraded', async () => {
+  reset(); as('emp-me', 0); T.db.employee = null;
+  const r = await callEmp(); assert.equal(r.status, 200); assert.deepEqual(r.body, { employees: [], degraded: true });
 });
 await t('created: רק מה שיצרתי, החדש ראשון; בוטלה / טיוטה / מחוץ לחלון לא מופיעות', async () => {
   reset(); const r = await call();
