@@ -151,6 +151,20 @@ const STAGES = [
       ['R42 סריקה: הודעת "הושכר", השדה התאפס ונשאר בפוקוס (סריקה ברצף)', /הושכר/.test(st.msg) && st.val === '' && st.focus === 'scanIn'],
       ['R42 סריקה שנייה: ברקוד של פריט מושכר → החזרה + "הוחזר"', st2.calls.length === 4 && body(st2.calls[3]).action === 'return' && body(st2.calls[3]).itemId === 'a3' && /הוחזר/.test(st2.msg) && /נאספה/.test(st2.a3)]);
   } },
+  // C5: במסך צר (<640) אין גלילה אופקית של העמוד והלשוניות גוללות בתוך המכל שלהן; בדסקטופ המכל לא גולל
+  { name: '03b-tabs-narrow-scroll', real: async () => {
+    await fresh('neve'); await away();
+    const st = await p.evaluate(() => { const t = document.getElementById('tabs'); const de = document.documentElement; return { w: innerWidth, pageScroll: Math.max(de.scrollWidth, document.body.scrollWidth) - innerWidth, tabsScrolls: t.scrollWidth > t.clientWidth + 1, ox: getComputedStyle(t).overflowX, last: (() => { const l = [...t.querySelectorAll('.tab')].pop().getBoundingClientRect(); const r = t.getBoundingClientRect(); return { l: Math.round(l.left), r: Math.round(l.right), tl: Math.round(r.left), tr: Math.round(r.right) }; })() }; });
+    if (st.w < 640) {
+      await p.evaluate(() => { const t = document.getElementById('tabs'); t.scrollTo({ left: -9999 }); t.scrollTo({ left: 9999 }); });
+      await sleep(200);
+      const ok = await p.evaluate(() => { const t = document.getElementById('tabs'); const l = [...t.querySelectorAll('.tab')].pop().getBoundingClientRect(); const f = [...t.querySelectorAll('.tab')][0].getBoundingClientRect(); const r = t.getBoundingClientRect(); return Math.min(l.left, f.left) >= r.left - 2 && Math.max(l.right, f.right) <= r.right + 2 || (l.left >= r.left - 2 && l.right <= r.right + 2) || (f.left >= r.left - 2 && f.right <= r.right + 2); });
+      checks.push(['C5: ב-375 אין גלילה אופקית של העמוד', st.pageScroll <= 1],
+        ['C5: ב-375 הלשוניות גוללות בתוך המכל שלהן (overflow-x:auto)', st.tabsScrolls && st.ox === 'auto' && ok]);
+    } else {
+      checks.push(['C5: בדסקטופ אין גלילה אופקית והמכל לא גולל', st.pageScroll <= 1 && !st.tabsScrolls]);
+    }
+  } },
   // C3: סריקה שנייה בזמן שהראשונה רצה נכנסת לתור - verify-item של השנייה מתחיל רק אחרי שההשכרה של הראשונה הסתיימה (השכרה איטית 700ms)
   { name: '51b-scan-queue', real: async () => {
     await fresh('items', '&rentdelay=700'); await clickAt('#scanIn');

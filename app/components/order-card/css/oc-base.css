@@ -52,6 +52,13 @@
    את הסרגל בלי רווח נוסף ובלי קו תחתון */
 .gm-ds.gm-oc .tabs{border-bottom:0;margin-bottom:0}
 .gm-ds.gm-oc .tab{margin-inline-end:0}
+/* C5: במסך צר סרגל הלשוניות (design-system/components.css `.gm-ds .tabs{overflow:visible!important}` - גם בעיצוב המאושר) חרג מהדף וגרם לגלילה
+   אופקית של כל העמוד. מתחת ל-640px הסרגל גולל לבד בתוך המכל שלו (בלי סרגל גלילה גלוי); הלשוניות לא מתכווצות. padding-top נשאר לתגי המונה (.tabmk) */
+@media (max-width:639px){
+  .gm-ds.gm-oc .tabs{overflow-x:auto!important;overflow-y:hidden!important;max-width:100%;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .gm-ds.gm-oc .tabs::-webkit-scrollbar{display:none}
+  .gm-ds.gm-oc .tabs > .tab{flex:none}
+}
 /* דליפה: app/design-system.css .field{margin-bottom:14px} - בעיצוב המרווח בין שדות בא מ-gap */
 .gm-ds.gm-oc .field{margin-bottom:0}
 /* דליפה: מתג הפעלה - ה-input מוסתר (opacity:0) אבל globals/design-overrides נותנים לו רקע לבן */

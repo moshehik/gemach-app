@@ -202,3 +202,12 @@ test('C4: isFocusableTarget - null / body / מנותק / מנוטרל / מוסת
     assert.equal(UI.isFocusableTarget(mk()), true);
   } finally { globalThis.document = doc; }
 });
+
+// ---------- C5: לשוניות גוללות בתוך המכל במסך צר (בלי לגעת בקובצי design-system) ----------
+test('C5 (סטטי): כלל ה-CSS בהיקף .gm-ds.gm-oc מתחת ל-640px; design-system/components.css לא נערך', () => {
+  const css = fs.readFileSync(OC + 'css/oc-base.css', 'utf8');
+  assert.ok(/@media \(max-width:639px\)\{\s*\.gm-ds\.gm-oc \.tabs\{overflow-x:auto!important;overflow-y:hidden!important/.test(css));
+  assert.ok(/\.gm-ds\.gm-oc \.tabs > \.tab\{flex:none\}/.test(css));
+  const ds = fs.readFileSync(P + '/design-system/components.css', 'utf8');
+  assert.ok(ds.includes('.gm-ds .tabs{overflow:visible!important;padding-top:10px}'), 'קובץ הפלטה נשאר כמו שהיה');
+});
