@@ -122,6 +122,7 @@ await safe('15-items-cart', async () => (D ? js(() => document.querySelector('[d
 // R22: "בדוק תפוסה" לפריט מהסל - רשימה (כמו capacityDlg בעיצוב), ואז הלוח (רק בדף האמיתי)
 await safe('15b-capacity', async () => (D ? js(() => document.querySelector('[data-act="capacity"]').click()) : click('.ibtn[aria-label="בדוק תפוסה"]')));
 if (!D) await safe('x4-capacity-board', async () => { await click('#capView button:nth-of-type(2)'); await sleep(500); });
+if (!D) await safe('x5-capacity-board-occ', async () => { await click('#dlg2 .hc-n:not(.hc-nn)'); await sleep(500); });
 await safe('15c-capacity-closed', async () => (D ? js(() => closeDlg(2)) : click('#dlg2 .btn.ghost')));
 await safe('16-summary', async () => (D ? js(() => go(5)) : click(NEXT)));
 await safe('17-payment', async () => (D ? js(() => go(6)) : click(NEXT)));

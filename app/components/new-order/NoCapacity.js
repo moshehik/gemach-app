@@ -211,7 +211,8 @@ export function ItemCapacityDialog({ item, order, currentOrderId, onClose }) {
     return () => { off = true; };
   }, [item, order && order.eventDate]);
 
-  const name = (item.dressItem && item.dressItem.dress && item.dressItem.dress.name) || item.description || 'פריט';
+  // בישן: dressItem.dress.name / description / 'פריט' - לפריט מהאשף (בלי dressItem) נוסף dressName כדי שהכותרת לא תהיה סתם "פריט"
+  const name = (item.dressItem && item.dressItem.dress && item.dressItem.dress.name) || item.dressName || item.description || 'פריט';
   return (
     <DialogFrame layer={2} cls="capwin" onBackdrop={onClose}>
       <h2>זמינות: {name} ({item.sizeText || item.size || 'ללא מידה'})</h2>
