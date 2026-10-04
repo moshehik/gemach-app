@@ -2,6 +2,54 @@
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
+import { getHebrewDateString } from '@/lib/hebrewDate';
+
+// ברקוד תקין הוא ספרות/אותיות בלבד. הקלדה/הדבקה מתוך מסך RTL יכולה להכניס תווים בלתי נראים
+// (סימוני כיווניות U+200E/U+200F, רווח ברוחב אפס...) ש-s לא מסיר - והחיפוש המדויק נכשל על ברקוד
+// שנראה זהה. מנקים כאן בשרת (בנוסף לניקוי בלקוח) כדי שזה לא ישתנה לפי הלקוח.
+function normalizeScanBarcode(raw) {
+  return String(raw ?? '').replace(/[^0-9A-Za-z]/g, '');
+}
+
+// "לא נמצא פריט מושכר בברקוד" - מסבירים למה (כבר הוחזר / טרם נלקח / ברקוד לא מוכר) ורושמים ללוג של
+// השרת את הברקוד כפי שהתקבל (כולל קודי התווים), כדי שכישלון עתידי בהחזרה מהירה יהיה ניתן לאבחון
+// בלי לנחש (דיווח df035847, נווה יעקב 2026-10-04).
+async function barcodeNotRentedResponse(rawBarcode, barcode) {
+  let reason = 'unknown';
+  let error = 'לא נמצא פריט עם הברקוד הזה';
+  let orderId = null;
+  try {
+    const returned = await prisma.orderItem.findFirst({
+      where: { barcode, isTaken: true, isReturned: true, isDeleted: false },
+      orderBy: [{ returnDate: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
+      select: { orderId: true, returnDate: true }
+    });
+    if (returned) {
+      reason = 'already_returned';
+      orderId = returned.orderId;
+      const when = returned.returnDate ? ` ב-${getHebrewDateString(returned.returnDate)}` : '';
+      error = `השמלה הזו כבר סומנה כמוחזרת בהזמנה ${returned.orderId}${when}`;
+    } else {
+      const notTaken = await prisma.orderItem.findFirst({
+        where: { barcode, isTaken: false, isDeleted: false },
+        orderBy: { updatedAt: 'desc' },
+        select: { orderId: true }
+      });
+      if (notTaken) {
+        reason = 'not_taken';
+        orderId = notTaken.orderId;
+        error = `הברקוד הזה קיים בהזמנה ${notTaken.orderId} אבל טרם סומן כנלקח`;
+      }
+    }
+  } catch (diagErr) {
+    console.error('returns/scan diagnostic lookup failed:', diagErr);
+  }
+  console.error('returns/scan: no rented item for barcode', JSON.stringify({
+    reason, orderId, barcode,
+    rawCodePoints: [...String(rawBarcode ?? '')].map((c) => c.codePointAt(0).toString(16)).join(' ')
+  }));
+  return NextResponse.json({ error, reason, ...(orderId ? { orderId } : {}) }, { status: 404 });
+}
 
 // חיפוש read-only של הזמנה/פריט לפי ברקוד, בלי לבצע החזרה בפועל - משמש את בר
 // ההחזרה המהיר ב-app/rentals/page.js כדי לבדוק איחור (ר' lib/lateReturn.js)
@@ -10,7 +58,7 @@ export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
-    const barcode = searchParams.get('barcode');
+    const barcode = normalizeScanBarcode(searchParams.get('barcode'));
     if (!barcode) {
       return NextResponse.json({ error: 'חסר ברקוד' }, { status: 400 });
     }
@@ -38,7 +86,9 @@ export async function GET(request) {
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { barcode, orderId, overridePin, overrideEmployeeId } = await request.json();
+    const body = await request.json();
+    const { orderId, overridePin, overrideEmployeeId } = body;
+    const barcode = normalizeScanBarcode(body.barcode);
 
     if (!barcode) {
       return NextResponse.json({ error: 'חסר ברקוד' }, { status: 400 });
@@ -75,7 +125,7 @@ export async function POST(request) {
       });
 
       if (!itemToReturn) {
-        return NextResponse.json({ error: 'לא הצלחנו למצוא את ההזמנה' }, { status: 404 });
+        return barcodeNotRentedResponse(body.barcode, barcode);
       }
     }
 
