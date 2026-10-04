@@ -125,6 +125,26 @@ export const FIELD_TRANSLATIONS = {
   done: 'בוצע',
   outcome: 'מצב ההחזרה',
   orderId: 'מספר הזמנה',
+  // אירועי הזמנה בלי כתיבת מודל (lib/history/orderEvents.js): הדפסה / הורדה / ייצוא / אישור מנהל / מייל
+  doc: 'מסמך',
+  sheet: 'גיליון',
+  source: 'מקור',
+  batch: 'הדפסה מרוכזת',
+  count: 'מספר הזמנות',
+  format: 'פורמט',
+  rows: 'שורות',
+  clientEventId: 'מזהה אירוע',
+  featureKey: 'סוג האישור',
+  level: 'רמת אישור',
+  reason: 'סיבה',
+  approverId: 'מזהה מאשר',
+  selfApproved: 'השולח מורשה',
+  attachments: 'צרופות',
+  attachmentCount: 'מספר צרופות',
+  sendMode: 'אופן שליחה',
+  files: 'קבצים',
+  driveLinks: 'קישורי דרייב',
+  error: 'שגיאה',
 };
 
 export const ACTION_TRANSLATIONS = {
@@ -161,7 +181,16 @@ export const ACTION_TRANSLATIONS = {
   ALTERATION_UNDONE: 'ביטול סימון תיקון',
   // לו״ז יומי - סימון "בוצע" לשלב (ScheduleStageMark, lib/schedule/marks.js)
   SCHEDULE_STAGE_DONE: 'סומן "בוצע" בלו״ז',
-  SCHEDULE_STAGE_UNDONE: 'בוטל סימון "בוצע" בלו״ז'
+  SCHEDULE_STAGE_UNDONE: 'בוטל סימון "בוצע" בלו״ז',
+  // שמירת הזמנה עם "לפני ← אחרי" (PUT /api/orders/[id], AMB-19) ואירועי הזמנה בלי כתיבת מודל
+  // (lib/history/orderEvents.js) - כדי שהכרטיס הישן לא יציג שם פעולה גולמי
+  UPDATE_ORDER: 'עדכון הזמנה',
+  ORDER_PRINTED: 'הדפסת הזמנה',
+  ORDER_PDF_DOWNLOADED: 'הורדת סיכום ההזמנה (PDF)',
+  ORDER_XLSX_EXPORTED: 'ייצוא ההזמנה ל-Excel',
+  HISTORY_EXPORTED: 'ייצוא היסטוריית ההזמנה',
+  MANAGER_APPROVAL: 'אישור מנהל',
+  EMAIL_FAILED: 'שליחת מייל נכשלה'
 };
 
 export default function HistoryViewer({ entityType, entityId }) {

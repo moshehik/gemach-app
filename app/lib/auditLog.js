@@ -1,4 +1,26 @@
 import prisma from '@/app/lib/prisma';
+import { ALL_ORDER_EVENT_ACTIONS, buildOrderEventRow } from '@/lib/history/orderEvents';
+
+/**
+ * THE single place that writes order "event" rows to AuditLog (print / PDF / Excel / history export /
+ * manager approval / email) - see the contract at the top of lib/history/orderEvents.js.
+ * These events have NO model write behind them, so the Prisma extension in app/lib/prisma.js never
+ * logs them; writing them here does not duplicate anything. A model write must NEVER be logged
+ * through this helper (use auditAs() on the write itself).
+ * - `meta` must already be sanitized by the caller (sanitizeEventMeta / buildApprovalMeta / emailEventMeta).
+ * - `actorId` comes from the session cookie (getActingEmployeeId) - never from a request body.
+ * - Plain createMany, outside any $transaction (memory: no reads/heavy work inside transactions).
+ * @returns {Promise<number>} rows written
+ */
+export async function writeOrderEvents({ orderIds, action, meta, actorId, clientEventId = null }) {
+  if (!ALL_ORDER_EVENT_ACTIONS.includes(action)) throw new Error(`writeOrderEvents: unknown action ${action}`);
+  const ids = (orderIds || []).filter((n) => Number.isInteger(n) && n > 0);
+  if (ids.length === 0) return 0;
+  const data = ids.map((orderId) => buildOrderEventRow({ orderId, action, meta, actorId, clientEventId }));
+  // eslint-disable-next-line no-restricted-syntax -- an order event with no model write behind it (print/PDF/export/approval/email); the extension never sees it, so this is not a duplicate
+  const res = await prisma.auditLog.createMany({ data });
+  return (res && typeof res.count === 'number') ? res.count : data.length;
+}
 
 function displayName(employee) {
   if (!employee) return null;
