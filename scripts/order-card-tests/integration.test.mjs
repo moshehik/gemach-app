@@ -125,7 +125,7 @@ test('c (סטטי): בקר - preview בכל לשונית, ניקוי שורות 
 
 test('c (סטטי): preview-pricing בשרת מכבד extraDay (R-1 של W2a)', () => {
   const route = fs.readFileSync(P + '/app/api/orders/[id]/preview-pricing/route.js', 'utf8');
-  assert.ok(/extraDay: orderOverrides\.extraDay !== undefined \? orderOverrides\.extraDay : baseOrder\.extraDay/.test(route));
+  assert.ok(/extraDay: resolveExtraDay\(\{[^}]*requested: orderOverrides\.extraDay, current: baseOrder\.extraDay \}\)\.value/.test(route));
 });
 
 // ---------- (d) רייל: ביטול כפול, a11y ----------

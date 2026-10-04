@@ -143,10 +143,10 @@ test('התמחור: joinPrice ב-computeDeliveryObligationPreview, applyDelivery
   assert.match(read('lib/pricingCalc.js'), /joinPrice = null,/);
   assert.match(read('lib/pricingCalc.js'), /if \(joinPrice && Number\(joinPrice\) > 0\) cityPrice = joinPrice;/);
   const eng = read('lib/pricingEngine.js');
-  assert.match(eng, /getDeliveryJoinPrice\(\)/); assert.match(eng, /isOrderJoined\(order\.orderId\)/);
+  assert.match(eng, /getDeliveryJoinPrice\(\)/); assert.match(eng, /isOrderJoinValid\(order\.orderId, \{ dropStale: true \}\)/); // S1: הצטרפות נבדקת מול השורש (במקום isOrderJoined)
   const pv = read('app/api/orders/[id]/preview-pricing/route.js');
   assert.match(pv, /'enable_delivery_join'/); assert.match(pv, /orderOverrides\.deliveryJoinedTo !== undefined/);
-  assert.match(pv, /extraDay: orderOverrides\.extraDay/);
+  assert.match(pv, /requested: orderOverrides\.extraDay/); // S2: דרך resolveExtraDay (כבוי = מתעלמים)
 });
 
 test('לא נכתבות הגדרות / לא מורץ DDL: אין SystemSetting.create/update/upsert ואין קריאת/הרצת קובץ SQL בקוד', () => {

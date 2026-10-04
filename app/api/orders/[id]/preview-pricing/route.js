@@ -4,6 +4,7 @@ import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { computeOrderObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
 import { isOrderJoinValid } from '@/lib/deliveryJoin';
+import { resolveExtraDay } from '@/lib/extraDayGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,8 @@ const SETTING_KEYS = [
   'delivery_price_by_city',
   'delivery_price',
   'enable_delivery_join',
-  'delivery_join_price'
+  'delivery_join_price',
+  'enable_rental_extension'
 ];
 
 /**
@@ -90,7 +92,8 @@ export async function POST(request, { params }) {
       deliveryCity: orderOverrides.deliveryCity !== undefined ? orderOverrides.deliveryCity : baseOrder.deliveryCity,
       deliveryDirection: orderOverrides.deliveryDirection !== undefined ? orderOverrides.deliveryDirection : baseOrder.deliveryDirection,
       // "יום השכרה נוסף" (תוספת 50% ב-pricingCalc) - הכרטיס החדש שולח אותו בתצוגה המקדימה (REQUESTS-W2a R-1)
-      extraDay: orderOverrides.extraDay !== undefined ? orderOverrides.extraDay : baseOrder.extraDay
+      // S2: כש-enable_rental_extension כבוי - דריסה מהלקוח מתעלמים (נשאר הערך השמור, כמו שה-PUT היה מחשב)
+      extraDay: resolveExtraDay({ enabledSetting: settings.find(s => s.key === 'enable_rental_extension')?.value, requested: orderOverrides.extraDay, current: baseOrder.extraDay }).value
     };
 
     const now = new Date();

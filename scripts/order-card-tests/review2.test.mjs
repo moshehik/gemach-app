@@ -219,3 +219,24 @@ test('C6 (סטטי): OcTopbar - לחצן נעילה מחדש אחרי שחרור
   assert.ok(/data-act="relockbtn"/.test(src) && /לחצו לנעילה מחדש/.test(src));
   assert.ok(/ui\.confirm\(\{[^}]*נעילה מחדש[^}]*\}\);\s*if \(ok\) oc\.relock\(\)/.test(src));
 });
+
+// ---------- S2: extraDay רק כש-enable_rental_extension דלוק ----------
+test('S2: resolveExtraDay - כבוי: הוספה/החלפה נדחות, ערך זהה מותר, הסרה מותרת; דלוק: הכל מותר', async () => {
+  const G = await P2('lib/extraDayGate.js');
+  const off = (requested, current = null) => G.resolveExtraDay({ enabledSetting: 'false', requested, current });
+  assert.deepEqual(off('after'), { ok: false, value: null, changed: false });
+  assert.deepEqual(off('before', 'after'), { ok: false, value: 'after', changed: false });
+  assert.deepEqual(off('after', 'after'), { ok: true, value: 'after', changed: false }, 'הערך השמור נשלח כמו שהוא');
+  assert.deepEqual(off(null, 'after'), { ok: true, value: null, changed: true }, 'הסרה מותרת');
+  assert.deepEqual(off(undefined, 'after'), { ok: true, value: 'after', changed: false });
+  assert.deepEqual(off('garbage'), { ok: true, value: null, changed: false }, 'ערך לא חוקי = null = ללא שינוי');
+  for (const s of [undefined, null, '', 'False']) assert.equal(G.resolveExtraDay({ enabledSetting: s, requested: 'after', current: null }).ok, false);
+  assert.deepEqual(G.resolveExtraDay({ enabledSetting: 'true', requested: 'after', current: null }), { ok: true, value: 'after', changed: true });
+});
+test('S2 (סטטי): PUT דוחה 400 EXTRA_DAY_DISABLED ו-preview-pricing מתעלם; מקור ההגדרה = enable_rental_extension', () => {
+  const put = fs.readFileSync(P + '/app/api/orders/[id]/route.js', 'utf8');
+  assert.ok(/resolveExtraDay\(\{ enabledSetting: \(await getCachedSetting\('enable_rental_extension'\)\)\?\.value, requested: data\.extraDay, current: existingOrder\.extraDay \}\)/.test(put));
+  assert.ok(/code: 'EXTRA_DAY_DISABLED' \}, \{ status: 400 \}/.test(put));
+  const prev = fs.readFileSync(P + '/app/api/orders/[id]/preview-pricing/route.js', 'utf8');
+  assert.ok(/'enable_rental_extension'\s*\];/.test(prev) && /resolveExtraDay\(/.test(prev));
+});

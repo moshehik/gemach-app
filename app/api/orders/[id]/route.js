@@ -5,6 +5,7 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth, getSessionEmployee } from '../../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
+import { resolveExtraDay } from '@/lib/extraDayGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -299,6 +300,14 @@ export async function PUT(request, { params }) {
     }
 
     const data = await request.json();
+
+    // S2: "יום השכרה נוסף" משתנה רק כש-enable_rental_extension דלוק (ערך זהה לשמור = מותר; ההזמנות הישנות שולחות את הערך כמו שהוא)
+    if (data.extraDay !== undefined) {
+      const gate = resolveExtraDay({ enabledSetting: (await getCachedSetting('enable_rental_extension'))?.value, requested: data.extraDay, current: existingOrder.extraDay });
+      if (!gate.ok) {
+        return NextResponse.json({ error: 'יום השכרה נוסף אינו מופעל בהגדרות הגמ"ח', message: 'יום השכרה נוסף אינו מופעל בהגדרות הגמ"ח', code: 'EXTRA_DAY_DISABLED' }, { status: 400 });
+      }
+    }
 
     // אכיפה שרתית של שדות חובה במשלוח (עיר/כתובת) - אותה לוגיקה בדיוק כמו POST /api/orders
     // (lib/deliveryValidation.js), אבל רק כשמשלוח באמת משתנה בבקשה הזו - לא על כל שמירה
