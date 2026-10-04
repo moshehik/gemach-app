@@ -524,5 +524,41 @@ t('oc-details.css: אין דריסת @media לפני הכלל הלא-מותנה,
   assert.ok(!/[a-z0-9]-\*\//i.test(OC_DETAILS_CSS), 'הערה עם "-*/"');
 });
 
+/* ---------- 10. כרטיס ההזמנה — לשונית פריטים (W3, app/components/order-card/css/oc-items.css) ---------- */
+// נטען רק בתוך הכרטיס החדש (.gm-ds.gm-oc). רוב העיצוב מהפלטה; כאן: לחצני הסרגל בסגנון "מחוקים" (A10), שורת הברקוד (R25), מובייל.
+const OC_ITEMS_CSS = read('../app/components/order-card/css/oc-items.css');
+const ocItemsRules = parseCss(OC_ITEMS_CSS);
+// !important על רקע רק בלחצני הסרגל — בדיוק כמו #delToggle בפלטה (שקוף; כחול בריחוף), אחרת חוק ה-.btn של הפלטה גובר
+const OC_ITEMS_IMPORTANT_BG_OK = new Set(['.gm-ds.gm-oc .app .hres-bar .btn.tgl', '.gm-ds.gm-oc .app .hres-bar .btn.tgl:is(:hover,:focus-visible)']);
+t('oc-items.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  const bad = [];
+  for (const r of ocItemsRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-items.css: אין רקע לבן קשיח; !important על רקע רק בלחצני הסרגל (כמו #delToggle)', () => {
+  const bad = [];
+  for (const r of ocItemsRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!OC_ITEMS_IMPORTANT_BG_OK.has(s.replace(/\s+/g, ' '))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-items.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בהערה; אין סלקטור גלובלי', () => {
+  assert.deepEqual(mediaBeforeBase(ocItemsRules, 'oc-items.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_ITEMS_CSS), '"-*/" בתוך הערה שובר next build');
+  assert.ok(!/(^|[},\s])(:root|html|body)\b/.test(OC_ITEMS_CSS.replace(/\/\*[\s\S]*?\*\//g, '')), 'סלקטור גלובלי');
+});
+const hasOcItems = (selRe, propRe, valueRe) => ocItemsRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => !valueRe || valueRe.test(d.value)));
+t('oc-items.css: A10 — לחצני הסרגל בגובה 32 ובמסגרת הכחולה של "מחוקים", ✓ ורוד בנבחר; צבע טקסט השדות גובר על globals (0,4,1)', () => {
+  assert.ok(hasOcItems(/\.hres-bar \.btn\.tgl$/, /^height$/, /^32px/), 'גובה 32 ללחצני הסרגל');
+  assert.ok(hasOcItems(/\.hres-bar \.btn\.tgl$/, /^border$/, /var\(--gm-navy\)/), 'מסגרת כחולה כמו #delToggle');
+  assert.ok(hasOcItems(/\.hres-bar \.btn\.tgl \.evck$/, /^stroke$/, /#f38a6b/), '✓ ורוד כמו #delToggle');
+  assert.ok(/#delToggle[^{]*\{[^}]*height:32px/.test(PALETTE.replace(/\s+/g, '')) || /#delToggle\{min-height:32px;height:32px/.test(PALETTE), 'הפלטה: #delToggle בגובה 32 (המקור שאליו מיישרים)');
+  assert.ok(hasOcItems(/:is\(\.items-card,\.sbar\) :is\(input,textarea\)\.inp$/, /^color$/), 'צבע טקסט לשדות הלשונית ושורת הסריקה');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

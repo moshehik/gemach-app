@@ -13,7 +13,6 @@ const APPROVED = [
   [/^DLG2?>.*\[(h|w)\]$/, 'גובה/רוחב גוף החלון תלוי בטקסט (נוסח אמיתי מול נוסח הדגמה)'],
   [/^TOAST>.*\[(h|w)\]$|^TOAST \[(h|w)\]$/, 'רוחב הטוסט תלוי בטקסט'],
   [/^DLG2? \[(h|w)\]$/, 'גובה החלון תלוי בטקסט'],
-  [/^TOP>div\.sbar/, 'שורת הסריקה R42 - slot של W3 (OcScanBar); W8 מוסיף את השלב שלה'],
   [/^TOP \[h\]$/, 'גובה שורת הכותרת במסך צר כולל את שורת הסריקה (W3) כשורה מלאה'],
   [/^DLG2?>div\.dbtns \[(bi|pad)\]$/, 'במסך צר שורת הלחצנים האחרונה נדבקת לתחתית (:last-child); בעיצוב שכבת הסקירה (pv-line) באה אחריה ומבטלת את זה'],
 ];
@@ -33,6 +32,28 @@ const APPROVED_STAGE = [
   ['33-abroad', /^DET>div\.hc>div\.hc-g>button\.hc-d \[(bg|col|bs)\]$/, 'מעבר לחו"ל מנקה את תאריך האירוע (כמו הישן, MGD:344) - בהדגמה היום נשאר מסומן'],
   ['33-abroad', /^DET>div\.card(>div)? \[h\]$|^DET>div\.card>div>div\.faint$/, 'R16: הכיתוב "ערכי דוגמה" של שכבת הסקירה לא נבנה'],
   ['36-swap-new', /^DLG>div>div>div\.mfld$|^DLG>div>div\.mfld>/, 'R19: בנווה (require_customer_id_number) "בית" ו"תעודת זהות" בשורה אחת (grid2) - בהדגמה אין ת״ז והשדה "בית" לבד'],
+  // ---- W3 (לשונית פריטים) — מתועד ב-W3-NOTES.md ----
+  ...['40-items', '41-item-open', '42-items-table', '43-items-deleted', '44-addpanel', '45-dlg-edit', '46-dlg-capacity', '47-dlg-itemdet', '48-items-locked', '49-dlg-condbad'].flatMap((s) => [
+    [s, /^ITEMS>.*\bvsw\b|^ITEMS>div\.vsw/, 'A10 (הערת הבעלים): מתג רשימה/טבלה הוחלף בלחצני btn tgl באותו גובה וסגנון כמו "מחוקים"'],
+    [s, /^ITEMS>div\.card\.items-card>div\.hres-bar>button\.btn\.tgl \[(bg|bd|fs|pad|h|w)\]$|^ITEMS>div\.hres-bar>button\.btn\.tgl>svg\.evck/, 'A10: כל לחצני הסרגל (כולל "פרטי תיקונים") בסגנון "מחוקים", ✓ בנבחר'],
+    [s, /^ITEMS( |>div\.card\.items-card |>div\.card\.items-card>div\.hres )\[h\]$|^ITEMS>div\.card\.items-card>div\.hres-bar \[h\]$|^ITEMS>div\.card\.items-card>div\.hres>div\.hgrp \[h\]$/, 'גובה הלשונית: הסרגל בגובה 32 (A10) ותוכן השורות האמיתי'],
+    [s, /^ITEMS>.*hv-btns>span\.faint|^ITEMS>.*hv-btns>div\.inpw( |>input\.inp )\[w\]$/, 'R25: "ברקוד לדוגמה" של העיצוב הוא נתון מדומה; בדף האמיתי מוצג הברקוד שנרשם לפריט (כשיש)'],
+  ]),
+  ['43-items-deleted', /^ITEMS>.*irow/, 'שורת פריט מחוק: בעיצוב השורה "ממתינה" (pending) כי הנתון המדומה מחוק כבר בשמירה; בדף האמיתי אותו מראה (pending), שורות בסדר אחר'],
+  ...['45-dlg-edit', '46-dlg-capacity', '47-dlg-itemdet', '49-dlg-condbad'].map((s) => [s, /^ITEMS/, 'מאחורי החלון: בדף האמיתי השורה נפתחה כדי להגיע ללחצן; בעיצוב החלון נפתח מתפריט ההדגמה']),
+  ['45-dlg-edit', /^DLG>(div>span\.chip|div\.mfld|div>div\.mfld|div\.oc-edit-note|div\.faint|div\.mfld>div\.pill)|^DLG>div\.(field|row)/, 'R24: בעיצוב פריט עם החלפת מידה פעילה (גלולה) ותגית "לפי ההגדרות" (הוסרה, A27); בתרחיש האמיתי חלון 15 הדקות סגור ואין size_edit_until_days_before_event'],
+  ['46-dlg-capacity', /^DLG>div\.(c|chg>div\.c)>/, 'R29: רשימת ההזמנות התופסות (נתונים אמיתיים) — בעיצוב רק שלושת המספרים'],
+  ['47-dlg-itemdet', /^DLG>(div\.c|div\.chg>div\.c|button|div\.c>button)/, 'R28: שורות חיובים / היסטוריה עם נתונים אמיתיים (לחיצה מרחיבה שורה)'],
+  ['48-items-locked', /^ITEMS>.*hv-btns>button/, 'R3: בעיצוב הפריט במצב "נעול" מוצג עם לחצני מצב החזרה של שכבת הסקירה; בדף האמיתי פריט שטרם נלקח — שדה הברקוד מנוטרל'],
+  ['49-dlg-condbad', /^DLG>div\.amsg/, 'R27: אזור ההודעה (ריק) של הכרטיס'],
+  ...['41-item-open', '48-items-locked'].map((s) => [s, /^ITEMS>.*(irow\.open|hdet|hv-act|hv-btns)[^[]*\[h\]$/, 'R25: בעיצוב "ברקוד לדוגמה" (נתון מדומה) גולש לשורה שנייה; בדף האמיתי לפריט שטרם הושכר אין ברקוד (ובנעול — לחצני מצב ההחזרה של שכבת הסקירה)']),
+  ['48-items-locked', /^ITEMS>div\.card\.items-card>div\.amber\.chip \[(pad|h|w)\]$/, 'R3: במסך צר פס הנעילה נשבר לשתי שורות (בעיצוב הוא גולש מחוץ לכרטיס: 517px ברוחב 375)'],
+  ['48-items-locked', /^ITEMS>.*(irow|lrow|div\.t|span\.ln)[^[>]*\[h\]$/, 'R3: במסך צר שורת הסטטוס של פריט עם תיקון גולשת לשתי שורות (הטקסט בעיצוב הנעול שונה)'],
+  ['44-addpanel', /^ITEMS>.*(addpanel\.open|row\.spread\.wrap|span\.muted) \[h\]$/, 'A27: במסך צר "מחיר השכרה · דמי ביטול" גולש לשורה שנייה'],
+  ['44-addpanel', /^ITEMS>.*span\.muted( |>b )\[w\]$/, 'A27: המחיר מהמנוע + "דמי ביטול" (AMB-14) — אורך הטקסט שונה מהערך הקבוע בעיצוב'],
+  ['44-addpanel', /^ITEMS>div\.field>div\.sizes>button \[op\]$/, 'מידה שאין לה יחידה פנויה מנוטרלת (כמו option disabled בבורר המידות של הישן)'],
+  ['44-addpanel', /^ITEMS>.*label\.lbl>span\.chip\.gray|^ITEMS>div\.field>label\.lbl>span\.chip/, 'A27/R23: התגית "לפי הגדרות הגמ״ח" הוסרה לפי הערת הבעלים'],
+  ...['01-default', '02-hover-tab', '04-hover-back'].map((s) => [s, /^TOP>div\.sbar>div\.inpw>input\.inp \[bs\]$/, 'R42: בעיצוב לשדה הסריקה autofocus (טבעת המיקוד); בכרטיס השדה לא חוטף את המיקוד בפתיחה (כמו הישן)']),
 ];
 const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => s2 === st && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };

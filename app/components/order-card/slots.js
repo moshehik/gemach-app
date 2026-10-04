@@ -2,12 +2,13 @@
 // בלי לגעת בקבצים אחרים של W1. כל רכיב מקבל {oc, ui} (חלקי דף) או {...props, close} (חלונות, נפתחים ב-ui.openDialog).
 // החוזה המלא: scratch/order-card-build/W1-NOTES.md.
 import * as D from './OcDefaultParts';
+import OcScanBar from './parts/OcScanBar';
 
 export const SLOTS = {
   Rail: D.DefaultRail, //                     W5 → parts/OcRail.js            (<aside class="rail">)
   DraftBanner: D.DefaultDraftBanner, //       W5 → parts/OcDraftBanner.js     (R11, מעל הלשוניות)
   MoneyToast: D.NoPart, //                    W5 → parts/OcMoneyToast.js      (A23, מאזין ל-oc.totals.pendingNet)
-  ScanBar: D.NoPart, //                       W3 → parts/OcScanBar.js         (R42, בתוך .topbar; רצף ברקודים של W2b מחליף אותו בתוכו)
+  ScanBar: OcScanBar, //                      W3: parts/OcScanBar.js         (R42, בתוך .topbar; רצף ברקודים של W2b מחליף אותו בתוכו)
   Exports: D.PlaceholderExports, //           W7 → parts/OcExports.js         (A1/A2: xlbtn.xlg + xlbtn.xld בתוך .tools)
   PrintMenu: D.PlaceholderPrintMenu, //       W7 → parts/OcPrintMenu.js       (R6/A3/A4/R7: xlbtn.xlp + .menu בתוך .tools)
   TopBanners: D.NoPart, //                    W2b → parts/OcDressLocationBanner.js (מעל הלשוניות)

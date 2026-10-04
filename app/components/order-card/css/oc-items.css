@@ -1,2 +1,74 @@
 /* oc-items.css — כרטיס ההזמנה החדש: לשונית פריטים, שורת הפריט, שורת הברקוד ושורת הסריקה (R42) בתוך שורת הכותרת. בבעלות W3 (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
-   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build). */
+   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build).
+   רוב העיצוב כבר בפלטה (design-system/components.css: .items-card, .hres-bar, .hres .li/.hdet, .irow, .rtbl, .addpanel, .sizes, .advlist, .sbar).
+   כאן רק: (1) הערת הבעלים ל-A10 — כל לחצני הסרגל בגובה ובסגנון של "מחוקים" (#delToggle בפלטה: מסגרת כחולה, ✓ ורוד כשנבחר);
+   (2) מה שישב בשכבת הסקירה של העיצוב (pv-bcin / pv-bch, סידור מובייל של שורת הפעולות) בשמות נקיים; (3) סגנונות מוטבעים של
+   העיצוב (style=…) כמחלקות; (4) גוף החלונות של הלשונית. */
+
+/* ---------- (1) A10: סרגל הלשונית — רשימה / טבלה / פרטי תיקונים / מחוקים, כולם כמו "מחוקים" ---------- */
+.gm-ds.gm-oc .app .hres-bar .btn.tgl{min-height:32px;height:32px;padding:0 12px;gap:6px;font-size:14px;background:transparent!important;border:1.5px solid var(--gm-navy)!important;color:var(--gm-navy)!important;box-shadow:none}
+.gm-ds.gm-oc .app .hres-bar .btn.tgl:is(:hover,:focus-visible){background:var(--gm-navy)!important;color:#fff!important;border-color:var(--gm-navy)!important;box-shadow:none}
+.gm-ds.gm-oc .app .hres-bar .btn.tgl .ic:not(.evck){transition:color .18s,stroke .18s}
+.gm-ds.gm-oc .app .hres-bar .btn.tgl:is(:hover,:focus-visible) .ic:not(.evck){color:#fff!important;stroke:#fff!important}
+.gm-ds.gm-oc .app .hres-bar .btn.tgl .evck{color:#f38a6b!important;stroke:#f38a6b!important;stroke-width:3!important;stroke-dasharray:24;stroke-dashoffset:24;animation:gm-evDraw .35s ease-out forwards}
+@media (prefers-reduced-motion:reduce){
+.gm-ds.gm-oc .app .hres-bar .btn.tgl .evck{animation:none;stroke-dashoffset:0}
+}
+
+/* ---------- R3: פס "ההזמנה נעולה" ---------- */
+.gm-ds.gm-oc .items-card .oc-lockbar{margin-bottom:14px;max-width:100%}
+@media (max-width:640px){
+.gm-ds.gm-oc .items-card .oc-lockbar{white-space:normal;height:auto;min-height:32px;line-height:1.4;padding-block:6px}
+}
+
+/* ---------- (2) שורת הברקוד בשורת הפריט (R25/R26; העיצוב: pv-bcin / pv-bch) ---------- */
+.gm-ds.gm-oc .irow .oc-bcin{flex:1 1 200px;min-width:0;max-width:340px;position:relative}
+.gm-ds.gm-oc .irow .oc-bcin>.ic{position:absolute;inset-inline-start:14px;top:50%;translate:0 -50%;color:var(--gm-navy-500);pointer-events:none;z-index:1}
+.gm-ds.gm-oc .irow .oc-bcin>.inp{width:100%;padding-inline-start:44px;padding-inline-end:16px}
+.gm-ds.gm-oc .irow .oc-bch{font-size:12.5px}
+.gm-ds.gm-oc .items-card .ibtn{padding:1px 6px}
+/* צבע הטקסט בשדות (העיצוב: navy-900). globals.css קובע input:not(...)x4 (ספציפיות 0,4,1) — כאן 0,5,1 */
+.gm-ds.gm-oc .app :is(.items-card,.sbar) :is(input,textarea).inp{color:var(--gm-navy-900)}
+.gm-ds.gm-oc .irow .oc-bcin>.inp{border:1px solid var(--gm-sky-300)}
+@media (max-width:640px){
+.gm-ds.gm-oc .irow .oc-bcin{flex-basis:100%;max-width:none}
+.gm-ds.gm-oc .irow .hv-act{flex-direction:column;align-items:flex-start;gap:4px}
+.gm-ds.gm-oc .irow .hv-act small{width:auto}
+.gm-ds.gm-oc .irow .hv-act .hv-btns{width:100%}
+}
+
+/* ---------- (3) חלונית "הוספת שמלה" (העיצוב: style מוטבע) ---------- */
+.gm-ds.gm-oc .addpanel .oc-addt{font-size:19px}
+.gm-ds.gm-oc .addpanel .oc-addx{width:38px;height:38px}
+.gm-ds.gm-oc .oc-alt{margin-bottom:14px}
+.gm-ds.gm-oc .oc-alt .lbl{display:flex;align-items:center;gap:6px}
+.gm-ds.gm-oc .oc-alt .oc-alt-row{gap:10px;margin-bottom:10px}
+.gm-ds.gm-oc .oc-alt .oc-len{width:170px}
+.gm-ds.gm-oc .oc-alt textarea.inp{min-height:70px}
+.gm-ds.gm-oc .oc-sizes-msg{font-size:14px;min-height:40px;display:flex;align-items:center}
+.gm-ds.gm-oc .oc-advcode{font-size:13px}
+.gm-ds.gm-oc .addpanel .sizes button:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---------- (4) חלונות הלשונית (#dlg, כהה) ---------- */
+.gm-ds.gm-oc .oc-edit-note{font-size:14px;margin-bottom:14px}
+.gm-ds.gm-oc .oc-edit-grid{gap:14px;margin-bottom:14px}
+.gm-ds.gm-oc .oc-edit-hint{font-size:13px;margin-top:6px}
+.gm-ds.gm-oc .oc-edit-hint.err{color:var(--gm-red)}
+.gm-ds.gm-oc .oc-edit-reopen{margin:14px 0}
+.gm-ds.gm-oc #dlg .sizes button:disabled{opacity:.4;cursor:not-allowed}
+.gm-ds.gm-oc .oc-dsec{display:block;margin-top:8px}
+.gm-ds.gm-oc .oc-crchip{margin-inline-start:8px}
+.gm-ds.gm-oc .oc-obldesc{display:block;font-size:13px}
+.gm-ds.gm-oc .oc-hrow{flex-direction:column;align-items:stretch;gap:8px}
+.gm-ds.gm-oc .oc-hbtn{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:start;cursor:pointer}
+.gm-ds.gm-oc .oc-hbtn .oc-hchev{flex:none;transition:transform .2s}
+.gm-ds.gm-oc .oc-hbtn[aria-expanded="true"] .oc-hchev{transform:rotate(180deg)}
+.gm-ds.gm-oc .oc-hdet{font-size:13px;line-height:1.7;padding-inline-start:4px}
+.gm-ds.gm-oc .oc-capchip{margin-inline-start:8px}
+.gm-ds.gm-oc .oc-capcust{display:block;font-size:13px}
+.gm-ds.gm-oc .oc-caprange{font-size:13px;margin-bottom:12px}
+.gm-ds.gm-oc .oc-caplink{flex:none}
+.gm-ds.gm-oc .oc-caperr{margin:12px 0}
+.gm-ds.gm-oc .oc-bcval{margin:0 0 14px;font-weight:700;font-size:16px}
+.gm-ds.gm-oc .oc-choose{margin-bottom:16px}
+.gm-ds.gm-oc :is(#dlg,#dlg2) .oc-alt .inp{border-radius:14px}
