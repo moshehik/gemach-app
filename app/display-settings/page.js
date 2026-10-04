@@ -12,7 +12,6 @@ import {
   applyMode,
   pushPrefsToServer,
   readLocalPrefs,
-  writeDesignPrefsCookie,
   writeLocalPrefs,
   writeThemeCookie,
 } from '../lib/designPrefs';
@@ -329,10 +328,9 @@ export default function DisplaySettingsPage() {
       .catch(() => {});
   }, []);
 
-  // --- התמדה משותפת: localStorage + קוקי פר-עובד + PUT מושהה ל-DB ---
+  // --- התמדה משותפת: localStorage + PUT מושהה ל-DB (תשובת ה-PUT מרעננת את עוגיית ה-SSR החתומה, GQ-01b) ---
   function commit(nextRaw) {
     writeLocalPrefs(nextRaw);
-    writeDesignPrefsCookie(employeeIdRef.current, nextRaw);
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
     pushTimerRef.current = setTimeout(() => {
       pushPrefsToServer({

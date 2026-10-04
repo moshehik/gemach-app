@@ -6,7 +6,6 @@ import {
   applyPrefsToDom,
   pushPrefsToServer,
   readLocalPrefs,
-  writeDesignPrefsCookie,
   writeLocalPrefs,
   writeThemeCookie,
 } from '../lib/designPrefs';
@@ -16,17 +15,26 @@ import { splitServerPrefs } from '@/lib/designPrefsSchema';
 // (Employee.themeColor JSON, via /api/me/design-prefs) the source of truth
 // for design preferences:
 //   * DB has prefs  → apply them and refresh the fast mirrors (localStorage +
-//     designPrefs_<id> / theme_<id> cookies), so a login from a brand-new
-//     browser paints correctly from the second page load onward (and already
-//     on this load, right after mount).
+//     theme_<id> cookie), so a login from a brand-new browser paints correctly
+//     from the second page load onward (and already on this load, right after mount).
 //   * DB empty      → one-time migration: push whatever this browser already
 //     had locally (legacy localStorage-only behavior) into the DB.
+// The SSR cookie designPrefs_<id> is signed + httpOnly (lib/designPrefsSig.js, GQ-01b): this component can neither read
+// nor write it. The GET below makes the SERVER rebuild it from the DB whenever it is missing / legacy-unsigned / forged /
+// expired (response header x-design-prefs-cookie: rebuilt) — so no worker loses preferences and nothing is trusted from the client.
+// When it was rebuilt and the worker has "old/new" screen overrides, the server-rendered page of THIS load used the
+// defaults, so reload once (per tab session) to render with the real overrides.
 // Renders nothing; runs once per full page load.
 export default function DesignPrefsSync() {
   useEffect(() => {
     let cancelled = false;
+    let cookieRebuilt = false;
+    let pendingPush = Promise.resolve(); // ההגירה החד-פעמית (PUT) חייבת להסתיים לפני רענון הדף
     fetch('/api/me/design-prefs')
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        cookieRebuilt = res.headers.get('x-design-prefs-cookie') === 'rebuilt';
+        return res.ok ? res.json() : null;
+      })
       .then((data) => {
         if (cancelled || !data || !data.success || !data.employeeId) return;
         const employeeId = data.employeeId;
@@ -39,7 +47,6 @@ export default function DesignPrefsSync() {
           // DB wins over whatever this (possibly shared) browser had.
           const merged = { ...local, ...server.prefs };
           writeLocalPrefs(merged);
-          writeDesignPrefsCookie(employeeId, merged, server.uiVariants);
           if (merged.mode) writeThemeCookie(employeeId, merged.mode);
           applyPrefsToDom(merged);
           try {
@@ -49,20 +56,18 @@ export default function DesignPrefsSync() {
           // First login since the DB store exists — migrate the legacy
           // browser-local prefs up so they follow the employee everywhere.
           // (PUT מתמזג על ההעדפות השמורות, ולכן עקיפת uiVariants קיימת נשמרת.)
-          pushPrefsToServer(local);
-          writeDesignPrefsCookie(employeeId, local, server.uiVariants);
+          pendingPush = pushPrefsToServer(local); // התשובה (PUT) כותבת את העוגייה החתומה
           if (local.mode) writeThemeCookie(employeeId, local.mode);
-        } else {
-          // אין העדפות ואין מה להגר — רק מרעננים את עוגיית העקיפה כדי שהשרת יראה אותה בטעינה הבאה,
-          // ומנקים עוגייה ישנה עם uiVariants אם הבעלים כבר ביטל את העקיפה (אחרת היא נשארת עד שנה).
-          let staleCookie = false;
+        }
+        // העוגייה נבנתה מחדש כרגע ויש עקיפות "ישן / חדש" ב-DB: ה-SSR של הטעינה הזו רץ בלעדיהן. רענון אחד (פעם לכל לשונית).
+        if (cookieRebuilt && server.uiVariants && Object.keys(server.uiVariants).length > 0) {
           try {
-            const c = decodeURIComponent(document.cookie);
-            staleCookie = c.includes(`designPrefs_${employeeId}=`) && c.includes('"uiVariants"');
+            const guard = `gemachPrefsCookieReload_${employeeId}`;
+            if (!sessionStorage.getItem(guard)) {
+              sessionStorage.setItem(guard, '1');
+              window.location.reload();
+            }
           } catch (e) {}
-          if (server.uiVariants || staleCookie) {
-            writeDesignPrefsCookie(employeeId, {}, server.uiVariants || null);
-          }
         }
       })
       .catch(() => {});
