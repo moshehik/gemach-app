@@ -280,15 +280,16 @@
 
 /* 17) "כספים" בחיפוש המתקדם (5.10.2026; עיצוב מאושר: תצוגות-עיצוב/סיימתי-לעבוד/דף-הבית.html, בלוק fcust): "סטטוס הזמנה" הוא בורר (select.inp) ולא שדה טקסט, והפלטה
        (design-system/components.css) עדיין לא מכילה בורר בטופס המתקדם. כאן רק: גבול הזהב ובלי חץ הדפדפן, וחץ "v" מצויר בשני מעברי צבע (בלי תמונה / hex) בצד
-       השמאלי (inline-end ב-RTL); הריפוד לצד ה-X (padding-inline-end) כבר בכלל .advp .inpw>.inp של הפלטה. */
-.gm-ds.gm-home .advp .inpw > select.inp {
+       השמאלי (inline-end ב-RTL); הריפוד לצד ה-X (padding-inline-end) כבר בכלל .advp .inpw>.inp של הפלטה.
+       !important רק על background-image/position/size/repeat: כלל השדות של הפלטה (.gm-home :is(input, select).inp:not(:is(#dlg, #dlg2, .snav) *)) מכיל מזהה (#dlg) בסלקטור ולכן מאפס את background-image בכל specificity ללא !important, כולל חץ ה-select.inp של הפלטה עצמה (גם בדמו הוא לא נראה). */
+.gm-ds.gm-home.gm-home .advp .inpw > select.inp {
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
   border: 2px solid var(--gm-gold-b);
   color: inherit;
-  background-image: linear-gradient(45deg, transparent 50%, var(--gm-navy-500) 50%), linear-gradient(135deg, var(--gm-navy-500) 50%, transparent 50%);
-  background-position: 20px calc(50% + 1px), 25px calc(50% + 1px);
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gm-navy-500) 50%), linear-gradient(135deg, var(--gm-navy-500) 50%, transparent 50%) !important;
+  background-position: 20px calc(50% + 1px), 25px calc(50% + 1px) !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
 }

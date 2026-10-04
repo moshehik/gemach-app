@@ -117,6 +117,7 @@ const IMPORTANT_BG_OK = new Set([
   '.gm-ds.gm-home :is(.card,.stepper,.itm,.coll[open],.dhero)',
   '.gm-ds.gm-home .hero-in.jshell .card', // שקוף בתוך המסגרת המשותפת
   '.gm-ds.gm-home .rtbl thead tr th', // כותרת טבלה כחולה (דורס "כותרת דביקה" של globals.css)
+  '.gm-ds.gm-home.gm-home .advp .inpw > select.inp', // חץ בורר "סטטוס הזמנה" (כספים): כלל השדות של הפלטה מאפס background-image דרך #dlg בסלקטור
 ]);
 t('רקע עם !important ב-home.css רק בכללים המאושרים (אחרת זו דריסה שקטה של הפלטה)', () => {
   const bad = [];
@@ -785,8 +786,8 @@ const selRules = parseCss(HOME_CSS).filter((r) => /select\.inp/.test(r.sel));
 t('כספים: בורר "סטטוס הזמנה" (select.inp) — כלל אחד בהיקף .gm-ds.gm-home, בלי !important, בלי hex / תמונה, רק משתני --gm-*', () => {
   assert.ok(selRules.length >= 1, 'חסר כלל select.inp ב-home.css');
   for (const r of selRules) {
-    for (const sel of splitSel(r.sel)) assert.ok(/^\.gm-ds\.gm-home /.test(sel), 'מחוץ להיקף: ' + sel);
-    assert.ok(!/!important/.test(r.body), '!important ב-' + r.sel);
+    for (const sel of splitSel(r.sel)) assert.ok(/^\.gm-ds\.gm-home(\.gm-home)? /.test(sel), 'מחוץ להיקף: ' + sel);
+    assert.deepEqual(decls(r.body).filter((d) => isImportant(d)).map((d) => d.prop), ['background-image', 'background-position', 'background-size', 'background-repeat'], '!important רק על מאפייני החץ המצויר (הפלטה מאפסת אותם דרך #dlg בסלקטור)');
     assert.ok(!/#[0-9a-f]{3,8}\b|url\(/i.test(r.body), 'hex / תמונה ב-' + r.sel);
     for (const m of r.body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה שאינו gm-: --' + m[1]);
     assert.ok(/appearance:\s*none/.test(r.body), 'בלי appearance:none חץ הדפדפן מצטרף לחץ המצויר');
