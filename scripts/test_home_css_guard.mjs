@@ -501,5 +501,39 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+/* ---------- 10. כרטיס ההזמנה החדש - לשונית היסטוריה (W6, app/components/order-card/css/oc-history.css) ---------- */
+// שורש .gm-ds.gm-oc (לעולם לא gm-home). רוב הרכיבים מהפלטה; כאן רק תוספות העיצוב ונטרולי הדליפה שנמצאו בבדיקת
+// scripts/order-card-bg-audit (שלבים 40-48, TOTAL 0 ב-1280/375): שדה החיפוש (input גלובלי לבן/גבול/רדיוס), ריפוד לחצן הניקוי,
+// מסגרת לחצן הסינון כשהתפריט פתוח. אין רקע לבן קשיח, אין !important על רקע, אין @media לפני הבסיס.
+const OC_HIST_CSS = read('../app/components/order-card/css/oc-history.css');
+const ocHistRules = parseCss(OC_HIST_CSS);
+t('oc-history.css: כל כלל בהיקף .gm-ds.gm-oc, בלי gm-home', () => {
+  const bad = [];
+  for (const r of ocHistRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(\s|$)/.test(s) || /gm-home/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-history.css: אין רקע לבן קשיח ואין !important על רקע; אין @media לפני הכלל הלא-מותנה; אין "-*/" בהערה', () => {
+  const bad = [];
+  for (const r of ocHistRules) for (const d of setsProp(r, /^background(-color|-image)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || isImportant(d)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+  }
+  assert.deepEqual(bad, []);
+  assert.deepEqual(mediaBeforeBase(ocHistRules, 'oc-history.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_HIST_CSS));
+});
+const hasOcHist = (selRe, propRe, valueRe) => ocHistRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => !valueRe || valueRe.test(d.value)));
+t('oc-history.css: נטרולי הדליפה - שדה החיפוש שקוף בלי גבול/רדיוס, ריפוד לחצן הניקוי, מסגרת הסינון הפתוח, מטא השלבים', () => {
+  assert.ok(hasOcHist(/input#hfQ/, /^background$/, /^transparent/), 'רקע שדה החיפוש');
+  assert.ok(hasOcHist(/input#hfQ/, /^border$/, /^0/), 'גבול שדה החיפוש');
+  assert.ok(hasOcHist(/input#hfQ/, /^border-radius$/, /^0/), 'רדיוס שדה החיפוש (design-overrides 10px)');
+  assert.ok(hasOcHist(/\.hf-cl$/, /^padding$/), 'ריפוד לחצן הניקוי (globals.css מאפס)');
+  assert.ok(hasOcHist(/\.hf-sel\.on \.hf-t$/, /^border-color$/), 'מסגרת לחצן הסינון כשהתפריט פתוח');
+  assert.ok(hasOcHist(/\.card\.stg \.prc-m$/, /^display$/, /^flex/), 'מטא שורת שלב (שכבת הסקירה, מאושר)');
+});
+t('הדליפות שנוטרלו בלשונית ההיסטוריה עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
+  assert.ok(/input[^{]*\{[^}]*border-radius:\s*10px/.test(OVERRIDES), 'design-overrides.css: input{border-radius:10px} כבר לא קיים');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
