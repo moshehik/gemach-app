@@ -60,7 +60,7 @@ function CustomerCard({ oc, ui }) {
         <h2>לקוח</h2>
         <button type="button" className="ibtn" data-act="swap-customer" aria-label="החלפת לקוח" data-tip="החלפת לקוח" onClick={swap}><OcIcon name="swap" /></button>
         {c && c.id ? (
-          <a className="ibtn" href={`/customers/${c.id}`} target="_blank" rel="noopener noreferrer" aria-label="פתיחת כרטיס לקוח" data-tip="פתיחת כרטיס לקוח"><OcIcon name="ext" /></a>
+          <button type="button" className="ibtn" data-act="open-customer" aria-label="פתיחת כרטיס לקוח" data-tip="פתיחת כרטיס לקוח" onClick={() => window.open(`/customers/${c.id}`, '_blank', 'noopener')}><OcIcon name="ext" /></button>
         ) : null}
       </div>
       <div className="row wrap oc-cust-name"><span className="big">{c ? (customerName(c) || '—') : 'לא נבחר לקוח'}</span></div>

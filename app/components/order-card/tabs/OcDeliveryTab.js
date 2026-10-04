@@ -126,7 +126,7 @@ export function SuggestInput({ id, name, icon = 'pin', value, options, closed, o
   );
 }
 
-/** תוכן המשלוח (גם בלשונית "משלוח" וגם בתוך "פרטים"). מחזיר null כש-enable_deliveries כבוי. */
+/** תוכן המשלוח (גם בלשונית "משלוח" וגם בתוך "פרטים"): ילדים ישירים של הלוח (gap של .panel), כמו בעיצוב. null כש-enable_deliveries כבוי. */
 export function OcDeliveryCards({ oc, ui }) {
   const order = oc.order || {};
   const ds = deliverySettingsOf(oc.settings);
@@ -142,7 +142,7 @@ export function OcDeliveryCards({ oc, ui }) {
   const JoinPicker = SLOTS.DeliveryJoinPicker; // W2b (R49) - נקודת הרחבה; לא קיים עד שהזרם שלו ירשום אותו ב-slots.js
 
   return (
-    <div className="oc-del" data-oc-del={on ? 'on' : 'off'}>
+    <>
       <div className={`dhero${on ? '' : ' off'}`}>
         <div className="ico"><OcIcon name="truck" size="lg" /></div>
         <div className="oc-del-hero">
@@ -178,7 +178,7 @@ export function OcDeliveryCards({ oc, ui }) {
             <SuggestInput id="delCityIn" name="delcity-nofill" icon="pin" value={order.deliveryCity || ''} options={cityOptions} closed
               placeholder="עיר..." required={fs.cityRequired} describedBy={fs.cityMsg ? 'oc-del-city-msg' : undefined}
               onCommit={(v) => set({ deliveryCity: v })} />
-            {fs.cityMsg ? <p className="oc-fmsg" id="oc-del-city-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.cityMsg}</p> : null}
+            {fs.cityMsg ? <p className="amsg oc-fmsg" id="oc-del-city-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.cityMsg}</p> : null}
           </div>
           {fs.showAddress ? (
             <div className="field">
@@ -186,7 +186,7 @@ export function OcDeliveryCards({ oc, ui }) {
               <SuggestInput id="delAddr" name="deladdr-nofill" icon="pin" value={order.deliveryAddress || ''} options={loc.streets}
                 placeholder="רחוב ומספר..." required={fs.addressRequired} describedBy={fs.addressMsg ? 'oc-del-addr-msg' : undefined}
                 onCommit={(v) => set({ deliveryAddress: v })} />
-              {fs.addressMsg ? <p className="oc-fmsg" id="oc-del-addr-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.addressMsg}</p> : null}
+              {fs.addressMsg ? <p className="amsg oc-fmsg" id="oc-del-addr-msg" role="alert"><OcIcon name="alert" size="sm" />{fs.addressMsg}</p> : null}
             </div>
           ) : null}
         </div>
@@ -201,7 +201,7 @@ export function OcDeliveryCards({ oc, ui }) {
         ) : null}
       </div>
       {JoinPicker ? <JoinPicker oc={oc} ui={ui} /> : null}
-    </div>
+    </>
   );
 }
 

@@ -44,9 +44,12 @@ const ORG2 = [
   ['enable_local_order_drafts', 'true'], ['enable_order_edit_summary_confirm', 'true'], ['consolidate_manual_payment_credit_ui', 'true'],
   ['order_edit_redirect_screen', 'new_order'], ['enable_deliveries', 'true'], ['delivery_separate_tab', 'true'], ['require_customer_id_number', 'true'],
   ['require_manager_code_for_item_changes', 'true'], ['max_items_per_order', '6'],
+  // W2a (לשונית משלוח): כתובת שונה, יום לפני, מחירון ערים (כמו CITY בעיצוב)
+  ['delivery_allow_address_override', 'true'], ['delivery_one_day_before_option', 'true'],
+  ['delivery_price_by_city', JSON.stringify({ 'ירושלים': 40, 'בית שמש': 60, 'בני ברק': 50, 'מודיעין עילית': 60 })],
 ];
 const EMPLOYEES = [
-  { id: 'e1', firstName: 'שרה', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:manual_charge_add': true } },
+  { id: 'e1', firstName: 'שרה', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:manual_charge_add': true, 'feature:special_spacing_approval': true } },
   { id: 'e2', firstName: 'רחל', lastName: 'כהן', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true } },
   { id: 'e3', firstName: 'דנה', lastName: 'אברהם', roleId: 0, department: { name: 'הנהלה' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true } },
   { id: 'e4', firstName: 'דוד', lastName: 'לוי', roleId: 1, department: { name: 'מנהל משמרת' }, canApproveWithoutPayment: false, approvals: { 'feature:locked_order_edit': true } },
@@ -68,6 +71,9 @@ const SCENARIOS = {
   stock: { draft: true, put409stock: true, settings: ORG2.filter(([k]) => k !== 'enable_order_edit_summary_confirm') },
   notfound: { notfound: true },
   loading: { hang: true },
+  // W2a: אירוע חו"ל עם יום השכרה נוסף (enable_rental_extension) וציפוף ברירת מחדל 2 (5 גלולות כמו בעיצוב); משלוח בתוך "פרטים"
+  xday: { settings: [...ORG2, ['enable_rental_extension', 'true'], ['inventory_buffer_days', '2']], order: { isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z', extraDay: null } },
+  inline: { settings: ORG2.filter(([k]) => k !== 'delivery_separate_tab') },
 };
 const S = SCENARIOS[scn] || {};
 const order = { ...ORDER, ...(S.order || {}), items: ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: [] };
@@ -99,6 +105,10 @@ window.fetch = async (url, opts) => {
   // העובדת המחוברת לא מורשית לאשר (כמו בעיצוב: אף שם לא מסומן מראש). me=e2 בכתובת = מנהלת מורשית (מסומנת מראש, כמו בישן)
   if (u.startsWith('/api/me')) return j(qs.get('me') === 'e2' ? { success: true, employee: { id: 'e2', firstName: 'רחל', lastName: 'כהן' } } : { success: true, employee: { id: 'e7', firstName: 'עובדת', lastName: 'רגילה' } });
   if (u.startsWith('/api/inventory/preload')) return j({});
+  // W2a: ערי/רחובות לקוחות, חיפוש לקוח, יצירת לקוח (ת״ז חובה כש-require_customer_id_number, כמו השרת)
+  if (u.startsWith('/api/customers/locations')) return j({ cities: ['ירושלים', 'בית שמש', 'בני ברק', 'אלעד'], streets: ['עמוס', 'הרב קוק', 'יפו', 'בן יהודה', 'הנביאים'] });
+  if (u.startsWith('/api/customers?')) return j({ data: [CUSTOMER, { id: 'c2', firstName: 'מרים', lastName: 'אברהם', phone1: '052-4331290', email: 'm.avraham@example.com', city: 'בני ברק' }] });
+  if (u === '/api/customers' && method === 'POST') { const b = JSON.parse(opts.body); return b.zeout || !settings.some(x => x.key === 'require_customer_id_number' && x.value === 'true') ? j({ id: 'c-new', ...b }) : j({ error: 'תעודת זהות חובה' }, 400); }
   if (u.startsWith('/api/orders/validate-inventory')) return j({ valid: true, errors: [] });
   if (u.startsWith('/api/orders/events')) return j({ ok: true, written: 1 });
   if (u.startsWith('/api/auth/verify-pin')) {

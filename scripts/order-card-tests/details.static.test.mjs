@@ -83,9 +83,10 @@ test('לוח עברי בלבד: אין תאריך לועזי, אין Intl/toLoca
   assert.ok(!/getHebrewDateString\(/.test(DET + DEL + CAL), 'בתצוגה - הפורמט של העיצוב (גרשיים); getHebrewDateString רק לערך השמור');
 });
 
-test('CSS: oc-details.css בלי !important (נשען על הפלטה), בלי צבע לבן קשיח, ו-.oc-del שקוף לפריסה (display:contents)', () => {
+test('CSS: oc-details.css בלי !important (נשען על הפלטה), בלי צבע לבן קשיח; תוכן המשלוח בלי עטיפה (ילדים ישירים של הלוח, כמו בעיצוב)', () => {
   const body = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!/!important/.test(body));
   assert.ok(!/#fff\b|#ffffff\b|\bwhite\b/i.test(body));
-  assert.match(body, /\.gm-ds\.gm-oc \.oc-del\{display:contents\}/);
+  assert.ok(/return \(\s*<>\s*<div className=\{`dhero/.test(DEL) && !/className="oc-del"/.test(DEL), 'OcDeliveryCards מחזיר fragment');
+  assert.ok((DEL.match(/className="amsg oc-fmsg"/g) || []).length === 2, 'הודעות החובה = .amsg של הפלטה');
 });

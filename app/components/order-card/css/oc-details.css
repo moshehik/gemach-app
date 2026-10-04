@@ -34,31 +34,23 @@
 .gm-ds.gm-oc #adv .oc-r18{font-size:13px;margin-bottom:6px}
 
 /* ===== משלוח (לשונית "משלוח" או בתוך "פרטים") ===== */
-/* העטיפה לא משנה את הפריסה: הגיבור והכרטיסים הם ילדים ישירים של הלוח (gap של .panel), כמו בעיצוב */
-.gm-ds.gm-oc .oc-del{display:contents}
 /* בעיצוב: <div style="flex:1;min-width:0"> ליד אייקון המשאית */
 .gm-ds.gm-oc .dhero .oc-del-hero{flex:1;min-width:0}
 /* בעיצוב: <div class="row wrap" style="margin-top:18px;gap:14px"> סביב "יוצא יום לפני האירוע" */
 .gm-ds.gm-oc .dfields .oc-del-one{margin-top:18px;gap:14px}
+/* דליפה: design-overrides.css צובע טקסט של input בחום - בעיצוב שדות העיר/הכתובת בכחול כהה */
+.gm-ds.gm-oc .dfields .inpw > input.inp:not(:disabled){color:var(--gm-navy-900)}
 /* R21: כוכבית חובה והודעת שדה (lib/deliveryValidation) - בצבע "חסר"/אזהרה של הפלטה (אין אדום בעיצוב) */
 .gm-ds.gm-oc .dfields .oc-req{color:var(--gm-red)}
 .gm-ds.gm-oc .dfields .amsg.oc-fmsg{margin:6px 0 0;font-size:14px;min-height:0;align-items:flex-start}
 
 /* ===== חלון החלפת לקוח (R19, WIN.newcust בשכבת הסקירה) ===== */
 /* בעיצוב: <div id="pvCustA" style="margin-top:16px">, .grid2 נוספים style="margin-top:12px", "השלם ל-" style="margin:8px 0 0" */
-.gm-ds.gm-oc #dlg.oc-cs .oc-cs-body{margin-top:16px}
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-pane{margin-top:16px}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-gap{margin-top:12px}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-gm{margin:8px 0 0}
-.gm-ds.gm-oc #dlg.oc-cs .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.gm-ds.gm-oc #dlg.oc-cs .mfld > .inpw{position:relative}
-.gm-ds.gm-oc #dlg.oc-cs .mfld > .inpw > .ic{position:absolute;inset-inline-start:14px;top:50%;translate:0 -50%;pointer-events:none}
-.gm-ds.gm-oc #dlg.oc-cs .mfld > .inpw > .inp{padding-inline-start:40px;border-radius:14px}
-.gm-ds.gm-oc #dlg.oc-cs .mfld > input.inp{border-radius:14px}
-/* רשימת הלקוחות: עד ~5 שורות, גלילה פנימית (תוצאות עד 50) */
-.gm-ds.gm-oc #dlg.oc-cs .oc-cs-list{max-height:280px;overflow-y:auto;margin-top:12px}
+/* רשימת הלקוחות (תוצאות עד 50): גלילה פנימית; שורה נבחרת מסומנת ב-✓ כמו בעיצוב */
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-list{max-height:280px;overflow-y:auto}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-row{cursor:pointer}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-row:focus-visible{outline:2px solid var(--gm-gold);outline-offset:-2px}
-.gm-ds.gm-oc #dlg.oc-cs .oc-cs-row.oc-sel{box-shadow:inset 0 0 0 2px var(--gm-gold-300)}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-empty{cursor:default}
-.gm-ds.gm-oc #dlg.oc-cs .amsg{margin-top:10px}
-@media (max-width:520px){.gm-ds.gm-oc #dlg.oc-cs .grid2{grid-template-columns:minmax(0,1fr)}}

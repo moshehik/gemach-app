@@ -126,12 +126,10 @@ export default function OcCustomerSwapDialog({ settings, close }) {
           <button key={k} type="button" role="radio" aria-checked={mode === k} className={mode === k ? 'on' : ''} onClick={() => { setMode(k); setErr(''); }}>{l}</button>
         ))}
       </div>
-      <div className="oc-cs-body">
-        {mode === 'existing'
-          ? <CustomerSearch picked={picked} onPick={setPicked} onConfirm={confirmExisting} />
-          : <NewCustomerForm form={form} setForm={(fn) => { setErr(''); setForm(fn); }} settings={settings || {}} />}
-      </div>
-      <div className="amsg" aria-live="polite">{err ? <><OcIcon name="alert" size="sm" />{err}</> : null}</div>
+      {mode === 'existing'
+        ? <CustomerSearch picked={picked} onPick={setPicked} onConfirm={confirmExisting} />
+        : <NewCustomerForm form={form} setForm={(fn) => { setErr(''); setForm(fn); }} settings={settings || {}} />}
+      {err ? <div className="amsg" role="alert"><OcIcon name="alert" size="sm" />{err}</div> : null}
       <DlgButtons>
         <DlgBtn kind="primary" icon="check" disabled={busy || (mode === 'existing' && !picked)} onClick={() => (mode === 'existing' ? confirmExisting() : saveNew())}>שמור ובחר</DlgBtn>
         <DlgBtn kind="ghost" icon="x" onClick={() => close(null)}>ביטול</DlgBtn>
