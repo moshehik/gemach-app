@@ -29,7 +29,7 @@ function item(oi, k, withRepair) {
 function order(orderId, i, n, { repair, event, branch = null, delivery = false, notes = '' }) {
   return {
     orderId, status: null, isDeleted: false, orderDate: d('2026-09-01T08:00:00Z'), eventDate: d(event), eventDateHebrew: null,
-    fromDate: null, toDate: null, returnDate: null, isAbroad: false, isWeekdayEvent: false, extraDay: null, customSpacing: null,
+    fromDate: null, toDate: null, returnDate: null, isAbroad: false, extraDay: null, customSpacing: null,
     branch, pickupBranch: branch, notes, internalNotes: '', isDelivery: delivery, deliveryDirection: delivery ? 'הלוך-חזור' : null,
     deliveryAddress: null, deliveryCity: null, deliveryOneDayBefore: false,
     customer: cust(i), employee: { id: 'emp-1', firstName: 'רחלי', lastName: 'לוי', fullName: 'רחלי לוי', roleId: 1, isActive: true, hourlyWage: 50 },

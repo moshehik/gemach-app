@@ -31,7 +31,6 @@ async function test() {
     if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
     const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
     if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
-    if (order.isWeekdayEvent === false) skipWeekends = false;
 
     const newOrderIsAbroad = order.isAbroad;
     let targetMinDate, targetMaxDate;

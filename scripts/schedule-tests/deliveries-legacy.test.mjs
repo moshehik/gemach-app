@@ -19,7 +19,7 @@ const LEGACY_ROW_KEYS = [
 ];
 // opt-in only (includeInternalNotes / withScheduleFields): never on a legacy row (review 2.10, blocker 3 -
 // scripts/business-days-tests/deliveries-parity.test.mjs test D checks the row shape byte-for-byte against the old code)
-const NEW_OPTIONAL_KEYS = ['internalNotes', 'street', 'dressCount', 'branch', 'pickupBranch', 'isAbroad', 'isWeekdayEvent', 'extraDay', 'customSpacing', 'fromDate', 'toDate', 'returnCondition'];
+const NEW_OPTIONAL_KEYS = ['internalNotes', 'street', 'dressCount', 'branch', 'pickupBranch', 'isAbroad', 'extraDay', 'customSpacing', 'fromDate', 'toDate', 'returnCondition'];
 const SCHEDULE_KEYS = NEW_OPTIONAL_KEYS.filter((k) => k !== 'internalNotes');
 const SETTINGS_LEGACY = SETTINGS_ORG2.map((s) => (s.key === 'deliveries_select_by_event_date' ? { ...s, value: 'false' } : s));
 const ids = (res) => res.data.map((r) => r.orderId).sort();
