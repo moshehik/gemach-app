@@ -1,2 +1,60 @@
 /* oc-details.css — כרטיס ההזמנה החדש: לשוניות פרטים ומשלוח (OcDetailsTab, OcDeliveryTab, OcHebrewCalendar, OcCustomerSwap) + חלקי W2b (באנר מיקום שמלה, בורר הצטרפות למשלוח). בבעלות W2a (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
-   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build). */
+   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build).
+   מקור: העיצוב המאושר תצוגות-עיצוב/כרטיס-הזמנה.html — pDetails / pDelivery / hebCalHTML / WIN.newcust, ושכבת הסקירה במצב "מאושר"
+   (r15 הערות פנימיות, r16 טווח תאריכים, r18 שורת ציפוף). כאן רק מה שהעיצוב כתב כ-style מוטבע או מה שחסר בפלטה. */
+
+/* ===== לשונית פרטים: כרטיס לקוח ===== */
+/* בעיצוב: <div class="row wrap" style="gap:14px;margin-bottom:14px"> סביב השם */
+.gm-ds.gm-oc .card.cust .oc-cust-name{gap:14px;margin-bottom:14px}
+.gm-ds.gm-oc .card.cust .oc-cust-none{font-size:15px}
+/* שורת המייל: לחצן "מייל מהיר" (W7) מתחת לכתובת - בעיצוב <div style="margin-top:10px"> ו-min-width:0 על התא */
+.gm-ds.gm-oc .card.cust .kv .f .oc-kv-min{min-width:0}
+.gm-ds.gm-oc .card.cust .kv .f .oc-qm{margin-top:10px}
+/* שורת החתימה: בעיצוב style="margin-top:6px" על #termsBtn */
+.gm-ds.gm-oc .card.cust #termsBtn{margin-top:6px}
+
+/* ===== לשונית פרטים: כרטיס אירוע ===== */
+/* בעיצוב: <div class="row wrap" style="margin-top:16px;gap:14px"> סביב "חו״ל" */
+.gm-ds.gm-oc .card.oc-evt .oc-evt-row{margin-top:16px;gap:14px}
+/* R16 (שכבת הסקירה, מאושר): טווח לקיחה/החזרה - <div style="margin-top:16px"> מעל "חו״ל" */
+.gm-ds.gm-oc .card.oc-evt .oc-range{margin-top:16px}
+.gm-ds.gm-oc .card.oc-evt .oc-range .inp{cursor:default}
+/* דליפה: design-overrides.css (input:not(...), 0,4,1) צובע טקסט בחום וגבול בבז' - בעיצוב: טקסט כחול כהה, גבול --gm-line */
+.gm-ds.gm-oc .card.oc-evt .oc-range .inpw > input.inp{color:var(--gm-navy-900);border-color:var(--gm-line)}
+/* A9 + R16: ימים בתוך טווח שנבחר (בין הלקיחה להחזרה) - גוון כחול כהה חלש, בלי גבול (הקצוות .on מהפלטה) */
+.gm-ds.gm-oc .hc.oc-hc-range .hc-d.oc-rng{background:rgba(15,44,82,.14);border-radius:6px}
+.gm-ds.gm-oc .hc.oc-hc-range .hc-d.oc-rng.sh{background:rgba(15,44,82,.2)}
+
+/* ===== לשונית פרטים: הערות (R15) ===== */
+/* שכבת הסקירה: <div data-pvk="r15" style="margin-top:16px"> */
+.gm-ds.gm-oc .card.oc-notes .oc-inotes{margin-top:16px}
+
+/* ===== לשונית פרטים: פרטים מתקדמים (R18, A26) ===== */
+/* בעיצוב: <span class="chip gray" style="margin-inline-start:4px">מנהל</span> */
+.gm-ds.gm-oc #adv > summary .oc-adv-chip{margin-inline-start:4px}
+/* שכבת הסקירה r18: <div class="faint" style="font-size:13px;margin-bottom:6px"> */
+.gm-ds.gm-oc #adv .oc-r18{font-size:13px;margin-bottom:6px}
+
+/* ===== משלוח (לשונית "משלוח" או בתוך "פרטים") ===== */
+/* בעיצוב: <div style="flex:1;min-width:0"> ליד אייקון המשאית */
+.gm-ds.gm-oc .dhero .oc-del-hero{flex:1;min-width:0}
+/* בעיצוב: <div class="row wrap" style="margin-top:18px;gap:14px"> סביב "יוצא יום לפני האירוע" */
+.gm-ds.gm-oc .dfields .oc-del-one{margin-top:18px;gap:14px}
+/* דליפה: design-overrides.css צובע טקסט של input בחום - בעיצוב שדות העיר/הכתובת בכחול כהה */
+.gm-ds.gm-oc .dfields .inpw > input.inp:not(:disabled){color:var(--gm-navy-900)}
+/* R21: כוכבית חובה והודעת שדה (lib/deliveryValidation) - בצבע "חסר"/אזהרה של הפלטה (אין אדום בעיצוב) */
+.gm-ds.gm-oc .dfields .oc-req{color:var(--gm-red)}
+.gm-ds.gm-oc .dfields .amsg.oc-fmsg{margin:6px 0 0;font-size:14px;min-height:0;align-items:flex-start}
+
+/* ===== חלון החלפת לקוח (R19, WIN.newcust בשכבת הסקירה) ===== */
+/* בעיצוב: <div id="pvCustA" style="margin-top:16px">, .grid2 נוספים style="margin-top:12px", "השלם ל-" style="margin:8px 0 0" */
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-pane{margin-top:16px}
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-gap{margin-top:12px}
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-gm{margin:8px 0 0}
+/* דליפה: design-overrides.css input:not(...){border-radius:10px} - בעיצוב שדה בחלון מעוגל 14px (כמו .mfld > input.inp ב-oc-base) */
+.gm-ds.gm-oc #dlg.oc-cs .mfld .inpw > input.inp{border-radius:14px}
+/* רשימת הלקוחות (תוצאות עד 50): גלילה פנימית; שורה נבחרת מסומנת ב-✓ כמו בעיצוב */
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-list{max-height:280px;overflow-y:auto}
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-row{cursor:pointer}
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-row:focus-visible{outline:2px solid var(--gm-gold);outline-offset:-2px}
+.gm-ds.gm-oc #dlg.oc-cs .oc-cs-empty{cursor:default}

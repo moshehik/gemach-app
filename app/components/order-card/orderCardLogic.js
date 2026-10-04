@@ -32,6 +32,7 @@
 // itemLabel, fmtMoney, hebDateOf.
 
 import { getHebrewDateString, getIsraelDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
+import { extraDayUpdates, isRangeEvent } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
 
 // ---------------------------------------------------------------------------------------------
 // טיוטות ו"ביטול שינויים" — מילולי מהישן (הטיוטה נקראת גם ע"י הכרטיס הישן ורשימת ההזמנות)
@@ -155,6 +156,9 @@ export const obligationIdentityKey = (o) => {
 // ---------------------------------------------------------------------------------------------
 // הגדרות (A.5) — אותן ברירות מחדל כמו הישן כשהשורה חסרה ב-DB
 // ---------------------------------------------------------------------------------------------
+// AMB-10: אימות ת״ז לעריכה/ביטול (require_id_for_edit_cancel) בתוקף רק כש-require_customer_id_number דולקת
+export const effectiveRequireIdForEdit = (requireIdForEdit, requireCustomerIdNumber) => !!requireIdForEdit && !!requireCustomerIdNumber;
+
 /**
  * @param {Array<{key:string,value:string}>} rows תשובת GET /api/settings
  * @returns {OcSettings}
@@ -176,7 +180,8 @@ export function parseSettings(rows) {
     json,
     // ---- בדיוק כמו LegacyOrderPage.js:244-303 ----
     draftsAsDeleted: bool('draft_orders_show_as_deleted', true),
-    requireIdForEdit: bool('require_id_for_edit_cancel', false),
+    // AMB-10 (הבעלים): אימות הת״ז לעריכה/ביטול בתוקף רק כשגם "חובה ת״ז ללקוח" דולקת (effectiveRequireIdForEdit)
+    requireIdForEdit: effectiveRequireIdForEdit(bool('require_id_for_edit_cancel', false), bool('require_customer_id_number', false)),
     allowEditPartially: bool('allow_edit_partially_rented', true),
     requireManagerCodeForItems: bool('require_manager_code_for_item_changes', false),
     enableLocalDrafts: bool('enable_local_order_drafts', true),
@@ -491,14 +496,15 @@ export function itemLabel(it) {
 }
 
 const nonEmpty = (v) => v !== null && v !== undefined && String(v).trim() !== '';
-// AMB-10: ת״ז "חסר" כשאחת משתי ההגדרות דורשת ת״ז
+// AMB-10 (הכרעת הבעלים): ת״ז "חסר" לפי require_customer_id_number בלבד. אימות הת״ז לעריכה (requireIdForEdit) תקף רק כשהיא דלוקה,
+// ולכן אין צורך בו כאן (settings.requireIdForEdit ⊆ settings.requireCustomerIdNumber ב-parseSettings).
 export function customerMissing(customer, settings) {
   if (!customer) return [];
   const out = [];
   if (!nonEmpty(customer.phone1) && !nonEmpty(customer.phone2)) out.push({ key: 'phone', label: 'טלפון' });
   if (!nonEmpty(customer.email)) out.push({ key: 'email', label: 'מייל' });
   if (!nonEmpty(customer.city) && !nonEmpty(customer.street)) out.push({ key: 'addr', label: 'כתובת' });
-  if (settings && (settings.requireCustomerIdNumber || settings.requireIdForEdit) && !nonEmpty(customer.zeout)) out.push({ key: 'zeout', label: 'ת״ז' });
+  if (settings && settings.requireCustomerIdNumber && !nonEmpty(customer.zeout)) out.push({ key: 'zeout', label: 'ת״ז' });
   return out;
 }
 
@@ -524,6 +530,15 @@ export function tabMarkers({ order, totals, settings }) {
 /** @typedef {{key:string, group:'order'|'items'|'delivery'|'payments', icon:string, text:string, note:string, amt:number}} Change */
 
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+// שדות ההזמנה (סקירת W2a, סעיף 7): ''/null/undefined שקולים; תאריכים מושווים לפי היום בישראל (אותו יום בצורת שמירה אחרת -
+// 'YYYY-MM-DD' מול ISO של חצות ישראל, או שעה אחרת באותו יום - אינו "שינוי")
+const ORDER_DATE_FIELDS = new Set(['eventDate', 'fromDate', 'toDate', 'returnDate', 'orderDate']);
+const blank = (v) => v === null || v === undefined || v === '';
+export const sameOrderField = (f, a, b) => {
+  if (blank(a) && blank(b)) return true;
+  if (ORDER_DATE_FIELDS.has(f) && !blank(a) && !blank(b)) { const ka = getIsraelDateKey(a), kb = getIsraelDateKey(b); if (ka && kb) return ka === kb; }
+  return same(a, b);
+};
 const EXTRA_DAY_LABEL = { before: 'לפני התקופה', after: 'אחרי התקופה' };
 const etypeLabel = (o) => (o?.isAbroad ? 'חו״ל' : o?.isWeekdayEvent ? 'אמצע שבוע' : 'רגיל');
 const custName = (o) => [o?.customer?.firstName, o?.customer?.lastName].filter(Boolean).join(' ') || 'לקוח';
@@ -541,7 +556,7 @@ export const ORDER_CHANGE_KEYS = [
   { key: 'inotes', fields: ['internalNotes'], group: 'order', icon: 'note', text: () => 'הערות פנימיות עודכנו', note: () => '' },
   { key: 'sig', fields: ['hasSignedRegulations'], group: 'order', icon: 'sig', text: (s, c) => (c.hasSignedRegulations ? 'סומנה חתימה על התקנון' : 'בוטלה החתימה על התקנון'), note: () => '' },
   { key: 'spacing', fields: ['customSpacing'], group: 'order', icon: 'sliders', text: () => 'ציפוף ימים מיוחד', note: (s, c) => arrow(s.customSpacing ?? 'רגיל', c.customSpacing ?? 'רגיל') },
-  { key: 'xday', fields: ['extraDay'], group: 'order', icon: 'cal', text: () => 'יום השכרה נוסף', note: (s, c) => arrow(EXTRA_DAY_LABEL[s.extraDay] || 'ללא', EXTRA_DAY_LABEL[c.extraDay] || 'ללא') },
+  { key: 'xday', fields: ['extraDay'], capture: ['extraDay', 'fromDate', 'toDate', 'returnDate'], group: 'order', icon: 'cal', text: () => 'יום השכרה נוסף', note: (s, c) => arrow(EXTRA_DAY_LABEL[s.extraDay] || 'ללא', EXTRA_DAY_LABEL[c.extraDay] || 'ללא') },
   { key: 'cust', fields: ['customerId'], group: 'order', icon: 'user', text: () => 'הוחלף לקוח', note: (s, c) => arrow(custName(s), custName(c)) },
   { key: 'del', fields: ['isDelivery'], group: 'delivery', icon: 'truck', text: (s, c) => (c.isDelivery ? 'הוזמן משלוח' : 'בוטל המשלוח'), note: () => '' },
   { key: 'delcfg', fields: ['deliveryDirection', 'deliveryCity'], group: 'delivery', icon: 'truck', text: () => 'פרטי המשלוח', note: (s, c) => arrow([s.deliveryDirection, s.deliveryCity].filter(Boolean).join(' · '), [c.deliveryDirection, c.deliveryCity].filter(Boolean).join(' · ')) },
@@ -551,9 +566,9 @@ export const ORDER_CHANGE_KEYS = [
 // שדות PUT שלא שייכים לקבוצה (field:<f>). orderDate לא נערך בכרטיס החדש (R17) אך נבדק כדי שלא "ייעלם".
 export const LOOSE_ORDER_FIELDS = ['orderDate', 'status', 'deliveryJoinedTo'];
 const ALT_FIELDS = ['neckAlteration', 'sleeveAlteration', 'lengthAlteration', 'alterationDetails'];
-const fieldsOfKey = (key) => {
+const fieldsOfKey = (key, forCapture = false) => {
   const g = ORDER_CHANGE_KEYS.find(x => x.key === key);
-  if (g) return g.fields;
+  if (g) return (forCapture && g.capture) || g.fields;
   if (key.startsWith('field:')) return [key.slice(6)];
   return null;
 };
@@ -570,10 +585,10 @@ export function changesOf(snap, cur) {
   const s = snap.order || {}, c = cur.order || {};
   const out = [];
   ORDER_CHANGE_KEYS.forEach(g => {
-    if (g.fields.some(f => !same(s[f], c[f]))) out.push({ key: g.key, group: g.group, icon: g.icon, text: g.text(s, c), note: g.note(s, c), amt: 0 });
+    if (g.fields.some(f => !sameOrderField(f, s[f], c[f]))) out.push({ key: g.key, group: g.group, icon: g.icon, text: g.text(s, c), note: g.note(s, c), amt: 0 });
   });
   LOOSE_ORDER_FIELDS.forEach(f => {
-    if (!same(s[f], c[f])) out.push({ key: `field:${f}`, group: 'order', icon: 'pencil', text: `עודכן שדה: ${ORDER_FIELD_LABELS[f] || f}`, note: '', amt: 0 });
+    if (!sameOrderField(f, s[f], c[f])) out.push({ key: `field:${f}`, group: 'order', icon: 'pencil', text: `עודכן שדה: ${ORDER_FIELD_LABELS[f] || f}`, note: '', amt: 0 });
   });
   // פריטים
   const sItems = snap.items || [], cItems = cur.items || [];
@@ -650,7 +665,7 @@ const findIdx = (list, ident) => list.findIndex((x, i) => identOf(x, i) === iden
  * @returns {{key:string, kind:'order'|'list', fields?:object, list?:string, ident?:string, value?:object|null, index?:number}}
  */
 export function captureChange(cur, key) {
-  const fields = fieldsOfKey(key);
+  const fields = fieldsOfKey(key, true);
   if (fields) {
     const vals = {};
     fields.forEach(f => { vals[f] = cur.order ? cur.order[f] : undefined; });
@@ -667,6 +682,18 @@ export function captureChange(cur, key) {
 /** מבטל שינוי אחד: מחזיר את החלק הרלוונטי לערכי ה-snapshot. מחזיר state חדש (לא משנה את הקלט). */
 export function revertChange(cur, snap, key) {
   const next = { ...cur };
+  // "יום השכרה נוסף" הזיז את הלקיחה/ההחזרה ביום - הביטול מזיז בחזרה (כמו בחירה ב"ללא"/בערך השמור), אחרת נשאר יום חינם או הזזה כפולה.
+  // בלי תאריכים בהזמנה הנוכחית - חוזרים לערכי ה-snapshot (עקביים זה עם זה).
+  if (key === 'xday' && cur.order && !isRangeEvent(cur.order)) {
+    // אירוע רגיל (AMB-13): אין תאריכי טווח להזיז - מחזירים רק את הדגל
+    return { ...next, order: { ...cur.order, extraDay: (snap.order && snap.order.extraDay) || null } };
+  }
+  if (key === 'xday' && cur.order) {
+    const target = (snap.order && snap.order.extraDay) || null;
+    const u = extraDayUpdates(cur.order, target);
+    const o = u ? { ...cur.order, ...u } : { ...cur.order, ...Object.fromEntries(['extraDay', 'fromDate', 'toDate', 'returnDate'].map(f => [f, snap.order ? snap.order[f] : undefined])) };
+    return { ...next, order: o };
+  }
   const fields = fieldsOfKey(key);
   if (fields) {
     const o = { ...cur.order };

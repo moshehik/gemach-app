@@ -24,6 +24,15 @@ const APPROVED_STAGE = [
   ['10-conflict', /^DLG>div\.dbtns>button\.block\.btn\.ghost/, 'R12: לחצן שלישי "חזרה לעריכה" (החלטת הבעלים: 3 בחירות; בעיצוב רק 2)'],
   ['10-conflict', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
   ['11-stock', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
+  // ===== W2a (scratch/order-card-build/W2a-NOTES.md §5) =====
+  ...['30-details', '31-details-calendar', '32-hover-day', '33-abroad'].flatMap((st) => [
+    [st, /^DET>div\.(kv>div\.f>div|f>div>small|f>div>b) \[w\]$/, 'רוחב תא בכרטיס הלקוח = רוחב הטקסט (טלפון/מייל אמיתיים מול נתוני ההדגמה)'],
+    [st, /^DET \[h\]$|^DET>div\.card\.cust(>div\.kv)? \[h\]$/, 'גובה: בשורת המייל אין "מייל מהיר" (slot של W7, מאחורי order_quick_mail_enabled)'],
+    [st, /^DET>details\.coll>div\.in|^DET>div\.in>div>div\.pill\.seg|^DET>div>div\.pill\.seg>(span\.pth|button)/, '"פרטים מתקדמים" בהזמנת נווה בלי enable_rental_extension: אין "יום נוסף", 6 גלולות ציפוף (ברירת מחדל 3); מושווה בשלב 34 עם הגדרות תואמות'],
+  ]),
+  ['33-abroad', /^DET>div\.hc>div\.hc-g>button\.hc-d \[(bg|col|bs)\]$/, 'מעבר לחו"ל מנקה את תאריך האירוע (כמו הישן, MGD:344) - בהדגמה היום נשאר מסומן'],
+  ['33-abroad', /^DET>div\.card(>div)? \[h\]$|^DET>div\.card>div>div\.faint$/, 'R16: הכיתוב "ערכי דוגמה" של שכבת הסקירה לא נבנה'],
+  ['36-swap-new', /^DLG>div>div>div\.mfld$|^DLG>div>div\.mfld>/, 'R19: בנווה (require_customer_id_number) "בית" ו"תעודת זהות" בשורה אחת (grid2) - בהדגמה אין ת״ז והשדה "בית" לבד'],
 ];
 const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => s2 === st && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };

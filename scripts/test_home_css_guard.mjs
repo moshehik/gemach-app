@@ -501,5 +501,28 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+/* ---------- 11. כרטיס ההזמנה החדש - לשוניות פרטים/משלוח (app/components/order-card/css/oc-details.css, W2a) ---------- */
+// הקובץ נטען תמיד עם oc-base.css (נטרולי הגופן/השדות/המתג של הכרטיס כולו) - כאן רק המשטר של הקובץ עצמו: היקף .gm-ds.gm-oc, בלי
+// !important (הכול נשען על הפלטה), בלי לבן קשיח, בלי @media לפני הכלל הרגיל, בלי "-*/" בהערות (שובר next build).
+const OC_DETAILS_CSS = read('../app/components/order-card/css/oc-details.css');
+const ocDetailsRules = parseCss(OC_DETAILS_CSS);
+t('oc-details.css: כל כלל בהיקף .gm-ds.gm-oc (לא דולף לשאר האתר / לכרטיס הישן)', () => {
+  const bad = [];
+  for (const r of ocDetailsRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-details.css: בלי !important ובלי רקע לבן קשיח / var(--gm-surface) (הכרטיסים "פנינה" מ-oc-base, החלונות כהים מהפלטה)', () => {
+  const bad = [];
+  for (const r of ocDetailsRules) for (const d of decls(r.body)) {
+    if (isImportant(d)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/^background(-color)?$/.test(d.prop) && (WHITE_RE.test(d.value.trim()) || /var\(--gm-surface\)/.test(d.value))) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (לבן)`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-details.css: אין דריסת @media לפני הכלל הלא-מותנה, ואין "-*/" בהערות', () => {
+  assert.deepEqual(mediaBeforeBase(ocDetailsRules, 'oc-details.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_DETAILS_CSS), 'הערה עם "-*/"');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
