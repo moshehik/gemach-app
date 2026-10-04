@@ -18,6 +18,11 @@ export async function GET(request) {
     const isNum = !isNaN(q) && q.trim() !== '';
     const numQ = isNum ? Number(q) : undefined;
     const likeQ = `%${q}%`;
+    // חיפוש שנראה כמו ברקוד (ספרות בלבד, 5+): ברקוד חוזר בהזמנות רבות לאורך השנים, ולכן הפריט
+    // שמושכר עכשיו (נלקח ולא הוחזר) קודם - זה מה שמי שסורקת/מקלידה ברקוד מחפשת. שאר החיפושים כמו קודם.
+    const rentalsOrderBy = /^d{5,}$/.test(q.trim())
+      ? `CASE WHEN oi."isTaken" AND NOT oi."isReturned" THEN 0 ELSE 1 END, oi."createdAt" DESC`
+      : `oi."createdAt" DESC`;
 
     // חיפוש שם מלא ("רחל כהן") - $1/likeQ בודק כל שדה מול המחרוזת השלמה, כך ששם
     // פרטי+משפחה יחד (בשני טורים נפרדים) לא היה תואם אף שדה בנפרד. מוסיפים תנאי
@@ -111,6 +116,7 @@ export async function GET(request) {
       // so we join DressModel too and COALESCE both, same relation app/api/orders/route.js uses.
       prisma.$queryRawUnsafe(`
         SELECT oi."id", oi."orderId", oi."barcode", oi."sizeText", oi."description",
+          oi."isTaken", oi."isReturned",
           COALESCE(d."dressName", dm."name") as "catalogName",
           COALESCE(d."barcodePrefix", dm."barcodePrefix") as "catalogBarcode"
         FROM "OrderItem" oi
@@ -127,7 +133,7 @@ export async function GET(request) {
           oi."orderId" = $2 OR
           oi.id = $3
         )
-        ORDER BY oi."createdAt" DESC
+        ORDER BY ${rentalsOrderBy}
         LIMIT 50
       `, likeQ, isNum ? numQ : -1, q)
     ]);

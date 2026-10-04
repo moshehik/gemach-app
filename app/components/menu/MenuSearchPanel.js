@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
+import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 import { Ic, SnLi } from './menuParts';
 
 const TOPBAR_PANEL_RESULT_CAP = 15; // COPIED FROM TopbarSearch.js
@@ -37,7 +38,7 @@ export function useMenuSearch() {
       .then((data) => {
         if (cancelled) return;
         if (data && (data.customers || data.orders)) {
-          const combined = [...(data.orders || []), ...(data.customers || [])];
+          const combined = combineQuickSearchResults(data, term);
           setTotal(combined.length);
           setResults(combined.slice(0, TOPBAR_PANEL_RESULT_CAP));
         } else {
@@ -127,7 +128,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             >
               <SnLi n={isOrder ? 'file' : 'user'} />
               {isOrder ? `הזמנה #${item.orderId}` : name}
-              <span className="sn-k">{isOrder ? name : (item.phone1 || item.city || '')}</span>
+              <span className="sn-k">{item.fromBarcode ? `ברקוד ${item.barcode}${item.stateLabel ? ` · ${item.stateLabel}` : ''}` : isOrder ? name : (item.phone1 || item.city || '')}</span>
             </a>
           );
         })}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import useDebounce from '@/hooks/useDebounce';
 import { usePopup } from './PopupProvider';
+import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 
 // Ports GlobalSidebar's barcode-return / global-search / recently-viewed logic
 // into the topbar quick-search box + dropdown panel (design-v2 topbar-search pattern).
@@ -69,7 +70,7 @@ export default function TopbarSearch() {
       .then((res) => res.json())
       .then((data) => {
         if (data && (data.customers || data.orders)) {
-          const combined = [...(data.orders || []), ...(data.customers || [])];
+          const combined = combineQuickSearchResults(data, debouncedQuery);
           setTotalResultCount(combined.length);
           setSearchResults(combined.slice(0, TOPBAR_PANEL_RESULT_CAP));
         }
@@ -131,11 +132,12 @@ export default function TopbarSearch() {
         else router.push('/rentals?orderId=' + data.orderId);
       } else if (res.status === 404) {
         // אין פריט מושכר בברקוד הזה (לא נלקח / כבר הוחזר / לא קיים) - במקום הודעת שגיאה,
-        // מחפשים אותו בחיפוש הרגיל (הזמנות, לקוחות ופריטים לפי ברקוד), כמו כל חיפוש אחר.
+        // מעבירים את הברקוד לשדה החיפוש המהיר עצמו והפאנל נשאר פתוח - החיפוש (כולל התאמה
+        // לפי ברקוד, ר' lib/quickSearchResults.js) רץ כמו כל חיפוש הזמנה אחר.
         // דיווח df035847, נווה יעקב 2026-10-04.
-        setOpen(false);
         setBarcode('');
-        router.push('/?q=' + encodeURIComponent(cleanBarcode));
+        setQuery(cleanBarcode);
+        setOpen(true);
       } else {
         alert(data.error || 'שגיאה בהחזרה');
       }
@@ -189,7 +191,7 @@ export default function TopbarSearch() {
                     </div>
                     <div>
                       <strong>{isOrder ? 'הזמנה #' + item.orderId : `${item.firstName} ${item.lastName || ''}`}</strong>
-                      <span>{isOrder ? (item.firstName + ' ' + (item.lastName || '')) : (item.phone1 || item.city || '')}</span>
+                      <span>{item.fromBarcode ? 'ברקוד ' + item.barcode + (item.stateLabel ? ' · ' + item.stateLabel : '') : isOrder ? (item.firstName + ' ' + (item.lastName || '')) : (item.phone1 || item.city || '')}</span>
                     </div>
                   </div>
                 );
