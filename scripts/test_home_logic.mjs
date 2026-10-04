@@ -122,6 +122,11 @@ t('נרמול: קלט ריק/חסר', () => {
   assert.deepEqual(normalizeSearch({}), { customers: [], orders: [], rentals: [] });
   assert.equal(resultsCount(null), 0);
 });
+t('נרמול: מצב פריט (מושכר עכשיו / הוחזר / טרם נלקח) רק כשהשרת שלח את הדגלים', () => {
+  const r = normalizeSearch({ rentals: [{ orderId: 1, barcode: 'B', isTaken: true, isReturned: false }, { orderId: 2, barcode: 'B', isTaken: true, isReturned: true }, { orderId: 3, barcode: 'B', isTaken: false, isReturned: false }, { orderId: 4, barcode: 'B' }] });
+  assert.deepEqual(r.rentals.map((x) => x.rs), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח', undefined]);
+  assert.deepEqual(unifiedRows(r).map((x) => x.state), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח', '']);
+});
 t('סטטוס הזמנה: ארבעה ערכים, השאר "פעיל"', () => {
   assert.deepEqual(orderStatus('הוחזר'), { cls: 'ok', icon: 'check', label: 'הוחזר' });
   assert.deepEqual(orderStatus('בוטל'), { cls: 'warn', icon: 'x', label: 'בוטל' });

@@ -25,7 +25,7 @@ function RowLine({ r }) {
     );
   }
   return (
-    <span className="ln">ברקוד <bdi dir="ltr">{r.barcode}</bdi> · מידה <bdi>{r.size}</bdi></span>
+    <span className="ln">ברקוד <bdi dir="ltr">{r.barcode}</bdi> · מידה <bdi>{r.size}</bdi>{r.state ? <> · {r.state}</> : null}</span>
   );
 }
 
