@@ -4,7 +4,6 @@
 // S01 + S02 (לא להכניס): אין בדיקות חוסרים בבחירה מהרשימה ואין כרטיס "לקוח שנבחר" עם 5 שדות - שורת הלקוח + "חסר ללקוח" כמו באתר.
 // R03: הודעת "חובה למלא לפחות אחד מבין" בגוון הסלמון של ההתראה ובגודל רגיל (no-grp). R05: הודעת השרת מתחת לשדה.
 // R06: "מאשר/ת קבלת דיוורים" - הנוסח של כרטיס הלקוח/ההזמנה; מוסתר כש-hide_marketing_consent_field = 'true' (הגמ"ח הראשי).
-import { useRef } from 'react';
 import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, Tip, NO_FILL } from './NoUi';
 import NoSuggest, { emailSuggestions } from './NoSuggest';
 import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
@@ -131,12 +130,11 @@ function ListTab({ ctl }) {
 function NewTab({ ctl }) {
   const s = ctl.settings;
   const n = ctl.newCustomer;
-  const formRef = useRef(null);
   const set = (k) => (v) => { ctl.setNewCustomerError(null); ctl.setNewCustomer(prev => ({ ...prev, [k]: v })); };
   const onEnter = (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    const box = formRef.current;
+    const box = e.target.closest('.blk');
     if (!box) return;
     const all = Array.from(box.querySelectorAll('input, select, textarea')).filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null);
     const next = all[all.indexOf(e.target) + 1];
@@ -149,7 +147,7 @@ function NewTab({ ctl }) {
   const addrReq = (k) => s.require_full_address === 'true' || isFieldMandatoryFromPicker(s, k);
   const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, value: n[k] || '', onChange: (e) => set(k)(e.target.value), onKeyDown: onEnter, ...extra });
   return (
-    <div ref={formRef}>
+    <>
       {ctl.phoneSearchInput.trim() ? (
         <Note style={{ marginBottom: 14 }} icon="alert">
           לא נמצא לקוח עם הטלפון שהוזן. יתכן שהמספר במערכת שונה מעט - כדאי לנסות{' '}
@@ -190,7 +188,7 @@ function NewTab({ ctl }) {
       <div className="row" style={{ marginTop: 24 }}>
         <button type="button" className="btn primary" onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />שמור לקוח והמשך</button>
       </div>
-    </div>
+    </>
   );
 }
 

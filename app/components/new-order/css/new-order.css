@@ -174,3 +174,29 @@
 /* חלון "עסוק": הסיבוב של .big-ck (בעיצוב style="animation:spin") */
 .gm-ds.gm-no .big-ck.no-spin{animation:no-spin 1.2s linear infinite}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-no .big-ck.no-spin{animation:none}}
+
+/* ===== נטרול דליפות של ה-CSS הגלובלי (נמצאו ב-scripts/new-order-bg-audit מול העיצוב) ===== */
+/* שאלת השלב בגופן הכותרת של העיצוב (הכלל של h1-h6 למעלה מכריח inherit עם !important) */
+.gm-ds.gm-no .hero-t .hero-q{font-family:'FB Melatef','Suez One',serif!important}
+/* הכרטיס: בעיצוב הגרדיאנט "פנינה" (body .app :is(.card,...) בקובץ העיצוב) ולא זכוכית 30% של הפלטה - אותם ערכים, כמו profile.css */
+.gm-ds.gm-no .app :is(.card,.stepper,.itm,.scan,.coll[open],.leg,.dhero){background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+/* design-overrides.css: input:not(...) (0,4,1) צובע טקסט בחום וגבול בבז'; .inp.inp = (0,5,0) מחזיר את ערכי הפלטה (בפוקוס - כללי הפלטה) */
+.gm-ds.gm-no .no-app .inp.inp{color:var(--gm-ink)}
+.gm-ds.gm-no .no-app .inp.inp:not(:focus){border-color:var(--gm-line)}
+.gm-ds.gm-no .no-app .scan>input:not(.x){border:0;background:transparent;border-radius:0;box-shadow:none;color:var(--gm-ink)}
+.gm-ds.gm-no .no-app .lenin.lenin{border-radius:12px;color:var(--gm-navy-900)}
+.gm-ds.gm-no .no-app .lenin.lenin:not(:focus){border-color:var(--gm-line)}
+/* globals.css מאפס padding לכל אלמנט: ibtn בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-no .ibtn{padding:1px 6px}
+/* חלונות כהים (Q2): לחצן "ביטול/סגירה" השקוף בתחתית החלון - בעיצוב (:is(#dlg,#dlg2) .btn.ghost) ואינו ב-components.css */
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2){position:relative;background:transparent;border:0;box-shadow:none;color:var(--k-ghost);font-weight:600;min-height:44px!important;width:auto;align-self:center;padding:8px 18px;text-decoration:none;transform:none}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:active,:focus-visible){background:transparent;color:var(--k-ghost);box-shadow:none;transform:none;text-decoration:none}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::before{content:none;display:none}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2) svg{color:var(--k-ghost)!important;stroke:var(--k-ghost)!important}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):focus-visible{outline:2px solid var(--gm-gold);outline-offset:2px;box-shadow:none}
+/* בחלונות: תוויות 14px ושדות ברדיוס הפלטה (design-overrides נותן לכל input רדיוס 10px) */
+.gm-ds.gm-no :is(#dlg,#dlg2) .mfld .lbl{font-size:14px}
+.gm-ds.gm-no :is(#dlg,#dlg2) .inp.inp{border-radius:14px}
+/* "סכום לתשלום כעת": השדה בתוך .amtin שקוף כמו בעיצוב (design-overrides צובע רקע/גבול/רדיוס לכל input) */
+.gm-ds.gm-no .no-app .amtin>input:not(.x){border:0;background:transparent;border-radius:0;padding:1px 2px;color:var(--gm-ink);box-shadow:none}
+.gm-ds.gm-no .no-app .inp.inp:focus{border-color:var(--gm-brand)}

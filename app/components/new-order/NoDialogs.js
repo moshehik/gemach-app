@@ -68,7 +68,9 @@ export function ApprovalDialog({ message, level, close, fetchImpl }) {
     return () => { off = true; };
   }, [level]);
   const submit = async () => {
-    if (busy || !code) return;
+    if (busy) return;
+    if (!sel) { setErr('אין עובד מורשה לבחירה.'); return; }
+    if (!code) { setErr('יש להזין סיסמה.'); return; }
     setBusy(true); setErr('');
     try {
       const res = await (fetchImpl || fetch)('/api/auth/verify-pin', {
@@ -106,7 +108,7 @@ export function ApprovalDialog({ message, level, close, fetchImpl }) {
       </div>
       {err ? <Note style={{ marginTop: 12 }}>{err}</Note> : null}
       <Btns>
-        <button type="button" className="btn primary lg block" disabled={busy || !code || !sel} onClick={submit}><Ic n="check" />אישור</button>
+        <button type="button" className="btn primary lg block" disabled={busy} onClick={submit}><Ic n="check" />אישור</button>
         <button type="button" className="btn ghost block" onClick={() => close(null)}><Ic n="back" c="sm" />ביטול</button>
       </Btns>
     </>
@@ -248,6 +250,8 @@ export function DuplicateOrderDialog({ existingOrderId, close }) {
 
 // ---------- חיוב אשראי (נדרים פלוס) - R28: השגיאה בתוך החלון ----------
 export function CreditDialog({ data, setData, error, processing, onCharge, onSwipe, close }) {
+  // Enter בכל שדה = "בצע חיוב" (כמו ה-form בישן)
+  const onKeyDown = (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !processing) { e.preventDefault(); onCharge(); } };
   return (
     <>
       <h2>חיוב באשראי (נדרים פלוס)</h2>
@@ -256,33 +260,31 @@ export function CreditDialog({ data, setData, error, processing, onCharge, onSwi
         <button type="button" className="btn sm" data-tip="העברת כרטיס מהירה בקורא מגנטי" onClick={onSwipe} disabled={processing}><Ic n="scan" c="sm" />העברה מהירה</button>
       </div>
       {error ? <Note style={{ marginBottom: 12 }}>{error}</Note> : null}
-      <form id="noCreditForm" onSubmit={(e) => { e.preventDefault(); onCharge(); }}>
         <div className="mfld">
           <label className="lbl with-ic" htmlFor="noCcNum"><Ic n="card" c="sm" />מספר כרטיס אשראי (או העברה בקורא)</label>
-          <div className="inpw"><input className="inp" id="noCcNum" dir="ltr" inputMode="numeric" placeholder="0000 0000 0000 0000" autoComplete="cc-number" maxLength={19}
+          <div className="inpw"><input className="inp" id="noCcNum" onKeyDown={onKeyDown} dir="ltr" inputMode="numeric" placeholder="0000 0000 0000 0000" autoComplete="cc-number" maxLength={19}
             value={data.cardNumber} data-autofocus="true" onChange={(e) => { const v = cardNumberInput(e.target.value, data.tokef); setData(p => ({ ...p, ...v })); }} /></div>
         </div>
         <div className="grid2" style={{ marginTop: 12 }}>
           <div className="mfld">
             <label className="lbl with-ic" htmlFor="noCcExp"><Ic n="cal" c="sm" />תוקף (MM/YY)</label>
-            <div className="inpw"><input className="inp" id="noCcExp" dir="ltr" placeholder="12/25" autoComplete="cc-exp" maxLength={5} value={data.tokef} onChange={(e) => setData(p => ({ ...p, tokef: tokefInput(e.target.value) }))} /></div>
+            <div className="inpw"><input className="inp" id="noCcExp" onKeyDown={onKeyDown} dir="ltr" placeholder="12/25" autoComplete="cc-exp" maxLength={5} value={data.tokef} onChange={(e) => setData(p => ({ ...p, tokef: tokefInput(e.target.value) }))} /></div>
           </div>
           <div className="mfld">
             <label className="lbl with-ic" htmlFor="noCcAmt"><Ic n="wallet" c="sm" />סכום לחיוב (₪)</label>
-            <div className="inpw"><input className="inp" id="noCcAmt" type="number" dir="ltr" value={data.amount} onChange={(e) => setData(p => ({ ...p, amount: e.target.value }))} /></div>
+            <div className="inpw"><input className="inp" id="noCcAmt" onKeyDown={onKeyDown} type="number" dir="ltr" value={data.amount} onChange={(e) => setData(p => ({ ...p, amount: e.target.value }))} /></div>
           </div>
           <div className="mfld">
             <label className="lbl with-ic" htmlFor="noCcInst"><Ic n="list" c="sm" />תשלומים</label>
-            <div className="inpw"><input className="inp" id="noCcInst" type="number" dir="ltr" min="1" max="12" value={data.installments} onChange={(e) => setData(p => ({ ...p, installments: e.target.value }))} /></div>
+            <div className="inpw"><input className="inp" id="noCcInst" onKeyDown={onKeyDown} type="number" dir="ltr" min="1" max="12" value={data.installments} onChange={(e) => setData(p => ({ ...p, installments: e.target.value }))} /></div>
           </div>
           <div className="mfld">
             <label className="lbl with-ic" htmlFor="noCcNote"><Ic n="note" c="sm" />הערות לנדרים</label>
-            <div className="inpw"><input className="inp" id="noCcNote" value={data.notes} onChange={(e) => setData(p => ({ ...p, notes: e.target.value }))} /></div>
+            <div className="inpw"><input className="inp" id="noCcNote" onKeyDown={onKeyDown} value={data.notes} onChange={(e) => setData(p => ({ ...p, notes: e.target.value }))} /></div>
           </div>
         </div>
-      </form>
       <Btns>
-        <button type="submit" form="noCreditForm" className="btn green lg block" disabled={processing} aria-busy={processing}><Ic n="check" />{processing ? 'מבצע חיוב...' : 'בצע חיוב ושמור הזמנה'}</button>
+        <button type="button" onClick={onCharge} className="btn green lg block" disabled={processing} aria-busy={processing}><Ic n="check" />{processing ? 'מבצע חיוב...' : 'בצע חיוב ושמור הזמנה'}</button>
         <button type="button" className="btn ghost block" onClick={() => close()} disabled={processing}><Ic n="x" c="sm" />ביטול</button>
       </Btns>
     </>

@@ -14,6 +14,8 @@ export default function StepPayment({ ctl }) {
   const pct = tot ? Math.min(100, Math.round((paid / tot) * 100)) : 0;
   const p = ctl.payment;
   const busy = ctl.saving || ctl.isProcessingCredit || !!ctl.saved;
+  // Enter בסכום / בהערה = "אישור תשלום" (כמו ה-form בישן ו-keydown בעיצוב)
+  const enter = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) ctl.handleAddPaymentClick(); } };
   return (
     <OneCard>
       <Blk>
@@ -28,9 +30,8 @@ export default function StepPayment({ ctl }) {
       </Blk>
       <Blk>
         <SubH icon="card" tone="blue" title="רישום תשלום" />
-        <form onSubmit={(e) => { e.preventDefault(); ctl.handleAddPaymentClick(); }}>
           <label className="lbl" htmlFor="noPayAmt">סכום לתשלום כעת (₪)</label>
-          <div className="amtin"><span>₪</span><input id="noPayAmt" type="number" inputMode="numeric" value={p.amount} onChange={(e) => ctl.setPayment(prev => ({ ...prev, amount: e.target.value }))} /></div>
+          <div className="amtin"><span>₪</span><input id="noPayAmt" type="number" inputMode="numeric" value={p.amount} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, amount: e.target.value }))} /></div>
           <div className="lbl" style={{ marginTop: 14 }}>אופן תשלום</div>
           <div className="methods" id="methods" role="radiogroup" aria-label="אופן תשלום">
             {ctl.paymentMethodOptions.map(m => (
@@ -42,14 +43,13 @@ export default function StepPayment({ ctl }) {
           <details className="coll" style={{ marginTop: 14 }} open={p.notes ? true : undefined}>
             <summary><Ic n="note" />הערה לתשלום<Ic n="chev" c="chev" /></summary>
             <div className="in">
-              <div className="inpw ico-in"><Ic n="note" c="sm" /><input className="inp" id="noPayNote" placeholder="מספר אישור, פרטי הבנק, שם המשלם..." autoComplete="off" value={p.notes} onChange={(e) => ctl.setPayment(prev => ({ ...prev, notes: e.target.value }))} /></div>
+              <div className="inpw ico-in"><Ic n="note" c="sm" /><input className="inp" id="noPayNote" placeholder="מספר אישור, פרטי הבנק, שם המשלם..." autoComplete="off" value={p.notes} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, notes: e.target.value }))} /></div>
             </div>
           </details>
           <div className="row wrap" style={{ gap: 10, marginTop: 16 }}>
-            <button type="submit" className="btn green" disabled={busy}><Ic n="check" />אישור תשלום / פיצול</button>
+            <button type="button" className="btn green" disabled={busy} onClick={ctl.handleAddPaymentClick}><Ic n="check" />אישור תשלום / פיצול</button>
             {s.nedarim_plus_enabled !== 'false' ? <button type="button" className="btn navy" disabled={busy} onClick={() => ctl.openCredit(p.notes)}><Ic n="card" />חיוב אשראי</button> : null}
           </div>
-        </form>
       </Blk>
       <Blk>
         <SubH icon="list" tone="gold" title="תשלומים שנרשמו" />

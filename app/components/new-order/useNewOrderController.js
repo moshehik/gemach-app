@@ -689,6 +689,8 @@ export default function useNewOrderController({ router }) {
       }
       setSaving(false);
       showBusy(false);
+      // ההזמנה נשמרה עם רשימת התשלומים הזו - המסך (שנשאר פתוח מאחורי חלון "ההזמנה נשמרה", S08) מציג אותה
+      setPaymentsList(finalPaymentsList.filter(x => (parseFloat(x.amount) || 0) > 0 || x.method === NL.MANAGER_EXIT_METHOD));
       if (settings.auto_print_on_order_create === 'true' && data.orderId) window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank');
       backGuardArmedRef.current = false;
       setSaved({ orderId: data.orderId, customerId: data.customerId, warning: data.warning || '' });
