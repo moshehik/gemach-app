@@ -215,7 +215,7 @@ await t('הצעות שמות לקוחות בתחום לקוחות בלי הרש�
   assert.equal(res.status, 403);
   assert.equal(T.dbCalls, 0);
 });
-for (const [focus, page] of Object.entries({ customers: 'page:customers', orders: 'page:orders', rentals: 'page:rentals', returns: 'page:rentals', deliveries: 'page:deliveries', alterations: 'page:alterations', finance: 'page:refunds', models: 'page:dresses_catalog' })) {
+for (const [focus, page] of Object.entries({ customers: 'page:customers', orders: 'page:orders', rentals: 'page:rentals', returns: 'page:rentals', deliveries: 'page:deliveries', alterations: 'page:alterations', finance: 'page:refunds', alerts: 'page:orders', capacity: 'page:orders', models: 'page:dresses_catalog' })) {
   await t(`${focus}: בלי ${page} -> 403; עם ${page} -> 200`, async () => {
     reset([]);
     assert.equal((await opt.GET(req(`/api/a5/options?key=q&focus=${focus}&typed=`))).status, 403);
