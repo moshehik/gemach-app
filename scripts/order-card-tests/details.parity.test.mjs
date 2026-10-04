@@ -57,8 +57,8 @@ for (const [name, o] of TYPE_STATES) {
     test(`סוג אירוע: ${name} → ${toAbroad ? 'חו"ל' : 'רגיל'} = הישן`, () => {
       const neu = apply(o, D.eventTypeUpdates(o, toAbroad));
       const legacyRaw = legacyEventType(o, toAbroad);
-      // תיקון מכוון (סקירת W2a, סעיף 1): במעבר סוג אירוע extraDay מתאפס (הישן השאיר אותו - ולא שלח אותו ב-PUT)
-      const old = legacyRaw === o ? o : { ...legacyRaw, extraDay: null };
+      // AMB-13 (הבעלים): "יום נוסף" זמין בכל סוג אירוע - extraDay נשמר במעבר, בדיוק כמו בישן (ביטול האיפוס של סעיף 1 בסקירה)
+      const old = legacyRaw;
       assert.deepEqual(neu, old);
       assert.deepEqual(putOf(neu).legacyShape, legacyPut(old));
     });
@@ -125,12 +125,13 @@ for (const [i, o0] of XD_BASE.entries()) {
 test('shiftDateStr = הישן (כולל ריק ומעבר שעון)', () => {
   for (const s of ['2026-10-24T21:00:00.000Z', '2026-03-26T22:00:00.000Z', '2026-10-05', null, '']) for (const d of [-1, 1]) assert.equal(D.shiftDateStr(s, d), legacyShiftDateStr(s, d));
 });
-test('יום נוסף מוצג רק עם enable_rental_extension ורק לאירוע עם טווח (AMB-13, כמו MGD:384)', () => {
+test('יום נוסף מוצג בכל סוג אירוע כש-enable_rental_extension דלוק (AMB-13, הכרעת הבעלים; בישן MGD:384 רק לטווח)', () => {
   const on = { enableRentalExtension: true }, off = { enableRentalExtension: false };
-  assert.equal(D.extraDayVisible(on, baseOrder()), false);
-  assert.equal(D.extraDayVisible(on, baseOrder({ isAbroad: true })), true);
-  assert.equal(D.extraDayVisible(on, baseOrder({ isWeekdayEvent: true })), true);
-  assert.equal(D.extraDayVisible(off, baseOrder({ isAbroad: true })), false);
+  for (const o of [baseOrder(), baseOrder({ isAbroad: true }), baseOrder({ isWeekdayEvent: true })]) {
+    assert.equal(D.extraDayVisible(on, o), true);
+    assert.equal(D.extraDayVisible(off, o), false);
+  }
+  assert.equal(D.extraDayVisible(undefined, baseOrder()), false);
 });
 
 // ---------- ציפוף ימים (R18) ----------
@@ -151,10 +152,22 @@ for (const def of [0, 2, 3, 5]) {
     }
   }
 }
-test('ציר הציפוף = ציר הישן בלי הערך של ברירת המחדל (שבישן שקול ל"רגיל")', () => {
+test('ציר הציפוף (W2A-SPACING, הכרעת הבעלים): רגיל + 0..(gap-1); בלי ערכים מעל "רגיל"; ערך שמור >= gap מוצג כגלולה נוספת', () => {
+  assert.deepEqual(D.spacingAxis(3, null), [0, 1, 2], 'gap 3 → רגיל/0/1/2');
+  assert.deepEqual(D.spacingAxis(5, null), [0, 1, 2, 3, 4]);
+  assert.deepEqual(D.spacingAxis(1, null), [0]);
+  assert.deepEqual(D.spacingAxis(0, null), [], 'gap 0: רק "רגיל"');
+  assert.deepEqual(D.spacingAxis(3, 1), [0, 1, 2], 'ערך שמור בטווח - בלי תוספת');
+  assert.deepEqual(D.spacingAxis(3, 4), [0, 1, 2, 4], 'ישן 4: מוצג כגלולה נוספת, לא משתנה בשקט');
+  assert.deepEqual(D.spacingAxis(3, 3), [0, 1, 2, 3], 'שווה ל-gap (ישן שנשמר כמספר): גם הוא מוצג');
+  assert.deepEqual(D.spacingAxis(3, 5), [0, 1, 2, 5]);
+  assert.equal(D.spacingIsLegacy(3, 4), true);
+  assert.equal(D.spacingIsLegacy(3, 2), false);
+  assert.equal(D.spacingIsLegacy(3, null), false);
+});
+test('hasCustomSpacing = הישן', () => {
   for (const def of [0, 1, 2, 3, 5]) for (const sel of [null, 0, 2, 7]) {
     const old = legacySpacingAxis(baseOrder({ customSpacing: sel }), def);
-    assert.deepEqual(D.spacingAxis(def, old.selectedSpacing), old.axisDays.filter((d) => d !== def));
     assert.equal(D.hasCustomSpacing(baseOrder({ customSpacing: sel }), false), old.hasCustomSpacing);
     assert.equal(D.hasCustomSpacing(baseOrder({ customSpacing: sel }), true), legacySpacingAxis(baseOrder({ customSpacing: sel }), def, true).hasCustomSpacing);
   }

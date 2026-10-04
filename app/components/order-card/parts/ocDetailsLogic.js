@@ -9,8 +9,8 @@
 // shiftDateStr, extraDayUpdates ← MGD:68-83 (setExtraDay: הזזת from/to/return ביום, extraDay)
 // spacingDefaultOf ← MGD:33/40-41 (inventory_buffer_days, ברירת מחדל 3 כשחסר/לא מספר)
 // spacingDecision ← MGD:85-98 (applyCustomSpacing: אישור מנהל בכל הקטנה בפועל; ערך = ברירת המחדל נשמר כ-null)
-// spacingAxis ← MGD:221-224 (ציר 0..max(ברירת מחדל+2, נבחר, 4))
-// extraDayVisible ← MGD:384 (isAbroad && enable_rental_extension; isAbroad = isAbroad || isWeekdayEvent :62)
+// spacingAxis ← MGD:221-224 — שונה לפי הבעלים (W2A-SPACING): רגיל + 0..(ימים בין הזמנות − 1), בלי ערכים מעל "רגיל"
+// extraDayVisible ← MGD:384 — שונה לפי הבעלים (AMB-13): בכל סוג אירוע כש-enable_rental_extension (בישן: רק isAbroad)
 // deliverySettingsOf ← MGD:189-216 (enable_deliveries, delivery_allow_address_override, delivery_one_day_before_option, delivery_price_by_city)
 // deliveryCityOptions ← MGD:217-218 + :474 (ערי המחירון, אחרת ערי הלקוחות; הערך הנוכחי תמיד ברשימה)
 // deliveryFieldState ← MGD:219-220 + :471-491 (lib/deliveryValidation - אותן פונקציות בדיוק)
@@ -95,15 +95,15 @@ export const isRangeEvent = (o) => !!(o && (o.isAbroad || o.isWeekdayEvent));
 
 /**
  * MGD:330-345 — מעבר לאירוע רגיל / חו"ל. null = אין שינוי (הישן: return כשהמצב כבר נבחר).
- * תיקון מכוון מול הישן (סקירת W2a, סעיף 1): extraDay מתאפס בכל מעבר. הישן השאיר אותו (ולא שלח אותו ב-PUT); הכרטיס החדש שולח
- * extraDay, ואירוע רגיל עם extraDay שנשאר היה מחויב ב-50% (pricingCalc.js:225) בלי גלולה להסרתו.
+ * AMB-13 (הבעלים): "יום השכרה נוסף" זמין בכל סוג אירוע, ולכן extraDay נשמר במעבר (קודם: אופס, סקירת W2a סעיף 1, כי היה מוסתר באירוע רגיל).
+ * במעבר לחו"ל אין עדיין לקיחה/החזרה והגלולות 'לפני/אחרי' כבויות עד שיבחרו התאריכים; כשיבחר טווח - rangeUpdates מחיל את ההזזה (ר' שם).
  */
 export function eventTypeUpdates(order, toAbroad) {
   const abroad = isRangeEvent(order);
   if (toAbroad === abroad) return null;
   return toAbroad
-    ? withDateUpdates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null, extraDay: null })
-    : withDateUpdates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null, extraDay: null });
+    ? withDateUpdates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null })
+    : withDateUpdates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
 }
 
 /** MGD:367-375 applyTime — היום שנבחר + שעת היום של הערך הקודם (או של עכשיו), כ-ISO. */
@@ -119,12 +119,19 @@ export function applyTime(newDateStr, prevDateStr, now = new Date()) {
 
 /**
  * MGD:366-379 — טווח לקיחה/החזרה (start/end = YYYY-MM-DD, end יכול להיות ריק).
- * תיקון מכוון (סקירת W2a, סעיף 2): טווח חדש = טווח נקי, extraDay מתאפס (הישן השאיר אותו בלי ההזזה, וביטולו אחר כך קיצר יום).
+ * תיקון מכוון (סקירת W2a, סעיף 2): בחירה מחדש של טווח שכבר הושלם = טווח נקי, extraDay מתאפס (הישן השאיר אותו בלי ההזזה, וביטולו
+ * אחר כך קיצר יום). חריג (AMB-13): כשהדגל נשמר ממעבר סוג אירוע - עדיין אין טווח שלם בהזמנה - הטווח הראשון שהושלם הוא הבסיס
+ * ו-extraDay מוחל עליו (הזזה ביום) במקום להיעלם בשקט; עד שהושלם הטווח (בחירת התחלה בלבד) הדגל נשאר כמות שהוא, בלי הזזה.
  */
 export function rangeUpdates(order, start, end, now = new Date()) {
   const newFrom = applyTime(start, order.fromDate, now);
   const newTo = applyTime(end, order.toDate || order.returnDate, now);
-  return withDateUpdates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom, extraDay: null });
+  const hadFullRange = !!(order.fromDate && (order.toDate || order.returnDate));
+  const keep = order.extraDay && !hadFullRange;
+  const base = { fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom };
+  if (!keep) return withDateUpdates({ ...base, extraDay: null });
+  const shifted = extraDayUpdates({ ...order, ...base, extraDay: null }, order.extraDay); // null כשהטווח עוד לא שלם
+  return withDateUpdates(shifted ? { ...base, ...shifted } : base);
 }
 
 /** MGD:68-73 (מילולי) */
@@ -135,14 +142,23 @@ export const shiftDateStr = (dateStr, deltaDays) => {
   return d.toISOString();
 };
 
-// יום נוסף אפשרי רק כשיש לקיחה והחזרה (אחרת אין מה להזיז, והתוספת הייתה מחויבת בלי יום בפועל - סקירת W2a, סעיף 2)
-export const extraDayReady = (order) => !!(order && order.fromDate && (order.toDate || order.returnDate));
+// יום נוסף אפשרי רק כשיש תאריכים להזיז / לחייב עליהם (אחרת התוספת הייתה מחויבת בלי יום בפועל - סקירת W2a, סעיף 2):
+// באירוע עם טווח - לקיחה והחזרה; באירוע רגיל (AMB-13) - תאריך האירוע.
+export const extraDayReady = (order) => {
+  if (!order) return false;
+  return isRangeEvent(order) ? !!(order.fromDate && (order.toDate || order.returnDate)) : !!order.eventDate;
+};
 
-/** MGD:74-83 setExtraDay — null = אין שינוי (גם: בחירת יום נוסף בלי שני התאריכים). newValue: null | 'before' | 'after'. */
+/**
+ * MGD:74-83 setExtraDay — null = אין שינוי (גם: בחירת יום נוסף בלי התאריכים הנדרשים). newValue: null | 'before' | 'after'.
+ * באירוע עם טווח הבחירה מזיזה את הלקיחה/ההחזרה ביום. באירוע רגיל (AMB-13) אין טווח לשמור: הדגל בלבד (מחיר 50% במנוע; הטיפול בשרת -
+ * ר' REQUESTS-W0 בסעיף AMB-13).
+ */
 export function extraDayUpdates(order, newValue) {
   const current = order.extraDay || null;
   if (current === newValue) return null;
   if (newValue && !extraDayReady(order)) return null;
+  if (!isRangeEvent(order)) return withDateUpdates({ extraDay: newValue });
   let { fromDate, toDate, returnDate } = order;
   if (current === 'before') fromDate = shiftDateStr(fromDate, 1);
   if (current === 'after') { toDate = shiftDateStr(toDate, -1); returnDate = shiftDateStr(returnDate, -1); }
@@ -151,8 +167,8 @@ export function extraDayUpdates(order, newValue) {
   return withDateUpdates({ fromDate, toDate, returnDate, extraDay: newValue });
 }
 
-// AMB-13 (ברירת מחדל התכנית): יום נוסף רק כש-enable_rental_extension ורק לאירוע עם טווח (כמו הישן)
-export const extraDayVisible = (settings, order) => !!(settings && settings.enableRentalExtension) && isRangeEvent(order);
+// AMB-13 (הבעלים: "בכל אירוע"): יום נוסף כש-enable_rental_extension, בכל סוג אירוע (order נשאר בחתימה לתאימות)
+export const extraDayVisible = (settings) => !!(settings && settings.enableRentalExtension);
 export const EXTRA_DAY_OPTIONS = [[null, 'ללא'], ['before', 'יום לפני'], ['after', 'יום אחרי']];
 
 // ---------------------------------------------------------------------------------------------
@@ -165,11 +181,19 @@ export function spacingDefaultOf(settings) {
   return raw !== null && raw !== undefined && !isNaN(n) ? n : 3;
 }
 export const hasCustomSpacing = (order, hide) => !hide && order.customSpacing !== null && order.customSpacing !== undefined;
-/** MGD:221-224 — ציר הערכים; בלי הערך של ברירת המחדל (בישן בחירה בו = "רגיל", לחצן כפול). */
+/**
+ * W2A-SPACING (הבעלים): הציר = "רגיל" + 0..(gap-1) כש-gap = ימים בין הזמנות (inventory_buffer_days, ברירת מחדל 3): gap=3 → רגיל/0/1/2.
+ * אין ערכים מעל "רגיל" (אין ציפוף מוגדל). order שמור עם ערך >= gap (ישן: 4/5 או gap שהוקטן) מוצג כערך הנוכחי - גלולה נוספת - ולא
+ * משתנה בשקט (שאלה פתוחה לבעלים, W2a-NOTES). הקריאה הישנה spacingAxis(def, selected) נשארת תואמת.
+ */
 export function spacingAxis(defaultSpacing, selected) {
-  const max = Math.max(defaultSpacing + 2, selected !== null && selected !== undefined ? selected : 0, 4);
-  return Array.from({ length: max + 1 }, (_, i) => i).filter(d => d !== defaultSpacing);
+  const gap = Math.max(0, defaultSpacing);
+  const axis = Array.from({ length: gap }, (_, i) => i);
+  if (selected !== null && selected !== undefined && Number.isInteger(selected) && selected >= 0 && !axis.includes(selected)) axis.push(selected);
+  return axis;
 }
+/** הערך השמור גבוה/שווה ל-gap (לא ניתן לבחירה מחדש; מסומן בגלולה) */
+export const spacingIsLegacy = (defaultSpacing, selected) => selected !== null && selected !== undefined && selected >= Math.max(0, defaultSpacing);
 /**
  * MGD:85-98 applyCustomSpacing. spacing: null = "רגיל".
  * @returns {{needsApproval:boolean, valueToStore:number|null}}
@@ -188,17 +212,10 @@ const nonEmpty = (v) => v !== null && v !== undefined && String(v).trim() !== ''
 export const customerName = (c) => (c ? [c.firstName, c.lastName].filter(Boolean).join(' ') : '');
 /** MGD:164 */
 export const customerAddress = (c) => (c ? [c.street && `${c.street} ${c.houseNum || ''}`.trim(), c.city].filter(Boolean).join(', ') : '');
-// ת״ז מוצגת (A7). כשהגדרת "אימות ת״ז לעריכה/ביטול" דולקת (R13) - הת״ז היא הסוד שהעובד מבקש מהלקוח, ולכן מוצגות רק 3 הספרות
-// האחרונות (אחרת השער חסר ערך). ר' W2a-NOTES.
-// מתג יחיד להחלטת הבעלים (סקירת W2a, ממצא 4 - נשלח כשאלה): false = הת״ז מוצגת תמיד במלואה.
-export const MASK_ZEOUT_WHEN_ID_GATE = true;
-export function zeoutDisplay(zeout, settings) {
-  const z = String(zeout || '').trim();
-  if (!z) return '';
-  if (MASK_ZEOUT_WHEN_ID_GATE && settings && settings.requireIdForEdit) return `${'•'.repeat(Math.max(0, z.length - 3))}${z.slice(-3)}`;
-  return z;
-}
-export const zeoutRequired = (settings) => !!(settings && (settings.requireCustomerIdNumber || settings.requireIdForEdit)); // AMB-10
+// ת״ז מוצגת (A7) תמיד במלואה (W2A-ID, הכרעת הבעלים: בלי מסיכת 3 הספרות האחרונות גם כשאימות הת״ז לעריכה דולק).
+export const zeoutDisplay = (zeout) => String(zeout || '').trim();
+// AMB-10 (הבעלים): "חסר" ליד ת״ז ריקה לפי require_customer_id_number בלבד (אימות הת״ז לעריכה בתוקף רק כשהיא דלוקה - parseSettings)
+export const zeoutRequired = (settings) => !!(settings && settings.requireCustomerIdNumber);
 
 export const NEW_CUSTOMER_EMPTY = Object.freeze({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
 /** MGD:139-142 (+ ת״ז כש-require_customer_id_number: השרת דוחה בלעדיה, ר' app/api/customers/route.js:145) */

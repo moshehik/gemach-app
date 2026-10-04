@@ -32,7 +32,7 @@
 // itemLabel, fmtMoney, hebDateOf.
 
 import { getHebrewDateString, getIsraelDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
-import { extraDayUpdates } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
+import { extraDayUpdates, isRangeEvent } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
 
 // ---------------------------------------------------------------------------------------------
 // טיוטות ו"ביטול שינויים" — מילולי מהישן (הטיוטה נקראת גם ע"י הכרטיס הישן ורשימת ההזמנות)
@@ -156,6 +156,9 @@ export const obligationIdentityKey = (o) => {
 // ---------------------------------------------------------------------------------------------
 // הגדרות (A.5) — אותן ברירות מחדל כמו הישן כשהשורה חסרה ב-DB
 // ---------------------------------------------------------------------------------------------
+// AMB-10: אימות ת״ז לעריכה/ביטול (require_id_for_edit_cancel) בתוקף רק כש-require_customer_id_number דולקת
+export const effectiveRequireIdForEdit = (requireIdForEdit, requireCustomerIdNumber) => !!requireIdForEdit && !!requireCustomerIdNumber;
+
 /**
  * @param {Array<{key:string,value:string}>} rows תשובת GET /api/settings
  * @returns {OcSettings}
@@ -177,7 +180,8 @@ export function parseSettings(rows) {
     json,
     // ---- בדיוק כמו LegacyOrderPage.js:244-303 ----
     draftsAsDeleted: bool('draft_orders_show_as_deleted', true),
-    requireIdForEdit: bool('require_id_for_edit_cancel', false),
+    // AMB-10 (הבעלים): אימות הת״ז לעריכה/ביטול בתוקף רק כשגם "חובה ת״ז ללקוח" דולקת (effectiveRequireIdForEdit)
+    requireIdForEdit: effectiveRequireIdForEdit(bool('require_id_for_edit_cancel', false), bool('require_customer_id_number', false)),
     allowEditPartially: bool('allow_edit_partially_rented', true),
     requireManagerCodeForItems: bool('require_manager_code_for_item_changes', false),
     enableLocalDrafts: bool('enable_local_order_drafts', true),
@@ -492,14 +496,15 @@ export function itemLabel(it) {
 }
 
 const nonEmpty = (v) => v !== null && v !== undefined && String(v).trim() !== '';
-// AMB-10: ת״ז "חסר" כשאחת משתי ההגדרות דורשת ת״ז
+// AMB-10 (הכרעת הבעלים): ת״ז "חסר" לפי require_customer_id_number בלבד. אימות הת״ז לעריכה (requireIdForEdit) תקף רק כשהיא דלוקה,
+// ולכן אין צורך בו כאן (settings.requireIdForEdit ⊆ settings.requireCustomerIdNumber ב-parseSettings).
 export function customerMissing(customer, settings) {
   if (!customer) return [];
   const out = [];
   if (!nonEmpty(customer.phone1) && !nonEmpty(customer.phone2)) out.push({ key: 'phone', label: 'טלפון' });
   if (!nonEmpty(customer.email)) out.push({ key: 'email', label: 'מייל' });
   if (!nonEmpty(customer.city) && !nonEmpty(customer.street)) out.push({ key: 'addr', label: 'כתובת' });
-  if (settings && (settings.requireCustomerIdNumber || settings.requireIdForEdit) && !nonEmpty(customer.zeout)) out.push({ key: 'zeout', label: 'ת״ז' });
+  if (settings && settings.requireCustomerIdNumber && !nonEmpty(customer.zeout)) out.push({ key: 'zeout', label: 'ת״ז' });
   return out;
 }
 
@@ -679,6 +684,10 @@ export function revertChange(cur, snap, key) {
   const next = { ...cur };
   // "יום השכרה נוסף" הזיז את הלקיחה/ההחזרה ביום - הביטול מזיז בחזרה (כמו בחירה ב"ללא"/בערך השמור), אחרת נשאר יום חינם או הזזה כפולה.
   // בלי תאריכים בהזמנה הנוכחית - חוזרים לערכי ה-snapshot (עקביים זה עם זה).
+  if (key === 'xday' && cur.order && !isRangeEvent(cur.order)) {
+    // אירוע רגיל (AMB-13): אין תאריכי טווח להזיז - מחזירים רק את הדגל
+    return { ...next, order: { ...cur.order, extraDay: (snap.order && snap.order.extraDay) || null } };
+  }
   if (key === 'xday' && cur.order) {
     const target = (snap.order && snap.order.extraDay) || null;
     const u = extraDayUpdates(cur.order, target);

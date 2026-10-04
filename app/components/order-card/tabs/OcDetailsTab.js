@@ -21,7 +21,7 @@ import OcCustomerSwapDialog from '../parts/OcCustomerSwap';
 import { OcDeliveryCards, Tip } from './OcDeliveryTab';
 import {
   EXTRA_DAY_OPTIONS, customerAddress, customerName, customerUpdates, dateKeyOf, dayTitle, eventTypeUpdates, extraDayReady, extraDayUpdates, extraDayVisible,
-  hasCustomSpacing, hebDateLabel, isRangeEvent, rangeUpdates, spacingAxis, spacingDecision, spacingDefaultOf, withDateUpdates, zeoutDisplay, zeoutRequired
+  hasCustomSpacing, hebDateLabel, isRangeEvent, rangeUpdates, spacingAxis, spacingDecision, spacingDefaultOf, spacingIsLegacy, withDateUpdates, zeoutDisplay, zeoutRequired
 } from '../parts/ocDetailsLogic';
 
 const Miss = () => <span className="missv"><OcIcon name="alert" size="sm" />חסר</span>;
@@ -71,7 +71,7 @@ function CustomerCard({ oc, ui }) {
             {QuickMail ? <div className="oc-qm"><QuickMail oc={oc} ui={ui} /></div> : null}
           </KvRow>
           <KvRow icon="pin" label="כתובת" value={addr} missing />
-          <KvRow icon="file" label="ת״ז" value={zeoutDisplay(c.zeout, s)} missing={zeoutRequired(s)} dirLtr />
+          <KvRow icon="file" label="ת״ז" value={zeoutDisplay(c.zeout)} missing={zeoutRequired(s)} dirLtr />
           {phone2 ? <KvRow icon="phone" label="טלפון נוסף" value={phone2} dirLtr /> : null}
           <div className="f">
             <OcIcon name="note" />
@@ -166,13 +166,14 @@ function AdvancedCard({ oc }) {
   const order = oc.order || {};
   const s = oc.settings;
   const hide = !!s.hideCustomSpacing;
-  const showXday = extraDayVisible(s, order);
+  const showXday = extraDayVisible(s);
   const def = spacingDefaultOf(s);
   const custom = hasCustomSpacing(order, hide);
   const [open, setOpen] = useState(() => custom || !!order.extraDay);
   if (hide && !showXday) return null;
   const selected = custom ? order.customSpacing : null;
-  const spacingOptions = [[null, 'רגיל'], ...spacingAxis(def, selected).map(d => [d, String(d)])];
+  // W2A-SPACING: רגיל + 0..(gap-1); ערך שמור >= gap מוצג כגלולה נוספת מסומנת ("שמור") ולא משתנה בשקט
+  const spacingOptions = [[null, 'רגיל'], ...spacingAxis(def, selected).map(d => [d, spacingIsLegacy(def, d) ? `${d} (שמור)` : String(d)])];
   const applySpacing = async (v) => {
     const { needsApproval, valueToStore } = spacingDecision(oc.order || {}, v, def);
     if (needsApproval) {

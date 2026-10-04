@@ -14,15 +14,32 @@ const ABROAD_AFTER = baseOrder({ isAbroad: true, eventDate: '2026-10-04T21:00:00
 const ABROAD = baseOrder({ isAbroad: true, eventDate: '2026-10-04T21:00:00.000Z', fromDate: '2026-10-04T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z' });
 const read = (f) => fs.readFileSync(P + '/app/components/order-card/' + f, 'utf8');
 
-// ---------- 1 (HIGH, כסף): חו"ל עם יום נוסף → רגיל ----------
-test('1: מעבר מחו"ל עם "יום אחרי" לאירוע רגיל מאפס extraDay - ה-PUT לא נושא יום נוסף (לא 50% בלי גלולה להסרה)', () => {
+// ---------- 1 (HIGH, כסף): סוג אירוע ויום נוסף - שונה ב-AMB-13 (הבעלים: "יום נוסף" בכל סוג אירוע) ----------
+const SINGLE = baseOrder({ eventDate: '2026-10-08' });
+test('1 (AMB-13): מעבר סוג אירוע שומר extraDay (הוא נתמך בכל סוג) - ה-PUT נושא אותו, והגלולה נשארת מוצגת', () => {
   const o = apply(ABROAD_AFTER, D.eventTypeUpdates(ABROAD_AFTER, false));
-  assert.equal(o.extraDay, null);
-  assert.equal(putOf(o).extraDay, null);
-  assert.equal(D.extraDayVisible({ enableRentalExtension: true }, o), false, 'הגלולה מוסתרת - ולכן חייב להתאפס');
-  const back = apply(baseOrder({ extraDay: 'before' }), D.eventTypeUpdates(baseOrder({ extraDay: 'before' }), true));
-  assert.equal(back.extraDay, null, 'גם במעבר לחו"ל');
+  assert.equal(o.extraDay, 'after');
+  assert.equal(putOf(o).extraDay, 'after');
+  assert.equal(o.fromDate, null);
+  assert.equal(D.extraDayVisible({ enableRentalExtension: true }, o), true, 'הגלולה מוצגת גם באירוע רגיל');
+  const before = baseOrder({ extraDay: 'before' });
+  const back = apply(before, D.eventTypeUpdates(before, true));
+  assert.equal(back.extraDay, 'before');
+  assert.equal(D.extraDayReady(back), false, 'אין טווח עדיין - גלולות לפני/אחרי כבויות עד שיבחרו התאריכים');
 });
+test('1ב (AMB-13): מעבר רגיל→חו"ל עם דגל שנשמר, ואז בחירת הטווח: הדגל מוחל על הטווח הראשון (לא נעלם בשקט), ובחירה מחדש מאפסת', () => {
+  const sw = apply(baseOrder({ eventDate: '2026-10-08', extraDay: 'before' }), D.eventTypeUpdates(baseOrder({ eventDate: '2026-10-08', extraDay: 'before' }), true));
+  const startOnly = apply(sw, D.rangeUpdates(sw, '2026-11-01', ''));
+  assert.equal(startOnly.extraDay, 'before', 'עד שהטווח שלם - הדגל נשאר, בלי הזזה');
+  const full = apply(startOnly, D.rangeUpdates(startOnly, '2026-11-01', '2026-11-08'));
+  assert.equal(full.extraDay, 'before');
+  assert.ok(Math.abs(new Date(full.fromDate) - new Date(applyIso('2026-11-01', startOnly.fromDate)) + 24 * 3600e3) <= 3600e3, 'הלקיחה זזה יום אחורה (±שעה: מעבר שעון חורף בניו-יורק ב-1.11)');
+  assert.equal(full.toDate, applyIso('2026-11-08', startOnly.toDate || startOnly.fromDate));
+  assert.ok(D.extraDayReady(full));
+  const again = apply(full, D.rangeUpdates(full, '2026-11-02', '2026-11-09'));
+  assert.equal(again.extraDay, null, 'טווח שלם שנבחר מחדש = טווח נקי, הדגל מתאפס (סקירת W2a סעיף 2)');
+});
+function applyIso(key, prev) { return D.applyTime(key, prev, new Date(0)); }
 
 // ---------- 2 (MED): טווח חדש / יום נוסף בלי תאריכים ----------
 test('2א: בחירת טווח חדש כשיש יום נוסף מאפסת אותו (בלי הזזה חלקית), וה-PUT בהתאם', () => {
@@ -33,16 +50,34 @@ test('2א: בחירת טווח חדש כשיש יום נוסף מאפסת אות
   const again = apply(o, D.extraDayUpdates(o, 'after'));
   assert.equal(new Date(again.toDate) - new Date(o.toDate), 24 * 3600e3);
 });
-test('2ב: "יום לפני/אחרי" בלי לקיחה והחזרה = אין שינוי (לא נגבה 50% בלי יום); "ללא" תמיד אפשרי; הגלולה כבויה בלי תאריכים', () => {
-  for (const o of [baseOrder({ isAbroad: true, eventDate: null }), baseOrder({ isAbroad: true, fromDate: '2026-10-05', toDate: null, returnDate: null }), baseOrder({ isWeekdayEvent: true, fromDate: null, toDate: '2026-10-06' })]) {
+test('2ב: "יום לפני/אחרי" בלי התאריכים הנדרשים = אין שינוי (לא נגבה 50% בלי יום); "ללא" תמיד אפשרי; הגלולה כבויה בלי תאריכים', () => {
+  for (const o of [baseOrder({ isAbroad: true, eventDate: null }), baseOrder({ isAbroad: true, fromDate: '2026-10-05', toDate: null, returnDate: null }), baseOrder({ isWeekdayEvent: true, fromDate: null, toDate: '2026-10-06' }),
+    baseOrder({ eventDate: null })]) {
     assert.equal(D.extraDayReady(o), false);
     assert.equal(D.extraDayUpdates(o, 'after'), null);
     assert.equal(D.extraDayUpdates(o, 'before'), null);
   }
   const stray = baseOrder({ isAbroad: true, eventDate: null, extraDay: 'after' });
   assert.equal(apply(stray, D.extraDayUpdates(stray, null)).extraDay, null);
+  const strayRegular = baseOrder({ eventDate: null, extraDay: 'before' });
+  assert.equal(apply(strayRegular, D.extraDayUpdates(strayRegular, null)).extraDay, null);
   assert.ok(D.extraDayReady(ABROAD));
+  assert.ok(D.extraDayReady(SINGLE), 'AMB-13: באירוע רגיל מספיק תאריך אירוע');
   assert.ok(read('tabs/OcDetailsTab.js').includes('isDisabled={(v) => !!v && !extraDayReady(order)}'));
+});
+test('2ג (AMB-13): אירוע רגיל עם תאריך - יום נוסף = דגל בלבד (בלי הזזת תאריכים), ה-PUT נושא אותו, וביטול חוזר ל"ללא"', () => {
+  const o = apply(SINGLE, D.extraDayUpdates(SINGLE, 'after'));
+  assert.equal(o.extraDay, 'after');
+  assert.equal(o.eventDate, SINGLE.eventDate);
+  assert.equal(o.fromDate ?? null, SINGLE.fromDate ?? null);
+  assert.equal(o.toDate ?? null, SINGLE.toDate ?? null);
+  assert.equal(putOf(o).extraDay, 'after');
+  const sw = apply(o, D.extraDayUpdates(o, 'before'));
+  assert.equal(sw.extraDay, 'before');
+  const none = apply(sw, D.extraDayUpdates(sw, null));
+  assert.equal(none.extraDay, null);
+  assert.equal(D.extraDayUpdates(none, null), null);
+  assert.equal(D.extraDayUpdates(o, 'after'), null);
 });
 
 // ---------- 3 (MED): ביטול "יום השכרה נוסף" ברשימת השינויים ----------
@@ -74,13 +109,30 @@ test('3ב: ביטול הסרת יום נוסף שמור מחזיר את ההזז
   assert.equal(new Date(u2.order.toDate) - new Date(ranged.toDate), 24 * 3600e3, 'יום אחד בלבד מעבר לטווח שנבחר');
   assert.equal(u2.order.fromDate, ranged.fromDate);
 });
-test('3ג: ביטול יום נוסף כשאין תאריכים בהזמנה הנוכחית - חוזר לערכי ה-snapshot העקביים', () => {
+test('3ג: ביטול יום נוסף כשאין תאריכי טווח בהזמנה הנוכחית (חו"ל בלי תאריכים) - חוזר לערכי ה-snapshot העקביים', () => {
   const snap = snapOf(ABROAD_AFTER);
-  const regular = apply(ABROAD_AFTER, D.eventTypeUpdates(ABROAD_AFTER, false));
-  const undone = L.revertChange(cur(regular), snap, 'xday');
+  const noDates = baseOrder({ isAbroad: true, eventDate: null, extraDay: null });
+  const undone = L.revertChange(cur(noDates), snap, 'xday');
   assert.equal(undone.order.extraDay, 'after');
   assert.equal(undone.order.fromDate, ABROAD_AFTER.fromDate);
   assert.equal(undone.order.toDate, ABROAD_AFTER.toDate);
+  assert.equal(undone.order.returnDate, ABROAD_AFTER.returnDate);
+});
+test('3ד (AMB-13): ביטול יום נוסף באירוע רגיל מחזיר רק את הדגל (לא נוגע בתאריכי טווח)', () => {
+  const snap = snapOf(SINGLE);
+  const edited = apply(SINGLE, D.extraDayUpdates(SINGLE, 'before'));
+  const undone = L.revertChange(cur(edited), snap, 'xday');
+  assert.deepEqual(undone.order, SINGLE);
+  assert.deepEqual(L.changesOf(snap, undone), []);
+  const snap2 = snapOf(apply(SINGLE, D.extraDayUpdates(SINGLE, 'after')));
+  const removed = apply(snap2.order, D.extraDayUpdates(snap2.order, null));
+  assert.equal(L.revertChange(cur(removed), snap2, 'xday').order.extraDay, 'after');
+  // אירוע שהיה חו"ל עם דגל ועבר לרגיל (הדגל נשמר): הביטול לא מדביק תאריכי טווח לאירוע רגיל
+  const snap3 = snapOf(ABROAD_AFTER);
+  const regular = apply(ABROAD_AFTER, D.eventTypeUpdates(ABROAD_AFTER, false));
+  const u3 = L.revertChange(cur(regular), snap3, 'xday').order;
+  assert.equal(u3.fromDate, null);
+  assert.equal(u3.extraDay, 'after');
 });
 
 // ---------- 5 (LOW): ערי לקוחות - כישלון לא נשמר ----------
@@ -111,10 +163,9 @@ test('7: ריק/null/undefined שקולים, ותאריך באותו יום יש
   assert.deepEqual(L.changesOf(snapOf(s), cur({ ...c, eventDate: '2026-10-09' })).map((x) => x.key), ['date']);
 });
 
-// ---------- 4 (לבעלים): מסיכת הת״ז - מתג יחיד ----------
-test('4: מסיכת הת״ז נשלטת בקבוע יחיד (MASK_ZEOUT_WHEN_ID_GATE)', () => {
-  assert.equal(typeof D.MASK_ZEOUT_WHEN_ID_GATE, 'boolean');
-  const src = read('parts/ocDetailsLogic.js');
-  assert.equal((src.match(/MASK_ZEOUT_WHEN_ID_GATE/g) || []).length, 2, 'הגדרה + שימוש אחד');
-  assert.equal(D.zeoutDisplay('312456789', { requireIdForEdit: true }), D.MASK_ZEOUT_WHEN_ID_GATE ? '••••••789' : '312456789');
+// ---------- 4: W2A-ID - הת״ז תמיד במלואה ----------
+test('4 (W2A-ID): אין מסיכת ת״ז - הקבוע והמסלול הוסרו, והלשונית מציגה את הערך המלא', () => {
+  assert.ok(!/MASK_ZEOUT_WHEN_ID_GATE|'•'\.repeat/.test(read('parts/ocDetailsLogic.js')));
+  assert.equal(D.zeoutDisplay('312456789'), '312456789');
+  assert.ok(read('tabs/OcDetailsTab.js').includes('zeoutDisplay(c.zeout)'));
 });

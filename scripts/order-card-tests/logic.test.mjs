@@ -131,12 +131,16 @@ test('A6 סמני לשוניות + A7 "חסר" (AMB-10: ת״ז לפי שתי ה�
   assert.equal(L.tabMarkers({ order: st.order, totals: { balance: -20 }, settings: s0 }).payments.tip, 'יש זיכוי');
   assert.deepEqual(L.customerMissing(st.order.customer, s0), []);
   assert.deepEqual(L.customerMissing(st.order.customer, L.parseSettings([{ key: 'require_customer_id_number', value: 'true' }])).map(x => x.key), ['zeout']);
-  assert.deepEqual(L.customerMissing(st.order.customer, L.parseSettings([{ key: 'require_id_for_edit_cancel', value: 'true' }])).map(x => x.key), ['zeout']);
+  // AMB-10 (הבעלים): "חסר" ת״ז לפי require_customer_id_number בלבד - אימות הת״ז לעריכה לבדו לא מסמן
+  assert.deepEqual(L.customerMissing(st.order.customer, L.parseSettings([{ key: 'require_id_for_edit_cancel', value: 'true' }])), []);
+  assert.deepEqual(L.customerMissing(st.order.customer, L.parseSettings([{ key: 'require_id_for_edit_cancel', value: 'true' }, { key: 'require_customer_id_number', value: 'true' }])).map(x => x.key), ['zeout']);
 });
 
 test('שערים: zeout רק כשיש ת״ז ללקוח; מושכר חלקי; תיקון בלי פירוט; תאריכים חסרים; ביטול פריט', () => {
-  const sId = L.parseSettings([{ key: 'require_id_for_edit_cancel', value: 'true' }]);
+  const sId = L.parseSettings([{ key: 'require_id_for_edit_cancel', value: 'true' }, { key: 'require_customer_id_number', value: 'true' }]);
   assert.equal(L.zeoutVerificationNeeded(sId, { customer: { zeout: '' } }), false);
+  // AMB-10: אימות הת״ז לעריכה בלי "חובה ת״ז ללקוח" אינו בתוקף
+  assert.equal(L.zeoutVerificationNeeded(L.parseSettings([{ key: 'require_id_for_edit_cancel', value: 'true' }]), { customer: { zeout: '123' } }), false);
   assert.equal(L.zeoutVerificationNeeded(sId, { customer: { zeout: '123' } }), true);
   assert.equal(L.zeoutVerificationNeeded(L.parseSettings([]), { customer: { zeout: '123' } }), false);
   const sNo = L.parseSettings([{ key: 'allow_edit_partially_rented', value: 'false' }]);

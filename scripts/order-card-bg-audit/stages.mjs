@@ -166,11 +166,11 @@ STAGES.push(
   } },
   { name: '54-spacing-approval', roots: W2A_DET, real: async () => {
     await fresh('xday'); await clickAt('#adv > summary'); await sleep(200);
-    await clickAt('#spacing button:nth-of-type(2)'); await sleep(600); // "0" < ברירת המחדל 2 → אישור מנהל
+    await clickAt('#spacing button:nth-of-type(2)'); await sleep(600); // "0" < ברירת המחדל 2 → אישור מנהל (הציר: רגיל/0/1)
     const appr = await p.evaluate(() => document.getElementById('scrim2').classList.contains('on'));
     await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p.type('#oc-appr-code', '1234'); await p.keyboard.press('Enter'); await sleep(700);
     const on = await p.$eval('#spacing button.on', (e) => e.textContent);
-    await clickAt('#spacing button:nth-of-type(5)'); await sleep(300); // הגדלה (4) - בלי אישור
+    await clickAt('#spacing button:nth-of-type(1)'); await sleep(300); // חזרה ל"רגיל" (הגדלה, W2A-SPACING: אין ערכים מעל רגיל) - בלי אישור
     const appr2 = await p.evaluate(() => document.getElementById('scrim2').classList.contains('on'));
     await clickAt('#xday button:nth-of-type(3)'); await sleep(300); // "יום אחרי"
     const xd = await p.$eval('#xday button.on', (e) => e.textContent);

@@ -80,7 +80,7 @@ test('אין שינויים → אין PUT ("אין שינויים לשמירה"
 
 test('R13 ת״ז: prompt → zeout בגוף + x-zeout בכותרת (כמו putOrder של הישן); ביטול = אין PUT', async () => {
   const st = baseState({ order: { customer: { firstName: 'א', zeout: '123456789' } } });
-  const settings = [{ key: 'require_id_for_edit_cancel', value: 'true' }];
+  const settings = [{ key: 'require_id_for_edit_cancel', value: 'true' }, { key: 'require_customer_id_number', value: 'true' }];
   const h = harness(st, { settings, edit: withNotes, answers: { prompt: ' 123456789 ' }, respond: (u) => (u.includes('validate') ? { body: { valid: true } } : serverOk(st)) });
   await h.flows.save();
   const put = h.calls.find(c => c.method === 'PUT');
@@ -263,7 +263,7 @@ test('מחיקת הזמנה: DELETE /api/orders/<orderId> (בלי גוף; עם �
   assert.deepEqual([h.calls[0].method, h.calls[0].url, h.calls[0].headers, h.calls[0].rawBody], ['DELETE', `/api/orders/${st.order.orderId}`, {}, undefined]);
   assert.deepEqual(h.nav, ['/orders']);
   const st2 = baseState({ order: { customer: { zeout: '1' } } });
-  const h2 = harness(st2, { settings: [{ key: 'require_id_for_edit_cancel', value: 'true' }], answers: { prompt: '1' }, respond: () => ({}) });
+  const h2 = harness(st2, { settings: [{ key: 'require_id_for_edit_cancel', value: 'true' }, { key: 'require_customer_id_number', value: 'true' }], answers: { prompt: '1' }, respond: () => ({}) });
   await h2.flows.deleteOrder();
   assert.deepEqual(h2.calls[0].headers, { 'x-zeout': '1', 'Content-Type': 'application/json' });
   assert.deepEqual(h2.calls[0].body, { zeout: '1' });

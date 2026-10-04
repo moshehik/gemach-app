@@ -66,19 +66,33 @@ test('מפתח התאריך של ערך שמור = היום בישראל (חצו
   assert.equal(D.dateKeyOf('לא תאריך'), '');
 });
 
-test('ת״ז: מוצגת מלאה; כששער האימות לעריכה/ביטול (R13) דולק - רק 3 ספרות אחרונות', () => {
-  assert.equal(D.zeoutDisplay('312456789', {}), '312456789');
-  assert.equal(D.zeoutDisplay('312456789', { requireIdForEdit: true }), '••••••789');
-  assert.equal(D.zeoutDisplay('', { requireIdForEdit: true }), '');
-  assert.equal(D.zeoutDisplay(null, {}), '');
+test('W2A-ID: ת״ז מוצגת תמיד במלואה - גם כשאימות הת״ז לעריכה/ביטול (R13) דולק; אין מסיכה', () => {
+  assert.equal(D.zeoutDisplay('312456789'), '312456789');
+  assert.equal(D.zeoutDisplay('312456789', { requireIdForEdit: true }), '312456789');
+  assert.equal(D.zeoutDisplay(' 312456789 ', { requireCustomerIdNumber: true, requireIdForEdit: true }), '312456789');
+  assert.equal(D.zeoutDisplay(''), '');
+  assert.equal(D.zeoutDisplay(null), '');
+  assert.equal(D.MASK_ZEOUT_WHEN_ID_GATE, undefined, 'מסלול המסיכה הוסר');
 });
 
-test('"חסר" לת״ז לפי ההגדרות (AMB-10) - אותה הכרעה כמו סמן הלשונית של הבקר', () => {
+test('"חסר" לת״ז לפי require_customer_id_number בלבד (AMB-10, הכרעת הבעלים) - אותה הכרעה כמו סמן הלשונית של הבקר', () => {
   const c = { phone1: '1', email: 'a@b', city: 'x', zeout: '' };
   for (const s of [{}, { requireCustomerIdNumber: true }, { requireIdForEdit: true }, { requireCustomerIdNumber: true, requireIdForEdit: true }]) {
     const tabSaysMissing = L.customerMissing(c, s).some((x) => x.key === 'zeout');
     assert.equal(D.zeoutRequired(s), tabSaysMissing, JSON.stringify(s));
+    assert.equal(tabSaysMissing, !!s.requireCustomerIdNumber, 'רק require_customer_id_number: ' + JSON.stringify(s));
   }
+  // מההגדרות האמיתיות: אימות לעריכה לבדו = לא בתוקף, ולכן גם לא "חסר"
+  const only = (rows) => L.parseSettings(rows.map(([key, value]) => ({ key, value })));
+  const idEdit = only([['require_id_for_edit_cancel', 'true']]);
+  assert.equal(idEdit.requireIdForEdit, false, 'האימות בתוקף רק כש-require_customer_id_number דולקת');
+  assert.equal(D.zeoutRequired(idEdit), false);
+  const both = only([['require_id_for_edit_cancel', 'true'], ['require_customer_id_number', 'true']]);
+  assert.equal(both.requireIdForEdit, true);
+  assert.equal(D.zeoutRequired(both), true);
+  assert.equal(only([['require_customer_id_number', 'true']]).requireIdForEdit, false);
+  assert.equal(L.effectiveRequireIdForEdit(true, false), false);
+  assert.equal(L.effectiveRequireIdForEdit(true, true), true);
 });
 
 test('כתובת הלקוח ושם - כמו MGD:162-164', () => {

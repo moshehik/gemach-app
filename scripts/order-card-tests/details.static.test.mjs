@@ -43,7 +43,7 @@ test('תנאי תצוגה כמו בישן: משלוח רק עם enable_deliverie
   assert.ok(DEL.includes('if (!ds.enabled) return null;'));
   assert.ok(DET.includes('s.enableDeliveries && !s.deliverySeparateTab ? <OcDeliveryCards'));
   assert.ok(DET.includes('const hide = !!s.hideCustomSpacing;') && DET.includes('{!hide ? ('));
-  assert.ok(DET.includes('const showXday = extraDayVisible(s, order);'));
+  assert.ok(DET.includes('const showXday = extraDayVisible(s);'));
   assert.ok(DEL.includes('{fs.showAddress ? (') && DEL.includes('{ds.oneDayBeforeOption ? ('));
 });
 
