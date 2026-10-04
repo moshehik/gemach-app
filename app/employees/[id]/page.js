@@ -13,6 +13,11 @@ export default function EmployeePage({ params }) {
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details'); // details, attendance, history
+  // ?tab=history / ?tab=attendance - קישור ישיר ללשונית (סיכום הנוכחות: "לכרטיס העובד · היסטוריה", החלטת הבעלים AT-16)
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t === 'history' || t === 'attendance') setActiveTab(t);
+  }, []);
   const [saving, setSaving] = useState(false);
   const [permissionsRefresh, setPermissionsRefresh] = useState(0);
   const [emailModalOpen, setEmailModalOpen] = useState(false);

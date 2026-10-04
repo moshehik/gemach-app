@@ -501,5 +501,60 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+/* ---------- 10. "סיכום נוכחות" (app/components/attendance/attendance.css, 4.10.2026) ---------- */
+// אותו משטר כמו הפרופיל והלו״ז: כל כלל בהיקף .gm-ds.gm-at, שורש בלי gm-home, נטרולי הדליפות של globals / design-overrides במקום,
+// ומתג התצוגה בגובה הלחצנים (46px). בדיקת נאמנות מלאה מול העיצוב: scripts/attendance-bg-audit (run.mjs + print.mjs).
+const ATT_CSS = read('../app/components/attendance/attendance.css');
+const ATT_PRINT_CSS = read('../app/components/attendance/print/attendancePrint.css');
+const attRules = parseCss(ATT_CSS);
+const ATT_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-at)']);
+t('attendance.css: כל כלל בהיקף .gm-ds.gm-at (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of attRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-at(\.dlg-dark)?(\s|$)/.test(s) && !ATT_OUT_OF_SCOPE_OK.has(s) && !/^(from|to|\d+%)$/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('attendance.css: אין רקע לבן קשיח מחוץ לרשימה; !important על רקע רק בכרטיס הפנינה ובכותרות הטבלאות', () => {
+  const OK = new Set(['.gm-ds.gm-at .card', '.gm-ds.gm-at .rtbl>thead>tr>th', '.gm-ds.gm-at .at-sh>thead>tr>th', '.gm-ds.gm-at .ea-tbl thead tr.per th']);
+  const bad = [];
+  for (const r of attRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    // !important שקוף (כללי הנייד של העיצוב: השורה הופכת לכרטיס בלי רקע תא) מותר
+    if (setsProp(r, /^background(-color|-image)?$/).some((d) => isImportant(d) && !/^transparent\s*!important$/i.test(d.value))) for (const s of splitSel(r.sel)) if (!OK.has(s.replace(/\s+/g, ' '))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('attendance.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(attRules, 'attendance.css'), []);
+});
+const hasAtt = (selRe, propRe, { important = false, valueRe } = {}) => attRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('attendance.css: נטרול דליפות - גופן (!important), כותרות הטבלאות, field margin, צבע שדה, ריפוד לחצני אייקון, כרטיס הפנינה', () => {
+  assert.ok(hasAtt(/\.gm-ds\.gm-at :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasAtt(/\.gm-ds\.gm-at :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasAtt(/^\.gm-ds\.gm-at \.rtbl>thead>tr>th$/, /^background-color$/, { important: true }), 'כותרת הטבלה הראשית (globals כופה קרם)');
+  assert.ok(hasAtt(/^\.gm-ds\.gm-at \.at-sh>thead>tr>th$/, /^background-color$/, { important: true }), 'כותרת טבלת המשמרות שבפירוט');
+  assert.ok(!attRules.some((r) => /\.rtbl thead tr th/.test(r.sel)), 'נטרול כותרת הטבלה בלי > תופס גם את טבלת הפירוט המקוננת (באג שנמצא בבדיקה)');
+  assert.ok(hasAtt(/^\.gm-ds\.gm-at \.field$/, /^margin-bottom$/, { valueRe: /^0/ }));
+  assert.ok(hasAtt(/\.gm-ds\.gm-at input\.inp:not\(:disabled\)/, /^color$/));
+  assert.ok(hasAtt(/^\.gm-ds\.gm-at :is\(\.back,\.ibtn\)$/, /^padding$/));
+  assert.ok(hasAtt(/^\.gm-ds\.gm-at \.card$/, /^background$/, { important: true }));
+});
+t('attendance.css: מתג "לפי חודש / לפי עובד" ו"החודש" בגובה 46px כמו שאר לחצני הסרגל (תיקון הבעלים 4.10.2026)', () => {
+  assert.ok(hasAtt(/\.seg\.pill\.at-vseg$/, /^height$/, { valueRe: /^46px/ }));
+  assert.ok(hasAtt(/#mNow$/, /^height$/, { valueRe: /^46px/ }));
+  assert.ok(!/lz-wpin/.test(ATT_CSS), 'סיסמת מאשר לייצוא (בוטלה - AT-08)');
+});
+t('סיכום נוכחות: שורש בלי gm-home, בלי title=, הדף המודפס בלי משתני ערכת נושא', () => {
+  const dir = '../app/components/attendance/';
+  const src = ['AttendancePage.js', 'AttendanceEdit.js', 'AttendanceWizard.js', 'AttendanceDialogs.js', 'parts.js'].map((f) => read(dir + f)).join('\n');
+  assert.ok(/className="gm-ds gm-at home-bg dlg-dark"/.test(src));
+  assert.ok(!/gm-home/.test(src));
+  assert.ok(!/\btitle="/.test(src.replace(/<iframe[^>]*>/g, '')), 'title= (טולטיפ דפדפן) במקום data-tip');
+  assert.ok(!/var\(--(?!pp-)/.test(ATT_PRINT_CSS.replace(/\/\*[\s\S]*?\*\//g, '')), 'משתנה ערכת נושא בדף המודפס');
+  assert.ok(!/@import/.test(ATT_PRINT_CSS), '@import ב-CSS של ההדפסה (הגופן נטען בדף עצמו)');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
