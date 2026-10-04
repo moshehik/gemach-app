@@ -689,6 +689,33 @@ export function createItemActions(env) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// תור סריקות (שורת הסריקה R42): סריקה שמגיעה בזמן שקודמתה רצה לא נזרקת ולא מתערבבת בטקסט — היא נכנסת לתור ורצה אחריה, לפי הסדר.
+// run(code) = סריקה בודדת (לא זורקת); onBusy(bool) = מצב "בעיבוד" לתצוגה.
+// ---------------------------------------------------------------------------------------------
+export function createScanQueue(run, onBusy = () => {}) {
+  const queue = [];
+  let busy = false;
+  async function push(code) {
+    const c = (code || '').trim();
+    if (!c) return false;
+    queue.push(c);
+    if (busy) return true;
+    busy = true;
+    onBusy(true);
+    try {
+      while (queue.length) {
+        try { await run(queue.shift()); } catch (err) { console.error(err); }
+      }
+    } finally {
+      busy = false;
+      onBusy(false);
+    }
+    return true;
+  }
+  return { push, isBusy: () => busy, pending: () => queue.length };
+}
+
+// ---------------------------------------------------------------------------------------------
 // כללי עריכה (MIM :82-108, :228-242) — טהורים
 // ---------------------------------------------------------------------------------------------
 export function canFullyEditItem(item, { sessionEditableIds, forceEditableIds }) {

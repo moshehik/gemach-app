@@ -135,3 +135,31 @@ test('R25 שדה הברקוד: טקסט לפי מצב (שמירה קודם / ה�
   assert.equal(A.barcodePlaceholder(it({ isTaken: true }), true), 'סרקו ברקוד להחזרה');
   assert.equal(A.barcodePlaceholder(it({ isTaken: true, isReturned: true }), false), 'הפריט הוחזר');
 });
+
+test('ביקורת W3 #4 createScanQueue: סריקה שנייה בזמן שהראשונה רצה לא נזרקת — רצה אחריה לפי הסדר', async () => {
+  const seen = [], busy = [];
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const q = A.createScanQueue(async (code) => { seen.push(`start:${code}`); if (code === 'A') await gate; seen.push(`end:${code}`); }, (b) => busy.push(b));
+  const p1 = q.push('A');
+  assert.equal(q.isBusy(), true);
+  const p2 = q.push(' B ');
+  const p3 = q.push('   '); // ריק — מתעלמים
+  assert.equal(await p3, false);
+  assert.deepEqual(seen, ['start:A'], 'B ממתינה');
+  assert.equal(q.pending(), 1);
+  release();
+  await Promise.all([p1, p2]);
+  assert.deepEqual(seen, ['start:A', 'end:A', 'start:B', 'end:B']);
+  assert.deepEqual(busy, [true, false], 'busy פעם אחת לכל הרצף');
+  assert.equal(q.isBusy(), false);
+});
+test('createScanQueue: סריקה שזורקת לא עוצרת את התור', async () => {
+  const seen = [];
+  const origErr = console.error; console.error = () => {};
+  try {
+    const q = A.createScanQueue(async (c) => { seen.push(c); if (c === 'X') throw new Error('boom'); });
+    await Promise.all([q.push('X'), q.push('Y')]);
+  } finally { console.error = origErr; }
+  assert.deepEqual(seen, ['X', 'Y']);
+});
