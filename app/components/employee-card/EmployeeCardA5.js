@@ -7,7 +7,7 @@
 // משחזר את המטענים; הבדיקה scripts/test_employee_card_a5.mjs). לוגיקת התיקון שנבדק (requestJson / describeFailure: כישלון שמירה לא
 // מוצג כהצלחה, שינוי סיסמה בכרטיס של עובד אחר) נשמרת כאן וגם בכרטיס הישן. שינויים מהישן = החלטות הבעלים בלבד:
 //   EC-05 תמונת פרופיל בלבד, בלי emailSuffix, בלי שדה מספר מחלקה חלופי | EC-08 כרטיס אחד "מחלקה, סטטוס והערות" | EC-09 הרשאות
-//   ב-7 קטגוריות מתקפלות | EC-10 אישור מנהל למייל בחלון נפרד | EC-11 הודעת הצלחה לעובד חדש לפני המעבר | EC-12 כרטיס צר + שמירה 420px.
+//   ב-10 קטגוריות מתקפלות | EC-10 אישור מנהל למייל בחלון נפרד | EC-11 הודעת הצלחה לעובד חדש לפני המעבר | EC-12 כרטיס צר + שמירה 420px.
 // אין window.alert / confirm: הודעות בטוסט של הפלטה (#toast), אישורים בחלון כהה (#dlg), אימות מנהל בשכבה 2 (#dlg2).
 
 import '@/design-system/components.css';
@@ -32,6 +32,7 @@ import EcHistory from './EcHistory';
 import EcMail from './EcMail';
 
 const FLASH_KEY = 'ec-flash-toast';
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024; // תקרת תמונת פרופיל (EC-05)
 const focusId = (elId) => { const el = document.getElementById(elId); if (el) el.focus(); };
 const TABS = [['details', 'פרטי עובד', 'userck'], ['attendance', 'נוכחות וסיכום', 'clock'], ['history', 'היסטוריה', 'sn-history']];
 
@@ -202,8 +203,13 @@ export default function EmployeeCardA5({ employeeId }) {
     setEmployee((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
+  // בחירה מהדיאלוג וגרירה עוברות אותה בדיקה: תמונה בלבד (המסמך הישן 'מסמך' PDF לא נתמך יותר בהעלאה) ועד AVATAR_MAX_BYTES,
+  // כי התמונה נשמרת כ-data URL בשורת העובד וביומן.
   const readAvatar = (file) => {
     if (!file) return;
+    const reject = (msg) => { say(msg, 'error'); if (fileRef.current) fileRef.current.value = ''; };
+    if (!/^image\//.test(file.type || '')) return reject('אפשר להעלות תמונה בלבד');
+    if (file.size > AVATAR_MAX_BYTES) return reject('התמונה גדולה מדי - עד 2MB');
     const reader = new FileReader();
     reader.onloadend = () => setEmployee((prev) => ({ ...prev, profileImage: reader.result }));
     reader.readAsDataURL(file);
@@ -358,7 +364,7 @@ export default function EmployeeCardA5({ employeeId }) {
                         {photo
                           ? <div className="pf-av photo" id="ecAv" aria-hidden="true" style={{ backgroundImage: `url("${employee.profileImage}")` }} />
                           : <div className="pf-av" id="ecAv" aria-hidden="true">{initialsOf(employee)}</div>}
-                        <label className={`pf-up${drag ? ' drag' : ''}`} id="ecUp" htmlFor="employee-detail-profileImage" title="לחיצה או גרירת קובץ"
+                        <label className={`pf-up${drag ? ' drag' : ''}`} id="ecUp" htmlFor="employee-detail-profileImage" data-tip="לחיצה או גרירת קובץ"
                           onDragEnter={(e) => { e.preventDefault(); setDrag(true); }} onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                           onDragLeave={(e) => { e.preventDefault(); setDrag(false); }}
                           onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f && /^image\//.test(f.type)) readAvatar(f); }}>
@@ -367,7 +373,7 @@ export default function EmployeeCardA5({ employeeId }) {
                           <span className="sm faint">תמונה בלבד</span>
                         </label>
                         <input type="file" id="employee-detail-profileImage" accept="image/*" hidden ref={fileRef} onChange={(e) => readAvatar(e.target.files[0])} />
-                        {employee.profileImage ? <button type="button" className="btn danger sm" id="ecImgRm" data-ico="trash" title="הסרת התמונה" onClick={removeAvatar}><Ic id="trash" size="sm" />הסר</button> : null}
+                        {employee.profileImage ? <button type="button" className="btn danger sm" id="ecImgRm" data-ico="trash" data-tip="הסרת התמונה" onClick={removeAvatar}><Ic id="trash" size="sm" />הסר</button> : null}
                       </div>
                     </div>
                   ) : null}

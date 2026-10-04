@@ -2,7 +2,7 @@
 
 // EcPermissions - "הרשאות ספציפיות" בכרטיס העובד החדש (EmployeePermissionsPanel בישן, אותה לוגיקה ואותם ה-API:
 // GET / PUT / DELETE /api/admin/permissions/employees/<id>; נשמר מיד ולא דרך "שמור פרטים"). שינויים מול הישן:
-//   * החלטת הבעלים EC-09: 7 קטגוריות מתקפלות (lib/employeeCardPermGroups.js) במקום 2 קבוצות. כותרת קטגוריה = שם בלבד (בלי הכיתוב
+//   * החלטת הבעלים EC-09: 10 קטגוריות מתקפלות (lib/employeeCardPermGroups.js) במקום 2 קבוצות. כותרת קטגוריה = שם בלבד (בלי הכיתוב
 //     "מקופל" ובלי סוגריים); כשיש בה חריגות אישיות - שבב "N חריגות". כל 34 השורות והבקרות זהות לישן.
 //   * markup מהעיצוב המאושר (.prow, .pr-*, מתג .sw, שבבים), חלון המידע הוא חלון כהה (#dlg) ולא popover, ובלי window.alert: שגיאות בטוסט.
 import { useCallback, useEffect, useState } from 'react';
@@ -19,7 +19,7 @@ function PermRow({ catalogItem: item, row, busy, onSave, onClear, onInfo }) {
   if (row.alwaysAllowed) {
     ctl = (
       <div className="r">
-        {hasOverride ? <button type="button" className="btn ghost sm" data-ec="p-clear" disabled={busy} onClick={() => onClear(item.key)} title="חריגה ישנה שנשארה מלפני שהעובד הועבר להנהלה ראשית / מתכנת. אין לה השפעה, אפשר לנקות">נקה חריגה ישנה</button> : null}
+        {hasOverride ? <button type="button" className="btn ghost sm" data-ec="p-clear" disabled={busy} onClick={() => onClear(item.key)} data-tip="חריגה ישנה שנשארה מלפני שהעובד הועבר להנהלה ראשית / מתכנת. אין לה השפעה, אפשר לנקות">נקה חריגה ישנה</button> : null}
         <span className="chip green"><Ic id="check" size="sm" />תמיד מורשה (הנהלה ראשית / מתכנת)</span>
       </div>
     );
@@ -33,8 +33,8 @@ function PermRow({ catalogItem: item, row, busy, onSave, onClear, onInfo }) {
   } else if (item.type === 'boolean') {
     ctl = (
       <div className="r">
-        {hasOverride ? <button type="button" className="btn ghost sm" data-ec="p-clear" disabled={busy} onClick={() => onClear(item.key)} title="אפס לברירת המחדל של המחלקה">איפוס</button> : null}
-        <label className="sw" title={hasOverride ? 'חריגה אישית לעובד זה' : 'לחיצה תיצור חריגה אישית לעובד זה'}>
+        {hasOverride ? <button type="button" className="btn ghost sm" data-ec="p-clear" disabled={busy} onClick={() => onClear(item.key)} data-tip="אפס לברירת המחדל של המחלקה">איפוס</button> : null}
+        <label className="sw" data-tip={hasOverride ? 'חריגה אישית לעובד זה' : 'לחיצה תיצור חריגה אישית לעובד זה'}>
           <input type="checkbox" data-pk={item.key} aria-label={item.label} checked={!!row.effective} disabled={busy} onChange={() => !busy && onSave(item.key, !row.effective)} /><i />
         </label>
       </div>
@@ -44,7 +44,7 @@ function PermRow({ catalogItem: item, row, busy, onSave, onClear, onInfo }) {
       <div className="r">
         <input className="inp pr-num" type="number" data-pn={item.key} aria-label={item.label} defaultValue={row.effective} key={`${row.key}-${row.effective}`} disabled={busy}
           onBlur={(e) => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== row.effective) onSave(item.key, n); }} />
-        {hasOverride ? <button type="button" className="btn ghost sm" data-ec="p-clear" disabled={busy} onClick={() => onClear(item.key)} title="אפס לברירת המחדל של המחלקה">איפוס</button> : null}
+        {hasOverride ? <button type="button" className="btn ghost sm" data-ec="p-clear" disabled={busy} onClick={() => onClear(item.key)} data-tip="אפס לברירת המחדל של המחלקה">איפוס</button> : null}
       </div>
     );
   }
@@ -54,8 +54,8 @@ function PermRow({ catalogItem: item, row, busy, onSave, onClear, onInfo }) {
     <div className={`prow${busy ? ' busy' : ''}`} data-row={item.key}>
       <div className="pr-t">
         <div className="pr-h">
-          <strong>{item.route ? <a href={item.route} target="_blank" rel="noopener noreferrer" data-ec="p-route" title="פתיחת העמוד בטאב חדש">{item.label}</a> : <span>{item.label}</span>}</strong>
-          <button type="button" className="pr-i" data-ec="p-info" onClick={() => onInfo(item)} title="מידע והסבר" aria-label={`מידע והסבר: ${item.label}`}><Ic id="info" /></button>
+          <strong>{item.route ? <a href={item.route} target="_blank" rel="noopener noreferrer" data-ec="p-route" data-tip="פתיחת העמוד בטאב חדש">{item.label}</a> : <span>{item.label}</span>}</strong>
+          <button type="button" className="pr-i" data-ec="p-info" onClick={() => onInfo(item)} data-tip="מידע והסבר" aria-label={`מידע והסבר: ${item.label}`}><Ic id="info" /></button>
           {!item.enforced ? <span className="chip gold">לתיעוד בלבד — עדיין לא משנה את הגישה בפועל</span> : null}
           {hasOverride && !row.alwaysAllowed && listed.length === 0 ? <span className="chip rose">חריגה אישית</span> : null}
         </div>

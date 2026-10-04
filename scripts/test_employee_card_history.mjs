@@ -277,4 +277,11 @@ await t('ההרחבה אופציונלית (?extended=1) ושמות עדיין �
   assert.ok(codeOnly.includes('EmployeePermissionOverride'));
 });
 
+await t('הראוט מסיר profileImage רק במסלול ה-extended (ברירת המחדל זהה בייט-לבייט)', () => {
+  assert.ok(codeOnly.includes('stripProfileImages(historyWithNames)'));
+  const idx = codeOnly.indexOf('stripProfileImages(historyWithNames)');
+  const before = codeOnly.slice(Math.max(0, idx - 120), idx);
+  assert.ok(/searchParams\.get\('extended'\)\s*===\s*'1'/.test(before), 'ההסרה בתוך תנאי ה-extended');
+});
+
 console.log(`\n${passed} בדיקות עברו${process.exitCode ? ' - יש כישלונות' : ''}`);

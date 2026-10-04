@@ -293,6 +293,20 @@ await t('EC-05: תמונה בלבד (accept="image/*", בלי pdf), בלי email
   assert.doesNotMatch(a5Code, /type="number"[^>]*roleId/);
   assert.doesNotMatch(a5Code, /מסמך/);
 });
+await t('EC-05: בחירת קובץ בדיאלוג עוברת את אותה בדיקת תמונה + תקרת גודל 2MB כמו הגרירה, עם טוסט עברי', () => {
+  assert.match(a5Code, /const AVATAR_MAX_BYTES = 2 \* 1024 \* 1024/);
+  const fn = a5Code.slice(a5Code.indexOf('const readAvatar'), a5Code.indexOf('const removeAvatar'));
+  assert.match(fn, /\^image\\\//, 'בדיקת סוג בתוך readAvatar (משותף לדיאלוג ולגרירה)');
+  assert.match(fn, /file\.size > AVATAR_MAX_BYTES/);
+  assert.match(fn, /say\([^)]*'error'\)/);
+  assert.match(fn, /fileRef\.current\.value = ''/, 'איפוס הקלט אחרי דחייה');
+  assert.match(a5Code, /onChange=\{\(e\) => readAvatar\(e\.target\.files\[0\]\)\}/);
+});
+await t('הערות/טולטיפ: אין title= מקורי ברכיבי הכרטיס (label/קישור/מתג/כפתור) - data-tip בלבד', () => {
+  for (const f of ['EmployeeCardA5', 'EcUi', 'EcApproval', 'EcAttendance', 'EcHistory', 'EcMail', 'EcPermissions']) {
+    assert.doesNotMatch(stripComments(read(`app/components/employee-card/${f}.js`)), /\btitle=/, f);
+  }
+});
 await t('EC-08: כרטיס אחד "מחלקה, סטטוס והערות" (7 כרטיסי פרטים, בלי כרטיס "הערות" נפרד)', () => {
   assert.match(a5Code, />מחלקה, סטטוס והערות</);
   assert.equal((a5Code.match(/<CardHead /g) || []).length, 7);

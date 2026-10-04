@@ -140,11 +140,11 @@ export default function EcAttendance({ employee, employeeId, showDeleted, onShow
                       <div className="rowact">
                         {!del ? (
                           <>
-                            <button type="button" className="ibtn" data-ec="sh-edit" onClick={() => startEdit(s)} title="ערוך רק כניסה ויציאה" aria-label="ערוך רק כניסה ויציאה"><Ic id="pencil" size="sm" /></button>
-                            <button type="button" className="ibtn danger" data-ec="sh-del" onClick={() => deleteShift(s.id)} title="מחק" aria-label="מחק"><Ic id="trash" size="sm" /></button>
+                            <button type="button" className="ibtn" data-ec="sh-edit" onClick={() => startEdit(s)} data-tip="ערוך רק כניסה ויציאה" aria-label="ערוך רק כניסה ויציאה"><Ic id="pencil" size="sm" /></button>
+                            <button type="button" className="ibtn danger" data-ec="sh-del" onClick={() => deleteShift(s.id)} data-tip="מחק" aria-label="מחק"><Ic id="trash" size="sm" /></button>
                           </>
                         ) : (
-                          <button type="button" className="ibtn" data-ec="sh-restore" onClick={() => restoreShift(s)} title="שחזר" aria-label="שחזר"><Ic id="refresh" size="sm" /></button>
+                          <button type="button" className="ibtn" data-ec="sh-restore" onClick={() => restoreShift(s)} data-tip="שחזר" aria-label="שחזר"><Ic id="refresh" size="sm" /></button>
                         )}
                       </div>
                     </td>

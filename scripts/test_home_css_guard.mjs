@@ -739,6 +739,7 @@ t('כרטיס עובד: שורש בלי gm-home, בלי title= על רכיבי �
   const joined = src.join('\n').replace(/^\s*\/\*[\s\S]*?\*\//gm, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(/className="gm-ds gm-ec home-bg dlg-dark"/.test(joined));
   assert.ok(!/gm-home/.test(joined));
+  assert.ok(!/title=/.test(joined), 'אין title= מקורי באף רכיב של הכרטיס (גם לא על label/קישור/מתג): data-tip בלבד');
   assert.ok(!/window\.(alert|confirm|prompt)\(/.test(joined));
   assert.ok(!/@import/.test(EC_CSS));
 });
