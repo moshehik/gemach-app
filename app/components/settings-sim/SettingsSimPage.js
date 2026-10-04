@@ -134,7 +134,7 @@ function PermissionsRow() {
 }
 
 /** סביבת עבודה = מסד הנתונים של האתר החי (GET/POST /api/admin/db-mode, כמו WebBackupModeToggle). מופעל מיד, אחרי אישור. */
-function DbModeRow({ root, onToast }) {
+function DbModeRow({ root, onToast, dirty, onSwitched }) {
   const [mode, setMode] = useState(null);
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -149,6 +149,13 @@ function DbModeRow({ root, onToast }) {
     } catch (e) { setErr(e.message || 'שגיאה בטעינת מצב המסד'); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  // ההגדרות שבמסך שייכות למסד הנוכחי — החלפת מסד עם שינויים ממתינים תשמור אותם על המסד הלא נכון (או תאבד אותם), לכן חסום
+  const request = (next) => {
+    if (mode === next) return;
+    if (dirty) { setErr('יש שינויים שלא נשמרו. שמרו או בטלו אותם לפני החלפת סביבת העבודה.'); return; }
+    setErr(null);
+    setAsk(next);
+  };
   const apply = async () => {
     const next = ask;
     setBusy(true);
@@ -158,6 +165,7 @@ function DbModeRow({ root, onToast }) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || `שגיאה ${res.status}`);
       setMode(json.mode);
+      onSwitched(); // ההגדרות שמוצגות נטענו מהמסד הקודם — טוענים מחדש מהמסד החדש
       onToast({ title: json.mode === 'test' ? 'האתר החי עבר למסד הבדיקות' : 'האתר החי חזר למסד הייצור', sub: 'השינוי חל על כל המשתמשים', icon: 'check' });
     } catch (e) { setErr(e.message || 'שגיאה בהחלפת המסד'); }
     finally { setBusy(false); setAsk(null); }
@@ -181,8 +189,8 @@ function DbModeRow({ root, onToast }) {
           {mode === null && !err ? <small className="faint">טוען מצב נוכחי…</small> : (
             <div className="seg pill" role="radiogroup" aria-label="סביבת עבודה" style={{ '--n': 2, '--i': idx }}>
               <span className="pth" aria-hidden="true" />
-              <button type="button" role="radio" aria-checked={mode === 'prod'} className={mode === 'prod' ? 'on' : undefined} disabled={busy} onClick={() => { if (mode !== 'prod') setAsk('prod'); }}>ייצור</button>
-              <button type="button" role="radio" aria-checked={mode === 'test'} className={mode === 'test' ? 'on' : undefined} disabled={busy} onClick={() => { if (mode !== 'test') setAsk('test'); }}>בדיקות</button>
+              <button type="button" role="radio" aria-checked={mode === 'prod'} className={mode === 'prod' ? 'on' : undefined} disabled={busy} onClick={() => request('prod')}>ייצור</button>
+              <button type="button" role="radio" aria-checked={mode === 'test'} className={mode === 'test' ? 'on' : undefined} disabled={busy} onClick={() => request('test')}>בדיקות</button>
             </div>
           )}
           {err ? <small className="st-err" role="alert">{err}</small> : null}
@@ -618,7 +626,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
     let special = null;
     if (s.special === 'logo') special = <LogoBlock onDone={(t, sub) => setToast({ title: t, sub, icon: 'check' })} onError={(m) => setErrorBanner({ title: 'העלאת הלוגו נכשלה', text: m })} />;
     if (s.special === 'permissions') special = <PermissionsRow />;
-    if (s.special === 'dbmode') special = <DbModeRow root={portalRoot} onToast={setToast} />;
+    if (s.special === 'dbmode') special = <DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} />;
     if (s.special === 'neon') special = <NeonRows />;
     if (q && special && !shownRows.length) return null;
     return (

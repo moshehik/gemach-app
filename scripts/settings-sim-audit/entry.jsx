@@ -56,6 +56,7 @@ if (!sp.get('empty')) {
 }
 
 window.__posts = [];
+window.__gets = 0; // כמה פעמים נטען GET /api/settings (בדיקת "טעינה מחדש אחרי החלפת מסד")
 let dbMode = 'prod';
 const json = (status, body) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
 const realFetch = window.fetch.bind(window);
@@ -74,6 +75,7 @@ window.fetch = (url, init = {}) => {
       if (sp.get('nosession') && body.pin !== '1234') return json(401, { error: 'Unauthorized. Admin access required.' });
       return json(200, { success: true, message: 'Settings saved successfully' });
     }
+    window.__gets++;
     if (sp.get('fail')) return json(500, { error: 'Failed to fetch settings' });
     return json(200, rows);
   }

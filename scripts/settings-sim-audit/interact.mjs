@@ -345,6 +345,31 @@ try {
     assert.ok((await p.content()).includes('data-set') && !(await p.content()).includes('web_backup_mode'));
     await p.close();
   });
+
+  await t('#4 החלפת מסד נחסמת כשיש שינויים שלא נשמרו; אחרי החלפה ההגדרות נטענות מחדש', async () => {
+    const p = await page('view=site');
+    await tab(p, 'mail');
+    await typeIn(p, '#setting-row-email_drive_folder_id input', 'abc');
+    await tab(p, 'db');
+    await sleep(200);
+    await clickText(p, '.seg.pill button', 'בדיקות');
+    await sleep(200);
+    assert.equal(await p.$('.scrim.on'), null, 'אין חלון אישור');
+    assert.match(await p.$eval('.panel.on', (e) => e.textContent), /יש שינויים שלא נשמרו/);
+    assert.equal((await posts(p)).length, 0, 'אין POST');
+    await click(p, '.st-chgact [data-act="discard"]');
+    await sleep(150);
+    await clickText(p, '#dlg .btn', 'בטל שינויים');
+    await sleep(200);
+    const before = await p.evaluate(() => window.__gets);
+    await clickText(p, '.seg.pill button', 'בדיקות');
+    await sleep(150);
+    await clickText(p, '#dlg .btn', 'מעבר לבדיקות');
+    await sleep(500);
+    assert.deepEqual(await posts(p), [{ url: '/api/admin/db-mode', body: { mode: 'test' } }]);
+    assert.equal(await p.evaluate(() => window.__gets), before + 1, 'טעינה מחדש של ההגדרות');
+    await p.close();
+  });
 } finally {
   await browser.close();
   server.close();
