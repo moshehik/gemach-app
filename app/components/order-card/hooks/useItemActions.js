@@ -885,5 +885,6 @@ export default function useItemActions(oc, ui, { chooseItem } = {}) {
   }), [sessionEditableIds, forceEditableIds, sizeEditDays, priceList, gapRule, oc.order?.eventDate]);
 
   const run = useCallback((name, ...args) => actions[name](...args), [actions]);
-  return { ...actions, rules, run };
+  // אובייקט יציב בין רינדורים (C3): צרכנים שתלויים בזהות שלו (useMemo/useEffect) לא נוצרים מחדש בכל רינדור
+  return useMemo(() => ({ ...actions, rules, run }), [actions, rules, run]);
 }

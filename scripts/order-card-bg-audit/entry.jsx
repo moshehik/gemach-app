@@ -187,7 +187,8 @@ window.fetch = async (url, opts) => {
   const u = String(url);
   if (!u.startsWith('/api/')) return realFetch(url, opts);
   const method = (opts && opts.method) || 'GET';
-  window.__calls.push({ url: u, method, body: opts && opts.body ? String(opts.body).replace(/"(pin|password|managerPin|manualChargeApproverPin|emailApproverPin)":"[^"]*"/g, '"$1":"<redacted>"') : null });
+  const rec = { t0: Date.now(), url: u, method, body: opts && opts.body ? String(opts.body).replace(/"(pin|password|managerPin|manualChargeApproverPin|emailApproverPin)":"[^"]*"/g, '"$1":"<redacted>"') : null };
+  window.__calls.push(rec);
   await new Promise((r) => setTimeout(r, S.hang && u.startsWith('/api/orders/53375') ? 600000 : 20));
   if (u.startsWith('/api/settings')) return j(settings);
   if (u.startsWith('/api/employees')) return j(EMPLOYEES);
@@ -217,7 +218,7 @@ window.fetch = async (url, opts) => {
     { key: '3087|36|assigned', modelName: 'דגם 3087', size: '36', needed: 1, homeCount: null, shortage: 1, severity: 'warning', assigned: true, away: [{ barcode: '30873601', kind: 'out', orderId: 53201, expectedReturn: '2026-10-03T09:00:00.000Z', overdue: true, backBeforeEvent: false }] }] }] });
   if (u.startsWith('/api/rentals/verify-item') && String(JSON.parse(opts.body).barcode).startsWith('999')) return j({ valid: false, error: 'ברקוד 99900001 אינו תקף להשכרה.' }, 400);
   if (u.startsWith('/api/rentals/verify-item')) { const b = JSON.parse(opts.body); return j({ valid: true, dressItem: { barcodePrefix: Number(String(b.barcode).slice(0, -4)), sizeText: String(b.barcode).slice(-4, -2) } }); }
-  if (u.startsWith('/api/rentals/') || u.startsWith('/api/returns/')) return j({ success: true });
+  if (u.startsWith('/api/rentals/') || u.startsWith('/api/returns/')) { if (qs.get('rentdelay')) await new Promise((r) => setTimeout(r, Number(qs.get('rentdelay')))); rec.t1 = Date.now(); return j({ success: true }); } // ?rentdelay=ms: השכרה/החזרה איטיות (בדיקת תור הסריקות)
   if (u.startsWith('/api/orders/53375/items')) {
     const b = JSON.parse(opts.body);
     return j({ ...order, items: [...order.items, { ...b, id: `n${Date.now()}`, isNew: undefined, _localId: undefined, dressItem: { id: 'dn', dressModelId: b.dressModelId, dress: { id: b.dressModelId, name: b.description } }, price: 120, finalPrice: 120 }] });

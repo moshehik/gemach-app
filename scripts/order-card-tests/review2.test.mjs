@@ -163,3 +163,23 @@ test('C2 (סטטי): oc.ensureSaved בבקר ושימושו בהוספה/ערי�
   const pay = strip(read('hooks/usePaymentActions.js'));
   assert.equal((pay.match(/ocRef\.current\.ensureSaved\(/g) || []).length, 3, 'חישוב מחדש + בקשת זיכוי + אישור זיכוי');
 });
+
+// ---------- C3: תור הסריקות יציב בין רינדורים ----------
+test('C3 (סטטי): תור הסריקות נוצר פעם אחת (ref) ו-useItemActions מחזיר אובייקט יציב', () => {
+  const bar = strip(read('parts/OcScanBar.js'));
+  assert.ok(/queueRef\.current = createScanQueue\(/.test(bar) && !/useMemo\(\(\) => createScanQueue/.test(bar));
+  assert.ok(/actionsRef\.current\.scan\(code\)/.test(bar));
+  assert.ok(/return useMemo\(\(\) => \(\{ \.\.\.actions, rules, run \}\), \[actions, rules, run\]\)/.test(strip(read('hooks/useItemActions.js'))));
+});
+test('C3: createScanQueue - סריקה שנייה בזמן שהראשונה רצה ממתינה לה (לפי הסדר)', async () => {
+  const IA2 = await P2('app/components/order-card/hooks/useItemActions.js');
+  const log = []; let release;
+  const gate = new Promise((r) => { release = r; });
+  const q = IA2.createScanQueue(async (c) => { log.push('start:' + c); if (c === 'a') await gate; log.push('end:' + c); });
+  q.push('a'); q.push('b');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(log, ['start:a']);
+  release();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(log, ['start:a', 'end:a', 'start:b', 'end:b']);
+});

@@ -151,6 +151,18 @@ const STAGES = [
       ['R42 סריקה: הודעת "הושכר", השדה התאפס ונשאר בפוקוס (סריקה ברצף)', /הושכר/.test(st.msg) && st.val === '' && st.focus === 'scanIn'],
       ['R42 סריקה שנייה: ברקוד של פריט מושכר → החזרה + "הוחזר"', st2.calls.length === 4 && body(st2.calls[3]).action === 'return' && body(st2.calls[3]).itemId === 'a3' && /הוחזר/.test(st2.msg) && /נאספה/.test(st2.a3)]);
   } },
+  // C3: סריקה שנייה בזמן שהראשונה רצה נכנסת לתור - verify-item של השנייה מתחיל רק אחרי שההשכרה של הראשונה הסתיימה (השכרה איטית 700ms)
+  { name: '51b-scan-queue', real: async () => {
+    await fresh('items', '&rentdelay=700'); await clickAt('#scanIn');
+    await p.type('#scanIn', '45123801'); await p.keyboard.press('Enter'); await sleep(150);
+    await p.type('#scanIn', '27644001'); await p.keyboard.press('Enter'); await sleep(2600);
+    const rc = (await calls()).filter((c) => /rentals\//.test(c.url));
+    const rent1 = rc.find((c) => /toggle/.test(c.url)), verify2 = rc.filter((c) => /verify-item/.test(c.url))[1];
+    const seq = rc.map((c) => (/verify-item/.test(c.url) ? 'verify:' : (JSON.parse(c.body).action + ':')) + (JSON.parse(c.body).barcode || ''));
+    const a = await p.evaluate(() => ({ a1: (document.querySelectorAll('#p-items .irow')[0] || { textContent: '' }).textContent, a3: (document.querySelectorAll('#p-items .irow')[2] || { textContent: '' }).textContent, val: document.getElementById('scanIn').value }));
+    checks.push(['C3: שתי סריקות מהירות רצות בתור: verify→rent של הראשונה ורק אז verify→return של השנייה', seq.join(',') === 'verify:45123801,rent:45123801,verify:27644001,return:' && !!rent1 && !!verify2 && rent1.t1 > 0 && verify2.t0 >= rent1.t1],
+      ['C3: שני הפריטים עודכנו (a1 נלקחה, a3 הוחזרה) והשדה ריק', /נמסרה|נלקחה/.test(a.a1) && /נאספה/.test(a.a3) && a.val === '']);
+  } },
   { name: '52-add-flow', real: async () => {
     await fresh('neve'); await itemsTab(); await clickAt('#p-items [data-act="addtoggle"]'); await clickAt('#addModel'); await p.type('#addModel', '4519'); await sleep(700);
     await clickAt('#p-items .advlist .advo'); await sleep(300); await clickAt('#p-items .addpanel .sizes button:nth-child(3)'); await sleep(900);
