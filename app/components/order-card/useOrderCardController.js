@@ -23,7 +23,8 @@ import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/orderDrafts';
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
-  zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney
+  zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
+  exitGuardActive, withLocalIds, requiredOf, paidOf
 } from './orderCardLogic';
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
@@ -47,7 +48,8 @@ import OcApprovalDialog from './OcApproval';
  * @property {(href?:string)=>Promise<object>} exit
  * @property {()=>Promise<boolean>} reload
  * @property {(order:object, opts?:{savedLocalId?:string})=>void} applyServerOrder
- * @property {(patch:object)=>void} patchOrder   עדכון חלקי אחרי PUT קטן שכבר נשמר (מסונכרן גם ל-snapshot)
+ * @property {(patch:object, o?:{adoptUpdatedAt?:boolean})=>void} patchOrder   סנכרון מקומי אחרי PUT קטן שכבר נשמר (גם ל-snapshot; updatedAt רק עם adoptUpdatedAt)
+ * @property {(fields:object)=>Promise<{ok:boolean,overwrote?:boolean}>} patchServer   PUT קטן (כמו חתימה) עם updatedAt + 409→overwrite, ומסנכרן
  * @property {()=>Promise<boolean>} deleteOrder @property {(o?:{confirmed?:boolean})=>Promise<boolean>} toggleSignature
  * @property {()=>Promise<boolean>} unlock @property {()=>void} relock
  * @property {{pending:object|null, restore:()=>void, discard:()=>Promise<void>}} drafts
@@ -86,7 +88,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
 
   const snapshotRef = useRef(null);
   const initialLockChecked = useRef(false);
-  const flagsRef = useRef({ pendingDebtBlock: false, bankPromptedOnExit: false });
+  const flagsRef = useRef({ pendingDebtBlock: false, bankPromptedOnExit: false, approvedDebtLevel: null });
   const hadUnsavedRef = useRef(false);
   const previewSeqRef = useRef(0);
   const listenersRef = useRef(new Map());
@@ -213,15 +215,18 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   }, [tab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId, dirty]);
 
   // ---------- הגנות יציאה ----------
+  // פעילות כשיש שינויים שלא נשמרו וגם כשהיציאה חסומה בגלל חוב חדש שלא שולם/אושר (A18; סקירה, סעיף 1) - אחרת אפשר היה לעזוב
+  // את הכרטיס דרך התפריט / חזרה בדפדפן / סגירת לשונית בלי אישור החוב
+  const exitGuard = exitGuardActive(dirty, pendingDebtBlock);
   useEffect(() => {
-    if (!dirty) return undefined;
+    if (!exitGuard) return undefined;
     const h = (e) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
-  }, [dirty]);
+  }, [exitGuard]);
 
   useEffect(() => {
-    if (!dirty) return undefined;
+    if (!exitGuard) return undefined;
     const onDocClick = (e) => {
       const anchor = e.target.closest && e.target.closest('a[href]');
       if (!anchor) return;
@@ -235,7 +240,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     };
     document.addEventListener('click', onDocClick, true);
     return () => document.removeEventListener('click', onDocClick, true);
-  }, [dirty]);
+  }, [exitGuard]);
 
   // ---------- טיוטה מקומית (R11, orderDrafts.js ללא שינוי) ----------
   useEffect(() => {
@@ -277,6 +282,8 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     set pendingDebtBlock(v) { setPendingDebtBlock(!!v); },
     get bankPromptedOnExit() { return flagsRef.current.bankPromptedOnExit; },
     set bankPromptedOnExit(v) { flagsRef.current.bankPromptedOnExit = !!v; },
+    get approvedDebtLevel() { return flagsRef.current.approvedDebtLevel; },
+    set approvedDebtLevel(v) { flagsRef.current.approvedDebtLevel = v; },
   }), [setPendingDebtBlock]);
 
   const flows = useMemo(() => {
@@ -307,13 +314,13 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   const edit = useMemo(() => ({
     setField: (f, v) => { markEdited(); setOrder(prev => (prev ? { ...prev, [f]: v } : prev)); },
     setOrder: (val) => { markEdited(); setOrder(prev => (typeof val === 'function' ? val(prev) : val)); },
-    setItems: (val) => { markEdited(); setItems(prev => (typeof val === 'function' ? val(prev) : val)); },
+    setItems: (val) => { markEdited(); setItems(prev => withLocalIds(typeof val === 'function' ? val(prev) : val)); },
     addLocalItem: (partial = {}) => { markEdited(); const _localId = partial._localId || newLocalId(); setItems(prev => [...prev, { ...partial, _localId }]); return _localId; },
     removeLocalItem: (localId) => { markEdited(); setItems(prev => prev.filter(it => it.id || it._localId !== localId)); },
     markItemDeleted: (id, b = true) => { markEdited(); setItems(prev => prev.map(it => ((it.id && it.id === id) || (!it.id && it._localId === id) ? { ...it, isDeleted: !!b } : it))); },
     setAltDone: (id, b) => { markEdited(); setItems(prev => prev.map(it => (it.id === id ? { ...it, alterationDone: !!b } : it))); },
-    setObligations: (val) => { markEdited(); setObligations(prev => (typeof val === 'function' ? val(prev) : val)); },
-    setPayments: (val) => { markEdited(); setPayments(prev => (typeof val === 'function' ? val(prev) : val)); },
+    setObligations: (val) => { markEdited(); setObligations(prev => withLocalIds(typeof val === 'function' ? val(prev) : val)); },
+    setPayments: (val) => { markEdited(); setPayments(prev => withLocalIds(typeof val === 'function' ? val(prev) : val)); },
     setRefunds: (val) => { setRefunds(prev => (typeof val === 'function' ? val(prev) : val)); },
   }), [markEdited]);
 
@@ -370,16 +377,24 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   const relock = useCallback(() => setIsUnlocked(false), []);
 
   const approveDebt = useCallback(async ({ amount } = {}) => {
-    const r = await approve('debt', amount ? `הזמנה ללא תשלום ${fmtMoney(amount)}` : 'מאשר הזמנה ללא תשלום');
+    const st = stateRef.current;
+    const level = amount !== undefined && amount !== null ? Number(amount) : requiredOf(st.obligations || [], st.items || []) - paidOf(st.payments || []);
+    const r = await approve('debt', `הזמנה ללא תשלום ${fmtMoney(level)}`);
     if (!r) return null;
+    // האישור מכסה חוב עד הסכום הזה בלבד; חוב חדש מעליו יבטל את האישור (סקירה, סעיף 2)
+    flagsRef.current.approvedDebtLevel = level;
     setDebtApproved(String(r.employeeId));
     return { employeeId: r.employeeId, employeeName: r.employeeName };
   }, [approve]);
 
-  const patchOrder = useCallback((patch) => {
-    setOrder(prev => (prev ? { ...prev, ...patch } : prev));
+  // סנכרון מקומי אחרי PUT קטן שהקורא כבר שלח. updatedAt מהשרת לא מאומץ אלא אם adoptUpdatedAt (ואז רק כשהקורא שלח updatedAt ולא דרס
+  // התנגשות) - אחרת שינוי של משתמש אחר היה "נבלע" והשמירה הבאה לא הייתה מזהה 409 (סקירה, סעיף 3). עדיף: oc.patchServer(fields).
+  const patchOrder = useCallback((patch, { adoptUpdatedAt = false } = {}) => {
+    const p = { ...patch };
+    if (!adoptUpdatedAt) delete p.updatedAt;
+    setOrder(prev => (prev ? { ...prev, ...p } : prev));
     const snap = snapshotRef.current;
-    if (snap) setSnapshot({ ...snap, order: { ...snap.order, ...patch } });
+    if (snap) setSnapshot({ ...snap, order: { ...snap.order, ...p } });
   }, [setSnapshot]);
 
   const logEvent = useCallback(async (action, meta) => {
@@ -398,7 +413,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     changes, dirty, undoChange, redo, redoCount,
     discardAll: flows.discardAll,
     edit,
-    save: flows.save, exit: flows.exit, reload: flows.reload, applyServerOrder: flows.applyServerOrder, patchOrder,
+    save: flows.save, exit: flows.exit, reload: flows.reload, applyServerOrder: flows.applyServerOrder, patchOrder, patchServer: flows.patchServer,
     deleteOrder: flows.deleteOrder, toggleSignature: flows.toggleSignature, unlock, relock,
     drafts: { pending: pendingDraft, restore: restoreDraft, discard: discardDraft },
     historyVersion, bumpHistory, logEvent, approve, approveDebt,

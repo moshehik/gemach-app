@@ -20,8 +20,8 @@ import {
   buildPutPayload, buildPreviewBody, buildValidateInventoryBody, buildDraftSummary, cancelledItemNow, changesOf,
   formatStockErrors, freshBalanceAfterExit, freshDebtAfterSave, hasRequiredDates, isDebtUnchangedSinceOpen,
   isPartiallyRentedBlocked, mergePendingItems, missingDatesMessage, needsAutoRefundBank, obligationIdentityKey,
-  openedDebtOf, requiredOf, paidOf, submittedLocalIdsOf, validateRepairs, zeoutVerificationNeeded, DELETE_BLOCKED_STATUSES,
-  fmtMoney
+  requiredOf, paidOf, submittedLocalIdsOf, validateRepairs, zeoutVerificationNeeded, DELETE_BLOCKED_STATUSES,
+  fmtMoney, debtApprovalCovers, openedDebtOf
 } from './orderCardLogic';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
@@ -192,12 +192,14 @@ export function createOrderCardFlows(env) {
    * שמירה (A18). intent: 'save' | 'pay' | 'credit' (משנה רק את התשובה לרייל - כל השערים זהים).
    * @returns {Promise<{ok:boolean, order?:object, debtCreated?:number, creditNow?:number, noop?:boolean, cancelled?:boolean, reloaded?:boolean, stock?:boolean, error?:string}>}
    */
-  async function save({ intent = 'save', summaryConfirmed = false, debtApprovedBy: preApproved = null } = {}) {
+  // mode: 'save' (גוף handleSave) | 'exit' (גוף handleExit). force: PUT גם בלי שינויים (יציאה חסומה בחוב - הישן שולח שוב עם
+  // debtApprovedBy). post:false = בלי עיבוד אחרי השמירה (היציאה עושה את שלה). כל השערים זהים בשני המצבים (סקירה, סעיף 7).
+  async function saveCore({ intent = 'save', summaryConfirmed = false, debtApprovedBy: preApproved = null, mode = 'save', force = false, post = true } = {}) {
     const st = env.get(); // צילום מצב ברגע הלחיצה = ה-closure של handleSave בישן
     const currentOrder = st.order;
     if (!currentOrder) { await ui.alert({ title: 'שגיאה', sub: 'שגיאה: נתוני ההזמנה לא טוענו כראוי', kind: 'error' }); return { ok: false }; }
     // R49 "אין שינויים לשמירה": בלי PUT (H32 - שמירה בלי שינוי לא כותבת שורה)
-    if (!changesOf(st.snapshot, st).length) {
+    if (!force && !changesOf(st.snapshot, st).length) {
       ui.toast('info', 'אין שינויים לשמירה', '');
       return { ok: true, noop: true, order: currentOrder };
     }
@@ -227,7 +229,7 @@ export function createOrderCardFlows(env) {
           return { ok: false };
         }
       }
-      const summary = await confirmSummaryIfNeeded(currentOrder, st, summaryConfirmed, intent);
+      const summary = await confirmSummaryIfNeeded(currentOrder, st, summaryConfirmed, mode === 'exit' ? 'exit' : intent);
       if (!summary.proceed) return { ok: false, cancelled: true };
       if (summary.previewObligations) env.set.obligations(summary.previewObligations);
 
@@ -243,7 +245,7 @@ export function createOrderCardFlows(env) {
       }
 
       const submittedLocalIds = submittedLocalIdsOf(st.items);
-      const payload = buildPutPayload(currentOrder, { items: st.items, obligations: st.obligations, payments: st.payments, mode: 'save', debtApprovedBy, managerAuth, orderDateApproval: null });
+      const payload = buildPutPayload(currentOrder, { items: st.items, obligations: st.obligations, payments: st.payments, mode, debtApprovedBy, managerAuth, orderDateApproval: null });
       const r = await putOrder(payload);
       managerAuth = null;
       if (r.reloaded) { ui.toast('info', 'הנתונים נטענו מחדש מהשרת', 'בדקו את הפרטים ושמרו שוב.'); return { ok: false, reloaded: true }; }
@@ -257,6 +259,7 @@ export function createOrderCardFlows(env) {
         return { ok: false, error: msg };
       }
       const updatedOrder = await res.json();
+      if (!post) return { ok: true, order: updatedOrder, submittedLocalIds };
       applySaved(updatedOrder, submittedLocalIds, env.get().items);
       if (needsAutoRefundBank(updatedOrder.refunds || [])) {
         env.set.tab('payments');
@@ -264,7 +267,10 @@ export function createOrderCardFlows(env) {
       }
       const { freshDebtNow, newDebtCreated } = freshDebtAfterSave(updatedOrder, st.openedDebt);
       if (newDebtCreated) {
-        if (!debtApprovedBy) env.flags.pendingDebtBlock = true;
+        // אישור חוב מכסה רק עד הסכום שאושר (סקירה, סעיף 2): חוב חדש מעל הרמה המאושרת מבטל את האישור ונועל את היציאה שוב
+        if (debtApprovedBy) env.flags.approvedDebtLevel = freshDebtNow;
+        const covered = !!debtApprovedBy || (typeof st.debtApproved === 'string' && debtApprovalCovers(env.flags.approvedDebtLevel, freshDebtNow));
+        if (!covered) { if (st.debtApproved) env.setDebtApproved(false); env.flags.pendingDebtBlock = true; }
         env.set.tab('payments');
         const listeners = env.emit('debtCreated', { amount: freshDebtNow, source: 'save', intent });
         if (!listeners) ui.toast('charge', `נוצר חיוב חדש ${fmtMoney(freshDebtNow)}`, 'יש להשלים את הגבייה בלשונית תשלומים.');
@@ -278,6 +284,15 @@ export function createOrderCardFlows(env) {
       env.set.saving(false);
     }
   }
+
+  // שומר מפני פעולה שנייה בזמן שפעולה רצה (לחיצה כפולה / יציאה באמצע שמירה) - סקירה, סעיף 4
+  let inFlight = null;
+  const exclusive = (name, fn, busyValue) => async (...args) => {
+    if (inFlight) return typeof busyValue === 'function' ? busyValue(inFlight) : busyValue;
+    inFlight = name;
+    try { return await fn(...args); } finally { inFlight = null; }
+  };
+  const save = exclusive('save', (opts = {}) => saveCore({ ...opts, mode: 'save', force: false, post: true }), (b) => ({ ok: false, busy: b }));
 
   // = handleOrderUpdate: כל הקוראים כבר סבבו לשרת (פריט/זיכוי/חישוב מחדש/השכרה...) - סנכרון, לא עריכה.
   function applyServerOrder(updatedOrder, { savedLocalId } = {}) {
@@ -300,78 +315,67 @@ export function createOrderCardFlows(env) {
     }
   }
 
-  /**
-   * יציאה (= handleExit). href: יעד מפורש (קישור שיורט); בלי - יעד ההגדרה order_edit_redirect_screen (R44).
-   * @returns {Promise<{left:boolean, blocked?:'debt'|'bank', cancelled?:boolean}>}
-   */
-  async function exit(href) {
+  async function exitCore(href) {
     const st = env.get();
     const order = st.order;
     if (!order) { env.navigate(href || '/orders'); return { left: true }; }
     const fallbackExitHref = resolveOrderRedirectHref(st.settings.orderEditRedirectScreen, { orderId: order.orderId, customerId: order.customerId });
     const go = () => { env.navigate(href || fallbackExitHref); return { left: true }; };
     const dirty = changesOf(st.snapshot, st).length > 0;
-    if (!dirty && !env.flags.pendingDebtBlock) return go();
-    if (dirty && !env.flags.pendingDebtBlock) {
+    const blocked = !!env.flags.pendingDebtBlock;
+    if (!dirty && !blocked) return go();
+    if (dirty && !blocked) {
       const choice = await ui.openDialog(env.dialogs.ExitDialog, { changes: changesOf(st.snapshot, st) });
       if (choice === 'discard') return go();
       if (choice !== 'save') return { left: false, cancelled: true };
     }
-    const summary = await confirmSummaryIfNeeded(order, st, false, 'exit');
-    if (!summary.proceed) return { left: false, cancelled: true };
-    if (summary.previewObligations) env.set.obligations(summary.previewObligations);
-    // A18: אין אישור חוב לפני ה-PUT. אם כבר אושר (oc.approveDebt / שמירה קודמת) - נשלח כמו בישן (DEBT_APPROVED בשרת).
-    const exitDebtApprovedBy = typeof st.debtApproved === 'string' ? st.debtApproved : null;
-
-    env.set.saving(true);
+    // A18: אין אישור חוב לפני ה-PUT. אישור קודם (oc.approveDebt) נשלח כמו בישן - רק אם הוא מכסה את החוב הנוכחי (סקירה, סעיף 2)
+    const approvedId = typeof st.debtApproved === 'string' ? st.debtApproved : null;
+    const clientDebt = requiredOf(st.obligations, st.items) - paidOf(st.payments);
+    const exitDebtApprovedBy = approvedId && debtApprovalCovers(env.flags.approvedDebtLevel, clientDebt) ? approvedId : null;
+    // "שמור וצא" עובר דרך אותה שמירה עם כל השערים (תיקון, תאריכים, מלאי, סיכום, ת״ז, אישור ביטול פריט) - סקירה, סעיף 7;
+    // גוף ה-PUT = גוף handleExit של הישן
+    const r = await saveCore({ intent: 'save', mode: 'exit', debtApprovedBy: exitDebtApprovedBy, force: blocked, post: false });
+    if (r.reloaded) { await ui.alert({ title: 'הנתונים נטענו מחדש', sub: 'הנתונים נטענו מחדש מהשרת. בדוק את ההזמנה ושמור שוב לפני היציאה.' }); return { left: false }; }
+    if (!r.ok) return { left: false, cancelled: !!(r.cancelled || r.stock) };
+    if (r.noop) return go();
+    const updatedOrder = r.order;
+    const { submittedLocalIds } = r;
     try {
-      const submittedLocalIds = submittedLocalIdsOf(st.items);
-      const r = await putOrder(buildPutPayload(order, { items: st.items, obligations: st.obligations, payments: st.payments, mode: 'exit', debtApprovedBy: exitDebtApprovedBy }));
-      if (r.reloaded) { await ui.alert({ title: 'הנתונים נטענו מחדש', sub: 'הנתונים נטענו מחדש מהשרת. בדוק את ההזמנה ושמור שוב לפני היציאה.' }); return { left: false }; }
-      if (r.cancelled || r.stock) return { left: false, cancelled: true };
-      const res = r.res;
-      if (!res.ok) {
-        if (r.handled) return { left: false };
-        const errorData = await jsonOf(res);
-        toastError((errorData && (errorData.message || errorData.error)) || 'שגיאה בשמירה');
-        return { left: false };
+      const { freshDebtNow, creditNow, newDebtCreated } = freshBalanceAfterExit(updatedOrder, st.openedDebt);
+      const covered = !!exitDebtApprovedBy && debtApprovalCovers(env.flags.approvedDebtLevel, freshDebtNow);
+      if (newDebtCreated && !covered) {
+        if (approvedId) env.setDebtApproved(false);
+        applySaved(updatedOrder, submittedLocalIds, env.get().items);
+        env.flags.pendingDebtBlock = true;
+        env.set.tab('payments');
+        const listeners = env.emit('debtCreated', { amount: freshDebtNow, source: 'exit', href: href || fallbackExitHref });
+        if (!listeners) {
+          await ui.alert({ title: 'נוצר חיוב חדש', sub: `השינויים נשמרו, אך נוצר חיוב חדש של ${fmtMoney(freshDebtNow)} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בלשונית תשלומים.` });
+        }
+        return { left: false, blocked: 'debt' };
       }
-      env.set.saving(false);
-      try {
-        const updatedOrder = await res.clone().json();
-        const { freshDebtNow, creditNow, newDebtCreated } = freshBalanceAfterExit(updatedOrder, st.openedDebt);
-        if (newDebtCreated && !exitDebtApprovedBy) {
-          applySaved(updatedOrder, submittedLocalIds, env.get().items);
-          env.flags.pendingDebtBlock = true;
-          env.set.tab('payments');
-          const listeners = env.emit('debtCreated', { amount: freshDebtNow, source: 'exit', href: href || fallbackExitHref });
-          if (!listeners) {
-            await ui.alert({ title: 'נוצר חיוב חדש', sub: `השינויים נשמרו, אך נוצר חיוב חדש של ${fmtMoney(freshDebtNow)} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בלשונית תשלומים.` });
-          }
-          return { left: false, blocked: 'debt' };
-        }
-        if (needsAutoRefundBank(updatedOrder.refunds || []) && !env.flags.bankPromptedOnExit) {
-          env.flags.bankPromptedOnExit = true;
-          applySaved(updatedOrder, submittedLocalIds, env.get().items);
-          env.set.tab('payments');
-          env.emit('autoRefundNeedsBank', { source: 'exit', href: href || fallbackExitHref });
-          return { left: false, blocked: 'bank' };
-        }
-        if (creditNow > 0) {
-          await ui.alert({ title: 'ללקוח מגיע זיכוי', sub: `שים לב: ללקוח מגיע זיכוי של ${fmtMoney(creditNow)} עבור הזמנה זו. בקשת זיכוי ממתינה נרשמה אוטומטית בלשונית תשלומים.` });
-        }
-      } catch (e) {
-        console.error('Failed to check debt/credit balance on exit', e);
+      if (needsAutoRefundBank(updatedOrder.refunds || []) && !env.flags.bankPromptedOnExit) {
+        env.flags.bankPromptedOnExit = true;
+        applySaved(updatedOrder, submittedLocalIds, env.get().items);
+        env.set.tab('payments');
+        env.emit('autoRefundNeedsBank', { source: 'exit', href: href || fallbackExitHref });
+        return { left: false, blocked: 'bank' };
       }
-      env.flags.pendingDebtBlock = false;
-      return go();
-    } catch (err) {
-      toastError('שגיאה בשמירה: ' + (err.message || 'נסה שוב'));
-      return { left: false };
-    } finally {
-      env.set.saving(false);
+      if (creditNow > 0) {
+        await ui.alert({ title: 'ללקוח מגיע זיכוי', sub: `שים לב: ללקוח מגיע זיכוי של ${fmtMoney(creditNow)} עבור הזמנה זו. בקשת זיכוי ממתינה נרשמה אוטומטית בלשונית תשלומים.` });
+      }
+    } catch (e) {
+      console.error('Failed to check debt/credit balance on exit', e);
     }
+    env.flags.pendingDebtBlock = false;
+    return go();
   }
+  /**
+   * יציאה (= handleExit). href: יעד מפורש (קישור שיורט); בלי - יעד ההגדרה order_edit_redirect_screen (R44).
+   * @returns {Promise<{left:boolean, blocked?:'debt'|'bank', cancelled?:boolean, busy?:string}>}
+   */
+  const exit = exclusive('exit', exitCore, (bz) => ({ left: false, busy: bz }));
 
   // "בטל שינויים" (D7). confirmed=true כשהקורא (W5) כבר הציג את חלון האישור.
   async function discardAll({ confirmed = false } = {}) {
@@ -399,7 +403,7 @@ export function createOrderCardFlows(env) {
     return true;
   }
 
-  async function deleteOrder() {
+  async function deleteOrderCore() {
     const st = env.get();
     const order = st.order;
     const status = calculateOrderStatus({ ...order, items: st.items }, { draftsAsDeleted: st.settings.draftsAsDeleted });
@@ -417,6 +421,7 @@ export function createOrderCardFlows(env) {
       await ui.alert({ title: 'לא ניתן לבטל', sub: 'לא ניתן לבטל הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).', kind: 'error' });
       return false;
     }
+    env.set.saving(true);
     try {
       const res = await f(`/api/orders/${order.orderId}`, {
         method: 'DELETE',
@@ -431,7 +436,33 @@ export function createOrderCardFlows(env) {
       console.error(err);
       toastError('שגיאה במחיקת הזמנה');
       return false;
+    } finally {
+      env.set.saving(false);
     }
+  }
+  const deleteOrder = exclusive('delete', deleteOrderCore, false);
+
+  // PUT קטן שכבר "שמור" (כמו אישור החתימה): נשלח עם updatedAt כדי שהשרת יבדוק התנגשות (route.js:426; החריג של חתימה-בלבד מתיר
+  // updatedAt/overwriteConflict, :337). על 409 - שליחה חוזרת עם overwriteConflict, אבל updatedAt הישן נשאר ב-state כדי שהשמירה
+  // הבאה עדיין תזהה את השינוי של המשתמש האחר (סקירה, סעיף 3). בלי 409 - updatedAt מהתשובה נשמר (הפעולה שלנו אינה התנגשות).
+  async function patchServer(fields) {
+    const st = env.get();
+    const send = (extra) => f(`/api/orders/${env.routeId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...fields, updatedAt: st.order?.updatedAt, ...extra })
+    });
+    let res = await send({});
+    let overwrote = false;
+    if (res.status === 409) { overwrote = true; res = await send({ overwriteConflict: true }); }
+    if (!res.ok) return { ok: false, res };
+    const data = await jsonOf(res);
+    const patch = { ...fields, ...(!overwrote && data && data.updatedAt ? { updatedAt: data.updatedAt } : {}) };
+    env.set.order(prev => (prev ? { ...prev, ...patch } : prev));
+    const snap = env.get().snapshot;
+    if (snap) env.setSnapshot({ ...snap, order: { ...snap.order, ...patch } });
+    env.bumpHistory();
+    return { ok: true, overwrote, order: data };
   }
 
   async function toggleSignature({ confirmed = false } = {}) {
@@ -443,19 +474,8 @@ export function createOrderCardFlows(env) {
       if (!ok) return false;
     }
     try {
-      const res = await f(`/api/orders/${env.routeId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hasSignedRegulations: nowYes })
-      });
-      if (!res.ok) { toastError('שגיאה בשמירת אישור החתימה'); return false; }
-      // השרת מחזיר את ההזמנה המעודכנת: updatedAt החדש נשמר כדי שהשמירה הבאה לא תיתקל ב-409 על פעולה שלנו
-      const data = await jsonOf(res);
-      const patch = { hasSignedRegulations: nowYes, ...(data && data.updatedAt ? { updatedAt: data.updatedAt } : {}) };
-      env.set.order(prev => (prev ? { ...prev, ...patch } : prev));
-      const snap = env.get().snapshot;
-      if (snap) env.setSnapshot({ ...snap, order: { ...snap.order, ...patch } });
-      env.bumpHistory();
+      const r = await patchServer({ hasSignedRegulations: nowYes });
+      if (!r.ok) { toastError('שגיאה בשמירת אישור החתימה'); return false; }
       return true;
     } catch (e) {
       console.error(e);
@@ -464,5 +484,5 @@ export function createOrderCardFlows(env) {
     }
   }
 
-  return { requestZeout, reload, putOrder, confirmSummaryIfNeeded, save, applyServerOrder, exit, discardAll, deleteOrder, toggleSignature };
+  return { requestZeout, reload, putOrder, confirmSummaryIfNeeded, save, applyServerOrder, exit, discardAll, deleteOrder, toggleSignature, patchServer, isBusy: () => inFlight };
 }

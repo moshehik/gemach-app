@@ -198,3 +198,54 @@ test('obligationIdentityKey כמו הישן', () => {
   assert.equal(L.obligationIdentityKey(obligation('x', { orderItemId: 'i1', description: 'תיקון צוואר 2' })), 'item:i1:תיקון צוואר');
   assert.equal(L.obligationIdentityKey({ description: 'משלוח' }), 'desc:משלוח');
 });
+
+// ===================== תיקוני הסקירה =====================
+test('סקירה 8: נעילה לפי היום בישראל - מקרה שמבדיל מהלוגיקה המקומית (now 22:30Z, אירוע 00:00Z של אותו יום UTC)', () => {
+  // 2026-10-06T22:30Z = 7.10 01:30 בישראל; אירוע 2026-10-06T00:00Z = 6.10 בישראל → עבר. בלוגיקה מקומית ב-UTC שני הרגעים ב-6.10 → "לא עבר".
+  assert.equal(L.isPastEventDate('2026-10-06T00:00:00.000Z', new Date('2026-10-06T22:30:00.000Z')), true);
+  const localLogic = (ev, now) => new Date(ev).setHours(0, 0, 0, 0) < new Date(now).setHours(0, 0, 0, 0);
+  if (process.env.TZ === 'UTC') assert.equal(localLogic('2026-10-06T00:00:00.000Z', '2026-10-06T22:30:00.000Z'), false, 'המקרה באמת מבדיל');
+});
+
+test('סקירה 9: סכומים כמחרוזת נספרים כמספרים (requiredOf / paidOf / openedDebtOf / computeTotals)', () => {
+  const ob = [{ amount: '150' }, { amount: '50.5' }, { amount: '20', isDeleted: true }];
+  const pay = [{ amount: '100' }, { amount: '1', isDeleted: true }];
+  assert.equal(L.requiredOf(ob, []), 200.5);
+  assert.equal(L.paidOf(pay), 100);
+  assert.equal(L.openedDebtOf(ob, pay), 100.5);
+  assert.equal(L.computeTotals({ items: [], obligations: ob, payments: pay }).balance, 100.5);
+});
+
+test('סקירה 5: עריכה של חיוב אוטומטי שמור ושורת פריט בלי id/_localId הן שינוי (אין "אין שינויים" ששומט עריכה)', () => {
+  const st = baseState();
+  const snap = snapOf(st);
+  const cur = { ...st, obligations: [{ ...st.obligations[0], isDeleted: true }, st.obligations[1]] };
+  assert.deepEqual(keys(L.changesOf(snap, cur)), ['obl:ob1']);
+  const cur2 = { ...st, items: [...st.items, { dressModelId: 'm', sizeText: '40', price: 90 }] };
+  assert.deepEqual(keys(L.changesOf(snap, cur2)), ['item:add:n2']);
+  // שורות preview עדיין אינן שינוי
+  const cur3 = { ...st, obligations: [...st.obligations.map(o => ({ ...o, isPreview: true, id: undefined }))] };
+  assert.deepEqual(L.changesOf(snap, cur3), []);
+  // _localId נוסף במקום אחד (edit API) לשורה חדשה בלי מזהה
+  const withIds = L.withLocalIds([{ id: 'x' }, { amount: 3 }, { _localId: 'k' }, { isPreview: true }]);
+  assert.ok(withIds[1]._localId && !withIds[0]._localId && withIds[2]._localId === 'k' && !withIds[3]._localId);
+});
+
+test('סקירה 6: ביטול והחזרה של חיוב ידני חדש בלי id/_localId אחרי חיובים אוטומטיים (מפתח לפי האינדקס ברשימה המלאה)', () => {
+  const st = baseState();
+  const snap = snapOf(st);
+  const cur = { ...st, obligations: [...st.obligations, { amount: 30, isManual: true, description: 'ידני' }] };
+  const cs = L.changesOf(snap, cur);
+  assert.deepEqual(keys(cs), ['obl:n2']);
+  const reverted = L.revertChange(cur, snap, 'obl:n2');
+  assert.deepEqual(L.changesOf(snap, reverted), [], 'הביטול באמת מסיר את החיוב');
+  assert.equal(reverted.obligations.length, 2);
+  const cap = L.captureChange(cur, 'obl:n2');
+  assert.deepEqual(keys(L.changesOf(snap, L.applyCaptured(reverted, cap))), ['obl:n2']);
+});
+
+test('סקירה 2: debtApprovalCovers - רמה חסרה לא מכסה, עד הרמה מכסה', () => {
+  assert.equal(L.debtApprovalCovers(null, 10), false);
+  assert.equal(L.debtApprovalCovers(100, 100), true);
+  assert.equal(L.debtApprovalCovers(100, 100.5), false);
+});
