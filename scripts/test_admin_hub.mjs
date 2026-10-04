@@ -156,7 +156,8 @@ t('קוד הלקוח לא מייבא (גם לא בעקיפין) את הקטלו�
   };
   const FORBIDDEN_FILES = ['lib/adminHubCatalog.js', 'lib/auth.js', 'lib/authTokens.js', 'lib/settingsCache.js', 'app/lib/prisma.js', 'lib/prisma.js', 'lib/permissions.js'];
   const FORBIDDEN_SPECS = [/^next\/headers$/, /^@prisma\/client/, /^server-only$/, /^node:/];
-  const entries = ['app/components/admin-hub/AdminHubSwitch.js', 'app/components/admin-hub/AdminHubPage.js'];
+  // + המעטפת החדשה: פאנל "ניהול" המקוצר מקבל מהשרת רק את הכלים המותרים (app/layout.js), לעולם לא את הקטלוג
+  const entries = ['app/components/admin-hub/AdminHubSwitch.js', 'app/components/admin-hub/AdminHubPage.js', 'app/components/menu/MenuA5Shell.js', 'app/components/menu/useAdminRecents.js'];
   for (const e of entries) assert.ok(/^\s*'use client'/.test(src(e)), `${e} אמור להיות 'use client'`);
   const problems = [];
   for (const entry of entries) {

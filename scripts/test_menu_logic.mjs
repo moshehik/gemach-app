@@ -1110,4 +1110,21 @@ t('adminRecents: סריאליזציה סלחנית; מפתח לכל עובד; א
   assert.deepEqual(readAdminRecents('a'), [], 'ב-node אין localStorage');
 });
 
+t('חיווט: app/layout.js מזריק רק כלים מותרים (selectHub); המעטפת מרכיבה את הפאנל מהאחסון ומנקה בהתנתקות; המגירה משתמשת באותו עץ', () => {
+  const src = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const layout = src('../app/layout.js');
+  assert.ok(/adminTools: selectHub\(\s*accessForRole\(emp \? emp\.roleId : null, \{ logged: !!\(isAuthenticated && emp\), requireLogin \}\)/.test(layout), 'layout: adminTools');
+  assert.ok(layout.includes("'nedarim_plus_enabled'"), 'layout: ההגדרה של נדרים פלוס נטענת');
+  assert.ok(/\.value !== 'false' \},\s*\)\.tools/.test(layout), 'layout: כמו app/admin/page.js — רק "false" מפורש מכבה');
+  const shell = src('../app/components/menu/MenuA5Shell.js');
+  assert.ok(shell.includes('const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);'));
+  assert.ok(/nav\.clearOnLogout\(\);\s*clearAdminRecents\(\);/.test(shell), 'ניקוי בהתנתקות');
+  assert.ok(shell.includes('  menuTree: serverTree,'), 'העץ מהשרת לא בשימוש ישיר');
+  const hook = src('../app/components/menu/useAdminRecents.js');
+  assert.ok(/^'use client';/.test(hook));
+  assert.ok(hook.includes('matchAdminPoolItem(tree, pathname)') && hook.includes('applyAdminRecents(tree, adminRecentHrefs(list))'));
+  assert.ok(!/localStorage/.test(hook.replace(/\/\/[^\n]*/g, '')), 'גישה לאחסון רק דרך lib/menu/adminRecents.js (עטוף ב-try)');
+  const lib = src('../lib/menu/adminRecents.js');
+  assert.ok(!/(^|[^.])localStorage\.(get|set|remove)Item/.test(lib), 'בלי גישה ישירה שלא דרך st');
+});
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

@@ -37,6 +37,7 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
 import { buildMenuTree, NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
+import { selectHub, accessForRole } from '@/lib/adminHubCatalog';
 import versionData from './version.json';
 
 export default async function RootLayout({ children }) {
@@ -79,7 +80,7 @@ export default async function RootLayout({ children }) {
   // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
   // גדול ולכן נשלח ללקוח רק כ-!!value (ר' menuTree למטה), לעולם לא הערך עצמו.
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', 'nedarim_plus_enabled', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -320,6 +321,13 @@ export default async function RootLayout({ children }) {
       homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
       // דפים שהיו "בקרוב" בעיצוב ונבנו בפועל (lib/menu/buildMenuTree.js, notBuilt): בדיקת מלאי - /stock-check (2.10.2026).
       available: { 'order-stock': true },
+      // פאנל "ניהול" המקוצר (4.10.2026): כלי מסך /admin שמותרים למשתמש הזה — אותו סינון כמו app/admin/page.js (selectHub;
+      // accessForRole = אותם כללים כמו checkPageAccess: מחובר לפי roleId, אורח רק כשההתחברות לא חובה), מהנתונים שכבר נטענו
+      // למעלה (בלי שאילתה). רק הכלים המותרים נשלחים ללקוח (מאגר הלשונית), לעולם לא הקטלוג המלא. ר' docs/admin-menu-short-2026-10-04.md.
+      adminTools: selectHub(
+        accessForRole(emp ? emp.roleId : null, { logged: !!(isAuthenticated && emp), requireLogin }),
+        { nedarimEnabled: settings.find((s) => s.key === 'nedarim_plus_enabled')?.value !== 'false' },
+      ).tools,
     })
     : null;
 
