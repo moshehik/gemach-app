@@ -198,7 +198,8 @@ t('דף הבית: "#" ו-"$" מחווטים (actions + saved), פעולות מנ
   assert.ok(/row\.type === 'action'[\s\S]{0,260}actionTarget\(row\.action\)[\s\S]{0,200}router\.push\(tg\.url\)[\s\S]{0,60}runQuick\(tg\.run\)/.test(home));
   assert.ok(/row\.type === 'saved'\) \{ setQ\(row\.query\); runSearch\(row\.query\)/.test(home), 'חיפוש שמור רץ בלחיצה');
   assert.ok(/const runQuick = useCallback\(\(kind\) => \{[\s\S]{0,200}emptyAdv\('orders'\), flags: \[kind\][\s\S]{0,200}applyAdv\(false, a\)/.test(home), 'חובות / טיוטות = חיפוש מתקדם בתחום הזמנות');
-  assert.ok(/if \(dir\.run\) \{[\s\S]{0,260}runQuickRef\.current\(dir\.run\)[\s\S]{0,200}replaceUrl/.test(home), '/?run= מופעל ונמחק מהכתובת');
+  assert.ok(/if \(dir\.run\) \{[\s\S]{0,260}setPendingRun\(dir\.run\)[\s\S]{0,200}replaceUrl/.test(home), '/?run= מופעל ונמחק מהכתובת');
+  assert.ok(/useEffect\(\(\) => \{ if \(!pendingRun\) return; setPendingRun\(null\); runQuick\(pendingRun\)/.test(home) && home.indexOf('runQuick(pendingRun)') > home.indexOf('const runQuick = useCallback'), 'ההרצה באפקט שאחרי runQuick (לא ref שמוקצה אחרי אפקט הפתיחה); בדיקת התנהגות: scripts/home-bg-audit/test_run_directive.mjs');
   assert.ok(/if \(!ai\) rememberSearch\(query\)/.test(home), 'החיפוש האחרון + היסטוריה נרשמים בהרצת חיפוש רגיל (לא חכם)');
   assert.ok(!/fetch\(['"`]\/api\/(saved-searches|search-history)/.test(home), 'HomeA5 לא קורא לנתיבים ישירות');
 });

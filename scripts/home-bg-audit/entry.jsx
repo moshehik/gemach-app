@@ -21,6 +21,7 @@ const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'Cont
 const realFetch = window.fetch.bind(window);
 window.fetch = async (url, opts) => {
   const u = String(url);
+  (window.__reqs = window.__reqs || []).push(u); // נקרא על ידי test_run_directive.mjs
   await new Promise((r) => setTimeout(r, window.__delay || 30));
   if (u.includes('/api/a5/boot')) return j(BOOT);
   if (u.includes('/api/a5/version')) return j({ version: '1.2.3', date: '2026-10-02' });

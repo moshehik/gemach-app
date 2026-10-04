@@ -114,7 +114,7 @@ export default function HomeA5() {
   const seq = useRef(0);
   const toastTimer = useRef(null);
   const inputRef = useRef(null);
-  const runQuickRef = useRef(null); // runQuick (מוגדר אחרי applyAdv); applyDirective קורא לו דרך ה-ref
+  const [pendingRun, setPendingRun] = useState(null); // /?run=: ההרצה מתבצעת באפקט שמוגדר אחרי runQuick (באפקט הפתיחה runQuick עוד לא קיים)
   const lastQuery = useRef({ text: '', ai: false });
   const advFailed = useRef(false); // כרטיס השגיאה נולד מחיפוש מתקדם — "לנסות שוב" מריץ אותו שוב (ולא את החיפוש הכללי האחרון)
 
@@ -291,7 +291,7 @@ export default function HomeA5() {
     }
     if (dir.run) {
       // /?run=debts|unsaved: פעולת '#' מחיפוש התפריט - תצוגת תוצאות של הזמנות (חובות / טיוטות בעמדה). הפרמטר נמחק מיד מהכתובת
-      if (runQuickRef.current) runQuickRef.current(dir.run);
+      setPendingRun(dir.run);
       if (params) { params.delete('run'); replaceUrl(params.toString()); } else replaceUrl('');
       return;
     }
@@ -470,7 +470,7 @@ export default function HomeA5() {
     setAiMode(false);
     applyAdv(false, a);
   }, [applyAdv]);
-  useEffect(() => { runQuickRef.current = runQuick; });
+  useEffect(() => { if (!pendingRun) return; setPendingRun(null); runQuick(pendingRun); }, [pendingRun, runQuick]);
 
   /* ---------- ייצוא / הדפסה / הורדה ---------- */
   // sheet = { title, sections?, query, queryLabel, scopeChip } — תיאור דף ההדפסה / ה-PDF המעוצב (searchPdf.js). בלי sections:
