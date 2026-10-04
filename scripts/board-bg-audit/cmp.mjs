@@ -1,3 +1,5 @@
+// הערה (5.10.2026): הדמו לוח-חודשי.html נבנה עכשיו מהרינדור האמיתי (build-demo.mjs), ולכן השוואת הלוח מולו היא בדיקת עקביות הדמו; ההשוואה
+// בעלת הערך מול עיצוב חיצוני היא שורת החיפוש + המסנן מול #hfBar של כרטיס-הזמנה.html.
 // השוואת computed style: הלוח האמיתי (API מדומה) מול העיצוב המאושר (לוח-חודשי.html), ושורת החיפוש + מסנן השלבים מול חיפוש
 // ההיסטוריה בכרטיס ההזמנה (כרטיס-הזמנה.html #hfBar - "בדיוק בסגנון שיש בהיסטוריה", S01). לכל זוג רכיבים (עיצוב ↔ דף) מודפסים
 // רק המאפיינים השונים. שימוש: node cmp.mjs [רוחב=1280]   (אחרי build.mjs). יוצא 1 אם יש הבדל שאינו ברשימת ההבדלים המוסברים.
@@ -86,7 +88,7 @@ const clean = async () => { await p.evaluate(() => { document.querySelectorAll('
 async function demoBoard() {
   await p.goto(DEMO, { waitUntil: 'load' }); await sleep(1800); await clean();
   // בעיצוב בנייד הלוח עובר לרשימה; בהשוואה - תמיד לוח
-  await p.evaluate(() => { const g = document.querySelector('#mvsw .vopt[data-view="grid"]'); if (g) g.click(); });
+  await p.evaluate(() => { const g = document.querySelectorAll('#mvsw .vopt')[0]; if (g) g.click(); });
   await sleep(400); await p.mouse.move(2, 2);
   return dump(BOARD, 'demo')(p);
 }

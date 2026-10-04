@@ -38,7 +38,7 @@ const html = `<!doctype html>
 // לחיצה על יום (גם Ctrl / אמצעי) = הלו"ז היומי של הדמו, עם התאריך אחרי #
 (function () {
   var SCHEDULE = ${JSON.stringify(schedule)};
-  function go(u) { var m = /date=(\d{4}-\d{2}-\d{2})/.exec(u); location.href = SCHEDULE + (m ? '#' + m[1] : ''); }
+  function go(u) { var m = /date=([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(u); location.href = SCHEDULE + (m ? '#' + m[1] : ''); }
   window.__DEMO_GO = go;
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[href^="/schedule"]');
