@@ -176,7 +176,9 @@ body.hide-global-nav .app-shell > .sidebar,
 body.hide-global-nav .main > .topbar,
 body.hide-global-nav .sidebar-backdrop,
 body.hide-global-nav .ai-widget-fab,
-body.hide-global-nav .ai-widget-panel {
+body.hide-global-nav .ai-widget-panel,
+body.hide-global-nav .gm-er-launch,
+body.hide-global-nav .gm-ds.gm-er {
   display: none !important;
 }
 
