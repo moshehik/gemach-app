@@ -74,7 +74,9 @@
 .gm-ds.gm-cc .cc-mt24.row{gap:14px}
 
 /* כוכבית שדה חובה (customer_required_fields) */
-.gm-ds.gm-cc .cc-req{color:#2f4a6b;font-weight:500}
+/* CC-O5 (owner 4.10.2026): red star. The palette has no plain red: --gm-red aliases dark gold, so the only red hue is
+   --gm-rose-700 (#a8442a, colour 22) - the same hue the palette uses for error/warning (amber/plum aliases). */
+.gm-ds.gm-cc .cc-req{color:var(--gm-rose-700);font-weight:500}
 .gm-ds.gm-cc .field.cc-bad .inpw{border-color:var(--gm-rose-500)}
 
 /* העתקת מייל (הבעלים cp): לחצן נקי בתוך השורה, בלי רקע ובלי מסגרת, שצף ליד ה-X רק בריחוף / מיקוד על השדה */
