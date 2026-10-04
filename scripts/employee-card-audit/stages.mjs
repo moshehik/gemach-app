@@ -74,7 +74,7 @@ const hover = async (sel) => {
 };
 const away = async () => { await p.mouse.move(2, 400); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await sleep(250); };
 async function fresh(scn) {
-  await p.goto(D ? base : base + (scn ? `?scn=${scn}` : ''), { waitUntil: 'load' });
+  await p.goto(D ? base : base + (scn ? `?scn=${scn}` : ''), { waitUntil: 'load', timeout: 120000 });
   await sleep(1500);
   if (D) {
     await p.evaluate(() => { document.body.classList.add('dlg-dark'); });
