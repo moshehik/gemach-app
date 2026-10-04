@@ -4,7 +4,7 @@
 // הרצה: node scripts/test_employee_card_history.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildHistoryRows } from '../lib/employeeCardHistory.js';
+import { buildHistoryRows, stripProfileImages } from '../lib/employeeCardHistory.js';
 
 let passed = 0;
 async function t(name, fn) {
@@ -206,6 +206,56 @@ await t('תאריך Date מומר ל-ISO ותאריך לא תקין לא זור�
   assert.equal(one({ createdAt: new Date('2026-10-02T10:00:00Z') }).createdAt, '2026-10-02T10:00:00.000Z');
   assert.doesNotThrow(() => one({ createdAt: 'garbage' }));
   assert.equal(one({ createdAt: null }).createdAt, null);
+});
+
+console.log('שעות משמרת, תמונת פרופיל ושדות טכניים');
+await t('entryTime/exitTime ISO -> שעה בלבד בשעון ישראל (בלי תאריך ובלי ISO גולמי), גם from/to וגם ערך בודד', () => {
+  const r = one({ entityType: 'Shift', changesJson: json({ entryTime: { from: '2026-10-01T05:00:00.000Z', to: '2026-10-01T05:30:00.000Z' }, exitTime: '2026-10-01T14:15:00.000Z' }) });
+  assert.equal(r.changes[0].from, '08:00');
+  assert.equal(r.changes[0].to, '08:30');
+  assert.equal(r.changes[1].to, '17:15');
+  assert.ok(r.changes.every((c) => !/T\d\d:|20\d\d-/.test(`${c.from}${c.to}`)));
+  // חורף: UTC+2
+  const w = one({ entityType: 'Shift', changesJson: json({ entryTime: '2026-12-01T05:00:00.000Z' }) });
+  assert.equal(w.changes[0].to, '07:00');
+});
+await t('hourlyWageSnapshot / travelExpensesSnapshot עם תוויות עבריות, createdAt מוסתר', () => {
+  const r = one({ entityType: 'Shift', action: 'CREATE', changesJson: json({ to: { id: 's', hourlyWageSnapshot: 40, travelExpensesSnapshot: 12, createdAt: '2026-10-01T05:00:00.000Z', date: '2026-10-01' } }) });
+  assert.deepEqual(r.changes.map((c) => c.key), ['hourlyWageSnapshot', 'travelExpensesSnapshot', 'date']);
+  assert.ok(r.changes.every((c) => /[א-ת]/.test(c.label)), 'כל התוויות בעברית');
+  const flat = one({ entityType: 'Shift', changesJson: json({ createdAt: { from: 'a', to: 'b' } }) });
+  assert.equal(flat.changes.length, 0);
+});
+const BLOB = 'data:image/png;base64,' + 'A'.repeat(5000);
+await t('profileImage data URL מוחלף בתווית (from/to, ערך בודד, תמונת מצב) - ה-blob לא מופיע בשורות', () => {
+  const a = one({ changesJson: json({ profileImage: { from: null, to: BLOB } }) });
+  assert.equal(a.changes[0].to, 'תמונת פרופיל עודכנה');
+  assert.equal(a.changes[0].kind, 'value');
+  const b = one({ action: 'CREATE', changesJson: json({ to: { profileImage: BLOB, firstName: 'דנה' } }) });
+  assert.ok(b.changes.some((c) => c.key === 'profileImage' && c.to === 'תמונת פרופיל עודכנה'));
+  const c = one({ changesJson: json({ profileImage: { from: BLOB, to: BLOB + 'B' } }) });
+  assert.equal(c.changes[0].to, 'תמונת פרופיל עודכנה');
+  const d = one({ changesJson: json({ profileImage: { from: BLOB, to: null } }) });
+  assert.equal(d.changes[0].to, 'תמונת פרופיל הוסרה');
+  for (const r of [a, b, c, d]) assert.ok(!JSON.stringify(r).includes('base64'));
+});
+await t('stripProfileImages: מסיר blob מ-changesJson (כל הצורות), לא משנה שורות אחרות ולא את הקלט', () => {
+  const logs = [
+    log({ id: 'a', changesJson: json({ profileImage: { from: BLOB, to: BLOB } }) }),
+    log({ id: 'b', changesJson: json({ to: { profileImage: BLOB, city: 'לוד' } }) }),
+    log({ id: 'c', changesJson: json({ city: { from: 'x', to: 'data:fake' } }) }),
+    log({ id: 'd', changesJson: 'לא JSON profileImage data:' }),
+  ];
+  const before = json(logs);
+  const out = stripProfileImages(logs);
+  assert.equal(json(logs), before, 'הקלט לא שונה');
+  assert.ok(!out[0].changesJson.includes('base64') && !out[1].changesJson.includes('base64'));
+  assert.ok(out[1].changesJson.includes('לוד'));
+  assert.equal(out[2], logs[2]);
+  assert.equal(out[3], logs[3]);
+  const rows = buildHistoryRows(out);
+  assert.equal(rows[0].changes.length, 0, 'from===to אחרי הסרה: אין שינוי');
+  assert.equal(rows[1].changes.find((c) => c.key === 'profileImage').to, 'תמונת פרופיל עודכנה');
 });
 
 console.log('בדיקות מקור לראוט');

@@ -2,6 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { attachEmployeeNames } from '@/app/lib/auditLog';
+import { stripProfileImages } from '@/lib/employeeCardHistory';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -83,7 +84,13 @@ export async function GET(request, { params }) {
       }
     }
 
-    const historyWithNames = await attachEmployeeNames(history);
+    let historyWithNames = await attachEmployeeNames(history);
+
+    // ההרחבה בלבד: תמונת פרופיל נשמרת ביומן כ-data URL של כמה MB - הכרטיס החדש לא צריך אותה (מציג תווית),
+    // ולכן מסירים אותה לפני השליחה. מסלול ברירת המחדל (הטאב הישן) נשאר זהה בייט-לבייט.
+    if (new URL(request.url).searchParams.get('extended') === '1') {
+      historyWithNames = stripProfileImages(historyWithNames);
+    }
 
     return NextResponse.json(historyWithNames);
   } catch (error) {

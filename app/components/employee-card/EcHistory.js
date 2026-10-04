@@ -12,12 +12,16 @@ import { Ic } from './EcUi';
 
 const ISO_DAY = /^(\d{4}-\d{2}-\d{2})(?:$|T)/;
 const DATE_KEYS = new Set(['date', 'joinDate']);
+const TIME_KEYS = new Set(['entryTime', 'exitTime']);
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T/;
 
 function fmtChangeValue(key, v) {
   if (typeof v === 'string' && DATE_KEYS.has(key)) {
     const m = ISO_DAY.exec(v);
     if (m) return hDayYear(DATE_KEYS.has(key) && v.length > 10 ? (israelDayKey(v) || m[1]) : m[1]);
   }
+  // הגנה: חותמת ISO גולמית של כניסה/יציאה מוצגת כשעה בלבד בשעון ישראל (ה-lib כבר מעצב; זו רשת ביטחון)
+  if (typeof v === 'string' && TIME_KEYS.has(key) && ISO_STAMP.test(v)) return israelTime(v) || v;
   return v === null || v === undefined || v === '' ? '-' : String(v);
 }
 
