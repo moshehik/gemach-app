@@ -1,10 +1,5 @@
 # System Changes Log
 
-## 2026-10-04: New order - "שומר..." that never ends and unwanted manager approval on cash (both gemachs, found at Neve Yaakov)
-
-- **"אישור תשלום" במזומן כבר לא מבקש אישור מנהל.** The 4.10 evening release added a manager-approval prompt to the "אישור תשלום / פיצול" button, so regular cashiers (role 4) at Neve Yaakov could not record cash. Removed: the approval is only for "יציאה באישור מנהל" (exit with debt), as before. Setting `PAYMENT_APPROVAL_LEVEL` is unchanged on both gemachs.
-- **השמירה בהזמנה חדשה לא נשארת מסתובבת.** Neve Yaakov's "after saving go to" setting is "הזמנה חדשה" (/orders/new) - the page the cashier is already on; the soft navigation to the same URL left the form and the "שומר..." button as they were. Now that case reloads the page (a clean new order). Files: `app/orders/new/page.js`, `lib/newOrderPayments.js`, `scripts/test_new_order_money.mjs`.
-
 ## 2026-10-04: Quick return by barcode - explained failures, barcode search in the quick search and home, quick return in the new design (both gemachs)
 
 - **החזרה מהירה בברקוד: כשאין פריט מושכר, המערכת מסבירה למה במקום "לא הצלחנו למצוא את ההזמנה".** Reported by Neve Yaakov (report df035847). A barcode that was already returned, never taken, or unknown now gets a clear reason (e.g. "כבר סומנה כמוחזרת בהזמנה 52963 ב-..."), and the search opens with the barcode so the order is visible. The barcode is cleaned of invisible characters before lookup, and the server logs what it received if a lookup still fails.

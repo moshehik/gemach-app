@@ -1,0 +1,4 @@
+dist/
+out/
+out-*.txt
+cmp-out.txt

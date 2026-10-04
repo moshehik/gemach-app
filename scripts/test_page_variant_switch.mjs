@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   UI_SCREEN_REGISTRY, UI_SCREEN_IDS, NO_LEGACY_PAGES, EXTERNAL_VARIANT_SWITCHES, NEW_DESIGN_DEFAULT_ROLE_IDS,
-  getScreenEntry, hasBothVersions, selfSwitchableScreenIds, roleDefaultVariant, matchRoute, switchTargetFor,
+  getScreenEntry, hasBothVersions, selfSwitchableScreenIds, roleDefaultVariant, matchRoute, screenMatchesPath, switchTargetFor,
 } from '../lib/uiVariantScreens.js';
 import { UI_SCREENS, UI_VARIANT_SETTING_KEYS, UI_VARIANT_SETTING_KEY_LIST, resolveUiVariant, resolveUiVariants, sanitizeUiVariants } from '../lib/uiVariant.js';
 import {
@@ -36,7 +36,7 @@ const BOTH = ['shell', 'home', ...NEW_SCREENS];
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
   assert.equal(new Set(UI_SCREEN_IDS).size, UI_SCREEN_IDS.length);
-  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', ...NEW_SCREENS]);
+  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', ...NEW_SCREENS]);
   for (const e of UI_SCREEN_REGISTRY) {
     assert.match(e.id, /^[a-z][a-z_]{1,30}$/, e.id);
     assert.ok(typeof e.label === 'string' && /[֐-׿]/.test(e.label), `${e.id}: label בעברית`);
@@ -51,7 +51,7 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
 });
 await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board; order_card / customer_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['order_card', 'customer_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['order_card', 'customer_card', 'employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
 });
@@ -68,6 +68,24 @@ await t('תפקיד ברירת המחדל החדשה = DEVELOPER_ONLY_ROLES ב-l
   const auth = read('lib/roles.js'); // הקבועים עברו ל-lib/roles.js (employee-card fix), lib/auth.js מייצא אותם מחדש
   assert.deepEqual([...NEW_DESIGN_DEFAULT_ROLE_IDS], JSON.parse(/DEVELOPER_ONLY_ROLES = (\[[^\]]*\])/.exec(auth)[1]));
   assert.deepEqual([...SELF_SWITCH_ROLE_IDS], JSON.parse(/HEAD_MANAGEMENT_ROLES = (\[[^\]]*\])/.exec(auth)[1]));
+});
+await t('employee_card: /employees/:id לא תופס את /employees/attendance ו-/employees/report (excludeRoutes), כן את מזהה העובד ו-/employees/new', () => {
+  assert.ok(matchRoute('/employees/:id', '/employees/attendance'), 'matchRoute הגולמי תופס כל מקטע - לכן יש excludeRoutes');
+  assert.equal(screenMatchesPath('employee_card', '/employees/attendance'), false);
+  assert.equal(screenMatchesPath('employee_card', '/employees/report/'), false);
+  assert.equal(screenMatchesPath('employee_card', '/employees/abc-123'), true);
+  assert.equal(screenMatchesPath('employee_card', '/employees/new?x=1'), true);
+  assert.equal(screenMatchesPath('employee_card', '/employees'), false);
+  assert.equal(screenMatchesPath('employee_card', '/employees/abc/attendance'), false);
+  assert.equal(screenMatchesPath('attendance', '/employees/attendance'), true);
+  assert.equal(screenMatchesPath('shell', '/anything'), true);
+  assert.equal(screenMatchesPath('error_report', '/x'), false);
+  assert.equal(screenMatchesPath('nope', '/x'), false);
+  const e = getScreenEntry('employee_card');
+  assert.equal(e.newExists, false); assert.equal(e.switchTargets, null);
+  assert.equal(roleDefaultVariant('employee_card', 2), 'legacy', 'מתכנת לא מקבל את הכרטיס החדש כברירת מחדל עד שהבעלים מאשר');
+  assert.equal(resolveUiVariant('employee_card', { roleId: 0, settings: rows({ ui_variant_employee_card: 'a5' }) }), 'a5', 'הגדרת ארגון עדיין מדליקה');
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'employee_card', pathname: '/employees/abc' }), false, 'newExists:false -> אין אייקון');
 });
 await t('matchRoute / switchTargetFor', () => {
   assert.ok(matchRoute('/orders/:id', '/orders/12')); assert.ok(matchRoute('/orders/:id', '/orders/12/?x=1'));

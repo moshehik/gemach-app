@@ -6,7 +6,7 @@ import { DEFAULT_UI_VARIANT, isForcedLegacyPath, isUiScreen } from '@/lib/uiVari
 import { shouldShowVariantToggle } from '@/lib/uiVariantSelfSwitch';
 
 // גרסאות "ישן / A5" לכל מסך, כפי ש-app/layout.js הכריע בשרת (lib/uiVariant.js):
-// { shell, home, order_card, customer_card } עם 'legacy' | 'a5'.
+// { shell, home, order_card, customer_card, employee_card } עם 'legacy' | 'a5'.
 // מחוץ ל-Provider (למשל בדף בדיקה) כל מסך הוא 'legacy'.
 //
 // שימוש ברכיב לקוח:

@@ -42,7 +42,7 @@ await ta('isManagementRole: 0 ו-2 בלבד (כמו isHeadManagement ב-layout);
 await ta('מסכים מותרים: shell, home + המסכים של 4.10.2026 (מהרשומה)', () => {
   assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board']);
   for (const s of ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board']) assert.equal(isSelfSwitchScreen(s), true);
-  for (const s of ['order_card', 'customer_card', '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
+  for (const s of ['order_card', 'customer_card', 'employee_card', '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
 });
 await ta('describeSelfSwitch: הנהלה / מתכנת רואים את הסעיף; מנהל סניף, עובד, אורח לא', () => {
   assert.deepEqual(describeSelfSwitch(emp({ roleId: 0 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board'] });
@@ -116,7 +116,7 @@ await ta('הרשאה לפי התפקיד ב-DB, לא לפי הגוף: roleId / i
 
 console.log('מסכים אחרים, יעד אחר, ערכים עוינים');
 await ta('order_card / customer_card / מסכים לא מוכרים נדחים (גם להנהלה), בלי כתיבה', async () => {
-  for (const screen of ['order_card', 'customer_card', 'foo', '', '__proto__', 'constructor', undefined, null, 'SHELL']) {
+  for (const screen of ['order_card', 'customer_card', 'employee_card', 'foo', '', '__proto__', 'constructor', undefined, null, 'SHELL']) {
     const r = await call(screen, { value: 'a5' }, emp());
     assert.equal(r.status, 400, String(screen)); assert.equal(r.fp.calls.length, 0);
   }
