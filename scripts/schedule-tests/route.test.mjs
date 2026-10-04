@@ -44,18 +44,22 @@ test('401 when login is required and nobody is logged in', async () => {
 
 test('200 for a regular employee whose department has a page:schedule=true row', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const r = await call('?date=2026-10-01');
+  const r = await call('?date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
-  assert.equal(r.__json.date, '2026-10-01');
+  assert.equal(r.__json.date, '2026-10-15');
   assert.equal(r.headers['Cache-Control'], 'no-store');
   assert.equal(r.__json.settings.includeInternalNotes, false);
   assert.ok(Array.isArray(r.__json.stages) && r.__json.stages.length === 8);
-  assert.equal(r.__json.nonWorkingDay, false);
+  assert.equal(r.__json.nonWorkingDay, false, 'Thu 15.10.2026, a plain working day');
   assert.deepEqual(r.__json.dayStatus.reasons, []);
+  const thu = await call('?date=2026-10-01');
+  assert.equal(thu.status, 200);
+  assert.equal(thu.__json.nonWorkingDay, true, 'Thu 1.10.2026 = chol hamoed Sukkot: closed under rule v2 (NWD-Q02)');
+  assert.deepEqual(thu.__json.dayStatus.reasons, ['chol_hamoed']);
   const fri = await call('?date=2026-10-02');
   assert.equal(fri.status, 200);
-  assert.equal(fri.__json.nonWorkingDay, true, 'Fri 2.10.2026 (erev Shmini Atzeret) is flagged by the unified rule');
-  assert.deepEqual(fri.__json.dayStatus.reasons, ['friday', 'erev_chag']);
+  assert.equal(fri.__json.nonWorkingDay, true, 'Fri 2.10.2026 (Hoshana Raba = erev Shmini Atzeret) is flagged by the unified rule');
+  assert.deepEqual(fri.__json.dayStatus.reasons, ['friday', 'chol_hamoed', 'erev_chag']);
 });
 
 test('200 for a department WITHOUT any page:schedule row (open by default, GQ-04) - internal notes still hidden', async () => {

@@ -38,14 +38,14 @@ test('version a: by event date -> order blocks (customer name order), tallies, h
   const { payload } = await g2Payload(['PP-03'], { versions: { 'PP-03': 'a' } });
   const pg = payload.pages[0];
   assert.equal(pg.version, 'a');
-  assert.equal(pg.pageCode, 'ALL-REP-261001');
+  assert.equal(pg.pageCode, 'ALL-REP-261015');
   const d = pg.data;
   assert.equal(d.title, 'רשימת תיקונים לביצוע');
   assert.equal(d.sub, 'מקובץ לפי תאריך אירוע, ולפי הזמנה');
   assert.equal(d.days.length, 1, 'repair stage offset 0: one event date = the day');
   assert.equal(d.days[0].key, DAY);
   assert.match(d.days[0].label, /^יום חמישי /);
-  assert.equal(d.days[0].greg, '01/10/2026');
+  assert.equal(d.days[0].greg, '15/10/2026');
   const names = d.days[0].orders.map((o) => o.name);
   assert.deepEqual(names, [...names].sort((a, b) => a.localeCompare(b, 'he')), 'customers in Hebrew order inside the date');
   assert.equal(d.totals.orders, 6);
@@ -153,7 +153,7 @@ test('toRows: one row per item, Hebrew columns, numbers as numbers, same rows in
   assert.equal(typeof ra.rows[0]['הזמנה'], 'number');
   assert.equal(typeof ra.rows[0]['טלפון'], 'string');
   assert.deepEqual(ra.rows.map((r) => r['ברקוד פריט']).sort(), rb.rows.map((r) => r['ברקוד פריט']).sort());
-  assert.match(ra.rows[0]['תאריך אירוע'], /^01\/10\/2026$/);
+  assert.match(ra.rows[0]['תאריך אירוע'], /^15\/10\/2026$/);
 });
 
 test('API: alterations gate - 403 when every alterations page key is closed, 200 when one of them is open; one OrderItem query for the extra', async () => {
@@ -162,14 +162,14 @@ test('API: alterations gate - 403 when every alterations page key is closed, 200
   globalThis.__MOCK_DB.departmentPermission = closed().departmentPermission;
   invalidatePermissionCache();
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const denied = await get('?page=PP-03&date=2026-10-01');
+  const denied = await get('?page=PP-03&date=2026-10-15');
   assert.equal(denied.status, 403);
   assert.equal(denied.__json.page, 'PP-03');
 
   globalThis.__MOCK_DB.departmentPermission = closed().departmentPermission.map((r) => (r.key === 'page:board' ? { ...r, value: 'true' } : r)); // any-of: one open key is enough
   invalidatePermissionCache();
   globalThis.__MOCK_CALLS.length = 0;
-  const ok = await get('?page=PP-03&date=2026-10-01&version=b');
+  const ok = await get('?page=PP-03&date=2026-10-15&version=b');
   assert.equal(ok.status, 200, JSON.stringify(ok.__json));
   assert.equal(ok.__json.pages[0].version, 'b');
   assert.equal(ok.__json.pages[0].data.totals.items, 9);
