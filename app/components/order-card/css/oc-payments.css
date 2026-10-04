@@ -19,9 +19,8 @@
 /* r39: "ניתן לזכות ₪X על פריט חדש עוד mm:ss" (chip gray, style="margin-top:6px") */
 .gm-ds.gm-oc .li .oc-cdown{margin-top:6px}
 .gm-ds.gm-oc .li .oc-cdown .cdn{font-variant-numeric:tabular-nums}
-/* r38: שורת זיכוי ממתין עוטפת (style="flex-wrap:wrap") והלחצנים בשורה משלהם */
+/* r38: שורת זיכוי ממתין עוטפת (style="flex-wrap:wrap"), הלחצנים ילדים ישירים של השורה כמו בעיצוב */
 .gm-ds.gm-oc .li.oc-rf{flex-wrap:wrap}
-.gm-ds.gm-oc .oc-rf-acts{display:flex;flex-wrap:wrap;gap:10px}
 /* "מחשב מחדש ברקע" בכותרת כרטיס החיובים (תצוגה מקדימה של המנוע) */
 .gm-ds.gm-oc .card-h .oc-calc{display:inline-flex;align-items:center;gap:6px;font-size:13px;margin-inline-start:auto}
 .gm-ds.gm-oc .oc-calc .spinner{width:12px;height:12px;border-width:2px}

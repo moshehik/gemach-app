@@ -6,6 +6,7 @@ import '../../app/design-system.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import OrderCardA5 from '../../app/components/order-card/OrderCardA5.js';
+import { payScenarios, payMock } from './pay-mock.js'; // W4: תרחישי תשלומים
 
 const qs = new URLSearchParams(location.search);
 const scn = qs.get('scn') || 'neve';
@@ -68,9 +69,10 @@ const SCENARIOS = {
   stock: { draft: true, put409stock: true, settings: ORG2.filter(([k]) => k !== 'enable_order_edit_summary_confirm') },
   notfound: { notfound: true },
   loading: { hang: true },
+  ...payScenarios({ ITEMS, OBL, PAY, ORG1, ORG2 }), // W4
 };
 const S = SCENARIOS[scn] || {};
-const order = { ...ORDER, ...(S.order || {}), items: ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: [] };
+const order = { ...ORDER, ...(S.order || {}), items: S.items || ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: S.refunds || [] };
 const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
 
 if (S.draft) {
@@ -97,6 +99,7 @@ window.fetch = async (url, opts) => {
   if (u.startsWith('/api/settings')) return j(settings);
   if (u.startsWith('/api/employees')) return j(EMPLOYEES);
   // העובדת המחוברת לא מורשית לאשר (כמו בעיצוב: אף שם לא מסומן מראש). me=e2 בכתובת = מנהלת מורשית (מסומנת מראש, כמו בישן)
+  if (u.startsWith('/api/me') && qs.get('me') === 'e3') return j({ success: true, employee: { id: 'e3', firstName: 'דנה', lastName: 'אברהם', roleId: 0 } }); // W4: הנהלה ראשית (R33)
   if (u.startsWith('/api/me')) return j(qs.get('me') === 'e2' ? { success: true, employee: { id: 'e2', firstName: 'רחל', lastName: 'כהן' } } : { success: true, employee: { id: 'e7', firstName: 'עובדת', lastName: 'רגילה' } });
   if (u.startsWith('/api/inventory/preload')) return j({});
   if (u.startsWith('/api/orders/validate-inventory')) return j({ valid: true, errors: [] });
@@ -107,6 +110,7 @@ window.fetch = async (url, opts) => {
   }
   if (/\/api\/orders\/53375\/(preview-pricing)/.test(u)) return j({ newObligations: order.obligations.filter(o => o.isManual === false) });
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
+  { const pm = payMock(u, method, { S, order, j, body: opts && opts.body }); if (pm) return pm; } // W4
   if (/^\/api\/orders\/53375$/.test(u)) {
     if (S.notfound) return j({ error: 'Order not found' }, 404);
     if (method === 'PUT') {

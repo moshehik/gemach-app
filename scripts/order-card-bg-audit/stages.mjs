@@ -4,12 +4,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { serve, launch, sleep, HERE, PORT, DEMO } from './lib.mjs';
+import { payStages } from './stages-payments.mjs'; // W4
 const which = process.argv[2];
 const width = Number(process.argv[3] || 1280);
 const OUT = path.join(HERE, 'out'); fs.mkdirSync(OUT, { recursive: true });
 const D = which === 'demo';
 // אזורי המעטפת (W1): שורת הכותרת, הלשוניות, הטוסט, שני החלונות. התוכן של הלשוניות והרייל - של הזרמים האחרים (W8 מרחיב).
-const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2']];
+const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2'], ['PAY', '#p-payments']]; // PAY: W4
 const DUMP = (roots) => {
   const out = [];
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).map(Number); return { a: p.length > 3 ? p[3] : 1 }; };
@@ -112,12 +113,14 @@ const STAGES = [
       ['save: cardVariant a5 + extraDay בגוף', st.puts[0].cardVariant === 'a5' && 'extraDay' in st.puts[0] && st.puts[0].notes === 'הערה מטיוטה שלא נשמרה'],
       ['save: אחרי השמירה אין שינויים ברייל', st.badge === '0']);
   } },
+  ...payStages({ p: () => p, D, fresh, clickAt, hover, away, sleep, demoWin, check: (name, ok) => checks.push([name, ok]) }), // W4
 ];
 const checks = [];
 
 for (const st of STAGES) {
   const fn = D ? st.demo : st.real;
   if (!fn) continue;
+  if (process.env.STAGES && !new RegExp(process.env.STAGES).test(st.name)) continue; // סינון שלבים (למשל STAGES=^P)
   try { await fn(); await snap(st.name); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
 }
 fs.writeFileSync(`${OUT}/${which}-${width}.json`, JSON.stringify(results, null, 1));

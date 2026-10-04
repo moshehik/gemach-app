@@ -109,10 +109,8 @@ export default function OcPaymentsTab({ oc, ui }) {
                     <b>זיכוי <Money n={amountOf(r.amount)} /> · ממתין לביצוע</b>
                     <small>{[r.reason || 'ללא סיבה', noBank ? 'חסרים פרטי בנק' : `בנק ${r.bankName} · סניף ${r.bankBranch}`, r.createdAt ? hebDateOf(r.createdAt) : ''].filter(Boolean).join(' · ')}</small>
                   </div>
-                  <div className="oc-rf-acts">
-                    <button type="button" className="btn sm" onClick={() => pay.openBank(r)}><OcIcon name="pencil" size="sm" />{noBank ? 'הזנת פרטי בנק' : 'עריכת פרטי בנק'}</button>
-                    <button type="button" className="btn sm" onClick={() => pay.openCredit(r)}><OcIcon name="check" size="sm" />אשר ביצוע</button>
-                  </div>
+                  <button type="button" className="btn sm" onClick={() => pay.openBank(r)}><OcIcon name="pencil" size="sm" />{noBank ? 'הזנת פרטי בנק' : 'עריכת פרטי בנק'}</button>
+                  <button type="button" className="btn sm" onClick={() => pay.openCredit(r)}><OcIcon name="check" size="sm" />אשר ביצוע</button>
                 </div>
               );
             })}

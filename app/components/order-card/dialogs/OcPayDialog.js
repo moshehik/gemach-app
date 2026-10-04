@@ -146,7 +146,7 @@ export default function OcPayDialog({ api, source = 'pay-now', amount, close }) 
   return (
     <>
       <h2 id="oc-pay-t">{manualOnly ? 'תשלום נוסף' : debtFlow ? 'השינויים נשמרו! נוצר חיוב חדש' : 'תשלום'}</h2>
-      {manualOnly ? <div className="sub">רישום תשלום נוסף להזמנה (מזומן, העברה, צ׳ק).</div> : debtFlow ? <div className="sub">יש להשלים את הגבייה.</div> : null}
+      {manualOnly ? <div className="sub">רישום תשלום נוסף להזמנה (מזומן, העברה, צ׳ק).</div> : debtFlow ? <div className="sub">יש להשלים את הגבייה.</div> : <div className="sub">יתרת חוב בהזמנה</div>}
       <div className="amtin">
         <span>₪</span>
         <input ref={amountRef} type="number" inputMode="decimal" min="0" step="any" aria-label="סכום" value={amt} data-autofocus="true"
@@ -202,7 +202,7 @@ export default function OcPayDialog({ api, source = 'pay-now', amount, close }) 
       ) : null}
       <div className="amsg" aria-live="polite">{err ? <><OcIcon name="alert" size="sm" />{err}</> : null}</div>
       <DlgButtons>
-        <button type="button" className="btn green lg block" data-act="confirm-pay" disabled={!!busy || !method} onClick={submit}>
+        <button type="button" className="btn green lg block" data-act={allowLeaveDebt ? 'confirm-pay' : 'confirm-pay-only'} disabled={!!busy || !method} onClick={submit}>
           {busy === 'pay' ? <><span className="spinner" aria-hidden="true" />מעבד...</> : <><OcIcon name="check" />{manualOnly ? 'שמור תשלום' : 'אישור תשלום'}</>}
         </button>
         {allowLeaveDebt ? <DlgBtn icon="lock" act="pay-later" disabled={!!busy} onClick={leaveDebt}>השאר חוב (באישור מנהל)</DlgBtn> : null}
