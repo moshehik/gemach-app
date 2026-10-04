@@ -169,3 +169,8 @@
 /* 13) טבלת התוצאות (.rtbl): design-overrides.css כופה Assistant על th/td (כמו על לחצנים ושדות בכלל 4) - בעיצוב הטבלה ב-Rubik כמו שאר הדף.
        משותף לדף הבית ולבדיקת מלאי (שניהם מייבאים את הקובץ הזה). */
 .gm-ds.gm-home .rtbl :is(th, td) { font-family: inherit !important; }
+
+/* 14) מרווח בין שורות שדות הטופס המתקדם (.advgrid .field): design-system.css (.field) כופה margin-bottom:14px על כל שדה באתר; בעיצוב לשדה אין שוליים
+       והמרווח בין השורות בא רק מה-gap של .advgrid, ולכן בדף האמיתי כל שורה הייתה גבוהה ב-14px (צעד 100 במקום 86). חל גם על בדיקת מלאי (בעיצוב שלה
+       אותו אפס, נמדד 1280 ו-375). אותו נטרול כמו .gm-pf ב-profile.css. */
+.gm-ds.gm-home .advp .field { margin-bottom: 0; }

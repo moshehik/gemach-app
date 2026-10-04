@@ -16,6 +16,7 @@
 | 5 | גבול שדות הטופס המתקדם קרם 1px במקום זהב 2px, טקסט חום | ה-selector `input:not(x4)` ב-`design-overrides.css` בעל specificity `(0,4,1)`; כלל הפלטה `.gm-ds.gm-home .advp .inp` הוא `(0,4,0)` — **הפסד של "אלמנט" אחד** בקסקדה. | `home.css` כלל 11 (כפל `.gm-home` מעלה ל-`(0,5,0)`) |
 | 6 | צבע כותרת הברכה חום במקום כחול | `globals.css`: `h1 { color: var(--text-main) }` | `home.css` כלל 12 |
 | 7 | כפתור "אחרונים" בשורה | נוסף בהחלטת הבעלים (פריט 24) ובוטל ב-2.10.2026 | הוסר: `HomeA5.js` (כפתור, state, `?recent=`, `getHistory`, האזנה ל-`agy_history_updated`), `HomeRecents.js`, כללי `.cmode-i` ו-`.card.recent` ב-`home.css` |
+| 8 | מרווח של 14px נוסף בין שורות השדות בטופס המתקדם (צעד 100px במקום 86px בין `.advgrid .field`) | `app/design-system.css` (`.field { margin-bottom: 14px }`, בלי היקף) נטען בכל דף; בעיצוב `.field` בלי שוליים והמרווח בא רק מ-`gap` של `.advgrid`. נמדד 1280 ו-375, תפוסה ובדיקת מלאי. | `home.css` כלל 14: `.gm-ds.gm-home .advp .field { margin-bottom: 0 }` (חל גם על בדיקת מלאי, שמייבאת את הקובץ) |
 
 סיבה משותפת: ה-CSS הגלובלי הישן (`globals.css` / `design-overrides.css` / `design-system.css`) נטען בכל דף, בלי היקף, ובספציפיות גבוהה או `!important`;
 וכלל 6 הישן של הדף עצמו "נטרל" את זכוכית הפלטה בלי להבחין שהוא צובע גם את הכרטיס שבמסגרת המשותפת. לא היה מקור "אחד": זו השלמה של קסקדה.
