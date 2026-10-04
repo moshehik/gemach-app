@@ -215,6 +215,8 @@
 .gm-ds.gm-home .mine-who .chip.gray:hover { background: var(--gm-gbtn); color: var(--gm-navy-900); }
 .gm-ds.gm-home .mine-list .mine-all { margin-inline-start: auto; flex: none; }
 .gm-ds.gm-home .mine-list .mine-all .ic { width: 16px; height: 16px; }
+/* החלונית יושבת בתוך .scan: הכלל של הפלטה ".hero .scan .btn" (כדור 48px, לכפתור החיפוש) היה הופך גם את "הכל" לעיגול */
+.gm-ds.gm-home .hero .scan .mine-list .mine-all { width: auto; height: auto; min-height: 0; border-radius: 11px; padding: 7px 13px; }
 .gm-ds.gm-home .mine-list .mine-all.act { outline: 3px solid var(--gm-navy); outline-offset: 2px; }
 .gm-ds.gm-home .mine-view .mine-who-bar { padding: 2px 4px 10px; max-height: none; }
 .gm-ds.gm-home .mine-view .mine-who-name { font-weight: 500; color: var(--gm-ink3); }
