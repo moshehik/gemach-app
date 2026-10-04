@@ -66,6 +66,13 @@ export async function POST(request, { params }) {
     ]);
     if (!order) throw ruleError('הזמנה לא נמצאה');
 
+    // max_items_per_order - אותה מגבלה שה-PUT של ההזמנה אוכף (app/api/orders/[id]/route.js), גם בהוספת פריט בודד: בלי הבדיקה
+    // הזו קריאה ישירה (או הכרטיס החדש, שמוסיף בקריאה מיידית) עקפה את המגבלה. 0 / ריק / לא מספר = בלי מגבלה.
+    const maxItems = parseInt(settingsRaw.find(s => s.key === 'max_items_per_order')?.value, 10);
+    if (!isNaN(maxItems) && maxItems > 0 && (order.items || []).filter(i => !i.isDeleted).length >= maxItems) {
+      throw ruleError(`לא ניתן לשמור יותר מ-${maxItems} פריטים בהזמנה`);
+    }
+
     // An order that was already paid - or that a manager approved to leave with the
     // payment tracked afterwards - is not a shopping cart any more, so a dress added to
     // it has to be held permanently. Creating every item as 'pending' put a 15 minute
