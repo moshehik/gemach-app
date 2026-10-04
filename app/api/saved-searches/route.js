@@ -15,7 +15,7 @@ import { isMissingTableError } from '@/lib/prismaMissingTable';
 const SAVED_SEARCH_LIMIT = 50;
 const LABEL_MAX_LENGTH = 80;
 const QUERY_MAX_LENGTH = 300;
-const DOMAIN_MAX_LENGTH = 40;
+const SAVED_DOMAINS = new Set(['customers', 'orders', 'items']); // the advanced-search domains; anything else is stored as null
 
 // The identity is the VERIFIED auth_token (a signed auth_session naming the same employee),
 // never the raw cookie - see CLAUDE.md "Auth cookie forgery". checkAuth() alone is not enough
@@ -72,7 +72,8 @@ export async function POST(request) {
     }
     const label = clip(body.label, LABEL_MAX_LENGTH);
     const query = clip(body.query, QUERY_MAX_LENGTH);
-    const domain = clip(body.domain, DOMAIN_MAX_LENGTH) || null;
+    const rawDomain = clip(body.domain, 20);
+    const domain = SAVED_DOMAINS.has(rawDomain) ? rawDomain : null;
 
     if (!label) {
       return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -80,6 +81,10 @@ export async function POST(request) {
     if (!query) {
       return NextResponse.json({ error: 'query is required' }, { status: 400 });
     }
+
+    // The same query saved twice (double click, two tabs) is one row: answer with the existing one.
+    const existing = await prisma.savedSearch.findFirst({ where: { employeeId, query }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+    if (existing) return NextResponse.json({ success: true, savedSearch: existing, existing: true });
 
     // The list (GET) shows at most SAVED_SEARCH_LIMIT rows, so more than that would be saved but invisible - refuse instead.
     const count = await prisma.savedSearch.count({ where: { employeeId } });
@@ -90,6 +95,19 @@ export async function POST(request) {
     const created = await prisma.savedSearch.create({
       data: { employeeId, label, query, domain },
     });
+
+    // count-then-create and find-then-create are not atomic (no unique index, no DDL here, and no reads inside a transaction):
+    // re-check after the write and roll the extra row back. Concurrent writers apply the same ordering, so exactly one survives.
+    const sameQuery = await prisma.savedSearch.findMany({ where: { employeeId, query }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 2 });
+    if (sameQuery.length > 1 && sameQuery[0].id !== created.id) {
+      await prisma.savedSearch.delete({ where: { id: created.id } }).catch(() => {});
+      return NextResponse.json({ success: true, savedSearch: sameQuery[0], existing: true });
+    }
+    const after = await prisma.savedSearch.count({ where: { employeeId } });
+    if (after > SAVED_SEARCH_LIMIT) {
+      await prisma.savedSearch.delete({ where: { id: created.id } }).catch(() => {});
+      return NextResponse.json({ error: 'Saved searches limit reached', limit: SAVED_SEARCH_LIMIT }, { status: 409 });
+    }
 
     return NextResponse.json({ success: true, savedSearch: created });
   } catch (error) {

@@ -56,12 +56,17 @@ const missingErr = (table) => Object.assign(new Error('The table `public.' + tab
 const pgErr = () => Object.assign(new Error('relation "SavedSearch" does not exist'), { meta: { code: '42P01' } });
 const guard = (name) => { T.calls.push(name); if (T.missing) throw (T.missing === 'pg' ? pgErr() : missingErr(name)); if (T.fail) throw new Error('db down'); };
 const matchWhere = (r, w) => !w || Object.entries(w).every(([k, c]) => (c && typeof c === 'object' && 'notIn' in c ? !c.notIn.includes(r[k]) : r[k] === c));
+const orderRows = (rows, orderBy) => {
+  const ob = orderBy == null ? [{ createdAt: 'desc' }] : Array.isArray(orderBy) ? orderBy : [orderBy];
+  return rows.sort((x, y) => { for (const o of ob) { const [k, dir] = Object.entries(o)[0]; if (x[k] === y[k]) continue; return (x[k] < y[k] ? -1 : 1) * (dir === 'asc' ? 1 : -1); } return 0; });
+};
 const table = (name) => ({
-  findMany: async (a = {}) => { guard(name + '.findMany'); let rows = T.db[name].filter((r) => matchWhere(r, a.where)).sort((x, y) => y.createdAt - x.createdAt); if (a.take != null) rows = rows.slice(0, a.take); return rows.map((r) => ({ ...r })); },
+  findMany: async (a = {}) => { guard(name + '.findMany'); let rows = orderRows(T.db[name].filter((r) => matchWhere(r, a.where)), a.orderBy); if (a.take != null) rows = rows.slice(0, a.take); return rows.map((r) => ({ ...r })); },
+  findFirst: async (a = {}) => { guard(name + '.findFirst'); const rows = orderRows(T.db[name].filter((r) => matchWhere(r, a.where)), a.orderBy); return rows[0] ? { ...rows[0] } : null; },
   count: async (a = {}) => { guard(name + '.count'); return T.db[name].filter((r) => matchWhere(r, a.where)).length; },
   findUnique: async (a) => { guard(name + '.findUnique'); const r = T.db[name].find((x) => x.id === a.where.id); return r ? { ...r } : null; },
   create: async (a) => { guard(name + '.create'); const r = { id: 'id' + ++T.seq, createdAt: ++T.seq, ...a.data }; T.db[name].push(r); return { ...r }; },
-  delete: async (a) => { guard(name + '.delete'); T.db[name] = T.db[name].filter((x) => x.id !== a.where.id); return {}; },
+  delete: async (a) => { guard(name + '.delete'); if (!T.db[name].some((x) => x.id === a.where.id)) throw Object.assign(new Error('not found'), { code: 'P2025' }); T.db[name] = T.db[name].filter((x) => x.id !== a.where.id); return {}; },
   deleteMany: async (a) => { guard(name + '.deleteMany'); T.db[name] = T.db[name].filter((r) => !matchWhere(r, a.where)); return {}; },
 });
 T.prisma = new Proxy({}, { get: (_t, p) => { if (p === 'then') return undefined; if (p === 'savedSearch' || p === 'searchHistory') return table(p); throw new Error('mock: model לא צפוי ' + String(p)); } });
@@ -141,6 +146,32 @@ await t('תקרת 50: החמישים ואחד נדחה 409 (ולא נשמר); ח
   r = await json(await saved.POST(req('/api/saved-searches', { label: 'b', query: 'b' })));
   assert.equal(r.status, 409); assert.equal(r.body.limit, 50);
   assert.equal(T.db.savedSearch.filter((s) => s.employeeId === 'emp-me').length, 50);
+});
+await t('אותה שאילתה פעמיים (לחיצה כפולה) = שורה אחת: השנייה מחזירה את הקיימת', async () => {
+  const a = await json(await saved.POST(req('/api/saved-searches', { label: 'כהן', query: 'כהן' })));
+  const b = await json(await saved.POST(req('/api/saved-searches', { label: 'כהן 2', query: ' כהן ' })));
+  assert.equal(T.db.savedSearch.length, 1); assert.equal(b.status, 200); assert.equal(b.body.existing, true); assert.equal(b.body.savedSearch.id, a.body.savedSearch.id);
+  T.db.savedSearch.push({ id: 'o', employeeId: 'emp-other', label: 'x', query: 'חדש', domain: null, createdAt: 99 });
+  assert.equal((await json(await saved.POST(req('/api/saved-searches', { label: 'חדש', query: 'חדש' })))).body.existing, undefined, 'אותה שאילתה אצל אחרת לא נחשבת כפילות');
+});
+await t('שתי בקשות במקביל לאותה שאילתה (מירוץ): נשארת שורה אחת ושתי התשובות מצביעות עליה', async () => {
+  const [a, b] = await Promise.all([1, 2].map((i) => saved.POST(req('/api/saved-searches', { label: 'ל' + i, query: 'כהן' })).then(json)));
+  assert.equal(T.db.savedSearch.length, 1, 'שורה אחת');
+  assert.equal(a.status, 200); assert.equal(b.status, 200);
+  assert.equal(a.body.savedSearch.id, T.db.savedSearch[0].id); assert.equal(b.body.savedSearch.id, T.db.savedSearch[0].id);
+});
+await t('מירוץ על התקרה (49 + שתי שאילתות שונות במקביל): לעולם לא יותר מ-50 שורות', async () => {
+  T.db.savedSearch = rows(49, 'emp-me');
+  const rs = await Promise.all([1, 2].map((i) => saved.POST(req('/api/saved-searches', { label: 'n' + i, query: 'new' + i })).then(json)));
+  assert.ok(T.db.savedSearch.filter((s) => s.employeeId === 'emp-me').length <= 50);
+  assert.ok(rs.every((r) => r.status === 200 || r.status === 409));
+});
+await t('תחום (domain): רק customers / orders / items, כל ערך אחר נשמר כ-null', async () => {
+  for (const [d, want] of [['customers', 'customers'], ['items', 'items'], ['__proto__', null], ['constructor', null], ['hacker<script>', null], [5, null], [undefined, null]]) {
+    T.db.savedSearch = [];
+    const r = await json(await saved.POST(req('/api/saved-searches', { label: 'a', query: 'q', domain: d })));
+    assert.equal(r.status, 200); assert.equal(T.db.savedSearch[0].domain, want, String(d));
+  }
 });
 await t('לא מחובר / זהות לא מאומתת = 401 ובלי כתיבה', async () => {
   T.authed = false; assert.equal((await saved.POST(req('/api/saved-searches', { label: 'a', query: 'a' }))).status, 401);
