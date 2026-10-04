@@ -93,7 +93,48 @@ await t('deleteSavedSearch: DELETE ?id= (מקודד); 404 נחשב הצלחה; �
   await wait(); assert.ok(calls.some((c) => c.method === 'GET'), 'טעינה מחדש אחרי כשל');
 });
 
+await t('לחיצה כפולה על שמירה שקטה: POST אחד בלבד, והשנייה לא עושה כלום (saveQueryOnce)', async () => {
+  let posts = 0;
+  handler = async (u, o) => { await wait(10); if (o.method === 'POST') { posts++; return { status: 200, body: { success: true, savedSearch: row('n1', 'כהן') } }; } return { status: 200, body: { savedSearches: [] } }; };
+  const [a, b] = await Promise.all([S.saveQueryOnce({ label: 'כהן', query: 'כהן' }), S.saveQueryOnce({ label: 'כהן', query: ' כהן ' })]);
+  assert.equal(posts, 1); assert.equal([a, b].filter((r) => r.ok).length, 1); assert.ok([a, b].some((r) => r.reason === 'busy'));
+  const c = await S.saveQueryOnce({ label: 'כהן', query: 'כהן' }); assert.equal(c.reason, 'exists'); assert.equal(posts, 1, 'כבר שמור אחרי השמירה');
+});
+await t('שמירה שקטה בזמן שהרשימה עוד לא נטענה: קודם טוענים, כך ש"כבר שמור" מזוהה (בלי POST)', async () => {
+  handler = (u, o) => (o.method === 'POST' ? { status: 200, body: { success: true, savedSearch: row('z') } } : { status: 200, body: { savedSearches: [row('a', 'כהן')] } });
+  const r = await S.saveQueryOnce({ label: 'כהן', query: 'כהן' });
+  assert.equal(r.reason, 'exists'); assert.ok(!calls.some((c) => c.method === 'POST'));
+});
+await t('שמירה שקטה אחרי כשל טעינה (error): מנסים לטעון שוב לפני ההחלטה', async () => {
+  handler = () => ({ status: 500, body: {} }); await S.loadSavedSearches();
+  handler = (u, o) => (o.method === 'POST' ? { status: 200, body: { success: true, savedSearch: row('z') } } : { status: 200, body: { savedSearches: [row('a', 'כהן')] } });
+  assert.equal((await S.saveQueryOnce({ label: 'כהן', query: 'כהן' })).reason, 'exists');
+});
+await t('טבלה חסרה: שמירה שקטה = unavailable בלי POST', async () => {
+  handler = () => ({ status: 200, body: { savedSearches: [], unavailable: true } });
+  assert.equal((await S.saveQueryOnce({ label: 'a', query: 'a' })).reason, 'unavailable'); assert.ok(!calls.some((c) => c.method === 'POST'));
+});
+await t('createSavedSearch: שתי קריאות במקביל לאותה שאילתה = בקשת POST אחת', async () => {
+  let posts = 0; handler = async () => { posts++; await wait(5); return { status: 200, body: { success: true, savedSearch: row('n', 'q') } }; };
+  const [a, b] = await Promise.all([S.createSavedSearch({ label: 'a', query: 'q' }), S.createSavedSearch({ label: 'b', query: 'q' })]);
+  assert.equal(posts, 1); assert.equal(a.item.id, b.item.id);
+  await S.createSavedSearch({ label: 'c', query: 'q' }); assert.equal(posts, 2, 'אחרי שהסתיימה, קריאה חדשה נשלחת');
+});
+await t('createFailureToast: תקרה = info (לא נכנס ליומן השגיאות), כשל = error בלי התווית, unavailable / busy = שקט', () => {
+  assert.equal(S.createFailureToast({ ok: false, reason: 'limit' }).kind, 'info');
+  const f = S.createFailureToast({ ok: false, reason: 'error', label: 'רחל כהן' });
+  assert.equal(f.kind, 'error'); assert.equal(f.text, ''); assert.ok(!JSON.stringify(f).includes('כהן'));
+  assert.equal(S.createFailureToast({ ok: false, reason: 'unavailable' }), null); assert.equal(S.createFailureToast({ ok: false, reason: 'busy' }), null); assert.equal(S.createFailureToast({ ok: true }), null);
+});
+
 console.log('החיפוש האחרון והיסטוריה');
+await t('loadLastFromHistory: כשל זמני לא נועל (נסיון נוסף אפשרי), הצלחה כן; קריאות במקביל = בקשה אחת', async () => {
+  handler = () => ({ status: 500, body: {} }); await S.loadLastFromHistory();
+  handler = () => ({ status: 200, body: { history: [{ query: 'כהן' }] } });
+  await Promise.all([S.loadLastFromHistory(), S.loadLastFromHistory()]);
+  assert.equal(calls.length, 2, 'כשל + בקשה אחת משותפת');
+  await S.loadLastFromHistory(); assert.equal(calls.length, 2, 'אחרי הצלחה לא טוענים שוב');
+});
 await t('rememberSearch: POST להיסטוריה פעם אחת לאותו טקסט; קידומת / ריק לא נרשמים; טבלה חסרה = מפסיקים לשלוח', async () => {
   S.rememberSearch('  כהן ירושלים '); await wait();
   assert.equal(calls.length, 1); assert.deepEqual(calls[0].body, { query: 'כהן ירושלים' }); assert.equal(calls[0].url, '/api/search-history');

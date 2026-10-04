@@ -23,7 +23,7 @@ const setStore = (next) => { store = next; listeners.forEach((f) => f()); };
 const subscribe = (f) => { listeners.add(f); return () => listeners.delete(f); };
 const getStore = () => store;
 const getServerStore = () => INITIAL;
-export function resetSavedSearchesStore() { store = INITIAL; inflight = null; skipDeleteConfirm = false; lastSearch = ''; historyUnavailable = false; historyLoaded = false; }
+export function resetSavedSearchesStore() { store = INITIAL; inflight = null; creating.clear(); quickSaving.clear(); historyInflight = null; skipDeleteConfirm = false; lastSearch = ''; historyUnavailable = false; historyLoaded = false; }
 
 async function jsonOf(res) { try { return await res.json(); } catch { return null; } }
 
@@ -48,8 +48,17 @@ export function loadSavedSearches(force = false) {
   return inflight;
 }
 
+const quickSaving = new Set(); // שאילתות שבשמירה שקטה כרגע
+const creating = new Map(); // query -> Promise: לחיצה כפולה על אייקון השמירה = בקשת POST אחת
 /** { ok:true, item } | { ok:false, reason: 'limit' | 'unavailable' | 'error' } */
-export async function createSavedSearch(payload) {
+export function createSavedSearch(payload) {
+  const key = payload && typeof payload.query === 'string' ? payload.query.trim() : '';
+  if (key && creating.has(key)) return creating.get(key);
+  const p = postSavedSearch(payload).finally(() => { if (creating.get(key) === p) creating.delete(key); });
+  if (key) creating.set(key, p);
+  return p;
+}
+async function postSavedSearch(payload) {
   try {
     const res = await fetch('/api/saved-searches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(payload) });
     const d = await jsonOf(res);
@@ -61,6 +70,32 @@ export async function createSavedSearch(payload) {
   } catch {
     return { ok: false, reason: 'error' };
   }
+}
+
+/**
+ * שמירה שקטה של חיפוש: קודם מוודאים שהרשימה נטענה (בלי זה "כבר שמור" נבדק מול רשימה ריקה כשהמצב loading/error/idle), ואז:
+ * { ok:false, reason:'exists' } אם כבר שמור, 'unavailable' אם הטבלה חסרה, אחרת התוצאה של createSavedSearch. השרת מסנן כפילויות בכל מקרה.
+ */
+export async function saveQueryOnce(payload) {
+  const key = String(payload.query || '').trim();
+  if (quickSaving.has(key)) return { ok: false, reason: 'busy' }; // לחיצה כפולה: השנייה לא עושה כלום (גם לא הודעה כפולה)
+  quickSaving.add(key);
+  try {
+    if (store.state !== 'ok' && store.state !== 'unavailable') await loadSavedSearches(store.state === 'error');
+    if (store.state === 'unavailable') return { ok: false, reason: 'unavailable' };
+    if (isQuerySaved(store.list, payload.query)) return { ok: false, reason: 'exists' };
+    return await createSavedSearch(payload);
+  } finally {
+    quickSaving.delete(key);
+  }
+}
+
+/** ההודעה שמוצגת כשיצירה נכשלה (או null כשאין מה להציג). 'info' ולא 'error' לתקרה: כל הודעת 'error' נשלחת ליומן המערכת (PopupProvider -> /api/logs); התווית (לרוב שם לקוחה) לא נכנסת להודעת שגיאה. */
+export function createFailureToast(r) {
+  if (!r || r.ok) return null;
+  if (r.reason === 'limit') return { title: SAVED_TEXT.limitReached, text: 'מחקי חיפוש שמור כדי להוסיף', kind: 'info' };
+  if (r.reason === 'unavailable' || r.reason === 'busy') return null;
+  return { title: SAVED_TEXT.saveFailed, text: '', kind: 'error' };
 }
 
 /** מחיקה אופטימית: השורה נעלמת מיד; אם השרת נכשל (חוץ מ"לא נמצא") הרשימה נטענת מחדש. */
@@ -102,14 +137,19 @@ export function rememberSearch(text) {
   } catch { /* ignore */ }
 }
 
-async function loadLastFromHistory() {
-  if (historyLoaded || historyUnavailable || lastSearch) return;
-  historyLoaded = true;
+let historyInflight = null;
+export function loadLastFromHistory() {
+  if (historyLoaded || historyUnavailable || lastSearch) return Promise.resolve();
+  if (!historyInflight) historyInflight = fetchLastFromHistory().finally(() => { historyInflight = null; });
+  return historyInflight;
+}
+async function fetchLastFromHistory() {
   try {
     const res = await fetch('/api/search-history', { cache: 'no-store', credentials: 'same-origin' });
     const d = await jsonOf(res);
     if (d && d.unavailable) { historyUnavailable = true; return; }
     if (!res.ok || !d || !Array.isArray(d.history)) return;
+    historyLoaded = true; // רק אחרי הצלחה: כישלון זמני לא מונע ניסיון נוסף בפתיחה הבאה
     const first = d.history.map((h) => saveCandidate(h && h.query)).find(Boolean);
     if (first && !lastSearch) setLast(first);
   } catch { /* ignore */ }
@@ -140,10 +180,10 @@ export function useSavedSearches({ toast, focusInput } = {}) {
   const say = useCallback((title, text, kind) => { if (cbs.current.toast) cbs.current.toast(title, text || '', kind || 'ok'); }, []);
   const refocus = useCallback(() => { if (cbs.current.focusInput) cbs.current.focusInput(); }, []);
 
-  const afterCreate = useCallback((r, name) => {
+  const afterCreate = useCallback((r) => {
     if (r.ok) return true;
-    if (r.reason === 'limit') say(SAVED_TEXT.limitReached, 'מחקי חיפוש שמור כדי להוסיף', 'error');
-    else if (r.reason !== 'unavailable') say(SAVED_TEXT.saveFailed, name ? '“' + name + '”' : '', 'error');
+    const m = createFailureToast(r);
+    if (m) say(m.title, m.text, m.kind);
     return false;
   }, [say]);
 
@@ -151,9 +191,10 @@ export function useSavedSearches({ toast, focusInput } = {}) {
   const quickSave = useCallback(async (text) => {
     const payload = savePayload(text);
     if (!payload) return;
-    if (isQuerySaved(getStore().list, payload.query)) { say('החיפוש כבר שמור', '“' + payload.label + '”'); return; }
-    const r = await createSavedSearch(payload);
-    if (!afterCreate(r, payload.label)) return;
+    const r = await saveQueryOnce(payload);
+    if (r.reason === 'busy') return;
+    if (r.reason === 'exists') { say('החיפוש כבר שמור', '“' + payload.label + '”'); return; }
+    if (!afterCreate(r)) return;
     setFlash(true);
     clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setFlash(false), FLASH_MS);
@@ -168,7 +209,7 @@ export function useSavedSearches({ toast, focusInput } = {}) {
     const payload = savePayload(lastSearch, defaultSaveLabel(label));
     if (!payload) { setSaving(false); return; }
     const r = await createSavedSearch(payload);
-    if (!afterCreate(r, payload.label)) { setSaving(false); refocus(); return; }
+    if (!afterCreate(r)) { setSaving(false); refocus(); return; }
     setSaving(false); setFormError('');
     say(SAVED_TEXT.savedToast, '“' + payload.label + '”');
     refocus();

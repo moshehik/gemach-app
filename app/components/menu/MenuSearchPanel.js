@@ -173,7 +173,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const mineData = useMyActivity();
   const showToast = popup && popup.showAlert;
   const saved = useSavedSearches({
-    toast: (title, text, kind) => { if (showToast) showToast(text ? `${title}: ${text}` : title, kind === 'error' ? 'error' : 'success'); },
+    toast: (title, text, kind) => { if (showToast) showToast(text ? `${title}: ${text}` : title, kind === 'error' ? 'error' : kind === 'info' ? 'info' : 'success'); },
     focusInput: () => { if (inputRef && inputRef.current) inputRef.current.focus(); },
   });
   const draftCount = useDraftCount(q.startsWith('#'));
