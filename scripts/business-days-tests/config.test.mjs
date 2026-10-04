@@ -127,8 +127,8 @@ test('invalid entries are skipped and counted; valid ones still apply', () => {
     { month: 'Iyyar', day: 30 },     // Iyyar is always 29
     { month: 'Adar', day: 30 },      // Adar / Adar II are always 29
     { month: 'Adar II', day: 30 },
-    { month: 'Adar I', day: 30 },    // ok (30 in leap years, clamped to 29 otherwise)
-    { month: 'Cheshvan', day: 30 },  // ok (clamped in short years)
+    { month: 'Adar I', day: 30 },    // ok (30 in leap years; closes nothing in a simple year)
+    { month: 'Cheshvan', day: 30 },  // ok (closes nothing in a short year)
     { month: 'Mars', day: 1 }, { month: 12, day: 1 }, { day: 1 }, null, 'x', { month: 'Nisan', day: 1.5 },
   ] });
   const cfg = B.parseNonWorkingDaysSetting(raw);
@@ -164,11 +164,11 @@ test('ranges: every day closed, note precedence (day > later range > earlier ran
   assert.equal(one.invalid, 0);
 });
 
-test('recurring Hebrew dates: canonical/alias/Hebrew month names, Adar rule, 30th-of-short-month rule, leap and non-leap years', () => {
+test('recurring Hebrew dates: canonical/alias/Hebrew month names, Adar rule (Adar I = leap years only), 30th-of-short-month rule (no closure that year), leap and non-leap years', () => {
   const cfg = B.parseNonWorkingDaysSetting({ recurringHebrew: [
     { month: 'שבט', day: 26, note: 'כ"ו שבט' },
     { month: 'Adar', day: 14 },      // Purim day
-    { month: 'Adar I', day: 14 },    // Purim katan in leap years; plain Adar otherwise
+    { month: 'Adar I', day: 14 },    // Purim katan in leap years; nothing in simple years
     { month: 'Adar II', day: 7 },
     { month: "Sh'vat", day: 15 },    // alias
     { month: 'cheshvan', day: 30 },
@@ -191,18 +191,27 @@ test('recurring Hebrew dates: canonical/alias/Hebrew month names, Adar rule, 30t
     '2027-12-30=ל׳ כסלו',            // 30 Kislev 5788
     '2027-01-23=ט״ו שבט',
   ].sort());
-  // non-leap 5789 (Sep 2028 - Sep 2029): Adar / Adar I / Adar II all land on the one Adar; 30 Adar I -> 29 Adar; Cheshvan 29 days -> 30 -> 29
+  // non-leap 5789 (Sep 2028 - Sep 2029): 'Adar' and 'Adar II' land on the one Adar; 'Adar I' (14 and 30) closes NOTHING (NW-I7);
+  // Cheshvan 5789 has 29 days, so 30 Cheshvan closes nothing that year (NW-I7b); Kislev 5789 has 30 days (18.12.2028)
   const y2029 = hits(2029);
   assert.ok(y2029.includes('2029-02-11=כ״ו שבט'), y2029.join(' '));
-  assert.equal(y2029.filter((h) => h.startsWith('2029-03-01=')).length, 1, 'Purim 5789 = 1.3.2029: Adar 14 and Adar I 14 collapse to the same day, listed once');
-  assert.equal(B.dayStatus('2029-03-01', cfg).recurring.month, 'Adar I', 'the later entry (Adar I 14) is the one reported for the collapsed day');
+  assert.equal(y2029.filter((h) => h.startsWith('2029-03-01=')).length, 1, 'Purim 5789 = 1.3.2029: only Adar 14 closes it (Adar I 14 does not exist in a simple year)');
+  assert.equal(B.dayStatus('2029-03-01', cfg).recurring.month, 'Adar', 'the one entry that hits Purim of a simple year is plain Adar');
   assert.equal(B.hebrewDateOfKey('2029-03-01').label, 'י״ד אדר');
   assert.ok(y2029.includes('2029-02-22=ז׳ אדר ב\''), 'Adar II 7 in a non-leap year = 7 Adar');
   assert.equal(B.hebrewDateOfKey('2029-02-22').label, 'ז׳ אדר');
-  assert.ok(y2029.includes('2029-03-16=ל׳ אדר א\''), '30 Adar I in a non-leap year = the last day of Adar (29)');
+  assert.equal(y2029.some((h) => h.startsWith('2029-03-16=')), false, '30 Adar I in a non-leap year: no Adar I, nothing closes (not 29 Adar)');
+  assert.equal(B.dayStatus('2029-03-16', cfg).recurring, null);
   assert.equal(B.hebrewDateOfKey('2029-03-16').label, 'כ״ט אדר');
-  assert.ok(y2029.includes('2029-11-07=ל׳ חשוון'), 'Cheshvan 5790 is short: 30 -> 29 Cheshvan');
+  assert.equal(y2029.some((h) => h.endsWith('=ל׳ חשוון')), false, 'Cheshvan 5790 is short: 30 Cheshvan closes nothing, not 29 Cheshvan');
+  assert.equal(B.dayStatus('2029-11-07', cfg).recurring, null);
   assert.equal(B.hebrewDateOfKey('2029-11-07').label, 'כ״ט חשוון');
+  // reference years (owner NW-I7b): 5787 (leap, Cheshvan 30 + Kislev 30) closes 30 Cheshvan and 30 Kislev; 5789 (Cheshvan 29, Kislev 30) only 30 Kislev
+  const y5787 = B.listNonWorkingDays('2026-09-12', '2027-09-11', cfg).filter((d) => d.reasons.includes('recurring')).map((d) => `${d.key}=${d.recurring.label}`);
+  assert.ok(y5787.includes('2026-11-10=ל׳ חשוון') && y5787.includes('2026-12-10=ל׳ כסלו'), 'Cheshvan 5787 and Kislev 5787 have a 30th');
+  const y5789 = B.listNonWorkingDays('2028-09-01', '2029-09-10', cfg).filter((d) => d.reasons.includes('recurring')).map((d) => `${d.key}=${d.recurring.label}`);
+  assert.equal(y5789.some((h) => h.endsWith('=ל׳ חשוון')), false, 'Cheshvan 5789 has 29 days: 30 Cheshvan closes nothing');
+  assert.ok(y5789.includes('2028-12-18=ל׳ כסלו'), 'Kislev 5789 has 30 days');
   // Tishrei 1 = Rosh Hashana: closed anyway, both reasons reported
   assert.deepEqual(B.dayStatus('2026-09-12', cfg).reasons, ['recurring', 'shabbat', 'chag', 'erev_chag']);
   assert.equal(B.dayStatus('2027-02-03', cfg).note, 'כ"ו שבט');
