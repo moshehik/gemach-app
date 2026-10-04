@@ -383,6 +383,19 @@ t('הדף: טיוטה מקומית נכתבת וממוחזרת, נמחקת בש�
   assert.match(src, /ימים נבחרו/);
   assert.doesNotMatch(src, /`סמן \$\{|`הסר סימון מ-/, 'אין מספר בלחצני הסימון / ההסרה');
   assert.match(src, /'סמן: אין פעילות' : 'סמן'/, 'לחצן "סמן" פשוט');
+  // סקירה: הערה שמורה לא נדרסת בסימון מחדש; בלי מספר בטוסט; בלי טקסט מת; קישור הלוח לפי canBoard
+  assert.match(src, /restoreNoteKey = saved && ana && selList\.length === 1 && ana\.cand\.length === 1 && saved\.marks\.has\(selList\[0\]\)/, 'ההערה השמורה ממלאת את השדה');
+  assert.match(src, /saved\.marks\.get\(restoreNoteKey\)/);
+  assert.doesNotMatch(src, /say\([^\n]*length \+ ' ימים/, 'בטוסטים אין מספר ימים נפרד מהכותרת');
+  assert.doesNotMatch(src, /לא יחול בשנה הקרובה/, 'טקסט מת (nextOccurrence מחפש עד ~3 שנים)');
+  assert.match(src, /server && server\.canBoard \? <Link className="btn sm" href="\/board">/);
+  assert.match(read('app/api/non-working-days/route.js'), /canOpenPage\('page:board'\)/);
+  assert.match(read('app/api/non-working-days/route.js'), /canBoard: !!canBoard/);
+  const fdp = read('app/components/nonWorkingDays/FixedDatePicker.js');
+  assert.doesNotMatch(fdp, /[^-]disabled=/, 'לחצני החודש בלי disabled (הפוקוס נופל ל-BODY)');
+  assert.match(fdp, /aria-disabled=\{shown <= 0\}/); assert.match(fdp, /aria-disabled=\{shown >= last\}/);
+  assert.match(fdp, /tabIndex=\{d === tabDay \? 0 : -1\}/, 'roving tabindex');
+  assert.match(fdp, /ArrowRight: -1, ArrowLeft: 1, ArrowUp: -7, ArrowDown: 7/);
   // NW-I8: אין select ליום/חודש; לוח עברי ננעל
   assert.doesNotMatch(src, /<select/);
   assert.match(src, /<FixedDatePicker /);

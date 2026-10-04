@@ -50,6 +50,15 @@ await step('הסרת יום שמור (NW-I2): בלי חלון אישור - שו�
   assert.match(await text(p, '#nw-sum'), /יוסר הסימון/);
   assert.equal(await p.evaluate(() => window.__saved), before);
 });
+await step('סימון מחדש של יום שמור שהוסר בטיוטה: ההערה השמורה מתמלאת בשדה ולא נדרסת', async () => {
+  await p.click('.cl-row.cl-gone'); await sleep(250);
+  assert.equal(await p.$eval('#nw-note', (e) => e.value), 'חופשה', 'שדה ההערה מלא בהערה השמורה');
+  await p.$eval('.cl-side .rcard:not(#nw-sum) .btn.primary.lg', (b) => b.click()); await sleep(250);
+  assert.equal(await p.$('.cl-row.cl-gone'), null, 'הסימון חזר');
+  assert.match(await text(p, '#nw-sum'), /הכול שמור/, 'אותה הערה = בלי שינוי');
+  await (await p.$('.cl-row .cl-u')).click(); await sleep(250); // חוזרים למצב "יוסר" להמשך הבדיקה
+  assert.ok(await p.$('.cl-row.cl-gone'));
+});
 await step('"שמור" היחיד מחיל את ההסרה', async () => {
   const before = await p.evaluate(() => window.__saved);
   await (await p.$('#nw-sum .btn.primary')).click(); await sleep(700);
@@ -81,7 +90,7 @@ await step('תאריך קבוע (NW-I8): לוח עברי ננעל על תשפ״�
   assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'כסלו');
   assert.equal((await p.$$('#nw-fx-cal .hc-d')).length, 30, 'כסלו תשפ״ז: ל׳ ימים - גם יום ל׳ לחיץ');
   await p.click('#nw-fx-cal .hc-d[data-m="Kislev"][data-d="25"]'); await sleep(100);
-  await (await p.$('#nw-fixed .btn.lg')).click(); await sleep(200);
+  await p.$eval('#nw-fixed .btn.lg', (b) => b.click()); await sleep(200); // לא .click() אמיתי: הטוסט של הפעולה הקודמת עלול לכסות את הלחצן
   assert.match(await text(p, '#nw-fixed'), /כ״ה בכסלו/);
   assert.match(await text(p, '#nw-sum'), /ייסגר בכל שנה/);
   await p.$eval('#nw-fixed .btn.lg', (b) => b.click()); await sleep(200); // הטוסט (פינה שמאלית למטה) מכסה את הלחצן בצילום
@@ -103,6 +112,29 @@ await step('תאריך קבוע: אדר ב׳ נשמר כ-Adar, אדר א׳ כ-Ad
   assert.ok(saved.recurringHebrew.some((r) => r.month === 'Adar' && r.day === 14), 'אדר ב׳ ט״ו... י״ד נשמר כ-Adar');
   assert.ok(saved.recurringHebrew.some((r) => r.month === 'Kislev' && r.day === 25));
   assert.ok(!saved.recurringHebrew.some((r) => r.month === 'Adar II'), 'לא נשמר Adar II');
+});
+await step('לוח התאריך הקבוע (נגישות): עצירת Tab אחת, חיצים ב-RTL, ו-aria-disabled בקצה בלי לאבד פוקוס', async () => {
+  const stops = await p.$$eval('#nw-fx-cal .hc-d', (els) => els.filter((e) => e.tabIndex === 0).map((e) => e.dataset.d));
+  assert.equal(stops.length, 1, 'עצירת Tab אחת');
+  await p.focus('#nw-fx-cal .hc-d[tabindex="0"]');
+  const cur = () => p.evaluate(() => Number(document.activeElement.dataset.d));
+  const d0 = await cur();
+  await p.keyboard.press('ArrowLeft'); await sleep(80);
+  assert.equal(await cur(), d0 + 1, 'חץ שמאלה = היום הבא (RTL)');
+  await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight'); await sleep(80);
+  assert.equal(await cur(), d0 - 1);
+  await p.keyboard.press('ArrowDown'); await sleep(80);
+  assert.equal(await cur(), d0 + 6, 'חץ למטה = שבוע');
+  await p.keyboard.press('Home'); await sleep(80); assert.equal(await cur(), 1);
+  await p.keyboard.press('End'); await sleep(80); assert.equal(await cur(), 29, 'אדר ב׳: כ״ט');
+  for (let i = 0; i < 8; i++) await p.$eval('#nw-fx-next', (b) => b.click());
+  await sleep(100);
+  assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'אלול');
+  assert.equal(await p.$eval('#nw-fx-next', (b) => b.getAttribute('aria-disabled')), 'true');
+  assert.equal(await p.$eval('#nw-fx-next', (b) => b.disabled), false, 'לא disabled (הפוקוס נשאר)');
+  await p.focus('#nw-fx-next'); await p.keyboard.press('Enter'); await sleep(100);
+  assert.equal(await p.evaluate(() => document.activeElement.id), 'nw-fx-next', 'הפוקוס נשאר על הלחצן');
+  assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'אלול', 'לא עברנו את אלול');
 });
 await step('הסרת תאריך קבוע שמור (NW-I4): בלי חלון אישור, שורה "יוסר" בטיוטה, ורק "שמור" מחיל', async () => {
   const before = await p.evaluate(() => window.__saved);
@@ -174,6 +206,11 @@ await step('הודעת שגיאה מהשרת / מהאימות נשארת על ה
   assert.match(await text(d2, '.cl-side .cl-wrn [role="alert"]'), /רצף הימים הסגורים ארוך מדי/);
   await d2.click('#nw-sum [data-act="discard"]'); await sleep(250);
   assert.equal(await d2.$('.cl-side [role="alert"]'), null);
+});
+const nb = await page('?board=no');
+await step('הקישור "ללוח החודשי": מוצג למי שיכול לפתוח את הלוח, מוסתר למי שלא', async () => {
+  assert.ok(await p.$('.lz-dtools a[href="/board"]'));
+  assert.equal(await nb.$('.lz-dtools a[href="/board"]'), null);
 });
 const v = await page('?role=view');
 await step('צפייה בלבד: בלי כרטיס סיכום, בלי לחצני הסרה / הוספה', async () => {
