@@ -17,6 +17,8 @@
 
 /* פינה קבועה בדפים הישנים: שמאל-למטה (ב-RTL inline-end). ימין-למטה תפוסים: כפתור ה-AI (20px) והכפתור הצף של הדיווח (96px). */
 .gm-pvt.gm-pvt-corner{position:fixed;bottom:20px;inset-inline-end:20px;z-index:880}
+/* מרווח בסוף דף ישן כשהאייקון בפינה מוצג (VariantFrame) - גלילה עד הסוף לא משאירה תוכן מתחת לאייקון */
+.gm-pvt-spacer{height:76px}
 /* מעל החלון הישן של דיווח השגיאות (z-index 999999) */
 .gm-pvt.gm-pvt-overlay{position:fixed;bottom:20px;inset-inline-end:20px;z-index:1000000}
 /* בסרגל הכותרת של דף חדש: נדחף לקצה השורה (שמאל ב-RTL) */

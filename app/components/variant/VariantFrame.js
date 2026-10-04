@@ -9,14 +9,21 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ScreenVariantScope } from '../UiVariantContext';
+import { ScreenVariantScope, useCanSelfSwitch } from '../UiVariantContext';
 import PageVariantToggle from './PageVariantToggle';
 
 export function CornerToggle({ screen, placement = 'corner' }) {
+  const allowed = useCanSelfSwitch(screen);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted || typeof document === 'undefined') return null;
-  return createPortal(<PageVariantToggle screen={screen} placement={placement} />, document.body);
+  if (!allowed || !mounted || typeof document === 'undefined') return null;
+  // מרווח בסוף התוכן (רק כשהאייקון מוצג), כדי שגלילה עד הסוף לא תשאיר כפתור של הדף (למשל "שמירת פרטים") מתחת לאייקון הקבוע
+  return (
+    <>
+      <div className="gm-pvt-spacer" aria-hidden="true" />
+      {createPortal(<PageVariantToggle screen={screen} placement={placement} />, document.body)}
+    </>
+  );
 }
 
 export default function VariantFrame({ screen, variant, children }) {
