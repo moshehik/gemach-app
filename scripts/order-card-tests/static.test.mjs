@@ -197,3 +197,11 @@ test('CSS: נטרולי הדליפה של §D.2 קיימים ב-oc-base.css', ()
   assert.ok(has(/#stepper/, /^display$/, /none!important/), 'A5: סטפר מוסתר');
   assert.ok(has(/\.oc-emps$/, /^max-height$/), 'D12: רשימה נגללת');
 });
+
+test('סקירה 4: החץ ולחצני השמירה של הרייל מנוטרלים בזמן שמירה (oc.saving)', () => {
+  const top = read(path.join(OC, 'OcTopbar.js'));
+  assert.ok(/className="back"[^>]*disabled=\{oc\.saving\}/.test(top));
+  const rail = read(path.join(OC, 'OcDefaultParts.js'));
+  assert.ok((rail.match(/data-act="save" disabled=\{busy\}/g) || []).length === 3);
+  assert.ok(/const busy = !!oc\.saving;/.test(rail));
+});

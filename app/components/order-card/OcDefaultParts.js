@@ -22,6 +22,7 @@ export function DefaultRail({ oc }) {
   const { totals, changes, dirty, order, items } = oc;
   const net = totals.pendingNet, due = totals.balance, bal = totals.savedBalance;
   const nAct = items.filter(i => !i.isDeleted).length;
+  const busy = !!oc.saving;
   const onSave = async (intent) => {
     const r = await oc.save({ intent });
     if (r.ok && !r.noop) {
@@ -30,9 +31,9 @@ export function DefaultRail({ oc }) {
     }
   };
   let primary;
-  if (dirty && due > 0.005) primary = <button type="button" className="btn primary lg block" data-act="save" onClick={() => onSave('pay')}><OcIcon name="card" />תשלום</button>;
-  else if (dirty && net < -0.005) primary = <button type="button" className="btn primary lg block" data-act="save" onClick={() => onSave('credit')}><OcIcon name="undo" />זיכוי</button>;
-  else if (dirty) primary = <button type="button" className="btn primary lg block" data-act="save" onClick={() => onSave('save')}><OcIcon name="check" />שמור</button>;
+  if (dirty && due > 0.005) primary = <button type="button" className="btn primary lg block" data-act="save" disabled={busy} onClick={() => onSave('pay')}><OcIcon name="card" />תשלום</button>;
+  else if (dirty && net < -0.005) primary = <button type="button" className="btn primary lg block" data-act="save" disabled={busy} onClick={() => onSave('credit')}><OcIcon name="undo" />זיכוי</button>;
+  else if (dirty) primary = <button type="button" className="btn primary lg block" data-act="save" disabled={busy} onClick={() => onSave('save')}><OcIcon name="check" />שמור</button>;
   else if (bal < -0.005) primary = <button type="button" className="btn primary lg block" data-act="credit-now" onClick={oc.goPayments}><OcIcon name="undo" />זכה <Money n={bal} /></button>;
   else if (bal > 0.005) primary = <button type="button" className="btn primary lg block" data-act="pay-now" onClick={oc.goPayments}><OcIcon name="card" />שלם <Money n={bal} /></button>;
   else primary = <button type="button" className="btn primary lg block" disabled><OcIcon name="check" />שמור</button>;
@@ -70,7 +71,7 @@ export function DefaultRail({ oc }) {
       </div>
       <div className="cart-actions">
         {primary}
-        {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" />בטל שינויים</button> : null}
+        {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" disabled={busy} onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" />בטל שינויים</button> : null}
       </div>
     </div>
   );

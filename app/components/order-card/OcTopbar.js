@@ -29,7 +29,7 @@ export default function OcTopbar({ oc, ui, slots }) {
   };
   return (
     <div className="topbar">
-      <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" onClick={() => oc.exit()}>
+      <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" disabled={oc.saving} onClick={() => oc.exit()}>
         <OcIcon name="back" />
       </button>
       <div className="ttl">
