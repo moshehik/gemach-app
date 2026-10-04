@@ -407,4 +407,21 @@ t('#4 db-mode: POST מוגבל למתכנת בלבד (DEVELOPER_ONLY_ROLES), ל�
   assert.ok(!/checkAuth/.test(route.slice(route.indexOf('export async function GET'), route.indexOf('export async function POST'))), 'GET ציבורי: רק mode');
 });
 
+t('#7 סטפר "-" על שדה ריק נשאר ריק בשדות שבהם ריק משמעותי (ולא הופך ל-0)', () => {
+  for (const k of ['instant_undo_minutes', 'swap_min_days_before_event', 'swap_pairing_window_minutes', 'size_edit_until_days_before_event']) {
+    assert.equal(L.stepNumber(k, '', -1), '', k);
+    assert.equal(L.stepNumber(k, '', 1), '1', k + ' +');
+    assert.equal(L.stepNumber(k, '0', -1), '0', k + ' 0 נשאר 0');
+  }
+  assert.equal(L.stepNumber('delivery_days_before', '', -1), '0', 'שדה רגיל: ריק נחשב 0');
+});
+
+t('#8 אמצעי תשלום: אי אפשר לכבות את האחרון (נשאר לפחות אחד)', () => {
+  const choices = ['מזומן', 'העברה'];
+  assert.equal(L.methodsToggle(choices, 'מזומן', 'מזומן'), 'מזומן', 'האחרון לא נכבה');
+  assert.equal(L.methodsWouldEmpty('מזומן', 'מזומן'), true);
+  assert.equal(L.methodsWouldEmpty('מזומן,העברה', 'מזומן'), false);
+  assert.equal(L.methodsToggle(choices, '', 'מזומן'), 'מזומן', 'מרשימה ריקה אפשר להדליק');
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

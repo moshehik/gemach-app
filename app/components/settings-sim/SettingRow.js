@@ -13,7 +13,7 @@ import {
   toggleShownOn, toggleNextRaw, selectOptions, selectShownValue,
   ENFORCEABLE_FIELDS, CUSTOMER_FIELDS, mandatoryIsSelected, mandatoryToggle, mandatoryUnknown,
   parseGroups, serializeGroups, fieldName, deptToggle, deptSelected,
-  methodChoices, methodsToggle, methodsAdd, methodsSelected,
+  methodChoices, methodsToggle, methodsAdd, methodsSelected, methodsWouldEmpty,
   cleanNumberInput, stepNumber, numberLimit, numberPlaceholder, validationError,
   normTime, commitTime,
 } from '@/lib/settingsSimLayout';
@@ -202,6 +202,7 @@ function Depts({ row, raw, onChange, departments }) {
 
 function Methods({ row, raw, saved, onChange }) {
   const [adding, setAdding] = useState('');
+  const [lastHint, setLastHint] = useState(false);
   const choices = methodChoices(saved, raw);
   const on = methodsSelected(raw);
   const add = () => {
@@ -216,8 +217,13 @@ function Methods({ row, raw, saved, onChange }) {
         label={row.label}
         items={choices.map((c) => ({ id: c, label: c, icon: /אשראי/.test(c) ? 'card' : /מזומן/.test(c) ? 'cash' : /העברה|בנק/.test(c) ? 'bank' : /צ.?ק/.test(c) ? 'cheque' : 'wallet' }))}
         isOn={(it) => on.includes(it.id)}
-        onToggle={(it) => onChange(methodsToggle(choices, raw, it.id))}
+        onToggle={(it) => {
+          if (methodsWouldEmpty(raw, it.id)) { setLastHint(true); return; }
+          setLastHint(false);
+          onChange(methodsToggle(choices, raw, it.id));
+        }}
       />
+      {lastHint ? <small className="st-err" role="alert">חייב להישאר לפחות אמצעי תשלום אחד פעיל.</small> : null}
       <div className="st-add">
         <input
           className="inp"

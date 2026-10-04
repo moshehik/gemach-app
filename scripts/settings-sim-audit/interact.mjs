@@ -471,6 +471,33 @@ try {
     assert.deepEqual(await p.evaluate(() => window.__pushed || []), [], 'לא ניווט לשום מקום');
     await p.close();
   });
+
+  await t('#7 סטפר "-" בשדה ריק (חלון ביטול מיידי) נשאר ריק, בלי שינוי ממתין', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'pay');
+    assert.equal(await p.$eval('#setting-row-instant_undo_minutes input', (e) => e.value), '');
+    await click(p, '#setting-row-instant_undo_minutes .numb.dn');
+    await sleep(150);
+    assert.equal(await p.$eval('#setting-row-instant_undo_minutes input', (e) => e.value), '');
+    assert.equal(await p.$('.st-chgs:not([hidden])'), null);
+    await p.close();
+  });
+
+  await t('#8 אמצעי תשלום: מכבים שניים, השלישי (האחרון) לא נכבה ויש הסבר', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'pay');
+    await clickText(p, '#setting-row-ALLOWED_PAYMENT_METHODS button', 'מזומן');
+    await clickText(p, '#setting-row-ALLOWED_PAYMENT_METHODS button', 'יציאה באישור מנהל');
+    await sleep(100);
+    await clickText(p, '#setting-row-ALLOWED_PAYMENT_METHODS button', 'אשראי');
+    await sleep(150);
+    assert.match(await p.$eval('#setting-row-ALLOWED_PAYMENT_METHODS', (e) => e.textContent), /לפחות אמצעי תשלום אחד/);
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(300);
+    const v = (await posts(p))[0].body.items[0].value;
+    assert.equal(v, 'אשראי (דרך נדרים פלוס)', 'האחרון נשאר');
+    await p.close();
+  });
 } finally {
   await browser.close();
   server.close();
