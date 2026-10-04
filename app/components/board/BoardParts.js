@@ -274,8 +274,10 @@ export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selec
 }
 
 // ---------- תצוגת רשימה (S03; בנייד אוטומטית) ----------
-// BD-O5 ("לא, להוסיף מונים" + "רק מונים, כמו בעיצוב"): כותרת יום של הפלטה (hday, כמו ביומן ההיסטוריה) ומתחתיה מוני השלבים
-// של אותו יום - בלי שורות הזמנה. מוצגים רק ימים עם מונים (לפי המסנן) או עם סימן התראה. לחיצה על הכותרת = הלו״ז היומי (S06).
+// החלטת הבעלים (5.10.2026, "לוח חודשי מעולה ומאושר" + שינוי אחד): בתצוגת השורות כל יום נראה ופועל כמו שורה בתוצאות החיפוש
+// של דף הבית (HomeResults.js: card.res-one > .list > a.li.rlink.lrow, בדיוק אותה אנטומיה: לוחית ic-b כהה, .t עם b ו-.ln, חץ
+// .go) והאייקונים עם המספרים בתוך השורה (אותם lz-pr של התא, בצד הסופי של השורה). כותרת השורה = היום העברי, שורת המשנה =
+// פרשה / חג. כל השורה היא קישור ל-/schedule?date= (BD-O3). מוצגים רק ימים עם מונים (לפי המסנן) או עם סימן התראה.
 export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay }) {
   const lateCfg = useLateCfg();
   const days = weeks.flat().filter(Boolean).map((cell) => {
@@ -286,24 +288,36 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
     return { cell, rows, alert, late };
   }).filter((d) => d.rows.length || d.alert);
   return (
-    <div className="card items-card lz-lcard bd-lcard">
+    <div className="card items-card lz-lcard bd-lcard res-one">
       {head}
-      <div className="hres">
-        <div className="hgrp">
-          {days.length ? days.map(({ cell, rows, alert, late }) => (
-            <section key={cell.key} className={'bd-lday' + (cell.isToday ? ' lz-today' : '')} aria-label={cell.hebrewLong}>
-              <a className={'hday bd-hday' + (late ? ' bd-latecell' : '')} href={'/schedule?date=' + cell.key} onClick={(e) => goTo(e, cell, onOpenDay)} data-tip="ללו״ז של היום הזה">
-                <b>{cell.hebrewLong}</b>
-                {cell.notes.length ? <small>{cell.notes.join(' · ')}</small> : null}
+      {days.length ? (
+        <div className="list bd-list" aria-label="ימי החודש">
+          {days.map(({ cell, rows, alert, late }) => {
+            const total = rows.reduce((a, r) => a + r.total, 0);
+            return (
+              <a
+                key={cell.key}
+                className={'li rlink lrow bd-lrow' + (cell.isToday ? ' bd-ltoday' : '') + (late ? ' bd-latecell' : '')}
+                href={'/schedule?date=' + cell.key}
+                aria-label={cell.hebrewLong + (total ? ' · ' + total + ' פעולות' : '')}
+                data-d={cell.key}
+                onClick={(e) => goTo(e, cell, onOpenDay)}
+              >
+                <div className="ic-b"><Ic name="cal" /><span className="rlbl">{cell.letter}</span></div>
+                <div className="t">
+                  <b>{cell.hebrewLong}</b>
+                  {cell.notes.length ? <span className="ln">{cell.notes.join(' · ')}</span> : null}
+                </div>
+                {rows.length ? <StageCounters rows={rows} className="bd-lc" /> : null}
                 {alert ? <span className="tabmk debt lz-al" role="img" aria-label={alert.tip} data-tip={alert.tip}><Ic name="alert" className="sm" /></span> : null}
+                <Ic name="chev" className="go sm" />
               </a>
-              {rows.length ? <StageCounters rows={rows} className="bd-lc" /> : null}
-            </section>
-          )) : (
-            <div className="empty" role="status"><Ic name="cal" className="lg" /><div>אין פעולות בחודש הזה</div></div>
-          )}
+            );
+          })}
         </div>
-      </div>
+      ) : (
+        <div className="empty" role="status"><Ic name="cal" className="lg" /><div>אין פעולות בחודש הזה</div></div>
+      )}
     </div>
   );
 }

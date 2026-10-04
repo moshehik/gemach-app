@@ -106,7 +106,7 @@ await t('BD-O4 / BD-O5 / E09: בתא וברשימה רק סמנים ומונים
   has(cell, /className="tabmk debt lz-al"/, 'סימן ההתראה נשאר');
   has(PARTS, /'lz-pr' \+ \(r\.alerts \? ' al' : ''\)/, 'גוון ההתראה על מונה');
   has(list, /filter\(\(d\) => d\.rows\.length \|\| d\.alert\)/, 'ברשימה: ימים עם מונים או התראה (לא "ימים עם הזמנות")');
-  has(list, /<StageCounters rows=\{rows\} className="bd-lc" \/>/, 'ברשימה: מונים מתחת לכותרת היום');
+  has(list, /<StageCounters rows=\{rows\} className="bd-lc" \/>/, 'ברשימה: המונים (אייקון + מספר) בתוך שורת היום');
   // המסך נשאר ללא הסרות שגויות: הקוד הישן של השורה והאייקון לא קיים בשום קובץ של הלוח
   hasNot(CSS, /bd-co\b|bd-cos|bd-ex\b|--bd-cat/);
 });
@@ -165,7 +165,7 @@ await t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז ש�
   hasNot(UI, /תפעול/);
   hasNot(UI, /ללו״ז של היום<|id="toDay"/);
   hasNot(PARTS, /\bdim\b/);
-  hasNot(PARTS, /lz-lr|rlink/);
+  hasNot(PARTS, /lz-lr/);
   has(PAGE, /<bdi>לוח חודשי<\/bdi>/, 'JDG-1: שם הדף "לוח חודשי"');
 });
 
@@ -182,15 +182,38 @@ await t('נגישות (BD-O3): הגריד list/listitem; כל יום (בתא ו�
   has(PARTS, /role="listitem"/);
   has(PARTS, /className="bd-dlink"\s+href=\{href\}/);
   has(PARTS, /const href = '\/schedule\?date=' \+ cell\.key;/);
-  has(PARTS, /<a className=\{'hday bd-hday' \+ \(late \? ' bd-latecell' : ''\)\} href=\{'\/schedule\?date=' \+ cell\.key\} onClick=\{\(e\) => goTo\(e, cell, onOpenDay\)\}/, 'ברשימה: קישור ולא לחצן');
-  hasNot(code(PARTS), /<button type="button" className=\{'hday/, 'כותרת היום ברשימה כבר לא לחצן');
+  has(PARTS, /className=\{'li rlink lrow bd-lrow'[^}]*\}\s+href=\{'\/schedule\?date=' \+ cell\.key\}[\s\S]{0,200}onClick=\{\(e\) => goTo\(e, cell, onOpenDay\)\}/, 'ברשימה: כל שורה היא קישור (a.li.rlink.lrow) ולא לחצן');
+  hasNot(code(PARTS), /<button type="button" className=\{'(hday|li )/, 'שורת היום ברשימה כבר לא לחצן');
   has(PARTS, /e\.button > 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.altKey\) return;/, 'Ctrl/Shift/אמצעי = התנהגות קישור רגילה');
 });
 
 await t('GAP-4: איחור החזרה = מסגרת אדומה לתא כולו (ולכותרת היום ברשימה) בנוסף לסימן האחד ולמסגרת השורה', () => {
   has(PARTS, /\(lateCount \? ' bd-latecell' : ''\)/);
   has(CSS, /\.gm-ds\.gm-bd \.hc-d\.lz-day\.bd-latecell\{box-shadow:inset 0 0 0 2px var\(--red\)\}/);
-  has(CSS, /\.hday\.bd-hday\.bd-latecell/);
+  has(CSS, /\.bd-lrow\.bd-latecell\{box-shadow:inset 0 0 0 2px var\(--red\)\}/);
+  has(PARTS, /'li rlink lrow bd-lrow' \+ \(cell\.isToday \? ' bd-ltoday' : ''\) \+ \(late \? ' bd-latecell' : ''\)/);
+});
+
+await t('שינוי הבעלים 5.10.2026: תצוגת השורות = שורת תוצאה בחיפוש של דף הבית (אותו סימון, אותם כללי CSS), והאייקונים עם המספרים בתוך השורה', () => {
+  const list = PARTS.slice(PARTS.indexOf('export function DayList'), PARTS.indexOf('export { WEEKDAYS }'));
+  const HOME = read('../app/components/home/HomeResults.js');
+  // אותו סימון של השורה: card.res-one > .list > a.li.rlink.lrow עם ic-b (לוחית) / .t (b + .ln) / .go
+  has(HOME, /<div className="card res-one">/);
+  has(HOME, /<Link key=\{r\.key\} className="li rlink lrow" href=\{r\.url\}>/);
+  has(list, /className="card items-card lz-lcard bd-lcard res-one"/, 'כרטיס הרשימה = card.res-one');
+  has(list, /<div className="list bd-list"/);
+  has(list, /<div className="ic-b"><Ic name="cal" \/><span className="rlbl">\{cell\.letter\}<\/span><\/div>/, 'לוחית ic-b: אייקון + אות היום (כמו אייקון + סוג בתוצאה)');
+  has(list, /<div className="t">\s*<b>\{cell\.hebrewLong\}<\/b>\s*\{cell\.notes\.length \? <span className="ln">/, 'כותרת = היום העברי, שורת משנה (.ln) = פרשה / חג');
+  has(list, /<Ic name="chev" className="go sm" \/>/, 'חץ .go כמו בתוצאה');
+  // המונים בתוך השורה (בין .t לחץ), ולא בשורה / בלוק נפרד
+  const li = list.slice(list.indexOf('<a'), list.indexOf('</a>'));
+  assert.ok(li.indexOf('<StageCounters') > li.indexOf('className="t"') && li.indexOf('<StageCounters') < li.indexOf('className="go sm"'), 'המונים בתוך ה-<a> של השורה');
+  hasNot(code(PARTS), /hday|bd-lday|className="hres"|className="hgrp"/, 'אין יותר כותרת-יום + בלוק מונים נפרד');
+  // כללי השורה של הבית (components.css, "gm-home .res-one") מועתקים אחד לאחד ללוח (.gm-bd במקום .gm-home)
+  const DS = read('../design-system/components.css');
+  const homeRules = DS.split('\n').filter((l) => /^\.gm-ds\.gm-home \.res-one \.li(:|\.| )/.test(l) && !/\.rkind/.test(l));
+  assert.ok(homeRules.length >= 14, 'נמצאו כללי השורה של הבית');
+  for (const r of homeRules) assert.ok(CSS.includes(r.replace(/gm-home/g, 'gm-bd')), 'כלל שורה של הבית חסר בלוח: ' + r.slice(0, 90));
 });
 
 await t('S09: חצי המקלדת מחליפים חודש (לא בתוך שדה)', () => {

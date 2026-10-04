@@ -136,21 +136,50 @@
 .gm-ds.gm-bd .bd-mp .hc-d.bd-mpd small{font-size:12px;font-weight:500;color:var(--ink3)}
 .gm-ds.gm-bd .bd-mp .hc-d.bd-mpd.on small{color:var(--gold-300)}
 
-/* ===== תצוגת רשימה (S03; BD-O5: כותרת יום + מוני השלבים בלבד, בלי שורות הזמנה) ===== */
+/* ===== תצוגת רשימה (S03): כל יום = שורה בדיוק כמו שורת תוצאה בחיפוש של דף הבית ===== */
+/* החלטת הבעלים 5.10.2026: "בתצוגת השורות העיצוב כמו שורה בתוצאות החיפוש, והאייקונים עם המספרים בתוך השורה". הסימון (card.res-one >
+   .list > a.li.rlink.lrow: ic-b, .t עם b + .ln, .go) הוא של HomeResults.js; כללי השורה שלו (components.css, "gm-home .res-one") מועתקים
+   כאן כמות שהם, רק עם .gm-bd במקום .gm-home (הלוח אינו דף הבית). שומר סטטי: scripts/test_board_page.mjs (הכללים זהים לכללי הבית). */
+.gm-ds.gm-bd .res-one .li{align-items:center;gap:16px;padding:28px 12px;overflow:hidden;clip-path:inset(0 round 14px);contain:paint}
+.gm-ds.gm-bd .res-one .li.lrow::before{display:none}
+.gm-ds.gm-bd .res-one .li:hover,.gm-ds.gm-bd .res-one .li:focus-visible{background:linear-gradient(90deg,rgba(241,220,143,.34),rgba(212,176,74,.26) 55%,rgba(247,236,196,.38))}
+.gm-ds.gm-bd .res-one .li::after{content:"";position:absolute;top:0;bottom:0;right:0;left:auto;width:40%;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);transform:translateX(110%) skewX(-25deg);opacity:0;transition:opacity .15s,transform 0s .15s}
+.gm-ds.gm-bd .res-one .li:hover::after,.gm-ds.gm-bd .res-one .li:focus-visible::after{transform:translateX(-370%) skewX(-25deg);opacity:1;transition:opacity .1s,transform 2.2s cubic-bezier(.45,0,.25,1)}
+.gm-ds.gm-bd .res-one .li .t{display:flex;flex-direction:column;gap:6px}
+.gm-ds.gm-bd .res-one .li .t b{font-size:21px;font-weight:600;line-height:1.3;color:var(--gm-navy-900)}
+.gm-ds.gm-bd .res-one .li .t .ln{font-size:14px;font-weight:400;color:var(--gm-ink3)}
+.gm-ds.gm-bd .res-one .li .a{align-self:center;margin-inline-start:auto;padding-inline:8px}
+.gm-ds.gm-bd .res-one .li .go{transform:rotate(90deg);color:var(--gm-navy-500)}
+.gm-ds.gm-bd .res-one .li .ic-b{display:flex;align-items:center;width:75px;height:48px;padding:0 6px;gap:4px;justify-content:center;flex-direction:row;border-radius:14px;background:var(--gm-navy);color:#e8785a;align-self:center}
+.gm-ds.gm-bd .res-one .li .ic-b .ic{width:20px;height:20px;color:#f38a6b}
+.gm-ds.gm-bd .res-one .li .rlbl{flex:none;font-size:14px;font-weight:600;color:#fff}
+.gm-ds.gm-bd .res-one .li.rlink .ic-b .ic{color:#f4a68c!important;stroke:#f4a68c!important}
+.gm-ds.gm-bd .res-one .li:hover .ic-b{background:var(--gm-navy-700)}
+.gm-ds.gm-bd .res-one .li .t b,.gm-ds.gm-bd .res-one .li .t .ln,.gm-ds.gm-bd .res-one .li .a{transition:color 250ms ease}
+.gm-ds.gm-bd .res-one .li:hover .t b,.gm-ds.gm-bd .res-one .li:focus-visible .t b{color:#8a6a12}
+.gm-ds.gm-bd .res-one .li:hover .t .ln,.gm-ds.gm-bd .res-one .li:focus-visible .t .ln,.gm-ds.gm-bd .res-one .li:hover .a,.gm-ds.gm-bd .res-one .li:focus-visible .a{color:#9a7a1f}
+.gm-ds.gm-bd .rlink{color:inherit;text-decoration:none}
+.gm-ds.gm-bd .li .t .ln{display:block;color:var(--gm-ink3);font-size:14px;overflow-wrap:anywhere}
+.gm-ds.gm-bd .res-one .list{padding-inline:4px}
 .gm-ds.gm-bd .bd-lcard{margin-top:8px;padding:0;overflow:hidden}
 .gm-ds.gm-bd .bd-lcard>.hc-h{margin:0;border-radius:0}
-.gm-ds.gm-bd .bd-lcard .hres{padding:14px}
-.gm-ds.gm-bd .bd-lcard .hgrp{display:flex;flex-direction:column;gap:18px}
-.gm-ds.gm-bd .bd-lday{display:flex;flex-direction:column;gap:6px}
-.gm-ds.gm-bd .hday.bd-hday{position:relative;top:auto;z-index:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;margin:0 0 4px;padding:10px 16px;border-radius:12px;background:rgba(238,240,242,.96);border:1px solid var(--sky-200);border-inline-start:4px solid var(--gold);color:var(--navy);font:inherit;text-align:start;cursor:pointer;text-decoration:none;box-sizing:border-box}
-.gm-ds.gm-bd .hday.bd-hday:hover,.gm-ds.gm-bd .hday.bd-hday:focus-visible{background:#fff;outline:0;box-shadow:0 0 0 2px var(--gold)}
-.gm-ds.gm-bd .hday.bd-hday b{font-size:16px;font-weight:700;color:var(--navy)}
-.gm-ds.gm-bd .hday.bd-hday small{font-size:13px;color:var(--ink3)}
-.gm-ds.gm-bd .hday.bd-hday .lz-al{margin-inline-start:auto}
-.gm-ds.gm-bd .bd-lday.lz-today .hday.bd-hday{box-shadow:inset 0 0 0 2px var(--gold)}
-.gm-ds.gm-bd .hday.bd-hday.bd-latecell{box-shadow:inset 0 0 0 2px var(--red)}
-.gm-ds.gm-bd .bd-lc{display:flex;flex-wrap:wrap;gap:6px;padding-inline:4px}
+.gm-ds.gm-bd .bd-lcard .bd-list{padding:6px 12px 14px}
+.gm-ds.gm-bd .bd-lrow{flex-wrap:wrap;row-gap:12px}
+.gm-ds.gm-bd .bd-lrow .t{flex:1 1 200px;min-width:0}
+/* האייקונים עם המספרים בתוך השורה (BD-O5 + החלטת 5.10): אותם lz-pr של התא, בסוף השורה לפני סימן ההתראה והחץ */
+.gm-ds.gm-bd .bd-lrow .bd-lc{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;flex:0 1 auto;min-width:0;margin-inline-start:auto}
 .gm-ds.gm-bd .bd-lc .lz-pr{padding:4px 12px}
+.gm-ds.gm-bd .bd-lrow .lz-al{position:static;flex:none}
+.gm-ds.gm-bd .bd-lrow.bd-ltoday{box-shadow:inset 0 0 0 2px var(--gold)}
+.gm-ds.gm-bd .bd-lrow.bd-latecell{box-shadow:inset 0 0 0 2px var(--red)}
+.gm-ds.gm-bd .bd-lrow.bd-ltoday.bd-latecell{box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 4px var(--gold)}
+.gm-ds.gm-bd .bd-lrow:focus-visible{box-shadow:inset 0 0 0 2px var(--gold)}
+@media (max-width:720px){
+ .gm-ds.gm-bd .bd-lrow .t{flex:1 1 0}
+ .gm-ds.gm-bd .bd-lrow .bd-lc{order:5;flex:1 1 100%;justify-content:flex-start;margin-inline-start:0}
+ .gm-ds.gm-bd .bd-lrow .go{order:4}
+ .gm-ds.gm-bd .bd-lrow .lz-al{order:3}
+}
 
 /* הדף בלי חלונות (BD-O3): רק הסימן הצף של הטולטיפ של הדף מעל המעטפת */
 .gm-ds.gm-bd .pl-tt{z-index:1250}
