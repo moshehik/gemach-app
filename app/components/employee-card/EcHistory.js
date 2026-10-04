@@ -25,8 +25,8 @@ function Row({ row, index, open, onToggle }) {
   const dayKey = israelDayKey(row.createdAt);
   const time = israelTime(row.createdAt);
   return (
-    <article className={`hrow${open ? ' open' : ''}`} data-hv={row.id} aria-expanded={open} style={{ '--i': Math.min(index, 12) }}>
-      <div className="li rlink lrow" role="button" tabIndex={0} onClick={onToggle}
+    <article className={`hrow${open ? ' open' : ''}`} data-hv={row.id} style={{ '--i': Math.min(index, 12) }}>
+      <div className="li rlink lrow" role="button" tabIndex={0} aria-expanded={open} onClick={onToggle}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
         <div className="ic-b"><Ic id={row.icon} /><span className="rlbl">{row.entityLabel}</span></div>
         <div className="t">

@@ -32,6 +32,7 @@ import EcHistory from './EcHistory';
 import EcMail from './EcMail';
 
 const FLASH_KEY = 'ec-flash-toast';
+const focusId = (elId) => { const el = document.getElementById(elId); if (el) el.focus(); };
 const TABS = [['details', 'פרטי עובד', 'userck'], ['attendance', 'נוכחות וסיכום', 'clock'], ['history', 'היסטוריה', 'sn-history']];
 
 function CardHead({ icon, id, children }) {
@@ -247,7 +248,7 @@ export default function EmployeeCardA5({ employeeId }) {
   const confirmPasswordChange = async () => {
     if (pwBusyRef.current) return;
     const err = passwordChangeError({ newPassword: newPw, sessionEmployeeId });
-    if (err) { say(err, 'error'); return; }
+    if (err) { say(err, 'error'); focusId('employee-detail-newPassword'); return; }
     pwBusyRef.current = true; setPwBusy(true);
     try {
       const result = await requestJson(`/api/employees/${id}/password`, {
@@ -274,7 +275,7 @@ export default function EmployeeCardA5({ employeeId }) {
   const confirmSetPassword = async () => {
     if (pwBusyRef.current) return;
     const err = setPasswordError(setPw);
-    if (err) { say(err, 'error'); return; }
+    if (err) { say(err, 'error'); focusId('employee-detail-setPassword'); return; }
     pwBusyRef.current = true; setPwBusy(true);
     try {
       const result = await requestJson(`/api/employees/${id}/set-password`, {
@@ -285,7 +286,7 @@ export default function EmployeeCardA5({ employeeId }) {
     } finally { pwBusyRef.current = false; setPwBusy(false); }
   };
   // Enter מאשר רק משדה טקסט (ולא כשהמקש מוחזק), Escape מבטל - כמו בעיצוב המאושר
-  const boxKeys = (onOk, onCancel) => (e) => {
+  const onBoxKeys = (e, onOk, onCancel) => {
     if (e.key === 'Enter') { if (e.target.tagName === 'INPUT') { e.preventDefault(); if (!e.repeat) onOk(); } }
     else if (e.key === 'Escape') { e.stopPropagation(); onCancel(); }
   };
@@ -427,7 +428,7 @@ export default function EmployeeCardA5({ employeeId }) {
                       <div className="sm faint ec-hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית, או בכרטיס של עובד אחר - הנהלה ראשית / מתכנת באימות הסיסמה שלהם), לאפס ולשלוח סיסמה זמנית לעובד במייל, או שמנהל יקבע סיסמה חדשה ישירות (לעובד בלי מייל שמור, או בלי גישה אליו כרגע).</div>
 
                       {pwOpen ? (
-                        <div className="pf-pwbox" id="pwBox" onKeyDown={boxKeys(confirmPasswordChange, () => closePwBox(true))}>
+                        <div className="pf-pwbox" id="pwBox" onKeyDown={(e) => onBoxKeys(e, confirmPasswordChange, () => closePwBox(true))}>
                           {isOwnCard
                             ? <PasswordField id="employee-detail-oldPassword" label="סיסמא ישנה" value={oldPw} onChange={(e) => setOldPw(e.target.value)} shown={!!eye.old} onToggle={eyeBtn('old')} />
                             : <PasswordField id="employee-detail-managerPassword" label="הסיסמא שלך (לאימות המנהל)" value={mgrPw} onChange={(e) => setMgrPw(e.target.value)} shown={!!eye.mgr} onToggle={eyeBtn('mgr')} hint="שינוי סיסמה לעובד אחר מותר להנהלה ראשית ולמתכנת, באימות הסיסמה שלך. הסיסמה הנוכחית של העובד אינה נדרשת." />}
@@ -440,7 +441,7 @@ export default function EmployeeCardA5({ employeeId }) {
                       ) : null}
 
                       {pwSetOpen ? (
-                        <div className="pf-pwbox" id="pwSetBox" onKeyDown={boxKeys(confirmSetPassword, () => closeSetBox(true))}>
+                        <div className="pf-pwbox" id="pwSetBox" onKeyDown={(e) => onBoxKeys(e, confirmSetPassword, () => closeSetBox(true))}>
                           <PasswordField id="employee-detail-setPassword" label="סיסמה חדשה לעובד" value={setPw} onChange={(e) => setSetPw(e.target.value)} shown={!!eye.set} onToggle={eyeBtn('set')} />
                           <div className="pf-pwbtns">
                             <button type="button" className="btn ghost" id="pwSetCancel" onClick={() => closeSetBox(true)}>ביטול</button>

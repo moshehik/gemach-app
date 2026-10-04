@@ -90,7 +90,7 @@ await t('סיסמה גולמית מוסווית', () => {
 
 console.log('שליחת מייל');
 const emailLog = (data) => ({ action: 'EMAIL_SENT', changesJson: typeof data === 'string' ? data : json(data) });
-await t('EMAIL_SENT קריא: אל/עותק/נושא/תוכן/יעד/קבצים/קישורי דרייב - בלי JSON, כתובות או גדלים', () => {
+await t('EMAIL_SENT קריא (סדר העיצוב): נושא/אל/עותק/תוכן/יעד/קבצים/קישורי דרייב - בלי JSON, כתובות או גדלים', () => {
   const r = one(emailLog({
     subject: 'תלוש שכר', to: 'a@b.co', cc: 'c@d.co', body: 'שלום\nמצורף התלוש',
     sendMode: 'both',
@@ -100,7 +100,7 @@ await t('EMAIL_SENT קריא: אל/עותק/נושא/תוכן/יעד/קבצים/
   assert.equal(r.icon, 'mail');
   assert.equal(r.chipTone, 'gray');
   assert.equal(r.actionLabel, 'שליחת מייל');
-  assert.deepEqual(r.changes.map((c) => c.label), ['אל', 'עותק', 'נושא', 'תוכן', 'יעד הקבצים', 'קבצים', 'קישורי דרייב']);
+  assert.deepEqual(r.changes.map((c) => c.label), ['נושא', 'אל', 'עותק', 'תוכן', 'יעד הקבצים', 'קבצים', 'קישורי דרייב']);
   const by = Object.fromEntries(r.changes.map((c) => [c.key, c]));
   assert.equal(by.body.long, true);
   assert.equal(by.sendMode.to, 'גם וגם');

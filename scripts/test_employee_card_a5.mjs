@@ -257,7 +257,7 @@ await t('נרמול: חריגת הרשאה אישית + מייל קריא (תק�
     { id: 'm1', entityType: 'Employee', entityId: 'e1', action: 'EMAIL_SENT', changesJson: JSON.stringify({ to: 'a@b.co', subject: 'ש', body: 'x', sendMode: 'drive' }), createdAt: '2026-10-01T09:00:00.000Z', employeeId: 'a1', employeeName: 'דנה' },
   ], { catalogLabel: (k) => (k === 'feature:ai' ? 'בינה מלאכותית' : k) });
   assert.equal(rows[0].actionLabel, 'שינוי הרשאה'); assert.equal(rows[0].changes[0].label, 'בינה מלאכותית'); assert.equal(rows[0].changes[0].to, 'מותר');
-  assert.equal(rows[1].actionLabel, 'שליחת מייל'); assert.deepEqual(rows[1].changes.map((c) => c.key), ['to', 'subject', 'body', 'sendMode']);
+  assert.equal(rows[1].actionLabel, 'שליחת מייל'); assert.deepEqual(rows[1].changes.map((c) => c.key), ['subject', 'to', 'body', 'sendMode']);
   assert.equal(rows[1].changes[3].to, 'העלאה לדרייב + שיתוף');
 });
 

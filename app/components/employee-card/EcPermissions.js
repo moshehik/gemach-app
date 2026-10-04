@@ -94,7 +94,6 @@ export default function EcPermissions({ employeeId, refreshKey = 0 }) {
     }
   }, [employeeId]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- טעינה ראשונית + רענון אחרי שמירת פרטים (שינוי מחלקה משנה את ברירות המחדל)
   useEffect(() => { load(); }, [load, refreshKey]);
 
   const saveOverride = async (key, value) => {

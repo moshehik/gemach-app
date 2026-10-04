@@ -21,6 +21,7 @@
 .gm-ds.gm-ec :is(.back,.ibtn){padding:1px 6px}
 /* globals.css / design-system.css: .tab{margin-inline-end:22px} - בעיצוב הלשוניות צמודות וחולקות את הרוחב שווה */
 .gm-ds.gm-ec .tab{margin-inline-end:0}
+.gm-ds.gm-ec .tabs{border-bottom:0}
 .gm-ds.gm-ec .field{margin-bottom:0}
 .gm-ds.gm-ec input.inp:not(:disabled):not([type=checkbox]){color:var(--gm-ink)}
 .gm-ds.gm-ec .sw input{background:transparent}

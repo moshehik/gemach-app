@@ -15,7 +15,7 @@ const DUMP = (rootSels) => {
   rootSels.forEach((rootSel, ri) => {
     const root = document.querySelector(rootSel);
     if (!root) return;
-    const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { let s = e.tagName.toLowerCase(); const c = [...e.classList].filter((x) => !/^(on|act|pulse|drag|fresh|enter|bump|in|no-print)$/.test(x) && !/^(ia-)/.test(x)).sort().slice(0, 3).join('.'); if (c) s += '.' + c; p.unshift(s); e = e.parentElement; } return NAMES[ri] + '>' + p.join('>'); };
+    const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { let s = e.tagName.toLowerCase(); const c = [...e.classList].filter((x) => !/^(on|act|pulse|drag|fresh|enter|bump|in|no-print|print-area)$/.test(x) && !/^(ia-)/.test(x)).sort().slice(0, 3).join('.'); if (c) s += '.' + c; p.unshift(s); e = e.parentElement; } return NAMES[ri] + '>' + p.join('>'); };
     const all = [root, ...root.querySelectorAll('*')];
     all.forEach((el) => {
       if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
@@ -55,8 +55,8 @@ const results = {};
 const snap = async (name, opts = {}) => {
   await sleep(opts.wait || 650);
   const clip = D && !opts.viewport ? await p.evaluate(() => { const r = document.querySelector('#app').getBoundingClientRect(); return { x: 0, y: Math.max(0, r.top + scrollY - 10), width: document.documentElement.clientWidth, height: r.height + 20 }; }) : null;
+  results[name] = await p.evaluate(DUMP, ROOTS); // המדידה לפני הצילום (הצילום איטי והטוסט נעלם תוך 2.6 שנ')
   await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, ...(clip ? { clip, captureBeyondViewport: true } : { fullPage: !opts.viewport }) });
-  results[name] = await p.evaluate(DUMP, ROOTS);
 };
 const exists = (sel) => p.$(sel).then((h) => !!h);
 const pos = (sel) => p.$eval(sel, (el) => { const bb = el.getBoundingClientRect(); return { x: bb.left + bb.width / 2, y: bb.top + bb.height / 2 }; });
@@ -99,7 +99,8 @@ await clickAt('#pwOk'); await snap('06-pw-empty-toast');
 await away(); await clickAt('#pwSetOpen'); await snap('07-approval', { viewport: true });
 await clickAt('[data-ec=au-pick]'); await snap('08-approval-picked', { viewport: true });
 await escape(); await escape();
-await away(); await clickAt('[data-ec=p-info]'); await snap('09-perm-info', { viewport: true });
+await away(); if (!D) { await p.evaluate(() => { const r = document.querySelector('[data-row="page:refunds"]'); if (r) r.closest('details').open = true; }); await sleep(300); }
+await clickAt(D ? '[data-ec=p-info]' : '[data-row="page:refunds"] [data-ec=p-info]'); await snap('09-perm-info', { viewport: true });
 await escape(); await away();
 await fresh(''); await clickAt('#t-attendance'); await away(); await snap('10-attendance');
 await clickAt('[data-ec=add]'); await away(); await snap('11-add-shift');
@@ -112,7 +113,7 @@ await clickAt('.hrow[data-hv="4"] .li, .hrow:nth-child(4) .li'); await away(); a
 await fresh(''); await clickAt('#ecSend'); await snap('18-mail', { viewport: true, wait: 900 });
 await typeInto('#m-sub', 'שעות עבודה'); await typeInto('#m-body', 'שלום, מצורף לוח המשמרות'); await away(); await snap('19-mail-filled', { viewport: true });
 await clickAt('#m-send'); await snap('20-mail-approval', { viewport: true, wait: 900 });
-await fresh(''); await clickAt('#ecSave'); await sleep(1300); await snap('21-saved-toast', { viewport: true });
+await fresh(''); await clickAt('#ecSave'); await sleep(D ? 1300 : 450); await snap('21-saved-toast', { viewport: true, wait: D ? 650 : 200 });
 await fresh('new'); await away(); await snap('30-new');
 if (D) { await fresh('deptfail'); await away(); await snap('31-dept-failed'); await fresh('deptslow'); await away(); await snap('32-dept-loading'); }
 else { await fresh('deptfail'); await away(); await snap('31-dept-failed'); await fresh('deptslow'); await away(); await snap('32-dept-loading'); }

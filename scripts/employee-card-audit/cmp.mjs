@@ -19,12 +19,17 @@ const KNOWN = [
   [/card-h>h2$/, /^tx$/], // EC-08: "מחלקה, סטטוס והערות" (כרטיס מאוחד) והערות לא בכרטיס נפרד
   [/ec-notes|section\.card\.dfields>div\.grid2|div\.grid2>div\.field/, /^h$/], // EC-08: הכרטיס המאוחד (שדה ההערות בתוכו)
   [/^TOAST/, null, /^(?!06|21)/], // אלמנט ה-#toast הריק של העיצוב קיים תמיד (נבדק רק בשלבי הטוסט: 06 ו-21)
+  [/SCRIM2>div\.dlg>div\.faint$/, null], // שורת "קוד הדגמה: 1234" בעיצוב בלבד
+  [/section\.panel$/, /^h$/, /^(0\d|1[89]|2\d|3\d)/], // גובה לשונית הפרטים: כרטיס מאוחד (EC-08) והרשאות מקופלות (EC-09)
+  [/SCRIM>div\.dlg\.mailwin>div\.mfld>textarea\.inp$/, /^tx$/], // טקסט פנימי של textarea: בעיצוב נבנה מחדש עם כל הקלדה, ב-React הערך מסונכרן (בדיקת הרצה בלבד)
+  [/^TOAST$/, /^op$/], // שלב אנימציית הכניסה של הטוסט (תלוי זמן)
+  [/div\.field>div\.ec-warn|div\.field>div\.cb>button\.cb-t|div\.cb>button\.cb-t>span\.cb-v|div\.grid2>div\.field>input\.inp$/, null, /^31/], // EC-05: רשימת מחלקות שלא נטענה = שדה בורר מנוטרל + שורת אזהרה (בלי שדה מספר חלופי)
   [/ec-hint/, /^h$/], // טקסט העזר של הסיסמה בכרטיס החדש מפורט יותר: כולל שינוי סיסמה בכרטיס של עובד אחר (תיקון EMP-BUGS)
   [/ec-notes|form>section\.card\.dfields>div\.field\.wide|section\.card\.dfields>div\.field\.wide/, null], // EC-08: ההערות בכרטיס המאוחד
-  [/form>section\.card\.dfields$/, /^h$/, /^(0\d|2\d|3\d)/], // גובה כרטיסים בלשונית הפרטים: המאוחד (EC-08) וההרשאות (EC-09)
+  [/form>section\.card\.dfields$/, /^h$/, /^(0\d|1[89]|2\d|3\d)/], // גובה כרטיסים בלשונית הפרטים: המאוחד (EC-08) וההרשאות (EC-09)
   [/^SCRIM2>div\.dlg$/, /^h$/], // שורת "קוד הדגמה: 1234" בעיצוב בלבד
   [/SCRIM2>div\.dlg>div\.mfld>span\.lbl/, /^tx$/], // "בחר מאשר" לרמת feature (כמו חלונית האימות הישנה); בעיצוב תמיד "בחר מנהל"
-  [/\.(mico|dbadge)>svg/, /^(w|h)$/], // אנימציית ריחוף (תלוית זמן)
+  [/\.(mico|dbadge)>svg|button\.btn\.lg\.primary>svg\.ic$/, /^(w|h)$/], // אנימציית ריחוף (תלוית זמן)
 ];
 const known = (sel, f, st) => KNOWN.some(([re, fr, sr]) => re.test(sel) && (!fr || fr.test(f)) && (!sr || sr.test(st)));
 const group = (arr) => { const m = new Map(); for (const x of arr.filter((x) => !skip(x))) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };
