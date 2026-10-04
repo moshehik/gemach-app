@@ -93,13 +93,17 @@ export function withDateUpdates(updates) {
 
 export const isRangeEvent = (o) => !!(o && (o.isAbroad || o.isWeekdayEvent));
 
-/** MGD:330-345 — מעבר לאירוע רגיל / חו"ל. null = אין שינוי (הישן: return כשהמצב כבר נבחר). */
+/**
+ * MGD:330-345 — מעבר לאירוע רגיל / חו"ל. null = אין שינוי (הישן: return כשהמצב כבר נבחר).
+ * תיקון מכוון מול הישן (סקירת W2a, סעיף 1): extraDay מתאפס בכל מעבר. הישן השאיר אותו (ולא שלח אותו ב-PUT); הכרטיס החדש שולח
+ * extraDay, ואירוע רגיל עם extraDay שנשאר היה מחויב ב-50% (pricingCalc.js:225) בלי גלולה להסרתו.
+ */
 export function eventTypeUpdates(order, toAbroad) {
   const abroad = isRangeEvent(order);
   if (toAbroad === abroad) return null;
   return toAbroad
-    ? withDateUpdates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null })
-    : withDateUpdates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
+    ? withDateUpdates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null, extraDay: null })
+    : withDateUpdates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null, extraDay: null });
 }
 
 /** MGD:367-375 applyTime — היום שנבחר + שעת היום של הערך הקודם (או של עכשיו), כ-ISO. */
@@ -113,11 +117,14 @@ export function applyTime(newDateStr, prevDateStr, now = new Date()) {
   return d.toISOString();
 }
 
-/** MGD:366-379 — טווח לקיחה/החזרה (start/end = YYYY-MM-DD, end יכול להיות ריק). */
+/**
+ * MGD:366-379 — טווח לקיחה/החזרה (start/end = YYYY-MM-DD, end יכול להיות ריק).
+ * תיקון מכוון (סקירת W2a, סעיף 2): טווח חדש = טווח נקי, extraDay מתאפס (הישן השאיר אותו בלי ההזזה, וביטולו אחר כך קיצר יום).
+ */
 export function rangeUpdates(order, start, end, now = new Date()) {
   const newFrom = applyTime(start, order.fromDate, now);
   const newTo = applyTime(end, order.toDate || order.returnDate, now);
-  return withDateUpdates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom });
+  return withDateUpdates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom, extraDay: null });
 }
 
 /** MGD:68-73 (מילולי) */
@@ -128,10 +135,14 @@ export const shiftDateStr = (dateStr, deltaDays) => {
   return d.toISOString();
 };
 
-/** MGD:74-83 setExtraDay — null = אין שינוי. newValue: null | 'before' | 'after'. */
+// יום נוסף אפשרי רק כשיש לקיחה והחזרה (אחרת אין מה להזיז, והתוספת הייתה מחויבת בלי יום בפועל - סקירת W2a, סעיף 2)
+export const extraDayReady = (order) => !!(order && order.fromDate && (order.toDate || order.returnDate));
+
+/** MGD:74-83 setExtraDay — null = אין שינוי (גם: בחירת יום נוסף בלי שני התאריכים). newValue: null | 'before' | 'after'. */
 export function extraDayUpdates(order, newValue) {
   const current = order.extraDay || null;
   if (current === newValue) return null;
+  if (newValue && !extraDayReady(order)) return null;
   let { fromDate, toDate, returnDate } = order;
   if (current === 'before') fromDate = shiftDateStr(fromDate, 1);
   if (current === 'after') { toDate = shiftDateStr(toDate, -1); returnDate = shiftDateStr(returnDate, -1); }
@@ -179,10 +190,12 @@ export const customerName = (c) => (c ? [c.firstName, c.lastName].filter(Boolean
 export const customerAddress = (c) => (c ? [c.street && `${c.street} ${c.houseNum || ''}`.trim(), c.city].filter(Boolean).join(', ') : '');
 // ת״ז מוצגת (A7). כשהגדרת "אימות ת״ז לעריכה/ביטול" דולקת (R13) - הת״ז היא הסוד שהעובד מבקש מהלקוח, ולכן מוצגות רק 3 הספרות
 // האחרונות (אחרת השער חסר ערך). ר' W2a-NOTES.
+// מתג יחיד להחלטת הבעלים (סקירת W2a, ממצא 4 - נשלח כשאלה): false = הת״ז מוצגת תמיד במלואה.
+export const MASK_ZEOUT_WHEN_ID_GATE = true;
 export function zeoutDisplay(zeout, settings) {
   const z = String(zeout || '').trim();
   if (!z) return '';
-  if (settings && settings.requireIdForEdit) return `${'•'.repeat(Math.max(0, z.length - 3))}${z.slice(-3)}`;
+  if (MASK_ZEOUT_WHEN_ID_GATE && settings && settings.requireIdForEdit) return `${'•'.repeat(Math.max(0, z.length - 3))}${z.slice(-3)}`;
   return z;
 }
 export const zeoutRequired = (settings) => !!(settings && (settings.requireCustomerIdNumber || settings.requireIdForEdit)); // AMB-10

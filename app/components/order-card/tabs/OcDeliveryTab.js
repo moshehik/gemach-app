@@ -23,7 +23,11 @@ import {
 let locationsPromise = null;
 function loadLocations() {
   if (!locationsPromise) {
-    locationsPromise = fetch(`/api/customers/locations`).then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(d => ({ cities: (d && d.cities) || [], streets: (d && d.streets) || [] }));
+    // כישלון לא נשמר במטמון (סקירת W2a, סעיף 5): הטעינה הבאה מנסה שוב
+    locationsPromise = fetch(`/api/customers/locations`)
+      .then(r => { if (!r.ok) throw new Error(`locations ${r.status}`); return r.json(); })
+      .then(d => ({ cities: (d && d.cities) || [], streets: (d && d.streets) || [] }))
+      .catch(() => { locationsPromise = null; return { cities: [], streets: [] }; });
   }
   return locationsPromise;
 }
@@ -39,7 +43,7 @@ export function useCustomerLocations(enabled) {
 }
 
 export const Tip = ({ text }) => (
-  <button type="button" className="tip" data-tip={text} aria-label="עזרה"><OcIcon name="info" size="sm" /></button>
+  <button type="button" className="tip" data-tip={text} aria-label={text}><OcIcon name="info" size="sm" /></button>
 );
 
 const hl = (o, q) => {

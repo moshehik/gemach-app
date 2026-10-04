@@ -20,7 +20,7 @@ import OcHebrewCalendar from '../parts/OcHebrewCalendar';
 import OcCustomerSwapDialog from '../parts/OcCustomerSwap';
 import { OcDeliveryCards, Tip } from './OcDeliveryTab';
 import {
-  EXTRA_DAY_OPTIONS, customerAddress, customerName, customerUpdates, dateKeyOf, dayTitle, eventTypeUpdates, extraDayUpdates, extraDayVisible,
+  EXTRA_DAY_OPTIONS, customerAddress, customerName, customerUpdates, dateKeyOf, dayTitle, eventTypeUpdates, extraDayReady, extraDayUpdates, extraDayVisible,
   hasCustomSpacing, hebDateLabel, isRangeEvent, rangeUpdates, spacingAxis, spacingDecision, spacingDefaultOf, withDateUpdates, zeoutDisplay, zeoutRequired
 } from '../parts/ocDetailsLogic';
 
@@ -150,13 +150,13 @@ function NotesCard({ oc }) {
   );
 }
 
-function Pill({ id, label, options, value, onPick }) {
+function Pill({ id, label, options, value, onPick, isDisabled }) {
   const i = Math.max(0, options.findIndex(([v]) => v === value));
   return (
     <div className="seg pill" id={id} role="radiogroup" aria-label={label} style={{ '--n': options.length, '--i': i }}>
       <span className="pth" aria-hidden="true" />
       {options.map(([v, l]) => (
-        <button key={String(v)} type="button" role="radio" aria-checked={v === value} className={v === value ? 'on' : ''} onClick={() => { if (v !== value) onPick(v); }}>{l}</button>
+        <button key={String(v)} type="button" role="radio" aria-checked={v === value} className={v === value ? 'on' : ''} disabled={isDisabled ? isDisabled(v) : undefined} onClick={() => { if (v !== value) onPick(v); }}>{l}</button>
       ))}
     </div>
   );
@@ -196,7 +196,7 @@ function AdvancedCard({ oc }) {
         {showXday ? (
           <div>
             <label className="lbl"><OcIcon name="plus" size="sm" />יום השכרה נוסף <Tip text="תוספת 50% מסך ההזמנה" /></label>
-            <Pill id="xday" label="יום השכרה נוסף" options={EXTRA_DAY_OPTIONS} value={order.extraDay || null} onPick={setXday} />
+            <Pill id="xday" label="יום השכרה נוסף" options={EXTRA_DAY_OPTIONS} value={order.extraDay || null} onPick={setXday} isDisabled={(v) => !!v && !extraDayReady(order)} />
           </div>
         ) : null}
       </div>

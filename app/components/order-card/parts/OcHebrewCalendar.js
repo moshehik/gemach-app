@@ -36,7 +36,7 @@ export default function OcHebrewCalendar({ mode = 'single', value = '', from = '
         <button type="button" className="hc-n hc-nn" data-hnav="1" aria-label="החודש הבא" onClick={() => go(1)}><OcIcon name="chev" size="sm" /></button>
       </div>
       <div className="hc-w" aria-hidden="true">{WEEKDAY_SHORT.map(x => <span key={x}>{x}</span>)}</div>
-      <div className="hc-g" role="grid" aria-labelledby={labelledBy}>
+      <div className="hc-g" role="group" aria-labelledby={labelledBy ? `${labelledBy} ${labelledBy}-m` : undefined}>
         {Array.from({ length: blanks }, (_, i) => <span key={`e${i}`} className="hc-e" />)}
         {days.map(key => {
           const on = mode === 'range' ? (key === lo || key === hi) : key === value;

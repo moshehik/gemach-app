@@ -56,7 +56,9 @@ for (const [name, o] of TYPE_STATES) {
   for (const toAbroad of [true, false]) {
     test(`סוג אירוע: ${name} → ${toAbroad ? 'חו"ל' : 'רגיל'} = הישן`, () => {
       const neu = apply(o, D.eventTypeUpdates(o, toAbroad));
-      const old = legacyEventType(o, toAbroad);
+      const legacyRaw = legacyEventType(o, toAbroad);
+      // תיקון מכוון (סקירת W2a, סעיף 1): במעבר סוג אירוע extraDay מתאפס (הישן השאיר אותו - ולא שלח אותו ב-PUT)
+      const old = legacyRaw === o ? o : { ...legacyRaw, extraDay: null };
       assert.deepEqual(neu, old);
       assert.deepEqual(putOf(neu).legacyShape, legacyPut(old));
     });
@@ -77,7 +79,7 @@ for (const [name, o, a, b] of RANGE_CASES) {
     let neu, old;
     for (let attempt = 0; attempt < 3; attempt++) { // "עכשיו" נקרא פעמיים - חוזרים אם דקה התחלפה באמצע
       const now = new Date();
-      old = legacyPickRange(o, a, b);
+      old = { ...legacyPickRange(o, a, b), extraDay: null }; // סקירת W2a סעיף 2: טווח חדש מאפס extraDay
       neu = apply(o, D.rangeUpdates(o, a, b, now));
       if (o.fromDate || JSON.stringify(neu) === JSON.stringify(old)) break;
     }
