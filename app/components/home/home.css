@@ -277,3 +277,18 @@
 .gm-ds.gm-home #dlg .pfx-tg .sw i { background: rgba(169, 210, 240, .3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
 .gm-ds.gm-home #dlg .pfx-tg .sw input:checked + i { background: var(--gm-gold); box-shadow: none; }
 .gm-ds.gm-home #dlg .pfx-tg .sw input:focus-visible + i { box-shadow: 0 0 0 3px var(--gm-gold-300); }
+
+/* 17) "כספים" בחיפוש המתקדם (5.10.2026; עיצוב מאושר: תצוגות-עיצוב/סיימתי-לעבוד/דף-הבית.html, בלוק fcust): "סטטוס הזמנה" הוא בורר (select.inp) ולא שדה טקסט, והפלטה
+       (design-system/components.css) עדיין לא מכילה בורר בטופס המתקדם. כאן רק: גבול הזהב ובלי חץ הדפדפן, וחץ "v" מצויר בשני מעברי צבע (בלי תמונה / hex) בצד
+       השמאלי (inline-end ב-RTL); הריפוד לצד ה-X (padding-inline-end) כבר בכלל .advp .inpw>.inp של הפלטה. */
+.gm-ds.gm-home .advp .inpw > select.inp {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  border: 2px solid var(--gm-gold-b);
+  color: inherit;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gm-navy-500) 50%), linear-gradient(135deg, var(--gm-navy-500) 50%, transparent 50%);
+  background-position: 20px calc(50% + 1px), 25px calc(50% + 1px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
