@@ -77,7 +77,7 @@ export default function OcPaymentsTab({ oc, ui }) {
   const pending = pendingRefundsOf(oc.refunds);
 
   return (
-    <div className="oc-pay-tab">
+    <>
       {/* A12 מצב תשלום */}
       <div className="card" data-oc-pay="status">
         <div className="card-h"><div className="ico green"><OcIcon name="wallet" size="lg" /></div><h2>מצב תשלום</h2></div>
@@ -107,7 +107,7 @@ export default function OcPaymentsTab({ oc, ui }) {
                   <div className="ic-b"><OcIcon name="bank" /></div>
                   <div className="t">
                     <b>זיכוי <Money n={amountOf(r.amount)} /> · ממתין לביצוע</b>
-                    <small>{[r.reason || 'ללא סיבה', noBank ? 'חסרים פרטי בנק' : `בנק ${r.bankName} · סניף ${r.bankBranch}`, r.createdAt ? hebDateOf(r.createdAt) : ''].filter(Boolean).join(' · ')}</small>
+                    <small>{noBank ? 'חסרים פרטי בנק' : `${r.bankName} · סניף ${r.bankBranch}`}</small>
                   </div>
                   <button type="button" className="btn sm" onClick={() => pay.openBank(r)}><OcIcon name="pencil" size="sm" />{noBank ? 'הזנת פרטי בנק' : 'עריכת פרטי בנק'}</button>
                   <button type="button" className="btn sm" onClick={() => pay.openCredit(r)}><OcIcon name="check" size="sm" />אשר ביצוע</button>
@@ -172,6 +172,6 @@ export default function OcPaymentsTab({ oc, ui }) {
           </div>
         </div>
       </details>
-    </div>
+    </>
   );
 }

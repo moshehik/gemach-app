@@ -15,7 +15,8 @@
 /* שורת "ממתין לשמירה": תיבת האייקון בתכלת-כחול כמו בעיצוב (style מוטבע ב-.li.pend .ic-b) */
 .gm-ds.gm-oc .li.pend .ic-b{background:var(--gm-sky-100);color:var(--gm-blue)}
 /* r37: שני הסמלים העגולים בסוף שורת תשלום (style="width:38px;height:38px") */
-.gm-ds.gm-oc .li .oc-ib{width:38px;height:38px;flex:none}
+.gm-ds.gm-oc .li .oc-ib{width:38px;height:38px;flex:none;padding:1px 6px}
+/* דליפה: globals.css מאפס padding לכל אלמנט - בעיצוב ה-ibtn נושא את ריפוד ברירת המחדל של הדפדפן */
 /* r39: "ניתן לזכות ₪X על פריט חדש עוד mm:ss" (chip gray, style="margin-top:6px") */
 .gm-ds.gm-oc .li .oc-cdown{margin-top:6px}
 .gm-ds.gm-oc .li .oc-cdown .cdn{font-variant-numeric:tabular-nums}
@@ -37,6 +38,8 @@
 .gm-ds.gm-oc .oc-cc-tools{gap:10px;align-items:center}
 .gm-ds.gm-oc .oc-cc-tools .oc-bypass{width:38px;height:38px;margin-inline-start:auto}
 .gm-ds.gm-oc .oc-pay-none{margin:14px 0;font-size:14px}
+/* דליפה: input{border-radius:10px} ו-padding אפס של globals.css בתוך החלון - שדה הסכום הגדול (amtin) בעיצוב בלי רדיוס ועם ריפוד הדפדפן */
+.gm-ds.gm-oc :is(#dlg,#dlg2) .amtin input{border-radius:0;padding:1px 2px}
 /* "העברה מהירה": שדה הקליטה של הקורא המגנטי נסתר (MPM: opacity 0 מחוץ למסך) */
 .gm-ds.gm-oc .oc-swipe-in{position:absolute;top:-1000px;opacity:0;width:1px;height:1px}
 /* D4b: שדות הבנק ושורת ה-IBAN שפוענח */

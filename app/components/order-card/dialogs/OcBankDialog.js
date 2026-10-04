@@ -87,7 +87,7 @@ export default function OcBankDialog({ api, refund, auto = false, close }) {
       <BankFields value={bank} onChange={(v) => { setBank(v); setErr(''); }} iban onIbanError={setIbanErr} onEnter={save} />
       <div className="amsg" aria-live="polite">{err || ibanErr ? <><OcIcon name="alert" size="sm" />{err || ibanErr}</> : null}</div>
       <DlgButtons>
-        <button type="button" className="btn green lg block" data-act="bank-ok" disabled={busy} onClick={save}>
+        <button type="button" className="btn green lg block" data-act="bank-ok" disabled={busy || !bank.bankName?.trim() || !bank.bankBranch?.trim()} onClick={save}>
           {busy ? <><span className="spinner" aria-hidden="true" />שומר...</> : <><OcIcon name="check" />שמירת פרטי בנק</>}
         </button>
         <DlgBtn kind="ghost" icon="back" disabled={busy} onClick={() => close(auto ? 'later' : null)}>{auto ? 'סגור, אמלא מאוחר יותר' : 'חזרה'}</DlgBtn>

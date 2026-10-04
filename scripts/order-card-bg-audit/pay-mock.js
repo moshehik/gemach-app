@@ -15,7 +15,7 @@ export function payScenarios({ ITEMS, OBL, PAY, ORG1, ORG2 }) {
     // זיכוי אוטומטי בלי פרטי בנק → "הזנת פרטי בנק" → D4b עם IBAN
     paybank: { settings: withExtra, obligations: dated, refunds: [{ ...refund, bankName: '', bankBranch: '', bankAccount: '', bankAccountName: '' }] },
     // חוב קיים 230 ₪ (תשלום אחד) → "תשלום ₪230" → D3 עם 4 שיטות (נדרים + תשלום נוסף)
-    paydebt: { settings: withExtra, obligations: dated, payments: [PAY[0]] },
+    paydebt: { settings: withExtra, items: recentItems, obligations: dated, payments: [PAY[0]], refunds: [refund] },
     // שמירה שיוצרת חוב חדש (השרת מוסיף חיוב) → debtCreated → D3 "השינויים נשמרו! נוצר חיוב חדש" עם "השאר חוב"
     paysave: { draft: true, settings: withExtra, obligations: dated, putAddsCharge: true },
     // הגמ"ח הראשי, יתרת זכות בלי זיכוי ממתין → "זכה ₪N" → בקשת זיכוי (בלי אישור - כמו בישן)

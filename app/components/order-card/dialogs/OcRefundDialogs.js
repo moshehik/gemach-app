@@ -51,7 +51,7 @@ export default function OcRefundRequestDialog({ api, amount, close }) {
       </div>
       <div className="amsg" aria-live="polite">{err || ibanErr ? <><OcIcon name="alert" size="sm" />{err || ibanErr}</> : null}</div>
       <DlgButtons>
-        <button type="button" className="btn green lg block" data-act="refund-ok" disabled={busy} onClick={submit}>
+        <button type="button" className="btn primary lg block" data-act="refund-ok" disabled={busy} onClick={submit}>
           {busy ? <><span className="spinner" aria-hidden="true" />מעבד...</> : <><OcIcon name="check" />צור בקשת זיכוי</>}
         </button>
         <DlgBtn kind="ghost" icon="x" disabled={busy} onClick={() => close(null)}>ביטול</DlgBtn>

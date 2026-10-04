@@ -47,7 +47,7 @@ export default function OcCreditDialog({ api, refund, close }) {
       </div>
       <div className="amsg" aria-live="polite">{err ? <><OcIcon name="alert" size="sm" />{err}</> : noBank ? <><OcIcon name="alert" size="sm" />חובה להזין בנק וסניף לפני ביצוע הזיכוי</> : null}</div>
       <DlgButtons>
-        <button type="button" className="btn green lg block" data-act="confirm-credit" disabled={busy || noBank} onClick={execute}>
+        <button type="button" className="btn primary lg block" data-act="confirm-credit" disabled={busy || noBank} onClick={execute}>
           {busy ? <><span className="spinner" aria-hidden="true" />מעבד...</> : <><OcIcon name="check" />אשר ביצוע</>}
         </button>
         <DlgBtn icon="bank" disabled={busy} onClick={() => close('bank')}>{noBank ? 'הזנת פרטי בנק' : 'עריכת פרטי בנק'}</DlgBtn>

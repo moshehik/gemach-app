@@ -7,6 +7,7 @@ export function payStages(h) {
   const p = () => h.p();
   // בעיצוב: סמני שכבת הסקירה שהבעלים הסירו (r34 חיוב משלוח ידני, r35 "הוסף חיוב") יורדים; עטיפת r37 (span display:contents) נפתחת
   const demoPayClean = async () => p().evaluate(() => {
+    if (!document.getElementById('w4-hide')) { const st = document.createElement('style'); st.id = 'w4-hide'; st.textContent = '[data-pvk=r34],[data-pvk=r35],.pv-b{display:none!important}'; document.head.append(st); }
     document.querySelectorAll('[data-pvk=r34],[data-pvk=r35],.pv-b').forEach(e => e.remove());
     document.querySelectorAll('span[data-pvk=r37]').forEach(sp => sp.replaceWith(...sp.childNodes));
   });
@@ -20,14 +21,14 @@ export function payStages(h) {
     // ---------- השוואה לעיצוב ----------
     { name: 'P01-pay-tab', real: async () => { await realTab('pay'); await away(); }, demo: async () => { await demoTab(); await away(); } },
     { name: 'P02-pay-mgr', real: async () => { await realTab('pay', '&me=e3'); await clickAt('#p-payments details.coll > summary'); await sleep(300); await away(); }, demo: async () => { await demoTab(); await clickAt('#p-payments details.coll > summary'); await sleep(300); await demoPayClean(); await away(); } },
-    { name: 'P03-pay-debt', real: async () => { await realTab('paydebt'); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => { payments[1].amt = 0; }); await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(300); await demoPayClean(); await away(); } },
-    { name: 'P04-dlg-pay', real: async () => { await realTab('paydebt'); await clickAt('#p-payments [data-oc-pay="status"] [data-act="pay-now"]'); await sleep(500); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => { payments[1].amt = 0; }); await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(300); await p().evaluate(() => { UI.payMethod = 'אשראי'; }); await clickAt('#p-payments .card .btn.lg.block[data-act="pay-now"]'); await sleep(500); await away(); } },
+    { name: 'P03-pay-debt', real: async () => { await realTab('paydebt'); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => { payments[1].amt = 0; renderAll(); }); await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(300); await demoPayClean(); await away(); } },
+    { name: 'P04-dlg-pay', real: async () => { await realTab('paydebt'); await clickAt('#p-payments [data-oc-pay="status"] [data-act="pay-now"]'); await sleep(500); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => { payments[1].amt = 0; renderAll(); }); await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(300); await demoPayClean(); await p().evaluate(() => { UI.payMethod = 'אשראי'; }); await clickAt('#p-payments .card .btn.lg.block[data-act="pay-now"]'); await sleep(500); await away(); } },
     { name: 'P05-dlg-paydet', real: async () => { await realTab('pay'); await clickAt('#p-payments [data-oc-pay="payments"] .li .ibtn[aria-label="פרטים נוספים"]'); await sleep(500); await away(); }, demo: async () => { await fresh(); await demoWin('R37'); await away(); } },
     { name: 'P06-dlg-manual', real: async () => { await realTab('pay'); await clickAt('#p-payments details.coll > summary'); await clickAt('#p-payments [data-act="manual-money"]'); await sleep(500); await away(); }, demo: async () => { await fresh(); await demoWin('R22'); await away(); } },
     { name: 'P07-dlg-refund', real: async () => { await realTab('paycredit'); await clickAt('#p-payments [data-act="credit-now"]'); await sleep(500); await away(); }, demo: async () => { await fresh(); await demoWin('R38'); await away(); } },
     { name: 'P08-dlg-bank', real: async () => { await realTab('paybank'); await clickAt('#p-payments [data-oc-pay="refunds"] .li .btn.sm:nth-of-type(1)'); await sleep(500); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => bankDlg(120)); await sleep(500); await away(); } },
     { name: 'P09-dlg-credit', real: async () => { await realTab('pay'); await clickAt('#p-payments [data-oc-pay="refunds"] .li .btn.sm:nth-of-type(2)'); await sleep(500); await away(); }, demo: async () => { await demoTab(); await clickAt('#p-payments [data-pvact="refundexec"]'); await sleep(500); await away(); } },
-    { name: 'P10-dlg-forced', real: async () => { await fresh('paysave'); await clickAt('.oc-banner .nb-go'); await sleep(300); await clickAt('#rail .cart-actions .btn.primary'); await sleep(1200); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => { _act('sim-add'); }); await sleep(300); await p().evaluate(() => payDlg()); await sleep(500); await away(); } },
+    { name: 'P10-dlg-forced', real: async () => { await fresh('paysave'); await clickAt('.oc-banner .nb-go'); await sleep(300); await clickAt('#rail .cart-actions .btn.primary'); await sleep(1200); await away(); }, demo: async () => { await fresh(); await p().evaluate(() => { act('sim-add'); }); await sleep(300); await p().evaluate(() => payDlg()); await sleep(500); await away(); } },
 
     // ---------- זרימות מקצה לקצה (real בלבד) ----------
     { name: 'P20-flow-credit', real: async () => {
