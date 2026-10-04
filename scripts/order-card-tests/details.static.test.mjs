@@ -49,7 +49,7 @@ test('תנאי תצוגה כמו בישן: משלוח רק עם enable_deliverie
 
 test('נקודות הרחבה: SLOTS.DeliveryJoinPicker (W2b) בלשונית המשלוח, SLOTS.QuickMailButton (W7) בכרטיס הלקוח - אופציונליות', () => {
   assert.ok(DEL.includes('const JoinPicker = SLOTS.DeliveryJoinPicker;') && DEL.includes('{JoinPicker ? <JoinPicker oc={oc} ui={ui} /> : null}'));
-  assert.ok(DET.includes('const QuickMail = SLOTS.QuickMailButton;') && DET.includes('{QuickMail ? <div className="oc-qm"><QuickMail oc={oc} ui={ui} /></div> : null}'));
+  assert.ok(DET.includes('const QuickMail = SLOTS.QuickMailButton;') && DET.includes('{QuickMail && oc.settings.orderQuickMailEnabled ? <div className="oc-qm"><QuickMail oc={oc} ui={ui} /></div> : null}'));
 });
 
 test('הסרות §B: אין עריכת תאריך ביצוע (R17), אין "תשלום/זיכוי ידני" (R22 → תשלומים), אין מייל מהיר עצמאי (A8 → W7)', () => {
