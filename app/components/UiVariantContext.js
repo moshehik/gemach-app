@@ -3,8 +3,7 @@
 import { createContext, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import { DEFAULT_UI_VARIANT, isForcedLegacyPath, isUiScreen } from '@/lib/uiVariant';
-import { hasBothVersions } from '@/lib/uiVariantScreens';
-import { isSelfSwitchScreen } from '@/lib/uiVariantSelfSwitch';
+import { shouldShowVariantToggle } from '@/lib/uiVariantSelfSwitch';
 
 // גרסאות "ישן / A5" לכל מסך, כפי ש-app/layout.js הכריע בשרת (lib/uiVariant.js):
 // { shell, home, order_card, customer_card } עם 'legacy' | 'a5'.
@@ -32,16 +31,13 @@ export function UiVariantProvider({ value, canSelfSwitch = false, children }) {
 }
 
 /**
- * האם להציג את אייקון המעבר "ישן / חדש" של מסך (PageVariantToggle): המשתמש רשאי להחליף לעצמו, המסך ברשומה עם שתי
- * הגרסאות ומותר בו מעבר עצמאי, ולא בקיוסק / שעון נוכחות / הדפסה (isForcedLegacyPath).
+ * האם להציג את אייקון המעבר "ישן / חדש" של מסך (PageVariantToggle) — הכלל ב-shouldShowVariantToggle (lib/uiVariantSelfSwitch.js):
+ * רשאי להחליף לעצמו, מסך עם שתי הגרסאות, לא קיוסק / שעון / הדפסה, ורק בנתיבי המסך שברשומה.
  */
 export function useCanSelfSwitch(screen) {
   const allowed = useContext(UiVariantSelfSwitchContext);
   const pathname = usePathname();
-  if (!allowed) return false;
-  if (!isUiScreen(screen) || !hasBothVersions(screen) || !isSelfSwitchScreen(screen)) return false;
-  if (isForcedLegacyPath(pathname)) return false;
-  return true;
+  return shouldShowVariantToggle({ canSelfSwitch: allowed, screen, pathname });
 }
 
 // הערה: מחזיר את הערכים כפי שהוכרעו בשרת, בלי כלל ה-pathname — ל-shell העדיפו useUiVariant('shell').
