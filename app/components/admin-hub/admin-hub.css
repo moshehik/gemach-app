@@ -1,0 +1,76 @@
+/* "מסך ניהול ראשי" (AdminHubPage, /admin) — CSS מקומי לדף, בהיקף .gm-ds.gm-adm בלבד (לא נוגע ב-design-system/).
+   מכיל רק מה שאין בפלטה (design-system/components.css): כללי הפריסה של העיצוב המאושר (תצוגות-עיצוב/ניהול-ראשי-כרטיסים.html,
+   בלוק "page layout only" — .adm-*), ארבעה רכיבי פלטה שקיימים בפלטה רק בעור דף הבית (.gm-home: מתג תלת-מצבי .vsw.v3,
+   קישור טבלה .trl, כותרת .pg-ttl) והועתקו לכאן באותם ערכים, ונטרולי דליפה של ה-CSS הגלובלי של האתר (כמו profile.css).
+   שורש הדף .gm-ds.gm-adm.home-bg — בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה הוא ה-CSS של דף הבית ודורס כרטיסים/שורות).
+   שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "מסך ניהול ראשי"). בדיקת נאמנות: scripts/admin-hub-audit. */
+
+/* ===== גוף הדף ===== */
+/* הגופן של הפלטה (Rubik) בכל הדף; design-overrides.css כופה !important על לחצנים/שדות (Assistant) ועל כותרות (Frank Ruhl) */
+.gm-ds.gm-adm *{font-family:var(--gm-font)}
+.gm-ds.gm-adm :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-adm :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important}
+/* globals.css: h1-h6 letter-spacing:-0.01em. :where = ספציפיות (0,2,0): גובר על הכלל הגלובלי ונכנע לכללי הפלטה (.ttl h1 -.3px) */
+.gm-ds.gm-adm :where(h1,h2,h3,h4,h5,h6){letter-spacing:normal}
+
+/* מלא-רוחב: המעטפת עוטפת כל דף ב-.app-shell > .main > .content עם padding ו-max-width; בעיצוב הרווחים מגיעים מ-.app של הפלטה
+   (אותו דפוס כמו profile.css / home.css כלל 1) */
+.app-shell .main .content:has(> .gm-ds.gm-adm){max-width:none;margin-inline:0;padding:0}
+
+/* בעיצוב ה-topbar שקוף; globals.css / design-overrides.css יכולים לצבוע אותו. כותרת הדף (h1 הגלובלי של האתר צובע בחום) */
+.gm-ds.gm-adm .adm-app .topbar{position:relative;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.gm-ds.gm-adm .pg-ttl{overflow-wrap:anywhere;color:var(--gm-navy-900)}
+
+/* ===== סרגל: חיפוש + מתג תצוגה (בלי מונה — החלטת הבעלים; המתג נשאר בקצה כמו בעיצוב, שם המונה דחף אותו) ===== */
+.gm-ds.gm-adm .adm-bar{flex-direction:row;flex-wrap:wrap;margin:8px 0 8px;align-items:center}
+.gm-ds.gm-adm .adm-bar .hf-s{flex:0 1 380px}
+.gm-ds.gm-adm .adm-bar .vsw{flex:none;margin-inline-start:auto}
+/* design-overrides.css: input:not(x4) (ספציפיות 0,4,1) צובע רקע לבן, גבול קרם, רדיוס 10px וטקסט חום, ו-input:focus מוסיף טבעת;
+   בעיצוב השדה שקוף בתוך הגלולה (.hf-s נושאת את הגבול והטבעת). (0,5,1) גובר עליו */
+.gm-ds.gm-adm .adm-bar .hf-s input[type="search"]{background:transparent;border:0;border-radius:0;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-adm .adm-bar .hf-s input[type="search"]:focus{box-shadow:none;border:0}
+/* globals.css מאפס padding לכל אלמנט: לחצן הניקוי בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן (1px 6px) */
+.gm-ds.gm-adm .hf-cl{padding:1px 6px}
+/* מתג שלושה מצבים (.vsw.v3) — בפלטה רק בעור דף הבית */
+.gm-ds.gm-adm .vsw.v3{width:96px}
+.gm-ds.gm-adm .vsw.v3 .vknob{width:calc((100% - 4px)/3)}
+.gm-ds.gm-adm .vsw.v3.t .vknob{inset-inline-start:calc(2px + (100% - 4px)/3)}
+.gm-ds.gm-adm .vsw.v3.c .vknob{inset-inline-start:calc(2px + (100% - 4px)*2/3)}
+
+/* ===== קטגוריות ===== */
+.gm-ds.gm-adm .adm-h{margin:36px 0 16px;font-size:22px;font-weight:600;color:var(--gm-navy-900);display:flex;align-items:center;gap:12px}
+.gm-ds.gm-adm .adm-hi{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--gm-gold-rich-c) var(--gm-gold-rich);color:var(--gm-navy);box-shadow:inset 0 0 0 1px rgba(154,122,31,.55);flex:none}
+/* בתצוגת שורות הכותרת היא בתוך הכרטיס */
+.gm-ds.gm-adm #admSecs.v-rows .adm-h{display:none}
+.gm-ds.gm-adm #admSecs.v-rows .adm-sec+.adm-sec{margin-top:24px}
+
+/* ===== שורות ===== */
+/* הפלטה צובעת את גבול הכרטיסים בתוך .app בכחול (כלל של דפים מאושרים אחרים); בעיצוב המאושר של המסך הזה הגבול הוא גבול הזכוכית הלבן */
+.gm-ds.gm-adm .adm-app .card{border-color:rgba(255,255,255,.7)!important}
+.gm-ds.gm-adm .adm-rows .hres .li .go{transform:none;color:var(--gm-navy-500)}
+.gm-ds.gm-adm .adm-rows .hres .li .go .ic{transform:none}
+
+/* ===== טבלה ===== */
+.gm-ds.gm-adm .adm-table{margin:0}
+/* כותרות טבלה: globals.css (table thead tr th) כופה ב-!important רקע/צל/גבול של "כותרת דביקה" (קרם), ו-design-overrides.css
+   כופה צבע טקסט וגופן Assistant (table thead th). בעיצוב הכותרת כחולה כהה עם טקסט זהב — כמו home.css כלל 10 */
+.gm-ds.gm-adm .rtbl thead tr th{background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;box-shadow:none!important;border-bottom:0!important;outline:0;font-family:inherit!important;letter-spacing:normal}
+/* ברק השורות בטבלה (בפלטה רק בעור דף הבית). :where — כדי שכלל הריחוף של הפלטה (.gm-ds .rtbl tbody tr:hover) ימשיך לגבור, כמו בעיצוב */
+.gm-ds.gm-adm :where(.rtbl tbody tr){background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}
+.gm-ds.gm-adm .adm-table .go{color:var(--gm-navy-500)}
+.gm-ds.gm-adm .adm-trl{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:0;font:inherit;cursor:pointer}
+/* קישור טבלה (.trl) — בפלטה רק בעור דף הבית */
+.gm-ds.gm-adm .rtbl .trl{color:var(--gm-navy);font-weight:600;text-decoration:underline;text-decoration-color:var(--gm-gold-b);text-underline-offset:3px}
+.gm-ds.gm-adm .rtbl .trl:hover{text-decoration:underline}
+.gm-ds.gm-adm .rtbl tbody tr:has(.trl){cursor:pointer}
+
+/* ===== אריחים ===== */
+.gm-ds.gm-adm .adm-tiles{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));grid-auto-rows:168px}
+.gm-ds.gm-adm a.adm-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:12px;text-align:start;text-decoration:none;font:inherit;cursor:pointer;height:100%;padding:20px;width:100%}
+.gm-ds.gm-adm .adm-tile{background:var(--gm-rose-100);border:1px solid var(--gm-rose-300)}
+.gm-ds.gm-adm .adm-tile:hover{background:var(--gm-rose-200)}
+.gm-ds.gm-adm .adm-tile .ico{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none;background:#fff;color:var(--gm-rose-700);border:1px solid var(--gm-rose-300)}
+.gm-ds.gm-adm .adm-tile .ico .ic{width:24px;height:24px}
+.gm-ds.gm-adm .adm-tt{display:flex;flex-direction:column;gap:4px;min-width:0}
+.gm-ds.gm-adm .adm-tt b{font-size:17px;font-weight:600;color:var(--gm-navy-900);line-height:1.3}
+.gm-ds.gm-adm .adm-tt small{font-size:14px;font-weight:400;color:var(--gm-ink2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
