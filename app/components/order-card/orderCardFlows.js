@@ -260,8 +260,12 @@ export function createOrderCardFlows(env) {
         return { ok: false, error: msg };
       }
       const updatedOrder = await res.json();
-      if (!post) return { ok: true, order: updatedOrder, submittedLocalIds };
+      // R49 (W2b, סקירה סעיף 3): השרת שמר את ההזמנה אך לא את ההצטרפות למשלוח - joinError (עברית). לא נשמר ב-state/snapshot של ההזמנה.
+      const joinError = updatedOrder && updatedOrder.joinError ? String(updatedOrder.joinError) : null;
+      if (updatedOrder) delete updatedOrder.joinError;
+      if (!post) return { ok: true, order: updatedOrder, submittedLocalIds, ...(joinError ? { joinError } : {}) };
       applySaved(updatedOrder, submittedLocalIds, env.get().items);
+      if (joinError) ui.toast('error', 'ההצטרפות למשלוח לא נשמרה', `${joinError}. שאר השינויים נשמרו, והמשלוח חויב במחיר המלא.`);
       if (needsAutoRefundBank(updatedOrder.refunds || [])) {
         env.set.tab('payments');
         env.emit('autoRefundNeedsBank', { source: 'save' });
@@ -276,7 +280,7 @@ export function createOrderCardFlows(env) {
         const listeners = env.emit('debtCreated', { amount: freshDebtNow, source: 'save', intent });
         if (!listeners) ui.toast('charge', `נוצר חיוב חדש ${fmtMoney(freshDebtNow)}`, 'יש להשלים את הגבייה בלשונית תשלומים.');
       }
-      return { ok: true, order: updatedOrder, debtCreated: newDebtCreated ? freshDebtNow : 0, creditNow: freshDebtNow < 0 ? -freshDebtNow : 0, balance: freshDebtNow };
+      return { ok: true, order: updatedOrder, debtCreated: newDebtCreated ? freshDebtNow : 0, creditNow: freshDebtNow < 0 ? -freshDebtNow : 0, balance: freshDebtNow, ...(joinError ? { joinError } : {}) };
     } catch (err) {
       console.error(err);
       toastError(err.message || 'שגיאה בשמירת הנתונים.');
@@ -342,6 +346,12 @@ export function createOrderCardFlows(env) {
     if (r.noop) return go();
     const updatedOrder = r.order;
     const { submittedLocalIds } = r;
+    // השמירה הצליחה אך ההצטרפות למשלוח לא - לא יוצאים בשקט (המחיר המלא חויב): מחילים את מצב השרת ונשארים בכרטיס עם הסבר
+    if (r.joinError) {
+      applySaved(updatedOrder, submittedLocalIds, env.get().items);
+      await ui.alert({ title: 'ההצטרפות למשלוח לא נשמרה', sub: `${r.joinError}. שאר השינויים נשמרו, והמשלוח חויב במחיר המלא. בדוק את בחירת המשלוח ושמור שוב.`, kind: 'error' });
+      return { left: false, joinError: r.joinError };
+    }
     try {
       const { freshDebtNow, creditNow, newDebtCreated } = freshBalanceAfterExit(updatedOrder, st.openedDebt);
       const covered = !!exitDebtApprovedBy && debtApprovalCovers(env.flags.approvedDebtLevel, freshDebtNow);

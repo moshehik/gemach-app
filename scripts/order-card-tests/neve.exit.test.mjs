@@ -178,3 +178,40 @@ test('יציאה אחרי שמירה (save) שיצרה חוב: debtCreated עם 
   assert.equal(x.blocked, 'debt');
   assert.equal(h.nav.length, 0);
 });
+
+// ---------------- סקירה 3: כישלון בשמירת ההצטרפות למשלוח אינו שקט ----------------
+test('סקירה 3: שמירה - joinError מהשרת מוצג כטוסט שגיאה, לא נשמר ב-state/snapshot, ושאר השמירה תקינה', async () => {
+  const st = paidState();
+  const h = harness(st, { edit: (s) => { s.order = { ...s.order, notes: 'שונה', deliveryJoinedTo: 7 }; }, respond: reply(st, { joinError: 'המשלוח שנבחר הוא ביום אירוע אחר מזה של ההזמנה - לא ניתן להצטרף אליו' }) });
+  const r = await h.flows.save();
+  assert.equal(r.ok, true);
+  assert.equal(r.joinError, 'המשלוח שנבחר הוא ביום אירוע אחר מזה של ההזמנה - לא ניתן להצטרף אליו');
+  assert.equal(h.calls.find(c => c.method === 'PUT').body.deliveryJoin.joinedToOrderId, 7);
+  const t = h.toasts.find(x => x[0] === 'error' && /ההצטרפות למשלוח לא נשמרה/.test(x[1]));
+  assert.ok(t, 'טוסט שגיאה');
+  assert.match(t[2], /ביום אירוע אחר/); assert.match(t[2], /במחיר המלא/);
+  assert.ok(!('joinError' in h.state.order), 'joinError לא נשאר ב-order');
+  assert.ok(!('joinError' in h.state.snapshot.order), 'joinError לא נשאר ב-snapshot');
+});
+
+test('סקירה 3: שמירה בלי joinError = אין טוסט הצטרפות', async () => {
+  const st = paidState();
+  const h = harness(st, { edit: withNotes, respond: reply(st) });
+  const r = await h.flows.save();
+  assert.equal(r.ok, true); assert.ok(!('joinError' in r));
+  assert.ok(!h.toasts.some(x => /הצטרפות/.test(String(x[1]))));
+});
+
+test('סקירה 3: יציאה עם joinError - לא יוצאים בשקט: התראה, נשארים בכרטיס, מצב השרת מוחל', async () => {
+  const st = paidState();
+  const h = harness(st, { edit: (s) => { s.order = { ...s.order, notes: 'שונה', deliveryJoinedTo: 7 }; }, answers: { Exit: 'save' }, respond: reply(st, { joinError: 'המשלוח שנבחר כבר אינו קיים' }) });
+  const r = await h.flows.exit();
+  assert.equal(r.left, false); assert.equal(r.joinError, 'המשלוח שנבחר כבר אינו קיים');
+  assert.equal(h.nav.length, 0);
+  const a = h.opened.find(o => o[0] === 'alert');
+  assert.ok(a && /ההצטרפות למשלוח לא נשמרה/.test(a[1].title) && /כבר אינו קיים/.test(a[1].sub));
+  assert.ok(!('joinError' in h.state.order));
+  // בלי joinError - יוצאים כרגיל
+  const h2 = harness(st, { edit: withNotes, answers: { Exit: 'save' }, respond: reply(st) });
+  assert.equal((await h2.flows.exit()).left, true);
+});

@@ -111,8 +111,22 @@ test('PUT של ההזמנה (קובץ W0): deliveryJoin נשמר לפני applyD
   const charge = r.indexOf('await applyDeliveryCharge(parsedOrderId);');
   assert.ok(join > 0 && join < charge);
   const block = r.slice(join, charge);
-  assert.match(block, /isDeliveryJoinEnabled\(\)/); assert.match(block, /clearOrderJoin\(parsedOrderId\)/); assert.match(block, /saveDeliveryJoin\(parsedOrderId, data\.deliveryJoin\)/);
-  assert.match(block, /catch \(joinError\)/);
+  assert.match(block, /isDeliveryJoinEnabled\(\)/); assert.match(block, /releaseOrderJoins\(parsedOrderId\)/); assert.match(block, /saveDeliveryJoin\(parsedOrderId, data\.deliveryJoin\)/);
+  assert.match(block, /catch \(joinFailure\)/);
+  // סקירה 3: כישלון (ok:false או זריקה) לא שקט - joinError בעברית חוזר בתשובה
+  assert.match(block, /joinError = joinResult\.error/); assert.match(block, /joinError = 'ההצטרפות למשלוח לא נשמרה בגלל תקלה/);
+  assert.match(r, /\.\.\.\(joinError \? \{ joinError \} : \{\}\)/);
+  // סקירה 4: שחרור מצטרפים בכיבוי משלוח - ומחשבים להם מחדש לפני חישוב החיוב של ההזמנה עצמה
+  assert.match(block, /for \(const releasedId of releasedJoiners\)[\s\S]*applyDeliveryCharge\(releasedId\)/);
+});
+
+test('סקירה 4: ביטול הזמנה (DELETE) משחרר את ההצטרפות שלה / את מצטרפיה ומחשב להם חיוב מחדש, בלי AuditLog ידני', () => {
+  const r = read('app/api/orders/[id]/route.js');
+  const del = r.slice(r.indexOf('export async function DELETE'));
+  assert.match(del, /releaseOrderJoins\(parsedOrderId\)/);
+  assert.match(del, /applyDeliveryCharge\(releasedId\)/);
+  assert.ok(del.indexOf('releaseOrderJoins') > del.indexOf('$transaction'), 'אחרי הטרנזקציה (בלי קריאות בתוכה)');
+  assert.ok(!/join/i.test(del.slice(del.indexOf('$transaction'), del.indexOf('releaseOrderJoins'))), 'הטרנזקציה לא נוגעת בשורות ההצטרפות');
 });
 
 test('הבקר (קבצי W1): deliveryJoin בשני גופי ה-PUT, deliveryJoinedTo בתצוגה המקדימה ובמפעילי התצוגה; מפתחות בהגדרות', () => {
@@ -141,5 +155,15 @@ test('לא נכתבות הגדרות / לא מורץ DDL: אין SystemSetting.c
     const c = strip(read(f));
     assert.ok(!/systemSetting\.(create|update|upsert|delete)/.test(c), f);
     assert.ok(!/from 'node:fs'|from 'fs'|require\('fs'\)|readFile|child_process/.test(c), f + ' (לא קורא/מריץ את קובץ ה-SQL)');
+  }
+});
+
+test('סקירה 7: /api/deliveries/join קריאה בלבד - אין POST (ההצטרפות נשמרת רק ב-PUT של ההזמנה שמחשב מחדש), ושום קוד לא קורא לו ב-POST', () => {
+  const route = read('app/api/deliveries/join/route.js');
+  assert.ok(!/export async function (POST|PUT|PATCH|DELETE)/.test(route));
+  assert.match(route, /export async function GET/);
+  assert.ok(!/saveDeliveryJoin/.test(strip(route)));
+  for (const f of [`${OC}/parts/OcDeliveryJoinPicker.js`, `${OC}/orderCardFlows.js`, `${OC}/useOrderCardController.js`]) {
+    assert.ok(!/deliveries\/join[^\n]*method:\s*'POST'/.test(read(f)), f);
   }
 });

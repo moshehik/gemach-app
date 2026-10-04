@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import {
-  isDeliveryJoinAvailable, listJoinCandidates, getJoinInfo, getJoinGroup, saveDeliveryJoin,
+  isDeliveryJoinAvailable, listJoinCandidates, getJoinInfo, getJoinGroup,
 } from '@/lib/deliveryJoin';
 
 export const dynamic = 'force-dynamic';
@@ -11,9 +11,9 @@ export const dynamic = 'force-dynamic';
 //        -> משלוחים שאפשר להצטרף אליהם (אותו יום אירוע ואותו כיוון)
 //   GET  ?mode=info&orderId=<id>   -> מצב ההצטרפות/ראשי של הזמנה + הקבוצה שלה
 //   GET  ?mode=group&root=<id>     -> חברי הקבוצה של משלוח (שורש + מצטרפים)
-//   POST { orderId, deliveryJoin: { joinedToOrderId, primaryOrderId } } -> שמירה עצמאית (בד"כ השמירה
-//        נעשית כחלק מ-POST/PUT של ההזמנה עצמה; המסלול הזה לשימוש מסכים אחרים/עדכון "ראשי" בלבד)
-// כבוי (ברירת מחדל) = תשובות ריקות / 403 בשמירה - התנהגות הזמנות ומשלוחים לא משתנה.
+// קריאה בלבד. אין כאן POST (סקירה, סעיף 7): ההצטרפות נשמרת רק כחלק מ-PUT של ההזמנה (app/api/orders/[id]/route.js), שמחשב מחדש את
+// חיוב המשלוח ועובר את כל שערי השמירה. מסלול כתיבה עצמאי לא חישב מחדש מחירים, לא לקח את נעילת ההזמנה ולא נקרא מאף מסך.
+// כבוי (ברירת מחדל) = תשובות ריקות - התנהגות הזמנות ומשלוחים לא משתנה.
 // "כבוי" = ההגדרה כבויה, או שהטבלה DeliveryJoin טרם נוצרה (DDL-1, prisma/migrations-pending/2026-10-04-delivery-join.sql):
 // isDeliveryJoinAvailable תופס P2021 / 42P01, זוכר את זה כמה דקות, ושום מסלול לא מחזיר 500 בגלל טבלה חסרה.
 export async function GET(request) {
@@ -56,23 +56,5 @@ export async function GET(request) {
   } catch (error) {
     console.error('GET /api/deliveries/join error:', error);
     return NextResponse.json({ error: 'שגיאה בטעינת נתוני הצטרפות למשלוח' }, { status: 500 });
-  }
-}
-
-export async function POST(request) {
-  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  try {
-    if (!(await isDeliveryJoinAvailable())) {
-      return NextResponse.json({ error: 'הצטרפות למשלוח קיים כבויה בהגדרות' }, { status: 403 });
-    }
-    const body = await request.json();
-    const orderId = parseInt(body?.orderId, 10);
-    if (!orderId) return NextResponse.json({ error: 'orderId חסר' }, { status: 400 });
-    const result = await saveDeliveryJoin(orderId, body?.deliveryJoin || {});
-    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.unavailable ? 403 : 400 });
-    return NextResponse.json({ success: true, ...result });
-  } catch (error) {
-    console.error('POST /api/deliveries/join error:', error);
-    return NextResponse.json({ error: 'שגיאה בשמירת ההצטרפות למשלוח' }, { status: 500 });
   }
 }

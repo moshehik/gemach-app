@@ -59,7 +59,7 @@ async function fetchOrderItemsWithDress(orderId) {
   });
 }
 import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
-import { isDeliveryJoinEnabled, saveDeliveryJoin, clearOrderJoin } from '../../../../lib/deliveryJoin';
+import { isDeliveryJoinEnabled, saveDeliveryJoin, releaseOrderJoins } from '../../../../lib/deliveryJoin';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
@@ -952,18 +952,30 @@ export async function PUT(request, { params }) {
     // כך שהקריאה כאן גם יוצרת אותה כשחסרה וגם משחזרת אותה בכל שמירה אחרי שנמחקה.
     // הצטרפות למשלוח קיים (enable_delivery_join, R49 - W2b): נשמרת לפני חישוב החיוב כדי שיחושב במחיר ההצטרפות. כיבוי המשלוח
     // בהזמנה מסיר גם את ההצטרפות שלה. הטבלה חסרה (DDL-1 טרם הורץ) = no-op בשקט (lib/deliveryJoin.js); כישלון לא מפיל את השמירה.
+    // כישלון בשמירת ההצטרפות לא מפיל את השמירה, אבל גם לא שקט (סקירה, סעיף 3): joinError (עברית) חוזר בתשובה והכרטיס מציג אותו -
+    // אחרת ה-PUT היה מחזיר 200 עם תצוגה מוזלת בכרטיס אך חיוב מלא בפועל.
+    // כיבוי המשלוח בשורש עם מצטרפים משחרר אותם (סעיף 4) - ומחשבים להם מחדש את חיוב המשלוח (חזרה למחיר מלא).
+    let joinError = null;
+    let releasedJoiners = [];
     if (data.deliveryJoin !== undefined || data.isDelivery === false) {
       try {
         if (await isDeliveryJoinEnabled()) {
-          if (data.isDelivery === false) await clearOrderJoin(parsedOrderId);
+          if (data.isDelivery === false) releasedJoiners = await releaseOrderJoins(parsedOrderId);
           else if (data.deliveryJoin) {
             const joinResult = await saveDeliveryJoin(parsedOrderId, data.deliveryJoin);
-            if (!joinResult.ok) console.error(`Order ${parsedOrderId}: delivery join not saved:`, joinResult.error);
+            if (!joinResult.ok) {
+              joinError = joinResult.error || 'ההצטרפות למשלוח לא נשמרה';
+              console.error(`Order ${parsedOrderId}: delivery join not saved:`, joinResult.error);
+            }
           }
         }
-      } catch (joinError) {
-        console.error(`Order ${parsedOrderId}: delivery join failed:`, joinError);
+      } catch (joinFailure) {
+        joinError = 'ההצטרפות למשלוח לא נשמרה בגלל תקלה - ההזמנה נשמרה בלעדיה. יש לנסות שוב';
+        console.error(`Order ${parsedOrderId}: delivery join failed:`, joinFailure);
       }
+    }
+    for (const releasedId of releasedJoiners) {
+      try { await applyDeliveryCharge(releasedId); } catch (e) { console.error(`Order ${releasedId}: delivery charge after join release failed:`, e); }
     }
     await applyDeliveryCharge(parsedOrderId);
 
@@ -1072,7 +1084,7 @@ export async function PUT(request, { params }) {
       return ob;
     });
     
-    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds };
+    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds, ...(joinError ? { joinError } : {}) };
 
     return NextResponse.json(finalOrder);
   } catch (error) {
@@ -1230,6 +1242,16 @@ export async function DELETE(request, { params }) {
         ]
       });
     });
+
+    // R49 (W2b, סקירה סעיף 4): הזמנה שבוטלה יוצאת מהמשלוח - שורת ההצטרפות שלה נמחקת, ואם היא שורש עם מצטרפים הם משוחררים וחיוב
+    // המשלוח שלהם מחושב מחדש (מחיר מלא). כשל כאן לא מפיל את הביטול. טבלה חסרה (DDL-1) = no-op.
+    try {
+      for (const releasedId of await releaseOrderJoins(parsedOrderId)) {
+        try { await applyDeliveryCharge(releasedId); } catch (e) { console.error(`Order ${releasedId}: delivery charge after join release failed:`, e); }
+      }
+    } catch (joinFailure) {
+      console.error(`Order ${parsedOrderId}: releasing delivery join on cancel failed:`, joinFailure);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
