@@ -5,6 +5,7 @@
 // בדיקה חזותית מול העיצוב: scripts/board-bg-audit (cmp.mjs, views.mjs, interact.mjs).
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { register } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -55,8 +56,9 @@ t('הנתיב /board טוען את הדף דרך dynamic; ה-CSS של הפלטה
   has(PAGE, /import '\.\/board\.css'/);
 });
 
-t('E19: השער page:board נשאר (PageGate), רק החלון "אין הרשאה" בעיצוב החדש; PageGate בלי fallback לא השתנה', () => {
-  has(LAYOUT, /<PageGate pageKey="page:board" fallback=\{<BoardGate \/>\}>/);
+t('E19: השער page:board נשאר (PageGate), רק החלון "אין הרשאה" בעיצוב החדש (בגרסה החדשה); PageGate בלי fallback לא השתנה', () => {
+  has(LAYOUT, /<PageGate pageKey="page:board" fallback=\{<BoardGateSwitch legacy=\{<NoAccessMessage \/>\} next=\{<BoardGate \/>\} \/>\}>/);
+  has(read('../app/components/board/BoardGateSwitch.js'), /useUiVariant\('board'\) === 'a5' \? next : legacy/);
   has(PAGEGATE, /return fallback \|\| <NoAccessMessage \/>/);
   has(GATE, /getSessionEmployee/);
   has(GATE, /<NoAccessCard guest=\{!employee\}/);
@@ -64,6 +66,18 @@ t('E19: השער page:board נשאר (PageGate), רק החלון "אין הרש�
   has(CARD, /אין הרשאת גישה/);
   has(CARD, /<LoginGate isModal/, 'אורח: כניסה למערכת בחלון הכניסה');
   has(API, /canOpenPage\('page:board'\)/, 'גם ה-API של המונים בשער page:board');
+});
+
+t('BD-O1: /board מאחורי המתג ישן/חדש - ברירת מחדל הלוח הישן (זהה ל-main, בייט-לבייט), החדש רק עם הדגל board=a5', () => {
+  has(SWITCH, /useUiVariant\('board'\)/);
+  has(SWITCH, /variant === 'a5' \? <BoardPage \/> : <LegacyBoardPage \/>/);
+  has(SWITCH, /import\('@\/app\/board\/LegacyBoardPage'\)/);
+  assert.ok(existsSync(new URL('../app/board/LegacyBoardPage.js', import.meta.url)));
+  // הלוח הישן = הבלוב של app/board/page.js כפי שהיה לפני הלוח החדש (c944cb95, main) - בייט-לבייט
+  const blob = execFileSync('git', ['show', 'c944cb95:app/board/page.js'], { cwd: path.resolve(HERE, '..'), maxBuffer: 1 << 26 });
+  assert.ok(blob.equals(readFileSync(new URL('../app/board/LegacyBoardPage.js', import.meta.url))), 'LegacyBoardPage.js שונה מהבלוב ב-main');
+  const uv = readFileSync(new URL('../lib/uiVariant.js', import.meta.url), 'utf8');
+  has(uv, /'board'\]/); has(uv, /board: 'ui_variant_board'/);
 });
 
 t('E07/E02/E03/E04/E05/E06: אשף ההדפסה, חיפוש חכם, סטטיסטיקה, חיפוש גלובלי, חיפוש מתקדם ומקרא הסטטוס - הוסרו', () => {

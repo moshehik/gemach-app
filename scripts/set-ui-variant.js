@@ -9,7 +9,7 @@
  *     node scripts/set-ui-variant.js --screen shell --value a5 --scope user --employee <id|legacyId> --confirm-host <...> [--dry-run]
  *     node scripts/set-ui-variant.js --screen shell --clear   --scope user --employee <id|legacyId> --confirm-host <...>   (הסרת העקיפה)
  *
- *   --screen  shell | home | order_card | customer_card
+ *   --screen  shell | home | order_card | customer_card | board
  *   --value   legacy | a5
  *   --scope   org | user
  *   --employee  מזהה העובד: UUID, או legacyId (ספרות בלבד)
@@ -45,7 +45,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 
-const SCREENS = ['shell', 'home', 'order_card', 'customer_card'];
+const SCREENS = ['shell', 'home', 'order_card', 'customer_card', 'board'];
 const VALUES = ['legacy', 'a5'];
 const SCOPES = ['org', 'user'];
 const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);
@@ -66,7 +66,7 @@ const MAX_PREFS_BYTES = 8192; // אותה מגבלה כמו PUT /api/me/design-p
 
 const USAGE = [
   'Usage:',
-  '  node scripts/set-ui-variant.js --screen <shell|home|order_card|customer_card> --value <legacy|a5> --scope org --confirm-host <full DB host | ep-xxxx> [--dry-run]',
+  '  node scripts/set-ui-variant.js --screen <shell|home|order_card|customer_card|board> --value <legacy|a5> --scope org --confirm-host <full DB host | ep-xxxx> [--dry-run]',
   '  node scripts/set-ui-variant.js --screen <...> --value <legacy|a5> --scope user --employee <id|legacyId> --confirm-host <...> [--dry-run]',
   '  node scripts/set-ui-variant.js --screen <...> --clear --scope user --employee <id|legacyId> --confirm-host <...>',
   'Reads DATABASE_URL from the environment; refuses to run unless --confirm-host EXACTLY matches the DB host (or its full ep-xxxx endpoint id, min 8 chars).',
