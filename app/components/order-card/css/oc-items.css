@@ -23,7 +23,10 @@
 .gm-ds.gm-oc .irow .oc-bcin>.ic{position:absolute;inset-inline-start:14px;top:50%;translate:0 -50%;color:var(--gm-navy-500);pointer-events:none;z-index:1}
 .gm-ds.gm-oc .irow .oc-bcin>.inp{width:100%;padding-inline-start:44px;padding-inline-end:16px}
 .gm-ds.gm-oc .irow .oc-bch{font-size:12.5px}
-.gm-ds.gm-oc .irow .hv-btns .ibtn{padding:1px 6px}
+.gm-ds.gm-oc .items-card .ibtn{padding:1px 6px}
+/* צבע הטקסט בשדות (העיצוב: navy-900). globals.css קובע input:not(...)x4 (ספציפיות 0,4,1) — כאן 0,5,1 */
+.gm-ds.gm-oc .app :is(.items-card,.sbar) :is(input,textarea).inp{color:var(--gm-navy-900)}
+.gm-ds.gm-oc .irow .oc-bcin>.inp{border:1px solid var(--gm-sky-300)}
 @media (max-width:640px){
 .gm-ds.gm-oc .irow .oc-bcin{flex-basis:100%;max-width:none}
 .gm-ds.gm-oc .irow .hv-act{flex-direction:column;align-items:flex-start;gap:4px}
@@ -62,7 +65,7 @@
 .gm-ds.gm-oc .oc-capcust{display:block;font-size:13px}
 .gm-ds.gm-oc .oc-caprange{font-size:13px;margin-bottom:12px}
 .gm-ds.gm-oc .oc-caplink{flex:none}
-.gm-ds.gm-oc .oc-capcur{box-shadow:inset 0 0 0 1.5px var(--gm-gold-b)}
 .gm-ds.gm-oc .oc-caperr{margin:12px 0}
 .gm-ds.gm-oc .oc-bcval{margin:0 0 14px;font-weight:700;font-size:16px}
 .gm-ds.gm-oc .oc-choose{margin-bottom:16px}
+.gm-ds.gm-oc :is(#dlg,#dlg2) .oc-alt .inp{border-radius:14px}

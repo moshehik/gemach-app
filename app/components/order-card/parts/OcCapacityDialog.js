@@ -76,7 +76,7 @@ export default function OcCapacityDialog({ item, order, close, fetchImpl }) {
               {occupied.map(o => {
                 const isCurrent = o.orderId === order.orderId;
                 return (
-                  <div className={`c${isCurrent ? ' oc-capcur' : ''}`} key={o.id || o.orderId}>
+                  <div className="c" key={o.id || o.orderId}>
                     <div className="t">
                       <b>{hebDateOf(o.eventDate) || '—'}</b>{isCurrent ? <span className="chip gray oc-capchip">הזמנה נוכחית</span> : null}
                       <small className="faint oc-capcust">{o.customerName} · כמות {o.quantity}</small>

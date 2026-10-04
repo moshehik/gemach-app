@@ -186,10 +186,22 @@ export function sizeInfo(row, order) {
   return { size: row.sizeText || row.size, info, disabled };
 }
 
-export function SizeButtons({ rows, order, value, onChange, allow, loading, labelledBy }) {
+// variant="pill": גלולת בחירה (seg pill + pth) כמו "מידה חלופית פנויה" בחלון העריכה של העיצוב
+export function SizeButtons({ rows, order, value, onChange, allow, loading, labelledBy, variant }) {
   if (loading) return <div className="faint oc-sizes-msg" role="status">טוען מידות...</div>;
   const list = rows.map(r => sizeInfo(r, order)).filter(s => s.size && (!allow || s.size === value || allow(s.size)));
   if (!list.length) return <div className="faint oc-sizes-msg">אין מידות להצגה</div>;
+  if (variant === 'pill') {
+    const idx = Math.max(0, list.findIndex(s => s.size === value));
+    return (
+      <div className="seg pill" role="radiogroup" aria-labelledby={labelledBy} style={{ '--n': list.length, '--i': idx }}>
+        <span className="pth" aria-hidden="true" />
+        {list.map(s => (
+          <button key={s.size} type="button" role="radio" aria-checked={value === s.size} className={value === s.size ? 'on' : ''} disabled={s.disabled && value !== s.size} data-tip={s.info} aria-label={`מידה ${s.size} (${s.info})`} onClick={() => onChange(s.size)}>{s.size}</button>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="sizes" role="radiogroup" aria-labelledby={labelledBy}>
       {list.map(s => (
@@ -202,12 +214,12 @@ export function SizeButtons({ rows, order, value, onChange, allow, loading, labe
 }
 
 // ---------- תיקונים (R23): צוואר / שרוול / אורך / פירוט ----------
-export function AltFields({ value, onChange, idPrefix, lockedParts = false, label = 'פרטי תיקון' }) {
+export function AltFields({ value, onChange, idPrefix, lockedParts = false, label = 'פרטי תיקון', boxClass = 'field' }) {
   const neck = isChecked(value.neckAlteration);
   const sleeve = isChecked(value.sleeveAlteration);
   return (
-    <div className="field oc-alt">
-      <span className="lbl" id={`${idPrefix}-altl`}><OcIcon name="scissors" size="sm" />{label}</span>
+    <div className={`${boxClass} oc-alt`}>
+      <label className="lbl" id={`${idPrefix}-altl`}><OcIcon name="scissors" size="sm" />{label}</label>
       <div className="row wrap oc-alt-row">
         <button type="button" className={`btn tgl${neck ? ' on' : ''}`} aria-pressed={neck} disabled={lockedParts} onClick={() => onChange({ neckAlteration: neck ? 0 : 1 })}>{neck ? <OcIcon name="check" size="sm" className="evck" /> : null}צוואר</button>
         <button type="button" className={`btn tgl${sleeve ? ' on' : ''}`} aria-pressed={sleeve} disabled={lockedParts} onClick={() => onChange({ sleeveAlteration: sleeve ? 0 : 1 })}>{sleeve ? <OcIcon name="check" size="sm" className="evck" /> : null}שרוול</button>
@@ -306,7 +318,7 @@ export default function OcAddItemPanel({ oc, ui, actions, open, onClose, altEnab
           <ModelInput id="addModel" value={model} ui={ui} onChange={(m) => { setModel(m); patch({ sizeText: '' }); }} />
         </div>
         <div className="field">
-          <span className="lbl" id="addSizeL">מידה</span>
+          <label className="lbl" id="addSizeL">מידה</label>
           {model ? <SizeButtons rows={rows} order={oc.order} value={draft.sizeText} loading={loading} labelledBy="addSizeL" onChange={(s) => patch({ sizeText: s })} /> : <div className="faint oc-sizes-msg">יש לבחור דגם</div>}
         </div>
       </div>

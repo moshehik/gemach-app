@@ -63,7 +63,7 @@ export default function OcItemEditDialog({ item, oc, ui, actions, rules, altEnab
       ) : canEditSizeOnly ? (
         <div className="mfld">
           <span className="lbl" id="oc-edit-sizel"><OcIcon name="tag" size="sm" />מידה חלופית פנויה</span>
-          <SizeButtons rows={rows} order={oc.order} value={draft.sizeText} loading={loading} labelledBy="oc-edit-sizel"
+          <SizeButtons variant="pill" rows={rows} order={oc.order} value={draft.sizeText} loading={loading} labelledBy="oc-edit-sizel"
             allow={(sz) => rules.sizeSwap(item, sz).ok}
             onChange={(s) => {
               const v = rules.sizeSwap(item, s);
@@ -74,7 +74,7 @@ export default function OcItemEditDialog({ item, oc, ui, actions, rules, altEnab
           <div className={`faint oc-edit-hint${notice ? ' err' : ''}`} aria-live="polite">{notice || 'אפשר להחליף רק למידה באותה קטגוריית מחיר.'}</div>
         </div>
       ) : null}
-      {altEnabled ? <AltFields value={draft} idPrefix="oc-edit" label="תיקונים" lockedParts={!fully} onChange={patch} /> : null}
+      {altEnabled ? <AltFields value={draft} idPrefix="oc-edit" label="תיקונים" boxClass="mfld" lockedParts={!fully} onChange={patch} /> : null}
       {!fully && !item.isNew ? (
         <div className="oc-edit-reopen">
           <button type="button" className="btn block" data-act="full-edit" onClick={reopen}><OcIcon name="lock" size="sm" />פתיחת עריכה מלאה (אישור מנהל)</button>

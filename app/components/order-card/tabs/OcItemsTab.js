@@ -177,6 +177,7 @@ export default function OcItemsTab({ oc, ui }) {
                   item={item}
                   mode={mode}
                   oc={oc}
+                  ui={ui}
                   actions={actions}
                   open={openKeys.has(k)}
                   onToggle={() => toggleRow(item)}

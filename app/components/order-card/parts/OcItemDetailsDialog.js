@@ -82,10 +82,10 @@ export default function OcItemDetailsDialog({ item, order, obligations, loadLogs
               <div className="c" key={o.id || i}>
                 <div className="ico gray oc-cico"><OcIcon name={o.isCredit ? 'undo' : 'dress'} size="sm" /></div>
                 <div className="t">{o.label}{o.isCredit ? <span className="chip green oc-crchip">זיכוי</span> : null}{o.desc ? <small className="faint oc-obldesc">{o.desc}</small> : null}</div>
-                <div className={`amt ${o.isCredit ? 'm' : 'p'}`}><bdi dir="ltr">{o.isCredit ? '−' : ''}{fmtMoney(o.amount)}</bdi></div>
+                <div className="amt z"><bdi dir="ltr">{o.isCredit ? '−' : ''}{fmtMoney(o.amount)}</bdi></div>
               </div>
             ))}
-            <div className="c oc-det-total"><div className="t"><b>סה״כ לפריט</b></div><div className="amt"><bdi dir="ltr">{total < 0 ? '−' : ''}{fmtMoney(total)}</bdi></div></div>
+            <div className="c oc-det-total"><div className="t"><b>סה״כ לפריט</b></div><div className="amt z"><bdi dir="ltr">{total < 0 ? '−' : ''}{fmtMoney(total)}</bdi></div></div>
           </>
         ) : <div className="c"><div className="t faint">אין חיובים מפורטים לפריט זה</div></div>}
       </div>

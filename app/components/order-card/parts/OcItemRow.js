@@ -16,7 +16,7 @@ export function addedText(item, order, creatorName) {
   return [day, time, creatorName].filter(Boolean).join(' · ') || '—';
 }
 
-export default function OcItemRow({ item, mode, oc, actions, open, onToggle, locked, quotaFull, altEnabled, altShow, creatorName, onDetails, onCapacity, onEdit }) {
+export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle, locked, quotaFull, altEnabled, altShow, creatorName, onDetails, onCapacity, onEdit }) {
   const pending = isPendingItem(item);
   const key = item.id || item._localId;
   const status = statusText(item, oc.order, mode);
@@ -26,7 +26,7 @@ export default function OcItemRow({ item, mode, oc, actions, open, onToggle, loc
   const detId = `det-${key}`;
   const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } };
   return (
-    <article className={`hrow irow${pending ? ' pending' : ''}${open ? ' open' : ''}`} data-item={key}>
+    <article className={`hrow irow${pending || mode === 'del' ? ' pending' : ''}${open ? ' open' : ''}`} data-item={key}>
       <div className="li rlink lrow" role="button" tabIndex={0} data-act="opitem" aria-expanded={open} aria-controls={detId} onClick={onToggle} onKeyDown={onKey}>
         <div className="ic-b"><OcIcon name="dress" /><span className="rlbl">פריט</span></div>
         <div className="t">
@@ -60,7 +60,7 @@ export default function OcItemRow({ item, mode, oc, actions, open, onToggle, loc
             </div>
           ) : (
             <>
-              <OcBarcodeRow item={item} actions={actions} locked={locked} />
+              <OcBarcodeRow item={item} actions={actions} locked={locked} ui={ui} />
               <div className="hv-r hv-act">
                 <small>פרטים ועריכה</small>
                 <b className="hv-btns">

@@ -19,7 +19,7 @@ export function barcodePlaceholder(item, locked) {
   return locked ? 'ההזמנה נעולה' : 'סרקו ברקוד להשכרה';
 }
 
-export default function OcBarcodeRow({ item, actions, locked }) {
+export default function OcBarcodeRow({ item, actions, locked, ui }) {
   const [val, setVal] = useState('');
   const [busy, setBusy] = useState(false);
   const pending = isPendingItem(item);
@@ -58,7 +58,12 @@ export default function OcBarcodeRow({ item, actions, locked }) {
             <button type="button" className={`btn sm tgl${okCond ? ' on' : ''}`} data-act="cond-ok" aria-pressed={okCond} disabled={busy} onClick={() => go(() => actions.setReturnCondition(item, true))}>
               <OcIcon name="check" size="sm" />תקין
             </button>
-            <button type="button" className={`btn sm tgl${okCond ? '' : ' on'}`} data-act="cond-bad" aria-pressed={!okCond} disabled={busy} onClick={() => go(() => actions.setReturnCondition(item, false))}>
+            <button type="button" className={`btn sm tgl${okCond ? '' : ' on'}`} data-act="cond-bad" aria-pressed={!okCond} disabled={busy} onClick={() => go(async () => {
+              if (!ui || item.returnedOk === false) return actions.setReturnCondition(item, false);
+              const note = await ui.openDialog(OcCondBadDialog, { item });
+              if (note === null || note === undefined) return null;
+              return actions.setReturnCondition(item, false, { note });
+            })}>
               <OcIcon name="alert" size="sm" />לא תקין
             </button>
           </>
@@ -76,6 +81,24 @@ export default function OcBarcodeRow({ item, actions, locked }) {
         {own && !pending ? <span className="faint oc-bch">ברקוד <bdi dir="ltr">{own}</bdi></span> : null}
       </b>
     </div>
+  );
+}
+
+// R27 "לא תקין": הערה שתתווסף לכרטיס הלקוח (העיצוב: WIN.condbad; הישן: customPrompt). ביטול = null (בלי שינוי).
+export function OcCondBadDialog({ item, close }) {
+  const [note, setNote] = useState('');
+  return (
+    <>
+      <DlgHead id="oc-dlg-t" title="החזרה לא תקינה" sub={`דגם ${itemName(item)}${item.sizeText ? ` · מידה ${item.sizeText}` : ''}`} />
+      <div className="mfld">
+        <label className="lbl" htmlFor="oc-cond-note"><OcIcon name="note" size="sm" />הערה על הפריט (תתווסף לכרטיס הלקוח)</label>
+        <textarea className="inp" id="oc-cond-note" rows={3} placeholder="מה לא תקין?" value={note} data-autofocus="true" onChange={(e) => setNote(e.target.value)} {...NO_FILL} />
+      </div>
+      <DlgButtons>
+        <DlgBtn kind="primary" icon="check" onClick={() => close(note)}>שמור הערה</DlgBtn>
+        <DlgBtn kind="ghost" icon="x" onClick={() => close(null)}>ביטול</DlgBtn>
+      </DlgButtons>
+    </>
   );
 }
 
