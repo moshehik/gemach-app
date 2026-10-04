@@ -129,7 +129,7 @@ export default function EcPermissions({ employeeId, refreshKey = 0 }) {
 
   let body;
   if (loading && !items) body = <div className="pr-load"><span className="spin" />טוען הרשאות...</div>;
-  else if (error) body = <div className="status debt" role="alert"><Ic id="alert" size="lg" /><div><div className="n" style={{ fontSize: 18 }}>{error === 'שגיאה בטעינת ההרשאות' ? error : error}</div></div></div>;
+  else if (error) body = <div className="status debt" role="alert"><Ic id="alert" size="lg" /><div><div className="n" style={{ fontSize: 18 }}>{error}</div></div></div>;
   else if (!items) body = null;
   else {
     const byKey = new Map(items.map((it) => [it.key, it]));

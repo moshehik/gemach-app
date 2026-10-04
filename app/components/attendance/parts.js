@@ -62,7 +62,7 @@ export function ToolButtons({ canXl, disabled, tips, onPick }) {
 }
 
 /** תיבת הבחירה של המערכת (.cb, cbxHTML בעיצוב): רשימה צפה, וי על הנבחר, חיצים / Enter / Escape במקלדת */
-export function Combo({ id, label, value, options, onChange, className = '' }) {
+export function Combo({ id, label, value, options, onChange, className = '', disabled = false, placeholder = '' }) {
   const [open, setOpen] = useState(false);
   const [act, setAct] = useState(-1);
   const rootRef = useRef(null);
@@ -93,10 +93,10 @@ export function Combo({ id, label, value, options, onChange, className = '' }) {
   };
   return (
     <div className={'cb ' + className + (open ? ' open' : '')} data-cb={id} ref={rootRef} onKeyDown={onKey}>
-      <button type="button" className="cb-t" id={'cbt-' + id} role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={() => setOpen((o) => !o)}>
-        <span className="cb-v">{cur ? cur[1] : ''}</span><Ic id="chev" size="sm" />
+      <button type="button" className="cb-t" id={'cbt-' + id} role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)}>
+        <span className={'cb-v' + (cur ? '' : ' cb-ph')}>{cur ? cur[1] : placeholder}</span><Ic id="chev" size="sm" />
       </button>
-      <div className="cb-p" hidden={!open}>
+      <div className="cb-p" hidden={!open || disabled}>
         <ul className="cb-l" role="listbox" aria-label={label} ref={listRef}>
           {options.map(([v, l], i) => {
             const sel = String(v) === String(value);

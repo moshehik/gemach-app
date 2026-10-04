@@ -5,7 +5,7 @@
 // והטוסט של הפלטה (#toast.info). אין window.alert / confirm בשום מקום בכרטיס.
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Ic } from '../attendance/parts';
+import { Ic, decorateButtons } from '../attendance/parts';
 
 export { Ic };
 
@@ -20,16 +20,21 @@ export function EcPortal({ children }) {
 }
 
 // Escape סוגר, Tab נשאר בתוך החלון, הפוקוס חוזר בסגירה ללחצן שפתח (כמו useDialogKeys של סיכום הנוכחות)
+const DIALOG_STACK = [];
 export function useDialogKeys(dlgRef, onClose, focusSel = '.btn.primary, .btn, input') {
   const closeRef = useRef(onClose);
   useEffect(() => { closeRef.current = onClose; }, [onClose]);
   useEffect(() => {
+    // כמה חלונות פתוחים יחד (חלון אימות מנהל מעל חלון המייל): רק העליון מטפל ב-Escape / Tab
+    const me = {};
+    DIALOG_STACK.push(me);
     const opener = typeof document !== 'undefined' ? document.activeElement : null;
     const t = setTimeout(() => {
       const el = dlgRef.current && dlgRef.current.querySelector(focusSel);
       if (el && !dlgRef.current.contains(document.activeElement)) el.focus();
     }, 60);
     const onKey = (e) => {
+      if (DIALOG_STACK[DIALOG_STACK.length - 1] !== me) return;
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (closeRef.current) closeRef.current(); return; }
       if (e.key !== 'Tab' || !dlgRef.current) return;
       const els = [...dlgRef.current.querySelectorAll('button, a[href], input, textarea, [tabindex]:not([tabindex="-1"])')].filter((x) => !x.disabled && x.offsetParent !== null);
@@ -43,6 +48,8 @@ export function useDialogKeys(dlgRef, onClose, focusSel = '.btn.primary, .btn, i
     window.addEventListener('keydown', onKey, true);
     return () => {
       clearTimeout(t);
+      const at = DIALOG_STACK.indexOf(me);
+      if (at >= 0) DIALOG_STACK.splice(at, 1);
       window.removeEventListener('keydown', onKey, true);
       try { if (opener && opener.focus && document.contains(opener)) opener.focus(); } catch { /* */ }
     };
@@ -112,3 +119,12 @@ export function EcToast({ toast, onClose }) {
 // הקשר הכרטיס: say(title, kind, text), confirm(opts)->Promise<boolean>, approve(opts)->Promise<{employeeId,pin}|null>, info(item)
 export const EcContext = createContext(null);
 export const useEc = () => useContext(EcContext);
+
+// tipify() של העיצוב: decorateButtons (data-ico + טולטיפ מ-aria-label) + הסרת title מלחצנים (הטולטיפ של הפלטה מחליף אותו)
+export function decorateEc(root) {
+  if (!root) return;
+  decorateButtons(root);
+  root.querySelectorAll('button[title],[role=button][title]').forEach((b) => {
+    if (b.dataset.tip || b.textContent.trim()) b.removeAttribute('title');
+  });
+}

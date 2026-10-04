@@ -17,7 +17,7 @@ import { Ic, NO_FILL, useEc } from './EcUi';
 
 const fmtTime = (iso) => (iso ? new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-');
 
-export default function EcAttendance({ employee, employeeId, showDeleted, onShowDeleted, onReload, wage }) {
+export default function EcAttendance({ employee, employeeId, showDeleted, onShowDeleted, onReload }) {
   const ec = useEc();
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth());
@@ -59,7 +59,6 @@ export default function EcAttendance({ employee, employeeId, showDeleted, onShow
   const today = israelToday();
   const addDate = editShiftData.date || '';
   const busy = isAddingShift || editingShiftId !== null;
-  void wage;
 
   return (
     <div className="ec-pa print-area">

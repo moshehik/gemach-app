@@ -53,7 +53,7 @@ function Row({ row, index, open, onToggle }) {
 export default function EcHistory({ employeeId, refreshKey = 0 }) {
   const [logs, setLogs] = useState(null);
   const [error, setError] = useState(null);
-  const [openId, setOpenId] = useState(null);
+  const [openIds, setOpenIds] = useState(() => new Set()); // כמה שורות יכולות להיות פתוחות יחד (כמו בעיצוב)
   const [openInit, setOpenInit] = useState(false);
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export default function EcHistory({ employeeId, refreshKey = 0 }) {
 
   const rows = useMemo(() => buildHistoryRows(logs || [], { catalogLabel: (key) => (getCatalogItem(key) || {}).label || key }), [logs]);
   // השורה הראשונה פתוחה בטעינה הראשונה (כמו בעיצוב)
-  useEffect(() => { if (!openInit && rows.length) { setOpenId(rows[0].id); setOpenInit(true); } }, [rows, openInit]);
+  useEffect(() => { if (!openInit && rows.length) { setOpenIds(new Set([rows[0].id])); setOpenInit(true); } }, [rows, openInit]);
 
   return (
     <section className="card ec-hist" aria-labelledby="h-hist">
@@ -85,7 +85,7 @@ export default function EcHistory({ employeeId, refreshKey = 0 }) {
       <div className="hres">
         {logs === null ? <div className="empty" role="status"><span className="spin" /><p>טוען היסטוריית שינויים...</p></div>
           : error ? <div className="empty" role="alert"><Ic id="alert" /><p>שגיאה בטעינת היסטוריה: {error}</p></div>
-            : rows.length ? <div className="hgrp">{rows.map((r, i) => <Row key={r.id} row={r} index={i} open={openId === r.id} onToggle={() => setOpenId((cur) => (cur === r.id ? null : r.id))} />)}</div>
+            : rows.length ? <div className="hgrp">{rows.map((r, i) => <Row key={r.id} row={r} index={i} open={openIds.has(r.id)} onToggle={() => setOpenIds((cur) => { const n = new Set(cur); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })} />)}</div>
               : <div className="empty"><Ic id="sn-history" /><p>אין תיעוד היסטוריה לעובד זה</p></div>}
       </div>
     </section>
