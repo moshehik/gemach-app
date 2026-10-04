@@ -22,10 +22,19 @@ const near = (a, b) => a.length === b.length && a.every((x, i) => Math.abs(Numbe
 // הבדלים מאושרים לשלב מסוים בלבד: [שלב, regex, סיבה]
 const APPROVED_STAGE = [
   ['10-conflict', /^DLG>div\.dbtns>button\.block\.btn\.ghost/, 'R12: לחצן שלישי "חזרה לעריכה" (החלטת הבעלים: 3 בחירות; בעיצוב רק 2)'],
+  // W6: R40 (הוסר בהחלטת הבעלים) - הכרטיס "בוצעה על ידי" + "עובדים פעילים בהזמנה" בראש לשונית ההיסטוריה של העיצוב; המידע עבר ליומן (A20)
+  ...['40', '41', '42', '43', '44', '45', '46', '47', '48'].flatMap((n) => [
+    [n, /^HIST>div\.card(>|$)|^HIST>div\.(list|li)>/, 'R40: כרטיס "בוצעה על ידי" הוסר (בעיצוב עדיין מוצג)'],
+    [n, /^HIST \[h\]$/, 'R40: גובה הלשונית קטן בגובה הכרטיס שהוסר'],
+  ]),
+  ['42', /^HIST>(thead|tbody|tr)>.* \[w\]$/, 'רוחבי עמודות הטבלה לפי הטקסט (בעיצוב תאריך לועזי 8.10.2026 בשורת "נקבע תאריך האירוע"; אצלנו עברי)'],
+  ['41', /^HIST>div\.li\.lrow\.rlink>div\.ic-b>svg\.ic \[(w|h)\]$/, 'אנימציית ריחוף של האייקון בעיצוב (ia-h) באמצע המעבר'],
+  ['43', /^TOAST/, 'העיצוב משאיר טוסט מהדגמה שלו (לא חלק מההיסטוריה); בצילום אין טוסט'],
+  ['46', /^RT(>div\.rr1(>span)?)? \[w\]$/, 'AMB-18: אין שם משמרת במודל - "משמרת · 08:00–16:00" במקום "משמרת בוקר · 08:00–16:00"'],
   ['10-conflict', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
   ['11-stock', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
 ];
-const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => s2 === st && re.test(line));
+const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => (s2 === st || st.startsWith(s2 + '-')) && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };
 let total = 0, skipped = 0;
 for (const st of Object.keys(d)) {

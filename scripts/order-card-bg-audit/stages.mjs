@@ -18,7 +18,7 @@ const DUMP = (roots) => {
   roots.forEach(([label, rootSel]) => {
     const root = document.querySelector(rootSel);
     if (!root) return;
-    const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { let s = e.tagName.toLowerCase(); const c = [...e.classList].filter((x) => !/^(on|act|pulse|fresh|ia-h|enter|out)$/.test(x) && !/^ia-/.test(x) && !/^(oc|pv)-/.test(x)).sort().slice(0, 3).join('.'); if (c) s += '.' + c; p.unshift(s); e = e.parentElement; } return label + '>' + p.join('>'); };
+    const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { let s = e.tagName.toLowerCase(); const c = [...e.classList].filter((x) => !/^(on|act|pulse|fresh|ia-h|enter|out|pop)$/.test(x) && !/^ia-/.test(x) && !/^(oc|pv)-/.test(x)).sort().slice(0, 3).join('.'); if (c) s += '.' + c; p.unshift(s); e = e.parentElement; } return label + '>' + p.join('>'); };
     const all = [root, ...root.querySelectorAll('*')];
     all.forEach((el) => {
       if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
@@ -122,9 +122,9 @@ const openHistory = async () => { await (D ? fresh() : fresh('neve')); await cli
 STAGES.push(
   { name: '40-history', real: openHistory, demo: openHistory },
   { name: '41-history-row-open', real: async () => { await openHistory(); await clickAt('#hfeed .hrow:first-child .lrow'); await away(); }, demo: async () => { await openHistory(); await clickAt('#hfeed .hrow:first-child .lrow'); await away(); } },
-  { name: '42-history-table', real: async () => { await openHistory(); await clickAt('.hres-bar .vsw .vopt:last-child'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hres-bar .vsw .vopt:last-child'); await away(); } },
+  { name: '42-history-table', real: async () => { await openHistory(); await clickAt('#p-history .hres-bar .vsw .vopt:last-child'); await away(); }, demo: async () => { await openHistory(); await clickAt('#p-history .hres-bar .vsw .vopt:last-child'); await away(); } },
   { name: '43-history-filter', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(300); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(300); } },
-  { name: '44-history-filtered', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await p.keyboard.press('Escape'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await clickAt('.hf-bar .hf-t'); await away(); } },
+  { name: '44-history-filtered', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await clickAt('.hf-bar .hf-t'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await p.evaluate(() => hfSetOpen(false)); await away(); } },
   { name: '45-history-search', real: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); } },
   { name: '46-history-shift', real: async () => { await openHistory(); await hover('.card.proc .prc-sh'); }, demo: async () => { await openHistory(); await hover('.card.proc .prc-sh'); } },
   { name: '47-history-prep-dlg', real: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); } },

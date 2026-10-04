@@ -8,3 +8,11 @@
 
 /* כותרת המקטע "מותאם" (בדגימה style מוטבע font-size:19px) */
 .gm-ds.gm-oc .sect-h .oc-sect-t{font-size:19px}
+
+/* דליפה: design-overrides.css / globals.css מעצבים כל input (רקע לבן, גבול, רדיוס 10px, צבע טקסט) בספציפיות גבוהה (input:not(...)) -
+   בעיצוב שדה החיפוש של ההיסטוריה שקוף, בלי גבול ובצבע הכחול הכהה (המסגרת היא של .hf-s). מזהה כדי לגבור על הספציפיות. */
+.gm-ds.gm-oc .hf-bar .hf-s input#hfQ{background:transparent;border:0;border-radius:0;color:var(--gm-navy-900);box-shadow:none}
+/* דליפה: globals.css מאפס padding של לחצנים - בעיצוב לחצן הניקוי נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-oc .hf-bar .hf-s .hf-cl{padding:1px 6px}
+/* לחצן הסינון כשהתפריט פתוח: בעיצוב מסגרת כחולה כהה (.hf-sel.on); בפלטה כלל הזהב של .gm-ds:not(.gm-home) .hf-s .hf-t גובר עליו */
+.gm-ds.gm-oc .hf-s .hf-sel.on .hf-t{border-color:var(--gm-navy)}
