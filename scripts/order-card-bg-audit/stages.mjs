@@ -42,7 +42,7 @@ p.on('response', (r) => { if (r.status() === 404 && !/\/api\//.test(r.url())) co
 p.on('pageerror', (e) => console.log('PAGEERR', which, e.message));
 // כשיש שינויים שלא נשמרו הכרטיס מגן ביציאה (beforeunload) - בהרתמה מאשרים כדי לעבור לשלב הבא
 p.on('dialog', (dl) => dl.accept().catch(() => {}));
-p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', which, m.text().slice(0, 200)); });
+p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', which, globalThis.__st || '-', m.text().slice(0, 200)); });
 const results = {};
 const snap = async (name, roots) => { await sleep(600); await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: false }); results[name] = await p.evaluate(DUMP, roots || (/^[45]\d-/.test(name) ? ROOTS : ROOTS.filter((r) => r[0] !== 'ITEMS'))); }; // ITEMS (W3) רק בשלבי הפריטים; roots (W2a) לשלב מסוים
 // לחיצה אמיתית בעכבר; כשהאלמנט מכוסה (בעיצוב: סרגל ההדגמה / כפתור השאלות הצף במסך צר) - el.click() במקום
@@ -267,7 +267,7 @@ STAGES.push(
     const hasPicker = await p.evaluate(() => !!document.getElementById('oc-join'));
     const before = await p.evaluate(() => ({ joinCalls: (window.__calls || []).filter((c) => /deliveries\/join/.test(c.url)).map((c) => c.url) }));
     await clickAt('#oc-join [data-join="join"]'); await sleep(600);
-    const rows = await p.$eval('#oc-join .oc-join-row', (xs) => xs.map((x) => x.textContent));
+    const rows = await p.$$eval('#oc-join .oc-join-row', (xs) => xs.map((x) => x.textContent));
     await clickAt('#oc-join .oc-join-row'); await sleep(700);
     const st = await p.evaluate(() => ({ city: document.getElementById('delCityIn').value, cityOff: document.getElementById('delCityIn').disabled, addr: document.getElementById('delAddr') ? document.getElementById('delAddr').value : null, addrOff: document.getElementById('delAddr') ? document.getElementById('delAddr').disabled : null, checked: [...document.querySelectorAll('#oc-join .oc-join-row[aria-checked="true"]')].map((x) => x.textContent), badge: (document.querySelector('#rail .cart .badge') || {}).textContent }));
     await clickAt('#oc-join .oc-join-pane:last-of-type .oc-join-row:nth-child(2)'); await sleep(400);
@@ -308,7 +308,7 @@ STAGES.push(
     const s1 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), focus: document.activeElement && document.activeElement.id, val: document.getElementById('scanIn').value, tab: document.querySelector('#tabs .tab.on') ? document.querySelector('#tabs .tab.on').dataset.tab : null }));
     const c1 = (await calls(/rentals/)).map((c) => ({ url: c.url, body: c.body && JSON.parse(c.body) }));
     await p.type('#scanIn', '99900001'); await p.keyboard.press('Enter'); await sleep(1000);
-    const s2 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), toast: document.getElementById('toast') ? document.getElementById('toast').className : '', flash: document.querySelector('#sbar .oc-seq').className }));
+    const s2 = await p.evaluate(() => ({ chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent), feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), toast: document.getElementById('toast') ? document.getElementById('toast').className : '', flash: document.querySelector('#sbar .oc-seq').className, liCls: (document.querySelector('#sbar .oc-seq-feed li') || {}).className || '' }));
     await p.type('#scanIn', '27644001'); await p.keyboard.press('Enter'); await sleep(1000);
     const s3 = await p.evaluate(() => ({ feed: [...document.querySelectorAll('#sbar .oc-seq-feed li')].map((x) => x.textContent), chips: [...document.querySelectorAll('#sbar .oc-seq-bar .chip')].map((x) => x.textContent) }));
     await clickAt('#sbar .oc-seq-bar .btn:first-of-type'); await sleep(900); // בטל סריקה אחרונה (החזרת a3)
@@ -320,7 +320,7 @@ STAGES.push(
     checks.push(['sequence: #sbar מציג את הפאנל במקום השדה הרגיל (enable_barcode_sequence_mode), הפוקוס בשדה', init.seq && init.focus === 'scanIn' && !init.pop],
       ['sequence: ברקוד + Enter = השכרה אוטומטית (verify-item ואז toggle rent), השדה התאפס ובפוקוס, עובר ללשונית פריטים', c1.length === 2 && c1[0].url === '/api/rentals/verify-item' && c1[1].body.action === 'rent' && c1[1].body.barcode === '45123801' && s1.val === '' && s1.focus === 'scanIn' && s1.tab === 'items'],
       ['sequence: יומן "נלקחה", מונה נסרקו 1', s1.chips[0] === 'נסרקו: 1' && /נלקחה/.test(s1.feed[0]) && /45123801/.test(s1.feed[0])],
-      ['sequence: ברקוד לא תקף = שגיאה ביומן (נכשלו: 1) ולא כטוסט אדום חוסם', s2.chips[1] === 'נכשלו: 1' && /אינו תקף להשכרה/.test(s2.feed[0]) && !/\bon\b/.test(s2.toast) && /oc-seq-error/.test(s2.flash)],
+      ['sequence: ברקוד לא תקף = שגיאה ביומן (נכשלו: 1) ולא כטוסט אדום חוסם', s2.chips[1] === 'נכשלו: 1' && /אינו תקף להשכרה/.test(s2.feed[0]) && !/\bon\b/.test(s2.toast) && /oc-seq-error/.test(s2.liCls)],
       ['sequence: ברקוד של פריט מושכר = החזרה "הוחזרה"', /הוחזרה/.test(s3.feed[0]) && s3.chips[0] === 'נסרקו: 2'],
       ['sequence: "בטל סריקה אחרונה" שולח undoReturn בלי חלון אישור; הרשומה נחצית; המונה יורד', c2.some((c) => c.body && c.body.action === 'undoReturn' && c.body.itemId === 'a3') && s4.chips[0] === 'נסרקו: 1' && s4.feed.some((t) => /בוטל/.test(t))],
       ['sequence: סיכום נסרקו / נכשלו עם הברקוד שנכשל', /נסרקו בהצלחה: 1/.test(sum) && /נכשלו: 1/.test(sum) && /99900001/.test(sum)]);
@@ -331,7 +331,8 @@ STAGES.push(
 for (const st of STAGES) {
   const fn = D ? st.demo : st.real;
   if (!fn) continue;
-  try { await fn(); await snap(st.name, st.roots || ROOTS); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
+  globalThis.__st = st.name;
+  try { await fn(); await snap(st.name, st.roots); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
 }
 fs.writeFileSync(`${OUT}/${which}-${width}.json`, JSON.stringify(results, null, 1));
 if (checks.length) { checks.forEach(([n, ok]) => console.log(ok ? 'CHECK ok  ' : 'CHECK FAIL', n)); if (checks.some(([, ok]) => !ok)) process.exitCode = 1; }
