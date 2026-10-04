@@ -154,6 +154,7 @@ function DlgBadge({ boxId, dlgKey }) {
 
 // dismissable: false | true | () => boolean (נבדק בכל Esc/לחיצה על הרקע - למשל חלון תשלום בזמן חיוב רץ)
 const canDismiss = (opts) => (typeof opts.dismissable === 'function' ? !!opts.dismissable() : opts.dismissable !== false);
+const isDynamicDismiss = (opts) => typeof opts.dismissable === 'function';
 
 // ---------- ספק ----------
 export function OcUiProvider({ children }) {
@@ -232,7 +233,7 @@ export function OcUiProvider({ children }) {
       const box = typeof document !== 'undefined' ? document.getElementById(top.layer === 2 ? 'dlg2' : 'dlg') : null;
       if (e.key === 'Escape') {
         // dismissable:false (חלון שמטפל ב-Esc בעצמו, למשל גיליון המייל של W7) - לא נוגעים באירוע; dismissable:()=>false (חיוב רץ) - בולעים אותו
-        if (!canDismiss(top.opts)) { if (typeof top.opts.dismissable === 'function') { e.stopImmediatePropagation(); e.preventDefault(); } return; }
+        if (!canDismiss(top.opts)) { if (isDynamicDismiss(top.opts)) { e.stopImmediatePropagation(); e.preventDefault(); } return; }
         e.stopImmediatePropagation(); e.preventDefault();
         close(top.id, null);
         return;

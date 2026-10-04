@@ -200,7 +200,7 @@ test('g (סטטי): W3 מעדכן פריטים שכבר נשמרו בשרת דר
 // ---------- OcUi: Esc בחלון שמטפל בו בעצמו (גיליון המייל של W7) לא נבלע (תיקון מיזוג W4+W7) ----------
 test('OcUi: dismissable:false משאיר את Esc לחלון עצמו; dismissable:() => false (חיוב רץ) בולע אותו', () => {
   const ui = strip(read('OcUi.js'));
-  assert.ok(/if \(!canDismiss\(top\.opts\)\) \{ if \(typeof top\.opts\.dismissable === 'function'\) \{ e\.stopImmediatePropagation\(\); e\.preventDefault\(\); \} return; \}/.test(ui));
+  assert.ok(/if \(!canDismiss\(top\.opts\)\) \{ if \(isDynamicDismiss\(top\.opts\)\) \{ e\.stopImmediatePropagation\(\); e\.preventDefault\(\); \} return; \}/.test(ui));
   assert.ok(/dismissable: false/.test(strip(read('parts/OcMailSheet.js'))), 'גיליון המייל מטפל ב-Esc בעצמו');
   assert.ok(/dismissable: \(\) => !actions\.isBusy\(\)/.test(strip(read('hooks/usePaymentActions.js'))));
 });
