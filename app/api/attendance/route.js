@@ -6,10 +6,15 @@ import { verifySecret } from '../../../lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '../../../lib/trustedDevice';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { findOpenShift, punchIn, punchOut } from '@/lib/shiftPunch';
+import { resolveAttendanceManager } from '@/lib/attendance/server';
 
 // Get attendance records, optionally filter by month and year
+// הנהלה בלבד (סקירה 4.10.2026): עד עכשיו כל מחובר קיבל כאן שורות משמרת מלאות עם שכר של כל עובד. אין לזה קורא בממשק
+// (שעון הנוכחות משתמש רק ב-POST); העובד רואה את שלו דרך /api/attendance-sheet. אותו שער נכשל-סגור כמו סיכום הנוכחות.
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  const { isManager } = await resolveAttendanceManager();
+  if (!isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');

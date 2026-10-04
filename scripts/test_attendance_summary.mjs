@@ -173,7 +173,7 @@ await t('קריאה: טבלת כל העובדים - הנהלה בלבד; עוב�
   assert.deepEqual(A.decideReadAccess({ isManager: false, sessionEmployeeId: 'e1', requestedEmployeeId: null, scope: 'employee' }), { ok: true, employeeId: 'e1', wages: false });
   assert.equal(A.decideReadAccess({ isManager: false, sessionEmployeeId: 'e1', requestedEmployeeId: 'e2', scope: 'employee' }).status, 403);
   assert.deepEqual(A.decideReadAccess({ isManager: true, sessionEmployeeId: 'h', requestedEmployeeId: 'e2', scope: 'employee' }), { ok: true, employeeId: 'e2', wages: true });
-  assert.equal(A.decideReadAccess({ isManager: true, sessionEmployeeId: null, requestedEmployeeId: null, scope: 'employee' }).status, 400);
+  assert.equal(A.decideReadAccess({ isManager: true, sessionEmployeeId: null, requestedEmployeeId: null, scope: 'employee' }).status, 401, 'אורח במצב פתוח בלי עובד: יש להתחבר');
 });
 await t('כתיבה: הנהלה - כל עובד; עובד - רק עצמו; משמרת שאינה של העובד שבנתיב = 404 לכולם', () => {
   assert.deepEqual(A.decideShiftWrite({ isManager: true, sessionEmployeeId: 'h', routeEmployeeId: 'e2' }), { ok: true, wages: true });
@@ -393,6 +393,61 @@ await t('GET print: טבלת הסיכום להנהלה בלבד; עובד רגי
   assert.equal(w0.__json.meta.wages, false, '"השעות שלי" של הנהלה - בלי שכר');
   assert.equal((await get('scope=print&type=full&ids=a%27b&y=2026&m=8')).status, 400);
 });
+await t('נכשל סגור: שגיאת DB בחיפוש העובד המחובר (עוגייה קיימת) -> לא מנהל: 401/403 על טבלת כל העובדים ועל משמרת של אחר', async () => {
+  installDb(); as('emp-1');
+  // כל קריאה לטבלת העובדים זורקת (getSessionEmployee -> null; checkPageAccess היה מחזיר true בשגיאה)
+  const emps = globalThis.__MOCK_DB.employee;
+  Object.defineProperty(globalThis.__MOCK_DB, 'employee', { get() { throw new Error('DB down'); }, configurable: true, enumerable: true });
+  try {
+    const denied = (st) => st === 401 || st === 403;
+    assert.ok(denied((await get('scope=month&y=2026&m=8')).status), 'שכר של כולם דלף בשגיאת DB');
+    assert.ok(denied(await status(await shiftsRoute.POST(req(NEW), ctx('emp-2')))), 'כתיבה למשמרת של אחר בשגיאת DB');
+    assert.equal(writes().length, 0);
+  } finally {
+    Object.defineProperty(globalThis.__MOCK_DB, 'employee', { value: emps, writable: true, configurable: true, enumerable: true });
+  }
+});
+await t('נכשל סגור: הנהלה ראשית לא פעילה (isActive=false) אינה מנהלת - 401/403', async () => {
+  installDb();
+  globalThis.__MOCK_DB.employee.push({ id: 'emp-head-old', roleId: 0, isActive: false, firstName: 'ישנה', lastName: 'לא פעילה', shifts: [] });
+  as('emp-head-old');
+  assert.ok([401, 403].includes((await get('scope=month&y=2026&m=8')).status));
+  assert.ok([401, 403].includes(await status(await shiftRoute.PUT(req({ notes: 'x' }), ctx('emp-2', 'sh-2')))));
+  assert.equal(writes().length, 0);
+});
+await t('אורח במצב פתוח: "השעות שלי" בלי עובד -> 401 "יש להתחבר"; טבלת ההנהלה נשארת כמו הדפים (פתוחה במצב פתוח)', async () => {
+  installDb({ requireLogin: false }); as(null);
+  const r = await get('scope=employee&y=2026&m=8');
+  assert.equal(r.status, 401, JSON.stringify(r.__json));
+  assert.equal((await get('scope=months')).status, 401);
+  assert.equal((await get('scope=month&y=2026&m=8')).status, 200);
+});
+await t('GET /api/attendance (שורות משמרת עם שכר): הנהלה בלבד - עובד רגיל ושגיאת DB 403; הנהלה 200; POST (שעון הנוכחות) לא השתנה', async () => {
+  const att = await L('app/api/attendance/route.js');
+  const g = () => att.GET({ url: 'http://localhost/api/attendance?employeeId=emp-2' });
+  installDb(); as('emp-1');
+  assert.equal((await g()).status, 403);
+  as('emp-head');
+  assert.equal((await g()).status, 200);
+  as(null);
+  assert.equal((await g()).status, 401);
+  assert.equal(typeof att.POST, 'function');
+});
+await t('"לפי עובד" לכמה עובדים: שאילתה מקובצת אחת (לא שאילתה לכל עובד)', async () => {
+  installDb(); as('emp-head');
+  globalThis.__MOCK_CALLS = [];
+  const r = await get('scope=print&type=byemp&ids=emp-1,emp-2');
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(r.__json.sheets.length, 2);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'shift').length, 1);
+});
+await t('SHIFT_AUDIT_ACTOR_SINCE ניתן לדריסה במשתנה סביבה (לקבוע לזמן הפריסה במיזוג)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const url = pathToFileURL(path.join(PROJ, 'lib/attendance/summary.js')).href;
+  const run = (env) => execFileSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', `import(${JSON.stringify(url)}).then((m) => console.log(m.SHIFT_AUDIT_ACTOR_SINCE))`], { env: { ...process.env, ...env }, encoding: 'utf8' }).trim();
+  assert.equal(run({ SHIFT_AUDIT_ACTOR_SINCE: '2026-11-01T10:00:00+02:00' }), '2026-11-01T08:00:00.000Z');
+  assert.equal(run({ SHIFT_AUDIT_ACTOR_SINCE: 'garbage' }), '2026-10-05T00:00:00.000Z');
+});
 await t('PDF בשרת (AT-07): /attendance/print פתוח לכל מחובר (הנתונים נבדקים ב-API), נתיבים אחרים נשארים סגורים', async () => {
   assert.equal(PA.printPathPageKeys('/attendance/print'), PA.LOGIN_ONLY_PAGE_KEYS);
   assert.equal(await PA.canUsePrintSurface(PA.LOGIN_ONLY_PAGE_KEYS), true);
@@ -418,6 +473,7 @@ await t('נתיבים: /employees/attendance ו-/employees/<id>/attendance (תח
   assert.match(read('app/employees/report/page.js'), /redirect\('\/employees\/attendance'\)/);
   assert.match(read('app/employees/layout.js'), /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/, 'השער של /employees לא השתנה');
   assert.ok(existsSync(path.join(PROJ, 'app/attendance/print/page.js')));
+  assert.ok(!existsSync(path.join(PROJ, 'app/api/employees/attendance/route.js')), 'ה-API הישן שהוסר חזר');
   const emp = read('app/employees/page.js');
   assert.match(emp, /router\.push\('\/employees\/attendance'\)/, 'לשונית "נוכחות" מובילה לדף החדש');
   assert.ok(!/print-area|employee-page|ExportButtons|\/api\/employees\/attendance/.test(emp), 'קוד הלשונית הישנה נשאר');

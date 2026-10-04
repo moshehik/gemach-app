@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getAttendanceViewer, loadAllTotals, loadMonth, loadEmployeeMonth, loadEmployeeMonths, loadHistory, loadEmployeeBasic, loadEmployeeList, loadPrintMeta } from '@/lib/attendance/server';
+import { getAttendanceViewer, loadAllTotals, loadMonth, loadEmployeeMonth, loadEmployeeMonths, loadMonthsForEmployees, loadHistory, loadEmployeeBasic, loadEmployeeList, loadPrintMeta } from '@/lib/attendance/server';
 import { decideReadAccess, cleanEmployeeId } from '@/lib/attendance/access';
 import { parsePeriod } from '@/lib/attendance/summary';
 import { buildAttendancePrintPayload, PRINT_TYPES } from '@/lib/attendance/print';
 
 // GET /api/attendance-sheet — הנתונים של "סיכום נוכחות" (app/components/attendance/*, /employees/attendance, /my-hours, /attendance/print).
 // קריאה בלבד. ההרשאות (lib/attendance/access.js):
-//   scope=month     &y&m             טבלת כל העובדים לחודש (שכר + שעות של כולם) - הנהלה ראשית / מתכנת בלבד, כמו /api/employees/attendance
+//   scope=month     &y&m             טבלת כל העובדים לחודש (שכר + שעות של כולם) - הנהלה ראשית / מתכנת בלבד, כמו /api/employees/attendance שהוסר
 //   scope=employee  &emp&y&m[&deleted=1]  משמרות של עובד אחד בחודש + סימון "נערך ידנית" - הנהלה: כל עובד; עובד רגיל: רק עצמו
 //   scope=months    &emp             החודשים של עובד מכל הנתונים (AT-14) - כנ"ל; להנהלה גם רשימת העובדים לבורר
 //   scope=history   &emp[&shift]     היסטוריית השינויים במשמרות (לפני/אחרי, מי, מתי - AT-12/AT-16) - כנ"ל
@@ -89,12 +89,7 @@ export async function GET(request) {
       const meta = await loadPrintMeta(viewer.employeeId);
       if (type === 'byemp') {
         if (!targetIds.length) return json({ error: 'לא נבחר עובד' }, 400);
-        const monthsBy = [];
-        for (const id of targetIds) {
-          const employee = await loadEmployeeBasic(id);
-          if (!employee) continue;
-          monthsBy.push({ employee, months: await loadEmployeeMonths(id, { wages }) });
-        }
+        const monthsBy = await loadMonthsForEmployees(targetIds, { wages }); // שתי שאילתות לכל הבקשה, לא לכל עובד
         return json({ viewer: view, ...buildAttendancePrintPayload({ type, wages, ...meta, monthsBy }) });
       }
       const period = parsePeriod(sp.get('y'), sp.get('m'));
