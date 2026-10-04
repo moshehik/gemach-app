@@ -129,6 +129,13 @@ export default function TopbarSearch() {
         setBarcode('');
         if (openRentalModal) openRentalModal(data.orderId);
         else router.push('/rentals?orderId=' + data.orderId);
+      } else if (res.status === 404) {
+        // אין פריט מושכר בברקוד הזה (לא נלקח / כבר הוחזר / לא קיים) - במקום הודעת שגיאה,
+        // מחפשים אותו בחיפוש הרגיל (הזמנות, לקוחות ופריטים לפי ברקוד), כמו כל חיפוש אחר.
+        // דיווח df035847, נווה יעקב 2026-10-04.
+        setOpen(false);
+        setBarcode('');
+        router.push('/?q=' + encodeURIComponent(cleanBarcode));
       } else {
         alert(data.error || 'שגיאה בהחזרה');
       }
