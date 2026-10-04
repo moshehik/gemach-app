@@ -6,10 +6,9 @@
 // "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד: ברקוד בן 7 ספרות + Enter מחזיר את הפריט המושכר (כמו תיבת "החזרה מהירה"
 // של העיצוב הישן, TopbarSearch.js); אם אין פריט מושכר בברקוד - נשארים בחיפוש ומוצגות התוצאות עם הסיבה (דיווח df035847).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
-import { detectQuickPrefix } from '@/lib/quickPrefix';
 import { MINE_URL } from '@/lib/myRecentActivityView';
 import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
 import { MineRowBody, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
@@ -24,6 +23,11 @@ const MIN_CHARS = 2;
 /** מצב החיפוש - מוחזק במעטפת כדי שהפאנל בסרגל והמגירה בנייד יישארו מסונכרנים. */
 export function useMenuSearch() {
   const [q, setQ] = useState('');
+  // "השינויים שלי" ('&') מוצגת במקום תוצאות החיפוש - ורק אז חיפוש השרת מושעה. ההחלטה היא של הרשימה עצמה (SearchBody: mineOn, אותו
+  // תנאי שמצייר אותה: לא denied, שורה לא מקוצצת, '&' כתו ראשון, הרשימה פתוחה) ומדווחת לכאן; המגירה (נייד) גוברת על הפאנל כשהיא פתוחה.
+  const [mineSlots, setMineSlots] = useState({ panel: false, drawer: null });
+  const setMineActive = useCallback((drawer, on) => setMineSlots((p) => { const k = drawer ? 'drawer' : 'panel'; return p[k] === on ? p : { ...p, [k]: on }; }), []);
+  const mineActive = mineSlots.drawer !== null ? mineSlots.drawer : mineSlots.panel;
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [searching, setSearching] = useState(false);
@@ -32,9 +36,7 @@ export function useMenuSearch() {
   // COPIED FROM TopbarSearch.js
   useEffect(() => {
     const term = debounced.trim();
-    // '&' כתו ראשון = "השינויים שלי" (רשימה אישית, ר' SearchBody) - לא חיפוש טקסט
-    const mineTerm = detectQuickPrefix(term);
-    if (term.length < MIN_CHARS || (mineTerm && mineTerm.def.source === 'mine')) {
+    if (term.length < MIN_CHARS || mineActive) {
       setResults([]);
       setTotal(0);
       setSearching(false);
@@ -58,9 +60,9 @@ export function useMenuSearch() {
       .catch(() => { if (!cancelled) { setResults([]); setTotal(0); } })
       .finally(() => { if (!cancelled) setSearching(false); });
     return () => { cancelled = true; };
-  }, [debounced]);
+  }, [debounced, mineActive]);
 
-  return { q, setQ, results, total, searching, pending: q.trim() !== debounced.trim(), reset: () => setQ('') };
+  return { q, setQ, setMineActive, results, total, searching, pending: q.trim() !== debounced.trim(), reset: () => setQ('') };
 }
 
 // קידומת '&' בשורת החיפוש = "השינויים שלי": ההזמנות שיצרתי והשינויים שעשיתי (אותה רשימה כמו בדף הבית: hook ומודל משותפים ב-
@@ -126,6 +128,12 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     },
   });
   const mineOn = qp.open && !!qp.def && qp.def.source === 'mine';
+  const reportMine = search.setMineActive;
+  useEffect(() => {
+    if (!reportMine) return undefined;
+    reportMine(drawer, mineOn);
+    return () => reportMine(drawer, drawer ? null : false); // המגירה נסגרת = מחזירה את ההחלטה לפאנל
+  }, [reportMine, drawer, mineOn]);
   const isBarcode = /^\d{7}$/.test(term); // ברקוד תקין = בדיוק 7 ספרות (מס' הזמנה 5 ספרות, טלפון 9+)
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
 

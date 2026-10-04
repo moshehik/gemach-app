@@ -953,7 +953,11 @@ t('"השינויים שלי" בחיפוש התפריט: ה-CSS בהיקף .gm-ds
     assert.ok(!/!important/.test(body), r);
   }
   const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
-  assert.ok(/mineTerm\.def\.source === 'mine'/.test(panel), 'useMenuSearch לא שולח & לחיפוש');
+  // חיפוש השרת מושעה רק כשהרשימה עצמה מוצגת (mineOn של SearchBody), לא לפי "מתחיל ב-&" - אחרת: 403 / שורה לא מקוצצת / אחרי Esc = אין רשימה ואין חיפוש
+  const hook = panel.slice(panel.indexOf('export function useMenuSearch'), panel.indexOf('const MENU_PREFIXES'));
+  assert.ok(/term\.length < MIN_CHARS \|\| mineActive/.test(hook) && /\[debounced, mineActive\]/.test(hook), 'useMenuSearch לא שולח חיפוש כשהרשימה מוצגת');
+  assert.ok(!/detectQuickPrefix|startsWith\('&'\)/.test(hook), 'ההחלטה לא מתבססת על התו הראשון בלבד');
+  assert.ok(/reportMine\(drawer, mineOn\)/.test(panel) && /const mineOn = qp\.open && !!qp\.def && qp\.def\.source === 'mine'/.test(panel), 'mineActive = אותו תנאי שמצייר את הרשימה');
   assert.ok(/MENU_PREFIXES = \['&'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט רק '&'");
   assert.ok(/qp\.onKeyDown\(e\);[\s\S]{0,120}if \(e\.defaultPrevented\) return;/.test(panel), 'Enter על רשימת & לא מריץ חיפוש');
   assert.ok(/nav\.navigate\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הצג הכל" פותח /?recent=mine');

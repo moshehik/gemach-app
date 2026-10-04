@@ -15,7 +15,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getHistory } from '@/lib/historyManager';
-import { detectQuickPrefix, filterPrefixRows, splitMatch } from '@/lib/quickPrefix';
+import { filterPrefixRows, resolveQuickPrefix, splitMatch } from '@/lib/quickPrefix';
 import { buildMineModel } from '@/lib/myRecentActivityView';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import { recentRows } from '../home/homeLogic';
@@ -69,9 +69,8 @@ export function useMyActivity() {
 }
 
 export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-list', mine = null, prefixes = null }) {
-  let hit = enabled ? detectQuickPrefix(q) : null;
-  if (hit && Array.isArray(prefixes) && !prefixes.includes(hit.prefix)) hit = null; // prefixes: אילו קידומות פעילות במקום הזה (ברירת מחדל: כולן)
-  if (hit && hit.def.source === 'mine' && (!mine || mine.state === 'denied')) hit = null; // אין מקור / אין הרשאה: '&' היא סתם טקסט
+  // prefixes: אילו קידומות פעילות במקום הזה (ברירת מחדל: כולן); אין מקור / אין הרשאה (403): '&' היא סתם טקסט
+  const hit = resolveQuickPrefix(q, { enabled, prefixes, mineUsable: !!mine && mine.state !== 'denied' });
   const term = hit ? hit.term : '';
   const isMine = !!hit && hit.def.source === 'mine';
   const [dismissedFor, setDismissedFor] = useState(null); // הטקסט שעבורו הרשימה נסגרה (Escape / יציאה מהשדה)

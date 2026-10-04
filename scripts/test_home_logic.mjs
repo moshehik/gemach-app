@@ -12,7 +12,7 @@ import {
 } from '../app/components/home/homeLogic.js';
 import { isBarcodeLikeQuery } from '../lib/quickSearchResults.js';
 import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
-import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, splitMatch } from '../lib/quickPrefix.js';
+import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, resolveQuickPrefix, splitMatch } from '../lib/quickPrefix.js';
 import { buildMineModel, whenLabelHe, MINE_POPOVER_LIMIT, MINE_URL } from '../lib/myRecentActivityView.js';
 import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js';
 const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
@@ -787,6 +787,16 @@ t('התפריט והדף מסכימים: כל href של scope בתפריט הו�
 });
 
 console.log("קידומות חיפוש מהיר ('@', '&') — lib/quickPrefix.js");
+t("resolveQuickPrefix: '&' פעילה רק כשיש מקור שמותר (לא denied), בשורה לא מקוצצת, ובמקום שמפעיל אותה - אחרת היא טקסט חיפוש רגיל", () => {
+  const menu = { prefixes: ['&'], mineUsable: true };
+  assert.equal(resolveQuickPrefix('&רחל', menu).prefix, '&');
+  assert.equal(resolveQuickPrefix('&רחל', { ...menu, mineUsable: false }), null, '403 / אין מקור');
+  assert.equal(resolveQuickPrefix(' &abc', menu), null, 'שורה לא מקוצצת');
+  assert.equal(resolveQuickPrefix('@רחל', menu), null, "בתפריט רק '&'");
+  assert.equal(resolveQuickPrefix('&רחל', { ...menu, enabled: false }), null);
+  assert.equal(resolveQuickPrefix('@רחל', { mineUsable: false }).prefix, '@', "'@' לא תלויה במקור של '&'");
+  assert.equal(resolveQuickPrefix('רחל&'), null);
+});
 t("detectQuickPrefix: '@' ו-'&' כתו ראשון; '#' ו-'$' טרם נבנו; באמצע הטקסט לא", () => {
   assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&']);
   assert.equal(QUICK_PREFIXES['@'].source, 'local'); assert.equal(QUICK_PREFIXES['&'].source, 'mine');
