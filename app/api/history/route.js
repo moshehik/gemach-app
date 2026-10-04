@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { checkAuth, HEAD_MANAGEMENT_ROLES } from '../../../lib/auth';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 import { verifySecret } from '@/lib/passwordAuth';
+import { redactRequestQuery, redactUrl } from '@/lib/redactSensitive';
 
 
 export async function GET(request) {
@@ -22,7 +23,20 @@ export async function GET(request) {
     if (search) {
       where.OR = [
         { pageUrl: { contains: search } },
-        { requestQuery: { contains: search } },
+        // לא מאפשרים חיפוש בתוך גופים שעלולים להכיל סודות (אחרת החיפוש משמש כאורקל לניחוש סיסמאות/PIN)
+        {
+          requestQuery: { contains: search },
+          NOT: [
+            { pageUrl: { contains: '/api/login' } },
+            { pageUrl: { contains: '/api/auth/' } },
+            { pageUrl: { contains: '/api/attendance' } },
+            { requestQuery: { contains: 'assword', mode: 'insensitive' } },
+            { requestQuery: { contains: '"pin', mode: 'insensitive' } },
+            { requestQuery: { contains: 'authPin', mode: 'insensitive' } },
+            { requestQuery: { contains: 'secret', mode: 'insensitive' } },
+            { requestQuery: { contains: 'token', mode: 'insensitive' } },
+          ],
+        },
         { loadingError: { contains: search } },
       ];
     }
@@ -46,12 +60,18 @@ export async function GET(request) {
 
     const skip = (page - 1) * limit;
 
-    const data = await prisma.pageVisitLog.findMany({
+    const rows = await prisma.pageVisitLog.findMany({
       where,
       orderBy: { [sort]: order },
       skip,
       take: limit,
     });
+    // שורות ישנות (לפני התיקון) עלולות להכיל סיסמאות/PIN בטקסט גלוי - לעולם לא מחזירים אותן לקליינט.
+    const data = rows.map((r) => ({
+      ...r,
+      pageUrl: redactUrl(r.pageUrl),
+      requestQuery: redactRequestQuery(r.requestQuery, r.pageUrl),
+    }));
 
     const totalOverall = await prisma.pageVisitLog.count();
 

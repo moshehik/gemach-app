@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
-import prisma from '../../../../lib/prisma';
+import prisma, { getActingEmployeeId } from '../../../../lib/prisma';
 import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
 import { subtractBusinessDays, israelLocalDate } from '../../../../../lib/businessDays';
 import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
@@ -12,6 +12,8 @@ import { emailSubject } from '@/lib/emailCatalog';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
+import { writeOrderEvents } from '@/app/lib/auditLog';
+import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
@@ -469,8 +471,14 @@ export async function POST(request, { params }) {
     // או שמאשר מורשה אחר הקליד סיסמה בחלון "קוד מאשר" והלקוח שלח אותה לכאן (emailApproverId/emailApproverPin) -
     // בדיוק כמו orderDateApproverId/Pin ב-PUT /api/orders/[id]. החזרת ה-HTML בלבד (למעלה) לא שולחת כלום ולכן לא מחויבת.
     const sessionEmployee = await getSessionEmployee();
-    const approved = (sessionEmployee && (await hasPermission(sessionEmployee, 'feature:customer_email_approval')))
+    const selfApproved = !!(sessionEmployee && (await hasPermission(sessionEmployee, 'feature:customer_email_approval')));
+    const approved = selfApproved
       || (await verifyManagerPin(body.emailApproverId, body.emailApproverPin, 'feature:customer_email_approval'));
+    // who approved (history, A22/H27): the sender themself, or the approver whose code was just verified. An
+    // approver picked by code only (no emailApproverId) is not identified - verifyManagerPin answers yes/no.
+    const approverId = selfApproved ? sessionEmployee.id : (typeof body.emailApproverId === 'string' && body.emailApproverId ? body.emailApproverId : null);
+    // the sender = the session cookie (same source the Prisma extension uses), never the body
+    const actorId = sessionEmployee?.id || (await getActingEmployeeId());
     if (!approved) {
       return NextResponse.json(
         { success: false, code: 'approval_required', error: 'שליחת מייל ללקוח דורשת אישור של מי שהוגדר כמאשר שליחת מייל. יש להזין סיסמת מאשר.' },
@@ -548,29 +556,34 @@ export async function POST(request, { params }) {
           ? (driveLinks.length > 0 ? `Drive: ${driveLinks.map(d => d.url || d.fileName).join(', ')}` : null)
           : (result.message || 'Unknown error'),
         customerId: order.customerId,
+        employeeId: actorId || null,
         sentAt: new Date()
       }
     });
 
-    if (isSuccess) {
-      // eslint-disable-next-line no-restricted-syntax -- הכתיבה שקדמה היא ל-EmailLog; זו שורת ההיסטוריה של ההזמנה עצמה
-      await prisma.auditLog.create({
-        data: {
-          entityType: 'Order',
-          entityId: String(order.orderId),
-          action: 'EMAIL_SENT',
-          changesJson: JSON.stringify({
-            subject: emailSubject('orderCard', { orderId: order.orderId }),
-            to: email,
-            type: printType,
-            sendMode,
-            files: allFiles.map(a => ({ fileName: a.fileName, sizeBytes: a.sizeBytes ?? null, dest: a.dest })),
-            driveLinks
-          }),
-          createdAt: new Date()
-        }
-      });
-    }
+    // EMAIL_SENT (existing action, now with who sent / who approved / what was attached) or EMAIL_FAILED -
+    // the order's own history row; written through the single order-event helper (no model write behind it:
+    // the EmailLog write above is a different entity and is logged by the extension on its own).
+    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw });
+    await writeOrderEvents({
+      orderIds: [order.orderId],
+      action: isSuccess ? 'EMAIL_SENT' : 'EMAIL_FAILED',
+      meta: emailEventMeta({
+        base: {
+          subject: emailSubject('orderCard', { orderId: order.orderId }),
+          to: email,
+          type: printType,
+          sendMode,
+          files: allFiles.map(a => ({ fileName: a.fileName, sizeBytes: a.sizeBytes ?? null, dest: a.dest })),
+          driveLinks
+        },
+        approverId,
+        selfApproved,
+        attachments,
+        error: isSuccess ? null : (result.message || 'Unknown error'),
+      }),
+      actorId,
+    }).catch((e) => console.error('order email: history row failed', e));
 
     if (!isSuccess) {
       return NextResponse.json({ error: 'השליחה נכשלה: ' + (result.message || 'Unknown error') }, { status: 500 });

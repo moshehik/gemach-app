@@ -1,11 +1,19 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
 import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate } from '../../../lib/hebrewDate';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG, subtractBusinessDays } from '../../../lib/businessDays';
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
+import { printPageEventBodies } from '../../../lib/history/orderEvents';
+
+// One id per page load - the events route ignores a repeat with the same id (React dev double effects,
+// a reload of the same tab is a new load = a new print, as it should be).
+// (short and not UUID-shaped: the legacy history tab shows it as a chip)
+function newPrintEventId() {
+  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+}
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
@@ -63,6 +71,11 @@ export default function PrintOrderPage() {
   // להדפסת כרטיס בודד רגיל מתוך ההזמנה עצמה), רק כי orderIdList.length===1 באותו
   // מקרה בדיוק כמו בהדפסת כרטיס בודד. batch=1 מגיע רק מ-handlePrepPrint.
   const isBatch = orderIdList.length > 1 || searchParams.get('batch') === '1';
+  // downloadPdf=1: the page is being rendered into a PDF file by POST /api/pdf (download, mail attachment) -
+  // no print dialog and no print history row (whoever asked for the file logs ORDER_PDF_DOWNLOADED).
+  const isPdfRender = ['1', 'true'].includes(searchParams.get('downloadPdf'));
+  const [printEventId] = useState(newPrintEventId);
+  const printLoggedRef = useRef(false);
 
   const fetchData = async () => {
     try {
@@ -139,11 +152,31 @@ export default function PrintOrderPage() {
   useEffect(() => {
     // Auto trigger print when loaded
     if (!loading && !error && orders.length > 0) {
+      // a headless renderer (Chromium behind /api/pdf) reports navigator.webdriver - never a print either
+      const headless = typeof navigator !== 'undefined' && navigator.webdriver === true;
+      if (isPdfRender || headless) return undefined;
+
       fetch('/api/log-visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pageUrl: `[הדפסת כרטיס השכרה] הזמנה #${orders.map(o => o.orderId).join(', #')}` })
       }).catch(console.error);
+
+      // ORDER_PRINTED on every printed order (A22/H22, AMB-20): this page is the one print surface of an
+      // order - opened from the old card, the new card, the orders list, the board, new-order, rentals -
+      // so logging here covers printing "from any screen". Contract: lib/history/orderEvents.js.
+      if (!printLoggedRef.current) {
+        printLoggedRef.current = true;
+        const ids = orders.map(o => Number(o.orderId)).filter(n => Number.isInteger(n) && n > 0);
+        for (const body of printPageEventBodies({ orderIds: ids, printType, isBatch, clientEventId: printEventId })) {
+          fetch('/api/orders/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            body: JSON.stringify(body)
+          }).catch(console.error);
+        }
+      }
 
       const timer = setTimeout(() => {
         window.print();

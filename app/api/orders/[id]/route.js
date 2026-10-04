@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { checkAuth } from '../../../../lib/auth';
+import { checkAuth, getSessionEmployee } from '../../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 
@@ -65,7 +65,11 @@ import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus } from '../../../../lib/orderReservation';
 import { verifyManagerPin } from '../../../../lib/managerAuth';
 import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
-import { canApproveDebt } from '@/lib/permissions';
+import { canApproveDebt, hasPermission } from '@/lib/permissions';
+import {
+  STOCK_SHORTAGE_CODE, CONFLICT_CODE, MANUAL_CHARGE_PERMISSION, MANUAL_CHARGE_APPROVAL_REQUIRED_CODE,
+  A5_CARD_VARIANT, detectManualChargeChanges, hasManualChargeChange, diffOrderUpdate
+} from '@/lib/history/orderEvents';
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 
@@ -334,7 +338,8 @@ export async function PUT(request, { params }) {
     // בלי אימות זהות. בלי החריג הזה, כל לחיצה על "חתם על תקנון" (הבאדג' בכרטיס ההזמנה,
     // ר' OrderPrintMenu.js / ModernPaymentsManager.js) נכשלת תמיד כש-require_id_for_edit_cancel
     // מופעל, כי אף אחד מהמסכים ששולחים את ה-PUT הקטן הזה לא אוסף ת״ז.
-    const SIGNATURE_ONLY_KEYS = new Set(['hasSignedRegulations', 'updatedAt', 'overwriteConflict']);
+    // cardVariant: the new order card (A5) marks its bodies with it - not a content change.
+    const SIGNATURE_ONLY_KEYS = new Set(['hasSignedRegulations', 'updatedAt', 'overwriteConflict', 'cardVariant']);
     const isSignatureOnlyUpdate = data.hasSignedRegulations !== undefined
       && Object.keys(data).every(k => SIGNATURE_ONLY_KEYS.has(k));
 
@@ -429,7 +434,9 @@ export async function PUT(request, { params }) {
 
       // If server is strictly newer by more than 1 second
       if (serverUpdate > clientUpdate + 1000) {
+        // code: lets the new order card tell a real conflict (R12) apart from a stock shortage (R48) - both 409
         return NextResponse.json({
+          code: CONFLICT_CODE,
           error: 'Data Collision',
           message: 'הזמנה זו עודכנה בשרת לאחר הסנכרון האחרון שלך. כדי למנוע דריסת נתונים, אנא רענן את העמוד ושלב את השינויים שלך.',
           serverUpdatedAt: existingOrder.updatedAt,
@@ -540,7 +547,9 @@ export async function PUT(request, { params }) {
           }
           
           if (!validationResult.valid) {
+            // Same 409 as always (the legacy card is unchanged); code tells it apart from the data-collision 409
             return NextResponse.json({
+              code: STOCK_SHORTAGE_CODE,
               error: 'אחד או יותר מהפריטים שניסית לעדכן אינם זמינים במלאי בתאריכים החדשים.',
               validationErrors: validationResult.errors
             }, { status: 409 });
@@ -574,7 +583,7 @@ export async function PUT(request, { params }) {
       // המצב הקודם של ההתחייבויות — כדי לזהות ביטול/שחזור ולרשום אותו ביומן בשם מפורש
       prisma.paymentObligation.findMany({
         where: { orderId: parsedOrderId },
-        select: { id: true, isDeleted: true }
+        select: { id: true, isDeleted: true, isManual: true, amount: true, description: true }
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
@@ -601,6 +610,27 @@ export async function PUT(request, { params }) {
         }
       }
     }
+    // R35 / AMB-16 (new order card only): adding a manual charge, or editing / deleting / restoring a stored
+    // manual one (amount, description or isDeleted changes), needs
+    // feature:manual_charge_add - the logged-in employee holds it, or an approver typed their code
+    // (manualChargeApproverId/manualChargeApproverPin, re-verified here like managerPin/orderDateApproverPin).
+    // Bodies WITHOUT cardVariant:'a5' are the legacy card ("הוסף חיוב" / delivery-charge buttons, no approval
+    // step) and keep today's behavior until that card is retired.
+    if (data.cardVariant === A5_CARD_VARIANT) {
+      const manualCharges = detectManualChargeChanges(data.obligations, storedObligations);
+      if (hasManualChargeChange(manualCharges)) {
+        const sessionEmployee = await getSessionEmployee();
+        const allowed = (sessionEmployee && (await hasPermission(sessionEmployee, MANUAL_CHARGE_PERMISSION)))
+          || (await verifyManagerPin(data.manualChargeApproverId, data.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION));
+        if (!allowed) {
+          return NextResponse.json({
+            code: MANUAL_CHARGE_APPROVAL_REQUIRED_CODE,
+            error: 'הוספה או מחיקה של חיוב ידני מותרת רק למי שהוגדר כמאשר חיוב ידני (או באישור שלו).'
+          }, { status: 403 });
+        }
+      }
+    }
+
     const storedPaymentById = new Map(storedPayments.map(p => [p.id, p]));
     const storedObligationById = new Map(storedObligations.map(o => [o.id, o]));
 
@@ -659,9 +689,13 @@ export async function PUT(request, { params }) {
       const parsedOrderDate = parseSafeDate(data.orderDate);
 
       // 1. Update general order details
-      const order = await tx.order.update({
-        where: { orderId: parsedOrderId },
-        data: {
+      // TODO(W2b, R49): `deliveryJoinedTo` is NOT passed through here - it lives in the DeliveryJoin table
+      // (DDL-1, PENDING-DDL.md, not approved/applied), not an Order column. W2b adds it (outside this tx's
+      // reads) after DDL-1 is approved, as a patch to this file. W0-NOTES.md.
+      // UPDATE_ORDER with {field:{from,to}} against the row loaded before the transaction (AMB-19) instead of
+      // the extension's generic UPDATE (new values only, a row on every save). A save that changes no column
+      // writes no history row at all (auditAs with empty changes - see app/lib/prisma.js).
+      const orderUpdateData = {
           totalAmount: data.totalAmount !== undefined && data.totalAmount !== null ? (parseFloat(data.totalAmount) || 0) : undefined,
           orderDate: parsedOrderDate,
           eventDate: parsedEventDate,
@@ -687,8 +721,11 @@ export async function PUT(request, { params }) {
           ...(data.extraDay !== undefined ? { extraDay: (data.extraDay === 'before' || data.extraDay === 'after') ? data.extraDay : null } : {}),
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
-        }
-      });
+      };
+      const order = await tx.order.update(auditAs('UPDATE_ORDER', {
+        where: { orderId: parsedOrderId },
+        data: orderUpdateData
+      }, diffOrderUpdate(existingOrder, orderUpdateData)));
 
       // 2. Update order items (alterations, size, deletions) and create new items
       let addedItem = false;

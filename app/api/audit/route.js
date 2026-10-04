@@ -45,7 +45,8 @@ export async function GET(request) {
       if (ids.length) where.entityId = { in: ids };
     }
     if (action) {
-      where.action = action;
+      // "עדכון" covers the order-save row too: PUT /api/orders/[id] writes UPDATE_ORDER ({from,to}) since W0
+      where.action = action === 'UPDATE' ? { in: ['UPDATE', 'UPDATE_ORDER'] } : action;
     } else if (actions) {
       const actionList = actions.split(',').map(s => s.trim()).filter(Boolean);
       if (actionList.length) where.action = { in: actionList };
