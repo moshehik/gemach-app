@@ -882,6 +882,17 @@ t('buildMineModel: מצבים - טוען / ריק / שגיאה (עם "נסי ש�
   assert.deepEqual(bad.items.map((x) => x.orderNumber), [2]);
   assert.equal(bad.items[0].url, '/orders/2');
 });
+t("אין טעינה בטעינת עמוד: useMyActivity לא טוען מעצמו (אין useEffect); הטעינה רק מ-useQuickPrefix כשהרשימה של '&' פתוחה או מ-HomeMine, והמטמון 20 שניות", () => {
+  const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
+  const hook = comp.slice(comp.indexOf('export function useMyActivity'), comp.indexOf('export function useQuickPrefix'));
+  assert.ok(hook.length > 200 && !/useEffect/.test(hook), 'useMyActivity בלי useEffect = בלי fetch בעליית הרכיב');
+  assert.ok(/MINE_TTL_MS = 20000/.test(comp));
+  assert.ok(/if \(src && open && mineLoad\) mineLoad\(\)/.test(comp), 'טעינה רק כשהרשימה של & פתוחה');
+  assert.ok(/PREFIX_SOURCES\s*=\s*\{\s*mine: \{ buildModel/.test(comp) && /PREFIX_SOURCES\[hit\.def\.source\]/.test(comp) && /PREFIX_SOURCES\[qp\.def\.source\]/.test(comp), 'ניתוב המקורות דרך הרישום, בלי ענפי source קשיחים');
+  assert.ok(!/source === 'mine'/.test(comp), 'אין ענף mine קשיח ב-QuickPrefix.js');
+  const fetchers = ['HomeA5.js', 'HomeMine.js'].map((f) => homeSource(f)).join('\n');
+  assert.ok(!/fetch\(['"`]\/api\/me\/recent-activity/.test(fetchers), 'הקריאה לנתיב רק ב-useMyActivity');
+});
 t("'&' חווט בדף הבית ובתפריט: useMyActivity (מטמון + denied), HomeMine בתצוגת mine, /?recent=mine, ו-pick של 'הצג הכל'", () => {
   const home = homeSource('HomeA5.js'); const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
   assert.ok(home.includes('useMyActivity') && home.includes('mine,') && home.includes('<HomeMine'), 'HomeA5 משתמש ב-useMyActivity וב-HomeMine');

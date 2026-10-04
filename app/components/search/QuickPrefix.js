@@ -72,7 +72,7 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
   // prefixes: אילו קידומות פעילות במקום הזה (ברירת מחדל: כולן); אין מקור / אין הרשאה (403): '&' היא סתם טקסט
   const hit = resolveQuickPrefix(q, { enabled, prefixes, mineUsable: !!mine && mine.state !== 'denied' });
   const term = hit ? hit.term : '';
-  const isMine = !!hit && hit.def.source === 'mine';
+  const src = hit ? PREFIX_SOURCES[hit.def.source] || null : null; // מקור מרוחק מהרישום (PREFIX_SOURCES); null = 'local' (שורות פשוטות שהקורא מעביר)
   const [dismissedFor, setDismissedFor] = useState(null); // הטקסט שעבורו הרשימה נסגרה (Escape / יציאה מהשדה)
   const [actState, setActState] = useState({ q: null, i: -1 });
   const qRef = useRef(q);
@@ -82,11 +82,11 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
 
   const open = !!hit && dismissedFor !== q;
   const mineLoad = mine ? mine.load : null;
-  useEffect(() => { if (isMine && open && mineLoad) mineLoad(); }, [isMine, open, mineLoad]);
+  useEffect(() => { if (src && open && mineLoad) mineLoad(); }, [src, open, mineLoad]);
   const mineData = mine ? mine.data : null;
   const mineState = mine ? mine.state : 'idle';
-  const mineModel = useMemo(() => (isMine ? buildMineModel({ state: mineState, data: mineData }, { term }) : null), [isMine, mineState, mineData, term]);
-  const items = useMemo(() => (isMine ? mineModel.items : hit ? filterPrefixRows(rows, term) : []), [isMine, mineModel, hit, rows, term]);
+  const model = useMemo(() => (src ? src.buildModel({ state: mineState, data: mineData, term }) : null), [src, mineState, mineData, term]);
+  const items = useMemo(() => (src ? model.items : hit ? filterPrefixRows(rows, term) : []), [src, model, hit, rows, term]);
   const act = open && actState.q === q && actState.i < items.length ? actState.i : -1;
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
       'aria-activedescendant': open && act >= 0 ? `${listId}-o${act}` : undefined,
     }
     : {};
-  return { open, items, act, term, rows, def: hit ? hit.def : null, mineModel, listId, pick, onKeyDown, onFocus, onBlur, inputProps };
+  return { open, items, act, term, rows, def: hit ? hit.def : null, model, mineModel: model, listId, pick, onKeyDown, onFocus, onBlur, inputProps };
 }
 
 function Marked({ text, term }) {
@@ -199,7 +199,8 @@ function MineList({ qp }) {
 
 export function QuickPrefixList({ qp }) {
   if (!qp || !qp.open || !qp.def) return null;
-  if (qp.def.source === 'mine') return <MineList qp={qp} />;
+  const Src = PREFIX_SOURCES[qp.def.source];
+  if (Src) return <Src.List qp={qp} />;
   return (
     <ul className="advlist" id={qp.listId} role="listbox" aria-label={qp.def.listLabel} onMouseDown={(e) => e.preventDefault()}>
       {qp.items.length === 0 && (
@@ -222,3 +223,10 @@ export function QuickPrefixList({ qp }) {
     </ul>
   );
 }
+
+/* רישום המקורות המרוחקים של הקידומות: source (lib/quickPrefix.js QUICK_PREFIXES) -> { buildModel({ state, data, term }) => { items, ... }, List }.
+   buildModel הוא מודל טהור (כמו buildMineModel); List הוא הציור בחלונית הבית. מקור חדש ('#' / '$') = רשומה כאן + שורה ב-QUICK_PREFIXES.
+   (נתוני המקור מגיעים היום בפרמטר mine של useQuickPrefix - מקור שני יוסיף פרמטר דומה; ציור הרשימה בחיפוש התפריט ב-MenuSearchPanel.js נשאר מפורש.) */
+export const PREFIX_SOURCES = {
+  mine: { buildModel: ({ state, data, term }) => buildMineModel({ state, data }, { term }), List: MineList },
+};
