@@ -44,26 +44,28 @@ test('כתובת ההדפסה של סיכום/השכרה זהה לישן (openPr
 
 test('שורות התפריט: סדר ותוויות R6 (סיכום · השכרה · דף הכנה · דף משלוח · שליחה במייל · מייל השכרה); דף משלוח רק עם משלוח הלוך ו-enable_deliveries', () => {
   const settingsOn = { enableDeliveries: true };
-  const noDel = D.printMenuItems({ order: ORDER, settings: settingsOn });
+  const OK = { prep: true, delivery: true };
+  const noDel = D.printMenuItems({ order: ORDER, settings: settingsOn, access: OK });
   assert.deepEqual(noDel.map((i) => i.key), ['order', 'rental', 'prep', 'mail-order', 'mail-rental']);
   assert.deepEqual(noDel.map((i) => i.label), ['הדפסת סיכום ללקוח', 'הדפסת השכרה', 'דף הכנה למחסן', 'שליחה במייל', 'שליחת מייל השכרה']);
-  const withDel = D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך-חזור' }, settings: settingsOn });
+  const withDel = D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך-חזור' }, settings: settingsOn, access: OK });
   assert.deepEqual(withDel.map((i) => i.key), ['order', 'rental', 'prep', 'delivery', 'mail-order', 'mail-rental']);
   assert.equal(withDel.find((i) => i.key === 'delivery').label, 'דף משלוח');
   // null direction על משלוח = הלוך-חזור (כלל הלו״ז) → יש הלוך
-  assert.ok(D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: null }, settings: settingsOn }).some((i) => i.key === 'delivery'));
+  assert.ok(D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: null }, settings: settingsOn, access: OK }).some((i) => i.key === 'delivery'));
   // משלוח חזור בלבד: אין תעודת הלוך
-  assert.ok(!D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'חזור' }, settings: settingsOn }).some((i) => i.key === 'delivery'));
+  assert.ok(!D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'חזור' }, settings: settingsOn, access: OK }).some((i) => i.key === 'delivery'));
   // משלוחים כבויים בהגדרות
-  assert.ok(!D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, settings: { enableDeliveries: false } }).some((i) => i.key === 'delivery'));
-  assert.ok(!D.printMenuItems({ order: { ...ORDER, isDelivery: true }, settings: undefined }).some((i) => i.key === 'delivery'));
+  assert.ok(!D.printMenuItems({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, settings: { enableDeliveries: false }, access: OK }).some((i) => i.key === 'delivery'));
+  assert.ok(!D.printMenuItems({ order: { ...ORDER, isDelivery: true }, settings: undefined, access: OK }).some((i) => i.key === 'delivery'));
 });
 
-test('הרשאות (access): בלי page:schedule נעלמים דף ההכנה והמשלוח; undefined = עוד לא ידוע = מוצג; השרת אוכף', () => {
+test('הרשאות (access): בלי page:schedule נעלמים דף ההכנה והמשלוח; לא ידוע / טרם נטען = מוסתר (בלי קישור שבור); השרת אוכף', () => {
   const o = { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' };
   const s = { enableDeliveries: true };
   const keys = (access) => D.printMenuItems({ order: o, settings: s, access }).map((i) => i.key);
-  assert.deepEqual(keys({}), ['order', 'rental', 'prep', 'delivery', 'mail-order', 'mail-rental']);
+  assert.deepEqual(keys({}), ['order', 'rental', 'mail-order', 'mail-rental'], 'לא ידוע = מוסתר');
+  assert.deepEqual(keys({ prep: true, delivery: true }), ['order', 'rental', 'prep', 'delivery', 'mail-order', 'mail-rental']);
   assert.deepEqual(keys({ prep: false, delivery: false }), ['order', 'rental', 'mail-order', 'mail-rental']);
   assert.deepEqual(keys({ prep: true, delivery: false }), ['order', 'rental', 'prep', 'mail-order', 'mail-rental']);
   assert.deepEqual(D.accessFromResponse(403, null), { prep: false, delivery: false });
@@ -74,7 +76,7 @@ test('הרשאות (access): בלי page:schedule נעלמים דף ההכנה �
 });
 
 test('printTargetUrl: דף הכנה = PP-07 גרסה ב׳ עם orderId, דף משלוח = PP-12 עם orderId; פריטי מייל אינם כתובת', () => {
-  const items = Object.fromEntries(D.printMenuItems({ order: { ...ORDER, isDelivery: true }, settings: { enableDeliveries: true } }).map((i) => [i.key, i]));
+  const items = Object.fromEntries(D.printMenuItems({ order: { ...ORDER, isDelivery: true }, settings: { enableDeliveries: true }, access: { prep: true, delivery: true } }).map((i) => [i.key, i]));
   assert.equal(D.printTargetUrl(items.order, 53375), '/print/order?orderId=53375&type=order');
   assert.equal(D.printTargetUrl(items.rental, 53375), '/print/order?orderId=53375&type=rental');
   assert.equal(D.printTargetUrl(items.prep, 53375), '/schedule/print/PP-07?orderId=53375&version=PP-07%3Ab');
@@ -110,13 +112,16 @@ const IMG_ITEMS = [
 ];
 
 test('mailFilesFor: תקנון חתום רק כשנחתם, משלוח רק עם משלוח הלוך ו-enable_deliveries, קבלה רק עם תשלום, תמונות רק כשיש תמונת דגם', () => {
-  const byId = (o, s, items = [], payments = []) => Object.fromEntries(D.mailFilesFor({ order: o, settings: s, items, payments }).map((f) => [f.id, f.exists]));
+  const byId = (o, s, items = [], payments = []) => Object.fromEntries(D.mailFilesFor({ order: o, settings: s, items, payments, access: { prep: true, delivery: true } }).map((f) => [f.id, f.exists]));
   assert.deepEqual(byId({ ...ORDER, hasSignedRegulations: false }, { enableDeliveries: true }), { ord: true, reg: false, pay: true, del: false, inv: false, img: false });
   assert.deepEqual(byId(ORDER, { enableDeliveries: true }), { ord: true, reg: true, pay: true, del: false, inv: false, img: false });
   assert.deepEqual(byId({ ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, { enableDeliveries: true }, IMG_ITEMS, [{ amount: 50 }]), { ord: true, reg: true, pay: true, del: true, inv: true, img: true });
   assert.deepEqual(byId({ ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, { enableDeliveries: false }), { ord: true, reg: true, pay: true, del: false, inv: false, img: false });
   assert.equal(byId(ORDER, {}, [], [{ amount: 50, isDeleted: true }, { amount: 0 }]).inv, false, 'תשלום מחוק / אפס אינו קבלה');
   assert.equal(byId(ORDER, {}, [{ id: 'x', isDeleted: true, dressItem: { dress: { imageUrl: '/a' } } }], []).img, false, 'פריט מחוק');
+  // בלי הרשאת דף המשלוח (page:schedule/deliveries; גם 'לא ידוע') - אפור "אין הרשאה", לא צרופה שתיכשל ב-403
+  const noAcc = (access) => D.mailFilesFor({ order: { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך' }, settings: { enableDeliveries: true }, access }).find((f) => f.id === 'del');
+  assert.deepEqual([noAcc({}).exists, noAcc({}).miss, noAcc({ delivery: false }).exists, noAcc({ delivery: true }).exists], [false, 'אין הרשאה', false, true]);
   const miss = D.mailFilesFor({ order: { ...ORDER, hasSignedRegulations: false }, settings: {} });
   assert.deepEqual(Object.fromEntries(miss.filter((f) => !f.exists).map((f) => [f.id, f.miss])), { reg: 'טרם נחתם', del: 'ללא משלוח', inv: 'אין תשלומים', img: 'אין תמונות דגמים' });
 });

@@ -904,6 +904,44 @@ test('email quick: invalid quick body = 400 and nothing is sent or logged; missi
   assert.equal(sent.length, 0);
 });
 
+test('email quick: recipient must be ONE clean address; page access to orders is required; attachments are bounded and cleaned (nothing is sent on any rejection)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const sent = stubMailer({ status: 'success' });
+  const q = { subject: 'נושא', bodyText: 'תוכן' };
+  for (const email of ['a@b.co\r\nBcc: evil@x.co', 'a@b.co,evil@x.co', 'a@b.co;evil@x.co', 'Name <a@b.co>', 'no-at-sign', 'a b@c.co', 'a@b', '', 5, ['a@b.co']]) {
+    const r = await emailReq({ email, type: 'order', quick: q });
+    assert.equal(r.status, 400, JSON.stringify(email));
+  }
+  const tooMany = Array.from({ length: 11 }, (_, i) => ({ fileName: `f${i}.pdf`, fileContent: 'QUJD', kind: 'file' }));
+  assert.equal((await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: tooMany })).status, 400, 'more than 10 files');
+  assert.equal((await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: [{ fileName: 'big.pdf', fileContent: 'A'.repeat(6_000_001) }] })).status, 400, 'oversize');
+  assert.equal((await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: 'x' })).status, 400, 'not a list');
+  assert.equal(sent.length, 0);
+  assert.equal(audit().length, 0);
+  // no page:orders/rentals/board -> 403 before approval is even asked about (emp-blocked, emp-sched)
+  for (const who of ['emp-blocked', 'emp-sched']) {
+    globalThis.__AUTH_TOKEN = who;
+    const r = await emailReq({ email: 'a@b.co', type: 'order', quick: q });
+    assert.equal(r.status, 403, who);
+    assert.notEqual(r.__json.code, 'approval_required', who);
+  }
+  assert.equal(sent.length, 0);
+  // clean attachments: a path / control characters in the name, a bad mime type and an unknown dest are normalised
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const ok = await emailReq({
+    email: 'a@b.co', type: 'order', quick: q, driveFolderId: "x'; DROP", sendMode: 'email',
+    extraAttachments: [{ fileName: '..\..\evil\r\nname.pdf', fileContent: 'QUJD', mimeType: 'text/html\r\nX: y', dest: 'weird', kind: 'receipt' }, { fileName: '', fileContent: 'QUJD' }, null, 'str'],
+  });
+  assert.equal(ok.status, 200, JSON.stringify(ok.__json));
+  const a = sent[0].body.attachments;
+  assert.equal(a.length, 1, 'nameless / non-object entries are dropped');
+  assert.ok(!/[\r\n\/]/.test(a[0].fileName), a[0].fileName);
+  assert.equal(a[0].mimeType, 'application/octet-stream');
+  assert.equal(a[0].dest, 'email', 'unknown dest falls back to the send mode');
+  assert.ok(!/DROP/.test(sent[0].body.driveFolderId), 'an unsafe drive folder id is ignored');
+  assert.equal(JSON.parse(audit().find((x) => x.action === 'EMAIL_SENT').changesJson).attachments[0].kind, 'receipt');
+});
+
 test('email quick: a send failure writes EMAIL_FAILED with the typed subject; returnHtmlOnly ignores quick; a normal send is unchanged (PDF action + catalog subject)', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
   stubMailer({ status: 'error', message: 'quota' });

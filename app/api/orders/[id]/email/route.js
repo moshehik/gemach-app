@@ -7,11 +7,12 @@ import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 import { renderOrderCardEmailHtml, renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
-import { parseQuickMail } from '@/lib/orderQuickMail';
+import { parseQuickMail, isSafeRecipient, safeDriveFolderId, sanitizeQuickAttachments } from '@/lib/orderQuickMail';
+import { PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccessKeys';
 import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, canOpenAnyPage } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
@@ -84,6 +85,17 @@ export async function POST(request, { params }) {
     const quick = body.returnHtmlOnly ? null : parseQuickMail(body.quick);
     if (quick && !quick.ok) {
       return NextResponse.json({ error: quick.error }, { status: 400 });
+    }
+    // מייל מהיר = טקסט חופשי + קבצים לנמען שהוקלד: נוסף על אישור שליחת המייל (feature:customer_email_approval, למטה) נדרשת גם גישה
+    // לדפי ההזמנות (אותם מפתחות כמו הדפסת הזמנה), כתובת נמען בודדת ותקינה (בלי הזרקת כותרות/נמענים נוספים) וצרופות בגבולות
+    // (מספר, גודל, שם/סוג/יעד נקיים) - כל זאת לפני כל קריאה למסד.
+    let quickAttachments = null;
+    if (quick) {
+      if (!isSafeRecipient(email)) return NextResponse.json({ error: 'כתובת המייל אינה תקינה' }, { status: 400 });
+      if (!(await canOpenAnyPage(PRINT_ORDER_PAGE_KEYS))) return NextResponse.json({ error: 'אין הרשאה לשלוח מייל מהזמנה' }, { status: 403 });
+      const att = sanitizeQuickAttachments(extraRaw);
+      if (!att.ok) return NextResponse.json({ error: att.error }, { status: 400 });
+      quickAttachments = att.list;
     }
 
     const order = await prisma.order.findUnique({
@@ -503,7 +515,7 @@ export async function POST(request, { params }) {
       sizeBytes: Math.round((String(pdfBase64).length * 3) / 4),
       dest: sendMode
     }] : [];
-    const extraNormalized = normalizeAttachments({ attachments: extraRaw, sendMode });
+    const extraNormalized = normalizeAttachments({ attachments: quick ? quickAttachments : extraRaw, sendMode });
     const allFiles = [...pdfEntry, ...extraNormalized];
     const accompanyingHtml = renderOrderCardEmailHtml({
       orderId: order.orderId,
@@ -516,7 +528,7 @@ export async function POST(request, { params }) {
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
-    const driveFolderId = (driveFolderIdRaw || driveFolderDefault || '').trim();
+    const driveFolderId = ((quick ? safeDriveFolderId(driveFolderIdRaw) : driveFolderIdRaw) || driveFolderDefault || '').trim();
 
     // הנושא בפועל: מייל מהיר = מה שהעובדת הקלידה (נוקה בשרת); אחרת נושא הקטלוג
     const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId });
@@ -586,7 +598,7 @@ export async function POST(request, { params }) {
     // EMAIL_SENT (existing action, now with who sent / who approved / what was attached) or EMAIL_FAILED -
     // the order's own history row; written through the single order-event helper (no model write behind it:
     // the EmailLog write above is a different entity and is logged by the extension on its own).
-    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw });
+    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw: quick ? quickAttachments : extraRaw });
     await writeOrderEvents({
       orderIds: [order.orderId],
       action: isSuccess ? 'EMAIL_SENT' : 'EMAIL_FAILED',

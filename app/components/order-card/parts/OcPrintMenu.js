@@ -5,43 +5,19 @@
 // משלוח הלוך כש-enable_deliveries) · שליחה במייל · מייל השכרה. שער התקנון (R7): בלחיצה על הלחצן כשהלקוח לא חתם נפתח "האם הלקוח חתם על התקנון?";
 // "כן, חתם" שומר את החתימה (oc.toggleSignature) ופותח את התפריט - בדיוק כמו הישן (OrderPrintMenu :64-71).
 // הדפסה = לשונית חדשה; הדפים רושמים ORDER_PRINTED בעצמם (/print/order ודפי הלו״ז עם orderId) - הכרטיס לא רושם הדפסה (חוזה W0 §1.5).
-// דפי הלו״ז דורשים page:schedule (ו-PP-12 גם page:deliveries): הלחצנים מוסתרים למי שאין לו (GET /api/schedule/print?format=access, פעם אחת בדף);
-// השרת אוכף בכל מקרה. מייל: parts/OcMailSheet.js (+ "כתובת מייל חסרה": parts/OcMissingEmail.js).
+// דפי הלו״ז דורשים page:schedule (ו-PP-12 גם page:deliveries): השורות מוצגות רק כשהשרת אישר (GET /api/schedule/print?format=access, פעם אחת בדף) - לא ידוע/תקלה = מוסתרות, בלי קישור שבור;
+// עובדת עם page:orders בלבד לא רואה אותן (REQUESTS-W7 #8). השרת אוכף בכל מקרה. מייל: parts/OcMailSheet.js (+ "כתובת מייל חסרה": parts/OcMissingEmail.js).
 import { useEffect, useRef, useState } from 'react';
 import OcIcon, { XlGlyph } from '../OcIcon';
-import { accessFromResponse, needsRegulationsGate, printMenuItems, printTargetUrl } from './ocDocsLogic';
+import { needsRegulationsGate, printMenuItems, printTargetUrl } from './ocDocsLogic';
+import { useScheduleAccess } from './ocScheduleAccess';
 import { openMailSheet } from './OcMailSheet';
-
-let accessCache = null;
-let accessPromise = null;
-function loadAccess() {
-  if (accessCache) return Promise.resolve(accessCache);
-  if (!accessPromise) {
-    accessPromise = fetch(`/api/schedule/print?format=access`, { credentials: 'same-origin', cache: 'no-store' })
-      .then(async (res) => {
-        let body = null;
-        try { body = await res.json(); } catch { /* לא JSON */ }
-        const a = accessFromResponse(res.status, body);
-        if (Object.keys(a).length) accessCache = a;
-        return a;
-      })
-      .catch(() => ({}))
-      .finally(() => { accessPromise = null; });
-  }
-  return accessPromise;
-}
 
 export default function OcPrintMenu({ oc, ui }) {
   const [open, setOpen] = useState(false);
-  const [access, setAccess] = useState(accessCache || {});
+  const access = useScheduleAccess();
   const btnRef = useRef(null);
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    let off = false;
-    if (!accessCache) loadAccess().then((a) => { if (!off) setAccess(a); });
-    return () => { off = true; };
-  }, []);
 
   useEffect(() => {
     if (!open) return undefined;

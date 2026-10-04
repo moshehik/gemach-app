@@ -11,6 +11,7 @@ import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { ensureCustomerEmail } from './OcMissingEmail';
 import { sendOrderMail } from './ocDocsActions';
+import { useScheduleAccess } from './ocScheduleAccess';
 import {
   MAIL_DEST_OPTIONS, customerNameOf, defaultMailSubject, driveModeNote, isValidEmail, mailFilesFor, mailSentToast, orderEmailOf, quickMailValid,
 } from './ocDocsLogic';
@@ -95,7 +96,8 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
   const [dirty, setDirty] = useState(false);
   const bodyRef = useRef(null);
   const quick = mode === 'quick';
-  const files = useMemo(() => mailFilesFor({ order, settings: oc.settings, items, payments }), [order, oc.settings, items, payments]);
+  const access = useScheduleAccess();
+  const files = useMemo(() => mailFilesFor({ order, settings: oc.settings, items, payments, access }), [order, oc.settings, items, payments, access]);
   const idle = state === 'idle';
   const valid = quick ? quickMailValid({ to, subject, bodyText }) : isValidEmail(to);
   const markDirty = () => setDirty(true);

@@ -29,7 +29,7 @@ export const customerNameOf = (order) => [order?.customer?.firstName, order?.cus
 export const printOrderUrl = (orderId, type) => `/print/order?orderId=${encodeURIComponent(orderId)}&type=${type === 'rental' ? 'rental' : 'order'}`;
 
 /**
- * שורות התפריט לפי הזמנה והגדרות. access = { prep, delivery } (בוליאנים; undefined = עוד לא ידוע = מוצג, והשרת אוכף).
+ * שורות התפריט לפי הזמנה והגדרות. access = { prep, delivery } (בוליאנים; רק true מציג את השורה - לא ידוע / טרם נטען / תקלה = מוסתר, כדי שלא יהיה קישור שבור למי שאין לו page:schedule; השרת אוכף בכל מקרה).
  * דף משלוח (A4, AMB-03 = PP-12): רק כש-enable_deliveries וההזמנה במשלוח הלוך. דף הכנה (A3 = PP-07): תמיד להזמנה.
  * kind: 'print' (פותח לשונית הדפסה) | 'mail' (חלון המייל). target: מה לפתוח.
  */
@@ -38,9 +38,9 @@ export function printMenuItems({ order, settings, access = {} } = {}) {
     { key: 'order', kind: 'print', icon: 'print', label: 'הדפסת סיכום ללקוח', target: 'order' },
     { key: 'rental', kind: 'print', icon: 'list', label: 'הדפסת השכרה', target: 'rental' },
   ];
-  if (access.prep !== false) out.push({ key: 'prep', kind: 'print', icon: 'file', label: 'דף הכנה למחסן', target: 'PP-07' });
+  if (access.prep === true) out.push({ key: 'prep', kind: 'print', icon: 'file', label: 'דף הכנה למחסן', target: 'PP-07' });
   const deliverable = !!(settings && settings.enableDeliveries) && isDeliveryOut(order);
-  if (deliverable && access.delivery !== false) out.push({ key: 'delivery', kind: 'print', icon: 'truck', label: 'דף משלוח', target: 'PP-12' });
+  if (deliverable && access.delivery === true) out.push({ key: 'delivery', kind: 'print', icon: 'truck', label: 'דף משלוח', target: 'PP-12' });
   out.push({ key: 'mail-order', kind: 'mail', icon: 'mail', label: 'שליחה במייל', target: 'order' });
   out.push({ key: 'mail-rental', kind: 'mail', icon: 'mail', label: 'שליחת מייל השכרה', target: 'rental' });
   return out;
@@ -57,7 +57,7 @@ export function printTargetUrl(item, orderId) {
 export function accessFromResponse(status, body) {
   if (status === 403 || status === 401) return { prep: false, delivery: false };
   if (status === 200 && body && Array.isArray(body.allowed)) return { prep: body.allowed.includes('PP-07'), delivery: body.allowed.includes('PP-12') };
-  return {}; // לא ידוע (תקלה/501) - מציגים, והשרת אוכף
+  return {}; // לא ידוע (תקלה/501) - מוסתר (הבטוח יותר), נבדק שוב בטעינה הבאה
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -79,12 +79,15 @@ export const MAIL_FILES = Object.freeze([
 ]);
 
 /** הקבצים כפי שמוצגים: exists=false כשהמסמך לא רלוונטי להזמנה (טרם נחתם / ללא משלוח / אין תשלומים / אין תמונות דגמים) */
-export function mailFilesFor({ order, settings, items = [], payments = [] }) {
-  const delivery = !!(settings && settings.enableDeliveries) && isDeliveryOut(order);
+export function mailFilesFor({ order, settings, items = [], payments = [], access = {} }) {
+  // דף משלוח (PP-12 של הלו״ז) דורש page:schedule + page:deliveries - רק access.delivery === true (ר' ocScheduleAccess.js); אחרת האפור "אין הרשאה"
+  const deliverable = !!(settings && settings.enableDeliveries) && isDeliveryOut(order);
+  const delivery = deliverable && access.delivery === true;
   const hasPayments = payments.some((p) => !p.isDeleted && num(p.amount) !== 0);
   const hasPhotos = modelPhotosOf(items).length > 0;
   return MAIL_FILES.map((f) => ({
     ...f,
+    ...(f.need === 'del' && deliverable && !delivery ? { miss: 'אין הרשאה' } : {}),
     exists: !((f.need === 'sig' && !(order && order.hasSignedRegulations)) || (f.need === 'del' && !delivery)
       || (f.need === 'receipt' && !hasPayments) || (f.need === 'photos' && !hasPhotos)),
   }));
