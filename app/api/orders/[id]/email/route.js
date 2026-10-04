@@ -7,7 +7,7 @@ import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 import { renderOrderCardEmailHtml, renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
-import { parseQuickMail, isSafeRecipient, safeDriveFolderId, sanitizeQuickAttachments } from '@/lib/orderQuickMail';
+import { parseQuickMail, isSafeRecipient, quickDriveFolderId, sanitizeQuickAttachments } from '@/lib/orderQuickMail';
 import { PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccessKeys';
 import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
@@ -540,7 +540,8 @@ export async function POST(request, { params }) {
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
-    const driveFolderId = ((quick ? safeDriveFolderId(driveFolderIdRaw) : driveFolderIdRaw) || driveFolderDefault || '').trim();
+    // S4: מייל מהיר - רק ההגדרה email_drive_folder_id (מזהה תיקייה מהלקוח מתעלמים ממנו); שאר המסלולים - כמו קודם (רשות מהבקשה, אחרת ההגדרה)
+    const driveFolderId = (quick ? quickDriveFolderId(driveFolderDefault, driveFolderIdRaw) : ((driveFolderIdRaw || driveFolderDefault || '') + '').trim());
 
     // הנושא בפועל: מייל מהיר = מה שהעובדת הקלידה (נוקה בשרת); אחרת נושא הקטלוג
     const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId });

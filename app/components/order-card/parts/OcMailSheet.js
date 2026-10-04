@@ -11,6 +11,7 @@ import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { ensureCustomerEmail } from './OcMissingEmail';
 import { sendOrderMail } from './ocDocsActions';
+import { QUICK_MAIL_ACCEPT, QUICK_MAIL_FILE_TYPES_HE, isAllowedQuickFile } from '../../../../lib/orderQuickMail';
 import { useScheduleAccess } from './ocScheduleAccess';
 import {
   MAIL_DEST_OPTIONS, customerNameOf, defaultMailSubject, driveModeNote, isValidEmail, mailFilesFor, mailSentToast, orderEmailOf, quickMailValid,
@@ -38,7 +39,7 @@ function DiscardMailDialog({ close }) {
 DiscardMailDialog.ocLayer = 2;
 
 // R8: קבצים נוספים + יעד הקבצים (משותף לשני המצבים). המבנה כמו בעיצוב: mfld אחד עם כותרת, שורת לחצן "הוספת קובץ" (btn sm), כותרת יעד ובורר pill.
-function MailExtras({ extraFiles, setExtraFiles, dest, setDest, disabled, markDirty, filesLabel }) {
+function MailExtras({ extraFiles, setExtraFiles, dest, setDest, disabled, markDirty, filesLabel, restrict, ui }) {
   const idx = Math.max(0, MAIL_DEST_OPTIONS.findIndex((o) => o.v === dest));
   const note = driveModeNote(dest);
   const pickRef = useRef(null);
@@ -49,8 +50,11 @@ function MailExtras({ extraFiles, setExtraFiles, dest, setDest, disabled, markDi
         <button type="button" className="btn sm" data-act="mail-addfile" disabled={disabled} onClick={() => pickRef.current && pickRef.current.click()}>
           <OcIcon name="plus" size="sm" />הוספת קובץ
         </button>
-        <input ref={pickRef} type="file" multiple hidden tabIndex={-1} aria-label="בחירת קבצים לצירוף" onChange={(e) => {
-          const picked = e.target.files ? Array.from(e.target.files) : [];
+        <input ref={pickRef} type="file" multiple hidden tabIndex={-1} accept={restrict ? QUICK_MAIL_ACCEPT : undefined} aria-label="בחירת קבצים לצירוף" onChange={(e) => {
+          const all = e.target.files ? Array.from(e.target.files) : [];
+          // S4 (מייל מהיר בלבד): אותו allowlist כמו בשרת (lib/orderQuickMail.js) - קובץ מסוג אחר לא נצרף (ואז השליחה לא הייתה נדחית אחרי שהעובדת כבר הקלידה הכל)
+          const picked = restrict ? all.filter((f) => isAllowedQuickFile(f.name)) : all;
+          if (picked.length < all.length) ui.toast('error', 'חלק מהקבצים לא נוספו', `מותר לצרף: ${QUICK_MAIL_FILE_TYPES_HE}`);
           if (picked.length) { setExtraFiles((prev) => [...prev, ...picked]); markDirty(); }
           e.target.value = '';
         }} />
@@ -205,7 +209,7 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
               </div>
             </div>
           ) : null}
-          <MailExtras extraFiles={extraFiles} setExtraFiles={setExtraFiles} dest={dest} setDest={setDest} disabled={!idle} markDirty={markDirty} filesLabel={quick ? 'קבצים נוספים' : `קבצים נוספים (בנוסף ל-PDF ${type === 'rental' ? 'ההשכרה' : 'ההזמנה'})`} />
+          <MailExtras restrict={quick} ui={ui} extraFiles={extraFiles} setExtraFiles={setExtraFiles} dest={dest} setDest={setDest} disabled={!idle} markDirty={markDirty} filesLabel={quick ? 'קבצים נוספים' : `קבצים נוספים (בנוסף ל-PDF ${type === 'rental' ? 'ההשכרה' : 'ההזמנה'})`} />
         </div>
       </div>
       <div className="amsg oc-mail-err" aria-live="polite">{err ? <><OcIcon name="alert" size="sm" />{err}</> : null}</div>

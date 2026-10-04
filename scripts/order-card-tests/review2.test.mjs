@@ -250,3 +250,29 @@ test('S3 (סטטי): deliveries/join ו-dress-location-alerts דורשים page:
   assert.ok(/canOpenAnyPage\(\['page:orders', 'page:board'\]\)/.test(dl) && /error: 'Forbidden' \}, \{ status: 403 \}/.test(dl));
   assert.ok(dl.indexOf('canOpenAnyPage([') < dl.indexOf('isDressLocationAlertEnabled()'), 'השער לפני כל שאילתה');
 });
+
+// ---------- S4: מייל מהיר - תיקיית דרייב רק מההגדרה, צרופות base64 + allowlist ----------
+test('S4: quickDriveFolderId - רק ההגדרה, ערך הלקוח מתעלמים', async () => {
+  const Q = await P2('lib/orderQuickMail.js');
+  assert.equal(Q.quickDriveFolderId('1AbCdEfGhIjKlMnOp', 'EVILFOLDERID123456'), '1AbCdEfGhIjKlMnOp');
+  assert.equal(Q.quickDriveFolderId('', 'EVILFOLDERID123456'), '', 'אין הגדרה = אין תיקייה (לא נופלים לערך הלקוח)');
+  assert.equal(Q.quickDriveFolderId(undefined, 'x'), '');
+  const route = fs.readFileSync(P + '/app/api/orders/[id]/email/route.js', 'utf8');
+  assert.ok(/quick \? quickDriveFolderId\(driveFolderDefault, driveFolderIdRaw\)/.test(route) && !/safeDriveFolderId\(driveFolderIdRaw\)/.test(route));
+});
+test('S4: sanitizeQuickAttachments - סיומות מותרות בלבד, base64 תקין, mimeType נקבע בשרת', async () => {
+  const Q = await P2('lib/orderQuickMail.js');
+  const ok = (fileName, fileContent = 'JVBERi0xLjQK', extra = {}) => Q.sanitizeQuickAttachments([{ fileName, fileContent, ...extra }]);
+  for (const n of ['a.pdf', 'b.XLSX', 'c.png', 'd.jpg', 'e.jpeg', 'f.html']) assert.equal(ok(n).ok, true, n);
+  const r = ok('x.pdf', 'JVBERi0xLjQK', { mimeType: 'text/html' });
+  assert.equal(r.list[0].mimeType, 'application/pdf', 'mime מהסיומת, לא מהלקוח');
+  for (const n of ['evil.exe', 'a.svg', 'a.js', 'a.pdf.exe', 'noext', 'a.docm', 'a.htm']) { const e = ok(n); assert.equal(e.ok, false, n); assert.match(e.error, /אינו מותר/); }
+  for (const bad of ['data:application/pdf;base64,JVBERi0=', 'not base64!!', 'JVBERi0', 'AA=A', '<script>alert(1)</script>']) { const e = ok('a.pdf', bad); assert.equal(e.ok, false, bad); assert.match(e.error, /אינו תקין/); }
+  assert.equal(ok('a.pdf', 'JVBE\nRi0x\nLjQK').list[0].fileContent, 'JVBERi0xLjQK', 'ירידות שורה מוסרות');
+  assert.equal(ok('a.pdf', 'JVBERi0xLjQ=').ok, true);
+});
+test('S4 (סטטי): גיליון המייל - accept + סינון בצד הלקוח במייל מהיר בלבד', () => {
+  const s = strip(read('parts/OcMailSheet.js'));
+  assert.ok(/accept=\{restrict \? QUICK_MAIL_ACCEPT : undefined\}/.test(s) && /restrict \? all\.filter\(\(f\) => isAllowedQuickFile\(f\.name\)\) : all/.test(s));
+  assert.ok(/<MailExtras restrict=\{quick\}/.test(s));
+});
