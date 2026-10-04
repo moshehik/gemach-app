@@ -16,7 +16,10 @@
 }
 
 /* ---------- R3: פס "ההזמנה נעולה" ---------- */
-.gm-ds.gm-oc .items-card .oc-lockbar{margin-bottom:14px}
+.gm-ds.gm-oc .items-card .oc-lockbar{margin-bottom:14px;max-width:100%}
+@media (max-width:640px){
+.gm-ds.gm-oc .items-card .oc-lockbar{white-space:normal;height:auto;min-height:32px;line-height:1.4;padding-block:6px}
+}
 
 /* ---------- (2) שורת הברקוד בשורת הפריט (R25/R26; העיצוב: pv-bcin / pv-bch) ---------- */
 .gm-ds.gm-oc .irow .oc-bcin{flex:1 1 200px;min-width:0;max-width:340px;position:relative}
@@ -51,7 +54,7 @@
 .gm-ds.gm-oc .oc-edit-grid{gap:14px;margin-bottom:14px}
 .gm-ds.gm-oc .oc-edit-hint{font-size:13px;margin-top:6px}
 .gm-ds.gm-oc .oc-edit-hint.err{color:var(--gm-red)}
-.gm-ds.gm-oc .oc-edit-reopen{margin-top:14px}
+.gm-ds.gm-oc .oc-edit-reopen{margin:14px 0}
 .gm-ds.gm-oc #dlg .sizes button:disabled{opacity:.4;cursor:not-allowed}
 .gm-ds.gm-oc .oc-dsec{display:block;margin-top:8px}
 .gm-ds.gm-oc .oc-crchip{margin-inline-start:8px}
