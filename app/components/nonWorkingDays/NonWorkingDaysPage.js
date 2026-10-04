@@ -34,7 +34,7 @@ import {
 } from '@/lib/nonWorkingDaysPage';
 
 const TOAST_MS = 3600;
-const NOTE_HINT = 'ההערה גלויה לכל מי שפונה למערכת: בלי שמות, טלפונים או סיבות אישיות.';
+const NOTE_HINT = 'ההערה גלויה לכל העובדים המחוברים למערכת (ולא לגולשים בלי התחברות): בלי שמות, טלפונים או סיבות אישיות.';
 
 async function getJson(url) {
   const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
