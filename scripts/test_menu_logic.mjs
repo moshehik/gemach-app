@@ -1042,6 +1042,14 @@ t('applyAdminRecents (בלקוח) = buildMenuTree עם אותם אחרונים; 
   assert.equal(applyAdminRecents(noAdmin, rec), noAdmin); assert.equal(applyAdminRecents(null, rec), null);
   assert.ok(isJsonSafe(viaServer));
 });
+t('שום יעד לא נעלם: כל מה שיצא מהשורות הקבועות (R13) הוא אריח במסך /admin לאותו משתמש (הנהלה / מתכנת, עם ובלי משלוחים)', () => {
+  for (const roleId of [0, 2]) for (const deliveriesEnabled of [false, true]) {
+    const settings = deliveriesEnabled ? rows({ enable_deliveries: 'true' }) : [];
+    const tree = buildMenuTree({ user: roleId ? PROG : HEAD, permissions: ALL_OPEN, settings });
+    const hub = new Set(selectHub(accessForRole(roleId), { deliveriesEnabled }).tools.map((x) => x.href));
+    for (const it of tab(tree, 'admin').pool) assert.ok(hub.has(it.href), `${roleId}/${deliveriesEnabled}: ${it.label} (${it.href}) לא במסך /admin`);
+  }
+});
 t('composeAdminItems: קלט חסר / זבל לא זורק', () => {
   assert.deepEqual(composeAdminItems(), []);
   assert.deepEqual(composeAdminItems({ pool: [null, {}], fixed: [null], recents: 'x' }), []);
@@ -1115,7 +1123,7 @@ t('חיווט: app/layout.js מזריק רק כלים מותרים (selectHub); 
   const layout = src('../app/layout.js');
   assert.ok(/adminTools: selectHub\(\s*accessForRole\(emp \? emp\.roleId : null, \{ logged: !!\(isAuthenticated && emp\), requireLogin \}\)/.test(layout), 'layout: adminTools');
   assert.ok(layout.includes("'nedarim_plus_enabled'"), 'layout: ההגדרה של נדרים פלוס נטענת');
-  assert.ok(/\.value !== 'false' \},\s*\)\.tools/.test(layout), 'layout: כמו app/admin/page.js — רק "false" מפורש מכבה');
+  assert.ok(/\.value !== 'false', deliveriesEnabled: showDeliveries \},\s*\)\.tools/.test(layout), 'layout: כמו app/admin/page.js — רק "false" מפורש מכבה נדרים; משלוחים לפי enable_deliveries');
   const shell = src('../app/components/menu/MenuA5Shell.js');
   assert.ok(shell.includes('const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);'));
   assert.ok(/nav\.clearOnLogout\(\);\s*clearAdminRecents\(\);/.test(shell), 'ניקוי בהתנתקות');

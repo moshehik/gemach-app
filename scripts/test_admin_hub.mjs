@@ -35,16 +35,18 @@ const YES = {
   '/admin/email-test': 'head', '/management/history': 'head', '/admin/ai-restrictions': 'dev', '/admin/barcode-invalid': 'head',
   '/admin/bulk-email': 'head', '/admin/nedarim-hok-list': 'headOnly', '/admin/nedarim-hok-search': 'head', '/admin/nedarim-hok-edit': 'head',
   '/admin/nedarim-payments-recent': 'head', '/admin/nedarim-hok-test': 'head',
+  // 4.10.2026 (תפריט "ניהול" מקוצר): מה שיצא מהשורות הקבועות של התפריט חייב להיות במסך — "כל השאר בתוך דף הניהול"
+  '/refunds': 'head', '/dashboard/dresses': 'head', '/employees': 'head', '/deliveries': 'head',
 };
 const NO = ['/api/customers/emails', '/admin/refund-planner', '/admin/audit-system', '/management/database', '/design-system/',
   '/admin/refund-simulator', '/admin/settings/help'];
-const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה'];
+const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה', 'עבודה שוטפת'];
 
 t('הנתיב /admin דק: השרת מחשב את השערים עם checkPageAccess ומעביר רק את הכלים המותרים; הדף נטען ב-dynamic', () => {
   has(ROUTE, /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/, 'שער הנהלה');
   has(ROUTE, /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/, 'שער מתכנת');
   has(ROUTE, /checkPageAccess\(GATE_ROLES\.headOnly\)/, 'שער "רק מנהל ראשי"');
-  has(ROUTE, /selectHub\(\{ head, dev, headOnly \}, \{ nedarimEnabled: nedarim \}\)/, 'selectHub על תוצאות השערים');
+  has(ROUTE, /selectHub\(\{ head, dev, headOnly \}, \{ nedarimEnabled: nedarim, deliveriesEnabled: deliveries \}\)/, 'selectHub על תוצאות השערים');
   has(ROUTE, /<AdminHubSwitch tools=\{tools\} categories=\{categories\}/, 'מעביר רק את הכלים והקטגוריות המותרים');
   has(SWITCH, /dynamic\(\(\) => import\('\.\/AdminHubPage'\), \{ ssr: false \}\)/, 'dynamic');
   assert.ok(!/components\.css/.test(ROUTE + SWITCH), 'ה-CSS של הפלטה נטען רק מתוך AdminHubPage');
@@ -90,8 +92,10 @@ t('כל אריח מוביל לדף קיים באפליקציה', () => {
   }
 });
 
-t('9 קטגוריות בשמות של העיצוב; "זיכויים" מוזגה ל"תמחור וחישובים"; "הרשאות" ראשון ב"הגדרות ומיתוג"', () => {
-  assert.equal(CATEGORIES.length, 9);
+t('9 קטגוריות בשמות של העיצוב + "עבודה שוטפת" בסוף (4.10); "זיכויים" מוזגה ל"תמחור וחישובים"; "הרשאות" ראשון ב"הגדרות ומיתוג"', () => {
+  assert.equal(CATEGORIES.length, 10);
+  assert.equal(byHref('/refunds').cat, 'pricing', 'זיכויים וחובות — בקטגוריה שהבעלים מיזג אליה את "זיכויים"');
+  assert.deepEqual(TOOLS.filter((x) => x.cat === 'daily').map((x) => x.href), ['/dashboard/dresses', '/employees', '/deliveries']);
   assert.deepEqual(CATEGORIES.map((c) => c.title), CAT_NAMES);
   for (const c of CATEGORIES) assert.ok(TOOLS.some((x) => x.cat === c.id), `קטגוריה ריקה ${c.title}`);
   for (const x of TOOLS) assert.ok(CATEGORIES.some((c) => c.id === x.cat), `${x.id}: קטגוריה לא קיימת`);
@@ -104,7 +108,8 @@ t('9 קטגוריות בשמות של העיצוב; "זיכויים" מוזגה 
 t('מטריצת תפקידים: הנהלה ראשית / מתכנת / מנהלת סניף / עובדת / אורח (פתוח וסגור)', () => {
   const head = visibleToolIds(accessForRole(0));
   const prog = visibleToolIds(accessForRole(2));
-  const ids = (g) => TOOLS.filter((x) => g.includes(x.gate)).map((x) => x.id);
+  // בלי הגדרות הארגון: אריח עם needs (משלוחים) מוסתר — כשל-סגור
+  const ids = (g) => TOOLS.filter((x) => g.includes(x.gate) && !x.needs).map((x) => x.id);
   assert.deepEqual(head, ids(['head', 'headOnly']), 'הנהלה ראשית');
   assert.deepEqual(prog, ids(['head', 'dev']), 'מתכנת');
   assert.ok(head.includes('nedarim-hok-list') && !prog.includes('nedarim-hok-list'), 'רשימת הו״ק: רק מנהל ראשי');
@@ -114,7 +119,7 @@ t('מטריצת תפקידים: הנהלה ראשית / מתכנת / מנהלת 
   assert.deepEqual(visibleToolIds(accessForRole(1)), [], 'מנהלת סניף (ממילא נחסמת ב-app/admin/layout.js)');
   assert.deepEqual(visibleToolIds(accessForRole(5)), [], 'עובדת');
   assert.deepEqual(visibleToolIds(accessForRole(null, { logged: false, requireLogin: true })), [], 'אורח כשההתחברות חובה');
-  assert.equal(visibleToolIds(accessForRole(null, { logged: false, requireLogin: false })).length, TOOLS.length, 'אורח במצב פתוח = כמו checkPageAccess (עובר כל שער)');
+  assert.equal(visibleToolIds(accessForRole(null, { logged: false, requireLogin: false }), { deliveriesEnabled: true }).length, TOOLS.length, 'אורח במצב פתוח = כמו checkPageAccess (עובר כל שער)');
   assert.deepEqual(visibleToolIds(null), [], 'בלי מידע — כלום');
 });
 
@@ -123,14 +128,25 @@ t('מה שנשלח לדפדפן: רק הכלים המותרים, בלי שדה �
   assert.deepEqual(head.tools.map((x) => x.id), visibleToolIds(accessForRole(0)));
   assert.ok(head.tools.every((x) => !('gate' in x)), 'שדה gate נשלח');
   assert.ok(!head.tools.some((x) => TOOLS.find((y) => y.id === x.id).gate === 'dev'), 'כלי מתכנת נשלח להנהלה');
-  assert.equal(head.categories.length, 9);
+  assert.equal(head.categories.length, 10);
+  assert.ok(head.tools.every((x) => !('pageKey' in x) && !('needs' in x)), 'שדות פנימיים נשלחו');
   assert.deepEqual(selectHub(accessForRole(1)), { tools: [], categories: [] });
+});
+
+t('משלוחים: האריח רק כש-enable_deliveries === "true" (כמו התפריט); בלי ההגדרה / כל ערך אחר — מוסתר', () => {
+  assert.ok(!visibleToolIds(accessForRole(0)).includes('deliveries'));
+  assert.ok(!visibleToolIds(accessForRole(0), { deliveriesEnabled: 'true' }).includes('deliveries'), 'רק true בוליאני');
+  assert.ok(visibleToolIds(accessForRole(0), { deliveriesEnabled: true }).includes('deliveries'));
+  assert.ok(!visibleToolIds(accessForRole(1), { deliveriesEnabled: true }).includes('deliveries'), 'מנהלת סניף — אין /admin');
+  has(ROUTE, /getCachedSetting\('enable_deliveries'\)/, 'קריאת ההגדרה בשרת');
+  has(ROUTE, /return !!\(s && s\.value === 'true'\)/, 'רק "true" מפורש מדליק');
+  has(ROUTE, /selectHub\(\{ head, dev, headOnly \}, \{ nedarimEnabled: nedarim, deliveriesEnabled: deliveries \}\)/);
 });
 
 t('nedarim_plus_enabled === "false" מסתיר את קטגוריית נדרים פלוס (בשרת); כל ערך אחר — מוצגת', () => {
   const off = selectHub(accessForRole(0), { nedarimEnabled: false });
   assert.ok(!off.tools.some((x) => x.cat === 'nedarim') && !off.categories.some((c) => c.id === 'nedarim'));
-  assert.equal(off.categories.length, 8);
+  assert.equal(off.categories.length, 9);
   assert.ok(selectHub(accessForRole(0), {}).tools.some((x) => x.cat === 'nedarim'), 'ברירת מחדל: מוצגת');
   has(ROUTE, /getCachedSetting\('nedarim_plus_enabled'\)/, 'קריאת ההגדרה בשרת');
   has(ROUTE, /return !\(s && s\.value === 'false'\)/, 'רק "false" מפורש מכבה (כמו app/orders/new/page.js)');
@@ -193,8 +209,11 @@ t('השערים בדפים עצמם: כל אריח "מתכנת בלבד" מוב�
   // /dashboard: השער בתוך page.js עצמו (layout משותף היה חוסם גם את /dashboard/dresses)
   for (const x of TOOLS) {
     const srcs = [...layoutsFor(x.href), ...(x.href === '/dashboard' ? [read('../app/dashboard/page.js')] : [])];
+    // דף בשער הרשאות (PageGate page:*): הנהלה ראשית / מתכנת תמיד עוברים (ALWAYS_ALLOWED_ROLE_IDS = שער head), אז האריח בשער head מדויק
+    if (x.pageKey) { assert.equal(x.gate, 'head'); assert.ok(srcs.some((src) => src.includes(`<PageGate pageKey="${x.pageKey}">`)), `${x.href}: אין PageGate ${x.pageKey}`); continue; }
     assert.ok(srcs.some((src) => /checkPageAccess\((HEAD_MANAGEMENT_ROLES|DEVELOPER_ONLY_ROLES)\)/.test(src)), `${x.href}: הדף בלי שער הנהלה`);
   }
+  assert.deepEqual(JSON.parse(/ALWAYS_ALLOWED_ROLE_IDS = (\[[^\]]*\])/.exec(read('../lib/permissionsMetadata.js'))[1]), [...GATE_ROLES.head], 'הנהלה עוברת כל page:*');
   const site = read('../app/admin/site/layout.js');
   has(site, /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/, '/admin/site: שער מתכנת');
   has(site, /redirect\('\/admin'\)/, '/admin/site: מי שאינו מתכנת מועבר למסך החדש');

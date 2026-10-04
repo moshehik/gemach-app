@@ -326,7 +326,7 @@ export default async function RootLayout({ children }) {
       // למעלה (בלי שאילתה). רק הכלים המותרים נשלחים ללקוח (מאגר הלשונית), לעולם לא הקטלוג המלא. ר' docs/admin-menu-short-2026-10-04.md.
       adminTools: selectHub(
         accessForRole(emp ? emp.roleId : null, { logged: !!(isAuthenticated && emp), requireLogin }),
-        { nedarimEnabled: settings.find((s) => s.key === 'nedarim_plus_enabled')?.value !== 'false' },
+        { nedarimEnabled: settings.find((s) => s.key === 'nedarim_plus_enabled')?.value !== 'false', deliveriesEnabled: showDeliveries },
       ).tools,
     })
     : null;
