@@ -85,7 +85,9 @@ export async function POST(request, { params }) {
       toDate: orderOverrides.toDate !== undefined ? orderOverrides.toDate : baseOrder.toDate,
       isDelivery: orderOverrides.isDelivery !== undefined ? orderOverrides.isDelivery : baseOrder.isDelivery,
       deliveryCity: orderOverrides.deliveryCity !== undefined ? orderOverrides.deliveryCity : baseOrder.deliveryCity,
-      deliveryDirection: orderOverrides.deliveryDirection !== undefined ? orderOverrides.deliveryDirection : baseOrder.deliveryDirection
+      deliveryDirection: orderOverrides.deliveryDirection !== undefined ? orderOverrides.deliveryDirection : baseOrder.deliveryDirection,
+      // "יום השכרה נוסף" (תוספת 50% ב-pricingCalc) - הכרטיס החדש שולח אותו בתצוגה המקדימה (REQUESTS-W2a R-1)
+      extraDay: orderOverrides.extraDay !== undefined ? orderOverrides.extraDay : baseOrder.extraDay
     };
 
     const now = new Date();
