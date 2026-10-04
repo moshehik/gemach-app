@@ -1,6 +1,6 @@
 // הלוגיקה הטהורה של הלוח החודשי (/board) - בלי React, בלי DOM, בלי רשת. נבדקת ב-scripts/test_board_page.mjs.
 // כל הכללים כאן הועתקו מהדף הקודם (app/board/page.js עד 4.10.2026) כמו שהם: חישוב החודש העברי וניווט חודשים
-// (changeMonth), קבוצות ההזמנות לפי תאריך האירוע, קטגוריית הסטטוס (getOrderCategory), איחור החזרה (יותר מ-2 ימים
+// (changeMonth), קבוצות ההזמנות לפי תאריך האירוע, איחור החזרה (יותר מ-2 ימים
 // אחרי האירוע עם פריט שנלקח ולא הוחזר), פרשת השבוע והחגים בתא, וסינון חלון היום (שם / טלפון / מספר).
 // מה שנוסף לפי החלטות הבעלים (4.10.2026): רשימת 13 החודשים לקפיצה (S07), טקסט המונה לכל שלב (S02), איחוד סיבות
 // סימן ההתראה (S10 + E12, JDG-5), ומפתחות הטווח של בקשת המונים.
@@ -140,39 +140,8 @@ export function groupOrdersByDate(orders) {
 
 export const validItems = (order) => (order.items ? order.items.filter((i) => !i.isDeleted) : []);
 
-// קטגוריית הסטטוס - getOrderCategory של הדף הקודם, מילה במילה
-export function orderCategory(order, enableAlterations = true) {
-  const isEmpty = !order.items || order.items.length === 0;
-  const hasRepairs = order.items && order.items.some((i) => i.neckAlteration || i.lengthAlteration || i.sleeveAlteration || i.alterationDetails);
-  const isUnpaid = (order.totalPaid || 0) < (order.totalAmount || 0);
-  const isPaidInFull = (order.totalAmount || 0) > 0 && (order.totalPaid || 0) >= order.totalAmount;
-  const v = validItems(order);
-  const allReturned = v.length > 0 && v.every((i) => i.isReturned);
-  const someReturned = v.some((i) => i.isReturned);
-  const allTaken = v.length > 0 && v.every((i) => i.isTaken);
-  const someTaken = v.some((i) => i.isTaken);
-  if (isEmpty) return 'empty';
-  if (allReturned) return 'returned';
-  if (allTaken || someTaken || someReturned) return 'rented';
-  if (enableAlterations && hasRepairs) return 'repairs';
-  if (isUnpaid) return 'unpaid';
-  if (isPaidInFull) return 'completed';
-  return 'other';
-}
-
-// תוויות הקטגוריות כמו בדף הקודם; הצבע/האייקון = שבבי הפלטה (chip <צבע>) כמו בעיצוב (CAT ב-rv של לוח-חודשי.html)
-export const CATEGORY = {
-  empty: { label: 'הזמנה פגומה (0 פריטים)', chip: 'red', icon: 'alert', bar: 'var(--red)' },
-  repairs: { label: 'יש תיקונים', chip: 'rose', icon: 'scissors', bar: 'var(--rose-300)' },
-  unpaid: { label: 'לא שולם', chip: 'gold', icon: 'alert', bar: 'var(--gold)' },
-  returned: { label: 'הוחזר', chip: 'green', icon: 'check', bar: 'var(--green)' },
-  rented: { label: 'מושכר/חלקית', chip: 'blue', icon: 'truck', bar: 'var(--sky-400)' },
-  completed: { label: 'הושלם (שולם)', chip: 'teal', icon: 'wallet', bar: 'var(--navy-500)' },
-  other: { label: 'אחר', chip: 'gray', icon: 'info', bar: 'var(--sky-300)' },
-};
-export const categoryOrder = (enableAlterations) => (enableAlterations
-  ? ['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other', 'empty']
-  : ['unpaid', 'rented', 'returned', 'completed', 'other', 'empty']);
+// (קטגוריית הסטטוס של הזמנה - getOrderCategory של הדף הקודם, CATEGORY ו-categoryOrder - הוסרה ב-BD-O7: הבעלים לא רוצה
+// תגית סטטוס ולא ציר סינון לפי סטטוס. הקוד בהיסטוריית git, commit 620780b7.)
 
 // E12: איחור החזרה - אותו כלל כמו הלו״ז (שלב 8 "החזרה ידנית", התראת "באיחור"), /api/orders/overdue ובר ההחזרה המהיר:
 // יש פריט שנלקח ולא הוחזר (הדגל או התאריך, כמו loaders.js), ועברו late_return_threshold_days (ברירת מחדל 7) ימים ממועד

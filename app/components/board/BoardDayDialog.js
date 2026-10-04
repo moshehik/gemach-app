@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LzPortal } from '../schedule/LzPortal';
-import { CATEGORY, categoryOrder, filterDayOrders, isOrderLate, orderCategory } from './boardLogic';
+import { filterDayOrders, isOrderLate } from './boardLogic';
 import { Ic, OrderRow, useLateCfg } from './BoardParts';
 
-// חלון "הזמנות ליום" (E17, "יפתח ויציג כמו בדף הלו״ז עם הפירוט של הבאנר הימני"; E13 "כמו השאלה הקודמת"; GAP-6
-// "שינוי מלא של החלון בדומה ללו״ז"): אותו פריסה כמו /schedule - ציר כהה בצד ימין (st-sidenav / st-stab של הלו״ז) עם
-// "הכל" ושורה לכל סטטוס הזמנה (מונה על האייקון; "באיחור החזרה" עם משולש התראה), ולידו כרטיס פנינה (lz-st) עם שדה הסינון
-// של הדף הקודם (שם / טלפון / מספר) ושורות ההזמנה בעיצוב שורות הלו״ז (OrderRow). לחיצה על שורה = תפריט הפעולות (E15),
-// לחצן המידע העגול = חלונית הפרטים (E14). הדפסת פרוט היום נשארת בכותרת רק בארגון עם enable_batch_print_prep (כמו קודם).
-export default function BoardDayDialog({ day, enableAlterations, enableBatchPrintPrep, onClose, onOrder, onHint, onPrint }) {
+// חלון "הזמנות ליום" (E17, GAP-6; בפריסת הלו״ז): ציר כהה בצד ימין עם "הכל" ו"באיחור החזרה", ולידו כרטיס פנינה עם שדה הסינון
+// של הדף הקודם (שם / טלפון / מספר) ושורות ההזמנה בעיצוב שורות הלו״ז (OrderRow). לחיצה על שורה = תפריט הפעולות (E15), לחצן
+// המידע העגול = חלונית הפרטים (E14).
+// BD-O6 + BD-O7 (הבעלים 4.10.2026): בלי לחצן הדפסת פרוט היום (ובלי enable_batch_print_prep), בלי תגית סטטוס בשורה ובלי ציר
+// סינון לפי סטטוס. הלוח עצמו מציג רק מונים (BD-O4); החלון הזה נפתח רק כשאין הרשאה ללו״ז / לא ידוע אם יש (F12 - פתוח).
+export default function BoardDayDialog({ day, onClose, onOrder, onHint }) {
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState(null); // null = הכל | קטגוריה | 'late'
+  const [filter, setFilter] = useState(null); // null = הכל | 'late'
   const boxRef = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -20,23 +20,14 @@ export default function BoardDayDialog({ day, enableAlterations, enableBatchPrin
   const lateCfg = useLateCfg();
   const late = (o) => isOrderLate(o, lateCfg);
 
-  const counts = useMemo(() => {
-    const c = { late: 0 };
-    for (const o of orders) {
-      const k = orderCategory(o, enableAlterations);
-      c[k] = (c[k] || 0) + 1;
-      if (late(o)) c.late++;
-    }
-    return c;
-  }, [orders, enableAlterations, lateCfg]);
+  const lateCount = useMemo(() => orders.filter((o) => late(o)).length, [orders, lateCfg]);
 
   const visible = useMemo(() => {
     let list = filterDayOrders(orders, q);
     if (filter === 'late') list = list.filter((o) => late(o));
-    else if (filter) list = list.filter((o) => orderCategory(o, enableAlterations) === filter);
     // שורות באיחור ראשונות (כמו שורות עם התראה בלו״ז), השאר בסדר המקורי
     return list.map((o, i) => ({ o, i, r: late(o) ? 0 : 1 })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.o);
-  }, [orders, q, filter, enableAlterations, lateCfg]);
+  }, [orders, q, filter, lateCfg]);
 
   useEffect(() => {
     const prev = typeof document !== 'undefined' ? document.activeElement : null;
@@ -56,7 +47,6 @@ export default function BoardDayDialog({ day, enableAlterations, enableBatchPrin
     };
   }, []);
 
-  const cats = categoryOrder(enableAlterations).filter((k) => counts[k]);
   const stab = (key, label, icon, n, extra) => (
     <button
       key={key || 'all'}
@@ -89,22 +79,16 @@ export default function BoardDayDialog({ day, enableAlterations, enableBatchPrin
               </div>
             </div>
             <div className="bd-dx">
-              {enableBatchPrintPrep && orders.length ? (
-                <button type="button" className="ibtn bd-rb" aria-label="הדפסת פרוט ההזמנות ליום זה" data-tip="הדפסת פרוט ההזמנות ליום זה" onClick={() => onPrint(orders)}>
-                  <Ic name="print" />
-                </button>
-              ) : null}
               <button type="button" className="ibtn bd-rb" aria-label="סגירה" data-tip="סגירה" onClick={onClose}><Ic name="x" /></button>
             </div>
           </div>
           <div className="lz-layout bd-dl">
-            <aside className="rail lz-rail" aria-label="סטטוס ההזמנות ביום">
+            <aside className="rail lz-rail" aria-label="סינון ההזמנות ביום">
               <div className="st-sidenav lz-snav">
                 <div className="lz-rh">הזמנות היום</div>
-                <nav className="st-stabs" aria-label="סינון לפי סטטוס">
+                <nav className="st-stabs" aria-label="סינון הזמנות היום">
                   {stab(null, 'הכל', 'rows', orders.length, <small>{orders.length} הזמנות</small>)}
-                  {counts.late ? stab('late', 'באיחור החזרה', 'alert', counts.late) : null}
-                  {cats.map((k) => stab(k, CATEGORY[k].label, CATEGORY[k].icon, counts[k]))}
+                  {lateCount ? stab('late', 'באיחור החזרה', 'alert', lateCount) : null}
                 </nav>
               </div>
             </aside>
@@ -129,7 +113,7 @@ export default function BoardDayDialog({ day, enableAlterations, enableBatchPrin
               <div className="card lz-st bd-dst">
                 {visible.length ? (
                   <div className="hres"><div className="hgrp">
-                    {visible.map((o) => <OrderRow key={o.orderId} order={o} enableAlterations={enableAlterations} onOrder={onOrder} onHint={onHint} />)}
+                    {visible.map((o) => <OrderRow key={o.orderId} order={o} onOrder={onOrder} onHint={onHint} />)}
                   </div></div>
                 ) : (
                   <div className="empty" role="status"><Ic name="search" className="lg" /><div className="lz-empty-t">אין הזמנות שתואמות לסינון</div></div>

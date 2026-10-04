@@ -5,8 +5,7 @@ import ScheduleIcon from '../schedule/ScheduleIcon';
 import { LzPortal } from '../schedule/LzPortal';
 import { STAGE_META, dressCountText } from '../schedule/scheduleMeta';
 import {
-  CATEGORY, WEEKDAYS, cellAlert, customerName, dayStageRows, isOrderLate, jumpMonths, localKey, monthTitle,
-  orderCategory, stageCountText, validItems,
+  WEEKDAYS, cellAlert, customerName, dayStageRows, isOrderLate, jumpMonths, monthTitle, stageCountText, validItems,
 } from './boardLogic';
 
 // רכיבי התצוגה של הלוח החודשי - כולם רכיבי פלטה (design-system/COMPONENTS.md) ורכיבי הלו״ז (schedule.css), בשמות של
@@ -183,17 +182,18 @@ export function MonthHead({ date, today, onPrev, onNext, onPick }) {
 }
 
 // ---------- תא יום בגריד ----------
-// כמו dayCell בעיצוב: אות היום (MATCH-4), שם החודש ביום הראשון, סימן התראה אחד (S10 + איחור החזרה E12, JDG-5), פרשה וחגים
-// כטקסט פשוט (E10), מוני שלבים באותו גוון (S02), ושורות הזמנה קצרות כשיש עד 2 הזמנות; מעל 2 - אייקון "תצוגה מורחבת"
-// (JDG-3: כמו היום, רק מעל 2). לחיצה על התא = מעבר ללו״ז היומי (S06). בלי תאריך לועזי (E11).
-export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay, onExpand, onOrder, enableAlterations }) {
+// כמו dayCell בעיצוב המאושר, ורק זה (BD-O4, הבעלים 4.10.2026: "רק הסמנים והמספרים, בלי הפירוט של האתר הישן"): אות היום
+// (MATCH-4), שם החודש ביום הראשון, סימן התראה אחד (S10 + איחור החזרה E12, JDG-5), פרשה וחגים כטקסט פשוט (E10) ומוני
+// השלבים באותו גוון (S02; מונה עם התראה בגוון ההתראה). בלי שורות הזמנה ובלי אייקון "תצוגה מורחבת". איחור החזרה = מסגרת
+// אדומה לתא (GAP-4) + הסימן; ההזמנות נטענות רק כדי לחשב אותו. לחיצה על התא = מעבר ללו״ז היומי (S06). בלי תאריך לועזי (E11).
+export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay }) {
   const rows = dayStageRows(stageDay, stages, selected);
   const stageAlerts = rows.reduce((a, r) => a + (r.alerts ? r.alerts : 0), 0);
   const lateCfg = useLateCfg();
   const lateCount = orders.filter((o) => isOrderLate(o, lateCfg)).length;
   const alert = cellAlert(stageAlerts, lateCount);
   const total = rows.reduce((a, r) => a + r.total, 0);
-  const label = cell.hebrewLong + (total ? ' · ' + total + ' פעולות' : '') + (orders.length ? ' · ' + orders.length + ' הזמנות' : '');
+  const label = cell.hebrewLong + (total ? ' · ' + total + ' פעולות' : '');
   const open = (e) => {
     if (e.target.closest && e.target.closest('button,a')) return;
     onOpenDay(cell);
@@ -216,56 +216,33 @@ export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay, o
           <b>{cell.letter}</b>
           {cell.monthName ? <em>{cell.monthName}</em> : null}
         </a>
-        <span className="bd-dhx">
-          {orders.length > 2 ? (
-            <button type="button" className="ibtn bd-ex" aria-label={'תצוגה מורחבת ליום זה (' + orders.length + ' הזמנות)'} data-tip="תצוגה מורחבת ליום זה" onClick={(e) => { e.stopPropagation(); onExpand(cell); }}>
-              <Ic name="eye" className="sm" />
-            </button>
-          ) : null}
-          {alert ? (
+        {alert ? (
+          <span className="bd-dhx">
             <span className="tabmk debt lz-al" role="img" aria-label={alert.tip} data-tip={alert.tip}><Ic name="alert" className="sm" /></span>
-          ) : null}
-        </span>
+          </span>
+        ) : null}
       </span>
       {cell.notes.length ? <span className="bd-notes">{cell.notes.join(' · ')}</span> : null}
-      {rows.length ? (
-        <span className="lz-rows">
-          {rows.map((r) => (
-            <span key={r.stage.key} className={'lz-pr' + (r.alerts ? ' al' : '')} data-tip={stageCountText(r.stage, r.total) + (r.alerts ? ' · ' + r.alerts + ' עם התראה' : '')}>
-              <Ic name={(STAGE_META[r.stage.key] || STAGE_META.order).icon} /><b>{r.total}</b>
-            </span>
-          ))}
-        </span>
-      ) : null}
-      {orders.length > 0 && orders.length <= 2 ? (
-        <span className="bd-cos">
-          {orders.map((o) => <CellOrder key={o.orderId} order={o} onOrder={onOrder} enableAlterations={enableAlterations} />)}
-        </span>
-      ) : null}
+      {rows.length ? <StageCounters rows={rows} className="lz-rows" /> : null}
     </div>
   );
 }
 
-function CellOrder({ order, onOrder, enableAlterations }) {
-  const late = isOrderLate(order, useLateCfg());
-  const cat = orderCategory(order, enableAlterations);
+// מוני השלבים (lz-pr של העיצוב): אייקון השלב + המספר; מונה עם התראה בגוון ההתראה. משמש את התא ואת תצוגת הרשימה.
+function StageCounters({ rows, className }) {
   return (
-    <button
-      type="button"
-      className={'bd-co' + (late ? ' bd-late' : '')}
-      style={{ '--bd-cat': CATEGORY[cat].bar }}
-      aria-haspopup="menu"
-      aria-label={customerName(order) + ' #' + order.orderId + (late ? ' · באיחור החזרה' : '')}
-      onClick={(e) => { e.stopPropagation(); onOrder(order, e.currentTarget); }}
-    >
-      <span className="bd-con">{customerName(order) || 'ללא שם'}</span>
-      <bdi className="bd-coi">{late ? <Ic name="alert" className="sm" /> : null}#{order.orderId}</bdi>
-    </button>
+    <span className={className}>
+      {rows.map((r) => (
+        <span key={r.stage.key} className={'lz-pr' + (r.alerts ? ' al' : '')} data-tip={stageCountText(r.stage, r.total) + (r.alerts ? ' · ' + r.alerts + ' עם התראה' : '')}>
+          <Ic name={(STAGE_META[r.stage.key] || STAGE_META.order).icon} /><b>{r.total}</b>
+        </span>
+      ))}
+    </span>
   );
 }
 
 // ---------- גריד החודש (MATCH-3: שורת ימי השבוע; S08: תאים ריקים בקצוות) ----------
-export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay, onExpand, onOrder, enableAlterations }) {
+export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay }) {
   return (
     <div className="hc lz-hc">
       {head}
@@ -280,9 +257,6 @@ export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selec
             stages={stages}
             selected={selected}
             onOpenDay={onOpenDay}
-            onExpand={onExpand}
-            onOrder={onOrder}
-            enableAlterations={enableAlterations}
           />
         ) : <span key={'e' + i} className="hc-e bd-empty" aria-hidden="true" />))}
       </div>
@@ -291,33 +265,33 @@ export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selec
 }
 
 // ---------- תצוגת רשימה (S03; בנייד אוטומטית) ----------
-// S11 "לא להכניס": בלי שורות סיכום ליום (מונים + חץ). במקומן: כותרת יום של הפלטה (hday, כמו ביומן ההיסטוריה) ומתחתיה
-// שורות ההזמנות של אותו יום (אותה שורה כמו בחלון היום). מוצגים רק ימים עם הזמנות או עם התראה.
-export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay, onOrder, onHint, enableAlterations }) {
+// BD-O5 ("לא, להוסיף מונים" + "רק מונים, כמו בעיצוב"): כותרת יום של הפלטה (hday, כמו ביומן ההיסטוריה) ומתחתיה מוני השלבים
+// של אותו יום - בלי שורות הזמנה. מוצגים רק ימים עם מונים (לפי המסנן) או עם סימן התראה. לחיצה על הכותרת = הלו״ז היומי (S06).
+export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay }) {
   const lateCfg = useLateCfg();
   const days = weeks.flat().filter(Boolean).map((cell) => {
     const orders = ordersByDate[cell.key] || [];
     const rows = dayStageRows(stagesDays ? stagesDays[cell.key] : null, stages, selected);
     const late = orders.filter((o) => isOrderLate(o, lateCfg)).length;
     const alert = cellAlert(rows.reduce((a, r) => a + r.alerts, 0), late);
-    return { cell, orders, alert, late };
-  }).filter((d) => d.orders.length || d.alert);
+    return { cell, rows, alert, late };
+  }).filter((d) => d.rows.length || d.alert);
   return (
     <div className="card items-card lz-lcard bd-lcard">
       {head}
       <div className="hres">
         <div className="hgrp">
-          {days.length ? days.map(({ cell, orders, alert, late }) => (
+          {days.length ? days.map(({ cell, rows, alert, late }) => (
             <section key={cell.key} className={'bd-lday' + (cell.isToday ? ' lz-today' : '')} aria-label={cell.hebrewLong}>
               <button type="button" className={'hday bd-hday' + (late ? ' bd-latecell' : '')} onClick={() => onOpenDay(cell)} data-tip="ללו״ז של היום הזה">
                 <b>{cell.hebrewLong}</b>
                 {cell.notes.length ? <small>{cell.notes.join(' · ')}</small> : null}
                 {alert ? <span className="tabmk debt lz-al" role="img" aria-label={alert.tip} data-tip={alert.tip}><Ic name="alert" className="sm" /></span> : null}
               </button>
-              {orders.map((o) => <OrderRow key={o.orderId} order={o} enableAlterations={enableAlterations} onOrder={onOrder} onHint={onHint} />)}
+              {rows.length ? <StageCounters rows={rows} className="bd-lc" /> : null}
             </section>
           )) : (
-            <div className="empty" role="status"><Ic name="cal" className="lg" /><div>אין הזמנות בחודש הזה</div></div>
+            <div className="empty" role="status"><Ic name="cal" className="lg" /><div>אין פעולות בחודש הזה</div></div>
           )}
         </div>
       </div>
@@ -326,17 +300,16 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
 }
 
 // ---------- שורת הזמנה (E13 בעיצוב שורות הלו״ז: lz-r / li lrow / ic-b) ----------
-// שם · מספר · תגית סטטוס · פס צבע לפי הסטטוס · לחצן מידע עגול (E14). לחיצה על השורה = תפריט הפעולות (E15).
-export function OrderRow({ order, enableAlterations, onOrder, onHint }) {
-  const cat = orderCategory(order, enableAlterations);
-  const meta = CATEGORY[cat];
+// שם · מספר · סימן איחור · לחצן מידע עגול (E14). בלי תגית סטטוס ובלי פס צבע לפי סטטוס (BD-O7). לחיצה על השורה = תפריט הפעולות (E15).
+// (בלוח אין עוד שורות הזמנה בתא וברשימה - BD-O4/BD-O5; השורה חיה רק בחלון "הזמנות ליום", F12.)
+export function OrderRow({ order, onOrder, onHint }) {
   const late = isOrderLate(order, useLateCfg());
   const name = customerName(order) || 'ללא שם';
   const items = validItems(order).length;
   const parts = [order.customerPhone || order.customer?.phone1 || '', dressCountText(items)].filter(Boolean);
   const infoRef = useRef(null);
   return (
-    <article className={'hrow irow lz-r bd-or' + (late ? ' lz-late bd-late' : '')} style={{ '--bd-cat': meta.bar }}>
+    <article className={'hrow irow lz-r bd-or' + (late ? ' lz-late bd-late' : '')}>
       <div
         className="li lrow"
         role="button"
@@ -355,7 +328,6 @@ export function OrderRow({ order, enableAlterations, onOrder, onHint }) {
         </div>
         <div className="lz-act">
           {late ? <span className="chip red bd-latechip"><Ic name="alert" />איחור</span> : null}
-          {cat !== 'other' ? <span className={'chip ' + meta.chip}><Ic name={meta.icon} />{meta.label}</span> : null}
           <button
             ref={infoRef}
             type="button"
@@ -378,7 +350,7 @@ export function OrderRow({ order, enableAlterations, onOrder, onHint }) {
 // ---------- חלונית הפרטים בריחוף על לחצן המידע (E14): רמז עשיר של הפלטה (.pl-rt) ----------
 // אותן שורות כמו בדף הקודם, בלי התאריך הלועזי (תאריכי אירוע בעברית בלבד, JDG-6). "ציפוף ימים" רק כשיש ערך וההגדרה
 // hide_custom_spacing כבויה. צבע "שולם": ירוק כששולם במלואו, כתום חלקי, אדום בלי תשלום (כמו קודם).
-export function InfoHint({ hint, enableAlterations, hideCustomSpacing }) {
+export function InfoHint({ hint, hideCustomSpacing }) {
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
   useLayoutEffect(() => {
@@ -395,7 +367,6 @@ export function InfoHint({ hint, enableAlterations, hideCustomSpacing }) {
   if (!hint) return null;
   const o = hint.order;
   const v = validItems(o);
-  const cat = orderCategory(o, enableAlterations);
   const paidCls = o.totalPaid >= o.totalAmount && o.totalAmount > 0 ? 'bd-paid' : (o.totalPaid > 0 ? 'bd-part' : 'bd-unpaid');
   const rows = [
     ['טלפון', <bdi key="p" dir="ltr">{o.customerPhone || 'לא הוזן'}</bdi>],
@@ -403,7 +374,7 @@ export function InfoHint({ hint, enableAlterations, hideCustomSpacing }) {
   ];
   if (!hideCustomSpacing && o.customSpacing !== null && o.customSpacing !== undefined) rows.push(['ציפוף ימים', o.customSpacing + ' ' + (o.customSpacing === 1 ? 'יום' : 'ימים')]);
   rows.push(['פריטים בהזמנה', v.length], ['הושכר', v.filter((i) => i.isTaken).length], ['הוחזר', v.filter((i) => i.isReturned).length]);
-  rows.push(['סה״כ לתשלום', '₪' + (o.totalAmount || 0)], ['שולם', <span key="s" className={paidCls}>₪{o.totalPaid || 0}</span>], ['סטטוס', CATEGORY[cat].label]);
+  rows.push(['סה״כ לתשלום', '₪' + (o.totalAmount || 0)], ['שולם', <span key="s" className={paidCls}>₪{o.totalPaid || 0}</span>]);
   return (
     <LzPortal>
       <div

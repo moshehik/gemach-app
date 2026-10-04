@@ -85,11 +85,27 @@ t('E07/E02/E03/E04/E05/E06: אשף ההדפסה, חיפוש חכם, סטטיסט
   hasNot(ROUTE + LAYOUT, /PrintWizardModal|StatisticsModal/);
 });
 
-t('E09: בתא אין מונה הזמנות ואין הדפסת יום; JDG-3: אייקון "תצוגה מורחבת" רק מעל 2 הזמנות', () => {
-  has(PARTS, /orders\.length > 2 \? \(\s*<button type="button" className="ibtn bd-ex"/);
-  hasNot(PARTS, /i-printer|name="print"/, 'אין הדפסה בתא');
-  hasNot(PARTS, /title="מספר הזמנות ליום זה"|cell-muted/);
-  has(PARTS, /orders\.length > 0 && orders\.length <= 2/, 'עד 2 הזמנות - שורות קצרות בתא');
+t('BD-O4 / BD-O5 / E09: בתא וברשימה רק סמנים ומונים - בלי שורות הזמנה, בלי אייקון "מורחב", בלי מונה הזמנות / הדפסה', () => {
+  const cell = PARTS.slice(PARTS.indexOf('export function DayCell'), PARTS.indexOf('export function MonthGrid'));
+  const list = PARTS.slice(PARTS.indexOf('export function DayList'), PARTS.indexOf('export function OrderRow'));
+  for (const part of [cell, list]) {
+    hasNot(code(part), /OrderRow|CellOrder|bd-co\b|bd-cos|bd-ex|onExpand|onOrder|onHint|enableAlterations|customerName|#\{order|orderId/, 'פירוט הזמנות בתא / ברשימה');
+    hasNot(code(part), /i-printer|name="print"|name="eye"/);
+    has(part, /<StageCounters rows=\{rows\}/, 'מוני השלבים');
+  }
+  has(cell, /lateCount \? ' bd-latecell' : ''/, 'מסגרת איחור החזרה נשארת סמן');
+  has(cell, /className="tabmk debt lz-al"/, 'סימן ההתראה נשאר');
+  has(PARTS, /'lz-pr' \+ \(r\.alerts \? ' al' : ''\)/, 'גוון ההתראה על מונה');
+  has(list, /filter\(\(d\) => d\.rows\.length \|\| d\.alert\)/, 'ברשימה: ימים עם מונים או התראה (לא "ימים עם הזמנות")');
+  has(list, /<StageCounters rows=\{rows\} className="bd-lc" \/>/, 'ברשימה: מונים מתחת לכותרת היום');
+  // המסך נשאר ללא הסרות שגויות: הקוד הישן של השורה והאייקון לא קיים בשום קובץ של הלוח
+  hasNot(CSS, /bd-co\b|bd-cos|bd-ex\b|--bd-cat/);
+});
+
+t('BD-O7: בשורת ההזמנה בחלון היום אין תגית סטטוס, בחלונית הפרטים אין שורת סטטוס, ובלוגיקה אין עוד קטגוריית סטטוס', () => {
+  hasNot(code(PARTS + DAY), /CATEGORY|orderCategory|categoryOrder|'סטטוס'|meta\.chip|meta\.label/);
+  assert.equal(L.orderCategory, undefined);
+  assert.equal(L.CATEGORY, undefined);
 });
 
 t('E11/JDG-6: אין תאריך לועזי בתאים, בכותרות ובחלונית הפרטים (עברית בלבד)', () => {
@@ -180,12 +196,11 @@ t('S02/S10/E12: מונים באותו גוון חוץ מהתראה; סימן ה�
   has(PARTS, /className="tabmk debt lz-al"/);
 });
 
-t('E13/E14/E15: שורת הזמנה (שם · מספר · סטטוס · פס צבע), לחצן מידע עגול עם חלונית פרטים, תפריט כרטיס הזמנה / לקוח / השכרה', () => {
+t('E13/E14/E15: שורת הזמנה (שם · מספר · סימן איחור), לחצן מידע עגול עם חלונית פרטים, תפריט כרטיס הזמנה / לקוח / השכרה', () => {
   has(PARTS, /className=\{'hrow irow lz-r bd-or'/);
-  has(PARTS, /'--bd-cat': meta\.bar/);
   has(CSS, /\.gm-ds\.gm-bd \.ibtn\.bd-info\{[^}]*border-radius:50%/, 'לחצן המידע עגול');
   has(PARTS, /className="pl-rt on bd-rt"/);
-  for (const k of ['טלפון', 'פריטים בהזמנה', 'הושכר', 'הוחזר', 'סה״כ לתשלום', 'שולם', 'סטטוס', 'ציפוף ימים']) assert.ok(PARTS.includes(`'${k}'`), 'חסר ' + k);
+  for (const k of ['טלפון', 'פריטים בהזמנה', 'הושכר', 'הוחזר', 'סה״כ לתשלום', 'שולם', 'ציפוף ימים']) assert.ok(PARTS.includes(`'${k}'`), 'חסר ' + k);
   has(PARTS, /!hideCustomSpacing && o\.customSpacing !== null/);
   has(PARTS, />כרטיס הזמנה</); has(PARTS, />כרטיס לקוח</); has(PARTS, />כרטיס השכרה</);
   has(PARTS, /custId \? <button/, 'כרטיס לקוח רק עם מזהה לקוח');
@@ -193,12 +208,13 @@ t('E13/E14/E15: שורת הזמנה (שם · מספר · סטטוס · פס צב
   has(PAGE, /router\.push\(`\/customers\/\$\{id\}`\)/);
 });
 
-t('E17: חלון "הזמנות ליום" כמו הלו״ז (ציר st-sidenav + שורות lz-r) עם סינון שם/טלפון/מספר; הדפסת יום רק עם enable_batch_print_prep', () => {
+t('E17 / BD-O6 / BD-O7: חלון "הזמנות ליום" כמו הלו״ז (ציר st-sidenav + שורות lz-r) עם סינון שם/טלפון/מספר; בלי הדפסת יום, בלי ציר סטטוס', () => {
   has(DAY, /className="st-sidenav lz-snav"/);
   has(DAY, /className="card lz-st bd-dst"/);
   has(DAY, /placeholder="חיפוש הזמנה ביום זה \(שם, טלפון, מספר\)\.\.\."/);
-  has(DAY, /enableBatchPrintPrep && orders\.length \?/);
-  has(PAGE, /window\.open\(`\/print\/order\?orderId=\$\{ids\}&type=order&batch=1`, '_blank'\)/);
+  hasNot(code(DAY + PAGE), /enableBatchPrintPrep|enable_batch_print_prep|onPrint|printDayOrders|\/print\/order|batch=1/, 'BD-O6: הדפסת היום הוסרה');
+  hasNot(code(DAY), /filterDayOrders\(orders, q\);\s*if \(filter === 'late'[\s\S]*orderCategory/);
+  has(DAY, /stab\('late', 'באיחור החזרה'/, 'נשאר סינון "באיחור החזרה" (איחור הוא סמן, לא סטטוס)');
   assert.equal(L.filterDayOrders([{ orderId: 5, customerName: 'שרה', customerPhone: '052' }, { orderId: 6, customerName: 'לאה' }], '05').length, 1);
 });
 
@@ -234,19 +250,13 @@ t('E21/E18: טעינה כמו קודם - חודש עברי ±14 יום, מטמו
   has(pf, /fromDate\.setDate\(fromDate\.getDate\(\) - 14\)/);
 });
 
-t('E20: ההגדרות enable_alterations / hide_custom_spacing / enable_batch_print_prep נקראות כמו קודם', () => {
+t('E20: ההגדרות שנשארו בשימוש (hide_custom_spacing + כלל איחור ההחזרה) נקראות; enable_alterations / enable_batch_print_prep כבר לא (BD-O6 / BD-O7)', () => {
   has(PAGE, /fetchSharedJson\('\/api\/settings', \{ ttl: TTL\.STATIC \}\)/);
-  for (const k of ['enable_alterations', 'hide_custom_spacing', 'enable_batch_print_prep']) assert.ok(PAGE.includes(k), k);
-  assert.equal(L.orderCategory({ items: [{ neckAlteration: 1 }], totalAmount: 100, totalPaid: 0 }, true), 'repairs');
-  assert.equal(L.orderCategory({ items: [{ neckAlteration: 1 }], totalAmount: 100, totalPaid: 0 }, false), 'unpaid');
+  for (const k of ['hide_custom_spacing', 'late_return_threshold_days']) assert.ok(PAGE.includes(k), k);
+  hasNot(code(PAGE), /enable_alterations|enable_batch_print_prep|setEnableAlterations|setEnableBatchPrintPrep/);
 });
 
-t('לוגיקה: קטגוריות הסטטוס כמו בדף הקודם; איחור החזרה = הכלל של הלו״ז (סף מההגדרות + ימי עסקים)', () => {
-  assert.equal(L.orderCategory({ items: [] }), 'empty');
-  assert.equal(L.orderCategory({ items: [{ isTaken: true, isReturned: true }] }), 'returned');
-  assert.equal(L.orderCategory({ items: [{ isTaken: true }, {}] }), 'rented');
-  assert.equal(L.orderCategory({ items: [{}], totalAmount: 100, totalPaid: 100 }), 'completed');
-  assert.equal(L.orderCategory({ items: [{}], totalAmount: 0, totalPaid: 0 }), 'other');
+t('לוגיקה: איחור החזרה = הכלל של הלו״ז (סף מההגדרות + ימי עסקים)', () => {
   // E12 = כלל הלו״ז: late_return_threshold_days (ברירת מחדל 7) ממועד ההחזרה הצפוי (יום העבודה הראשון אחרי האירוע,
   // או toDate/returnDate מגולגל), רק כשיש פריט שנלקח ולא הוחזר (דגל או תאריך)
   const ev = (y, m, d) => new Date(Date.UTC(y, m - 1, d - 1, 21)).toISOString(); // חצות ישראל

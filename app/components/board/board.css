@@ -117,9 +117,6 @@
 .gm-ds.gm-bd .lz-dh em{font-style:normal;font-size:12px;font-weight:400;color:var(--ink3)}
 .gm-ds.gm-bd .bd-dhx{display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto}
 .gm-ds.gm-bd .lz-dh .lz-al{position:static}
-/* E14/JDG-3: אייקון "תצוגה מורחבת" - לחצן עגול קטן של הפלטה */
-.gm-ds.gm-bd .ibtn.bd-ex{width:26px;height:26px;padding:0;border-radius:50%}
-.gm-ds.gm-bd .ibtn.bd-ex .ic{width:14px;height:14px}
 /* E10: פרשה וחגים - טקסט פשוט בלי תגית */
 .gm-ds.gm-bd .bd-notes{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.35;color:var(--ink2)}
 /* S02: מונים לפי שלב - אותו גוון לכולם; רק מונה של שלב עם התראה בגוון ההתראה */
@@ -128,15 +125,6 @@
 .gm-ds.gm-bd .lz-pr.al{--pc:var(--bd-pc-al)}
 .gm-ds.gm-bd .lz-pr .ic{width:16px;height:16px;flex:none;color:var(--navy-900)}
 .gm-ds.gm-bd .lz-pr b{font-weight:700;font-size:15px}
-/* הזמנות בתא (עד 2; JDG-3) - שורה קצרה עם פס צבע לפי הסטטוס */
-.gm-ds.gm-bd .bd-cos{display:flex;flex-direction:column;gap:4px;margin-top:auto}
-.gm-ds.gm-bd .bd-co{display:flex;align-items:center;gap:6px;width:100%;min-width:0;padding:3px 8px;border:0;border-inline-start:4px solid var(--bd-cat,var(--sky-300));border-radius:8px;background:rgba(255,255,255,.85);box-shadow:inset 0 0 0 1px var(--sky-200);color:var(--navy-900);font:inherit;font-size:12.5px;font-weight:500;text-align:start;cursor:pointer;transition:background-color 120ms,box-shadow 120ms}
-.gm-ds.gm-bd .bd-co:hover,.gm-ds.gm-bd .bd-co:focus-visible{background:#fff;box-shadow:inset 0 0 0 1.5px var(--gold);outline:0}
-.gm-ds.gm-bd .bd-co .bd-con{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-.gm-ds.gm-bd .bd-co .bd-coi{flex:none;display:inline-flex;align-items:center;gap:3px;color:var(--ink3);font-size:11.5px}
-.gm-ds.gm-bd .bd-co.bd-late{box-shadow:inset 0 0 0 1.5px var(--red)}
-.gm-ds.gm-bd .bd-co.bd-late .bd-con,.gm-ds.gm-bd .bd-co.bd-late .bd-coi{color:var(--red)}
-.gm-ds.gm-bd .bd-co .ic{width:12px;height:12px}
 /* במסך צר רק הגופן קטן (בעיצוב גם ריפוד 2px 5px, אבל כלל ה-@media שם מוגדר לפני הכלל הרגיל ולכן מפסיד - הערכים המחושבים בעיצוב: 3px 8px) */
 @media (max-width:1100px){.gm-ds.gm-bd .lz-pr{font-size:11.5px}}
 
@@ -148,7 +136,7 @@
 .gm-ds.gm-bd .bd-mp .hc-d.bd-mpd small{font-size:12px;font-weight:500;color:var(--ink3)}
 .gm-ds.gm-bd .bd-mp .hc-d.bd-mpd.on small{color:var(--gold-300)}
 
-/* ===== תצוגת רשימה (S03; S11: בלי שורות סיכום - כותרת יום + שורות ההזמנה) ===== */
+/* ===== תצוגת רשימה (S03; BD-O5: כותרת יום + מוני השלבים בלבד, בלי שורות הזמנה) ===== */
 .gm-ds.gm-bd .bd-lcard{margin-top:8px;padding:0;overflow:hidden}
 .gm-ds.gm-bd .bd-lcard>.hc-h{margin:0;border-radius:0}
 .gm-ds.gm-bd .bd-lcard .hres{padding:14px}
@@ -161,10 +149,10 @@
 .gm-ds.gm-bd .hday.bd-hday .lz-al{margin-inline-start:auto}
 .gm-ds.gm-bd .bd-lday.lz-today .hday.bd-hday{box-shadow:inset 0 0 0 2px var(--gold)}
 .gm-ds.gm-bd .hday.bd-hday.bd-latecell{box-shadow:inset 0 0 0 2px var(--red)}
+.gm-ds.gm-bd .bd-lc{display:flex;flex-wrap:wrap;gap:6px;padding-inline:4px}
+.gm-ds.gm-bd .bd-lc .lz-pr{padding:4px 12px}
 
-/* ===== שורת הזמנה (E13): שורות הלו״ז + פס צבע לפי הסטטוס ===== */
-.gm-ds.gm-bd .bd-or .li{border-inline-start:4px solid var(--bd-cat,var(--sky-300))}
-.gm-ds.gm-bd .bd-or .ic-b{background:color-mix(in srgb,var(--bd-cat,var(--sky-300)) 26%,#fff)}
+/* ===== שורת הזמנה בחלון היום (E13): שורות הלו״ז; בלי תגית סטטוס ובלי פס צבע לפי סטטוס (BD-O7) ===== */
 .gm-ds.gm-bd .bd-or .t b bdi{font-weight:500;color:var(--ink3)}
 .gm-ds.gm-bd .bd-or.bd-late .li{box-shadow:inset 0 0 0 2px var(--red)}
 .gm-ds.gm-bd .bd-or.bd-late .t b,.gm-ds.gm-bd .bd-or.bd-late .t b bdi{color:var(--red)}
@@ -300,7 +288,7 @@
 .gm-ds.gm-bd .card.bd-loading{margin-top:8px}
 .gm-ds.gm-bd .card.bd-loading .empty{padding:56px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
 .gm-ds.gm-bd .card.bd-loading .mspin{border-color:rgba(15,44,82,.25);border-top-color:var(--navy)}
-@media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .hc-d.lz-day,.gm-ds.gm-bd .bd-co{transition:none}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .hc-d.lz-day{transition:none}}
 
 /* ===== טלפון: כותרות החלונות בשתי שורות (הגריד עצמו נשאר בערכי העיצוב; ברירת המחדל בנייד היא רשימה, S03) ===== */
 @media (max-width:640px){

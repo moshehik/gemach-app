@@ -4,14 +4,15 @@
 // scratch/board-build/answers-board.json). רכיבי פלטה בלבד (design-system/COMPONENTS.md) + רכיבי הלו״ז (schedule.css), בתוך
 // .gm-ds.gm-lz.gm-bd (השורש נושא גם gm-lz כי העיצוב של הלוח הוא המשך של דף הלו״ז: lz-app, lz-bar, הציר, שורות lz-r).
 //
-// מה נשאר מהדף הקודם (אותם חוזים): טעינת החודש העברי ±14 יום מ-GET /api/orders (buildBoardMonthParams - אותו מפתח מטמון
-// כמו ה-prefetch), מטמון SWR (pageCache 'board'), ביטול הבקשה הקודמת במעבר חודש, חיפוש רגיל (search לשרת, Enter, ניקוי),
-// ניווט חודשים, החודש העברי בכותרת, אות היום, סימון היום, פרשה וחגים, איחור החזרה, חלון "הזמנות ליום" עם סינון, כרטיס
-// הזמנה, חלונית פרטים, תפריט פעולות (כרטיס הזמנה / לקוח / השכרה), חלון השכרה והחזרה מלא (onUpdate = טעינה מחדש),
-// ההגדרות enable_alterations / hide_custom_spacing / enable_batch_print_prep, מצב "טוען נתונים...".
+// מה שנשאר מהדף הקודם (אותם חוזים): טעינת החודש העברי ±14 יום מ-GET /api/orders (buildBoardMonthParams - אותו מפתח מטמון
+// כמו ה-prefetch; ההזמנות משמשות כעת רק לסימן "איחור החזרה"), מטמון SWR (pageCache 'board'), ביטול הבקשה הקודמת במעבר חודש,
+// חיפוש רגיל (search לשרת, Enter, ניקוי), ניווט חודשים, החודש העברי בכותרת, אות היום, סימון היום, פרשה וחגים, איחור החזרה,
+// חלון "הזמנות ליום" (רק כשאין הרשאה ללו״ז - F12) עם סינון, כרטיס הזמנה, חלונית פרטים, תפריט פעולות (כרטיס הזמנה / לקוח /
+// השכרה), חלון השכרה והחזרה מלא (onUpdate = טעינה מחדש), ההגדרות hide_custom_spacing / late_return_*, מצב "טוען נתונים...".
 // מה הוסר (החלטות הבעלים): אשף הדפסת הכנה (E07), חיפוש חכם (E02), סטטיסטיקה (E03), חיפוש גלובלי (E04), חיפוש מתקדם
-// (E05), מקרא סטטוס (E06), מונה/הדפסה בתא (E09; אייקון "מורחב" נשאר מעל 2 הזמנות - JDG-3), תאריך לועזי (E11), תווית
-// "תפעול" (S12), "ללו״ז של היום" (S05), ימי חודש סמוך (S08), שורות סיכום ברשימה (S11).
+// (E05), מקרא סטטוס (E06), מונה/הדפסה בתא (E09), תאריך לועזי (E11), תווית "תפעול" (S12), "ללו״ז של היום" (S05), ימי חודש
+// סמוך (S08), שורות סיכום ברשימה (S11). ובתשובות ההבהרה (BD-O4 / BD-O5 / BD-O6 / BD-O7, "רק הסמנים והמספרים, בלי הפירוט
+// של האתר הישן"): בתא וברשימה רק מוני השלבים (בלי שורות הזמנה ובלי אייקון "מורחב"), בחלון היום בלי הדפסה ובלי סטטוס.
 // מה נוסף: "החודש הנוכחי" בגובה מתג התצוגה (S04), מתג לוח / רשימה + רשימה אוטומטית בנייד (S03), מסנן 8 השלבים בשורת
 // החיפוש (S01), בורר 13 חודשים (S07, E08), חצי המקלדת (S09), לחיצה על יום = הלו״ז היומי (S06), מוני שלבים בכל תא באותו
 // גוון (S02) וסימן התראה (S10) - הנתונים מ-GET /api/board/stages (אותו חישוב כמו /schedule, lib/schedule/range.js).
@@ -59,9 +60,7 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [enableAlterations, setEnableAlterations] = useState(true);
   const [hideCustomSpacing, setHideCustomSpacing] = useState(false);
-  const [enableBatchPrintPrep, setEnableBatchPrintPrep] = useState(false);
   // כלל איחור ההחזרה של הארגון - כמו הלו״ז וחלון ההשכרה (late_return_threshold_days, non_working_days_extra)
   const [lateCfg, setLateCfg] = useState({ threshold: 7, nonWorkingDays: null });
   const [view, setView] = useState('grid');
@@ -82,14 +81,13 @@ export default function BoardPage() {
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  // ההגדרות לפי ארגון (E20) - אותן שלוש כמו בדף הקודם
+  // ההגדרות לפי ארגון (E20) - hide_custom_spacing (חלונית הפרטים) וכלל איחור ההחזרה; enable_alterations ו-enable_batch_print_prep
+  // כבר לא בשימוש בלוח (BD-O6 / BD-O7)
   useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then((data) => {
         const find = (k) => (Array.isArray(data) ? data.find((s) => s.key === k) : null);
-        if (find('enable_alterations')?.value === 'false') setEnableAlterations(false);
         if (find('hide_custom_spacing')?.value === 'true') setHideCustomSpacing(true);
-        if (find('enable_batch_print_prep')?.value === 'true') setEnableBatchPrintPrep(true);
         setLateCfg({ threshold: Number(find('late_return_threshold_days')?.value) || 7, nonWorkingDays: parseNonWorkingDaysSetting(find(NON_WORKING_DAYS_SETTING_KEY)?.value ?? null) });
       })
       .catch(() => {});
@@ -205,6 +203,7 @@ export default function BoardPage() {
 
   // S06: לחיצה על יום = הלו״ז היומי של אותו יום - רק כשהשרת אישר הרשאה ללו״ז (canOpenSchedule=true). לא ידוע (המונים עוד
   // לא נטענו / נכשלו) או בלי הרשאה = חלון "הזמנות ליום" (ממצא הסקירה 4: לא שולחים עובדת בלי הרשאה לדף "אין הרשאה").
+  // F12 (פתוח): בלוח אין עוד אייקון שפותח את החלון, ולכן זו הכניסה היחידה אליו (וממנו - לתפריט ההזמנה ולחלון ההשכרה).
   const openDay = useCallback((cell) => {
     if (!stagesData || stagesData.canOpenSchedule !== true) {
       setDayDlg({ cell, orders: ordersByDate[cell.key] || [] });
@@ -212,7 +211,6 @@ export default function BoardPage() {
     }
     router.push('/schedule?date=' + cell.key);
   }, [router, stagesData, ordersByDate]);
-  const expandDay = useCallback((cell) => setDayDlg({ cell, orders: ordersByDate[cell.key] || [] }), [ordersByDate]);
   const openMenu = useCallback((order, el) => { setHint(null); setMenu({ order, el }); }, []);
   const closeMenu = useCallback(() => setMenu(null), []);
   const showHint = useCallback((order, el, pinned) => {
@@ -231,13 +229,6 @@ export default function BoardPage() {
     return () => { document.removeEventListener('mousedown', down); window.removeEventListener('keydown', key, true); };
   }, [hint]);
 
-  // הדפסת פרוט ההזמנות ליום (רק בחלון היום, בארגון עם enable_batch_print_prep) - אותו נתיב כמו קודם, עם batch=1
-  const printDayOrders = useCallback((list) => {
-    if (!list || list.length === 0) return;
-    const ids = list.map((o) => o.orderId).join(',');
-    window.open(`/print/order?orderId=${ids}&type=order&batch=1`, '_blank');
-  }, []);
-
   const toggleStage = (k) => setStageSel((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
   const rentalUi = useMemo(() => ({
     alert: (m) => say(String(m || ''), /שגיאה|חובה|יש ל|אינם|לא /.test(String(m || '')) ? 'error' : 'ok'),
@@ -248,7 +239,7 @@ export default function BoardPage() {
   const head = <MonthHead date={selectedDate} today={today} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} onPick={(d) => setSelectedDate(d)} />;
   const common = {
     weeks, head, ordersByDate, stagesDays: stagesData ? stagesData.days : null, stages, selected: stageSel,
-    onOpenDay: openDay, onOrder: openMenu, enableAlterations,
+    onOpenDay: openDay,
   };
 
   return (
@@ -291,9 +282,9 @@ export default function BoardPage() {
                 <div className="empty" role="status"><span className="mspin" /><div className="bd-lt">טוען נתונים...</div></div>
               </div>
             ) : view === 'grid' ? (
-              <MonthGrid {...common} onExpand={expandDay} />
+              <MonthGrid {...common} />
             ) : (
-              <DayList {...common} onHint={showHint} />
+              <DayList {...common} />
             )}
           </div>
         </div>
@@ -301,12 +292,9 @@ export default function BoardPage() {
         {dayDlg ? (
           <BoardDayDialog
             day={dayDlg}
-            enableAlterations={enableAlterations}
-            enableBatchPrintPrep={enableBatchPrintPrep}
             onClose={() => { setDayDlg(null); setHint(null); }}
             onOrder={openMenu}
             onHint={showHint}
-            onPrint={printDayOrders}
           />
         ) : null}
 
@@ -317,7 +305,7 @@ export default function BoardPage() {
           onCustomerCard={(id) => { setMenu(null); router.push(`/customers/${id}`); }}
           onRental={(o) => { setMenu(null); setDayDlg(null); setHint(null); setRentalId(o.orderId); }}
         />
-        <InfoHint hint={hint} enableAlterations={enableAlterations} hideCustomSpacing={hideCustomSpacing} />
+        <InfoHint hint={hint} hideCustomSpacing={hideCustomSpacing} />
 
         {rentalId ? (
           <BoardRentalModal orderId={rentalId} onClose={() => { setRentalId(null); fetchStages({ fresh: true }); }} onUpdate={fetchOrdersForMonth} ui={rentalUi} />
