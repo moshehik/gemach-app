@@ -16,7 +16,7 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
-import { isCreditMethod, validateSplitPayment, splitPaymentNeedsApproval, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
+import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -1204,10 +1204,6 @@ export default function NewOrderPage() {
         setCreditError('');
         setShowCreditModal(true);
     } else {
-        if (splitPaymentNeedsApproval(settings, payment.method, pAmount)) {
-          const approved = await requestPaymentApproval();
-          if (!approved) return;
-        }
         setPaymentsList(prev => [...prev, { amount: pAmount, method: payment.method, notes: payment.notes }]);
         setPayment(prev => ({ ...prev, notes: '' }));
     }
@@ -1342,10 +1338,14 @@ export default function NewOrderPage() {
       }
       // 42 - מסך יעד אחרי יצירת הזמנה, מותנה ב-order_new_redirect_screen (ברירת מחדל
       // "order" = ההתנהגות הקודמת, כרטיס ההזמנה שזה עתה נוצרה).
-      router.push(resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
+      const redirectHref = resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
         orderId: data.orderId,
         customerId: data.customerId,
-      }));
+      });
+      // order_new_redirect_screen = "new_order" (נווה יעקב) מפנה ל-/orders/new - הנתיב הנוכחי. router.push לאותו נתיב
+      // משאיר את הטופס, ו-saving נשאר true ("שומר..." לנצח, והקופאית פותחת קישור חדש בכל פעם) - לכן טעינה מלאה.
+      if (redirectNeedsFullReload(redirectHref, window.location.pathname)) window.location.assign(redirectHref);
+      else router.push(redirectHref);
     } catch (error) {
       console.error(error);
       alert(`שגיאה בשמירת הזמנה: ${error.message}`);
