@@ -59,7 +59,12 @@ const clickAt = async (sel) => {
 const hover = async (sel) => { await p.$eval(sel, (el) => el.scrollIntoView({ block: 'center', behavior: 'instant' })); await sleep(100); const r = await p.$eval(sel, (el) => { const bb = el.getBoundingClientRect(); return { x: bb.left + bb.width / 2, y: bb.top + bb.height / 2 }; }); await p.mouse.move(r.x, r.y); await sleep(400); };
 const away = async () => { await p.mouse.move(2, 2); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await sleep(250); };
 async function fresh(scn, extra = '') {
-  await p.goto(D ? DEMO : `http://127.0.0.1:${PORT}/?scn=${scn || 'neve'}${extra}`, { waitUntil: 'load', timeout: 90000 }); // W5: הטעינה הקרה הראשונה של העיצוב (פונטים חיצוניים) איטית
+  // סבב 2: על המכונה (כשסשן אחר מריץ Chrome במקביל) הניווט ל-127.0.0.1 נכשל לפרקים ב-ERR_NETWORK_ACCESS_DENIED / ERR_ABORTED - חוזרים עד 6 פעמים
+  const url = D ? DEMO : `http://127.0.0.1:${PORT}/?scn=${scn || 'neve'}${extra}`;
+  for (let attempt = 0; ; attempt += 1) {
+    try { await p.goto(url, { waitUntil: 'load', timeout: 90000 }); break; } // W5: הטעינה הקרה הראשונה של העיצוב (פונטים חיצוניים) איטית
+    catch (e) { if (attempt >= 5 || !/ERR_NETWORK_ACCESS_DENIED|ERR_ABORTED|ERR_CONNECTION|ERR_NETWORK_CHANGED/.test(String(e.message))) throw e; await sleep(2500); }
+  }
   await sleep(1500);
   // בעיצוב: מסתירים את שכבת הסקירה ואת כל מה שצף מעל הדף (סרגל האתר, כפתור השאלות) כדי שריחוף ולחיצה יגיעו לדף עצמו
   // W5: על מכונה עמוסה שכבת הסקירה מאתחלת מאוחר ופותחת מחדש את סרגל ההדגמה אחרי ההסתרה (במסך צר הוא דוחף את הרייל מטה) - הפונקציה
