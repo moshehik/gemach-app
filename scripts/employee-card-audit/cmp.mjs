@@ -11,7 +11,7 @@ const F = ['bg', 'bi', 'bf', 'col', 'bd', 'bs', 'rad', 'op', 'ff', 'fs', 'pad', 
 // לא נבדק: סרגל ההדגמה. הבדלים מוכרים (KNOWN = [סלקטור, שדה|null]) - החלטות הבעלים והבדלי הדגמה בלבד, כל אחד מוסבר:
 const skip = (x) => /\.demo|qp/.test(x.sel);
 const KNOWN = [
-  [/^ROOT$/, /^(pad|h)$/], // 72px אוויר מתחת לסרגל העליון של האתר (כמו attendance.css / profile.css); בעיצוב הסרגל מחוץ ל-#app
+  [/^ROOT$/, /^(pad|h|mar)$/], // 72px אוויר מתחת לסרגל העליון של האתר (כמו attendance.css / profile.css); בעיצוב הסרגל מחוץ ל-#app
   [/^ROOT>div\.layout(>main\.main)?$/, /^h$/], // גובה הלשונית = אורך רשימת ההרשאות (EC-09: 7 קטגוריות מקופלות במקום 2 קבוצות פתוחות)
   [/#permCard|#permBody|\.pr-g|\.pr-cat|\.pr-groups|\.coll|div\.prow|div\.pr-/, null], // EC-09
   [/ROOT>form>section\.card\.dfields>div$/, /^h$/], // מכל ההרשאות (EC-09)
@@ -24,6 +24,11 @@ const KNOWN = [
   [/SCRIM>div\.dlg\.mailwin>div\.mfld>textarea\.inp$/, /^tx$/], // טקסט פנימי של textarea: בעיצוב נבנה מחדש עם כל הקלדה, ב-React הערך מסונכרן (בדיקת הרצה בלבד)
   [/^TOAST$/, /^op$/], // שלב אנימציית הכניסה של הטוסט (תלוי זמן)
   [/div\.field>div\.ec-warn|div\.field>div\.cb>button\.cb-t|div\.cb>button\.cb-t>span\.cb-v|div\.grid2>div\.field>input\.inp$/, null, /^31/], // EC-05: רשימת מחלקות שלא נטענה = שדה בורר מנוטרל + שורת אזהרה (בלי שדה מספר חלופי)
+  [/grid2>div\.field|div\.field>div\.inpw|div\.field>div\.dt\.inpw|div\.field>div\.inpw>input\.inp|div\.field>input\.inp|div\.field>(span|label)\.lbl|div\.field>button\.ec-dtb|ec-dtb>span\.v|div\.field>div\.(inpw\.money|ec-gr)/, /^w$/], // EC-12 (עדכון): מקסימום 2 שדות בשורה - השדות מגיעים לרוחב המרבי (340) במקום 295 של 3 העמודות
+  [/ec-sw1|ec-travel|trow>label\.pf-pl|trow>label\.sw/, null], // EC-01 (עדכון): מתג הנסיעות עם כותרת שדה בתוך רשת השכר, לא בשורת המתגים
+  [/ec-add(>div\.grid2)?$|section\.card\.dfields$|section\.panel$/, /^h$/, /^1[0-7]/], // EC-12 (עדכון): 2 עמודות בטופס "הוסף משמרת" - גבוה יותר משלוש עמודות
+  [/^SCRIM2/, /^(op|w|h|bs)$/], // אנימציית הכניסה / מיקוד של חלון האימות (תלוי זמן)
+  [/li\.cb-o$/, /^bg$/], // אנימציית כניסת אפשרויות הרשימה (--i, תלוית זמן)
   [/ec-hint/, /^h$/], // טקסט העזר של הסיסמה בכרטיס החדש מפורט יותר: כולל שינוי סיסמה בכרטיס של עובד אחר (תיקון EMP-BUGS)
   [/ec-notes|form>section\.card\.dfields>div\.field\.wide|section\.card\.dfields>div\.field\.wide/, null], // EC-08: ההערות בכרטיס המאוחד
   [/form>section\.card\.dfields$/, /^h$/, /^(0\d|1[89]|2\d|3\d)/], // גובה כרטיסים בלשונית הפרטים: המאוחד (EC-08) וההרשאות (EC-09)

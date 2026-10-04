@@ -54,7 +54,7 @@
 .gm-ds.gm-ec .app.ec .dfields .grid2{grid-template-columns:repeat(2,minmax(0,1fr));justify-items:start;gap:22px 24px}
 @media (max-width:640px){.gm-ds.gm-ec .app.ec .dfields .grid2{grid-template-columns:minmax(0,1fr)}}
 /* EC-01: כותרת שדה (.lbl) לבורר הנסיעות, כמו "אופן תשלום" */
-.gm-ds.gm-ec .ec-travel .trow{align-items:center;min-height:44px}
+.gm-ds.gm-ec .ec-travel .trow{align-items:center;min-height:44px;font-size:16px;font-weight:400;color:var(--navy-900)}
 .gm-ds.gm-ec .app.ec .dfields .field{max-width:340px;width:100%}
 .gm-ds.gm-ec .app.ec .dfields .field.wide{grid-column:1/-1;max-width:none}
 .gm-ds.gm-ec .app.ec .card{overflow:visible}
