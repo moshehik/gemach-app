@@ -164,6 +164,23 @@ const floatRun = async (label, followUps) => {
 await floatRun('36-ai-float-short', 0);
 await floatRun('37-ai-float-long', 4);
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-float.json`, JSON.stringify(float, null, 1));
+
+/* 38: ה-X (ניקוי) בשורת שאלת ההמשך של החיפוש החכם (4.10.2026): ריק = אין X (כמו בשאר שורות החיפוש); הקלדה = X; לחיצה על X = השדה ריק וה-X נעלם. */
+{
+  await fresh();
+  await clickText(p, 'לחיפוש חכם'); await type('הזמנות של כהן'); await p.keyboard.press('Enter'); await sleep(2500);
+  const X = '.fu .scan .ibtn[aria-label="ניקוי הטקסט"]';
+  const st = () => p.evaluate((X) => { const b = document.querySelector(X); const i = document.querySelector('#fuQ'); if (!b || !i) return { err: 'missing' }; const r = b.getBoundingClientRect();
+    return { value: i.value, shown: getComputedStyle(b).display !== 'none' && r.width > 0 && r.height > 0, hiddenAttr: b.hidden }; }, X);
+  const fu = {};
+  fu.empty = await st();
+  await p.click('#fuQ'); await p.type('#fuQ', 'עוד'); fu.typed = await st();
+  await p.click(X); await sleep(150); fu.afterClear = await st();
+  fu.focusAfterClear = await p.evaluate(() => document.activeElement && document.activeElement.id);
+  await p.type('#fuQ', 'א'); await p.keyboard.press('Backspace'); fu.typedThenErased = await st();
+  fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-fuclear.json`, JSON.stringify(fu, null, 1));
+  console.log('fuclear', which, JSON.stringify(fu));
+}
 if (!onlyFloat) {
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}.json`, JSON.stringify(results, null, 1));
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-layout.json`, JSON.stringify(layout, null, 1));

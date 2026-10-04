@@ -713,5 +713,11 @@ t('HomeChat: ההיגיון כמו בדמו - 8px מתחת לסרגל, צר ב-3
   assert.match(CHAT_JS, /querySelector\('\.snav'\)/);
 });
 
+t('חיפוש חכם: ה-X בשורת שאלת ההמשך מוצג רק כשיש טקסט (.ibtn[hidden] מוסתר; hidden={!fu}; פוקוס חוזר לשדה)', () => {
+  assert.ok(parseCss(HOME_CSS).some((r) => r.sel.trim() === '.gm-ds.gm-home .scan .ibtn[hidden]' && /display:\s*none\s*!important/.test(r.body)), 'כלל .scan .ibtn[hidden] ב-home.css (הפלטה נותנת ל-.ibtn display:grid ולכן hidden לא עבד)');
+  assert.match(CHAT_JS, /aria-label="ניקוי הטקסט"[^>]*hidden=\{!fu\}/);
+  assert.match(CHAT_JS, /setFu\(''\); if \(fuRef\.current\) fuRef\.current\.focus\(\)/);
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

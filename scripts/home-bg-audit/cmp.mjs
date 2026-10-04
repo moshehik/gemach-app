@@ -50,4 +50,13 @@ try {
     console.log(`== ${st} (${lines.length})`); lines.forEach((l) => console.log(l.slice(0, 380)));
   }
 } catch (e) { console.log('(no float data)', e.message); }
+// 38: ה-X בשורת שאלת ההמשך (stages.mjs, FLOAT): ריק = אין X; הקלדה = X; לחיצה = ריק + נעלם + פוקוס חוזר לשדה. הציפייה (מחייבת, לא רק השוואה לדמו - הדמו עצמו מציג X בשדה ריק):
+try {
+  const r = JSON.parse(fs.readFileSync(path.join(OUT, `real-${w}-${th}-fuclear.json`), 'utf8'));
+  const want = { empty: false, typed: true, afterClear: false, typedThenErased: false };
+  const bad = Object.entries(want).filter(([k, v]) => r[k].shown !== v || (k !== 'typed' && r[k].value !== '') || (k === 'typed' && r[k].value === ''));
+  if (r.focusAfterClear !== 'fuQ') bad.push(['focusAfterClear', r.focusAfterClear]);
+  total += bad.length;
+  console.log(`== 38-followup-clear-x (${bad.length})`); bad.forEach(([k, v]) => console.log('  FAIL', k, JSON.stringify(v)));
+} catch (e) { console.log('(no fuclear data)', e.message); }
 console.log('TOTAL', total);
