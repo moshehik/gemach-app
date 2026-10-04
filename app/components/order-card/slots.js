@@ -2,16 +2,19 @@
 // בלי לגעת בקבצים אחרים של W1. כל רכיב מקבל {oc, ui} (חלקי דף) או {...props, close} (חלונות, נפתחים ב-ui.openDialog).
 // החוזה המלא: scratch/order-card-build/W1-NOTES.md.
 import * as D from './OcDefaultParts';
-import OcScanBar from './parts/OcScanBar';
+import OcScanBarWithSequence from './parts/OcScanBarWithSequence';
+import OcDressLocationBanner from './parts/OcDressLocationBanner';
+import OcDeliveryJoinPicker from './parts/OcDeliveryJoinPicker';
 
 export const SLOTS = {
   Rail: D.DefaultRail, //                     W5 → parts/OcRail.js            (<aside class="rail">)
   DraftBanner: D.DefaultDraftBanner, //       W5 → parts/OcDraftBanner.js     (R11, מעל הלשוניות)
   MoneyToast: D.NoPart, //                    W5 → parts/OcMoneyToast.js      (A23, מאזין ל-oc.totals.pendingNet)
-  ScanBar: OcScanBar, //                      W3: parts/OcScanBar.js         (R42, בתוך .topbar; רצף ברקודים של W2b מחליף אותו בתוכו)
+  ScanBar: OcScanBarWithSequence, //          W3 parts/OcScanBar.js + W2b רצף ברקודים (R42/R49, בתוך .topbar; SequencePanel מחליף את השדה כש-enable_barcode_sequence_mode)
   Exports: D.PlaceholderExports, //           W7 → parts/OcExports.js         (A1/A2: xlbtn.xlg + xlbtn.xld בתוך .tools)
   PrintMenu: D.PlaceholderPrintMenu, //       W7 → parts/OcPrintMenu.js       (R6/A3/A4/R7: xlbtn.xlp + .menu בתוך .tools)
-  TopBanners: D.NoPart, //                    W2b → parts/OcDressLocationBanner.js (מעל הלשוניות)
+  TopBanners: OcDressLocationBanner, //       W2b parts/OcDressLocationBanner.js (R49, מעל הלשוניות; enable_dress_location_alert)
+  DeliveryJoinPicker: OcDeliveryJoinPicker, // W2b parts/OcDeliveryJoinPicker.js (R49, אחרי כרטיס "יעד" בלשונית המשלוח; enable_delivery_join + DDL-1)
   ConflictDialog: D.DefaultConflictDialog, // W5 → dialogs/OcConflictDialog.js (R12) close('overwrite'|'reload'|null)
   StockDialog: D.DefaultStockDialog, //       W5 → dialogs/OcStockDialog.js    (R48) close(any)
   SummaryDialog: D.DefaultSummaryDialog, //   W5 → dialogs/OcSummaryDialog.js  (D1/R14) close(true|false)

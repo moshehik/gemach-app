@@ -522,6 +522,8 @@ t('oc-details.css: בלי !important ובלי רקע לבן קשיח / var(--gm-
 t('oc-details.css: אין דריסת @media לפני הכלל הלא-מותנה, ואין "-*/" בהערות', () => {
   assert.deepEqual(mediaBeforeBase(ocDetailsRules, 'oc-details.css'), []);
   assert.ok(!/[a-z0-9]-\*\//i.test(OC_DETAILS_CSS), 'הערה עם "-*/"');
+});
+
 /* ---------- 10. כרטיס ההזמנה — לשונית פריטים (W3, app/components/order-card/css/oc-items.css) ---------- */
 // נטען רק בתוך הכרטיס החדש (.gm-ds.gm-oc). רוב העיצוב מהפלטה; כאן: לחצני הסרגל בסגנון "מחוקים" (A10), שורת הברקוד (R25), מובייל.
 const OC_ITEMS_CSS = read('../app/components/order-card/css/oc-items.css');

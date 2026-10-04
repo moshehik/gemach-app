@@ -58,3 +58,30 @@
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-row{cursor:pointer}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-row:focus-visible{outline:2px solid var(--gm-gold);outline-offset:-2px}
 .gm-ds.gm-oc #dlg.oc-cs .oc-cs-empty{cursor:default}
+
+/* ===== חלקי W2b (R49, פורט נווה יעקב): בורר "הצטרפות למשלוח", באנר מיקום שמלה, פאנל רצף ברקודים ===== */
+/* הבורר: .card.dfields (כרטיסי המשלוח); גוף = seg pill (כמו "כיוון") + רשימות בחירה .chg > .c (כמו רשימת הלקוחות בהחלפת לקוח) */
+.gm-ds.gm-oc .card.oc-join .oc-join-pane{margin-top:16px}
+.gm-ds.gm-oc .card.oc-join .oc-join-hint{margin:8px 0 0;font-size:14px}
+.gm-ds.gm-oc .card.oc-join .oc-join-pane .lbl{margin-bottom:8px}
+.gm-ds.gm-oc .card.oc-join .oc-join-list{max-height:260px;overflow-y:auto}
+.gm-ds.gm-oc .card.oc-join .oc-join-row{cursor:pointer}
+.gm-ds.gm-oc .card.oc-join .oc-join-row:focus-visible{outline:2px solid var(--gm-gold);outline-offset:-2px}
+.gm-ds.gm-oc .card.oc-join .amsg.oc-fmsg{margin:8px 0 0;font-size:14px;min-height:0;align-items:flex-start}
+/* באנר מיקום שמלה: שורת דגם + רשימת היחידות שאינן בבית (בלי תבליטי דפדפן; הטקסט הלבן של .nb) */
+.gm-ds.gm-oc .nb.nb-warning .oc-dl-model > span{display:block;line-height:1.5}
+.gm-ds.gm-oc .nb.nb-warning .oc-dl-away{margin:4px 0 0;padding-inline-start:18px;font-weight:400;list-style:disc}
+/* רצף ברקודים: השדה ממלא את #sbar; היומן והלחצנים בלוח צף מתחתיו (לא דוחף את הכותרת) */
+.gm-ds.gm-oc #sbar .oc-seq{position:relative;width:100%;height:100%}
+.gm-ds.gm-oc #sbar .oc-seq > .inpw{height:100%}
+.gm-ds.gm-oc #sbar .oc-seq.oc-seq-ok > .inpw > input.inp{border-color:var(--gm-green)}
+.gm-ds.gm-oc #sbar .oc-seq.oc-seq-error > .inpw > input.inp{border-color:var(--gm-red)}
+.gm-ds.gm-oc #sbar .oc-seq-pop{position:absolute;top:calc(100% + 8px);inset-inline:0;min-width:min(420px,92vw);z-index:30;padding:12px;display:flex;flex-direction:column;gap:8px}
+.gm-ds.gm-oc #sbar .oc-seq-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+.gm-ds.gm-oc #sbar .oc-seq-bar .oc-seq-sp{flex:1}
+.gm-ds.gm-oc #sbar .oc-seq-feed,.gm-ds.gm-oc #sbar .oc-seq-sum ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.gm-ds.gm-oc #sbar .oc-seq-feed li{color:var(--gm-navy-900)}
+.gm-ds.gm-oc #sbar .oc-seq-feed li.oc-seq-error{color:var(--gm-red)}
+.gm-ds.gm-oc #sbar .oc-seq-feed li.oc-seq-undone{text-decoration:line-through}
+.gm-ds.gm-oc #sbar .oc-seq-sum{display:flex;flex-direction:column;gap:6px;font-size:13px;border-top:1px solid var(--gm-line);padding-top:8px}
+@media (max-width:1099px){.gm-ds.gm-oc #sbar .oc-seq{height:46px}.gm-ds.gm-oc #sbar .oc-seq-pop{inset-inline:0;min-width:0}}
