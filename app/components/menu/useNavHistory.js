@@ -114,7 +114,8 @@ export default function useNavHistory(tree, queryString = '') {
     if (act.itemId || act.tabId) {
       for (const tab of (tree && tree.tabs) || []) {
         if (act.itemId) {
-          const it = (tab.items || []).find((x) => x.id === act.itemId);
+          // tab.pool: כלי "ניהול" שאינם בפאנל המקוצר (findActive מחזיר גם אותם) — אותה תווית כמו בחיפוש בתפריט
+          const it = (tab.items || []).find((x) => x.id === act.itemId) || (tab.pool || []).find((x) => x.id === act.itemId);
           if (it) { label = it.label; icon = it.icon; break; }
         } else if (tab.id === act.tabId) { label = tab.label; icon = tab.icon; break; }
       }

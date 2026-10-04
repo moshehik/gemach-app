@@ -47,10 +47,11 @@
 | **לוז** + היום/מחר (P01) | אין | — | **מוסתר** (לשונית שלמה) | לא בשלב זה | — |
 | **לוח חודשי** (לשונית) | `navConfig.js:56` | `/board` | `legacy:/board` = `showBoardTab` (`page:board`, `layout.js:219`) | — | — |
 | **ניהול** (לשונית) | `navConfig.js:65` "לוח ניהול" | `/admin` (רק כש-`head`; אחרת `href:null` + `opensMenuOnly`) | מוצגת כשיש **לפחות תת-פריט אחד מותר** (D10, J02) | — | מנהלת סניף עם הרשאת דגמים רואה "ניהול" עם "דגמים" בלבד; לחיצה על הלשונית פותחת תפריט ולא מנווטת |
+| ניהול › (פאנל מקוצר, 4.10.2026) | בקשת הבעלים: "לקצר ל-4-5 פריטים" | — | **עודכן 4.10.2026:** הפאנל = עד 3 "אחרונים" (ברירת מחדל: עובדים, הרשאות, ניהול מחירון) + מפריד + "הגדרות מערכת" + "כל כלי הניהול" (`/admin`, אחרונה) — לכל היותר 5 שורות. השורות שלמטה (דגמים, כספים, זיכויים, משלוחים, ניהול אתר, סטטיסטיקה, מידע) **לא קבועות יותר בפאנל**: הן במאגר הלשונית (`tab.pool`, אותם שערים) — מופיעות כ"אחרון" / ברירת מחדל, בחיפוש בתפריט ובמסך `/admin`. ר' `docs/admin-menu-short-2026-10-04.md` (R13) | — | — |
 | ניהול › דגמים | `navConfig.js:45` (היום תחת "מלאי") | `/dashboard/dresses` | `legacy:/dashboard/dresses` = `showDressesTab` (`page:dresses_catalog`, `layout.js:212`) | — | — |
 | ניהול › עובדים | `navConfig.js:55` "עובדים ונוכחות" | `/employees` | `legacy:/employees` = `showEmployeesTab` (= `head`) | — | — |
 | ניהול › כספים | כרטיס ב-`/admin` + `app/dashboard/page.js:18` (`checkPageAccess(HEAD_MANAGEMENT_ROLES)`) | `/dashboard` | `head` | — | — |
-| ניהול › הגדרות | `app/admin/settings` (layout `/admin`: `app/admin/layout.js:9`) | `/admin/settings` | `head` | — | — |
+| ניהול › הגדרות מערכת (שורה קבועה) | `app/admin/settings` (layout `/admin`: `app/admin/layout.js:9`) | `/admin/settings` | `head` | — | — |
 | ניהול › סטטיסטיקה | `app/admin/statistics` | `/admin/statistics` | `head` | — | — |
 | ניהול › מידע / היסטוריה | `app/admin/data-history` | `/admin/data-history` | `head` | — | — |
 | **הזמנה** (לשונית) | `navConfig.js:32` | `/orders/new` (כש-`showOrdersNew`; אחרת `href:null`) | מוצגת כשיש תת-פריט מותר | — | — |

@@ -32,6 +32,8 @@
 .gm-ds.gm-menu .sn-panel .sn-st{padding:8px 12px 2px}
 .gm-ds.gm-menu .sn-link .sn-k,.gm-ds.gm-menu .sn-k{margin-inline-start:auto;font-size:12px;color:var(--gm-ink3);font-weight:400}
 .gm-ds.gm-menu .sn-panel .sn-link,.gm-ds.gm-menu .sn-panel .sn-link .sn-k{white-space:nowrap}
+.gm-ds.gm-menu .sn-k.sn-recent{display:inline-flex;align-items:center}
+.gm-ds.gm-menu .sn-k.sn-recent .ic{width:14px;height:14px}
 .gm-ds.gm-menu .sn-search .sn-link,.gm-ds.gm-menu .sn-search .sn-link .sn-k{white-space:normal}
 .gm-ds.gm-menu .sn-search .sn-link{min-width:0}
 .gm-ds.gm-menu .sn-link:disabled{opacity:.55;cursor:default}
