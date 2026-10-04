@@ -127,6 +127,10 @@ await t('נתיב הסיסמה: סיסמה מגובבת (hashSecret), אימות
   assert.match(routeSrc, /verifySecret\(managerPassword/);
   assert.doesNotMatch(routeSrc, /console\.(log|error)\([^)]*(newPassword|oldPassword|managerPassword)/);
 });
+await t('נתיב הסיסמה: ערכי סיסמה שאינם מחרוזת נדחים (400) לפני בדיקת האורך', () => {
+  const i = routeSrc.indexOf("typeof v !== 'string'");
+  assert.ok(i > 0 && i < routeSrc.indexOf('newPassword.length < 4'));
+});
 await t('העמוד: אין window.alert / alert ישירים, ואין fetch חשוף לנתיבי העובד', () => {
   assert.doesNotMatch(pageSrc, /(^|[^.\w])alert\(/m);
   assert.doesNotMatch(pageSrc, /window\.alert\(/);

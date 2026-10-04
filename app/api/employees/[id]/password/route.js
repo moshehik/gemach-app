@@ -12,9 +12,11 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 //  - manager: head management / programmer (HEAD_MANAGEMENT_ROLES) changes ANOTHER employee's
 //    password from that employee's card, provided the target is not more senior than the actor
 //    (canManageRoles). The target's old password is not required (a manager doesn't know it) - the
-//    manager instead re-proves their OWN password (`managerPassword`), so a hijacked/unattended
-//    session can't silently take over accounts. Before 2026-10-04 only the self mode existed, so the
-//    button on someone else's card always failed with 403.
+//    manager instead re-proves their OWN password (`managerPassword`) as an extra confirmation on this
+//    endpoint. (This does not make head management's account-takeover surface smaller overall:
+//    PUT /api/employees/[id] still accepts body.password from head management without re-auth.)
+//    Before 2026-10-04 only the self mode existed, so the button on someone else's card always failed
+//    with 403.
 // Either way the new password is bcrypt-hashed and the trusted-device PIN hash is re-derived from its
 // last 4 characters; plaintext is never stored or logged. This is deliberately different from the
 // reset-password endpoint (emails a temp password) and set-password (needs a manager code prompt).
@@ -30,6 +32,12 @@ export async function POST(request, { params }) {
     }
 
     const { oldPassword, newPassword, managerPassword } = await request.json();
+    // Non-string values (numbers, objects, arrays) would break .length / bcrypt - reject up front.
+    for (const v of [oldPassword, newPassword, managerPassword]) {
+      if (v !== undefined && v !== null && typeof v !== 'string') {
+        return NextResponse.json({ success: false, message: 'ערך סיסמה לא תקין' }, { status: 400 });
+      }
+    }
     if (!newPassword) {
       return NextResponse.json({ success: false, message: 'יש להזין סיסמה חדשה' }, { status: 400 });
     }
