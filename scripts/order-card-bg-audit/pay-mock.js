@@ -16,6 +16,8 @@ export function payScenarios({ ITEMS, OBL, PAY, ORG1, ORG2 }) {
     paybank: { settings: withExtra, obligations: dated, refunds: [{ ...refund, bankName: '', bankBranch: '', bankAccount: '', bankAccountName: '' }] },
     // חוב קיים 230 ₪ (תשלום אחד) → "תשלום ₪230" → D3 עם 4 שיטות (נדרים + תשלום נוסף)
     paydebt: { settings: withExtra, items: recentItems, obligations: dated, payments: [PAY[0]], refunds: [refund] },
+    // D6: הגמ"ח הראשי עם חוב (אותו חוב כמו paydebt) - חלון התשלום מציג רק אשראי (ההגדרה allow_additional_payment_on_order לא מוגדרת)
+    paymain: { settings: ORG1, order: { isDelivery: false, deliveryDirection: null, deliveryCity: null }, items: recentItems, obligations: dated.filter(o => o.id !== 'ob4'), payments: [{ ...PAY[0], amount: 100 }], refunds: [] },
     // שמירה שיוצרת חוב חדש (השרת מוסיף חיוב) → debtCreated → D3 "השינויים נשמרו! נוצר חיוב חדש" עם "השאר חוב"
     paysave: { draft: true, settings: withExtra, obligations: dated, putAddsCharge: true },
     // הגמ"ח הראשי, יתרת זכות בלי זיכוי ממתין → "זכה ₪N" → בקשת זיכוי (בלי אישור - כמו בישן)

@@ -123,7 +123,9 @@ export const CREDIT_METHOD = 'אשראי';
 export function payMethodsFor(settings, { manualOnly = false } = {}) {
   const out = [];
   if (!manualOnly && settings && settings.nedarimPlusEnabled) out.push(CREDIT_METHOD);
-  if (manualOnly || (settings && settings.allowAdditionalPayment)) out.push(...additionalPaymentMethodOptions(settings));
+  // D6 (בעלים 2026-10-05): "בגמ"ח הראשי יש רק אפשרות אחת - תוודא שזה מותאם להגדרות": גם "תשלום נוסף" (manualOnly) מציג מזומן/העברה/צ׳ק
+  // רק כש-allow_additional_payment_on_order דלוק - בלי ההגדרה אין אף אחד מהם, מכל נקודת כניסה
+  if (settings && settings.allowAdditionalPayment) out.push(...additionalPaymentMethodOptions(settings));
   return out;
 }
 
@@ -825,10 +827,11 @@ export default function usePaymentActions(oc, ui, D) {
 
   /** "תשלום נוסף" (הלחצן הנפרד של הגמ"ח הראשי, וגם מתוך הלחצן המאוחד של נווה). */
   const openManualPayment = useCallback(async () => {
+    if (!ocRef.current.settings.allowAdditionalPayment) { ui.toast('error', 'תשלום נוסף לא מאופשר', 'ההגדרה "אפשר תשלום נוסף בהזמנה קיימת" כבויה בגמ"ח הזה.'); return null; }
     if (ocRef.current.dirty) return openPay({ source: 'manual' }); // מציג את ההודעה "לשמור קודם" לפני בקשת אישור
     if (!(await manualMoneyGate())) return null;
     return openPay({ source: 'manual', approved: true });
-  }, [openPay, manualMoneyGate]);
+  }, [ui, openPay, manualMoneyGate]);
 
   /** "בקשת זיכוי ללקוח" (כנ"ל). */
   const openManualRefund = useCallback(async () => {

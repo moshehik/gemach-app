@@ -486,6 +486,24 @@ test('אופני "תשלום נוסף" מ-ALLOWED_PAYMENT_METHODS זהים לי�
   assert.deepEqual(A.payMethodsFor(S([['allow_additional_payment_on_order', 'true']]), { manualOnly: true }), ['מזומן', 'העברה בנקאית', "צ'ק"]);
 });
 
+// D6 (בעלים 2026-10-05): "בעיצוב 4 אפשרויות תשלום, בגמ"ח הראשי רק אחת - תוודא שזה מותאם להגדרות": כל אופן מגיע מההגדרות בלבד
+test('D6: אופני תשלום לפי הגדרות הגמ"ח - ראשי (אשראי בלבד) מול נווה (עם תשלום נוסף: אשראי + 3), בלי "4 תמיד", גם בנקודת הכניסה של "תשלום נוסף"', () => {
+  const S = (r) => L.parseSettings(r.map(([key, value]) => ({ key, value })));
+  const MAIN = S([['require_customer_id_number', 'true']]);
+  const NEVE = S([['consolidate_manual_payment_credit_ui', 'true'], ['allow_additional_payment_on_order', 'true']]);
+  assert.deepEqual(A.payMethodsFor(MAIN), ['אשראי'], 'ראשי: אפשרות אחת');
+  assert.deepEqual(A.payMethodsFor(MAIN, { manualOnly: true }), [], 'ראשי: "תשלום נוסף" לא מציג מזומן/העברה/צ׳ק בלי ההגדרה');
+  assert.equal(A.payMethodsFor(NEVE).length, 4, 'עם תשלום נוסף: אשראי + מזומן + העברה + צ׳ק');
+  assert.deepEqual(A.payMethodsFor(NEVE, { manualOnly: true }), ['מזומן', 'העברה בנקאית', "צ'ק"]);
+  assert.deepEqual(A.payMethodsFor(S([['allow_additional_payment_on_order', 'true'], ['ALLOWED_PAYMENT_METHODS', 'מזומן,אשראי']])), ['אשראי', 'מזומן'], 'ALLOWED_PAYMENT_METHODS נשמר');
+  assert.deepEqual(A.payMethodsFor(S([['allow_additional_payment_on_order', 'true'], ['nedarim_plus_enabled', 'false']])), ['מזומן', 'העברה בנקאית', "צ'ק"], 'בלי נדרים אין אשראי');
+  const hook = fs.readFileSync(path.join(PROJ, 'app/components/order-card/hooks/usePaymentActions.js'), 'utf8');
+  const man = hook.slice(hook.indexOf('const openManualPayment = useCallback'), hook.indexOf('const openManualRefund = useCallback'));
+  assert.ok(/!ocRef\.current\.settings\.allowAdditionalPayment\) \{ ui\.toast\('error'[^]*return null;/.test(man), 'נקודת הכניסה "תשלום נוסף" חסומה כשההגדרה כבויה');
+  const dlg = fs.readFileSync(path.join(PROJ, 'app/components/order-card/dialogs/OcPayDialog.js'), 'utf8');
+  assert.ok(/methods\.map\(/.test(dlg) && !/\[\s*'מזומן'/.test(dlg), 'חלון התשלום מרנדר רק את הרשימה שחושבה מההגדרות');
+});
+
 test('W4-MANUAL: אישור feature:manual_payment_credit_add לתשלום/זיכוי ידני בשני הגמ"חים; AMB-17: הלחצן המאוחד רק בנווה (מתג consolidate_manual_payment_credit_ui)', () => {
   const S = (r) => L.parseSettings(r.map(([key, value]) => ({ key, value })));
   assert.equal(A.manualMoneyNeedsApproval(S([['consolidate_manual_payment_credit_ui', 'true']])), true);

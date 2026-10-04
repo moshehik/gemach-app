@@ -49,6 +49,18 @@ export function payStages(h) {
       check('credit: גוף התשלום (אשראי, אותו סכום, notes = תשובת נדרים)', pb.orderId === 53375 && pb.amount === 230 && pb.paymentMethod === 'אשראי' && /0123456/.test(pb.notes));
       check('credit: אחרי שמירה - GET ההזמנה (סנכרון), החלון נסגר, טוסט', c.at(-1).method === 'GET' && c.at(-1).url === '/api/orders/53375' && !st.dlg && /התקבל תשלום באשראי/.test(st.toast));
     } },
+    // D6 (בעלים 2026-10-05): אופני התשלום לפי הגדרות הגמ"ח - ראשי: אשראי בלבד; נווה (עם תשלום נוסף): 4
+    { name: 'P20b-methods-by-settings', real: async () => {
+      const methodsOf = async (scn) => {
+        await realTab(scn);
+        await clickAt('#p-payments [data-oc-pay="status"] [data-act="pay-now"]'); await sleep(400);
+        return p().evaluate(() => [...document.querySelectorAll('#dlg .methods [data-method]')].map(b => b.getAttribute('data-method')));
+      };
+      const main = await methodsOf('paymain');
+      const neve = await methodsOf('paydebt');
+      check('methods: הגמ"ח הראשי (בלי תשלום נוסף) - אופן אחד: אשראי', JSON.stringify(main) === JSON.stringify(['אשראי']));
+      check('methods: נווה עם תשלום נוסף - אשראי + מזומן + העברה + צ׳ק', neve.length === 4 && neve[0] === 'אשראי');
+    } },
     { name: 'P21-flow-declined', real: async () => {
       await realTab('paydebt'); await p().evaluate(() => { /* חתום כבר - בלי שער */ });
       await clickAt('#p-payments [data-oc-pay="status"] [data-act="pay-now"]'); await sleep(400);
