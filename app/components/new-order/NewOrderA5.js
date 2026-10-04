@@ -11,8 +11,6 @@ import './css/new-order-font.css';
 import './css/new-order.css';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import ItemCapacityModal from '@/components/orders/ItemCapacityModal';
-import CapacitySearchModal from '@/components/CapacitySearchModal';
 import { HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import { Ic, Note, NoPortal, NoPortalRoot } from './NoUi';
@@ -20,6 +18,7 @@ import {
   ApprovalDialog, BackGuardDialog, BusyDialog, ConfirmDialog, CreditDialog, DialogFrame, DuplicateCustomerDialog, DuplicateOrderDialog,
   ExitDialog, MessageDialog, SpacingDialog, StockShortageDialog, SuccessDialog, SwipeDialog, successChips,
 } from './NoDialogs';
+import { CapacitySearchDialog, ItemCapacityDialog } from './NoCapacity';
 import useNewOrderController from './useNewOrderController';
 import StepCustomer from './StepCustomer';
 import StepDates from './StepDates';
@@ -216,11 +215,12 @@ export default function NewOrderA5() {
           ) : null}
           <Dialog ctl={ctl} layer={1} />
           <Dialog ctl={ctl} layer={2} />
+          {/* R22: "בדוק תפוסה" בפלטה (#dlg2 כהה) עם מתג רשימה / לוח - מצב של הבקר, לא חלון עם תשובה */}
+          {ctl.capacityItem ? <ItemCapacityDialog key="capItem" item={ctl.capacityItem} order={ctl.order} currentOrderId={ctl.draftOrderId} onClose={() => ctl.setCapacityItem(null)} /> : null}
+          {ctl.showCapacitySearch ? <CapacitySearchDialog key="capSearch" onClose={() => ctl.setShowCapacitySearch(false)} /> : null}
         </NoPortal>
         <div className="pl-tt" role="tooltip" ref={ttRef} />
       </NoPortalRoot.Provider>
-      {ctl.capacityItem ? <ItemCapacityModal item={ctl.capacityItem} order={ctl.order} isOpen onClose={() => ctl.setCapacityItem(null)} /> : null}
-      {ctl.showCapacitySearch ? <CapacitySearchModal isOpen={ctl.showCapacitySearch} onClose={() => ctl.setShowCapacitySearch(false)} /> : null}
     </div>
   );
 }

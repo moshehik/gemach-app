@@ -205,3 +205,41 @@
 /* אייקון השורה ברשימות הלקוחות / הדגם שנבחר (page glue של העיצוב) */
 .gm-ds.gm-no .hres .li .ic-b{width:48px}
 .gm-ds.gm-no .hres .hrow.open .go:has(use[href$="check"]){transform:none}
+
+/* ===== R22: חלון "בדוק תפוסה" (#dlg2 כהה) - מתג רשימה / לוח, סיכום, טבלה, הלוח העברי (.hc) עם התפוסה ===== */
+/* סיכום במלאי / בתפוסה / רזרבה: כמו בעיצוב (padding:0 0 14px; 3 עמודות), הטקסט עובר שורה במקום להיחתך */
+.gm-ds.gm-no .dlg .no-cap-glance{padding:0 0 14px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.gm-ds.gm-no .dlg .no-cap-glance .gl{padding:8px 10px}
+.gm-ds.gm-no .dlg .no-cap-glance .gv{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+/* מתג רשימה / לוח: .seg.pill של הפלטה (בעיצוב מוגדר רק בתוך .app) כהה - מחוון בהיר על רקע החלון */
+.gm-ds.gm-no .dlg .seg.pill{position:relative;display:flex;background:transparent;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;padding:4px;gap:0;max-width:100%;--i:0;--n:2}
+.gm-ds.gm-no .dlg .seg.pill .pth{position:absolute;top:4px;bottom:4px;height:auto;min-height:0;margin:0;width:calc((100% - 8px)/var(--n));inset-inline-start:calc(4px + (100% - 8px)/var(--n)*var(--i));background:var(--gm-sky-50);border-radius:999px;pointer-events:none}
+.gm-ds.gm-no .dlg .seg.pill button{position:relative;z-index:1;flex:1;min-width:0;border:0;background:transparent;box-shadow:none;border-radius:999px;padding:10px 16px;min-height:0;font-weight:500;color:var(--k-sub);display:flex;gap:8px;align-items:center;justify-content:center;transition:color .25s;white-space:nowrap}
+.gm-ds.gm-no .dlg .seg.pill button:hover{background:transparent;color:#fff}
+.gm-ds.gm-no .dlg .seg.pill button.on,.gm-ds.gm-no .dlg .seg.pill button.on:hover{background:transparent;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-no .dlg .seg.pill button.on .ic{color:var(--gm-navy-900);stroke:var(--gm-navy-900)}
+.gm-ds.gm-no .dlg .seg.pill button:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+/* טבלת ההזמנות התופסות */
+.gm-ds.gm-no .dlg .tblw{overflow-x:auto}
+.gm-ds.gm-no .dlg .rtbl tr.no-cap-cur td{background:rgba(241,220,143,.38)}
+.gm-ds.gm-no .dlg .no-cap-free{text-align:center}
+.gm-ds.gm-no .dlg .no-cap-load{text-align:center;padding:14px 0}
+/* הלוח: כרטיס בהיר בתוך החלון הכהה (כמו השדות), ללא שוליים עליונים; יום תפוס צבוע בסלמון, יום מחוץ לטווח מעומעם */
+.gm-ds.gm-no .dlg .hc{margin-top:0;background:var(--gm-sky-50)}
+.gm-ds.gm-no .dlg .hc-g{padding:12px;gap:4px}
+.gm-ds.gm-no .dlg .hc-w{padding:8px 12px;gap:4px}
+.gm-ds.gm-no .dlg .hc-d{min-height:52px}
+.gm-ds.gm-no .dlg .hc-d.occ{background:rgba(244,166,140,.6);box-shadow:inset 0 0 0 1.5px #d97b5f}
+.gm-ds.gm-no .dlg .hc-d.occ .hc-occ{color:var(--gm-navy-900);font-weight:700}
+.gm-ds.gm-no .dlg .hc-d.out{opacity:.38;cursor:default}
+.gm-ds.gm-no .dlg .hc-d.on{background:var(--gm-navy);color:#fff}
+.gm-ds.gm-no .dlg .hc-d.on .hc-p{color:#fff}
+.gm-ds.gm-no .dlg .hc-n:disabled{opacity:.35;cursor:default}
+@media (max-width:520px){.gm-ds.gm-no .dlg .hc-d{min-height:46px}.gm-ds.gm-no .dlg .hc-d .hc-p{font-size:10px}}
+/* רשימת הדגמים בחיפוש: סטטית בתוך החלון (לא נחתכת בגלילת החלון) ובמלוא הרוחב */
+.gm-ds.gm-no .dlg .advlist.advstatic{max-width:none;margin-top:8px;max-height:216px}
+.gm-ds.gm-no .dlg .inpw{position:relative}
+.gm-ds.gm-no .dlg .inpw>.inpx{position:absolute;inset-inline-end:8px;top:50%;translate:0 -50%}
+.gm-ds.gm-no .dlg .inpw:has(>.inpx)>.inp{padding-inline-end:44px}
+.gm-ds.gm-no .dlg .no-cap-hist{gap:8px}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .dlg .seg.pill button{transition:none}}
