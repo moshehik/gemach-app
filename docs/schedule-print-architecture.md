@@ -236,7 +236,11 @@
   הזמנה לא קיימת = 404; PP-12 להזמנה בלי משלוח הלוך / כש-`enable_deliveries` כבוי = 400; PP-07 מקבל גרסה ב׳ בכפייה. אותם שערים כמו כל דף (`page:schedule`, ו-PP-12 גם `page:deliveries`).
 - **הנתונים:** `lib/schedule/print/singleOrder.js` טוען את ההזמנה (findUnique אחד) ובונה "יום" סינתטי באותה צורה ש-`getScheduleDay` מחזיר - שורת שלב ההכנה דרך `buildEventStageRow` של הלו״ז עצמו, ושורת המשלוח באותם שדות כמו `deliveryRow`. כך ההזמנה מודפסת גם כשהיום אינו יום ההכנה
   וגם כששלב ההכנה כבוי בהגדרות הלו״ז. התאריך שבכותרת = יום ההכנה / יום יציאת המשלוח המחושב מתאריך האירוע (או היום כשאין תאריך אירוע). `meta.orderId` נושא את מספר ההזמנה.
-- **רישום בהיסטוריה (AMB-20, חוזה W0):** כשיש `orderId` דף ההדפסה רושם `ORDER_PRINTED {doc:'prep'|'delivery', sheet, source:'print-page', batch:false}` דרך `POST /api/orders/events`, פעם אחת בטעינה שמדפיסה בפועל
-  (לא ב-`downloadPdf=true`, לא ב-`preview=1`, לא בדפדפן ראש-חסר), עם `clientEventId` נפרד לכל דף. הדפסות יום מרוכזות (בלי `orderId`) **לא** נרשמות לכל הזמנה.
+- **רישום בהיסטוריה (AMB-20, החלטת הבעלים - מחליפה את ברירת המחדל של התכנית):** דף ההדפסה רושם `ORDER_PRINTED` דרך `POST /api/orders/events` (העוזר היחיד `writeOrderEvents`,
+  INSERT אחד לכל קבוצה של עד 200 הזמנות), פעם אחת בטעינה שמדפיסה בפועל (לא ב-`downloadPdf=true`, לא ב-`preview=1`, לא בדפדפן ראש-חסר):
+  - **עם `orderId`:** אירוע אחד להזמנה - `{doc:'prep'|'delivery', sheet, source:'print-page', batch:false}`.
+  - **הדפסת יום (בלי `orderId`):** אירוע בהיסטוריית **כל הזמנה שמופיעה בכל דף** שבמסמך - `{doc, sheet, source:'print-page', batch:true, count:<הזמנות בדף>}`; PP-07 = `prep`, PP-12 = `delivery`,
+    כל דף אחר = `doc:'schedule'` + `sheet` (חוזה W0 הורחב: `SCHEDULE_SHEET_KEYS`). מספרי ההזמנות נאספים מנתוני הדף עצמו (`collectPrintedOrderIds`); `clientEventId` נפרד לכל דף ולכל קבוצה.
+  - נפח: הדפסת יום של 40 הזמנות = 40 שורות AuditLog ב-INSERT אחד (דף עם 400 הזמנות = 2 בקשות). ההיסטוריה מציגה "הודפס דף הכנה (הדפסת יום)".
 - **PDF (תעודת משלוח כצרופת מייל מהיר):** `POST /api/pdf {path:'/schedule/print/PP-12?orderId=N&downloadPdf=true'}` - הנתיב כבר מותר (`printPathPageKeys`).
 - קבצים: `lib/schedule/print/orderMode.js` (טהור: פרמטר, כתובות, גוף האירוע), `lib/schedule/print/singleOrder.js` (שרת), בדיקות `scripts/schedule-print-tests/order-mode.test.mjs`.

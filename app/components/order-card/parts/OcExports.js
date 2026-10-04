@@ -15,17 +15,17 @@ export default function OcExports({ oc, ui }) {
   const busyRef = useRef(null);
   const orderId = oc.order && oc.order.orderId;
 
+  // כמו בעיצוב: הטוסט ("הקובץ יורד") מופיע מיד בלחיצה, וההורדה עצמה רצה ברקע; כישלון = טוסט שגיאה
   const run = async (kind) => {
     if (busyRef.current || !orderId) return;
     busyRef.current = kind; setBusy(kind);
+    ui.toast('info', kind === 'xlsx' ? 'קובץ Excel של ההזמנה יורד' : 'סיכום ההזמנה יורד כקובץ', oc.dirty ? UNSAVED_NOTE : `הזמנה ${orderId}`);
     try {
       if (kind === 'xlsx') {
         const r = await exportOrderXlsx({ oc, orderId });
-        if (r.ok) ui.toast('info', 'קובץ Excel של ההזמנה ירד', oc.dirty ? UNSAVED_NOTE : r.fileName);
-        else ui.toast('error', 'אין מה לייצא בהזמנה זו', '');
+        if (!r.ok) ui.toast('error', 'אין מה לייצא בהזמנה זו', '');
       } else {
-        const r = await downloadOrderPdf({ oc, orderId });
-        if (r.ok) ui.toast('info', 'סיכום ההזמנה ירד כקובץ', oc.dirty ? UNSAVED_NOTE : r.fileName);
+        await downloadOrderPdf({ oc, orderId });
       }
     } catch (e) {
       ui.toast('error', kind === 'xlsx' ? 'ייצוא ה-Excel נכשל' : 'הורדת הקובץ נכשלה', (e && e.message) || '');

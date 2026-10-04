@@ -523,7 +523,10 @@ t('oc-docs.css: !important רק בשדות הטקסט של גיליון המיי
 t('oc-docs.css: אין דריסת @media לפני הכלל הלא-מותנה, אין "-*/" בהערות, ואין מחלקות/סלקטורים של תפריט ההדפסה (הם מהפלטה)', () => {
   assert.deepEqual(mediaBeforeBase(ocDocsRules, 'oc-docs.css'), []);
   assert.ok(!/[a-z0-9]-\*\//i.test(OC_DOCS_CSS), 'הערה עם "-*/"');
-  assert.deepEqual(ocDocsRules.filter((r) => /(^|[\s,])\.(gm-ds\.gm-oc )?(menu|xlbtn)|\.xl[gdp]/.test(r.sel)).map((r) => r.sel), [], 'התפריט וכפתורי ה-xlbtn הם רכיבי פלטה - בלי כלל משלהם');
+  // החריג היחיד: עוגן התפריט במסך צר (בעיצוב הוא נחתך מחוץ למסך) - בלי שינוי בצבעים/רקעים/צורה של התפריט
+  const ownMenuRules = ocDocsRules.filter((r) => /(^|[\s,])\.(gm-ds\.gm-oc )?(menu|xlbtn)|\.xl[gdp]/.test(r.sel) && r.sel !== '.gm-ds.gm-oc .tools .menu');
+  assert.deepEqual(ownMenuRules.map((r) => r.sel), [], 'התפריט וכפתורי ה-xlbtn הם רכיבי פלטה - בלי כלל משלהם');
+  assert.deepEqual(ocDocsRules.filter((r) => r.sel === '.gm-ds.gm-oc .tools .menu').flatMap((r) => decls(r.body).map((d) => d.prop)).sort(), ['inset-inline-end', 'inset-inline-start'], 'עוגן התפריט בלבד');
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

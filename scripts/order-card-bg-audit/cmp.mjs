@@ -31,6 +31,9 @@ const APPROVED_STAGE = [
   ['44-mail-quick', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
   ['45-mail-filled', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
   ['46-mail-preview', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
+  ['46-mail-preview', /^DLG>div\.mprev>div>small$/, 'W7: שורת הסבר מה הקובץ מכיל (בעיצוב רק שלושה קווים סכמטיים)'],
+  // במסך צר ה-demo אינו מגיע לשורת התפריט (התפריט נחתך מחוץ למסך בעיצוב); בכרטיס החדש התפריט נשאר בתוך המסך והריחוף עובד
+  ['42-print-menu-hover', /^TOP>div\.tools>div\.menu\.open>button \[bg\]$|^TOP>div\.menu\.open>button>svg\.ic \[(h|w)\]$/, 'במסך צר הריחוף בעיצוב לא מגיע לתפריט (נחתך); ריחוף אמיתי = רקע + הגדלת אייקון של הפלטה'],
 ];
 const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => s2 === st && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };

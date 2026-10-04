@@ -233,12 +233,12 @@ const STAGES = [
     checks.push(['discard: בלי עריכה נסגר מיד', !(await p.$('#dlg .mh'))]);
   } },
   { name: '59-exports', real: async () => {
-    await fresh('signed'); await clickAt('.tools .xlbtn.xlg'); await sleep(1800); const t1 = await toastText();
-    await clickAt('.tools .xlbtn.xld[data-act="export-pdf"]'); await sleep(1800); const t2 = await toastText();
+    await fresh('signed'); await clickAt('.tools .xlbtn.xlg'); await sleep(500); const t1 = await toastText(); await sleep(2800);
+    await clickAt('.tools .xlbtn.xld[data-act="export-pdf"]'); await sleep(500); const t2 = await toastText(); await sleep(2500);
     const cs = await calls(); const evs = cs.filter((c) => c.url === '/api/orders/events').map((c) => JSON.parse(c.body));
     const pdf = cs.filter((c) => c.url === '/api/pdf').map((c) => JSON.parse(c.body));
-    checks.push(['exports: Excel → טוסט + ORDER_XLSX_EXPORTED עם שם הקובץ', /Excel/.test(t1) && evs.some((e) => e.action === 'ORDER_XLSX_EXPORTED' && e.meta.fileName === 'הזמנה 53375.xlsx' && e.orderIds[0] === 53375)],
-      ['exports: הורדה → HTML של הזמנה → /api/pdf → ORDER_PDF_DOWNLOADED {doc:order}', pdf.length === 1 && /דוח order/.test(pdf[0].html) && /סיכום ההזמנה/.test(t2) && evs.some((e) => e.action === 'ORDER_PDF_DOWNLOADED' && e.meta.doc === 'order' && e.meta.fileName === 'הזמנה 53375.pdf')]);
+    checks.push(['exports: Excel → טוסט מיידי "קובץ Excel של ההזמנה יורד" + ORDER_XLSX_EXPORTED עם שם הקובץ', /Excel של ההזמנה יורד/.test(t1) && evs.some((e) => e.action === 'ORDER_XLSX_EXPORTED' && e.meta.fileName === 'הזמנה 53375.xlsx' && e.orderIds[0] === 53375)],
+      ['exports: הורדה → טוסט מיידי + HTML של הזמנה → /api/pdf → ORDER_PDF_DOWNLOADED {doc:order}', pdf.length === 1 && /דוח order/.test(pdf[0].html) && /סיכום ההזמנה יורד/.test(t2) && evs.some((e) => e.action === 'ORDER_PDF_DOWNLOADED' && e.meta.doc === 'order' && e.meta.fileName === 'הזמנה 53375.pdf')]);
   } },
   { name: '60-quick-mail-setting', real: async () => {
     await fresh('noqm', '&qmhost=1'); const off = await p.$(qmButton); await fresh('signed', '&qmhost=1'); const on = await p.$(qmButton);
