@@ -6,47 +6,15 @@
 // "תאריך הוספה" לפי כלל A11 (createdAt; פריט מיובא → תאריך ההזמנה), שם העובד ליד כל שורת היסטוריה, וערכי מזהה (UUID) מוסתרים.
 import { useEffect, useState } from 'react';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '@/components/HistoryViewer';
-import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/components/modern/changesDisplay';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
-import { fmtMoney, hebDateOf } from '../orderCardLogic';
-import { addedAtOf, dedupeAuditLogs, isLegacyItem, israelTimeOf, itemName, itemObligations } from '../hooks/useItemActions';
+import { fmtMoney } from '../orderCardLogic';
+import { addedAtOf, dayTimeOf, dedupeAuditLogs, isLegacyItem, itemName, itemObligations, logChangeRows as logChangeRowsOf } from '../hooks/useItemActions';
 
-// שדות פנימיים של עגלת הקניות — לא מעניינים ביומן (MIM :18)
-const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
+const dayTime = dayTimeOf;
 
-
-const dayTime = (v, withTime = true) => {
-  const d = hebDateOf(v);
-  if (!d) return '';
-  const t = withTime ? israelTimeOf(v) : '';
-  return t ? `${d} · ${t}` : d;
-};
-
-// שורות השינוי של רשומת יומן אחת (MIM :1388-1411), עם הסתרת מזהים (changesDisplay של W0)
-export function logChangeRows(log) {
-  let changes;
-  try { changes = typeof log.changesJson === 'string' ? JSON.parse(log.changesJson) : log.changesJson; } catch { return null; }
-  if (!changes || typeof changes !== 'object') return [];
-  const rows = [];
-  const fmt = (k, v) => (typeof v === 'boolean' ? (v ? 'כן' : 'לא') : (labelChangeValue(k, v) ?? String(v ?? '-')));
-  for (const [key, raw] of Object.entries(changes)) {
-    if (raw === null || raw === undefined || raw === '') continue;
-    if (HIDDEN_HISTORY_FIELDS.includes(key) || !isVisibleChangeKey(key, raw)) continue;
-    if (typeof raw === 'boolean' && raw === false && log.action === 'CREATE') continue;
-    const value = normalizeChange(key, raw);
-    const label = FIELD_TRANSLATIONS[key] || key;
-    if (value && typeof value === 'object' && ('from' in value || 'to' in value)) {
-      const fromStr = value.from === null || value.from === undefined || value.from === '' ? '-' : fmt(key, value.from);
-      const toStr = value.to === null || value.to === undefined || value.to === '' ? '-' : fmt(key, value.to);
-      if (fromStr === toStr) continue;
-      rows.push({ key, text: `${label}: ${fromStr} ← ${toStr}` });
-    } else {
-      rows.push({ key, text: `${label}: ${fmt(key, value)}` });
-    }
-  }
-  return rows;
-}
+// שורות השינוי של רשומת יומן אחת (הלוגיקה ב-useItemActions.logChangeRows — טהורה ונבדקת ב-node)
+const logChangeRows = (log) => logChangeRowsOf(log, FIELD_TRANSLATIONS);
 
 export default function OcItemDetailsDialog({ item, order, obligations, loadLogs, employeeName, close }) {
   const [logs, setLogs] = useState(null); // null = בטעינה

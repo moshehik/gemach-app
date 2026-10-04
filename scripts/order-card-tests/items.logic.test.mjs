@@ -178,3 +178,23 @@ test('ביקורת W3 #8 syncSnapshotItems: אותו fn על פריטי ה-snaps
   assert.deepEqual(L.changesOf(next, state).filter((c) => /פריט/.test(c.label || c.text || '')), []);
   assert.ok(L.changesOf(snap, state).length > 0, 'בלי הסנכרון — הרייל היה מציג שינוי');
 });
+
+test('ביקורת W3 #7 logChangeRows: חותמות זמן ISO (takenDate/returnDate/createdAt) מוצגות כתאריך עברי + שעה ישראלית — אף פעם לא ISO גולמי', () => {
+  const ts = '2026-10-04T07:13:00.000Z';
+  const heb = `${L.hebDateOf(ts)} · 10:13`;
+  const rows = A.logChangeRows({ action: 'UPDATE', changesJson: JSON.stringify({ takenDate: { from: null, to: ts }, returnDate: { from: ts, to: '2026-10-05T11:00:00.000Z' }, createdAt: ts, sizeText: { from: '38', to: '40' }, isTaken: true }) }, { takenDate: 'תאריך לקיחה', returnDate: 'תאריך החזרה', createdAt: 'נוצר ב', sizeText: 'מידה', isTaken: 'נלקח' });
+  const text = Object.fromEntries(rows.map((r) => [r.key, r.text]));
+  assert.equal(text.takenDate, `תאריך לקיחה: - ← ${heb}`);
+  assert.equal(text.returnDate, `תאריך החזרה: ${heb} ← ${L.hebDateOf('2026-10-05T11:00:00.000Z')} · 14:00`);
+  assert.equal(text.createdAt, `נוצר ב: ${heb}`);
+  assert.equal(text.sizeText, 'מידה: 38 ← 40');
+  assert.equal(text.isTaken, 'נלקח: כן');
+  assert.ok(!rows.some((r) => /\d{4}-\d{2}-\d{2}T/.test(r.text)), 'אין ISO גולמי');
+  // ערך שאינו חותמת זמן נשאר כמו שהוא; JSON שבור → null; בלי שינויים → []
+  assert.equal(A.historyValueText('x', '2026-10-04'), '2026-10-04');
+  assert.equal(A.historyValueText('x', 'לא תאריך'), 'לא תאריך');
+  assert.equal(A.logChangeRows({ changesJson: '{bad' }), null);
+  assert.deepEqual(A.logChangeRows({ changesJson: '{}' }), []);
+  assert.equal(A.dayTimeOf('', true), '');
+  assert.equal(A.dayTimeOf(ts, false), L.hebDateOf(ts));
+});

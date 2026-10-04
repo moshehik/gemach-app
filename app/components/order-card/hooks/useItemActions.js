@@ -27,6 +27,7 @@ import { describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/components/modern/changesDisplay';
 import { hebDateOf, newLocalId } from '../orderCardLogic';
 
 // ---------------------------------------------------------------------------------------------
@@ -85,6 +86,53 @@ export function israelTimeOf(value) {
   if (Number.isNaN(d.getTime())) return '';
   const s = d.toLocaleString('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   return /^\d{2}:\d{2}$/.test(s) ? s : '';
+}
+
+// ---------------------------------------------------------------------------------------------
+// חלון הפרטים וההיסטוריה (R28) — עזרים טהורים: תאריך+שעה עבריים, שורות השינוי של רשומת יומן (MIM :1388-1411)
+// ---------------------------------------------------------------------------------------------
+// "תאריך עברי · שעה ישראלית" (בלי תאריך לועזי); '' לערך ריק/שגוי
+export function dayTimeOf(value, withTime = true) {
+  const d = hebDateOf(value);
+  if (!d) return '';
+  const t = withTime ? israelTimeOf(value) : '';
+  return t ? `${d} · ${t}` : d;
+}
+const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T/;
+// שדות פנימיים של עגלת הקניות — לא מעניינים ביומן (MIM :18)
+const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
+// ערך בודד ביומן: כן/לא, תווית עברית, חותמת זמן ISO (takenDate/returnDate/createdAt...) → תאריך עברי + שעה; אחרת הטקסט כמו שהוא
+export function historyValueText(key, v) {
+  if (typeof v === 'boolean') return v ? 'כן' : 'לא';
+  const label = labelChangeValue(key, v);
+  if (label !== null && label !== undefined) return label;
+  if (typeof v === 'string' && ISO_TIMESTAMP_RE.test(v)) {
+    const t = dayTimeOf(v);
+    if (t) return t;
+  }
+  return String(v ?? '-');
+}
+export function logChangeRows(log, fieldLabels = {}) {
+  let changes;
+  try { changes = typeof log.changesJson === 'string' ? JSON.parse(log.changesJson) : log.changesJson; } catch { return null; }
+  if (!changes || typeof changes !== 'object') return [];
+  const rows = [];
+  for (const [key, raw] of Object.entries(changes)) {
+    if (raw === null || raw === undefined || raw === '') continue;
+    if (HIDDEN_HISTORY_FIELDS.includes(key) || !isVisibleChangeKey(key, raw)) continue;
+    if (typeof raw === 'boolean' && raw === false && log.action === 'CREATE') continue;
+    const value = normalizeChange(key, raw);
+    const label = fieldLabels[key] || key;
+    if (value && typeof value === 'object' && ('from' in value || 'to' in value)) {
+      const fromStr = value.from === null || value.from === undefined || value.from === '' ? '-' : historyValueText(key, value.from);
+      const toStr = value.to === null || value.to === undefined || value.to === '' ? '-' : historyValueText(key, value.to);
+      if (fromStr === toStr) continue;
+      rows.push({ key, text: `${label}: ${fromStr} ← ${toStr}` });
+    } else {
+      rows.push({ key, text: `${label}: ${historyValueText(key, value)}` });
+    }
+  }
+  return rows;
 }
 
 // MIM :25-47 — קיפול שורות יומן כפולות של פריט (CREATE כפול; UPDATE גנרי ליד שורת פירוט)
