@@ -18,7 +18,7 @@ import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js'
 const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
-  ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES,
+  ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES, advCountsText, advTruncText,
 } from '../app/components/home/homeAdvConfig.js';
 import { hebText, hebFromInstant, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
@@ -479,7 +479,7 @@ t('סיכום סינונים: תוויות, תאריכים עבריים, סימ�
   assert.deepEqual(advSummaryParts(r, 'returns'), ['תאריך החזרה ' + hebText('2026-10-06')]);
 });
 t('נרמול תשובת adv', () => {
-  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, gaps: [], capstats: null, failed: [], tags: [] });
+  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, scanTruncated: false, total: 0, cap: 0, counts: null, gaps: [], capstats: null, failed: [], tags: [] });
   assert.equal(normalizeAdvResponse({ truncated: 1, gaps: ['x'] }).truncated, true);
   assert.deepEqual(normalizeAdvResponse({ gaps: ['x'] }).gaps, ['x']);
 });
@@ -1141,6 +1141,17 @@ t('התראות: תג שורה לפי data.tags (החזרה / הזמנה); ער�
 t('התראות: failed שאינו מערך = ריק; קישורי השורות נשארים פנימיים בלבד', () => {
   assert.deepEqual(normalizeAdvResponse({ failed: 'x' }).failed, []);
   assert.deepEqual(normalizeAdvResponse({ links: ['/orders/5', 'https://evil.example/x', '//evil.example'] }).links, ['/orders/5', '', '']);
+});
+t('התראות: ספירות לפי סוג וטקסט חיתוך אמיתי (תקרה וסך), לא "200 הראשונות" קבוע', () => {
+  const d = normalizeAdvResponse({ rows: new Array(200).fill([]), truncated: true, total: 659, cap: 200, counts: { late: 419, debt: 205, missing: 30, unsaved: 5, notReturned: 'x' } });
+  assert.deepEqual(d.counts, { late: 419, notReturned: 0, debt: 205, missing: 30, unsaved: 5 });
+  assert.equal(advCountsText(d.counts), 'איחורים 419 · חובות 205 · פרטים חסרים 30 · לא נשמרו 5');
+  assert.equal(advTruncText(d), 'מוצגות 200 מתוך 659');
+  assert.equal(advTruncText({ rows: new Array(150).fill([]), truncated: true, scanTruncated: true, total: 150, cap: 200 }), 'מוצגות 150 · ייתכנו עוד תוצאות (החיפוש חסום בתקרה)');
+  assert.equal(advTruncText({ rows: new Array(200).fill([]), truncated: true }), 'מוצגות 200 הראשונות');
+  assert.equal(advTruncText({ rows: [], truncated: false, total: 5 }), '');
+  assert.equal(advCountsText(null), '');
+  assert.equal(normalizeAdvResponse({ counts: 'x' }).counts, null);
 });
 t('התראות: אין בשרת כתיבה ל-DB ואין DDL (קריאה בלבד)', () => {
   const src = ALERTS_SRC + read('lib/advAlerts.js');

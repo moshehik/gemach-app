@@ -194,6 +194,30 @@ export function normalizeCapstats(c) {
   return { stock: capNum(c.stock), busy: capNum(c.busy), res: capNum(c.res) };
 }
 
+const ALERT_COUNT_LABELS = [['late', 'איחורים'], ['notReturned', 'שמלות שלא חזרו'], ['debt', 'חובות'], ['missing', 'פרטים חסרים'], ['unsaved', 'לא נשמרו']];
+// ספירות התראות לפי סוג (רק סוגים שנמצאו): { late, notReturned, debt, missing, unsaved } או null כשהשרת לא שלח
+export function normalizeAlertCounts(c) {
+  if (!c || typeof c !== 'object') return null;
+  const out = {};
+  for (const [k] of ALERT_COUNT_LABELS) { const n = Number(c[k]); out[k] = Number.isFinite(n) && n > 0 ? Math.round(n) : 0; }
+  return out;
+}
+// "איחורים 419 · חובות 205 · ..." (רק סוגים עם ספירה > 0); ריק כשאין ספירות
+export function advCountsText(counts) {
+  if (!counts) return '';
+  return ALERT_COUNT_LABELS.filter(([k]) => counts[k] > 0).map(([k, l]) => `${l} ${counts[k]}`).join(' · ');
+}
+// טקסט החיתוך לפי התקרה והסך האמיתיים (לא "200 הראשונות" קבוע): "מוצגות 200 מתוך 659" / "מוצגות 200 הראשונות" כשאין סך
+export function advTruncText(data) {
+  if (!data || !data.truncated) return '';
+  const shown = (data.rows || []).length;
+  const total = Number(data.total) || 0;
+  const cap = Number(data.cap) || shown;
+  if (total > shown) return `מוצגות ${shown} מתוך ${total}`;
+  if (data.scanTruncated) return `מוצגות ${shown} · ייתכנו עוד תוצאות (החיפוש חסום בתקרה)`;
+  return `מוצגות ${cap} הראשונות`;
+}
+
 // נרמול תשובת השרת לתצוגה: עמודות, שורות, קישורים, שורות עם התראה
 export function normalizeAdvResponse(r) {
   const d = r || {};
@@ -204,6 +228,10 @@ export function normalizeAdvResponse(r) {
     al: d.al || [],
     namesRev: d.namesRev || [],
     truncated: !!d.truncated,
+    scanTruncated: !!d.scanTruncated,
+    total: Number.isFinite(Number(d.total)) && Number(d.total) > 0 ? Math.round(Number(d.total)) : 0,
+    cap: Number.isFinite(Number(d.cap)) && Number(d.cap) > 0 ? Math.round(Number(d.cap)) : 0,
+    counts: normalizeAlertCounts(d.counts), // התראות בלבד
     gaps: d.gaps && d.gaps.length ? d.gaps : [],
     capstats: normalizeCapstats(d.capstats), // תפוסה בלבד: במלאי / בתפוסה / רזרבה
     failed: Array.isArray(d.failed) ? d.failed.filter((x) => typeof x === 'string') : [], // התראות: סוגים שהשרת לא הצליח לטעון (השאר חזרו)

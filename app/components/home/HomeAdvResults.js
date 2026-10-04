@@ -8,7 +8,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ic, ViewSwitch, XlButtons, MoreButton, ResultsTable, Dash } from './HomeParts';
-import { CAP_TILES, cellParts, looksLikePhoneOrMail, rowTag } from './homeAdvConfig';
+import { CAP_TILES, cellParts, looksLikePhoneOrMail, rowTag, advCountsText, advTruncText } from './homeAdvConfig';
 
 const LIMIT = 8;
 
@@ -54,7 +54,9 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
   }), [info, hasStatus, data.namesRev, data.links, alerts]);
   const columns = ['שם', 'פרטים', ...(hasStatus ? ['סטטוס'] : [])];
 
-  const sumText = summary.text + (data.truncated ? ' · מוצגות 200 הראשונות' : '');
+  const countsText = advCountsText(data.counts);
+  const truncText = advTruncText(data);
+  const sumText = [summary.text, countsText, truncText].filter(Boolean).join(' · ');
   return (
     <div className="card res-one advp">
       <div className="card-h">
