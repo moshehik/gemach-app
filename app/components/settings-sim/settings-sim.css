@@ -28,7 +28,6 @@
 /* ===== מהעיצוב: כותרת, סרגל חיפוש, כותרות סעיפים (בלוק העמוד של הגדרות-סימולציה.html) ===== */
 .gm-ds.gm-st .adm-h{margin:36px 0 16px;font-size:22px;font-weight:600;color:var(--gm-navy-900);display:flex;align-items:center;gap:12px}
 .gm-ds.gm-st .adm-hi{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--gm-gold-rich-c) var(--gm-gold-rich);color:var(--gm-navy);box-shadow:inset 0 0 0 1px rgba(154,122,31,.55);flex:none}
-.gm-ds.gm-st .adm-rows{padding:16px 24px}
 .gm-ds.gm-st .adm-bar{flex-direction:row;flex-wrap:wrap;margin:8px 0 8px;align-items:center}
 .gm-ds.gm-st .adm-bar .hf-s{flex:0 1 380px}
 .gm-ds.gm-st .adm-bar .hres-n{margin-inline-start:auto}
@@ -63,6 +62,7 @@
 .gm-ds.gm-st .st-opts .opt{width:100%}
 .gm-ds.gm-st .st-note{padding:12px 4px 4px;color:var(--gm-sky-300);font-size:14px;line-height:1.45}
 .gm-ds.gm-st .st-empty{margin-top:24px}
+.gm-ds.gm-st .st-def b{font-weight:500}
 .gm-ds.gm-st .st-card .li:has(> .sw){align-items:center}
 .gm-ds.gm-st .st-view .tabs{flex-wrap:wrap}
 .gm-ds.gm-st .st-view .topbar .ttl{flex:1}
@@ -88,7 +88,6 @@
 @media (max-width:640px){.gm-ds.gm-st .st-ctl{flex:1 0 100%}}
 @media (max-width:640px){.gm-ds.gm-st .st-ctl .inp,.gm-ds.gm-st .st-ctl .seg.pill{width:100%;min-width:0}}
 @media (max-width:640px){.gm-ds.gm-st .st-wide .st-ctl{padding-inline-start:0}}
-@media (max-width:640px){.gm-ds.gm-st .st-view .adm-rows{padding:8px 16px}}
 .gm-ds.gm-st .st-view .rtbl .st-row.st-dirty td{background:var(--gm-gold-50)}
 .gm-ds.gm-st .sizes.st-wide-btn button{width:auto;min-width:48px;padding-inline:16px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .gm-ds.gm-st .st-view .rail{gap:16px}
@@ -241,3 +240,12 @@
 .gm-ds.gm-st :is(#dlg,#dlg2) .st-auth-pin .inp{width:100%;text-align:center}
 .gm-ds.gm-st :is(#dlg,#dlg2) .st-err{text-align:center;color:#f1a596}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-st .st-row.st-flash,.gm-ds.gm-st .st-spin{animation:none}}
+/* נטרולי דליפה שנמצאו בהשוואת הסגנון המחושב (scripts/settings-sim-audit/cmp.mjs): globals.css צובע שדות בחום ומאפס ריפוד לחצנים */
+.gm-ds.gm-st .sizes button{padding-block:1px}
+.gm-ds.gm-st .back{padding:1px 6px}
+/* design-overrides.css: input:not(x4) (0,4,1) צובע גבול קרם לכל שדה; בעיצוב הגבול של .inp הוא --gm-line ובמיקוד --gm-brand */
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp{color:var(--gm-navy-900)}
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp:not(:focus){border-color:var(--gm-line)}
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp:focus{border-color:var(--gm-brand);box-shadow:0 0 0 4px var(--gm-brand-t)}
+/* ברק השורות בטבלת הכיתובים (בפלטה רק בעור דף הבית; כמו admin-hub.css) */
+.gm-ds.gm-st :where(.rtbl tbody tr){background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}

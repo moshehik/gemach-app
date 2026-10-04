@@ -8,6 +8,7 @@ import '../../app/design-system.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import SettingsSimPage from '../../app/components/settings-sim/SettingsSimPage.js';
+import { LabelsProvider } from '../../app/components/LabelsContext.js';
 import { SETTINGS_ORDER, SETTINGS_BOOLEAN_KEYS } from '../../lib/settingsMetadata.js';
 
 const sp = new URLSearchParams(location.search);
@@ -93,4 +94,4 @@ window.fetch = (url, init = {}) => {
   return realFetch(url, init);
 };
 
-createRoot(document.getElementById('root')).render(<SettingsSimPage view={view} />);
+createRoot(document.getElementById('root')).render(<LabelsProvider><SettingsSimPage view={view} /></LabelsProvider>);

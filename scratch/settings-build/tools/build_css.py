@@ -28,7 +28,7 @@ def scope_sel(sel):
             out.append('.gm-ds.gm-st ' + s)
     return ','.join(out)
 
-SKIP = re.compile(r'\.dhero|\.no-prop|:is\(\.card,\.itm|\.card,\.itm|\.card,\.stepper|\.rtbl td \.inp|\.st-view \.tblw|\.st-view \.tools|\.st-prev|\.st-def b|\.st-tgls|\.st-list-extra|\.rail\.open|\.rail:not\(\.open\)|\.rail\.open|rows \.rtbl|\.adm-tile|\.adm-tt|\.adm-mtools|\.adm-mbtns|\.adm-table|\.adm-trl|\.adm-h \.adm-n|\.adm-rows \.li \.go|\.adm-bar \.vsw|#tt|#toast|\.sn-badge|\.btn|\.ibtn|\.ttl h1::after')
+SKIP = re.compile(r'\.st-view \.adm-rows\{|^\.st-view \.adm-rows$|\.dhero|\.no-prop|:is\(\.card,\.itm|\.card,\.itm|\.card,\.stepper|\.rtbl td \.inp|\.st-view \.tblw|\.st-view \.tools|\.st-prev|\.st-tgls|\.st-list-extra|\.rail\.open|\.rail:not\(\.open\)|\.rail\.open|rows \.rtbl|\.adm-tile|\.adm-tt|\.adm-mtools|\.adm-mbtns|\.adm-table|\.adm-trl|\.adm-h \.adm-n|\.adm-rows \.li \.go|\.adm-bar \.vsw|#tt|#toast|\.sn-badge|\.btn|\.ibtn|\.ttl h1::after')
 
 def split_rules(text):
     """[(media|None, selector, body)] — brace matching, rules may span lines."""
@@ -66,7 +66,7 @@ def rules_from(path, pick):
     return out
 
 st = rules_from(os.path.join(HERE, 'demo_st_rules.css'), lambda s: True)
-misc = rules_from(os.path.join(HERE, 'demo_misc_rules.css'), lambda s: re.search(r'\.(adm-h|adm-hi|adm-rows|adm-bar)\b', s) is not None)
+misc = rules_from(os.path.join(HERE, 'demo_misc_rules.css'), lambda s: re.search(r'\.(adm-h|adm-hi|adm-bar)\b', s) is not None)
 local = io.open(os.path.join(HERE, 'local.css'), encoding='utf-8').read()
 head = io.open(os.path.join(HERE, 'head.css'), encoding='utf-8').read()
 css = head + '\n/* ===== מהעיצוב: כותרת, סרגל חיפוש, כותרות סעיפים (בלוק העמוד של הגדרות-סימולציה.html) ===== */\n' + '\n'.join(misc) + \

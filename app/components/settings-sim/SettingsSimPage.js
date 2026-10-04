@@ -740,10 +740,10 @@ export default function SettingsSimPage({ view = 'sys' }) {
                       ))}
                     </div>
                     <div className="cart-actions st-chgact">
-                      <button type="button" className="btn primary lg block" onClick={save} disabled={saving || hasErrors} data-element-name="כפתור_settings_save">
+                      <button type="button" className="btn primary lg block" data-act="save" onClick={save} disabled={saving || hasErrors} data-element-name="כפתור_settings_save">
                         <Ic id="check" />{saving ? 'שומר…' : hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'}
                       </button>
-                      <button type="button" className="btn ghost block sec" onClick={() => setAskDiscard(true)} disabled={saving} data-element-name="כפתור_settings_discard">
+                      <button type="button" className="btn ghost block sec" data-act="discard" onClick={() => setAskDiscard(true)} disabled={saving} data-element-name="כפתור_settings_discard">
                         <Ic id="undo" />ביטול השינויים
                       </button>
                     </div>
@@ -751,10 +751,10 @@ export default function SettingsSimPage({ view = 'sys' }) {
                 ) : null}
                 {dirty ? (
                   <div className="st-saverow">
-                    <button type="button" className="st-saveicon" onClick={save} aria-label="שמירת השינויים" data-tip={hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'} disabled={saving || hasErrors}>
+                    <button type="button" className="st-saveicon" data-act="save" onClick={save} aria-label="שמירת השינויים" data-tip={hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'} disabled={saving || hasErrors}>
                       <span className="sn-badge st-pendcnt">{nChanged}</span><Ic id="check" plain />
                     </button>
-                    <button type="button" className="st-discardicon" onClick={() => setAskDiscard(true)} aria-label="ביטול השינויים" data-tip="ביטול השינויים" disabled={saving}>
+                    <button type="button" className="st-discardicon" data-act="discard" onClick={() => setAskDiscard(true)} aria-label="ביטול השינויים" data-tip="ביטול השינויים" disabled={saving}>
                       <Ic id="undo" plain />
                     </button>
                   </div>

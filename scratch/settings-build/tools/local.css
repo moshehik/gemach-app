@@ -34,3 +34,12 @@
 .gm-ds.gm-st :is(#dlg,#dlg2) .st-auth-pin .inp{width:100%;text-align:center}
 .gm-ds.gm-st :is(#dlg,#dlg2) .st-err{text-align:center;color:#f1a596}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-st .st-row.st-flash,.gm-ds.gm-st .st-spin{animation:none}}
+/* נטרולי דליפה שנמצאו בהשוואת הסגנון המחושב (scripts/settings-sim-audit/cmp.mjs): globals.css צובע שדות בחום ומאפס ריפוד לחצנים */
+.gm-ds.gm-st .sizes button{padding-block:1px}
+.gm-ds.gm-st .back{padding:1px 6px}
+/* design-overrides.css: input:not(x4) (0,4,1) צובע גבול קרם לכל שדה; בעיצוב הגבול של .inp הוא --gm-line ובמיקוד --gm-brand */
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp{color:var(--gm-navy-900)}
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp:not(:focus){border-color:var(--gm-line)}
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp:focus{border-color:var(--gm-brand);box-shadow:0 0 0 4px var(--gm-brand-t)}
+/* ברק השורות בטבלת הכיתובים (בפלטה רק בעור דף הבית; כמו admin-hub.css) */
+.gm-ds.gm-st :where(.rtbl tbody tr){background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}
