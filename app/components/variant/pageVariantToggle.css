@@ -21,6 +21,9 @@
 .gm-pvt.gm-pvt-overlay{position:fixed;bottom:20px;inset-inline-end:20px;z-index:1000000}
 /* בסרגל הכותרת של דף חדש: נדחף לקצה השורה (שמאל ב-RTL) */
 .gm-pvt.gm-pvt-header{margin-inline-start:auto}
+/* בכותרת חלון הדיווח החדש: בגודל הלחצנים הקטנים של החלון */
+.gm-pvt.gm-pvt-window .gm-pvt-btn{width:32px;height:32px}
+.gm-pvt.gm-pvt-window .gm-pvt-ic{width:16px;height:16px}
 /* בסרגל העליון של המעטפת הישנה: קטן יותר, טולטיפ מתחת */
 .gm-pvt.gm-pvt-topbar .gm-pvt-btn{width:34px;height:34px}
 .gm-pvt.gm-pvt-topbar .gm-pvt-ic{width:18px;height:18px}

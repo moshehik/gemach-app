@@ -23,6 +23,7 @@ import { MenuSprite } from '../menu/menuParts';
 import { useA5Shell } from '../menu/A5ShellContext';
 import * as M from './erModel';
 import { AttChip, Composer, Ic, RoundBtn, Spin, Thumb } from './erParts';
+import PageVariantToggle from '../variant/PageVariantToggle';
 
 const NARROW_PX = 640; // גיליון תחתון
 const SPLIT_PX = 900; // פאנל: רשימה + שרשור זה לצד זה
@@ -842,6 +843,8 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
       <div className="er-hd">
         {xBtn(close)}
         <span style={{ flex: 1 }} />
+        {/* "חזרה לתצוגה הישנה" (4.10.2026): רק להנהלה ראשית / מתכנת; הטולטיפ - הטולטיפ של החלון (data-tip) */}
+        <PageVariantToggle screen="error_report" placement="window" systemTip />
         <button type="button" className="btn ghost er-inb" data-ico="inbox" onClick={() => { setMode('panel'); setThreadOnly(false); setSelId(null); setQ(''); setArchTab(false); fetchReports(); }}>
           <Ic n="inbox" cls="sm" inBtn />פניות שלי{waiting ? <span className="mbadge" aria-label={`${waiting} ממתינות לך`}>{waiting}</span> : null}
         </button>
@@ -1058,6 +1061,7 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
               ) : null}
             </div>
           ) : null}
+          <PageVariantToggle screen="error_report" placement="window" systemTip />
           {canNew ? <button type="button" className="btn primary er-newb" data-ico="plus" onClick={() => { setMode('card'); setThreadOnly(false); }}><Ic n="plus" cls="sm" inBtn />דיווח חדש</button> : null}
         </div>
         <div className="er3-g">
