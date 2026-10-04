@@ -208,7 +208,7 @@ await t('PageVariantToggle: null כשאסור; POST /api/me/ui-variant/<screen> 
   assert.match(c, /fetch\(`\/api\/me\/ui-variant\/\$\{encodeURIComponent\(screen\)\}`/);
   assert.match(c, /body: JSON\.stringify\(\{ value: target \}\)/);
   assert.match(c, /window\.location\.reload\(\)/);
-  assert.match(TOGGLE, /'מעבר לתצוגה החדשה'/); assert.match(TOGGLE, /'חזרה לתצוגה הישנה'/);
+  assert.match(c, /toggleLabelsFor\(screen\)/);
   assert.match(c, /SPRITE_SYMBOLS\.find\(\(s\) => s\[0\] === 'swap'\)/);
   const icons = JSON.parse(read('design-system/icons.json')).icons;
   assert.equal(icons.find((x) => x.id === 'swap').n, 57);
@@ -237,7 +237,7 @@ await t('האייקון בגרסה הישנה: VariantFrame (פינה) סביב 
   assert.match(frame, /createPortal\(<PageVariantToggle screen=\{screen\} placement=\{placement\} \/>, document\.body\)/);
   const legacyMounts = [
     ['app/profile/page.js', /<VariantFrame screen="profile" variant=\{variant\}>[\s\S]*<LegacyProfilePage \/>/],
-    ['app/admin/page.js', /<VariantFrame screen="admin_hub" variant="legacy">\s*<LegacyAdminPage \/>/],
+    ['app/admin/page.js', /<VariantFrame screen="admin_hub" variant="legacy">\s*<LegacyAdminPage showSite=\{showSite\} \/>/],
     ['app/my-hours/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyMyHoursPage \/>/],
     ['app/employees/report/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyReportPage \/>/],
     ['app/employees/page.js', /<VariantFrame screen="attendance" variant="legacy">\s*<LegacyEmployeesPage \/>/],
@@ -260,6 +260,68 @@ await t('/display-settings: הרשימה מהשרת + שמות מהרשומה, �
   assert.ok(!/DESIGN_SWITCH_ROWS/.test(c), 'אין רשימה קשיחה');
 });
 
+console.log('4b. ביקורת עצמאית (4.10.2026)');
+await t('"ניהול אתר": LegacyAdminPage מסתיר את הכרטיס בלי showSite, ו-app/admin/page.js מחשב אותו עם אותו שער של app/admin/site/layout.js', () => {
+  const legacy = code(read('app/admin/LegacyAdminPage.js'));
+  assert.match(legacy, /AdminHubPage\(\{ showSite = false \}\)/, 'ברירת מחדל: מוסתר');
+  assert.match(legacy, /cards\.filter\(\(card\) => card\.href !== '\/admin\/site'\)/);
+  assert.match(legacy, /visibleCards\.map\(/);
+  assert.ok(!/\bcards\.map\(/.test(legacy), 'אין map על הרשימה המלאה');
+  const page = code(read('app/admin/page.js'));
+  assert.match(page, /const showSite = await checkPageAccess\(DEVELOPER_ONLY_ROLES\);[\s\S]*<LegacyAdminPage showSite=\{showSite\} \/>/);
+  const layout = code(read('app/admin/site/layout.js'));
+  assert.match(layout, /checkPageAccess\(DEVELOPER_ONLY_ROLES\)[\s\S]*redirect\('\/admin'\)/, 'אותו שער כמו הלייאאוט של /admin/site');
+});
+await t('הפרופיל הישן: "שם מלא" לקריאה בלבד, נגזר משם פרטי + משפחה, ולא נשלח ב-name=fullName', () => {
+  const c = read('app/profile/LegacyProfilePage.js');
+  const m = c.match(/<input[^>]*id="profile-fullName"[^>]*\/>/);
+  assert.ok(m, 'השדה קיים');
+  assert.match(m[0], /disabled/); assert.match(m[0], /readOnly/);
+  assert.match(m[0], /profile\.firstName[\s\S]*profile\.lastName/);
+  assert.ok(!/name="fullName"/.test(m[0]) && !/onChange/.test(m[0]), 'לא שדה ערוך');
+});
+await t('כיתובי האייקון לפי מסך: המעטפת ("תפריט") שונה מכל דף, ואין שני כיתובים זהים בין מעטפת לדף באותו מסך', async () => {
+  const L = await import('../lib/pageVariantToggle.js');
+  assert.equal(L.toggleLabelsFor('shell').toNew, 'מעבר לתפריט החדש'); assert.equal(L.toggleLabelsFor('shell').toOld, 'חזרה לתפריט הישן');
+  for (const id of BOTH.filter((x) => x !== 'shell')) {
+    const l = L.toggleLabelsFor(id);
+    assert.notEqual(l.toNew, L.toggleLabelsFor('shell').toNew, id); assert.notEqual(l.toOld, L.toggleLabelsFor('shell').toOld, id);
+    assert.ok(/החד/.test(l.toNew) && /היש/.test(l.toOld), id);
+  }
+  assert.deepEqual(L.toggleLabelsFor('profile'), L.DEFAULT_TOGGLE_LABELS);
+  assert.deepEqual(L.toggleLabelsFor('nope'), L.DEFAULT_TOGGLE_LABELS);
+  assert.doesNotMatch(code(TOGGLE), /TOGGLE_LABELS\b/, 'אין כיתוב קבוע אחד לכל המסכים');
+});
+await t('לפני טעינה מחדש: דף מלוכלך -> חלונית האישור של האתר (showConfirm, לא window.confirm); דף נקי -> ישר', async () => {
+  const L = await import('../lib/pageVariantToggle.js');
+  const ctl = (o) => ({ tagName: 'INPUT', type: 'text', value: '', defaultValue: '', disabled: false, readOnly: false, closest: () => null, ...o });
+  const doc = (els) => ({ querySelectorAll: () => els });
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({})]) }), false, 'נקי');
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({ value: 'x' })]) }), true, 'טקסט שונה');
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({ type: 'checkbox', checked: true, defaultChecked: false })]) }), true, 'תיבת סימון');
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([{ tagName: 'SELECT', options: [{ selected: true, defaultSelected: false }], closest: () => null }]) }), true, 'select');
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({ type: 'search', value: 'x' })]) }), false, 'חיפוש לא נחשב');
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({ type: 'hidden', value: 'x' })]) }), false);
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({ value: 'x', disabled: true })]) }), false);
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([ctl({ value: 'x', closest: () => ({}) })]) }), false, 'בתוך האייקון עצמו');
+  assert.equal(L.isPageDirty({ win: { __gmDirty: true }, doc: doc([]) }), true, 'window.__gmDirty');
+  assert.equal(L.isPageDirty({ win: { __gmDirty: () => true }, doc: doc([]) }), true, '__gmDirty כפונקציה');
+  assert.equal(L.isPageDirty({ win: { __gmDirty: () => { throw new Error('x'); } }, doc: doc([]) }), false);
+  assert.equal(L.isPageDirty({ win: {}, doc: doc([]), userEdited: true }), true, 'עריכה אמיתית (בקרה מבוקרת)');
+  assert.equal(L.UNSAVED_CONFIRM_MESSAGE, 'יש שינויים שלא נשמרו - לעבור בכל זאת?');
+  const c = code(TOGGLE);
+  assert.match(c, /isPageDirty\(\{ win: window, doc: document, userEdited: userEdited\.current \}\)[\s\S]*await popup\.showConfirm\(UNSAVED_CONFIRM_MESSAGE[\s\S]*if \(!ok\) return;[\s\S]*setBusy\(true\)/, 'האישור לפני ה-POST');
+  assert.ok(!/window\.confirm|[^.\w]confirm\(/.test(c), 'לא חלונית הדפדפן');
+  assert.match(c, /e\.isTrusted/, 'רק קלט אמיתי של משתמש');
+  // חלון האישור מעל החלון הישן של דיווח השגיאות (z-index 999999)
+  assert.match(read('app/components/PopupProvider.js'), /\{confirmConfig\.isOpen && \(\s*<div className="modal-backdrop" style=\{\{ position: 'fixed', inset: 0, zIndex: 1000001,/);
+});
+await t('הדפסה: גם .gm-pvt-spacer מוסתר (pageVariantToggle.css)', () => {
+  const css = read('app/components/variant/pageVariantToggle.css');
+  assert.match(css, /@media print\{[^}]*\.gm-pvt-spacer[^}]*display:none!important/);
+});
+
+
 console.log('5. השחזור מ-git והתאימות ל-API של היום');
 const RESTORED = [
   ['7917382f^', 'app/profile/page.js', 'app/profile/LegacyProfilePage.js'],
@@ -275,9 +337,32 @@ const RESTORED = [
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 let gitOk = true;
 try { git('cat-file', '-e', 'c944cb95^{commit}'); } catch { gitOk = false; }
-await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>)', () => {
+// חריגים מתועדים (ביקורת עצמאית 4.10.2026): שני קבצים ישנים נערכו בכוונה, וההבדל מול ה-blob מוגבל בדיוק לתחליפים האלה.
+//  - LegacyAdminPage.js: ה-prop showSite (ברירת מחדל false) מסתיר את הכרטיס "ניהול אתר" (/admin/site) - app/admin/site/layout.js מחזיר
+//    כל מי שאינו מתכנת ל-/admin, כך שבמסך הישן הכרטיס היה קישור מת להנהלה ראשית. app/admin/page.js מחשב אותו עם אותו שער.
+//  - LegacyProfilePage.js: השדה "שם מלא" מוצג לקריאה בלבד ומחושב משם פרטי + שם משפחה - PUT /api/me/profile מתעלם ממנו (fullName נגזר
+//    מהשניים מאז 8321f436), והשדה הערוך הציג "נשמר" בלי לשמור.
+const RESTORED_EXCEPTIONS = {
+  'app/admin/LegacyAdminPage.js': [
+    ['export default function AdminHubPage() {', `// showSite: "ניהול אתר" (/admin/site) מיועד למתכנת בלבד (app/admin/site/layout.js מחזיר כל אחר ל-/admin) - הכרטיס מוצג רק כש-app/admin/page.js מאשר את אותו שער.
+export default function AdminHubPage({ showSite = false }) {
+  const visibleCards = showSite ? cards : cards.filter((card) => card.href !== '/admin/site');`],
+    ['{cards.map((card) => (', '{visibleCards.map((card) => ('],
+  ],
+  'app/profile/LegacyProfilePage.js': [
+    ['id="profile-fullName" name="fullName" value={profile.fullName || \'\'} onChange={handleChange} autoComplete="new-password" />', 'id="profile-fullName" value={`${profile.firstName || \'\'} ${profile.lastName || \'\'}`.trim()} disabled readOnly />'],
+  ],
+};
+const norm = (x) => x.replace(/\r\n/g, '\n');
+await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
   if (!gitOk) { console.log('         (אין היסטוריית git מלאה - דילוג)'); return; }
-  for (const [rev, from, to] of RESTORED) assert.equal(git('hash-object', to), git('rev-parse', `${rev}:${from}`), to);
+  for (const [rev, from, to] of RESTORED) {
+    const edits = RESTORED_EXCEPTIONS[to];
+    if (!edits) { assert.equal(git('hash-object', to), git('rev-parse', `${rev}:${from}`), to); continue; }
+    let blob = norm(execFileSync('git', ['show', `${rev}:${from}`], { cwd: ROOT, encoding: 'utf8' }));
+    for (const [a, b] of edits) { assert.ok(blob.includes(a), `${to}: חסר בבלוב: ${a.slice(0, 40)}`); blob = blob.replace(a, () => b); }
+    assert.equal(norm(read(to)), blob, `${to}: ההבדל מול ה-blob חורג מהתחליפים המתועדים`);
+  }
 });
 await t('לא שוחזר אף מטפל API ישן: נתיבי התאימות בנויים על השערים המוקשחים של היום', () => {
   const att = code(read('app/api/employees/attendance/route.js'));

@@ -176,7 +176,7 @@ export default function MyProfilePage() {
 
           <div className="field">
             <label htmlFor="profile-fullName">שם מלא</label>
-            <input data-element-name="שדה_profile_3" className="input" type="text" id="profile-fullName" name="fullName" value={profile.fullName || ''} onChange={handleChange} autoComplete="new-password" />
+            <input data-element-name="שדה_profile_3" className="input" type="text" id="profile-fullName" value={`${profile.firstName || ''} ${profile.lastName || ''}`.trim()} disabled readOnly />
           </div>
 
           <div className="field">

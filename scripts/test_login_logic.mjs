@@ -376,7 +376,11 @@ t('AutoClockSwitch מיובא רק מדף הפרופיל - לא מתפריט ה�
   // הפרופיל הישן (LegacyProfilePage), ונבחר אך ורק לפי useUiVariant('profile') - לא לפי prop.
   const auto = src('../app/components/login/AutoClockSwitch.js');
   assert.match(auto, /export default function AutoClockSwitch\(\) \{/, 'no props - single profile-card switch');
-  assert.ok(!/variant[=:]/.test(auto), 'no variant prop / placement option');
+  const stripLegit = (x) => x.replace(/profileVariant|useUiVariant|UiVariantContext/g, '');
+  for (const bad of ['const variant = 1;', '<A variant={x} />', 'function F({ variant }) {}', 'x = { variant }', 'variant: 1', 'f(variant)', 'variant}']) {
+    assert.ok(/variant/i.test(stripLegit(bad)), `guard must catch: ${bad}`);
+  }
+  assert.ok(!/variant/i.test(stripLegit("const profileVariant = useUiVariant('profile'); if (profileVariant === 'legacy') {}")), 'legit usage allowed');
   assert.match(auto, /useUiVariant\('profile'\)/, 'old look only on the old profile page');
 });
 

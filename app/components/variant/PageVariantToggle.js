@@ -19,17 +19,17 @@
 // המעטפת הישנה) | 'overlay' (מעל החלון הישן של דיווח השגיאות).
 
 import './pageVariantToggle.css';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useCanSelfSwitch, useUiVariant } from '../UiVariantContext';
+import { usePopup } from '../PopupProvider';
 import { switchTargetFor } from '@/lib/uiVariantScreens';
+import {
+  toggleLabelsFor, TOGGLE_FAILED_LABEL, UNSAVED_CONFIRM_MESSAGE, UNSAVED_CONFIRM_TITLE, isPageDirty, isEditableControl,
+} from '@/lib/pageVariantToggle';
 import { SPRITE_SYMBOLS } from '../menu/spriteSymbols';
 
-export const TOGGLE_LABELS = Object.freeze({
-  toNew: 'מעבר לתצוגה החדשה',
-  toOld: 'חזרה לתצוגה הישנה',
-  failed: 'המעבר נכשל. נסו שוב.',
-});
+// הכיתובים לפי מסך: lib/pageVariantToggle.js (למעטפת "תפריט", לשאר "דף" - כדי ששני אייקונים באותו מסך לא יזהו זהה).
 
 // אייקון 57 בפלטה ("החלפה", design-system/icons.json) — מוטמע מאותו מקור כמו ה-sprite (spriteSymbols.js), כי בדפים הישנים
 // ה-sprite של הפלטה לא תמיד נטען.
@@ -50,12 +50,29 @@ export default function PageVariantToggle({ screen, placement = 'header', system
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const popup = usePopup();
+  const userEdited = useRef(false);
 
   const target = current === 'a5' ? 'legacy' : 'a5';
-  const label = failed ? TOGGLE_LABELS.failed : (target === 'a5' ? TOGGLE_LABELS.toNew : TOGGLE_LABELS.toOld);
+  const labels = toggleLabelsFor(screen);
+  const label = failed ? TOGGLE_FAILED_LABEL : (target === 'a5' ? labels.toNew : labels.toOld);
+
+  // עריכה אמיתית של המשתמש בבקרת טופס (בקרות מבוקרות של React לא ניתנות להשוואה מול defaultValue) - דגל לאישור לפני הטעינה מחדש.
+  useEffect(() => {
+    if (!allowed) return undefined;
+    const mark = (e) => { if (e.isTrusted && isEditableControl(e.target)) userEdited.current = true; };
+    document.addEventListener('input', mark, true);
+    document.addEventListener('change', mark, true);
+    return () => { document.removeEventListener('input', mark, true); document.removeEventListener('change', mark, true); };
+  }, [allowed]);
 
   const onClick = useCallback(async () => {
     if (busy) return;
+    // המעבר טוען את הדף מחדש ומאבד קלט שלא נשמר: חלונית האישור של האתר (לא window.confirm).
+    if (isPageDirty({ win: window, doc: document, userEdited: userEdited.current }) && popup && popup.showConfirm) {
+      const ok = await popup.showConfirm(UNSAVED_CONFIRM_MESSAGE, UNSAVED_CONFIRM_TITLE);
+      if (!ok) return;
+    }
     setBusy(true);
     setFailed(false);
     try {
@@ -72,7 +89,7 @@ export default function PageVariantToggle({ screen, placement = 'header', system
       setBusy(false);
       setFailed(true);
     }
-  }, [busy, screen, target, pathname]);
+  }, [busy, screen, target, pathname, popup]);
 
   // useCanSelfSwitch כולל גם את בדיקת הנתיב (רק נתיבי המסך שברשומה; לא ב-/employees/<id>/attendance שאין לו גרסה ישנה).
   if (!allowed) return null;
@@ -91,7 +108,7 @@ export default function PageVariantToggle({ screen, placement = 'header', system
         <SwapIcon />
       </button>
       {!systemTip && <span className="gm-pvt-tt" role="tooltip" aria-hidden="true">{label}</span>}
-      {failed && <span className="gm-pvt-sr" role="alert">{TOGGLE_LABELS.failed}</span>}
+      {failed && <span className="gm-pvt-sr" role="alert">{TOGGLE_FAILED_LABEL}</span>}
     </span>
   );
 }

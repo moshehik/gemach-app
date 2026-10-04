@@ -29,7 +29,9 @@ const cards = [
   },
 ];
 
-export default function AdminHubPage() {
+// showSite: "ניהול אתר" (/admin/site) מיועד למתכנת בלבד (app/admin/site/layout.js מחזיר כל אחר ל-/admin) - הכרטיס מוצג רק כש-app/admin/page.js מאשר את אותו שער.
+export default function AdminHubPage({ showSite = false }) {
+  const visibleCards = showSite ? cards : cards.filter((card) => card.href !== '/admin/site');
   return (
     <>
       <div className="page-head">
@@ -40,7 +42,7 @@ export default function AdminHubPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '1060px' }}>
-        {cards.map((card) => (
+        {visibleCards.map((card) => (
           <Link
             key={card.href}
             href={card.href}

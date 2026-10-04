@@ -29,9 +29,11 @@ async function nedarimEnabled() {
 // שהוא, עם EmailListCard / AdminHubA5Cards / FullEmailListModal בנתיבים המקוריים). בישן לא מחושבים השערים של המסך החדש.
 export default async function AdminHubPage() {
   if ((await getRequestUiVariant('admin_hub')) === 'legacy') {
+    // כרטיס "ניהול אתר" רק למתכנת - אותו שער כמו app/admin/site/layout.js (אחרת הוא מחזיר את ההנהלה ל-/admin: קישור מת).
+    const showSite = await checkPageAccess(DEVELOPER_ONLY_ROLES);
     return (
       <VariantFrame screen="admin_hub" variant="legacy">
-        <LegacyAdminPage />
+        <LegacyAdminPage showSite={showSite} />
       </VariantFrame>
     );
   }

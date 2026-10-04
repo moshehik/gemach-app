@@ -38,4 +38,4 @@
   .gm-pvt.gm-pvt-corner,.gm-pvt.gm-pvt-overlay{bottom:16px;inset-inline-end:16px}
 }
 @media (prefers-reduced-motion:reduce){.gm-pvt .gm-pvt-btn,.gm-pvt .gm-pvt-tt{transition:none}}
-@media print{.gm-pvt{display:none!important}}
+@media print{.gm-pvt,.gm-pvt-spacer{display:none!important}}

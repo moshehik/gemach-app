@@ -75,7 +75,7 @@ for (const width of [1280, 375]) {
         check(!!f, `${tag}: אין אייקון במיקום ${placement} (${found.map((x) => x.cls).join(', ')})`);
         if (f) {
           check(f.target === target, `${tag}: יעד ${f.target} במקום ${target}`);
-          check(f.label === (target === 'a5' ? 'מעבר לתצוגה החדשה' : 'חזרה לתצוגה הישנה'), `${tag}: תווית ${f.label}`);
+          check(target === 'a5' ? /^מעבר ל(דף|תפריט|חלון)[^]*החד(ש|שה)$/.test(f.label) : /^חזרה ל(דף|תפריט|חלון)[^]*היש(ן|נה)$/.test(f.label), `${tag}: תווית ${f.label}`);
           check(Math.abs(f.w - f.h) < 0.5 && f.w >= 32, `${tag}: לא עגול/קטן ${f.w}x${f.h}`);
           check(f.radius === '50%' || parseFloat(f.radius) >= f.w / 2 - 0.5, `${tag}: radius ${f.radius}`);
           check(/linear-gradient/.test(f.bg), `${tag}: רקע ${f.bg}`);
@@ -132,7 +132,7 @@ for (const [scn, screen, value, openEr] of [['profile-old', 'profile', 'a5'], ['
   await sleep(300);
   await page.hover('.gm-pvt .gm-pvt-btn'); await sleep(300);
   const tt = await page.evaluate(() => { const t = document.querySelector('.gm-pvt-tt'); const cs = getComputedStyle(t); const r = t.getBoundingClientRect(); return { text: t.textContent, op: cs.opacity, bg: cs.backgroundColor, x: r.left, w: r.width, vw: innerWidth }; });
-  check(tt.text === 'מעבר לתצוגה החדשה' && Number(tt.op) > 0.9 && tt.x >= 0 && tt.x + tt.w <= tt.vw, `טולטיפ בפינה: ${JSON.stringify(tt)}`);
+  check(tt.text === 'מעבר לדף החדש' && Number(tt.op) > 0.9 && tt.x >= 0 && tt.x + tt.w <= tt.vw, `טולטיפ בפינה: ${JSON.stringify(tt)}`);
   await page.screenshot({ path: path.join(OUT, 'profile-old-tooltip.png') });
   await page.close();
 }
