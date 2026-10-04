@@ -9,6 +9,7 @@
 
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { Row, ChangeRow, NetBlock, Money } from './ocDialogParts';
+import { summaryModel } from '../parts/ocRailLogic';
 
 const PRIMARY = {
   pay: { icon: 'card', text: 'תשלום' },
@@ -16,18 +17,6 @@ const PRIMARY = {
   save: { icon: 'check', text: 'שמור' },
   exit: { icon: 'check', text: 'שמור וצא' },
 };
-
-/** נתוני החלון (טהור, נבדק ב-node): שורות הכסף של R14 ובלוק הסכום */
-export function summaryModel({ changes = [], totalRequired = 0, totalPaid = 0, pendingNet }) {
-  const required = Math.round((Number(totalRequired) || 0) * 100) / 100;
-  const paid = Math.round((Number(totalPaid) || 0) * 100) / 100;
-  const balance = Math.round((required - paid) * 100) / 100;
-  // pendingNet (חיוב/זיכוי ממתין) אם הבקר מעביר; אחרת היתרה אחרי השמירה (שם הסכום לתשלום)
-  const net = pendingNet !== undefined && pendingNet !== null ? Number(pendingNet) : balance;
-  const showAmt = changes.filter((c) => c.amt).length > 1;
-  const balanceLabel = balance > 0 ? 'יתרה לתשלום' : 'יתרת זכות / מאוזן';
-  return { required, paid, balance, net, showAmt, balanceLabel };
-}
 
 export default function OcSummaryDialog({ intent = 'save', changes = [], totalRequired = 0, totalPaid = 0, pendingNet, close }) {
   const m = summaryModel({ changes, totalRequired, totalPaid, pendingNet });

@@ -3,7 +3,7 @@
 // נטען מ-stages.mjs: railRoots(ROOTS, D) מוסיף את אזורי ההשוואה; railStages(ctx) מחזיר את השלבים.
 export const railRoots = (ROOTS, D) => { ROOTS.push(['RAIL', '#rail'], ['NB', D ? '#nbArea' : '.oc-banner']); };
 
-export function railStages({ p, D, fresh, clickAt, away, sleep, check }) {
+export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) {
   // העיצוב: לחיצה על data-act כמו act() של הדף (כפתור זמני עם data-act נלחץ - מאזין ה-click של המסמך תופס אותו)
   const demoAct = async (a) => { await p.evaluate((x) => { const b = document.createElement('button'); b.dataset.act = x; document.body.append(b); b.click(); b.remove(); }, a); await sleep(400); };
   // אמיתי: משחזר את הטיוטה בלחיצה על הבאנר. בלי לסגור את הטוסט (הטוסט "חיוב ממתין" הוא חלק מההשוואה)
@@ -31,6 +31,9 @@ export function railStages({ p, D, fresh, clickAt, away, sleep, check }) {
     { name: 'R04-summary-d1', real: async () => { await addReal(); await clickAt('#rail .btn.primary'); await sleep(900); await away(); }, demo: async () => { await addDemo(); await clickAt('#rail .btn.primary'); await sleep(900); await away(); } },
     { name: 'R05-discard-d7', real: async () => { await addReal(); await openCart(); await clickAt('#rail .btn[data-act="discard"]'); await sleep(700); await away(); }, demo: async () => { await addDemo(); await openCart(); await clickAt('#rail .btn[data-act="discard"]'); await sleep(700); await away(); } },
     { name: 'R06-success-d6', real: async () => { await fresh('railnotes'); await restoreQuiet(); await clickAt('#rail .btn.primary'); await sleep(1200); await away(); }, demo: async () => { await fresh(); await p.evaluate(() => finish('ההזמנה נשמרה', [])); await sleep(700); await away(); } },
+    // --- ריחוף: ביטול שורה, לחצן ראשי, צ׳יפ התשלום (מצבי hover של הפלטה) ---
+    { name: 'R09-hover-undo', real: async () => { await addReal(); await openCart(); await hover('#rail .cl-u'); }, demo: async () => { await addDemo(); await openCart(); await hover('#rail .cl-u'); } },
+    { name: 'R10-hover-primary', real: async () => { await addReal(); await hover('#rail .btn.primary'); }, demo: async () => { await addDemo(); await hover('#rail .btn.primary'); } },
     // --- באנר הטיוטה (R11) ---
     { name: 'R07-draft-banner', real: async () => { await fresh('railbanner'); await away(); }, demo: async () => { await fresh(); await p.select('#pvState', 'draft'); await sleep(500); await away(); } },
     // --- רק בדף האמיתי: צילומים + בדיקות זרימה ---

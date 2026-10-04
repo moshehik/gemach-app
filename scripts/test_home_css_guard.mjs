@@ -501,5 +501,43 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+/* ---------- 12. כרטיס ההזמנה החדש - הרייל וחלונות השמירה (app/components/order-card/css/oc-rail.css, W5) ---------- */
+// נטען בתוך שורש .gm-ds.gm-oc (בלי .gm-home). רק תוספות למה שאין בפלטה: היקף, בלי לבן קשיח / !important / גופן, צבעים רק מאסימוני הפלטה,
+// אין @media לפני הכלל הרגיל, ואין "-*/" בהערה. הבדיקה החזותית מול העיצוב: scripts/order-card-bg-audit (שלבי R01-R08).
+const OC_RAIL_CSS = read('../app/components/order-card/css/oc-rail.css');
+const ocRailRules = parseCss(OC_RAIL_CSS);
+t('oc-rail.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  assert.ok(ocRailRules.length >= 4, 'הקובץ לא ריק');
+  const bad = [];
+  for (const r of ocRailRules) for (const s2 of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s2)) bad.push(s2);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-rail.css: אין רקע לבן קשיח, אין !important, אין font-family, צבעים רק מאסימוני הפלטה (בלי hex/rgb)', () => {
+  const bad = [];
+  for (const r of ocRailRules) {
+    for (const d of decls(r.body)) {
+      if (isImportant(d)) bad.push(`!important: ${r.sel} { ${d.prop} }`);
+      if (d.prop === 'font-family') bad.push(`font-family: ${r.sel}`);
+      if (/^(background(-color)?|color|border(-color)?)$/.test(d.prop)) {
+        const v = d.value.trim();
+        if (WHITE_RE.test(v) || /#[0-9a-f]{3,8}|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${v} }`);
+      }
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-rail.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בתוך הערה', () => {
+  assert.deepEqual(mediaBeforeBase(ocRailRules, 'oc-rail.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_RAIL_CSS), '"-*/" שובר next build');
+});
+t('oc-rail.css: נטרולי הדליפה של הרייל והבאנר - ריפוד לחצני ביטול/החזר (globals.css מאפס padding), רווחי באנר הטיוטה, מרווח D6', () => {
+  const has = (selRe, prop, valRe) => ocRailRules.some((r) => selRe.test(r.sel) && decls(r.body).some((d) => d.prop === prop && valRe.test(d.value)));
+  assert.ok(has(/\.rail :is\(\.cl-u,\.redo\)/, 'padding', /^1px 6px$/), 'padding של .cl-u/.redo');
+  assert.ok(has(/\.oc-banner \.nb-bi$/, 'gap', /^2px$/), 'gap של שורות הבאנר');
+  assert.ok(has(/\.oc-banner \.nb-bi \.nb-go$/, 'margin-top', /^12px$/), 'מרווח לחצן הבאנר');
+  assert.ok(has(/\.success \.oc-success-gap$/, 'height', /^24px$/), 'D6: מרווח 24px');
+  assert.ok(!ocRailRules.some((r) => /oc-r5|shield/.test(r.sel)), 'AMB-05: אין כלל לשורת מגן חוב');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

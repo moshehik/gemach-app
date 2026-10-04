@@ -165,6 +165,25 @@ export function successTargets(screen, { customerId } = {}) {
 /** R9: כתובת הדפסת ההזמנה (הדף /print/order רושם ORDER_PRINTED בעצמו - חוזה W0 §1.5) */
 export const printUrl = (orderId) => `/print/order?orderId=${orderId}&type=order`;
 
+// ---------- חלונות השמירה: נתונים וטקסטים טהורים (הרכיבים ב-dialogs/*.js רק מציגים אותם) ----------
+/** D1/R14: סה״כ לתשלום / שולם עד כה / יתרה, ובלוק הסכום (pendingNet אם הבקר מעביר; אחרת היתרה אחרי השמירה) */
+export function summaryModel({ changes = [], totalRequired = 0, totalPaid = 0, pendingNet }) {
+  const required = Number(totalRequired) || 0;
+  const paid = Number(totalPaid) || 0;
+  const balance = r2(required - paid); // כמו הישן: עיגול ההפרש, לא של כל צד
+  const net = pendingNet !== undefined && pendingNet !== null ? Number(pendingNet) : balance;
+  const showAmt = changes.filter((c) => c.amt).length > 1;
+  const balanceLabel = balance > 0 ? 'יתרה לתשלום' : 'יתרת זכות / מאוזן';
+  return { required, paid, balance, net, showAmt, balanceLabel };
+}
+/** D7: "שינוי אחד יימחק" / "N שינויים יימחקו" */
+export const discardSub = (n) => (n === 1 ? 'שינוי אחד יימחק' : `${n} שינויים יימחקו`);
+/** D2: כמה שורות שינוי מוצגות בחלון היציאה (השאר: "ועוד N שינויים") */
+export const EXIT_ROWS_MAX = 6;
+/** R48: הערה לכל שורת חוסר, ורמז הציפוף */
+export const stockLineNote = (spacing) => (spacing ? 'היחידה תפוסה בגלל ציפוף הימים' : 'אין יחידה פנויה בתאריך האירוע');
+export const STOCK_HINT = 'רמז: ציפוף הימים בין הזמנות יכול לתפוס יחידה. בדקו “ציפוף ימים מיוחד” בפרטים מתקדמים.';
+
 // ---------- R11: באנר הטיוטה ----------
 const DRAFT_ICONS = { calendar: 'cal', 'alert-tri': 'alert', 'check-circle': 'check', receipt: 'file', file: 'file', user: 'user', pin: 'pin', bag: 'bag', card: 'card' };
 /** אייקון שורה בטיוטה ("#i-calendar" בטיוטות הישנות) → שם sprite של הפלטה */

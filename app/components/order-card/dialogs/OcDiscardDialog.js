@@ -6,10 +6,8 @@
 
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { ChangeRow } from './ocDialogParts';
+import { discardSub, EXIT_ROWS_MAX } from '../parts/ocRailLogic';
 
-/** "שינוי אחד יימחק" / "N שינויים יימחקו" */
-export const discardSub = (n) => (n === 1 ? 'שינוי אחד יימחק' : `${n} שינויים יימחקו`);
-export const EXIT_ROWS_MAX = 6;
 
 // D7: בעיצוב אין רשימת שינויים בחלון - רק הספירה
 export default function OcDiscardDialog({ changes = [], close }) {

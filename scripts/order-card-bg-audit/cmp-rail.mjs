@@ -7,7 +7,7 @@ export const RAIL_APPROVED = [
   [/^NB[^[]*\[(w|h)\]$/, 'R11: רוחב וגובה הבאנר - בתוך עמודת הכרטיס מעל הלשוניות (בעיצוב: אזור הודעות מעטפת האתר ברוחב מלא; במסך צר הטקסט נשבר אחרת)'],
 ];
 export const RAIL_APPROVED_STAGE = [];
-const stages = ['R01-rail-charge', 'R02-rail-credit', 'R03-rail-notes', 'R04-summary-d1', 'R05-discard-d7', 'R06-success-d6', 'R07-draft-banner', 'R08-rail-undo-redo'];
+const stages = ['R01-rail-charge', 'R02-rail-credit', 'R03-rail-notes', 'R04-summary-d1', 'R05-discard-d7', 'R06-success-d6', 'R07-draft-banner', 'R08-rail-undo-redo', 'R09-hover-undo', 'R10-hover-primary'];
 for (const st of stages) {
   // סמני הלשוניות (W1, A6): בעיצוב "יש חוב/זיכוי" לפי היתרה השמורה; בבקר לפי היתרה כולל שינויים שלא נשמרו - REQUESTS-W5 #4
   RAIL_APPROVED_STAGE.push([st, /^TABS/, 'סמני לשוניות (W1): יתרה שמורה מול יתרה כולל שינויים - REQUESTS-W5 #4']);
