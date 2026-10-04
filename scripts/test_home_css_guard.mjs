@@ -95,6 +95,7 @@ const WHITE_RE = /^(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\b/i;
 const WHITE_OK = [
   '.gm-ds.gm-home .hero .scan', // כדור החיפוש (לבן בעיצוב, בכל מצב: ברירת מחדל / hover / focus)
   '.gm-ds.gm-home :is(.card,.stepper,.itm,.coll[open],.dhero)', // כרטיסים מחוץ למסגרת המשותפת (שגיאה וכד'): surface = לבן בעיצוב
+  '.gm-ds.gm-home .scan .pfx-form input.inp', // שדה שם "שמור חיפוש" בתוך חלונית $: שדה לבן בעיצוב המאושר (תצוגות-עיצוב/חיפוש-קיצורים.html)
 ];
 t('אין רקע לבן קשיח ב-home.css מחוץ לרשימה המאושרת (כדור החיפוש)', () => {
   const bad = [];

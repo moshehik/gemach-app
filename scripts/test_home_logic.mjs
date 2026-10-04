@@ -532,8 +532,8 @@ t('תפוסה: דגם חובה — ההודעה זהה לשרת, נבדק לפנ
   for (const k of Object.keys(ADV_FOCI).filter((x) => x !== 'capacity')) assert.equal(advMissing(k, emptyAdv(k)), '', k + ': אין שדה חובה');
   assert.equal(advMissing('nope', {}), '');
   const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
-  assert.ok(/const missing = advMissing\(adv\.focus, adv\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
-  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(adv.focus'));
+  assert.ok(/const missing = advMissing\(cur\.focus, cur\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
+  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(cur.focus'));
 });
 t('תפוסה: מגבלת צמדי דגם/מידה בשרת מוחזרת כ-400 עם הודעה שהטופס מציג', () => {
   assert.ok(/CAPACITY_PAIRS_MAX = \d+/.test(ADVB_ROUTE));
@@ -931,7 +931,7 @@ t("אין טעינה בטעינת עמוד: useMyActivity לא טוען מעצמ
   const hook = comp.slice(comp.indexOf('export function useMyActivity'), comp.indexOf('export function useQuickPrefix'));
   assert.ok(hook.length > 200 && !/useEffect/.test(hook), 'useMyActivity בלי useEffect = בלי fetch בעליית הרכיב');
   assert.ok(/MINE_TTL_MS = 20000/.test(comp));
-  assert.ok(/if \(src && open && mineLoad\) mineLoad\(\)/.test(comp), 'טעינה רק כשהרשימה של & פתוחה');
+  assert.ok(/if \(src && open && srcLoad\) srcLoad\(\)/.test(comp), 'טעינה רק כשהרשימה של הקידומת (& / $) פתוחה');
   assert.ok(/PREFIX_SOURCES\s*=\s*\{\s*mine: \{ buildModel/.test(comp) && /PREFIX_SOURCES\[hit\.def\.source\]/.test(comp) && /PREFIX_SOURCES\[qp\.def\.source\]/.test(comp), 'ניתוב המקורות דרך הרישום, בלי ענפי source קשיחים');
   assert.ok(!/source === 'mine'/.test(comp), 'אין ענף mine קשיח ב-QuickPrefix.js');
   const fetchers = ['HomeA5.js', 'HomeMine.js'].map((f) => homeSource(f)).join('\n');

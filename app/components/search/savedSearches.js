@@ -137,13 +137,13 @@ export function useSavedSearches({ toast, focusInput } = {}) {
 
   const load = useCallback(() => { loadSavedSearches(false); loadLastFromHistory(); }, []);
   const reload = useCallback(() => { loadSavedSearches(true); }, []);
-  const say = useCallback((title, text) => { if (cbs.current.toast) cbs.current.toast(title, text || ''); }, []);
+  const say = useCallback((title, text, kind) => { if (cbs.current.toast) cbs.current.toast(title, text || '', kind || 'ok'); }, []);
   const refocus = useCallback(() => { if (cbs.current.focusInput) cbs.current.focusInput(); }, []);
 
   const afterCreate = useCallback((r, name) => {
     if (r.ok) return true;
-    if (r.reason === 'limit') say(SAVED_TEXT.limitReached, 'מחקי חיפוש שמור כדי להוסיף');
-    else if (r.reason !== 'unavailable') say(SAVED_TEXT.saveFailed, name ? '“' + name + '”' : '');
+    if (r.reason === 'limit') say(SAVED_TEXT.limitReached, 'מחקי חיפוש שמור כדי להוסיף', 'error');
+    else if (r.reason !== 'unavailable') say(SAVED_TEXT.saveFailed, name ? '“' + name + '”' : '', 'error');
     return false;
   }, [say]);
 
@@ -176,7 +176,7 @@ export function useSavedSearches({ toast, focusInput } = {}) {
 
   const removeNow = useCallback(async (id) => {
     const r = await deleteSavedSearch(id);
-    if (!r.ok) say(SAVED_TEXT.deleteFailed, '');
+    if (!r.ok) say(SAVED_TEXT.deleteFailed, '', 'error');
   }, [say]);
   const askDelete = useCallback((item) => {
     if (!item || !item.id) return;

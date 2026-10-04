@@ -106,26 +106,13 @@ export function useMyActivity() {
   return useMemo(() => ({ state: cur.state, data: cur.data, load, reload, who, setWho, chips, whoName }), [cur.state, cur.data, load, reload, who, chips, whoName]);
 }
 
-/** כמה טיוטות (שינויים שלא נשמרו בכרטיסי הזמנה) יש בעמדה הזו: מ-localStorage, אותו מקור כמו "לא נשמר" ברשימת ההזמנות. נקרא רק כשרשימת '#' פתוחה. */
-export function useDraftCount(active) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (!active) return undefined;
-    const read = () => { try { setN(unsavedOrderIds(window.localStorage).length); } catch { setN(0); } };
-    read();
-    window.addEventListener('storage', read);
-    return () => window.removeEventListener('storage', read);
-  }, [active]);
-  return n;
-}
-
 export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-list', mine = null, prefixes = null, actions = null, saved = null }) {
   // prefixes: אילו קידומות פעילות במקום הזה (ברירת מחדל: כולן); אין מקור / אין הרשאה (403): '&' היא סתם טקסט;
   // actions = { allowed, draftCount } ל-'#', saved = useSavedSearches() ל-'$' - בלי המקור הקידומת היא טקסט רגיל
   const hit = resolveQuickPrefix(q, { enabled, prefixes, mineUsable: !!mine && mine.state !== 'denied', actionsUsable: !!actions, savedUsable: !!saved });
   const term = hit ? hit.term : '';
   const src = hit ? PREFIX_SOURCES[hit.def.source] || null : null; // מקור מרוחק מהרישום (PREFIX_SOURCES); null = 'local' (שורות פשוטות שהקורא מעביר)
-  const ctx = hit ? (hit.def.source === 'mine' ? mine : hit.def.source === 'actions' ? actions : hit.def.source === 'saved' ? saved : null) : null;
+  const ctx = hit ? ({ mine, actions, saved })[hit.def.source] || null : null; // נתוני המקור לפי השם ברישום (QUICK_PREFIXES[..].source)
   const [dismissedFor, setDismissedFor] = useState(null); // הטקסט שעבורו הרשימה נסגרה (Escape / יציאה מהשדה)
   const [actState, setActState] = useState({ q: null, i: -1 });
   const qRef = useRef(q);
@@ -195,6 +182,19 @@ export function useQuickPrefix({ q, rows, enabled = true, onPick, listId = 'qp-l
     }
     : {};
   return { open, items, act, term, rows, def: hit ? hit.def : null, model, mineModel: model, mine, saved, actions, listId, pick, onKeyDown, onFocus, onBlur, inputProps };
+}
+
+/** כמה טיוטות (שינויים שלא נשמרו בכרטיסי הזמנה) יש בעמדה הזו: מ-localStorage, אותו מקור כמו "לא נשמר" ברשימת ההזמנות. נקרא רק כשרשימת '#' פתוחה. */
+export function useDraftCount(active) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!active) return undefined;
+    const read = () => { try { setN(unsavedOrderIds(window.localStorage).length); } catch { setN(0); } };
+    read();
+    window.addEventListener('storage', read);
+    return () => window.removeEventListener('storage', read);
+  }, [active]);
+  return n;
 }
 
 function Marked({ text, term }) {
