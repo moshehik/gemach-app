@@ -65,7 +65,7 @@ export default function DesignPrefsSync() {
             const guard = `gemachPrefsCookieReload_${employeeId}`;
             if (!sessionStorage.getItem(guard)) {
               sessionStorage.setItem(guard, '1');
-              window.location.reload();
+              pendingPush.then(() => { if (!cancelled) window.location.reload(); });
             }
           } catch (e) {}
         }
