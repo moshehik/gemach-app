@@ -163,3 +163,18 @@ test('createScanQueue: סריקה שזורקת לא עוצרת את התור', a
   } finally { console.error = origErr; }
   assert.deepEqual(seen, ['X', 'Y']);
 });
+
+test('ביקורת W3 #8 syncSnapshotItems: אותו fn על פריטי ה-snapshot (השאר לא נוגע); בלי snapshot — כלום', () => {
+  const snap = { order: { orderId: 1 }, items: [it(), it({ id: 'a2' })], obligations: [] };
+  const patch = (prev) => prev.map((i) => (i.id === 'a1' ? { ...i, isTaken: true, barcode: '4538010' } : i));
+  const next = L.syncSnapshotItems(snap, patch);
+  assert.equal(next.items[0].isTaken, true);
+  assert.equal(next.items[1].isTaken, false);
+  assert.equal(next.order, snap.order);
+  assert.equal(snap.items[0].isTaken, false, 'לא משנה את המקור');
+  assert.equal(L.syncSnapshotItems(null, patch), null);
+  // התוצאה: אחרי sync של state+snapshot אין "שינוי שלא נשמר" ברייל
+  const state = { order: snap.order, items: patch(snap.items), obligations: [], payments: [] };
+  assert.deepEqual(L.changesOf(next, state).filter((c) => /פריט/.test(c.label || c.text || '')), []);
+  assert.ok(L.changesOf(snap, state).length > 0, 'בלי הסנכרון — הרייל היה מציג שינוי');
+});

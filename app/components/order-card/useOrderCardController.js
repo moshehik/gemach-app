@@ -24,7 +24,7 @@ import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/order
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
   zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
-  exitGuardActive, withLocalIds, requiredOf, paidOf
+  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems
 } from './orderCardLogic';
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
@@ -49,6 +49,7 @@ import OcApprovalDialog from './OcApproval';
  * @property {()=>Promise<boolean>} reload
  * @property {(order:object, opts?:{savedLocalId?:string})=>void} applyServerOrder
  * @property {(patch:object, o?:{adoptUpdatedAt?:boolean})=>void} patchOrder   סנכרון מקומי אחרי PUT קטן שכבר נשמר (גם ל-snapshot; updatedAt רק עם adoptUpdatedAt)
+ * @property {(fn:(items:object[])=>object[])=>void} syncItems   כמו patchOrder, לפריטים: עדכון פריט שכבר נשמר בשרת ב-items וב-snapshot, בלי markEdited
  * @property {(fields:object)=>Promise<{ok:boolean,overwrote?:boolean}>} patchServer   PUT קטן (כמו חתימה) עם updatedAt + 409→overwrite, ומסנכרן
  * @property {()=>Promise<boolean>} deleteOrder @property {(o?:{confirmed?:boolean})=>Promise<boolean>} toggleSignature
  * @property {()=>Promise<boolean>} unlock @property {()=>void} relock
@@ -397,6 +398,14 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     if (snap) setSnapshot({ ...snap, order: { ...snap.order, ...p } });
   }, [setSnapshot]);
 
+  // כמו patchOrder, לפריטים: עדכון פריטים שכבר נשמרו בשרת (השכרה/החזרה/מצב החזרה — POST מיידי) ב-state וב-snapshot גם יחד, בלי
+  // markEdited/clearRedo — הכרטיס לא נהיה "מלוכלך" והרייל לא מציג "עודכן פריט". fn: (items) => items (REQUESTS-W3.md #1).
+  const syncItems = useCallback((fn) => {
+    setItems(prev => fn(prev));
+    const snap = snapshotRef.current;
+    if (snap) setSnapshot(syncSnapshotItems(snap, fn));
+  }, [setSnapshot]);
+
   const logEvent = useCallback(async (action, meta) => {
     const oid = stateRef.current.order?.orderId;
     const r = await postOrderEvent({ orderIds: [oid], action, meta, clientEventId: newClientEventId() });
@@ -413,7 +422,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     changes, dirty, undoChange, redo, redoCount,
     discardAll: flows.discardAll,
     edit,
-    save: flows.save, exit: flows.exit, reload: flows.reload, applyServerOrder: flows.applyServerOrder, patchOrder, patchServer: flows.patchServer,
+    save: flows.save, exit: flows.exit, reload: flows.reload, applyServerOrder: flows.applyServerOrder, patchOrder, syncItems, patchServer: flows.patchServer,
     deleteOrder: flows.deleteOrder, toggleSignature: flows.toggleSignature, unlock, relock,
     drafts: { pending: pendingDraft, restore: restoreDraft, discard: discardDraft },
     historyVersion, bumpHistory, logEvent, approve, approveDebt,

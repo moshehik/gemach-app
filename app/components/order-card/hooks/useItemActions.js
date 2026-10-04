@@ -804,9 +804,8 @@ export default function useItemActions(oc, ui, { chooseItem } = {}) {
       const c = ocRef.current;
       return { order: c.order, items: c.items, settings: c.settings, isLocked: c.flags.isLocked, routeId: c.orderRef, priceList: priceRef.current, ...editSetsRef.current };
     },
-    // פעולה שכבר נשמרה בשרת: הבקר מעדכן גם את ה-snapshot (syncItems) כדי שלא תוצג כ"שינוי שלא נשמר". עד שהבקר יחשוף אותה
-    // (REQUESTS-W3.md #1) — עדכון רגיל של הפריטים (כמו onItemsChange של הישן, שגם הוא סימן את ההזמנה כ"לא נשמרה").
-    syncItems: (fn) => { const c = ocRef.current; if (typeof c.syncItems === 'function') c.syncItems(fn); else c.edit.setItems(fn); },
+    // פעולה שכבר נשמרה בשרת: הבקר מעדכן גם את ה-snapshot (oc.syncItems) כדי שלא תוצג כ"שינוי שלא נשמר" (REQUESTS-W3.md #1)
+    syncItems: (fn) => ocRef.current.syncItems(fn),
     addLocalItem: (p) => ocRef.current.edit.addLocalItem(p),
     removeLocalItem: (id) => ocRef.current.edit.removeLocalItem(id),
     markItemDeleted: (id, b) => ocRef.current.edit.markItemDeleted(id, b),

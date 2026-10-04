@@ -106,3 +106,14 @@ test('אין שינוי בקובצי הכרטיס הישן ובשורת הסרי
     assert.ok(fs.existsSync(path.join(PROJ, f)), f);
   }
 });
+
+test('ביקורת W3 #8: הבקר חושף oc.syncItems (state + snapshot, בלי markEdited) והפעולות משתמשות בו — לא ב-oc.edit.setItems', () => {
+  const ctl = fs.readFileSync(path.join(OC, 'useOrderCardController.js'), 'utf8');
+  const body = ctl.slice(ctl.indexOf('const syncItems = useCallback'), ctl.indexOf('const logEvent = useCallback'));
+  assert.ok(body.includes('setItems(prev => fn(prev))') && body.includes('syncSnapshotItems(snap, fn)'));
+  assert.ok(!/markEdited|clearRedo/.test(body), 'לא מסמן "נערך"');
+  assert.match(ctl, /patchOrder, syncItems, patchServer/, 'נחשף על oc');
+  const act = CODE['hooks/useItemActions.js'];
+  assert.match(act, /syncItems: \(fn\) => ocRef\.current\.syncItems\(fn\)/);
+  assert.ok(!/edit\.setItems/.test(act));
+});
