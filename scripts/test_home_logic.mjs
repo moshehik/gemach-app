@@ -822,7 +822,7 @@ t("רשימת '@' = אותם נתונים כמו כרטיס 'האחרונים' �
 console.log('"השינויים שלי" (&) — lib/myRecentActivityView.js + חיווט HomeA5 / QuickPrefix');
 const NOW = new Date('2026-10-04T10:00:00Z'); // 13:00 שעון ישראל, 23 בתשרי
 const agoMin = (m) => new Date(NOW.getTime() - m * 60000).toISOString();
-const mk = (n, label, ago) => ({ orderId: '00000000-0000-4000-8000-' + String(n).padStart(12, '0'), orderNumber: n, customerName: 'רחל כהן' + n, createdAt: agoMin(ago), lastChangeLabelHe: label, lastChangeAt: agoMin(ago) });
+const mk = (n, label, ago) => ({ id: '00000000-0000-4000-8000-' + String(n).padStart(12, '0'), orderNumber: n, customerName: 'רחל כהן' + n, createdAt: agoMin(ago), lastChangeLabelHe: label, lastChangeAt: agoMin(ago) });
 const MINE_DATA = {
   created: [1, 2, 3, 4, 5, 6, 7].map((n) => mk(n, '', n * 100)),
   changed: [11, 12, 13].map((n, i) => mk(n, 'עודכן תאריך האירוע', 30 + i * 500)),
@@ -849,7 +849,7 @@ t('buildMineModel: שני חלקים (חדשות / שינויים), עד 5 בכ�
   assert.equal(m.more.sub, 'עוד 2 ברשימה המלאה');
   const r = m.sections[1].rows[0];
   assert.deepEqual([r.type, r.icon, r.title, r.orderNumber, r.detail, r.when], ['order', 'pencil', 'רחל כהן11', 11, 'עודכן תאריך האירוע', 'לפני 30 דק׳']);
-  assert.equal(r.url, '/orders/00000000-0000-4000-8000-000000000011');
+  assert.equal(r.url, '/orders/11', 'הקישור לפי מספר הזמנה, לא uuid');
   assert.equal(m.sections[0].rows[0].icon, 'plus'); assert.equal(m.sections[0].rows[0].detail, 'הזמנה חדשה');
 });
 t('buildMineModel: בלי תקרה (התצוגה המלאה) כל הרשימה ובלי "הצג הכל"; סינון לפי שם / מספר / נוסח; אין התאמה', () => {
@@ -862,14 +862,15 @@ t('buildMineModel: בלי תקרה (התצוגה המלאה) כל הרשימה �
   const none = buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'zzz', now: NOW });
   assert.equal(none.items.length, 0); assert.match(none.none, /אין התאמה/);
 });
-t('buildMineModel: מצבים - טוען / ריק / שגיאה (עם "נסי שוב") / degraded; פריט עם מזהה לא תקין נזרק', () => {
+t('buildMineModel: מצבים - טוען / ריק / שגיאה (עם "נסי שוב") / degraded; פריט בלי מספר הזמנה תקין נזרק', () => {
   assert.equal(buildMineModel({ state: 'loading' }).state, 'loading'); assert.equal(buildMineModel({ state: 'idle' }).state, 'loading'); assert.equal(buildMineModel(null).state, 'loading');
   const empty = buildMineModel({ state: 'ok', data: { created: [], changed: [] } });
   assert.equal(empty.none, 'עוד לא יצרת או שינית הזמנות'); assert.equal(empty.items.length, 0);
   const err = buildMineModel({ state: 'error' }); assert.equal(err.state, 'error'); assert.deepEqual(err.items.map((x) => x.type), ['retry']);
   assert.equal(buildMineModel({ state: 'ok', data: { created: [], changed: [], degraded: true } }).state, 'error');
-  const bad = buildMineModel({ state: 'ok', data: { created: [{ orderId: '../x', orderNumber: 1, customerName: 'a' }, { orderId: 'ok-1', orderNumber: 2, customerName: 'b', createdAt: agoMin(5) }], changed: [] } }, { now: NOW });
+  const bad = buildMineModel({ state: 'ok', data: { created: [{ id: 'x', orderNumber: '../x', customerName: 'a' }, { id: 'y', orderNumber: -3, customerName: 'a' }, { id: 'z', orderNumber: 1.5, customerName: 'a' }, { id: 'ok-1', orderNumber: 2, customerName: 'b', createdAt: agoMin(5) }], changed: [] } }, { now: NOW });
   assert.deepEqual(bad.items.map((x) => x.orderNumber), [2]);
+  assert.equal(bad.items[0].url, '/orders/2');
 });
 t("'&' חווט בדף הבית ובתפריט: useMyActivity (מטמון + denied), HomeMine בתצוגת mine, /?recent=mine, ו-pick של 'הצג הכל'", () => {
   const home = homeSource('HomeA5.js'); const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');

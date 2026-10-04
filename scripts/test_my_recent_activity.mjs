@@ -80,7 +80,11 @@ function model(name) {
         rows = rows.slice().sort((a, b) => { for (const o of ob) { const [f, d] = Object.entries(o)[0]; const c = cmp(a[f], b[f]); if (c) return d === 'desc' ? -c : c; } return 0; });
       }
       if (args.take != null) rows = rows.slice(0, args.take);
-      return rows.map((r) => ({ ...r }));
+      return rows.map((r) => {
+        const out = args.select ? Object.fromEntries(Object.entries(r).filter(([k]) => !!args.select[k])) : { ...r }; // select כמו Prisma: שדה שלא נבחר לא חוזר
+        if (args.select && args.select.order && r.orderId != null) { const o = (T.db.order || []).find((x) => x.orderId === r.orderId); out.order = o ? { id: o.id } : null; }
+        return out;
+      });
     },
   };
 }
@@ -157,12 +161,12 @@ await t('activitySince: תחילת היום הישראלי לפני 60 יום (�
   assert.equal(s.toISOString(), '2026-08-04T21:00:00.000Z'); // 5.8 00:00 שעון ישראל (קיץ, UTC+3)... 60 יום אחורה מ-4.10 = 5.8
   assert.equal(lib.activitySince(new Date('2026-10-04T22:30:00Z')).toISOString(), '2026-08-05T21:00:00.000Z'); // 5.10 בבוקר שעון ישראל -> היום הישראלי הבא
 });
-await t('pickCandidates: שורה בתוך חלון היצירה היא לא שינוי, מחוץ לחלון כן; הזמנה אחת פעם אחת', () => {
+await t('pickCandidates: שורה בתוך חלון היצירה (דקה) היא לא שינוי, מחוץ לחלון כן; הזמנה אחת פעם אחת', () => {
   const at = (m) => new Date(1e12 + m * 60000).toISOString();
   const rows = [
     { entityType: 'Order', action: 'CREATE', createdAt: at(0), orderNumber: 1 },
-    { entityType: 'OrderItem', action: 'CREATE', createdAt: at(1), orderNumber: 1 },
-    { entityType: 'Order', action: 'UPDATE', createdAt: at(9), orderNumber: 1 },
+    { entityType: 'OrderItem', action: 'CREATE', createdAt: at(0.2), orderNumber: 1 },
+    { entityType: 'Order', action: 'UPDATE', createdAt: at(0.9), orderNumber: 1 },
     { entityType: 'Order', action: 'UPDATE', createdAt: at(11), orderNumber: 1 },
     { entityType: 'Order', action: 'UPDATE', createdAt: at(50), orderNumber: 1 },
     { entityType: 'Order', action: 'UPDATE', createdAt: at(5), orderNumber: 2 },
@@ -171,6 +175,42 @@ await t('pickCandidates: שורה בתוך חלון היצירה היא לא ש�
   assert.deepEqual(c.created.map((x) => x.orderNumber), [1]);
   assert.deepEqual(c.changed.map((x) => x.orderNumber), [1, 2]);
   assert.equal(c.changed[0].at, 1e12 + 50 * 60000, 'הרגע האחרון של העריכה');
+});
+await t('pickCandidates (טיוטה): CREATE 10:00, שמירה סופית (טיוטה->פעילה) 10:25, פריט + תשלום 10:25:01 -> created=[הזמנה] ברגע 10:25, changed=[]', () => {
+  const at = (m, sec = 0) => new Date(Date.UTC(2026, 9, 4, 7, 0 + m, sec)).toISOString(); // 10:00 שעון ישראל = 07:00Z
+  const rows = [
+    { id: 'r1', entityType: 'Order', action: 'CREATE', createdAt: at(0), orderNumber: 7, changesJson: JSON.stringify({ status: 'טיוטה' }) },
+    { id: 'r2', entityType: 'Order', action: 'UPDATE', createdAt: at(25), orderNumber: 7, changesJson: JSON.stringify({ status: { from: 'טיוטה', to: 'פעילה' } }) },
+    { id: 'r3', entityType: 'OrderItem', action: 'CREATE', createdAt: at(25, 1), orderNumber: 7 },
+    { id: 'r4', entityType: 'Payment', action: 'CREATE', createdAt: at(25, 1), orderNumber: 7 },
+  ];
+  const c = lib.pickCandidates(rows);
+  assert.deepEqual(c.created.map((x) => x.orderNumber), [7]);
+  assert.equal(c.created[0].at, Date.parse(at(25)), 'רגע היצירה = השמירה הסופית, לא תחילת הטיוטה');
+  assert.deepEqual(c.changed, []);
+});
+await t('pickCandidates (טיוטה): שמירות טיוטה באמצע הן חלק מהיצירה; ערך סטטוס פשוט (בלי from) מזוהה לפי ה-CREATE; עריכה אחרי השמירה הסופית היא שינוי', () => {
+  const at = (m, sec = 0) => new Date(Date.UTC(2026, 9, 4, 7, 0 + m, sec)).toISOString();
+  const rows = [
+    { id: 'r1', entityType: 'Order', action: 'CREATE', createdAt: at(0), orderNumber: 8, changesJson: JSON.stringify({ status: 'טיוטה', orderId: 8 }) },
+    { id: 'r2', entityType: 'Order', action: 'UPDATE', createdAt: at(10), orderNumber: 8, changesJson: JSON.stringify({ status: 'טיוטה' }) },
+    { id: 'r3', entityType: 'Order', action: 'UPDATE', createdAt: at(30), orderNumber: 8, changesJson: JSON.stringify({ status: 'פעילה', isDeleted: false }) },
+    { id: 'r4', entityType: 'OrderItem', action: 'CREATE', createdAt: at(30, 2), orderNumber: 8 },
+    { id: 'r5', entityType: 'Order', action: 'UPDATE', createdAt: at(90), orderNumber: 8, changesJson: JSON.stringify({ notes: { from: '', to: 'x' } }) },
+  ];
+  const c = lib.pickCandidates(rows);
+  assert.equal(c.created[0].at, Date.parse(at(30)));
+  assert.deepEqual(c.changed.map((x) => [x.orderNumber, x.at]), [[8, Date.parse(at(90))]]);
+});
+await t('pickCandidates: הזמנה שנוצרה לא כטיוטה - שינוי סטטוס רגיל אחרי היצירה לא נחשב שמירה סופית', () => {
+  const at = (m) => new Date(Date.UTC(2026, 9, 4, 7, m, 0)).toISOString();
+  const rows = [
+    { id: 'r1', entityType: 'Order', action: 'CREATE', createdAt: at(0), orderNumber: 9, changesJson: JSON.stringify({ status: 'פעילה' }) },
+    { id: 'r2', entityType: 'Order', action: 'UPDATE', createdAt: at(25), orderNumber: 9, changesJson: JSON.stringify({ status: { from: 'פעילה', to: 'שולם' } }) },
+  ];
+  const c = lib.pickCandidates(rows);
+  assert.equal(c.created[0].at, Date.parse(at(0)));
+  assert.deepEqual(c.changed.map((x) => x.orderNumber), [9]);
 });
 await t('pickCandidates: בלי שורות -> רשימות ריקות', () => {
   const c = lib.pickCandidates([]);
@@ -197,15 +237,16 @@ await t('created: רק מה שיצרתי, החדש ראשון; בוטלה / טי
   reset(); const r = await call();
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.created.map((x) => x.orderNumber), [1001, 1005]);
-  assert.deepEqual(Object.keys(r.body.created[0]).sort(), ['createdAt', 'customerName', 'orderId', 'orderNumber']);
+  assert.deepEqual(Object.keys(r.body.created[0]).sort(), ['createdAt', 'customerName', 'id', 'orderNumber']);
   assert.equal(r.body.created[0].customerName, 'רחל כהן1001');
-  assert.equal(r.body.created[0].orderId, uid(1001));
+  assert.equal(r.body.created[0].id, uid(1001));
+  assert.equal(r.body.created[0].orderNumber, 1001);
 });
 await t('changed: הזמנה שיצרתי לא נכנסת בגלל מה שנכתב בזמן היצירה; כן אם ערכתי אחרי; הזמנה של אחרת שערכתי כן', async () => {
   reset(); const r = await call();
   assert.deepEqual(r.body.changed.map((x) => x.orderNumber), [1002, 1005, 1006]);
   assert.ok(!r.body.changed.some((x) => [1001, 1003, 1004, 1007, 1008].includes(x.orderNumber)));
-  assert.deepEqual(Object.keys(r.body.changed[0]).sort(), ['customerName', 'lastChangeAt', 'lastChangeLabelHe', 'orderId', 'orderNumber']);
+  assert.deepEqual(Object.keys(r.body.changed[0]).sort(), ['customerName', 'id', 'lastChangeAt', 'lastChangeLabelHe', 'orderNumber']);
 });
 await t('הנוסח העברי הוא של מיפוי ההיסטוריה (תאריך האירוע / משלוח / פריט) ובלי מזהים גולמיים', async () => {
   reset(); const r = await call();
@@ -227,8 +268,9 @@ await t('הרשימה של אחרת לא דולפת: שורות של emp-other �
 await t('כל שאילתת יומן מסוננת לפי ה-employeeId שלי ויש לה חלון זמן; לכל שאילתה take; רק קריאות (אין כתיבה / $transaction)', async () => {
   reset(); await call();
   const first = T.calls.filter((c) => c.model === 'auditLog' && c.where && c.where.employeeId);
-  assert.equal(first.length, 3);
+  assert.equal(first.length, 2, 'שאילתת סבב 1 (אחת) + שורות Order של העובדת לפי entityId');
   for (const c of first) { assert.equal(c.where.employeeId, 'emp-me'); assert.ok(c.where.createdAt && c.where.createdAt.gte instanceof Date); }
+  assert.equal(first.filter((c) => !c.where.entityId).length, 1, 'סבב 1 הוא שאילתה אחת');
   for (const c of T.calls) { assert.equal(c.method, 'findMany'); assert.ok(Number.isFinite(c.take) && c.take > 0, 'חסר take: ' + c.model); }
   assert.ok(T.calls.length <= 10, 'כמות השאילתות ממוקדת, לא N+1: ' + T.calls.length);
 });
@@ -242,6 +284,55 @@ await t('בלי N+1: כמות השאילתות לא תלויה בכמות ההז
   assert.equal(T.calls.length, smallCalls);
   assert.ok(small.body.changed.length <= 20 && big.body.changed.length === 20, 'תקרת 20 בכל רשימה: ' + big.body.changed.length);
   const ts = big.body.changed.map((x) => Date.parse(x.lastChangeAt)); assert.deepEqual(ts.slice().sort((a, b) => b - a), ts, 'החדש ראשון');
+});
+await t('הזמנה חדשה דרך טיוטה (CREATE, שמירה סופית 25 דק׳ אחר כך, פריט + תשלום אחריה) מופיעה רק ב"נוצרו" ברגע השמירה הסופית, ולא ב"שינויים"', async () => {
+  reset();
+  const D = new Date(Date.now() - 6 * 3600000); const at = (m, sec = 0) => new Date(D.getTime() + m * 60000 + sec * 1000);
+  T.db.order.push(orderRow(3001));
+  T.db.orderItem.push({ id: 'it-3001', orderId: 3001, sizeText: '38', description: null, barcodePrefix: 549, isDeleted: false, dressItem: { barcodePrefix: 549, dress: { name: 'ורד', barcodePrefix: 549 } } });
+  T.db.payment.push({ id: 'pay-3001', orderId: 3001, amount: 100, paymentMethod: 'מזומן', notes: null, paymentDate: at(25), isDeleted: false, isRefund: false });
+  T.db.auditLog.push(
+    A('emp-me', 'Order', uid(3001), 'CREATE', { ...baseOrder(3001), status: 'טיוטה' }, at(0)),
+    A('emp-me', 'Order', uid(3001), 'UPDATE', { status: 'טיוטה', notes: 'a' }, at(12)),
+    A('emp-me', 'Order', uid(3001), 'UPDATE', { status: 'שולם', isDeleted: false }, at(25)),
+    A('emp-me', 'OrderItem', 'it-3001', 'CREATE', { sizeText: '38' }, at(25, 1)),
+    A('emp-me', 'Payment', 'pay-3001', 'CREATE', { amount: 100 }, at(25, 1)),
+  );
+  const r = await call();
+  const c = r.body.created.find((x) => x.orderNumber === 3001);
+  assert.ok(c, 'ב"נוצרו"');
+  assert.equal(c.createdAt, at(25).toISOString(), 'createdAt = השמירה הסופית');
+  assert.ok(!r.body.changed.some((x) => x.orderNumber === 3001), 'לא ב"שינויים"');
+  // עריכה אמיתית אחר כך -> גם ב"שינויים"
+  T.db.auditLog.push(A('emp-me', 'Order', uid(3001), 'UPDATE', { eventDate: '2026-11-09T00:00:00.000Z' }, at(120)));
+  const r2 = await call();
+  assert.ok(r2.body.created.some((x) => x.orderNumber === 3001) && r2.body.changed.some((x) => x.orderNumber === 3001));
+});
+await t('הזמנה שנוצרה לפני שורות רבות (CREATE מחוץ לתקרת השאילתה הראשונה, "נוסף פריט" בפנים): לא נחשב שינוי והיא ב"נוצרו"', async () => {
+  reset();
+  const base = Date.now() - 3 * 86400000;
+  T.db.order.push(orderRow(4001));
+  T.db.orderItem.push({ id: 'it-4001', orderId: 4001, sizeText: '38', description: null, barcodePrefix: 549, isDeleted: false, dressItem: { barcodePrefix: 549, dress: { name: 'ורד', barcodePrefix: 549 } } });
+  T.db.auditLog.push(A('emp-me', 'Order', uid(4001), 'CREATE', baseOrder(4001), new Date(base)), A('emp-me', 'OrderItem', 'it-4001', 'CREATE', { sizeText: '38' }, new Date(base + 30000)));
+  const mineNow = T.db.auditLog.filter((x) => x.employeeId === 'emp-me' && x.createdAt.getTime() > Date.now() - 30 * 86400000).length; // כולל שורות הנתונים הקבועים (חדשות יותר מהמילוי)
+  for (let i = 0; i < lib.MY_ACTIVITY_LIMITS.auditRows - mineNow + 1; i++) T.db.auditLog.push(A('emp-me', 'Payment', 'filler-' + i, 'UPDATE', { amount: 1 }, new Date(base + 60000 + i * 1000)));
+  const r = await call();
+  assert.ok(r.body.created.some((x) => x.orderNumber === 4001), 'נטענה שורת ה-CREATE לפי entityId');
+  assert.ok(!r.body.changed.some((x) => x.orderNumber === 4001), 'אין "נוסף פריט" שקרי');
+  assert.ok(lib.MY_ACTIVITY_LIMITS.createAuditRows >= lib.MY_ACTIVITY_LIMITS.auditRows);
+});
+await t('שורות הסבב הראשון: שאילתה אחת לכל סוגי השורות; שורות ה-Order הנוספות לפי entityId (uuid) בלבד', async () => {
+  reset(); await call();
+  const audit = T.calls.filter((c) => c.model === 'auditLog' && c.where && c.where.employeeId);
+  const round1 = audit.filter((c) => !c.where.entityId);
+  assert.equal(round1.length, 1);
+  assert.deepEqual([...round1[0].where.entityType.in].sort(), ['Order', 'OrderItem', 'Payment']);
+  const extra = audit.find((c) => c.where.entityId);
+  assert.ok(extra && Array.isArray(extra.where.entityId.in) && extra.where.entityId.in.length > 0 && extra.where.entityType === 'Order');
+});
+await t('הקישור לפי מספר הזמנה: orderNumber בתשובה, id הוא uuid', async () => {
+  reset(); const r = await call();
+  for (const x of [...r.body.created, ...r.body.changed]) { assert.equal(typeof x.orderNumber, 'number'); assert.match(x.id, /^0000/); assert.ok(!('orderId' in x)); }
 });
 await t('כשל DB: 200 עם רשימות ריקות ו-degraded (לא 500)', async () => {
   reset(); T.fail = true; const r = await call(); assert.equal(r.status, 200); assert.deepEqual(r.body, { created: [], changed: [], degraded: true });

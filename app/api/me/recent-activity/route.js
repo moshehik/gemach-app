@@ -3,24 +3,28 @@ import prisma, { getActingEmployeeId } from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import {
-  MY_ACTIVITY_LIMITS as L, MY_ENTITY_TYPES, activitySince, collectRefs, attachOrderNumbers, pickCandidates,
+  MY_ACTIVITY_LIMITS as L, MY_ENTITY_TYPES, activitySince, collectRefs, attachOrderNumbers, mergeAuditRows, pickCandidates,
   detailOrderNumbers, historyOrderNumbers, composeMyActivity,
 } from '@/lib/myRecentActivity';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/me/recent-activity - "השינויים שלי": ההזמנות החדשות שהעובדת המחוברת יצרה והשינויים שעשתה בהזמנות.
-//   -> { created: [{ orderId, orderNumber, customerName, createdAt }],
-//        changed: [{ orderId, orderNumber, customerName, lastChangeLabelHe, lastChangeAt }],
+//   -> { created: [{ id, orderNumber, customerName, createdAt }],
+//        changed: [{ id, orderNumber, customerName, lastChangeLabelHe, lastChangeAt }],
 //        degraded?: true, anonymous?: true }
-// orderId = מזהה ההזמנה לכתובת (/orders/<orderId>); orderNumber = המספר שמוצג. החדש ראשון, הזמנה אחת פעם אחת בכל רשימה,
-// עד 20 בכל רשימה. הזמנה שבוטלה או טיוטה לא מופיעה.
+// id = מזהה ה-uuid של ההזמנה; orderNumber = המספר שמוצג והוא גם הכתובת (/orders/<orderNumber>, כמו שאר האפליקציה).
+// החדש ראשון, הזמנה אחת פעם אחת בכל רשימה, עד 20 בכל רשימה. הזמנה שבוטלה או טיוטה לא מופיעה.
+// createdAt של הזמנה שנוצרה דרך טיוטה = רגע השמירה הסופית (לא תחילת הטיוטה), ור' lib/myRecentActivity.js pickCandidates.
 //
 // פרטיות: רק הפעולות של העובדת המחוברת עצמה (employeeId נלקח מהעוגייה המאומתת, לא מהבקשה). ?employeeId=<אחרת> = 403
 // (צפייה ברשימה של עובדת אחרת, גם להנהלה, טרם הוחלט - ר' NOTES). הנתיב קריאה בלבד: לא כותב ל-AuditLog ולא לשום טבלה.
 // הרשאה: אותה כמו דפי ההזמנות (page:orders). ההפרדה בין שני הגמ"חים היא ה-DB עצמו (כל גמ"ח בסיס נתונים נפרד).
-// ביצועים: חמש סבבי שאילתות ממוקדים ובלי N+1 (יומן של העובדת -> שיוך להזמנות -> פרטי הזמנות -> פריטים/תשלומים -> יומן ההזמנות),
-// כולן עם take, בלי $transaction. חלון: 60 ימי-לוח ישראליים (אין אינדקס על employeeId+createdAt, והחלון הוא התקרה).
+// ביצועים: סבבים ממוקדים ובלי N+1 (יומן של העובדת: שאילתה אחת -> שיוך להזמנות -> שורות Order של העובדת לפי entityId ->
+// פרטי הזמנות -> פריטים/תשלומים -> יומן ההזמנות), כולן עם take, בלי $transaction. החלון (60 ימי-לוח ישראליים) + take הם התקרה של
+// התוצאה, לא של הסריקה: יש אינדקס על employeeId בלבד (לא על employeeId+createdAt), לכן למי שיש לה המון שורות בהיסטוריה Postgres
+// עלול לסרוק את כולן ולמיין. אינדקס @@index([employeeId, createdAt]) על AuditLog היה פותר (SQL ידני בשני ה-DB, ר' NOTES, לא בוצע).
+// הנתיב נקרא רק בפתיחת הרשימה ('&' / שורת השינויים שלי / /?recent=mine) - לא בטעינת עמוד.
 // כשל ב-DB: 200 עם רשימות ריקות ו-degraded:true (התצוגה מראה "לא הצלחנו לטעון" ולא שגיאה).
 
 const json = (body, status = 200) => NextResponse.json(body, { status });
@@ -39,28 +43,36 @@ export async function GET(request) {
     const select = { id: true, entityType: true, entityId: true, action: true, createdAt: true };
     const orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
 
-    // סבב 1: מה העובדת כתבה ביומן (שלוש שאילתות במקביל: יצירות של הזמנות, שאר הפעולות, ויצירות של פריט / תשלום -
-    // CREATE של פריט / תשלום בהזמנה שלא נוצרה עכשיו הוא שינוי ("נוסף פריט"), לכן נקרא בנפרד, באותה תקרה)
-    const [createRows, changeRows, addRows] = await Promise.all([
-      prisma.auditLog.findMany({ where: { employeeId: me, entityType: 'Order', action: 'CREATE', createdAt: { gte: since } }, orderBy, take: L.createAuditRows, select }),
-      prisma.auditLog.findMany({ where: { employeeId: me, entityType: { in: [...MY_ENTITY_TYPES] }, action: { not: 'CREATE' }, createdAt: { gte: since } }, orderBy, take: L.changeAuditRows, select }),
-      prisma.auditLog.findMany({ where: { employeeId: me, entityType: { in: ['OrderItem', 'Payment'] }, action: 'CREATE', createdAt: { gte: since } }, orderBy, take: L.changeAuditRows, select }),
-    ]);
-    const mine = [...createRows, ...changeRows, ...addRows];
-    if (!mine.length) return json(EMPTY);
+    // סבב 1: מה העובדת כתבה ביומן - שאילתה אחת (Order / OrderItem / Payment, כל הפעולות); CREATE של פריט / תשלום בהזמנה
+    // שלא נוצרה עכשיו הוא שינוי ("נוסף פריט"), והסינון בין סוגי השורות נעשה בזיכרון (pickCandidates)
+    const rows = await prisma.auditLog.findMany({ where: { employeeId: me, entityType: { in: [...MY_ENTITY_TYPES] }, createdAt: { gte: since } }, orderBy, take: L.auditRows, select });
+    if (!rows.length) return json(EMPTY);
 
-    // סבב 2: שיוך כל שורה להזמנה (מזהה uuid / מזהה פריט / מזהה תשלום -> מספר הזמנה)
-    const refs = collectRefs(mine);
+    // סבב 2: שיוך כל שורה להזמנה (מזהה uuid / מזהה פריט / מזהה תשלום -> מספר הזמנה + uuid של ההזמנה)
+    const refs = collectRefs(rows);
     const [byUuid, items, pays] = await Promise.all([
       refs.orderUuids.length ? prisma.order.findMany({ where: { id: { in: refs.orderUuids } }, select: { id: true, orderId: true }, take: refs.orderUuids.length }) : [],
-      refs.itemIds.length ? prisma.orderItem.findMany({ where: { id: { in: refs.itemIds } }, select: { id: true, orderId: true }, take: refs.itemIds.length }) : [],
-      refs.paymentIds.length ? prisma.payment.findMany({ where: { id: { in: refs.paymentIds } }, select: { id: true, orderId: true }, take: refs.paymentIds.length }) : [],
+      refs.itemIds.length ? prisma.orderItem.findMany({ where: { id: { in: refs.itemIds } }, select: { id: true, orderId: true, order: { select: { id: true } } }, take: refs.itemIds.length }) : [],
+      refs.paymentIds.length ? prisma.payment.findMany({ where: { id: { in: refs.paymentIds } }, select: { id: true, orderId: true, order: { select: { id: true } } }, take: refs.paymentIds.length }) : [],
     ]);
     const lookups = {
       uuidToNumber: new Map(byUuid.map((o) => [o.id, o.orderId])),
       itemToOrder: new Map(items.filter((i) => i.orderId != null).map((i) => [i.id, i.orderId])),
       paymentToOrder: new Map(pays.filter((p) => p.orderId != null).map((p) => [p.id, p.orderId])),
     };
+
+    // סבב 2ב: שורות Order של העובדת להזמנות שנמצאו, לפי entityId (אינדקס entityType+entityId): (א) יצירות שנפלו מהתקרה של סבב 1
+    // (אחרת "נוסף פריט" שנכתב בזמן יצירת הזמנה ישנה נחשב שינוי), (ב) שורות עם changesJson - הסטטוס שבהן קובע את רגע השמירה הסופית
+    // של הזמנה שנוצרה דרך טיוטה. הזמנות בלי שורת Order בסבב 1 (רק פריט / תשלום) נכללות דרך ה-uuid שבקשר של הפריט / התשלום.
+    const knownUuids = new Set(refs.orderUuids);
+    for (const x of [...items, ...pays]) if (x.order && x.order.id) { knownUuids.add(x.order.id); lookups.uuidToNumber.set(x.order.id, x.orderId); }
+    const orderRows = knownUuids.size
+      ? await prisma.auditLog.findMany({
+        where: { employeeId: me, entityType: 'Order', action: { in: ['CREATE', 'UPDATE'] }, entityId: { in: [...knownUuids] }, createdAt: { gte: since } },
+        orderBy, take: L.extraAuditRows, select: { ...select, changesJson: true },
+      })
+      : [];
+    const mine = mergeAuditRows(orderRows, rows);
     const candidates = pickCandidates(attachOrderNumbers(mine, lookups));
     const detailNums = detailOrderNumbers(candidates);
     if (!detailNums.length) return json(EMPTY);
