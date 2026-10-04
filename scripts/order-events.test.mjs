@@ -133,7 +133,7 @@ function installDb(extraSettings = []) {
       { id: 'emp-mgr', roleId: 1, isActive: true, firstName: 'מנהלת', lastName: 'סניף', password: PIN_HASH },
       { id: 'emp-head', roleId: 0, isActive: true, firstName: 'הנהלה', lastName: 'ראשית', password: OTHER_HASH },
     ],
-    systemSetting: [{ key: 'require_login', value: 'true' }, { key: 'email_link_a', value: 'http://mailer.test/exec' }, ...extraSettings],
+    systemSetting: [{ key: 'require_login', value: 'true' }, { key: 'email_link_a', value: 'http://mailer.test/exec' }, { key: 'order_quick_mail_enabled', value: 'true' }, ...extraSettings],
     departmentPermission: [
       { roleId: 5, key: 'page:orders', value: 'true' },
       { roleId: 6, key: 'page:orders', value: 'false' }, { roleId: 6, key: 'page:rentals', value: 'false' }, { roleId: 6, key: 'page:board', value: 'false' }, { roleId: 6, key: 'page:schedule', value: 'false' },
@@ -959,6 +959,48 @@ test('email quick: a send failure writes EMAIL_FAILED with the typed subject; re
   assert.equal(sent[0].body.action, 'sendGemachOrderEmail');
   assert.match(sent[0].body.subject, /הזמנה #501/);
   assert.equal(sent[0].body.fileContent, 'JVBERi0x');
+});
+
+test('email quick: order_quick_mail_enabled is enforced on the server (missing / false = 403, nothing sent or logged); the normal send does not depend on it', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const q = { subject: 'נושא', bodyText: 'תוכן' };
+  for (const extra of [[{ key: 'order_quick_mail_enabled', value: 'false' }], [{ key: 'order_quick_mail_enabled', value: 'TRUE' }]]) {
+    installDb(); globalThis.__MOCK_DB.systemSetting = globalThis.__MOCK_DB.systemSetting.filter((r) => r.key !== 'order_quick_mail_enabled').concat(extra);
+    invalidateSettingsCache();
+    const sent = stubMailer({ status: 'success' });
+    const r = await emailReq({ email: 'sara@example.com', type: 'order', quick: q });
+    assert.equal(r.status, 403, JSON.stringify(extra));
+    assert.match(r.__json.error, /מייל המהיר כבוי/);
+    assert.equal(sent.length, 0); assert.equal(audit().length, 0); assert.equal(globalThis.__MOCK_DB.emailLog.length, 0);
+  }
+  // setting row absent = off (the client default is false too)
+  installDb(); globalThis.__MOCK_DB.systemSetting = globalThis.__MOCK_DB.systemSetting.filter((r) => r.key !== 'order_quick_mail_enabled');
+  invalidateSettingsCache();
+  const sent = stubMailer({ status: 'success' });
+  assert.equal((await emailReq({ email: 'sara@example.com', type: 'order', quick: q })).status, 403, 'absent row');
+  const normal = await emailReq({ email: 'sara@example.com', type: 'order', pdfBase64: 'JVBERi0x' });
+  assert.equal(normal.status, 200, 'normal send unaffected');
+  assert.equal(sent.length, 1);
+  assert.ok(src('lib/settingsMetadata.js').match(/order_quick_mail_enabled: '[^']+'/g).length >= 2 && /SETTINGS_BOOLEAN_KEYS[\s\S]*'order_quick_mail_enabled'/.test(src('lib/settingsMetadata.js')), 'registered (name, note, boolean)');
+});
+
+test('email: a mailer that THROWS is a normal send failure - EmailLog error row + EMAIL_FAILED + the 500 answer (normal and quick)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  globalThis.fetch = async () => { throw new Error('network down 4580123412341234'); };
+  const r = await emailReq({ email: 'sara@example.com', type: 'order', pdfBase64: 'JVBERi0x' });
+  assert.equal(r.status, 500);
+  assert.match(r.__json.error, /network down/);
+  assert.equal(globalThis.__MOCK_DB.emailLog.length, 1);
+  assert.equal(globalThis.__MOCK_DB.emailLog[0].status, 'error');
+  assert.match(globalThis.__MOCK_DB.emailLog[0].errorMessage, /network down/);
+  const row = audit().find((a) => a.action === 'EMAIL_FAILED');
+  assert.ok(row, 'EMAIL_FAILED written');
+  assert.equal(JSON.parse(row.changesJson).error, 'network down [מוסתר]');
+  const q = await emailReq({ email: 'sara@example.com', type: 'order', quick: { subject: 'נושא', bodyText: 'תוכן' } });
+  assert.equal(q.status, 500);
+  assert.equal(globalThis.__MOCK_DB.emailLog.length, 2);
+  assert.equal(audit().filter((a) => a.action === 'EMAIL_FAILED').length, 2);
+  assert.equal(audit().filter((a) => a.action === 'EMAIL_SENT').length, 0);
 });
 
 // ======================================= W7 / AMB-20 (owner decision): whole-day schedule prints are recorded per order
