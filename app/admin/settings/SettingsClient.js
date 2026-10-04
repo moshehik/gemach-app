@@ -103,7 +103,8 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName, fieldList,
         item !== field.alias
       );
     } else {
-      nextList = [...rawItems, field.alias || field.name];
+      // "none" (= אין שדות חובה, customer_required_fields) לא נשאר ליד שדה שנבחר ("none, firstName")
+      nextList = [...rawItems.filter(item => item.toLowerCase() !== 'none'), field.alias || field.name];
     }
     onChange(nextList.length ? nextList.join(', ') : emptyValue);
   };

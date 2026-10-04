@@ -64,11 +64,18 @@ export default function CcMailSheet({ customer, ui, guard, onSent, close, fetchI
 
   const toggleDoc = (id) => { if (busy) return; dirty.current = true; setDocs((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id])); };
 
+  const sendLock = useRef(false);
   const send = async () => {
-    if (!valid || busy) { if (!subject.trim() || !body.trim()) setError('חובה למלא נושא ותוכן'); return; }
+    if (!valid || busy || sendLock.current) { if (!subject.trim() || !body.trim()) setError('חובה למלא נושא ותוכן'); return; }
+    sendLock.current = true;
+    try { await doSend(); } finally { sendLock.current = false; }
+  };
+  const doSend = async () => {
     setError('');
+    // נעילה כבר לפני חלון האישור - לחיצה כפולה על "שלח" לא פותחת שני חלונות אישור
+    setState('approving');
     const auth = await ui.openDialog(CcApprovalDialog, { level: 'feature:customer_email_approval', reason: 'שליחת מייל מהיר ללקוחה', customerId: customer.id }, { layer: 2, className: 'apprwin', labelledBy: 'cc-appr-t' });
-    if (!auth) return;
+    if (!auth) { setState('idle'); return; }
     setState('sending');
     try {
       const attachments = [];

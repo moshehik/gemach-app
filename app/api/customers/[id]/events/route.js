@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 // row is written; the pin is never stored.
 const fail = (status, code, error, extra = {}) => NextResponse.json({ ok: false, code, error, ...extra }, { status });
 
-// Same tiers as app/api/auth/verify-pin/route.js (kept in step by scripts/customer-card-tests/events.test.mjs).
+// Same tiers as app/api/auth/verify-pin/route.js (kept in step by scripts/customer-card-tests/logic.test.mjs).
 async function approverAllowed(employee, requiredLevel) {
   const isManager = employee.roleId === 1 || employee.roleId === 2;
   if (requiredLevel === 'מנהל') return isManager ? null : 'אין הרשאת מנהל/מתכנת למשתמש זה';
@@ -54,7 +54,9 @@ export async function POST(request, { params }) {
     // reads only, no transaction (the write below is a single create)
     const [customer, duplicate] = await Promise.all([
       prisma.customer.findUnique({ where: { id }, select: { id: true } }),
-      clientEventId
+      // MANAGER_APPROVAL never takes the duplicate shortcut: a repeated clientEventId must still go through the pin check
+      // below (otherwise a replayed request would get {ok:true} without a password)
+      clientEventId && action !== CUSTOMER_EVENT_ACTIONS.MANAGER_APPROVAL
         ? prisma.auditLog.findFirst({ where: { entityType: 'Customer', entityId: id, action, changesJson: { contains: clientEventIdNeedle(clientEventId) } }, select: { id: true } })
         : null,
     ]);
