@@ -501,5 +501,37 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+/* ---------- 11. כרטיס ההזמנה החדש - לשונית התשלומים (app/components/order-card/css/oc-payments.css, W4) ---------- */
+// נטען בתוך שורש .gm-ds.gm-oc (בלי .gm-home). רק תוספות למה שאין בפלטה: היקף, בלי לבן קשיח / !important / גופן, צבעים רק מאסימוני הפלטה,
+// אין @media לפני הכלל הרגיל, ואין "-*/" בהערה. הבדיקה החזותית מול העיצוב: scripts/order-card-bg-audit (שלבי P01-P10).
+const OC_PAY_CSS = read('../app/components/order-card/css/oc-payments.css');
+const ocPayRules = parseCss(OC_PAY_CSS);
+t('oc-payments.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  const bad = [];
+  for (const r of ocPayRules) for (const s2 of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s2)) bad.push(s2);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-payments.css: אין רקע לבן קשיח, אין !important, אין font-family, צבעים רק מאסימוני הפלטה (var(--gm-*))', () => {
+  const bad = [];
+  for (const r of ocPayRules) {
+    for (const d of decls(r.body)) {
+      if (isImportant(d)) bad.push(`!important: ${r.sel} { ${d.prop} }`);
+      if (d.prop === 'font-family') bad.push(`font-family: ${r.sel}`);
+      if (/^(background(-color)?|color|border(-color)?)$/.test(d.prop)) {
+        const v = d.value.trim();
+        if (WHITE_RE.test(v) || /#[0-9a-f]{3,8}\b|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${v} }`);
+      }
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-payments.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בתוך הערה', () => {
+  assert.deepEqual(mediaBeforeBase(ocPayRules, 'oc-payments.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_PAY_CSS), '"-*/" שובר next build');
+});
+t('oc-payments.css: נטרול דליפת input של החלון בשדה הסכום (amtin) - בהיקף החלון, כמו בעיצוב', () => {
+  assert.ok(ocPayRules.some((r) => /:is\(#dlg,#dlg2\) \.amtin input/.test(r.sel) && decls(r.body).some((d) => d.prop === 'border-radius' && /^0/.test(d.value))));
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
