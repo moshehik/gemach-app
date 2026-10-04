@@ -67,7 +67,7 @@ DressItem → DressModel → Customer → Employee` (בכפוף לחריגי ה�
 הפנימי שמשתנה). ב-2026-09-15 אלה היו: `isDelivery, deliveryCity,
 deliveryAddress, deliveryDirection, deliveryOneDayBefore, branch,
 pickupBranch, isPhoneOrder, hasSignedRegulations, internalNotes,
-customSpacing, extraDay, hokDetails, isWeekdayEvent` — **לוודא ידנית שאין
+customSpacing, extraDay, hokDetails, isWeekdayEvent` (העמודה `isWeekdayEvent` הוסרה מהקוד ב-2026-10-05 — החלטת בעלים Q9, היו 0 שורות `true` בשני ה-PROD; ברשימה היסטורית זו בלבד) — **לוודא ידנית שאין
 עוד לפני הרצה עתידית**, כי הכלי עצמו יכול להשתנות בין ריצה לריצה.
 
 לוודא גם מול העמודות הגולמיות בגישה עצמה (`SELECT TOP 1 * FROM [טבלה]`) —
