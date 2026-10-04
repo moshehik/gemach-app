@@ -56,7 +56,6 @@
 
 /* ===== שורת ההסבר והמקרא ===== */
 .gm-ds.gm-nw .cl-quick{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-.gm-ds.gm-nw .cl-quick .btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .gm-ds.gm-nw .cl-expl{display:flex;gap:10px;align-items:flex-start;margin:14px 0 0;padding:12px 16px;border-radius:var(--r-sm);background:rgba(255,255,255,.72);border:1px solid var(--sky-300);color:var(--navy-900);font-size:14.5px;line-height:1.6}
 .gm-ds.gm-nw .cl-expl .ic{flex:none;width:20px;height:20px;margin-top:2px;color:var(--navy-500)}
 .gm-ds.gm-nw .cl-expl b{font-weight:600}
@@ -121,9 +120,11 @@
 .gm-ds.gm-nw .cl-fb{display:flex;align-items:center;gap:8px;text-align:start;cursor:pointer;min-height:44px;font:inherit;font-size:14px;width:100%}
 .gm-ds.gm-nw .cl-fb .ic{width:16px;height:16px;flex:none;color:var(--navy-500)}
 .gm-ds.gm-nw .cl-fb.armed{outline:3px solid var(--gold);outline-offset:1px;background:#fff!important}
-.gm-ds.gm-nw .cl-side .rcard .inp,.gm-ds.gm-nw .cl-side .rcard .inp:disabled{background:var(--sky-50)!important;color:var(--navy-900)!important;border-color:var(--sky-300)!important}
+/* השדות בעמודה הכהה בהירים כמו בעיצוב. הכלל של הפלטה לשדות בתוך .app (רקע לבן שקוף) נושא :not(:is(#dlg..) *) - ספציפיות
+   של מזהה - ולכן גם כאן אותו :not, אחרת הוא גובר */
+.gm-ds.gm-nw .cl-side .rcard .inp,.gm-ds.gm-nw .cl-side .rcard .inp:disabled,.gm-ds.gm-nw .cl-side .rcard :is(input,select).inp:not(:is(#dlg,#dlg2) *){background:var(--sky-50)!important;color:var(--navy-900)!important;border-color:var(--sky-300)!important}
 .gm-ds.gm-nw .cl-side .rcard .inp::placeholder{color:#5b7391;opacity:1}
-.gm-ds.gm-nw .cl-side .rcard .inp:focus{background:#fff!important;border-color:var(--gold)!important}
+.gm-ds.gm-nw .cl-side .rcard .inp:focus,.gm-ds.gm-nw .cl-side .rcard :is(input,select).inp:not(:is(#dlg,#dlg2) *):focus{background:#fff!important;border-color:var(--gold)!important}
 .gm-ds.gm-nw .cl-sum{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .gm-ds.gm-nw .cl-sum .chip{background:rgba(255,255,255,.14);color:#fff}
 .gm-ds.gm-nw .cl-sum .chip.gold{background:var(--gold-100);color:var(--navy-900)}
