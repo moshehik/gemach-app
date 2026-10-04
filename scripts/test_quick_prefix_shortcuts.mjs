@@ -149,6 +149,10 @@ t('שורה עם תחום מוכר מציגה אותו; שם חסר = השאיל
   assert.ok(m.items[2].sub.length < 100); assert.ok(!m.items[2].sub.includes(' · '));
   assert.equal(m.items[2].query.length, 200, 'השאילתה המלאה נשמרת לריצה');
 });
+t('תחום שנשמר ב-DB לא תקין (constructor / __proto__ / toString / לא מחרוזת) לא נכנס לשורה כתווית', () => {
+  const m = buildSavedModel({ state: 'ok', list: ['constructor', '__proto__', 'toString', 'hasOwnProperty', 5, {}, null].map((d, i) => ({ id: 'x' + i, label: 'n', query: 'q' + i, domain: d })) });
+  for (const it of m.items.slice(1)) { assert.ok(!it.sub.includes(' · '), it.sub); assert.ok(!/function|object/i.test(it.sub), it.sub); }
+});
 t('saveCandidate / savePayload: מקוצץ, לא ריק, לא קידומת, עד 300; שם עד 80; הדגל לא מציע לשמור "#..."', () => {
   assert.equal(saveCandidate('  כהן ירושלים '), 'כהן ירושלים');
   for (const no of ['', '   ', '#abc', '$x', '@x', '&x', ' #x', null, undefined, 5]) assert.equal(saveCandidate(no), '', String(no));
@@ -247,7 +251,7 @@ t('חיפוש התפריט והמגירה: אותן קידומות (& # $), הר
   assert.ok(/\/\?q=\$\{encodeURIComponent\(row\.query\)\}/.test(menu), 'חיפוש שמור בתפריט נפתח כ-/?q=');
   assert.ok(/const prefixOn = qp\.open && !!qp\.def;/.test(menu));
   assert.ok(/ShortcutMenuList/.test(menu) && /SaveForm qp=\{qp\} menu/.test(menu) && /SavedDelButton/.test(menu));
-  assert.ok(/usePopup\(\)/.test(menu) && /showToast\(text \? `\$\{title\}: \$\{text\}` : title, kind === 'error' \? 'error' : 'success'\)/.test(menu), 'הודעות דרך ה-popup של האתר (לא window.alert)');
+  assert.ok(/usePopup\(\)/.test(menu) && /showToast\(text \? `\$\{title\}: \$\{text\}` : title, kind === 'error' \? 'error' : kind === 'info' \? 'info' : 'success'\)/.test(menu), 'הודעות דרך ה-popup של האתר (לא window.alert)');
 });
 t('CSS: כללי .pfx-* ב-home.css בהיקף .gm-ds.gm-home, ב-menu.css בהיקף .gm-ds.gm-menu (או עטיפת החלון .gm-ds.pfx-dlg-root), בלי font-family ובלי צבע hex', () => {
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');

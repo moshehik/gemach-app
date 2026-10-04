@@ -227,6 +227,11 @@ await t('POST: רושם על העובדת המחוברת בלבד; שאילתה 
   T.me = null; assert.equal((await hist.POST(req('/api/search-history', { query: 'x' }))).status, 401);
   assert.equal(T.db.searchHistory.length, 1);
 });
+await t('POST מנקה שורות יתומות (employeeId null אחרי מחיקת עובדת) ולא נוגע בשורות של אחרות', async () => {
+  T.db.searchHistory = [{ id: 'orph', employeeId: null, query: 'שם לקוחה', domain: null, createdAt: 1 }, { id: 'oth', employeeId: 'emp-other', query: 'x', domain: null, createdAt: 2 }];
+  assert.equal((await hist.POST(req('/api/search-history', { query: 'חדש' }))).status, 200);
+  assert.deepEqual(T.db.searchHistory.map((r) => r.id).filter((id) => id === 'orph' || id === 'oth'), ['oth']);
+});
 await t('הטבלה חסרה: GET = רשימה ריקה + unavailable; POST = 200 { success:false, unavailable } (בלי 500)', async () => {
   T.missing = true;
   let r = await json(await hist.GET()); assert.equal(r.status, 200); assert.deepEqual(r.body, { history: [], unavailable: true });

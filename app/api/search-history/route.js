@@ -101,6 +101,10 @@ export async function POST(request) {
       where: { employeeId, id: { notIn: keepIds } },
     });
 
+    // Rows whose employee was deleted (employeeId null) belong to nobody and would otherwise live forever: clear them opportunistically.
+    // Best-effort - a failure here must not fail the recording itself.
+    await prisma.searchHistory.deleteMany({ where: { employeeId: null } }).catch(() => {});
+
     return NextResponse.json({ success: true, entry: created });
   } catch (error) {
     // recording is best-effort: a missing table answers 200 { success: false, unavailable: true } (no console noise in the browser)

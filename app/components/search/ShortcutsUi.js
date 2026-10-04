@@ -52,12 +52,15 @@ function Win({ skin, cls, labelId, onClose, initialRef, children }) {
   const boxRef = useRef(null);
   const [host, setHost] = useState(null);
   useEffect(() => { setHost(document.body); }, []);
+  // onClose לרוב פונקציה חדשה בכל ציור של ההורה (ואז אפקט המיקוד היה מתאפס וגונב מיקוד): שומרים אותה ב-ref, האפקט לא תלוי בה
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; });
   useEffect(() => {
     if (!host) return undefined;
     const back = document.activeElement;
     const t = setTimeout(() => { if (initialRef && initialRef.current) initialRef.current.focus(); }, 30);
     const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeRef.current(); return; }
       if (e.key !== 'Tab' || !boxRef.current) return;
       const f = [...boxRef.current.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href]')];
       if (!f.length) return;
@@ -73,11 +76,11 @@ function Win({ skin, cls, labelId, onClose, initialRef, children }) {
       document.removeEventListener('keydown', onKey, true);
       if (back && back !== document.body && document.contains(back) && back.focus) back.focus();
     };
-  }, [host, onClose, initialRef]);
+  }, [host, initialRef]);
   if (!host) return null;
   return createPortal(
     <div className={`gm-ds${skin === 'home' ? ' gm-home' : ''} dlg-dark pfx-dlg-root`} dir="rtl">
-      <div className="scrim on" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="scrim on" onMouseDown={(e) => { if (e.target === e.currentTarget) closeRef.current(); }}>
         <div ref={boxRef} className={`dlg pfxwin ${cls}`} id="dlg" role="dialog" aria-modal="true" aria-labelledby={labelId}>{children}</div>
       </div>
     </div>,
