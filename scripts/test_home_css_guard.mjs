@@ -524,7 +524,7 @@ t('oc-details.css: אין דריסת @media לפני הכלל הלא-מותנה,
   assert.ok(!/[a-z0-9]-\*\//i.test(OC_DETAILS_CSS), 'הערה עם "-*/"');
 });
 
-/* ---------- 10. כרטיס ההזמנה — לשונית פריטים (W3, app/components/order-card/css/oc-items.css) ---------- */
+/* ---------- 12. כרטיס ההזמנה — לשונית פריטים (W3, app/components/order-card/css/oc-items.css) ---------- */
 // נטען רק בתוך הכרטיס החדש (.gm-ds.gm-oc). רוב העיצוב מהפלטה; כאן: לחצני הסרגל בסגנון "מחוקים" (A10), שורת הברקוד (R25), מובייל.
 const OC_ITEMS_CSS = read('../app/components/order-card/css/oc-items.css');
 const ocItemsRules = parseCss(OC_ITEMS_CSS);
@@ -560,7 +560,7 @@ t('oc-items.css: A10 — לחצני הסרגל בגובה 32 ובמסגרת הכ
   assert.ok(hasOcItems(/:is\(\.items-card,\.sbar\) :is\(input,textarea\)\.inp$/, /^color$/), 'צבע טקסט לשדות הלשונית ושורת הסריקה');
 });
 
-/* ---------- 11. כרטיס ההזמנה החדש - לשונית התשלומים (app/components/order-card/css/oc-payments.css, W4) ---------- */
+/* ---------- 13. כרטיס ההזמנה החדש - לשונית התשלומים (app/components/order-card/css/oc-payments.css, W4) ---------- */
 // נטען בתוך שורש .gm-ds.gm-oc (בלי .gm-home). רק תוספות למה שאין בפלטה: היקף, בלי לבן קשיח / !important / גופן, צבעים רק מאסימוני הפלטה,
 // אין @media לפני הכלל הרגיל, ואין "-*/" בהערה. הבדיקה החזותית מול העיצוב: scripts/order-card-bg-audit (שלבי P01-P10).
 const OC_PAY_CSS = read('../app/components/order-card/css/oc-payments.css');
@@ -592,7 +592,7 @@ t('oc-payments.css: נטרול דליפת input של החלון בשדה הסכ�
   assert.ok(ocPayRules.some((r) => /:is\(#dlg,#dlg2\) \.amtin input/.test(r.sel) && decls(r.body).some((d) => d.prop === 'border-radius' && /^0/.test(d.value))));
 });
 
-/* ---------- 10. כרטיס ההזמנה החדש - לשונית היסטוריה (W6, app/components/order-card/css/oc-history.css) ---------- */
+/* ---------- 14. כרטיס ההזמנה החדש - לשונית היסטוריה (W6, app/components/order-card/css/oc-history.css) ---------- */
 // שורש .gm-ds.gm-oc (לעולם לא gm-home). רוב הרכיבים מהפלטה; כאן רק תוספות העיצוב ונטרולי הדליפה שנמצאו בבדיקת
 // scripts/order-card-bg-audit (שלבים 40-48, TOTAL 0 ב-1280/375): שדה החיפוש (input גלובלי לבן/גבול/רדיוס), ריפוד לחצן הניקוי,
 // מסגרת לחצן הסינון כשהתפריט פתוח. אין רקע לבן קשיח, אין !important על רקע, אין @media לפני הבסיס.
@@ -626,7 +626,7 @@ t('הדליפות שנוטרלו בלשונית ההיסטוריה עדיין ק
   assert.ok(/input[^{]*\{[^}]*border-radius:\s*10px/.test(OVERRIDES), 'design-overrides.css: input{border-radius:10px} כבר לא קיים');
 });
 
-/* ---------- 12. כרטיס ההזמנה החדש - מסמכים: תפריט הדפסה, מייל מהיר, כתובת מייל חסרה (app/components/order-card/css/oc-docs.css, W7) ---------- */
+/* ---------- 15. כרטיס ההזמנה החדש - מסמכים: תפריט הדפסה, מייל מהיר, כתובת מייל חסרה (app/components/order-card/css/oc-docs.css, W7) ---------- */
 // בלוק mail-sheet-css של העיצוב (גיליון תחתון בשתי עמודות) בשמות הפלטה (--gm-*) בהיקף הכרטיס. החריג היחיד ל"בלי !important" הוא שדות הטקסט של
 // גיליון המייל (מסגרת זהב + זוהר במיקוד) - בדיוק כמו בעיצוב, כדי לגבור על design-overrides.css (input:not(...){...!important}).
 const OC_DOCS_CSS = read('../app/components/order-card/css/oc-docs.css');
@@ -652,6 +652,44 @@ t('oc-docs.css: אין דריסת @media לפני הכלל הלא-מותנה, א
   const ownMenuRules = ocDocsRules.filter((r) => /(^|[\s,])\.(gm-ds\.gm-oc )?(menu|xlbtn)|\.xl[gdp]/.test(r.sel) && r.sel !== '.gm-ds.gm-oc .tools .menu');
   assert.deepEqual(ownMenuRules.map((r) => r.sel), [], 'התפריט וכפתורי ה-xlbtn הם רכיבי פלטה - בלי כלל משלהם');
   assert.deepEqual(ocDocsRules.filter((r) => r.sel === '.gm-ds.gm-oc .tools .menu').flatMap((r) => decls(r.body).map((d) => d.prop)).sort(), ['inset-inline-end', 'inset-inline-start'], 'עוגן התפריט בלבד');
+});
+
+/* ---------- 16. כרטיס ההזמנה החדש - הרייל וחלונות השמירה (app/components/order-card/css/oc-rail.css, W5) ---------- */
+// נטען בתוך שורש .gm-ds.gm-oc (בלי .gm-home). רק תוספות למה שאין בפלטה: היקף, בלי לבן קשיח / !important / גופן, צבעים רק מאסימוני הפלטה,
+// אין @media לפני הכלל הרגיל, ואין "-*/" בהערה. הבדיקה החזותית מול העיצוב: scripts/order-card-bg-audit (שלבי R01-R08).
+const OC_RAIL_CSS = read('../app/components/order-card/css/oc-rail.css');
+const ocRailRules = parseCss(OC_RAIL_CSS);
+t('oc-rail.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  assert.ok(ocRailRules.length >= 4, 'הקובץ לא ריק');
+  const bad = [];
+  for (const r of ocRailRules) for (const s2 of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s2)) bad.push(s2);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-rail.css: אין רקע לבן קשיח, אין !important, אין font-family, צבעים רק מאסימוני הפלטה (בלי hex/rgb)', () => {
+  const bad = [];
+  for (const r of ocRailRules) {
+    for (const d of decls(r.body)) {
+      if (isImportant(d)) bad.push(`!important: ${r.sel} { ${d.prop} }`);
+      if (d.prop === 'font-family') bad.push(`font-family: ${r.sel}`);
+      if (/^(background(-color)?|color|border(-color)?)$/.test(d.prop)) {
+        const v = d.value.trim();
+        if (WHITE_RE.test(v) || /#[0-9a-f]{3,8}|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${v} }`);
+      }
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-rail.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בתוך הערה', () => {
+  assert.deepEqual(mediaBeforeBase(ocRailRules, 'oc-rail.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_RAIL_CSS), '"-*/" שובר next build');
+});
+t('oc-rail.css: נטרולי הדליפה של הרייל והבאנר - ריפוד לחצני ביטול/החזר (globals.css מאפס padding), רווחי באנר הטיוטה, מרווח D6', () => {
+  const has = (selRe, prop, valRe) => ocRailRules.some((r) => selRe.test(r.sel) && decls(r.body).some((d) => d.prop === prop && valRe.test(d.value)));
+  assert.ok(has(/\.rail :is\(\.cl-u,\.redo\)/, 'padding', /^1px 6px$/), 'padding של .cl-u/.redo');
+  assert.ok(has(/\.oc-banner \.nb-bi$/, 'gap', /^2px$/), 'gap של שורות הבאנר');
+  assert.ok(has(/\.oc-banner \.nb-bi \.nb-go$/, 'margin-top', /^12px$/), 'מרווח לחצן הבאנר');
+  assert.ok(has(/\.success \.oc-success-gap$/, 'height', /^24px$/), 'D6: מרווח 24px');
+  assert.ok(!ocRailRules.some((r) => /oc-r5|shield/.test(r.sel)), 'AMB-05: אין כלל לשורת מגן חוב');
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

@@ -59,10 +59,12 @@ const clickAt = async (sel) => {
 const hover = async (sel) => { await p.$eval(sel, (el) => el.scrollIntoView({ block: 'center', behavior: 'instant' })); await sleep(100); const r = await p.$eval(sel, (el) => { const bb = el.getBoundingClientRect(); return { x: bb.left + bb.width / 2, y: bb.top + bb.height / 2 }; }); await p.mouse.move(r.x, r.y); await sleep(400); };
 const away = async () => { await p.mouse.move(2, 2); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await sleep(250); };
 async function fresh(scn, extra = '') {
-  await p.goto(D ? DEMO : `http://127.0.0.1:${PORT}/?scn=${scn || 'neve'}${extra}`, { waitUntil: 'load' });
+  await p.goto(D ? DEMO : `http://127.0.0.1:${PORT}/?scn=${scn || 'neve'}${extra}`, { waitUntil: 'load', timeout: 90000 }); // W5: הטעינה הקרה הראשונה של העיצוב (פונטים חיצוניים) איטית
   await sleep(1500);
   // בעיצוב: מסתירים את שכבת הסקירה ואת כל מה שצף מעל הדף (סרגל האתר, כפתור השאלות) כדי שריחוף ולחיצה יגיעו לדף עצמו
-  if (D) await p.evaluate(() => {
+  // W5: על מכונה עמוסה שכבת הסקירה מאתחלת מאוחר ופותחת מחדש את סרגל ההדגמה אחרי ההסתרה (במסך צר הוא דוחף את הרייל מטה) - הפונקציה
+  // אידמפוטנטית ורצה שלוש פעמים
+  const hideDemoChrome = () => p.evaluate(() => {
     document.documentElement.classList.add('pv-off');
     const t = document.getElementById('demoTog'); if (t && t.getAttribute('aria-pressed') === 'true') t.click();
     const keep = (el) => el.closest('#app,#scrim,#scrim2,#toast,#tt,#rt');
@@ -70,6 +72,7 @@ async function fresh(scn, extra = '') {
     // במסך צר הרייל של העיצוב (גיליון תחתון) מכסה את שורת הכותרת ובולע את הריחוף - לא חלק מהבדיקה של המעטפת
     const rail = document.getElementById('rail'); if (rail && innerWidth < 1024) rail.style.setProperty('pointer-events', 'none', 'important');
   });
+  if (D) { await hideDemoChrome(); await sleep(1200); await hideDemoChrome(); await sleep(700); await hideDemoChrome(); }
   await p.evaluate(() => window.scrollTo(0, 0));
 }
 const restoreDraft = async () => { await clickAt('.oc-banner .nb-go'); await sleep(300); await p.evaluate(() => { const t = document.querySelector('#toast .tclose'); if (t) t.click(); }); await sleep(400); };
@@ -95,6 +98,8 @@ const mailFlow = {
   fillQuick: async () => { await p.type('#m-body', 'שלום, הזמנה #53375 מוכנה.'); await clickAt('.mfile[data-id="ord"]'); await clickAt('.mfile[data-id="pay"]'); await away(); },
 };
 
+const { railRoots, railStages } = await import('./stages-rail.mjs'); // W5: הרייל וחלונות השמירה
+railRoots(ROOTS, D);
 const STAGES = [
   { name: '01-default', real: async () => fresh('neve'), demo: async () => fresh() },
   { name: '02-hover-tab', real: async () => { await fresh('neve'); await hover('#tabs .tab[data-tab="items"]'); }, demo: async () => { await fresh(); await hover('#tabs .tab[data-tab="items"]'); } },
@@ -165,6 +170,7 @@ const STAGES = [
     const st = await p.evaluate(() => { const t = document.querySelector('#app > .topbar').getBoundingClientRect(); const s = document.getElementById('sbar').getBoundingClientRect(); const x = document.querySelector('.tools .xlbtn').getBoundingClientRect(); return { tc: t.left + t.width / 2, sc: s.left + s.width / 2, sy: s.top + s.height / 2, xy: x.top + x.height / 2, w: innerWidth, sw: s.width, tw: t.width, below: s.top >= x.bottom - 1 }; });
     checks.push([`R42 מיקום (${width}): במרכז ומיושר עם לחצני ההורדה (≥1100) / שורה מלאה מתחת (<1100)`, st.w >= 1100 ? Math.abs(st.tc - st.sc) <= 2 && Math.abs(st.sy - st.xy) <= 3 : st.below && st.sw >= st.tw * 0.8]);
   } },
+  ...railStages({ p, D, fresh, clickAt, hover, away, sleep, check: (name, ok) => checks.push([name, ok]) }), // W5
   // רק בדף האמיתי (צילום + JSON, בלי השוואה)
   { name: '20-main-org1', real: async () => { await fresh('main'); await away(); } },
   { name: '21-exit-d2', real: async () => { await fresh('draft'); await restoreDraft(); await clickAt('#app > .topbar .back'); await sleep(400); await away(); } },

@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom';
 import OrderCardA5 from '../../app/components/order-card/OrderCardA5.js';
 import { payScenarios, payMock } from './pay-mock.js'; // W4: תרחישי תשלומים
 import { SLOTS } from '../../app/components/order-card/slots.js';
+import { railScenarios } from './rail-mock.js'; // W5: תרחישי רייל וחלונות שמירה
 
 const qs = new URLSearchParams(location.search);
 const scn = qs.get('scn') || 'neve';
@@ -155,6 +156,7 @@ const MODELS = [
   { id: 'm-4510', name: '4510', barcodePrefix: 4510, priceCategory: 'שמלה', isPremium: false },
 ];
 const STOCK = { stock: { 'm-4519': { 34: { total: 2 }, 36: { total: 3 }, 38: { total: 2 }, 40: { total: 1 }, 42: { total: 0 }, 44: { total: 2 } }, 'm-4512': { 36: { total: 1 }, 38: { total: 2 }, 40: { total: 2 } } }, bookings: [], settings: { bufferDays: 3, skipWeekends: true } };
+Object.assign(SCENARIOS, railScenarios({ ITEMS, OBL, PAY, ORG1, ORG2, ORDER })); // W5
 const S = SCENARIOS[scn] || {};
 const order = { ...ORDER, ...(S.order || {}), items: S.items === 'states' ? ITEMS_STATES : (S.items || ITEMS), obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: S.refunds || [] };
 const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
@@ -162,8 +164,8 @@ const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
 if (S.draft) {
   try {
     localStorage.setItem('gemachOrderDraft:53375', JSON.stringify({
-      savedAt: Date.now() - 3600e3, baseUpdatedAt: ORDER.updatedAt, summary: ['הערות השתנה'], rows: [{ icon: '#i-file', text: 'הערות להזמנה' }],
-      state: { order: { ...order, notes: 'הערה מטיוטה שלא נשמרה' }, items: order.items, obligations: order.obligations, payments: order.payments, refunds: [] },
+      savedAt: Date.now() - 3600e3, baseUpdatedAt: S.draftBase || ORDER.updatedAt, summary: ['הערות השתנה'], rows: S.draftRows || [{ icon: '#i-file', text: 'הערות להזמנה' }],
+      state: { order: { ...order, notes: 'הערה מטיוטה שלא נשמרה', ...(S.draftOrder || {}) }, items: S.draftItems || order.items, obligations: S.draftObligations || order.obligations, payments: order.payments, refunds: [] }, // W5: S.draft*
     }));
   } catch { /* noop */ }
 } else {
@@ -228,7 +230,7 @@ window.fetch = async (url, opts) => {
     // W3 A27: פריט היפותטי של חלונית ההוספה → מחיר 120 / דמי ביטול 40 ("המנוע" המדומה)
     const hypo = (JSON.parse(opts.body).items || []).find(i => i.id === 'oc-add-preview');
     if (hypo) return j({ newObligations: hypo.isDeleted ? [{ orderItemId: hypo.id, amount: 120, description: 'חיוב מקורי' }, { orderItemId: hypo.id, amount: -120, description: 'זיכוי בגין ביטול' }, { orderItemId: hypo.id, amount: 40, description: 'דמי ביטול ותיקונים' }] : [{ orderItemId: hypo.id, amount: 120, description: 'השכרת שמלה' }] });
-    return j({ newObligations: order.obligations.filter(o => o.isManual === false) });
+    return j({ newObligations: [...order.obligations.filter(o => o.isManual === false && !(S.previewDrop || []).includes(o.id)), ...(S.previewExtra || [])] }); // W5: previewDrop/previewExtra
   }
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
   { const pm = payMock(u, method, { S, order, j, body: opts && opts.body }); if (pm) return pm; } // W4

@@ -99,6 +99,8 @@ APPROVED_STAGE.push(
 );
 // W4: שלב המעטפת 03 פותח את לשונית התשלומים עם נתוני נווה ובלי ניקוי סמני הסקירה - הלשונית עצמה נבדקת בשלבי P01-P10
 APPROVED_STAGE.push(['03-tab-payments', /^PAY/, 'לשונית התשלומים נבדקת ב-P01-P04']);
+const { RAIL_APPROVED, RAIL_APPROVED_STAGE } = await import('./cmp-rail.mjs'); // W5
+APPROVED.push(...RAIL_APPROVED); APPROVED_STAGE.push(...RAIL_APPROVED_STAGE);
 const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => (s2 === st || st.startsWith(s2 + '-')) && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };
 let total = 0, skipped = 0;
