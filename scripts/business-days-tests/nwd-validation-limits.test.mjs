@@ -37,10 +37,11 @@ test('closed run cap: accepted configs keep rollForward/isNonWorkingDay consiste
   assert.equal(B.validateNonWorkingDaysSettingValue(doc({ ranges })), null);
 });
 
-test('recurring Hebrew day must be an integer number (no true / "5" / [5] / 5.5)', () => {
+test('recurring Hebrew day must be an integer (digit strings like "26" are still read; no true / [26] / "" / "2e1" / 26.5)', () => {
   const v = (day) => B.validateNonWorkingDaysSettingValue(doc({ recurringHebrew: [{ month: 'Shvat', day }] }));
   assert.equal(v(26), null);
-  for (const bad of [true, '26', [26], 26.5, null, {}]) assert.notEqual(v(bad), null, JSON.stringify(bad));
+  assert.equal(v('26'), null, 'digit string coerced, as before');
+  for (const bad of [true, false, [26], ['26'], '', ' ', '2e1', '26.5', '0x1a', 26.5, null, {}]) assert.notEqual(v(bad), null, JSON.stringify(bad));
   assert.equal(B.parseNonWorkingDaysSetting(doc({ recurringHebrew: [{ month: 'Shvat', day: true }] })).recurringHebrew.length, 0);
 });
 
