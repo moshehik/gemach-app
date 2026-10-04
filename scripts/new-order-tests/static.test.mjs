@@ -107,3 +107,16 @@ test('לוגיקה: R23 שם/קוד דגם, R27 רמת אישור, תאריך ש
   assert.equal(N.isPastDateKey('2026-10-03', '2026-10-04'), true);
   assert.equal(N.isPastDateKey('2026-10-04', '2026-10-04'), false);
 });
+
+// Q7b (בעלים): "חסר ללקוח" של לקוח קיים לא כולל ת״ז גם כשהגדרת הארגון דורשת אותה (חובה רק ליצירת לקוח חדש); Q6b: אין מחיר ברשימת הדגמים
+test('Q7b: ת״ז לא מסומנת כחסרה בלקוח קיים; Q6b: אין מחיר ברשימת הדגמים ובכרטיס המשלוח', () => {
+  const existing = { firstName: 'מרים', lastName: 'כהן', phone1: '0500000000', email: 'a@b.c', city: 'ירושלים', street: 'עמוס', houseNum: '1', idNumber: '', zeout: '' };
+  for (const s of [{}, { require_customer_id_number: 'true', require_full_address: 'true' }, { mandatory_fields: 'ת"ז,zeout,idnumber' }]) {
+    const missing = N.getMissingMandatoryCustomerFields(s, existing);
+    assert.ok(!missing.some(k => /zeout|idNumber|ת/i.test(k)), JSON.stringify(missing));
+  }
+  assert.ok(!Object.keys(N.CUSTOMER_FIELD_LABELS).some(k => /zeout|idNumber/.test(k)));
+  const modelList = /className="advlist advstatic"[\s\S]*?<\/ul>/.exec(read('StepItems.js'));
+  assert.ok(modelList && !/₪|money|price/i.test(modelList[0]), 'Q6b מחיר ברשימת הדגמים');
+  assert.ok(!/₪|money|fee|price/i.test(read('StepDelivery.js').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')), 'Q6b מחיר/דמי משלוח בכרטיס המשלוח');
+});
