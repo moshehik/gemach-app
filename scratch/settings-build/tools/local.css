@@ -43,3 +43,4 @@
 .gm-ds.gm-st .st-view :is(input,textarea,select).inp:focus{border-color:var(--gm-brand);box-shadow:0 0 0 4px var(--gm-brand-t)}
 /* ברק השורות בטבלת הכיתובים (בפלטה רק בעור דף הבית; כמו admin-hub.css) */
 .gm-ds.gm-st :where(.rtbl tbody tr){background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}
+@media (max-width:640px){.gm-ds.gm-st .st-def small{display:none}}

@@ -54,7 +54,7 @@ try {
     assert.equal(ps.length, 1);
     assert.deepEqual(ps[0].body, { items: [{ key: 'require_login', value: 'false' }, { key: 'gmach_address', value: 'רחוב חדש 5' }] });
     assert.ok(await p.$('.nb-success'), 'באנר נשמר');
-    assert.equal(await p.$('.st-chgs'), null, 'הפאנל נעלם אחרי שמירה');
+    assert.equal(await p.$('.st-chgs:not([hidden])'), null, 'הפאנל נעלם אחרי שמירה');
     await p.close();
   });
 
@@ -95,7 +95,7 @@ try {
     await p.screenshot({ path: path.join(OUT, 'i-discard-dialog.png') });
     await clickText(p, '#dlg .btn', 'בטל שינויים');
     await sleep(200);
-    assert.equal(await p.$('.st-chgs'), null);
+    assert.equal(await p.$('.st-chgs:not([hidden])'), null);
     assert.equal(await p.$eval('#toast', (e) => e.className.includes('on')), true);
     await p.close();
   });
@@ -170,7 +170,7 @@ try {
     await clickText(p, '#dlg .btn', 'חזרה לעריכה');
     await sleep(150);
     assert.equal(await p.$('.scrim.on'), null);
-    assert.ok(await p.$('.st-chgs'));
+    assert.ok(await p.$('.st-chgs:not([hidden])'));
     await p.close();
   });
 
@@ -203,7 +203,7 @@ try {
     const ps = await posts(p);
     assert.deepEqual(ps, [{ url: '/api/admin/db-mode', body: { mode: 'test' } }]);
     assert.match(await p.$eval('.panel.on', (e) => e.textContent), /מצב בדיקות פעיל/);
-    assert.equal(await p.$('.st-chgs'), null);
+    assert.equal(await p.$('.st-chgs:not([hidden])'), null);
     await p.close();
   });
 
@@ -242,6 +242,11 @@ try {
     assert.ok(bar.vis, 'פס שמירה');
     assert.ok(bar.bottom > 700, 'בתחתית המסך');
     assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'גלילה אופקית');
+    await click(p, '.st-saverow [data-act="discard"]');
+    await sleep(150);
+    await clickText(p, '#dlg .btn', 'בטל שינויים');
+    await sleep(200);
+    assert.equal(await p.$eval('.rail', (e) => getComputedStyle(e).display), 'none', 'בלי שינויים אין פס תחתון ריק');
     await p.screenshot({ path: path.join(OUT, 'i-dirty-mob.png') });
     await p.close();
   });

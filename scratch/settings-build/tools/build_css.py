@@ -28,7 +28,7 @@ def scope_sel(sel):
             out.append('.gm-ds.gm-st ' + s)
     return ','.join(out)
 
-SKIP = re.compile(r'\.st-view \.adm-rows\{|^\.st-view \.adm-rows$|\.dhero|\.no-prop|:is\(\.card,\.itm|\.card,\.itm|\.card,\.stepper|\.rtbl td \.inp|\.st-view \.tblw|\.st-view \.tools|\.st-prev|\.st-tgls|\.st-list-extra|\.rail\.open|\.rail:not\(\.open\)|\.rail\.open|rows \.rtbl|\.adm-tile|\.adm-tt|\.adm-mtools|\.adm-mbtns|\.adm-table|\.adm-trl|\.adm-h \.adm-n|\.adm-rows \.li \.go|\.adm-bar \.vsw|#tt|#toast|\.sn-badge|\.btn|\.ibtn|\.ttl h1::after')
+SKIP = re.compile(r'\.st-view \.adm-rows\{|^\.st-view \.adm-rows$|\.dhero|\.no-prop|:is\(\.card,\.itm|\.card,\.itm|\.card,\.stepper|\.rtbl td \.inp|\.st-view \.tblw|\.st-view \.tools|\.st-prev|\.st-tgls|\.st-list-extra|\.rail\.open|\.rail:not\(\.open\)|\.rail\.open|rows \.rtbl|\.adm-tile|\.adm-tt|\.adm-mtools|\.adm-mbtns|\.adm-table|\.adm-trl|\.adm-h \.adm-n|\.adm-rows \.li \.go|\.adm-bar \.vsw|#tt|#toast|^\.sn-badge|^\.btn|^\.ibtn|\.ttl h1::after')
 
 def split_rules(text):
     """[(media|None, selector, body)] — brace matching, rules may span lines."""
@@ -54,9 +54,28 @@ def split_rules(text):
         i = k
     return out
 
+def props(body):
+    return {d.split(':', 1)[0].strip() for d in body.split(';') if ':' in d}
+
+def drop_dead_media(items):
+    # an @media rule followed (later in source) by an unconditional rule for the same selector that sets the same
+    # properties never applies in the design either — drop it (keeps the CSS guard's "no @media before base" rule).
+    keep = []
+    for i, (media, sel, body) in enumerate(items):
+        if media:
+            later = set()
+            for (m2, s2, b2) in items[i + 1:]:
+                if not m2 and s2 == sel:
+                    later |= props(b2)
+            if props(body) and props(body) <= later:
+                continue
+        keep.append((media, sel, body))
+    return keep
+
 def rules_from(path, pick):
     out = []
-    for media, sel, body in split_rules(io.open(path, encoding='utf-8').read()):
+    items = [(m, ' '.join(s.split()), ' '.join(b.split())) for (m, s, b) in split_rules(io.open(path, encoding='utf-8').read())]
+    for media, sel, body in drop_dead_media(items):
         sel = ' '.join(sel.split())
         body = ' '.join(body.split())
         if not pick(sel) or SKIP.search(sel):

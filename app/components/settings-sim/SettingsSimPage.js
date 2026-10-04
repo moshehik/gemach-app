@@ -531,7 +531,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
 
   /* ----- יציאה עם שינויים: חלון "שינויים שלא נשמרו" לכל קישור פנימי, ואזהרת דפדפן בסגירה */
   const dirtyRef = useRef(false);
-  dirtyRef.current = dirty;
+  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
   useEffect(() => {
     const onClick = (e) => {
       if (!dirtyRef.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -720,8 +720,8 @@ export default function SettingsSimPage({ view = 'sys' }) {
                     );
                   })}
                 </nav>
-                {dirty ? (
-                  <div className="st-chgs">
+                {/* הפאנל ופס השמירה תמיד ב-DOM (hidden כשאין שינויים), כמו בעיצוב: בנייד הסרגל התחתון מוסתר לפי .rail:has(.st-saverow[hidden]) */}
+                <div className="st-chgs" hidden={!dirty}>
                     <div className="st-chgh"><Ic id="note" /><b>שינויים לשמירה</b><span className="badge st-chgn">{nChanged}</span></div>
                     <div className="cart-list st-chglist">
                       {resetAll ? (
@@ -748,9 +748,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
                       </button>
                     </div>
                   </div>
-                ) : null}
-                {dirty ? (
-                  <div className="st-saverow">
+                <div className="st-saverow" hidden={!dirty}>
                     <button type="button" className="st-saveicon" data-act="save" onClick={save} aria-label="שמירת השינויים" data-tip={hasErrors ? 'יש לתקן שגיאות' : 'שמירת השינויים'} disabled={saving || hasErrors}>
                       <span className="sn-badge st-pendcnt">{nChanged}</span><Ic id="check" plain />
                     </button>
@@ -758,7 +756,6 @@ export default function SettingsSimPage({ view = 'sys' }) {
                       <Ic id="undo" plain />
                     </button>
                   </div>
-                ) : null}
               </div>
             </aside>
 

@@ -687,5 +687,27 @@ t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגו�
   assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
 });
 
+/* ---------- הגדרות מערכת / אתר / שינוי שמות בעיצוב "סימולציה" (app/components/settings-sim/settings-sim.css) ---------- */
+const ST_CSS = read('../app/components/settings-sim/settings-sim.css');
+const stRules = parseCss(ST_CSS);
+t('settings-sim.css: כל כלל בהיקף .gm-ds.gm-st (חוץ מנטרול הריפוד של המעטפת סביב השורש)', () => {
+  const bad = [];
+  for (const r of stRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-st(\s|\.|:|$)/.test(s) && s !== '.app-shell .main .content:has(> .gm-ds.gm-st)') bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('settings-sim.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(stRules, 'settings-sim.css'), []);
+});
+t('הגדרות: השורש gm-ds gm-st home-bg dlg-dark, בלי gm-home; אין רקע לבן קשיח חדש ב-settings-sim.css', () => {
+  assert.match(read('../app/components/settings-sim/SettingsSimPage.js'), /className="gm-ds gm-st home-bg dlg-dark"/);
+  const bad = [];
+  for (const r of stRules) for (const d of setsProp(r, /^background(-color)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(r.sel);
+  }
+  // .tp-c (תאי בוחר השעה) לבנים בעיצוב
+  assert.deepEqual(bad.filter((s) => !/\.tp-c/.test(s)), []);
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

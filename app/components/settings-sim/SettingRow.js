@@ -147,7 +147,6 @@ function Groups({ row, raw, onChange }) {
         const used = new Set(g);
         const options = CUSTOMER_FIELDS.filter((f) => !used.has(f.key));
         return (
-          // eslint-disable-next-line react/no-array-index-key
           <div className="st-grp" key={gi}>
             <div className="st-grp-h">
               <span>קבוצה {gi + 1} - אחד מספיק מבין:</span>
@@ -322,6 +321,7 @@ function TimeCtl({ row, raw, onChange, portalRoot }) {
         role="combobox"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-controls={`st-tp-${row.key}`}
         aria-label={row.label}
         value={text}
         onClick={() => setOpen(true)}
@@ -341,7 +341,7 @@ function TimeCtl({ row, raw, onChange, portalRoot }) {
         data-element-name={`שדה_settings_${row.key}`}
       />
       {open && pos && portalRoot ? createPortal(
-        <div className="tpop" role="dialog" aria-label={row.label} ref={popRef} style={{ left: pos.left, top: pos.top }}>
+        <div className="tpop" id={`st-tp-${row.key}`} role="dialog" aria-label={row.label} ref={popRef} style={{ left: pos.left, top: pos.top }}>
           <div className="tp-h"><span className="tp-hi"><Ic id="clock" plain /></span><b dir="ltr">{p2(cur[0])}:{p2(cur[1])}</b></div>
           <div className="tp-l">שעה</div>
           <div className="tp-g">
