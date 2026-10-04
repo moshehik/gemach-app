@@ -661,7 +661,7 @@ export default function HomeDashboard() {
                       <Link key={r.id} href={`/orders/${r.orderId}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700 }}>{r.catalogName || r.description}</div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}{typeof r.isTaken === 'boolean' ? ` • ${r.isTaken && !r.isReturned ? 'מושכר עכשיו' : r.isReturned ? 'הוחזר' : 'טרם נלקח'}` : ''}</div>
                         </div>
                         <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
                       </Link>

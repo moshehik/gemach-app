@@ -120,6 +120,13 @@ export function scopedAdvFields(text) {
 
 // כמו A5.search ב-public/a5/adapters/ai.js. השרת כבר מגביל ל-50 לכל סוג; החיתוך ל"עוד N" נעשה בתצוגה.
 // חשוב: רק שדות התצוגה נשמרים — לא מעבירים הלאה שדות נוספים שהשרת עשוי להחזיר (ר' ממצא global-search).
+// מצב פריט בהזמנה לפי הדגלים: מושכר עכשיו / הוחזר / טרם נלקח (אותו ניסוח גם בחיפוש המהיר - lib/quickSearchResults.js)
+export function rentalStateLabel(r) {
+  if (r.isTaken && !r.isReturned) return 'מושכר עכשיו';
+  if (r.isReturned) return 'הוחזר';
+  return 'טרם נלקח';
+}
+
 export function normalizeSearch(d) {
   const data = d || {};
   const customers = (data.customers || []).map((c) => ({
@@ -147,6 +154,7 @@ export function normalizeSearch(d) {
     s: str(r.sizeText),
     orderId: r.orderId,
     url: '/orders/' + r.orderId,
+    ...(typeof r.isTaken === 'boolean' ? { rs: rentalStateLabel(r) } : {}),
   }));
   return { customers, orders, rentals };
 }
@@ -171,7 +179,7 @@ export function unifiedRows(res) {
   return [
     ...res.customers.map((x) => ({ key: 'c' + x.id, kind: 'לקוח', icon: 'user', title: x.n, url: x.url, phone: x.p, city: x.c })),
     ...res.orders.map((x) => ({ key: 'o' + x.uuid + '-' + x.id, kind: 'הזמנה', icon: 'file', title: x.n, url: x.url, orderId: x.id, eventHeb: x.h, status: orderStatus(x.st) })),
-    ...res.rentals.map((x, i) => ({ key: 'r' + i + '-' + x.orderId + '-' + x.b, kind: 'פריט', icon: 'dress', title: x.n, url: x.url, barcode: x.b, size: x.s })),
+    ...res.rentals.map((x, i) => ({ key: 'r' + i + '-' + x.orderId + '-' + x.b, kind: 'פריט', icon: 'dress', title: x.n, url: x.url, barcode: x.b, size: x.s, state: x.rs || '' })),
   ];
 }
 
