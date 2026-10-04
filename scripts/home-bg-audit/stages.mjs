@@ -116,6 +116,11 @@ if (which === 'real') {
   await capOpen(); await capFill('תקלה'); await capGo(); await sleep(900); await p.mouse.move(5, 5); await snap('34-cap-error');
   await p.evaluate(() => { window.__capOk = true; }); await clickText(p, 'לנסות שוב'); await sleep(1500); await p.mouse.move(5, 5); await snap('35-cap-retry-ok'); await p.evaluate(() => { window.__capOk = false; });
 }
+// חיפוש ברקוד (4.10.2026, בדף האמיתי בלבד — אין שלב כזה בעיצוב): שלוש השכרות של אותו פריט, לכל אחת שורה שנייה — הזמנה · לקוחה · תאריך עברי · מצב
+if (which === 'real') {
+  await fresh(); await type('5511205'); await p.keyboard.press('Enter'); await sleep(2200); await p.mouse.move(5, 5); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await snap('36-barcode-results');
+  await clickText(p, '', '.vopt[aria-label="מצב טבלה"]'); await sleep(500); await p.mouse.move(5, 5); await snap('37-barcode-table');
+}
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}.json`, JSON.stringify(results, null, 1));
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-layout.json`, JSON.stringify(layout, null, 1));
 console.log('done', which, Object.keys(results).length);
