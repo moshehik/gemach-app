@@ -55,6 +55,12 @@ export default function BoardRentalModal({ orderId, onClose, onUpdate, ui }) {
   useEffect(() => {
     const key = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // חלון קופץ מעל החלון (אישור מנהל בקוד / חלונות "הדפסה ומייל" של PopupProvider ו-OrderPrintMenu = .modal-backdrop,
+      // "בטוח?" של הלוח, תפריט ההדפסה הפתוח) מטפל ב-Esc בעצמו - לא סוגרים מתחתיו את חלון ההשכרה (ממצא הסקירה 1)
+      if (document.querySelector('.modal-backdrop, .bd-cf-scrim, .bd-pm .opm-menu')) return;
+      const t = e.target;
+      const inside = !t || t === document.body || t === document.documentElement || (t.closest && t.closest('.bd-rent, .bd-sub-scrim'));
+      if (!inside) return;
       e.preventDefault();
       if (subRef.current) { setItemDetails(null); setDuplicates(null); return; }
       attemptRef.current();

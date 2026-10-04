@@ -97,6 +97,12 @@ ok((await calls()).some((x) => x.url === '/api/rentals/scan' && /itemIdToForce/.
 await p.type('.bd-scan input', '189310002'); await p.keyboard.press('Enter'); await sleep(600);
 ok(!!(await p.$('#dlg.bd-cf')) || (await calls()).some((x) => x.url.startsWith('/api/returns/scan')), 'E16: סריקה מהירה של פריט מושכר -> החזרה (או שאלת איחור)');
 if (await p.$('#dlg.bd-cf')) { await click('#dlg.bd-cf .btn.ghost'); await sleep(500); }
+// חלון קופץ של האתר מעל (אישור מנהל / הדפסה ומייל = .modal-backdrop): Esc שלו לא סוגר את חלון ההשכרה
+await p.evaluate(() => { const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'fakePop'; d.innerHTML = '<input id="fakePin">'; document.body.appendChild(d); document.getElementById('fakePin').focus(); });
+await p.keyboard.press('Escape'); await sleep(400);
+ok(!!(await p.$('.dlg.bd-rent')) && !(await p.$('#dlg.bd-cf')), 'Esc בחלון קופץ מעל (modal-backdrop) לא סוגר את חלון ההשכרה');
+await p.evaluate(() => document.getElementById('fakePop').remove());
+await p.focus('.bd-scan input');
 await p.keyboard.press('Escape'); await sleep(500);
 if (await p.$('#dlg.bd-cf')) { await click('#dlg.bd-cf .btn.primary'); await sleep(500); }
 ok(!(await p.$('.dlg.bd-rent')) || !!(await p.$('#dlg.bd-cf')), 'E16: Esc = סגירת החלון (עם בדיקת שינויים)');
