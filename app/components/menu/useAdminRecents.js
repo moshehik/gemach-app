@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { applyAdminRecents, matchAdminPoolItem } from '@/lib/menu/buildMenuTree';
-import { adminRecentHrefs, clearAdminRecentsStorage, readAdminRecents, recordAdminVisit, writeAdminRecents } from '@/lib/menu/adminRecents';
+import { adminRecentHrefs, sameRecents, clearAdminRecentsStorage, readAdminRecents, recordAdminVisit, writeAdminRecents } from '@/lib/menu/adminRecents';
 
 /**
  * @param {object} tree עץ התפריט מהשרת
@@ -26,7 +26,8 @@ export default function useAdminRecents(tree) {
     const hit = matchAdminPoolItem(tree, pathname);
     const next = hit ? recordAdminVisit(stored, hit.href) : stored;
     if (next !== stored) writeAdminRecents(userKey, next);
-    setList(next); // סנכרון מאחסון הדפדפן אחרי הטעינה
+    // סנכרון מאחסון הדפדפן אחרי הטעינה — רק כשהרשימה השתנתה בפועל (אחרת רינדור מיותר של כל המעטפת בכל ניווט).
+    setList((prev) => (sameRecents(prev, next) ? prev : next));
   }, [tree, pathname, userKey]);
 
   const view = useMemo(() => applyAdminRecents(tree, adminRecentHrefs(list)), [tree, list]);

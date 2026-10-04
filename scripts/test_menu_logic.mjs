@@ -1135,4 +1135,63 @@ t('חיווט: app/layout.js מזריק רק כלים מותרים (selectHub); 
   const lib = src('../lib/menu/adminRecents.js');
   assert.ok(!/(^|[^.])localStorage\.(get|set|remove)Item/.test(lib), 'בלי גישה ישירה שלא דרך st');
 });
+
+// ---- תיקוני סקירה (4.10.2026): חיפוש לא מוצף, סימון "אחרון", רינדור, התנתקות, אייקון ----
+import { menuRowMatchesTerm } from '../lib/menu/buildMenuTree.js';
+import { sameRecents } from '../lib/menu/adminRecents.js';
+import { TOOLS as TOOLS_FOR_ICON } from '../lib/adminHubCatalog.js';
+t('חיפוש בתפריט: תת-מחרוזת של "ניהול" ("הו","יה","ול","ני") לא מציפה בכלי ניהול; כלי שהוסר נמצא בשמו; קבוצות של לשוניות אחרות עדיין מתאימות', () => {
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], adminTools: hubTools(0) });
+  const flat = flattenMenuTree(tree);
+  const search = (term) => flat.filter((x) => x.kind === 'link' && x.href && x.group !== 'משתמש' && x.group !== 'התראות' && menuRowMatchesTerm(x, term));
+  for (const term of ['הו', 'יה', 'ול', 'ני', 'ניה', 'יהודית']) {
+    const adminHits = search(term).filter((x) => x.group === 'ניהול');
+    assert.ok(adminHits.every((x) => String(x.label).includes(term)), `"${term}": שורת ניהול הותאמה לפי שם הקבוצה`);
+  }
+  assert.ok(search('הו').filter((x) => x.group === 'ניהול').length < 8, 'לא מציף');
+  assert.ok(search('גיבוי').some((x) => x.href === '/admin/backups'), 'כלי שהוסר מהפאנל נמצא בשמו');
+  assert.ok(search('סטטיסטיקה').some((x) => x.href === '/admin/statistics'));
+  assert.ok(flat.some((x) => x.id === 'ad-all' && x.noGroupMatch) && flat.some((x) => x.group === 'ניהול' && x.noGroupMatch));
+  assert.ok(!flat.filter((x) => x.group !== 'ניהול' && x.kind !== 'tab').some((x) => x.noGroupMatch), 'רק שורות ניהול מסומנות');
+  const ord = flat.find((x) => x.kind === 'link' && x.group && x.group !== 'ניהול' && x.group !== 'משתמש' && x.group !== 'התראות');
+  assert.ok(search(ord.group).some((x) => x.id === ord.id), 'חיפוש לפי שם לשונית אחרת עדיין מוצא את שורותיה');
+  assert.equal(menuRowMatchesTerm(null, 'x'), false); assert.equal(menuRowMatchesTerm({ label: 'a', group: 'b' }, ' '), false);
+  const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  assert.ok(panel.includes('menuRowMatchesTerm(x, term)') && !/String\(x\.group\)\.includes\(term\)/.test(panel));
+});
+t('סימון "נפתח לאחרונה": הטולטיפ לא נחתך ב-tipOf גם ל-ad-models/ad-refunds/ad-deliveries, ויש סימון גלוי (אייקון + טקסט לקורא מסך)', () => {
+  const parts = readFileSync(new URL('../app/components/menu/menuParts.js', import.meta.url), 'utf8');
+  const start = parts.indexOf('export function tipOf');
+  const fn = parts.slice(start, parts.indexOf('\n}', start) + 2).replace('export function tipOf', 'function tipOf');
+  const HIDE_TIP_IDS = new Set(['ad-models', 'ad-refunds', 'ad-deliveries', 'sched']);
+  const tipOf = new Function('HIDE_TIP_IDS', `${fn}; return tipOf;`)(HIDE_TIP_IDS);
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }), adminTools: hubTools(0) });
+  const comp = applyAdminRecents(tree, ['/dashboard/dresses', '/refunds', '/deliveries']);
+  const rec = tab(comp, 'admin').items.filter((x) => x.recent);
+  assert.deepEqual(rec.map((x) => x.id), ['ad-models', 'ad-refunds', 'ad-deliveries']);
+  for (const it of rec) assert.equal(tipOf(it), ADMIN_RECENT_TIP, it.id);
+  assert.equal(tipOf({ id: 'ad-models', tip: 'הערת תכנון' }), undefined, 'ברירת מחדל: הערת תכנון עדיין מוסתרת');
+  assert.ok(/item\.recent && !k/.test(parts) && parts.includes('sn-recent') && parts.includes('נפתח לאחרונה') && parts.includes('n="sn-history"'));
+  assert.ok(SPRITE_SYMBOLS.some((x) => x[0] === 'sn-history'));
+  assert.ok(readFileSync(new URL('../app/components/menu/menu.css', import.meta.url), 'utf8').includes('.sn-k.sn-recent'));
+});
+t('useAdminRecents: לא קורא ל-setList עם מערך זהה (אין רינדור מיותר בכל ניווט)', () => {
+  const a = [{ href: '/refunds', ts: 5 }, { href: '/employees', ts: 3 }];
+  assert.ok(sameRecents(a, a) && sameRecents(a, a.map((x) => ({ ...x }))) && sameRecents([], []));
+  assert.ok(!sameRecents(a, [a[0]]) && !sameRecents(a, [a[1], a[0]]) && !sameRecents(a, [a[0], { href: '/employees', ts: 4 }]));
+  assert.ok(!sameRecents(null, []) && !sameRecents([], undefined));
+  const hook = readFileSync(new URL('../app/components/menu/useAdminRecents.js', import.meta.url), 'utf8');
+  assert.ok(hook.includes('setList((prev) => (sameRecents(prev, next) ? prev : next))'));
+});
+t('התנתקות מ-UserMenu הישן מנקה גם את "אחרוני הניהול"', () => {
+  const um = readFileSync(new URL('../app/components/UserMenu.js', import.meta.url), 'utf8');
+  assert.ok(um.includes("import { clearAdminRecentsStorage } from '@/lib/menu/adminRecents';"));
+  const i = um.indexOf("fetch('/api/logout'");
+  assert.ok(i > 0 && um.slice(0, i).includes('clearAdminRecentsStorage();'), 'הניקוי לפני בקשת ההתנתקות');
+});
+t('אייקון משלוחים זהה באריח (מסך /admin) ובתפריט: truck', () => {
+  const tile = TOOLS_FOR_ICON.find((x) => x.id === 'deliveries');
+  const menu = flattenMenuTree(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) })).find((x) => x.id === 'ad-deliveries');
+  assert.equal(menu.icon, 'truck'); assert.equal(menu.icon, tile.icon);
+});
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

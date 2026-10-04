@@ -53,4 +53,4 @@
 
 ## בדיקות
 
-`node scripts/test_menu_logic.mjs` (99, מתוכן 13 חדשות: עד 5 שורות לכל תפקיד ולכל מספר אחרונים, "כל כלי הניהול" אחרונה, סדר החדש-ראשון, השלמת ברירות מחדל בלי כפילות, אחרון אסור נזרק לכל תפקיד, תאימות שרת/לקוח, התאמת נתיב, אחסון ומחיקה בהתנתקות, חיווט), `test_admin_hub` (גרף הייבוא כולל עכשיו את `MenuA5Shell`), `test_home_logic`, `test_home_css_guard`, `test_profile_page`, `test_login_logic`, `test_punch_clock_logic`, `test_ui_variant*`.
+`node scripts/test_menu_logic.mjs` (105, מתוכן 19 חדשות: עד 5 שורות לכל תפקיד ולכל מספר אחרונים, "כל כלי הניהול" אחרונה, סדר החדש-ראשון, השלמת ברירות מחדל בלי כפילות, אחרון אסור נזרק לכל תפקיד, תאימות שרת/לקוח, התאמת נתיב, אחסון ומחיקה בהתנתקות, חיווט; ותיקוני הסקירה: חיפוש בתפריט מתאים שורות ניהול לפי שמן בלבד, סימון "נפתח לאחרונה" גלוי + טולטיפ שלא נחתך, בלי setList מיותר, ניקוי אחרונים גם ב-UserMenu הישן, אייקון משלוחים truck), `test_admin_hub` (גרף הייבוא כולל עכשיו את `MenuA5Shell`), `test_home_logic`, `test_home_css_guard`, `test_profile_page`, `test_login_logic`, `test_punch_clock_logic`, `test_ui_variant*`.

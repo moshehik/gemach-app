@@ -62,7 +62,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     if (!term) return [];
     return flattenMenuTree(tree).filter((x) => (
       x.kind === 'link' && x.href && x.group !== 'משתמש' && x.group !== 'התראות'
-      && (String(x.label).includes(term) || String(x.group).includes(term))
+      && menuRowMatchesTerm(x, term)
     ));
   }, [tree, term]);
 
