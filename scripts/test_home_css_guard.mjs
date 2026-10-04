@@ -687,5 +687,61 @@ t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגו�
   assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
 });
 
+/* ---------- 12. "כרטיס עובד (ניהול)" (app/components/employee-card/employee-card.css, 4.10.2026) ---------- */
+// אותו משטר כמו הפרופיל / סיכום הנוכחות: כל כלל בהיקף .gm-ds.gm-ec, שורש בלי gm-home, נטרולי הדליפות של globals / design-overrides במקום,
+// ובלי כלל גלובלי. בדיקת נאמנות מלאה מול העיצוב: scripts/employee-card-audit (run.mjs, API מדומה, פורט 5203).
+const EC_CSS = read('../app/components/employee-card/employee-card.css');
+const ecRules = parseCss(EC_CSS);
+const EC_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-ec)', 'body *']); // body * = כלל ההדפסה (visibility) כמו בכרטיס הישן
+t('employee-card.css: כל כלל בהיקף .gm-ds.gm-ec (חוץ מביטול ריפוד המעטפת וכלל ההדפסה), בלי .gm-home', () => {
+  const bad = [];
+  for (const r of ecRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-ec(?![\w-])/.test(s) && !EC_OUT_OF_SCOPE_OK.has(s) && !/^(from|to|\d+%)$/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+  assert.ok(!/gm-home/.test(EC_CSS.replace(/\/\*[\s\S]*?\*\//g, '')), 'gm-home בכרטיס');
+});
+t('employee-card.css: אין רקע לבן קשיח מחוץ לרשימה; !important על רקע רק בכרטיס הפנינה, בכותרות הטבלה ובהדפסה', () => {
+  const OK = new Set(['.gm-ds.gm-ec .card', '.gm-ds.gm-ec .rtbl>thead>tr>th', '.gm-ds.gm-ec .rtbl>thead>tr.per>th', '.gm-ds.gm-ec .print-area', '.gm-ds.gm-ec .print-area .card', '.gm-ds.gm-ec .print-area .rtbl>thead>tr>th', '.gm-ds.gm-ec .rtbl td', '.gm-ds.gm-ec .rtbl th']);
+  const bad = [];
+  for (const r of ecRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    // !important שקוף (כללי הנייד של העיצוב: השורה הופכת לכרטיס בלי רקע תא) מותר
+    if (setsProp(r, /^background(-color|-image)?$/).some((d) => isImportant(d) && !/^transparent\s*!important$/i.test(d.value))) for (const s of splitSel(r.sel)) if (!OK.has(s.replace(/\s+/g, ' ')) && !/^\.gm-ds\.gm-ec \.rtbl>?\s*(tbody|tr|td|th|thead)/.test(s) && !/^\.gm-ds\.gm-ec \.rtbl[ ,]/.test(s) && !/\.rtbl/.test(s)) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('employee-card.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(ecRules, 'employee-card.css'), []);
+});
+const hasEc = (selRe, propRe, { important = false, valueRe } = {}) => ecRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('employee-card.css: נטרול דליפות - גופן (!important), כותרות הטבלה (>), field margin, צבע שדה, ריפוד לחצני אייקון, כרטיס הפנינה, לשונית, רדיוס שדות בחלון כהה', () => {
+  assert.ok(hasEc(/\.gm-ds\.gm-ec :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasEc(/\.gm-ds\.gm-ec :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.rtbl>thead>tr>th$/, /^background-color$/, { important: true }), 'כותרת הטבלה (globals כופה קרם)');
+  assert.ok(!ecRules.some((r) => /\.rtbl thead tr th/.test(r.sel)), 'נטרול כותרת הטבלה בלי >');
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.field$/, /^margin-bottom$/, { valueRe: /^0/ }));
+  assert.ok(hasEc(/\.gm-ds\.gm-ec input\.inp:not\(:disabled\)/, /^color$/));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec :is\(\.back,\.ibtn\)$/, /^padding$/));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.card$/, /^background$/, { important: true }));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.tab$/, /^margin-inline-end$/, { valueRe: /^0/ }), '.tab{margin-inline-end:22px} הגלובלי');
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec :is\(#dlg,#dlg2\) \.inp$/, /^border-radius$/, { valueRe: /^14px/ }), 'input:not(...) הגלובלי (0,4,1) דורס את רדיוס .inp בחלונות');
+});
+t('employee-card.css: EC-12 - הכרטיס הצר 1040px וכפתור השמירה 420px', () => {
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.app\.ec$/, /^max-width$/, { valueRe: /^1040px/ }));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.ec-save \.btn$/, /^max-width$/, { valueRe: /^420px/ }));
+});
+t('כרטיס עובד: שורש בלי gm-home, בלי title= על רכיבי הכרטיס (טולטיפ data-tip), בלי window.alert / confirm', () => {
+  const dir = '../app/components/employee-card/';
+  const src = ['EmployeeCardA5.js', 'EcUi.js', 'EcApproval.js', 'EcAttendance.js', 'EcHistory.js', 'EcMail.js', 'EcPermissions.js'].map((f) => read(dir + f));
+  // בלי הערות (בלוק רק בתחילת שורה: accept="image/*" אינו הערה)
+  const joined = src.join('\n').replace(/^\s*\/\*[\s\S]*?\*\//gm, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(/className="gm-ds gm-ec home-bg dlg-dark"/.test(joined));
+  assert.ok(!/gm-home/.test(joined));
+  assert.ok(!/window\.(alert|confirm|prompt)\(/.test(joined));
+  assert.ok(!/@import/.test(EC_CSS));
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

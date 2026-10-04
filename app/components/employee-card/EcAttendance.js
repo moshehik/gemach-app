@@ -56,15 +56,15 @@ export default function EcAttendance({ employee, employeeId, showDeleted, onShow
   const shifts = filterShifts(employee.shifts, { showDeleted, filterMonth, filterYear });
   const lbl = monthLabel(filterYear, filterMonth);
   const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
-  const today = israelToday();
+  const today = israelToday().key;
   const addDate = editShiftData.date || '';
   const busy = isAddingShift || editingShiftId !== null;
 
   return (
-    <div className="ec-pa print-area">
-      <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
-      <section className="card dfields" aria-labelledby="h-att">
+    <>
+      <section className="card dfields print-area" aria-labelledby="h-att">
         <div className="card-h"><div className="ico rose"><Ic id="clock" size="lg" /></div><h2 id="h-att">דוח נוכחות וסיכום - {fullName}</h2></div>
+        <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
         <div className="ec-tool no-print">
           <div className="trow"><label className="sw"><input type="checkbox" id="showDel" checked={showDeleted} onChange={(e) => onShowDeleted(e.target.checked)} /><i /></label><label htmlFor="showDel" className="pf-pl">הצג מחוקות</label></div>
           <span className="sp" />
@@ -161,6 +161,6 @@ export default function EcAttendance({ employee, employeeId, showDeleted, onShow
           <div><small>סיכום שכר</small><small>{lbl}</small><div className="n">₪{monthlySalary(employee.shifts, filterMonth, filterYear)}</div></div>
         </div>
       </section>
-    </div>
+    </>
   );
 }

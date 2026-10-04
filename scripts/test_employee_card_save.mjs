@@ -121,7 +121,12 @@ await t('סולם ההרשאות ב-roles.js: HEAD_MANAGEMENT_ROLES=[0,2], canMa
 
 console.log('הנתיב והעמוד (בדיקת מקור)');
 const routeSrc = readFileSync(new URL('../app/api/employees/[id]/password/route.js', import.meta.url), 'utf8');
-const pageSrc = readFileSync(new URL('../app/employees/[id]/page.js', import.meta.url), 'utf8');
+// הכרטיס הישן (app/employees/[id]/LegacyEmployeeCardPage.js; page.js הוא עטיפה דקה שמחליפה בין הישן לחדש) והכרטיס החדש (EmployeeCardA5):
+// לוגיקת התיקון שנבדק חייבת להישאר בשניהם.
+const pageSrc = readFileSync(new URL('../app/employees/[id]/LegacyEmployeeCardPage.js', import.meta.url), 'utf8');
+const a5Src = readFileSync(new URL('../app/components/employee-card/EmployeeCardA5.js', import.meta.url), 'utf8');
+const a5Files = ['EmployeeCardA5', 'EcApproval', 'EcAttendance', 'EcHistory', 'EcMail', 'EcPermissions', 'EcUi']
+  .map((n) => [n, readFileSync(new URL(`../app/components/employee-card/${n}.js`, import.meta.url), 'utf8')]);
 await t('נתיב הסיסמה: סיסמה מגובבת (hashSecret), אימות סיסמת המנהל, ושום סיסמה לא נרשמת ללוג', () => {
   assert.match(routeSrc, /hashSecret\(newPassword\)/);
   assert.match(routeSrc, /verifySecret\(managerPassword/);
@@ -141,6 +146,30 @@ await t('העמוד: הצלחת שמירה מוצגת רק אחרי בדיקת r
   const i = pageSrc.indexOf("notifySuccess('הפרטים נשמרו בהצלחה!')");
   const j = pageSrc.indexOf('if (!result.ok)');
   assert.ok(i > 0 && j > 0 && j < i, 'הבדיקה חייבת לבוא לפני הודעת ההצלחה');
+});
+
+console.log('הכרטיס החדש (EmployeeCardA5): אותה לוגיקת תיקון');
+await t('A5: אין window.alert / confirm / customConfirm בשום קובץ של הכרטיס', () => {
+  for (const [n, raw] of a5Files) {
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''); // בלי הערות
+    assert.doesNotMatch(src, /(^|[^.\w])alert\(/m, n);
+    assert.doesNotMatch(src, /window\.(alert|confirm|prompt)\(/, n);
+    assert.doesNotMatch(src, /customConfirm|customAuthPrompt/, n);
+  }
+});
+await t('A5: כל הקריאות לשרת של הכרטיס עוברות requestJson (אין fetch חשוף ל-POST/PUT של עובד)', () => {
+  assert.doesNotMatch(a5Src, /await fetch\(`\/api\/employees/);
+  assert.ok(a5Files.reduce((n, [, src]) => n + (src.match(/requestJson\(/g) || []).length, 0) >= 8);
+});
+await t('A5: הצלחת שמירה מוצגת רק אחרי בדיקת result.ok', () => {
+  const i = a5Src.indexOf("say('הפרטים נשמרו בהצלחה!')");
+  const j = a5Src.indexOf('if (!result.ok)');
+  assert.ok(i > 0 && j > 0 && j < i, 'הבדיקה חייבת לבוא לפני הודעת ההצלחה');
+});
+await t('A5: שינוי סיסמה בכרטיס של עובד אחר (managerPassword) דרך passwordChangeBody, ובדיקת זיהוי המשתמש המחובר', () => {
+  assert.match(a5Src, /passwordChangeBody\(\{ isOwnCard/);
+  assert.match(a5Src, /passwordChangeError\(\{ newPassword: newPw, sessionEmployeeId \}\)/);
+  assert.match(a5Src, /הסיסמא שלך \(לאימות המנהל\)/);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}`);

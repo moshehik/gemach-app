@@ -19,6 +19,8 @@
 
 /* ===== נטרול דליפות של ה-CSS הגלובלי של האתר ===== */
 .gm-ds.gm-ec :is(.back,.ibtn){padding:1px 6px}
+/* globals.css / design-system.css: .tab{margin-inline-end:22px} - בעיצוב הלשוניות צמודות וחולקות את הרוחב שווה */
+.gm-ds.gm-ec .tab{margin-inline-end:0}
 .gm-ds.gm-ec .field{margin-bottom:0}
 .gm-ds.gm-ec input.inp:not(:disabled):not([type=checkbox]){color:var(--gm-ink)}
 .gm-ds.gm-ec .sw input{background:transparent}
@@ -37,6 +39,11 @@
 .gm-ds.gm-ec :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:focus-visible) .ic{transform:translateX(3px)}
 .gm-ds.gm-ec :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):focus-visible{outline:2px solid var(--gold);outline-offset:2px;box-shadow:none}
 
+/* שדות בחלונות הכהים: input:not([type=checkbox]...) הגלובלי (0,4,1) דורס את רדיוס .inp של הפלטה (14px) */
+.gm-ds.gm-ec :is(#dlg,#dlg2) .inp{border-radius:14px}
+/* לחצן ראשי מנוטרל בחלון כהה (שליחת מייל לפני מילוי): כלל העיצוב - לא קיים בפלטה */
+.gm-ds.gm-ec :is(#dlg,#dlg2) :is(.dbtns,.mact) .btn.btn:disabled:not(.z1):not(.z2),.gm-ds.gm-ec :is(#dlg,#dlg2) :is(.dbtns,.mact) .btn.btn:disabled:hover:not(.z1){background:var(--k-row);color:var(--k-faint);border:1.5px solid var(--k-rowb);box-shadow:none;transform:none;cursor:not-allowed}
+
 /* ===== מהעיצוב (בלוק ec-card) ===== */
 .gm-ds.gm-ec [hidden]{display:none!important}
 .gm-ds.gm-ec .app.ec{max-width:1040px}
@@ -46,7 +53,6 @@
 .gm-ds.gm-ec .app.ec .dfields .field{max-width:340px;width:100%}
 .gm-ds.gm-ec .app.ec .dfields .field.wide{grid-column:1/-1;max-width:none}
 .gm-ds.gm-ec .app.ec .card{overflow:visible}
-.gm-ds.gm-ec .app.ec .card-h{border-top-left-radius:inherit;border-top-right-radius:inherit}
 .gm-ds.gm-ec .app.ec .tabs{margin-bottom:0}
 .gm-ds.gm-ec .app.ec .tab .tico{display:inline-flex}
 @media (max-width:1023px){
@@ -69,7 +75,7 @@
 .gm-ds.gm-ec .pf-up:focus-within{box-shadow:0 0 0 3px rgba(201,162,39,.3)}
 .gm-ds.gm-ec .ec-eml{display:flex;align-items:center;gap:8px;max-width:620px}
 .gm-ds.gm-ec .ec-eml .inpw{flex:1;min-width:0}
-.gm-ds.gm-ec .ec-eml .ibtn{width:44px;height:44px;border-radius:50%;flex:none}
+.gm-ds.gm-ec .ec-eml .ibtn{width:44px;height:44px;flex:none}
 .gm-ds.gm-ec .ec-fill{margin-top:10px}
 .gm-ds.gm-ec .ec-pwact{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .gm-ds.gm-ec .ec-hint{margin-top:12px;max-width:760px;line-height:1.6}
@@ -138,7 +144,7 @@
 .gm-ds.gm-ec .rtbl tr.del td.act{text-decoration:none;opacity:1}
 .gm-ds.gm-ec .rtbl tr.edit td{background:rgba(255,255,255,.55)}
 .gm-ds.gm-ec .rtbl .rowact{display:flex;gap:6px;justify-content:center;align-items:center}
-.gm-ds.gm-ec .rtbl .ibtn{width:36px;height:36px;border-radius:12px}
+.gm-ds.gm-ec .rtbl .ibtn{width:36px;height:36px}
 .gm-ds.gm-ec .rtbl .inp{min-height:40px!important;height:40px!important;width:100%;min-width:70px;padding-inline:10px!important;font-size:15px}
 .gm-ds.gm-ec .rtbl input[type=time]{min-width:112px}
 .gm-ds.gm-ec .rtbl td.heb,.gm-ds.gm-ec .rtbl td.num{white-space:nowrap}
@@ -250,6 +256,8 @@
   .gm-ds.gm-ec .print-area{position:absolute;left:0;top:0;width:100%;direction:rtl;overflow:visible!important;background:#fff!important;box-shadow:none!important}
   .gm-ds.gm-ec .print-area .card{background:#fff!important;box-shadow:none!important;border:0!important}
   .gm-ds.gm-ec .no-print{display:none!important}
+  .gm-ds.gm-ec .print-area{display:flex;flex-direction:column}
+  .gm-ds.gm-ec .print-area>.bsd-header{order:-1}
   .gm-ds.gm-ec .bsd-header{display:block!important;text-align:center;font-size:1.2rem;font-weight:700;margin-bottom:1rem}
   .gm-ds.gm-ec .print-area .tblw{overflow:visible}
   .gm-ds.gm-ec .print-area .rtbl{min-width:0}
