@@ -7,7 +7,7 @@ import { canViewOthersActivity, isViewableEmployee, employeeChipName } from '@/l
 export const dynamic = 'force-dynamic';
 
 // GET /api/me/recent-activity/employees - רשימת העובדות לבורר ("שבבים") של "השינויים שלי" (MY-04 ב).
-//   -> { employees: [{ id, name }] }  שמות ומזהים בלבד (בלי שכר, קוד, סיסמה, טלפון, תפקיד). עובדות פעילות בלבד, ללא עובדי שירות, עד 60.
+//   -> { employees: [{ id, name }], meId }  (meId = העובדת המחוברת, כדי שהבורר לא יציג אותה פעמיים)  שמות ומזהים בלבד (בלי שכר, קוד, סיסמה, טלפון, תפקיד). עובדות פעילות בלבד, ללא עובדי שירות, עד 60.
 // הרשאה: page:orders + feature:view_others_recent_activity (ברירת מחדל הנהלה ראשית / מתכנת), נבדק מהעוגייה החתומה בשרת.
 // בלי הרשאה / בלי זהות = 403 (הלקוח לא מציג בורר). קריאה בלבד.
 
@@ -27,9 +27,9 @@ export async function GET() {
       take: MAX_EMPLOYEES + 40, // מרווח לעובדי שירות שיסוננו
     });
     const employees = rows.filter(isViewableEmployee).map((e) => ({ id: e.id, name: employeeChipName(e) })).filter((e) => e.name).slice(0, MAX_EMPLOYEES);
-    return json({ employees });
+    return json({ employees, meId: me });
   } catch (error) {
     console.error('recent-activity employees error:', error);
-    return json({ employees: [], degraded: true });
+    return json({ employees: [], meId: me, degraded: true });
   }
 }

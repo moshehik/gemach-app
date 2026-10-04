@@ -960,7 +960,7 @@ t('"השינויים שלי" בחיפוש התפריט: ה-CSS בהיקף .gm-ds
   assert.ok(/reportMine\(drawer, mineOn\)/.test(panel) && /const mineOn = qp\.open && !!qp\.def && qp\.def\.source === 'mine'/.test(panel), 'mineActive = אותו תנאי שמצייר את הרשימה');
   assert.ok(/MENU_PREFIXES = \['&'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט רק '&'");
   assert.ok(/qp\.onKeyDown\(e\);[\s\S]{0,120}if \(e\.defaultPrevented\) return;/.test(panel), 'Enter על רשימת & לא מריץ חיפוש');
-  assert.ok(/nav\.navigate\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הצג הכל" פותח /?recent=mine');
+  assert.ok(/nav\.navigate\(href\)/.test(panel) && /row\.url\.startsWith\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הכל" פותח /?recent=mine (עם emp של הנהלה)');
 });
 // ---- תוויות עבריות ל"נצפו לאחרונה" (תיקון רוחבי: אף נתיב גולמי באנגלית) ----
 import { pageLabel, hebrewLabelOr, hasPageLabel, ROUTE_LABELS, FALLBACK_PAGE_LABEL } from '../lib/menu/pageLabels.js';

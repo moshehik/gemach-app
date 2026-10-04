@@ -297,6 +297,7 @@ console.log('GET /api/me/recent-activity/employees');
 await t('הנהלה: שמות ומזהים בלבד, פעילות בלבד, בלי עובדי שירות, בלי שכר / קוד', async () => {
   reset(); as('emp-me', 0); const r = await callEmp();
   assert.equal(r.status, 200);
+  assert.equal(r.body.meId, 'emp-me');
   assert.deepEqual(r.body.employees.map((e) => e.id).sort(), ['emp-me', 'emp-other']);
   for (const e of r.body.employees) assert.deepEqual(Object.keys(e).sort(), ['id', 'name']);
   const text = JSON.stringify(r.body); assert.ok(!/wage|pin|55|900001|API/.test(text));
@@ -312,7 +313,7 @@ await t('מנהלת סניף / עובדת רגילה: 403 בלי שאילתת ע
 });
 await t('כשל DB ברשימת העובדות: 200 עם רשימה ריקה ו-degraded', async () => {
   reset(); as('emp-me', 0); T.db.employee = null;
-  const r = await callEmp(); assert.equal(r.status, 200); assert.deepEqual(r.body, { employees: [], degraded: true });
+  const r = await callEmp(); assert.equal(r.status, 200); assert.deepEqual(r.body, { employees: [], meId: 'emp-me', degraded: true });
 });
 await t('created: רק מה שיצרתי, החדש ראשון; בוטלה / טיוטה / מחוץ לחלון לא מופיעות', async () => {
   reset(); const r = await call();

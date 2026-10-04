@@ -25,6 +25,7 @@ import { HomeFooter, PrivacyDialog } from './HomeFooter';
 import { buildSearchSheet, sectionsFromGeneral, sectionFromRecords } from './searchPdf';
 import { QuickPrefixList, useLocalRecentRows, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import SearchKeySync from '../search/SearchKeySync';
+import { buildMineModel, mineExportRecords, mineSheetSections } from '@/lib/myRecentActivityView';
 import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
 import {
   AI_CONTEXT, buildGreeting, normalizeSearch, resultsCount, unifiedRows, exportRecordsForRows,
@@ -103,6 +104,8 @@ export default function HomeA5() {
   const [wantAdv, setWantAdv] = useState(false); // /?adv=1: נפתח ישר לחיפוש המתקדם ברגע שההרשאות נטענו
   const scopeRef = useRef(null);
   const urlMode = useRef(null); // { kind: 'adv'|'recent'|'mine', open } — הפרמטר נשאר בכתובת כל עוד המצב פעיל (להדגשת פריט התפריט)
+  const mine = useMyActivity(); // "השינויים שלי" ('&' / ?recent=mine): נתוני GET /api/me/recent-activity, נטענים רק כשצריך; ההנהלה בוחרת עובדת אחרת (mine.setWho)
+  const setMineWho = mine.setWho;
   const appliedKey = useRef('');
   const seq = useRef(0);
   const toastTimer = useRef(null);
@@ -255,8 +258,9 @@ export default function HomeA5() {
     setLoading(false);
     setAdvRes(null);
     setRes(null);
+    setMineWho(null); // הבחירה של הנהלה ב"השינויים שלי" לא נשארת אחרי היציאה מהתצוגה: ברירת המחדל היא הרשימות של עצמה
     forget();
-  }, [forget]);
+  }, [forget, setMineWho]);
 
   /* ---------- קישורי תפריט "בית": ?scope= / ?adv=1 / ?recent=changes (רשימה סגורה — ר' parseHomeParams) ----------
      המצב מתחיל נקי (בלי לשחזר חיפוש קודם תחת כותרת הקטגוריה). הפרמטר נשאר בכתובת כל עוד המצב פעיל, כדי שהתפריט
@@ -284,6 +288,7 @@ export default function HomeA5() {
       setQ('@'); // אותה תוצאה בדיוק כמו הקלדת '@' בשורת החיפוש
     } else if (dir.recent === 'mine') {
       urlMode.current = { kind: 'mine', open: false };
+      setMineWho(dir.emp); // /?recent=mine&emp=<id> (הנהלה שבחרה עובדת בחלונית & ולחצה "הכל"); בלי emp = שלי. השרת מסרב למי שאין לה הרשאה והרשימה חוזרת לשלה
       setView('mine'); // "השינויים שלי": כרטיס התוצאות המלא (HomeMine); הקלדת '&' בשורה פותחת את החלונית הקצרה של אותם נתונים
     } else if (dir.q) {
       setQ(dir.q);
@@ -291,7 +296,7 @@ export default function HomeA5() {
       if (params) { params.delete('q'); replaceUrl(params.toString()); }
     }
     if (inputRef.current) inputRef.current.focus();
-  }, [runSearch]);
+  }, [runSearch, setMineWho]);
 
   // ניווט לתוך הדף כשהוא כבר פתוח (לחיצה על פריט תפריט "בית" מדף הבית עצמו): הכתובת משתנה והדף לא נטען מחדש
   const [spKey, setSpKey] = useState(null); // מחרוזת ה-query של הכתובת (מדווחת מ-SearchKeySync); null עד הדיווח הראשון
@@ -495,6 +500,16 @@ export default function HomeA5() {
     query: lastQuery.current.text || q,
     scopeChip: scopeDef ? 'רק ' + scopeDef.only : '',
   });
+  // "השינויים שלי": אותן שורות כמו על המסך (שני חלקים), אותו דף הדפסה / PDF כמו תוצאות החיפוש; הנהלה שבחרה עובדת אחרת - שמה בכותרת
+  const onExportMine = (kind) => {
+    const m = buildMineModel({ state: mine.state, data: mine.data }, { limit: null, whoName: mine.whoName });
+    exportRows(kind, mineExportRecords(m.sections), 'השינויים שלי', 'My_Changes', {
+      title: 'השינויים שלי',
+      sections: mineSheetSections(m.sections),
+      query: mine.whoName,
+      queryLabel: 'עובדת',
+    });
+  };
   const onExportAdv = (kind) => {
     if (!advRes) return;
     const { data, summary } = advRes;
@@ -557,7 +572,6 @@ export default function HomeA5() {
   // '@' בתחילת השורה = רשימת האחרונים שלי (ההיסטוריה המקומית); "שינויים אחרונים" בתפריט פותח את אותה תוצאה בדיוק
   // '&' בתחילת השורה = "השינויים שלי" (ההזמנות שיצרתי והשינויים שעשיתי; GET /api/me/recent-activity, נטען רק כשצריך)
   const recentList = useLocalRecentRows();
-  const mine = useMyActivity();
   const qp = useQuickPrefix({ q, rows: recentList, mine, enabled: !ai, onPick: (row) => { const u = safeInternalRoute(row.url); if (row.type === 'all') setQ(''); if (u) router.push(u); } });
 
   // בלי חיפוש חכם, בלי חיפוש מתקדם ובלי סינון לקטגוריה אין מה להציג: לא מרנדרים מיכל ריק
@@ -679,7 +693,7 @@ export default function HomeA5() {
               onOpenRoute={(r) => router.push(r)}
             />
           )}
-          {view === 'mine' && <HomeMine mine={mine} onClose={resetAll} />}
+          {view === 'mine' && <HomeMine mine={mine} onClose={resetAll} table={asTable} onTable={setAsTable} onExport={onExportMine} />}
           {advResults && (
             <HomeAdvResults
               data={advRes.data}

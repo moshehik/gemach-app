@@ -11,7 +11,7 @@ import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
 import { MINE_URL } from '@/lib/myRecentActivityView';
 import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
-import { MineRowBody, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
+import { MineRowBody, MineWho, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
@@ -90,8 +90,27 @@ function MineMenuList({ qp }) {
       ><MineRowBody r={r} term={qp.term} /></a>
     );
   };
+  const mine = qp.mine;
+  const all = m.state === 'ok' ? m.more : null;
+  const allIdx = m.items.length - 1;
   return (
     <div className="mine-menu" id={qp.listId} role="listbox" aria-label={qp.def.listLabel}>
+      {(all || (mine && mine.chips.length > 0)) && (
+        <div className="mine-head" role="presentation">
+          <MineWho chips={mine ? mine.chips : []} setWho={mine ? mine.setWho : () => {}} />
+          {all && (
+            <button
+              type="button"
+              id={`${qp.listId}-o${allIdx}`}
+              role="option"
+              aria-selected={qp.act === allIdx}
+              className={`btn sm mine-all${qp.act === allIdx ? ' act' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => qp.pick(all)}
+            >{all.title}<Ic n="arrl" /></button>
+          )}
+        </div>
+      )}
       {m.state === 'loading' && <div className="sn-empty" role="status">{m.none}</div>}
       {m.state === 'error' && <div className="sn-empty" role="alert">{m.none}<small>{m.sub}</small></div>}
       {m.state === 'error' && m.items.map(row)}
@@ -101,7 +120,6 @@ function MineMenuList({ qp }) {
           {s.rows.map(row)}
         </div>
       ))}
-      {m.state === 'ok' && m.more && row(m.more)}
       {m.state === 'ok' && m.none && <div className="sn-empty" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</div>}
       <div className="mine-note" role="note"><Ic n="lock" /><span>{m.note}</span></div>
     </div>
@@ -121,7 +139,8 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     listId: `${idPrefix}-qp`,
     onPick: (row) => {
       if (row.type === 'all') {
-        onGo(() => { nav.navigate(MINE_URL); window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href: MINE_URL } })); }, true);
+        const href = typeof row.url === 'string' && row.url.startsWith(MINE_URL) ? row.url : MINE_URL; // /?recent=mine[&emp=<id>]: הבחירה של הנהלה נשמרת
+        onGo(() => { nav.navigate(href); window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href } })); }, true);
       } else if (row.url) {
         onGo(() => nav.navigate(row.url), true);
       }

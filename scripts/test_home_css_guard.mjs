@@ -771,7 +771,9 @@ t('השינויים שלי: הקומפוננטות משתמשות באותם מ�
   const HM = read('../app/components/home/HomeMine.js');
   for (const c of ['advlist mine-list', 'advo mine-o', 'mine-t', 'mine-note', 'advo-h']) assert.ok(QP.includes(c), c);
   for (const c of ['mine-view', 'mine-sec-h', 'mine-nt', 'mine-big']) assert.ok(HM.includes(c), c);
-  for (const c of ['advlist.mine-list', 'mine-list .advo-h', 'mine-view .mine-sec-h', 'mine-view .mine-nt', 'mine-view .mine-big', 'mine-note', 'mine-t ']) assert.ok(HOME_CSS.includes(c), 'חסר כלל: ' + c);
+  for (const c of ['advlist.mine-list', 'mine-list .advo-h', 'mine-view .mine-sec-h', 'mine-view .mine-nt', 'mine-view .mine-big', 'mine-note', 'mine-t ', 'mine-list .mine-head', 'mine-who .chip', 'mine-list .mine-all']) assert.ok(HOME_CSS.includes(c), 'חסר כלל: ' + c);
+  for (const c of ['XlButtons', 'ViewSwitch', 'ResultsTable', 'li rlink lrow', 'card res-one recent mine-view']) assert.ok(HM.includes(c), 'HomeMine משתמש ברכיבי תוצאות החיפוש: ' + c);
+  assert.ok(QP.includes('mine-head') && QP.includes('mine-all') && QP.includes('MineWho'), 'כותרת החלונית: שבבי עובדת + "הכל"');
   assert.ok(!/<img|\.svg['"]/.test(QP + HM), 'בלי תמונות / קבצי svg חיצוניים');
 });
 
