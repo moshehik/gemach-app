@@ -220,12 +220,32 @@ export function requiredOf(obligations = [], items = []) {
       }
       return true;
     })
-    .reduce((sum, obs) => sum + obs.amount, 0);
+    .reduce((sum, obs) => sum + num(obs.amount), 0);
 }
-export const paidOf = (payments = []) => payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+// סכומים כמחרוזת ("150") נספרים כמספר - בישן `sum + o.amount` היה משרשר מחרוזות (סקירה, סעיף 9)
+const num = (v) => parseFloat(v) || 0;
+export const paidOf = (payments = []) => payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + num(p.amount), 0);
 // openedDebt (:347-349): בטעינה - בלי ההחרגה של פריט שנמחק מקומית
 export const openedDebtOf = (obligations = [], payments = []) =>
-  obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0) - payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+  obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + num(o.amount), 0) - payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + num(p.amount), 0);
+
+// אישור "השאר חוב" מכסה חוב עד הרמה שאושרה (סקירה, סעיף 2). בלי רמה = לא מכסה.
+export const debtApprovalCovers = (level, debt) => level !== null && level !== undefined && Number.isFinite(Number(level)) && round2(debt) <= round2(level) + 0.01;
+
+// הגנות היציאה (יירוט קישורים + beforeunload) פעילות כשיש שינויים שלא נשמרו או כשהיציאה חסומה בגלל חוב חדש (סקירה, סעיף 1)
+export const exitGuardActive = (dirty, pendingDebtBlock) => !!(dirty || pendingDebtBlock);
+
+// שורה חדשה (בלי id) מקבלת _localId במקום אחד - כך כל שורה מזוהה ברשימת השינויים, בביטול ובהחזרה (סקירה, סעיפים 5-6)
+export function withLocalIds(list) {
+  if (!Array.isArray(list)) return list;
+  let changed = false;
+  const out = list.map(x => {
+    if (!x || typeof x !== 'object' || x.id || x._localId || x.isPreview) return x;
+    changed = true;
+    return { ...x, _localId: newLocalId() };
+  });
+  return changed ? out : list;
+}
 
 /**
  * @returns {{required:number,paid:number,balance:number,openedDebt:number|null,savedBalance:number,pendingNet:number,balanceAfterSave:number}}
@@ -538,7 +558,6 @@ const fieldsOfKey = (key) => {
   return null;
 };
 const identOf = (x, i) => (x.id ? String(x.id) : (x._localId ? String(x._localId) : `n${i}`));
-const isAutoObligation = (o) => o.isManual === false || !!o.isPreview;
 const oblAmountsForItem = (obligations, itemId) => (obligations || []).filter(o => !o.isDeleted && o.orderItemId === itemId).reduce((a, o) => a + (Number(o.amount) || 0), 0);
 
 /**
@@ -563,7 +582,6 @@ export function changesOf(snap, cur) {
     const id = it.id ? String(it.id) : null;
     const before = id ? sById.get(id) : null;
     if (!before) {
-      if (!it.id && !it._localId) return;
       if (it.isDeleted) return; // שורה חדשה שנמחקה לפני שמירה - אין מה לשמור
       out.push({ key: `item:add:${identOf(it, i)}`, group: 'items', icon: 'plus', text: `נוסף פריט: ${itemLabel(it)}`, note: '', amt: round2(parseFloat(it.finalPrice) || parseFloat(it.price) || 0) });
       return;
@@ -593,10 +611,12 @@ export function changesOf(snap, cur) {
   sItems.forEach(b => { if (b.id && !cItems.some(x => String(x.id) === String(b.id))) out.push({ key: `item:rm:${b.id}`, group: 'items', icon: 'trash', text: `הוסר פריט: ${itemLabel(b)}`, note: '', amt: -round2(oblAmountsForItem(snap.obligations, b.id)) }); });
   // חיובים ידניים (שורות אוטומטיות/preview נגזרות מהמנוע - לא "שינוי" בפני עצמן)
   const listDiff = (sList, cList, kind) => {
-    const sMan = (sList || []).filter(x => kind === 'pay' || !isAutoObligation(x));
-    const cMan = (cList || []).filter(x => kind === 'pay' || !isAutoObligation(x));
-    const sMap = new Map(sMan.filter(x => x.id).map(x => [String(x.id), x]));
-    cMan.forEach((x, i) => {
+    // שורות preview (מהמנוע) אינן שינוי בפני עצמן. חיוב אוטומטי (isManual===false) נחשב שינוי רק כשהוא קיים ב-snapshot ושונה ממנו
+    // (למשל סומן כמבוטל). המפתח נבנה מהאינדקס ברשימה המלאה - אותו אינדקס שבו revertChange מחפש (סקירה, סעיף 6).
+    const sMap = new Map((sList || []).filter(x => x.id && !x.isPreview).map(x => [String(x.id), x]));
+    (cList || []).forEach((x, i) => {
+      if (kind === 'obl' && x.isPreview) return;
+      if (kind === 'obl' && x.isManual === false && !(x.id && sMap.has(String(x.id)))) return;
       const before = x.id ? sMap.get(String(x.id)) : null;
       const amount = round2(Number(x.amount) || 0);
       const desc = (x.description || x.paymentMethod || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '');
