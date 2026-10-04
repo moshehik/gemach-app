@@ -328,7 +328,7 @@ const fakePrisma = (o = {}) => {
   return {
     calls,
     $executeRawUnsafe: async (sql, ...args) => { calls.push(['exec', sql, args]); if (o.missing) { const e = new Error('Raw query failed. Code: `42703`. Message: `column "aiTitle" of relation "ErrorReport" does not exist`'); e.code = 'P2010'; e.meta = { code: '42703' }; throw e; } return 1; },
-    $queryRawUnsafe: async (sql, ...args) => { calls.push(['query', sql, args]); if (o.missing) { const e = new Error('column "aiTitle" does not exist'); e.code = 'P2010'; e.meta = { code: '42703' }; throw e; } return (o.rows || []); },
+    $queryRawUnsafe: async (sql, ...args) => { calls.push([/LIMIT 0/.test(sql) ? 'probe' : 'query', sql, args]); if (o.missing) { const e = new Error('column "aiTitle" does not exist'); e.code = 'P2010'; e.meta = { code: '42703' }; throw e; } return (o.rows || []); },
   };
 };
 await t('כבוי כברירת מחדל: בלי ההגדרה אין קריאה ל-Gemini ואין SQL', async () => {
@@ -349,7 +349,10 @@ await t('פעיל + עמודה קיימת: כותרת נוצרת מהתיאור 
   const r = await AI.generateAndStoreAiTitle('r1', withSteps('לחצתי על שמירה והכפתור נתקע'), { prisma, getSetting: async () => 'true', generate: async (p) => { prompt = p; return '"כפתור שמירה תקוע."'; } });
   assert.equal(r, 'כפתור שמירה תקוע');
   assert.ok(prompt.includes('לחצתי על שמירה') && !prompt.includes('[00:02]'), 'הצעדים לא נשלחים ל-Gemini');
-  assert.deepEqual(prisma.calls[0], ['exec', 'UPDATE "ErrorReport" SET "aiTitle" = $1 WHERE "id" = $2', ['כפתור שמירה תקוע', 'r1']]);
+  assert.deepEqual(prisma.calls[0], ['probe', 'SELECT "aiTitle" FROM "ErrorReport" LIMIT 0', []], 'בדיקת עמודה זולה לפני Gemini');
+  assert.deepEqual(prisma.calls[1], ['exec', 'UPDATE "ErrorReport" SET "aiTitle" = $1 WHERE "id" = $2', ['כפתור שמירה תקוע', 'r1']]);
+  await AI.generateAndStoreAiTitle('r2', 'עוד תקלה', { prisma, getSetting: async () => 'true', generate: async () => 'עוד כותרת' });
+  assert.equal(prisma.calls.filter((c) => c[0] === 'probe').length, 1, 'תוצאת הבדיקה נזכרת (5 דקות)');
   const list = [{ id: 'r1' }, { id: 'r2' }];
   await AI.attachAiTitles(list, { prisma, getSetting: async () => 'true' });
   assert.equal(list[0].aiTitle, 'כפתור שמירה תקוע'); assert.equal(list[1].aiTitle, undefined);
@@ -368,11 +371,22 @@ await t('פעיל + עמודה חסרה (42703): לא נופל, מחזיר null,
   assert.equal(AI.isMissingColumnError({ code: 'P2021' }), false);
   AI.resetAiTitleColumnState();
 });
+await t('פעיל + עמודה חסרה: בדיקת LIMIT 0 נכשלת => אין קריאה ל-Gemini בכלל, ואין בדיקה חוזרת בכל דיווח', async () => {
+  AI.resetAiTitleColumnState();
+  let gen = 0;
+  const prisma = fakePrisma({ missing: true });
+  const deps = { prisma, getSetting: async () => 'true', generate: async () => { gen++; return 'כותרת'; } };
+  assert.equal(await AI.generateAndStoreAiTitle('r1', 'הכפתור נתקע', deps), null);
+  assert.equal(await AI.generateAndStoreAiTitle('r2', 'עוד תקלה', deps), null);
+  assert.equal(gen, 0, 'קריאה מבוזבזת ל-Gemini');
+  assert.deepEqual(prisma.calls.map((c) => c[0]), ['probe'], 'בדיקה אחת בלבד, נזכרת');
+  AI.resetAiTitleColumnState();
+});
 await t('כשל Gemini / זמן קצוב = null (נשארת הכותרת החלופית); ה-prompt של דיווח שונה מזה של השיחה', async () => {
   AI.resetAiTitleColumnState();
   const prisma = fakePrisma();
   assert.equal(await AI.generateAndStoreAiTitle('r1', 'x', { prisma, getSetting: async () => 'true', generate: async () => { throw new Error('quota'); } }), null);
-  assert.equal(prisma.calls.length, 0);
+  assert.deepEqual(prisma.calls.map((c) => c[0]), ['probe'], 'בכשל Gemini אין כתיבה');
   assert.ok(buildReportTitlePrompt('הכפתור נתקע').includes('דיווח על תקלה'));
   assert.notEqual(buildReportTitlePrompt('a'), buildTitlePrompt('a'));
   assert.equal(await generateChatTitle('שאלה', async (p) => (p.includes('שיחה') ? 'כותרת שיחה' : 'אחר')), 'כותרת שיחה', 'ברירת המחדל לא השתנתה');
