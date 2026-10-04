@@ -22,7 +22,7 @@ import './pageVariantToggle.css';
 import { useCallback, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useCanSelfSwitch, useUiVariant } from '../UiVariantContext';
-import { switchTargetFor } from '@/lib/uiVariantScreens';
+import { getScreenEntry, matchRoute, switchTargetFor } from '@/lib/uiVariantScreens';
 import { SPRITE_SYMBOLS } from '../menu/spriteSymbols';
 
 export const TOGGLE_LABELS = Object.freeze({
@@ -74,7 +74,11 @@ export default function PageVariantToggle({ screen, placement = 'header', system
     }
   }, [busy, screen, target, pathname]);
 
-  if (!allowed) return null;
+  // רק בנתיבים שהרשומה מונה למסך (למשל לא ב-/employees/<id>/attendance, שאין לו גרסה ישנה). routes ריק = רכיב גלובלי (חלון הדיווח).
+  const entry = getScreenEntry(screen);
+  const routes = entry ? entry.routes : [];
+  const onScreenRoute = routes.length === 0 || routes.some((r) => matchRoute(r, pathname || ''));
+  if (!allowed || !onScreenRoute) return null;
 
   return (
     <span className={`gm-pvt gm-pvt-${placement}${systemTip ? '' : ' gm-pvt-owntip'}${className ? ` ${className}` : ''}`} data-pvt-screen={screen} data-pvt-target={target}>
