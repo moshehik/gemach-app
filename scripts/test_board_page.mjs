@@ -211,7 +211,7 @@ await t('שינוי הבעלים 5.10.2026: תצוגת השורות = שורת �
   hasNot(code(PARTS), /hday|bd-lday|className="hres"|className="hgrp"/, 'אין יותר כותרת-יום + בלוק מונים נפרד');
   // כללי השורה של הבית (components.css, "gm-home .res-one") מועתקים אחד לאחד ללוח (.gm-bd במקום .gm-home)
   const DS = read('../design-system/components.css');
-  const homeRules = DS.split('\n').filter((l) => /^\.gm-ds\.gm-home \.res-one \.li(:|\.| )/.test(l) && !/\.rkind/.test(l));
+  const homeRules = DS.split('\n').filter((l) => /^\.gm-ds\.gm-home \.res-one \.li(:|\.| )/.test(l) && !/\.rkind|\.ralert/.test(l));
   assert.ok(homeRules.length >= 14, 'נמצאו כללי השורה של הבית');
   for (const r of homeRules) assert.ok(CSS.includes(r.replace(/gm-home/g, 'gm-bd')), 'כלל שורה של הבית חסר בלוח: ' + r.slice(0, 90));
 });

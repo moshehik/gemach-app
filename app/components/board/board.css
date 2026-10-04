@@ -161,6 +161,7 @@
 .gm-ds.gm-bd .rlink{color:inherit;text-decoration:none}
 .gm-ds.gm-bd .li .t .ln{display:block;color:var(--gm-ink3);font-size:14px;overflow-wrap:anywhere}
 .gm-ds.gm-bd .res-one .list{padding-inline:4px}
+.gm-ds.gm-bd .res-one .li .ic-b .ic{color:#fff!important;stroke:#fff!important}
 .gm-ds.gm-bd .bd-lcard{margin-top:8px;padding:0;overflow:hidden}
 .gm-ds.gm-bd .bd-lcard>.hc-h{margin:0;border-radius:0}
 .gm-ds.gm-bd .bd-lcard .bd-list{padding:6px 12px 14px}
