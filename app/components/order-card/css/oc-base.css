@@ -1,0 +1,92 @@
+/* oc-base.css — כרטיס ההזמנה החדש (A5): המעטפת (W1). רק מה שאין בפלטה (design-system/components.css), בהיקף .gm-ds.gm-oc.
+   מקורות: העיצוב המאושר תצוגות-עיצוב/כרטיס-הזמנה.html — הבלוקים pearl-faces, navy-frames, ושכבת הסקירה pv-css במצב "מאושר"
+   (A5 הסתרת הסטפר, R42 מיקום שורת הסריקה, D12 רשימת עובדים נגללת, sect-h) — בשמות מחלקה נקיים, בלי body/html/:root/IDs גלובליים.
+   שורש הכרטיס: .gm-ds.gm-oc.home-bg.dlg-dark — בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה הוא ה-CSS של דף הבית).
+   נטרולי הדליפה של ה-CSS הגלובלי של האתר (globals.css / design-overrides.css / design-system.css) מסומנים "דליפה". */
+
+/* ===== גוף הדף ===== */
+/* דליפה: design-overrides.css כופה Assistant/Frank Ruhl ב-!important על לחצנים, שדות וכותרות */
+.gm-ds.gm-oc *{font-family:var(--gm-font)}
+.gm-ds.gm-oc :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-oc :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+/* דליפה: [hidden] חייב להסתיר גם כשהפלטה נותנת display לאלמנט (כמו בעיצוב) */
+.gm-ds.gm-oc [hidden]:not([hidden=until-found i]){display:none!important}
+
+/* מלא-רוחב: המעטפת (הישנה והחדשה) עוטפת כל דף ב-.app-shell .main .content עם padding ו-max-width; בעיצוב הרווחים באים
+   מ-.app של הפלטה (אותו דפוס כמו home.css כלל 1 ו-profile.css) */
+.app-shell .main .content:has(> .gm-ds.gm-oc){max-width:none;margin-inline:0;padding:0}
+
+/* ===== שורת הכותרת ===== */
+/* בעיצוב ה-topbar שקוף; globals.css / design-overrides.css יכולים לצבוע אותו */
+.gm-ds.gm-oc .oc-app .topbar{position:relative;background:transparent;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* דליפה: h1 הגלובלי של האתר צובע בחום */
+.gm-ds.gm-oc .oc-app .ttl h1{color:var(--gm-navy-900)}
+/* דליפה: globals.css מאפס padding לכל אלמנט - לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-oc .back{padding:1px 6px}
+/* #hdrChips ריק תמיד (R1) */
+.gm-ds.gm-oc #hdrChips:empty{display:none}
+
+/* R42 (שכבת הסקירה, מאושר): שורת הסריקה בשורת הכותרת, באמצע הדף, בקו אחד עם לחצני ההורדה; שורה מלאה מתחת במסך צר.
+   הפלטה מסתירה .sbar (display:none!important) וממקמת אותה fixed - כאן היא גלויה ובתוך ה-topbar. התוכן שלה: parts/OcScanBar.js (W3). */
+.gm-ds.gm-oc .topbar > #sbar{display:flex!important;position:relative;inset:auto;top:auto;margin:0;z-index:5}
+@media (min-width:1100px){.gm-ds.gm-oc .topbar > #sbar{position:absolute;inset:auto;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:46px}}
+@media (max-width:1099px){.gm-ds.gm-oc .topbar > #sbar{width:100%;order:5;flex:1 1 100%}}
+
+/* A5 (שכבת הסקירה, מאושר): הציר העליון עם כרטיסים עשירים הוסר - שלבי ההזמנה בראש לשונית היסטוריה */
+.gm-ds.gm-oc #stepper{display:none!important}
+
+/* ===== לוחות: פנים "פנינה" ומסגרות כחול כהה (בלוקים pearl-faces / navy-frames בעיצוב) =====
+   הפלטה משאירה את ה"זכוכית" הלבנה 30% (!important) של בלוק oc-panels; בעיצוב pearl-faces בא אחריו ודורס אותו */
+.gm-ds.gm-oc .app :is(.card,.stepper,.itm,.scan,.coll[open],.leg,.dhero){background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+.gm-ds.gm-oc .app :is(.itm .det,.card.tint-info){background:rgba(246,238,232,.4)!important}
+
+/* כותרת מקטע (שכבת הסקירה, מאושר; משמש את לשונית ההיסטוריה) */
+.gm-ds.gm-oc .sect-h{display:flex;align-items:center;gap:12px;margin:22px 4px 10px}
+
+/* ===== נטרולי דליפה כלליים ===== */
+/* דליפה: app/design-system.css .field{margin-bottom:14px} - בעיצוב המרווח בין שדות בא מ-gap */
+.gm-ds.gm-oc .field{margin-bottom:0}
+/* דליפה: מתג הפעלה - ה-input מוסתר (opacity:0) אבל globals/design-overrides נותנים לו רקע לבן */
+.gm-ds.gm-oc .sw input{background:transparent}
+/* דליפה: globals.css div:has(> table){max-height:75vh;overflow-y:auto} - בעיצוב הטבלה גדלה לפי התוכן והדף גולל */
+.gm-ds.gm-oc div:has(> table){max-height:none;overflow-y:visible}
+/* דליפה: globals.css (table thead tr th, !important: כותרת דביקה קרם + צל + גבול זהב בכהה) ו-design-overrides.css (צבע+גופן
+   Assistant ב-!important) - בעיצוב כותרת טבלה כחולה כהה עם טקסט זהב (כמו בלו״ז ובדף הבית) */
+.gm-ds.gm-oc .rtbl thead tr th{position:static!important;top:auto!important;z-index:auto!important;background-color:var(--gm-navy)!important;background-image:none!important;color:var(--gm-gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;border-bottom:0!important;outline:0}
+/* דליפה: טבעת הפוקוס של design-overrides.css (input:focus, box-shadow בצבע המותג) בשדות הפלטה */
+.gm-ds.gm-oc :is(#dlg,#dlg2) .inp:focus{outline:0}
+
+/* ===== חלונות (תמיד כהים, A25) ===== */
+/* D12 / R47 (שכבת הסקירה, מאושר): רשימת עובדים נגללת בחלון אישור מנהל */
+.gm-ds.gm-oc .oc-emps{max-height:204px;overflow-y:auto;padding:2px;margin:0;gap:8px}
+.gm-ds.gm-oc .oc-emps .opt{min-height:52px;padding:10px 14px}
+.gm-ds.gm-oc .oc-emps .oc-emps-wait{padding:10px 4px;font-size:14px}
+.gm-ds.gm-oc .oc-appr-code{margin-top:14px}
+.gm-ds.gm-oc .oc-appr .amsg{margin-top:6px}
+.gm-ds.gm-oc .oc-appr-hint{font-size:13px;margin-bottom:12px}
+.gm-ds.gm-oc .oc-appr .dbtns:last-child{margin-top:8px}
+/* אייקון בשורת רשימה בחלון (בעיצוב: style מוטבע על .ico בתוך .chg .c) */
+.gm-ds.gm-oc .chg .c .oc-cico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
+.gm-ds.gm-oc :is(#dlg,#dlg2) .oc-hint{font-size:13px;margin-bottom:14px}
+.gm-ds.gm-oc :is(#dlg,#dlg2) .oc-new{margin-inline-start:6px}
+
+/* ===== טוסט: שגיאות באדום (R45) ===== */
+.gm-ds.gm-oc #toast.error{border-color:var(--gm-rose-500)}
+.gm-ds.gm-oc #toast.error .tb{background:var(--gm-rose-300);color:var(--gm-navy-900)}
+
+/* ===== באנרים מעל הלשוניות (מחוקה/טיוטה AMB-02, טיוטה מקומית R11) ===== */
+.gm-ds.gm-oc .oc-banner{margin-top:24px}
+.gm-ds.gm-oc .oc-banner + .oc-banner{margin-top:12px}
+.gm-ds.gm-oc .oc-banner-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+/* ===== מצבי טעינה / לא נמצא ===== */
+.gm-ds.gm-oc .oc-loading{display:flex;align-items:center;gap:12px;font-size:16px;color:var(--gm-ink2)}
+.gm-ds.gm-oc .oc-empty-t{font-size:19px;margin-top:8px;color:var(--gm-ink)}
+.gm-ds.gm-oc .oc-layout-msg{grid-template-columns:minmax(0,1fr)}
+
+/* ===== לשונית "בבנייה" (tabs/OcTabPlaceholder.js) ===== */
+.gm-ds.gm-oc .oc-ph .card-h .oc-ph-chip{margin-inline-start:auto}
+.gm-ds.gm-oc .oc-ph-list{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px}
+
+/* ה-portal לחלונות/טוסט: אלמנט ריק בלי גודל (התוכן fixed) */
+.gm-ds.gm-oc .oc-portal{position:static}
