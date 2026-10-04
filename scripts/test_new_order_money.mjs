@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   MANAGER_EXIT_METHOD, isManagerExitMethod, isCreditMethod, pickCreditMethod, validateSplitPayment,
-  paymentApprovalLevelRequiresPrompt, splitPaymentNeedsApproval, describeItemAlterations, withDefaultAlterationDetails,
+  paymentApprovalLevelRequiresPrompt, redirectNeedsFullReload, describeItemAlterations, withDefaultAlterationDetails,
   creditMethodForCharge, repairsForEdit,
 } from '../lib/newOrderPayments.js';
 
@@ -47,13 +47,19 @@ t('approval level levels', () => {
   assert.equal(paymentApprovalLevelRequiresPrompt({ PAYMENT_APPROVAL_LEVEL: 'כולם' }), false);
   for (const l of ['מנהל', 'עובד', 'מנהל סניף ומעלה']) assert.equal(paymentApprovalLevelRequiresPrompt({ PAYMENT_APPROVAL_LEVEL: l }), true);
 });
-t('split cash payment is gated by PAYMENT_APPROVAL_LEVEL like the finish path', () => {
-  assert.equal(splitPaymentNeedsApproval({ PAYMENT_APPROVAL_LEVEL: 'מנהל' }, 'מזומן', 200), true);
-  assert.equal(splitPaymentNeedsApproval({ PAYMENT_APPROVAL_LEVEL: 'כולם' }, 'מזומן', 200), false);
-  assert.equal(splitPaymentNeedsApproval({}, 'מזומן', 200), false);
+t('split cash payment is never gated (only manager-exit is, in saveOrder) - Neve cashiers regression 2026-10-04', () => {
+  assert.equal(validateSplitPayment('200', 'מזומן').ok, true);
+  assert.equal(validateSplitPayment('200', 'יציאה באישור מנהל').ok, false);
 });
-t('credit goes through the card window, not the approval prompt', () => {
-  assert.equal(splitPaymentNeedsApproval({ PAYMENT_APPROVAL_LEVEL: 'מנהל' }, 'אשראי (דרך נדרים פלוס)', 200), false);
+
+console.log('redirect after save');
+t('same route needs a full reload, others do not', () => {
+  assert.equal(redirectNeedsFullReload('/orders/new', '/orders/new'), true);
+  assert.equal(redirectNeedsFullReload('/orders/new', '/orders/new/'), true);
+  assert.equal(redirectNeedsFullReload('/orders/new?x=1', '/orders/new'), true);
+  assert.equal(redirectNeedsFullReload('/orders/53440', '/orders/new'), false);
+  assert.equal(redirectNeedsFullReload('/orders', '/orders/new'), false);
+  assert.equal(redirectNeedsFullReload('/', '/orders/new'), false);
 });
 
 console.log('bug 2: card charge method');
