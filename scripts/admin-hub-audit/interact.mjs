@@ -70,8 +70,8 @@ for (const role of ['0', '2', 'anon']) {
   const want = visibleToolIds(acc).map((id) => TOOLS.find((x) => x.id === id).href);
   const got = await hrefsShown(p);
   ok(JSON.stringify(got) === JSON.stringify(want), `תפקיד ${role}: ${got.length} אריחים בדיוק לפי הקטלוג`);
-  if (role === '0') ok(!got.includes('/admin/site') && !got.includes('/admin/labels') && got.includes('/admin/nedarim-hok-list'), 'הנהלה ראשית: בלי כלי מתכנת, עם רשימת הו״ק');
-  if (role === '2') ok(got.includes('/admin/site') && got.includes('/admin/ai-restrictions') && !got.includes('/admin/nedarim-hok-list'), 'מתכנת: עם כלי מתכנת, בלי רשימת הו״ק');
+  if (role === '0') ok(!got.includes('/admin/site') && !got.includes('/admin/labels') && !got.includes('/design-system') && got.includes('/admin/nedarim-hok-list'), 'הנהלה ראשית: בלי כלי מתכנת, עם רשימת הו״ק');
+  if (role === '2') ok(got.includes('/admin/site') && got.includes('/admin/ai-restrictions') && got.includes('/design-system') && got.includes('/admin/nedarim-hok-list'), 'מתכנת: עם כלי מתכנת (כולל מערכת העיצוב) וגם רשימת הו״ק');
   await p.close();
 }
 

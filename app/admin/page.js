@@ -8,7 +8,7 @@
 // השער של האזור כולו (הנהלה ראשית / מתכנת) נשאר ב-app/admin/layout.js.
 import { checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES, DEVELOPER_ONLY_ROLES } from '@/lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
-import { GATE_ROLES, selectHub } from '@/lib/adminHubCatalog';
+import { selectHub } from '@/lib/adminHubCatalog';
 import AdminHubSwitch from '@/app/components/admin-hub/AdminHubSwitch';
 
 export const dynamic = 'force-dynamic';
@@ -32,14 +32,13 @@ async function deliveriesEnabled() {
 }
 
 export default async function AdminHubPage() {
-  const [head, dev, headOnly, me, nedarim, deliveries] = await Promise.all([
+  const [head, dev, me, nedarim, deliveries] = await Promise.all([
     checkPageAccess(HEAD_MANAGEMENT_ROLES),
     checkPageAccess(DEVELOPER_ONLY_ROLES),
-    checkPageAccess(GATE_ROLES.headOnly),
     getSessionEmployee(),
     nedarimEnabled(),
     deliveriesEnabled(),
   ]);
-  const { tools, categories } = selectHub({ head, dev, headOnly }, { nedarimEnabled: nedarim, deliveriesEnabled: deliveries });
+  const { tools, categories } = selectHub({ head, dev }, { nedarimEnabled: nedarim, deliveriesEnabled: deliveries });
   return <AdminHubSwitch tools={tools} categories={categories} userKey={me ? me.id : null} />;
 }

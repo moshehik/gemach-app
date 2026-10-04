@@ -1015,8 +1015,11 @@ t('שערים לכל תפקיד: אחרון שאינו מותר נזרק (מתכ
   assert.deepEqual(ids(ADM(HEAD, ['/admin/site', '/admin/data-explorer', '/admin/statistics']).items), ['ad-stats', 'ad-staff', 'ad-perms', 'ad-settings', 'ad-all']);
   // מתכנת: מותר
   assert.deepEqual(ids(ADM(PROG, ['/admin/site', '/admin/data-explorer']).items), ['ad-site', 'hub-data-explorer', 'ad-staff', 'ad-settings', 'ad-all']);
-  // רשימת הו"ק: הנהלה ראשית בלבד (headOnly) — לא למתכנת
-  assert.equal(ADM(PROG, ['/admin/nedarim-hok-list']).items[0].id, 'ad-staff');
+  // רשימת הו"ק: הנהלה ראשית וגם מתכנת (AH-03, 4.10.2026)
+  assert.equal(ADM(PROG, ['/admin/nedarim-hok-list']).items[0].id, 'hub-nedarim-hok-list');
+  // מערכת העיצוב (AH-02): מתכנת בלבד — הנהלה ראשית לא מקבלת אותה במאגר
+  assert.equal(ADM(PROG, ['/design-system']).items[0].id, 'hub-design-system');
+  assert.equal(ADM(HEAD, ['/design-system']).items[0].id, 'ad-staff');
   assert.equal(ADM(HEAD, ['/admin/nedarim-hok-list']).items[0].id, 'hub-nedarim-hok-list');
   // מנהלת סניף: אין /admin, אין הגדרות; רק דגמים/זיכויים (לפי ההרשאה), בלי כלי קטלוג גם אם הוזרקו בטעות
   const br = tab(buildMenuTree({ user: BRANCH, permissions: ALL_OPEN, settings: [], adminTools: hubTools(0), adminRecents: ['/refunds', '/admin/statistics', '/admin/settings'] }), 'admin');
