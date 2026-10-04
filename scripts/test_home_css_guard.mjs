@@ -510,6 +510,56 @@ t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שו�
   assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
 });
 
+/* ---------- 11. "מסך ניהול ראשי" (app/components/admin-hub/admin-hub.css): אותו משטר היקף כמו הפרופיל ---------- */
+// שורש .gm-ds.gm-adm.home-bg (בלי .gm-home). נבדק: היקף, לבן קשיח רק בעיגול האייקון של האריח (לבן בעיצוב ניהול-ראשי-כרטיסים.html),
+// !important על רקע רק בכותרת הטבלה (כמו home.css כלל 10), ונטרולי הדליפה שנמצאו בבדיקת scripts/admin-hub-audit.
+const ADM_CSS = read('../app/components/admin-hub/admin-hub.css');
+const admRules = parseCss(ADM_CSS);
+const ADM_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-adm)']);
+const ADM_WHITE_OK = new Set(['.gm-ds.gm-adm .adm-tile .ico']); // עיגול האייקון באריח: background:#fff בעיצוב (.adm-tile .ico)
+const ADM_IMPORTANT_BG_OK = new Set(['.gm-ds.gm-adm .rtbl thead tr th']);
+t('admin-hub.css: כל כלל בהיקף .gm-ds.gm-adm (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of admRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-adm(\s|$)/.test(s) && !ADM_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('admin-hub.css: לבן קשיח רק בעיגול האייקון של האריח; !important על רקע רק בכותרת הטבלה', () => {
+  const bad = [];
+  for (const r of admRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if ((WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) && !splitSel(r.sel).every((s) => ADM_WHITE_OK.has(s.trim().replace(/\s+/g, ' ')))) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!ADM_IMPORTANT_BG_OK.has(s.trim().replace(/\s+/g, ' '))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('admin-hub.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(admRules, 'admin-hub.css'), []);
+});
+const hasAdm = (selRe, propRe, { important = false, valueRe } = {}) => admRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('admin-hub.css: נטרול דליפות - גופן, כותרת טבלה, שדה החיפוש (design-overrides input:not x4), ריפוד לחצן הניקוי, גבול הכרטיס', () => {
+  assert.ok(hasAdm(/\.gm-ds\.gm-adm :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'גופן לחצנים/שדות');
+  assert.ok(hasAdm(/\.gm-ds\.gm-adm :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'גופן כותרות');
+  assert.ok(hasAdm(/\.gm-ds\.gm-adm \.rtbl thead tr th/, /^background-color$/, { important: true }), 'רקע כותרת טבלה (globals.css כותרת דביקה)');
+  assert.ok(hasAdm(/\.gm-ds\.gm-adm \.rtbl thead tr th/, /^font-family$/, { important: true }), 'גופן כותרת טבלה (design-overrides.css Assistant)');
+  // ספציפיות (0,5,1) מעל input:not(x4) (0,4,1) של design-overrides.css
+  assert.ok(hasAdm(/^\.gm-ds\.gm-adm \.adm-bar \.hf-s input\[type="search"\]$/, /^background$/, { valueRe: /^transparent/ }), 'רקע שדה החיפוש');
+  assert.ok(hasAdm(/^\.gm-ds\.gm-adm \.adm-bar \.hf-s input\[type="search"\]:focus$/, /^box-shadow$/, { valueRe: /^none/ }), 'טבעת הפוקוס של design-overrides.css');
+  assert.ok(hasAdm(/^\.gm-ds\.gm-adm \.hf-cl$/, /^padding$/), 'ריפוד לחצן הניקוי');
+  assert.ok(hasAdm(/^\.gm-ds\.gm-adm \.adm-app \.card$/, /^border-color$/, { important: true }), 'גבול זכוכית לבן לכרטיס (הפלטה צובעת כחול)');
+});
+t('הדליפות שנוטרלו במסך הניהול עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
+  assert.ok(OVERRIDES.includes('input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"])'), 'design-overrides.css: input:not(x4)');
+  assert.ok(/table thead th\s*\{[^}]*font-family:\s*'Assistant'/.test(OVERRIDES), 'design-overrides.css: table thead th Assistant');
+});
+t('מסך הניהול: בלי מונה, בלי window.alert, ושורש בלי gm-home (החלטות הבעלים 4.10.2026)', () => {
+  const page = read('../app/components/admin-hub/AdminHubPage.js');
+  assert.ok(!/hres-n|adm-cnt/.test(page + ADM_CSS), 'המונה חזר');
+  assert.ok(!/window\.alert/.test(page), 'window.alert');
+  assert.ok(!/gm-home/.test(page), 'gm-home בשורש');
+});
+
 /* ---------- 9. כפתור הורדת PDF + דף ההדפסה של התוצאות (searchPdf.js): בלי CSS חדש בדף הבית, בלי דליפת רקע ---------- */
 // כפתור ה-PDF הוא כפתור ההורדה הקיים של הפלטה (xlbtn xld) — רק התווית והפעולה השתנו. כל עיצוב חדש לכפתור = כלל חדש ב-home.css = סיכון דליפה.
 t('כפתור הורדת PDF: אותו כפתור פלטה (xlbtn xld), בלי מחלקה/סגנון חדש ובלי כלל xld ב-home.css', () => {
