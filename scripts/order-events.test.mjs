@@ -134,7 +134,7 @@ function installDb(extraSettings = []) {
       { id: 'emp-mgr', roleId: 1, isActive: true, firstName: 'מנהלת', lastName: 'סניף', password: PIN_HASH },
       { id: 'emp-head', roleId: 0, isActive: true, firstName: 'הנהלה', lastName: 'ראשית', password: OTHER_HASH },
     ],
-    systemSetting: [{ key: 'require_login', value: 'true' }, { key: 'email_link_a', value: 'http://mailer.test/exec' }, ...extraSettings],
+    systemSetting: [{ key: 'require_login', value: 'true' }, { key: 'email_link_a', value: 'http://mailer.test/exec' }, { key: 'order_quick_mail_enabled', value: 'true' }, ...extraSettings],
     departmentPermission: [
       { roleId: 5, key: 'page:orders', value: 'true' },
       { roleId: 6, key: 'page:orders', value: 'false' }, { roleId: 6, key: 'page:rentals', value: 'false' }, { roleId: 6, key: 'page:board', value: 'false' }, { roleId: 6, key: 'page:schedule', value: 'false' },
@@ -892,4 +892,221 @@ test('POST items: מתחת למגבלה / בלי מגבלה / 0 / לא מספר 
       assert.doesNotMatch(String(r.__json?.error || ''), /יותר מ-\d+ פריטים/, `value=${value}`);
     }
   } finally { console.error = errSpy; }
+});
+
+// ============================================ W7: quick mail (A8) through POST /api/orders/[id]/email
+test('email quick (A8): the typed subject/body are what is sent, no order-report PDF action; attachments keep their kinds in EMAIL_SENT; EmailLog has the typed subject', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const sent = stubMailer({ status: 'success' });
+  const r = await emailReq({
+    email: 'sara@example.com', type: 'order', pdfBase64: 'SHOULD-BE-IGNORED', sendMode: 'both',
+    quick: { subject: 'תזכורת לקיחה\r\nBcc: evil@example.com', bodyText: 'שלום שרה,\r\nהלקיחה ביום ראשון.' },
+    extraAttachments: [{ fileName: 'משלוח 501.pdf', fileContent: 'QUJD', mimeType: 'application/pdf', sizeBytes: 3, dest: 'both', kind: 'delivery' }, { fileName: 'תשלומים 501.pdf', fileContent: 'QUJD', kind: 'payments' }],
+  });
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(sent.length, 1);
+  const p = sent[0].body;
+  assert.ok(!p.action, 'not the order-report PDF action');
+  assert.equal(p.subject, 'תזכורת לקיחה Bcc: evil@example.com', 'a header-injection attempt is flattened to one line of text');
+  assert.ok(p.body.includes('הלקיחה ביום ראשון'));
+  assert.ok(p.htmlBody.includes('תזכורת לקיחה') && p.htmlBody.includes('הלקיחה ביום ראשון'));
+  assert.deepEqual(p.attachments.map((a) => a.fileName), ['משלוח 501.pdf', 'תשלומים 501.pdf'], 'only the chosen files; the ignored pdfBase64 is not attached');
+  assert.equal(p.sendMode, 'both');
+  assert.equal(p.to, 'sara@example.com');
+  const row = audit().find((a) => a.action === 'EMAIL_SENT');
+  const meta = JSON.parse(row.changesJson);
+  assert.equal(meta.subject, 'תזכורת לקיחה Bcc: evil@example.com');
+  assert.deepEqual(meta.attachments, [{ kind: 'delivery', name: 'משלוח 501.pdf' }, { kind: 'payments', name: 'תשלומים 501.pdf' }]);
+  assert.equal(meta.attachmentCount, 2);
+  assert.equal(meta.approverId, 'emp-head');
+  assert.equal(globalThis.__MOCK_DB.emailLog[0].subject, 'תזכורת לקיחה Bcc: evil@example.com');
+  assert.ok(globalThis.__MOCK_DB.emailLog[0].body.includes('שלום שרה'));
+});
+
+test('email quick: invalid quick body = 400 and nothing is sent or logged; missing approval = the unchanged 403', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const sent = stubMailer({ status: 'success' });
+  for (const quick of [{ subject: '', bodyText: 'x' }, { subject: 'x', bodyText: '   ' }, 'text', [], { subject: 5, bodyText: {} }]) {
+    const r = await emailReq({ email: 'sara@example.com', type: 'order', quick });
+    assert.equal(r.status, 400, JSON.stringify(quick));
+  }
+  assert.equal(sent.length, 0);
+  assert.equal(audit().length, 0);
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const r = await emailReq({ email: 'sara@example.com', type: 'order', quick: { subject: 'נושא', bodyText: 'תוכן' } });
+  assert.equal(r.status, 403);
+  assert.equal(r.__json.code, 'approval_required');
+  assert.equal(sent.length, 0);
+});
+
+test('email quick: recipient must be ONE clean address; page access to orders is required; attachments are bounded and cleaned (nothing is sent on any rejection)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const sent = stubMailer({ status: 'success' });
+  const q = { subject: 'נושא', bodyText: 'תוכן' };
+  for (const email of ['a@b.co\r\nBcc: evil@x.co', 'a@b.co,evil@x.co', 'a@b.co;evil@x.co', 'Name <a@b.co>', 'no-at-sign', 'a b@c.co', 'a@b', '', 5, ['a@b.co']]) {
+    const r = await emailReq({ email, type: 'order', quick: q });
+    assert.equal(r.status, 400, JSON.stringify(email));
+  }
+  const tooMany = Array.from({ length: 11 }, (_, i) => ({ fileName: `f${i}.pdf`, fileContent: 'QUJD', kind: 'file' }));
+  assert.equal((await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: tooMany })).status, 400, 'more than 10 files');
+  assert.equal((await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: [{ fileName: 'big.pdf', fileContent: 'A'.repeat(6_000_001) }] })).status, 400, 'oversize');
+  assert.equal((await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: 'x' })).status, 400, 'not a list');
+  assert.equal(sent.length, 0);
+  assert.equal(audit().length, 0);
+  // no page:orders/rentals/board -> 403 before approval is even asked about (emp-blocked, emp-sched)
+  for (const who of ['emp-blocked', 'emp-sched']) {
+    globalThis.__AUTH_TOKEN = who;
+    const r = await emailReq({ email: 'a@b.co', type: 'order', quick: q });
+    assert.equal(r.status, 403, who);
+    assert.notEqual(r.__json.code, 'approval_required', who);
+  }
+  assert.equal(sent.length, 0);
+  // clean attachments: a path / control characters in the name, a bad mime type and an unknown dest are normalised
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const ok = await emailReq({
+    email: 'a@b.co', type: 'order', quick: q, driveFolderId: "x'; DROP", sendMode: 'email',
+    extraAttachments: [{ fileName: '..\..\evil\r\nname.pdf', fileContent: 'QUJD', mimeType: 'text/html\r\nX: y', dest: 'weird', kind: 'receipt' }, { fileName: '', fileContent: 'QUJD' }, null, 'str'],
+  });
+  assert.equal(ok.status, 200, JSON.stringify(ok.__json));
+  const a = sent[0].body.attachments;
+  assert.equal(a.length, 1, 'nameless / non-object entries are dropped');
+  assert.ok(!/[\r\n\/]/.test(a[0].fileName), a[0].fileName);
+  assert.equal(a[0].mimeType, 'application/octet-stream');
+  assert.equal(a[0].dest, 'email', 'unknown dest falls back to the send mode');
+  assert.ok(!/DROP/.test(sent[0].body.driveFolderId), 'an unsafe drive folder id is ignored');
+  assert.equal(JSON.parse(audit().find((x) => x.action === 'EMAIL_SENT').changesJson).attachments[0].kind, 'receipt');
+});
+
+test('email quick: a send failure writes EMAIL_FAILED with the typed subject; returnHtmlOnly ignores quick; a normal send is unchanged (PDF action + catalog subject)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  stubMailer({ status: 'error', message: 'quota' });
+  const failed = await emailReq({ email: 'sara@example.com', type: 'order', quick: { subject: 'נושא חופשי', bodyText: 'תוכן' } });
+  assert.equal(failed.status, 500);
+  assert.equal(JSON.parse(audit().find((a) => a.action === 'EMAIL_FAILED').changesJson).subject, 'נושא חופשי');
+
+  const html = await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true, quick: { subject: '', bodyText: '' } });
+  assert.equal(html.status, 200, 'returnHtmlOnly does not look at quick');
+  assert.equal(html.__json.success, true);
+
+  const sent = stubMailer({ status: 'success' });
+  const normal = await emailReq({ email: 'sara@example.com', type: 'order', pdfBase64: 'JVBERi0x' });
+  assert.equal(normal.status, 200);
+  assert.equal(sent[0].body.action, 'sendGemachOrderEmail');
+  assert.match(sent[0].body.subject, /הזמנה #501/);
+  assert.equal(sent[0].body.fileContent, 'JVBERi0x');
+});
+
+test('email quick: order_quick_mail_enabled is enforced on the server (missing / false = 403, nothing sent or logged); the normal send does not depend on it', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  const q = { subject: 'נושא', bodyText: 'תוכן' };
+  for (const extra of [[{ key: 'order_quick_mail_enabled', value: 'false' }], [{ key: 'order_quick_mail_enabled', value: 'TRUE' }]]) {
+    installDb(); globalThis.__MOCK_DB.systemSetting = globalThis.__MOCK_DB.systemSetting.filter((r) => r.key !== 'order_quick_mail_enabled').concat(extra);
+    invalidateSettingsCache();
+    const sent = stubMailer({ status: 'success' });
+    const r = await emailReq({ email: 'sara@example.com', type: 'order', quick: q });
+    assert.equal(r.status, 403, JSON.stringify(extra));
+    assert.match(r.__json.error, /מייל המהיר כבוי/);
+    assert.equal(sent.length, 0); assert.equal(audit().length, 0); assert.equal(globalThis.__MOCK_DB.emailLog.length, 0);
+  }
+  // setting row absent = off (the client default is false too)
+  installDb(); globalThis.__MOCK_DB.systemSetting = globalThis.__MOCK_DB.systemSetting.filter((r) => r.key !== 'order_quick_mail_enabled');
+  invalidateSettingsCache();
+  const sent = stubMailer({ status: 'success' });
+  assert.equal((await emailReq({ email: 'sara@example.com', type: 'order', quick: q })).status, 403, 'absent row');
+  const normal = await emailReq({ email: 'sara@example.com', type: 'order', pdfBase64: 'JVBERi0x' });
+  assert.equal(normal.status, 200, 'normal send unaffected');
+  assert.equal(sent.length, 1);
+  assert.ok(src('lib/settingsMetadata.js').match(/order_quick_mail_enabled: '[^']+'/g).length >= 2 && /SETTINGS_BOOLEAN_KEYS[\s\S]*'order_quick_mail_enabled'/.test(src('lib/settingsMetadata.js')), 'registered (name, note, boolean)');
+});
+
+test('email: a mailer that THROWS is a normal send failure - EmailLog error row + EMAIL_FAILED + the 500 answer (normal and quick)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  globalThis.fetch = async () => { throw new Error('network down 4580123412341234'); };
+  const r = await emailReq({ email: 'sara@example.com', type: 'order', pdfBase64: 'JVBERi0x' });
+  assert.equal(r.status, 500);
+  assert.match(r.__json.error, /network down/);
+  assert.equal(globalThis.__MOCK_DB.emailLog.length, 1);
+  assert.equal(globalThis.__MOCK_DB.emailLog[0].status, 'error');
+  assert.match(globalThis.__MOCK_DB.emailLog[0].errorMessage, /network down/);
+  const row = audit().find((a) => a.action === 'EMAIL_FAILED');
+  assert.ok(row, 'EMAIL_FAILED written');
+  assert.equal(JSON.parse(row.changesJson).error, 'network down [מוסתר]');
+  const q = await emailReq({ email: 'sara@example.com', type: 'order', quick: { subject: 'נושא', bodyText: 'תוכן' } });
+  assert.equal(q.status, 500);
+  assert.equal(globalThis.__MOCK_DB.emailLog.length, 2);
+  assert.equal(audit().filter((a) => a.action === 'EMAIL_FAILED').length, 2);
+  assert.equal(audit().filter((a) => a.action === 'EMAIL_SENT').length, 0);
+});
+
+test('email returnHtmlOnly: needs page access to orders/rentals/board (any logged-in employee could read any order report before); normal send unchanged', async () => {
+  const sent = stubMailer({ status: 'success' });
+  for (const who of ['emp-blocked', 'emp-sched']) {
+    globalThis.__AUTH_TOKEN = who;
+    const r = await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true });
+    assert.equal(r.status, 403, who);
+    assert.ok(!r.__json.html, 'no report leaked: ' + who);
+  }
+  for (const who of ['emp-worker', 'emp-head']) {
+    globalThis.__AUTH_TOKEN = who;
+    const r = await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true });
+    assert.equal(r.status, 200, who);
+    assert.equal(r.__json.success, true);
+    assert.ok(typeof r.__json.html === 'string' && r.__json.html.length > 100);
+  }
+  assert.equal(sent.length, 0, 'returnHtmlOnly never sends');
+  // the denied request does not even read the order
+  globalThis.__MOCK_CALLS.length = 0;
+  globalThis.__AUTH_TOKEN = 'emp-blocked';
+  await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true });
+  assert.ok(!globalThis.__MOCK_CALLS.some((c) => c.model === 'order'), 'no order read before the gate');
+  // normal send for emp-worker (no returnHtmlOnly) still reaches the approval check exactly as before
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  assert.equal((await emailReq({ email: 'sara@example.com', type: 'order' })).__json.code, 'approval_required');
+});
+
+// ======================================= W7 / AMB-20 (owner decision): whole-day schedule prints are recorded per order
+test('events W7: a whole-day schedule print (doc schedule / prep, batch) is logged for every order, in ONE insert; page:schedule is enough; an order print still is not', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-sched';
+  const ids = Array.from({ length: 60 }, (_, i) => 1000 + i);
+  const r = await postEvent({ orderIds: ids, action: 'ORDER_PRINTED', meta: { doc: 'schedule', sheet: 'PP-10', source: 'print-page', batch: true, count: 60 }, clientEventId: 'day-load-PP-10-0' });
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(r.__json.written, 60);
+  assert.equal(audit().length, 60);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'auditLog' && c.method === 'createMany').length, 1, 'one batched INSERT for the 60 orders');
+  assert.deepEqual(JSON.parse(audit()[0].changesJson), { source: 'print-page', batch: true, count: 60, doc: 'schedule', sheet: 'PP-10', clientEventId: 'day-load-PP-10-0' });
+  assert.ok(audit().every((a) => a.entityType === 'Order' && a.action === 'ORDER_PRINTED' && a.employeeId === 'emp-sched'));
+  // the same load posted again is a duplicate (no second set of rows)
+  const again = await postEvent({ orderIds: ids, action: 'ORDER_PRINTED', meta: { doc: 'schedule', sheet: 'PP-10', source: 'print-page', batch: true, count: 60 }, clientEventId: 'day-load-PP-10-0' });
+  assert.equal(again.__json.duplicate, true);
+  assert.equal(audit().length, 60);
+  // a prep day print uses the existing doc
+  const prep = await postEvent({ orderIds: ids.slice(0, 3), action: 'ORDER_PRINTED', meta: { doc: 'prep', sheet: 'PP-07', source: 'print-page', batch: true, count: 3 }, clientEventId: 'day-load-PP-07-0' });
+  assert.equal(prep.status, 200, JSON.stringify(prep.__json));
+  assert.equal(audit().length, 63);
+  const order = await postEvent({ orderIds: ids.slice(0, 2), action: 'ORDER_PRINTED', meta: { doc: 'order', batch: true, count: 2 } });
+  assert.equal(order.status, 403, 'page:schedule does not allow logging an order print');
+  globalThis.__AUTH_TOKEN = 'emp-blocked';
+  assert.equal((await postEvent({ orderIds: [1000], action: 'ORDER_PRINTED', meta: { doc: 'schedule', sheet: 'PP-10' } })).status, 403);
+});
+
+test('events W7: doc schedule needs a sheet that is not PP-07/PP-12; prep/delivery keep their own sheet; the label maps cover every sheet', () => {
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule' }).ok, false, 'sheet required');
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-07' }).ok, false, 'PP-07 is doc prep');
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-12' }).ok, false, 'PP-12 is doc delivery');
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-99' }).ok, false);
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'prep', sheet: 'PP-01' }).ok, false);
+  assert.equal(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'order', sheet: 'PP-01' }).ok, false);
+  assert.deepEqual(OE.sanitizeEventMeta('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-16', batch: true, count: 12, source: 'print-page' }).meta, { source: 'print-page', batch: true, doc: 'schedule', sheet: 'PP-16', count: 12 });
+  assert.ok(OE.eventPageKeys('ORDER_PRINTED', { doc: 'schedule' }).includes('page:schedule'));
+  for (const k of OE.SCHEDULE_SHEET_KEYS) assert.ok(CD.labelChangeValue('sheet', k), k);
+  // email attachment kinds added for the quick mail (W7)
+  assert.ok(OE.EMAIL_ATTACHMENT_KINDS.includes('receipt') && OE.EMAIL_ATTACHMENT_KINDS.includes('model-photos'));
+  assert.deepEqual(OE.emailAttachmentSummary({ hasOrderPdf: false, extraRaw: [{ fileName: 'קבלה.pdf', fileContent: 'QQ==', kind: 'receipt' }, { fileName: 'תמונות.pdf', fileContent: 'QQ==', kind: 'model-photos' }] }), [{ kind: 'receipt', name: 'קבלה.pdf' }, { kind: 'model-photos', name: 'תמונות.pdf' }]);
+});
+
+test('customer feed W7: a day print reads "הודפס … (הדפסת יום)", a schedule-page print names its sheet, a single print has no suffix', () => {
+  // the mapper itself is exercised by scripts/customer-history.test.mjs; the label rule is pinned in source
+  const s = src('lib/history/customerHistory.js');
+  assert.match(s, /value\.doc === 'schedule' \? \(SCHEDULE_SHEET_LABELS\[value\.sheet\] \|\| 'דף לו״ז'\)/);
+  assert.match(s, /const dayPrint = !!value\.batch && value\.source === 'print-page' && \['prep', 'delivery', 'schedule'\]\.includes\(value\.doc\);/);
 });

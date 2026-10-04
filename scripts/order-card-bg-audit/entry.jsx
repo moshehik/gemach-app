@@ -5,14 +5,16 @@ import '../../app/design-overrides.css';
 import '../../app/design-system.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import OrderCardA5 from '../../app/components/order-card/OrderCardA5.js';
 import { payScenarios, payMock } from './pay-mock.js'; // W4: תרחישי תשלומים
+import { SLOTS } from '../../app/components/order-card/slots.js';
 
 const qs = new URLSearchParams(location.search);
 const scn = qs.get('scn') || 'neve';
 
 const CUSTOMER = { id: 'c1', firstName: 'מרים', lastName: 'אברמוביץ', phone1: '050-7123456', phone2: '02-5810044', email: 'miriam.abr@example.com', city: 'ירושלים', street: 'עמוס', houseNum: 14, zeout: '' };
-const dress = (id, name) => ({ id: `di-${id}`, dressModelId: `m-${name}`, dress: { id: `m-${name}`, name } });
+const dress = (id, name) => ({ id: `di-${id}`, dressModelId: `m-${name}`, dress: { id: `m-${name}`, name, imageUrl: `/api/attachment/img-${name}`, thumbnailUrl: `/api/attachment/thumb-${name}` } });
 const ITEMS = [
   { id: 'a1', dressItem: dress('a1', '4512'), sizeText: '38', price: 150, finalPrice: 150, isDeleted: false, isTaken: false, isReturned: false, createdAt: '2026-09-23T07:13:00.000Z' },
   { id: 'a2', dressItem: dress('a2', '3087'), sizeText: '36', price: 120, finalPrice: 120, isDeleted: false, isTaken: false, isReturned: false, sleeveAlteration: 1, alterationDetails: 'קיצור שרוול' },
@@ -50,8 +52,8 @@ const ORG2 = [
   ['delivery_price_by_city', JSON.stringify({ 'ירושלים': 40, 'בית שמש': 60, 'בני ברק': 50, 'מודיעין עילית': 60 })],
 ];
 const EMPLOYEES = [
-  { id: 'e1', firstName: 'שרה', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:manual_charge_add': true, 'feature:special_spacing_approval': true } },
-  { id: 'e2', firstName: 'רחל', lastName: 'כהן', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true } },
+  { id: 'e1', firstName: 'שרה', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:manual_charge_add': true, 'feature:special_spacing_approval': true, 'feature:customer_email_approval': true } },
+  { id: 'e2', firstName: 'רחל', lastName: 'כהן', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true, 'feature:customer_email_approval': true } },
   { id: 'e3', firstName: 'דנה', lastName: 'אברהם', roleId: 0, department: { name: 'הנהלה' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true, 'feature:item_change_approval': true } },
   { id: 'e4', firstName: 'דוד', lastName: 'לוי', roleId: 1, department: { name: 'מנהל משמרת' }, canApproveWithoutPayment: false, approvals: { 'feature:locked_order_edit': true } },
   { id: 'e5', firstName: 'מיכל', lastName: 'לוי', roleId: 1, department: { name: 'מנהלת סניף' }, canApproveWithoutPayment: true, approvals: { 'feature:locked_order_edit': true } },
@@ -109,8 +111,18 @@ const JOURNAL = {
 };
 
 // תרחישים: הזמנה + הגדרות + התנהגות שרת
+// W7 (מסמכים): order_quick_mail_enabled דלוק רק בתרחישי המייל; הזמנה חתומה כדי שתפריט ההדפסה ייפתח בלי שער התקנון
+const MAILQ = [['order_quick_mail_enabled', 'true']];
 const SCENARIOS = {
   neve: {},
+  signed: { settings: [...ORG2, ...MAILQ], order: { hasSignedRegulations: true } },
+  unsignedq: { settings: [...ORG2, ...MAILQ] },
+  msigned: { settings: [...ORG1, ...MAILQ], order: { isDelivery: false, deliveryDirection: null, deliveryCity: null, hasSignedRegulations: true }, obligations: OBL.filter(o => o.id !== 'ob4') },
+  noqm: { settings: ORG2, order: { hasSignedRegulations: true } },
+  missmail: { settings: [...ORG2, ...MAILQ], order: { hasSignedRegulations: true, customer: { ...CUSTOMER, email: '' } } },
+  mailapprove: { settings: [...ORG2, ...MAILQ], order: { hasSignedRegulations: true }, mail403: true },
+  mailfail: { settings: [...ORG2, ...MAILQ], order: { hasSignedRegulations: true }, mailFail: true },
+  noschedule: { settings: [...ORG2, ...MAILQ], order: { hasSignedRegulations: true }, noScheduleAccess: true },
   main: { settings: ORG1, order: { isDelivery: false, deliveryDirection: null, deliveryCity: null }, obligations: OBL.filter(o => o.id !== 'ob4'), payments: [{ ...PAY[0] }, { ...PAY[1], amount: 150 }] },
   debt: { payments: [PAY[0]] },
   locked: { order: { eventDate: '2026-09-01T21:00:00.000Z' } },
@@ -160,13 +172,15 @@ if (S.draft) {
 
 const j = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } });
 window.__calls = [];
+window.__opened = []; // window.open (הדפסה בלשונית חדשה) נרשם ולא נפתח
+window.open = (u) => { window.__opened.push(String(u)); return null; };
 const realFetch = window.fetch.bind(window);
 let putCount = 0;
 window.fetch = async (url, opts) => {
   const u = String(url);
   if (!u.startsWith('/api/')) return realFetch(url, opts);
   const method = (opts && opts.method) || 'GET';
-  window.__calls.push({ url: u, method, body: opts && opts.body ? String(opts.body).replace(/"(pin|password|managerPin|manualChargeApproverPin)":"[^"]*"/g, '"$1":"<redacted>"') : null });
+  window.__calls.push({ url: u, method, body: opts && opts.body ? String(opts.body).replace(/"(pin|password|managerPin|manualChargeApproverPin|emailApproverPin)":"[^"]*"/g, '"$1":"<redacted>"') : null });
   await new Promise((r) => setTimeout(r, S.hang && u.startsWith('/api/orders/53375') ? 600000 : 20));
   if (u.startsWith('/api/settings')) return j(settings);
   if (u.startsWith('/api/employees')) return j(EMPLOYEES);
@@ -190,6 +204,22 @@ window.fetch = async (url, opts) => {
   }
   if (u.startsWith('/api/orders/validate-inventory')) return j({ valid: true, errors: [] });
   if (u.startsWith('/api/orders/events')) return j({ ok: true, written: 1 });
+  // W7: הרשאות הדפסת דפי לו״ז, דוח ההזמנה (HTML), PDF, שמירת מייל בכרטיס הלקוח, שליחת מייל
+  if (u.startsWith('/api/schedule/print')) return S.noScheduleAccess ? j({ error: 'Forbidden' }, 403) : j({ allowed: ['PP-01', 'PP-07', 'PP-12'], forbidden: [] });
+  // תמונת דגם (A8: דף "תמונות דגמים"): PNG 1x1 אמיתי כדי ש-createImageBitmap + canvas יעבדו
+  if (u.startsWith('/api/attachment/')) {
+    const bin = atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    return new Response(Uint8Array.from(bin, (c) => c.charCodeAt(0)), { status: 200, headers: { 'Content-Type': 'image/png' } });
+  }
+  if (u === '/api/pdf') return new Response(new Blob(['%PDF-1.4 fake'], { type: 'application/pdf' }), { status: 200 });
+  if (/^\/api\/customers\/c1$/.test(u) && method === 'PUT') return j(JSON.parse(opts.body));
+  if (u === '/api/orders/53375/email' && method === 'POST') {
+    const b = JSON.parse(opts.body);
+    if (b.returnHtmlOnly) return j({ success: true, html: `<html dir="rtl"><body>דוח ${b.type}</body></html>` });
+    if (S.mail403 && !b.emailApproverId) return j({ success: false, code: 'approval_required', error: 'שליחת מייל ללקוח דורשת אישור' }, 403);
+    if (S.mailFail) return j({ error: 'השליחה נכשלה: חסימה' }, 500);
+    return j({ success: true, driveLinks: b.sendMode === 'email' ? [] : (b.extraAttachments || []).map((a) => ({ fileName: a.fileName, url: 'https://drive.test/' + a.fileName })) });
+  }
   if (u.startsWith('/api/auth/verify-pin')) {
     const b = JSON.parse(opts.body);
     return b.pin === '1234' ? j({ success: true, employeeId: b.employeeId, employeeName: (EMPLOYEES.find(e => e.id === b.employeeId) || {}).firstName || '' }) : j({ success: false, error: 'סיסמה שגויה או משתמש לא פעיל' }, 401);
@@ -221,4 +251,14 @@ window.fetch = async (url, opts) => {
   return j({});
 };
 
+// W7: לחצן "מייל מהיר" אמיתי (slot QuickMailButton) מתארח מחוץ לכרטיס, רק עם ?qmhost=1 - הוא שייך לכרטיס הלקוח של W2a
+// ושם הוא מורכב אחרי המיזוג; כאן הוא רק מאפשר לפתוח את חלון המייל בהרתמה בלי לערב את אזורי ההשוואה (TOP/TABS/...)
+if (qs.get('qmhost') === '1') {
+  const host = document.createElement('div');
+  host.id = 'qm-host';
+  host.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2';
+  document.body.append(host);
+  const Exports0 = SLOTS.Exports;
+  SLOTS.Exports = (p) => (<><Exports0 {...p} />{createPortal(<SLOTS.QuickMailButton {...p} />, host)}</>);
+}
 createRoot(document.getElementById('root')).render(<OrderCardA5 orderRef="53375" />);

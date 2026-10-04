@@ -6,11 +6,13 @@ import { subtractBusinessDays, israelLocalDate } from '../../../../../lib/busine
 import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
-import { renderOrderCardEmailHtml } from '../../../../../lib/emailTemplates';
-import { normalizeAttachments, postToMailer } from '@/lib/mailer';
+import { renderOrderCardEmailHtml, renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
+import { parseQuickMail, isSafeRecipient, safeDriveFolderId, sanitizeQuickAttachments } from '@/lib/orderQuickMail';
+import { PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccessKeys';
+import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, canOpenAnyPage } from '@/lib/permissions';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { emailAttachmentSummary, emailEventMeta } from '@/lib/history/orderEvents';
@@ -78,6 +80,34 @@ export async function POST(request, { params }) {
 
     if (!email) {
       return NextResponse.json({ error: 'כתובת מייל חסרה' }, { status: 400 });
+    }
+    // מייל מהיר מכרטיס ההזמנה החדש (A8): נושא ותוכן חופשיים + צרופות לפי kind, בלי דוח ההזמנה כ-PDF. בלי body.quick - בלי שינוי.
+    // החזרת ה-HTML של דוח ההזמנה בלבד (מקור ה-PDF של כרטיס ההזמנה/ייצוא/מייל) לא שולחת כלום, אבל חושפת את כל הדוח של כל orderId -
+    // לכן אותו שער גישה לדפי ההזמנות כמו הדפסת הזמנה (PRINT_ORDER_PAGE_KEYS), לפני כל קריאה למסד. שליחה רגילה לא משתנה.
+    if (body.returnHtmlOnly && !(await canOpenAnyPage(PRINT_ORDER_PAGE_KEYS))) {
+      return NextResponse.json({ error: 'אין הרשאה להציג דוח הזמנה' }, { status: 403 });
+    }
+    const quick = body.returnHtmlOnly ? null : parseQuickMail(body.quick);
+    if (quick && !quick.ok) {
+      return NextResponse.json({ error: quick.error }, { status: 400 });
+    }
+    // order_quick_mail_enabled (ברירת מחדל כבוי - כמו הלקוח, orderCardLogic.orderQuickMailEnabled): ההגדרה נאכפת גם בשרת, לא רק בהסתרת הלחצן
+    if (quick) {
+      const quickRow = await getCachedSetting('order_quick_mail_enabled');
+      if (!quickRow || String(quickRow.value) !== 'true') {
+        return NextResponse.json({ error: 'המייל המהיר כבוי בהגדרות המערכת' }, { status: 403 });
+      }
+    }
+    // מייל מהיר = טקסט חופשי + קבצים לנמען שהוקלד: נוסף על אישור שליחת המייל (feature:customer_email_approval, למטה) נדרשת גם גישה
+    // לדפי ההזמנות (אותם מפתחות כמו הדפסת הזמנה), כתובת נמען בודדת ותקינה (בלי הזרקת כותרות/נמענים נוספים) וצרופות בגבולות
+    // (מספר, גודל, שם/סוג/יעד נקיים) - כל זאת לפני כל קריאה למסד.
+    let quickAttachments = null;
+    if (quick) {
+      if (!isSafeRecipient(email)) return NextResponse.json({ error: 'כתובת המייל אינה תקינה' }, { status: 400 });
+      if (!(await canOpenAnyPage(PRINT_ORDER_PAGE_KEYS))) return NextResponse.json({ error: 'אין הרשאה לשלוח מייל מהזמנה' }, { status: 403 });
+      const att = sanitizeQuickAttachments(extraRaw);
+      if (!att.ok) return NextResponse.json({ error: att.error }, { status: 400 });
+      quickAttachments = att.list;
     }
 
     const order = await prisma.order.findUnique({
@@ -490,14 +520,14 @@ export async function POST(request, { params }) {
 
     // רשימת קבצים מלאה: ה-PDF של ההזמנה + קבצים נוספים שהמשתמש צרף,
     // כל אחד עם יעד בהתאמה (מייל / דרייב / גם וגם) + טבלת הוראות מסודרת.
-    const pdfEntry = pdfBase64 ? [{
+    const pdfEntry = (pdfBase64 && !quick) ? [{
       fileName: `הזמנה ${order.orderId}.pdf`,
       fileContent: pdfBase64,
       mimeType: 'application/pdf',
       sizeBytes: Math.round((String(pdfBase64).length * 3) / 4),
       dest: sendMode
     }] : [];
-    const extraNormalized = normalizeAttachments({ attachments: extraRaw, sendMode });
+    const extraNormalized = normalizeAttachments({ attachments: quick ? quickAttachments : extraRaw, sendMode });
     const allFiles = [...pdfEntry, ...extraNormalized];
     const accompanyingHtml = renderOrderCardEmailHtml({
       orderId: order.orderId,
@@ -510,14 +540,30 @@ export async function POST(request, { params }) {
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
-    const driveFolderId = (driveFolderIdRaw || driveFolderDefault || '').trim();
+    const driveFolderId = ((quick ? safeDriveFolderId(driveFolderIdRaw) : driveFolderIdRaw) || driveFolderDefault || '').trim();
+
+    // הנושא בפועל: מייל מהיר = מה שהעובדת הקלידה (נוקה בשרת); אחרת נושא הקטלוג
+    const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId });
 
     // Use the generic email script OR our new PDF generator action
-    const googlePayload = {
+    const googlePayload = quick ? buildGasPayload({
+      to: email,
+      subject: subjectUsed,
+      body: quick.bodyText,
+      htmlBody: renderGenericEmailHtml({
+        title: quick.subject, bodyText: quick.bodyText, gmachName: printSettings.gmachName, subtitle: `הזמנה #${order.orderId}`,
+        gmachAddress: printSettings.gmachAddress, gmachPhone: printSettings.gmachPhone
+      }),
+      attachments: allFiles,
+      sendMode,
+      driveFolderId,
+      driveShareEmail: email,
+      grantFullDownload: true
+    }) : {
       action: "sendGemachOrderEmail",
       to: email,
       cc: '',
-      subject: emailSubject('orderCard', { orderId: order.orderId }),
+      subject: subjectUsed,
       htmlBody: htmlBody,
       bodyText: accompanyingHtml,
       fileName: `הזמנה ${order.orderId}.pdf`,
@@ -541,15 +587,23 @@ export async function POST(request, { params }) {
     };
 
     // כתובת ה-Apps Script נפתרת מרכזית (lib/mailer.js) לפי email_link_a/b + אסטרטגיית הניתוב
-    const { isSuccess, result } = await postToMailer(googlePayload);
+    // חריגה מהגשר (רשת / כתובת חסרה / timeout) היא כשל שליחה רגיל: חייב להירשם EmailLog + EMAIL_FAILED ולהחזיר 500 מסודר, לא להיבלע ב-catch הכללי
+    let mailRes;
+    try {
+      mailRes = await postToMailer(googlePayload);
+    } catch (mailErr) {
+      console.error('order email: mailer threw', mailErr);
+      mailRes = { isSuccess: false, result: { message: (mailErr && mailErr.message) || 'Unknown error' } };
+    }
+    const { isSuccess, result } = mailRes;
     const driveLinks = Array.isArray(result.driveLinks) ? result.driveLinks : (Array.isArray(result.driveFiles) ? result.driveFiles : []);
 
     await prisma.emailLog.create({
       data: {
         to: email,
         cc: null,
-        subject: emailSubject('orderCard', { orderId: order.orderId }),
-        body: 'HTML body sent to App Script for PDF conversion',
+        subject: subjectUsed,
+        body: quick ? quick.bodyText : 'HTML body sent to App Script for PDF conversion',
         fileName: allFiles.map(a => a.fileName).join(', ') || `הזמנה ${order.orderId}.pdf`,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess
@@ -564,13 +618,13 @@ export async function POST(request, { params }) {
     // EMAIL_SENT (existing action, now with who sent / who approved / what was attached) or EMAIL_FAILED -
     // the order's own history row; written through the single order-event helper (no model write behind it:
     // the EmailLog write above is a different entity and is logged by the extension on its own).
-    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw });
+    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw: quick ? quickAttachments : extraRaw });
     await writeOrderEvents({
       orderIds: [order.orderId],
       action: isSuccess ? 'EMAIL_SENT' : 'EMAIL_FAILED',
       meta: emailEventMeta({
         base: {
-          subject: emailSubject('orderCard', { orderId: order.orderId }),
+          subject: subjectUsed,
           to: email,
           type: printType,
           sendMode,

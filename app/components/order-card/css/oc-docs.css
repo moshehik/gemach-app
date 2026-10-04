@@ -1,2 +1,57 @@
 /* oc-docs.css — כרטיס ההזמנה החדש: תפריט ההדפסה, ייצוא Excel/הורדה, מייל מהיר וכתובת מייל חסרה. בבעלות W7 (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
-   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build). */
+   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build).
+   מקורות: העיצוב המאושר תצוגות-עיצוב/כרטיס-הזמנה.html - הבלוק mail-sheet-css (גיליון תחתון, שתי עמודות) - בשמות הקלאסים והמשתנים של הפלטה (--gm-*). */
+
+/* ===== מייל מהיר / שליחת מייל: גיליון תחתון בשתי עמודות (בלוק mail-sheet-css בעיצוב) ===== */
+@keyframes oc-mailUp{from{transform:translateY(100%)}to{transform:none}}
+.gm-ds.gm-oc #dlg.mailwin.fx-sheet{max-width:860px}
+.gm-ds.gm-oc #dlg.fx-sheet .mh h2{line-height:1.25}
+.gm-ds.gm-oc #dlg.fx-sheet .msub{display:block;font-size:14px;font-weight:400;opacity:.75;margin-top:2px}
+.gm-ds.gm-oc #dlg.fx-sheet .fx-2col{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:24px;align-items:start}
+.gm-ds.gm-oc #dlg.fx-sheet .fx-stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+.gm-ds.gm-oc #dlg.fx-sheet .mfld{gap:6px}
+.gm-ds.gm-oc #dlg.fx-sheet .mfiles{display:grid;grid-template-columns:1fr;gap:8px}
+.gm-ds.gm-oc #dlg.fx-sheet .mfile{padding-block:8px;min-height:0;align-items:center}
+.gm-ds.gm-oc #dlg.fx-sheet .mfx small:empty{display:none}
+.gm-ds.gm-oc #dlg.fx-sheet .mfx[role=checkbox]:focus-visible{outline:0}
+.gm-ds.gm-oc #dlg.fx-sheet .mfile:has(> .mfx[role=checkbox]:focus-visible){outline:3px solid var(--gm-gold);outline-offset:2px}
+.gm-ds.gm-oc #dlg.fx-sheet textarea.inp{min-height:260px;resize:none}
+/* שדות טקסט: שקופים עם מסגרת זהב; זוהר במיקוד (בלוק mail-sheet-css) */
+.gm-ds.gm-oc #dlg.fx-sheet :is(input,textarea).inp{background:rgba(15,44,82,.04)!important;border:1.5px solid var(--gm-gold)!important;border-radius:14px!important;transition:border-color .2s,box-shadow .2s,background-color .2s}
+.gm-ds.gm-oc.dlg-dark #dlg.fx-sheet :is(input,textarea).inp{background:rgba(255,255,255,.07)!important;color:#fff!important}
+.gm-ds.gm-oc.dlg-dark #dlg.fx-sheet :is(input,textarea).inp::placeholder{color:rgba(255,255,255,.5)!important}
+.gm-ds.gm-oc #dlg.fx-sheet :is(input,textarea).inp:focus,.gm-ds.gm-oc #dlg.fx-sheet :is(input,textarea).inp:focus-visible{border-color:var(--gm-gold-300)!important;outline:0;box-shadow:0 0 0 3px rgba(224,197,110,.35),0 0 18px 3px rgba(224,197,110,.55)!important}
+.gm-ds.gm-oc.dlg-dark #dlg.fx-sheet :is(input,textarea).inp:focus{background:rgba(255,255,255,.11)!important}
+/* שליחה מימין, ביטול לידה */
+.gm-ds.gm-oc #dlg.fx-sheet .fx-actions{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;margin-top:8px}
+.gm-ds.gm-oc #dlg.fx-sheet .fx-actions .btn{width:auto;flex:0 0 auto}
+.gm-ds.gm-oc #dlg.fx-sheet .fx-actions .btn.primary{min-width:200px}
+
+/* דליפה: globals.css מאפס padding לכל אלמנט - לחצן הסגירה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן (כמו .back ב-oc-base) */
+.gm-ds.gm-oc #dlg.fx-sheet :is(.mh .ibtn.mx,.mfile > .mfe,.oc-mx-row > .mfe){padding:1px 6px}
+
+/* ===== R8 בתוך חלון המייל: קבצים נוספים + יעד הקבצים (רכיבי פלטה: btn sm, שורת קובץ כמו mfile, בורר pill) ===== */
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-add{gap:10px}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-dest-l{margin-top:6px}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-list{display:flex;flex-direction:column;gap:8px}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-row{display:flex;align-items:center;gap:12px;padding:6px 12px;border:1.5px solid var(--gm-sky-200);border-radius:14px;background:var(--gm-sky-50)}
+.gm-ds.gm-oc.dlg-dark #dlg.fx-sheet .oc-mx-row{background:var(--k-row);border-color:var(--k-rowb)}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mx-note{font-size:13px}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mail-err{min-height:0;margin-top:2px}
+.gm-ds.gm-oc #dlg.fx-sheet .oc-mail-err:empty{display:none}
+
+/* ===== גיליון תחתון במסכי רוחב (אחרי כללי הבסיס למעלה) ===== */
+@media (min-width:641px){
+  .gm-ds.gm-oc #scrim:has(#dlg.fx-sheet){align-items:flex-end;padding:0 16px}
+  .gm-ds.gm-oc #dlg.mailwin.fx-sheet{width:100%;border-end-start-radius:0;border-end-end-radius:0;animation:oc-mailUp .38s cubic-bezier(.2,.8,.2,1)}
+}
+@media (max-width:900px){.gm-ds.gm-oc #dlg.fx-sheet .fx-2col{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .gm-ds.gm-oc #dlg.fx-sheet .fx-actions .btn.primary{flex:1 1 auto;min-width:0}
+  .gm-ds.gm-oc #dlg.fx-sheet textarea.inp{min-height:160px}
+  /* דליפה: כלל ה-:last-child של חלונות בפלטה (שורת לחצנים דביקה עם דהייה) גובר על .mact של חלון המייל - בעיצוב שורת הלחצנים של המייל היא פס אטום */
+  .gm-ds.gm-oc #dlg.mailwin .mact{background:var(--k-solid);background-image:none;margin-inline:0;padding:12px 0 calc(12px + env(safe-area-inset-bottom))}
+  /* תיקון לעיצוב: במסך צר שורת הכלים צמודה לשמאל והתפריט (inline-end:0) נחתך מחוץ למסך - הוא נפתח מהקצה הימני של שורת הכלים ונשאר בתוך המסך */
+  .gm-ds.gm-oc .tools .menu{inset-inline-end:auto;inset-inline-start:0}
+}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-oc #dlg.mailwin.fx-sheet{animation:none}}

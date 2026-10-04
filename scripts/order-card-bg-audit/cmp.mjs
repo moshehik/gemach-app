@@ -63,6 +63,16 @@ const APPROVED_STAGE = [
   ['44-addpanel', /^ITEMS>div\.field>div\.sizes>button \[op\]$/, 'מידה שאין לה יחידה פנויה מנוטרלת (כמו option disabled בבורר המידות של הישן)'],
   ['44-addpanel', /^ITEMS>.*label\.lbl>span\.chip\.gray|^ITEMS>div\.field>label\.lbl>span\.chip/, 'A27/R23: התגית "לפי הגדרות הגמ״ח" הוסרה לפי הערת הבעלים'],
   ...['01-default', '02-hover-tab', '04-hover-back'].map((s) => [s, /^TOP>div\.sbar>div\.inpw>input\.inp \[bs\]$/, 'R42: בעיצוב לשדה הסריקה autofocus (טבעת המיקוד); בכרטיס השדה לא חוטף את המיקוד בפתיחה (כמו הישן)']),
+  // W7 (מסמכים): בעיצוב שכבת הסקירה מסמנת "דף הכנה למחסן"/"דף משלוח" כשורות מקווקוות חצי שקופות ("עוד לא אושר"); הבעלים אישר את שתיהן (A3/A4)
+  ['41-print-menu', /^TOP>div\.tools>div\.menu\.open>button \[op\]$/, 'A3/A4: שורות מקווקוות בשכבת הסקירה = לא מאושר עדיין; בכרטיס החדש הן שורות רגילות'],
+  ['42-print-menu-hover', /^TOP>div\.tools>div\.menu\.open>button \[op\]$/, 'A3/A4: כנ"ל'],
+  // AMB-11 (בעלים: לבנות את כולם): "תמונות דגמים" נבנה כ-PDF ולא כ-ZIP - בלי הצ'יפ הזהוב של סוג ZIP
+  ['44-mail-quick', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
+  ['45-mail-filled', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
+  ['46-mail-preview', /^DLG>div\.mfiles>div\.mfile>span\.mft\.zip$|^DLG>div\.mfile>span\.mft\.zip>svg\.ic$/, 'AMB-11: תמונות דגמים = PDF (לא ZIP)'],
+  ['46-mail-preview', /^DLG>div\.mprev>div>small$/, 'W7: שורת הסבר מה הקובץ מכיל (בעיצוב רק שלושה קווים סכמטיים)'],
+  // במסך צר ה-demo אינו מגיע לשורת התפריט (התפריט נחתך מחוץ למסך בעיצוב); בכרטיס החדש התפריט נשאר בתוך המסך והריחוף עובד
+  ['42-print-menu-hover', /^TOP>div\.tools>div\.menu\.open>button \[bg\]$|^TOP>div\.menu\.open>button>svg\.ic \[(h|w)\]$/, 'במסך צר הריחוף בעיצוב לא מגיע לתפריט (נחתך); ריחוף אמיתי = רקע + הגדלת אייקון של הפלטה'],
 ];
 // W4 (לשונית תשלומים): עטיפת r37 של שכבת הסקירה (span display:contents) נוספת מחדש בכל רינדור; בעיצוב לחצן "רישום תשלום ידני" מנוטרל כשאין יתרה
 APPROVED_STAGE.push(...['P01-pay-tab', 'P02-pay-mgr', 'P03-pay-debt', 'P04-dlg-pay'].flatMap((st) => [

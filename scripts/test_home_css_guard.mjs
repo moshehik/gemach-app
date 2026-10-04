@@ -626,5 +626,33 @@ t('הדליפות שנוטרלו בלשונית ההיסטוריה עדיין ק
   assert.ok(/input[^{]*\{[^}]*border-radius:\s*10px/.test(OVERRIDES), 'design-overrides.css: input{border-radius:10px} כבר לא קיים');
 });
 
+/* ---------- 12. כרטיס ההזמנה החדש - מסמכים: תפריט הדפסה, מייל מהיר, כתובת מייל חסרה (app/components/order-card/css/oc-docs.css, W7) ---------- */
+// בלוק mail-sheet-css של העיצוב (גיליון תחתון בשתי עמודות) בשמות הפלטה (--gm-*) בהיקף הכרטיס. החריג היחיד ל"בלי !important" הוא שדות הטקסט של
+// גיליון המייל (מסגרת זהב + זוהר במיקוד) - בדיוק כמו בעיצוב, כדי לגבור על design-overrides.css (input:not(...){...!important}).
+const OC_DOCS_CSS = read('../app/components/order-card/css/oc-docs.css');
+const ocDocsRules = parseCss(OC_DOCS_CSS);
+const OC_DOCS_IMPORTANT_OK = /\.fx-sheet :is\(input,textarea\)\.inp/;
+t('oc-docs.css: כל כלל בהיקף .gm-ds.gm-oc (לא דולף לשאר האתר / לכרטיס הישן)', () => {
+  const bad = [];
+  for (const r of ocDocsRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-docs.css: !important רק בשדות הטקסט של גיליון המייל; בלי רקע לבן קשיח / var(--gm-surface)', () => {
+  const bad = [];
+  for (const r of ocDocsRules) for (const d of decls(r.body)) {
+    if (isImportant(d) && !OC_DOCS_IMPORTANT_OK.test(r.sel)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/^background(-color)?$/.test(d.prop) && (WHITE_RE.test(d.value.trim()) || /var\(--gm-surface\)/.test(d.value))) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (לבן)`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-docs.css: אין דריסת @media לפני הכלל הלא-מותנה, אין "-*/" בהערות, ואין מחלקות/סלקטורים של תפריט ההדפסה (הם מהפלטה)', () => {
+  assert.deepEqual(mediaBeforeBase(ocDocsRules, 'oc-docs.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_DOCS_CSS), 'הערה עם "-*/"');
+  // החריג היחיד: עוגן התפריט במסך צר (בעיצוב הוא נחתך מחוץ למסך) - בלי שינוי בצבעים/רקעים/צורה של התפריט
+  const ownMenuRules = ocDocsRules.filter((r) => /(^|[\s,])\.(gm-ds\.gm-oc )?(menu|xlbtn)|\.xl[gdp]/.test(r.sel) && r.sel !== '.gm-ds.gm-oc .tools .menu');
+  assert.deepEqual(ownMenuRules.map((r) => r.sel), [], 'התפריט וכפתורי ה-xlbtn הם רכיבי פלטה - בלי כלל משלהם');
+  assert.deepEqual(ocDocsRules.filter((r) => r.sel === '.gm-ds.gm-oc .tools .menu').flatMap((r) => decls(r.body).map((d) => d.prop)).sort(), ['inset-inline-end', 'inset-inline-start'], 'עוגן התפריט בלבד');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
