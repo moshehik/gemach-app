@@ -109,6 +109,21 @@ const STAGES = [
   { name: '06-toast', real: async () => { await fresh('neve'); await clickAt('.tools .xlbtn.xlg'); await away(); }, demo: async () => { await fresh(); await clickAt('.tools .xlbtn.xlg'); await away(); } },
   { name: '07-locked', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await away(); }, demo: async () => { await fresh(); await demoLocked(); await clickAt('.tools .xlbtn[data-pvact="lockbtn"]'); await away(); } },
   { name: '08-approval', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await away(); }, demo: async () => { await fresh(); await demoLocked(); await demoWin('R46'); await away(); } },
+  // C6: אחרי שחרור הנעילה נשאר לחצן נעילה מחדש (כמו הישן) → אישור → ההזמנה ננעלת שוב (לחצן השחרור חוזר, הפריטים נעולים)
+  { name: '08b-relock', real: async () => {
+    await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500);
+    await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p.type('#oc-appr-code', '1234'); await sleep(200); await clickAt('#dlg2 .btn.primary'); await sleep(900);
+    const a = await p.evaluate(() => ({ lock: !!document.querySelector('.tools [data-act="lockbtn"]'), relock: !!document.querySelector('.tools [data-act="relockbtn"]'), tip: (document.querySelector('.tools [data-act="relockbtn"]') || { dataset: {} }).dataset.tip }));
+    await clickAt('.tools .xlbtn[data-act="relockbtn"]'); await sleep(500);
+    const d = await p.evaluate(() => ({ h2: (document.querySelector('#dlg > h2') || {}).textContent, sub: (document.querySelector('#dlg > .sub') || {}).textContent }));
+    await clickAt('#dlg .btn.ghost'); await sleep(400);
+    const kept = await p.evaluate(() => !!document.querySelector('.tools [data-act="relockbtn"]'));
+    await clickAt('.tools .xlbtn[data-act="relockbtn"]'); await sleep(400); await clickAt('#dlg .btn.primary'); await sleep(500);
+    const b = await p.evaluate(() => ({ lock: !!document.querySelector('.tools [data-act="lockbtn"]'), relock: !!document.querySelector('.tools [data-act="relockbtn"]') }));
+    checks.push(['C6: אחרי שחרור נעילה מוצג לחצן "נעילה מחדש" (ולא לחצן השחרור) עם הטולטיפ של הישן', !a.lock && a.relock && /לחצו לנעילה מחדש/.test(a.tip || '')],
+      ['C6: לחיצה = חלון אישור "האם ברצונך לנעול מחדש את ההזמנה?"; ביטול משאיר פתוח', d.h2 === 'נעילה מחדש' && /לנעול מחדש/.test(d.sub || '') && kept],
+      ['C6: אישור = ההזמנה ננעלת שוב (חוזר לחצן השחרור, נעלם לחצן הנעילה מחדש)', b.lock && !b.relock]);
+  } },
   { name: '09-approval-picked', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await clickAt('#dlg2 .oc-emps .opt:nth-child(2)'); await p.type('#oc-appr-code', '9'); await sleep(200); }, demo: async () => { await fresh(); await demoLocked(); await demoWin('R46'); await clickAt('#dlg2 .pv-emps .opt:nth-child(2)'); await p.type('#pvAp', '9'); await sleep(200); } },
   { name: '10-conflict', real: async () => { await fresh('conflict'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R12'); await away(); } },
   { name: '11-stock', real: async () => { await fresh('stock'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R48'); await away(); } },

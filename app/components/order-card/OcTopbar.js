@@ -27,6 +27,11 @@ export default function OcTopbar({ oc, ui, slots }) {
     const go = await ui.openDialog(LockedDialog, {});
     if (go) await oc.unlock();
   };
+  // C6 (פריטי-שוויון עם הישן): אחרי שחרור הנעילה הלחצן נשאר ("ההזמנה שוחררה לעריכה. לחצו לנעילה מחדש") → אישור → oc.relock()
+  const relock = async () => {
+    const ok = await ui.confirm({ title: 'נעילה מחדש', sub: 'האם ברצונך לנעול מחדש את ההזמנה?', okText: 'נעל', icon: 'lock' });
+    if (ok) oc.relock();
+  };
   return (
     <div className="topbar">
       <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" disabled={oc.saving} onClick={() => oc.exit()}>
@@ -40,6 +45,11 @@ export default function OcTopbar({ oc, ui, slots }) {
       <div className="tools">
         {oc.status === 'ready' && oc.flags.isLocked ? (
           <button type="button" className="xlbtn xld" data-act="lockbtn" aria-label="הזמנה נעולה" data-tip="הזמנה נעולה — תאריך האירוע עבר. לחצו לשחרור באישור מנהל" onClick={openLocked}>
+            <OcIcon name="lock" />
+          </button>
+        ) : null}
+        {oc.status === 'ready' && oc.flags.isPastEvent && oc.flags.isUnlocked ? (
+          <button type="button" className="xlbtn xld" data-act="relockbtn" aria-label="ההזמנה שוחררה לעריכה - נעילה מחדש" data-tip="ההזמנה שוחררה לעריכה. לחצו לנעילה מחדש" onClick={relock}>
             <OcIcon name="lock" />
           </button>
         ) : null}

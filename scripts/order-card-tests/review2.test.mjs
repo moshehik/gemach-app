@@ -211,3 +211,11 @@ test('C5 (סטטי): כלל ה-CSS בהיקף .gm-ds.gm-oc מתחת ל-640px; de
   const ds = fs.readFileSync(P + '/design-system/components.css', 'utf8');
   assert.ok(ds.includes('.gm-ds .tabs{overflow:visible!important;padding-top:10px}'), 'קובץ הפלטה נשאר כמו שהיה');
 });
+
+// ---------- C6: נעילה מחדש ----------
+test('C6 (סטטי): OcTopbar - לחצן נעילה מחדש אחרי שחרור (isPastEvent && isUnlocked), עם אישור, וקורא ל-oc.relock', () => {
+  const src = strip(read('OcTopbar.js'));
+  assert.ok(/oc\.flags\.isPastEvent && oc\.flags\.isUnlocked/.test(src));
+  assert.ok(/data-act="relockbtn"/.test(src) && /לחצו לנעילה מחדש/.test(src));
+  assert.ok(/ui\.confirm\(\{[^}]*נעילה מחדש[^}]*\}\);\s*if \(ok\) oc\.relock\(\)/.test(src));
+});
