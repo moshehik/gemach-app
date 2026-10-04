@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ScheduleIcon from '../schedule/ScheduleIcon';
 import { LzPortal } from '../schedule/LzPortal';
 import { STAGE_META, dressCountText } from '../schedule/scheduleMeta';
@@ -13,6 +13,9 @@ import {
 // העיצוב המאושר (תצוגות-עיצוב/סיימתי-לעבוד/לוח-חודשי.html). אין כאן קריאות API.
 
 export const Ic = ScheduleIcon;
+// כלל האיחור של הארגון (late_return_threshold_days + non_working_days_extra) - BoardPage מספק, כל רכיב שמסמן איחור קורא
+export const LateContext = createContext({});
+export const useLateCfg = () => useContext(LateContext);
 const WD_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
 // ---------- שורת החיפוש + מסנן השלבים (E01 + S01) ----------
@@ -186,7 +189,8 @@ export function MonthHead({ date, today, onPrev, onNext, onPick }) {
 export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay, onExpand, onOrder, enableAlterations }) {
   const rows = dayStageRows(stageDay, stages, selected);
   const stageAlerts = rows.reduce((a, r) => a + (r.alerts ? r.alerts : 0), 0);
-  const lateCount = orders.filter((o) => isOrderLate(o)).length;
+  const lateCfg = useLateCfg();
+  const lateCount = orders.filter((o) => isOrderLate(o, lateCfg)).length;
   const alert = cellAlert(stageAlerts, lateCount);
   const total = rows.reduce((a, r) => a + r.total, 0);
   const label = cell.hebrewLong + (total ? ' · ' + total + ' פעולות' : '') + (orders.length ? ' · ' + orders.length + ' הזמנות' : '');
@@ -238,7 +242,7 @@ export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay, o
 }
 
 function CellOrder({ order, onOrder, enableAlterations }) {
-  const late = isOrderLate(order);
+  const late = isOrderLate(order, useLateCfg());
   const cat = orderCategory(order, enableAlterations);
   return (
     <button
@@ -285,10 +289,11 @@ export function MonthGrid({ weeks, head, ordersByDate, stagesDays, stages, selec
 // S11 "לא להכניס": בלי שורות סיכום ליום (מונים + חץ). במקומן: כותרת יום של הפלטה (hday, כמו ביומן ההיסטוריה) ומתחתיה
 // שורות ההזמנות של אותו יום (אותה שורה כמו בחלון היום). מוצגים רק ימים עם הזמנות או עם התראה.
 export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selected, onOpenDay, onOrder, onHint, enableAlterations }) {
+  const lateCfg = useLateCfg();
   const days = weeks.flat().filter(Boolean).map((cell) => {
     const orders = ordersByDate[cell.key] || [];
     const rows = dayStageRows(stagesDays ? stagesDays[cell.key] : null, stages, selected);
-    const alert = cellAlert(rows.reduce((a, r) => a + r.alerts, 0), orders.filter((o) => isOrderLate(o)).length);
+    const alert = cellAlert(rows.reduce((a, r) => a + r.alerts, 0), orders.filter((o) => isOrderLate(o, lateCfg)).length);
     return { cell, orders, alert };
   }).filter((d) => d.orders.length || d.alert);
   return (
@@ -319,7 +324,7 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
 export function OrderRow({ order, enableAlterations, onOrder, onHint }) {
   const cat = orderCategory(order, enableAlterations);
   const meta = CATEGORY[cat];
-  const late = isOrderLate(order);
+  const late = isOrderLate(order, useLateCfg());
   const name = customerName(order) || 'ללא שם';
   const items = validItems(order).length;
   const parts = [order.customerPhone || order.customer?.phone1 || '', dressCountText(items)].filter(Boolean);

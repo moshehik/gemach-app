@@ -31,7 +31,8 @@ import { MarkToast } from '../schedule/MarkDialogs';
 import {
   buildMonthGrid, groupOrdersByDate, monthRangeKeys, monthStageTotals, sameMonth, shiftMonth,
 } from './boardLogic';
-import { ActionMenu, BoardSearchBar, DayList, Ic, InfoHint, MonthGrid, MonthHead } from './BoardParts';
+import { ActionMenu, BoardSearchBar, DayList, Ic, InfoHint, LateContext, MonthGrid, MonthHead } from './BoardParts';
+import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 import BoardDayDialog from './BoardDayDialog';
 import BoardRentalModal from './BoardRentalModal';
 import { useBoardDialogs } from './BoardDialogs';
@@ -60,6 +61,8 @@ export default function BoardPage() {
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [hideCustomSpacing, setHideCustomSpacing] = useState(false);
   const [enableBatchPrintPrep, setEnableBatchPrintPrep] = useState(false);
+  // כלל איחור ההחזרה של הארגון - כמו הלו״ז וחלון ההשכרה (late_return_threshold_days, non_working_days_extra)
+  const [lateCfg, setLateCfg] = useState({ threshold: 7, nonWorkingDays: null });
   const [view, setView] = useState('grid');
   const [stageSel, setStageSel] = useState([]);
   const [stagesData, setStagesData] = useState(null);
@@ -86,6 +89,7 @@ export default function BoardPage() {
         if (find('enable_alterations')?.value === 'false') setEnableAlterations(false);
         if (find('hide_custom_spacing')?.value === 'true') setHideCustomSpacing(true);
         if (find('enable_batch_print_prep')?.value === 'true') setEnableBatchPrintPrep(true);
+        setLateCfg({ threshold: Number(find('late_return_threshold_days')?.value) || 7, nonWorkingDays: parseNonWorkingDaysSetting(find(NON_WORKING_DAYS_SETTING_KEY)?.value ?? null) });
       })
       .catch(() => {});
   }, []);
@@ -240,6 +244,7 @@ export default function BoardPage() {
 
   return (
     <LzPortalRoot.Provider value={portalRoot}>
+    <LateContext.Provider value={lateCfg}>
       <div className="gm-ds gm-lz gm-bd home-bg dlg-dark" ref={rootRef} dir="rtl">
         <LocalSprite />
         <div className="app lz-app bd-app">
@@ -313,6 +318,7 @@ export default function BoardPage() {
         <MarkToast toast={toast} onClose={() => setToast(null)} />
         <div className="pl-tt" role="tooltip" id="bd-tt" ref={ttRef} />
       </div>
+    </LateContext.Provider>
     </LzPortalRoot.Provider>
   );
 }

@@ -5,7 +5,15 @@
 // בדיקה חזותית מול העיצוב: scripts/board-bg-audit (cmp.mjs, views.mjs, interact.mjs).
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import * as L from '../app/components/board/boardLogic.js';
+import { register } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import path from 'node:path';
+// boardLogic.js משתמש ב-lib/lateReturn.js (ייבוא בלי סיומת) - נטען דרך ה-hooks של scripts/schedule-tests ('@/', סיומות)
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+process.env.PROJ = process.env.PROJ || path.resolve(HERE, '..');
+process.env.SPDIR = process.env.SPDIR || path.join(HERE, 'schedule-tests');
+register(pathToFileURL(path.join(HERE, 'schedule-tests', 'hooks.mjs')).href);
+const L = await import('../app/components/board/boardLogic.js');
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 // הקוד בלי הערות (ההערות מתעדות מה הוסר - לא קוד חי)
@@ -138,7 +146,8 @@ t('S02/S10/E12: מונים באותו גוון חוץ מהתראה; סימן ה�
   has(CSS, /\.gm-ds\.gm-bd \.lz-pr\{--pc:var\(--bd-pc\)/);
   has(CSS, /\.gm-ds\.gm-bd \.lz-pr\.al\{--pc:var\(--bd-pc-al\)\}/);
   hasNot(PARTS, /STAGE_META\[[^\]]+\]\.color/, 'צבע לכל שלב חזר');
-  assert.deepEqual(L.cellAlert(2, 1), { count: 3, tip: '2 משימות שלא בוצעו · הזמנה אחת באיחור החזרה' });
+  assert.deepEqual(L.cellAlert(2, 1), { count: 3, tip: '2 התראות בלו״ז · הזמנה אחת באיחור החזרה' });
+  assert.ok(!/משימות שלא בוצעו/.test(code(read('../app/components/board/boardLogic.js'))), 'ניסוח "משימות" (כולל גם "חסרה כתובת") - צריך "התראות"');
   assert.equal(L.cellAlert(0, 0), null);
   has(PARTS, /className="tabmk debt lz-al"/);
 });
@@ -203,17 +212,29 @@ t('E20: ההגדרות enable_alterations / hide_custom_spacing / enable_batch_p
   assert.equal(L.orderCategory({ items: [{ neckAlteration: 1 }], totalAmount: 100, totalPaid: 0 }, false), 'unpaid');
 });
 
-t('לוגיקה: קטגוריות הסטטוס ואיחור החזרה בדיוק כמו בדף הקודם', () => {
+t('לוגיקה: קטגוריות הסטטוס כמו בדף הקודם; איחור החזרה = הכלל של הלו״ז (סף מההגדרות + ימי עסקים)', () => {
   assert.equal(L.orderCategory({ items: [] }), 'empty');
   assert.equal(L.orderCategory({ items: [{ isTaken: true, isReturned: true }] }), 'returned');
   assert.equal(L.orderCategory({ items: [{ isTaken: true }, {}] }), 'rented');
   assert.equal(L.orderCategory({ items: [{}], totalAmount: 100, totalPaid: 100 }), 'completed');
   assert.equal(L.orderCategory({ items: [{}], totalAmount: 0, totalPaid: 0 }), 'other');
-  const now = new Date(2026, 9, 10, 15);
-  assert.equal(L.isOrderLate({ eventDate: new Date(2026, 9, 7).toISOString(), items: [{ isTaken: true }] }, now), true);
-  assert.equal(L.isOrderLate({ eventDate: new Date(2026, 9, 8).toISOString(), items: [{ isTaken: true }] }, now), false);
-  assert.equal(L.isOrderLate({ eventDate: new Date(2026, 9, 1).toISOString(), items: [{ isTaken: true, isReturned: true }] }, now), false);
-  assert.equal(L.isOrderLate({ eventDate: new Date(2026, 9, 1).toISOString(), items: [{ isTaken: true, isDeleted: true }] }, now), false);
+  // E12 = כלל הלו״ז: late_return_threshold_days (ברירת מחדל 7) ממועד ההחזרה הצפוי (יום העבודה הראשון אחרי האירוע,
+  // או toDate/returnDate מגולגל), רק כשיש פריט שנלקח ולא הוחזר (דגל או תאריך)
+  const ev = (y, m, d) => new Date(Date.UTC(y, m - 1, d - 1, 21)).toISOString(); // חצות ישראל
+  const taken = [{ isTaken: true }];
+  const now = new Date(Date.UTC(2026, 9, 20, 9)); // ג׳ 20.10.2026
+  // אירוע ב׳ 12.10 -> החזרה צפויה ג׳ 13.10 -> 7 ימים ב-20.10 = באיחור; הכלל הישן (2 ימים) היה מסמן כבר ב-15.10
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 12), items: taken }, { now }), true);
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 14), items: taken }, { now }), false, '5 ימים - לא באיחור (סף 7)');
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 14), items: taken }, { now, threshold: 3 }), true, 'הסף מההגדרות');
+  // אירוע ה׳ 15.10 -> החזרה ראשון 18.10 (שישי/שבת מדולגים) -> 2 ימים
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 15), items: taken }, { now, threshold: 3 }), false, 'ימי עסקים: אירוע בחמישי -> החזרה בראשון');
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 1), items: [{ isTaken: true, isReturned: true }] }, { now }), false);
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 1), items: [{ isTaken: true, isDeleted: true }] }, { now }), false);
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 1), items: [{ takenDate: ev(2026, 9, 29) }] }, { now }), true, 'נלקח לפי תאריך (כמו הלו״ז)');
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 1), items: [{}] }, { now }), false, 'לא נלקח - לא איחור החזרה');
+  // toDate מפורש (חו״ל) גובר על האירוע
+  assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 1), toDate: ev(2026, 10, 19), isAbroad: true, items: taken }, { now }), false);
 });
 
 t('לוגיקה: ניווט חודשים, 13 חודשי הקפיצה, טווח המונים והגריד העברי', () => {

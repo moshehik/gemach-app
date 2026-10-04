@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LzPortal } from '../schedule/LzPortal';
 import { CATEGORY, categoryOrder, filterDayOrders, isOrderLate, orderCategory } from './boardLogic';
-import { Ic, OrderRow } from './BoardParts';
+import { Ic, OrderRow, useLateCfg } from './BoardParts';
 
 // חלון "הזמנות ליום" (E17, "יפתח ויציג כמו בדף הלו״ז עם הפירוט של הבאנר הימני"; E13 "כמו השאלה הקודמת"; GAP-6
 // "שינוי מלא של החלון בדומה ללו״ז"): אותו פריסה כמו /schedule - ציר כהה בצד ימין (st-sidenav / st-stab של הלו״ז) עם
@@ -17,24 +17,26 @@ export default function BoardDayDialog({ day, enableAlterations, enableBatchPrin
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const orders = day.orders;
+  const lateCfg = useLateCfg();
+  const late = (o) => isOrderLate(o, lateCfg);
 
   const counts = useMemo(() => {
     const c = { late: 0 };
     for (const o of orders) {
       const k = orderCategory(o, enableAlterations);
       c[k] = (c[k] || 0) + 1;
-      if (isOrderLate(o)) c.late++;
+      if (late(o)) c.late++;
     }
     return c;
-  }, [orders, enableAlterations]);
+  }, [orders, enableAlterations, lateCfg]);
 
   const visible = useMemo(() => {
     let list = filterDayOrders(orders, q);
-    if (filter === 'late') list = list.filter((o) => isOrderLate(o));
+    if (filter === 'late') list = list.filter((o) => late(o));
     else if (filter) list = list.filter((o) => orderCategory(o, enableAlterations) === filter);
     // שורות באיחור ראשונות (כמו שורות עם התראה בלו״ז), השאר בסדר המקורי
-    return list.map((o, i) => ({ o, i, r: isOrderLate(o) ? 0 : 1 })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.o);
-  }, [orders, q, filter, enableAlterations]);
+    return list.map((o, i) => ({ o, i, r: late(o) ? 0 : 1 })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.o);
+  }, [orders, q, filter, enableAlterations, lateCfg]);
 
   useEffect(() => {
     const prev = typeof document !== 'undefined' ? document.activeElement : null;

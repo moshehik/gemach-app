@@ -8,6 +8,7 @@
 
 import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewMonthYear, getHebrewDateString } from '../../../lib/hebrewDate.js';
+import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../../lib/lateReturn.js';
 
 export const WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
@@ -173,15 +174,18 @@ export const categoryOrder = (enableAlterations) => (enableAlterations
   ? ['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other', 'empty']
   : ['unpaid', 'rented', 'returned', 'completed', 'other', 'empty']);
 
-// E12: איחור החזרה - פריט שנלקח ולא הוחזר, ועברו יותר מ-2 ימים מתאריך האירוע (אותו חישוב כמו בדף הקודם)
-export function isOrderLate(order, now = new Date()) {
+// E12: איחור החזרה - אותו כלל כמו הלו״ז (שלב 8 "החזרה ידנית", התראת "באיחור"), /api/orders/overdue ובר ההחזרה המהיר:
+// יש פריט שנלקח ולא הוחזר (הדגל או התאריך, כמו loaders.js), ועברו late_return_threshold_days (ברירת מחדל 7) ימים ממועד
+// ההחזרה הצפוי - toDate/returnDate או יום העבודה הראשון אחרי האירוע, לפי הכלל האחיד של ימי עסקים (lib/lateReturn.js).
+// (עד 4.10.2026 הלוח השתמש ב"יותר מ-2 ימים מהאירוע" קבוע - ממצא הסקירה 6: הסימן בלוח והמונה בלו״ז לא תאמו.)
+// cfg = { threshold, nonWorkingDays, now } - מההגדרות (late_return_threshold_days, non_working_days_extra).
+const itemTaken = (i) => !!(i && (i.isTaken || i.takenDate));
+const itemReturned = (i) => !!(i && (i.isReturned || i.returnDate));
+export function isOrderLate(order, cfg = {}) {
   const v = validItems(order);
-  if (!v.length || !v.some((i) => i.isTaken && !i.isReturned)) return false;
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const ev = new Date(order.eventDate);
-  ev.setHours(0, 0, 0, 0);
-  return Math.ceil((today - ev) / 86400000) > 2;
+  if (!v.length || !v.some((i) => itemTaken(i) && !itemReturned(i))) return false;
+  const threshold = Number(cfg.threshold) > 0 ? Number(cfg.threshold) : LATE_RETURN_THRESHOLD_DAYS;
+  return !!getLateReturnInfo(order, threshold, { now: cfg.now || new Date(), nonWorkingDays: cfg.nonWorkingDays ?? null }).isLate;
 }
 
 export const customerName = (order) => order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim();
@@ -201,11 +205,11 @@ export function stageCountText(stage, n) {
   return n + ' ' + (stage.plural || stage.label || '');
 }
 
-// S10 + E12 (JDG-5 "כן, לאחד"): סימן התראה אחד בכותרת התא עם שתי סיבות - משימות שלא בוצעו (התראות הלו״ז) והזמנות
+// S10 + E12 (JDG-5 "כן, לאחד"): סימן התראה אחד בכותרת התא עם שתי סיבות - התראות הלו״ז (באיחור / חסרה כתובת) והזמנות
 // באיחור החזרה. מחזיר null כשאין סיבה.
 export function cellAlert(stageAlerts, lateCount) {
   const parts = [];
-  if (stageAlerts > 0) parts.push(stageAlerts === 1 ? 'משימה אחת שלא בוצעה' : stageAlerts + ' משימות שלא בוצעו');
+  if (stageAlerts > 0) parts.push(stageAlerts === 1 ? 'התראה אחת בלו״ז' : stageAlerts + ' התראות בלו״ז');
   if (lateCount > 0) parts.push(lateCount === 1 ? 'הזמנה אחת באיחור החזרה' : lateCount + ' הזמנות באיחור החזרה');
   if (!parts.length) return null;
   return { count: stageAlerts + lateCount, tip: parts.join(' · ') };
