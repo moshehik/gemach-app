@@ -179,6 +179,8 @@ test('journal: 401 / 403 / 404, ואז שלבים + יומן: הכנה בוצע�
   assert.equal((await getJournal('53375')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-worker';
   assert.equal((await getJournal('x')).status, 404);
+  globalThis.__MOCK_DB.systemSetting.push({ key: 'shift_definitions', value: JSON.stringify([{ name: 'בוקר', from: '08:00', to: '16:00' }]) });
+  invalidateSettingsCache();
   const r = await getJournal(ORDER_UUID);
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const b = r.__json;
@@ -193,7 +195,7 @@ test('journal: 401 / 403 / 404, ואז שלבים + יומן: הכנה בוצע�
   const n = Object.fromEntries(b.journal.map((x) => [x.key, x]));
   assert.equal(n.prep.who, 'מנהלת סניף');
   assert.equal(n.prep.when.time, '11:20');
-  assert.equal(n.prep.shift.title, 'משמרת · 08:00–16:00');
+  assert.equal(n.prep.shift.title, 'משמרת בוקר · 08:00–16:00');
   assert.deepEqual(n.prep.shift.names, ['עובדת רגילה', 'מנהלת סניף']);
   assert.equal(n.order.who, 'עובדת רגילה');
   assert.equal(n.pay.paidText, 'שולם ₪300');
@@ -201,6 +203,18 @@ test('journal: 401 / 403 / 404, ואז שלבים + יומן: הכנה בוצע�
   assert.ok(!UUID_RE.test(JSON.stringify(b)), 'no employee / order ids in the journal');
   assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'shift').length, 1, 'one Shift query');
   noWrites();
+});
+
+test('journal: D3 - בלי shift_definitions אין מידע משמרת בכלל (אף צומת, בלי שאילתת Shift, בלי שמות עובדים במשמרת)', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  const r = await getJournal(ORDER_UUID);
+  assert.equal(r.status, 200);
+  assert.ok(r.__json.journal.every((n) => n.shift === null), 'no node carries shift info');
+  assert.ok(!/משמרת/.test(JSON.stringify(r.__json.journal)), 'no shift text at all');
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'shift').length, 0, 'no Shift query without definitions');
+  globalThis.__MOCK_DB.systemSetting.push({ key: 'shift_definitions', value: '[]' });
+  invalidateSettingsCache();
+  assert.ok((await getJournal(ORDER_UUID)).__json.journal.every((n) => n.shift === null), 'empty array = none');
 });
 
 test('journal: AMB-08 (B) - כל מי שיש לה page:orders יכולה לסמן גם בלי page:schedule (canMark); טבלת סימונים חסרה - marksAvailable=false, canMark=false, עדיין 200', async () => {

@@ -1,15 +1,13 @@
 'use client';
 
 // לשונית "היסטוריה" של כרטיס ההזמנה החדש (W6, PLAN §C): מלמעלה למטה כמו pHistory() בדגימה -
-//   1. "שלבי ההזמנה" (A5)            parts/OcStagesCard.js   ← GET /api/orders/[id]/journal (stages)
-//   2. "יומן הזמנה" (A20)            parts/OcJournalCard.js  ← אותה קריאה (journal)
-//   3. כותרת המקטע "מותאם" + "פעולות ושינויים" (R41/A21/A22) parts/OcHistoryFeed.js ← GET /api/orders/[id]/history?all=1
+//   1. "יומן הזמנה" (A20 + שלבי ההזמנה A5 - אוחדו לכרטיס אחד, D2 2026-10-05) parts/OcJournalCard.js ← GET /api/orders/[id]/journal (journal + stages)
+//   2. כותרת המקטע "מותאם" + "פעולות ושינויים" (R41/A21/A22) parts/OcHistoryFeed.js ← GET /api/orders/[id]/history?all=1
 // טעינה: בפעם הראשונה שהלשונית מוצגת (כל הלשוניות מורכבות תמיד - לא טוענים היסטוריה לכל פתיחת כרטיס), ומחדש בכל שינוי של
 // oc.historyVersion (עולה אחרי כל כתיבה בשרת - שמירה, פעולה מיידית, תשלום, אישור, ייצוא; W1) - כשהלשונית מוצגת, ואם לא - בפעם
 // הבאה שתוצג. סימון "הכנה בוצעה" (AMB-08) → POST /api/orders/[id]/prep-mark → oc.bumpHistory() (הפיד והיומן נטענים מחדש).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
-import OcStagesCard from '../parts/OcStagesCard';
 import OcJournalCard from '../parts/OcJournalCard';
 import OcHistoryFeed from '../parts/OcHistoryFeed';
 
@@ -95,10 +93,7 @@ export default function OcHistoryTab({ oc, ui, active }) {
   return (
     <>
       {journal ? (
-        <>
-          <OcStagesCard stages={journal.stages} canMark={!!journal.canMark} busyKey={markBusy} onMark={onMark} />
-          <OcJournalCard nodes={journal.journal} todayKey={journal.today && journal.today.dayKey} />
-        </>
+        <OcJournalCard nodes={journal.journal} stages={journal.stages} todayKey={journal.today && journal.today.dayKey} canMark={!!journal.canMark} busyKey={markBusy} onMark={onMark} />
       ) : null}
       <div className="sect-h">
         <div className="ico gold"><OcIcon name="sliders" size="lg" /></div>

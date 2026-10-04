@@ -192,7 +192,7 @@ test('g (סטטי): W3 מעדכן פריטים שכבר נשמרו בשרת דר
   const items = strip(read('hooks/useItemActions.js'));
   assert.ok(/syncItems: \(fn\) => ocRef\.current\.syncItems\(fn\)/.test(items));
   assert.ok(!/typeof [a-z.]*syncItems === 'function'/.test(items), 'ה-fallback הישן הוסר');
-  for (const f of ['hooks/usePaymentActions.js', 'parts/OcRail.js', 'parts/ocDocsActions.js', 'parts/OcMailSheet.js', 'parts/OcHistoryTable.js', 'parts/OcStagesCard.js']) {
+  for (const f of ['hooks/usePaymentActions.js', 'parts/OcRail.js', 'parts/ocDocsActions.js', 'parts/OcMailSheet.js', 'parts/OcHistoryTable.js']) {
     assert.ok(!/edit\.setItems|\bsetItems\(/.test(strip(read(f))), `${f}: אין עדכון פריטים ישיר`);
   }
 });

@@ -94,14 +94,15 @@ export async function GET(request, { params }) {
     const orderEmployeeName = named[0].employeeName || null;
     const auditRows = named.slice(1);
 
-    // AMB-18 (B): שמות משמרות לפי שעה (SystemSetting shift_definitions; ריק = הכותרת הרגילה "משמרת · HH:MM–HH:MM")
+    // AMB-18 (B): שמות משמרות לפי שעה (SystemSetting shift_definitions; ריק = בלי משמרות בכלל - D3)
     const shiftDefinitions = parseShiftDefinitions(map.shift_definitions);
     const base = { order: { orderId: order.orderId, orderDate: order.orderDate, employeeName: orderEmployeeName }, stages, auditRows, items, payments, todayKey, shiftDefinitions };
     // pass 1 (without shifts) -> the instants of the done nodes -> ONE Shift query (a window per instant) -> pass 2
     const first = buildOrderJournal(base);
     const instants = first.nodes.map((n) => n.when && !n.when.dateOnly && n.when.ts).filter(Boolean).map((t) => new Date(t));
     let shifts = [];
-    if (instants.length) {
+    // D3 (בעלים 2026-10-05): אין הגדרות משמרות = אין מידע משמרת בכלל (גם לא שאילתת Shift)
+    if (instants.length && shiftDefinitions.length) {
       const rows = await prisma.shift.findMany({
         where: { isDeleted: false, OR: instants.map((t) => ({ entryTime: { gte: new Date(t.getTime() - DAY_MS), lte: t } })) },
         select: { employeeId: true, entryTime: true, exitTime: true, employee: { select: { firstName: true, lastName: true, fullName: true } } },

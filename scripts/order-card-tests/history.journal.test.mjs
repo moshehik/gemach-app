@@ -123,15 +123,15 @@ test('משמרת (AMB-18): כניסה ≤ T ≤ יציאה, משמרת פתוח�
     { name: 'אסתר גולד', entryTime: IL('2026-10-05', '07:00'), exitTime: IL('2026-10-05', '18:00'), isDeleted: true },
     { name: 'יוסי מזרחי', entryTime: IL('2026-10-05', '10:00'), exitTime: null },
   ];
-  const s = shiftAt(shifts, T, { todayKey: '2026-10-05' });
+  const definitions = parseShiftDefinitions([{ name: 'יום', from: '00:00', to: '24:00' }]); // D3: בלי הגדרות אין משמרות בכלל
+  const s = shiftAt(shifts, T, { todayKey: '2026-10-05', definitions });
   assert.deepEqual(s.names, ['רחל כהן', 'שרה לוי', 'יוסי מזרחי']);
   assert.equal(s.from, '08:00');
   assert.equal(s.to, 'עכשיו');
-  assert.equal(s.title, 'משמרת · 08:00–עכשיו');
-  const closed = shiftAt(shifts.slice(0, 2), T, { todayKey: '2026-10-09' });
-  assert.equal(closed.title, 'משמרת · 08:00–16:00');
-  assert.equal(shiftAt(shifts, IL('2026-10-05', '06:00'), {}), null);
-  assert.equal(shiftAt(shifts, new Date('2026-10-04T21:00:00Z'), {}), null, 'a date-only instant (import) has no shift');
+  const closed = shiftAt(shifts.slice(0, 2), T, { todayKey: '2026-10-09', definitions });
+  assert.equal(closed.to, '16:00');
+  assert.equal(shiftAt(shifts, IL('2026-10-05', '06:00'), { definitions }), null);
+  assert.equal(shiftAt(shifts, new Date('2026-10-04T21:00:00Z'), { definitions }), null, 'a date-only instant (import) has no shift');
   assert.equal(timeOf(T), '11:20');
 });
 
@@ -152,12 +152,12 @@ test('יומן: מי/מתי לכל שלב מכל מקור, צומת תשלום �
     { id: 'p3', amount: 100, paymentDate: IL('2026-09-24', '10:19'), isDeleted: true },
   ];
   const shifts = [{ name: 'רחל כהן', entryTime: IL('2026-09-23', '08:00'), exitTime: IL('2026-09-23', '16:00') }, { name: 'שרה כהן', entryTime: IL('2026-09-23', '08:00'), exitTime: IL('2026-09-23', '16:00') }];
-  const j = buildOrderJournal({ order: { orderId: 53375, orderDate: o.orderDate, employeeName: 'רחל כהן' }, stages, auditRows: audit, items: o.items, payments, shifts, todayKey: '2026-10-07' });
+  const j = buildOrderJournal({ order: { orderId: 53375, orderDate: o.orderDate, employeeName: 'רחל כהן' }, stages, auditRows: audit, items: o.items, payments, shifts, todayKey: '2026-10-07', shiftDefinitions: parseShiftDefinitions([{ name: 'בוקר', from: '08:00', to: '16:00' }]) });
   const n = Object.fromEntries(j.nodes.map((x) => [x.key, x]));
   assert.deepEqual(j.nodes.map((x) => x.key).slice(0, 2), ['order', 'pay'], 'payment node right after the order (as in the design)');
   assert.equal(n.order.who, 'רחל כהן');
   assert.equal(n.order.when.time, '10:12');
-  assert.equal(n.order.shift.title, 'משמרת · 08:00–16:00');
+  assert.equal(n.order.shift.title, 'משמרת בוקר · 08:00–16:00');
   assert.deepEqual(n.order.shift.names, ['רחל כהן', 'שרה כהן']);
   assert.equal(n.pay.done, true);
   assert.equal(n.pay.paid, 530, 'net of live payments');
@@ -243,12 +243,13 @@ test('שמות משמרות: כותרת הטולטיפ "משמרת בוקר · 0
   assert.equal(named.title, 'משמרת בוקר · 08:00–16:00');
   assert.equal(named.name, 'בוקר');
   assert.deepEqual(named.names, ['רחל כהן', 'שרה לוי']);
-  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09' }).title, 'משמרת · 08:00–16:00', 'בלי הגדרות: כמו היום');
-  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: [] }).title, 'משמרת · 08:00–16:00');
+  // D3 (בעלים 2026-10-05): כל עוד לא הוגדרו משמרות - אין מידע משמרת בכלל (לא כותרת, לא שמות, לא שעות)
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09' }), null, 'בלי הגדרות: אין משמרת');
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: [] }), null);
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: undefined }), null);
   const evening = parseShiftDefinitions([{ name: 'ערב', from: '16:00', to: '23:00' }]);
   const noMatch = shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: evening });
-  assert.equal(noMatch.title, 'משמרת · 08:00–16:00', 'השעה לא באף הגדרה - נפילה לכותרת הרגילה');
-  assert.equal(noMatch.name, undefined);
+  assert.equal(noMatch, null, 'השעה לא באף הגדרה - אין משמרת (D3)');
   assert.equal(shiftAt(SHIFTS_1120, IL('2026-10-05', '06:00'), { definitions: DEFS }), null, 'אין עובדים במשמרת = אין משמרת (גם עם הגדרה)');
   assert.equal(shiftAt(SHIFTS_1120, new Date('2026-10-04T21:00:00Z'), { definitions: DEFS }), null, 'תאריך בלבד (ייבוא) - בלי משמרת');
 });
@@ -266,7 +267,8 @@ test('שמות משמרות: buildOrderJournal מעביר את ההגדרות ל
   const plain = buildOrderJournal(base);
   const named = buildOrderJournal({ ...base, shiftDefinitions: DEFS });
   const nodes = (j) => Object.fromEntries(j.nodes.map((n) => [n.key, n]));
-  assert.equal(nodes(plain).prep.shift.title, 'משמרת · 08:00–16:00');
+  assert.ok(Object.values(nodes(plain)).every((x) => x.shift === null), 'D3: בלי הגדרות אף צומת לא נושא משמרת');
+  assert.ok(Object.values(nodes(named)).some((x) => x.shift), 'עם הגדרות - יש');
   assert.equal(nodes(named).prep.shift.title, 'משמרת בוקר · 08:00–16:00');
   assert.equal(nodes(named).pay.shift.title, 'משמרת ערב · 16:00–24:00', 'צומת התשלום (17:30) = ערב');
   assert.deepEqual(buildOrderJournal({ ...base, shiftDefinitions: [] }), plain, 'הגדרות ריקות = בדיוק כמו בלי');

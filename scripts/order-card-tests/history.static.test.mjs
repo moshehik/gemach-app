@@ -9,7 +9,7 @@ import path from 'node:path';
 const PROJ = process.env.PROJ;
 const read = (rel) => fs.readFileSync(path.join(PROJ, rel), 'utf8');
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
-const W6_UI = ['app/components/order-card/tabs/OcHistoryTab.js', 'app/components/order-card/parts/OcStagesCard.js', 'app/components/order-card/parts/OcJournalCard.js',
+const W6_UI = ['app/components/order-card/tabs/OcHistoryTab.js', 'app/components/order-card/parts/OcJournalCard.js',
   'app/components/order-card/parts/OcHistoryFeed.js', 'app/components/order-card/parts/OcHistoryTable.js', 'app/components/order-card/parts/OcHighlight.js', 'app/components/order-card/parts/ocHistoryModel.js'];
 
 test('הלשונית רשומה ב-tabs/index.js (שורת W6) ונטענת מחדש לפי oc.historyVersion', () => {
@@ -102,4 +102,24 @@ test('review a11y: תפריט הסינון - roving focus (חצים / Home / End
   assert.match(feed, /\(e\.key === 'Enter' \|\| e\.key === ' '\)[^)]*toggle\(cats\[i\]\[0\]\)|toggle\(cats\[i\]\[0\]\)/);
   assert.match(feed, /first\.focus\(\)/, 'opening focuses the first option');
   assert.match(feed, /trigRef\.current\.focus\(\)/, 'Escape returns focus to the trigger');
+});
+
+// D2 (בעלים 2026-10-05): "שלבי ההזמנה" ו"יומן הזמנה" אוחדו לכרטיס אחד; אין כרטיס/שורה נפרדת "עורך ההזמנה" - מי יצר מופיע בשלב "הזמנה" ביומן
+test('D2: כרטיס אחד (OcJournalCard) לשלבים + יומן; אין OcStagesCard; אין "עורך ההזמנה" / "בוצעה על ידי"; הלשונית מרנדרת כרטיס יחיד', () => {
+  assert.ok(!fs.existsSync(path.join(PROJ, 'app/components/order-card/parts/OcStagesCard.js')), 'the separate stages card is gone');
+  const tab = strip(read('app/components/order-card/tabs/OcHistoryTab.js'));
+  assert.ok(!/OcStagesCard/.test(tab));
+  assert.equal((tab.match(/<OcJournalCard /g) || []).length, 1);
+  assert.match(tab, /<OcJournalCard [^>]*stages=\{journal\.stages\}[^>]*canMark=[^>]*onMark=\{onMark\}/, 'mark buttons live inside the merged list');
+  const card = read('app/components/order-card/parts/OcJournalCard.js');
+  assert.equal((card.match(/<div className="card /g) || []).length, 1, 'one card in the file');
+  assert.match(card, /data-act="prep-mark"/);
+  assert.match(card, /data-act="prep-unmark"/);
+  for (const f of W6_UI) assert.ok(!/עורך ההזמנה|בוצעה על ידי|עובדים פעילים בהזמנה/.test(strip(read(f))), `${f}: no separate order-editor / performed-by card`);
+});
+
+test('D3: כרטיס היומן מציג כפתור משמרת רק כשהצומת נושא shift (אין חזרה לכותרת "משמרת · HH:MM")', () => {
+  const card = strip(read('app/components/order-card/parts/OcJournalCard.js'));
+  assert.match(card, /doneBy && n\.shift \? <ShiftButton/);
+  assert.ok(!/משמרת ·/.test(card));
 });
