@@ -34,6 +34,26 @@ const BOARD = [
   ['אייקון במונה', '#month .lz-pr .ic', '#month .lz-pr .ic', []],
   ['סימן התראה', '#month .lz-al', '#month .lz-al', ['margin']],
 ];
+// תצוגת הרשימה (שינוי הבעלים 5.10: שורה כמו תוצאת חיפוש בדף הבית): הדמו נבנה מאותו קוד, ולכן זו בדיקת עקביות של שורת הרשימה ושל חלקיה
+const LIST = [
+  ['כרטיס הרשימה', '#month .bd-lcard', '#month .bd-lcard', ['height']],
+  ['רשימה', '#month .bd-list', '#month .bd-list', ['height']],
+  ['שורת יום', '#month .bd-lrow:not(.bd-latecell):not(.bd-ltoday)', '#month .bd-lrow:not(.bd-latecell):not(.bd-ltoday)', []],
+  ['שורת יום באיחור', '#month .bd-lrow.bd-latecell', '#month .bd-lrow.bd-latecell', []],
+  ['לוחית יום', '#month .bd-lrow .ic-b', '#month .bd-lrow .ic-b', []],
+  ['אייקון בלוחית', '#month .bd-lrow .ic-b .ic', '#month .bd-lrow .ic-b .ic', []],
+  ['אות היום בלוחית', '#month .bd-lrow .rlbl', '#month .bd-lrow .rlbl', []],
+  ['כותרת השורה', '#month .bd-lrow .t', '#month .bd-lrow .t', []],
+  ['היום העברי', '#month .bd-lrow .t b', '#month .bd-lrow .t b', []],
+  ['פרשה / חג', '#month .bd-lrow .t .ln', '#month .bd-lrow .t .ln', []],
+  ['מוני השורה', '#month .bd-lrow .bd-lc', '#month .bd-lrow .bd-lc', []],
+  ['מונה בשורה', '#month .bd-lrow .lz-pr:not(.al)', '#month .bd-lrow .lz-pr:not(.al)', []],
+  ['מונה בשורה עם התראה', '#month .bd-lrow .lz-pr.al', '#month .bd-lrow .lz-pr.al', []],
+  ['אייקון במונה בשורה', '#month .bd-lrow .lz-pr .ic', '#month .bd-lrow .lz-pr .ic', []],
+  ['מספר במונה בשורה', '#month .bd-lrow .lz-pr b', '#month .bd-lrow .lz-pr b', []],
+  ['סימן התראה בשורה', '#month .bd-lrow .lz-al', '#month .bd-lrow .lz-al', []],
+  ['חץ השורה', '#month .bd-lrow .go', '#month .bd-lrow .go', []],
+];
 const HF = [
   ['שורת החיפוש', '#hfBar .hf-s', '#bdSearch .hf-s', []],
   ['אייקון חיפוש', '#hfBar .hf-s>svg.ic', '#bdSearch .hf-s>svg.ic', []],
@@ -98,6 +118,18 @@ async function realBoard() {
   await sleep(400); await p.mouse.move(2, 2);
   return dump(BOARD, 'real')(p);
 }
+async function demoList() {
+  await p.goto(DEMO, { waitUntil: 'load' }); await sleep(1800); await clean();
+  await p.evaluate(() => { const g = document.querySelectorAll('#mvsw .vopt')[1]; if (g) g.click(); });
+  await sleep(500); await p.mouse.move(2, 2);
+  return dump(LIST, 'demo')(p);
+}
+async function realList() {
+  await p.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' }); await sleep(1500);
+  await p.evaluate(() => { const g = document.querySelectorAll('#mvsw .vopt')[1]; if (g) g.click(); });
+  await sleep(500); await p.mouse.move(2, 2);
+  return dump(LIST, 'real')(p);
+}
 async function demoHf(open) {
   await p.goto(DEMO_OC, { waitUntil: 'load' }); await sleep(1500);
   await p.evaluate(() => { const t = [...document.querySelectorAll('button,a,[role=tab]')].find((x) => /היסטוריה/.test(x.textContent || '') && x.offsetParent); if (t) t.click(); });
@@ -126,6 +158,7 @@ function compare(title, d, r) {
   }
 }
 compare('לוח', await demoBoard(), await realBoard());
+compare('תצוגת רשימה (שורות כמו תוצאות חיפוש)', await demoList(), await realList());
 compare('שורת חיפוש + סינון (סגור)', await demoHf(false), await realHf(false));
 compare('סינון פתוח', await demoHf(true), await realHf(true));
 console.log(`\nלא מוסברים: ${unexplained}`);
