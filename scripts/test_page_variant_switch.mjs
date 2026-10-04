@@ -64,8 +64,8 @@ await t('דפים בלי גרסה ישנה ודף הכניסה לא ברשומה
 await t('scripts/set-ui-variant.js מכיר בדיוק את מסכי הרשומה', () => {
   assert.deepEqual(require('./set-ui-variant.js').SCREENS, UI_SCREEN_IDS);
 });
-await t('תפקיד ברירת המחדל החדשה = DEVELOPER_ONLY_ROLES ב-lib/auth.js; תפקידי המעבר העצמאי = HEAD_MANAGEMENT_ROLES', () => {
-  const auth = read('lib/auth.js');
+await t('תפקיד ברירת המחדל החדשה = DEVELOPER_ONLY_ROLES ב-lib/roles.js; תפקידי המעבר העצמאי = HEAD_MANAGEMENT_ROLES', () => {
+  const auth = read('lib/roles.js'); // הקבועים עברו ל-lib/roles.js (employee-card fix), lib/auth.js מייצא אותם מחדש
   assert.deepEqual([...NEW_DESIGN_DEFAULT_ROLE_IDS], JSON.parse(/DEVELOPER_ONLY_ROLES = (\[[^\]]*\])/.exec(auth)[1]));
   assert.deepEqual([...SELF_SWITCH_ROLE_IDS], JSON.parse(/HEAD_MANAGEMENT_ROLES = (\[[^\]]*\])/.exec(auth)[1]));
 });

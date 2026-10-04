@@ -223,7 +223,8 @@ t('השערים בדפים עצמם: כל אריח "מתכנת בלבד" מוב�
     assert.ok(layoutsFor(x.href).some((src) => /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/.test(src)), `${x.href}: הדף לא בשער מתכנת`);
   }
   // /dashboard: השער בתוך page.js עצמו (layout משותף היה חוסם גם את /dashboard/dresses)
-  for (const x of TOOLS) {
+  // (גם כאן /design-system פטור — AH-02: קובץ סטטי ציבורי בכוונה; השער הוא רק על האריח)
+  for (const x of TOOLS.filter((y) => y.href !== '/design-system')) {
     const srcs = [...layoutsFor(x.href), ...(x.href === '/dashboard' ? [read('../app/dashboard/page.js')] : [])];
     // דף בשער הרשאות (PageGate page:*): הנהלה ראשית / מתכנת תמיד עוברים (ALWAYS_ALLOWED_ROLE_IDS = שער head), אז האריח בשער head מדויק
     if (x.pageKey) { assert.equal(x.gate, 'head'); assert.ok(srcs.some((src) => src.includes(`<PageGate pageKey="${x.pageKey}">`)), `${x.href}: אין PageGate ${x.pageKey}`); continue; }
@@ -263,7 +264,7 @@ t('חיפוש בלי מונה: שדה .hf-s מסנן לפי כותרת, תיאו
   assert.equal(normSearch('הו"ק'), normSearch('הו״ק'));
   assert.equal(normSearch("ת'ז"), normSearch('ת׳ז'));
   assert.equal(normSearch('“הו”ק'), normSearch('"הו"ק'));
-  assert.deepEqual(g('הו"ק').flatMap((x) => x.tools.map((y) => y.id)), ['nedarim-hok-search', 'nedarim-hok-edit']);
+  assert.deepEqual(g('הו"ק').flatMap((x) => x.tools.map((y) => y.id)), ['nedarim-hok-list', 'nedarim-hok-search', 'nedarim-hok-edit']); // AH-03: רשימת הו״ק פתוחה גם למתכנת (accessForRole(2))
   assert.ok(toolMatches({ title: 'בדיקה', desc: 'ת׳ז' }, "ת'ז"), 'גרש עברי מול גרש רגיל');
   has(PAGE, /לא נמצאו כלים התואמים לחיפוש/, 'מצב ריק');
 });
