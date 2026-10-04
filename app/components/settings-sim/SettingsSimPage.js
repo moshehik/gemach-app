@@ -839,7 +839,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
                 <section className={`panel on${visibleTab.dim ? ' st-dim' : ''}`} id={`p-${view}-${visibleTab.id}`} role="tabpanel" data-panel={visibleTab.id}>
                   {visibleTab.sections.map(renderSection)}
                   {visibleTab.id === 'unused' && !q ? (
-                    <p className="st-note">המפתחות בלשונית הזו לא נקראים היום בשום קוד (חלקם עברו למסך ההרשאות). הם נשמרים לתיעוד בלבד.</p>
+                    <p className="st-note">המפתחות בלשונית הזו אינם נקראים היום בשום קוד פעיל (נבדק מול הקוד; הערות ותיעוד לא נחשבים). חלקם עברו למסך ההרשאות. הם נשמרים לתיעוד בלבד.</p>
                   ) : null}
                 </section>
               ) : null}

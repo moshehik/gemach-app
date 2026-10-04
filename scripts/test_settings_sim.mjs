@@ -424,4 +424,12 @@ t('#8 אמצעי תשלום: אי אפשר לכבות את האחרון (נשא�
   assert.equal(L.methodsToggle(choices, '', 'מזומן'), 'מזומן', 'מרשימה ריקה אפשר להדליק');
 });
 
+t('#9 gmach_subtitle (נקרא ב-layout / buildMenuTree / loginFlow) מוצג בלשונית המיתוג ולא ב"לא בשימוש"', () => {
+  assert.deepEqual(L.placeRow({ key: 'gmach_subtitle', category: 'לא בשימוש' }), { view: 'sys', tab: 'brand', sectionId: 'identity' });
+  const dead = L.SECTIONS.find((s) => s.id === 'dead');
+  assert.ok(!dead.keys.includes('gmach_subtitle'));
+  const usedBy = ['../app/layout.js', '../lib/menu/buildMenuTree.js', '../lib/loginFlow.js'].filter((f) => existsSync(new URL(f, import.meta.url)) && /gmach_subtitle/.test(read(f)));
+  assert.ok(usedBy.length >= 1, 'עדיין נקרא בקוד: ' + usedBy.join(','));
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
