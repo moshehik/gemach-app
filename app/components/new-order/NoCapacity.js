@@ -30,7 +30,7 @@ function Glance({ results, occLabel, reserveLabel }) {
     <div className="glance no-cap-glance">
       <span className="gl" tabIndex={0}><Ic n="box" /><span className="gv">במלאי {results.inStock}</span></span>
       <span className="gl" tabIndex={0}><Ic n="cal" /><span className="gv">{occLabel} {results.occupiedCount}</span></span>
-      <span className="gl" tabIndex={0}><Ic n="check" /><span className="gv">{reserveLabel} {results.reserve}</span></span>
+      <span className={`gl ${results.reserve > 0 ? 'ok' : 'no'}`} tabIndex={0}><Ic n="check" /><span className="gv">{reserveLabel} {results.reserve}</span></span>
     </div>
   );
 }
@@ -52,7 +52,7 @@ function OccupiedTable({ orders, actionHead, actionLabel, currentOrderId }) {
                   {isCurrent ? <> <span className="chip gold">הזמנה נוכחית</span></> : null}
                 </td>
                 <td>{o.customerName}</td>
-                <td><span className="chip red">{o.quantity}</span></td>
+                <td>{o.quantity}</td>
                 <td><a className="btn sm" href={orderLink(o)} target="_blank" rel="noopener noreferrer"><Ic n="ext" c="sm" />{actionLabel}</a></td>
               </tr>
             );
@@ -222,11 +222,11 @@ export function ItemCapacityDialog({ item, order, currentOrderId, onClose }) {
       {loading ? <div className="muted no-cap-load" role="status" aria-live="polite">טוען נתוני תפוסה...</div> : null}
       {error ? <Note>{error}</Note> : null}
       {results && !loading ? (
-        <div className="no-cap-body">
+        <>
           <Glance results={results} occLabel="בתפוסה מתוכננת" reserveLabel="רזרבה זמינה" />
           <ResultsView results={results} view={view} setView={setView} showToggle={results.occupiedCount > 0} range={range} startKey={eventKey} today={today}
             actionHead="הזמנה" actionLabel="צפה בהזמנה" currentOrderId={currentOrderId} />
-        </div>
+        </>
       ) : null}
       <div className="dbtns" style={{ marginTop: 16 }}>
         <button type="button" className="btn ghost block" data-autofocus onClick={onClose}><Ic n="x" c="sm" />סגירה</button>
@@ -356,7 +356,7 @@ export function CapacitySearchDialog({ onClose }) {
           })}
         </div>
       ) : null}
-      <form onSubmit={(e) => { e.preventDefault(); performSearch(); }} noValidate>
+      <>
         <div className="mfld" style={{ position: 'relative' }}>
           <label className="lbl with-ic" htmlFor="noCapModel"><Ic n="dress" c="sm" />דגם</label>
           <div className="inpw">
@@ -364,7 +364,8 @@ export function CapacitySearchDialog({ onClose }) {
               value={modelQuery}
               onChange={(e) => { setModelQuery(e.target.value); setShowModelList(true); if (barcodePrefix) { setBarcodePrefix(''); setSize(''); } }}
               onFocus={(e) => { setShowModelList(true); if (barcodePrefix) e.target.select(); }}
-              onBlur={() => setShowModelList(false)} />
+              onBlur={() => setShowModelList(false)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); performSearch(); } }} data-autofocus />
             {barcodePrefix ? <button type="button" className="inpx" aria-label="נקה בחירה" data-tip="נקה בחירה" onClick={clearModel}><Ic n="x" c="sm" /></button> : null}
           </div>
           {showModelList && !barcodePrefix && filteredModels.length > 0 ? (
@@ -380,7 +381,7 @@ export function CapacitySearchDialog({ onClose }) {
         <div className="mfld" style={{ marginTop: 12 }}>
           <label className="lbl with-ic" htmlFor="noCapSize"><Ic n="tag" c="sm" />מידה</label>
           <div className="inpw">
-            <select className="inp" id="noCapSize" value={size} onChange={(e) => setSize(e.target.value)} disabled={!barcodePrefix || sizes.length === 0}>
+            <select className="inp" id="noCapSize" value={size} onChange={(e) => setSize(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); performSearch(); } }} disabled={!barcodePrefix || sizes.length === 0}>
               <option value="">{!barcodePrefix ? 'בחר דגם תחילה' : (sizes.length === 0 ? 'אין מידות לדגם' : 'בחר מידה...')}</option>
               {sizes.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -400,21 +401,19 @@ export function CapacitySearchDialog({ onClose }) {
           ) : null}
         </div>
         {error ? <Note style={{ marginTop: 14 }}>{error}</Note> : null}
+        {results ? (
+          <div className="no-cap-res" style={{ marginTop: 14 }}>
+            <Glance results={results} occLabel="בתפוסה" reserveLabel="רזרבה" />
+            <ResultsView results={results} view={view} setView={setView} showToggle range={resultRange} startKey={resultRange.fromDate} today={today}
+              actionHead="פעולות" actionLabel="פתח" currentOrderId={null} />
+          </div>
+        ) : null}
         <div className="dbtns" style={{ marginTop: 16 }}>
-          <button type="submit" className="btn primary lg block" disabled={loading} aria-busy={loading}><Ic n="search" />{loading ? 'מחפש...' : 'חפש'}</button>
+          <button type="button" className="btn primary lg block" disabled={loading} aria-busy={loading} onClick={() => performSearch()}><Ic n="search" />{loading ? 'מחפש...' : 'חפש'}</button>
           <button type="button" className="btn block" onClick={handleClear}><Ic n="eraser" c="sm" />נקה הכל</button>
+          <button type="button" className="btn ghost block" onClick={onClose}><Ic n="x" c="sm" />סגירה</button>
         </div>
-      </form>
-      {results ? (
-        <div className="no-cap-body" style={{ marginTop: 18 }}>
-          <Glance results={results} occLabel="בתפוסה" reserveLabel="רזרבה" />
-          <ResultsView results={results} view={view} setView={setView} showToggle range={resultRange} startKey={resultRange.fromDate} today={today}
-            actionHead="פעולות" actionLabel="פתח" currentOrderId={null} />
-        </div>
-      ) : null}
-      <div className="dbtns" style={{ marginTop: 16 }}>
-        <button type="button" className="btn ghost block" onClick={onClose}><Ic n="x" c="sm" />סגירה</button>
-      </div>
+      </>
     </DialogFrame>
   );
 }

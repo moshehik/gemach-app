@@ -592,13 +592,13 @@ t('new-order.css: כל כלל בהיקף .gm-ds.gm-no (חוץ מביטול רי�
   for (const r of noRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-no(\s|$)/.test(s) && !NO_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
   assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
 });
-t('new-order.css: אין רקע לבן קשיח לבלוקים; !important על רקע רק לשיטוח (none/transparent), לכרטיס הפנינה או לאריח האייקון (.ico) של העיצוב', () => {
+t('new-order.css: אין רקע לבן קשיח לבלוקים; !important על רקע רק לשיטוח (none/transparent), לכרטיס הפנינה, לאריח האייקון (.ico) של העיצוב או לכותרת הטבלה בחלון התפוסה (.rtbl>thead>tr>th, globals.css כופה רקע על כל th)', () => {
   const bad = [];
   for (const r of noRules) {
     for (const d of setsProp(r, /^background(-color|-image)?$/)) {
       const v = d.value.replace(/!important/i, '').trim();
       if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
-      if (isImportant(d) && !/^(none|transparent)$/.test(v) && !PEARL_RE.test(v.replace(/\s+/g, '')) && !/ \.ico\[class\]$/.test(r.sel)) bad.push('!important: ' + r.sel + ' ' + v.slice(0, 40));
+      if (isImportant(d) && !/^(none|transparent)$/.test(v) && !PEARL_RE.test(v.replace(/\s+/g, '')) && !/ \.ico\[class\]$/.test(r.sel) && !/\.rtbl>thead>tr>th$/.test(r.sel)) bad.push('!important: ' + r.sel + ' ' + v.slice(0, 40));
     }
   }
   assert.deepEqual(bad, []);

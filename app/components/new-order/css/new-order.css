@@ -207,7 +207,6 @@
 /* ===== R22: חלון "בדוק תפוסה" (#dlg2 כהה) - מתג רשימה / לוח, סיכום, טבלה, הלוח העברי (.hc) עם התפוסה ===== */
 /* סיכום במלאי / בתפוסה / רזרבה: כמו בעיצוב (padding:0 0 14px; 3 עמודות), הטקסט עובר שורה במקום להיחתך */
 .gm-ds.gm-no .dlg .no-cap-glance{padding:0 0 14px;grid-template-columns:repeat(3,minmax(0,1fr))}
-.gm-ds.gm-no .dlg .no-cap-glance .gl{padding:8px 10px}
 .gm-ds.gm-no .dlg .no-cap-glance .gv{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
 /* מתג רשימה / לוח: .seg.pill של הפלטה (בעיצוב מוגדר רק בתוך .app) כהה - מחוון בהיר על רקע החלון */
 .gm-ds.gm-no .dlg .seg.pill{position:relative;display:flex;background:transparent;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;padding:4px;gap:0;max-width:100%;--i:0;--n:2}
@@ -248,3 +247,5 @@
 .gm-ds.gm-no .no-banner .nb-msg span{white-space:normal;overflow:visible;text-overflow:clip}
 .gm-ds.gm-no .no-banner .nb-r{align-items:flex-start;padding-block:10px}
 .gm-ds.gm-no .no-banner .nb-r span{padding-top:3px}
+/* כותרת הטבלה: globals.css כופה על כל <th> רקע קרם וצל (!important), design-overrides גופן - בעיצוב כחול כהה וזהב (כמו attendance.css) */
+.gm-ds.gm-no .dlg .rtbl>thead>tr>th{position:static!important;background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;outline:0;border-bottom:0!important}
