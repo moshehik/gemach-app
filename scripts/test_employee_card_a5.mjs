@@ -315,6 +315,12 @@ await t('דליפות: אין :root / body (מלבד כלל ההדפסה) / html
   assert.doesNotMatch(code, /(^|[},])\s*(:root|html)\b/);
   assert.doesNotMatch(code, /gm-home/);
 });
+await t('EC-01 (עדכון): מתג הנסיעות נשאר עם כותרת שדה (.lbl) כמו "אופן תשלום"; EC-12 (עדכון): הרשת במקסימום 2 עמודות', () => {
+  assert.match(a5Code, /className="field ec-travel"><span className="lbl" id="ec-travel-l">זכאות לנסיעות<\/span>/);
+  assert.match(a5Code, /name="travelExpenses"/);
+  assert.match(css, /\.gm-ds\.gm-ec \.app\.ec \.dfields \.grid2\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(css, /auto-fit/);
+});
 await t('התקנים: בלי window.alert / confirm, חלונות כהים דרך portal, אימות מנהל בשכבה 2, avatar לא נשמר כמסמך', () => {
   for (const f of ['EmployeeCardA5', 'EcApproval', 'EcAttendance', 'EcHistory', 'EcMail', 'EcPermissions', 'EcUi']) {
     const code = stripComments(read(`app/components/employee-card/${f}.js`));

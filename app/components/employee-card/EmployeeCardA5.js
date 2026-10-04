@@ -475,9 +475,7 @@ export default function EmployeeCardA5({ employeeId }) {
                   <div className="grid2">
                     <div className="field"><label className="lbl" htmlFor="employee-detail-hourlyWage">שכר לשעה (₪)</label><div className="inpw money"><span className="aff" aria-hidden="true">₪</span><input className="inp" type="number" step="0.01" inputMode="decimal" id="employee-detail-hourlyWage" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
                     <div className="field"><label className="lbl" htmlFor="employee-detail-paymentMethod">אופן תשלום</label><div className="inpw"><Ic id="bank" size="sm" /><input className="inp" type="text" id="employee-detail-paymentMethod" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} autoComplete="off" {...NO_FILL} /></div></div>
-                  </div>
-                  <div className="pf-prefs ec-sw1">
-                    <div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-travelExpenses" name="travelExpenses" checked={!!employee.travelExpenses} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-travelExpenses" className="pf-pl">זכאות לנסיעות</label></div>
+                    <div className="field ec-travel"><span className="lbl" id="ec-travel-l">זכאות לנסיעות</span><div className="trow"><label className="sw"><input type="checkbox" id="employee-detail-travelExpenses" name="travelExpenses" aria-labelledby="ec-travel-l" checked={!!employee.travelExpenses} onChange={handleChange} /><i /></label><label htmlFor="employee-detail-travelExpenses" className="pf-pl">{employee.travelExpenses ? 'זכאי לנסיעות' : 'לא זכאי לנסיעות'}</label></div></div>
                   </div>
                 </section>
 
