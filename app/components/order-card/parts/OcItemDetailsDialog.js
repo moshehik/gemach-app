@@ -10,22 +10,12 @@ import { isVisibleChangeKey, labelChangeValue, normalizeChange } from '@/compone
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { fmtMoney, hebDateOf } from '../orderCardLogic';
-import { addedAtOf, dedupeAuditLogs, isLegacyItem, israelTimeOf, itemName } from '../hooks/useItemActions';
+import { addedAtOf, dedupeAuditLogs, isLegacyItem, israelTimeOf, itemName, itemObligations } from '../hooks/useItemActions';
 
 // שדות פנימיים של עגלת הקניות — לא מעניינים ביומן (MIM :18)
 const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
 const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
 
-// חיובי הפריט (MIM :1305-1342)
-export function itemObligations(obligations, itemId) {
-  const searchStr = `(פריט #${itemId})`;
-  return (obligations || []).filter(o => !o.isDeleted && o.description && o.description.includes(searchStr)).map(o => {
-    const isCredit = o.amount < 0;
-    const label = cleanTxt(o.productName) || (isCredit ? 'זיכוי / ביטול' : (o.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
-    const desc = cleanTxt(o.description);
-    return { id: o.id, label, desc: desc && desc !== label ? desc : '', amount: Number(o.amount) || 0, isCredit };
-  });
-}
 
 const dayTime = (v, withTime = true) => {
   const d = hebDateOf(v);

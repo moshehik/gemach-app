@@ -14,16 +14,10 @@ import { calculateDynamicAvailability } from '@/lib/clientInventory';
 import { sortSizeRows } from '@/lib/sizeSort';
 import OcIcon from '../OcIcon';
 import { buildPreviewBody, fmtMoney } from '../orderCardLogic';
-import { isChecked } from '../hooks/useItemActions';
+import { isChecked, displayModelName, sizeInfo, hypotheticalItem, priceFromPreview, feeFromPreview } from '../hooks/useItemActions';
 
 const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
-// "ללא שם" → קוד הדגם (OrderModelSelector.displayModelName)
-export function displayModelName(model) {
-  const name = (model?.name || '').trim();
-  if (name.startsWith('ללא שם') && model?.barcodePrefix) return String(model.barcodePrefix);
-  return name;
-}
 
 // ---------- דגם: שדה עם רשימת הצעות ----------
 export function ModelInput({ id, value, onChange, ui, disabled }) {
@@ -165,26 +159,6 @@ export function useSizeRows(modelId, order, inventoryCache, cartItems) {
   return fetched.key === fetchKey ? { rows: fetched.rows, loading: false } : { rows: [], loading: true };
 }
 
-// טקסט הזמינות של הישן (OrderSizeSelector :104-121) + האם מנוטרלת
-export function sizeInfo(row, order) {
-  const normalAvail = row.withNormalBuffer?.availableQuantity ?? row.availableQuantity;
-  const customAvail = row.withCustomSpacing?.availableQuantity;
-  const hasCustom = !!order && order.customSpacing !== undefined && order.customSpacing !== null;
-  const selectedAvail = hasCustom ? customAvail : normalAvail;
-  const disabled = selectedAvail !== undefined && selectedAvail !== null && selectedAvail <= 0;
-  let info;
-  if (normalAvail !== undefined) {
-    if (row.withCustomSpacing) {
-      const gain = row.withCustomSpacing.gain || 0;
-      info = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${row.totalInStock}`;
-    } else {
-      info = `פנוי ${normalAvail} מתוך ${row.totalInStock}`;
-    }
-  } else {
-    info = `במלאי: ${row.totalQuantity || row.totalInStock}`;
-  }
-  return { size: row.sizeText || row.size, info, disabled };
-}
 
 // variant="pill": גלולת בחירה (seg pill + pth) כמו "מידה חלופית פנויה" בחלון העריכה של העיצוב
 export function SizeButtons({ rows, order, value, onChange, allow, loading, labelledBy, variant }) {
@@ -232,30 +206,6 @@ export function AltFields({ value, onChange, idPrefix, lockedParts = false, labe
   );
 }
 
-// ---------- A27: מחיר השכרה ודמי ביטול מהמנוע ----------
-// פריט "היפותטי" (לא נשמר) נשלח ל-preview-pricing (אותו endpoint וגוף כמו התצוגה המקדימה של הישן, בלי כתיבה) עם שאר הפריטים:
-// פעם פעיל → סכום חיובי ההשכרה שלו (בלי שורות "תיקון"); פעם כמבוטל עכשיו → מה שהיה נשאר לתשלום (= דמי הביטול לפי המדרגות).
-export const PREVIEW_ITEM_ID = 'oc-add-preview';
-export function hypotheticalItem(model, draft) {
-  return {
-    id: PREVIEW_ITEM_ID,
-    legacyId: null,
-    sizeText: draft.sizeText,
-    neckAlteration: draft.neckAlteration || 0,
-    sleeveAlteration: draft.sleeveAlteration || 0,
-    lengthAlteration: draft.lengthAlteration || '',
-    isDeleted: false,
-    dressItem: { id: PREVIEW_ITEM_ID, dressModelId: model.id, sizeText: draft.sizeText, dress: { id: model.id, name: model.name, priceCategory: model.priceCategory || '', isPremium: !!model.isPremium, barcodePrefix: model.barcodePrefix } },
-  };
-}
-export function priceFromPreview(newObligations) {
-  return (newObligations || []).filter(o => o.orderItemId === PREVIEW_ITEM_ID && Number(o.amount) > 0 && !/^תיקון/.test(o.description || ''))
-    .reduce((s, o) => s + Number(o.amount), 0);
-}
-export function feeFromPreview(newObligations) {
-  const net = (newObligations || []).filter(o => o.orderItemId === PREVIEW_ITEM_ID).reduce((s, o) => s + (Number(o.amount) || 0), 0);
-  return Math.max(0, Math.round(net * 100) / 100);
-}
 function useAddPricePreview(oc, model, draft) {
   const [res, setRes] = useState({ key: '', price: null, fee: null });
   const orderId = oc.order?.orderId;

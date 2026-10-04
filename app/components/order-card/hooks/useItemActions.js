@@ -27,7 +27,7 @@ import { describeMismatch } from '@/lib/rentalBarcodeMatch';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { newLocalId } from '../orderCardLogic';
+import { hebDateOf, newLocalId } from '../orderCardLogic';
 
 // ---------------------------------------------------------------------------------------------
 // עזרי תצוגה טהורים (גם לשורה, לטבלה ולחלונות)
@@ -163,6 +163,104 @@ export function newItemOf({ model, sizeText, neckAlteration = 0, sleeveAlteratio
 // גוף ה-PUT/POST לפריט (MIM :471)
 export function itemRequestBody(item, { forceFullEdit = false, managerAuth = null } = {}) {
   return { ...item, ...(forceFullEdit ? { forceFullEdit: true } : {}), ...(managerAuth || {}) };
+}
+
+// ---------------------------------------------------------------------------------------------
+// עזרים טהורים של רכיבי הלשונית (כאן ולא בקובצי ה-JSX כדי שייבדקו ב-node: items.logic.test.mjs)
+// ---------------------------------------------------------------------------------------------
+// "ללא שם" → קוד הדגם (OrderModelSelector.displayModelName)
+export function displayModelName(model) {
+  const name = (model?.name || '').trim();
+  if (name.startsWith('ללא שם') && model?.barcodePrefix) return String(model.barcodePrefix);
+  return name;
+}
+// טקסט הזמינות של הישן (OrderSizeSelector :104-121) + האם מנוטרלת
+export function sizeInfo(row, order) {
+  const normalAvail = row.withNormalBuffer?.availableQuantity ?? row.availableQuantity;
+  const customAvail = row.withCustomSpacing?.availableQuantity;
+  const hasCustom = !!order && order.customSpacing !== undefined && order.customSpacing !== null;
+  const selectedAvail = hasCustom ? customAvail : normalAvail;
+  const disabled = selectedAvail !== undefined && selectedAvail !== null && selectedAvail <= 0;
+  let info;
+  if (normalAvail !== undefined) {
+    if (row.withCustomSpacing) {
+      const gain = row.withCustomSpacing.gain || 0;
+      info = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${row.totalInStock}`;
+    } else {
+      info = `פנוי ${normalAvail} מתוך ${row.totalInStock}`;
+    }
+  } else {
+    info = `במלאי: ${row.totalQuantity || row.totalInStock}`;
+  }
+  return { size: row.sizeText || row.size, info, disabled };
+}
+// ---------- A27: מחיר השכרה ודמי ביטול מהמנוע ----------
+// פריט "היפותטי" (לא נשמר) נשלח ל-preview-pricing (אותו endpoint וגוף כמו התצוגה המקדימה של הישן, בלי כתיבה) עם שאר הפריטים:
+// פעם פעיל → סכום חיובי ההשכרה שלו (בלי שורות "תיקון"); פעם כמבוטל עכשיו → מה שהיה נשאר לתשלום (= דמי הביטול לפי המדרגות).
+export const PREVIEW_ITEM_ID = 'oc-add-preview';
+export function hypotheticalItem(model, draft) {
+  return {
+    id: PREVIEW_ITEM_ID,
+    legacyId: null,
+    sizeText: draft.sizeText,
+    neckAlteration: draft.neckAlteration || 0,
+    sleeveAlteration: draft.sleeveAlteration || 0,
+    lengthAlteration: draft.lengthAlteration || '',
+    isDeleted: false,
+    dressItem: { id: PREVIEW_ITEM_ID, dressModelId: model.id, sizeText: draft.sizeText, dress: { id: model.id, name: model.name, priceCategory: model.priceCategory || '', isPremium: !!model.isPremium, barcodePrefix: model.barcodePrefix } },
+  };
+}
+export function priceFromPreview(newObligations) {
+  return (newObligations || []).filter(o => o.orderItemId === PREVIEW_ITEM_ID && Number(o.amount) > 0 && !/^תיקון/.test(o.description || ''))
+    .reduce((s, o) => s + Number(o.amount), 0);
+}
+export function feeFromPreview(newObligations) {
+  const net = (newObligations || []).filter(o => o.orderItemId === PREVIEW_ITEM_ID).reduce((s, o) => s + (Number(o.amount) || 0), 0);
+  return Math.max(0, Math.round(net * 100) / 100);
+}
+export function barcodePlaceholder(item, locked) {
+  if (isPendingItem(item)) return 'יש לשמור קודם';
+  if (item.isReturned) return 'הפריט הוחזר';
+  if (item.isTaken) return 'סרקו ברקוד להחזרה';
+  return locked ? 'ההזמנה נעולה' : 'סרקו ברקוד להשכרה';
+}
+// טווח השאילתה של הישן (חודש לפני ואחרי, YYYY-MM-DD ב-UTC כמו toISOString().split('T')[0])
+export function capacityRange(eventDate) {
+  const e = new Date(eventDate);
+  const from = new Date(e); from.setMonth(from.getMonth() - 1);
+  const to = new Date(e); to.setMonth(to.getMonth() + 1);
+  return { fromDate: from.toISOString().split('T')[0], toDate: to.toISOString().split('T')[0] };
+}
+export function capacityPrecheck(item, order) {
+  const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
+  const size = item?.sizeText || item?.size;
+  if (!order?.eventDate) return 'לא הוגדר תאריך אירוע להזמנה זו.';
+  if (!hasIdentifier) return 'לא ניתן לבדוק תפוסה לפריט ללא דגם (פריט כללי).';
+  if (!size) return 'לא ניתן לבדוק תפוסה לפריט ללא מידה מוגדרת.';
+  return '';
+}
+// חיובי הפריט (MIM :1305-1342)
+export function itemObligations(obligations, itemId) {
+  const searchStr = `(פריט #${itemId})`;
+  return (obligations || []).filter(o => !o.isDeleted && o.description && o.description.includes(searchStr)).map(o => {
+    const isCredit = o.amount < 0;
+    const label = cleanTxt(o.productName) || (isCredit ? 'זיכוי / ביטול' : (o.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
+    const desc = cleanTxt(o.description);
+    return { id: o.id, label, desc: desc && desc !== label ? desc : '', amount: Number(o.amount) || 0, isCredit };
+  });
+}
+export function addedText(item, order, creatorName) {
+  const at = addedAtOf(item, order);
+  const day = hebDateOf(at);
+  const time = !isLegacyItem(item) && !isPendingItem(item) ? israelTimeOf(at) : '';
+  return [day, time, creatorName].filter(Boolean).join(' · ') || '—';
+}
+// עמודות הטבלה ומיון (העיצוב: IT_COLS / itemsTable)
+export const IT_COLS = [['model', 'דגם'], ['size', 'מידה'], ['stat', 'סטטוס'], ['alt', 'תיקון'], ['price', 'מחיר']];
+export function sortItems(list, { col, dir }, order, mode) {
+  const num = (v) => { const n = parseInt(v, 10); return Number.isNaN(n) ? 0 : n; };
+  const val = (i) => (col === 'model' ? num(itemName(i)) || itemName(i) : col === 'size' ? num(i.sizeText) : col === 'stat' ? statusText(i, order, mode) : col === 'alt' ? altText(i) : itemPrice(i));
+  return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
 }
 
 // ---------------------------------------------------------------------------------------------

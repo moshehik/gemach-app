@@ -8,16 +8,10 @@
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
-import { hasRepairOf, isPendingItem, itemBarcode, itemName } from '../hooks/useItemActions';
+import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder } from '../hooks/useItemActions';
 
 const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
-export function barcodePlaceholder(item, locked) {
-  if (isPendingItem(item)) return 'יש לשמור קודם';
-  if (item.isReturned) return 'הפריט הוחזר';
-  if (item.isTaken) return 'סרקו ברקוד להחזרה';
-  return locked ? 'ההזמנה נעולה' : 'סרקו ברקוד להשכרה';
-}
 
 export default function OcBarcodeRow({ item, actions, locked, ui }) {
   const [val, setVal] = useState('');

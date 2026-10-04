@@ -13,7 +13,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import OcIcon from '../OcIcon';
 import { fmtMoney } from '../orderCardLogic';
-import useItemActions, { altText, alterationsEnabled, creatorIdOf, itemName, itemPrice, quotaFull, statusText } from '../hooks/useItemActions';
+import useItemActions, { altText, alterationsEnabled, creatorIdOf, itemName, itemPrice, quotaFull, statusText, IT_COLS, sortItems } from '../hooks/useItemActions';
 import OcItemRow from '../parts/OcItemRow';
 import OcAddItemPanel from '../parts/OcAddItemPanel';
 import OcItemEditDialog from '../parts/OcItemEditDialog';
@@ -21,13 +21,6 @@ import OcItemDetailsDialog from '../parts/OcItemDetailsDialog';
 import OcCapacityDialog from '../parts/OcCapacityDialog';
 import { OcItemChooserDialog } from '../parts/OcBarcodeRow';
 
-// עמודות הטבלה ומיון (העיצוב: IT_COLS / itemsTable)
-export const IT_COLS = [['model', 'דגם'], ['size', 'מידה'], ['stat', 'סטטוס'], ['alt', 'תיקון'], ['price', 'מחיר']];
-export function sortItems(list, { col, dir }, order, mode) {
-  const num = (v) => { const n = parseInt(v, 10); return Number.isNaN(n) ? 0 : n; };
-  const val = (i) => (col === 'model' ? num(itemName(i)) || itemName(i) : col === 'size' ? num(i.sizeText) : col === 'stat' ? statusText(i, order, mode) : col === 'alt' ? altText(i) : itemPrice(i));
-  return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
-}
 
 function ItemsTable({ list, mode, order, sort, setSort, altEnabled }) {
   const cols = altEnabled ? IT_COLS : IT_COLS.filter(([k]) => k !== 'alt');

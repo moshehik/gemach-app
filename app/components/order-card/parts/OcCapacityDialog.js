@@ -8,23 +8,8 @@ import { useEffect, useState } from 'react';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { hebDateOf } from '../orderCardLogic';
-import { itemName } from '../hooks/useItemActions';
+import { itemName, capacityRange, capacityPrecheck } from '../hooks/useItemActions';
 
-// טווח השאילתה של הישן (חודש לפני ואחרי, YYYY-MM-DD ב-UTC כמו toISOString().split('T')[0])
-export function capacityRange(eventDate) {
-  const e = new Date(eventDate);
-  const from = new Date(e); from.setMonth(from.getMonth() - 1);
-  const to = new Date(e); to.setMonth(to.getMonth() + 1);
-  return { fromDate: from.toISOString().split('T')[0], toDate: to.toISOString().split('T')[0] };
-}
-export function capacityPrecheck(item, order) {
-  const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
-  const size = item?.sizeText || item?.size;
-  if (!order?.eventDate) return 'לא הוגדר תאריך אירוע להזמנה זו.';
-  if (!hasIdentifier) return 'לא ניתן לבדוק תפוסה לפריט ללא דגם (פריט כללי).';
-  if (!size) return 'לא ניתן לבדוק תפוסה לפריט ללא מידה מוגדרת.';
-  return '';
-}
 
 export default function OcCapacityDialog({ item, order, close, fetchImpl }) {
   const pre = capacityPrecheck(item, order);

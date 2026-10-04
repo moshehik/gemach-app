@@ -5,16 +5,10 @@
 // (OcBarcodeRow: R25/R26/R27) ושורת "פרטים ועריכה": ⓘ פרטים והיסטוריה (R28) ו-📅 תפוסה (R29) — לחצני אייקון עגולים, "סמן תיקון
 // בוצע", עריכה, הסרה. בלי קישור לכרטיס דגם (R30). שורת פריט מחוק: "שחזור" בלבד. פריט שטרם נשמר: "אישור" (POST) / הסרה.
 import OcIcon from '../OcIcon';
-import { fmtMoney, hebDateOf } from '../orderCardLogic';
+import { fmtMoney } from '../orderCardLogic';
 import OcBarcodeRow from './OcBarcodeRow';
-import { altText, addedAtOf, hasRepairOf, isLegacyItem, isPendingItem, israelTimeOf, itemName, itemPrice, statusText } from '../hooks/useItemActions';
+import { altText, hasRepairOf, isPendingItem, itemName, itemPrice, statusText, addedText } from '../hooks/useItemActions';
 
-export function addedText(item, order, creatorName) {
-  const at = addedAtOf(item, order);
-  const day = hebDateOf(at);
-  const time = !isLegacyItem(item) && !isPendingItem(item) ? israelTimeOf(at) : '';
-  return [day, time, creatorName].filter(Boolean).join(' · ') || '—';
-}
 
 export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle, locked, quotaFull, altEnabled, altShow, creatorName, onDetails, onCapacity, onEdit }) {
   const pending = isPendingItem(item);
