@@ -36,6 +36,7 @@ import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
+import { isManagementRole } from '@/lib/uiVariantSelfSwitch';
 import { buildMenuTree, NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
 import versionData from './version.json';
 
@@ -297,13 +298,17 @@ export default async function RootLayout({ children }) {
 
   // דגלי "ישן / A5" לכל מסך (lib/uiVariant.js): עקיפה אישית (uiVariants בעוגיית designPrefs_<id>,
   // מראה של Employee.themeColor) > הגדרת הארגון ui_variant_<screen> (מאותה קריאת הגדרות בלי שאילתה
-  // נוספת) > 'legacy'. קיוסק / שעון נוכחות / הדפסה: המעטפת תמיד 'legacy'. בלי אף ערך מוגדר הכול
-  // 'legacy' והאתר נראה בדיוק כמו קודם.
+  // נוספת) > ברירת מחדל לפי תפקיד (החלטת הבעלים 4.10.2026: מתכנת -> החדש בכל מסך שיש לו גרסה חדשה, כל השאר -> הישן;
+  // lib/uiVariantScreens.js). קיוסק / שעון נוכחות / הדפסה: המעטפת תמיד 'legacy'.
   const uiVariants = resolveUiVariants({
     userVariants: sanitizeUiVariants(employeeDesignPrefs?.uiVariants),
     settings,
     pathname: requestPathname,
+    roleId: isAuthenticated && emp && typeof emp.roleId === 'number' ? emp.roleId : null,
   });
+  // אייקון המעבר "ישן / חדש" (PageVariantToggle) מוצג רק למי שרשאי להחליף לעצמו (הנהלה ראשית / מתכנת). ה-roleId כבר נקרא
+  // למעלה (עוגיית auth_session או השאילתה הקיימת) — אין כאן שאילתה נוספת. ה-POST בודק שוב מה-DB.
+  const canSelfSwitchVariant = !!(isAuthenticated && emp && isManagementRole(emp.roleId));
 
   // עץ התפריט של המעטפת החדשה (lib/menu/buildMenuTree.js): נבנה רק כשהמעטפת 'a5' - בלי דגל אין כאן שום עבודה
   // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות
@@ -683,7 +688,7 @@ function cpCssText(vars) {
         data-ui-order-card={uiVariants.order_card}
         data-ui-customer-card={uiVariants.customer_card}
       >
-        <UiVariantProvider value={uiVariants}>
+        <UiVariantProvider value={uiVariants} canSelfSwitch={canSelfSwitchVariant}>
         <LoginVariantProvider value={loginVariant}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">

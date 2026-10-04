@@ -3,6 +3,8 @@
 import { createContext, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import { DEFAULT_UI_VARIANT, isForcedLegacyPath, isUiScreen } from '@/lib/uiVariant';
+import { hasBothVersions } from '@/lib/uiVariantScreens';
+import { isSelfSwitchScreen } from '@/lib/uiVariantSelfSwitch';
 
 // גרסאות "ישן / A5" לכל מסך, כפי ש-app/layout.js הכריע בשרת (lib/uiVariant.js):
 // { shell, home, order_card, customer_card } עם 'legacy' | 'a5'.
@@ -17,9 +19,29 @@ import { DEFAULT_UI_VARIANT, isForcedLegacyPath, isUiScreen } from '@/lib/uiVari
 // data-ui-shell עלול להישאר 'a5'. אסור להתבסס עליהם ב-CSS (selectors כמו body[data-ui-shell=...]) או ב-JS;
 // רק ה-hooks כאן מחילים את כלל ה-pathname (isForcedLegacyPath) בצד הלקוח.
 const UiVariantContext = createContext({});
+// האם המשתמש המחובר רשאי להחליף לעצמו "ישן / חדש" (הנהלה ראשית / מתכנת — isManagementRole ב-lib/uiVariantSelfSwitch.js),
+// כפי ש-app/layout.js חישב בשרת מה-roleId (בלי בקשה נוספת). משמש רק להצגת האייקון PageVariantToggle — ה-POST אוכף מחדש מה-DB.
+const UiVariantSelfSwitchContext = createContext(false);
 
-export function UiVariantProvider({ value, children }) {
-  return <UiVariantContext.Provider value={value || {}}>{children}</UiVariantContext.Provider>;
+export function UiVariantProvider({ value, canSelfSwitch = false, children }) {
+  return (
+    <UiVariantContext.Provider value={value || {}}>
+      <UiVariantSelfSwitchContext.Provider value={canSelfSwitch === true}>{children}</UiVariantSelfSwitchContext.Provider>
+    </UiVariantContext.Provider>
+  );
+}
+
+/**
+ * האם להציג את אייקון המעבר "ישן / חדש" של מסך (PageVariantToggle): המשתמש רשאי להחליף לעצמו, המסך ברשומה עם שתי
+ * הגרסאות ומותר בו מעבר עצמאי, ולא בקיוסק / שעון נוכחות / הדפסה (isForcedLegacyPath).
+ */
+export function useCanSelfSwitch(screen) {
+  const allowed = useContext(UiVariantSelfSwitchContext);
+  const pathname = usePathname();
+  if (!allowed) return false;
+  if (!isUiScreen(screen) || !hasBothVersions(screen) || !isSelfSwitchScreen(screen)) return false;
+  if (isForcedLegacyPath(pathname)) return false;
+  return true;
 }
 
 // הערה: מחזיר את הערכים כפי שהוכרעו בשרת, בלי כלל ה-pathname — ל-shell העדיפו useUiVariant('shell').
