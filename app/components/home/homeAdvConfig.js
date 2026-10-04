@@ -2,7 +2,8 @@
 // ועיצוב התשובה. מודול טהור (בלי DOM/React/רשת) — נבדק ב-scripts/test_home_logic.mjs.
 // מקור: public/a5/index.html (ADV_FOCI, ADV_KEYS, advApply) ו-public/a5/adapters/adv-a.js / adv-b.js.
 //
-// V1: התחומים האיטיים (כספים, התראות) וה"הגדרות" (חיפוש AI בלבד) לא נבנו — V1-RELEASE-PLAN §3 UI-2. בדיקת מלאי = דף נפרד (/stock-check).
+// V1: ה"הגדרות" (חיפוש AI בלבד) לא נבנו — V1-RELEASE-PLAN §3 UI-2. בדיקת מלאי = דף נפרד (/stock-check).
+// כספים והתראות נוספו ב-5.10.2026 (החלטות הבעלים HM-03 ו-HM-04/F23 = כן), שניהם מאחורי כפתור ה"+" — ר' docs/home-adv-finance-alerts.md.
 // תפוסה נוספה ב-4.10.2026 לבקשת הבעלים (בעיצוב המאושר: capacity, בלוק 'cap', סיכום "במלאי / בתפוסה / רזרבה") — ר' docs/home-adv-capacity.md.
 
 import { hebText } from './homeDates.js';
@@ -33,6 +34,20 @@ export const DFLAGS = [['dl_out', 'הלוך', 'truck'], ['dl_back', 'חזור', 
 export const AFLAGS = [['al_len', 'אורך', 'sliders'], ['al_fix', 'תיקון', 'scissors'], ['al_sleeve', 'שרוול', 'dress'], ['al_done', 'בוצע תיקון', 'flag']];
 export const MFLAGS = [['md_inactive', 'לא פעיל', 'lock'], ['md_repair', 'בתיקון', 'scissors'], ['md_delmodel', 'דגם מחוק', 'trash'], ['md_delitem', 'פריט מחוק', 'trash']];
 export const EFLAGS = [['em_active', 'פעיל', 'users'], ['em_inactive', 'לא פעיל', 'lock']];
+// כספים (העיצוב המאושר: fgen/fcred/fchk/fcust): חובות / זיכויים; זיכוי שבוצע; חסר פרטי בנק; סטטוס הזמנה בבורר
+export const FFLAGS = [['fn_debt', 'חובות', 'wallet'], ['fn_credit', 'זיכויים', 'card']];
+export const FDONE = [['fc_done', 'בוצע', 'flag']];
+export const FCHK = [['fc_nobank', 'חסר פרטי בנק', 'bank']];
+export const ORD_STATUS = ['הוזמן', 'הושכר', 'הוחזר', 'לא נלקח'];
+// התראות (F23, החלטת הבעלים HM-04 = א): הזמנות והחזרות עם דגל שדורש טיפול. כל סוג = כלל שכבר קיים באתר
+// (ר' lib/advAlerts.js). value, תווית, אייקון, טולטיפ. בלי בחירה = כל הסוגים.
+export const ALERT_TYPES = [
+  ['ar_late', 'איחור בהחזרה', 'undo', 'שמלה שלא חזרה אחרי שעבר סף האיחור שהוגדר בגמ״ח (כמו חלונית האיחורים)'],
+  ['ar_unret', 'שמלה שלא חזרה', 'bag', 'האירוע כבר עבר והשמלה עוד לא הוחזרה, עדיין לפני סף האיחור'],
+  ['ar_debt', 'חוב פתוח', 'wallet', 'האירוע כבר עבר (עד שנה אחורה) ועדיין לא שולם כל הסכום'],
+  ['ar_missing', 'פרטי לקוח חסרים', 'user', 'חסרים פרטי חובה של הלקוחה בהזמנה שהאירוע שלה עוד לפנינו'],
+  ['ar_unsaved', 'שינויים שלא נשמרו', 'pencil', 'שינויים בכרטיס הזמנה שנשמרו רק במחשב הזה ועוד לא נשמרו'],
+];
 const OEVENT_FLAGS = (packing) => [['holiday', 'אירוע חול', 'cal'], ...(packing ? [['packing', 'ציפוף ימים', 'list', 'כמות ימים']] : []), ['delivery', 'משלוח', 'truck'], ['repairs', 'תיקונים', 'scissors']];
 const OITEM_FLAGS = [['itRepairs', 'תיקונים', 'scissors']];
 
@@ -62,6 +77,10 @@ export const ADV_FOCI = {
   deliveries: { label: 'משלוחים', icon: 'truck', api: 'advb', needs: 'deliveries', blocks: [{ t: 'dpart' }, { t: 'sstat', list: 'dlv' }, { t: 'rchk' }, { t: 'rcust' }] },
   // תפוסה: דגם (חובה — השרת מחזיר 400 בלעדיו), מידה, טווח תאריכי אירוע. keys = רק מה שהשרת קורא לתחום הזה
   capacity: { label: 'תפוסה', icon: 'box', api: 'advb', keys: ['model', 'size', 'from', 'to'], required: [['model', 'נדרש דגם לחיפוש תפוסה']], blocks: [{ t: 'cap' }] },
+  // כספים: בעיצוב מאחורי כפתור ה"+" (plus). בלי keys — השרת קורא את כל שדות הכספים (amount/adate/emp/cemp/cdate/oid/from/name/cinfo/ordst) והסימונים
+  finance: { label: 'כספים', icon: 'wallet', plus: true, api: 'advb', blocks: [{ t: 'fgen' }, { t: 'fcred' }, { t: 'fchk' }, { t: 'fcust' }] },
+  // התראות: נתיב שרת משלו (/api/a5/adv-alerts); בלי סימון = כל הסוגים; keys = רק מה שהשרת קורא
+  alerts: { label: 'התראות', icon: 'bell', plus: true, api: 'alerts', keys: ['oid', 'from', 'name', 'cinfo'], blocks: [{ t: 'alrt' }, { t: 'rcust' }] },
   models: { label: 'דגמים', icon: 'dress', api: 'advb', mgr: true, blocks: [{ t: 'mgen' }] },
   employees: { label: 'עובדים', icon: 'users', api: 'advb', mgr: true, blocks: [{ t: 'fields', icon: 'user', title: 'פרטים כלליים', keys: CUSTOMER_FIELDS }, { t: 'estat' }] },
 };
@@ -69,7 +88,8 @@ export const ADV_FOCI = {
 // העמוד שמאחורי כל תחום — העובדת רואה את התחום רק אם העמוד הזה מותר לה (אותו סינון הרשאות כמו התפריט ב-/api/a5/boot).
 // למנהלות-על (דגמים/עובדים) ההגבלה נאכפת בשרת; כאן הם נשארים לפי תפקיד.
 // תפוסה = page:orders (GATE.capacity ב-app/api/a5/adv-b/route.js; אותו שער כמו /stock-check — STOCK_CHECK_PAGE_KEY), ולכן נתיב '/orders'.
-const FOCUS_PAGE = { customers: '/customers', orders: '/orders', rentals: '/rentals', returns: '/rentals', alterations: '/alterations', deliveries: '/deliveries', capacity: '/orders' };
+// כספים = page:refunds (GATE.finance ב-adv-b; הנתיב בתפריט: /refunds). התראות = page:orders (GATE ב-adv-alerts; "לכל מי שיש לה הרשאה לדף ההזמנות" — F23).
+const FOCUS_PAGE = { customers: '/customers', orders: '/orders', rentals: '/rentals', returns: '/rentals', alterations: '/alterations', deliveries: '/deliveries', capacity: '/orders', finance: '/refunds', alerts: '/orders' };
 const pathOf = (href) => String(href || '').split(/[?#]/)[0];
 export function navPathSet(navGroups) {
   if (!Array.isArray(navGroups)) return null;
@@ -95,7 +115,7 @@ export function visibleFoci({ settings, isManager, isHead, navPaths }) {
   Object.keys(ADV_FOCI).forEach((k) => {
     const f = ADV_FOCI[k];
     if (!ok(f, k)) return;
-    if (f.mgr) { if (isManager) extra.push(k); } else main.push(k);
+    if (f.mgr) { if (isManager) extra.push(k); } else if (f.plus) extra.push(k); else main.push(k); // plus = מאחורי כפתור ה"+" לכל מי שמותר לה
   });
   return { main, extra };
 }
@@ -142,6 +162,17 @@ export function buildAdvRequest(focus, adv, storage) {
   }
   const p = new URLSearchParams();
   p.set('focus', focus);
+  if (f.api === 'alerts') {
+    // נתיב ההתראות: רק השדות שהוא קורא + הסוגים שנבחרו; "שינויים שלא נשמרו" = טיוטות הדפדפן (אין מקור בשרת), נשלחות רק כשהסוג הזה רלוונטי
+    f.keys.forEach((k) => { const v = A[k]; if (typeof v === 'string' && v.trim()) p.set(k, v.trim()); });
+    const fl = Array.isArray(A.flags) ? A.flags : [];
+    if (fl.length) p.set('flags', fl.join(','));
+    if (storage && (!fl.length || fl.includes('ar_unsaved'))) {
+      const u = unsavedOrderIds(storage);
+      if (u.length) p.set('unsaved', u.join(','));
+    }
+    return '/api/a5/adv-alerts?' + p.toString();
+  }
   (f.keys || ADV_KEYS).forEach((k) => { const v = A[k]; if (v != null && typeof v === 'string' && v.trim() !== '') p.set(k, v.trim()); });
   if (!f.keys && A.flags && A.flags.length) p.set('flags', A.flags.join(','));
   if (!f.keys && A.ost && A.ost.length) p.set('ost', A.ost.join(','));
@@ -175,14 +206,15 @@ export function normalizeAdvResponse(r) {
     truncated: !!d.truncated,
     gaps: d.gaps && d.gaps.length ? d.gaps : [],
     capstats: normalizeCapstats(d.capstats), // תפוסה בלבד: במלאי / בתפוסה / רזרבה
+    tags: Array.isArray(d.tags) ? d.tags : [], // התראות בלבד: לכל שורה 'return' | 'order' (תג ואייקון בשורה — ALERT_ROW_TAGS)
   };
 }
 
 // תווית שדות הסיכום (מי ביקש מה)
 const OLBL = { amount: 'סכום משוער', cemp: 'עובד (זיכוי)', ordst: 'סטטוס הזמנה', branch: 'סניף', city: 'עיר משלוח', oid: 'קוד הזמנה', name: 'שם לקוח', phone: 'טלפון', cinfo: 'פרטי לקוח', emp: 'עובד מבצע', model: 'דגם', size: 'מידה', item: 'ברקוד' };
-const ALL_FLAGS = [...ADV_FLAGS, ...ORD_CHECK, ...RCHK, ...DFLAGS, ...AFLAGS, ...MFLAGS, ...EFLAGS, ['holiday', 'אירוע חול'], ['packing', 'ציפוף ימים'], ['delivery', 'משלוח'], ['repairs', 'תיקונים'], ['itRepairs', 'תיקונים']];
+const ALL_FLAGS = [...ADV_FLAGS, ...ORD_CHECK, ...RCHK, ...DFLAGS, ...AFLAGS, ...MFLAGS, ...EFLAGS, ...FFLAGS, ...FDONE, ...FCHK, ...ALERT_TYPES, ['holiday', 'אירוע חול'], ['packing', 'ציפוף ימים'], ['delivery', 'משלוח'], ['repairs', 'תיקונים'], ['itRepairs', 'תיקונים']];
 const ALL_OST = [...OST, ...RST, ...RTN, ...DST, ...AST];
-const SUMMARY_FOCI = ['orders', 'rentals', 'returns', 'deliveries', 'alterations', 'capacity', 'models'];
+const SUMMARY_FOCI = ['orders', 'rentals', 'returns', 'deliveries', 'alterations', 'capacity', 'models', 'finance', 'alerts'];
 
 // שורת הסיכום של הסינונים ("שם פרטי רחל, חובות"); ריקה = לא נבחר שום מסנן
 export function advSummaryParts(adv, focus) {
@@ -197,6 +229,9 @@ export function advSummaryParts(adv, focus) {
   if (SUMMARY_FOCI.includes(focus)) {
     Object.keys(OLBL).forEach((k) => { if (A[k] && A[k].trim() && !(labels[k])) p.push(OLBL[k] + ' ' + A[k].trim()); });
   }
+  if (focus === 'alerts' && !A.flags.length) p.unshift('כל סוגי ההתראות'); // בלי בחירה = הכול (כמו מסך ראשי); כך גם החיפוש בלי שדות רץ
+  if (A.adate) p.push('תאריך הוספה ' + hebText(A.adate));
+  if (A.cdate) p.push('תאריך זיכוי ' + hebText(A.cdate));
   if (A.sfrom || A.sto) p.push('תאריכי סטטוס ' + [A.sfrom, A.sto].filter(Boolean).map(hebText).join(' עד '));
   if (A.rdate) p.push((focus === 'returns' ? 'תאריך החזרה ' : 'תאריך השכרה ') + hebText(A.rdate));
   if (A.from || A.to) p.push('תאריכים ' + [A.from, A.to].filter(Boolean).map(hebText).join(' עד '));
@@ -211,8 +246,15 @@ export const advAiPrompt = (focus, parts) => 'חפש ' + ADV_FOCI[focus].label +
 export const advFlagsFor = (packing) => ({ oevent: OEVENT_FLAGS(packing), oitems: OITEM_FLAGS });
 
 /* ---------- תצוגת תוצאות ---------- */
-export const ADV_TAG = { customers: ['לקוח', 'user'], orders: ['הזמנה', 'file'], rentals: ['השכרה', 'bag'], returns: ['החזרה', 'undo'], deliveries: ['משלוח', 'truck'], alterations: ['תיקון', 'scissors'], capacity: ['תפוסה', 'box'], employees: ['עובד', 'users'], models: ['דגם', 'dress'] };
+export const ADV_TAG = { finance: ['כספים', 'wallet'], alerts: ['התראה', 'bell'], customers: ['לקוח', 'user'], orders: ['הזמנה', 'file'], rentals: ['השכרה', 'bag'], returns: ['החזרה', 'undo'], deliveries: ['משלוח', 'truck'], alterations: ['תיקון', 'scissors'], capacity: ['תפוסה', 'box'], employees: ['עובד', 'users'], models: ['דגם', 'dress'] };
 
+// התראות: תג השורה לפי הסוג שהשרת שלח (בהצעה: "החזרה" עם אייקון undo, "הזמנה" עם אייקון file); ערך לא מוכר = תג התחום
+export const ALERT_ROW_TAGS = { return: ['החזרה', 'undo'], order: ['הזמנה', 'file'] };
+export const rowTag = (focus, data, i) => {
+  const k = data && Array.isArray(data.tags) ? data.tags[i] : null;
+  if (focus === 'alerts' && typeof k === 'string' && Object.prototype.hasOwnProperty.call(ALERT_ROW_TAGS, k)) return ALERT_ROW_TAGS[k];
+  return ADV_TAG[focus] || ['רשומה', 'file'];
+};
 // תא: מחרוזת או [טקסט, מחלקת-צ'יפ]
 export const cellParts = (c) => (Array.isArray(c) ? [c[0], c[1]] : [c, '']);
 // סיכום התפוסה מעל התוצאות (בעיצוב: .capstats, שלושה אריחים). אובייקטים ולא [ערך, תווית, אייקון] — אין כאן אייקונים

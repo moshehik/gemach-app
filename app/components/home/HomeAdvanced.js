@@ -2,7 +2,7 @@
 
 // החיפוש המתקדם בדף הבית (בית 3/19/20/21 advp/advfb/advplus/advextra): שלב 1 "במה נתמקד?" (בחירת תחום),
 // שלב 2 טופס הסינונים של התחום. תחומים: לקוחות, הזמנות, השכרות, החזרות, תיקונים, משלוחים (לפי הגדרות הגמ"ח), תפוסה
-// (הרשאת הזמנות) ולמנהלות גם דגמים ועובדים. כספים / התראות לא נבנו (איטיים — V1-RELEASE-PLAN §3 UI-2).
+// (הרשאת הזמנות) ולמנהלות גם דגמים ועובדים. כספים והתראות (מאחורי כפתור ה"+", לפי הרשאת זיכויים/הזמנות) נוספו ב-5.10.2026.
 // loading: החיפוש נשלח וטרם חזר (תפוסה יכולה לקחת כמה שניות) — כפתורי החיפוש נעולים ומציגים את הספינר של שורת החיפוש.
 // הסינון עצמו נעשה בשרת (/api/a5/adv, /api/a5/adv-b); כאן רק הטופס. הלוגיקה בבורר התאריכים
 // ובהצעות לשדות מועתקת מ-public/a5/index.html.
@@ -11,11 +11,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Ic } from './HomeParts';
 import {
   ADV_FOCI, OST, ORD_CHECK, RST, RTN, RCHK, DFLAGS, AFLAGS, MFLAGS, EFLAGS, AST, DST, F,
+  FFLAGS, FDONE, FCHK, ORD_STATUS, ALERT_TYPES,
   alertTip, advFlagsFor, visibleFoci,
 } from './homeAdvConfig';
 import { hebText, hebDayTitle, hebMonthStart, hebMonthShift, hebMonthGrid, isoOf, dateOf } from './homeDates';
 
-const OPT_KEYS = ['first', 'last', 'name', 'phone', 'city', 'oid', 'item', 'model', 'emp', 'size', 'q'];
+const OPT_KEYS = ['first', 'last', 'name', 'phone', 'city', 'oid', 'item', 'model', 'emp', 'cemp', 'size', 'q'];
 const OPT_TTL = 60 * 1000;
 const optCache = new Map(); // key|focus|typed -> { t, list }
 
@@ -233,6 +234,22 @@ export function DateField({ dkey, label, value, onChange, rangeKeys, adv, cleara
   );
 }
 
+// בורר ערך מרשימה סגורה (כספים: סטטוס הזמנה). אותה עטיפת שדה כמו שאר השדות; הריק = "הכל"
+function SelectField({ idPrefix, k, label, icon, value, options, onChange }) {
+  const id = idPrefix + k;
+  return (
+    <div className="field">
+      <label className="lbl" htmlFor={id}>{label}</label>
+      <div className="inpw">
+        <Ic id={icon} size="sm" />
+        <select className="inp" id={id} name={id + '-nofill'} value={value} onChange={(e) => onChange(e.target.value)}>
+          {['', ...options].map((v) => <option key={v} value={v}>{v || 'הכל'}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 function Sec({ icon, title, children }) {
   return (
     <section className="advs" aria-label={title}>
@@ -412,6 +429,43 @@ export default function HomeAdvanced({ adv, setAdv, settings, isManager, isHead,
         );
       case 'estat':
         return <Sec key={bi} icon="users" title="סטטוס עובד">{ofl(EFLAGS, 'סטטוס עובד')}</Sec>;
+      case 'fgen':
+        return (
+          <Sec key={bi} icon="wallet" title="כללי">
+            {ofl(FFLAGS, 'כללי')}
+            <div className="advgrid g3">
+              {fld(['amount', 'סכום משוער', 'card', 'סכום...'], 'טווח של ±30 ₪')}
+              {dt('adate', 'תאריך הוספה')}
+              {fld(['emp', 'עובד מבצע', 'users', 'בחר עובד...'])}
+            </div>
+          </Sec>
+        );
+      case 'fcred':
+        return (
+          <Sec key={bi} icon="card" title="פרטי זיכוי">
+            {ofl(FDONE, 'פרטי זיכוי')}
+            <div className="advgrid">
+              {fld(['cemp', 'עובד מבצע', 'users', 'בחר עובד...'])}
+              {dt('cdate', 'תאריך זיכוי')}
+            </div>
+          </Sec>
+        );
+      case 'fchk':
+        return <Sec key={bi} icon="alert" title="דרוש בדיקה">{ofl(FCHK, 'דרוש בדיקה')}</Sec>;
+      case 'fcust':
+        return (
+          <Sec key={bi} icon="file" title="פרטי לקוח והזמנה">
+            <div className="advgrid">
+              {fld(['oid', 'קוד הזמנה', 'file', 'קוד הזמנה...'])}
+              {dt('from', 'תאריך אירוע')}
+              {fld(['name', 'שם לקוח', 'user', 'שם פרטי ומשפחה...'])}
+              {fld(['cinfo', 'פרטי לקוח', 'mail', 'מייל, כתובת, טלפון...'])}
+              <SelectField idPrefix="adv-" k="ordst" label="סטטוס הזמנה" icon="list" value={adv.ordst} options={ORD_STATUS} onChange={(v) => set('ordst', v)} />
+            </div>
+          </Sec>
+        );
+      case 'alrt':
+        return <Sec key={bi} icon="bell" title="סוג התראה">{ofl(ALERT_TYPES, 'סוג התראה')}</Sec>;
       default:
         return null;
     }
