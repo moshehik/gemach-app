@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
-import { hasPermission } from '@/lib/permissions';
+import { hasPermission, canOpenPage } from '@/lib/permissions';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY } from '@/lib/businessDays';
 import { canEditFrom } from '@/lib/nonWorkingDaysPage';
@@ -21,6 +21,8 @@ export async function GET() {
     const row = await prisma.systemSetting.findUnique({ where: { key: NON_WORKING_DAYS_SETTING_KEY }, select: { value: true } });
     const employee = await getSessionEmployee();
     const hasManagePermission = employee ? await hasPermission(employee, NON_WORKING_DAYS_PERMISSION_KEY) : false;
+    // הקישור "ללוח החודשי" מוצג רק למי שיכול לפתוח את /board (page:board, אותו שער של app/board/layout.js)
+    const canBoard = await canOpenPage('page:board').catch(() => false);
     return NextResponse.json({
       key: NON_WORKING_DAYS_SETTING_KEY,
       name: SETTINGS_HEBREW_NAMES[NON_WORKING_DAYS_SETTING_KEY] || NON_WORKING_DAYS_SETTING_KEY,
@@ -28,6 +30,7 @@ export async function GET() {
       today: getIsraelTodayKey(),
       userId: employee && employee.id !== undefined ? employee.id : null, // מפתח הטיוטה המקומית של הדף (לפי עובד)
       canEdit: canEditFrom({ logged: !!employee, hasManagePermission }),
+      canBoard: !!canBoard,
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('GET /api/non-working-days error:', error);

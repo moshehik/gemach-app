@@ -335,7 +335,11 @@ export default function NonWorkingDaysPage() {
 
   // הערה בשדה: ליום מסומן אחד - ההערה שלו; אחרת ריק
   const oneMarked = ana && selList.length === 1 && ana.marked.length === 1 && !ana.cand.length ? ana.marked[0] : null;
-  useEffect(() => { setNoteText(oneMarked && work ? work.marks.get(oneMarked) || '' : ''); }, [oneMarked, sel]);
+  // יום שמור שהסרתם בטיוטה וסימנתם שוב: שדה ההערה מתמלא בהערה השמורה (אחרת הסימון מחדש היה דורס אותה בהערה ריקה)
+  const restoreNoteKey = saved && ana && selList.length === 1 && ana.cand.length === 1 && saved.marks.has(selList[0]) ? selList[0] : null;
+  useEffect(() => {
+    setNoteText(oneMarked && work ? work.marks.get(oneMarked) || '' : restoreNoteKey && saved ? saved.marks.get(restoreNoteKey) || '' : '');
+  }, [oneMarked, restoreNoteKey, sel]);
 
   /* ---------- פעולות ---------- */
   const pick = useCallback((k, shift) => {
@@ -355,7 +359,7 @@ export default function NonWorkingDaysPage() {
   const stageMark = () => {
     if (!canEdit || !ana || !ana.cand.length) return;
     setWork((w) => markDays(w, ana.cand, noteText));
-    say('נוסף לשינויים: אין פעילות', ana.cand.length === 1 ? hLong(ana.cand[0]) : ana.cand.length + ' ימים · לא נשמר עד "שמור"', 'lock');
+    say('נוסף לשינויים: אין פעילות', ana.cand.length === 1 ? hLong(ana.cand[0]) : rangeLabel(ana.cand) + ' · לא נשמר עד "שמור"', 'lock');
   };
 
   // NW-I2 (תשובת הבעלים): בלי חלון אישור. הסרה של יום שמור היא טיוטה: השורה נכנסת ל"שינויים שלא נשמרו" כ"יוסר", ורק "שמור" מחיל.
@@ -365,7 +369,7 @@ export default function NonWorkingDaysPage() {
     if (!keys.length) return;
     const hasSaved = keys.some((k) => saved.marks.has(k));
     setWork((w) => unmarkDays(w, keys));
-    say(hasSaved ? 'הסימון יוסר אחרי שמירה' : 'הוסר מהשינויים', keys.length === 1 ? hLong(keys[0]) : keys.length + ' ימים', 'check');
+    say(hasSaved ? 'הסימון יוסר אחרי שמירה' : 'הוסר מהשינויים', keys.length === 1 ? hLong(keys[0]) : rangeLabel(keys), 'check');
   };
 
   // NW-I4 (תשובת הבעלים): גם הסרת תאריך עברי קבוע שמור בלי חלון אישור: טיוטה "יוסר", ורק "שמור" מחיל
@@ -470,7 +474,7 @@ export default function NonWorkingDaysPage() {
       <div className="app lz-app">
         <div className="topbar">
           <div className="ttl"><h1 className="pg-ttl"><small>ניהול</small><bdi>ימי אי-פעילות</bdi></h1></div>
-          <div className="tools lz-dtools"><Link className="btn sm" href="/board"><Ic id="cal" />ללוח החודשי</Link></div>
+          <div className="tools lz-dtools">{server && server.canBoard ? <Link className="btn sm" href="/board"><Ic id="cal" />ללוח החודשי</Link> : null}</div>
         </div>
         <div className="lz-bar">
           <div className="lz-quick cl-quick">
@@ -738,7 +742,7 @@ function FixedCard({ canEdit, today, saved, work, fx, setFx, fxNext, activity, o
                 <div className="cl-i"><b>{gematria(f.day)}</b></div>
                 <div className="cl-t">
                   <span><b>{fixedLabel(f)}</b>{isNew && !gone ? <span className="chip gold">חדש · לא נשמר</span> : null}{gone ? <span className="chip">יוסר</span> : null}</span>
-                  <small>{nx ? 'הקרוב: ' + hLong(nx) : 'לא יחול בשנה הקרובה'}{f.note ? ' · ' + f.note : ''}</small>
+                  <small>{nx ? 'הקרוב: ' + hLong(nx) : ''}{nx && f.note ? ' · ' : ''}{f.note || ''}</small>
                 </div>
                 {canEdit ? (gone
                   ? <button type="button" className="cl-u" aria-label="החזרת התאריך" data-tip="החזרה" onClick={() => onRestore(f)}><Ic id="bk" size="sm" /></button>
