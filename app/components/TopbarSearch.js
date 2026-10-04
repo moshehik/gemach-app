@@ -18,6 +18,7 @@ export default function TopbarSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [barcode, setBarcode] = useState('');
   const [isReturning, setIsReturning] = useState(false);
+  const [returnNote, setReturnNote] = useState('');
   const [historyItems, setHistoryItems] = useState([]);
 
   const wrapRef = useRef(null);
@@ -116,8 +117,10 @@ export default function TopbarSearch() {
     e.preventDefault();
     if (!barcode.trim() || isReturning) return;
     setIsReturning(true);
+    setReturnNote('');
     try {
-      const cleanBarcode = barcode.replace(/\s+/g, '');
+      // רק ספרות/אותיות: הקלדה/הדבקה מ-RTL יכולה להכניס תווים בלתי נראים (השרת מנקה גם הוא)
+      const cleanBarcode = barcode.replace(/[^0-9A-Za-z]/g, '');
       const res = await fetch('/api/returns/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,6 +139,7 @@ export default function TopbarSearch() {
         // לפי ברקוד, ר' lib/quickSearchResults.js) רץ כמו כל חיפוש הזמנה אחר.
         // דיווח df035847, נווה יעקב 2026-10-04.
         setBarcode('');
+        setReturnNote(data.error || '');
         setQuery(cleanBarcode);
         setOpen(true);
       } else {
@@ -229,6 +233,9 @@ export default function TopbarSearch() {
               </button>
             </div>
           </form>
+          {returnNote && (
+            <div role="status" style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-3)' }}>{returnNote} - מוצגות תוצאות חיפוש לברקוד.</div>
+          )}
         </div>
         <div className="topbar-search-panel-section">
           <div className="topbar-search-panel-title" style={{ justifyContent: 'space-between', display: 'flex' }}>
