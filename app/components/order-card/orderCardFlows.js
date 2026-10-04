@@ -17,7 +17,7 @@
 // הקריאות ל-window.customConfirm/customAuthPrompt/customPrompt/alert/confirm הוחלפו כולן ב-ui.* / approve (נאכף בבדיקה סטטית).
 
 import {
-  buildPutPayload, buildPreviewBody, buildValidateInventoryBody, buildDraftSummary, cancelledItemNow, changesOf,
+  buildPutPayload, buildPreviewBody, buildValidateInventoryBody, buildDraftSummary, cancelledItemNow, pendingAddNow, changesOf,
   formatStockErrors, freshBalanceAfterExit, freshDebtAfterSave, hasRequiredDates, isDebtUnchangedSinceOpen,
   isPartiallyRentedBlocked, mergePendingItems, missingDatesMessage, needsAutoRefundBank, obligationIdentityKey,
   requiredOf, paidOf, submittedLocalIdsOf, validateRepairs, zeoutVerificationNeeded, DELETE_BLOCKED_STATUSES,
@@ -238,9 +238,10 @@ export function createOrderCardFlows(env) {
       const debtApprovedBy = preApproved || null;
 
       let managerAuth = null;
-      if (cancelledItemNow(st.settings, st.snapshot?.items || [], st.items)) {
-        const a = await env.approve('feature:item_change_approval', 'ביטול פריט מהזמנה קיימת דורש גם אישור מנהל (בנוסף לאימות ת״ז).');
-        if (!a) { ui.toast('error', 'השמירה בוטלה: ביטול פריט דורש אישור מנהל.', ''); return { ok: false, cancelled: true }; }
+      // ביטול פריט שנשמר, או שורה שטרם נשמרה (הוספה שנכשלה) — השרת דורש אישור מנהל בשני המקרים (hasNewCancel / hasNewAdd)
+      if (cancelledItemNow(st.settings, st.snapshot?.items || [], st.items) || pendingAddNow(st.settings, st.items)) {
+        const a = await env.approve('feature:item_change_approval', 'הוספה או ביטול של פריט בהזמנה קיימת דורשים גם אישור מנהל (בנוסף לאימות ת״ז).');
+        if (!a) { ui.toast('error', 'השמירה בוטלה: הוספה או ביטול של פריט דורשים אישור מנהל.', ''); return { ok: false, cancelled: true }; }
         managerAuth = { employeeId: a.employeeId, pin: a.pin };
       }
 

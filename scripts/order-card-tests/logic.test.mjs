@@ -149,6 +149,13 @@ test('שערים: zeout רק כשיש ת״ז ללקוח; מושכר חלקי; ת
   assert.equal(L.cancelledItemNow(sMgr, [item('a1')], [item('a1', { isDeleted: true })]), true);
   assert.equal(L.cancelledItemNow(sMgr, [item('a1', { isDeleted: true })], [item('a1', { isDeleted: true })]), false);
   assert.equal(L.cancelledItemNow(L.parseSettings([]), [item('a1')], [item('a1', { isDeleted: true })]), false);
+  // ביקורת W3 #2: שורה מקומית שטרם נשמרה (הוספה שנכשלה) דורשת גם היא אישור מנהל ב-PUT (hasNewAdd בשרת)
+  const failedAdd = { _localId: 'L1', isNew: true, dressModelId: 'm2', sizeText: '42' };
+  assert.equal(L.pendingAddNow(sMgr, [item('a1'), failedAdd]), true);
+  assert.equal(L.pendingAddNow(sMgr, [item('a1')]), false);
+  assert.equal(L.pendingAddNow(sMgr, [item('a1'), { ...failedAdd, sizeText: '' }]), false);
+  assert.equal(L.pendingAddNow(sMgr, [item('a1'), { ...failedAdd, isNew: false }]), false);
+  assert.equal(L.pendingAddNow(L.parseSettings([]), [failedAdd]), false);
 });
 
 test('נעילה: אירוע שעבר לפי היום בישראל, לא לפי אזור הזמן של התהליך (רץ ב-3 אזורי זמן)', () => {
