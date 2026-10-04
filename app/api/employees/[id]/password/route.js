@@ -1,14 +1,23 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, getSessionEmployee, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
+import { decidePasswordChangeMode } from '@/lib/employeeCardSave';
 import { hashSecret, verifySecret, last4Of } from '@/lib/passwordAuth';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
-// Self-service "change my password": requires knowing the CURRENT password (verified
-// server-side via bcrypt) and replaces it with a new one, re-deriving the trusted-device
-// PIN hash from the new password's last 4 characters. This is deliberately different from
-// the manager-triggered reset-password endpoint, which doesn't need the old password.
+// "Change password" with two modes (decided by decidePasswordChangeMode in lib/employeeCardSave.js):
+//  - self: the signed-in employee changes their OWN password. Requires knowing the CURRENT password
+//    (verified server-side via bcrypt).
+//  - manager: head management / programmer (HEAD_MANAGEMENT_ROLES) changes ANOTHER employee's
+//    password from that employee's card, provided the target is not more senior than the actor
+//    (canManageRoles). The target's old password is not required (a manager doesn't know it) - the
+//    manager instead re-proves their OWN password (`managerPassword`), so a hijacked/unattended
+//    session can't silently take over accounts. Before 2026-10-04 only the self mode existed, so the
+//    button on someone else's card always failed with 403.
+// Either way the new password is bcrypt-hashed and the trusted-device PIN hash is re-derived from its
+// last 4 characters; plaintext is never stored or logged. This is deliberately different from the
+// reset-password endpoint (emails a temp password) and set-password (needs a manager code prompt).
 export async function POST(request, { params }) {
   if (!(await checkAuth())) {
     return NextResponse.json({ success: false, message: 'יש להתחבר למערכת' }, { status: 401 });
@@ -20,7 +29,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ success: false, message: 'מזהה עובד לא תקין' }, { status: 400 });
     }
 
-    const { oldPassword, newPassword } = await request.json();
+    const { oldPassword, newPassword, managerPassword } = await request.json();
     if (!newPassword) {
       return NextResponse.json({ success: false, message: 'יש להזין סיסמה חדשה' }, { status: 400 });
     }
@@ -28,34 +37,53 @@ export async function POST(request, { params }) {
       return NextResponse.json({ success: false, message: 'הסיסמה החדשה קצרה מדי' }, { status: 400 });
     }
 
-    // Only the employee themselves may change their own password this way - anyone else
-    // (a manager helping a locked-out employee) uses the reset-password endpoint instead,
-    // which emails a fresh temporary password rather than requiring the old one.
     const cookieStore = await cookies();
     const sessionEmployeeId = getVerifiedAuthCookie(cookieStore)?.value;
-    if (sessionEmployeeId !== id) {
-      return NextResponse.json({ success: false, message: 'ניתן לשנות רק את הסיסמה של המשתמש המחובר' }, { status: 403 });
-    }
+    const isSelf = !!sessionEmployeeId && sessionEmployeeId === id;
 
-    const employee = await prisma.employee.findUnique({ where: { id } });
+    // Resolve WHO is calling first and only look the target up for a caller who may act on it, so a
+    // non-manager can't use 404-vs-403 to probe which employee ids exist.
+    const actor = isSelf ? null : await getSessionEmployee();
+    const mayLookup = isSelf || (!!actor && HEAD_MANAGEMENT_ROLES.includes(actor.roleId));
+    const employee = mayLookup ? await prisma.employee.findUnique({ where: { id } }) : null;
+    const decision = decidePasswordChangeMode({
+      sessionEmployeeId,
+      targetId: id,
+      actor,
+      target: employee ? { roleId: employee.roleId } : null,
+    });
+    if (decision.mode === 'deny') {
+      return NextResponse.json({ success: false, message: decision.message }, { status: decision.status });
+    }
     if (!employee) {
       return NextResponse.json({ success: false, message: 'עובד לא נמצא' }, { status: 404 });
     }
 
-    // Right after a forgot-password/reset temp password is issued, mustResetPassword is
-    // true and the employee is forced to set a real password before doing anything else.
-    // They just proved knowledge of the temp credential to establish THIS session (either
-    // the full temp password, or its last 4 characters on a trusted device), so re-asking for
-    // the old password a second time here is skipped in that one case. Any other password
-    // change (the normal self-service flow) still requires it.
-    const skipOldPasswordCheck = employee.mustResetPassword && !oldPassword;
-    if (!skipOldPasswordCheck) {
-      if (!oldPassword) {
-        return NextResponse.json({ success: false, message: 'יש להזין סיסמה ישנה' }, { status: 400 });
+    if (decision.mode === 'manager') {
+      // Manager changing someone else's password: re-verify the MANAGER's own password.
+      if (!managerPassword) {
+        return NextResponse.json({ success: false, message: 'יש להזין את הסיסמה שלך (של המנהל) לאימות' }, { status: 400 });
       }
-      const oldOk = await verifySecret(oldPassword, employee.password);
-      if (!oldOk) {
-        return NextResponse.json({ success: false, message: 'הסיסמה הישנה אינה נכונה' }, { status: 401 });
+      const actorRow = await prisma.employee.findUnique({ where: { id: actor.id }, select: { password: true } });
+      if (!(await verifySecret(managerPassword, actorRow?.password))) {
+        return NextResponse.json({ success: false, message: 'סיסמת המנהל שהוזנה אינה נכונה' }, { status: 401 });
+      }
+    } else {
+      // Right after a forgot-password/reset temp password is issued, mustResetPassword is
+      // true and the employee is forced to set a real password before doing anything else.
+      // They just proved knowledge of the temp credential to establish THIS session (either
+      // the full temp password, or its last 4 characters on a trusted device), so re-asking for
+      // the old password a second time here is skipped in that one case. Any other password
+      // change (the normal self-service flow) still requires it.
+      const skipOldPasswordCheck = employee.mustResetPassword && !oldPassword;
+      if (!skipOldPasswordCheck) {
+        if (!oldPassword) {
+          return NextResponse.json({ success: false, message: 'יש להזין סיסמה ישנה' }, { status: 400 });
+        }
+        const oldOk = await verifySecret(oldPassword, employee.password);
+        if (!oldOk) {
+          return NextResponse.json({ success: false, message: 'הסיסמה הישנה אינה נכונה' }, { status: 401 });
+        }
       }
     }
 
