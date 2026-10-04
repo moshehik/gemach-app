@@ -123,9 +123,9 @@ t('אופני תשלום ידני = כמו "תשלום נוסף" בכרטיס ה
   assert.deepEqual(manualPaymentMethods({ ALLOWED_PAYMENT_METHODS: 'אשראי, מזומן ,ביט' }), ['מזומן', 'ביט']);
   assert.deepEqual(manualPaymentMethods({ ALLOWED_PAYMENT_METHODS: 'אשראי' }), ['מזומן']);
 });
-t('מסמכי מייל: כרטיס לקוחה + דף חשבון + סיכומי הזמנות לא מחוקות (עד 6), דרך /api/pdf במצב path', () => {
+t('מסמכי מייל: כרטיס לקוחה + דף חשבון + דף פרטי קשר (CC-O9) + סיכומי הזמנות לא מחוקות (עד 6), דרך /api/pdf במצב path', () => {
   const docs = mailDocuments({ id: 'abc', firstName: 'א', lastName: 'ב', orders: CUST.orders });
-  assert.deepEqual(docs.map((d) => d.id), ['card', 'account', 'order-1', 'order-2']);
+  assert.deepEqual(docs.map((d) => d.id), ['card', 'account', 'contact', 'order-1', 'order-2']);
   assert.ok(docs.every((d) => /downloadPdf=true/.test(d.path)));
   assert.equal(displayName({ firstName: 'null', lastName: 'כהן' }), 'כהן');
 });
