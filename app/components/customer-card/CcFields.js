@@ -80,7 +80,7 @@ export function CcEmailInput({ id, value, onChange, required, invalid, onCopied 
       after={(!v || !v.includes('@')) ? (
         <div className="cc-gmail-row">
           <button type="button" className="btn tgl cc-gmail" data-act="gmail" onClick={() => onChange(`${v}@gmail.com`)}>
-            <span className="dtico"><CcIcon name="mail" size="sm" anim={false} /></span>השלם ל- @gmail.com
+            <span className="dtico"><CcIcon name="mail" size="sm" anim={false} /></span>השלם ל- <bdi dir="ltr">@gmail.com</bdi>
           </button>
         </div>
       ) : null}

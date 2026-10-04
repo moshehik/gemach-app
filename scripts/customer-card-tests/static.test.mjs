@@ -112,7 +112,7 @@ t('ההערות נשמרות רק דרך "שמור" במסילה: אין קרי�
 });
 t('כפתור "השלם ל-@gmail.com" ו-העתקת מייל צפה (בלי לחצן "העתק" נפרד)', () => {
   const f = read(`${CC_DIR}/CcFields.js`);
-  assert.match(f, /השלם ל- @gmail\.com/);
+  assert.match(f, /השלם ל- <bdi dir="ltr">@gmail\.com<\/bdi>/);
   assert.match(f, /className=\{`cc-copy/);
   assert.ok(!/העתק כתובת מייל<\//.test(f));
   assert.match(CSS, /\.inpw:is\(:hover,:focus-within\) \.cc-copy\{opacity:1/);
