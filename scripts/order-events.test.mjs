@@ -1003,6 +1003,32 @@ test('email: a mailer that THROWS is a normal send failure - EmailLog error row 
   assert.equal(audit().filter((a) => a.action === 'EMAIL_SENT').length, 0);
 });
 
+test('email returnHtmlOnly: needs page access to orders/rentals/board (any logged-in employee could read any order report before); normal send unchanged', async () => {
+  const sent = stubMailer({ status: 'success' });
+  for (const who of ['emp-blocked', 'emp-sched']) {
+    globalThis.__AUTH_TOKEN = who;
+    const r = await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true });
+    assert.equal(r.status, 403, who);
+    assert.ok(!r.__json.html, 'no report leaked: ' + who);
+  }
+  for (const who of ['emp-worker', 'emp-head']) {
+    globalThis.__AUTH_TOKEN = who;
+    const r = await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true });
+    assert.equal(r.status, 200, who);
+    assert.equal(r.__json.success, true);
+    assert.ok(typeof r.__json.html === 'string' && r.__json.html.length > 100);
+  }
+  assert.equal(sent.length, 0, 'returnHtmlOnly never sends');
+  // the denied request does not even read the order
+  globalThis.__MOCK_CALLS.length = 0;
+  globalThis.__AUTH_TOKEN = 'emp-blocked';
+  await emailReq({ email: 'x@y.co', type: 'order', returnHtmlOnly: true });
+  assert.ok(!globalThis.__MOCK_CALLS.some((c) => c.model === 'order'), 'no order read before the gate');
+  // normal send for emp-worker (no returnHtmlOnly) still reaches the approval check exactly as before
+  globalThis.__AUTH_TOKEN = 'emp-worker';
+  assert.equal((await emailReq({ email: 'sara@example.com', type: 'order' })).__json.code, 'approval_required');
+});
+
 // ======================================= W7 / AMB-20 (owner decision): whole-day schedule prints are recorded per order
 test('events W7: a whole-day schedule print (doc schedule / prep, batch) is logged for every order, in ONE insert; page:schedule is enough; an order print still is not', async () => {
   globalThis.__AUTH_TOKEN = 'emp-sched';

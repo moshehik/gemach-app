@@ -82,6 +82,11 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'כתובת מייל חסרה' }, { status: 400 });
     }
     // מייל מהיר מכרטיס ההזמנה החדש (A8): נושא ותוכן חופשיים + צרופות לפי kind, בלי דוח ההזמנה כ-PDF. בלי body.quick - בלי שינוי.
+    // החזרת ה-HTML של דוח ההזמנה בלבד (מקור ה-PDF של כרטיס ההזמנה/ייצוא/מייל) לא שולחת כלום, אבל חושפת את כל הדוח של כל orderId -
+    // לכן אותו שער גישה לדפי ההזמנות כמו הדפסת הזמנה (PRINT_ORDER_PAGE_KEYS), לפני כל קריאה למסד. שליחה רגילה לא משתנה.
+    if (body.returnHtmlOnly && !(await canOpenAnyPage(PRINT_ORDER_PAGE_KEYS))) {
+      return NextResponse.json({ error: 'אין הרשאה להציג דוח הזמנה' }, { status: 403 });
+    }
     const quick = body.returnHtmlOnly ? null : parseQuickMail(body.quick);
     if (quick && !quick.ok) {
       return NextResponse.json({ error: quick.error }, { status: 400 });
