@@ -345,16 +345,26 @@ test('events H22: ORDER_PRINTED row shape - actor from the cookie, not from the 
   assert.ok(!('createdAt' in globalThis.__MOCK_CALLS.find((c) => c.method === 'createMany').args.data[0]), 'time comes from the DB default');
 });
 
-test('events H22 batch: one row per order, a deleted order still counts; 404 lists missing orders and writes nothing', async () => {
+test('events H22 batch: one row per order, a deleted order still counts; unknown ids are skipped (count only, no list); nothing exists = 404 without a list', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
   const ok = await postEvent({ orderIds: [501, 502], action: 'ORDER_PRINTED', meta: { doc: 'order', batch: true, count: 2, source: 'print-page' } });
   assert.equal(ok.status, 200);
   assert.deepEqual(audit().map((r) => r.entityId), ['501', '502']);
-  const miss = await postEvent({ orderIds: [501, 999999], action: 'ORDER_PRINTED', meta: { doc: 'order' } });
+  // S6: one unknown id no longer fails the whole chunk; the existing ones are recorded, the answer carries only a count
+  const part = await postEvent({ orderIds: [501, 999999, 502], action: 'ORDER_PRINTED', meta: { doc: 'order' } });
+  assert.equal(part.status, 200);
+  assert.equal(part.__json.written, 2); assert.equal(part.__json.skipped, 1);
+  assert.ok(!('missing' in part.__json), 'no list of ids');
+  assert.deepEqual(audit().map((r) => r.entityId), ['501', '502', '501', '502']);
+  const miss = await postEvent({ orderIds: [999999, 999998], action: 'ORDER_PRINTED', meta: { doc: 'order' } });
   assert.equal(miss.status, 404);
   assert.equal(miss.__json.code, 'ORDER_NOT_FOUND');
-  assert.deepEqual(miss.__json.missing, [999999]);
-  assert.equal(audit().length, 2);
+  assert.ok(!('missing' in miss.__json), 'a 404 must not reveal which ids exist');
+  assert.equal(audit().length, 4);
+  // duplicates in the request are collapsed before the write (one row per order)
+  const dup = await postEvent({ orderIds: [501, 501, 501], action: 'ORDER_PRINTED', meta: { doc: 'order' } });
+  assert.equal(dup.status, 200); assert.equal(dup.__json.written, 1);
+  assert.equal(audit().length, 5);
   const big = await postEvent({ orderIds: Array.from({ length: 200 }, (_, i) => 1000 + i), action: 'ORDER_PRINTED', meta: { doc: 'order', batch: true, count: 200 } });
   assert.equal(big.status, 200);
   assert.equal(big.__json.written, 200);
@@ -971,10 +981,39 @@ test('email quick: recipient must be ONE clean address; page access to orders is
   const a = sent[0].body.attachments;
   assert.equal(a.length, 1, 'nameless / non-object entries are dropped');
   assert.ok(!/[\r\n\/]/.test(a[0].fileName), a[0].fileName);
-  assert.equal(a[0].mimeType, 'application/octet-stream');
+  assert.equal(a[0].mimeType, 'application/pdf', 'S4: mimeType comes from the allowlisted extension, not from the client');
   assert.equal(a[0].dest, 'email', 'unknown dest falls back to the send mode');
   assert.ok(!/DROP/.test(sent[0].body.driveFolderId), 'an unsafe drive folder id is ignored');
   assert.equal(JSON.parse(audit().find((x) => x.action === 'EMAIL_SENT').changesJson).attachments[0].kind, 'receipt');
+});
+
+test('email quick (S4): drive folder = the email_drive_folder_id setting only (a client-supplied id is ignored); attachments need an allowlisted type and valid base64', async () => {
+  globalThis.__AUTH_TOKEN = 'emp-head';
+  installDb([{ key: 'email_drive_folder_id', value: 'SettingFolder_12345' }]); invalidateSettingsCache();
+  const q = { subject: 'נושא', bodyText: 'תוכן' };
+  let sent = stubMailer({ status: 'success' });
+  const r = await emailReq({ email: 'a@b.co', type: 'order', quick: q, driveFolderId: 'EvilClientFolder_99999', sendMode: 'drive', extraAttachments: [{ fileName: 'a.pdf', fileContent: 'QUJD', kind: 'file' }] });
+  assert.equal(r.status, 200, JSON.stringify(r.__json));
+  assert.equal(sent[0].body.driveFolderId, 'SettingFolder_12345');
+  // no setting -> no folder at all (never the client's value)
+  installDb(); invalidateSettingsCache();
+  sent = stubMailer({ status: 'success' });
+  const r2 = await emailReq({ email: 'a@b.co', type: 'order', quick: q, driveFolderId: 'EvilClientFolder_99999', sendMode: 'drive', extraAttachments: [{ fileName: 'a.xlsx', fileContent: 'QUJD' }, { fileName: 'b.JPG', fileContent: 'QUJD' }] });
+  assert.equal(r2.status, 200);
+  assert.equal(sent[0].body.driveFolderId, '');
+  assert.deepEqual(sent[0].body.attachments.map((x) => x.mimeType), ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg']);
+  // the normal (non-quick) send keeps the legacy optional folder from the request
+  sent = stubMailer({ status: 'success' });
+  const r3 = await emailReq({ email: 'a@b.co', type: 'order', pdfBase64: 'JVBERi0x', driveFolderId: 'LegacyFolder_12345', sendMode: 'both' });
+  assert.equal(r3.status, 200);
+  assert.equal(sent[0].body.driveFolderId, 'LegacyFolder_12345');
+  // rejections: nothing is sent
+  sent = stubMailer({ status: 'success' });
+  for (const att of [{ fileName: 'evil.exe', fileContent: 'QUJD' }, { fileName: 'x.svg', fileContent: 'QUJD' }, { fileName: 'a.pdf', fileContent: 'not base64!' }, { fileName: 'a.pdf', fileContent: 'data:application/pdf;base64,QUJD' }, { fileName: 'a.pdf', fileContent: 'QUJ' }]) {
+    const x = await emailReq({ email: 'a@b.co', type: 'order', quick: q, extraAttachments: [att] });
+    assert.equal(x.status, 400, JSON.stringify(att));
+  }
+  assert.equal(sent.length, 0);
 });
 
 test('email quick: a send failure writes EMAIL_FAILED with the typed subject; returnHtmlOnly ignores quick; a normal send is unchanged (PDF action + catalog subject)', async () => {

@@ -276,3 +276,64 @@ test('S4 (סטטי): גיליון המייל - accept + סינון בצד הלק
   assert.ok(/accept=\{restrict \? QUICK_MAIL_ACCEPT : undefined\}/.test(s) && /restrict \? all\.filter\(\(f\) => isAllowedQuickFile\(f\.name\)\) : all/.test(s));
   assert.ok(/<MailExtras restrict=\{quick\}/.test(s));
 });
+
+// ---------- S5: PII בהיסטוריית הגלישה (PageVisitLog.requestQuery) ----------
+const PII_BODY = {
+  cardVariant: 'a5', notes: 'שלום',
+  zeout: '123456789', customer: { idNumber: '987654321', firstName: 'א' },
+  bankAccount: '12345', bankName: 'לאומי', iban: 'IL620108000000099999999', cardNumber: '4580000000000000', cardLast4: '0000', cardHolder: 'x',
+  extraAttachments: [{ fileName: 'a.pdf', fileContent: 'QUJD'.repeat(2000), mimeType: 'application/pdf' }], pdfBase64: 'QUJD'.repeat(500),
+};
+const PII_KEYS = ['zeout', 'idNumber', 'bankAccount', 'bankName', 'iban', 'cardNumber', 'cardLast4', 'cardHolder', 'fileContent', 'pdfBase64'];
+
+test('S5: lib/redactSensitive - שדות PII מוסתרים (גם מקוננים ובמערך), cardVariant ושאר השדות נשארים; טקסט חתוך עם PII מושמט', async () => {
+  const R = await P2('lib/redactSensitive.js');
+  for (const k of PII_KEYS) assert.equal(R.isSensitiveKey(k), true, k);
+  for (const k of ['cardVariant', 'barcode', 'notes', 'orderId', 'description', 'eventDate', 'firstName']) assert.equal(R.isSensitiveKey(k), false, k);
+  const out = JSON.parse(R.redactRequestQuery(JSON.stringify(PII_BODY), '/api/orders/1/email'));
+  assert.equal(out.cardVariant, 'a5'); assert.equal(out.notes, 'שלום'); assert.equal(out.customer.firstName, 'א');
+  for (const k of ['zeout', 'bankAccount', 'bankName', 'iban', 'cardNumber', 'cardLast4', 'cardHolder', 'pdfBase64']) assert.equal(out[k], R.REDACTED, k);
+  assert.equal(out.customer.idNumber, R.REDACTED);
+  assert.equal(out.extraAttachments[0].fileContent, R.REDACTED);
+  assert.ok(!JSON.stringify(out).includes('QUJDQUJD'), 'אין base64 שנשאר');
+  assert.equal(R.redactRequestQuery('{"zeout":"123456789","a":"' + 'x'.repeat(50), '/api/x'), null, 'JSON חתוך עם zeout');
+  assert.equal(R.redactRequestQuery('?zeout=1&iban=IL1&q=ok', '/api/x'), '?zeout=%5B%D7%9E%D7%95%D7%A1%D7%AA%D7%A8%5D&iban=%5B%D7%9E%D7%95%D7%A1%D7%AA%D7%A8%5D&q=ok');
+});
+
+test('S5: הסקריפט המרונדר של app/layout.js (אחרי עיבוד תבנית המחרוזת) מסתיר את אותם שדות ומשמיט base64 מה-requestQuery', async () => {
+  const vm = await import('node:vm');
+  const src = fs.readFileSync(P + '/app/layout.js', 'utf8').replace(/\r\n/g, '\n');
+  const start = src.indexOf('__html: `\n(function() {\n  if (typeof window === \'undefined\' || window.__apiInterceptorInstalled)');
+  assert.ok(start > 0, 'סקריפט ה-interceptor נמצא');
+  const bodyStart = src.indexOf('`', start) + 1;
+  const bodyEnd = src.indexOf('\n`\n', bodyStart);
+  const template = src.slice(bodyStart, bodyEnd);
+  assert.ok(!template.includes('${'), 'אין אינטרפולציות בסקריפט');
+  const rendered = new Function('return `' + template.replace(/\r\n/g, '\n') + '`')(); // = מה ש-React מזריק ל-<script>
+  // הרגקס של נקודות הקצה נשאר תקין אחרי עיבוד התבנית (באג ה-collapse של \/ → /)
+  assert.ok(rendered.includes(String.raw`var AUTH_EP = /\/api\/(login|logout|auth(\/|$)|attendance`), 'ה-regex ב-rendered שומר סלאש מוברח (לא קורס ל-//)');
+  const logs = [];
+  const win = {
+    location: { origin: 'http://x', pathname: '/orders/1' },
+    dispatchEvent() {}, addEventListener() {},
+    fetch: async () => new Response('{}', { status: 200, headers: { 'content-length': '2' } }),
+  };
+  const ctx = vm.createContext({ window: win, document: { addEventListener() {}, visibilityState: 'visible' }, navigator: {}, performance: { now: () => 0 }, CustomEvent: class { constructor(t, o) { this.detail = o && o.detail; } },
+    URL, URLSearchParams, Blob, setTimeout: () => 0, clearTimeout() {}, Response, Date, JSON, String, Array, Object, Math, parseInt, isNaN, console });
+  vm.runInContext(rendered, ctx);
+  win.__queueVisitLog = (e) => logs.push(e);
+  const r = await win.fetch('/api/orders/53375/email', { method: 'POST', body: JSON.stringify(PII_BODY) });
+  assert.ok(r.ok);
+  assert.equal(logs.length, 1);
+  const rq = logs[0].requestQuery;
+  const out = JSON.parse(rq);
+  assert.equal(out.cardVariant, 'a5'); assert.equal(out.notes, 'שלום');
+  for (const k of ['zeout', 'bankAccount', 'bankName', 'iban', 'cardNumber', 'cardLast4', 'cardHolder', 'pdfBase64']) assert.equal(out[k], '[מוסתר]', k);
+  assert.equal(out.customer.idNumber, '[מוסתר]');
+  assert.equal(out.extraAttachments[0].fileContent, '[מוסתר]');
+  assert.ok(rq.length < 1000 && !rq.includes('QUJD'), 'ה-base64 לא נשמר ב-requestQuery');
+  // נתיב אימות: הגוף לא נרשם כלל
+  logs.length = 0;
+  await win.fetch('/api/auth/verify-pin', { method: 'POST', body: JSON.stringify({ pin: '1234' }) });
+  assert.equal(logs[0].requestQuery, null, 'גוף בקשת אימות לא נרשם');
+});

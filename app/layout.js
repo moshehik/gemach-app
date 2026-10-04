@@ -389,7 +389,8 @@ export default async function RootLayout({ children }) {
   var AUTH_EP = /\\/api\\/(login|logout|auth(\\/|$)|attendance|dev\\/agent-login|employees\\/[^/?]+\\/(reset-)?password)|\\/api\\/history$/i;
   function isSensitiveKey(key) {
     var k = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
-    return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1 || k.indexOf('otp') !== -1 || k === 'code' || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k);
+    return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1 || k.indexOf('otp') !== -1 || k === 'code' || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k)
+      || k.indexOf('zeout') !== -1 || k.indexOf('idnumber') !== -1 || k.indexOf('iban') !== -1 || k.indexOf('bank') === 0 || (k.indexOf('card') === 0 && k !== 'cardvariant') || k.indexOf('filecontent') !== -1 || k.indexOf('base64') !== -1;
   }
   function redactValue(v, d) {
     if (d > 6) return v;
@@ -415,7 +416,7 @@ export default async function RootLayout({ children }) {
         return ch ? '?' + p.toString() : t;
       } catch (e) { return ''; }
     }
-    return /pass|secret|token|pin|otp|authorization/i.test(t) ? '' : t;
+    return /pass|secret|token|pin|otp|authorization|zeout|idnumber|iban|bank|filecontent|base64/i.test(t) ? '' : t;
   }
   window.__queueVisitLog = function(entry) {
     entry.ts = Date.now();
