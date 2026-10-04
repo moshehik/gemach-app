@@ -687,5 +687,37 @@ t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגו�
   assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
 });
 
+/* ---------- כותרת צפה של החיפוש החכם (4.10.2026, "הכותרת לא צפה כמו בדמו") ---------- */
+const CHAT_JS = read('../app/components/home/HomeChat.js');
+t('חיפוש חכם: כללי הכותרת הצפה (.aibar) בפלטה - fixed, מוסתרת עד .on, ללא דריסה בדף', () => {
+  const rs = parseCss(PALETTE).filter((r) => /\.gm-ds\.gm-home \.advp\.aiw>\.card-h\.aibar/.test(r.sel));
+  assert.ok(rs.some((r) => /position:\s*fixed/.test(r.body) && /opacity:\s*0/.test(r.body) && /visibility:\s*hidden/.test(r.body)), 'מצב מוסתר, position:fixed');
+  assert.ok(rs.some((r) => /\.on$/.test(r.sel) && /opacity:\s*1/.test(r.body) && /visibility:\s*visible/.test(r.body)), 'מצב .on');
+  assert.ok(!parseCss(HOME_CSS).some((r) => /aibar/.test(r.sel)), 'home.css לא דורס את הכותרת הצפה');
+});
+t('HomeChat: הכותרת הצפה מרונדרת ב-portal ל-body (אבות עם backdrop-filter שוברים fixed), בשני עוטפים .gm-ds.gm-home > .advp.aiw > .card-h.aibar', () => {
+  assert.match(CHAT_JS, /createPortal\(/);
+  assert.match(CHAT_JS, /document\.body/);
+  assert.match(CHAT_JS, /className="gm-ds gm-home"[^>]*style=\{FLOAT_WRAP_STYLE\}/);
+  assert.match(CHAT_JS, /className="advp aiw" style=\{FLOAT_WRAP_STYLE\}/);
+  assert.match(CHAT_JS, /FLOAT_WRAP_STYLE = \{ display: 'contents' \}/);
+  assert.match(CHAT_JS, /className="card-h aibar"/);
+});
+t('HomeChat: ההיגיון כמו בדמו - 8px מתחת לסרגל, צר ב-34px מכל צד, "on" כשהכותרת יצאה ועד סוף הכרטיס, מאזין לגלילה/שינוי גודל', () => {
+  assert.match(CHAT_JS, /side = 34/);
+  assert.match(CHAT_JS, /inset = 14/);
+  assert.match(CHAT_JS, /Math\.min\(nb \+ 8, cr\.bottom - bh - inset\)/);
+  assert.match(CHAT_JS, /classList\.toggle\('on', hr\.bottom < nb \+ 4 && cr\.bottom > nb \+ bh \+ inset \+ 8\)/);
+  assert.match(CHAT_JS, /addEventListener\('scroll'/);
+  assert.match(CHAT_JS, /addEventListener\('resize'/);
+  assert.match(CHAT_JS, /querySelector\('\.snav'\)/);
+});
+
+t('חיפוש חכם: ה-X בשורת שאלת ההמשך מוצג רק כשיש טקסט (.ibtn[hidden] מוסתר; hidden={!fu}; פוקוס חוזר לשדה)', () => {
+  assert.ok(parseCss(HOME_CSS).some((r) => r.sel.trim() === '.gm-ds.gm-home .scan .ibtn[hidden]' && /display:\s*none\s*!important/.test(r.body)), 'כלל .scan .ibtn[hidden] ב-home.css (הפלטה נותנת ל-.ibtn display:grid ולכן hidden לא עבד)');
+  assert.match(CHAT_JS, /aria-label="ניקוי הטקסט"[^>]*hidden=\{!fu\}/);
+  assert.match(CHAT_JS, /setFu\(''\); if \(fuRef\.current\) fuRef\.current\.focus\(\)/);
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
