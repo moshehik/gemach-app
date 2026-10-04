@@ -194,7 +194,7 @@ console.log('העיצוב שאושר + הוראות הבעלים');
 await t('אין תפריט ⋯: בלי .menu / er3-menu / role="menu" / אייקון more', () => {
   assert.ok(!/er3-menu|role="menu"|className="menu|n="more"|'more'/.test(UI), 'תפריט ⋯ חזר');
   assert.ok(!/er3-menu|\.menu\b/.test(CSS), 'CSS של תפריט');
-  assert.ok(!SPRITE_SYMBOLS.some(([id]) => id === 'more'), 'אייקון more לא הותקן');
+  // (האייקון 'more' כן נמצא בספרייה המוטמעת מאז MS-05 - נוצרת מהפלטה; החלון עצמו לא משתמש בו: ר' הבדיקה על האייקונים למטה)
 });
 await t('כותרת השרשור: "טופל" (V) ו"ארכיון" ככפתורים עגולים כחולים של הפלטה (.tools .xlbtn.xlp) עם טולטיפ; גלויים תמיד', () => {
   has(PARTS, /className=\{`xlbtn xlp\$\{pressed \? ' on' : ''\}`\}[^>]*data-tip=\{tip\} aria-label=\{tip\}/, 'RoundBtn = .xlbtn.xlp עם data-tip');

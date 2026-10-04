@@ -22,7 +22,7 @@ import {
 import { hebText, hebFromInstant, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
 import { ORDER_STATUS_STYLE } from '../app/components/home/homeLogic.js';
-import { PRIVACY_SECTIONS, buildPrivacySections, privacyContactLine } from '../app/components/home/privacyPolicyText.js';
+import { PRIVACY_SECTIONS, buildPrivacySections, privacyContactLine, POLICY_UPDATED, policyUpdatedHebrew } from '../app/components/home/privacyPolicyText.js';
 import { hebrewUpdatedDate } from '../lib/hebrewStamp.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -627,13 +627,13 @@ t('הנוסח: כל הסעיפים, בלי שדות מילוי ובלי טקסט
   assert.ok(all.includes('נדרים פלוס') && all.includes('בינה מלאכותית'));
 });
 t('הנוסח נבנה מהגדרות הארגון: שם משפטי = gmach_name, טלפון = gmach_phone, 30 ימי מענה, שרתים ארה"ב / אירופה, תאריך עברי', () => {
-  const a = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח נווה יעקב', phone: '02-1234567', updatedDate: 'כ תשרי תשפ"ז' }));
+  const a = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח נווה יעקב', phone: '02-1234567' }));
   assert.ok(a.includes('גמ״ח נווה יעקב (להלן'), 'שם הגוף המשפטי מההגדרה');
   assert.ok(a.includes('02-1234567'), 'הטלפון מההגדרה');
   assert.ok(a.includes('נשיב תוך 30 ימים'));
   assert.ok(a.includes('בארה"ב ובאירופה'));
   assert.ok(a.includes('איננו משתמשים בעוגיות פרסום או מעקב.'));
-  assert.ok(a.includes('כ תשרי תשפ"ז'));
+  assert.ok(a.includes(policyUpdatedHebrew()), 'תאריך העדכון (קבוע) מוצג');
   // ארגון אחר -> טקסט אחר (לא קשיח)
   const b = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח אחר', phone: '03-7654321' }));
   assert.ok(b.includes('גמ״ח אחר') && b.includes('03-7654321') && !b.includes('02-1234567') && !b.includes('נווה יעקב'));
@@ -643,11 +643,29 @@ t('הנוסח נבנה מהגדרות הארגון: שם משפטי = gmach_name
   assert.equal(privacyContactLine('  '), privacyContactLine(''));
   assert.ok(privacyContactLine(' 050-1112222 ').includes('050-1112222.'));
 });
-t('תאריך העדכון: תאריך עברי בלבד (תאריך הגרסה בלי שעה; נפילה ליום הנוכחי), בלי ספרות לועזיות', () => {
+t('hebrewUpdatedDate (עזר כללי ב-lib/hebrewStamp): תאריך עברי בלבד (תאריך הגרסה בלי שעה; נפילה ליום הנוכחי), בלי ספרות לועזיות', () => {
   assert.equal(hebrewUpdatedDate('01/10/2026 12:47'), 'כ תשרי תשפ"ז');
   assert.equal(hebrewUpdatedDate('לא תאריך', Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
   assert.equal(hebrewUpdatedDate(null, Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
   assert.ok(!/\d{4}/.test(hebrewUpdatedDate('01/10/2026 12:47')));
+});
+t('תאריך "שינויים בנוסח" קבוע (POLICY_UPDATED, לא תאריך הפריסה): עברי בלבד ולא תלוי בגרסה / בשעון', () => {
+  assert.equal(POLICY_UPDATED, '2026-10-04');
+  assert.equal(policyUpdatedHebrew(), 'כג תשרי תשפ"ז'); // 4.10.2026 = כ"ג בתשרי תשפ"ז
+  const sec = (x) => x.find((q) => q.h === 'שינויים בנוסח').p;
+  const text = sec(buildPrivacySections({ legalName: 'א' }));
+  assert.ok(text.includes('כג תשרי תשפ"ז') && !/\d{4}/.test(text), 'עברי בלבד, בלי שנה לועזית');
+  assert.equal(text, sec(PRIVACY_SECTIONS), 'אותו תאריך בכל ארגון ובכל קריאה');
+  const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');
+  assert.ok(!/hebrewUpdatedDate|versionDate/.test(src), 'התאריך כבר לא נגזר מתאריך הגרסה');
+});
+t('נוסח: מרכאות מסולסלות + גרשיים בהגדרת "הגמ״ח"; ספק הבינה המלאכותית (Google Gemini) וגופני Google מוזכרים', () => {
+  const all = flatPrivacy(PRIVACY_SECTIONS);
+  assert.ok(all.includes('(להלן: “הגמ״ח”)'), 'מרכאות מקוננות בנוסח הגבוה');
+  assert.ok(!all.includes('"הגמ"ח"'), 'אין מרכאות ישרות מקוננות');
+  assert.ok(all.includes('Google Gemini'), 'ספק ה-AI');
+  assert.ok(all.includes('Google Fonts'), 'גופנים מ-Google');
+  assert.ok(!/ייתכן שחלק מהמידע הנדרש לכך מועבר למערכות אלה/.test(all), 'לא הניסוח הכללי הישן');
 });
 t('HomeFooter: אין שדות מילוי, הדיאלוג מקבל settings ומחשב את הנוסח בזמן ההצגה', () => {
   const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');

@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Ic } from './HomeParts';
 import { PRIVACY_TITLE, PRIVACY_SUB, buildPrivacySections } from './privacyPolicyText';
-import { hebrewVersionStamp, hebrewUpdatedDate } from '@/lib/hebrewStamp';
+import { hebrewVersionStamp } from '@/lib/hebrewStamp';
 
 const LINK_ICON = { orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', guide: 'info', report: 'alert', profile: 'user', display: 'sun' };
 
@@ -61,13 +61,12 @@ export function HomeFooter({ groups, name, version, date, onPrivacy }) {
 }
 
 // settings = הגדרות הארגון מ-/api/a5/boot: gmach_name (שם הגוף המשפטי) ו-gmach_phone (שורת הפנייה) - נבנה בזמן ההצגה, לא קשיח לכל גמ"ח.
-// versionDate = תאריך הגרסה (app/version.json) - ממנו מחושב תאריך העדכון העברי.
-export function PrivacyDialog({ onClose, settings, versionDate }) {
+// תאריך העדכון בנוסח הוא קבוע (POLICY_UPDATED ב-privacyPolicyText.js), לא תאריך הפריסה.
+export function PrivacyDialog({ onClose, settings }) {
   const sections = useMemo(() => buildPrivacySections({
     legalName: settings && settings.gmach_name,
     phone: settings && settings.gmach_phone,
-    updatedDate: hebrewUpdatedDate(versionDate),
-  }), [settings, versionDate]);
+  }), [settings]);
   const boxRef = useRef(null);
   const closeRef = useRef(null);
   const lastFocus = useRef(null);
