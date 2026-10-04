@@ -482,6 +482,41 @@ t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שו�
   assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
 });
 
+/* ---------- 11. הלוח החודשי (app/components/board/board.css) + חלון "אין הרשאה" החדש (app/components/gate/gate.css) ---------- */
+// שורש הלוח: .gm-ds.gm-lz.gm-bd - schedule.css חל עליו (כולל נטרולי הגופן של design-overrides.css, סעיף 6ב), ו-board.css מוסיף רק
+// בהיקף .gm-ds.gm-bd. נבדק: היקף, אין @media לפני הכלל הרגיל (הבאג שנמצא בעיצוב עצמו - ר' ההערה ב-board.css על .lz-pr),
+// אין !important על רקע, השורש בלי gm-home, ונטרול שדה החיפוש מול design-overrides.css (input:not(x4)).
+const BOARD_CSS = read('../app/components/board/board.css');
+const boardRules = parseCss(BOARD_CSS);
+const BOARD_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-bd)']); // ביטול ריפוד המעטפת לדף מלא-רוחב, כמו profile.css
+t('board.css: כל כלל בהיקף .gm-ds.gm-bd (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of boardRules) for (const x of splitSel(r.sel)) if (!/^\.gm-ds\.gm-bd(\s|$|\.|#)/.test(x) && !BOARD_OUT_OF_SCOPE_OK.has(x)) bad.push(x);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('board.css: אין דריסת @media לפני הכלל הלא-מותנה, ואין !important על רקע/גבול', () => {
+  assert.deepEqual(mediaBeforeBase(boardRules, 'board.css'), []);
+  const bad = [];
+  for (const r of boardRules) if (setsProp(r, /^(background(-color|-image)?|border(-color)?|box-shadow)$/).some(isImportant)) bad.push(r.sel);
+  assert.deepEqual(bad, []);
+});
+t('הלוח: השורש .gm-ds.gm-lz.gm-bd (schedule.css מנטרל את הגופנים), בלי gm-home; שדה החיפוש מנוטרל מול design-overrides.css', () => {
+  const page = read('../app/components/board/BoardPage.js');
+  assert.match(page, /className="gm-ds gm-lz gm-bd home-bg dlg-dark"/);
+  assert.ok(!/gm-home/.test(page), 'gm-home על שורש הלוח');
+  assert.ok(boardRules.some((r) => /input#bdQ:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/.test(r.sel) && setsProp(r, /^background$/).length && setsProp(r, /^box-shadow$/).length), 'חסר נטרול רקע/טבעת לשדה החיפוש');
+  assert.ok(boardRules.some((r) => /#mToday$/.test(r.sel) && setsProp(r, /^height$/).some((d) => d.value === '28px')), 'S04: "החודש הנוכחי" בגובה המתג (28px)');
+});
+const GATE_CSS = read('../app/components/gate/gate.css');
+const gateRules = parseCss(GATE_CSS);
+t('gate.css: היקף .gm-ds.gm-login.gm-gate (חלון "אין הרשאה" = החלון הכהה של דף הכניסה), בלי צבעים משלו', () => {
+  const bad = [];
+  for (const r of gateRules) for (const x of splitSel(r.sel)) if (!/^\.gm-ds\.gm-login\.gm-gate(\s|$)/.test(x) && x !== '.app-shell .main .content:has(> .gm-ds.gm-gate)') bad.push(x);
+  assert.deepEqual(bad, []);
+  assert.ok(!gateRules.some((r) => setsProp(r, /^(background(-color|-image)?|color|border-color)$/).length), 'gate.css לא מגדיר צבעים - הכול מ-login.css');
+  assert.deepEqual(mediaBeforeBase(gateRules, 'gate.css'), []);
+});
+
 /* ---------- 9. כפתור הורדת PDF + דף ההדפסה של התוצאות (searchPdf.js): בלי CSS חדש בדף הבית, בלי דליפת רקע ---------- */
 // כפתור ה-PDF הוא כפתור ההורדה הקיים של הפלטה (xlbtn xld) — רק התווית והפעולה השתנו. כל עיצוב חדש לכפתור = כלל חדש ב-home.css = סיכון דליפה.
 t('כפתור הורדת PDF: אותו כפתור פלטה (xlbtn xld), בלי מחלקה/סגנון חדש ובלי כלל xld ב-home.css', () => {
