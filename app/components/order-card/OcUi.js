@@ -239,6 +239,9 @@ export function OcUiProvider({ children }) {
     const onKey = (e) => {
       const box = typeof document !== 'undefined' ? document.getElementById(top.layer === 2 ? 'dlg2' : 'dlg') : null;
       if (e.key === 'Escape') {
+        // D7: בורר פתוח (combobox עם data-oc-esc="own", למשל בורר המאשר ב-OcApproval) מטפל ב-Esc בעצמו וסוגר רק את הרשימה
+        const ae = document.activeElement;
+        if (ae && ae.getAttribute && ae.getAttribute('data-oc-esc') === 'own' && ae.getAttribute('aria-expanded') === 'true') return;
         // dismissable:false (חלון שמטפל ב-Esc בעצמו, למשל גיליון המייל של W7) - לא נוגעים באירוע; dismissable:()=>false (חיוב רץ) - בולעים אותו
         if (!canDismiss(top.opts)) { if (isDynamicDismiss(top.opts)) { e.stopImmediatePropagation(); e.preventDefault(); } return; }
         e.stopImmediatePropagation(); e.preventDefault();

@@ -137,7 +137,7 @@ export const manualMoneyNeedsApproval = (settings) => true;
 export const isUnifiedManualButton = (settings) => !!(settings && settings.consolidateManualPaymentCredit);
 export const MANUAL_PAYMENT_CREDIT_KEY = 'feature:manual_payment_credit_add';
 export const MANUAL_CHARGE_KEY = 'feature:manual_charge_add';
-/** AMB-22 (החלטת הבעלים): מחיקת תשלום וסימון זיכוי כבוצע דורשים אישור מנהל בכרטיס החדש. אין הרשאה ייעודית בקטלוג - משתמשים באותה
+/** AMB-22 + D7 (בעלים 2026-10-05: "בהרשאות הקיימות, בלי הרשאות חדשות"): מחיקת תשלום וסימון זיכוי כבוצע דורשים אישור מנהל בכרטיס החדש. אין הרשאה ייעודית בקטלוג - משתמשים באותה
  * הרשאת "כסף ידני" כדי שהמאשרים יהיו אותם אנשים ולא תיווצר הרשאה סגורה-כברירת-מחדל שתחסום את העבודה; פיצול להרשאות נפרדות = שינוי שני הקבועים. */
 export const PAYMENT_DELETE_APPROVAL_KEY = MANUAL_PAYMENT_CREDIT_KEY;
 export const REFUND_EXECUTE_APPROVAL_KEY = MANUAL_PAYMENT_CREDIT_KEY;

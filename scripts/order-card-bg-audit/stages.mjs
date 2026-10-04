@@ -50,6 +50,8 @@ p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', which,
 const results = {};
 const snap = async (name, roots = rootsFor(name)) => { await sleep(600); await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: false }); results[name] = await p.evaluate(DUMP, roots); }; // ITEMS (W3) רק בשלבי הפריטים
 // לחיצה אמיתית בעכבר; כשהאלמנט מכוסה (בעיצוב: סרגל ההדגמה / כפתור השאלות הצף במסך צר) - el.click() במקום
+// D7: בורר המאשר הוא combobox עם רשימה נגללת - פותחים ובוחרים את השורה ה-n
+const pickApprover = async (n) => { await clickAt('#dlg2 .oc-appr-sel'); await p.waitForSelector('#dlg2 .advlist .advo', { timeout: 5000 }); await clickAt(`#dlg2 .advlist .advo:nth-child(${n})`); };
 const clickAt = async (sel) => {
   await p.waitForSelector(sel, { visible: true, timeout: 5000 }); await p.$eval(sel, (el) => el.scrollIntoView({ block: 'center', behavior: 'instant' })); await sleep(150);
   const r = await p.$eval(sel, (el) => { const bb = el.getBoundingClientRect(); const x = bb.left + bb.width / 2, y = bb.top + bb.height / 2; const hit = document.elementFromPoint(x, y); return { x, y, ok: !!hit && (hit === el || el.contains(hit)) }; });
@@ -117,7 +119,7 @@ const STAGES = [
   // C6: אחרי שחרור הנעילה נשאר לחצן נעילה מחדש (כמו הישן) → אישור → ההזמנה ננעלת שוב (לחצן השחרור חוזר, הפריטים נעולים)
   { name: '08b-relock', real: async () => {
     await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500);
-    await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p.type('#oc-appr-code', '1234'); await sleep(200); await clickAt('#dlg2 .btn.primary'); await sleep(900);
+    await pickApprover(1); await p.type('#oc-appr-code', '1234'); await sleep(200); await clickAt('#dlg2 .btn.primary'); await sleep(900);
     const a = await p.evaluate(() => ({ lock: !!document.querySelector('.tools [data-act="lockbtn"]'), relock: !!document.querySelector('.tools [data-act="relockbtn"]'), tip: (document.querySelector('.tools [data-act="relockbtn"]') || { dataset: {} }).dataset.tip }));
     await clickAt('.tools .xlbtn[data-act="relockbtn"]'); await sleep(500);
     const d = await p.evaluate(() => ({ h2: (document.querySelector('#dlg > h2') || {}).textContent, sub: (document.querySelector('#dlg > .sub') || {}).textContent }));
@@ -129,7 +131,7 @@ const STAGES = [
       ['C6: לחיצה = חלון אישור "האם ברצונך לנעול מחדש את ההזמנה?"; ביטול משאיר פתוח', d.h2 === 'נעילה מחדש' && /לנעול מחדש/.test(d.sub || '') && kept],
       ['C6: אישור = ההזמנה ננעלת שוב (חוזר לחצן השחרור, נעלם לחצן הנעילה מחדש)', b.lock && !b.relock]);
   } },
-  { name: '09-approval-picked', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await clickAt('#dlg2 .oc-emps .opt:nth-child(2)'); await p.type('#oc-appr-code', '9'); await sleep(200); }, demo: async () => { await fresh(); await demoLocked(); await demoWin('R46'); await clickAt('#dlg2 .pv-emps .opt:nth-child(2)'); await p.type('#pvAp', '9'); await sleep(200); } },
+  { name: '09-approval-picked', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await pickApprover(2); await p.type('#oc-appr-code', '9'); await sleep(200); }, demo: async () => { await fresh(); await demoLocked(); await demoWin('R46'); await clickAt('#dlg2 .pv-emps .opt:nth-child(2)'); await p.type('#pvAp', '9'); await sleep(200); } },
   { name: '10-conflict', real: async () => { await fresh('conflict'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R12'); await away(); } },
   { name: '11-stock', real: async () => { await fresh('stock'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R48'); await away(); } },
   // ---- W3: לשונית פריטים (העיצוב: אותם 4 פריטים; הדף האמיתי: תרחיש neve) ----
@@ -246,7 +248,7 @@ const STAGES = [
   // שחרור נעילה מקצה לקצה: קוד שגוי → הודעה; קוד נכון (1234 במוק) → verify-pin עם context, הלחצן נעלם, טוסט
   { name: '28-unlock-flow', real: async () => {
     await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500);
-    await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p.type('#oc-appr-code', '0000'); await p.keyboard.press('Enter'); await sleep(500);
+    await pickApprover(1); await p.type('#oc-appr-code', '0000'); await p.keyboard.press('Enter'); await sleep(500);
     const msg = await p.$eval('#dlg2 .amsg', (e) => e.textContent);
     await p.type('#oc-appr-code', '1234'); await p.keyboard.press('Enter'); await sleep(700);
     const st = await p.evaluate(() => ({ lock: !!document.querySelector('.tools .xlbtn[data-act="lockbtn"]'), dlg2: document.getElementById('scrim2').classList.contains('on'), toast: (document.querySelector('#toast b') || {}).textContent || '', vp: (window.__calls || []).filter((c) => c.url === '/api/auth/verify-pin').map((c) => JSON.parse(c.body)) }));
@@ -261,7 +263,7 @@ const STAGES = [
       ['save: cardVariant a5 + extraDay בגוף', st.puts[0].cardVariant === 'a5' && 'extraDay' in st.puts[0] && st.puts[0].notes === 'הערה מטיוטה שלא נשמרה'],
       ['save: אחרי השמירה אין שינויים ברייל', st.badge === '0']);
   } },
-  ...payStages({ p: () => p, D, fresh, clickAt, hover, away, sleep, demoWin, check: (name, ok) => checks.push([name, ok]) }), // W4
+  ...payStages({ p: () => p, D, fresh, clickAt, pickApprover, hover, away, sleep, demoWin, check: (name, ok) => checks.push([name, ok]) }), // W4
 
   // ---------- W7: מסמכים (תפריט הדפסה, שער תקנון, מייל חסר, מייל מהיר) - מושווים לעיצוב ----------
   { name: '40-regs-gate', real: async () => { await fresh('unsignedq'); await clickAt('.tools .xlbtn.xlp'); await sleep(500); await away(); }, demo: async () => { await fresh(); await clickAt('.tools [data-act="menu"]'); await sleep(500); await away(); } },
@@ -342,7 +344,7 @@ const STAGES = [
   { name: '56-mail-approval-flow', real: async () => {
     await openQuick('mailapprove'); await p.type('#m-body', 'שלום'); await clickAt('#m-send'); await sleep(1500);
     const dlg2 = await p.evaluate(() => ({ on: document.getElementById('scrim2').classList.contains('on'), title: (document.querySelector('#dlg2 h2') || {}).textContent, mail: !!document.querySelector('#dlg .mh') }));
-    await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p.type('#oc-appr-code', '1234'); await p.keyboard.press('Enter'); await sleep(2500);
+    await pickApprover(1); await p.type('#oc-appr-code', '1234'); await p.keyboard.press('Enter'); await sleep(2500);
     const posts = await emailPosts(); const vp = (await calls()).filter((c) => c.url === '/api/auth/verify-pin').map((c) => JSON.parse(c.body));
     checks.push(['approval: 403 approval_required → חלון אישור מנהל מעל החלון', dlg2.on && dlg2.title === 'אישור מנהל' && dlg2.mail], ['approval: verify-pin עם feature:customer_email_approval ו-context של ההזמנה', vp.length === 1 && vp[0].requiredLevel === 'feature:customer_email_approval' && !!vp[0].context && vp[0].context.orderId === 53375],
       ['approval: שליחה חוזרת עם emailApproverId/Pin (שני POST)', posts.length === 2 && !posts[0].emailApproverId && posts[1].emailApproverId === 'e1' && posts[1].emailApproverPin === '<redacted>'], ['approval: החלון נסגר אחרי הצלחה', !(await p.$('#dlg .mh'))]);
@@ -435,7 +437,7 @@ STAGES.push(
     await fresh('xday'); await clickAt('#adv > summary'); await sleep(200);
     await clickAt('#spacing button:nth-of-type(2)'); await sleep(600); // "0" < ברירת המחדל 2 → אישור מנהל (הציר: רגיל/0/1)
     const appr = await p.evaluate(() => document.getElementById('scrim2').classList.contains('on'));
-    await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p.type('#oc-appr-code', '1234'); await p.keyboard.press('Enter'); await sleep(700);
+    await pickApprover(1); await p.type('#oc-appr-code', '1234'); await p.keyboard.press('Enter'); await sleep(700);
     const on = await p.$eval('#spacing button.on', (e) => e.textContent);
     await clickAt('#spacing button:nth-of-type(1)'); await sleep(300); // חזרה ל"רגיל" (הגדלה, W2A-SPACING: אין ערכים מעל רגיל) - בלי אישור
     const appr2 = await p.evaluate(() => document.getElementById('scrim2').classList.contains('on'));

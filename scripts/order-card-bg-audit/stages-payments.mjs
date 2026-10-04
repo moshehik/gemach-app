@@ -3,7 +3,7 @@
 // מקצה לקצה מול ה-API המדומה (pay-mock.js): endpoints, גופים, וחלונות.
 
 export function payStages(h) {
-  const { fresh, clickAt, away, sleep, demoWin, check } = h;
+  const { fresh, clickAt, pickApprover, away, sleep, demoWin, check } = h;
   const p = () => h.p();
   // בעיצוב: סמני שכבת הסקירה שהבעלים הסירו (r34 חיוב משלוח ידני, r35 "הוסף חיוב") יורדים; עטיפת r37 (span display:contents) נפתחת
   const demoPayClean = async () => p().evaluate(() => {
@@ -15,7 +15,7 @@ export function payStages(h) {
   const realTab = async (scn, extra = '') => { await fresh(scn + extra); await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(400); };
   const calls = () => p().evaluate(() => window.__calls || []);
   const typeIn = async (sel, text) => { await clickAt(sel); await p().type(sel, text); };
-  const approveWith = async (code = '1234') => { await p().waitForSelector('#scrim2.on #dlg2 .oc-emps .opt', { timeout: 5000 }); await clickAt('#dlg2 .oc-emps .opt:nth-child(1)'); await p().type('#oc-appr-code', code); await p().keyboard.press('Enter'); await sleep(700); };
+  const approveWith = async (code = '1234') => { await p().waitForSelector('#scrim2.on #dlg2 .oc-appr-sel', { timeout: 5000 }); await pickApprover(1); await p().type('#oc-appr-code', code); await p().keyboard.press('Enter'); await sleep(700); };
 
   return [
     // ---------- השוואה לעיצוב ----------

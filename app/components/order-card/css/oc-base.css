@@ -87,9 +87,17 @@
 /* דליפה: design-overrides.css input:not(...){border-radius:10px} (0,4,1) גובר על .inp של הפלטה - בעיצוב שדה בחלון מעוגל 14px */
 .gm-ds.gm-oc :is(#dlg,#dlg2) .mfld > input.inp{border-radius:14px}
 /* D12 / R47 (שכבת הסקירה, מאושר): רשימת עובדים נגללת בחלון אישור מנהל */
-.gm-ds.gm-oc .oc-emps{max-height:204px;overflow-y:auto;padding:2px;margin:0;gap:8px}
-.gm-ds.gm-oc .oc-emps .opt{min-height:52px;padding:10px 14px}
-.gm-ds.gm-oc .oc-emps .oc-emps-wait{padding:10px 4px;font-size:14px}
+/* D7: בורר המאשר - לחצן-תיבה (combobox) + רשימה נגללת (.advlist מהפלטה, max-height 216px) במקום כל העובדים כשורות */
+.gm-ds.gm-oc .oc-appr-pick{position:relative}
+.gm-ds.gm-oc .oc-appr-sel{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:start;cursor:pointer;font:inherit}
+.gm-ds.gm-oc .oc-appr-sel:disabled{cursor:default;opacity:.85}
+.gm-ds.gm-oc .oc-appr-sel .oc-appr-cur{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.gm-ds.gm-oc .oc-appr-sel .oc-appr-cur small{font-size:13px;opacity:.75}
+.gm-ds.gm-oc .oc-appr-sel > .faint{flex:1;min-width:0;font-size:14px}
+.gm-ds.gm-oc .oc-appr-sel .oc-appr-chev{margin-inline-start:auto;flex:none;transition:transform 150ms}
+.gm-ds.gm-oc .oc-appr-sel[aria-expanded="true"] .oc-appr-chev{transform:rotate(180deg)}
+.gm-ds.gm-oc .oc-appr-pick .advlist{z-index:60}
+.gm-ds.gm-oc .oc-appr-pick .advo-t small{font-size:13px}
 .gm-ds.gm-oc .oc-appr-code{margin-top:14px}
 .gm-ds.gm-oc .oc-appr .amsg{margin-top:6px}
 .gm-ds.gm-oc .oc-appr-hint{font-size:13px;margin-bottom:12px}

@@ -197,7 +197,7 @@ test('CSS: נטרולי הדליפה של §D.2 קיימים ב-oc-base.css', ()
   assert.ok(has(/\.card/, /^background$/, /linear-gradient\(135deg,rgba\(255,252,247/), 'פנינה במקום זכוכית');
   assert.ok(has(/#sbar/, /^display$/, /!important/), 'R42: .sbar גלוי');
   assert.ok(has(/#stepper/, /^display$/, /none!important/), 'A5: סטפר מוסתר');
-  assert.ok(has(/\.oc-emps$/, /^max-height$/), 'D12: רשימה נגללת');
+  assert.ok(has(/\.oc-appr-sel$/, /^min-height$/), 'D12/D7: בורר המאשר (רשימה נגללת נפתחת)');
 });
 
 test('סקירה 4: החץ ולחצני השמירה של הרייל מנוטרלים בזמן שמירה (oc.saving)', () => {

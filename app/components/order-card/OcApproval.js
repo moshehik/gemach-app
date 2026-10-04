@@ -1,6 +1,6 @@
 'use client';
 
-// OcApproval — חלון "אישור מנהל" של הכרטיס החדש (D12, בגרסת הבעלים מהעיצוב: pv-main askManagerApproval): רשימה נגללת של העובדים
+// OcApproval — חלון "אישור מנהל" של הכרטיס החדש (D12, בגרסת הבעלים מהעיצוב: pv-main askManagerApproval; D7 2026-10-05: בורר נפתח במקום כל השמות על המסך): בחירה מרשימה נגללת של העובדים
 // המורשים להרשאה המבוקשת לפי מסך ההרשאות (אותה הכרעה כמו customAuthPrompt: approvals[key] / canApproveWithoutPayment מ-GET
 // /api/employees) + שדה קוד (אותו סוד ש-verify-pin מקבל היום, כמו בכניסה לאתר) → POST /api/auth/verify-pin עם context
 // {orderId, reason} (חוזה W0 §1.2: השרת רושם MANAGER_APPROVAL ובודק את ההרשאה מחדש; לחוב featureKey='feature:debt_approval' בשרת). בלי 4 תיבות ספרות. נעילה בצד לקוח אחרי
@@ -19,6 +19,77 @@ import OcIcon from './OcIcon';
 import { DlgBtn, DlgButtons, Field, Inp } from './OcUi';
 import { approvalLevelOf, employeeRoleLabel, filterApprovers, verifyPinBody, APPROVAL_LOCK_MS, APPROVAL_MAX_TRIES } from './orderCardLogic';
 
+// D7 (בעלים 2026-10-05): "אל תציג את כל השמות אלא בחירה מרשימה נגללת של המערכת" - בורר נפתח (combobox) במקום כל המורשים כשורות/צ'יפים:
+// לחצן שמציג את המאשר שנבחר + רשימה נגללת (max-height של .advlist מהפלטה) של העובדים המורשים מ-GET /api/employees (מסנן ההרשאות הקיים,
+// בלי הרשאות חדשות). מקלדת: חצים / Home / End / Enter / Escape (סוגר רק את הרשימה כשהיא פתוחה - ר' data-oc-esc ב-OcUi).
+function ApproverPicker({ emps, sel, onPick, labelId }) {
+  const [open, setOpen] = useState(false);
+  const [act, setAct] = useState(-1);
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const listRef = useRef(null);
+  const list = emps || [];
+  const cur = list.find((e) => String(e.id) === String(sel)) || null;
+  const empty = emps !== null && list.length === 0;
+  const optId = (i) => `oc-appr-opt-${i}`;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || act < 0 || !listRef.current) return;
+    const el = listRef.current.querySelectorAll('[role="option"]')[act];
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  }, [open, act]);
+
+  const show = () => { if (!list.length) return; setAct(Math.max(0, list.findIndex((e) => String(e.id) === String(sel)))); setOpen(true); };
+  const choose = (i) => { const e = list[i]; if (!e) return; setOpen(false); onPick(e.id); };
+  const onKey = (e) => {
+    if (!list.length) return;
+    if (e.key === 'Escape') { if (open) { e.preventDefault(); e.stopPropagation(); setOpen(false); } return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { show(); return; }
+      setAct((a) => (e.key === 'ArrowDown' ? Math.min(list.length - 1, a + 1) : Math.max(0, a - 1)));
+    } else if (e.key === 'Home' && open) { e.preventDefault(); setAct(0); }
+    else if (e.key === 'End' && open) { e.preventDefault(); setAct(list.length - 1); }
+    else if ((e.key === 'Enter' || e.key === ' ') && open) { e.preventDefault(); choose(act >= 0 ? act : 0); }
+  };
+
+  return (
+    <div className="oc-appr-pick" ref={wrapRef}>
+      <button
+        type="button" ref={btnRef} id="oc-appr-sel" className="inp oc-appr-sel" role="combobox" data-oc-esc="own"
+        aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? 'oc-appr-list' : undefined} aria-labelledby={`${labelId} oc-appr-sel`}
+        aria-activedescendant={open && act >= 0 ? optId(act) : undefined}
+        disabled={emps === null || empty}
+        onClick={() => (open ? setOpen(false) : show())} onKeyDown={onKey}
+      >
+        <OcIcon name="user" size="sm" />
+        {emps === null ? <span className="faint" role="status">טוען רשימת עובדים...</span>
+          : empty ? <span className="faint" role="status">אין עובדים מורשים להרשאה זו לפי מסך ההרשאות.</span>
+            : cur ? <span className="oc-appr-cur"><b>{cur.firstName} {cur.lastName}</b><small>{employeeRoleLabel(cur)}</small></span>
+              : <span className="faint">בחרו מאשר מהרשימה</span>}
+        <OcIcon name="chev" size="sm" className="oc-appr-chev" />
+      </button>
+      {open ? (
+        <ul className="advlist" id="oc-appr-list" role="listbox" aria-labelledby={labelId} ref={listRef}>
+          {list.map((e, i) => (
+            <li key={e.id} id={optId(i)} role="option" aria-selected={String(e.id) === String(sel)} className={`advo${i === act ? ' act' : ''}`}
+              onMouseDown={(ev) => ev.preventDefault()} onMouseEnter={() => setAct(i)} onClick={() => choose(i)}>
+              <span className="advo-t"><b>{e.firstName} {e.lastName}</b><small className="faint oc-advcode"> · {employeeRoleLabel(e)}</small></span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export default function OcApprovalDialog({ kind, reason, orderId, close, fetchImpl }) {
   const level = useMemo(() => approvalLevelOf(kind), [kind]);
   const [emps, setEmps] = useState(null); // null = בטעינה
@@ -29,7 +100,6 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
   const [locked, setLocked] = useState(false);
   const tries = useRef(0);
   const codeRef = useRef(null);
-  const listRef = useRef(null);
 
   useEffect(() => {
     let off = false;
@@ -88,46 +158,13 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
     }
   };
 
-  // ניווט מקלדת ברשימה (listbox): חצים למעלה/למטה
-  const onListKey = (e) => {
-    if (!emps || !emps.length || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
-    e.preventDefault();
-    const i = Math.max(0, emps.findIndex(x => String(x.id) === String(sel)));
-    const n = e.key === 'ArrowDown' ? Math.min(emps.length - 1, i + 1) : Math.max(0, i - 1);
-    setSel(String(emps[n].id));
-    const btn = listRef.current && listRef.current.querySelectorAll('.opt')[n];
-    btn && btn.focus();
-  };
-
   return (
     <>
       <h2 id="oc-appr-t">אישור מנהל</h2>
       <div className="sub">{reason || 'נדרש אישור מנהל'}</div>
       <div className="mfld">
         <span className="lbl" id="oc-appr-emps-l"><OcIcon name="user" size="sm" />שם משתמש</span>
-        <div className="dbtns oc-emps" role="listbox" aria-labelledby="oc-appr-emps-l" ref={listRef} onKeyDown={onListKey}>
-          {emps === null ? (
-            <div className="faint oc-emps-wait" role="status">טוען רשימת עובדים...</div>
-          ) : emps.length === 0 ? (
-            <div className="faint oc-emps-wait" role="status">אין עובדים מורשים להרשאה זו לפי מסך ההרשאות.</div>
-          ) : emps.map(e => {
-            const on = String(e.id) === String(sel);
-            return (
-              <button
-                key={e.id}
-                type="button"
-                className={`opt${on ? ' on' : ''}`}
-                role="option"
-                aria-selected={on}
-                tabIndex={on || (!sel && e === emps[0]) ? 0 : -1}
-                onClick={() => { setSel(String(e.id)); setTimeout(() => codeRef.current && codeRef.current.focus(), 0); }}
-              >
-                <OcIcon name="user" size="lg" />
-                <div><b>{e.firstName} {e.lastName}</b><small>{employeeRoleLabel(e)}</small></div>
-              </button>
-            );
-          })}
-        </div>
+        <ApproverPicker emps={emps} sel={sel} labelId="oc-appr-emps-l" onPick={(id) => { setSel(String(id)); setTimeout(() => codeRef.current && codeRef.current.focus(), 0); }} />
       </div>
       <div className="oc-appr-code">
         <Field label="קוד" icon="lock" htmlFor="oc-appr-code">
