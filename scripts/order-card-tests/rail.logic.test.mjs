@@ -449,7 +449,8 @@ test('אינטגרציה: D1 (נווה, enable_order_edit_summary_confirm) נפ�
   await x.a.primary('save');
   const sum = h.opened.filter((o) => o[0] === 'Summary');
   assert.equal(sum.length, 1);
-  assert.deepEqual(Object.keys(sum[0][1]).sort(), ['changes', 'intent', 'obligations', 'savedObligationKeys', 'totalPaid', 'totalRequired']);
+  assert.deepEqual(Object.keys(sum[0][1]).sort(), ['changes', 'intent', 'obligations', 'pendingNet', 'savedObligationKeys', 'totalPaid', 'totalRequired']);
+  assert.equal(typeof sum[0][1].pendingNet, 'number', 'D1 מקבל את החיוב/הזיכוי הממתין (REQUESTS-W5 #2)');
   assert.equal(sum[0][1].intent, 'save');
   assert.ok(Array.isArray(sum[0][1].changes) && sum[0][1].changes.length === 1);
   // ביטול D1: אין PUT, אין חלון גבייה, אין D6

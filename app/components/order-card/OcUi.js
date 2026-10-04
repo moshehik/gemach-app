@@ -171,7 +171,14 @@ export function OcUiProvider({ children }) {
       return prev.filter(x => x.id !== id);
     });
     const back = focusBack.current.pop();
-    if (back && typeof back.focus === 'function') setTimeout(() => { try { back.focus(); } catch { /* noop */ } }, 0);
+    // הלחצן שפתח את החלון יכול להיעלם בזמן שהחלון פתוח (למשל "שמור" ברייל אחרי שמירה מוצלחת) - אז המיקוד חוזר ללחצן-גיבוי (data-oc-focus-fallback)
+    if (back && typeof back.focus === 'function') {
+      setTimeout(() => {
+        try {
+          if (back.isConnected === false) { const fb = document.querySelector('[data-oc-focus-fallback]'); if (fb) fb.focus(); } else back.focus();
+        } catch { /* noop */ }
+      }, 0);
+    }
   }, []);
 
   const openDialog = useCallback((Component, props = {}, opts = {}) => new Promise((resolve) => {

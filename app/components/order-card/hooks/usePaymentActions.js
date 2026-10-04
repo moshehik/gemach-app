@@ -21,7 +21,7 @@
 //
 // סכומים: תמיד parseFloat + money2 (עיגול לאגורות) — לעולם לא שרשור מחרוזות.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { fmtMoney, obligationIdentityKey, unsavedCardChargeMessage } from '../orderCardLogic';
 import { formatIban } from '@/lib/iban';
@@ -700,7 +700,8 @@ export function requestPayment(kind = 'auto') {
  */
 export default function usePaymentActions(oc, ui, D) {
   const ocRef = useRef(oc);
-  useEffect(() => { ocRef.current = oc; });
+  // layout effect (לא passive): בקשת תשלום שמגיעה מיד אחרי שמירה (oc.save → הרייל) חייבת לראות את ה-state השמור, לא את זה שלפני השמירה
+  useLayoutEffect(() => { ocRef.current = oc; });
   const [busy, setBusy] = useState('');
   const [roleId, setRoleId] = useState(null);
   const syncingRef = useRef(false);
@@ -760,7 +761,11 @@ export default function usePaymentActions(oc, ui, D) {
     const r = await ui.openDialog(D.Pay, { api, ...ctx }, { labelledBy: 'oc-pay-t', className: 'oc-pay', dismissable: () => !actions.isBusy() });
     if (!r) return null;
     if (r.paid) announcePaid(r);
-    if (r.leftDebt) ui.toast('info', `אושר על ידי ${r.leftDebt.employeeName || 'מנהל'}`, 'ההזמנה נשמרה עם יתרת חוב');
+    if (r.leftDebt) {
+      ui.toast('info', `אושר על ידי ${r.leftDebt.employeeName || 'מנהל'}`, 'ההזמנה נשמרה עם יתרת חוב');
+      // D6 "נשמר · חוב ₪N" (R10) ברייל - רק אחרי שהחלון נסגר, ולא ביציאה (שם ממשיכים לצאת). REQUESTS-W5 #1
+      if (ctx.source !== 'exit' && ocRef.current.announceDebtLeft) ocRef.current.announceDebtLeft({ amount: money2(ctx.amount), employeeId: r.leftDebt.employeeId, employeeName: r.leftDebt.employeeName });
+    }
     if ((r.paid || r.leftDebt) && ctx.source === 'exit') await continueExit(ctx.href);
     return r;
   }, [ui, D, api, actions, announcePaid, continueExit]);
@@ -866,9 +871,10 @@ export default function usePaymentActions(oc, ui, D) {
   }, [ui, actions]);
 
   /** "תשלום ₪N" / "הוסף תשלום" / צ׳יפ הארנק: עם שינויים - שמירה קודם (A18: תשלום = שמירה → PUT → חלון התשלום) */
-  const payNow = useCallback(async () => {
+  // opts.afterSave: הקורא (הרייל) כבר שמר - לא שומרים שוב גם אם ה-state עוד מסומן "מלוכלך" (שורות מקומיות שטרם נשלחו)
+  const payNow = useCallback(async (opts = {}) => {
     const o = ocRef.current;
-    if (o.dirty) {
+    if (o.dirty && !opts.afterSave) {
       const r = await o.save({ intent: 'pay' });
       // חוב חדש → הבקר שולח debtCreated והחלון נפתח משם; חוב שהיה קודם → פותחים כאן
       if (r && r.ok && !r.noop && !r.debtCreated && money2(r.balance) > 0) return openPay({ source: 'pay-now', amount: money2(r.balance) });
@@ -879,9 +885,9 @@ export default function usePaymentActions(oc, ui, D) {
   }, [openPay]);
 
   /** "זכה ₪N": עם שינויים - שמירה (השרת יוצר זיכוי אוטומטי → פרטי בנק); בלי - הזיכוי הממתין (פרטי בנק / אישור ביצוע) או בקשת זיכוי */
-  const creditNow = useCallback(async () => {
+  const creditNow = useCallback(async (opts = {}) => {
     const o = ocRef.current;
-    if (o.dirty) { await o.save({ intent: 'credit' }); return null; }
+    if (o.dirty && !opts.afterSave) { await o.save({ intent: 'credit' }); return null; }
     const pending = pendingRefundsOf(o.refunds);
     const needBank = pendingAutoRefundNeedingBank(o.refunds) || pending.find(refundNeedsBank);
     if (needBank) return openBank(needBank);
@@ -922,9 +928,13 @@ export default function usePaymentActions(oc, ui, D) {
   }, [bankAsk, oc.refunds, openBank]);
 
   // R4 / רייל: בקשת תשלום מבחוץ
+  // afterSave (מהרייל, מיד אחרי oc.save): ה-state השמור מגיע ברינדור הבא - מחכים לו (אותו דפוס כמו bankAsk) ואז פותחים בלי לשמור שוב
+  const [afterSaveAsk, setAfterSaveAsk] = useState(null); // {kind}
   useEffect(() => {
     const h = (ev) => {
-      const kind = (ev && ev.detail && ev.detail.kind) || 'auto';
+      const d = (ev && ev.detail) || {};
+      const kind = d.kind || 'auto';
+      if (d.afterSave) { setAfterSaveAsk({ kind }); return; }
       const bal = money2(ocRef.current.totals.balance);
       if (kind === 'pay' || (kind === 'auto' && bal > 0)) payNow();
       else if (kind === 'credit' || (kind === 'auto' && bal < 0)) creditNow();
@@ -932,6 +942,14 @@ export default function usePaymentActions(oc, ui, D) {
     window.addEventListener(OC_PAY_REQUEST_EVENT, h);
     return () => window.removeEventListener(OC_PAY_REQUEST_EVENT, h);
   }, [payNow, creditNow]);
+  useEffect(() => {
+    if (!afterSaveAsk) return;
+    const { kind } = afterSaveAsk;
+    setAfterSaveAsk(null);
+    const bal = money2(ocRef.current.totals.balance);
+    if (kind === 'pay' || (kind === 'auto' && bal > 0)) payNow({ afterSave: true });
+    else if (kind === 'credit' || (kind === 'auto' && bal < 0)) creditNow({ afterSave: true });
+  }, [afterSaveAsk, payNow, creditNow]);
 
   return {
     api, actions, busy,

@@ -242,6 +242,13 @@ export const debtApprovalCovers = (level, debt) => level !== null && level !== u
 // הגנות היציאה (יירוט קישורים + beforeunload) פעילות כשיש שינויים שלא נשמרו או כשהיציאה חסומה בגלל חוב חדש (סקירה, סעיף 1)
 export const exitGuardActive = (dirty, pendingDebtBlock) => !!(dirty || pendingDebtBlock);
 
+// חסימת היציאה בגלל חוב חדש (pendingDebtBlock) מסתיימת כשהחוב השמור שולם במלואו (תשלום / זיכוי שסגר את היתרה) - אחרת "הזמנה חדשה" אחרי
+// תשלום שולח PUT מיותר ומפעיל את חלון הסיכום, וה-beforeunload נשאר פעיל (סקירת W5, אינטגרציה)
+export const debtBlockShouldClear = (pendingDebtBlock, savedBalance) => !!pendingDebtBlock && Number(savedBalance) <= 0.01;
+
+// שורה מקומית חצי-ריקה (נוספה ולא נבחר בה דגם/מידה - אין dressItem.dress) לא נשלחת לתצוגה המקדימה: השרת מתעלם ממנה, והיא רק מרעישה את הבקשה
+export const isHalfFilledLocalItem = (it) => !!it && !it.id && !(it.dressItem && it.dressItem.dress);
+
 // שורה חדשה (בלי id) מקבלת _localId במקום אחד - כך כל שורה מזוהה ברשימת השינויים, בביטול ובהחזרה (סקירה, סעיפים 5-6)
 export function withLocalIds(list) {
   if (!Array.isArray(list)) return list;
@@ -252,6 +259,13 @@ export function withLocalIds(list) {
     return { ...x, _localId: newLocalId() };
   });
   return changed ? out : list;
+}
+
+// החיוב/הזיכוי הממתין לפי הסכום המחושב (למשל תוצאת preview-pricing) מול היתרה השמורה ב-snapshot - אותה נוסחה כמו totals.pendingNet,
+// לחלון הסיכום D1 (בלוק הסכום בעיצוב = הממתין, לא היתרה אחרי השמירה)
+export function pendingNetOf(snapshot, required, paid) {
+  const saved = snapshot ? requiredOf(snapshot.obligations || [], snapshot.items || []) - paidOf(snapshot.payments || []) : required - paid;
+  return round2((required - paid) - saved);
 }
 
 /**
@@ -330,7 +344,7 @@ export function formatStockErrors(errors = []) {
 }
 
 export const buildPreviewBody = (items, o) => ({
-  items,
+  items: (items || []).filter(it => !isHalfFilledLocalItem(it)),
   order: {
     eventDate: o.eventDate,
     isAbroad: o.isAbroad,

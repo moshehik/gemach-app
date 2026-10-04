@@ -21,7 +21,7 @@ import {
   formatStockErrors, freshBalanceAfterExit, freshDebtAfterSave, hasRequiredDates, isDebtUnchangedSinceOpen,
   isPartiallyRentedBlocked, mergePendingItems, missingDatesMessage, needsAutoRefundBank, obligationIdentityKey,
   requiredOf, paidOf, submittedLocalIdsOf, validateRepairs, zeoutVerificationNeeded, DELETE_BLOCKED_STATUSES,
-  fmtMoney, debtApprovalCovers, openedDebtOf, unsavedCardChargeMessage
+  fmtMoney, debtApprovalCovers, openedDebtOf, unsavedCardChargeMessage, pendingNetOf
 } from './orderCardLogic';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
@@ -167,6 +167,7 @@ export function createOrderCardFlows(env) {
         obligations: previewObligations,
         totalRequired: previewTotal,
         totalPaid,
+        pendingNet: pendingNetOf(st.snapshot, previewTotal, totalPaid),
         savedObligationKeys: new Set((st.snapshot?.obligations || []).filter(so => !so.isDeleted).map(so => obligationIdentityKey(so))),
         changes: changesOf(st.snapshot, st)
       });

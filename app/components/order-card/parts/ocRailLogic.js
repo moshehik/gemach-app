@@ -33,10 +33,15 @@ export const OC_PAYMENT_DONE_EVENT = 'oc:payment-done';
 // הלחצן הראשי של הרייל (הטוסט "לשמירה" של A23 שולח אותו כדי שיש מסלול שמירה אחד)
 export const OC_RAIL_PRIMARY_EVENT = 'oc:rail-primary';
 
-/** kind: 'auto' | 'pay' | 'credit' (כמו requestPayment של W4) */
-export function requestPaymentEvent(kind = 'auto') {
+/**
+ * kind: 'auto' | 'pay' | 'credit' (כמו requestPayment של W4).
+ * opts.afterSave: הבקשה נשלחת מיד אחרי שמירה שהצליחה - W4 לא שומר שוב (גם אם ה-state שלו עוד "מלוכלך") ומחכה לרינדור עם הנתונים השמורים.
+ */
+export function requestPaymentEvent(kind = 'auto', opts = {}) {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(OC_PAY_REQUEST_EVENT, { detail: { kind } }));
+  const detail = { kind };
+  if (opts && opts.afterSave) detail.afterSave = true;
+  window.dispatchEvent(new CustomEvent(OC_PAY_REQUEST_EVENT, { detail }));
 }
 
 // ---------- הלחצן הראשי של הרייל (A18) ----------
@@ -226,7 +231,7 @@ export const moneyToastText = (kind, net) => `${kind === 'credit' ? 'זיכוי'
 /**
  * @param {object} env
  * @param {()=>object} env.getOc          הבקר העדכני
- * @param {(kind:string)=>void} env.requestPayment
+ * @param {(kind:string, opts?:{afterSave?:boolean})=>void} env.requestPayment
  * @param {(info:{kind:string,amount:number,method?:string})=>void} env.showSuccess   פותח D6
  * @param {()=>number} [env.now]
  * @param {(fn:Function,ms:number)=>any} [env.setTimeout]
@@ -263,9 +268,9 @@ export function createRailActions(env) {
     // זיכוי אוטומטי שחסרים לו פרטי בנק: W4 פותח את חלון הבנק
     if (bankPrompted) return { handled: 'bank-window', r };
     // חוב שהיה קודם ("תשלום"): חלון התשלום של W4
-    if (kind === 'pay' && r.balance > EPS) { pending = { amount: r.balance, at: now() }; env.requestPayment('pay'); return { handled: 'pay-window', r }; }
+    if (kind === 'pay' && r.balance > EPS) { pending = { amount: r.balance, at: now() }; env.requestPayment('pay', { afterSave: true }); return { handled: 'pay-window', r }; }
     // יתרת זכות אחרי "זיכוי": W4 (אישור ביצוע זיכוי / פרטי בנק / בקשת זיכוי)
-    if (kind === 'credit' && r.creditNow > EPS) { env.requestPayment('credit'); return { handled: 'credit-window', r }; }
+    if (kind === 'credit' && r.creditNow > EPS) { env.requestPayment('credit', { afterSave: true }); return { handled: 'credit-window', r }; }
     env.showSuccess(successKindOfSave(r));
     return { handled: 'success', r };
   }

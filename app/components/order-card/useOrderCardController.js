@@ -24,7 +24,7 @@ import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/order
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
   zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
-  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, undoDropsUnsavedCardCharge, unsavedCardChargeMessage
+  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, undoDropsUnsavedCardCharge, unsavedCardChargeMessage, debtBlockShouldClear
 } from './orderCardLogic';
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
@@ -62,6 +62,7 @@ import OcApprovalDialog from './OcApproval';
  * @property {boolean} saving @property {object|null} inventoryCache
  * @property {(type:string, fn:Function)=>()=>void} on   אירועים: 'debtCreated' {amount,source,href?}, 'autoRefundNeedsBank' {source,href?}
  * @property {boolean} pendingDebtBlock
+ * @property {(p:{amount:number,employeeId:string,employeeName:string})=>void} announceDebtLeft   נקרא אחרי שחלון התשלום נסגר ב"השאר חוב" → אירוע 'debtApproved'
  */
 export default function useOrderCardController(orderRef, ui, { dialogs = {} } = {}) {
   const router = useRouter();
@@ -187,11 +188,20 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     statusText,
   }), [isLocked, isPastEvent, isUnlocked, settings, order, statusText]);
 
-  // ---------- תצוגה מקדימה חיה (לשונית תשלומים, שינויים שמשפיעים על מחיר) ----------
+  // ---------- תצוגה מקדימה חיה (בכל לשונית: הטוסט "חיוב ממתין", הלחצן "תשלום/זיכוי" והשורה ברייל תלויים ב-totals.pendingNet) ----------
+  // רצה כשיש שינוי שמשפיע על המחיר. כשאין - שורות isPreview שנשארו (ביטול שורה / ביטול שינויים) מוסרות; גרסה (previewSeqRef) עולה בכל ריצה
+  // ובניקוי, כך שתשובה שמגיעה מאוחר (אחרי שמירה / ביטול) לא מחזירה שורות preview.
+  const previewActive = useMemo(
+    () => dirty && !!order?.orderId && pricingInputsChanged(snapshot, items, order),
+    [dirty, snapshot, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId]
+  );
   useEffect(() => {
-    if (tab !== 'payments' || !dirty || !order?.orderId) return undefined;
-    if (!pricingInputsChanged(snapshotRef.current, items, order)) return undefined;
     const mySeq = ++previewSeqRef.current;
+    if (!previewActive) {
+      setIsLivePreviewing(false);
+      setObligations(prev => (prev.some(o => o.isPreview) ? prev.filter(o => !o.isPreview) : prev));
+      return undefined;
+    }
     const timer = setTimeout(async () => {
       setIsLivePreviewing(true);
       try {
@@ -212,8 +222,9 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
         if (mySeq === previewSeqRef.current) setIsLivePreviewing(false);
       }
     }, 400);
-    return () => clearTimeout(timer);
-  }, [tab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId, dirty]);
+    return () => { clearTimeout(timer); previewSeqRef.current += 1; };
+  }, [previewActive, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId]);
+
 
   // ---------- הגנות יציאה ----------
   // פעילות כשיש שינויים שלא נשמרו וגם כשהיציאה חסומה בגלל חוב חדש שלא שולם/אושר (A18; סקירה, סעיף 1) - אחרת אפשר היה לעזוב
@@ -286,6 +297,11 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     get approvedDebtLevel() { return flagsRef.current.approvedDebtLevel; },
     set approvedDebtLevel(v) { flagsRef.current.approvedDebtLevel = v; },
   }), [setPendingDebtBlock]);
+
+  // חסימת היציאה בגלל חוב חדש מסתיימת כשהחוב השמור שולם (ר' debtBlockShouldClear)
+  useEffect(() => {
+    if (debtBlockShouldClear(pendingDebtBlock, totals.savedBalance)) setPendingDebtBlock(false);
+  }, [pendingDebtBlock, totals.savedBalance, setPendingDebtBlock]);
 
   const flows = useMemo(() => {
     const f = createOrderCardFlows({
@@ -389,6 +405,9 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     return { employeeId: r.employeeId, employeeName: r.employeeName };
   }, [approve]);
 
+  // החלון "השאר חוב" נסגר (W4 קורא אחרי הסגירה) → אירוע debtApproved {amount, employeeId, employeeName}: הרייל פותח D6 "נשמר · חוב ₪N"
+  const announceDebtLeft = useCallback((payload) => emit('debtApproved', payload), [emit]);
+
   // סנכרון מקומי אחרי PUT קטן שהקורא כבר שלח. updatedAt מהשרת לא מאומץ אלא אם adoptUpdatedAt (ואז רק כשהקורא שלח updatedAt ולא דרס
   // התנגשות) - אחרת שינוי של משתמש אחר היה "נבלע" והשמירה הבאה לא הייתה מזהה 409 (סקירה, סעיף 3). עדיף: oc.patchServer(fields).
   const patchOrder = useCallback((patch, { adoptUpdatedAt = false } = {}) => {
@@ -426,7 +445,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     save: flows.save, exit: flows.exit, reload: flows.reload, applyServerOrder: flows.applyServerOrder, patchOrder, syncItems, patchServer: flows.patchServer,
     deleteOrder: flows.deleteOrder, toggleSignature: flows.toggleSignature, unlock, relock,
     drafts: { pending: pendingDraft, restore: restoreDraft, discard: discardDraft },
-    historyVersion, bumpHistory, logEvent, approve, approveDebt,
+    historyVersion, bumpHistory, logEvent, approve, approveDebt, announceDebtLeft,
     tab, setTab, goPayments, saving, inventoryCache, on, pendingDebtBlock,
     requestZeout: flows.requestZeout,
     orderRef,

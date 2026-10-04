@@ -35,7 +35,17 @@ export default function OcRail({ oc, ui }) {
   const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(null);
   const [sessionPays, setSessionPays] = useState([]);
+  const [sheet, setSheet] = useState(false); // מתחת ל-1024px הרייל הוא גיליון תחתון (נפתח/נסגר); מעליו תמיד פתוח
+  const leavingRef = useRef(false);
   useLayoutEffect(() => { ocRef.current = oc; });
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(max-width:1023px)');
+    const sync = () => setSheet(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   // D6 - אחרי שמירה (R10). היעד הראשי לפי order_edit_redirect_screen (R44); "הדפסה" פותחת את /print/order (נרשם ע"י הדף עצמו - R9)
   const showSuccess = useCallback(async ({ kind, amount, method }) => {
@@ -49,6 +59,8 @@ export default function OcRail({ oc, ui }) {
     else if (choice === 'print' && typeof window !== 'undefined') window.open(printUrl(order.orderId), '_blank');
   }, [ui]);
 
+  // getOc/showSuccess קוראים את ocRef רק בתוך handler / אירוע (אף פעם לא ברינדור); הקומפיילר של React לא יודע לראות את זה דרך createRailActions
+  // eslint-disable-next-line react-hooks/refs
   const actions = useMemo(() => createRailActions({
     getOc: () => ocRef.current,
     requestPayment: requestPaymentEvent,
@@ -76,6 +88,21 @@ export default function OcRail({ oc, ui }) {
     const aside = rootRef.current && rootRef.current.closest('#rail');
     if (aside) aside.classList.toggle('open', open);
   }, [open]);
+  // הגיליון התחתון (מתחת ל-1024px): Esc או לחיצה מחוץ לגיליון סוגרים אותו (a11y); החלונות והטוסט לא נחשבים "מחוץ"
+  useEffect(() => {
+    if (!open || !sheet) return undefined;
+    const close = () => { setOpen(false); const t = rootRef.current && rootRef.current.querySelector('.cart-t'); if (t) t.focus(); };
+    const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('#scrim.on, #scrim2.on')) close(); };
+    const onDown = (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#rail, #scrim, #scrim2, #toast, .oc-portal')) return;
+      setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onDown); };
+  }, [open, sheet]);
 
   const { totals, changes, dirty, order, items } = oc;
   const net = totals.pendingNet;
@@ -106,10 +133,24 @@ export default function OcRail({ oc, ui }) {
     prevChip.current = chip.cls;
   }, [chip.cls]);
 
+  // לחיצה כפולה על ביטול: בזמן ש"הנעלמת" רצה מתעלמים (אחרת undoChange רץ פעמיים והאחרון מבטל שורה אחרת)
   const undo = (key) => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
     setLeaving(key);
-    setTimeout(() => { setLeaving(null); ocRef.current.undoChange(key); }, UNDO_LEAVE_MS);
+    setTimeout(() => { leavingRef.current = false; setLeaving(null); ocRef.current.undoChange(key); }, UNDO_LEAVE_MS);
   };
+
+  // הלחצן הראשי נעלם אחרי שמירה (אין שינויים) - המיקוד לא הולך לאיבוד אל ה-body: עובר ללחצן "שינויים בהזמנה"
+  const hadPrimary = useRef(false);
+  useEffect(() => {
+    const has = pr.kind !== 'none' && showAct;
+    if (hadPrimary.current && !has) {
+      const ae = document.activeElement;
+      if (!ae || ae === document.body) { const t = rootRef.current && rootRef.current.querySelector('.cart-t'); if (t) t.focus(); }
+    }
+    hadPrimary.current = has;
+  }, [pr.kind, showAct]);
 
   const primaryBtn = pr.kind === 'none' ? null : (
     <button type="button" className="btn primary lg block" data-act={pr.kind === 'pay-now' ? 'pay-now' : pr.kind === 'credit-now' ? 'credit-now' : 'save'} data-ico={pr.icon} disabled={busy} onClick={() => actions.primary()}>
@@ -125,20 +166,20 @@ export default function OcRail({ oc, ui }) {
           <OcIcon name={signed ? 'check' : 'x'} /><span className="gv">{signed ? 'חתום' : 'לא חתום'}</span>
         </button>
         {order && order.isDelivery ? (
-          <span className="gl del" tabIndex={0} aria-label={`משלוח ${order.deliveryDirection || ''}`.trim()}><OcIcon name="truck" /><span className="gv">{order.deliveryDirection || 'משלוח'}</span></span>
+          <span className="gl del" role="img" tabIndex={0} aria-label={`משלוח ${order.deliveryDirection || ''}`.trim()}><OcIcon name="truck" /><span className="gv">{order.deliveryDirection || 'משלוח'}</span></span>
         ) : null}
-        <span className="gl itm-c" tabIndex={0} aria-label={nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}><OcIcon name="dress" /><span className="gv">{nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}</span></span>
+        <span className="gl itm-c" role="img" tabIndex={0} aria-label={nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}><OcIcon name="dress" /><span className="gv">{nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}</span></span>
         <span className={`gl pay ${chip.cls}`} role="button" tabIndex={0} data-act="wallet" data-tip="מצב תשלום - לחצו למעבר לתשלומים" aria-label="מצב תשלום" onClick={() => actions.wallet()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.wallet(); } }}>
           <OcIcon name="card" /><span className="gv">{chip.cls === 'ok' ? chip.label : <>{chip.label} <Money n={chip.amount} /></>}</span>
         </span>
       </div>
       <div className="cart-h">
-        <button type="button" className="cart-t" data-act="cart-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="cart-t" data-act="cart-toggle" data-oc-focus-fallback="1" aria-expanded={sheet ? open : true} onClick={() => setOpen((v) => !v)}>
           <OcIcon name="cart" size="sm" /><b>שינויים בהזמנה</b><span className="badge">{count}</span>
           <span className="cart-sum">{sum ? <Money n={sum.value} signed={sum.signed} /> : null}</span><OcIcon name="chev" size="sm" />
         </button>
         {oc.redoCount ? (
-          <button type="button" className="redo fresh" data-act="redo" data-ico="redo" data-tip="החזר ביטול" aria-label="החזר ביטול" onClick={oc.redo}>
+          <button type="button" className="redo fresh" data-act="redo" data-ico="redo" data-tip="החזר ביטול" aria-label="החזר ביטול" disabled={busy} onClick={oc.redo}>
             <OcIcon name="redo" size="sm" anim />{oc.redoCount > 1 ? <i>{oc.redoCount}</i> : null}
           </button>
         ) : null}

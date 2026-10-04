@@ -248,7 +248,7 @@ test('5: "תשלום נוסף" (source manual) עם שינויים פתוחים 
   const man = hook.slice(hook.indexOf('const openManualPayment = useCallback'), hook.indexOf('const openManualRefund = useCallback'));
   assert.ok(man.indexOf('ocRef.current.dirty') > -1 && man.indexOf('ocRef.current.dirty') < man.indexOf('manualMoneyGate()'), 'הודעת "לשמור קודם" לפני בקשת האישור (גם בלחצן הנפרד של הגמ"ח הראשי)');
   const payNow = hook.slice(hook.indexOf('const payNow = useCallback'), hook.indexOf('const creditNow = useCallback'));
-  assert.ok(/if \(o\.dirty\)[\s\S]*o\.save\(\{ intent: 'pay' \}\)/.test(payNow));
+  assert.ok(/if \(o\.dirty && !opts\.afterSave\)[\s\S]*o\.save\(\{ intent: 'pay' \}\)/.test(payNow), 'עם שינויים שומרים קודם - אלא אם הקורא (הרייל) כבר שמר (afterSave)');
 });
 
 // ===================================================================================================

@@ -42,8 +42,11 @@ for (const { name, st, opts } of states) {
     const xd = st.order.extraDay !== undefined ? st.order.extraDay : null;
     assert.equal(neu.order.extraDay, xd);
     const stripped = { ...neu, order: { ...neu.order } }; delete stripped.order.extraDay;
-    assert.equal(JSON.stringify(stripped), JSON.stringify(legacyPreviewLiveBody(st.items, st.order)));
-    assert.equal(JSON.stringify(stripped), JSON.stringify(legacyPreviewSummaryBody(st.items, st.order)));
+    // הפרש מכוון יחיד מהישן: שורה מקומית חצי-ריקה (בלי id ובלי dressItem.dress - השרת מתעלם ממנה בכל מקרה) לא נשלחת
+    const sent = st.items.filter(i => !L.isHalfFilledLocalItem(i));
+    assert.equal(JSON.stringify(stripped), JSON.stringify(legacyPreviewLiveBody(sent, st.order)));
+    assert.equal(JSON.stringify(stripped), JSON.stringify(legacyPreviewSummaryBody(sent, st.order)));
+    assert.equal(neu.items.length, sent.length);
   });
   test(`validate-inventory = הישן · ${name}`, () => {
     const active = st.items.filter(i => !i.isDeleted);
