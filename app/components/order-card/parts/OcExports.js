@@ -10,6 +10,12 @@ import { downloadOrderPdf, exportOrderXlsx } from './ocDocsActions';
 
 const UNSAVED_NOTE = 'שינויים שלא נשמרו אינם כלולים בקובץ';
 
+// ייצוא ה-Excel טוען ספרייה כבדה (xlsx) שחוסמת את החוט הראשי; ממתינים לציור הטוסט לפני כן כדי שיופיע מיד (rAF לא רץ בלשונית מוסתרת - לכן גם טיימר)
+const afterPaint = () => new Promise((resolve) => {
+  const t = setTimeout(resolve, 120);
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(t); resolve(); }));
+});
+
 export default function OcExports({ oc, ui }) {
   const [busy, setBusy] = useState(null); // 'xlsx' | 'pdf' | null
   const busyRef = useRef(null);
@@ -21,6 +27,7 @@ export default function OcExports({ oc, ui }) {
     busyRef.current = kind; setBusy(kind);
     ui.toast('info', kind === 'xlsx' ? 'קובץ Excel של ההזמנה יורד' : 'סיכום ההזמנה יורד כקובץ', oc.dirty ? UNSAVED_NOTE : `הזמנה ${orderId}`);
     try {
+      await afterPaint();
       if (kind === 'xlsx') {
         const r = await exportOrderXlsx({ oc, orderId });
         if (!r.ok) ui.toast('error', 'אין מה לייצא בהזמנה זו', '');

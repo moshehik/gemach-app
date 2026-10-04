@@ -14,6 +14,9 @@ import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
 
 const jsonOf = async (res) => { try { return await res.json(); } catch { return {}; } };
 
+// גוף הבקשה למייל עובר כ-JSON בפונקציית שרת (Vercel: עד 4.5MB לבקשה) - קבצים גדולים יוצרים 413 שקט; חוסמים מראש בהודעה ברורה
+export const MAX_MAIL_PAYLOAD_CHARS = 4_200_000;
+
 const defaultPdf = () => import('@/app/lib/pdfClient');
 
 /** ה-HTML של דוח ההזמנה/ההשכרה (אותו HTML שהישן הופך ל-PDF) מהשרת - בלי לשלוח כלום */
@@ -93,6 +96,8 @@ export async function sendOrderMail({
     for (const file of extraFiles) {
       attachments.push(extraAttachmentOf({ name: file.name, base64: await readFile(file), mimeType: file.type, size: file.size }, sendMode));
     }
+    const payloadChars = (pdfBase64 ? pdfBase64.length : 0) + attachments.reduce((sum, a) => sum + String(a.fileContent || '').length, 0);
+    if (payloadChars > MAX_MAIL_PAYLOAD_CHARS) return { ok: false, error: 'הקבצים המצורפים גדולים מדי לשליחה אחת (מעל 3MB) - הסירו קובץ או שלחו אותם במייל נפרד' };
     onStep && onStep('send');
     const send = async (approval) => {
       const res = await fetchImpl(`/api/orders/${orderId}/email`, {

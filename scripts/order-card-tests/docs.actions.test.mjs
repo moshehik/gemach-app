@@ -182,6 +182,17 @@ test('quick: בלי צרופות - רק נושא ותוכן; fileCount 0; איש
   assert.equal(posts(f)[1].body.emailApproverPin, '1234');
 });
 
+test('גודל: צרופות מעל תקרת הבקשה (Vercel 4.5MB) נחסמות לפני השליחה בהודעה ברורה; מתחת לתקרה נשלח כרגיל', async () => {
+  const f = makeFetch(); const oc = makeOc();
+  const big = { name: 'גדול.pdf', type: 'application/pdf', size: 3_300_000 };
+  const r = await A.sendOrderMail({ oc, orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 'נושא', bodyText: 'תוכן', extraFiles: [big], fetchImpl: f, pdf: makePdf(), readFile: async () => 'A'.repeat(A.MAX_MAIL_PAYLOAD_CHARS + 1) });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /גדולים מדי/);
+  assert.equal(posts(f).length, 0);
+  const ok = await A.sendOrderMail({ oc, orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 'נושא', bodyText: 'תוכן', extraFiles: [big], fetchImpl: makeFetch(), pdf: makePdf(), readFile: async () => 'A'.repeat(1_000_000) });
+  assert.equal(ok.ok, true);
+});
+
 test('makeDocPdf: סוג לא נתמך = שגיאה; משלוח ללא מספר הזמנה תקין = שגיאה', async () => {
   await assert.rejects(() => A.makeDocPdf({ kind: 'invoice', orderId: 1, pdf: makePdf(), fetchImpl: makeFetch() }), /סוג מסמך לא נתמך/);
   await assert.rejects(() => A.makeDocPdf({ kind: 'delivery', orderId: 'x', pdf: makePdf(), fetchImpl: makeFetch() }), /מספר הזמנה לא תקין/);

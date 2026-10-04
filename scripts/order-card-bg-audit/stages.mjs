@@ -84,6 +84,8 @@ const openQuick = async (scn = 'unsignedq') => { await fresh(scn, '&qmhost=1'); 
 const calls = () => p.evaluate(() => window.__calls || []);
 const emailPosts = async () => (await calls()).filter((c) => c.url === '/api/orders/53375/email' && c.method === 'POST' && !/returnHtmlOnly/.test(c.body)).map((c) => JSON.parse(c.body));
 const toastText = () => p.evaluate(() => (document.querySelector('#toast b') || {}).textContent || '');
+// הטוסט נעלם אחרי 2.6 ש׳ - בודקים בדגימה חוזרת עד שהוא מופיע (המכונה/הרוחב משנים את זמן ההכנה של ה-PDF)
+const waitToast = async (re, ms = 9000) => { const t0 = Date.now(); let t = ''; while (Date.now() - t0 < ms) { t = await toastText(); if (re.test(t)) return t; await sleep(150); } return t; };
 const mailFlow = {
   fillQuick: async () => { await p.type('#m-body', 'שלום, הזמנה #53375 מוכנה.'); await clickAt('.mfile[data-id="ord"]'); await clickAt('.mfile[data-id="pay"]'); await away(); },
 };
@@ -184,8 +186,8 @@ const STAGES = [
   { name: '54-mail-doc-send', real: async () => {
     await fresh('signed'); await openMenu(); await clickAt('#pmenu [data-act="pm-mail-rental"]'); await sleep(800);
     const head = await p.$eval('#dlg h2', (e) => e.textContent);
-    await clickAt('#m-send'); await sleep(1800);
-    const posts = await emailPosts(); const toast = await toastText(); const pdfCalls = (await calls()).filter((c) => c.url === '/api/pdf');
+    await clickAt('#m-send'); const toast = await waitToast(/^נשלח ל-/); await sleep(300);
+    const posts = await emailPosts(); const pdfCalls = (await calls()).filter((c) => c.url === '/api/pdf');
     const html = (await calls()).filter((c) => c.url === '/api/orders/53375/email' && /returnHtmlOnly/.test(c.body || '')).map((c) => JSON.parse(c.body));
     checks.push(['mail doc: כותרת "שליחת מייל השכרה"', /שליחת מייל השכרה/.test(head)], ['mail doc: HTML של השכרה → PDF → POST עם pdfBase64 וה-type', html.length === 1 && html[0].type === 'rental' && pdfCalls.length === 1 && posts.length === 1 && posts[0].type === 'rental' && !!posts[0].pdfBase64 && posts[0].email === 'miriam.abr@example.com'],
       ['mail doc: טוסט "נשלח ל-…" והחלון נסגר', /^נשלח ל-miriam\.abr@example\.com/.test(toast) && !(await p.$('#dlg .mh'))]);
@@ -195,8 +197,8 @@ const STAGES = [
     const disabledBefore = await p.$eval('#m-send', (b) => b.disabled);
     await clickAt('.mfile[data-id="ord"]'); await clickAt('.mfile[data-id="pay"]'); await clickAt('.mfile[data-id="del"]'); await clickAt('.mfile[data-id="inv"]'); await clickAt('.mfile[data-id="img"]');
     const input = await p.$('#dlg input[type=file]'); await input.uploadFile(SHEET_TMP); await sleep(300); await clickAt('#dlg [data-dest="drive"]');
-    await clickAt('#m-send'); await sleep(2500);
-    const posts = await emailPosts(); const toast = await toastText(); const pdfs = (await calls()).filter((c) => c.url === '/api/pdf').map((c) => JSON.parse(c.body));
+    await clickAt('#m-send'); const toast = await waitToast(/^נשלח ל-/); await sleep(300);
+    const posts = await emailPosts(); const pdfs = (await calls()).filter((c) => c.url === '/api/pdf').map((c) => JSON.parse(c.body));
     const b = posts[0] || {};
     checks.push(['quick: שלח זמין כשיש נושא + תוכן', disabledBefore === false], ['quick: quick:{subject,bodyText} בלי pdfBase64', !!b.quick && b.quick.subject === 'תזכורת לקיחה' && b.quick.bodyText === 'שלום, נשמח לראותך.' && !('pdfBase64' in b)],
       ['quick: צרופות לפי kind (כל ששת הסוגים + קובץ נוסף) כולן ב-dest drive', JSON.stringify((b.extraAttachments || []).map((a) => [a.kind, a.dest])) === JSON.stringify([['order-pdf', 'drive'], ['payments', 'drive'], ['delivery', 'drive'], ['receipt', 'drive'], ['model-photos', 'drive'], ['file', 'drive']]) && b.sendMode === 'drive'],
