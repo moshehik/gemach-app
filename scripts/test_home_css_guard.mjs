@@ -748,5 +748,34 @@ t('pageVariantToggle.css: לחצן אייקון עגול של הפלטה - עי�
   assert.ok(has(/^\.gm-pvt\.gm-pvt-overlay$/, /^z-index$/, /^1000000/), 'מעל החלון הישן של הדיווח (999999)');
 });
 
+/* ---------- 13. "השינויים שלי" (& ו-/?recent=mine, 4.10.2026): בלוק 15 ב-home.css ---------- */
+const mineRules = parseCss(HOME_CSS).filter((r) => /\.mine-/.test(r.sel));
+t('השינויים שלי: הכללים קיימים, כולם בהיקף .gm-ds.gm-home, בלי !important, ורק משתני הפלטה --gm-* (בלי var(--navy)... של דף הדמו)', () => {
+  assert.ok(mineRules.length >= 20, 'נמצאו ' + mineRules.length);
+  const bad = [];
+  for (const r of mineRules) {
+    for (const sel of splitSel(r.sel)) if (!/^\.gm-ds\.gm-home /.test(sel)) bad.push(sel);
+    if (/!important/.test(r.body)) bad.push('!important ב-' + r.sel);
+    for (const m of r.body.matchAll(/var\(--([a-z0-9-]+)/gi)) if (!m[1].startsWith('gm-')) bad.push('משתנה שאינו gm-: --' + m[1]);
+  }
+  assert.deepEqual(bad, [], bad.join(' | '));
+});
+t('השינויים שלי: אין דריסת @media לפני הכלל הלא-מותנה, וה-CSS של החלונית לא מגדיר צבע / גופן חדש (רק rgba של הזהב / הלבן שכבר בפלטה, בלי font-family)', () => {
+  assert.deepEqual(mediaBeforeBase(mineRules, 'home.css (mine)'), []);
+  for (const r of mineRules) {
+    assert.ok(!/font-family|#[0-9a-f]{3,8}/i.test(r.body), 'צבע hex / גופן חדש ב-' + r.sel);
+  }
+});
+t('השינויים שלי: הקומפוננטות משתמשות באותם מחלקות (mine-list / mine-o / mine-t / mine-note / mine-view) ובאייקוני sprite בלבד', () => {
+  const QP = read('../app/components/search/QuickPrefix.js');
+  const HM = read('../app/components/home/HomeMine.js');
+  for (const c of ['advlist mine-list', 'advo mine-o', 'mine-t', 'mine-note', 'advo-h']) assert.ok(QP.includes(c), c);
+  for (const c of ['mine-view', 'mine-sec-h', 'mine-nt', 'mine-big']) assert.ok(HM.includes(c), c);
+  for (const c of ['advlist.mine-list', 'mine-list .advo-h', 'mine-view .mine-sec-h', 'mine-view .mine-nt', 'mine-view .mine-big', 'mine-note', 'mine-t ', 'mine-list .mine-head', 'mine-who .chip', 'mine-list .mine-all']) assert.ok(HOME_CSS.includes(c), 'חסר כלל: ' + c);
+  for (const c of ['XlButtons', 'ViewSwitch', 'ResultsTable', 'li rlink lrow', 'card res-one recent mine-view']) assert.ok(HM.includes(c), 'HomeMine משתמש ברכיבי תוצאות החיפוש: ' + c);
+  assert.ok(QP.includes('mine-head') && QP.includes('mine-all') && QP.includes('MineWho'), 'כותרת החלונית: שבבי עובדת + "הכל"');
+  assert.ok(!/<img|\.svg['"]/.test(QP + HM), 'בלי תמונות / קבצי svg חיצוניים');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

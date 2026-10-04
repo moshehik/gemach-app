@@ -111,17 +111,18 @@ t('הנהלה ראשית: חמש לשוניות (בית, לוז, לוח חודש
 t('הנהלה ראשית: תפריט בית — בלי הכותרת הקטנה "אחרונים"; כל הפריטים פותחים את דף החיפוש הראשי ("/") עם פרמטר (2.10.2026)', () => {
   const home = tab(HEAD_TREE, 'home');
   assert.deepEqual(home.items.map((x) => x.kind === 'link' ? x.id : x.kind === 'heading' ? `h:${x.label}` : x.kind === 'soon' ? `soon:${x.id}` : '-'),
-    ['home-search', '-', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'recent-all', '-', 'home-adv']);
+    ['home-search', '-', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'recent-all', 'recent-mine', '-', 'home-adv']);
   assert.equal(home.href, '/');
   assert.ok(!home.items.some((x) => x.kind === 'heading'), 'אין כותרת קבוצה בתפריט בית');
   assert.ok(!home.items.some((x) => x.kind === 'soon'), '"שינויים אחרונים" ו"חיפוש מתקדם" כבר לא "בקרוב"');
   const byId = Object.fromEntries(home.items.filter((x) => x.kind === 'link').map((x) => [x.id, x]));
   assert.deepEqual(Object.fromEntries(Object.entries(byId).map(([k, v]) => [k, v.href])), {
     'home-search': '/', 'recent-orders': '/?scope=orders', 'recent-customers': '/?scope=customers', 'recent-rentals': '/?scope=rentals',
-    'recent-returns': '/?scope=returns', 'recent-alterations': '/?scope=alterations', 'recent-all': '/?recent=changes', 'home-adv': '/?adv=1',
+    'recent-returns': '/?scope=returns', 'recent-alterations': '/?scope=alterations', 'recent-all': '/?recent=changes', 'recent-mine': '/?recent=mine', 'home-adv': '/?adv=1',
   });
   assert.deepEqual(['recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations'].map((k) => byId[k].label), ['הזמנות', 'לקוחות', 'השכרות', 'החזרות', 'תיקונים']);
   assert.equal(byId['recent-all'].label, 'שינויים אחרונים'); assert.equal(byId['home-adv'].label, 'חיפוש מתקדם');
+  assert.equal(byId['recent-mine'].label, 'השינויים שלי'); assert.equal(byId['recent-mine'].icon, 'pencil');
   // הפריט נשאר "נוכח" גם בעמוד הישן של הקטגוריה (match), כדי שההדגשה לא תיעלם בעמוד /orders וכו'
   assert.deepEqual(Object.fromEntries(['recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations'].map((k) => [k, byId[k].match])),
     { 'recent-orders': '/orders', 'recent-customers': '/customers', 'recent-rentals': '/rentals#rented', 'recent-returns': '/rentals#returned', 'recent-alterations': '/alterations' });
@@ -223,7 +224,7 @@ t('עובדת בלי הרשאות (הכול סגור): רק בית (חיפוש �
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_CLOSED, settings: [] });
   assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'order']);
   // "שינויים אחרונים" (האחרונים של העובדת, מקומי) מוצג לכולן; "חיפוש מתקדם" רק כשמותר לפחות תחום אחד (אין כאן — הכול סגור)
-  assert.deepEqual(ids(tab(tree, 'home').items), ['home-search', 'recent-all']);
+  assert.deepEqual(ids(tab(tree, 'home').items), ['home-search', 'recent-all']); // בלי page:orders אין "השינויים שלי" (אותה הרשאה של דף ההזמנות)
   assert.ok(!tab(tree, 'home').items.some((x) => x.kind === 'soon' || x.kind === 'heading'));
   assert.equal(tab(tree, 'sched').soon, true, 'אין page:schedule → "לוז" בקרוב');
   assert.deepEqual(ids(tab(tree, 'order').items), ['order-kiosk']);
@@ -352,14 +353,14 @@ t('מעטפת a5 + דף בית legacy (דגלים עצמאיים): אין קיש
     // (קישורי "היום"/"מחר" של הלוז (/schedule?date=) אינם תלויים בדף הבית - הדף עצמו קורא את הפרמטר)
     assert.ok(!flattenMenuTree(lt).some((x) => x.href && x.href.includes('?') && !x.href.startsWith('/schedule?')), `${name}: אין href עם query`);
     // אותן שורות בדיוק (נראות זהה); רק ה-href וסוג שתי השורות החדשות משתנים
-    assert.deepEqual(ids(tab(lt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), ids(tab(nt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), name);
+    assert.deepEqual(ids(tab(lt, 'home').items).filter((i) => !['recent-all', 'recent-mine', 'home-adv'].includes(i)), ids(tab(nt, 'home').items).filter((i) => !['recent-all', 'recent-mine', 'home-adv'].includes(i)), name);
     if (tab(lt, 'home')) assert.ok(!tab(lt, 'home').items.some((x) => x.kind === 'heading'));
   }
   const lt = legacyHome({ user: HEAD, permissions: ALL_OPEN, settings: [] });
   const home = tab(lt, 'home');
   assert.deepEqual(Object.fromEntries(home.items.filter((x) => x.kind === 'link').map((x) => [x.id, x.href])),
     { 'home-search': '/', 'recent-orders': '/orders', 'recent-customers': '/customers', 'recent-rentals': '/rentals#rented', 'recent-returns': '/rentals#returned', 'recent-alterations': '/alterations' });
-  assert.deepEqual(home.items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'home-adv']);
+  assert.deepEqual(home.items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'recent-mine', 'home-adv']);
   for (const x of home.items.filter((i) => i.kind === 'soon')) { assert.equal(x.href, undefined); assert.equal(x.action, undefined); }
   assert.ok(!home.items.some((x) => 'match' in x), 'בלי match כשהקישור הוא הדף הישן עצמו');
   // ברירת מחדל (בלי הדגל) = בטוח: קישורים ישנים
@@ -506,10 +507,25 @@ t('פריטים "עדיין לא קיימים": שורה כבויה "בקרוב"
   assert.deepEqual(ids(tab(noNew, 'order').items), ['order-kiosk', 'order-stock'], 'page:orders בלי page:orders_new: בדיקת מלאי כן, הזמנה חדשה לא');
   assert.deepEqual(withStock.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.ok(ids(tab(withStock, 'home').items).includes('recent-all')); assert.ok(ids(tab(withStock, 'home').items).includes('home-adv'));
+  assert.ok(ids(tab(withStock, 'home').items).includes('recent-mine'));
   assert.deepEqual(soonIds(withStock), []);
   // available לא יכול "להדליק" את לוז — הוא נשלט רק ע"י page:schedule
   const forced = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [], available: { sched: true } });
   assert.equal(tab(forced, 'sched').soon, true);
+});
+t('"השינויים שלי" (recent-mine): אחרי "שינויים אחרונים", לפי הרשאת page:orders בלבד (כמו דף ההזמנות); בלי דף בית חדש — "בקרוב"', () => {
+  const homeIds = (tree) => ids(tab(tree, 'home').items);
+  const open = homeIds(buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: [], homeA5: true }));
+  assert.equal(open.indexOf('recent-mine'), open.indexOf('recent-all') + 1, 'מיד אחרי recent-all');
+  const noOrders = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders': false }, settings: [], homeA5: true });
+  assert.ok(!homeIds(noOrders).includes('recent-mine'), 'בלי page:orders השורה לא מוצגת');
+  assert.ok(homeIds(noOrders).includes('recent-all'), '"שינויים אחרונים" (מקומי) כן');
+  const legacyOpen = buildMenuTreeRaw({ user: STAFF, permissions: ALL_OPEN, settings: [], homeA5: false });
+  const row = tab(legacyOpen, 'home').items.find((x) => x.id === 'recent-mine');
+  assert.equal(row.kind, 'soon'); assert.equal(row.href, undefined);
+  const noOrdersLegacy = buildMenuTreeRaw({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders': false }, settings: [], homeA5: false });
+  assert.ok(!tab(noOrdersLegacy, 'home').items.some((x) => x.id === 'recent-mine'));
+  assert.equal(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], homeA5: true }), 'home').items.find((x) => x.id === 'recent-mine').href, '/?recent=mine');
 });
 t('"חיפוש מתקדם" (home-adv): מוצג רק כשמותר לפחות תחום אחד שהחיפוש יכול לעבוד עליו; "שינויים אחרונים" תמיד', () => {
   assert.ok(!NOT_BUILT_ITEM_IDS.includes('recent-all') && !NOT_BUILT_ITEM_IDS.includes('home-adv'));
@@ -583,6 +599,7 @@ t('כללי isActive של AppShell: "/" רק מדויק, אחרת תחילית, 
   assert.deepEqual(findActive(HEAD_TREE, '/', '', 'scope=returns'), { tabId: 'home', itemId: 'recent-returns' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?adv=1'), { tabId: 'home', itemId: 'home-adv' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?recent=changes'), { tabId: 'home', itemId: 'recent-all' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?recent=mine'), { tabId: 'home', itemId: 'recent-mine' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', ''), { tabId: 'home', itemId: 'home-search' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?q=כהן'), { tabId: 'home', itemId: 'home-search' }, 'פרמטר לא מוכר = חיפוש כללי');
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?scope=evil'), { tabId: 'home', itemId: 'home-search' }, 'ערך לא מוכר לא מסמן שום פריט');
@@ -925,6 +942,26 @@ t('פאנל החיפוש: אין חיצי אחורה/קדימה ולא "עמוד
   assert.ok(/\.sn-sbox input:focus[^{]*\{[^}]*outline:0!important[^}]*box-shadow:none!important/.test(css), 'אין טבעת פוקוס של האתר הישן על השדה');
 });
 
+t('"השינויים שלי" בחיפוש התפריט: ה-CSS בהיקף .gm-ds.gm-menu בלבד, רק משתני --gm-*, והפאנל עושה את שלושת הדברים: אין בקשת חיפוש ל-&, רק '&' פעילה, Enter על הרשימה לא מריץ חיפוש', () => {
+  const css = readFileSync(new URL('../app/components/menu/menu.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = css.split('}').map((x) => x.trim()).filter((x) => /\.mine-/.test(x.split('{')[0]));
+  assert.ok(rules.length >= 15, 'נמצאו ' + rules.length);
+  for (const r of rules) {
+    const [sel, body] = r.split('{');
+    for (const one of sel.split(',')) assert.ok(/^\s*\.gm-ds\.gm-menu /.test(one), 'מחוץ להיקף: ' + one);
+    for (const m of body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה לא gm-: ' + m[1]);
+    assert.ok(!/!important/.test(body), r);
+  }
+  const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  // חיפוש השרת מושעה רק כשהרשימה עצמה מוצגת (mineOn של SearchBody), לא לפי "מתחיל ב-&" - אחרת: 403 / שורה לא מקוצצת / אחרי Esc = אין רשימה ואין חיפוש
+  const hook = panel.slice(panel.indexOf('export function useMenuSearch'), panel.indexOf('const MENU_PREFIXES'));
+  assert.ok(/term\.length < MIN_CHARS \|\| mineActive/.test(hook) && /\[debounced, mineActive\]/.test(hook), 'useMenuSearch לא שולח חיפוש כשהרשימה מוצגת');
+  assert.ok(!/detectQuickPrefix|startsWith\('&'\)/.test(hook), 'ההחלטה לא מתבססת על התו הראשון בלבד');
+  assert.ok(/reportMine\(drawer, mineOn\)/.test(panel) && /const mineOn = qp\.open && !!qp\.def && qp\.def\.source === 'mine'/.test(panel), 'mineActive = אותו תנאי שמצייר את הרשימה');
+  assert.ok(/MENU_PREFIXES = \['&'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט רק '&'");
+  assert.ok(/qp\.onKeyDown\(e\);[\s\S]{0,120}if \(e\.defaultPrevented\) return;/.test(panel), 'Enter על רשימת & לא מריץ חיפוש');
+  assert.ok(/nav\.navigate\(href\)/.test(panel) && /row\.url\.startsWith\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הכל" פותח /?recent=mine (עם emp של הנהלה)');
+});
 // ---- תוויות עבריות ל"נצפו לאחרונה" (תיקון רוחבי: אף נתיב גולמי באנגלית) ----
 import { pageLabel, hebrewLabelOr, hasPageLabel, ROUTE_LABELS, FALLBACK_PAGE_LABEL } from '../lib/menu/pageLabels.js';
 import { makeEntry } from '../lib/menu/navHistory.js';

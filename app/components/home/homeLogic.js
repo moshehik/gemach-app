@@ -49,7 +49,7 @@ export function buildGreeting(rawTitle, firstName) {
 
 /* ---------- קישורים מתפריט "בית" (2.10.2026): פרמטרים בטוחים ---------- */
 
-// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes (ר' lib/menu/buildMenuTree.js).
+// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes | /?recent=mine (ר' lib/menu/buildMenuTree.js).
 // הפרמטרים נבדקים מול רשימה סגורה: ערך לא מוכר נזרק ולעולם לא מוצג/מוחדר לדף (הכותרת והתוויות נלקחות מהטבלה למטה, לא מהכתובת).
 // via: 'search' = החיפוש הכללי (/api/global-search מחזיר לקוחות / הזמנות / פריטי השכרה) והסינון נעשה על התשובה;
 //      'adv' = אין קטגוריה כזאת בחיפוש הכללי — מריצים את תחום החיפוש המתקדם המתאים (/api/a5/adv, adv-b) לפי שם / טלפון / קוד הזמנה.
@@ -60,17 +60,17 @@ export const HOME_SCOPES = Object.freeze({
   returns: Object.freeze({ label: 'החזרות', only: 'בהחזרות', icon: 'undo', via: 'adv', focus: 'returns' }),
   alterations: Object.freeze({ label: 'תיקונים', only: 'בתיקונים', icon: 'scissors', via: 'adv', focus: 'alterations' }),
 });
-export const HOME_RECENT_VALUES = Object.freeze(['changes']);
+export const HOME_RECENT_VALUES = Object.freeze(['changes', 'mine']); // changes = רשימת '@' (האחרונים שלי); mine = "השינויים שלי" (תצוגת התוצאות של '&')
 const MAX_PARAMS_CHARS = 2000;
 const MAX_Q_CHARS = 200;
 
 /**
  * פרמטרי הכתובת של דף הבית → { scope, adv, recent, q, any }. רשימה סגורה: scope = אחד ממפתחות HOME_SCOPES, adv = '1' בדיוק,
- * recent = 'changes' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
+ * recent = 'changes' | 'mine' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
  * @param {string|URLSearchParams} search מחרוזת query (עם או בלי '?')
  */
 export function parseHomeParams(search) {
-  const out = { scope: null, adv: false, recent: null, q: null, any: false };
+  const out = { scope: null, adv: false, recent: null, q: null, emp: null, any: false };
   let params;
   try {
     params = search instanceof URLSearchParams ? search : new URLSearchParams(str(search).slice(0, MAX_PARAMS_CHARS).replace(/^\?/, ''));
@@ -82,15 +82,19 @@ export function parseHomeParams(search) {
   if (recent !== null && HOME_RECENT_VALUES.includes(recent)) out.recent = recent;
   const q = params.get('q');
   if (q !== null && q.trim()) out.q = q.slice(0, MAX_Q_CHARS);
+  // emp = מזהה העובדת שהנהלה בחרה ב"השינויים שלי" (רק יחד עם recent=mine; השרת הוא שמחליט אם מותר - בלי הרשאה חוזרים לרשימה של עצמה)
+  const emp = params.get('emp');
+  if (emp !== null && out.recent === 'mine' && /^[A-Za-z0-9_-]{1,64}$/.test(emp)) out.emp = emp;
   // הוראה אחת בכל פעם: adv עדיף על recent, ו-recent על scope (כדי שהכתובת, הכותרת והדגשת התפריט יתאימו זה לזה)
-  if (out.adv) { out.recent = null; out.scope = null; } else if (out.recent) out.scope = null;
+  if (out.adv) { out.recent = null; out.scope = null; out.emp = null; } else if (out.recent) out.scope = null;
+  if (out.recent !== 'mine') out.emp = null;
   out.any = !!(out.scope || out.adv || out.recent);
   return out;
 }
 
 /** כותרת הקטגוריה: { label, rest } = "<קטגוריה> - מה תרצי לחפש?"; null לקטגוריה לא מוכרת. התווית רק מהטבלה, לא מהקלט. */
 /** מפתח יציב להוראה (לזיהוי "אותה הוראה שכבר הוחלה"). */
-export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' : dir.recent ? 'recent:' + dir.recent : dir.scope ? 'scope:' + dir.scope : '');
+export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' : dir.recent ? 'recent:' + dir.recent + (dir.emp ? ':' + dir.emp : '') : dir.scope ? 'scope:' + dir.scope : '');
 
 export const SCOPE_TITLE_REST = 'מה תרצי לחפש?';
 export function homeScopeTitle(scope) {

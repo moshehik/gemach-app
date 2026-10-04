@@ -170,3 +170,46 @@
        והמרווח בין השורות בא רק מה-gap של .advgrid, ולכן בדף האמיתי כל שורה הייתה גבוהה ב-14px (צעד 100 במקום 86). חל גם על בדיקת מלאי (בעיצוב שלה
        אותו אפס, נמדד 1280 ו-375). אותו נטרול כמו .gm-pf ב-profile.css. */
 .gm-ds.gm-home .advp .field { margin-bottom: 0; }
+
+/* 15) "השינויים שלי" (4.10.2026): הקידומת '&' בשורת החיפוש (חלונית ul.advlist.mine-list, כמו '@') ותצוגת התוצאות המלאה /?recent=mine (כרטיס .res-one.recent.mine-view).
+       אותו מראה בדיוק כמו תצוגות-עיצוב\השינויים-שלי.html (הרכיבים: advlist / advo / sn-li של הפלטה, ללא צבע וגופן חדשים): כותרת חלק (.advo-h), אריח אייקון, שורת שם + "הזמנה #N · מה השתנה · מתי",
+       שורת "הצג הכל", הערת פרטיות. הרשימה הקצרה גבוהה מהברירת מחדל של הפלטה (216px) כי יש בה שני חלקים. */
+.gm-ds.gm-home .advlist.mine-list { max-height: min(340px, 52vh); }
+.gm-ds.gm-home .mine-list .advo-h { direction: rtl; position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--gm-ink3); background: linear-gradient(180deg, rgba(255, 255, 255, .98) 70%, rgba(255, 255, 255, 0)); pointer-events: none; }
+.gm-ds.gm-home .mine-list .advo-h b { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; background: var(--gm-gold-100); color: var(--gm-gold-700); font-size: 12px; display: grid; place-items: center; }
+.gm-ds.gm-home .mine-list .advo.mine-o { gap: 12px; }
+.gm-ds.gm-home .mine-list .advo.mine-o::before { display: none; }
+.gm-ds.gm-home .mine-list .advo.mine-o:hover .sn-li,
+.gm-ds.gm-home .mine-list .advo.mine-o.act .sn-li { background: var(--gm-gbtn); color: var(--gm-navy-900); }
+.gm-ds.gm-home .mine-list .advo.mine-more .sn-li { background: var(--gm-sky-100); color: var(--gm-navy-700); }
+.gm-ds.gm-home .mine-list .advo .sn-k { margin-inline-start: auto; font-size: 12px; color: var(--gm-ink3); white-space: nowrap; }
+.gm-ds.gm-home .mine-list .advo.none { flex-direction: column; align-items: center; gap: 2px; text-align: center; padding: 14px; }
+.gm-ds.gm-home .mine-list .advo.none small { font-size: 12.5px; line-height: 1.5; }
+.gm-ds.gm-home .mine-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; text-align: start; }
+.gm-ds.gm-home .mine-t b { font-weight: 600; line-height: 1.35; }
+.gm-ds.gm-home .mine-t small { font-size: 12.5px; line-height: 1.4; color: var(--gm-ink3); font-weight: 400; overflow-wrap: anywhere; }
+.gm-ds.gm-home .mine-t bdi { unicode-bidi: isolate; }
+.gm-ds.gm-home .mine-t mark { background: transparent; color: var(--gm-gold-d); font-weight: 700; }
+.gm-ds.gm-home .mine-note { direction: rtl; display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; color: var(--gm-ink3); padding: 8px 12px 4px; margin-top: 6px; border-top: 1px dashed rgba(184, 145, 47, .45); list-style: none; }
+.gm-ds.gm-home .mine-note .ic { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--gm-navy-500); }
+.gm-ds.gm-home .mine-view .mine-big { font-size: 19px; margin-top: 8px; color: var(--gm-ink); }
+.gm-ds.gm-home .mine-view .mine-sec + .mine-sec { margin-top: 6px; }
+.gm-ds.gm-home .mine-view .mine-sec-h { display: flex; align-items: center; gap: 8px; padding: 10px 4px 6px; font-size: 13px; font-weight: 600; color: var(--gm-ink3); }
+.gm-ds.gm-home .mine-view .mine-sec-h b { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; background: var(--gm-gold-100); color: var(--gm-gold-700); font-size: 12px; display: grid; place-items: center; }
+.gm-ds.gm-home .mine-view .mine-nt { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; color: var(--gm-ink3); padding: 10px 4px 2px; margin-top: 6px; border-top: 1px dashed rgba(184, 145, 47, .45); }
+.gm-ds.gm-home .mine-view .mine-nt .ic { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--gm-navy-500); }
+.gm-ds.gm-home .mine-view .rlink .t .ln bdi { unicode-bidi: isolate; }
+/* "הכל" בצד שמאל של כותרת החלונית (MY-01) ובורר העובדת להנהלה (MY-04 ב): .mine-head = שורה אחת, direction:rtl כדי שהשבבים יהיו מימין והכפתור משמאל (בלי order). */
+.gm-ds.gm-home .mine-list .mine-head { direction: rtl; position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 6px 8px; margin: 0; list-style: none; background: rgba(255, 255, 255, .98); border-bottom: 1px solid rgba(15, 44, 82, .08); }
+.gm-ds.gm-home .mine-who { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; flex: 1; max-height: 92px; overflow-y: auto; }
+/* שבבי העובדות באותו גובה כמו כפתור "הכל" (40px, כמו כפתורי הכדור .advact) */
+.gm-ds.gm-home .mine-who .chip { box-sizing: border-box; min-height: 40px; height: 40px; padding: 0 16px; font-size: 14px; border-radius: 999px; cursor: pointer; }
+.gm-ds.gm-home .mine-who .chip.gold { border-color: var(--gm-gold); font-weight: 600; }
+.gm-ds.gm-home .mine-who .chip.gray:hover { background: var(--gm-gbtn); color: var(--gm-navy-900); }
+.gm-ds.gm-home .mine-list .mine-all { margin-inline-start: auto; flex: none; min-height: 40px; height: 40px; box-sizing: border-box; padding: 0 18px; border-radius: 999px; font-size: 15px; font-weight: 600; gap: 8px; }
+.gm-ds.gm-home .mine-list .mine-all .ic { width: 16px; height: 16px; }
+/* החלונית יושבת בתוך .scan: הכלל של הפלטה ".hero .scan .btn" (עיגול 48x48 לכפתור החיפוש) היה הופך גם את "הכל" לעיגול; כאן הוא כפתור גלולה רגיל של האתר (כמו .advact .btn) */
+.gm-ds.gm-home .hero .scan .mine-list .mine-all { width: auto; min-height: 40px; height: 40px; box-sizing: border-box; padding: 0 18px; border-radius: 999px; font-size: 15px; font-weight: 600; gap: 8px; }
+.gm-ds.gm-home .mine-list .mine-all.act { outline: 3px solid var(--gm-navy); outline-offset: 2px; }
+.gm-ds.gm-home .mine-view .mine-who-bar { padding: 2px 4px 10px; max-height: none; }
+.gm-ds.gm-home .mine-view .mine-who-name { font-weight: 500; color: var(--gm-ink3); }
