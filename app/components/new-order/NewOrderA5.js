@@ -1,0 +1,226 @@
+'use client';
+
+// אשף "הזמנה חדשה" החדש (A5) - העיצוב המאושר תצוגות-עיצוב/הזמנה-חדשה.html, גרסת "B2 מודרך עם פסים" (Q1 "הכי חדש"),
+// עם תשובות הבעלים (scratch/neworder-build/answers-neworder.json; ההחלטות וברירות המחדל ב-scratch/neworder-build/NOTES.md).
+// שורש הדף: .gm-ds.gm-no.home-bg.dlg-dark (בלי gm-home - העור של דף הבית דורס לחצנים/שדות; Q2 = חלונות כהים).
+// מבנה כמו בעיצוב: .topbar, .pbars (G3 - 6 פסי התקדמות + הפרט שמולא מתחת לכל פס שהושלם), .hero-t (שאלת השלב), קוביית שלב אחת,
+// שורת ניווט (.row.spread - "חזור" מימין, "המשך" משמאל). חלונות #dlg/#dlg2, טוסט #toast וטולטיפ .pl-tt ב-portal לשורש.
+// R01 (להסיר): אין קישור "טיוטה #N" בשורה העליונה.
+import '@/design-system/components.css';
+import './css/new-order-font.css';
+import './css/new-order.css';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import ItemCapacityModal from '@/components/orders/ItemCapacityModal';
+import CapacitySearchModal from '@/components/CapacitySearchModal';
+import { HomeSprite } from '../home/HomeParts';
+import usePageTooltip from '../profile/usePageTooltip';
+import { Ic, Note, NoPortal, NoPortalRoot } from './NoUi';
+import {
+  ApprovalDialog, BackGuardDialog, BusyDialog, ConfirmDialog, CreditDialog, DialogFrame, DuplicateCustomerDialog, DuplicateOrderDialog,
+  ExitDialog, MessageDialog, SpacingDialog, StockShortageDialog, SuccessDialog, SwipeDialog, successChips,
+} from './NoDialogs';
+import useNewOrderController from './useNewOrderController';
+import StepCustomer from './StepCustomer';
+import StepDates from './StepDates';
+import StepDelivery from './StepDelivery';
+import StepItems from './StepItems';
+import StepSummary from './StepSummary';
+import StepPayment from './StepPayment';
+import { STEP_KEYS, STEP_META, getCustomerFullName, moneyTxt } from './newOrderLogic';
+import { hebrewParts } from '../schedule/hebrewCalendar';
+
+const STEP_VIEW = { customer: StepCustomer, dates: StepDates, delivery: StepDelivery, items: StepItems, summary: StepSummary, payment: StepPayment };
+const shortHeb = (k) => { if (!k) return ''; const h = hebrewParts(k); return `${h.dl} ${h.m}`; };
+
+function stepSummaries(ctl) {
+  const o = ctl.order;
+  const c = o.selectedCustomer;
+  return {
+    customer: o.customerId ? getCustomerFullName(c) : '',
+    dates: o.isAbroad ? (o.fromDate && o.toDate ? `${shortHeb(o.fromDate)} — ${shortHeb(o.toDate)}` : '') : shortHeb(o.eventDate),
+    delivery: o.isDelivery ? `${o.deliveryDirection} · ${o.deliveryCity || (c && c.city) || ''}` : (o.isPhoneOrder ? 'הזמנה טלפונית' : 'ללא משלוח'),
+    items: ctl.activeItems.length ? `${ctl.activeItems.length} פריטים · ${moneyTxt(ctl.totalAmount)}` : '',
+    summary: 'הושלם',
+    payment: ctl.totalPaid > 0 ? `שולם ${moneyTxt(ctl.totalPaid)}` : 'רישום תשלום וסיום',
+  };
+}
+
+function ProgressBars({ ctl }) {
+  const sums = stepSummaries(ctl);
+  const doneOf = { customer: !!ctl.order.customerId, dates: ctl.datesFilled, delivery: true, items: ctl.activeItems.length > 0, summary: true, payment: !!ctl.saved };
+  return (
+    <div className="pbars" id="pbars" aria-label="התקדמות ההזמנה">
+      {STEP_KEYS.map((k, i) => {
+        const cur = i === ctl.step && !ctl.saved;
+        const done = (!!ctl.saved || i < ctl.step) && doneOf[k];
+        const meta = STEP_META[k];
+        return (
+          <div key={k} className={`pb ${done ? 'done' : cur ? 'cur' : 'fut'}`}>
+            <div className="pb-bar" role="progressbar" aria-label={meta.l} aria-valuemin={0} aria-valuemax={1} aria-valuenow={done ? 1 : 0}><i /></div>
+            {done ? (
+              <div className="pb-d" role="button" tabIndex={0} data-tip={`חזרה לשלב ${meta.l}`} onClick={() => !ctl.saved && ctl.go(i)}
+                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !ctl.saved) { e.preventDefault(); ctl.go(i); } }}>
+                <Ic n={meta.i} c="sm" /><span className="pb-t"><b>{sums[k] || 'הושלם'}</b></span>
+              </div>
+            ) : <span className="pb-d ph" aria-hidden="true" />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Nav({ ctl }) {
+  const k = ctl.stepKey;
+  const busy = ctl.saving || ctl.isProcessingCredit;
+  if (ctl.saved) {
+    return (
+      <div className="row spread wrap no-nav" data-sec="nav">
+        <button type="button" className="btn" onClick={ctl.goTarget}><Ic n="file" c="sm" />{ctl.targetLabel}</button>
+        <button type="button" className="btn primary" onClick={ctl.newOrder}><Ic n="plus" />הזמנה חדשה</button>
+      </div>
+    );
+  }
+  const next = {
+    customer: ['המשך', !ctl.order.customerId, ctl.proceedToStep2],
+    dates: ['המשך למשלוח', !ctl.datesFilled, () => ctl.go(2)],
+    delivery: ['המשך לבחירת פריטים', !!ctl.deliveryError, () => ctl.go(3)],
+    items: ['המשך לסיכום', ctl.activeItems.length === 0, () => ctl.go(4)],
+    summary: ['המשך לתשלום', false, () => ctl.go(5)],
+  }[k];
+  return (
+    <>
+      <div className="row spread wrap no-nav" data-sec="nav">
+        {ctl.step > 0
+          ? <button type="button" className="btn" disabled={busy} onClick={() => ctl.setStep(ctl.step - 1)}><Ic n="arrr" />חזור</button>
+          : <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול</button>}
+        {next
+          ? <button type="button" className="btn primary" disabled={next[1]} onClick={next[2]}><Ic n="arrl" />{next[0]}</button>
+          : <button type="button" className="btn primary" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>}
+      </div>
+      {k === 'payment' && ctl.saveError ? <SaveError err={ctl.saveError} /> : null}
+    </>
+  );
+}
+
+// R29 (הבעלים): תשובות השרת בשמירה - הודעה מתחת לכפתור השמירה, עם פירוט נפתח (לא חלון קופץ)
+function SaveError({ err }) {
+  const hasDetail = (err.lines && err.lines.length) || err.detail || err.spacingNote;
+  return (
+    <div className="no-saveerr" role="alert">
+      <Note>{err.title}</Note>
+      {hasDetail ? (
+        <details className="coll" open={!!(err.lines && err.lines.length)}>
+          <summary><Ic n="list" />פירוט<Ic n="chev" c="chev" /></summary>
+          <div className="in">
+            {err.lines && err.lines.length ? <div className="list">{err.lines.map(l => <div className="li" key={l}><div className="ic-b"><Ic n="dress" /></div><div className="t"><b>{l}</b></div></div>)}</div> : null}
+            {err.detail ? <div className="muted sm" dir="auto">{err.detail}</div> : null}
+            {err.spacingNote ? <div className="muted sm" style={{ marginTop: 8 }}>{err.spacingNote}</div> : null}
+          </div>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function Dialog({ ctl, layer }) {
+  const d = ctl.dlg[layer];
+  if (!d) return null;
+  const close = (r) => ctl.answer(layer, r);
+  const p = d.props || {};
+  let body = null;
+  let cls = '';
+  let backdrop = () => close(null);
+  switch (d.type) {
+    case 'approval': body = <ApprovalDialog message={p.message} level={p.level} close={close} />; break;
+    case 'confirm': body = <ConfirmDialog {...p} close={close} />; break;
+    case 'message': body = <MessageDialog {...p} close={close} />; break;
+    case 'stock': body = <StockShortageDialog {...p} close={close} />; break;
+    case 'backGuard': body = <BackGuardDialog close={close} />; backdrop = () => close(false); break;
+    case 'exit': body = <ExitDialog {...p} close={close} />; backdrop = () => close(false); break;
+    case 'spacing': body = <SpacingDialog close={close} />; break;
+    case 'dupCustomer': body = <DuplicateCustomerDialog customers={p.customers} settings={ctl.settings} onUse={ctl.handleUseExistingCustomer} onCreate={() => ctl.handleSaveNewCustomerAndProceed(true)} close={close} />; break;
+    case 'dupOrder': body = <DuplicateOrderDialog existingOrderId={p.existingOrderId} close={close} />; backdrop = null; break;
+    case 'credit':
+      body = <CreditDialog data={ctl.creditCardData} setData={ctl.setCreditCardData} error={ctl.creditError} processing={ctl.isProcessingCredit} onCharge={ctl.handleProcessCreditCard}
+        onSwipe={() => ctl.ask('swipe', {}, 2)} close={close} />;
+      backdrop = ctl.isProcessingCredit ? null : () => close(null);
+      break;
+    case 'swipe':
+      body = <SwipeDialog onCard={(c) => { ctl.setCreditCardData(prev => ({ ...prev, ...c })); close(null); }} close={close} />;
+      break;
+    case 'busy':
+      body = p.kind === 'credit'
+        ? <BusyDialog title="מבצע חיוב מול נדרים פלוס" sub="אין לסגור את החלון עד לקבלת אישור מחברת האשראי." />
+        : <BusyDialog title="יוצר את ההזמנה" sub="מאמת זמינות מלאי, רושם פריטים ומחשב חיובים. נא לא לסגור את החלון." />;
+      backdrop = null;
+      break;
+    case 'success': {
+      const s = ctl.saved || {};
+      const o = ctl.order;
+      body = (
+        <>
+          <SuccessDialog orderId={s.orderId} customerName={getCustomerFullName(o.selectedCustomer)} dateLabel={shortHeb(o.isAbroad ? o.fromDate : o.eventDate)}
+            chips={successChips({ itemsCount: ctl.activeItems.length, isDelivery: o.isDelivery, deliveryDirection: o.deliveryDirection, balance: ctl.remaining,
+              specialSpacing: o.customSpacing !== null && o.customSpacing !== undefined && o.customSpacing < 3, settings: ctl.settings, customerEmail: o.selectedCustomer && o.selectedCustomer.email })}
+            targetLabel={ctl.targetLabel} onNew={ctl.newOrder} onPrint={ctl.printSaved} onTarget={ctl.goTarget} close={close} />
+          {s.warning ? <Note style={{ marginTop: 14 }}>{s.warning}</Note> : null}
+        </>
+      );
+      break;
+    }
+    default: return null;
+  }
+  return <DialogFrame layer={layer} cls={cls} onBackdrop={backdrop}>{body}</DialogFrame>;
+}
+
+export default function NewOrderA5() {
+  const router = useRouter();
+  const ctl = useNewOrderController({ router });
+  const rootRef = useRef(null);
+  const ttRef = useRef(null);
+  const [rootEl, setRootEl] = useState(null);
+  const setRoot = useCallback((el) => { rootRef.current = el; setRootEl(el); }, []);
+  usePageTooltip(rootRef, ttRef, false);
+  const View = STEP_VIEW[ctl.stepKey];
+  const question = useMemo(() => STEP_META[ctl.stepKey].q, [ctl.stepKey]);
+  const t = ctl.toast;
+
+  return (
+    <div className="gm-ds gm-no home-bg dlg-dark" dir="rtl" ref={setRoot}>
+      <NoPortalRoot.Provider value={rootEl}>
+        <HomeSprite />
+        <div className="app no-app" id="app">
+          <div className="topbar">
+            <button type="button" className="back" aria-label="יציאה מהמסך" data-tip="יציאה מהמסך" onClick={ctl.handleExit} disabled={ctl.saving || ctl.isProcessingCredit}><Ic n="back" /></button>
+            <div className="ttl"><h1><bdi>הזמנה חדשה</bdi></h1></div>
+            <div className="tools" />
+          </div>
+          <ProgressBars ctl={ctl} />
+          <div className="hero-t" id="heroT"><h2 className="hero-q">{question}</h2></div>
+          <div className="no-panels">
+            <section className="panel on" id={`p${ctl.step + 1}`}>
+              <div className="sec" data-sec={ctl.stepKey}><View ctl={ctl} /></div>
+            </section>
+          </div>
+          <Nav ctl={ctl} />
+        </div>
+        <NoPortal>
+          {t ? (
+            <div id="toast" className={`${t.kind === 'ok' ? 'info' : t.kind} on pulse`} data-kind={t.kind} role="status" aria-live="polite" key={t.n}>
+              <button type="button" className="tclose" data-tip="סגור" aria-label="סגירה" onClick={() => ctl.setToast(null)}><Ic n="x" c="sm" /></button>
+              <div className="tb"><Ic n={t.kind === 'ok' ? 'check' : 'info'} c="lg" /></div>
+              <div><b>{t.big}</b>{t.small ? <small>{t.small}</small> : null}</div>
+            </div>
+          ) : null}
+          <Dialog ctl={ctl} layer={1} />
+          <Dialog ctl={ctl} layer={2} />
+        </NoPortal>
+        <div className="pl-tt" role="tooltip" ref={ttRef} />
+      </NoPortalRoot.Provider>
+      {ctl.capacityItem ? <ItemCapacityModal item={ctl.capacityItem} order={ctl.order} isOpen onClose={() => ctl.setCapacityItem(null)} /> : null}
+      {ctl.showCapacitySearch ? <CapacitySearchModal isOpen={ctl.showCapacitySearch} onClose={() => ctl.setShowCapacitySearch(false)} /> : null}
+    </div>
+  );
+}

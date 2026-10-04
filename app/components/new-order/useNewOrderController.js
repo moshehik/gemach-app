@@ -35,6 +35,8 @@ export default function useNewOrderController({ router }) {
   const [modelQuery, setModelQuery] = useState('');
   const [modelList, setModelList] = useState(null);
   const [pickedModel, setPickedModel] = useState(null);
+  // קוד הדגם (barcodePrefix) לכל dressModelId שנבחר - לתצוגה בלבד (R23). לא נכנס לפריטי ההזמנה כדי שגוף השמירה יישאר זהה לישן
+  const [modelCodes, setModelCodes] = useState({});
   const [availableSizes, setAvailableSizes] = useState([]);
   const [customerLocations, setCustomerLocations] = useState({ cities: [], streets: [] });
   const [loadingSizes, setLoadingSizes] = useState(false);
@@ -284,7 +286,7 @@ export default function useNewOrderController({ router }) {
     } else {
       setInventoryCache(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, preloadDeps);
 
   const refreshInventory = () => {
@@ -386,6 +388,7 @@ export default function useNewOrderController({ router }) {
       return;
     }
     setPickedModel(model);
+    if (model.barcodePrefix) setModelCodes(prev => ({ ...prev, [model.id]: String(model.barcodePrefix) }));
     setModelQuery('');
     setNewItem(prev => ({ ...prev, dressModelId: model.id, dressName: model.name, selectedSizes: [] }));
   };
@@ -425,7 +428,7 @@ export default function useNewOrderController({ router }) {
       } catch { if (!off) setAddPreview(null); }
     }, 300);
     return () => { off = true; clearTimeout(t); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.isWeekdayEvent, settings.enable_alterations]);
 
   const addItemToOrder = async () => {
@@ -463,7 +466,7 @@ export default function useNewOrderController({ router }) {
   };
   const editItem = (index) => {
     const itemToEdit = order.items[index];
-    setPickedModel({ id: itemToEdit.dressModelId, name: itemToEdit.dressName, barcodePrefix: itemToEdit.barcodePrefix });
+    setPickedModel({ id: itemToEdit.dressModelId, name: itemToEdit.dressName, barcodePrefix: modelCodes[itemToEdit.dressModelId] });
     setNewItem({
       dressModelId: itemToEdit.dressModelId || '', selectedSizes: itemToEdit.sizeText ? [itemToEdit.sizeText] : [], quantity: itemToEdit.quantity || 1,
       repairs: itemToEdit.repairs || '', dressName: itemToEdit.dressName || '', neckAlteration: itemToEdit.neckAlteration || false,
@@ -481,7 +484,7 @@ export default function useNewOrderController({ router }) {
       .then(res => res.json())
       .then(data => { setCalculatedData({ totalAmount: data.totalAmount || 0, items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 }); setCalculating(false); })
       .catch(() => setCalculating(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
   const totalAmount = calculatedData.totalAmount;
 
@@ -510,7 +513,7 @@ export default function useNewOrderController({ router }) {
       });
     }, 1500);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad, order.isWeekdayEvent, order.fromDate, order.toDate, order.notes, order.customSpacing, order.items, totalAmount]);
 
   // R01 (להסיר): אין קישור "טיוטה #N" בשורה העליונה; החיווי השקט נשאר כטוסט (כמו ה-flash בישן)
@@ -752,7 +755,7 @@ export default function useNewOrderController({ router }) {
     searchMode, setSearchMode, phoneSearchInput, setPhoneSearchInput, isCheckingPhone, foundCustomersFromPhone, setFoundCustomersFromPhone, pickedFound, setPickedFound,
     listQuery, setListQuery, listResults, listLoading, pickFromList,
     order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf,
-    newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel,
+    newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel, modelCodes,
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
     calculatedData, calculating, totalAmount, activeItems, datesFilled, rangePending, setRangePending,
     deliveryCityOptions, deliveryAddressRequired, deliveryCityRequired, deliveryError,
