@@ -141,10 +141,11 @@ export async function GET(request) {
     if (want.has('ar_late') || want.has('ar_unret')) jobs.push(['out', () => loadOut(p, ctx, want)]);
     if (want.has('ar_debt')) jobs.push(['ar_debt', () => loadDebt(p, ctx)]);
     if (want.has('ar_missing')) jobs.push(['ar_missing', () => loadMissing(p, ctx)]);
-    if (want.has('ar_unsaved')) jobs.push(['ar_unsaved', () => loadUnsaved(p, parseUnsavedIds(p.unsaved))]);
+    const unsavedIds = parseUnsavedIds(p.unsaved);
+    if (want.has('ar_unsaved') && unsavedIds.length) jobs.push(['ar_unsaved', () => loadUnsaved(p, unsavedIds)]); // בלי מספרים אין מה לשאול את ה-DB
 
     const settled = await Promise.allSettled(jobs.map(([, run]) => run()));
-    const gaps = [];
+    const failedSections = [];
     const all = [];
     let truncated = false;
     let failed = 0;
@@ -152,7 +153,7 @@ export async function GET(request) {
       if (r.status === 'fulfilled') { all.push(...r.value.list); truncated = truncated || r.value.truncated; return; }
       failed++;
       console.error('a5 adv-alerts section ' + jobs[i][0] + ':', r.reason?.message || r.reason);
-      gaps.push(`לא הצלחנו לטעון: ${SECTION_LABEL[jobs[i][0]]}`);
+      failedSections.push(SECTION_LABEL[jobs[i][0]]);
     });
     if (jobs.length && failed === jobs.length) return json({ error: 'שגיאה בחיפוש ההתראות' }, 500);
 
@@ -166,7 +167,8 @@ export async function GET(request) {
       namesRev: rows.map((x) => x.nameRev),
       tags: rows.map((x) => x.tag),
       truncated,
-      gaps,
+      gaps: [],
+      failed: failedSections, // סוגים שלא נטענו (שאילתה נכשלה); שאר הסוגים חזרו — הלקוח מציג הודעה
     });
   } catch (error) {
     console.error('GET /api/a5/adv-alerts error:', error);

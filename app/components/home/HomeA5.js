@@ -446,6 +446,7 @@ export default function HomeA5() {
       setView('results');
       showToast('הסינון הוחל: ' + f.label, parts.join(', '));
       if (data.gaps.length) setTimeout(() => showToast('חלק מהסינונים לא נתמכים', data.gaps.join('; ')), 400);
+      if (data.failed.length) setTimeout(() => showToast('חלק מההתראות לא נטענו', data.failed.join(', ') + '. אפשר לנסות שוב בעוד רגע'), 400);
     } catch (e) {
       if (my !== seq.current) return;
       setLoading(false);

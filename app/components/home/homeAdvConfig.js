@@ -206,6 +206,7 @@ export function normalizeAdvResponse(r) {
     truncated: !!d.truncated,
     gaps: d.gaps && d.gaps.length ? d.gaps : [],
     capstats: normalizeCapstats(d.capstats), // תפוסה בלבד: במלאי / בתפוסה / רזרבה
+    failed: Array.isArray(d.failed) ? d.failed.filter((x) => typeof x === 'string') : [], // התראות: סוגים שהשרת לא הצליח לטעון (השאר חזרו)
     tags: Array.isArray(d.tags) ? d.tags : [], // התראות בלבד: לכל שורה 'return' | 'order' (תג ואייקון בשורה — ALERT_ROW_TAGS)
   };
 }
