@@ -749,6 +749,16 @@ export function revertChange(cur, snap, key) {
     const o = { ...cur.order };
     fields.forEach(f => { o[f] = snap.order ? snap.order[f] : undefined; });
     if (key === 'cust') o.customer = snap.order ? snap.order.customer : o.customer;
+    // ביטול "תאריך האירוע" כשיש עדיין "יום השכרה נוסף" שלא בוטל: הדגל הנוכחי הזיז את הטווח, לכן התאריכים חוזרים לערכי ה-snapshot
+    // *מוזזים* בהתאם לדגל (אחרת ביטול "יום נוסף" אחר כך מזיז שוב ויום אחד נשאר תקוע - סקירת אינטגרציה)
+    if (key === 'date' && isRangeEvent(o)) {
+      const curX = (cur.order && cur.order.extraDay) || null;
+      const snapX = (snap.order && snap.order.extraDay) || null;
+      if (curX !== snapX) {
+        const u = extraDayUpdates({ ...o, extraDay: snapX }, curX);
+        if (u) { next.order = { ...o, ...u }; return next; }
+      }
+    }
     next.order = o;
     return next;
   }

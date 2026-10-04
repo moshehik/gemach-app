@@ -19,6 +19,8 @@ export function railScenarios({ ITEMS, OBL, ORG2, ORDER }) {
       draftObligations: [...OBL, { ...feeRow, isPreview: true, _localId: 'p-fee' }], previewDrop: ['ob2'], previewExtra: [feeRow],
     },
     railnotes: { draft: true, settings: noSummary },
+    // הערות בלבד על הזמנה עם חוב קיים (בלי תשלומים): הלחצן הראשי "תשלום" = שמירה (PUT יחיד) ואז חלון התשלום של W4 - בלי שמירה שנייה (אינטגרציה)
+    railpaydebt: { draft: true, settings: noSummary, payments: [] },
     railbanner: {
       draft: true, draftBase: '2026-09-30T00:00:00.000Z',
       draftRows: [{ icon: '#i-dress', text: 'נוספה דגם 4519 · מידה 38' }, { icon: '#i-note', text: 'הערות עודכנו' }, { icon: '#i-calendar', text: 'תאריך האירוע: כ״ו תשרי ← כ״ז תשרי' }],

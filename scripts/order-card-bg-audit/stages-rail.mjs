@@ -105,5 +105,29 @@ export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) 
       const st = await p.evaluate(() => ({ banner: !!document.querySelector('.oc-banner .nb'), ls: !!localStorage.getItem('gemachOrderDraft:53375') }));
       check('flow: X בבאנר הטיוטה סוגר את הבאנר בלבד (הטיוטה נשארת)', ls0 && !st.banner && st.ls);
     } },
+    // --- אינטגרציה (W5 + W4 + W1): "תשלום" אחרי עריכת הערות בהזמנה עם חוב קיים ---
+    { name: 'R30-flow-pay-after-save', real: async () => {
+      await fresh('railpaydebt'); await restore();
+      const prim = await p.$eval('#rail .btn.primary', (e) => e.textContent.trim());
+      await clickAt('#rail .btn.primary'); await sleep(1500);
+      const st = await p.evaluate(() => ({ h2: (document.querySelector('#dlg > h2') || {}).textContent, on: document.getElementById('scrim').classList.contains('on'), toasts: (document.getElementById('toast') || {}).textContent || '' }));
+      const puts = (await calls()).filter((c) => c.method === 'PUT').length;
+      check('integration: הלחצן הראשי "תשלום" בהזמנה עם חוב והערות בלבד', /^תשלום/.test(prim));
+      check('integration: PUT יחיד (W4 לא שומר שוב אחרי שהרייל שמר)', puts === 1);
+      check('integration: חלון התשלום של W4 נפתח, בלי הודעת "אין שינויים לשמירה"', st.on && /תשלום/.test(st.h2 || '') && !/אין שינויים לשמירה/.test(st.toasts));
+    } },
+    // שורת preview לא נשארת אחרי ביטול שורה (גם כשהלשונית הפעילה אינה תשלומים), והסכום הממתין נגזר בכל לשונית
+    { name: 'R31-flow-preview-any-tab', real: async () => {
+      await fresh('railadd'); await restore(); await sleep(900);
+      const toast0 = await p.evaluate(() => (document.getElementById('toast') || {}).textContent || '');
+      await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(500);
+      const pend0 = await p.evaluate(() => document.querySelectorAll('#p-payments .li.pend').length);
+      await clickAt('#tabs .tab[data-tab="details"]'); await sleep(300);
+      await openCart(); await clickAt('#rail .cl-u'); await sleep(900);
+      await clickAt('#tabs .tab[data-tab="payments"]'); await sleep(500);
+      const pend1 = await p.evaluate(() => document.querySelectorAll('#p-payments .li.pend').length);
+      check('integration: הטוסט "חיוב ממתין" מופיע בלשונית פרטים (preview בכל לשונית)', /חיוב ממתין/.test(toast0));
+      check('integration: שורת preview מוצגת בתשלומים לפני הביטול ונעלמת אחריו (בלי שורת רפאים)', pend0 > 0 && pend1 === 0);
+    } },
   ];
 }
