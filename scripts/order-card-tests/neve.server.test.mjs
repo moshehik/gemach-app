@@ -232,3 +232,109 @@ test('הגדרה כבויה = לא זמין, בלי שאילתה לטבלה', as
   f.settings.enable_delivery_join = 'true';
   assert.equal(await J.isDeliveryJoinAvailable(), true);
 });
+
+
+// ---------------- סקירה בלתי תלויה של עבודת ההצטרפות (סעיפים 2, 4, 5, 6) ----------------
+const joinErr = async (id, root) => { const r = await J.saveDeliveryJoin(id, { joinedToOrderId: root }); return r.ok ? null : r.error; };
+
+test('סקירה 2: השרת מאמת יום אירוע ישראלי (גם סביב חצות) / fromDate / כתובת מול היעד - ok:false בעברית, בלי כתיבה', async () => {
+  const f = seed([
+    ord(1), // יעד: הלוך-חזור, 07/10, בלי יום-לפני
+    ord(2), // תואם
+    ord(3, { eventDate: '2026-10-08T09:00:00.000Z' }), // יום אחר
+    ord(7, { eventDate: '2026-10-07T21:30:00.000Z' }), // 08/10 00:30 בישראל (UTC+3) = יום אחר מ-07/10
+    ord(8, { eventDate: '2026-10-06T21:30:00.000Z' }), // 07/10 00:30 בישראל = אותו יום כמו 1 (למרות ש-UTC הוא 06/10)
+    ord(9, { eventDate: null, fromDate: '2026-10-07T09:00:00.000Z' }), // חו"ל/אמצע שבוע: fromDate
+    ord(6, { deliveryAddress: null, deliveryCity: null, customer: cust('x', { street: '', houseNum: '', city: '' }) }), // יעד בלי כתובת
+    ord(10),
+  ]);
+  const before = JSON.stringify(f.db.deliveryJoin);
+  assert.match(await joinErr(3, 1), /ביום אירוע אחר/);
+  assert.match(await joinErr(7, 1), /ביום אירוע אחר/, 'חצות ישראל: 21:30Z = למחרת בישראל');
+  assert.match(await joinErr(10, 6), /אין כתובת/);
+  assert.equal(JSON.stringify(f.db.deliveryJoin), before, 'שגיאה = אין שורה ואין audit');
+  assert.equal(f.audits.length, 0);
+  assert.equal(await joinErr(8, 1), null, '21:30Z של אתמול = אותו יום בישראל');
+  assert.equal(await joinErr(9, 1), null, 'fromDate מחליף eventDate');
+  assert.equal(await joinErr(2, 1), null);
+  assert.deepEqual(f.db.deliveryJoin.map(r => r.orderId).sort(), [2, 8, 9]);
+});
+
+test('סקירה 2: כיוון ו"יוצא יום לפני" - אותו כלל כמו listJoinCandidates (הלוך-חזור לא מצטרף לכיוון אחד; הלוך כן להלוך-חזור)', async () => {
+  seed([
+    ord(1), // הלוך-חזור
+    ord(4, { deliveryDirection: 'הלוך' }), // יעד של כיוון אחד
+    ord(5, { deliveryOneDayBefore: true }), // יעד הלוך-חזור עם יום-לפני
+    ord(11), ord(12, { deliveryDirection: 'הלוך' }), ord(13, { deliveryDirection: 'חזור' }), ord(14, { deliveryDirection: 'חזור', deliveryOneDayBefore: true }),
+    ord(15, { deliveryDirection: 'חזור', deliveryOneDayBefore: true }),
+  ]);
+  assert.match(await joinErr(11, 4), /כיוון המשלוח/, 'הלוך-חזור מול משלוח של הלוך בלבד');
+  assert.match(await joinErr(12, 13), /כיוון המשלוח/, 'הלוך מול חזור');
+  assert.equal(await joinErr(12, 1), null, 'הלוך מצטרף להלוך-חזור');
+  assert.equal(await joinErr(12, 4), null, 'הלוך מצטרף להלוך');
+  assert.match(await joinErr(11, 5), /מועד אחר/, 'הלוך-חזור (כולל הלוך): יום-לפני חייב להיות זהה');
+  assert.equal(await joinErr(13, 14), null, '"חזור" - כלל יום-לפני לא חל');
+  assert.equal(await joinErr(15, 1), null, 'חזור (יום-לפני) מצטרף להלוך-חזור');
+  // עקביות עם הרשימה: מה שהשרת דוחה (4 = כיוון אחד, 5 = יום-לפני) לא מוצע להלוך-חזור בלי יום-לפני
+  const cands = await J.listJoinCandidates({ eventDateIso: '2026-10-07', direction: 'הלוך-חזור', oneDayBefore: false, excludeOrderId: 99 });
+  for (const c of cands) assert.ok(c.orderId !== 4 && c.orderId !== 5, 'הרשימה לא מציעה את מה שהשרת דוחה');
+});
+
+test('סקירה 4: מצטרף שנמחק לא חוסם הצטרפות של השורש למשלוח אחר, ומצטרף חי עדיין חוסם', async () => {
+  const f = seed([ord(1), ord(2, { isDeleted: true }), ord(3)], [row(2, { joinedToOrderId: 3 })]);
+  assert.equal(await joinErr(3, 1), null, 'המצטרף היחיד נמחק - 3 חופשי להצטרף');
+  assert.equal(f.db.deliveryJoin.find(r => r.orderId === 3).joinedToOrderId, 1);
+  seed([ord(20), ord(21)], [row(21, { joinedToOrderId: 20 })]);
+  assert.match(await joinErr(20, 1), /כבר הצטרפו/);
+});
+
+test('סקירה 4: releaseOrderJoins - הזמנה שנמחקה/כובה בה משלוח: מצטרפת מוסרת משורת ההצטרפות; שורש משחרר את מצטרפיו (audit, בלי AuditLog ידני)', async () => {
+  const f = seed([ord(1), ord(2), ord(3), ord(4)], [row(1, { isPrimary: true }), row(2, { joinedToOrderId: 1 }), row(3, { joinedToOrderId: 1 })]);
+  assert.deepEqual(await J.releaseOrderJoins(2), [], 'מצטרפת בלבד: אין מי ששוחרר');
+  assert.deepEqual(f.db.deliveryJoin.map(r => r.orderId).sort(), [1, 3]);
+  assert.equal(f.audits.at(-1).action, 'DELIVERY_JOIN_CANCELLED');
+  assert.deepEqual(await J.releaseOrderJoins(1), [3], 'שורש: מצטרפיו משוחררים ומוחזרים לחישוב מחדש');
+  assert.deepEqual(f.db.deliveryJoin.map(r => r.orderId), [1], 'נשארת רק שורת ה"ראשי" של השורש');
+  assert.deepEqual(await J.releaseOrderJoins(4), [], 'הזמנה בלי שורות = no-op');
+  assert.ok(f.audits.every(a => a.entityType === 'deliveryJoin' && /^DELIVERY_/.test(a.action)));
+  assert.ok(!f.queries.some(q => /auditLog|updateMany|deleteMany/.test(q)));
+  f.failWith = missing(); // טבלה חסרה = no-op בלי זריקה
+  assert.deepEqual(await J.releaseOrderJoins(1), []);
+});
+
+test('סקירה 5: מירוץ - אחרי הכתיבה נבדק שהיעד עדיין שורש ושלהזמנה אין מצטרפים; אחרת הכתיבה מבוטלת ו-ok:false', async () => {
+  const hookCreate = (f, inject) => {
+    let done = false;
+    const push = f.queries.push.bind(f.queries);
+    f.queries.push = (q) => { if (q === 'deliveryJoin.create' && !done) { done = true; inject(); } return push(q); };
+  };
+  // א. בזמן הכתיבה היעד (1) עצמו הצטרף ל-9
+  let f = seed([ord(1), ord(2), ord(9)]);
+  hookCreate(f, () => f.db.deliveryJoin.push(row(1, { joinedToOrderId: 9, direction: 'הלוך-חזור' })));
+  let r = await J.saveDeliveryJoin(2, { joinedToOrderId: 1 });
+  assert.equal(r.ok, false); assert.match(r.error, /הצטרף בינתיים/);
+  assert.equal(f.db.deliveryJoin.find(x => x.orderId === 2), undefined, 'השורה שנכתבה בוטלה');
+  assert.equal(f.db.order.find(o => o.orderId === 2).deliveryAddress, 'עמוס 3', 'הכתובת לא נדרסה');
+  // ב. בזמן הכתיבה מישהי (7) הצטרפה להזמנה שמצטרפת (2)
+  resetFake(); f = seed([ord(1), ord(2), ord(7)]);
+  hookCreate(f, () => f.db.deliveryJoin.push(row(7, { joinedToOrderId: 2, direction: 'הלוך-חזור' })));
+  r = await J.saveDeliveryJoin(2, { joinedToOrderId: 1 });
+  assert.equal(r.ok, false); assert.match(r.error, /הצטרפו בינתיים/);
+  assert.deepEqual(f.db.deliveryJoin.map(x => x.orderId), [7], 'רק השורה של המצטרפת האחרת נשארה');
+  assert.equal(f.audits.some(a => a.action === 'DELIVERY_JOIN_CANCELLED' && a.entityId === '2'), true, 'הביטול נרשם ב-audit');
+});
+
+test('סקירה 6: שורש לשעבר שהיה "ראשי" ומצטרף לאחר - isPrimary מתאפס (ולא נשאר ראשי כפול)', async () => {
+  const f = seed([ord(1), ord(2)], [row(2, { isPrimary: true }), row(1)]);
+  assert.equal(await joinErr(2, 1), null);
+  const r2 = f.db.deliveryJoin.find(r => r.orderId === 2);
+  assert.equal(r2.joinedToOrderId, 1); assert.equal(r2.isPrimary, false);
+  const a = f.audits.find(x => x.action === 'DELIVERY_JOIN_UPDATED');
+  assert.deepEqual(a.changes.isPrimary, { from: true, to: false });
+  const n = f.audits.length; // אידמפוטנטי: שמירה חוזרת בלי שינוי לא כותבת
+  assert.equal(await joinErr(2, 1), null);
+  assert.equal(f.audits.length, n);
+  seed([ord(5)]); // שורה חדשה (create) נוצרת עם isPrimary:false
+  await J.saveDeliveryJoin(5, { joinedToOrderId: 1 });
+  assert.equal(f.db.deliveryJoin.find(r => r.orderId === 5).isPrimary, false);
+});
