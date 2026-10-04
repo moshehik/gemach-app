@@ -620,7 +620,7 @@ t('oc-history.css: נטרולי הדליפה - שדה החיפוש שקוף בל
   assert.ok(hasOcHist(/input#hfQ/, /^border-radius$/, /^0/), 'רדיוס שדה החיפוש (design-overrides 10px)');
   assert.ok(hasOcHist(/\.hf-cl$/, /^padding$/), 'ריפוד לחצן הניקוי (globals.css מאפס)');
   assert.ok(hasOcHist(/\.hf-sel\.on \.hf-t$/, /^border-color$/), 'מסגרת לחצן הסינון כשהתפריט פתוח');
-  assert.ok(hasOcHist(/\.card\.stg \.prc-m$/, /^display$/, /^flex/), 'מטא שורת שלב (שכבת הסקירה, מאושר)');
+  assert.ok(hasOcHist(/\.card\.proc \.prc-m$/, /^display$/, /^flex/), 'מטא שורת שלב (שכבת הסקירה, מאושר)');
 });
 t('הדליפות שנוטרלו בלשונית ההיסטוריה עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
   assert.ok(/input[^{]*\{[^}]*border-radius:\s*10px/.test(OVERRIDES), 'design-overrides.css: input{border-radius:10px} כבר לא קיים');
