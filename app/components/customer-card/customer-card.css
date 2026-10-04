@@ -26,8 +26,8 @@
 .gm-ds.gm-cc .cc-app .ttl h1{color:var(--gm-navy-900)}
 /* דליפה: globals.css מאפס padding לכל אלמנט - לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
 .gm-ds.gm-cc .back{padding:1px 6px}
-/* #hdrChips ריק תמיד (הבעלים PG3: בכותרת רק שם הלקוחה וחץ החזרה) */
-.gm-ds.gm-cc #hdrChips:empty{display:none}
+/* #hdrChips ריק תמיד (הבעלים PG3: בכותרת רק שם הלקוחה וחץ החזרה) אבל נשאר מוצג כמו בעיצוב - הוא שובר שורה בנייד וכך הכלים
+   יושבים ליד הכותרת (בלי display:none כאן; נמצא בבדיקת scripts/customer-card-audit ב-375) */
 
 /* ===== לוחות: פנים "פנינה" (בלוק pearl-faces בעיצוב) - הפלטה משאירה את ה"זכוכית" הלבנה 30% (!important) של oc-panels ===== */
 .gm-ds.gm-cc .app :is(.card,.coll[open]){background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
@@ -43,8 +43,10 @@
 .gm-ds.gm-cc .layout > .main{order:0;display:block;flex:none}
 /* דליפה: app/design-system.css .tab{margin-inline-end:22px} - הלשוניות לא ממלאות את הסרגל (160 במקום 181 פיקסל) */
 .gm-ds.gm-cc .tabs .tab{margin-inline-end:0}
-/* דליפה: app/design-system.css .tabs{margin-bottom:18px} */
-.gm-ds.gm-cc .tabs{margin:0}
+/* דליפה: app/design-system.css .tabs{border-bottom:1px solid;margin-bottom:18px} */
+.gm-ds.gm-cc .tabs{margin:0;border-bottom:0}
+/* מסנן ההיסטוריה פתוח: מסגרת כחולה כמו בעיצוב (.hf-sel.on .hf-t) - body .hf-s .hf-t של העיצוב צובע זהב */
+.gm-ds.gm-cc .hf-sel.on .hf-t{border-color:var(--gm-navy)}
 /* דליפה: app/design-system.css .field{margin-bottom:14px} - בעיצוב המרווח בין שדות בא מ-gap */
 .gm-ds.gm-cc .field{margin-bottom:0}
 /* דליפה: design-overrides.css צובע טקסט בשדה בחום (0,4,1); בעיצוב טקסט השדה בצבע הדיו */
