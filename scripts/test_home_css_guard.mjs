@@ -579,5 +579,54 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
 });
 
+
+/* ---------- 12. אשף "הזמנה חדשה" (app/components/new-order/css/new-order.css): אותו משטר היקף כמו הפרופיל ---------- */
+// שורש .gm-ds.gm-no.home-bg.dlg-dark (בלי gm-home). ה-page glue של העיצוב (B2) מגדיר רקעים עם !important רק כדי לשטח את בלוקי
+// קוביית השלב (none/transparent) ואת כרטיס ה"פנינה" של העיצוב (body .app :is(.card,...)). נטרולי הדליפה: scripts/new-order-bg-audit.
+const NO_CSS = read('../app/components/new-order/css/new-order.css');
+const noRules = parseCss(NO_CSS);
+const NO_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-no)']);
+const PEARL_RE = /^linear-gradient\(135deg,rgba\(255,252,247,\.62\)/;
+t('new-order.css: כל כלל בהיקף .gm-ds.gm-no (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of noRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-no(\s|$)/.test(s) && !NO_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('new-order.css: אין רקע לבן קשיח לבלוקים; !important על רקע רק לשיטוח (none/transparent), לכרטיס הפנינה או לאריח האייקון (.ico) של העיצוב', () => {
+  const bad = [];
+  for (const r of noRules) {
+    for (const d of setsProp(r, /^background(-color|-image)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+      if (isImportant(d) && !/^(none|transparent)$/.test(v) && !PEARL_RE.test(v.replace(/\s+/g, '')) && !/ \.ico\[class\]$/.test(r.sel)) bad.push('!important: ' + r.sel + ' ' + v.slice(0, 40));
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('new-order.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(noRules, 'new-order.css'), []);
+});
+const hasNo = (selRe, propRe, { important = false, valueRe } = {}) => noRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('new-order.css: נטרול דליפות - גופן, field margin, צבע/גבול שדה (.inp.inp), ריפוד לחצן חזרה/ibtn, גופן שאלת השלב', () => {
+  assert.ok(hasNo(/\.gm-ds\.gm-no :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'חסר font-family:inherit!important ללחצנים/שדות');
+  assert.ok(hasNo(/\.gm-ds\.gm-no :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'חסר font-family:inherit!important לכותרות');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.hero-t \.hero-q$/, /^font-family$/, { important: true, valueRe: /FB Melatef/ }), 'שאלת השלב חייבת לגבור על כלל הכותרות');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.field$/, /^margin-bottom$/, { valueRe: /^0/ }), 'חסר איפוס margin-bottom של .field');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.no-app \.inp\.inp$/, /^color$/), 'חסר צבע טקסט לשדה (design-overrides.css צובע בחום)');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.back$/, /^padding$/) && hasNo(/^\.gm-ds\.gm-no \.ibtn$/, /^padding$/), 'חסר ריפוד ברירת מחדל ללחצן חזרה / ibtn');
+  assert.ok(/input:not\(\[type="checkbox"\]\)/.test(OVERRIDES), 'design-overrides.css: כלל ה-input הכללי כבר לא קיים - אפשר להסיר את .inp.inp');
+});
+t('אשף הזמנה חדשה: שורש gm-ds gm-no home-bg dlg-dark, בלי gm-home, בלי alert/confirm של הדפדפן, בלי title=', () => {
+  const dir = '../app/components/new-order/';
+  const files = ['NewOrderA5.js', 'NewOrderSwitch.js', 'NoUi.js', 'NoDialogs.js', 'NoSuggest.js', 'NoHebrewCalendar.js', 'useNewOrderController.js', 'StepCustomer.js', 'StepDates.js', 'StepDelivery.js', 'StepItems.js', 'StepSummary.js', 'StepPayment.js', 'newOrderLogic.js'];
+  const all = files.map((f) => read(dir + f)).join(String.fromCharCode(10));
+  assert.ok(/className="gm-ds gm-no home-bg dlg-dark"/.test(read(dir + 'NewOrderA5.js')), 'שורש הדף');
+  assert.ok(!/gm-home/.test(all.replace(/\/\/.*$/gm, '')), 'gm-home בקוד האשף');
+  assert.ok(!/window\.(alert|confirm|customConfirm|customAuthPrompt|prompt)|alert\(/.test(all.replace(/\/\/.*$/gm, '')), 'חלון דפדפן בקוד האשף');
+  assert.ok(!/<[a-z][a-z0-9]*[^>]*\stitle=/.test(all), 'title= על אלמנט DOM (טולטיפ דפדפן) במקום data-tip');
+  const font = read(dir + 'css/new-order-font.css').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+  assert.ok(/^@font-face\{[^}]*\}$/.test(font), 'קובץ הגופן מכיל רק @font-face');
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);
