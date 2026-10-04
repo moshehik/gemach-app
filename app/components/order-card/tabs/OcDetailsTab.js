@@ -68,7 +68,7 @@ function CustomerCard({ oc, ui }) {
         <div className="kv">
           <KvRow icon="phone" label="טלפון" value={phone} missing dirLtr />
           <KvRow icon="mail" label="מייל" value={c.email} missing dirLtr>
-            {QuickMail ? <div className="oc-qm"><QuickMail oc={oc} ui={ui} /></div> : null}
+            {QuickMail && oc.settings.orderQuickMailEnabled ? <div className="oc-qm"><QuickMail oc={oc} ui={ui} /></div> : null}
           </KvRow>
           <KvRow icon="pin" label="כתובת" value={addr} missing />
           <KvRow icon="file" label="ת״ז" value={zeoutDisplay(c.zeout)} missing={zeoutRequired(s)} dirLtr />

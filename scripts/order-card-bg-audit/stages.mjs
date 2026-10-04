@@ -13,7 +13,7 @@ const D = which === 'demo';
 const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2'], ['ITEMS', '#p-items'], ['PAY', '#p-payments'],
   // W6: לשונית היסטוריה (שלבים, יומן, פיד/טבלה, סינון) + הטולטיפ העשיר של המשמרת (#rt בעיצוב = .pl-rt של הפלטה בכרטיס)
   ['HIST', '#p-history'], ['RT', D ? '#rt.on' : '.oc-portal .pl-rt.on']]; // ITEMS: W3 ו-HIST/RT: W6 רק בשלבים שלהם, PAY: W4 בכולם
-const rootsFor = (name) => ROOTS.filter(([l]) => (l !== 'ITEMS' || /^4\d-(items?|addpanel|dlg-)/.test(name)) && (!/^(HIST|RT)$/.test(l) || /^4\d-history/.test(name)));
+const rootsFor = (name) => ROOTS.filter(([l]) => (!/^(RAIL|NB)$/.test(l) || /^([012]\d|R\d\d)-/.test(name)) && (l !== 'ITEMS' || /^4\d-(items?|addpanel|dlg-)/.test(name)) && (!/^(HIST|RT)$/.test(l) || /^4\d-history/.test(name)));
 const DUMP = (roots) => {
   const out = [];
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).map(Number); return { a: p.length > 3 ? p[3] : 1 }; };

@@ -93,6 +93,7 @@ APPROVED_STAGE.push(
   ['P08-dlg-bank', /^DLG>(div>div|div\.mfld|div\.grid2|div\.amsg|div\.grid2>div\.mfld)/, 'A15/R38: שם + IBAN + בנק + סניף (חובה בשרת) בעטיפת שדות'],
   ['P08-dlg-bank', /^DLG>div$/, 'עטיפת השדות'],
   ['P09-dlg-credit', /^DLG>(div\.chg|div\.amsg|div\.dbtns>button\.block\.btn(>svg\.ic\.sm)?$)/, 'D4: פרטי הזיכוי והבנק + "עריכת פרטי בנק"'],
+  ['P09-dlg-credit', /^DLG>div(\.faint|>svg\.ic\.sm|>span)?$/, 'W4-D4 (החלטת בעלים): שורת הווידוא "בוצעה העברה בנקאית?" בחלון אישור הביצוע - לא קיימת בעיצוב'],
   ['P09-dlg-credit', /^DLG>div\.dbtns>button\.block\.btn( |>svg\.ic\.sm )\[/, 'D4: לחצן "פרטי בנק"'],
   ['P10-dlg-forced', /^(TABS|TOAST)/, 'סמני לשוניות (W1) והטוסט של sim-add בעיצוב'],
   ['P10-dlg-forced', /^DLG>(div\.sub|div$|div>div|div\.mfld|div\.grid2|div\.row\.wrap|div\.amsg)/, 'R14 כותרת-משנה + R36 שדות נדרים (אשראי ברירת מחדל) + שורת השגיאה'],
