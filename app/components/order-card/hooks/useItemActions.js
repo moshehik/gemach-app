@@ -473,6 +473,7 @@ export function createItemActions(env) {
 
     // 1. אימות הפריט מול המלאי בשרת
     let dressInfo = null;
+    let unreturnedItemId = null;
     try {
       const vRes = await f('/api/rentals/verify-item', {
         method: 'POST',
@@ -492,16 +493,9 @@ export function createItemActions(env) {
           icon: 'check',
         });
         if (!yes) return { ok: false, cancelled: true };
-        const putRes = await f('/api/rentals/scan', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ unreturnedItemId: vData.unreturnedItemId })
-        });
-        if (!putRes.ok) {
-          const errData = await putRes.json().catch(() => ({}));
-          fail(errData.error || 'שגיאה בעדכון החזרה מהשכרה קודמת');
-          return { ok: false };
-        }
+        // ה-PUT שמסמן את הפריט בהזמנה האחרת כמוחזר נשלח רק אחרי שנמצא פריט להשכרה כאן (markPrevReturned, לפני rentItem) —
+        // אחרת סריקה שלא תואמת לשום פריט בהזמנה הייתה מסמנת את ההזמנה האחרת כמוחזרת לחינם
+        unreturnedItemId = vData.unreturnedItemId;
       }
       dressInfo = vData.dressItem;
     } catch (err) {
@@ -529,10 +523,32 @@ export function createItemActions(env) {
       if (candidates.length === 1) matchedItem = candidates[0];
     }
 
+    // סימון הפריט בהשכרה הקודמת כמוחזר — רק כשבאמת משכירים כאן (מיד לפני rentItem)
+    const markPrevReturned = async () => {
+      if (!unreturnedItemId) return true;
+      try {
+        const putRes = await f('/api/rentals/scan', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ unreturnedItemId })
+        });
+        if (!putRes.ok) {
+          const errData = await putRes.json().catch(() => ({}));
+          fail(errData.error || 'שגיאה בעדכון החזרה מהשכרה קודמת');
+          return false;
+        }
+      } catch {
+        fail('שגיאה בעדכון החזרה מהשכרה קודמת');
+        return false;
+      }
+      return true;
+    };
+
     // כמה פריטים זהים תואמים — בוחרים לאיזה לשייך
     if (!matchedItem && candidates.length > 1) {
       const chosen = await env.chooseItem({ candidates, barcode });
       if (!chosen) return { ok: false, cancelled: true };
+      if (!(await markPrevReturned())) return { ok: false };
       return rentItem(chosen, barcode);
     }
 
@@ -542,7 +558,10 @@ export function createItemActions(env) {
       return { ok: false };
     }
 
-    if (!matchedItem.isTaken) return rentItem(matchedItem, barcode);
+    if (!matchedItem.isTaken) {
+      if (!(await markPrevReturned())) return { ok: false };
+      return rentItem(matchedItem, barcode);
+    }
     if (!matchedItem.isReturned) return returnItem(matchedItem);
     fail(`פריט ${barcode} כבר הוחזר.`);
     return { ok: false };

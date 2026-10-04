@@ -272,6 +272,25 @@ for (const [name, confirm, putResp] of [['כן → PUT rentals/scan וממשיך
   });
 }
 
+test('ביקורת W3 #5: סריקה של שמלה רשומה בהשכרה אחרת שלא תואמת לשום פריט בהזמנה → אין PUT על ההזמנה האחרת', async () => {
+  const verify = V({ valid: true, unreturned: true, warning: 'השמלה עדיין מושכרת', unreturnedOrderId: 53311, unreturnedItemId: 'x9', dressItem: { barcodePrefix: 99, sizeText: '40', dressName: '9940' } });
+  const M = await mineScan(SCAN_ITEMS, '9940010', { '/api/rentals/verify-item': [verify], '/api/rentals/scan': [OK] });
+  assert.deepEqual(M.me.srv.calls.map((c) => `${c.method} ${c.url}`), ['POST /api/rentals/verify-item'], 'רק verify-item; בלי PUT ובלי toggle');
+  assert.equal(M.me.errors().length, 1);
+  assert.match(M.me.errors()[0], /לא נמצא בין הפריטים/);
+});
+test('ביקורת W3 #5: כשיש התאמה — ה-PUT נשלח מיד לפני השכרת הפריט כאן; בבחירה בין פריטים זהים — רק אחרי הבחירה', async () => {
+  const verify = (pfx, size) => V({ valid: true, unreturned: true, warning: 'w', unreturnedOrderId: 53311, unreturnedItemId: 'x9', dressItem: { barcodePrefix: pfx, sizeText: size } });
+  const M = await mineScan(SCAN_ITEMS, '1842010', { '/api/rentals/verify-item': [verify(18, '42')], '/api/rentals/scan': [OK] });
+  assert.deepEqual(M.me.srv.calls.map((c) => `${c.method} ${c.url}`), ['POST /api/rentals/verify-item', 'PUT /api/rentals/scan', 'POST /api/rentals/toggle']);
+  assert.deepEqual(M.me.srv.calls[1].body, { unreturnedItemId: 'x9' });
+  // שני פריטים זהים: המשתמש מבטל את הבחירה → בלי PUT
+  const me = mine({ items: SCAN_ITEMS, chooseIdx: 99, queues: { '/api/rentals/verify-item': [verify(45, '38')], '/api/rentals/scan': [OK], '/api/rentals/toggle': [OK] } });
+  const r = await me.act.scan('4538010');
+  assert.equal(r.cancelled, true);
+  assert.deepEqual(me.srv.calls.map((c) => c.url), ['/api/rentals/verify-item']);
+});
+
 test('סריקה בהזמנה נעולה: השכרה נחסמת (אותה הודעה, בלי קריאות); החזרה של פריט מושכר מותרת', async () => {
   const L1 = await legacyScan(SCAN_ITEMS, '1842010', {}, { locked: true });
   const M = await mineScan(SCAN_ITEMS, '1842010', {}, { locked: true });
