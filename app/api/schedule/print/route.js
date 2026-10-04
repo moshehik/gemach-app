@@ -10,6 +10,8 @@ import { PRINT_PAGES, parsePageList, parseVersions, getPrintPage } from '@/lib/s
 import { loadExtras, buildPrintPayload, payloadToRows } from '@/lib/schedule/print/data';
 import { parseExportLimit } from '@/lib/schedule/print/exportLimit';
 import { printNotices } from '@/lib/schedule/print/notices';
+import { hasOrderIdParam, parseOrderIdParam, orderModePageError, orderModeVersions } from '@/lib/schedule/print/orderMode';
+import { loadSingleOrderDay, SingleOrderError } from '@/lib/schedule/print/singleOrder';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // כמו GET /api/schedule (אותן שאילתות + שאילתת extras אחת)
@@ -26,6 +28,8 @@ export const maxDuration = 30; // כמו GET /api/schedule (אותן שאילת�
 // (הדפים האחרים מודפסים); רק כשכל הדפים שנבחרו אסורים -> 403.
 // format=access (בלי page): { allowed:[keys], forbidden:[keys] } - האשף מנטרל את הדפים האסורים מראש.
 // 400 = פרמטר שגוי, 404 = מפתח דף לא קיים/הוסר, 501 = דף רשום שעדיין לא נבנה.
+// orderId=N (כרטיס הזמנה, W7): הדף להזמנה אחת בלבד, בלי קשר ליום - רק PP-07 (גרסה ב׳ בכפייה) ו-PP-12 (רק להזמנה עם משלוח הלוך),
+//   format=json בלבד; הנתונים נבנים מההזמנה (lib/schedule/print/singleOrder.js) ו-meta.orderId נושא את מספרה. אותם שערים כמו כל דף.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   return handle({
@@ -34,6 +38,7 @@ export async function GET(request) {
     branch: searchParams.get('branch'),
     version: searchParams.get('version'),
     format: searchParams.get('format') || 'json',
+    orderIdRaw: searchParams.get('orderId'),
   });
 }
 
@@ -55,7 +60,7 @@ export async function POST(request) {
   });
 }
 
-async function handle({ page, date, branch, version, format, approvalPin }) {
+async function handle({ page, date, branch, version, format, approvalPin, orderIdRaw = null }) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!(await canOpenPage('page:schedule'))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -73,6 +78,14 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
   if (!requestedKeys.length) return NextResponse.json({ error: 'נדרש פרמטר page (למשל PP-15)' }, { status: 400 });
   if (date && !isValidKey(date)) return NextResponse.json({ error: 'תאריך לא תקין - נדרש YYYY-MM-DD' }, { status: 400 });
   if (format !== 'json' && format !== 'rows') return NextResponse.json({ error: 'format לא נתמך' }, { status: 400 });
+  // מצב הזמנה בודדת: מוודאים את הפרמטרים לפני כל שאילתה (פרמטר שגוי = 400, לא מתעלמים ממנו בשקט)
+  const singleOrderId = hasOrderIdParam(orderIdRaw) ? parseOrderIdParam(orderIdRaw) : null;
+  if (hasOrderIdParam(orderIdRaw)) {
+    if (!singleOrderId) return NextResponse.json({ error: 'orderId לא תקין' }, { status: 400 });
+    const pageErr = orderModePageError(requestedKeys);
+    if (pageErr) return NextResponse.json({ error: pageErr }, { status: 400 });
+    if (format !== 'json') return NextResponse.json({ error: 'הדפסת הזמנה בודדת זמינה רק ב-format=json' }, { status: 400 });
+  }
 
   // הרשאה נוספת לכל דף (any-of בתוך הדף) - נבדקת לפני כל שאילתה. דף אסור מדולג (meta.skipped) ולא מפיל את
   // כל הבקשה; רק כשכל הדפים שנבחרו אסורים -> 403.
@@ -101,7 +114,9 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
     }
     const branchParam = (branch || '').toString().slice(0, 100);
     const [day, settingsRows, me] = await Promise.all([
-      getScheduleDay({ date: date || undefined, branch: branchParam, user }),
+      singleOrderId
+        ? loadSingleOrderDay({ orderId: singleOrderId, keys })
+        : getScheduleDay({ date: date || undefined, branch: branchParam, user }),
       getAllCachedSettings().catch(() => []),
       user && user.id
         ? prisma.employee.findUnique({ where: { id: user.id }, select: { firstName: true, lastName: true, fullName: true } }).catch(() => null)
@@ -111,7 +126,9 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
     const gmach = { name: setting('gmach_name') || 'גמ״ח שמלות', address: setting('gmach_address') || '', phone: setting('gmach_phone') || '' };
     const printedBy = me ? (me.fullName || [me.firstName, me.lastName].filter(Boolean).join(' ')) : '';
     const extras = await loadExtras(day, defs);
-    const payload = buildPrintPayload({ day, keys, versions: parseVersions(version, keys), extras, gmach, printedBy });
+    // הזמנה בודדת: דף הכנה תמיד בגרסה ב׳ (הזמנה בעמוד נפרד), בלי קשר לפרמטר version
+    const versions = singleOrderId ? { ...parseVersions(version, keys), ...orderModeVersions(keys) } : parseVersions(version, keys);
+    const payload = buildPrintPayload({ day, keys, versions, extras, gmach, printedBy });
     payload.meta.skipped = skipped;
 
     if (format === 'json') return NextResponse.json(payload, { headers: { 'Cache-Control': 'no-store' } });
@@ -134,6 +151,7 @@ async function handle({ page, date, branch, version, format, approvalPin }) {
     return NextResponse.json({ meta: payload.meta, sheets, total, limit, notices: printNotices(payload) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error && error.status === 400) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof SingleOrderError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error('GET /api/schedule/print error:', error);
     return NextResponse.json({ error: 'שגיאה בהכנת נתוני ההדפסה' }, { status: 500 });
   }
