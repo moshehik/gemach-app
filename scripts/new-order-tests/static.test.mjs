@@ -126,3 +126,18 @@ test('Q7b: ת״ז לא מסומנת כחסרה בלקוח קיים; Q6b: אין 
   assert.ok(modelList && !/₪|money|price/i.test(modelList[0]), 'Q6b מחיר ברשימת הדגמים');
   assert.ok(!/₪|money|fee|price/i.test(read('StepDelivery.js').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')), 'Q6b מחיר/דמי משלוח בכרטיס המשלוח');
 });
+
+// R29b (עדכון בעלים): "כמו ההתראות של הזמנות שלא הוחזרו בנווה יעקב" = באנר ההודעות העליון של המעטפת (public/a5/adapters/shell.js notices() ->
+// nbAdd ב-public/a5/index.html: .nb-w > section.nb.nb-warning, אייקון alert, nb-msg, nb-x, nb-more, nb-bw/nb-body/nb-bi/nb-r). NoBanner חייב לשאת אותם מחלקות.
+test('R29b: NoBanner הוא אותו שלד כמו באנר "הזמנות שלא הוחזרו" של המעטפת', () => {
+  const html = fs.readFileSync(path.join(process.env.PROJ, 'public/a5/index.html'), 'utf8');
+  const tpl = /w\.innerHTML=`<section class="nb nb-\$\{kind\}"[\s\S]*?<\/section>`/.exec(html);
+  assert.ok(tpl, 'תבנית nbAdd');
+  const shellClasses = ['nb-main', 'nb-head', 'nb-ic', 'nb-msg', 'nb-x', 'nb-acts', 'nb-more', 'nb-bw', 'nb-body', 'nb-bi'];
+  const ui = read('NoUi.js');
+  for (const c of shellClasses) { assert.ok(tpl[0].includes(`"${c}"`), `בתבנית: ${c}`); assert.ok(ui.includes(`"${c}"`), `ב-NoBanner: ${c}`); }
+  assert.ok(ui.includes('className="nb-r"') && ui.includes('className="nb-w"') && /nb nb-\$\{kind\}/.test(ui));
+  assert.ok(/kind: 'warning'/.test(fs.readFileSync(path.join(process.env.PROJ, 'public/a5/adapters/shell.js'), 'utf8')), 'ההתראה הקיימת היא nb-warning');
+  assert.match(ui, /kind = 'warning'/);
+  assert.match(ui, /<Ic n="alert" \/>/);
+});

@@ -244,7 +244,6 @@
 /* R29b: באנר הודעות השמירה (.nb של הפלטה, כחול כהה) מתחת לשורת הכותרת - במלוא רוחב העמוד, הטקסט עובר שורה במקום להיחתך */
 .gm-ds.gm-no .no-banner{padding:0;margin-top:14px}
 .gm-ds.gm-no .no-banner .nb-w{margin-top:0;max-width:none}
-.gm-ds.gm-no .no-banner .nb-msg span{white-space:normal;overflow:visible;text-overflow:clip}
 .gm-ds.gm-no .no-banner .nb-r{align-items:flex-start;padding-block:10px}
 .gm-ds.gm-no .no-banner .nb-r span{padding-top:3px}
 /* כותרת הטבלה: globals.css כופה על כל <th> רקע קרם וצל (!important), design-overrides גופן - בעיצוב כחול כהה וזהב (כמו attendance.css) */
