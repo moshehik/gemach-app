@@ -15,6 +15,7 @@ export default function OcRefundRequestDialog({ api, amount, close }) {
   const oc = api.oc;
   const [data, setData] = useState(() => ({ ...refundPrefill(oc.order?.customer, oc.payments), amount: amount > 0 ? String(amount) : '' }));
   const [ibanErr, setIbanErr] = useState('');
+  const [iban, setIban] = useState(''); // ה-IBAN המקורי - נשמר בסיבת הזיכוי (הפירוק מוריד אפסים מובילים)
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (patch) => { setData(d => ({ ...d, ...patch })); setErr(''); };
@@ -24,7 +25,7 @@ export default function OcRefundRequestDialog({ api, amount, close }) {
     setErr('');
     setBusy(true);
     try {
-      const r = await api.actions.createRefund(data);
+      const r = await api.actions.createRefund(data, { iban });
       if (!r.ok) { setErr(r.error); return; }
       close({ created: true });
     } finally { setBusy(false); }
@@ -38,7 +39,7 @@ export default function OcRefundRequestDialog({ api, amount, close }) {
         <Field label="סכום לזיכוי *" icon="tag" htmlFor="oc-rf-amt">
           <Inp id="oc-rf-amt" type="number" inputMode="decimal" dir="ltr" data-autofocus="true" value={data.amount} onChange={(e) => set({ amount: e.target.value })} onKeyDown={key} />
         </Field>
-        <BankFields idp="oc-rf" value={data} onChange={(v) => set(v)} iban onIbanError={setIbanErr} onEnter={submit} />
+        <BankFields idp="oc-rf" value={data} onChange={(v) => set(v)} iban onIbanError={setIbanErr} onIban={setIban} onEnter={submit} />
         <Field label="סיבה / הערות" icon="note" htmlFor="oc-rf-reason">
           <Inp id="oc-rf-reason" value={data.reason} onChange={(e) => set({ reason: e.target.value })} onKeyDown={key} />
         </Field>

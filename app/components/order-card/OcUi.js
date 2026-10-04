@@ -152,6 +152,9 @@ function DlgBadge({ boxId, dlgKey }) {
   return <div className="dbadge" aria-hidden="true" data-k={b.k}><OcIcon name={b.icon} /></div>;
 }
 
+// dismissable: false | true | () => boolean (נבדק בכל Esc/לחיצה על הרקע - למשל חלון תשלום בזמן חיוב רץ)
+const canDismiss = (opts) => (typeof opts.dismissable === 'function' ? !!opts.dismissable() : opts.dismissable !== false);
+
 // ---------- ספק ----------
 export function OcUiProvider({ children }) {
   const [stack, setStack] = useState([]); // [{id, layer, Component, props, resolve, opts}]
@@ -221,7 +224,7 @@ export function OcUiProvider({ children }) {
     const onKey = (e) => {
       const box = typeof document !== 'undefined' ? document.getElementById(top.layer === 2 ? 'dlg2' : 'dlg') : null;
       if (e.key === 'Escape') {
-        if (top.opts.dismissable === false) return;
+        if (!canDismiss(top.opts)) { e.stopImmediatePropagation(); e.preventDefault(); return; }
         e.stopImmediatePropagation(); e.preventDefault();
         close(top.id, null);
         return;
@@ -264,7 +267,7 @@ export function OcUiProvider({ children }) {
       <div
         className={`scrim${top ? ' on' : ''}`}
         id={sid}
-        onMouseDown={(e) => { if (top && e.target === e.currentTarget && top.opts.dismissable !== false) close(top.id, null); }}
+        onMouseDown={(e) => { if (top && e.target === e.currentTarget && canDismiss(top.opts)) close(top.id, null); }}
       >
         <div className={`dlg${top && top.opts.className ? ` ${top.opts.className}` : ''}`} id={did} role="dialog" aria-modal="true" aria-labelledby={top ? (top.opts.labelledBy || 'oc-dlg-t') : undefined}>
           {top && top.opts.badge !== false ? <DlgBadge key={`b${top.id}`} boxId={did} dlgKey={top.id} /> : null}

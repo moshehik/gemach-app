@@ -60,7 +60,7 @@ export function OcRegsDialog({ close }) {
 }
 OcRegsDialog.ocLayer = 2;
 
-export default function OcPayDialog({ api, source = 'pay-now', amount, close }) {
+export default function OcPayDialog({ api, source = 'pay-now', amount, approved = false, close }) {
   const oc = api.oc;
   const manualOnly = source === 'manual';
   const methods = useMemo(() => payMethodsFor(oc.settings, { manualOnly }), [oc.settings, manualOnly]);
@@ -116,7 +116,8 @@ export default function OcPayDialog({ api, source = 'pay-now', amount, close }) 
     try {
       const r = isCredit
         ? await api.actions.chargeCard({ ...card, amount: amt })
-        : await api.actions.addManualPayment({ amount: amt, paymentMethod: method, notes });
+        : await api.actions.addManualPayment({ amount: amt, paymentMethod: method, notes, approved });
+      if (r.cancelled) return;
       if (!r.ok) { setErr(r.error || 'שגיאה בתשלום'); return; }
       close({ paid: true, amount: r.amount, method: r.method, persisted: r.persisted });
     } finally { setBusy(''); }

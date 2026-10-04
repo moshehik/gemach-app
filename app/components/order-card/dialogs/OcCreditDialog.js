@@ -21,10 +21,11 @@ const Row = ({ label, value, missing }) => (
 export default function OcCreditDialog({ api, refund, close }) {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const noBank = refundNeedsBank(refund);
   const money = fmtMoney(amountOf(refund.amount));
   const execute = async () => {
-    if (busy || noBank) return;
+    if (busy || noBank || !confirmed) return;
     setErr('');
     setBusy(true);
     try {
@@ -45,9 +46,14 @@ export default function OcCreditDialog({ api, refund, close }) {
         {refund.bankAccount ? <Row label="מספר חשבון" value={<bdi dir="ltr">{refund.bankAccount}</bdi>} /> : null}
         {refund.bankAccountName ? <Row label="שם בעל החשבון" value={refund.bankAccountName} /> : null}
       </div>
+      <label className="oc-confirm-row" data-act="confirm-transfer">
+        <input type="checkbox" checked={confirmed} disabled={busy} onChange={(e) => setConfirmed(e.target.checked)} />
+        <span>בוצעה העברה בנקאית?</span>
+      </label>
+      <div className="faint oc-dlg-note">האישור סופי: נוצר תשלום הפכי ונשלחת ללקוח הודעה. יש לסמן רק לאחר שההעברה בוצעה בפועל.</div>
       <div className="amsg" aria-live="polite">{err ? <><OcIcon name="alert" size="sm" />{err}</> : noBank ? <><OcIcon name="alert" size="sm" />חובה להזין בנק וסניף לפני ביצוע הזיכוי</> : null}</div>
       <DlgButtons>
-        <button type="button" className="btn primary lg block" data-act="confirm-credit" disabled={busy || noBank} onClick={execute}>
+        <button type="button" className="btn primary lg block" data-act="confirm-credit" disabled={busy || noBank || !confirmed} onClick={execute}>
           {busy ? <><span className="spinner" aria-hidden="true" />מעבד...</> : <><OcIcon name="check" />אשר ביצוע</>}
         </button>
         <DlgBtn icon="bank" disabled={busy} onClick={() => close('bank')}>{noBank ? 'הזנת פרטי בנק' : 'עריכת פרטי בנק'}</DlgBtn>

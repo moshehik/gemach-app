@@ -24,7 +24,7 @@ import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/order
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
   zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
-  exitGuardActive, withLocalIds, requiredOf, paidOf
+  exitGuardActive, withLocalIds, requiredOf, paidOf, undoDropsUnsavedCardCharge, unsavedCardChargeMessage
 } from './orderCardLogic';
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
@@ -331,11 +331,12 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   const undoChange = useCallback((key) => {
     const st = stateRef.current;
     const cur = { order: st.order, items: st.items, obligations: st.obligations, payments: st.payments };
+    if (undoDropsUnsavedCardCharge(cur, key)) { ui.alert({ kind: 'error', title: 'לא ניתן לבטל את התשלום', sub: unsavedCardChargeMessage(st.payments) }); return; }
     const cap = captureChange(cur, key);
     applyState(revertChange(cur, snapshotRef.current, key));
     redoRef.current = [...redoRef.current, cap];
     setRedoCount(redoRef.current.length);
-  }, []);
+  }, [ui]);
   const redo = useCallback(() => {
     const s = redoRef.current;
     if (!s.length) return;

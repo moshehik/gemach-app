@@ -23,7 +23,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { fmtMoney, obligationIdentityKey } from '../orderCardLogic';
+import { fmtMoney, obligationIdentityKey, unsavedCardChargeMessage } from '../orderCardLogic';
+import { formatIban } from '@/lib/iban';
 
 // ---------------------------------------------------------------------------------------------
 // עזרי כסף ותצוגה (טהורים)
@@ -31,6 +32,18 @@ import { fmtMoney, obligationIdentityKey } from '../orderCardLogic';
 /** עיגול לאגורות - אותו עיגול כמו round2 של orderCardLogic (totals), על parseFloat. */
 export const money2 = (n) => Math.round((parseFloat(n) || 0) * 100) / 100;
 export const amountOf = (x) => parseFloat(x) || 0;
+/** תשלומים בכרטיס אשראי: 1-36 (ברירת מחדל 1). */
+export const clampInstallments = (v) => Math.min(36, Math.max(1, parseInt(v, 10) || 1));
+/** שורה שנוצרה במעקף מתכנת (בלי חיוב אשראי בפועל) - היחידה בלי id שמותר למחוק מקומית. */
+export const isBypassRow = (p) => !!p && !p.id && String(p.paymentMethod || '').includes('מעקף');
+/** הערת IBAN להוספה לשדה הסיבה של זיכוי (פירוק ה-IBAN מוריד אפסים מובילים - המקור נשמר בטקסט). */
+export const ibanNote = (iban) => (iban ? `IBAN: ${formatIban(iban)}` : '');
+export const withIbanNote = (reason, iban) => {
+  const note = ibanNote(iban);
+  if (!note) return reason;
+  const base = String(reason || '').trim();
+  return base && base.includes(note) ? base : (base ? `${base} | ${note}` : note);
+};
 export const ITEM_SUFFIX_RE = /\s*\(פריט #[a-zA-Z0-9-]+\)/g;
 
 /** :766-771 - הגדרה חסרה = 15 דקות; קיימת אבל 0/ריקה/שלילית/לא מספר = כבוי (null). עד שההגדרות נטענו - null. */
@@ -286,8 +299,8 @@ export function nedarimBody({ customer = {}, obligations = [], orderId, card }) 
     address: fullAddress,
     cardNumber: card.cardNumber.replace(/\s/g, ''),
     tokef: card.tokef.replace(/\//g, ''),
-    amount: parseFloat(card.amount),
-    installments: parseInt(card.installments) || 1,
+    amount: money2(card.amount),
+    installments: clampInstallments(card.installments),
     notes: finalNotes,
     zeout: c.idNumber || c.zeout || '',
     email: c.email || ''
@@ -301,40 +314,40 @@ export function creditPaymentRow(data, card, nowIso = new Date().toISOString()) 
     if (data.rawResponse) parsedRaw = JSON.parse(data.rawResponse);
   } catch { /* נשאר האישור */ }
   if (card.notes) parsedRaw['הערות משתמש'] = card.notes;
-  return { isNew: true, paymentMethod: 'אשראי', notes: JSON.stringify(parsedRaw), amount: parseFloat(card.amount), paymentDate: nowIso };
+  return { isNew: true, paymentMethod: 'אשראי', notes: JSON.stringify(parsedRaw), amount: money2(card.amount), paymentDate: nowIso };
 }
 
 /** :524-536 - מעקף מתכנת: שורת תשלום מקומית (נשמרת ב-PUT הבא) בלי פנייה לנדרים. */
 export function bypassPaymentRow(card, approverId, nowIso = new Date().toISOString()) {
   const notesObj = { 'אישור': 'מעקף מתכנת - לא בוצע חיוב אשראי בפועל', 'מזהה עובד מאשר': approverId };
   if (card.notes) notesObj['הערות משתמש'] = card.notes;
-  return { isNew: true, paymentMethod: 'אשראי (מעקף מתכנת)', notes: JSON.stringify(notesObj), amount: parseFloat(card.amount), paymentDate: nowIso };
+  return { isNew: true, paymentMethod: 'אשראי (מעקף מתכנת)', notes: JSON.stringify(notesObj), amount: money2(card.amount), paymentDate: nowIso };
 }
 
 /** :587-597 - בדיקות טופס האשראי (אותן הודעות). balance = היתרה הנדרשת (מעוגלת). */
 export function validateCreditCard(card, balance) {
   if (!card.cardNumber || !card.tokef || !card.amount) return 'אנא מלא את כל השדות החובה (מספר כרטיס, תוקף, וסכום).';
-  const paymentAmount = parseFloat(card.amount);
+  const paymentAmount = money2(card.amount);
   if (!(paymentAmount > 0)) return 'אנא הזן סכום חיובי לחיוב.';
   if (paymentAmount > money2(balance)) return `לא ניתן לשלם יותר מהיתרה הנדרשת (${fmtMoney(balance)}).`;
   return null;
 }
 /** :504-513 */
 export function validateBypass(card, balance) {
-  const amount = parseFloat(card.amount);
+  const amount = money2(card.amount);
   if (!amount || amount <= 0) return 'אנא הזן סכום לפני מעקף.';
   if (amount > money2(balance)) return `לא ניתן לשלם יותר מהיתרה הנדרשת (${fmtMoney(balance)}).`;
   return null;
 }
 /** :274-278 */
 export function validateManualPayment(amountStr) {
-  const amount = parseFloat(amountStr);
+  const amount = money2(amountStr);
   if (!amount || amount <= 0) return 'יש להזין סכום חיובי לתשלום';
   return null;
 }
 /** :231-238 */
 export function validateRefund(refundData) {
-  if (!refundData.amount || parseFloat(refundData.amount) <= 0) return 'יש להזין סכום חיובי לזיכוי';
+  if (!refundData.amount || money2(refundData.amount) <= 0) return 'יש להזין סכום חיובי לזיכוי';
   if (!refundData.bankName?.trim() || !refundData.bankBranch?.trim()) return 'יש להזין בנק וסניף לזיכוי';
   return null;
 }
@@ -352,11 +365,15 @@ export function validateManualCharge({ description, amount }) {
 }
 
 /** :244 - גוף POST /api/refunds (אותם מפתחות ובאותו סדר; הסכום כמספר). */
-export const refundBody = ({ customerId, orderId, refundData }) => ({ customerId, orderId, ...refundData, amount: parseFloat(refundData.amount) });
+export const refundBody = ({ customerId, orderId, refundData }) => ({ customerId, orderId, ...refundData, amount: money2(refundData.amount) });
 /** :285-290 */
-export const additionalPaymentBody = ({ orderId, amount, paymentMethod, notes }) => ({ orderId, amount: parseFloat(amount), paymentMethod: paymentMethod || 'מזומן', notes: notes || '' });
+export const additionalPaymentBody = ({ orderId, amount, paymentMethod, notes }) => ({ orderId, amount: money2(amount), paymentMethod: paymentMethod || 'מזומן', notes: notes || '' });
 /** :463 - רק ארבעת שדות הבנק (IBAN לא נשלח - A15). */
-export const refundBankBody = (bank) => ({ bankName: bank.bankName, bankBranch: bank.bankBranch, bankAccount: bank.bankAccount, bankAccountName: bank.bankAccountName });
+export const refundBankBody = (bank, { iban, reason } = {}) => ({
+  bankName: bank.bankName, bankBranch: bank.bankBranch, bankAccount: bank.bankAccount, bankAccountName: bank.bankAccountName,
+  // רק כשהוזן IBAN תקין: המקור המעוצב נשמר בסיבה (הפירוק מוריד אפסים מובילים ולא הפיך)
+  ...(iban ? { reason: withIbanNote(reason, iban) } : {})
+});
 
 // ---------------------------------------------------------------------------------------------
 // רשימת החיובים בלשונית (A13 + R39): שורות שמורות + "ממתין לשמירה"
@@ -400,6 +417,13 @@ export function createPaymentActions(env) {
   const f = (...a) => env.fetch(...a);
   const st = () => env.get();
   let chargeInFlight = false;
+  let manualInFlight = false;
+
+  // חיוב אשראי שנשמר רק מקומית: סנכרון מהשרת/איפוס היו מעלימים את הרישום היחיד של הכסף - חוסמים עד "שמור"
+  const unsavedCardBlock = () => {
+    const msg = unsavedCardChargeMessage(st().payments);
+    return msg ? { ok: false, error: msg } : null;
+  };
 
   // = handleOrderUpdate של הישן אחרי GET טרי (זיכוי / ביצוע זיכוי / חישוב מחדש)
   async function refetchApply() {
@@ -412,6 +436,20 @@ export function createPaymentActions(env) {
 
   // תשלום שכבר נשמר בשרת: כשאין שינויים שלא נשמרו - סנכרון מלא מהשרת (התשלום נכנס גם ל-snapshot ולא מוצג כ"שינוי");
   // כשיש - כמו הישן (onPaymentsChange([...payments, saved])) כדי לא לדרוס את השינויים שבעריכה.
+  // POST /api/payments יכול להיות שהתחייב בשרת גם כשהתשובה אבדה/לא נקראה: לפני שמוסיפים שורה מקומית (שהיתה נשמרת שוב ב-PUT הבא =
+  // כפל) בודקים מול השרת אם קיים תשלום עם אותן הערות וסכום שעוד לא מוכר למסך.
+  async function findPersistedTwin(added) {
+    try {
+      const orderId = st().order?.orderId;
+      const res = await f(`/api/orders/${orderId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const known = new Set((st().payments || []).filter(p => p.id).map(p => String(p.id)));
+      return (data.payments || []).find(p => p.id && !p.isDeleted && !known.has(String(p.id))
+        && String(p.notes || '') === String(added.notes || '') && money2(p.amount) === money2(added.amount)) || null;
+    } catch { return null; }
+  }
+
   async function syncSavedPayment(saved) {
     if (!st().dirty) {
       try { if (await refetchApply()) return 'synced'; } catch { /* נופל לגיבוי */ }
@@ -446,6 +484,7 @@ export function createPaymentActions(env) {
         });
         if (saveRes.ok) savedPayment = await saveRes.json();
       } catch { /* savedPayment נשאר null */ }
+      if (!savedPayment) savedPayment = await findPersistedTwin(added);
       if (savedPayment) {
         await syncSavedPayment(savedPayment);
         return { ok: true, amount: added.amount, method: added.paymentMethod, persisted: true };
@@ -473,9 +512,17 @@ export function createPaymentActions(env) {
   }
 
   /** "תשלום נוסף" / מזומן-העברה-צ׳ק בחלון התשלום: POST /api/payments. → {ok, error?} */
-  async function addManualPayment({ amount, paymentMethod, notes }) {
+  async function addManualPayment({ amount, paymentMethod, notes, approved = false }) {
     const err = validateManualPayment(amount);
     if (err) return { ok: false, error: err };
+    if (manualInFlight) return { ok: false, error: 'תשלום קודם עדיין בתהליך' };
+    // בנווה (המתג המאוחד) מזומן/העברה/צ׳ק דורשים אישור feature:manual_payment_credit_add - גם כשהחלון נפתח מחוב/שמירה/רייל.
+    // approved=true: הקורא כבר אישר (הלחצן "חיוב / זיכוי ידני").
+    if (!approved && manualMoneyNeedsApproval(st().settings)) {
+      const auth = await env.approve(MANUAL_PAYMENT_CREDIT_KEY, 'הוספת תשלום/זיכוי ידני דורשת קוד מאשר.');
+      if (!auth) return { ok: false, cancelled: true };
+    }
+    manualInFlight = true;
     try {
       const res = await f('/api/payments', {
         method: 'POST',
@@ -485,17 +532,22 @@ export function createPaymentActions(env) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת התשלום');
       await syncSavedPayment(data);
-      return { ok: true, amount: parseFloat(amount), method: paymentMethod || 'מזומן', persisted: true };
+      return { ok: true, amount: money2(amount), method: paymentMethod || 'מזומן', persisted: true };
     } catch (e) {
       return { ok: false, error: e.message || 'שגיאה בשמירת התשלום' };
+    } finally {
+      manualInFlight = false;
     }
   }
 
   /** R38 בקשת זיכוי: POST /api/refunds → GET → applyServerOrder. → {ok, error?} */
-  async function createRefund(refundData) {
+  async function createRefund(refundData, { iban } = {}) {
     const err = validateRefund(refundData);
     if (err) return { ok: false, error: err };
+    const blocked = unsavedCardBlock();
+    if (blocked) return blocked;
     const s = st();
+    if (iban) refundData = { ...refundData, reason: withIbanNote(refundData.reason, iban) };
     try {
       const res = await f('/api/refunds', {
         method: 'POST',
@@ -512,10 +564,11 @@ export function createPaymentActions(env) {
   }
 
   /** D4b / R38 פרטי בנק לזיכוי קיים: PUT /api/refunds/{id} (ארבעת השדות). → {ok, error?} */
-  async function saveRefundBank(refundId, bank) {
+  async function saveRefundBank(refundId, bank, { iban } = {}) {
     const err = validateBank(bank);
     if (err) return { ok: false, error: err };
-    const body = refundBankBody(bank);
+    const existing = (st().refunds || []).find(r => r.id === refundId);
+    const body = refundBankBody(bank, { iban, reason: existing && existing.reason });
     try {
       const res = await f(`/api/refunds/${refundId}`, {
         method: 'PUT',
@@ -533,6 +586,8 @@ export function createPaymentActions(env) {
 
   /** R38 "אשר ביצוע": PUT {isExecuted:true} (השרת יוצר תשלום הפכי ושולח מייל) → GET → applyServerOrder. → {ok, error?} */
   async function executeRefund(refundId) {
+    const blocked = unsavedCardBlock();
+    if (blocked) return blocked;
     try {
       const res = await f(`/api/refunds/${refundId}`, {
         method: 'PUT',
@@ -552,6 +607,8 @@ export function createPaymentActions(env) {
 
   /** R33 חישוב מחדש (הנהלה ראשית). → {ok, error?} */
   async function recalc() {
+    const blocked = unsavedCardBlock();
+    if (blocked) return blocked;
     try {
       const res = await f('/api/admin/recalculations', {
         method: 'POST',
@@ -572,7 +629,10 @@ export function createPaymentActions(env) {
 
   /** R37 מחיקת תשלום (מקומי, נשמר ב-PUT; בלי PIN כמו היום - AMB-22). */
   function deletePayment(p) {
+    // שורה בלי id = עוד לא נשמרה בשרת: כסף שכבר זז (חיוב אשראי) לא נעלם בלחיצה - רק מעקף מתכנת (בלי כסף אמיתי) ניתן למחיקה מקומית
+    if (!p.id && !isBypassRow(p)) return { ok: false, error: 'תשלום שעוד לא נשמר בהזמנה לא נמחק מכאן. יש לשמור את ההזמנה קודם (או לבטל את השינוי ברייל).' };
     env.edit.setPayments(prev => (p.id ? prev.map(x => (x.id === p.id ? { ...x, isDeleted: true } : x)) : prev.filter(x => !sameRow(x, p))));
+    return { ok: true };
   }
 
   /** R35 חיוב ידני (מקומי, נשמר ב-PUT; השרת דורש feature:manual_charge_add). */
@@ -591,7 +651,7 @@ export function createPaymentActions(env) {
     return env.toggleSignature({ confirmed: true });
   }
 
-  return { refetchApply, syncSavedPayment, chargeCard, bypassCard, addManualPayment, createRefund, saveRefundBank, executeRefund, recalc, deletePayment, addManualCharge, deleteManualCharge, signRegulations };
+  return { isBusy: () => chargeInFlight || manualInFlight, refetchApply, syncSavedPayment, chargeCard, bypassCard, addManualPayment, createRefund, saveRefundBank, executeRefund, recalc, deletePayment, addManualCharge, deleteManualCharge, signRegulations };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -665,13 +725,20 @@ export default function usePaymentActions(oc, ui, D) {
 
   /** D3 חלון התשלום. ctx: {source:'save'|'exit'|'server-action'|'pay-now'|'manual', amount, href, intent} */
   const openPay = useCallback(async (ctx = {}) => {
-    const r = await ui.openDialog(D.Pay, { api, ...ctx }, { labelledBy: 'oc-pay-t', className: 'oc-pay' });
+    // "תשלום נוסף" ידני בזמן שיש שינויים שלא נשמרו: התשלום היה נכנס למצב המקומי בלבד, וביטול שינויים/"בטל" ברייל היה מעלים אותו מהמסך
+    // (ואז אפשר לגבות פעמיים). עד שהבקר יחשוף עדכון snapshot - דורשים שמירה קודם.
+    if (ctx.source === 'manual' && ocRef.current.dirty) {
+      await ui.alert({ kind: 'error', title: 'יש שינויים שלא נשמרו', sub: 'יש לשמור את ההזמנה לפני רישום תשלום נוסף.' });
+      return null;
+    }
+    // בזמן שחיוב האשראי/שמירת התשלום רצים - Esc/לחיצה על הרקע לא סוגרים את החלון (התוצאה, ההודעה והמשך היציאה לא יילכדו)
+    const r = await ui.openDialog(D.Pay, { api, ...ctx }, { labelledBy: 'oc-pay-t', className: 'oc-pay', dismissable: () => !actions.isBusy() });
     if (!r) return null;
     if (r.paid) announcePaid(r);
     if (r.leftDebt) ui.toast('info', `אושר על ידי ${r.leftDebt.employeeName || 'מנהל'}`, 'ההזמנה נשמרה עם יתרת חוב');
     if ((r.paid || r.leftDebt) && ctx.source === 'exit') await continueExit(ctx.href);
     return r;
-  }, [ui, D, api, announcePaid, continueExit]);
+  }, [ui, D, api, actions, announcePaid, continueExit]);
 
   /** D4b פרטי בנק לזיכוי קיים. ctx: {source, href} */
   const openBank = useCallback(async (refund, ctx = {}) => {
@@ -720,21 +787,23 @@ export default function usePaymentActions(oc, ui, D) {
     const key = await ui.openDialog(D.Manual, { api, needsApproval: needs, allowPayment: !!o.settings.allowAdditionalPayment }, { labelledBy: 'oc-manual-t', className: 'oc-manual' });
     if (!key) return null;
     if (key === 'charge') return openAddCharge();
+    if (key === 'payment' && ocRef.current.dirty) return openPay({ source: 'manual' }); // מציג את ההודעה "לשמור קודם" לפני בקשת אישור
     if (needs) {
       const a = await o.approve(MANUAL_PAYMENT_CREDIT_KEY, 'הוספת תשלום/זיכוי ידני דורשת קוד מאשר.');
       if (!a) return null;
     }
-    if (key === 'payment') return openPay({ source: 'manual' });
+    if (key === 'payment') return openPay({ source: 'manual', approved: true });
     if (key === 'refund') return openRefundRequest();
     return null;
   }, [ui, D, api, openAddCharge, openPay, openRefundRequest]);
 
   /** R37 פרטי תשלום מלאים + מחיקה. */
   const openPaymentDetails = useCallback(async (p) => {
-    const r = await ui.openDialog(D.PaymentDetails, { payment: p }, { labelledBy: 'oc-paydet-t', className: 'oc-paydet' });
+    const r = await ui.openDialog(D.PaymentDetails, { payment: p, canDelete: !!p.id }, { labelledBy: 'oc-paydet-t', className: 'oc-paydet' });
     if (r !== 'delete') return;
+    if (!p.id) { ui.toast('error', 'תשלום שעוד לא נשמר לא נמחק מכאן', 'יש לשמור את ההזמנה קודם.'); return; }
     const ok = await ui.confirm({ title: 'מחיקת תשלום', sub: `למחוק את התשלום ב${p.paymentMethod || 'תשלום'} בסך ${fmtMoney(amountOf(p.amount))}? הפעולה נשמרת עם שמירת ההזמנה.`, okText: 'מחק', icon: 'trash', danger: true });
-    if (ok) actions.deletePayment(p);
+    if (ok) { const res = actions.deletePayment(p); if (!res.ok) ui.toast('error', res.error, ''); }
   }, [ui, D, actions]);
 
   /** R33 */

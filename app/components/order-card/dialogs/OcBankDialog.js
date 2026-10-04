@@ -17,7 +17,7 @@ import { autoRefundBankPrefill, amountOf } from '../hooks/usePaymentActions';
  * שדות הבנק. value = {bankName, bankBranch, bankAccount, bankAccountName}; onChange(next). iban=true: שדה החשבון מקבל גם IBAN
  * ומפרק אותו. מחזיר גם שגיאת IBAN דרך onIbanError (או '' כשתקין/לא IBAN).
  */
-export function BankFields({ value, onChange, iban = false, idp = 'oc-bk', onIbanError, onEnter }) {
+export function BankFields({ value, onChange, iban = false, idp = 'oc-bk', onIbanError, onIban, onEnter }) {
   const [acct, setAcct] = useState(value.bankAccount || '');
   const [parsed, setParsed] = useState(null);
   const set = (patch) => onChange({ ...value, ...patch });
@@ -29,16 +29,19 @@ export function BankFields({ value, onChange, iban = false, idp = 'oc-bk', onIba
       const r = parseIsraeliIban(s);
       if (r.ok) {
         setParsed(r);
+        onIban && onIban(s);
         onIbanError && onIbanError('');
         onChange({ ...value, bankName: r.bankName, bankBranch: r.bankBranch, bankAccount: r.bankAccount });
       } else {
         setParsed(null);
+        onIban && onIban('');
         onIbanError && onIbanError(s.length >= IL_IBAN_LENGTH || !s.startsWith('IL') ? r.error : 'IBAN חלקי');
         onChange({ ...value, bankAccount: '' });
       }
       return;
     }
     setParsed(null);
+    onIban && onIban('');
     onIbanError && onIbanError('');
     set({ bankAccount: raw });
   };
@@ -66,6 +69,7 @@ export function BankFields({ value, onChange, iban = false, idp = 'oc-bk', onIba
 export default function OcBankDialog({ api, refund, auto = false, close }) {
   const [bank, setBank] = useState(() => autoRefundBankPrefill(refund, api.oc.order?.customer));
   const [ibanErr, setIbanErr] = useState('');
+  const [iban, setIban] = useState(''); // ה-IBAN המקורי (לשמירה בסיבת הזיכוי - הפירוק מוריד אפסים מובילים)
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const save = async () => {
@@ -74,7 +78,7 @@ export default function OcBankDialog({ api, refund, auto = false, close }) {
     setErr('');
     setBusy(true);
     try {
-      const r = await api.actions.saveRefundBank(refund.id, bank);
+      const r = await api.actions.saveRefundBank(refund.id, bank, { iban });
       if (!r.ok) { setErr(r.error); return; }
       close({ saved: true });
     } finally { setBusy(false); }
@@ -84,7 +88,7 @@ export default function OcBankDialog({ api, refund, auto = false, close }) {
       <h2 id="oc-bank-t">פרטי בנק</h2>
       <div className="sub">להחזר <bdi dir="ltr">{fmtMoney(amountOf(refund.amount))}</bdi></div>
       {auto ? <div className="faint oc-dlg-note">ללקוח נוצרה יתרת זכות עבור הזמנה זו. יש להזין (או לאשר) את פרטי הבנק להעברת הזיכוי.</div> : null}
-      <BankFields value={bank} onChange={(v) => { setBank(v); setErr(''); }} iban onIbanError={setIbanErr} onEnter={save} />
+      <BankFields value={bank} onChange={(v) => { setBank(v); setErr(''); }} iban onIbanError={setIbanErr} onIban={setIban} onEnter={save} />
       <div className="amsg" aria-live="polite">{err || ibanErr ? <><OcIcon name="alert" size="sm" />{err || ibanErr}</> : null}</div>
       <DlgButtons>
         <button type="button" className="btn green lg block" data-act="bank-ok" disabled={busy || !bank.bankName?.trim() || !bank.bankBranch?.trim()} onClick={save}>

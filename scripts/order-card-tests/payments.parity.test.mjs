@@ -315,13 +315,16 @@ test('R33 חישוב מחדש: POST /api/admin/recalculations {orderIds:[id]} �
 });
 
 test('R37 מחיקת תשלום / R35 מחיקת חיוב ידני: אותה תוצאה מקומית כמו הישן (שמור → isDeleted; חדש → הסרה)', async () => {
-  const pays = [...PAY, { isNew: true, amount: 5, paymentMethod: 'מזומן', _localId: 'L1' }];
+  // סטייה מכוונת מהישן (סקירת כסף): שורה בלי id (עוד לא נשמרה - למשל חיוב אשראי שכבר זז) לא נמחקת; רק מעקף מתכנת (בלי כסף אמיתי) כן.
+  const bypass = { isNew: true, amount: 7, paymentMethod: 'אשראי (מעקף מתכנת)', _localId: 'L3' };
+  const pays = [...PAY, bypass];
   for (let idx = 0; idx < pays.length; idx++) {
     // הישן משנה את האובייקט במקום (updated[idx].isDeleted = true) - מעבירים לו עותק
     const leg = legacyScope({ payments: structuredClone(pays) });
     await evalLegacy(arrowText('removePayment'), leg.scope)(idx);
     const neu = newEnv({ payments: pays });
-    neu.actions.deletePayment(pays[idx]);
+    const res = neu.actions.deletePayment(pays[idx]);
+    assert.equal(res.ok, true);
     assert.deepEqual(neu.lists.payments, leg.cap.payments);
   }
   const obls = [...OBL, { isNew: true, description: 'x', amount: 3, isManual: true, _localId: 'L2' }];

@@ -21,7 +21,7 @@ import {
   formatStockErrors, freshBalanceAfterExit, freshDebtAfterSave, hasRequiredDates, isDebtUnchangedSinceOpen,
   isPartiallyRentedBlocked, mergePendingItems, missingDatesMessage, needsAutoRefundBank, obligationIdentityKey,
   requiredOf, paidOf, submittedLocalIdsOf, validateRepairs, zeoutVerificationNeeded, DELETE_BLOCKED_STATUSES,
-  fmtMoney, debtApprovalCovers, openedDebtOf
+  fmtMoney, debtApprovalCovers, openedDebtOf, unsavedCardChargeMessage
 } from './orderCardLogic';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
@@ -326,7 +326,11 @@ export function createOrderCardFlows(env) {
     if (!dirty && !blocked) return go();
     if (dirty && !blocked) {
       const choice = await ui.openDialog(env.dialogs.ExitDialog, { changes: changesOf(st.snapshot, st) });
-      if (choice === 'discard') return go();
+      if (choice === 'discard') {
+        const cardMsg = unsavedCardChargeMessage(st.payments);
+        if (cardMsg) { await ui.alert({ kind: 'error', title: 'לא ניתן לצאת בלי לשמור', sub: cardMsg }); return { left: false, cancelled: true }; }
+        return go();
+      }
       if (choice !== 'save') return { left: false, cancelled: true };
     }
     // A18: אין אישור חוב לפני ה-PUT. אישור קודם (oc.approveDebt) נשלח כמו בישן - רק אם הוא מכסה את החוב הנוכחי (סקירה, סעיף 2)
@@ -383,6 +387,8 @@ export function createOrderCardFlows(env) {
     const snap = st.snapshot;
     const rows = changesOf(snap, st);
     if (!rows.length || !snap) { ui.toast('info', 'אין שינויים לביטול', ''); return false; }
+    const cardMsg = unsavedCardChargeMessage(st.payments);
+    if (cardMsg) { await ui.alert({ kind: 'error', title: 'לא ניתן לבטל שינויים', sub: cardMsg }); return false; }
     const changes = buildDraftSummary(snap, { order: st.order, items: st.items, obligations: st.obligations, payments: st.payments });
     if (!confirmed) {
       const ok = await ui.openDialog(env.dialogs.DiscardDialog, { changes: rows });

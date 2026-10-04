@@ -3,7 +3,7 @@
 // OcPaymentDetails — R37 "פרטי תשלום מלאים" (WIN.paydet בעיצוב + MPM :1242-1301): אופן תשלום, סכום, תאריך עברי ושעה, ופירוט ההערות
 // (נתוני נדרים מפוענחים לשורות, או טקסט). "מחק תשלום" מחזיר 'delete' - הקורא מאשר ומסמן isDeleted מקומית (נשמר ב-PUT, בלי PIN כמו
 // היום - AMB-22).
-// props: {payment, close} ; close: 'delete' | null
+// props: {payment, canDelete (רק לשורה ששמורה בשרת - !!p.id), close} ; close: 'delete' | null
 
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons } from '../OcUi';
@@ -18,7 +18,7 @@ const Row = ({ label, children, ltr }) => (
   </div>
 );
 
-export default function OcPaymentDetails({ payment: p, close }) {
+export default function OcPaymentDetails({ payment: p, canDelete = false, close }) {
   const amount = amountOf(p.amount);
   const notes = parsePaymentNotes(p.notes);
   const when = [hebDateOf(p.paymentDate), formatIsraelHHMM(p.paymentDate)].filter(Boolean).join(' · ');
@@ -39,7 +39,7 @@ export default function OcPaymentDetails({ payment: p, close }) {
         ) : <div className="faint oc-notes-t">אין הערות</div>}
       </div>
       <DlgButtons>
-        <DlgBtn icon="trash" act="paydel" onClick={() => close('delete')}>מחק תשלום</DlgBtn>
+        {canDelete ? <DlgBtn icon="trash" act="paydel" onClick={() => close('delete')}>מחק תשלום</DlgBtn> : null}
         <DlgBtn kind="ghost" icon="x" onClick={() => close(null)}>סגירה</DlgBtn>
       </DlgButtons>
     </>

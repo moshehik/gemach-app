@@ -150,7 +150,7 @@ export default function OcPaymentsTab({ oc, ui }) {
                 {/* שורה שעוד לא נשמרה (חיוב אשראי שלא נשמר בשרת / מעקף) לא נמחקת מכאן - כסף שכבר זז לא נעלם בלחיצה; ביטול השינוי ברייל */}
                 {fresh ? null : <button type="button" className="ibtn oc-ib" aria-label="מחק תשלום" data-tip="מחק תשלום" onClick={async () => {
                   const ok = await ui.confirm({ title: 'מחיקת תשלום', sub: `למחוק את התשלום ב${p.paymentMethod || 'תשלום'} בסך ${fmtMoney(amt)}? הפעולה נשמרת עם שמירת ההזמנה.`, okText: 'מחק', icon: 'trash', danger: true });
-                  if (ok) pay.actions.deletePayment(p);
+                  if (ok) { const res = pay.actions.deletePayment(p); if (!res.ok) ui.toast('error', res.error, ''); }
                 }}><OcIcon name="trash" size="sm" /></button>}
               </div>
             );
