@@ -58,7 +58,9 @@ async function fresh(scn) {
   await p.goto(D ? DEMO : `http://127.0.0.1:${PORT}/?scn=${scn || 'neve'}`, { waitUntil: 'load', timeout: 90000 }); // W5: הטעינה הקרה הראשונה של העיצוב (פונטים חיצוניים) איטית לפעמים
   await sleep(1500);
   // בעיצוב: מסתירים את שכבת הסקירה ואת כל מה שצף מעל הדף (סרגל האתר, כפתור השאלות) כדי שריחוף ולחיצה יגיעו לדף עצמו
-  if (D) await p.evaluate(() => {
+  // W5: על מכונה עמוסה שכבת הסקירה מאתחלת מאוחר ופותחת מחדש את סרגל ההדגמה אחרי ההסתרה (במסך צר הוא דוחף את הרייל מטה) - הפונקציה
+  // אידמפוטנטית ורצה שלוש פעמים
+  const hideDemoChrome = () => p.evaluate(() => {
     document.documentElement.classList.add('pv-off');
     const t = document.getElementById('demoTog'); if (t && t.getAttribute('aria-pressed') === 'true') t.click();
     const keep = (el) => el.closest('#app,#scrim,#scrim2,#toast,#tt,#rt');
@@ -66,6 +68,7 @@ async function fresh(scn) {
     // במסך צר הרייל של העיצוב (גיליון תחתון) מכסה את שורת הכותרת ובולע את הריחוף - לא חלק מהבדיקה של המעטפת
     const rail = document.getElementById('rail'); if (rail && innerWidth < 1024) rail.style.setProperty('pointer-events', 'none', 'important');
   });
+  if (D) { await hideDemoChrome(); await sleep(1200); await hideDemoChrome(); await sleep(700); await hideDemoChrome(); }
   await p.evaluate(() => window.scrollTo(0, 0));
 }
 const restoreDraft = async () => { await clickAt('.oc-banner .nb-go'); await sleep(300); await p.evaluate(() => { const t = document.querySelector('#toast .tclose'); if (t) t.click(); }); await sleep(400); };

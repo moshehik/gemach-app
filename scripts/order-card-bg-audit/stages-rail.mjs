@@ -1,7 +1,8 @@
 // שלבי W5 של הרתמה: הרייל (#rail), טוסט "חיוב/זיכוי ממתין", חלונות השמירה (D1 סיכום, D7 ביטול שינויים, D6 "נשמרה"), באנר הטיוטה (R11) -
 // הדף האמיתי מול כרטיס-הזמנה.html. + בדיקות זרימה מקצה לקצה (רק בדף האמיתי) של הלחצנים, הטוסט, הביטול/החזרה, D6 והדפסה.
 // נטען מ-stages.mjs: railRoots(ROOTS, D) מוסיף את אזורי ההשוואה; railStages(ctx) מחזיר את השלבים.
-export const railRoots = (ROOTS, D) => { ROOTS.push(['RAIL', '#rail'], ['NB', D ? '#nbArea' : '.oc-banner']); };
+// RAIL = כרטיס הרייל (#rail .rcard) ולא ה-aside: במסך צר ה-aside של העיצוב הוא גיליון fixed שגובהו אינו תלוי בתוכן (גדל לפי גובה הדף)
+export const railRoots = (ROOTS, D) => { ROOTS.push(['RAIL', '#rail .rcard'], ['NB', D ? '#nbArea' : '.oc-banner']); };
 
 export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) {
   // העיצוב: לחיצה על data-act כמו act() של הדף (כפתור זמני עם data-act נלחץ - מאזין ה-click של המסמך תופס אותו)
@@ -17,6 +18,7 @@ export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) 
   const notesDemo = async () => { await fresh(); await p.type('#notes', 'x'); await sleep(300); await away(); };
   // במסך צר הרייל הוא גיליון תחתון מקופל (רשימת השינויים ולחצן "בטל שינויים" נראים רק כשהוא פתוח) - פותחים לפני לחיצה עליהם
   const openCart = async () => { if (await p.evaluate(() => innerWidth) < 1024) { await clickAt('#rail [data-act="cart-toggle"]'); await sleep(350); } };
+  const wide = async () => (await p.evaluate(() => innerWidth)) >= 1024;
   const nav = () => p.evaluate(() => window.__nav || []);
   const calls = () => p.evaluate(() => window.__calls || []);
 
@@ -32,8 +34,9 @@ export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) 
     { name: 'R05-discard-d7', real: async () => { await addReal(); await openCart(); await clickAt('#rail .btn[data-act="discard"]'); await sleep(700); await away(); }, demo: async () => { await addDemo(); await openCart(); await clickAt('#rail .btn[data-act="discard"]'); await sleep(700); await away(); } },
     { name: 'R06-success-d6', real: async () => { await fresh('railnotes'); await restoreQuiet(); await clickAt('#rail .btn.primary'); await sleep(1200); await away(); }, demo: async () => { await fresh(); await p.evaluate(() => finish('ההזמנה נשמרה', [])); await sleep(700); await away(); } },
     // --- ריחוף: ביטול שורה, לחצן ראשי, צ׳יפ התשלום (מצבי hover של הפלטה) ---
-    { name: 'R09-hover-undo', real: async () => { await addReal(); await openCart(); await hover('#rail .cl-u'); }, demo: async () => { await addDemo(); await openCart(); await hover('#rail .cl-u'); } },
-    { name: 'R10-hover-primary', real: async () => { await addReal(); await hover('#rail .btn.primary'); }, demo: async () => { await addDemo(); await hover('#rail .btn.primary'); } },
+    // ריחוף לא קיים במסך מגע: מתחת ל-1024 (גיליון תחתון, בעיצוב pointer-events:none על הרייל) השלבים האלה לא מבצעים ריחוף - אותו מצב בשני הצדדים
+    { name: 'R09-hover-undo', real: async () => { await addReal(); if (await wide()) { await hover('#rail .cl-u'); } }, demo: async () => { await addDemo(); if (await wide()) { await hover('#rail .cl-u'); } } },
+    { name: 'R10-hover-primary', real: async () => { await addReal(); if (await wide()) await hover('#rail .btn.primary'); }, demo: async () => { await addDemo(); if (await wide()) await hover('#rail .btn.primary'); } },
     // --- באנר הטיוטה (R11) ---
     { name: 'R07-draft-banner', real: async () => { await fresh('railbanner'); await away(); }, demo: async () => { await fresh(); await p.select('#pvState', 'draft'); await sleep(500); await away(); } },
     // --- רק בדף האמיתי: צילומים + בדיקות זרימה ---
