@@ -113,3 +113,53 @@ test('C7: חתימה - לחיצה כפולה פותחת חלון אישור אח
   assert.equal(confirms, 1);
   assert.equal(h.calls.length, 0);
 });
+
+// ---------- C2: הוספה/עריכת פריט עם שינויים שלא נשמרו - "לשמור קודם?" ----------
+const IA = await P2('app/components/order-card/hooks/useItemActions.js');
+function itemEnv({ ensure, items = [item('a1')] }) {
+  const calls = [], local = [], applied = [], ensured = [];
+  const order = { orderId: 53375, eventDate: '2026-10-20T21:00:00.000Z' };
+  const env = {
+    fetch: async (u, o = {}) => { calls.push([o.method || 'GET', u]); return new Response(JSON.stringify({ ...order, items }), { status: 200, headers: { 'Content-Type': 'application/json' } }); },
+    ui: { toast: () => {}, confirm: async () => true }, approve: async () => null,
+    get: () => ({ order, items, settings: L.parseSettings([]), isLocked: false, routeId: '53375', forceEditableIds: new Set(), sessionEditableIds: new Set(), priceList: [] }),
+    syncItems: () => {}, addLocalItem: (p) => { local.push(p); return p._localId; }, removeLocalItem: () => {}, markItemDeleted: () => {}, setAltDone: () => {},
+    applyServerOrder: (o) => applied.push(o), markForceEditable: () => {}, chooseItem: async () => null, bumpHistory: () => {},
+    ensureSaved: async (o) => { ensured.push(o); return ensure(o); },
+  };
+  return { act: IA.createItemActions(env), calls, local, applied, ensured };
+}
+const DRAFT = { model: { id: 'm-4519', name: '4519' }, sizeText: '38', price: 150 };
+
+test('C2: addItem עם שינויים שלא נשמרו - ביטול בחלון = אין POST ואין שורה מקומית', async () => {
+  const e = itemEnv({ ensure: () => ({ ok: false, cancelled: true }) });
+  const r = await e.act.addItem(DRAFT);
+  assert.equal(r.ok, false);
+  assert.equal(e.calls.length, 0); assert.equal(e.local.length, 0); assert.equal(e.applied.length, 0);
+  assert.match(e.ensured[0].sub, /לשמור לפני הוספת השמלה/);
+  assert.equal(e.ensured[0].okText, 'שמור והוסף');
+});
+test('C2: addItem אחרי "שמור והוסף" - POST אחד, והשמירה נבדקת לפני שהשורה נוספת', async () => {
+  const e = itemEnv({ ensure: () => ({ ok: true, saved: true }) });
+  const r = await e.act.addItem(DRAFT);
+  assert.equal(r.ok, true);
+  assert.deepEqual(e.calls.map(c => c.join(' ')), ['POST /api/orders/53375/items']);
+  assert.equal(e.ensured.length, 2, 'לפני הוספת השורה וגם לפני ה-POST (השורה עצמה מתעלמים ממנה)');
+  assert.equal(typeof e.ensured[1].ignore, 'function');
+  assert.equal(e.ensured[1].ignore({ key: `item:add:${e.local[0]._localId}` }), true);
+  assert.equal(e.ensured[1].ignore({ key: 'notes' }), false);
+});
+test('C2: עריכת פריט שמור עם שינויים שלא נשמרו - ביטול = אין PUT', async () => {
+  const e = itemEnv({ ensure: () => ({ ok: false, cancelled: true }) });
+  const r = await e.act.confirmItem({ id: 'a1', sizeText: '40', dressItem: { dressModelId: 'm1' }, price: 150 });
+  assert.equal(r.ok, false); assert.equal(e.calls.length, 0);
+  assert.match(e.ensured[0].sub, /לפני עדכון הפריט/);
+});
+test('C2 (סטטי): oc.ensureSaved בבקר ושימושו בהוספה/עריכה/חישוב מחדש/זיכוי', () => {
+  const ctrl = strip(read('useOrderCardController.js'));
+  assert.ok(/const ensureSaved = useCallback/.test(ctrl) && /ensureSaved,\s*\n?\s*orderRef/.test(ctrl));
+  assert.ok(/flows\.save\(\{ intent: 'save' \}\)/.test(ctrl) && /cancelText: 'ביטול'/.test(ctrl));
+  assert.ok(/ensureSaved: \(o\) => ocRef\.current\.ensureSaved\(o\)/.test(strip(read('hooks/useItemActions.js'))));
+  const pay = strip(read('hooks/usePaymentActions.js'));
+  assert.equal((pay.match(/ocRef\.current\.ensureSaved\(/g) || []).length, 3, 'חישוב מחדש + בקשת זיכוי + אישור זיכוי');
+});

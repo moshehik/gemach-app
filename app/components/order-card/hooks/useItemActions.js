@@ -325,6 +325,7 @@ export function sortItems(list, { col, dir }, order, mode) {
  * @param {(partial:object)=>string} env.addLocalItem @param {(id:string)=>void} env.removeLocalItem
  * @param {(id:string,b:boolean)=>void} env.markItemDeleted @param {(id:string,b:boolean)=>void} env.setAltDone
  * @param {(order:object,opts?:{savedLocalId?:string})=>void} env.applyServerOrder
+ * @param {(o?:object)=>Promise<{ok:boolean}>} [env.ensureSaved]   C2: "לשמור קודם?" כשיש שינויים שלא נשמרו (oc.ensureSaved)
  * @param {(id:string)=>void} env.markForceEditable
  * @param {(o:{candidates:object[],barcode:string})=>Promise<object|null>} env.chooseItem
  * @param {()=>void} [env.bumpHistory]
@@ -658,6 +659,13 @@ export function createItemActions(env) {
     }
   }
   async function confirmItemNow(item) {
+    // C2: POST/PUT של פריט מסנכרן את הכרטיס מהשרת ודורס שינויים שלא נשמרו - קודם שומרים (שורת הפריט החדשה עצמה אינה "שינוי אחר")
+    if (env.ensureSaved) {
+      const own = item && item._localId ? `item:add:${item._localId}` : null;
+      const editing = !!item?.id && !item.isNew;
+      const g = await env.ensureSaved({ sub: `יש שינויים שלא נשמרו. לשמור לפני ${editing ? 'עדכון הפריט' : 'הוספת השמלה'}?`, okText: editing ? 'שמור והמשך' : 'שמור והוסף', ignore: (ch) => !!own && ch.key === own });
+      if (!g.ok) return { ok: false, cancelled: true };
+    }
     const st = env.get();
     const hasModelIdentity = !!(item.dressModelId || item.barcodePrefix || item.dressItem?.dressModelId || item.dressItem?.barcodePrefix);
     if (!item.sizeText || !hasModelIdentity) { fail('יש לבחור דגם ומידה לפני האישור'); return { ok: false }; }
@@ -693,6 +701,11 @@ export function createItemActions(env) {
 
   // ---- הוספה מחלונית "הוספת שמלה": שורה מקומית + POST מיד ----
   async function addItem(draft) {
+    // C2: שינויים שלא נשמרו נשמרים לפני שהשורה החדשה נכנסת (אחרת ה-POST היה דורס אותם); ביטול/חסימה = לא מוסיפים
+    if (env.ensureSaved && env.get().order && !env.get().isLocked) {
+      const g = await env.ensureSaved({ sub: 'יש שינויים שלא נשמרו. לשמור לפני הוספת השמלה?', okText: 'שמור והוסף' });
+      if (!g.ok) return { ok: false, cancelled: true };
+    }
     const st = env.get();
     if (st.isLocked) return { ok: false };
     if (quotaFull(st.settings, st.items)) return { ok: false }; // R32: הלחצן כבר מוסתר; בלי הודעה
@@ -859,6 +872,7 @@ export default function useItemActions(oc, ui, { chooseItem } = {}) {
     markItemDeleted: (id, b) => ocRef.current.edit.markItemDeleted(id, b),
     setAltDone: (id, b) => ocRef.current.edit.setAltDone(id, b),
     applyServerOrder: (o, opts) => ocRef.current.applyServerOrder(o, opts),
+    ensureSaved: (o) => ocRef.current.ensureSaved(o),
     markForceEditable: (id) => setForceEditableIds(prev => new Set(prev).add(id)),
     chooseItem: (o) => (chooseRef.current ? chooseRef.current(o) : Promise.resolve(null)),
     bumpHistory: () => ocRef.current.bumpHistory(),

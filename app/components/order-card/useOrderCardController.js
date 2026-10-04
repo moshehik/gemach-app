@@ -62,6 +62,7 @@ import OcApprovalDialog from './OcApproval';
  * @property {boolean} saving @property {object|null} inventoryCache
  * @property {(type:string, fn:Function)=>()=>void} on   אירועים: 'debtCreated' {amount,source,href?}, 'autoRefundNeedsBank' {source,href?}
  * @property {boolean} pendingDebtBlock
+ * @property {(o?:{sub?:string,okText?:string,ignore?:(change:object)=>boolean})=>Promise<{ok:boolean,clean?:boolean,saved?:boolean,cancelled?:boolean,blocked?:boolean}>} ensureSaved   "שיש שינויים - לשמור קודם?" לפני פעולת שרת שמסנכרנת את הכרטיס (C2)
  * @property {(p:{amount:number,employeeId:string,employeeName:string})=>void} announceDebtLeft   נקרא אחרי שחלון התשלום נסגר ב"השאר חוב" → אירוע 'debtApproved'
  */
 export default function useOrderCardController(orderRef, ui, { dialogs = {} } = {}) {
@@ -326,6 +327,24 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   }, [ui, dialogs, orderRef, setSnapshot, flagsProxy, approve, navigate, emit, bumpHistory, clearRedo]);
   useEffect(() => { exitRef.current = flows.exit; }, [flows]);
 
+  // ---------- "לשמור קודם" (סקירת אינטגרציה C2) ----------
+  // פעולה שמסנכרנת את הכרטיס מהשרת (הוספת/עריכת פריט, זיכוי, חישוב מחדש - oc.applyServerOrder) דורסת כל שינוי מקומי שלא נשמר (הערות, תאריך,
+  // לקוח, מחיקות, חיובים ידניים...). לכן כשיש שינויים: חלון כהה "לשמור לפני ...?" ← שמירה בזרימה הסטנדרטית (אישורים/התנגשות/חוב) ← המשך.
+  // ביטול / שמירה שנחסמה / חוב חדש (חלון התשלום נפתח) = עוצרים. ignore(change) = שינוי שהפעולה עצמה יצרה (למשל שורת הפריט החדשה).
+  const ensureSaved = useCallback(async ({ sub = 'יש שינויים שלא נשמרו. לשמור לפני הפעולה?', okText = 'שמור והמשך', ignore = null } = {}) => {
+    const st = stateRef.current;
+    const rows = changesOf(snapshotRef.current, { order: st.order, items: st.items, obligations: st.obligations, payments: st.payments }).filter(ch => !(ignore && ignore(ch)));
+    if (!rows.length) return { ok: true, clean: true };
+    const yes = await ui.confirm({ title: 'שינויים שלא נשמרו', sub, okText, cancelText: 'ביטול', icon: 'check' });
+    if (!yes) return { ok: false, cancelled: true };
+    const r = await flows.save({ intent: 'save' });
+    if (!r || !r.ok) return { ok: false, blocked: true, result: r || null };
+    if (r.debtCreated > 0) return { ok: false, blocked: true, result: r };
+    // ממתינים שה-state השמור ייכנס לרינדור (stateRef מתעדכן ב-layout effect) - אחרת הפעולה הבאה הייתה ממזגת מול שורות מקומיות ישנות
+    for (let i = 0; i < 40 && stateRef.current.snapshot !== snapshotRef.current; i += 1) await new Promise(res => setTimeout(res, 25));
+    return { ok: true, saved: true };
+  }, [ui, flows]);
+
   // ---------- עריכה ----------
   const markEdited = clearRedo;
   const edit = useMemo(() => ({
@@ -447,7 +466,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     drafts: { pending: pendingDraft, restore: restoreDraft, discard: discardDraft },
     historyVersion, bumpHistory, logEvent, approve, approveDebt, announceDebtLeft,
     tab, setTab, goPayments, saving, inventoryCache, on, pendingDebtBlock,
-    requestZeout: flows.requestZeout,
+    requestZeout: flows.requestZeout, ensureSaved,
     orderRef,
   };
   return oc;

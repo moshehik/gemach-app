@@ -782,6 +782,12 @@ export default function usePaymentActions(oc, ui, D) {
   /** D4 אישור ביצוע זיכוי (R38 "אשר ביצוע" / "זכה ₪N"). */
   const openCredit = useCallback(async (refund) => {
     if (!refund) return null;
+    // C2: "אשר ביצוע" מסנכרן מהשרת ודורס שינויים שלא נשמרו - שומרים קודם (אחרי שמירה ה-refund נטען מחדש לפי ה-id)
+    if (ocRef.current.ensureSaved) {
+      const g = await ocRef.current.ensureSaved({ sub: 'יש שינויים שלא נשמרו. לשמור לפני אישור הזיכוי?', okText: 'שמור והמשך' });
+      if (!g.ok) return null;
+      if (g.saved) refund = (ocRef.current.refunds || []).find(x => x.id === refund.id) || refund;
+    }
     const r = await ui.openDialog(D.Credit, { api, refund }, { labelledBy: 'oc-credit-t', className: 'oc-credit' });
     if (r === 'bank') return openBank(refund);
     if (r && r.executed) ui.toast('info', 'הזיכוי אושר ובוצע בהצלחה.', fmtMoney(refund.amount));
@@ -826,6 +832,8 @@ export default function usePaymentActions(oc, ui, D) {
 
   /** "בקשת זיכוי ללקוח" (כנ"ל). */
   const openManualRefund = useCallback(async () => {
+    // C2: יצירת הזיכוי מסנכרנת מהשרת ודורסת שינויים שלא נשמרו - שומרים קודם
+    if (ocRef.current.ensureSaved) { const g = await ocRef.current.ensureSaved({ sub: 'יש שינויים שלא נשמרו. לשמור לפני בקשת הזיכוי?', okText: 'שמור והמשך' }); if (!g.ok) return null; }
     if (!(await manualMoneyGate())) return null;
     return openRefundRequest();
   }, [openRefundRequest, manualMoneyGate]);
@@ -862,6 +870,8 @@ export default function usePaymentActions(oc, ui, D) {
   const runRecalc = useCallback(async () => {
     const ok = await ui.confirm({ title: 'חישוב מחדש', sub: 'לחשב מחדש את כל חיובי ההזמנה הזו לפי הכללים העדכניים? פעולה זו עשויה לשנות סכומים קיימים.', okText: 'חשב מחדש', icon: 'refresh' });
     if (!ok) return;
+    // C2: חישוב מחדש מסנכרן מהשרת ודורס שינויים שלא נשמרו - שומרים קודם (באישור)
+    if (ocRef.current.ensureSaved) { const g = await ocRef.current.ensureSaved({ sub: 'יש שינויים שלא נשמרו. לשמור לפני החישוב מחדש?', okText: 'שמור והמשך' }); if (!g.ok) return; }
     setBusy('recalc');
     try {
       const r = await actions.recalc();

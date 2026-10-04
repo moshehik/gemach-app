@@ -160,6 +160,23 @@ const STAGES = [
     checks.push(['A27: מחיר השכרה ודמי ביטול מהמנוע (preview-pricing), בלי "לפי הגדרות הגמ״ח"', /מחיר השכרה: ₪120/.test(price) && /דמי ביטול ₪40/.test(price) && !/לפי הגדרות/.test(price)],
       ['R47 הוספה (נווה: require_manager_code_for_item_changes) → חלון אישור מנהל לפני POST', st.dlg2 && st.posts.length === 0]);
   } },
+  // C2 (סקירת אינטגרציה 2): הוספת פריט עם שינויים שלא נשמרו - חלון "לשמור לפני הוספת השמלה?"; ביטול = בלי POST; "שמור והוסף" = PUT ואז POST
+  { name: '52b-add-dirty-save-first', real: async () => {
+    await fresh('main'); await p.type('#notes', ' שינוי'); await sleep(300);
+    await itemsTab(); await clickAt('#p-items [data-act="addtoggle"]'); await clickAt('#addModel'); await p.type('#addModel', '4519'); await sleep(700);
+    await clickAt('#p-items .advlist .advo'); await sleep(300); await clickAt('#p-items .addpanel .sizes button:nth-child(3)'); await sleep(900);
+    await clickAt('#p-items [data-act="additem"]'); await sleep(700);
+    const d1 = await p.evaluate(() => ({ on: document.getElementById('scrim').classList.contains('on'), h2: (document.querySelector('#dlg > h2') || {}).textContent, sub: (document.querySelector('#dlg > .sub') || {}).textContent, btns: [...document.querySelectorAll('#dlg .dbtns .btn')].map((b) => b.textContent.trim()), dark: !!document.querySelector('.oc-root.dlg-dark, .dlg-dark') }));
+    const urls = async () => (await calls()).filter((c) => /\/api\/orders\/53375(\/items)?$/.test(c.url) && c.method !== 'GET').map((c) => c.method + ' ' + c.url);
+    await clickAt('#dlg .dbtns .btn.ghost'); await sleep(600);
+    const afterCancel = { urls: await urls(), notes: await p.$eval('#notes', (e) => e.value), rows: await p.evaluate(() => document.querySelectorAll('#p-items .irow').length) };
+    await clickAt('#p-items [data-act="additem"]'); await sleep(600);
+    await clickAt('#dlg .dbtns .btn.primary'); await sleep(1800);
+    const afterSave = { urls: await urls(), dlg: await p.evaluate(() => document.getElementById('scrim').classList.contains('on')) };
+    checks.push(['C2: הוספת פריט עם שינויים שלא נשמרו פותחת חלון כהה "שינויים שלא נשמרו" עם "שמור והוסף" / "ביטול"', d1.on && /שינויים שלא נשמרו/.test(d1.h2 || '') && /לשמור לפני הוספת השמלה/.test(d1.sub || '') && d1.btns.join('|') === 'שמור והוסף|ביטול'],
+      ['C2: ביטול בחלון = בלי PUT ובלי POST, ההערה שהוקלדה נשארת', afterCancel.urls.length === 0 && /שינוי/.test(afterCancel.notes)],
+      ['C2: "שמור והוסף" = PUT של ההזמנה (עם ההערה) ורק אחריו POST של הפריט', afterSave.urls.length === 2 && afterSave.urls[0] === 'PUT /api/orders/53375' && afterSave.urls[1] === 'POST /api/orders/53375/items']);
+  } },
   { name: '53-quota-full', real: async () => {
     await fresh('quota'); await itemsTab(); await clickAt('#delToggle'); await away();
     const st = await p.evaluate(() => ({ add: !!document.querySelector('#p-items [data-act="addtoggle"]'), restore: !!document.querySelector('#p-items [data-act="restore"]'), alerts: document.querySelectorAll('#scrim.on').length }));
