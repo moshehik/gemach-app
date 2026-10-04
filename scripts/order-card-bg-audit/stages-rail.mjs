@@ -8,7 +8,7 @@ export function railStages({ p, D, fresh, clickAt, hover, away, sleep, check }) 
   // העיצוב: לחיצה על data-act כמו act() של הדף (כפתור זמני עם data-act נלחץ - מאזין ה-click של המסמך תופס אותו)
   const demoAct = async (a) => { await p.evaluate((x) => { const b = document.createElement('button'); b.dataset.act = x; document.body.append(b); b.click(); b.remove(); }, a); await sleep(400); };
   // אמיתי: משחזר את הטיוטה בלחיצה על הבאנר. בלי לסגור את הטוסט (הטוסט "חיוב ממתין" הוא חלק מההשוואה)
-  const restore = async () => { await clickAt('.oc-banner .nb-go'); await sleep(900); };
+  const restore = async () => { await p.waitForSelector('.oc-banner .nb-go', { visible: true, timeout: 20000 }); await clickAt('.oc-banner .nb-go'); await sleep(900); };
   // כמו restore, ובנוסף סוגר את טוסט "שוחזרו" (בעיצוב אין טוסט כשהשינוי היחיד הוא הערות)
   const restoreQuiet = async () => { await restore(); await p.evaluate(() => { const t = document.querySelector('#toast .tclose'); if (t) t.click(); }); await sleep(450); };
   const addDemo = async () => { await fresh(); await demoAct('sim-add'); await away(); };
