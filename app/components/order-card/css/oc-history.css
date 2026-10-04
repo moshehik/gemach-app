@@ -1,2 +1,18 @@
 /* oc-history.css — כרטיס ההזמנה החדש: לשונית היסטוריה: שלבי ההזמנה, יומן הזמנה, פיד, טבלה. בבעלות W6 (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
-   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build). */
+   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build).
+   רוב הרכיבים כבר בפלטה (design-system/components.css: .prc, .hf-*, .hrow/.hdet/.hv-r, .hres-bar, .vsw, .rtbl, .pl-rt) - כאן רק מה
+   שהדגימה (כרטיס-הזמנה.html) מוסיפה מעבר לפלטה, ונטרולי דליפה של ה-CSS הגלובלי של האתר (מסומנים "דליפה"). */
+
+/* שכבת הסקירה (מאושר): מטא של שורת שלב - צ'יפ + לחצן בשורה אחת */
+.gm-ds.gm-oc .card.stg .prc-m{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* כותרת המקטע "מותאם" (בדגימה style מוטבע font-size:19px) */
+.gm-ds.gm-oc .sect-h .oc-sect-t{font-size:19px}
+
+/* דליפה: design-overrides.css / globals.css מעצבים כל input (רקע לבן, גבול, רדיוס 10px, צבע טקסט) בספציפיות גבוהה (input:not(...)) -
+   בעיצוב שדה החיפוש של ההיסטוריה שקוף, בלי גבול ובצבע הכחול הכהה (המסגרת היא של .hf-s). מזהה כדי לגבור על הספציפיות. */
+.gm-ds.gm-oc .hf-bar .hf-s input#hfQ{background:transparent;border:0;border-radius:0;color:var(--gm-navy-900);box-shadow:none}
+/* דליפה: globals.css מאפס padding של לחצנים - בעיצוב לחצן הניקוי נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-oc .hf-bar .hf-s .hf-cl{padding:1px 6px}
+/* לחצן הסינון כשהתפריט פתוח: בעיצוב מסגרת כחולה כהה (.hf-sel.on); בפלטה כלל הזהב של .gm-ds:not(.gm-home) .hf-s .hf-t גובר עליו */
+.gm-ds.gm-oc .hf-s .hf-sel.on .hf-t{border-color:var(--gm-navy)}

@@ -10,14 +10,17 @@ const width = Number(process.argv[3] || 1280);
 const OUT = path.join(HERE, 'out'); fs.mkdirSync(OUT, { recursive: true });
 const D = which === 'demo';
 // אזורי המעטפת (W1): שורת הכותרת, הלשוניות, הטוסט, שני החלונות. התוכן של הלשוניות והרייל - של הזרמים האחרים (W8 מרחיב).
-const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2'], ['ITEMS', '#p-items'], ['PAY', '#p-payments']]; // ITEMS: W3 (רק בשלבי הפריטים), PAY: W4
+const ROOTS = [['TOP', '#app > .topbar'], ['TABS', '#tabs'], ['TOAST', '#toast'], ['DLG', '#dlg'], ['DLG2', '#dlg2'], ['ITEMS', '#p-items'], ['PAY', '#p-payments'],
+  // W6: לשונית היסטוריה (שלבים, יומן, פיד/טבלה, סינון) + הטולטיפ העשיר של המשמרת (#rt בעיצוב = .pl-rt של הפלטה בכרטיס)
+  ['HIST', '#p-history'], ['RT', D ? '#rt.on' : '.oc-portal .pl-rt.on']]; // ITEMS: W3 ו-HIST/RT: W6 רק בשלבים שלהם, PAY: W4 בכולם
+const rootsFor = (name) => ROOTS.filter(([l]) => (l !== 'ITEMS' || /^4\d-(items?|addpanel|dlg-)/.test(name)) && (!/^(HIST|RT)$/.test(l) || /^4\d-history/.test(name)));
 const DUMP = (roots) => {
   const out = [];
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).map(Number); return { a: p.length > 3 ? p[3] : 1 }; };
   roots.forEach(([label, rootSel]) => {
     const root = document.querySelector(rootSel);
     if (!root) return;
-    const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { let s = e.tagName.toLowerCase(); const c = [...e.classList].filter((x) => !/^(on|act|pulse|fresh|ia-h|enter|out)$/.test(x) && !/^ia-/.test(x) && !/^(oc|pv)-/.test(x)).sort().slice(0, 3).join('.'); if (c) s += '.' + c; p.unshift(s); e = e.parentElement; } return label + '>' + p.join('>'); };
+    const sel = (el) => { const p = []; let e = el; while (e && e !== root && e.nodeType === 1 && p.length < 3) { let s = e.tagName.toLowerCase(); const c = [...e.classList].filter((x) => !/^(on|act|pulse|fresh|ia-h|enter|out|pop)$/.test(x) && !/^ia-/.test(x) && !/^(oc|pv)-/.test(x)).sort().slice(0, 3).join('.'); if (c) s += '.' + c; p.unshift(s); e = e.parentElement; } return label + '>' + p.join('>'); };
     const all = [root, ...root.querySelectorAll('*')];
     all.forEach((el) => {
       if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') return;
@@ -45,7 +48,7 @@ p.on('pageerror', (e) => console.log('PAGEERR', which, e.message));
 p.on('dialog', (dl) => dl.accept().catch(() => {}));
 p.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', which, m.text().slice(0, 200)); });
 const results = {};
-const snap = async (name, roots = /^4\d-(items?|addpanel|dlg-)/.test(name) ? ROOTS : ROOTS.filter((r) => r[0] !== 'ITEMS')) => { await sleep(600); await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: false }); results[name] = await p.evaluate(DUMP, roots); }; // ITEMS (W3) רק בשלבי הפריטים
+const snap = async (name, roots = rootsFor(name)) => { await sleep(600); await p.screenshot({ path: `${OUT}/${which}-${width}-${name}.png`, fullPage: false }); results[name] = await p.evaluate(DUMP, roots); }; // ITEMS (W3) רק בשלבי הפריטים
 // לחיצה אמיתית בעכבר; כשהאלמנט מכוסה (בעיצוב: סרגל ההדגמה / כפתור השאלות הצף במסך צר) - el.click() במקום
 const clickAt = async (sel) => {
   await p.waitForSelector(sel, { visible: true, timeout: 5000 }); await p.$eval(sel, (el) => el.scrollIntoView({ block: 'center', behavior: 'instant' })); await sleep(150);
@@ -255,11 +258,43 @@ STAGES.push(
 );
 
 
+// W6: לשונית היסטוריה - אותם שלבים בשני הצדדים (הכרטיס עם API מדומה = הרישומים של הדגימה, ר' entry.jsx)
+const openHistory = async () => { await (D ? fresh() : fresh('neve')); await clickAt('#tabs .tab[data-tab="history"]'); await sleep(500); await away(); };
+STAGES.push(
+  { name: '40-history', real: openHistory, demo: openHistory },
+  { name: '41-history-row-open', real: async () => { await openHistory(); await clickAt('#hfeed .hrow:first-child .lrow'); await away(); }, demo: async () => { await openHistory(); await clickAt('#hfeed .hrow:first-child .lrow'); await away(); } },
+  { name: '42-history-table', real: async () => { await openHistory(); await clickAt('#p-history .hres-bar .vsw .vopt:last-child'); await away(); }, demo: async () => { await openHistory(); await clickAt('#p-history .hres-bar .vsw .vopt:last-child'); await away(); } },
+  { name: '43-history-filter', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(300); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(300); } },
+  { name: '44-history-filtered', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await clickAt('.hf-bar .hf-t'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await p.evaluate(() => hfSetOpen(false)); await away(); } },
+  { name: '45-history-search', real: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); } },
+  { name: '46-history-shift', real: async () => { await openHistory(); await hover('.card.proc .prc-sh'); }, demo: async () => { await openHistory(); await hover('.card.proc .prc-sh'); } },
+  { name: '47-history-prep-dlg', real: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); } },
+  { name: '48-history-scrolled', real: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); }, demo: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); } },
+  // בדיקות התנהגות (רק בדף האמיתי): ייצוא נרשם HISTORY_EXPORTED, סימון הכנה שולח POST /api/orders/53375/prep-mark וטוען מחדש
+  { name: '49-history-exports', real: async () => {
+    await openHistory();
+    await p.evaluate(() => { window.open = () => ({}); });
+    await clickAt('.hres-x .xlbtn.xlp'); await sleep(400);
+    await clickAt('.hres-x .xlbtn.xld'); await sleep(600);
+    await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(700);
+    const calls = await p.evaluate(() => window.__calls || []);
+    const ev = calls.filter((c) => c.url === '/api/orders/events').map((c) => JSON.parse(c.body));
+    const fmts = ev.filter((b) => b.action === 'HISTORY_EXPORTED').map((b) => b.meta.format);
+    const pdf = calls.find((c) => c.url === '/api/pdf');
+    const mark = calls.find((c) => c.url === '/api/orders/53375/prep-mark');
+    const reloads = calls.filter((c) => /\/api\/orders\/53375\/journal/.test(c.url)).length;
+    checks.push(['history: הדפסה והורדה נרשמו HISTORY_EXPORTED (print, pdf) עם מספר השורות', fmts.join(',') === 'print,pdf' && ev.every((b) => b.meta.rows === 12)],
+      ['history: הורדה = POST /api/pdf עם /print/order-history?orderId=53375&downloadPdf=1', !!pdf && JSON.parse(pdf.body).path === '/print/order-history?orderId=53375&downloadPdf=1'],
+      ['history: סימון הכנה = POST /api/orders/53375/prep-mark {mark, 2026-10-05} (AMB-08 B: בלי stageKey/orderId בגוף)', !!mark && (() => { const b = JSON.parse(mark.body); return b.action === 'mark' && b.dayKey === '2026-10-05' && !('stageKey' in b) && !('orderId' in b); })() && !calls.some((c) => c.url === '/api/schedule/marks')],
+      ['history: אחרי סימון / ייצוא היומן נטען מחדש (historyVersion)', reloads >= 2]);
+  } },
+);
+
 for (const st of STAGES) {
   const fn = D ? st.demo : st.real;
   if (!fn) continue;
   if (process.env.STAGES && !new RegExp(process.env.STAGES).test(st.name)) continue; // סינון שלבים (למשל STAGES=^P)
-  try { await fn(); await snap(st.name, st.roots || ROOTS); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
+  try { await fn(); await snap(st.name, st.roots || rootsFor(st.name)); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
 }
 fs.writeFileSync(`${OUT}/${which}-${width}.json`, JSON.stringify(results, null, 1));
 if (checks.length) { checks.forEach(([n, ok]) => console.log(ok ? 'CHECK ok  ' : 'CHECK FAIL', n)); if (checks.some(([, ok]) => !ok)) process.exitCode = 1; }

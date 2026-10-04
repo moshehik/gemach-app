@@ -8,11 +8,12 @@ import OcDetailsTab from './OcDetailsTab'; //   W2a
 import OcDeliveryTab from './OcDeliveryTab'; //  W2a
 import OcItemsTab from './OcItemsTab'; //        W3
 import OcPaymentsTab from './OcPaymentsTab'; //  W4
+import OcHistoryTab from './OcHistoryTab'; //    W6
 
 export const TABS = {
   details: OcDetailsTab, //                    W2a
   items: OcItemsTab, //                        W3
   delivery: OcDeliveryTab, //                  W2a
   payments: OcPaymentsTab, //                  W4
-  history: makeTabPlaceholder('history'), //   W6  → import OcHistoryTab from './OcHistoryTab';
+  history: OcHistoryTab, //                    W6
 };

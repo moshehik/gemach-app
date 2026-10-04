@@ -59,6 +59,55 @@ const EMPLOYEES = [
   { id: 'e7', firstName: 'עובדת', lastName: 'רגילה', roleId: 3, department: { name: 'מכירות' }, canApproveWithoutPayment: false, approvals: {} },
 ];
 
+// W6: לשונית היסטוריה - אותם רישומים כמו `logs` בדגימה (כרטיס-הזמנה.html), בצורה ש-GET /api/orders/[id]/history מחזיר
+// (lib/history/orderHistory.js): dateHe/weekdayHe/time עבריים במקום התאריך הלועזי של הדגימה; ts למיון בלבד.
+const HE = { '2026-09-23': ['יב תשרי תשפ"ז', 'יום רביעי'], '2026-09-24': ['יג תשרי תשפ"ז', 'יום חמישי'] };
+const hEntry = (id, ts, o) => { const d = ts.slice(0, 10); return { id: `h${id}`, ts: new Date(`${ts}:00+03:00`).toISOString(), day: d, time: ts.slice(11), dateHe: HE[d][0], weekdayHe: HE[d][1], whoKnown: true, det: [], ...o }; };
+const HISTORY = [
+  hEntry(1, '2026-09-23T10:12', { cat: 'items', icon: 'file', text: 'ההזמנה נוצרה', sub: 'סניף נווה יעקב', who: 'רחל כהן', det: [['מס׳ הזמנה', '#53375'], ['לקוחה', 'מרים אברמוביץ']] }),
+  hEntry(2, '2026-09-23T10:13', { cat: 'items', icon: 'dress', text: 'נוסף פריט: דגם 4512, מידה 38', who: 'רחל כהן', amt: 150, kind: 'charge', det: [['מחיר', '₪150'], ['סטטוס', 'טרם נלקחה']] }),
+  hEntry(3, '2026-09-23T10:14', { cat: 'items', icon: 'dress', text: 'נוסף פריט: דגם 3087, מידה 36', who: 'רחל כהן', amt: 120, kind: 'charge', det: [['מחיר', '₪120'], ['תיקון', 'שרוול']] }),
+  hEntry(4, '2026-09-23T10:14', { cat: 'items', icon: 'dress', text: 'נוסף פריט: דגם 2764, מידה 40', who: 'רחל כהן', amt: 140, kind: 'charge', det: [['מחיר', '₪140']] }),
+  hEntry(5, '2026-09-23T10:15', { cat: 'del', icon: 'truck', text: 'נוסף משלוח', sub: 'הלוך-חזור · ירושלים', who: 'רחל כהן', amt: 80, kind: 'charge', det: [['לפני', 'ללא משלוח'], ['אחרי', 'הלוך-חזור · ירושלים · ₪80']] }),
+  hEntry(6, '2026-09-23T10:16', { cat: 'dates', icon: 'cal', text: 'נקבע תאריך האירוע', sub: 'יום חמישי כז תשרי', who: 'רחל כהן', det: [['לפני', 'לא נקבע'], ['אחרי', 'יום חמישי כז תשרי']] }),
+  hEntry(7, '2026-09-23T10:18', { cat: 'pay', icon: 'cash', text: 'התקבל תשלום במזומן', who: 'רחל כהן', amt: 300, kind: 'pay', det: [['שיטה', 'מזומן'], ['סכום', '₪300']] }),
+  hEntry(8, '2026-09-23T10:19', { cat: 'pay', icon: 'card', text: 'התקבל תשלום באשראי', sub: 'ספרות 4432', who: 'רחל כהן', amt: 230, kind: 'pay', det: [['שיטה', 'אשראי'], ['סכום', '₪230']] }),
+  hEntry(9, '2026-09-23T10:31', { cat: 'items', icon: 'dress', text: 'הוסר פריט: דגם 1893, מידה 38', sub: 'דמי ביטול ₪40', who: 'רחל כהן', amt: 40, kind: 'charge', det: [['מחיר', '₪100'], ['דמי ביטול', '₪40']] }),
+  hEntry(10, '2026-09-23T10:35', { cat: 'docs', icon: 'print', text: 'הודפס סיכום הזמנה', who: 'רחל כהן', det: [['מסמך', 'סיכום ללקוחה']] }),
+  hEntry(11, '2026-09-24T09:05', { cat: 'docs', icon: 'mail', text: 'נשלח מייל אישור ללקוחה', sub: 'miriam.abr@example.com', who: 'דוד לוי', det: [['נמען', 'miriam.abr@example.com']] }),
+  hEntry(12, '2026-09-24T09:40', { cat: 'items', icon: 'scissors', text: 'נוספה בקשת תיקון', sub: 'דגם 3087 · שרוול', who: 'דוד לוי', det: [['פריט', 'דגם 3087'], ['תיקון', 'שרוול']] }),
+].reverse();
+const counts = { all: HISTORY.length, categories: { items: 6, pay: 2, del: 1, dates: 1, docs: 2, gen: 0 }, extras: { sig: 0, print: 1, mail: 1, fix: 1 } };
+// "שלבי ההזמנה" + "יומן הזמנה" כמו stageList()/pProcess() בדגימה (נווה: משלוח הלוך-חזור; היום = 24.9)
+const DAY = (k, he, heShort, wd, wdFull) => ({ dayKey: k, he, heShort, wd, wdFull });
+const D = {
+  '2026-09-23': DAY('2026-09-23', 'יב תשרי תשפ"ז', 'יב תשרי', "יום ד'", 'יום רביעי'), '2026-09-28': DAY('2026-09-28', 'יז תשרי תשפ"ז', 'יז תשרי', "יום ב'", 'יום שני'),
+  '2026-10-05': DAY('2026-10-05', 'כד תשרי תשפ"ז', 'כד תשרי', "יום ב'", 'יום שני'), '2026-10-06': DAY('2026-10-06', 'כה תשרי תשפ"ז', 'כה תשרי', "יום ג'", 'יום שלישי'),
+  '2026-10-08': DAY('2026-10-08', 'כז תשרי תשפ"ז', 'כז תשרי', "יום ה'", 'יום חמישי'), '2026-10-09': DAY('2026-10-09', 'כח תשרי תשפ"ז', 'כח תשרי', "יום ו'", 'יום שישי'),
+  '2026-09-24': DAY('2026-09-24', 'יג תשרי תשפ"ז', 'יג תשרי', "יום ה'", 'יום חמישי'),
+};
+const stg = (key, label, icon, k, o) => ({ key, label, icon, dayKey: k, day: D[k], infoOnly: false, markable: false, done: false, doneVia: null, mark: null, outcome: null, current: false, ...o });
+const SHIFT = { title: 'משמרת · 08:00–16:00', from: '08:00', to: '16:00', open: false, names: ['רחל כהן', 'שרה כהן', 'מיכל לוי'] };
+const when = (k, t) => ({ ts: new Date(`${k}T${t}:00+03:00`).toISOString(), dayKey: k, day: D[k], time: t, dateOnly: false });
+const JOURNAL = {
+  orderId: 53375, today: D['2026-09-24'], currentKey: 'repair', marksAvailable: true, canMark: true,
+  stages: [
+    stg('order', 'הזמנה', 'file', '2026-09-23', { infoOnly: true, done: true, doneVia: 'info' }),
+    stg('repair', 'תיקונים', 'scissors', '2026-09-28', { current: true }),
+    stg('prep', 'הכנה', 'bag', '2026-10-05', { markable: true }),
+    stg('dout', 'משלוח הלוך', 'truck', '2026-10-06'),
+    stg('event', 'אירוע', 'gift', '2026-10-08', { infoOnly: true, doneVia: 'info' }),
+    stg('dback', 'משלוח חזור', 'truck', '2026-10-09'),
+  ],
+  journal: [
+    { key: 'order', label: 'הזמנה', icon: 'file', infoOnly: true, done: true, current: false, plannedDay: D['2026-09-23'], when: when('2026-09-23', '10:12'), who: 'רחל כהן', via: 'audit', shift: SHIFT, outcome: null },
+    { key: 'pay', label: 'תשלום', icon: 'wallet', infoOnly: false, done: true, current: false, plannedDay: null, when: when('2026-09-23', '10:20'), who: 'רחל כהן', via: 'audit', shift: SHIFT, outcome: null, paid: 530, paidText: 'שולם ₪530' },
+    { key: 'dout', label: 'משלוח הלוך', icon: 'truck', infoOnly: false, done: false, current: true, plannedDay: D['2026-10-06'], when: null, who: null, via: null, shift: null, outcome: null },
+    { key: 'event', label: 'אירוע', icon: 'gift', infoOnly: true, done: false, current: false, plannedDay: D['2026-10-08'], when: null, who: null, via: null, shift: null, outcome: null },
+    { key: 'dback', label: 'משלוח חזור', icon: 'truck', infoOnly: false, done: false, current: false, plannedDay: D['2026-10-09'], when: null, who: null, via: null, shift: null, outcome: null },
+  ],
+};
+
 // תרחישים: הזמנה + הגדרות + התנהגות שרת
 const SCENARIOS = {
   neve: {},
@@ -153,6 +202,10 @@ window.fetch = async (url, opts) => {
   }
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
   { const pm = payMock(u, method, { S, order, j, body: opts && opts.body }); if (pm) return pm; } // W4
+  if (/\/api\/orders\/53375\/journal/.test(u)) return j(JOURNAL);
+  if (/\/api\/orders\/53375\/history/.test(u)) return j({ entries: HISTORY, nextCursor: null, total: HISTORY.length, counts, unmappedCount: 0, exportTruncated: false });
+  if (u.startsWith('/api/schedule/marks') || /\/api\/orders\/53375\/prep-mark/.test(u)) return j({ ok: true, status: 'marked' });
+  if (u.startsWith('/api/pdf')) return new Response(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), { status: 200 });
   if (/^\/api\/orders\/53375$/.test(u)) {
     if (S.notfound) return j({ error: 'Order not found' }, 404);
     if (method === 'PUT') {

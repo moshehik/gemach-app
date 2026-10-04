@@ -1,0 +1,273 @@
+// W6 — "שלבי ההזמנה" (lib/schedule/orderStages.js) ו"יומן הזמנה" (lib/history/orderJournal.js): פונקציות טהורות, 3 אזורי זמן
+// (run.mjs). שלבים לפי הגדרות הלו״ז (דלוק/כבוי, משלוח/איסוף, תיקונים כן/לא, offset), גלגול החזרה ליום עובד, "בוצע" מסימון
+// או מהפריטים, השלב הנוכחי; ביומן: מי/מתי מכל מקור, צומת תשלום, משמרת בגבולות היום הישראלי (AMB-18: שעות + שמות).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { computeOrderStages, dayKeyOf, dayLabels, returnDueKey, effectiveStartKey } from '@/lib/schedule/orderStages.js';
+import { buildOrderJournal, shiftAt, timeOf, parseShiftDefinitions, shiftDefinitionAt } from '@/lib/history/orderJournal.js';
+import { resolveScheduleSettings } from '@/lib/schedule/settings.js';
+import { relativeDayLabel } from '@/app/components/order-card/parts/ocHistoryModel.js';
+
+const IL = (key, hhmm = '00:00') => {
+  // an Israel wall-clock time (October 2026 = UTC+3) as an instant
+  const [h, m] = hhmm.split(':').map(Number);
+  const [y, mo, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, mo - 1, d, h - 3, m));
+};
+const ORG_MAIN = resolveScheduleSettings({});
+const ORG_NEVE = resolveScheduleSettings({ enable_deliveries: 'true' });
+const keys = (r) => r.stages.map((s) => s.key);
+const byKey = (r, k) => r.stages.find((s) => s.key === k);
+const ORDER = {
+  orderId: 53375, orderDate: IL('2026-09-23', '10:12'), eventDate: IL('2026-10-08'), // Thursday 8.10.2026 (Israel midnight = 21:00Z the day before)
+  isAbroad: false, isWeekdayEvent: false, isDelivery: false, deliveryDirection: null,
+  items: [{ id: 'a1', sleeveAlteration: 0 }, { id: 'a2', sleeveAlteration: 0 }],
+};
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+test('יום ישראלי בכל אזור זמן: אירוע בחצות ישראל = 8.10, תוויות עבריות בלבד', () => {
+  assert.equal(dayKeyOf(ORDER.eventDate), '2026-10-08');
+  assert.equal(dayKeyOf(new Date('2026-10-07T21:30:00Z')), '2026-10-08');
+  assert.equal(dayKeyOf(new Date('2026-10-07T20:59:00Z')), '2026-10-07');
+  const l = dayLabels('2026-10-08');
+  assert.equal(l.wd, "יום ה'");
+  assert.equal(l.wdFull, 'יום חמישי');
+  assert.match(l.he, /^כז תשרי תשפ"ז$/);
+  assert.equal(l.heShort, 'כז תשרי');
+});
+
+test('הגמ״ח הראשי (בלי משלוחים): הזמנה → הכנה → איסוף → אירוע → החזרה ידנית; ימים לפי כללי הלו״ז', () => {
+  const r = computeOrderStages(ORDER, { schedule: ORG_MAIN, todayKey: '2026-10-04' });
+  assert.deepEqual(keys(r), ['order', 'prep', 'pick', 'event', 'manret']);
+  assert.equal(byKey(r, 'order').dayKey, '2026-09-23');
+  assert.equal(byKey(r, 'prep').dayKey, '2026-10-05', 'prep = 3 business days before the event');
+  assert.equal(byKey(r, 'pick').dayKey, '2026-10-06', 'pick = 2 business days before');
+  assert.equal(byKey(r, 'event').dayKey, '2026-10-08');
+  assert.equal(byKey(r, 'manret').dayKey, '2026-10-11', 'Thursday event: return rolls past Friday/Saturday to Sunday');
+  assert.equal(r.currentKey, 'prep');
+  assert.ok(byKey(r, 'prep').current && !byKey(r, 'pick').current);
+  assert.ok(byKey(r, 'prep').markable, 'prep is the one stage marked from the card');
+  assert.ok(!byKey(r, 'pick').markable);
+  assert.equal(byKey(r, 'event').done, false);
+});
+
+test('נווה (משלוחים דלוקים): הלוך-חזור → משלוח הלוך + משלוח חזור במקום איסוף / החזרה ידנית; יום לפני', () => {
+  const o = { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך-חזור' };
+  const r = computeOrderStages(o, { schedule: ORG_NEVE, delivery: { daysBefore: 2, daysAfter: 1 }, todayKey: '2026-10-04' });
+  assert.deepEqual(keys(r), ['order', 'prep', 'dout', 'event', 'dback']);
+  assert.equal(byKey(r, 'dout').dayKey, '2026-10-06');
+  assert.equal(byKey(r, 'dback').dayKey, '2026-10-09', 'deliveries count Friday unless delivery_skip_weekends');
+  const skip = computeOrderStages(o, { schedule: ORG_NEVE, delivery: { daysBefore: 2, daysAfter: 1, skipWeekends: true }, todayKey: '2026-10-04' });
+  assert.equal(byKey(skip, 'dback').dayKey, '2026-10-11');
+  const oneDay = computeOrderStages({ ...o, deliveryOneDayBefore: true }, { schedule: ORG_NEVE, delivery: { daysBefore: 2 }, todayKey: '2026-10-04' });
+  assert.equal(byKey(oneDay, 'dout').dayKey, '2026-10-07');
+  assert.deepEqual(keys(computeOrderStages({ ...o, deliveryDirection: 'הלוך' }, { schedule: ORG_NEVE, todayKey: '2026-10-04' })), ['order', 'prep', 'dout', 'event', 'manret']);
+  assert.deepEqual(keys(computeOrderStages({ ...o, deliveryDirection: 'חזור' }, { schedule: ORG_NEVE, todayKey: '2026-10-04' })), ['order', 'prep', 'pick', 'event', 'dback']);
+  // a delivery order in an org whose deliveries are off: the schedule lists it in no delivery stage - neither do we
+  assert.deepEqual(keys(computeOrderStages(o, { schedule: ORG_MAIN, todayKey: '2026-10-04' })), ['order', 'prep', 'event']);
+});
+
+test('תיקונים רק כשיש פריט עם תיקון ותיקונים דלוקים; שלב כבוי בהגדרות לא מוצג; offset מההגדרות', () => {
+  const alt = { ...ORDER, items: [{ id: 'a1', sleeveAlteration: 1, alterationDone: false }, { id: 'a2' }] };
+  // chronological; repair (offset 0 = the event day) before the event on the same day (schedule numbering)
+  assert.deepEqual(keys(computeOrderStages(alt, { schedule: ORG_MAIN, todayKey: '2026-10-04' })), ['order', 'prep', 'pick', 'repair', 'event', 'manret']);
+  const offAlt = resolveScheduleSettings({ enable_alterations: 'false' });
+  assert.ok(!keys(computeOrderStages(alt, { schedule: offAlt, todayKey: '2026-10-04' })).includes('repair'));
+  const noPrep = resolveScheduleSettings({ schedule_stage_prep_enabled: 'false', schedule_stage_repair_days: '5' });
+  const r = computeOrderStages(alt, { schedule: noPrep, todayKey: '2026-10-04' });
+  assert.ok(!keys(r).includes('prep'));
+  assert.equal(byKey(r, 'repair').dayKey, '2026-10-15', 'repair offset 5 business days after the event (configured magnitude, default direction)');
+});
+
+test('חו״ל / אמצע שבוע: יום ההתחלה = fromDate; החזרה = toDate מגולגל ליום עובד; אירוע עם טווח', () => {
+  const o = { ...ORDER, isAbroad: true, fromDate: IL('2026-10-12'), toDate: IL('2026-10-16'), eventDate: IL('2026-10-14') };
+  assert.equal(effectiveStartKey(o), '2026-10-12');
+  const r = computeOrderStages(o, { schedule: ORG_MAIN, todayKey: '2026-10-04' });
+  assert.equal(byKey(r, 'event').dayKey, '2026-10-12');
+  assert.equal(byKey(r, 'event').endKey, '2026-10-16');
+  assert.equal(byKey(r, 'manret').dayKey, '2026-10-18', 'toDate Friday 16.10 rolls to Sunday 18.10');
+  assert.equal(returnDueKey({ eventDate: IL('2026-10-08') }), '2026-10-11');
+});
+
+test('"בוצע": מהפריטים (כולם נלקחו / הוחזרו + מצב), מסימון בלו״ז (עדיף אותו יום, אחרת האחרון), ביטול סימון באותו יום', () => {
+  const taken = { ...ORDER, items: ORDER.items.map((i) => ({ ...i, isTaken: true, isReturned: true, returnedOk: i.id === 'a1' })) };
+  const r = computeOrderStages(taken, { schedule: ORG_MAIN, todayKey: '2026-10-20' });
+  assert.equal(byKey(r, 'pick').done, true);
+  assert.equal(byKey(r, 'pick').doneVia, 'fact');
+  assert.equal(byKey(r, 'manret').outcome, 'not_ok');
+  assert.equal(byKey(r, 'event').done, true, 'event day passed');
+  assert.equal(r.currentKey, 'prep', 'prep is never done by a fact');
+  const marks = [
+    { stageKey: 'prep', dayKey: '2026-10-01', done: true, markedAt: IL('2026-10-01', '09:00'), markedBy: 'דוד לוי' },
+    { stageKey: 'prep', dayKey: '2026-10-05', done: true, markedAt: IL('2026-10-05', '11:20'), markedBy: 'רחל כהן' },
+  ];
+  const m = computeOrderStages(taken, { schedule: ORG_MAIN, marks, todayKey: '2026-10-20' });
+  assert.equal(byKey(m, 'prep').doneVia, 'mark');
+  assert.equal(byKey(m, 'prep').mark.markedBy, 'רחל כהן', 'the mark of the stage day wins');
+  assert.equal(m.currentKey, null);
+  const other = computeOrderStages(ORDER, { schedule: ORG_MAIN, marks: [marks[0]], todayKey: '2026-10-04' });
+  assert.equal(byKey(other, 'prep').mark.markedBy, 'דוד לוי', 'a mark from another day (dates changed) still counts');
+  const undone = computeOrderStages(ORDER, { schedule: ORG_MAIN, marks: [{ ...marks[1], done: false }, marks[0]], todayKey: '2026-10-04' });
+  assert.equal(byKey(undone, 'prep').done, false, 'un-marked on the stage day = not done');
+  const noItems = computeOrderStages({ ...ORDER, items: [] }, { schedule: ORG_MAIN, todayKey: '2026-10-04' });
+  assert.equal(byKey(noItems, 'pick').done, false, 'no items is not "all taken"');
+});
+
+test('משמרת (AMB-18): כניסה ≤ T ≤ יציאה, משמרת פתוחה רק באותו יום ישראלי, מחוקה לא נספרת, שעות + שמות', () => {
+  const T = IL('2026-10-05', '11:20');
+  const shifts = [
+    { name: 'רחל כהן', entryTime: IL('2026-10-05', '08:00'), exitTime: IL('2026-10-05', '16:00') },
+    { name: 'שרה לוי', entryTime: IL('2026-10-05', '09:30'), exitTime: IL('2026-10-05', '14:00') },
+    { name: 'דוד לוי', entryTime: IL('2026-10-05', '12:00'), exitTime: IL('2026-10-05', '20:00') },
+    { name: 'מיכל לוי', entryTime: IL('2026-10-04', '10:00'), exitTime: null },
+    { name: 'אסתר גולד', entryTime: IL('2026-10-05', '07:00'), exitTime: IL('2026-10-05', '18:00'), isDeleted: true },
+    { name: 'יוסי מזרחי', entryTime: IL('2026-10-05', '10:00'), exitTime: null },
+  ];
+  const s = shiftAt(shifts, T, { todayKey: '2026-10-05' });
+  assert.deepEqual(s.names, ['רחל כהן', 'שרה לוי', 'יוסי מזרחי']);
+  assert.equal(s.from, '08:00');
+  assert.equal(s.to, 'עכשיו');
+  assert.equal(s.title, 'משמרת · 08:00–עכשיו');
+  const closed = shiftAt(shifts.slice(0, 2), T, { todayKey: '2026-10-09' });
+  assert.equal(closed.title, 'משמרת · 08:00–16:00');
+  assert.equal(shiftAt(shifts, IL('2026-10-05', '06:00'), {}), null);
+  assert.equal(shiftAt(shifts, new Date('2026-10-04T21:00:00Z'), {}), null, 'a date-only instant (import) has no shift');
+  assert.equal(timeOf(T), '11:20');
+});
+
+test('יומן: מי/מתי לכל שלב מכל מקור, צומת תשלום אחרי ההזמנה, משמרות, בלי מזהים ובלי תאריך לועזי', () => {
+  const o = { ...ORDER, items: [{ id: 'a1', sleeveAlteration: 1, alterationDone: true, isTaken: true, takenDate: IL('2026-10-06', '18:05') }, { id: 'a2', isTaken: true, takenDate: IL('2026-10-06', '18:10') }] };
+  const marks = [{ stageKey: 'prep', dayKey: '2026-10-05', done: true, markedAt: IL('2026-10-05', '11:20'), markedBy: 'רחל כהן', markedById: 'e-uuid-should-not-leak' }];
+  const { stages } = computeOrderStages(o, { schedule: ORG_MAIN, marks, todayKey: '2026-10-07' });
+  const audit = [
+    { entityType: 'Order', entityId: 'x', action: 'CREATE', createdAt: IL('2026-09-23', '10:12'), employeeId: 'e1', employeeName: 'רחל כהן', changesJson: '{}' },
+    { entityType: 'OrderItem', entityId: 'a1', action: 'ALTERATION_DONE', createdAt: IL('2026-10-04', '13:00'), employeeId: 'e3', employeeName: 'אסתר גולד', changesJson: '{}' },
+    { entityType: 'OrderItem', entityId: 'a1', action: 'CONFIRM_RENTAL', createdAt: IL('2026-10-06', '18:05'), employeeId: 'e2', employeeName: 'דוד לוי', changesJson: '{}' },
+    { entityType: 'OrderItem', entityId: 'a2', action: 'CONFIRM_RENTAL', createdAt: IL('2026-10-06', '18:10'), employeeId: 'e1', employeeName: 'רחל כהן', changesJson: '{}' },
+    { entityType: 'Payment', entityId: 'p2', action: 'CREATE', createdAt: IL('2026-09-23', '10:20'), employeeId: 'e1', employeeName: 'רחל כהן', changesJson: '{}' },
+  ];
+  const payments = [
+    { id: 'p1', amount: 300, paymentDate: IL('2026-09-23', '10:18'), isDeleted: false },
+    { id: 'p2', amount: 230, paymentDate: IL('2026-09-23', '10:19'), isDeleted: false },
+    { id: 'p3', amount: 100, paymentDate: IL('2026-09-24', '10:19'), isDeleted: true },
+  ];
+  const shifts = [{ name: 'רחל כהן', entryTime: IL('2026-09-23', '08:00'), exitTime: IL('2026-09-23', '16:00') }, { name: 'שרה כהן', entryTime: IL('2026-09-23', '08:00'), exitTime: IL('2026-09-23', '16:00') }];
+  const j = buildOrderJournal({ order: { orderId: 53375, orderDate: o.orderDate, employeeName: 'רחל כהן' }, stages, auditRows: audit, items: o.items, payments, shifts, todayKey: '2026-10-07' });
+  const n = Object.fromEntries(j.nodes.map((x) => [x.key, x]));
+  assert.deepEqual(j.nodes.map((x) => x.key).slice(0, 2), ['order', 'pay'], 'payment node right after the order (as in the design)');
+  assert.equal(n.order.who, 'רחל כהן');
+  assert.equal(n.order.when.time, '10:12');
+  assert.equal(n.order.shift.title, 'משמרת · 08:00–16:00');
+  assert.deepEqual(n.order.shift.names, ['רחל כהן', 'שרה כהן']);
+  assert.equal(n.pay.done, true);
+  assert.equal(n.pay.paid, 530, 'net of live payments');
+  assert.equal(n.pay.paidText, 'שולם ₪530');
+  assert.equal(n.pay.who, 'רחל כהן', 'the CREATE row of the latest payment');
+  assert.equal(n.pay.when.time, '10:20');
+  assert.equal(n.prep.who, 'רחל כהן');
+  assert.equal(n.prep.via, 'mark');
+  assert.equal(n.prep.when.time, '11:20');
+  assert.equal(n.repair.who, 'אסתר גולד', 'last ALTERATION_DONE');
+  assert.equal(n.pick.who, 'דוד לוי', 'first CONFIRM_RENTAL');
+  assert.equal(n.pick.when.time, '18:05');
+  assert.equal(n.event.when, null);
+  assert.equal(n.manret.done, false);
+  assert.equal(n.manret.when, null);
+  const blob = JSON.stringify(j);
+  assert.ok(!UUID_RE.test(blob) && !blob.includes('e-uuid-should-not-leak'), 'no employee ids');
+  for (const x of j.nodes) for (const lbl of [x.when && x.when.day, x.plannedDay].filter(Boolean)) assert.ok(/[א-ת]/.test(lbl.he) && !/\d{1,2}[./]\d{1,2}/.test(lbl.he));
+});
+
+test('יומן: נפילה למקורות הטבלה (takenDate / returnDate בלי "מי"), הזמנה מיובאת בתאריך בלבד = בלי שעה ובלי משמרת', () => {
+  const o = { ...ORDER, orderDate: new Date('2026-09-22T21:00:00Z'), items: [{ id: 'a1', isTaken: true, takenDate: IL('2026-10-06', '18:00'), isReturned: true, returnDate: IL('2026-10-11', '12:20'), returnedOk: true }] };
+  const { stages } = computeOrderStages(o, { schedule: ORG_MAIN, todayKey: '2026-10-20' });
+  const j = buildOrderJournal({ order: { orderId: 1, orderDate: o.orderDate, employeeName: null }, stages, auditRows: [], items: o.items, payments: [], shifts: [{ name: 'x', entryTime: IL('2026-09-23', '00:00'), exitTime: IL('2026-09-23', '20:00') }], todayKey: '2026-10-20' });
+  const n = Object.fromEntries(j.nodes.map((x) => [x.key, x]));
+  assert.equal(n.order.when.time, null);
+  assert.equal(n.order.when.dateOnly, true);
+  assert.equal(n.order.shift, null);
+  assert.equal(n.pick.via, 'table');
+  assert.equal(n.pick.who, null);
+  assert.equal(n.pick.when.time, '18:00');
+  assert.equal(n.manret.when.dayKey, '2026-10-11');
+  assert.equal(n.pay.done, false);
+  assert.equal(n.pay.when, null);
+});
+
+test('תווית יום יחסית: היום / מחר / אתמול / יום + תאריך עברי (בלי שנה)', () => {
+  const l = dayLabels('2026-10-08');
+  assert.equal(relativeDayLabel('2026-10-08', '2026-10-08', l), 'היום');
+  assert.equal(relativeDayLabel('2026-10-09', '2026-10-08', l), 'מחר');
+  assert.equal(relativeDayLabel('2026-10-07', '2026-10-08', l), 'אתמול');
+  assert.equal(relativeDayLabel('2026-10-08', '2026-10-01', l), 'יום חמישי כז תשרי');
+  assert.equal(relativeDayLabel('2026-12-31', '2027-01-01', dayLabels('2026-12-31')), 'אתמול', 'across a year end');
+});
+
+// ---------- AMB-18 (B): שמות משמרות לפי הגדרה (shift_definitions) ----------
+const DEFS = parseShiftDefinitions([{ name: 'בוקר', from: '08:00', to: '16:00' }, { name: 'ערב', from: '16:00', to: '24:00' }]);
+const SHIFTS_1120 = [
+  { name: 'רחל כהן', entryTime: IL('2026-10-05', '08:00'), exitTime: IL('2026-10-05', '16:00') },
+  { name: 'שרה לוי', entryTime: IL('2026-10-05', '09:30'), exitTime: IL('2026-10-05', '14:00') },
+];
+
+test('שמות משמרות: parseShiftDefinitions מנקה (JSON / מערך, שעות מרופדות, פריט לא תקין מדולג, עד 12), ריק/שבור = []', () => {
+  assert.deepEqual(parseShiftDefinitions('[{"name":" בוקר ","from":"8:00","to":"16:00"}]'), [{ name: 'בוקר', from: '08:00', to: '16:00' }]);
+  assert.deepEqual(parseShiftDefinitions([{ name: 'א', from: '08:00', to: '08:00' }, { name: '', from: '08:00', to: '09:00' }, { name: 'ב', from: '25:00', to: '09:00' }, { name: 'ג', from: '09:00' }, null, 5, { name: 'ד', from: '09:00', to: '10:61' }]), []);
+  assert.deepEqual(parseShiftDefinitions(''), []);
+  assert.deepEqual(parseShiftDefinitions(undefined), []);
+  assert.deepEqual(parseShiftDefinitions('not json'), []);
+  assert.deepEqual(parseShiftDefinitions('{"name":"x"}'), [], 'לא מערך');
+  assert.equal(parseShiftDefinitions(Array.from({ length: 30 }, (_, i) => ({ name: `מ${i}`, from: '01:00', to: '02:00' }))).length, 12);
+});
+
+test('שמות משמרות: הגדרה לפי שעת הרישום (גבול כלול בהתחלה, לא בסוף), הראשונה מנצחת, טווח שחוצה חצות', () => {
+  const at = (hhmm) => shiftDefinitionAt(DEFS, IL('2026-10-05', hhmm));
+  assert.equal(at('08:00').name, 'בוקר');
+  assert.equal(at('15:59').name, 'בוקר');
+  assert.equal(at('16:00').name, 'ערב', 'גבול הסיום של בוקר = תחילת ערב');
+  assert.equal(at('07:59'), null);
+  const night = parseShiftDefinitions([{ name: 'לילה', from: '22:00', to: '06:00' }, { name: 'כללי', from: '00:00', to: '23:59' }]);
+  const n = (hhmm) => shiftDefinitionAt(night, IL('2026-10-05', hhmm));
+  assert.equal(n('23:30').name, 'לילה');
+  assert.equal(n('02:15').name, 'לילה', 'אחרי חצות, באותו טווח');
+  assert.equal(n('06:00').name, 'כללי', 'סוף הטווח לא כלול - נופל להגדרה הבאה');
+  assert.equal(n('12:00').name, 'כללי');
+  const overlap = parseShiftDefinitions([{ name: 'א', from: '08:00', to: '12:00' }, { name: 'ב', from: '10:00', to: '14:00' }]);
+  assert.equal(shiftDefinitionAt(overlap, IL('2026-10-05', '11:00')).name, 'א', 'כמה התאמות = הראשונה');
+  assert.equal(shiftDefinitionAt([], IL('2026-10-05', '11:00')), null);
+});
+
+test('שמות משמרות: כותרת הטולטיפ "משמרת בוקר · 08:00–16:00" (שעות ההגדרה) + שמות העובדים; בלי הגדרות / בלי התאמה = הכותרת הרגילה', () => {
+  const T = IL('2026-10-05', '11:20');
+  const named = shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: DEFS });
+  assert.equal(named.title, 'משמרת בוקר · 08:00–16:00');
+  assert.equal(named.name, 'בוקר');
+  assert.deepEqual(named.names, ['רחל כהן', 'שרה לוי']);
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09' }).title, 'משמרת · 08:00–16:00', 'בלי הגדרות: כמו היום');
+  assert.equal(shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: [] }).title, 'משמרת · 08:00–16:00');
+  const evening = parseShiftDefinitions([{ name: 'ערב', from: '16:00', to: '23:00' }]);
+  const noMatch = shiftAt(SHIFTS_1120, T, { todayKey: '2026-10-09', definitions: evening });
+  assert.equal(noMatch.title, 'משמרת · 08:00–16:00', 'השעה לא באף הגדרה - נפילה לכותרת הרגילה');
+  assert.equal(noMatch.name, undefined);
+  assert.equal(shiftAt(SHIFTS_1120, IL('2026-10-05', '06:00'), { definitions: DEFS }), null, 'אין עובדים במשמרת = אין משמרת (גם עם הגדרה)');
+  assert.equal(shiftAt(SHIFTS_1120, new Date('2026-10-04T21:00:00Z'), { definitions: DEFS }), null, 'תאריך בלבד (ייבוא) - בלי משמרת');
+});
+
+test('שמות משמרות: buildOrderJournal מעביר את ההגדרות לצומתי היומן (שלב מסומן + תשלום) - ובלי הגדרות הפלט זהה להיום', () => {
+  const o = { ...ORDER, items: [{ id: 'a1', sleeveAlteration: 0 }] };
+  const marks = [{ stageKey: 'prep', dayKey: '2026-10-05', done: true, markedAt: IL('2026-10-05', '11:20'), markedBy: 'רחל כהן' }];
+  const stages = computeOrderStages(o, { schedule: ORG_MAIN, marks, todayKey: '2026-10-07' }).stages;
+  const payments = [{ id: 'p1', amount: 300, paymentDate: IL('2026-09-23', '17:30'), isDeleted: false, isRefund: false }];
+  const shifts = [
+    { name: 'רחל כהן', entryTime: IL('2026-10-05', '08:00'), exitTime: IL('2026-10-05', '16:00') },
+    { name: 'דוד לוי', entryTime: IL('2026-09-23', '16:00'), exitTime: IL('2026-09-23', '23:30') },
+  ];
+  const base = { order: { orderId: 53375, orderDate: o.orderDate, employeeName: 'רחל כהן' }, stages, auditRows: [], items: o.items, payments, shifts, todayKey: '2026-10-07' };
+  const plain = buildOrderJournal(base);
+  const named = buildOrderJournal({ ...base, shiftDefinitions: DEFS });
+  const nodes = (j) => Object.fromEntries(j.nodes.map((n) => [n.key, n]));
+  assert.equal(nodes(plain).prep.shift.title, 'משמרת · 08:00–16:00');
+  assert.equal(nodes(named).prep.shift.title, 'משמרת בוקר · 08:00–16:00');
+  assert.equal(nodes(named).pay.shift.title, 'משמרת ערב · 16:00–24:00', 'צומת התשלום (17:30) = ערב');
+  assert.deepEqual(buildOrderJournal({ ...base, shiftDefinitions: [] }), plain, 'הגדרות ריקות = בדיוק כמו בלי');
+});
