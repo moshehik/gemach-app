@@ -4,7 +4,7 @@
 // ===== מפת פורט / מקורות =====
 // railPrimary            ← renderRail בעיצוב (תצוגות-עיצוב/כרטיס-הזמנה.html, _renderRail: primary, A18 "תשלום"/"זיכוי"/"שמור"/"שלם ₪N"/"זכה ₪N")
 // cartTotals             ← _renderRail: tot (חיוב/זיכוי ממתין, "לתשלום אחרי שמירה", "יתרת חוב/זכות")
-// railShield (R5)        ← ModernOrderCard.js:79-82 (saveNeedsApproval = debt > 0 && !debtUnchangedSinceOpen) — נבדק מול המקור החי
+// (R5 - מגן החוב מתחת ללחצנים - הוסר סופית: החלטת בעלים AMB-05, החוב מוצג רק בחלון התשלום)
 // walletClickPlan (R4)   ← LegacyOrderPage.js handleWalletClick (:1465-1470): מעבר לתשלומים, ואם יש חוב - חלון תשלום
 // successHead / successTargets (D6, R10/R9/R44/A16) ← notify/finish/successDlg בעיצוב + החלטות R10 ("אין לחצן לרשימה"), R44 (יעד לפי הגדרה)
 // printUrl (R9)          ← LegacyOrderPage.js:975 (/print/order?orderId=N&type=order)
@@ -14,7 +14,7 @@
 //
 // הקובץ לא מייבא React/DOM ולא את useOrderCardController (כך נבדק בלי JSX).
 
-import { isDebtUnchangedSinceOpen, hebDateOf } from '../orderCardLogic';
+import { hebDateOf } from '../orderCardLogic';
 
 export const EPS = 0.005;
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -82,16 +82,6 @@ export function cartSum({ net, saved }) {
   return null;
 }
 
-// ---------- R5: מגן החוב ----------
-/** שמירה שתיצור/תגדיל חוב תדרוש אישור מנהל (חלון התשלום, "השאר חוב"). זהה ל-saveNeedsApproval של הכרטיס הישן, ורק כשיש שינויים לשמירה. */
-export function railShield({ dirty, due, openedDebt }) {
-  if (!dirty) return null;
-  const debt = r2(due);
-  if (!(debt > 0)) return null;
-  if (isDebtUnchangedSinceOpen(debt, openedDebt === undefined ? null : openedDebt)) return null;
-  return { amount: debt };
-}
-
 // ---------- R4: צ׳יפ הארנק ----------
 /**
  * מעבר לתשלומים; ואם יש חוב שמור ואין שינויים פתוחים - גם חלון תשלום (כמו handleWalletClick בישן).
@@ -99,6 +89,36 @@ export function railShield({ dirty, due, openedDebt }) {
  */
 export function walletClickPlan({ dirty, saved }) {
   return { goPayments: true, openPay: !dirty && saved > EPS };
+}
+
+// ---------- הדגשת הטקסט בשורת שינוי (בעיצוב: "נוספה <b>דגם 4519</b>", "<b>תאריך האירוע</b>", "<b>הערות</b> עודכנו") ----------
+const LEAD_VERBS = ['נוסף', 'נוספה', 'הוסר', 'הוסרה', 'שוחזר', 'שוחזרה', 'עודכן', 'עודכנה', 'עודכנו', 'סומנה', 'בוטלה', 'בוטל', 'הוזמן', 'הוחלף', 'תיקון'];
+const TRAIL_VERBS = ['עודכנו', 'עודכנה', 'עודכן'];
+/**
+ * מפצל טקסט של שינוי לקטעים [{t, b}] - הישות מודגשת, הפועל לא. טהור; כלל אחד לכל השורות (רייל / סיכום / יציאה).
+ * "נוסף פריט: דגם 4519, מידה 38" → ["נוסף פריט: ", **"דגם 4519, מידה 38"**]; "הערות ההזמנה עודכנו" → [**"הערות ההזמנה"**, " עודכנו"].
+ */
+export function emphasize(text) {
+  const s = String(text || '');
+  if (!s) return [];
+  const colon = s.indexOf(': ');
+  if (colon > 0) return [{ t: s.slice(0, colon + 2), b: false }, { t: s.slice(colon + 2), b: true }];
+  const words = s.split(' ');
+  if (words.length > 1 && TRAIL_VERBS.includes(words[words.length - 1])) return [{ t: words.slice(0, -1).join(' '), b: true }, { t: ` ${words[words.length - 1]}`, b: false }];
+  if (words.length > 1 && LEAD_VERBS.includes(words[0])) return [{ t: `${words[0]} `, b: false }, { t: words.slice(1).join(' '), b: true }];
+  return [{ t: s, b: true }];
+}
+
+/**
+ * שורת שינוי לתצוגה: פריט שנוסף/הוסר/שוחזר מפוצל כמו בעיצוב - "נוספה **דגם 4519**" + פירוט "מידה 38" (הבקר מחזיר "נוסף פריט: דגם 4519, מידה 38").
+ * @param {{key:string,text:string,note?:string}} c
+ * @returns {{text:string, note:string}}
+ */
+const FEM = { נוסף: 'נוספה', הוסר: 'הוסרה', שוחזר: 'שוחזרה' };
+export function displayLine(c) {
+  const m = /^(נוסף|הוסר|שוחזר) פריט: (דגם [^,]+), (מידה .+)$/.exec(c.text || '');
+  if (m && /^item:(add|rm|rs):/.test(c.key || '')) return { text: `${FEM[m[1]]} ${m[2]}`, note: c.note || m[3] };
+  return { text: c.text, note: c.note || '' };
 }
 
 // ---------- D6: חלון "ההזמנה נשמרה" ----------

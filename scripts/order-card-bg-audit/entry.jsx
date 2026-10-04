@@ -6,6 +6,7 @@ import '../../app/design-system.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import OrderCardA5 from '../../app/components/order-card/OrderCardA5.js';
+import { railScenarios } from './rail-mock.js'; // W5: תרחישי רייל וחלונות שמירה
 
 const qs = new URLSearchParams(location.search);
 const scn = qs.get('scn') || 'neve';
@@ -69,6 +70,7 @@ const SCENARIOS = {
   notfound: { notfound: true },
   loading: { hang: true },
 };
+Object.assign(SCENARIOS, railScenarios({ ITEMS, OBL, PAY, ORG1, ORG2, ORDER })); // W5
 const S = SCENARIOS[scn] || {};
 const order = { ...ORDER, ...(S.order || {}), items: ITEMS, obligations: S.obligations || OBL, payments: S.payments || PAY, refunds: [] };
 const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
@@ -76,8 +78,8 @@ const settings = (S.settings || ORG2).map(([key, value]) => ({ key, value }));
 if (S.draft) {
   try {
     localStorage.setItem('gemachOrderDraft:53375', JSON.stringify({
-      savedAt: Date.now() - 3600e3, baseUpdatedAt: ORDER.updatedAt, summary: ['הערות השתנה'], rows: [{ icon: '#i-file', text: 'הערות להזמנה' }],
-      state: { order: { ...order, notes: 'הערה מטיוטה שלא נשמרה' }, items: order.items, obligations: order.obligations, payments: order.payments, refunds: [] },
+      savedAt: Date.now() - 3600e3, baseUpdatedAt: S.draftBase || ORDER.updatedAt, summary: ['הערות השתנה'], rows: S.draftRows || [{ icon: '#i-file', text: 'הערות להזמנה' }],
+      state: { order: { ...order, notes: 'הערה מטיוטה שלא נשמרה', ...(S.draftOrder || {}) }, items: S.draftItems || order.items, obligations: S.draftObligations || order.obligations, payments: order.payments, refunds: [] }, // W5: S.draft*
     }));
   } catch { /* noop */ }
 } else {
@@ -105,7 +107,7 @@ window.fetch = async (url, opts) => {
     const b = JSON.parse(opts.body);
     return b.pin === '1234' ? j({ success: true, employeeId: b.employeeId, employeeName: (EMPLOYEES.find(e => e.id === b.employeeId) || {}).firstName || '' }) : j({ success: false, error: 'סיסמה שגויה או משתמש לא פעיל' }, 401);
   }
-  if (/\/api\/orders\/53375\/(preview-pricing)/.test(u)) return j({ newObligations: order.obligations.filter(o => o.isManual === false) });
+  if (/\/api\/orders\/53375\/(preview-pricing)/.test(u)) return j({ newObligations: [...order.obligations.filter(o => o.isManual === false && !(S.previewDrop || []).includes(o.id)), ...(S.previewExtra || [])] }); // W5: previewDrop/previewExtra
   if (/\/api\/orders\/53375\/cancel-changes/.test(u)) return j({ success: true });
   if (/^\/api\/orders\/53375$/.test(u)) {
     if (S.notfound) return j({ error: 'Order not found' }, 404);

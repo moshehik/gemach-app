@@ -73,6 +73,8 @@ const demoLocked = async () => { await p.select('#pvState', 'locked'); await sle
 // בעיצוב: חלון הדגמה לפי מזהה ההחלטה (שכבת הסקירה, data-pvgo → WIN[open]) - pv-main עטוף ב-IIFE ולכן אין גישה ישירה ל-WIN
 const demoWin = async (id) => { await p.evaluate((x) => { const b = document.createElement('button'); b.dataset.pvgo = x; document.body.append(b); b.click(); b.remove(); }, id); await sleep(500); };
 
+const { railRoots, railStages } = await import('./stages-rail.mjs'); // W5: הרייל וחלונות השמירה
+railRoots(ROOTS, D);
 const STAGES = [
   { name: '01-default', real: async () => fresh('neve'), demo: async () => fresh() },
   { name: '02-hover-tab', real: async () => { await fresh('neve'); await hover('#tabs .tab[data-tab="items"]'); }, demo: async () => { await fresh(); await hover('#tabs .tab[data-tab="items"]'); } },
@@ -85,6 +87,7 @@ const STAGES = [
   { name: '09-approval-picked', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await clickAt('#dlg2 .oc-emps .opt:nth-child(2)'); await p.type('#oc-appr-code', '9'); await sleep(200); }, demo: async () => { await fresh(); await demoLocked(); await demoWin('R46'); await clickAt('#dlg2 .pv-emps .opt:nth-child(2)'); await p.type('#pvAp', '9'); await sleep(200); } },
   { name: '10-conflict', real: async () => { await fresh('conflict'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R12'); await away(); } },
   { name: '11-stock', real: async () => { await fresh('stock'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R48'); await away(); } },
+  ...railStages({ p, D, fresh, clickAt, away, sleep, check: (name, ok) => checks.push([name, ok]) }), // W5
   // רק בדף האמיתי (צילום + JSON, בלי השוואה)
   { name: '20-main-org1', real: async () => { await fresh('main'); await away(); } },
   { name: '21-exit-d2', real: async () => { await fresh('draft'); await restoreDraft(); await clickAt('#app > .topbar .back'); await sleep(400); await away(); } },
@@ -118,6 +121,7 @@ const checks = [];
 for (const st of STAGES) {
   const fn = D ? st.demo : st.real;
   if (!fn) continue;
+  if (process.env.STAGES && !new RegExp(process.env.STAGES).test(st.name)) continue; // סינון שלבים (למשל STAGES=^R)
   try { await fn(); await snap(st.name); } catch (e) { console.log('STAGE-ERR', which, st.name, e.message); }
 }
 fs.writeFileSync(`${OUT}/${which}-${width}.json`, JSON.stringify(results, null, 1));

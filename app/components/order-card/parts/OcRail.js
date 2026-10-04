@@ -1,24 +1,24 @@
 'use client';
 
-// OcRail — הרייל "סיכום" של כרטיס ההזמנה החדש (A17/A18/R4/R5): צ׳יפים (חתימה / משלוח / פריטים / תשלום), "שינויים בהזמנה" עם ביטול לכל שורה
+// OcRail — הרייל "סיכום" של כרטיס ההזמנה החדש (A17/A18/R4): צ׳יפים (חתימה / משלוח / פריטים / תשלום), "שינויים בהזמנה" עם ביטול לכל שורה
 // ו"החזר ביטול", סכומים (חיוב/זיכוי ממתין, לתשלום אחרי שמירה), והלחצנים: תשלום / זיכוי / שמור / שלם ₪N / זכה ₪N + "בטל שינויים".
 // מוצג בתוך <aside class="rail" id="rail"> של OrderCardA5 (slot Rail). אין כאן לוגיקה עסקית: כל ההחלטות ב-ocRailLogic.js (נבדק ב-node), כל
 // הכתיבות דרך הבקר (oc.save / oc.discardAll / oc.undoChange / oc.redo / oc.toggleSignature).
 //
 // חוזה עם W4 (REQUESTS-W4 "ל-W5"): שמירה שיצרה חוב חדש → הבקר שולח debtCreated ו-W4 פותח את חלון התשלום בעצמו - הרייל לא פותח חלון תשלום
 // ולא D6 באותו רגע; חוב שהיה קודם → requestPayment('pay'); "שלם ₪N"/"זכה ₪N"/צ׳יפ הארנק → oc.goPayments() + בקשת תשלום (אירוע oc:pay-request).
-// "השאר חוב (באישור מנהל)" קיים רק בחלון התשלום (A18) - לא כאן.
+// "השאר חוב (באישור מנהל)" קיים רק בחלון התשלום (A18) - לא כאן, וגם אין שורת אזהרת חוב מתחת ללחצנים (AMB-05, החלטת בעלים).
 //
 // מפת פורט: _renderRail/renderRail/fx בעיצוב (תצוגות-עיצוב/כרטיס-הזמנה.html); הצ׳יפ "משלוח" (gl del) כשיש משלוח; סמני "enter"/"leaving"/"bump"/"pop"
-// של האנימציות; ב-375 הרייל הוא גיליון תחתון (.rail.open נקבע ע"י לחצן "שינויים בהזמנה"). R5: שורת מגן החוב מתחת ללחצנים.
+// של האנימציות; ב-375 הרייל הוא גיליון תחתון (.rail.open נקבע ע"י לחצן "שינויים בהזמנה").
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import { useOcEvent } from '../useOrderCardController';
-import { Money } from '../dialogs/ocDialogParts';
+import { Money, Emph } from '../dialogs/ocDialogParts';
 import OcSuccessDialog from '../dialogs/OcSuccessDialog';
 import {
-  railPrimary, railShowActions, payChip, cartTotals, cartSum, railShield, successHead, successTargets, printUrl,
+  displayLine, railPrimary, railShowActions, payChip, cartTotals, cartSum, successHead, successTargets, printUrl,
   createRailActions, requestPaymentEvent, OC_PAYMENT_DONE_EVENT, OC_RAIL_PRIMARY_EVENT,
 } from './ocRailLogic';
 
@@ -88,7 +88,6 @@ export default function OcRail({ oc, ui }) {
   const chip = payChip(saved);
   const rows = cartTotals({ net, saved });
   const sum = cartSum({ net, saved });
-  const shield = railShield({ dirty, due, openedDebt: totals.openedDebt });
   const signed = !!(order && order.hasSignedRegulations);
   const showAct = railShowActions({ dirty, saved });
 
@@ -96,13 +95,14 @@ export default function OcRail({ oc, ui }) {
   const prevCount = useRef(null);
   useEffect(() => {
     const el = rootRef.current && rootRef.current.querySelector('.cart-t');
-    if (el && prevCount.current !== null && count > prevCount.current) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+    // כמו בעיצוב: ה-class קיים רק אחרי רינדור שהספירה בו עלתה; כל שינוי ספירה אחר מנקה אותו
+    if (el) { el.classList.remove('bump'); if (prevCount.current !== null && count > prevCount.current) { void el.offsetWidth; el.classList.add('bump'); } }
     prevCount.current = count;
   }, [count]);
   const prevChip = useRef(null);
   useEffect(() => {
     const el = rootRef.current && rootRef.current.querySelector('.gl.pay');
-    if (el && prevChip.current !== null && prevChip.current !== chip.cls) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    if (el) { el.classList.remove('pop'); if (prevChip.current !== null && prevChip.current !== chip.cls) { void el.offsetWidth; el.classList.add('pop'); } }
     prevChip.current = chip.cls;
   }, [chip.cls]);
 
@@ -128,9 +128,9 @@ export default function OcRail({ oc, ui }) {
           <span className="gl del" tabIndex={0} aria-label={`משלוח ${order.deliveryDirection || ''}`.trim()}><OcIcon name="truck" /><span className="gv">{order.deliveryDirection || 'משלוח'}</span></span>
         ) : null}
         <span className="gl itm-c" tabIndex={0} aria-label={nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}><OcIcon name="dress" /><span className="gv">{nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}</span></span>
-        <button type="button" className={`gl pay ${chip.cls}`} data-act="wallet" data-tip="מצב תשלום - לחצו למעבר לתשלומים" aria-label="מצב תשלום" onClick={() => actions.wallet()}>
+        <span className={`gl pay ${chip.cls}`} role="button" tabIndex={0} data-act="wallet" data-tip="מצב תשלום - לחצו למעבר לתשלומים" aria-label="מצב תשלום" onClick={() => actions.wallet()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.wallet(); } }}>
           <OcIcon name="card" /><span className="gv">{chip.cls === 'ok' ? chip.label : <>{chip.label} <Money n={chip.amount} /></>}</span>
-        </button>
+        </span>
       </div>
       <div className="cart-h">
         <button type="button" className="cart-t" data-act="cart-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -147,13 +147,16 @@ export default function OcRail({ oc, ui }) {
         <div className="cart-list">
           {count ? (
             <>
-              {changes.map((c) => (
-                <div className={`cl enter${leaving === c.key ? ' leaving' : ''}`} key={c.key} data-key={c.key} tabIndex={0}>
-                  <div className="cl-i"><OcIcon name={c.icon} /></div>
-                  <div className="cl-t"><span>{c.text}</span>{c.note ? <small>{c.note}</small> : null}{c.amt ? <em className={c.amt > 0 ? 'p' : 'm'}><Money n={c.amt} signed /></em> : null}</div>
-                  <button type="button" className="cl-u" data-act="undo" data-k={c.key} data-tip="ביטול השינוי" aria-label="ביטול השינוי" disabled={busy} onClick={() => undo(c.key)}><OcIcon name="bk" size="sm" /></button>
-                </div>
-              ))}
+              {changes.map((c) => {
+                const line = displayLine(c);
+                return (
+                  <div className={`cl enter${leaving === c.key ? ' leaving' : ''}`} key={c.key} data-key={c.key} tabIndex={0}>
+                    <div className="cl-i"><OcIcon name={c.icon} /></div>
+                    <div className="cl-t"><span><Emph text={line.text} /></span>{line.note ? <small>{line.note}</small> : null}{c.amt ? <em className={c.amt > 0 ? 'p' : 'm'}><Money n={c.amt} signed /></em> : null}</div>
+                    <button type="button" className="cl-u" data-act="undo" data-k={c.key} data-tip="ביטול השינוי" aria-label="ביטול השינוי" disabled={busy} onClick={() => undo(c.key)}><OcIcon name="bk" size="sm" /></button>
+                  </div>
+                );
+              })}
               {sessionPays.map((p) => (
                 <div className="cl enter" key={`sp-${p.id}`} tabIndex={0}>
                   <div className="cl-i"><OcIcon name="cash" /></div>
@@ -174,7 +177,6 @@ export default function OcRail({ oc, ui }) {
       {showAct ? (
         <div className="cart-actions enter">
           {primaryBtn}
-          {shield ? <div className="oc-r5" data-oc="r5"><OcIcon name="shield" size="sm" />שמירה עם יתרת חוב של <Money n={shield.amount} /> תדרוש אישור מנהל</div> : null}
           {dirty ? <button type="button" className="btn ghost block sec" data-act="discard" disabled={busy} onClick={() => oc.discardAll()}><OcIcon name="undo" size="sm" />בטל שינויים</button> : null}
         </div>
       ) : null}

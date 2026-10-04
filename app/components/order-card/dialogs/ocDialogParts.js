@@ -5,6 +5,10 @@
 
 import OcIcon from '../OcIcon';
 import { fmtMoney, fmtSignedMoney } from '../orderCardLogic';
+import { emphasize, displayLine } from '../parts/ocRailLogic';
+
+/** טקסט שינוי עם הדגשת הישות (<b>) כמו בעיצוב */
+export const Emph = ({ text }) => emphasize(text).map((s, i) => (s.b ? <b key={i}>{s.t}</b> : s.t));
 
 export const Money = ({ n, signed }) => <bdi dir="ltr">{signed ? fmtSignedMoney(n) : fmtMoney(n)}</bdi>;
 
@@ -20,12 +24,13 @@ export function Row({ icon, children, amt, tone = 'gray' }) {
 }
 
 /** שורת שינוי כמו ב-summaryDlg של העיצוב: צבע האייקון לפי הסכום (ירוק=זיכוי, ורוד=חיוב), פירוט מתחת, סכום רק כשיש יותר משינוי אחד עם סכום */
-export function ChangeRow({ c, showAmt }) {
+export function ChangeRow({ c: raw, showAmt }) {
+  const c = { ...raw, ...displayLine(raw) };
   const tone = c.amt < 0 ? 'green' : c.amt > 0 ? 'rose' : 'gray';
   return (
     <div className="c">
       <div className={`ico ${tone} oc-cico`}><OcIcon name={c.icon || 'pencil'} size="sm" /></div>
-      <div className="t">{c.text}{c.note ? <div className="faint sm">{c.note}</div> : null}</div>
+      <div className="t"><Emph text={c.text} />{c.note ? <div className="faint sm">{c.note}</div> : null}</div>
       {c.amt && showAmt ? <div className={`amt ${c.amt > 0 ? 'p' : 'm'}`}><Money n={c.amt} signed /></div> : null}
     </div>
   );

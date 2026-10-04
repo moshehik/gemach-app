@@ -1,2 +1,15 @@
-/* oc-rail.css — כרטיס ההזמנה החדש: רייל הסיכום, באנר הטיוטה, טוסט סכום ממתין וחלונות השמירה (D1/D2/D6/D7/R12/R48). בבעלות W5 (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
-   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build). */
+/* oc-rail.css — הרייל "סיכום" וחלונות השמירה של כרטיס ההזמנה החדש (W5). רק מה שאין בפלטה (design-system/components.css), בהיקף .gm-ds.gm-oc.
+   מקור: העיצוב המאושר תצוגות-עיצוב/כרטיס-הזמנה.html - סגנונות מוטבעים (style=) של _renderRail / successDlg / showDraft בשמות מחלקה נקיים,
+   ונטרולי דליפה של ה-CSS הגלובלי של האתר (globals.css / design-overrides.css) מסומנים "דליפה". */
+
+/* דליפה: globals.css מאפס padding לכל אלמנט - לחצני הרייל בעיצוב נושאים את ריפוד ברירת המחדל של הדפדפן (כמו .back ב-oc-base.css) */
+.gm-ds.gm-oc .rail :is(.cl-u,.redo){padding:1px 6px}
+
+/* D6 (successDlg בעיצוב): הכותרת המשנית בלי שוליים תחתונים ומרווח 24px לפני הלחצנים (אין צ׳יפים) */
+.gm-ds.gm-oc :is(#dlg,#dlg2) .success .oc-success-sub{margin-bottom:0}
+.gm-ds.gm-oc :is(#dlg,#dlg2) .success .oc-success-gap{height:24px}
+
+/* R11 (showDraft בעיצוב): שני הלחצנים בשורה אחת עם רווח 10px, בלי שוליים מעל (הרווח בא מ-.nb-bi) */
+.gm-ds.gm-oc .oc-banner .oc-banner-acts{gap:10px;margin-top:0}
+.gm-ds.gm-oc .oc-banner .nb-bi{gap:2px}
+.gm-ds.gm-oc .oc-banner .nb-bi .nb-go{margin-top:12px}

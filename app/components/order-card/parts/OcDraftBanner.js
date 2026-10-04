@@ -6,14 +6,16 @@
 // מפת פורט: showDraft בשכבת הסקירה של העיצוב (באנר 35 בפלטה: nb-warning open); הישן: LegacyOrderPage.js:1748 (pendingDraft).
 
 import { useState } from 'react';
-import OcIcon from '../OcIcon';
+import OcIcon, { OC_ICON_NAMES } from '../OcIcon';
 import { draftIconName, draftTimeLabel, draftIsStale } from './ocRailLogic';
+
+const iconOf = (icon) => { const n = draftIconName(icon); return OC_ICON_NAMES.has(n) ? n : 'pencil'; };
 
 export default function OcDraftBanner({ oc }) {
   const d = oc.drafts.pending;
   const [closedAt, setClosedAt] = useState(null);
   if (!d || closedAt === d.savedAt) return null;
-  const rows = Array.isArray(d.rows) && d.rows.length ? d.rows.map((r) => ({ icon: draftIconName(r.icon), text: r.text })) : (d.summary || []).map((t) => ({ icon: 'pencil', text: t }));
+  const rows = Array.isArray(d.rows) && d.rows.length ? d.rows.map((r) => ({ icon: iconOf(r.icon), text: r.text })) : (d.summary || []).map((t) => ({ icon: 'pencil', text: t }));
   const when = draftTimeLabel(d.savedAt);
   const stale = draftIsStale(d, oc.order && oc.order.updatedAt);
   return (

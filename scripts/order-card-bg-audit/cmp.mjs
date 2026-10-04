@@ -25,6 +25,8 @@ const APPROVED_STAGE = [
   ['10-conflict', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
   ['11-stock', /^TOP>button\.back \[op\]$/, 'סקירה 4: החץ מנוטרל בזמן שמירה רצה (החלון נפתח באמצע השמירה)'],
 ];
+const { RAIL_APPROVED, RAIL_APPROVED_STAGE } = await import('./cmp-rail.mjs'); // W5
+APPROVED.push(...RAIL_APPROVED); APPROVED_STAGE.push(...RAIL_APPROVED_STAGE);
 const approved = (line, st) => APPROVED.some(([re]) => re.test(line)) || APPROVED_STAGE.some(([s2, re]) => s2 === st && re.test(line));
 const group = (arr) => { const m = new Map(); for (const x of arr) { if (!m.has(x.sel)) m.set(x.sel, []); m.get(x.sel).push(x); } return m; };
 let total = 0, skipped = 0;
