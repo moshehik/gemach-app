@@ -273,11 +273,39 @@ t('לוז: השורש בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה
 t('לוז: טולטיפים רק דרך data-tip (הטולטיפ של המערכת, כמו בעיצוב) - אין title= על רכיבי הדף', () => {
   for (const f of SCHED_FILES) assert.ok(!/\btitle=/.test(schedSrc(f)), f + ' משתמש ב-title= (טולטיפ דפדפן) במקום data-tip');
 });
-t('לוז: אין טקסטים שהבעלים לא הגדיר (כיתוב "לקריאה בלבד", "יסומן בגרסה הבאה", "אין נוכחות רשומה", תאריך מעל הכותרת, תגיות ספירה)', () => {
+t('לוז: אין טקסטים שהבעלים לא הגדיר (כיתוב "לקריאה בלבד", "יסומן בגרסה הבאה", "אין נוכחות רשומה", תאריך מעל הכותרת, תגיות ספירה כמו "N אירועים", "אין פעולות" בציר)', () => {
   const all = SCHED_FILES.map(schedSrc).join(String.fromCharCode(10));
-  for (const bad of ['לקריאה בלבד', 'יסומן בגרסה', 'אין נוכחות', '>במשמרת', 'chip st-bad', 'chip st-mid', 'lz-note', 'lz-staff', 'lz-nwd', 'NOT_MARKED_TIP']) assert.ok(!all.includes(bad), 'הטקסט/הרכיב "' + bad + '" חזר לדף');
+  // 'lz-nwd' = השבב הישן (chip st-today עם הסבר); 'chip st-mid' = "N אירועים" (SCH-CHIP-EVENTS = ב', 4.10.2026)
+  for (const bad of ['לקריאה בלבד', 'יסומן בגרסה', 'אין נוכחות', '>במשמרת', 'chip st-mid', 'lz-note', 'lz-staff', 'lz-nwd', 'NonWorkingChip', 'nonWorkingDayText', 'NOT_MARKED_TIP']) assert.ok(!all.includes(bad), 'הטקסט/הרכיב "' + bad + '" חזר לדף');
   assert.ok(!/<small>\{[^}]*hebrewLong/.test(schedSrc('ScheduleDay.js')), 'שורת התאריך מעל "לוח זמנים" חזרה');
-  assert.ok(!/\{total\} \{stage\.plural\}/.test(schedSrc('StageSection.js')), 'תגית "N אירועים" חזרה לכותרת השלב');
+  const sec = schedSrc('StageSection.js');
+  assert.ok(!/\{[^}]*\} \{(stage\.plural|meta\.plural)\}/.test(sec) && !/(stage|meta)\.plural/.test(sec) && !sec.split(String.fromCharCode(10)).filter((l) => !/^\s*\/\//.test(l)).join('').includes('אירועים'), 'תגית "N אירועים" חזרה לכותרת השלב (SCH-CHIP-EVENTS = ב׳)');
+  // "אין פעולות" מתחת לשם שלב ריק בציר הוסר (SCH-EMPTY-TXT = ב', 4.10.2026): ה-<small> היחיד בציר הוא "N פריטים" של "הכל"
+  const rail = schedSrc('StageRail.js');
+  assert.equal((rail.match(/<small>/g) || []).length, 1, 'כיתוב קטן חזר מתחת לשם שלב בציר');
+  assert.ok(rail.includes('<small>{allTotal} פריטים</small>') && !/<small>\{line\}<\/small>/.test(rail), '"אין פעולות" חזר מתחת לשם השלב בציר');
+});
+t('לוז: השבבים שהבעלים הגדיר ב-4.10.2026 - בנוסח המדויק ובמקום אחד בלבד ("יום לא עובד" ליד המתג, "N התראות" בכותרת שלב); אין שבבים אחרים בכותרת', () => {
+  const all = SCHED_FILES.map(schedSrc).join(String.fromCharCode(10));
+  const day = schedSrc('ScheduleDay.js'), sec = schedSrc('StageSection.js');
+  // SCH-CHIP-NWD = א': תגית 14 (chip gray), הנוסח בדיוק "יום לא עובד", מוצג לפי data.nonWorkingDay מהשרת (lib/businessDays.js)
+  const nwd = '<span className="chip gray lz-offday">יום לא עובד</span>';
+  assert.equal(day.split(nwd).length - 1, 1, 'שבב "יום לא עובד" חסר / שונה נוסח / מופיע יותר מפעם אחת');
+  assert.equal((all.match(/>יום לא עובד</g) || []).length, 1, 'הנוסח "יום לא עובד" מוצג במקום נוסף בדף');
+  assert.ok(/!loading && data && data\.nonWorkingDay \? <span className="chip gray lz-offday">/.test(day), 'השבב חייב להיות מותנה ב-data.nonWorkingDay של השרת (הכלל האחיד), לא בחישוב מקומי');
+  assert.ok(day.indexOf(nwd) > day.indexOf('id="vsw"') && day.indexOf(nwd) < day.indexOf('<BranchSeg'), 'השבב יושב מיד אחרי מתג שורות/טבלה');
+  assert.ok(!/getDay\(\)|isChag|isNonWorkingDay\(/.test(day), 'הדף לא מחשב "יום לא עובד" בעצמו');
+  // SCH-CHIP-ALERTS = א': chip st-bad עם אייקון alert והנוסח "N התראות" (עיצוב cardHTML שורה 1992), רק בכותרת השלב
+  const al = '<span className="chip st-bad"><ScheduleIcon name="alert" />{alertRows} התראות</span>';
+  assert.equal(sec.split(al).length - 1, 1, 'שבב "N התראות" חסר / שונה נוסח');
+  assert.ok(/\{alertRows \? <span className="chip st-bad">/.test(sec), 'השבב מוצג רק כשיש התראות בשלב');
+  assert.equal((all.match(/chip st-bad/g) || []).length, 1, 'chip st-bad מופיע במקום נוסף בדף');
+  // בכותרת השלב רק השבבים שהוגדרו: התראות, משמרת (S08), שעות איסוף (B13)
+  const chipClasses = [...sec.matchAll(/className="(chip[^"]*)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(chipClasses, ['chip st-bad', 'chip st-today', 'chip st-today'], 'שבב לא מוגדר נוסף לכותרת השלב');
+  const dayChips = [...day.matchAll(/className="(chip[^"]*)"/g)].map((m) => m[1]);
+  assert.deepEqual(dayChips, ['chip gray lz-offday'], 'שבב לא מוגדר נוסף לשורת המתג');
+  assert.ok(hasSched(/\.gm-ds\.gm-lz \.chip\.st-bad$/, /^background$/, { valueRe: /^#f4a68c$/ }), 'schedule.css: חסר צבע st-bad של העיצוב (1122)');
 });
 t('לוז: הרכיבים של העיצוב קיימים - לחצן "בוצע" (btn tgl lz-mark), "הוחזר לא תקין" (lz-retw), "הכל בוצע" (lz-all), כלי XL/הורדה/הדפסה (lz-dtools/lz-stools), שורת ברקוד (sbar)', () => {
   // המראה של לחצני הסימון יושב ב-MarkControls.js (אותו markup כמו בעיצוב), ההתנהגות ב-useStageMarks.js - חוזה אחד

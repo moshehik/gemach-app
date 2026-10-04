@@ -69,7 +69,7 @@ const LAYOUT = () => {
   add('dpanel', document.querySelector('.lz-dpanel')); add('dnav', document.querySelector('.lz-dnav')); add('quick', document.querySelector('.lz-quick'));
   add('dlg', document.querySelector('.scrim .dlg')); add('dbtns', document.querySelector('.scrim .dbtns')); add('toast', document.querySelector('#toast.on'));
   add('note', document.querySelector('.lz-note'));
-  add('nwd', document.querySelector('.lz-nwd'));
+  add('nwd', document.querySelector('.lz-offday'));
   add('branches', document.querySelector('.lz-branches'));
   const sec = document.querySelector('#stages .lz-sec');
   if (sec) {
