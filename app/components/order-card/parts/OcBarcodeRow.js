@@ -37,7 +37,7 @@ export default function OcBarcodeRow({ item, actions, locked }) {
     <div className="hv-r hv-act oc-bcrow">
       <small>ברקוד</small>
       <b className="hv-btns">
-        <div className="inpw bcin">
+        <div className="inpw oc-bcin">
           <OcIcon name="scan" size="sm" />
           <input
             className="inp"
@@ -73,7 +73,7 @@ export default function OcBarcodeRow({ item, actions, locked }) {
             <OcIcon name="undo" size="sm" />בטל החזרה
           </button>
         ) : null}
-        {own && !pending ? <span className="faint bch">ברקוד <bdi dir="ltr">{own}</bdi></span> : null}
+        {own && !pending ? <span className="faint oc-bch">ברקוד <bdi dir="ltr">{own}</bdi></span> : null}
       </b>
     </div>
   );

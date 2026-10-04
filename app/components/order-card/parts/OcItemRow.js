@@ -41,14 +41,14 @@ export default function OcItemRow({ item, mode, oc, actions, open, onToggle, loc
           <div className="hv-r"><small>מידה</small><b>{item.sizeText || '—'}</b></div>
           <div className="hv-r"><small>סטטוס</small><b>{status}</b></div>
           {alt ? <div className="hv-r"><small>תיקון</small><b>{alt.replace('תיקון: ', '')}</b></div> : null}
+          <div className="hv-r"><small>מחיר</small><b>{price}</b></div>
+          <div className="hv-r"><small>פרטי הוספה</small><b>{addedText(item, oc.order, creatorName)}</b></div>
           {altEnabled && (hasAlt || altShow) ? (
             <>
               <div className="hv-r"><small>אורך</small><b>{item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : '—'}</b></div>
               <div className="hv-r"><small>פירוט</small><b>{item.alterationDetails || item.repairs || '—'}</b></div>
             </>
           ) : null}
-          <div className="hv-r"><small>מחיר</small><b>{price}</b></div>
-          <div className="hv-r"><small>פרטי הוספה</small><b>{addedText(item, oc.order, creatorName)}</b></div>
           {mode === 'del' ? (
             <div className="hv-r hv-act">
               <small>פעולות</small>
