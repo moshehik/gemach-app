@@ -143,7 +143,9 @@ test('joinPatch: בחירת משלוח / ראשי / חזרה ל"משלוח חד�
     // ביטול בחירה (chooseCandidate('') בנווה)
     n = neve.patchJoin({ joinedToOrderId: null });
     m = N.joinPatch('candidate', null, eff);
-    assert.equal(m.deliveryJoinedTo, n.deliveryJoin.joinedToOrderId); assert.equal(m.deliveryPrimaryOrderId, n.deliveryJoin.primaryOrderId);
+    // סטייה מכוונת מנווה (סקירה, סעיף 1): ביטול הצטרפות שמורה = false (לא null) כדי שיהיה שינוי גם מול snapshot בלי הערך - שקול ל-null בשרת
+    assert.equal(m.deliveryJoinedTo || null, n.deliveryJoin.joinedToOrderId); assert.equal(m.deliveryPrimaryOrderId, n.deliveryJoin.primaryOrderId);
+    assert.equal(m.deliveryJoinedTo, eff.savedJoin ? false : null);
     assert.ok(!('deliveryAddress' in m));
     // ראשי
     for (const pid of ['self', 5, 9]) {
@@ -153,7 +155,7 @@ test('joinPatch: בחירת משלוח / ראשי / חזרה ל"משלוח חד�
     }
     // חזרה ל"משלוח חדש": רק כשהיה מצורף
     const back = N.joinPatch('mode-new', null, eff);
-    if (neve.joinedTo) { n = neve.patchJoin({ joinedToOrderId: null }); assert.equal(back.deliveryJoinedTo, n.deliveryJoin.joinedToOrderId); assert.equal(back.deliveryPrimaryOrderId, n.deliveryJoin.primaryOrderId); } else assert.equal(back, null);
+    if (neve.joinedTo) { n = neve.patchJoin({ joinedToOrderId: null }); assert.equal(back.deliveryJoinedTo || null, n.deliveryJoin.joinedToOrderId); assert.equal(back.deliveryPrimaryOrderId, n.deliveryJoin.primaryOrderId); } else assert.equal(back, null);
   }
 });
 
@@ -204,6 +206,55 @@ test('changesOf: בחירת הצטרפות / ראשי = שינוי שלא נשמ
   const c = L.changesOf(snap, { ...st, order: { ...st.order, deliveryJoinedTo: 5 } })[0];
   assert.equal(c.text, 'עודכן שדה: הצטרפות למשלוח');
   assert.equal(L.changesOf(snap, { ...st, order: { ...st.order, deliveryPrimaryOrderId: 9 } })[0].text, 'עודכן שדה: ה"ראשי" בכתובת המשלוח');
+});
+
+test('סקירה 1: ביטול הצטרפות קיימת נראה - שינוי, מלוכלך, שמירה ורענון מחיר (false / null מול ההצטרפות השמורה ב-snapshot)', () => {
+  const st = baseState({ order: { isDelivery: true, deliveryCity: 'ירושלים' } });
+  const info = { joinedToOrderId: 5, rootOrderId: 5, isPrimary: false, group: [{ orderId: 5 }, { orderId: 9 }] };
+  // א. ההצטרפות השמורה נטענת ל-order ול-snapshot (patchOrder) - בלי שינוי בטעינה
+  const sync = N.savedJoinSyncPatch({ order: st.order, info, infoVersion: 3, historyVersion: 3 });
+  assert.deepEqual(sync, { deliveryJoinedTo: 5 });
+  const snap = { ...st, order: { ...st.order, ...sync } };
+  const cur = (o) => ({ ...st, order: { ...st.order, ...sync, ...o } });
+  assert.deepEqual(L.changesOf(snap, cur({})), [], 'אחרי הסנכרון אין שינוי');
+  for (const cancelled of [null, false]) {
+    const c = L.changesOf(snap, cur({ deliveryJoinedTo: cancelled }));
+    assert.deepEqual(c.map(x => x.key), ['field:deliveryJoinedTo'], `ביטול (${cancelled}) = שינוי`);
+    assert.equal(L.pricingInputsChanged(snap, st.items, cur({ deliveryJoinedTo: cancelled }).order), true, 'ומרענן מחיר');
+    assert.equal(L.buildPutPayload(cur({ deliveryJoinedTo: cancelled }).order, { items: st.items, obligations: st.obligations, payments: st.payments, mode: 'save' }).deliveryJoin.joinedToOrderId, null);
+  }
+  // ב. גם אם הסנכרון טרם קרה (snapshot בלי הערך) - ה-joinPatch של ביטול שמור = false, שונה מ-undefined
+  const eff = N.effectiveJoin({ order: st.order, info, group: [], modeState: null });
+  assert.equal(eff.savedJoin, 5);
+  const cancelPatch = N.joinPatch('candidate', null, eff);
+  assert.equal(cancelPatch.deliveryJoinedTo, false);
+  const bare = { ...st };
+  assert.deepEqual(L.changesOf(bare, { ...st, order: { ...st.order, ...cancelPatch } }).map(x => x.key), ['field:deliveryJoinedTo']);
+  assert.equal(L.pricingInputsChanged(bare, st.items, { ...st.order, ...cancelPatch }), true);
+  assert.equal(L.buildPreviewBody(st.items, { ...st.order, ...cancelPatch }).order.deliveryJoinedTo, false);
+  // אחרי ביטול, בחירת "ראשי" לא מבטלת את הביטול (false נשמר)
+  const eff2 = N.effectiveJoin({ order: { ...st.order, ...cancelPatch }, info, group: [], modeState: null });
+  assert.equal(eff2.joinedTo, null);
+  assert.equal(N.joinPatch('primary', 'self', eff2).deliveryJoinedTo, false);
+  assert.equal(N.joinPatch('mode-new', null, eff).deliveryJoinedTo, false);
+  // ג. בחירה וביטול של משלוח שמעולם לא נשמר = אין שינוי (null)
+  const effNone = N.effectiveJoin({ order: st.order, info: { joinedToOrderId: null, isPrimary: false, group: [] }, group: [], modeState: null });
+  assert.equal(N.joinPatch('candidate', null, effNone).deliveryJoinedTo, null);
+  assert.deepEqual(L.changesOf({ ...st }, { ...st, order: { ...st.order, deliveryJoinedTo: null } }), []);
+  // ד. מחזירים לאותו שורש = שוב אין שינוי
+  assert.deepEqual(L.changesOf(snap, cur({ deliveryJoinedTo: 5 })), []);
+});
+
+test('סקירה 1: savedJoinSyncPatch לא מסנכרן כשהמשתמש נגע / אין הצטרפות / המידע מיושן (אחרי שמירה) - כדי לא להחזיר הצטרפות שבוטלה', () => {
+  const st = baseState();
+  const info = { joinedToOrderId: 5, rootOrderId: 5, isPrimary: false, group: [] };
+  assert.equal(N.savedJoinSyncPatch({ order: { ...st.order, deliveryJoinedTo: null }, info, infoVersion: 1, historyVersion: 1 }), null);
+  assert.equal(N.savedJoinSyncPatch({ order: { ...st.order, deliveryJoinedTo: false }, info, infoVersion: 1, historyVersion: 1 }), null);
+  assert.equal(N.savedJoinSyncPatch({ order: { ...st.order, deliveryJoinedTo: 7 }, info, infoVersion: 1, historyVersion: 1 }), null);
+  assert.equal(N.savedJoinSyncPatch({ order: st.order, info: { ...info, joinedToOrderId: null }, infoVersion: 1, historyVersion: 1 }), null);
+  assert.equal(N.savedJoinSyncPatch({ order: st.order, info: null, infoVersion: null, historyVersion: 1 }), null);
+  assert.equal(N.savedJoinSyncPatch({ order: st.order, info, infoVersion: 1, historyVersion: 2 }), null, 'מידע שנטען לפני השמירה');
+  assert.equal(N.savedJoinSyncPatch({ order: null, info, infoVersion: 1, historyVersion: 1 }), null);
 });
 
 test('רצף ברקודים: sequenceEntry / scanResultToSequence = record של נווה (סטטוס, הודעת ברירת מחדל, undo)', () => {

@@ -11,7 +11,7 @@
 // הטבלה חסרה / ההגדרה כבויה: GET /api/deliveries/join מחזיר enabled:false והבורר לא מוצג בכלל.
 import { useEffect, useMemo, useState } from 'react';
 import OcIcon from '../OcIcon';
-import { candidateLabel, effectiveJoin, eventIsoOf, joinCandidatesQuery, joinPatch } from './ocNeveLogic';
+import { candidateLabel, effectiveJoin, eventIsoOf, joinCandidatesQuery, joinPatch, savedJoinSyncPatch } from './ocNeveLogic';
 
 const getJson = (url) => fetch(url, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null));
 
@@ -27,6 +27,7 @@ export default function OcDeliveryJoinPicker({ oc }) {
   // available: null = טרם נבדק, false = כבוי / הטבלה חסרה (הבורר מוסתר).
   const [available, setAvailable] = useState(null);
   const [info, setInfo] = useState(null);
+  const [infoVersion, setInfoVersion] = useState(null);
   const [candidates, setCandidates] = useState(null); // null = טרם נטען
   const [group, setGroup] = useState([]); // חברי הקבוצה של השורש (בלי ההזמנה הזו)
   const [modeState, setModeState] = useState(null); // 'new' | 'join' | null (עד שנקבע מהמצב השמור)
@@ -35,17 +36,24 @@ export default function OcDeliveryJoinPicker({ oc }) {
   useEffect(() => {
     if (!enabledSetting || !orderId) { setAvailable(false); return undefined; }
     let cancelled = false;
+    const version = oc.historyVersion; // גרסת ה-historyVersion שבה נשאל המידע - מידע מיושן (אחרי שמירה) לא מסונכרן ל-order (savedJoinSyncPatch)
     getJson(`/api/deliveries/join?mode=info&orderId=${orderId}`)
       .then(data => {
         if (cancelled) return;
         setAvailable(!!(data && data.enabled));
         setInfo(data?.info || { joinedToOrderId: null, isPrimary: false, group: [] });
+        setInfoVersion(version);
       })
       .catch(() => { if (!cancelled) setAvailable(false); });
     return () => { cancelled = true; };
   }, [enabledSetting, orderId, oc.historyVersion]);
 
   const eff = effectiveJoin({ order, info, group, modeState });
+
+  // ההצטרפות השמורה נטענת גם ל-order וגם ל-snapshot (בלי לסמן שינוי) - כך ביטול שלה (null / false מול מספר) הוא שינוי אמיתי: הכרטיס
+  // "מלוכלך", נשמר, ומחיר המשלוח מתעדכן (סקירה, סעיף 1).
+  const syncPatch = savedJoinSyncPatch({ order, info, infoVersion, historyVersion: oc.historyVersion });
+  useEffect(() => { if (syncPatch) oc.patchOrder(syncPatch); }, [syncPatch?.deliveryJoinedTo]);
 
   // משלוחים זמינים להצטרפות - רק במצב "הצטרפות" (או כשכבר מצורף), לפי יום האירוע והכיוון
   useEffect(() => {

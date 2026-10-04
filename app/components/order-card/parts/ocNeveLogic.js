@@ -49,8 +49,24 @@ export function effectiveJoin({ order, info, group, modeState }) {
   const picked = order?.deliveryPrimaryOrderId;
   const currentPrimary = picked !== undefined && picked !== null ? picked : savedPrimary;
   const rootForGroup = joinedTo || (info?.group?.length ? info.rootOrderId : null);
-  return { joinedTo, mode, savedPrimary, currentPrimary, rootForGroup };
+  return { joinedTo, mode, savedPrimary, currentPrimary, rootForGroup, savedJoin: info?.joinedToOrderId || null, cancelled: order?.deliveryJoinedTo === false };
 }
+
+/**
+ * סנכרון ההצטרפות השמורה (מהשרת) אל order + snapshot כשהבורר נטען (סקירה, סעיף 1: ביטול הצטרפות קיימת היה בלתי נראה כי snapshot.order
+ * לא נשא את ההצטרפות השמורה - undefined≡null - ולכן לא נוצר שינוי, ההזמנה לא "מלוכלכת" והמחיר לא התעדכן). מחזיר patch ל-oc.patchOrder
+ * (שמעדכן את שניהם, בלי לסמן שינוי) או null כשאין מה לסנכרן: אין הצטרפות שמורה / המשתמש כבר נגע בה / המידע מיושן (נטען לפני
+ * שמירה אחרונה - historyVersion שונה) - כדי שמידע ישן לא יחזיר הצטרפות שבוטלה.
+ */
+export function savedJoinSyncPatch({ order, info, infoVersion, historyVersion }) {
+  if (!order || !info || !info.joinedToOrderId) return null;
+  if (infoVersion !== historyVersion) return null;
+  if (order.deliveryJoinedTo !== undefined) return null;
+  return { deliveryJoinedTo: info.joinedToOrderId };
+}
+
+/** ערך "בוטלה הצטרפות" ב-order.deliveryJoinedTo כשהייתה הצטרפות שמורה: false (שונה גם מ-undefined; buildPutPayload/effectiveJoin/השרת מתייחסים אליו כ-null). */
+export const JOIN_CANCELLED = false;
 
 /**
  * עדכון ה-state של ההזמנה (לשימוש edit.setOrder(prev => ({...prev, ...patch}))).
@@ -59,7 +75,7 @@ export function effectiveJoin({ order, info, group, modeState }) {
  */
 export function joinPatch(kind, value, eff) {
   if (kind === 'candidate') {
-    if (!value) return { deliveryJoinedTo: null, deliveryPrimaryOrderId: eff.currentPrimary ?? null };
+    if (!value) return { deliveryJoinedTo: eff.savedJoin ? JOIN_CANCELLED : null, deliveryPrimaryOrderId: eff.currentPrimary ?? null };
     return {
       deliveryJoinedTo: value.orderId,
       deliveryPrimaryOrderId: null,
@@ -67,8 +83,8 @@ export function joinPatch(kind, value, eff) {
       deliveryCity: value.city || '',
     };
   }
-  if (kind === 'primary') return { deliveryJoinedTo: eff.joinedTo, deliveryPrimaryOrderId: value };
-  if (kind === 'mode-new') return eff.joinedTo ? { deliveryJoinedTo: null, deliveryPrimaryOrderId: eff.currentPrimary ?? null } : null;
+  if (kind === 'primary') return { deliveryJoinedTo: eff.joinedTo ?? (eff.cancelled ? JOIN_CANCELLED : null), deliveryPrimaryOrderId: value };
+  if (kind === 'mode-new') return eff.joinedTo ? { deliveryJoinedTo: eff.savedJoin ? JOIN_CANCELLED : null, deliveryPrimaryOrderId: eff.currentPrimary ?? null } : null;
   return null;
 }
 
