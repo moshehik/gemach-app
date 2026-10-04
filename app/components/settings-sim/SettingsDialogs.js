@@ -52,9 +52,10 @@ function Portal({ root, children }) {
 }
 
 /** confirmDlg של העיצוב: אייקון, כותרת, שורת משנה, לחצן ראשי + ביטול. k = האנימציה של התג (lid / tilt / breathe / float) */
-export function ConfirmDialog({ open, root, heading, sub, okLabel = 'אישור', okIcon = 'check', icon = 'alert', k = 'lid', busy = false, onYes, onNo }) {
+export function ConfirmDialog({ open, root, heading, sub, okLabel = 'אישור', okIcon = 'check', icon = 'alert', k = 'lid', busy = false, destructive = false, onYes, onNo }) {
   const dlgRef = useRef(null);
-  useDialogKeys(open, dlgRef, onNo);
+  // פעולה הרסנית / בעלת השפעה רחבה: הפוקוס ההתחלתי על "ביטול", כך ש-Enter בטעות לא מבצע אותה
+  useDialogKeys(open, dlgRef, onNo, destructive ? '.btn.ghost' : undefined);
   if (!open) return null;
   return (
     <Portal root={root}>

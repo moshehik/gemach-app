@@ -207,6 +207,7 @@ function DbModeRow({ root, onToast, dirty, onSwitched }) {
         okLabel={ask === 'test' ? 'מעבר לבדיקות' : 'חזרה לייצור'}
         okIcon="refresh"
         icon="refresh"
+        destructive
         onYes={apply}
         onNo={() => setAsk(null)}
       />
@@ -806,6 +807,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
         okIcon="undo"
         icon="undo"
         k="tilt"
+        destructive
         onYes={discard}
         onNo={() => setAskDiscard(false)}
       />
@@ -818,6 +820,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
         okIcon="undo"
         icon="undo"
         k="tilt"
+        destructive
         onYes={() => {
           setAskReset(false);
           setResetAll(true);

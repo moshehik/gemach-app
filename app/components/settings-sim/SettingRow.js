@@ -410,6 +410,7 @@ function SecretCtl({ row, raw, saved, onChange, portalRoot }) {
         okIcon="trash"
         icon="trash"
         k="tilt"
+        destructive
         onYes={() => { setAskClear(false); onChange(SECRET_CLEAR_MARKER); }}
         onNo={() => setAskClear(false)}
       />

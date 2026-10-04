@@ -370,6 +370,29 @@ try {
     assert.equal(await p.evaluate(() => window.__gets), before + 1, 'טעינה מחדש של ההגדרות');
     await p.close();
   });
+
+  await t('#5 חלונות הרסניים: הפוקוס ההתחלתי על "ביטול", לא על לחצן הפעולה (בטל שינויים / מעבר לבדיקות / נקה ערך)', async () => {
+    const focused = (p) => p.evaluate(() => { const a = document.activeElement; return { txt: a ? a.textContent : '', inDlg: !!(a && a.closest && a.closest('#dlg')) }; });
+    const p = await page('view=sys');
+    await click(p, '#setting-row-require_login .sw input');
+    await click(p, '.st-chgact [data-act="discard"]');
+    await sleep(250);
+    let f = await focused(p);
+    assert.ok(f.inDlg && /ביטול/.test(f.txt) && !/בטל שינויים/.test(f.txt), 'discard: ' + f.txt);
+    await clickText(p, '#dlg .btn', 'ביטול');
+    await tab(p, 'pay');
+    await click(p, '#setting-row-nedarim_plus_token [data-act="clear-secret"]');
+    await sleep(250);
+    f = await focused(p);
+    assert.ok(f.inDlg && /ביטול/.test(f.txt), 'clear-secret: ' + f.txt);
+    await p.close();
+    const q = await page('view=site');
+    await clickText(q, '.seg.pill button', 'בדיקות');
+    await sleep(250);
+    f = await focused(q);
+    assert.ok(f.inDlg && /ביטול/.test(f.txt) && !/מעבר/.test(f.txt), 'db switch: ' + f.txt);
+    await q.close();
+  });
 } finally {
   await browser.close();
   server.close();
