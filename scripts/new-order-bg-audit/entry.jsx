@@ -56,6 +56,18 @@ window.fetch = async (url, opts) => {
   if (u.startsWith('/api/employees')) return j([{ id: 'e1', firstName: 'שרה', lastName: 'כהן', roleId: 1, approvals: { 'feature:special_spacing_approval': true, 'feature:payment_exit_approval': true, 'feature:missing_contact_approval': true, 'feature:past_date_order_approval': true } }, { id: 'e2', firstName: 'רחל', lastName: 'לוי', roleId: 0, approvals: {} }]);
   if (u.startsWith('/api/me')) return j({ success: true, employee: { id: 'e1', firstName: 'שרה', lastName: 'כהן', roleId: 1 } });
   if (u.startsWith('/api/inventory/models')) { const q = new URL(u, location.origin).searchParams.get('q') || ''; return j({ models: MODELS.filter(m => !q || m.name.includes(q) || m.barcodePrefix.includes(q)) }); }
+  if (u.startsWith('/api/inventory/sizes')) return j({ sizes: SIZES });
+  if (u.startsWith('/api/inventory/capacity')) {
+    // R22: תפוסה מדומה סביב תחילת הטווח - הזמנה של 3 ימים, הזמנה בודדת ויומיים עם שתי הזמנות חופפות (בדיקת הלוח)
+    const q = new URL(u, location.origin).searchParams; const f = q.get('fromDate') || '2026-10-01';
+    const at = (n) => { const d = new Date(f + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString(); };
+    const occ = [
+      { id: 52110, orderId: 52110, customerName: 'רחל כהן', eventDate: at(10), returnDate: at(12), eventDateHebrew: '', quantity: 1 },
+      { id: 52111, orderId: 52111, customerName: 'מרים אברמוביץ', eventDate: at(20), returnDate: null, eventDateHebrew: '', quantity: 1 },
+      { id: 52112, orderId: 52112, customerName: 'תמר פרידמן', eventDate: at(20), returnDate: at(21), eventDateHebrew: '', quantity: 2 },
+    ];
+    return j({ inStock: 3, reserve: 1, occupiedCount: occ.reduce((a, o) => a + o.quantity, 0), occupiedOrders: occ });
+  }
   if (u.startsWith('/api/inventory/preload')) return j({ stock, bookings: [], settings: { bufferDays: 3, skipWeekends: true } });
   if (u.startsWith('/api/orders/pricing')) return j({ basePrice: PRICE });
   if (u.startsWith('/api/orders/calculate')) {

@@ -89,6 +89,17 @@ await safe('06-dates-sel', async () => {
 });
 await safe('07-dates-notes', async () => (D ? js(() => { S.ev.notesOpen = true; paint('dates'); }) : click('details.coll > summary')));
 await safe('08-spacing-dlg', async () => (D ? js(() => document.querySelector('#spSeg [data-v="1"]').click()) : click('#spSeg button:nth-of-type(3)')));
+// R22: חלון חיפוש התפוסה (נפתח מ"רגע, בדקת מלאי?") - ריק, ואז עם תוצאות. אחר כך חוזרים לחלון הציפוף כדי ששלב 09 יישאר זהה
+await safe('08b-capsearch', async () => (D ? js(() => document.querySelector('#spSearch').click()) : clickText('#dlg .btn', 'פתח חיפוש')));
+await safe('08c-capsearch-res', async () => {
+  if (D) await js(() => { document.querySelector('#csModel').value = '4512'; document.querySelector('#csSize').value = '38'; document.querySelector('#csGo').click(); });
+  else { await type('#noCapModel', '4512'); await mdown('#noCapModels .advo'); await p.select('#noCapSize', '38'); await click('#dlg2 button[type=submit]'); await sleep(400); }
+});
+if (!D) await safe('x3-capsearch-board', async () => { await click('#capView button:nth-of-type(2)'); await sleep(500); });
+await safe('08d-back-to-spacing', async () => {
+  if (D) await js(() => { closeDlg(); document.querySelector('#spSeg [data-v="1"]').click(); });
+  else { await click('#dlg2 .btn.ghost'); await click('#spSeg button:nth-of-type(3)'); }
+});
 await safe('09-pin-dlg', async () => (D ? js(() => document.querySelector('#spYes').click()) : click('#dlg .btn.primary')));
 await safe('10-delivery', async () => {
   if (D) await js(() => { closeDlg(); S.ev.spacing = null; S.ev.notesOpen = false; paintAll(); go(3); });
@@ -108,6 +119,10 @@ await safe('14-items-sizes', async () => {
   else { await clickText('#addSizes button', '38'); await clickText('#addSizes button', '40'); await click('.altopts .opt'); await type('#noAltLen', '3'); await type('#noAltNote', 'קיצור'); await sleep(600); }
 });
 await safe('15-items-cart', async () => (D ? js(() => document.querySelector('[data-act="add-cart"]').click()) : click('.addbar .btn.primary')));
+// R22: "בדוק תפוסה" לפריט מהסל - רשימה (כמו capacityDlg בעיצוב), ואז הלוח (רק בדף האמיתי)
+await safe('15b-capacity', async () => (D ? js(() => document.querySelector('[data-act="capacity"]').click()) : click('.ibtn[aria-label="בדוק תפוסה"]')));
+if (!D) await safe('x4-capacity-board', async () => { await click('#capView button:nth-of-type(2)'); await sleep(500); });
+await safe('15c-capacity-closed', async () => (D ? js(() => closeDlg()) : click('#dlg2 .btn.ghost')));
 await safe('16-summary', async () => (D ? js(() => go(5)) : click(NEXT)));
 await safe('17-payment', async () => (D ? js(() => go(6)) : click(NEXT)));
 await safe('18-credit', async () => (D ? js(() => document.querySelector('[data-act="credit"]').click()) : clickText('.btn.navy', 'חיוב אשראי')));

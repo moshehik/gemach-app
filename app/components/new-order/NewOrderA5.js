@@ -13,7 +13,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
-import { Ic, Note, NoPortal, NoPortalRoot } from './NoUi';
+import { Ic, NoBanner, NoPortal, NoPortalRoot } from './NoUi';
 import {
   ApprovalDialog, BackGuardDialog, BusyDialog, ConfirmDialog, CreditDialog, DialogFrame, DuplicateCustomerDialog, DuplicateOrderDialog,
   ExitDialog, MessageDialog, SpacingDialog, StockShortageDialog, SuccessDialog, SwipeDialog, successChips,
@@ -26,7 +26,7 @@ import StepDelivery from './StepDelivery';
 import StepItems from './StepItems';
 import StepSummary from './StepSummary';
 import StepPayment from './StepPayment';
-import { STEP_KEYS, STEP_META, getCustomerFullName, moneyTxt } from './newOrderLogic';
+import { STEP_KEYS, STEP_META, getCustomerFullName, moneyTxt, plural } from './newOrderLogic';
 import { hebrewParts } from '../schedule/hebrewCalendar';
 
 const STEP_VIEW = { customer: StepCustomer, dates: StepDates, delivery: StepDelivery, items: StepItems, summary: StepSummary, payment: StepPayment };
@@ -98,29 +98,25 @@ function Nav({ ctl }) {
           ? <button type="button" className="btn primary" disabled={next[1]} onClick={next[2]}><Ic n="arrl" />{next[0]}</button>
           : <button type="button" className="btn primary" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>}
       </div>
-      {k === 'payment' && ctl.saveError ? <SaveError err={ctl.saveError} /> : null}
     </>
   );
 }
 
-// R29 (הבעלים): תשובות השרת בשמירה - הודעה מתחת לכפתור השמירה, עם פירוט נפתח (לא חלון קופץ)
-function SaveError({ err }) {
-  const hasDetail = (err.lines && err.lines.length) || err.detail || err.spacingNote;
-  return (
-    <div className="no-saveerr" role="alert">
-      <Note>{err.title}</Note>
-      {hasDetail ? (
-        <details className="coll" open={!!(err.lines && err.lines.length)}>
-          <summary><Ic n="list" />פירוט<Ic n="chev" c="chev" /></summary>
-          <div className="in">
-            {err.lines && err.lines.length ? <div className="list">{err.lines.map(l => <div className="li" key={l}><div className="ic-b"><Ic n="dress" /></div><div className="t"><b>{l}</b></div></div>)}</div> : null}
-            {err.detail ? <div className="muted sm" dir="auto">{err.detail}</div> : null}
-            {err.spacingNote ? <div className="muted sm" style={{ marginTop: 8 }}>{err.spacingNote}</div> : null}
-          </div>
-        </details>
-      ) : null}
-    </div>
-  );
+// R29b (הבעלים): תשובות השרת בשמירה - באנר כחול-כהה מתחת לשורת הכותרת עם "פירוט" נפתח (409 חוסר מלאי / שגיאה כללית), ואזהרה אחרי שמירה
+// מוצלחת (warning). בלי חלון ובלי alert. בישן: חלון/הודעה מתחת לכפתור - ר' NOTES.md.
+function bannerFor(err, warning) {
+  if (err) {
+    const lines = (err.lines || []).map(t => ({ t, i: 'dress' }));
+    const rows = [...lines];
+    if (err.spacingNote) rows.push({ t: err.spacingNote, i: 'info' });
+    if (err.detail) rows.push({ t: err.detail, i: 'alert' });
+    return {
+      id: `e:${err.title}:${rows.length}`, title: err.title, rows,
+      text: lines.length ? plural(lines.length, 'פריט אחד לא זמין', 'פריטים לא זמינים') : 'ההזמנה לא נשמרה - אפשר לנסות שוב',
+    };
+  }
+  if (warning) return { id: `w:${warning}`, title: 'ההזמנה נשמרה, עם אזהרה', text: 'יש לעיין בפירוט', rows: [{ t: warning, i: 'info' }] };
+  return null;
 }
 
 function Dialog({ ctl, layer }) {
@@ -160,11 +156,11 @@ function Dialog({ ctl, layer }) {
       const o = ctl.order;
       body = (
         <>
+          {/* R29b: האזהרה אחרי שמירה מוצגת בבאנר מתחת לשורת הכותרת (לא בחלון) */}
           <SuccessDialog orderId={s.orderId} customerName={getCustomerFullName(o.selectedCustomer)} dateLabel={shortHeb(o.isAbroad ? o.fromDate : o.eventDate)}
             chips={successChips({ itemsCount: ctl.activeItems.length, isDelivery: o.isDelivery, deliveryDirection: o.deliveryDirection, balance: ctl.remaining,
               specialSpacing: o.customSpacing !== null && o.customSpacing !== undefined && o.customSpacing < 3, settings: ctl.settings, customerEmail: o.selectedCustomer && o.selectedCustomer.email })}
             targetLabel={ctl.targetLabel} onNew={ctl.newOrder} onPrint={ctl.printSaved} onTarget={ctl.goTarget} close={close} />
-          {s.warning ? <Note style={{ marginTop: 14 }}>{s.warning}</Note> : null}
         </>
       );
       break;
@@ -180,11 +176,14 @@ export default function NewOrderA5() {
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   const [rootEl, setRootEl] = useState(null);
+  const [warnClosed, setWarnClosed] = useState(null); // אזהרת "נשמרה" שנסגרה (לפי מספר ההזמנה)
   const setRoot = useCallback((el) => { rootRef.current = el; setRootEl(el); }, []);
   usePageTooltip(rootRef, ttRef, false);
   const View = STEP_VIEW[ctl.stepKey];
   const question = useMemo(() => STEP_META[ctl.stepKey].q, [ctl.stepKey]);
   const t = ctl.toast;
+  const savedWarning = ctl.saved && ctl.saved.warning && warnClosed !== ctl.saved.orderId ? ctl.saved.warning : '';
+  const banner = bannerFor(ctl.saveError, savedWarning);
 
   return (
     <div className="gm-ds gm-no home-bg dlg-dark" dir="rtl" ref={setRoot}>
@@ -196,6 +195,8 @@ export default function NewOrderA5() {
             <div className="ttl"><h1><bdi>הזמנה חדשה</bdi></h1></div>
             <div className="tools" />
           </div>
+          {banner ? <NoBanner key={banner.id} id={banner.id} title={banner.title} text={banner.text} rows={banner.rows}
+            onClose={() => (ctl.saveError ? ctl.setSaveError(null) : setWarnClosed(ctl.saved.orderId))} /> : null}
           <ProgressBars ctl={ctl} />
           <div className="hero-t" id="heroT"><h2 className="hero-q">{question}</h2></div>
           <div className="no-panels">

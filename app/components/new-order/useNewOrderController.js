@@ -767,7 +767,7 @@ export default function useNewOrderController({ router }) {
     deliveryCityOptions, deliveryAddressRequired, deliveryCityRequired, deliveryError,
     paymentMethodOptions, payment, setPayment, paymentsList, removePayment, totalPaid, remaining, handleAddPaymentClick, openCredit,
     creditCardData, setCreditCardData, creditError, isProcessingCredit, handleProcessCreditCard,
-    saving, saveError, saveOrder, saved, draftOrderId,
+    saving, saveError, setSaveError, saveOrder, saved, draftOrderId,
     capacityItem, setCapacityItem, showCapacitySearch, setShowCapacitySearch,
     // פעולות
     handleCheckPhone, handleUseExistingCustomer, proceedToStep2, handleSaveNewCustomerAndProceed,

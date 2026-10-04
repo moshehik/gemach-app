@@ -77,7 +77,13 @@ test('פריטים שהבעלים הוסיף/אישר קיימים (S03, S06, S0
   assert.ok(!/דיוורים ועדכונים/.test(VIEW), 'R06 לא הנוסח הישן של האשף');
   assert.match(read('StepCustomer.js'), /className="no-grp"/, 'R03');
   assert.match(read('useNewOrderController.js'), /ask\('stock'/, 'R13 חלון חוסר מלאי');
-  assert.match(read('NewOrderA5.js'), /function SaveError[\s\S]*<details className="coll"/, 'R29 הודעה + פירוט נפתח');
+  // R29b (הבעלים): באנר כחול-כהה של הפלטה (.nb) מתחת לשורת הכותרת עם "פירוט" נפתח - לא חלון ולא הודעה מתחת לכפתור
+  assert.match(read('NoUi.js'), /export function NoBanner[\s\S]*className=\{`nb nb-\$\{kind\}[\s\S]*className="nb-more"[\s\S]*className="nb-bw"/, 'R29b באנר nb + פירוט');
+  assert.match(read('NewOrderA5.js'), /<NoBanner [\s\S]*?onClose/, 'R29b הבאנר בעמוד');
+  assert.ok(!/<SaveError|function SaveError|<Note style=\{\{ marginTop: 14 \}\}>\{s\.warning/.test(read('NewOrderA5.js')), 'R29b אין הודעה מתחת לכפתור / אזהרה בתוך החלון');
+  assert.match(read('NewOrderA5.js'), /function bannerFor[\s\S]*err\.lines[\s\S]*err\.spacingNote[\s\S]*err\.detail[\s\S]*warning/, 'R29b: 409 / שגיאה כללית / אזהרה');
+  // R03b: אייקון סימן קריאה בהודעת "חובה למלא לפחות אחד מבין"
+  assert.match(read('StepCustomer.js'), /className="no-grp" role="note"><Ic n="alert"/, 'R03b אייקון');
   assert.match(read('useNewOrderController.js'), /ask\('backGuard'/, 'R02');
   assert.match(read('NewOrderA5.js'), /className="pbars"/, 'G3');
   assert.match(read('NoSuggest.js'), /className="advlist"/, 'G2');

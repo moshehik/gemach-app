@@ -3,7 +3,7 @@
 // רכיבי עזר קטנים של אשף "הזמנה חדשה" (A5) - כולם markup של הפלטה כמו בעיצוב המאושר (תצוגות-עיצוב/הזמנה-חדשה.html, B2):
 // אייקון מה-sprite המוטמע (#gmi-*), כפתור עזרה .tip, שדה .field עם האייקון בשורת התווית (oneCard/lblIcons של העיצוב),
 // כותרת משנה .sub-h, בורר גלולה .seg.pill עם האנימציה (pillRun), ושכבת הפורטל לשורש הדף (חלונות/טוסט יורשים את ההיקף .gm-ds.gm-no).
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import { moneyAmount } from './newOrderLogic';
@@ -117,6 +117,44 @@ export function Note({ icon = 'alert', children, className = 'empty', style }) {
 
 // אגורות מוצגות כשיש (moneyAmount): מחיר/תשלום לא שלם לא מעוגל בשקט לשקל שלם
 export const money = (n) => <bdi dir="ltr">₪{moneyAmount(n)}</bdi>;
+
+// R29b (הבעלים): הודעת שמירה (חוסר מלאי 409 / שגיאה כללית / אזהרה אחרי שמירה) - הבאנר הכחול-כהה של האתר (.nb, "באנרים והתראות" בפלטה:
+// design-system/COMPONENTS.md; אותו שלד כמו StockCheckPage ודף הבית) מתחת לשורת הכותרת, עם "פירוט" נפתח (.nb-more -> .nb-bw/.nb-bi/.nb-r).
+// בלי חלון ובלי alert. rows: [{t, i?}]; kind: 'warning' (פס זהב, כמו הבאנר באתר) / 'info'.
+export function NoBanner({ id, kind = 'warning', title, text, rows = [], onClose }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const bodyId = useId();
+  useEffect(() => { // ההודעה מופיעה בראש המסך, והלחצן שגרם לה בתחתיתו - מביאים אותה לתצוגה
+    const el = ref.current;
+    if (el && el.scrollIntoView) { try { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* */ } }
+  }, [id]);
+  return (
+    <div className="nb-area no-banner" data-sec="banner">
+      <div className="nb-w">
+        <section className={`nb nb-${kind}${open ? ' open' : ''}`} role="alert" aria-live="assertive" ref={ref}>
+          <div className="nb-main">
+            <div className="nb-head">
+              <span className="nb-ic" aria-hidden="true"><Ic n="alert" /></span>
+              <div className="nb-msg"><b>{title}</b>{text ? <span>{text}</span> : null}</div>
+              {onClose ? <button type="button" className="nb-x" aria-label="סגור" data-tip="סגור" onClick={onClose}><Ic n="x" /></button> : null}
+            </div>
+            {rows.length ? (
+              <div className="nb-acts">
+                <button type="button" className="nb-more" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(!open)}><span>{open ? 'פחות פירוט' : 'פירוט'}</span><Ic n="chev" /></button>
+              </div>
+            ) : null}
+          </div>
+          {rows.length ? (
+            <div className="nb-bw"><div className="nb-body" id={bodyId}><div className="nb-bi">
+              {rows.map((r, k) => <div className="nb-r" key={`${k}${r.t}`}><i><Ic n={r.i || 'dress'} /></i><span dir="auto">{r.t}</span></div>)}
+            </div></div></div>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
+}
 
 // ---------- פורטל לשורש הדף ----------
 export const NoPortalRoot = createContext(null);

@@ -209,7 +209,7 @@ export function ItemCapacityDialog({ item, order, currentOrderId, onClose }) {
       }
     })();
     return () => { off = true; };
-  }, [item, order && order.eventDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [item, order && order.eventDate]);
 
   const name = (item.dressItem && item.dressItem.dress && item.dressItem.dress.name) || item.description || 'פריט';
   return (
