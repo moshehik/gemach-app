@@ -398,4 +398,13 @@ t('#3 web_backup_mode (דגל המעבר החי) מוסתר: לא מוצב בא�
   assert.ok(!JSON.stringify(vm).includes('web_backup_mode'));
 });
 
+t('#4 db-mode: POST מוגבל למתכנת בלבד (DEVELOPER_ONLY_ROLES), לא הנהלה ראשית', () => {
+  const route = read('../app/api/admin/db-mode/route.js');
+  const post = route.slice(route.indexOf('export async function POST'));
+  assert.ok(/checkAuth\('מתכנת'\)/.test(post) && !/הנהלה ראשית/.test(post.replace(/\/\/.*$/gm, '')));
+  const auth = read('../lib/auth.js');
+  assert.ok(/'מתכנת':\s*\[2\]/.test(auth) && /DEVELOPER_ONLY_ROLES\s*=\s*\[2\]/.test(auth), "ROLE_LEVELS['מתכנת'] = DEVELOPER_ONLY_ROLES");
+  assert.ok(!/checkAuth/.test(route.slice(route.indexOf('export async function GET'), route.indexOf('export async function POST'))), 'GET ציבורי: רק mode');
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
