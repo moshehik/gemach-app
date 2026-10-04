@@ -3,14 +3,13 @@
 // (scripts/test_home_logic.mjs). מקור הלוגיקה: public/a5/adapters/ai.js ו-public/a5/index.html
 // (אב-טיפוס מחובר); הכללים של הדף הישן: app/components/home/LegacyHome.js.
 
-export const DEFAULT_TITLE = 'ברוכים הבאים לגמ״ח';
-
 const str = (v) => (v === null || v === undefined ? '' : String(v));
 
 /* ---------- כותרת ---------- */
 
 // כותרת הדף בשתי שורות: { hi, q }. hi = "שלום [שם]," (סלמון), q = השורה השנייה (כחול).
-//  - הגדרה ריקה → "ברוכים הבאים לגמ״ח" בשורה אחת (החלטת הבעלים).
+//  - הגדרה ריקה → הברכה המעוצבת המותאמת אישית (DESIGNED_TITLE: "שלום [שם]," + "מה תרצי לחפש?"), כמו בנוסח המוסכם (GQ-02 / HM-05;
+//    התשובה הקודמת גוברת על "ברוכים הבאים לגמ״ח").
 //  - הגדרה בצורת "שלום! מה תרצי לחפש?" → מפוצלת בסימן הקריאה; "שלום" הופך ל"שלום [שם פרטי]," כשיש עובדת מחוברת
 //    (כמו homeTitleHtml בעיצוב).
 //  - הגדרה אחרת (בלי "!") ועובדת מחוברת → "שלום [שם]," ומתחת טקסט ההגדרה (ר' V1-RELEASE-PLAN, החלטה על פריט 11).
@@ -33,9 +32,9 @@ export function isLegacyDefaultTitle(title) {
 }
 
 export function buildGreeting(rawTitle, firstName) {
-  const t = isLegacyDefaultTitle(rawTitle) ? DESIGNED_TITLE : str(rawTitle).trim();
+  const trimmed = str(rawTitle).trim();
+  const t = isLegacyDefaultTitle(rawTitle) || !trimmed ? DESIGNED_TITLE : trimmed;
   const name = str(firstName).trim();
-  if (!t) return { hi: null, q: DEFAULT_TITLE };
   const m = /^([^!]*)!\s*(.*)$/.exec(t);
   if (m && m[2]) {
     let hi = m[1].trim();

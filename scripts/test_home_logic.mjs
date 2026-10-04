@@ -3,7 +3,7 @@
 // הרצה: node scripts/test_home_logic.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import {
-  buildGreeting, DEFAULT_TITLE, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
+  buildGreeting, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
   TABLE_COLUMNS, sortRecords, exportRecordsForRows, parseAiTags, safeInternalRoute, botMessageFromResponse,
   botErrorMessage, chatToHistory, chatCopyText, aiRowView, aiRowKind, aiRowHref, richSegments, rowsToCsv,
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
@@ -32,10 +32,13 @@ function t(name, fn) {
 }
 
 console.log('כותרת');
-t('הגדרה ריקה → "ברוכים הבאים לגמ״ח" בשורה אחת, גם כשיש שם', () => {
-  assert.deepEqual(buildGreeting('', 'רחל'), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting(undefined, ''), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting('   ', 'רחל'), { hi: null, q: DEFAULT_TITLE });
+t('הגדרה ריקה → הברכה המעוצבת המותאמת אישית ("שלום [שם]," + "מה תרצי לחפש?"), לא "ברוכים הבאים לגמ״ח"', () => {
+  assert.deepEqual(buildGreeting('', 'רחל'), { hi: 'שלום רחל,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting('   ', 'רחל'), { hi: 'שלום רחל,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(undefined, ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(null, null), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+  // בדיוק כמו ההגדרה שנשמרה בפועל (GQ-02b)
+  assert.deepEqual(buildGreeting('', 'רחל'), buildGreeting('שלום! מה תרצי לחפש?', 'רחל'));
 });
 t('"שלום! מה תרצי לחפש?" → "שלום [שם]," + שורה שנייה', () => {
   assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
@@ -76,13 +79,13 @@ t('נוסח ברירת המחדל הישן ("ברוכים הבאים למערכ�
   // בלי עובדת מחוברת: "שלום" + השורה השנייה (כמו "שלום! מה תרצי לחפש?" בעיצוב)
   assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח', ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
 });
-t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → "ברוכים הבאים לגמ״ח"', () => {
+t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → הברכה המעוצבת', () => {
   assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת ניהול הגמ"ח של נווה'), false);
   assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת'), false);
   assert.equal(isLegacyDefaultTitle(''), false); assert.equal(isLegacyDefaultTitle(null), false);
   assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח של נווה', 'אסתר'), { hi: 'שלום אסתר,', q: 'ברוכים הבאים למערכת ניהול הגמ"ח של נווה' });
-  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting(null, ''), { hi: null, q: 'ברוכים הבאים לגמ״ח' });
+  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: 'שלום אסתר,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(null, ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
 });
 t('המחרוזת המדויקת של העיצוב "שלום! מה תרצי לחפש?" מתפצלת כמו בעיצוב', () => {
   assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
