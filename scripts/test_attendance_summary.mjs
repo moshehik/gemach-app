@@ -446,7 +446,7 @@ await t('SHIFT_AUDIT_ACTOR_SINCE ניתן לדריסה במשתנה סביבה (
   const url = pathToFileURL(path.join(PROJ, 'lib/attendance/summary.js')).href;
   const run = (env) => execFileSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', `import(${JSON.stringify(url)}).then((m) => console.log(m.SHIFT_AUDIT_ACTOR_SINCE))`], { env: { ...process.env, ...env }, encoding: 'utf8' }).trim();
   assert.equal(run({ SHIFT_AUDIT_ACTOR_SINCE: '2026-11-01T10:00:00+02:00' }), '2026-11-01T08:00:00.000Z');
-  assert.equal(run({ SHIFT_AUDIT_ACTOR_SINCE: 'garbage' }), '2026-10-05T00:00:00.000Z');
+  assert.equal(run({ SHIFT_AUDIT_ACTOR_SINCE: 'garbage' }), '2026-10-04T12:15:00.000Z');
 });
 await t('PDF בשרת (AT-07): /attendance/print פתוח לכל מחובר (הנתונים נבדקים ב-API), נתיבים אחרים נשארים סגורים', async () => {
   assert.equal(PA.printPathPageKeys('/attendance/print'), PA.LOGIN_ONLY_PAGE_KEYS);
