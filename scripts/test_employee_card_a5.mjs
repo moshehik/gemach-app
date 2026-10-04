@@ -1,6 +1,6 @@
 // בדיקת יחידה לכרטיס העובד החדש (lib/employeeCardA5.js + lib/employeeCardPermGroups.js + lib/employeeCardHistory.js + שומרי מקור
 // לרכיבי app/components/employee-card/*): המטענים מול השרת זהים לכרטיס הישן (העתקים מילוליים של handleSave / saveShift / שינוי סיסמה /
-// SendEmailModal כ"אורקל"), 34 שורות ההרשאה מכוסות בקטגוריות בדיוק פעם אחת, נרמול ההיסטוריה, והחלטות הבעלים EC-05..EC-12 בקוד.
+// SendEmailModal כ"אורקל"), 36 שורות ההרשאה מכוסות בקטגוריות בדיוק פעם אחת, נרמול ההיסטוריה, והחלטות הבעלים EC-05..EC-12 בקוד.
 // לא נוגעת ב-DB / ברשת. הרצה: node scripts/test_employee_card_a5.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -226,8 +226,8 @@ await t('עזרים קטנים: תאריך כניסה, ראשי תיבות, "ה�
 
 console.log('קטגוריות ההרשאות (EC-09)');
 const configurable = PERMISSION_CATALOG.filter((i) => !i.notConfigurable);
-await t('34 השורות הניתנות להגדרה: כל אחת בקטגוריה אחת בדיוק (ואף אחת לא ב"אחר")', () => {
-  assert.equal(configurable.length, 34);
+await t('36 השורות הניתנות להגדרה: כל אחת בקטגוריה אחת בדיוק (ואף אחת לא ב"אחר")', () => {
+  assert.equal(configurable.length, 36);
   const seen = new Map();
   for (const c of PERM_CATEGORIES) for (const k of c.keys) { assert.equal(seen.has(k), false, `${k} בשתי קטגוריות`); seen.set(k, c.id); }
   for (const item of configurable) assert.ok(seen.has(item.key), `${item.key} ללא קטגוריה`);
@@ -238,7 +238,7 @@ await t('groupPermissionItems: 8-10 קבוצות (החלטת הבעלים המע
   const groups = groupPermissionItems(configurable);
   assert.ok(groups.length >= 8 && groups.length <= 10, `קבוצות: ${groups.length}`);
   const flat = groups.flatMap((g) => g.items.map((i) => i.key));
-  assert.equal(flat.length, 34); assert.equal(new Set(flat).size, 34);
+  assert.equal(flat.length, 36); assert.equal(new Set(flat).size, 36);
   assert.ok(groups.every((g) => g.items.length > 0 && g.title && g.icon));
   const extra = groupPermissionItems([...configurable, { key: 'feature:future_thing' }]);
   assert.equal(extra.at(-1).id, 'other'); assert.equal(extra.at(-1).items[0].key, 'feature:future_thing');
