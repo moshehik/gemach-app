@@ -3,16 +3,19 @@ import { cookies } from 'next/headers';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { isMissingTableError } from '@/lib/prismaMissingTable';
 
 // Smart quick-search `$` trigger (docs/smart-quick-search-plan-2026-09-27.md, Part 2) -
 // searches the current employee has explicitly named/saved for reuse. Always scoped to
 // the employeeId derived from the auth_token cookie server-side - never a client-supplied
 // employee id, same as app/api/me/design-prefs/route.js. Phase 1 only saves a free-text
 // query (+ optional domain); filtersJson is reserved for a future advanced-search phase.
+// Missing table (SavedSearch not created in this database yet - no DDL is run from here): GET answers 200 with an empty list and
+// `unavailable: true`, POST / DELETE answer 503 with `unavailable: true` - the UI quietly hides the feature, never a 500.
 const SAVED_SEARCH_LIMIT = 50;
 const LABEL_MAX_LENGTH = 80;
 const QUERY_MAX_LENGTH = 300;
-const DOMAIN_MAX_LENGTH = 40;
+const SAVED_DOMAINS = new Set(['customers', 'orders', 'items']); // the advanced-search domains; anything else is stored as null
 
 // The identity is the VERIFIED auth_token (a signed auth_session naming the same employee),
 // never the raw cookie - see CLAUDE.md "Auth cookie forgery". checkAuth() alone is not enough
@@ -25,6 +28,7 @@ async function getEmployeeId() {
 }
 
 const clip = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
+const unavailable = () => NextResponse.json({ error: 'Saved searches are not available', unavailable: true }, { status: 503 });
 
 export async function GET() {
   if (!(await checkAuth())) {
@@ -45,6 +49,7 @@ export async function GET() {
 
     return NextResponse.json({ savedSearches });
   } catch (error) {
+    if (isMissingTableError(error)) return NextResponse.json({ savedSearches: [], unavailable: true });
     console.error('Error fetching saved searches:', error);
     return NextResponse.json({ error: 'Failed to fetch saved searches' }, { status: 500 });
   }
@@ -67,7 +72,8 @@ export async function POST(request) {
     }
     const label = clip(body.label, LABEL_MAX_LENGTH);
     const query = clip(body.query, QUERY_MAX_LENGTH);
-    const domain = clip(body.domain, DOMAIN_MAX_LENGTH) || null;
+    const rawDomain = clip(body.domain, 20);
+    const domain = SAVED_DOMAINS.has(rawDomain) ? rawDomain : null;
 
     if (!label) {
       return NextResponse.json({ error: 'label is required' }, { status: 400 });
@@ -76,12 +82,36 @@ export async function POST(request) {
       return NextResponse.json({ error: 'query is required' }, { status: 400 });
     }
 
+    // The same query saved twice (double click, two tabs) is one row: answer with the existing one.
+    const existing = await prisma.savedSearch.findFirst({ where: { employeeId, query }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+    if (existing) return NextResponse.json({ success: true, savedSearch: existing, existing: true });
+
+    // The list (GET) shows at most SAVED_SEARCH_LIMIT rows, so more than that would be saved but invisible - refuse instead.
+    const count = await prisma.savedSearch.count({ where: { employeeId } });
+    if (count >= SAVED_SEARCH_LIMIT) {
+      return NextResponse.json({ error: 'Saved searches limit reached', limit: SAVED_SEARCH_LIMIT }, { status: 409 });
+    }
+
     const created = await prisma.savedSearch.create({
       data: { employeeId, label, query, domain },
     });
 
+    // count-then-create and find-then-create are not atomic (no unique index, no DDL here, and no reads inside a transaction):
+    // re-check after the write and roll the extra row back. Concurrent writers apply the same ordering, so exactly one survives.
+    const sameQuery = await prisma.savedSearch.findMany({ where: { employeeId, query }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], take: 2 });
+    if (sameQuery.length > 1 && sameQuery[0].id !== created.id) {
+      await prisma.savedSearch.delete({ where: { id: created.id } }).catch(() => {});
+      return NextResponse.json({ success: true, savedSearch: sameQuery[0], existing: true });
+    }
+    const after = await prisma.savedSearch.count({ where: { employeeId } });
+    if (after > SAVED_SEARCH_LIMIT) {
+      await prisma.savedSearch.delete({ where: { id: created.id } }).catch(() => {});
+      return NextResponse.json({ error: 'Saved searches limit reached', limit: SAVED_SEARCH_LIMIT }, { status: 409 });
+    }
+
     return NextResponse.json({ success: true, savedSearch: created });
   } catch (error) {
+    if (isMissingTableError(error)) return unavailable();
     console.error('Error creating saved search:', error);
     return NextResponse.json({ error: 'Failed to create saved search' }, { status: 500 });
   }
@@ -116,6 +146,7 @@ export async function DELETE(request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (isMissingTableError(error)) return unavailable();
     console.error('Error deleting saved search:', error);
     return NextResponse.json({ error: 'Failed to delete saved search' }, { status: 500 });
   }

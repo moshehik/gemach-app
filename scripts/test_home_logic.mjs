@@ -536,8 +536,8 @@ t('תפוסה: דגם חובה — ההודעה זהה לשרת, נבדק לפנ
   for (const k of Object.keys(ADV_FOCI).filter((x) => x !== 'capacity')) assert.equal(advMissing(k, emptyAdv(k)), '', k + ': אין שדה חובה');
   assert.equal(advMissing('nope', {}), '');
   const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
-  assert.ok(/const missing = advMissing\(adv\.focus, adv\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
-  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(adv.focus'));
+  assert.ok(/const missing = advMissing\(cur\.focus, cur\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
+  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(cur.focus'));
 });
 t('תפוסה: מגבלת צמדי דגם/מידה בשרת מוחזרת כ-400 עם הודעה שהטופס מציג', () => {
   assert.ok(/CAPACITY_PAIRS_MAX = \d+/.test(ADVB_ROUTE));
@@ -748,13 +748,13 @@ t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSpri
 
 console.log('קישורי תפריט "בית" (scope / adv / recent) — 2.10.2026');
 t('parseHomeParams: רשימה סגורה — רק scope מוכר, adv=1 בדיוק, recent=changes בדיוק', () => {
-  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, recent: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, recent: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', run: null, q: null, emp: null, any: true });
   assert.deepEqual(Object.keys(HOME_SCOPES), ['customers', 'orders', 'rentals', 'returns', 'alterations']);
   assert.deepEqual([...HOME_RECENT_VALUES], ['changes', 'mine']);
-  assert.deepEqual(parseHomeParams('?recent=mine'), { scope: null, adv: false, recent: 'mine', q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=mine'), { scope: null, adv: false, recent: 'mine', run: null, q: null, emp: null, any: true });
   assert.equal(parseHomeParams('').any, false); assert.equal(parseHomeParams(undefined).any, false); assert.equal(parseHomeParams(null).any, false);
 });
 t('parseHomeParams: ערכים לא מוכרים נזרקים (בלי prototype, XSS, redirect, רישיות)', () => {
@@ -774,16 +774,16 @@ t('parseHomeParams: מקבל גם URLSearchParams; קלט ענק נחתך; q נ�
   assert.equal(parseHomeParams(big).scope, null, 'מעבר לתקרת האורך — לא נקרא');
 });
 t('parseHomeParams: הוראה אחת — adv עדיף על recent על scope (כתובת, כותרת והדגשת תפריט תואמות)', () => {
-  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, recent: null, q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, recent: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, recent: 'changes', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
   assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').q, 'כ'); assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').scope, 'orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?scope=orders')), 'scope:orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?adv=1')), 'adv');
   assert.equal(homeDirectiveKey(parseHomeParams('?recent=changes')), 'recent:changes');
   assert.equal(homeDirectiveKey(parseHomeParams('?recent=mine')), 'recent:mine');
-  assert.deepEqual(parseHomeParams('?scope=orders&recent=mine'), { scope: null, adv: false, recent: 'mine', q: null, emp: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=mine&adv=1'), { scope: null, adv: true, recent: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=mine'), { scope: null, adv: false, recent: 'mine', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=mine&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
   assert.equal(homeDirectiveKey(parseHomeParams('?q=x')), '');
 });
 t('homeScopeTitle: "<קטגוריה> - מה תרצי לחפש?" לכל קטגוריה, מהטבלה בלבד; לא מוכר = null', () => {
@@ -851,14 +851,14 @@ t("resolveQuickPrefix: '&' פעילה רק כשיש מקור שמותר (לא de
   assert.equal(resolveQuickPrefix('@רחל', { mineUsable: false }).prefix, '@', "'@' לא תלויה במקור של '&'");
   assert.equal(resolveQuickPrefix('רחל&'), null);
 });
-t("detectQuickPrefix: '@' ו-'&' כתו ראשון; '#' ו-'$' טרם נבנו; באמצע הטקסט לא", () => {
-  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&']);
+t("detectQuickPrefix: '@' '&' '#' '$' כתו ראשון; באמצע הטקסט לא ('#' ו-'$' - ר' test_quick_prefix_shortcuts.mjs)", () => {
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$']);
   assert.equal(QUICK_PREFIXES['@'].source, 'local'); assert.equal(QUICK_PREFIXES['&'].source, 'mine');
   assert.equal(detectQuickPrefix('&').prefix, '&'); assert.equal(detectQuickPrefix('&').def.id, 'mine'); assert.equal(detectQuickPrefix('& רחל ').term, 'רחל');
   for (const no of [' &', 'רחל&', 'a&b', 'Q&A']) assert.equal(detectQuickPrefix(no), null, no);
   assert.equal(detectQuickPrefix('@').prefix, '@'); assert.equal(detectQuickPrefix('@').term, '');
   assert.equal(detectQuickPrefix('@ כהן ').term, 'כהן');
-  for (const no of ['', ' @', 'כהן@', 'a@b.co', '#', '$', '!', '#x', '$x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
+  for (const no of ['', ' @', 'כהן@', 'a@b.co', '!', '%x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
 });
 t('filterPrefixRows / splitMatch: סינון לפי כותרת / סוג / טקסט משנה, בלי לשנות את הקלט', () => {
   const rows = [{ key: 'a', kind: 'לקוח', title: 'רחל כהן', sub: 'ירושלים' }, { key: 'b', kind: 'הזמנה', title: 'דנה לוי', sub: '' }];
@@ -985,7 +985,7 @@ t("אין טעינה בטעינת עמוד: useMyActivity לא טוען מעצמ
   const hook = comp.slice(comp.indexOf('export function useMyActivity'), comp.indexOf('export function useQuickPrefix'));
   assert.ok(hook.length > 200 && !/useEffect/.test(hook), 'useMyActivity בלי useEffect = בלי fetch בעליית הרכיב');
   assert.ok(/MINE_TTL_MS = 20000/.test(comp));
-  assert.ok(/if \(src && open && mineLoad\) mineLoad\(\)/.test(comp), 'טעינה רק כשהרשימה של & פתוחה');
+  assert.ok(/if \(src && open && srcLoad\) srcLoad\(\)/.test(comp), 'טעינה רק כשהרשימה של הקידומת (& / $) פתוחה');
   assert.ok(/PREFIX_SOURCES\s*=\s*\{\s*mine: \{ buildModel/.test(comp) && /PREFIX_SOURCES\[hit\.def\.source\]/.test(comp) && /PREFIX_SOURCES\[qp\.def\.source\]/.test(comp), 'ניתוב המקורות דרך הרישום, בלי ענפי source קשיחים');
   assert.ok(!/source === 'mine'/.test(comp), 'אין ענף mine קשיח ב-QuickPrefix.js');
   const fetchers = ['HomeA5.js', 'HomeMine.js'].map((f) => homeSource(f)).join('\n');

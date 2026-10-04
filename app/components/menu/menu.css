@@ -138,3 +138,38 @@
 .gm-ds.gm-menu .mine-menu .mine-all{margin-inline-start:auto;flex:none;width:auto;min-height:40px;height:40px;box-sizing:border-box;padding:0 18px;border-radius:999px;font-size:15px;font-weight:600;gap:8px}
 .gm-ds.gm-menu .mine-menu .mine-all .ic{width:16px;height:16px}
 .gm-ds.gm-menu .mine-menu .mine-all.act{outline:3px solid var(--gm-navy);outline-offset:2px}
+
+/* קיצורי החיפוש בתפריט (5.10.2026): רשימות '#' ו-'$' (הרשימה mine-menu של '&' + שורות sn-link), שדה שם ל"שמור חיפוש", X למחיקה ואייקון שמירה בשדה - בהיקף .gm-ds.gm-menu */
+.gm-ds.gm-menu .mine-menu .sn-link.dis,.gm-ds.gm-menu .mine-menu .sn-link.dis .mine-t small{color:var(--gm-ink3)}
+.gm-ds.gm-menu .mine-menu .sn-link.dis .sn-li{background:var(--gm-sky-50);color:var(--gm-ink3)}
+.gm-ds.gm-menu .pfx-row{display:flex;align-items:center;gap:2px}
+.gm-ds.gm-menu .pfx-row .sn-link{flex:1;min-width:0}
+.gm-ds.gm-menu .pfx-form{direction:rtl;display:flex;flex-direction:column;gap:8px;padding:10px 12px;margin:2px 0;border-radius:12px;text-align:start;background:linear-gradient(90deg,rgba(241,220,143,.42),rgba(247,236,196,.3))}
+.gm-ds.gm-menu .pfx-lbl{font-size:13px;font-weight:600;color:var(--gm-ink2)}
+.gm-ds.gm-menu .pfx-ctx{font-size:12.5px;line-height:1.4;color:var(--gm-ink3);overflow-wrap:anywhere}
+.gm-ds.gm-menu .pfx-acts{display:flex;gap:8px;align-items:center}
+.gm-ds.gm-menu .pfx-acts .btn{flex:none;white-space:nowrap}
+.gm-ds.gm-menu .pfx-err{font-size:13px;font-weight:600;color:var(--gm-red)}
+.gm-ds.gm-menu .pfx-err:empty{display:none}
+.gm-ds.gm-menu .pfx-sr,.gm-ds.pfx-dlg-root .pfx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.gm-ds.gm-menu .pfx-menu .pfx-del{flex:none;opacity:0;transition:opacity 150ms,background-color 150ms,color 150ms}
+.gm-ds.gm-menu .pfx-row:hover .pfx-del,.gm-ds.gm-menu .pfx-row:has(.sn-link.act) .pfx-del,.gm-ds.gm-menu .pfx-menu .pfx-del:focus-visible{opacity:1}
+.gm-ds.gm-menu .pfx-menu .pfx-del:hover,.gm-ds.gm-menu .pfx-menu .pfx-del:focus-visible{background:var(--gm-rose-100);color:var(--gm-rose-700)}
+@media (hover:none),(max-width:767px){.gm-ds.gm-menu .pfx-menu .pfx-del{opacity:1}}
+/* אייקון שמירה בתוך שדה החיפוש של התפריט (אין שם X: ה-X המובנה של הדפדפן מוסתר) */
+.gm-ds.gm-menu .sn-sbox .pfx-save{flex:none;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--gm-ink3);cursor:pointer;transition:background-color 150ms,color 150ms}
+.gm-ds.gm-menu .sn-sbox .pfx-save .ic{width:16px;height:16px}
+.gm-ds.gm-menu .sn-sbox .pfx-save:hover,.gm-ds.gm-menu .sn-sbox .pfx-save:focus-visible{background:var(--gm-gbtn);color:var(--gm-navy-900);outline:0}
+.gm-ds.gm-menu .sn-sbox .pfx-save:focus-visible{box-shadow:0 0 0 3px var(--gm-gold)}
+.gm-ds.gm-menu .sn-sbox .pfx-save[data-st="saved"],.gm-ds.gm-menu .sn-sbox .pfx-save[data-st="done"]{color:var(--gm-gold-d)}
+.gm-ds.gm-menu .sn-sbox .pfx-save[data-st="done"] .ic{transform:scale(1.18)}
+/* חלון אישור המחיקה (מועבר ל-body; עטיפה .gm-ds.dlg-dark.pfx-dlg-root בלי תיבה משלה) */
+.gm-ds.pfx-dlg-root{display:contents}
+.gm-ds.pfx-dlg-root #dlg.pfxdel{max-width:400px}
+.gm-ds.pfx-dlg-root #dlg.pfxdel h2{font-size:19px;overflow-wrap:anywhere}
+.gm-ds.pfx-dlg-root #dlg.pfxdel .dbtns .btn.ghost,.gm-ds.pfx-dlg-root #dlg.pfxdel .dbtns .btn.ghost:hover,.gm-ds.pfx-dlg-root #dlg.pfxdel .dbtns .btn.ghost:focus-visible{color:var(--k-ghost)}
+.gm-ds.pfx-dlg-root #dlg .pfx-tg{display:flex;align-items:center;gap:12px;margin:8px 0 18px;cursor:pointer}
+.gm-ds.pfx-dlg-root #dlg .pfx-tg b{font-weight:600}
+.gm-ds.pfx-dlg-root #dlg .pfx-tg .sw i{background:rgba(169,210,240,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.gm-ds.pfx-dlg-root #dlg .pfx-tg .sw input:checked + i{background:var(--gm-gold);box-shadow:none}
+.gm-ds.pfx-dlg-root #dlg .pfx-tg .sw input:focus-visible + i{box-shadow:0 0 0 3px var(--gm-gold-300)}
