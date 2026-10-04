@@ -5,12 +5,12 @@
 // מהשרת עם dateHe / weekdayHe / time (lib/history/orderHistory.js); ts/day משמשים למיון בלבד ולעולם לא מוצגים.
 
 // [id, תווית, אייקון] - הקטגוריות של הדגימה (HCATS בלי 'all')
-export const HISTORY_CATEGORIES = [['items', 'פריטים', 'dress'], ['pay', 'תשלומים', 'card'], ['del', 'משלוח', 'truck'], ['dates', 'תאריכים', 'cal'], ['docs', 'מסמכים', 'file']];
+export const HISTORY_CATEGORIES = [['items', 'פריטים', 'dress'], ['pay', 'תשלומים', 'card'], ['del', 'משלוח', 'truck'], ['dates', 'תאריכים', 'cal'], ['docs', 'מסמכים', 'file'], ['gen', 'כללי', 'list']];
 // סלי סינון נוספים לפי אייקון השורה (HF_EXTRA) - מוצגים רק כשיש שורה כזו
 export const HISTORY_EXTRAS = [['sig', 'חתימות', 'sig'], ['print', 'הדפסות', 'print'], ['mail', 'מיילים', 'mail'], ['fix', 'תיקונים', 'scissors']];
 const EXTRA_ICON = { sig: 'sig', print: 'print', mail: 'mail', fix: 'scissors' };
 // תווית הקטגוריה בשורת הפיד (catL בדגימה)
-export const ROW_CATEGORY_LABEL = { items: 'פריט', pay: 'תשלום', del: 'משלוח', dates: 'תאריך', docs: 'מסמך' };
+export const ROW_CATEGORY_LABEL = { items: 'פריט', pay: 'תשלום', del: 'משלוח', dates: 'תאריך', docs: 'מסמך', gen: 'כללי' };
 const CATEGORY_NAME = Object.fromEntries(HISTORY_CATEGORIES.map((c) => [c[0], c[1]]));
 
 export const inCategory = (e, k) => (EXTRA_ICON[k] ? e.icon === EXTRA_ICON[k] : e.cat === k);

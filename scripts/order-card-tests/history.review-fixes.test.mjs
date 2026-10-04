@@ -3,7 +3,12 @@
 // סימון הלו״ז היא קבוע אחד. פונקציות טהורות, 3 אזורי זמן (run.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOrderHistory, SCHEDULE_MARK_CAT } from '@/lib/history/orderHistory.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { buildOrderHistory, SCHEDULE_MARK_CAT, ORDER_HISTORY_CATEGORIES, filterByCategory, searchEntries } from '@/lib/history/orderHistory.js';
+import { HISTORY_CATEGORIES, ROW_CATEGORY_LABEL, categoryCount, visibleEntries, filterCategories, exportRows } from '@/app/components/order-card/parts/ocHistoryModel.js';
+
+const PROJ = process.env.PROJ;
 
 const ORDER_UUID = '0b6e7f1c-2a3d-4e5f-8a9b-0c1d2e3f4a5b';
 const ORDER_NO = 53375;
@@ -69,8 +74,37 @@ test('D10: אחד-לאחד - שתי שורות audit ושני כשלים בחל�
   assert.equal(lone.entries.filter((e) => e.text === 'שליחת המייל נכשלה').length, 1);
 });
 
-test('קטגוריית שורות סימון הלו״ז = הקבוע SCHEDULE_MARK_CAT (docs עד החלטת הבעלים)', () => {
-  assert.equal(SCHEDULE_MARK_CAT, 'docs');
+test("W6-MARK: קטגוריית שורות סימון הלו״ז = SCHEDULE_MARK_CAT = 'gen' (\"כללי\", קטגוריה חדשה) - לא מסמכים ולא פריטים", () => {
+  assert.equal(SCHEDULE_MARK_CAT, 'gen');
   const r = feed([mark('SCHEDULE_STAGE_DONE', 0)]);
   assert.equal(r.entries[0].cat, SCHEDULE_MARK_CAT);
+  assert.deepEqual(ORDER_HISTORY_CATEGORIES.find((c) => c[0] === 'gen').slice(0, 2), ['gen', 'כללי']);
+  assert.equal(r.counts.categories.gen, 1, 'ספירת הקטגוריה החדשה');
+  assert.equal(r.counts.categories.docs, 0, 'לא נספר ב"מסמכים"');
+  assert.equal(r.counts.categories.items, 0);
+  assert.deepEqual(filterByCategory(r.entries, ['gen']).map((e) => e.text), ["סומן 'בוצע' בלו״ז · הכנה"]);
+  assert.deepEqual(filterByCategory(r.entries, ['docs']), []);
+  // חיפוש: שם הקטגוריה "כללי" חלק מהטקסט הנחפש
+  assert.equal(searchEntries(r.entries, 'כללי').length, 1);
+});
+
+test('W6-MARK: מודל הלשונית (סינון / ספירה / תווית שורה / ייצוא Excel-הדפסה) מכיר את "כללי"', () => {
+  assert.deepEqual(HISTORY_CATEGORIES.find((c) => c[0] === 'gen').slice(0, 2), ['gen', 'כללי']);
+  assert.deepEqual(HISTORY_CATEGORIES.map((c) => c[0]), ORDER_HISTORY_CATEGORIES.map((c) => c[0]), 'אותו סדר ואותן קטגוריות כמו בשרת');
+  assert.equal(ROW_CATEGORY_LABEL.gen, 'כללי');
+  const r = feed([mark('SCHEDULE_STAGE_DONE', 0), mark('SCHEDULE_STAGE_UNDONE', 60)]);
+  assert.equal(categoryCount(r.entries, 'gen'), 2);
+  assert.equal(categoryCount(r.entries, 'docs'), 0);
+  assert.equal(visibleEntries(r.entries, { selected: ['gen'] }).length, 2);
+  assert.equal(visibleEntries(r.entries, { selected: ['docs'] }).length, 0);
+  assert.ok(filterCategories(r.entries).some((c) => c[0] === 'gen'), 'הלחצן בתפריט הסינון');
+  assert.deepEqual(exportRows(r.entries).map((x) => x['קטגוריה']), ['כללי', 'כללי']);
+});
+
+test('W6-MARK: דף ההדפסה / הטבלה מושכים את שם הקטגוריה מאותו מודל ("כללי"), והשרת מקבל category=gen', () => {
+  const printPage = fs.readFileSync(path.join(PROJ, 'app/print/order-history/page.js'), 'utf8');
+  assert.ok(/HISTORY_CATEGORIES/.test(printPage) && /CAT_NAME/.test(printPage), 'CAT_NAME נבנה מ-HISTORY_CATEGORIES');
+  const route = fs.readFileSync(path.join(PROJ, 'app/api/orders/[id]/history/route.js'), 'utf8');
+  assert.ok(/ORDER_HISTORY_CATEGORIES\.map\(c => c\[0\]\)/.test(route), 'קטגוריות תקפות נגזרות מהמערך');
+  assert.ok(ORDER_HISTORY_CATEGORIES.some((c) => c[0] === 'gen'));
 });
