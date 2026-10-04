@@ -190,12 +190,13 @@ export function OcMailSheet({ oc, ui, mode, type = 'order', to: toInit, snapshot
                   const on = picked.includes(file.id);
                   return (
                     <Fragment key={file.id}>
-                      <div className={`mfile${on ? ' on' : ''}${file.exists ? '' : ' off'}`} role="checkbox" aria-checked={on} aria-disabled={!file.exists} tabIndex={file.exists ? 0 : -1} data-act="mail-file" data-id={file.id}
-                        onClick={() => toggleFile(file)} onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFile(file); } }}>
-                        <span className="mft"><OcIcon name="file" /></span>
-                        <span className="mfx"><b>{file.name}</b><small>{file.exists ? '' : file.miss}</small></span>
+                      {/* שורת הקובץ: ה-checkbox הוא ה-.mfx בלבד; לחצן התצוגה אח שלו (לא מקונן בתוך role="checkbox"), הקלקה על כל השורה עדיין מחליפה */}
+                      <div className={`mfile${on ? ' on' : ''}${file.exists ? '' : ' off'}`} data-act="mail-file" data-id={file.id} onClick={() => toggleFile(file)}>
+                        <span className="mft" aria-hidden="true"><OcIcon name="file" /></span>
+                        <span className="mfx" role="checkbox" aria-checked={on} aria-disabled={!file.exists} tabIndex={file.exists ? 0 : -1}
+                          onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleFile(file); } }}><b>{file.name}</b><small>{file.exists ? '' : file.miss}</small></span>
                         {file.exists ? <button type="button" className="mfe" data-act="mail-prev" data-id={file.id} data-tip="תצוגה" aria-label="תצוגה מקדימה" onClick={(e) => { e.stopPropagation(); setPrev((p) => (p === file.id ? null : file.id)); }}><OcIcon name="eye" size="sm" /></button> : null}
-                        <span className="mfk"><OcIcon name="check" size="sm" /></span>
+                        <span className="mfk" aria-hidden="true"><OcIcon name="check" size="sm" /></span>
                       </div>
                       {prev === file.id && file.exists ? <div className="mprev"><span className="mft"><OcIcon name="file" /></span><div><b>{file.name}</b><small>{PREVIEW_NOTE[file.id]}</small><i /><i /><i /></div></div> : null}
                     </Fragment>

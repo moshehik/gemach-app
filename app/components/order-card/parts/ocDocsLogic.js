@@ -11,7 +11,7 @@
 import { hebDateOf } from '../orderCardLogic';
 import { isDeliveryOut } from '../../../../lib/schedule/deliveryDirection';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
-import { QUICK_MAIL_MAX_BODY, QUICK_MAIL_MAX_SUBJECT } from '../../../../lib/orderQuickMail';
+import { QUICK_MAIL_MAX_BODY, QUICK_MAIL_MAX_FILES, QUICK_MAIL_MAX_SUBJECT } from '../../../../lib/orderQuickMail';
 
 // ---------------------------------------------------------------------------------------------
 // כתובת מייל
@@ -100,6 +100,7 @@ export const MAIL_DEST_OPTIONS = Object.freeze([
 ]);
 export const MAX_QUICK_SUBJECT = QUICK_MAIL_MAX_SUBJECT; // אותן מגבלות כמו השרת (lib/orderQuickMail.js)
 export const MAX_QUICK_BODY = QUICK_MAIL_MAX_BODY;
+export const MAX_QUICK_FILES = QUICK_MAIL_MAX_FILES; // תקרת השרת (lib/orderQuickMail.js): נבדקת גם בלקוח לפני שמייצרים PDF
 
 /** נושא ברירת מחדל למייל מהיר (כמו בדגימה: "הזמנה #N") */
 export const defaultMailSubject = (order) => `הזמנה #${order && order.orderId}`;

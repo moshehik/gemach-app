@@ -28,8 +28,25 @@ export default function OcPrintMenu({ oc, ui }) {
     const onKey = (e) => { if (e.key === 'Escape') { setOpen(false); btnRef.current && btnRef.current.focus(); } };
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
+    // role="menu": בפתיחה הפוקוס עובר לשורה הראשונה (כדי שמקלדת תעבוד מיד); חצים / Home / End ב-onMenuKey
+    const first = menuRef.current && menuRef.current.querySelector('[role="menuitem"]');
+    if (first) first.focus({ preventScroll: true });
     return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
   }, [open]);
+
+  // ניווט מקלדת בתפריט (role="menu"): חץ למטה/למעלה (מעגלי), Home, End; Tab סוגר ומחזיר לפוקוס הלחצן
+  const onMenuKey = (e) => {
+    const els = menuRef.current ? Array.from(menuRef.current.querySelectorAll('[role="menuitem"]')) : [];
+    if (!els.length) return;
+    const i = els.indexOf(document.activeElement);
+    let next = null;
+    if (e.key === 'ArrowDown') next = els[(i + 1) % els.length];
+    else if (e.key === 'ArrowUp') next = els[(i - 1 + els.length) % els.length];
+    else if (e.key === 'Home') next = els[0];
+    else if (e.key === 'End') next = els[els.length - 1];
+    else if (e.key === 'Tab') { setOpen(false); return; }
+    if (next) { e.preventDefault(); next.focus(); }
+  };
 
   // מצב השרת האחרון - הדפים מודפסים מהשרת, לא ממה שבעריכה
   const order = (oc.snapshot && oc.snapshot.order) || oc.order;
@@ -62,7 +79,7 @@ export default function OcPrintMenu({ oc, ui }) {
       <button ref={btnRef} type="button" className="xlbtn xlp" data-act="menu" aria-label="הדפסה ומייל" data-tip="הדפסה / מייל" aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
         <XlGlyph kind="print" />
       </button>
-      <div ref={menuRef} className={`menu${open ? ' open' : ''}`} id="pmenu" role="menu" aria-label="הדפסה ומייל">
+      <div ref={menuRef} className={`menu${open ? ' open' : ''}`} id="pmenu" role="menu" aria-label="הדפסה ומייל" onKeyDown={onMenuKey}>
         {items.map((it) => (
           <button key={it.key} type="button" role="menuitem" data-act={`pm-${it.key}`} onClick={() => pick(it)}>
             <OcIcon name={it.icon} />{it.label}

@@ -13,6 +13,8 @@
 .gm-ds.gm-oc #dlg.fx-sheet .mfiles{display:grid;grid-template-columns:1fr;gap:8px}
 .gm-ds.gm-oc #dlg.fx-sheet .mfile{padding-block:8px;min-height:0;align-items:center}
 .gm-ds.gm-oc #dlg.fx-sheet .mfx small:empty{display:none}
+.gm-ds.gm-oc #dlg.fx-sheet .mfx[role=checkbox]:focus-visible{outline:0}
+.gm-ds.gm-oc #dlg.fx-sheet .mfile:has(> .mfx[role=checkbox]:focus-visible){outline:3px solid var(--gm-gold);outline-offset:2px}
 .gm-ds.gm-oc #dlg.fx-sheet textarea.inp{min-height:260px;resize:none}
 /* שדות טקסט: שקופים עם מסגרת זהב; זוהר במיקוד (בלוק mail-sheet-css) */
 .gm-ds.gm-oc #dlg.fx-sheet :is(input,textarea).inp{background:rgba(15,44,82,.04)!important;border:1.5px solid var(--gm-gold)!important;border-radius:14px!important;transition:border-color .2s,box-shadow .2s,background-color .2s}

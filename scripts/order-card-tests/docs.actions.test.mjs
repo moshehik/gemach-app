@@ -261,3 +261,21 @@ test('הפעולות שנרשמות בכרטיס עומדות בחוזה W0 (par
     assert.equal(p.meta.fileName, meta.fileName);
   }
 });
+
+test('quick: תקרת השרת (10 קבצים) נאכפת בלקוח לפני יצירת PDF-ים: אף HTML/PDF/POST לא נעשים; 10 בדיוק עובר; מצב doc לא מוגבל בכך', async () => {
+  const mk = (n) => Array.from({ length: n }, (_, i) => ({ name: `f${i}.pdf`, size: 3, type: 'application/pdf' }));
+  const docData = { order: ORDER, obligations: [], payments: [{ amount: 40, paymentMethod: 'מזומן', paymentDate: '2026-09-23T07:18:00.000Z' }], items: [] };
+  const f = makeFetch(); const pdf = makePdf();
+  const bad = await A.sendOrderMail({ oc: makeOc(), orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 's', bodyText: 'b', kinds: ['order-pdf', 'payments', 'receipt'], extraFiles: mk(8), docData, fetchImpl: f, pdf, readFile: async () => 'QQ==' });
+  assert.equal(bad.ok, false);
+  assert.match(bad.error, /עד 10 קבצים/);
+  assert.equal(f.calls.length, 0, 'שום בקשה (גם לא HTML של השרת)');
+  assert.equal(pdf.calls.length, 0, 'שום PDF לא נבנה');
+  const f2 = makeFetch(); const pdf2 = makePdf();
+  const ok = await A.sendOrderMail({ oc: makeOc(), orderId: 53375, mode: 'quick', to: 'a@b.co', subject: 's', bodyText: 'b', kinds: ['payments', 'receipt'], extraFiles: mk(8), docData, fetchImpl: f2, pdf: pdf2, readFile: async () => 'QQ==' });
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  assert.equal(posts(f2)[0].body.extraAttachments.length, 10);
+  const f3 = makeFetch();
+  const doc = await A.sendOrderMail({ oc: makeOc(), orderId: 53375, mode: 'doc', to: 'a@b.co', extraFiles: mk(12), fetchImpl: f3, pdf: makePdf(), readFile: async () => 'QQ==' });
+  assert.equal(doc.ok, true, 'מצב doc: אין תקרה כזו בשרת');
+});

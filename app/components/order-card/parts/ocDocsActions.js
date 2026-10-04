@@ -7,7 +7,7 @@
 // שמירת כתובת מייל חדשה בכרטיס הלקוח (PUT /api/customers/:id עם כל שדות הלקוח). כאן במקום window.alert/customAuthPrompt: ui.* / oc.approve.
 // רישום להיסטוריה: הדפסה נרשמת ע"י דף ההדפסה עצמו (חוזה W0 §1.5) - לא כאן; הורדת PDF / ייצוא Excel = oc.logEvent; מייל = השרת (EMAIL_SENT / EMAIL_FAILED).
 import {
-  mailRequestBody, docAttachmentOf, extraAttachmentOf, docFileName, paymentsPageHtml, receiptPageHtml, modelPhotosPageHtml, orderExportSheets, orderEmailOf, isValidEmail,
+  mailRequestBody, MAX_QUICK_FILES, docAttachmentOf, extraAttachmentOf, docFileName, paymentsPageHtml, receiptPageHtml, modelPhotosPageHtml, orderExportSheets, orderEmailOf, isValidEmail,
 } from './ocDocsLogic';
 import { loadModelPhotos } from './ocDocsImages';
 import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
@@ -80,6 +80,10 @@ export async function sendOrderMail({
   fetchImpl = fetch, pdf, readFile = readFileBase64, gmachName, onStep, images,
 }) {
   if (!isValidEmail(to)) return { ok: false, error: 'כתובת המייל אינה תקינה' };
+  // תקרת השרת (עד 10 קבצים במייל מהיר) נבדקת כאן לפני שמייצרים PDF-ים: בלי זה כל הדפים נבנים ורק אז השרת דוחה
+  if (mode === 'quick' && kinds.length + extraFiles.length > MAX_QUICK_FILES) {
+    return { ok: false, error: `אפשר לצרף עד ${MAX_QUICK_FILES} קבצים במייל מהיר - הסירו ${kinds.length + extraFiles.length - MAX_QUICK_FILES} (נבחרו ${kinds.length + extraFiles.length})` };
+  }
   try {
     const attachments = [];
     let pdfBase64 = null;

@@ -72,3 +72,22 @@ test('דף הכנה / דף משלוח נפתחים כלשונית חדשה לכ�
   assert.match(s, /window\.open\(url, '_blank'\)/);
   assert.match(s, /printTargetUrl\(item, orderId\)/);
 });
+
+test('סקירה (ממצא 8): אין כפתור בתוך role="checkbox"; תפריט ההדפסה עם ניווט חצים; מטמון הרשאות הלו״ז עם תפוגה', () => {
+  const mail = read('parts/OcMailSheet.js');
+  const row = mail.slice(mail.indexOf('data-act="mail-file"') - 160, mail.indexOf('{prev === file.id'));
+  assert.match(row, /className=\{`mfile/);
+  assert.ok(!/<div[^>]*className=\{`mfile[^>]*role="checkbox"/.test(row), 'ה-div של השורה אינו checkbox');
+  assert.match(row, /<span className="mfx" role="checkbox"/);
+  assert.ok(row.indexOf('role="checkbox"') < row.indexOf('<button'), 'ה-checkbox נסגר לפני הלחצן (אחים, לא מקוננים)');
+  const cb = row.slice(row.indexOf('<span className="mfx" role="checkbox"'), row.indexOf('</span>', row.indexOf('<small>')) + 7);
+  assert.ok(!/<button/.test(cb), 'בתוך ה-checkbox אין לחצן');
+  const menu = strip(read('parts/OcPrintMenu.js'));
+  for (const k of ['ArrowDown', 'ArrowUp', 'Home', 'End']) assert.ok(menu.includes(`'${k}'`), k);
+  assert.match(menu, /onKeyDown=\{onMenuKey\}/);
+  assert.match(menu, /\.focus\(\{ preventScroll: true \}\)/, 'פוקוס לשורה הראשונה בפתיחה');
+  const acc = strip(read('parts/ocScheduleAccess.js'));
+  assert.match(acc, /SCHEDULE_ACCESS_TTL_MS = 5 \* 60 \* 1000/);
+  assert.match(acc, /Date\.now\(\) - accessAt < SCHEDULE_ACCESS_TTL_MS/);
+  assert.ok(!/if \(accessCache\) return Promise\.resolve\(accessCache\)/.test(acc), 'לא מטמון נצחי');
+});
