@@ -119,13 +119,28 @@ test('PP-07 להזמנה אחת: גרסה ב׳ בכפייה (גם עם version=a
   assert.equal(p.data.sub, 'הזמנה אחת בכל עמוד');
 });
 
-test('PP-07 להזמנה שאינה ביום ההכנה היום (1001: אירוע 15.10) וגם כשהיא מחוקה (1019): עדיין נבנה מההזמנה עצמה', async () => {
+test('PP-07 להזמנה שאינה ביום ההכנה היום (1001: אירוע 15.10): עדיין נבנה מההזמנה עצמה', async () => {
   const a = await get('?page=PP-07&orderId=1001');
   assert.equal(a.status, 200);
   assert.deepEqual(a.__json.pages[0].data.rows.map((x) => x.orderId), [1001]);
   assert.equal(a.__json.meta.date, '2026-10-12', 'ב׳ 12.10: האירוע בחצות ישראלית של ה׳ 15.10, פחות 3 ימי עסקים');
-  const b = await get('?page=PP-07&orderId=1019');
-  assert.equal(b.status, 200);
+});
+
+test('הזמנה מחוקה (1019) או טיוטה (1004 / 9001 במשלוח): 404 בעברית ברורה בכל דף - אין מה להדפיס ואין נתונים שעליהם נרשם ORDER_PRINTED', async () => {
+  for (const [id, re] of [[1019, /נמחקה/], [1004, /טיוטה/], [9001, /טיוטה/]]) {
+    for (const page of ['PP-07', 'PP-12', 'PP-07,PP-12']) {
+      const r = await get(`?page=${page}&orderId=${id}`);
+      assert.equal(r.status, 404, `${id} ${page}`);
+      assert.match(r.__json.error, re, `${id} ${page}`);
+      assert.ok(!r.__json.pages && !r.__json.meta, 'לא מוחזר דף: דף ההדפסה רושם רק אחרי שהנתונים נטענו');
+    }
+  }
+  // הזמנה רגילה לא מושפעת
+  assert.equal((await get('?page=PP-07&orderId=1001')).status, 200);
+  // סטטית: הקוד הלא-בשימוש singleOrderDeleted הוסר, והבדיקה נעשית לפני בניית השורות
+  const so = fs.readFileSync(path.join(process.env.PROJ, 'lib/schedule/print/singleOrder.js'), 'utf8');
+  assert.ok(!so.includes('singleOrderDeleted'));
+  assert.ok(so.indexOf('order.isDeleted') < so.indexOf('rowsByStage = {}'));
 });
 
 test('PP-07 + PP-12 יחד להזמנה אחת: שני דפים, כל אחד להזמנה הזאת בלבד', async () => {
@@ -184,6 +199,29 @@ test('דף ההדפסה: רושם ORDER_PRINTED רק כשמדפיס (לא downlo
   // כל הרישום בלולאה אחת של bodies ובקריאה אחת ל-/api/orders/events (בלי כתיבה ידנית אחרת)
   assert.equal((src.match(/orders\/events/g) || []).length, 1);
   assert.ok(!/auditLog|AuditLog/.test(src));
+});
+
+test('claimDayPrintRecord: אותו דף+תאריך בתוך 10 דקות לא נרשם שוב; דף/תאריך אחר או אחרי 10 דקות כן; תקלת אחסון = רושם; הדף משתמש בו ושומר על הקבוצות', () => {
+  const mem = new Map();
+  const st = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, v) };
+  const T = 1_000_000_000_000;
+  assert.equal(om.claimDayPrintRecord(st, 'PP-10', '2026-10-01', T), true, 'ראשון');
+  assert.equal(mem.get('PP-10:2026-10-01'), String(T), 'מפתח ${sheet}:${date}');
+  assert.equal(om.claimDayPrintRecord(st, 'PP-10', '2026-10-01', T + 60_000), false, 'רענון אחרי דקה');
+  assert.equal(om.claimDayPrintRecord(st, 'PP-10', '2026-10-01', T + 9 * 60_000 + 59_000), false, 'עדיין בתוך 10 דקות');
+  assert.equal(om.claimDayPrintRecord(st, 'PP-11', '2026-10-01', T + 60_000), true, 'דף אחר');
+  assert.equal(om.claimDayPrintRecord(st, 'PP-10', '2026-10-02', T + 60_000), true, 'תאריך אחר');
+  assert.equal(om.claimDayPrintRecord(st, 'PP-10', '2026-10-01', T + 10 * 60_000), true, 'אחרי 10 דקות - נרשם שוב');
+  assert.equal(om.claimDayPrintRecord(st, 'PP-10', '2026-10-01', T + 10 * 60_000 + 1), false, 'והחלון החדש מתחיל');
+  const broken = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('denied'); } };
+  assert.equal(om.claimDayPrintRecord(broken, 'PP-10', 'd', T), true);
+  assert.equal(om.claimDayPrintRecord(null, 'PP-10', 'd', T), true);
+  assert.equal(om.claimDayPrintRecord({ getItem: () => 'garbage', setItem() {} }, 'PP-10', 'd', T), true, 'ערך פגום');
+  const src = fs.readFileSync(path.join(process.env.PROJ, 'app/schedule/print/[page]/page.js'), 'utf8').replace(/\/\/.*$/gm, '');
+  assert.ok(/claimDayPrintRecord\(storage, p\.key, \(payload\.meta && payload\.meta\.date\) \|\| '', Date\.now\(\)\)\) continue;/.test(src));
+  assert.ok(/try \{ storage = window\.sessionStorage; \} catch/.test(src));
+  assert.ok(/scheduleDayPrintEventBodies\(\{ orderIds: collectPrintedOrderIds\(p\.data\)/.test(src), 'הקבוצות של 200 נשארו');
+  assert.ok(src.indexOf('claimDayPrintRecord(storage') > src.indexOf('} else {'), 'רק בהדפסת יום, לא במצב orderId');
 });
 
 test('collectPrintedOrderIds: כל ההזמנות שמופיעות בדף (rows / orders / groups[].rows / late), בלי כפילויות, לפי סדר; לכל 15 הדפים ביום הדמה', async () => {

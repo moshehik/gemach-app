@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { PrintDocument } from '@/app/components/schedule/print/PrintShell';
 import { parsePageList, parseVersions, versionsParam } from '@/lib/schedule/print/registry';
 import { PRINT_FONT_CSS } from '@/lib/schedule/print/font';
-import { collectPrintedOrderIds, hasOrderIdParam, orderModeVersions, parseOrderIdParam, schedulePrintEventBody } from '@/lib/schedule/print/orderMode';
+import { claimDayPrintRecord, collectPrintedOrderIds, hasOrderIdParam, orderModeVersions, parseOrderIdParam, schedulePrintEventBody } from '@/lib/schedule/print/orderMode';
 import { scheduleDayPrintEventBodies } from '@/lib/history/orderEvents';
 import '@/app/components/schedule/print/print.css';
 
@@ -113,6 +113,10 @@ export default function SchedulePrintPage() {
         const body = schedulePrintEventBody({ orderId, pageKey: p.key, loadId });
         if (body) bodies.push(body);
       } else {
+        // טעינה חוזרת של אותו דף ויום בתוך 10 דקות לא נרשמת שוב (sessionStorage, בדף ובתאריך); החלוקה לקבוצות של 200 נשארת
+        let storage = null;
+        try { storage = window.sessionStorage; } catch { /* חסום */ }
+        if (!claimDayPrintRecord(storage, p.key, (payload.meta && payload.meta.date) || '', Date.now())) continue;
         bodies.push(...scheduleDayPrintEventBodies({ orderIds: collectPrintedOrderIds(p.data), pageKey: p.key, loadId }));
       }
     }
