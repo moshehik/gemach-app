@@ -25,6 +25,7 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
   const setTabRef = useRef(oc.setTab);
   useLayoutEffect(() => { actionsRef.current = actions; setTabRef.current = oc.setTab; });
   const queueRef = useRef(null);
+  /* eslint-disable react-hooks/refs -- אתחול עצלן חד-פעמי של התור; הסוגרים קוראים את ה-refs רק כשסריקה רצה (אחרי הרינדור) */
   if (!queueRef.current) {
     queueRef.current = createScanQueue(async (code) => {
       setTabRef.current('items');
@@ -35,6 +36,7 @@ export default function OcScanBar({ oc, ui, SequencePanel }) {
       if (!b) setTimeout(() => { const el = document.getElementById('scanIn'); if (el) el.focus(); }, 0);
     });
   }
+  /* eslint-enable react-hooks/refs */
   const queue = queueRef.current;
   useEffect(() => {
     if (!msg) return undefined;
