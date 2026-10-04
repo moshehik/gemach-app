@@ -2,6 +2,7 @@
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
+import { getHebrewDateString } from '@/lib/hebrewDate';
 
 // חיפוש read-only של הזמנה/פריט לפי ברקוד, בלי לבצע החזרה בפועל - משמש את בר
 // ההחזרה המהיר ב-app/rentals/page.js כדי לבדוק איחור (ר' lib/lateReturn.js)
@@ -75,6 +76,22 @@ export async function POST(request) {
       });
 
       if (!itemToReturn) {
+        // אין פריט פתוח בברקוד הזה - בודקים אם הוא כבר סומן כמוחזר, כדי שהעובדת תדע למה
+        // (דיווח df035847, נווה יעקב 2026-10-04: שמלה סומנה כמוחזרת בטעות 10 ימים קודם והודעה
+        // כללית "לא נמצא" לא הסבירה מה קרה).
+        const alreadyReturned = await prisma.orderItem.findFirst({
+          where: { barcode, isTaken: true, isReturned: true, isDeleted: false },
+          orderBy: [{ returnDate: { sort: 'desc', nulls: 'last' } }, { updatedAt: 'desc' }],
+          select: { orderId: true, returnDate: true }
+        });
+        if (alreadyReturned) {
+          const when = alreadyReturned.returnDate ? ` ב-${getHebrewDateString(alreadyReturned.returnDate)}` : '';
+          return NextResponse.json({
+            error: `השמלה הזו כבר סומנה כמוחזרת בהזמנה ${alreadyReturned.orderId}${when}. אם זו טעות - אפשר לבטל את ההחזרה בכרטיס ההזמנה.`,
+            alreadyReturned: true,
+            orderId: alreadyReturned.orderId
+          }, { status: 404 });
+        }
         return NextResponse.json({ error: 'לא הצלחנו למצוא את ההזמנה' }, { status: 404 });
       }
     }
