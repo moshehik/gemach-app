@@ -38,13 +38,13 @@ export default function CcPaymentsTab({ cc }) {
           <span>סה״כ זיכויים <bdi dir="ltr">{money(account.refunds)}</bdi></span>
           <Tip text="יתרה = חיובים − (תשלומים − זיכויים)" />
         </div>
-        {bal > 0 && charges.length ? (
-          <button type="button" className="btn primary cc-mt24" data-act="pay-now" onClick={() => cc.pay()}><CcIcon name="card" />{payLabel} <bdi dir="ltr">{money(bal)}</bdi></button>
+        {bal > 0 && charges.length && !cc.readOnly ? (
+          <button type="button" className="btn primary cc-mt24" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />{payLabel} <bdi dir="ltr">{money(bal)}</bdi></button>
         ) : null}
         <div className="cc-bankline faint sm">
           <CcIcon name="bank" size="sm" anim={false} />
           <span>פרטי בנק לזיכויים: {bank || 'לא הוזנו'}</span>
-          <button type="button" className="cc-linkbtn" onClick={() => { cc.setTab('details'); cc.setEditCust(true); }}>עריכה</button>
+          <button type="button" className="cc-linkbtn" hidden={cc.readOnly} onClick={() => { cc.setTab('details'); cc.setEditCust(true); }}>עריכה</button>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export default function CcPaymentsTab({ cc }) {
       <div className="card">
         <div className="card-h">
           <div className="ico blue"><CcIcon name="card" size="lg" /></div><h2>תשלומים שהתקבלו</h2>
-          {bal > 0 && charges.length ? <button type="button" className="btn navy" data-act="pay-now" onClick={() => cc.pay()}><CcIcon name="plus" />{cc.paymentsEnabled ? 'הוסף תשלום' : 'תשלום בהזמנה'}</button> : null}
+          {bal > 0 && charges.length && !cc.readOnly ? <button type="button" className="btn navy" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="plus" />{cc.paymentsEnabled ? 'הוסף תשלום' : 'תשלום בהזמנה'}</button> : null}
         </div>
         <div className="list">
           {rows.length ? rows.map((p) => {

@@ -14,7 +14,8 @@ import CcIcon from '../CcIcon';
 import { CcEmailInput, CcInput, Tip, ViewRow } from '../CcFields';
 import { isStarred, joinNotes, signatureState, splitNotes } from '../customerCardLogic';
 
-function EditBtn({ on, onClick }) {
+function EditBtn({ on, onClick, hidden }) {
+  if (hidden) return null;
   const t = on ? 'סיום עריכה' : 'עריכת פרטי לקוח';
   return (
     <button type="button" className="ibtn" data-act="editcust" aria-label={t} data-tip={t} aria-pressed={on} onClick={onClick}>
@@ -40,7 +41,7 @@ export default function CcDetailsTab({ cc, ui }) {
     <div className="cc-mailrow"><button type="button" className="btn sm" data-act="mail-open" onClick={cc.openMail}><CcIcon name="mail" size="sm" />מייל מהיר</button></div>
   );
 
-  const custCard = editCust ? (
+  const custCard = editCust && !cc.readOnly ? (
     <div className="card dfields">
       <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on onClick={() => setEditCust(false)} /></div>
       <div className="grid2">
@@ -58,7 +59,7 @@ export default function CcDetailsTab({ cc, ui }) {
     </div>
   ) : (
     <div className="card cust">
-      <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on={false} onClick={() => setEditCust(true)} /></div>
+      <div className="card-h"><div className="ico rose"><CcIcon name="user" size="lg" /></div><h2>פרטי לקוח</h2><EditBtn on={false} hidden={cc.readOnly} onClick={() => setEditCust(true)} /></div>
       <div className="kv">
         <ViewRow icon="user" label="שם פרטי" value={cur.firstName} required={star('firstName')} />
         <ViewRow icon="user" label="שם משפחה" value={cur.lastName} required={star('lastName')} />
@@ -87,7 +88,7 @@ export default function CcDetailsTab({ cc, ui }) {
       </div>
       {showConsent ? (
         <div className="trow cc-mt24">
-          <label className="sw"><input type="checkbox" id="newsOn" data-f="marketingConsent" checked={!!cur.marketingConsent} onChange={(e) => setField('marketingConsent', e.target.checked)} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
+          <label className="sw"><input type="checkbox" id="newsOn" data-f="marketingConsent" checked={!!cur.marketingConsent} disabled={cc.readOnly} onChange={(e) => setField('marketingConsent', e.target.checked)} aria-label="מאשר/ת קבלת דיוורים" /><i /></label>
           <b>מאשר/ת קבלת דיוורים</b><Tip text="תזכורות ועדכוני מבצעים במייל" />
         </div>
       ) : null}
@@ -108,12 +109,12 @@ export default function CcDetailsTab({ cc, ui }) {
           ))}
         </div>
       ) : null}
-      <textarea className="inp" id="notes" data-f="notes" placeholder="כתבו כאן הערה…" value={manual} onChange={(e) => setField('notes', joinNotes(cc.saved.notes, e.target.value))} aria-label="הערות ללקוחה" />
+      <textarea className="inp" id="notes" data-f="notes" placeholder="כתבו כאן הערה…" value={manual} readOnly={cc.readOnly} onChange={(e) => setField('notes', joinNotes(cc.saved.notes, e.target.value))} aria-label="הערות ללקוחה" />
       {cc.changes.some((c) => c.field === 'notes') ? <div className="faint sm cc-notes-hint">השינוי בהערות יישמר רק בלחיצה על "שמור" בסיכום</div> : null}
     </div>
   );
 
-  const bankCard = editCust ? (
+  const bankCard = editCust && !cc.readOnly ? (
     <div className="card dfields">
       <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2></div>
       <div className="grid2">
@@ -125,7 +126,7 @@ export default function CcDetailsTab({ cc, ui }) {
     </div>
   ) : (
     <div className="card cust cc-bank">
-      <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2><EditBtn on={false} onClick={() => setEditCust(true)} /></div>
+      <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2><EditBtn on={false} hidden={cc.readOnly} onClick={() => setEditCust(true)} /></div>
       <div className="kv">
         <ViewRow icon="bank" label="שם בנק" value={cur.bankName} required={star('bankName')} />
         <ViewRow icon="bank" label="סניף" value={cur.bankBranch} bdi required={star('bankBranch')} />

@@ -12,10 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { addHistory } from '@/lib/historyManager';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { getHebrewDateString } from '@/lib/hebrewDate';
+import { getHebrewDateString, getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
 import { requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 import {
-  accountSummary, buildPaymentPayload, buildSavePayload, computeChanges, customerXlsxSheets, displayName, manualPaymentMethods,
+  accountSummary, deleteBlockers, paymentApprovalLevel, buildPaymentPayload, buildSavePayload, computeChanges, customerXlsxSheets, displayName, manualPaymentMethods,
   nameOk, openCharges, safeFileBase, tabMarkers, undoField, unblockPayload, validateForSave, CARD_FIELD_KEYS,
 } from './customerCardLogic';
 import { DeleteDialog, DiscardDialog, PaymentDialog, SuccessDialog, SummaryDialog } from './CcDialogs';
@@ -87,6 +87,8 @@ export default function useCustomerCard(customerId, ui) {
   const charges = useMemo(() => openCharges(cur, refunds), [cur, refunds]);
   const markers = useMemo(() => tabMarkers({ customer: cur, requiredKeys, balance: account.balance }), [cur, requiredKeys, account.balance]);
   const isHeadManagement = !!me && (me.roleId === 0 || me.roleId === 2);
+  // לקוחה שנמחקה (Customer.isDeleted) - הכרטיס לצפייה בלבד: בלי עריכה, בלי מחיקה, בלי תשלום (פס "נמחק" בראש הדף)
+  const readOnly = !!saved?.isDeleted;
   const paymentsEnabled = settings.allow_additional_payment_on_order === 'true';
   const methods = useMemo(() => manualPaymentMethods(settings), [settings]);
 
@@ -109,10 +111,10 @@ export default function useCustomerCard(customerId, ui) {
 
   // ---------- עריכה ----------
   const setField = useCallback((key, value) => {
-    if (!CARD_FIELD_KEYS.includes(key)) return;
+    if (!CARD_FIELD_KEYS.includes(key) || readOnly) return;
     setRedoStack([]);
     setCur((c) => ({ ...c, [key]: value }));
-  }, []);
+  }, [readOnly]);
   const undo = useCallback((field) => {
     setRedoStack((r) => [...r, clone(cur)]);
     setCur((c) => undoField(c, saved, field));
@@ -239,10 +241,9 @@ export default function useCustomerCard(customerId, ui) {
 
   // ---------- מחיקה ----------
   const deleteCustomer = useCallback(async () => {
-    const blockers = [];
-    const active = (saved?.orders || []).filter((o) => !o.isDeleted && new Date(o.toDate || o.returnDate || o.eventDate || 0) >= new Date(new Date().toDateString()));
-    if (active.length) blockers.push(`יש הזמנות פעילות: ${active.map((o) => `#${o.orderId}`).join(', ')}`);
-    if (account.balance > 0) blockers.push(`יש יתרת חוב של ₪${account.balance.toLocaleString('he-IL')}`);
+    if (readOnly) return;
+    // אותו כלל בדיוק כמו השרת (lib/customerAccount.js deleteBlockers); השרת בודק שוב והוא הסמכות
+    const { messages: blockers } = deleteBlockers({ orders: saved?.orders || [], refunds, todayKey: getIsraelTodayKey(), dateKey: getIsraelDateKey });
     const yes = await ui.openDialog(DeleteDialog, { blockers });
     if (!yes) return;
     const auth = await ui.openDialog(CcApprovalDialog, { level: 'feature:customer_delete_approval', reason: 'מחיקת כרטיס לקוחה', customerId }, { layer: 2, className: 'apprwin', labelledBy: 'cc-appr-t' });
@@ -258,30 +259,41 @@ export default function useCustomerCard(customerId, ui) {
     } catch {
       ui.toast('error', 'שגיאת רשת במחיקה');
     }
-  }, [saved, account.balance, ui, customerId, router]);
+  }, [saved, refunds, ui, customerId, router, readOnly]);
 
   // ---------- תשלום ----------
   // מאושר בהגדרה allow_additional_payment_on_order (כמו "תשלום נוסף" בכרטיס ההזמנה); אחרת "שלם" פותח את ההזמנה (לשונית התשלומים).
+  // נעילה בזמן תשלום (מהפתיחה ועד שהרענון מהשרת חוזר) - בלי זה לחיצה כפולה פותחת שני חלונות / רושמת תשלום פעמיים
+  const payingRef = useRef(false);
+  const [paying, setPaying] = useState(false);
   const pay = useCallback(async (orderId) => {
-    if (!charges.length) return;
+    if (!charges.length || payingRef.current) return;
+    if (readOnly) { ui.toast('error', 'כרטיס הלקוח נמחק', 'אי אפשר לרשום תשלום'); return; }
     if (!paymentsEnabled) {
       const target = orderId || charges[0].order.orderId;
       if (dirty) { await exit(`/orders/${target}`); return; }
       router.push(`/orders/${target}`);
       return;
     }
-    const r = await ui.openDialog(PaymentDialog, { charges, defaultOrderId: orderId, methods });
-    if (!r) return;
+    payingRef.current = true;
+    setPaying(true);
     try {
+      // נווה יעקב (consolidate_manual_payment_credit_ui): תשלום ידני דורש מאשר feature:manual_payment_credit_add - כמו הכפתור המאוחד
+      // בכרטיס ההזמנה הישן (app/orders/[id]/page.js handleOpenManualPaymentCredit), לפני חלון התשלום.
+      const level = paymentApprovalLevel(settings);
+      if (level) {
+        const auth = await ui.openDialog(CcApprovalDialog, { level, reason: 'הוספת תשלום ידני מכרטיס הלקוח', customerId }, { layer: 2, className: 'apprwin', labelledBy: 'cc-appr-t' });
+        if (!auth) return;
+      }
+      const r = await ui.openDialog(PaymentDialog, { charges, defaultOrderId: orderId, methods });
+      if (!r) return;
       const res = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildPaymentPayload(r)) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { ui.toast('error', data.error || 'שגיאה בשמירת התשלום'); return; }
       // ההזמנות והתשלומים נטענים מחדש מהשרת; שינויים שלא נשמרו בפרטים נשארים
       const keep = cur;
-      const fresh = await (async () => {
-        const res2 = await fetch(`/api/customers/${customerId}`);
-        return res2.ok ? res2.json() : null;
-      })();
+      const res2 = await fetch(`/api/customers/${customerId}`);
+      const fresh = res2.ok ? await res2.json().catch(() => null) : null;
       if (fresh && !fresh.error) {
         setSaved((s) => ({ ...s, orders: fresh.orders, updatedAt: fresh.updatedAt }));
         setCur(() => ({ ...keep, orders: fresh.orders, updatedAt: fresh.updatedAt }));
@@ -290,8 +302,11 @@ export default function useCustomerCard(customerId, ui) {
       setHistoryTick((t) => t + 1);
     } catch {
       ui.toast('error', 'שגיאת רשת בשמירת התשלום');
+    } finally {
+      payingRef.current = false;
+      setPaying(false);
     }
-  }, [charges, paymentsEnabled, dirty, exit, router, ui, methods, cur, customerId]);
+  }, [charges, paymentsEnabled, dirty, exit, router, ui, methods, cur, customerId, settings, readOnly]);
 
   // ---------- מייל ----------
   const mailGuard = useRef(null);
@@ -356,7 +371,7 @@ export default function useCustomerCard(customerId, ui) {
 
   return {
     customerId, status, saved, cur, refunds, settings, me, tab, setTab, editCust, setEditCust,
-    requiredKeys, changes, dirty, account, charges, markers, isHeadManagement, paymentsEnabled, methods, saving,
+    requiredKeys, changes, dirty, account, charges, markers, isHeadManagement, paymentsEnabled, methods, saving, readOnly, paying,
     redoCount: redoStack.length, historyTick,
     setField, undo, redo, discardAll, save, exit, unblock, deleteCustomer, pay, openMail,
     exportXlsx, downloadCard, printDoc, printOrder, reload: load,

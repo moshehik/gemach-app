@@ -74,6 +74,25 @@ function BlockedBanner({ cc }) {
   );
 }
 
+// לקוחה שנמחקה: פס "נמחק" בראש הדף; הכרטיס לצפייה בלבד (בלי עריכה / מחיקה / תשלום)
+function DeletedBanner({ cc }) {
+  if (!cc.readOnly) return null;
+  return (
+    <div className="nb-area cc-banner">
+      <div className="nb-w">
+        <section className="nb nb-warning" role="status" aria-labelledby="cc-del-t">
+          <div className="nb-main">
+            <div className="nb-head">
+              <span className="nb-ic" aria-hidden="true"><CcIcon name="trash" /></span>
+              <div className="nb-msg"><b id="cc-del-t">כרטיס הלקוח נמחק</b><span>הכרטיס הוסר מרשימת הלקוחות ומוצג לצפייה בלבד</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 function Tabs({ cc, ui }) {
   const seen = useRef({});
   const freshNow = {};
@@ -197,6 +216,7 @@ function CardBody({ customerId, rootRef }) {
 
   return (
     <div className="app cc-app" id="app">
+      {cc.status === 'ready' ? <DeletedBanner cc={cc} /> : null}
       {cc.status === 'ready' ? <BlockedBanner cc={cc} /> : null}
       <CcTopbar cc={cc} />
       {cc.status === 'loading' ? (

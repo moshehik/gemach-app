@@ -32,7 +32,7 @@ export default function CcRail({ cc, open, setOpen }) {
   const pc = bal > 0 ? 'debt' : bal < 0 ? 'cred' : 'ok';
   const pv = bal > 0 ? `חוב ${money(bal)}` : bal < 0 ? `זיכוי ${money(bal)}` : 'שולם';
   const miss = missingRequiredFields(cur, cc.requiredKeys);
-  const canPay = !dirty && bal > 0 && cc.charges.length > 0;
+  const canPay = !dirty && bal > 0 && cc.charges.length > 0 && !cc.readOnly;
 
   const undo = (key, field) => {
     setLeaving(key);
@@ -76,7 +76,7 @@ export default function CcRail({ cc, open, setOpen }) {
         </div>
       ) : canPay ? (
         <div className="cart-actions">
-          <button type="button" className="btn primary lg block" data-act="pay-now" onClick={() => cc.pay()}><CcIcon name="card" />שלם <bdi dir="ltr">{money(bal)}</bdi></button>
+          <button type="button" className="btn primary lg block" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />שלם <bdi dir="ltr">{money(bal)}</bdi></button>
         </div>
       ) : null}
     </div>

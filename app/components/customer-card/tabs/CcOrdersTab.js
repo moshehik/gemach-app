@@ -49,7 +49,7 @@ function OrderRow({ o, open, onToggle, cc, showDelivery }) {
           <div className="hv-r"><small>יתרה</small><b>{debt > 0 ? <bdi dir="ltr">{money(debt)}</bdi> : 'שולם במלואו'}</b></div>
           <div className="hv-r hv-act"><small>פעולות</small><b className="hv-btns">
             <Link className="btn sm" href={`/orders/${o.orderId}`} data-act="open-order" onClick={(e) => { if (cc.dirty) { e.preventDefault(); cc.exit(`/orders/${o.orderId}`); } }}><CcIcon name="ext" size="sm" />פתיחת הזמנה</Link>
-            {debt > 0 && !o.isDeleted ? <button type="button" className="btn sm" data-act="pay-now" onClick={() => cc.pay(o.orderId)}><CcIcon name="card" size="sm" />שלם <bdi dir="ltr">{money(debt)}</bdi></button> : null}
+            {debt > 0 && !o.isDeleted && !cc.readOnly ? <button type="button" className="btn sm" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay(o.orderId)}><CcIcon name="card" size="sm" />שלם <bdi dir="ltr">{money(debt)}</bdi></button> : null}
             <button type="button" className="ibtn" aria-label="הדפסת סיכום הזמנה" data-tip="הדפסת סיכום הזמנה" onClick={() => cc.printOrder(o.orderId)}><CcIcon name="print" size="sm" /></button>
           </b></div>
         </div>
