@@ -183,3 +183,22 @@ test('C3: createScanQueue - סריקה שנייה בזמן שהראשונה רצ
   await new Promise((r) => setTimeout(r, 20));
   assert.deepEqual(log, ['start:a', 'end:a', 'start:b', 'end:b']);
 });
+
+// ---------- C4: מיקוד ----------
+test('C4: isFocusableTarget - null / body / מנותק / מנוטרל / מוסתר = חסר', async () => {
+  // OcUi.js הוא JSX (לא נטען ב-node) - מחלצים את הפונקציה מהמקור
+  const m = read('OcUi.js').match(/export const isFocusableTarget = [\s\S]*?;\r?\n/);
+  assert.ok(m, 'isFocusableTarget קיים');
+  const body = {}; const doc = globalThis.document;
+  globalThis.document = { body };
+  try {
+    const UI = { isFocusableTarget: new Function('document', `${m[0].replace('export const isFocusableTarget =', 'return')}`)(globalThis.document) };
+    const mk = (o) => ({ focus() {}, isConnected: true, disabled: false, hidden: false, getClientRects: () => [1], ...o });
+    assert.equal(UI.isFocusableTarget(null), false);
+    assert.equal(UI.isFocusableTarget(body), false);
+    assert.equal(UI.isFocusableTarget(mk({ isConnected: false })), false);
+    assert.equal(UI.isFocusableTarget(mk({ disabled: true })), false);
+    assert.equal(UI.isFocusableTarget(mk({ getClientRects: () => [] })), false);
+    assert.equal(UI.isFocusableTarget(mk()), true);
+  } finally { globalThis.document = doc; }
+});

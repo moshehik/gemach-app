@@ -132,14 +132,14 @@ test('c (סטטי): preview-pricing בשרת מכבד extraDay (R-1 של W2a)', 
 test('d (סטטי): ביטול שורה - התעלמות מלחיצה בזמן "נעלמת"; החזר ביטול מנוטרל בזמן שמירה; aria/מיקוד', () => {
   const src = strip(read('parts/OcRail.js'));
   assert.ok(/const undo = \(key\) => \{\s*if \(leavingRef\.current\) return;\s*leavingRef\.current = true;/.test(src));
-  assert.ok(/leavingRef\.current = false;\s*setLeaving\(null\);\s*ocRef\.current\.undoChange\(key\)/.test(src));
+  assert.ok(/leavingRef\.current = false;\s*setLeaving\(null\);\s*undoFocusRef\.current = true;\s*ocRef\.current\.undoChange\(key\)/.test(src));
   assert.ok(/data-act="redo"[^>]*disabled=\{busy\}/.test(src));
   assert.ok(/aria-expanded=\{sheet \? open : true\}/.test(src), 'במסך רחב הרייל תמיד פתוח');
   assert.ok(/className="gl del" role="img"/.test(src) && /className="gl itm-c" role="img"/.test(src));
   assert.ok(/e\.key === 'Escape'/.test(src) && /pointerdown/.test(src), 'Esc ולחיצה מחוץ לגיליון סוגרים אותו');
   assert.ok(/data-oc-focus-fallback/.test(src));
   const ui = strip(read('OcUi.js'));
-  assert.ok(/isConnected === false[\s\S]*data-oc-focus-fallback/.test(ui), 'המיקוד חוזר ללחצן-גיבוי כשהלחצן שפתח את החלון נעלם');
+  assert.ok(/isFocusableTarget\(back\)[\s\S]*focusFallback\(\)/.test(ui) && /querySelector\('\[data-oc-focus-fallback\]'\)/.test(ui), 'המיקוד חוזר ללחצן-גיבוי כשהלחצן שפתח את החלון נעלם/חסר (C4)');
 });
 
 // ---------- (e) debtApproved ----------
