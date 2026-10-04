@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   MANAGER_EXIT_METHOD, isManagerExitMethod, isCreditMethod, pickCreditMethod, validateSplitPayment,
   paymentApprovalLevelRequiresPrompt, splitPaymentNeedsApproval, describeItemAlterations, withDefaultAlterationDetails,
+  creditMethodForCharge, repairsForEdit,
 } from '../lib/newOrderPayments.js';
 
 let passed = 0;
@@ -86,6 +87,25 @@ t('no alteration / alterations disabled: untouched; input not mutated', () => {
 });
 t('describeItemAlterations', () => {
   assert.equal(describeItemAlterations(base), 'ללא תיקונים');
+});
+t('edit: auto text is cleared so unticking an alteration regenerates it', () => {
+  const stored = withDefaultAlterationDetails({ ...base, neckAlteration: true, sleeveAlteration: true }, true);
+  assert.equal(stored.repairs, 'צוואר, שרוול');
+  const edited = { ...stored, repairs: repairsForEdit(stored), sleeveAlteration: false };
+  assert.equal(edited.repairs, '');
+  assert.equal(withDefaultAlterationDetails(edited, true).repairs, 'צוואר');
+});
+t('edit: clerk-typed text is kept', () => {
+  assert.equal(repairsForEdit({ ...base, neckAlteration: true, repairs: 'לקצר 2 ס"מ' }), 'לקצר 2 ס"מ');
+  assert.equal(repairsForEdit({ ...base, repairs: '' }), '');
+  assert.equal(repairsForEdit({ ...base }), '');
+});
+t('credit charge keeps the selected internal credit option; non-credit falls back to the first', () => {
+  const opts = ['מזומן', 'אשראי (דרך נדרים פלוס)', 'אשראי נוסף', 'אשראי חיצונית'];
+  assert.equal(creditMethodForCharge('אשראי נוסף', opts), 'אשראי נוסף');
+  assert.equal(creditMethodForCharge('מזומן', opts), 'אשראי (דרך נדרים פלוס)');
+  assert.equal(creditMethodForCharge('אשראי חיצונית', opts), 'אשראי (דרך נדרים פלוס)');
+  assert.equal(creditMethodForCharge('מזומן', []), 'אשראי (דרך נדרים פלוס)');
 });
 
 console.log(`\n${passed} passed`);

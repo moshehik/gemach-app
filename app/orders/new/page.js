@@ -16,7 +16,7 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
-import { isCreditMethod, pickCreditMethod, validateSplitPayment, splitPaymentNeedsApproval, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails } from '../../../lib/newOrderPayments';
+import { isCreditMethod, validateSplitPayment, splitPaymentNeedsApproval, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -359,7 +359,7 @@ export default function NewOrderPage() {
         
         const newPayment = {
           amount: paymentAmount,
-          method: pickCreditMethod(paymentMethodOptions),
+          method: creditMethodForCharge(payment.method, paymentMethodOptions),
           notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes
         };
         const updatedList = [...paymentsList, newPayment];
@@ -945,7 +945,7 @@ export default function NewOrderPage() {
       dressModelId: itemToEdit.dressModelId || '',
       selectedSizes: itemToEdit.sizeText ? [itemToEdit.sizeText] : [],
       quantity: itemToEdit.quantity || 1,
-      repairs: itemToEdit.repairs || '',
+      repairs: repairsForEdit(itemToEdit),
       dressName: itemToEdit.dressName || '',
       neckAlteration: itemToEdit.neckAlteration || false,
       sleeveAlteration: itemToEdit.sleeveAlteration || false,
