@@ -116,7 +116,7 @@ test('c (סטטי): בקר - preview בכל לשונית, ניקוי שורות 
   const i = src.indexOf('const previewActive = useMemo');
   const blk = src.slice(i, src.indexOf('// חסימת היציאה בגלל חוב חדש', i) > -1 ? src.indexOf('// חסימת היציאה', i) : i + 3000);
   assert.ok(!/tab !== 'payments'|tab === 'payments'/.test(blk), 'אין תלות בלשונית');
-  assert.ok(/const mySeq = \+\+previewSeqRef\.current;\s*if \(!previewActive\) \{[\s\S]*?filter\(o => !o\.isPreview\)[\s\S]*?return undefined;/.test(blk), 'bump לפני ה-return המוקדם + הסרת שורות preview');
+  assert.ok(/const mySeq = \+\+previewSeqRef\.current;\s*if \(!previewActive\) \{[\s\S]*?restoreSavedAutoObligations\(prev, [\s\S]*?return undefined;/.test(blk), 'bump לפני ה-return המוקדם + הסרת שורות preview והחזרת החיובים השמורים (C1)');
   assert.ok(/return \(\) => \{ clearTimeout\(timer\); previewSeqRef\.current \+= 1; \};/.test(blk), 'bump בניקוי');
   assert.ok(/dirty && !!order\?\.orderId && pricingInputsChanged\(snapshot, items, order\)/.test(blk));
   const flows = strip(read('orderCardFlows.js'));
