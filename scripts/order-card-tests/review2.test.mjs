@@ -337,3 +337,16 @@ test('S5: הסקריפט המרונדר של app/layout.js (אחרי עיבוד 
   await win.fetch('/api/auth/verify-pin', { method: 'POST', body: JSON.stringify({ pin: '1234' }) });
   assert.equal(logs[0].requestQuery, null, 'גוף בקשת אימות לא נרשם');
 });
+
+// ---------- S6: /api/orders/events - מזהים לא קיימים לא מפילים את האצווה ולא נחשפים ----------
+test('S6 (סטטי): events route כותב את הקיימים, מחזיר skipped כמספר בלבד, 404 בלי רשימה; התקרה והדה-דופליקציה ב-parseEventsRequest', async () => {
+  const route = fs.readFileSync(P + '/app/api/orders/events/route.js', 'utf8');
+  assert.ok(!/missing/.test(route.replace(/\/\/.*$/gm, '')), 'אין רשימת missing בתשובה');
+  assert.ok(/writeOrderEvents\(\{ orderIds: writable,/.test(route) && /\.\.\.\(skipped \? \{ skipped \} : \{\}\)/.test(route));
+  const OE = await P2('lib/history/orderEvents.js');
+  assert.equal(OE.MAX_EVENT_ORDER_IDS, 200);
+  const over = OE.parseEventsRequest({ orderIds: Array.from({ length: 201 }, (_, i) => i + 1), action: 'ORDER_PRINTED', meta: { doc: 'order' } });
+  assert.equal(over.ok, false); assert.equal(over.code, 'TOO_MANY_ORDERS');
+  const dd = OE.parseEventsRequest({ orderIds: [5, 5, 6, 5], action: 'ORDER_PRINTED', meta: { doc: 'order' } });
+  assert.deepEqual(dd.orderIds, [5, 6]);
+});
