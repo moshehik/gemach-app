@@ -15,6 +15,7 @@ if (await run('build.mjs', [])) process.exit(1);
 bad += await run('interact.mjs', []);
 bad += await run('cmp.mjs', ['1280']);
 bad += await run('cmp.mjs', ['375']);
+bad += await run('phone.mjs', ['375,390,320']);
 await run('views.mjs', ['1280', out]);
 await run('views.mjs', ['375', out]);
 console.log(bad ? '\nנכשל' : '\nהכול עבר; צילומים ב-' + out);

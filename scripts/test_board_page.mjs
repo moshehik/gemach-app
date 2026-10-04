@@ -182,6 +182,21 @@ await t('החלטת הבעלים 5.10: "החודש הנוכחי" מופיע רק
   assert.equal(visible(new Date(2026, 9, 20), nowIL), false, 'יום אחר בחודש הנוכחי - הלחצן מוסתר');
 });
 
+await t('טלפון (5.10 "ותקן לטלפון"): שורת היום בגריד של שתי שורות, כותרת קטנה מ-21px בשורה אחת, אזורי מגע 44px; במחשב השורה נשארת כמו תוצאת חיפוש', () => {
+  const m = /@media \(max-width:720px\)\{\s*\.gm-ds\.gm-bd \.res-one \.li\.bd-lrow\{[^}]*\}[\s\S]*?\n\}/.exec(CSS.replace(/\r\n/g, '\n'));
+  assert.ok(m, 'בלוק הטלפון של שורת היום חסר');
+  const ph = m[0];
+  has(ph, /display:grid;grid-template-columns:auto minmax\(0,1fr\) auto;grid-template-areas:"tile ttl go" "cnt cnt mark"/);
+  has(ph, /\.t b\{font-size:clamp\(13px,4\.2vw,16px\);[^}]*white-space:nowrap\}/, 'התאריך בשורה אחת, קטן מ-21px');
+  has(ph, /\.ic-b\{grid-area:tile;width:52px;height:40px/);
+  has(ph, /#mToday\{min-height:44px;height:44px/);
+  has(ph, /\.hc-h \.hc-n\{width:44px;height:44px/);
+  // המחשב: הכללים הבסיסיים של השורה (21px, ריפוד 28, לוחית 75x48) לא נגעו
+  has(CSS, /\.gm-ds\.gm-bd \.res-one \.li \.t b\{font-size:21px;font-weight:600/);
+  has(CSS, /\.gm-ds\.gm-bd \.res-one \.li\{align-items:center;gap:16px;padding:28px 12px/);
+  has(CSS, /\.ic-b\{display:flex;align-items:center;width:75px;height:48px/);
+});
+
 await t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז של היום", בלי ימי חודש סמוך, בלי שורות סיכום ברשימה', () => {
   hasNot(UI, /תפעול/);
   hasNot(UI, /ללו״ז של היום<|id="toDay"/);

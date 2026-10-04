@@ -175,11 +175,55 @@
 .gm-ds.gm-bd .bd-lrow.bd-latecell{box-shadow:inset 0 0 0 2px var(--red)}
 .gm-ds.gm-bd .bd-lrow.bd-ltoday.bd-latecell{box-shadow:inset 0 0 0 2px var(--red),inset 0 0 0 4px var(--gold)}
 .gm-ds.gm-bd .bd-lrow:focus-visible{box-shadow:inset 0 0 0 2px var(--gold)}
+/* ===== טלפון (<=720px; החלטת הבעלים 5.10 "ותקן לטלפון"): שורת היום בשתי שורות בתוך השורה - למעלה לוחית + כותרת (התאריך העברי בשורה אחת) + חץ,
+   למטה המונים (+ סימן ההתראה בסופה). גריד ולא flex-wrap כדי שהשורה לא תקרוס ל"תאריך בשתי שורות" כשהמסך צר. הגודל קטן מ-21px של
+   תוצאות החיפוש (שם יש 1280px); במחשב (>720px) כל הכללים שלמעלה נשארים כמות שהם. אזורי מגע >=44px. ===== */
 @media (max-width:720px){
- .gm-ds.gm-bd .bd-lrow .t{flex:1 1 0}
- .gm-ds.gm-bd .bd-lrow .bd-lc{order:5;flex:1 1 100%;justify-content:flex-start;margin-inline-start:0}
- .gm-ds.gm-bd .bd-lrow .go{order:4}
- .gm-ds.gm-bd .bd-lrow .lz-al{order:3}
+ .gm-ds.gm-bd .res-one .li.bd-lrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"tile ttl go" "cnt cnt mark";align-items:center;gap:8px 10px;padding:12px 10px;min-height:64px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .ic-b{grid-area:tile;width:52px;height:40px;padding:0 4px;gap:3px;border-radius:12px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .ic-b .ic{width:16px;height:16px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .rlbl{font-size:13px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .t{grid-area:ttl;flex:none;min-width:0;gap:2px}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .t b{font-size:clamp(13px,4.2vw,16px);line-height:1.3;white-space:nowrap}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .t .ln{font-size:12.5px;line-height:1.3}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .go{grid-area:go}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .bd-lc{grid-area:cnt;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px;margin:0;min-width:0}
+ .gm-ds.gm-bd .res-one .li.bd-lrow .lz-al{grid-area:mark;justify-self:end}
+ .gm-ds.gm-bd .bd-lc .lz-pr{padding:3px 10px}
+ .gm-ds.gm-bd .bd-lcard .bd-list{padding:2px 6px 10px}
+ .gm-ds.gm-bd .res-one .list{padding-inline:0}
+ /* אזורי מגע >=44px בסרגל, בכותרת החודש ובמסנן */
+ .gm-ds.gm-bd #mToday{min-height:44px;height:44px;padding:0 16px}
+ .gm-ds.gm-bd #mvsw{width:100px;height:46px;padding:0}
+ .gm-ds.gm-bd #mvsw .vknob{top:0;bottom:0;inset-inline-start:0;width:50%}
+ .gm-ds.gm-bd #mvsw.t .vknob{inset-inline-start:50%}
+ .gm-ds.gm-bd #mvsw .vopt .ic{width:18px;height:18px}
+ .gm-ds.gm-bd .lz-bar{gap:10px}
+ .gm-ds.gm-bd .bd-lcard>.hc-h{gap:8px;padding:10px 8px}
+ .gm-ds.gm-bd .hc-h .hc-n{width:44px;height:44px;flex:none}
+ .gm-ds.gm-bd .lz-jump{min-height:44px;padding:4px 8px;white-space:nowrap;font-size:16px}
+ /* בורר החודשים ממורכז מתחת לשם החודש (כותרת הכרטיס ממורכזת), לא מיושר לקצה - בטלפון הקצה היה גולש מחוץ למסך */
+ .gm-ds.gm-bd .lz-pop.bd-mp{inset-inline-start:50%;translate:50% 0}
+ .gm-ds.gm-bd .bd-search .hf-cl{width:44px;height:44px;margin-inline-end:4px}
+ .gm-ds.gm-bd .bd-search .hf-pill{height:44px;padding:0 10px 0 14px}
+ .gm-ds.gm-bd .bd-search .hf-allb{min-height:44px}
+ .gm-ds.gm-bd .bd-search .hf-s input::placeholder{text-overflow:ellipsis}
+}
+
+/* תצוגת הלוח (גריד) בטלפון: 7 עמודות של ~40px - אות היום, סימן התראה ומוני השלבים כמספרים בלבד (בלי אייקון ובלי פרשה/חג; הפירוט המלא ברשימה) */
+@media (max-width:720px){
+ .gm-ds.gm-bd .lz-hc .hc-g{gap:3px;padding:6px}
+ .gm-ds.gm-bd .lz-hc .hc-w{padding:8px 6px;gap:3px}
+ .gm-ds.gm-bd .lz-hc .hc-e.bd-empty{min-height:84px;border-radius:8px}
+ .gm-ds.gm-bd .hc-d.lz-day{min-height:84px;padding:4px 3px 6px;gap:4px;border-radius:8px}
+ .gm-ds.gm-bd .lz-day .lz-dh{flex-wrap:wrap;justify-content:center;gap:2px;min-height:22px}
+ .gm-ds.gm-bd .lz-day .lz-dh em,.gm-ds.gm-bd .lz-day .bd-notes{display:none}
+ .gm-ds.gm-bd .lz-day .lz-dh b{font-size:15px}
+ .gm-ds.gm-bd .lz-day .bd-dhx{margin-inline-start:0}
+ .gm-ds.gm-bd .lz-day .lz-rows{grid-template-columns:minmax(0,1fr);gap:2px}
+ .gm-ds.gm-bd .lz-day .lz-pr{justify-content:center;gap:0;padding:1px 2px;border-inline-start-width:3px;border-radius:6px;font-size:12px}
+ .gm-ds.gm-bd .lz-day .lz-pr .ic{display:none}
+ .gm-ds.gm-bd .lz-day .lz-pr b{font-size:13px}
 }
 
 /* הדף בלי חלונות (BD-O3): רק הסימן הצף של הטולטיפ של הדף מעל המעטפת */
