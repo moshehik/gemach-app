@@ -505,7 +505,10 @@ t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שו�
   const page = read('../app/components/profile/ProfilePage.js');
   const auto = read('../app/components/login/AutoClockSwitch.js');
   assert.ok(!/pf-side|<aside|className="rail/.test(page + PROFILE_CSS), 'עמודה צדדית חזרה');
-  assert.ok(!/בלי לחיצה על/.test(page + auto), 'שורת העזר של מתג הכניסה האוטומטית חזרה');
+  // 4.10.2026 ("ישן / חדש"): שורת העזר קיימת רק בענף של הדף הישן (useUiVariant('profile') === 'legacy'), לא במראה החדש
+  const autoNew = auto.slice(auto.indexOf('<div className="pf-pref">'));
+  assert.ok(auto.includes('<div className="pf-pref">') && /profileVariant === 'legacy'/.test(auto), 'המראה החדש / ענף הישן');
+  assert.ok(!/בלי לחיצה על/.test(page + autoNew), 'שורת העזר של מתג הכניסה האוטומטית חזרה');
   assert.ok(!/window\.alert/.test(page), 'window.alert חזר (הודעות בטוסט)');
   assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
 });
@@ -685,6 +688,32 @@ t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגו�
   assert.ok(!erRules.some((r) => /\.er3-acts/.test(r.sel) && setsProp(r, /^(width|height|border-radius|background|border)$/).length && !/\.on|:disabled/.test(r.sel)), 'הכפתור העגול לא מעוצב מחדש - רק הפלטה (.tools .xlbtn.xlp)');
   assert.ok(hasEr(/\.er3-bh b/, /^color$/, { valueRe: /var\(--er-name\)/ }) && /--er-name:var\(--eg-tx\)/.test(ER_CSS) && /--er-name:var\(--gm-gold-300\)/.test(ER_CSS), 'שמות בזהב של הפלטה');
   assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
+});
+
+/* ---------- 12. אייקון המעבר "ישן / חדש" (app/components/variant/pageVariantToggle.css, 4.10.2026) ---------- */
+// נטען בכל דף שבו האייקון מוצג - גם בדפים הישנים (בלי components.css) ובמעטפת הישנה - ולכן קטן, עצמאי ובהיקף .gm-pvt בלבד.
+// בדיקת המראה בדפדפן: scripts/variant-toggle-audit (computed style בדף חדש ובדף ישן, 1280 / 375).
+const PVT_CSS = read('../app/components/variant/pageVariantToggle.css');
+const pvtRules = parseCss(PVT_CSS);
+t('pageVariantToggle.css: כל כלל בהיקף .gm-pvt, בלי הפלטה (.gm-ds), בלי data-ui-*, בלי */ בתוך הערה', () => {
+  const bad = [];
+  for (const r of pvtRules) for (const s of splitSel(r.sel)) if (!/^\.gm-pvt(?![\w-])/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+  const code = PVT_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/\.gm-ds|gm-home|data-ui-|!important(?![^{}]*display:none)/.test(code.replace(/@media print\{[^}]*\}\}?/, '')), 'תלות בפלטה / data-ui / !important');
+  assert.ok(pvtRules.length > 10, 'הכללים נקראו');
+});
+t('pageVariantToggle.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(pvtRules, 'pageVariantToggle.css'), []);
+});
+t('pageVariantToggle.css: לחצן אייקון עגול של הפלטה - עיגול, רקע --gm-gbtn, מסגרת שחורה 1.5px, פוקוס נייבי; פינה בצד שמאל (inline-end) מתחת ל-AI/דיווח', () => {
+  const has = (selRe, propRe, valueRe) => pvtRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => valueRe.test(d.value)));
+  assert.ok(has(/^\.gm-pvt \.gm-pvt-btn$/, /^border-radius$/, /^50%/), 'עגול');
+  assert.ok(has(/^\.gm-pvt \.gm-pvt-btn$/, /^background$/, /var\(--gm-gbtn\)/), 'רקע זהב של הפלטה');
+  assert.ok(has(/^\.gm-pvt \.gm-pvt-btn$/, /^border$/, /^1\.5px solid #000/), 'מסגרת');
+  assert.ok(has(/:focus-visible/, /^outline$/, /var\(--gm-navy\)/), 'פוקוס');
+  assert.ok(has(/^\.gm-pvt\.gm-pvt-corner$/, /^inset-inline-end$/, /^20px/), 'פינה שמאלית (ימין תפוס ע"י AI + הדיווח)');
+  assert.ok(has(/^\.gm-pvt\.gm-pvt-overlay$/, /^z-index$/, /^1000000/), 'מעל החלון הישן של הדיווח (999999)');
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

@@ -24,6 +24,9 @@
 /* בכותרת חלון הדיווח החדש: בגודל הלחצנים הקטנים של החלון */
 .gm-pvt.gm-pvt-window .gm-pvt-btn{width:32px;height:32px}
 .gm-pvt.gm-pvt-window .gm-pvt-ic{width:16px;height:16px}
+/* דף הבית החדש (אין לו סרגל כותרת): פינה עליונה של אזור החיפוש, טולטיפ מתחת */
+.gm-pvt.gm-pvt-hero{position:absolute;top:12px;inset-inline-end:16px;z-index:3}
+.gm-pvt.gm-pvt-hero .gm-pvt-tt{bottom:auto;top:calc(100% + 10px)}
 /* בסרגל העליון של המעטפת הישנה: קטן יותר, טולטיפ מתחת */
 .gm-pvt.gm-pvt-topbar .gm-pvt-btn{width:34px;height:34px}
 .gm-pvt.gm-pvt-topbar .gm-pvt-ic{width:18px;height:18px}
