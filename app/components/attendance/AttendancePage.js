@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
+import PageVariantToggle from '../variant/PageVariantToggle';
 import { Ic, ToolButtons, Combo, SortTh, decorateButtons } from './parts';
 import { hLong as hFullDay } from '@/lib/schedule/print/format';
 import AttendanceEdit from './AttendanceEdit';
@@ -487,7 +488,11 @@ export default function AttendancePage({ mode = 'manager', initial = {} }) {
         <div className="topbar">
           <button type="button" className="back" id="atBack" aria-label="חזרה" data-tip="חזרה" onClick={onBack}><Ic id="back" className="ia-ov" /></button>
           <div className="ttl"><div><h1 id="atH1">{h1}</h1><div className="faint at-sub" id="atSub">{subT}</div></div></div>
-          <div className="tools lz-dtools" id="atTools">{unauth ? null : tools}</div>
+          <div className="tools lz-dtools" id="atTools">
+            {unauth ? null : tools}
+            {/* "חזרה לתצוגה הישנה" (4.10.2026): רק להנהלה ראשית / מתכנת, ורק בנתיבים שיש להם גרסה ישנה (לא ב-/employees/<id>/attendance) */}
+            <PageVariantToggle screen="attendance" placement="header" systemTip />
+          </div>
         </div>
         {unauth ? null : <section className="card at-bar" aria-label="סינון לפי תקופה">{bar}</section>}
         <div id="atBody">{body}</div>

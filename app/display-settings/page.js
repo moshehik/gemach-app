@@ -16,7 +16,8 @@ import {
   writeLocalPrefs,
   writeThemeCookie,
 } from '../lib/designPrefs';
-import { useUiVariant } from '../components/UiVariantContext';
+import { useUiVariants } from '../components/UiVariantContext';
+import { getScreenEntry } from '@/lib/uiVariantScreens';
 
 // עמוד "עיצוב ותצוגה" — גרסה קומפקטית ומאורגנת (סעיפים ברורים, רוחב מוגבל):
 //   1. מצב תצוגה (בהיר/כהה/ניגודיות/אוטומטי)
@@ -190,20 +191,17 @@ function PreviewStrip({ colors }) {
 // מעבר עצמאי בין העיצוב הישן לחדש (הנהלה ראשית / מתכנת בלבד, לעצמם בלבד). הסעיף מוצג רק כש-GET /api/me/ui-variant
 // אישר canSelfSwitch (ההחלטה בשרת לפי Employee.roleId, וה-POST אוכף אותה מחדש). הבחירה נשמרת כעקיפה אישית
 // (Employee.themeColor.uiVariants) ואז טעינה מלאה, כדי שה-layout יקרא את העוגייה המרוענת.
-const DESIGN_SWITCH_ROWS = [
-  { screen: 'shell', label: 'תפריט עליון' },
-  { screen: 'home', label: 'דף הבית' },
-];
+// הרשימה מגיעה מהשרת (GET /api/me/ui-variant -> screens = המסכים ברשומה המרכזית lib/uiVariantScreens.js שמותר להחליף ושתי
+// הגרסאות שלהם קיימות), והשמות מהרשומה — מסך חדש ברשומה מופיע כאן בלי שינוי בדף (4.10.2026). "ברירת מחדל" = value null:
+// מבטל את הבחירה האישית וחוזרים להגדרת הארגון ui_variant_<screen> (ובלעדיה — ברירת המחדל לפי תפקיד: מתכנת חדש, השאר ישן).
 const DESIGN_SWITCH_CHOICES = [
   { value: 'legacy', label: 'ישן' },
   { value: 'a5', label: 'חדש' },
 ];
 
 function DesignSwitchCard() {
-  const shellVariant = useUiVariant('shell');
-  const homeVariant = useUiVariant('home');
-  const current = { shell: shellVariant, home: homeVariant };
-  const [canSelfSwitch, setCanSelfSwitch] = useState(false);
+  const values = useUiVariants();
+  const [screens, setScreens] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -211,15 +209,20 @@ function DesignSwitchCard() {
     let alive = true;
     fetch('/api/me/ui-variant')
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (alive && data && data.success && data.canSelfSwitch) setCanSelfSwitch(true); })
+      .then((data) => {
+        if (alive && data && data.success && data.canSelfSwitch && Array.isArray(data.screens)) {
+          setScreens(data.screens.filter((id) => getScreenEntry(id)));
+        }
+      })
       .catch(() => {});
     return () => { alive = false; };
   }, []);
 
-  if (!canSelfSwitch) return null;
+  if (!screens || !screens.length) return null;
+  const current = (screen) => (values && values[screen] === 'a5' ? 'a5' : 'legacy');
 
   async function choose(screen, value) {
-    if (busy || current[screen] === value) return;
+    if (busy || (value !== null && current(screen) === value)) return;
     setBusy(true);
     setError('');
     try {
@@ -240,29 +243,39 @@ function DesignSwitchCard() {
     <div className="card card-pad settings-card" id="design-switch-card">
       <div className="section-title">מעבר בין העיצוב הישן לחדש</div>
       <div className="settings-two-col">
-        {DESIGN_SWITCH_ROWS.map((row) => (
-          <div key={row.screen} className="field" style={{ marginBottom: 0 }}>
-            <label>{row.label}</label>
+        {screens.map((screen) => (
+          <div key={screen} className="field" style={{ marginBottom: 0 }}>
+            <label>{getScreenEntry(screen).label}</label>
             <div className="density-row">
               {DESIGN_SWITCH_CHOICES.map((c) => (
                 <button
                   key={c.value}
                   type="button"
-                  data-design-switch={`${row.screen}:${c.value}`}
-                  className={`density-btn${current[row.screen] === c.value ? ' active' : ''}`}
-                  aria-pressed={current[row.screen] === c.value}
+                  data-design-switch={`${screen}:${c.value}`}
+                  className={`density-btn${current(screen) === c.value ? ' active' : ''}`}
+                  aria-pressed={current(screen) === c.value}
                   disabled={busy}
-                  onClick={() => choose(row.screen, c.value)}
+                  onClick={() => choose(screen, c.value)}
                 >
                   {c.label}
                 </button>
               ))}
+              <button
+                type="button"
+                data-design-switch={`${screen}:default`}
+                className="density-btn"
+                title="ביטול הבחירה האישית - חזרה לברירת המחדל של הארגון"
+                disabled={busy}
+                onClick={() => choose(screen, null)}
+              >
+                ברירת מחדל
+              </button>
             </div>
           </div>
         ))}
       </div>
       <div className="hint" style={{ marginTop: 10 }}>
-        {busy ? 'מחליף… העמוד יטען מחדש.' : 'חל עליך בלבד, ואפשר להחליף בכל רגע. העמוד נטען מחדש אחרי הבחירה.'}
+        {busy ? 'מחליף… העמוד יטען מחדש.' : 'חל עליך בלבד, ואפשר להחליף בכל רגע. "ברירת מחדל" מחזיר להגדרת הארגון. העמוד נטען מחדש אחרי הבחירה.'}
       </div>
       {error && <div className="hint" style={{ marginTop: 6 }} role="alert">{error}</div>}
     </div>
