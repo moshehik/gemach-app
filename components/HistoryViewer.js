@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { CUSTOMER_ONLY_FIELD_LABELS } from '../lib/history/labels';
+import { isVisibleChangeKey, labelChangeValue } from './modern/changesDisplay';
 
 export const FIELD_TRANSLATIONS = {
   // תוויות שדות לקוח שלא היו כאן (תעודת זהות, דיוורים, בנק, הוראת קבע, חסימה) - מוגדרות ב-lib/history/labels.js
@@ -138,6 +139,7 @@ export const FIELD_TRANSLATIONS = {
   level: 'רמת אישור',
   reason: 'סיבה',
   approverId: 'מזהה מאשר',
+  approverName: 'מאשר',
   selfApproved: 'השולח מורשה',
   attachments: 'צרופות',
   attachmentCount: 'מספר צרופות',
@@ -279,8 +281,11 @@ export default function HistoryViewer({ entityType, entityId }) {
 
       if (allKeys.length === 0) return <div style={{ color: 'var(--text-3)', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '0.9rem' }}>אין פירוט שינויים זמין.</div>;
 
+      // raw UUIDs / technical keys are never shown; machine values get Hebrew labels (modern/changesDisplay.js)
+      const show = (key, val) => labelChangeValue(key, val) ?? formatValue(val);
       const filteredKeys = allKeys.filter(key => {
          const change = changes[key];
+         if (!isVisibleChangeKey(key, change)) return false;
          if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {
             const isEmptyFrom = change.from === null || change.from === undefined || change.from === '';
             const isEmptyTo = change.to === null || change.to === undefined || change.to === '';
@@ -314,9 +319,9 @@ export default function HistoryViewer({ entityType, entityId }) {
                     <span style={{ fontWeight: '600', color: 'var(--text-3)' }}>{label}:</span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface)', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
                       {!isEmptyFrom && (
-                        <div style={{ textDecoration: 'line-through', color: 'var(--danger)', whiteSpace: 'pre-wrap' }}>{formatValue(change.from)}</div>
+                        <div style={{ textDecoration: 'line-through', color: 'var(--danger)', whiteSpace: 'pre-wrap' }}>{show(key, change.from)}</div>
                       )}
-                      <div style={{ color: 'var(--success)', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{formatValue(change.to)}</div>
+                      <div style={{ color: 'var(--success)', fontWeight: '500', whiteSpace: 'pre-wrap' }}>{show(key, change.to)}</div>
                     </div>
                   </div>
                 );
@@ -327,11 +332,11 @@ export default function HistoryViewer({ entityType, entityId }) {
                   <span style={{ fontWeight: '600', color: 'var(--text-3)' }}>{label}:</span>
                   {!isEmptyFrom && (
                     <>
-                      <span style={{ textDecoration: 'line-through', color: 'var(--danger)' }}>{formatValue(change.from)}</span>
+                      <span style={{ textDecoration: 'line-through', color: 'var(--danger)' }}>{show(key, change.from)}</span>
                       <span style={{ color: 'var(--text-3)' }}>←</span>
                     </>
                   )}
-                  <span style={{ color: 'var(--success)', fontWeight: '600' }}>{formatValue(change.to)}</span>
+                  <span style={{ color: 'var(--success)', fontWeight: '600' }}>{show(key, change.to)}</span>
                 </div>
               );
             }
@@ -341,7 +346,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                 <div key={key} style={{ width: '100%', background: 'var(--surface-alt)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ fontWeight: '600', color: 'var(--text-3)' }}>{label}:</span>
                   <div style={{ color: 'var(--text)', fontWeight: '500', whiteSpace: 'pre-wrap', background: 'var(--surface)', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                    {formatValue(change)}
+                    {show(key, change)}
                   </div>
                 </div>
               );
@@ -350,7 +355,7 @@ export default function HistoryViewer({ entityType, entityId }) {
             return (
               <div key={key} className="chip">
                 <span style={{ fontWeight: '600', color: 'var(--text-3)' }}>{label}:</span>
-                <span style={{ color: 'var(--text)', fontWeight: '500' }}>{formatValue(change)}</span>
+                <span style={{ color: 'var(--text)', fontWeight: '500' }}>{show(key, change)}</span>
               </div>
             );
           })}

@@ -649,3 +649,76 @@ test('customer feed: ORDER_PRINTED mapped (no raw action text), UPDATE_ORDER tre
   const [u] = CH.mapOrderAuditRow({ id: 'r2', entityId: '501', action: 'UPDATE_ORDER', employeeId: null, createdAt: new Date('2026-10-04T08:00:00Z'), changesJson: '{"notes":{"from":"a","to":"b"}}' }, ctx);
   assert.equal(u.type, 'order-updated');
 });
+
+// ============================== follow-up: no raw UUIDs / machine values in the legacy history chips
+const CD = await L('components/modern/changesDisplay.js');
+const { attachEmployeeNames } = await L('app/lib/auditLog.js');
+const { isMutationSkipped } = await L('lib/apiCache.js');
+const UUID = '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c';
+
+test('changesDisplay: UUID-valued keys, approverId and clientEventId are hidden; ordinary keys stay', () => {
+  assert.equal(CD.isVisibleChangeKey('approverId', 'emp-mgr'), false);
+  assert.equal(CD.isVisibleChangeKey('clientEventId', 'p1abc-0'), false);
+  assert.equal(CD.isVisibleChangeKey('employeeId', UUID), false);
+  assert.equal(CD.isVisibleChangeKey('customerId', { from: UUID, to: null }), false);
+  assert.equal(CD.isVisibleChangeKey('debtApprovedBy', UUID.toUpperCase()), false);
+  for (const [k, v] of [['notes', 'x'], ['approverName', 'מנהלת סניף'], ['doc', 'order'], ['eventDate', { from: '2026-01-01T00:00:00Z', to: '2026-02-01T00:00:00Z' }], ['amount', 50], ['orderId', 501]]) {
+    assert.equal(CD.isVisibleChangeKey(k, v), true, k);
+  }
+});
+
+test('changesDisplay: machine values -> Hebrew labels, attachments -> names, unknown -> null (caller formats as before)', () => {
+  assert.equal(CD.labelChangeValue('doc', 'order'), 'סיכום הזמנה');
+  assert.equal(CD.labelChangeValue('doc', 'rental'), 'דף השכרה');
+  assert.equal(CD.labelChangeValue('format', 'xlsx'), 'Excel');
+  assert.equal(CD.labelChangeValue('source', 'print-page'), 'דף ההדפסה');
+  assert.equal(CD.labelChangeValue('sendMode', 'both'), 'מייל ודרייב');
+  assert.equal(CD.labelChangeValue('type', 'rental'), 'השכרה');
+  assert.equal(CD.labelChangeValue('type', 'Customer'), null, 'other entities keep their `type` values');
+  assert.equal(CD.labelChangeValue('featureKey', 'feature:manual_charge_add'), 'מאשר חיוב ידני');
+  assert.equal(CD.labelChangeValue('level', 'מנהל'), null);
+  assert.equal(CD.labelChangeValue('attachments', [{ kind: 'order-pdf', name: 'הזמנה 501.pdf' }, { kind: 'file', name: 'x.png' }]), 'הזמנה 501.pdf, x.png');
+  assert.equal(CD.labelChangeValue('files', [{ fileName: 'a.pdf', sizeBytes: 3 }]), 'a.pdf');
+  assert.equal(CD.labelChangeValue('notes', 'order'), null);
+  assert.equal(CD.labelChangeValue('doc', null), null);
+  // every value the events route can store for doc/format/source has a label
+  for (const [k, spec] of Object.entries(OE.EVENT_META_SCHEMAS.ORDER_PRINTED)) if (spec.type === 'enum' && CD.VALUE_LABELS[k]) for (const v of spec.values) assert.ok(CD.labelChangeValue(k, v), `${k}=${v}`);
+  for (const v of OE.EVENT_META_SCHEMAS.HISTORY_EXPORTED.format.values) assert.ok(CD.labelChangeValue('format', v));
+});
+
+test('ChangesChips + HistoryViewer (static): every key passes the filter and every value the label map first', () => {
+  for (const f of ['components/modern/ChangesChips.js', 'components/HistoryViewer.js']) {
+    const s = src(f);
+    assert.match(s, /if \(!isVisibleChangeKey\(key, change\)\) return false;/, f);
+    assert.match(s, /const show = \(key, val\) => labelChangeValue\(key, val\) \?\? formatValue\(val\);/, f);
+    assert.ok(!/\{formatValue\(change(\.from|\.to)?\)\}/.test(s), f + ': no unlabelled value rendering left');
+  }
+  assert.match(src('components/HistoryViewer.js'), /approverName: 'מאשר'/);
+});
+
+test('attachEmployeeNames: approverId resolved to approverName in the same query; other rows untouched', async () => {
+  const rows = [
+    { id: 'a', entityType: 'Order', entityId: '501', action: 'MANAGER_APPROVAL', employeeId: 'emp-worker', changesJson: JSON.stringify({ featureKey: 'feature:item_change_approval', approverId: 'emp-mgr' }) },
+    { id: 'b', entityType: 'Order', entityId: '501', action: 'EMAIL_SENT', employeeId: null, changesJson: JSON.stringify({ to: 'a@b.c', approverId: 'gone-emp' }) },
+    { id: 'c', entityType: 'Order', entityId: '501', action: 'UPDATE_ORDER', employeeId: 'emp-head', changesJson: '{"notes":{"from":"a","to":"b"}}' },
+    { id: 'd', entityType: 'Order', entityId: '501', action: 'ORDER_PRINTED', employeeId: null, changesJson: 'not json "approverId"' },
+  ];
+  globalThis.__MOCK_CALLS = [];
+  const out = await attachEmployeeNames(rows);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'employee').length, 1, 'one batched query');
+  assert.equal(JSON.parse(out[0].changesJson).approverName, 'מנהלת סניף');
+  assert.equal(JSON.parse(out[0].changesJson).approverId, 'emp-mgr', 'the id stays for the history mapper (hidden in the UI)');
+  assert.equal(out[0].employeeName, 'עובדת רגילה');
+  assert.equal(JSON.parse(out[1].changesJson).approverName, 'עובד שנמחק');
+  assert.equal(out[1].employeeName, null);
+  assert.equal(out[2].changesJson, rows[2].changesJson);
+  assert.equal(out[2].employeeName, 'הנהלה ראשית');
+  assert.equal(out[3].changesJson, rows[3].changesJson);
+});
+
+test('lib/apiCache: POST /api/orders/events does not clear order/inventory caches; real order writes still do', () => {
+  assert.equal(isMutationSkipped('/api/orders/events'), true);
+  assert.equal(isMutationSkipped('/api/orders/501'), false);
+  assert.equal(isMutationSkipped('/api/orders/501/items'), false);
+  assert.equal(isMutationSkipped('/api/orders'), false);
+});

@@ -59,9 +59,37 @@ function redactSecrets(log) {
   }
 }
 
+// Order-event rows (MANAGER_APPROVAL / EMAIL_SENT, lib/history/orderEvents.js) carry meta.approverId - a bare
+// Employee UUID. Its display name is resolved in the same batched query and added as meta.approverName, so no
+// history screen ever needs (or shows) the id itself (components/modern/changesDisplay.js hides *Id UUIDs).
+function approverIdOf(log) {
+  if (!log.changesJson || !log.changesJson.includes('"approverId"')) return null;
+  try {
+    const parsed = JSON.parse(log.changesJson);
+    return parsed && typeof parsed === 'object' && typeof parsed.approverId === 'string' ? parsed.approverId : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function withApproverName(log, nameById) {
+  const approverId = approverIdOf(log);
+  if (!approverId) return log;
+  try {
+    const parsed = JSON.parse(log.changesJson);
+    parsed.approverName = nameById.get(approverId) || 'עובד שנמחק';
+    return { ...log, changesJson: JSON.stringify(parsed) };
+  } catch (e) {
+    return log;
+  }
+}
+
 export async function attachEmployeeNames(rawLogs) {
   const logs = rawLogs.map(redactSecrets);
-  const employeeIds = [...new Set(logs.map(l => l.employeeId).filter(Boolean))];
+  const employeeIds = [...new Set([
+    ...logs.map(l => l.employeeId),
+    ...logs.map(approverIdOf),
+  ].filter(Boolean))];
   if (employeeIds.length === 0) return logs;
 
   const employees = await prisma.employee.findMany({
@@ -71,7 +99,7 @@ export async function attachEmployeeNames(rawLogs) {
   const nameById = new Map(employees.map(e => [e.id, displayName(e)]));
 
   return logs.map(log => ({
-    ...log,
+    ...withApproverName(log, nameById),
     employeeName: log.employeeId ? (nameById.get(log.employeeId) || null) : null
   }));
 }
