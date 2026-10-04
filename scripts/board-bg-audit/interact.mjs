@@ -26,7 +26,7 @@ ok(c.length >= 1 && /eventDateFrom=.*eventDateTo=.*filterStatus=all.*limit=2000/
 ok((await calls()).some((x) => /^\/api\/board\/stages\?from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/.test(x.url)), 'מוני השלבים: /api/board/stages?from&to');
 ok(await p.evaluate(() => !document.body.textContent.match(/\b\d{1,2}\/\d{1,2}\b/)), 'אין תאריך לועזי בדף');
 for (const gone of ['חיפוש מתקדם', 'שאלות סטטיסטיקה', 'חיפוש חכם', 'הדפסת הזמנות להכנה', 'מקרא', 'תפעול', 'ללו״ז של היום']) ok(!(await p.evaluate((t) => document.body.innerHTML.includes(t), gone)), 'הוסר: ' + gone);
-ok(await p.evaluate(() => { const a = document.querySelector('#mToday').getBoundingClientRect().height; const v = document.querySelector('#mvsw').getBoundingClientRect().height; return Math.abs(a - v) < 0.5; }), 'S04: "החודש הנוכחי" בגובה מתג התצוגה');
+ok(!(await p.$('#mToday')), 'החלטת הבעלים 5.10: בחודש הנוכחי "החודש הנוכחי" מוסתר');
 ok(await p.evaluate(() => document.querySelectorAll('.lz-day').length >= 29 && !document.querySelector('.lz-day .bd-co, .lz-day .bd-cos, .lz-day .bd-ex, .lz-day button, .lz-day .chip, .lz-day article')), 'BD-O4: בתא רק אות יום + סמנים + מונים - אין שורות הזמנה, אין אייקון "מורחב", אין לחצנים');
 ok(await p.evaluate(() => [...document.querySelectorAll('.lz-day')].every((d) => [...d.children].every((c) => /lz-dh|bd-notes|lz-rows/.test(c.className)))), 'BD-O4: תוכן התא = כותרת (lz-dh) + פרשה/חגים + מונים (lz-rows) בלבד');
 ok(await p.evaluate(() => { const r = getComputedStyle(document.querySelector('.lz-pr:not(.al)')).backgroundColor; return [...document.querySelectorAll('.lz-pr:not(.al)')].every((x) => getComputedStyle(x).backgroundColor === r); }), 'S02: כל המונים בלי התראה באותו גוון');
@@ -43,17 +43,20 @@ ok(!/search=/.test(c[c.length - 1].url) && (await p.$eval('#bdQ', (e) => e.value
 // ניווט חודשים
 const t0 = await title();
 await click('#month .hc-nn'); const t1 = await title();
+ok(await p.evaluate(() => { const b = document.querySelector('#mToday'); if (!b) return false; const a = b.getBoundingClientRect().height; const v = document.querySelector('#mvsw').getBoundingClientRect().height; return Math.abs(a - v) < 0.5; }), 'החלטת הבעלים 5.10: בחודש אחר "החודש הנוכחי" מוצג, בגובה מתג התצוגה (S04)');
 ok(t1 !== t0, 'חץ "החודש הבא" מחליף חודש (' + t0 + ' -> ' + t1 + ')');
 await p.mouse.click(5, 300); await p.keyboard.press('ArrowRight'); await sleep(400);
 ok((await title()) === t0, 'S09: חץ ימינה במקלדת = החודש הקודם');
 await p.keyboard.press('ArrowLeft'); await sleep(400);
 ok((await title()) === t1, 'S09: חץ שמאלה במקלדת = החודש הבא');
-await click('#mToday'); ok((await title()) === t0 && (await p.$eval('#mToday', (e) => e.getAttribute('aria-pressed'))) === 'true', 'S04: "החודש הנוכחי" חוזר לחודש של היום');
+await click('#mToday');
+ok((await title()) === t0 && !(await p.$('#mToday')), 'S04: "החודש הנוכחי" חוזר לחודש של היום ונעלם');
 await click('#mJump');
 ok((await p.$$('.bd-mp .bd-mpd')).length === 13, 'S07: בורר 13 חודשים');
 await p.evaluate(() => document.querySelectorAll('.bd-mp .bd-mpd')[2].click()); await sleep(500);
 ok((await title()) !== t0 && !(await p.$('.bd-mp')), 'בחירת חודש בבורר מזיזה את הלוח וסוגרת את הבורר');
-await click('#mToday');
+ok(!!(await p.$('#mToday')), 'החלטת הבעלים 5.10: אחרי בחירת חודש אחר בבורר הלחצן מוצג'); await click('#mToday');
+ok(!(await p.$('#mToday')), 'החלטת הבעלים 5.10: וחוזר להיעלם בחזרה לחודש הנוכחי');
 ok((await p.$$('.rv-jbtn, .lz-jw .ic-cal')).length === 0, 'S07: בלי אייקון יומן ליד הכותרת');
 
 // מסנן שלבים

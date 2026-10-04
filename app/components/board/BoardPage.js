@@ -37,6 +37,7 @@ import {
 import PageVariantToggle from '../variant/PageVariantToggle';
 import { BoardSearchBar, DayList, Ic, LateContext, MonthGrid, MonthHead } from './BoardParts';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
+import { getIsraelTodayDate } from '@/lib/hebrewDate';
 
 // מטמון SWR משותף - ר' app/lib/pageCache.js. 'board' = ההזמנות (אותו namespace ומפתח כמו ה-prefetch ב-prefetchRoutes.js);
 // 'board-stages' = מוני השלבים לחודש.
@@ -51,7 +52,7 @@ export default function BoardPage() {
   const ttRef = useRef(null);
   usePageTooltip(rootRef, ttRef, false);
 
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => getIsraelTodayDate());
   const [orders, setOrders] = useState([]);
   // מתחיל כ-true כדי שהרינדור הראשון יציג "טוען נתונים..." ולא לוח ריק שנראה כאילו אין הזמנות (כמו קודם)
   const [loading, setLoading] = useState(true);
@@ -153,8 +154,9 @@ export default function BoardPage() {
   }, [fetchStages, range.from, range.to]);
 
   const ordersByDate = useMemo(() => groupOrdersByDate(orders), [orders]);
-  const today = useMemo(() => new Date(), []);
-  const weeks = useMemo(() => buildMonthGrid(selectedDate, new Date()), [selectedDate]);
+  // "היום" לפי שעון ישראל (לא שעון המכשיר): מסגרת היום בגריד, "החודש הנוכחי" והחודש שנפתח בכניסה
+  const today = useMemo(() => getIsraelTodayDate(), []);
+  const weeks = useMemo(() => buildMonthGrid(selectedDate, today), [selectedDate, today]);
   const stages = stagesData ? stagesData.stages : [];
   const totals = useMemo(() => monthStageTotals(stagesData ? stagesData.days : null, stages), [stagesData, stages]);
   const isCurrentMonth = sameMonth(selectedDate, today);
@@ -214,9 +216,12 @@ export default function BoardPage() {
           />
 
           <div className="lz-bar" id="mBar">
-            <div className="lz-quick">
-              <button type="button" className={'btn tgl' + (isCurrentMonth ? ' on' : '')} id="mToday" aria-pressed={isCurrentMonth} onClick={() => setSelectedDate(new Date())}>החודש הנוכחי</button>
-            </div>
+            {/* החלטת הבעלים 5.10.2026: "החודש הנוכחי" מופיע רק כשמוצג חודש אחר; בחודש הנוכחי הוא מוסתר */}
+            {!isCurrentMonth && (
+              <div className="lz-quick">
+                <button type="button" className="btn tgl" id="mToday" onClick={() => setSelectedDate(getIsraelTodayDate())}>החודש הנוכחי</button>
+              </div>
+            )}
             <div className={'vsw' + (view === 'list' ? ' t' : '')} id="mvsw" role="group" aria-label="מצב תצוגה">
               <span className="vknob" aria-hidden="true" />
               <button type="button" className={'vopt' + (view === 'grid' ? ' on' : '')} aria-label="תצוגת לוח" aria-pressed={view === 'grid'} data-tip="לוח חודשי" onClick={() => setView('grid')}><Ic name="cal" /></button>

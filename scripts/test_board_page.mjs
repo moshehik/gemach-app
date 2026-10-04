@@ -161,6 +161,27 @@ await t('S04: "החודש הנוכחי" בגובה מתג התצוגה (28px), S
   has(PAGE, /MOBILE_MQ = '\(max-width:720px\)'/);
 });
 
+await t('החלטת הבעלים 5.10: "החודש הנוכחי" מופיע רק כשמוצג חודש אחר (מוסתר בחודש הנוכחי), לפי "היום" בשעון ישראל', async () => {
+  const UIC = code(PAGE);
+  has(UIC, /const isCurrentMonth = sameMonth\(selectedDate, today\);/);
+  has(UIC, /\{!isCurrentMonth && \([\s\S]*?id="mToday"/, 'הלחצן מוצג רק כש-!isCurrentMonth');
+  hasNot(UIC, /isCurrentMonth \?|aria-pressed=\{isCurrentMonth\}/, 'אין עוד מצב "לחוץ" ללחצן (הוא לא מוצג בחודש הנוכחי)');
+  // "היום" = היום בישראל, לא שעון המכשיר / UTC
+  has(UIC, /const today = useMemo\(\(\) => getIsraelTodayDate\(\), \[\]\);/);
+  has(UIC, /useState\(\(\) => getIsraelTodayDate\(\)\)/, 'החודש הפותח = החודש של היום בישראל');
+  has(UIC, /onClick=\{\(\) => setSelectedDate\(getIsraelTodayDate\(\)\)\}/);
+  hasNot(UIC, /new Date\(\)/, 'אין new Date() גולמי בדף (שעון המכשיר)');
+  // התנהגות: 1 בחשוון תשפ"ז = 12.10.2026; בשעה 01:00 שעון ישראל התאריך ב-UTC עדיין 11.10 (תשרי) - ההחלטה לפי ישראל
+  const H = await import('../lib/hebrewDate.js');
+  const visible = (selected, now) => !L.sameMonth(selected, H.getIsraelTodayDate(now));
+  const nowIL = new Date(Date.UTC(2026, 9, 11, 22, 0)); // 12.10 01:00 בישראל (1 בחשוון)
+  assert.equal(visible(new Date(2026, 9, 12), nowIL), false, 'חשוון מוצג ובישראל כבר חשוון - הלחצן מוסתר');
+  assert.equal(visible(new Date(2026, 9, 11), nowIL), true, 'תשרי מוצג ובישראל כבר חשוון - הלחצן מוצג');
+  assert.equal(visible(L.shiftMonth(new Date(2026, 9, 12), 1), nowIL), true, 'חודש הבא - הלחצן מוצג');
+  assert.equal(visible(L.shiftMonth(new Date(2026, 9, 12), -1), nowIL), true, 'חודש קודם - הלחצן מוצג');
+  assert.equal(visible(new Date(2026, 9, 20), nowIL), false, 'יום אחר בחודש הנוכחי - הלחצן מוסתר');
+});
+
 await t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז של היום", בלי ימי חודש סמוך, בלי שורות סיכום ברשימה', () => {
   hasNot(UI, /תפעול/);
   hasNot(UI, /ללו״ז של היום<|id="toDay"/);

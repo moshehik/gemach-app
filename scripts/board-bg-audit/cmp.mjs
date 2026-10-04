@@ -11,7 +11,6 @@ const PROPS = ['display', 'height', 'padding', 'margin', 'borderTopWidth', 'bord
 const BOARD = [
   ['כותרת הדף', '.pg-ttl', '.pg-ttl', ['height']],
   ['סרגל החודש הנוכחי + מתג', '#mBar', '#mBar', []],
-  ['החודש הנוכחי', '#mToday', '#mToday', []],
   ['מתג תצוגה', '#mvsw', '#mvsw', []],
   ['לחצן במתג', '#mvsw .vopt', '#mvsw .vopt', []],
   ['ידית המתג', '#mvsw .vknob', '#mvsw .vknob', []],
@@ -34,6 +33,8 @@ const BOARD = [
   ['אייקון במונה', '#month .lz-pr .ic', '#month .lz-pr .ic', []],
   ['סימן התראה', '#month .lz-al', '#month .lz-al', ['margin']],
 ];
+// "החודש הנוכחי" מוצג רק בחודש אחר (החלטת הבעלים 5.10) - נמדד אחרי מעבר לחודש הבא
+const TODAY_BTN = [['החודש הנוכחי', '#mToday', '#mToday', []]];
 // תצוגת הרשימה (שינוי הבעלים 5.10: שורה כמו תוצאת חיפוש בדף הבית): הדמו נבנה מאותו קוד, ולכן זו בדיקת עקביות של שורת הרשימה ושל חלקיה
 const LIST = [
   ['כרטיס הרשימה', '#month .bd-lcard', '#month .bd-lcard', ['height']],
@@ -118,6 +119,18 @@ async function realBoard() {
   await sleep(400); await p.mouse.move(2, 2);
   return dump(BOARD, 'real')(p);
 }
+async function demoTodayBtn() {
+  await p.goto(DEMO, { waitUntil: 'load' }); await sleep(1800); await clean();
+  await p.evaluate(() => { const n = document.querySelector('#month .hc-nn'); if (n) n.click(); });
+  await sleep(500); await p.mouse.move(2, 2);
+  return dump(TODAY_BTN, 'demo')(p);
+}
+async function realTodayBtn() {
+  await p.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' }); await sleep(1500);
+  await p.evaluate(() => { const n = document.querySelector('#month .hc-nn') || document.querySelector('.hc-nn'); if (n) n.click(); });
+  await sleep(500); await p.mouse.move(2, 2);
+  return dump(TODAY_BTN, 'real')(p);
+}
 async function demoList() {
   await p.goto(DEMO, { waitUntil: 'load' }); await sleep(1800); await clean();
   await p.evaluate(() => { const g = document.querySelectorAll('#mvsw .vopt')[1]; if (g) g.click(); });
@@ -158,6 +171,7 @@ function compare(title, d, r) {
   }
 }
 compare('לוח', await demoBoard(), await realBoard());
+compare('החודש הנוכחי (מוצג רק בחודש אחר)', await demoTodayBtn(), await realTodayBtn());
 compare('תצוגת רשימה (שורות כמו תוצאות חיפוש)', await demoList(), await realList());
 compare('שורת חיפוש + סינון (סגור)', await demoHf(false), await realHf(false));
 compare('סינון פתוח', await demoHf(true), await realHf(true));
