@@ -11,6 +11,9 @@ import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
 // קריאה בלבד. אותם כללים כמו העמודים החיים (ר' public/a5/adapters/adv-b.NOTES.md).
 // מחזיר כבר בפורמט ADV_VIEW: {cols, rows, links, al, capstats?, truncated, gaps}.
 export const dynamic = 'force-dynamic';
+// חישוב תפוסה לדגם בלי מידה = עד 30 צמדים x 3 שאילתות (5 במקביל) - איטי; בלי תקרה מפורשת מתקבלת ברירת המחדל הקצרה של Vercel.
+// 60 כמו /api/pdf ו-/api/ai (כבר נפרסים בתוכנית הנוכחית).
+export const maxDuration = 60;
 
 const LIMIT = 200;
 const OTHER_DAYS_MAX = 31;

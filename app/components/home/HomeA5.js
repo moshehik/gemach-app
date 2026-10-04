@@ -428,7 +428,7 @@ export default function HomeA5() {
       setLoading(false);
       if (e.status === 403 || e.status === 400) {
         setView('adv');
-        showToast(e.status === 403 ? 'אין הרשאה לחיפוש הזה' : 'חסר שדה חובה', e.status === 403 ? '' : e.message);
+        showToast(e.status === 403 ? 'אין הרשאה לחיפוש הזה' : (/יותר מדי/.test(e.message || '') ? 'החיפוש רחב מדי' : 'חסר שדה חובה'), e.status === 403 ? '' : e.message);
         return;
       }
       setAdvRes(null);
