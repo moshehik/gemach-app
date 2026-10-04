@@ -65,9 +65,10 @@ export function payStages(h) {
       await clickAt('#dlg [data-act="pay-later"]'); await approveWith('1234');
       const c = await calls();
       const vp = c.filter(x => x.url === '/api/auth/verify-pin').map(x => JSON.parse(x.body)).at(-1) || {};
-      const st = await p().evaluate(() => ({ open: document.getElementById('scrim').classList.contains('on'), toast: (document.querySelector('#toast b') || {}).textContent || '' }));
+      const st = await p().evaluate(() => ({ open: document.getElementById('scrim').classList.contains('on'), payOpen: !!document.querySelector('#dlg [data-act="pay-later"]'), d6: (document.querySelector('#dlg .success h2') || {}).textContent || '', toast: (document.querySelector('#toast b') || {}).textContent || '' }));
       check('forced: "השאר חוב" = אישור מאשר הזמנה ללא תשלום + context עם הסכום', vp.requiredLevel === 'מאשר הזמנה ללא תשלום' && vp.context && vp.context.orderId === 53375 && /120/.test(vp.context.reason));
-      check('forced: החלון נסגר וטוסט "אושר על ידי"', !st.open && /אושר על ידי/.test(st.toast));
+      // אינטגרציה (REQUESTS-W5 #1): אחרי "השאר חוב" חלון התשלום נסגר, הטוסט "אושר על ידי" מוצג והרייל פותח D6 "נשמר · חוב ₪N"
+      check('forced: החלון נסגר, טוסט "אושר על ידי" ו-D6 "נשמר · חוב ₪120" מהרייל', !st.payOpen && /אושר על ידי/.test(st.toast) && /^נשמר · חוב/.test(st.d6) && /120/.test(st.d6));
     } },
     { name: 'P23-flow-manual-charge', real: async () => {
       await realTab('pay'); await clickAt('#p-payments details.coll > summary'); await clickAt('#p-payments [data-act="manual-money"]'); await sleep(300);
@@ -89,7 +90,7 @@ export function payStages(h) {
       const c = await calls(); const put = c.find(x => x.method === 'PUT' && x.url === '/api/refunds/r1');
       const b = put ? JSON.parse(put.body) : {};
       check('iban: פוענח לבנק/סניף/חשבון (A15)', /לאומי/.test(ok) && /800/.test(ok) && /99999999/.test(ok));
-      check('iban: PUT /api/refunds/r1 עם ארבעת השדות בלבד, בלי IBAN', JSON.stringify(Object.keys(b)) === '["bankName","bankBranch","bankAccount","bankAccountName"]' && b.bankName === 'לאומי' && b.bankBranch === '800' && b.bankAccount === '99999999' && !/IL62/.test(put.body));
+      check('iban: PUT /api/refunds/r1 עם ארבעת השדות + reason עם ה-IBAN, בלי שדה iban', JSON.stringify(Object.keys(b)) === '["bankName","bankBranch","bankAccount","bankAccountName","reason"]' && b.bankName === 'לאומי' && b.bankBranch === '800' && b.bankAccount === '99999999' && /IBAN: IL62/.test(b.reason || '') && !/"iban"/i.test(put.body)); // a4ed1deb: ה-IBAN נשמר רק בתוך reason (בלי עמודה חדשה)
       await clickAt('#p-payments [data-oc-pay="refunds"] .li .btn.sm:nth-of-type(1)'); await sleep(300);
       await p().evaluate(() => { const i = document.getElementById('oc-bk-acct'); i.select(); });
       await p().keyboard.type('IL63 0108 0000 0009 9999 999'); await sleep(200);
