@@ -8,9 +8,11 @@
 // תשובות הבעלים 1.10.2026 (15/15) + הפירושים (scratch/schedule-build/DECISIONS-ימי-אי-פעילות.md "החלטות שפורשו"):
 //   NWD-02/Q02/Q03  שישי, שבת, חג, ערב חג (כולל הושענא רבה וערב שביעי של פסח) וחול המועד סגורים אוטומטית - מהכלל
 //                   האחיד ב-lib/businessDays.js, לא מחושב כאן. NWD-Q04: אי אפשר לפתוח יום סגור.
-//   NWD-03/Q07      סימון יום או טווח (Shift + לחיצה, או "מתאריך" / "עד תאריך"), עם הערה. ימים סגורים ושעברו מדולגים (פירוש 5).
+//   NWD-03/Q07      סימון יום או טווח (Shift + לחיצה, או "מתאריך" / "עד תאריך"), עם הערה. ימים סגורים ושעברו מדולגים (פירוש 5);
+//                   NW-I5: רק מספר הימים בטווח ("N ימים נבחרו"), בלי שום פירוט ובלי מספר נוסף בלחצן.
 //   NWD-04          כל שינוי הוא טיוטה עד "שמור"; "בטל שינויים" זורק אותה; ביטול לכל שורה.
-//   NWD-05          חלון אישור כהה (#dlg בפורטל לשורש הדף) לפני הסרה של יום שמור / תאריך קבוע שמור (פירושים 2-4).
+//   NWD-05 / NW-I2 / NW-I4  אין חלונות אישור להסרה: הסרת יום שמור או תאריך עברי קבוע שמור היא טיוטה (שורה "יוסר" בשינויים שלא נשמרו,
+//                   ורק "שמור" אחד מחיל). חלון כהה (#dlg בפורטל לשורש הדף) נשאר רק להתנגשות שמירה (מישהו אחר שמר בינתיים).
 //   NWD-Q05         ימים שעברו נעולים (בממשק). NWD-Q06: אזהרה בלבד על פעילות רשומה - ההזמנות לא משתנות.
 //   NWD-Q08         עורך מי שהשרת אומר canEdit (הנהלה ראשית / feature:non_working_days_manage); אחרים - צפייה בלבד (פירוש 9).
 // הלוגיקה הטהורה (מודל, הפרש, ניתוח בחירה, תאריכים עבריים): lib/nonWorkingDaysPage.js. בממשק - תאריכים עבריים בלבד.
@@ -21,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Ic, HomeSprite } from '../home/HomeParts';
+import FixedDatePicker from './FixedDatePicker';
 import usePageTooltip from '../profile/usePageTooltip';
 import { useA5Shell } from '../menu/A5ShellContext';
 import { validateNonWorkingDaysSettingValue } from '@/lib/businessDays';
@@ -29,7 +32,7 @@ import {
   heb, hLong, hDate, hShort, hMonthTitle, monthStartOf, monthGrid, nextMonthStart, prevMonthStart, keysBetween, WEEKDAYS_SHORT,
   autoReason, closedReason, fixedOn, fixedLabel, nextOccurrence, modelFromSetting, cloneModel, serializeModel, sameMeaning,
   diffModels, undoGroup, analyseSelection, markDays, unmarkDays, setNote, addFixed, removeFixed, hasFixed,
-  FIXED_MONTH_OPTIONS, fixedMaxDay, SHORT_YEAR_MONTHS, DAY30_NOTE, gematria, plural, activityText, sumActivity, NOTE_MAX,
+  SHORT_YEAR_MONTHS, DAY30_NOTE, ADAR1_NOTE, ADAR_NOTE, gematria, plural, activityText, sumActivity, NOTE_MAX,
   draftStorageKey, buildDraft, parseDraft, restoreDraftModel,
 } from '@/lib/nonWorkingDaysPage';
 
@@ -355,51 +358,27 @@ export default function NonWorkingDaysPage() {
     say('נוסף לשינויים: אין פעילות', ana.cand.length === 1 ? hLong(ana.cand[0]) : ana.cand.length + ' ימים · לא נשמר עד "שמור"', 'lock');
   };
 
+  // NW-I2 (תשובת הבעלים): בלי חלון אישור. הסרה של יום שמור היא טיוטה: השורה נכנסת ל"שינויים שלא נשמרו" כ"יוסר", ורק "שמור" מחיל.
   const askRemove = (keysIn) => {
     if (!canEdit) return;
     const keys = keysIn.filter((k) => work.marks.has(k) && k >= today).sort();
     if (!keys.length) return;
-    const savedKeys = keys.filter((k) => saved.marks.has(k));
-    // פירוש 3: סימון שעוד לא נשמר (טיוטה בלבד) יורד בלי חלון אישור
-    if (!savedKeys.length) {
-      setWork((w) => unmarkDays(w, keys));
-      say('הוסר מהשינויים', keys.length === 1 ? hLong(keys[0]) : keys.length + ' ימים', 'check');
-      return;
-    }
-    const one = keys.length === 1;
-    const note = one ? work.marks.get(keys[0]) : '';
-    setDlg({
-      icon: 'trash',
-      title: one ? 'להסיר את הסימון?' : `להסיר את הסימון מ-${keys.length} ימים?`,
-      sub: (
-        <>
-          <bdi>{rangeLabel(keys)}</bdi><br />
-          {one ? 'היום הזה יחזור להיות יום פעילות רגיל: הכנה, איסוף ומשלוחים יחזרו אליו.' : 'הימים האלה יחזרו להיות ימי פעילות רגילים.'}
-          {note ? <><br />ההערה &quot;{note}&quot; תימחק.</> : null}
-          <br />ההסרה תיכנס לתוקף רק אחרי שתלחצו &quot;שמור&quot;.
-        </>
-      ),
-      yes: 'הסר סימון', yesIcon: 'trash', no: 'השאר מסומן',
-      onYes: () => { setWork((w) => unmarkDays(w, keys)); say('הסימון יוסר אחרי שמירה', one ? hLong(keys[0]) : keys.length + ' ימים', 'check'); },
-    });
+    const hasSaved = keys.some((k) => saved.marks.has(k));
+    setWork((w) => unmarkDays(w, keys));
+    say(hasSaved ? 'הסימון יוסר אחרי שמירה' : 'הוסר מהשינויים', keys.length === 1 ? hLong(keys[0]) : keys.length + ' ימים', 'check');
   };
 
+  // NW-I4 (תשובת הבעלים): גם הסרת תאריך עברי קבוע שמור בלי חלון אישור: טיוטה "יוסר", ורק "שמור" מחיל
   const askRemoveFixed = (f) => {
     if (!canEdit) return;
-    // פירוש 4: הסרת תאריך קבוע שמור - באותו חלון כהה (משפיע על כל השנים); תאריך שנוסף בטיוטה בלבד - בלי חלון
-    if (!hasFixed(saved, f)) { setWork((w) => removeFixed(w, f)); say('הוסר מהשינויים', fixedLabel(f), 'check'); return; }
-    setDlg({
-      icon: 'trash',
-      title: 'להסיר את התאריך הקבוע?',
-      sub: <><bdi>{fixedLabel(f)}</bdi><br />התאריך הזה יפסיק להיסגר בכל שנה.<br />ההסרה תיכנס לתוקף רק אחרי שתלחצו &quot;שמור&quot;.</>,
-      yes: 'הסר תאריך', yesIcon: 'trash', no: 'השאר',
-      onYes: () => { setWork((w) => removeFixed(w, f)); say('התאריך יוסר אחרי שמירה', fixedLabel(f), 'check'); },
-    });
+    const wasSaved = hasFixed(saved, f);
+    setWork((w) => removeFixed(w, f));
+    say(wasSaved ? 'התאריך יוסר אחרי שמירה' : 'הוסר מהשינויים', fixedLabel(f), 'check');
   };
 
   const doAddFixed = () => {
     if (!canEdit) return;
-    const cand = { ...fx, day: Math.min(fx.day, fixedMaxDay(fx.month)) };
+    const cand = { month: fx.month, day: fx.day, note: fx.note };
     const r = addFixed(work, cand);
     if (r.duplicate) { say('התאריך כבר ברשימה', fixedLabel(cand), 'info'); return; }
     if (!r.added) return;
@@ -668,14 +647,6 @@ function EditorCard({ canEdit, today, work, sel, selList, ana, arm, activity, no
           <button type="button" className={'inp cl-fb' + (arm === 'to' ? ' armed' : '')} id="nw-to" aria-labelledby="nw-to-l nw-to" aria-pressed={arm === 'to'} onClick={() => onArm('to')}><Ic id="cal" size="sm" /><bdi>{hShort(b)}</bdi></button>
         </div>
       </div>
-      {n > 1 ? (
-        <div className="cl-sum">
-          {ana.cand.length ? <span className="chip gold">יסומנו: {ana.cand.length}</span> : null}
-          {ana.marked.length ? <span className="chip">כבר מסומנים: {ana.marked.length}</span> : null}
-          {ana.closed ? <span className="chip">סגורים בלאו הכי: {ana.closed}</span> : null}
-          {ana.past ? <span className="chip">עברו (נעולים): {ana.past}</span> : null}
-        </div>
-      ) : null}
       {one && cr && cr.k === 'fx' ? <p className="cl-p"><b>{cr.txt}.</b> הגמ״ח סגור ביום הזה לפי התאריך העברי הקבוע. להסרה: ברשימת התאריכים הקבועים למטה.</p> : null}
       {one && cr && cr.k !== 'fx' ? <p className="cl-p"><b>{cr.txt}.</b> הגמ״ח סגור ביום הזה תמיד, אין צורך לסמן אותו, ואי אפשר לסמן אותו כפתוח.</p> : null}
       {one && !cr && one < today ? <p className="cl-p">זה יום שכבר עבר, אי אפשר לשנות אותו.</p> : null}
@@ -701,8 +672,8 @@ function EditorCard({ canEdit, today, work, sel, selList, ana, arm, activity, no
           <p className="cl-note cl-note-hint">{NOTE_HINT}</p>
         </>
       ) : null}
-      {ana.cand.length ? <button type="button" className="btn primary lg block" onClick={onMark}><Ic id="lock" />{n === 1 ? 'סמן: אין פעילות' : `סמן ${ana.cand.length} ימים: אין פעילות`}</button> : null}
-      {ana.marked.length ? <button type="button" className="btn ghost lg block" onClick={onRemoveSel}><Ic id="trash" />{ana.marked.length === 1 ? 'הסר סימון' : `הסר סימון מ-${ana.marked.length} ימים`}</button> : null}
+      {ana.cand.length ? <button type="button" className="btn primary lg block" onClick={onMark}><Ic id="lock" />{n === 1 ? 'סמן: אין פעילות' : 'סמן'}</button> : null}
+      {ana.marked.length ? <button type="button" className="btn ghost lg block" onClick={onRemoveSel}><Ic id="trash" />הסר סימון</button> : null}
       <p className="cl-note">{arm ? `לחצו על יום בלוח כדי לקבוע את ${arm === 'from' ? 'תאריך ההתחלה' : 'תאריך הסיום'}.` : 'הסימון נכנס לשינויים שלא נשמרו, ונשמר רק אחרי "שמור".'}</p>
     </div>
   );
@@ -750,8 +721,7 @@ function MarkedList({ canEdit, today, saved, work, onPick, onRemove, onRestore }
 /* ---------- תאריכים עבריים קבועים ---------- */
 function FixedCard({ canEdit, today, saved, work, fx, setFx, fxNext, activity, onAdd, onRemove, onRestore }) {
   const all = [...work.fixed, ...saved.fixed.filter((f) => !hasFixed(work, f))];
-  const max = fixedMaxDay(fx.month);
-  const day = Math.min(fx.day, max);
+  const day = fx.day;
   const act = fxNext && activity[fxNext] ? activity[fxNext] : null;
   return (
     <div className="rcard" id="nw-fixed">
@@ -781,17 +751,12 @@ function FixedCard({ canEdit, today, saved, work, fx, setFx, fxNext, activity, o
       {canEdit ? (
         <div className="cl-add">
           <span className="lbl">הוספת תאריך קבוע</span>
-          <div className="cl-pick">
-            <select className="inp" id="nw-fx-d" aria-label="יום בחודש העברי" value={day} onChange={(e) => setFx((s) => ({ ...s, day: Number(e.target.value) }))}>
-              {Array.from({ length: max }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{gematria(d)}</option>)}
-            </select>
-            <select className="inp" id="nw-fx-m" aria-label="חודש עברי" value={fx.month} onChange={(e) => { const m = e.target.value; setFx((s) => ({ ...s, month: m, day: Math.min(s.day, fixedMaxDay(m)) })); }}>
-              {FIXED_MONTH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
+          <FixedDatePicker month={fx.month} day={day} onPick={(p) => setFx((s2) => ({ ...s2, day: p.day, month: p.month }))} />
           <div className="inpw"><input id="nw-fx-n" className="inp" maxLength={NOTE_MAX} autoComplete="off" placeholder="הערה (לא חובה)" value={fx.note} onChange={(e) => setFx((s) => ({ ...s, note: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAdd(); } }} /></div>
           <p className="cl-note cl-note-hint">{NOTE_HINT}</p>
           {day === 30 && SHORT_YEAR_MONTHS.includes(fx.month) ? <p className="cl-note cl-note-hint">{DAY30_NOTE}</p> : null}
+          {fx.month === 'Adar I' ? <p className="cl-note cl-note-hint">{ADAR1_NOTE}</p> : null}
+          {fx.month === 'Adar' ? <p className="cl-note cl-note-hint">{ADAR_NOTE}</p> : null}
           {fxNext && act && (act.events || act.deliveries) ? <Warn title="בתאריך הקרוב כבר רשומה פעילות" detail={hLong(fxNext) + ' · ' + activityText(act.events, act.deliveries) + ' · ההזמנות עצמן לא ישתנו'} /> : null}
           <button type="button" className="btn lg block" onClick={onAdd}><Ic id="plus" />הוסף ({fixedLabel({ month: fx.month, day })})</button>
         </div>

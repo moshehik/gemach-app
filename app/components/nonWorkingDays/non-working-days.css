@@ -125,9 +125,6 @@
 .gm-ds.gm-nw .cl-side .rcard .inp,.gm-ds.gm-nw .cl-side .rcard .inp:disabled,.gm-ds.gm-nw .cl-side .rcard :is(input,select).inp:not(:is(#dlg,#dlg2) *){background:var(--sky-50)!important;color:var(--navy-900)!important;border-color:var(--sky-300)!important}
 .gm-ds.gm-nw .cl-side .rcard .inp::placeholder{color:#5b7391;opacity:1}
 .gm-ds.gm-nw .cl-side .rcard .inp:focus,.gm-ds.gm-nw .cl-side .rcard :is(input,select).inp:not(:is(#dlg,#dlg2) *):focus{background:#fff!important;border-color:var(--gold)!important}
-.gm-ds.gm-nw .cl-sum{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
-.gm-ds.gm-nw .cl-sum .chip{background:rgba(255,255,255,.14);color:#fff}
-.gm-ds.gm-nw .cl-sum .chip.gold{background:var(--gold-100);color:var(--navy-900)}
 .gm-ds.gm-nw .cl-scroll{max-height:380px;overflow:auto;scrollbar-width:thin}
 .gm-ds.gm-nw .cl-row{cursor:pointer;align-items:center}
 .gm-ds.gm-nw .cl-row.cl-fxrow{cursor:default}
@@ -137,8 +134,11 @@
 .gm-ds.gm-nw .cl-row .cl-t .chip{font-size:11.5px;padding:2px 8px;min-height:0}
 .gm-ds.gm-nw .cl-gone .cl-t span b,.gm-ds.gm-nw .cl-gone .cl-t small{text-decoration:line-through;opacity:.7}
 .gm-ds.gm-nw .cl-add{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
-.gm-ds.gm-nw .cl-pick{display:grid;grid-template-columns:96px 1fr;gap:8px;margin:6px 0 10px}
-.gm-ds.gm-nw .cl-pick select.inp{min-height:44px;font:inherit;width:100%;padding-inline:10px}
+/* בורר התאריך הקבוע: לוח עברי של הפלטה (.hc) על רקע לבן בתוך העמודה הכהה, ננעל על שנה אחת (בלי שורת ימי שבוע) */
+.gm-ds.gm-nw .cl-fxcal{margin:6px 0 10px;background:#fff}
+.gm-ds.gm-nw .cl-fxcal .hc-g{gap:4px;padding:10px}
+.gm-ds.gm-nw .cl-fxcal .hc-n:disabled{opacity:.35;cursor:default;border-color:#fff}
+.gm-ds.gm-nw .cl-fxcal .hc-n:disabled:hover{transform:none}
 .gm-ds.gm-nw .cl-side .cl-add .inpw{margin-bottom:10px}
 
 /* ===== החלון הכהה (פורטל לשורש הדף: .gm-ds.dlg-dark #dlg) - "ביטול" כקישור בלי מסגרת, כמו בעיצוב ===== */

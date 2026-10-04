@@ -96,7 +96,7 @@ t('holidayName: שמות hebcal -> שמות התצוגה של העיצוב', () 
 });
 
 console.log('תאריכים עבריים קבועים');
-t('fixedOn / nextOccurrence / fixedLabel: כ״ו בשבט; אדר = אדר ב׳ בשנה מעוברת; אדר א׳ בשנה פשוטה = אדר (הכלל של businessDays)', () => {
+t('fixedOn / nextOccurrence / fixedLabel: כ״ו בשבט; אדר = אדר ב׳ בשנה מעוברת; אדר א׳ רק בשנה מעוברת (NW-I7); ל׳ בחשוון/כסלו בשנה חסרה לא נסגר (NW-I7b)', () => {
   const shvat = { month: 'Shvat', day: 26 };
   assert.equal(P.fixedLabel(shvat), 'כ״ו בשבט');
   assert.equal(P.nextOccurrence(shvat, '2026-10-04'), '2027-02-03');
@@ -105,9 +105,10 @@ t('fixedOn / nextOccurrence / fixedLabel: כ״ו בשבט; אדר = אדר ב׳ 
   // תשפ״ז מעוברת: "אדר" י״ד = פורים (אדר ב׳) 23.3.2027; "אדר א׳" י״ד = 21.2.2027
   assert.equal(P.nextOccurrence({ month: 'Adar', day: 14 }, '2026-10-04'), '2027-03-23');
   assert.equal(P.nextOccurrence({ month: 'Adar I', day: 14 }, '2026-10-04'), '2027-02-21');
-  // תשפ״ח פשוטה: אדר א׳ י״ד = אדר י״ד = 13.3.2028
-  assert.equal(P.nextOccurrence({ month: 'Adar I', day: 14 }, '2027-10-01'), '2028-03-12');
+  // תשפ״ח ותשפ״ט פשוטות: "אדר" י״ד = 12.3.2028 (תשפ״ח); "אדר א׳" לא נסגר כלל בשנה פשוטה - המופע הקרוב הוא בשנה המעוברת הבאה (תש״ץ, 17.2.2030)
   assert.equal(P.nextOccurrence({ month: 'Adar', day: 14 }, '2027-10-01'), '2028-03-12');
+  assert.equal(P.nextOccurrence({ month: 'Adar I', day: 14 }, '2027-10-01'), '2030-02-17', 'אדר א׳ בשנה פשוטה: מדלגים על השנים הפשוטות');
+  assert.equal(P.fixedOn([{ month: 'Adar I', day: 14 }], '2028-03-12'), null, 'י״ד באדר בשנה פשוטה אינו נסגר בגלל "אדר א׳"');
   // אותה תשובה כמו הכלל עצמו (parseNonWorkingDaysSetting + isNonWorkingDay בלי ברירות המחדל)
   for (const f of [{ month: 'Cheshvan', day: 30 }, { month: 'Kislev', day: 30 }, { month: 'Adar I', day: 30 }, { month: 'Nisan', day: 1 }]) {
     const cfg = B.parseNonWorkingDaysSetting({ recurringHebrew: [f] });
@@ -116,19 +117,50 @@ t('fixedOn / nextOccurrence / fixedLabel: כ״ו בשבט; אדר = אדר ב׳ 
     assert.equal(B.isNonWorkingDay(nx, cfg, { skipWeekend: false, skipHolidays: false }), true);
     assert.equal(B.isNonWorkingDay(P.addDays(nx, -1), cfg, { skipWeekend: false, skipHolidays: false }), false);
   }
-  // יום ל׳ בחשוון חסר -> כ״ט (DAY30_NOTE): חשוון תשפ״ז חסר (29 ימים) => המופע הוא כ״ט חשוון
-  const ch30 = P.nextOccurrence({ month: 'Cheshvan', day: 30 }, '2026-10-12');
-  assert.equal(P.heb(ch30).month, 'Cheshvan');
-  assert.ok([29, 30].includes(P.heb(ch30).d));
-  assert.match(P.DAY30_NOTE, /כ״ט/);
+  // יום ל׳ שחסר (NW-I7b): חשוון תשפ״ז שלם (ל׳ = 10.11.2026), חשוון תשפ״ט חסר (29 ימים) - לא נסגר שום יום באותה שנה והמופע הבא נדחה
+  assert.equal(P.nextOccurrence({ month: 'Cheshvan', day: 30 }, '2026-09-01'), '2026-11-10');
+  assert.equal(P.nextOccurrence({ month: 'Cheshvan', day: 30 }, '2026-11-11'), '2027-11-30');
+  const ch30 = P.nextOccurrence({ month: 'Cheshvan', day: 30 }, '2028-09-01');
+  assert.equal(ch30, '2030-11-26', 'חשוון תשפ״ט ותש״ץ חסרים (29): הקרוב הוא בתשפ״א');
+  assert.equal(P.heb(ch30).d, 30, 'המופע הוא תמיד יום ל׳ - אף פעם לא כ״ט');
+  assert.equal(P.fixedOn([{ month: 'Cheshvan', day: 30 }], '2028-11-28'), null, 'כ״ט חשוון תשפ״ט לא נסגר בגלל "ל׳ בחשוון"');
+  assert.equal(P.nextOccurrence({ month: 'Kislev', day: 30 }, '2028-09-01'), '2028-12-18', 'כסלו תשפ״ט שלם');
+  assert.match(P.DAY30_NOTE, /לא ייסגר באף יום/);
+  assert.doesNotMatch(P.DAY30_NOTE, /כ״ט/);
+  assert.match(P.ADAR1_NOTE, /שנה מעוברת/);
 });
-t('בורר החודש (פירוש 8): מתשרי, בלי "אדר ב׳" כפול; תוויות אדר לפי הכלל; maxDay', () => {
+t('בורר החודש: תוויות אדר לפי הכלל (NW-I7); maxDay; כל החודשים תקינים', () => {
   const v = P.FIXED_MONTH_OPTIONS.map((o) => o.value);
   assert.equal(v[0], 'Tishrei'); assert.equal(v.length, 13); assert.ok(!v.includes('Adar II'));
   assert.ok(v.indexOf('Shvat') < v.indexOf('Adar') && v.indexOf('Adar') < v.indexOf('Nisan'));
   assert.match(P.FIXED_MONTH_OPTIONS.find((o) => o.value === 'Adar').label, /בשנה מעוברת: אדר ב׳/);
+  assert.equal(P.FIXED_MONTH_OPTIONS.find((o) => o.value === 'Adar I').label, 'אדר א׳ (שנה מעוברת בלבד)');
   assert.equal(P.fixedMaxDay('Tevet'), 29); assert.equal(P.fixedMaxDay('Kislev'), 30); assert.equal(P.fixedMaxDay('Adar'), 29);
   assert.ok(P.isValidFixed('Shvat', 26)); assert.ok(!P.isValidFixed('Tevet', 30)); assert.ok(!P.isValidFixed('Shevat', 1)); assert.ok(!P.isValidFixed('Shvat', 0));
+});
+t('הלוח הננעל על תשפ״ז (NW-I8): 13 חודשים, כל יום וכל חודש לחיצים; אדר ב׳ נשמר כ-Adar ואדר א׳ כ-Adar I', () => {
+  assert.equal(P.FIXED_PICKER_YEAR, 5787);
+  const h0 = P.heb(P.FIXED_PICKER_START);
+  assert.equal(h0.year, 5787); assert.equal(h0.d, 1); assert.equal(h0.month, 'Tishrei'); assert.equal(h0.leap, true, 'שנה מעוברת');
+  const ms = P.fixedPickerMonths();
+  assert.equal(ms.length, 13);
+  assert.deepEqual(ms.map((m) => m.month), ['Tishrei', 'Cheshvan', 'Kislev', 'Tevet', 'Shvat', 'Adar I', 'Adar', 'Nisan', 'Iyyar', 'Sivan', 'Tamuz', 'Av', 'Elul']);
+  assert.deepEqual(ms.map((m) => m.name).slice(4, 8), ['שבט', 'אדר א׳', 'אדר ב׳', 'ניסן'], 'התצוגה: אדר א׳ ואדר ב׳');
+  const len = Object.fromEntries(ms.map((m) => [m.month, m.len]));
+  assert.equal(len.Cheshvan, 30); assert.equal(len.Kislev, 30); assert.equal(len['Adar I'], 30); assert.equal(len.Adar, 29, 'אדר ב׳ כ״ט');
+  // כל (חודש, יום) שהבורר מציע (FIXED_MONTH_OPTIONS) קיים בלוח, והאורך שלו = maxDay של הכלל
+  for (const o of P.FIXED_MONTH_OPTIONS) {
+    const m = ms.find((x) => x.month === o.value);
+    assert.ok(m, o.value); assert.equal(m.len, o.maxDay, o.value);
+  }
+  // חודשי הלוח רצופים (כל חודש מתחיל ביום שאחרי הקודם) ונגמרים באלול
+  for (let i = 1; i < ms.length; i++) assert.equal(P.addDays(ms[i - 1].start, ms[i - 1].len), ms[i].start);
+  assert.equal(P.heb(P.addDays(ms[12].start, 28)).m, 'אלול');
+  // מה שהלוח שומר עובר את אותו אימות ומתנהג כמו הכלל: אדר ב׳ ט״ו = 'Adar' 15, אדר א׳ ל׳ = 'Adar I' 30, חשוון ל׳, כסלו ל׳
+  for (const [month, day] of [['Adar', 29], ['Adar I', 30], ['Cheshvan', 30], ['Kislev', 30], ['Tishrei', 1], ['Elul', 29]]) {
+    assert.ok(P.isValidFixed(month, day), month + ' ' + day);
+    assert.ok(P.addFixed({ marks: new Map(), fixed: [] }, { month, day }).added);
+  }
 });
 
 console.log('הטיוטה, ההפרש והשמירה');
@@ -334,13 +366,33 @@ t('הדף: טיוטה מקומית נכתבת וממוחזרת, נמחקת בש�
   assert.match(src, /className="hc-g lz-g" role="group"/);
   assert.doesNotMatch(src, /<div ref=\{editorRef\} aria-live/, 'אזור ה-live לא עוטף את כל כרטיס העריכה');
   assert.match(src, /<div className="sr-only" role="status" aria-live="polite">/);
-  assert.doesNotMatch(src, /שנה מעוברת בלבד/);
-  assert.match(P.FIXED_MONTH_OPTIONS.find((o) => o.value === 'Adar I').label, /בשנה פשוטה: אדר/);
+  // NW-I2 + NW-I4: אין חלונות אישור להסרה (יום שמור, תאריך קבוע שמור): הסרה = טיוטה "יוסר" ו"שמור" אחד מחיל. נשאר רק חלון ההתנגשות בשמירה
+  assert.doesNotMatch(src, /להסיר את הסימון/, 'אין חלון "להסיר את הסימון?"');
+  assert.doesNotMatch(src, /להסיר את התאריך הקבוע/, 'אין חלון "להסיר את התאריך הקבוע?" (NW-I4 = לא)');
+  assert.match(src, /הרשימה השתנתה בינתיים/, 'חלון ההתנגשות נשאר');
+  assert.equal((src.match(/setDlg\(\{/g) || []).length, 1, 'חלון אחד בלבד בדף: התנגשות שמירה');
+  for (const fn of ['askRemove', 'askRemoveFixed']) {
+    const i = src.indexOf('const ' + fn + ' = ');
+    const body = src.slice(i, src.indexOf('};', i));
+    assert.doesNotMatch(body, /setDlg/, fn + ' לא פותח חלון');
+  }
+  assert.match(src, /setWork\(\(w\) => unmarkDays\(w, keys\)\)/);
+  assert.match(src, /setWork\(\(w\) => removeFixed\(w, f\)\)/);
+  // NW-I5: רק מספר הימים בטווח ("N ימים נבחרו"); בלי תגיות ובלי מספר נוסף בלחצנים
+  assert.doesNotMatch(src, /cl-sum|יסומנו:|כבר מסומנים:|סגורים בלאו הכי:|עברו \(נעולים\):/, 'אין תגיות סיכום בטווח');
+  assert.match(src, /ימים נבחרו/);
+  assert.doesNotMatch(src, /`סמן \$\{|`הסר סימון מ-/, 'אין מספר בלחצני הסימון / ההסרה');
+  assert.match(src, /'סמן: אין פעילות' : 'סמן'/, 'לחצן "סמן" פשוט');
+  // NW-I8: אין select ליום/חודש; לוח עברי ננעל
+  assert.doesNotMatch(src, /<select/);
+  assert.match(src, /<FixedDatePicker /);
+  assert.match(read('app/components/nonWorkingDays/FixedDatePicker.js'), /className="hc cl-fxcal"/);
   assert.match(read('app/api/non-working-days/route.js'), /userId: employee/);
 });
 t('התפריט ומסך הניהול: פריט "ימי אי-פעילות" (lib/menu), תווית בעברית (pageLabels), אריח במסך הניהול', () => {
   const menu = read('lib/menu/buildMenuTree.js');
-  assert.match(menu, /'ad-nwd': \{ label: 'ימי אי-פעילות', icon: 'lock', href: '\/non-working-days', featureKey: 'feature:non_working_days_manage'/);
+  assert.match(menu, /'ad-nwd': \{ label: 'ימי אי-פעילות', icon: 'lock', href: '\/non-working-days', logged: true, tip:/);
+  assert.doesNotMatch(menu.replace(/\/\/[^\n]*/g, ''), /featureKey/, 'NW-I9: בלי featureKey - מוצג לכל מחובר');
   assert.match(menu, /'ad-settings', 'ad-nwd'/);
   assert.match(read('lib/menu/pageLabels.js'), /'\/non-working-days': 'ימי אי-פעילות'/);
   assert.match(read('lib/adminHubCatalog.js'), /href: '\/non-working-days', icon: 'lock', gate: 'head', title: 'ימי אי-פעילות'/);

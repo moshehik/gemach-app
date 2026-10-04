@@ -1,5 +1,6 @@
-// בדיקת התנהגות בדפדפן (headless) על החבילה המדומה (dist, אחרי build.mjs): סימון -> טיוטה -> שמור; הסרה -> חלון כהה ->
-// טיוטה -> שמור; Escape סוגר את החלון; ביטול שורה; צפייה בלבד בלי לחצני עריכה. node scripts/nwd-audit/interact.mjs
+// בדיקת התנהגות בדפדפן (headless) על החבילה המדומה (dist, אחרי build.mjs): סימון -> טיוטה -> שמור; הסרת יום שמור (NW-I2) = טיוטה
+// "יוסר" בלי חלון אישור -> שמור; גם הסרת תאריך קבוע שמור בלי חלון (NW-I4); טווח = רק "N ימים נבחרו" ולחצן "סמן" (NW-I5);
+// תאריך קבוע מלוח עברי ננעל על תשפ״ז (NW-I8); ביטול שורה; צפייה בלבד בלי לחצני עריכה. node scripts/nwd-audit/interact.mjs
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
@@ -40,34 +41,77 @@ await step('סימון ושמירה: POST /api/settings עם מסמך גרסה 2
   assert.ok(JSON.stringify(saved).includes('חופשה'));
   assert.match(await text(p, '#nw-sum'), /הכול שמור/);
 });
-await step('הסרת יום שמור: חלון כהה (#dlg בתוך .gm-ds.dlg-dark), Escape סוגר בלי שינוי', async () => {
-  await (await p.$('.cl-row .cl-u')).click(); await sleep(300);
-  assert.ok(await p.$('.gm-ds.gm-nw.dlg-dark .scrim.on #dlg'));
-  await p.keyboard.press('Escape'); await sleep(300);
-  assert.equal(await p.$('#dlg'), null);
-  assert.match(await text(p, '#nw-sum'), /הכול שמור/);
-});
-await step('הסרה מאושרת נכנסת לטיוטה (שורה "יוסר", "יוסר אחרי שמירה" בתא) ונשמרת רק ב"שמור"', async () => {
+await step('הסרת יום שמור (NW-I2): בלי חלון אישור - שורה "יוסר" בטיוטה, השמור לא משתנה', async () => {
+  await sleep(500);
   const before = await p.evaluate(() => window.__saved);
   await (await p.$('.cl-row .cl-u')).click(); await sleep(300);
-  await (await p.$('#dlg [data-yes]')).click(); await sleep(300);
+  assert.equal(await p.$('#dlg'), null, 'אין חלון');
   assert.ok(await p.$('.cl-row.cl-gone'));
+  assert.match(await text(p, '#nw-sum'), /יוסר הסימון/);
   assert.equal(await p.evaluate(() => window.__saved), before);
+});
+await step('"שמור" היחיד מחיל את ההסרה', async () => {
+  const before = await p.evaluate(() => window.__saved);
   await (await p.$('#nw-sum .btn.primary')).click(); await sleep(700);
   assert.notEqual(await p.evaluate(() => window.__saved), before);
+  assert.match(await text(p, '#nw-sum'), /הכול שמור/);
+});
+await step('טווח (NW-I5): רק "N ימים נבחרו", בלי תגיות ובלי מספר נוסף, ולחצן "סמן" פשוט', async () => {
+  const cells = await p.$$eval(free, (els) => els.map((e) => e.dataset.d));
+  await p.click(`.lz-day[data-d="${cells[0]}"]`); await sleep(100);
+  await p.keyboard.down('Shift'); await p.click(`.lz-day[data-d="${cells[cells.length - 1]}"]`); await p.keyboard.up('Shift'); await sleep(200);
+  assert.match(await text(p, '.cl-side .cl-eh'), /ימים נבחרו/);
+  assert.equal(await p.$('.cl-sum'), null);
+  assert.equal(await p.$('.cl-side .chip.gold'), null, 'אין תגית');
+  assert.doesNotMatch(await text(p, '.cl-side'), /יסומנו|כבר מסומנים|סגורים בלאו הכי|עברו \(נעולים\)/);
+  const btn = await p.$eval('.cl-side .btn.primary.lg', (b) => b.textContent.trim());
+  assert.equal(btn, 'סמן');
 });
 await step('יום סגור (שבת / חג / חול המועד): אין לחצן סימון, הסבר "אי אפשר לסמן אותו כפתוח"', async () => {
   await (await p.$('.lz-day.cl-auto:not(.dim)')).click(); await sleep(150);
   assert.equal(await p.$('.cl-side .btn.primary.lg'), null);
   assert.match(await text(p, '.cl-side'), /אי אפשר לסמן אותו כפתוח/);
 });
-await step('תאריך קבוע: הוספה לטיוטה, כפול נדחה', async () => {
-  await p.select('#nw-fx-m', 'Kislev'); await p.select('#nw-fx-d', '25'); await sleep(100);
+await step('תאריך קבוע (NW-I8): לוח עברי ננעל על תשפ״ז - בלי select ובלי שנה; כל יום וחודש לחיצים; הוספה לטיוטה, כפול נדחה', async () => {
+  assert.equal(await p.$('#nw-fixed select'), null, 'אין select');
+  assert.ok(await p.$('#nw-fx-cal.hc'));
+  assert.doesNotMatch(await text(p, '#nw-fx-title'), /\d|תשפ/, 'השנה מוסתרת');
+  assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'שבט');
+  await p.click('#nw-fx-prev'); await p.click('#nw-fx-prev'); await sleep(100);
+  assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'כסלו');
+  assert.equal((await p.$$('#nw-fx-cal .hc-d')).length, 30, 'כסלו תשפ״ז: ל׳ ימים - גם יום ל׳ לחיץ');
+  await p.click('#nw-fx-cal .hc-d[data-m="Kislev"][data-d="25"]'); await sleep(100);
   await (await p.$('#nw-fixed .btn.lg')).click(); await sleep(200);
   assert.match(await text(p, '#nw-fixed'), /כ״ה בכסלו/);
   assert.match(await text(p, '#nw-sum'), /ייסגר בכל שנה/);
   await p.$eval('#nw-fixed .btn.lg', (b) => b.click()); await sleep(200); // הטוסט (פינה שמאלית למטה) מכסה את הלחצן בצילום
   assert.match(await text(p, '#toast'), /כבר ברשימה/);
+});
+await step('תאריך קבוע: אדר ב׳ נשמר כ-Adar, אדר א׳ כ-Adar I; ל׳ בחשוון/כסלו ואדר א׳ מציגים את ההערה המתאימה', async () => {
+  for (let i = 0; i < 8; i++) { if ((await p.$eval('#nw-fx-title', (e) => e.textContent.trim())) === 'אדר א׳') break; await p.click('#nw-fx-next'); await sleep(60); }
+  assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'אדר א׳');
+  await p.click('#nw-fx-cal .hc-d[data-m="Adar I"][data-d="30"]'); await sleep(100);
+  assert.match(await text(p, '#nw-fixed'), /אדר א׳ קיים רק בשנה מעוברת/);
+  await p.click('#nw-fx-next'); await sleep(100);
+  assert.equal(await p.$eval('#nw-fx-title', (e) => e.textContent.trim()), 'אדר ב׳');
+  assert.equal((await p.$$('#nw-fx-cal .hc-d')).length, 29, 'אדר ב׳: כ״ט ימים');
+  await p.click('#nw-fx-cal .hc-d[data-m="Adar"][data-d="14"]'); await sleep(100);
+  assert.match(await text(p, '#nw-fixed'), /בשנה מעוברת נסגר באדר ב׳/);
+  await p.$eval('#nw-fixed .btn.lg', (b) => b.click()); await sleep(200);
+  await p.click('#nw-sum .btn.primary'); await sleep(700);
+  const saved = JSON.parse(await p.evaluate(() => window.__saved));
+  assert.ok(saved.recurringHebrew.some((r) => r.month === 'Adar' && r.day === 14), 'אדר ב׳ ט״ו... י״ד נשמר כ-Adar');
+  assert.ok(saved.recurringHebrew.some((r) => r.month === 'Kislev' && r.day === 25));
+  assert.ok(!saved.recurringHebrew.some((r) => r.month === 'Adar II'), 'לא נשמר Adar II');
+});
+await step('הסרת תאריך קבוע שמור (NW-I4): בלי חלון אישור, שורה "יוסר" בטיוטה, ורק "שמור" מחיל', async () => {
+  const before = await p.evaluate(() => window.__saved);
+  await (await p.$('#nw-fixed .cl-u')).click(); await sleep(300);
+  assert.equal(await p.$('#dlg'), null, 'אין חלון');
+  assert.ok(await p.$('#nw-fixed .cl-row.cl-gone'));
+  assert.equal(await p.evaluate(() => window.__saved), before);
+  await (await p.$('#nw-sum .btn.primary')).click(); await sleep(700);
+  assert.notEqual(await p.evaluate(() => window.__saved), before);
 });
 // הדף שומר טיוטה בכל שינוי, ו-beforeunload עדיין מופיע כשיש שינויים: ב-reload של הבדיקה מאשרים אותו. הדפדפן הזה חולק localStorage עם
 // העמוד הראשון (שהשאיר טיוטה), לכן מנקים ואז טוענים מחדש כדי להתחיל בלי באנר ממתין.
