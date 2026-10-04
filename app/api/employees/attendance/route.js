@@ -1,66 +1,63 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
-import { checkAuth, HEAD_MANAGEMENT_ROLES, checkPageAccess } from '@/lib/auth';
+import prisma from '@/app/lib/prisma';
+import { getAttendanceViewer } from '@/lib/attendance/server';
+import { decideReadAccess } from '@/lib/attendance/access';
+import { parsePeriod, monthQueryRange, dayKeyInMonth, israelDayKey } from '@/lib/attendance/summary';
+
+// GET /api/employees/attendance?month=1-12&year=YYYY — נתיב תאימות לממשק הנוכחות הישן בלבד (4.10.2026, מעבר "ישן / חדש"):
+// לשונית "נוכחות" הישנה ב-/employees (app/employees/LegacyEmployeesPage.js) ו"דוח נוכחות חודשי" הישן
+// (app/employees/report/LegacyReportPage.js), ששוחזרו מ-git כפי שהם וקוראים לכתובת הזו.
+//
+// זה לא המטפל הישן (שהוסר ב-02a76630): השער הוא השער המוקשח של "סיכום נוכחות" — getAttendanceViewer() (resolveAttendanceManager:
+// עובד מחובר לפי roleId, נכשל סגור בשגיאת DB / עובד לא פעיל) + decideReadAccess(scope:'month') — בדיוק כמו
+// GET /api/attendance-sheet?scope=month. הטווח לפי שעון ישראל (monthQueryRange + israelDayKey) ולא לפי שעון השרת.
+// התשובה מכילה רק את השדות שהממשק הישן קורא (לא כל שורת Employee כמו פעם), באותה צורה: { success, data, period }.
+// קריאה בלבד: בלי כתיבה, בלי $transaction.
+export const dynamic = 'force-dynamic';
+
+const json = (body, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+
+function currentIsraelPeriod() {
+  const key = israelDayKey(new Date()) || '';
+  const [y, m] = key.split('-').map(Number);
+  return Number.isInteger(y) && Number.isInteger(m) ? { y, m: m - 1 } : null;
+}
 
 export async function GET(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-  // Wages + hours of EVERY employee: same audience as the /employees pages (head management + programmer).
-  if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const viewer = await getAttendanceViewer();
+  if (!viewer) return json({ success: false, error: 'Unauthorized' }, 401);
+  const acc = decideReadAccess({ isManager: viewer.isManager, sessionEmployeeId: viewer.employeeId, scope: 'month' });
+  if (!acc.ok) return json({ success: false, error: acc.error }, acc.status);
+
+  const sp = new URL(request.url).searchParams;
+  const month = sp.get('month');
+  const year = sp.get('year');
+  const period = month && year ? parsePeriod(year, Number(month) - 1) : currentIsraelPeriod();
+  if (!period) return json({ success: false, error: 'חודש לא תקין' }, 400);
+
   try {
-    const { searchParams } = new URL(request.url);
-    const month = searchParams.get('month');
-    const year = searchParams.get('year');
-    
-    let startDate, endDate;
-    if (month && year) {
-      startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-      endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-    } else {
-      // Default to current month
-      const now = new Date();
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    }
-
     const employees = await prisma.employee.findMany({
-      where: {
-        // We could filter by isActive, but let's get everyone who might have shifts this month
-      },
-      include: {
+      select: {
+        id: true, firstName: true, lastName: true, isActive: true,
+        department: { select: { id: true, name: true } },
         shifts: {
-          where: {
-            isDeleted: false,
-            date: {
-              gte: startDate,
-              lte: endDate
-            }
-          },
-          // כרונולוגי מהישן לחדש - גם דוח כלל העובדים וגם ההדפסה של כל עובד משתמשים בסדר הזה
-          orderBy: [{ date: 'asc' }, { entryTime: 'asc' }]
+          where: { isDeleted: false, date: monthQueryRange(period.y, period.m) },
+          select: { id: true, date: true, entryTime: true, exitTime: true, totalMinutes: true, totalCalculated: true, hourlyWageSnapshot: true, travelExpensesSnapshot: true, notes: true },
+          orderBy: [{ date: 'asc' }, { entryTime: 'asc' }],
         },
-        department: true
       },
-      orderBy: [
-        { firstName: 'asc' },
-        { lastName: 'asc' }
-      ]
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
     });
-
-    // Filter out inactive employees that have no shifts in this period
-    const activeOrWithShifts = employees
-      .filter(e => e.isActive || e.shifts.length > 0)
-      .map(({ password, pinHash, ...safe }) => safe); // never send the password/pin hashes to the browser
-
-    return NextResponse.json({
+    const data = employees
+      .map((e) => ({ ...e, shifts: e.shifts.filter((s) => dayKeyInMonth(israelDayKey(s.date) || israelDayKey(s.entryTime), period.y, period.m)) }))
+      .filter((e) => e.isActive || e.shifts.length > 0);
+    return json({
       success: true,
-      data: activeOrWithShifts,
-      period: {
-        startDate,
-        endDate
-      }
+      data,
+      period: { startDate: new Date(Date.UTC(period.y, period.m, 1)), endDate: new Date(Date.UTC(period.y, period.m + 1, 0, 23, 59, 59, 999)) },
     });
   } catch (error) {
-    console.error('Error fetching attendance report:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch attendance data' }, { status: 500 });
+    console.error('Error fetching legacy attendance report:', error);
+    return json({ success: false, error: 'Failed to fetch attendance data' }, 500);
   }
 }

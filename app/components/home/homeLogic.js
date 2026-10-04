@@ -3,6 +3,8 @@
 // (scripts/test_home_logic.mjs). מקור הלוגיקה: public/a5/adapters/ai.js ו-public/a5/index.html
 // (אב-טיפוס מחובר); הכללים של הדף הישן: app/components/home/LegacyHome.js.
 
+import { hebFromInstant } from './homeDates.js';
+
 export const DEFAULT_TITLE = 'ברוכים הבאים לגמ״ח';
 
 const str = (v) => (v === null || v === undefined ? '' : String(v));
@@ -120,6 +122,13 @@ export function scopedAdvFields(text) {
 
 // כמו A5.search ב-public/a5/adapters/ai.js. השרת כבר מגביל ל-50 לכל סוג; החיתוך ל"עוד N" נעשה בתצוגה.
 // חשוב: רק שדות התצוגה נשמרים — לא מעבירים הלאה שדות נוספים שהשרת עשוי להחזיר (ר' ממצא global-search).
+// מצב פריט בהזמנה לפי הדגלים: מושכר עכשיו / הוחזר / טרם נלקח (אותו ניסוח גם בחיפוש המהיר - lib/quickSearchResults.js)
+export function rentalStateLabel(r) {
+  if (r.isTaken && !r.isReturned) return 'מושכר עכשיו';
+  if (r.isReturned) return 'הוחזר';
+  return 'טרם נלקח';
+}
+
 export function normalizeSearch(d) {
   const data = d || {};
   const customers = (data.customers || []).map((c) => ({
@@ -141,12 +150,17 @@ export function normalizeSearch(d) {
     uuid: o.id,
     url: '/orders/' + o.orderId,
   }));
+  // ברקוד אחד חוזר בהשכרות רבות לאורך השנים (4.10.2026): לכל פריט גם הלקוחה ותאריך האירוע של ההזמנה, כדי שאפשר
+  // יהיה להבדיל בין השורות. תאריך עברי בלבד: הטקסט השמור בהזמנה, ואם אין (נתונים ישנים) — חישוב מ-eventDate לפי יום ישראלי.
   const rentals = (data.rentals || []).map((r) => ({
     n: str(r.catalogName || r.description),
     b: str(r.barcode || r.catalogBarcode),
     s: str(r.sizeText),
     orderId: r.orderId,
     url: '/orders/' + r.orderId,
+    cn: [r.firstName, r.lastName].map((x) => str(x).trim()).filter(Boolean).join(' '),
+    h: str(r.eventDateHebrew).trim() || hebFromInstant(r.eventDate),
+    ...(typeof r.isTaken === 'boolean' ? { rs: rentalStateLabel(r) } : {}),
   }));
   return { customers, orders, rentals };
 }
@@ -165,24 +179,40 @@ export function orderStatus(st) {
   return { cls: s ? s[0] : '', icon: s ? s[1] : 'clock', label: st || 'פעיל' };
 }
 
+// מצב פריט (rentalStateLabel) → תגית כמו סטטוס ההזמנה: [מחלקה, אייקון]. מה שלא מוכר — בלי תגית.
+export const RENTAL_STATE_STYLE = {
+  'מושכר עכשיו': ['', 'bag'],
+  'הוחזר': ['ok', 'check'],
+  'טרם נלקח': ['', 'clock'],
+};
+export function rentalStatus(label) {
+  const s = Object.prototype.hasOwnProperty.call(RENTAL_STATE_STYLE, label) ? RENTAL_STATE_STYLE[label] : null;
+  return s ? { cls: s[0], icon: s[1], label } : null;
+}
+
 // רשימה מאוחדת אחת (לקוחות, הזמנות, פריטים) — כל שורה מציינת מה היא
 export function unifiedRows(res) {
   if (!res) return [];
   return [
     ...res.customers.map((x) => ({ key: 'c' + x.id, kind: 'לקוח', icon: 'user', title: x.n, url: x.url, phone: x.p, city: x.c })),
     ...res.orders.map((x) => ({ key: 'o' + x.uuid + '-' + x.id, kind: 'הזמנה', icon: 'file', title: x.n, url: x.url, orderId: x.id, eventHeb: x.h, status: orderStatus(x.st) })),
-    ...res.rentals.map((x, i) => ({ key: 'r' + i + '-' + x.orderId + '-' + x.b, kind: 'פריט', icon: 'dress', title: x.n, url: x.url, barcode: x.b, size: x.s })),
+    ...res.rentals.map((x, i) => ({
+      key: 'r' + i + '-' + x.orderId + '-' + x.b, kind: 'פריט', icon: 'dress', title: x.n, url: x.url, barcode: x.b, size: x.s, state: x.rs || '',
+      orderId: x.orderId, customer: x.cn || '', eventHeb: x.h || '', status: rentalStatus(x.rs),
+    })),
   ];
 }
 
-export const TABLE_COLUMNS = ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'תאריך אירוע', 'סטטוס / מידה'];
+// "הזמנה" ו"לקוח" (4.10.2026) — רק לשורות פריט: ההזמנה שבה הפריט הושכר ושם הלקוחה (בשורת הזמנה המספר כבר ב"מזהה" והשם ב"שם").
+export const TABLE_COLUMNS = ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס / מידה'];
 
 // שורות הטבלה (מערך תאים לכל שורה, באותו סדר כמו TABLE_COLUMNS) + קישור לשורה
 export function tableRecords(rows) {
   return rows.map((r) => {
-    if (r.kind === 'לקוח') return { url: r.url, cells: ['לקוח', r.title, r.phone, r.city, '', '', ''] };
-    if (r.kind === 'הזמנה') return { url: r.url, cells: ['הזמנה', r.title, '', '', '#' + r.orderId, r.eventHeb, r.status.label] };
-    return { url: r.url, cells: ['פריט', r.title, '', '', r.barcode, '', r.size ? 'מידה ' + r.size : ''] };
+    if (r.kind === 'לקוח') return { url: r.url, cells: ['לקוח', r.title, r.phone, r.city, '', '', '', '', ''] };
+    if (r.kind === 'הזמנה') return { url: r.url, cells: ['הזמנה', r.title, '', '', '#' + r.orderId, '', '', r.eventHeb, r.status.label] };
+    const st = [r.state, r.size ? 'מידה ' + r.size : ''].filter(Boolean).join(' · ');
+    return { url: r.url, cells: ['פריט', r.title, '', '', r.barcode, r.orderId ? '#' + r.orderId : '', r.customer || '', r.eventHeb || '', st] };
   });
 }
 

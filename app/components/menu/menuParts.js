@@ -55,7 +55,10 @@ const HIDE_TIP_IDS = new Set(['ad-models', 'ad-refunds', 'ad-deliveries', 'sched
 /** התווית של פריט שעדיין לא נבנה (kind:'soon'): שורה כבויה, לא קישור ולא ניתנת למיקוד. */
 export const SOON_LABEL = 'בקרוב';
 export function tipOf(item) {
-  if (!item || !item.tip || HIDE_TIP_IDS.has(item.id)) return undefined;
+  if (!item || !item.tip) return undefined;
+  // "מהכלים שנפתחו לאחרונה" (שורת אחרונים בפאנל "ניהול") הוא טקסט למשתמשת — לא מוסתר גם בשורות שהערת התכנון שלהן מוסתרת.
+  if (item.recent) return String(item.tip);
+  if (HIDE_TIP_IDS.has(item.id)) return undefined;
   // הסרת סוגריים טכניים כמו "(page:orders)" אם נשארו בטקסט.
   const t = String(item.tip).replace(/\s*\(page:[^)]*\)/g, '').trim();
   return t || undefined;
@@ -79,6 +82,13 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
       <SnLi n={item.icon} />
       {item.label}
       {k ? <span className="sn-k">{k}</span> : null}
+      {/* סימון "נפתח לאחרונה" גלוי גם בלי ריחוף (מקלדת / מגע) + טקסט לקורא מסך */}
+      {item.recent && !k ? (
+        <span className="sn-k sn-recent">
+          <Ic n="sn-history" />
+          <span className="sr-only">נפתח לאחרונה</span>
+        </span>
+      ) : null}
     </>
   );
   const cls = `sn-link${item.danger ? ' danger' : ''}`;

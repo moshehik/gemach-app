@@ -1,4 +1,5 @@
 // בדיקת חוזה לדף "לוח חודשי" (/board) אחרי המעבר לעיצוב החדש (תשובות הבעלים 4.10.2026, scratch/board-build/answers-board.json):
+// BD-O3 (5.10.2026): חלון "הזמנות ליום" נמחק - כל לחיצה על יום עוברת לדף הלו״ז. F13: שחרור קודם למתכנת בלבד (הרישום).
 // מה שהבעלים הסיר לא חזר, מה שנשאר קיים, אין תאריך לועזי בתאים, "החודש הנוכחי" בגובה מתג התצוגה, השער page:board נשאר,
 // חוזי ה-API של הדף הקודם לא השתנו, אין alert/confirm של הדפדפן, והלוגיקה הטהורה (boardLogic.js) נכונה.
 // בלי DB, רשת ודפדפן. הרצה: node scripts/test_board_page.mjs   (יוצא עם קוד 1 אם משהו נכשל)
@@ -24,9 +25,6 @@ const LAYOUT = read('../app/board/layout.js');
 const SWITCH = read('../app/components/board/BoardSwitch.js');
 const PAGE = read('../app/components/board/BoardPage.js');
 const PARTS = read('../app/components/board/BoardParts.js');
-const DAY = read('../app/components/board/BoardDayDialog.js');
-const RENT = read('../app/components/board/BoardRentalModal.js');
-const DLG = read('../app/components/board/BoardDialogs.js');
 const GATE = read('../app/components/board/BoardGate.js');
 const CARD = read('../app/components/gate/NoAccessCard.js');
 const CSS = read('../app/components/board/board.css');
@@ -35,19 +33,19 @@ const LEGACY = read('../components/orders/RentalReturnModal.js');
 const PAGEGATE = read('../app/components/PageGate.js');
 const API = read('../app/api/board/stages/route.js');
 const RANGE = read('../lib/schedule/range.js');
-const UI = code(PAGE + PARTS + DAY + RENT + DLG);
+const UI = code(PAGE + PARTS);
 const ALL = UI + code(CARD + GATE);
 
 let passed = 0;
 let failed = 0;
-function t(name, fn) {
-  try { fn(); passed++; console.log('  ok   -', name); }
+async function t(name, fn) {
+  try { await fn(); passed++; console.log('  ok   -', name); }
   catch (e) { failed++; console.error('  FAIL -', name, '\n        ', e.message); process.exitCode = 1; }
 }
 const has = (src, re, msg) => assert.ok(re.test(src), msg || String(re));
 const hasNot = (src, re, msg) => assert.ok(!re.test(src), msg || 'נמצא: ' + re);
 
-t('הנתיב /board טוען את הדף דרך dynamic; ה-CSS של הפלטה רק מתוך BoardPage', () => {
+await t('הנתיב /board טוען את הדף דרך dynamic; ה-CSS של הפלטה רק מתוך BoardPage', () => {
   has(ROUTE, /BoardSwitch/);
   has(SWITCH, /dynamic\(\(\) => import\('\.\/BoardPage'\), \{ ssr: false \}\)/);
   hasNot(ROUTE + SWITCH, /components\.css/);
@@ -56,7 +54,7 @@ t('הנתיב /board טוען את הדף דרך dynamic; ה-CSS של הפלטה
   has(PAGE, /import '\.\/board\.css'/);
 });
 
-t('E19: השער page:board נשאר (PageGate), רק החלון "אין הרשאה" בעיצוב החדש (בגרסה החדשה); PageGate בלי fallback לא השתנה', () => {
+await t('E19: השער page:board נשאר (PageGate), רק החלון "אין הרשאה" בעיצוב החדש (בגרסה החדשה); PageGate בלי fallback לא השתנה', () => {
   has(LAYOUT, /<PageGate pageKey="page:board" fallback=\{<BoardGateSwitch legacy=\{<NoAccessMessage \/>\} next=\{<BoardGate \/>\} \/>\}>/);
   has(read('../app/components/board/BoardGateSwitch.js'), /useUiVariant\('board'\) === 'a5' \? next : legacy/);
   has(PAGEGATE, /return fallback \|\| <NoAccessMessage \/>/);
@@ -68,28 +66,39 @@ t('E19: השער page:board נשאר (PageGate), רק החלון "אין הרש�
   has(API, /canOpenPage\('page:board'\)/, 'גם ה-API של המונים בשער page:board');
 });
 
-t('BD-O1: /board מאחורי המתג ישן/חדש - ברירת מחדל הלוח הישן (זהה ל-main, בייט-לבייט), החדש רק עם הדגל board=a5', () => {
-  has(SWITCH, /useUiVariant\('board'\)/);
-  has(SWITCH, /variant === 'a5' \? <BoardPage \/> : <LegacyBoardPage \/>/);
-  has(SWITCH, /import\('@\/app\/board\/LegacyBoardPage'\)/);
+await t('BD-O1 / F13: /board מאחורי המתג ישן/חדש לפי הרישום המרכזי - ברירת מחדל הלוח הישן, החדש למתכנת בלבד; הישן זהה ל-main בייט-לבייט', async () => {
+  const c = code(ROUTE);
+  has(c, /const variant = await getRequestUiVariant\('board'\);/);
+  has(c, /<VariantFrame screen="board" variant=\{variant\}>/);
+  has(c, /variant === 'legacy' \? <LegacyBoardPage \/> : <BoardSwitch \/>/);
+  has(c, /import LegacyBoardPage from '\.\/LegacyBoardPage'/);
+  hasNot(code(SWITCH), /useUiVariant|LegacyBoardPage/, 'הבחירה בשרת, לא בלקוח');
   assert.ok(existsSync(new URL('../app/board/LegacyBoardPage.js', import.meta.url)));
+  // הרישום (lib/uiVariantScreens.js): board = {routes:['/board'], legacyExists, newExists, selfSwitch}; ברירת מחדל: מתכנת a5, אחרים legacy
+  const R = await import('../lib/uiVariantScreens.js');
+  const e = R.getScreenEntry('board');
+  assert.ok(e && e.legacyExists === true && e.newExists === true && e.selfSwitch === true && e.switchTargets === null);
+  assert.deepEqual([...e.routes], ['/board']);
+  assert.equal(R.roleDefaultVariant('board', 2), 'a5', 'מתכנת - הלוח החדש');
+  for (const r of [0, 1, 3, 4, 5, null, undefined]) assert.equal(R.roleDefaultVariant('board', r), 'legacy', 'תפקיד ' + r);
+  assert.ok(!R.NO_LEGACY_PAGES.some((x) => x.routes.includes('/board')), 'הלוח לא ברשימת הדפים בלי גרסה ישנה');
+  has(PAGE, /<PageVariantToggle screen="board" placement="header" systemTip \/>/, 'מתג חזרה לישן בכותרת הלוח החדש');
+  has(LAYOUT, /BoardGateSwitch legacy=\{<NoAccessMessage \/>\} next=\{<BoardGate \/>\}/);
   // הלוח הישן = הבלוב של app/board/page.js כפי שהיה לפני הלוח החדש (c944cb95, main) - בייט-לבייט
   const blob = execFileSync('git', ['show', 'c944cb95:app/board/page.js'], { cwd: path.resolve(HERE, '..'), maxBuffer: 1 << 26 });
   assert.ok(blob.equals(readFileSync(new URL('../app/board/LegacyBoardPage.js', import.meta.url))), 'LegacyBoardPage.js שונה מהבלוב ב-main');
-  const uv = readFileSync(new URL('../lib/uiVariant.js', import.meta.url), 'utf8');
-  has(uv, /'board'\]/); has(uv, /board: 'ui_variant_board'/);
 });
 
-t('E07/E02/E03/E04/E05/E06: אשף ההדפסה, חיפוש חכם, סטטיסטיקה, חיפוש גלובלי, חיפוש מתקדם ומקרא הסטטוס - הוסרו', () => {
+await t('E07/E02/E03/E04/E05/E06: אשף ההדפסה, חיפוש חכם, סטטיסטיקה, חיפוש גלובלי, חיפוש מתקדם ומקרא הסטטוס - הוסרו', () => {
   for (const re of [/PrintWizardModal/, /StatisticsModal/, /smart-search/, /\/api\/ai\//, /handleGlobalSearch|חיפוש גלובלי|חיפוש בכל החודשים/, /חיפוש מתקדם|advFilters|showAdvSearch|buildBoardAiPrompt/, /aiInputMode|isAiModeActive|חיפוש חכם/, /מקרא/, /HebrewDatePicker/]) hasNot(ALL, re);
   hasNot(ROUTE + LAYOUT, /PrintWizardModal|StatisticsModal/);
 });
 
-t('BD-O4 / BD-O5 / E09: בתא וברשימה רק סמנים ומונים - בלי שורות הזמנה, בלי אייקון "מורחב", בלי מונה הזמנות / הדפסה', () => {
+await t('BD-O4 / BD-O5 / E09: בתא וברשימה רק סמנים ומונים - בלי שורות הזמנה, בלי אייקון "מורחב", בלי מונה הזמנות / הדפסה', () => {
   const cell = PARTS.slice(PARTS.indexOf('export function DayCell'), PARTS.indexOf('export function MonthGrid'));
-  const list = PARTS.slice(PARTS.indexOf('export function DayList'), PARTS.indexOf('export function OrderRow'));
+  const list = PARTS.slice(PARTS.indexOf('export function DayList'), PARTS.indexOf('export { WEEKDAYS }'));
   for (const part of [cell, list]) {
-    hasNot(code(part), /OrderRow|CellOrder|bd-co\b|bd-cos|bd-ex|onExpand|onOrder|onHint|enableAlterations|customerName|#\{order|orderId/, 'פירוט הזמנות בתא / ברשימה');
+    hasNot(code(part), /OrderRow|CellOrder|bd-co\b|bd-cos|bd-ex|onExpand|onOrder|onHint|enableAlterations|customerName|#\{order|orderId|setDayDlg|BoardDayDialog/, 'פירוט הזמנות בתא / ברשימה');
     hasNot(code(part), /i-printer|name="print"|name="eye"/);
     has(part, /<StageCounters rows=\{rows\}/, 'מוני השלבים');
   }
@@ -102,13 +111,13 @@ t('BD-O4 / BD-O5 / E09: בתא וברשימה רק סמנים ומונים - ב�
   hasNot(CSS, /bd-co\b|bd-cos|bd-ex\b|--bd-cat/);
 });
 
-t('BD-O7: בשורת ההזמנה בחלון היום אין תגית סטטוס, בחלונית הפרטים אין שורת סטטוס, ובלוגיקה אין עוד קטגוריית סטטוס', () => {
-  hasNot(code(PARTS + DAY), /CATEGORY|orderCategory|categoryOrder|'סטטוס'|meta\.chip|meta\.label/);
+await t('BD-O7: אין תגית סטטוס ושורת סטטוס בלוח, ובלוגיקה אין עוד קטגוריית סטטוס', () => {
+  hasNot(code(PARTS), /CATEGORY|orderCategory|categoryOrder|'סטטוס'|meta\.chip|meta\.label/);
   assert.equal(L.orderCategory, undefined);
   assert.equal(L.CATEGORY, undefined);
 });
 
-t('E11/JDG-6: אין תאריך לועזי בתאים, בכותרות ובחלונית הפרטים (עברית בלבד)', () => {
+await t('E11/JDG-6: אין תאריך לועזי בתאים, בכותרות ובחלונית הפרטים (עברית בלבד)', () => {
   hasNot(UI, /getDate\(\)\}\/\{|getMonth\(\) \+ 1\}|toLocaleDateString\('he-IL'\)|תאריך לועזי/);
   const g = L.buildMonthGrid(new Date(2026, 9, 4), new Date(2026, 9, 4));
   for (const c of g.flat().filter(Boolean)) {
@@ -116,7 +125,7 @@ t('E11/JDG-6: אין תאריך לועזי בתאים, בכותרות ובחלו
   }
 });
 
-t('E10: פרשה וחגים כטקסט פשוט, בלי תגית (badge/chip)', () => {
+await t('E10: פרשה וחגים כטקסט פשוט, בלי תגית (badge/chip)', () => {
   has(PARTS, /<span className="bd-notes">\{cell\.notes\.join\(' · '\)\}<\/span>/);
   hasNot(PARTS, /badge-neutral/);
   const g = L.buildMonthGrid(new Date(2026, 9, 4), new Date(2026, 9, 4)).flat().filter(Boolean);
@@ -125,7 +134,7 @@ t('E10: פרשה וחגים כטקסט פשוט, בלי תגית (badge/chip)', 
   assert.ok(g.find((c) => c.key === '2026-09-21').notes[0].includes('כִּפּוּר'), 'יום כיפור');
 });
 
-t('E01: חיפוש רגיל (מספר הזמנה / שם לקוח) עם ניקוי, בעיצוב חיפוש ההיסטוריה (hf-s, אייקון חיפוש); search נשלח לשרת', () => {
+await t('E01: חיפוש רגיל (מספר הזמנה / שם לקוח) עם ניקוי, בעיצוב חיפוש ההיסטוריה (hf-s, אייקון חיפוש); search נשלח לשרת', () => {
   has(PARTS, /className="hf-s" role="search"/);
   has(PARTS, /<Ic name="search" \/>/);
   has(PARTS, /placeholder="חיפוש הזמנה \(מספר הזמנה, שם לקוח\)\.\.\."/);
@@ -134,7 +143,7 @@ t('E01: חיפוש רגיל (מספר הזמנה / שם לקוח) עם ניקו�
   has(PAGE, /buildBoardMonthParams\(selectedDate, \{ search \}\)/);
 });
 
-t('S01: מסנן השלבים בשורת החיפוש בדיוק כמו בהיסטוריה (hf-sel/hf-t/hf-p/hf-o/hf-ck/hf-oi/hf-oc) + "הצג הכל"', () => {
+await t('S01: מסנן השלבים בשורת החיפוש בדיוק כמו בהיסטוריה (hf-sel/hf-t/hf-p/hf-o/hf-ck/hf-oi/hf-oc) + "הצג הכל"', () => {
   for (const cls of ['hf-sel', 'hf-t', 'hf-lbl', 'hf-bdg', 'hf-chv', 'hf-scrim', 'hf-p', 'hf-all', 'hf-allb', 'hf-l', 'hf-o', 'hf-ck', 'hf-oi', 'hf-ol', 'hf-oc', 'hf-pills', 'hf-pill']) has(PARTS, new RegExp(`className=[{"'][^>]*\\b${cls}\\b`), 'חסר ' + cls);
   has(PARTS, />הצג הכל</);
   has(PARTS, /<span className="hf-lbl">סינון<\/span>/);
@@ -142,7 +151,7 @@ t('S01: מסנן השלבים בשורת החיפוש בדיוק כמו בהיס
   assert.ok(PARTS.indexOf('className="hf-s"') < PARTS.indexOf("className={'hf-sel'"), 'hf-sel בתוך שורת החיפוש');
 });
 
-t('S04: "החודש הנוכחי" בגובה מתג התצוגה (28px), S03: מתג לוח/רשימה + רשימה אוטומטית בנייד', () => {
+await t('S04: "החודש הנוכחי" בגובה מתג התצוגה (28px), S03: מתג לוח/רשימה + רשימה אוטומטית בנייד', () => {
   has(PAGE, />החודש הנוכחי</);
   const vsw = /\.gm-ds \.vsw\{[^}]*height:(\d+)px/.exec(read('../design-system/components.css'));
   const btn = /\.gm-ds\.gm-bd #mToday\{[^}]*height:(\d+)px/.exec(CSS);
@@ -152,7 +161,7 @@ t('S04: "החודש הנוכחי" בגובה מתג התצוגה (28px), S03: מ
   has(PAGE, /MOBILE_MQ = '\(max-width:720px\)'/);
 });
 
-t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז של היום", בלי ימי חודש סמוך, בלי שורות סיכום ברשימה', () => {
+await t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז של היום", בלי ימי חודש סמוך, בלי שורות סיכום ברשימה', () => {
   hasNot(UI, /תפעול/);
   hasNot(UI, /ללו״ז של היום<|id="toDay"/);
   hasNot(PARTS, /\bdim\b/);
@@ -160,33 +169,37 @@ t('S12/S05/S08/S11: בלי תווית "תפעול", בלי "ללו״ז של הי
   has(PAGE, /<bdi>לוח חודשי<\/bdi>/, 'JDG-1: שם הדף "לוח חודשי"');
 });
 
-t('S06: לחיצה על יום = /schedule?date=<היום> רק כשההרשאה ללו״ז ידועה; לא ידוע / בלי הרשאה - חלון "הזמנות ליום" (ממצא 4)', () => {
-  has(PAGE, /router\.push\('\/schedule\?date=' \+ cell\.key\)/);
-  has(PAGE, /if \(!stagesData \|\| stagesData\.canOpenSchedule !== true\) \{/);
-  has(API, /canOpenPage\('page:schedule'\)/);
+await t('S06 / BD-O3: כל לחיצה על יום = /schedule?date=<היום>, תמיד - בלי חלון ובלי חלופה לפי הרשאה', () => {
+  has(PAGE, /const openDay = useCallback\(\(cell\) => \{ router\.push\('\/schedule\?date=' \+ cell\.key\); \}, \[router\]\);/);
+  hasNot(code(PAGE + PARTS), /canOpenSchedule|dayDlg|setDayDlg|BoardDayDialog|stagesData\.can/, 'אין עוד תנאי הרשאה / חלון יום');
+  hasNot(code(API), /canOpenSchedule|page:schedule/, 'ה-API לא בודק page:schedule (דף הלו״ז מציג בעצמו "אין הרשאה")');
+  has(read('../app/schedule/layout.js'), /<PageGate pageKey="page:schedule">/, 'דף הלו״ז בשער page:schedule עם חלון "אין הרשאה" משלו');
 });
 
-t('נגישות (ממצא 3): הגריד הוא list/listitem (לא grid בלי שורות), הקישור הוא כותרת היום בלבד, אין role=link עם לחצנים בתוכו', () => {
+await t('נגישות (BD-O3): הגריד list/listitem; כל יום (בתא וברשימה) הוא קישור אמיתי <a href> - Enter עובד, Ctrl/אמצעי פותחים טאב; אין role=link עם לחצנים בתוכו', () => {
   hasNot(code(PARTS), /role="grid"|role="link"/);
   has(PARTS, /className="hc-g lz-g" role="list"/);
   has(PARTS, /role="listitem"/);
-  has(PARTS, /className="bd-dlink"\s+href=\{'\/schedule\?date=' \+ cell\.key\}/);
+  has(PARTS, /className="bd-dlink"\s+href=\{href\}/);
+  has(PARTS, /const href = '\/schedule\?date=' \+ cell\.key;/);
+  has(PARTS, /<a className=\{'hday bd-hday' \+ \(late \? ' bd-latecell' : ''\)\} href=\{'\/schedule\?date=' \+ cell\.key\} onClick=\{\(e\) => goTo\(e, cell, onOpenDay\)\}/, 'ברשימה: קישור ולא לחצן');
+  hasNot(code(PARTS), /<button type="button" className=\{'hday/, 'כותרת היום ברשימה כבר לא לחצן');
+  has(PARTS, /e\.button > 0 \|\| e\.metaKey \|\| e\.ctrlKey \|\| e\.shiftKey \|\| e\.altKey\) return;/, 'Ctrl/Shift/אמצעי = התנהגות קישור רגילה');
 });
 
-t('GAP-4: איחור החזרה = מסגרת אדומה לתא כולו (ולכותרת היום ברשימה) בנוסף לסימן האחד ולמסגרת השורה', () => {
+await t('GAP-4: איחור החזרה = מסגרת אדומה לתא כולו (ולכותרת היום ברשימה) בנוסף לסימן האחד ולמסגרת השורה', () => {
   has(PARTS, /\(lateCount \? ' bd-latecell' : ''\)/);
   has(CSS, /\.gm-ds\.gm-bd \.hc-d\.lz-day\.bd-latecell\{box-shadow:inset 0 0 0 2px var\(--red\)\}/);
-  has(CSS, /\.gm-ds\.gm-bd \.bd-or\.bd-late \.li\{box-shadow:inset 0 0 0 2px var\(--red\)\}/);
   has(CSS, /\.hday\.bd-hday\.bd-latecell/);
 });
 
-t('S09: חצי המקלדת מחליפים חודש (לא בתוך שדה ולא כשחלון פתוח)', () => {
+await t('S09: חצי המקלדת מחליפים חודש (לא בתוך שדה)', () => {
   has(PAGE, /e\.key !== 'ArrowRight' && e\.key !== 'ArrowLeft'/);
   has(PAGE, /changeMonth\(e\.key === 'ArrowRight' \? -1 : 1\)/);
-  has(PAGE, /if \(anyOverlay\) return;/);
+  hasNot(code(PAGE), /anyOverlay/, 'אין חלונות בלוח');
 });
 
-t('S02/S10/E12: מונים באותו גוון חוץ מהתראה; סימן התראה אחד עם שתי סיבות (משימות + איחור החזרה)', () => {
+await t('S02/S10/E12: מונים באותו גוון חוץ מהתראה; סימן התראה אחד עם שתי סיבות (משימות + איחור החזרה)', () => {
   has(CSS, /\.gm-ds\.gm-bd \.lz-pr\{--pc:var\(--bd-pc\)/);
   has(CSS, /\.gm-ds\.gm-bd \.lz-pr\.al\{--pc:var\(--bd-pc-al\)\}/);
   hasNot(PARTS, /STAGE_META\[[^\]]+\]\.color/, 'צבע לכל שלב חזר');
@@ -196,47 +209,28 @@ t('S02/S10/E12: מונים באותו גוון חוץ מהתראה; סימן ה�
   has(PARTS, /className="tabmk debt lz-al"/);
 });
 
-t('E13/E14/E15: שורת הזמנה (שם · מספר · סימן איחור), לחצן מידע עגול עם חלונית פרטים, תפריט כרטיס הזמנה / לקוח / השכרה', () => {
-  has(PARTS, /className=\{'hrow irow lz-r bd-or'/);
-  has(CSS, /\.gm-ds\.gm-bd \.ibtn\.bd-info\{[^}]*border-radius:50%/, 'לחצן המידע עגול');
-  has(PARTS, /className="pl-rt on bd-rt"/);
-  for (const k of ['טלפון', 'פריטים בהזמנה', 'הושכר', 'הוחזר', 'סה״כ לתשלום', 'שולם', 'ציפוף ימים']) assert.ok(PARTS.includes(`'${k}'`), 'חסר ' + k);
-  has(PARTS, /!hideCustomSpacing && o\.customSpacing !== null/);
-  has(PARTS, />כרטיס הזמנה</); has(PARTS, />כרטיס לקוח</); has(PARTS, />כרטיס השכרה</);
-  has(PARTS, /custId \? <button/, 'כרטיס לקוח רק עם מזהה לקוח');
-  has(PAGE, /router\.push\(`\/orders\/\$\{o\.orderId\}`\)/);
-  has(PAGE, /router\.push\(`\/customers\/\$\{id\}`\)/);
-});
-
-t('E17 / BD-O6 / BD-O7: חלון "הזמנות ליום" כמו הלו״ז (ציר st-sidenav + שורות lz-r) עם סינון שם/טלפון/מספר; בלי הדפסת יום, בלי ציר סטטוס', () => {
-  has(DAY, /className="st-sidenav lz-snav"/);
-  has(DAY, /className="card lz-st bd-dst"/);
-  has(DAY, /placeholder="חיפוש הזמנה ביום זה \(שם, טלפון, מספר\)\.\.\."/);
-  hasNot(code(DAY + PAGE), /enableBatchPrintPrep|enable_batch_print_prep|onPrint|printDayOrders|\/print\/order|batch=1/, 'BD-O6: הדפסת היום הוסרה');
-  hasNot(code(DAY), /filterDayOrders\(orders, q\);\s*if \(filter === 'late'[\s\S]*orderCategory/);
-  has(DAY, /stab\('late', 'באיחור החזרה'/, 'נשאר סינון "באיחור החזרה" (איחור הוא סמן, לא סטטוס)');
-  assert.equal(L.filterDayOrders([{ orderId: 5, customerName: 'שרה', customerPhone: '052' }, { orderId: 6, customerName: 'לאה' }], '05').length, 1);
-});
-
-t('E16/UNV-6: חלון ההשכרה בעיצוב חדש עם כל הפונקציונליות - אותו hook כמו החלון הקיים, אותן קריאות API', () => {
-  has(RENT, /useRentalReturn\(\{ orderId, onClose, onUpdate, ui \}\)/);
+await t('BD-O3: חלון "הזמנות ליום" נמחק לגמרי - הקבצים, תפריט ההזמנה, חלונית הפרטים, חלון ההשכרה והסטייל שלהם; הרכיבים המשותפים נשארו', () => {
+  for (const f of ['BoardDayDialog.js', 'BoardRentalModal.js', 'BoardDialogs.js']) assert.ok(!existsSync(new URL('../app/components/board/' + f, import.meta.url)), f + ' עדיין קיים');
+  const bad = /BoardDayDialog|BoardRentalModal|BoardDialogs|useBoardDialogs|OrderRow|ActionMenu|InfoHint|filterDayOrders|MarkToast|LzPortal|hideCustomSpacing|setRentalId|rentalUi|dialogs\./;
+  hasNot(code(PAGE + PARTS + SWITCH), bad);
+  assert.equal(L.filterDayOrders, undefined);
+  assert.equal(L.customerName, undefined);
+  hasNot(CSS, /bd-day|bd-dl\b|bd-dh\b|bd-rent|bd-menu|bd-rt\b|bd-info|bd-or\b|bd-cf|bd-scrim|bd-item|bd-dup|#toast/, 'סטייל של החלונות נשאר');
+  // הרכיבים המשותפים שחלון ההשכרה של הלוח הסתמך עליהם - נשארים (משמשים את /orders, /rentals)
+  assert.ok(existsSync(new URL('../components/orders/useRentalReturn.js', import.meta.url)));
   has(LEGACY, /useRentalReturn\(\{ orderId, onClose, onUpdate, ui: LEGACY_UI \}\)/);
-  for (const api of ['/api/rentals/scan', '/api/rentals/confirm', '/api/rentals/cancel', '/api/rentals/toggle', '/api/returns/scan', '/api/returns/report-issue', '/api/audit/order-item/', '/api/customers/', '/api/orders/']) assert.ok(HOOK.includes(api), 'חסר ' + api);
-  for (const fn of ['handleGlobalBarcodeScan', 'confirmInlineRent', 'confirmManualEntry', 'cancelManualEntry', 'selectDuplicate', 'confirmRental', 'handleMarkReturnGood', 'handleMarkReturnBad', 'undoRental', 'undoReturn', 'reportIssue', 'markReturnGoodAgain', 'showItemDetails', 'handleHeaderSave', 'handleHeaderCancel', 'attemptCloseCard', 'handlePrintPreConfirm']) assert.ok(new RegExp('\\b' + fn + '\\b').test(RENT), 'החלון החדש לא משתמש ב-' + fn);
-  has(RENT, /<OrderPrintMenu/);
-  has(PAGE, /onUpdate=\{fetchOrdersForMonth\}/, 'אחרי עדכון בחלון - רק ההזמנות נטענות מחדש (ממצא 2)');
-  has(PAGE, /onClose=\{\(\) => \{ setRentalId\(null\); fetchStages\(\{ fresh: true \}\); \}\}/, 'המונים - כשהחלון נסגר');
-  hasNot(code(HOOK), /window\.(alert|confirm|customConfirm|customPrompt)\(|[^.\w]alert\(/, 'ה-hook לא קורא ישירות לחלונות הדפדפן');
+  assert.ok(existsSync(new URL('../app/components/gate/NoAccessCard.js', import.meta.url)));
+  assert.ok(existsSync(new URL('../app/components/schedule/MarkDialogs.js', import.meta.url)), 'שימוש משותף בלו״ז');
 });
 
-t('אין window.alert / window.confirm / prompt של הדפדפן ואין title= (טולטיפ דפדפן) בקוד הלוח', () => {
+await t('אין window.alert / window.confirm / prompt של הדפדפן ואין title= (טולטיפ דפדפן) בקוד הלוח', () => {
   hasNot(UI + code(CARD), /window\.(alert|confirm|prompt)\(|[^.\w](alert|confirm|prompt)\(/, 'alert/confirm');
   hasNot(UI + code(CARD), /customConfirm|customPrompt/);
   hasNot(UI + CARD, /\btitle=/);
   hasNot(UI, /console\.(log|info|debug)/);
 });
 
-t('E21/E18: טעינה כמו קודם - חודש עברי ±14 יום, מטמון SWR, ביטול בקשה קודמת, "טוען נתונים..."', () => {
+await t('E21/E18: טעינה כמו קודם - חודש עברי ±14 יום, מטמון SWR, ביטול בקשה קודמת, "טוען נתונים..."', () => {
   has(PAGE, /cacheNamespace\('board'\)/);
   has(PAGE, /boardCache\.has\(cacheKey\)/);
   has(PAGE, /activeOrdersRequestRef\.current\.abort\(\)/);
@@ -250,13 +244,13 @@ t('E21/E18: טעינה כמו קודם - חודש עברי ±14 יום, מטמו
   has(pf, /fromDate\.setDate\(fromDate\.getDate\(\) - 14\)/);
 });
 
-t('E20: ההגדרות שנשארו בשימוש (hide_custom_spacing + כלל איחור ההחזרה) נקראות; enable_alterations / enable_batch_print_prep כבר לא (BD-O6 / BD-O7)', () => {
+await t('E20: רק כלל איחור ההחזרה נקרא מההגדרות; hide_custom_spacing (חלונית הפרטים), enable_alterations, enable_batch_print_prep כבר לא (BD-O3 / BD-O6 / BD-O7)', () => {
   has(PAGE, /fetchSharedJson\('\/api\/settings', \{ ttl: TTL\.STATIC \}\)/);
-  for (const k of ['hide_custom_spacing', 'late_return_threshold_days']) assert.ok(PAGE.includes(k), k);
-  hasNot(code(PAGE), /enable_alterations|enable_batch_print_prep|setEnableAlterations|setEnableBatchPrintPrep/);
+  for (const k of ['late_return_threshold_days', 'NON_WORKING_DAYS_SETTING_KEY']) assert.ok(PAGE.includes(k), k);
+  hasNot(code(PAGE), /enable_alterations|enable_batch_print_prep|setEnableAlterations|setEnableBatchPrintPrep|hide_custom_spacing/);
 });
 
-t('לוגיקה: איחור החזרה = הכלל של הלו״ז (סף מההגדרות + ימי עסקים)', () => {
+await t('לוגיקה: איחור החזרה = הכלל של הלו״ז (סף מההגדרות + ימי עסקים)', () => {
   // E12 = כלל הלו״ז: late_return_threshold_days (ברירת מחדל 7) ממועד ההחזרה הצפוי (יום העבודה הראשון אחרי האירוע,
   // או toDate/returnDate מגולגל), רק כשיש פריט שנלקח ולא הוחזר (דגל או תאריך)
   const ev = (y, m, d) => new Date(Date.UTC(y, m - 1, d - 1, 21)).toISOString(); // חצות ישראל
@@ -276,7 +270,7 @@ t('לוגיקה: איחור החזרה = הכלל של הלו״ז (סף מההג
   assert.equal(L.isOrderLate({ eventDate: ev(2026, 10, 1), toDate: ev(2026, 10, 19), isAbroad: true, items: taken }, { now }), false);
 });
 
-t('לוגיקה: ניווט חודשים, 13 חודשי הקפיצה, טווח המונים והגריד העברי', () => {
+await t('לוגיקה: ניווט חודשים, 13 חודשי הקפיצה, טווח המונים והגריד העברי', () => {
   const d = new Date(2026, 9, 4); // כ״ג תשרי תשפ״ז
   assert.equal(L.monthTitle(d), 'תשרי תשפ"ז');
   assert.equal(L.monthTitle(L.shiftMonth(d, 1)), 'חשוון תשפ"ז');
@@ -296,7 +290,7 @@ t('לוגיקה: ניווט חודשים, 13 חודשי הקפיצה, טווח �
   assert.equal(L.stageCountText({ label: 'הכנה', plural: 'הכנות' }, 3), '3 הכנות');
 });
 
-t('API חדש GET /api/board/stages: מספרים בלבד, אותו חישוב כמו הלו״ז (getScheduleDay), טווח עד 31 יום', () => {
+await t('API חדש GET /api/board/stages: מספרים בלבד, אותו חישוב כמו הלו״ז (getScheduleDay), טווח עד 31 יום', () => {
   has(RANGE, /import \{ getScheduleDay \} from '\.\/index'/);
   has(RANGE, /MAX_RANGE_DAYS = 31/);
   has(RANGE, /RANGE_CONCURRENCY = [23];/, '2-3 ימים במקביל');
@@ -316,7 +310,7 @@ t('API חדש GET /api/board/stages: מספרים בלבד, אותו חישוב 
   assert.deepEqual(L.monthStageTotals(days, stages), { prep: 2, event: 1, dout: 0 });
 });
 
-t('board.css: כל כלל בהיקף .gm-ds.gm-bd (חוץ מביטול ריפוד המעטפת), והשורש בלי gm-home', () => {
+await t('board.css: כל כלל בהיקף .gm-ds.gm-bd (חוץ מביטול ריפוד המעטפת), והשורש בלי gm-home', () => {
   has(PAGE, /className="gm-ds gm-lz gm-bd home-bg dlg-dark"/);
   hasNot(PAGE, /gm-home/);
   assert.ok(existsSync(new URL('../app/components/board/board.css', import.meta.url)));

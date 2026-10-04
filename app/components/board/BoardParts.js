@@ -1,11 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import ScheduleIcon from '../schedule/ScheduleIcon';
-import { LzPortal } from '../schedule/LzPortal';
-import { STAGE_META, dressCountText } from '../schedule/scheduleMeta';
+import { STAGE_META } from '../schedule/scheduleMeta';
 import {
-  WEEKDAYS, cellAlert, customerName, dayStageRows, isOrderLate, jumpMonths, monthTitle, stageCountText, validItems,
+  WEEKDAYS, cellAlert, dayStageRows, isOrderLate, jumpMonths, monthTitle, stageCountText,
 } from './boardLogic';
 
 // רכיבי התצוגה של הלוח החודשי - כולם רכיבי פלטה (design-system/COMPONENTS.md) ורכיבי הלו״ז (schedule.css), בשמות של
@@ -181,6 +180,15 @@ export function MonthHead({ date, today, onPrev, onNext, onPick }) {
   );
 }
 
+// ניווט הקישור של יום (BD-O3): קישור אמיתי לדף הלו״ז (Enter / לחיצה אמצעית / Ctrl+לחיצה עובדים כמו בכל קישור);
+// לחיצה רגילה = ניווט בצד הלקוח (router.push) בלי טעינת דף מלאה.
+function goTo(e, cell, onOpenDay) {
+  e.stopPropagation();
+  if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  onOpenDay(cell);
+}
+
 // ---------- תא יום בגריד ----------
 // כמו dayCell בעיצוב המאושר, ורק זה (BD-O4, הבעלים 4.10.2026: "רק הסמנים והמספרים, בלי הפירוט של האתר הישן"): אות היום
 // (MATCH-4), שם החודש ביום הראשון, סימן התראה אחד (S10 + איחור החזרה E12, JDG-5), פרשה וחגים כטקסט פשוט (E10) ומוני
@@ -198,6 +206,7 @@ export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay })
     if (e.target.closest && e.target.closest('button,a')) return;
     onOpenDay(cell);
   };
+  const href = '/schedule?date=' + cell.key;
   return (
     <div
       className={'hc-d lz-day' + (cell.isShabbat ? ' sh' : '') + (cell.isToday ? ' today' : '') + (lateCount ? ' bd-latecell' : '')}
@@ -209,9 +218,9 @@ export function DayCell({ cell, orders, stageDay, stages, selected, onOpenDay })
         {/* הקישור הסמנטי של התא (ממצא נגישות 3): רק כותרת היום. לחיצה בעכבר בכל שטח התא עושה אותו דבר (S06) */}
         <a
           className="bd-dlink"
-          href={'/schedule?date=' + cell.key}
+          href={href}
           aria-label={label}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenDay(cell); }}
+          onClick={(e) => goTo(e, cell, onOpenDay)}
         >
           <b>{cell.letter}</b>
           {cell.monthName ? <em>{cell.monthName}</em> : null}
@@ -283,11 +292,11 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
         <div className="hgrp">
           {days.length ? days.map(({ cell, rows, alert, late }) => (
             <section key={cell.key} className={'bd-lday' + (cell.isToday ? ' lz-today' : '')} aria-label={cell.hebrewLong}>
-              <button type="button" className={'hday bd-hday' + (late ? ' bd-latecell' : '')} onClick={() => onOpenDay(cell)} data-tip="ללו״ז של היום הזה">
+              <a className={'hday bd-hday' + (late ? ' bd-latecell' : '')} href={'/schedule?date=' + cell.key} onClick={(e) => goTo(e, cell, onOpenDay)} data-tip="ללו״ז של היום הזה">
                 <b>{cell.hebrewLong}</b>
                 {cell.notes.length ? <small>{cell.notes.join(' · ')}</small> : null}
                 {alert ? <span className="tabmk debt lz-al" role="img" aria-label={alert.tip} data-tip={alert.tip}><Ic name="alert" className="sm" /></span> : null}
-              </button>
+              </a>
               {rows.length ? <StageCounters rows={rows} className="bd-lc" /> : null}
             </section>
           )) : (
@@ -296,146 +305,6 @@ export function DayList({ weeks, head, ordersByDate, stagesDays, stages, selecte
         </div>
       </div>
     </div>
-  );
-}
-
-// ---------- שורת הזמנה (E13 בעיצוב שורות הלו״ז: lz-r / li lrow / ic-b) ----------
-// שם · מספר · סימן איחור · לחצן מידע עגול (E14). בלי תגית סטטוס ובלי פס צבע לפי סטטוס (BD-O7). לחיצה על השורה = תפריט הפעולות (E15).
-// (בלוח אין עוד שורות הזמנה בתא וברשימה - BD-O4/BD-O5; השורה חיה רק בחלון "הזמנות ליום", F12.)
-export function OrderRow({ order, onOrder, onHint }) {
-  const late = isOrderLate(order, useLateCfg());
-  const name = customerName(order) || 'ללא שם';
-  const items = validItems(order).length;
-  const parts = [order.customerPhone || order.customer?.phone1 || '', dressCountText(items)].filter(Boolean);
-  const infoRef = useRef(null);
-  return (
-    <article className={'hrow irow lz-r bd-or' + (late ? ' lz-late bd-late' : '')}>
-      <div
-        className="li lrow"
-        role="button"
-        tabIndex={0}
-        aria-haspopup="menu"
-        aria-label={'פעולות להזמנה #' + order.orderId + ' של ' + name}
-        onClick={(e) => { if (e.target.closest('.bd-info')) return; onOrder(order, e.currentTarget); }}
-        onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); onOrder(order, e.currentTarget); } }}
-      >
-        <div className="ic-b"><Ic name="file" /></div>
-        <div className="t">
-          <b>{name} <bdi>#{order.orderId}</bdi></b>
-          {parts.length ? (
-            <span className="ln">{parts.map((p, i) => <span key={i} className="lz-p">{i ? ' · ' : ''}<bdi dir={i === 0 && /\d/.test(p) ? 'ltr' : undefined}>{p}</bdi></span>)}</span>
-          ) : null}
-        </div>
-        <div className="lz-act">
-          {late ? <span className="chip red bd-latechip"><Ic name="alert" />איחור</span> : null}
-          <button
-            ref={infoRef}
-            type="button"
-            className="ibtn bd-info"
-            aria-label="פרטים נוספים"
-            onMouseEnter={() => onHint(order, infoRef.current)}
-            onMouseLeave={() => onHint(null)}
-            onFocus={() => onHint(order, infoRef.current)}
-            onBlur={() => onHint(null)}
-            onClick={(e) => { e.stopPropagation(); onHint(order, infoRef.current, true); }}
-          >
-            <Ic name="info" />
-          </button>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// ---------- חלונית הפרטים בריחוף על לחצן המידע (E14): רמז עשיר של הפלטה (.pl-rt) ----------
-// אותן שורות כמו בדף הקודם, בלי התאריך הלועזי (תאריכי אירוע בעברית בלבד, JDG-6). "ציפוף ימים" רק כשיש ערך וההגדרה
-// hide_custom_spacing כבויה. צבע "שולם": ירוק כששולם במלואו, כתום חלקי, אדום בלי תשלום (כמו קודם).
-export function InfoHint({ hint, hideCustomSpacing }) {
-  const ref = useRef(null);
-  const [pos, setPos] = useState(null);
-  useLayoutEffect(() => {
-    if (!hint || !ref.current || !hint.el) { setPos(null); return; }
-    const r = hint.el.getBoundingClientRect();
-    const w = ref.current.offsetWidth;
-    const h = ref.current.offsetHeight;
-    const x = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
-    let y = r.top - h - 10;
-    let side = 't';
-    if (y < 8) { y = r.bottom + 10; side = 'b'; }
-    setPos({ x, y, side, ax: Math.max(12, Math.min(w - 12, r.left + r.width / 2 - x)) });
-  }, [hint]);
-  if (!hint) return null;
-  const o = hint.order;
-  const v = validItems(o);
-  const paidCls = o.totalPaid >= o.totalAmount && o.totalAmount > 0 ? 'bd-paid' : (o.totalPaid > 0 ? 'bd-part' : 'bd-unpaid');
-  const rows = [
-    ['טלפון', <bdi key="p" dir="ltr">{o.customerPhone || 'לא הוזן'}</bdi>],
-    ['תאריך אירוע', o.eventDateHebrew || 'לא צוין'],
-  ];
-  if (!hideCustomSpacing && o.customSpacing !== null && o.customSpacing !== undefined) rows.push(['ציפוף ימים', o.customSpacing + ' ' + (o.customSpacing === 1 ? 'יום' : 'ימים')]);
-  rows.push(['פריטים בהזמנה', v.length], ['הושכר', v.filter((i) => i.isTaken).length], ['הוחזר', v.filter((i) => i.isReturned).length]);
-  rows.push(['סה״כ לתשלום', '₪' + (o.totalAmount || 0)], ['שולם', <span key="s" className={paidCls}>₪{o.totalPaid || 0}</span>]);
-  return (
-    <LzPortal>
-      <div
-        ref={ref}
-        className="pl-rt on bd-rt"
-        role="tooltip"
-        data-side={pos ? pos.side : 't'}
-        style={pos ? { left: pos.x, top: pos.y } : { left: -9999, top: -9999 }}
-      >
-        <div className="rh">פרטים על הזמנה #{o.orderId}</div>
-        {rows.map(([k, val]) => <div className="rr" key={k}><small>{k}</small><b>{val}</b></div>)}
-        <span className="ra" style={pos ? { insetInlineStart: 'auto', left: pos.ax - 6 } : undefined} />
-      </div>
-    </LzPortal>
-  );
-}
-
-// ---------- תפריט הפעולות להזמנה (E15): תפריט הפלטה (.menu, פריט 15) ----------
-export function ActionMenu({ menu, onClose, onOrderCard, onCustomerCard, onRental }) {
-  const ref = useRef(null);
-  const [pos, setPos] = useState(null);
-  useLayoutEffect(() => {
-    if (!menu || !ref.current) return;
-    const r = menu.el.getBoundingClientRect();
-    const w = ref.current.offsetWidth;
-    const h = ref.current.offsetHeight;
-    const x = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w));
-    let y = r.bottom + 4;
-    if (y + h > window.innerHeight - 8) y = Math.max(8, r.top - h - 4);
-    setPos({ x, y });
-    setTimeout(() => ref.current?.querySelector('button')?.focus(), 30);
-  }, [menu]);
-  useEffect(() => {
-    if (!menu) return undefined;
-    const key = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); return; }
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const b = [...(ref.current?.querySelectorAll('button') || [])];
-        const i = b.indexOf(document.activeElement);
-        e.preventDefault();
-        b[(i + (e.key === 'ArrowDown' ? 1 : -1) + b.length) % b.length]?.focus();
-      }
-    };
-    window.addEventListener('keydown', key, true);
-    return () => window.removeEventListener('keydown', key, true);
-  }, [menu, onClose]);
-  if (!menu) return null;
-  const o = menu.order;
-  const custId = o.customerId || o.customer?.id;
-  return (
-    <LzPortal>
-      <div className="bd-menu-bg" onMouseDown={onClose} />
-      <div className="bd-menu-w" ref={ref} style={pos ? { left: pos.x, top: pos.y } : { left: -9999, top: -9999 }}>
-        <div className="menu open" role="menu" aria-label={'פעולות להזמנה #' + o.orderId}>
-          <div className="bd-menu-h">הזמנה #{o.orderId}</div>
-          <button type="button" role="menuitem" onClick={() => onOrderCard(o)}><Ic name="file" />כרטיס הזמנה</button>
-          {custId ? <button type="button" role="menuitem" onClick={() => onCustomerCard(custId)}><Ic name="user" />כרטיס לקוח</button> : null}
-          <button type="button" role="menuitem" onClick={() => onRental(o)}><Ic name="box" />כרטיס השכרה</button>
-        </div>
-      </div>
-    </LzPortal>
   );
 }
 

@@ -4,7 +4,7 @@
 // וייצוא/הדפסה/הורדה. בית 42 (card.res-one), 13 (vbar), 18/19/20 (hrow...), טבלה rtbl. החלטת הבעלים:
 // ברירת המחדל = הרשימה המאוחדת (לא שלושה כרטיסים).
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ic, ViewSwitch, XlButtons, MoreButton, ResultsTable, Dash } from './HomeParts';
 import { unifiedRows, tableRecords, TABLE_COLUMNS } from './homeLogic';
@@ -24,8 +24,18 @@ function RowLine({ r }) {
       </span>
     );
   }
+  // פריט: שורה 1 = ברקוד ומידה (כמו קודם); שורה 2 = ההשכרה עצמה — הזמנה, לקוחה, תאריך אירוע עברי ומצב (4.10.2026: ברקוד אחד
+  // חוזר בהשכרות רבות, וזה מה שמבדיל ביניהן). חלק שחסר בנתונים ישנים פשוט לא מוצג.
+  const parts = [];
+  if (r.orderId) parts.push(<>הזמנה <bdi>#{r.orderId}</bdi></>);
+  if (r.customer) parts.push(<bdi>{r.customer}</bdi>);
+  if (r.eventHeb) parts.push(r.eventHeb);
+  if (r.status) parts.push(<span className={`stx ${r.status.cls}`}><Ic id={r.status.icon} />{r.status.label}</span>);
   return (
-    <span className="ln">ברקוד <bdi dir="ltr">{r.barcode}</bdi> · מידה <bdi>{r.size}</bdi></span>
+    <>
+      <span className="ln">ברקוד <bdi dir="ltr">{r.barcode}</bdi> · מידה <bdi>{r.size}</bdi></span>
+      {parts.length ? <span className="ln">{parts.map((p, i) => <Fragment key={i}>{i ? ' · ' : null}{p}</Fragment>)}</span> : null}
+    </>
   );
 }
 
@@ -66,7 +76,7 @@ export default function HomeResults({ res, none, table, onTable, onExport, note 
               rowLimit={more ? 0 : LIMIT}
               renderCell={(c, j) => {
                 if (j === 0) return <span className="chip rtype">{c}</span>;
-                if (j === 2 || j === 4) return c ? <bdi dir="ltr">{c}</bdi> : <Dash />;
+                if (j === 2 || j === 4 || j === 5) return c ? <bdi dir="ltr">{c}</bdi> : <Dash />;
                 return c ? c : <Dash />;
               }}
             />

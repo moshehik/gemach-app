@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StatisticsModal from '../components/StatisticsModal';
-import ExportButtons from '../../components/ExportButtons';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
+import { useUiVariant } from '../components/UiVariantContext';
+import VariantFrame from '../components/variant/VariantFrame';
+import LegacyEmployeesPage from './LegacyEmployeesPage';
 
 // מיון בצד הלקוח לשתי הטבלאות בעמוד זה (רשימת עובדים + סיכום נוכחות) - שתיהן טוענות
 // את כל הנתונים למקשה אחת בלי pagination בשרת, אז אין צורך במיון צד-שרת. אותו דפוס
@@ -35,7 +37,24 @@ const SortIcon = ({ sort, colKey }) => {
   );
 };
 
-export default function EmployeesPage() {
+// "ישן / חדש" (4.10.2026, lib/uiVariantScreens.js מסך 'attendance'): בגרסה הישנה /employees הוא הדף הקודם במלואו, כולל לשונית
+// "נוכחות" הישנה (LegacyEmployeesPage.js = f3b1f771^1:app/employees/page.js כפי שהוא; הנתונים מנתיב התאימות המוקשח
+// של הנוכחות הישנה, ר' docs/page-variant-switch-2026-10-04.md). בגרסה החדשה - הדף הזה, שהלשונית בו מובילה ל-/employees/attendance. ההכרעה: useUiVariant
+// (אותם קלטים כמו בשרת - app/layout.js). בישן האייקון "מעבר לתצוגה החדשה" בפינה (VariantFrame); בחדש אין אייקון בדף הזה
+// (רשימת העובדים זהה בשתי הגרסאות) - הוא בכותרת "סיכום נוכחות".
+export default function EmployeesRoute() {
+  const variant = useUiVariant('attendance');
+  if (variant === 'legacy') {
+    return (
+      <VariantFrame screen="attendance" variant="legacy">
+        <LegacyEmployeesPage />
+      </VariantFrame>
+    );
+  }
+  return <EmployeesPage />;
+}
+
+function EmployeesPage() {
   const router = useRouter();
 
   // Tab State
@@ -78,31 +97,6 @@ export default function EmployeesPage() {
     }
   }, [activeTab]);
 
-  // Attendance State
-  const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [attendanceData, setAttendanceData] = useState([]);
-  const [loadingAttendance, setLoadingAttendance] = useState(false);
-  const [printEmployeeId, setPrintEmployeeId] = useState(null);
-  // 'full' = דוח מלא (עמוד לכל עובד) / 'summary' = טבלת הסיכום של החודש המוצג בלבד
-  const [printMode, setPrintMode] = useState('full');
-  const [printMenuOpen, setPrintMenuOpen] = useState(false);
-  const printMenuRef = useRef(null);
-
-  // מיון טבלת סיכום הנוכחות (גם היא נבנית מראש בלקוח מ-processedAttendance, ר' למטה)
-  const [attSort, setAttSort] = useState({ key: null, direction: 'asc' });
-  const handleAttSort = (key) => setAttSort(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
-
-  useEffect(() => {
-    if (!printMenuOpen) return;
-    const handler = (e) => {
-      if (printMenuRef.current && !printMenuRef.current.contains(e.target)) setPrintMenuOpen(false);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [printMenuOpen]);
-
   // Fetch Employees List
   useEffect(() => {
     if (activeTab === 'list' && !isAiModeActive) {
@@ -114,28 +108,6 @@ export default function EmployeesPage() {
         .catch(e => console.error(e));
     }
   }, [activeTab, isAiModeActive]);
-
-  const fetchAttendanceData = async (month, year) => {
-    setLoadingAttendance(true);
-    try {
-      const res = await fetch(`/api/employees/attendance?month=${month}&year=${year}`);
-      const result = await res.json();
-      if (result.success) {
-        setAttendanceData(result.data || []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingAttendance(false);
-    }
-  };
-
-  // Fetch Attendance Data
-  useEffect(() => {
-    if (activeTab === 'attendance') {
-      fetchAttendanceData(selectedMonth, selectedYear);
-    }
-  }, [activeTab, selectedMonth, selectedYear]);
 
   const handleAiSearch = async (query) => {
     setAiLoading(true);
@@ -199,108 +171,10 @@ export default function EmployeesPage() {
     handleAiSearch(aiInputText);
   };
 
-  // Attendance Handlers
-  const handlePrevMonth = () => {
-    if (selectedMonth === 1) {
-      setSelectedMonth(12);
-      setSelectedYear(y => y - 1);
-    } else {
-      setSelectedMonth(m => m - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (selectedMonth === 12) {
-      setSelectedMonth(1);
-      setSelectedYear(y => y + 1);
-    } else {
-      setSelectedMonth(m => m + 1);
-    }
-  };
-
-  const getMonthName = (monthNum) => {
-    const d = new Date(2000, monthNum - 1, 1);
-    return d.toLocaleDateString('he-IL', { month: 'long' });
-  };
-
-  const handlePrintPdfs = (employeeId = null, mode = 'full') => {
-    setPrintMenuOpen(false);
-    setPrintEmployeeId(employeeId);
-    setPrintMode(mode);
-    setTimeout(() => {
-      window.print();
-    }, 100);
-  };
-
-  // Process Attendance Data for the Table
-  const processedAttendance = attendanceData.map(emp => {
-    const shifts = emp.shifts || [];
-    const daysCount = shifts.length;
-    let totalMinutes = 0;
-    let totalCalculated = 0;
-    let issues = 0;
-    let hasTravels = false;
-
-    shifts.forEach(shift => {
-      totalMinutes += (shift.totalMinutes || 0);
-      totalCalculated += (shift.totalCalculated || 0);
-      if (shift.travelExpensesSnapshot > 0) hasTravels = true;
-      // "תקלה" = יש תאריך אבל חסרה כניסה או יציאה (אחת מהשתיים, לא שתיהן) - אותו קריטריון
-      // כמו בכרטיס העובד הבודד (isIncompleteShift), כדי שההדגשה תהיה עקבית בין המסכים.
-      if (!!shift.entryTime !== !!shift.exitTime) issues++;
-    });
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const timeStr = `${hours} שעות ו ${minutes} דקות`;
-
-    return {
-      id: emp.id,
-      firstName: emp.firstName,
-      lastName: emp.lastName,
-      fullName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim(),
-      department: emp.department,
-      daysCount,
-      totalMinutes,
-      timeStr,
-      totalCalculated,
-      issues,
-      hasTravels: hasTravels ? 'כן' : 'לא',
-      shifts
-    };
-  }).filter(e => e.daysCount > 0);
-
   const sortedEmployees = sortRows(filteredEmployees, empSort, empSortValue);
-  const sortedAttendance = sortRows(processedAttendance, attSort, (r, key) => r[key]);
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{__html: `
-        #print-area { display: none; }
-        @media print {
-          body * { visibility: hidden; }
-          #print-area, #print-area * {
-            visibility: visible;
-            color: black !important;
-            filter: grayscale(100%) !important;
-          }
-          #print-area {
-            display: block !important;
-            position: absolute; left: 0; top: 0; width: 100%; direction: rtl;
-            overflow: visible !important;
-          }
-          .no-print { display: none !important; }
-          .bsd-header { display: block !important; text-align: center; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; }
-          ::-webkit-scrollbar { display: none; }
-          .employee-page { page-break-after: always; margin-bottom: 0; box-shadow: none !important; border-radius: 0 !important; }
-          .employee-page:last-child { page-break-after: auto; }
-          .employee-page thead { display: table-header-group; }
-          .employee-page tr { break-inside: avoid; page-break-inside: avoid; }
-          .summary-print-table thead { display: table-header-group; }
-          .summary-print-table tr { break-inside: avoid; page-break-inside: avoid; }
-        }
-      `}} />
-
       <div className="no-print">
         {showStatistics && <StatisticsModal isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
 
@@ -316,7 +190,7 @@ export default function EmployeesPage() {
             <svg className="icon"><use href="#i-users" /></svg>
             רשימת עובדים
           </button>
-          <button type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('attendance')}>
+          <button type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => router.push('/employees/attendance')}>
             <svg className="icon"><use href="#i-clock" /></svg>
             נוכחות
           </button>
@@ -461,233 +335,8 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* Attendance Tab Content */}
-        {activeTab === 'attendance' && (
-          <div>
-            <div className="toolbar">
-              <button type="button" onClick={handlePrevMonth} className="btn btn-ghost btn-icon-only" title="חודש קודם">
-                <svg className="icon"><use href="#i-chevron-end" /></svg>
-              </button>
-              <strong style={{ minWidth: '110px', textAlign: 'center', color: 'var(--primary)' }}>
-                {getMonthName(selectedMonth)} {selectedYear}
-              </strong>
-              <button type="button" onClick={handleNextMonth} className="btn btn-ghost btn-icon-only" title="חודש הבא">
-                <svg className="icon"><use href="#i-chevron-start" /></svg>
-              </button>
-
-              <div className="spacer"></div>
-
-              <div ref={printMenuRef} style={{ position: 'relative' }}>
-                <button
-                  type="button"
-                  onClick={() => setPrintMenuOpen(o => !o)}
-                  className="btn btn-secondary btn-icon-only"
-                  disabled={processedAttendance.length === 0}
-                  title="הדפסת נוכחות"
-                >
-                  <svg className="icon"><use href="#i-printer" /></svg>
-                </button>
-                {printMenuOpen && (
-                  <div className="card" style={{ position: 'absolute', top: 'calc(100% + 6px)', insetInlineEnd: 0, minWidth: '250px', padding: '6px', zIndex: 20 }}>
-                    <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => handlePrintPdfs(null, 'full')}>
-                      <svg className="icon"><use href="#i-file" /></svg>
-                      דוחות מלאים לכל עובד
-                    </button>
-                    <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => handlePrintPdfs(null, 'summary')}>
-                      <svg className="icon"><use href="#i-list" /></svg>
-                      טבלת סיכום בלבד ({getMonthName(selectedMonth)} {selectedYear})
-                    </button>
-                  </div>
-                )}
-              </div>
-              <ExportButtons
-                data={processedAttendance}
-                filename={`נוכחות_${selectedMonth}_${selectedYear}`}
-                columns={[
-                  { key: 'fullName', label: 'שם' },
-                  { key: 'timeStr', label: 'ס"ה דקות' },
-                  { key: 'daysCount', label: 'כמות ימים' },
-                  { key: 'issues', label: 'תקלות' },
-                  { key: 'totalCalculated', label: 'ס"ה' },
-                  { key: 'hasTravels', label: 'נסיעות' }
-                ]}
-                iconOnly={true}
-              />
-            </div>
-
-            <div className="table-wrap">
-              <div className="table-scroll">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th className={attSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('fullName')}>שם <SortIcon sort={attSort} colKey="fullName" /></th>
-                      <th className={attSort.key === 'totalMinutes' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalMinutes')}>ס&quot;ה דקות <SortIcon sort={attSort} colKey="totalMinutes" /></th>
-                      <th className={attSort.key === 'daysCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('daysCount')}>כמות ימים <SortIcon sort={attSort} colKey="daysCount" /></th>
-                      <th className={attSort.key === 'issues' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('issues')}>תקלות <SortIcon sort={attSort} colKey="issues" /></th>
-                      <th className={attSort.key === 'totalCalculated' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalCalculated')}>ס&quot;ה <SortIcon sort={attSort} colKey="totalCalculated" /></th>
-                      <th className={attSort.key === 'hasTravels' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('hasTravels')}>נסיעות <SortIcon sort={attSort} colKey="hasTravels" /></th>
-                      <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingAttendance ? (
-                      <tr>
-                        <td colSpan="7" style={{ padding: '4rem', textAlign: 'center' }}>
-                          <span className="spinner lg" style={{ margin: '0 auto' }} />
-                        </td>
-                      </tr>
-                    ) : processedAttendance.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>
-                          לא נמצאו נתוני נוכחות לחודש זה.
-                        </td>
-                      </tr>
-                    ) : (
-                      sortedAttendance.map(emp => (
-                        <tr
-                          key={emp.id}
-                          className={emp.issues > 0 ? 'row-flag' : undefined}
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => router.push(`/employees/${emp.id}`)}
-                        >
-                          <td className="cell-primary">{emp.fullName}</td>
-                          <td>{emp.timeStr}</td>
-                          <td>{emp.daysCount}</td>
-                          <td>
-                            {emp.issues > 0 && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontWeight: 700 }}>
-                                {emp.issues} <svg className="icon"><use href="#i-alert-tri" /></svg>
-                              </span>
-                            )}
-                          </td>
-                          <td className="cell-primary">{emp.totalCalculated.toFixed(2)}</td>
-                          <td>{emp.hasTravels}</td>
-                          <td className="no-print" style={{ textAlign: 'center' }}>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-secondary btn-sm" title="הדפס דוח אישי לעובד זה">
-                              <svg className="icon"><use href="#i-printer" /></svg>
-                              הדפס
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="table-foot">
-                <span>סה&quot;כ שורות מוצגות: {loadingAttendance ? '...' : processedAttendance.length}</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Hidden Print Area for Individual PDF Reports */}
-      {activeTab === 'attendance' && (
-        <div id="print-area">
-          <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
-
-          {printMode === 'summary' && !loadingAttendance && (
-            <div style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px' }}>
-              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                <h2 style={{ margin: '0 0 0.5rem 0' }}>טבלת סיכום נוכחות - כלל העובדים</h2>
-                <div style={{ fontSize: '1.1rem', color: '#555' }}>תקופה: {getMonthName(selectedMonth)} {selectedYear}</div>
-              </div>
-              <table className="summary-print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-                <thead>
-                  <tr style={{ background: '#f8f9fa' }}>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>שם</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה&quot;כ שעות</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כמות ימים</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>תקלות</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה&quot;כ לתשלום</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>נסיעות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {processedAttendance.map(emp => (
-                    <tr key={emp.id}>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', fontWeight: 500 }}>{emp.fullName}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.timeStr}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.daysCount}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', color: emp.issues > 0 ? '#b71c1c' : 'inherit', fontWeight: emp.issues > 0 ? 700 : 400 }}>{emp.issues || '-'}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', fontWeight: 500 }}>₪{emp.totalCalculated.toFixed(2)}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.hasTravels}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {printMode === 'full' && !loadingAttendance && processedAttendance.length > 0 && processedAttendance.filter(emp => !printEmployeeId || emp.id === printEmployeeId).map(emp => {
-            const totalHours = (emp.totalMinutes / 60).toFixed(2);
-            return (
-              <div key={emp.id} className="employee-page" style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h2 style={{ margin: '0 0 0.5rem 0' }}>דוח נוכחות עובד: {emp.fullName}</h2>
-                    <div style={{ fontSize: '1.1rem', color: '#555' }}>
-                      תקופה: {getMonthName(selectedMonth)} {selectedYear}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    {emp.department && <div style={{ fontSize: '1rem', color: '#666' }}>מחלקה: {emp.department.name}</div>}
-                  </div>
-                </div>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.95rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f8f9fa' }}>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>תאריך</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כניסה</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>יציאה</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה&quot;כ שעות</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'left' }}>סה&quot;כ לתשלום</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {emp.shifts.map((shift) => (
-                      <tr key={shift.id}>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee' }}>
-                          {shift.date ? new Date(shift.date).toLocaleDateString('he-IL') : '-'}
-                        </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                          {shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', color: !shift.exitTime ? '#d32f2f' : 'inherit' }}>
-                          {shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : 'חסר'}
-                        </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                          {shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}
-                        </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'left', fontWeight: '500' }}>
-                          ₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה&quot;כ משמרות:</span>
-                    <strong style={{ fontSize: '1.2rem' }}>{emp.daysCount}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה&quot;כ שעות:</span>
-                    <strong style={{ fontSize: '1.2rem' }}>{totalHours}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה&quot;כ לתשלום:</span>
-                    <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>₪{emp.totalCalculated.toFixed(2)}</strong>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </>
   );
 }

@@ -1,7 +1,7 @@
 // הלוגיקה הטהורה של הלוח החודשי (/board) - בלי React, בלי DOM, בלי רשת. נבדקת ב-scripts/test_board_page.mjs.
 // כל הכללים כאן הועתקו מהדף הקודם (app/board/page.js עד 4.10.2026) כמו שהם: חישוב החודש העברי וניווט חודשים
 // (changeMonth), קבוצות ההזמנות לפי תאריך האירוע, איחור החזרה (יותר מ-2 ימים
-// אחרי האירוע עם פריט שנלקח ולא הוחזר), פרשת השבוע והחגים בתא, וסינון חלון היום (שם / טלפון / מספר).
+// אחרי האירוע עם פריט שנלקח ולא הוחזר), פרשת השבוע והחגים בתא, 
 // מה שנוסף לפי החלטות הבעלים (4.10.2026): רשימת 13 החודשים לקפיצה (S07), טקסט המונה לכל שלב (S02), איחוד סיבות
 // סימן ההתראה (S10 + E12, JDG-5), ומפתחות הטווח של בקשת המונים.
 // ייבוא יחסי עם סיומת .js - כדי שהקובץ ייטען גם ב-node בבדיקה (כמו homeLogic.js).
@@ -155,17 +155,6 @@ export function isOrderLate(order, cfg = {}) {
   if (!v.length || !v.some((i) => itemTaken(i) && !itemReturned(i))) return false;
   const threshold = Number(cfg.threshold) > 0 ? Number(cfg.threshold) : LATE_RETURN_THRESHOLD_DAYS;
   return !!getLateReturnInfo(order, threshold, { now: cfg.now || new Date(), nonWorkingDays: cfg.nonWorkingDays ?? null }).isLate;
-}
-
-export const customerName = (order) => order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim();
-
-// סינון חלון היום (שם / טלפון / מספר) - כמו בדף הקודם
-export function filterDayOrders(orders, q) {
-  if (!q) return orders;
-  const lower = q.toLowerCase();
-  return orders.filter((o) => customerName(o).toLowerCase().includes(lower)
-    || (o.customerPhone || '').toLowerCase().includes(lower)
-    || String(o.orderId).includes(lower));
 }
 
 // S02: הטקסט של מונה שלב בתא ("2 הכנות" / "הכנה אחת") - chipTxt בעיצוב; plural מהשרת

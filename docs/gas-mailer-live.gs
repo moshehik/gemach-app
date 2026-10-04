@@ -10,11 +10,20 @@
  *
  * תאימות לאחור מלאה: בקשה בלי noAttachment (מערכות אחרות שמשתמשות באותו סקריפט) - בדיוק כמו קודם.
  *
+ * תיקון (3) 2026-10-05: שם השולח דינמי - data.senderName (נשלח מ-lib/mailer.js postToMailer, לפי ההגדרה
+ * gmach_name של האתר ששלח). בלי השדה (מערכות אחרות) - ברירת המחדל 'גמ"ח שמלות' כמו קודם.
+ *
  * !!! הקובץ הזה עדיין לא נפרס. פריסה = clasp push + clasp deploy -i <deploymentId> (גרסה חדשה לאותו
  * URL של /exec). זה משנה סקריפט חי שמשרת גם מערכות אחרות - נדרש אישור מפורש של הבעלים. !!!
  *
  * (docs/gas-mail-drive.gs הוא סקריפט אחר, מורחב עם דרייב, שלא פרוס - ר' CLAUDE.md "Cloud backup".)
  */
+
+// שם השולח שמוצג ב-Gmail. נשלח עם הבקשה (senderName); אחרת ברירת המחדל הקבועה.
+function senderName_(data) {
+  var n = data && data.senderName ? String(data.senderName).replace(/[\r\n]+/g, " ").trim() : "";
+  return n ? n.substring(0, 100) : 'גמ"ח שמלות';
+}
 
 function doPost(e) {
   try {
@@ -32,7 +41,7 @@ function doPost(e) {
           subject: data.subject,
           htmlBody: data.bodyText || "מצורף כרטיס הזמנה/השכרה.",
           attachments: [pdfBlob],
-          name: 'גמ"ח שמלות'
+          name: senderName_(data)
         });
 
         return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
@@ -83,7 +92,7 @@ function doPost(e) {
       subject: subject,
       body: body,          // נשאר תמיד - גרסת טקסט פשוט כגיבוי
       attachments: attachments,
-      name: 'גמ"ח שמלות'
+      name: senderName_(data)
     };
 
     // === התיקון: אם המערכת שלחה גרסה מעוצבת (htmlBody) - להשתמש בה ===

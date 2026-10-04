@@ -5,14 +5,15 @@
 // .gm-ds.gm-lz.gm-bd (השורש נושא גם gm-lz כי העיצוב של הלוח הוא המשך של דף הלו״ז: lz-app, lz-bar, הציר, שורות lz-r).
 //
 // מה שנשאר מהדף הקודם (אותם חוזים): טעינת החודש העברי ±14 יום מ-GET /api/orders (buildBoardMonthParams - אותו מפתח מטמון
-// כמו ה-prefetch; ההזמנות משמשות כעת רק לסימן "איחור החזרה"), מטמון SWR (pageCache 'board'), ביטול הבקשה הקודמת במעבר חודש,
-// חיפוש רגיל (search לשרת, Enter, ניקוי), ניווט חודשים, החודש העברי בכותרת, אות היום, סימון היום, פרשה וחגים, איחור החזרה,
-// חלון "הזמנות ליום" (רק כשאין הרשאה ללו״ז - F12) עם סינון, כרטיס הזמנה, חלונית פרטים, תפריט פעולות (כרטיס הזמנה / לקוח /
-// השכרה), חלון השכרה והחזרה מלא (onUpdate = טעינה מחדש), ההגדרות hide_custom_spacing / late_return_*, מצב "טוען נתונים...".
+// כמו ה-prefetch; ההזמנות משמשות רק לסימן "איחור החזרה"), מטמון SWR (pageCache 'board'), ביטול הבקשה הקודמת במעבר חודש,
+// חיפוש רגיל (search לשרת, Enter, ניקוי), ניווט חודשים, החודש העברי בכותרת, אות היום, סימון היום, פרשה וחגים, איחור החזרה
+// (סימן + מסגרת אדומה), מצב "טוען נתונים...", ההגדרות late_return_*.
 // מה הוסר (החלטות הבעלים): אשף הדפסת הכנה (E07), חיפוש חכם (E02), סטטיסטיקה (E03), חיפוש גלובלי (E04), חיפוש מתקדם
 // (E05), מקרא סטטוס (E06), מונה/הדפסה בתא (E09), תאריך לועזי (E11), תווית "תפעול" (S12), "ללו״ז של היום" (S05), ימי חודש
-// סמוך (S08), שורות סיכום ברשימה (S11). ובתשובות ההבהרה (BD-O4 / BD-O5 / BD-O6 / BD-O7, "רק הסמנים והמספרים, בלי הפירוט
-// של האתר הישן"): בתא וברשימה רק מוני השלבים (בלי שורות הזמנה ובלי אייקון "מורחב"), בחלון היום בלי הדפסה ובלי סטטוס.
+// סמוך (S08), שורות סיכום ברשימה (S11); ובתשובות ההבהרה (BD-O4 / BD-O5 / BD-O6 / BD-O7): בתא וברשימה רק מוני השלבים.
+// BD-O3 (הבעלים, 5.10.2026): חלון "הזמנות ליום" נמחק לגמרי - כל לחיצה על יום (עכבר, Enter) = דף הלו״ז של אותו יום
+// (/schedule?date=), בלי חלון ובלי חלופה לפי הרשאה: דף הלו״ז מציג בעצמו "אין הרשאה". יחד איתו נמחקו מהלוח תפריט ההזמנה,
+// חלונית הפרטים וחלון ההשכרה והחזרה (נגישים רק דרכו; החלון הקיים נשאר ב-/orders ו-/rentals).
 // מה נוסף: "החודש הנוכחי" בגובה מתג התצוגה (S04), מתג לוח / רשימה + רשימה אוטומטית בנייד (S03), מסנן 8 השלבים בשורת
 // החיפוש (S01), בורר 13 חודשים (S07, E08), חצי המקלדת (S09), לחיצה על יום = הלו״ז היומי (S06), מוני שלבים בכל תא באותו
 // גוון (S02) וסימן התראה (S10) - הנתונים מ-GET /api/board/stages (אותו חישוב כמו /schedule, lib/schedule/range.js).
@@ -27,23 +28,18 @@ import { buildBoardMonthParams } from '@/app/lib/prefetchRoutes';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import usePageTooltip from '../profile/usePageTooltip';
 import { LocalSprite } from '../schedule/ScheduleIcon';
-import { LzPortalRoot } from '../schedule/LzPortal';
-import { MarkToast } from '../schedule/MarkDialogs';
 import {
   buildMonthGrid, groupOrdersByDate, monthRangeKeys, monthStageTotals, sameMonth, shiftMonth,
 } from './boardLogic';
-import { ActionMenu, BoardSearchBar, DayList, Ic, InfoHint, LateContext, MonthGrid, MonthHead } from './BoardParts';
+import PageVariantToggle from '../variant/PageVariantToggle';
+import { BoardSearchBar, DayList, Ic, LateContext, MonthGrid, MonthHead } from './BoardParts';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
-import BoardDayDialog from './BoardDayDialog';
-import BoardRentalModal from './BoardRentalModal';
-import { useBoardDialogs } from './BoardDialogs';
 
 // מטמון SWR משותף - ר' app/lib/pageCache.js. 'board' = ההזמנות (אותו namespace ומפתח כמו ה-prefetch ב-prefetchRoutes.js);
 // 'board-stages' = מוני השלבים לחודש.
 const boardCache = cacheNamespace('board');
 const stagesCache = cacheNamespace('board-stages');
 const MOBILE_MQ = '(max-width:720px)';
-const TOAST_MS = 3200;
 const STAGES_DEBOUNCE_MS = 300;
 
 export default function BoardPage() {
@@ -51,8 +47,6 @@ export default function BoardPage() {
   const rootRef = useRef(null);
   const ttRef = useRef(null);
   usePageTooltip(rootRef, ttRef, false);
-  const [portalRoot, setPortalRoot] = useState(null);
-  useEffect(() => { setPortalRoot(rootRef.current); }, []);
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [orders, setOrders] = useState([]);
@@ -60,34 +54,17 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [hideCustomSpacing, setHideCustomSpacing] = useState(false);
   // כלל איחור ההחזרה של הארגון - כמו הלו״ז וחלון ההשכרה (late_return_threshold_days, non_working_days_extra)
   const [lateCfg, setLateCfg] = useState({ threshold: 7, nonWorkingDays: null });
   const [view, setView] = useState('grid');
   const [stageSel, setStageSel] = useState([]);
   const [stagesData, setStagesData] = useState(null);
-  const [dayDlg, setDayDlg] = useState(null); // { cell, orders }
-  const [menu, setMenu] = useState(null); // { order, el }
-  const [hint, setHint] = useState(null); // { order, el, pinned }
-  const [rentalId, setRentalId] = useState(null);
-  const [toast, setToast] = useState(null);
-  const toastTimer = useRef(null);
-  const dialogs = useBoardDialogs();
 
-  const say = useCallback((title, kind = 'ok') => {
-    setToast({ title, text: '', kind, n: Date.now() });
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
-  }, []);
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
-
-  // ההגדרות לפי ארגון (E20) - hide_custom_spacing (חלונית הפרטים) וכלל איחור ההחזרה; enable_alterations ו-enable_batch_print_prep
-  // כבר לא בשימוש בלוח (BD-O6 / BD-O7)
+  // ההגדרות לפי ארגון (E20) - כלל איחור ההחזרה (late_return_threshold_days, non_working_days_extra)
   useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then((data) => {
         const find = (k) => (Array.isArray(data) ? data.find((s) => s.key === k) : null);
-        if (find('hide_custom_spacing')?.value === 'true') setHideCustomSpacing(true);
         setLateCfg({ threshold: Number(find('late_return_threshold_days')?.value) || 7, nonWorkingDays: parseNonWorkingDaysSetting(find(NON_WORKING_DAYS_SETTING_KEY)?.value ?? null) });
       })
       .catch(() => {});
@@ -139,17 +116,16 @@ export default function BoardPage() {
 
   // מוני השלבים לחודש (S01/S02/S10). הבקשה יקרה (חישוב הלו״ז לכל יום בחודש), ולכן (ממצא הסקירה 2): מה שבמטמון מוצג מיד,
   // הבקשה עצמה יוצאת רק אחרי STAGES_DEBOUNCE_MS בלי מעבר חודש נוסף (דפדוף מהיר = בקשה אחת), בקשה קודמת מבוטלת, והשרת
-  // שומר תשובה ל-45 שניות (lib/schedule/rangeCache.js). אחרי עדכון בחלון ההשכרה נטענות רק ההזמנות; המונים - כשהחלון נסגר
-  // (fresh=1 עוקף את המטמון של השרת). כשל = הלוח בלי מונים (לא חוסם).
+  // שומר תשובה ל-45 שניות (lib/schedule/rangeCache.js). כשל = הלוח בלי מונים (לא חוסם).
   const range = useMemo(() => monthRangeKeys(selectedDate), [selectedDate]);
   const activeStagesRef = useRef(null);
-  const fetchStages = useCallback(async ({ fresh = false } = {}) => {
+  const fetchStages = useCallback(async () => {
     if (activeStagesRef.current) activeStagesRef.current.abort();
     const controller = new AbortController();
     activeStagesRef.current = controller;
     const key = range.from + '_' + range.to;
     try {
-      const res = await fetch(`/api/board/stages?from=${range.from}&to=${range.to}${fresh ? '&fresh=1' : ''}`, { signal: controller.signal, cache: 'no-store' });
+      const res = await fetch(`/api/board/stages?from=${range.from}&to=${range.to}`, { signal: controller.signal, cache: 'no-store' });
       if (!res.ok) { if (activeStagesRef.current === controller) setStagesData((cur) => (stagesCache.has(key) ? cur : null)); return; }
       const data = await res.json();
       if (data && data.days) {
@@ -181,61 +157,29 @@ export default function BoardPage() {
   const isCurrentMonth = sameMonth(selectedDate, today);
 
   const changeMonth = useCallback((delta) => setSelectedDate((d) => shiftMonth(d, delta)), []);
-  const anyOverlay = !!(dayDlg || menu || rentalId || dialogs.isOpen);
 
-  // S09: חצי המקלדת מחליפים חודש (RTL: ימינה = הקודם, שמאלה = הבא), לא בתוך שדה ולא כשחלון פתוח
+  // S09: חצי המקלדת מחליפים חודש (RTL: ימינה = הקודם, שמאלה = הבא), לא בתוך שדה
   useEffect(() => {
     const key = (e) => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.defaultPrevented) return;
       const t = e.target;
       if (t && t.closest && t.closest('input,textarea,select,[contenteditable="true"],[role="listbox"],[role="menu"],.lz-pop')) return;
-      if (anyOverlay) return;
       e.preventDefault();
       changeMonth(e.key === 'ArrowRight' ? -1 : 1);
     };
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
-  }, [anyOverlay, changeMonth]);
+  }, [changeMonth]);
 
   const handleSearch = () => setSearch(searchInput);
   const handleClearSearch = () => { setSearchInput(''); setSearch(''); };
 
-  // S06: לחיצה על יום = הלו״ז היומי של אותו יום - רק כשהשרת אישר הרשאה ללו״ז (canOpenSchedule=true). לא ידוע (המונים עוד
-  // לא נטענו / נכשלו) או בלי הרשאה = חלון "הזמנות ליום" (ממצא הסקירה 4: לא שולחים עובדת בלי הרשאה לדף "אין הרשאה").
-  // F12 (פתוח): בלוח אין עוד אייקון שפותח את החלון, ולכן זו הכניסה היחידה אליו (וממנו - לתפריט ההזמנה ולחלון ההשכרה).
-  const openDay = useCallback((cell) => {
-    if (!stagesData || stagesData.canOpenSchedule !== true) {
-      setDayDlg({ cell, orders: ordersByDate[cell.key] || [] });
-      return;
-    }
-    router.push('/schedule?date=' + cell.key);
-  }, [router, stagesData, ordersByDate]);
-  const openMenu = useCallback((order, el) => { setHint(null); setMenu({ order, el }); }, []);
-  const closeMenu = useCallback(() => setMenu(null), []);
-  const showHint = useCallback((order, el, pinned) => {
-    setHint((cur) => {
-      if (!order) return cur && cur.pinned ? cur : null;
-      if (pinned && cur && cur.pinned && cur.order.orderId === order.orderId) return null;
-      return { order, el, pinned: !!pinned };
-    });
-  }, []);
-  useEffect(() => {
-    if (!hint || !hint.pinned) return undefined;
-    const down = (e) => { if (!e.target.closest || !e.target.closest('.bd-info,.bd-rt')) setHint(null); };
-    const key = (e) => { if (e.key === 'Escape') { e.preventDefault(); setHint(null); } };
-    document.addEventListener('mousedown', down);
-    window.addEventListener('keydown', key, true);
-    return () => { document.removeEventListener('mousedown', down); window.removeEventListener('keydown', key, true); };
-  }, [hint]);
+  // S06 + BD-O3: כל לחיצה על יום (עכבר על התא, Enter על הקישור) = דף הלו״ז של אותו יום. בלי חלון ובלי חלופה לפי הרשאה -
+  // עובדת בלי page:schedule רואה את חלון "אין הרשאה" של דף הלו״ז עצמו (app/schedule/layout.js).
+  const openDay = useCallback((cell) => { router.push('/schedule?date=' + cell.key); }, [router]);
 
   const toggleStage = (k) => setStageSel((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
-  const rentalUi = useMemo(() => ({
-    alert: (m) => say(String(m || ''), /שגיאה|חובה|יש ל|אינם|לא /.test(String(m || '')) ? 'error' : 'ok'),
-    confirm: dialogs.confirm,
-    prompt: (message, def) => dialogs.prompt(message, def),
-  }), [say, dialogs.confirm, dialogs.prompt]);
-
   const head = <MonthHead date={selectedDate} today={today} onPrev={() => changeMonth(-1)} onNext={() => changeMonth(1)} onPick={(d) => setSelectedDate(d)} />;
   const common = {
     weeks, head, ordersByDate, stagesDays: stagesData ? stagesData.days : null, stages, selected: stageSel,
@@ -243,13 +187,14 @@ export default function BoardPage() {
   };
 
   return (
-    <LzPortalRoot.Provider value={portalRoot}>
     <LateContext.Provider value={lateCfg}>
       <div className="gm-ds gm-lz gm-bd home-bg dlg-dark" ref={rootRef} dir="rtl">
         <LocalSprite />
         <div className="app lz-app bd-app">
           <div className="topbar">
             <div className="ttl"><h1 className="pg-ttl"><bdi>לוח חודשי</bdi></h1></div>
+            {/* "חזרה ללוח הישן": רק להנהלה ראשית / מתכנת (הרשומה ב-lib/uiVariantScreens.js); הטולטיפ - usePageTooltip (data-tip) */}
+            <PageVariantToggle screen="board" placement="header" systemTip />
           </div>
 
           <BoardSearchBar
@@ -289,33 +234,8 @@ export default function BoardPage() {
           </div>
         </div>
 
-        {dayDlg ? (
-          <BoardDayDialog
-            day={dayDlg}
-            onClose={() => { setDayDlg(null); setHint(null); }}
-            onOrder={openMenu}
-            onHint={showHint}
-          />
-        ) : null}
-
-        <ActionMenu
-          menu={menu}
-          onClose={closeMenu}
-          onOrderCard={(o) => { setMenu(null); router.push(`/orders/${o.orderId}`); }}
-          onCustomerCard={(id) => { setMenu(null); router.push(`/customers/${id}`); }}
-          onRental={(o) => { setMenu(null); setDayDlg(null); setHint(null); setRentalId(o.orderId); }}
-        />
-        <InfoHint hint={hint} hideCustomSpacing={hideCustomSpacing} />
-
-        {rentalId ? (
-          <BoardRentalModal orderId={rentalId} onClose={() => { setRentalId(null); fetchStages({ fresh: true }); }} onUpdate={fetchOrdersForMonth} ui={rentalUi} />
-        ) : null}
-        {dialogs.node}
-
-        <MarkToast toast={toast} onClose={() => setToast(null)} />
         <div className="pl-tt" role="tooltip" id="bd-tt" ref={ttRef} />
       </div>
     </LateContext.Provider>
-    </LzPortalRoot.Provider>
   );
 }

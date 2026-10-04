@@ -20,11 +20,11 @@ export const dynamic = 'force-dynamic';
 // (app/api/a5/adv-b). בפועל: כמה שניות; הלקוח מציג את הלוח מיד ומשלים את המונים כשהתשובה מגיעה.
 export const maxDuration = 60;
 
-// GET /api/board/stages?from=YYYY-MM-DD&to=YYYY-MM-DD[&branch=][&fresh=1] — מונים לפי שלב לכל יום בטווח, ללוח החודשי (/board):
+// GET /api/board/stages?from=YYYY-MM-DD&to=YYYY-MM-DD[&branch=]— מונים לפי שלב לכל יום בטווח, ללוח החודשי (/board):
 // { from, to, today, stages:[{key,number,label,plural,enabled,infoOnly}], days:{ [YYYY-MM-DD]: { s:{ [stageKey]:{t,a} },
-// alerts, nonWorkingDay } }, truncated, canOpenSchedule }. מספרים בלבד - אף שורה, שם או טלפון לא יוצאים מכאן.
-// שער: התחברות + page:board (אותו פריט כמו הדף, app/board/layout.js). canOpenSchedule = האם לחיצה על יום בלוח
-// יכולה לפתוח את הלו״ז היומי (page:schedule) - אחרת הלוח פותח את חלון "הזמנות ליום" במקומו.
+// alerts, nonWorkingDay } }, truncated }. מספרים בלבד - אף שורה, שם או טלפון לא יוצאים מכאן.
+// שער: התחברות + page:board (אותו פריט כמו הדף, app/board/layout.js). לחיצה על יום בלוח תמיד עוברת לדף הלו״ז (BD-O3),
+// שמציג בעצמו "אין הרשאה" - לכן אין כאן בדיקת page:schedule.
 // הנתונים מחושבים ע"י getScheduleDay לכל יום (lib/schedule/range.js) - אותם מונים בדיוק כמו בציר של /schedule.
 export async function GET(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -34,14 +34,10 @@ export async function GET(request) {
     const from = searchParams.get('from') || '';
     const to = searchParams.get('to') || '';
     const branch = (searchParams.get('branch') || '').slice(0, 100);
-    const fresh = searchParams.get('fresh') === '1'; // אחרי סגירת חלון ההשכרה - חישוב מחדש (ונשמר)
     const key = rangeCacheKey({ dbTag: dbTag(), host: request.headers.get('host') || '', from, to, branch });
-    const cached = fresh ? null : cache.get(key);
-    const [result, canOpenSchedule] = await Promise.all([
-      cached ? Promise.resolve(cached) : getScheduleRangeSummary({ from, to, branch }).then((r) => { cache.set(key, r); return r; }),
-      canOpenPage('page:schedule').catch(() => false),
-    ]);
-    return NextResponse.json({ ...result, canOpenSchedule: !!canOpenSchedule }, { headers: { 'Cache-Control': 'no-store' } });
+    const cached = cache.get(key);
+    const result = cached || await getScheduleRangeSummary({ from, to, branch }).then((r) => { cache.set(key, r); return r; });
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error && error.status === 400) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('GET /api/board/stages error:', error);

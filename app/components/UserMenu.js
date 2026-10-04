@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import LoginGate from './login/LoginGate';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { clearAdminRecentsStorage } from '@/lib/menu/adminRecents';
 
 export default function UserMenu({ hideInternalMessaging = false }) {
   const router = useRouter();
@@ -84,6 +85,7 @@ export default function UserMenu({ hideInternalMessaging = false }) {
     }
 
     setActionLoading(true);
+    clearAdminRecentsStorage(); // "ניהול" מקוצר: אחרונים לא נשארים במחשב אחרי התנתקות (כמו במעטפת החדשה); עטוף ב-try בפנים
     try {
       await fetch('/api/logout', { method: 'POST' });
     } catch (err) {

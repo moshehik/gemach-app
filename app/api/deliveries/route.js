@@ -27,6 +27,8 @@ function parseDateParam(dateParam) {
 // picked back up AFTER it, so:
 //   outbound due date = Order.eventDate - delivery_days_before
 //   return due date   = Order.eventDate + delivery_days_after
+//                       (0 = the event day itself, but a closed event day rolls to the next
+//                        working day - owner decision 4.10.2026, SCH-DELIV-0; lib/deliveries.js)
 // i.e. an order is "due for outbound delivery" on `date` when
 // eventDate = date + delivery_days_before, and "due for return" when
 // eventDate = date - delivery_days_after.

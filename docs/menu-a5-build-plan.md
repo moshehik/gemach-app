@@ -47,10 +47,11 @@
 | **לוז** + היום/מחר (P01) | אין | — | **מוסתר** (לשונית שלמה) | לא בשלב זה | — |
 | **לוח חודשי** (לשונית) | `navConfig.js:56` | `/board` | `legacy:/board` = `showBoardTab` (`page:board`, `layout.js:219`) | — | — |
 | **ניהול** (לשונית) | `navConfig.js:65` "לוח ניהול" | `/admin` (רק כש-`head`; אחרת `href:null` + `opensMenuOnly`) | מוצגת כשיש **לפחות תת-פריט אחד מותר** (D10, J02) | — | מנהלת סניף עם הרשאת דגמים רואה "ניהול" עם "דגמים" בלבד; לחיצה על הלשונית פותחת תפריט ולא מנווטת |
+| ניהול › (פאנל מקוצר, 4.10.2026) | בקשת הבעלים: "לקצר ל-4-5 פריטים" | — | **עודכן 4.10.2026:** הפאנל = עד 3 "אחרונים" (ברירת מחדל: עובדים, הרשאות, ניהול מחירון) + מפריד + "הגדרות מערכת" + "כל כלי הניהול" (`/admin`, אחרונה) — לכל היותר 5 שורות. השורות שלמטה (דגמים, כספים, זיכויים, משלוחים, ניהול אתר, סטטיסטיקה, מידע) **לא קבועות יותר בפאנל**: הן במאגר הלשונית (`tab.pool`, אותם שערים) — מופיעות כ"אחרון" / ברירת מחדל, בחיפוש בתפריט ובמסך `/admin`. ר' `docs/admin-menu-short-2026-10-04.md` (R13) | — | — |
 | ניהול › דגמים | `navConfig.js:45` (היום תחת "מלאי") | `/dashboard/dresses` | `legacy:/dashboard/dresses` = `showDressesTab` (`page:dresses_catalog`, `layout.js:212`) | — | — |
 | ניהול › עובדים | `navConfig.js:55` "עובדים ונוכחות" | `/employees` | `legacy:/employees` = `showEmployeesTab` (= `head`) | — | — |
 | ניהול › כספים | כרטיס ב-`/admin` + `app/dashboard/page.js:18` (`checkPageAccess(HEAD_MANAGEMENT_ROLES)`) | `/dashboard` | `head` | — | — |
-| ניהול › הגדרות | `app/admin/settings` (layout `/admin`: `app/admin/layout.js:9`) | `/admin/settings` | `head` | — | — |
+| ניהול › הגדרות מערכת (שורה קבועה) | `app/admin/settings` (layout `/admin`: `app/admin/layout.js:9`) | `/admin/settings` | `head` | — | — |
 | ניהול › סטטיסטיקה | `app/admin/statistics` | `/admin/statistics` | `head` | — | — |
 | ניהול › מידע / היסטוריה | `app/admin/data-history` | `/admin/data-history` | `head` | — | — |
 | **הזמנה** (לשונית) | `navConfig.js:32` | `/orders/new` (כש-`showOrdersNew`; אחרת `href:null`) | מוצגת כשיש תת-פריט מותר | — | — |
@@ -114,7 +115,7 @@
 | R04 | מתג ערכת נושא | `ThemeToggle.js`, `AppShell.js:238` | לא מוצג |
 | R09 | משלוחים | `navConfig.js:36` (`enable_deliveries` ∧ `page:deliveries`) | לא בעץ. **אין שום כניסה אחרת ל-`/deliveries`:** `grep` על `app/` ו-`lib/` (1.10) מראה שהקישור היחיד הוא `navConfig.js:36` (הכרטיסים ב-`app/admin/page.js` הם הגדרות/אתר/הרשאות/מחירון; ב-`app/page.js` לוח בקרה/מחירון/נוכחות/הודעות/שעון). אחרי המעבר ל-A5 העמוד נגיש רק בהקלדת כתובת. **נווה יעקב משתמשת במשלוחים יומית** — חוסם להדלקה שם, ראו שאלה 4 |
 | R10 | זיכויים וחובות | `navConfig.js:37` | לא בעץ. **אין כניסה אחרת ל-`/refunds`** (אותו grep; `/dashboard` לא מקשר אליו). ראו שאלה 5 |
-| R11 | הרשאות / מחירון / ניהול אתר / דוח נוכחות | כרטיסים ב-`/admin` (לא בסיידבר הישן) | לא בעץ; נגישים מ-`/admin` כמו היום |
+| R11 | הרשאות / מחירון / ניהול אתר / דוח נוכחות | כרטיסים ב-`/admin` (לא בסיידבר הישן) | **עודכן 4.10.2026 (החלטת הבעלים, מסך הניהול החדש):** "הרשאות" (`ad-perms`, הנהלה), "ניהול מחירון" (`ad-pricelist`, הנהלה) ו"ניהול אתר" (`ad-site` → `/admin/site`, מתכנת בלבד) חזרו כקיצורים בתפריט "ניהול" (`RESTORED_ITEMS.R11a-R11c`); ב-`REMOVED_HREFS` נשאר רק `/employees/report`. כולם גם אריחים במסך `/admin` (`lib/adminHubCatalog.js`) |
 
 `REMOVED_HREFS` ב-`buildMenuTree.js` + הבדיקה "הפריטים שהוסרו לעולם לא בעץ" מבטיחים שלא יחזרו בטעות.
 

@@ -3,9 +3,9 @@
    מעטפת lz-*), ולכן schedule.css חל עליו (lz-app, topbar, lz-rail/st-stab, שורות lz-r, lz-st, lz-pop, toast, "בטוח?").
    כאן רק מה שאין בפלטה ובלו״ז: גריד החודש (lz-hc / lz-day / lz-pr - ערכי העיצוב, שורות 1019-1085 של המעטפת שם), שורת
    החיפוש + מסנן השלבים (hf-* בערכים המחושבים של כרטיס-הזמנה.html #hfBar, כולל השכבות hf-inside / hf-popup / hf-adv-look
-   / hf-t-clear), בורר החודשים, חלון היום, חלון ההשכרה, חלונית הפרטים, התפריט. כל כלל בהיקף .gm-ds.gm-bd.
+   / hf-t-clear), בורר החודשים, תצוגת הרשימה. כל כלל בהיקף .gm-ds.gm-bd.
    הבעלים 4.10.2026: S02 - כל מוני השלבים באותו גוון, רק מונה עם התראה בגוון אחר; S04 - "החודש הנוכחי" בגובה מתג התצוגה;
-   E14 - לחצן המידע עגול כמו לחצני האתר. שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "הלוח החודשי"). */
+   BD-O3 - אין חלונות בלוח (חלון היום נמחק). שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "הלוח החודשי"). */
 
 .gm-ds.gm-bd{--bd-pc:var(--navy-500);--bd-pc-al:#f38a6b}
 
@@ -142,7 +142,7 @@
 .gm-ds.gm-bd .bd-lcard .hres{padding:14px}
 .gm-ds.gm-bd .bd-lcard .hgrp{display:flex;flex-direction:column;gap:18px}
 .gm-ds.gm-bd .bd-lday{display:flex;flex-direction:column;gap:6px}
-.gm-ds.gm-bd .hday.bd-hday{position:relative;top:auto;z-index:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;margin:0 0 4px;padding:10px 16px;border-radius:12px;background:rgba(238,240,242,.96);border:1px solid var(--sky-200);border-inline-start:4px solid var(--gold);color:var(--navy);font:inherit;text-align:start;cursor:pointer}
+.gm-ds.gm-bd .hday.bd-hday{position:relative;top:auto;z-index:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;margin:0 0 4px;padding:10px 16px;border-radius:12px;background:rgba(238,240,242,.96);border:1px solid var(--sky-200);border-inline-start:4px solid var(--gold);color:var(--navy);font:inherit;text-align:start;cursor:pointer;text-decoration:none;box-sizing:border-box}
 .gm-ds.gm-bd .hday.bd-hday:hover,.gm-ds.gm-bd .hday.bd-hday:focus-visible{background:#fff;outline:0;box-shadow:0 0 0 2px var(--gold)}
 .gm-ds.gm-bd .hday.bd-hday b{font-size:16px;font-weight:700;color:var(--navy)}
 .gm-ds.gm-bd .hday.bd-hday small{font-size:13px;color:var(--ink3)}
@@ -152,148 +152,11 @@
 .gm-ds.gm-bd .bd-lc{display:flex;flex-wrap:wrap;gap:6px;padding-inline:4px}
 .gm-ds.gm-bd .bd-lc .lz-pr{padding:4px 12px}
 
-/* ===== שורת הזמנה בחלון היום (E13): שורות הלו״ז; בלי תגית סטטוס ובלי פס צבע לפי סטטוס (BD-O7) ===== */
-.gm-ds.gm-bd .bd-or .t b bdi{font-weight:500;color:var(--ink3)}
-.gm-ds.gm-bd .bd-or.bd-late .li{box-shadow:inset 0 0 0 2px var(--red)}
-.gm-ds.gm-bd .bd-or.bd-late .t b,.gm-ds.gm-bd .bd-or.bd-late .t b bdi{color:var(--red)}
-.gm-ds.gm-bd .bd-or .lz-act .chip{font-size:13px;padding:2px 10px}
-.gm-ds.gm-bd .bd-or .lz-act .chip .ic{width:14px;height:14px}
-/* E14: לחצן המידע עגול כמו לחצני האתר (ibtn של הפלטה הוא 12px) */
-.gm-ds.gm-bd .ibtn.bd-info{width:34px;height:34px;padding:0;border-radius:50%;flex:none}
-.gm-ds.gm-bd .ibtn.bd-info .ic{width:16px;height:16px}
-
-/* ===== חלונית הפרטים (E14): רמז עשיר של הפלטה ===== */
-.gm-ds.gm-bd .pl-rt.bd-rt{z-index:1300;pointer-events:none;opacity:1;min-width:220px}
-.gm-ds.gm-bd .pl-rt.bd-rt .rr{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
-.gm-ds.gm-bd .pl-rt.bd-rt .rr small{display:inline}
-.gm-ds.gm-bd .pl-rt.bd-rt .rr b{display:inline;text-align:end}
-/* צבעי "שולם" (ירוק / כתום / אדום כמו קודם) בגוונים הבהירים של הפלטה - החלונית כהה */
-.gm-ds.gm-bd .pl-rt.bd-rt .bd-paid{color:var(--green-t)}
-.gm-ds.gm-bd .pl-rt.bd-rt .bd-part{color:var(--gold-300)}
-.gm-ds.gm-bd .pl-rt.bd-rt .bd-unpaid{color:#f38a6b}
-
-/* ===== תפריט הפעולות (E15): פריט 15 של הפלטה ===== */
-.gm-ds.gm-bd .bd-menu-bg{position:fixed;inset:0;z-index:1150}
-.gm-ds.gm-bd .bd-menu-w{position:fixed;z-index:1160}
-.gm-ds.gm-bd .bd-menu-w .menu{position:static;display:flex;min-width:220px}
-.gm-ds.gm-bd .bd-menu-w .menu button{display:flex;align-items:center;gap:10px;color:var(--navy-900);font-weight:500}
-.gm-ds.gm-bd .bd-menu-w .menu button .ic{color:var(--navy-500)}
-.gm-ds.gm-bd .bd-menu-h{font-size:13px;font-weight:700;color:var(--ink2);padding:2px 10px 8px;border-bottom:1px solid var(--sky-200);margin-bottom:2px}
-
-/* ===== חלונות (חלון 18 של הפלטה): מעל המעטפת והסרגל העליון ===== */
-.gm-ds.gm-bd .scrim.bd-scrim{z-index:1000}
-.gm-ds.gm-bd .scrim.bd-sub-scrim{z-index:1050}
-.gm-ds.gm-bd .scrim.bd-cf-scrim{z-index:1100}
-.gm-ds.gm-bd #toast{z-index:1200}
+/* הדף בלי חלונות (BD-O3): רק הסימן הצף של הטולטיפ של הדף מעל המעטפת */
 .gm-ds.gm-bd .pl-tt{z-index:1250}
-.gm-ds.gm-bd .bd-dh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}
-.gm-ds.gm-bd .bd-dht{display:flex;align-items:center;gap:12px;min-width:0}
-.gm-ds.gm-bd .bd-dht h2{margin:0;font-size:22px;font-weight:600;line-height:1.3;color:var(--navy-900)}
-.gm-ds.gm-bd .bd-dht .faint{color:var(--ink3);font-size:14px}
-.gm-ds.gm-bd .bd-dx{display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
-.gm-ds.gm-bd .ibtn.bd-rb{width:38px;height:38px;padding:0;border-radius:50%}
-.gm-ds.gm-bd .ibtn.bd-rb .ic,.gm-ds.gm-bd .ibtn.bd-rb .icon{width:18px;height:18px}
-.gm-ds.gm-bd .ibtn.bd-rb:disabled{opacity:.6;cursor:not-allowed}
-.gm-ds.gm-bd .bd-dh .chip{margin:0}
-
-/* חלון "הזמנות ליום" (E17) - פריסת הלו״ז בתוך החלון */
-.gm-ds.gm-bd .dlg.bd-day{max-width:1120px;width:100%;max-height:calc(100dvh - 32px);padding:24px 26px;background:linear-gradient(135deg,#fffcf7 0%,#f6eee8 55%,#fbf4ee 100%);text-align:start}
-.gm-ds.gm-bd .bd-dl.lz-layout{grid-template-columns:270px minmax(0,1fr);gap:24px;margin-top:0}
-.gm-ds.gm-bd .bd-dl .rail.lz-rail{position:static;margin-top:0}
-.gm-ds.gm-bd .bd-dl .st-stabs{gap:10px}
-.gm-ds.gm-bd .bd-dl .lz-snav .st-stabs{margin-top:0;padding-top:10px;border-top:0}
-.gm-ds.gm-bd .bd-dq{position:relative;margin-bottom:14px}
-.gm-ds.gm-bd .bd-dq>.ic{position:absolute;inset-inline-start:14px;top:50%;translate:0 -50%;width:18px;height:18px;color:var(--navy-500);pointer-events:none;z-index:1}
-.gm-ds.gm-bd .bd-dq input.inp#bdDayQ{width:100%;min-height:46px;padding-inline:44px 44px;border:2px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.55);box-shadow:none;color:var(--navy-900);font-size:16px}
-.gm-ds.gm-bd .bd-dq input.inp#bdDayQ:focus{border-color:var(--gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3);outline:0}
-.gm-ds.gm-bd .bd-dq .inpx{position:absolute;inset-inline-end:8px;top:50%;translate:0 -50%}
-.gm-ds.gm-bd .bd-dst{padding:14px 18px}
-.gm-ds.gm-bd .bd-dst .hgrp{display:flex;flex-direction:column;gap:6px}
-@media (max-width:1023px){.gm-ds.gm-bd .bd-dl.lz-layout{grid-template-columns:1fr;gap:16px}}
-@media (max-width:640px){.gm-ds.gm-bd .dlg.bd-day{padding:18px 14px}.gm-ds.gm-bd .bd-dht h2{font-size:19px}.gm-ds.gm-bd .bd-dst{padding:8px 6px}}
-
-/* חלון "השכרה והחזרה" (E16) */
-.gm-ds.gm-bd .dlg.bd-rent{max-width:980px;width:100%;max-height:calc(100dvh - 32px);padding:24px 26px;text-align:start;background:linear-gradient(135deg,#fffcf7 0%,#f6eee8 55%,#fbf4ee 100%)}
-.gm-ds.gm-bd .bd-rload{padding:56px 16px;display:flex;flex-direction:column;align-items:center;gap:12px}
-.gm-ds.gm-bd .bd-rsub{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:2px}
-.gm-ds.gm-bd .bd-rsub>span{display:inline-flex;align-items:center;gap:6px}
-.gm-ds.gm-bd .bd-rsub .ic{color:var(--navy-500)}
-.gm-ds.gm-bd .bd-pm{display:inline-flex;position:relative}
-.gm-ds.gm-bd .bd-scan{margin:0 0 14px}
-.gm-ds.gm-bd .bd-scan .inpw,.gm-ds.gm-bd .bd-rinb{position:relative}
-.gm-ds.gm-bd .bd-scan .inpw>.ic,.gm-ds.gm-bd .bd-rinb>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;width:20px;height:20px;color:var(--navy-500);pointer-events:none;z-index:1}
-.gm-ds.gm-bd .bd-scan input.inp{width:100%;min-height:50px;padding-inline:48px 16px;border:2px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.55);box-shadow:none;color:var(--navy-900);font-size:17px}
-.gm-ds.gm-bd .bd-scan input.inp:focus{border-color:var(--gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3);outline:0}
-.gm-ds.gm-bd .lz-banner.bd-note,.gm-ds.gm-bd .lz-banner.bd-pend{flex-wrap:wrap}
-.gm-ds.gm-bd .lz-banner.bd-pend .btn{margin-inline-start:auto}
-.gm-ds.gm-bd .bd-rst{padding:14px 18px}
-.gm-ds.gm-bd .bd-rst .hgrp{display:flex;flex-direction:column;gap:6px}
-.gm-ds.gm-bd .bd-ri .li{cursor:default}
-.gm-ds.gm-bd .bd-ri .ic-b{background:var(--sky-100)}
-.gm-ds.gm-bd .bd-ri .lz-act{gap:6px}
-.gm-ds.gm-bd .bd-ri .lz-act .chip{font-size:13px;padding:2px 10px}
-.gm-ds.gm-bd .bd-ri .btn.sm{min-height:34px;height:34px;padding:0 12px;font-size:14px;gap:6px}
-.gm-ds.gm-bd .bd-ri .btn.sm .ic{width:16px;height:16px}
-.gm-ds.gm-bd .chip.bd-chipbtn{cursor:pointer;border:0;font:inherit}
-.gm-ds.gm-bd .chip.bd-chipbtn:hover,.gm-ds.gm-bd .chip.bd-chipbtn:focus-visible{box-shadow:0 0 0 2px var(--gold);outline:0}
-.gm-ds.gm-bd .chip.bd-dim{opacity:.7}
-.gm-ds.gm-bd .bd-tg{display:inline-flex;gap:4px}
-.gm-ds.gm-bd .btn.bd-tgb{background:transparent;border:1.5px solid var(--navy);color:var(--navy)}
-.gm-ds.gm-bd .btn.bd-tgb .ic{color:var(--navy)}
-.gm-ds.gm-bd .btn.bd-tgb:not(:disabled):is(:hover,:focus-visible),.gm-ds.gm-bd .btn.bd-tgb.on{background:var(--navy);color:#fff;border-color:var(--navy)}
-.gm-ds.gm-bd .btn.bd-tgb:not(:disabled):is(:hover,:focus-visible) .ic,.gm-ds.gm-bd .btn.bd-tgb.on .ic{color:#fff}
-.gm-ds.gm-bd .btn.bd-tgb.bd-tgbad.on{background:var(--red);border-color:var(--red)}
-.gm-ds.gm-bd .btn.bd-tgb:disabled:not(.on){opacity:.55;cursor:not-allowed}
-.gm-ds.gm-bd .btn.bd-danger{color:var(--red)}
-.gm-ds.gm-bd .btn.bd-danger .ic{color:var(--red)}
-.gm-ds.gm-bd .bd-rin{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:4px 12px 12px;padding-inline-start:68px}
-.gm-ds.gm-bd .bd-rinr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.gm-ds.gm-bd .bd-rinb input.inp{width:200px;min-height:40px;padding-inline:44px 12px;border:2px solid var(--gold-b);border-radius:999px;background:#fff;box-shadow:none}
-.gm-ds.gm-bd .bd-rinb input.inp:focus{box-shadow:0 0 0 3px rgba(201,162,39,.3);outline:0}
-.gm-ds.gm-bd .lz-banner.bd-man{flex-direction:column;align-items:stretch;gap:8px;width:min(320px,100%);margin:0}
-.gm-ds.gm-bd .bd-man input.inp{min-height:40px;border-radius:12px;background:#fff}
-.gm-ds.gm-bd .bd-mantr{gap:10px;font-size:14px}
-.gm-ds.gm-bd .bd-manb{display:flex;gap:8px}
-.gm-ds.gm-bd .bd-link{background:none;border:0;padding:0 0 2px;font:inherit;font-size:13px;font-weight:600;color:var(--navy-700);border-bottom:2px solid var(--gold);cursor:pointer}
-.gm-ds.gm-bd .bd-link:hover,.gm-ds.gm-bd .bd-link:focus-visible{color:var(--navy-900);outline:0}
-.gm-ds.gm-bd .bd-rfoot{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
-@media (max-width:640px){.gm-ds.gm-bd .dlg.bd-rent{padding:18px 14px}.gm-ds.gm-bd .bd-rin{padding-inline-start:12px}.gm-ds.gm-bd .bd-rst{padding:8px 6px}.gm-ds.gm-bd .bd-rfoot .btn{flex:1 1 140px}}
-
-/* פרטי פריט / פריטים זהים */
-.gm-ds.gm-bd .dlg.bd-item,.gm-ds.gm-bd .dlg.bd-dup{max-width:560px;width:100%;text-align:start}
-.gm-ds.gm-bd .bd-kv{display:flex;flex-direction:column}
-.gm-ds.gm-bd .bd-kv .hv-r{display:flex;align-items:center;gap:12px;min-height:40px;padding:6px 0}
-.gm-ds.gm-bd .bd-kv .hv-r+.hv-r{border-top:1px solid var(--sky-200)}
-.gm-ds.gm-bd .bd-kv .hv-r small{flex:none;width:120px;font-size:13px;color:var(--ink3)}
-.gm-ds.gm-bd .bd-kv .hv-r b{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--navy-900);overflow-wrap:anywhere}
-.gm-ds.gm-bd .bd-h3{margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--sky-200);font-size:16px;font-weight:600;color:var(--navy-900)}
-.gm-ds.gm-bd .bd-hist{display:flex;flex-direction:column;gap:10px}
-.gm-ds.gm-bd .bd-hl{padding:10px 12px;border-radius:12px;background:var(--sky-50);border:1px solid var(--sky-200)}
-.gm-ds.gm-bd .bd-hlh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.gm-ds.gm-bd .bd-hlh small{color:var(--ink3);font-size:12.5px}
-.gm-ds.gm-bd .bd-chg{display:flex;flex-wrap:wrap;gap:6px}
-.gm-ds.gm-bd .bd-chg .chip{white-space:normal;gap:4px}
-.gm-ds.gm-bd .bd-from{color:var(--red)}
-.gm-ds.gm-bd .bd-to{color:var(--green)}
-.gm-ds.gm-bd .bd-none,.gm-ds.gm-bd .bd-raw{font-size:12px;color:var(--ink3)}
-.gm-ds.gm-bd .bd-dupo{width:100%;border:1px solid var(--sky-200);border-radius:14px;background:#fff;font:inherit;text-align:start;margin-bottom:6px}
-.gm-ds.gm-bd .bd-dupo .bd-num{font-weight:700;color:var(--navy)}
-
-/* חלון "בטוח?" / הערה (BoardDialogs.js): החלון הכהה של הפלטה כמו בלו״ז; שדה ההערה בתוכו */
-.gm-ds.gm-bd .dlg.bd-cf .bd-cf-l{display:block}
-.gm-ds.gm-bd .bd-cf-form{margin:0 0 16px}
-.gm-ds.gm-bd .bd-cf-form input.inp{width:100%;min-height:46px;border-radius:14px}
 
 /* ===== מצב טעינה (E18): כרטיס ריק עם מחוון הפלטה ===== */
 .gm-ds.gm-bd .card.bd-loading{margin-top:8px}
 .gm-ds.gm-bd .card.bd-loading .empty{padding:56px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
 .gm-ds.gm-bd .card.bd-loading .mspin{border-color:rgba(15,44,82,.25);border-top-color:var(--navy)}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .hc-d.lz-day{transition:none}}
-
-/* ===== טלפון: כותרות החלונות בשתי שורות (הגריד עצמו נשאר בערכי העיצוב; ברירת המחדל בנייד היא רשימה, S03) ===== */
-@media (max-width:640px){
- .gm-ds.gm-bd .bd-dh{flex-wrap:wrap}
- .gm-ds.gm-bd .bd-dht{flex:1 1 100%}
- .gm-ds.gm-bd .bd-dx{justify-content:flex-start}
-}
-.gm-ds.gm-bd .bd-rsub>span{white-space:nowrap}

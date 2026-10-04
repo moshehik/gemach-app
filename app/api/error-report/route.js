@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import { getAllCachedSettings } from '@/lib/settingsCache';
+import { getAllCachedSettings, getCachedSettingValue } from '@/lib/settingsCache';
+import { attachAiTitles, generateAndStoreAiTitle } from '@/lib/errorReportAiTitle';
+import { generateContent } from '@/lib/ai/gemini';
 import { cookies } from 'next/headers';
 import { renderErrorReportEmailHtml, renderHumanRequestedEmailHtml } from '../../../lib/emailTemplates';
 import { sendSystemEmail } from '../../../lib/mailer';
@@ -82,6 +84,9 @@ export async function GET(request) {
       for (const r of reports) {
         r.replies = r.replies.map(({ sketchHtml, ...rep }) => ({ ...rep, hasSketch: !!sketchHtml }));
       }
+      // כותרת AI (שדה נוסף aiTitle) - רק כשההגדרה error_report_ai_title פעילה והעמודה קיימת; אחרת הרשימה כמו שהייתה.
+      // ר' lib/errorReportAiTitle.js (SQL גולמי - העמודה בכוונה לא בסכימה של Prisma).
+      await attachAiTitles(reports, { prisma, getSetting: (k) => getCachedSettingValue(k) });
     }
 
     return NextResponse.json({ success: true, reports, isProgrammer, isManager });
@@ -253,6 +258,15 @@ export async function POST(request) {
       }
     });
 
+    // כותרת AI לדיווח (lib/errorReportAiTitle.js): מתחילה עכשיו ורצה במקביל למיילים; כבויה (מחזירה null מיד) כל עוד
+    // ההגדרה error_report_ai_title לא 'true' או שהעמודה aiTitle עוד לא קיימת. ממתינים לה לפני התשובה - בפונקציית שרת
+    // ב-Vercel עבודה שלא ממתינים לה עלולה לקפוא אחרי שהתשובה נשלחה. מוגבלת ל-6 שניות (TITLE_TIMEOUT_MS) ולא זורקת.
+    const aiTitlePromise = generateAndStoreAiTitle(newReport.id, userText, {
+      prisma,
+      getSetting: (k) => getCachedSettingValue(k),
+      generate: (p) => generateContent(p),
+    });
+
     // Find programmers to email (optional - keep as backup)
     const programmers = await prisma.employee.findMany({
       where: { roleId: 2, isActive: true, email: { not: null } }
@@ -342,7 +356,8 @@ ${hiddenData}
         console.error('Failed to append to local CSV', err);
     }
 
-    return NextResponse.json({ success: true, report: newReport });
+    const aiTitle = await aiTitlePromise;
+    return NextResponse.json({ success: true, report: aiTitle ? { ...newReport, aiTitle } : newReport });
   } catch (error) {
     console.error('Error sending error report:', error);
     return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });

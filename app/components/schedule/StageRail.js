@@ -6,7 +6,8 @@ import { STAGE_META, STAGE_ORDER } from './scheduleMeta';
 
 // ציר שלבי היום (צד ימין) - כמו renderTL בעיצוב (לוז-יומי.html, שורות 1633, 1956-1971): כותרת "שלבי היום", שורת
 // הברקוד (ניווט 48, S05/D2), ואז "הכל" + שורה לכל שלב: אייקון עם מונה "לביצוע" ורוד על הפינה, שם השלב, משולש
-// התראות, חץ. לחיצה = סינון לשלב. שלב בלי פריטים מעומעם (fut) עם הטקסט "אין פעולות" (l1 בעיצוב, שורה 1963).
+// התראות, חץ. לחיצה = סינון לשלב. שלב בלי פריטים מעומעם (fut) בלי כיתוב - בעיצוב יש מתחת לשם "אין פעולות" (l1,
+// שורה 1963), והבעלים בחר להסיר אותו (4.10.2026, SCH-EMPTY-TXT = ב'). הטולטיפ של השורה נשאר כמו בעיצוב.
 // אין בציר "מי במשמרת": המיקום שהבעלים אישר ל-B02 הוא טולטיפ על שבב המשמרת בסרגל העליון, לא רכיב בציר.
 //
 // חוזה לסוכן הברקוד/הסימון: onScan(code) נקרא ב-Enter בשדה הברקוד. בלי handler השדה מרונדר כבוי (disabled) באותו מראה.
@@ -73,6 +74,8 @@ export default function StageRail({ data, loading, filter, onFilter, onScan }) {
             const done = s ? s.counts.done : 0;
             const alerts = s ? s.counts.alerts : 0;
             const cnt = isInfo ? total : total - done;
+            // שורת המונה - לטולטיפ בלבד (l1 בעיצוב, שורה 1963-1964). בשורה עצמה המונה הוא העיגול על האייקון, ושלב ריק
+            // מוצג מעומעם (fut) בלי כיתוב: החלטת הבעלים 4.10.2026 (SCH-EMPTY-TXT = ב') הסירה את "אין פעולות" שמתחת לשם.
             let line = '';
             if (s) {
               if (!total) line = 'אין פעולות';
@@ -104,7 +107,6 @@ export default function StageRail({ data, loading, filter, onFilter, onScan }) {
                 </span>
                 <span className="st-slb">
                   <span className="lz-nm">{label}</span>
-                  {s && !showBadge ? <small>{line}</small> : null}
                 </span>
                 {alerts ? <span className="sn-badge lz-al2" role="img" aria-label={alerts + ' התראות'}>{alerts}</span> : null}
                 <span className="st-sgo"><ScheduleIcon name="chev" className="sm" /></span>
