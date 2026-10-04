@@ -14,6 +14,14 @@ const ORDERS = [
   { ...N.EMPTY_ORDER, customerId: 'c-1', selectedCustomer: CUST, eventDate: '2026-12-01', branch: 'נווה יעקב', pickupBranch: 'בית שמש', hokBankName: 'לאומי', hokBankAccount: '123', hokConsent: true, customSpacing: 0, items: [] },
   { ...N.EMPTY_ORDER },
 ];
+// Q9 (החלטת בעלים, מכוונת - שונה מהישן): אין סוג אירוע שלישי "אירוע חול". הישן שולח isWeekdayEvent (תמיד false/undefined);
+// החדש לא שולח אותו בשום גוף (השרת מניח false). האורקל מושווה אחרי הסרת המפתח הזה, ובודקים שהמפתח באמת חסר בחדש.
+const noWk = (o) => { const c = { ...o }; delete c.isWeekdayEvent; return c; };
+const assertSameNoWk = (mine, legacy, msg) => {
+  assert.ok(!('isWeekdayEvent' in mine), 'Q9: isWeekdayEvent לא נשלח');
+  assert.deepStrictEqual(mine, noWk(legacy), msg);
+  assert.deepStrictEqual(Object.keys(mine), Object.keys(noWk(legacy)), 'סדר השדות');
+};
 const SETTINGS = [
   {},
   { hok_enabled: 'true' },
@@ -33,8 +41,7 @@ test('POST /api/orders - גוף השמירה זהה (itemsToSave + hokDetails + 
       const itemsToSave = N.buildItemsToSave(order, calculatedData.items);
       const hokDetailsPayload = N.buildHokDetailsPayload(settings, order, newCustomer);
       const mine = N.buildSavePayload({ order, totalAmount, itemsToSave, hokDetailsPayload, finalPaymentsList, reservedOrderId, draftOrderId, force });
-      assert.deepStrictEqual(mine, legacy);
-      assert.deepStrictEqual(Object.keys(mine), Object.keys(legacy), 'סדר השדות');
+      assertSameNoWk(mine, legacy);
       n++;
     }
   }
@@ -45,10 +52,10 @@ test('POST /api/orders/draft, /calculate, /validate-inventory - גופים זה�
   for (const order of ORDERS) {
     const active = (order.items || []).filter(i => !i.isDeleted);
     for (const id of [null, 777]) {
-      assert.deepStrictEqual(N.buildDraftBody(order, id, 340, active), L.legacyDraftBody(order, id, 340, active));
-      assert.deepStrictEqual(N.buildValidateBody(active, order, id), L.legacyValidateBody(active, order, id));
+      assertSameNoWk(N.buildDraftBody(order, id, 340, active), L.legacyDraftBody(order, id, 340, active));
+      assertSameNoWk(N.buildValidateBody(active, order, id), L.legacyValidateBody(active, order, id));
     }
-    assert.deepStrictEqual(N.buildCalculateBody(order), L.legacyCalculateBody(order));
+    assertSameNoWk(N.buildCalculateBody(order), L.legacyCalculateBody(order));
   }
 });
 
@@ -94,7 +101,10 @@ test('תשלום: הרשימה הסופית בשמירה ותנאי בקשת ה�
     for (const lvl of levels) {
       const s = lvl === undefined ? {} : { PAYMENT_APPROVAL_LEVEL: lvl };
       const p = parseFloat(amount) || 0;
-      assert.equal(N.paymentApprovalRequired(s, method, p), L.legacyPaymentApprovalRequired(s, method, p), `${method}/${amount}/${lvl}`);
+      // החלטת בעלים Q3b (מכוונת, שונה מהישן): "יציאה באישור מנהל" דורשת תמיד אישור (feature:payment_exit_approval) - גם כש-PAYMENT_APPROVAL_LEVEL
+      // חסר/'כולם'. כל שאר האמצעים - זהה לישן בדיוק.
+      if (method === 'יציאה באישור מנהל') assert.equal(N.paymentApprovalRequired(s, method, p), true, `Q3b ${amount}/${lvl}`);
+      else assert.equal(N.paymentApprovalRequired(s, method, p), L.legacyPaymentApprovalRequired(s, method, p), `${method}/${amount}/${lvl}`);
     }
   }
 });
@@ -116,7 +126,8 @@ test('אמצעי תשלום, שדות חובה, תיאור תיקונים, נע�
   for (const it of [ITEM(), ITEM({ neckAlteration: true, lengthAlteration: '4' }), ITEM({ sleeveAlteration: true })]) assert.equal(N.describeAlterations(it), L.legacyDescribeAlterations(it));
   // הישן: 1 לקוח, 2 תאריכים, 3 פריטים, 4 סיכום, 5 תשלום. החדש: + "משלוח" עם אותו שער כמו "פריטים"
   const map = { 2: 'dates', 3: 'items', 4: 'summary', 5: 'payment' };
-  for (const o of [...ORDERS, { ...ORDERS[0], isWeekdayEvent: true }, { ...ORDERS[0], isWeekdayEvent: true, fromDate: '2026-11-01', toDate: '2026-11-02' }]) {
+  // Q9: גם הזמנה שנושאת isWeekdayEvent=true (למשל טיוטה ישנה) לא משנה את האשף - מתייחסים אליה כאל אירוע רגיל (הישן: טווח); לכן לא משווים לישן עבורה
+  for (const o of ORDERS) {
     const info = N.stepOpenInfo(o);
     for (const [t, k] of Object.entries(map)) assert.equal(info[k].open, !!L.legacyCanNavigate(o, +t), `${k}`);
     assert.equal(info.delivery.open, info.items.open);
@@ -130,4 +141,17 @@ test('כרטיס אשראי: קורא מגנטי והקלדה - אותם ערכ�
   assert.deepStrictEqual(N.cardNumberInput('45801234567', ''), { cardNumber: '4580 1234 567', tokef: '' });
   assert.equal(N.tokefInput('1227'), '12/27');
   assert.equal(N.tokefInput('1'), '1');
+});
+
+test('Q9: האשף לא יוצר ולא קורא isWeekdayEvent - דגל על ההזמנה לא משנה תאריכים/גוף בקשה', () => {
+  assert.ok(!('isWeekdayEvent' in N.EMPTY_ORDER));
+  const base = ORDERS[0];
+  const flagged = { ...base, isWeekdayEvent: true };
+  assert.equal(N.usesRange(flagged), false);
+  assert.equal(N.datesFilledOf(flagged), N.datesFilledOf(base));
+  assert.deepStrictEqual(N.buildCalculateBody(flagged), N.buildCalculateBody(base));
+  assert.deepStrictEqual(N.buildDraftBody(flagged, null, 340, base.items), N.buildDraftBody(base, null, 340, base.items));
+  assert.deepStrictEqual(N.buildValidateBody(base.items, flagged, null), N.buildValidateBody(base.items, base, null));
+  assert.deepStrictEqual(N.buildSavePayload({ order: flagged, totalAmount: 1, itemsToSave: [], hokDetailsPayload: null, finalPaymentsList: [], reservedOrderId: null, draftOrderId: null, force: false }),
+    N.buildSavePayload({ order: base, totalAmount: 1, itemsToSave: [], hokDetailsPayload: null, finalPaymentsList: [], reservedOrderId: null, draftOrderId: null, force: false }));
 });

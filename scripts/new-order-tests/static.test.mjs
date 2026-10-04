@@ -98,7 +98,11 @@ test('לוגיקה: R23 שם/קוד דגם, R27 רמת אישור, תאריך ש
   assert.equal(N.modelCodeSuffix({ name: 'ללא שם 17', barcodePrefix: '1893' }), '');
   assert.equal(N.modelCodeSuffix({ name: '4512', barcodePrefix: '4512' }), '', 'נווה יעקב: קוד = שם');
   assert.equal(N.modelCodeSuffix({ name: 'שמלת תחרה', barcodePrefix: '4512' }), '4512');
-  assert.equal(N.paymentApprovalRequired({}, 'יציאה באישור מנהל', 0), false, 'כולם = בלי בקשה');
+  // החלטת בעלים Q3b (מכוונת, שונה מהישן ומ-R27/Q3 הקודם): יציאה בלי תשלום מלא תמיד דורשת אישור, בלי תלות ב-PAYMENT_APPROVAL_LEVEL
+  assert.equal(N.paymentApprovalRequired({}, 'יציאה באישור מנהל', 0), true, 'Q3b: גם בלי הגדרה');
+  assert.equal(N.paymentApprovalRequired({ PAYMENT_APPROVAL_LEVEL: 'כולם' }, 'יציאה באישור מנהל', 0), true, "Q3b: גם 'כולם'");
+  assert.equal(N.paymentApprovalRequired({}, 'מזומן', 100), false, 'תשלום רגיל: עדיין לפי הרמה (כולם = בלי בקשה)');
+  assert.equal(N.paymentApprovalRequired({ PAYMENT_APPROVAL_LEVEL: 'מנהל' }, 'מזומן', 100), true);
   assert.equal(N.paymentApprovalRequired({ PAYMENT_APPROVAL_LEVEL: 'מנהל סניף ומעלה' }, 'יציאה באישור מנהל', 0), true);
   assert.equal(N.isPastDateKey('2026-10-03', '2026-10-04'), true);
   assert.equal(N.isPastDateKey('2026-10-04', '2026-10-04'), false);

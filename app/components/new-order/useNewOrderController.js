@@ -418,7 +418,7 @@ export default function useNewOrderController({ router }) {
     }, 300);
     return () => { off = true; clearTimeout(t); };
      
-  }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.items, order.isDelivery, order.deliveryCity, order.deliveryDirection, settings.enable_alterations]);
+  }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.items, order.isDelivery, order.deliveryCity, order.deliveryDirection, settings.enable_alterations]);
 
   const addItemToOrder = async () => {
     setAddError('');
@@ -475,7 +475,7 @@ export default function useNewOrderController({ router }) {
       .then(data => { setCalculatedData({ totalAmount: data.totalAmount || 0, items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 }); setCalculating(false); })
       .catch(() => setCalculating(false));
      
-  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
   const totalAmount = calculatedData.totalAmount;
 
   useEffect(() => {
@@ -504,7 +504,7 @@ export default function useNewOrderController({ router }) {
     }, 1500);
     return () => clearTimeout(timer);
      
-  }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad, order.isWeekdayEvent, order.fromDate, order.toDate, order.notes, order.customSpacing, order.items, totalAmount]);
+  }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad, order.fromDate, order.toDate, order.notes, order.customSpacing, order.items, totalAmount]);
 
   // R01 (להסיר): אין קישור "טיוטה #N" בשורה העליונה; החיווי השקט נשאר כטוסט (כמו ה-flash בישן)
   const lastFlashedDraftRef = useRef(null);
@@ -650,7 +650,7 @@ export default function useNewOrderController({ router }) {
       return;
     }
     if (pAmount > 0 && isCreditCardPayment) { openCredit(''); return; }
-    // R27 (אושר) + Q3: בקשת אישור רק לפי רמת PAYMENT_APPROVAL_LEVEL (בגמ"ח הראשי "כולם" = בלי בקשה)
+    // Q3b (החלטת בעלים): "יציאה באישור מנהל" תמיד דורשת אישור (feature:payment_exit_approval), בלי תלות ב-PAYMENT_APPROVAL_LEVEL; תשלום רגיל - לפי הרמה כמו בישן
     if (NL.paymentApprovalRequired(settings, payment.method, pAmount)) {
       const authResult = await verifyPin('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
       if (!authResult) { say('info', 'אישור תשלום בוטל.'); return; }

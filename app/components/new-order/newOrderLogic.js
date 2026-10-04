@@ -19,7 +19,7 @@ export const EMPTY_NEW_CUSTOMER = Object.freeze({
 });
 
 export const EMPTY_ORDER = Object.freeze({
-  customerId: '', selectedCustomer: null, eventDate: '', eventDateHebrew: '', returnDate: '', isAbroad: false, isWeekdayEvent: false,
+  customerId: '', selectedCustomer: null, eventDate: '', eventDateHebrew: '', returnDate: '', isAbroad: false,
   fromDate: '', toDate: '', notes: '', items: [], customSpacing: null,
   isDelivery: false, deliveryDirection: 'הלוך-חזור', deliveryAddress: '', deliveryCity: '', deliveryOneDayBefore: false,
   isPhoneOrder: false, branch: '', pickupBranch: '',
@@ -121,11 +121,14 @@ export const isCreditMethod = (method) => String(method || '').includes('אשר�
 // האייקון של כל אמצעי בבורר .methods (כמו METHOD_ICON בעיצוב)
 export const methodIcon = (m) => (m.includes('אשראי') ? 'card' : m.includes('מזומן') ? 'cash' : m.includes('העברה') ? 'bank' : m.includes('צ') ? 'cheque' : 'lock');
 
-// R27: בקשת אישור רק כשרמת PAYMENT_APPROVAL_LEVEL היא אחת משלוש הרמות; חלה על יציאה באישור מנהל ועל תשלום רגיל (לא אשראי) בסכום חיובי
+// R27 + Q3b (החלטת הבעלים, גוברת על הישן ועל R27/Q3 הקודם): "יציאה באישור מנהל" (יציאה בלי תשלום מלא) דורשת תמיד אישור -
+// בשני הגמ"חים, בלי תלות ב-PAYMENT_APPROVAL_LEVEL ('כולם' כבר לא אומר "בלי בקשה"). המאשרים: מחזיקי ההרשאה הקיימת
+// feature:payment_exit_approval (lib/permissionsMetadata.js). תשלום רגיל (לא אשראי) בסכום חיובי - נשאר לפי PAYMENT_APPROVAL_LEVEL כמו בישן
+// (החלטת Q3b עוסקת ביציאה בלי תשלום מלא בלבד).
 export function paymentApprovalRequired(settings, method, amount) {
-  const isManagerExitPayment = method === MANAGER_EXIT_METHOD;
+  if (method === MANAGER_EXIT_METHOD) return true; // Q3b
   const isCredit = isCreditMethod(method);
-  if (!(isManagerExitPayment || (amount > 0 && !isCredit))) return false;
+  if (!(amount > 0 && !isCredit)) return false;
   const level = (settings && settings.PAYMENT_APPROVAL_LEVEL) || 'כולם';
   return level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה';
 }
@@ -163,9 +166,10 @@ export const sumPaid = (list) => (list || []).reduce((acc, p) => acc + (parseFlo
 export const isChargedPayment = (p) => String((p && p.notes) || '').includes('אישור נדרים');
 
 // ---------- תאריכים ----------
-export const usesRange = (order) => !!(order.isAbroad || order.isWeekdayEvent);
+// Q9 (בעלים): יש רק שני סוגי אירוע - רגיל וחו"ל/תפוסה ארוכה. "אירוע חול" (isWeekdayEvent) הוא טעות ישנה: האשף לא יוצר ולא קורא אותו, והוא לא נשלח בשום גוף בקשה (השרת מניח false).
+export const usesRange = (order) => !!order.isAbroad;
 export const datesFilledOf = (order) => (usesRange(order) ? !!(order.fromDate && order.toDate) : !!order.eventDate);
-// ה-preload / האפקט החי בודקים isAbroad בלבד (כמו בישן) - לא isWeekdayEvent
+// ה-preload / האפקט החי בודקים isAbroad בלבד (כמו בישן)
 export const hasDatesForInventory = (order) => (order.isAbroad ? !!(order.fromDate && order.toDate) : !!order.eventDate);
 
 export function buildPreloadParams(order, draftOrderId, bust) {
@@ -202,7 +206,6 @@ export function buildValidateBody(activeItems, proposedOrder, draftOrderId) {
     items: activeItems,
     eventDate: proposedOrder.eventDate,
     isAbroad: proposedOrder.isAbroad,
-    isWeekdayEvent: proposedOrder.isWeekdayEvent,
     fromDate: proposedOrder.fromDate,
     toDate: proposedOrder.toDate,
     customSpacing: proposedOrder.customSpacing,
@@ -318,7 +321,6 @@ export function buildCalculateBody(order) {
     items: order.items,
     eventDate: order.eventDate,
     isAbroad: order.isAbroad,
-    isWeekdayEvent: order.isWeekdayEvent,
     isDelivery: order.isDelivery,
     deliveryCity: order.deliveryCity,
     deliveryDirection: order.deliveryDirection
@@ -332,7 +334,7 @@ export function buildAddPreviewBody(order, newItem) {
       dressModelId: newItem.dressModelId, sizeText, quantity: 1,
       neckAlteration: !!newItem.neckAlteration, sleeveAlteration: !!newItem.sleeveAlteration, lengthAlteration: newItem.lengthAlteration || ''
     })),
-    eventDate: order.eventDate, isAbroad: order.isAbroad, isWeekdayEvent: order.isWeekdayEvent,
+    eventDate: order.eventDate, isAbroad: order.isAbroad,
   };
 }
 // S06 (ממצא סקירה 8): "להוספה: ₪N" כולל את הסל - הפרש בין חישוב (סל + פריטים חדשים) לחישוב הסל לבד, באותם שדות משלוח/חו"ל
@@ -355,7 +357,7 @@ export function buildAltProbeBody(order, newItem, sizeText) {
       { ...base, sleeveAlteration: true },
       { ...base, lengthAlteration: '1' },
     ],
-    eventDate: order.eventDate, isAbroad: order.isAbroad, isWeekdayEvent: order.isWeekdayEvent,
+    eventDate: order.eventDate, isAbroad: order.isAbroad,
   };
 }
 
@@ -367,7 +369,6 @@ export function buildDraftBody(order, draftOrderId, totalAmount, activeItems) {
     eventDateHebrew: order.eventDateHebrew,
     returnDate: order.returnDate,
     isAbroad: order.isAbroad,
-    isWeekdayEvent: order.isWeekdayEvent,
     fromDate: order.fromDate,
     toDate: order.toDate,
     notes: order.notes,
@@ -403,7 +404,6 @@ export function buildSavePayload({ order, totalAmount, itemsToSave, hokDetailsPa
     eventDateHebrew: order.eventDateHebrew,
     returnDate: order.returnDate,
     isAbroad: order.isAbroad,
-    isWeekdayEvent: order.isWeekdayEvent,
     fromDate: order.fromDate,
     toDate: order.toDate,
     notes: order.notes,
@@ -558,7 +558,7 @@ export const plural = (n, one, many) => (n === 1 ? one : `${n} ${many}`);
 // lib/deliveries.js עצמו מייבא prisma ולכן הכלל משוכפל כאן על הפונקציות הטהורות; scripts/new-order-tests מוכיחים שוויון.
 export function pickupReturnKeys(order, settings) {
   const s = settings || {};
-  const useRange = !!(order.isAbroad || order.isWeekdayEvent);
+  const useRange = !!order.isAbroad;
   const ev = useRange && order.fromDate ? order.fromDate : order.eventDate; // כמו effectiveEventDateRaw בשרת
   if (!ev) return null;
   const nonWorking = parseNonWorkingDaysSetting(s.non_working_days_extra ?? null);
