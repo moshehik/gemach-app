@@ -26,6 +26,7 @@ export async function GET() {
       name: SETTINGS_HEBREW_NAMES[NON_WORKING_DAYS_SETTING_KEY] || NON_WORKING_DAYS_SETTING_KEY,
       value: row && typeof row.value === 'string' ? row.value : '',
       today: getIsraelTodayKey(),
+      userId: employee && employee.id !== undefined ? employee.id : null, // מפתח הטיוטה המקומית של הדף (לפי עובד)
       canEdit: canEditFrom({ logged: !!employee, hasManagePermission }),
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

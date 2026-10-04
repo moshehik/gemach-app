@@ -69,6 +69,68 @@ await step('תאריך קבוע: הוספה לטיוטה, כפול נדחה', as
   await p.$eval('#nw-fixed .btn.lg', (b) => b.click()); await sleep(200); // הטוסט (פינה שמאלית למטה) מכסה את הלחצן בצילום
   assert.match(await text(p, '#toast'), /כבר ברשימה/);
 });
+// הדף שומר טיוטה בכל שינוי, ו-beforeunload עדיין מופיע כשיש שינויים: ב-reload של הבדיקה מאשרים אותו. הדפדפן הזה חולק localStorage עם
+// העמוד הראשון (שהשאיר טיוטה), לכן מנקים ואז טוענים מחדש כדי להתחיל בלי באנר ממתין.
+const d1 = await page();
+d1.on('dialog', (d) => d.accept());
+await d1.evaluate(() => localStorage.clear());
+await d1.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+const markOne = async (pg) => { await (await pg.$(free)).click(); await sleep(150); await (await pg.$('.cl-side .btn.primary.lg')).click(); await sleep(200); };
+await step('טיוטה מקומית: שינוי שלא נשמר נכתב ל-localStorage; ביקור חוזר מציג באנר שחזר / מחק; שחזור מחזיר את השינוי', async () => {
+  await markOne(d1);
+  const raw = await d1.evaluate(() => localStorage.getItem('gemachNwdDraft:5'));
+  assert.ok(raw && JSON.parse(raw).value.includes('"days"'), 'draft written');
+  await d1.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  assert.ok(await d1.$('#nw-draft'), 'banner');
+  assert.match(await text(d1, '#nw-draft'), /שינוי אחד/);
+  assert.match(await text(d1, '#nw-sum'), /הכול שמור/, 'nothing applied before the decision');
+  await d1.click('#nw-draft [data-act="draft-restore"]'); await sleep(250);
+  assert.equal(await d1.$('#nw-draft'), null);
+  assert.equal((await text(d1, '#nw-sum .cart-h .badge')).trim(), '1');
+  assert.ok(await d1.$('.lz-day.cl-pend'));
+});
+await step('טיוטה מקומית: אחרי שחזור היא נשארת; "בטל שינויים" מוחק אותה (ביקור חוזר בלי באנר)', async () => {
+  await d1.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  assert.ok(await d1.$('#nw-draft'), 'draft survived the restore');
+  await d1.click('#nw-draft [data-act="draft-restore"]'); await sleep(250);
+  await d1.click('#nw-sum [data-act="discard"]'); await sleep(250);
+  assert.equal(await d1.evaluate(() => localStorage.getItem('gemachNwdDraft:5')), null);
+  await d1.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  assert.equal(await d1.$('#nw-draft'), null);
+});
+await step('טיוטה מקומית: "מחק טיוטה" משאיר את השמור; שמירה מוחקת את הטיוטה', async () => {
+  await markOne(d1);
+  await d1.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  await d1.click('#nw-draft [data-act="draft-discard"]'); await sleep(250);
+  assert.equal(await d1.$('#nw-draft'), null);
+  assert.match(await text(d1, '#nw-sum'), /הכול שמור/);
+  assert.equal(await d1.evaluate(() => localStorage.getItem('gemachNwdDraft:5')), null);
+  await markOne(d1);
+  await (await d1.$('#nw-sum .btn.primary')).click(); await sleep(800);
+  assert.equal(await d1.evaluate(() => localStorage.getItem('gemachNwdDraft:5')), null, 'cleared after a successful save');
+  await d1.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  assert.equal(await d1.$('#nw-draft'), null);
+});
+await step('נגישות: לוח הימים role=group; אזור ה-live קטן (לא כל כרטיס העריכה)', async () => {
+  assert.equal(await d1.$('[role="grid"]'), null);
+  assert.ok(await d1.$('.hc-g[role="group"]'));
+  assert.equal(await d1.$('.cl-side [aria-live]:not(.sr-only):not(.nb):not(#toast) > .rcard'), null);
+  await (await d1.$(free)).click(); await sleep(200);
+  assert.ok((await text(d1, '.cl-side .sr-only[role="status"]')).trim().length > 5);
+});
+const d2 = await page('?fail=' + encodeURIComponent('רצף הימים הסגורים ארוך מדי: בדיקה'));
+d2.on('dialog', (d) => d.accept());
+await d2.evaluate(() => localStorage.clear());
+await d2.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+await step('הודעת שגיאה מהשרת / מהאימות נשארת על המסך (באנר), ונעלמת בעריכה הבאה', async () => {
+  await markOne(d2);
+  await (await d2.$('#nw-sum .btn.primary')).click(); await sleep(600);
+  assert.match(await text(d2, '.cl-side .cl-wrn [role="alert"]'), /רצף הימים הסגורים ארוך מדי/);
+  await sleep(4200); // הטוסט נעלם
+  assert.match(await text(d2, '.cl-side .cl-wrn [role="alert"]'), /רצף הימים הסגורים ארוך מדי/);
+  await d2.click('#nw-sum [data-act="discard"]'); await sleep(250);
+  assert.equal(await d2.$('.cl-side [role="alert"]'), null);
+});
 const v = await page('?role=view');
 await step('צפייה בלבד: בלי כרטיס סיכום, בלי לחצני הסרה / הוספה', async () => {
   assert.equal(await v.$('#nw-sum'), null);

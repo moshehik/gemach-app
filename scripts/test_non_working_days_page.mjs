@@ -161,7 +161,10 @@ t('modelToDocument: רצף צמוד עם אותה הערה = טווח; בודד 
   const long = P.markDays(P.modelFromSetting(''), P.keysBetween('2027-01-01', '2028-06-01', 600), '');
   const dl = P.modelToDocument(long);
   assert.ok(dl.ranges.every((r) => P.keysBetween(r.from, r.to, 1000).length <= B.MAX_RANGE_DAYS));
-  assert.equal(B.validateNonWorkingDaysSettingValue(JSON.stringify(dl)), null);
+  // ... אבל רצף כזה (518 ימים ברצף) כבר לא נשמר: תקרת רצף סגור (MAX_CLOSED_RUN_DAYS) עם הודעה בעברית שהדף מציג
+  assert.match(B.validateNonWorkingDaysSettingValue(JSON.stringify(dl)), /רצף הימים הסגורים ארוך מדי/);
+  const ok = P.modelToDocument(P.markDays(P.modelFromSetting(''), P.keysBetween('2027-01-01', '2027-11-01', 600), ''));
+  assert.equal(B.validateNonWorkingDaysSettingValue(JSON.stringify(ok)), null, 'רצף של פחות משנה עדיין נשמר');
 });
 t('diffModels / undoGroup: הוספה, הסרה, הערה, תאריך קבוע; כל ביטול מחזיר את השמור; ימים צמודים עם אותה הערה = קבוצה אחת', () => {
   const saved = P.modelFromSetting(SETTING);
@@ -225,6 +228,41 @@ t('countActivity לפי היום הישראלי (שתי צורות השמירה)
   assert.equal(P.parseActivityRange(null, '2026-01-01'), null);
 });
 
+console.log('טיוטה מקומית (localStorage) - הלוגיקה הטהורה');
+t('buildDraft / parseDraft: סבב מלא, גרסה/שבור/ישן/עתידי נדחים, מפתח לפי עובד', () => {
+  const saved = P.modelFromSetting(SETTING);
+  const work = P.markDays(saved, ['2026-12-01'], 'טיוטה');
+  const now = Date.parse('2026-10-04T10:00:00Z');
+  const d = P.parseDraft(JSON.stringify(P.buildDraft(saved, work, now)), now + 1000);
+  assert.ok(d && d.v === 1 && d.savedAt === now);
+  assert.ok(P.sameMeaning(P.modelFromSetting(d.value), work));
+  assert.ok(P.sameMeaning(P.modelFromSetting(d.base), saved));
+  assert.equal(P.parseDraft(null), null); assert.equal(P.parseDraft('{'), null); assert.equal(P.parseDraft('[]'), null);
+  assert.equal(P.parseDraft(JSON.stringify({ ...d, v: 2 }), now), null);
+  assert.equal(P.parseDraft(JSON.stringify({ ...d, value: 5 }), now), null);
+  assert.equal(P.parseDraft(JSON.stringify(d), now + P.DRAFT_MAX_AGE_MS + 1), null, 'ישן מ-30 יום');
+  assert.equal(P.parseDraft(JSON.stringify(d), now - 3 * 3600 * 1000), null, 'חותמת זמן מהעתיד');
+  assert.notEqual(P.draftStorageKey(7), P.draftStorageKey(8));
+  assert.equal(P.draftStorageKey(null), 'gemachNwdDraft:anon');
+});
+t('restoreDraftModel: ימים שעברו חוזרים להיות כמו בשמור (הם נעולים גם בשרת); עתידיים ותאריכים קבועים משוחזרים', () => {
+  const today = '2026-10-04';
+  const saved = P.modelFromSetting(JSON.stringify({ version: 2, days: [{ date: '2026-09-20', note: 'עבר' }, { date: '2026-11-03' }] }));
+  // טיוטה שנכתבה כשהיום ה-3.10: הסירה את 20.9 (עכשיו עבר) והוסיפה יום עבר חדש 2.10 ויום עתידי + תאריך קבוע
+  let w = P.unmarkDays(saved, ['2026-09-20']);
+  w = P.markDays(w, ['2026-10-02', '2026-12-01'], 'חדש');
+  w = P.addFixed(w, { month: 'Kislev', day: 25, note: '' }).work;
+  const draft = P.parseDraft(JSON.stringify(P.buildDraft(saved, w, Date.now())), Date.now());
+  const r = P.restoreDraftModel(saved, draft, today);
+  assert.equal(r.marks.get('2026-09-20'), 'עבר', 'יום עבר שהוסר בטיוטה - חוזר');
+  assert.equal(r.marks.has('2026-10-02'), false, 'יום עבר שנוסף בטיוטה - לא משוחזר');
+  assert.equal(r.marks.get('2026-12-01'), 'חדש');
+  assert.ok(P.hasFixed(r, { month: 'Kislev', day: 25 }));
+  assert.deepEqual(P.diffModels(saved, r).map((g) => g.t).sort(), ['add', 'fxadd']);
+  // טיוטה זהה לשמור -> אין שינוי (הדף לא מציג באנר)
+  assert.deepEqual(P.diffModels(saved, P.restoreDraftModel(saved, P.parseDraft(JSON.stringify(P.buildDraft(saved, saved, Date.now())), Date.now()), today)), []);
+});
+
 console.log('הרשאה ושערים');
 t('canEditFrom: רק מחובר עם ההרשאה (hasPermission מחזיר true להנהלה / מתכנת)', () => {
   assert.equal(P.canEditFrom({ logged: true, hasManagePermission: true }), true);
@@ -281,6 +319,24 @@ t('הדף שומר רק דרך POST /api/settings עם המפתח היחיד (מ
     for (const part of parts) assert.ok(part.trim().startsWith('.gm-ds.gm-nw'), 'כלל CSS לא תחום: ' + part.trim());
   }
   assert.doesNotMatch(css, /gm-home/);
+});
+t('הדף: טיוטה מקומית נכתבת וממוחזרת, נמחקת בשמירה/ביטול; הודעת אימות נשארת על המסך; נגישות (grid/aria-live); תווית אדר א׳', () => {
+  const src = read('app/components/nonWorkingDays/NonWorkingDaysPage.js');
+  assert.match(src, /localStorage\.setItem\(draftKey, JSON\.stringify\(buildDraft\(saved, work\)\)\)/);
+  assert.match(src, /restoreDraftModel\(m, dr, d\.today\)/);
+  assert.match(src, /await postSave\(value\);\s*clearDraft\(\);/, 'הטיוטה נמחקת אחרי שמירה מוצלחת');
+  assert.match(src, /onYes: \(\) => \{ clearDraft\(\); setTick/, '"טען מחדש" מוחק את הטיוטה');
+  assert.match(src, /data-act="draft-restore"/); assert.match(src, /data-act="draft-discard"/);
+  assert.match(src, /try \{ raw = localStorage\.getItem\(key\); \} catch/, 'localStorage עטוף ב-try/catch');
+  assert.match(src, /setSaveError\(bad\)/, 'הודעת האימות (גם תקרת הרצף) מוצגת בדף, לא רק בטוסט');
+  assert.match(src, /<Warn alert title="לא נשמר" detail=\{saveError\}/);
+  assert.doesNotMatch(src, /role="grid"/);
+  assert.match(src, /className="hc-g lz-g" role="group"/);
+  assert.doesNotMatch(src, /<div ref=\{editorRef\} aria-live/, 'אזור ה-live לא עוטף את כל כרטיס העריכה');
+  assert.match(src, /<div className="sr-only" role="status" aria-live="polite">/);
+  assert.doesNotMatch(src, /שנה מעוברת בלבד/);
+  assert.match(P.FIXED_MONTH_OPTIONS.find((o) => o.value === 'Adar I').label, /בשנה פשוטה: אדר/);
+  assert.match(read('app/api/non-working-days/route.js'), /userId: employee/);
 });
 t('התפריט ומסך הניהול: פריט "ימי אי-פעילות" (lib/menu), תווית בעברית (pageLabels), אריח במסך הניהול', () => {
   const menu = read('lib/menu/buildMenuTree.js');

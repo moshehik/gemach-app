@@ -24,11 +24,13 @@ import { Ic, HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
 import { useA5Shell } from '../menu/A5ShellContext';
 import { validateNonWorkingDaysSettingValue } from '@/lib/businessDays';
+import { getIsraelDateKey } from '@/lib/hebrewDate';
 import {
   heb, hLong, hDate, hShort, hMonthTitle, monthStartOf, monthGrid, nextMonthStart, prevMonthStart, keysBetween, WEEKDAYS_SHORT,
   autoReason, closedReason, fixedOn, fixedLabel, nextOccurrence, modelFromSetting, cloneModel, serializeModel, sameMeaning,
   diffModels, undoGroup, analyseSelection, markDays, unmarkDays, setNote, addFixed, removeFixed, hasFixed,
   FIXED_MONTH_OPTIONS, fixedMaxDay, SHORT_YEAR_MONTHS, DAY30_NOTE, gematria, plural, activityText, sumActivity, NOTE_MAX,
+  draftStorageKey, buildDraft, parseDraft, restoreDraftModel,
 } from '@/lib/nonWorkingDaysPage';
 
 const TOAST_MS = 3600;
@@ -109,14 +111,38 @@ function Toast({ toast, onClose }) {
   );
 }
 
-function Warn({ title, detail }) {
+function Warn({ title, detail, alert }) {
   return (
     <div className="cl-wrn">
-      <section className="nb nb-warning open" role="status" aria-live="polite">
+      <section className="nb nb-warning open" role={alert ? 'alert' : 'status'} aria-live={alert ? 'assertive' : 'polite'}>
         <div className="nb-main"><div className="nb-head">
           <span className="nb-ic" aria-hidden="true"><Ic id="alert" /></span>
           <div className="nb-msg"><b>{title}</b><span>{detail}</span></div>
         </div></div>
+      </section>
+    </div>
+  );
+}
+
+/** טיוטה שלא נשמרה מהביקור הקודם (localStorage): שחזר / מחק - לא חוסם, כמו הבאנר בכרטיס ההזמנה */
+function DraftBanner({ draft, onRestore, onDiscard }) {
+  const when = hDate(getIsraelDateKey(new Date(draft.savedAt))) + ' · ' + new Date(draft.savedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  return (
+    <div className="cl-wrn cl-draft" id="nw-draft">
+      <section className="nb nb-warning open" role="status" aria-live="polite">
+        <div className="nb-main">
+          <div className="nb-head">
+            <span className="nb-ic" aria-hidden="true"><Ic id="pencil" /></span>
+            <div className="nb-msg">
+              <b>נמצאו שינויים שלא נשמרו</b>
+              <span>{plural(draft.count, 'שינוי אחד', 'שינויים')} · נשמרו כטיוטה ב-{when}.{draft.stale ? ' הרשימה השמורה השתנתה מאז, ולכן אחרי השחזור חלק מהשורות יופיעו כ"יוסר": בדקו ברשימת השינויים לפני שמירה.' : ''}</span>
+            </div>
+          </div>
+          <div className="nb-acts">
+            <button type="button" className="btn primary sm" data-act="draft-restore" onClick={onRestore}><Ic id="undo" size="sm" />שחזר</button>
+            <button type="button" className="btn ghost sm" data-act="draft-discard" onClick={onDiscard}><Ic id="trash" size="sm" />מחק טיוטה</button>
+          </div>
+        </div>
       </section>
     </div>
   );
@@ -175,7 +201,7 @@ function MonthCalendar({ start, today, saved, work, sel, onPick, onNav }) {
         <button type="button" className="hc-n hc-nn" aria-label="החודש הבא" data-tip="החודש הבא" onClick={() => onNav(1)}><Ic id="chev" size="sm" /></button>
       </div>
       <div className="hc-w" aria-hidden="true">{WEEKDAYS_SHORT.map((x) => <span key={x}>{x}</span>)}</div>
-      <div className="hc-g lz-g" role="grid" aria-label={'ימי החודש ' + hMonthTitle(start)}>
+      <div className="hc-g lz-g" role="group" aria-label={'ימי החודש ' + hMonthTitle(start)}>
         {cells.map((c) => <DayCell key={c.key} k={c.key} inMonth={c.inMonth} today={today} saved={saved} work={work} selSet={selSet} anchors={anchors} onPick={onPick} />)}
       </div>
     </div>
@@ -206,6 +232,10 @@ export default function NonWorkingDaysPage() {
   const [saving, setSaving] = useState(false);
   const [activity, setActivity] = useState({}); // key -> { events, deliveries }
   const [tick, setTick] = useState(0);
+  const [pendingDraft, setPendingDraft] = useState(null); // טיוטה מהביקור הקודם שממתינה להחלטה (שחזר / מחק)
+  const [saveError, setSaveError] = useState(null); // הודעת האימות / השרת האחרונה - נשארת על המסך (הטוסט נעלם אחרי 3.6 שנ')
+  const draftCheckedRef = useRef(false);
+  const hadDraftRef = useRef(false);
   const toastTimer = useRef(null);
 
   const say = useCallback((title, sub, icon) => {
@@ -226,6 +256,20 @@ export default function NonWorkingDaysPage() {
       setSaved(m);
       setWork(cloneModel(m));
       setStart((s) => s || monthStartOf(d.today));
+      // טיוטה מהביקור הקודם (רק בטעינה הראשונה, רק למי שרשאי לערוך): אם היא באמת שונה ממה שנשמר - באנר שחזר / מחק
+      if (!draftCheckedRef.current) {
+        draftCheckedRef.current = true;
+        if (d.canEdit) {
+          const key = draftStorageKey(d.userId);
+          let raw = null;
+          try { raw = localStorage.getItem(key); } catch { /* */ }
+          const dr = parseDraft(raw);
+          const model = dr ? restoreDraftModel(m, dr, d.today) : null;
+          const n = model ? diffModels(m, model).length : 0;
+          if (dr && n) setPendingDraft({ savedAt: dr.savedAt, model, count: n, stale: !sameMeaning(modelFromSetting(dr.base), m) });
+          else if (raw !== null) { try { localStorage.removeItem(key); } catch { /* */ } }
+        }
+      }
       setLoad({ loading: false, error: null });
     }).catch((e) => { if (alive) setLoad({ loading: false, error: e }); });
     return () => { alive = false; };
@@ -243,6 +287,22 @@ export default function NonWorkingDaysPage() {
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
+
+  // טיוטה מקומית: נכתבת מיד עם כל שינוי (בלי השהיה - ניווט פנימי יכול לבוא מיד אחרי העריכה האחרונה), נמחקת כשהטיוטה שבה
+  // חזרה להיות זהה לשמור (שמירה / "בטל שינויים"). כל עוד ממתינה טיוטה ישנה להחלטה לא נוגעים בה.
+  const draftKey = server && canEdit ? draftStorageKey(server.userId) : null;
+  useEffect(() => {
+    if (!draftKey || !saved || !work || pendingDraft) return;
+    try {
+      if (dirty) { localStorage.setItem(draftKey, JSON.stringify(buildDraft(saved, work))); hadDraftRef.current = true; }
+      else if (hadDraftRef.current) { localStorage.removeItem(draftKey); hadDraftRef.current = false; }
+    } catch { /* אין localStorage (חלון פרטי / חסום): הטיוטה פשוט לא נשמרת */ }
+  }, [draftKey, saved, work, dirty, pendingDraft]);
+  const clearDraft = useCallback(() => {
+    hadDraftRef.current = false;
+    try { if (draftKey) localStorage.removeItem(draftKey); } catch { /* */ }
+  }, [draftKey]);
+  useEffect(() => { setSaveError(null); }, [work]);
 
   const selList = useMemo(() => (sel ? keysBetween(sel.a, sel.b) : []), [sel]);
   const ana = useMemo(() => (work && today ? analyseSelection(selList, work, today) : null), [selList, work, today]);
@@ -367,7 +427,8 @@ export default function NonWorkingDaysPage() {
     if (!canEdit || !dirty || saving) return;
     const value = serializeModel(work);
     const bad = validateNonWorkingDaysSettingValue(value);
-    if (bad) { say('לא נשמר', bad, 'alert'); return; }
+    if (bad) { setSaveError(bad); say('לא נשמר', bad, 'alert'); return; }
+    setSaveError(null);
     setSaving(true);
     try {
       if (!force) {
@@ -379,7 +440,7 @@ export default function NonWorkingDaysPage() {
             icon: 'alert',
             title: 'הרשימה השתנתה בינתיים',
             sub: <>מישהו אחר שמר שינויים בימי אי-הפעילות אחרי שפתחתם את הדף.<br />&quot;טען מחדש&quot; מציג את הרשימה העדכנית (השינויים שלכם שלא נשמרו יימחקו). &quot;שמור בכל זאת&quot; מחליף את הרשימה ברשימה שלכם.</>,
-            yes: 'טען מחדש', yesIcon: 'undo', onYes: () => setTick((t) => t + 1),
+            yes: 'טען מחדש', yesIcon: 'undo', onYes: () => { clearDraft(); setTick((t) => t + 1); },
             alt: 'שמור בכל זאת', altIcon: 'check', onAlt: () => save(true),
             no: 'ביטול',
           });
@@ -387,9 +448,11 @@ export default function NonWorkingDaysPage() {
         }
       }
       await postSave(value);
+      clearDraft();
       say('נשמר', 'ימי אי-הפעילות עודכנו', 'check');
       setTick((t) => t + 1);
     } catch (e) {
+      setSaveError(e.message || 'השמירה נכשלה');
       say('לא נשמר', e.message || 'השמירה נכשלה', 'alert');
     } finally {
       setSaving(false);
@@ -405,6 +468,18 @@ export default function NonWorkingDaysPage() {
     if (cur === noteText.trim()) return;
     setWork((w) => setNote(w, oneMarked, noteText));
     say('ההערה עודכנה (לא נשמרה)', hLong(oneMarked), 'pencil');
+  };
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    setWork(pendingDraft.model);
+    setPendingDraft(null);
+    say('הטיוטה שוחזרה', 'השינויים עדיין לא נשמרו, עד "שמור"', 'undo');
+  };
+  const discardDraft = () => {
+    clearDraft();
+    setPendingDraft(null);
+    say('הטיוטה נמחקה', 'נשארה הרשימה השמורה', 'trash');
   };
 
   /* ---------- רינדור ---------- */
@@ -447,10 +522,13 @@ export default function NonWorkingDaysPage() {
             </div>
             <div className="cl-side rail open">
               {canEdit ? <SummaryCard work={work} today={today} changes={changes} saving={saving} onUndo={(g) => setWork((w) => undoGroup(saved, w, g))} onSave={() => save(false)} onCancel={cancelAll} /> : null}
+              {pendingDraft && canEdit ? <DraftBanner draft={pendingDraft} onRestore={restoreDraft} onDiscard={discardDraft} /> : null}
+              {saveError ? <Warn alert title="לא נשמר" detail={saveError} /> : null}
               {saved.invalid > 0 ? (
                 <Warn title="בהגדרה השמורה יש רשומות לא תקינות" detail={`${saved.invalid} רשומות לא נקראו (תאריך לא קיים, טווח הפוך, סימון "פתוח" ישן ועוד). הן לא חלות היום, ושמירה מהדף הזה תסיר אותן.`} />
               ) : null}
-              <div ref={editorRef} aria-live="polite">
+              <div ref={editorRef}>
+                <div className="sr-only" role="status" aria-live="polite">{selList.length === 1 ? hLong(selList[0]) + ' · ' + statusOf(selList[0], work) : selList.length > 1 ? selList.length + ' ימים נבחרו' : ''}</div>
                 <EditorCard
                   canEdit={canEdit} today={today} work={work} sel={sel} selList={selList} ana={ana} arm={arm} activity={activity}
                   noteText={noteText} onNoteChange={onNoteChange} onNoteCommit={commitOneNote} oneMarked={oneMarked}

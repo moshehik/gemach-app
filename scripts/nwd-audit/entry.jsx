@@ -22,12 +22,13 @@ const rv = (n) => { let a = (n * 2654435761) >>> 0; a = (a + 0x6D2B79F5) | 0; le
 const json = (b, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 window.fetch = async (url, opts = {}) => {
   const u = new URL(url, location.href);
-  if (u.pathname === '/api/non-working-days') return json({ key: 'non_working_days_extra', name: 'ימים ללא פעילות (רשימת הבעלים)', value, today, canEdit });
+  if (u.pathname === '/api/non-working-days') return json({ key: 'non_working_days_extra', name: 'ימים ללא פעילות (רשימת הבעלים)', value, today, canEdit, userId: 5 });
   if (u.pathname === '/api/non-working-days/activity') {
     const days = {}; let d = u.searchParams.get('from'); const to = u.searchParams.get('to');
     for (; d <= to; d = addDaysToDateKey(d, 1)) { const r = rv(Date.parse(d) / 864e5); if (r >= 0.35) { const ev = 1 + Math.floor(r * 5); days[d] = { events: ev, deliveries: Math.floor(ev * 0.6) }; } }
     return json({ days });
   }
+  if (u.pathname === '/api/settings' && opts.method === 'POST' && sp.get('fail')) return json({ error: 'non_working_days_extra: ' + sp.get('fail') }, 400);
   if (u.pathname === '/api/settings' && opts.method === 'POST') { value = JSON.parse(opts.body)[0].value; window.__saved = value; return json({ ok: true }); }
   return json({ error: 'not mocked' }, 404);
 };

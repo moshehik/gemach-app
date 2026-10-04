@@ -164,3 +164,7 @@
  .gm-ds.gm-nw .cl-side .rcard.cart{padding:16px 16px 4px}
  .gm-ds.gm-nw .lz-app .topbar .ttl h1{font-size:23px}
 }
+.gm-ds.gm-nw .sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.gm-ds.gm-nw .cl-draft .nb-main{flex-wrap:wrap}
+.gm-ds.gm-nw .cl-draft .nb-head{display:flex;align-items:center;gap:14px;flex:1 1 100%;min-width:0}
+.gm-ds.gm-nw .cl-draft .nb-acts{flex:1 1 100%;justify-content:flex-start}
