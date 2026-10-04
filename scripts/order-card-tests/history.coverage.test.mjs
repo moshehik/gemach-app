@@ -433,6 +433,23 @@ test('H23 דף הכנה (PP-07) / תעודת משלוח (PP-12): docs/print', ()
   assertBucket(r, one(r, 'הודפסה תעודת משלוח', 'H23'), 'docs', 'print');
 });
 
+// אינטגרציה W6+W7 (AMB-20, REQUESTS-W7 #1): הדפסת יום שלמה של דף לו״ז שההזמנה הופיעה בו - "(הדפסת יום)"; דף לו״ז אחר נקרא בשמו
+test('H23b הדפסת יום (batch מדף ההדפסה של הלו״ז): "הודפס דף הכנה (הדפסת יום)", וגם דף לו״ז אחר בשמו', () => {
+  const rows = [
+    eventRow('ORDER_PRINTED', { doc: 'prep', sheet: 'PP-07', source: 'print-page', batch: true, count: 12 }),
+    eventRow('ORDER_PRINTED', { doc: 'delivery', sheet: 'PP-12', source: 'print-page', batch: true, count: 3 }),
+    eventRow('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-16', source: 'print-page', batch: true, count: 8 }),
+    eventRow('ORDER_PRINTED', { doc: 'schedule', sheet: 'PP-01', source: 'print-page', batch: false }),
+  ];
+  const r = feed(rows);
+  assertClean(r, 'H23b');
+  assertBucket(r, one(r, 'הודפס דף הכנה (הדפסת יום)', 'H23b prep'), 'docs', 'print');
+  one(r, 'הודפסה תעודת משלוח (הדפסת יום)', 'H23b delivery (the label keeps its own grammar)');
+  assertBucket(r, one(r, 'הודפס דף קבלת החזרות (הדפסת יום)', 'H23b schedule sheet'), 'docs', 'print');
+  const single = one(r, 'הודפס דוח הזמנות כללי', 'H23b schedule single print (no day-print suffix)');
+  assert.equal(det(single, 'מסמך'), 'דוח הזמנות כללי');
+});
+
 test('H24 הורדת סיכום PDF: docs · "הורד סיכום ההזמנה (PDF)"', () => {
   H.h24 = [eventRow('ORDER_PDF_DOWNLOADED', { doc: 'order', fileName: 'הזמנה 53375.pdf' }), eventRow('ORDER_PDF_DOWNLOADED', { doc: 'rental' })];
   const r = feed(H.h24);
