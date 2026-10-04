@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
+import { canOpenAnyPage } from '@/lib/permissions';
 import {
   isDeliveryJoinAvailable, listJoinCandidates, getJoinInfo, getJoinGroup,
 } from '@/lib/deliveryJoin';
@@ -18,6 +19,8 @@ export const dynamic = 'force-dynamic';
 // isDeliveryJoinAvailable תופס P2021 / 42P01, זוכר את זה כמה דקות, ושום מסלול לא מחזיר 500 בגלל טבלה חסרה.
 export async function GET(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // S3: שמות לקוחות וכתובות - רק למי שפותח הזמנות (כרטיס ההזמנה: בורר ההצטרפות) או משלוחים (מסך המשלוחים); התחברות בלבד לא מספיקה
+  if (!(await canOpenAnyPage(['page:orders', 'page:deliveries']))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     if (!(await isDeliveryJoinAvailable())) {
       return NextResponse.json({ enabled: false, candidates: [], group: [], info: null });

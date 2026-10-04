@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { canOpenAnyPage } from '@/lib/permissions';
 import { getIsraelDayRange, getIsraelTodayDate } from '@/lib/hebrewDate';
 import { computeDressLocationAlerts, isDressLocationAlertEnabled } from '@/lib/dressLocationAlerts';
 
@@ -12,6 +13,8 @@ export const dynamic = 'force-dynamic';
 // כשההגדרה כבויה: { enabled:false, orders:[] } בלי שום שאילתה נוספת.
 export async function GET(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // S3: שמות לקוחות ופרטי הזמנות - כרטיס ההזמנה (page:orders) או סיכום הלוח (page:board); התחברות בלבד לא מספיקה
+  if (!(await canOpenAnyPage(['page:orders', 'page:board']))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     if (!(await isDressLocationAlertEnabled())) return NextResponse.json({ enabled: false, orders: [] });
 

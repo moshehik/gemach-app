@@ -240,3 +240,13 @@ test('S2 (סטטי): PUT דוחה 400 EXTRA_DAY_DISABLED ו-preview-pricing מת
   const prev = fs.readFileSync(P + '/app/api/orders/[id]/preview-pricing/route.js', 'utf8');
   assert.ok(/'enable_rental_extension'\s*\];/.test(prev) && /resolveExtraDay\(/.test(prev));
 });
+
+// ---------- S3: שערי עמוד בקריאות GET שמחזירות שמות/כתובות ----------
+test('S3 (סטטי): deliveries/join ו-dress-location-alerts דורשים page:orders (או page:deliveries / page:board) מעבר להתחברות, 403 אחרת', () => {
+  const join = fs.readFileSync(P + '/app/api/deliveries/join/route.js', 'utf8');
+  assert.ok(/canOpenAnyPage\(\['page:orders', 'page:deliveries'\]\)/.test(join) && /error: 'Forbidden' \}, \{ status: 403 \}/.test(join));
+  assert.ok(join.indexOf('canOpenAnyPage([') < join.indexOf('isDeliveryJoinAvailable()'), 'השער לפני כל שאילתה');
+  const dl = fs.readFileSync(P + '/app/api/orders/dress-location-alerts/route.js', 'utf8');
+  assert.ok(/canOpenAnyPage\(\['page:orders', 'page:board'\]\)/.test(dl) && /error: 'Forbidden' \}, \{ status: 403 \}/.test(dl));
+  assert.ok(dl.indexOf('canOpenAnyPage([') < dl.indexOf('isDressLocationAlertEnabled()'), 'השער לפני כל שאילתה');
+});
