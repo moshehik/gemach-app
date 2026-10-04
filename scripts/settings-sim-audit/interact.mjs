@@ -393,6 +393,84 @@ try {
     assert.ok(f.inDlg && /ביטול/.test(f.txt) && !/מעבר/.test(f.txt), 'db switch: ' + f.txt);
     await q.close();
   });
+
+  await t('#6 window.__gmDirty: true בזמן שיש שינויים, false אחרי ביטול', async () => {
+    const p = await page('view=sys');
+    assert.equal(await p.evaluate(() => window.__gmDirty), false);
+    await click(p, '#setting-row-require_login .sw input');
+    await sleep(100);
+    assert.equal(await p.evaluate(() => window.__gmDirty), true);
+    await click(p, '.st-chgact [data-act="discard"]');
+    await sleep(150);
+    await clickText(p, '#dlg .btn', 'בטל שינויים');
+    await sleep(150);
+    assert.equal(await p.evaluate(() => window.__gmDirty), false);
+    await p.close();
+  });
+
+  await t('#6 router.push מרכיב אחר (תפריט וכד\') עם שינויים → חלון "שינויים שלא נשמרו"; בלי שינויים עובר ישר', async () => {
+    const p = await page('view=sys');
+    await p.evaluate(() => window.__stubRouter.push('/orders'));
+    assert.deepEqual(await p.evaluate(() => window.__pushed), ['/orders'], 'בלי שינויים — ניווט רגיל');
+    await p.evaluate(() => { window.__pushed = []; });
+    await click(p, '#setting-row-require_login .sw input');
+    await p.evaluate(() => window.__stubRouter.push('/customers'));
+    await sleep(200);
+    assert.ok(await p.$('.scrim.on #dlg'), 'חלון');
+    assert.deepEqual(await p.evaluate(() => window.__pushed), [], 'הניווט נחסם');
+    await clickText(p, '#dlg .btn', 'חזרה לעריכה');
+    await sleep(100);
+    assert.deepEqual(await p.evaluate(() => window.__pushed), []);
+    await p.evaluate(() => window.__stubRouter.push('/customers'));
+    await sleep(150);
+    await clickText(p, '#dlg .btn', 'צא בלי לשמור');
+    await sleep(200);
+    assert.deepEqual(await p.evaluate(() => window.__pushed), ['/customers'], 'יציאה בלי שמירה מנווטת');
+    await p.close();
+  });
+
+  await t('#6 לחצן חזרה של הדפדפן (popstate) עם שינויים → חלון; "חזרה לעריכה" נשארים; "צא בלי לשמור" יוצאים', async () => {
+    const p = await page('view=site'); // העמוד הקודם בהיסטוריה
+    const url0 = `http://127.0.0.1:${PORT}/index.html?view=sys`;
+    await p.goto(url0, { waitUntil: 'networkidle0' });
+    await sleep(500);
+    await click(p, '#setting-row-require_login .sw input');
+    await sleep(150);
+    await p.evaluate(() => window.history.back());
+    await sleep(300);
+    assert.ok(await p.$('.scrim.on #dlg'), 'חלון אחרי חזרה');
+    assert.equal(await p.url(), url0, 'נשארים בעמוד');
+    await clickText(p, '#dlg .btn', 'חזרה לעריכה');
+    await sleep(100);
+    assert.ok(await p.$('.st-chgs:not([hidden])'), 'השינויים נשמרו');
+    await p.evaluate(() => window.history.back()); // שוב — השומר חודש
+    await sleep(300);
+    assert.ok(await p.$('.scrim.on #dlg'), 'חלון גם בחזרה שנייה');
+    await clickText(p, '#dlg .btn', 'צא בלי לשמור');
+    await p.waitForFunction(() => /view=site/.test(location.search), { timeout: 5000 }).catch(() => {});
+    assert.match(await p.url(), /view=site/, 'יצאנו לעמוד הקודם');
+    await p.close();
+  });
+
+  await t('#6 "שמור והמשך" שנכשל בולידציה לא משאיר המשך תלוי: שמירה מאוחרת לא מנווטת', async () => {
+    const p = await page('view=sys');
+    await tab(p, 'ord');
+    await typeIn(p, '#setting-row-max_items_per_order input', '500');
+    await sleep(100);
+    await p.evaluate(() => window.__stubRouter.push('/orders'));
+    await sleep(150);
+    await clickText(p, '#dlg .btn', 'שמור והמשך');
+    await sleep(300);
+    assert.deepEqual(await posts(p), [], 'אין POST — ערך לא תקין');
+    assert.deepEqual(await p.evaluate(() => window.__pushed || []), []);
+    await typeIn(p, '#setting-row-max_items_per_order input', '7');
+    await sleep(100);
+    await click(p, '.st-chgact [data-act="save"]');
+    await sleep(400);
+    assert.equal((await posts(p)).length, 1, 'נשמר');
+    assert.deepEqual(await p.evaluate(() => window.__pushed || []), [], 'לא ניווט לשום מקום');
+    await p.close();
+  });
 } finally {
   await browser.close();
   server.close();

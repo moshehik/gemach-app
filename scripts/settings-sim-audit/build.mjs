@@ -8,7 +8,7 @@ const req = createRequire(path.join(root, 'package.json'));
 let esbuild;
 try { esbuild = req(process.env.ESBUILD_DIR || 'esbuild'); } catch { console.error('esbuild לא נמצא (npm i --no-save esbuild או ESBUILD_DIR=...)'); process.exit(1); }
 const here = (f) => path.join(HERE, f);
-const stubs = path.join(root, 'scripts/home-bg-audit/stubs.js');
+const stubs = path.join(HERE, 'stubs.js'); // נתב יציב שרושם push/replace (window.__pushed)
 await esbuild.build({
   entryPoints: [here('entry.jsx')], bundle: true, outdir: here('dist'), format: 'iife', jsx: 'automatic',
   loader: { '.js': 'jsx', '.svg': 'text' },

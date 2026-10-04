@@ -421,7 +421,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
   const [auth, setAuth] = useState(null); // { error }
   const [askDiscard, setAskDiscard] = useState(false);
   const [askReset, setAskReset] = useState(false);
-  const [leave, setLeave] = useState(null); // { href }
+  const [leave, setLeave] = useState(null); // { kind: 'link' | 'pop', href }
   const afterSaveRef = useRef(null);
 
   const finishSaved = (n) => {
@@ -472,10 +472,12 @@ export default function SettingsSimPage({ view = 'sys' }) {
   };
 
   const save = async () => {
-    if (!dirty || saving) return;
+    // כל יציאה מוקדמת מנקה את ה"המשך אחרי שמירה" — אחרת הוא נשאר תלוי ויופעל בשמירה מאוחרת לא קשורה
+    if (!dirty || saving) { afterSaveRef.current = null; return; }
     if (isNames) return saveLabels();
     const bad = firstValidationError(modified);
     if (bad) {
+      afterSaveRef.current = null;
       const r = rowsByKey.get(bad.key);
       setErrorBanner({ title: 'יש לתקן ערך לא תקין לפני השמירה', text: `${r ? r.row.label : bad.key}: ${bad.error}` });
       if (r) setTab(r.tab);
@@ -538,9 +540,31 @@ export default function SettingsSimPage({ view = 'sys' }) {
 
   const discard = () => { setModified({}); setResetAll(false); setAskDiscard(false); setToast({ title: 'השינויים בוטלו', sub: 'ההגדרות חזרו לערכים השמורים', icon: 'undo' }); };
 
-  /* ----- יציאה עם שינויים: חלון "שינויים שלא נשמרו" לכל קישור פנימי, ואזהרת דפדפן בסגירה */
+  /* ----- יציאה עם שינויים: חלון "שינויים שלא נשמרו" לכל דרך יציאה, ואזהרת דפדפן בסגירה.
+     דרכי היציאה: קישור פנימי (<a>), לחצן חזרה/קדימה של הדפדפן (popstate), ו-router.push/replace שנקרא מרכיב אחר (תפריט, חיפוש...).
+     בנוסף window.__gmDirty — מתג החלפת הווריאנט (lib/pageVariantToggle.js) קורא אותו. */
   const dirtyRef = useRef(false);
-  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
+  const guardRef = useRef({ sentinel: false });
+  useEffect(() => {
+    dirtyRef.current = dirty;
+    try { window.__gmDirty = dirty; } catch { /* */ }
+  }, [dirty]);
+  useEffect(() => () => { try { window.__gmDirty = false; } catch { /* */ } }, []);
+
+  // לחצן חזרה: בזמן שיש שינויים נוסף רשומת היסטוריה זהה ("שומר"), ולכן חזרה נוחתת על אותו עמוד ואפשר להציג את החלון
+  const pushSentinel = () => { try { window.history.pushState(window.history.state, '', window.location.href); guardRef.current.sentinel = true; } catch { /* */ } };
+  useEffect(() => { if (dirty && !guardRef.current.sentinel) pushSentinel(); }, [dirty]);
+  useEffect(() => {
+    const onPop = () => {
+      const g = guardRef.current;
+      if (!g.sentinel) return;
+      if (dirtyRef.current) { pushSentinel(); setLeave({ kind: 'pop', href: null }); } // חזרנו לרשומה המקורית: מחזירים שומר מיד ושואלים
+      else { g.sentinel = false; window.history.back(); } // אין שינויים: צורכים את הרשומה הנוספת שלנו וממשיכים אחורה
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   useEffect(() => {
     const onClick = (e) => {
       if (!dirtyRef.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -551,7 +575,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
       if (url.pathname === window.location.pathname && url.search === window.location.search) return;
       e.preventDefault();
       e.stopPropagation();
-      setLeave({ href: url.pathname + url.search + url.hash });
+      setLeave({ kind: 'link', href: url.pathname + url.search + url.hash });
     };
     const onBefore = (e) => { if (dirtyRef.current) { e.preventDefault(); e.returnValue = ''; } };
     document.addEventListener('click', onClick, true);
@@ -559,7 +583,36 @@ export default function SettingsSimPage({ view = 'sys' }) {
     return () => { document.removeEventListener('click', onClick, true); window.removeEventListener('beforeunload', onBefore); };
   }, []);
 
+  // router.push / replace שנקראים מרכיבים אחרים (התפריט, חיפוש, תפריט המשתמש...): עוטפים את אובייקט הנתב (גם window.next.router) בזמן שהדף פתוח
+  useEffect(() => {
+    const restore = [];
+    const targets = new Set([router, typeof window !== 'undefined' && window.next ? window.next.router : null].filter(Boolean));
+    for (const r of targets) {
+      for (const m of ['push', 'replace']) {
+        const orig = r[m];
+        if (typeof orig !== 'function') continue;
+        const wrapped = function guarded(href, ...rest) {
+          if (dirtyRef.current && typeof href === 'string') {
+            let url = null;
+            try { url = new URL(href, window.location.href); } catch { /* */ }
+            if (url && url.origin === window.location.origin && (url.pathname !== window.location.pathname || url.search !== window.location.search)) {
+              setLeave({ kind: 'link', href: url.pathname + url.search + url.hash });
+              return undefined;
+            }
+          }
+          return orig.call(this, href, ...rest);
+        };
+        try { r[m] = wrapped; restore.push(() => { if (r[m] === wrapped) r[m] = orig; }); } catch { /* אובייקט נתב קפוא */ }
+      }
+    }
+    return () => restore.forEach((f) => f());
+  }, [router]);
+
   const go = (href) => { dirtyRef.current = false; router.push(href); };
+  // המשך אחרי שמירה / יציאה בלי שמירה: קישור/push → ניווט; חזרה בדפדפן → שתי רשומות אחורה (השומר המחודש + העמוד עצמו)
+  const goLeave = (l) => {
+    if (l.kind === 'pop') { guardRef.current.sentinel = false; dirtyRef.current = false; window.history.go(-2); } else go(l.href);
+  };
 
   /* ----- מצבי טעינה / שגיאה */
   const loading = !isNames && !settings && !loadError;
@@ -835,8 +888,8 @@ export default function SettingsSimPage({ view = 'sys' }) {
         root={portalRoot}
         items={resetAll && !changeItems.length ? [{ key: '__reset', label: 'כל הכיתובים', icon: 'undo', from: 'כיתובים שמורים', to: 'ברירת מחדל' }] : changeItems}
         busy={saving}
-        onSave={() => { const href = leave.href; afterSaveRef.current = () => go(href); setLeave(null); save(); }}
-        onLeave={() => { const href = leave.href; setLeave(null); setModified({}); setResetAll(false); go(href); }}
+        onSave={() => { const l = leave; afterSaveRef.current = () => goLeave(l); setLeave(null); save(); }}
+        onLeave={() => { const l = leave; setLeave(null); setModified({}); setResetAll(false); goLeave(l); }}
         onStay={() => setLeave(null)}
       />
       <AuthDialog
