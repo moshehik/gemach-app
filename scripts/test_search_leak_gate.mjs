@@ -108,7 +108,9 @@ const kinds = ['customers', 'orders', 'rentals'];
 const REQUIRED = {
   customers: ['"id"', '"firstName"', '"lastName"', '"phone1"', '"city"'],
   orders: ['o."id"', 'o."orderId"', 'o."status"', 'o."totalAmount"', 'o."eventDateHebrew"', 'c."firstName"', 'c."lastName"', '"itemCount"'],
-  rentals: ['oi."id"', 'oi."orderId"', 'oi."barcode"', 'oi."sizeText"', 'oi."description"', '"catalogName"', '"catalogBarcode"'],
+  // o.eventDate/eventDateHebrew + c.firstName/lastName (4.10.2026): ברקוד חוזר בהשכרות רבות — השורה בדף הבית מציגה גם לקוחה ותאריך אירוע
+  rentals: ['oi."id"', 'oi."orderId"', 'oi."barcode"', 'oi."sizeText"', 'oi."description"', 'oi."isTaken"', 'oi."isReturned"', '"catalogName"', '"catalogBarcode"',
+    'o."eventDate"', 'o."eventDateHebrew"', 'c."firstName"', 'c."lastName"'],
 };
 for (let k = 0; k < 3; k++) {
   await t(`${kinds[k]}: אין * בבחירה`, () => {
@@ -132,6 +134,42 @@ await t('לקוחות: הבחירה היא בדיוק id/שם/טלפונים/ע�
   const cols = selectList(captured[0].sql).split(/COALESCE/)[0].split(',').map((x) => x.trim()).filter(Boolean);
   assert.deepEqual(cols, ['"id"', '"firstName"', '"lastName"', '"phone1"', '"phone2"', '"city"']);
 });
+await t('השכרות: הבחירה היא בדיוק העמודות המוכרות (לא נוספה עמודה בלי צרכן)', () => {
+  const cols = selectList(captured[2].sql).split(',').map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean);
+  assert.deepEqual(cols, ['oi."id"', 'oi."orderId"', 'oi."barcode"', 'oi."sizeText"', 'oi."description"', 'oi."isTaken"', 'oi."isReturned"',
+    'COALESCE) as "catalogName"', 'COALESCE) as "catalogBarcode"', // selectList מסיר את תוכן הסוגריים
+    'o."eventDate"', 'o."eventDateHebrew"', 'c."firstName"', 'c."lastName"']);
+  // ותוכן ה-COALESCE: רק שם הדגם והקידומת שלו
+  assert.ok(/COALESCE\(d\."dressName", dm\."name"\) as "catalogName",\s*COALESCE\(d\."barcodePrefix", dm\."barcodePrefix"\) as "catalogBarcode"/.test(captured[2].sql));
+});
+await t('השכרות: JOIN ל-Order לפי orderId ול-Customer לפי customerId (LEFT — לא מוסיף/מוריד שורות), LIMIT 50 נשאר', () => {
+  const sql = captured[2].sql.replace(/\s+/g, ' ');
+  assert.ok(sql.includes('LEFT JOIN "Order" o ON o."orderId" = oi."orderId"'), sql);
+  assert.ok(sql.includes('LEFT JOIN "Customer" c ON o."customerId" = c.id'), sql);
+  assert.equal((sql.match(/ JOIN /g) || []).length, (sql.match(/ LEFT JOIN /g) || []).length, 'רק LEFT JOIN');
+  assert.match(sql, /LIMIT 50\s*$/);
+  // שום תנאי WHERE על הטבלאות החדשות (התוצאות עצמן לא משתנות)
+  const where = sql.slice(sql.indexOf('WHERE'), sql.indexOf('ORDER BY'));
+  assert.ok(!/\bo\.|\bc\./.test(where), where);
+});
+console.log('global-search: מיון "מושכר עכשיו קודם" בחיפוש ברקוד');
+const rentalsSql = async (q) => {
+  reset([]);
+  await gs.GET(req('/api/global-search?q=' + encodeURIComponent(q)));
+  return T.sql[2].sql.replace(/\s+/g, ' ');
+};
+const RENTED_FIRST = 'ORDER BY CASE WHEN oi."isTaken" AND NOT oi."isReturned" THEN 0 ELSE 1 END, oi."createdAt" DESC';
+await t('ברקוד (ספרות בלבד, 5+) -> המושכר עכשיו קודם (היה באג: /^d{5,}$/ בלי הלוכסן, אף פעם לא הופעל)', async () => {
+  for (const q of ['5511205', '12345', ' 5511205 ']) assert.ok((await rentalsSql(q)).includes(RENTED_FIRST), q);
+});
+await t('לא ברקוד -> מיון רגיל לפי תאריך יצירה (כולל "ddddd" שהביטוי השבור התאים לו)', async () => {
+  for (const q of ['כהן', '1234', 'ddddd', '551a205']) {
+    const sql = await rentalsSql(q);
+    assert.ok(!sql.includes('CASE WHEN oi."isTaken"'), q);
+    assert.ok(sql.includes('ORDER BY oi."createdAt" DESC'), q);
+  }
+});
+
 await t('הרשאת כניסה נשארת: ללא התחברות -> 401', async () => {
   reset([], { authed: false });
   const res = await gs.GET(req('/api/global-search?q=x'));
