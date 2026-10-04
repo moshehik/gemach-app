@@ -16,9 +16,9 @@ const settings = () => resolveScheduleSettings(settingsMap(SETTINGS_ORG2));
 beforeEach(() => { installDb(); invalidateSettingsCache(); });
 
 test('every day of the range = the daily schedule counts (total + alerts per enabled stage)', async () => {
-  const res = await getScheduleRangeSummary({ from: '2026-09-27', to: '2026-10-06', settings: settings(), now: NOW });
+  const res = await getScheduleRangeSummary({ from: '2026-10-11', to: '2026-10-20', settings: settings(), now: NOW });
   assert.equal(Object.keys(res.days).length, 10);
-  assert.equal(res.today, '2026-10-01');
+  assert.equal(res.today, '2026-10-15'); // NOW (fixtures.mjs) moved to 15.10 by non-working-days v2 (1.10 is Chol HaMoed)
   assert.deepEqual(res.stages.map((s) => s.key), ['order', 'repair', 'prep', 'dout', 'pick', 'event', 'manret', 'dback']);
   let any = 0;
   for (const key of Object.keys(res.days)) {
