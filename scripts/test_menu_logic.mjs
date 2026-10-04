@@ -230,7 +230,7 @@ t('עובדת: הודעות פנימיות מוסתרות (hide_internal_messagi
   assert.deepEqual(ids(tree.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-logout']);
   // גם הנהלה ראשית: פעמון קיים, "הודעה למנהל" מוסתרת כשההודעות הפנימיות מוסתרות
   const head = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true', management_messages: 'true' }) });
-  assert.equal(head.rail.bell.show, true); assert.deepEqual(ids(head.rail.bell.rows), ['n-center']);
+  assert.equal(head.rail.bell.show, true); assert.deepEqual(ids(head.rail.bell.rows), [], 'MS-08: גם "פתח מרכז הודעות" מוסתרת כשההודעות הפנימיות מוסתרות');
   // עם הודעות פנימיות פעילות ו-management_messages — השורה חוזרת
   const on = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'false', management_messages: 'true' }) });
   assert.deepEqual(ids(on.rail.bell.rows), ['n-center', 'n-manager-message']);
@@ -511,7 +511,7 @@ t('דגלים מה-layout (flags) גוברים על הנגזרים: showBoardTab
   const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], flags: { showBoardTab: false } });
   assert.equal(tab(tree, 'month'), undefined);
   const u = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true' }), flags: { hideInternalMessaging: undefined, showBoardTab: undefined } });
-  assert.equal(u.rail.bell.show, true); assert.ok(!ids(u.rail.bell.rows).includes('n-manager-message')); assert.ok(tab(u, 'month'));
+  assert.equal(u.rail.bell.show, true); assert.ok(!ids(u.rail.bell.rows).includes('n-manager-message')); assert.ok(!ids(u.rail.bell.rows).includes('n-center')); assert.ok(tab(u, 'month'));
 });
 t('חוזה a5Shell.flags מ-app/layout.js: עם flags בלבד (בלי settings/permissions) העץ מציג משלוחים/זיכויים/לוח בדיוק לפי הדגלים', () => {
   // אותו אובייקט שה-layout בונה (legacyNavFlags + 6 הנוספים) — אם buildMenuTree יתחיל לקרוא דגל חדש, הבדיקה הזאת תיפול.
