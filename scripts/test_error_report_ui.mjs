@@ -274,6 +274,7 @@ await t('גלילה דקה (6px, מעוגלת, מופיעה בריחוף); בנ�
   has(CSS, /#scrim\.er-sheet #dlg\.mailwin\{[^}]*border-radius:24px 24px 0 0!important/, 'גיליון תחתון');
 });
 await t('הכפתור הצף: שקט כברירת מחדל, נחשף בריחוף/מיקוד; בנגיעה ראשונה רק נחשף', () => {
+  has(LCSS, /@media \(max-width:640px\)\{[^@]*\.gm-er-launch \.er-fab\{bottom:76px;inset-inline-start:20px;transform:none;opacity:1\}/, 'בטלפון קבוע מעל כוכב ה-AI ומיושר איתו (הבעלים 5.10.2026)');
   has(LCSS, /@media \(min-width:641px\)\{\.gm-er-launch\{display:none\}\}/, 'מוסתרת במחשב (הבעלים 5.10.2026), נשארת בטלפון');
   has(LCSS, /\.er-fab\{[^}]*opacity:\.5/, 'שקט');
   has(LCSS, /\.er-fab:hover,\.gm-er-launch \.er-fab:focus-within,\.gm-er-launch \.er-fab\.reveal\{transform:translateX\(-14px\);opacity:1\}/, 'נחשף');
