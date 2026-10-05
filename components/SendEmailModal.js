@@ -32,7 +32,7 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
   const [admins, setAdmins] = useState([]);
 
   useEffect(() => {
-    fetch('/api/employees')
+    fetch('/api/employees?slim=1')
       .then(res => res.json())
       .then(data => {
         // כמו PopupProvider.js - מי שבאמת מורשה לפי feature:customer_email_approval

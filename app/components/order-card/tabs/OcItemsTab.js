@@ -102,7 +102,7 @@ export default function OcItemsTab({ oc, ui }) {
   }, []);
   const ensureEmployees = useCallback(() => {
     if (employees) return;
-    fetchSharedJson('/api/employees', { ttl: TTL.STATIC }).then(d => setEmployees(Array.isArray(d) ? d : [])).catch(() => setEmployees([]));
+    fetchSharedJson('/api/employees?slim=1', { ttl: TTL.STATIC }).then(d => setEmployees(Array.isArray(d) ? d : [])).catch(() => setEmployees([]));
   }, [employees]);
   const employeeName = useCallback((id) => {
     if (!id || !employees) return '';

@@ -507,7 +507,7 @@ export default function CustomerInventoryViewer() {
   }, [selectedDate]);
 
   useEffect(() => {
-    fetch('/api/employees')
+    fetch('/api/employees?slim=1')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEmployees(data);

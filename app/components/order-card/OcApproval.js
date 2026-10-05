@@ -119,7 +119,7 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
   useEffect(() => {
     let off = false;
     Promise.all([
-      fetchSharedJson('/api/employees', { ttl: TTL.STATIC }).catch(() => []),
+      fetchSharedJson('/api/employees?slim=1', { ttl: TTL.STATIC }).catch(() => []),
       fetchSharedJson('/api/me', { ttl: TTL.STATIC }).catch(() => null)
     ]).then(([all, me]) => {
       if (off) return;

@@ -8,3 +8,7 @@ export async function getSessionEmployee() { return globalThis.__SESSION_EMPLOYE
 export const HEAD_MANAGEMENT_ROLES = [0, 2];
 export function invalidateRequireLoginCache() {}
 export function readVerifiedSession() { return globalThis.__SESSION_EMPLOYEE ? { employeeId: globalThis.__SESSION_EMPLOYEE.id, roleId: globalThis.__SESSION_EMPLOYEE.roleId } : null; }
+export async function checkPageAccess() { return true; }
+export function canManageRoles() { return true; }
+export function roleRank(r) { return r; }
+export const DEVELOPER_ONLY_ROLES = [2];

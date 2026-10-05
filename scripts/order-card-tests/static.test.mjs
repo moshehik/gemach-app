@@ -107,7 +107,7 @@ test('כל fetch מתוך רשימת ה-endpoints המותרת של הכרטיס
       if (!/^['`]|^ORDER_EVENTS_URL$/.test(arg)) continue;
       if (!ALLOWED.some((re) => re.test(arg))) bad.push(`${f}: ${arg}`);
     }
-    for (const m of s.matchAll(/fetchSharedJson\(\s*'([^']+)'/g)) if (!['/api/settings', '/api/employees', '/api/me'].includes(m[1])) bad.push(`${f}: fetchSharedJson ${m[1]}`);
+    for (const m of s.matchAll(/fetchSharedJson\(\s*'([^']+)'/g)) if (!['/api/settings', '/api/employees', '/api/employees?slim=1', '/api/me'].includes(m[1])) bad.push(`${f}: fetchSharedJson ${m[1]}`);
   }
   assert.deepEqual(bad, []);
 });
