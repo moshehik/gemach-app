@@ -1,10 +1,11 @@
 import prisma, { auditAs } from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
+import { customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS, validateCustomerBankFields } from '@/lib/customerBankFields';
 import { checkAuth } from '../../../../lib/auth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { validateCustomerFieldFormats, validateCustomerBankFields } from '@/lib/customerValidation';
-import { requiredFieldErrors, requiredFieldsFromSettings, customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS } from '@/lib/customerRequiredFields';
+import { validateCustomerFieldFormats } from '@/lib/customerValidation';
+import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
 import { deleteBlockers } from '@/lib/customerAccount';
@@ -88,8 +89,10 @@ export async function PUT(request, { params }) {
     }
 
     const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
-    // שדות הבנק נשמרים בעריכה רק כשההגדרה customer_bank_fields_enabled פעילה (ברירת מחדל: כבוי, וגם כשהקריאה להגדרות נכשלת).
-    let bankOn = false;
+    // customer_bank_fields_enabled חל רק על הכרטיס החדש (cardVariant:'a5'). הכרטיס הישן (לשונית הזיכויים/הבנק שלו) שולח את כל אובייקט
+    // הלקוח ושומר שדות בנק כמו תמיד - לא מסננים ולא בודקים אותם. bankOn: true/false כשקריאת ההגדרות הצליחה; null = לא ידוע (הקריאה
+    // נכשלה, fail-open) - אז לא מסירים ולא בודקים שדות בנק, כדי לא לאבד נתונים בארגון שההגדרה פעילה בו.
+    let bankOn = null;
 
     // 4 - אכיפה בעריכת לקוח קיים (גם ב-API, לא רק ב-UI). require_customer_email/
     // require_full_address הוסרו מכאן (דיווח תקלה 48ff7055, 2026-09-22) - הן חלות
@@ -134,7 +137,7 @@ export async function PUT(request, { params }) {
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));
       // תבנית שדות הבנק - רק על מה שהשתנה מהערך השמור (ערך ישן לא תקין לא חוסם שמירה של שדה אחר)
-      if (bankOn) errors.push(...validateCustomerBankFields(body, CUSTOMER_BANK_FIELD_KEYS.filter((k) => body[k] !== undefined && String(body[k] ?? '').trim() !== String(oldCustomer[k] ?? '').trim())));
+      if (bankOn === true && body.cardVariant === 'a5') errors.push(...validateCustomerBankFields(body, CUSTOMER_BANK_FIELD_KEYS.filter((k) => body[k] !== undefined && String(body[k] ?? '').trim() !== String(oldCustomer[k] ?? '').trim())));
 
       // 5 - חסימת כפילות ת"ז בין לקוחות (ר' אותה בדיקה ב-POST /api/customers) - כאן
       // מוציאים את הלקוח הנוכחי עצמו (NOT: { id }) כדי לא לחסום שמירה בלי שינוי בת"ז.
@@ -180,8 +183,8 @@ export async function PUT(request, { params }) {
       hokConsent: body.hokConsent !== undefined ? !!body.hokConsent : undefined,
     };
 
-    // שדות הבנק כבויים בארגון: לא נכתבים (הכרטיס לא מציג אותם; ערך קיים נשאר כמו שהוא)
-    if (!bankOn) for (const k of CUSTOMER_BANK_FIELD_KEYS) delete data[k];
+    // שדות הבנק כבויים בארגון: הכרטיס החדש לא נכתב אליהם (הוא לא מציג אותם; ערך קיים נשאר כמו שהוא). הכרטיס הישן לא מושפע.
+    if (bankOn === false && body.cardVariant === 'a5') for (const k of CUSTOMER_BANK_FIELD_KEYS) delete data[k];
 
     // 2. Compute changes (before the write, so they can be handed to the audit extension)
     const changes = {};

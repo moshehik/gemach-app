@@ -31,7 +31,7 @@ export function auditAs(action, args, changes) { return { ...args, __audit: { ac
 `;
 const authShim = 'export async function checkAuth() { return true; }';
 const managerShim = 'export async function verifyManagerPin() { return { ok: false }; }';
-const settingsShim = 'export async function getAllCachedSettings() { return globalThis.__CC.settings; }';
+const settingsShim = 'export async function getAllCachedSettings() { if (globalThis.__CC.settingsFail) throw new Error("settings read failed"); return globalThis.__CC.settings; }';
 const hooksSrc = `
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -69,7 +69,7 @@ const postRoute = await L('app/api/customers/route.js');
 const putRoute = await L('app/api/customers/[id]/route.js');
 
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
-const reset = (settings = {}, customers = []) => { globalThis.__CC = { settings: rows(settings), customers, created: [], updated: [], zeoutOwner: null }; };
+const reset = (settings = {}, customers = [], settingsFail = false) => { globalThis.__CC = { settings: rows(settings), customers, created: [], updated: [], zeoutOwner: null, settingsFail }; };
 const BANK = { bankName: 'לאומי', bankBranch: '800', bankAccount: '123456', bankAccountName: 'רחל כהן' };
 const BASE = { firstName: 'רחל', lastName: 'כהן', phone1: '0501234567', email: 'r@example.com', cardVariant: 'a5' };
 
@@ -223,6 +223,47 @@ await t('PUT פעיל + שדה בנק חובה (a5): ריק חוסם', async () 
   assert.match(res.__json.error, /שם בעל החשבון חובה/);
 });
 
+const { cardVariant: _cv, ...LEGACY_BASE } = BASE;
+await t('PUT של הכרטיס הישן (בלי cardVariant), ההגדרה חסרה: שדות בנק נשמרים כמו תמיד (רגרסיה B1)', async () => {
+  reset({ mandatory_field_groups: '[]' }, [{ ...OLD }]);
+  const res = await put({ ...OLD, ...LEGACY_BASE, bankName: 'פועלים', bankBranch: '600', bankAccount: '555555', bankAccountName: 'רחל' });
+  assert.equal(res.status, 200, JSON.stringify(res.__json));
+  const u = globalThis.__CC.updated[0];
+  assert.deepEqual([u.data.bankName, u.data.bankBranch, u.data.bankAccount, u.data.bankAccountName], ['פועלים', '600', '555555', 'רחל']);
+  assert.equal(Object.keys(u.__audit.changes).filter((k) => R.isBankFieldKey(k)).length, 4);
+});
+await t('PUT של הכרטיס הישן, ההגדרה כבויה במפורש: שדות בנק נשמרים; ההגדרה פעילה: אין ולידציית תבנית חדשה', async () => {
+  reset({ customer_bank_fields_enabled: 'false', mandatory_field_groups: '[]' }, [{ ...OLD }]);
+  const off = await put({ ...OLD, ...LEGACY_BASE, bankName: 'פועלים' });
+  assert.equal(off.status, 200);
+  assert.equal(globalThis.__CC.updated[0].data.bankName, 'פועלים');
+  reset({ customer_bank_fields_enabled: 'true', mandatory_field_groups: '[]' }, [{ ...OLD }]);
+  const on = await put({ ...OLD, ...LEGACY_BASE, bankAccount: 'IL-new', bankBranch: 'abc' });
+  assert.equal(on.status, 200, JSON.stringify(on.__json));
+  assert.equal(globalThis.__CC.updated[0].data.bankAccount, 'IL-new');
+});
+await t('PUT של הכרטיס החדש (a5), ההגדרה חסרה: שדות הבנק מוסרים מהכתיבה', async () => {
+  reset({ mandatory_field_groups: '[]' }, [{ ...OLD }]);
+  const res = await put({ ...OLD, ...BASE, bankName: 'פועלים' });
+  assert.equal(res.status, 200);
+  assert.equal('bankName' in globalThis.__CC.updated[0].data, false);
+});
+await t('קריאת ההגדרות נכשלה (fail-open): PUT לא מסיר ולא בודק שדות בנק (a5 וישן), POST שומר מה שנשלח', async () => {
+  reset({}, [{ ...OLD }], true);
+  const a5 = await put({ ...OLD, ...BASE, bankName: 'פועלים', bankAccount: 'IL-new' });
+  assert.equal(a5.status, 200, JSON.stringify(a5.__json));
+  assert.equal(globalThis.__CC.updated[0].data.bankName, 'פועלים');
+  assert.equal(globalThis.__CC.updated[0].data.bankAccount, 'IL-new');
+  reset({}, [{ ...OLD }], true);
+  const legacy = await put({ ...OLD, ...LEGACY_BASE, bankName: 'פועלים' });
+  assert.equal(legacy.status, 200);
+  assert.equal(globalThis.__CC.updated[0].data.bankName, 'פועלים');
+  reset({}, [], true);
+  const post = await postRoute.POST({ json: async () => ({ ...BASE, ...BANK }) });
+  assert.equal(post.status, 200, JSON.stringify(post.__json));
+  assert.equal(globalThis.__CC.created[0].bankName, 'לאומי');
+});
+
 console.log('C. static');
 await t('טופס לקוח חדש: כרטיס בנק רק תחת bankEnabled, והגוף נבנה עם bankEnabled', () => {
   const s = code(read('app/components/customer-card/NewCustomerA5.js'));
@@ -239,9 +280,10 @@ await t('כרטיס לקוח: לשונית הפרטים והתשלומים מס�
 await t('שרת: POST/PUT קוראים את ההגדרה ולא כותבים בנק כשכבוי', () => {
   const post = code(read('app/api/customers/route.js'));
   assert.match(post, /bankOn = customerBankFieldsEnabled\(sMap\)/);
-  assert.match(post, /\.\.\.\(bankOn \? /);
+  assert.match(post, /\.\.\.\(bankOn !== false \? /);
   const put2 = code(read('app/api/customers/[id]/route.js'));
-  assert.match(put2, /if \(!bankOn\) for \(const k of CUSTOMER_BANK_FIELD_KEYS\) delete data\[k\]/);
+  assert.match(put2, /if \(bankOn === false && body\.cardVariant === 'a5'\) for \(const k of CUSTOMER_BANK_FIELD_KEYS\) delete data\[k\]/);
+  assert.match(put2, /bankOn === true && body\.cardVariant === 'a5'/);
 });
 await t('הגדרות: מטא-דאטה (שם, הערה, סדר, בוליאני), סימולטור וסקריפט seed (ברירת מחדל כבוי בשני הגמחים)', async () => {
   const M = await L('lib/settingsMetadata.js');
