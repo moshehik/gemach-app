@@ -203,3 +203,11 @@ test('לשונית ההיסטוריה (יומן הזמנה) לא השתנתה: �
   assert.match(h, /<OcJournalCard /);
   assert.ok(!/OcStepper/.test(h));
 });
+
+test('OcStepper: בלי נתונים (טעינה / כישלון) מחזיר null - לא div.stepper מוסתר שה-CSS (display:block + מסגרת + ריפוד) חושף', () => {
+  const c = strip(read('app/components/order-card/OcStepper.js'));
+  assert.match(c, /if \(!model\) return null;/);
+  assert.ok(!/<div className="stepper" id="stepper" hidden/.test(c));
+  assert.equal((c.match(/className="stepper"/g) || []).length, 1, 'div.stepper רק כשיש מודל');
+  assert.ok(S.buildStepper(null) === null && S.buildStepper({ stages: [] }) === null);
+});

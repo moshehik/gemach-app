@@ -93,7 +93,8 @@ export default function OcStepper({ oc, data }) {
     return () => { window.removeEventListener('scroll', hide, true); window.removeEventListener('resize', hide); document.removeEventListener('keydown', onKey); };
   }, [rich, hide]);
 
-  if (!model) return <div className="stepper" id="stepper" hidden />;
+  // אין נתונים (עדיין נטען / נכשל / אין שלבים): לא מרנדרים כלום - לא פס זכוכית ריק (.stepper נותנת מסגרת וריפוד) ולא הזזת פריסה
+  if (!model) return null;
   const touch = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover:none)').matches;
   const descId = `${rid}-rt`;
   const nowRich = (el) => show('now', el, model.nowRows);
