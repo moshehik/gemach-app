@@ -272,7 +272,10 @@ export function isPrefetchableRoute(path) {
 // "שכנים" — לאילו דפים סביר שהמשתמש ימשיך מכל דף, לחימום ברקע אחרי הטעינה.
 const ROUTE_NEIGHBORS = {
   '/': ['/orders', '/customers'],
-  '/orders': ['/customers', '/board', '/rentals'],
+  // /board (limit=2000, ~530KB) ו-/rentals (מיון חכם שסורק את כל ההזמנות) הוסרו מהחימום האוטומטי:
+  // הם נטענו 2.5 שנ' אחרי כל כניסה להזמנות ונצפו רק לעיתים רחוקות (cpu-phase0-2026-10-06).
+  // חימום לפי כוונה (hover/focus/touch על קישור) נשאר דרך PrefetchManager.
+  '/orders': ['/customers'],
   '/customers': ['/orders'],
   '/board': ['/orders'],
   '/rentals': ['/orders'],
