@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { onActiveInterval } from '@/lib/idleGuard';
 
 export default function NotificationBell({ employeeId }) {
   const [notifications, setNotifications] = useState([]);
@@ -45,33 +46,10 @@ export default function NotificationBell({ employeeId }) {
 
   useEffect(() => {
     fetchUnreadCount();
-    let interval = null;
-    const startPolling = () => {
-      if (interval) return;
-      // 120 שנ' (היה 60, ורשימה מלאה): כל טיק הוא invocation + שאילתת DB לכל טאב פתוח.
-      interval = setInterval(fetchUnreadCount, 120000);
-    };
-    const stopPolling = () => {
-      clearInterval(interval);
-      interval = null;
-    };
-    // Background/minimized tabs were polling forever - pause while hidden so an
-    // employee's idle tab doesn't keep hitting the API all day, and catch up
-    // immediately when they come back instead of waiting for the next tick.
-    const handleVisibility = () => {
-      if (document.hidden) {
-        stopPolling();
-      } else {
-        fetchUnreadCount();
-        startPolling();
-      }
-    };
-    if (!document.hidden) startPolling();
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      stopPolling();
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
+    // 120 שנ' (היה 60, ורשימה מלאה): כל טיק הוא invocation + שאילתת DB לכל טאב פתוח.
+    // lib/idleGuard.js: הדגימה רצה רק בטאב גלוי עם פעילות משתמש ב-30 הדקות האחרונות (טאב מוסתר או שנשכח פתוח נעצר),
+    // ובחזרה (גלוי / תזוזה) נשלחת דגימה מיידית אחת (resumeStaleMs: 0) ואז חוזרים לקצב הרגיל.
+    return onActiveInterval(fetchUnreadCount, 120000, { resumeStaleMs: 0 });
   }, [employeeId]);
 
   // NotificationBell lives once in AppShell and never remounts on client-side

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import OverdueOrdersModal from './OverdueOrdersModal';
+import { onActiveInterval } from '@/lib/idleGuard';
 
 const HOUR_MS = 60 * 60 * 1000;
 const LAST_SHOWN_KEY = 'overdueRemindersLastShownAt';
@@ -52,10 +53,11 @@ export default function OverdueRemindersWatcher({ authToken }) {
 
     checkAndAlert();
 
-    const interval = setInterval(checkAndAlert, HOUR_MS);
+    // lib/idleGuard.js: טאב מוסתר / שנשכח פתוח לא שולף ולא מקפיץ חלונית לאף אחד; בחזרה - בדיקה אחת אם עברה שעה.
+    const stopInterval = onActiveInterval(checkAndAlert, HOUR_MS);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      stopInterval();
     };
   }, [authToken]);
 

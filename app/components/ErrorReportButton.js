@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { unreadCount as countUnread } from './errorReport/erModel';
+import { onActiveInterval } from '@/lib/idleGuard';
 import { useUiVariant } from './UiVariantContext';
 import LegacyErrorReportFrame from './variant/LegacyErrorReportFrame';
 
@@ -86,30 +87,10 @@ function ErrorReportButtonNew({ trigger } = {}) {
   }, []);
 
   useEffect(() => {
-    let intervalId;
-    // טאב ברקע / ממוזער לא בודק בכלל; כשחוזרים אליו - בדיקה מיידית. 120 שנ' (מכסות Vercel/Neon, ר' docs/vercel-resource-audit-2026-09-20.md).
-    const start = () => {
-      if (intervalId) return;
-      intervalId = setInterval(() => fetchLight(), 120000);
-    };
-    const stop = () => {
-      clearInterval(intervalId);
-      intervalId = undefined;
-    };
-    const handleVisibility = () => {
-      if (!mounted || isOpen) return;
-      if (document.hidden) stop();
-      else {
-        fetchLight();
-        start();
-      }
-    };
-    if (mounted && !isOpen && !document.hidden) start();
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
+    if (!mounted || isOpen) return undefined;
+    // טאב ברקע / ממוזער / שנשכח פתוח (30 דקות בלי פעילות) לא בודק בכלל; כשחוזרים אליו - בדיקה מיידית אחת.
+    // 120 שנ' (מכסות Vercel/Neon, ר' docs/vercel-resource-audit-2026-09-20.md ו-docs/idle-tab-guard-2026-10-06.md).
+    return onActiveInterval(() => fetchLight(), 120000, { resumeStaleMs: 0 });
   }, [mounted, isOpen, fetchLight]);
 
   useEffect(() => {

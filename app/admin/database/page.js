@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import UploadZone from '../../components/UploadZone';
+import { onActiveInterval } from '@/lib/idleGuard';
 
 export default function DatabaseManagement() {
   const [file, setFile] = useState(null);
@@ -12,9 +13,10 @@ export default function DatabaseManagement() {
   const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
-    let interval;
+    let stopInterval;
     if (uploading) {
-      interval = setInterval(async () => {
+      // lib/idleGuard.js: העלאה תקועה לא דוגמת לנצח מטאב מוסתר / שנשכח פתוח
+      stopInterval = onActiveInterval(async () => {
         try {
           const res = await fetch('/api/admin/database/status');
           if (res.ok) {
@@ -23,15 +25,15 @@ export default function DatabaseManagement() {
             setProgress(data.progress || 0);
             if (data.status === 'completed' || data.status === 'error') {
               setUploading(false);
-              clearInterval(interval);
+              if (stopInterval) stopInterval();
             }
           }
         } catch (e) {
           console.error(e);
         }
-      }, 2000);
+      }, 2000, { resumeStaleMs: 0 });
     }
-    return () => clearInterval(interval);
+    return () => { if (stopInterval) stopInterval(); };
   }, [uploading]);
 
   const handleFileChange = (selectedFile) => {

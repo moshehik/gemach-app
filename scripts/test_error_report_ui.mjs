@@ -152,9 +152,10 @@ console.log('חוזה ה-API (נשמר מהחלון הישן)');
 await t('GET /api/error-report (מלא, בחלון) ו-?light=1 (בדיקה תקופתית, בכפתור) - 120 שנ\', רק כשסגור והטאב גלוי, 401 עוצר', () => {
   has(WIN, /fetch\('\/api\/error-report'\)/, 'GET מלא');
   has(BTN, /fetch\('\/api\/error-report\?light=1'\)/, 'GET light');
-  has(BTN, /setInterval\(\(\) => fetchLight\(\), 120000\)/, 'כל 120 שנ\'');
-  has(BTN, /visibilitychange/, 'עצירה בטאב מוסתר');
-  has(BTN, /if \(mounted && !isOpen && !document\.hidden\) start\(\)/, 'רק כשהחלון סגור');
+  // lib/idleGuard.js (6.10.2026): אותו קצב, אבל רק בטאב גלוי עם פעילות משתמש ב-30 הדקות האחרונות (מוסתר/נשכח פתוח = נעצר)
+  has(BTN, /onActiveInterval\(\(\) => fetchLight\(\), 120000, \{ resumeStaleMs: 0 \}\)/, 'כל 120 שנ\' דרך שומר ה-idle');
+  has(BTN, /@\/lib\/idleGuard/, 'עצירה בטאב מוסתר / שנשכח פתוח');
+  has(BTN, /if \(!mounted \|\| isOpen\) return undefined/, 'רק כשהחלון סגור');
   has(BTN + WIN, /res\.status === 401/, '401');
   has(BTN + WIN, /seq !== fetchSeqRef\.current/, 'תשובה ישנה לא דורסת חדשה');
 });
