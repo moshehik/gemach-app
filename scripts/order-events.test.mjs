@@ -104,6 +104,7 @@ const src = (rel) => fs.readFileSync(path.join(PROJ, rel), 'utf8');
 
 const OE = await L('lib/history/orderEvents.js');
 const eventsRoute = await L('app/api/orders/events/route.js');
+const { resetEventRateLimit } = await L('lib/eventRateLimit.js');
 const verifyPin = await L('app/api/auth/verify-pin/route.js');
 const emailRoute = await L('app/api/orders/[id]/email/route.js');
 const itemsRoute = await L('app/api/orders/[id]/items/route.js');
@@ -152,6 +153,7 @@ function installDb(extraSettings = []) {
 }
 
 beforeEach(() => {
+  resetEventRateLimit();
   installDb();
   invalidateSettingsCache();
   invalidateRequireLoginCache();
@@ -1005,11 +1007,31 @@ test('email quick (S4): drive folder = the email_drive_folder_id setting only (a
   assert.equal(r2.status, 200);
   assert.equal(sent[0].body.driveFolderId, '');
   assert.deepEqual(sent[0].body.attachments.map((x) => x.mimeType), ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg']);
-  // the normal (non-quick) send keeps the legacy optional folder from the request
+  // H4 (hardening 2026-10-05): the normal print-menu send ignores a client-supplied folder too (no screen sends one) - only the setting counts
+  installDb([{ key: 'email_drive_folder_id', value: 'SettingFolder_12345' }]); invalidateSettingsCache();
   sent = stubMailer({ status: 'success' });
   const r3 = await emailReq({ email: 'a@b.co', type: 'order', pdfBase64: 'JVBERi0x', driveFolderId: 'LegacyFolder_12345', sendMode: 'both' });
   assert.equal(r3.status, 200);
-  assert.equal(sent[0].body.driveFolderId, 'LegacyFolder_12345');
+  assert.equal(sent[0].body.driveFolderId, 'SettingFolder_12345');
+  installDb(); invalidateSettingsCache();
+  sent = stubMailer({ status: 'success' });
+  const r3b = await emailReq({ email: 'a@b.co', type: 'order', pdfBase64: 'JVBERi0x', driveFolderId: 'LegacyFolder_12345', sendMode: 'both' });
+  assert.equal(r3b.status, 200);
+  assert.equal(sent[0].body.driveFolderId, '', 'no setting = no folder, never the client value');
+  // H4: extra files on the print-menu path - ordinary documents still go through (server-decided mimeType), executables / bad base64 / too many are refused
+  sent = stubMailer({ status: 'success' });
+  const r3c = await emailReq({ email: 'a@b.co', type: 'order', pdfBase64: 'JVBERi0x', sendMode: 'email', extraAttachments: [{ fileName: 'סריקה.docx', fileContent: 'QUJD', mimeType: 'text/html', dest: 'email' }, { fileName: 'x.weird', fileContent: 'QUJD' }] });
+  assert.equal(r3c.status, 200, JSON.stringify(r3c.__json));
+  const extra = sent[0].body.attachments.filter((x) => x.fileName !== 'הזמנה 501.pdf');
+  assert.deepEqual(extra.map((x) => x.mimeType), ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream'], 'the client-claimed text/html is ignored');
+  sent = stubMailer({ status: 'success' });
+  for (const att of [{ fileName: 'evil.exe', fileContent: 'QUJD' }, { fileName: 'run.PS1', fileContent: 'QUJD' }, { fileName: 'x.svg', fileContent: 'QUJD' }, { fileName: 'a.pdf', fileContent: 'not base64!' }]) {
+    const x = await emailReq({ email: 'a@b.co', type: 'order', pdfBase64: 'JVBERi0x', extraAttachments: [att] });
+    assert.equal(x.status, 400, JSON.stringify(att));
+  }
+  const tooMany = await emailReq({ email: 'a@b.co', type: 'order', pdfBase64: 'JVBERi0x', extraAttachments: Array.from({ length: 11 }, (_, i) => ({ fileName: `f${i}.pdf`, fileContent: 'QUJD' })) });
+  assert.equal(tooMany.status, 400);
+  assert.equal(sent.length, 0);
   // rejections: nothing is sent
   sent = stubMailer({ status: 'success' });
   for (const att of [{ fileName: 'evil.exe', fileContent: 'QUJD' }, { fileName: 'x.svg', fileContent: 'QUJD' }, { fileName: 'a.pdf', fileContent: 'not base64!' }, { fileName: 'a.pdf', fileContent: 'data:application/pdf;base64,QUJD' }, { fileName: 'a.pdf', fileContent: 'QUJ' }]) {

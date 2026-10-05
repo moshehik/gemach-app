@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
+import { canOpenAnyPage } from '@/lib/permissions';
 import { getDeliveriesForDate } from '@/lib/deliveries';
 import { getIsraelTodayDate } from '@/lib/hebrewDate';
 
@@ -37,6 +38,8 @@ function parseDateParam(dateParam) {
 // docs/deliveries-feature-plan-2026-09-16.md §C/§D.
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // H5 hardening: customer names / addresses - the deliveries screen (page:deliveries) or the orders screens (page:orders) only, like /api/deliveries/join
+  if (!(await canOpenAnyPage(['page:deliveries', 'page:orders']))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const { searchParams } = new URL(request.url);
     const requestedDate = parseDateParam(searchParams.get('date'));

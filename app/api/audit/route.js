@@ -1,7 +1,8 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
-import { attachEmployeeNames } from '@/app/lib/auditLog';
+import { attachEmployeeNames, hideForeignEmployeeIds } from '@/app/lib/auditLog';
+import { getActingEmployeeId } from '@/app/lib/prisma';
 import { listOrderMarkIds } from '@/lib/schedule/marks';
 
 
@@ -100,7 +101,9 @@ export async function GET(request) {
       skip: (page - 1) * limit,
     });
 
-    const logsWithNames = await attachEmployeeNames(logs);
+    const namedLogs = await attachEmployeeNames(logs);
+    // non-head-management viewers never receive other employees' raw ids (H1 hardening; names are already attached)
+    const logsWithNames = canSeeEmployeeHistory ? namedLogs : hideForeignEmployeeIds(namedLogs, await getActingEmployeeId());
 
     const total = await prisma.auditLog.count({ where });
 

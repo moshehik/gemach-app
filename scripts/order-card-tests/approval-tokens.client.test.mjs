@@ -313,7 +313,7 @@ test('static: every legacy sender of a debt approver now asks verify-pin for the
   assert.ok(!/requiredLevel: 'עובד'/.test(legacy), 'the permission-less "עובד" level is gone from the debt prompts');
   assert.equal((legacy.match(/requiredLevel: DEBT_APPROVAL_LEVEL, orderId:/g) || []).length, 2, 'save + exit');
   assert.equal((legacy.match(/stashApprovalToken\(DEBT_APPROVAL_LEVEL/g) || []).length, 2);
-  assert.match(legacy, /stashApprovalToken\(MANUAL_PAYMENT_CREDIT_LEVEL, order\?\.orderId, data\.approvalToken\)/);
+  assert.match(legacy, /stashApprovalToken\('feature:manual_payment_credit_add', order\?\.orderId, data\.approvalToken\)/);
   assert.match(legacy, /sendWithApproval\(\(extra\) => send\(\{ \.\.\.base, \.\.\.extra \}\)/);
   assert.match(legacy, /sendApproved\(\{ \.\.\.payload, overwriteConflict: true \}\)/, 'the overwrite retry carries tokens too');
   const refunds = read('app/refunds/page.js');

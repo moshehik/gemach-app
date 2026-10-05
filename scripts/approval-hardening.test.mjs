@@ -53,6 +53,7 @@ const logModel = (m) => ({
   async createMany({ data }) { globalThis.__MOCK_CALLS.push({ model: m, method: 'createMany', args: { data } }); for (const d of data) rows(m).push({ id: m + '-' + (++seq), createdAt: new Date(), ...d }); return { count: data.length }; },
   async findFirst({ where } = {}) { return rows(m).find((r) => match(r, where)) || null; },
   async findMany({ where } = {}) { return rows(m).filter((r) => match(r, where)); },
+  async count({ where } = {}) { return rows(m).filter((r) => match(r, where)).length; },
 });
 const LOGS = { auditLog: logModel('auditLog'), emailLog: logModel('emailLog') };
 const proxy = new Proxy({}, { get(_, p) { if (p === 'then') return undefined; return LOGS[p] || base[p]; } });
@@ -120,6 +121,11 @@ const debtRoute = await L('app/api/orders/[id]/debt-approval/route.js');
 const paymentsRoute = await L('app/api/payments/route.js');
 const refundRoute = await L('app/api/refunds/[id]/route.js');
 const orderRoute = await L('app/api/orders/[id]/route.js');
+const auditRoute = await L('app/api/audit/route.js');
+const deliveriesRoute = await L('app/api/deliveries/route.js');
+const eventsRoute = await L('app/api/orders/events/route.js');
+const RateLimit = await L('lib/eventRateLimit.js');
+const AuditLib = await L('app/lib/auditLog.js');
 const Gate = await L('lib/approvalGate.js');
 const OE = await L('lib/history/orderEvents.js');
 const { invalidatePermissionCache } = await L('lib/permissions.js');
@@ -182,6 +188,7 @@ beforeEach(() => {
   invalidateRequireLoginCache();
   invalidatePermissionCache();
   T.resetApprovalTokenUse();
+  RateLimit.resetEventRateLimit();
   globalThis.__AUTH_TOKEN = null;
   globalThis.__AUTH_ROLE = 5;
   logs.length = 0;
@@ -701,4 +708,81 @@ test('detectAutoLineRemovals / detectPaymentMoneyChanges: only real money moveme
   assert.deepEqual(OE.detectPaymentMoneyChanges([{ id: 'p1', isDeleted: false, amount: '100.00' }, { id: 'p2', isDeleted: false, amount: 1 }], pays), { deleted: 0, edited: 0 }, 'echo / restore');
   assert.deepEqual(OE.detectPaymentMoneyChanges([{ id: 'p1', isDeleted: false, amount: 90 }], pays), { deleted: 0, edited: 1 });
   assert.deepEqual(OE.detectPaymentMoneyChanges([{ isNew: true, amount: 5 }, null], pays), { deleted: 0, edited: 0 });
+});
+
+// ============================================================================================ safe items: H1 audit ids, H5, H6
+const auditReq = (qs = '') => ({ url: 'http://localhost/api/audit' + qs, headers: { get: () => null }, json: async () => ({}) });
+
+test('H1: /api/audit hides OTHER employees\' ids (row employeeId + meta.approverId) from non-head-management viewers; names stay; own id stays', async () => {
+  globalThis.__MOCK_DB.auditLog.push(
+    { id: 'a1', entityType: 'Order', entityId: '501', action: 'DEBT_APPROVED', changesJson: JSON.stringify({ approvedDebtAmount: 10 }), employeeId: 'emp-mgr', createdAt: new Date() },
+    { id: 'a2', entityType: 'Order', entityId: '501', action: 'MANAGER_APPROVAL', changesJson: JSON.stringify({ level: 'x', approverId: 'emp-head' }), employeeId: 'emp-worker', createdAt: new Date() },
+    { id: 'a3', entityType: 'Order', entityId: '501', action: 'UPDATE_ORDER', changesJson: '{}', employeeId: null, createdAt: new Date() },
+  );
+  loginAs('emp-worker', 5);
+  const r = await auditRoute.GET(auditReq('?entityType=Order'));
+  assert.equal(r.status, 200);
+  const rows = Object.fromEntries(r.__json.logs.map((l) => [l.id, l]));
+  assert.equal(rows.a1.employeeId, 'hidden');
+  assert.equal(rows.a1.employeeName, 'מנהלת סניף', 'the display name was resolved before the id was hidden');
+  assert.equal(rows.a2.employeeId, 'emp-worker', 'the viewer\'s own id is theirs');
+  const meta = JSON.parse(rows.a2.changesJson);
+  assert.ok(!('approverId' in meta));
+  assert.equal(meta.approverName, 'הנהלה ראשית');
+  assert.equal(rows.a3.employeeId, null);
+  assert.ok(!JSON.stringify(r.__json).includes('emp-mgr') && !JSON.stringify(r.__json).includes('emp-head'), 'no other id anywhere in the answer');
+});
+
+test('H1: head management still sees the raw rows (they own the employee screens); the helper never mutates its input', async () => {
+  globalThis.__MOCK_DB.auditLog.push({ id: 'a1', entityType: 'Order', entityId: '501', action: 'DEBT_APPROVED', changesJson: '{}', employeeId: 'emp-mgr', createdAt: new Date() });
+  loginAs('emp-head', 0);
+  const r = await auditRoute.GET(auditReq('?entityType=Order'));
+  assert.equal(r.__json.logs[0].employeeId, 'emp-mgr');
+  const input = [{ id: 'x', employeeId: 'emp-mgr', changesJson: JSON.stringify({ approverId: 'emp-head' }) }];
+  const out = AuditLib.hideForeignEmployeeIds(input, 'emp-worker');
+  assert.equal(input[0].employeeId, 'emp-mgr');
+  assert.equal(out[0].employeeId, AuditLib.HIDDEN_EMPLOYEE_ID);
+});
+
+test('H5: /api/deliveries needs page:deliveries or page:orders (customer names / addresses); login alone is not enough', async () => {
+  globalThis.__MOCK_DB.departmentPermission.push({ roleId: 6, key: 'page:orders', value: 'false' }, { roleId: 6, key: 'page:deliveries', value: 'false' });
+  globalThis.__MOCK_DB.employee.push({ id: 'emp-blocked', roleId: 6, isActive: true, firstName: 'א', lastName: 'ב', password: OTHER_HASH });
+  invalidatePermissionCache();
+  loginAs('emp-blocked', 6);
+  const denied = await deliveriesRoute.GET(auditReq('?date=2026-11-10'));
+  assert.equal(denied.status, 403);
+  globalThis.__MOCK_CALLS = [];
+  loginAs('emp-worker', 5); // roleId 5 has page:orders
+  const allowed = await deliveriesRoute.GET(auditReq('?date=2026-11-10')).catch(() => ({ status: 500 }));
+  assert.ok(allowed.status !== 403 && allowed.status !== 401, 'a worker with page:orders gets past the gate (the mock has no delivery data, so a 500 after it is fine)');
+  globalThis.__AUTH_TOKEN = null;
+  assert.equal((await deliveriesRoute.GET(auditReq('?date=2026-11-10'))).status, 401);
+});
+
+test('H6: /api/orders/events caps one employee at 1000 rows a minute (429, nothing written), other employees are unaffected; a failed write gives its rows back', async () => {
+  const post = (body) => eventsRoute.POST(req(body));
+  globalThis.__MOCK_DB.employee.push({ id: 'emp-w3', roleId: 5, isActive: true, firstName: 'ג', lastName: 'ד', password: OTHER_HASH });
+  loginAs('emp-worker', 5);
+  const doc = { action: 'ORDER_PRINTED', meta: { doc: 'order' } };
+  const ids = Array.from({ length: 200 }, (_, i) => 1000 + i);
+  globalThis.__MOCK_DB.order.push(...ids.map((n) => ({ id: 'u' + n, orderId: n, isDeleted: false, items: [], obligations: [], payments: [] })));
+  for (let i = 0; i < 5; i++) assert.equal((await post({ orderIds: ids, ...doc })).status, 200, 'five full batches = 1000 rows');
+  const over = await post({ orderIds: [501], ...doc });
+  assert.equal(over.status, 429);
+  assert.equal(over.__json.code, 'RATE_LIMITED');
+  assert.equal(auditRows().length, 1000, 'nothing written by the refused request');
+  loginAs('emp-w3', 5);
+  assert.equal((await post({ orderIds: [501], ...doc })).status, 200, 'another employee has their own window');
+  // a window that has passed starts over
+  assert.equal(RateLimit.admitEvents({ actorId: 'emp-worker', count: 1, now: Date.now() + 61 * 1000 }).ok, true);
+});
+
+test('H6: the limiter counts rows, hands them back on release, and treats anonymous (open mode) as one actor', () => {
+  const t = 1_000_000;
+  assert.equal(RateLimit.admitEvents({ actorId: 'a', count: 1000, now: t }).ok, true);
+  assert.equal(RateLimit.admitEvents({ actorId: 'a', count: 1, now: t + 1 }).ok, false);
+  RateLimit.releaseEvents({ actorId: 'a', count: 10 });
+  assert.equal(RateLimit.admitEvents({ actorId: 'a', count: 10, now: t + 2 }).ok, true);
+  assert.equal(RateLimit.admitEvents({ actorId: null, count: 1000, now: t }).ok, true);
+  assert.equal(RateLimit.admitEvents({ actorId: undefined, count: 1, now: t }).ok, false);
 });

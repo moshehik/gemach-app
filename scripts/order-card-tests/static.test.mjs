@@ -20,7 +20,9 @@ const CODE = Object.fromEntries(JS.map((f) => [rel(f), stripJsComments(read(f))]
 const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map(([f]) => f);
 
 // ---------- הכרטיס הישן והמעבר ----------
-const LEGACY_SHA256_LF = 'f8d2a8082ddb02fc989f5e606b5ff8e57b35462e2342162aba02b456aff32f64'; // = app/orders/[id]/page.js של main ב-c944cb95
+// עודכן במכוון (fix/server-approval-hardening-2026-10-05): הדף הישן קיבל אסימוני אישור חתומים (lib/approvalClient.js) - אותו מקום שלח מזהה מאשר גולמי. כל השאר זהה לדף שב-main ב-c944cb95.
+// כל שינוי עתידי בדף הישן חייב לעדכן את הערך הזה במכוון (והבדיקות ב-approval-tokens.client.test.mjs מגדירות מה השתנה).
+const LEGACY_SHA256_LF = '2e0336260173a9a32cee30e86d63b13ccaa73e690ded48e2f912972f5595cb07';
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
   const s = read(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js')).replace(/\r\n/g, '\n');
   assert.equal(crypto.createHash('sha256').update(s).digest('hex'), LEGACY_SHA256_LF);

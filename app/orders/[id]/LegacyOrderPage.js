@@ -15,7 +15,7 @@ import { addHistory } from '../../../lib/historyManager';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
-import { sendWithApproval, stashApprovalToken, DEBT_APPROVAL_LEVEL, MANUAL_PAYMENT_CREDIT_LEVEL } from '../../../lib/approvalClient';
+import { sendWithApproval, stashApprovalToken, DEBT_APPROVAL_LEVEL } from '../../../lib/approvalClient';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -1501,14 +1501,14 @@ export default function OrderDetailsPage({ params }) {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: MANUAL_PAYMENT_CREDIT_LEVEL, orderId: order?.orderId })
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:manual_payment_credit_add', orderId: order?.orderId })
       });
       const data = await res.json();
       if (!data.success) {
         alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
         return;
       }
-      stashApprovalToken(MANUAL_PAYMENT_CREDIT_LEVEL, order?.orderId, data.approvalToken); // נשלח עם POST /api/payments / PUT של הזיכוי / מחיקת תשלום
+      stashApprovalToken('feature:manual_payment_credit_add', order?.orderId, data.approvalToken); // נשלח עם POST /api/payments / PUT של הזיכוי / מחיקת תשלום
     } catch (err) {
       alert('שגיאה באימות קוד מאשר.');
       return;

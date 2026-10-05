@@ -14,6 +14,7 @@ const MPM_PATH = path.join(PROJ, 'components/orders/modern/ModernPaymentsManager
 const MPM = fs.readFileSync(MPM_PATH, 'utf8');
 const P = (rel) => import(pathToFileURL(path.join(PROJ, rel)).href);
 const A = await P('app/components/order-card/hooks/usePaymentActions.js');
+const ApprovalClient = await P('lib/approvalClient.js'); // hardening 2026-10-05: the legacy manager's POST /api/payments + refund PUT go through sendWithApproval (no stashed token + a server that does not enforce = the same single request)
 const L = await P('app/components/order-card/orderCardLogic.js');
 const { createOrderCardFlows } = await P('app/components/order-card/orderCardFlows.js');
 
@@ -105,6 +106,7 @@ function legacyScope(extra = {}, respond) {
   const setter = (k) => (v) => { cap.set[k] = typeof v === 'function' ? v(cap.set[k] ?? extra[`__prev_${k}`]) : v; };
   const scope = {
     fetch: m.fetch,
+    sendWithApproval: ApprovalClient.sendWithApproval,
     alert: (msg) => cap.alerts.push(msg),
     window: { customConfirm: async () => true },
     orderId: ORDER_ID, customer: CUSTOMER, obligations: OBL, payments: PAY, refunds: [], order: { hasSignedRegulations: false },
