@@ -441,6 +441,8 @@ await t('תקרת שורות: מוצגות עד 20 וטופל truncated', async 
   assert.equal(r.inventory.length, 20);
   assert.equal(r.inventoryTruncated, true);
   assert.equal(T.bulkCalls.length, 1);
+  assert.ok(T.bulkCalls[0].ids.length <= 20, 'חישוב הזמינות לכל היותר ל-20 דגמים: ' + T.bulkCalls[0].ids.length);
+  assert.equal(T.calls.find(([n]) => n === 'dressModel.findMany')[1].take, 21, 'take = תקרה + 1 (כדי לדעת אם נחתכנו)');
 });
 await t('תאריך בשאילתת מילות מפתח: הזמינות לאותו יום (תווית עברית)', async () => {
   reset([]);
