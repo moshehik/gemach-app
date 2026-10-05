@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CUSTOMER_ONLY_FIELD_LABELS } from '../lib/history/labels';
+import { CUSTOMER_ONLY_FIELD_LABELS, isHiddenAuditKey } from '../lib/history/labels';
 import { isVisibleChangeKey, labelChangeValue, normalizeChange } from './modern/changesDisplay';
 
 export const FIELD_TRANSLATIONS = {
@@ -51,7 +51,6 @@ export const FIELD_TRANSLATIONS = {
   eventDate: 'תאריך אירוע',
   eventDateHebrew: 'תאריך אירוע (עברי)',
   returnDate: 'תאריך החזרה',
-  isWeekdayEvent: 'אירוע חו"ל',
   orderDate: 'תאריך הזמנה',
   isAbroad: 'אירוע חו"ל',
   fromDate: 'מתאריך',
@@ -284,6 +283,7 @@ export default function HistoryViewer({ entityType, entityId }) {
       // raw UUIDs / technical keys are never shown; machine values get Hebrew labels (modern/changesDisplay.js)
       const show = (key, val) => labelChangeValue(key, val) ?? formatValue(val);
       const filteredKeys = allKeys.filter(key => {
+         if (isHiddenAuditKey(key)) return false;
          const change = changes[key];
          if (!isVisibleChangeKey(key, change)) return false;
          if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {

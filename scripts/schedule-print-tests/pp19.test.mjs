@@ -33,7 +33,7 @@ test('grouped by city (bigger city first, "no city" last), stops numbered 1..n a
   const { payload, extras } = await payloadFor(['PP-19']);
   assert.deepEqual(extras, {}, 'no extra query for this page');
   const pg = payload.pages[0];
-  assert.equal(pg.pageCode, 'ALL-DBK-261001');
+  assert.equal(pg.pageCode, 'ALL-DBK-261015');
   const d = pg.data;
   assert.deepEqual(d.groups.map((g) => g.city), ['ירושלים', 'בית שמש', 'ללא עיר']);
   assert.deepEqual(d.groups.map((g) => g.rows.length), [3, 2, 1]);
@@ -90,14 +90,14 @@ test('toRows: stop, city, name, order, street, both phones, dresses, note, colle
 
 test('API: deliveries permission gate (403 for an employee without it), 200 + payload for head management', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const denied = await get('?page=PP-19&date=2026-10-01');
+  const denied = await get('?page=PP-19&date=2026-10-15');
   assert.equal(denied.status, 403);
   assert.equal(denied.__json.page, 'PP-19');
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-19&date=2026-10-01');
+  const r = await get('?page=PP-19&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   assert.equal(r.__json.pages[0].data.totals.stops, 6);
-  const x = await get('?page=PP-19&date=2026-10-01&format=rows');
+  const x = await get('?page=PP-19&date=2026-10-15&format=rows');
   assert.equal(x.status, 200);
   assert.equal(x.__json.sheets[0].rows.length, 6);
 });

@@ -1,0 +1,9 @@
+/* חלון "אין הרשאה" בעיצוב החדש (NoAccessCard.js) - רק ההרכבה: החלון הכהה של דף הכניסה (.gm-ds.gm-login .dlg.dk, login.css)
+   מוצג במקום (לא כשכבה צפה) באמצע אזור התוכן. כל הצבעים/הגופנים/הלחצנים מגיעים מ-login.css ומהפלטה; כאן רק מיקום. */
+.app-shell .main .content:has(> .gm-ds.gm-gate){max-width:none;margin-inline:0;padding:0}
+.gm-ds.gm-login.gm-gate{display:block;min-height:0}
+.gm-ds.gm-login.gm-gate .gt-stage{min-height:min(70vh,640px);display:grid;place-items:center;padding:40px 16px 56px}
+.gm-ds.gm-login.gm-gate .dlg.gt-card{position:relative;max-width:440px;animation:none}
+.gm-ds.gm-login.gm-gate .gt-card .sub{margin-bottom:22px}
+.gm-ds.gm-login.gm-gate .gt-card .dbtns a{text-decoration:none}
+@media (max-width:520px){.gm-ds.gm-login.gm-gate .gt-stage{padding:24px 0 40px;place-items:start center}}

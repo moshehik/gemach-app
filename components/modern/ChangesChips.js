@@ -4,6 +4,7 @@ import React from 'react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { FIELD_TRANSLATIONS } from '../HistoryViewer';
 import { isVisibleChangeKey, labelChangeValue, normalizeChange } from './changesDisplay';
+import { isHiddenAuditKey } from '../../lib/history/labels';
 
 const DANGER_TONE = { bg: 'var(--danger-tint)', color: 'var(--danger)' };
 const SUCCESS_TONE = { bg: 'var(--success-tint)', color: 'var(--success)' };
@@ -56,6 +57,7 @@ export function ChangesChips({ changesJson }) {
     // raw UUIDs / technical keys are never shown; machine values get Hebrew labels (changesDisplay.js)
     const show = (key, val) => labelChangeValue(key, val) ?? formatValue(val);
     const keys = Object.keys(changes).filter(key => {
+      if (isHiddenAuditKey(key)) return false;
       const change = changes[key];
       if (!isVisibleChangeKey(key, change)) return false;
       if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {

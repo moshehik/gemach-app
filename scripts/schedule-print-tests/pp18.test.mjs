@@ -1,5 +1,5 @@
 // PP-18 "דף משלוח חזור (למשלוחן)": אותו דף כמו 10 בכיוון חזור - שלב 9 (dback), ברקוד DBK, כותרת "משלוח נאסף", שער page:deliveries,
-// נתוני הדמה (1.10.2026: 1010 ו-1022) ו-toRows.
+// נתוני הדמה (15.10.2026: 1010 ו-1022) ו-toRows.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -31,21 +31,21 @@ test('registry: ready, deliveries gate, DBK barcode, stage 9', () => {
 
 test('route gate: 403 without page:deliveries, 200 for head management', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  assert.equal((await get('?page=PP-18&date=2026-10-01')).status, 403);
+  assert.equal((await get('?page=PP-18&date=2026-10-15')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-head';
-  assert.equal((await get('?page=PP-18&date=2026-10-01')).status, 200);
+  assert.equal((await get('?page=PP-18&date=2026-10-15')).status, 200);
 });
 
-test('route: pick-up stops of 1.10 (1010, 1022) grouped under one event date, DBK codes, "נאסף" in the title', async () => {
+test('route: pick-up stops of 15.10 (1010, 1022) grouped under one event date, DBK codes, "נאסף" in the title', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-18&date=2026-10-01');
+  const r = await get('?page=PP-18&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const p = r.__json.pages[0];
-  assert.equal(p.pageCode, 'ALL-DBK-261001');
+  assert.equal(p.pageCode, 'ALL-DBK-261015');
   assert.equal(p.data.title, 'נתוני משלוחים למשלוחן · חזור');
   assert.equal(p.data.sub, 'שם, כתובת ושני טלפונים לכל איסוף');
   assert.equal(p.data.groups.length, 1);
-  assert.equal(p.data.groups[0].title, 'משלוח חזור אירועים יום רביעי י״ט תשרי תשפ״ז (משלוח נאסף יום חמישי)');
+  assert.equal(p.data.groups[0].title, 'משלוח חזור אירועים יום רביעי ג׳ חשוון תשפ״ז (משלוח נאסף יום חמישי)');
   assert.deepEqual(p.data.groups[0].rows.map((x) => x.orderId), [1010, 1022]);
   assert.deepEqual(p.data.groups[0].rows.map((x) => x.code), ['DBK-1010', 'DBK-1022']);
   assert.equal(p.data.groups[0].rows[0].address, 'הרצל 5, בית שמש');
@@ -55,7 +55,7 @@ test('route: pick-up stops of 1.10 (1010, 1022) grouped under one event date, DB
 
 test('the outbound stage does not leak into the return page (1009 is outbound only)', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-18&date=2026-10-01');
+  const r = await get('?page=PP-18&date=2026-10-15');
   const ids = r.__json.pages[0].data.groups.flatMap((g) => g.rows.map((x) => x.orderId));
   assert.equal(ids.includes(1009), false);
   assert.equal(ids.includes(9001), false, 'draft excluded');

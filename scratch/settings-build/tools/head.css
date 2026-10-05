@@ -1,0 +1,26 @@
+/* מסכי ההגדרות בעיצוב "סימולציה" (SettingsSimPage, /admin/settings · /admin/site-settings · /admin/labels) — CSS מקומי בהיקף .gm-ds.gm-st בלבד
+   (לא נוגע ב-design-system/). נוצר ע"י scratch/settings-build/tools/build_css.py מהבלוק של העמוד בעיצוב המאושר
+   (תצוגות-עיצוב/הגדרות-סימולציה.html: .layout/.rail/.st-*, סטפר .numw, בוחר שעה .timew/.tpop, כותרת וסרגל החיפוש, כותרות הסעיפים .adm-h)
+   + נטרולי דליפה של ה-CSS הגלובלי של האתר (כמו admin-hub.css / profile.css) + רכיבים מקומיים קטנים בסוף.
+   שורש הדף .gm-ds.gm-st.home-bg.dlg-dark — בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה הוא ה-CSS של דף הבית).
+   שומרים: scripts/test_settings_sim.mjs (היקף), scripts/test_home_css_guard.mjs (סעיף "הגדרות"). */
+
+/* ===== גוף הדף / נטרולי דליפה ===== */
+/* הגופן של הפלטה (Rubik); design-overrides.css כופה !important על לחצנים/שדות (Assistant) ועל כותרות (Frank Ruhl) */
+.gm-ds.gm-st *{font-family:var(--gm-font)}
+.gm-ds.gm-st :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-st :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important}
+.gm-ds.gm-st :where(h1,h2,h3,h4,h5,h6){letter-spacing:normal}
+/* מלא-רוחב: המעטפת עוטפת כל דף ב-.app-shell > .main > .content עם padding ו-max-width; בעיצוב הרווחים מגיעים מ-.app של הפלטה */
+.app-shell .main .content:has(> .gm-ds.gm-st){max-width:none;margin-inline:0;padding:0}
+/* בעיצוב ה-topbar שקוף; globals.css / design-overrides.css צובעים אותו. כותרת הדף (h1 הגלובלי צובע בחום) */
+.gm-ds.gm-st .st-view .topbar{position:relative;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.gm-ds.gm-st .pg-ttl{color:var(--gm-navy-900)}
+/* design-overrides.css: input:not(x4) צובע רקע לבן/גבול קרם/רדיוס בשדה החיפוש; בעיצוב השדה שקוף בתוך הגלולה (.hf-s נושאת את הגבול) */
+.gm-ds.gm-st .st-bar .hf-s input[type="search"]{background:transparent;border:0;border-radius:0;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-st .st-bar .hf-s input[type="search"]:focus{box-shadow:none;border:0}
+.gm-ds.gm-st .hf-cl{padding:1px 6px}
+/* כותרות טבלה (שינוי שמות): globals.css / design-overrides.css כופים "כותרת דביקה" קרם; בעיצוב כחול כהה עם זהב (כמו admin-hub.css) */
+.gm-ds.gm-st .rtbl thead tr th{background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;box-shadow:none!important;border-bottom:0!important;outline:0;font-family:inherit!important;letter-spacing:normal}
+/* globals.css מגביל div:has(> table) ל-75vh עם גלילה פנימית; בעיצוב הטבלה מלאה והדף גולל */
+.gm-ds.gm-st .tblw{max-height:none;overflow:visible}

@@ -29,7 +29,7 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 const STANDARD_RETURN_HOUR = '13:00';
 
 // יום/שעת קבלת השמלות מראש (דיווח 11cd3ecf, 2026-09-10): אותו חישוב בדיוק כמו
-// app/print/order/page.js - 2 ימי-עסקים לפני האירוע (מדלג שישי/שבת/חג/ערב חג/ימים שהבעלים
+// app/print/order/page.js - 2 ימי-עסקים לפני האירוע (מדלג שישי/שבת/חג/חול המועד/ערב חג/ימים שהבעלים
 // סימן, ר' subtractBusinessDays ב-lib/businessDays.js), בטווח שעות קבוע שנשלף
 // מהגדרת standard_pickup_hours (הגדרות מערכת > הדפסה); זהו רק ה-fallback אם השורה
 // עוד לא נוצרה ב-DB.
@@ -316,7 +316,7 @@ export async function POST(request, { params }) {
       </div>
     `;
 
-    // מועד החזרה/איסוף לפי הכלל האחיד "יום לא עובד" (שישי/שבת/חג/ערב חג/ימים שהבעלים סימן) - אותו
+    // מועד החזרה/איסוף לפי הכלל האחיד "יום לא עובד" (שישי/שבת/חג/חול המועד/ערב חג/ימים שהבעלים סימן) - אותו
     // כלל כמו הדף המודפס והתראת האיחור (lib/businessDays.js).
     const nonWorkingDays = await getNonWorkingDaysConfig();
     const returnByDate = getExpectedReturnDate(order, nonWorkingDays);
@@ -405,7 +405,7 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
-                ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
+                ${!order.isAbroad ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(israelLocalDate(order.eventDate) ?? order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                 ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
             </tr>

@@ -243,7 +243,7 @@ export function PopupProvider({ children }) {
 
       {/* Confirm Modal */}
       {confirmConfig.isOpen && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="modal animate-fade-in" style={{ maxWidth: '420px', width: '100%', margin: 0 }}>
             <div className="modal-head">
               <strong>

@@ -27,10 +27,10 @@ test('header: date, hebrew label, today/tomorrow computed in Israel time', async
   const res = await day();
   assert.equal(res.date, DAY);
   assert.equal(res.isToday, true);
-  assert.equal(res.today, '2026-10-01');
-  assert.equal(res.tomorrow, '2026-10-02');
+  assert.equal(res.today, '2026-10-15');
+  assert.equal(res.tomorrow, '2026-10-16');
   assert.equal(res.weekday, 'יום חמישי');
-  assert.match(res.dateHebrew, /תשרי/);
+  assert.match(res.dateHebrew, /חשוון/);
   assert.equal(res.nonWorkingDay, false);
   assert.deepEqual(res.dayStatus, { working: true, reasons: [], titles: [], note: null });
   assert.equal('dayFlags' in res, false, 'the old Fri/Sat + chag pair is gone - one unified flag with reasons');
@@ -38,12 +38,24 @@ test('header: date, hebrew label, today/tomorrow computed in Israel time', async
   assert.deepEqual(res.stages.map((s) => s.number), [1, 2, 4, 5, 6, 7, 8, 9]);
   for (const s of res.stages) assert.equal('skipChag' in s, false, 'no per-stage calendar switch (unified rule)');
   assert.equal('skipChagAllStages' in res.settings, false);
-  const r2 = await getScheduleDay({ user: manager, now: new Date('2026-10-01T21:30:00Z'), settings: resolveScheduleSettings({}) });
-  assert.equal(r2.date, '2026-10-02', 'no date param + 00:30 Israel => tomorrow\'s Israeli date, not the UTC date');
-  assert.equal(r2.nonWorkingDay, true, 'Fri 2.10.2026 = Hoshana Raba = erev Shmini Atzeret');
-  assert.deepEqual(r2.dayStatus.reasons, ['friday', 'erev_chag']);
-  assert.match(r2.dayStatus.titles[0], /שמיני עצרת/);
+  const r2 = await getScheduleDay({ user: manager, now: new Date('2026-10-15T21:30:00Z'), settings: resolveScheduleSettings({}) });
+  assert.equal(r2.date, '2026-10-16', 'no date param + 00:30 Israel => tomorrow\'s Israeli date, not the UTC date');
+  assert.equal(r2.nonWorkingDay, true, 'Fri 16.10.2026');
+  assert.deepEqual(r2.dayStatus.reasons, ['friday']);
   assert.equal(r2.dayStatus.note, null);
+  // the same flag with holiday reasons + titles, on the real Sukkot 5787 days (rule v2: chol hamoed is closed too)
+  const hr = await getScheduleDay({ user: manager, now: new Date('2026-10-01T21:30:00Z'), settings: resolveScheduleSettings({}) });
+  assert.equal(hr.date, '2026-10-02');
+  assert.equal(hr.nonWorkingDay, true, 'Fri 2.10.2026 = Hoshana Raba (last day of chol hamoed) = erev Shmini Atzeret');
+  assert.deepEqual(hr.dayStatus.reasons, ['friday', 'chol_hamoed', 'erev_chag']);
+  assert.match(hr.dayStatus.titles[0], /הושענא רבה/);
+  assert.match(hr.dayStatus.titles[1], /^ערב .*שמיני עצרת/);
+  const ch = await day('2026-10-01', { now: new Date('2026-10-01T06:00:00Z') });
+  assert.equal(ch.isToday, true);
+  assert.equal(ch.nonWorkingDay, true, 'Thu 1.10.2026 = chol hamoed Sukkot: closed under rule v2 (NWD-Q02)');
+  assert.deepEqual(ch.dayStatus.reasons, ['chol_hamoed']);
+  assert.match(ch.dayStatus.titles[0], /חוה״מ/);
+  for (const key of ['prep', 'pick', 'manret', 'dout', 'dback']) assert.deepEqual(ids(ch, key), [], 'nothing planned on chol hamoed: ' + key);
 });
 
 test('owner-marked closed day (non_working_days_extra): flagged with reason "closed" + note; no prep/pickup/returns/deliveries on it; registrations, repairs (offset 0) and events still listed', async () => {
@@ -60,7 +72,7 @@ test('owner-marked closed day (non_working_days_extra): flagged with reason "clo
   assert.deepEqual(res.dayStatus, { working: false, reasons: ['closed'], titles: [], note: 'ספירת מלאי' });
   assert.deepEqual(ids(res, 'prep'), [], 'nothing is prepared on a closed day');
   assert.deepEqual(ids(res, 'pick'), []);
-  // event-based returns (1013/1015, event 30.9) move to the next working day, and so does 1014 whose EXPLICIT toDate
+  // event-based returns (1013/1015, event 14.10) move to the next working day, and so does 1014 whose EXPLICIT toDate
   // is the closed Thursday: owner decision 2.10.2026 - a return never lands on a closed day (the same roll in
   // lib/lateReturn.js: order card, late list, print, e-mails - business-days-tests/return-roll-forward.test.mjs).
   assert.deepEqual(ids(res, 'manret'), [], 'nothing comes back on a closed day, not even an explicit toDate');
@@ -69,34 +81,41 @@ test('owner-marked closed day (non_working_days_extra): flagged with reason "clo
   assert.deepEqual(ids(res, 'order'), [1001, 1002], 'orders registered that day are a fact, not a plan');
   assert.deepEqual(ids(res, 'event'), [1011, 1012, 1014, 1016], 'events are the customer\'s dates');
   assert.deepEqual(ids(res, 'repair'), [1011], 'repair offset 0 = the event day itself');
-  // the returns that were due on the closed Thursday are due on Sunday 4.10 (Fri/Sat closed anyway), together with Thu-Sat events
+  // the returns that were due on the closed Thursday are due on Sunday 18.10 (Fri/Sat closed anyway), together with Thu-Sat events
   invalidateSettingsCache();
-  const sunday = await day('2026-10-04', { settings: resolveScheduleSettings(settingsMap(closedSettings)) });
+  const sunday = await day('2026-10-18', { settings: resolveScheduleSettings(settingsMap(closedSettings)) });
   assert.equal(sunday.nonWorkingDay, false);
-  // 1013/1015 (event 30.9, moved from the closed Thursday) + 1011/1016 (event 1.10) + 1009 (event Fri 2.10, outbound-only
+  // 1013/1015 (event 14.10, moved from the closed Thursday) + 1011/1016 (event 15.10) + 1009 (event Fri 16.10, outbound-only
   // delivery => comes back by hand; due Sunday with or without the closed Thursday) + the explicit dates that rolled
-  // forward: 1014 (toDate = the closed Thursday) and 1012 (toDate Fri 2.10, erev chag).
+  // forward: 1014 (toDate = the closed Thursday) and 1012 (toDate Fri 16.10).
   assert.deepEqual(ids(sunday, 'manret'), [1009, 1011, 1012, 1013, 1014, 1015, 1016]);
   const r1014 = stageOf(sunday, 'manret').items.find((r) => r.orderId === 1014);
-  assert.equal(r1014.dueKey, '2026-10-04');
+  assert.equal(r1014.dueKey, '2026-10-18');
   assert.equal(r1014.dueKeyRaw, DAY, 'the original (explicit) date is kept for display');
   assert.ok(!ids(sunday, 'dback').includes(1009) && !ids(sunday, 'dout').includes(1009), '1009 is a manual return, not a courier row');
-  // stages 5/9 follow the same rule through lib/deliveries.js: the courier collections of Thursday (1010/1022, event 30.9)
-  // move to Sunday too; the outbound of 1009 (event Fri 2.10) moved EARLIER, to Wed 30.9 (see deliveries-legacy.test.mjs)
-  assert.deepEqual(ids(sunday, 'dback'), [1010, 1022]);
-  assert.deepEqual(ids(sunday, 'dout'), [1008], 'event Mon 5.10 goes out on Sunday as before; 1009 never moves past its event');
-  for (const row of stageOf(sunday, 'dback').items) assert.equal(row.dispatchDate, '2026-10-04');
+  // stages 5/9 follow the same rule through lib/deliveries.js: the courier collections of Thursday (1010/1022, event 14.10)
+  // move LATER, to the next day the courier works. SETTINGS_ORG2 has delivery_skip_weekends=false, so for deliveries a
+  // plain Friday is a working day (only chag / chol hamoed / erev chag / owner days are always skipped): they move to
+  // Fri 16.10. The outbound of 1009 (event Fri 16.10) moved EARLIER, to Wed 14.10 (see deliveries-legacy.test.mjs).
+  invalidateSettingsCache();
+  const friday = await day('2026-10-16', { settings: resolveScheduleSettings(settingsMap(closedSettings)) });
+  assert.equal(friday.nonWorkingDay, true, 'the gemach itself is closed on Friday');
+  assert.deepEqual(ids(friday, 'dback'), [1010, 1022]);
+  for (const row of stageOf(friday, 'dback').items) assert.equal(row.dispatchDate, '2026-10-16');
+  assert.deepEqual(ids(friday, 'manret'), [], 'manual returns follow the gemach\'s own days: never on Friday');
+  assert.deepEqual(ids(sunday, 'dback'), [], 'nothing left for Sunday: 1010/1022 were collected on Friday');
+  assert.deepEqual(ids(sunday, 'dout'), [1008], 'event Mon 19.10 goes out on Sunday as before; 1009 never moves past its event');
 });
 
-test('owner-marked closed Monday 5.10 shifts the pickup (stage 6) and prep (stage 4) windows of Thu 1.10 through the helper', async () => {
-  const closed = JSON.stringify({ version: 1, days: ['2026-10-05'] });
+test('owner-marked closed Monday 19.10 shifts the pickup (stage 6) and prep (stage 4) windows of Thu 15.10 through the helper', async () => {
+  const closed = JSON.stringify({ version: 1, days: ['2026-10-19'] });
   const res = await day(DAY, { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), non_working_days_extra: closed }) });
   assert.equal(res.nonWorkingDay, false, 'Thursday itself is open');
   // pickup 2 business days before: events on the closed Monday AND on Tuesday are both picked up on Thursday
   assert.deepEqual(ids(res, 'pick'), [1005, 1006, 1007]);
-  // prep 3 business days before: Wed 7.10 events - none in the fixture
+  // prep 3 business days before: Wed 21.10 events - none in the fixture
   assert.deepEqual(ids(res, 'prep'), []);
-  const monday = await day('2026-10-05', { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), non_working_days_extra: closed }) });
+  const monday = await day('2026-10-19', { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), non_working_days_extra: closed }) });
   assert.equal(monday.nonWorkingDay, true);
   assert.deepEqual(monday.dayStatus.reasons, ['closed']);
   assert.deepEqual(ids(monday, 'pick'), []);
@@ -117,8 +136,8 @@ test('stage 1: orders registered on the Israeli day only; drafts/deleted exclude
   assert.equal(row.customer.name, 'רבקה ברק');
   // the DB window itself is the Israeli day (UTC+3 in October)
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args.where.orderDate);
-  assert.equal(q.args.where.orderDate.gte.toISOString(), '2026-09-30T21:00:00.000Z');
-  assert.equal(q.args.where.orderDate.lte.toISOString(), '2026-10-01T20:59:59.999Z');
+  assert.equal(q.args.where.orderDate.gte.toISOString(), '2026-10-14T21:00:00.000Z');
+  assert.equal(q.args.where.orderDate.lte.toISOString(), '2026-10-15T20:59:59.999Z');
   assert.deepEqual(q.args.where.OR, [{ status: null }, { status: { not: 'טיוטה' } }], 'NULL-safe draft filter, never notIn');
 });
 
@@ -159,7 +178,7 @@ test('stage 5 delivery out: by dispatch day even when deliveries_select_by_event
   assert.equal(row.address.street, '');
   assert.deepEqual(row.alerts.map((a) => a.code), ['missing_delivery_address']);
   assert.equal(row.chargeExists, true);
-  assert.equal(row.dispatchDate, '2026-10-01');
+  assert.equal(row.dispatchDate, '2026-10-15');
   assert.equal(row.dressCount, 2);
   assert.equal(row.items, undefined, 'no dress model details on delivery rows');
   assert.equal(res.settings.deliveryDaysBefore, 1);
@@ -186,7 +205,7 @@ test('stage 9 delivery return: event + delivery_days_after; excluded from manual
 
 test('WP1 review #1: a DRAFT delivery order (autosaved cart) is NOT a delivery in stages 5/9, and the query filters it NULL-safely', async () => {
   const res = await day();
-  assert.ok(!ids(res, 'dout').includes(9001), 'draft 9001 (event 2.10, delivery out 1.10) must not appear');
+  assert.ok(!ids(res, 'dout').includes(9001), 'draft 9001 (event 16.10, delivery out 15.10) must not appear');
   assert.ok(!ids(res, 'dback').includes(9001));
   assert.equal(stageOf(res, 'dout').counts.alerts, 1, 'the draft (no street) must not add a missing-address alert');
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args.where.isDelivery === true);
@@ -202,7 +221,7 @@ test('WP1 review #1: a DRAFT delivery order (autosaved cart) is NOT a delivery i
 });
 
 test('A7: an order that is not paid yet still appears in stage 1 (only drafts/deleted are filtered); amount + paid flag on the row', async () => {
-  const res = await day('2026-09-29');
+  const res = await day('2026-10-13');
   assert.deepEqual(ids(res, 'order'), [1021]);
   const row = stageOf(res, 'order').items[0];
   assert.equal(row.isPaid, false);
@@ -229,25 +248,25 @@ test('A3: stage 8 rows carry the dress COUNT (number only), never the models', a
   assert.equal(stageOf(res, 'manret').showModel, false);
 });
 
-test('A2: stage 1 is "registered that day" only - an order registered 29.9 is not on 30.9 or 1.10, whatever its event date', async () => {
-  assert.ok(!ids(await day('2026-09-30'), 'order').includes(1021));
+test('A2: stage 1 is "registered that day" only - an order registered 13.10 is not on 14.10 or 15.10, whatever its event date', async () => {
+  assert.ok(!ids(await day('2026-10-14'), 'order').includes(1021));
   assert.ok(!ids(await day(), 'order').includes(1021));
-  assert.deepEqual(ids(await day('2026-09-29'), 'order'), [1021]);
+  assert.deepEqual(ids(await day('2026-10-13'), 'order'), [1021]);
 });
 
 test('stage 7 event: event day + abroad period spanning the day; info only', async () => {
   const res = await day();
-  // 1012: abroad 28.9-2.10 spans the day; 1014: abroad 29.9-1.10 ends on the day (still "away" that day)
+  // 1012: abroad 12.10-16.10 spans the day; 1014: abroad 13.10-15.10 ends on the day (still "away" that day)
   assert.deepEqual(ids(res, 'event'), [1011, 1012, 1014, 1016]);
   const s = stageOf(res, 'event');
   assert.equal(s.infoOnly, true);
   const abroad = s.items.find((r) => r.orderId === 1012);
   assert.equal(abroad.flags.isAbroad, true);
-  assert.equal(abroad.eventKey, '2026-09-28');
+  assert.equal(abroad.eventKey, '2026-10-12');
   assert.equal(s.counts.total, 4);
   assert.equal(s.counts.done + s.counts.pending + s.counts.unknown, 0, 'info-only: no done counters');
   const r1011 = s.items.find((r) => r.orderId === 1011);
-  assert.equal(r1011.eventDateHebrew, 'כ תשרי');
+  assert.equal(r1011.eventDateHebrew, 'ד חשון');
   assert.equal(r1011.items[0].model, 'ורד');
 });
 
@@ -272,7 +291,7 @@ test('stage 8 manual return: due day, delivery-return orders excluded, return co
   assert.equal(r1013.items, undefined, 'no model on manual-return rows');
   assert.deepEqual(r1013.alerts, [], 'due today: 0 days late');
   assert.equal(r1013.dueKey, DAY);
-  assert.equal(r1013.dueKeyRaw, DAY, 'event 30.9 + 1 business day = Thu 1.10, a working day: no roll');
+  assert.equal(r1013.dueKeyRaw, DAY, 'event 14.10 + 1 business day = Thu 15.10, a working day: no roll');
   const r1014 = s.items.find((r) => r.orderId === 1014);
   assert.equal(r1014.done, true);
   assert.equal(r1014.returnCondition, 'not_ok');
@@ -283,8 +302,8 @@ test('stage 8 manual return: due day, delivery-return orders excluded, return co
 
 // החלטת הבעלים 2.10.2026: "ההחזרה של אירוע בחמישי תהיה בראשון" - שלב 8 נוחת תמיד על יום עובד
 test('owner decision 2.10: explicit toDate/returnDate on Fri/Shabbat/erev chag roll forward to the next working day (stage 8 only)', async () => {
-  // Fri 16.10 (2002 toDate) and Shabbat 17.10 (2003 returnDate): nothing on the closed days themselves
-  for (const closed of ['2026-10-16', '2026-10-17']) {
+  // Fri 30.10 (2002 toDate) and Shabbat 31.10 (2003 returnDate): nothing on the closed days themselves
+  for (const closed of ['2026-10-30', '2026-10-31']) {
     const r = await day(closed);
     assert.equal(r.nonWorkingDay, true, closed);
     assert.deepEqual(ids(r, 'manret'), [], 'no manual return on ' + closed);
@@ -292,22 +311,22 @@ test('owner decision 2.10: explicit toDate/returnDate on Fri/Shabbat/erev chag r
     assert.ok(q, 'event query still runs (prep/pick/event stages)');
     assert.ok(!q.args.where.AND[2].OR.some((o) => o.toDate || o.returnDate), 'no toDate/returnDate clause at all on a closed day');
   }
-  // Sunday 18.10 collects them, together with 2006 (event Fri 16.10 + 1 business day) and 1001 (event Thu 15.10 + 1
+  // Sunday 1.11 collects them, together with 2006 (event Fri 30.10 + 1 business day) and 1001 (event Thu 29.10 + 1
   // business day - the owner's own example: "the return of a Thursday event is on Sunday")
   globalThis.__MOCK_CALLS = []; // look at Sunday's query only, not the closed days' queries above
-  const sun = await day('2026-10-18');
+  const sun = await day('2026-11-01');
   assert.equal(sun.nonWorkingDay, false);
   assert.deepEqual(ids(sun, 'manret'), [1001, 2002, 2003, 2006]);
   const rows = Object.fromEntries(stageOf(sun, 'manret').items.map((r) => [r.orderId, r]));
-  assert.equal(rows[2002].dueKey, '2026-10-18');
-  assert.equal(rows[2002].dueKeyRaw, '2026-10-16', 'original explicit date kept for the UI');
-  assert.equal(rows[2003].dueKeyRaw, '2026-10-17');
-  assert.equal(rows[2006].dueKeyRaw, '2026-10-18', 'event-based: already a working day, raw = due');
+  assert.equal(rows[2002].dueKey, '2026-11-01');
+  assert.equal(rows[2002].dueKeyRaw, '2026-10-30', 'original explicit date kept for the UI');
+  assert.equal(rows[2003].dueKeyRaw, '2026-10-31');
+  assert.equal(rows[2006].dueKeyRaw, '2026-11-01', 'event-based: already a working day, raw = due');
   // the explicit-date window of the query = Sunday + the closed run before it (Fri + Shabbat)
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args.where.AND && c.args.where.isDelivery === undefined);
   const or = q.args.where.AND[2].OR;
-  assert.deepEqual(or.find((o) => o.toDate), { toDate: { gte: D.dayRange('2026-10-16').start, lte: D.dayRange('2026-10-18').end } });
-  assert.deepEqual(or.find((o) => o.returnDate), { returnDate: { gte: D.dayRange('2026-10-16').start, lte: D.dayRange('2026-10-18').end } });
+  assert.deepEqual(or.find((o) => o.toDate), { toDate: { gte: D.dayRange('2026-10-30').start, lte: D.dayRange('2026-11-01').end } });
+  assert.deepEqual(or.find((o) => o.returnDate), { returnDate: { gte: D.dayRange('2026-10-30').start, lte: D.dayRange('2026-11-01').end } });
   // erev Yom Kippur (Sun 20.9, 2004 toDate) -> Tue 22.9, not 20.9
   assert.deepEqual(ids(await day('2026-09-20'), 'manret'), []);
   assert.deepEqual(ids(await day('2026-09-22'), 'manret'), [2004]);
@@ -318,65 +337,66 @@ test('owner decision 2.10: explicit toDate/returnDate on Fri/Shabbat/erev chag r
 test('owner decision 2.10: schedule_stage_manret_days=0 (return on the event day) also rolls an event on Friday to Sunday', async () => {
   const settings = resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), schedule_stage_manret_days: '0' });
   assert.equal(settings.stages.manret.offset, 0);
-  const fri = await day('2026-10-16', { settings });
+  const fri = await day('2026-10-30', { settings });
   assert.deepEqual(ids(fri, 'manret'), [], 'Friday itself: nothing');
-  const sun = await day('2026-10-18', { settings });
-  assert.deepEqual(ids(sun, 'manret'), [2002, 2003, 2006], '2006 (event Fri 16.10) rolls to Sunday with offset 0; 2002/2003 explicit');
-  assert.equal(stageOf(sun, 'manret').items.find((r) => r.orderId === 2006).dueKeyRaw, '2026-10-16');
+  const sun = await day('2026-11-01', { settings });
+  assert.deepEqual(ids(sun, 'manret'), [2002, 2003, 2006], '2006 (event Fri 30.10) rolls to Sunday with offset 0; 2002/2003 explicit');
+  assert.equal(stageOf(sun, 'manret').items.find((r) => r.orderId === 2006).dueKeyRaw, '2026-10-30');
   // a working day with offset 0 = the event day itself (and nothing from the days before it)
-  const thu = await day('2026-10-15', { settings });
-  assert.deepEqual(ids(thu, 'manret'), [1001], 'offset 0 on a working day = the event day itself (1001, event Thu 15.10); 2003 (event 15.10) has an explicit returnDate on Shabbat -> Sunday; 2006 (event 16.10) is not due on 15.10');
+  const thu = await day('2026-10-29', { settings });
+  assert.deepEqual(ids(thu, 'manret'), [1001], 'offset 0 on a working day = the event day itself (1001, event Thu 29.10); 2003 (event 29.10) has an explicit returnDate on Shabbat -> Sunday; 2006 (event 30.10) is not due on 29.10');
 });
 
 test('owner decision 2.10: an explicit toDate on an owner-closed day moves to the day after', async () => {
-  const closed = JSON.stringify({ version: 1, days: [{ date: '2026-10-13', note: 'ספירת מלאי' }] });
+  const closed = JSON.stringify({ version: 1, days: [{ date: '2026-10-27', note: 'ספירת מלאי' }] });
   const closedSettings = [...SETTINGS_ORG2, { key: 'non_working_days_extra', value: closed }];
   installDb({ settings: closedSettings });
   invalidateSettingsCache();
   const settings = resolveScheduleSettings(settingsMap(closedSettings));
-  assert.deepEqual(ids(await day('2026-10-13', { settings }), 'manret'), []);
-  const wed = await day('2026-10-14', { settings });
-  assert.ok(ids(wed, 'manret').includes(2005), '2005 (toDate Tue 13.10) is due Wed 14.10');
-  assert.equal(stageOf(wed, 'manret').items.find((r) => r.orderId === 2005).dueKeyRaw, '2026-10-13');
+  assert.deepEqual(ids(await day('2026-10-27', { settings }), 'manret'), []);
+  const wed = await day('2026-10-28', { settings });
+  assert.ok(ids(wed, 'manret').includes(2005), '2005 (toDate Tue 27.10) is due Wed 28.10');
+  assert.equal(stageOf(wed, 'manret').items.find((r) => r.orderId === 2005).dueKeyRaw, '2026-10-27');
   // without the owner list the same order is due on Tuesday
   installDb();
   invalidateSettingsCache();
-  assert.ok(ids(await day('2026-10-13'), 'manret').includes(2005));
-  assert.ok(!ids(await day('2026-10-14'), 'manret').includes(2005));
+  assert.ok(ids(await day('2026-10-27'), 'manret').includes(2005));
+  assert.ok(!ids(await day('2026-10-28'), 'manret').includes(2005));
 });
 
 test('owner decision 2.10: late_not_done counts from the ROLLED due day, and lib/lateReturn.js (order card / late list / cron) counts the same', async () => {
-  // 2002: toDate Fri 16.10 -> due Sun 18.10. Seen on 25.10: 7 days late (threshold 7) => alert; on 24.10: 6 days => none.
-  const late = await day('2026-10-18', { now: new Date('2026-10-25T06:00:00Z') });
+  // 2002: toDate Fri 30.10 -> due Sun 1.11. Seen on 8.11: 7 days late (threshold 7) => alert; on 7.11: 6 days => none.
+  const late = await day('2026-11-01', { now: new Date('2026-11-08T06:00:00Z') });
   const row = stageOf(late, 'manret').items.find((r) => r.orderId === 2002);
   assert.deepEqual(row.alerts.map((a) => a.code), ['late_not_done']);
   assert.equal(row.alerts[0].daysLate, 7);
-  const notYet = await day('2026-10-18', { now: new Date('2026-10-24T06:00:00Z') });
+  const notYet = await day('2026-11-01', { now: new Date('2026-11-07T06:00:00Z') });
   assert.deepEqual(stageOf(notYet, 'manret').items.find((r) => r.orderId === 2002).alerts, []);
-  // lib/lateReturn.js rolls the explicit Friday to Sunday as well (unified 2.10.2026): 7 days on 25.10, same as the schedule
+  // lib/lateReturn.js rolls the explicit Friday to Sunday as well (unified 2.10.2026): 7 days on 8.11, same as the schedule
   const LR = await L('lib/lateReturn.js');
-  const order = { eventDate: '2026-10-14T00:00:00.000Z', toDate: '2026-10-16T00:00:00.000Z' };
-  const info = LR.getLateReturnInfo(order, 7, new Date('2026-10-25T06:00:00Z'));
+  const order = { eventDate: '2026-10-28T00:00:00.000Z', toDate: '2026-10-30T00:00:00.000Z' };
+  const info = LR.getLateReturnInfo(order, 7, new Date('2026-11-08T06:00:00Z'));
   assert.equal(info.daysLate, row.alerts[0].daysLate, 'order card and schedule count the same number of late days');
   assert.equal(info.isLate, true);
   assert.equal(info.dueKey, row.dueKey);
-  assert.equal(LR.getLateReturnInfo(order, 7, new Date('2026-10-24T06:00:00Z')).isLate, false, '6 days on 24.10 - not late, like the schedule');
-  assert.equal(LR.getExpectedReturnKey(order, null), '2026-10-18');
+  assert.equal(LR.getLateReturnInfo(order, 7, new Date('2026-11-07T06:00:00Z')).isLate, false, '6 days on 7.11 - not late, like the schedule');
+  assert.equal(LR.getExpectedReturnKey(order, null), '2026-11-01');
 });
 
 test('review 2.10 blocker 2: an abroad/weekday order whose fromDate differs from eventDate is found by prep/pickup/repair (fromDate in the SQL window)', async () => {
-  // 1023: fromDate Tue 13.10 (effective start), eventDate 27.10. prep = 13.10 - 3 business days = Thu 8.10; pickup = Sun 11.10
-  assert.equal(D.addBusinessDays('2026-10-13', -3), '2026-10-08');
-  assert.equal(D.addBusinessDays('2026-10-13', -2), '2026-10-11');
-  const prep = await day('2026-10-08');
-  assert.ok(ids(prep, 'prep').includes(1023), 'prep on Thu 8.10');
-  assert.equal(stageOf(prep, 'prep').items.find((r) => r.orderId === 1023).eventKey, '2026-10-13', 'eventKey = effective start');
-  const pick = await day('2026-10-11');
-  assert.ok(ids(pick, 'pick').includes(1023), 'pickup on Sun 11.10');
+  // 1023: fromDate Tue 27.10 (effective start), eventDate 10.11. prep = 27.10 - 3 business days = Thu 22.10; pickup = Sun 25.10
+  // (the DST-end day: a 25-hour Israeli day)
+  assert.equal(D.addBusinessDays('2026-10-27', -3), '2026-10-22');
+  assert.equal(D.addBusinessDays('2026-10-27', -2), '2026-10-25');
+  const prep = await day('2026-10-22');
+  assert.ok(ids(prep, 'prep').includes(1023), 'prep on Thu 22.10');
+  assert.equal(stageOf(prep, 'prep').items.find((r) => r.orderId === 1023).eventKey, '2026-10-27', 'eventKey = effective start');
+  const pick = await day('2026-10-25');
+  assert.ok(ids(pick, 'pick').includes(1023), 'pickup on Sun 25.10');
   // repair on the effective start day, even when the event stage (whose period-overlap clause used to pull the row by accident) is off
   globalThis.__MOCK_CALLS = [];
-  const noEvent = await day('2026-10-13', { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), schedule_stage_event_enabled: 'false' }) });
-  assert.ok(ids(noEvent, 'repair').includes(1023), 'repair on 13.10 without the event stage');
+  const noEvent = await day('2026-10-27', { settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), schedule_stage_event_enabled: 'false' }) });
+  assert.ok(ids(noEvent, 'repair').includes(1023), 'repair on 27.10 without the event stage');
   // and the SQL window itself carries fromDate next to eventDate
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args.where.AND && c.args.where.isDelivery === undefined);
   const or = q.args.where.AND[2].OR;
@@ -384,14 +404,14 @@ test('review 2.10 blocker 2: an abroad/weekday order whose fromDate differs from
   assert.deepEqual(or[1].fromDate, or[0].eventDate, 'same union window on both columns');
 });
 
-test('late alerts on a past day (2026-09-24): return 7 days late, pickup not done', async () => {
-  const res = await day('2026-09-24');
+test('late alerts on a past day (2026-10-08): return 7 days late, pickup not done', async () => {
+  const res = await day('2026-10-08');
   assert.equal(res.isToday, false);
   assert.deepEqual(ids(res, 'manret'), [1017]);
   const ret = stageOf(res, 'manret').items[0];
   assert.deepEqual(ret.alerts.map((a) => a.code), ['late_not_done']);
   assert.equal(ret.alerts[0].daysLate, 7);
-  // 1012 (abroad, period starts Mon 28.9) and 1018 (event Mon 28.9): pickup Thu 24.9 (25-27.9 = Fri, Shabbat/Sukkot, Sun... -> 2 business days back)
+  // 1012 (abroad, period starts Mon 12.10) and 1018 (event Mon 12.10): pickup Thu 8.10 (Sun 11.10 = 1, Fri 9.10 / Shabbat 10.10 skipped, Thu 8.10 = 2)
   assert.deepEqual(ids(res, 'pick'), [1012, 1018]);
   for (const pick of stageOf(res, 'pick').items) assert.deepEqual(pick.alerts.map((a) => a.code), ['late_not_done'], 'order ' + pick.orderId);
   assert.equal(res.totals.alerts, 3);
@@ -415,8 +435,8 @@ test('event-based query: one Order query with a union window + the NULL-safe dra
   assert.deepEqual(where.AND[0], { isDeleted: false });
   assert.deepEqual(where.AND[1], { OR: [{ status: null }, { status: { not: 'טיוטה' } }] });
   const or = where.AND[2].OR;
-  assert.equal(or[0].eventDate.gte.toISOString(), '2026-09-29T21:00:00.000Z', 'earliest source day: Sep 30 (manual return +1)');
-  assert.equal(or[0].eventDate.lte.toISOString(), '2026-10-06T20:59:59.999Z', 'latest source day: Oct 6 (prep -3)');
+  assert.equal(or[0].eventDate.gte.toISOString(), '2026-10-13T21:00:00.000Z', 'earliest source day: Oct 14 (manual return +1)');
+  assert.equal(or[0].eventDate.lte.toISOString(), '2026-10-20T20:59:59.999Z', 'latest source day: Oct 20 (prep -3)');
   assert.deepEqual(or[1], { fromDate: or[0].eventDate }, 'the same window on fromDate (abroad/weekday orders start on fromDate)');
   assert.equal(or.length, 5, 'eventDate, fromDate, period overlap (stage 7), toDate, returnDate');
   assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 3, 'orderDate query + event query + deliveries query');
@@ -454,7 +474,7 @@ test('settings loaded from the (mock) DB through the settings cache when not inj
 
 test('stage offsets from settings: prep 1 business day before', async () => {
   const res = await getScheduleDay({ date: DAY, user: manager, now: NOW, settings: resolveScheduleSettings({ ...settingsMap(SETTINGS_ORG2), schedule_stage_prep_days: '1' }) });
-  // 1 business day before Oct 1 (Thu) <- events on Fri Oct 2, Sat Oct 3, Sun Oct 4: fixture events are Oct 2 (1009, delivery) only
+  // 1 business day before Oct 15 (Thu) <- events on Fri Oct 16, Sat Oct 17, Sun Oct 18: fixture events are Oct 16 (1009, delivery) only
   assert.deepEqual(ids(res, 'prep'), [1009]);
   assert.equal(stageOf(res, 'prep').offsetBusinessDays, -1);
 });
@@ -484,7 +504,7 @@ test('staff on shift (today): names only, open shift from last night included, c
   assert.equal(json.includes('totalCalculated'), false);
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'shift');
   assert.equal(q.args.where.isDeleted, false);
-  assert.equal(q.args.where.OR[0].entryTime.gte.toISOString(), '2026-09-30T21:00:00.000Z');
+  assert.equal(q.args.where.OR[0].entryTime.gte.toISOString(), '2026-10-14T21:00:00.000Z');
   assert.equal(q.args.select.employee.select.hourlyWage, undefined);
 });
 
@@ -494,6 +514,8 @@ test('invalid date rejected', async () => {
 });
 
 test('WP1 review #4: a well-formed date far outside +-3 years is a 400, not a RangeError/500', async () => {
+  // "today" = 1.10.2026 here (not the fixture day): its +-3-year edges fall on Sukkot, which also exercises the rule
+  const day = (date) => getScheduleDay({ date, user: manager, now: new Date('2026-10-01T06:00:00Z'), settings: resolveScheduleSettings(settingsMap(SETTINGS_ORG2)) });
   await assert.rejects(() => day('9999-12-31'), (e) => e.status === 400 && /מחוץ לטווח/.test(e.message));
   await assert.rejects(() => day('0100-01-01'), (e) => e.status === 400);
   await assert.rejects(() => day('2023-09-30'), (e) => e.status === 400, '3 years + 1 day back');
@@ -508,19 +530,23 @@ test('WP1 review #4: a well-formed date far outside +-3 years is a 400, not a Ra
   assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 2, 'orderDate query + event query; no deliveries query on a chag');
   const edgeBack = await day('2023-10-01');
   assert.equal(edgeBack.date, '2023-10-01');
-  assert.equal(edgeBack.nonWorkingDay, false, 'Sun 1.10.2023 = chol hamoed Sukkot, a working day under rule v1');
-  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 5, 'a working day adds all 3 queries');
+  assert.equal(edgeBack.nonWorkingDay, true, 'Sun 1.10.2023 = chol hamoed Sukkot 5784: closed under rule v2 (NWD-Q02)');
+  assert.deepEqual(edgeBack.dayStatus.reasons, ['chol_hamoed']);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 4, 'chol hamoed: no deliveries query either (2 + 2)');
+  const working = await day('2026-10-15');
+  assert.equal(working.nonWorkingDay, false);
+  assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order').length, 7, 'a working day adds all 3 queries');
 });
 
 test('WP1 review #5: "who is on shift" for a FUTURE or PAST day never includes today\'s open shifts', async () => {
-  const tomorrow = await day('2026-10-02');
-  assert.deepEqual(tomorrow.staff, [], 'nobody has entered on 2.10 yet; s1/s2 (open today) must not leak into tomorrow');
+  const tomorrow = await day('2026-10-16');
+  assert.deepEqual(tomorrow.staff, [], 'nobody has entered on 16.10 yet; s1/s2 (open today) must not leak into tomorrow');
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'shift');
   assert.equal(q.args.where.OR.length, 1, 'no "open shift from yesterday" clause on a non-today day');
-  const yesterday = await day('2026-09-30');
-  assert.deepEqual(yesterday.staff.map((s) => s.name), ['אתמול סגורה', 'פייגי ברוך'], 'only shifts that entered on 30.9 (s3 closed, s2 entered 23:00 IL)');
+  const yesterday = await day('2026-10-14');
+  assert.deepEqual(yesterday.staff.map((s) => s.name), ['אתמול סגורה', 'פייגי ברוך'], 'only shifts that entered on 14.10 (s3 closed, s2 entered 23:00 IL)');
   assert.deepEqual(yesterday.staff.map((s) => s.open), [false, true]);
-  const nextWeek = await day('2026-10-08');
+  const nextWeek = await day('2026-10-22');
   assert.deepEqual(nextWeek.staff, []);
 });
 
@@ -532,7 +558,7 @@ test('scan cap: truncated flag + warning when more orders than schedule_max_scan
 
 test('same answers regardless of the process timezone (sanity: TZ=' + (process.env.TZ || 'default') + ')', async () => {
   const res = await day();
-  assert.equal(D.todayKey(NOW), '2026-10-01');
+  assert.equal(D.todayKey(NOW), '2026-10-15');
   assert.deepEqual(ids(res, 'prep'), [1005, 1006]);
   assert.deepEqual(ids(res, 'manret'), [1013, 1014, 1015]);
   assert.deepEqual(ids(res, 'order'), [1001, 1002]);

@@ -20,7 +20,7 @@ test('registry: ready, order-level barcode, itemInfo extra only', () => {
 test('rows: by order number, dresses count, repair flag from itemInfo, order barcode, sum line', async () => {
   const { payload } = await g2Payload(['PP-09']);
   const pg = payload.pages[0];
-  assert.equal(pg.pageCode, 'ALL-PRP-261001');
+  assert.equal(pg.pageCode, 'ALL-PRP-261015');
   const d = pg.data;
   assert.equal(d.title, 'צ׳ק ליסט הכנה');
   assert.equal(d.sub, 'בדיקה, גיהוץ ואריזה לכל הזמנה');

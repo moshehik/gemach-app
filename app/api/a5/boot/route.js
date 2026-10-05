@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 const SETTING_KEYS = [
   'require_login', 'home_welcome_title', 'hide_internal_messaging', 'hide_ai_features',
-  'hide_gregorian_calendar', 'enable_alterations', 'enable_deliveries', 'gmach_name', 'gmach_subtitle',
+  'hide_gregorian_calendar', 'enable_alterations', 'enable_deliveries', 'gmach_name', 'gmach_subtitle', 'gmach_phone',
   'packing_enabled', 'branches_enabled',
 ];
 const NAV_PAGE_KEYS = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];

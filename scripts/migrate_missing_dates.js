@@ -57,7 +57,7 @@ async function migrateData() {
           data: {
             eventDate: eventDate,
             returnDate: returnDate,
-            isWeekdayEvent: isAbroad, // Using this field for 'Abroad Event'
+            isAbroad: isAbroad, // Access 'אירוע_חול' = the abroad / long-occupancy event (the old isWeekdayEvent column was a duplicate)
           }
         });
         orderCount++;

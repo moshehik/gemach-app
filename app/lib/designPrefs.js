@@ -6,8 +6,9 @@
 //      (the no-FOUC bootstrap in app/layout.js ignores it when a session
 //      cookie exists).
 //   2. Cookies `designPrefs_<employeeId>` (palette/font/density/textScale/
-//      customColors — what SSR needs before paint) and `theme_<employeeId>`
-//      (display mode). Read server-side by RootLayout for first-paint attrs.
+//      customColors/uiVariants — what SSR needs before paint; SIGNED + httpOnly,
+//      written only by the server, see below) and `theme_<employeeId>`
+//      (display mode, client-written). Read server-side by RootLayout for first-paint attrs.
 //   3. DB — Employee.themeColor, repurposed as a JSON blob (source of truth,
 //      via GET/PUT /api/me/design-prefs). Includes everything the cookie has
 //      PLUS mode and the savedPalettes list (kept out of the cookie to keep
@@ -49,42 +50,9 @@ export function writeLocalPrefs(raw) {
   } catch (e) {}
 }
 
-// קורא את uiVariants מהעוגייה הקיימת designPrefs_<employeeId> (או undefined).
-function readCookieUiVariants(employeeId) {
-  if (typeof document === 'undefined' || !employeeId) return undefined;
-  try {
-    const name = `designPrefs_${employeeId}=`;
-    const part = document.cookie.split('; ').find((c) => c.startsWith(name));
-    if (!part) return undefined;
-    const parsed = JSON.parse(decodeURIComponent(part.slice(name.length)));
-    return parsed && parsed.uiVariants ? parsed.uiVariants : undefined;
-  } catch (e) {
-    return undefined;
-  }
-}
-
-// Writes the subset of prefs SSR needs before paint (mode has its own
-// theme_<employeeId> cookie). No-ops for guests (no employeeId to scope by).
-//
-// uiVariants (עקיפות "ישן / A5", lib/uiVariant.js) לא נלקח מ-`raw`: localStorage משותף לכל
-// העובדים בדפדפן, ולכן ערך משם היה דולף לעוגייה של עובד אחר. רק DesignPrefsSync, שמחזיק את
-// ערך ה-DB של העובד המחובר, מעביר אותו כארגומנט השלישי (אובייקט = להחליף, null = לנקות).
-// כשלא מועבר (undefined), למשל בשמירה מדף התצוגה, נשמר מה שכבר בעוגייה.
-export function writeDesignPrefsCookie(employeeId, raw, uiVariants) {
-  if (typeof document === 'undefined' || !employeeId) return;
-  const payload = {
-    palette: raw.palette,
-    font: raw.font,
-    density: raw.density,
-    textScale: raw.textScale,
-    customColors: raw.customColors,
-  };
-  const keptVariants = uiVariants === undefined ? readCookieUiVariants(employeeId) : uiVariants;
-  if (keptVariants) payload.uiVariants = keptVariants;
-  try {
-    document.cookie = `designPrefs_${employeeId}=${encodeURIComponent(JSON.stringify(payload))}; path=/; max-age=31536000; SameSite=Lax`;
-  } catch (e) {}
-}
+// עוגיית designPrefs_<employeeId> (מה ש-SSR צריך לפני הציור: פלטה / גופן / צפיפות / גודל טקסט / צבעים מותאמים + uiVariants) כבר
+// לא נכתבת מהלקוח: היא חתומה ב-HMAC, httpOnly, ונכתבת רק ע"י השרת (lib/designPrefsSig.js, GQ-01b) - GET/PUT /api/me/design-prefs
+// ו-POST /api/me/ui-variant/*. הלקוח רק שולח את השינוי ל-DB (pushPrefsToServer), והתשובה מרעננת את העוגייה.
 
 export function writeThemeCookie(employeeId, mode) {
   if (typeof document === 'undefined' || !employeeId || !mode) return;

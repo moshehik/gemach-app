@@ -5,6 +5,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { installDb, NOW, DAY, SETTINGS_ORG2, ORDERS } from './fixtures.mjs';
 
 const L = (rel) => import(pathToFileURL(process.env.PROJ + '/' + rel).href);
@@ -37,7 +38,7 @@ function installWithTable(opts = {}) {
 }
 const d = (iso) => new Date(iso);
 const bareItem = (over = {}) => ({ id: 'it-' + Math.random().toString(36).slice(2, 8), isTaken: true, takenDate: null, isReturned: false, returnDate: null, returnedOk: false, isDeleted: false, neckAlteration: 0, lengthAlteration: null, sleeveAlteration: 0, alterationDone: false, dressItem: null, dressItemId: null, ...over });
-// an extra order that lands in stage 8 (manual return) on DAY: event Tue 29.9 -> due Thu 1.10
+// an extra order that lands in stage 8 (manual return) on DAY: a copy of 1013 (event Wed 14.10) -> due Thu 15.10
 const manretOrder = (orderId, items) => ({ ...ORDERS.find((o) => o.orderId === 1013), orderId, customer: { firstName: 'בדיקה', lastName: String(orderId), phone1: '050', city: 'ירושלים', street: 'א', houseNum: 1 }, items });
 
 beforeEach(() => {
@@ -212,7 +213,7 @@ test('unmark prep: update via auditAs(SCHEDULE_STAGE_UNDONE), row kept with undo
 test('server re-runs the classification: an order that is not in that stage on that day is refused (409), nothing written', async () => {
   installWithTable();
   await assert.rejects(() => apply({ action: 'mark', stageKey: 'prep', dayKey: DAY, orderId: 1013, outcome: null, source: 'row' }), (e) => e instanceof M.MarkError && e.status === 409 && e.extra.notInStage);
-  await assert.rejects(() => apply({ action: 'mark', stageKey: 'prep', dayKey: '2026-10-07', orderId: 1005, outcome: null, source: 'row' }), (e) => e.status === 409, 'right order, wrong day');
+  await assert.rejects(() => apply({ action: 'mark', stageKey: 'prep', dayKey: '2026-10-21', orderId: 1005, outcome: null, source: 'row' }), (e) => e.status === 409, 'right order, wrong day');
   await assert.rejects(() => apply({ action: 'mark', stageKey: 'dout', dayKey: DAY, orderId: 1005, outcome: null, source: 'row' }), (e) => e.status === 409, 'not a delivery');
   assert.equal(writes('scheduleStageMark').length, 0);
   // disabled stage (org1: deliveries off) -> 409
@@ -389,7 +390,7 @@ test('two people mark the same row at once: the second create hits P2002 and con
   globalThis.__MOCK_BEFORE_WRITE = (model, method) => {
     if (model === 'scheduleStageMark' && method === 'create' && !injected) {
       injected = true;
-      globalThis.__MOCK_DB.scheduleStageMark.push({ id: 'other', orderId: 1005, stageKey: 'prep', dayKey: DAY, done: true, outcome: null, source: 'row', markedById: 'emp-worker', markedAt: new Date('2026-10-01T05:59:00Z'), undoneById: null, undoneAt: null });
+      globalThis.__MOCK_DB.scheduleStageMark.push({ id: 'other', orderId: 1005, stageKey: 'prep', dayKey: DAY, done: true, outcome: null, source: 'row', markedById: 'emp-worker', markedAt: new Date('2026-10-15T05:59:00Z'), undoneById: null, undoneAt: null });
     }
   };
   const r = await apply({ action: 'mark', stageKey: 'prep', dayKey: DAY, orderId: 1005, outcome: null, source: 'row' });
@@ -416,9 +417,9 @@ test('two people mark the same row at once: the second create hits P2002 and con
 
 test('late alerts follow the mark: marking a past-day return clears late_not_done in the patch, unmarking brings it back', async () => {
   installWithTable();
-  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: '2026-09-24', orderId: 1017, outcome: 'ok', source: 'row' });
+  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: '2026-10-08', orderId: 1017, outcome: 'ok', source: 'row' });
   assert.deepEqual(r.results[0].row.alerts, []);
-  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: '2026-09-24', orderId: 1017, outcome: null, source: 'row' });
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: '2026-10-08', orderId: 1017, outcome: null, source: 'row' });
   assert.equal(u.results[0].row.alerts[0].code, 'late_not_done');
   assert.equal(u.results[0].row.alerts[0].daysLate, 7);
   const order = ORDERS.find((o) => o.orderId === 1017);
@@ -426,51 +427,51 @@ test('late alerts follow the mark: marking a past-day return clears late_not_don
 });
 
 test('late_not_done for stages without an existing field (4/5/9): only from the Israel day of the EARLIEST mark in the table (self-activating, no flood of old days)', async () => {
-  // Thu 24.9.2026 viewed from 1.10: prep rows of that day (events Tue 29.9 -> 3 business days back over Sukkot)
-  let res = await day('2026-09-24');
+  // Thu 8.10.2026 viewed from 15.10: prep rows of that day (events Tue 13.10 -> 3 business days back over the weekend)
+  let res = await day('2026-10-08');
   const prepAbsent = stageOf(res, 'prep').items;
   assert.ok(prepAbsent.length > 0);
   assert.ok(prepAbsent.every((r) => r.done === null && !r.alerts.some((a) => a.code === 'late_not_done')), 'table absent: unknown, no late alert');
   const noLate = (r) => !r.alerts.some((a) => a.code === 'late_not_done');
   // empty table: nothing was ever marked -> no "late" on past days
   installWithTable();
-  res = await day('2026-09-24');
+  res = await day('2026-10-08');
   let prep = stageOf(res, 'prep').items;
   assert.ok(prep.every((r) => r.done === false && noLate(r)), 'empty table: not done, but no late alert');
   assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' && c.method === 'findFirst').length, 1, 'min(markedAt) asked once (past day only)');
   globalThis.__MOCK_CALLS = [];
   await day(DAY);
   assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' && c.method === 'findFirst').length, 0, 'today: no min(markedAt) query');
-  // first mark ever on 28.9 (Israel) -> 24.9 is before that -> still no alerts
-  const mk = (id, markedAt) => ({ id, orderId: 9999, stageKey: 'dout', dayKey: '2026-09-28', done: true, outcome: null, source: 'row', markedById: 'emp-head', markedAt: d(markedAt), undoneById: null, undoneAt: null });
-  installWithTable({ extra: { scheduleStageMark: [mk('m1', '2026-09-27T21:30:00Z')] } }); // 00:30 Israel 28.9
-  res = await day('2026-09-24');
-  assert.ok(stageOf(res, 'prep').items.every(noLate), 'marks exist only from 28.9: the 24.9 is not flagged');
-  // first mark on 20.9 -> 24.9 >= 20.9 -> late (7 days from 1.10)
-  installWithTable({ extra: { scheduleStageMark: [mk('m2', '2026-09-20T10:00:00Z'), mk('m1', '2026-09-27T21:30:00Z')] } });
-  res = await day('2026-09-24');
+  // first mark ever on 12.10 (Israel) -> 8.10 is before that -> still no alerts
+  const mk = (id, markedAt) => ({ id, orderId: 9999, stageKey: 'dout', dayKey: '2026-10-12', done: true, outcome: null, source: 'row', markedById: 'emp-head', markedAt: d(markedAt), undoneById: null, undoneAt: null });
+  installWithTable({ extra: { scheduleStageMark: [mk('m1', '2026-10-11T21:30:00Z')] } }); // 00:30 Israel 12.10
+  res = await day('2026-10-08');
+  assert.ok(stageOf(res, 'prep').items.every(noLate), 'marks exist only from 12.10: the 8.10 is not flagged');
+  // first mark on 4.10 -> 8.10 >= 4.10 -> late (7 days from 15.10)
+  installWithTable({ extra: { scheduleStageMark: [mk('m2', '2026-10-04T10:00:00Z'), mk('m1', '2026-10-11T21:30:00Z')] } });
+  res = await day('2026-10-08');
   prep = stageOf(res, 'prep').items;
   assert.ok(prep.every((r) => r.done === false && r.alerts.some((a) => a.code === 'late_not_done' && a.daysLate === 7)), 'from the first mark on: not marked on a past day = late');
   // the boundary day itself counts (>=), stages with an existing field are unaffected by the rule
-  assert.equal(M.marksSinceKey(d('2026-09-20T10:00:00Z')), '2026-09-20');
+  assert.equal(M.marksSinceKey(d('2026-10-04T10:00:00Z')), '2026-10-04');
   assert.equal(M.marksSinceKey(null), null);
   const A = await L('lib/schedule/alerts.js');
   const prepStage = STAGE_BY_KEY.prep;
   const base = { done: false, canMark: true };
-  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-09-20', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: '2026-09-20' }).length, 1);
-  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-09-19', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: '2026-09-20' }).length, 0);
-  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-09-19', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: null }).length, 0);
-  assert.equal(A.alertsForRow({ done: false }, STAGE_BY_KEY.pick, { dayKey: '2026-09-19', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: null }).length, 1, 'stage 6 (isTaken) keeps its late rule regardless');
+  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-10-04', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: '2026-10-04' }).length, 1);
+  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-10-03', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: '2026-10-04' }).length, 0);
+  assert.equal(A.alertsForRow(base, prepStage, { dayKey: '2026-10-03', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: null }).length, 0);
+  assert.equal(A.alertsForRow({ done: false }, STAGE_BY_KEY.pick, { dayKey: '2026-10-03', todayKey: DAY, lateReturnThresholdDays: 7, marksSinceKey: null }).length, 1, 'stage 6 (isTaken) keeps its late rule regardless');
   // marking clears it (patch == reload)
-  const r = await apply({ action: 'mark', stageKey: 'prep', dayKey: '2026-09-24', orderId: prep[0].orderId, outcome: null, source: 'row' });
+  const r = await apply({ action: 'mark', stageKey: 'prep', dayKey: '2026-10-08', orderId: prep[0].orderId, outcome: null, source: 'row' });
   assert.deepEqual(r.results[0].row.alerts, []);
-  res = await day('2026-09-24');
+  res = await day('2026-10-08');
   assert.deepEqual(rowOf(res, 'prep', prep[0].orderId).alerts, []);
   assert.equal(stageOf(res, 'prep').counts.alerts, prep.length - 1);
   // unmarking it again on that past day brings the alert back, in the patch and on reload
-  const u = await apply({ action: 'unmark', stageKey: 'prep', dayKey: '2026-09-24', orderId: prep[0].orderId, outcome: null, source: 'row' });
+  const u = await apply({ action: 'unmark', stageKey: 'prep', dayKey: '2026-10-08', orderId: prep[0].orderId, outcome: null, source: 'row' });
   assert.equal(u.results[0].row.alerts[0].code, 'late_not_done');
-  res = await day('2026-09-24');
+  res = await day('2026-10-08');
   assert.equal(rowOf(res, 'prep', prep[0].orderId).alerts[0].code, 'late_not_done');
 });
 
@@ -543,31 +544,45 @@ test('unmark on a fact-done row (stage 6, all items taken): the mark is undone b
   }
 });
 
-test('stage 8 unmark cancels ONLY the items the schedule itself returned (returnDate == markedAt); scan-returned items keep their state; DressItem.location follows /api/returns/scan', async () => {
-  const byScan = bareItem({ id: 'it-scan', isReturned: true, returnedOk: true, returnDate: d('2026-09-30T10:00:00Z'), dressItemId: 'di-scan' });
+// SCH-RET-LOC (החלטת הבעלים 4.10.2026 = ב'): הלו״ז לא נוגע ב-DressItem.location. אותו תרחיש רץ פעמיים - עם המתג
+// כפי שהוא בקוד (false: אף כתיבה על DressItem, לא בסימון ולא בביטול), ועם updateDressLocation:true שמוכיח שההתנהגות
+// הקודמת (כמו /api/returns/scan) עדיין נמצאת במרחק הקבוע האחד ולא נשברה.
+test('SCH-RET-LOC: the switch is OFF in code and the marks route does not override it', () => {
+  assert.equal(M.SCHEDULE_RETURN_UPDATES_DRESS_LOCATION, false);
+  const route = readFileSync(new URL('app/api/schedule/marks/route.js', pathToFileURL(process.env.PROJ + '/')), 'utf8');
+  assert.ok(route.includes('applyStageMark(input, { user })') && !route.includes('updateDressLocation'), 'the route must use the code default');
+});
+
+async function stage8LocationScenario(updateDressLocation) {
+  const moves = updateDressLocation === true;
+  const opts = updateDressLocation === undefined ? {} : { updateDressLocation };
+  const byScan = bareItem({ id: 'it-scan', isReturned: true, returnedOk: true, returnDate: d('2026-10-14T10:00:00Z'), dressItemId: 'di-scan' });
   const pending = bareItem({ id: 'it-pend', dressItemId: 'di-pend' });
   const noDress = bareItem({ id: 'it-nodress' }); // before a barcode was assigned: no DressItem to move
   installWithTable({ extra: {
-    order: [...ORDERS, manretOrder(3002, [byScan, pending, noDress]), manretOrder(3003, [bareItem({ id: 'it-s1', isReturned: true, returnedOk: true, returnDate: d('2026-09-30T10:00:00Z') })])],
+    order: [...ORDERS, manretOrder(3002, [byScan, pending, noDress]), manretOrder(3003, [bareItem({ id: 'it-s1', isReturned: true, returnedOk: true, returnDate: d('2026-10-14T10:00:00Z') })])],
     dressItem: [{ id: 'di-scan', location: 'חנות' }, { id: 'di-pend', location: 'מושכר' }],
   } });
   const di = (id) => globalThis.__MOCK_DB.dressItem.find((x) => x.id === id);
   // mark: only the two pending items are returned; their dresses move to the store
-  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: 'ok', source: 'row' });
+  const r = await apply({ action: 'mark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: 'ok', source: 'row' }, opts);
   assert.equal(r.results[0].status, 'marked');
   assert.deepEqual(writes('orderItem', 'update').map((c) => c.args.where.id).sort(), ['it-nodress', 'it-pend']);
-  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), [['di-pend', 'חנות']]);
-  assert.equal(di('di-pend').location, 'חנות');
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), moves ? [['di-pend', 'חנות']] : []);
+  assert.equal(writes('dressItem').length, moves ? 1 : 0, 'no other DressItem write of any kind');
+  assert.equal(di('di-pend').location, moves ? 'חנות' : 'מושכר');
   assert.equal(r.results[0].row.done, true);
   assert.equal(r.results[0].row.returnCondition, 'ok');
   let row = rowOf(await day(), 'manret', 3002);
   assert.equal(row.done, true); assert.equal(row.returnCondition, 'ok'); assert.equal(row.returnedCount, 3);
   // unmark: only it-pend / it-nodress (returnDate == markedAt) go back; it-scan stays returned; di-pend -> מושכר, di-scan untouched
   globalThis.__MOCK_CALLS = [];
-  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: null, source: 'row' });
+  const u = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3002, outcome: null, source: 'row' }, opts);
   assert.deepEqual(writes('orderItem', 'update').map((c) => c.args.where.id).sort(), ['it-nodress', 'it-pend']);
   assert.ok(writes('orderItem', 'update').every((c) => c.audit.action === 'CANCEL_RETURN'));
-  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), [['di-pend', 'מושכר']]);
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), moves ? [['di-pend', 'מושכר']] : [], 'unmark never "reverts" a location it did not set');
+  assert.equal(writes('dressItem').length, moves ? 1 : 0);
+  assert.equal(di('di-pend').location, 'מושכר');
   assert.equal(di('di-scan').location, 'חנות');
   assert.equal(byScan.isReturned, true, 'returned by scan earlier: untouched');
   assert.equal(pending.isReturned, false);
@@ -579,7 +594,7 @@ test('stage 8 unmark cancels ONLY the items the schedule itself returned (return
   assert.equal(row.returnedCount, 1);
   // a row that is done only by facts (all returned by scan, no mark): unmark cancels nothing, the row stays done, note explains
   globalThis.__MOCK_CALLS = [];
-  const f = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3003, outcome: null, source: 'row' });
+  const f = await apply({ action: 'unmark', stageKey: 'manret', dayKey: DAY, orderId: 3003, outcome: null, source: 'row' }, opts);
   assert.equal(writes('orderItem').length, 0);
   assert.equal(writes('dressItem').length, 0);
   assert.equal(f.results[0].row.done, true);
@@ -588,6 +603,22 @@ test('stage 8 unmark cancels ONLY the items the schedule itself returned (return
   assert.match(f.results[0].row.note, /הוחזרו בסריקה/);
   row = rowOf(await day(), 'manret', 3003);
   for (const k of ['done', 'doneVia', 'returnCondition']) assert.deepEqual(f.results[0].row[k], row[k], k);
+  // "הכל בוצע" בשלב 8 עובר באותו setReturned - אותו מתג
+  installWithTable({ extra: {
+    order: [...ORDERS, manretOrder(3004, [bareItem({ id: 'it-a1', dressItemId: 'di-a1' })])],
+    dressItem: [{ id: 'di-a1', location: 'מושכר' }],
+  } });
+  const all = await apply({ action: 'mark_all', stageKey: 'manret', dayKey: DAY, orderIds: [3004], source: 'all' }, opts);
+  assert.ok(all.results.some((x) => x.orderId === 3004 && x.status === 'marked'));
+  assert.deepEqual(writes('dressItem', 'update').map((c) => [c.args.where.id, c.args.data.location]), moves ? [['di-a1', 'חנות']] : []);
+}
+
+test('stage 8 unmark cancels ONLY the items the schedule itself returned (returnDate == markedAt); scan-returned items keep their state; DressItem.location is NOT touched (SCH-RET-LOC = B, code default)', async () => {
+  await stage8LocationScenario(undefined);
+});
+
+test('SCH-RET-LOC: the old behaviour is one constant away - with the switch on, DressItem.location follows /api/returns/scan (mark -> חנות, unmark -> מושכר)', async () => {
+  await stage8LocationScenario(true);
 });
 
 // ---- הנתיב: שערים -----------------------------------------------------------------------------------
@@ -719,8 +750,8 @@ test('stage 8 stale screen, reverse order: A marks "not OK", B marks OK -> 409, 
 
 test('writeMark: rewriting a done mark keeps its original markedAt / markedById (stage-8 undo stays linked)', async () => {
   installWithTable();
-  const t1 = new Date('2026-10-01T08:00:00Z');
-  const t2 = new Date('2026-10-01T09:00:00Z');
+  const t1 = new Date('2026-10-15T08:00:00Z');
+  const t2 = new Date('2026-10-15T09:00:00Z');
   const first = await M.writeMark({ orderId: 1013, stageKey: 'manret', dayKey: DAY, wanted: true, outcome: 'ok', source: 'row', userId: 'emp-worker', now: t1, stageLabel: 'x' });
   assert.equal(first.mark.markedAt.getTime(), t1.getTime());
   const second = await M.writeMark({ orderId: 1013, stageKey: 'manret', dayKey: DAY, wanted: true, outcome: 'not_ok', source: 'row', userId: 'emp-head', now: t2, stageLabel: 'x' });

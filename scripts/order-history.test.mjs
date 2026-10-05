@@ -63,7 +63,7 @@ test('explicit {from,to} rows keep their own before and are marked explicit', ()
 });
 
 test('a big new-values row with no recorded start says beforeUnknown instead of inventing a change', () => {
-  const snap = row({ changesJson: J({ eventDate: '2026-10-08T00:00:00.000Z', returnDate: null, fromDate: null, toDate: null, isAbroad: false, isWeekdayEvent: false, notes: 'x', hasSignedRegulations: true, totalAmount: 900, status: null }) });
+  const snap = row({ changesJson: J({ eventDate: '2026-10-08T00:00:00.000Z', returnDate: null, fromDate: null, toDate: null, isAbroad: false, notes: 'x', hasSignedRegulations: true, totalAmount: 900, status: null }) });
   const r = build([snap]);
   assert.equal(r.entries.length, 1);
   const e = r.entries[0];

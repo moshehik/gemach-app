@@ -153,6 +153,7 @@ Distilled from the incidents in the journal; each one is still in force.
 - A missing or empty `SystemSetting` row must keep the pre-change behaviour (the main gemach relies on this for features requested by Neve Yaakov, e.g. the swap/refund policy settings).
 - `handleSave` in `app/orders/[id]/page.js` sends `putOrder(...)` an explicit field list — a new editable order field must be added there or it never reaches the server.
 - Any code path that assigns a barcode to an order item goes through `lib/rentalBarcodeGuard.js`; a button that unlocks item editing must never sit inside a column a setting can hide.
+- Barcodes: a valid barcode is exactly 7 digits on both gemachs (order ids are 5, phones 9+). Quick return (`/api/returns/scan`, old-design `TopbarSearch`, new-design `MenuSearchPanel` with 7 digits + Enter) matches `OrderItem.barcode` only - never fall back to `DressItem.dressBarcode` (open items can share a unit) - and always explains a miss (`reason`: already_returned / not_taken / unknown). See docs/journal-2026.md -> "Quick return by barcode".
 - Access imports are upsert-only; orphaned rows are marked `notInUse=true` with a manual `AuditLog` row, never deleted.
 - Schema changes: apply the additive DDL by hand to BOTH PROD DBs before the code deploys (`prisma db push` writes only to the one DB in `DATABASE_URL`); generate it with `prisma migrate diff --from-url <db> --to-schema-datamodel prisma/schema.prisma --script` and re-run the diff until it is empty. org2 has fallen behind before (P2022 errors on live pages).
 

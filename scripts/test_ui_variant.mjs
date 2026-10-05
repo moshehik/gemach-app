@@ -26,7 +26,8 @@ const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value })
 
 console.log('resolution order');
 t('בלי כלום: כל המסכים legacy', () => {
-  assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy' });
+  // 4.10.2026: נוספו profile / admin_hub / attendance / error_report (lib/uiVariantScreens.js) + board (5.10.2026) + employee_card (newExists:false) + settings (5.10.2026) - בלי roleId כולם legacy.
+  assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy', employee_card: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy' });
   assert.deepEqual(resolveUiVariants(), resolveUiVariants({}));
 });
 t('הגדרת ארגון (מערך שורות) מדליקה רק את המסך שלה', () => {
@@ -43,12 +44,35 @@ t('עקיפה אישית גוברת על הארגון (בשני הכיוונים
 });
 t('עקיפה אישית של מסך אחד לא משפיעה על מסך אחר', () => {
   const r = resolveUiVariants({ settings: rows({ ui_variant_home: 'a5' }), userVariants: { customer_card: 'a5' } });
-  assert.deepEqual(r, { shell: 'legacy', home: 'a5', order_card: 'legacy', customer_card: 'a5' });
+  assert.deepEqual(r, { shell: 'legacy', home: 'a5', order_card: 'legacy', customer_card: 'a5', employee_card: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy' });
 });
 t('מפתחות ההגדרה בדיוק כפי שסוכם', () => {
   assert.deepEqual(UI_VARIANT_SETTING_KEYS, {
-    shell: 'ui_variant_shell', home: 'ui_variant_home', order_card: 'ui_variant_order_card', customer_card: 'ui_variant_customer_card',
+    shell: 'ui_variant_shell', home: 'ui_variant_home', order_card: 'ui_variant_order_card', customer_card: 'ui_variant_customer_card', employee_card: 'ui_variant_employee_card',
+    // 4.10.2026 (lib/uiVariantScreens.js):
+    profile: 'ui_variant_profile', admin_hub: 'ui_variant_admin_hub', attendance: 'ui_variant_attendance', error_report: 'ui_variant_error_report',
+    board: 'ui_variant_board', // 5.10.2026 (הלוח החודשי החדש, F13)
+    settings: 'ui_variant_settings', // 5.10.2026 (הגדרות מערכת / אתר / שינוי שמות)
   });
+});
+
+console.log('settings: role default (owner decision 4.10.2026)');
+t('הגדרות: בלי עקיפה ובלי הגדרת ארגון — מתכנת חדש, כל השאר ישן', () => {
+  assert.equal(resolveUiVariant('settings', { roleId: 2 }), 'a5');
+  for (const r of [0, 1, 3, 7, null, undefined, '2']) assert.equal(resolveUiVariant('settings', { roleId: r }), 'legacy', String(r));
+  assert.equal(resolveUiVariant('settings', {}), 'legacy');
+});
+t('הגדרות: הגדרת ארגון וגם עקיפה אישית גוברות על ברירת המחדל לפי תפקיד', () => {
+  assert.equal(resolveUiVariant('settings', { roleId: 2, settings: rows({ ui_variant_settings: 'legacy' }) }), 'legacy');
+  assert.equal(resolveUiVariant('settings', { roleId: 0, settings: rows({ ui_variant_settings: 'a5' }) }), 'a5');
+  assert.equal(resolveUiVariant('settings', { roleId: 2, userVariants: { settings: 'legacy' } }), 'legacy');
+  assert.equal(resolveUiVariant('settings', { roleId: 0, userVariants: { settings: 'a5' } }), 'a5');
+  assert.equal(resolveUiVariant('settings', { roleId: 2, settings: rows({ ui_variant_settings: 'bogus' }) }), 'a5', 'ערך ארגון לא תקין נופל לברירת המחדל לפי תפקיד');
+});
+t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים שהגרסה החדשה שלהם קיימת (newExists); כרטיסי הזמנה / לקוח / עובד נשארים ישנים', () => {
+  for (const s of ['order_card', 'customer_card', 'employee_card']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'legacy', s);
+  for (const s of ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'a5', s);
+  for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 0 }), 'legacy', 'הנהלה ראשית: ' + s);
 });
 
 console.log('invalid values');
@@ -394,6 +418,6 @@ t('splitServerPrefs (R4): התאמה ל-GET האמיתי - parseStoredDesignPref
   assert.equal(splitServerPrefs(parseStoredDesignPrefs(stored)).hasPrefs, false);
   assert.equal(splitServerPrefs(parseStoredDesignPrefs('standard')).hasPrefs, false);
 });
-t('כל המסכים נבדקים בפועל', () => assert.equal(UI_SCREENS.length, 4));
+t('כל המסכים נבדקים בפועל', () => assert.equal(UI_SCREENS.length, 11)); // 4 המקוריים + כרטיס עובד + 4 המסכים של 4.10.2026 + board + settings (scripts/test_page_variant_switch.mjs)
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

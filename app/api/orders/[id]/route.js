@@ -458,8 +458,7 @@ export async function PUT(request, { params }) {
     // the dress-item picker inside the transaction have to reason about the same window,
     // otherwise the save can pass validation and still book an already-taken unit.
     const isAbroadVal = data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad;
-    const isWeekdayVal = data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : existingOrder.isWeekdayEvent;
-    const isCustomDuration = isAbroadVal || isWeekdayVal;
+    const isCustomDuration = !!isAbroadVal;
     const eventDateVal = data.eventDate !== undefined ? parseSafeDate(data.eventDate) : existingOrder.eventDate;
     const fromDateVal = data.fromDate !== undefined ? parseSafeDate(data.fromDate) : existingOrder.fromDate;
     const toDateVal = data.toDate !== undefined ? parseSafeDate(data.toDate) : existingOrder.toDate;
@@ -685,10 +684,10 @@ export async function PUT(request, { params }) {
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const parsedFromDate = parseSafeDate(data.fromDate);
       const parsedToDate = parseSafeDate(data.toDate);
-      // isAbroad/isWeekdayEvent orders drive dates from fromDate/toDate, not eventDate (ר'
-      // orders/[id]/page.js:297) - keep eventDate in sync with fromDate here too, or it goes
+      // isAbroad orders drive dates from fromDate/toDate, not eventDate (ר'
+      // orders/[id]/page.js) - keep eventDate in sync with fromDate here too, or it goes
       // stale relative to an edited date range and pickup-date calc (email/print) breaks.
-      const parsedEventDate = (data.isAbroad || data.isWeekdayEvent) && parsedFromDate
+      const parsedEventDate = data.isAbroad && parsedFromDate
         ? parsedFromDate
         : parseSafeDate(data.eventDate);
       const parsedReturnDate = parseSafeDate(data.returnDate);
@@ -711,7 +710,6 @@ export async function PUT(request, { params }) {
           eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : (parsedEventDate ? getHebrewDateString(parsedEventDate) : undefined),
           returnDate: parsedReturnDate,
           isAbroad: data.isAbroad !== undefined ? data.isAbroad : undefined,
-          isWeekdayEvent: data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : undefined,
           fromDate: parsedFromDate,
           toDate: parsedToDate,
           customSpacing: data.customSpacing !== undefined ? (hideCustomSpacing ? null : (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10))) : undefined,

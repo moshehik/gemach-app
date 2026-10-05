@@ -85,7 +85,6 @@ export async function POST(request, { params }) {
       ...baseOrder,
       eventDate: orderOverrides.eventDate !== undefined ? orderOverrides.eventDate : baseOrder.eventDate,
       isAbroad: orderOverrides.isAbroad !== undefined ? orderOverrides.isAbroad : baseOrder.isAbroad,
-      isWeekdayEvent: orderOverrides.isWeekdayEvent !== undefined ? orderOverrides.isWeekdayEvent : baseOrder.isWeekdayEvent,
       fromDate: orderOverrides.fromDate !== undefined ? orderOverrides.fromDate : baseOrder.fromDate,
       toDate: orderOverrides.toDate !== undefined ? orderOverrides.toDate : baseOrder.toDate,
       isDelivery: orderOverrides.isDelivery !== undefined ? orderOverrides.isDelivery : baseOrder.isDelivery,

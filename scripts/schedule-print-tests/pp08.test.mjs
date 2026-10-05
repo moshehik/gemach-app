@@ -20,7 +20,7 @@ test('registry: ready, slim sticker sheet, no extra permission (prep is shown in
 test('one sticker per dress of every prep order; tag, k-of-N, repair flag and PRP codes', async () => {
   const { payload } = await g2Payload(['PP-08']);
   const pg = payload.pages[0];
-  assert.equal(pg.pageCode, 'ALL-PRP-261001');
+  assert.equal(pg.pageCode, 'ALL-PRP-261015');
   const d = pg.data;
   assert.equal(d.title, 'מדבקות שמלה');
   assert.equal(d.sub, 'מדבקה לכל שמלה, להדבקה על הקולב או השקית');
@@ -40,7 +40,7 @@ test('one sticker per dress of every prep order; tag, k-of-N, repair flag and PR
   assert.equal(del.hasRepair, true, 'order 41000 (index 0) has an item with a repair');
   assert.equal(d.labels.find((l) => l.orderId === 41011).hasRepair, false);
   assert.match(del.model, / - \d{4}$/);
-  assert.match(del.eventShort, /תשרי$/);
+  assert.equal(del.eventShort, 'ט׳ חשוון', 'event 20.10.2026 = ט׳ חשוון');
 });
 
 test('pickup without a branch says just "איסוף"; delivery-return-only order is not a "משלוח" sticker', async () => {

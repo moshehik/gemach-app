@@ -3,24 +3,28 @@
 // הרצה: node scripts/test_home_logic.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 import assert from 'node:assert/strict';
 import {
-  buildGreeting, DEFAULT_TITLE, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
+  buildGreeting, isLegacyDefaultTitle, LEGACY_DEFAULT_TITLE, normalizeTitleForCompare, normalizeSearch, resultsCount, orderStatus, unifiedRows, tableRecords,
   TABLE_COLUMNS, sortRecords, exportRecordsForRows, parseAiTags, safeInternalRoute, botMessageFromResponse,
   botErrorMessage, chatToHistory, chatCopyText, aiRowView, aiRowKind, aiRowHref, richSegments, rowsToCsv,
   threadToCsv, printRowsHtml, printThreadHtml, withoutActionKeys, recentRows, footerGroups, safeCell, isSensitiveKey, rowColumns,
   HOME_SCOPES, HOME_RECENT_VALUES, parseHomeParams, homeDirectiveKey, homeScopeTitle, SCOPE_TITLE_REST, applyScope, scopedAdvFields,
+  RENTAL_STATE_STYLE, rentalStatus,
 } from '../app/components/home/homeLogic.js';
+import { isBarcodeLikeQuery } from '../lib/quickSearchResults.js';
 import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
-import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, splitMatch } from '../lib/quickPrefix.js';
+import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, resolveQuickPrefix, splitMatch } from '../lib/quickPrefix.js';
+import { buildMineModel, buildWhoChips, mineTableRecords, mineExportRecords, mineSheetSections, MINE_TABLE_COLUMNS, whenLabelHe, MINE_POPOVER_LIMIT, MINE_URL } from '../lib/myRecentActivityView.js';
 import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js';
 const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
   ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES,
 } from '../app/components/home/homeAdvConfig.js';
-import { hebText, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
+import { hebText, hebFromInstant, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
 import { ORDER_STATUS_STYLE } from '../app/components/home/homeLogic.js';
-import { PRIVACY_SECTIONS, splitPlaceholders, PRIVACY_PLACEHOLDER_COUNT } from '../app/components/home/privacyPolicyText.js';
+import { PRIVACY_SECTIONS, buildPrivacySections, privacyContactLine, POLICY_UPDATED, policyUpdatedHebrew } from '../app/components/home/privacyPolicyText.js';
+import { hebrewUpdatedDate } from '../lib/hebrewStamp.js';
 import { SPRITE_SYMBOLS, SPRITE_ID_PREFIX } from '../app/components/menu/spriteSymbols.js';
 import { readFileSync, readdirSync } from 'node:fs';
 
@@ -32,10 +36,13 @@ function t(name, fn) {
 }
 
 console.log('כותרת');
-t('הגדרה ריקה → "ברוכים הבאים לגמ״ח" בשורה אחת, גם כשיש שם', () => {
-  assert.deepEqual(buildGreeting('', 'רחל'), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting(undefined, ''), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting('   ', 'רחל'), { hi: null, q: DEFAULT_TITLE });
+t('הגדרה ריקה → הברכה המעוצבת המותאמת אישית ("שלום [שם]," + "מה תרצי לחפש?"), לא "ברוכים הבאים לגמ״ח"', () => {
+  assert.deepEqual(buildGreeting('', 'רחל'), { hi: 'שלום רחל,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting('   ', 'רחל'), { hi: 'שלום רחל,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(undefined, ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(null, null), { hi: 'שלום', q: 'מה תרצי לחפש?' });
+  // בדיוק כמו ההגדרה שנשמרה בפועל (GQ-02b)
+  assert.deepEqual(buildGreeting('', 'רחל'), buildGreeting('שלום! מה תרצי לחפש?', 'רחל'));
 });
 t('"שלום! מה תרצי לחפש?" → "שלום [שם]," + שורה שנייה', () => {
   assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
@@ -76,13 +83,13 @@ t('נוסח ברירת המחדל הישן ("ברוכים הבאים למערכ�
   // בלי עובדת מחוברת: "שלום" + השורה השנייה (כמו "שלום! מה תרצי לחפש?" בעיצוב)
   assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח', ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
 });
-t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → "ברוכים הבאים לגמ״ח"', () => {
+t('נוסח מותאם אמיתי נשאר כמו שהוא (ברכה בשם + הטקסט המותאם); ריק → הברכה המעוצבת', () => {
   assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת ניהול הגמ"ח של נווה'), false);
   assert.equal(isLegacyDefaultTitle('ברוכים הבאים למערכת'), false);
   assert.equal(isLegacyDefaultTitle(''), false); assert.equal(isLegacyDefaultTitle(null), false);
   assert.deepEqual(buildGreeting('ברוכים הבאים למערכת ניהול הגמ"ח של נווה', 'אסתר'), { hi: 'שלום אסתר,', q: 'ברוכים הבאים למערכת ניהול הגמ"ח של נווה' });
-  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: null, q: DEFAULT_TITLE });
-  assert.deepEqual(buildGreeting(null, ''), { hi: null, q: 'ברוכים הבאים לגמ״ח' });
+  assert.deepEqual(buildGreeting('', 'אסתר'), { hi: 'שלום אסתר,', q: 'מה תרצי לחפש?' });
+  assert.deepEqual(buildGreeting(null, ''), { hi: 'שלום', q: 'מה תרצי לחפש?' });
 });
 t('המחרוזת המדויקת של העיצוב "שלום! מה תרצי לחפש?" מתפצלת כמו בעיצוב', () => {
   assert.deepEqual(buildGreeting('שלום! מה תרצי לחפש?', 'שולמית'), { hi: 'שלום שולמית,', q: 'מה תרצי לחפש?' });
@@ -122,6 +129,11 @@ t('נרמול: קלט ריק/חסר', () => {
   assert.deepEqual(normalizeSearch({}), { customers: [], orders: [], rentals: [] });
   assert.equal(resultsCount(null), 0);
 });
+t('נרמול: מצב פריט (מושכר עכשיו / הוחזר / טרם נלקח) רק כשהשרת שלח את הדגלים', () => {
+  const r = normalizeSearch({ rentals: [{ orderId: 1, barcode: 'B', isTaken: true, isReturned: false }, { orderId: 2, barcode: 'B', isTaken: true, isReturned: true }, { orderId: 3, barcode: 'B', isTaken: false, isReturned: false }, { orderId: 4, barcode: 'B' }] });
+  assert.deepEqual(r.rentals.map((x) => x.rs), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח', undefined]);
+  assert.deepEqual(unifiedRows(r).map((x) => x.state), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח', '']);
+});
 t('סטטוס הזמנה: ארבעה ערכים, השאר "פעיל"', () => {
   assert.deepEqual(orderStatus('הוחזר'), { cls: 'ok', icon: 'check', label: 'הוחזר' });
   assert.deepEqual(orderStatus('בוטל'), { cls: 'warn', icon: 'x', label: 'בוטל' });
@@ -137,14 +149,76 @@ t('רשימה מאוחדת: סדר לקוחות, הזמנות, פריטים וכ
   assert.equal(rows[3].status.label, 'הוחזר');
   assert.deepEqual(unifiedRows(null), []);
 });
-t('טבלה: 7 עמודות ותאי כל סוג', () => {
+t('טבלה: 9 עמודות ותאי כל סוג', () => {
   const rec = tableRecords(unifiedRows(normalizeSearch(RAW)));
-  assert.equal(TABLE_COLUMNS.length, 7);
-  assert.ok(rec.every((r) => r.cells.length === 7));
-  assert.deepEqual(rec[0].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '']);
-  assert.deepEqual(rec[2].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', 'י״ג תשרי', 'פעיל']);
-  assert.deepEqual(rec[4].cells, ['פריט', 'שמלת ורד', '', '', '1024038', '', 'מידה 38']);
-  assert.equal(rec[5].cells[6], '', 'אין מידה = ריק');
+  assert.deepEqual(TABLE_COLUMNS, ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס / מידה']);
+  assert.ok(rec.every((r) => r.cells.length === TABLE_COLUMNS.length));
+  assert.deepEqual(rec[0].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '', '', '']);
+  assert.deepEqual(rec[2].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', '', '', 'י״ג תשרי', 'פעיל']);
+  assert.deepEqual(rec[4].cells, ['פריט', 'שמלת ורד', '', '', '1024038', '#48131', '', '', 'מידה 38']);
+  assert.equal(rec[5].cells[8], '', 'אין מידה = ריק');
+});
+
+console.log('חיפוש ברקוד: כל השכרה של אותו פריט בשורה משלה (4.10.2026)');
+// אותו ברקוד בשלוש השכרות שונות — כמו שהשרת מחזיר אחרי ה-JOIN ל-Order/Customer
+const BC = {
+  rentals: [
+    { id: 'i1', orderId: 52001, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: true, isReturned: false, firstName: 'רחל', lastName: 'כהן', eventDateHebrew: 'ט״ו תשרי תשפ״ז', eventDate: '2026-10-03T00:00:00.000Z' },
+    { id: 'i2', orderId: 47310, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: true, isReturned: true, firstName: 'לאה', lastName: null, eventDateHebrew: null, eventDate: '2025-06-11T21:00:00.000Z' },
+    { id: 'i3', orderId: 39002, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: false, isReturned: false, firstName: null, lastName: null, eventDateHebrew: '', eventDate: null },
+  ],
+};
+t('נרמול: לקוחה ותאריך אירוע לכל השכרה; תאריך עברי בלבד (שמור, או מחושב לפי יום ישראלי)', () => {
+  const r = normalizeSearch(BC).rentals;
+  assert.deepEqual(r.map((x) => x.cn), ['רחל כהן', 'לאה', '']);
+  assert.equal(r[0].h, 'ט״ו תשרי תשפ״ז', 'הטקסט השמור בהזמנה קודם');
+  // 2025-06-11T21:00Z = 12.6.2025 בישראל (לא 11.6 לפי UTC)
+  assert.equal(r[1].h, hebText('2025-06-12'));
+  assert.notEqual(r[1].h, hebText('2025-06-11'));
+  assert.equal(r[2].h, '', 'אין תאריך = ריק, בלי מקף');
+  for (const x of r) assert.ok(!/\d|[./]/.test(x.h), 'תאריך לועזי דלף: ' + x.h);
+});
+t('hebFromInstant: יום ישראלי, ריק לערך חסר/לא תקין', () => {
+  assert.equal(hebFromInstant('2026-10-03T00:00:00.000Z'), hebText('2026-10-03'));
+  assert.equal(hebFromInstant('2026-10-02T21:30:00.000Z'), hebText('2026-10-03'), 'אחרי חצות בישראל = היום הבא');
+  assert.equal(hebFromInstant(new Date('2026-10-03T09:00:00Z')), hebText('2026-10-03'));
+  for (const v of [null, undefined, '', 'לא תאריך']) assert.equal(hebFromInstant(v), '');
+});
+t('שורות פריט: הזמנה, לקוחה, תאריך עברי ותגית מצב; חלק חסר = ריק (בלי מקף)', () => {
+  const rows = unifiedRows(normalizeSearch(BC));
+  assert.equal(new Set(rows.map((x) => x.key)).size, 3, 'שלוש שורות נפרדות');
+  assert.deepEqual(rows.map((x) => x.orderId), [52001, 47310, 39002]);
+  assert.deepEqual(rows.map((x) => x.customer), ['רחל כהן', 'לאה', '']);
+  assert.deepEqual(rows.map((x) => x.eventHeb), ['ט״ו תשרי תשפ״ז', hebText('2025-06-12'), '']);
+  assert.deepEqual(rows.map((x) => x.status), [
+    { cls: '', icon: 'bag', label: 'מושכר עכשיו' },
+    { cls: 'ok', icon: 'check', label: 'הוחזר' },
+    { cls: '', icon: 'clock', label: 'טרם נלקח' },
+  ]);
+  assert.equal(unifiedRows(normalizeSearch({ rentals: [{ orderId: 1, barcode: 'B' }] }))[0].status, null, 'בלי דגלים — בלי תגית');
+});
+t('מצב פריט → תגית: שלושת המצבים בלבד; ערך לא מוכר (גם constructor) = null', () => {
+  assert.deepEqual(Object.keys(RENTAL_STATE_STYLE), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח']);
+  for (const k of ['', 'constructor', '__proto__', 'מושכר', undefined]) assert.equal(rentalStatus(k), null, String(k));
+  // תווית התגית = התווית של rentalStateLabel (אותו ניסוח בכל המסכים)
+  assert.deepEqual([{ isTaken: true, isReturned: false }, { isTaken: true, isReturned: true }, { isTaken: false, isReturned: false }].map((x) => rentalStatus(normalizeSearch({ rentals: [{ orderId: 1, ...x }] }).rentals[0].rs).label), ['מושכר עכשיו', 'הוחזר', 'טרם נלקח']);
+});
+t('טבלה + Excel של השכרות: הזמנה, לקוח, תאריך עברי, מצב ומידה', () => {
+  const rec = tableRecords(unifiedRows(normalizeSearch(BC)));
+  assert.deepEqual(rec[0].cells, ['פריט', '551', '', '', '5511205', '#52001', 'רחל כהן', 'ט״ו תשרי תשפ״ז', 'מושכר עכשיו · מידה 12']);
+  assert.deepEqual(rec[2].cells, ['פריט', '551', '', '', '5511205', '#39002', '', '', 'טרם נלקח · מידה 12']);
+  const ex = exportRecordsForRows(unifiedRows(normalizeSearch(BC)));
+  assert.equal(ex[1]['הזמנה'], '#47310');
+  assert.equal(ex[1]['לקוח'], 'לאה');
+  assert.equal(ex[1]['תאריך אירוע'], hebText('2025-06-12'));
+  assert.equal(ex[1]['סטטוס / מידה'], 'הוחזר · מידה 12');
+  // רק שדות תצוגה — לא eventDate גולמי ולא שדות לא מוכרים מהשרת
+  const json = JSON.stringify(normalizeSearch({ rentals: [{ ...BC.rentals[1], zeout: '123456789', phone1: '050' }] }));
+  for (const bad of ['zeout', '123456789', 'eventDate', '2025-06-11', 'phone1']) assert.ok(!json.includes(bad), 'דלף: ' + bad);
+});
+t('זיהוי חיפוש-ברקוד (משותף לשרת ולחיפוש המהיר): ספרות בלבד, 5 ומעלה', () => {
+  for (const yes of ['5511205', '12345', ' 5511205 ']) assert.equal(isBarcodeLikeQuery(yes), true, yes);
+  for (const no of ['1234', 'ddddd', 'd{5,}', '55112a5', '551 1205', '', null, 'כהן']) assert.equal(isBarcodeLikeQuery(no), false, String(no));
 });
 t('מיון: מספרים לפי ערך, טקסט בעברית, לא משנה את המקור', () => {
   const recs = [{ cells: ['x', '#10'] }, { cells: ['y', '#9'] }, { cells: ['z', '#100'] }];
@@ -462,8 +536,8 @@ t('תפוסה: דגם חובה — ההודעה זהה לשרת, נבדק לפנ
   for (const k of Object.keys(ADV_FOCI).filter((x) => x !== 'capacity')) assert.equal(advMissing(k, emptyAdv(k)), '', k + ': אין שדה חובה');
   assert.equal(advMissing('nope', {}), '');
   const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
-  assert.ok(/const missing = advMissing\(adv\.focus, adv\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
-  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(adv.focus'));
+  assert.ok(/const missing = advMissing\(cur\.focus, cur\);\s*if \(missing\) \{ showToast\('חסר שדה חובה', missing\); return; \}/.test(home), 'נבדק לפני הקריאה לשרת');
+  assert.ok(home.indexOf('const missing = advMissing') < home.indexOf('buildAdvRequest(cur.focus'));
 });
 t('תפוסה: מגבלת צמדי דגם/מידה בשרת מוחזרת כ-400 עם הודעה שהטופס מציג', () => {
   assert.ok(/CAPACITY_PAIRS_MAX = \d+/.test(ADVB_ROUTE));
@@ -543,15 +617,65 @@ t('חודש עברי: התחלה, רשת, הזזה קדימה ואחורה', () 
 });
 
 console.log('מדיניות פרטיות');
-t('הנוסח: כל הסעיפים, שדות המילוי מזוהים ומסומנים', () => {
+const flatPrivacy = (secs) => secs.map((s) => [s.h, ...(s.ul || []), s.p || ''].join(' | ')).join(' | ');
+t('הנוסח: כל הסעיפים, בלי שדות מילוי ובלי טקסט זמני', () => {
   assert.ok(PRIVACY_SECTIONS.length >= 9);
   assert.ok(PRIVACY_SECTIONS.every((s) => s.h && (s.p || s.ul)));
-  assert.equal(PRIVACY_PLACEHOLDER_COUNT, 6, 'מי אנחנו, שרתים, פניות, זמן מענה, עוגיות, תאריך');
-  assert.deepEqual(splitPlaceholders('א [[ב]] ג'), [{ text: 'א ', ph: false }, { text: '[ב]', ph: true }, { text: ' ג', ph: false }]);
-  assert.deepEqual(splitPlaceholders(''), []);
-  const all = JSON.stringify(PRIVACY_SECTIONS);
+  const all = flatPrivacy(PRIVACY_SECTIONS);
+  assert.ok(!all.includes('[['), 'אין שדה מילוי [[...]]');
+  assert.ok(!/להשלים|יושלם|\[לאימות/.test(all), 'אין סימוני "להשלים/לאימות"');
   assert.ok(!all.includes('טקסט זמני'), 'לא הנוסח הזמני הישן');
   assert.ok(all.includes('נדרים פלוס') && all.includes('בינה מלאכותית'));
+});
+t('הנוסח נבנה מהגדרות הארגון: שם משפטי = gmach_name, טלפון = gmach_phone, 30 ימי מענה, שרתים ארה"ב / אירופה, תאריך עברי', () => {
+  const a = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח נווה יעקב', phone: '02-1234567' }));
+  assert.ok(a.includes('גמ״ח נווה יעקב (להלן'), 'שם הגוף המשפטי מההגדרה');
+  assert.ok(a.includes('02-1234567'), 'הטלפון מההגדרה');
+  assert.ok(a.includes('נשיב תוך 30 ימים'));
+  assert.ok(a.includes('בארה"ב ובאירופה'));
+  assert.ok(a.includes('איננו משתמשים בעוגיות פרסום או מעקב.'));
+  assert.ok(a.includes(policyUpdatedHebrew()), 'תאריך העדכון (קבוע) מוצג');
+  // ארגון אחר -> טקסט אחר (לא קשיח)
+  const b = flatPrivacy(buildPrivacySections({ legalName: 'גמ״ח אחר', phone: '03-7654321' }));
+  assert.ok(b.includes('גמ״ח אחר') && b.includes('03-7654321') && !b.includes('02-1234567') && !b.includes('נווה יעקב'));
+  // בלי הגדרות: שם ברירת מחדל, שורת פנייה כללית בלי מספר ובלי תאריך, ועדיין בלי שדות מילוי
+  const c = flatPrivacy(buildPrivacySections({}));
+  assert.ok(c.includes('גמ״ח שמלות (להלן') && c.includes('ניתן לפנות אלינו ישירות בגמ"ח') && !c.includes('[['));
+  assert.equal(privacyContactLine('  '), privacyContactLine(''));
+  assert.ok(privacyContactLine(' 050-1112222 ').includes('050-1112222.'));
+});
+t('hebrewUpdatedDate (עזר כללי ב-lib/hebrewStamp): תאריך עברי בלבד (תאריך הגרסה בלי שעה; נפילה ליום הנוכחי), בלי ספרות לועזיות', () => {
+  assert.equal(hebrewUpdatedDate('01/10/2026 12:47'), 'כ תשרי תשפ"ז');
+  assert.equal(hebrewUpdatedDate('לא תאריך', Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
+  assert.equal(hebrewUpdatedDate(null, Date.parse('2026-10-01T10:00:00Z')), 'כ תשרי תשפ"ז');
+  assert.ok(!/\d{4}/.test(hebrewUpdatedDate('01/10/2026 12:47')));
+});
+t('תאריך "שינויים בנוסח" קבוע (POLICY_UPDATED, לא תאריך הפריסה): עברי בלבד ולא תלוי בגרסה / בשעון', () => {
+  assert.equal(POLICY_UPDATED, '2026-10-04');
+  assert.equal(policyUpdatedHebrew(), 'כג תשרי תשפ"ז'); // 4.10.2026 = כ"ג בתשרי תשפ"ז
+  const sec = (x) => x.find((q) => q.h === 'שינויים בנוסח').p;
+  const text = sec(buildPrivacySections({ legalName: 'א' }));
+  assert.ok(text.includes('כג תשרי תשפ"ז') && !/\d{4}/.test(text), 'עברי בלבד, בלי שנה לועזית');
+  assert.equal(text, sec(PRIVACY_SECTIONS), 'אותו תאריך בכל ארגון ובכל קריאה');
+  const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');
+  assert.ok(!/hebrewUpdatedDate|versionDate/.test(src), 'התאריך כבר לא נגזר מתאריך הגרסה');
+});
+t('נוסח: מרכאות מסולסלות + גרשיים בהגדרת "הגמ״ח"; ספק הבינה המלאכותית (Google Gemini) וגופני Google מוזכרים', () => {
+  const all = flatPrivacy(PRIVACY_SECTIONS);
+  assert.ok(all.includes('(להלן: “הגמ״ח”)'), 'מרכאות מקוננות בנוסח הגבוה');
+  assert.ok(!all.includes('"הגמ"ח"'), 'אין מרכאות ישרות מקוננות');
+  assert.ok(all.includes('Google Gemini'), 'ספק ה-AI');
+  assert.ok(all.includes('Google Fonts'), 'גופנים מ-Google');
+  assert.ok(!/ייתכן שחלק מהמידע הנדרש לכך מועבר למערכות אלה/.test(all), 'לא הניסוח הכללי הישן');
+});
+t('HomeFooter: אין שדות מילוי, הדיאלוג מקבל settings ומחשב את הנוסח בזמן ההצגה', () => {
+  const src = readFileSync(new URL('../app/components/home/HomeFooter.js', import.meta.url), 'utf8');
+  assert.ok(!/splitPlaceholders|priv-ph/.test(src));
+  assert.ok(/buildPrivacySections\(\{[\s\S]*gmach_name[\s\S]*gmach_phone/.test(src));
+  const a5 = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
+  assert.ok(/<PrivacyDialog[\s\S]*?settings=\{settings\}/.test(a5));
+  const boot = readFileSync(new URL('../app/api/a5/boot/route.js', import.meta.url), 'utf8');
+  assert.ok(/'gmach_phone'/.test(boot), 'gmach_phone מוחזר מ-/api/a5/boot');
 });
 
 console.log('אייקונים (sprite מוטמע)');
@@ -624,17 +748,18 @@ t('ה-sprite מוטמע פעם אחת: HomeA5 מרנדר HomeSprite, ו-HomeSpri
 
 console.log('קישורי תפריט "בית" (scope / adv / recent) — 2.10.2026');
 t('parseHomeParams: רשימה סגורה — רק scope מוכר, adv=1 בדיוק, recent=changes בדיוק', () => {
-  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, recent: null, q: null, any: true });
-  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, recent: null, q: null, any: true });
-  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=customers'), { scope: 'customers', adv: false, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('scope=orders'), { scope: 'orders', adv: false, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes'), { scope: null, adv: false, recent: 'changes', run: null, q: null, emp: null, any: true });
   assert.deepEqual(Object.keys(HOME_SCOPES), ['customers', 'orders', 'rentals', 'returns', 'alterations']);
-  assert.deepEqual([...HOME_RECENT_VALUES], ['changes']);
+  assert.deepEqual([...HOME_RECENT_VALUES], ['changes', 'mine']);
+  assert.deepEqual(parseHomeParams('?recent=mine'), { scope: null, adv: false, recent: 'mine', run: null, q: null, emp: null, any: true });
   assert.equal(parseHomeParams('').any, false); assert.equal(parseHomeParams(undefined).any, false); assert.equal(parseHomeParams(null).any, false);
 });
 t('parseHomeParams: ערכים לא מוכרים נזרקים (בלי prototype, XSS, redirect, רישיות)', () => {
   for (const bad of ['?scope=evil', '?scope=__proto__', '?scope=constructor', '?scope=toString', '?scope=Customers', '?scope=customers%20', '?scope=', '?scope=<script>alert(1)</script>',
-    '?scope=https://evil.example', '?scope=//evil.example', '?scope=customers,orders', '?adv=true', '?adv=0', '?adv=', '?adv=11', '?recent=1', '?recent=', '?recent=all', '?recent=Changes']) {
+    '?scope=https://evil.example', '?scope=//evil.example', '?scope=customers,orders', '?adv=true', '?adv=0', '?adv=', '?adv=11', '?recent=1', '?recent=', '?recent=all', '?recent=Changes', '?recent=Mine', '?recent=mine%20', '?recent=mine,changes']) {
     const r = parseHomeParams(bad);
     assert.equal(r.any, false, bad); assert.equal(r.scope, null, bad); assert.equal(r.adv, false, bad); assert.equal(r.recent, null, bad);
   }
@@ -649,13 +774,16 @@ t('parseHomeParams: מקבל גם URLSearchParams; קלט ענק נחתך; q נ�
   assert.equal(parseHomeParams(big).scope, null, 'מעבר לתקרת האורך — לא נקרא');
 });
 t('parseHomeParams: הוראה אחת — adv עדיף על recent על scope (כתובת, כותרת והדגשת תפריט תואמות)', () => {
-  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
-  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, recent: 'changes', q: null, any: true });
-  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, recent: null, q: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=changes'), { scope: null, adv: false, recent: 'changes', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=changes&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
   assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').q, 'כ'); assert.equal(parseHomeParams('?scope=orders&q=%D7%9B').scope, 'orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?scope=orders')), 'scope:orders');
   assert.equal(homeDirectiveKey(parseHomeParams('?adv=1')), 'adv');
   assert.equal(homeDirectiveKey(parseHomeParams('?recent=changes')), 'recent:changes');
+  assert.equal(homeDirectiveKey(parseHomeParams('?recent=mine')), 'recent:mine');
+  assert.deepEqual(parseHomeParams('?scope=orders&recent=mine'), { scope: null, adv: false, recent: 'mine', run: null, q: null, emp: null, any: true });
+  assert.deepEqual(parseHomeParams('?recent=mine&adv=1'), { scope: null, adv: true, recent: null, run: null, q: null, emp: null, any: true });
   assert.equal(homeDirectiveKey(parseHomeParams('?q=x')), '');
 });
 t('homeScopeTitle: "<קטגוריה> - מה תרצי לחפש?" לכל קטגוריה, מהטבלה בלבד; לא מוכר = null', () => {
@@ -703,21 +831,34 @@ t('התפריט והדף מסכימים: כל href של scope בתפריט הו�
   const keys = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations', 'page:messages', 'page:schedule'];
   const tree = buildMenuTree({ user: { id: 'e0', firstName: 'ש', lastName: 'כ', roleId: 0 }, permissions: Object.fromEntries(keys.map((k) => [k, true])), settings: [] });
   const items = tree.tabs.find((x) => x.id === 'home').items.filter((x) => x.kind === 'link' && x.href.includes('?'));
-  assert.equal(items.length, 7);
+  assert.equal(items.length, 8);
   for (const it of items) {
     const p = parseHomeParams(it.href.slice(it.href.indexOf('?')));
     assert.ok(p.any, it.href);
-    if (it.id === 'home-adv') assert.equal(p.adv, true); else if (it.id === 'recent-all') assert.equal(p.recent, 'changes');
+    if (it.id === 'home-adv') assert.equal(p.adv, true); else if (it.id === 'recent-all') assert.equal(p.recent, 'changes'); else if (it.id === 'recent-mine') assert.equal(p.recent, 'mine');
     else { assert.ok(p.scope, it.href); assert.equal(it.label, HOME_SCOPES[p.scope].label, 'תווית הפריט = תווית הקטגוריה'); }
   }
 });
 
-console.log("קידומות חיפוש מהיר ('@') — lib/quickPrefix.js");
-t("detectQuickPrefix: רק '@' כתו ראשון; '#' ו-'$' טרם נבנו; באמצע הטקסט לא", () => {
-  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@']);
+console.log("קידומות חיפוש מהיר ('@', '&') — lib/quickPrefix.js");
+t("resolveQuickPrefix: '&' פעילה רק כשיש מקור שמותר (לא denied), בשורה לא מקוצצת, ובמקום שמפעיל אותה - אחרת היא טקסט חיפוש רגיל", () => {
+  const menu = { prefixes: ['&'], mineUsable: true };
+  assert.equal(resolveQuickPrefix('&רחל', menu).prefix, '&');
+  assert.equal(resolveQuickPrefix('&רחל', { ...menu, mineUsable: false }), null, '403 / אין מקור');
+  assert.equal(resolveQuickPrefix(' &abc', menu), null, 'שורה לא מקוצצת');
+  assert.equal(resolveQuickPrefix('@רחל', menu), null, "בתפריט רק '&'");
+  assert.equal(resolveQuickPrefix('&רחל', { ...menu, enabled: false }), null);
+  assert.equal(resolveQuickPrefix('@רחל', { mineUsable: false }).prefix, '@', "'@' לא תלויה במקור של '&'");
+  assert.equal(resolveQuickPrefix('רחל&'), null);
+});
+t("detectQuickPrefix: '@' '&' '#' '$' כתו ראשון; באמצע הטקסט לא ('#' ו-'$' - ר' test_quick_prefix_shortcuts.mjs)", () => {
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$']);
+  assert.equal(QUICK_PREFIXES['@'].source, 'local'); assert.equal(QUICK_PREFIXES['&'].source, 'mine');
+  assert.equal(detectQuickPrefix('&').prefix, '&'); assert.equal(detectQuickPrefix('&').def.id, 'mine'); assert.equal(detectQuickPrefix('& רחל ').term, 'רחל');
+  for (const no of [' &', 'רחל&', 'a&b', 'Q&A']) assert.equal(detectQuickPrefix(no), null, no);
   assert.equal(detectQuickPrefix('@').prefix, '@'); assert.equal(detectQuickPrefix('@').term, '');
   assert.equal(detectQuickPrefix('@ כהן ').term, 'כהן');
-  for (const no of ['', ' @', 'כהן@', 'a@b.co', '#', '$', '!', '#x', '$x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
+  for (const no of ['', ' @', 'כהן@', 'a@b.co', '!', '%x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
 });
 t('filterPrefixRows / splitMatch: סינון לפי כותרת / סוג / טקסט משנה, בלי לשנות את הקלט', () => {
   const rows = [{ key: 'a', kind: 'לקוח', title: 'רחל כהן', sub: 'ירושלים' }, { key: 'b', kind: 'הזמנה', title: 'דנה לוי', sub: '' }];
@@ -735,10 +876,132 @@ t("רשימת '@' = אותם נתונים כמו כרטיס 'האחרונים' �
   const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
   assert.ok(comp.includes('getHistory') && comp.includes('recentRows'), 'מקור הנתונים: ההיסטוריה המקומית');
   assert.ok(/advlist/.test(comp) && /advo/.test(comp), 'רשימת הפלטה הנגללת (advlist/advo)');
-  assert.ok(!/fetch\(/.test(comp), 'בלי רישום/קריאת חיפושים בשרת (לא נבנה עדיין)');
+  assert.equal((comp.match(/fetch\(/g) || []).length, 2, 'הקריאות היחידות לשרת: "השינויים שלי" (GET /api/me/recent-activity) ורשימת העובדות לבורר של הנהלה (GET /api/me/recent-activity/employees); בלי רישום/קריאת חיפושים בשרת');
+  assert.ok(comp.includes("fetch('/api/me/recent-activity'"));
   const home = homeSource('HomeA5.js');
   assert.ok(home.includes('useQuickPrefix') && home.includes('<QuickPrefixList'), 'HomeA5 משתמש ברכיב המשותף');
   assert.match(home, /setQ\('@'\)/, "'שינויים אחרונים' (?recent=changes) ממלא '@' — אותה תוצאה בדיוק");
+});
+
+console.log('"השינויים שלי" (&) — lib/myRecentActivityView.js + חיווט HomeA5 / QuickPrefix');
+const NOW = new Date('2026-10-04T10:00:00Z'); // 13:00 שעון ישראל, 23 בתשרי
+const agoMin = (m) => new Date(NOW.getTime() - m * 60000).toISOString();
+const mk = (n, label, ago) => ({ id: '00000000-0000-4000-8000-' + String(n).padStart(12, '0'), orderNumber: n, customerName: 'רחל כהן' + n, createdAt: agoMin(ago), lastChangeLabelHe: label, lastChangeAt: agoMin(ago) });
+const MINE_DATA = {
+  created: [1, 2, 3, 4, 5, 6, 7].map((n) => mk(n, '', n * 100)),
+  changed: [11, 12, 13].map((n, i) => mk(n, 'עודכן תאריך האירוע', 30 + i * 500)),
+};
+t('whenLabelHe: דקות / שעה / היום / אתמול / יומיים / תאריך עברי (בלי תאריך לועזי); לא תלוי באזור הזמן של התהליך', () => {
+  assert.equal(whenLabelHe(agoMin(12), NOW), 'לפני 12 דק׳');
+  assert.equal(whenLabelHe(agoMin(0.2), NOW), 'לפני 1 דק׳');
+  assert.equal(whenLabelHe(agoMin(75), NOW), 'לפני שעה');
+  assert.equal(whenLabelHe('2026-10-04T05:40:00Z', NOW), 'היום, 08:40');
+  assert.equal(whenLabelHe('2026-10-03T08:00:00Z', NOW), 'אתמול');
+  assert.equal(whenLabelHe('2026-10-02T08:00:00Z', NOW), 'לפני יומיים');
+  assert.equal(whenLabelHe('2026-09-30T08:00:00Z', NOW), 'יט תשרי');
+  assert.ok(!/\d{4}|\d+\/\d+/.test(whenLabelHe('2026-09-20T08:00:00Z', NOW)), 'בלי ספרות של תאריך לועזי');
+  assert.equal(whenLabelHe('nope', NOW), ''); assert.equal(whenLabelHe(null, NOW), '');
+  // סביב חצות שעון ישראל: היום לפי יום ישראלי, לא לפי UTC
+  assert.equal(whenLabelHe('2026-10-03T21:30:00Z', NOW), 'היום, 00:30');
+  assert.equal(whenLabelHe('2026-10-02T21:30:00Z', NOW), 'אתמול');
+});
+t('buildMineModel: שני חלקים (חדשות / שינויים), עד 5 בכל חלק + שורת "הצג הכל" עם הספירה; החדש ראשון; items = השורות לניווט במקלדת', () => {
+  const m = buildMineModel({ state: 'ok', data: MINE_DATA }, { now: NOW });
+  assert.equal(MINE_POPOVER_LIMIT, 5);
+  assert.deepEqual(m.sections.map((x) => [x.key, x.head, x.count, x.rows.length]), [['created', 'הזמנות חדשות שיצרתי', 7, 5], ['changed', 'שינויים שעשיתי', 3, 3]]);
+  assert.equal(m.items.length, 9); assert.equal(m.items[8].type, 'all'); assert.equal(m.items[8].url, MINE_URL); assert.equal(m.more.tail, '10');
+  assert.equal(m.more.sub, 'עוד 2 ברשימה המלאה'); assert.equal(m.more.title, 'הכל', 'MY-01: הכפתור בכותרת נקרא "הכל"');
+  assert.equal(buildMineModel({ state: 'ok', data: MINE_DATA }, { now: NOW, whoId: 'emp-9' }).more.url, '/?recent=mine&emp=emp-9', 'הבחירה של הנהלה נשמרת בכתובת');
+  const few = buildMineModel({ state: 'ok', data: { created: [1, 2, 3, 4, 5].map((n) => mk(n, '', n)), changed: [] } }, { now: NOW });
+  assert.equal(few.more, null, 'MY-07 ב: 5 בחלק אחד ואין עוד - אין כפתור "הכל"'); assert.ok(few.items.every((x) => x.type !== 'all'), 'ואין פריט "הכל" לניווט במקלדת');
+  const six = buildMineModel({ state: 'ok', data: { created: [1, 2, 3, 4, 5, 6].map((n) => mk(n, '', n)), changed: [] } }, { now: NOW });
+  assert.equal(six.more && six.more.type, 'all', 'MY-07 ב: יותר מ-5 באחד החלקים - הכפתור מופיע'); assert.equal(six.items[six.items.length - 1].type, 'all', 'הפריט האחרון לניווט במקלדת');
+  const two = buildMineModel({ state: 'ok', data: { created: [1, 2, 3, 4, 5].map((n) => mk(n, '', n)), changed: [21, 22, 23, 24, 25].map((n) => mk(n, 'עודכן', n)) } }, { now: NOW });
+  assert.equal(two.more, null, 'שני חלקים של 5 כל אחד - אין כפתור');
+  const r = m.sections[1].rows[0];
+  assert.deepEqual([r.type, r.icon, r.title, r.orderNumber, r.detail, r.when], ['order', 'pencil', 'רחל כהן11', 11, 'עודכן תאריך האירוע', 'לפני 30 דק׳']);
+  assert.equal(r.url, '/orders/11', 'הקישור לפי מספר הזמנה, לא uuid');
+  assert.equal(m.sections[0].rows[0].icon, 'plus'); assert.equal(m.sections[0].rows[0].detail, 'הזמנה חדשה');
+});
+t('buildMineModel: בלי תקרה (התצוגה המלאה) כל הרשימה ובלי "הצג הכל"; סינון לפי שם / מספר / נוסח; אין התאמה', () => {
+  const all = buildMineModel({ state: 'ok', data: MINE_DATA }, { limit: null, now: NOW });
+  assert.equal(all.items.length, 10); assert.equal(all.more, null);
+  const byName = buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'כהן12', now: NOW });
+  assert.deepEqual(byName.sections.map((x) => x.rows.map((r) => r.orderNumber)), [[12]]);
+  assert.deepEqual(buildMineModel({ state: 'ok', data: MINE_DATA }, { term: '13', now: NOW }).items.filter((r) => r.type === 'order').map((r) => r.orderNumber), [13]);
+  assert.equal(buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'תאריך', now: NOW }).sections.length, 1);
+  const none = buildMineModel({ state: 'ok', data: MINE_DATA }, { term: 'zzz', now: NOW });
+  assert.equal(none.items.length, 0); assert.match(none.none, /אין התאמה/); assert.equal(none.more, null, 'אין "הכל" כשאין התאמה');
+});
+t('buildMineModel: מצבים - טוען / ריק / שגיאה (עם "נסי שוב") / degraded; פריט בלי מספר הזמנה תקין נזרק', () => {
+  assert.equal(buildMineModel({ state: 'loading' }).state, 'loading'); assert.equal(buildMineModel({ state: 'idle' }).state, 'loading'); assert.equal(buildMineModel(null).state, 'loading');
+  const empty = buildMineModel({ state: 'ok', data: { created: [], changed: [] } });
+  assert.equal(empty.none, 'עוד לא יצרת או שינית הזמנות'); assert.equal(empty.items.length, 0);
+  const err = buildMineModel({ state: 'error' }); assert.equal(err.state, 'error'); assert.deepEqual(err.items.map((x) => x.type), ['retry']);
+  assert.equal(buildMineModel({ state: 'ok', data: { created: [], changed: [], degraded: true } }).state, 'error');
+  const bad = buildMineModel({ state: 'ok', data: { created: [{ id: 'x', orderNumber: '../x', customerName: 'a' }, { id: 'y', orderNumber: -3, customerName: 'a' }, { id: 'z', orderNumber: 1.5, customerName: 'a' }, { id: 'ok-1', orderNumber: 2, customerName: 'b', createdAt: agoMin(5) }], changed: [] } }, { now: NOW });
+  assert.deepEqual(bad.items.filter((x) => x.type === 'order').map((x) => x.orderNumber), [2]);
+  assert.equal(bad.items[0].url, '/orders/2');
+});
+t('MY-04 ב: buildWhoChips - "שלי" ראשון ונבחר כברירת מחדל, אחרות לפי הסדר בלי העובדת עצמה; בחירה מסמנת שבב ונותנת whoName; בלי אחרות = בלי בורר', () => {
+  const people = { meId: 'e0', employees: [{ id: 'e0', name: 'דנה כהן' }, { id: 'e1', name: 'שרה לוי' }, { id: 'e2', name: ' רבקה ' }, { id: '', name: 'ריק' }, { id: 'e3', name: '  ' }] };
+  const d = buildWhoChips({ people });
+  assert.deepEqual(d.chips.map((c) => [c.id, c.name, c.on]), [[null, 'שלי', true], ['e1', 'שרה לוי', false], ['e2', 'רבקה', false]]); assert.equal(d.whoName, '');
+  const s = buildWhoChips({ people, who: 'e2' });
+  assert.deepEqual(s.chips.map((c) => c.on), [false, false, true]); assert.equal(s.whoName, 'רבקה');
+  assert.equal(buildWhoChips({ people, who: 'e0' }).chips[0].on, true, 'מזהה של עצמה / לא מוכר = שלי');
+  assert.deepEqual(buildWhoChips({ people: { meId: 'e0', employees: [{ id: 'e0', name: 'דנה' }] } }).chips, []);
+  assert.deepEqual(buildWhoChips({ people: null }).chips, []); assert.deepEqual(buildWhoChips({}).chips, []);
+});
+t('MY-04 ב: buildMineModel עם whoName - ההערה והריק מזכירים את העובדת; בלי whoName הנוסח המקורי', () => {
+  const m = buildMineModel({ state: 'ok', data: MINE_DATA }, { now: NOW, whoName: 'שרה לוי' });
+  assert.match(m.note, /שרה לוי/);
+  const e = buildMineModel({ state: 'ok', data: { created: [], changed: [] } }, { whoName: 'שרה לוי' });
+  assert.match(e.none, /שרה לוי/); assert.equal(buildMineModel({ state: 'ok', data: MINE_DATA }, { now: NOW }).note, 'מוצגות רק ההזמנות והשינויים שאת עשית.');
+});
+t('MY-01: תצוגת התוצאות המלאה - עמודות הטבלה, ייצוא Excel ומקטעי הדפסה / PDF לפי אותן שורות (שני חלקים), בלי שדות נוספים', () => {
+  const m = buildMineModel({ state: 'ok', data: MINE_DATA }, { limit: null, now: NOW });
+  assert.equal(m.more, null); assert.equal(m.items.length, 10);
+  assert.deepEqual([...MINE_TABLE_COLUMNS], ['סוג', 'שם', 'הזמנה', 'מה השתנה', 'מתי']);
+  const rec = mineTableRecords(m.sections[1].rows);
+  assert.deepEqual(rec[0].cells, ['שונתה', 'רחל כהן11', '#11', 'עודכן תאריך האירוע', 'לפני 30 דק׳']); assert.equal(rec[0].url, '/orders/11');
+  const ex = mineExportRecords(m.sections);
+  assert.equal(ex.length, 10); assert.deepEqual(Object.keys(ex[0]), [...MINE_TABLE_COLUMNS]); assert.equal(ex[0]['סוג'], 'חדשה'); assert.equal(ex[7]['סוג'], 'שונתה');
+  const sh = mineSheetSections(m.sections);
+  assert.deepEqual(sh.map((x) => [x.key, x.label, x.rows.length]), [['created', 'הזמנות חדשות שיצרתי', 7], ['changed', 'שינויים שעשיתי', 3]]);
+  for (const x of sh) for (const r of x.rows) assert.equal(r.length, x.cols.length, 'מספר התאים = מספר העמודות');
+  assert.deepEqual(mineExportRecords(null), []);
+});
+t('MY-04 ב: ?emp= ב-parseHomeParams רק יחד עם recent=mine, מזהה בטוח בלבד; adv / scope מבטלים אותו; מפתח ההוראה כולל אותו', () => {
+  assert.equal(parseHomeParams('?recent=mine&emp=abc-123_X').emp, 'abc-123_X');
+  assert.equal(parseHomeParams('?recent=mine').emp, null);
+  for (const bad of ['', 'a b', '../x', 'x'.repeat(65), 'a/b', '<s>', 'a;b']) assert.equal(parseHomeParams('?recent=mine&emp=' + encodeURIComponent(bad)).emp, null, bad);
+  assert.equal(parseHomeParams('?emp=abc').emp, null); assert.equal(parseHomeParams('?recent=changes&emp=abc').emp, null);
+  assert.equal(parseHomeParams('?recent=mine&emp=abc&adv=1').emp, null);
+  assert.equal(homeDirectiveKey(parseHomeParams('?recent=mine&emp=abc')), 'recent:mine:abc'); assert.equal(homeDirectiveKey(parseHomeParams('?recent=mine')), 'recent:mine');
+});
+t("אין טעינה בטעינת עמוד: useMyActivity לא טוען מעצמו (אין useEffect); הטעינה רק מ-useQuickPrefix כשהרשימה של '&' פתוחה או מ-HomeMine, והמטמון 20 שניות", () => {
+  const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
+  const hook = comp.slice(comp.indexOf('export function useMyActivity'), comp.indexOf('export function useQuickPrefix'));
+  assert.ok(hook.length > 200 && !/useEffect/.test(hook), 'useMyActivity בלי useEffect = בלי fetch בעליית הרכיב');
+  assert.ok(/MINE_TTL_MS = 20000/.test(comp));
+  assert.ok(/if \(src && open && srcLoad\) srcLoad\(\)/.test(comp), 'טעינה רק כשהרשימה של הקידומת (& / $) פתוחה');
+  assert.ok(/PREFIX_SOURCES\s*=\s*\{\s*mine: \{ buildModel/.test(comp) && /PREFIX_SOURCES\[hit\.def\.source\]/.test(comp) && /PREFIX_SOURCES\[qp\.def\.source\]/.test(comp), 'ניתוב המקורות דרך הרישום, בלי ענפי source קשיחים');
+  assert.ok(!/source === 'mine'/.test(comp), 'אין ענף mine קשיח ב-QuickPrefix.js');
+  const fetchers = ['HomeA5.js', 'HomeMine.js'].map((f) => homeSource(f)).join('\n');
+  assert.ok(!/fetch\(['"`]\/api\/me\/recent-activity/.test(fetchers), 'הקריאה לנתיב רק ב-useMyActivity');
+});
+t("'&' חווט בדף הבית ובתפריט: useMyActivity (מטמון + denied), HomeMine בתצוגת mine, /?recent=mine, ו-pick של 'הצג הכל'", () => {
+  const home = homeSource('HomeA5.js'); const comp = readFileSync(new URL('../app/components/search/QuickPrefix.js', import.meta.url), 'utf8');
+  assert.ok(home.includes('useMyActivity') && home.includes('mine,') && home.includes('<HomeMine'), 'HomeA5 משתמש ב-useMyActivity וב-HomeMine');
+  assert.match(home, /dir\.recent === 'mine'[\s\S]{0,400}setView\('mine'\)/);
+  assert.match(home, /dir\.recent === 'mine'[\s\S]{0,400}setMineWho\(dir\.emp\)/, '/?recent=mine&emp= נטען לבחירת העובדת');
+  assert.match(home, /m\.kind === 'mine' \? view === 'mine'/);
+  assert.ok(/state: 'denied'/.test(comp) && /res\.status === 403/.test(comp), '403 = "&" היא סתם טקסט');
+  assert.ok(/MINE_TTL_MS/.test(comp) && /mine-list/.test(comp) && /row\.type === 'retry'/.test(comp));
+  assert.ok(!/useMyActivity|recent-activity/.test(homeSource('LegacyHome.js')), 'הדף הישן לא נגע');
+  const menu = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  assert.ok(menu.includes('useQuickPrefix') && menu.includes('MineRowBody') && menu.includes('useMyActivity'), 'חיפוש התפריט משתמש באותו מנגנון');
 });
 
 console.log('שורת החיפוש: בלי כפתור "אחרונים"');
