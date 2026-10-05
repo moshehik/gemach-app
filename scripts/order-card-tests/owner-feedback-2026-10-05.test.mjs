@@ -203,3 +203,13 @@ test('tall(): top = min(snav + 16, גובה חלון - גובה רייל - 16) �
   assert.equal(top(64, 600, 900), -316);
   assert.equal(top(64, 900, 400), 80);
 });
+
+// דוח ההשוואה F13: אייקון המעבר ישן/חדש לא דוחף את הכלים
+test('PageVariantToggle בכותרת: מחוץ לזרימה (absolute) ברווח העליון מ-641px - הכלים נשארים במקום העיצוב; בצר נשאר בזרימה', () => {
+  const css = read(`${OC}/css/oc-base.css`);
+  assert.match(css, /@media \(min-width:641px\)\{\.gm-ds\.gm-oc \.oc-app \.topbar > \.gm-pvt\{position:absolute;top:-46px;inset-inline-end:0\}\}/);
+  const m = css.match(/\.oc-app\{padding-top:(\d+)px\}/);
+  assert.ok(m && Number(m[1]) >= 46 + 4, 'הריפוד העליון מכיל את הלחצן (40px) בלי לגעת בתפריט');
+  assert.match(strip(read(`${OC}/OcTopbar.js`)), /<PageVariantToggle screen="order_card" placement="header" systemTip \/>/, 'הרכיב עצמו לא השתנה');
+  assert.match(read('app/components/variant/pageVariantToggle.css'), /\.gm-pvt\{position:relative;display:inline-flex/);
+});

@@ -32,6 +32,9 @@
 .gm-ds.gm-oc .back{padding:1px 6px}
 /* סמל נעילה במקום מחיקה (מחיקה חסומה): לא-פעיל - בלי הדגשת לחיצה, עדיין ניתן למיקוד לטולטיפ */
 .gm-ds.gm-oc .topbar .xlbtn.oc-nodel{cursor:not-allowed;opacity:.8}
+/* דוח ההשוואה F13: אייקון "ישן / חדש" (PageVariantToggle, רק להנהלה ראשית / מתכנת) דחף את קבוצת הכלים מ-x=44 ל-x=98. בעיצוב אין אותו - לכן הוא יוצא מהזרימה
+   ויושב ברווח העליון שמעל הכותרת (הריפוד העליון של .oc-app, 50px), בקצה הכלים; הכלים נשארים במקום שבעיצוב. במסך צר (ריפוד 18px) הוא נשאר בזרימה. */
+@media (min-width:641px){.gm-ds.gm-oc .oc-app .topbar > .gm-pvt{position:absolute;top:-46px;inset-inline-end:0}}
 /* #hdrChips ריק תמיד (R1) */
 .gm-ds.gm-oc #hdrChips:empty{display:none}
 
