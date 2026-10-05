@@ -2210,8 +2210,11 @@ export default function NewOrderPage() {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px', minHeight: '38px', alignItems: 'center' }}>
                   {availableSizes.length === 0 ? (
-                    <p className="hint">
-                      {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
+                    // דיווח a2e3f590: בזמן טעינת נתוני המלאי (loadingPreload) הרשימה ריקה - הצגנו בטעות "אין מידות זמינות"
+                    <p className="hint" role="status">
+                      {newItem.dressModelId
+                        ? ((loadingPreload || loadingSizes) ? 'טוען מידות…' : 'אין מידות זמינות לתאריך זה.')
+                        : 'בחר דגם כדי לראות מידות זמינות.'}
                     </p>
                   ) : (
                     availableSizes.map(s => {
