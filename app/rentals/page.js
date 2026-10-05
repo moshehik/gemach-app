@@ -17,6 +17,7 @@ import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn'
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG } from '@/lib/businessDays';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import RentedPastEventWidget from '@/app/components/RentedPastEventWidget';
+import { SearchNotices } from '../../components/SearchNotices';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
 const PAGE_SIZE = 50;
@@ -157,6 +158,8 @@ export default function RentalsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  // הודעות החיפוש מהשרת (api/orders -> notices): ברקוד / מקלדת אנגלית / שמות דומים (הטווח בהשכרות לא מורחב)
+  const [searchNotices, setSearchNotices] = useState([]);
 
   const handleSort = (column) => {
     if (sort === column) {
@@ -211,6 +214,7 @@ export default function RentalsPage() {
         setPage(targetPage);
         setTotalPages(cached.totalPages || 1);
         setTotalCount(cached.total || 0);
+        setSearchNotices(cached.notices || []);
         setLoading(false);
       }
 
@@ -224,6 +228,7 @@ export default function RentalsPage() {
       setPage(targetPage);
       setTotalPages(data.totalPages || 1);
       setTotalCount(data.total || 0);
+      setSearchNotices(data.notices || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -457,6 +462,8 @@ export default function RentalsPage() {
       {/* "השכרות" מול "החזרות" נבחרים רק דרך קישורי הסיידבר (#rented/#returned) - הלשוניות
          בתוך העמוד הוסרו לבקשת המשתמש (8e647af8); הכותרת למעלה מציגה את המצב הנוכחי. */}
       {/* תת-סינון בתוך הלשונית הפעילה - "הכל" (כולל חלקי) מול "חלקי בלבד" */}
+      {!isAiModeActive && <SearchNotices notices={searchNotices} />}
+
       <div className="pill-tabs" style={{ marginBottom: '20px' }}>
         {activeTabGroup === 'rentals' ? (
           <>

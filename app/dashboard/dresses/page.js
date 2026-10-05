@@ -8,6 +8,7 @@ import { useLabels } from '@/app/components/LabelsContext';
 import { fetchSharedJson, readCache, TTL } from '@/lib/apiCache';
 import { buildDressesListParams } from '@/app/lib/prefetchRoutes';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
+import { SearchNotices } from '../../../components/SearchNotices';
 
 export default function DressesManagement() {
   const { getLabel } = useLabels();
@@ -17,6 +18,8 @@ export default function DressesManagement() {
   const [filterStatus, setFilterStatus] = useState('active'); // 'active', 'inactive', 'deleted', 'all'
   const [settings, setSettings] = useState({ useModelNames: 'true', useFileNamesForImages: 'true' });
   const [catalogSearch, setCatalogSearch] = useState('');
+  // הודעות החיפוש מהשרת (api/dresses -> notices): מקלדת אנגלית
+  const [searchNotices, setSearchNotices] = useState([]);
   const [catalogSort, setCatalogSort] = useState({ key: 'name', direction: 'asc' });
   const [advancedFilters, setAdvancedFilters] = useState({
     name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false
@@ -52,6 +55,7 @@ export default function DressesManagement() {
         setDresses(cached.data);
         setTotalPages(cached.totalPages || 1);
         setTotalDresses(cached.total || 0);
+        setSearchNotices(cached.notices || []);
         setLoading(false); // UI becomes interactive instantly
       }
 
@@ -77,6 +81,7 @@ export default function DressesManagement() {
         setDresses(parsedData);
         setTotalPages(parsedTotalPages);
         setTotalDresses(parsedTotal);
+        setSearchNotices((data && data.notices) || []);
       }
     } catch (e) {
       console.error('Failed to fetch dresses:', e);
@@ -283,6 +288,8 @@ export default function DressesManagement() {
           </div>
         </div>
       </div>
+
+      <SearchNotices notices={searchNotices} />
 
       {/* סינון סטטוס: פעילים / לא פעילים / מחוקים / הכל */}
       <div className="pill-tabs" style={{ marginBottom: '20px' }}>

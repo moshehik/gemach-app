@@ -6,6 +6,8 @@ import useDebounce from '@/hooks/useDebounce';
 export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {
   const [query, setQuery] = useState('');
   const [customers, setCustomers] = useState([]);
+  // הודעת חיפוש מהשרת (api/customers -> notices): מקלדת אנגלית / שמות דומים
+  const [notice, setNotice] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -77,6 +79,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
         const data = await res.json();
         if (!controller.signal.aborted) {
           setCustomers(data.data || []);
+          setNotice((data.notices && data.notices[0] && data.notices[0].text) || '');
         }
       } catch (err) {
         if (err.name === 'AbortError') return;
@@ -140,6 +143,11 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     <>
       {isOpen && customers.length > 0 && (
         <div ref={dropdownRef} style={{ ...dropdownBaseStyle, maxHeight: '250px', overflowY: 'auto' }}>
+          {notice && (
+            <div role="status" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
+              {notice}
+            </div>
+          )}
           {customers.map((c) => (
             <div
               key={c.id}
@@ -174,7 +182,8 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
       )}
       {isOpen && !loading && debouncedQueryEffective && customers.length === 0 && (
         <div ref={dropdownRef} style={{ ...dropdownBaseStyle, padding: '1rem', textAlign: 'center', color: 'var(--text-main)' }}>
-          לא נמצאו לקוחות.
+          <div>לא נמצאו לקוחות.</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה או עיר</div>
         </div>
       )}
     </>

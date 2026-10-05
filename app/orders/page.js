@@ -16,6 +16,7 @@ import PrintWizardModal from '../components/PrintWizardModal';
 import { fetchSharedJson, readCache, subscribe, TTL } from '../../lib/apiCache';
 import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
 import { listOrderDrafts } from '@/app/lib/orderDrafts';
+import { SearchNotices, ScopeNote, SearchEmptyHint } from '../../components/SearchNotices';
 
 // מיפוי סטטוס טקסטואלי (calculateOrderStatus/calculatePaymentStatus ב-lib/orderStatus.js, משותף
 // לכמה עמודים) אל מחלקת ה-badge של מערכת העיצוב "אריג" כאן בעמוד ההזמנות בלבד — לא נוגעים בעוזר המשותף עצמו.
@@ -160,6 +161,8 @@ export default function OrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [filterStatus, setFilterStatus] = useState('soon');
+  // הודעות החיפוש מהשרת (api/orders -> notices): "לא נמצא בהזמנות עתידיות - מוצגות תוצאות מכל התאריכים", מקלדת אנגלית, שמות דומים
+  const [searchNotices, setSearchNotices] = useState([]);
 
   // How long a pending cart holds its items. The server releases them back to the pool
   // based on the `inventory_hold_minutes` setting, so hardcoding 15 here made the countdown
@@ -278,6 +281,7 @@ export default function OrdersPage() {
         setOrders(sortPendingFirst(cached.data || [], holdMinutes));
         setTotalPages(cached.totalPages || 1);
         setTotalCount(cached.total || 0);
+        setSearchNotices(cached.notices || []);
         setLoading(false);
       } else {
         setLoading(true);
@@ -294,6 +298,7 @@ export default function OrdersPage() {
         setOrders(sortPendingFirst(data.data || [], holdMinutes));
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.total || 0);
+        setSearchNotices(data.notices || []);
       }
     } catch (e) {
       console.error(e);
@@ -326,6 +331,7 @@ export default function OrdersPage() {
         setOrders(sortPendingFirst(data.data || [], holdMinutes));
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.total || 0);
+        setSearchNotices(data.notices || []);
       }
     });
   }, [buildOrdersUrl, page, holdMinutes, isAiModeActive]);
@@ -559,6 +565,17 @@ export default function OrdersPage() {
         </form>
       </div>
 
+      {/* אינדיקציית טווח: בלשונית "בקרוב" מוצגות רק הזמנות עתידיות (94% מחיפושי הרשימה רצים עם הסינון הזה בלי שום סימן - ר' scratch/search-improvement/B).
+          כשחיפוש לא מצא כלום שם והשרת הרחיב לכל התאריכים (או תיקן מקלדת / שם דומה) - מוצגת הודעה במקום האינדיקציה. */}
+      {!isAiModeActive && searchNotices.length > 0 && <SearchNotices notices={searchNotices} />}
+      {!isAiModeActive && searchNotices.length === 0 && filterStatus === 'soon' && (
+        <ScopeNote
+          text="מוצגות הזמנות עתידיות בלבד"
+          actionLabel="הצג את כל התאריכים"
+          onAction={() => { setFilterStatus('all'); setPage(1); }}
+        />
+      )}
+
       {/* סינון סטטוס: הכפתור הפעיל קובע אילו הזמנות מוצגות בטבלה */}
       <div className="pill-tabs" style={{ marginBottom: '20px' }}>
         <button type="button" onClick={() => { setFilterStatus('soon'); setPage(1); }} className={filterStatus === 'soon' ? 'pill-tab active' : 'pill-tab'} title="בקרוב (החל מהיום ואילך)">
@@ -785,6 +802,16 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
+              {orders.length === 0 && (
+                <tr>
+                  <td colSpan={9}>
+                    <SearchEmptyHint
+                      title={search ? `לא נמצאו הזמנות עבור "${search}"` : 'אין הזמנות להצגה'}
+                      hint={search ? 'אפשר לחפש לפי שם לקוח, מספר הזמנה, טלפון (בכל צורת כתיבה), ברקוד, דגם, תאריך עברי (כז תשרי) או תאריך לועזי (5/10)' : ''}
+                    />
+                  </td>
+                </tr>
+              )}
               {orders.map(order => {
                 const isPaid = (order.totalPaid >= order.totalAmount && order.totalAmount > 0) || order.totalPaid > 0 || order.status === 'שולם' || order.status === 'שולם חלקי';
                 const pendingItem = (!order.legacyId && !isPaid) ? order.items?.find(i => i.cartStatus === 'pending') : null;
