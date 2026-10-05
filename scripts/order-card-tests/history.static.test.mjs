@@ -134,3 +134,10 @@ test('D3: כרטיס היומן מציג כפתור משמרת רק כשהצומ
   assert.match(card, /doneBy && n\.shift \? <ShiftButton/);
   assert.ok(!/משמרת ·/.test(card));
 });
+
+test('לשונית היסטוריה: אין כותרת "מותאם" / "הפרטים המלאים של כל השינויים" מעל "פעולות ושינויים" (בעלים 2026-10-05)', () => {
+  const tab = strip(read('app/components/order-card/tabs/OcHistoryTab.js'));
+  assert.ok(!/מותאם|הפרטים המלאים של כל השינויים|sect-h|oc-sect-t/.test(tab));
+  assert.ok(!/oc-sect-t/.test(read('app/components/order-card/css/oc-history.css')));
+  assert.match(read('app/components/order-card/parts/OcHistoryFeed.js'), /<h2>פעולות ושינויים<\/h2>/, 'the feed card carries its own title');
+});
