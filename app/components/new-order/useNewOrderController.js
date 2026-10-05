@@ -107,6 +107,15 @@ export default function useNewOrderController({ router }) {
       .catch(err => console.error(err));
   }, []);
 
+  // 1cbaf995 / fdce699f: נווה יעקב לא מזמינים חו"ל / תפוסה ארוכה (allow_abroad_long_stay_orders). כשההגדרה כבויה האשף תמיד במצב אירוע רגיל
+  // (תאריך בודד) - גם אם ה-state כבר הוגדר כ-isAbroad. ברירת מחדל (חסר / כל ערך שאינו 'false') = מוצג כמו תמיד.
+  const allowAbroad = NL.abroadAllowedOf(settings);
+  useEffect(() => {
+    if (allowAbroad) return;
+    setRangePending(null);
+    setOrder(prev => ((prev.isAbroad || prev.fromDate || prev.toDate) ? { ...prev, isAbroad: false, fromDate: '', toDate: '' } : prev));
+  }, [allowAbroad, order.isAbroad, order.fromDate, order.toDate]);
+
   // R15 (אושר): סניף ביצוע נזכר מההזמנה הקודמת במחשב הזה
   useEffect(() => {
     if (settings.track_branch_on_order !== 'true') return;
@@ -314,6 +323,8 @@ export default function useNewOrderController({ router }) {
 
   // handleDateChangeWithValidation: R13 + Q5 - חוסר מלאי חוסם את השינוי ומוצג בחלון עם פירוט (לא alert)
   const handleDateChangeWithValidation = async (fieldOrUpdates, valueIfField) => {
+    const attempted = typeof fieldOrUpdates === 'object' ? fieldOrUpdates : { [fieldOrUpdates]: valueIfField };
+    if (NL.abroadDateChangeBlocked(allowAbroad, attempted)) return false; // 1cbaf995 / fdce699f
     const prop = NL.proposeDateChange(order, fieldOrUpdates, valueIfField);
     if (prop.error) { say('info', prop.error); return false; }
     const { proposedOrder } = prop;
@@ -760,7 +771,7 @@ export default function useNewOrderController({ router }) {
 
   return {
     // מצב
-    step, stepKey, setStep, go, goStep, openInfo, settings, todayKey,
+    step, stepKey, setStep, go, goStep, openInfo, settings, todayKey, allowAbroad,
     searchMode, setSearchMode, phoneSearchInput, setPhoneSearchInput, isCheckingPhone, foundCustomersFromPhone, setFoundCustomersFromPhone, pickedFound, setPickedFound,
     listQuery, setListQuery, listResults, listLoading, pickFromList,
     order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf,

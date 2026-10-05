@@ -203,6 +203,13 @@ export function proposeDateChange(order, fieldOrUpdates, valueIfField) {
   return { proposedOrder };
 }
 
+// 1cbaf995 / fdce699f (נווה יעקב): allow_abroad_long_stay_orders='false' - אין חו"ל / תפוסה ארוכה. הגדרה חסרה / כל ערך אחר = מותר (כמו תמיד).
+export const abroadAllowedOf = (settings) => (settings || {}).allow_abroad_long_stay_orders !== 'false';
+// כשחו"ל כבוי, כל שינוי שמדליק isAbroad או נוגע ב-fromDate / toDate נחסם (אותו תנאי כמו הישן ב-handleDateChangeWithValidation)
+export function abroadDateChangeBlocked(allowAbroad, updates) {
+  return !allowAbroad && !!(updates && (updates.isAbroad || 'fromDate' in updates || 'toDate' in updates));
+}
+
 export function buildValidateBody(activeItems, proposedOrder, draftOrderId) {
   return {
     items: activeItems,

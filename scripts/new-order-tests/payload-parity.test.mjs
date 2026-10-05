@@ -74,6 +74,22 @@ test('שינוי תאריך: אותה הזמנה מוצעת ואותה שגיא�
   for (const [o, f, v] of cases) assert.deepStrictEqual(N.proposeDateChange(o, f, v), L.legacyProposeDateChange(o, f, v));
 });
 
+test('allow_abroad_long_stay_orders=false: אותו שער כמו בישן (חו"ל / טווח נחסמים, שינוי תאריך רגיל עובר)', () => {
+  assert.equal(N.abroadAllowedOf({}), true);
+  assert.equal(N.abroadAllowedOf({ allow_abroad_long_stay_orders: 'true' }), true);
+  assert.equal(N.abroadAllowedOf({ allow_abroad_long_stay_orders: 'false' }), false);
+  const cases = [
+    [ORDERS[0], 'eventDate', '2026-11-20'], [ORDERS[0], 'isAbroad', true], [ORDERS[0], 'isAbroad', false], [ORDERS[1], { fromDate: '2026-11-05', toDate: '2026-11-25' }],
+    [ORDERS[1], 'toDate', '2026-10-01'], [ORDERS[0], 'customSpacing', 2],
+  ];
+  for (const [o, f, v] of cases) {
+    const updates = typeof f === 'object' ? f : { [f]: v };
+    const legacyBlocked = L.legacyProposeDateChange(o, f, v, false) === undefined;
+    assert.equal(N.abroadDateChangeBlocked(false, updates), legacyBlocked, JSON.stringify(updates));
+    assert.equal(N.abroadDateChangeBlocked(true, updates), false);
+  }
+});
+
 test('הוספה לסל: פיצול מידות זמינות/אזלו, פריטים שנוצרים, כתובת המחיר', () => {
   const avail = [{ sizeText: '36', availableQuantity: 2, sampleItemId: 'a' }, { sizeText: '38', availableQuantity: 0, sampleItemId: 'b' }, { sizeText: '40', availableQuantity: 1, sampleItemId: 'c' }];
   for (const sizes of [['36'], ['36', '38', '40'], ['38'], ['42', '40']]) {

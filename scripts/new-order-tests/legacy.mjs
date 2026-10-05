@@ -51,10 +51,10 @@ export const legacyNedarimBody = (cust, cc, amount, no, getCustomerFullName) => 
 export const LEGACY_RESERVE_BODY_SRC = bodyLiteralAfter("fetch('/api/orders/reserve'");
 
 // --- הצעת שינוי תאריך (handleDateChangeWithValidation עד בדיקת המלאי) ---
-const proposeFn = fn(['order', 'fieldOrUpdates', 'valueIfField', 'alert'], region('const isMulti = typeof fieldOrUpdates', 'const activeItems = order.items.filter') + '\nreturn { proposedOrder };');
-export function legacyProposeDateChange(order, f, v) {
+const proposeFn = fn(['order', 'fieldOrUpdates', 'valueIfField', 'alert', 'allowAbroad'], region('const isMulti = typeof fieldOrUpdates', 'const activeItems = order.items.filter') + '\nreturn { proposedOrder };');
+export function legacyProposeDateChange(order, f, v, allowAbroad = true) {
   let msg = null;
-  const r = proposeFn(order, f, v, (m) => { msg = m; });
+  const r = proposeFn(order, f, v, (m) => { msg = m; }, allowAbroad);
   return msg ? { error: msg } : r;
 }
 

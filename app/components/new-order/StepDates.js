@@ -35,8 +35,9 @@ export default function StepDates({ ctl }) {
     <OneCard>
       <Blk>
         <SubH icon="cal" tone="gold" title="אירוע" />
-        <SegPill id="evSeg" label="סוג האירוע" options={EVT} value={!!o.isAbroad} onChange={(v) => { ctl.setRangePending(null); ctl.handleDateChangeWithValidation('isAbroad', v); }} />
-        <div className="lbl" style={{ marginTop: 18 }}>{o.isAbroad ? 'טווח תאריכים (מתאריך עד תאריך) *' : 'תאריך אירוע *'}</div>
+        {/* 1cbaf995 / fdce699f: allow_abroad_long_stay_orders='false' - בלי בורר סוג האירוע; תמיד אירוע רגיל (תאריך בודד) */}
+        {ctl.allowAbroad ? <SegPill id="evSeg" label="סוג האירוע" options={EVT} value={!!o.isAbroad} onChange={(v) => { ctl.setRangePending(null); ctl.handleDateChangeWithValidation('isAbroad', v); }} /> : null}
+        <div className="lbl" style={{ marginTop: ctl.allowAbroad ? 18 : 0 }}>{o.isAbroad ? 'טווח תאריכים (מתאריך עד תאריך) *' : 'תאריך אירוע *'}</div>
         <div className="big" id="dateBig" style={{ margin: '4px 0 12px' }}>{big}</div>
         <div id="hcWrap">
           {o.isAbroad ? (
