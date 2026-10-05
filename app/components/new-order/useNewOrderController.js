@@ -429,7 +429,7 @@ export default function useNewOrderController({ router }) {
     }, 300);
     return () => { off = true; clearTimeout(t); };
      
-  }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.items, order.isDelivery, order.deliveryCity, order.deliveryDirection, settings.enable_alterations]);
+  }, [newItem.dressModelId, newItem.selectedSizes, newItem.neckAlteration, newItem.sleeveAlteration, newItem.lengthAlteration, order.eventDate, order.isAbroad, order.items, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection, settings.enable_alterations]);
 
   const addItemToOrder = async () => {
     setAddError('');
@@ -486,7 +486,7 @@ export default function useNewOrderController({ router }) {
       .then(data => { setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 }); setCalculating(false); })
       .catch(() => setCalculating(false));
      
-  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection]);
   const totalAmount = calculatedData.totalAmount;
 
   useEffect(() => {

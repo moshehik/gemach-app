@@ -332,6 +332,8 @@ export function buildCalculateBody(order) {
     isAbroad: order.isAbroad,
     isDelivery: order.isDelivery,
     deliveryCity: order.deliveryCity,
+    // נפילה-לאחור של עיר המשלוח לעיר הלקוח גם בחישוב השרת - ר' resolveEffectiveDeliveryCity (lib/pricingCalc.js). כמו בישן (06467870 / 3a4d36df)
+    customerCity: (order.selectedCustomer && order.selectedCustomer.city) || '',
     deliveryDirection: order.deliveryDirection
   };
 }
