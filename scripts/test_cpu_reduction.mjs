@@ -84,7 +84,7 @@ await t('מסכי עריכת הגדרות קוראים GET /api/settings עם ?f
 console.log('5. רשימת דיווחי התקלות (לא ה-light) במטמון 60 שנ\'');
 await t('ErrorReportWindow קורא את הרשימה דרך fetchFreshJson (60 שנ\'), בלי GET גולמי; הבדיקה הקלה נשארה fetch גולמי ב-ErrorReportButton', () => {
   const win = stripComments(read('app/components/errorReport/ErrorReportWindow.js'));
-  assert.match(win, /fetchFreshJson\('\/api\/error-report', \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/);
+  assert.match(win, /fetchFreshJson\(REPORTS_LIST_URL, \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/); // CPU phase 1B: REPORTS_LIST_URL = /api/error-report?take=50
   assert.match(win, /const REPORTS_LIST_MAX_AGE_MS = 60 \* 1000;/);
   assert.doesNotMatch(win, /fetch\('\/api\/error-report'\)/);
   const btn = stripComments(read('app/components/ErrorReportButton.js'));

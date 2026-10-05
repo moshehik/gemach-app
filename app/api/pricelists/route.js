@@ -1,11 +1,12 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
+import { cachedJson } from '@/lib/httpCache';
 
 
 
 
-export async function GET() {
+export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const pricelists = await prisma.priceList.findMany({
@@ -14,7 +15,8 @@ export async function GET() {
                 { fromSize: 'asc' }
             ]
         });
-        return NextResponse.json(pricelists);
+        // CPU phase 1B: private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js). מסך עריכת מחירון קורא cache:'no-store' אחרי כל כתיבה.
+        return cachedJson(request, pricelists);
     } catch (error) {
         console.error("Error fetching pricelists:", error);
         return NextResponse.json({ error: "Failed to fetch pricelists" }, { status: 500 });
