@@ -196,26 +196,41 @@ await t('מס\' הזמנה מדויק: ORDER BY שם אותו ראשון, והפ
   assert.equal(sqlOf(/FROM "Order" o/).params[1], -1, '7 ספרות = ברקוד, לא מס\' הזמנה');
   assert.ok(!/CASE WHEN o\."orderId" = \$2/.test(sqlOf(/FROM "Order" o/).sql));
 });
-await t('טלפון בכל צורה: השוואת ספרות בלבד בלקוחות (phone1+phone2) ובהזמנות (גם phone2), עם 972', async () => {
+await t('טלפון בכל צורה: מזהי לקוחות בשאילתה קטנה אחת (regexp רק על Customer, ORDER BY id, LIMIT 300+1), והשאילתות הראשיות מסננות לפי customerId = ANY - בלי regexp_replace על שורות ההזמנה', async () => {
   reset();
+  T.customers = [{ id: 'cx1' }, { id: 'cx2' }];
   await run('050-123-4567');
-  for (const re of [/FROM "Customer"/, /FROM "Order" o/]) {
-    const q = sqlOf(re);
+  const ids = T.sql[0];
+  const s0 = norm(ids.sql);
+  assert.ok(s0.startsWith('SELECT "id" FROM "Customer" WHERE (regexp_replace(') && s0.includes('IN ($1, $2)') && s0.includes('"phone2"'), s0);
+  assert.ok(s0.endsWith('ORDER BY "id" LIMIT 301'), s0);
+  assert.deepEqual(ids.params, ['0501234567', '972501234567']);
+  for (const re of [/FROM "Customer" WHERE "isDeleted"/, /FROM "Order" o/]) {
+    const q = T.sql.find((x) => re.test(norm(x.sql)));
     const s = norm(q.sql);
-    assert.ok(s.includes(`regexp_replace(COALESCE(${re.source.includes('Customer') ? 'phone1' : 'c.phone1'}, ''), '\\D', '', 'g') IN (`), s);
-    assert.ok(s.includes(re.source.includes('Customer') ? "regexp_replace(COALESCE(phone2" : 'regexp_replace(COALESCE(c.phone2'), 'phone2 נבדק גם');
-    assert.ok(q.params.includes('0501234567') && q.params.includes('972501234567'));
+    assert.ok(!/regexp_replace\(COALESCE\((c\.)?phone/.test(s), 'אין regexp_replace על טלפון בשאילתה הראשית: ' + s.slice(0, 200));
+    assert.ok(s.includes(re.source.includes('Customer') ? '"id" = ANY($' : 'o."customerId" = ANY($'), s);
+    assert.ok(q.params.some((p) => Array.isArray(p) && p.join() === 'cx1,cx2'), 'מזהי הלקוחות כפרמטר מערך');
   }
   assert.ok(norm(sqlOf(/FROM "Order" o/).sql).includes('c.phone2 LIKE $1'), 'phone2 גם בהתאמה הרגילה של הזמנות');
+});
+await t('טלפון חלקי: מ-5 ספרות בלבד מחפשים לפי ספרות; 4 ספרות - רק ה-LIKE הרגיל (בלי שאילתת מזהים)', async () => {
+  reset();
+  await run('0501');
+  assert.ok(!T.sql.some((x) => /regexp_replace/.test(x.sql)), '4 ספרות: אין סריקת טלפונים');
+  reset();
+  await run('05012');
+  const ids = T.sql[0];
+  assert.ok(/regexp_replace/.test(ids.sql) && ids.params.includes('%05012%') && ids.params.includes('%9725012%'), '5 ספרות: חלקי + צורה בינלאומית');
 });
 await t('איחוד עם הרשימות: 9 ספרות בלי 0 מוביל = טלפון; טלפון חלקי מתאים גם לצורה הבינלאומית (972)', async () => {
   reset();
   await run('501234567');
-  const q = sqlOf(/FROM "Customer"/);
+  const q = T.sql[0];
   assert.ok(q.params.includes('0501234567') && q.params.includes('972501234567'), '9 ספרות בלי 0 = 0501234567');
   reset();
   await run('050123');
-  const p = sqlOf(/FROM "Customer"/).params;
+  const p = T.sql[0].params;
   assert.ok(p.includes('%050123%') && p.includes('%97250123%'), 'חלקי: גם %972...%');
 });
 await t('הטקסט שהוקלד לא נכנס ל-SQL (פרמטרים בלבד) והברחת % / _', async () => {
