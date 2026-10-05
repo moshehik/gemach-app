@@ -19,7 +19,7 @@ async function bigPng() {
 }
 const post = (file) => { const fd = new FormData(); if (file) fd.append('file', file); return up.POST(new Request('http://localhost/api/upload-logo', { method: 'POST', body: fd })); };
 
-beforeEach(() => { globalThis.__SETTINGS.length = 0; globalThis.__MOCK_CALLS.length = 0; globalThis.__AUTH = true; SC.invalidateSettingsCache(); });
+beforeEach(() => { globalThis.__ROLE_OK = true; globalThis.__AUTH_ROLES = []; globalThis.__SETTINGS.length = 0; globalThis.__MOCK_CALLS.length = 0; globalThis.__AUTH = true; SC.invalidateSettingsCache(); });
 
 test('העלאה: נשמר data URL דחוס (לא המקור), התשובה כוללת לפני/אחרי', async () => {
   const input = await bigPng();
@@ -46,6 +46,14 @@ test('העלאה: אחרי שמירה הלוגו החדש מוגש מיד (מט�
   assert.equal(res.status, 200);
   const row = await SC.getCachedSetting('BRAND_LOGO');
   assert.ok(row.value.length > 100 && row.value !== 'data:image/png;base64,AAAA');
+});
+
+test('העלאה: רק הנהלה ראשית (checkAuth("הנהלה ראשית")); עובד מחובר רגיל => 401 ולא נכתב ולא נדחס כלום', async () => {
+  globalThis.__ROLE_OK = false;
+  const res = await post(new File([await bigPng()], 'l.png', { type: 'image/png' }));
+  assert.equal(res.status, 401);
+  assert.ok(globalThis.__AUTH_ROLES.includes('הנהלה ראשית'));
+  assert.equal(globalThis.__SETTINGS.length, 0);
 });
 
 test('העלאה: קובץ שאינו תמונה => 400 בעברית ולא נכתב כלום', async () => {
@@ -77,11 +85,34 @@ test('הגשה: 404 כשאין לוגו; כשיש - Cache-Control ארוך, ETag
   assert.equal(r1.headers.get('content-type'), 'image/png');
   assert.match(r1.headers.get('cache-control'), /max-age=31536000/);
   assert.equal(r1.headers.get('x-logo-oversize'), null);
+  assert.equal(r1.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(r1.headers.get('content-security-policy'), "default-src 'none'; sandbox");
   assert.ok(Buffer.from(await r1.arrayBuffer()).equals(png));
   const etag = r1.headers.get('etag');
   assert.ok(etag);
   const r2 = await logo.GET(new Request('http://localhost/api/logo', { headers: { 'if-none-match': etag } }));
   assert.equal(r2.status, 304);
+});
+
+test('הגשה: שורה ישנה עם SVG/HTML לא מוגשת (415) ובכל מקרה עם nosniff + CSP', async () => {
+  for (const mime of ['image/svg+xml', 'text/html', 'application/javascript']) {
+    SC.invalidateSettingsCache(); globalThis.__SETTINGS.length = 0;
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    globalThis.__SETTINGS.push({ id: 'x', key: 'BRAND_LOGO', value: LC.toDataUrl(svg, mime), updatedAt: new Date('2026-10-01T00:00:00Z') });
+    const r = await logo.GET(new Request('http://localhost/api/logo'));
+    assert.equal(r.status, 415, mime);
+    assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+    assert.match(r.headers.get('content-security-policy'), /sandbox/);
+    assert.ok(!/svg|html|javascript/.test(r.headers.get('content-type') || ''), 'never echoes the stored type');
+  }
+  // webp/jpeg/gif מותרים, image/jpg הישן מנורמל
+  for (const [mime, expected] of [['image/webp', 'image/webp'], ['image/jpeg', 'image/jpeg'], ['image/gif', 'image/gif'], ['image/jpg', 'image/jpeg']]) {
+    SC.invalidateSettingsCache(); globalThis.__SETTINGS.length = 0;
+    globalThis.__SETTINGS.push({ id: 'x', key: 'BRAND_LOGO', value: LC.toDataUrl(Buffer.from('abc'), mime), updatedAt: new Date('2026-10-02T00:00:00Z') });
+    const r = await logo.GET(new Request('http://localhost/api/logo'));
+    assert.equal(r.status, 200, mime);
+    assert.equal(r.headers.get('content-type'), expected);
+  }
 });
 
 test('הגשה: לוגו ישן וגדול (>300KB) מוגש עם מטמון ארוך + x-logo-oversize', async () => {

@@ -7,7 +7,8 @@ import { compressLogoBuffer, toDataUrl, LogoError, LOGO_MAX_INPUT_BYTES } from '
 // העלאת לוגו: כל העלאה נדחסת בשרת (עד 512px בצד הארוך, שקיפות נשמרת, יעד ~100KB) - המקור שהועלה לעולם לא נשמר.
 // ר' lib/logoCompress.js. התשובה כוללת לפני/אחרי (originalBytes/storedBytes) להצגה למנהל.
 export async function POST(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // הנהלה ראשית/מתכנת בלבד (כמו POST /api/settings): העלאה מפעילה sharp (CPU של שניות) והחלפת לוגו המערכת. מסכי ההעלאה כולם תחת /admin.
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const formData = await request.formData();
     const file = formData.get('file');
