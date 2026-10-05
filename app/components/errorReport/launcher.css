@@ -16,3 +16,6 @@
 }
 @media (prefers-reduced-motion:reduce){.gm-er-launch .er-fab{transition:none}}
 @media print{.gm-er-launch{display:none!important}}
+/* הבעלים 5.10.2026: להסתיר את לשונית הדיווח הצפה במחשב - הדיווח נשאר באיקון בסרגל (מעטפת ישנה) / בתפריט הצד (מעטפת חדשה) ובכוכב. */
+/* במסכים צרים (טלפון) נשארת, כי איקון תפריט הצד מוסתר שם. */
+@media (min-width:641px){.gm-er-launch{display:none}}
