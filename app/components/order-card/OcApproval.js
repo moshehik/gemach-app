@@ -28,6 +28,7 @@ function ApproverPicker({ emps, sel, onPick, labelId }) {
   const wrapRef = useRef(null);
   const btnRef = useRef(null);
   const listRef = useRef(null);
+  const pointerIn = useRef(false); // לחיצה (גם על פס הגלילה של הרשימה) בתוך הבורר - לא נחשבת כיציאת המוקד
   const list = emps || [];
   const cur = list.find((e) => String(e.id) === String(sel)) || null;
   const empty = emps !== null && list.length === 0;
@@ -46,6 +47,20 @@ function ApproverPicker({ emps, sel, onPick, labelId }) {
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }, [open, act]);
 
+  // המוקד עבר לשדה הקוד (Tab) / מחוץ לבורר -> הרשימה נסגרת (לא נשארת פתוחה מעל השדה). לחיצה בתוך הבורר (אפשרות / פס גלילה) לא סוגרת.
+  const onBlur = (e) => {
+    if (pointerIn.current) return;
+    if (wrapRef.current && e.relatedTarget && wrapRef.current.contains(e.relatedTarget)) return;
+    setOpen(false);
+  };
+  const onPointerDown = () => {
+    pointerIn.current = true;
+    document.addEventListener('mouseup', () => {
+      pointerIn.current = false;
+      if (btnRef.current && wrapRef.current && !wrapRef.current.contains(document.activeElement)) btnRef.current.focus();
+    }, { once: true });
+  };
+
   const show = () => { if (!list.length) return; setAct(Math.max(0, list.findIndex((e) => String(e.id) === String(sel)))); setOpen(true); };
   const choose = (i) => { const e = list[i]; if (!e) return; setOpen(false); onPick(e.id); };
   const onKey = (e) => {
@@ -61,7 +76,7 @@ function ApproverPicker({ emps, sel, onPick, labelId }) {
   };
 
   return (
-    <div className="oc-appr-pick" ref={wrapRef}>
+    <div className="oc-appr-pick" ref={wrapRef} onBlur={onBlur} onMouseDown={onPointerDown}>
       <button
         type="button" ref={btnRef} id="oc-appr-sel" className="inp oc-appr-sel" role="combobox" data-oc-esc="own"
         aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? 'oc-appr-list' : undefined} aria-labelledby={`${labelId} oc-appr-sel`}

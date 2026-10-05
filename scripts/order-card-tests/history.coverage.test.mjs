@@ -645,3 +645,14 @@ test('F2 "כללי": יצירת הזמנה / סטטוס / הערות / ביטו�
   assert.ok(other.entries.length >= 2 && other.entries.every((e) => e.cat !== 'gen'));
   assert.equal(other.counts.categories.gen, 0);
 });
+
+test('פעולה ברמת ההזמנה שאין לה מיפוי: שורה כללית (gen) עם unmapped, לא "פריטים"; פעולה בפריט שאין לה מיפוי נשארת items', () => {
+  const r = feed([row({ action: 'SOME_FUTURE_ORDER_ACTION' }), row({ entityType: 'OrderItem', entityId: ITEM, action: 'SOME_FUTURE_ITEM_ACTION' })]);
+  assert.equal(r.unmappedCount, 2);
+  const ord = r.entries.find((e) => /SOME_FUTURE_ORDER_ACTION/.test(e.text));
+  const itm = r.entries.find((e) => /SOME_FUTURE_ITEM_ACTION/.test(e.text));
+  assert.ok(ord && itm);
+  assert.equal(ord.cat, 'gen');
+  assert.equal(itm.cat, 'items');
+  assert.equal(r.counts.categories.gen, 1);
+});

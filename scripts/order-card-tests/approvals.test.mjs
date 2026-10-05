@@ -65,3 +65,11 @@ test('D8: feature:payment_exit_approval - ברירת מחדל מנהל ומעל�
   const other = META.getCatalogItem('feature:item_change_approval');
   for (const r of [1, 3]) assert.equal(META.defaultValueForRoleId(other, r, {}), false, 'פריטי מאשר אחרים עדיין סגורים כברירת מחדל');
 });
+
+test('D7: בורר המאשר נסגר כשהמוקד יוצא ממנו (Tab לשדה הקוד), בלי לסגור על לחיצה בתוך הרשימה / פס הגלילה', () => {
+  const src = read('OcApproval.js');
+  assert.match(src, /onBlur=\{onBlur\}/);
+  assert.match(src, /const onBlur = \(e\) => \{[\s\S]*?pointerIn\.current\) return;[\s\S]*?relatedTarget[\s\S]*?setOpen\(false\)/);
+  assert.match(src, /onMouseDown=\{onPointerDown\}/);
+  assert.match(src, /if \(e\.key === 'Escape'\) \{ if \(open\)/); // Esc עדיין סוגר רק את הרשימה
+});
