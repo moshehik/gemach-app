@@ -12,7 +12,7 @@ import './errorReport.css';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { fetchSharedJson, fetchFreshJson, TTL } from '../../../lib/apiCache';
 import { captureElement, captureViewport } from '../../../lib/clientCapture';
 import useElementPicker, { describeElement } from '../useElementPicker';
 import useActionRecorder from '../useActionRecorder';
@@ -29,6 +29,7 @@ import PageVariantToggle from '../variant/PageVariantToggle';
 const NARROW_PX = 640; // גיליון תחתון
 const SPLIT_PX = 900; // פאנל: רשימה + שרשור זה לצד זה
 const CARD_W = 392;
+const REPORTS_LIST_MAX_AGE_MS = 60 * 1000; // הרשימה המלאה במטמון המשותף (fetchFreshJson) - ראה fetchReports
 const TOAST_MS = { info: 2600, other: 6500 };
 const hebrewDateTime = (d) => `${getHebrewDateString(d)} ${new Date(d).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
 const isTouch = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover:none)').matches;
@@ -145,13 +146,21 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
     if (authFailedRef.current) return null;
     const seq = ++fetchSeqRef.current;
     try {
-      const res = await fetch('/api/error-report');
-      if (res.status === 401) { authFailedRef.current = true; return null; }
-      if (!res.ok) return null;
-      const data = await res.json();
+      // CPU 5.10.2026: הרשימה המלאה (עד ~270KB) נשמרת במטמון המשותף ל-60 שנ' - פתיחה/סגירה חוזרת של החלון לא פונה לשרת (70% מהקריאות חזרו
+      // תוך דקה). כל כתיבה לדיווחים (שליחה, תגובה, ארכוב, סימון נקרא, החלטה על סקיצה) מבטלת אותה אוטומטית (lib/apiCache.js),
+      // וכך גם שינוי במונה "לא נקראו" בבדיקה הקלה (ErrorReportButton). הבדיקה הקלה (?light=1) לא עוברת כאן.
+      let data;
+      try {
+        data = await fetchFreshJson('/api/error-report', { maxAge: REPORTS_LIST_MAX_AGE_MS });
+      } catch (e) {
+        const m = (e && e.message) || '';
+        if (m.includes('HTTP 401')) { authFailedRef.current = true; return null; }
+        if (/^HTTP \d+/.test(m)) return null;
+        throw e;
+      }
       if (seq !== fetchSeqRef.current) return null;
       if (data.success) {
-        const list = data.reports || [];
+        const list = [...(data.reports || [])]; // עותק: הרשימה במטמון משותפת ואסור שתשתנה במקום
         const prog = data.isProgrammer || false;
         setReports(list);
         setIsProgrammer(prog);
