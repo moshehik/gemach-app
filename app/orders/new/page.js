@@ -2437,7 +2437,8 @@ export default function NewOrderPage() {
                 <h3 style={{ margin: 0 }}>פריטים ({order.items.length})</h3>
               </div>
 
-              <div style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
+              {/* דיווח 60d5cb50: בלי גלילה פנימית (היה maxHeight:42vh) - הסיכום נפתח כעמוד שלם והעמוד עצמו גולל */}
+              <div role="region" aria-label="רשימת פריטים בהזמנה">
                 {order.items.map((item, idx) => {
                   const calcItem = calculatedData.items[idx];
                   const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
