@@ -573,9 +573,48 @@ await t('חובות: מועמדות SQL חסומות (LIMIT 5000), הזמנות 
   assert.deepEqual(body.rows[0][1], ['חוב ₪450', 'amtd']);
   assert.equal(T.raw.length, 1);
   assert.match(T.raw[0].sql, /LIMIT \?\s*$/);
-  assert.equal(T.raw[0].values[T.raw[0].values.length - 1], 5000);
+  assert.equal(T.raw[0].values[T.raw[0].values.length - 1], 5001, 'LIMIT = תקרה + 1 כדי לזהות חיתוך');
+  assert.ok(T.raw[0].values.includes('טיוטה') && /<> \?/.test(T.raw[0].sql), 'ה-SQL לא כולל טיוטות שרת');
   assert.equal(T.calls.filter((c) => c.name === 'order.findMany')[0].args.take, 5000);
   assert.equal(T.calls.filter((c) => c.name === 'refund.findMany').length, 0, 'רק חובות = בלי שאילתת זיכויים');
+});
+await t('חובות: טיוטת שרת לא נכללת (גם אם ה-SQL החזיר אותה)', async () => {
+  allow('page:refunds');
+  const ok = fOrder({ totalAmount: 100 });
+  const draft = fOrder({ totalAmount: 100, status: 'טיוטה' });
+  const nul = fOrder({ totalAmount: 100, status: null });
+  T.orders = [ok, draft, nul];
+  T.rawRows = [ok, draft, nul].map((o) => ({ orderId: o.orderId }));
+  const { body } = await fin('flags=fn_debt');
+  assert.deepEqual(body.links.sort(), ['/orders/' + ok.orderId, '/orders/' + nul.orderId].sort());
+});
+await t('חובות: תקרת 5000 מועמדות בלי מסנן מצמצם -> truncated; בדיוק 5000 -> לא', async () => {
+  allow('page:refunds');
+  const o = fOrder({ totalAmount: 100 });
+  T.orders = [o];
+  T.rawRows = Array.from({ length: 5001 }, (_, i) => ({ orderId: i === 0 ? o.orderId : 900000 + i }));
+  assert.equal((await fin('flags=fn_debt')).body.truncated, true);
+  T.rawRows = Array.from({ length: 5000 }, (_, i) => ({ orderId: i === 0 ? o.orderId : 900000 + i }));
+  assert.equal((await fin('flags=fn_debt')).body.truncated, false);
+});
+await t('חובות: תקרה נחתכה + מסנן שם -> הסינון ב-DB על ההזמנות, חוב ישן שמחוץ ל-5000 נמצא, truncated=false', async () => {
+  allow('page:refunds');
+  const old = fOrder({ totalAmount: 100, eventDate: dayStart(-900), customer: cust({ firstName: 'דבורה', lastName: 'לוי' }) });
+  const other = fOrder({ totalAmount: 100, customer: cust({ firstName: 'רחל' }) });
+  T.orders = [old, other];
+  T.rawRows = Array.from({ length: 5001 }, (_, i) => ({ orderId: 900000 + i })); // ה-SQL החזיר רק מועמדות חדשות אחרות
+  const { body } = await fin('flags=fn_debt&name=' + encodeURIComponent('דבורה'));
+  assert.deepEqual(body.links, ['/orders/' + old.orderId]);
+  assert.equal(body.truncated, false);
+  const q = T.calls.filter((c) => c.name === 'order.findMany')[0].args;
+  assert.ok(!JSON.stringify(q.where).includes('"in"'), 'בלי רשימת המועמדות החתוכה');
+});
+await t('חובות: תקרה נחתכה + מסנן שם שעדיין מחזיר יותר מ-5000 -> truncated', async () => {
+  allow('page:refunds');
+  T.orders = Array.from({ length: 5001 }, (_, i) => fOrder({ totalAmount: 100, orderId: 700000 + i }));
+  T.rawRows = Array.from({ length: 5001 }, (_, i) => ({ orderId: 700000 + i }));
+  const { body } = await fin('flags=fn_debt&name=' + encodeURIComponent('רחל'));
+  assert.equal(body.truncated, true);
 });
 await t('זיכויים בלבד (fn_credit): בלי SQL של חובות; take 5000; צ׳יפ amtc', async () => {
   allow('page:refunds');
