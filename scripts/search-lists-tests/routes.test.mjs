@@ -118,6 +118,18 @@ await t('לקוחות: טקסט קצר מ-3 תווים שלא מצא - שאיל�
   assert.ok(T.calls.filter((c) => c.name === 'customer.findMany').length >= 2, 'נסיון חוזר רץ');
   assert.ok(T.calls.filter((c) => c.name === '$queryRawUnsafe').length <= 1, 'שמות דומים נשלפים פעם אחת');
 });
+await t('טלפון עם יותר מ-300 לקוחות תואמים: נחתך לפי id (קבוצה קבועה) ומוצגת הודעת "תוצאות חלקיות"', async () => {
+  customersFixture();
+  // phone1 עם מקפים: רק השוואת הספרות תופסת (לא contains על מה שהוקלד)
+  T.customers = Array.from({ length: 320 }, (_, i) => ({ id: 'cx' + String(1000 + i), firstName: 'לקוח' + i, lastName: 'בדיקה', phone1: '050-123-' + String(1000 + i), phone2: null, city: '', isDeleted: false }));
+  const r = await get(customersRoute, '/api/customers?search=' + encodeURIComponent('050123') + '&limit=1000');
+  assert.equal(r.body.total, 300, 'נחתך ל-300');
+  assert.ok(r.body.notices.some((n) => n.kind === 'partial' && /תוצאות חלקיות/.test(n.text)));
+  const sqls = T.raw.map((x) => x.sql).filter((s) => /regexp_replace/.test(s));
+  assert.ok(sqls.every((s) => /ORDER BY "id" LIMIT 301/.test(s)), 'מיון דטרמיניסטי + LIMIT+1');
+  const few = await get(customersRoute, '/api/customers?search=' + encodeURIComponent('0501231005'));  // 10 ספרות = שוויון מלא, תוצאה אחת
+  assert.equal(few.body.notices, undefined, 'בלי חיתוך אין הודעה');
+});
 await t('401 כשלא מחובר', async () => { T.authed = false; assert.equal((await get(customersRoute, '/api/customers?search=x')).status, 401); });
 
 // ---------------------------------------------------------------- דגמים

@@ -6,7 +6,7 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
 import {
-  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, phoneKeysFromInput,
+  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, phoneKeysFromInput,
 } from '@/lib/listSearch';
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
@@ -26,7 +26,7 @@ export async function GET(request) {
       for (const variant of buildRetryVariants(plan, { scopeRestricted: false, barcode: false, dateStage: false })) {
         const variantPlan = variant.text ? planListSearch(variant.text) : plan;
         const retry = await queryCustomersList(searchParams, { plan: variantPlan, cache, fuzzy: variant.fuzzy });
-        if (retry.total > 0) { result = { ...retry, notices: variant.notices }; break; }
+        if (retry.total > 0) { result = { ...retry, notices: [...variant.notices, ...(retry.notices || [])] }; break; }
       }
     }
     return NextResponse.json(result);
@@ -65,6 +65,7 @@ async function queryCustomersList(searchParams, opts) {
     // "תוצאות לפי עיר לא נכונות": מה שהוקלד בפועל נדרס ולא השפיע על השאילתה.
     const multiWordNameCond = search ? buildMultiWordNameCondition(search, 'firstName', 'lastName') : null;
     const conditions = [{ isDeleted: false }];
+    let phonePartial = false; // יותר מ-300 לקוחות תואמים לטלפון - התוצאות חלקיות (הודעה בתשובה)
     if (search) {
       // לקוחות לפי טלפון בכל צורת כתיבה (מקפים / +972 / בלי 0 מוביל, שני הטלפונים) ולפי שם דומה - lib/searchDb.js; רק כשהקלט מתאים.
       const [phoneIds, fuzzyIds] = await Promise.all([
@@ -73,6 +74,7 @@ async function queryCustomersList(searchParams, opts) {
       ]);
       // חיפוש שם מלא ("רחל כהן") - קודם כל מילה נבדקה רק כמכלול מול שדה
       // בודד, כך ששם פרטי+משפחה יחד מעולם לא התאים לאף שדה. ר' lib/searchUtils.js.
+      if (phoneIds.capped) phonePartial = true;
       conditions.push(customerSearchCondition(plan, { multiNameCond: multiWordNameCond, phoneIds, fuzzyIds }));
     }
     if (advFirstName) conditions.push({ firstName: { contains: advFirstName } });
@@ -80,6 +82,7 @@ async function queryCustomersList(searchParams, opts) {
     if (advPhone) {
       const advPhoneKeys = phoneKeysFromInput(advPhone);
       const advPhoneIds = advPhoneKeys ? await memoLookup(opts.cache, `advphone:${advPhone}`, () => findCustomerIdsByPhone(advPhoneKeys)) : [];
+      if (advPhoneIds.capped) phonePartial = true;
       conditions.push({
         OR: [
           { phone1: { contains: advPhone } },
@@ -137,6 +140,7 @@ async function queryCustomersList(searchParams, opts) {
       page,
       limit,
       ...(limitCapped ? { limitCapped: true } : {}),
+      ...(phonePartial ? { notices: [{ kind: 'partial', text: NOTICE_PARTIAL }] } : {}),
       totalPages: Math.ceil(totalCount / limit)
     };
   }

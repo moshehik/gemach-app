@@ -132,7 +132,10 @@ export function emulateRaw(sql, params) {
       if (!d) return false;
       return params.some((p) => (isLike ? d.includes(String(p).replace(/%/g, '')) : d === String(p)));
     };
-    return T.customers.filter((c) => hit(c.phone1) || hit(c.phone2)).map((c) => ({ id: c.id }));
+    let rows = T.customers.filter((c) => hit(c.phone1) || hit(c.phone2)).map((c) => ({ id: c.id }));
+    if (/ORDER BY "id"/.test(sql)) rows = rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // מדמה ORDER BY "id"
+    const lim = /LIMIT (\d+)/.exec(sql);
+    return lim ? rows.slice(0, Number(lim[1])) : rows;
   }
   if (/similarity\(/.test(sql) && /FROM "Customer"/.test(sql)) {
     // מועמדי pg_trgm: מדמה DB רופף - מחזיר את כל הלקוחות הלא-מחוקים; האימות המדויק נעשה ב-JS (lib/searchFuzzy.js)

@@ -16,7 +16,7 @@ import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 import {
-  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, sizeTextFilter, phoneKeysFromInput,
+  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
@@ -46,7 +46,7 @@ export async function GET(request) {
       for (const variant of buildRetryVariants(plan, { scopeRestricted: isScopeRestricted(searchParams) })) {
         const variantPlan = variant.text ? planListSearch(variant.text) : plan;
         const retry = await queryOrdersList(searchParams, { plan: variantPlan, cache, widen: variant.widen, fuzzy: variant.fuzzy, barcodeStage: variant.barcode, dateStage: variant.dateStage });
-        if (retry.total > 0) { result = { ...retry, notices: variant.notices }; break; }
+        if (retry.total > 0) { result = { ...retry, notices: [...variant.notices, ...(retry.notices || [])] }; break; }
       }
     }
     return NextResponse.json(result);
@@ -711,6 +711,8 @@ async function queryOrdersList(searchParams, opts) {
       page,
       limit,
       ...(limitCapped ? { limitCapped: true } : {}),
+      // חיפוש טלפון שנחתך (יותר מ-300 לקוחות תואמים): התוצאות חלקיות - מודיעים ולא מציגים כאילו זה הכל
+      ...(searchPhoneIds.capped || advPhoneIds.capped ? { notices: [{ kind: 'partial', text: NOTICE_PARTIAL }] } : {}),
       totalPages: Math.ceil(finalTotalCount / limit)
     };
   }
