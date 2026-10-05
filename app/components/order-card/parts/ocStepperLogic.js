@@ -11,6 +11,8 @@
 // הבדלים מכוונים מהעיצוב (נתוני אמת): "בוצע" = עובדה במערכת (סימון / פריטים נלקחו-הוחזרו), לא "התאריך עבר"; צומת שחלף מועדו ולא בוצע = "נוכחי" (ממתין); הזמנה
 // שהוחזרה במלואה = כל הצמתים בוצעו ואין צומת נוכחי ואין סמן "היום" (closeWhenReturned); הזמנה מבוטלת = רק "הזמנה" בוצעה, בלי צומת נוכחי.
 
+import { shortHebrew, hebrewWithGershayim } from './ocHistoryModel';
+
 export const STEPPER_KEYS = ['order', 'pick', 'dout', 'event', 'manret', 'dback'];
 export const STEPPER_UI = {
   order: { label: 'הזמנה', icon: 'file' },
@@ -30,7 +32,7 @@ const whoWhen = (n) => [n && n.who, n && n.when && n.when.time].filter(Boolean).
 export function stepperRows(key, { stage, node, order = {}, items = [], courier = '' } = {}) {
   const rows = [];
   const day = stage && stage.day;
-  if (day && day.he) rows.push({ icon: 'cal', text: `${day.wdFull || ''}${day.wdFull ? ', ' : ''}${day.he}` });
+  if (day && day.he) rows.push({ icon: 'cal', text: `${day.wdFull || ''}${day.wdFull ? ', ' : ''}${hebrewWithGershayim(day.he)}` });
   const done = !!(stage && stage.done);
   const active = (items || []).filter((i) => i && !i.isDeleted);
   const ww = whoWhen(node);
@@ -47,7 +49,7 @@ export function stepperRows(key, { stage, node, order = {}, items = [], courier 
     rows.push({ icon: done ? 'check' : 'clock', text: done ? (o ? 'נמסר' : 'נאסף') : (o ? 'טרם יצא' : 'טרם נאסף') });
     if (done && ww) rows.push({ icon: 'user', text: ww });
   } else if (key === 'event') {
-    if (stage && stage.endDay && stage.endDay.he) rows.push({ icon: 'cal', text: `עד ${stage.endDay.wdFull ? `${stage.endDay.wdFull}, ` : ''}${stage.endDay.he}` });
+    if (stage && stage.endDay && stage.endDay.he) rows.push({ icon: 'cal', text: `עד ${stage.endDay.wdFull ? `${stage.endDay.wdFull}, ` : ''}${hebrewWithGershayim(stage.endDay.he)}` });
     if (order.eventType) rows.push({ icon: 'gift', text: order.eventType });
   } else if (key === 'manret') {
     if (done && node && node.who) rows.push({ icon: 'user', text: `התקבלו ע״י ${node.who}` });
@@ -75,7 +77,7 @@ export function buildStepper(data, { order = {}, items = [], courier = '' } = {}
     const ui = STEPPER_UI[s.key];
     const factDone = s.key === 'order' ? true : !!s.done;
     const done = s.key === 'order' ? true : closedBy === 'return' ? true : closedBy === 'cancelled' ? false : factDone;
-    return { k: s.key, label: ui.label, icon: ui.icon, deliv: !!ui.deliv, dayKey: s.dayKey, wd: s.day && s.day.wd, heShort: s.day && s.day.heShort, endHeShort: s.endDay ? s.endDay.heShort : null,
+    return { k: s.key, label: ui.label, icon: ui.icon, deliv: !!ui.deliv, dayKey: s.dayKey, wd: s.day && s.day.wd, heShort: s.day ? shortHebrew(s.day.heShort || s.day.he) : '', endHeShort: s.endDay ? shortHebrew(s.endDay.heShort || s.endDay.he) : null,
       city: ui.deliv ? (order.deliveryCity || '') : '', done, stage: s, rows: stepperRows(s.key, { stage: s, node: byKey.get(s.key), order, items, courier }) };
   });
   const idx = closedBy ? -1 : nodes.findIndex((n) => !n.done);
@@ -97,7 +99,7 @@ export function buildStepper(data, { order = {}, items = [], courier = '' } = {}
   });
   const nowRows = [];
   const t = data.today;
-  nowRows.push({ icon: 'cal', text: `${t.wdFull ? `${t.wdFull}, ` : ''}${t.he}` });
+  nowRows.push({ icon: 'cal', text: `${t.wdFull ? `${t.wdFull}, ` : ''}${hebrewWithGershayim(t.he)}` });
   if (idx >= 0) {
     const nx = nodes[idx];
     const d = diff(todayKey, nx.dayKey);

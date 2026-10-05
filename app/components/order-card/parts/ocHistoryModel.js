@@ -44,10 +44,31 @@ export function categoryCount(entries, k, q = '') {
   return (entries || []).filter((e) => (k === 'all' || inCategory(e, k)) && matchesWords(e, words)).length;
 }
 
-/** "כז תשרי" מתוך 'כז תשרי תשפ"ז' (התאריך העברי בלי השנה - hDateShort בדגימה) */
+// אות-מספר עברית (גימטריה) בלי סימני גרש -> עם סימנים כמו gematriya של @hebcal/core שבה משתמש כרטיס האירוע: "כח" -> "כ״ח", "ל" -> "ל׳", "טו" -> "ט״ו", "תשפז" לא רלוונטי
+// (השנה מגיעה כבר עם " / ' ומומרת). דוח ההשוואה F12: ביומן ובהיסטוריה הוצג "כח תשרי" ובכרטיס האירוע "כ״ח" - תבנית אחת (הדמו: "י״ב תשרי", "כ״ז תשרי תשפ״ז").
+const GEM_RE = /^[א-ת]{1,4}$/;
+export function gershayim(token) {
+  const t = String(token || '');
+  if (/[״׳"']/.test(t)) return t.replace(/"/g, '״').replace(/'/g, '׳');
+  if (!GEM_RE.test(t)) return t;
+  return t.length === 1 ? `${t}׳` : `${t.slice(0, -1)}״${t.slice(-1)}`;
+}
+/** 'כח תשרי תשפ"ז' -> 'כ״ח תשרי תשפ״ז' (היום והשנה בגרשיים; שם החודש כמות שהוא, כולל "אדר א'") */
+export function hebrewWithGershayim(dateHe) {
+  const p = String(dateHe || '').trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return '';
+  const out = [...p];
+  out[0] = gershayim(p[0]);
+  if (p.length > 2) out[p.length - 1] = gershayim(p[p.length - 1]);
+  return out.join(' ');
+}
+
+/** "כ״ז תשרי" מתוך 'כז תשרי תשפ"ז' (התאריך העברי בלי השנה - hDateShort בדגימה), היום בגרשיים */
 export function shortHebrew(dateHe) {
-  const p = String(dateHe || '').trim().split(/\s+/);
-  return p.length > 2 ? p.slice(0, -1).join(' ') : p.join(' ');
+  const p = String(dateHe || '').trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return '';
+  const day = [gershayim(p[0]), ...p.slice(1, p.length > 2 ? -1 : undefined)];
+  return day.join(' ');
 }
 
 /** "היום" / "מחר" / "אתמול" / "יום ה' כז תשרי" - יום ישראלי מול היום הישראלי (שני מפתחות YYYY-MM-DD) */
@@ -59,7 +80,7 @@ export function relativeDayLabel(dayKey, todayKey, labels) {
     if (d === -1) return 'אתמול';
   }
   if (!labels) return '';
-  return [labels.wdFull || labels.wd, labels.heShort || shortHebrew(labels.he)].filter(Boolean).join(' ');
+  return [labels.wdFull || labels.wd, shortHebrew(labels.heShort || labels.he)].filter(Boolean).join(' ');
 }
 function ymd(key) {
   const [y, m, d] = String(key).split('-').map(Number);

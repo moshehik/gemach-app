@@ -199,7 +199,7 @@ test('תווית יום יחסית: היום / מחר / אתמול / יום + ת
   assert.equal(relativeDayLabel('2026-10-08', '2026-10-08', l), 'היום');
   assert.equal(relativeDayLabel('2026-10-09', '2026-10-08', l), 'מחר');
   assert.equal(relativeDayLabel('2026-10-07', '2026-10-08', l), 'אתמול');
-  assert.equal(relativeDayLabel('2026-10-08', '2026-10-01', l), 'יום חמישי כז תשרי');
+  assert.equal(relativeDayLabel('2026-10-08', '2026-10-01', l), 'יום חמישי כ״ז תשרי');
   assert.equal(relativeDayLabel('2026-12-31', '2027-01-01', dayLabels('2026-12-31')), 'אתמול', 'across a year end');
 });
 
@@ -334,4 +334,20 @@ test('מקרי גבול: אין החזרה = הכנה נשארת נוכחית; �
   assert.equal(empty.closed, false, 'no items is not "all returned"');
   const deletedOnly = computeOrderStages({ ...RET_ORDER, items: [...RET_ORDER.items, { id: 'z', isDeleted: true }] }, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
   assert.equal(deletedOnly.closed, true, 'a deleted item does not keep the order open');
+});
+
+// דוח ההשוואה F12: תבנית תאריך עברי אחת בכרטיס - גרשיים ("כ״ח תשרי"), כמו כרטיס האירוע (gematriya) והדמו
+test('גרשיים בתאריכים העבריים של היומן / ההיסטוריה / הציר: כח->כ״ח, ל->ל׳, טו->ט״ו, השנה והחודש "אדר א׳" נשמרים', async () => {
+  const H = await import('@/app/components/order-card/parts/ocHistoryModel.js');
+  assert.equal(H.shortHebrew('כח תשרי תשפ"ז'), 'כ״ח תשרי');
+  assert.equal(H.shortHebrew('ל תשרי תשפ"ז'), 'ל׳ תשרי');
+  assert.equal(H.shortHebrew('טו אדר א\' תשפ"ז'), 'ט״ו אדר א\'');
+  assert.equal(H.shortHebrew('כ״ז תשרי תשפ״ז'), 'כ״ז תשרי', 'idempotent');
+  assert.equal(H.hebrewWithGershayim('כח תשרי תשפ"ז'), 'כ״ח תשרי תשפ״ז');
+  assert.equal(H.hebrewWithGershayim(dayLabels('2026-10-08').he), 'כ״ז תשרי תשפ״ז');
+  assert.equal(H.relativeDayLabel('2026-10-08', '2026-10-01', dayLabels('2026-10-08')), 'יום חמישי כ״ז תשרי');
+  assert.equal(H.shortHebrew(''), '');
+  // אותו פורמט כמו הפורמטר המשותף של כרטיס האירוע
+  const D = await import('@/app/components/order-card/parts/ocDetailsLogic.js');
+  assert.equal(H.hebrewWithGershayim(dayLabels('2026-10-08').he), D.hebDateLabel('2026-10-08'));
 });

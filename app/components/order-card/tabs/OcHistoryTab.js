@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import OcJournalCard from '../parts/OcJournalCard';
 import OcHistoryFeed from '../parts/OcHistoryFeed';
+import { hebrewWithGershayim } from '../parts/ocHistoryModel';
 
 export default function OcHistoryTab({ oc, ui, active }) {
   const orderId = oc.order && oc.order.orderId;
@@ -64,7 +65,7 @@ export default function OcHistoryTab({ oc, ui, active }) {
       body: (
         <div className="chg">
           <div className="c"><div className="ico gray oc-cico"><OcIcon name="dress" size="sm" /></div><div className="t">{n === 1 ? 'שמלה אחת' : `${n} שמלות`}</div></div>
-          {event && event.day ? <div className="c"><div className="ico gray oc-cico"><OcIcon name="cal" size="sm" /></div><div className="t">{`אירוע: ${[event.day.wdFull, event.day.he].filter(Boolean).join(' ')}`}</div></div> : null}
+          {event && event.day ? <div className="c"><div className="ico gray oc-cico"><OcIcon name="cal" size="sm" /></div><div className="t">{`אירוע: ${[event.day.wdFull, hebrewWithGershayim(event.day.he)].filter(Boolean).join(' ')}`}</div></div> : null}
         </div>
       ),
       okText: wanted ? 'כן, סמן כבוצע' : 'כן, בטל סימון',

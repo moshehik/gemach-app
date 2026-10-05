@@ -135,7 +135,7 @@ test('כרטיסים עשירים: עובדות בלבד - תאריך עברי �
   const audit = [{ entityType: 'Order', entityId: 'x', action: 'CREATE', createdAt: IL('2026-09-23', '10:12'), employeeName: 'רחל כהן' }];
   const m = S.buildStepper(data(o, { schedule: NEVE, todayKey: '2026-10-04', audit }), { order: o, items: o.items, courier: 'יוסי מזרחי' });
   const all = (n) => n.rows.map((r) => r.text);
-  assert.match(all(node(m, 'order'))[0], /^יום [^,]+, .+ תשפ"ו$|^יום [^,]+, .+ תשפ"ז$/, 'תאריך עברי מלא');
+  assert.match(all(node(m, 'order'))[0], /^יום [^,]+, [א-ת]+[״׳]?[א-ת]? [א-ת]+ תשפ״[זו]$/, 'תאריך עברי מלא, בגרשיים');
   assert.ok(all(node(m, 'order')).includes('רחל כהן · 10:12'));
   const dout = all(node(m, 'dout'));
   assert.ok(dout.includes('ירושלים') && dout.includes('עמוס 14') && dout.includes('יוסי מזרחי') && dout.includes('טרם יצא'));
