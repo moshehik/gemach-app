@@ -90,7 +90,7 @@ test('R3: פס "ההזמנה נעולה"; בנעילה אין הוספה/ערי�
   assert.match(tab, /\{locked \? \(\s*<div className="chip amber oc-lockbar"/);
   const row = CODE['parts/OcItemRow.js'];
   assert.match(row, /\{!item\.isTaken && !locked \? \(/);
-  assert.match(CODE['parts/OcBarcodeRow.js'], /item\.isTaken && !item\.isReturned && !locked \?/);
+  assert.match(CODE['parts/OcBarcodeRow.js'], /item\.isTaken && !locked \?/);
 });
 
 test('endpoints של W3 — הרשימה המדויקת (כל endpoint חדש = שינוי מודע בבדיקה)', () => {

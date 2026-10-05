@@ -516,14 +516,13 @@ export function createItemActions(env) {
     // רק פריטים שמורים (לפריט שטרם נשמר אין מה להשכיר בשרת)
     const activeItems = activeItemsOf().filter(i => i.id && !i.isNew);
 
-    // ברקוד של פריט שכבר הוחזר (ואין פריט אחר בהזמנה עם אותו ברקוד שעוד לא הוחזר): הודעה ברורה במקום החזרה שנייה / הודעת נעילה / פנייה לשרת
+    // ברקוד של פריט שכבר הוחזר (ואין פריט אחר בהזמנה עם אותו ברקוד שעוד לא הוחזר). בהזמנה פתוחה ההודעה "כבר הוחזר" של הישן (בסוף הפונקציה,
+    // אחרי verify-item - זוגיות); בהזמנה נעולה הודעת הנעילה הייתה מטעה לפריט שהוחזר, ולכן כאן ההודעה הברורה
     const sameBarcode = activeItems.filter(i => { const b = itemBarcode(i); return b && b === barcode; });
-    if (sameBarcode.length && sameBarcode.every(isItemReturned)) {
-      fail(returnedAgainMessage(sameBarcode[0], barcode));
-      return { ok: false, alreadyReturned: true };
-    }
+    const allSameReturned = sameBarcode.length > 0 && sameBarcode.every(isItemReturned);
 
     if (st.isLocked) {
+      if (allSameReturned) { fail(returnedAgainMessage(sameBarcode[0], barcode)); return { ok: false, alreadyReturned: true }; }
       const isReturnScan = activeItems.some(i => itemBarcode(i) === barcode && i.isTaken && !i.isReturned);
       if (!isReturnScan) {
         fail('ההזמנה נעולה (תאריך האירוע עבר) — ניתן לבצע החזרה בלבד. השכרה דורשת שחרור באישור מנהל.');
