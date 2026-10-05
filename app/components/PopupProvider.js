@@ -58,7 +58,8 @@ export function PopupProvider({ children }) {
           action: 'UI_ERROR_ALERT',
           error: errorMessage,
           timestamp: new Date().toISOString(),
-          url: window.location.href,
+          // נתיב בלבד: ה-query string של העמוד (חיפוש לפי שם/טלפון, מזהים) לא נשלח ליומן השגיאות
+          url: window.location.pathname,
         })
       });
     } catch (e) {
