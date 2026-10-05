@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../lib/hebrewDate';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { captureElement, captureViewport } from '../../lib/clientCapture';
 import useElementPicker, { describeElement, ElementPickerOverlay } from './useElementPicker';
 import useActionRecorder from './useActionRecorder';
@@ -536,8 +537,8 @@ export default function ErrorReportButton({ trigger } = {}) {
   }
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
+    // /api/settings משותף (מטמון apiCache, 5 דק') - לפני כן כל טעינת דף משכה את כל ההגדרות (~66KB) שוב רק בשביל מפתח אחד.
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         if (!Array.isArray(data)) return;
         const s = data.find(x => x.key === 'error_report_handled_at_bottom');

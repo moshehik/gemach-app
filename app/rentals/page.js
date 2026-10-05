@@ -12,6 +12,7 @@ import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG } from '@/lib/businessDays';
@@ -140,7 +141,8 @@ export default function RentalsPage() {
   const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
   const [nonWorkingDays, setNonWorkingDays] = useState(EMPTY_NON_WORKING_CONFIG);
   useEffect(() => {
-    fetch('/api/settings').then(r => r.json()).then(arr => {
+    // /api/settings משותף (מטמון apiCache, 5 דק') - לפני כן כל טעינת דף משכה את כל ההגדרות (~66KB) שוב רק בשביל מפתח אחד.
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).then(arr => {
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'rentals_sort_recent_first')?.value : null;
       if (v === 'true') { setSort('eventDate'); setOrder('desc'); }
       const hide = Array.isArray(arr) ? arr.find(s => s.key === 'hide_custom_spacing')?.value : null;
