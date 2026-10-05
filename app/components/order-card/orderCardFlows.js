@@ -40,7 +40,9 @@ const jsonOf = async (res) => { try { return await res.clone().json(); } catch {
  * @property {(n:number|null)=>void} setOpenedDebt
  * @property {(id:string|false)=>void} setDebtApproved
  * @property {{pendingDebtBlock:boolean, bankPromptedOnExit:boolean}} flags  אובייקט משותף (ref)
- * @property {(kind:string, reason:string)=>Promise<{employeeId:string,employeeName:string,pin:string}|null>} approve
+ * @property {(kind:string, reason:string)=>Promise<{employeeId:string,employeeName:string,pin:string,approvalToken?:string}|null>} approve
+ * @property {(kind:string)=>string|null} [peekApprovalToken]   אסימון אישור חתום טרי (verify-pin) לפי רמת האישור, או null (hardening 2026-10-05)
+ * @property {(kind:string)=>void} [clearApprovalToken]
  * @property {(href:string)=>void} navigate
  * @property {(type:string, payload?:object)=>number} emit  מחזיר את מספר המאזינים
  * @property {()=>void} bumpHistory
@@ -107,17 +109,44 @@ export function createOrderCardFlows(env) {
       headers: { 'Content-Type': 'application/json', ...(zeoutForRequest ? { 'x-zeout': zeoutForRequest } : {}) },
       body: JSON.stringify(body)
     });
+    // אסימוני אישור חתומים שנשמרו מהחלונות הקודמים (hardening 2026-10-05, docs/server-approval-hardening.md): השרת קורא את המאשר מהאסימון, לא מ-id בגוף.
+    // נשלחים רק כשיש (עד 4.5 דקות); אסימון שפג/נדחה = 403 עם approvalKind ← אישור מחדש ושליחה חוזרת (למטה). כבוי בשרת = מתעלם מהם.
+    const peek = (k) => (env.peekApprovalToken ? env.peekApprovalToken(k) : null);
+    const tokenFields = {};
+    if (payload.debtApprovedBy && peek('debt')) tokenFields.debtApprovalToken = peek('debt');
+    if (peek('feature:manual_charge_add')) tokenFields.manualChargeApprovalToken = peek('feature:manual_charge_add');
+    if (peek('feature:manual_payment_credit_add')) tokenFields.paymentApprovalToken = peek('feature:manual_payment_credit_add');
+    payload = { ...payload, ...tokenFields };
     let res = await send(payload);
     // חוזה W0 §1.4: חיוב ידני חדש / מחיקת חיוב ידני שמור בכרטיס החדש דורש feature:manual_charge_add (R35/AMB-16). כשלעובד המחובר
     // אין את ההרשאה השרת מחזיר 403 MANUAL_CHARGE_APPROVAL_REQUIRED → אישור מנהל ושליחה חוזרת עם המאשר (השרת מאמת את הקוד שוב).
-    if (res.status === 403) {
+    // אותו מנגנון לאסימונים: 403 + approvalKind (debt_approval / manual_payment_credit) ← אישור מחדש ושליחה חוזרת עם אסימון טרי.
+    for (let attempt = 0; attempt < 3 && res.status === 403; attempt++) {
       const errData = await jsonOf(res);
       if (errData && errData.code === 'MANUAL_CHARGE_APPROVAL_REQUIRED') {
         const a = await env.approve('feature:manual_charge_add', 'הוספה או מחיקה של חיוב ידני דורשת אישור מנהל.');
         if (!a) { ui.toast('error', 'השמירה בוטלה: חיוב ידני דורש אישור מנהל.', ''); return { cancelled: true }; }
-        payload = { ...payload, manualChargeApproverId: a.employeeId, manualChargeApproverPin: a.pin };
+        payload = { ...payload, manualChargeApproverId: a.employeeId, manualChargeApproverPin: a.pin, ...(a.approvalToken ? { manualChargeApprovalToken: a.approvalToken } : {}) };
         res = await send(payload);
+      } else if (errData && errData.approvalKind === 'manual_payment_credit') {
+        const a = await env.approve('feature:manual_payment_credit_add', 'מחיקה או שינוי של תשלום דורשים אישור מנהל.');
+        if (!a) { ui.toast('error', 'השמירה בוטלה: מחיקת תשלום דורשת אישור מנהל.', ''); return { cancelled: true }; }
+        payload = { ...payload, ...(a.approvalToken ? { paymentApprovalToken: a.approvalToken } : {}) };
+        res = await send(payload);
+      } else if (errData && errData.approvalKind === 'debt_approval') {
+        const a = await env.approve('debt', 'אישור שמירת ההזמנה עם יתרת חוב. נדרש אישור מנהל.');
+        if (!a) { ui.toast('error', 'השמירה בוטלה: נדרש אישור מנהל ליתרת חוב.', ''); return { cancelled: true }; }
+        payload = { ...payload, debtApprovedBy: a.employeeId, ...(a.approvalToken ? { debtApprovalToken: a.approvalToken } : {}) };
+        res = await send(payload);
+      } else {
+        break;
       }
+    }
+    if (res.ok && env.clearApprovalToken) {
+      // השרת צרך את האסימונים (חד-פעמיים) - לא משתמשים בהם שוב
+      if (tokenFields.debtApprovalToken || payload.debtApprovalToken) env.clearApprovalToken('debt');
+      if (tokenFields.manualChargeApprovalToken || payload.manualChargeApprovalToken) env.clearApprovalToken('feature:manual_charge_add');
+      if (tokenFields.paymentApprovalToken || payload.paymentApprovalToken) env.clearApprovalToken('feature:manual_payment_credit_add');
     }
     if (res.status === 401 || res.status === 403 || res.status === 400) {
       const errData = await jsonOf(res);

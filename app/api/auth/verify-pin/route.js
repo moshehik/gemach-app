@@ -6,6 +6,7 @@ import { hasPermission } from '@/lib/permissions';
 import { getCatalogItem } from '@/lib/permissionsMetadata';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { parseApprovalContext, buildApprovalMeta, isLoggableApprovalLevel } from '@/lib/history/orderEvents';
+import approvalTokens from '@/lib/approvalTokens';
 
 // Optional `context: { orderId, reason }` (new order card, D12): a SUCCESSFUL approval is recorded as one
 // MANAGER_APPROVAL row on that order - employeeId = the logged-in employee who asked, meta.approverId = the
@@ -29,6 +30,26 @@ async function recordApproval(ctx, requiredLevel, approver) {
   }
 }
 
+// Signed approval token (lib/approvalTokens.js): minted ONLY after the typed code matched and every level check below
+// passed, ONLY for the approvals the server later consumes (debt approval / manual charge / manual payment-credit) and
+// only when the caller names the order(s) it is for (context.orderId, orderId or orderIds). Bound to the logged-in
+// employee who asked (actor) - a token copied to another session is refused. Never contains the code.
+async function mintApprovalToken({ requiredLevel, approvalCtx, body, approver }) {
+  try {
+    const secret = process.env.AUTH_SECRET || null;
+    const kind = approvalTokens.kindForRequiredLevel(requiredLevel);
+    if (!secret || !kind) return null;
+    const orderIds = approvalTokens.normalizeOrderIds(
+      approvalCtx.present ? [approvalCtx.orderId] : (Array.isArray(body.orderIds) ? body.orderIds : [body.orderId])
+    );
+    if (orderIds.length === 0) return null;
+    return approvalTokens.createApprovalToken({ approverId: approver.id, kind, orderIds, actorEmployeeId: await getActingEmployeeId() }, secret);
+  } catch (e) {
+    console.error('verify-pin: approval token not issued');
+    return null;
+  }
+}
+
 export async function POST(request) {
   // Was fully anonymous: with no employeeId it tried the typed password against EVERY active
   // employee and answered with the matching employee's id - a password-guessing oracle open to
@@ -38,7 +59,8 @@ export async function POST(request) {
     return NextResponse.json({ success: false, error: 'יש להתחבר למערכת' }, { status: 401 });
   }
   try {
-    const { pin, requiredLevel, employeeId, context } = await request.json();
+    const body = await request.json();
+    const { pin, requiredLevel, employeeId, context } = body;
 
     if (!pin) {
       return NextResponse.json({ success: false, error: 'לא סופקה סיסמה' }, { status: 400 });
@@ -134,11 +156,13 @@ export async function POST(request) {
     }
 
     const employeeName = employee.firstName + ' ' + employee.lastName;
+    const approvalToken = await mintApprovalToken({ requiredLevel, approvalCtx, body, approver: employee });
+    const tokenPart = approvalToken ? { approvalToken } : {};
     if (approvalCtx.present) {
       const approvalLogged = await recordApproval(approvalCtx, requiredLevel, employee);
-      return NextResponse.json({ success: true, employeeId: employee.id, employeeName, approvalLogged });
+      return NextResponse.json({ success: true, employeeId: employee.id, employeeName, approvalLogged, ...tokenPart });
     }
-    return NextResponse.json({ success: true, employeeId: employee.id, employeeName });
+    return NextResponse.json({ success: true, employeeId: employee.id, employeeName, ...tokenPart });
   } catch (error) {
     console.error('Error verifying PIN:', error);
     return NextResponse.json({ success: false, error: 'שגיאה באימות הסיסמה' }, { status: 500 });

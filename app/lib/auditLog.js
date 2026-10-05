@@ -91,6 +91,27 @@ function withApproverName(log, nameById) {
   }
 }
 
+// Hardening (docs/server-approval-hardening.md, H1): employee UUIDs are the only thing a forged approval needed. For a viewer who is not head
+// management, every employee id of ANOTHER employee in an audit row (the row's employeeId, meta.approverId) is replaced by an opaque marker -
+// the display names (employeeName, meta.approverName) were already resolved by attachEmployeeNames, and every history screen only tests
+// `log.employeeId` for truthiness before showing the name, so nothing visible changes. The viewer's own id stays (it is their own).
+export const HIDDEN_EMPLOYEE_ID = 'hidden';
+export function hideForeignEmployeeIds(logs, viewerId) {
+  return logs.map((log) => {
+    let out = log;
+    if (log.employeeId && log.employeeId !== viewerId) out = { ...out, employeeId: HIDDEN_EMPLOYEE_ID };
+    const approverId = approverIdOf(log);
+    if (approverId && approverId !== viewerId) {
+      try {
+        const parsed = JSON.parse(log.changesJson);
+        delete parsed.approverId;
+        out = { ...out, changesJson: JSON.stringify(parsed) };
+      } catch (e) { /* unparsable rows were never going to expose a parsed id */ }
+    }
+    return out;
+  });
+}
+
 export async function attachEmployeeNames(rawLogs) {
   const logs = rawLogs.map(redactSecrets);
   const employeeIds = [...new Set([

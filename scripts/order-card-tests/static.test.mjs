@@ -20,7 +20,10 @@ const CODE = Object.fromEntries(JS.map((f) => [rel(f), stripJsComments(read(f))]
 const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map(([f]) => f);
 
 // ---------- הכרטיס הישן והמעבר ----------
-const LEGACY_SHA256_LF = 'd9276912171eef1051a2ad7c705a355370e656292f1dded9aa5c4e1e4521dc17'; // = app/orders/[id]/page.js של main ב-32d00e0c (אחרי c4d6e619: isWeekdayEvent הוסר; 1215fb9b/8830bc63: פריטי ברקוד לא מלכלכים את הכרטיס, חיוב ידני)
+// = app/orders/[id]/page.js של main ב-32d00e0c (אחרי c4d6e619: isWeekdayEvent הוסר; 1215fb9b/8830bc63: פריטי ברקוד לא מלכלכים את הכרטיס, חיוב ידני)
+// + הקשחת אישורים (fix/server-approval-hardening-2026-10-05, lib/approvalClient.js): הדף הישן שולח אסימוני אישור חתומים - אותו מקום שלח מזהה מאשר גולמי; אין שום שינוי אחר.
+// כל שינוי עתידי בדף הישן חייב לעדכן את הערך הזה במכוון (והבדיקות ב-approval-tokens.client.test.mjs מגדירות מה השתנה).
+const LEGACY_SHA256_LF = '85152101b87ebeae747b25971e3c3f1e462ee8c411a68862dd7ac96acda44a6b';
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
   const s = read(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js')).replace(/\r\n/g, '\n');
   assert.equal(crypto.createHash('sha256').update(s).digest('hex'), LEGACY_SHA256_LF);

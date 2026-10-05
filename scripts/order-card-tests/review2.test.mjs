@@ -258,7 +258,7 @@ test('S4: quickDriveFolderId - רק ההגדרה, ערך הלקוח מתעלמי
   assert.equal(Q.quickDriveFolderId('', 'EVILFOLDERID123456'), '', 'אין הגדרה = אין תיקייה (לא נופלים לערך הלקוח)');
   assert.equal(Q.quickDriveFolderId(undefined, 'x'), '');
   const route = fs.readFileSync(P + '/app/api/orders/[id]/email/route.js', 'utf8');
-  assert.ok(/quick \? quickDriveFolderId\(driveFolderDefault, driveFolderIdRaw\)/.test(route) && !/safeDriveFolderId\(driveFolderIdRaw\)/.test(route));
+  assert.ok(/const driveFolderId = quickDriveFolderId\(driveFolderDefault, driveFolderIdRaw\)/.test(route) && !/safeDriveFolderId\(driveFolderIdRaw\)/.test(route));
 });
 test('S4: sanitizeQuickAttachments - סיומות מותרות בלבד, base64 תקין, mimeType נקבע בשרת', async () => {
   const Q = await P2('lib/orderQuickMail.js');

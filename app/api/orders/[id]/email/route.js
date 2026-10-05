@@ -7,7 +7,7 @@ import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 import { renderOrderCardEmailHtml, renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
-import { parseQuickMail, isSafeRecipient, quickDriveFolderId, sanitizeQuickAttachments } from '@/lib/orderQuickMail';
+import { parseQuickMail, isSafeRecipient, quickDriveFolderId, sanitizeQuickAttachments, sanitizeOrderMailAttachments } from '@/lib/orderQuickMail';
 import { PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccessKeys';
 import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
 import { emailSubject } from '@/lib/emailCatalog';
@@ -108,6 +108,14 @@ export async function POST(request, { params }) {
       const att = sanitizeQuickAttachments(extraRaw);
       if (!att.ok) return NextResponse.json({ error: att.error }, { status: 400 });
       quickAttachments = att.list;
+    }
+    // H4: the print-menu path ("שליחה במייל" + extra files) gets the same server-side cleaning (count/size, clean name, valid base64, no executables,
+    // server-decided mimeType) - everything a worker legitimately attaches still goes through
+    let orderMailAttachments = null;
+    if (!quick && !body.returnHtmlOnly) {
+      const att = sanitizeOrderMailAttachments(extraRaw);
+      if (!att.ok) return NextResponse.json({ error: att.error }, { status: 400 });
+      orderMailAttachments = att.list;
     }
 
     const order = await prisma.order.findUnique({
@@ -527,7 +535,7 @@ export async function POST(request, { params }) {
       sizeBytes: Math.round((String(pdfBase64).length * 3) / 4),
       dest: sendMode
     }] : [];
-    const extraNormalized = normalizeAttachments({ attachments: quick ? quickAttachments : extraRaw, sendMode });
+    const extraNormalized = normalizeAttachments({ attachments: quick ? quickAttachments : orderMailAttachments, sendMode });
     const allFiles = [...pdfEntry, ...extraNormalized];
     const accompanyingHtml = renderOrderCardEmailHtml({
       orderId: order.orderId,
@@ -540,8 +548,8 @@ export async function POST(request, { params }) {
     });
 
     const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
-    // S4: מייל מהיר - רק ההגדרה email_drive_folder_id (מזהה תיקייה מהלקוח מתעלמים ממנו); שאר המסלולים - כמו קודם (רשות מהבקשה, אחרת ההגדרה)
-    const driveFolderId = (quick ? quickDriveFolderId(driveFolderDefault, driveFolderIdRaw) : ((driveFolderIdRaw || driveFolderDefault || '') + '').trim());
+    // S4 + H4: רק ההגדרה email_drive_folder_id (מזהה תיקייה שנשלח מהלקוח מתעלמים ממנו, בכל סוגי השליחה - אף מסך לא שולח אותו)
+    const driveFolderId = quickDriveFolderId(driveFolderDefault, driveFolderIdRaw);
 
     // הנושא בפועל: מייל מהיר = מה שהעובדת הקלידה (נוקה בשרת); אחרת נושא הקטלוג
     const subjectUsed = quick ? quick.subject : emailSubject('orderCard', { orderId: order.orderId });
@@ -619,7 +627,7 @@ export async function POST(request, { params }) {
     // EMAIL_SENT (existing action, now with who sent / who approved / what was attached) or EMAIL_FAILED -
     // the order's own history row; written through the single order-event helper (no model write behind it:
     // the EmailLog write above is a different entity and is logged by the extension on its own).
-    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw: quick ? quickAttachments : extraRaw });
+    const attachments = emailAttachmentSummary({ hasOrderPdf: pdfEntry.length > 0, printType, orderPdfName: pdfEntry[0]?.fileName, extraRaw: quick ? quickAttachments : orderMailAttachments });
     await writeOrderEvents({
       orderIds: [order.orderId],
       action: isSuccess ? 'EMAIL_SENT' : 'EMAIL_FAILED',

@@ -4,6 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { canOpenAnyPage } from '@/lib/permissions';
 import { writeOrderEvents } from '@/app/lib/auditLog';
 import { parseEventsRequest, eventPageKeys, clientEventIdNeedle } from '@/lib/history/orderEvents';
+import { admitEvents, releaseEvents } from '@/lib/eventRateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,15 @@ export async function POST(request) {
     if (duplicate) return NextResponse.json({ ok: true, action, orderIds, written: 0, ...(skipped ? { skipped } : {}), duplicate: true });
 
     const actorId = await getActingEmployeeId();
-    const written = await writeOrderEvents({ orderIds: writable, action, meta, actorId, clientEventId });
+    // H6: per-employee flood control - more than MAX_ROWS_PER_WINDOW (5000) rows a minute from one employee is refused (lib/eventRateLimit.js)
+    if (!admitEvents({ actorId, count: writable.length }).ok) return fail(429, 'RATE_LIMITED', 'יותר מדי פעולות נרשמו בזמן קצר. נסו שוב בעוד דקה.');
+    let written;
+    try {
+      written = await writeOrderEvents({ orderIds: writable, action, meta, actorId, clientEventId });
+    } catch (writeError) {
+      releaseEvents({ actorId, count: writable.length });
+      throw writeError;
+    }
     // 0 written with a clientEventId = a concurrent repeat won the race on the deterministic row key
     return NextResponse.json({ ok: true, action, orderIds, written, ...(skipped ? { skipped } : {}), duplicate: !!clientEventId && written === 0 });
   } catch (error) {

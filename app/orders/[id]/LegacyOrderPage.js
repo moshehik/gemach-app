@@ -15,6 +15,7 @@ import { addHistory } from '../../../lib/historyManager';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
+import { sendWithApproval, stashApprovalToken, DEBT_APPROVAL_LEVEL } from '../../../lib/approvalClient';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -573,7 +574,19 @@ export default function OrderDetailsPage({ params }) {
       body: JSON.stringify(body)
     });
 
-    const res = await send(payload);
+    // אסימוני אישור חתומים (lib/approvalClient.js, docs/server-approval-hardening.md): נשלחים עם ה-PUT כשיש; כשהשרת מחייב אישור (approval_tokens_required /
+    // approval_permissions_enforced דלוקים בגמ"ח הזה) והאסימון חסר או פג - 403 + approvalKind ← חלון קוד המאשר הקיים פעם נוספת ושליחה חוזרת.
+    // כל ההגדרות כבויות (ברירת מחדל) = השרת לא מחזיר את זה והזרימה זהה לקודמת.
+    const approvalOrderId = Number(payload.orderId) || Number(order?.orderId) || 0;
+    const sendApproved = (base) => (approvalOrderId
+      ? sendWithApproval((extra) => send({ ...base, ...extra }), {
+        orderId: approvalOrderId,
+        kinds: base.debtApprovedBy ? ['debt_approval', 'manual_charge', 'manual_payment_credit'] : ['manual_charge', 'manual_payment_credit'],
+        fieldFor: (k) => (k === 'debt_approval' ? 'debtApprovalToken' : k === 'manual_charge' ? 'manualChargeApprovalToken' : 'paymentApprovalToken'),
+        messages: { manual_payment_credit: 'מחיקה או שינוי של תשלום דורשים קוד מאשר. אנא בחר מאשר והזן סיסמה:' },
+      })
+      : send(base));
+    const res = await sendApproved(payload);
     if (res.status === 401 || res.status === 403 || res.status === 400) {
       const errData = await res.clone().json().catch(() => null);
       if (typeof window !== 'undefined') alert(errData?.error || 'שגיאת אימות תעודת זהות.');
@@ -588,7 +601,7 @@ export default function OrderDetailsPage({ params }) {
       await reloadOrderFromServer();
       return null;
     }
-    return send({ ...payload, overwriteConflict: true });
+    return sendApproved({ ...payload, overwriteConflict: true });
   };
 
   // מציג את חלון "סיכום ההזמנה" (פריטים/משלוח, סה"כ, שולם, יתרה) לפני שמירה בפועל -
@@ -784,7 +797,8 @@ export default function OrderDetailsPage({ params }) {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+          // רמת "מאשר הזמנה ללא תשלום" (במקום 'עובד', שלא בדק הרשאה): השרת בודק את אותה הרשאה ב-PUT ממילא - ומחזיר approvalToken מקושר להזמנה
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: DEBT_APPROVAL_LEVEL, orderId: currentOrder.orderId })
         });
         const data = await res.json();
         if (!data.success) {
@@ -792,6 +806,7 @@ export default function OrderDetailsPage({ params }) {
           alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
           return;
         }
+        stashApprovalToken(DEBT_APPROVAL_LEVEL, currentOrder.orderId, data.approvalToken);
         debtApprovedBy = authResult.employeeId;
         setDebtApproved(authResult.employeeId);
       } catch (err) {
@@ -1112,13 +1127,14 @@ export default function OrderDetailsPage({ params }) {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: DEBT_APPROVAL_LEVEL, orderId: order.orderId })
         });
         const data = await res.json();
         if (!data.success) {
           alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
           return;
         }
+        stashApprovalToken(DEBT_APPROVAL_LEVEL, order.orderId, data.approvalToken);
         setDebtApproved(authResult.employeeId);
         exitDebtApprovedBy = authResult.employeeId;
       } catch (err) {
@@ -1478,13 +1494,14 @@ export default function OrderDetailsPage({ params }) {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:manual_payment_credit_add' })
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:manual_payment_credit_add', orderId: order?.orderId })
       });
       const data = await res.json();
       if (!data.success) {
         alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
         return;
       }
+      stashApprovalToken('feature:manual_payment_credit_add', order?.orderId, data.approvalToken); // נשלח עם POST /api/payments / PUT של הזיכוי / מחיקת תשלום
     } catch (err) {
       alert('שגיאה באימות קוד מאשר.');
       return;
