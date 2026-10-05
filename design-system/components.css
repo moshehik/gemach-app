@@ -4022,7 +4022,7 @@
 .gm-ds.gm-home .tbl tbody tr:last-child td{border-bottom:0}
 .gm-ds.gm-home .tbl td.num,.gm-ds.gm-home .tbl th.num{text-align:end;font-variant-numeric:tabular-nums}
 .gm-ds.gm-home .tbl tbody tr.enter{animation:gm-rowin .32s var(--gm-ease)}
-.gm-ds.gm-home .stx{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--gm-ink2)}
+.gm-ds.gm-home .stx{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--gm-ink2);vertical-align:middle;line-height:1}
 .gm-ds.gm-home .stx .ic{width:16px;height:16px;color:var(--gm-navy-500)}
 .gm-ds.gm-home .stx.warn{color:var(--gm-gold-700)}
 .gm-ds.gm-home .stx.warn .ic{color:var(--gm-gold-b)}

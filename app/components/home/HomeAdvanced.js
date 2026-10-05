@@ -102,7 +102,7 @@ function OptionField({ spec, tip, value, onChange, focus, onEnter, idPrefix }) {
           name={id + '-nofill'}
           value={value}
           placeholder={ph}
-          autoComplete="nope"
+          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"
@@ -190,7 +190,7 @@ export function DateField({ dkey, label, value, onChange, rangeKeys, adv, cleara
           aria-controls={id + '-dp'}
           value={hebText(value)}
           placeholder="בחר תאריך עברי"
-          autoComplete="nope"
+          autoComplete="off"
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"

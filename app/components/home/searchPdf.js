@@ -13,7 +13,7 @@
 // הממשק שמתחבר ל-shell ההדפסה של הלו"ז (feature/schedule-print-core-2026-10-02, כשימוזג): אותם משתני גיאומטריה
 // (GEOMETRY_MM) וסדר המקטעים (כותרת / שורת הקשר / גוף / תחתית). עד אז הדף הזה עצמאי; להחליף = להחזיר מ-buildSearchSheet את אותו מבנה pages.
 
-import { escapeHtml, unifiedRows, rowColumns, withoutActionKeys, cellText } from './homeLogic.js';
+import { escapeHtml, unifiedRows, rowColumns, withoutActionKeys, cellText, inventorySizesText } from './homeLogic.js';
 import { hebText } from './homeDates.js';
 
 export const SHEET_TITLE = 'תוצאות חיפוש';
@@ -81,9 +81,11 @@ const cnt = (n, one, many) => (n === 1 ? one : n + ' ' + many);
 
 // תיאור עמודות החיפוש הכללי: h = כותרת, w = משקל רוחב, ltr = מספרים/טלפון/ברקוד (כיוון שמאל-לימין, מיושר לימין).
 // לפי מה שהעובדת רואה על המסך בשורת התוצאה — לא מוסיפים סכום, פריטים או פרטי תשלום (מידע שלא מוצג בתוצאות).
+// סדר המקטעים (5.10.2026): מלאי, הזמנות, לקוחות, פריטים - הזמנות לפני לקוחות כמו על המסך
 const GENERAL_SECTIONS = [
-  { kind: 'לקוח', key: 'customers', label: 'לקוחות', one: 'לקוח אחד', many: 'לקוחות', cols: [{ h: 'שם', w: 42 }, { h: 'טלפון', w: 30, ltr: true }, { h: 'עיר', w: 28 }] },
+  { kind: 'מלאי', key: 'inventory', label: 'מלאי', one: 'שורת מלאי אחת', many: 'שורות מלאי', cols: [{ h: 'דגם', w: 26 }, { h: 'ברקוד / קוד דגם', w: 18, ltr: true }, { h: 'סטטוס', w: 14 }, { h: 'תאריך', w: 20 }, { h: 'מידות (פנויות/סה״כ)', w: 42 }] },
   { kind: 'הזמנה', key: 'orders', label: 'הזמנות', one: 'הזמנה אחת', many: 'הזמנות', cols: [{ h: 'שם', w: 34 }, { h: 'מס׳ הזמנה', w: 16, ltr: true }, { h: 'תאריך אירוע', w: 30 }, { h: 'סטטוס', w: 20 }] },
+  { kind: 'לקוח', key: 'customers', label: 'לקוחות', one: 'לקוח אחד', many: 'לקוחות', cols: [{ h: 'שם', w: 42 }, { h: 'טלפון', w: 30, ltr: true }, { h: 'עיר', w: 28 }] },
   // פריט = השכרה אחת של פריט (ברקוד חוזר בהשכרות רבות): גם ההזמנה, הלקוחה, תאריך האירוע (עברי) ומצב הפריט — כמו בשורה על המסך
   { kind: 'פריט', key: 'items', label: 'פריטים', one: 'פריט אחד', many: 'פריטים', cols: [{ h: 'דגם', w: 28 }, { h: 'ברקוד', w: 17, ltr: true }, { h: 'מידה', w: 10 }, { h: 'מס׳ הזמנה', w: 14, ltr: true }, { h: 'לקוח', w: 27 }, { h: 'תאריך אירוע', w: 25 }, { h: 'סטטוס', w: 20 }] },
 ];
@@ -91,12 +93,13 @@ const GENERAL_SECTIONS = [
 function generalCells(kind, r) {
   if (kind === 'לקוח') return [r.title, r.phone, r.city];
   if (kind === 'הזמנה') return [r.title, '#' + r.orderId, r.eventHeb, r.status ? r.status.label : ''];
-  return [r.title, r.barcode, r.size, r.orderId ? '#' + r.orderId : '', r.customer, r.eventHeb, r.status ? r.status.label : ''];
+  if (kind === 'מלאי') return [r.title, r.inv.barcode || (r.inv.modelCode ? String(r.inv.modelCode) : ''), r.inv.status, r.inv.dateLabel, inventorySizesText(r.inv)];
+  return [r.name, r.barcode, r.size, r.orderId ? '#' + r.orderId : '', r.customer, r.eventHeb, r.status ? r.status.label : ''];
 }
 
 /** תשובת החיפוש הכללי (אחרי normalizeSearch + applyScope) → מקטעים: לקוחות / הזמנות / פריטים, רק מה שיש בו שורות. */
-export function sectionsFromGeneral(res) {
-  const rows = unifiedRows(res);
+export function sectionsFromGeneral(res, query = '') {
+  const rows = unifiedRows(res, query);
   return GENERAL_SECTIONS
     .map((def) => {
       const mine = rows.filter((r) => r.kind === def.kind);

@@ -125,8 +125,9 @@ t('נרמול: שדות רגישים של השרת (ת"ז, בנק, הערות פ
   }
 });
 t('נרמול: קלט ריק/חסר', () => {
-  assert.deepEqual(normalizeSearch(null), { customers: [], orders: [], rentals: [] });
-  assert.deepEqual(normalizeSearch({}), { customers: [], orders: [], rentals: [] });
+  const EMPTY_RES = { customers: [], orders: [], rentals: [], inventory: [], inventoryTruncated: false, dateChips: null };
+  assert.deepEqual(normalizeSearch(null), EMPTY_RES);
+  assert.deepEqual(normalizeSearch({}), EMPTY_RES);
   assert.equal(resultsCount(null), 0);
 });
 t('נרמול: מצב פריט (מושכר עכשיו / הוחזר / טרם נלקח) רק כשהשרת שלח את הדגלים', () => {
@@ -141,20 +142,20 @@ t('סטטוס הזמנה: ארבעה ערכים, השאר "פעיל"', () => {
   assert.deepEqual(orderStatus(''), { cls: '', icon: 'clock', label: 'פעיל' });
   assert.deepEqual(orderStatus('מצב לא מוכר'), { cls: '', icon: 'clock', label: 'מצב לא מוכר' });
 });
-t('רשימה מאוחדת: סדר לקוחות, הזמנות, פריטים וכל שורה מסמנת מה היא', () => {
+t('רשימה מאוחדת: סדר הזמנות, לקוחות, פריטים (הזמנות לפני לקוחות) וכל שורה מסמנת מה היא', () => {
   const rows = unifiedRows(normalizeSearch(RAW));
-  assert.deepEqual(rows.map((r) => r.kind), ['לקוח', 'לקוח', 'הזמנה', 'הזמנה', 'פריט', 'פריט']);
+  assert.deepEqual(rows.map((r) => r.kind), ['הזמנה', 'הזמנה', 'לקוח', 'לקוח', 'פריט', 'פריט']);
   assert.equal(new Set(rows.map((r) => r.key)).size, rows.length, 'מפתחות ייחודיים');
-  assert.equal(rows[2].status.label, 'פעיל');
-  assert.equal(rows[3].status.label, 'הוחזר');
+  assert.equal(rows[0].status.label, 'פעיל');
+  assert.equal(rows[1].status.label, 'הוחזר');
   assert.deepEqual(unifiedRows(null), []);
 });
 t('טבלה: 9 עמודות ותאי כל סוג', () => {
   const rec = tableRecords(unifiedRows(normalizeSearch(RAW)));
   assert.deepEqual(TABLE_COLUMNS, ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס / מידה']);
   assert.ok(rec.every((r) => r.cells.length === TABLE_COLUMNS.length));
-  assert.deepEqual(rec[0].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '', '', '']);
-  assert.deepEqual(rec[2].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', '', '', 'י״ג תשרי', 'פעיל']);
+  assert.deepEqual(rec[2].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '', '', '']);
+  assert.deepEqual(rec[0].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', '', '', 'י״ג תשרי', 'פעיל']);
   assert.deepEqual(rec[4].cells, ['פריט', 'שמלת ורד', '', '', '1024038', '#48131', '', '', 'מידה 38']);
   assert.equal(rec[5].cells[8], '', 'אין מידה = ריק');
 });
@@ -231,7 +232,7 @@ t('מיון: מספרים לפי ערך, טקסט בעברית, לא משנה א
 t('ייצוא: אובייקט לכל שורה עם כותרות הטבלה', () => {
   const ex = exportRecordsForRows(unifiedRows(normalizeSearch(RAW)));
   assert.deepEqual(Object.keys(ex[0]), TABLE_COLUMNS);
-  assert.equal(ex[2]['מזהה / ברקוד'], '#48131');
+  assert.equal(ex[0]['מזהה / ברקוד'], '#48131');
 });
 
 console.log('חיפוש חכם');
