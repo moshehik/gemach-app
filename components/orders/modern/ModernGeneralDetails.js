@@ -435,7 +435,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           {/* מתג "הזמנת משלוח" — נשאר תמיד גלוי (לא נכנס למצב עריכה/קריאה כמו שאר הכרטיס
               למטה) ומודגש יותר משאר השדות, כי הוא הקובע היחיד אם כל שאר האזור פעיל בכלל. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>משלוח</h3>
+            {/* אותו סגנון כותרת כמו כרטיסי לקוח/אירוע (div מודגש) ולא h3 - ה-h3 קיבל את גופן הכותרות (24380f79) */}
+            <div style={{ fontWeight: 700, fontSize: '15px' }}>משלוח</div>
             <div
               className={`switch${order.isDelivery ? ' on' : ''}`}
               role="switch"
