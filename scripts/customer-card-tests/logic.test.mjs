@@ -129,8 +129,8 @@ t('מסמכי מייל: כרטיס לקוחה + דף חשבון + דף פרטי 
   assert.ok(docs.every((d) => /downloadPdf=true/.test(d.path)));
   assert.equal(displayName({ firstName: 'null', lastName: 'כהן' }), 'כהן');
 });
-t('מיון הזמנות כמו בכרטיס הישן (לפי אירוע, אירוע חול לפי מתאריך)', () => {
-  const list = sortOrders([{ orderId: 1, eventDate: '2025-01-01' }, { orderId: 2, isWeekdayEvent: true, fromDate: '2026-01-01', eventDate: '2020-01-01' }, { orderId: 3, eventDate: '2025-06-01' }]);
+t('מיון הזמנות כמו בכרטיס הישן (לפי אירוע, אירוע חו"ל לפי מתאריך)', () => {
+  const list = sortOrders([{ orderId: 1, eventDate: '2025-01-01' }, { orderId: 2, isAbroad: true, fromDate: '2026-01-01', eventDate: '2020-01-01' }, { orderId: 3, eventDate: '2025-06-01' }]);
   assert.deepEqual(list.map((o) => o.orderId), [2, 3, 1]);
 });
 t('היסטוריה: סינון קטגוריות (כולל הדפסות/מיילים לפי אייקון) וחיפוש מילים', () => {

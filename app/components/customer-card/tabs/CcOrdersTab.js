@@ -15,7 +15,7 @@ const money = (n) => `₪${Math.abs(Number(n) || 0).toLocaleString('he-IL')}`;
 const heb = (d) => (d ? getHebrewDateString(d) : '');
 
 export function eventLabel(o) {
-  if (o.isWeekdayEvent) {
+  if (o.isAbroad) {
     const from = o.fromDate ? heb(o.fromDate) : '-';
     const to = (o.toDate || o.returnDate) ? heb(o.toDate || o.returnDate) : '-';
     return `לקיחה ${from} · החזרה ${to}`;

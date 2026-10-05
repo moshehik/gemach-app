@@ -263,7 +263,7 @@ export function paymentRows(customer, refunds = []) {
 }
 
 // ---------- הזמנות ----------
-const eventSortDate = (o) => ((o.isWeekdayEvent || o.isAbroad) ? (o.fromDate || o.eventDate || o.orderDate || o.createdAt || 0) : (o.eventDate || o.orderDate || o.createdAt || 0));
+const eventSortDate = (o) => (o.isAbroad ? (o.fromDate || o.eventDate || o.orderDate || o.createdAt || 0) : (o.eventDate || o.orderDate || o.createdAt || 0));
 /** אותו מיון כמו ModernCustomerOrdersTab: לפי תאריך האירוע, החדש ראשון. */
 export function sortOrders(orders) {
   return [...(orders || [])].sort((a, b) => new Date(eventSortDate(b)) - new Date(eventSortDate(a)));
