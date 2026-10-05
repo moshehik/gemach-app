@@ -214,6 +214,14 @@ export default function PrintAlterationsPage() {
   };
 
   const showAlterationCols = reportType !== 'orders_no_alterations';
+  // סיכום כמות התיקונים לפי סוג, לכל הדוח (בראש הרשימה) - כל פריט נספר לפי הכמות שלו, כמו הסיכום של כל יום.
+  const altTotals = items.reduce((acc, item) => {
+    const qty = item.quantity || 1;
+    if (item.neckAlteration > 0) acc.neck += qty;
+    if (lengthAltOf(item)) acc.length += qty;
+    if (item.sleeveAlteration > 0) acc.sleeve += qty;
+    return acc;
+  }, { neck: 0, length: 0, sleeve: 0 });
   const showDoneCol = reportType === 'alterations_all' || reportType === 'orders_all';
 
   return (
@@ -413,8 +421,36 @@ export default function PrintAlterationsPage() {
         }
         .order-notes {
           font-size: 12px;
-          color: #888;
+          color: #444;
           margin-bottom: 5px;
+        }
+        /* סיכום כמות התיקונים בראש הדוח (דיווח 0620085f) - צבעים קבועים, בלי משתני ערכת נושא */
+        .alt-summary {
+          margin: 0 0 14px 0;
+          padding: 8px 14px;
+          border: 1px solid #bdbdbd;
+          background: #f4f4f4;
+          color: #262626;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .alt-summary-title {
+          font-size: 12px;
+          font-weight: 600;
+          color: #555;
+          margin-bottom: 4px;
+        }
+        .alt-summary-items {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px 28px;
+          font-size: 14.5px;
+          font-weight: 600;
+        }
+        .alt-summary-items strong {
+          font-size: 17px;
+          font-weight: 700;
+          margin-inline-start: 4px;
         }
         .date-summary {
           margin-top: 3px;
@@ -563,6 +599,20 @@ export default function PrintAlterationsPage() {
               ) : null}
             </td>
           </tr>
+          {!loading && !error && enableAlterations && items.length > 0 && showAlterationCols && reportType !== 'labels' && (
+            <tr>
+              <td style={{ border: 'none', padding: 0 }}>
+                <div className="alt-summary">
+                  <div className="alt-summary-title">סיכום תיקונים בדוח</div>
+                  <div className="alt-summary-items">
+                    <span>תיקוני אורך:<strong>{altTotals.length}</strong></span>
+                    <span>תיקוני צוואר:<strong>{altTotals.neck}</strong></span>
+                    <span>תיקוני שרוול:<strong>{altTotals.sleeve}</strong></span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          )}
           {enableAlterations && (reportType === 'labels' ? (
         groupedItems.length === 0 ? (
           <tr>
@@ -642,6 +692,15 @@ export default function PrintAlterationsPage() {
                     </h3>
                   </td>
                 </tr>
+                {showAlterationCols && (
+                  <tr>
+                    <td style={{ border: 'none', padding: 0 }}>
+                      <div className="date-summary">
+                        כמות תיקוני צוואר: {sums.neck} | כמות תיקוני אורך: {sums.length} | כמות תיקוני שרוול: {sums.sleeve}
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {buildOrderBlocks(group.items).map(block => (
                   <tr key={block.orderId ?? 'no-order'}>
                     <td style={{ border: 'none', padding: 0 }}>
@@ -692,15 +751,6 @@ export default function PrintAlterationsPage() {
                     </td>
                   </tr>
                 ))}
-                {showAlterationCols && (
-                  <tr>
-                    <td style={{ border: 'none', padding: 0 }}>
-                      <div className="date-summary">
-                        כמות תיקוני צוואר: {sums.neck} | כמות תיקוני אורך: {sums.length} | כמות תיקוני שרוול: {sums.sleeve}
-                      </div>
-                    </td>
-                  </tr>
-                )}
               </Fragment>
             );
           })
