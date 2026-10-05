@@ -1236,6 +1236,8 @@ t('חיפוש בתפריט: תת-מחרוזת של "ניהול" ("הו","יה","
   assert.equal(menuRowMatchesTerm(null, 'x'), false); assert.equal(menuRowMatchesTerm({ label: 'a', group: 'b' }, ' '), false);
   const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
   assert.ok(panel.includes('menuRowMatchesTerm(x, term)') && !/String\(x\.group\)\.includes\(term\)/.test(panel));
+  // 5.10.2026: הפונקציה הייתה בשימוש בלי import -> ReferenceError בכל הקלדה בחיפוש תפריט A5 והמסך נפל. חייבת להיות מיובאת.
+  assert.match(panel, /import\s*\{[^}]*menuRowMatchesTerm[^}]*\}\s*from\s*'@\/lib\/menu\/buildMenuTree'/, 'menuRowMatchesTerm חייב להיות מיובא');
 });
 t('סימון "נפתח לאחרונה": הטולטיפ לא נחתך ב-tipOf גם ל-ad-models/ad-refunds/ad-deliveries, ויש סימון גלוי (אייקון + טקסט לקורא מסך)', () => {
   const parts = readFileSync(new URL('../app/components/menu/menuParts.js', import.meta.url), 'utf8');
