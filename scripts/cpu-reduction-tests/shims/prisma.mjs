@@ -28,6 +28,16 @@ const prisma = {
       const r = globalThis.__SETTINGS.find((s) => s.key === args.where.key);
       return r ? { ...r } : null;
     },
+    // phase0: hasBrandLogo() = findFirst({ where: { key, value: { not: '' } }, select: { id: true } })
+    findFirst: async (args = {}) => {
+      globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'findFirst', args });
+      if (globalThis.__FIND_MANY_FAIL) throw new Error('db down');
+      const w = args.where || {};
+      const r = globalThis.__SETTINGS.find((s) => (w.key === undefined || s.key === w.key)
+        && (!w.value || w.value.not === undefined || s.value !== w.value.not));
+      if (!r) return null;
+      return args.select ? Object.fromEntries(Object.keys(args.select).map((k) => [k, r[k]])) : { ...r };
+    },
     upsert: async (args) => {
       globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'upsert', args });
       const row = globalThis.__SETTINGS.find((s) => s.key === args.where.key);
