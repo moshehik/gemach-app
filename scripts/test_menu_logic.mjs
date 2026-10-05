@@ -994,7 +994,7 @@ t('"השינויים שלי" בחיפוש התפריט: ה-CSS בהיקף .gm-ds
   assert.ok(/term\.length < MIN_CHARS \|\| prefixActive/.test(hook) && /\[debounced, prefixActive\]/.test(hook), 'useMenuSearch לא שולח חיפוש כשהרשימה מוצגת');
   assert.ok(!/detectQuickPrefix|startsWith\('&'\)/.test(hook), 'ההחלטה לא מתבססת על התו הראשון בלבד');
   assert.ok(/reportPrefix\(drawer, prefixOn\)/.test(panel) && /const prefixOn = qp\.open && !!qp\.def;/.test(panel) && /const mineOn = prefixOn && qp\.def\.source === 'mine'/.test(panel), 'prefixActive = אותו תנאי שמצייר את הרשימה');
-  assert.ok(/MENU_PREFIXES = \['&', '#', '\$'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט '&' '#' '$' ('@' ומדריך הקיצורים רק בדף הבית)");
+  assert.ok(/MENU_PREFIXES = \['&', '#', '\$', '%'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט '&' '#' '$' '%' ('@' ומדריך הקיצורים רק בדף הבית)");
   assert.ok(/qp\.onKeyDown\(e\);[\s\S]{0,120}if \(e\.defaultPrevented\) return;/.test(panel), 'Enter על רשימת & לא מריץ חיפוש');
   assert.ok(/nav\.navigate\(href\)/.test(panel) && /row\.url\.startsWith\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הכל" פותח /?recent=mine (עם emp של הנהלה)');
 });

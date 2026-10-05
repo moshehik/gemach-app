@@ -14,8 +14,9 @@ import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
 import { MineRowBody, MineWho, SavedDelButton, SaveForm, ShortcutRowBody, useDraftCount, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import { useSavedSearches } from '../search/savedSearches';
 import { DeleteDialog, SaveIconButton } from '../search/ShortcutsUi';
-import { actionTarget, menuAllowedPaths, saveCandidate } from '@/lib/quickShortcuts';
+import { actionTarget, keywordInsert, menuAllowedPaths, saveCandidate } from '@/lib/quickShortcuts';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
+import { classifyQuery } from '@/lib/searchNormalize';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
@@ -72,7 +73,8 @@ export function useMenuSearch() {
 // קידומות בשורת החיפוש: '&' = "השינויים שלי" (ההזמנות שיצרתי והשינויים שעשיתי), '#' = פעולות מהירות (לפי הרשאות), '$' = חיפושים שמורים - אותן רשימות
 // כמו בדף הבית (hook ומודלים משותפים: components/search/QuickPrefix.js, lib/myRecentActivityView.js, lib/quickShortcuts.js). '@' נשארת בדף הבית.
 // מדריך הקיצורים (כפתור "קיצורים") רק בדף הבית (PFX-08) - בחיפוש התפריט אין אותו.
-const MENU_PREFIXES = ['&', '#', '$'];
+// '%' = מילות מפתח (רשימה סטטית מ-KEYWORD_GUIDE): הבחירה מכניסה את המילה לשדה, בלי ניווט.
+const MENU_PREFIXES = ['&', '#', '$', '%'];
 
 function MineMenuList({ qp }) {
   const m = qp.mineModel;
@@ -161,7 +163,7 @@ function ShortcutMenuList({ qp }) {
         return r.type === 'saved' ? <div className="pfx-row" key={r.key}>{row}<SavedDelButton r={r} saved={saved} /></div> : row;
       })}
       {m.state === 'ok' && m.none && <div className="sn-empty" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</div>}
-      {m.state !== 'unavailable' && <div className="mine-note" role="note"><Ic n="lock" /><span>{m.note}</span></div>}
+      {m.state !== 'unavailable' && <div className="mine-note" role="note"><Ic n={m.noteIcon || 'lock'} /><span>{m.note}</span></div>}
     </div>
   );
 }
@@ -188,6 +190,12 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     prefixes: MENU_PREFIXES,
     listId: `${idPrefix}-qp`,
     onPick: (row) => {
+      if (row.type === 'keyword') { // '%': המילה נכנסת לשדה (הרשימה נסגרת, אין ניווט)
+        const k = keywordInsert(row);
+        search.setQ(k.text);
+        setTimeout(() => { const el = inputRef && inputRef.current; if (el) { el.focus(); try { el.setSelectionRange(k.start, k.end); } catch { /* ignore */ } } }, 0);
+        return;
+      }
       if (row.type === 'action') {
         const tg = actionTarget(row.action);
         if (!tg) return;
@@ -216,7 +224,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const hasSaveText = !!saveText;
   const loadSaved = saved.load;
   useEffect(() => { if (hasSaveText) loadSaved(); }, [hasSaveText, loadSaved]); // נטען רק כשיש מה לשמור, לא בעליית הדף
-  const isBarcode = /^\d{7}$/.test(term); // ברקוד תקין = בדיוק 7 ספרות (מס' הזמנה 5 ספרות, טלפון 9+)
+  // ברקוד מלא = 7 ספרות (או "ברקוד N"), לפי classifyQuery - אותו כלל כמו בכל החיפושים (5-6 ספרות = מס' הזמנה קודם, לא ברקוד מלא)
+  const termCls = useMemo(() => classifyQuery(term), [term]);
+  const barcodeDigits = termCls.kind === 'barcode' && termCls.barcode && termCls.barcode.complete ? termCls.barcode.digits : '';
+  const isBarcode = !!barcodeDigits;
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
 
   // החזרה מהירה בברקוד - אותו מנגנון כמו TopbarSearch.js (postReturnScan מטפל גם באישור מנהל להחזרה מוקדמת)
@@ -224,7 +235,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     if (qr.busy) return;
     setQr({ busy: true, text: '', err: false });
     try {
-      const { res, data } = await postReturnScan({ barcode: term });
+      const { res, data } = await postReturnScan({ barcode: barcodeDigits });
       if (res.ok) {
         setQr({ busy: false, text: '', err: false });
         onGo(() => {
@@ -354,7 +365,11 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
           type="search"
           value={q}
           placeholder="חיפוש עמוד, הזמנה או לקוח…"
-          autoComplete="nope"
+          name={`${idPrefix}-search`}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"
@@ -379,7 +394,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
         <SaveIconButton text={q} saved={saved} />
       </div>
       <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
-        {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${term}` : ''))}
+        {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${barcodeDigits}` : ''))}
       </div>
       {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>}
       {saved.confirm && <DeleteDialog key={saved.confirm.id} confirm={saved.confirm} onConfirm={saved.confirmDelete} onCancel={saved.cancelDelete} skin="menu" />}

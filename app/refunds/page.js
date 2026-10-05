@@ -8,6 +8,7 @@ import { sendWithApproval } from '@/lib/approvalClient';
 import { NO_ORDER_APPROVAL_ID } from '@/lib/approvalTokenStore';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { REFUNDS_PAGE_SIZE } from '@/app/lib/prefetchRoutes';
+import { classifyQuery } from '@/lib/searchNormalize';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const refundsCache = cacheNamespace('refunds');
@@ -28,9 +29,10 @@ async function fetchDebtOrdersPage(filterStatus, page, searchTerm) {
   const params = new URLSearchParams({ filterStatus, page: String(page), limit: String(PAGE_SIZE) });
   const term = (searchTerm || '').trim();
   if (term) {
-    // מספר ארוך (7+ ספרות) מזוהה כטלפון וממופה ל-customerPhone (OR על phone1/phone2
-    // בשרת); כל השאר עובר כ-search הכללי (שם לקוח / מס' הזמנה / פריט).
-    if (/^\d{7,}$/.test(term)) params.set('customerPhone', term);
+    // טלפון (כל צורת כתיבה: 0501234567 / 050-123-4567 / +972...) ממופה ל-customerPhone (OR על phone1/phone2
+    // בשרת, השוואה לפי ספרות); כל השאר עובר כ-search הכללי (שם לקוח / מס' הזמנה / ברקוד / פריט).
+    // קודם: "7+ ספרות = טלפון" - ברקוד של 7 ספרות נשלח בטעות כטלפון (lib/searchNormalize.js classifyQuery: 7 ספרות = ברקוד).
+    if (classifyQuery(term).kind === 'phone') params.set('customerPhone', term);
     else params.set('search', term);
   }
   const res = await fetch(`/api/orders?${params.toString()}`);

@@ -204,7 +204,7 @@ export default function HomeChat({ chat, loading, table, onTable, onClose, onFol
         <div className="scan">
           <button type="button" className="ibtn" aria-label="ניקוי הטקסט" data-tip="ניקוי הטקסט" hidden={!fu} onClick={() => { setFu(''); if (fuRef.current) fuRef.current.focus(); }}><Ic id="x" /></button>
           <label className="sr-only" htmlFor="fuQ">שאלת המשך</label>
-          <input id="fuQ" ref={fuRef} value={fu} onChange={(e) => setFu(e.target.value)} placeholder="שאלת המשך…" disabled={loading} autoComplete="nope" data-lpignore="true" data-1p-ignore data-form-type="other" />
+          <input id="fuQ" ref={fuRef} value={fu} onChange={(e) => setFu(e.target.value)} placeholder="שאלת המשך…" disabled={loading} autoComplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" />
           <button type="submit" className="btn primary" aria-label="שליחה" data-tip="שליחה" disabled={loading}><Ic id="send" /></button>
         </div>
       </form>

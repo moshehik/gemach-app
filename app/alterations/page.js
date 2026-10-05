@@ -223,7 +223,7 @@ export default function AlterationsPage() {
       let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=${exportLimit}&hideTakenReturned=true`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
-      if (search) url += `&search=${search}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
       const res = await fetch(url);
       const data = await res.json();
       return (data.data || []).map(item => ({
@@ -263,7 +263,7 @@ export default function AlterationsPage() {
       let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=2000&hideTakenReturned=true`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
-      if (search) url += `&search=${search}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
       const res = await fetch(url);
       if (!res.ok) return [];
       const data = await res.json();

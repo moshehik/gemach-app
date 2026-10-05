@@ -4,6 +4,7 @@ import { checkAuth, checkPageAccess, getSessionEmployee, HEAD_MANAGEMENT_ROLES }
 import { canOpenPage, canOpenAnyPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getSettingDisplayName } from '@/lib/settingsMetadata';
+import { sizeKey, sizeSpellings } from '@/lib/searchNormalize';
 
 // הצעות לשדות הטקסט של החיפוש המתקדם ב-/a5. קריאה בלבד.
 // GET /api/a5/options?key=<first|last|name|phone|city|oid|item|model|emp|size|q>&focus=<...>&typed=<טקסט>
@@ -126,9 +127,21 @@ async function employees(typed) {
 }
 
 async function sizes(typed) {
-  const where = { isDeleted: false, sizeText: typed ? { startsWith: typed } : { not: null } };
-  const rows = await prisma.dressItem.groupBy({ by: ['sizeText'], where, _count: { _all: true }, orderBy: { _count: { sizeText: 'desc' } }, take: LIMIT });
-  return finish(rows.map((r) => r.sizeText));
+  // "2" מציע גם "02" (כתיבים שקולים מתאחדים לאחד, בכתיב הנפוץ ביותר ב-DB) - lib/searchNormalize.js sizeKey / sizeSpellings
+  const where = { isDeleted: false };
+  if (typed) where.OR = [...new Set([typed, ...sizeSpellings(typed)])].map((s) => ({ sizeText: { startsWith: s } }));
+  else where.sizeText = { not: null };
+  const rows = await prisma.dressItem.groupBy({ by: ['sizeText'], where, _count: { _all: true }, orderBy: { _count: { sizeText: 'desc' } }, take: POOL });
+  const groups = new Map(); // מפתח מידה -> { display, count }
+  for (const r of rows) {
+    const raw = r.sizeText == null ? '' : String(r.sizeText).trim();
+    if (!raw) continue;
+    const key = sizeKey(raw);
+    const n = (r._count && r._count._all) || 0;
+    const g = groups.get(key);
+    if (!g || n > g.count) groups.set(key, { display: raw, count: n });
+  }
+  return finish([...groups.values()].map((g) => g.display));
 }
 
 async function settingNames(typed) {

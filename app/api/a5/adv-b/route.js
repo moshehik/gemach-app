@@ -7,6 +7,8 @@ import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate } from '@/lib/hebrewDate';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
+import { sizeTextFilter } from '@/lib/listSearch';
+import { sizeMatches } from '@/lib/searchNormalize';
 
 // חיפוש מתקדם A5 - תחומי משלוחים / תיקונים / כספים / תפוסה / דגמים / עובדים.
 // קריאה בלבד. אותם כללים כמו העמודים החיים (ר' public/a5/adapters/adv-b.NOTES.md).
@@ -422,7 +424,8 @@ async function models(p, flags, gaps) {
   }
   const itemSome = {};
   const size = s(p.size), code = s(p.item);
-  if (size) itemSome.sizeText = { contains: size };
+  // מידה מדויקת: "2" = "02" ולא 12/20/32 (lib/listSearch.js sizeTextFilter; קודם contains)
+  if (size) itemSome.sizeText = sizeTextFilter(size) || { contains: size };
   if (code) itemSome.dressBarcode = { contains: code };
   if (has(flags, 'md_repair')) itemSome.inRepair = true;
   if (has(flags, 'md_delitem')) itemSome.isDeleted = true;
@@ -437,7 +440,7 @@ async function models(p, flags, gaps) {
     rows: list.slice(0, LIMIT).map((m) => {
       // כמות פריטים: פריטים פעילים (או המחוקים כשנבחר "פריט מחוק"), בכפוף לסינון מידה/ברקוד
       const its = m.items.filter((i) => (has(flags, 'md_delitem') ? i.isDeleted : !i.isDeleted)
-        && (!size || (i.sizeText || '').includes(size)) && (!code || (i.dressBarcode || '').includes(code)) && (!has(flags, 'md_repair') || i.inRepair));
+        && (!size || sizeMatches(i.sizeText, size)) && (!code || (i.dressBarcode || '').includes(code)) && (!has(flags, 'md_repair') || i.inRepair));
       return { link: `/dashboard/dresses/${m.id}`, cells: [m.name || '', m.barcodePrefix != null ? String(m.barcodePrefix) : '', String(its.reduce((a, i) => a + (i.quantity || 1), 0))] };
     }),
     truncated, cols: ['שם', 'קוד', 'כמות פריטים'],

@@ -68,5 +68,44 @@ const direct = await m.finalizeTagsAndText('ראו [OPEN_SETTING:INVENTORY_BUFFE
 ok('finalize: manager direct answer gets validated tags', direct.includes('[OPEN_SETTING:inventory_buffer_days]') && !direct.includes('/nope'), direct);
 const staff = await m.finalizeTagsAndText('ראו [OPEN_SETTING:inventory_buffer_days]', { isManager: false, loadSettingsCatalog: async () => cat, loadHowToCatalog: async () => [] });
 ok('finalize: non-manager gets no settings panel tag', !staff.includes('OPEN_SETTING'), staff);
+
+// ---- 5.10.2026: Hebrew months from the shared table (lib/searchNormalize.js HEBREW_MONTH_TABLE) + barcode / phone / size rules (S16-S20) ----
+const HMT = (await import(pathToFileURL(process.env.PROJ + '/lib/searchNormalize.js').href)).HEBREW_MONTH_TABLE;
+const hintFor = (txt) => m.buildUserDateHints(txt, now);
+// 'now' = 9 Tishrei 5787 (a leap year: Adar I + Adar II exist in 5787)
+let hm = hintFor('הזמנות של ד כסליו');
+ok('month: כסלו and כסליו both -> KISLEV day hint', hm.includes("'KISLEV'") && hintFor('הזמנות של ד כסלו').includes("'KISLEV'"), hm);
+hm = hintFor('הזמנות של ב מרחשון');
+ok('month: מרחשון (new spelling) -> CHESHVAN', hm.includes("'CHESHVAN'"), hm);
+ok('month: מרחשוון and חשון still work', hintFor('ז מרחשוון').includes("'CHESHVAN'") && hintFor('ז חשון').includes("'CHESHVAN'"));
+hm = hintFor('כמה הזמנות בכסליו?');
+ok('month-only: בכסליו -> KISLEV start/end macros', hm.includes("HEBREW_MONTH_START('KISLEV'"), hm);
+hm = hintFor('י"ד באדר ב');
+ok('month: אדר ב -> ADAR II day macro (leap year 5787)', hm.includes("HEBREW_DATE(14, 'ADAR II', 5787)"), hm);
+hm = hintFor('י"ד באדר א');
+ok('month: אדר א -> ADAR I', hm.includes("'ADAR I'"), hm);
+hm = hintFor('ט"ו אדר');
+ok('month: bare אדר with a day is recognised', /HEBREW_DATE\(15, 'ADAR/.test(hm), hm);
+hm = hintFor('כמה הזמנות באדר ב?');
+ok('month-only: באדר ב -> ADAR II month macros', hm.includes("HEBREW_MONTH_START('ADAR II'"), hm);
+ok('month-only: bare אדר without a prefix is a name, not a month', hintFor('הזמנות של אדר כהן') === '', hintFor('הזמנות של אדר כהן'));
+ok('month: מנחם אב -> AV with a day', hintFor('ט מנחם אב').includes("'AV'"), hintFor('ט מנחם אב'));
+for (const row of HMT) for (const alias of row.aliases) {
+  const text = /^(אב|איר|אדר)$/.test(alias) ? 'י ב' + alias : 'י ' + alias; // "אב"/"איר"/"אדר" are also ordinary words: with a day they count
+  const out = hintFor(text);
+  ok('table month "' + alias + '" resolves to a hint', out.includes('HEBREW_DATE(10,'), { text, out });
+}
+const rules = m.buildSharedSqlRules({ draftStatus: 'טיוטה', reservedStatus: 'שמור לחיוב' });
+for (const id of ['S16', 'S17', 'S18', 'S19', 'S20']) ok('rules: ' + id + ' present', rules.includes('\n' + id + '. '), id);
+ok('S16: barcode = model prefix + 2-digit size + 2-digit serial, with the worked example', /LAST 2 digits are the serial/.test(rules) && rules.includes('6323401 = model 632, size 34, serial 01') && rules.includes('"DressItem"."dressBarcode"') && rules.includes('"OrderItem"."barcode"'));
+ok('S17: a 7-digit number is a barcode and is never called an order number', rules.includes('NEVER treat a 7-digit number as an order number') && rules.includes('NEVER write "מספר הזמנה"'));
+ok('S17: 5-6 digits = order first, 1-4 digits = order, the word הזמנה forces an order, 9-10 digits from 0 = phone', /5-6 digits \("Order"\."orderId"\)/.test(rules) && rules.includes('order number FIRST') && rules.includes('1-4 digits is an order number') && rules.includes('before any number it is an order number') && rules.includes('9-10 digit number that starts with 0'));
+ok('S18: phone compared by digits only, both phone columns, 972 form', rules.includes("regexp_replace(\"phone1\", '\\D', '', 'g')") && rules.includes("'0501234567', '972501234567'") && rules.includes('phone2'), rules.match(/S18\.[^\n]*/)[0].slice(0, 400));
+ok('S19: every spelling of every month is listed with its macro name', HMT.every((row) => [...row.aliases, ...row.spellings].filter((a) => !/["'׳״]/.test(a)).every((a) => rules.includes(a))));
+ok('S19: new spellings explicitly present (אדר א / אדר ב / כסליו / מרחשון / מנחם אב)', ['אדר א', 'אדר ב', 'כסליו', 'מרחשון', 'מנחם אב'].every((w) => rules.match(/S19\.[^\n]*/)[0].includes(w)));
+ok('S19: month macros present (ADAR_I, ADAR_II, KISLEV, CHESHVAN)', ['ADAR_I', 'ADAR_II', 'KISLEV', 'CHESHVAN'].every((w) => rules.match(/S19\.[^\n]*/)[0].includes(w)));
+ok('S20: size spelling - both spellings, never LIKE %2%', rules.includes("TRIM(\"sizeText\") IN ('2', '02')") && rules.includes('NEVER use "sizeText" LIKE'));
+ok('rules: S1-S15 untouched (S1 and S15 still there)', rules.includes('S1. NULL-SAFE STATUS FILTER') && rules.includes('S15. COUNTING'));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

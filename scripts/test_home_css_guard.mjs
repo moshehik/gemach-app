@@ -1223,5 +1223,95 @@ t('כספים והתראות: הקומפוננטות משתמשות רק במח�
   assert.ok(!/טוגל/.test(ADV + RES + CFG + read('../lib/advAlerts.js') + read('../app/api/a5/adv-alerts/route.js')), 'בלי הלועזית "טוגל"');
 });
 
+/* ---------- 20. שדות הקלט: בלי מלבן "כחול בהיר" (autofill / הדגשת בחירה של הדפדפן) - דיווח הבעלים 5.10.2026 ---------- */
+const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '');
+t('שורת החיפוש הראשית: autoComplete="off" (לא הערך הלא-תקני "nope" ש-Chrome מתייחס אליו כהשלמה), שם ייחודי, בלי תיקון / הגדלה / בדיקת איות', () => {
+  const A5 = read('../app/components/home/HomeA5.js');
+  const i = A5.indexOf('id="sq"');
+  assert.ok(i > 0, 'לא נמצא שדה #sq');
+  const tag = A5.slice(A5.lastIndexOf('<input', i), A5.indexOf('/>', i));
+  assert.ok(/autoComplete="off"/.test(tag), 'חסר autoComplete="off"');
+  assert.ok(!/autoComplete="nope"/.test(tag));
+  assert.ok(/name="gm-home-search"/.test(tag), 'חסר name ייחודי');
+  assert.ok(/autoCorrect="off"/.test(tag) && /autoCapitalize="off"/.test(tag) && /spellCheck=\{false\}/.test(tag));
+});
+t('כל שדות הטקסט בדף הבית (חיפוש מתקדם, שאלת המשך) בלי autoComplete="nope"', () => {
+  for (const f of ['HomeA5', 'HomeAdvanced', 'HomeChat']) assert.ok(!/autoComplete="nope"/.test(stripComments(read(`../app/components/home/${f}.js`))), f);
+});
+t('home.css: :-webkit-autofill נצבע מחדש בצל פנימי בצבע המשטח (--gm-surface), עם טקסט בצבע הדיו, ו-transition ארוך - בלי hex', () => {
+  const rules = homeRules.filter((r) => /:-webkit-autofill/.test(r.sel));
+  assert.ok(rules.length >= 1, 'אין כלל autofill');
+  const sels = rules.flatMap((r) => splitSel(r.sel));
+  for (const st of ['', ':hover', ':focus', ':active']) assert.ok(sels.some((s) => s.replace(/\s+/g, ' ') === `.gm-ds.gm-home input:-webkit-autofill${st}`), 'חסר מצב ' + (st || 'רגיל'));
+  const body = rules.map((r) => r.body).join(';');
+  assert.ok(/box-shadow:\s*0 0 0 1000px var\(--gm-surface\) inset\s*!important/.test(body), 'הצל הפנימי העבה');
+  assert.ok(/-webkit-text-fill-color:\s*var\(--gm-ink\)\s*!important/.test(body), 'צבע הטקסט');
+  assert.ok(/transition:\s*background-color 600000s/.test(body), 'transition ארוך נגד הבהוב צבע הדפדפן');
+  assert.ok(!/#[0-9a-f]{3,8}\b/i.test(body), 'hex בכלל autofill');
+});
+t('home.css: ::selection בשדות הדף בצבעי פלטה (זהב-בהיר + כחול כהה), בלי כחול ברירת מחדל / hex', () => {
+  const rules = homeRules.filter((r) => /::selection/.test(r.sel));
+  assert.ok(rules.length >= 1, 'אין כלל ::selection');
+  for (const r of rules) {
+    for (const s of splitSel(r.sel)) assert.ok(/\.gm-ds\.gm-home/.test(s), 'מחוץ להיקף: ' + s);
+    assert.ok(/background:\s*var\(--gm-/.test(r.body) && /color:\s*var\(--gm-/.test(r.body), 'צבעים לא מטוקן פלטה: ' + r.body.trim());
+    assert.ok(!/#[0-9a-f]{3,8}\b|rgb|blue/i.test(r.body));
+  }
+});
+t('אין ב-home.css כלל שצובע את שדות הקלט ב-#e8f0fe / כחול autofill של Chrome', () => {
+  assert.ok(!/#e8f0fe|#e3effa|#d2e3fc|rgb\(\s*232\s*,\s*240\s*,\s*254/i.test(stripComments(HOME_CSS)));
+});
+t('כל :-webkit-autofill בפלטה / globals שמשנה את שדות הדף לא מכניס רקע שאינו --gm-', () => {
+  for (const r of [...paletteHome, ...globalRules].filter((x) => /:-webkit-autofill/.test(x.sel))) {
+    assert.ok(!/background(-color)?:\s*(#|rgb)/i.test(r.body), r.sel);
+  }
+});
+
+/* ---------- 21. תוצאות החיפוש הראשי (5.10.2026): יישור תגית הסטטוס, שורת פריט / מלאי / צ'יפים של הלו"ז ---------- */
+t('.stx (תגית סטטוס: "פעיל / הושכר") ב-components.css: vertical-align:middle - לא יושבת על קו הבסיס של האייקון', () => {
+  const rule = parseCss(PALETTE).find((r) => r.sel === '.gm-ds.gm-home .stx');
+  assert.ok(rule, 'חסר כלל .stx');
+  const props = Object.fromEntries(decls(rule.body).map((d) => [d.prop, d.value]));
+  assert.equal(props['vertical-align'], 'middle');
+  assert.equal(props['align-items'], 'center');
+  assert.equal(props.display, 'inline-flex');
+  assert.equal(props['line-height'], '1');
+});
+t('שורת תוצאה: .li הוא flex עם align-items:center והעמודה .t נמתחת (flex:1, min-width:0) - התגית והשורה על אותו קו', () => {
+  const li = parseCss(PALETTE).find((r) => r.sel === '.gm-ds.gm-home .res-one .li');
+  assert.ok(li && /align-items:\s*center/.test(li.body), '.res-one .li ללא align-items:center');
+  const t2 = homeRules.find((r) => r.sel === '.gm-ds.gm-home .res-one .li .t');
+  assert.ok(t2 && /flex:\s*1/.test(t2.body) && /min-width:\s*0/.test(t2.body));
+});
+t('המחלקות שרכיבי התוצאות החדשים משתמשים בהן קיימות: בפלטה (chip / btnlike / amber / rose / gold / stx / li / lrow) או ב-home.css (dchips / invs / invd / invz / nolink / rt)', () => {
+  const RES = read('../app/components/home/HomeResults.js');
+  for (const c of ['chip', 'stx', 'li', 'lrow', 'rlink', 'ic-b', 'rlbl']) assert.ok(new RegExp(CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .' + c + ' בפלטה');
+  for (const c of ['amber', 'rose', 'gold', 'btnlike']) assert.ok(new RegExp(CLS_PRE + 'chip' + CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .chip.' + c);
+  for (const c of ['dchips', 'dchips-h', 'dchips-r', 'invs', 'invd', 'invz', 'nolink', 'rt', 'dchip-al']) {
+    assert.ok(new RegExp(CLS_PRE + c + '(?![\\w-])').test(HOME_CSS), 'אין כלל ב-home.css ל-.' + c);
+    assert.ok(RES.includes(c), c + ' לא בשימוש ב-HomeResults');
+  }
+  const SPRITE = read('../app/components/menu/spriteSymbols.js');
+  for (const i of ['box', 'cal', 'dress', 'user', 'file', 'chev', 'bag', 'check', 'clock', 'x', 'undo', 'pencil']) assert.ok(SPRITE.includes('["' + i + '"'), 'אין אייקון ' + i);
+});
+t('כללי הסעיף החדש ב-home.css (19): בהיקף .gm-ds.gm-home, רק טוקני --gm-*, בלי hex / רקע לבן / !important על רקע', () => {
+  const at = HOME_CSS.indexOf('/* 19) תוצאות החיפוש הכללי');
+  assert.ok(at > 0, 'סעיף 19 חסר');
+  const sec = parseCss(HOME_CSS.slice(at));
+  assert.ok(sec.length >= 8);
+  for (const r of sec) {
+    for (const s of splitSel(r.sel)) assert.ok(/^\.gm-ds\.gm-home /.test(s), 'מחוץ להיקף: ' + s);
+    assert.ok(!/#[0-9a-f]{3,8}\b/i.test(r.body), 'hex ב-' + r.sel);
+    for (const m of r.body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה שאינו gm-: --' + m[1]);
+    assert.ok(!setsProp(r, /^background(-color)?$/).some((d) => WHITE_RE.test(d.value) || isImportant(d)), r.sel);
+  }
+  assert.deepEqual(mediaBeforeBase(sec, 'home.css (19)'), []);
+});
+t('הדגשת התאמה (mark) בתוצאות: אותו עיצוב כמו .advo mark / .mine-t mark - טקסט זהב מודגש בלי רקע', () => {
+  const r = homeRules.find((x) => x.sel === '.gm-ds.gm-home .res-one .li mark');
+  assert.ok(r);
+  assert.ok(/background:\s*transparent/.test(r.body) && /color:\s*var\(--gm-gold-d\)/.test(r.body) && /font-weight:\s*700/.test(r.body));
+});
+
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
 if (failed) process.exit(1);

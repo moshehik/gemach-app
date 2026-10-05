@@ -52,6 +52,10 @@
    בצבע --primary-color בספציפיות 0,4,1 ומעלה, וגובר על הכלל של הפלטה (.gm-ds .sn-sbox input, 0,2,1) - בתוך תיבת החיפוש נוצר "שדה בתוך שדה".
    לכן !important (כמו הגנת הגופן למטה). הסימון הנראה נשאר: טבעת הזהב של העטיפה (.sn-sbox:focus-within בפלטה). */
 .gm-ds.gm-menu .sn-sbox input,.gm-ds.gm-menu .sn-sbox input:focus,.gm-ds.gm-menu .sn-sbox input:focus-visible{border:0!important;border-radius:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}
+/* השלמה אוטומטית של Chrome (אותו כלל כמו בדף הבית, home.css סעיף 18): בלי הרקע הכחול-בהיר של :-webkit-autofill בתוך תיבת החיפוש, ובלי צבע ההדגשה הכחול של הדפדפן. */
+.gm-ds.gm-menu .sn-sbox input:-webkit-autofill,.gm-ds.gm-menu .sn-sbox input:-webkit-autofill:hover,.gm-ds.gm-menu .sn-sbox input:-webkit-autofill:focus,.gm-ds.gm-menu .sn-sbox input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 1000px var(--gm-sky-50) inset!important;box-shadow:0 0 0 1000px var(--gm-sky-50) inset!important;-webkit-text-fill-color:var(--gm-ink)!important;caret-color:var(--gm-ink);transition:background-color 600000s 0s,color 600000s 0s}
+.gm-ds.gm-menu .sn-sbox:focus-within input:-webkit-autofill,.gm-ds.gm-menu .sn-sbox:focus-within input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px #fff inset!important;box-shadow:0 0 0 1000px #fff inset!important}
+.gm-ds.gm-menu .sn-sbox input::selection{background:var(--gm-gold-light);color:var(--gm-navy-900)}
 /* ה-X הכחול של הדפדפן בשדה search: מוסתר (כמו בפלטה ב-.hf-s) */
 .gm-ds.gm-menu .sn-sbox input::-webkit-search-cancel-button{display:none}
 .gm-ds.gm-menu .sn-msg{font-size:13.5px;font-weight:600;padding:0 10px;min-height:0}
@@ -163,6 +167,7 @@
 .gm-ds.gm-menu .sn-sbox .pfx-save:focus-visible{box-shadow:0 0 0 3px var(--gm-gold)}
 .gm-ds.gm-menu .sn-sbox .pfx-save[data-st="saved"],.gm-ds.gm-menu .sn-sbox .pfx-save[data-st="done"]{color:var(--gm-gold-d)}
 .gm-ds.gm-menu .sn-sbox .pfx-save[data-st="done"] .ic{transform:scale(1.18)}
+.gm-ds.gm-menu .sn-sbox .pfx-save[data-st="saved"] .ic{fill:currentColor}
 /* חלון אישור המחיקה (מועבר ל-body; עטיפה .gm-ds.dlg-dark.pfx-dlg-root בלי תיבה משלה) */
 .gm-ds.pfx-dlg-root{display:contents}
 .gm-ds.pfx-dlg-root #dlg.pfxdel{max-width:400px}

@@ -10,7 +10,7 @@ import {
   HOME_SCOPES, HOME_RECENT_VALUES, parseHomeParams, homeDirectiveKey, homeScopeTitle, SCOPE_TITLE_REST, applyScope, scopedAdvFields,
   RENTAL_STATE_STYLE, rentalStatus,
 } from '../app/components/home/homeLogic.js';
-import { isBarcodeLikeQuery } from '../lib/quickSearchResults.js';
+import { isBarcodeLikeQuery, combineQuickSearchResults } from '../lib/quickSearchResults.js';
 import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
 import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, resolveQuickPrefix, splitMatch } from '../lib/quickPrefix.js';
 import { buildMineModel, buildWhoChips, mineTableRecords, mineExportRecords, mineSheetSections, MINE_TABLE_COLUMNS, whenLabelHe, MINE_POPOVER_LIMIT, MINE_URL } from '../lib/myRecentActivityView.js';
@@ -125,8 +125,9 @@ t('נרמול: שדות רגישים של השרת (ת"ז, בנק, הערות פ
   }
 });
 t('נרמול: קלט ריק/חסר', () => {
-  assert.deepEqual(normalizeSearch(null), { customers: [], orders: [], rentals: [] });
-  assert.deepEqual(normalizeSearch({}), { customers: [], orders: [], rentals: [] });
+  const EMPTY_RES = { customers: [], orders: [], rentals: [], inventory: [], inventoryTruncated: false, dateChips: null };
+  assert.deepEqual(normalizeSearch(null), EMPTY_RES);
+  assert.deepEqual(normalizeSearch({}), EMPTY_RES);
   assert.equal(resultsCount(null), 0);
 });
 t('נרמול: מצב פריט (מושכר עכשיו / הוחזר / טרם נלקח) רק כשהשרת שלח את הדגלים', () => {
@@ -141,20 +142,20 @@ t('סטטוס הזמנה: ארבעה ערכים, השאר "פעיל"', () => {
   assert.deepEqual(orderStatus(''), { cls: '', icon: 'clock', label: 'פעיל' });
   assert.deepEqual(orderStatus('מצב לא מוכר'), { cls: '', icon: 'clock', label: 'מצב לא מוכר' });
 });
-t('רשימה מאוחדת: סדר לקוחות, הזמנות, פריטים וכל שורה מסמנת מה היא', () => {
+t('רשימה מאוחדת: סדר הזמנות, לקוחות, פריטים (הזמנות לפני לקוחות) וכל שורה מסמנת מה היא', () => {
   const rows = unifiedRows(normalizeSearch(RAW));
-  assert.deepEqual(rows.map((r) => r.kind), ['לקוח', 'לקוח', 'הזמנה', 'הזמנה', 'פריט', 'פריט']);
+  assert.deepEqual(rows.map((r) => r.kind), ['הזמנה', 'הזמנה', 'לקוח', 'לקוח', 'פריט', 'פריט']);
   assert.equal(new Set(rows.map((r) => r.key)).size, rows.length, 'מפתחות ייחודיים');
-  assert.equal(rows[2].status.label, 'פעיל');
-  assert.equal(rows[3].status.label, 'הוחזר');
+  assert.equal(rows[0].status.label, 'פעיל');
+  assert.equal(rows[1].status.label, 'הוחזר');
   assert.deepEqual(unifiedRows(null), []);
 });
 t('טבלה: 9 עמודות ותאי כל סוג', () => {
   const rec = tableRecords(unifiedRows(normalizeSearch(RAW)));
   assert.deepEqual(TABLE_COLUMNS, ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס / מידה']);
   assert.ok(rec.every((r) => r.cells.length === TABLE_COLUMNS.length));
-  assert.deepEqual(rec[0].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '', '', '']);
-  assert.deepEqual(rec[2].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', '', '', 'י״ג תשרי', 'פעיל']);
+  assert.deepEqual(rec[2].cells, ['לקוח', 'רחל כהן', '052-4418210', 'ירושלים', '', '', '', '', '']);
+  assert.deepEqual(rec[0].cells, ['הזמנה', 'רחל כהן', '', '', '#48131', '', '', 'י״ג תשרי', 'פעיל']);
   assert.deepEqual(rec[4].cells, ['פריט', 'שמלת ורד', '', '', '1024038', '#48131', '', '', 'מידה 38']);
   assert.equal(rec[5].cells[8], '', 'אין מידה = ריק');
 });
@@ -220,6 +221,13 @@ t('זיהוי חיפוש-ברקוד (משותף לשרת ולחיפוש המהי
   for (const yes of ['5511205', '12345', ' 5511205 ']) assert.equal(isBarcodeLikeQuery(yes), true, yes);
   for (const no of ['1234', 'ddddd', 'd{5,}', '55112a5', '551 1205', '', null, 'כהן']) assert.equal(isBarcodeLikeQuery(no), false, String(no));
 });
+t('חיפוש מהיר: 7 ספרות = הפריט שנמצא לפי ברקוד קודם; 5-6 ספרות = ההזמנה קודם והברקוד אחריה (אותו כלל כמו classifyQuery)', () => {
+  const data = { orders: [{ orderId: 25734, firstName: 'א' }], customers: [{ id: 'c1' }], rentals: [{ orderId: 777, barcode: '6323401', isTaken: true, isReturned: false }, { orderId: 888, barcode: '2573401' }] };
+  assert.deepEqual(combineQuickSearchResults(data, '6323401').map((x) => x.orderId || x.id), [777, 25734, 'c1']);
+  assert.deepEqual(combineQuickSearchResults({ ...data, rentals: [{ orderId: 888, barcode: '1257340' }] }, '25734').map((x) => x.orderId || x.id), [25734, 888, 'c1']);
+  assert.deepEqual(combineQuickSearchResults(data, 'ברקוד 6323401').map((x) => x.orderId || x.id), [777, 25734, 'c1'], 'מילת מפתח מפורשת');
+  assert.equal(combineQuickSearchResults(data, '2573').length, 2, '4 ספרות = מספר הזמנה בלבד, בלי פריטי ברקוד');
+});
 t('מיון: מספרים לפי ערך, טקסט בעברית, לא משנה את המקור', () => {
   const recs = [{ cells: ['x', '#10'] }, { cells: ['y', '#9'] }, { cells: ['z', '#100'] }];
   assert.deepEqual(sortRecords(recs, 1, 1).map((r) => r.cells[1]), ['#9', '#10', '#100']);
@@ -231,7 +239,7 @@ t('מיון: מספרים לפי ערך, טקסט בעברית, לא משנה א
 t('ייצוא: אובייקט לכל שורה עם כותרות הטבלה', () => {
   const ex = exportRecordsForRows(unifiedRows(normalizeSearch(RAW)));
   assert.deepEqual(Object.keys(ex[0]), TABLE_COLUMNS);
-  assert.equal(ex[2]['מזהה / ברקוד'], '#48131');
+  assert.equal(ex[0]['מזהה / ברקוד'], '#48131');
 });
 
 console.log('חיפוש חכם');
@@ -817,6 +825,9 @@ t('scopedAdvFields (החזרות / תיקונים): שם לקוח / טלפון (
   assert.deepEqual(scopedAdvFields('כהן רחל'), { name: 'כהן רחל' });
   assert.deepEqual(scopedAdvFields('052-1234567'), { cinfo: '0521234567' });
   assert.deepEqual(scopedAdvFields('52103'), { oid: '52103' });
+  assert.deepEqual(scopedAdvFields('5511205', 'returns'), { item: '5511205' }, '7 ספרות = ברקוד, לא טלפון');
+  assert.deepEqual(scopedAdvFields('5511205', 'alterations'), { oid: '5511205' });
+  assert.deepEqual(scopedAdvFields('501234567'), { cinfo: '501234567' });
   assert.equal(scopedAdvFields('  '), null); assert.equal(scopedAdvFields(undefined), null);
   assert.equal(HOME_SCOPES.returns.via, 'adv'); assert.equal(HOME_SCOPES.returns.focus, 'returns'); assert.equal(HOME_SCOPES.alterations.focus, 'alterations');
   assert.ok(ADV_FOCI.returns && ADV_FOCI.alterations, 'תחומי החיפוש המתקדם קיימים');
@@ -854,13 +865,13 @@ t("resolveQuickPrefix: '&' פעילה רק כשיש מקור שמותר (לא de
   assert.equal(resolveQuickPrefix('רחל&'), null);
 });
 t("detectQuickPrefix: '@' '&' '#' '$' כתו ראשון; באמצע הטקסט לא ('#' ו-'$' - ר' test_quick_prefix_shortcuts.mjs)", () => {
-  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$']);
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$', '%']);
   assert.equal(QUICK_PREFIXES['@'].source, 'local'); assert.equal(QUICK_PREFIXES['&'].source, 'mine');
   assert.equal(detectQuickPrefix('&').prefix, '&'); assert.equal(detectQuickPrefix('&').def.id, 'mine'); assert.equal(detectQuickPrefix('& רחל ').term, 'רחל');
   for (const no of [' &', 'רחל&', 'a&b', 'Q&A']) assert.equal(detectQuickPrefix(no), null, no);
   assert.equal(detectQuickPrefix('@').prefix, '@'); assert.equal(detectQuickPrefix('@').term, '');
   assert.equal(detectQuickPrefix('@ כהן ').term, 'כהן');
-  for (const no of ['', ' @', 'כהן@', 'a@b.co', '!', '%x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
+  for (const no of ['', ' @', 'כהן@', 'a@b.co', '!', '^x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
 });
 t('filterPrefixRows / splitMatch: סינון לפי כותרת / סוג / טקסט משנה, בלי לשנות את הקלט', () => {
   const rows = [{ key: 'a', kind: 'לקוח', title: 'רחל כהן', sub: 'ירושלים' }, { key: 'b', kind: 'הזמנה', title: 'דנה לוי', sub: '' }];

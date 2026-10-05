@@ -15,18 +15,59 @@ import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOr
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
+import {
+  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, sizeTextFilter, phoneKeysFromInput,
+} from '@/lib/listSearch';
+import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
+import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 
 export const dynamic = 'force-dynamic';
+
+// האם הטווח "עתידי בלבד" (לשונית "בקרוב" / excludeArchiveAndPast) פעיל - אז כשחיפוש טקסט לא מצא כלום אפשר להרחיב לכל התאריכים.
+// בלשוניות ההשכרות (forRentals) הטווח הוא חלק מהמשמעות התפעולית של המסך ולא מרחיבים אותו.
+function isScopeRestricted(searchParams) {
+  if (searchParams.get('forRentals') === 'true') return false;
+  const filterStatus = searchParams.get('filterStatus') || 'all';
+  return filterStatus === 'soon' || (filterStatus === 'all' && searchParams.get('excludeArchiveAndPast') === 'true');
+}
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
+    // תוכנית החיפוש (lib/listSearch.js): מזהה מה הוקלד - שם / מספר הזמנה / טלפון / ברקוד / תאריך עברי או לועזי - ובונה את התנאים.
+    const plan = planListSearch(searchParams.get('search') || '');
+    const cache = new Map(); // חיפושי עזר (דגמים / טלפונים / שמות דומים) שמשותפים לנסיון הראשון ולנסיונות החוזרים
+    let result = await queryOrdersList(searchParams, { plan, cache });
+    // חיפוש טקסט שלא מצא כלום: מנסים שוב לפי הסדר (הרחבת טווח התאריכים, ברקוד, מקלדת אנגלית, שמות דומים) ומציגים הודעה.
+    // שימוש בנתונים האמיתיים (B-search-usage-mining): 12% מחיפושי הרשימה ריקים, 94% מהם רצים עם "בקרוב" בלי שום אינדיקציה.
+    // בלי נסיונות חוזרים בלשוניות החובות (טוענות את כל ההזמנות) ובטקסט קצר מ-3 תווים (shouldRetryEmptySearch)
+    if (result.total === 0 && shouldRetryEmptySearch(plan, { filterStatus: searchParams.get('filterStatus') || 'all' })) {
+      for (const variant of buildRetryVariants(plan, { scopeRestricted: isScopeRestricted(searchParams) })) {
+        const variantPlan = variant.text ? planListSearch(variant.text) : plan;
+        const retry = await queryOrdersList(searchParams, { plan: variantPlan, cache, widen: variant.widen, fuzzy: variant.fuzzy, barcodeStage: variant.barcode, dateStage: variant.dateStage });
+        if (retry.total > 0) { result = { ...retry, notices: [...variant.notices, ...(retry.notices || [])] }; break; }
+      }
+    }
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
+  }
+}
+
+// כל שאילתת הרשימה (חיפוש + סינון + עימוד). opts: { plan, widen (לוותר על סינון "בקרוב"), fuzzy (להוסיף שמות דומים), barcodeStage (להוסיף ברקוד כגיבוי) }.
+// מחזירה את גוף התשובה (לא Response) כדי ש-GET יוכל להריץ אותה שוב עם וריאנט.
+async function queryOrdersList(searchParams, opts) {
+  {
+    const plan = opts.plan;
+    const search = plan.text;
     const sort = searchParams.get('sort') || 'eventDate';
     const order = searchParams.get('order') || 'desc';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const page = clampPage(searchParams.get('page') || '1');
+    // תקרה ל-limit (קודם: ?limit=100000000 שלף את כל הטבלה). התקרה (EXPORT_MAX_ROWS) גבוהה מספיק לייצוא של כל ההזמנות; מעבר לה limitCapped:true בתשובה
+    const limit = clampLimit(searchParams.get('limit'), 50, EXPORT_MAX_ROWS);
+    const limitCapped = limitWasCapped(searchParams.get('limit'), EXPORT_MAX_ROWS);
 
     const skip = (page - 1) * limit;
     const forRentals = searchParams.get('forRentals') === 'true';
@@ -50,9 +91,14 @@ export async function GET(request) {
     const partiallyRentedOnly = searchParams.get('partiallyRentedOnly') === 'true';
     const partiallyReturnedOnly = searchParams.get('partiallyReturnedOnly') === 'true';
 
-    const excludeArchiveAndPast = searchParams.get('excludeArchiveAndPast') === 'true';
+    let excludeArchiveAndPast = searchParams.get('excludeArchiveAndPast') === 'true';
     const archiveAndPastOnly = searchParams.get('archiveAndPastOnly') === 'true';
-    const filterStatus = searchParams.get('filterStatus') || 'all';
+    let filterStatus = searchParams.get('filterStatus') || 'all';
+    // וריאנט "מכל התאריכים" (חיפוש טקסט שלא מצא בהזמנות עתידיות): בלי סינון "בקרוב"
+    if (opts.widen) {
+      if (filterStatus === 'soon') filterStatus = 'all';
+      excludeArchiveAndPast = false;
+    }
 
     // When the admin toggle is on, autosaved-but-never-finished draft orders ('טיוטה') are
     // displayed as deleted instead of getting their own tab (see app/orders/page.js, which hides
@@ -70,7 +116,7 @@ export async function GET(request) {
       try {
         const s = await getCachedSetting('show_not_taken_orders');
         if (s?.value === 'false') {
-          return NextResponse.json({ data: [], total: 0, page, limit, totalPages: 0 });
+          return { data: [], total: 0, page, limit, totalPages: 0 };
         }
       } catch {}
     }
@@ -115,24 +161,39 @@ export async function GET(request) {
     // למטה). כדי שחיפוש טקסט חופשי ימצא גם הזמנות "בקרוב" כאלה, מאתרים קודם אילו דגמים תואמים
     // את מחרוזת החיפוש ומסננים גם לפי בר-הקוד שלהם.
     let searchModelPrefixes = [];
+    let searchPhoneIds = [];
+    let searchFuzzyIds = [];
     if (search) {
       // דגמים רבים (בעיקר מיובאי-Access) נשארים עם שם placeholder ("ללא שם - X") שלא
       // מכיל את מספר הדגם עצמו - name.contains לבדו מפספס אותם. אותה בעיה שדיווח 9460cf81
       // (נווה יעקב, דגם 811) חשף: חיפוש טקסט חופשי לפי מספר דגם צריך להתאים גם לפי
       // barcodePrefix מספרי, בדיוק כמו ש-/api/inventory/models וה"דגם" בחיפוש המתקדם כבר עושים.
-      const searchAsInt = parseInt(search, 10);
-      const matchingModels = await prisma.dressModel.findMany({
-        where: {
-          barcodePrefix: { not: null },
-          OR: [
-            { name: { contains: search } },
-            ...(!isNaN(searchAsInt) ? [{ barcodePrefix: searchAsInt }] : [])
-          ]
-        },
-        select: { barcodePrefix: true }
-      });
-      searchModelPrefixes = matchingModels.map(m => m.barcodePrefix).filter(p => p !== null && p !== undefined);
+      // (רק כשהקלט ספרות בלבד - parseInt על טקסט חופשי הפך "050-123" לדגם 50 / הזמנה 50.)
+      const modelLookup = planModelLookup(plan);
+      const [prefixes, phoneIds, fuzzyIds] = await Promise.all([
+        modelLookup
+          ? memoLookup(opts.cache, `models:${modelLookup.name}|${modelLookup.prefix}`, () => prisma.dressModel.findMany({
+            where: {
+              barcodePrefix: { not: null },
+              OR: [
+                ...(modelLookup.name ? [{ name: { contains: modelLookup.name } }] : []),
+                ...(modelLookup.prefix !== null && modelLookup.prefix !== undefined ? [{ barcodePrefix: modelLookup.prefix }] : [])
+              ]
+            },
+            select: { barcodePrefix: true }
+          }))
+          : [],
+        // לקוחות לפי טלפון בכל צורת כתיבה (מקפים / +972 / בלי 0 מוביל), שני הטלפונים - lib/searchDb.js
+        planNeedsPhoneIds(plan) ? memoLookup(opts.cache, `phone:${JSON.stringify(plan.phone)}`, () => findCustomerIdsByPhone(plan.phone)) : [],
+        opts.fuzzy ? memoLookup(opts.cache, `fuzzy:${search}`, () => findFuzzyCustomerIds(search)) : []
+      ]);
+      searchModelPrefixes = prefixes.map(m => m.barcodePrefix).filter(p => p !== null && p !== undefined);
+      searchPhoneIds = phoneIds;
+      searchFuzzyIds = fuzzyIds;
     }
+    // טלפון בחיפוש המתקדם: אותה השוואה לפי ספרות (בנוסף ל-contains של מה שהוקלד, שנשאר כמו קודם)
+    const advPhoneKeys = advCustomerPhone ? phoneKeysFromInput(advCustomerPhone) : null;
+    const advPhoneIds = advPhoneKeys ? await memoLookup(opts.cache, `advphone:${advCustomerPhone}`, () => findCustomerIdsByPhone(advPhoneKeys)) : [];
 
     // 37 - not_taken: הזמנות שלא נלקחו/חלקית (יש isTaken=false), מותנה ב-show_not_taken_orders (מוסתר כשכבוי)
     //
@@ -208,17 +269,16 @@ export async function GET(request) {
     if (search) {
       // חיפוש שם מלא ("רחל כהן") - קודם, שם פרטי ושם משפחה נבדקו בנפרד מול המחרוזת
       // השלמה, כך שאף אחד מהם לא הכיל אותה כשהיא כללה גם שם פרטי וגם משפחה יחד.
-      const multiWordNameCond = buildMultiWordRelationNameCondition(search, 'customer', 'firstName', 'lastName');
-      conditions.push({
-        OR: [
-          { orderId: isNaN(parseInt(search)) ? undefined : parseInt(search) },
-          { customer: { firstName: { contains: search } } },
-          { customer: { lastName: { contains: search } } },
-          { items: { some: { isDeleted: false, dressItem: { dress: { name: { contains: search } } } } } },
-          ...(searchModelPrefixes.length > 0 ? [{ items: { some: { isDeleted: false, barcodePrefix: { in: searchModelPrefixes } } } }] : []),
-          ...(multiWordNameCond ? [multiWordNameCond] : [])
-        ]
-      });
+      // הרכבת התנאי לפי מה שהוקלד (lib/listSearch.js orderSearchCondition): מספר הזמנה רק לקלט מספרי; שם לקוח / דגם; טלפון; ברקוד; תאריך עברי / לועזי.
+      conditions.push(orderSearchCondition(plan, {
+        modelPrefixes: searchModelPrefixes,
+        phoneIds: searchPhoneIds,
+        fuzzyIds: searchFuzzyIds,
+        barcodeStage: !!opts.barcodeStage,
+        dateStage: !!opts.dateStage,
+        multiNameCond: plan.nameText ? buildMultiWordRelationNameCondition(plan.nameText, 'customer', 'firstName', 'lastName') : null,
+        multiRestCond: plan.kw && plan.kw.rest ? buildMultiWordRelationNameCondition(plan.kw.rest, 'customer', 'firstName', 'lastName') : null
+      }));
     }
     if (advOrderId) conditions.push({ orderId: parseInt(advOrderId) });
     if (advCustomerName) {
@@ -233,12 +293,17 @@ export async function GET(request) {
     }
     if (advCustomerPhone) {
       conditions.push({
-        customer: {
-          OR: [
-            { phone1: { contains: advCustomerPhone } },
-            { phone2: { contains: advCustomerPhone } }
-          ]
-        }
+        OR: [
+          {
+            customer: {
+              OR: [
+                { phone1: { contains: advCustomerPhone } },
+                { phone2: { contains: advCustomerPhone } }
+              ]
+            }
+          },
+          ...(advPhoneIds.length ? [{ customerId: { in: advPhoneIds } }] : [])
+        ]
       });
     }
     if (advCustomerCity) conditions.push({ customer: { city: { contains: advCustomerCity } } });
@@ -250,7 +315,9 @@ export async function GET(request) {
         }
       });
     }
-    if (itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix || advSize) {
+    // מידה מדויקת: "2" = "02" ולא 12/20/32 (lib/listSearch.js sizeTextFilter; קודם contains)
+    const advSizeFilter = advSize ? sizeTextFilter(advSize) : null;
+    if (itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix || advSizeFilter) {
       conditions.push({
         items: {
           some: {
@@ -274,11 +341,11 @@ export async function GET(request) {
                 isDeleted: false,
                 dressItem: { dress: { name: { contains: advModelName } } }
               }] : []),
-              ...(advSize ? [{
+              ...(advSizeFilter ? [{
                 isDeleted: false,
                 OR: [
-                  { sizeText: { contains: advSize } },
-                  { dressItem: { sizeText: { contains: advSize } } }
+                  { sizeText: advSizeFilter },
+                  { dressItem: { sizeText: advSizeFilter } }
                 ]
               }] : [])
             ]
@@ -638,16 +705,16 @@ export async function GET(request) {
 
     let finalFormatted = formattedOrders;
 
-    return NextResponse.json({
+    return {
       data: finalFormatted,
       total: finalTotalCount,
       page,
       limit,
+      ...(limitCapped ? { limitCapped: true } : {}),
+      // חיפוש טלפון שנחתך (יותר מ-300 לקוחות תואמים): התוצאות חלקיות - מודיעים ולא מציגים כאילו זה הכל
+      ...(searchPhoneIds.capped || advPhoneIds.capped ? { notices: [{ kind: 'partial', text: NOTICE_PARTIAL }] } : {}),
       totalPages: Math.ceil(finalTotalCount / limit)
-    });
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
+    };
   }
 }
 

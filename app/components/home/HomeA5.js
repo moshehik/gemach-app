@@ -26,7 +26,7 @@ import { buildSearchSheet, sectionsFromGeneral, sectionFromRecords } from './sea
 import { QuickPrefixList, useDraftCount, useLocalRecentRows, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import { useSavedSearches, rememberSearch } from '../search/savedSearches';
 import { DeleteDialog, GuideButton, GuideDialog, SaveIconButton } from '../search/ShortcutsUi';
-import { actionTarget, guideRows, saveCandidate } from '@/lib/quickShortcuts';
+import { actionTarget, guideRows, keywordInsert, saveCandidate } from '@/lib/quickShortcuts';
 import SearchKeySync from '../search/SearchKeySync';
 import { buildMineModel, mineExportRecords, mineSheetSections } from '@/lib/myRecentActivityView';
 import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
@@ -53,6 +53,14 @@ async function getJson(url) {
     throw new HttpError(res.status, msg);
   }
   return res.json();
+}
+
+// שורת התוצאה הראשונה (קישור או שורת מלאי בלי קישור) - למעבר מקלדת מהשורת חיפוש; false כשאין
+function focusFirstResult() {
+  const el = document.querySelector('.res-one .lrow');
+  if (!el) return false;
+  el.focus();
+  return true;
 }
 
 function saveBlob(blob, name) {
@@ -90,6 +98,7 @@ export default function HomeA5() {
   const [aiMode, setAiMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState(null);
+  const [resQuery, setResQuery] = useState(''); // הטקסט שהפיק את התוצאות המוצגות (לא מה שמוקלד עכשיו): מס' הזמנה מדויק קודם, הדגשה, ייצוא
   const [resKey, setResKey] = useState(0);
   const [advRes, setAdvRes] = useState(null); // { focus, data, summary }
   const [chat, setChat] = useState([]);
@@ -183,7 +192,7 @@ export default function HomeA5() {
      המתקדם שלהן (אותו שרת, אותה הרשאה) לפי הטקסט: שם לקוח / טלפון / קוד הזמנה (scopedAdvFields). לא חיפוש לפי ברקוד או דגם. */
   const runScopedAdv = useCallback(async (query, sc, my) => {
     const focus = HOME_SCOPES[sc].focus;
-    const fields = scopedAdvFields(query);
+    const fields = scopedAdvFields(query, focus);
     if (!fields) { setLoading(false); return; }
     const form = { ...emptyAdv(focus), ...fields };
     try {
@@ -228,9 +237,11 @@ export default function HomeA5() {
     const sc = scopeRef.current;
     if (sc && HOME_SCOPES[sc].via === 'adv') { runScopedAdv(query, sc, my); return; }
     try {
-      const d = await getJson('/api/global-search?q=' + encodeURIComponent(query));
+      // extras=1: שורות "מלאי" (ברקוד / מידה / דגם) וצ'יפים של הלו"ז ליום שהוקלד - רק לבית החדש (הצרכנים האחרים של הנתיב לא מבקשים)
+      const d = await getJson('/api/global-search?q=' + encodeURIComponent(query) + '&extras=1');
       if (my !== seq.current) return;
       const norm = normalizeSearch(d);
+      setResQuery(query);
       setRes(norm); // התשובה המלאה; הסינון לקטגוריה מוחל בתצוגה (applyScope), כדי שהסרת הסינון תחשוף את שאר התוצאות בלי חיפוש חדש
       setChat([]);
       setResKey((k) => k + 1);
@@ -264,6 +275,7 @@ export default function HomeA5() {
     setLoading(false);
     setAdvRes(null);
     setRes(null);
+    setResQuery('');
     setMineWho(null); // הבחירה של הנהלה ב"השינויים שלי" לא נשארת אחרי היציאה מהתצוגה: ברירת המחדל היא הרשימות של עצמה
     forget();
   }, [forget, setMineWho]);
@@ -383,7 +395,8 @@ export default function HomeA5() {
       const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || 'null');
       if (saved && saved.res && Array.isArray(saved.res.customers) && Array.isArray(saved.res.orders) && Array.isArray(saved.res.rentals)) {
         setQ(saved.q || '');
-        setRes(saved.res);
+        setResQuery(saved.q || '');
+        setRes({ inventory: [], inventoryTruncated: false, dateChips: null, ...saved.res }); // תשובה ישנה (נשמרה לפני שדות המלאי / הצ'יפים) עדיין תקפה
         setResKey((k) => k + 1);
         setView(resultsCount(saved.res) ? 'results' : 'none');
       }
@@ -520,8 +533,8 @@ export default function HomeA5() {
     }
   }, [showToast, gmachName]);
 
-  const onExportGeneral = (kind) => exportRows(kind, exportRecordsForRows(unifiedRows(shownRes)), 'תוצאות חיפוש', 'Search_Export', {
-    sections: sectionsFromGeneral(shownRes),
+  const onExportGeneral = (kind) => exportRows(kind, exportRecordsForRows(unifiedRows(shownRes, resQuery)), 'תוצאות חיפוש', 'Search_Export', {
+    sections: sectionsFromGeneral(shownRes, resQuery),
     query: lastQuery.current.text || q,
     scopeChip: scopeDef ? 'רק ' + scopeDef.only : '',
   });
@@ -604,6 +617,12 @@ export default function HomeA5() {
   const qp = useQuickPrefix({
     q, rows: recentList, mine, actions, saved, enabled: !ai,
     onPick: (row) => {
+      if (row.type === 'keyword') { // '%': מילת המפתח (או הדוגמה, מסומנת) נכנסת לשדה; לא מריצים חיפוש
+        const k = keywordInsert(row);
+        setQ(k.text);
+        setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); try { el.setSelectionRange(k.start, k.end); } catch { /* ignore */ } } }, 0);
+        return;
+      }
       if (row.type === 'action') {
         const tg = actionTarget(row.action);
         if (!tg) return;
@@ -694,12 +713,22 @@ export default function HomeA5() {
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   disabled={loading}
-                  autoComplete="nope"
+                  name="gm-home-search"
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  enterKeyHint="search"
                   data-lpignore="true"
                   data-1p-ignore
                   data-form-type="other"
                   {...qp.inputProps}
-                  onKeyDown={qp.onKeyDown}
+                  onKeyDown={(e) => {
+                    // חץ למטה משורת החיפוש (כשרשימת הקידומת סגורה) = מעבר לשורת התוצאה הראשונה; בתוך הרשימה החצים מזיזים בין השורות (HomeResults)
+                    if (e.key === 'ArrowDown' && view === 'results' && !qp.open && !e.altKey && focusFirstResult()) { e.preventDefault(); return; }
+                    qp.onKeyDown(e);
+                  }}
                   onFocus={qp.onFocus}
                   onBlur={qp.onBlur}
                 />
@@ -767,6 +796,7 @@ export default function HomeA5() {
             <HomeResults
               key={resKey}
               res={shownRes}
+              query={resQuery}
               none={view === 'none'}
               table={asTable}
               onTable={setAsTable}

@@ -49,13 +49,14 @@ t('searchFileName: כותרת, טקסט חיפוש ותאריך עברי; תוו
 
 t('sectionsFromGeneral: לקוחות / הזמנות / פריטים, רק מה שיש; עמודות לפי הקטגוריה', () => {
   const s = sectionsFromGeneral(applyScope(mk(2, 3, 1), null));
-  assert.deepEqual(s.map((x) => x.label), ['לקוחות', 'הזמנות', 'פריטים']);
-  assert.deepEqual(s[0].cols.map((c) => c.h), ['שם', 'טלפון', 'עיר']);
-  assert.deepEqual(s[1].cols.map((c) => c.h), ['שם', 'מס׳ הזמנה', 'תאריך אירוע', 'סטטוס']);
+  // 5.10.2026: הזמנות לפני לקוחות (גם בדף ההדפסה / ה-PDF)
+  assert.deepEqual(s.map((x) => x.label), ['הזמנות', 'לקוחות', 'פריטים']);
+  assert.deepEqual(s[1].cols.map((c) => c.h), ['שם', 'טלפון', 'עיר']);
+  assert.deepEqual(s[0].cols.map((c) => c.h), ['שם', 'מס׳ הזמנה', 'תאריך אירוע', 'סטטוס']);
   assert.deepEqual(s[2].cols.map((c) => c.h), ['דגם', 'ברקוד', 'מידה', 'מס׳ הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס']);
   assert.deepEqual(s[2].cols.map((c) => !!c.ltr), [false, true, false, true, false, false, false]);
-  assert.equal(s[1].rows[0][1], '#40000');
-  assert.equal(s[1].rows[0][3], 'פעיל'); // סטטוס ריק = "פעיל" (כמו במסך)
+  assert.equal(s[0].rows[0][1], '#40000');
+  assert.equal(s[0].rows[0][3], 'פעיל'); // סטטוס שמור ריק (תשובה ישנה בלי computedStatus) = "פעיל" (כמו במסך)
   assert.equal(sectionsFromGeneral(applyScope(mk(2, 3, 1), 'customers')).length, 1, 'סינון לקטגוריה = מקטע אחד');
   assert.deepEqual(sectionsFromGeneral(null), []);
   // אין סכומים ופרטי תשלום בדף (מידע שלא מוצג בשורת התוצאה)

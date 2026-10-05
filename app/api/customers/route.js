@@ -5,17 +5,48 @@ import { normalizeEmail } from '@/lib/emailUtils';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
+import {
+  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, NOTICE_PARTIAL, phoneKeysFromInput,
+} from '@/lib/listSearch';
+import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
+import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
+    // תוכנית החיפוש (lib/listSearch.js): טלפון בכל צורת כתיבה (גם טלפון 2), שם דומה, הצלת מקלדת אנגלית.
+    const plan = planListSearch(searchParams.get('search') || '');
+    const cache = new Map(); // חיפושי עזר משותפים לנסיון הראשון ולנסיונות החוזרים
+    let result = await queryCustomersList(searchParams, { plan, cache });
+    // חיפוש טקסט שלא מצא כלום: מנסים שוב (מקלדת אנגלית -> עברית, שמות דומים) ומציגים הודעה (ר' app/api/orders/route.js).
+    // בלי נסיון חוזר בטקסט קצר מ-3 תווים (shouldRetryEmptySearch)
+    if (result.total === 0 && shouldRetryEmptySearch(plan)) {
+      for (const variant of buildRetryVariants(plan, { scopeRestricted: false, barcode: false, dateStage: false })) {
+        const variantPlan = variant.text ? planListSearch(variant.text) : plan;
+        const retry = await queryCustomersList(searchParams, { plan: variantPlan, cache, fuzzy: variant.fuzzy });
+        if (retry.total > 0) { result = { ...retry, notices: [...variant.notices, ...(retry.notices || [])] }; break; }
+      }
+    }
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 });
+  }
+}
+
+// שאילתת הרשימה (חיפוש + סינון + עימוד); מחזירה את גוף התשובה כדי ש-GET יוכל להריץ אותה שוב עם וריאנט.
+async function queryCustomersList(searchParams, opts) {
+  {
+    const plan = opts.plan;
+    const search = plan.text;
     const sort = searchParams.get('sort') || 'legacyId';
     const order = searchParams.get('order') || 'desc';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const page = clampPage(searchParams.get('page') || '1');
+    // תקרה ל-limit (קודם: ?limit=100000000 שלף את כל הטבלה); EXPORT_MAX_ROWS מכסה ייצוא של כל הלקוחות, מעבר לה limitCapped:true
+    const limit = clampLimit(searchParams.get('limit'), 50, EXPORT_MAX_ROWS);
+    const limitCapped = limitWasCapped(searchParams.get('limit'), EXPORT_MAX_ROWS);
 
     const skip = (page - 1) * limit;
 
@@ -34,27 +65,29 @@ export async function GET(request) {
     // "תוצאות לפי עיר לא נכונות": מה שהוקלד בפועל נדרס ולא השפיע על השאילתה.
     const multiWordNameCond = search ? buildMultiWordNameCondition(search, 'firstName', 'lastName') : null;
     const conditions = [{ isDeleted: false }];
+    let phonePartial = false; // יותר מ-300 לקוחות תואמים לטלפון - התוצאות חלקיות (הודעה בתשובה)
     if (search) {
-      conditions.push({
-        OR: [
-          { firstName: { contains: search } },
-          { lastName: { contains: search } },
-          { phone1: { contains: search } },
-          { email: { contains: search } },
-          { city: { contains: search } },
-          // חיפוש שם מלא ("רחל כהן") - קודם כל מילה נבדקה רק כמכלול מול שדה
-          // בודד, כך ששם פרטי+משפחה יחד מעולם לא התאים לאף שדה. ר' lib/searchUtils.js.
-          ...(multiWordNameCond ? [multiWordNameCond] : [])
-        ]
-      });
+      // לקוחות לפי טלפון בכל צורת כתיבה (מקפים / +972 / בלי 0 מוביל, שני הטלפונים) ולפי שם דומה - lib/searchDb.js; רק כשהקלט מתאים.
+      const [phoneIds, fuzzyIds] = await Promise.all([
+        planNeedsPhoneIds(plan) ? memoLookup(opts.cache, `phone:${JSON.stringify(plan.phone)}`, () => findCustomerIdsByPhone(plan.phone)) : [],
+        opts.fuzzy ? memoLookup(opts.cache, `fuzzy:${search}`, () => findFuzzyCustomerIds(search)) : []
+      ]);
+      // חיפוש שם מלא ("רחל כהן") - קודם כל מילה נבדקה רק כמכלול מול שדה
+      // בודד, כך ששם פרטי+משפחה יחד מעולם לא התאים לאף שדה. ר' lib/searchUtils.js.
+      if (phoneIds.capped) phonePartial = true;
+      conditions.push(customerSearchCondition(plan, { multiNameCond: multiWordNameCond, phoneIds, fuzzyIds }));
     }
     if (advFirstName) conditions.push({ firstName: { contains: advFirstName } });
     if (advLastName) conditions.push({ lastName: { contains: advLastName } });
     if (advPhone) {
+      const advPhoneKeys = phoneKeysFromInput(advPhone);
+      const advPhoneIds = advPhoneKeys ? await memoLookup(opts.cache, `advphone:${advPhone}`, () => findCustomerIdsByPhone(advPhoneKeys)) : [];
+      if (advPhoneIds.capped) phonePartial = true;
       conditions.push({
         OR: [
           { phone1: { contains: advPhone } },
-          { phone2: { contains: advPhone } }
+          { phone2: { contains: advPhone } },
+          ...(advPhoneIds.length ? [{ id: { in: advPhoneIds } }] : [])
         ]
       });
     }
@@ -101,16 +134,15 @@ export async function GET(request) {
       email: normalizeEmail(c.email, c.emailSuffix)
     }));
 
-    return NextResponse.json({
+    return {
       data: formattedCustomers,
       total: totalCount,
       page,
       limit,
+      ...(limitCapped ? { limitCapped: true } : {}),
+      ...(phonePartial ? { notices: [{ kind: 'partial', text: NOTICE_PARTIAL }] } : {}),
       totalPages: Math.ceil(totalCount / limit)
-    });
-  } catch (error) {
-    console.error('Error fetching customers:', error);
-    return NextResponse.json({ error: 'Failed to fetch customers' }, { status: 500 });
+    };
   }
 }
 
