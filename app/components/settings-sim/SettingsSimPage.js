@@ -22,6 +22,8 @@ import { useLabels } from '../LabelsContext';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_CLEAR_MARKER } from '@/app/lib/secretSettingKeys';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { describeLogoResult } from '@/lib/logoFormat';
+import { prepareLogoFile } from '@/lib/logoClientPrep';
 import {
   buildViewModel, NAMES_TABS, DEFAULT_LABELS, applyChange, revertChange, pruneUnchanged, buildPayload,
   firstValidationError, validationError, shownValue, cutTxt, rowMatches, normSearch, tabForDeepLink,
@@ -82,14 +84,14 @@ function LogoBlock({ onDone, onError }) {
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', await prepareLogoFile(file));
       const res = await fetch('/api/upload-logo', { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'שגיאה בהעלאת הלוגו');
       try { window.localStorage.setItem('logo_timestamp', data.timestamp); } catch { /* */ }
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
       setStamp(String(data.timestamp));
-      onDone('הלוגו עודכן', 'הלוגו החדש מוצג בראש העמודים ובהדפסות');
+      onDone('הלוגו עודכן', `הלוגו החדש מוצג בראש העמודים ובהדפסות. ${describeLogoResult(data)}`.trim());
     } catch (err) {
       onError(err.message || 'שגיאה בהעלאת הלוגו');
     } finally {

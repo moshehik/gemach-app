@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
+import { describeLogoResult } from '@/lib/logoFormat';
+import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
@@ -661,7 +663,7 @@ export default function SettingsClient({ mode = 'general' }) {
     setError(null);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', await prepareLogoFile(file));
 
       const res = await fetch('/api/upload-logo', {
         method: 'POST',
@@ -671,7 +673,7 @@ export default function SettingsClient({ mode = 'general' }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בהעלאת הלוגו');
 
-      setSaveMessage('הלוגו עודכן בהצלחה! מרענן תצוגה...');
+      setSaveMessage(`הלוגו עודכן בהצלחה! ${describeLogoResult(data)} מרענן תצוגה...`);
       localStorage.setItem('logo_timestamp', data.timestamp);
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
       setTimeout(() => setSaveMessage(null), 3000);
