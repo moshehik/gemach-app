@@ -6,9 +6,9 @@
 //
 // מה שנשאר מהדף הקודם (אותם חוזים): טעינת החודש העברי ±14 יום מ-GET /api/orders (buildBoardMonthParams - אותו מפתח מטמון
 // כמו ה-prefetch; ההזמנות משמשות רק לסימן "איחור החזרה"), מטמון SWR (pageCache 'board'), ביטול הבקשה הקודמת במעבר חודש,
-// חיפוש רגיל (search לשרת, Enter, ניקוי), ניווט חודשים, החודש העברי בכותרת, אות היום, סימון היום, פרשה וחגים, איחור החזרה
+// ניווט חודשים, החודש העברי בכותרת, אות היום, סימון היום, פרשה וחגים, איחור החזרה
 // (סימן + מסגרת אדומה), מצב "טוען נתונים...", ההגדרות late_return_*.
-// מה הוסר (החלטות הבעלים): אשף הדפסת הכנה (E07), חיפוש חכם (E02), סטטיסטיקה (E03), חיפוש גלובלי (E04), חיפוש מתקדם
+// מה הוסר (החלטות הבעלים): תיבת החיפוש הרגיל (5.10.2026, "לא לקפוץ לחודש ההזמנה" - ההזמנות נטענות תמיד בלי search), אשף הדפסת הכנה (E07), חיפוש חכם (E02), סטטיסטיקה (E03), חיפוש גלובלי (E04), חיפוש מתקדם
 // (E05), מקרא סטטוס (E06), מונה/הדפסה בתא (E09), תאריך לועזי (E11), תווית "תפעול" (S12), "ללו״ז של היום" (S05), ימי חודש
 // סמוך (S08), שורות סיכום ברשימה (S11); ובתשובות ההבהרה (BD-O4 / BD-O5 / BD-O6 / BD-O7): בתא וברשימה רק מוני השלבים.
 // BD-O3 (הבעלים, 5.10.2026): חלון "הזמנות ליום" נמחק לגמרי - כל לחיצה על יום (עכבר, Enter) = דף הלו״ז של אותו יום
@@ -17,8 +17,7 @@
 // שינוי עיצוב אחד של הבעלים (5.10.2026, אחרי "לוח חודשי מעולה ומאושר"): בתצוגת השורות (הרשימה) כל יום נראה ופועל כמו שורה בתוצאות החיפוש
 // של דף הבית (HomeResults.js: card.res-one > .list > a.li.rlink.lrow) והאייקונים עם המספרים בתוך השורה; הגריד לא השתנה. הכללים של השורה
 // מועתקים מ-components.css (כללי ".res-one .li" של דף הבית) ל-board.css עם .gm-bd, והבדיקה ב-test_board_page.mjs מוודאת שהם זהים.
-// מה נוסף: "החודש הנוכחי" בגובה מתג התצוגה (S04), מתג לוח / רשימה + רשימה אוטומטית בנייד (S03), מסנן 8 השלבים בשורת
-// החיפוש (S01), בורר 13 חודשים (S07, E08), חצי המקלדת (S09), לחיצה על יום = הלו״ז היומי (S06), מוני שלבים בכל תא באותו
+// מה נוסף: "החודש הנוכחי" בגובה מתג התצוגה (S04), מתג לוח / רשימה + רשימה אוטומטית בנייד (S03), מסנן 8 השלבים (S01), בורר 13 חודשים (S07, E08), חצי המקלדת (S09), לחיצה על יום = הלו״ז היומי (S06), מוני שלבים בכל תא באותו
 // גוון (S02) וסימן התראה (S10) - הנתונים מ-GET /api/board/stages (אותו חישוב כמו /schedule, lib/schedule/range.js).
 
 import '@/design-system/components.css';
@@ -35,7 +34,7 @@ import {
   buildMonthGrid, groupOrdersByDate, monthRangeKeys, monthStageTotals, sameMonth, shiftMonth,
 } from './boardLogic';
 import PageVariantToggle from '../variant/PageVariantToggle';
-import { BoardSearchBar, DayList, Ic, LateContext, MonthGrid, MonthHead } from './BoardParts';
+import { BoardStageFilter, DayList, Ic, LateContext, MonthGrid, MonthHead } from './BoardParts';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting } from '@/lib/businessDays';
 import { getIsraelTodayDate } from '@/lib/hebrewDate';
 
@@ -56,8 +55,6 @@ export default function BoardPage() {
   const [orders, setOrders] = useState([]);
   // מתחיל כ-true כדי שהרינדור הראשון יציג "טוען נתונים..." ולא לוח ריק שנראה כאילו אין הזמנות (כמו קודם)
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
   // כלל איחור ההחזרה של הארגון - כמו הלו״ז וחלון ההשכרה (late_return_threshold_days, non_working_days_extra)
   const [lateCfg, setLateCfg] = useState({ threshold: 7, nonWorkingDays: null });
   const [view, setView] = useState('grid');
@@ -93,7 +90,7 @@ export default function BoardPage() {
     const controller = new AbortController();
     activeOrdersRequestRef.current = controller;
     try {
-      const queryParams = buildBoardMonthParams(selectedDate, { search });
+      const queryParams = buildBoardMonthParams(selectedDate);
       const cacheKey = queryParams.toString();
       if (boardCache.has(cacheKey)) {
         const cachedData = boardCache.get(cacheKey);
@@ -115,7 +112,7 @@ export default function BoardPage() {
         activeOrdersRequestRef.current = null;
       }
     }
-  }, [selectedDate, search]);
+  }, [selectedDate]);
   useEffect(() => { fetchOrdersForMonth(); }, [fetchOrdersForMonth]);
 
   // מוני השלבים לחודש (S01/S02/S10). הבקשה יקרה (חישוב הלו״ז לכל יום בחודש), ולכן (ממצא הסקירה 2): מה שבמטמון מוצג מיד,
@@ -177,9 +174,6 @@ export default function BoardPage() {
     return () => document.removeEventListener('keydown', key);
   }, [changeMonth]);
 
-  const handleSearch = () => setSearch(searchInput);
-  const handleClearSearch = () => { setSearchInput(''); setSearch(''); };
-
   // S06 + BD-O3: כל לחיצה על יום (עכבר על התא, Enter על הקישור) = דף הלו״ז של אותו יום. בלי חלון ובלי חלופה לפי הרשאה -
   // עובדת בלי page:schedule רואה את חלון "אין הרשאה" של דף הלו״ז עצמו (app/schedule/layout.js).
   const openDay = useCallback((cell) => { router.push('/schedule?date=' + cell.key); }, [router]);
@@ -202,11 +196,7 @@ export default function BoardPage() {
             <PageVariantToggle screen="board" placement="header" systemTip />
           </div>
 
-          <BoardSearchBar
-            value={searchInput}
-            onChange={setSearchInput}
-            onSubmit={handleSearch}
-            onClear={handleClearSearch}
+          <BoardStageFilter
             stages={stages}
             totals={totals}
             selected={stageSel}

@@ -1,4 +1,4 @@
-// בדיקת התנהגות של הלוח האמיתי בדפדפן (API מדומה מ-entry.jsx): חיפוש (search לשרת) וניקוי, ניווט חודשים (חצים במסך
+// בדיקת התנהגות של הלוח האמיתי בדפדפן (API מדומה מ-entry.jsx): ניווט חודשים (חצים במסך
 // ובמקלדת, "החודש הנוכחי", בורר החודשים), מתג לוח/רשימה, מסנן השלבים, לחיצה על יום = הלו״ז היומי בעכבר / Enter / Ctrl (BD-O3,
 // בלי חלון בשום מצב, גם בלי הרשאה ללו״ז), בתא וברשימה רק מונים וסמנים (BD-O4 / BD-O5), הגדרות איחור, השער, והחלון הקיים של
 // ההשכרה והחזרה (אותו hook, נשאר ב-/orders ו-/rentals). OK/FAIL; יוצא 1 בכישלון.
@@ -32,13 +32,9 @@ ok(await p.evaluate(() => [...document.querySelectorAll('.lz-day')].every((d) =>
 ok(await p.evaluate(() => { const r = getComputedStyle(document.querySelector('.lz-pr:not(.al)')).backgroundColor; return [...document.querySelectorAll('.lz-pr:not(.al)')].every((x) => getComputedStyle(x).backgroundColor === r); }), 'S02: כל המונים בלי התראה באותו גוון');
 ok(await p.evaluate(() => { const a = document.querySelector('.lz-pr.al'); const n = document.querySelector('.lz-pr:not(.al)'); return a && getComputedStyle(a).backgroundColor !== getComputedStyle(n).backgroundColor; }), 'S02: מונה עם התראה בגוון אחר');
 
-// חיפוש
-await p.type('#bdQ', 'כהן'); await p.keyboard.press('Enter'); await sleep(600);
-c = await ordersCalls();
-ok(/search=%D7%9B%D7%94%D7%9F/.test(c[c.length - 1].url), 'E01: Enter שולח search לשרת');
-await click('#bdSearch .hf-cl'); await sleep(500);
-c = await ordersCalls();
-ok(!/search=/.test(c[c.length - 1].url) && (await p.$eval('#bdQ', (e) => e.value)) === '', 'E01: ניקוי מאפס את החיפוש');
+// החלטת הבעלים 5.10: תיבת החיפוש הרגיל הוסרה (לא קופצים לחודש ההזמנה); ההזמנות נטענות בלי search
+ok(!(await p.$('#bdQ, #bdSearch input, #bdSearch form, #bdSearch .hf-cl, [role=search]')), 'E01: אין תיבת חיפוש בלוח (רק מסנן השלבים)');
+ok(!(await ordersCalls()).some((x) => /[?&]search=/.test(x.url)), 'E01: אף בקשת הזמנות לא נושאת search');
 
 // ניווט חודשים
 const t0 = await title();
