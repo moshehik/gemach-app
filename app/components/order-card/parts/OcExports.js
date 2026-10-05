@@ -6,7 +6,7 @@
 // (ORDER_XLSX_EXPORTED / ORDER_PDF_DOWNLOADED) דרך oc.logEvent. כשיש שינויים שלא נשמרו - הודעה שהקובץ כולל רק את מה שנשמר.
 import { useRef, useState } from 'react';
 import { XlGlyph } from '../OcIcon';
-import { downloadOrderPdf, exportOrderXlsx, openOrderPrintFallback } from './ocDocsActions';
+import { downloadOrderPdf, exportOrderXlsx, isServerPdfFailure, openOrderPrintFallback } from './ocDocsActions';
 
 const UNSAVED_NOTE = 'שינויים שלא נשמרו אינם כלולים בקובץ';
 
@@ -35,12 +35,17 @@ export default function OcExports({ oc, ui }) {
         await downloadOrderPdf({ oc, orderId });
       }
     } catch (e) {
-      if (kind === 'pdf') {
-        // PDF השרת נכשל (ראו docs/server-pdf-verification-2026-10-05.md) - גיבוי: דף ההדפסה של ההזמנה בלשונית חדשה, ושם "שמירה כ-PDF"
+      if (kind === 'pdf' && isServerPdfFailure(e)) {
+        // PDF השרת נכשל (ראו docs/server-pdf-verification-2026-10-05.md) - גיבוי: דף ההדפסה של ההזמנה בלשונית חדשה, ושם "שמירה כ-PDF".
+        // רק כשל של שרת ה-PDF (stage / סטטוס 5xx מ-/api/pdf); כשל בקריאת ה-HTML של ההזמנה / פג תוקף ההתחברות / אין רשת = הודעת השגיאה הרגילה.
+        // window.open רץ שניות אחרי הלחיצה ולכן חוסם החלונות הקופצים עלול לחסום אותו: ההודעות נשארות זמן ארוך, ובמקרה של חסימה יש בהן
+        // לחצן שהלחיצה עליו כן פותחת את הדף.
         try { console.warn('server PDF failed, falling back to the print page:', e && e.message, e && e.detail); } catch { /* ignore */ }
         const fb = openOrderPrintFallback({ orderId });
-        if (fb.ok) ui.toast('info', 'הורדת ה-PDF לא זמינה כרגע', 'נפתח דף הדפסה - בחלון ההדפסה בוחרים "שמירה כ-PDF"');
-        else ui.toast('error', 'הורדת ה-PDF לא זמינה כרגע', 'חלון ההדפסה נחסם', { text: 'פתיחת דף הדפסה', icon: 'print', onClick: () => openOrderPrintFallback({ orderId }) });
+        if (fb.ok) ui.toast('info', 'הורדת ה-PDF לא זמינה כרגע', 'נפתח דף הדפסה - בחלון ההדפסה בוחרים "שמירה כ-PDF"', null, { ms: 9000 });
+        else ui.toast('error', 'הורדת ה-PDF לא זמינה כרגע', 'חלון ההדפסה נחסם - לחצו על הכפתור כדי לפתוח את דף ההדפסה', { text: 'פתיחת דף הדפסה', icon: 'print', onClick: () => openOrderPrintFallback({ orderId }) }, { ms: 15000 });
+      } else if (kind === 'pdf') {
+        ui.toast('error', 'הורדת הקובץ נכשלה', (e && e.message) || '');
       } else {
         ui.toast('error', 'ייצוא ה-Excel נכשל', (e && e.message) || '');
       }

@@ -8,7 +8,7 @@
 // route and hands back a Blob/base64 string.
 
 // First non-empty line of the server's `detail`, capped - toasts/alerts must stay readable.
-export function shortDetail(detail, max = 160) {
+export function shortDetail(detail, max = 300) {
   if (typeof detail !== 'string') return '';
   const line = detail.split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '';
   return line.length > max ? `${line.slice(0, max - 1)}…` : line;

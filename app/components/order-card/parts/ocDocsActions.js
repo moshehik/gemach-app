@@ -156,6 +156,9 @@ export async function downloadOrderPdf({ oc, orderId, fetchImpl = fetch, pdf }) 
   return { ok: true, fileName };
 }
 
+/** כשל של שרת ה-PDF (ולא של קריאת ה-HTML של ההזמנה / התחברות / רשת): השגיאה מ-pdfClient נושאת stage (גוף ה-500 של /api/pdf) או status >= 500 */
+export const isServerPdfFailure = (e) => !!e && (!!e.stage || Number(e.status) >= 500);
+
 /**
  * גיבוי להורדת PDF שנכשלה בשרת (/api/pdf): אותו דף ההדפסה של ההזמנה בלשונית חדשה - הוא פותח את חלון ההדפסה של הדפדפן ושם בוחרים "שמירה כ-PDF"
  * (אותו דפוס כמו HomeA5 / AttendanceWizard). הדף רושם ORDER_PRINTED בעצמו. מחזיר { ok, path }; ok=false = החלון נחסם (חוסם חלונות קופצים -
