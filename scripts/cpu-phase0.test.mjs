@@ -76,3 +76,28 @@ test('web_backup_mode poll is 60s and setWebBackupMode still refreshes the local
   assert.match(src, /const WEB_DB_MODE_TTL_MS = 60 \* 1000;/);
   assert.match(src, /webDbModeState\.fetchedAt = Date\.now\(\);/);
 });
+
+// ---- 5. overdue reminders --------------------------------------------------
+const OR = await import(pathToFileURL(path.join(ROOT, 'lib/overdueReminders.js')).href);
+
+test('isOverdueCheckFresh: fresh under 55 min, stale after, junk/future = check', () => {
+  const now = 10_000_000_000;
+  const MIN = 60 * 1000;
+  assert.equal(OR.isOverdueCheckFresh(String(now - 10 * MIN), now), true);
+  assert.equal(OR.isOverdueCheckFresh(String(now - 54 * MIN), now), true);
+  assert.equal(OR.isOverdueCheckFresh(String(now - 55 * MIN), now), false);
+  assert.equal(OR.isOverdueCheckFresh(String(now - 60 * MIN), now), false, 'the hourly timer is never blocked');
+  for (const v of [null, undefined, '', 'abc', '0', '-5', String(now + 5 * MIN)]) assert.equal(OR.isOverdueCheckFresh(v, now), false, String(v));
+});
+
+test('overdue check key is per employee', () => {
+  assert.notEqual(OR.overdueCheckKey('a'), OR.overdueCheckKey('b'));
+});
+
+test('OverdueRemindersWatcher: marker read/written inside try/catch, still uses the idle guard', () => {
+  const src = read('app/components/OverdueRemindersWatcher.js');
+  assert.match(src, /try \{ lastCheckedRaw = sessionStorage\.getItem\(checkKey\); \} catch/);
+  assert.match(src, /try \{ sessionStorage\.setItem\(checkKey, String\(Date\.now\(\)\)\); \} catch/);
+  assert.match(src, /isOverdueCheckFresh\(lastCheckedRaw\)/);
+  assert.match(src, /onActiveInterval\(checkAndAlert, HOUR_MS\)/);
+});
