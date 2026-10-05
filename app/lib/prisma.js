@@ -297,7 +297,9 @@ if (!globalForPrisma.activeDbMode) {
 // to the flag it controls. getWebBackupMode/setWebBackupMode are the only
 // sanctioned way to touch this key; regular app code keeps using
 // prisma.systemSetting.* for every other setting, unaffected.
-const WEB_DB_MODE_TTL_MS = 5000;
+// cpu-phase0 (6.10.2026): היה 5000. כל גישה ל-prisma בכל אינסטנס חם בדקה את הדגל מחדש כל 5 שנ' (findUnique ל-PROD).
+// 60 שנ': מעבר מצב-גיבוי מתפשט לאינסטנסים אחרים תוך עד דקה (האינסטנס שביצע את ה-set מתעדכן מיד, ר' setWebBackupMode).
+const WEB_DB_MODE_TTL_MS = 60 * 1000;
 if (!globalForPrisma.webDbModeState) {
   globalForPrisma.webDbModeState = { mode: 'prod', fetchedAt: 0, inFlight: null };
 }

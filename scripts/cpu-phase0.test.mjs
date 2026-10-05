@@ -69,3 +69,10 @@ test('log-visit route + layout interceptor use the helpers and the 60s window', 
   assert.match(layout, /visitQueue\.length >= 25/);
   assert.match(layout, /addEventListener\('pagehide', function\(\) \{ flushVisitQueue\(true\)/);
 });
+
+// ---- 4. web_backup_mode poll interval --------------------------------------
+test('web_backup_mode poll is 60s and setWebBackupMode still refreshes the local state immediately', () => {
+  const src = read('app/lib/prisma.js');
+  assert.match(src, /const WEB_DB_MODE_TTL_MS = 60 \* 1000;/);
+  assert.match(src, /webDbModeState\.fetchedAt = Date\.now\(\);/);
+});
