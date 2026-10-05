@@ -1827,11 +1827,22 @@ export default function OrderDetailsPage({ params }) {
                 orderId={order.orderId}
                 order={order}
                 items={items}
-                onItemsChange={(val) => {
+                onItemsChange={(val, opts) => {
                   // תומך גם בעדכון פונקציונלי (prev => ...) — נחוץ לפעולות שעוברות דרך await
                   // (למשל סריקת ברקוד: אישור PIN / בדיקת מלאי / דיאלוג אישור), כדי לא לדרוס
                   // שינויים אחרים בפריטים שקרו בינתיים על בסיס סנאפשוט ישן של items.
                   setItems(prev => (typeof val === 'function' ? val(prev) : val));
+                  if (opts?.persisted && typeof val === 'function') {
+                    // השכרה/החזרה בברקוד נשמרות בשרת מיד (/api/rentals/toggle), לא דרך "שמור
+                    // שינויים". לכן זה לא "שינוי שלא נשמר": מעדכנים גם את הסנאפשוט השמור כדי
+                    // שההבדל מולו לא יקפיץ אזהרת "שינויים לא נשמרו" / סיכום שינויים / בקשת ת"ז /
+                    // אישור מנהל / שאלת הדפסה אחרי כל סריקה (דיווחי נווה יעקב 2026-10-04).
+                    const snap = savedSnapshotRef.current;
+                    if (snap && Array.isArray(snap.items)) {
+                      savedSnapshotRef.current = { ...snap, items: val(snap.items) };
+                    }
+                    return;
+                  }
                   setHasUnsavedChanges(true);
                 }}
                 onOrderUpdated={handleOrderUpdate}

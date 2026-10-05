@@ -605,12 +605,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         return;
       }
     }
+    const rentPersisted = !!(item.id && !item.isNew);
     onItemsChange(prev => prev.map(i => {
       if (i.id !== item.id) return i;
       const updateData = { isTaken: true, takenDate: new Date() };
       if (barcodeToAssign) updateData.barcode = barcodeToAssign;
       return { ...i, ...updateData };
-    }));
+    }), rentPersisted ? { persisted: true } : undefined);
 
     if (item.id && !item.isNew) {
       try {
@@ -624,7 +625,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         }
       } catch (err) {
         alert(err.userMessage || 'שגיאה בשמירת סטטוס השכרה');
-        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i), { persisted: true });
       }
     }
   };
@@ -649,20 +650,20 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         return;
       }
     }
-    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i));
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i), item.id && !item.isNew ? { persisted: true } : undefined);
 
     if (item.id && !item.isNew) {
       // postRentalReturn מטפל גם בדחיית השרת "האירוע עדיין לא הגיע" (require_approval_for_early_return)
       const result = await postRentalReturn(item.id);
       if (!result.ok) {
         alert(result.message || 'שגיאה בשמירת סטטוס החזרה');
-        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i), { persisted: true });
       }
     }
   };
 
   const handleCancelRent = async (item) => {
-    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: false, takenDate: null, barcode: null } : i));
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: false, takenDate: null, barcode: null } : i), item.id && !item.isNew ? { persisted: true } : undefined);
     if (item.id && !item.isNew) {
       try {
         const res = await fetch('/api/rentals/toggle', {
@@ -672,13 +673,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
         alert('שגיאה בביטול סטטוס השכרה');
-        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i), { persisted: true });
       }
     }
   };
 
   const handleCancelReturn = async (item) => {
-    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: false, returnDate: null } : i));
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: false, returnDate: null } : i), item.id && !item.isNew ? { persisted: true } : undefined);
     if (item.id && !item.isNew) {
       try {
         const res = await fetch('/api/rentals/toggle', {
@@ -688,7 +689,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
         alert('שגיאה בביטול סטטוס החזרה');
-        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i), { persisted: true });
       }
     }
   };

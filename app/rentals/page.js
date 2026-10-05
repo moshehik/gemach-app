@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
@@ -657,6 +658,17 @@ export default function RentalsPage() {
                         >
                           <svg className="icon"><use href="#i-box" /></svg>
                         </button>
+                        {/* כניסה לכרטיס ההזמנה המלא (עריכה, משלוח, תשלומים) ישירות מרשימת ההשכרות -
+                            כמו הכניסה דרך מסך הלקוחות. דיווח נווה יעקב 6244b29b (הסקיצה אושרה). */}
+                        <Link
+                          href={`/orders/${ord.orderId}`}
+                          className="btn btn-secondary btn-sm"
+                          title="פתח את כרטיס ההזמנה המלא (עריכה, משלוח, תשלומים)"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <svg className="icon"><use href="#i-edit" /></svg>
+                          עריכת הזמנה
+                        </Link>
                       </div>
                     </td>
                     <td><strong>{ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין תאריך')}</strong></td>
