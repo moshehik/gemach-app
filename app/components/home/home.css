@@ -285,3 +285,40 @@
   background-size: 5px 5px, 5px 5px !important;
   background-repeat: no-repeat !important;
 }
+
+/* 18) שדות הקלט בדף הבית - מלבן "כחול בהיר" בתוך הכדור (דיווח הבעלים 5.10.2026, צילום מסך עם '5511402' בשדה החיפוש): שתי סיבות אפשריות, ושתיהן סגורות כאן.
+       א) השלמה אוטומטית של Chrome: שדה ש-autocomplete בו אינו תקני ("nope") מקבל השלמה מההיסטוריה ו-Chrome צובע אותו ב-:-webkit-autofill (#e8f0fe, כחול בהיר)
+          עם -webkit-text-fill-color. הצד של ה-JSX: autoComplete="off" + name ייחודי. הצד של ה-CSS: צובעים מחדש בצל פנימי בצבע המשטח של הפלטה (--gm-surface) -
+          לא ניתן לדרוס את הרקע של autofill ישירות, ולכן הצל הפנימי העבה, וה-transition הארוך כדי שהצבע של הדפדפן לא יצוץ לרגע.
+       ב) צבע ההדגשה (::selection) של הדפדפן, כחול ברירת מחדל: בפלטה זהב-בהיר עם טקסט כחול כהה. */
+.gm-ds.gm-home input:-webkit-autofill,
+.gm-ds.gm-home input:-webkit-autofill:hover,
+.gm-ds.gm-home input:-webkit-autofill:focus,
+.gm-ds.gm-home input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--gm-surface) inset !important;
+  box-shadow: 0 0 0 1000px var(--gm-surface) inset !important;
+  -webkit-text-fill-color: var(--gm-ink) !important;
+  caret-color: var(--gm-ink);
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+.gm-ds.gm-home :is(input, textarea)::selection {
+  background: var(--gm-gold-light);
+  color: var(--gm-navy-900);
+}
+
+/* 19) תוצאות החיפוש הכללי (5.10.2026): שורת פריט בשתי שורות (כותרת = ברקוד + תגית מצב), שורת "מלאי" (מידות כצ'יפים), הדגשת התאמה, שורה בלי קישור וצ'יפים של הלו"ז ליום.
+       כל הרכיבים מהפלטה (.li/.lrow/.chip/.stx/.ic-b/.rlbl); כאן רק מה שחסר בה: פריסה של הכותרת והמידות והסיום של הדגשה (mark בצבע הזהב של .advo mark / .mine-t mark). */
+.gm-ds.gm-home .res-one .li .t { flex: 1; min-width: 0; }
+.gm-ds.gm-home .res-one .li .t b.rt { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+.gm-ds.gm-home .res-one .li .t b .stx { font-size: 15px; margin-inline-start: 10px; }
+.gm-ds.gm-home .res-one .li .t b.rt .stx { margin-inline-start: 0; }
+.gm-ds.gm-home .res-one .li mark { background: transparent; color: var(--gm-gold-d); font-weight: 700; }
+.gm-ds.gm-home .res-one .li.nolink { cursor: default; }
+.gm-ds.gm-home .res-one .li .t .ln.invs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.gm-ds.gm-home .res-one .li .t .invd { font-weight: 500; color: var(--gm-ink3); margin-inline-end: 4px; }
+.gm-ds.gm-home .res-one .li .invz b { font-size: inherit; font-weight: 600; color: inherit; }
+.gm-ds.gm-home .res-one .dchips { padding: 4px 4px 14px; }
+.gm-ds.gm-home .res-one .dchips-h { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; color: var(--gm-navy-900); }
+.gm-ds.gm-home .res-one .dchips-r { display: flex; flex-wrap: wrap; gap: 8px; }
+.gm-ds.gm-home .res-one .dchips-r .chip b { font-weight: 700; }
+.gm-ds.gm-home .res-one .dchip-al { margin-inline-start: 6px; font-weight: 700; color: var(--gm-gold-700); }
