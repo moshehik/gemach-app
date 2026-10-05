@@ -22,7 +22,8 @@ import { OcSprite } from './OcIcon';
 import OcIcon from './OcIcon';
 import OcTopbar from './OcTopbar';
 import OcTabs from './OcTabs';
-import OcStepper from './OcStepper';
+import OcStepper, { useOrderJournalData } from './OcStepper';
+import { OcJournalContext } from './OcJournalContext';
 import { TABS } from './tabs';
 import { SLOTS } from './slots';
 
@@ -73,6 +74,7 @@ function OrderCardBody({ orderRef }) {
   const ui = useOcUi();
   const oc = useOrderCardController(orderRef, ui, { dialogs: SLOTS });
   const { Rail, DraftBanner, MoneyToast, TopBanners } = SLOTS;
+  const journalData = useOrderJournalData(oc);
   const mainRef = useRef(null);
   const railRef = useRef(null);
   // הרייל "סיכום" מתחיל בגובה הלוח הראשון (הסקשן הראשון מתחת לשורת הלשוניות), לא בגובה שורת הלשוניות - כמו fit() בעיצוב המאושר
@@ -100,7 +102,7 @@ function OrderCardBody({ orderRef }) {
     <div className="app oc-app" id="app">
       <OcTopbar oc={oc} ui={ui} slots={SLOTS} />
       {/* ציר האירוע (.stepper) חזר בהערת הבעלים 2026-10-05 - בדיוק כמו renderTimeline() בעיצוב; נתוני אמת מה-journal (OcStepper) */}
-      <OcStepper oc={oc} />
+      <OcStepper oc={oc} data={journalData} />
       {oc.status === 'loading' ? (
         <div className="layout oc-layout-msg"><main className="main"><div className="card oc-loading" role="status"><span className="spinner" aria-hidden="true" />טוען נתוני הזמנה...</div></main></div>
       ) : oc.status === 'notfound' ? (
@@ -112,7 +114,9 @@ function OrderCardBody({ orderRef }) {
           <TopBanners oc={oc} ui={ui} />
           <div className="layout">
             <main className="main" ref={mainRef}>
-              <OcTabs oc={oc} ui={ui} tabs={TABS} />
+              <OcJournalContext.Provider value={journalData}>
+                <OcTabs oc={oc} ui={ui} tabs={TABS} />
+              </OcJournalContext.Provider>
             </main>
             <aside className="rail" id="rail" aria-label="סיכום ההזמנה" ref={railRef}>
               <Rail oc={oc} ui={ui} />

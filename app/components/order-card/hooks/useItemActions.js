@@ -71,6 +71,29 @@ export function statusText(i, order, mode = 'active') {
   return outOn ? 'טרם נמסרה' : 'טרם נלקחה';
 }
 
+// "מי לקח / מי החזיר" בשורת הפריט (הערת הבעלים 2026-10-05): תאריך+שעה מהפריט עצמו (takenDate / returnDate - גם אחרי פעולה אופטימית שעוד לא נטענה מחדש),
+// והעובדת מ-journal.itemActors (נגזר משורות CONFIRM_RENTAL / RETURN_RENTAL ביומן, GET /api/orders/[id]/journal). בלי עובדת מזוהה - רק התאריך; בלי שניהם - אין שורה.
+// התוויות כמו statusText: בהזמנה עם משלוח הלוך "מסירה", עם משלוח חזור "איסוף".
+export function rentalActorLines(item, order, actors) {
+  if (!item || isPendingItem(item)) return [];
+  const dir = order?.deliveryDirection || '';
+  const outOn = !!order?.isDelivery && dir !== 'חזור';
+  const backOn = !!order?.isDelivery && dir !== 'הלוך';
+  const a = (actors && item.id && actors[String(item.id)]) || {};
+  const line = (key, label, on, date, actor) => {
+    if (!on) return null;
+    const at = date || (actor && actor.at) || null;
+    const when = at ? dayTimeOf(at) : '';
+    const who = actor && actor.who ? actor.who : '';
+    const text = [when, who].filter(Boolean).join(' · ');
+    return text ? { key, label, text } : null;
+  };
+  return [
+    line('took', outOn ? 'מסירה' : 'לקיחה', item.isTaken, item.takenDate, a.took),
+    line('returned', backOn ? 'איסוף' : 'החזרה', item.isReturned, item.returnDate, a.returned),
+  ].filter(Boolean);
+}
+
 // פריט ממוגרר מ-Access: createdAt קפוא (רגע המיגרציה) → תאריך ההזמנה (A11, ר' lib/pricingCalc getItemAddReference)
 export function addedAtOf(item, order) {
   if (!item) return null;

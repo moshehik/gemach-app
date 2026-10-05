@@ -7,12 +7,15 @@
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
 import { fmtMoney } from '../orderCardLogic';
+import { useOcJournal } from '../OcJournalContext';
 import OcBarcodeRow from './OcBarcodeRow';
-import { altText, hasRepairOf, isPendingItem, itemName, itemPrice, statusText, addedText } from '../hooks/useItemActions';
+import { altText, hasRepairOf, isPendingItem, itemName, itemPrice, statusText, addedText, rentalActorLines } from '../hooks/useItemActions';
 
 
 export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle, locked, quotaFull, altEnabled, altShow, creatorName, onDetails, onCapacity, onEdit }) {
   const pending = isPendingItem(item);
+  const journal = useOcJournal();
+  const actorLines = rentalActorLines(item, oc.order, journal && journal.itemActors);
   const [confirming, setConfirming] = useState(false);
   const confirm = async () => { if (confirming) return; setConfirming(true); try { await actions.confirmItem(item); } finally { setConfirming(false); } };
   const key = item.id || item._localId;
@@ -40,6 +43,7 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
           {alt ? <div className="hv-r"><small>תיקון</small><b>{alt.replace('תיקון: ', '')}</b></div> : null}
           <div className="hv-r"><small>מחיר</small><b>{price}</b></div>
           <div className="hv-r"><small>פרטי הוספה</small><b>{addedText(item, oc.order, creatorName)}</b></div>
+          {mode !== 'del' ? actorLines.map((l) => <div className="hv-r" key={l.key} data-actor={l.key}><small>{l.label}</small><b>{l.text}</b></div>) : null}
           {altEnabled && (hasAlt || altShow) ? (
             <>
               <div className="hv-r"><small>אורך</small><b>{item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : '—'}</b></div>

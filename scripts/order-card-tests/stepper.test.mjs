@@ -184,7 +184,7 @@ test('OcStepper: markup של renderTimeline (stepper > tlx > tx > dot / tt / tod
   assert.match(c, /document\.querySelector\('\[data-sticky-nav\]'\)/, 'לא נבלע מתחת לתפריט העליון');
   assert.ok(!/title=/.test(c) && !/window\.(alert|confirm)/.test(c));
   const a5 = strip(read('app/components/order-card/OrderCardA5.js'));
-  assert.match(a5, /<OcStepper oc=\{oc\} \/>/);
+  assert.match(a5, /<OcStepper oc={oc} data={journalData} />/);
   assert.ok(!/<div className="stepper" id="stepper" aria-hidden="true" \/>/.test(a5), 'ה-div הריק הוסר');
 });
 

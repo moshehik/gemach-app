@@ -7,7 +7,7 @@
 // הנתונים: GET /api/orders/[id]/journal (אותו מקור כמו שלבי ההזמנה בלשונית ההיסטוריה) - ר' parts/ocStepperLogic.js (הלוגיקה, בלי פרטים בדויים).
 // הכרטיס העשיר (data-rich בעיצוב, #rt): ריחוף / מיקוד מקלדת / הקשה במגע; .pl-rt ב-portal (כמו טולטיפ המשמרת ביומן); מעל הצומת, ומתהפך מתחתיו כשאין מקום
 // (גם מתחת לתפריט העליון הדביק #snav). סמנטיקה: role=list / listitem, aria-current="step" בצומת הנוכחי, aria-describedby לכרטיס.
-// טעינה: אחרי שהכרטיס מוכן ובכל oc.historyVersion (עולה אחרי כל כתיבה בשרת); כישלון = אין ציר (הכרטיס עובד בלעדיו).
+// הנתונים (data) נטענים ב-OrderCardA5 (useOrderJournalData) ומשותפים עם שורות הפריטים (OcJournalContext). טעינה: אחרי שהכרטיס מוכן ובכל oc.historyVersion (עולה אחרי כל כתיבה בשרת); כישלון = אין ציר (הכרטיס עובד בלעדיו).
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import OcIcon from './OcIcon';
 import OcPortal from './OcPortal';
@@ -60,8 +60,7 @@ export function useOrderJournalData(oc) {
   return data;
 }
 
-export default function OcStepper({ oc }) {
-  const data = useOrderJournalData(oc);
+export default function OcStepper({ oc, data }) {
   const rid = useId();
   const model = useMemo(
     () => buildStepper(data, { order: oc.order || {}, items: oc.items || [], courier: (oc.settings && oc.settings.get && oc.settings.get('courier_name', '')) || '' }),
