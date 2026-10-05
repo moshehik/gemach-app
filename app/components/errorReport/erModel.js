@@ -96,6 +96,26 @@ export function groupOpenReports(reports, { isProgrammer, handledAtBottom = true
   return { top: [...pinned, ...attention], others };
 }
 
+/**
+ * מיזוג רשימה חדשה (עמוד ראשון רזה מהשרת, partial=true) עם מה שכבר בזיכרון: שרשור שנטען במלואו (partial=false) נשמר - טקסט מלא, כל
+ * התגובות, צרופות - כל עוד מספר התגובות והתגובה האחרונה זהים לאלה ברשימה החדשה (כלומר לא נוספה תגובה); מעל זה מתעדכנים רק שדות הרשימה
+ * (סטטוס, נקרא, טופל, זמן עדכון, כותרת AI). אחרת השורה החדשה נכנסת כ-partial והשרשור ייטען מחדש. רשימה בצורה ישנה (בלי partial) עוברת כמו שהיא.
+ */
+export function mergeReportLists(prev, incoming) {
+  const byId = new Map((prev || []).map((r) => [r.id, r]));
+  return (incoming || []).map((n) => {
+    const p = byId.get(n.id);
+    if (!n.partial || !p || p.partial) return n;
+    const pReps = p.replies || [];
+    const nLast = (n.replies || [])[(n.replies || []).length - 1];
+    const same = typeof n.repliesCount === 'number'
+      && pReps.length === n.repliesCount
+      && (!nLast || (pReps.length > 0 && pReps[pReps.length - 1].id === nLast.id));
+    if (!same) return n;
+    return { ...p, ...n, userText: p.userText, replies: pReps, attachmentUrls: p.attachmentUrls, lastButtons: p.lastButtons, queryParams: p.queryParams, time: p.time, partial: false };
+  });
+}
+
 // ארכיון: לפי createdAt קבוע (לא לפי updatedAt) - אחרת קריאת פנייה בארכיון מזיזה אותה לראש הרשימה.
 export const archivedReports = (reports) =>
   (reports || []).filter((r) => r.status === 'ARCHIVED').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

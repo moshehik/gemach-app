@@ -150,7 +150,8 @@ await t('"העתק פרטי מערכת" - אותו טקסט כמו קודם', ()
 
 console.log('חוזה ה-API (נשמר מהחלון הישן)');
 await t('GET /api/error-report (מלא, בחלון) ו-?light=1 (בדיקה תקופתית, בכפתור) - 120 שנ\', רק כשסגור והטאב גלוי, 401 עוצר', () => {
-  has(WIN, /fetchFreshJson\('\/api\/error-report', \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/, 'GET מלא (דרך מטמון 60 שנ - scripts/cpu-reduction-tests/error-report-cache.test.mjs)');
+  has(WIN, /fetchFreshJson\(REPORTS_LIST_URL, \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/, 'GET מלא (דרך מטמון 60 שנ - scripts/cpu-reduction-tests/error-report-cache.test.mjs; CPU phase 1B: REPORTS_LIST_URL = /api/error-report?take=50, עמודים רזים)');
+  has(WIN, /const REPORTS_LIST_URL = `\/api\/error-report\?take=\$\{REPORTS_PAGE_SIZE\}`;/, 'כתובת הרשימה בעמודים');
   has(BTN, /fetch\('\/api\/error-report\?light=1'\)/, 'GET light');
   has(BTN, /setInterval\(\(\) => fetchLight\(\), 120000\)/, 'כל 120 שנ\'');
   has(BTN, /visibilitychange/, 'עצירה בטאב מוסתר');
