@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { onActiveInterval } from '@/lib/idleGuard';
 
 const PRESET_HOURS = [6, 12, 24, 48];
 
@@ -103,15 +104,17 @@ export default function BackupsPage() {
   // מתי היא מסתיימת (הדאמפ בפועל רץ ב-GitHub Actions, לא כאן).
   useEffect(() => {
     const latestRunning = runs && runs[0]?.status === 'running';
+    // pollRef.current = פונקציית ביטול של onActiveInterval (lib/idleGuard.js): ריצה "תקועה" ב-running לא תדגום
+    // לנצח מטאב מנהל שנשכח פתוח - נעצר אחרי 30 דקות בלי פעילות / בטאב מוסתר, ובחזרה נטען מיד.
     if (latestRunning && !pollRef.current) {
-      pollRef.current = setInterval(load, 10000);
+      pollRef.current = onActiveInterval(load, 10000, { resumeStaleMs: 0 });
     } else if (!latestRunning && pollRef.current) {
-      clearInterval(pollRef.current);
+      pollRef.current();
       pollRef.current = null;
     }
     return () => {
       if (pollRef.current) {
-        clearInterval(pollRef.current);
+        pollRef.current();
         pollRef.current = null;
       }
     };
