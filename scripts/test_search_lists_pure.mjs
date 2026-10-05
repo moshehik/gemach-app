@@ -144,7 +144,8 @@ t('מילות מפתח: מידה / דגם', () => {
 t('תאריכים: עברי / לועזי', () => {
   let p = P('כז תשרי'); ok(p.hebrewDate); eq(p.hebrewDate.day, 27); eq(p.gregorianDate, null); eq(p.nameText, null);
   p = P('5/10'); ok(p.gregorianDate); eq([p.gregorianDate.day, p.gregorianDate.month], [5, 10]); eq(p.nameText, null);
-  p = P('ניסן'); ok(p.hebrewDate); eq(p.nameText, 'ניסן', 'שם חודש שהוא גם שם פרטי - נבדק גם כשם');
+  p = P('ניסן'); eq(p.hebrewDate, null, 'ניסן: קודם שם'); ok(p.hebrewDateFallback, 'ורק בנסיון חוזר כתאריך'); eq(p.nameText, 'ניסן');
+  p = P('תשרי'); ok(p.hebrewDate); eq(p.hebrewDateFallback, null); eq(p.nameText, 'תשרי', 'חודש לבדו: גם כשם (הרחבה זולה)');
   p = P('6.1'); ok(p.gregorianDate); eq(p.nameText, '6.1', 'מועמד גם כטקסט (מידה 06.1)');
 });
 t('planModelLookup / planNeedsPhoneIds', () => {
@@ -252,6 +253,10 @@ t('buildRetryVariants: סדר + הודעות', () => {
   eq(kinds('ankv', { scopeRestricted: true }), ['scope', 'scope+layout', 'scope+fuzzy']);
   eq(kinds('64012', { scopeRestricted: false }), ['barcode']);
   eq(kinds('64012', { scopeRestricted: true }), ['scope', 'scope+barcode']);
+  eq(kinds('ניסן', { scopeRestricted: false }).length, 2, 'dateStage + fuzzy');
+  eq(LS.buildRetryVariants(P('ניסן'), { scopeRestricted: false })[0].dateStage, true);
+  ok(LS.orderSearchCondition(P('ניסן'), { dateStage: true }).OR.some((a) => a.eventDate), 'dateStage מפעיל את התאריך');
+  no(LS.orderSearchCondition(P('ניסן'), {}).OR.some((a) => a.eventDate), 'בלי dateStage - רק שם');
   eq(kinds('0501234567', { scopeRestricted: false }), []);
   eq(kinds('', { scopeRestricted: true }), []);
   eq(kinds('רחל', { scopeRestricted: false, fuzzy: false }), []);

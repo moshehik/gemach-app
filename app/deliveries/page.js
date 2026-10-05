@@ -8,6 +8,7 @@ import HebrewDateRangePicker from '@/components/HebrewDateRangePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
 import { getHebrewDateString, getHebrewWeekdayFullName, getIsraelTodayKey } from '@/lib/hebrewDate';
+import { phoneMatches } from '@/lib/searchNormalize';
 
 // "היום" לפי שעון ישראל (לא לפי אזור הזמן של המכשיר) - תואם את /api/deliveries.
 const todayIso = () => getIsraelTodayKey();
@@ -163,6 +164,9 @@ export default function DeliveriesPage() {
           (r.customerName || '').toLowerCase().includes(term) ||
           (r.customerPhone || '').includes(term) ||
           (r.customerPhone2 || '').includes(term) ||
+          // טלפון בכל צורת כתיבה (מקפים / +972 / בלי 0 מוביל) - lib/searchNormalize.js phoneMatches; ה-includes למעלה נשאר כמו קודם
+          phoneMatches(r.customerPhone, term) ||
+          phoneMatches(r.customerPhone2, term) ||
           (r.address || '').toLowerCase().includes(term)
         );
       });

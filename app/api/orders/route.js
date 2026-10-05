@@ -42,7 +42,7 @@ export async function GET(request) {
     if (plan.text && result.total === 0) {
       for (const variant of buildRetryVariants(plan, { scopeRestricted: isScopeRestricted(searchParams) })) {
         const variantPlan = variant.text ? planListSearch(variant.text) : plan;
-        const retry = await queryOrdersList(searchParams, { plan: variantPlan, widen: variant.widen, fuzzy: variant.fuzzy, barcodeStage: variant.barcode });
+        const retry = await queryOrdersList(searchParams, { plan: variantPlan, widen: variant.widen, fuzzy: variant.fuzzy, barcodeStage: variant.barcode, dateStage: variant.dateStage });
         if (retry.total > 0) { result = { ...retry, notices: variant.notices }; break; }
       }
     }
@@ -271,6 +271,7 @@ async function queryOrdersList(searchParams, opts) {
         phoneIds: searchPhoneIds,
         fuzzyIds: searchFuzzyIds,
         barcodeStage: !!opts.barcodeStage,
+        dateStage: !!opts.dateStage,
         multiNameCond: plan.nameText ? buildMultiWordRelationNameCondition(plan.nameText, 'customer', 'firstName', 'lastName') : null,
         multiRestCond: plan.kw && plan.kw.rest ? buildMultiWordRelationNameCondition(plan.kw.rest, 'customer', 'firstName', 'lastName') : null
       }));

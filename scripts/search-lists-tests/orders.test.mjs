@@ -4,6 +4,7 @@
 // טלפון בכל צורת כתיבה (גם טלפון 2), "050-123" לא מוצא הזמנה #50, ברקוד (7 ספרות; 5-6 ספרות הזמנה קודם), הצלת מקלדת, שמות דומים, מידה מדויקת
 // בחיפוש המתקדם, תקרת limit.
 import assert from 'node:assert/strict';
+import { HDate } from '@hebcal/core';
 import { T, resetT, load, t, req, summary } from './kit.mjs';
 
 const route = await load('app/api/orders/route.js');
@@ -14,6 +15,8 @@ const dayStart = (offset) => hd.getIsraelDayRange(hd.addDaysToDateKey(todayKey, 
 // תאריך אירוע בצורת האחסון של האתר: חצות ישראל
 const dateOf = (key) => hd.getIsraelDayRange(key).start;
 
+// תאריך עברי -> מפתח יום לועזי (כך שהבדיקות עקביות: eventDate ו-eventDateHebrew של אותה הזמנה מתארים אותו יום)
+const hebKey = (d, m, y) => { const g = new HDate(d, m, y).greg(); return `${g.getFullYear()}-${String(g.getMonth() + 1).padStart(2, '0')}-${String(g.getDate()).padStart(2, '0')}`; };
 const cust = (id, first, last, phone1, phone2 = null) => ({ id, firstName: first, lastName: last, phone1, phone2, email: null, city: null, zeout: null, isDeleted: false });
 const item = (o = {}) => ({ id: Math.random().toString(36).slice(2), isDeleted: false, isTaken: false, isReturned: false, barcodePrefix: null, sizeText: null, description: null, price: 0, barcode: null, dressItemId: null, dressItem: null, ...o });
 let seq = 30000;
@@ -32,11 +35,12 @@ function fixture() {
   const upcoming = order(rachel, { orderId: 30001, eventDate: dayStart(5), eventDateHebrew: 'כז תשרי תשפ"ז', items: [item({ barcode: '5511205', sizeText: '02', barcodePrefix: 551, dressItem: { sizeText: '02', barcodePrefix: 551, dress: { id: 'd1', name: 'שמלת ורד', barcodePrefix: 551 } } })] });
   const past = order(moshe, { orderId: 30002, eventDate: dateOf('2026-03-15'), eventDateHebrew: 'כב אדר תשפ"ו', items: [item({ sizeText: '12', barcodePrefix: 640, dressItem: { sizeText: '12', barcodePrefix: 640, dress: { id: 'd2', name: 'שמלת תכלת', barcodePrefix: 640 } } })] });
   const past2 = order(dana, { orderId: 30050, eventDate: dateOf('2025-10-15'), eventDateHebrew: 'כג תשרי תשפ"ו', items: [item({ sizeText: '2', barcodePrefix: 640, dressItem: { sizeText: '2', barcodePrefix: 640, dress: { id: 'd2', name: 'שמלת תכלת', barcodePrefix: 640 } } })] });
-  const b2 = order(dana, { orderId: 30060, eventDate: dateOf('2025-10-05'), eventDateHebrew: 'ב חשוון תשפ"ו', items: [item({ barcode: '6401203' })] });
-  const b22 = order(rachel, { orderId: 30061, eventDate: dateOf('2025-11-22'), eventDateHebrew: 'כב חשוון תשפ"ו' });
+  const b2 = order(dana, { orderId: 30060, eventDate: dateOf('2025-10-05'), eventDateHebrew: 'יג תשרי תשפ"ו', items: [item({ barcode: '6401203' })] });
+  const b22 = order(rachel, { orderId: 30061, eventDate: dateOf(hebKey(22, 8, 5786)), eventDateHebrew: 'כב חשוון תשפ"ו' });
+  const b2h = order(dana, { orderId: 30062, eventDate: dateOf(hebKey(2, 8, 5786)), eventDateHebrew: 'ב חשוון תשפ"ו' });
   const hug = order(moshe, { orderId: 50, eventDate: dayStart(40) }); // הזמנה #50 - לא אמורה להימצא בחיפוש "050-123"
   T.customers = [rachel, moshe, dana];
-  T.orders = [upcoming, past, past2, b2, b22, hug];
+  T.orders = [upcoming, past, past2, b2, b22, b2h, hug];
   T.dressModels = [{ barcodePrefix: 551, name: 'שמלת ורד' }, { barcodePrefix: 640, name: 'שמלת תכלת' }];
 }
 
@@ -81,7 +85,7 @@ console.log('טווח: "בקרוב" שלא מצא כלום מורחב לכל ה�
 await t('הזמנה בעבר: ב"בקרוב" ריק -> מורחב לכל התאריכים עם הודעת scope', async () => {
   fixture();
   const r = await call('search=' + encodeURIComponent('דנה') + '&filterStatus=soon');
-  assert.deepEqual(ids(r), [30050, 30060]);
+  assert.deepEqual(ids(r), [30050, 30060, 30062]);
   assert.equal(r.body.notices.length, 1);
   assert.equal(r.body.notices[0].kind, 'scope');
   assert.match(r.body.notices[0].text, /מכל התאריכים/);
@@ -114,7 +118,7 @@ await t('"כז תשרי" מוצא את ההזמנה (עם ובלי שנה בטק
 await t('"ב חשוון" = יום 2: לא מוצא "כב חשוון"', async () => {
   fixture();
   const r = ids(await call('search=' + encodeURIComponent('ב חשוון') + '&filterStatus=all'));
-  assert.ok(r.includes(30060), 'יום 2');
+  assert.ok(r.includes(30062), 'יום 2');
   assert.ok(!r.includes(30061), 'כב חשוון אסור');
 });
 await t('איותי חודש שונים ("חשון" / "חשוון") נמצאים', async () => {
@@ -129,6 +133,21 @@ await t('הזמנה בלי טקסט עברי שמור נמצאת לפי eventDat
   T.orders.find((o) => o.orderId === 30050).eventDateHebrew = null;
   const r = ids(await call('search=' + encodeURIComponent('כג תשרי') + '&filterStatus=all'));
   assert.ok(r.includes(30050), 'נמצא לפי טווח eventDate: ' + JSON.stringify(r) + ' ' + hDate);
+});
+
+await t('חודש לבדו: "תשרי" = כל ההזמנות בתשרי; "ניסן" קודם כשם ורק אחר כך כתאריך', async () => {
+  fixture();
+  const r = ids(await call('search=' + encodeURIComponent('תשרי') + '&filterStatus=all'));
+  assert.deepEqual(r, [30001, 30050, 30060]);
+  const nisan = cust('c8', 'ניסן', 'ברק', '0501212121');
+  T.customers.push(nisan);
+  T.orders.push(order(nisan, { orderId: 77001, eventDate: dayStart(3) }));
+  // שם לקוח "ניסן" נמצא כשם - בלי להציף בהזמנות ניסן
+  T.orders.push(order(rachel, { orderId: 77002, eventDate: dateOf('2026-04-10'), eventDateHebrew: 'כב ניסן תשפ"ו' }));
+  assert.deepEqual(ids(await call('search=' + encodeURIComponent('ניסן') + '&filterStatus=all')), [77001]);
+  // אין לקוח בשם הזה -> נסיון חוזר כתאריך
+  T.customers = T.customers.filter((c) => c.id !== 'c8'); T.orders = T.orders.filter((o) => o.orderId !== 77001);
+  assert.deepEqual(ids(await call('search=' + encodeURIComponent('ניסן') + '&filterStatus=all')), [77002]);
 });
 
 console.log('תאריך לועזי (התאמה מדויקת ליום)');
@@ -230,7 +249,7 @@ await t('"רחלל" / "כהנ" / "ראחל" נמצאים כשאין התאמה �
     assert.equal(r.body.notices.at(-1).kind, 'fuzzy', q);
   }
   const abr = ids(await call('search=' + encodeURIComponent('אברהמ') + '&filterStatus=all'));
-  assert.deepEqual(abr, [30050, 30060]);
+  assert.deepEqual(abr, [30050, 30060, 30062]);
 });
 await t('שם שונה לגמרי לא נמצא; שאילתת המועמדים חסומה (LIMIT) ורצה רק אחרי חיפוש ריק', async () => {
   fixture();

@@ -22,6 +22,8 @@ const notices = read('components/SearchNotices.js');
 const topbar = read('app/components/TopbarSearch.js');
 const alterations = read('app/alterations/page.js');
 const selector = read('components/CustomerSelector.js');
+const refunds = read('app/refunds/page.js');
+const deliveries = read('app/deliveries/page.js');
 
 t('SearchNotices: שלוש קומפוננטות, role=status, callout קיים', () => {
   has(notices, 'export function SearchNotices'); has(notices, 'export function ScopeNote'); has(notices, 'export function SearchEmptyHint');
@@ -62,6 +64,16 @@ t('תיקונים: כתובת הייצוא / ההדפסה מקודדת (encodeUR
 });
 t('בוחר לקוח: הודעת שרת + רמז במצב ריק', () => {
   has(selector, 'setNotice('); has(selector, 'אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה או עיר');
+});
+
+t('חובות (refunds): ברקוד של 7 ספרות כבר לא נשלח כטלפון; טלפון לפי classifyQuery', () => {
+  has(refunds, "classifyQuery(term).kind === 'phone'");
+  lacks(refunds, '/^\\d{7,}$/.test(term)', 'הכלל הישן: 7+ ספרות = טלפון');
+});
+t('משלוחים: טלפון בכל צורת כתיבה (phoneMatches) בנוסף ל-includes הישן', () => {
+  has(deliveries, "import { phoneMatches } from '@/lib/searchNormalize'");
+  has(deliveries, 'phoneMatches(r.customerPhone, term)');
+  has(deliveries, "(r.customerPhone || '').includes(term)");
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);
