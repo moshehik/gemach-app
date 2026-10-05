@@ -37,7 +37,22 @@ const prisma = {
       return created;
     },
   },
-  employee: { findUnique: async () => null },
+  employee: { findUnique: async (args) => (globalThis.__EMPLOYEES || {})[args.where.id] || null },
+  // log-visit tests: globalThis.__VISITS collects written rows; globalThis.__VISIT_COLUMNS_MISSING = true simulates a DB without the measure columns
+  pageVisitLog: {
+    createMany: async (args) => {
+      globalThis.__MOCK_CALLS.push({ model: 'pageVisitLog', op: 'createMany', args });
+      const touchesMeasure = args.data.some((r) => ['serverCpuMs', 'navigationType', 'serverBootId'].some((f) => r[f] !== undefined));
+      if (globalThis.__VISIT_COLUMNS_MISSING && touchesMeasure) {
+        const err = new Error('Invalid `prisma.pageVisitLog.createMany()` invocation: The column `PageVisitLog.serverCpuMs` does not exist in the current database.');
+        err.code = 'P2022';
+        throw err;
+      }
+      if (globalThis.__VISIT_FAIL_ALWAYS) throw new Error('db down');
+      globalThis.__VISITS = (globalThis.__VISITS || []).concat(args.data.map((r) => ({ ...r })));
+      return { count: args.data.length };
+    },
+  },
 };
 
 export default prisma;

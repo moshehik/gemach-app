@@ -461,7 +461,7 @@ export default async function RootLayout({ children }) {
           window.__LAST_API_METADATA__ = window.__LAST_API_METADATA__ || {};
           window.__LAST_API_METADATA__[url] = { responseSize: respSize, executionTime: execTime, timestamp: new Date().toISOString() };
           window.dispatchEvent(new CustomEvent('agy_api_call', { detail: { url: url, endpoint: endpoint, requestQuery: requestQuery, responseSize: respSize, executionTime: execTime } }));
-          window.__queueVisitLog({ pageUrl: url, requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime });
+          window.__queueVisitLog({ pageUrl: url, requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime, serverCpuMs: response.headers.get('x-cpu-ms'), serverBootId: response.headers.get('x-boot-id') });
         } catch(e) {}
       };
 
