@@ -8,7 +8,7 @@ import { canOpenAnyPage } from '@/lib/permissions';
 // A surface that several regular pages reach (the print routes - see lib/printAccess.js) passes
 // `pageKeys` instead: rendered when the employee may open ANY of them.
 // `fallback` (optional): what to render instead of the legacy "no access" card - a page that was moved to the new
-// design passes its own window (app/board/layout.js -> BoardGate). Without it nothing changes.
+// design passes its own window (e.g. app/board/layout.js -> BoardGate, app/customers/layout.js -> CustomersGate). Without it nothing changes.
 export default async function PageGate({ pageKey, pageKeys, fallback, children }) {
   const keys = pageKeys || [pageKey];
   if (!(await canOpenAnyPage(keys))) {

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
+import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
@@ -53,7 +54,12 @@ const CUSTOMER_FIELDS = [
 // יצא מהרשימה כי הוא מנוהל אך ורק דרך "קבוצות שדות" למטה (אחד מספיק מבין טלפון נוסף/אימייל).
 const ENFORCEABLE_FIELD_KEYS = ['firstName', 'lastName', 'phone1', 'email', 'city', 'street', 'houseNum'];
 
-function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
+// שדות החובה של כרטיס הלקוח החדש (customer_required_fields, lib/customerRequiredFields.js): אותו פיקר, רשימת השדות של הכרטיס,
+// והערך נכתב כמפתחות שדה. "נקה הכל" נשמר כ-none (ערך ריק = ברירת המחדל: שם פרטי, שם משפחה, טלפון).
+const CUSTOMER_CARD_REQUIRED_PICKER_FIELDS = REQUIRABLE_CUSTOMER_FIELDS.map(f => ({ key: f.key, name: f.label, alias: f.key }));
+const CUSTOMER_CARD_REQUIRED_HINT = 'שדה מסומן חוסם שמירה של כרטיס הלקוח (עריכה וגם לקוח חדש) כל עוד הוא ריק, עם כוכבית ליד השדה. נבדק גם בשרת. חל על כרטיס הלקוח החדש בלבד.';
+
+function CustomerFieldsCheckboxPicker({ value, onChange, elementName, fieldList, hint, emptyValue = '' }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -72,7 +78,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
     };
   }, [isOpen]);
 
-  const fields = CUSTOMER_FIELDS.filter(f => ENFORCEABLE_FIELD_KEYS.includes(f.key));
+  const fields = fieldList || CUSTOMER_FIELDS.filter(f => ENFORCEABLE_FIELD_KEYS.includes(f.key));
 
   const rawItems = (value || '')
     .split(',')
@@ -97,9 +103,10 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
         item !== field.alias
       );
     } else {
-      nextList = [...rawItems, field.alias || field.name];
+      // "none" (= אין שדות חובה, customer_required_fields) לא נשאר ליד שדה שנבחר ("none, firstName")
+      nextList = [...rawItems.filter(item => item.toLowerCase() !== 'none'), field.alias || field.name];
     }
-    onChange(nextList.join(', '));
+    onChange(nextList.length ? nextList.join(', ') : emptyValue);
   };
 
   const selectAll = () => {
@@ -108,7 +115,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   };
 
   const clearAll = () => {
-    onChange('');
+    onChange(emptyValue);
   };
 
   const count = fields.filter(f => isSelected(f)).length;
@@ -160,9 +167,9 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
             </div>
           </div>
 
-          <p className="hint" style={{ margin: 0, color: 'var(--text-3)' }}>
+          {hint ? <p className="hint" style={{ margin: 0, color: 'var(--text-3)' }}>{hint}</p> : <p className="hint" style={{ margin: 0, color: 'var(--text-3)' }}>
             שדה מסומן חוסם שמירת ההזמנה/הלקוח כל עוד הוא ריק (כוכבית אדומה מוצגת ליד השדה בטופס). לדרישת "אחד מספיק מבין שני שדות" (למשל טלפון נוסף / אימייל) - ר&apos; &quot;קבוצות שדות&quot; למטה.
-          </p>
+          </p>}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
             {fields.map(field => {
@@ -901,6 +908,7 @@ export default function SettingsClient({ mode = 'general' }) {
             };
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
+            const isCustomerRequiredSetting = setting.key === CUSTOMER_REQUIRED_FIELDS_KEY;
             const isFieldGroupsSetting = setting.key === 'mandatory_field_groups';
             const isSelectSetting = setting.type === 'select' || Object.prototype.hasOwnProperty.call(SETTINGS_SELECT_OPTIONS, setting.key);
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
@@ -916,7 +924,7 @@ export default function SettingsClient({ mode = 'general' }) {
               setting.key === 'enable_ai_specific_employees';
 
             // Helper to check if it needs a larger multiline textbox
-            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isFieldGroupsSetting && !isSelectSetting && !isSecretSetting && (
+            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isCustomerRequiredSetting && !isFieldGroupsSetting && !isSelectSetting && !isSecretSetting && (
               setting.key.toLowerCase().includes('print') ||
               setting.key.toLowerCase().includes('box') ||
               setting.key.toLowerCase().includes('footer') ||
@@ -963,6 +971,15 @@ export default function SettingsClient({ mode = 'general' }) {
                     <CustomerFieldsCheckboxPicker
                       value={rawValue || ''}
                       elementName="שדה_SettingsClient_21"
+                      onChange={(val) => handleChange(setting.key, val)}
+                    />
+                  ) : isCustomerRequiredSetting ? (
+                    <CustomerFieldsCheckboxPicker
+                      value={rawValue || ''}
+                      elementName="שדה_SettingsClient_customer_required"
+                      fieldList={CUSTOMER_CARD_REQUIRED_PICKER_FIELDS}
+                      hint={CUSTOMER_CARD_REQUIRED_HINT}
+                      emptyValue="none"
                       onChange={(val) => handleChange(setting.key, val)}
                     />
                   ) : isFieldGroupsSetting ? (

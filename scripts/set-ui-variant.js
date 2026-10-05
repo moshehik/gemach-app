@@ -51,7 +51,7 @@ const { pathToFileURL } = require('url');
 const ROOT = path.join(__dirname, '..');
 
 // אותה רשימה כמו UI_SCREEN_IDS ב-lib/uiVariantScreens.js (הסקריפט CommonJS סינכרוני; הבדיקה משווה בין השתיים).
-const SCREENS = ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
+const SCREENS = ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
 const VALUES = ['legacy', 'a5'];
 const SCOPES = ['org', 'user'];
 const KNOWN_FLAGS = new Set(['screen', 'value', 'scope', 'employee', 'confirm-host', 'dry-run', 'apply', 'clear', 'help', 'i-know-this-is-prod', 'not-prod']);

@@ -9,7 +9,7 @@ import { getHebrewDateString, getIsraelDayRange, HEBREW_DAYS } from '@/lib/hebre
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getLateReturnInfo, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays, rolledSourceRange } from '@/lib/businessDays';
-import { parseFieldGroups, getUnsatisfiedFieldGroups } from '@/lib/customerValidation';
+import { missingRule, customerMissing, customerMissingWhere } from '@/lib/customerMissing';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 
 // חיפוש מתקדם (A5) — תחומים: לקוחות, הזמנות, השכרות, החזרות. קריאה בלבד.
@@ -72,36 +72,7 @@ const ALT_COND = {
   ],
 };
 
-// ---- חוסר פרטי לקוח: השדות שהאתר תמיד דורש (שם פרטי/משפחה/טלפון) + mandatory_fields + mandatory_field_groups ----
-const ALIASES = {
-  firstName: ['firstname', 'שם פרטי', 'שם_פרטי'],
-  lastName: ['lastname', 'שם משפחה', 'שם_משפחה'],
-  phone1: ['phone1', 'טלפון ראשי (נייד)', 'טלפון_1'],
-  email: ['email', 'אימייל'],
-  city: ['city', 'עיר'],
-  street: ['street', 'רחוב'],
-  houseNum: ['housenum', 'מספר בית', 'מספר_בית'],
-};
-const emptyStr = (v) => v === null || v === undefined || String(v).trim() === '';
-function missingRule(cfg) {
-  const picked = (cfg.mandatory_fields || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  const keys = ['firstName', 'lastName', 'phone1'];
-  for (const k of Object.keys(ALIASES)) {
-    if (!keys.includes(k) && ALIASES[k].some((a) => picked.includes(a.toLowerCase()))) keys.push(k);
-  }
-  return { keys, groups: parseFieldGroups(cfg.mandatory_field_groups) };
-}
-function customerMissing(c, rule) {
-  if (!c) return true;
-  if (rule.keys.some((k) => emptyStr(c[k]))) return true;
-  return getUnsatisfiedFieldGroups(c, rule.groups).length > 0;
-}
-const emptyCond = (k) => (k === 'houseNum' ? { [k]: null } : { OR: [{ [k]: null }, { [k]: '' }] });
-function customerMissingWhere(rule) {
-  const or = rule.keys.map(emptyCond);
-  for (const g of rule.groups) or.push({ AND: g.map(emptyCond) });
-  return { OR: or };
-}
+// ---- חוסר פרטי לקוח: lib/customerMissing.js (משותף גם ל-/api/a5/adv-alerts) ----
 
 // ---- תנאי לקוח משותפים (שם / טלפון / פרטי לקוח / עיר) ----
 function personConds(adv, rel) {

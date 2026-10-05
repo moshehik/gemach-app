@@ -5,6 +5,7 @@ import { canOpenPage } from '@/lib/permissions';
 import { getDeliveriesForDate } from '@/lib/deliveries';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate } from '@/lib/hebrewDate';
+import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
 
 // חיפוש מתקדם A5 - תחומי משלוחים / תיקונים / כספים / תפוסה / דגמים / עובדים.
@@ -75,8 +76,10 @@ function eventDateCond(p) {
 }
 
 // פילטרים משותפים של "פרטי לקוח והזמנה" (rcust / fcust): קוד הזמנה, תאריך אירוע, שם, פרטי לקוח
+// טיוטות שרת (status 'טיוטה') לא נכללות, כמו orderFilterAnd ב-lib/advAlerts.js (בגמ"ח עם draft_orders_show_as_deleted הן מוצגות כ"מחוקות")
+const COMMON_BASE_LEN = 2;
 function commonOrderWhere(p) {
-  const AND = [{ isDeleted: false }];
+  const AND = [{ isDeleted: false }, { OR: [{ status: null }, { status: { not: DRAFT_ORDER_STATUS } }] }];
   const oid = s(p.oid);
   if (oid) { const n = parseInt(oid, 10); AND.push(isNaN(n) || !/^\d+$/.test(oid) ? { orderId: -1 } : { orderId: n }); }
   const ev = eventDateCond(p);
@@ -270,6 +273,7 @@ async function finance(p, flags, gaps) {
   const ordSel = ORD_ST[s(p.ordst)] || null;
   const orderAND = commonOrderWhere(p);
   const rows = [];
+  let debtCapTruncated = false;
 
   if (includeDebts) {
     // מועמדות בלבד: הזמנות לא-מחוקות עם סכום > 0 ששולם עליהן (תשלומים לא-מחוקים) פחות מהסכום, החדשות קודם.
@@ -278,16 +282,28 @@ async function finance(p, flags, gaps) {
       SELECT o."orderId" FROM "Order" o
       LEFT JOIN "Payment" p ON p."orderId" = o."orderId" AND p."isDeleted" = false
       WHERE o."isDeleted" = false AND COALESCE(o."totalAmount", 0) > 0
+        AND (o."status" IS NULL OR o."status" <> ${DRAFT_ORDER_STATUS})
       GROUP BY o."orderId", o."totalAmount", o."eventDate"
       HAVING COALESCE(SUM(p."amount"), 0) < o."totalAmount"
       ORDER BY o."eventDate" DESC NULLS LAST
-      LIMIT ${DEBT_CANDIDATES_MAX}`;
-    const AND = [...orderAND, { totalAmount: { gt: 0 } }, { orderId: { in: debtRows.map((r) => r.orderId) } }];
-    if (adate) AND.push({ orderDate: { gte: adate.start, lte: adate.end } });
-    const orders = await prisma.order.findMany({
-      where: { AND }, take: DEBT_CANDIDATES_MAX,
-      select: { ...orderBase, items: { select: { isDeleted: true, isTaken: true, isReturned: true } } },
-    });
+      LIMIT ${DEBT_CANDIDATES_MAX + 1}`;
+    // תקרת מועמדות: אם נחתכה, חוב ישן יותר (שמסנן שם / קוד / תאריך היה מוצא) נעדר מהרשימה. עם מסנן שמצמצם — מסננים ב-DB על ההזמנות
+    // עצמן (עם התשלומים, החוב מחושב ב-JS כמו תמיד); בלי מסנן מצמצם — מסמנים truncated (אי אפשר לדעת מה חסר).
+    const candCapHit = debtRows.length > DEBT_CANDIDATES_MAX;
+    const narrowed = orderAND.length > COMMON_BASE_LEN || !!adate;
+    const orderSel = { ...orderBase, items: { select: { isDeleted: true, isTaken: true, isReturned: true } } };
+    let orders;
+    if (candCapHit && narrowed) {
+      const AND = [...orderAND, { totalAmount: { gt: 0 } }];
+      if (adate) AND.push({ orderDate: { gte: adate.start, lte: adate.end } });
+      orders = await prisma.order.findMany({ where: { AND }, orderBy: { eventDate: { sort: 'desc', nulls: 'last' } }, take: DEBT_CANDIDATES_MAX + 1, select: orderSel });
+      if (orders.length > DEBT_CANDIDATES_MAX) { debtCapTruncated = true; orders = orders.slice(0, DEBT_CANDIDATES_MAX); }
+    } else {
+      if (candCapHit) debtCapTruncated = true;
+      const AND = [...orderAND, { totalAmount: { gt: 0 } }, { orderId: { in: debtRows.slice(0, DEBT_CANDIDATES_MAX).map((r) => r.orderId) } }];
+      if (adate) AND.push({ orderDate: { gte: adate.start, lte: adate.end } });
+      orders = await prisma.order.findMany({ where: { AND }, take: DEBT_CANDIDATES_MAX, select: orderSel });
+    }
     for (const o of orders) {
       const d = orderDebt(o);
       if (d <= 0 || !amtOk(d)) continue;
@@ -333,7 +349,7 @@ async function finance(p, flags, gaps) {
     }
   }
   let sorted = smartSort(rows, (r) => r.sort);
-  const truncated = sorted.length > LIMIT;
+  const truncated = sorted.length > LIMIT || debtCapTruncated;
   sorted = sorted.slice(0, LIMIT);
   return { rows: sorted, truncated, cols: ['שם', 'סכום', 'תאריך אירוע', 'טלפון'] };
 }

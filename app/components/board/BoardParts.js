@@ -16,11 +16,11 @@ export const LateContext = createContext({});
 export const useLateCfg = () => useContext(LateContext);
 const WD_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
-// ---------- שורת החיפוש + מסנן השלבים (E01 + S01) ----------
-// בדיוק הרכיב של חיפוש ההיסטוריה בכרטיס ההזמנה (היסטוריה 2/8/9/12/14 בפלטה, כרטיס-הזמנה.html #hfBar): גלולה עם אייקון
-// חיפוש, לחצן ניקוי (hf-cl), ובתוכה לחצן "סינון" (hf-t) שפותח רשימה עם תיבות סימון, אייקון ומונה לכל שלב.
-// החיפוש עצמו נשלח לשרת ב-Enter כמו בדף הקודם (search ב-/api/orders, רק בחודש המוצג); הסינון מסתיר מונים בתאים.
-export function BoardSearchBar({ value, onChange, onSubmit, onClear, stages, totals, selected, onToggle, onShowAll, filterDisabled }) {
+// ---------- מסנן השלבים (S01) ----------
+// הרכיב של המסנן מחיפוש ההיסטוריה בכרטיס ההזמנה (היסטוריה 2/8/9/12/14 בפלטה, כרטיס-הזמנה.html #hfBar): לחצן "סינון" (hf-t)
+// שפותח רשימה עם תיבות סימון, אייקון ומונה לכל שלב. החלטת הבעלים (5.10.2026): תיבת החיפוש הרגיל הוסרה מהלוח (לא קופצים
+// לחודש ההזמנה) - נשאר רק המסנן; הוא מסתיר מונים בתאים.
+export function BoardStageFilter({ stages, totals, selected, onToggle, onShowAll, filterDisabled }) {
   const [open, setOpen] = useState(false);
   const selRef = useRef(null);
   useEffect(() => {
@@ -36,66 +36,48 @@ export function BoardSearchBar({ value, onChange, onSubmit, onClear, stages, tot
   const stageOf = (k) => stages.find((s) => s.key === k);
   return (
     <div className="hf-bar bd-search" id="bdSearch">
-      <form className="hf-s" role="search" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
-        <Ic name="search" />
-        <input
-          id="bdQ"
-          type="search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-          aria-label="חיפוש הזמנה לפי מספר הזמנה או שם לקוח"
-          autoComplete="off"
-          data-lpignore="true"
-          data-1p-ignore=""
-          data-form-type="other"
-        />
-        <button type="button" className={'hf-cl' + (value ? ' on' : '')} aria-label="ניקוי חיפוש" data-tip="ניקוי חיפוש" onClick={onClear} tabIndex={value ? 0 : -1}>
-          <Ic name="x" />
+      <div className={'hf-sel' + (open ? ' on' : '')} ref={selRef}>
+        <button
+          type="button"
+          className="hf-t"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls="bdStageList"
+          disabled={filterDisabled}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Ic name="sliders" />
+          <span className="hf-lbl">סינון</span>
+          <span className={'hf-bdg' + (selected.length ? ' has' : '')}>{selected.length || ''}</span>
+          <Ic name="chev" className="hf-chv" />
         </button>
-        <div className={'hf-sel' + (open ? ' on' : '')} ref={selRef}>
-          <button
-            type="button"
-            className="hf-t"
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            aria-controls="bdStageList"
-            disabled={filterDisabled}
-            onClick={() => setOpen((v) => !v)}
-          >
-            <Ic name="sliders" />
-            <span className="hf-lbl">סינון</span>
-            <span className={'hf-bdg' + (selected.length ? ' has' : '')}>{selected.length || ''}</span>
-            <Ic name="chev" className="hf-chv" />
-          </button>
-          <div className="hf-scrim" onClick={() => setOpen(false)} />
-          <div className="hf-p">
-            <div className="hf-all"><button type="button" className="hf-allb" onClick={onShowAll}>הצג הכל</button></div>
-            <div className="hf-l" id="bdStageList" role="listbox" aria-multiselectable="true" aria-label="סינון לפי שלב">
-              {stages.filter((s) => s.enabled).map((s, n) => {
-                const on = selected.includes(s.key);
-                return (
-                  <div
-                    key={s.key}
-                    className="hf-o"
-                    role="option"
-                    tabIndex={0}
-                    aria-selected={on}
-                    style={{ '--k': n }}
-                    onClick={() => onToggle(s.key)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(s.key); } }}
-                  >
-                    <span className="hf-ck"><Ic name="check" /></span>
-                    <span className="hf-oi"><Ic name={metaOf(s.key).icon} /></span>
-                    <span className="hf-ol">{s.label}</span>
-                    <span className="hf-oc">{totals[s.key] || 0}</span>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="hf-scrim" onClick={() => setOpen(false)} />
+        <div className="hf-p">
+          <div className="hf-all"><button type="button" className="hf-allb" onClick={onShowAll}>הצג הכל</button></div>
+          <div className="hf-l" id="bdStageList" role="listbox" aria-multiselectable="true" aria-label="סינון לפי שלב">
+            {stages.filter((s) => s.enabled).map((s, n) => {
+              const on = selected.includes(s.key);
+              return (
+                <div
+                  key={s.key}
+                  className="hf-o"
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={on}
+                  style={{ '--k': n }}
+                  onClick={() => onToggle(s.key)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(s.key); } }}
+                >
+                  <span className="hf-ck"><Ic name="check" /></span>
+                  <span className="hf-oi"><Ic name={metaOf(s.key).icon} /></span>
+                  <span className="hf-ol">{s.label}</span>
+                  <span className="hf-oc">{totals[s.key] || 0}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </form>
+      </div>
       {pills.length ? (
         <div className="hf-pills">
           {pills.map((k) => {
