@@ -220,16 +220,25 @@ t('מדריך הקיצורים: כפתור רק בדף הבית, לפני חיפ
   assert.ok(/createPortal\(/.test(ui) && /e\.key === 'Escape'/.test(ui) && /e\.key !== 'Tab'/.test(ui), 'portal, Esc, מלכודת מיקוד');
   assert.ok(!/window\.(alert|confirm)|\balert\(|window\.customConfirm/.test(ui + src('../app/components/search/QuickPrefix.js') + src('../app/components/search/savedSearches.js')), 'בלי alert / confirm של הדפדפן');
 });
-t('אייקון שמירה (PFX-09): i-archive מהפלטה (אין "שמירה" בפלטה), נעלם לקידומת / ריק / unavailable; הודעת "החיפוש נשמר"; דגל ✓ לרגע', () => {
+t('אייקון שמירה (PFX-09): i-bookmark (סימנייה, אייקון 81 בפלטה; לא עוד i-archive), נעלם לקידומת / ריק / unavailable; הודעת "החיפוש נשמר"; דגל ✓ לרגע', () => {
   const ui = src('../app/components/search/ShortcutsUi.js');
-  assert.ok(/QIcon id=\{st === 'done' \? 'check' : 'archive'\}/.test(ui));
+  assert.ok(/QIcon id=\{st === 'done' \? 'check' : 'bookmark'\}/.test(ui));
+  assert.ok(!/'archive'/.test(ui), 'האייקון archive כבר לא משמש לשמירת חיפוש');
+  assert.equal(SAVED_TEXT.saveIconLabel, 'שמירת חיפוש', 'שם נגיש בעברית');
+  assert.ok(/aria-label=\{label\}/.test(ui) && /SAVED_TEXT\.saveIconLabel/.test(ui), 'aria-label = "שמירת חיפוש" (לא רק טולטיפ)');
   assert.ok(/saved\.state === 'unavailable'\) return null/.test(ui) && /saveCandidate\(text\)/.test(ui));
   assert.equal(SAVED_TEXT.savedToast, 'החיפוש נשמר');
   const store = src('../app/components/search/savedSearches.js');
   assert.ok(/say\(SAVED_TEXT\.savedToast, '“' \+ payload\.label \+ '”'\)/.test(store), 'הודעה אחרי שמירה');
-  assert.ok(/id="archive"|'archive'/.test(ui));
   const sprite = src('../app/components/menu/spriteSymbols.js');
-  for (const id of ['archive', 'check', 'info', 'trash', 'x', 'plus', 'pencil', 'wallet', 'search', 'lock']) assert.ok(sprite.includes(`["${id}",`), 'חסר אייקון בספרייט: ' + id);
+  for (const id of ['bookmark', 'check', 'info', 'trash', 'x', 'plus', 'pencil', 'wallet', 'search', 'lock']) assert.ok(sprite.includes(`["${id}",`), 'חסר אייקון בספרייט: ' + id);
+  const palette = src('../design-system/sprite.svg');
+  assert.ok(palette.includes('<symbol id="i-bookmark"') && palette.includes('81 סמלים'), 'הסמל בפלטה (sprite.svg) והמונה בכותרת');
+  const iconsJson = JSON.parse(src('../design-system/icons.json')).icons;
+  assert.deepEqual(iconsJson[iconsJson.length - 1], { n: 81, id: 'bookmark', label: 'שמירת חיפוש (סימנייה)', usage: { home: 0, order: 0 } }, 'אייקון 81 מצורף בסוף (בלי מספור מחדש)');
+  assert.equal(iconsJson.find((x) => x.id === 'archive').n, 75, 'archive נשאר 75');
+  assert.equal(JSON.parse(src('../design-system/build/numbers.json')).icon.bookmark, 81, 'מרשם המספרים');
+  assert.ok(/אייקון 81 \| `i-bookmark`/.test(src('../design-system/COMPONENTS.md')), 'שורה בקטלוג הרכיבים');
   const home = src('../app/components/home/HomeA5.js');
   assert.ok(/!loading && <SaveIconButton text=\{q\} saved=\{saved\} ibtn \/>/.test(home), 'ליד ה-X בשדה הבית');
   assert.ok(/<SaveIconButton text=\{q\} saved=\{saved\} \/>/.test(src('../app/components/menu/MenuSearchPanel.js')), 'בשדה התפריט / המגירה (אותו SearchBody)');

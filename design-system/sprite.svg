@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
-<!-- design-system/sprite.svg — ספריית האייקונים של הפלטה, 80 סמלים, גרסה 2026-09-29. נוצר אוטומטית ע"י build/install.py מכרטיס ההזמנה.
+<!-- design-system/sprite.svg — ספריית האייקונים של הפלטה, 81 סמלים, גרסה 2026-09-29. נוצר אוטומטית ע"י build/install.py מכרטיס ההזמנה.
      בתוך האפליקציה: <svg class="ic"><use href="/design-system/sprite.svg#i-mail"/></svg> (הפניה חיצונית - כך אין התנגשות עם ה-ids של app/components/IconSprite.js). -->
 <defs>
 <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></symbol>
@@ -82,5 +82,6 @@
 <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.500"/><path d="M12 2.500v5M12 16.500v5M2.500 12h5M16.500 12h5"/></symbol>
 <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.500" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18.500" cy="12" r="1"/></symbol>
 <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10.500M7.500 10.500 12 15l4.500-4.500M4.500 19.500h15"/></symbol>
+<symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 3.500h10a1 1 0 0 1 1 1V20.500l-6-4.500-6 4.500V4.500a1 1 0 0 1 1-1z"/></symbol>
 </defs>
 </svg>
