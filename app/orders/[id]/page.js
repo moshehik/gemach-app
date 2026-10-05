@@ -1492,6 +1492,7 @@ export default function OrderDetailsPage({ params }) {
     setActiveTab('payments');
     setTimeout(() => {
       if (type === 'credit') paymentsManagerRef.current?.openRefundModal();
+      else if (type === 'charge') paymentsManagerRef.current?.openAddChargeModal();
       else paymentsManagerRef.current?.openAdditionalPaymentModal();
     }, 60);
   };

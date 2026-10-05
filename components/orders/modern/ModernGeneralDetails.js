@@ -548,7 +548,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
             <div className="avatar"><svg className="icon"><use href="#i-wallet" /></svg></div>
             <div>
               <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
-              <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח - דורש קוד מאשר.</div>
+              <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן), בקשת זיכוי ללקוח או הוספת חיוב ידני - דורש קוד מאשר.</div>
             </div>
           </div>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowManualPaymentCreditChooser(true)}>
@@ -669,7 +669,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p className="hint" style={{ color: 'var(--text-2)', margin: 0 }}>בחר את סוג הפעולה. שתיהן דורשות קוד מאשר.</p>
+              <p className="hint" style={{ color: 'var(--text-2)', margin: 0 }}>בחר את סוג הפעולה. כולן דורשות קוד מאשר.</p>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -685,6 +685,14 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('credit'); }}
               >
                 <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ justifyContent: 'flex-start' }}
+                onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('charge'); }}
+              >
+                <svg className="icon"><use href="#i-plus" /></svg>הוספת חיוב ידני
               </button>
             </div>
           </div>

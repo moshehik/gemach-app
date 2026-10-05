@@ -495,7 +495,10 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     // אותם חלונות בדיוק כמו הכפתורים הרגילים למטה - האישור (feature:manual_payment_credit_add)
     // כבר קרה לפני שהקורא מגיע לכאן, אין צורך לחזור ולבדוק.
     openAdditionalPaymentModal: () => handleOpenAdditionalPaymentModal(),
-    openRefundModal: () => handleOpenRefundModal()
+    openRefundModal: () => handleOpenRefundModal(),
+    // חיוב ידני כללי ("הוסף חיוב") - כש-consolidate_manual_payment_credit_ui מופעל הכפתור
+    // הגנרי מוסתר בטאב תשלומים והחלון נפתח רק מהבורר המאוחד אחרי קוד מאשר (f559c61b/af7170ce/79c5130b).
+    openAddChargeModal: () => setShowAddChargeModal(true)
   }));
 
   /** מעקף אשראי מלא מתוך האתר - רושם תשלום אשראי כאילו שולם, מבלי לפנות למסוף נדרים פלוס בכלל.
@@ -870,16 +873,23 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               </button>
             </>
           )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
-            <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
-          </button>
+          {/* כש-consolidate_manual_payment_credit_ui מופעל (נווה יעקב) הכפתור הגנרי "הוסף חיוב" מוסתר -
+              הוא נגיש רק דרך הבורר המאוחד בטאב "פרטים כלליים" אחרי קוד מאשר (f559c61b/af7170ce/79c5130b).
+              כפתורי חיוב המשלוח למעלה נשארים. אצל שאר הגמחים (המתג כבוי) שום דבר לא משתנה. */}
+          {settings.consolidate_manual_payment_credit_ui !== 'true' && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
+              <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
+            </button>
+          )}
         </div>
         {/* דיווח תקלה (הזמנה #53377): "הוסף חיוב" בלבל עובדות לחשוב שהן צריכות להוסיף חיובים
             בעצמן בכל הזמנה - למרות שחיובי מחירון רגילים (כולל ביטולים/החלפות) כבר מחושבים
             ומתעדכנים אוטומטית. הכפתור עצמו נשאר (נחוץ למקרים חריגים אמיתיים), רק ההסבר נוסף. */}
-        <p className="hint" style={{ margin: '-10px 0 10px', color: 'var(--text-2)' }}>
-          &quot;הוסף חיוב&quot; מיועד למקרים חריגים בלבד - חיובי מחירון רגילים (כולל ביטולים והחלפות) מתעדכנים אוטומטית ואין צורך להוסיף אותם ידנית.
-        </p>
+        {settings.consolidate_manual_payment_credit_ui !== 'true' && (
+          <p className="hint" style={{ margin: '-10px 0 10px', color: 'var(--text-2)' }}>
+            &quot;הוסף חיוב&quot; מיועד למקרים חריגים בלבד - חיובי מחירון רגילים (כולל ביטולים והחלפות) מתעדכנים אוטומטית ואין צורך להוסיף אותם ידנית.
+          </p>
+        )}
         {activeObligations.length > 0 ? (
           <div className="table-wrap">
             <div className="table-scroll">
