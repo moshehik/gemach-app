@@ -581,11 +581,11 @@ t('board.css: אין דריסת @media לפני הכלל הלא-מותנה, וא
   for (const r of boardRules) if (setsProp(r, /^(background(-color|-image)?|border(-color)?|box-shadow)$/).some(isImportant)) bad.push(r.sel);
   assert.deepEqual(bad, []);
 });
-t('הלוח: השורש .gm-ds.gm-lz.gm-bd (schedule.css מנטרל את הגופנים), בלי gm-home; שדה החיפוש מנוטרל מול design-overrides.css', () => {
+t('הלוח: השורש .gm-ds.gm-lz.gm-bd (schedule.css מנטרל את הגופנים), בלי gm-home', () => {
   const page = read('../app/components/board/BoardPage.js');
   assert.match(page, /className="gm-ds gm-lz gm-bd home-bg dlg-dark"/);
   assert.ok(!/gm-home/.test(page), 'gm-home על שורש הלוח');
-  assert.ok(boardRules.some((r) => /input#bdQ:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/.test(r.sel) && setsProp(r, /^background$/).length && setsProp(r, /^box-shadow$/).length), 'חסר נטרול רקע/טבעת לשדה החיפוש');
+  assert.ok(!boardRules.some((r) => /#bdQ|\.hf-cl/.test(r.sel)), 'נשארו כללי CSS של תיבת החיפוש שהוסרה');
   assert.ok(boardRules.some((r) => /#mToday$/.test(r.sel) && setsProp(r, /^height$/).some((d) => d.value === '28px')), 'S04: "החודש הנוכחי" בגובה המתג (28px)');
 });
 const GATE_CSS = read('../app/components/gate/gate.css');

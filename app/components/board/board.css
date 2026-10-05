@@ -2,7 +2,7 @@
    השורש: .gm-ds.gm-lz.gm-bd.home-bg.dlg-dark - הלוח הוא המשך של דף הלו״ז בעיצוב המאושר (לוח-חודשי.html נבנה על אותה
    מעטפת lz-*), ולכן schedule.css חל עליו (lz-app, topbar, lz-rail/st-stab, שורות lz-r, lz-st, lz-pop, toast, "בטוח?").
    כאן רק מה שאין בפלטה ובלו״ז: גריד החודש (lz-hc / lz-day / lz-pr - ערכי העיצוב, שורות 1019-1085 של המעטפת שם), שורת
-   החיפוש + מסנן השלבים (hf-* בערכים המחושבים של כרטיס-הזמנה.html #hfBar, כולל השכבות hf-inside / hf-popup / hf-adv-look
+   מסנן השלבים (hf-* בערכים המחושבים של כרטיס-הזמנה.html #hfBar, כולל השכבות hf-inside / hf-popup / hf-adv-look
    / hf-t-clear), בורר החודשים, תצוגת הרשימה. כל כלל בהיקף .gm-ds.gm-bd.
    הבעלים 4.10.2026: S02 - כל מוני השלבים באותו גוון, רק מונה עם התראה בגוון אחר; S04 - "החודש הנוכחי" בגובה מתג התצוגה;
    BD-O3 - אין חלונות בלוח (חלון היום נמחק). שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "הלוח החודשי"). */
@@ -15,23 +15,10 @@
 .gm-ds.gm-bd .bd-app{padding-top:50px}
 @media (max-width:640px){.gm-ds.gm-bd .bd-app{padding-top:18px}}
 
-/* ===== שורת החיפוש + מסנן השלבים (E01 + S01): בדיוק חיפוש ההיסטוריה בכרטיס ההזמנה ===== */
+/* ===== מסנן השלבים (S01): לחצן הסינון של חיפוש ההיסטוריה בכרטיס ההזמנה; תיבת החיפוש הוסרה (הבעלים 5.10.2026) ===== */
 .gm-ds.gm-bd .hf-bar.bd-search{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin:14px 0 0;max-width:720px}
-.gm-ds.gm-bd .bd-search .hf-s{position:relative;display:flex;align-items:center;flex:none;width:100%;height:60px;min-width:0;padding:0;padding-inline-end:0;overflow:visible;border:2px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.3);box-shadow:none;transition:border-color 150ms,box-shadow 150ms}
-.gm-ds.gm-bd .bd-search .hf-s:hover{border-color:var(--gold-b)}
-.gm-ds.gm-bd .bd-search .hf-s:focus-within{border-color:var(--gold-b);box-shadow:0 0 0 3px rgba(201,162,39,.3)}
-.gm-ds.gm-bd .bd-search .hf-s>svg.ic{position:absolute;inset-inline-start:20px;top:18px;width:20px;height:20px;color:var(--navy-500);pointer-events:none;transition:color 150ms,transform 250ms var(--spring)}
-.gm-ds.gm-bd .bd-search .hf-s:focus-within>svg.ic{color:var(--navy);transform:scale(1.12)}
-/* ה-input: design-overrides.css (input:not(x4) = 0,4,1) ו-globals.css צובעים רקע/גבול/טבעת לכל שדה - נטרול בספציפיות גבוהה יותר */
-.gm-ds.gm-bd .bd-search .hf-s input#bdQ:not([type="checkbox"]):not([type="radio"]){flex:1;min-width:0;height:100%;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;outline:0;padding-block:0;padding-inline:52px 20px;font-size:17px;color:var(--navy-900)}
-.gm-ds.gm-bd .bd-search .hf-s input::placeholder{color:var(--ink3)}
-.gm-ds.gm-bd .bd-search .hf-s input::-webkit-search-cancel-button{display:none}
-.gm-ds.gm-bd .bd-search .hf-cl{position:static;flex:none;width:32px;height:32px;margin-inline-end:6px;padding:1px 6px;border-radius:50%;border:0;background:var(--sky-100);color:var(--navy);display:grid;place-items:center;cursor:pointer;opacity:0;transform:scale(.5);visibility:hidden;transition:opacity 160ms,transform 220ms var(--spring),background-color 150ms,visibility 0s 160ms}
-.gm-ds.gm-bd .bd-search .hf-cl.on{opacity:1;transform:none;visibility:visible;transition-delay:0s}
-.gm-ds.gm-bd .bd-search .hf-cl:hover,.gm-ds.gm-bd .bd-search .hf-cl:focus-visible{background:var(--navy);color:#fff;outline:0}
-.gm-ds.gm-bd .bd-search .hf-cl svg.ic{width:16px;height:16px}
-.gm-ds.gm-bd .bd-search .hf-sel{position:relative;flex:none;align-self:stretch;display:flex;padding:4px;border-inline-start:0}
-.gm-ds.gm-bd .bd-search .hf-t{position:relative;width:auto;height:100%;display:flex;align-items:center;gap:10px;padding:0 16px;border:1.5px solid var(--gold-b);border-radius:999px;background:transparent;color:var(--navy);font-weight:600;font-size:17px;white-space:nowrap;cursor:pointer;text-align:start;transition:border-color 150ms,box-shadow 150ms}
+.gm-ds.gm-bd .bd-search .hf-sel{position:relative;flex:none;align-self:flex-start;display:flex;padding:4px;border-inline-start:0}
+.gm-ds.gm-bd .bd-search .hf-t{position:relative;width:auto;height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;border:1.5px solid var(--gold-b);border-radius:999px;background:rgba(255,255,255,.3);color:var(--navy);font-weight:600;font-size:17px;white-space:nowrap;cursor:pointer;text-align:start;transition:border-color 150ms,box-shadow 150ms}
 .gm-ds.gm-bd .bd-search .hf-t:hover,.gm-ds.gm-bd .bd-search .hf-t:focus-visible{background:var(--navy);color:#fff;outline:0}
 .gm-ds.gm-bd .bd-search .hf-t:hover .ic,.gm-ds.gm-bd .bd-search .hf-t:focus-visible .ic{color:#fff;stroke:#fff}
 .gm-ds.gm-bd .bd-search .hf-t:disabled{cursor:not-allowed;opacity:.6;background:transparent;color:var(--navy)}
@@ -42,7 +29,7 @@
 .gm-ds.gm-bd .bd-search .hf-bdg{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--gbtn);color:#000;font-size:13px;font-weight:700;display:none;place-items:center}
 .gm-ds.gm-bd .bd-search .hf-bdg.has{display:grid}
 .gm-ds.gm-bd .bd-search .hf-scrim{display:none}
-.gm-ds.gm-bd .bd-search .hf-p{position:absolute;z-index:30;top:calc(100% + 8px);inset-inline-start:auto;inset-inline-end:0;width:min(360px,calc(100vw - 32px));min-width:240px;max-width:none;padding:8px;overflow:hidden;background:#fff;border:1px solid var(--navy);border-radius:16px;box-shadow:0 24px 60px -12px rgba(15,44,82,.35),0 2px 8px rgba(15,44,82,.08);opacity:0;visibility:hidden;transform:translateY(-8px) scale(.98);transform-origin:50% 0;transition:opacity 180ms var(--ease),transform 180ms var(--ease),visibility 0s 180ms}
+.gm-ds.gm-bd .bd-search .hf-p{position:absolute;z-index:30;top:calc(100% + 8px);inset-inline-start:0;inset-inline-end:auto;width:min(360px,calc(100vw - 32px));min-width:240px;max-width:none;padding:8px;overflow:hidden;background:#fff;border:1px solid var(--navy);border-radius:16px;box-shadow:0 24px 60px -12px rgba(15,44,82,.35),0 2px 8px rgba(15,44,82,.08);opacity:0;visibility:hidden;transform:translateY(-8px) scale(.98);transform-origin:50% 0;transition:opacity 180ms var(--ease),transform 180ms var(--ease),visibility 0s 180ms}
 .gm-ds.gm-bd .bd-search .hf-sel.on .hf-p{opacity:1;visibility:visible;transform:none;transition-delay:0s}
 .gm-ds.gm-bd .bd-search .hf-all{display:flex;justify-content:flex-start;padding:4px 6px 8px;border-bottom:1px solid var(--sky-200);margin-bottom:6px}
 .gm-ds.gm-bd .bd-search .hf-allb{background:none;border:0;padding:6px 8px;font:inherit;font-weight:600;font-size:16px;color:var(--navy);cursor:pointer;border-radius:8px;min-height:36px}
@@ -84,7 +71,7 @@
  .gm-ds.gm-bd .bd-search .hf-l{max-height:calc(80dvh - 120px)}
 }
 @media (max-width:479px){.gm-ds.gm-bd .bd-search .hf-lbl{display:none}}
-@media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .bd-search :is(.hf-p,.hf-scrim,.hf-cl,.hf-chv){transition-duration:.01ms!important}.gm-ds.gm-bd .bd-search :is(.hf-o,.hf-pill,.hf-ck){animation:none!important}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-bd .bd-search :is(.hf-p,.hf-scrim,.hf-chv){transition-duration:.01ms!important}.gm-ds.gm-bd .bd-search :is(.hf-o,.hf-pill,.hf-ck){animation:none!important}}
 
 /* ===== סרגל "החודש הנוכחי" + מתג לוח/רשימה (S03 + S04) ===== */
 .gm-ds.gm-bd .lz-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 4px}
@@ -204,10 +191,8 @@
  .gm-ds.gm-bd .lz-jump{min-height:44px;padding:4px 8px;white-space:nowrap;font-size:16px}
  /* בורר החודשים ממורכז מתחת לשם החודש (כותרת הכרטיס ממורכזת), לא מיושר לקצה - בטלפון הקצה היה גולש מחוץ למסך */
  .gm-ds.gm-bd .lz-pop.bd-mp{inset-inline-start:50%;translate:50% 0}
- .gm-ds.gm-bd .bd-search .hf-cl{width:44px;height:44px;margin-inline-end:4px}
  .gm-ds.gm-bd .bd-search .hf-pill{height:44px;padding:0 10px 0 14px}
  .gm-ds.gm-bd .bd-search .hf-allb{min-height:44px}
- .gm-ds.gm-bd .bd-search .hf-s input::placeholder{text-overflow:ellipsis}
 }
 
 /* תצוגת הלוח (גריד) בטלפון: 7 עמודות של ~40px - אות היום, סימן התראה ומוני השלבים כמספרים בלבד (בלי אייקון ובלי פרשה/חג; הפירוט המלא ברשימה) */
