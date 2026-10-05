@@ -759,6 +759,34 @@ export default function useNewOrderController({ router }) {
   const remaining = Math.max(0, NL.roundMoney(totalAmount - totalPaid));
   const openInfo = NL.stepOpenInfo(order);
 
+  // ac8afab7 / 1913c29a / caab5f84 (נווה יעקב): "הוסף / עריכת משלוח" משלבי הפריטים / הסיכום / התשלום. בישן - חלון עם שדות שלב 2; ב-A5 המשלוח
+  // הוא שלב נפרד, אז הלחצן קופץ אליו (עם צילום מצב לביטול) וחוזר לשלב המקור. "הוסף" מדליק את המשלוח מיד כדי שהשדות יהיו פעילים.
+  const deliveryEnabled = NL.deliveryStepVisibility(settings).showDelivery;
+  const [deliveryEdit, setDeliveryEdit] = useState(null); // { to: מפתח שלב החזרה, snap: שדות המשלוח לפני העריכה }
+  const openDeliveryEdit = (from) => {
+    if (!deliveryEnabled || saved) return;
+    setDeliveryEdit({
+      to: from,
+      snap: { isDelivery: !!order.isDelivery, deliveryDirection: order.deliveryDirection, deliveryCity: order.deliveryCity, deliveryAddress: order.deliveryAddress, deliveryOneDayBefore: order.deliveryOneDayBefore },
+    });
+    if (!order.isDelivery) setOrder(prev => ({ ...prev, isDelivery: true }));
+    goStep('delivery');
+  };
+  const closeDeliveryEdit = (save) => {
+    if (!deliveryEdit) return;
+    if (save) {
+      // אותה בדיקה כמו "המשך" משלב המשלוח ו-saveOrder - הקפיצה חזרה עוקפת את go()
+      if (deliveryError) { say('info', deliveryError); return; }
+    } else {
+      setOrder(prev => ({ ...prev, ...deliveryEdit.snap }));
+    }
+    const to = deliveryEdit.to;
+    setDeliveryEdit(null);
+    goStep(to);
+  };
+  // יציאה משלב המשלוח בדרך אחרת (פס התקדמות) מסיימת את מצב העריכה; השינויים נשמרים (go() ממילא חוסם משלוח לא תקין)
+  useEffect(() => { if (deliveryEdit && stepKey !== 'delivery') setDeliveryEdit(null); }, [deliveryEdit, stepKey]);
+
   const go = (idx) => {
     const key = NL.STEP_KEYS[idx];
     if (!key) return;
@@ -778,7 +806,7 @@ export default function useNewOrderController({ router }) {
     newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel, modelCodes,
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
     calculatedData, calculating, totalAmount, activeItems, datesFilled, rangePending, setRangePending,
-    deliveryCityOptions, deliveryAddressRequired, deliveryCityRequired, deliveryError,
+    deliveryCityOptions, deliveryAddressRequired, deliveryCityRequired, deliveryError, deliveryEnabled, deliveryEdit, openDeliveryEdit, closeDeliveryEdit,
     paymentMethodOptions, payment, setPayment, paymentsList, removePayment, totalPaid, remaining, handleAddPaymentClick, openCredit,
     creditCardData, setCreditCardData, creditError, isProcessingCredit, handleProcessCreditCard,
     saving, saveError, setSaveError, saveOrder, saved, draftOrderId,

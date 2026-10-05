@@ -81,6 +81,16 @@ function Nav({ ctl }) {
       </div>
     );
   }
+  // "הוסף / עריכת משלוח" משלב הפריטים / הסיכום / התשלום: שלב המשלוח חוזר לשלב המקור (ביטול מחזיר את השדות)
+  if (k === 'delivery' && ctl.deliveryEdit) {
+    const back = STEP_META[ctl.deliveryEdit.to];
+    return (
+      <div className="row spread wrap no-nav" data-sec="nav">
+        <button type="button" className="btn ghost" onClick={() => ctl.closeDeliveryEdit(false)}><Ic n="x" c="sm" />ביטול</button>
+        <button type="button" className="btn primary" disabled={!!ctl.deliveryError} onClick={() => ctl.closeDeliveryEdit(true)}><Ic n="check" />שמור וחזור ל{back ? back.l : 'שלב הקודם'}</button>
+      </div>
+    );
+  }
   const next = {
     customer: ['המשך', !ctl.order.customerId, ctl.proceedToStep2],
     dates: ['המשך למשלוח', !ctl.datesFilled, () => ctl.go(2)],
