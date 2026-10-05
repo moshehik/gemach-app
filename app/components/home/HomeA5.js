@@ -26,7 +26,7 @@ import { buildSearchSheet, sectionsFromGeneral, sectionFromRecords } from './sea
 import { QuickPrefixList, useDraftCount, useLocalRecentRows, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import { useSavedSearches, rememberSearch } from '../search/savedSearches';
 import { DeleteDialog, GuideButton, GuideDialog, SaveIconButton } from '../search/ShortcutsUi';
-import { actionTarget, guideRows, saveCandidate } from '@/lib/quickShortcuts';
+import { actionTarget, guideRows, keywordInsert, saveCandidate } from '@/lib/quickShortcuts';
 import SearchKeySync from '../search/SearchKeySync';
 import { buildMineModel, mineExportRecords, mineSheetSections } from '@/lib/myRecentActivityView';
 import { HOME_NAV_EVENT, homeNavTarget } from '@/lib/menu/homeNav';
@@ -617,6 +617,12 @@ export default function HomeA5() {
   const qp = useQuickPrefix({
     q, rows: recentList, mine, actions, saved, enabled: !ai,
     onPick: (row) => {
+      if (row.type === 'keyword') { // '%': מילת המפתח (או הדוגמה, מסומנת) נכנסת לשדה; לא מריצים חיפוש
+        const k = keywordInsert(row);
+        setQ(k.text);
+        setTimeout(() => { const el = inputRef.current; if (el) { el.focus(); try { el.setSelectionRange(k.start, k.end); } catch { /* ignore */ } } }, 0);
+        return;
+      }
       if (row.type === 'action') {
         const tg = actionTarget(row.action);
         if (!tg) return;

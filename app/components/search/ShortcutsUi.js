@@ -1,7 +1,7 @@
 'use client';
 
 // רכיבי הממשק של הקיצורים בשורת החיפוש (עיצוב מאושר: תצוגות-עיצוב/חיפוש-קיצורים.html; החלטות PFX-01..11):
-//   SaveIconButton  - אייקון שמירה ליד ה-X (PFX-09: אייקון i-archive מהפלטה + הודעה "החיפוש נשמר"; אין אייקון "שמירה" ייעודי בפלטה)
+//   SaveIconButton  - אייקון שמירה ליד ה-X (PFX-09: אייקון i-bookmark (סימנייה, אייקון 81 בפלטה, נוסף ב-5.10.2026 באישור הבעלים; קודם i-archive) + הודעה "החיפוש נשמר")
 //   GuideButton     - כפתור "קיצורים" מימין ל"לחיפוש חכם", בדף הבית בלבד, רק בשדה ריק לפני חיפוש; בטלפון אייקון בלבד (PFX-11 ב)
 //   GuideDialog     - החלון הכהה: שורה והסבר לכל סימן + "נסה" (PFX-07)
 //   DeleteDialog    - אישור מחיקת חיפוש שמור עם מתג "אל תשאל שוב" (PFX-10: עד רענון)
@@ -23,17 +23,18 @@ export function SaveIconButton({ text, saved, ibtn = false }) {
   const isSaved = saved.state === 'ok' && isQuerySaved(saved.list, q);
   const st = saved.flash ? 'done' : isSaved ? 'saved' : 'new';
   const tip = st === 'done' ? SAVED_TEXT.savedToast : isSaved ? SAVED_TEXT.savedIconTip : SAVED_TEXT.saveIconTip;
+  const label = st === 'done' ? SAVED_TEXT.savedToast : isSaved ? SAVED_TEXT.savedIconLabel : SAVED_TEXT.saveIconLabel; // שם נגיש קצר: "שמירת חיפוש"
   return (
     <>
       <button
         type="button"
         className={`${ibtn ? 'ibtn ' : ''}pfx-save`}
         data-st={st}
-        aria-label={tip}
+        aria-label={label}
         data-tip={tip}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => saved.quickSave(q)}
-      ><QIcon id={st === 'done' ? 'check' : 'archive'} /></button>
+      ><QIcon id={st === 'done' ? 'check' : 'bookmark'} /></button>
       {saved.flash && <span className="pfx-sr" role="status" aria-live="polite">{SAVED_TEXT.savedToast}</span>}
     </>
   );

@@ -248,6 +248,7 @@
 .gm-ds.gm-home .hero .scan .pfx-save[data-st="done"] { color: var(--gm-gold-d); }
 .gm-ds.gm-home .hero .scan .pfx-save[data-st="saved"]:hover { color: var(--gm-navy); }
 .gm-ds.gm-home .pfx-save[data-st="done"] svg.ic { transform: scale(1.18); }
+.gm-ds.gm-home .pfx-save[data-st="saved"] svg.ic { fill: currentColor; } /* סימנייה מלאה = החיפוש כבר שמור */
 /* כפתור "קיצורים" (cmode-b) מימין ל"לחיפוש חכם"; בטלפון אייקון בלבד (PFX-11 ב) */
 @media (max-width: 767px) {
   .gm-ds.gm-home .hero .cmode .pfx-help { width: 34px; padding: 0; justify-content: center; }

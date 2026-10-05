@@ -855,13 +855,13 @@ t("resolveQuickPrefix: '&' פעילה רק כשיש מקור שמותר (לא de
   assert.equal(resolveQuickPrefix('רחל&'), null);
 });
 t("detectQuickPrefix: '@' '&' '#' '$' כתו ראשון; באמצע הטקסט לא ('#' ו-'$' - ר' test_quick_prefix_shortcuts.mjs)", () => {
-  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$']);
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$', '%']);
   assert.equal(QUICK_PREFIXES['@'].source, 'local'); assert.equal(QUICK_PREFIXES['&'].source, 'mine');
   assert.equal(detectQuickPrefix('&').prefix, '&'); assert.equal(detectQuickPrefix('&').def.id, 'mine'); assert.equal(detectQuickPrefix('& רחל ').term, 'רחל');
   for (const no of [' &', 'רחל&', 'a&b', 'Q&A']) assert.equal(detectQuickPrefix(no), null, no);
   assert.equal(detectQuickPrefix('@').prefix, '@'); assert.equal(detectQuickPrefix('@').term, '');
   assert.equal(detectQuickPrefix('@ כהן ').term, 'כהן');
-  for (const no of ['', ' @', 'כהן@', 'a@b.co', '!', '%x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
+  for (const no of ['', ' @', 'כהן@', 'a@b.co', '!', '^x', null, undefined, 5, '__proto__', 'constructor']) assert.equal(detectQuickPrefix(no), null, String(no));
 });
 t('filterPrefixRows / splitMatch: סינון לפי כותרת / סוג / טקסט משנה, בלי לשנות את הקלט', () => {
   const rows = [{ key: 'a', kind: 'לקוח', title: 'רחל כהן', sub: 'ירושלים' }, { key: 'b', kind: 'הזמנה', title: 'דנה לוי', sub: '' }];

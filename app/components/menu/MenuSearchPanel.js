@@ -14,7 +14,7 @@ import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
 import { MineRowBody, MineWho, SavedDelButton, SaveForm, ShortcutRowBody, useDraftCount, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
 import { useSavedSearches } from '../search/savedSearches';
 import { DeleteDialog, SaveIconButton } from '../search/ShortcutsUi';
-import { actionTarget, menuAllowedPaths, saveCandidate } from '@/lib/quickShortcuts';
+import { actionTarget, keywordInsert, menuAllowedPaths, saveCandidate } from '@/lib/quickShortcuts';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
@@ -72,7 +72,8 @@ export function useMenuSearch() {
 // קידומות בשורת החיפוש: '&' = "השינויים שלי" (ההזמנות שיצרתי והשינויים שעשיתי), '#' = פעולות מהירות (לפי הרשאות), '$' = חיפושים שמורים - אותן רשימות
 // כמו בדף הבית (hook ומודלים משותפים: components/search/QuickPrefix.js, lib/myRecentActivityView.js, lib/quickShortcuts.js). '@' נשארת בדף הבית.
 // מדריך הקיצורים (כפתור "קיצורים") רק בדף הבית (PFX-08) - בחיפוש התפריט אין אותו.
-const MENU_PREFIXES = ['&', '#', '$'];
+// '%' = מילות מפתח (רשימה סטטית מ-KEYWORD_GUIDE): הבחירה מכניסה את המילה לשדה, בלי ניווט.
+const MENU_PREFIXES = ['&', '#', '$', '%'];
 
 function MineMenuList({ qp }) {
   const m = qp.mineModel;
@@ -161,7 +162,7 @@ function ShortcutMenuList({ qp }) {
         return r.type === 'saved' ? <div className="pfx-row" key={r.key}>{row}<SavedDelButton r={r} saved={saved} /></div> : row;
       })}
       {m.state === 'ok' && m.none && <div className="sn-empty" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</div>}
-      {m.state !== 'unavailable' && <div className="mine-note" role="note"><Ic n="lock" /><span>{m.note}</span></div>}
+      {m.state !== 'unavailable' && <div className="mine-note" role="note"><Ic n={m.noteIcon || 'lock'} /><span>{m.note}</span></div>}
     </div>
   );
 }
@@ -188,6 +189,12 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     prefixes: MENU_PREFIXES,
     listId: `${idPrefix}-qp`,
     onPick: (row) => {
+      if (row.type === 'keyword') { // '%': המילה נכנסת לשדה (הרשימה נסגרת, אין ניווט)
+        const k = keywordInsert(row);
+        search.setQ(k.text);
+        setTimeout(() => { const el = inputRef && inputRef.current; if (el) { el.focus(); try { el.setSelectionRange(k.start, k.end); } catch { /* ignore */ } } }, 0);
+        return;
+      }
       if (row.type === 'action') {
         const tg = actionTarget(row.action);
         if (!tg) return;

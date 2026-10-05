@@ -307,9 +307,9 @@ await t('אייקונים חדשים בפלטה ובספרייה המוטמעת:
   const used = new Set([...UI.matchAll(/<Ic n="([a-z0-9-]+)"/g)].map((m) => m[1]).concat([...UI.matchAll(/icon(?:=|: )['"]([a-z0-9-]+)['"]/g)].map((m) => m[1])));
   for (const id of used) assert.ok(ids.has(id), `icon ${id} missing from sprite`);
   const icons = JSON.parse(read('../design-system/icons.json')).icons;
-  assert.deepEqual(icons.slice(-9).map((x) => [x.n, x.id]), [[72, 'camera'], [73, 'video'], [74, 'cursor-rec'], [75, 'archive'], [76, 'inbox'], [77, 'sparkles'], [78, 'crosshair'], [79, 'more'], [80, 'download']]);
+  assert.deepEqual(icons.slice(71, 80).map((x) => [x.n, x.id]), [[72, 'camera'], [73, 'video'], [74, 'cursor-rec'], [75, 'archive'], [76, 'inbox'], [77, 'sparkles'], [78, 'crosshair'], [79, 'more'], [80, 'download']]);
   const paletteSprite = read('../design-system/sprite.svg');
-  assert.ok(paletteSprite.includes('80 סמלים'));
+  assert.ok(paletteSprite.includes('81 סמלים')); // 80 + bookmark (81, 5.10.2026)
   assert.equal((paletteSprite.match(/<symbol id="i-more"/g) || []).length, 1, 'i-more בפלטה בדיוק פעם אחת');
   assert.equal((paletteSprite.match(/<symbol /g) || []).length, icons.length, 'כל אייקון ב-icons.json יש לו symbol ב-sprite');
   // MS-05: האייקון בפלטה בלבד; תפריט ⋯ בחלון הדיווח נשאר מבוטל (הוראת הבעלים) - החלון לא משתמש ב-more
