@@ -148,7 +148,7 @@ export default function useCustomerCard(customerId, ui) {
   const putCustomer = useCallback(async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/customers/${customerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildSavePayload(cur)) });
+      const res = await fetch(`/api/customers/${customerId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildSavePayload(cur, saved)) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 409 && data.message) {
@@ -173,7 +173,7 @@ export default function useCustomerCard(customerId, ui) {
     } finally {
       setSaving(false);
     }
-  }, [customerId, cur, ui]);
+  }, [customerId, cur, saved, ui]);
 
   const printDoc = useCallback((doc) => {
     window.open(`/print/customer?customerId=${encodeURIComponent(customerId)}&type=${doc}`, '_blank', 'noopener');

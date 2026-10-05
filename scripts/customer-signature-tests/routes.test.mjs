@@ -44,7 +44,7 @@ const auditFor = (id = 'c1') => globalThis.__AUDIT.filter((a) => a.entityId === 
 
 test('PUT a5: signing sets the flag + a SERVER timestamp; a forged regulationsSignedAt in the body is ignored', async () => {
   const t0 = Date.now();
-  const r = await put(body({ hasSignedRegulations: true, regulationsSignedAt: '1999-01-01T00:00:00.000Z' }));
+  const r = await put(body({ signatureEdit: true, hasSignedRegulations: true, regulationsSignedAt: '1999-01-01T00:00:00.000Z' }));
   const t1 = Date.now();
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(row().hasSignedRegulations, true);
@@ -54,7 +54,7 @@ test('PUT a5: signing sets the flag + a SERVER timestamp; a forged regulationsSi
 });
 
 test('PUT a5: signing writes ONE history entry (only the flag - no separate row for the timestamp)', async () => {
-  await put(body({ hasSignedRegulations: true }));
+  await put(body({ signatureEdit: true, hasSignedRegulations: true }));
   const rows = auditFor();
   assert.equal(rows.length, 1);
   assert.deepEqual(Object.keys(rows[0].changes), ['hasSignedRegulations']);
@@ -64,7 +64,7 @@ test('PUT a5: signing writes ONE history entry (only the flag - no separate row 
 
 test('PUT a5: un-signing clears the flag, keeps the stored timestamp as the "revoked" marker, one history entry', async () => {
   globalThis.__CUSTOMERS = [baseRow({ hasSignedRegulations: true, regulationsSignedAt: OLD_AT })];
-  const r = await put(body({ hasSignedRegulations: false, regulationsSignedAt: null }));
+  const r = await put(body({ signatureEdit: true, hasSignedRegulations: false, regulationsSignedAt: null }));
   assert.equal(r.status, 200);
   assert.equal(row().hasSignedRegulations, false);
   assert.equal(row().regulationsSignedAt.getTime(), OLD_AT.getTime(), 'timestamp untouched (also never taken from the body)');
@@ -73,7 +73,7 @@ test('PUT a5: un-signing clears the flag, keeps the stored timestamp as the "rev
 
 test('PUT a5: same value (already signed, flag true again) changes nothing - timestamp kept, no signature history row', async () => {
   globalThis.__CUSTOMERS = [baseRow({ hasSignedRegulations: true, regulationsSignedAt: OLD_AT })];
-  const r = await put(body({ hasSignedRegulations: true, regulationsSignedAt: '2030-01-01T00:00:00.000Z' }));
+  const r = await put(body({ signatureEdit: true, hasSignedRegulations: true, regulationsSignedAt: '2030-01-01T00:00:00.000Z' }));
   assert.equal(r.status, 200);
   assert.equal(row().regulationsSignedAt.getTime(), OLD_AT.getTime());
   assert.ok(!auditFor().some((a) => 'hasSignedRegulations' in a.changes || 'regulationsSignedAt' in a.changes));
@@ -92,7 +92,7 @@ test('PUT a5: flag not sent (partial body) leaves the signature alone', async ()
 });
 
 test('PUT a5: signing together with another field edit = one history row carrying both changes', async () => {
-  await put(body({ city: 'בית שמש', hasSignedRegulations: true }));
+  await put(body({ city: 'בית שמש', signatureEdit: true, hasSignedRegulations: true }));
   const rows = auditFor();
   assert.equal(rows.length, 1);
   assert.deepEqual(Object.keys(rows[0].changes).sort(), ['city', 'hasSignedRegulations']);
@@ -110,7 +110,7 @@ test('PUT without cardVariant (old card sends the WHOLE customer incl. a stale f
 
 test('PUT a5: a non-boolean flag is a 400 (nothing guessed, nothing written)', async () => {
   for (const bad of ['true', 1, 0, null, {}]) {
-    const r = await put(body({ hasSignedRegulations: bad }));
+    const r = await put(body({ signatureEdit: true, hasSignedRegulations: bad }));
     assert.equal(r.status, 400, JSON.stringify(bad));
   }
   assert.equal(row().hasSignedRegulations, false);
@@ -122,7 +122,7 @@ test('PUT a5: a row without the columns (old client / DB) -> 503 SIGNATURE_UNAVA
   delete bare.hasSignedRegulations;
   delete bare.regulationsSignedAt;
   globalThis.__CUSTOMERS = [bare];
-  let r = await put(body({ hasSignedRegulations: true }));
+  let r = await put(body({ signatureEdit: true, hasSignedRegulations: true }));
   assert.equal(r.status, 503);
   assert.equal(r.body.code, 'SIGNATURE_UNAVAILABLE');
   assert.ok(!globalThis.__CALLS.some((c) => c.op === 'customer.update'));
@@ -133,25 +133,25 @@ test('PUT a5: a row without the columns (old client / DB) -> 503 SIGNATURE_UNAVA
 
 test('PUT: unauthenticated -> 401 and no write; deleted customer -> 409 and no write; unknown -> 404', async () => {
   globalThis.__AUTH = false;
-  assert.equal((await put(body({ hasSignedRegulations: true }))).status, 401);
+  assert.equal((await put(body({ signatureEdit: true, hasSignedRegulations: true }))).status, 401);
   globalThis.__AUTH = true;
   globalThis.__CUSTOMERS = [baseRow({ isDeleted: true })];
-  assert.equal((await put(body({ hasSignedRegulations: true }))).status, 409);
-  assert.equal((await put(body({ hasSignedRegulations: true }), 'nope')).status, 404);
+  assert.equal((await put(body({ signatureEdit: true, hasSignedRegulations: true }))).status, 409);
+  assert.equal((await put(body({ signatureEdit: true, hasSignedRegulations: true }), 'nope')).status, 404);
   assert.ok(!globalThis.__CALLS.some((c) => c.op === 'customer.update'));
   assert.equal(globalThis.__CUSTOMERS[0].hasSignedRegulations, false);
 });
 
 test('PUT a5: a 409 data collision (stale updatedAt) blocks the signature write too', async () => {
   globalThis.__CUSTOMERS = [baseRow({ updatedAt: new Date('2026-06-01T00:00:00.000Z') })];
-  const r = await put(body({ hasSignedRegulations: true, updatedAt: '2026-01-01T00:00:00.000Z' }));
+  const r = await put(body({ signatureEdit: true, hasSignedRegulations: true, updatedAt: '2026-01-01T00:00:00.000Z' }));
   assert.equal(r.status, 409);
   assert.equal(row().hasSignedRegulations, false);
 });
 
 test('POST a5: creating a customer already signed stores the flag + a server timestamp (client timestamp ignored)', async () => {
   const t0 = Date.now();
-  const r = await post(body({ hasSignedRegulations: true, regulationsSignedAt: '1999-01-01T00:00:00.000Z' }));
+  const r = await post(body({ signatureEdit: true, hasSignedRegulations: true, regulationsSignedAt: '1999-01-01T00:00:00.000Z' }));
   const t1 = Date.now();
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const created = globalThis.__CUSTOMERS.find((c) => c.id !== 'c1');
@@ -161,7 +161,7 @@ test('POST a5: creating a customer already signed stores the flag + a server tim
 
 test('POST a5 without the flag / POST without cardVariant: stored unsigned, no timestamp', async () => {
   await post(body());
-  const legacy = body({ firstName: 'לאה', hasSignedRegulations: true, regulationsSignedAt: '2026-01-01T00:00:00.000Z' });
+  const legacy = body({ firstName: 'לאה', signatureEdit: true, hasSignedRegulations: true, regulationsSignedAt: '2026-01-01T00:00:00.000Z' });
   delete legacy.cardVariant;
   await post(legacy);
   const created = globalThis.__CUSTOMERS.filter((c) => c.id !== 'c1');
@@ -170,13 +170,50 @@ test('POST a5 without the flag / POST without cardVariant: stored unsigned, no t
 });
 
 test('POST a5: a non-boolean flag is a 400 and creates nothing', async () => {
-  const r = await post(body({ hasSignedRegulations: 'yes' }));
+  const r = await post(body({ signatureEdit: true, hasSignedRegulations: 'yes' }));
   assert.equal(r.status, 400);
   assert.equal(globalThis.__CUSTOMERS.length, 1);
 });
 
 test('POST: unauthenticated -> 401', async () => {
   globalThis.__AUTH = false;
-  assert.equal((await post(body({ hasSignedRegulations: true }))).status, 401);
+  assert.equal((await post(body({ signatureEdit: true, hasSignedRegulations: true }))).status, 401);
   assert.equal(globalThis.__CUSTOMERS.length, 1);
+});
+
+// ---- A1 (review): a stale card must never silently cancel (or set) a signature ----
+test('PUT a5 whole-object save with a STALE flag and NO signatureEdit marker (e.g. stale false after the backfill signed the customer): the stored signature is untouched', async () => {
+  globalThis.__CUSTOMERS = [baseRow({ hasSignedRegulations: true, regulationsSignedAt: OLD_AT, updatedAt: new Date('2026-01-01T00:00:00.000Z') })];
+  // matching updatedAt: the 409 check cannot catch it (the backfill is raw SQL and does not bump updatedAt)
+  const r = await put(body({ hasSignedRegulations: false, regulationsSignedAt: null, firstName: 'שרה', updatedAt: '2026-01-01T00:00:00.000Z' }));
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(row().firstName, 'שרה', 'the unrelated edit is saved');
+  assert.equal(row().hasSignedRegulations, true, 'the stale false is ignored');
+  assert.equal(row().regulationsSignedAt.getTime(), OLD_AT.getTime());
+  assert.ok(!auditFor().some((a) => 'hasSignedRegulations' in a.changes), 'no "signature: yes -> no" history row');
+});
+
+test('PUT a5: a stale TRUE without the marker does not sign an unsigned customer either', async () => {
+  const r = await put(body({ hasSignedRegulations: true, regulationsSignedAt: '2026-05-05T00:00:00.000Z' }));
+  assert.equal(r.status, 200);
+  assert.equal(row().hasSignedRegulations, false);
+  assert.equal(row().regulationsSignedAt, null);
+});
+
+test('PUT: the marker alone is not enough - it needs cardVariant a5 and must be exactly true; with it only the explicit flag is honoured', async () => {
+  const noVariant = { ...body({ signatureEdit: true, hasSignedRegulations: true }) };
+  delete noVariant.cardVariant;
+  assert.equal((await put(noVariant)).status, 200);
+  assert.equal(row().hasSignedRegulations, false, 'no cardVariant -> ignored');
+  for (const m of ['true', 1, 'yes']) {
+    assert.equal((await put(body({ signatureEdit: m, hasSignedRegulations: true }))).status, 200);
+    assert.equal(row().hasSignedRegulations, false, `marker ${JSON.stringify(m)} is not true`);
+  }
+  assert.equal((await put(body({ signatureEdit: true, hasSignedRegulations: true }))).status, 200);
+  assert.equal(row().hasSignedRegulations, true);
+});
+
+test('PUT a5: a non-boolean flag WITHOUT the marker is simply ignored (200), WITH the marker it is a 400', async () => {
+  assert.equal((await put(body({ hasSignedRegulations: 'yes' }))).status, 200);
+  assert.equal((await put(body({ signatureEdit: true, hasSignedRegulations: 'yes' }))).status, 400);
 });

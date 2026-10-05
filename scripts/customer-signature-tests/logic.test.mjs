@@ -88,10 +88,26 @@ test('changes: signing in the draft shows one "חתימה על התקנון סו
   assert.deepEqual(logic.computeChanges({ hasSignedRegulations: undefined }, { hasSignedRegulations: false }), [], 'undefined and false are the same for an old payload');
 });
 
-test('save payload carries the flag and cardVariant a5 (the only variant the server lets write it)', () => {
-  const p = logic.buildSavePayload({ firstName: 'א', hasSignedRegulations: true, regulationsSignedAt: AT, email: '', emailSuffix: '' });
-  assert.equal(p.cardVariant, 'a5');
-  assert.equal(p.hasSignedRegulations, true);
+test('save payload (A1): the signature fields are sent ONLY when the user changed the signature in the draft, always with signatureEdit:true', () => {
+  const base = { firstName: 'א', email: '', emailSuffix: '', regulationsSignedAt: AT };
+  const saved = { ...base, hasSignedRegulations: true };
+  // untouched (even though the loaded value rides in the object): neither field, no marker
+  const same = logic.buildSavePayload({ ...saved }, saved);
+  assert.equal(same.cardVariant, 'a5');
+  for (const k of ['hasSignedRegulations', 'regulationsSignedAt', 'signatureEdit']) assert.ok(!(k in same), `${k} must not be sent when untouched`);
+  // user cancelled
+  const off = logic.buildSavePayload({ ...saved, hasSignedRegulations: false }, saved);
+  assert.deepEqual([off.hasSignedRegulations, off.signatureEdit, 'regulationsSignedAt' in off], [false, true, false]);
+  // user signed
+  const savedNo = { ...base, hasSignedRegulations: false };
+  const on = logic.buildSavePayload({ ...savedNo, hasSignedRegulations: true }, savedNo);
+  assert.deepEqual([on.hasSignedRegulations, on.signatureEdit], [true, true]);
+  // old payload without the flag on both sides = untouched; no saved (new customer) = never an edit
+  assert.ok(!('signatureEdit' in logic.buildSavePayload({ firstName: 'א' }, { firstName: 'א' })));
+  assert.ok(!('signatureEdit' in logic.buildSavePayload({ firstName: 'א', hasSignedRegulations: true })));
+  assert.ok(!('signatureEdit' in logic.buildNewCustomerPayload({ firstName: 'א', hasSignedRegulations: true })));
+  // the rest of the body is unchanged
+  assert.equal(same.firstName, 'א');
 });
 
 // ---------- server plan ----------
@@ -110,13 +126,17 @@ test('plan: only a real change produces a write; sign stamps now; unsign keeps t
   assert.equal(created.data.regulationsSignedAt, now);
 });
 
-test('readSignatureFlag: only the a5 variant, booleans only', () => {
-  assert.equal(sig.readSignatureFlag({ hasSignedRegulations: true }), undefined, 'no cardVariant');
-  assert.equal(sig.readSignatureFlag({ cardVariant: 'legacy', hasSignedRegulations: true }), undefined);
-  assert.equal(sig.readSignatureFlag({ cardVariant: 'a5' }), undefined);
-  assert.equal(sig.readSignatureFlag({ cardVariant: 'a5', hasSignedRegulations: true }), true);
-  assert.equal(sig.readSignatureFlag({ cardVariant: 'a5', hasSignedRegulations: false }), false);
-  for (const bad of ['true', 1, null, {}, []]) assert.equal(sig.readSignatureFlag({ cardVariant: 'a5', hasSignedRegulations: bad }), 'invalid');
+test('readSignatureFlag: only the a5 variant WITH signatureEdit === true, booleans only', () => {
+  const E = { cardVariant: 'a5', signatureEdit: true };
+  assert.equal(sig.readSignatureFlag({ hasSignedRegulations: true, signatureEdit: true }), undefined, 'no cardVariant');
+  assert.equal(sig.readSignatureFlag({ cardVariant: 'legacy', signatureEdit: true, hasSignedRegulations: true }), undefined);
+  assert.equal(sig.readSignatureFlag({ cardVariant: 'a5', hasSignedRegulations: true }), undefined, 'no marker = a whole-object save (stale value), ignored');
+  assert.equal(sig.readSignatureFlag({ cardVariant: 'a5', hasSignedRegulations: false }), undefined);
+  for (const m of ['true', 1, null, false]) assert.equal(sig.readSignatureFlag({ cardVariant: 'a5', signatureEdit: m, hasSignedRegulations: true }), undefined);
+  assert.equal(sig.readSignatureFlag(E), undefined);
+  assert.equal(sig.readSignatureFlag({ ...E, hasSignedRegulations: true }), true);
+  assert.equal(sig.readSignatureFlag({ ...E, hasSignedRegulations: false }), false);
+  for (const bad of ['true', 1, null, {}, []]) assert.equal(sig.readSignatureFlag({ ...E, hasSignedRegulations: bad }), 'invalid');
   assert.equal(sig.readSignatureFlag(null), undefined);
 });
 
@@ -162,6 +182,13 @@ test('sync: only a false->true order transition counts (already-signed order, un
   }
 });
 
+test('sync (A3): a deleted order never signs the customer (active orders only, like the backfill)', async () => {
+  const env = mockEnv({ id: 'c1', isDeleted: false, hasSignedRegulations: false });
+  const r = await run(env, { orderIsDeleted: true });
+  assert.deepEqual(r, { ok: true, synced: false, reason: 'order-deleted' });
+  assert.equal(env.calls.length, 0);
+});
+
 test('sync: deleted customer, missing customer, or a client without the columns are skipped quietly', async () => {
   assert.equal((await run(mockEnv({ id: 'c1', isDeleted: true, hasSignedRegulations: false }))).reason, 'customer-deleted');
   assert.equal((await run(mockEnv(null))).reason, 'no-customer');
@@ -182,13 +209,19 @@ test('sync: a failure is swallowed (returns ok:false, never throws) so the order
 });
 
 // ---------- static guards ----------
-test('order route: the sync runs after the $transaction, before the final fetch, only on a true flag, with the pre-update order as "was"', () => {
+test('order route (A2): the sync runs right after the $transaction commit - before recalculateOrderObligations / applyDeliveryCharge / the final fetch', () => {
   const src = code(read('app/api/orders/[id]/route.js'));
   assert.match(src, /import \{ syncCustomerSignatureFromOrder \} from '@\/lib\/customerSignature'/);
   const iTx = src.indexOf('const updatedOrder = await prisma.$transaction(');
+  const iCommit = src.indexOf('commitApprovalClaims(claims);', iTx);
   const iSync = src.indexOf('await syncCustomerSignatureFromOrder(');
+  const iRecalc = src.indexOf('await recalculateOrderObligations(parsedOrderId)');
+  const iDelivery = src.indexOf('await applyDeliveryCharge(parsedOrderId)');
   const iFinal = src.indexOf('prisma.order.findUnique({\n        where: { orderId: parsedOrderId },\n        include: {\n          customer: true');
-  assert.ok(iTx > 0 && iSync > iTx && iFinal > iSync, 'order: transaction < sync < final fetch');
+  assert.ok(iTx > 0 && iCommit > iTx && iSync > iCommit, 'transaction < commit < sync');
+  assert.ok(iRecalc > iSync && iDelivery > iSync && iFinal > iSync, 'sync comes before every later step that can throw');
+  assert.ok(!/return /.test(src.slice(iCommit, iSync)), 'no early return between the commit and the sync');
+  assert.match(src.slice(iSync, src.indexOf('});', iSync)), /orderIsDeleted: !!\(existingOrder\.isDeleted \|\| \(updatedOrder && updatedOrder\.isDeleted\)\)/);
   assert.equal(src.split('await syncCustomerSignatureFromOrder(').length - 1, 1);
   const call = src.slice(iSync, src.indexOf('});', iSync) + 3);
   assert.match(call, /customerId: existingOrder\.customerId/);
@@ -219,6 +252,8 @@ test('card wiring: the button toggles through setField, is locked (aria-disabled
   assert.ok(!/אחרי עדכון מסד הנתונים/.test(src), 'the "after DB update" placeholder text is gone');
   assert.match(read('app/components/customer-card/tabs/CcDetailsTab.js'), /חתמה על התקנון/);
   const setField = code(read('app/components/customer-card/useCustomerCard.js'));
+  assert.match(setField, /JSON\.stringify\(buildSavePayload\(cur, saved\)\)/, 'the save compares the draft with the saved row (signature only when edited)');
+  assert.match(setField, /\[customerId, cur, saved, ui\]/, 'putCustomer depends on saved');
   assert.match(setField, /CARD_FIELD_KEYS\.includes\(key\)/, 'setField only accepts card fields (hasSignedRegulations is one now)');
 });
 

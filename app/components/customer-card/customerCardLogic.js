@@ -95,9 +95,19 @@ export function undoField(cur, saved, field) {
 export function legacySavePayload(customer) {
   return { ...customer, email: normalizeEmail(customer.email, customer.emailSuffix) };
 }
-/** הגוף של הכרטיס החדש = בדיוק הישן + cardVariant (אכיפת customer_required_fields בשרת). */
-export function buildSavePayload(customer) {
-  return { ...legacySavePayload(customer), cardVariant: CARD_VARIANT };
+/**
+ * הגוף של הכרטיס החדש = בדיוק הישן + cardVariant (אכיפת customer_required_fields בשרת), פרט לחתימה: שני שדות החתימה (hasSignedRegulations /
+ * regulationsSignedAt) מוסרים מהגוף תמיד, ורק כשהמשתמשת שינתה את החתימה בטיוטה (cur מול saved) נשלחים hasSignedRegulations + signatureEdit:true.
+ * כך כרטיס ישן/פתוח לא יכול לבטל בטעות חתימה שנרשמה בינתיים (המטען נושא את הערך כפי שנטען). saved חסר (יצירת לקוחה) = בלי עריכת חתימה.
+ */
+export function buildSavePayload(customer, saved) {
+  const { hasSignedRegulations, regulationsSignedAt, ...rest } = legacySavePayload(customer);
+  const body = { ...rest, cardVariant: CARD_VARIANT };
+  if (saved && !sameValue('hasSignedRegulations', saved.hasSignedRegulations, hasSignedRegulations)) {
+    body.hasSignedRegulations = !!hasSignedRegulations;
+    body.signatureEdit = true;
+  }
+  return body;
 }
 
 /** טופס לקוח חדש: אותו אובייקט פתיחה כמו בישן (LegacyCustomerPage.js, id === 'new'). */

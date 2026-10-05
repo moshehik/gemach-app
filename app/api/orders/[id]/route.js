@@ -974,6 +974,17 @@ async function putOrder(request, { params }, claims) {
     }, { timeout: 30000, maxWait: 15000 });
     commitApprovalClaims(claims); // the save is committed: the tokens stay spent even if the recalculation below fails
 
+    // חתימה על התקנון בהזמנה (false->true) מסמנת גם את הלקוח, אם עוד לא חתום (lib/customerSignature.js). מיד אחרי ה-commit ולפני כל
+    // שלב המשך (חישוב התחייבויות / חיוב משלוח): כך שתקלה מאוחרת יותר לא "צורכת" את המעבר false->true בלי שהסנכרון קרה. מחוץ ל-$transaction,
+    // וכשל כאן לא מכשיל את שמירת ההזמנה. הזמנה מחוקה לא מסנכרנת (רק הזמנות פעילות, כמו ה-backfill).
+    await syncCustomerSignatureFromOrder({
+      prisma, auditAs,
+      customerId: existingOrder.customerId,
+      orderWasSigned: !!existingOrder.hasSignedRegulations,
+      orderIsSigned: data.hasSignedRegulations === true,
+      orderIsDeleted: !!(existingOrder.isDeleted || (updatedOrder && updatedOrder.isDeleted)),
+    });
+
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);
 
@@ -1010,15 +1021,6 @@ async function putOrder(request, { params }, claims) {
       try { await applyDeliveryCharge(releasedId); } catch (e) { console.error(`Order ${releasedId}: delivery charge after join release failed:`, e); }
     }
     await applyDeliveryCharge(parsedOrderId);
-
-    // חתימה על התקנון בהזמנה (false->true) מסמנת גם את הלקוח, אם עוד לא חתום (lib/customerSignature.js). מחוץ ל-$transaction,
-    // וכשל כאן לא מכשיל את שמירת ההזמנה. לפני שליפת ההזמנה הסופית כדי שה-customer שבתשובה כבר יכלול את החתימה.
-    await syncCustomerSignatureFromOrder({
-      prisma, auditAs,
-      customerId: existingOrder.customerId,
-      orderWasSigned: !!existingOrder.hasSignedRegulations,
-      orderIsSigned: data.hasSignedRegulations === true,
-    });
 
     // Fetch the fully updated order to return to the client.
     // These queries are independent of each other - fetch them concurrently.
