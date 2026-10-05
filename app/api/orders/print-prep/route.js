@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getIsraelDayRange } from '@/lib/hebrewDate';
+import { getIsraelDayRange, getEventDayRange } from '@/lib/hebrewDate';
+import { isEventEveningRollover } from '@/lib/eventDay';
 import { getPrintPrepDateWithConfig, printPrepWindowEndKey } from '@/lib/businessDays';
 import { getNonWorkingDaysConfig } from '@/lib/businessDaysServer';
 
@@ -62,8 +63,10 @@ export async function GET(request) {
       // שהגיעה מהייבוא מ-Access (לא רק חצות UTC), וזו הופיעה תחת התאריך הקודם בגלל
       // היסט UTC+2/+3 - ר' getIsraelDayRange ב-lib/hebrewDate.js, כבר בשימוש באותו
       // אופן ב-app/api/alterations/route.js.
-      const eventWindowStart = getIsraelDayRange(fromStr).start;
-      const eventWindowEnd = getIsraelDayRange(toStr).end;
+      // + יום האירוע לפי התאריך העברי השמור כשההגדרה event_date_evening_rollover דלוקה (lib/eventDay.js)
+      const eveningRoll = await isEventEveningRollover();
+      const eventWindowStart = getEventDayRange(fromStr, eveningRoll).start;
+      const eventWindowEnd = getEventDayRange(toStr, eveningRoll).end;
 
       const orders = await prisma.order.findMany({
         where: {

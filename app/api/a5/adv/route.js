@@ -5,7 +5,8 @@ import { canOpenPage } from '@/lib/permissions';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { buildMultiWordRelationNameCondition, buildMultiWordNameCondition } from '@/lib/searchUtils';
-import { getHebrewDateString, getIsraelDayRange, HEBREW_DAYS } from '@/lib/hebrewDate';
+import { getHebrewDateString, getIsraelDayRange, getEventDayRange, HEBREW_DAYS } from '@/lib/hebrewDate';
+import { isEventEveningRollover } from '@/lib/eventDay';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getLateReturnInfo, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays, rolledSourceRange } from '@/lib/businessDays';
@@ -69,6 +70,7 @@ const fullAddress = (c) => {
 // מזהי לקוחות שהטלפון שלהם תואם לשדה הטלפון / "פרטי לקוח" לפי ספרות (מקפים, +972, בלי 0 מוביל, שני הטלפונים) - lib/searchDb.js.
 // נשמר על אובייקט ה-adv תחת Symbol (JSON.parse לא יכול לייצר אחד כזה, כך שהלקוח לא יכול להזריק מזהים).
 const PHONE_IDS = Symbol('phoneIds');
+const EVENT_ROLL = Symbol('eventEveningRoll'); // event_date_evening_rollover (lib/eventDay.js) - נקבע בשרת ב-GET, לא מהבקשה
 
 const ALT_COND = {
   OR: [
@@ -204,8 +206,9 @@ function orderCommonConds(adv, focus) {
   if (validIso(adv.from) || validIso(adv.to)) {
     c.push({
       eventDate: {
-        ...(validIso(adv.from) ? { gte: dayRange(adv.from).start } : {}),
-        ...(validIso(adv.to) ? { lte: dayRange(adv.to).end } : {}),
+        // יום האירוע לפי התאריך העברי השמור כשההגדרה דלוקה (הגמח הראשי: ייבוא מאקסס = ערב היום הקודם), ר' getEventDayRange
+        ...(validIso(adv.from) ? { gte: getEventDayRange(adv.from, !!adv[EVENT_ROLL]).start } : {}),
+        ...(validIso(adv.to) ? { lte: getEventDayRange(adv.to, !!adv[EVENT_ROLL]).end } : {}),
       },
     });
   }
@@ -552,6 +555,7 @@ export async function GET(request) {
     // מזהי לקוחות לפי טלפון בכל צורת כתיבה (רק כשמולא שדה טלפון / פרטי לקוח עם 4+ ספרות)
     const phoneKeys = S(adv.phone) ? phoneKeysFromInput(S(adv.phone)) : null;
     const cinfoKeys = S(adv.cinfo) ? phoneKeysFromInput(S(adv.cinfo)) : null;
+    adv[EVENT_ROLL] = await isEventEveningRollover();
     adv[PHONE_IDS] = {
       phone: phoneKeys ? await findCustomerIdsByPhone(phoneKeys) : [],
       cinfo: cinfoKeys ? await findCustomerIdsByPhone(cinfoKeys) : [],

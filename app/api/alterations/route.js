@@ -4,8 +4,9 @@ import { getModelDisplayOpts } from '@/lib/modelDisplayServer';
 import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../lib/auth';
-import { getIsraelDayRange, getIsraelDaysUntil } from '@/lib/hebrewDate';
+import { getEventDayRange, getEventDayKey, getIsraelDaysUntil } from '@/lib/hebrewDate';
 import { combinedOrderNotes } from '@/lib/orderNotes';
+import { isEventEveningRollover } from '@/lib/eventDay';
 
 
 export async function GET(request) {
@@ -36,6 +37,8 @@ export async function GET(request) {
     // sequential round-trips - OrderItem, Order, Customer, DressItem,
     // DressModel - each paying ~100-300ms of latency to Neon). The filter
     // logic below mirrors the previous Prisma whereClause exactly.
+    // גמח ראשי: יום האירוע לפי התאריך העברי השמור (event_date_evening_rollover) - ר' lib/eventDay.js
+    const eveningRoll = await isEventEveningRollover();
     const conditions = [
       Prisma.sql`oi."isDeleted" = false`,
       Prisma.sql`o."isDeleted" = false`
@@ -57,11 +60,11 @@ export async function GET(request) {
       // same helper for the same screen's "mark all done for date" action.
       if (startDate) {
         // In legacy, it searched events > (date - 1), which means from the start of the date.
-        conditions.push(Prisma.sql`o."eventDate" >= ${getIsraelDayRange(startDate).start}`);
+        conditions.push(Prisma.sql`o."eventDate" >= ${getEventDayRange(startDate, eveningRoll).start}`);
       }
       if (endDate) {
         // Until the end of the date
-        conditions.push(Prisma.sql`o."eventDate" <= ${getIsraelDayRange(endDate).end}`);
+        conditions.push(Prisma.sql`o."eventDate" <= ${getEventDayRange(endDate, eveningRoll).end}`);
       }
     }
 
@@ -135,6 +138,8 @@ export async function GET(request) {
         orderId: r.o_orderId,
         eventDate: r.o_eventDate,
         eventDateHebrew: r.o_eventDateHebrew,
+        // יום האירוע לקיבוץ בדוח המודפס (כמו חלון הסינון למעלה)
+        eventDayKey: getEventDayKey(r.o_eventDate, eveningRoll),
         // notes + orderNotes (הערות_להזמנה מאקסס) - ר' lib/orderNotes.js
         notes: combinedOrderNotes({ notes: r.o_notes, orderNotes: r.o_orderNotes }),
         customer: r.has_customer ? {

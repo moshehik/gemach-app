@@ -184,7 +184,8 @@ export default function PrintAlterationsPage() {
 
     const groups = {};
     sorted.forEach(item => {
-      const dateKey = item.order?.eventDate ? (toIsraelDateKey(item.order.eventDate) || 'ללא תאריך') : 'ללא תאריך';
+      // eventDayKey מהשרת = יום האירוע לפי התאריך העברי השמור (event_date_evening_rollover); בלעדיו - היום הקלנדרי בישראל
+      const dateKey = item.order?.eventDate ? (item.order.eventDayKey || toIsraelDateKey(item.order.eventDate) || 'ללא תאריך') : 'ללא תאריך';
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(item);
     });

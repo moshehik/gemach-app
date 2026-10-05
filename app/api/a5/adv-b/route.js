@@ -6,7 +6,8 @@ import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { getDeliveriesForDate } from '@/lib/deliveries';
 import { calculateOrderStatus } from '@/lib/orderStatus';
-import { getHebrewDateString, getIsraelDayRange, getIsraelTodayDate } from '@/lib/hebrewDate';
+import { getHebrewDateString, getIsraelDayRange, getEventDayRange, getIsraelTodayDate } from '@/lib/hebrewDate';
+import { isEventEveningRollover } from '@/lib/eventDay';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { GET as capacityGET } from '@/app/api/inventory/capacity/route';
 import { sizeTextFilter } from '@/lib/listSearch';
@@ -71,11 +72,14 @@ function smartSort(rows, dateOf) {
 }
 
 const dayRange = (iso) => getIsraelDayRange(iso);
+// event_date_evening_rollover (lib/eventDay.js) - נקבע בשרת ב-GET, לא מהבקשה
+const EVENT_ROLL = Symbol('eventEveningRoll');
 function eventDateCond(p) {
   const from = isIso(p.from) ? p.from : '', to = isIso(p.to) ? p.to : '';
-  if (from && to) return { gte: dayRange(from).start, lte: dayRange(to).end };
-  if (from) return { gte: dayRange(from).start, lte: dayRange(from).end }; // תאריך אירוע בודד = אותו יום
-  if (to) return { lte: dayRange(to).end };
+  const roll = !!p[EVENT_ROLL]; // יום האירוע לפי התאריך העברי השמור (getEventDayRange)
+  if (from && to) return { gte: getEventDayRange(from, roll).start, lte: getEventDayRange(to, roll).end };
+  if (from) return { gte: getEventDayRange(from, roll).start, lte: getEventDayRange(from, roll).end }; // תאריך אירוע בודד = אותו יום
+  if (to) return { lte: getEventDayRange(to, roll).end };
   return null;
 }
 
@@ -490,6 +494,7 @@ export async function GET(request) {
     const flags = s(p.flags).split(',').filter(Boolean);
     const ost = s(p.ost).split(',').filter(Boolean);
     const gaps = new Set();
+    p[EVENT_ROLL] = await isEventEveningRollover();
 
     // אותם שערי הרשאה כמו הדפים החיים
     if (focus === 'employees') {
