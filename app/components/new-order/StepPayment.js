@@ -40,12 +40,15 @@ export default function StepPayment({ ctl }) {
               </button>
             ))}
           </div>
-          <details className="coll" style={{ marginTop: 14 }} open={p.notes ? true : undefined}>
-            <summary><Ic n="note" />הערה לתשלום<Ic n="chev" c="chev" /></summary>
-            <div className="in">
-              <div className="inpw ico-in"><Ic n="note" c="sm" /><input className="inp" id="noPayNote" placeholder="מספר אישור, פרטי הבנק, שם המשלם..." autoComplete="off" value={p.notes} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, notes: e.target.value }))} /></div>
-            </div>
-          </details>
+          {/* 51f2cc56 (נווה יעקב): hide_order_payment_note='true' מסתיר את "הערה לתשלום" (כמו בישן). ברירת מחדל - מוצג */}
+          {s.hide_order_payment_note !== 'true' ? (
+            <details className="coll" style={{ marginTop: 14 }} open={p.notes ? true : undefined}>
+              <summary><Ic n="note" />הערה לתשלום<Ic n="chev" c="chev" /></summary>
+              <div className="in">
+                <div className="inpw ico-in"><Ic n="note" c="sm" /><input className="inp" id="noPayNote" placeholder="מספר אישור, פרטי הבנק, שם המשלם..." autoComplete="off" value={p.notes} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, notes: e.target.value }))} /></div>
+              </div>
+            </details>
+          ) : null}
           <div className="row wrap" style={{ gap: 10, marginTop: 16 }}>
             <button type="button" className="btn green" disabled={busy} onClick={ctl.handleAddPaymentClick}><Ic n="check" />אישור תשלום / פיצול</button>
             {s.nedarim_plus_enabled !== 'false' ? <button type="button" className="btn navy" disabled={busy} onClick={() => ctl.openCredit(p.notes)}><Ic n="card" />חיוב אשראי</button> : null}
