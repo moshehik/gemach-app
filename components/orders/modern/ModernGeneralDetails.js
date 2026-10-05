@@ -435,8 +435,12 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           {/* מתג "הזמנת משלוח" — נשאר תמיד גלוי (לא נכנס למצב עריכה/קריאה כמו שאר הכרטיס
               למטה) ומודגש יותר משאר השדות, כי הוא הקובע היחיד אם כל שאר האזור פעיל בכלל. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-            {/* אותו סגנון כותרת כמו כרטיסי לקוח/אירוע (div מודגש) ולא h3 - ה-h3 קיבל את גופן הכותרות (24380f79) */}
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>משלוח</div>
+            {/* אותו סגנון כותרת כמו כרטיסי לקוח/אירוע (div מודגש) ולא h3 - ה-h3 קיבל את גופן הכותרות (24380f79);
+                האווטאר העגול כמו בכרטיסי לקוח/אירוע (139f6a15) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="avatar"><svg className="icon"><use href="#i-truck" /></svg></div>
+              <div style={{ fontWeight: 700, fontSize: '15px' }}>משלוח</div>
+            </div>
             <div
               className={`switch${order.isDelivery ? ' on' : ''}`}
               role="switch"
@@ -540,9 +544,12 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           האמיתית (תשלום/זיכוי) נפתחת בפועל בטאב תשלומים. */}
       {showManualPaymentCreditButton && (
         <div className="card card-pad" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
-            <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח - דורש קוד מאשר.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div className="avatar"><svg className="icon"><use href="#i-wallet" /></svg></div>
+            <div>
+              <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
+              <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח - דורש קוד מאשר.</div>
+            </div>
           </div>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowManualPaymentCreditChooser(true)}>
             <svg className="icon"><use href="#i-coin" /></svg>הוספת תשלום/זיכוי ידני
@@ -552,6 +559,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
 
       {/* תאריך ביצוע ההזמנה */}
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <div className="avatar"><svg className="icon"><use href="#i-clock" /></svg></div>
         <div style={{ flex: 1 }}>
           <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך ביצוע ההזמנה</span>
           {isEditingOrderDate ? (
