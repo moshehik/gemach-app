@@ -208,6 +208,16 @@ await t('טלפון בכל צורה: השוואת ספרות בלבד בלקוח
   }
   assert.ok(norm(sqlOf(/FROM "Order" o/).sql).includes('c.phone2 LIKE $1'), 'phone2 גם בהתאמה הרגילה של הזמנות');
 });
+await t('איחוד עם הרשימות: 9 ספרות בלי 0 מוביל = טלפון; טלפון חלקי מתאים גם לצורה הבינלאומית (972)', async () => {
+  reset();
+  await run('501234567');
+  const q = sqlOf(/FROM "Customer"/);
+  assert.ok(q.params.includes('0501234567') && q.params.includes('972501234567'), '9 ספרות בלי 0 = 0501234567');
+  reset();
+  await run('050123');
+  const p = sqlOf(/FROM "Customer"/).params;
+  assert.ok(p.includes('%050123%') && p.includes('%97250123%'), 'חלקי: גם %972...%');
+});
 await t('הטקסט שהוקלד לא נכנס ל-SQL (פרמטרים בלבד) והברחת % / _', async () => {
   reset();
   await run('100%_x');
@@ -227,17 +237,18 @@ await t('תאריך עברי להזמנות: regex על eventDateHebrew בלי �
   assert.ok(dates.length >= 6 && dates.length % 2 === 0, 'טווחי יום (start,end) לכל שנה מועמדת');
   assert.ok(dates.every((d, i) => (i % 2 ? d > dates[i - 1] : true)));
 });
-await t('תאריך לועזי 5/10: טווחי היום הישראלי של 4 שנים, בלי TO_CHAR LIKE', async () => {
+await t('תאריך לועזי 5/10: טווחי היום הישראלי של 11 שנים (אותו חלון כמו רשימת ההזמנות), בלי TO_CHAR LIKE', async () => {
   reset();
   await run('5/10');
   const q = T.sql[0];
   assert.equal(T.sql.length, 1);
   assert.ok(!/TO_CHAR/.test(q.sql));
   const dates = q.params.filter((p) => p instanceof Date);
-  assert.equal(dates.length, 8);
+  assert.equal(dates.length, 22, 'השנה-8 עד השנה+2 (lib/listSearch.js gregorianDateOrderAlternatives)');
   // יום 5.10.2026 בישראל מתחיל ב-4.10 21:00 UTC (שעון קיץ UTC+3)
-  assert.equal(dates[2].toISOString(), '2026-10-04T21:00:00.000Z');
-  assert.equal(dates[3].toISOString(), '2026-10-05T20:59:59.999Z');
+  const i26 = dates.findIndex((d) => d.toISOString() === '2026-10-04T21:00:00.000Z');
+  assert.ok(i26 >= 0 && i26 % 2 === 0);
+  assert.equal(dates[i26 + 1].toISOString(), '2026-10-05T20:59:59.999Z');
 });
 await t('גבולות: LIMIT 50 רגיל, 20 לשאילתה של 2 תווים; תו בודד = בלי שאילתות', async () => {
   reset();
@@ -374,6 +385,12 @@ await t('5 ספרות: הזמנה ראשונה (שאילתה) וגם בדיקת 
   reset([]);
   await run('2573', { extras: true });
   assert.ok(!T.calls.some(([n]) => n === 'dressItem.findFirst'));
+});
+await t('5-6 ספרות: אין ניחוש דגם לפי קידומת (מספר הזמנה קודם); 7 ספרות עדיין מנחשות', async () => {
+  reset([]);
+  T.dressItem = null; T.models = [{ id: 'm-5', name: 'חמש', barcodePrefix: 5 }]; T.bulk = BULK;
+  assert.deepEqual((await run('52103', { extras: true })).inventory, [], 'הזמנה 52103 לא מציגה "דגם 5"');
+  assert.equal(T.calls.filter(([n]) => n === 'dressModel.findMany').length, 0);
 });
 await t('מילות מפתח: "מידה 02 דגם 3" - התאמה מדויקת למידה (02 = 2 = " 2", לעולם לא 12), שורה לכל דגם עם המידה, בקריאת מלאי אחת', async () => {
   reset([]);
