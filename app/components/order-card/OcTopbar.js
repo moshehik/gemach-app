@@ -36,6 +36,9 @@ export default function OcTopbar({ oc, ui, slots }) {
   };
   // הערת הבעלים 2026-10-05: כשאי אפשר למחוק את ההזמנה (היסטוריית השכרה / הגדרה) מוצג סמל נעילה במקום פח הזבל - לא לחצן מחיקה שנכשל. הכלל: deleteBlockReason
   const delBlock = oc.status === 'ready' ? deleteBlockReason({ statusText: oc.flags.statusText, settings: oc.settings, items: oc.items }) : null;
+  // נעילה אחת בלבד בכותרת (סקירה): כשכבר מוצג לחצן נעילת האירוע (נעולה / שוחררה לעריכה) והמחיקה חסומה - סמל נעילה אחד, והסיבה לחסימת המחיקה מצורפת לטולטיפ שלו
+  const eventLockShown = oc.status === 'ready' && (oc.flags.isLocked || (oc.flags.isPastEvent && oc.flags.isUnlocked));
+  const delTail = delBlock && eventLockShown ? ` · מחיקה חסומה: ${delBlock.text}` : '';
   return (
     <div className="topbar">
       <button type="button" className="back" data-act="exit" aria-label="חזרה" data-tip="חזרה" disabled={oc.saving} onClick={() => oc.exit()}>
@@ -48,12 +51,12 @@ export default function OcTopbar({ oc, ui, slots }) {
       {oc.status === 'ready' ? <ScanBar oc={oc} ui={ui} /> : null}
       <div className="tools">
         {oc.status === 'ready' && oc.flags.isLocked ? (
-          <button type="button" className="xlbtn xld" data-act="lockbtn" aria-label="הזמנה נעולה" data-tip="הזמנה נעולה — תאריך האירוע עבר. לחצו לשחרור באישור מנהל" onClick={openLocked}>
+          <button type="button" className="xlbtn xld" data-act="lockbtn" aria-label={`הזמנה נעולה${delTail}`} data-tip={`הזמנה נעולה — תאריך האירוע עבר. לחצו לשחרור באישור מנהל${delTail}`} onClick={openLocked}>
             <OcIcon name="lock" />
           </button>
         ) : null}
         {oc.status === 'ready' && oc.flags.isPastEvent && oc.flags.isUnlocked ? (
-          <button type="button" className="xlbtn xld" data-act="relockbtn" aria-label="ההזמנה שוחררה לעריכה - נעילה מחדש" data-tip="ההזמנה שוחררה לעריכה. לחצו לנעילה מחדש" onClick={relock}>
+          <button type="button" className="xlbtn xld" data-act="relockbtn" aria-label={`ההזמנה שוחררה לעריכה - נעילה מחדש${delTail}`} data-tip={`ההזמנה שוחררה לעריכה. לחצו לנעילה מחדש${delTail}`} onClick={relock}>
             <OcIcon name="lock" />
           </button>
         ) : null}
@@ -61,7 +64,7 @@ export default function OcTopbar({ oc, ui, slots }) {
           <>
             <Exports oc={oc} ui={ui} />
             <PrintMenu oc={oc} ui={ui} />
-            {delBlock ? (
+            {delBlock && eventLockShown ? null : delBlock ? (
               <button type="button" className="xlbtn xld oc-nodel" data-act="delete-locked" aria-disabled="true" aria-label={`מחיקה חסומה: ${delBlock.text}`} data-tip={`אי אפשר למחוק: ${delBlock.text}`} onClick={(e) => e.preventDefault()}>
                 <OcIcon name="lock" />
               </button>

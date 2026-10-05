@@ -2,14 +2,14 @@
 
 // OcBarcodeRow — שורת הברקוד בשורת פריט פתוחה (R25/R26/R27, העיצוב: hv-r.hv-act "ברקוד" + שכבת הסקירה pv-bcin): שדה הזנת ברקוד
 // (כמו בחלון "השכרה והחזרה") שמבצע השכרה לפריט ממתין / החזרה לפריט מושכר, "בטל השכרה", "בטל החזרה", ומצב החזרה תקין / לא תקין.
-// פריט שהוחזר (הערת הבעלים 2026-10-05): בלי שדה ברקוד - צ׳יפ "הוחזרה · תאריך" + בורר תקין/לא תקין + "בטל החזרה" כפעולה משנית אחת.
+// פריט שהוחזר (הערת הבעלים 2026-10-05): בלי שדה ברקוד - צ׳יפ "הוחזרה" (התאריך והעובדת בשורת "החזרה" של הפרטים - לא חוזרים כאן) + בורר תקין/לא תקין + "בטל החזרה" כפעולה משנית אחת.
 // בלי "סמן כנלקחה/כנמסרה/כהוחזרה" ובלי קישור לכרטיס דגם (הערת הבעלים ל-R25). בהזמנה נעולה (R3): השכרה וביטול השכרה חסומים;
 // החזרה, ביטול החזרה ומצב החזרה זמינים (כמו בישן :1023-1040).
 // OcItemChooserDialog — "לאיזה פריט לשייך את הברקוד?" (MIM :1200-1255) כחלון כהה של הכרטיס.
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
-import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder, isItemReturned, dayTimeOf } from '../hooks/useItemActions';
+import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder, isItemReturned } from '../hooks/useItemActions';
 
 const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
@@ -29,7 +29,6 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
     if (r && r.ok) setVal('');
   });
   const returned = isItemReturned(item);
-  const when = returned && item.returnDate ? dayTimeOf(item.returnDate) : null;
   const badCond = () => go(async () => {
     if (!ui || item.returnedOk === false) return actions.setReturnCondition(item, false);
     const note = await ui.openDialog(OcCondBadDialog, { item });
@@ -45,7 +44,7 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
         <small>ברקוד</small>
         <b className="hv-btns">
           <span className={`chip ${okCond ? 'green' : 'amber'} oc-retchip`} role="status" data-act="returned-chip">
-            <OcIcon name={okCond ? 'check' : 'alert'} size="sm" />{`הוחזרה${okCond ? '' : ' · לא תקין'}${when ? ` · ${when}` : ''}`}
+            <OcIcon name={okCond ? 'check' : 'alert'} size="sm" />{okCond ? 'הוחזרה' : 'הוחזרה · לא תקין'}
           </span>
           <div className="seg pill oc-cond" role="radiogroup" aria-label="מצב ההחזרה" style={{ '--n': 2, '--i': okCond ? 0 : 1 }}>
             <span className="pth" aria-hidden="true" />

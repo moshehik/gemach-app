@@ -35,7 +35,9 @@ test('deleteBlockReason: מותר / חסום לפי היסטוריית השכר�
 test('הטופבר: סמל נעילה לא-פעיל (aria-disabled, בלי קריאה למחיקה) במקום הפח כשהמחיקה חסומה; אחרת הפח; לחצן שחרור נעילת האירוע נשאר', () => {
   const t = strip(read(`${OC}/OcTopbar.js`));
   assert.match(t, /deleteBlockReason\(\{ statusText: oc\.flags\.statusText, settings: oc\.settings, items: oc\.items \}\)/);
-  assert.match(t, /\{delBlock \? \(\s*<button type="button" className="xlbtn xld oc-nodel" data-act="delete-locked" aria-disabled="true"/);
+  assert.match(t, /\{delBlock && eventLockShown \? null : delBlock \? \(\s*<button type="button" className="xlbtn xld oc-nodel" data-act="delete-locked" aria-disabled="true"/);
+  assert.match(t, /const delTail = delBlock && eventLockShown \? ` · מחיקה חסומה: \$\{delBlock\.text\}` : '';/, 'נעילה אחת: הסיבה במחיקה חסומה מצורפת לטולטיפ של נעילת האירוע');
+  assert.match(t, /data-tip=\{`הזמנה נעולה — תאריך האירוע עבר\. לחצו לשחרור באישור מנהל\$\{delTail\}`\}/);
   assert.match(t, /aria-label=\{`מחיקה חסומה: \$\{delBlock\.text\}`\}/);
   assert.match(t, /data-tip=\{`אי אפשר למחוק: \$\{delBlock\.text\}`\}/);
   assert.match(t, /<OcIcon name="lock" \/>\s*<\/button>\s*\) : \(\s*<button type="button" className="xlbtn xld" data-act="delete"/);
@@ -133,8 +135,8 @@ test('שורת הברקוד (UI): פריט שהוחזר = בלי שדה קלט; 
   assert.match(ret, /aria-checked=\{!okCond\}/);
   assert.equal((ret.match(/className="btn sm ghost" data-act="undoret"/g) || []).length, 1, 'פעולה משנית אחת');
   assert.ok(!/className="btn sm tgl|className="btn sm"/.test(ret), 'אין שני לחצנים פעילים באותו משקל');
-  assert.match(code, /const when = returned && item\.returnDate \? dayTimeOf\(item\.returnDate\) : null;/, 'תאריך ההחזרה בצ׳יפ');
-  assert.match(ret, /\$\{when \? ` · \$\{when\}` : ''\}/);
+  assert.ok(!/dayTimeOf|const when/.test(code), 'התאריך לא חוזר בצ׳יפ (שורת "החזרה" נושאת אותו)');
+  assert.match(ret, /\{okCond \? 'הוחזרה' : 'הוחזרה · לא תקין'\}/);
   const rest = code.slice(liveStart, code.indexOf('export function OcCondBadDialog'));
   assert.match(rest, /<input/);
   assert.match(rest, /disabled=\{inputOff\}/);
@@ -151,7 +153,7 @@ test('מטריצת מצבים של שורת הברקוד: ממתין / מושכ�
   // לא הוחזר (ממתין / מושכר): שדה ברקוד; מושכר ולא נעול גם "בטל השכרה"; בלי בורר תקין/לא תקין ובלי "בטל החזרה"
   assert.ok(/<input/.test(livePart) && /item\.isTaken && !locked \?/.test(livePart) && !/cond-ok|cond-bad|undoret/.test(livePart));
   // הוחזר (תקין / לא תקין): צ׳יפ + בורר + ghost; הצבע/טקסט לפי okCond
-  assert.ok(/'green' : 'amber'/.test(retPart) && /הוחזרה\$\{okCond \? '' : ' · לא תקין'\}/.test(retPart));
+  assert.ok(/'green' : 'amber'/.test(retPart) && /okCond \? 'הוחזרה' : 'הוחזרה · לא תקין'/.test(retPart));
   assert.ok(!/undorent/.test(retPart), 'פריט שהוחזר אין בו "בטל השכרה"');
 });
 
