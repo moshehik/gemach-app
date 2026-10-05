@@ -514,6 +514,62 @@ t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שו�
   assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
 });
 
+/* ---------- 10b. כרטיס הלקוח החדש (app/components/customer-card/customer-card.css): אותו משטר היקף כמו הפרופיל ---------- */
+// שורש .gm-ds.gm-cc.home-bg.dlg-dark (בלי .gm-home). נבדק: היקף, אין לבן קשיח, !important על רקע רק בכללים המאושרים מהעיצוב,
+// אין @media לפני הכלל הלא-מותנה, ונטרולי הדליפה שנמצאו ב-scripts/customer-card-audit (גופן, .tab margin, .tabs margin,
+// .field margin, ריפוד לחצנים/שדות שנמחק ע"י *{padding:0}, ריפוד לחצן החזרה, רקע/מסגרת input גלובליים בתוך רכיבים).
+const CC_CSS = read('../app/components/customer-card/customer-card.css');
+const ccRules = parseCss(CC_CSS);
+const CC_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-cc)']);
+const CC_IMPORTANT_BG_OK = [
+  /^\.gm-ds\.gm-cc \.app :is\(\.card,\.coll\[open\]\)$/, // פנים "פנינה" (pearl-faces בעיצוב) מול הזכוכית של הפלטה
+  /^\.gm-ds\.gm-cc \.rtbl thead tr th$/, // כותרת טבלה כחולה (נטרול כותרת קרם גלובלית)
+  /^\.gm-ds\.gm-cc \.app \.btn\.cc-gmail/, // "השלם ל-@gmail.com" = לחצן "מחוקים" של כרטיס ההזמנה (שקוף, בריחוף כחול)
+  /^\.gm-ds\.gm-cc #dlg\.fx-sheet :is\(input,textarea\)\.inp/, // שדות גיליון המייל (mail-sheet-css בעיצוב)
+  /^\.gm-ds\.gm-cc\.dlg-dark :is\(#dlg,#dlg2\) \.chg \.c \.ico$/, // DLG-MODERN בעיצוב
+];
+t('customer-card.css: כל כלל בהיקף .gm-ds.gm-cc (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of ccRules) for (const s of splitSel(r.sel)) if (!/^(:where\()?\.gm-ds\.gm-cc(\)|[\s.:#[]|$)/.test(s) && !CC_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, []);
+});
+t('customer-card.css: אין רקע לבן קשיח; !important על רקע רק בכללים המאושרים', () => {
+  const bad = [];
+  for (const r of ccRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!CC_IMPORTANT_BG_OK.some((re) => re.test(s.replace(/\s+/g, ' ')))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('customer-card.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(ccRules, 'customer-card.css'), []);
+});
+const hasCc = (selRe, propRe, { important = false, valueRe } = {}) => ccRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('customer-card.css: נטרולי הדליפות שנמצאו בבדיקת הנאמנות', () => {
+  assert.ok(hasCc(/\.gm-ds\.gm-cc :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'גופן ללחצנים/שדות');
+  assert.ok(hasCc(/\.gm-ds\.gm-cc :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true }), 'גופן לכותרות');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.tabs \.tab$/, /^margin-inline-end$/, { valueRe: /^0/ }), '.tab{margin-inline-end:22px} של design-system.css');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.tabs$/, /^margin$/, { valueRe: /^0/ }), '.tabs{margin-bottom} של design-system.css');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.field$/, /^margin-bottom$/, { valueRe: /^0/ }), '.field{margin-bottom:14px}');
+  assert.ok(hasCc(/^:where\(\.gm-ds\.gm-cc\) :where\(button\)$/, /^padding$/), 'ריפוד ברירת מחדל ללחצנים (*{padding:0})');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.back$/, /^padding$/), 'ריפוד לחצן החזרה');
+  assert.ok(hasCc(/\.gm-ds\.gm-cc :is\(\.hf-s,\.amtin\) input/, /^background$/), 'רקע input גלובלי בחיפוש ההיסטוריה / סכום התשלום');
+});
+t('הדליפות שנוטרלו בכרטיס הלקוח עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
+  assert.ok(/\.tab\{[^}]*margin-inline-end:22px/.test(DS_GLOBAL), 'design-system.css: .tab{margin-inline-end:22px} כבר לא קיים');
+  assert.ok(/\*\s*\{[^}]*padding:\s*0/.test(GLOBALS), 'globals.css: *{padding:0} כבר לא קיים');
+});
+t('כרטיס הלקוח: שורש בלי gm-home, בלי window.alert, חלונות כהים', () => {
+  for (const f of ['CustomerCardA5.js', 'NewCustomerA5.js']) {
+    const src = read(`../app/components/customer-card/${f}`);
+    assert.match(src, /className="gm-ds gm-cc home-bg dlg-dark"/, f);
+    assert.ok(!/window\.alert/.test(src), f);
+  }
+});
+
 /* ---------- 11. "מסך ניהול ראשי" (app/components/admin-hub/admin-hub.css): אותו משטר היקף כמו הפרופיל ---------- */
 // שורש .gm-ds.gm-adm.home-bg (בלי .gm-home). נבדק: היקף, לבן קשיח רק בעיגול האייקון של האריח (לבן בעיצוב ניהול-ראשי-כרטיסים.html),
 // !important על רקע רק בכותרת הטבלה (כמו home.css כלל 10), ונטרולי הדליפה שנמצאו בבדיקת scripts/admin-hub-audit.

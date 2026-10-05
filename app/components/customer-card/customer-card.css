@@ -1,0 +1,217 @@
+/* customer-card.css — כרטיס הלקוח החדש (A5) וטופס הלקוח החדש. רק מה שאין בפלטה (design-system/components.css), בהיקף .gm-ds.gm-cc.
+   מקורות: העיצוב המאושר תצוגות-עיצוב/כרטיס-לקוח.html - הבלוקים cust-view, mail-sheet-css, rt-navy, rt-gold, bg-fade, pearl-faces
+   (בשמות מחלקה נקיים, בלי body/html/:root), ותוספות לתשובות הבעלים (שדות חובה, העתקת מייל צפה, "השלם ל-@gmail.com", הערות אוטומטיות
+   לא מודגשות, נוסחת החוב, רשימת המנהלים הנגללת בחלון האישור).
+   שורש: .gm-ds.gm-cc.home-bg.dlg-dark — בלי .gm-home (הבלוק .gm-ds.gm-home של הפלטה הוא ה-CSS של דף הבית ודורס שדות/כפתורים).
+   נטרולי הדליפה של ה-CSS הגלובלי של האתר (globals.css / design-overrides.css / design-system.css) מסומנים "דליפה".
+   שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "כרטיס הלקוח"). בדיקת נאמנות: scripts/customer-card-audit. */
+
+/* ===== גוף הדף ===== */
+/* דליפה: design-overrides.css כופה Assistant/Frank Ruhl ב-!important על לחצנים, שדות וכותרות */
+.gm-ds.gm-cc *{font-family:var(--gm-font)}
+.gm-ds.gm-cc :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-cc :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+/* דליפה: [hidden] חייב להסתיר גם כשהפלטה נותנת display לאלמנט (כמו בעיצוב, oc-panels) */
+.gm-ds.gm-cc [hidden]:not([hidden=until-found i]){display:none!important}
+/* העיצוב (bg-fade): תמונת הרקע בשקיפות 65% */
+.gm-ds.gm-cc.home-bg::before{opacity:.65}
+
+/* מלא-רוחב: המעטפת (הישנה והחדשה) עוטפת כל דף ב-.app-shell .main .content עם padding ו-max-width; בעיצוב הרווחים באים מ-.app של הפלטה */
+.app-shell .main .content:has(> .gm-ds.gm-cc){max-width:none;margin-inline:0;padding:0}
+
+/* ===== שורת הכותרת ===== */
+/* דליפה: app/design-system.css .topbar (sticky, רקע שקוף-למחצה, blur, קו תחתון, ריפוד) - בעיצוב ה-topbar שקוף, יחסי ובלי ריפוד */
+.gm-ds.gm-cc .cc-app .topbar{position:relative;top:auto;z-index:auto;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+/* דליפה: h1 הגלובלי של האתר צובע בחום */
+.gm-ds.gm-cc .cc-app .ttl h1{color:var(--gm-navy-900)}
+/* דליפה: globals.css מאפס padding לכל אלמנט - לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-cc .back{padding:1px 6px}
+/* #hdrChips ריק תמיד (הבעלים PG3: בכותרת רק שם הלקוחה וחץ החזרה) אבל נשאר מוצג כמו בעיצוב - הוא שובר שורה בנייד וכך הכלים
+   יושבים ליד הכותרת (בלי display:none כאן; נמצא בבדיקת scripts/customer-card-audit ב-375) */
+
+/* ===== לוחות: פנים "פנינה" (בלוק pearl-faces בעיצוב) - הפלטה משאירה את ה"זכוכית" הלבנה 30% (!important) של oc-panels ===== */
+.gm-ds.gm-cc .app :is(.card,.coll[open]){background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+
+/* ===== נטרולי דליפה כלליים ===== */
+/* דליפה: globals.css *{padding:0;margin:0} מוחק את ריפוד ברירת המחדל של הדפדפן ללחצנים ולשדות שהפלטה לא מגדירה להם ריפוד
+   (ביטול שינוי במסילה, ניקוי חיפוש, תצוגה מקדימה בגיליון המייל...). ספציפיות 0 (:where) - כל כלל של הפלטה גובר */
+:where(.gm-ds.gm-cc) :where(button){padding:1px 6px}
+:where(.gm-ds.gm-cc) :where(input:not([type=checkbox]):not([type=radio])){padding:1px 2px}
+/* דליפה: עיצוב input הגלובלי (רקע לבן, מסגרת, רדיוס, צבע) על שדות שבעיצוב שקופים בתוך רכיב (חיפוש ההיסטוריה, סכום התשלום) */
+.gm-ds.gm-cc :is(.hf-s,.amtin) input:not([type=checkbox]):not([type=radio]){background:transparent;border:0;border-radius:0;box-shadow:none;color:var(--gm-navy-900)}
+/* דליפה: app/design-system.css .main{order:1;display:flex;flex-direction:column} - בתוך .layout זה הזיז את העמודה הראשית אחרי המסילה */
+.gm-ds.gm-cc .layout > .main{order:0;display:block;flex:none}
+/* דליפה: app/design-system.css .tab{margin-inline-end:22px} - הלשוניות לא ממלאות את הסרגל (160 במקום 181 פיקסל) */
+.gm-ds.gm-cc .tabs .tab{margin-inline-end:0}
+/* דליפה: app/design-system.css .tabs{border-bottom:1px solid;margin-bottom:18px} */
+.gm-ds.gm-cc .tabs{margin:0;border-bottom:0}
+/* מסנן ההיסטוריה פתוח: מסגרת כחולה כמו בעיצוב (.hf-sel.on .hf-t) - body .hf-s .hf-t של העיצוב צובע זהב */
+.gm-ds.gm-cc .hf-sel.on .hf-t{border-color:var(--gm-navy)}
+/* דליפה: app/design-system.css .field{margin-bottom:14px} - בעיצוב המרווח בין שדות בא מ-gap */
+.gm-ds.gm-cc .field{margin-bottom:0}
+/* דליפה: design-overrides.css צובע טקסט בשדה בחום (0,4,1); בעיצוב טקסט השדה בצבע הדיו */
+.gm-ds.gm-cc .app :is(.dfields input.inp,textarea.inp):not(:disabled){color:var(--gm-ink)}
+/* דליפה: מתג הפעלה - ה-input מוסתר (opacity:0) אבל globals/design-overrides נותנים לו רקע לבן */
+.gm-ds.gm-cc .sw input{background:transparent}
+/* דליפה: globals.css div:has(> table){max-height:75vh;overflow-y:auto} - בעיצוב הטבלה גדלה לפי התוכן והדף גולל */
+.gm-ds.gm-cc div:has(> table){max-height:none;overflow-y:visible}
+/* דליפה: globals.css / design-overrides.css על כותרת טבלה (דביקה, קרם, Assistant) - בעיצוב כחול כהה עם טקסט זהב */
+.gm-ds.gm-cc .rtbl thead tr th{position:static!important;top:auto!important;z-index:auto!important;background-color:var(--gm-navy)!important;background-image:none!important;color:var(--gm-gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;border-bottom:0!important;outline:0}
+/* דליפה: טבעת הפוקוס של design-overrides.css בשדות הפלטה בחלונות */
+.gm-ds.gm-cc :is(#dlg,#dlg2) .inp:focus{outline:0}
+/* דליפה: globals.css a{color} על שורות-קישור (הערות אוטומטיות, קישורי טבלה) */
+.gm-ds.gm-cc a.rlink,.gm-ds.gm-cc a.rlink:visited{color:inherit;text-decoration:none}
+.gm-ds.gm-cc .cc-tlink,.gm-ds.gm-cc .cc-tlink:visited{color:var(--gm-navy);text-decoration:none}
+.gm-ds.gm-cc .cc-tlink:hover{text-decoration:underline}
+
+/* ===== פרטי לקוח: עיפרון בכותרת הכרטיס + תצוגת קריאה (בלוק cust-view בעיצוב) ===== */
+.gm-ds.gm-cc .card-h .ibtn[data-act=editcust][aria-pressed=true]{background:var(--gm-gbtn);color:#000;border-color:var(--gm-gold-d)}
+/* מצב חשבון: סכום החוב/הזיכוי בכחול האתר (בלוק cust-view) */
+.gm-ds.gm-cc .bal .n{color:var(--gm-navy)!important}
+.gm-ds.gm-cc .cc-mailrow{margin-top:10px}
+.gm-ds.gm-cc .cc-mt24{margin-top:24px}
+.gm-ds.gm-cc .cc-gap14{gap:14px}
+.gm-ds.gm-cc .cc-mt24.row{gap:14px}
+
+/* כוכבית שדה חובה (customer_required_fields) */
+/* CC-O5 (owner 4.10.2026): red star. The palette has no plain red: --gm-red aliases dark gold, so the only red hue is
+   --gm-rose-700 (#a8442a, colour 22) - the same hue the palette uses for error/warning (amber/plum aliases). */
+.gm-ds.gm-cc .cc-req{color:var(--gm-rose-700);font-weight:500}
+.gm-ds.gm-cc .field.cc-bad .inpw{border-color:var(--gm-rose-500)}
+
+/* העתקת מייל (הבעלים cp): לחצן נקי בתוך השורה, בלי רקע ובלי מסגרת, שצף ליד ה-X רק בריחוף / מיקוד על השדה */
+.gm-ds.gm-cc .inpw .cc-copy{position:absolute;inset-inline-end:42px;top:50%;translate:0 -50%;display:inline-grid;place-items:center;width:28px;height:28px;padding:0;margin:0;border:0;border-radius:50%;background:none;box-shadow:none;color:var(--gm-ink3);cursor:pointer;opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity 160ms,transform 160ms,color 160ms}
+.gm-ds.gm-cc .inpw:has(.cc-copy) .inp{padding-inline-end:76px}
+.gm-ds.gm-cc .inpw:is(:hover,:focus-within) .cc-copy{opacity:1;transform:none;pointer-events:auto}
+.gm-ds.gm-cc .inpw .cc-copy:is(:hover,:focus-visible){color:var(--gm-navy);outline:0}
+.gm-ds.gm-cc .inpw .cc-copy.done{color:var(--gm-navy-500);opacity:1}
+@media (hover:none){.gm-ds.gm-cc .inpw .cc-copy{opacity:1;transform:none;pointer-events:auto}}
+
+/* "השלם ל- @gmail.com" (הבעלים gm): אותם צבעים וגודל כמו לחצן "מחוקים" בכרטיס ההזמנה (#delToggle: שקוף, מסגרת כחולה 1.5px,
+   בריחוף כחול עם טקסט לבן, 32px גובה, ריפוד 0 12px, טקסט 14px) */
+.gm-ds.gm-cc .cc-gmail-row{margin-top:8px;display:flex}
+.gm-ds.gm-cc .app .btn.cc-gmail{min-height:32px;height:32px;padding:0 12px;gap:6px;font-size:14px;border-radius:999px;background:transparent!important;border:1.5px solid var(--gm-navy)!important;color:var(--gm-navy)!important;box-shadow:none;direction:rtl}
+.gm-ds.gm-cc .app .btn.cc-gmail:is(:hover,:focus-visible){background:var(--gm-navy)!important;color:#fff!important;border-color:var(--gm-navy)!important;box-shadow:none}
+.gm-ds.gm-cc .app .btn.cc-gmail .dtico{display:inline-grid;place-items:center}
+.gm-ds.gm-cc .app .btn.cc-gmail .dtico .ic{width:16px;height:16px}
+.gm-ds.gm-cc .app .btn.cc-gmail:is(:hover,:focus-visible) .ic{color:#fff;stroke:#fff}
+
+/* לחצן "חתמה על התקנון": נגזר מההזמנות (אין עמודה ברמת לקוח עדיין) - נראה כמו בעיצוב, בלי שינוי בלחיצה */
+.gm-ds.gm-cc #termsBtn[aria-disabled=true]{cursor:default}
+
+/* ===== הערות (הבעלים notes: "משום מה הכל מודגש" - השורות האוטומטיות בטקסט רגיל) ===== */
+.gm-ds.gm-cc .cc-autonotes{margin-bottom:14px}
+.gm-ds.gm-cc .cc-autonotes .li .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.gm-ds.gm-cc .cc-autonotes .li .t .cc-an{font-weight:400;font-size:15px;color:var(--gm-ink);overflow-wrap:anywhere}
+.gm-ds.gm-cc .cc-autonotes .li .t .cc-an-d{color:var(--gm-ink3)}
+.gm-ds.gm-cc .cc-autonotes .li .go{margin-inline-start:auto;color:var(--gm-navy-500)}
+.gm-ds.gm-cc #notes{width:100%;min-height:110px;resize:vertical}
+.gm-ds.gm-cc .cc-notes-hint{margin-top:8px}
+
+/* ===== תשלומים ===== */
+.gm-ds.gm-cc .cc-balbar{flex:1;min-width:200px}
+.gm-ds.gm-cc .cc-formula{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:14px}
+.gm-ds.gm-cc .cc-bankline{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:18px;padding-top:12px;border-top:1px solid var(--gm-sky-200)}
+.gm-ds.gm-cc .cc-linkbtn{border:0;background:none;padding:0;color:var(--gm-navy);font-weight:600;text-decoration:underline;cursor:pointer}
+.gm-ds.gm-cc .cc-linkbtn:focus-visible{outline:2px solid var(--gm-navy);outline-offset:2px;border-radius:4px}
+.gm-ds.gm-cc .cc-more{display:flex;justify-content:center;margin-top:16px}
+
+/* ===== כרטיסי ריחוף עשירים: כחול כהה בתוכן, זהב במסילה (בלוקים rt-navy / rt-gold בעיצוב) ===== */
+.gm-ds.gm-cc .pl-rt{background:rgba(15,44,82,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border:1px solid var(--gm-navy-500);box-shadow:0 16px 36px -10px rgba(10,34,66,.55),0 2px 6px rgba(10,34,66,.25)}
+.gm-ds.gm-cc .pl-rt :is(.rr1,.rh){color:#fff}
+.gm-ds.gm-cc .pl-rt .rr1+.rr1{border-top-color:rgba(255,255,255,.2)}
+.gm-ds.gm-cc .pl-rt .rr1 .ic{color:#f38a6b}
+.gm-ds.gm-cc .pl-rt .ra{background:rgba(15,44,82,.8);border-color:var(--gm-navy-500)}
+.gm-ds.gm-cc .pl-rt.gold{background:linear-gradient(135deg,rgba(246,231,166,.77) 0%,rgba(224,191,90,.77) 38%,rgba(201,162,39,.77) 68%,rgba(233,207,122,.77) 100%);color:#1a1405;border:1px solid rgba(154,122,31,.77);box-shadow:0 18px 40px -10px rgba(120,90,20,.6),inset 0 1px 0 rgba(255,255,255,.65)}
+.gm-ds.gm-cc .pl-rt.gold :is(.rr1,.rh){color:#1a1405;font-weight:600}
+.gm-ds.gm-cc .pl-rt.gold .rr1+.rr1{border-top-color:rgba(90,66,10,.35)}
+.gm-ds.gm-cc .pl-rt.gold .rr1 .ic{color:var(--gm-navy)}
+.gm-ds.gm-cc .pl-rt.gold .ra{background:rgba(217,184,74,.77);border-color:rgba(154,122,31,.77)}
+
+/* ===== חלונות (תמיד כהים) ===== */
+.gm-ds.gm-cc .chg .c .cc-cico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
+.gm-ds.gm-cc #dlg .success .cc-sub0{margin-bottom:0}
+.gm-ds.gm-cc #dlg .success .cc-gap24{height:24px}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .amsg:empty{display:none}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .cc-payhint{font-size:13px;margin:-6px 0 12px}
+/* אישור מנהל (הבעלים PG1): רשימת המנהלים המורשים נגללת, עם פס גלילה זהב כמו הרשימה הנגללת של המערכת (.advlist) */
+.gm-ds.gm-cc .cc-emps{max-height:216px;overflow-y:auto;padding:2px;margin:0;gap:8px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c9a227 transparent}
+.gm-ds.gm-cc .cc-emps::-webkit-scrollbar{width:6px}
+.gm-ds.gm-cc .cc-emps::-webkit-scrollbar-track{background:transparent;margin-block:10px}
+.gm-ds.gm-cc .cc-emps::-webkit-scrollbar-thumb{border-radius:999px;background:linear-gradient(180deg,#e8ca5e,#b8912f)}
+.gm-ds.gm-cc .cc-emps .opt{min-height:52px;padding:10px 14px;display:flex;align-items:center;gap:12px;text-align:start}
+.gm-ds.gm-cc .cc-emps .opt .av{flex:none}
+.gm-ds.gm-cc .cc-emps .opt small{display:block}
+.gm-ds.gm-cc .cc-emps .cc-emps-wait{padding:10px 4px;font-size:14px}
+.gm-ds.gm-cc .appr .mfld{width:100%;text-align:start}
+.gm-ds.gm-cc .appr .cc-appr-q{margin-bottom:10px}
+.gm-ds.gm-cc .appr .cc-appr-code{margin-top:14px}
+.gm-ds.gm-cc .appr .amsg{margin-top:6px}
+.gm-ds.gm-cc .cc-payorders{margin:4px 0 14px}
+
+/* ===== "מייל מהיר": גיליון תחתון בשתי עמודות (בלוק mail-sheet-css בעיצוב, design 18) ===== */
+@keyframes cc-mailUp{from{transform:translateY(100%)}to{transform:none}}
+.gm-ds.gm-cc #dlg.mailwin.fx-sheet{max-width:860px}
+.gm-ds.gm-cc #dlg.fx-sheet .mh h2{line-height:1.25}
+.gm-ds.gm-cc #dlg.fx-sheet .msub{display:block;font-size:14px;font-weight:400;opacity:.75;margin-top:2px}
+.gm-ds.gm-cc #dlg.fx-sheet .fx-2col{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:24px;align-items:start}
+.gm-ds.gm-cc #dlg.fx-sheet .fx-stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+.gm-ds.gm-cc #dlg.fx-sheet .mfld{gap:6px}
+.gm-ds.gm-cc #dlg.fx-sheet .mfiles{display:grid;grid-template-columns:1fr;gap:8px}
+.gm-ds.gm-cc #dlg.fx-sheet .mfile{padding-block:8px;min-height:0;align-items:center}
+.gm-ds.gm-cc #dlg.fx-sheet .mfx small:empty{display:none}
+.gm-ds.gm-cc #dlg.fx-sheet textarea.inp{min-height:260px;resize:none}
+/* שדות טקסט: שקופים עם מסגרת זהב; זוהר בפוקוס */
+.gm-ds.gm-cc #dlg.fx-sheet :is(input,textarea).inp{background:rgba(255,255,255,.07)!important;color:#fff!important;border:1.5px solid var(--gm-gold)!important;border-radius:14px!important;transition:border-color .2s,box-shadow .2s,background-color .2s}
+.gm-ds.gm-cc #dlg.fx-sheet :is(input,textarea).inp::placeholder{color:rgba(255,255,255,.5)!important}
+.gm-ds.gm-cc #dlg.fx-sheet :is(input,textarea).inp:focus,.gm-ds.gm-cc #dlg.fx-sheet :is(input,textarea).inp:focus-visible{border-color:var(--gm-gold-300)!important;outline:0;box-shadow:0 0 0 3px rgba(224,197,110,.35),0 0 18px 3px rgba(224,197,110,.55)!important;background:rgba(255,255,255,.11)!important}
+/* שלח מימין, ביטול לידו */
+.gm-ds.gm-cc #dlg.fx-sheet .fx-actions{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;margin-top:8px}
+.gm-ds.gm-cc #dlg.fx-sheet .fx-actions .btn{width:auto;flex:0 0 auto}
+.gm-ds.gm-cc #dlg.fx-sheet .fx-actions .btn.primary{min-width:200px}
+.gm-ds.gm-cc #dlg.fx-sheet .cc-addfile{align-self:flex-start}
+.gm-ds.gm-cc #dlg.fx-sheet .cc-drive{margin-top:8px}
+.gm-ds.gm-cc #dlg.fx-sheet .cc-mailerr{margin:0 0 12px}
+@media (min-width:641px){
+  .gm-ds.gm-cc #scrim:has(#dlg.fx-sheet){align-items:flex-end;padding:0 16px}
+  .gm-ds.gm-cc #dlg.mailwin.fx-sheet{width:100%;border-end-start-radius:0;border-end-end-radius:0;animation:cc-mailUp .38s cubic-bezier(.2,.8,.2,1)}
+}
+@media (max-width:900px){.gm-ds.gm-cc #dlg.fx-sheet .fx-2col{grid-template-columns:1fr}}
+@media (max-width:640px){.gm-ds.gm-cc #dlg.fx-sheet .fx-actions .btn.primary{flex:1 1 auto;min-width:0}.gm-ds.gm-cc #dlg.fx-sheet textarea.inp{min-height:160px}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-cc #dlg.mailwin.fx-sheet{animation:none}}
+
+/* ===== טוסט: שגיאות באדום ===== */
+.gm-ds.gm-cc #toast.error{border-color:var(--gm-rose-500)}
+.gm-ds.gm-cc #toast.error .tb{background:var(--gm-rose-300);color:var(--gm-navy-900)}
+
+/* ===== פס הלקוח החסום (J5 ב': בפס ההודעות הגלובלי בראש הדף) ===== */
+.gm-ds.gm-cc .cc-banner{margin:24px 0 8px}
+.gm-ds.gm-cc .cc-banner .nb-main{display:flex;flex-direction:column}
+
+/* ===== מצבי טעינה / לא נמצא / טופס לקוח חדש ===== */
+.gm-ds.gm-cc .cc-loading{display:flex;align-items:center;gap:12px;font-size:16px;color:var(--gm-ink2)}
+.gm-ds.gm-cc .cc-empty-t{font-size:19px;margin-top:8px;color:var(--gm-ink)}
+.gm-ds.gm-cc .cc-layout-msg{grid-template-columns:minmax(0,1fr)}
+.gm-ds.gm-cc .cc-new .cc-layout-msg{max-width:860px}
+.gm-ds.gm-cc .cc-newsave{display:flex}
+.gm-ds.gm-cc .cc-newsave .btn{width:100%}
+
+/* ה-portal לחלונות/טוסט: אלמנט ריק בלי גודל (התוכן fixed) */
+.gm-ds.gm-cc .cc-portal{position:static}
+
+/* ===== חלונות כהים: כללי DLG-MODERN של העיצוב שחסרים בפלטה (הסורק השמיט כללים עם :not(.q1)/:not(.z1) - "מגבירי ספציפיות"
+   שהמחלקות שלהם לא קיימות בדף). בלעדיהם "חזרה"/"ביטול" בחלון יוצאים בכחול על רקע כהה ולחצן מנוטרל נראה פעיל. ===== */
+.gm-ds.gm-cc :is(#dlg,#dlg2)>:nth-child(n+5){animation-delay:230ms}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .chg .c:nth-child(n+4){animation-delay:140ms}
+.gm-ds.gm-cc.dlg-dark :is(#dlg,#dlg2) .chg .c .ico{background:rgba(224,197,110,.16)!important;color:#f1dc8f!important;box-shadow:inset 0 0 0 1px rgba(224,197,110,.35)}
+.gm-ds.gm-cc :is(#dlg,#dlg2) :is(.merr,.amsg){color:var(--k-err)}
+.gm-ds.gm-cc :is(#dlg,#dlg2) :is(.dbtns,.mact) .btn.btn:disabled:not(.z1):not(.z2),.gm-ds.gm-cc :is(#dlg,#dlg2) :is(.dbtns,.mact) .btn.btn:disabled:hover:not(.z1){background:var(--k-row);color:var(--k-faint);border:1.5px solid var(--k-rowb);box-shadow:none;transform:none;cursor:not-allowed}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2){position:relative;background:transparent;border:0;box-shadow:none;color:var(--k-ghost);font-weight:600;min-height:44px!important;width:auto;align-self:center;padding:8px 18px;text-decoration:none;transform:none}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:active,:focus-visible){background:transparent;color:var(--k-ghost);box-shadow:none;transform:none;text-decoration:none}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::before{content:none;display:none}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::after{inset-inline:18px;bottom:6px;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%) no-repeat,linear-gradient(90deg,#e0bf5a,#c9a227,#f1dc8f);background-size:45% 100%,100% 100%;background-position:-130% 0,0 0}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2) svg{color:var(--k-ghost)!important;stroke:var(--k-ghost)!important}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:focus-visible) .ic{transform:translateX(3px)}
+.gm-ds.gm-cc :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):focus-visible{outline:2px solid var(--gm-gold);outline-offset:2px;box-shadow:none}
+.gm-ds.gm-cc:has(.scrim.on) #toast{z-index:90}
+.gm-ds.gm-cc :is(#dlg,#dlg2) :is(h2,.sub)+:is(.chg,.opts,.methods,.mto,.mfld,.dsum,.dbody,.net){margin-top:24px}

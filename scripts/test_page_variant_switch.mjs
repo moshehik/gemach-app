@@ -31,7 +31,7 @@ async function t(name, fn) {
 }
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
 const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
-const BOTH = ['shell', 'home', ...NEW_SCREENS];
+const BOTH = ['shell', 'home', 'customer_card', ...NEW_SCREENS]; // סדר הרשומה: customer_card (כרטיס לקוח, 5.10.2026) אחרי home
 
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
@@ -49,9 +49,9 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
   assert.deepEqual(UI_SCREENS, UI_SCREEN_IDS, 'lib/uiVariant.js נגזר מהרשומה');
   assert.equal(UI_VARIANT_SETTING_KEY_LIST.length, UI_SCREEN_IDS.length);
 });
-await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board; order_card / customer_card עוד לא', () => {
+await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / customer_card; order_card / employee_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['order_card', 'customer_card', 'employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['order_card', 'employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
 });
@@ -160,7 +160,7 @@ const fakePrisma = () => { const calls = []; return { calls, employee: { update:
 await t('SELF_SWITCH_SCREENS מהרשומה; canSelfSwitchScreen רק להנהלה ראשית / מתכנת', () => {
   assert.deepEqual([...SELF_SWITCH_SCREENS], BOTH);
   for (const s of BOTH) { assert.ok(canSelfSwitchScreen(0, s)); assert.ok(canSelfSwitchScreen(2, s)); assert.ok(!canSelfSwitchScreen(1, s)); assert.ok(!canSelfSwitchScreen(null, s)); }
-  for (const s of ['order_card', 'customer_card', 'login', 'schedule', '__proto__']) assert.ok(!canSelfSwitchScreen(2, s), s);
+  for (const s of ['order_card', 'login', 'schedule', '__proto__']) assert.ok(!canSelfSwitchScreen(2, s), s);
   assert.ok(!isManagementRole('0'));
   assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })).screens, BOTH);
 });
@@ -189,7 +189,7 @@ await t('POST: מנהל סניף / עובד -> 403 בכל ערך; מסך לא מ
     const r = await applyUiVariantRequest({ screen, body: { value }, employee: emp({ roleId }), prisma: fp });
     assert.equal(r.status, 403, `${screen}/${roleId}/${value}`); assert.equal(fp.calls.length, 0);
   }
-  for (const screen of ['order_card', 'customer_card', 'login', 'schedule', '', '__proto__', 'PROFILE']) {
+  for (const screen of ['order_card', 'login', 'schedule', '', '__proto__', 'PROFILE']) {
     const fp = fakePrisma();
     const r = await applyUiVariantRequest({ screen, body: { value: 'a5' }, employee: emp({ roleId: 2 }), prisma: fp });
     assert.equal(r.status, 400, screen); assert.equal(fp.calls.length, 0);
@@ -215,7 +215,7 @@ await t('shouldShowVariantToggle: רק לרשאי, רק במסך עם שתי ג�
   assert.ok(!ok('profile', '/profile', false)); assert.ok(!ok('profile', '/profile', 'true'));
   assert.ok(!ok('attendance', '/employees/abc/attendance'), 'אין גרסה ישנה לעריכת עובד');
   assert.ok(!ok('admin_hub', '/admin/settings')); assert.ok(!ok('profile', '/'));
-  assert.ok(!ok('order_card', '/orders/5')); assert.ok(!ok('customer_card', '/customers/5'));
+  assert.ok(!ok('order_card', '/orders/5')); assert.ok(ok('customer_card', '/customers/5')); assert.ok(!ok('customer_card', '/orders/5'));
   for (const p of ['/customer-interface', '/punch-clock', '/print/order/5', '/dashboard/dresses/5/print']) { assert.ok(!ok('shell', p), p); assert.ok(!ok('error_report', p), p); }
 });
 const TOGGLE = read('app/components/variant/PageVariantToggle.js');
