@@ -2,8 +2,9 @@
 // הרצה: node scripts/test_redact_sensitive.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 // הגרסה המקבילה בתוך app/layout.js נבדקת ב-scripts/test_visitlog_interceptor_rendered.mjs
 import assert from 'node:assert/strict';
+import { SECRET_SETTING_KEYS } from '../app/lib/secretSettingKeys.js';
 import {
-  REDACTED, isSensitiveKey, isAuthEndpoint, redactRequestQuery, redactUrl, redactLogText,
+  REDACTED, MAX_BODY_LEN, isSensitiveKey, isAuthEndpoint, redactRequestQuery, redactUrl, redactLogText,
 } from '../lib/redactSensitive.js';
 
 let passed = 0;
@@ -134,6 +135,71 @@ t('redactLogText: digit runs, base64 and length', () => {
   assert.equal(redactLogText(null), '');
   assert.equal(redactLogText('שגיאה בשמירה'), 'שגיאה בשמירה');
   assert.equal(typeof redactLogText({ a: 1 }), 'string');
+});
+
+t('key/value pair objects: sibling value masked when the NAME is sensitive (SystemSetting arrays)', () => {
+  const body = [
+    { key: 'nedarim_plus_token', value: 'PLAINTEXT-TOKEN-1' }, { key: 'neon_api_key', value: 'napi_PLAINTEXT2' },
+    { key: 'yemot_api_token', value: 'PLAINTEXT-3' }, { key: 'store_name', value: 'Gemach' }, { name: 'adminPassword', newValue: 'pw!', oldValue: 'old' },
+  ];
+  const out = JSON.parse(redactRequestQuery(J(body), '/api/orders'));
+  assert.deepEqual(out.map((o) => o.value ?? o.newValue), [REDACTED, REDACTED, REDACTED, 'Gemach', REDACTED]);
+  assert.equal(out[4].oldValue, REDACTED);
+  assert.equal(out[0].key, 'nedarim_plus_token');
+  const wrapped = JSON.parse(redactRequestQuery(J({ employeeId: 5, pin: '1234', items: body }), '/api/orders'));
+  assert.equal(wrapped.pin, REDACTED);
+  assert.ok(!J(wrapped).includes('PLAINTEXT'));
+  for (const k of SECRET_SETTING_KEYS) assert.equal(isSensitiveKey(k), true, 'secret setting key not covered by the key rule: ' + k);
+});
+
+t('/api/settings* bodies are dropped entirely', () => {
+  for (const u of ['/api/settings', '/api/settings/', '/api/settings/guide', '/api/settings/labels', '/api/a5/settings', '/api/a5/settings/approvers', '/api/admin/backups/settings'])
+    assert.equal(redactRequestQuery(J([{ key: 'x', value: 'y' }]), u), null, u);
+  for (const u of ['/api/settingsx', '/api/system-settings', '/api/my/settings-x']) assert.equal(isAuthEndpoint(u), false, u);
+});
+
+t('gmk_ API keys and Bearer tokens are masked anywhere (neutral keys, URLs, query strings, text)', () => {
+  const key = 'gmk_' + 'a1B2c3D4e5F6g7H8i9';
+  const out = redactRequestQuery(J({ note: 'use ' + key + ' now', headers: { x: 'Bearer abc.def-123' }, h: 'bearer   zzz' }), '/api/x');
+  assert.ok(!out.includes(key) && !out.includes('abc.def') && !out.includes('zzz'));
+  assert.ok(out.includes('Bearer ' + REDACTED));
+  assert.ok(!redactUrl('/api/x/' + key + '?a=1').includes(key));
+  assert.ok(!redactRequestQuery('?k=' + key, '/api/x').includes('a1B2c3'));
+  assert.equal(redactRequestQuery('see ' + key, '/api/x'), null);
+  assert.equal(redactRequestQuery('Authorization: Bearer abc', '/api/x'), null);
+  assert.equal(redactRequestQuery(J({ k: 'gmk_short' }), '/api/x'), J({ k: 'gmk_short' }));
+});
+
+t('JSON inside a string value (one level) is scanned with the key rules', () => {
+  const inner = J({ pin: '9876', amount: 5, nested: { zeout: '123' } });
+  const out = JSON.parse(redactRequestQuery(J({ payload: inner, other: 'x' }), '/api/x'));
+  assert.ok(!out.payload.includes('9876') && !out.payload.includes('123'));
+  assert.deepEqual(JSON.parse(out.payload), { pin: REDACTED, amount: 5, nested: { zeout: REDACTED } });
+  // broken / too long embedded JSON that mentions a secret key -> dropped, never passed through
+  assert.equal(JSON.parse(redactRequestQuery(J({ p: '{"pin":"12' }), '/api/x')).p, REDACTED);
+  assert.equal(JSON.parse(redactRequestQuery(J({ p: J({ a: 'xx '.repeat(200), pin: '1' }) }), '/api/x')).p, REDACTED);
+  // idempotent
+  const once = redactRequestQuery(J({ payload: inner }), '/api/x');
+  assert.equal(redactRequestQuery(once, '/api/x'), once);
+});
+
+t('key-name gaps: pin*, pwd, ccv', () => {
+  for (const k of ['pinCode', 'pin1', 'pinValue', 'pinNumber', 'pwd', 'userPwd', 'newPwd', 'ccv', 'CCV2']) assert.equal(isSensitiveKey(k), true, k);
+  for (const k of ['pinned', 'pinnedItems', 'pinMode']) assert.equal(isSensitiveKey(k), false, k);
+});
+
+t('query string: duplicated keys scanned one by one, #fragment stripped', () => {
+  const q = redactRequestQuery('?pin=1&pin=2&a=1&a=2', '/api/x');
+  assert.equal(q, '?pin=' + encodeURIComponent(REDACTED) + '&pin=' + encodeURIComponent(REDACTED) + '&a=1&a=2');
+  assert.equal(redactRequestQuery('?a=1#token=abc', '/api/x'), '?a=1');
+  assert.equal(redactUrl('/orders?a=1&a=2#secret'), '/orders?a=1&a=2');
+  assert.equal(redactUrl('/orders#frag'), '/orders');
+  assert.ok(!decodeURIComponent(redactUrl('/api/x?a=1&a=%7B%22pin%22%3A%229876%22%7D')).includes('9876'));
+  assert.equal(redactUrl('/api/x?t=1&t=Bearer%20abcdef'), '/api/x?t=1&t=Bearer+' + encodeURIComponent(REDACTED));
+});
+
+t('oversized body is dropped without parsing', () => {
+  assert.equal(redactRequestQuery('{"a":"' + 'x '.repeat(MAX_BODY_LEN) + '"}', '/api/x'), null);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}`);
