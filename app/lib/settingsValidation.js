@@ -19,6 +19,9 @@ export const NUMBER_FIELD_LIMITS = {
   delivery_price: { min: 0, max: 1000, allowDecimal: true },
   backup_interval_hours: { min: 1, max: 336, allowDecimal: true }, // 336h = 2 weeks
   late_return_threshold_days: { min: 1, max: 90 },
+  // חלונית "הזמנות שלא הוחזרו" בלבד (749aaf87): 0 חוקי (= כבר ביום ההחזרה הצפוי, בשילוב שעה); ריק = כמו late_return_threshold_days
+  overdue_popup_threshold_days: { min: 0, max: 90, allowEmpty: true, emptyHint: 'ריק = כמו ימי האיחור הרגילים' },
+  overdue_popup_after_hour: { min: 0, max: 23, allowEmpty: true, emptyHint: 'ריק = בלי הגבלת שעה' },
 };
 
 // allowEmpty: ערך ריק (או שורה חסרה) חוקי ומשמעותו "ברירת המחדל הישנה" - חל על הגדרות
