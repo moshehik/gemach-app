@@ -90,13 +90,26 @@ function OrderCardBody({ orderRef }) {
       const top = p.getBoundingClientRect().top - main.getBoundingClientRect().top;
       rail.style.setProperty('--rail-top', `${Math.max(0, Math.round(top))}px`);
     };
-    fit();
-    const ro = new ResizeObserver(fit);
+    // tall() של העיצוב (כרטיס-הזמנה.html, סקריפט "סרגל הסיכום מתחיל בגובה הלוח הראשון", שורה tall): רייל גבוה מהחלון נדבק עם top שלילי כך שהתחתית שלו
+    // (שמור / בטל שינויים) תמיד נראית: top = min(גובה התפריט העליון + 16, גובה החלון - גובה הרייל - 16). הדמו מסתמך על --snav-h, באתר המשתנה הוא --gm-snav-h (tokens.css).
+    // במסך צר (מתחת ל-1024) הרייל הוא גיליון תחתון קבוע - אין top מוטבע. נמדד מחדש בכל שינוי גודל של הרייל / תוכנו / החלון.
+    const tall = () => {
+      if (window.innerWidth < 1024) { rail.style.removeProperty('top'); return; }
+      const snav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gm-snav-h')) || 0;
+      rail.style.top = `${Math.min(snav + 16, window.innerHeight - rail.offsetHeight - 16)}px`;
+    };
+    const both = () => { fit(); tall(); };
+    both();
+    const ro = new ResizeObserver(both);
     ro.observe(main);
+    const rro = new ResizeObserver(tall);
+    rro.observe(rail);
     const mo = new MutationObserver(fit);
     mo.observe(main, { attributes: true, subtree: true, attributeFilter: ['class'] });
-    window.addEventListener('resize', fit);
-    return () => { ro.disconnect(); mo.disconnect(); window.removeEventListener('resize', fit); };
+    const rmo = new MutationObserver(tall);
+    rmo.observe(rail, { childList: true, subtree: true, characterData: true });
+    window.addEventListener('resize', both);
+    return () => { ro.disconnect(); rro.disconnect(); mo.disconnect(); rmo.disconnect(); window.removeEventListener('resize', both); rail.style.removeProperty('top'); };
   }, [oc.status, oc.tab]);
   return (
     <div className="app oc-app" id="app">

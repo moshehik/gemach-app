@@ -188,3 +188,18 @@ test('הרייל מתחיל בגובה הסקשן הראשון: --rail-top מ-.p
   assert.match(a5, /<aside className="rail" id="rail" aria-label="סיכום ההזמנה" ref=\{railRef\}>/);
   assert.match(read('design-system/components.css'), /@media \(min-width:1024px\)\{\s*\.gm-ds \.app \.rail\{margin-top:var\(--rail-top,0px\)\}/, 'כלל הפלטה שמקבל את המשתנה');
 });
+
+// דוח ההשוואה (F6): tall() של העיצוב - רייל גבוה מהחלון נדבק כך שהתחתית נראית
+test('tall(): top = min(snav + 16, גובה חלון - גובה רייל - 16) רק מ-1024px; נמדד ב-ResizeObserver של הרייל + MutationObserver על תוכנו + resize; מתנקה', () => {
+  const a5 = read(`${OC}/OrderCardA5.js`);
+  assert.match(a5, /rail\.style\.top = `\$\{Math\.min\(snav \+ 16, window\.innerHeight - rail\.offsetHeight - 16\)\}px`/);
+  assert.match(a5, /getPropertyValue\('--gm-snav-h'\)/);
+  assert.match(a5, /if \(window\.innerWidth < 1024\) \{ rail\.style\.removeProperty\('top'\); return; \}/);
+  assert.match(a5, /rro\.observe\(rail\)/);
+  assert.match(a5, /rmo\.observe\(rail, \{ childList: true, subtree: true, characterData: true \}\)/);
+  assert.match(a5, /rail\.style\.removeProperty\('top'\)\; window|rail\.style\.removeProperty\('top'\); \}\;?/.test(a5) ? /./ : /removeProperty\('top'\)/);
+  // אותה נוסחה: חלון 600, רייל 900, תפריט 64 -> top שלילי (-316) כדי שהתחתית תיראה; רייל נמוך -> sticky רגיל (80)
+  const top = (snav, vh, h) => Math.min(snav + 16, vh - h - 16);
+  assert.equal(top(64, 600, 900), -316);
+  assert.equal(top(64, 900, 400), 80);
+});
