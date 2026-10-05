@@ -108,10 +108,18 @@ await t('CC-O7: computeCustomerRequiredFieldsFromLegacy - בסיס + require_* +
   assert.equal(f({ require_customer_email: 'false' }).value, 'firstName,lastName,phone1');
   assert.equal(f({ require_full_address: 'true' }).value, 'firstName,lastName,phone1,city,street,houseNum');
   assert.equal(f({ require_customer_id_number: 'true' }).value, 'firstName,lastName,phone1,zeout');
-  const neve = f(new Map([['require_customer_email', 'true'], ['require_customer_id_number', 'true'], ['mandatory_fields', 'אימייל, עיר,טלפון_1,לא_קיים'], ['mandatory_field_groups', '[["phone2","email"]]']]));
+  // mandatory_fields = חובה קשיחה רק כש-strict_mandatory_fields='true' (D3 של הסקירה); אחרת רכה ומופיעה ב-soft
+  const base = [['require_customer_email', 'true'], ['require_customer_id_number', 'true'], ['mandatory_fields', 'אימייל, עיר,טלפון_1,לא_קיים'], ['mandatory_field_groups', '[["phone2","email"]]']];
+  const neve = f(new Map([...base, ['strict_mandatory_fields', 'true']]));
   assert.deepEqual(neve.keys, ['firstName', 'lastName', 'phone1', 'email', 'city', 'zeout']);
   assert.deepEqual(neve.reasons.email, ['require_customer_email', 'mandatory_fields']);
+  assert.deepEqual(neve.soft, []);
   assert.deepEqual(lib.parseRequiredFields(neve.value), neve.keys);
+  const lax = f(new Map(base)); // strict חסר / כבוי
+  assert.deepEqual(lax.keys, ['firstName', 'lastName', 'phone1', 'email', 'zeout'], 'city לא חובה קשיחה בלי strict');
+  assert.deepEqual(lax.soft, ['city'], 'city רכה; email כבר קשיחה מ-require_customer_email ולא מופיעה כרכה');
+  assert.deepEqual(f(new Map([...base, ['strict_mandatory_fields', 'false']])).keys, lax.keys);
+  assert.deepEqual(f({ mandatory_fields: 'שם_משפחה,טלפון_1,טלפון_2' }).soft, ['phone2'], 'שם משפחה וטלפון כבר בבסיס');
 });
 await t('CC-O7: סקריפט הזריעה קורא בלבד עד --apply, בלי ערך קבוע, וכותב פעם אחת בלבד', () => {
   const c = code(read('scripts/seed_customer_required_fields_setting.js'));

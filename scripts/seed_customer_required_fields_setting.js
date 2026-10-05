@@ -1,6 +1,6 @@
 // מוסיף את customer_required_fields (כרטיס הלקוח החדש, תשובת הבעלים 4.10.2026: "מקום בהגדרות לקבוע איזה שדות הם חובה").
 // CC-O7 (תשובת הבעלים 4.10.2026): הערך שנזרע לא קבוע ולא זהה לשני הגמחים - הוא מחושב לכל ארגון בקריאה בלבד מהגדרות החובה
-// שהארגון כבר קבע (require_customer_email, require_full_address, require_customer_id_number [נווה יעקב], mandatory_fields)
+// שהארגון כבר קבע (require_customer_email, require_full_address, require_customer_id_number [נווה יעקב], mandatory_fields רק כש-strict_mandatory_fields='true'; אחרת הן "רכות" ומוצגות ב-dry-run)
 // על גבי הבסיס שם פרטי + שם משפחה + טלפון, כך שכל גמח שומר את השדות שכבר דרש (lib/customerRequiredFields.js
 // computeCustomerRequiredFieldsFromLegacy). ה-dry-run מדפיס את הערך המחושב + ה-host + מקור כל שדה, לאישור הבעלים לפני כל כתיבה.
 //
@@ -81,6 +81,7 @@ async function main() {
     const computed = await computeValue(map);
     for (const k of SOURCE_KEYS) console.log(`org${org}:   source ${k} = ${map.has(k) ? JSON.stringify(map.get(k)) : '(not set)'}`);
     for (const k of computed.keys) console.log(`org${org}:   field ${k} <- ${computed.reasons[k].join(', ')}`);
+    if (computed.soft.length) console.log(`org${org}:   soft (mandatory_fields while strict_mandatory_fields is not 'true' - NOT hard-required in the card): ${computed.soft.join(', ')}`);
     if (map.get('mandatory_field_groups')) console.log(`org${org}:   note: mandatory_field_groups and require_marketing_consent stay enforced separately on creation (not expressible as fields)`);
     if (!apply) {
       console.log(`org${org}: DRY RUN - would create ${KEY} = ${computed.value} on host ${host}. Owner approval needed, then re-run with --apply --expect-host=${host.split('.')[0]}`);

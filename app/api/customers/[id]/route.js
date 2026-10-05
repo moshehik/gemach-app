@@ -69,6 +69,10 @@ export async function PUT(request, { params }) {
     if (!oldCustomer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
+    // לקוחה שנמחקה (soft delete) לא נערכת: בלי זה שמירה מכרטיס פתוח (או מסנכרון אופליין) משנה שדות של לקוחה מחוקה ומשאירה אותה "חיה" בהיסטוריה.
+    if (oldCustomer.isDeleted) {
+      return NextResponse.json({ error: 'הלקוחה נמחקה ולא ניתן לערוך אותה', code: 'CUSTOMER_DELETED' }, { status: 409 });
+    }
 
     // Offline data collision check
     if (body.updatedAt && oldCustomer.updatedAt) {
@@ -275,7 +279,7 @@ export async function DELETE(request, { params }) {
         orders: {
           select: {
             orderId: true, isDeleted: true, eventDate: true, toDate: true, returnDate: true, totalAmount: true,
-            items: { select: { barcode: true, isReturned: true } },
+            items: { where: { isDeleted: false }, select: { barcode: true, isReturned: true, isDeleted: true } }, // פריט שהוסר (isDeleted) לא חוסם מחיקה
             payments: { where: { isDeleted: false }, select: { amount: true } },
             obligations: { where: { isDeleted: false }, select: { amount: true } },
           },

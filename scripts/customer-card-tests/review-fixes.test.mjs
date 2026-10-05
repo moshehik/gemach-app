@@ -26,7 +26,34 @@ await t('(1) מחיקה: פריט שנסרק ולא הוחזר חוסם, גם ב
   const returned = ord(6, { items: [{ barcode: '451238', isReturned: true }, { barcode: null, isReturned: false }] });
   assert.equal(acc.deleteBlockers({ orders: [returned], refunds: [], todayKey: '2026-10-04', dateKey }).blocked, false);
   const route = code(read('../../app/api/customers/[id]/route.js'));
-  assert.match(route, /items: \{ select: \{ barcode: true, isReturned: true \} \}/, 'השרת לא טוען את הפריטים');
+  assert.match(route, /items: \{ where: \{ isDeleted: false \}, select: \{ barcode: true, isReturned: true, isDeleted: true \} \}/, 'השרת לא טוען את הפריטים (רק לא מוסרים)');
+});
+
+// D1 (סקירה סופית): פריט שהוסר מההזמנה (isDeleted) שנסרק ולא הוחזר לא חוסם מחיקה לנצח
+await t('D1: פריט שהוסר (isDeleted) לא נחשב שמלה אצל הלקוחה, ופריט פעיל באותה הזמנה כן', () => {
+  const removed = ord(7, { items: [{ barcode: '451238', isReturned: false, isDeleted: true }] });
+  const b = acc.deleteBlockers({ orders: [removed], refunds: [], todayKey: '2026-10-04', dateKey });
+  assert.equal(b.blocked, false); assert.deepEqual(b.holdingOrders, []);
+  const mixed = ord(8, { items: [{ barcode: '451238', isReturned: false, isDeleted: true }, { barcode: '451239', isReturned: false, isDeleted: false }] });
+  assert.deepEqual(acc.deleteBlockers({ orders: [mixed], refunds: [], todayKey: '2026-10-04', dateKey }).holdingOrders, [8]);
+});
+
+// D4: ביטול חסימה מעדכן updatedAt מתשובת ה-PATCH (אחרת ה-PUT הבא נחסם ב-409 שווא)
+await t('D4: unblock לוקח updatedAt מתשובת ה-PATCH', () => {
+  const hook = code(read('../../app/components/customer-card/useCustomerCard.js'));
+  const i = hook.indexOf('unblockPayload()');
+  const seg = hook.slice(i, hook.indexOf('ביטול חסימה', i + 400) > 0 ? i + 1800 : i + 1800);
+  assert.match(seg, /patched\.updatedAt/); assert.match(seg, /setSaved\(\(p\) => \(\{ \.\.\.p, isBlocked: false, blockedReason: null, \.\.\.stamp \}\)\)/);
+});
+
+// D5: PUT על לקוחה מחוקה נדחה (409, בעברית) לפני כל בדיקה/כתיבה
+await t('D5: PUT /api/customers/[id] דוחה לקוחה מחוקה לפני בדיקת ההתנגשות והכתיבה', () => {
+  const route = code(read('../../app/api/customers/[id]/route.js'));
+  const put = route.slice(route.indexOf('export async function PUT'), route.indexOf('export async function PATCH'));
+  const iDel = put.indexOf('oldCustomer.isDeleted');
+  assert.ok(iDel > 0, 'אין בדיקת isDeleted ב-PUT');
+  assert.ok(iDel < put.indexOf('Data Collision') && iDel < put.indexOf('prisma.customer.update'), 'הבדיקה חייבת לבוא לפני ההתנגשות והעדכון');
+  assert.match(put.slice(iDel, iDel + 300), /status: 409/); assert.match(put.slice(iDel, iDel + 300), /נמחקה/);
 });
 
 // (2) כלל אחד לשרת ולכרטיס; זיכוי שלא בוצע חוסם

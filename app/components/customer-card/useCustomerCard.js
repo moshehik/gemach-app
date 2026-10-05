@@ -230,8 +230,11 @@ export default function useCustomerCard(customerId, ui) {
         ui.toast('error', (data && data.error) || 'שגיאה בביטול החסימה');
         return;
       }
-      setSaved((p) => ({ ...p, isBlocked: false, blockedReason: null }));
-      setCur((p) => ({ ...p, isBlocked: false, blockedReason: null }));
+      // updatedAt מתשובת ה-PATCH: בלעדיו ה-PUT הבא נשלח עם updatedAt ישן ונחסם ב-409 שווא ("עודכן במקום אחר")
+      const patched = await res.json().catch(() => null);
+      const stamp = patched && patched.updatedAt ? { updatedAt: patched.updatedAt } : {};
+      setSaved((p) => ({ ...p, isBlocked: false, blockedReason: null, ...stamp }));
+      setCur((p) => ({ ...p, isBlocked: false, blockedReason: null, ...stamp }));
       ui.toast('info', 'החסימה בוטלה', 'הלקוחה יכולה להזמין שוב');
       setHistoryTick((t) => t + 1);
     } catch {
