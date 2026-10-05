@@ -395,6 +395,77 @@ export default async function RootLayout({ children }) {
       originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: payload }).catch(function(){});
     } catch (e) {}
   }
+  // אבטחה: גוף בקשה הוא לא לוג ניטרלי - ב-login/PIN/נוכחות הוא מכיל סיסמאות, ובשאר הנתיבים ת"ז / בנק / אשראי / צרופות base64.
+  // לכן כאן (לפני שהרשומה נכנסת לתור) endpoint של אימות לא נרשם עם גוף כלל, ובשאר הנתיבים שדות רגישים מוסתרים.
+  // המקבילה בשרת: lib/redactSensitive.js (+ app/api/log-visit) - לשמור זהות; scripts/test_redact_sensitive.mjs בודק שוויון.
+  // חשוב: בלי backslash בביטויים (משתמשים ב-[/] ו-[0-9]) - בתוך template string רצף backslash+slash קורס לסלאש בודד ושובר את הביטוי בשקט (באג PR #188).
+  var REDACTED = '[מוסתר]';
+  var AUTH_EP = /[/]api[/](login([/]|$)|logout([/]|$)|auth([/]|$)|attendance([/]|$)|dev[/]agent-login|admin[/]api-keys|employees[/][^/?]+[/](reset-|set-)?password)|[/]api[/](history|logs)$/i;
+  var BASE64_RUN = /^[A-Za-z0-9+/=_-]{256,}$/;
+  var TEXT_SECRET = /pass|secret|token|pin|otp|authorization|credential|apikey|zeout|idnumber|iban|bank|card|cvv|cvc|filecontent|base64|data:/i;
+  var BARE_DIGITS = /^["']?[0-9][0-9 -]{2,}["']?$/;
+  function isAuthEndpoint(u) {
+    try { return AUTH_EP.test(new URL(String(u), 'http://x').pathname); } catch (e) { return AUTH_EP.test(String(u)); }
+  }
+  function isSensitiveKey(key) {
+    var k = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1
+      || k.indexOf('credential') !== -1 || k.indexOf('apikey') !== -1 || k.indexOf('privatekey') !== -1 || k.indexOf('otp') !== -1
+      || k === 'code' || k === 'jwt' || k === 'ssn'
+      || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k)
+      || k.indexOf('zeout') !== -1 || k.indexOf('idnumber') !== -1 || k.indexOf('teudat') !== -1 || k.indexOf('nationalid') !== -1
+      || k.indexOf('iban') !== -1 || k.indexOf('bank') === 0 || k.indexOf('accountnumber') !== -1
+      || k.indexOf('creditcard') !== -1 || k.indexOf('ccnumber') !== -1 || k.indexOf('cvv') !== -1 || k.indexOf('cvc') !== -1
+      || (k.indexOf('card') === 0 && k !== 'cardvariant')
+      || k.indexOf('filecontent') !== -1 || k.indexOf('base64') !== -1;
+  }
+  function redactString(s) {
+    if (s.length > 20 && /^data:[^,]*;base64,/i.test(s)) return REDACTED;
+    if (s.length >= 256 && BASE64_RUN.test(s)) return REDACTED;
+    return s.length > 300 ? s.slice(0, 300) + '…[נחתך]' : s;
+  }
+  function redactValue(v, d) {
+    if (typeof v === 'string') return redactString(v);
+    if (!v || typeof v !== 'object') return v;
+    if (d > 6) return REDACTED;
+    if (Array.isArray(v)) return v.map(function(x) { return redactValue(x, d + 1); });
+    var out = {};
+    Object.keys(v).forEach(function(k) { out[k] = isSensitiveKey(k) ? REDACTED : redactValue(v[k], d + 1); });
+    return out;
+  }
+  function redactQs(qs) {
+    var p = new URLSearchParams(qs.charAt(0) === '?' ? qs.slice(1) : qs);
+    var ch = false;
+    Array.from(p.keys()).forEach(function(k) {
+      var orig = p.get(k);
+      var next = isSensitiveKey(k) ? REDACTED : redactString(orig);
+      if (next !== orig) { p.set(k, next); ch = true; }
+    });
+    return ch ? '?' + p.toString() : qs;
+  }
+  // כשל כלשהו => '' (לא נרשם גוף) - לעולם לא נופלים חזרה לטקסט הגולמי
+  function sanitizeRequestQuery(text, endpoint) {
+    try {
+      if (isAuthEndpoint(endpoint)) return '';
+      var s = String(text);
+      var t = s.trim();
+      if (t.charAt(0) === '{' || t.charAt(0) === '[') {
+        try { return JSON.stringify(redactValue(JSON.parse(t), 0)); } catch (e) { return TEXT_SECRET.test(t) ? '' : s; }
+      }
+      if (BARE_DIGITS.test(t) || redactString(t) === REDACTED) return '';
+      if (t.charAt(0) === '?' || t.indexOf('=') !== -1) return redactQs(t);
+      return TEXT_SECRET.test(t) ? '' : redactString(s);
+    } catch (e) { return ''; }
+  }
+  function sanitizeUrl(u) {
+    try {
+      var s = String(u);
+      var i = s.indexOf('?');
+      if (i === -1) return s;
+      if (isAuthEndpoint(s)) return s.slice(0, i);
+      return s.slice(0, i) + redactQs(s.slice(i));
+    } catch (e) { var j = String(u).indexOf('?'); return j === -1 ? String(u) : String(u).slice(0, j); }
+  }
   window.__queueVisitLog = function(entry) {
     entry.ts = Date.now();
     visitQueue.push(entry);
@@ -419,13 +490,14 @@ export default async function RootLayout({ children }) {
           if (!requestQuery && args[1] && args[1].body) {
             requestQuery = typeof args[1].body === 'string' ? args[1].body : JSON.stringify(args[1].body);
           }
+          if (requestQuery) requestQuery = sanitizeRequestQuery(requestQuery, endpoint);
           window.__GLOBAL_LAST_API_CALL__ = url;
           window.__LAST_API_CALLS__ = window.__LAST_API_CALLS__ || {};
           window.__LAST_API_CALLS__[window.location.pathname] = url;
           window.__LAST_API_METADATA__ = window.__LAST_API_METADATA__ || {};
           window.__LAST_API_METADATA__[url] = { responseSize: respSize, executionTime: execTime, timestamp: new Date().toISOString() };
           window.dispatchEvent(new CustomEvent('agy_api_call', { detail: { url: url, endpoint: endpoint, requestQuery: requestQuery, responseSize: respSize, executionTime: execTime } }));
-          window.__queueVisitLog({ pageUrl: url, requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime });
+          window.__queueVisitLog({ pageUrl: sanitizeUrl(url), requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime });
         } catch(e) {}
       };
 
