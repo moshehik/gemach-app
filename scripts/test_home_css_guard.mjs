@@ -117,6 +117,7 @@ const IMPORTANT_BG_OK = new Set([
   '.gm-ds.gm-home :is(.card,.stepper,.itm,.coll[open],.dhero)',
   '.gm-ds.gm-home .hero-in.jshell .card', // שקוף בתוך המסגרת המשותפת
   '.gm-ds.gm-home .rtbl thead tr th', // כותרת טבלה כחולה (דורס "כותרת דביקה" של globals.css)
+  '.gm-ds.gm-home.gm-home .advp .inpw > select.inp', // חץ בורר "סטטוס הזמנה" (כספים): כלל השדות של הפלטה מאפס background-image דרך #dlg בסלקטור
 ]);
 t('רקע עם !important ב-home.css רק בכללים המאושרים (אחרת זו דריסה שקטה של הפלטה)', () => {
   const bad = [];
@@ -995,6 +996,41 @@ t('הגדרות: השורש gm-ds gm-st home-bg dlg-dark, בלי gm-home; אין
   }
   // .tp-c (תאי בוחר השעה) לבנים בעיצוב
   assert.deepEqual(bad.filter((s) => !/\.tp-c/.test(s)), []);
+});
+
+/* ---------- כספים והתראות בחיפוש המתקדם (5.10.2026) ---------- */
+const CLS_PRE = String.fromCharCode(92) + '.'; // regex: נקודה ליטרלית
+const CLS_POST = String.fromCharCode(92) + 'b'; // regex: גבול מילה
+const selRules = parseCss(HOME_CSS).filter((r) => /select\.inp/.test(r.sel));
+t('כספים: בורר "סטטוס הזמנה" (select.inp) — כלל אחד בהיקף .gm-ds.gm-home, בלי !important, בלי hex / תמונה, רק משתני --gm-*', () => {
+  assert.ok(selRules.length >= 1, 'חסר כלל select.inp ב-home.css');
+  for (const r of selRules) {
+    for (const sel of splitSel(r.sel)) assert.ok(/^\.gm-ds\.gm-home(\.gm-home)? /.test(sel), 'מחוץ להיקף: ' + sel);
+    assert.deepEqual(decls(r.body).filter((d) => isImportant(d)).map((d) => d.prop), ['background-image', 'background-position', 'background-size', 'background-repeat'], '!important רק על מאפייני החץ המצויר (הפלטה מאפסת אותם דרך #dlg בסלקטור)');
+    assert.ok(!/#[0-9a-f]{3,8}\b|url\(/i.test(r.body), 'hex / תמונה ב-' + r.sel);
+    for (const m of r.body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה שאינו gm-: --' + m[1]);
+    assert.ok(/appearance:\s*none/.test(r.body), 'בלי appearance:none חץ הדפדפן מצטרף לחץ המצויר');
+  }
+  assert.deepEqual(mediaBeforeBase(selRules, 'home.css (select)'), []);
+});
+t('כספים והתראות: הקומפוננטות משתמשות רק במחלקות שכבר בפלטה (advs / advgrid / advflags / advfl / field / inpw / inp / chip) ובאייקוני sprite', () => {
+  const ADV = read('../app/components/home/HomeAdvanced.js');
+  const RES = read('../app/components/home/HomeAdvResults.js');
+  const CFG = read('../app/components/home/homeAdvConfig.js');
+  for (const c of ['advs', 'advgrid', 'advflags', 'advfl', 'className="field"', 'className="inpw"', 'className="inp"']) assert.ok(ADV.includes(c), c);
+  // כל מחלקה שהקומפוננטה החדשה מזכירה קיימת בפלטה או ב-home.css
+  for (const c of ['advs', 'advgrid', 'advflags', 'advfl', 'inpw', 'chip', 'rlink', 'lrow']) {
+    assert.ok(new RegExp(CLS_PRE + c + CLS_POST).test(PALETTE) || new RegExp(CLS_PRE + c + CLS_POST).test(HOME_CSS), 'אין כלל ל-.' + c);
+  }
+  // צ'יפים בתוצאות הכספים וההתראות הם מחלקות פלטה קיימות
+  for (const c of ['amtd', 'amtc', 'red', 'amber', 'gold', 'rose', 'blue']) assert.ok(new RegExp(CLS_PRE + 'chip' + CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .chip.' + c + ' בפלטה');
+  // כל אייקון שהתחומים החדשים מבקשים קיים ב-sprite
+  const SPRITE = read('../app/components/menu/spriteSymbols.js');
+  for (const i of ['bell', 'wallet', 'card', 'flag', 'bank', 'alert', 'undo', 'bag', 'user', 'pencil', 'list', 'file', 'mail']) assert.ok(SPRITE.includes('["' + i + '"'), 'אין אייקון ' + i);
+  assert.ok(!/<img|\.svg['"]/.test(ADV + RES), 'בלי תמונות / קבצי svg חיצוניים');
+  assert.ok(!/window\.(alert|confirm|prompt)|\balert\(|\bconfirm\(/.test(ADV + RES + CFG), 'בלי alert/confirm של הדפדפן');
+  assert.ok(!/<(button|a|span|div|li|label|input|select|svg|bdi)[^>]*\stitle=/.test(ADV + RES), 'טולטיפ דרך data-tip, לא title= על אלמנט');
+  assert.ok(!/טוגל/.test(ADV + RES + CFG + read('../lib/advAlerts.js') + read('../app/api/a5/adv-alerts/route.js')), 'בלי הלועזית "טוגל"');
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

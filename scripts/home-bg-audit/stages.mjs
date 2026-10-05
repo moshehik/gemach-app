@@ -118,6 +118,32 @@ if (which === 'real') {
   await capOpen(); await capFill('תקלה'); await capGo(); await sleep(900); await p.mouse.move(5, 5); await snap('34-cap-error');
   await p.evaluate(() => { window.__capOk = true; }); await clickText(p, 'לנסות שוב'); await sleep(1500); await p.mouse.move(5, 5); await snap('35-cap-retry-ok'); await p.evaluate(() => { window.__capOk = false; });
 }
+// כספים (5.10.2026, HM-03; בעיצוב מאחורי ה"+"): טופס, טופס ממולא, תוצאות, טבלה — מול הדמו; ובדף האמיתי בלבד — בורר "סטטוס הזמנה" עם ערך נבחר, שגיאת שרת
+const extraOpen = async (label) => { await fresh(); await clickText(p, 'לחיפוש מתקדם'); await sleep(500); const pl = await p.$('.advplus'); if (pl) { await pl.click(); await sleep(900); } await p.evaluate((t) => { const b = [...document.querySelectorAll('.advextra .advfb')].find((x) => x.textContent.includes(t)); if (b) b.click(); }, label); await sleep(800); };
+const finFill = async () => {
+  const a = await p.$('#adv-amount'); if (a) { await a.click(); await a.type('450'); }
+  const n = await p.$('#adv-name'); if (n) { await n.click(); await n.type('רחל'); await sleep(300); await p.keyboard.press('Escape'); }
+  const fl = await p.$('.advflags .advfl'); if (fl) await fl.click();
+  await p.mouse.move(5, 5);
+};
+await extraOpen('כספים'); await p.mouse.move(5, 5); await snap('40-fin-form');
+await finFill(); await snap('41-fin-form-filled');
+await clickText(p, 'חיפוש', '.advp .advact .btn.primary'); await sleep(2200); await p.mouse.move(5, 5); await snap('42-fin-results');
+await clickText(p, '', '.vopt[aria-label="מצב טבלה"]'); await sleep(500); await p.mouse.move(5, 5); await snap('43-fin-table');
+if (which === 'real') {
+  await extraOpen('כספים'); await p.select('#adv-ordst', 'הושכר'); await p.mouse.move(5, 5); await snap('44-fin-status-selected');
+  await extraOpen('כספים'); { const n = await p.$('#adv-name'); if (n) { await n.click(); await n.type('תקלה'); await p.keyboard.press('Escape'); } } await clickText(p, 'חיפוש', '.advp .advact .btn.primary'); await sleep(1200); await p.mouse.move(5, 5); await snap('45-fin-error');
+}
+// התראות (5.10.2026, HM-04 / F23; ההצעה בלבד — אין תחום כזה בדמו המאושר, לכן רק בדף האמיתי): טופס, סוג נבחר, תוצאות (3 שורות עם תג החזרה/הזמנה וצ'יפ), טבלה, הודעת "חלק לא נטען", ריק, שגיאה
+if (which === 'real') {
+  await extraOpen('התראות'); await p.mouse.move(5, 5); await snap('46-alerts-form');
+  { const fl = await p.$('.advflags .advfl'); if (fl) { await fl.click(); await p.mouse.move(5, 5); } } await snap('47-alerts-form-type-selected');
+  await extraOpen('התראות'); await clickText(p, 'חיפוש', '.advp .advact .btn.primary'); await sleep(2200); await p.mouse.move(5, 5); await snap('48-alerts-results');
+  await clickText(p, '', '.vopt[aria-label="מצב טבלה"]'); await sleep(500); await p.mouse.move(5, 5); await snap('49-alerts-table');
+  await extraOpen('התראות'); { const n = await p.$('#adv-name'); if (n) { await n.click(); await n.type('חלקי'); await p.keyboard.press('Escape'); } } await clickText(p, 'חיפוש', '.advp .advact .btn.primary'); await sleep(900); await snap('50-alerts-partial-toast');
+  await extraOpen('התראות'); { const n = await p.$('#adv-name'); if (n) { await n.click(); await n.type('ריק'); await p.keyboard.press('Escape'); } } await clickText(p, 'חיפוש', '.advp .advact .btn.primary'); await sleep(1500); await p.mouse.move(5, 5); await snap('51-alerts-empty');
+  await extraOpen('התראות'); { const n = await p.$('#adv-name'); if (n) { await n.click(); await n.type('שגיאה'); await p.keyboard.press('Escape'); } } await clickText(p, 'חיפוש', '.advp .advact .btn.primary'); await sleep(1500); await p.mouse.move(5, 5); await snap('52-alerts-error');
+}
 // חיפוש ברקוד (4.10.2026, בדף האמיתי בלבד — אין שלב כזה בעיצוב): שלוש השכרות של אותו פריט, לכל אחת שורה שנייה — הזמנה · לקוחה · תאריך עברי · מצב
 if (which === 'real') {
   await fresh(); await type('5511205'); await p.keyboard.press('Enter'); await sleep(2200); await p.mouse.move(5, 5); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await snap('36-barcode-results');
