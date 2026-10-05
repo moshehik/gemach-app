@@ -1070,7 +1070,7 @@ t('כספים: הצעות לשדה "עובד (זיכוי)" — מקור עובד
 });
 t('כספים: עלות שרת מתועדת ותקרות — מועמדות חוב עד 5000, זיכויים עד 5000, תשובה עד 200', () => {
   assert.ok(/DEBT_CANDIDATES_MAX = 5000/.test(ADVB_SRC));
-  assert.ok(/LIMIT \$\{DEBT_CANDIDATES_MAX\}/.test(ADVB_FIN));
+  assert.ok(/LIMIT \$\{DEBT_CANDIDATES_MAX \+ 1\}/.test(ADVB_FIN));
   assert.ok(/take: 5000/.test(ADVB_FIN) && /take: DEBT_CANDIDATES_MAX/.test(ADVB_FIN));
   assert.ok(/const LIMIT = 200/.test(ADVB_SRC));
 });
