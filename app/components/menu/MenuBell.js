@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Ic, MenuRow, relativeTime } from './menuParts';
+import { onActiveInterval } from '@/lib/idleGuard';
 
 const POLL_MS = 120000; // COPIED FROM NotificationBell.js - אסור לשנות (מכסת Neon)
 const SHOW = 5;
@@ -61,19 +62,8 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
   useEffect(() => {
     if (!enabled || !employeeId) return undefined;
     fetchCount();
-    let interval = null;
-    const startPolling = () => { if (!interval) interval = setInterval(fetchCount, POLL_MS); };
-    const stopPolling = () => { clearInterval(interval); interval = null; };
-    const onVisibility = () => {
-      if (document.hidden) stopPolling();
-      else { fetchCount(); startPolling(); }
-    };
-    if (!document.hidden) startPolling();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      stopPolling();
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
+    // lib/idleGuard.js: רץ רק בטאב גלוי עם פעילות משתמש ב-30 הדקות האחרונות; בחזרה - דגימה מיידית אחת.
+    return onActiveInterval(fetchCount, POLL_MS, { resumeStaleMs: 0 });
   }, [enabled, employeeId, fetchCount]);
 
   // רענון המונה בכל ניווט (מונה בלבד; הרשימה נטענת רק בפתיחה).
