@@ -6,8 +6,9 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
 import {
-  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, phoneKeysFromInput,
+  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, phoneKeysFromInput,
 } from '@/lib/listSearch';
+import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 
@@ -41,8 +42,9 @@ async function queryCustomersList(searchParams, opts) {
     const sort = searchParams.get('sort') || 'legacyId';
     const order = searchParams.get('order') || 'desc';
     const page = clampPage(searchParams.get('page') || '1');
-    // תקרה ל-limit (קודם: ?limit=100000000 שלף את כל הטבלה)
-    const limit = clampLimit(searchParams.get('limit'), 50, 5000);
+    // תקרה ל-limit (קודם: ?limit=100000000 שלף את כל הטבלה); EXPORT_MAX_ROWS מכסה ייצוא של כל הלקוחות, מעבר לה limitCapped:true
+    const limit = clampLimit(searchParams.get('limit'), 50, EXPORT_MAX_ROWS);
+    const limitCapped = limitWasCapped(searchParams.get('limit'), EXPORT_MAX_ROWS);
 
     const skip = (page - 1) * limit;
 
@@ -132,6 +134,7 @@ async function queryCustomersList(searchParams, opts) {
       total: totalCount,
       page,
       limit,
+      ...(limitCapped ? { limitCapped: true } : {}),
       totalPages: Math.ceil(totalCount / limit)
     };
   }

@@ -16,8 +16,9 @@ import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 import {
-  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, sizeTextFilter, phoneKeysFromInput,
+  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
+import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 
 export const dynamic = 'force-dynamic';
@@ -62,8 +63,9 @@ async function queryOrdersList(searchParams, opts) {
     const sort = searchParams.get('sort') || 'eventDate';
     const order = searchParams.get('order') || 'desc';
     const page = clampPage(searchParams.get('page') || '1');
-    // תקרה ל-limit (קודם: ?limit=100000000 שלף את כל הטבלה); 5000 מכסה את הייצוא הקיים (2000)
-    const limit = clampLimit(searchParams.get('limit'), 50, 5000);
+    // תקרה ל-limit (קודם: ?limit=100000000 שלף את כל הטבלה). התקרה (EXPORT_MAX_ROWS) גבוהה מספיק לייצוא של כל ההזמנות; מעבר לה limitCapped:true בתשובה
+    const limit = clampLimit(searchParams.get('limit'), 50, EXPORT_MAX_ROWS);
+    const limitCapped = limitWasCapped(searchParams.get('limit'), EXPORT_MAX_ROWS);
 
     const skip = (page - 1) * limit;
     const forRentals = searchParams.get('forRentals') === 'true';
@@ -706,6 +708,7 @@ async function queryOrdersList(searchParams, opts) {
       total: finalTotalCount,
       page,
       limit,
+      ...(limitCapped ? { limitCapped: true } : {}),
       totalPages: Math.ceil(finalTotalCount / limit)
     };
   }

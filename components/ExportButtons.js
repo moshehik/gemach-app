@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { downloadRowsAsXlsx } from '../lib/xlsxExport';
+import { EXPORT_MAX_ROWS } from '../lib/exportLimits';
 
 export default function ExportButtons({ data = [], filename = 'export', columns = [], iconOnly = false, onFetchData = null }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -351,7 +352,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                           value={exportLimit}
                           onChange={(e) => {
                              const val = parseInt(e.target.value);
-                             setExportLimit(isNaN(val) ? 100 : val);
+                             setExportLimit(isNaN(val) ? 100 : Math.min(val, EXPORT_MAX_ROWS)); // מעל התקרה השרת היה חותך בשקט - מגבילים כאן ומציגים הודעה
                              setIsAdminVerified(false); // Reset verification if limit changes
                           }}
                           style={{ width: '80px' }}
@@ -364,6 +365,9 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                             <svg className="icon"><use href="#i-check" /></svg>
                             אושר מנהל
                           </span>
+                        )}
+                        {exportLimit >= EXPORT_MAX_ROWS && (
+                          <span className="badge badge-warning" role="status">{`המקסימום לייצוא אחד הוא ${EXPORT_MAX_ROWS.toLocaleString('he-IL')} שורות - לייצוא נוסף צמצמו את הסינון`}</span>
                         )}
                       </div>
 

@@ -286,9 +286,12 @@ await t('מידה עם רווח מוביל שמורה (" 06") נתפסת', async
 });
 
 console.log('תקרות');
-await t('limit מוגבל ל-5000 ולא נשלף "כל הטבלה"; ערך לא תקין -> 50', async () => {
+await t('limit מוגבל ל-EXPORT_MAX_ROWS (100000) ולא נשלף "כל הטבלה"; ייצוא של 6000 לא נחתך; מעבר לתקרה limitCapped; ערך לא תקין -> 50', async () => {
   fixture();
-  assert.equal((await call('limit=100000000&filterStatus=all')).body.limit, 5000);
+  const huge = (await call('limit=100000000&filterStatus=all')).body;
+  assert.equal(huge.limit, 100000); assert.equal(huge.limitCapped, true, 'חיתוך מדווח');
+  const six = (await call('limit=6000&filterStatus=all')).body;
+  assert.equal(six.limit, 6000); assert.ok(!('limitCapped' in six), 'ייצוא מעל 5000 לא נחתך');
   assert.equal((await call('limit=abc&filterStatus=all')).body.limit, 50);
   assert.equal((await call('limit=-3&filterStatus=all')).body.limit, 50);
   assert.equal((await call('limit=2000&filterStatus=all')).body.limit, 2000);

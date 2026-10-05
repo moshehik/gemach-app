@@ -94,7 +94,10 @@ await t('שמות דומים: "רחלל", "כהנ", "אברהמ"', async () => {
 });
 await t('תקרת limit; כשל בעזר לא מפיל', async () => {
   customersFixture();
-  assert.equal((await get(customersRoute, '/api/customers?limit=99999999')).body.limit, 5000);
+  const hugeC = (await get(customersRoute, '/api/customers?limit=99999999')).body;
+  assert.equal(hugeC.limit, 100000); assert.equal(hugeC.limitCapped, true);
+  const sixC = (await get(customersRoute, '/api/customers?limit=6000')).body;
+  assert.equal(sixC.limit, 6000); assert.ok(!('limitCapped' in sixC));
   assert.equal((await get(customersRoute, '/api/customers?limit=x')).body.limit, 50);
   T.rawFail = true;
   const r = await get(customersRoute, '/api/customers?search=' + encodeURIComponent('זבולון'));
