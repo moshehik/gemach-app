@@ -12,7 +12,7 @@ import { fmtMoney } from '../orderCardLogic';
 import { relativeDayLabel } from './ocHistoryModel';
 
 // כרטיס אחד (D2, החלטת הבעלים 2026-10-05): "שלבי ההזמנה" + "יומן הזמנה" אוחדו לרשימה אחת. שורה לכל שלב + "תשלום" (החדש למעלה): שם השלב,
-// מתי / מי (היומן), לחצן "עובדים במשמרת" (רק כשהוגדרו משמרות - D3), וה-meta של השלב (טרם בוצע / "סמן הכנה בוצעה" / "בטל סימון").
+// מתי / מי (היומן), לחצן "עובדים במשמרת" (רק כשהוגדרו משמרות - D3), וה-meta של השלב ("סמן הכנה בוצעה" / "בטל סימון"; בלי צ׳יפ "טרם בוצע").
 // החלטת הבעלים 2026-10-05: אין צ׳יפ "נרשמה" (שורת ההזמנה) ולא "מידע בלבד" (שורת האירוע) - שלב מידע-בלבד בלי meta כלל.
 // הזמנה שהוחזרה במלואה / שבוטלה (stage.closedByReturn): אין "השלב הנוכחי", אין "סמן הכנה בוצעה" ואין "טרם בוצע" - אין פעולה ממתינה.
 export default function OcJournalCard({ nodes, stages, todayKey, canMark, busyKey, onMark }) {
@@ -48,7 +48,7 @@ function StageMeta({ s, canMark, busy, onMark }) {
       </button>
     );
   }
-  return s.done ? null : <span className="chip amber">טרם בוצע</span>;
+  return null; // שלב שלא בוצע: בלי תווית (בעלים 2026-10-06) - היעדר ✓ = טרם בוצע; ההדגשה של השלב הנוכחי ולחצן "סמן הכנה בוצעה" נשארים
 }
 
 function JournalRow({ n, stage, todayKey, canMark, busy, onMark }) {
