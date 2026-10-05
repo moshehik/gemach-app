@@ -151,13 +151,13 @@ await t('"העתק פרטי מערכת" - אותו טקסט כמו קודם', ()
 console.log('חוזה ה-API (נשמר מהחלון הישן)');
 await t('GET /api/error-report (מלא, בחלון) ו-?light=1 (בדיקה תקופתית, בכפתור) - 120 שנ\', רק כשסגור והטאב גלוי, 401 עוצר', () => {
   has(WIN, /fetchFreshJson\('\/api\/error-report', \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/, 'GET מלא (דרך מטמון 60 שנ - scripts/cpu-reduction-tests/error-report-cache.test.mjs)');
-  has(BTN, /fetch\('\/api\/error-report\?light=1'\)/, 'GET light');
-  // lib/idleGuard.js (6.10.2026): אותו קצב, אבל רק בטאב גלוי עם פעילות משתמש ב-30 הדקות האחרונות (מוסתר/נשכח פתוח = נעצר)
-  has(BTN, /onActiveInterval\(\(\) => fetchLight\(\), 120000, \{ resumeStaleMs: 0 \}\)/, 'כל 120 שנ\' דרך שומר ה-idle');
-  has(BTN, /@\/lib\/idleGuard/, 'עצירה בטאב מוסתר / שנשכח פתוח');
-  has(BTN, /if \(!mounted \|\| isOpen\) return undefined/, 'רק כשהחלון סגור');
-  has(BTN + WIN, /res\.status === 401/, '401');
-  has(BTN + WIN, /seq !== fetchSeqRef\.current/, 'תשובה ישנה לא דורסת חדשה');
+  // Phase 1A (6.10.2026): הבדיקה הקלה עברה לדוגם המשותף lib/pollClient.js (GET /api/poll, כל 300 שנ', בקשה אחת גם לפעמון);
+  // הנתיב הישן ?light=1 נשאר בשרת לתאימות לאחור ולעותק הקפוא. ר' scripts/poll-client.test.mjs ו-scripts/poll-endpoint.test.mjs.
+  has(BTN, /usePollSnapshot\(true\)/, 'מנוי לדוגם המשותף');
+  has(BTN, /@\/lib\/pollClient/, 'pollAfterAction');
+  has(BTN, /if \(!er\.known \|\| isOpen \|\| er\.rev <= appliedRevRef\.current\) return;/, 'רק כשהחלון סגור, ותוצאה ישנה לא דורסת קריאה מלאה');
+  has(BTN, /snap\.authFailed/, '401 (authFailed) עוצר');
+  has(BTN, /wasOpenRef\.current && !isOpen\) pollAfterAction\(\)/, 'רענון מיידי אחרי סגירת החלון');
 });
 await t('POST /api/error-report עם כל השדות (url/title/time/queryParams/lastButtons/attachments) + הודעות', () => {
   has(WIN, /fetch\('\/api\/error-report', \{\s*method: 'POST'/, 'POST');

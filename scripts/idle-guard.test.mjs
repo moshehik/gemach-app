@@ -273,16 +273,14 @@ const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/
 
 test('סטטי: כל הדגימות שנמצאו בסקר משתמשות ב-onActiveInterval ולא ב-setInterval חשוף', () => {
   const polls = [
-    'app/components/NotificationBell.js',
-    'app/components/menu/MenuBell.js',
-    'app/components/ErrorReportButton.js',
+    'lib/pollClient.js', // הדוגם המשותף (פעמונים + דיווח תקלות) - docs/cpu-phase1a-poll-2026-10-06.md
     'app/components/OverdueRemindersWatcher.js',
     'app/admin/backups/page.js',
     'app/admin/database/page.js',
   ];
   for (const f of polls) {
     const c = code(read(f));
-    assert.match(c, /from '@\/lib\/idleGuard'/, f);
+    assert.match(c, /from '(@\/lib|\.)\/idleGuard(\.js)?'/, f);
     assert.match(c, /onActiveInterval\(/, f);
     assert.ok(!/\bsetInterval\(/.test(c), `${f}: נשאר setInterval חשוף`);
   }
@@ -290,19 +288,23 @@ test('סטטי: כל הדגימות שנמצאו בסקר משתמשות ב-onAc
   assert.match(orders, /onActiveInterval\(\(\) => setNowTick/);
 });
 
-test('סטטי: הפעמונים ודיווח התקלות מתעוררים מיד בחזרה (resumeStaleMs: 0) ושומרים על 120 שנ\'', () => {
-  assert.match(code(read('app/components/NotificationBell.js')), /onActiveInterval\(fetchUnreadCount, 120000, \{ resumeStaleMs: 0 \}\)/);
-  assert.match(code(read('app/components/menu/MenuBell.js')), /onActiveInterval\(fetchCount, POLL_MS, \{ resumeStaleMs: 0 \}\)/);
-  assert.match(code(read('app/components/ErrorReportButton.js')), /onActiveInterval\(\(\) => fetchLight\(\), 120000, \{ resumeStaleMs: 0 \}\)/);
+test('סטטי: הפעמונים ודיווח התקלות דוגמים דרך הדוגם המשותף (lib/pollClient.js) שמתעורר מיד בחזרה (resumeStaleMs: 0), כל 300 שנ\'', () => {
+  const poll = code(read('lib/pollClient.js'));
+  assert.match(poll, /onActiveInterval\(\(\) => \{ refresh\(\); \}, intervalMs, \{ resumeStaleMs: 0 \}\)/);
+  assert.match(poll, /POLL_INTERVAL_MS = 300000/);
+  for (const f of ['app/components/NotificationBell.js', 'app/components/menu/MenuBell.js', 'app/components/ErrorReportButton.js']) {
+    assert.match(code(read(f)), /usePollSnapshot/, f);
+  }
 });
 
 test('סטטי: הקבצים הישנים הקפואים לא נערכו (LegacyErrorReportButton נשאר עם הלולאה שלו; השער מכסה אותה)', () => {
   const legacy = read('app/components/LegacyErrorReportButton.js');
-  assert.match(legacy, /setInterval\(\(\) => fetchReports\(\{ light: true \}\), 120000\)/);
+  assert.match(legacy, /fetchReports\(\{ light: true \}\), 120000\)/);
   assert.ok(!/idleGuard/.test(legacy), 'לא נוגעים בעותק הקפוא');
   // הוא נטען רק דרך ErrorReportButton, שמייבא את השומר (וכך מתקין את שער ה-light=1)
   assert.match(read('app/components/ErrorReportButton.js'), /LegacyErrorReportFrame/);
-  assert.match(read('app/components/ErrorReportButton.js'), /@\/lib\/idleGuard/);
+  assert.match(read('app/components/ErrorReportButton.js'), /@\/lib\/pollClient/); // מייבא את הדוגם, שמייבא את השומר (וכך מתקין את שער ה-light=1)
+  assert.match(read('lib/pollClient.js'), /from '\.\/idleGuard\.js'/);
   assert.ok(!/idleGuard/.test(read('app/orders/[id]/LegacyOrderPage.js')));
   assert.ok(!/idleGuard/.test(read('app/orders/new/LegacyNewOrderPage.js')));
 });

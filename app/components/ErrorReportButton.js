@@ -57,13 +57,13 @@ function ErrorReportButtonNew({ trigger } = {}) {
   const authFailed = snap.authFailed && !snap.errorReports.known;
   const appliedRevRef = useRef(0); // הגרסה האחרונה של הדוגם שכבר הוחלה (או שהחלון הפתוח עקף אותה)
   const latestRevRef = useRef(0);
-  latestRevRef.current = snap.errorReports.rev;
   const wasOpenRef = useRef(false);
   const lastUnreadRef = useRef(null); // מונה "לא נקראו" האחרון - שינוי בו (בדיקה קלה) מבטל את הרשימה המלאה במטמון (ErrorReportWindow)
 
   // תוצאת הדוגם (מונה "לא נקראו" + הרשאות) מוחלת רק כשהחלון סגור: כשהוא פתוח הקריאה המלאה שלו (onData) היא מקור האמת,
   // ותוצאה ישנה יותר מהקריאה המלאה לא דורסת אותה (appliedRevRef). הקריאה המלאה (רשימה, תגובות, צרופות) נעשית בחלון עצמו.
   useEffect(() => {
+    latestRevRef.current = snap.errorReports.rev;
     const er = snap.errorReports;
     if (!er.known || isOpen || er.rev <= appliedRevRef.current) return;
     appliedRevRef.current = er.rev;
