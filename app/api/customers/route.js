@@ -6,7 +6,7 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
 import {
-  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, phoneKeysFromInput,
+  planListSearch, planNeedsPhoneIds, customerSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, phoneKeysFromInput,
 } from '@/lib/listSearch';
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
@@ -18,12 +18,14 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     // תוכנית החיפוש (lib/listSearch.js): טלפון בכל צורת כתיבה (גם טלפון 2), שם דומה, הצלת מקלדת אנגלית.
     const plan = planListSearch(searchParams.get('search') || '');
-    let result = await queryCustomersList(searchParams, { plan });
+    const cache = new Map(); // חיפושי עזר משותפים לנסיון הראשון ולנסיונות החוזרים
+    let result = await queryCustomersList(searchParams, { plan, cache });
     // חיפוש טקסט שלא מצא כלום: מנסים שוב (מקלדת אנגלית -> עברית, שמות דומים) ומציגים הודעה (ר' app/api/orders/route.js).
-    if (plan.text && result.total === 0) {
+    // בלי נסיון חוזר בטקסט קצר מ-3 תווים (shouldRetryEmptySearch)
+    if (result.total === 0 && shouldRetryEmptySearch(plan)) {
       for (const variant of buildRetryVariants(plan, { scopeRestricted: false, barcode: false, dateStage: false })) {
         const variantPlan = variant.text ? planListSearch(variant.text) : plan;
-        const retry = await queryCustomersList(searchParams, { plan: variantPlan, fuzzy: variant.fuzzy });
+        const retry = await queryCustomersList(searchParams, { plan: variantPlan, cache, fuzzy: variant.fuzzy });
         if (retry.total > 0) { result = { ...retry, notices: variant.notices }; break; }
       }
     }
@@ -66,8 +68,8 @@ async function queryCustomersList(searchParams, opts) {
     if (search) {
       // לקוחות לפי טלפון בכל צורת כתיבה (מקפים / +972 / בלי 0 מוביל, שני הטלפונים) ולפי שם דומה - lib/searchDb.js; רק כשהקלט מתאים.
       const [phoneIds, fuzzyIds] = await Promise.all([
-        planNeedsPhoneIds(plan) ? findCustomerIdsByPhone(plan.phone) : [],
-        opts.fuzzy ? findFuzzyCustomerIds(search) : []
+        planNeedsPhoneIds(plan) ? memoLookup(opts.cache, `phone:${JSON.stringify(plan.phone)}`, () => findCustomerIdsByPhone(plan.phone)) : [],
+        opts.fuzzy ? memoLookup(opts.cache, `fuzzy:${search}`, () => findFuzzyCustomerIds(search)) : []
       ]);
       // חיפוש שם מלא ("רחל כהן") - קודם כל מילה נבדקה רק כמכלול מול שדה
       // בודד, כך ששם פרטי+משפחה יחד מעולם לא התאים לאף שדה. ר' lib/searchUtils.js.
@@ -77,7 +79,7 @@ async function queryCustomersList(searchParams, opts) {
     if (advLastName) conditions.push({ lastName: { contains: advLastName } });
     if (advPhone) {
       const advPhoneKeys = phoneKeysFromInput(advPhone);
-      const advPhoneIds = advPhoneKeys ? await findCustomerIdsByPhone(advPhoneKeys) : [];
+      const advPhoneIds = advPhoneKeys ? await memoLookup(opts.cache, `advphone:${advPhone}`, () => findCustomerIdsByPhone(advPhoneKeys)) : [];
       conditions.push({
         OR: [
           { phone1: { contains: advPhone } },

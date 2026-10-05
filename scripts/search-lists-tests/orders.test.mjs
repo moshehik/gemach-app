@@ -109,6 +109,31 @@ await t('בלי חיפוש טקסט אין הרחבה (רשימה ריקה נש�
   assert.equal(rent.body.notices, undefined, 'טאבי ההשכרות לא מורחבים');
 });
 
+console.log('נסיונות חוזרים: מתי לא, ושימוש חוזר בחיפושי עזר');
+await t('טקסט קצר מ-3 תווים שלא מצא כלום: בלי נסיונות חוזרים ובלי הודעה (קודם: הרחבת טווח)', async () => {
+  fixture();
+  const r = await call('search=' + encodeURIComponent('דנ') + '&filterStatus=soon');
+  assert.equal(r.body.total, 0); assert.equal(r.body.notices, undefined);
+  assert.equal(T.calls.filter((c) => c.name === 'order.findMany').length, 1, 'שאילתה אחת בלבד');
+});
+await t('לשונית חובות (unpaid*): בלי נסיונות חוזרים', async () => {
+  fixture();
+  T.calls = [];
+  const r = await call('search=' + encodeURIComponent('שם שלא קיים') + '&filterStatus=unpaid_all');
+  assert.equal(r.body.notices, undefined);
+  assert.equal(T.calls.filter((c) => c.name === 'dressModel.findMany').length, 1, 'חיפוש הדגמים רץ פעם אחת בלבד');
+  assert.equal(T.calls.filter((c) => c.name === '$queryRawUnsafe').length, 0, 'ולא רץ מעבר שמות דומים');
+});
+await t('חיפוש שלא מצא כלום (3+ תווים): נסיונות חוזרים משתמשים שוב בחיפוש הדגמים / שמות דומים - לא קריאה חוזרת ל-DB', async () => {
+  fixture();
+  T.calls = [];
+  const r = await call('search=' + encodeURIComponent('שם שלא קיים') + '&filterStatus=soon');
+  assert.equal(r.body.total, 0);
+  const orderQueries = T.calls.filter((c) => c.name === 'order.findMany').length;
+  assert.ok(orderQueries >= 3, 'היו נסיונות חוזרים (הרחבת טווח + שמות דומים): ' + orderQueries);
+  assert.equal(T.calls.filter((c) => c.name === 'dressModel.findMany').length, 1, 'חיפוש הדגמים פעם אחת לכל הנסיונות');
+});
+
 console.log('תאריך עברי (התאמת אסימון שלם)');
 await t('"כז תשרי" מוצא את ההזמנה (עם ובלי שנה בטקסט השמור)', async () => {
   fixture();

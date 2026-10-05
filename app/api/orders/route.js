@@ -16,7 +16,7 @@ import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 import {
-  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, sizeTextFilter, phoneKeysFromInput,
+  planListSearch, planNeedsPhoneIds, planModelLookup, orderSearchCondition, buildRetryVariants, clampLimit, clampPage, limitWasCapped, shouldRetryEmptySearch, memoLookup, sizeTextFilter, phoneKeysFromInput,
 } from '@/lib/listSearch';
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
@@ -37,13 +37,15 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     // תוכנית החיפוש (lib/listSearch.js): מזהה מה הוקלד - שם / מספר הזמנה / טלפון / ברקוד / תאריך עברי או לועזי - ובונה את התנאים.
     const plan = planListSearch(searchParams.get('search') || '');
-    let result = await queryOrdersList(searchParams, { plan });
+    const cache = new Map(); // חיפושי עזר (דגמים / טלפונים / שמות דומים) שמשותפים לנסיון הראשון ולנסיונות החוזרים
+    let result = await queryOrdersList(searchParams, { plan, cache });
     // חיפוש טקסט שלא מצא כלום: מנסים שוב לפי הסדר (הרחבת טווח התאריכים, ברקוד, מקלדת אנגלית, שמות דומים) ומציגים הודעה.
     // שימוש בנתונים האמיתיים (B-search-usage-mining): 12% מחיפושי הרשימה ריקים, 94% מהם רצים עם "בקרוב" בלי שום אינדיקציה.
-    if (plan.text && result.total === 0) {
+    // בלי נסיונות חוזרים בלשוניות החובות (טוענות את כל ההזמנות) ובטקסט קצר מ-3 תווים (shouldRetryEmptySearch)
+    if (result.total === 0 && shouldRetryEmptySearch(plan, { filterStatus: searchParams.get('filterStatus') || 'all' })) {
       for (const variant of buildRetryVariants(plan, { scopeRestricted: isScopeRestricted(searchParams) })) {
         const variantPlan = variant.text ? planListSearch(variant.text) : plan;
-        const retry = await queryOrdersList(searchParams, { plan: variantPlan, widen: variant.widen, fuzzy: variant.fuzzy, barcodeStage: variant.barcode, dateStage: variant.dateStage });
+        const retry = await queryOrdersList(searchParams, { plan: variantPlan, cache, widen: variant.widen, fuzzy: variant.fuzzy, barcodeStage: variant.barcode, dateStage: variant.dateStage });
         if (retry.total > 0) { result = { ...retry, notices: variant.notices }; break; }
       }
     }
@@ -170,7 +172,7 @@ async function queryOrdersList(searchParams, opts) {
       const modelLookup = planModelLookup(plan);
       const [prefixes, phoneIds, fuzzyIds] = await Promise.all([
         modelLookup
-          ? prisma.dressModel.findMany({
+          ? memoLookup(opts.cache, `models:${modelLookup.name}|${modelLookup.prefix}`, () => prisma.dressModel.findMany({
             where: {
               barcodePrefix: { not: null },
               OR: [
@@ -179,11 +181,11 @@ async function queryOrdersList(searchParams, opts) {
               ]
             },
             select: { barcodePrefix: true }
-          })
+          }))
           : [],
         // לקוחות לפי טלפון בכל צורת כתיבה (מקפים / +972 / בלי 0 מוביל), שני הטלפונים - lib/searchDb.js
-        planNeedsPhoneIds(plan) ? findCustomerIdsByPhone(plan.phone) : [],
-        opts.fuzzy ? findFuzzyCustomerIds(search) : []
+        planNeedsPhoneIds(plan) ? memoLookup(opts.cache, `phone:${JSON.stringify(plan.phone)}`, () => findCustomerIdsByPhone(plan.phone)) : [],
+        opts.fuzzy ? memoLookup(opts.cache, `fuzzy:${search}`, () => findFuzzyCustomerIds(search)) : []
       ]);
       searchModelPrefixes = prefixes.map(m => m.barcodePrefix).filter(p => p !== null && p !== undefined);
       searchPhoneIds = phoneIds;
@@ -191,7 +193,7 @@ async function queryOrdersList(searchParams, opts) {
     }
     // טלפון בחיפוש המתקדם: אותה השוואה לפי ספרות (בנוסף ל-contains של מה שהוקלד, שנשאר כמו קודם)
     const advPhoneKeys = advCustomerPhone ? phoneKeysFromInput(advCustomerPhone) : null;
-    const advPhoneIds = advPhoneKeys ? await findCustomerIdsByPhone(advPhoneKeys) : [];
+    const advPhoneIds = advPhoneKeys ? await memoLookup(opts.cache, `advphone:${advCustomerPhone}`, () => findCustomerIdsByPhone(advPhoneKeys)) : [];
 
     // 37 - not_taken: הזמנות שלא נלקחו/חלקית (יש isTaken=false), מותנה ב-show_not_taken_orders (מוסתר כשכבוי)
     //

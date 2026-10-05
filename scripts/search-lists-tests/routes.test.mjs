@@ -109,6 +109,15 @@ await t('חיפוש ספרות (5 ספרות) בלקוחות: אין נסיונ�
   assert.equal(r.body.total, 0);
   assert.equal(T.calls.filter((c) => c.name === 'customer.findMany').length, 1);
 });
+await t('לקוחות: טקסט קצר מ-3 תווים שלא מצא - שאילתה אחת; 3+ תווים - עם שימוש חוזר בחיפוש שמות דומים', async () => {
+  customersFixture();
+  await get(customersRoute, '/api/customers?search=' + encodeURIComponent('זב'));
+  assert.equal(T.calls.filter((c) => c.name === 'customer.findMany').length, 1);
+  T.calls = [];
+  await get(customersRoute, '/api/customers?search=' + encodeURIComponent('זבולון'));
+  assert.ok(T.calls.filter((c) => c.name === 'customer.findMany').length >= 2, 'נסיון חוזר רץ');
+  assert.ok(T.calls.filter((c) => c.name === '$queryRawUnsafe').length <= 1, 'שמות דומים נשלפים פעם אחת');
+});
 await t('401 כשלא מחובר', async () => { T.authed = false; assert.equal((await get(customersRoute, '/api/customers?search=x')).status, 401); });
 
 // ---------------------------------------------------------------- דגמים
