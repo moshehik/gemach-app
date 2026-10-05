@@ -53,22 +53,30 @@ export function gershayim(token) {
   if (!GEM_RE.test(t)) return t;
   return t.length === 1 ? `${t}׳` : `${t.slice(0, -1)}״${t.slice(-1)}`;
 }
-/** 'כח תשרי תשפ"ז' -> 'כ״ח תשרי תשפ״ז' (היום והשנה בגרשיים; שם החודש כמות שהוא, כולל "אדר א'") */
+// טוקן שנה עברית: מתחיל ב-ת (עם ה' אופציונלית) ומכיל גרש/גרשיים לפני האות האחרונה - 'תשפ"ז' / 'תשפ״ז' / 'התשפ״ז'. שמות חודשים (תשרי, תמוז, טבת) בלי סימן - לא שנה.
+// לא מזהים לפי מספר המילים: heShort של שנה מעוברת הוא 'יג אדר א'' (שלוש מילים בלי שנה).
+export const isHebrewYearToken = (t) => /^ה?ת[א-ת]*["״׳'][א-ת]$/.test(String(t || ''));
+
+/** 'כח תשרי תשפ"ז' -> 'כ״ח תשרי תשפ״ז'; 'יג אדר א' תשפ"ז' -> 'י״ג אדר א׳ תשפ״ז' (היום והשנה בגרשיים; החודש כמות שהוא) */
 export function hebrewWithGershayim(dateHe) {
   const p = String(dateHe || '').trim().split(/\s+/).filter(Boolean);
   if (!p.length) return '';
-  const out = [...p];
-  out[0] = gershayim(p[0]);
-  if (p.length > 2) out[p.length - 1] = gershayim(p[p.length - 1]);
+  const out = p.map((t, i) => (i === 0 || /^[א-ת]["'׳]$/.test(t) ? gershayim(t) : t));
+  const last = p.length - 1;
+  if (last > 0 && isHebrewYearToken(p[last])) out[last] = gershayim(p[last]);
   return out.join(' ');
 }
 
-/** "כ״ז תשרי" מתוך 'כז תשרי תשפ"ז' (התאריך העברי בלי השנה - hDateShort בדגימה), היום בגרשיים */
+/**
+ * היום והחודש בלי השנה, היום בגרשיים: 'כז תשרי תשפ"ז' -> 'כ״ז תשרי'; heShort (בלי שנה) נשאר כמות שהוא: 'יג אדר א'' -> 'י״ג אדר א׳' (לא 'י״ג אדר').
+ * השנה נחתכת רק כשהטוקן האחרון הוא שנה (isHebrewYearToken), לא לפי מספר המילים.
+ */
 export function shortHebrew(dateHe) {
   const p = String(dateHe || '').trim().split(/\s+/).filter(Boolean);
   if (!p.length) return '';
-  const day = [gershayim(p[0]), ...p.slice(1, p.length > 2 ? -1 : undefined)];
-  return day.join(' ');
+  const rest = p.slice(1);
+  if (rest.length && isHebrewYearToken(rest[rest.length - 1])) rest.pop();
+  return [gershayim(p[0]), ...rest.map((t) => (/^[א-ת]["'׳]$/.test(t) ? gershayim(t) : t))].join(' ');
 }
 
 /** "היום" / "מחר" / "אתמול" / "יום ה' כז תשרי" - יום ישראלי מול היום הישראלי (שני מפתחות YYYY-MM-DD) */

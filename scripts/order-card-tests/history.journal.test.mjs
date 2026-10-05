@@ -351,3 +351,28 @@ test('גרשיים בתאריכים העבריים של היומן / ההיסט�
   const D = await import('@/app/components/order-card/parts/ocDetailsLogic.js');
   assert.equal(H.hebrewWithGershayim(dayLabels('2026-10-08').he), D.hebDateLabel('2026-10-08'));
 });
+
+// סקירה: שנה מעוברת - heShort בלי שנה ('יג אדר א׳') לא נחתך; השנה נחתכת רק כשהטוקן האחרון הוא שנה
+test('shortHebrew / hebrewWithGershayim: אדר א׳/ב׳ (שנה מעוברת), יום וחודש בלבד, מחרוזות מלאות עם שנה', async () => {
+  const H = await import('@/app/components/order-card/parts/ocHistoryModel.js');
+  assert.equal(H.shortHebrew("יג אדר א'"), 'י״ג אדר א׳');
+  assert.equal(H.shortHebrew("יג אדר ב'"), 'י״ג אדר ב׳');
+  assert.equal(H.shortHebrew('יג אדר א׳'), 'י״ג אדר א׳');
+  assert.equal(H.shortHebrew('כ״ח תשרי'), 'כ״ח תשרי');
+  assert.equal(H.shortHebrew('כח תשרי'), 'כ״ח תשרי');
+  assert.equal(H.shortHebrew('כח תשרי תשפ"ז'), 'כ״ח תשרי');
+  assert.equal(H.shortHebrew("יג אדר א' תשפ\"ז"), 'י״ג אדר א׳');
+  assert.equal(H.shortHebrew('ט תמוז התשפ״ז'), 'ט׳ תמוז', 'שנה עם ה׳');
+  assert.equal(H.shortHebrew('ל תשרי'), 'ל׳ תשרי');
+  assert.equal(H.shortHebrew('טו תמוז'), 'ט״ו תמוז', 'תמוז/תשרי הם חודשים ולא שנה');
+  assert.equal(H.hebrewWithGershayim("יג אדר א' תשפ\"ז"), 'י״ג אדר א׳ תשפ״ז');
+  assert.equal(H.hebrewWithGershayim('כח תשרי תשפ"ז'), 'כ״ח תשרי תשפ״ז');
+  assert.equal(H.isHebrewYearToken('תשפ"ז') && H.isHebrewYearToken('התשפ״ז'), true);
+  assert.equal(H.isHebrewYearToken('תשרי') || H.isHebrewYearToken('תמוז') || H.isHebrewYearToken('טבת'), false);
+  // פוטנציאלי אמיתי: 13 באדר א׳ תשפ״ז (פברואר 2027) דרך dayLabels
+  const l = dayLabels('2027-02-19');
+  assert.match(l.heShort, /אדר/);
+  assert.ok(H.shortHebrew(l.heShort).includes('אדר'), l.heShort);
+  assert.equal(H.shortHebrew(l.heShort), H.shortHebrew(l.he), 'heShort ו-he נותנים אותו יום וחודש');
+  assert.equal(H.relativeDayLabel('2027-02-19', '2027-02-01', l), `${l.wdFull} ${H.shortHebrew(l.heShort)}`);
+});
