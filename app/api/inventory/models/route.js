@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { cleanQuery, parseBarcodeDigits } from '@/lib/searchNormalize';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get('q');
+  // ניקוי תווים בלתי נראים (סימוני RTL מהדבקה) ורווחים; קידומת דגם רק מקלט ספרות בלבד - parseInt על טקסט חופשי ("12 דגם") הפך אותו ל-12.
+  // ברקוד של 7 ספרות מתאים גם לפי הקידומת שלו (כל הספרות חוץ מ-4 האחרונות).
+  const q = cleanQuery(searchParams.get('q'));
+  const prefixCandidates = !q ? [] : [
+    ...(/^\d{1,9}$/.test(q) ? [parseInt(q, 10)] : []),
+    ...(/^\d{7}$/.test(q) ? [parseInt(parseBarcodeDigits(q).prefix, 10)] : [])
+  ];
   const hasActiveItems = searchParams.get('hasActiveItems') === 'true';
 
   try {
@@ -16,7 +23,7 @@ export async function GET(request) {
         ...(q ? {
           OR: [
             { name: { contains: q } },
-            { barcodePrefix: { equals: parseInt(q) || -1 } }
+            ...(prefixCandidates.length ? prefixCandidates.map((n) => ({ barcodePrefix: { equals: n } })) : [{ barcodePrefix: { equals: -1 } }])
           ]
         } : {}),
         ...(hasActiveItems ? {

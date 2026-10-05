@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
+import { planListSearch, dressSearchAlternatives, sizeTextFilter, clampLimit, clampPage, buildRetryVariants } from '@/lib/listSearch';
+import { sizeMatches } from '@/lib/searchNormalize';
 
 
 export const dynamic = 'force-dynamic';
@@ -24,13 +26,16 @@ export async function GET(request) {
     const limitParam = searchParams.get('limit');
     
     // Pagination parameters
-    const page = pageParam ? parseInt(pageParam, 10) : 1;
-    const limit = limitParam ? parseInt(limitParam, 10) : 50;
+    // תקרה ל-limit (קודם ללא הגבלה); 10000 מכסה את טעינת הקטלוג המלאה של עמוד הקיוסק (customer-interface: limit=10000)
+    const page = clampPage(pageParam || '1');
+    const limit = clampLimit(limitParam, 50, 10000);
     const skip = (page - 1) * limit;
 
     // Filter parameters
     const filterStatus = searchParams.get('filterStatus') || 'all';
-    const search = searchParams.get('search') || '';
+    // תוכנית החיפוש (lib/listSearch.js): מספר = קידומת דגם, מידה (1-2 ספרות / S,M,L / "מידה X") = מידה מדויקת (2 = 02, לא 12/20)
+    const searchPlan = planListSearch(searchParams.get('search') || '');
+    const search = searchPlan.text;
     const sortKey = searchParams.get('sortKey') || 'entryDateToRepo';
     const sortDir = searchParams.get('sortDir') || 'desc';
 
@@ -62,23 +67,7 @@ export async function GET(request) {
       // all
     }
 
-    if (search) {
-      const searchNumber = parseInt(search, 10);
-      const searchConditions = [
-        { name: { contains: search } },
-        { priceCategory: { contains: search } },
-        { notes: { contains: search } }
-      ];
-      if (!isNaN(searchNumber)) searchConditions.push({ barcodePrefix: searchNumber });
-      
-      if (where.OR) {
-        where.AND = [ { OR: where.OR }, { OR: searchConditions } ];
-        delete where.OR;
-      } else {
-        where.OR = searchConditions;
-      }
-    }
-
+    // תנאי החיפוש החופשי מצורף בסוף (whereWithSearch) כדי שאפשר יהיה לנסות שוב עם טקסט מומר (מקלדת אנגלית)
     if (advName) {
       const advNameNum = parseInt(advName, 10);
       const advNameCond = [ { name: { contains: advName } } ];
@@ -88,7 +77,8 @@ export async function GET(request) {
     }
 
     const itemsWhere = {};
-    if (advSize) itemsWhere.sizeText = { contains: advSize };
+    // מידה מדויקת (sizeInList): "2" = "02" ולא 12/20/32; קודם contains
+    if (advSize) itemsWhere.sizeText = sizeTextFilter(advSize) || { contains: advSize };
     if (advSerial) itemsWhere.serialNumber = parseInt(advSerial, 10);
     if (advNotInUse) itemsWhere.notInUse = true;
     if (advInRepair) itemsWhere.inRepair = true;
@@ -109,9 +99,23 @@ export async function GET(request) {
     let dressModels = [];
     let totalCount = 0;
 
-    const [models, count] = await Promise.all([
-      prisma.dressModel.findMany({
-        where,
+    const whereWithSearch = (plan) => {
+      if (!plan.text) return where;
+      const searchConditions = dressSearchAlternatives(plan);
+      const w = { ...where };
+      if (w.OR) {
+        w.AND = [...(w.AND || []), { OR: w.OR }, { OR: searchConditions }];
+        delete w.OR;
+      } else {
+        w.OR = searchConditions;
+      }
+      return w;
+    };
+    let searchWhere = whereWithSearch(searchPlan);
+    const notices = [];
+
+    const dressFindArgs = (w) => ({
+        where: w,
         orderBy,
         skip,
         take: limit,
@@ -143,9 +147,25 @@ export async function GET(request) {
             }
           }
         }
-      }),
-      prisma.dressModel.count({ where })
+    });
+    let [models, count] = await Promise.all([
+      prisma.dressModel.findMany(dressFindArgs(searchWhere)),
+      prisma.dressModel.count({ where: searchWhere })
     ]);
+    // חיפוש טקסט שלא מצא כלום: הצלת מקלדת אנגלית (ר' lib/keyboardLayout.js) - אותה הודעה כמו ברשימות ההזמנות/לקוחות
+    if (count === 0 && searchPlan.text) {
+      for (const variant of buildRetryVariants(searchPlan, { scopeRestricted: false, fuzzy: false })) {
+        if (!variant.text) continue;
+        const retryWhere = whereWithSearch(planListSearch(variant.text));
+        const retryCount = await prisma.dressModel.count({ where: retryWhere });
+        if (retryCount > 0) {
+          searchWhere = retryWhere;
+          [models, count] = [await prisma.dressModel.findMany(dressFindArgs(retryWhere)), retryCount];
+          notices.push(...variant.notices);
+          break;
+        }
+      }
+    }
     dressModels = models;
     totalCount = count;
 
@@ -198,7 +218,7 @@ export async function GET(request) {
       if (advRentalsCountMin > 0) {
         const hasMatchingItem = adjustedItems.some(item => {
            let matches = true;
-           if (advSize && (!item.sizeText || !item.sizeText.includes(advSize))) matches = false;
+           if (advSize && !sizeMatches(item.sizeText, advSize)) matches = false;
            if (advSerial && item.serialNumber !== parseInt(advSerial, 10)) matches = false;
            if ((item.rentalsCount || 0) < advRentalsCountMin) matches = false;
            if (advNotInUse && !item.notInUse) matches = false;
@@ -253,7 +273,8 @@ export async function GET(request) {
       total: totalCount,
       page,
       limit,
-      totalPages: Math.ceil(totalCount / limit)
+      totalPages: Math.ceil(totalCount / limit),
+      ...(notices.length ? { notices } : {})
     });
   } catch (error) {
     console.error('Error fetching dresses:', error);

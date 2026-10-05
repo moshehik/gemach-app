@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { sizeTextFilter } from '@/lib/sizeSearch';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,9 @@ export async function GET(request) {
     }
 
     const barcodePrefix = parseInt(barcodePrefixParam, 10);
+    // מידה שקולה בכל כתיב: "2" = "02" = "002" (ובנווה יעקב המידות שמורות בערבוב, ר' lib/searchNormalize.js sizeSpellings), לא 12/20/32.
+    // התאמה מדויקת ב-IN (בלי LIKE); ערך שמור עם רווח מוביל/עוקב נתפס גם הוא. קודם: שוויון מדויק לטקסט שהתקבל (המידות הגיעו מרשימת המידות עצמה).
+    const sizeFilter = sizeTextFilter(size) || size;
     // Adjust boundaries by 12 hours to safely cover timezone differences (Israel time is UTC+2 or UTC+3)
     const fromDateLimit = new Date(new Date(fromDateParam).getTime() - 12 * 60 * 60 * 1000);
     const toDateLimit = new Date(new Date(toDateParam).getTime() + 12 * 60 * 60 * 1000);
@@ -27,7 +31,7 @@ export async function GET(request) {
     const inStockItems = await prisma.dressItem.findMany({
       where: {
         barcodePrefix,
-        sizeText: size,
+        sizeText: sizeFilter,
         isDeleted: false,
         notInUse: false,
         inRepair: false,
@@ -51,7 +55,7 @@ export async function GET(request) {
     const reserveItems = await prisma.dressItem.findMany({
       where: {
         barcodePrefix,
-        sizeText: size,
+        sizeText: sizeFilter,
         isDeleted: false,
         notInUse: false,
         inRepair: false,
@@ -71,16 +75,16 @@ export async function GET(request) {
         OR: [
           {
             barcodePrefix: barcodePrefix,
-            size: size
+            size: sizeFilter
           },
           {
             barcodePrefix: barcodePrefix,
-            sizeText: size
+            sizeText: sizeFilter
           },
           {
             dressItem: {
               barcodePrefix: barcodePrefix,
-              sizeText: size
+              sizeText: sizeFilter
             }
           }
         ],

@@ -11,6 +11,8 @@ import { getLateReturnInfo, getExpectedReturnKey, LATE_RETURN_THRESHOLD_DAYS } f
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, inverseBusinessDays, rolledSourceRange } from '@/lib/businessDays';
 import { missingRule, customerMissing, customerMissingWhere } from '@/lib/customerMissing';
 import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
+import { sizeTextFilter, phoneKeysFromInput } from '@/lib/listSearch';
+import { findCustomerIdsByPhone } from '@/lib/searchDb';
 
 // חיפוש מתקדם (A5) — תחומים: לקוחות, הזמנות, השכרות, החזרות. קריאה בלבד.
 // אותם כללים כמו העמודים החיים: /api/customers, /api/orders (advOrderId/customerName/...,
@@ -64,6 +66,10 @@ const fullAddress = (c) => {
   return [street, c.city].filter((x) => x && String(x).trim()).join(', ');
 };
 
+// מזהי לקוחות שהטלפון שלהם תואם לשדה הטלפון / "פרטי לקוח" לפי ספרות (מקפים, +972, בלי 0 מוביל, שני הטלפונים) - lib/searchDb.js.
+// נשמר על אובייקט ה-adv תחת Symbol (JSON.parse לא יכול לייצר אחד כזה, כך שהלקוח לא יכול להזריק מזהים).
+const PHONE_IDS = Symbol('phoneIds');
+
 const ALT_COND = {
   OR: [
     { neckAlteration: { gt: 0 } },
@@ -88,22 +94,28 @@ function personConds(adv, rel) {
   }
   const first = S(adv.first); if (first) out.push(wrap({ firstName: { contains: first } }));
   const last = S(adv.last); if (last) out.push(wrap({ lastName: { contains: last } }));
+  const phoneIds = (adv[PHONE_IDS] && adv[PHONE_IDS].phone) || [];
+  const cinfoIds = (adv[PHONE_IDS] && adv[PHONE_IDS].cinfo) || [];
+  // תנאי "לקוח לפי מזהה" ברמת הישות הנכונה: על הלקוח עצמו id, על הזמנה customerId (לא בתוך wrap)
+  const byId = (ids) => (rel ? { customerId: { in: ids } } : { id: { in: ids } });
   const phone = S(adv.phone);
   if (phone) {
     const p = phone.replace(/[\s-]/g, '');
-    out.push(wrap({ OR: [{ phone1: { contains: p } }, { phone2: { contains: p } }] }));
+    const base = wrap({ OR: [{ phone1: { contains: p } }, { phone2: { contains: p } }] });
+    out.push(phoneIds.length ? { OR: [base, byId(phoneIds)] } : base);
   }
   const city = S(adv.city); if (city) out.push(wrap({ city: { contains: city } }));
   const email = S(adv.email); if (email) out.push(wrap({ email: { contains: email } }));
   const cinfo = S(adv.cinfo);
   if (cinfo) {
     const p = cinfo.replace(/[\s-]/g, '');
-    out.push(wrap({
+    const base = wrap({
       OR: [
         { email: { contains: cinfo } }, { city: { contains: cinfo } }, { street: { contains: cinfo } },
         { phone1: { contains: p } }, { phone2: { contains: p } },
       ],
-    }));
+    });
+    out.push(cinfoIds.length ? { OR: [base, byId(cinfoIds)] } : base);
   }
   const addr = S(adv.addr);
   if (addr) out.push(wrap({ OR: [{ city: { contains: addr } }, { street: { contains: addr } }] }));
@@ -225,7 +237,11 @@ function orderCommonConds(adv, focus) {
       ],
     });
   }
-  if (size) itemAnd.push({ OR: [{ sizeText: { contains: size } }, { dressItem: { sizeText: { contains: size } } }] });
+  if (size) {
+    // מידה מדויקת: "2" = "02" ולא 12/20/32 (lib/listSearch.js sizeTextFilter; קודם contains)
+    const sf = sizeTextFilter(size) || { contains: size };
+    itemAnd.push({ OR: [{ sizeText: sf }, { dressItem: { sizeText: sf } }] });
+  }
   if (itemAnd.length) c.push({ items: { some: { AND: [{ isDeleted: false }, ...itemAnd] } } });
   return c;
 }
@@ -527,11 +543,19 @@ export async function GET(request) {
     const focus = sp.get('focus') || '';
     let adv = {};
     try { adv = JSON.parse(sp.get('adv') || '{}') || {}; } catch { adv = {}; }
+    if (typeof adv !== 'object' || Array.isArray(adv)) adv = {};
     // טיוטות "לא נשמר" נשמרות בדפדפן בלבד (localStorage); המתאם שולח את מספרי ההזמנות
     const unsavedIds = (sp.get('unsaved') || '').split(',').map((x) => parseInt(x, 10)).filter((n) => !isNaN(n)).slice(0, 500);
     if (!FOCUS_PAGE[focus]) return NextResponse.json({ error: 'תחום לא נתמך' }, { status: 400 });
     if (!(await canOpenPage(FOCUS_PAGE[focus]))) return NextResponse.json({ error: 'אין הרשאה לחיפוש בתחום זה' }, { status: 403 });
     const cfg = await loadCfg();
+    // מזהי לקוחות לפי טלפון בכל צורת כתיבה (רק כשמולא שדה טלפון / פרטי לקוח עם 4+ ספרות)
+    const phoneKeys = S(adv.phone) ? phoneKeysFromInput(S(adv.phone)) : null;
+    const cinfoKeys = S(adv.cinfo) ? phoneKeysFromInput(S(adv.cinfo)) : null;
+    adv[PHONE_IDS] = {
+      phone: phoneKeys ? await findCustomerIdsByPhone(phoneKeys) : [],
+      cinfo: cinfoKeys ? await findCustomerIdsByPhone(cinfoKeys) : [],
+    };
     let res;
     if (focus === 'customers') res = await focusCustomers(adv, cfg);
     else if (focus === 'orders') res = await focusOrders(adv, cfg, unsavedIds);
