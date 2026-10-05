@@ -77,7 +77,8 @@ test('תאריכים עבריים בלבד: אין toLocaleDateString / toLocale
 });
 
 test('A28: אין רכיבי מעטפת של הדגימה (snav/nbArea/siteFoot/demoBar/pv-)', () => {
-  assert.deepEqual(grepAll(/\b(snav|nbArea|siteFoot|demoBar|demoTog)\b|["' ]pv-[a-z]/), []);
+  // --gm-snav-h = משתנה גובה התפריט העליון של הפלטה (tall() ב-OrderCardA5) - לא רכיב מעטפת של הדגימה
+  assert.deepEqual(Object.entries(CODE).filter(([, s]) => /\b(snav|nbArea|siteFoot|demoBar|demoTog)\b|["' ]pv-[a-z]/.test(s.split('--gm-snav-h').join(''))).map(([f]) => f), []);
 });
 
 test('הסרות מתוך §B שלא יחזרו בטעות (R17, R30, R31, A14, A27, R23)', () => {
