@@ -27,8 +27,13 @@ export async function GET(request) {
     
     // Pagination parameters
     // תקרה ל-limit (קודם ללא הגבלה); 10000 מכסה את טעינת הקטלוג המלאה של עמוד הקיוסק (customer-interface: limit=10000)
+    // fields (CPU phase 1B, 2026-10-06): בלי הפרמטר - הצורה הישנה המלאה (כל פריט של כל דגם, כולל rentalsCount) לכל הצרכנים הקיימים/מטמוני לקוח ישנים.
+    //   fields=summary - רשימת הקטלוג (dashboard/dresses): בלי items; במקומם itemsCount / activeItemsCount / inUseItemsCount (+ sizes, inStock), תקרת limit 500.
+    //   fields=kiosk   - מסך הקיוסק: items מקובצים לפי (מידה, isUnusable, זמין) עם count, בלי מזהים/ברקוד/מיקום/rentalsCount.
+    const fieldsParam = searchParams.get('fields');
+    const fieldsMode = fieldsParam === 'summary' || fieldsParam === 'kiosk' ? fieldsParam : null;
     const page = clampPage(pageParam || '1');
-    const limit = clampLimit(limitParam, 50, 10000);
+    const limit = clampLimit(limitParam, 50, fieldsMode === 'summary' ? 500 : 10000);
     const skip = (page - 1) * limit;
 
     // Filter parameters
@@ -47,6 +52,7 @@ export async function GET(request) {
     const advNotInUse = searchParams.get('advNotInUse') === 'true';
     const advInRepair = searchParams.get('advInRepair') === 'true';
     const advItemDeleted = searchParams.get('advItemDeleted') === 'true';
+    const needItemRentals = !fieldsMode || advRentalsCountMin > 0;
 
     // Build Prisma Where
     const where = {};
@@ -143,7 +149,8 @@ export async function GET(request) {
               isDeleted: true,
               serialNumber: true,
               dressBarcode: true,
-              _count: { select: { orderItems: true } }
+              // ספירת ההשכרות לכל פריט היא תת-שאילתה לכל שורה - מיותרת בתצוגות המוקטנות (חוץ מסינון advRentalsCountMin)
+              ...(needItemRentals ? { _count: { select: { orderItems: true } } } : {})
             }
           }
         }
@@ -229,7 +236,7 @@ export async function GET(request) {
         if (!hasMatchingItem) return null;
       }
 
-      return {
+      const modelFields = {
         id: model.id,
         name: model.name,
         barcodePrefix: model.barcodePrefix,
@@ -243,7 +250,39 @@ export async function GET(request) {
         inactiveReason: model.inactiveReason,
         isDeleted: model.isDeleted,
         sizes: Array.from(new Set(adjustedItems.map(item => item.sizeText).filter(Boolean))),
-        inStock: adjustedItems.some(item => item.quantity > 0),
+        inStock: adjustedItems.some(item => item.quantity > 0)
+      };
+
+      if (fieldsMode === 'summary') {
+        // רשימת הקטלוג: רק ספירות. itemsCount = פריטים לא מחוקים (העמודה "כמות פריטים"), inUseItemsCount = פריטים עם notInUse=false (כולל מחוקים -
+        // בדיוק התנאי הישן !items.some(i => !i.notInUse) של "לא פעיל"), activeItemsCount = notInUse=false וגם לא מחוק (התראת "החזר לפעילות").
+        return {
+          ...modelFields,
+          itemsCount: adjustedItems.filter(i => !i.isDeleted).length,
+          inUseItemsCount: adjustedItems.filter(i => !i.notInUse).length,
+          activeItemsCount: adjustedItems.filter(i => !i.notInUse && !i.isDeleted).length
+        };
+      }
+
+      if (fieldsMode === 'kiosk') {
+        // הקיוסק קורא מכל פריט רק: sizeText, זמינות (quantity>0), ו-isUnusable (notInUse/isDeleted/inRepair/מחסן/רזרבה כבר בפנים). פריטים זהים בשלוש הערכים
+        // האלה מקובצים לשורה אחת עם count - בקטלוג של ~13K פריטים על ~120 דגמים זה מוריד את התשובה בסדר גודל.
+        const groups = new Map();
+        for (const i of adjustedItems) {
+          const unusable = !!(i.inRepair || i.notInUse || i.isDeleted
+            || (!includeWarehouse && i.location && (i.location.includes('מחסן') || i.location.includes('warehouse')))
+            || (!allowRentingReserve && i.location && (i.location.includes('רזרבה') || i.location.includes('reserve'))));
+          const avail = i.quantity > 0 ? 1 : 0;
+          const gkey = `${i.sizeText ?? ''}\u0000${unusable ? 1 : 0}\u0000${avail}`;
+          const g = groups.get(gkey);
+          if (g) g.count += 1;
+          else groups.set(gkey, { sizeText: i.sizeText, quantity: avail, isUnusable: unusable, count: 1 });
+        }
+        return { ...modelFields, items: Array.from(groups.values()) };
+      }
+
+      return {
+        ...modelFields,
         items: adjustedItems.map(i => ({
           id: i.id,
           sizeText: i.sizeText,

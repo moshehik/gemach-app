@@ -110,7 +110,9 @@ export function buildDressesListParams({
     advRentalsCountMin: advancedFilters.rentalsCountMin,
     advNotInUse: advancedFilters.notInUse,
     advInRepair: advancedFilters.inRepair,
-    advItemDeleted: advancedFilters.itemDeleted
+    advItemDeleted: advancedFilters.itemDeleted,
+    // CPU phase 1B: רשימת הקטלוג צריכה רק ספירות פריטים (itemsCount...), לא כל פריט של כל דגם. הפרמטר חלק מהמפתח המשותף עם ה-prefetch.
+    fields: 'summary'
   });
 }
 
