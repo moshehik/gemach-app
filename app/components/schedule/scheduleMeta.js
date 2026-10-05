@@ -49,6 +49,19 @@ export function formatAddress(address) {
   return city || street || '';
 }
 
+// "שולם" / "שולם חלקי · נותר ₪X" / "טרם שולם" - לפי התשלומים שנרשמו בפועל (row.payStatus מ-lib/schedule/payment.js).
+// שורה בלי payStatus (נתון ישן / שרת ישן) נופלת לשדה isPaid הישן. אין סכום ואין תשלום - אין מה להציג.
+export function payText(row) {
+  const st = row.payStatus === undefined ? (row.isPaid ? 'paid' : 'unpaid') : row.payStatus;
+  if (st === 'paid') return 'שולם';
+  if (st === 'partial') {
+    const left = formatMoney(row.balance);
+    return left ? 'שולם חלקי · נותר ' + left : 'שולם חלקי';
+  }
+  if (st === 'unpaid') return 'טרם שולם';
+  return '';
+}
+
 export function formatMoney(n) {
   if (n == null || Number.isNaN(Number(n))) return '';
   return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 });
@@ -86,7 +99,8 @@ export function subParts(stageKey, row, ctx = {}) {
       const parts = ['אירוע ' + (row.eventDateHebrew || '—')];
       const money = formatMoney(row.totalAmount);
       if (money) parts.push('סה״כ ' + money);
-      parts.push(row.isPaid ? 'שולם' : 'טרם שולם');
+      const pay = payText(row);
+      if (pay) parts.push(pay);
       if (count) parts.push(count);
       if (row.registeredBy) parts.push('נרשמה ע״י ' + row.registeredBy);
       return parts;
