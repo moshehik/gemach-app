@@ -69,7 +69,7 @@ export async function GET(request, { params }) {
     const delivery = { daysBefore: intOr(map.delivery_days_before, 1), daysAfter: intOr(map.delivery_days_after, 1), skipWeekends: map.delivery_skip_weekends === 'true' };
 
     // closeWhenReturned: הזמנה שהוחזרה במלואה / שבוטלה = בלי "שלב נוכחי" ובלי הצעת סימון הכנה (lib/schedule/orderStages.js)
-    const { stages, currentKey, closed } = computeOrderStages({ ...order, items }, { schedule, delivery, marks: marksRes.marks || [], todayKey, closeWhenReturned: true });
+    const { stages, currentKey, closed, closedBy } = computeOrderStages({ ...order, items }, { schedule, delivery, marks: marksRes.marks || [], todayKey, closeWhenReturned: true });
 
     // audit rows that say who did a stage (creation, repairs, rental, return, payment)
     const or = [{ entityType: 'Order', entityId: { in: [order.id, String(order.orderId)] }, action: 'CREATE' }];
@@ -120,6 +120,7 @@ export async function GET(request, { params }) {
       stages: stages.map(publicStage),
       currentKey,
       closed: !!closed,
+      closedBy: closedBy || null, // 'return' | 'cancelled' | null - הציר העליון (OcStepper) מציג הזמנה שהוחזרה כגמורה והזמנה מבוטלת בלי שלב ממתין
       journal: journal.nodes,
       marksAvailable: !!marksRes.available,
       canMark: !!marksRes.available,

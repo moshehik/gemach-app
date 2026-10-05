@@ -22,6 +22,7 @@ import { OcSprite } from './OcIcon';
 import OcIcon from './OcIcon';
 import OcTopbar from './OcTopbar';
 import OcTabs from './OcTabs';
+import OcStepper from './OcStepper';
 import { TABS } from './tabs';
 import { SLOTS } from './slots';
 
@@ -98,8 +99,8 @@ function OrderCardBody({ orderRef }) {
   return (
     <div className="app oc-app" id="app">
       <OcTopbar oc={oc} ui={ui} slots={SLOTS} />
-      {/* A5: הסטפר העליון הוסר (שלבי ההזמנה בראש לשונית היסטוריה, W6) - נשאר מוסתר כמו בעיצוב */}
-      <div className="stepper" id="stepper" aria-hidden="true" />
+      {/* ציר האירוע (.stepper) חזר בהערת הבעלים 2026-10-05 - בדיוק כמו renderTimeline() בעיצוב; נתוני אמת מה-journal (OcStepper) */}
+      <OcStepper oc={oc} />
       {oc.status === 'loading' ? (
         <div className="layout oc-layout-msg"><main className="main"><div className="card oc-loading" role="status"><span className="spinner" aria-hidden="true" />טוען נתוני הזמנה...</div></main></div>
       ) : oc.status === 'notfound' ? (
