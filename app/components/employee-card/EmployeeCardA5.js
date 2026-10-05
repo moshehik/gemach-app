@@ -14,6 +14,7 @@ import '@/design-system/components.css';
 import './employee-card.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { requestJson, describeFailure } from '@/lib/employeeCardSave';
 import {
   blankEmployee, employeeSaveRequest, joinDateValue, initialsOf, needsGmailFill, withGmail,
@@ -139,7 +140,8 @@ export default function EmployeeCardA5({ employeeId }) {
   // --- טעינות -----------------------------------------------------------------------------------
   useEffect(() => {
     fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.employee && d.employee.id) setSessionEmployeeId(d.employee.id); }).catch(() => {});
-    fetch('/api/settings').then((r) => r.json()).then((d) => {
+    // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה לכרטיס משכה שוב את כל ההגדרות (~66KB) בשביל דגל אחד.
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).then((d) => {
       const s = Array.isArray(d) ? d.find((x) => x.key === 'show_employee_profile_image') : null;
       if (s) setShowImage(s.value !== 'false');
     }).catch(() => {});

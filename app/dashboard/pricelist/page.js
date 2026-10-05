@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { listGapRanges, normalizeGapRule, GAP_RULE_CHEAPER } from '@/lib/priceRows';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 // קטגוריות שאינן מחירי שמלה לפי מידה (תיקונים / תוספת חו"ל) - כלל "מידה בין טווחים" לא חל עליהן
 const NON_DRESS_CATEGORIES = ['תיקונים', 'תיקון אורך', 'חול', 'חו"ל'];
@@ -35,8 +36,8 @@ export default function PricelistManagement() {
   useEffect(() => {
     fetchPricelists();
     // קריאת ההגדרה כמו ב-app/orders/new/page.js: /api/settings מחזיר מערך {key, value}
-    fetch('/api/settings')
-      .then(res => (res.ok ? res.json() : null))
+    // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה למסך משכה שוב את כל ההגדרות (~66KB).
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         if (Array.isArray(data)) {
           const row = data.find(s => s.key === 'gap_size_price_rule');
