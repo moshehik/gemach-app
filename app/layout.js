@@ -691,6 +691,7 @@ function cpCssText(vars) {
         data-ui-home={uiVariants.home}
         data-ui-order-card={uiVariants.order_card}
         data-ui-customer-card={uiVariants.customer_card}
+        data-ui-new-order={uiVariants.new_order}
         data-ui-employee-card={uiVariants.employee_card}
       >
         <UiVariantProvider value={uiVariants} canSelfSwitch={canSelfSwitchVariant}>

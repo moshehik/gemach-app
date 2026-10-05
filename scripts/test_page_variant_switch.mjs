@@ -36,7 +36,7 @@ const BOTH = ['shell', 'home', 'customer_card', ...NEW_SCREENS]; // סדר הר�
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
   assert.equal(new Set(UI_SCREEN_IDS).size, UI_SCREEN_IDS.length);
-  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', ...NEW_SCREENS]);
+  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', ...NEW_SCREENS]);
   for (const e of UI_SCREEN_REGISTRY) {
     assert.match(e.id, /^[a-z][a-z_]{1,30}$/, e.id);
     assert.ok(typeof e.label === 'string' && /[֐-׿]/.test(e.label), `${e.id}: label בעברית`);
@@ -51,7 +51,7 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
 });
 await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / customer_card; order_card / employee_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['order_card', 'employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['order_card', 'employee_card', 'new_order']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
 });
@@ -354,6 +354,7 @@ const RESTORED = [
   ['f3b1f771^1', 'app/my-hours/page.js', 'app/my-hours/LegacyMyHoursPage.js'],
   ['c944cb95', 'app/components/ErrorReportButton.js', 'app/components/LegacyErrorReportButton.js'],
   ['c944cb95', 'app/board/page.js', 'app/board/LegacyBoardPage.js'], // הלוח החודשי הישן (feature/board-new-design-2026-10-04)
+  ['ea579b00', 'app/orders/new/page.js', 'app/orders/new/LegacyNewOrderPage.js'], // אשף "הזמנה חדשה" הישן כפי ש-main מכיל אותו (כולל תיקוני ה-hotfix של lib/newOrderPayments)
 ];
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 let gitOk = true;
