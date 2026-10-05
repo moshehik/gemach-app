@@ -103,10 +103,15 @@ test('dry-run: the sample is anonymised - hashed customer id, order id and date 
   assert.match(sample, /LIMIT 10$/);
 });
 
-test('runner script: dry-run by default, writes only with --write, host-checked via connectOrg, aborts (rollback) if the row count differs from the dry-run, no DDL / AuditLog', () => {
+test('runner script: dry-run by default, writes only with --write, host-checked via connectStrict (no DATABASE_URL fallback), aborts (rollback) if the row count differs from the dry-run, no DDL / AuditLog', () => {
   const src = text('scripts/customer-signature-backfill.js');
   assert.match(src, /const write = rest\.includes\('--write'\)/);
-  assert.match(src, /connectOrg\(org, write\)/);
+  assert.match(src, /connectStrict\(org, write, /);
+  const code = src.replace(/\/\/.*$/gm, '');
+  assert.ok(!/process\.env\.DATABASE_URL|process\.env\[['"`]DATABASE_URL|fileVars\.DATABASE_URL|fileVars\[['"`]DATABASE_URL/.test(code), 'never reads a bare DATABASE_URL (no silent fallback)');
+  assert.ok(!/resolveDbUrl|connectOrg|seed-bool-setting/.test(code), 'does not use the helpers that fall back to DATABASE_URL');
+  assert.match(code, /PROD_DATABASE_URL_ORG2/);
+  assert.match(code, /NO fallback to DATABASE_URL/);
   assert.match(src, /if \(!write\) \{ console\.log\('dry-run - pass --write to apply'\); return; \}/);
   assert.match(src, /prisma\.\$transaction\(/);
   assert.match(src, /if \(n !== expected\) throw/);
