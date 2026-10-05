@@ -2496,15 +2496,19 @@ export default function NewOrderPage() {
                     </select>
                   </div>
 
-                  <NocCollapsible title="הערה לתשלום" badge={payment.notes ? 'יש הערה' : null}>
-                    <input
-                      type="text"
-                      className="input"
-                      value={payment.notes}
-                      onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="מספר אישור, פרטי הבנק, שם המשלם..."
-                    />
-                  </NocCollapsible>
+                  {/* דיווח 51f2cc56: נווה יעקב ביקשו להוריד את "הערה לתשלום" לגמרי. ההערה נשמרת על התשלום ומוצגת
+                      ברשימת התשלומים בגמח הראשי, לכן ההסתרה מאחורי הגדרה (ברירת מחדל = מוצג). */}
+                  {settings.hide_order_payment_note !== 'true' && (
+                    <NocCollapsible title="הערה לתשלום" badge={payment.notes ? 'יש הערה' : null}>
+                      <input
+                        type="text"
+                        className="input"
+                        value={payment.notes}
+                        onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="מספר אישור, פרטי הבנק, שם המשלם..."
+                      />
+                    </NocCollapsible>
+                  )}
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
                     <button type="submit" className="btn btn-secondary" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
