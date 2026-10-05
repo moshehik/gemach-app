@@ -30,6 +30,11 @@ model Customer {
   isBlocked        Boolean @default(false) // חסום מהזמנות חדשות
   blockedReason    String? // סיבת החסימה
 
+  // חתימה על התקנון ברמת הלקוח. העמודות כבר קיימות בשני ה-DB (prisma/migrations-pending/2026-10-04-customer-signed-regulations.sql,
+  // הורץ ידנית) - ההצהרה כאן רק מיישרת את הקליינט; לעולם לא db push. regulationsSignedAt מחושב בשרת בלבד.
+  hasSignedRegulations Boolean   @default(false) // חתמה על התקנון (ברמת הלקוח)
+  regulationsSignedAt  DateTime? // מתי נחתם (מחושב בשרת)
+
   // Tier-3 fuzzy-name search (docs/smart-quick-search-plan-2026-09-27.md) - a coarse
   // phonetic key (lib/hebrewPhonetic.js) computed from firstName/lastName, collapsing
   // recurring Ashkenazi-surname spelling variants (e.g. שיינועטר/שינוטר/שיינאטר) that

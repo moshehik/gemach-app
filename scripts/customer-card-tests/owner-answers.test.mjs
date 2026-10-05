@@ -70,13 +70,14 @@ await t('CC-O5: כוכבית השדה החובה באדום של הפלטה (--g
 });
 
 // ---- CC-O6: DDL לא הורץ; הקוד מתנהג יפה בלי העמודות ----
-await t('CC-O6: SIGNATURE_COLUMNS_READY=false, בלי נגיעה במודל Customer, וה-SQL תוספתי נקי', () => {
-  assert.equal(logic.SIGNATURE_COLUMNS_READY, false);
+await t('CC-O6: דיפלוי 1 - המודל Customer מצהיר על שתי העמודות (בדיוק כמו ה-DDL), הדגל עוד כבוי, וה-SQL תוספתי נקי', () => {
+  assert.equal(logic.SIGNATURE_COLUMNS_READY, false, 'ההפעלה היא דיפלוי 2 נפרד');
   const schema = read('prisma/schema.prisma');
   const start = schema.indexOf('model Customer {');
   assert.ok(start > 0);
   const cust = schema.slice(start, schema.indexOf('\n}', start));
-  assert.ok(!/regulationsSignedAt|hasSignedRegulations/.test(cust), 'המודל Customer לא נוגעים בו לפני אישור הרצת DDL');
+  assert.match(cust, /^\s*hasSignedRegulations\s+Boolean\s+@default\(false\)/m, 'NOT NULL DEFAULT false');
+  assert.match(cust, /^\s*regulationsSignedAt\s+DateTime\?(\s|$)/m, 'TIMESTAMP(3) nullable');
   const buf = readFileSync(new URL('../../prisma/migrations-pending/2026-10-04-customer-signed-regulations.sql', import.meta.url));
   assert.notDeepEqual([...buf.subarray(0, 3)], [0xef, 0xbb, 0xbf], 'BOM');
   assert.ok(!buf.includes(0x0d), 'CR');
@@ -111,15 +112,15 @@ await t('CC-O6b: אין "#null" בטקסט החתימה (חתימה ברמת ל�
     assert.ok(!/בהזמנה #\$\{(sig|s)\.orderId\}|נחתם בהזמנה #/.test(src), `${f}: נשאר "#orderId" ישיר`);
   }
 });
-await t('CC-O6b: תוויות ההיסטוריה של שני שדות החתימה קיימות (בלי מפתח גולמי), והסכמה עוד לא נגעה', async () => {
+await t('CC-O6b: תוויות ההיסטוריה של שני שדות החתימה קיימות (בלי מפתח גולמי), והסכמה מצהירה עליהן', async () => {
   const labels = await import('../../lib/history/labels.js');
   assert.equal(labels.CUSTOMER_ONLY_FIELD_LABELS.hasSignedRegulations, 'חתימה על התקנון');
   assert.equal(labels.CUSTOMER_ONLY_FIELD_LABELS.regulationsSignedAt, 'מועד החתימה על התקנון');
   assert.equal(logic.SIGNATURE_COLUMNS_READY, false, 'ההפעלה היא צעד נפרד (SIGNATURE-FLIP-PLAN)');
   const schema = read('prisma/schema.prisma');
   const start = schema.indexOf('model Customer {');
-  const model = schema.slice(start, schema.indexOf('}', start));
-  assert.ok(!/regulationsSignedAt|hasSignedRegulations/.test(model), 'schema.prisma לא אמור להכיל את העמודות לפני ההפעלה');
+  const model = schema.slice(start, schema.indexOf('\n}', start));
+  assert.ok(/regulationsSignedAt/.test(model) && /hasSignedRegulations/.test(model), 'schema.prisma מצהיר על העמודות (דיפלוי 1)');
 });
 
 // ---- CC-O7: ערך ההגדרה לכל ארגון מחושב מהגדרות החובה הקיימות ----
