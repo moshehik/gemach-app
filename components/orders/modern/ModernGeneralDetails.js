@@ -32,6 +32,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [isEditingDelivery, setIsEditingDelivery] = useState(!!order?.isDelivery && !order?.deliveryCity);
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
   const [enableRentalExtension, setEnableRentalExtension] = useState(false);
+  // 1cbaf995 / fdce699f: allow_abroad_long_stay_orders = 'false' מסתיר את בורר "אירוע רגיל / חו"ל" (ברירת מחדל: מוצג)
+  const [allowAbroadSetting, setAllowAbroadSetting] = useState(true);
 
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -41,6 +43,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         if (setting && !isNaN(parseInt(setting.value, 10))) setSystemDefaultSpacing(parseInt(setting.value, 10));
         const extSetting = arr.find(s => s.key === 'enable_rental_extension');
         setEnableRentalExtension(!!extSetting && extSetting.value === 'true');
+        const abroadSetting = arr.find(s => s.key === 'allow_abroad_long_stay_orders');
+        setAllowAbroadSetting(!(abroadSetting && abroadSetting.value === 'false'));
       })
       .catch(() => {});
   }, []);
@@ -323,6 +327,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              {(allowAbroadSetting || isAbroad) ? (
               <div className="pill-tabs">
                 <button
                   type="button"
@@ -347,6 +352,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                   אירוע חו"ל
                 </button>
               </div>
+              ) : <span />}
               <button type="button" className="btn btn-ghost btn-icon-only" title="סיים עריכה" onClick={() => setIsEditingEvent(false)}>
                 <svg className="icon"><use href="#i-check" /></svg>
               </button>
@@ -435,7 +441,12 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           {/* מתג "הזמנת משלוח" — נשאר תמיד גלוי (לא נכנס למצב עריכה/קריאה כמו שאר הכרטיס
               למטה) ומודגש יותר משאר השדות, כי הוא הקובע היחיד אם כל שאר האזור פעיל בכלל. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px' }}>
-            <h3 style={{ margin: 0, fontSize: 14 }}>משלוח</h3>
+            {/* אותו סגנון כותרת כמו כרטיסי לקוח/אירוע (div מודגש) ולא h3 - ה-h3 קיבל את גופן הכותרות (24380f79);
+                האווטאר העגול כמו בכרטיסי לקוח/אירוע (139f6a15) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="avatar"><svg className="icon"><use href="#i-truck" /></svg></div>
+              <div style={{ fontWeight: 700, fontSize: '15px' }}>משלוח</div>
+            </div>
             <div
               className={`switch${order.isDelivery ? ' on' : ''}`}
               role="switch"
@@ -539,9 +550,12 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           האמיתית (תשלום/זיכוי) נפתחת בפועל בטאב תשלומים. */}
       {showManualPaymentCreditButton && (
         <div className="card card-pad" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
-            <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן) או בקשת זיכוי ללקוח - דורש קוד מאשר.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div className="avatar"><svg className="icon"><use href="#i-wallet" /></svg></div>
+            <div>
+              <div style={{ fontWeight: 700 }}>תשלום / זיכוי ידני</div>
+              <div className="hint" style={{ color: 'var(--text-3)' }}>רישום תשלום נוסף (למשל מזומן), בקשת זיכוי ללקוח או הוספת חיוב ידני - דורש קוד מאשר.</div>
+            </div>
           </div>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowManualPaymentCreditChooser(true)}>
             <svg className="icon"><use href="#i-coin" /></svg>הוספת תשלום/זיכוי ידני
@@ -551,6 +565,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
 
       {/* תאריך ביצוע ההזמנה */}
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+        <div className="avatar"><svg className="icon"><use href="#i-clock" /></svg></div>
         <div style={{ flex: 1 }}>
           <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך ביצוע ההזמנה</span>
           {isEditingOrderDate ? (
@@ -660,7 +675,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p className="hint" style={{ color: 'var(--text-2)', margin: 0 }}>בחר את סוג הפעולה. שתיהן דורשות קוד מאשר.</p>
+              <p className="hint" style={{ color: 'var(--text-2)', margin: 0 }}>בחר את סוג הפעולה. כולן דורשות קוד מאשר.</p>
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -676,6 +691,14 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('credit'); }}
               >
                 <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ justifyContent: 'flex-start' }}
+                onClick={() => { setShowManualPaymentCreditChooser(false); onOpenManualPaymentCredit?.('charge'); }}
+              >
+                <svg className="icon"><use href="#i-plus" /></svg>הוספת חיוב ידני
               </button>
             </div>
           </div>

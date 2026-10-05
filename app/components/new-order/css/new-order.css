@@ -1,0 +1,250 @@
+/* אשף "הזמנה חדשה" (A5) - CSS מקומי לדף, בהיקף .gm-ds.gm-no בלבד (לא נוגע ב-design-system/ ולא בשום דף אחר).
+   מקור: העיצוב המאושר תצוגות-עיצוב/הזמנה-חדשה.html, גרסת B2 "מודרך עם פסים" - בלוק ה-"page glue" שלו (פריסה בלבד: פסי ההתקדמות .pbars,
+   קוביית שלב אחת .one/.blk, שדות 440px, אריחי מידה, תיקונים .altopts/.lenopt, הלוח .hc-d, רשימת ההצעות .advstatic) הועתק כמו שהוא
+   ורק הוגדר בהיקף: "body .app X" / "#app" -> ".gm-ds.gm-no .app X" / ".gm-ds.gm-no .no-app". רכיבי הפלטה עצמם באים מ-design-system/components.css.
+   שורש הדף .gm-ds.gm-no.home-bg.dlg-dark - בלי .gm-home (העור של דף הבית דורס לחצנים/שדות; ר' docs/ui-fidelity-schedule.md סעיף 2).
+   שומר סטטי: scripts/test_home_css_guard.mjs (סעיף "הזמנה חדשה"). בדיקת נאמנות: scripts/new-order-bg-audit. */
+
+/* ===== גוף הדף ===== */
+/* הגופן של הפלטה (Rubik) בכל הדף; design-overrides.css כופה !important על לחצנים/שדות (Assistant) ועל כותרות (Frank Ruhl) */
+.gm-ds.gm-no *{font-family:var(--gm-font)}
+.gm-ds.gm-no :is(button,input,select,textarea){font-family:inherit!important}
+.gm-ds.gm-no :is(h1,h2,h3,h4,h5,h6){font-family:inherit!important;letter-spacing:normal}
+/* מלא-רוחב: המעטפת (הישנה והחדשה) עוטפת כל דף ב-.app-shell > .main > .content עם padding ו-max-width - כמו profile.css */
+.app-shell .main .content:has(> .gm-ds.gm-no){max-width:none;margin-inline:0;padding:0}
+/* בעיצוב ה-topbar שקוף; globals.css / design-overrides.css יכולים לצבוע אותו */
+.gm-ds.gm-no .no-app .topbar{position:relative;background:transparent;padding:0;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.gm-ds.gm-no .no-app .ttl h1{color:var(--gm-navy-900)}
+/* globals.css מאפס padding לכל אלמנט: לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-no .back{padding:1px 6px}
+/* מתג הפעלה: ה-input מוסתר אך globals/design-overrides נותנים לו רקע לבן */
+.gm-ds.gm-no .sw input{background:transparent}
+/* app/design-system.css: .field{margin-bottom:14px} - בעיצוב המרווח בא מ-gap של הרשת */
+.gm-ds.gm-no .field{margin-bottom:0}
+/* מרווחי הדף כמו בעיצוב (#pbars / #heroT / הפאנלים / שורת הניווט - style="margin-top" בעיצוב) */
+.gm-ds.gm-no .no-app .pbars{margin-top:22px}
+.gm-ds.gm-no .no-app .hero-t{margin-top:22px}
+.gm-ds.gm-no .no-app .no-panels{margin-top:20px}
+.gm-ds.gm-no .no-app .no-nav{margin-top:32px;gap:16px}
+
+/* ===== page glue של העיצוב (B2), בהיקף הדף ===== */
+.gm-ds.gm-no .sec{display:flex;flex-direction:column;gap:18px;min-width:0}
+.gm-ds.gm-no .sec:empty{display:none}
+.gm-ds.gm-no .sizes button{width:auto;min-width:64px;height:auto;padding:6px 10px;display:flex;flex-direction:column;align-items:center;line-height:1.25}
+.gm-ds.gm-no .sizes button:disabled{opacity:.55;cursor:not-allowed}
+.gm-ds.gm-no .kv .f .missv{display:inline-flex;align-items:center;gap:4px}
+@keyframes no-spin{to{transform:rotate(360deg)}}
+.gm-ds.gm-no .pbars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:start}
+.gm-ds.gm-no .pb{display:flex;flex-direction:column;gap:8px;min-width:0}
+.gm-ds.gm-no .pb-bar{height:8px;border-radius:999px;background:var(--sky-300);overflow:hidden;position:relative}
+.gm-ds.gm-no .pb-bar i{position:absolute;inset-block:0;inset-inline-start:0;width:0;border-radius:999px;background:var(--brand);transition:width .45s cubic-bezier(.22,1,.36,1)}
+.gm-ds.gm-no .pb.done .pb-bar i{width:100%}
+.gm-ds.gm-no .pb.cur .pb-bar i{width:100%;background:var(--gbtn)}
+.gm-ds.gm-no .pb-d{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:6px 8px;border:0;background:transparent;text-align:start;color:var(--ink);font:inherit;cursor:pointer;transition:background-color .15s,border-color .15s}
+.gm-ds.gm-no .pb-d:hover .pb-t b,.gm-ds.gm-no .pb-d:focus-visible .pb-t b{text-decoration:underline}
+.gm-ds.gm-no .pb-d:focus-visible{outline:3px solid var(--gold);outline-offset:2px;border-radius:8px}
+.gm-ds.gm-no .pb-d .ic{color:var(--brand);margin-top:2px}
+.gm-ds.gm-no .pb-t{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+.gm-ds.gm-no .pb-t b{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.gm-ds.gm-no .pb-d.ph{min-height:0;padding:0;border:0;pointer-events:none}
+@media (max-width:520px){.gm-ds.gm-no .pbars{gap:6px}
+.gm-ds.gm-no .pb-d{padding:4px}
+.gm-ds.gm-no .pb-d .ic{display:none}
+.gm-ds.gm-no .pb-t b{font-size:13px}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .pb-bar i{transition:none}}
+.gm-ds.gm-no .one-body{display:flex;flex-direction:column}
+.gm-ds.gm-no .one-body>.blk+.blk{margin-top:22px;padding-top:22px;border-top:1px dashed var(--line)}
+.gm-ds.gm-no .app .one .blk:is(.card,.gm-ds.gm-no .dfields,.gm-ds.gm-no .cust,.gm-ds.gm-no .items-card,.gm-ds.gm-no .coll,.gm-ds.gm-no .stepper){background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding-inline:0!important}
+.gm-ds.gm-no .app .one .blk:is(.card,.gm-ds.gm-no .dfields,.gm-ds.gm-no .cust,.gm-ds.gm-no .items-card){padding-block:0!important;margin:0!important}
+.gm-ds.gm-no .one .sub-h{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.gm-ds.gm-no .one .sub-h h2{margin:0;font-size:17px;font-weight:600;color:var(--ink);flex:1;min-width:0}
+.gm-ds.gm-no .one .sub-h .ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--sky-100);color:var(--navy-500)}
+.gm-ds.gm-no .one .sub-h .ico .ic{width:20px;height:20px}
+.gm-ds.gm-no .app .one .addpanel{background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+.gm-ds.gm-no .hero-q{margin:10px 0 0;font-family:'FB Melatef','Suez One',serif;font-size:84px;font-weight:700;line-height:1;color:var(--navy-900)}
+@media (max-width:520px){.gm-ds.gm-no .hero-q{font-size:64px}}
+.gm-ds.gm-no .scan{position:relative}
+.gm-ds.gm-no .altrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.gm-ds.gm-no .addbar{margin-top:18px;gap:12px}
+.gm-ds.gm-no .one .inpw{position:relative}
+.gm-ds.gm-no .one .lbl.with-ic{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-no .one .lbl.with-ic>.ic{width:18px;height:18px;color:var(--navy-500)}
+.gm-ds.gm-no .app .one .inpw>.inp{padding-inline-start:16px!important}
+.gm-ds.gm-no .app .one .inpw:has(>.inpx)>.inp{padding-inline-end:44px!important}
+.gm-ds.gm-no .one .inpw>.inpx{position:absolute;inset-inline-end:8px;top:50%;translate:0 -50%}
+.gm-ds.gm-no .one .inpw.ico-in>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;color:var(--navy-500);pointer-events:none;z-index:1}
+.gm-ds.gm-no .app .one .inpw.ico-in>.inp{padding-inline-start:44px!important}
+.gm-ds.gm-no .app .card.one>.card-h:first-child{background:transparent!important;color:var(--ink)!important;border-bottom:1px solid var(--line)}
+.gm-ds.gm-no .app .card.one>.card-h:first-child h2{color:var(--ink)!important}
+.gm-ds.gm-no .app .card.one>.card-h:first-child .ico[class]{background:var(--sky-100)!important;color:var(--navy)!important}
+.gm-ds.gm-no .no-app{max-width:680px!important}
+.gm-ds.gm-no .one .field,.gm-ds.gm-no .one .scan,.gm-ds.gm-no .one .seg.pill,.gm-ds.gm-no .one .amtin{max-width:440px}
+.gm-ds.gm-no .one .methods{max-width:440px}
+.gm-ds.gm-no .one .hc{max-width:none;width:100%}
+.gm-ds.gm-no .one .altopts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:440px}
+.gm-ds.gm-no .one .lenstep{display:flex;align-items:center;gap:8px;margin-top:12px}
+.gm-ds.gm-no .one .lenstep .inp{max-width:120px;text-align:center}
+.gm-ds.gm-no .one .avl{display:flex;flex-wrap:wrap;gap:4px 16px;margin:12px 0 0}
+.gm-ds.gm-no .one .sizes{margin-top:2px}
+.gm-ds.gm-no .dlg .lbl.with-ic{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-no .dlg .lbl.with-ic>.ic{width:18px;height:18px}
+.gm-ds.gm-no .dlg .inpw{position:relative}
+.gm-ds.gm-no .dlg .inpw.ico-in>.ic{position:absolute;inset-inline-start:16px;top:50%;translate:0 -50%;pointer-events:none}
+.gm-ds.gm-no .app .one .blk{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;outline:0!important}
+.gm-ds.gm-no .app .one .blk::before,.gm-ds.gm-no .app .one .blk::after{display:none!important}
+.gm-ds.gm-no .app .one .seg.pill{max-width:440px!important}
+.gm-ds.gm-no .one .inpw{max-width:440px}
+.gm-ds.gm-no .app .one .blk.dhero{background:none!important;border:0!important;box-shadow:none!important;padding-inline:0!important;border-radius:0!important}
+@media (max-width:520px){.gm-ds.gm-no .one .btn{white-space:normal;text-align:start;height:auto;min-height:44px}}
+.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
+.gm-ds.gm-no .app .one .stepper{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin-top:0!important}
+.gm-ds.gm-no .app .one .stepper::after{display:none!important}
+.gm-ds.gm-no .app .one .coll{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;border-top:1px dashed var(--line)!important;padding-inline:0!important}
+.gm-ds.gm-no .app .one .coll>summary{padding-inline:0}
+.gm-ds.gm-no .app .one .coll[open]{padding-bottom:4px}
+.gm-ds.gm-no .app .one .sub-h .ico[class]{background:var(--sky-100)!important;color:var(--navy)!important}
+.gm-ds.gm-no .app .one .sub-h .ico svg{stroke:currentColor}
+.gm-ds.gm-no .one .avl{gap:8px;margin:16px 0 0}
+.gm-ds.gm-no .one .chip.out{opacity:.6;text-decoration:line-through}
+.gm-ds.gm-no .one .altbox{margin-top:24px;padding-top:22px;border-top:1px dashed var(--line)}
+.gm-ds.gm-no .one .altbox .lenstep{margin-top:16px}
+.gm-ds.gm-no .one .altbox .field{margin-top:16px}
+.gm-ds.gm-no .one .addbar{margin-top:24px}
+.gm-ds.gm-no .one .altbox .field.lenf{margin-top:16px}
+.gm-ds.gm-no .one .inpw.stepw{max-width:240px}
+.gm-ds.gm-no .one .stepw>.inpx{position:absolute;top:50%;translate:0 -50%;width:32px;height:32px;display:grid;place-items:center}
+.gm-ds.gm-no .one .stepw>.st-minus{inset-inline-start:8px;inset-inline-end:auto}
+.gm-ds.gm-no .one .stepw>.st-plus{inset-inline-end:8px;inset-inline-start:auto}
+.gm-ds.gm-no .app .one .inpw.stepw:has(>.inpx)>.inp{padding-inline:52px!important;text-align:center}
+.gm-ds.gm-no .one .grid2.col1{grid-template-columns:minmax(0,1fr);gap:16px}
+.gm-ds.gm-no .one .ncmore{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+.gm-ds.gm-no .one .ncmore .trow{margin-top:4px}
+.gm-ds.gm-no .hres .hrow.open .go:has(use[href="#i-check"]){transform:none}
+.gm-ds.gm-no .one .opt{position:relative}
+.gm-ds.gm-no .one .opt .evck{position:absolute;top:10px;inset-inline-end:10px;width:18px;height:18px;color:var(--navy)!important;stroke:var(--navy)!important;stroke-width:3!important;stroke-dasharray:24;stroke-dashoffset:24;animation:gm-evDraw .35s ease-out forwards}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .one .opt .evck{animation:none;stroke-dashoffset:0}}
+.gm-ds.gm-no .cart-total{font-size:17px;font-weight:700;color:var(--navy-900);white-space:nowrap}
+.gm-ds.gm-no .one .altopts{grid-template-columns:repeat(3,minmax(0,1fr));max-width:none;gap:12px}
+@media (max-width:560px){.gm-ds.gm-no .one .altopts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gm-ds.gm-no .opt.lenopt{align-items:center;cursor:text}
+.gm-ds.gm-no .opt.lenopt>div{flex:1;min-width:0}
+.gm-ds.gm-no .lenin{flex:none;width:56px;height:40px;border:1.5px solid var(--line);border-radius:12px;background:#fff;text-align:center;font-size:17px;font-weight:600;color:var(--navy-900);padding:0;outline:0;transition:border-color 150ms,box-shadow 150ms}
+.gm-ds.gm-no .lenin:focus{border-color:var(--navy);box-shadow:0 0 0 3px var(--gold-100)}
+.gm-ds.gm-no .advlist.advstatic{max-width:440px}
+.gm-ds.gm-no .advlist.advstatic{position:static;margin-top:16px;max-height:264px;animation:none}
+.gm-ds.gm-no .advlist.advstatic .advo-t{flex:1}
+.gm-ds.gm-no .hc-d{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:46px}
+.gm-ds.gm-no .hc-d .hc-p{display:block;max-width:100%;padding:0 2px;font-size:11px;font-weight:500;line-height:1.15;color:var(--ink2);text-align:center;white-space:normal;overflow-wrap:anywhere}
+.gm-ds.gm-no .hc-d .hc-hol{color:var(--rose-700);font-weight:600}
+.gm-ds.gm-no .hc-d.hasH{background:rgba(251,191,169,.28)}
+.gm-ds.gm-no .hc-d.hasH{min-height:56px}
+.gm-ds.gm-no .hc-d.on .hc-p,.gm-ds.gm-no .hc-d.on .hc-hol{color:#fff}
+.gm-ds.gm-no .hc-d.sh{min-height:56px}
+.gm-ds.gm-no .hc-g{gap:6px;padding:16px}
+.gm-ds.gm-no .hc-w{padding:8px 16px;gap:6px}
+.gm-ds.gm-no .lbl,.gm-ds.gm-no label.lbl{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;color:var(--ink2);margin-bottom:12px}
+.gm-ds.gm-no .lbl>.ic{color:var(--navy-500)}
+.gm-ds.gm-no .app .lbl{margin-bottom:12px}
+.gm-ds.gm-no .trow{gap:16px}
+.gm-ds.gm-no .trow .sw{margin-inline-end:4px}
+.gm-ds.gm-no .grid2{gap:24px}
+.gm-ds.gm-no .dhero{gap:20px}
+.gm-ds.gm-no .card .sub-h+.seg.pill{margin-top:20px}
+.gm-ds.gm-no .seg.pill+.lbl,.gm-ds.gm-no .seg.pill+.field,.gm-ds.gm-no .seg.pill+.muted{margin-top:28px}
+.gm-ds.gm-no .row{gap:12px}
+.gm-ds.gm-no .row.wrap{row-gap:12px}
+.gm-ds.gm-no .row:has(>.ibtn){gap:12px}
+.gm-ds.gm-no .methods{gap:12px}
+
+/* ===== תוספות של הבנייה (מה שלא היה בעיצוב, מסומן במזהה ההחלטה) ===== */
+/* R03 (הבעלים): הודעת "חובה למלא לפחות אחד מבין" בגוון הסלמון-ורוד של ההתראה ובגודל רגיל (לא תיבת .empty גדולה) */
+.gm-ds.gm-no .no-grp{display:flex;align-items:center;gap:6px;margin-top:8px;padding:6px 12px;border-radius:12px;background:var(--gm-rose-100);border:1px solid var(--gm-pink-500);color:var(--gm-rose-700);font-size:13px;font-weight:500;line-height:1.35;width:fit-content;max-width:100%}
+.gm-ds.gm-no .no-grp .ic{width:16px;height:16px;flex:none}
+/* R05: הודעת השרת מתחת לשדה */
+.gm-ds.gm-no .no-ferr{display:flex;gap:6px;align-items:center;margin-top:8px;color:var(--gm-rose-700)}
+/* Q8: "* (חובה)" בתווית "פירוט לתופרת" */
+.gm-ds.gm-no .no-req{color:var(--gm-rose-700);font-weight:600}
+/* R29: הודעת השמירה מתחת לכפתור "סיום ויצירת ההזמנה" + פירוט נפתח */
+/* חלון "לקוח קיים במערכת": אייקון השורה (בעיצוב style מקומי) */
+.gm-ds.gm-no .no-chg-ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
+/* העברת כרטיס מהירה: שדה הקורא המגנטי נסתר (כמו בישן) */
+.gm-ds.gm-no .no-swipe-in{position:absolute;top:-1000px;opacity:0;width:1px;height:1px}
+/* חלון "עסוק": הסיבוב של .big-ck (בעיצוב style="animation:spin") */
+.gm-ds.gm-no .big-ck.no-spin{animation:no-spin 1.2s linear infinite}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .big-ck.no-spin{animation:none}}
+
+/* ===== נטרול דליפות של ה-CSS הגלובלי (נמצאו ב-scripts/new-order-bg-audit מול העיצוב) ===== */
+/* שאלת השלב בגופן הכותרת של העיצוב (הכלל של h1-h6 למעלה מכריח inherit עם !important) */
+.gm-ds.gm-no .hero-t .hero-q{font-family:'FB Melatef','Suez One',serif!important}
+/* הכרטיס: בעיצוב הגרדיאנט "פנינה" (body .app :is(.card,...) בקובץ העיצוב) ולא זכוכית 30% של הפלטה - אותם ערכים, כמו profile.css */
+.gm-ds.gm-no .app :is(.card,.stepper,.itm,.scan,.coll[open],.leg,.dhero){background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
+/* design-overrides.css: input:not(...) (0,4,1) צובע טקסט בחום וגבול בבז'; .inp.inp = (0,5,0) מחזיר את ערכי הפלטה (בפוקוס - כללי הפלטה) */
+.gm-ds.gm-no .no-app .inp.inp{color:var(--gm-ink)}
+.gm-ds.gm-no .no-app .inp.inp:not(:focus){border-color:var(--gm-line)}
+.gm-ds.gm-no .no-app .scan>input:not(.x){border:0;background:transparent;border-radius:0;box-shadow:none;color:var(--gm-ink)}
+.gm-ds.gm-no .no-app .lenin.lenin{border-radius:12px;color:var(--gm-navy-900)}
+.gm-ds.gm-no .no-app .lenin.lenin:not(:focus){border-color:var(--gm-line)}
+/* globals.css מאפס padding לכל אלמנט: ibtn בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
+.gm-ds.gm-no .ibtn{padding:1px 6px}
+/* חלונות כהים (Q2): לחצן "ביטול/סגירה" השקוף בתחתית החלון - בעיצוב (:is(#dlg,#dlg2) .btn.ghost) ואינו ב-components.css */
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2){position:relative;background:transparent;border:0;box-shadow:none;color:var(--k-ghost);font-weight:600;min-height:44px!important;width:auto;align-self:center;padding:8px 18px;text-decoration:none;transform:none}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):is(:hover,:active,:focus-visible){background:transparent;color:var(--k-ghost);box-shadow:none;transform:none;text-decoration:none}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2)::before{content:none;display:none}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2) svg{color:var(--k-ghost)!important;stroke:var(--k-ghost)!important}
+.gm-ds.gm-no :is(#dlg,#dlg2) .btn.ghost:not(.q1):not(.q2):focus-visible{outline:2px solid var(--gm-gold);outline-offset:2px;box-shadow:none}
+/* בחלונות: תוויות 14px ושדות ברדיוס הפלטה (design-overrides נותן לכל input רדיוס 10px) */
+.gm-ds.gm-no :is(#dlg,#dlg2) .mfld .lbl{font-size:14px}
+.gm-ds.gm-no :is(#dlg,#dlg2) .inp.inp{border-radius:14px}
+/* "סכום לתשלום כעת": השדה בתוך .amtin שקוף כמו בעיצוב (design-overrides צובע רקע/גבול/רדיוס לכל input) */
+.gm-ds.gm-no .no-app .amtin>input:not(.x){border:0;background:transparent;border-radius:0;padding:1px 2px;color:var(--gm-ink);box-shadow:none}
+.gm-ds.gm-no .no-app .inp.inp:focus{border-color:var(--gm-brand)}
+/* שאלת השלב (.hero-t) ממורכזת עם הילה לבנה - הכלל של דף הבית שהעיצוב מכיל (ב-components.css רק תחת gm-home) */
+.gm-ds.gm-no .hero-t{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.8);overflow-wrap:anywhere}
+/* אייקון השורה ברשימות הלקוחות / הדגם שנבחר (page glue של העיצוב) */
+.gm-ds.gm-no .hres .li .ic-b{width:48px}
+.gm-ds.gm-no .hres .hrow.open .go:has(use[href$="check"]){transform:none}
+
+/* ===== R22: חלון "בדוק תפוסה" (#dlg2 כהה) - מתג רשימה / לוח, סיכום, טבלה, הלוח העברי (.hc) עם התפוסה ===== */
+/* סיכום במלאי / בתפוסה / רזרבה: כמו בעיצוב (padding:0 0 14px; 3 עמודות), הטקסט עובר שורה במקום להיחתך */
+.gm-ds.gm-no .dlg .no-cap-glance{padding:0 0 14px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.gm-ds.gm-no .dlg .no-cap-glance .gv{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+/* מתג רשימה / לוח: .seg.pill של הפלטה (בעיצוב מוגדר רק בתוך .app) כהה - מחוון בהיר על רקע החלון */
+.gm-ds.gm-no .dlg .seg.pill{position:relative;display:flex;background:transparent;border:1.5px solid rgba(255,255,255,.55);border-radius:999px;padding:4px;gap:0;max-width:100%;--i:0;--n:2}
+.gm-ds.gm-no .dlg .seg.pill .pth{position:absolute;top:4px;bottom:4px;height:auto;min-height:0;margin:0;width:calc((100% - 8px)/var(--n));inset-inline-start:calc(4px + (100% - 8px)/var(--n)*var(--i));background:var(--gm-sky-50);border-radius:999px;pointer-events:none}
+.gm-ds.gm-no .dlg .seg.pill button{position:relative;z-index:1;flex:1;min-width:0;border:0;background:transparent;box-shadow:none;border-radius:999px;padding:10px 16px;min-height:0;font-weight:500;color:var(--k-sub);display:flex;gap:8px;align-items:center;justify-content:center;transition:color .25s;white-space:nowrap}
+.gm-ds.gm-no .dlg .seg.pill button:hover{background:transparent;color:#fff}
+.gm-ds.gm-no .dlg .seg.pill button.on,.gm-ds.gm-no .dlg .seg.pill button.on:hover{background:transparent;color:var(--gm-navy-900);box-shadow:none}
+.gm-ds.gm-no .dlg .seg.pill button.on .ic{color:var(--gm-navy-900);stroke:var(--gm-navy-900)}
+.gm-ds.gm-no .dlg .seg.pill button:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+/* טבלת ההזמנות התופסות */
+.gm-ds.gm-no .dlg .tblw{overflow-x:auto}
+.gm-ds.gm-no .dlg .rtbl tr.no-cap-cur td{background:rgba(241,220,143,.38)}
+.gm-ds.gm-no .dlg .no-cap-free{text-align:center}
+.gm-ds.gm-no .dlg .no-cap-load{text-align:center;padding:14px 0}
+/* הלוח: כרטיס בהיר בתוך החלון הכהה (כמו השדות), ללא שוליים עליונים; יום תפוס צבוע בסלמון, יום מחוץ לטווח מעומעם */
+.gm-ds.gm-no .dlg .hc{margin-top:0;background:var(--gm-sky-50)}
+.gm-ds.gm-no .dlg .hc-g{padding:12px;gap:4px}
+.gm-ds.gm-no .dlg .hc-w{padding:8px 12px;gap:4px}
+.gm-ds.gm-no .dlg .hc-d{min-height:52px}
+.gm-ds.gm-no .dlg .hc-d.occ{background:rgba(244,166,140,.6);box-shadow:inset 0 0 0 1.5px #d97b5f}
+.gm-ds.gm-no .dlg .hc-d.occ .hc-occ{color:var(--gm-navy-900);font-weight:700}
+.gm-ds.gm-no .dlg .hc-d.out{opacity:.38;cursor:default}
+.gm-ds.gm-no .dlg .hc-d.on{background:var(--gm-navy);color:#fff}
+.gm-ds.gm-no .dlg .hc-d.on .hc-p{color:#fff}
+.gm-ds.gm-no .dlg .hc-n:disabled{opacity:.35;cursor:default}
+@media (max-width:520px){.gm-ds.gm-no .dlg .hc-d{min-height:46px}.gm-ds.gm-no .dlg .hc-d .hc-p{font-size:10px}}
+/* רשימת הדגמים בחיפוש: סטטית בתוך החלון (לא נחתכת בגלילת החלון) ובמלוא הרוחב */
+.gm-ds.gm-no .dlg .advlist.advstatic{max-width:none;margin-top:8px;max-height:216px}
+.gm-ds.gm-no .dlg .inpw{position:relative}
+.gm-ds.gm-no .dlg .inpw>.inpx{position:absolute;inset-inline-end:8px;top:50%;translate:0 -50%}
+.gm-ds.gm-no .dlg .inpw:has(>.inpx)>.inp{padding-inline-end:44px}
+.gm-ds.gm-no .dlg .no-cap-hist{gap:8px}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .dlg .seg.pill button{transition:none}}
+
+/* R29b: באנר הודעות השמירה (.nb של הפלטה, כחול כהה) מתחת לשורת הכותרת - במלוא רוחב העמוד, הטקסט עובר שורה במקום להיחתך */
+.gm-ds.gm-no .no-banner{padding:0;margin-top:14px}
+.gm-ds.gm-no .no-banner .nb-w{margin-top:0;max-width:none}
+.gm-ds.gm-no .no-banner .nb-r{align-items:flex-start;padding-block:10px}
+.gm-ds.gm-no .no-banner .nb-r span{padding-top:3px}
+/* כותרת הטבלה: globals.css כופה על כל <th> רקע קרם וצל (!important), design-overrides גופן - בעיצוב כחול כהה וזהב (כמו attendance.css) */
+.gm-ds.gm-no .dlg .rtbl>thead>tr>th{position:static!important;background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;outline:0;border-bottom:0!important}

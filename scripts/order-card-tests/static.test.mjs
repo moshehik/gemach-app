@@ -20,7 +20,7 @@ const CODE = Object.fromEntries(JS.map((f) => [rel(f), stripJsComments(read(f))]
 const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map(([f]) => f);
 
 // ---------- הכרטיס הישן והמעבר ----------
-const LEGACY_SHA256_LF = '27211c616f7cd65736b0099281abfe9b08dcbbd5e30dc1a7a089beaf3a3829b1'; // = app/orders/[id]/page.js של main ב-ea579b00 (אחרי c4d6e619: isWeekdayEvent הוסר)
+const LEGACY_SHA256_LF = 'd9276912171eef1051a2ad7c705a355370e656292f1dded9aa5c4e1e4521dc17'; // = app/orders/[id]/page.js של main ב-32d00e0c (אחרי c4d6e619: isWeekdayEvent הוסר; 1215fb9b/8830bc63: פריטי ברקוד לא מלכלכים את הכרטיס, חיוב ידני)
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
   const s = read(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js')).replace(/\r\n/g, '\n');
   assert.equal(crypto.createHash('sha256').update(s).digest('hex'), LEGACY_SHA256_LF);

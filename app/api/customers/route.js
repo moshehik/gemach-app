@@ -5,6 +5,7 @@ import { normalizeEmail } from '@/lib/emailUtils';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
+import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -165,6 +166,11 @@ export async function POST(request) {
             if (!errors.includes(`${label} חובה`)) errors.push(`${label} חובה`);
           }
         }
+      }
+      // שדות החובה של כרטיס הלקוח החדש (customer_required_fields) - רק לטופס הלקוח החדש של העיצוב החדש (cardVariant:'a5');
+      // הטופס הישן והוספת לקוח מהירה בהזמנה לא שולחים cardVariant ולכן לא מושפעים.
+      if (body.cardVariant === 'a5') {
+        for (const e of requiredFieldErrors(body, requiredFieldsFromSettings(sMap))) if (!errors.includes(e)) errors.push(e);
       }
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));

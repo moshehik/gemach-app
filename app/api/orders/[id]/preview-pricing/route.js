@@ -31,7 +31,8 @@ const SETTING_KEYS = [
   'delivery_price',
   'enable_delivery_join',
   'delivery_join_price',
-  'enable_rental_extension'
+  'enable_rental_extension',
+  'delivery_charge_customer_city_fallback'
 ];
 
 /**
@@ -68,7 +69,12 @@ export async function POST(request, { params }) {
         // obligations רק בשביל בדיקת "כבר קיים חיוב משלוח" ב-computeDeliveryObligationPreview
         // למטה - לא רלוונטי לחישוב עצמו (computeOrderObligations מקבל את items/deletedItems
         // מהלקוח, לא מה-DB, ר' התיעוד למעלה).
-        include: { obligations: { where: { isDeleted: false }, select: { description: true } } }
+        // customer.city: נפילה-לאחור של עיר המשלוח לעיר הלקוח (resolveEffectiveDeliveryCity) -
+        // חייב להתאים ל-applyDeliveryCharge כדי שהתצוגה המקדימה תכלול את אותו חיוב.
+        include: {
+          obligations: { where: { isDeleted: false }, select: { description: true } },
+          customer: { select: { city: true } }
+        }
       }),
       prisma.priceList.findMany(),
       getAllCachedSettings().then(all => all.filter(s => SETTING_KEYS.includes(s.key)))
@@ -130,6 +136,8 @@ export async function POST(request, { params }) {
     const deliveryPreview = computeDeliveryObligationPreview({
       isDelivery: effectiveOrder.isDelivery,
       deliveryCity: effectiveOrder.deliveryCity,
+      customerCity: baseOrder.customer?.city,
+      allowCustomerCityFallback: settings.find(s => s.key === 'delivery_charge_customer_city_fallback')?.value === 'true',
       deliveryDirection: effectiveOrder.deliveryDirection,
       deliveryPriceByCity: settings.find(s => s.key === 'delivery_price_by_city')?.value,
       deliveryPrice: settings.find(s => s.key === 'delivery_price')?.value,

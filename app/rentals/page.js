@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
@@ -102,17 +103,6 @@ export default function RentalsPage() {
   // הלשונית הראשית הנוכחית (לצורך הדגשת כפתור הלשונית) - 'rented_partial' שייך
   // ללשונית "השכרות" (הוא תת-סינון שלה), 'returned_partial' ל"החזרות".
   const activeTabGroup = (viewMode === 'returned' || viewMode === 'returned_partial') ? 'returns' : 'rentals';
-
-  // מעבר בין הלשוניות הראשיות + עדכון ה-hash בכתובת בהתאם (אותו hash שקישורי הסיידבר
-  // #rented/#returned כבר משתמשים בו) - כדי ששני מנגנוני הניווט (סיידבר + לשונית בעמוד)
-  // יישארו עקביים, בלי להוסיף רשומת היסטוריה חדשה לכל החלפת לשונית.
-  const switchTabGroup = (group) => {
-    const target = group === 'returns' ? 'returned' : 'rented';
-    setViewMode(target);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `#${target}`);
-    }
-  };
 
   const [advFilters, setAdvFilters] = useState(defaultRentalsAdvFilters());
   const [showAdvSearch, setShowAdvSearch] = useState(false);
@@ -464,18 +454,8 @@ export default function RentalsPage() {
         )}
       </div>
 
-      {/* שתי לשוניות ראשיות נפרדות - "השכרות" (פריטים שנמצאים כרגע בחוץ) מול "החזרות"
-         (פריטים שהוחזרו כבר) - דיווח e6c14620 + הבקשה המשלימה: לא לערבב את שתי זרימות
-         העבודה השונות (מעקב אחרי פריט שיצא, מול טיפול בבעיה שמתגלה בהחזרה) באותה תצוגה. */}
-      <div className="tabs" style={{ marginBottom: '4px' }}>
-        <button type="button" className={`tab${activeTabGroup === 'rentals' ? ' active' : ''}`} onClick={() => switchTabGroup('rentals')}>
-          <svg className="icon"><use href="#i-truck" /></svg> השכרות
-        </button>
-        <button type="button" className={`tab${activeTabGroup === 'returns' ? ' active' : ''}`} onClick={() => switchTabGroup('returns')}>
-          <svg className="icon"><use href="#i-check" /></svg> החזרות
-        </button>
-      </div>
-
+      {/* "השכרות" מול "החזרות" נבחרים רק דרך קישורי הסיידבר (#rented/#returned) - הלשוניות
+         בתוך העמוד הוסרו לבקשת המשתמש (8e647af8); הכותרת למעלה מציגה את המצב הנוכחי. */}
       {/* תת-סינון בתוך הלשונית הפעילה - "הכל" (כולל חלקי) מול "חלקי בלבד" */}
       <div className="pill-tabs" style={{ marginBottom: '20px' }}>
         {activeTabGroup === 'rentals' ? (
@@ -657,6 +637,17 @@ export default function RentalsPage() {
                         >
                           <svg className="icon"><use href="#i-box" /></svg>
                         </button>
+                        {/* כניסה לכרטיס ההזמנה המלא (עריכה, משלוח, תשלומים) ישירות מרשימת ההשכרות -
+                            כמו הכניסה דרך מסך הלקוחות. דיווח נווה יעקב 6244b29b (הסקיצה אושרה). */}
+                        <Link
+                          href={`/orders/${ord.orderId}`}
+                          className="btn btn-secondary btn-sm"
+                          title="פתח את כרטיס ההזמנה המלא (עריכה, משלוח, תשלומים)"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <svg className="icon"><use href="#i-edit" /></svg>
+                          עריכת הזמנה
+                        </Link>
                       </div>
                     </td>
                     <td><strong>{ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין תאריך')}</strong></td>

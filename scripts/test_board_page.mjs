@@ -134,21 +134,23 @@ await t('E10: פרשה וחגים כטקסט פשוט, בלי תגית (badge/ch
   assert.ok(g.find((c) => c.key === '2026-09-21').notes[0].includes('כִּפּוּר'), 'יום כיפור');
 });
 
-await t('E01: חיפוש רגיל (מספר הזמנה / שם לקוח) עם ניקוי, בעיצוב חיפוש ההיסטוריה (hf-s, אייקון חיפוש); search נשלח לשרת', () => {
-  has(PARTS, /className="hf-s" role="search"/);
-  has(PARTS, /<Ic name="search" \/>/);
-  has(PARTS, /placeholder="חיפוש הזמנה \(מספר הזמנה, שם לקוח\)\.\.\."/);
-  has(PARTS, /className=\{'hf-cl' \+ \(value \? ' on' : ''\)\} aria-label="ניקוי חיפוש"/);
-  has(PAGE, /const handleClearSearch = \(\) => \{ setSearchInput\(''\); setSearch\(''\); \};/);
-  has(PAGE, /buildBoardMonthParams\(selectedDate, \{ search \}\)/);
+await t('E01 (הוסר, החלטת הבעלים 5.10): אין תיבת חיפוש רגיל בלוח - לא input, לא search לשרת, לא ניקוי; האיחור מחושב בלי search', () => {
+  const UIP = code(PAGE), UIA = code(PARTS), UIC = code(CSS.replace(/\/\*[\s\S]*?\*\//g, ''));
+  for (const src of [UIP, UIA]) hasNot(src, /BoardSearchBar|role="search"|<input|type="search"|handleSearch|handleClearSearch|searchInput|setSearch\b|search=|\{ search |, search\b|bdQ|hf-cl|ניקוי חיפוש|חיפוש הזמנה/);
+  hasNot(UIA, /<Ic name="search"/);
+  hasNot(UIC, /bdQ|hf-cl|input::placeholder|search-cancel-button|\.hf-s>svg/);
+  has(PAGE, /buildBoardMonthParams\(selectedDate\)/);
+  has(PAGE, /<BoardStageFilter\b/);
+  // ההזמנות עדיין נטענות (סימן "איחור החזרה"): fetch של /api/orders + isOrderLate נשארו
+  has(PAGE, /fetch\(`\/api\/orders\?\$\{queryParams\.toString\(\)\}`/);
+  has(PARTS, /isOrderLate\(/);
 });
 
-await t('S01: מסנן השלבים בשורת החיפוש בדיוק כמו בהיסטוריה (hf-sel/hf-t/hf-p/hf-o/hf-ck/hf-oi/hf-oc) + "הצג הכל"', () => {
+await t('S01: מסנן השלבים (לחצן הסינון) בדיוק כמו בהיסטוריה (hf-sel/hf-t/hf-p/hf-o/hf-ck/hf-oi/hf-oc) + "הצג הכל"', () => {
   for (const cls of ['hf-sel', 'hf-t', 'hf-lbl', 'hf-bdg', 'hf-chv', 'hf-scrim', 'hf-p', 'hf-all', 'hf-allb', 'hf-l', 'hf-o', 'hf-ck', 'hf-oi', 'hf-ol', 'hf-oc', 'hf-pills', 'hf-pill']) has(PARTS, new RegExp(`className=[{"'][^>]*\\b${cls}\\b`), 'חסר ' + cls);
   has(PARTS, />הצג הכל</);
   has(PARTS, /<span className="hf-lbl">סינון<\/span>/);
-  // ה-hf-sel יושב בתוך hf-s (כמו בכרטיס ההזמנה)
-  assert.ok(PARTS.indexOf('className="hf-s"') < PARTS.indexOf("className={'hf-sel'"), 'hf-sel בתוך שורת החיפוש');
+  hasNot(code(PARTS), /className="hf-s"/, 'אין עטיפת hf-s (הפלטה מכפה עליה גבול/רקע עם !important) - הלחצן עומד לבדו');
 });
 
 await t('S04: "החודש הנוכחי" בגובה מתג התצוגה (28px), S03: מתג לוח/רשימה + רשימה אוטומטית בנייד', () => {

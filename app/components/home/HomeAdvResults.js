@@ -2,12 +2,13 @@
 
 // תוצאות החיפוש המתקדם: כרטיס res-one.advp עם סיכום הסינונים, עריכה/עדכון/ניקוי, מתג שורות/טבלה,
 // ייצוא/הדפסה/הורדה, "עוד N" והתראות שורה (adot). התצוגה בשורות כמו החיפוש הכללי.
+// התראות: תג השורה (החזרה / הזמנה) לפי data.tags — כמו בהצעה (F23); בשאר התחומים התג אחד לכל התחום.
 // תפוסה: מתחת לסיכום — שלושה אריחי .capstats (במלאי / בתפוסה / רזרבה), מוצגים גם כשאין הזמנות תופסות (כמו בעיצוב).
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Ic, ViewSwitch, XlButtons, MoreButton, ResultsTable, Dash } from './HomeParts';
-import { ADV_TAG, CAP_TILES, cellParts, looksLikePhoneOrMail } from './homeAdvConfig';
+import { CAP_TILES, cellParts, looksLikePhoneOrMail, rowTag, advCountsText, advTruncText } from './homeAdvConfig';
 
 const LIMIT = 8;
 
@@ -30,7 +31,6 @@ const nameOf = (r) => {
 
 export default function HomeAdvResults({ data, focus, summary, table, onTable, onEdit, onReopenClear, onClose, onExport }) {
   const [more, setMore] = useState(false);
-  const [tag, icon] = ADV_TAG[focus] || ['רשומה', 'file'];
   const alerts = useMemo(() => new Set(data.al || []), [data.al]);
   const rows = data.rows;
   const shown = more ? rows : rows.slice(0, LIMIT);
@@ -54,7 +54,9 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
   }), [info, hasStatus, data.namesRev, data.links, alerts]);
   const columns = ['שם', 'פרטים', ...(hasStatus ? ['סטטוס'] : [])];
 
-  const sumText = summary.text + (data.truncated ? ' · מוצגות 200 הראשונות' : '');
+  const countsText = advCountsText(data.counts);
+  const truncText = advTruncText(data);
+  const sumText = [summary.text, countsText, truncText].filter(Boolean).join(' · ');
   return (
     <div className="card res-one advp">
       <div className="card-h">
@@ -99,6 +101,7 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
           ) : (
             <div className="list" aria-label="תוצאות החיפוש">
               {shown.map((r, i) => {
+                const [tag, icon] = rowTag(focus, data, i);
                 const al = alerts.has(i);
                 const url = data.links && data.links[i];
                 const inner = (

@@ -118,7 +118,10 @@ async function handleAiPost(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { prompt, history = [], context = '', image = null, recordingFileId = null, recordingSteps = null } = await req.json();
+    const { prompt, history: rawHistory = [], context = '', image = null, recordingFileId = null, recordingSteps = null } = await req.json();
+    // חיתוך היסטוריית השיחה ל-10 ההודעות האחרונות גם בצד השרת (5c5b2b1c): הווידג'ט כבר חותך בצד הלקוח,
+    // אבל /admin/ai שולח את כל השרשור - הקשר ישן מדי גרם לתשובות לא רלוונטיות.
+    const history = Array.isArray(rawHistory) ? rawHistory.filter((m) => m && typeof m === 'object').slice(-10) : [];
     const hasRecording = Boolean(recordingFileId || recordingSteps);
 
     if (!prompt) {

@@ -18,7 +18,7 @@ import { buildMenuTree as buildMenuTreeRaw } from '../lib/menu/buildMenuTree.js'
 const buildMenuTree = (ctx) => buildMenuTreeRaw({ homeA5: true, ...ctx });
 import {
   emptyAdv, visibleFoci, navPathSet, buildAdvRequest, unsavedOrderIds, advSummaryParts, advAiPrompt, normalizeAdvResponse,
-  ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES,
+  ADV_FOCI, ADV_KEYS, ADV_TAG, advMissing, normalizeCapstats, CAP_TILES, advCountsText, advTruncText,
 } from '../app/components/home/homeAdvConfig.js';
 import { hebText, hebFromInstant, hebMonthStart, hebMonthShift, hebMonthGrid, hebrewYearLetters, isoOf, dateOf } from '../app/components/home/homeDates.js';
 import * as advConfig from '../app/components/home/homeAdvConfig.js';
@@ -409,11 +409,12 @@ t('תחומים לפי הגדרות ותפקיד', () => {
   const all = navPathSet([{ items: ['/customers', '/orders', '/rentals#rented', '/alterations', '/deliveries', '/dashboard/dresses'].map((href) => ({ href })) }]);
   let v = visibleFoci({ settings: {}, isManager: false, navPaths: all });
   assert.deepEqual(v.main, ['customers', 'orders', 'rentals', 'returns', 'alterations', 'capacity']);
-  assert.deepEqual(v.extra, []);
+  assert.deepEqual(v.extra, ['alerts'], 'התראות (מאחורי ה"+") לפי הרשאת הזמנות; כספים לא — אין "/refunds" בתפריט');
   v = visibleFoci({ settings: { enable_deliveries: 'true', enable_alterations: 'false' }, isManager: true, isHead: true, navPaths: all });
   assert.deepEqual(v.main, ['customers', 'orders', 'rentals', 'returns', 'deliveries', 'capacity']);
-  assert.deepEqual(v.extra, ['models', 'employees']);
-  assert.ok(!('finance' in ADV_FOCI) && !('stock' in ADV_FOCI) && !('settings' in ADV_FOCI), 'כספים / בדיקת מלאי / הגדרות לא בחיפוש המתקדם');
+  assert.deepEqual(v.extra, ['alerts', 'models', 'employees']);
+  assert.ok(!('stock' in ADV_FOCI) && !('settings' in ADV_FOCI), 'בדיקת מלאי / הגדרות לא בחיפוש המתקדם (דף נפרד / חיפוש AI)');
+  assert.ok('finance' in ADV_FOCI && 'alerts' in ADV_FOCI, 'כספים והתראות נבנו (HM-03 / HM-04)');
 });
 t('תחומים לפי הרשאות התפריט (navPaths): עובדת בלי "הזמנות" לא רואה את התחום', () => {
   const nav = [{ items: [{ href: '/' }, { href: '/customers' }, { href: '/rentals#rented' }, { href: '/rentals#returned' }, { href: '/alterations' }] }];
@@ -427,9 +428,9 @@ t('תחומים לפי הרשאות התפריט (navPaths): עובדת בלי "
   assert.equal(navPathSet(null), null);
   assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: null }), { main: [], extra: [] }, 'בלי מידע הרשאות: נעילה סגורה');
   const full = navPathSet([{ items: [{ href: '/customers' }, { href: '/orders' }, { href: '/rentals#rented' }, { href: '/alterations' }, { href: '/dashboard/dresses' }] }]);
-  assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: false, navPaths: full }).extra, ['models'], 'מנהלת סניף: דגמים כן, עובדים לא');
-  assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: full }).extra, ['models', 'employees']);
-  assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: navPathSet([{ items: [{ href: '/orders' }] }]) }).extra, ['employees'], 'דגמים דורש את עמוד הקטלוג');
+  assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: false, navPaths: full }).extra, ['alerts', 'models'], 'מנהלת סניף: דגמים כן, עובדים לא');
+  assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: full }).extra, ['alerts', 'models', 'employees']);
+  assert.deepEqual(visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: navPathSet([{ items: [{ href: '/orders' }] }]) }).extra, ['alerts', 'employees'], 'דגמים דורש את עמוד הקטלוג');
 });
 t('בקשת adv: רק מפתחות מוכרים, מסונן ומקוצץ, flags/ost כמערכים', () => {
   const a = { ...emptyAdv('customers'), first: ' רחל ', phone: '', flags: ['debts'], ost: [] };
@@ -482,7 +483,7 @@ t('סיכום סינונים: תוויות, תאריכים עבריים, סימ�
   assert.deepEqual(advSummaryParts(r, 'returns'), ['תאריך החזרה ' + hebText('2026-10-06')]);
 });
 t('נרמול תשובת adv', () => {
-  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, gaps: [], capstats: null });
+  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, scanTruncated: false, total: 0, cap: 0, counts: null, gaps: [], capstats: null, failed: [], tags: [] });
   assert.equal(normalizeAdvResponse({ truncated: 1, gaps: ['x'] }).truncated, true);
   assert.deepEqual(normalizeAdvResponse({ gaps: ['x'] }).gaps, ['x']);
 });
@@ -493,7 +494,8 @@ const ADVB_CAP = ADVB_ROUTE.slice(ADVB_ROUTE.indexOf('async function capacity'),
 t('תפוסה: מקום בשורת התחומים כמו בעיצוב (אחרי משלוחים, לפני דגמים), תווית/אייקון, לא תחום AI ולא תחום מנהלות', () => {
   const keys = Object.keys(ADV_FOCI);
   assert.equal(keys.indexOf('capacity'), keys.indexOf('deliveries') + 1);
-  assert.equal(keys.indexOf('models'), keys.indexOf('capacity') + 1);
+  const shown = keys.filter((k) => !ADV_FOCI[k].plus); // כספים / התראות מאחורי ה"+" — לא בשורה הראשית
+  assert.equal(shown.indexOf('models'), shown.indexOf('capacity') + 1);
   const c = ADV_FOCI.capacity;
   assert.equal(c.label, 'תפוסה');
   assert.equal(c.icon, 'box');
@@ -1060,6 +1062,161 @@ t('useNavHistory: שינוי query בלבד (/?scope=a → /?scope=b) מפעיל
 t('app/layout.js מעביר homeA5 מהדגל ui_variant_home (דגלי shell ו-home עצמאיים)', () => {
   const layout = readFileSync(new URL('../app/layout.js', import.meta.url), 'utf8');
   assert.ok(layout.includes("homeA5: uiVariants.home === 'a5'"));
+});
+
+console.log('חיפוש מתקדם: כספים (HM-03)');
+const read = (rel) => readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
+const ADVB_SRC = read('app/api/a5/adv-b/route.js');
+const ADVB_FIN = ADVB_SRC.slice(ADVB_SRC.indexOf('async function finance'), ADVB_SRC.indexOf('async function capacity'));
+const OPTIONS_SRC = read('app/api/a5/options/route.js');
+const navOf = (...hrefs) => navPathSet([{ items: hrefs.map((href) => ({ href })) }]);
+t('כספים: מאחורי כפתור ה"+" (כמו בעיצוב), לא בשורה הראשית ולא תחום AI', () => {
+  const f = ADV_FOCI.finance;
+  assert.deepEqual([f.label, f.icon, f.plus, !!f.ai, !!f.mgr], ['כספים', 'wallet', true, false, false]);
+  const v = visibleFoci({ settings: {}, isManager: false, navPaths: navOf('/orders', '/refunds') });
+  assert.ok(v.extra.includes('finance') && !v.main.includes('finance'));
+  assert.deepEqual(ADV_TAG.finance, ['כספים', 'wallet']);
+});
+t('כספים: בלוקים וסדרם כמו בדמו המאושר (fgen / fcred / fchk / fcust)', () => {
+  assert.deepEqual(ADV_FOCI.finance.blocks.map((b) => b.t), ['fgen', 'fcred', 'fchk', 'fcust']);
+  assert.deepEqual(advConfig.FFLAGS.map((x) => x[0]), ['fn_debt', 'fn_credit']);
+  assert.deepEqual(advConfig.FDONE.map((x) => x[0]), ['fc_done']);
+  assert.deepEqual(advConfig.FCHK.map((x) => x[0]), ['fc_nobank']);
+  assert.deepEqual(advConfig.ORD_STATUS, ['הוזמן', 'הושכר', 'הוחזר', 'לא נלקח']);
+});
+t('כספים: אותו שער כמו השרת (page:refunds) = נתיב "/refunds" בתפריט; בלי הרשאה / בלי boot — לא מוצג', () => {
+  assert.ok(/const GATE = \{[^}]*finance: 'page:refunds'/.test(ADVB_SRC), 'GATE.finance בשרת');
+  assert.ok(OPTIONS_SRC.includes("finance: 'page:refunds'"), 'אותו שער להצעות');
+  assert.ok(read('app/components/navConfig.js').includes("href: '/refunds', label: 'זיכויים וחובות', icon: 'i-wallet', gate: 'showRefundsTab'"), 'הנתיב בתפריט');
+  const fin = (nav) => visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: nav }).extra.includes('finance');
+  assert.ok(fin(navOf('/refunds')));
+  assert.ok(fin(navOf('/refunds?x=1')), 'query בכתובת לא משנה');
+  assert.ok(!fin(navOf('/orders', '/customers', '/rentals', '/dashboard/dresses')), 'הרשאת הזמנות / לקוחות לא פותחת כספים');
+  assert.ok(!fin(null), 'נעילה סגורה בלי boot');
+  assert.ok(!visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: navOf('/refunds') }).main.includes('finance'));
+});
+t('כספים: בקשה ל-adv-b רק עם השדות שהשרת קורא + הסימונים (שדות לא שייכים לא נשלחים)', () => {
+  const a = { ...emptyAdv('finance'), amount: ' 450 ', adate: '2026-10-05', emp: 'דנה', cemp: 'רינה', cdate: '2026-10-06', oid: '123', from: '2026-10-07', name: 'רחל', cinfo: 'ירושלים', ordst: 'הושכר',
+    first: 'לא שייך', city: 'לא שייך', flags: ['fn_debt', 'fc_done'], ost: ['soon'] };
+  const url = buildAdvRequest('finance', a);
+  assert.ok(url.startsWith('/api/a5/adv-b?'));
+  const qs = new URL('http://x' + url).searchParams;
+  assert.equal(qs.get('focus'), 'finance');
+  assert.equal(qs.get('amount'), '450');
+  assert.equal(qs.get('flags'), 'fn_debt,fc_done');
+  assert.ok(!qs.has('first') && !qs.has('city') && !qs.has('ost'));
+  for (const k of ADV_FOCI.finance.keys) assert.ok(new RegExp('p\\.' + k + '\\b').test(ADVB_SRC), 'השרת קורא ' + k);
+  assert.deepEqual([...new URL('http://x' + buildAdvRequest('finance', emptyAdv('finance'))).searchParams.keys()], ['focus']);
+});
+t('כספים: שורת הסיכום — דגלים, סכום, תאריכי הוספה/זיכוי עבריים, סטטוס הזמנה, עובד', () => {
+  const a = { ...emptyAdv('finance'), flags: ['fn_debt', 'fc_nobank'], amount: '450', adate: '2026-10-05', cdate: '2026-10-06', ordst: 'הושכר', emp: 'דנה', cemp: 'רינה', oid: '9' };
+  const p = advSummaryParts(a, 'finance');
+  assert.ok(p.includes('סכום משוער 450') && p.includes('עובד מבצע דנה') && p.includes('עובד (זיכוי) רינה') && p.includes('סטטוס הזמנה הושכר') && p.includes('קוד הזמנה 9'));
+  assert.ok(p.includes('תאריך הוספה ' + hebText('2026-10-05')) && p.includes('תאריך זיכוי ' + hebText('2026-10-06')));
+  assert.ok(p.includes('חובות, חסר פרטי בנק'));
+  assert.ok(!/\d{4}-\d{2}/.test(p.join(' ')), 'בלי תאריך לועזי');
+  assert.deepEqual(advSummaryParts(emptyAdv('finance'), 'finance'), []);
+  assert.deepEqual(advSummaryParts({ ...emptyAdv('finance'), cdate: '2026-10-06' }, 'finance'), ['תאריך זיכוי ' + hebText('2026-10-06')], 'סינון תאריך בלבד נחשב סינון');
+});
+t('כספים: הצעות לשדה "עובד (זיכוי)" — מקור עובדים וגם בשרת וגם בלקוח', () => {
+  assert.ok(/cemp: employees/.test(OPTIONS_SRC));
+  assert.ok(/const OPT_KEYS = \[[^\]]*'cemp'/.test(read('app/components/home/HomeAdvanced.js')));
+});
+t('כספים: עלות שרת מתועדת ותקרות — מועמדות חוב עד 5000, זיכויים עד 5000, תשובה עד 200', () => {
+  assert.ok(/DEBT_CANDIDATES_MAX = 5000/.test(ADVB_SRC));
+  assert.ok(/LIMIT \$\{DEBT_CANDIDATES_MAX \+ 1\}/.test(ADVB_FIN));
+  assert.ok(/take: 5000/.test(ADVB_FIN) && /take: DEBT_CANDIDATES_MAX/.test(ADVB_FIN));
+  assert.ok(/const LIMIT = 200/.test(ADVB_SRC));
+});
+
+console.log('חיפוש מתקדם: התראות (HM-04 / F23)');
+const ALERTS_SRC = read('app/api/a5/adv-alerts/route.js');
+// lib/advAlerts.js מייבא בלי סיומת (Next) — כאן קוראים את רשימת הסוגים מהמקור; הלוגיקה עצמה נבדקת ב-scripts/test_home_adv_foci_server.mjs
+const ALERT_FLAGS_SERVER = [...read('lib/advAlerts.js').match(/export const ALERT_FLAGS = \[([^\]]*)\]/)[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+const fakeStorage = (drafts) => {
+  const keys = Object.keys(drafts);
+  return { length: keys.length, key: (i) => keys[i], getItem: (k) => JSON.stringify(drafts[k]) };
+};
+t('התראות: מאחורי ה"+" לכל מי שיש לה הרשאת הזמנות; לא בשורה הראשית; אייקון פעמון', () => {
+  const f = ADV_FOCI.alerts;
+  assert.deepEqual([f.label, f.icon, f.plus, !!f.ai, !!f.mgr, f.api], ['התראות', 'bell', true, false, false, 'alerts']);
+  const nav = (...h) => visibleFoci({ settings: {}, isManager: false, navPaths: navOf(...h) });
+  assert.ok(nav('/orders').extra.includes('alerts') && !nav('/orders').main.includes('alerts'));
+  assert.ok(!nav('/customers', '/rentals', '/refunds', '/alterations').extra.includes('alerts'), 'בלי הזמנות — אין התראות');
+  assert.ok(!visibleFoci({ settings: {}, isManager: true, isHead: true, navPaths: null }).extra.includes('alerts'), 'נעילה סגורה בלי boot');
+  assert.deepEqual(ADV_TAG.alerts, ['התראה', 'bell']);
+});
+t('התראות: אותו שער בשרת (page:orders) ובהצעות; סוגי ההתראה בלקוח = הסוגים בשרת', () => {
+  assert.ok(ALERTS_SRC.includes("canOpenPage('page:orders')"));
+  assert.ok(OPTIONS_SRC.includes("alerts: 'page:orders'"));
+  assert.deepEqual(advConfig.ALERT_TYPES.map((x) => x[0]), ALERT_FLAGS_SERVER);
+  assert.equal(ALERT_FLAGS_SERVER.length, 5);
+  assert.equal(new Set(advConfig.ALERT_TYPES.map((x) => x[1])).size, advConfig.ALERT_TYPES.length, 'תוויות ייחודיות');
+  for (const [v, l, i, tip] of advConfig.ALERT_TYPES) {
+    assert.ok(l && tip && SPRITE_IDS.has(i), v + ': תווית, טולטיפ ואייקון sprite');
+    assert.ok(!/טוגל/.test(l + tip));
+  }
+  assert.deepEqual(ADV_FOCI.alerts.blocks.map((b) => b.t), ['alrt', 'rcust']);
+});
+t('התראות: בקשה לנתיב adv-alerts רק עם השדות שהוא קורא; "לא נשמר" נשלח כשהסוג נבחר או כשאין בחירה', () => {
+  const drafts = { 'gemachOrderDraft:77': { savedAt: Date.now(), state: { a: 1 } }, 'gemachOrderDraft:78': { savedAt: 1, state: { a: 1 } }, other: { x: 1 } };
+  const base = { ...emptyAdv('alerts'), oid: '5', from: '2026-10-07', name: ' רחל ', cinfo: '', first: 'לא שייך', amount: '9', ost: ['soon'] };
+  const q = (a, st) => new URL('http://x' + buildAdvRequest('alerts', a, st)).searchParams;
+  const none = q(base, fakeStorage(drafts));
+  assert.equal(new URL('http://x' + buildAdvRequest('alerts', base, fakeStorage(drafts))).pathname, '/api/a5/adv-alerts');
+  assert.deepEqual([...none.keys()], ['focus', 'oid', 'from', 'name', 'unsaved']);
+  assert.equal(none.get('name'), 'רחל');
+  assert.equal(none.get('unsaved'), '77', 'טיוטה ישנה (מעל 30 יום) לא נשלחת');
+  const late = q({ ...base, flags: ['ar_late'] }, fakeStorage(drafts));
+  assert.ok(!late.has('unsaved') && late.get('flags') === 'ar_late');
+  assert.equal(q({ ...base, flags: ['ar_late', 'ar_unsaved'] }, fakeStorage(drafts)).get('unsaved'), '77');
+  assert.ok(!q(base, null).has('unsaved'), 'בלי storage — בלי unsaved');
+  for (const k of ADV_FOCI.alerts.keys) assert.ok(new RegExp('p\\.' + k + '\\b').test(read('lib/advAlerts.js')), 'השרת קורא ' + k);
+});
+t('התראות: שורת הסיכום — בלי בחירה "כל סוגי ההתראות" (החיפוש רץ), עם בחירה התוויות, ושדות הסינון', () => {
+  assert.deepEqual(advSummaryParts(emptyAdv('alerts'), 'alerts'), ['כל סוגי ההתראות']);
+  const a = { ...emptyAdv('alerts'), flags: ['ar_late', 'ar_debt'], oid: '9', name: 'רחל', from: '2026-10-07' };
+  const p = advSummaryParts(a, 'alerts');
+  assert.ok(!p.includes('כל סוגי ההתראות'));
+  assert.ok(p.includes('קוד הזמנה 9') && p.includes('שם לקוח רחל') && p.includes('תאריכים ' + hebText('2026-10-07')) && p.includes('איחור בהחזרה, חוב פתוח'));
+  assert.equal(advMissing('alerts', emptyAdv('alerts')), '', 'אין שדה חובה');
+});
+t('התראות: תג שורה לפי data.tags (החזרה / הזמנה); ערך לא מוכר / מפתח עם אב-טיפוס — תג התחום', () => {
+  const d = normalizeAdvResponse({ rows: [[], [], [], []], tags: ['return', 'order', '__proto__', 'x'], failed: ['חובות', 5] });
+  assert.deepEqual(d.failed, ['חובות']);
+  assert.deepEqual(advConfig.rowTag('alerts', d, 0), ['החזרה', 'undo']);
+  assert.deepEqual(advConfig.rowTag('alerts', d, 1), ['הזמנה', 'file']);
+  assert.deepEqual(advConfig.rowTag('alerts', d, 2), ['התראה', 'bell']);
+  assert.deepEqual(advConfig.rowTag('alerts', d, 3), ['התראה', 'bell']);
+  assert.deepEqual(advConfig.rowTag('alerts', d, 9), ['התראה', 'bell']);
+  assert.deepEqual(advConfig.rowTag('orders', d, 0), ['הזמנה', 'file'], 'בתחום אחר התג הוא של התחום, גם אם נשלחו tags');
+  assert.deepEqual(advConfig.rowTag('zzz', null, 0), ['רשומה', 'file']);
+});
+t('התראות: failed שאינו מערך = ריק; קישורי השורות נשארים פנימיים בלבד', () => {
+  assert.deepEqual(normalizeAdvResponse({ failed: 'x' }).failed, []);
+  assert.deepEqual(normalizeAdvResponse({ links: ['/orders/5', 'https://evil.example/x', '//evil.example'] }).links, ['/orders/5', '', '']);
+});
+t('התראות: ספירות לפי סוג וטקסט חיתוך אמיתי (תקרה וסך), לא "200 הראשונות" קבוע', () => {
+  const d = normalizeAdvResponse({ rows: new Array(200).fill([]), truncated: true, total: 659, cap: 200, counts: { late: 419, debt: 205, missing: 30, unsaved: 5, notReturned: 'x' } });
+  assert.deepEqual(d.counts, { late: 419, notReturned: 0, debt: 205, missing: 30, unsaved: 5 });
+  assert.equal(advCountsText(d.counts), 'איחורים 419 · חובות 205 · פרטים חסרים 30 · לא נשמרו 5');
+  assert.equal(advTruncText(d), 'מוצגות 200 מתוך 659');
+  assert.equal(advTruncText({ rows: new Array(150).fill([]), truncated: true, scanTruncated: true, total: 150, cap: 200 }), 'מוצגות 150 · ייתכנו עוד תוצאות (החיפוש חסום בתקרה)');
+  assert.equal(advTruncText({ rows: new Array(200).fill([]), truncated: true }), 'מוצגות 200 הראשונות');
+  assert.equal(advTruncText({ rows: [], truncated: false, total: 5 }), '');
+  assert.equal(advCountsText(null), '');
+  assert.equal(normalizeAdvResponse({ counts: 'x' }).counts, null);
+});
+t('התראות: אין בשרת כתיבה ל-DB ואין DDL (קריאה בלבד)', () => {
+  const src = ALERTS_SRC + read('lib/advAlerts.js');
+  assert.ok(!/\.(create|createMany|update|updateMany|upsert|delete|deleteMany)\(/.test(src), 'כתיבה');
+  assert.ok(!/\$executeRaw|\$queryRawUnsafe|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s/i.test(src), 'DDL / SQL לא פרמטרי');
+  assert.ok(/export async function GET\b/.test(ALERTS_SRC) && !/export async function (POST|PUT|PATCH|DELETE)\b/.test(ALERTS_SRC));
+});
+t('התראות: תאריכים לפי שעון ישראל בלבד (בלי setHours / toISOString().slice על "היום")', () => {
+  const src = ALERTS_SRC + read('lib/advAlerts.js');
+  assert.ok(!/setHours\(|toISOString\(\)\.slice\(0, 10\)|getTimezoneOffset/.test(src));
+  assert.ok(/getIsraelTodayRange/.test(ALERTS_SRC) && /getIsraelDateKey/.test(read('lib/advAlerts.js')));
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
