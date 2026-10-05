@@ -75,6 +75,7 @@
 
 'use strict';
 
+const { pickPagingKey, buildPageQuery, nextCursor } = require('./lib/backup-paging');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
@@ -227,19 +228,16 @@ async function getColumns(client, table) {
 // ---------------------------------------------------------------------------
 async function dumpTable(client, table, columns, write) {
   let total = 0;
-  let lastId = null;
+  let cursor = null;
   const colList = columns.map(sqlIdent).join(', ');
+  const key = await pickPagingKey(client, table, columns, sqlIdent); // 'id', else a single-column primary key, else ctid offset (6.10.2026: DeliveryJoin has no id)
 
   while (true) {
-    const whereClause = lastId === null ? '' : `WHERE ${sqlIdent('id')} > $2`;
-    const params = lastId === null ? [BATCH_SIZE] : [BATCH_SIZE, lastId];
-    const { rows } = await client.query(
-      `SELECT ${colList} FROM ${sqlIdent(table)} ${whereClause} ORDER BY ${sqlIdent('id')} LIMIT $1`,
-      params
-    );
+    const q = buildPageQuery({ table, colList, key, cursor, batchSize: BATCH_SIZE, sqlIdent });
+    const { rows } = await client.query(q.text, q.params);
     if (rows.length === 0) break;
     total += rows.length;
-    lastId = rows[rows.length - 1].id;
+    cursor = nextCursor(key, rows, cursor);
 
     for (let i = 0; i < rows.length; i += ROWS_PER_INSERT) {
       const chunk = rows.slice(i, i + ROWS_PER_INSERT);
