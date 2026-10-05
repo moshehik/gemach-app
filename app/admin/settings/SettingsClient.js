@@ -517,7 +517,8 @@ export default function SettingsClient({ mode = 'general' }) {
   const fetchSettings = async (isPrefetch = false) => {
     try {
       if (!isPrefetch) setLoading(true);
-      const res = await fetch('/api/settings');
+      // fresh=1: עוקף את מטמון השרת (30 שנ') - מסך העריכה חייב להציג בדיוק מה ששמור, גם אם השמירה נעשתה באינסטנס אחר
+      const res = await fetch('/api/settings?fresh=1');
       if (!res.ok) throw new Error('שגיאה בטעינת ההגדרות');
       const data = await res.json();
 

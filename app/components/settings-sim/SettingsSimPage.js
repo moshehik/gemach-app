@@ -289,7 +289,8 @@ export default function SettingsSimPage({ view = 'sys' }) {
     if (isNames) return;
     setLoadError(null);
     try {
-      const res = await fetch('/api/settings', { cache: 'no-store' });
+      // fresh=1: עוקף את מטמון השרת (30 שנ') - מסך העריכה חייב להציג בדיוק מה ששמור, גם אם השמירה נעשתה באינסטנס אחר
+      const res = await fetch('/api/settings?fresh=1', { cache: 'no-store' });
       if (!res.ok) throw new Error('שגיאה בטעינת ההגדרות');
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error('שגיאה בטעינת ההגדרות');
