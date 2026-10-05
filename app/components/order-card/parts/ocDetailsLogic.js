@@ -91,7 +91,7 @@ export function withDateUpdates(updates) {
   return u;
 }
 
-export const isRangeEvent = (o) => !!(o && (o.isAbroad || o.isWeekdayEvent));
+export const isRangeEvent = (o) => !!(o && o.isAbroad);
 
 /**
  * MGD:330-345 — מעבר לאירוע רגיל / חו"ל. null = אין שינוי (הישן: return כשהמצב כבר נבחר).
@@ -102,8 +102,8 @@ export function eventTypeUpdates(order, toAbroad) {
   const abroad = isRangeEvent(order);
   if (toAbroad === abroad) return null;
   return toAbroad
-    ? withDateUpdates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null })
-    : withDateUpdates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
+    ? withDateUpdates({ isAbroad: true, eventDate: null, eventDateHebrew: null })
+    : withDateUpdates({ isAbroad: false, fromDate: null, toDate: null, returnDate: null });
 }
 
 /** MGD:367-375 applyTime — היום שנבחר + שעת היום של הערך הקודם (או של עכשיו), כ-ISO. */

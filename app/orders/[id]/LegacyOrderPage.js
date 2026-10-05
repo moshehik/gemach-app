@@ -24,7 +24,6 @@ const ORDER_FIELD_LABELS = {
   fromDate: 'מתאריך',
   toDate: 'עד תאריך',
   isAbroad: 'אירוע חו"ל',
-  isWeekdayEvent: 'אירוע באמצע שבוע',
   customSpacing: 'ריווח מותאם',
   notes: 'הערות',
   internalNotes: 'הערות פנימיות',
@@ -77,7 +76,7 @@ const summarizeListDiffCounts = (snapList = [], currList = []) => {
 // היה מפעיל את החישוב המחדש למטה בכלל, גם כשכן עוברים לטאב תשלומים - preview-pricing
 // עכשיו כן יודע לחשב משלוח (ר' computeDeliveryObligationPreview), אבל בלי השדות האלה
 // כאן pricingInputsChanged היה מחזיר false ומדלג על הקריאה מלכתחילה (דיווח 6124472b).
-const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection'];
+const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection'];
 const pricingInputsChanged = (snap, currItems, currOrder) => {
   if (!snap) return false;
   if (JSON.stringify(snap.items || []) !== JSON.stringify(currItems || [])) return true;
@@ -111,7 +110,7 @@ const formatListCounts = (label, counts) => {
 const CHANGE_GROUPS = [
   { icon: '#i-calendar', label: 'תאריך אירוע', fields: ['eventDate', 'eventDateHebrew'] },
   { icon: '#i-calendar', label: 'טווח תאריכים (לקיחה/החזרה)', fields: ['fromDate', 'toDate', 'returnDate'] },
-  { icon: '#i-pin', label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad', 'isWeekdayEvent'] },
+  { icon: '#i-pin', label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad'] },
   { icon: '#i-alert-tri', label: 'ריווח ימים מותאם', fields: ['customSpacing'] },
   { icon: '#i-file', label: 'הערות להזמנה', fields: ['notes'] },
   { icon: '#i-file', label: 'הערות פנימיות', fields: ['internalNotes'] },
@@ -370,11 +369,10 @@ export default function OrderDetailsPage({ params }) {
 
   useEffect(() => {
     if (!order) return;
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     if (hasDates) {
       const queryParams = new URLSearchParams({
         isAbroad: order.isAbroad || false,
-        isWeekdayEvent: order.isWeekdayEvent || false,
         excludeOrderId: order.orderId
       });
       if (order.eventDate) queryParams.append('eventDate', order.eventDate);
@@ -391,7 +389,7 @@ export default function OrderDetailsPage({ params }) {
         })
         .catch(err => console.error('Failed to preload inventory cache', err));
     }
-  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.isWeekdayEvent, order?.orderId]);
+  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.orderId]);
 
   // תצוגה מקדימה של הסכום הכולל: פריט שסומן למחיקה מקומית אך עדיין לא נשמר (isDeleted=true
   // אבל אין עדיין deletedAt - זה נחתם רק בשמירה, ר' lib/pricingEngine.js) לא נספר בסכום, כמו
@@ -430,7 +428,6 @@ export default function OrderDetailsPage({ params }) {
             order: {
               eventDate: order.eventDate,
               isAbroad: order.isAbroad,
-              isWeekdayEvent: order.isWeekdayEvent,
               fromDate: order.fromDate,
               toDate: order.toDate,
               isDelivery: order.isDelivery,
@@ -455,7 +452,7 @@ export default function OrderDetailsPage({ params }) {
     }, 400);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.orderId, hasUnsavedChanges]);
+  }, [activeTab, items, order?.eventDate, order?.isAbroad, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.orderId, hasUnsavedChanges]);
 
   // חוסם סגירה/רענון של החלון רק כשבאמת יש שינויים שלא נשמרו.
   // יתרת חוב לא נחסמת כאן: הדפדפן מתעלם מהודעה מותאמת ומציג תמיד טקסט גנרי ("ייתכן שהשינויים
@@ -617,7 +614,6 @@ export default function OrderDetailsPage({ params }) {
           order: {
             eventDate: currentOrder.eventDate,
             isAbroad: currentOrder.isAbroad,
-            isWeekdayEvent: currentOrder.isWeekdayEvent,
             fromDate: currentOrder.fromDate,
             toDate: currentOrder.toDate,
             isDelivery: currentOrder.isDelivery,
@@ -693,12 +689,12 @@ export default function OrderDetailsPage({ params }) {
     
     // FULL ORDER INVENTORY VALIDATION
     const activeItems = (items || []).filter(i => !i.isDeleted);
-    const hasDates = (currentOrder.isAbroad || currentOrder.isWeekdayEvent) ? (currentOrder.fromDate && currentOrder.toDate) : currentOrder.eventDate;
+    const hasDates = currentOrder.isAbroad ? (currentOrder.fromDate && currentOrder.toDate) : currentOrder.eventDate;
 
     if (activeItems.length > 0 && !hasDates) {
       setSaving(false);
-      alert(currentOrder.isAbroad || currentOrder.isWeekdayEvent 
-        ? 'חובה להזין תאריכי התחלה וסיום (אירוע חו"ל/מיוחד) עבור הזמנה הכוללת פריטים.' 
+      alert(currentOrder.isAbroad 
+        ? 'חובה להזין תאריכי התחלה וסיום (אירוע חו"ל / תפוסה ארוכה) עבור הזמנה הכוללת פריטים.' 
         : 'חובה לבחור תאריך אירוע עבור הזמנה הכוללת פריטים.');
       return;
     }
@@ -712,7 +708,6 @@ export default function OrderDetailsPage({ params }) {
             items: activeItems,
             eventDate: currentOrder.eventDate,
             isAbroad: currentOrder.isAbroad,
-            isWeekdayEvent: currentOrder.isWeekdayEvent,
             fromDate: currentOrder.fromDate,
             toDate: currentOrder.toDate,
             orderId: currentOrder.orderId,
@@ -858,7 +853,6 @@ export default function OrderDetailsPage({ params }) {
           eventDateHebrew: currentOrder.eventDateHebrew,
           returnDate: currentOrder.returnDate,
           isAbroad: currentOrder.isAbroad,
-          isWeekdayEvent: currentOrder.isWeekdayEvent,
           fromDate: currentOrder.fromDate,
           toDate: currentOrder.toDate,
           customSpacing: currentOrder.customSpacing !== undefined ? currentOrder.customSpacing : null,
@@ -1148,7 +1142,6 @@ export default function OrderDetailsPage({ params }) {
           eventDateHebrew: order.eventDateHebrew,
           returnDate: order.returnDate,
           isAbroad: order.isAbroad,
-          isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
           toDate: order.toDate,
           customSpacing: order.customSpacing !== undefined ? order.customSpacing : null,

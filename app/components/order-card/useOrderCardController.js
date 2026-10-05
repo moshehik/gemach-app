@@ -163,9 +163,9 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
 
   useEffect(() => {
     if (!order) return;
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     if (!hasDates) return;
-    const queryParams = new URLSearchParams({ isAbroad: order.isAbroad || false, isWeekdayEvent: order.isWeekdayEvent || false, excludeOrderId: order.orderId });
+    const queryParams = new URLSearchParams({ isAbroad: order.isAbroad || false, excludeOrderId: order.orderId });
     if (order.eventDate) queryParams.append('eventDate', order.eventDate);
     if (order.fromDate) queryParams.append('fromDate', order.fromDate);
     if (order.toDate) queryParams.append('toDate', order.toDate);
@@ -173,7 +173,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
       .then(res => { if (!res.ok) throw new Error('Failed to load cache'); return res.json(); })
       .then(data => setInventoryCache(data))
       .catch(err => console.error('Failed to preload inventory cache', err));
-  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.isWeekdayEvent, order?.orderId]);
+  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.orderId]);
 
   // ---------- נגזרות ----------
   const totals = useMemo(() => computeTotals({ items, obligations, payments, snapshot, openedDebt }), [items, obligations, payments, snapshot, openedDebt]);
@@ -194,7 +194,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   // ובניקוי, כך שתשובה שמגיעה מאוחר (אחרי שמירה / ביטול) לא מחזירה שורות preview.
   const previewActive = useMemo(
     () => dirty && !!order?.orderId && pricingInputsChanged(snapshot, items, order),
-    [dirty, snapshot, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId]
+    [dirty, snapshot, items, order?.eventDate, order?.isAbroad, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.orderId]
   );
   useEffect(() => {
     const mySeq = ++previewSeqRef.current;
@@ -224,7 +224,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
       }
     }, 400);
     return () => { clearTimeout(timer); previewSeqRef.current += 1; };
-  }, [previewActive, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.deliveryJoinedTo, order?.orderId]);
+  }, [previewActive, items, order?.eventDate, order?.isAbroad, order?.fromDate, order?.toDate, order?.isDelivery, order?.deliveryCity, order?.deliveryDirection, order?.extraDay, order?.deliveryJoinedTo, order?.orderId]);
 
 
   // ---------- הגנות יציאה ----------

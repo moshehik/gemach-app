@@ -49,7 +49,6 @@ for (const key of KEYS) {
 const TYPE_STATES = [
   ['רגיל', baseOrder()],
   ['חו"ל', baseOrder({ isAbroad: true, eventDate: '2026-10-05T21:00:00.000Z', fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z' })],
-  ['אמצע שבוע', baseOrder({ isWeekdayEvent: true, fromDate: '2026-10-05', toDate: '2026-10-06' })],
   ['חו"ל + יום נוסף', baseOrder({ isAbroad: true, fromDate: '2026-10-04T21:00:00.000Z', toDate: '2026-10-13T21:00:00.000Z', returnDate: '2026-10-13T21:00:00.000Z', extraDay: 'after' })],
 ];
 for (const [name, o] of TYPE_STATES) {
@@ -70,7 +69,7 @@ const RANGE_CASES = [
   ['בלי טווח קודם (שעה = עכשיו)', baseOrder({ isAbroad: true, eventDate: null }), '2026-10-05', '2026-10-12'],
   ['טווח קודם בחצות ישראל', TYPE_STATES[1][1], '2026-11-01', '2026-11-09'],
   ['טווח קודם עם שעה', baseOrder({ isAbroad: true, fromDate: '2026-10-05T07:30:00.000Z', toDate: '2026-10-12T15:45:00.000Z' }), '2026-10-20', '2026-10-27'],
-  ['רק returnDate קודם', baseOrder({ isWeekdayEvent: true, fromDate: '2026-10-05', toDate: null, returnDate: '2026-10-06T10:00:00.000Z' }), '2026-10-07', '2026-10-08'],
+  ['רק returnDate קודם', baseOrder({ isAbroad: true, fromDate: '2026-10-05', toDate: null, returnDate: '2026-10-06T10:00:00.000Z' }), '2026-10-07', '2026-10-08'],
   ['יום אחד', TYPE_STATES[1][1], '2026-10-15', '2026-10-15'],
   ['מעבר שעון חורף', TYPE_STATES[1][1], '2026-10-23', '2026-10-27'],
 ];
@@ -102,7 +101,7 @@ for (const [name, o, a, b] of RANGE_CASES) {
 // ---------- יום השכרה נוסף (A26 + G13) ----------
 const XD_BASE = [
   baseOrder({ isAbroad: true, fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', returnDate: '2026-10-12T21:00:00.000Z' }),
-  baseOrder({ isWeekdayEvent: true, fromDate: '2026-10-05', toDate: '2026-10-06', returnDate: null }),
+  baseOrder({ isAbroad: true, fromDate: '2026-10-05', toDate: '2026-10-06', returnDate: null }),
   baseOrder({ isAbroad: true, fromDate: '2026-10-24T21:00:00.000Z', toDate: '2026-10-25T21:00:00.000Z', returnDate: '2026-10-25T21:00:00.000Z' }),
 ];
 for (const [i, o0] of XD_BASE.entries()) {
@@ -127,7 +126,7 @@ test('shiftDateStr = הישן (כולל ריק ומעבר שעון)', () => {
 });
 test('יום נוסף מוצג בכל סוג אירוע כש-enable_rental_extension דלוק (AMB-13, הכרעת הבעלים; בישן MGD:384 רק לטווח)', () => {
   const on = { enableRentalExtension: true }, off = { enableRentalExtension: false };
-  for (const o of [baseOrder(), baseOrder({ isAbroad: true }), baseOrder({ isWeekdayEvent: true })]) {
+  for (const o of [baseOrder(), baseOrder({ isAbroad: true })]) {
     assert.equal(D.extraDayVisible(on, o), true);
     assert.equal(D.extraDayVisible(off, o), false);
   }

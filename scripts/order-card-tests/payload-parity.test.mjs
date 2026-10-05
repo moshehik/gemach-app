@@ -19,7 +19,7 @@ const expectSerialized = (newer, legacy, extraDay) => {
 };
 
 const states = payloadStates();
-test('20 מצבים בדיוק', () => assert.equal(states.length, 20));
+test('19 מצבים בדיוק', () => assert.equal(states.length, 19));
 
 for (const { name, st, opts } of states) {
   test(`PUT שמירה = handleSave + extraDay + cardVariant · ${name}`, () => {

@@ -451,7 +451,7 @@ STAGES.push(
       ['details: טווח חו"ל בלוח (לחיצה מאוחרת → מוקדמת מתהפכת)', rng.length === 2 && rng[0] === 'כ״ה תשרי תשפ״ז' && rng[1] === 'כ״ח תשרי תשפ״ז'],
       ['delivery: עיר לא ברשימה חוזרת לערך התקף', cityAfterBad === 'ירושלים'],
       ['delivery: בחירה מההצעות במקלדת', cityAfterPick === 'בית שמש'],
-      ['save: PUT עם השדות שנערכו (טווח, הערות, משלוח, extraDay, cardVariant)', puts.length >= 1 && b.isAbroad === true && b.isWeekdayEvent === false && /^2026-10-0(5|6)T/.test(b.fromDate || '') && /^2026-10-0(8|9)T/.test(b.toDate || '') && b.returnDate === b.toDate && b.eventDate === b.fromDate && String(b.notes).includes('נוסף') && b.internalNotes === 'לצוות' && b.deliveryCity === 'בית שמש' && b.deliveryOneDayBefore === true && b.deliveryDirection === 'הלוך' && b.extraDay === null && b.cardVariant === 'a5']);
+      ['save: PUT עם השדות שנערכו (טווח, הערות, משלוח, extraDay, cardVariant)', puts.length >= 1 && b.isAbroad === true && b.isWeekdayEvent === undefined && /^2026-10-0(5|6)T/.test(b.fromDate || '') && /^2026-10-0(8|9)T/.test(b.toDate || '') && b.returnDate === b.toDate && b.eventDate === b.fromDate && String(b.notes).includes('נוסף') && b.internalNotes === 'לצוות' && b.deliveryCity === 'בית שמש' && b.deliveryOneDayBefore === true && b.deliveryDirection === 'הלוך' && b.extraDay === null && b.cardVariant === 'a5']);
   } },
   { name: '54-spacing-approval', roots: W2A_DET, real: async () => {
     await fresh('xday'); await clickAt('#adv > summary'); await sleep(200);

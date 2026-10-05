@@ -20,7 +20,7 @@ const keys = (r) => r.stages.map((s) => s.key);
 const byKey = (r, k) => r.stages.find((s) => s.key === k);
 const ORDER = {
   orderId: 53375, orderDate: IL('2026-09-23', '10:12'), eventDate: IL('2026-10-08'), // Thursday 8.10.2026 (Israel midnight = 21:00Z the day before)
-  isAbroad: false, isWeekdayEvent: false, isDelivery: false, deliveryDirection: null,
+  isAbroad: false, isDelivery: false, deliveryDirection: null,
   items: [{ id: 'a1', sleeveAlteration: 0 }, { id: 'a2', sleeveAlteration: 0 }],
 };
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -79,7 +79,7 @@ test('תיקונים רק כשיש פריט עם תיקון ותיקונים ד�
   assert.equal(byKey(r, 'repair').dayKey, '2026-10-15', 'repair offset 5 business days after the event (configured magnitude, default direction)');
 });
 
-test('חו״ל / אמצע שבוע: יום ההתחלה = fromDate; החזרה = toDate מגולגל ליום עובד; אירוע עם טווח', () => {
+test('חו״ל: יום ההתחלה = fromDate; החזרה = toDate מגולגל ליום עובד; אירוע עם טווח', () => {
   const o = { ...ORDER, isAbroad: true, fromDate: IL('2026-10-12'), toDate: IL('2026-10-16'), eventDate: IL('2026-10-14') };
   assert.equal(effectiveStartKey(o), '2026-10-12');
   const r = computeOrderStages(o, { schedule: ORG_MAIN, todayKey: '2026-10-04' });

@@ -51,7 +51,7 @@ test('2א: בחירת טווח חדש כשיש יום נוסף מאפסת אות
   assert.equal(new Date(again.toDate) - new Date(o.toDate), 24 * 3600e3);
 });
 test('2ב: "יום לפני/אחרי" בלי התאריכים הנדרשים = אין שינוי (לא נגבה 50% בלי יום); "ללא" תמיד אפשרי; הגלולה כבויה בלי תאריכים', () => {
-  for (const o of [baseOrder({ isAbroad: true, eventDate: null }), baseOrder({ isAbroad: true, fromDate: '2026-10-05', toDate: null, returnDate: null }), baseOrder({ isWeekdayEvent: true, fromDate: null, toDate: '2026-10-06' }),
+  for (const o of [baseOrder({ isAbroad: true, eventDate: null }), baseOrder({ isAbroad: true, fromDate: '2026-10-05', toDate: null, returnDate: null }), baseOrder({ isAbroad: true, fromDate: null, toDate: '2026-10-06' }),
     baseOrder({ eventDate: null })]) {
     assert.equal(D.extraDayReady(o), false);
     assert.equal(D.extraDayUpdates(o, 'after'), null);

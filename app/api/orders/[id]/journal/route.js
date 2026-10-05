@@ -41,7 +41,7 @@ export async function GET(request, { params }) {
       where: ref.id ? { id: ref.id } : { orderId: ref.orderId },
       select: {
         id: true, orderId: true, orderDate: true, employeeId: true, isDeleted: true,
-        eventDate: true, fromDate: true, toDate: true, returnDate: true, isAbroad: true, isWeekdayEvent: true,
+        eventDate: true, fromDate: true, toDate: true, returnDate: true, isAbroad: true,
         isDelivery: true, deliveryDirection: true, deliveryOneDayBefore: true,
         items: {
           select: {

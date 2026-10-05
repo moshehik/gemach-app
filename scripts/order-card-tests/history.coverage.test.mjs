@@ -128,17 +128,17 @@ test('H01 שינוי תאריך אירוע: dates · "עודכן תאריך הא
   assert.equal(r.entries.length, 1, 'eventDateHebrew is not a second line');
 });
 
-test('H02 חו״ל + טווח / אמצע שבוע: dates · סוג אירוע + טווח', () => {
+test('H02 חו״ל + טווח / חזרה לרגיל: dates · סוג אירוע + טווח', () => {
   H.h02 = [
     putRow(EXISTING, { isAbroad: true, fromDate: new Date('2026-10-12T21:00:00Z'), toDate: new Date('2026-10-19T21:00:00Z') }),
-    putRow({ ...EXISTING, isAbroad: true }, { isAbroad: false, isWeekdayEvent: true }),
+    putRow({ ...EXISTING, isAbroad: true }, { isAbroad: false }),
   ];
   const r = feed(H.h02);
   assertClean(r, 'H02');
   assertBucket(r, one(r, 'האירוע סומן חו״ל', 'H02'), 'dates');
   const range = one(r, 'עודכן טווח התאריכים', 'H02');
   assert.ok(/←/.test(det(range, 'מתאריך')) && /חשו?ון/.test(det(range, 'עד תאריך')));
-  assertBucket(r, one(r, 'האירוע סומן כאירוע חול', 'H02'), 'dates');
+  assertBucket(r, one(r, 'האירוע סומן כאירוע רגיל', 'H02'), 'dates');
 });
 
 test('H03 הערות / הערות פנימיות: gen (כללי)', () => {

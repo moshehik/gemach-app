@@ -65,7 +65,7 @@ export const legacySetExtraDay = (order, v) => runLegacy(order, ({ setExtraDay }
 export const legacyShiftDateStr = (s, d) => datesFactory({}, () => {}, HD.getHebrewDateString).shiftDateStr(s, d);
 // לחצני סוג האירוע: "if (!isAbroad) return;" / "if (isAbroad) return;" ואז changeDates(<ליטרל>)
 export function legacyEventType(order, toAbroad) {
-  const isAbroad = !!(order.isAbroad || order.isWeekdayEvent);
+  const isAbroad = !!order.isAbroad;
   return runLegacy(order, ({ changeDates }) => {
     if (toAbroad ? isAbroad : !isAbroad) return;
     // eslint-disable-next-line no-new-func

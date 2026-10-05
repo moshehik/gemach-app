@@ -66,7 +66,7 @@ function installDb() {
   globalThis.__MOCK_DB = {
     order: [{
       id: ORDER_UUID, orderId: 53375, orderDate: IL('2026-09-23', '10:12'), employeeId: 'emp-worker', customerId: CUST_B, isDeleted: false, deletedAt: null,
-      eventDate: IL('2026-10-08'), fromDate: null, toDate: null, returnDate: null, isAbroad: false, isWeekdayEvent: false, isDelivery: false, deliveryDirection: null, deliveryOneDayBefore: false,
+      eventDate: IL('2026-10-08'), fromDate: null, toDate: null, returnDate: null, isAbroad: false, isDelivery: false, deliveryDirection: null, deliveryOneDayBefore: false,
       items, payments: [{ id: 'pay-1', amount: 300, paymentDate: IL('2026-09-23', '10:18'), isDeleted: false, isRefund: false }],
     }],
     __itemsRaw: [{ id: 'it-1', sizeText: '38', description: 'שמלה', oi_prefix: 4512, isDeleted: false, isTaken: false, takenDate: null, isReturned: false, returnDate: null, returnedOk: false, di_prefix: null, dm_prefix: 4512, dm_name: 'רוז' }],

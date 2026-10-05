@@ -44,7 +44,6 @@ export const ORDER_FIELD_LABELS = {
   fromDate: 'מתאריך',
   toDate: 'עד תאריך',
   isAbroad: 'אירוע חו"ל',
-  isWeekdayEvent: 'אירוע באמצע שבוע',
   customSpacing: 'ריווח מותאם',
   notes: 'הערות',
   internalNotes: 'הערות פנימיות',
@@ -85,7 +84,7 @@ export const summarizeListDiffCounts = (snapList = [], currList = []) => {
 };
 
 // + extraDay: יום השכרה נוסף משנה את המחיר (pricingCalc.js:222) ולכן מפעיל תצוגה מקדימה (A26).
-export const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection', 'extraDay', 'deliveryJoinedTo'];
+export const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'fromDate', 'toDate', 'isDelivery', 'deliveryCity', 'deliveryDirection', 'extraDay', 'deliveryJoinedTo'];
 export const pricingInputsChanged = (snap, currItems, currOrder) => {
   if (!snap) return false;
   if (JSON.stringify(snap.items || []) !== JSON.stringify(currItems || [])) return true;
@@ -114,7 +113,7 @@ export const formatListCounts = (label, counts) => {
 export const CHANGE_GROUPS = [
   { icon: '#i-calendar', label: 'תאריך אירוע', fields: ['eventDate', 'eventDateHebrew'] },
   { icon: '#i-calendar', label: 'טווח תאריכים (לקיחה/החזרה)', fields: ['fromDate', 'toDate', 'returnDate'] },
-  { icon: '#i-pin', label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad', 'isWeekdayEvent'] },
+  { icon: '#i-pin', label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad'] },
   { icon: '#i-alert-tri', label: 'ריווח ימים מותאם', fields: ['customSpacing'] },
   { icon: '#i-file', label: 'הערות להזמנה', fields: ['notes'] },
   { icon: '#i-file', label: 'הערות פנימיות', fields: ['internalNotes'] },
@@ -300,7 +299,7 @@ export function isPastEventDate(eventDate, now = new Date()) {
   return !!k && k < getIsraelTodayKey(now);
 }
 
-export const hasRequiredDates = (o) => ((o.isAbroad || o.isWeekdayEvent) ? (o.fromDate && o.toDate) : o.eventDate);
+export const hasRequiredDates = (o) => (o.isAbroad ? (o.fromDate && o.toDate) : o.eventDate);
 
 export const isPartiallyRentedBlocked = (settings, items) => !settings.allowEditPartially && items.some(i => !i.isDeleted && i.isTaken);
 
@@ -319,15 +318,14 @@ export function validateRepairs(items = []) {
   return null;
 }
 
-export const missingDatesMessage = (o) => (o.isAbroad || o.isWeekdayEvent
-  ? 'חובה להזין תאריכי התחלה וסיום (אירוע חו"ל/מיוחד) עבור הזמנה הכוללת פריטים.'
+export const missingDatesMessage = (o) => (o.isAbroad
+  ? 'חובה להזין תאריכי התחלה וסיום (אירוע חו"ל / תפוסה ארוכה) עבור הזמנה הכוללת פריטים.'
   : 'חובה לבחור תאריך אירוע עבור הזמנה הכוללת פריטים.');
 
 export const buildValidateInventoryBody = (currentOrder, activeItems) => ({
   items: activeItems,
   eventDate: currentOrder.eventDate,
   isAbroad: currentOrder.isAbroad,
-  isWeekdayEvent: currentOrder.isWeekdayEvent,
   fromDate: currentOrder.fromDate,
   toDate: currentOrder.toDate,
   orderId: currentOrder.orderId,
@@ -348,7 +346,6 @@ export const buildPreviewBody = (items, o) => ({
   order: {
     eventDate: o.eventDate,
     isAbroad: o.isAbroad,
-    isWeekdayEvent: o.isWeekdayEvent,
     fromDate: o.fromDate,
     toDate: o.toDate,
     isDelivery: o.isDelivery,
@@ -405,7 +402,6 @@ export function buildPutPayload(currentOrder, { items, obligations, payments, mo
       eventDateHebrew: o.eventDateHebrew,
       returnDate: o.returnDate,
       isAbroad: o.isAbroad,
-      isWeekdayEvent: o.isWeekdayEvent,
       fromDate: o.fromDate,
       toDate: o.toDate,
       customSpacing: o.customSpacing !== undefined ? o.customSpacing : null,
@@ -433,7 +429,6 @@ export function buildPutPayload(currentOrder, { items, obligations, payments, mo
       eventDateHebrew: o.eventDateHebrew,
       returnDate: o.returnDate,
       isAbroad: o.isAbroad,
-      isWeekdayEvent: o.isWeekdayEvent,
       fromDate: o.fromDate,
       toDate: o.toDate,
       customSpacing: o.customSpacing !== undefined ? o.customSpacing : null,
@@ -574,7 +569,7 @@ export const sameOrderField = (f, a, b) => {
   return same(a, b);
 };
 const EXTRA_DAY_LABEL = { before: 'לפני התקופה', after: 'אחרי התקופה' };
-const etypeLabel = (o) => (o?.isAbroad ? 'חו״ל' : o?.isWeekdayEvent ? 'אמצע שבוע' : 'רגיל');
+const etypeLabel = (o) => (o?.isAbroad ? 'חו״ל' : 'רגיל');
 const custName = (o) => [o?.customer?.firstName, o?.customer?.lastName].filter(Boolean).join(' ') || 'לקוח';
 const arrow = (a, b) => `${a || '—'} ← ${b || '—'}`;
 
@@ -582,10 +577,10 @@ const arrow = (a, b) => `${a || '—'} ← ${b || '—'}`;
 export const ORDER_CHANGE_KEYS = [
   { key: 'date', fields: ['eventDate', 'eventDateHebrew', 'fromDate', 'toDate', 'returnDate'], group: 'order', icon: 'cal',
     text: () => 'תאריך האירוע',
-    note: (s, c) => (c.isAbroad || c.isWeekdayEvent)
+    note: (s, c) => c.isAbroad
       ? arrow([hebDateOf(s.fromDate), hebDateOf(s.toDate)].filter(Boolean).join(' – '), [hebDateOf(c.fromDate), hebDateOf(c.toDate)].filter(Boolean).join(' – '))
       : arrow(hebDateOf(s.eventDate), hebDateOf(c.eventDate)) },
-  { key: 'etype', fields: ['isAbroad', 'isWeekdayEvent'], group: 'order', icon: 'pin', text: () => 'סוג האירוע', note: (s, c) => arrow(etypeLabel(s), etypeLabel(c)) },
+  { key: 'etype', fields: ['isAbroad'], group: 'order', icon: 'pin', text: () => 'סוג האירוע', note: (s, c) => arrow(etypeLabel(s), etypeLabel(c)) },
   { key: 'notes', fields: ['notes'], group: 'order', icon: 'note', text: () => 'הערות ההזמנה עודכנו', note: () => '' },
   { key: 'inotes', fields: ['internalNotes'], group: 'order', icon: 'note', text: () => 'הערות פנימיות עודכנו', note: () => '' },
   { key: 'sig', fields: ['hasSignedRegulations'], group: 'order', icon: 'sig', text: (s, c) => (c.hasSignedRegulations ? 'סומנה חתימה על התקנון' : 'בוטלה החתימה על התקנון'), note: () => '' },

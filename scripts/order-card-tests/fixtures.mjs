@@ -5,7 +5,7 @@ export function baseOrder(over = {}) {
   return {
     id: 'o-uuid-1', orderId: 53375, customerId: 'c1', customer: { ...CUSTOMER },
     orderDate: '2026-09-23T07:12:00.000Z', eventDate: '2026-10-07T21:00:00.000Z', eventDateHebrew: 'כ״ו תשרי תשפ״ז',
-    returnDate: null, isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, customSpacing: null,
+    returnDate: null, isAbroad: false, fromDate: null, toDate: null, customSpacing: null,
     extraDay: null, notes: 'הערה', internalNotes: '', isDelivery: false, deliveryDirection: null, deliveryAddress: null,
     deliveryCity: null, deliveryOneDayBefore: false, status: null, hasSignedRegulations: false, isDeleted: false,
     totalAmount: 300, updatedAt: '2026-10-01T10:00:00.000Z',
@@ -36,7 +36,6 @@ export function payloadStates() {
   const push = (name, st, opts = {}) => S.push({ name, st, opts });
   push('basic', baseState());
   push('abroad range', baseState({ order: { isAbroad: true, fromDate: '2026-10-05T21:00:00.000Z', toDate: '2026-10-12T21:00:00.000Z', eventDate: null } }));
-  push('weekday event', baseState({ order: { isWeekdayEvent: true, fromDate: '2026-10-05', toDate: '2026-10-06' } }));
   push('customSpacing undefined', baseState({ order: { customSpacing: undefined } }));
   push('customSpacing 2', baseState({ order: { customSpacing: 2 } }));
   push('notes + internal notes', baseState({ order: { notes: 'שורה\nשנייה', internalNotes: 'פנימי "בגרש"' } }));

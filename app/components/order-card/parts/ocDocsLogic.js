@@ -169,7 +169,7 @@ export function orderExportSheets({ order, items = [], obligations = [], payment
   const activePay = payments.filter((p) => !p.isDeleted);
   const required = activeObl.reduce((s, x) => s + num(x.amount), 0);
   const paid = activePay.reduce((s, p) => s + num(p.amount), 0);
-  const eventRange = o.isAbroad || o.isWeekdayEvent
+  const eventRange = o.isAbroad
     ? [hebDateOf(o.fromDate), hebDateOf(o.toDate)].filter(Boolean).join(' – ')
     : '';
   const summary = [
