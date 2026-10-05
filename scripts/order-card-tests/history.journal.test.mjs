@@ -341,7 +341,7 @@ test('גרשיים בתאריכים העבריים של היומן / ההיסט�
   const H = await import('@/app/components/order-card/parts/ocHistoryModel.js');
   assert.equal(H.shortHebrew('כח תשרי תשפ"ז'), 'כ״ח תשרי');
   assert.equal(H.shortHebrew('ל תשרי תשפ"ז'), 'ל׳ תשרי');
-  assert.equal(H.shortHebrew('טו אדר א\' תשפ"ז'), 'ט״ו אדר א\'');
+  assert.equal(H.shortHebrew('טו אדר א\' תשפ"ז'), 'ט״ו אדר א׳');
   assert.equal(H.shortHebrew('כ״ז תשרי תשפ״ז'), 'כ״ז תשרי', 'idempotent');
   assert.equal(H.hebrewWithGershayim('כח תשרי תשפ"ז'), 'כ״ח תשרי תשפ״ז');
   assert.equal(H.hebrewWithGershayim(dayLabels('2026-10-08').he), 'כ״ז תשרי תשפ״ז');
