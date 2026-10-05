@@ -238,7 +238,7 @@ test('S2 (סטטי): PUT דוחה 400 EXTRA_DAY_DISABLED ו-preview-pricing מת
   assert.ok(/resolveExtraDay\(\{ enabledSetting: \(await getCachedSetting\('enable_rental_extension'\)\)\?\.value, requested: data\.extraDay, current: existingOrder\.extraDay \}\)/.test(put));
   assert.ok(/code: 'EXTRA_DAY_DISABLED' \}, \{ status: 400 \}/.test(put));
   const prev = fs.readFileSync(P + '/app/api/orders/[id]/preview-pricing/route.js', 'utf8');
-  assert.ok(/'enable_rental_extension'\s*\];/.test(prev) && /resolveExtraDay\(/.test(prev));
+  assert.ok(/'enable_rental_extension',?\s*(?:'delivery_charge_customer_city_fallback'\s*)?\];/.test(prev) && /resolveExtraDay\(/.test(prev));
 });
 
 // ---------- S3: שערי עמוד בקריאות GET שמחזירות שמות/כתובות ----------

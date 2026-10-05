@@ -166,7 +166,10 @@ test('computeDeliveryObligationPreview עם joinPrice = הפונקציה של נ
     for (const bc of byCity) for (const flat of [undefined, '', '45', '0']) for (const joinPrice of [null, undefined, 0, 20, '15'])
       for (const existing of [[], [{ description: 'משלוח הלוך - ירושלים', isDeleted: false }], [{ description: 'משלוח', isDeleted: true }]]) {
         const args = { isDelivery, deliveryCity: city, deliveryDirection: dir, deliveryPriceByCity: bc, deliveryPrice: flat, joinPrice, existingObligations: existing };
-        assert.deepEqual(CALC.computeDeliveryObligationPreview(args), neve(args), JSON.stringify(args));
+        // main (32d00e0c) הוסיף citySource לתוצאה (order|customer) - לא חלק מאורקל נווה; בלי customerCity המקור תמיד 'order'
+        const actual = CALC.computeDeliveryObligationPreview(args);
+        if (actual) { assert.equal(actual.citySource, 'order', JSON.stringify(args)); delete actual.citySource; }
+        assert.deepEqual(actual, neve(args), JSON.stringify(args));
       }
   // בלי joinPrice = ההתנהגות הקודמת בדיוק (המפתח לא חייב להופיע)
   const { joinPrice: _jp, ...noJoin } = { isDelivery: true, deliveryCity: 'ירושלים', deliveryDirection: 'הלוך-חזור', deliveryPriceByCity: '{"ירושלים":60}', deliveryPrice: '50', existingObligations: [] };

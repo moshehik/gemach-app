@@ -145,7 +145,7 @@ test('R31: אין שער "הזמנה לא שולמה" — השכרה/החזרה 
   const items = [it('a1')];
   const le = legacyEnv({ items, queues: { '/api/rentals/toggle': [OK] } });
   const { postRentalRent } = await legacyRentalToggle();
-  const handleRent = mimFunction('handleRent', { ...le.scope, isFullyPaid: false, postRentalRent });
+  const handleRent = mimFunction('handleRent', { ...le.scope, isFullyPaid: false, postRentalRent, settings: {}, unpaidApprovedRef: { current: false } });
   await legacyRun(le, () => handleRent(items[0], '4538010'));
   assert.deepEqual(le.asked, ['feature:unpaid_action_items_tab'], 'הישן (לשם השוואה)');
   const me = mine({ items, queues: { '/api/rentals/toggle': [OK] } });
