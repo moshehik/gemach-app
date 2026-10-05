@@ -173,6 +173,9 @@ const FOCUS_PAGE = {
 const CUSTOMER_KEYS = ['first', 'last', 'name', 'phone', 'city'];
 const CUSTOMER_PAGES = ['page:customers', 'page:orders', 'page:rentals', 'page:deliveries', 'page:alterations', 'page:refunds'];
 const ORDER_PAGES = ['page:orders', 'page:rentals', 'page:deliveries', 'page:alterations', 'page:refunds'];
+// רשימת עובדים (emp / cemp): בלי תחום (focus ריק) נדרשת הרשאה לפחות לאחד מדפי החיפוש המתקדם, אחרת כל משתמש מחובר היה שולף שמות עובדים
+const EMPLOYEE_KEYS = ['emp', 'cemp'];
+const ANY_FOCUS_PAGES = [...new Set(Object.values(FOCUS_PAGE))];
 const forbidden = () => NextResponse.json({ error: 'אין הרשאה להצעות בתחום זה' }, { status: 403 });
 
 async function allowed(key, focus) {
@@ -185,6 +188,7 @@ async function allowed(key, focus) {
   }
   if (CUSTOMER_KEYS.includes(key)) return canOpenAnyPage(CUSTOMER_PAGES);
   if (key === 'oid') return canOpenAnyPage(ORDER_PAGES);
+  if (EMPLOYEE_KEYS.includes(key) && !focus) return canOpenAnyPage(ANY_FOCUS_PAGES);
   return true;
 }
 

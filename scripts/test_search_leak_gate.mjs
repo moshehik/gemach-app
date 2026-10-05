@@ -243,6 +243,15 @@ await t('עובדים: רק הנהלה ראשית/מתכנת', async () => {
   reset([], { head: true });
   assert.equal((await opt.GET(req('/api/a5/options?key=q&focus=employees&typed='))).status, 200);
 });
+await t('רשימת עובדים (emp / cemp) בלי תחום: בלי אף עמוד חיפוש -> 403 ובלי שאילתה; עם page:refunds -> 200', async () => {
+  for (const key of ['emp', 'cemp']) {
+    reset([]);
+    assert.equal((await opt.GET(req(`/api/a5/options?key=${key}&typed=`))).status, 403, key);
+    assert.equal(T.dbCalls, 0, key);
+    reset(['page:dresses_catalog']);
+    assert.equal((await opt.GET(req(`/api/a5/options?key=${key}&focus=&typed=`))).status, 200, key + ' (עמוד דגמים הוא עמוד חיפוש)');
+  }
+});
 await t('תחום לא מוכר נכשל סגור; לא מחובר -> 401', async () => {
   reset(['page:customers']);
   assert.equal((await opt.GET(req('/api/a5/options?key=q&focus=bogus&typed='))).status, 403);
