@@ -96,7 +96,8 @@ export function evalWhere(row, where) {
   if (!where) return true;
   for (const [k, v] of Object.entries(where)) {
     if (k === 'AND') { if (!(Array.isArray(v) ? v : [v]).every((w) => evalWhere(row, w))) return false; }
-    else if (k === 'OR') { if (!v.some((w) => evalWhere(row, w))) return false; }
+    // איבר ריק ב-OR (למשל { orderId: undefined } של הקוד הישן) אינו מתאים לכלום - כך עובד האתר בפועל (חיפוש שם לא מחזיר את כל ההזמנות)
+    else if (k === 'OR') { if (!v.some((w) => Object.values(w).some((x) => x !== undefined) && evalWhere(row, w))) return false; }
     else if (k === 'NOT') { if ((Array.isArray(v) ? v : [v]).some((w) => evalWhere(row, w))) return false; }
     else if (!evalCond(row ? row[k] : undefined, v)) return false;
   }
