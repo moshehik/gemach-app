@@ -7,7 +7,7 @@ import { checkAiAccess } from '../../../../lib/permissions';
 import { cookies } from 'next/headers';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { processHebrewDateMacro } from '../../../../lib/hebrewDate';
-import { buildDateContext, buildUserDateHints, normalizeAiSql } from '../../../../lib/ai/aiCommon';
+import { buildDateContext, buildUserDateHints, normalizeAiSql, hebrewMonthRuleText } from '../../../../lib/ai/aiCommon';
 import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
 import { getFeatureRestrictionConfig, isRestrictionEnabled } from '../../../../lib/ai/restrictionsConfig';
 
@@ -121,6 +121,10 @@ Rules:
 9. STATUS: never write "status" NOT IN (...) or "status" <> '...' ("status" is NULL for almost every order and NOT IN drops NULL rows). Use COALESCE("status", '') if you must filter it.
 10. DELIVERY: an order that ordered delivery has "isDelivery" = true; the word "משלוח" inside "notes" is different.
 11. MODEL NUMBER: to filter dresses/rentals by model number N use "barcodePrefix" = N (an integer column of "DressItem" and "OrderItem"). "dressModelId" is a UUID - NEVER compare it to a number.
+12. BARCODE vs ORDER NUMBER (same rules as the other AI search agents, S16-S17 in lib/ai/aiCommon.js): a dress barcode has 7 digits (older: 5-6): the last 2 digits are the serial, the 2 before them the SIZE, the digits before those the model ("barcodePrefix"). A bare 7-digit number, or any number after the word ברקוד, is a BARCODE and NEVER an "orderId": match it as text - "dressBarcode" = '6323401' on DressItem, "barcode" = '6323401' on OrderItem, and for the Order table "orderId" IN (SELECT "orderId" FROM "OrderItem" WHERE "barcode" = '6323401'). A bare 5-6 digit number is an ORDER NUMBER first ("orderId" = N); 1-4 digits is an order number; the word הזמנה before a number always means an order number. A 9-10 digit number starting with 0 (or 972 / +972) is a PHONE number.
+13. PHONES: "phone1"/"phone2" are saved as typed (with or without dashes, sometimes +972). Compare digits only for both columns: regexp_replace("phone1", '\\D', '', 'g') IN ('0501234567', '972501234567') (the 0-form and the 972-form); for a partial number use regexp_replace(...) LIKE '%1234567%'. For the Order/OrderItem tables go through "customerId" IN (SELECT id FROM "Customer" WHERE ...).
+14. SIZES (refines rule 5): "sizeText" is padded in one gemach and unpadded in the other, sometimes with stray spaces ('02', '2', ' 06'). For a one-digit size match BOTH spellings and ignore spaces: TRIM("sizeText") IN ('2', '02'); two-digit sizes as is ('34'). NEVER use "sizeText" LIKE '%2%' (it also matches 12, 20-29, 32).
+15. HEBREW MONTH NAMES (map to the macro names of rule 7): ${hebrewMonthRuleText()}. A date written with or without quote marks is the same (כז תשרי = כ"ז תשרי). A bare "ב חשוון" is the second day of Cheshvan unless the user clearly says "in Cheshvan".
 
 Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
