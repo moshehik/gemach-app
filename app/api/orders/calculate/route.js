@@ -134,7 +134,7 @@ export async function POST(request) {
     const priceByCity = getSetting('delivery_price_by_city', '');
     // בלי עיר משלוח מפורשת נופלים לעיר הלקוח (אם בטבלה) - כמו applyDeliveryCharge (org2 06467870).
     const deliveryCity = isDelivery
-      ? resolveEffectiveDeliveryCity({ deliveryCity: explicitDeliveryCity, customerCity, deliveryPriceByCity: priceByCity }).city
+      ? resolveEffectiveDeliveryCity({ deliveryCity: explicitDeliveryCity, customerCity, deliveryPriceByCity: priceByCity, allowCustomerCityFallback: getSetting('delivery_charge_customer_city_fallback', 'false') === 'true' }).city
       : null;
     if (isDelivery && deliveryCity) {
       let priceMap = {};

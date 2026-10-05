@@ -26,7 +26,8 @@ const SETTING_KEYS = [
   'instant_undo_minutes',
   'gap_size_price_rule',
   'delivery_price_by_city',
-  'delivery_price'
+  'delivery_price',
+  'delivery_charge_customer_city_fallback'
 ];
 
 /**
@@ -115,6 +116,7 @@ export async function POST(request, { params }) {
       isDelivery: effectiveOrder.isDelivery,
       deliveryCity: effectiveOrder.deliveryCity,
       customerCity: baseOrder.customer?.city,
+      allowCustomerCityFallback: settings.find(s => s.key === 'delivery_charge_customer_city_fallback')?.value === 'true',
       deliveryDirection: effectiveOrder.deliveryDirection,
       deliveryPriceByCity: settings.find(s => s.key === 'delivery_price_by_city')?.value,
       deliveryPrice: settings.find(s => s.key === 'delivery_price')?.value,

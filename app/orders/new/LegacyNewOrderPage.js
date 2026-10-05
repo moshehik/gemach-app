@@ -1467,13 +1467,18 @@ export default function NewOrderPage() {
     </div>
   );
   // שורת חיוב המשלוח (אותו מספר שכלול ב-totalAmount). variant 'sum' = בכרטיס הסיכום של שלב 5.
+  // אין עיר משלוח מפורשת: כשהשרת מחשב חיוב בכל זאת (נפילה-לאחור לעיר הלקוח, delivery_charge_customer_city_fallback)
+  // מציגים את עיר הלקוח ואת הסכום - ולא "יש לבחור עיר" אדום, שהיה שגוי כשהחיוב כבר מחושב.
+  const shownDeliveryCity = order.deliveryCity || (deliveryAmount > 0 ? (order.selectedCustomer?.city || '') : '');
   const renderDeliveryChargeRow = (variant) => (deliveryEnabled && order.isDelivery) ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: variant === 'sum' ? '6px 2px' : '10px 4px 0' }}>
       <span className="hint" style={{ color: 'var(--text-3)' }}>
-        {variant === 'sum' ? 'מתוכם משלוח' : 'משלוח'}{order.deliveryCity ? ` · ${order.deliveryCity}` : ''} · {order.deliveryDirection}
+        {variant === 'sum' ? 'מתוכם משלוח' : 'משלוח'}{shownDeliveryCity ? ` · ${shownDeliveryCity}` : ''} · {order.deliveryDirection}
       </span>
-      {!order.deliveryCity
-        ? <span className="hint" style={{ color: 'var(--danger)' }}>יש לבחור עיר משלוח</span>
+      {!shownDeliveryCity
+        ? (deliveryCityRequired
+          ? <span className="hint" style={{ color: 'var(--danger)' }}>יש לבחור עיר משלוח</span>
+          : <span className="hint" style={{ color: 'var(--text-3)' }}>לא נבחרה עיר - ללא חיוב משלוח</span>)
         : activeItems.length === 0
           ? <span className="hint" style={{ color: 'var(--text-3)' }}>יחושב אחרי הוספת פריטים</span>
           : <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{deliveryAmount.toLocaleString('he-IL')}</strong>}
