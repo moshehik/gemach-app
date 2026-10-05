@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
-import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
+import { flattenMenuTree, menuRowMatchesTerm } from '@/lib/menu/buildMenuTree';
 import { MINE_URL } from '@/lib/myRecentActivityView';
 import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
 import { MineRowBody, MineWho, SavedDelButton, SaveForm, ShortcutRowBody, useDraftCount, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
