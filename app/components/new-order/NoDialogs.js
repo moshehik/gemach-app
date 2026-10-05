@@ -3,28 +3,55 @@
 // החלונות של אשף "הזמנה חדשה" (A5): כולם #dlg / #dlg2 של הפלטה בתוך .scrim, כהים (Q2 = "כהים" - השורש נושא dlg-dark),
 // ב-portal לשורש הדף. ה-markup כמו openDlg/pinDlg/confirmDlg/... בעיצוב (h2, .sub, .mfld, .dbtns, .success, .chg).
 // אף חלון כאן לא משתמש ב-window.alert / confirm / customConfirm / customAuthPrompt.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { Ic, Note, NO_FILL } from './NoUi';
 import { getCustomerFullName, getMissingMandatoryCustomerFields, CUSTOMER_FIELD_LABELS, cardNumberInput, tokefInput, parseSwipe, plural, moneyTxt } from './newOrderLogic';
 import { parseFieldGroups, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
 
 // ---------- מסגרת ----------
+// D7 (נגישות): aria-labelledby לכותרת החלון (ה-h1/h2/h3 הראשון בתוכו), מלכודת פוקוס (Tab / Shift+Tab נשארים בתוך החלון)
+// והחזרת הפוקוס לאלמנט שפתח את החלון כשהוא נסגר.
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 export function DialogFrame({ layer, cls, onBackdrop, children }) {
   const ref = useRef(null);
+  const titleId = useId();
   useEffect(() => {
+    const opener = typeof document !== 'undefined' ? document.activeElement : null;
     const t = setTimeout(() => {
       const el = ref.current;
       if (!el) return;
       const f = el.querySelector('[data-autofocus]') || el.querySelector('input:not([type=hidden]):not([disabled]),select,textarea,button:not([disabled])');
       if (f) f.focus();
     }, 40);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      if (opener && opener !== document.body && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+    };
   }, []);
+  useEffect(() => { // כותרת החלון יכולה להיטען אחרי הרינדור הראשון - מעדכנים בכל רינדור (זול)
+    const el = ref.current;
+    if (!el) return;
+    const h = el.querySelector('h1,h2,h3');
+    if (h) { if (!h.id) h.id = titleId; el.setAttribute('aria-labelledby', h.id); } else el.removeAttribute('aria-labelledby');
+  });
+  const onKeyDown = (e) => {
+    if (e.key !== 'Tab') return;
+    const el = ref.current;
+    if (!el) return;
+    const items = [...el.querySelectorAll(FOCUSABLE)].filter(x => x.offsetParent !== null || x === document.activeElement);
+    if (!items.length) { e.preventDefault(); el.focus(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    const inside = el.contains(active);
+    if (e.shiftKey && (!inside || active === first || active === el)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (!inside || active === last)) { e.preventDefault(); first.focus(); }
+  };
   const n = layer === 2 ? '2' : '';
   return (
     <div className="scrim on" id={`scrim${n}`} onMouseDown={(e) => { if (e.target === e.currentTarget && onBackdrop) onBackdrop(); }}>
-      <div className={`dlg${cls ? ` ${cls}` : ''}`} id={`dlg${n}`} role="dialog" aria-modal="true" ref={ref}>{children}</div>
+      <div className={`dlg${cls ? ` ${cls}` : ''}`} id={`dlg${n}`} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={onKeyDown} ref={ref}>{children}</div>
     </div>
   );
 }

@@ -164,3 +164,16 @@ test('Q9: האשף לא יוצר ולא קורא isWeekdayEvent - דגל על ה
   assert.deepStrictEqual(N.buildSavePayload({ order: flagged, totalAmount: 1, itemsToSave: [], hokDetailsPayload: null, finalPaymentsList: [], reservedOrderId: null, draftOrderId: null, force: false }),
     N.buildSavePayload({ order: base, totalAmount: 1, itemsToSave: [], hokDetailsPayload: null, finalPaymentsList: [], reservedOrderId: null, draftOrderId: null, force: false }));
 });
+
+test('D1: סכום כולל עם רעש נקודה צפה (350 * 1.1) - הגוף נשלח עם הסכום המעוגל, והאורקל מושווה מול אותו סכום מעוגל', () => {
+  const raw = 350 * 1.1;
+  assert.notEqual(raw, 385);
+  const totalAmount = N.roundMoney(raw); // מה שה-controller שומר מתוך תגובת /api/orders/calculate
+  const calculatedData = { items: [{ calculatedPrice: 350, repairsCost: 0 }] };
+  const args = { order: ORDERS[0], settings: {}, newCustomer: { ...N.EMPTY_NEW_CUSTOMER }, finalPaymentsList: [{ amount: 385, method: 'מזומן', notes: '' }], reservedOrderId: null, draftOrderId: null, force: false };
+  const legacy = L.legacySavePayload({ ...args, calculatedData, totalAmount });
+  const itemsToSave = N.buildItemsToSave(args.order, calculatedData.items);
+  const mine = N.buildSavePayload({ order: args.order, totalAmount, itemsToSave, hokDetailsPayload: N.buildHokDetailsPayload(args.settings, args.order, args.newCustomer), finalPaymentsList: args.finalPaymentsList, reservedOrderId: null, draftOrderId: null, force: false });
+  assertSameNoWk(mine, legacy);
+  assert.equal(mine.totalAmount, 385);
+});

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as N from '../../app/components/new-order/newOrderLogic.js';
 import { LEGACY_SRC } from './legacy.mjs';
+import * as P from '../../lib/newOrderPayments.js';
 import { subtractBusinessDays, keyFromLocalDate, parseNonWorkingDaysSetting, addBusinessDays } from '../../lib/businessDays.js';
 import { getExpectedReturnKey } from '../../lib/lateReturn.js';
 import { SETTINGS_HEBREW_NAMES, SETTINGS_HEBREW_NOTES, SETTINGS_ORDER, SETTINGS_BOOLEAN_KEYS } from '../../lib/settingsMetadata.js';
@@ -18,7 +19,7 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 const CTL = strip(read('useNewOrderController.js'));
 
 // ---------- 1 + 2: כסף ----------
-test('1: "יציאה באישור מנהל" לא נרשמת כתשלום ₪; תשלום מפוצל (גם מזומן) דורש אישור לפי PAYMENT_APPROVAL_LEVEL', () => {
+test('1: "יציאה באישור מנהל" לא נרשמת כתשלום ₪; תשלום מפוצל (מזומן ועוד) נרשם מיד בלי אישור מנהל (D2, main 46a054b1)', () => {
   const M = N.MANAGER_EXIT_METHOD;
   assert.equal(N.paymentAddDecision({}, M, 150).action, 'reject');
   assert.equal(N.paymentAddDecision({}, M, 150).reason, 'manager-exit');
@@ -28,21 +29,28 @@ test('1: "יציאה באישור מנהל" לא נרשמת כתשלום ₪; ת
   assert.equal(N.paymentAddDecision({}, 'אשראי (דרך נדרים פלוס)', 100).action, 'credit');
   assert.equal(N.paymentAddDecision({ PAYMENT_APPROVAL_LEVEL: 'מנהל' }, 'אשראי (דרך נדרים פלוס)', 100).action, 'credit', 'אשראי עובר חיוב אמיתי - לא אישור');
   assert.equal(N.paymentAddDecision({}, 'מזומן', 100).action, 'add', 'כולם = בלי בקשה');
-  for (const level of ['מנהל', 'עובד', 'מנהל סניף ומעלה']) {
-    const d = N.paymentAddDecision({ PAYMENT_APPROVAL_LEVEL: level }, 'מזומן', 100);
-    assert.equal(d.action, 'approve', level);
-    assert.equal(d.amount, 100);
+  // D2: בפיצול אין בקשת אישור בשום רמה (אי אפשר לסיים בלי תשלום מלא אלא דרך "יציאה באישור מנהל" - ושם האישור נבדק בסיום, Q3b)
+  for (const level of [undefined, 'כולם', 'מנהל', 'עובד', 'מנהל סניף ומעלה', 'אחר']) {
+    const s = level === undefined ? {} : { PAYMENT_APPROVAL_LEVEL: level };
+    for (const method of ['מזומן', 'העברה בנקאית', 'צ׳ק', 'אשראי חיצונית']) {
+      const d = N.paymentAddDecision(s, method, 100);
+      assert.equal(d.action, 'add', `${level}/${method}`);
+      assert.equal(d.amount, 100);
+    }
+    assert.equal(N.paymentAddDecision(s, N.MANAGER_EXIT_METHOD, 100).action, 'reject', 'יציאה באישור מנהל נדחית בכל רמה');
+    assert.equal(N.paymentAddDecision(s, 'מזומן', 0).action, 'reject');
   }
   assert.equal(N.paymentAddDecision({ PAYMENT_APPROVAL_LEVEL: 'כולם' }, 'העברה בנקאית', 100).action, 'add');
 });
-test('1: handleAddPaymentClick ב-controller נשען על paymentAddDecision ומבקש אישור (feature:payment_exit_approval) לפני הרישום', () => {
+test('1: handleAddPaymentClick ב-controller נשען על paymentAddDecision ואינו מבקש אישור מנהל (D2); האישור נשאר בסיום (Q3b)', () => {
   const m = /const handleAddPaymentClick = async \(\) => \{([\s\S]*?)\n {2}\};/.exec(CTL);
   assert.ok(m, 'handleAddPaymentClick (async)');
   const body = m[1];
   assert.match(body, /NL\.paymentAddDecision\(settings, payment\.method, payment\.amount\)/);
-  assert.ok(body.indexOf('verifyPin(') < body.indexOf('setPaymentsList('), 'האישור לפני הרישום');
-  assert.match(body, /'feature:payment_exit_approval'/);
+  assert.ok(!/verifyPin\(|payment_exit_approval|'approve'/.test(body), 'אין בקשת אישור בפיצול');
   assert.match(body, /reason === 'manager-exit'/);
+  const save = /const saveOrder = async \(\) => \{([\s\S]*?)\n {2}\};/.exec(CTL);
+  assert.ok(save && /NL\.paymentApprovalRequired\(settings, payment\.method, pAmount\)/.test(save[1]) && /'feature:payment_exit_approval'/.test(save[1]), 'Q3b: האישור ביציאה באישור מנהל נבדק בסיום');
 });
 test('1: בסיום ההזמנה "יציאה באישור מנהל" עדיין נרשמת בסכום 0 (השרת סופר אותה כאישור, לא ככסף)', () => {
   const f = N.buildFinalPayments([], { amount: 300, method: N.MANAGER_EXIT_METHOD, notes: 'x' });
@@ -57,10 +65,86 @@ test('2: חיוב אשראי נשמר תמיד באמצעי האשראי, גם �
   assert.equal(N.creditPaymentMethod(['מזומן']), N.DEFAULT_CREDIT_METHOD);
   assert.equal(N.creditPaymentMethod(undefined), N.DEFAULT_CREDIT_METHOD);
   assert.ok(N.isCreditMethod(N.creditPaymentMethod(['מזומן'])));
-  const ok = /const newPayment = \{ amount: paymentAmount, method: ([^,]+),/.exec(CTL);
+  const ok = /const newPayment = \{ amount: paymentAmount, method: (.+?), notes: conf/.exec(CTL);
   assert.ok(ok, 'newPayment');
-  assert.equal(ok[1], 'NL.creditPaymentMethod(paymentMethodOptions)');
+  assert.equal(ok[1], 'NL.creditMethodForCharge(payment.method, paymentMethodOptions)', 'D4: נשמרת אופציית האשראי שנבחרה (כמו בישן)');
   assert.ok(!/method: payment\.method, notes: conf/.test(CTL));
+});
+test('D4: creditMethodForCharge / isCreditMethod / validateSplitPayment הם אותו קוד כמו lib/newOrderPayments (מקור אמת אחד)', () => {
+  assert.equal(N.creditMethodForCharge, P.creditMethodForCharge);
+  assert.equal(N.isCreditMethod, P.isCreditMethod);
+  assert.equal(N.validateSplitPayment, P.validateSplitPayment);
+  assert.equal(N.redirectNeedsFullReload, P.redirectNeedsFullReload);
+  const opts = ['מזומן', 'אשראי (דרך נדרים פלוס)', 'אשראי מסלול ב', 'יציאה באישור מנהל'];
+  assert.equal(N.creditMethodForCharge('אשראי מסלול ב', opts), 'אשראי מסלול ב', 'האופציה שנבחרה נשמרת');
+  assert.equal(N.creditMethodForCharge('מזומן', opts), 'אשראי (דרך נדרים פלוס)', 'נבחר מזומן - הראשונה ברשימה');
+  assert.equal(N.creditMethodForCharge('אשראי חיצונית', opts), 'אשראי (דרך נדרים פלוס)');
+});
+
+// ---------- D1: סכום כולל מעוגל + השוואה באגורות ----------
+test('D1: 350 * 1.1 (385.00000000000006) - הזמנה ששולמה במלואה לא נחסמת; paidInFull משווה באגורות', () => {
+  const raw = 350 * 1.1;
+  assert.notEqual(raw, 385, 'הרעש קיים בנקודה צפה');
+  assert.equal(N.roundMoney(raw), 385);
+  assert.equal(N.paidInFull(raw, 385), true, 'שולם 385 מול 385.00000000000006');
+  assert.equal(N.paidInFull(385, raw), true);
+  assert.equal(N.paidInFull(385, 384.99), false, 'אגורה חסרה = לא שולם במלואו');
+  assert.equal(N.paidInFull(0, 0), true);
+  assert.equal(N.paidInFull(385, 386), true);
+  // מכמה תשלומים: 0.1 + 0.2 מול 0.3
+  assert.equal(N.paidInFull(0.3, N.sumPaid([{ amount: 0.1 }, { amount: 0.2 }])), true);
+  assert.equal(N.paidInFull(N.roundMoney(0.1 + 0.2), 0.3), true);
+});
+test('D1: סריקה אקראית - מחיר * אחוז, אחרי עיגול, משולם במלואו ע"י תשלומים בגובה העיגול; אגורה חסרה לא', () => {
+  let seed = 12345;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  let noisy = 0;
+  for (let i = 0; i < 5000; i++) {
+    const price = Math.round(rnd() * 200000) / 100; // עד 2000 ש"ח, באגורות
+    const pct = [1.1, 1.05, 1.15, 1.2, 1.25, 0.9, 0.85, 1.07][Math.floor(rnd() * 8)];
+    const rawTotal = price * pct;
+    if (rawTotal !== N.roundMoney(rawTotal)) noisy++;
+    const total = N.roundMoney(rawTotal);
+    const parts = Math.floor(rnd() * 3) + 1;
+    const list = []; let left = total;
+    for (let k = 0; k < parts - 1; k++) { const part = N.roundMoney(left * rnd()); list.push({ amount: part }); left = N.roundMoney(left - part); }
+    list.push({ amount: left });
+    assert.equal(N.paidInFull(total, N.sumPaid(list)), true, `${price}*${pct}`);
+    assert.equal(N.paidInFull(rawTotal, N.sumPaid(list)), true, `גם מול הגולמי ${price}*${pct}`);
+    if (total > 0) assert.equal(N.paidInFull(total, N.roundMoney(N.sumPaid(list) - 0.01)), false, `אגורה חסרה ${price}*${pct}`);
+    assert.ok(N.roundMoney(total - N.sumPaid(list)) === 0, 'יתרה 0');
+  }
+  assert.ok(noisy > 100, 'הסריקה כוללת הרבה מקרי רעש (' + noisy + ')');
+});
+test('D1: ה-controller שומר סכום מעוגל, שולח אותו, ובודק "שולם במלואו" באגורות (גם אחרי חיוב אשראי)', () => {
+  assert.match(CTL, /setCalculatedData\(\{ totalAmount: NL\.roundMoney\(data\.totalAmount\),/);
+  assert.match(CTL, /NL\.paidInFull\(totalAmount, newTotalPaid\)/);
+  assert.match(CTL, /!isManagerExitPayment && !NL\.paidInFull\(totalAmount, totalWithCurrent\)/);
+  assert.ok(!/totalWithCurrent < totalAmount|newTotalPaid >= totalAmount/.test(CTL), 'אין עוד השוואה גולמית');
+  // גוף השמירה והטיוטה נשלחים עם הסכום המעוגל (totalAmount של ה-controller)
+  assert.match(CTL, /NL\.buildSavePayload\(\{ order, totalAmount,/);
+  assert.match(CTL, /NL\.buildDraftBody\(order, draftOrderIdRef\.current, totalAmount, activeItems\)/);
+  const a = N.buildSavePayload({ order: { items: [], selectedCustomer: null }, totalAmount: N.roundMoney(350 * 1.1), itemsToSave: [], hokDetailsPayload: null, finalPaymentsList: [], reservedOrderId: null, draftOrderId: null, force: false });
+  assert.equal(a.totalAmount, 385);
+});
+
+// ---------- D7 ----------
+test('D7: מספר הכרטיס המלא נמחק מה-state אחרי חיוב שהצליח; DialogFrame עם aria-labelledby, מלכודת פוקוס והחזרת פוקוס', () => {
+  const ok = /if \(data\.success\) \{([\s\S]*?)\n {6}\}\n/.exec(CTL);
+  assert.ok(ok, 'ענף ההצלחה');
+  assert.match(ok[1], /setCreditCardData\(\{ cardNumber: '', tokef: '', installments: 1, notes: '', amount: '' \}\)/);
+  assert.ok(ok[1].indexOf('creditCardData.notes') < ok[1].indexOf('setCreditCardData('), 'ההערות נקראות לפני הניקוי');
+  const D = strip(read('NoDialogs.js'));
+  const frame = /export function DialogFrame[\s\S]*?\n\}\n/.exec(D)[0];
+  assert.match(frame, /setAttribute\('aria-labelledby'/);
+  assert.match(frame, /e\.key !== 'Tab'/);
+  assert.match(frame, /opener\.focus\(\)/);
+  assert.match(frame, /tabIndex=\{-1\}/);
+});
+test('Neve: אחרי שמירה, יעד שהוא הנתיב הנוכחי נטען מחדש במלואו (redirectNeedsFullReload)', () => {
+  assert.match(CTL, /NL\.redirectNeedsFullReload\(href, window\.location\.pathname\)\) window\.location\.assign\(href\)/);
+  assert.equal(N.redirectNeedsFullReload('/orders/new', '/orders/new'), true);
+  assert.equal(N.redirectNeedsFullReload('/orders/123', '/orders/new'), false);
 });
 
 // ---------- 3: Q8 ----------

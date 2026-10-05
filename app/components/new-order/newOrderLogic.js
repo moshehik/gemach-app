@@ -117,7 +117,10 @@ export const computePaymentMethodOptions = (settingsObj) => {
   return withoutCredit.length > 0 ? withoutCredit : ['יציאה באישור מנהל'];
 };
 export const MANAGER_EXIT_METHOD = 'יציאה באישור מנהל';
-export const isCreditMethod = (method) => String(method || '').includes('אשראי') && !String(method || '').includes('חיצונית');
+// מקור אמת אחד עם האשף הישן (lib/newOrderPayments.js, תיקוני ה-hotfix של main): אשראי פנימי, אמצעי החיוב שנשמר אחרי חיוב כרטיס
+// (נשמרת האופציה שנבחרה) וקביעת תקינות "אישור תשלום / פיצול". מיוצאים מכאן כדי שהקוד והבדיקות של האשף יישענו עליהם.
+import { isCreditMethod, creditMethodForCharge, validateSplitPayment, paymentApprovalLevelRequiresPrompt, redirectNeedsFullReload } from '../../../lib/newOrderPayments';
+export { isCreditMethod, creditMethodForCharge, validateSplitPayment, redirectNeedsFullReload };
 // האייקון של כל אמצעי בבורר .methods (כמו METHOD_ICON בעיצוב)
 export const methodIcon = (m) => (m.includes('אשראי') ? 'card' : m.includes('מזומן') ? 'cash' : m.includes('העברה') ? 'bank' : m.includes('צ') ? 'cheque' : 'lock');
 
@@ -129,8 +132,7 @@ export function paymentApprovalRequired(settings, method, amount) {
   if (method === MANAGER_EXIT_METHOD) return true; // Q3b
   const isCredit = isCreditMethod(method);
   if (!(amount > 0 && !isCredit)) return false;
-  const level = (settings && settings.PAYMENT_APPROVAL_LEVEL) || 'כולם';
-  return level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה';
+  return paymentApprovalLevelRequiresPrompt(settings);
 }
 
 // אמצעי התשלום שנרשם בחיוב אשראי שעבר: תמיד אמצעי האשראי (הראשון ברשימה המותרת), לא האמצעי שנבחר בבורר -
@@ -138,17 +140,17 @@ export function paymentApprovalRequired(settings, method, amount) {
 export const DEFAULT_CREDIT_METHOD = 'אשראי (דרך נדרים פלוס)';
 export const creditPaymentMethod = (options) => (options || []).find(isCreditMethod) || DEFAULT_CREDIT_METHOD;
 
-// מה עושה "אישור תשלום / פיצול" (ממצא סקירה 1). "יציאה באישור מנהל" אינה תשלום - היא נרשמת רק בסיום ההזמנה, בסכום 0
-// (buildFinalPayments); כתשלום ₪ אמיתי השרת היה סופר אותה ככסף ששולם. אשראי - חלון החיוב. כל השאר (גם מזומן) - דרך אישור
-// PAYMENT_APPROVAL_LEVEL כמו ברישום הסופי: בפיצול הסכום שנשאר ב-payment.amount אחרי הרישום הוא 0, ולכן בדיקת השמירה לא
-// הייתה מתעוררת אף פעם.
+// מה עושה "אישור תשלום / פיצול". "יציאה באישור מנהל" אינה תשלום - היא נרשמת רק בסיום ההזמנה, בסכום 0 (buildFinalPayments);
+// כתשלום ₪ אמיתי השרת היה סופר אותה ככסף ששולם. אשראי - חלון החיוב. כל השאר (מזומן ועוד) - נרשם מיד, בלי אישור מנהל
+// (D2, אחרי main 46a054b1: אי אפשר לסיים הזמנה בלי תשלום מלא אלא דרך "יציאה באישור מנהל", ושם האישור נבדק בסיום - Q3b).
+// הפרמטר settings נשאר בחתימה לתאימות; ההחלטה אינה תלויה בו.
 export function paymentAddDecision(settings, method, amount) {
-  const amt = parseFloat(amount) || 0;
-  if (amt <= 0) return { action: 'reject', reason: 'amount', amount: amt };
-  if (method === MANAGER_EXIT_METHOD) return { action: 'reject', reason: 'manager-exit', amount: amt };
-  if (isCreditMethod(method)) return { action: 'credit', amount: amt };
-  return { action: paymentApprovalRequired(settings, method, amt) ? 'approve' : 'add', amount: amt };
+  const check = validateSplitPayment(amount, method);
+  if (!check.ok) return { action: 'reject', reason: isManagerExitMethod(method) && (parseFloat(amount) || 0) > 0 ? 'manager-exit' : 'amount', amount: parseFloat(amount) || 0 };
+  if (isCreditMethod(method)) return { action: 'credit', amount: check.amount };
+  return { action: 'add', amount: check.amount };
 }
+const isManagerExitMethod = (method) => String(method || '').trim() === MANAGER_EXIT_METHOD;
 
 // הרשימה הסופית שנשלחת בשמירה (זהה ל-finalPayments ב-saveOrder בישן)
 export function buildFinalPayments(paymentsList, payment) {
@@ -348,6 +350,9 @@ export function buildAddPreviewBodies(order, newItem) {
 }
 export const addPreviewTotal = (withCartTotal, baseTotal) => Math.round(((Number(withCartTotal) || 0) - (Number(baseTotal) || 0)) * 100) / 100;
 export const roundMoney = (n) => Math.round((Number(n) || 0) * 100) / 100;
+// D1: השוואת סכומים באגורות - רעש נקודה צפה (350 * 1.1 = 385.00000000000006) לא יחסום הזמנה ששולמה במלואה.
+export const toAgorot = (n) => Math.round((Number(n) || 0) * 100);
+export const paidInFull = (total, paid) => toAgorot(paid) >= toAgorot(total);
 // S06: מחיר כל אפשרות תיקון בנפרד (שלושה פריטי בדיקה למידה הראשונה המסומנת, ההפרש = repairsCost)
 export function buildAltProbeBody(order, newItem, sizeText) {
   const base = { dressModelId: newItem.dressModelId, sizeText, quantity: 1 };

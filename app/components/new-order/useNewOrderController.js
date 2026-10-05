@@ -472,7 +472,7 @@ export default function useNewOrderController({ router }) {
     setCalculating(true);
     fetch('/api/orders/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(NL.buildCalculateBody(order)) })
       .then(res => res.json())
-      .then(data => { setCalculatedData({ totalAmount: data.totalAmount || 0, items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 }); setCalculating(false); })
+      .then(data => { setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 }); setCalculating(false); })
       .catch(() => setCalculating(false));
      
   }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
@@ -557,10 +557,6 @@ export default function useNewOrderController({ router }) {
     if (decision.action === 'credit') { openCredit(payment.notes); return; }
     const method = payment.method;
     const notes = payment.notes;
-    if (decision.action === 'approve') {
-      const auth = await verifyPin('רישום תשלום דורש אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
-      if (!auth) { say('info', 'אישור תשלום בוטל.'); return; }
-    }
     setPaymentsList(prev => [...prev, { amount: decision.amount, method, notes }]);
     setPayment(prev => ({ ...prev, notes: '' }));
     say('ok', 'התשלום נרשם', `${NL.moneyTxt(decision.amount)} · ${method}`);
@@ -608,13 +604,14 @@ export default function useNewOrderController({ router }) {
       if (data.success) {
         const conf = data.confirmation || 'בוצע';
         answer(1, undefined); // סוגר את חלון האשראי
-        const newPayment = { amount: paymentAmount, method: NL.creditPaymentMethod(paymentMethodOptions), notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes };
+        const newPayment = { amount: paymentAmount, method: NL.creditMethodForCharge(payment.method, paymentMethodOptions), notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes };
         const updatedList = [...paymentsList, newPayment];
         setPaymentsList(updatedList);
+        setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: '' }); // D7: מספר הכרטיס המלא לא נשאר ב-state אחרי חיוב שהצליח
         const newTotalPaid = updatedList.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
         setIsProcessingCredit(false);
         showBusy(false);
-        if (newTotalPaid >= totalAmount) executeSaveOrderForList(updatedList);
+        if (NL.paidInFull(totalAmount, newTotalPaid)) executeSaveOrderForList(updatedList);
         else say('info', 'תשלום חלקי עבר בהצלחה.', 'יש להשלים את יתרת התשלום (או לצאת באישור מנהל) כדי לסיים את ההזמנה.');
         return;
       }
@@ -645,7 +642,7 @@ export default function useNewOrderController({ router }) {
     const totalWithCurrent = NL.sumPaid(paymentsList) + pAmount;
     const isManagerExitPayment = payment.method === NL.MANAGER_EXIT_METHOD;
     const isCreditCardPayment = NL.isCreditMethod(payment.method);
-    if (!isManagerExitPayment && totalWithCurrent < totalAmount) {
+    if (!isManagerExitPayment && !NL.paidInFull(totalAmount, totalWithCurrent)) {
       say('info', 'לא ניתן לסיים הזמנה לפני תשלום מלא.', 'אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל בין כמה אמצעי תשלום, השתמש בכפתור "אישור תשלום / פיצול" כמה פעמים.');
       return;
     }
@@ -709,7 +706,13 @@ export default function useNewOrderController({ router }) {
   const redirectScreen = settings.order_new_redirect_screen || 'order';
   const targetScreen = redirectScreen === 'new_order' ? 'order' : redirectScreen;
   const targetLabel = targetScreen === 'order' ? 'לכרטיס ההזמנה' : `ל${(ORDER_REDIRECT_SCREENS.find(s => s.value === targetScreen) || { label: 'כרטיס ההזמנה' }).label}`;
-  const goTarget = () => saved && router.push(resolveOrderRedirectHref(targetScreen, { orderId: saved.orderId, customerId: saved.customerId }));
+  const goTarget = () => {
+    if (!saved) return;
+    const href = resolveOrderRedirectHref(targetScreen, { orderId: saved.orderId, customerId: saved.customerId });
+    // כמו בישן (main 46a054b1): יעד שהוא הנתיב הנוכחי (/orders/new) - router.push לא מאפס את הטופס, לכן טעינה מלאה
+    if (typeof window !== 'undefined' && NL.redirectNeedsFullReload(href, window.location.pathname)) window.location.assign(href);
+    else router.push(href);
+  };
   const printSaved = () => saved && window.open(`/print/order?orderId=${saved.orderId}&type=order`, '_blank');
   const newOrder = () => { if (typeof window !== 'undefined') window.location.assign('/orders/new'); };
 
