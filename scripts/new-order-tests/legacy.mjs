@@ -3,6 +3,7 @@
 // אותו דפוס כמו scripts/order-card-tests/legacy.mjs (ענף feature/order-card-w1).
 import fs from 'node:fs';
 import path from 'node:path';
+import { paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails } from '../../lib/newOrderPayments.js';
 
 export const LEGACY_PATH = path.join(process.env.PROJ, 'app/orders/new/LegacyNewOrderPage.js');
 export const LEGACY_SRC = fs.readFileSync(LEGACY_PATH, 'utf8').replace(/\r\n/g, '\n');
@@ -69,8 +70,9 @@ export const legacyRefreshParams = (order, draftOrderId, t) => preload2(order, {
 // --- הוספה לסל ---
 const splitFn = fn(['newItem', 'availableSizes'], region('const unavailable = [];', 'if (validSizes.length === 0)') + '\nreturn { unavailable, validSizes };');
 export const legacySplitSizes = (newItem, availableSizes) => splitFn(newItem, availableSizes);
-const addFn = fn(['newItem', 'validSizes', 'prices'], region('const itemsToAdd = validSizes.map(', '\n\n    setOrder(prev') + '\nreturn itemsToAdd;');
-export const legacyItemsToAdd = (newItem, validSizes, prices) => addFn(newItem, validSizes, prices);
+// main שינה את הישן: הפריט נבנה מ-itemToAdd = withDefaultAlterationDetails(newItem, enable_alterations !== 'false') (פירוט ברירת מחדל מהסימונים, 97ea96be).
+const addFn = fn(['newItem', 'itemToAdd', 'validSizes', 'prices'], region('const itemsToAdd = validSizes.map(', '\n\n    setOrder(prev') + '\nreturn itemsToAdd;');
+export const legacyItemsToAdd = (newItem, validSizes, prices, settings = {}) => addFn(newItem, withDefaultAlterationDetails(newItem, settings.enable_alterations !== 'false'), validSizes, prices);
 export const LEGACY_PRICING_URL_SRC = region('fetch(`/api/orders/pricing', '`)') + '`';
 
 // --- תשלום: הרשימה הסופית + תנאי בקשת האישור ---
@@ -80,10 +82,9 @@ const LINE_CREDIT = region("const isCreditCardPayment = payment.method.includes(
 const finalFn = fn(['paymentsList', 'payment'], [LINE_PAMOUNT, LINE_EXIT, region('let finalPayments = [...paymentsList];', 'executeSaveOrderForList(finalPayments);'), 'return finalPayments;'].join('\n'));
 export const legacyFinalPayments = (paymentsList, payment) => finalFn(paymentsList, payment);
 const cond1 = region('if (isManagerExitPayment || (pAmount > 0 && !isCreditCardPayment))', ' {');
-const levelLine = region('const level = settings.PAYMENT_APPROVAL_LEVEL', '\n');
-const cond2 = region("if (level === 'מנהל'", ' {');
-const approvalFn = fn(['settings', 'payment', 'pAmount'], [LINE_EXIT, LINE_CREDIT, `${cond1} { ${levelLine}\n ${cond2} { return true; } }`, 'return false;'].join('\n'));
-export const legacyPaymentApprovalRequired = (settings, method, amount) => approvalFn(settings, { method }, amount);
+// main העביר את בדיקת הרמה ל-paymentApprovalLevelRequiresPrompt(settings) (lib/newOrderPayments.js) - מועבר כפרמטר לקוד החי.
+const approvalFn = fn(['settings', 'payment', 'pAmount', 'paymentApprovalLevelRequiresPrompt'], [LINE_EXIT, LINE_CREDIT, `${cond1} { if (paymentApprovalLevelRequiresPrompt(settings)) { return true; } }`, 'return false;'].join('\n'));
+export const legacyPaymentApprovalRequired = (settings, method, amount) => approvalFn(settings, { method }, amount, paymentApprovalLevelRequiresPrompt);
 
 // --- הגדרות / שדות חובה / אמצעי תשלום ---
 const pmoSrc = region('const computePaymentMethodOptions = (settingsObj) => {', '\n};\n') + '\n};';
@@ -94,7 +95,8 @@ const missingFn = fn(['settings'], [
   region('const getMissingMandatoryCustomerFields = (customerObj) => {', '\n  };\n') + '\n  };',
   'return getMissingMandatoryCustomerFields;'].join('\n'));
 export const legacyMissingFields = (settings, customer) => missingFn(settings)(customer);
-export const legacyDescribeAlterations = fn([], region('const describeAlterations = (item) => [', ';\n') + ';\nreturn describeAlterations;')();
+// main: describeAlterations בישן = describeItemAlterations מ-lib/newOrderPayments.js (ייבוא).
+export const legacyDescribeAlterations = describeItemAlterations;
 
 // --- נעילת שלבים (canNavigateToStep) ---
 const navFn = fn(['order'], region('const canNavigateToStep = (targetStep) => {', '\n  };\n') + '\n  };\nreturn canNavigateToStep;');

@@ -70,7 +70,7 @@ test('3 Q8: הפירוט האוטומטי (alteration_details_optional) נכנס
   const optional = N.prepareItemForAdd({ alteration_details_optional: 'true' }, it);
   assert.equal(optional.itemToAdd.repairs, 'צוואר, שרוול, אורך (3)');
   assert.equal(N.buildItemsToAdd(optional.itemToAdd, valid, [{ basePrice: 100 }])[0].repairs, 'צוואר, שרוול, אורך (3)');
-  assert.equal(N.buildItemsToAdd(it, valid, [{ basePrice: 100 }])[0].repairs, '', 'הבאג של הישן (newItem גולמי) - זה מה שתוקן');
+  assert.equal(N.buildItemsToAdd(it, valid, [{ basePrice: 100 }])[0].repairs, '', 'newItem גולמי (בלי prepareItemForAdd) לא מקבל פירוט - לכן הקורא חייב להעביר prep.itemToAdd');
   assert.ok(N.prepareItemForAdd({}, it).error, 'ברירת מחדל = אכיפה');
   assert.ok(N.prepareItemForAdd({ alteration_details_optional: 'false' }, it).error);
   assert.ok(N.prepareItemForAdd({ alteration_details_optional: '' }, it).error);
@@ -79,13 +79,13 @@ test('3 Q8: הפירוט האוטומטי (alteration_details_optional) נכנס
   assert.match(CTL, /NL\.buildItemsToAdd\(prep\.itemToAdd, validSizes, prices\)/);
   assert.ok(!/NL\.buildItemsToAdd\(newItem,/.test(CTL));
 });
-test('3 Q8: alteration_details_optional רשום ב-lib/settingsMetadata (שם, הסבר, קטגוריה, מתג) ובישן אין אכיפה (סטייה מתועדת)', () => {
+test('3 Q8: alteration_details_optional רשום ב-lib/settingsMetadata (שם, הסבר, קטגוריה, מתג) ובישן אין אכיפה (חובה בחדש בלבד, החלטת בעלים פתוחה)', () => {
   const k = 'alteration_details_optional';
   assert.ok(SETTINGS_HEBREW_NAMES[k] && /[א-ת]/.test(SETTINGS_HEBREW_NAMES[k]));
   assert.ok(SETTINGS_HEBREW_NOTES[k] && /[א-ת]/.test(SETTINGS_HEBREW_NOTES[k]));
   assert.ok(Object.values(SETTINGS_ORDER).some(list => list.includes(k)), 'קטגוריה');
   assert.ok(SETTINGS_BOOLEAN_KEYS.includes(k), 'מתג');
-  assert.ok(!/alteration_details_optional/.test(LEGACY_SRC), 'הישן לא קורא את ההגדרה (אין חובה בו) - הסטייה בחדש בלבד');
+  assert.ok(!/alteration_details_optional/.test(LEGACY_SRC), 'הישן לא קורא את ההגדרה (הוא תמיד ממלא פירוט ברירת מחדל, withDefaultAlterationDetails) - האכיפה בחדש בלבד');
 });
 
 // ---------- 4: מועדי לקיחה/החזרה ----------

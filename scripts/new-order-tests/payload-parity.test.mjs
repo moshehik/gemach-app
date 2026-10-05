@@ -81,10 +81,19 @@ test('הוספה לסל: פיצול מידות זמינות/אזלו, פריטי
     const a = N.splitSizesByAvailability(sizes, avail);
     assert.deepStrictEqual(a, L.legacySplitSizes(newItem, avail));
     const prices = a.validSizes.map((_, i) => (i ? {} : { basePrice: 130 }));
-    // buildItemsToAdd עצמה זהה לישן. סטייה מכוונת (Q8, 2026-10): הקורא בחדש (useNewOrderController.addItemToOrder) מעביר לה את
-    // prep.itemToAdd - עם הפירוט האוטומטי describeAlterations - ולא את newItem הגולמי כמו בישן (שם repairs נשלח ריק כשהפירוט אוטומטי;
-    // commit 97ea96be הוסיף את ההערה האוטומטית בכוונה). כשהפירוט ידני/אין תיקון - זהה לישן. ההוכחה: review-fixes.test.mjs (Q8).
-    assert.deepStrictEqual(N.buildItemsToAdd(newItem, a.validSizes, prices), L.legacyItemsToAdd(newItem, a.validSizes, prices));
+    // parity פשוט (Q8, אחרי main): הישן בונה את הפריטים מ-itemToAdd = withDefaultAlterationDetails(newItem, enable_alterations !== 'false'),
+    // והחדש מ-prepareItemForAdd(settings, newItem).itemToAdd. עם alteration_details_optional='true' זה בדיוק אותו מהלך (פירוט ברירת מחדל
+    // מהסימונים) - והתוצאה זהה לישן. בלי ההגדרה החדש אוכף "פירוט לתופרת" (החלטת בעלים פתוחה, ר' NOTES.md) - ר' review-fixes.test.mjs (Q8).
+    for (const repairs of ['קיצור', '', '   ']) {
+      const ni = { ...newItem, repairs };
+      const prep = N.prepareItemForAdd({ alteration_details_optional: 'true' }, ni);
+      assert.deepStrictEqual(N.buildItemsToAdd(prep.itemToAdd, a.validSizes, prices), L.legacyItemsToAdd(ni, a.validSizes, prices));
+    }
+    // וגם עם פירוט ידני / בלי תיקון: זהה לישן בלי תלות בהגדרה
+    for (const extra of [{}, { neckAlteration: false, sleeveAlteration: false, lengthAlteration: '' }]) {
+      const ni = { ...newItem, ...extra, repairs: extra.neckAlteration === false ? '' : 'קיצור' };
+      assert.deepStrictEqual(N.buildItemsToAdd(N.prepareItemForAdd({}, ni).itemToAdd, a.validSizes, prices), L.legacyItemsToAdd(ni, a.validSizes, prices));
+    }
   }
   // eslint-disable-next-line no-new-func
   const legacyUrl = new Function('newItem', 'sizeText', 'order', 'return ' + L.LEGACY_PRICING_URL_SRC.replace(/^fetch\(/, '') + ';');
