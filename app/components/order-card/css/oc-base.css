@@ -91,6 +91,9 @@
 .gm-ds.gm-oc .oc-appr-pick{position:relative}
 .gm-ds.gm-oc .oc-appr-sel{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:start;cursor:pointer;font:inherit}
 .gm-ds.gm-oc .oc-appr-sel:disabled{cursor:default;opacity:.85}
+/* בדיאלוג הכהה .inp לבן - הטקסט כהה (הדיאלוג צובע ברירת מחדל בצבע בהיר, ולחצן לא יורש את צבע ה-input) */
+.gm-ds.gm-oc .oc-appr-sel,.gm-ds.gm-oc .oc-appr-sel .oc-appr-cur b{color:var(--gm-navy-900)}
+.gm-ds.gm-oc .oc-appr-sel .oc-appr-cur small,.gm-ds.gm-oc .oc-appr-sel > .faint{color:var(--gm-ink3);opacity:1}
 .gm-ds.gm-oc .oc-appr-sel .oc-appr-cur{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
 .gm-ds.gm-oc .oc-appr-sel .oc-appr-cur small{font-size:13px;opacity:.75}
 .gm-ds.gm-oc .oc-appr-sel > .faint{flex:1;min-width:0;font-size:14px}

@@ -74,6 +74,16 @@ const APPROVED_STAGE = [
   // במסך צר ה-demo אינו מגיע לשורת התפריט (התפריט נחתך מחוץ למסך בעיצוב); בכרטיס החדש התפריט נשאר בתוך המסך והריחוף עובד
   ['42-print-menu-hover', /^TOP>div\.tools>div\.menu\.open>button \[bg\]$|^TOP>div\.menu\.open>button>svg\.ic \[(h|w)\]$/, 'במסך צר הריחוף בעיצוב לא מגיע לתפריט (נחתך); ריחוף אמיתי = רקע + הגדלת אייקון של הפלטה'],
 ];
+// ===== החלטות הבעלים סבב 3 (2026-10-05) - הבדלים מאושרים מול הדגמה הישנה (INTEGRATION-NOTES §7) =====
+// D2: "שלבי ההזמנה" + "יומן הזמנה" אוחדו לכרטיס אחד (.card.proc, החדש למעלה) - בדגמה שני כרטיסים נפרדים (.card.stg + .card.proc); ה-meta של השלב
+// (מידע בלבד / טרם בוצע / "סמן הכנה בוצעה") עבר לשורות היומן, ולכן רוחבי הטקסט בשורות ותוספת ה-prc-m שונים
+APPROVED_STAGE.push(...['40', '41', '42', '43', '44', '45', '46', '47', '48'].flatMap((n) => [
+  [n, /^HIST>div\.card\.stg(>|$)/, 'D2: כרטיס "שלבי ההזמנה" אוחד עם יומן ההזמנה (בדגמה כרטיס נפרד)'],
+  [n, /^HIST>div\.(done|fut|cur\.fut)\.prc>div\.prc-body>div\.(prc-t|prc-m)( \[(w|h)\])?$|^HIST>div\.prc-body>div\.prc-t>(b|small) \[w\]$|^HIST>div\.prc-body>div\.prc-m>button|^HIST>div\.prc-m>button\.btn\.sm(>svg\.ic\.sm)?$/, 'D2: שורות היומן נושאות עכשיו גם את ה-meta של השלב (מאוחד); רוחבי טקסט/prc-m שונים מהשורות בדגמה'],
+  [n, /^HIST>div\.card\.proc( |>div\.prc-l )\[h\]$/, 'D2: בתרחיש האמיתי היומן מציג גם את השלבים "תיקונים" ו"הכנה" (השרת בונה צומת לכל שלב); בדגמה לא'],
+]));
+// D7: בורר המאשר בחלון האישור הכהה = combobox עם רשימה נגללת נפתחת (.advlist), לא כל המורשים כשורות/כרטיסי .opt כמו בדגמה
+APPROVED_STAGE.push(...['08-approval', '09-approval-picked'].map((st) => [st, /^DLG2>(div\.mfld>div(\.dbtns(>button\.opt)?|>button\.inp)?|div\.dbtns>button\.opt(>svg\.ic\.lg|>div)?|button\.opt>div>(b|small)|div>button\.inp>(svg\.ic\.sm|span(\.faint)?)|button\.inp>span>(b|small)|div>button\.inp|div>div|div\.dbtns)( |$)/, 'D7 (בעלים): בחירת מאשר מרשימה נגללת נפתחת של המערכת במקום הצגת כל השמות']));
 // W4 (לשונית תשלומים): עטיפת r37 של שכבת הסקירה (span display:contents) נוספת מחדש בכל רינדור; בעיצוב לחצן "רישום תשלום ידני" מנוטרל כשאין יתרה
 APPROVED_STAGE.push(...['P01-pay-tab', 'P02-pay-mgr', 'P03-pay-debt', 'P04-dlg-pay'].flatMap((st) => [
   [st, /^PAY>(div\.li>span>button\.ibtn|span>button\.ibtn>svg)/, 'r37: עטיפת span של שכבת הסקירה'],

@@ -90,7 +90,8 @@ const D = {
   '2026-09-24': DAY('2026-09-24', 'יג תשרי תשפ"ז', 'יג תשרי', "יום ה'", 'יום חמישי'),
 };
 const stg = (key, label, icon, k, o) => ({ key, label, icon, dayKey: k, day: D[k], infoOnly: false, markable: false, done: false, doneVia: null, mark: null, outcome: null, current: false, ...o });
-const SHIFT = { title: 'משמרת · 08:00–16:00', from: '08:00', to: '16:00', open: false, names: ['רחל כהן', 'שרה כהן', 'מיכל לוי'] };
+// D3 (2026-10-05): השרת מחזיר משמרת רק כשהוגדר shift_definitions - כאן הגמ"ח "מוגדר" (שם הגדרה) כמו בעיצוב
+const SHIFT = { title: 'משמרת בוקר · 08:00–16:00', name: 'בוקר', from: '08:00', to: '16:00', open: false, names: ['רחל כהן', 'שרה כהן', 'מיכל לוי'] };
 const when = (k, t) => ({ ts: new Date(`${k}T${t}:00+03:00`).toISOString(), dayKey: k, day: D[k], time: t, dateOnly: false });
 const JOURNAL = {
   orderId: 53375, today: D['2026-09-24'], currentKey: 'repair', marksAvailable: true, canMark: true,
@@ -105,6 +106,9 @@ const JOURNAL = {
   journal: [
     { key: 'order', label: 'הזמנה', icon: 'file', infoOnly: true, done: true, current: false, plannedDay: D['2026-09-23'], when: when('2026-09-23', '10:12'), who: 'רחל כהן', via: 'audit', shift: SHIFT, outcome: null },
     { key: 'pay', label: 'תשלום', icon: 'wallet', infoOnly: false, done: true, current: false, plannedDay: null, when: when('2026-09-23', '10:20'), who: 'רחל כהן', via: 'audit', shift: SHIFT, outcome: null, paid: 530, paidText: 'שולם ₪530' },
+    // השרת בונה צומת יומן לכל שלב (lib/history/orderJournal.js) - גם "תיקונים" ו"הכנה" (כאן עדיין לא בוצעו); ה-meta ו"סמן הכנה בוצעה" חיים בשורה המאוחדת (D2)
+    { key: 'repair', label: 'תיקונים', icon: 'scissors', infoOnly: false, done: false, current: false, plannedDay: D['2026-09-28'], when: null, who: null, via: null, shift: null, outcome: null },
+    { key: 'prep', label: 'הכנה', icon: 'bag', infoOnly: false, done: false, current: false, plannedDay: D['2026-10-05'], when: null, who: null, via: null, shift: null, outcome: null },
     { key: 'dout', label: 'משלוח הלוך', icon: 'truck', infoOnly: false, done: false, current: true, plannedDay: D['2026-10-06'], when: null, who: null, via: null, shift: null, outcome: null },
     { key: 'event', label: 'אירוע', icon: 'gift', infoOnly: true, done: false, current: false, plannedDay: D['2026-10-08'], when: null, who: null, via: null, shift: null, outcome: null },
     { key: 'dback', label: 'משלוח חזור', icon: 'truck', infoOnly: false, done: false, current: false, plannedDay: D['2026-10-09'], when: null, who: null, via: null, shift: null, outcome: null },

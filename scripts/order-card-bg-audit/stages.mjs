@@ -131,6 +131,25 @@ const STAGES = [
       ['C6: לחיצה = חלון אישור "האם ברצונך לנעול מחדש את ההזמנה?"; ביטול משאיר פתוח', d.h2 === 'נעילה מחדש' && /לנעול מחדש/.test(d.sub || '') && kept],
       ['C6: אישור = ההזמנה ננעלת שוב (חוזר לחצן השחרור, נעלם לחצן הנעילה מחדש)', b.lock && !b.relock]);
   } },
+  // D7: הרשימה הנגללת הפתוחה של בורר המאשר (צילום) + Esc סוגר רק את הרשימה, Esc שני סוגר את החלון (בדיקות התנהגות, בדף האמיתי בלבד)
+  { name: '09b-approval-open', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await clickAt('#dlg2 .oc-appr-sel'); await sleep(300); } },
+  { name: '09c-approval-esc', real: async () => {
+    await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500);
+    const n = await p.$$eval('#dlg2 [role="option"]', (e) => e.length); // סגור = אין אפשרויות על המסך
+    await clickAt('#dlg2 .oc-appr-sel'); await sleep(250);
+    const opts = await p.$$eval('#dlg2 .advlist [role="option"]', (e) => e.length);
+    await p.keyboard.press('Escape'); await sleep(250);
+    const afterEsc1 = await p.evaluate(() => ({ list: !!document.querySelector('#dlg2 .advlist'), dlg: !!document.querySelector('#scrim2.on #dlg2') }));
+    await clickAt('#dlg2 .oc-appr-sel'); await sleep(200); await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await sleep(250);
+    const picked = await p.evaluate(() => ({ list: !!document.querySelector('#dlg2 .advlist'), name: (document.querySelector('#dlg2 .oc-appr-cur b') || {}).textContent || '' }));
+    await p.keyboard.press('Escape'); await sleep(300);
+    const closed = await p.evaluate(() => !document.querySelector('#scrim2.on #dlg2'));
+    checks.push(['D7: הבורר סגור כברירת מחדל - אין רשימת עובדים על המסך', n === 0]);
+    checks.push(['D7: לחיצה פותחת רשימה נגללת עם כל המורשים (4)', opts === 4]);
+    checks.push(['D7: Esc סוגר רק את הרשימה והחלון נשאר פתוח', !afterEsc1.list && afterEsc1.dlg]);
+    checks.push(['D7: חץ + Enter בוחרים מאשר, הרשימה נסגרת והשם מוצג', !picked.list && picked.name.length > 0]);
+    checks.push(['D7: Esc שני (רשימה סגורה) סוגר את החלון', closed]);
+  } },
   { name: '09-approval-picked', real: async () => { await fresh('locked'); await clickAt('.tools .xlbtn[data-act="lockbtn"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(500); await pickApprover(2); await p.type('#oc-appr-code', '9'); await sleep(200); }, demo: async () => { await fresh(); await demoLocked(); await demoWin('R46'); await clickAt('#dlg2 .pv-emps .opt:nth-child(2)'); await p.type('#pvAp', '9'); await sleep(200); } },
   { name: '10-conflict', real: async () => { await fresh('conflict'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R12'); await away(); } },
   { name: '11-stock', real: async () => { await fresh('stock'); await restoreDraft(); await clickAt('#rail .btn.primary'); await sleep(700); await away(); }, demo: async () => { await fresh(); await demoWin('R48'); await away(); } },
@@ -548,7 +567,7 @@ STAGES.push(
   { name: '44-history-filtered', real: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await clickAt('.hf-bar .hf-t'); await away(); }, demo: async () => { await openHistory(); await clickAt('.hf-bar .hf-t'); await sleep(250); await clickAt('#hfo-pay'); await clickAt('#hfo-docs'); await sleep(250); await p.evaluate(() => hfSetOpen(false)); await away(); } },
   { name: '45-history-search', real: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await p.type('#hfQ', 'תשלום'); await sleep(300); await away(); } },
   { name: '46-history-shift', real: async () => { await openHistory(); await hover('.card.proc .prc-sh'); }, demo: async () => { await openHistory(); await hover('.card.proc .prc-sh'); } },
-  { name: '47-history-prep-dlg', real: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); } },
+  { name: '47-history-prep-dlg', real: async () => { await openHistory(); await clickAt('.card.proc [data-act="prep-mark"]'); await sleep(300); await away(); }, demo: async () => { await openHistory(); await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await away(); } },
   { name: '48-history-scrolled', real: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); }, demo: async () => { await openHistory(); await p.$eval('.card.hist', (el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await sleep(200); } },
   // בדיקות התנהגות (רק בדף האמיתי): ייצוא נרשם HISTORY_EXPORTED, סימון הכנה שולח POST /api/orders/53375/prep-mark וטוען מחדש
   { name: '49-history-exports', real: async () => {
@@ -556,7 +575,7 @@ STAGES.push(
     await p.evaluate(() => { window.open = () => ({}); });
     await clickAt('.hres-x .xlbtn.xlp'); await sleep(400);
     await clickAt('.hres-x .xlbtn.xld'); await sleep(600);
-    await clickAt('.card.stg [data-act="prep-mark"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(700);
+    await clickAt('.card.proc [data-act="prep-mark"]'); await sleep(300); await clickAt('#dlg .btn.primary'); await sleep(700);
     const calls = await p.evaluate(() => window.__calls || []);
     const ev = calls.filter((c) => c.url === '/api/orders/events').map((c) => JSON.parse(c.body));
     const fmts = ev.filter((b) => b.action === 'HISTORY_EXPORTED').map((b) => b.meta.format);
