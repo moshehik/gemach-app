@@ -375,10 +375,18 @@ export default function AdminHubPage({ showSite = false }) {
     ['id="profile-fullName" name="fullName" value={profile.fullName || \'\'} onChange={handleChange} autoComplete="new-password" />', 'id="profile-fullName" value={`${profile.firstName || \'\'} ${profile.lastName || \'\'}`.trim()} disabled readOnly />'],
   ],
 };
+// קבצים ישנים שנערכו בכוונה אחרי השחזור (דיווחי נווה יעקב 5.10.2026 - הגמח עדיין על העיצוב הישן, ותיקונים חייבים לשבת גם בעותק הזה):
+//  - LegacyNewOrderPage.js: מתג הסתרת "הערה לתשלום" (hide_order_payment_note), מתג allow_abroad_long_stay_orders (הסתרת לשוניות חו"ל/תפוסה ארוכה),
+//    כפתור/חלונית "הוסף משלוח" בשלבים 3-5 עם שורת חיוב המשלוח, "טוען מידות…", בלי גלילה פנימית בסיכום, ושליחת customerCity ל-/api/orders/calculate.
+//    במקום השוואה ל-blob בהיסטוריה (שאי אפשר לכוון אליו אחרי העריכה) נעול כאן ה-hash של הקובץ עצמו: כל עריכה נוספת בו מחייבת עדכון מודע של השורה.
+const PINNED_BLOBS = {
+  'app/orders/new/LegacyNewOrderPage.js': '5cfde52200ba3ec25c0fab7b21930c2bf7e0ff08',
+};
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
   if (!gitOk) { console.log('         (אין היסטוריית git מלאה - דילוג)'); return; }
   for (const [rev, from, to] of RESTORED) {
+    if (PINNED_BLOBS[to]) { assert.equal(git('hash-object', to), PINNED_BLOBS[to], `${to}: הקובץ השתנה מאז הנעילה - עדכנו את PINNED_BLOBS אחרי בדיקה`); continue; }
     const edits = RESTORED_EXCEPTIONS[to];
     if (!edits) { assert.equal(git('hash-object', to), git('rev-parse', `${rev}:${from}`), to); continue; }
     let blob = norm(execFileSync('git', ['show', `${rev}:${from}`], { cwd: ROOT, encoding: 'utf8' }));
