@@ -20,6 +20,8 @@ export const maxDuration = 60;
 // `html` mode is capped: the only caller (OrderPrintMenu) sends one order/rental report, a few
 // hundred KB at most. Anything bigger is not a report and is not worth a Chromium render.
 const MAX_HTML_LENGTH = 3 * 1024 * 1024;
+// a failed render's technical reason is returned to the (authenticated) caller - cap it
+const MAX_DETAIL_LENGTH = 1500;
 
 // POST /api/pdf
 // Body (JSON), exactly one of `html` / `path`:
@@ -112,12 +114,17 @@ export async function POST(request) {
     if (err && err.printPageError) {
       return NextResponse.json({ error: err.message }, { status: 422 });
     }
-    console.error('PDF generation failed:', err);
-    // detail is intentionally included: Vercel function logs aren't reachable from the
-    // owner's usual workflow, and this authed endpoint's launch errors (Chromium binary /
-    // bundling issues) are otherwise invisible. Message only - no stack.
+    // One structured line for Vercel runtime logs (search "[pdf] generation failed"), then the stack for the same entry.
+    const stage = (err && err.pdfStage) || 'unknown';
+    const message = String((err && err.message) || err);
+    console.error('[pdf] generation failed', JSON.stringify({ stage, mode: html ? 'html' : 'path', htmlChars: html ? html.length : 0, message: message.slice(0, MAX_DETAIL_LENGTH) }));
+    if (err && err.stack) console.error(err.stack);
+    // detail is intentionally returned (the caller is authenticated and page-permission gated): the owner cannot read Vercel logs from
+    // the app, and launch errors (Chromium binary / shared libraries / bundling) are otherwise invisible. Message + stage only - no stack;
+    // for a launch failure lib/pdfServerless.js has already folded in the exit code / signal / missing libs / environment fingerprint.
+    // `error` stays the first key so older clients that read only `error` keep working; app/lib/pdfClient.js appends a short `detail`.
     return NextResponse.json(
-      { error: 'יצירת ה-PDF נכשלה', detail: String(err?.message || err) },
+      { error: 'יצירת ה-PDF נכשלה', detail: message.slice(0, MAX_DETAIL_LENGTH), stage },
       { status: 500 }
     );
   }

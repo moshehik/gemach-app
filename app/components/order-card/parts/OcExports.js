@@ -6,7 +6,7 @@
 // (ORDER_XLSX_EXPORTED / ORDER_PDF_DOWNLOADED) דרך oc.logEvent. כשיש שינויים שלא נשמרו - הודעה שהקובץ כולל רק את מה שנשמר.
 import { useRef, useState } from 'react';
 import { XlGlyph } from '../OcIcon';
-import { downloadOrderPdf, exportOrderXlsx } from './ocDocsActions';
+import { downloadOrderPdf, exportOrderXlsx, openOrderPrintFallback } from './ocDocsActions';
 
 const UNSAVED_NOTE = 'שינויים שלא נשמרו אינם כלולים בקובץ';
 
@@ -35,7 +35,15 @@ export default function OcExports({ oc, ui }) {
         await downloadOrderPdf({ oc, orderId });
       }
     } catch (e) {
-      ui.toast('error', kind === 'xlsx' ? 'ייצוא ה-Excel נכשל' : 'הורדת הקובץ נכשלה', (e && e.message) || '');
+      if (kind === 'pdf') {
+        // PDF השרת נכשל (ראו docs/server-pdf-verification-2026-10-05.md) - גיבוי: דף ההדפסה של ההזמנה בלשונית חדשה, ושם "שמירה כ-PDF"
+        try { console.warn('server PDF failed, falling back to the print page:', e && e.message, e && e.detail); } catch { /* ignore */ }
+        const fb = openOrderPrintFallback({ orderId });
+        if (fb.ok) ui.toast('info', 'הורדת ה-PDF לא זמינה כרגע', 'נפתח דף הדפסה - בחלון ההדפסה בוחרים "שמירה כ-PDF"');
+        else ui.toast('error', 'הורדת ה-PDF לא זמינה כרגע', 'חלון ההדפסה נחסם', { text: 'פתיחת דף הדפסה', icon: 'print', onClick: () => openOrderPrintFallback({ orderId }) });
+      } else {
+        ui.toast('error', 'ייצוא ה-Excel נכשל', (e && e.message) || '');
+      }
     } finally {
       busyRef.current = null; setBusy(null);
     }
