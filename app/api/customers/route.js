@@ -20,7 +20,7 @@ export async function GET(request) {
     let result = await queryCustomersList(searchParams, { plan });
     // חיפוש טקסט שלא מצא כלום: מנסים שוב (מקלדת אנגלית -> עברית, שמות דומים) ומציגים הודעה (ר' app/api/orders/route.js).
     if (plan.text && result.total === 0) {
-      for (const variant of buildRetryVariants(plan, { scopeRestricted: false })) {
+      for (const variant of buildRetryVariants(plan, { scopeRestricted: false, barcode: false, dateStage: false })) {
         const variantPlan = variant.text ? planListSearch(variant.text) : plan;
         const retry = await queryCustomersList(searchParams, { plan: variantPlan, fuzzy: variant.fuzzy });
         if (retry.total > 0) { result = { ...retry, notices: variant.notices }; break; }

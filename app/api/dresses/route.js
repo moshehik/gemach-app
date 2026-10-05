@@ -154,7 +154,7 @@ export async function GET(request) {
     ]);
     // חיפוש טקסט שלא מצא כלום: הצלת מקלדת אנגלית (ר' lib/keyboardLayout.js) - אותה הודעה כמו ברשימות ההזמנות/לקוחות
     if (count === 0 && searchPlan.text) {
-      for (const variant of buildRetryVariants(searchPlan, { scopeRestricted: false, fuzzy: false })) {
+      for (const variant of buildRetryVariants(searchPlan, { scopeRestricted: false, fuzzy: false, barcode: false, dateStage: false })) {
         if (!variant.text) continue;
         const retryWhere = whereWithSearch(planListSearch(variant.text));
         const retryCount = await prisma.dressModel.count({ where: retryWhere });

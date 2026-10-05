@@ -257,6 +257,8 @@ t('buildRetryVariants: סדר + הודעות', () => {
   eq(LS.buildRetryVariants(P('ניסן'), { scopeRestricted: false })[0].dateStage, true);
   ok(LS.orderSearchCondition(P('ניסן'), { dateStage: true }).OR.some((a) => a.eventDate), 'dateStage מפעיל את התאריך');
   no(LS.orderSearchCondition(P('ניסן'), {}).OR.some((a) => a.eventDate), 'בלי dateStage - רק שם');
+  eq(kinds('64012', { scopeRestricted: false, barcode: false }), [], 'לקוחות/דגמים: אין ברקוד');
+  eq(kinds('ניסן', { scopeRestricted: false, dateStage: false, fuzzy: false }), []);
   eq(kinds('0501234567', { scopeRestricted: false }), []);
   eq(kinds('', { scopeRestricted: true }), []);
   eq(kinds('רחל', { scopeRestricted: false, fuzzy: false }), []);

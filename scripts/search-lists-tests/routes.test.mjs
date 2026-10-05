@@ -100,6 +100,12 @@ await t('תקרת limit; כשל בעזר לא מפיל', async () => {
   const r = await get(customersRoute, '/api/customers?search=' + encodeURIComponent('זבולון'));
   assert.equal(r.status, 200);
 });
+await t('חיפוש ספרות (5 ספרות) בלקוחות: אין נסיונות חוזרים מיותרים (ברקוד / תאריך לא רלוונטיים)', async () => {
+  customersFixture();
+  const r = await get(customersRoute, '/api/customers?search=64012');
+  assert.equal(r.body.total, 0);
+  assert.equal(T.calls.filter((c) => c.name === 'customer.findMany').length, 1);
+});
 await t('401 כשלא מחובר', async () => { T.authed = false; assert.equal((await get(customersRoute, '/api/customers?search=x')).status, 401); });
 
 // ---------------------------------------------------------------- דגמים
