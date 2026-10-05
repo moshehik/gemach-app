@@ -1,11 +1,19 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
 import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate } from '../../../lib/hebrewDate';
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG, subtractBusinessDays } from '../../../lib/businessDays';
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
+import { printPageEventBodies } from '../../../lib/history/orderEvents';
+
+// One id per page load - the events route ignores a repeat with the same id (React dev double effects,
+// a reload of the same tab is a new load = a new print, as it should be).
+// (short and not UUID-shaped: the legacy history tab shows it as a chip)
+function newPrintEventId() {
+  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+}
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
@@ -47,6 +55,9 @@ export default function PrintOrderPage() {
   // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
   const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
   const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
+  // 27f278c7 (נווה יעקב) - print_order_clean_layout: הדפסת הזמנה בודדת "נקייה" ללקוח (בלי "לכבוד:"/"טלפון:"/כתובת לקוח,
+  // הערות פעם אחת, בלי טבלת תשלומים וכו'). כבוי כברירת מחדל = הפלט הקיים. לא חל על הדפסה מרוכזת (isBatch).
+  const [cleanLayoutSetting, setCleanLayoutSetting] = useState(false);
   // 20 - מיון דפי הכנה: משלוחים בנפרד מרגילות (רק כשמדפיסים כמה הזמנות יחד)
   const [sortDeliveriesFirst, setSortDeliveriesFirst] = useState(true);
   // 21 - מפה orderItemId -> { familyName, returnOrderId } לפריטים שסומנו "חסרה"
@@ -63,6 +74,11 @@ export default function PrintOrderPage() {
   // להדפסת כרטיס בודד רגיל מתוך ההזמנה עצמה), רק כי orderIdList.length===1 באותו
   // מקרה בדיוק כמו בהדפסת כרטיס בודד. batch=1 מגיע רק מ-handlePrepPrint.
   const isBatch = orderIdList.length > 1 || searchParams.get('batch') === '1';
+  // downloadPdf=1: the page is being rendered into a PDF file by POST /api/pdf (download, mail attachment) -
+  // no print dialog and no print history row (whoever asked for the file logs ORDER_PDF_DOWNLOADED).
+  const isPdfRender = ['1', 'true'].includes(searchParams.get('downloadPdf'));
+  const [printEventId] = useState(newPrintEventId);
+  const printLoggedRef = useRef(false);
 
   const fetchData = async () => {
     try {
@@ -87,6 +103,8 @@ export default function PrintOrderPage() {
         if (delSetting && delSetting.value === 'false') setShowDeliveryInPrint(false);
         const sortSetting = settingsData.find(s => s.key === 'print_sort_deliveries_first');
         if (sortSetting && sortSetting.value === 'false') setSortDeliveriesFirst(false);
+        const cleanSetting = settingsData.find(s => s.key === 'print_order_clean_layout');
+        if (cleanSetting && cleanSetting.value === 'true') setCleanLayoutSetting(true);
         const missSetting = settingsData.find(s => s.key === 'print_mark_missing_dresses');
         if (missSetting && missSetting.value === 'false') { setMarkMissingInPrint(false); markMissing = false; }
 
@@ -139,11 +157,31 @@ export default function PrintOrderPage() {
   useEffect(() => {
     // Auto trigger print when loaded
     if (!loading && !error && orders.length > 0) {
+      // a headless renderer (Chromium behind /api/pdf) reports navigator.webdriver - never a print either
+      const headless = typeof navigator !== 'undefined' && navigator.webdriver === true;
+      if (isPdfRender || headless) return undefined;
+
       fetch('/api/log-visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pageUrl: `[הדפסת כרטיס השכרה] הזמנה #${orders.map(o => o.orderId).join(', #')}` })
       }).catch(console.error);
+
+      // ORDER_PRINTED on every printed order (A22/H22, AMB-20): this page is the one print surface of an
+      // order - opened from the old card, the new card, the orders list, the board, new-order, rentals -
+      // so logging here covers printing "from any screen". Contract: lib/history/orderEvents.js.
+      if (!printLoggedRef.current) {
+        printLoggedRef.current = true;
+        const ids = orders.map(o => Number(o.orderId)).filter(n => Number.isInteger(n) && n > 0);
+        for (const body of printPageEventBodies({ orderIds: ids, printType, isBatch, clientEventId: printEventId })) {
+          fetch('/api/orders/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            body: JSON.stringify(body)
+          }).catch(console.error);
+        }
+      }
 
       const timer = setTimeout(() => {
         window.print();
@@ -253,6 +291,8 @@ export default function PrintOrderPage() {
     // שהבעלים סימן - הכלל האחיד של lib/businessDays.js, אותו כלל של התראת האיחור); האיסוף = 2 ימי עסקים לפני.
     const returnByDate = ord ? getExpectedReturnDate(ord, nonWorkingDays) : null;
     const pickupDate = ord?.eventDate ? subtractBusinessDays(ord.eventDate, 2, nonWorkingDays) : null;
+    // 27f278c7: מצב "נקי" רק להדפסת הזמנה בודדת (גיליונות ההכנה המרוכזים נשארים כמו שהם)
+    const clean = cleanLayoutSetting && !isBatch;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -277,7 +317,7 @@ export default function PrintOrderPage() {
               )}
               {returnByDate && (
                 <div className="return-details-box">
-                  <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
+                  <strong>{clean ? 'החזרת השמלות:' : 'פרטי החזרה:'}</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
                     <div className="belt-notice-line">{printSettings.beltNotice}</div>
                   )}
@@ -311,10 +351,11 @@ export default function PrintOrderPage() {
               <div className="order-details-card">
                 {/* Right side: Customer - כולל הערות ההזמנה בשורת פרטי הלקוח (בקשת יא אלול) */}
                 <div>
-                  <strong>לכבוד: {ord.customer?.firstName} {ord.customer?.lastName}</strong><br />
-                  טלפון: <span dir="ltr">{ord.customer?.phone1 || ord.customer?.phone || '-'}</span><br />
-                  כתובת: {ord.customer?.city ? `${ord.customer.city}${ord.customer?.address ? `, ${ord.customer.address}` : ''}` : '-'}<br />
-                  {ord.notes && (
+                  {/* 27f278c7 (clean): בלי "לכבוד:" / "טלפון:", בלי כתובת הלקוח, והערות רק בתיבה הייעודית */}
+                  <strong>{clean ? '' : 'לכבוד: '}{ord.customer?.firstName} {ord.customer?.lastName}</strong><br />
+                  {clean ? '' : 'טלפון: '}<span dir="ltr">{ord.customer?.phone1 || ord.customer?.phone || '-'}</span><br />
+                  {!clean && (<>כתובת: {ord.customer?.city ? `${ord.customer.city}${ord.customer?.address ? `, ${ord.customer.address}` : ''}` : '-'}<br /></>)}
+                  {ord.notes && !clean && (
                     <>הערות להזמנה: {ord.notes}<br /></>
                   )}
                 </div>
@@ -330,7 +371,7 @@ export default function PrintOrderPage() {
                   {/* 13/34 - סימון טלפוני וסניף בהדפסה */}
                   {ord.isPhoneOrder && (<><span style={{ color: '#666' }}>(הזמנה טלפונית)</span><br /></>)}
                   {(ord.branch || ord.pickupBranch) && (
-                    <>סניף: {ord.branch ? `בוצעה ב${ord.branch}` : ''}{ord.branch && ord.pickupBranch ? ' · ' : ''}{ord.pickupBranch ? `איסוף ב${ord.pickupBranch}` : ''}<br /></>
+                    <>סניף: {ord.branch ? (clean ? ord.branch : `בוצעה ב${ord.branch}`) : ''}{ord.branch && ord.pickupBranch ? ' · ' : ''}{ord.pickupBranch ? `איסוף ב${ord.pickupBranch}` : ''}<br /></>
                   )}
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
@@ -340,7 +381,7 @@ export default function PrintOrderPage() {
                   ) : (
                     <>סוג אירוע: אירוע חו&quot;ל</>
                   )}
-                  {ord.notes && (
+                  {ord.notes && !clean && (
                     <><br />הערות: {ord.notes}</>
                   )}
                 </div>
@@ -373,7 +414,7 @@ export default function PrintOrderPage() {
             </td>
           </tr>
           <tr>
-            <th>דגם / תיאור</th>
+            <th>{clean ? 'דגם' : 'דגם / תיאור'}</th>
             <th>מידה</th>
             {enableAlterations && <th>תיקונים</th>}
           </tr>
@@ -448,7 +489,8 @@ export default function PrintOrderPage() {
               {/* בהדפסה מרוכזת (כמה הזמנות יחד, "אשף הדפסה") רבקה לוי ביקשה שכל הזמנה
                   תישאר בדף בודד ובלי פירוט תשלומים - רק סכום קטן (כבר מוצג למעלה בטבלת
                   הסיכום). בהדפסת הזמנה בודדת (הכרטיס הרגיל) נשאר הפירוט המלא כמו קודם. */}
-              {activePayments.length > 0 && !isBatch && (
+              {/* 27f278c7 (clean): טבלת "תשלומים שהתקבלו" יורדת; סיכום לחיוב/שולם/יתרה למעלה נשאר */}
+              {activePayments.length > 0 && !isBatch && !clean && (
                 <div className="payments-section">
                   <h4 className="payments-title">תשלומים שהתקבלו</h4>
                   <table className="print-table" style={{ marginBottom: '30px' }}>
@@ -504,7 +546,7 @@ export default function PrintOrderPage() {
                   השלישית כאן מיותרת שם וגוזלת בדיוק את השורות שדוחפות הזמנה עם הערות
                   + משלוח לעמוד שני (337e5938/075858d6, 2026-09-14). בהדפסת הזמנה בודדת
                   שאינה חלק מ"פירוט הזמנות להכנה" (!isBatch) לא נגעתי - נשאר כמו קודם. */}
-              {ord.notes && !isBatch && (
+              {ord.notes && !isBatch && !clean && (
                 <div className="order-notes-box">
                   <strong>הערות להזמנה: </strong>{ord.notes}
                 </div>
@@ -558,7 +600,10 @@ export default function PrintOrderPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            /* שוליים תחתונים 15 מ"מ (במקום 10): "עמוד X מתוך Y" יושב באמצע השוליים, ו-10 מ"מ
+               הציבו אותו ~5 מ"מ מהקצה - בתוך האזור שהמדפסת לא מדפיסה בו, והמספור נחתך
+               (דיווח נווה יעקב b58303e9, 2026-10-04). */
+            margin: 10mm 10mm 15mm;
             /* תחתית "עמוד X מתוך Y" — קופסת שוליים של CSS (Chrome/Edge 131+), כך שהמספור
                מודפס מעצמו בלי שהמשתמש יצטרך להפעיל כותרות/תחתיות בחלון ההדפסה.
                counter(pages) סופר את כל המסמך: בהדפסה מרוכזת של כמה הזמנות הוא רץ ברצף

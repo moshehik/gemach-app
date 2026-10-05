@@ -117,7 +117,7 @@ t('כל מפתח ממופה קיים במטא-דאטה או ברשימת "ידו
 t('כל מפתח במטא-דאטה ממופה במפורש, חוץ מהרשימה המתועדת (לא בעיצוב)', () => {
   const mapped = new Set(L.SECTIONS.flatMap((s) => s.keys));
   const notInDesign = [...metaKeys].filter((k) => !mapped.has(k)).sort();
-  assert.deepEqual(notInDesign, ['NEDARIM_MOSAD', 'full_refund_days', 'login_page_new', 'non_working_days_extra'].sort());
+  assert.deepEqual(notInDesign, ['NEDARIM_MOSAD', 'allow_leave_debt_with_approval', 'alteration_details_optional', 'approval_permissions_enforced', 'approval_tokens_required', 'customer_required_fields', 'delivery_join_price', 'delivery_separate_tab', 'enable_barcode_sequence_mode', 'enable_delivery_join', 'enable_dress_location_alert', 'order_quick_mail_enabled', 'shift_definitions', 'full_refund_days', 'login_page_new', 'non_working_days_extra'].sort());
 });
 t('מפתחות המתכנת (מסד נתונים/מערכת/מיילים) ממופים רק למסך site, והשאר רק ל-sys', () => {
   for (const s of L.SECTIONS) for (const k of s.keys) {

@@ -910,7 +910,7 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
 :root[data-font="rounded"]{ --font:"Segoe UI Rounded","Segoe UI",Arial,sans-serif; --font-heading:"Segoe UI Rounded","Segoe UI",Arial,sans-serif; }
 :root[data-font="contemporary"]{ --font:"Trebuchet MS","Segoe UI",Arial,sans-serif; --font-heading:"Trebuchet MS","Segoe UI",Arial,sans-serif; }
 :root[data-font="condensed"]{ --font:"Bahnschrift","Segoe UI",Arial,sans-serif; --font-heading:"Bahnschrift","Segoe UI",Arial,sans-serif; }
-:root[data-font="editorial"]{ --font:"Constantia","Georgia",serif; --font-heading:"Constantia","Georgia",serif; }
+:root[data-font="editorial"]{ --font:"Constantia","Georgia","David",serif; --font-heading:"Constantia","Georgia","David",serif; }
 /* --- extended list (33 more, opened via the "עוד גופנים" dropdown) --- */
 :root[data-font="arial"]{ --font:Arial,"Segoe UI",sans-serif; --font-heading:Arial,"Segoe UI",sans-serif; }
 :root[data-font="arial-black"]{ --font:"Arial Black",Arial,sans-serif; --font-heading:"Arial Black",Arial,sans-serif; }
@@ -932,11 +932,11 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
 :root[data-font="narkisim"]{ --font:Narkisim,David,serif; --font-heading:Narkisim,David,serif; }
 :root[data-font="levenim"]{ --font:"Levenim MT",David,"Segoe UI",sans-serif; --font-heading:"Levenim MT",David,"Segoe UI",sans-serif; }
 :root[data-font="gisha"]{ --font:Gisha,"Segoe UI",sans-serif; --font-heading:Gisha,"Segoe UI",sans-serif; }
-:root[data-font="georgia"]{ --font:Georgia,serif; --font-heading:Georgia,serif; }
-:root[data-font="cambria"]{ --font:Cambria,Georgia,serif; --font-heading:Cambria,Georgia,serif; }
-:root[data-font="palatino"]{ --font:"Palatino Linotype",Georgia,serif; --font-heading:"Palatino Linotype",Georgia,serif; }
-:root[data-font="sitka"]{ --font:Sitka,Georgia,serif; --font-heading:Sitka,Georgia,serif; }
-:root[data-font="sylfaen"]{ --font:Sylfaen,Georgia,serif; --font-heading:Sylfaen,Georgia,serif; }
+:root[data-font="georgia"]{ --font:Georgia,"David",serif; --font-heading:Georgia,"David",serif; }
+:root[data-font="cambria"]{ --font:Cambria,Georgia,"David",serif; --font-heading:Cambria,Georgia,"David",serif; }
+:root[data-font="palatino"]{ --font:"Palatino Linotype",Georgia,"David",serif; --font-heading:"Palatino Linotype",Georgia,"David",serif; }
+:root[data-font="sitka"]{ --font:Sitka,Georgia,"David",serif; --font-heading:Sitka,Georgia,"David",serif; }
+:root[data-font="sylfaen"]{ --font:Sylfaen,Georgia,"David",serif; --font-heading:Sylfaen,Georgia,"David",serif; }
 :root[data-font="times"]{ --font:"Times New Roman",serif; --font-heading:"Times New Roman",serif; }
 :root[data-font="consolas"]{ --font:Consolas,"Courier New",monospace; --font-heading:Consolas,"Courier New",monospace; }
 :root[data-font="lucida-console"]{ --font:"Lucida Console",Consolas,monospace; --font-heading:"Lucida Console",Consolas,monospace; }

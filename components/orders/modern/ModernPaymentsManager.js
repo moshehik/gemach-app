@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { sendWithApproval } from '../../../lib/approvalClient';
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
@@ -279,16 +280,18 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     setIsProcessing(true);
     setAdditionalPaymentError('');
     try {
-      const res = await fetch('/api/payments', {
+      // approvalToken: אישור קוד המאשר שנתן הכפתור המאוחד (lib/approvalTokenStore) - נדרש רק כשהשרת אוכף (approval_permissions_enforced); אחרת מתעלמים ממנו.
+      const res = await sendWithApproval((extra) => fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
           amount,
           paymentMethod: additionalPaymentData.paymentMethod || 'מזומן',
-          notes: additionalPaymentData.notes || ''
+          notes: additionalPaymentData.notes || '',
+          ...extra
         })
-      });
+      }), { orderId: Number(orderId), kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת התשלום');
       onPaymentsChange([...payments, data]);
@@ -304,11 +307,11 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     if (!(await window.customConfirm('האם לאשר ביצוע זיכוי זה? הפעולה תיצור תשלום הפכי להזמנה.'))) return;
     setIsProcessing(true);
     try {
-      const res = await fetch(`/api/refunds/${refundId}`, {
+      const res = await sendWithApproval((extra) => fetch(`/api/refunds/${refundId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isExecuted: true })
-      });
+        body: JSON.stringify({ isExecuted: true, ...extra })
+      }), { orderId: Number(orderId), kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' });
       if (!res.ok) throw new Error('Failed to approve refund');
       alert('הזיכוי אושר ובוצע בהצלחה.');
 
@@ -495,7 +498,10 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     // אותם חלונות בדיוק כמו הכפתורים הרגילים למטה - האישור (feature:manual_payment_credit_add)
     // כבר קרה לפני שהקורא מגיע לכאן, אין צורך לחזור ולבדוק.
     openAdditionalPaymentModal: () => handleOpenAdditionalPaymentModal(),
-    openRefundModal: () => handleOpenRefundModal()
+    openRefundModal: () => handleOpenRefundModal(),
+    // חיוב ידני כללי ("הוסף חיוב") - כש-consolidate_manual_payment_credit_ui מופעל הכפתור
+    // הגנרי מוסתר בטאב תשלומים והחלון נפתח רק מהבורר המאוחד אחרי קוד מאשר (f559c61b/af7170ce/79c5130b).
+    openAddChargeModal: () => setShowAddChargeModal(true)
   }));
 
   /** מעקף אשראי מלא מתוך האתר - רושם תשלום אשראי כאילו שולם, מבלי לפנות למסוף נדרים פלוס בכלל.
@@ -625,7 +631,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           installments: parseInt(creditCardData.installments) || 1,
           notes: finalNotes,
           zeout: customer.idNumber || customer.zeout || '',
-          email: customer.email || ''
+          email: customer.email || '',
+          orderId // the server signs the charge receipt for THIS order (nedarim ignores the field)
         })
       });
 
@@ -660,7 +667,9 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               orderId,
               amount: added.amount,
               paymentMethod: added.paymentMethod,
-              notes: added.notes
+              notes: added.notes,
+              // signed by POST /api/nedarim - what lets a card row through when the server enforces payment permissions
+              ...(data.chargeReceipt ? { chargeReceipt: data.chargeReceipt } : {})
             })
           });
           if (saveRes.ok) savedPayment = await saveRes.json();
@@ -870,16 +879,23 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               </button>
             </>
           )}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
-            <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
-          </button>
+          {/* כש-consolidate_manual_payment_credit_ui מופעל (נווה יעקב) הכפתור הגנרי "הוסף חיוב" מוסתר -
+              הוא נגיש רק דרך הבורר המאוחד בטאב "פרטים כלליים" אחרי קוד מאשר (f559c61b/af7170ce/79c5130b).
+              כפתורי חיוב המשלוח למעלה נשארים. אצל שאר הגמחים (המתג כבוי) שום דבר לא משתנה. */}
+          {settings.consolidate_manual_payment_credit_ui !== 'true' && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
+              <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
+            </button>
+          )}
         </div>
         {/* דיווח תקלה (הזמנה #53377): "הוסף חיוב" בלבל עובדות לחשוב שהן צריכות להוסיף חיובים
             בעצמן בכל הזמנה - למרות שחיובי מחירון רגילים (כולל ביטולים/החלפות) כבר מחושבים
             ומתעדכנים אוטומטית. הכפתור עצמו נשאר (נחוץ למקרים חריגים אמיתיים), רק ההסבר נוסף. */}
-        <p className="hint" style={{ margin: '-10px 0 10px', color: 'var(--text-2)' }}>
-          &quot;הוסף חיוב&quot; מיועד למקרים חריגים בלבד - חיובי מחירון רגילים (כולל ביטולים והחלפות) מתעדכנים אוטומטית ואין צורך להוסיף אותם ידנית.
-        </p>
+        {settings.consolidate_manual_payment_credit_ui !== 'true' && (
+          <p className="hint" style={{ margin: '-10px 0 10px', color: 'var(--text-2)' }}>
+            &quot;הוסף חיוב&quot; מיועד למקרים חריגים בלבד - חיובי מחירון רגילים (כולל ביטולים והחלפות) מתעדכנים אוטומטית ואין צורך להוסיף אותם ידנית.
+          </p>
+        )}
         {activeObligations.length > 0 ? (
           <div className="table-wrap">
             <div className="table-scroll">

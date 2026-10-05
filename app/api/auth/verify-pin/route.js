@@ -1,9 +1,54 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma, { getActingEmployeeId } from '../../../lib/prisma';
 import { verifySecret } from '@/lib/passwordAuth';
 import { HEAD_MANAGEMENT_ROLES, checkAuth } from '@/lib/auth';
 import { hasPermission } from '@/lib/permissions';
 import { getCatalogItem } from '@/lib/permissionsMetadata';
+import { writeOrderEvents } from '@/app/lib/auditLog';
+import { parseApprovalContext, buildApprovalMeta, isLoggableApprovalLevel } from '@/lib/history/orderEvents';
+import approvalTokens from '@/lib/approvalTokens';
+
+// Optional `context: { orderId, reason }` (new order card, D12): a SUCCESSFUL approval is recorded as one
+// MANAGER_APPROVAL row on that order - employeeId = the logged-in employee who asked, meta.approverId = the
+// employee whose code matched. Never the pin. Without `context` nothing here changes (legacy card / wizard).
+// Contract: lib/history/orderEvents.js. Logging never turns a valid approval into a failure.
+async function recordApproval(ctx, requiredLevel, approver) {
+  try {
+    const order = await prisma.order.findUnique({ where: { orderId: ctx.orderId }, select: { orderId: true } });
+    if (!order) return false;
+    const actorId = await getActingEmployeeId();
+    const written = await writeOrderEvents({
+      orderIds: [ctx.orderId],
+      action: 'MANAGER_APPROVAL',
+      meta: buildApprovalMeta({ requiredLevel, reason: ctx.reason, approverId: approver.id }),
+      actorId,
+    });
+    return written > 0;
+  } catch (e) {
+    console.error('verify-pin: MANAGER_APPROVAL log failed', e);
+    return false;
+  }
+}
+
+// Signed approval token (lib/approvalTokens.js): minted ONLY after the typed code matched and every level check below
+// passed, ONLY for the approvals the server later consumes (debt approval / manual charge / manual payment-credit) and
+// only when the caller names the order(s) it is for (context.orderId, orderId or orderIds). Bound to the logged-in
+// employee who asked (actor) - a token copied to another session is refused. Never contains the code.
+async function mintApprovalToken({ requiredLevel, approvalCtx, body, approver }) {
+  try {
+    const secret = process.env.AUTH_SECRET || null;
+    const kind = approvalTokens.kindForRequiredLevel(requiredLevel);
+    if (!secret || !kind) return null;
+    const orderIds = approvalTokens.normalizeOrderIds(
+      approvalCtx.present ? [approvalCtx.orderId] : (Array.isArray(body.orderIds) ? body.orderIds : [body.orderId])
+    );
+    if (orderIds.length === 0) return null;
+    return approvalTokens.createApprovalToken({ approverId: approver.id, kind, orderIds, actorEmployeeId: await getActingEmployeeId() }, secret);
+  } catch (e) {
+    console.error('verify-pin: approval token not issued');
+    return null;
+  }
+}
 
 export async function POST(request) {
   // Was fully anonymous: with no employeeId it tried the typed password against EVERY active
@@ -14,10 +59,21 @@ export async function POST(request) {
     return NextResponse.json({ success: false, error: 'יש להתחבר למערכת' }, { status: 401 });
   }
   try {
-    const { pin, requiredLevel, employeeId } = await request.json();
+    const body = await request.json();
+    const { pin, requiredLevel, employeeId, context } = body;
 
     if (!pin) {
       return NextResponse.json({ success: false, error: 'לא סופקה סיסמה' }, { status: 400 });
+    }
+
+    const approvalCtx = parseApprovalContext(context);
+    if (approvalCtx.present && !approvalCtx.ok) {
+      return NextResponse.json({ success: false, error: approvalCtx.error }, { status: 400 });
+    }
+    // a MANAGER_APPROVAL row only for a real approval: a manager tier or an approver catalog key - never
+    // 'עובד' (not checked below at all) or a free string
+    if (approvalCtx.present && !isLoggableApprovalLevel(requiredLevel, getCatalogItem)) {
+      return NextResponse.json({ success: false, error: 'רמת אישור לא מוכרת לאישור מנהל' }, { status: 400 });
     }
 
     // Note: despite the field name, this is the employee's full real password re-entered
@@ -99,7 +155,14 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ success: true, employeeId: employee.id, employeeName: employee.firstName + ' ' + employee.lastName });
+    const employeeName = employee.firstName + ' ' + employee.lastName;
+    const approvalToken = await mintApprovalToken({ requiredLevel, approvalCtx, body, approver: employee });
+    const tokenPart = approvalToken ? { approvalToken } : {};
+    if (approvalCtx.present) {
+      const approvalLogged = await recordApproval(approvalCtx, requiredLevel, employee);
+      return NextResponse.json({ success: true, employeeId: employee.id, employeeName, approvalLogged, ...tokenPart });
+    }
+    return NextResponse.json({ success: true, employeeId: employee.id, employeeName, ...tokenPart });
   } catch (error) {
     console.error('Error verifying PIN:', error);
     return NextResponse.json({ success: false, error: 'שגיאה באימות הסיסמה' }, { status: 500 });

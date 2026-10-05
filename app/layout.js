@@ -399,8 +399,9 @@ export default async function RootLayout({ children }) {
   // לכן כאן (לפני שהרשומה נכנסת לתור) endpoint של אימות לא נרשם עם גוף כלל, ובשאר הנתיבים שדות רגישים מוסתרים.
   // המקבילה בשרת: lib/redactSensitive.js (+ app/api/log-visit) - לשמור זהות; scripts/test_redact_sensitive.mjs בודק שוויון.
   // חשוב: בלי backslash בביטויים (משתמשים ב-[/] ו-[0-9]) - בתוך template string רצף backslash+slash קורס לסלאש בודד ושובר את הביטוי בשקט (באג PR #188).
-  var REDACTED = '[מוסתר]';
   var AUTH_EP = /[/]api[/](login([/]|$)|logout([/]|$)|auth([/]|$)|attendance([/]|$)|dev[/]agent-login|admin[/]api-keys|employees[/][^/?]+[/](reset-|set-)?password|(a5[/]|admin[/]backups[/])?settings([/]|$))|[/]api[/](history|logs)$/i;
+  // (AUTH_EP חייב להיות ראשון: scripts/order-events.test.mjs ו-review2 חותכים את הסקריפט מ-'var AUTH_EP' ועד __queueVisitLog)
+  var REDACTED = '[מוסתר]';
   var BASE64_RUN = /^[A-Za-z0-9+/=_-]{256,}$/;
   var TEXT_SECRET = /pass|secret|token|pin|pwd|otp|authorization|bearer|gmk_|credential|apikey|zeout|idnumber|iban|bank|card|cvv|cvc|ccv|filecontent|base64|data:/i;
   var BARE_DIGITS = /^["']?[0-9][0-9 -]{2,}["']?$/;
@@ -805,6 +806,7 @@ function cpCssText(vars) {
         data-ui-home={uiVariants.home}
         data-ui-order-card={uiVariants.order_card}
         data-ui-customer-card={uiVariants.customer_card}
+        data-ui-new-order={uiVariants.new_order}
         data-ui-employee-card={uiVariants.employee_card}
       >
         <UiVariantProvider value={uiVariants} canSelfSwitch={canSelfSwitchVariant}>

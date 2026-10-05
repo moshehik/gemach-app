@@ -3,6 +3,7 @@
 import React from 'react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { FIELD_TRANSLATIONS } from '../HistoryViewer';
+import { isVisibleChangeKey, labelChangeValue, normalizeChange } from './changesDisplay';
 import { isHiddenAuditKey } from '../../lib/history/labels';
 
 const DANGER_TONE = { bg: 'var(--danger-tint)', color: 'var(--danger)' };
@@ -53,9 +54,12 @@ export const formatValue = (val) => {
 export function ChangesChips({ changesJson }) {
   try {
     const changes = typeof changesJson === 'string' ? JSON.parse(changesJson) : changesJson;
+    // raw UUIDs / technical keys are never shown; machine values get Hebrew labels (changesDisplay.js)
+    const show = (key, val) => labelChangeValue(key, val) ?? formatValue(val);
     const keys = Object.keys(changes).filter(key => {
       if (isHiddenAuditKey(key)) return false;
       const change = changes[key];
+      if (!isVisibleChangeKey(key, change)) return false;
       if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {
         const isEmptyFrom = change.from === null || change.from === undefined || change.from === '';
         const isEmptyTo = change.to === null || change.to === undefined || change.to === '';
@@ -74,7 +78,7 @@ export function ChangesChips({ changesJson }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
         {keys.map(key => {
           const label = FIELD_TRANSLATIONS[key] || key;
-          const change = changes[key];
+          const change = normalizeChange(key, changes[key]); // UUID reassignment -> placeholder
           const isFromTo = change && typeof change === 'object' && ('from' in change || 'to' in change);
           const isLongText = key === 'body' || key === 'notes' || key === 'orderNotes' || key === 'officeNotes';
 
@@ -87,11 +91,11 @@ export function ChangesChips({ changesJson }) {
                 <strong style={{ color: 'var(--text-3)' }}>{label}: </strong>
                 {isFromTo ? (
                   <>
-                    {change.from && <span style={{ textDecoration: 'line-through', color: 'var(--danger)', marginLeft: '6px' }}>{formatValue(change.from)}</span>}
-                    <span style={{ color: 'var(--success)', fontWeight: 600 }}>{formatValue(change.to)}</span>
+                    {change.from && <span style={{ textDecoration: 'line-through', color: 'var(--danger)', marginLeft: '6px' }}>{show(key, change.from)}</span>}
+                    <span style={{ color: 'var(--success)', fontWeight: 600 }}>{show(key, change.to)}</span>
                   </>
                 ) : (
-                  <span>{formatValue(change)}</span>
+                  <span>{show(key, change)}</span>
                 )}
               </div>
             );
@@ -103,13 +107,13 @@ export function ChangesChips({ changesJson }) {
               {isFromTo ? (
                 <>
                   {change.from !== null && change.from !== undefined && change.from !== '' && (
-                    <span style={{ textDecoration: 'line-through', color: 'var(--danger)' }}>{formatValue(change.from)}</span>
+                    <span style={{ textDecoration: 'line-through', color: 'var(--danger)' }}>{show(key, change.from)}</span>
                   )}
                   <span style={{ color: 'var(--text-3)' }}>←</span>
-                  <span style={{ color: 'var(--success)', fontWeight: 700 }}>{formatValue(change.to)}</span>
+                  <span style={{ color: 'var(--success)', fontWeight: 700 }}>{show(key, change.to)}</span>
                 </>
               ) : (
-                <span style={{ fontWeight: 600 }}>{formatValue(change)}</span>
+                <span style={{ fontWeight: 600 }}>{show(key, change)}</span>
               )}
             </span>
           );

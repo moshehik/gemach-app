@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { canOpenPage } from '@/lib/permissions';
 import { attachEmployeeNames } from '@/app/lib/auditLog';
-import { buildOrderHistory, filterByCategory, paginateEntries, decodeCursor, normalizeLimit, resolveOrderRef, ORDER_HISTORY_CATEGORIES } from '@/lib/history/orderHistory';
+import { listOrderMarkIds } from '@/lib/schedule/marks';
+import { buildOrderHistory, filterByCategory, searchEntries, paginateEntries, publicEntry, decodeCursor, normalizeLimit, resolveOrderRef, ORDER_HISTORY_CATEGORIES } from '@/lib/history/orderHistory';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +17,18 @@ export const dynamic = 'force-dynamic';
 //   ?category=a,b   items | pay | del | dates | docs | sig | print | mail | fix (filters the page only;
 //                   counts always describe the whole feed so a filter menu can show every total)
 //   ?system=1       also return engine bookkeeping entries (automatic charge recalculation ...)
-//   ?prints=1       also return print visits (PageVisitLog has no index on the URL: opt-in)
+//   ?prints=1       also return print visits (PageVisitLog has no index on the URL: opt-in; the ones next to an
+//                   ORDER_PRINTED row are dropped by the mapper, D9)
+//   ?q=words        search inside the mapped feed (text, details, who, Hebrew date, time) - every word must match
+//   ?all=1          the whole (filtered) feed in one answer, up to MAX_EXPORT_ENTRIES (history export / print page);
+//                   limit / cursor are ignored, `exportTruncated` says when the cap cut it
+//
+// W6 (new order card): gated by page:orders on top of the login (PLAN §C.5 - the same people who open the order
+// screen); the schedule "done" marks of the order (ScheduleStageMark audit rows, like GET /api/audit) and the
+// customers named by a customer swap are part of the feed.
 //
 // Returns { entries, nextCursor, counts, dedupedCount, dedupedBy, noopCount, hiddenSystemCount,
-//           unmappedCount, truncated }.  Read-only; the AuditLog is never written from here.
+//           unmappedCount, truncated, total, exportTruncated? }.  Read-only; the AuditLog is never written from here.
 
 // One order has a handful of audit rows; the caps only stop a runaway record from turning one call into
 // a table scan. Hitting the audit cap sets `truncated` (the oldest rows are the ones left out).
@@ -29,6 +39,9 @@ const MAX_REFUND_ROWS = 200;
 const MAX_OBLIGATION_ROWS = 1000;
 const MAX_EMAIL_ROWS = 30;
 const MAX_PRINT_ROWS = 50;
+const MAX_EXPORT_ENTRIES = 2000;
+const MAX_QUERY_LENGTH = 200;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PRINT_LOG_RETENTION_DAYS = 90; // scripts/cleanup_old_logs.js
 const PRINT_LOG_PREFIX = '[הדפסת כרטיס השכרה]';
 
@@ -38,6 +51,7 @@ const json = (body, status = 200) => NextResponse.json(body, { status });
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await canOpenPage('page:orders'))) return json({ error: 'Forbidden' }, 403);
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
@@ -50,6 +64,8 @@ export async function GET(request, { params }) {
     if (categories.some(c => !VALID_CATEGORY_FILTERS.has(c))) return json({ error: 'קטגוריה לא מוכרת' }, 400);
     const includeSystem = searchParams.get('system') === '1';
     const includePrints = searchParams.get('prints') === '1';
+    const exportAll = searchParams.get('all') === '1';
+    const q = String(searchParams.get('q') || '').slice(0, MAX_QUERY_LENGTH);
 
     // same lookup as GET /api/orders/[id]: a UUID or the order number - but strict (ID-1): any other path
     // segment (NUL byte, letters, "12abc", 0, above INT4) is a 404 before Prisma sees it
@@ -122,6 +138,10 @@ export async function GET(request, { params }) {
     if (payments.length) or.push({ entityType: 'Payment', entityId: { in: payments.map(p => p.id) } });
     if (refunds.length) or.push({ entityType: 'Refund', entityId: { in: refunds.map(r => r.id) } });
     if (obligations.length) or.push({ entityType: 'PaymentObligation', entityId: { in: obligations.map(o => o.id) } });
+    // the schedule "done" marks of this order (lib/schedule/marks.js writes them under the mark row's id); [] when the
+    // table / model is missing - never throws
+    const markIds = await listOrderMarkIds(order.orderId);
+    if (markIds.length) or.push({ entityType: 'ScheduleStageMark', entityId: { in: markIds } });
 
     const since = new Date(Date.now() - PRINT_LOG_RETENTION_DAYS * 24 * 3600 * 1000);
     const [auditFetched, printFetched] = await Promise.all([
@@ -154,6 +174,20 @@ export async function GET(request, { params }) {
     const orderEmployeeName = named[0].employeeName || null;
     const namedRows = named.slice(1);
 
+    // H06 customer swap: the customers a customerId {from,to} names (names only - the ids never leave the server)
+    const customerIds = new Set();
+    for (const r of namedRows) {
+      if (r.entityType !== 'Order' || !r.changesJson || !r.changesJson.includes('"customerId"')) continue;
+      try {
+        const c = JSON.parse(r.changesJson).customerId;
+        for (const v of (c && typeof c === 'object') ? [c.from, c.to] : [c]) if (typeof v === 'string' && UUID_RE.test(v)) customerIds.add(v);
+      } catch { /* unparsed row - the mapper flags it */ }
+    }
+    const customers = customerIds.size
+      ? (await prisma.customer.findMany({ where: { id: { in: [...customerIds] } }, select: { id: true, firstName: true, lastName: true } }))
+        .map(c => ({ id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ') }))
+      : [];
+
     const result = buildOrderHistory({
       order: { orderId: order.orderId, orderDate: order.orderDate, employeeId: order.employeeId, employeeName: orderEmployeeName, isDeleted: order.isDeleted, deletedAt: order.deletedAt },
       auditRows: namedRows,
@@ -163,13 +197,19 @@ export async function GET(request, { params }) {
       obligations,
       emailLogs: failedEmails,
       printVisits,
+      customers,
     }, { includeSystem });
 
-    const page = paginateEntries(filterByCategory(result.entries, categories), { limit, cursor });
+    const filtered = searchEntries(filterByCategory(result.entries, categories), q);
+    const page = exportAll
+      ? { entries: filtered.slice(0, MAX_EXPORT_ENTRIES).map(publicEntry), nextCursor: null }
+      : paginateEntries(filtered, { limit, cursor });
 
     return NextResponse.json({
       entries: page.entries,
       nextCursor: page.nextCursor,
+      total: filtered.length,
+      ...(exportAll ? { exportTruncated: filtered.length > MAX_EXPORT_ENTRIES } : {}),
       counts: result.counts,
       dedupedCount: result.dedupedCount,
       dedupedBy: result.dedupedBy,

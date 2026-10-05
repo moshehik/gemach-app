@@ -890,3 +890,23 @@ model ScheduleStageMark {
   @@index([dayKey, stageKey])
   @@index([orderId])
 }
+
+// "הצטרפות למשלוח קיים" (R49, enable_delivery_join, נווה יעקב): הזמנה שמצטרפת למשלוח של הזמנה אחרת באותו יום ובאותו כיוון,
+// ומי ה"ראשי" בקבוצת הכתובת. החלטת הבעלים DDL-1 (4.10.2026): אושרה יצירת הטבלה בשני הגמ"חים - ההרצה עצמה (SQL ידני
+// עם בדיקת זהות לכל DB) דורשת אישור נפרד בזמן ההרצה. הקוד (lib/deliveryJoin.js) מתנהג כ"כבוי" כשהטבלה חסרה (P2021 / 42P01).
+//   orderId         - ההזמנה עצמה (Order.orderId, מספר קריא, PK; בלי @relation - כמו ScheduleStageMark / NedarimHok)
+//   joinedToOrderId - "שורש" הקבוצה (ההזמנה שאליה הצטרפו). NULL = השורה קיימת רק כדי לשמור isPrimary לשורש
+//   isPrimary       - האם ההזמנה היא ה"ראשי" בקבוצה (לכל היותר אחד בקבוצה)
+//   direction       - deliveryDirection בעת ההצטרפות ('הלוך' | 'חזור' | 'הלוך-חזור')
+// updatedAt בלי @updatedAt (כמו בענף נווה) - הקוד מעדכן ידנית.
+// SQL ידני: prisma/migrations-pending/2026-10-04-delivery-join.sql
+model DeliveryJoin {
+  orderId         Int      @id
+  joinedToOrderId Int?
+  isPrimary       Boolean  @default(false)
+  direction       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+
+  @@index([joinedToOrderId])
+}

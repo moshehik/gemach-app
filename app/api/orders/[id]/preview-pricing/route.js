@@ -3,6 +3,8 @@ import { checkAuth } from '@/lib/auth';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { computeOrderObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
+import { isOrderJoinValid } from '@/lib/deliveryJoin';
+import { resolveExtraDay } from '@/lib/extraDayGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +28,11 @@ const SETTING_KEYS = [
   'instant_undo_minutes',
   'gap_size_price_rule',
   'delivery_price_by_city',
-  'delivery_price'
+  'delivery_price',
+  'enable_delivery_join',
+  'delivery_join_price',
+  'enable_rental_extension',
+  'delivery_charge_customer_city_fallback'
 ];
 
 /**
@@ -63,7 +69,12 @@ export async function POST(request, { params }) {
         // obligations רק בשביל בדיקת "כבר קיים חיוב משלוח" ב-computeDeliveryObligationPreview
         // למטה - לא רלוונטי לחישוב עצמו (computeOrderObligations מקבל את items/deletedItems
         // מהלקוח, לא מה-DB, ר' התיעוד למעלה).
-        include: { obligations: { where: { isDeleted: false }, select: { description: true } } }
+        // customer.city: נפילה-לאחור של עיר המשלוח לעיר הלקוח (resolveEffectiveDeliveryCity) -
+        // חייב להתאים ל-applyDeliveryCharge כדי שהתצוגה המקדימה תכלול את אותו חיוב.
+        include: {
+          obligations: { where: { isDeleted: false }, select: { description: true } },
+          customer: { select: { city: true } }
+        }
       }),
       prisma.priceList.findMany(),
       getAllCachedSettings().then(all => all.filter(s => SETTING_KEYS.includes(s.key)))
@@ -84,7 +95,10 @@ export async function POST(request, { params }) {
       toDate: orderOverrides.toDate !== undefined ? orderOverrides.toDate : baseOrder.toDate,
       isDelivery: orderOverrides.isDelivery !== undefined ? orderOverrides.isDelivery : baseOrder.isDelivery,
       deliveryCity: orderOverrides.deliveryCity !== undefined ? orderOverrides.deliveryCity : baseOrder.deliveryCity,
-      deliveryDirection: orderOverrides.deliveryDirection !== undefined ? orderOverrides.deliveryDirection : baseOrder.deliveryDirection
+      deliveryDirection: orderOverrides.deliveryDirection !== undefined ? orderOverrides.deliveryDirection : baseOrder.deliveryDirection,
+      // "יום השכרה נוסף" (תוספת 50% ב-pricingCalc) - הכרטיס החדש שולח אותו בתצוגה המקדימה (REQUESTS-W2a R-1)
+      // S2: כש-enable_rental_extension כבוי - דריסה מהלקוח מתעלמים (נשאר הערך השמור, כמו שה-PUT היה מחשב)
+      extraDay: resolveExtraDay({ enabledSetting: settings.find(s => s.key === 'enable_rental_extension')?.value, requested: orderOverrides.extraDay, current: baseOrder.extraDay }).value
     };
 
     const now = new Date();
@@ -106,12 +120,28 @@ export async function POST(request, { params }) {
     // שמסמנים בה משלוח (או משנים בה עיר/כיוון משלוח) לא כללה את החיוב הזה כלל, כך שהסכום
     // שהוצג לפני שמירה היה נמוך מהאמת - בדיוק הבאג שגרם לחוב לא-ידוע על משלוח (ר' דיווח
     // 6124472b). מוסיפים אותו כאן מאותו חישוב טהור ומשותף (computeDeliveryObligationPreview).
+    // הצטרפות למשלוח קיים (R49, enable_delivery_join): מחיר הצטרפות לצד כשההזמנה מצטרפת - לפי ה-state הלא-שמור אם נשלח
+    // (order.deliveryJoinedTo: מספר = מצטרפת, null = לא), אחרת לפי הטבלה. כבוי / טבלה חסרה = המחיר הרגיל.
+    let joinPrice = null;
+    if (settings.find(s => s.key === 'enable_delivery_join')?.value === 'true') {
+      const parsedJoinPrice = parseFloat(settings.find(s => s.key === 'delivery_join_price')?.value);
+      if (Number.isFinite(parsedJoinPrice) && parsedJoinPrice > 0) {
+        // הצטרפות שמורה נבדקת מול השדות הלא שמורים (S1): תאריך/כיוון/משלוח שהשתנו בכרטיס מבטלים את מחיר ההצטרפות גם בתצוגה המקדימה
+        const joined = orderOverrides.deliveryJoinedTo !== undefined
+          ? !!orderOverrides.deliveryJoinedTo
+          : await isOrderJoinValid(parsedOrderId, { overrides: { isDelivery: effectiveOrder.isDelivery, eventDate: effectiveOrder.eventDate, fromDate: effectiveOrder.fromDate, deliveryDirection: effectiveOrder.deliveryDirection } });
+        if (joined) joinPrice = parsedJoinPrice;
+      }
+    }
     const deliveryPreview = computeDeliveryObligationPreview({
       isDelivery: effectiveOrder.isDelivery,
       deliveryCity: effectiveOrder.deliveryCity,
+      customerCity: baseOrder.customer?.city,
+      allowCustomerCityFallback: settings.find(s => s.key === 'delivery_charge_customer_city_fallback')?.value === 'true',
       deliveryDirection: effectiveOrder.deliveryDirection,
       deliveryPriceByCity: settings.find(s => s.key === 'delivery_price_by_city')?.value,
       deliveryPrice: settings.find(s => s.key === 'delivery_price')?.value,
+      joinPrice,
       // חיוב "משלוח" קיים ולא נמחק בהזמנה האמיתית - נבדק בנפרד מ-newObligations (שמכיל רק
       // חיובים אוטומטיים מ-computeOrderObligations, לא כולל משלוח מלכתחילה, כך שאין סיכון
       // לספור פעמיים).

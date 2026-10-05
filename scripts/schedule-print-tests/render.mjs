@@ -113,7 +113,11 @@ installDb({ extra: { order: orders, orderItem: orderItems } });
 const { getScheduleDay } = await L('lib/schedule/index.js');
 const { loadExtras, buildPrintPayload } = await L('lib/schedule/print/data.js');
 const { getPrintPage } = await L('lib/schedule/print/registry.js');
-const day = await getScheduleDay({ date: DAY, user: { id: 'emp-head', roleId: 0 }, now: NOW });
+// single=<orderId> (PP-07 / PP-12 only): the "?orderId=" mode - one order's synthetic day (lib/schedule/print/singleOrder.js), as the order card prints it
+const singleArg = process.argv.find((a) => a.startsWith('single='));
+const day = singleArg
+  ? await (await L('lib/schedule/print/singleOrder.js')).loadSingleOrderDay({ orderId: Number(singleArg.slice(7)), keys: keysArg, now: NOW })
+  : await getScheduleDay({ date: DAY, user: { id: 'emp-head', roleId: 0 }, now: NOW });
 const defs = keysArg.map(getPrintPage);
 const extras = await loadExtras(day, defs);
 // one payload per (page, version): the same page may be rendered in several versions in one run

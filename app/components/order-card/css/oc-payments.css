@@ -1,0 +1,55 @@
+/* oc-payments.css — כרטיס ההזמנה החדש: לשונית תשלומים וחלונות התשלום/זיכוי/בנק/ידני. בבעלות W4 (נוצר ריק ע"י W1 ומיובא ב-OrderCardA5.js).
+   כל כלל בהיקף .gm-ds.gm-oc בלבד; בלי @media לפני חוק הבסיס שלו; בלי כוכבית-לוכסן בתוך הערה (שובר next build).
+   מקור: pPayments / payDlg בכרטיס-הזמנה.html והסגנונות המוטבעים (style="") של העיצוב ושל סמני r36-r39 בשכבת הסקירה, כמחלקות. */
+
+/* ===== מצב תשלום (A12) ===== */
+/* style="flex:1;min-width:200px" של עמודת המד בעיצוב */
+.gm-ds.gm-oc .oc-pbar-w{flex:1;min-width:200px}
+/* צבע היתרה בעיצוב: חוב = --red, זיכוי/מאוזן = --green (מוטבע) */
+.gm-ds.gm-oc .bal .n.oc-debt{color:var(--gm-red)}
+.gm-ds.gm-oc .bal .n.oc-ok{color:var(--gm-green)}
+/* style="margin-top:24px" על "תשלום ₪N" / "זכה ₪N" */
+.gm-ds.gm-oc .oc-pay-main{margin-top:24px}
+
+/* ===== שורות (A13 / R37 / R38 / R39) ===== */
+/* שורת "ממתין לשמירה": תיבת האייקון בתכלת-כחול כמו בעיצוב (style מוטבע ב-.li.pend .ic-b) */
+.gm-ds.gm-oc .li.pend .ic-b{background:var(--gm-sky-100);color:var(--gm-blue)}
+/* r37: שני הסמלים העגולים בסוף שורת תשלום (style="width:38px;height:38px") */
+.gm-ds.gm-oc .li .oc-ib{width:38px;height:38px;flex:none;padding:1px 6px}
+/* דליפה: globals.css מאפס padding לכל אלמנט - בעיצוב ה-ibtn נושא את ריפוד ברירת המחדל של הדפדפן */
+/* r39: "ניתן לזכות ₪X על פריט חדש עוד mm:ss" (chip gray, style="margin-top:6px") */
+.gm-ds.gm-oc .li .oc-cdown{margin-top:6px}
+.gm-ds.gm-oc .li .oc-cdown .cdn{font-variant-numeric:tabular-nums}
+/* r38: שורת זיכוי ממתין עוטפת (style="flex-wrap:wrap"), הלחצנים ילדים ישירים של השורה כמו בעיצוב */
+.gm-ds.gm-oc .li.oc-rf{flex-wrap:wrap}
+/* "מחשב מחדש ברקע" בכותרת כרטיס החיובים (תצוגה מקדימה של המנוע) */
+.gm-ds.gm-oc .card-h .oc-calc{display:inline-flex;align-items:center;gap:6px;font-size:13px;margin-inline-start:auto}
+.gm-ds.gm-oc .oc-calc .spinner{width:12px;height:12px;border-width:2px}
+.gm-ds.gm-oc .oc-empty{display:flex;align-items:center;gap:10px;padding:14px 4px;color:var(--gm-ink3)}
+
+/* ===== אפשרויות מנהל (R22 / R33) ===== */
+.gm-ds.gm-oc .oc-mgr{gap:10px}
+.gm-ds.gm-oc [data-oc-pay="manual-legacy"]{margin-top:12px}
+.gm-ds.gm-oc .oc-mgr .spinner{width:14px;height:14px;border-width:2px}
+
+/* ===== חלונות ===== */
+/* r36: שדות הכרטיס מתחת לשיטות (style="margin:16px 0;display:grid;gap:12px") - וכך גם שדות שאר החלונות */
+.gm-ds.gm-oc .oc-ccf{margin:16px 0;display:grid;gap:12px}
+.gm-ds.gm-oc .oc-ccf .grid2{gap:12px}
+.gm-ds.gm-oc .oc-cc-tools{gap:10px;align-items:center}
+.gm-ds.gm-oc .oc-cc-tools .oc-bypass{width:38px;height:38px;margin-inline-start:auto}
+.gm-ds.gm-oc .oc-pay-none{margin:14px 0;font-size:14px}
+/* דליפה: input{border-radius:10px} ו-padding אפס של globals.css בתוך החלון - שדה הסכום הגדול (amtin) בעיצוב בלי רדיוס ועם ריפוד הדפדפן */
+.gm-ds.gm-oc :is(#dlg,#dlg2) .amtin input{border-radius:0;padding:1px 2px}
+/* "העברה מהירה": שדה הקליטה של הקורא המגנטי נסתר (MPM: opacity 0 מחוץ למסך) */
+.gm-ds.gm-oc .oc-swipe-in{position:absolute;top:-1000px;opacity:0;width:1px;height:1px}
+/* D4b: שדות הבנק ושורת ה-IBAN שפוענח */
+.gm-ds.gm-oc .oc-bank{display:grid;gap:12px}
+.gm-ds.gm-oc .oc-iban-ok{display:flex;align-items:center;gap:6px;font-size:13px}
+.gm-ds.gm-oc .oc-dlg-note{font-size:13px;margin-bottom:12px}
+.gm-ds.gm-oc .chg .amt.oc-miss{color:var(--gm-red)}
+.gm-ds.gm-oc .chg .c .ibtn{width:34px;height:34px;flex:none}
+.gm-ds.gm-oc .oc-notes-t{white-space:pre-wrap;line-height:1.6;font-size:13px}
+.gm-ds.gm-oc .oc-notes .amt{word-break:break-word;max-width:60%}
+.gm-ds.gm-oc .dbtns .btn .spinner{width:14px;height:14px;border-width:2px}
+.gm-ds.gm-oc .oc-confirm-row{display:flex;align-items:center;gap:10px;margin:12px 0 6px;font-weight:600}

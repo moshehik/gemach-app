@@ -19,19 +19,73 @@
    1. טיפוגרפיה — דריסת גופנים שנכפו inline
    חלק מהמסכים כפו fontFamily: 'system-ui' וכדומה, מה שביטל את גופני המערכת.
    -------------------------------------------------------------------------- */
-body,
-button,
-input,
-select,
-textarea,
-[style*="system-ui"],
-[style*="Segoe UI"],
-[style*="-apple-system"] {
+/* (f52ab4f4 / cabe10ef) בחירת הגופן ב-/display-settings משנה רק את העיצוב הישן.
+   כל מסכי העיצוב החדש (a5) עטופים ב-.gm-ds ומגדירים גופן משלהם (--gm-font): הכללים של הגופן הנבחר *לא* חלים בתוכם
+   (:not(:where(.gm-ds *))), ובתוכם נשארים כללי ברירת המחדל המקוריים - כמו לפני התיקון (דיווח הבעלים 5.10.2026: הכפתורים בעמוד
+   הבית החדש שינו גופן). כל הבוררים עטופים ב-:where() כדי לשמור על הסגוליות המקורית (0,0,1): הגדלתה גרמה לכללי ה-!important
+   של a5 (.gm-ds.gm-home :is(button..){font-family:inherit!important}) להפסיד לכלל הכללי. */
+:where(:root:not([data-font])) body,
+:where(:root[data-font="classic"]) body,
+:where(:root[data-font]) body:where(:has(.gm-ds)),
+:where(:root:not([data-font])) button,
+:where(:root[data-font="classic"]) button,
+:where(:root[data-font]) :where(.gm-ds) button,
+:where(:root:not([data-font])) input,
+:where(:root[data-font="classic"]) input,
+:where(:root[data-font]) :where(.gm-ds) input,
+:where(:root:not([data-font])) select,
+:where(:root[data-font="classic"]) select,
+:where(:root[data-font]) :where(.gm-ds) select,
+:where(:root:not([data-font])) textarea,
+:where(:root[data-font="classic"]) textarea,
+:where(:root[data-font]) :where(.gm-ds) textarea,
+:where(:root:not([data-font])) [style*="system-ui"],
+:where(:root[data-font="classic"]) [style*="system-ui"],
+:where(:root[data-font]) :where(.gm-ds) [style*="system-ui"],
+:where(:root:not([data-font])) [style*="Segoe UI"],
+:where(:root[data-font="classic"]) [style*="Segoe UI"],
+:where(:root[data-font]) :where(.gm-ds) [style*="Segoe UI"],
+:where(:root:not([data-font])) [style*="-apple-system"],
+:where(:root[data-font="classic"]) [style*="-apple-system"],
+:where(:root[data-font]) :where(.gm-ds) [style*="-apple-system"] {
   font-family: 'Assistant', 'Heebo', sans-serif !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
+:where(:root:not([data-font])) h1,
+:where(:root[data-font]) :where(.gm-ds) h1,
+:where(:root:not([data-font])) h2,
+:where(:root[data-font]) :where(.gm-ds) h2,
+:where(:root:not([data-font])) h3,
+:where(:root[data-font]) :where(.gm-ds) h3,
+:where(:root:not([data-font])) h4,
+:where(:root[data-font]) :where(.gm-ds) h4,
+:where(:root:not([data-font])) h5,
+:where(:root[data-font]) :where(.gm-ds) h5,
+:where(:root:not([data-font])) h6,
+:where(:root[data-font]) :where(.gm-ds) h6 {
   font-family: 'Frank Ruhl Libre', 'Assistant', serif !important;
+}
+
+/* גופן שנבחר ב-/display-settings (עיצוב ישן בלבד): טקסט לפי --font וכותרות לפי --font-heading
+   ("קלאסי" משנה רק כותרות - הטקסט נשאר Assistant, לכן מוחרג כאן מכלל הטקסט). */
+:where(:root[data-font]:not([data-font="classic"])) body:not(:where(:has(.gm-ds))),
+:where(:root[data-font]:not([data-font="classic"])) button:not(:where(.gm-ds *)),
+:where(:root[data-font]:not([data-font="classic"])) input:not(:where(.gm-ds *)),
+:where(:root[data-font]:not([data-font="classic"])) select:not(:where(.gm-ds *)),
+:where(:root[data-font]:not([data-font="classic"])) textarea:not(:where(.gm-ds *)),
+:where(:root[data-font]:not([data-font="classic"])) [style*="system-ui"]:not(:where(.gm-ds *)),
+:where(:root[data-font]:not([data-font="classic"])) [style*="Segoe UI"]:not(:where(.gm-ds *)),
+:where(:root[data-font]:not([data-font="classic"])) [style*="-apple-system"]:not(:where(.gm-ds *)) {
+  font-family: var(--font) !important;
+}
+
+:where(:root[data-font]) h1:not(:where(.gm-ds *)),
+:where(:root[data-font]) h2:not(:where(.gm-ds *)),
+:where(:root[data-font]) h3:not(:where(.gm-ds *)),
+:where(:root[data-font]) h4:not(:where(.gm-ds *)),
+:where(:root[data-font]) h5:not(:where(.gm-ds *)),
+:where(:root[data-font]) h6:not(:where(.gm-ds *)) {
+  font-family: var(--font-heading) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -191,8 +245,17 @@ table tbody td {
 
 table thead th {
   color: var(--text-muted) !important;
-  font-family: 'Assistant', sans-serif !important;
   letter-spacing: 0.01em;
+}
+
+:where(:root:not([data-font])) table thead th,
+:where(:root[data-font="classic"]) table thead th,
+:where(:root[data-font]) :where(.gm-ds) table thead th {
+  font-family: 'Assistant', sans-serif !important;
+}
+
+:where(:root[data-font]:not([data-font="classic"])) table thead th:not(:where(.gm-ds *)) {
+  font-family: var(--font) !important;
 }
 
 /* --------------------------------------------------------------------------

@@ -4,6 +4,10 @@ import { normalizeEmail } from '@/lib/emailUtils';
 import { checkAuth } from '../../../../lib/auth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats } from '@/lib/customerValidation';
+import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
+import { verifyManagerPin } from '@/lib/managerAuth';
+import { getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
+import { deleteBlockers } from '@/lib/customerAccount';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -65,6 +69,10 @@ export async function PUT(request, { params }) {
     if (!oldCustomer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
+    // לקוחה שנמחקה (soft delete) לא נערכת: בלי זה שמירה מכרטיס פתוח (או מסנכרון אופליין) משנה שדות של לקוחה מחוקה ומשאירה אותה "חיה" בהיסטוריה.
+    if (oldCustomer.isDeleted) {
+      return NextResponse.json({ error: 'הלקוחה נמחקה ולא ניתן לערוך אותה', code: 'CUSTOMER_DELETED' }, { status: 409 });
+    }
 
     // Offline data collision check
     if (body.updatedAt && oldCustomer.updatedAt) {
@@ -114,6 +122,11 @@ export async function PUT(request, { params }) {
             if (!errors.includes(`${label} חובה`)) errors.push(`${label} חובה`);
           }
         }
+      }
+      // שדות החובה של כרטיס הלקוח החדש (customer_required_fields, lib/customerRequiredFields.js) - רק לגוף שהגיע מהכרטיס
+      // החדש (cardVariant:'a5'). הכרטיס הישן לא שולח cardVariant ולכן ההתנהגות שלו לא השתנתה (דיווח 48ff7055).
+      if (body.cardVariant === 'a5') {
+        for (const e of requiredFieldErrors(body, requiredFieldsFromSettings(sMap))) if (!errors.includes(e)) errors.push(e);
       }
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));
@@ -236,6 +249,56 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(updatedCustomer);
   } catch (error) {
     console.error('Error patching customer:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+// מחיקת כרטיס לקוח (רכה: Customer.isDeleted=true) - מהכרטיס החדש בלבד (לחצן "מחיקת לקוחה", תשובת הבעלים 4.10.2026: del).
+// תמיד דורש approverId + approverPin של מאשר בהרשאת feature:customer_delete_approval (lib/permissionsMetadata.js), שנבדקים כאן
+// שוב מול ה-DB (verifyManagerPin) - לא סומכים על אישור שנעשה רק בדפדפן, וגם עובד מורשה מקליד את הסיסמה שלו.
+// חסום לפי deleteBlockers (lib/customerAccount.js, אותו מודול שהכרטיס מציג ממנו): הזמנה פעילה, שמלה שלא הוחזרה (גם בהשכרה
+// באיחור), יתרת חוב, זיכוי שלא בוצע. שורת ההיסטוריה נרשמת ע"י תוסף היומן (auditAs DELETE) - בלי שורה ידנית.
+export async function DELETE(request, { params }) {
+  if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const { id } = await params;
+    if (!id) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    let body = {};
+    try { body = await request.json(); } catch { body = {}; }
+    const approverId = typeof body.approverId === 'string' ? body.approverId : null;
+    const approverPin = typeof body.approverPin === 'string' ? body.approverPin : '';
+    if (!approverPin || !(await verifyManagerPin(approverId, approverPin, 'feature:customer_delete_approval'))) {
+      return NextResponse.json({ error: 'נדרש אישור מנהל מורשה למחיקת לקוח', code: 'APPROVAL_REQUIRED' }, { status: 403 });
+    }
+
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      select: {
+        id: true, isDeleted: true,
+        // כל ההזמנות (גם מחוקות - דמי ביטול נכנסים ליתרה, כמו בכרטיס); deleteBlockers מסנן מחוקות לבדיקת פעילות/שמלות
+        orders: {
+          select: {
+            orderId: true, isDeleted: true, eventDate: true, toDate: true, returnDate: true, totalAmount: true,
+            items: { where: { isDeleted: false }, select: { barcode: true, isReturned: true, isDeleted: true } }, // פריט שהוסר (isDeleted) לא חוסם מחיקה
+            payments: { where: { isDeleted: false }, select: { amount: true } },
+            obligations: { where: { isDeleted: false }, select: { amount: true } },
+          },
+        },
+        refunds: { where: { isDeleted: false }, select: { amount: true, isExecuted: true, orderId: true } },
+      },
+    });
+    if (!customer) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    if (customer.isDeleted) return NextResponse.json({ success: true, alreadyDeleted: true });
+
+    const b = deleteBlockers({ orders: customer.orders, refunds: customer.refunds, todayKey: getIsraelTodayKey(), dateKey: getIsraelDateKey });
+    if (b.blocked) {
+      return NextResponse.json({ error: `לא ניתן למחוק את הלקוחה: ${b.messages.join(' · ')}`, code: 'HAS_ACTIVE', activeOrders: b.activeOrders, holdingOrders: b.holdingOrders, debt: b.debt, pendingRefunds: b.pendingRefunds }, { status: 409 });
+    }
+
+    await prisma.customer.update(auditAs('DELETE', { where: { id }, data: { isDeleted: true } }, { isDeleted: { from: false, to: true } }));
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting customer:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

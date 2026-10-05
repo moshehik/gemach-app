@@ -1,4 +1,33 @@
 import prisma from '@/app/lib/prisma';
+import { ALL_ORDER_EVENT_ACTIONS, buildOrderEventRow } from '@/lib/history/orderEvents';
+
+/**
+ * THE single place that writes order "event" rows to AuditLog (print / PDF / Excel / history export /
+ * manager approval / email) - see the contract at the top of lib/history/orderEvents.js.
+ * These events have NO model write behind them, so the Prisma extension in app/lib/prisma.js never
+ * logs them; writing them here does not duplicate anything. A model write must NEVER be logged
+ * through this helper (use auditAs() on the write itself).
+ * - `meta` must already be sanitized by the caller (sanitizeEventMeta / buildApprovalMeta / emailEventMeta).
+ * - `actorId` comes from the session cookie (getActingEmployeeId) - never from a request body.
+ * - Plain createMany, outside any $transaction (memory: no reads/heavy work inside transactions).
+ * @returns {Promise<number>} rows written
+ */
+export async function writeOrderEvents({ orderIds, action, meta, actorId, clientEventId = null }) {
+  if (!ALL_ORDER_EVENT_ACTIONS.includes(action)) throw new Error(`writeOrderEvents: unknown action ${action}`);
+  const ids = (orderIds || []).filter((n) => Number.isInteger(n) && n > 0);
+  if (ids.length === 0) return 0;
+  const data = ids.map((orderId) => buildOrderEventRow({ orderId, action, meta, actorId, clientEventId }));
+  try {
+    // eslint-disable-next-line no-restricted-syntax -- an order event with no model write behind it (print/PDF/export/approval/email); the extension never sees it, so this is not a duplicate
+    const res = await prisma.auditLog.createMany({ data });
+    return (res && typeof res.count === 'number') ? res.count : data.length;
+  } catch (e) {
+    // a clientEventId gives every row a deterministic key: P2002 = a concurrent request already wrote this
+    // exact batch (one INSERT statement, all or nothing) -> nothing new written, not an error
+    if (clientEventId && e && e.code === 'P2002') return 0;
+    throw e;
+  }
+}
 
 function displayName(employee) {
   if (!employee) return null;
@@ -37,9 +66,58 @@ function redactSecrets(log) {
   }
 }
 
+// Order-event rows (MANAGER_APPROVAL / EMAIL_SENT, lib/history/orderEvents.js) carry meta.approverId - a bare
+// Employee UUID. Its display name is resolved in the same batched query and added as meta.approverName, so no
+// history screen ever needs (or shows) the id itself (components/modern/changesDisplay.js hides *Id UUIDs).
+function approverIdOf(log) {
+  if (!log.changesJson || !log.changesJson.includes('"approverId"')) return null;
+  try {
+    const parsed = JSON.parse(log.changesJson);
+    return parsed && typeof parsed === 'object' && typeof parsed.approverId === 'string' ? parsed.approverId : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function withApproverName(log, nameById) {
+  const approverId = approverIdOf(log);
+  if (!approverId) return log;
+  try {
+    const parsed = JSON.parse(log.changesJson);
+    parsed.approverName = nameById.get(approverId) || 'עובד שנמחק';
+    return { ...log, changesJson: JSON.stringify(parsed) };
+  } catch (e) {
+    return log;
+  }
+}
+
+// Hardening (docs/server-approval-hardening.md, H1): employee UUIDs are the only thing a forged approval needed. For a viewer who is not head
+// management, every employee id of ANOTHER employee in an audit row (the row's employeeId, meta.approverId) is replaced by an opaque marker -
+// the display names (employeeName, meta.approverName) were already resolved by attachEmployeeNames, and every history screen only tests
+// `log.employeeId` for truthiness before showing the name, so nothing visible changes. The viewer's own id stays (it is their own).
+export const HIDDEN_EMPLOYEE_ID = 'hidden';
+export function hideForeignEmployeeIds(logs, viewerId) {
+  return logs.map((log) => {
+    let out = log;
+    if (log.employeeId && log.employeeId !== viewerId) out = { ...out, employeeId: HIDDEN_EMPLOYEE_ID };
+    const approverId = approverIdOf(log);
+    if (approverId && approverId !== viewerId) {
+      try {
+        const parsed = JSON.parse(log.changesJson);
+        delete parsed.approverId;
+        out = { ...out, changesJson: JSON.stringify(parsed) };
+      } catch (e) { /* unparsable rows were never going to expose a parsed id */ }
+    }
+    return out;
+  });
+}
+
 export async function attachEmployeeNames(rawLogs) {
   const logs = rawLogs.map(redactSecrets);
-  const employeeIds = [...new Set(logs.map(l => l.employeeId).filter(Boolean))];
+  const employeeIds = [...new Set([
+    ...logs.map(l => l.employeeId),
+    ...logs.map(approverIdOf),
+  ].filter(Boolean))];
   if (employeeIds.length === 0) return logs;
 
   const employees = await prisma.employee.findMany({
@@ -49,7 +127,7 @@ export async function attachEmployeeNames(rawLogs) {
   const nameById = new Map(employees.map(e => [e.id, displayName(e)]));
 
   return logs.map(log => ({
-    ...log,
+    ...withApproverName(log, nameById),
     employeeName: log.employeeId ? (nameById.get(log.employeeId) || null) : null
   }));
 }

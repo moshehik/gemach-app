@@ -1,14 +1,33 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, getSessionEmployee } from '@/lib/auth';
+import { getApprovalMode, requireApprovalPermission, releaseApprovalClaims, commitApprovalClaims, KINDS } from '@/lib/approvalGate';
+import approvalTokens from '@/lib/approvalTokens';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderRefundExecutedEmailHtml } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
-export async function PUT(request, { params }) {
+// Marking a credit as done (isExecuted true) creates the reverse payment and mails the customer; undoing it deletes that payment. With
+// approval_permissions_enforced ON both need feature:manual_payment_credit_add: the logged-in employee holds it, or `approvalToken`
+// (verify-pin, kind manual_payment_credit, for THIS refund's order) comes along. A credit with NO order (Refund.orderId is nullable)
+// is approved with a token bound to approvalTokens.NO_ORDER_ID instead (the client asks verify-pin for that sentinel).
+// docs/server-approval-hardening.md
+export async function PUT(request, ctx) {
+  const claims = [];
+  let succeeded = false;
+  try {
+    const res = await putRefund(request, ctx, claims);
+    succeeded = !!res && res.status < 400;
+    return res;
+  } finally {
+    if (!succeeded) releaseApprovalClaims(claims);
+  }
+}
+
+async function putRefund(request, { params }, claims) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { id } = await params;
@@ -26,7 +45,7 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const { isExecuted, ...otherData } = body;
+    const { isExecuted, approvalToken: _approvalToken, ...otherData } = body;
 
     const existingRefund = await prisma.refund.findUnique({
       where: { id },
@@ -35,6 +54,20 @@ export async function PUT(request, { params }) {
 
     if (!existingRefund) {
       return NextResponse.json({ error: 'Refund not found' }, { status: 404 });
+    }
+
+    const changesExecution = (isExecuted === true && !existingRefund.isExecuted) || (isExecuted === false && !!existingRefund.isExecuted);
+    if (changesExecution) {
+      const approvalMode = await getApprovalMode();
+      if (approvalMode.permissionsEnforced) {
+        const gate = await requireApprovalPermission({
+          kind: KINDS.MANUAL_PAYMENT_CREDIT, orderId: existingRefund.orderId || approvalTokens.NO_ORDER_ID, token: body.approvalToken, claims, mode: approvalMode,
+          sessionEmployee: await getSessionEmployee(),
+        });
+        if (!gate.ok) {
+          return NextResponse.json({ error: 'סימון זיכוי כבוצע (או ביטול הסימון) מותר רק למי שהוגדר כמאשר תשלום/זיכוי ידני (או באישור שלו בקוד).', code: gate.code, approvalKind: gate.kind }, { status: gate.status });
+        }
+      }
     }
 
     let updateData = { ...otherData };
@@ -120,6 +153,7 @@ export async function PUT(request, { params }) {
         return true;
       });
 
+      if (claimed) commitApprovalClaims(claims);
       if (!claimed) {
         return NextResponse.json({ error: 'הזיכוי כבר סומן כבוצע בינתיים על ידי משתמש אחר. רענן את הדף.' }, { status: 409 });
       }

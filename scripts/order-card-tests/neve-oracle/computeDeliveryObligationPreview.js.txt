@@ -1,0 +1,36 @@
+export function computeDeliveryObligationPreview({
+  isDelivery,
+  deliveryCity,
+  deliveryDirection,
+  deliveryPriceByCity, // raw `delivery_price_by_city` SystemSetting value (JSON string or falsy)
+  deliveryPrice, // raw `delivery_price` SystemSetting value (string or falsy)
+  // מחיר לצד אחד להזמנה שמצטרפת למשלוח קיים (delivery_join_price, רק כש-enable_delivery_join דולק
+  // וההזמנה מצטרפת) - דורס את מחיר העיר/האחיד. null/חסר = המחיר הרגיל (ההתנהגות הישנה).
+  joinPrice = null,
+  existingObligations = []
+}) {
+  if (!isDelivery || !deliveryCity) return null;
+
+  const alreadyCharged = (existingObligations || []).some(o =>
+    !o.isDeleted && String(o.description || '').includes('משלוח')
+  );
+  if (alreadyCharged) return null;
+
+  let priceMap = {};
+  try { priceMap = JSON.parse(deliveryPriceByCity || '{}'); } catch { /* ignore malformed setting */ }
+  let cityPrice = priceMap[deliveryCity];
+  if (!cityPrice || Number(cityPrice) <= 0) cityPrice = deliveryPrice;
+  if (!cityPrice || Number(cityPrice) <= 0) cityPrice = 50;
+  if (joinPrice && Number(joinPrice) > 0) cityPrice = joinPrice;
+
+  const dir = deliveryDirection || 'הלוך-חזור';
+  const count = dir === 'הלוך-חזור' ? 2 : 1;
+  const amount = Number(cityPrice) * count;
+
+  return {
+    amount,
+    quantity: count,
+    description: `משלוח ${dir} - ${deliveryCity}`,
+    isManual: false
+  };
+}

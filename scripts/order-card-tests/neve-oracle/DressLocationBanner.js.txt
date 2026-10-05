@@ -1,0 +1,110 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { getHebrewDateString } from '../../lib/hebrewDate';
+
+// התראה בולטת על שמלות שהוזמנו אך עדיין לא בבית (enable_dress_location_alert): מושכרות
+// באירוע אחר / בסניף אחר. הנתונים מ-/api/orders/dress-location-alerts (קריאה בלבד, ר'
+// lib/dressLocationAlerts.js). כשההגדרה כבויה השרת מחזיר enabled:false והרכיב לא מציג כלום.
+
+function awayLine(a) {
+  if (a.kind === 'branch') {
+    return `ברקוד ${a.barcode} - נמצאת בסניף "${a.branch}" וצריכה לעבור לסניף ההזמנה`;
+  }
+  const exp = a.expectedReturn ? getHebrewDateString(a.expectedReturn) : 'לא ידוע';
+  const status = a.overdue ? 'עבר מועד ההחזרה - טרם הוחזרה!' : (a.backBeforeEvent ? 'צפויה לחזור לפני האירוע' : 'לא צפויה לחזור לפני האירוע');
+  return `ברקוד ${a.barcode} - עדיין באירוע של הזמנה #${a.orderId} (החזרה צפויה: ${exp}) - ${status}`;
+}
+
+function AlertList({ alerts }) {
+  return (
+    <ul style={{ margin: '6px 0 0', paddingInlineStart: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {alerts.map(al => (
+        <li key={al.key}>
+          <strong>{al.modelName}{al.size ? ` · מידה ${al.size}` : ''}</strong>
+          {al.assigned
+            ? <span> - היחידה שנבחרה להזמנה אינה זמינה:</span>
+            : <span> - נדרשות {al.needed}, בבית זמינות {al.homeCount} (חסרות {al.shortage}):</span>}
+          <ul style={{ margin: '3px 0 0', paddingInlineStart: '18px', fontWeight: 400 }}>
+            {al.away.map((a, i) => <li key={`${a.barcode}-${i}`}>{awayLine(a)}</li>)}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** באנר להזמנה בודדת (כרטיס הזמנה). refreshKey - שינוי בו מרענן (למשל מספר הפריטים). */
+export default function DressLocationBanner({ orderId, refreshKey }) {
+  const [alerts, setAlerts] = useState([]);
+
+  useEffect(() => {
+    if (!orderId) { setAlerts([]); return undefined; }
+    let cancelled = false;
+    fetch(`/api/orders/dress-location-alerts?orderId=${orderId}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (!cancelled) setAlerts(data?.orders?.[0]?.alerts || []); })
+      .catch(() => { if (!cancelled) setAlerts([]); });
+    return () => { cancelled = true; };
+  }, [orderId, refreshKey]);
+
+  if (alerts.length === 0) return null;
+  const critical = alerts.some(a => a.severity === 'critical');
+  return (
+    <div
+      role="alert"
+      data-element-name="התראת_מיקום_שמלות"
+      className="callout callout-danger"
+      style={{
+        margin: '10px 0', padding: '14px 16px', fontSize: '14px', fontWeight: 700,
+        border: `2px solid var(--danger)`, borderInlineStart: `8px solid var(--danger)`,
+        boxShadow: critical ? '0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent)' : 'none',
+      }}
+    >
+      <svg className="icon" style={{ width: '22px', height: '22px' }}><use href="#i-alert-tri" /></svg>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: '15px' }}>
+          שים לב: שמלות מההזמנה עדיין לא בבית - {critical ? 'לא צפויות להגיע בזמן ללא טיפול' : 'צריכות לעבור / להיאסף'}
+        </div>
+        <AlertList alerts={alerts} />
+      </div>
+    </div>
+  );
+}
+
+/** סיכום ללוח (כל ההזמנות הקרובות עם התראה). days - כמה ימים קדימה. */
+export function DressLocationSummary({ days = 7 }) {
+  const [orders, setOrders] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/orders/dress-location-alerts?days=${days}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (!cancelled) setOrders(data?.orders || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [days]);
+
+  if (orders.length === 0) return null;
+  return (
+    <div role="alert" className="callout callout-danger" style={{ margin: '0 0 14px', padding: '12px 16px', border: '2px solid var(--danger)', borderInlineStart: '8px solid var(--danger)' }}>
+      <svg className="icon" style={{ width: '20px', height: '20px' }}><use href="#i-alert-tri" /></svg>
+      <div style={{ flex: 1 }}>
+        <strong style={{ fontSize: '14px' }}>
+          {orders.length} הזמנות ב-{days} הימים הקרובים עם שמלות שעדיין באירועים / בסניף אחר
+        </strong>
+        <ul style={{ margin: '6px 0 0', paddingInlineStart: '20px', fontSize: '12.5px' }}>
+          {orders.slice(0, 12).map(o => (
+            <li key={o.orderId}>
+              <a href={`/orders/${o.orderId}`} style={{ fontWeight: 700 }}>הזמנה #{o.orderId}</a>
+              {o.customerName ? ` (${o.customerName})` : ''}
+              {o.eventDate ? ` · אירוע ${getHebrewDateString(o.eventDate)}` : ''}
+              {' - '}
+              {o.alerts.map(a => `${a.modelName}${a.size ? ` מידה ${a.size}` : ''}`).join(', ')}
+            </li>
+          ))}
+          {orders.length > 12 && <li>ועוד {orders.length - 12} הזמנות...</li>}
+        </ul>
+      </div>
+    </div>
+  );
+}

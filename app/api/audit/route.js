@@ -1,7 +1,8 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
-import { attachEmployeeNames } from '@/app/lib/auditLog';
+import { attachEmployeeNames, hideForeignEmployeeIds } from '@/app/lib/auditLog';
+import { getActingEmployeeId } from '@/app/lib/prisma';
 import { listOrderMarkIds } from '@/lib/schedule/marks';
 
 
@@ -45,7 +46,8 @@ export async function GET(request) {
       if (ids.length) where.entityId = { in: ids };
     }
     if (action) {
-      where.action = action;
+      // "עדכון" covers the order-save row too: PUT /api/orders/[id] writes UPDATE_ORDER ({from,to}) since W0
+      where.action = action === 'UPDATE' ? { in: ['UPDATE', 'UPDATE_ORDER'] } : action;
     } else if (actions) {
       const actionList = actions.split(',').map(s => s.trim()).filter(Boolean);
       if (actionList.length) where.action = { in: actionList };
@@ -99,7 +101,9 @@ export async function GET(request) {
       skip: (page - 1) * limit,
     });
 
-    const logsWithNames = await attachEmployeeNames(logs);
+    const namedLogs = await attachEmployeeNames(logs);
+    // non-head-management viewers never receive other employees' raw ids (H1 hardening; names are already attached)
+    const logsWithNames = canSeeEmployeeHistory ? namedLogs : hideForeignEmployeeIds(namedLogs, await getActingEmployeeId());
 
     const total = await prisma.auditLog.count({ where });
 

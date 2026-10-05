@@ -87,14 +87,15 @@ for (const w of widths) {
   ok(frames.today.includes(frames.gold) && !frames.today.includes(frames.red), w + ': שורת היום - מסגרת זהב');
   ok(frames.both.includes(frames.red) && frames.both.includes(frames.gold) && frames.bothFits, w + ': היום + איחור - אדום בחוץ וזהב בפנים, בלי גלישה');
 
-  // ---- כותרת הדף, חיפוש, סרגל, ניווט חודשים ----
+  // ---- כותרת הדף, מסנן, סרגל, ניווט חודשים ----
   const top = await p.evaluate(() => {
     const R = (s) => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; };
-    const hs = R('.hf-s'); const input = document.querySelector('#bdQ');
-    return { ttl: R('.topbar'), pg: R('.pg-ttl'), hs, hft: R('.hf-t'), input: R('#bdQ'), bar: R('#mBar'), vsw: R('#mvsw'), opts: [...document.querySelectorAll('#mvsw .vopt')].map((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; }), head: R('.bd-lcard > .hc-h'), prev: R('.bd-lcard .hc-h > .hc-n'), next: R('.bd-lcard .hc-h > .hc-nn'), jump: R('.bd-lcard .lz-jump'), pgClip: document.querySelector('.pg-ttl').scrollWidth > document.querySelector('.pg-ttl').clientWidth + 1, ph: input.getAttribute('placeholder'), inputClip: input.scrollWidth > input.clientWidth + 1, today: !!document.querySelector('#mToday') };
+    const hs = R('.hf-sel');
+    return { ttl: R('.topbar'), pg: R('.pg-ttl'), hs, hft: R('.hf-t'), bar: R('#mBar'), vsw: R('#mvsw'), opts: [...document.querySelectorAll('#mvsw .vopt')].map((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; }), head: R('.bd-lcard > .hc-h'), prev: R('.bd-lcard .hc-h > .hc-n'), next: R('.bd-lcard .hc-h > .hc-nn'), jump: R('.bd-lcard .lz-jump'), pgClip: document.querySelector('.pg-ttl').scrollWidth > document.querySelector('.pg-ttl').clientWidth + 1, today: !!document.querySelector('#mToday') };
   });
   ok(top.ttl && top.ttl.r <= w && top.ttl.l >= 0 && !top.pgClip, w + ': כותרת הדף בתוך המסך');
-  ok(top.hs.w >= w - 40 && top.hs.h >= 44 && top.hft.h >= 44 && top.hft.w >= 44 && top.hft.r <= top.hs.r + 0.5 && top.hft.l >= top.hs.l - 0.5, w + ': שורת החיפוש ולחצן הסינון בתוך השורה, >=44px (' + Math.round(top.hs.w) + 'x' + Math.round(top.hs.h) + ', לחצן ' + Math.round(top.hft.w) + 'x' + Math.round(top.hft.h) + ')');
+  ok(top.hft.h >= 44 && top.hft.w >= 44 && top.hft.r <= w && top.hft.l >= 0 && top.hft.r <= top.hs.r + 0.5 && top.hft.l >= top.hs.l - 0.5, w + ': לחצן הסינון בתוך המסך, >=44px (' + Math.round(top.hft.w) + 'x' + Math.round(top.hft.h) + ')');
+  ok(!(await p.$('#bdQ, #bdSearch input, [role=search]')), w + ': אין תיבת חיפוש בלוח');
   ok(top.opts.length === 2 && top.opts.every((o) => o.h >= 44 && o.w >= 44) && top.vsw.r <= w && top.vsw.h >= 44, w + ': מתג התצוגה >=44px (כל לחצן ' + Math.round(top.opts[0].w) + 'x' + Math.round(top.opts[0].h) + ')');
   ok(top.head.r <= w && top.prev.w >= 44 && top.prev.h >= 44 && top.next.w >= 44 && top.next.h >= 44 && top.jump.h >= 44, w + ': ניווט חודשים - חצים ושם החודש >=44px');
   ok(top.prev.l > top.jump.r - 1 && top.next.r < top.jump.l + 1 && top.prev.l >= top.head.l && top.next.r <= top.head.r, w + ': RTL - "הקודם" בימין, "הבא" בשמאל, שם החודש ביניהם בלי חפיפה');
@@ -133,12 +134,6 @@ for (const w of widths) {
   await noOverflow(w + ' עם סינון');
   await shot(w, '05-filtered');
   await click('#bdSearch .hf-t'); await click('#bdSearch .hf-allb'); await p.keyboard.press('Escape'); await p.mouse.click(Math.floor(w / 2), 30); await sleep(300);
-
-  // ---- שורת חיפוש עם טקסט: לחצן הניקוי ----
-  await p.type('#bdQ', 'כהן'); await sleep(250);
-  const cl = await p.evaluate(() => { const e = document.querySelector('#bdSearch .hf-cl'); const r = e.getBoundingClientRect(); const s = document.querySelector('#bdSearch .hf-s').getBoundingClientRect(); const i = document.querySelector('#bdQ').getBoundingClientRect(); return { w: r.width, h: r.height, inside: r.left >= s.left && r.right <= s.right && r.top >= s.top && r.bottom <= s.bottom, iw: i.width }; });
-  ok(cl.w >= 44 && cl.h >= 44 && cl.inside && cl.iw > 80, w + ': לחצן ניקוי החיפוש >=44px בתוך השורה, ונשאר שדה (' + Math.round(cl.iw) + 'px)');
-  await p.evaluate(() => document.querySelector('#bdSearch .hf-cl').click()); await sleep(300);
 
   // ---- תצוגת הלוח (גריד) בטלפון ----
   await click('#mvsw .vopt:nth-child(2)');

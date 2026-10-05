@@ -117,6 +117,7 @@ const IMPORTANT_BG_OK = new Set([
   '.gm-ds.gm-home :is(.card,.stepper,.itm,.coll[open],.dhero)',
   '.gm-ds.gm-home .hero-in.jshell .card', // שקוף בתוך המסגרת המשותפת
   '.gm-ds.gm-home .rtbl thead tr th', // כותרת טבלה כחולה (דורס "כותרת דביקה" של globals.css)
+  '.gm-ds.gm-home.gm-home .advp .inpw > select.inp', // חץ בורר "סטטוס הזמנה" (כספים): כלל השדות של הפלטה מאפס background-image דרך #dlg בסלקטור
 ]);
 t('רקע עם !important ב-home.css רק בכללים המאושרים (אחרת זו דריסה שקטה של הפלטה)', () => {
   const bad = [];
@@ -514,6 +515,62 @@ t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שו�
   assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
 });
 
+/* ---------- 10b. כרטיס הלקוח החדש (app/components/customer-card/customer-card.css): אותו משטר היקף כמו הפרופיל ---------- */
+// שורש .gm-ds.gm-cc.home-bg.dlg-dark (בלי .gm-home). נבדק: היקף, אין לבן קשיח, !important על רקע רק בכללים המאושרים מהעיצוב,
+// אין @media לפני הכלל הלא-מותנה, ונטרולי הדליפה שנמצאו ב-scripts/customer-card-audit (גופן, .tab margin, .tabs margin,
+// .field margin, ריפוד לחצנים/שדות שנמחק ע"י *{padding:0}, ריפוד לחצן החזרה, רקע/מסגרת input גלובליים בתוך רכיבים).
+const CC_CSS = read('../app/components/customer-card/customer-card.css');
+const ccRules = parseCss(CC_CSS);
+const CC_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-cc)']);
+const CC_IMPORTANT_BG_OK = [
+  /^\.gm-ds\.gm-cc \.app :is\(\.card,\.coll\[open\]\)$/, // פנים "פנינה" (pearl-faces בעיצוב) מול הזכוכית של הפלטה
+  /^\.gm-ds\.gm-cc \.rtbl thead tr th$/, // כותרת טבלה כחולה (נטרול כותרת קרם גלובלית)
+  /^\.gm-ds\.gm-cc \.app \.btn\.cc-gmail/, // "השלם ל-@gmail.com" = לחצן "מחוקים" של כרטיס ההזמנה (שקוף, בריחוף כחול)
+  /^\.gm-ds\.gm-cc #dlg\.fx-sheet :is\(input,textarea\)\.inp/, // שדות גיליון המייל (mail-sheet-css בעיצוב)
+  /^\.gm-ds\.gm-cc\.dlg-dark :is\(#dlg,#dlg2\) \.chg \.c \.ico$/, // DLG-MODERN בעיצוב
+];
+t('customer-card.css: כל כלל בהיקף .gm-ds.gm-cc (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of ccRules) for (const s of splitSel(r.sel)) if (!/^(:where\()?\.gm-ds\.gm-cc(\)|[\s.:#[]|$)/.test(s) && !CC_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, []);
+});
+t('customer-card.css: אין רקע לבן קשיח; !important על רקע רק בכללים המאושרים', () => {
+  const bad = [];
+  for (const r of ccRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!CC_IMPORTANT_BG_OK.some((re) => re.test(s.replace(/\s+/g, ' ')))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('customer-card.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(ccRules, 'customer-card.css'), []);
+});
+const hasCc = (selRe, propRe, { important = false, valueRe } = {}) => ccRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('customer-card.css: נטרולי הדליפות שנמצאו בבדיקת הנאמנות', () => {
+  assert.ok(hasCc(/\.gm-ds\.gm-cc :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'גופן ללחצנים/שדות');
+  assert.ok(hasCc(/\.gm-ds\.gm-cc :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true }), 'גופן לכותרות');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.tabs \.tab$/, /^margin-inline-end$/, { valueRe: /^0/ }), '.tab{margin-inline-end:22px} של design-system.css');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.tabs$/, /^margin$/, { valueRe: /^0/ }), '.tabs{margin-bottom} של design-system.css');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.field$/, /^margin-bottom$/, { valueRe: /^0/ }), '.field{margin-bottom:14px}');
+  assert.ok(hasCc(/^:where\(\.gm-ds\.gm-cc\) :where\(button\)$/, /^padding$/), 'ריפוד ברירת מחדל ללחצנים (*{padding:0})');
+  assert.ok(hasCc(/^\.gm-ds\.gm-cc \.back$/, /^padding$/), 'ריפוד לחצן החזרה');
+  assert.ok(hasCc(/\.gm-ds\.gm-cc :is\(\.hf-s,\.amtin\) input/, /^background$/), 'רקע input גלובלי בחיפוש ההיסטוריה / סכום התשלום');
+});
+t('הדליפות שנוטרלו בכרטיס הלקוח עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
+  assert.ok(/\.tab\{[^}]*margin-inline-end:22px/.test(DS_GLOBAL), 'design-system.css: .tab{margin-inline-end:22px} כבר לא קיים');
+  assert.ok(/\*\s*\{[^}]*padding:\s*0/.test(GLOBALS), 'globals.css: *{padding:0} כבר לא קיים');
+});
+t('כרטיס הלקוח: שורש בלי gm-home, בלי window.alert, חלונות כהים', () => {
+  for (const f of ['CustomerCardA5.js', 'NewCustomerA5.js']) {
+    const src = read(`../app/components/customer-card/${f}`);
+    assert.match(src, /className="gm-ds gm-cc home-bg dlg-dark"/, f);
+    assert.ok(!/window\.alert/.test(src), f);
+  }
+});
+
 /* ---------- 11. "מסך ניהול ראשי" (app/components/admin-hub/admin-hub.css): אותו משטר היקף כמו הפרופיל ---------- */
 // שורש .gm-ds.gm-adm.home-bg (בלי .gm-home). נבדק: היקף, לבן קשיח רק בעיגול האייקון של האריח (לבן בעיצוב ניהול-ראשי-כרטיסים.html),
 // !important על רקע רק בכותרת הטבלה (כמו home.css כלל 10), ונטרולי הדליפה שנמצאו בבדיקת scripts/admin-hub-audit.
@@ -582,11 +639,11 @@ t('board.css: אין דריסת @media לפני הכלל הלא-מותנה, וא
   for (const r of boardRules) if (setsProp(r, /^(background(-color|-image)?|border(-color)?|box-shadow)$/).some(isImportant)) bad.push(r.sel);
   assert.deepEqual(bad, []);
 });
-t('הלוח: השורש .gm-ds.gm-lz.gm-bd (schedule.css מנטרל את הגופנים), בלי gm-home; שדה החיפוש מנוטרל מול design-overrides.css', () => {
+t('הלוח: השורש .gm-ds.gm-lz.gm-bd (schedule.css מנטרל את הגופנים), בלי gm-home', () => {
   const page = read('../app/components/board/BoardPage.js');
   assert.match(page, /className="gm-ds gm-lz gm-bd home-bg dlg-dark"/);
   assert.ok(!/gm-home/.test(page), 'gm-home על שורש הלוח');
-  assert.ok(boardRules.some((r) => /input#bdQ:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/.test(r.sel) && setsProp(r, /^background$/).length && setsProp(r, /^box-shadow$/).length), 'חסר נטרול רקע/טבעת לשדה החיפוש');
+  assert.ok(!boardRules.some((r) => /#bdQ|\.hf-cl/.test(r.sel)), 'נשארו כללי CSS של תיבת החיפוש שהוסרה');
   assert.ok(boardRules.some((r) => /#mToday$/.test(r.sel) && setsProp(r, /^height$/).some((d) => d.value === '28px')), 'S04: "החודש הנוכחי" בגובה המתג (28px)');
 });
 const GATE_CSS = read('../app/components/gate/gate.css');
@@ -616,6 +673,245 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
   const bad = bgs.filter((v) => !/^(#fff|#f3f3f3|#e9ebee)$/i.test(v));
   assert.deepEqual(bad, [], 'רקע לא מאושר בדף ההדפסה: ' + bad.join(' | '));
   assert.ok(!/background-image|url\(/.test(src.replace(/@import url\([^)]*\);/, '').replace(/\/\/.*$/gm, '')), 'תמונת רקע בדף ההדפסה');
+});
+
+/* ---------- 11. כרטיס ההזמנה החדש - לשוניות פרטים/משלוח (app/components/order-card/css/oc-details.css, W2a) ---------- */
+// הקובץ נטען תמיד עם oc-base.css (נטרולי הגופן/השדות/המתג של הכרטיס כולו) - כאן רק המשטר של הקובץ עצמו: היקף .gm-ds.gm-oc, בלי
+// !important (הכול נשען על הפלטה), בלי לבן קשיח, בלי @media לפני הכלל הרגיל, בלי "-*/" בהערות (שובר next build).
+const OC_DETAILS_CSS = read('../app/components/order-card/css/oc-details.css');
+const ocDetailsRules = parseCss(OC_DETAILS_CSS);
+t('oc-details.css: כל כלל בהיקף .gm-ds.gm-oc (לא דולף לשאר האתר / לכרטיס הישן)', () => {
+  const bad = [];
+  for (const r of ocDetailsRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-details.css: בלי !important ובלי רקע לבן קשיח / var(--gm-surface) (הכרטיסים "פנינה" מ-oc-base, החלונות כהים מהפלטה)', () => {
+  const bad = [];
+  for (const r of ocDetailsRules) for (const d of decls(r.body)) {
+    if (isImportant(d)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/^background(-color)?$/.test(d.prop) && (WHITE_RE.test(d.value.trim()) || /var\(--gm-surface\)/.test(d.value))) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (לבן)`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-details.css: אין דריסת @media לפני הכלל הלא-מותנה, ואין "-*/" בהערות', () => {
+  assert.deepEqual(mediaBeforeBase(ocDetailsRules, 'oc-details.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_DETAILS_CSS), 'הערה עם "-*/"');
+});
+
+/* ---------- 12. כרטיס ההזמנה — לשונית פריטים (W3, app/components/order-card/css/oc-items.css) ---------- */
+// נטען רק בתוך הכרטיס החדש (.gm-ds.gm-oc). רוב העיצוב מהפלטה; כאן: לחצני הסרגל בסגנון "מחוקים" (A10), שורת הברקוד (R25), מובייל.
+const OC_ITEMS_CSS = read('../app/components/order-card/css/oc-items.css');
+const ocItemsRules = parseCss(OC_ITEMS_CSS);
+// !important על רקע רק בלחצני הסרגל — בדיוק כמו #delToggle בפלטה (שקוף; כחול בריחוף), אחרת חוק ה-.btn של הפלטה גובר
+const OC_ITEMS_IMPORTANT_BG_OK = new Set(['.gm-ds.gm-oc .app .hres-bar .btn.tgl', '.gm-ds.gm-oc .app .hres-bar .btn.tgl:is(:hover,:focus-visible)']);
+t('oc-items.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  const bad = [];
+  for (const r of ocItemsRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-items.css: אין רקע לבן קשיח; !important על רקע רק בלחצני הסרגל (כמו #delToggle)', () => {
+  const bad = [];
+  for (const r of ocItemsRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    if (setsProp(r, /^background(-color|-image)?$/).some(isImportant)) for (const s of splitSel(r.sel)) if (!OC_ITEMS_IMPORTANT_BG_OK.has(s.replace(/\s+/g, ' '))) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-items.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בהערה; אין סלקטור גלובלי', () => {
+  assert.deepEqual(mediaBeforeBase(ocItemsRules, 'oc-items.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_ITEMS_CSS), '"-*/" בתוך הערה שובר next build');
+  assert.ok(!/(^|[},\s])(:root|html|body)\b/.test(OC_ITEMS_CSS.replace(/\/\*[\s\S]*?\*\//g, '')), 'סלקטור גלובלי');
+});
+const hasOcItems = (selRe, propRe, valueRe) => ocItemsRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => !valueRe || valueRe.test(d.value)));
+t('oc-items.css: A10 — לחצני הסרגל בגובה 32 ובמסגרת הכחולה של "מחוקים", ✓ ורוד בנבחר; צבע טקסט השדות גובר על globals (0,4,1)', () => {
+  assert.ok(hasOcItems(/\.hres-bar \.btn\.tgl$/, /^height$/, /^32px/), 'גובה 32 ללחצני הסרגל');
+  assert.ok(hasOcItems(/\.hres-bar \.btn\.tgl$/, /^border$/, /var\(--gm-navy\)/), 'מסגרת כחולה כמו #delToggle');
+  assert.ok(hasOcItems(/\.hres-bar \.btn\.tgl \.evck$/, /^stroke$/, /#f38a6b/), '✓ ורוד כמו #delToggle');
+  assert.ok(/#delToggle[^{]*\{[^}]*height:32px/.test(PALETTE.replace(/\s+/g, '')) || /#delToggle\{min-height:32px;height:32px/.test(PALETTE), 'הפלטה: #delToggle בגובה 32 (המקור שאליו מיישרים)');
+  assert.ok(hasOcItems(/:is\(\.items-card,\.sbar\) :is\(input,textarea\)\.inp$/, /^color$/), 'צבע טקסט לשדות הלשונית ושורת הסריקה');
+});
+
+/* ---------- 13. כרטיס ההזמנה החדש - לשונית התשלומים (app/components/order-card/css/oc-payments.css, W4) ---------- */
+// נטען בתוך שורש .gm-ds.gm-oc (בלי .gm-home). רק תוספות למה שאין בפלטה: היקף, בלי לבן קשיח / !important / גופן, צבעים רק מאסימוני הפלטה,
+// אין @media לפני הכלל הרגיל, ואין "-*/" בהערה. הבדיקה החזותית מול העיצוב: scripts/order-card-bg-audit (שלבי P01-P10).
+const OC_PAY_CSS = read('../app/components/order-card/css/oc-payments.css');
+const ocPayRules = parseCss(OC_PAY_CSS);
+t('oc-payments.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  const bad = [];
+  for (const r of ocPayRules) for (const s2 of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s2)) bad.push(s2);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-payments.css: אין רקע לבן קשיח, אין !important, אין font-family, צבעים רק מאסימוני הפלטה (var(--gm-*))', () => {
+  const bad = [];
+  for (const r of ocPayRules) {
+    for (const d of decls(r.body)) {
+      if (isImportant(d)) bad.push(`!important: ${r.sel} { ${d.prop} }`);
+      if (d.prop === 'font-family') bad.push(`font-family: ${r.sel}`);
+      if (/^(background(-color)?|color|border(-color)?)$/.test(d.prop)) {
+        const v = d.value.trim();
+        if (WHITE_RE.test(v) || /#[0-9a-f]{3,8}\b|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${v} }`);
+      }
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-payments.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בתוך הערה', () => {
+  assert.deepEqual(mediaBeforeBase(ocPayRules, 'oc-payments.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_PAY_CSS), '"-*/" שובר next build');
+});
+t('oc-payments.css: נטרול דליפת input של החלון בשדה הסכום (amtin) - בהיקף החלון, כמו בעיצוב', () => {
+  assert.ok(ocPayRules.some((r) => /:is\(#dlg,#dlg2\) \.amtin input/.test(r.sel) && decls(r.body).some((d) => d.prop === 'border-radius' && /^0/.test(d.value))));
+});
+
+/* ---------- 14. כרטיס ההזמנה החדש - לשונית היסטוריה (W6, app/components/order-card/css/oc-history.css) ---------- */
+// שורש .gm-ds.gm-oc (לעולם לא gm-home). רוב הרכיבים מהפלטה; כאן רק תוספות העיצוב ונטרולי הדליפה שנמצאו בבדיקת
+// scripts/order-card-bg-audit (שלבים 40-48, TOTAL 0 ב-1280/375): שדה החיפוש (input גלובלי לבן/גבול/רדיוס), ריפוד לחצן הניקוי,
+// מסגרת לחצן הסינון כשהתפריט פתוח. אין רקע לבן קשיח, אין !important על רקע, אין @media לפני הבסיס.
+const OC_HIST_CSS = read('../app/components/order-card/css/oc-history.css');
+const ocHistRules = parseCss(OC_HIST_CSS);
+t('oc-history.css: כל כלל בהיקף .gm-ds.gm-oc, בלי gm-home', () => {
+  const bad = [];
+  for (const r of ocHistRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(\s|$)/.test(s) || /gm-home/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-history.css: אין רקע לבן קשיח ואין !important על רקע; אין @media לפני הכלל הלא-מותנה; אין "-*/" בהערה', () => {
+  const bad = [];
+  for (const r of ocHistRules) for (const d of setsProp(r, /^background(-color|-image)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || isImportant(d)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+  }
+  assert.deepEqual(bad, []);
+  assert.deepEqual(mediaBeforeBase(ocHistRules, 'oc-history.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_HIST_CSS));
+});
+const hasOcHist = (selRe, propRe, valueRe) => ocHistRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => !valueRe || valueRe.test(d.value)));
+t('oc-history.css: נטרולי הדליפה - שדה החיפוש שקוף בלי גבול/רדיוס, ריפוד לחצן הניקוי, מסגרת הסינון הפתוח, מטא השלבים', () => {
+  assert.ok(hasOcHist(/input#hfQ/, /^background$/, /^transparent/), 'רקע שדה החיפוש');
+  assert.ok(hasOcHist(/input#hfQ/, /^border$/, /^0/), 'גבול שדה החיפוש');
+  assert.ok(hasOcHist(/input#hfQ/, /^border-radius$/, /^0/), 'רדיוס שדה החיפוש (design-overrides 10px)');
+  assert.ok(hasOcHist(/\.hf-cl$/, /^padding$/), 'ריפוד לחצן הניקוי (globals.css מאפס)');
+  assert.ok(hasOcHist(/\.hf-sel\.on \.hf-t$/, /^border-color$/), 'מסגרת לחצן הסינון כשהתפריט פתוח');
+  assert.ok(hasOcHist(/\.card\.proc \.prc-m$/, /^display$/, /^flex/), 'מטא שורת שלב (שכבת הסקירה, מאושר)');
+});
+t('הדליפות שנוטרלו בלשונית ההיסטוריה עדיין קיימות ב-CSS הגלובלי (אם נעלמו - אפשר להסיר את הנטרול)', () => {
+  assert.ok(/input[^{]*\{[^}]*border-radius:\s*10px/.test(OVERRIDES), 'design-overrides.css: input{border-radius:10px} כבר לא קיים');
+});
+
+/* ---------- 15. כרטיס ההזמנה החדש - מסמכים: תפריט הדפסה, מייל מהיר, כתובת מייל חסרה (app/components/order-card/css/oc-docs.css, W7) ---------- */
+// בלוק mail-sheet-css של העיצוב (גיליון תחתון בשתי עמודות) בשמות הפלטה (--gm-*) בהיקף הכרטיס. החריג היחיד ל"בלי !important" הוא שדות הטקסט של
+// גיליון המייל (מסגרת זהב + זוהר במיקוד) - בדיוק כמו בעיצוב, כדי לגבור על design-overrides.css (input:not(...){...!important}).
+const OC_DOCS_CSS = read('../app/components/order-card/css/oc-docs.css');
+const ocDocsRules = parseCss(OC_DOCS_CSS);
+const OC_DOCS_IMPORTANT_OK = /\.fx-sheet :is\(input,textarea\)\.inp/;
+t('oc-docs.css: כל כלל בהיקף .gm-ds.gm-oc (לא דולף לשאר האתר / לכרטיס הישן)', () => {
+  const bad = [];
+  for (const r of ocDocsRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-docs.css: !important רק בשדות הטקסט של גיליון המייל; בלי רקע לבן קשיח / var(--gm-surface)', () => {
+  const bad = [];
+  for (const r of ocDocsRules) for (const d of decls(r.body)) {
+    if (isImportant(d) && !OC_DOCS_IMPORTANT_OK.test(r.sel)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    if (/^background(-color)?$/.test(d.prop) && (WHITE_RE.test(d.value.trim()) || /var\(--gm-surface\)/.test(d.value))) bad.push(`${r.sel} { ${d.prop}: ${d.value} } (לבן)`);
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-docs.css: אין דריסת @media לפני הכלל הלא-מותנה, אין "-*/" בהערות, ואין מחלקות/סלקטורים של תפריט ההדפסה (הם מהפלטה)', () => {
+  assert.deepEqual(mediaBeforeBase(ocDocsRules, 'oc-docs.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_DOCS_CSS), 'הערה עם "-*/"');
+  // החריג היחיד: עוגן התפריט במסך צר (בעיצוב הוא נחתך מחוץ למסך) - בלי שינוי בצבעים/רקעים/צורה של התפריט
+  const ownMenuRules = ocDocsRules.filter((r) => /(^|[\s,])\.(gm-ds\.gm-oc )?(menu|xlbtn)|\.xl[gdp]/.test(r.sel) && r.sel !== '.gm-ds.gm-oc .tools .menu');
+  assert.deepEqual(ownMenuRules.map((r) => r.sel), [], 'התפריט וכפתורי ה-xlbtn הם רכיבי פלטה - בלי כלל משלהם');
+  assert.deepEqual(ocDocsRules.filter((r) => r.sel === '.gm-ds.gm-oc .tools .menu').flatMap((r) => decls(r.body).map((d) => d.prop)).sort(), ['inset-inline-end', 'inset-inline-start'], 'עוגן התפריט בלבד');
+});
+
+/* ---------- 16. כרטיס ההזמנה החדש - הרייל וחלונות השמירה (app/components/order-card/css/oc-rail.css, W5) ---------- */
+// נטען בתוך שורש .gm-ds.gm-oc (בלי .gm-home). רק תוספות למה שאין בפלטה: היקף, בלי לבן קשיח / !important / גופן, צבעים רק מאסימוני הפלטה,
+// אין @media לפני הכלל הרגיל, ואין "-*/" בהערה. הבדיקה החזותית מול העיצוב: scripts/order-card-bg-audit (שלבי R01-R08).
+const OC_RAIL_CSS = read('../app/components/order-card/css/oc-rail.css');
+const ocRailRules = parseCss(OC_RAIL_CSS);
+t('oc-rail.css: כל כלל בהיקף .gm-ds.gm-oc', () => {
+  assert.ok(ocRailRules.length >= 4, 'הקובץ לא ריק');
+  const bad = [];
+  for (const r of ocRailRules) for (const s2 of splitSel(r.sel)) if (!/^\.gm-ds\.gm-oc(?=[\s.:#[>]|$)/.test(s2)) bad.push(s2);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('oc-rail.css: אין רקע לבן קשיח, אין !important, אין font-family, צבעים רק מאסימוני הפלטה (בלי hex/rgb)', () => {
+  const bad = [];
+  for (const r of ocRailRules) {
+    for (const d of decls(r.body)) {
+      if (isImportant(d)) bad.push(`!important: ${r.sel} { ${d.prop} }`);
+      if (d.prop === 'font-family') bad.push(`font-family: ${r.sel}`);
+      if (/^(background(-color)?|color|border(-color)?)$/.test(d.prop)) {
+        const v = d.value.trim();
+        if (WHITE_RE.test(v) || /#[0-9a-f]{3,8}|rgba?\(/i.test(v)) bad.push(`${r.sel} { ${d.prop}: ${v} }`);
+      }
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('oc-rail.css: אין דריסת @media לפני הכלל הלא-מותנה; אין "-*/" בתוך הערה', () => {
+  assert.deepEqual(mediaBeforeBase(ocRailRules, 'oc-rail.css'), []);
+  assert.ok(!/[a-z0-9]-\*\//i.test(OC_RAIL_CSS), '"-*/" שובר next build');
+});
+t('oc-rail.css: נטרולי הדליפה של הרייל והבאנר - ריפוד לחצני ביטול/החזר (globals.css מאפס padding), רווחי באנר הטיוטה, מרווח D6', () => {
+  const has = (selRe, prop, valRe) => ocRailRules.some((r) => selRe.test(r.sel) && decls(r.body).some((d) => d.prop === prop && valRe.test(d.value)));
+  assert.ok(has(/\.rail :is\(\.cl-u,\.redo\)/, 'padding', /^1px 6px$/), 'padding של .cl-u/.redo');
+  assert.ok(has(/\.oc-banner \.nb-bi$/, 'gap', /^2px$/), 'gap של שורות הבאנר');
+  assert.ok(has(/\.oc-banner \.nb-bi \.nb-go$/, 'margin-top', /^12px$/), 'מרווח לחצן הבאנר');
+  assert.ok(has(/\.success \.oc-success-gap$/, 'height', /^24px$/), 'D6: מרווח 24px');
+  assert.ok(!ocRailRules.some((r) => /oc-r5|shield/.test(r.sel)), 'AMB-05: אין כלל לשורת מגן חוב');
+});
+
+/* ---------- 15. אשף "הזמנה חדשה" (app/components/new-order/css/new-order.css): אותו משטר היקף כמו הפרופיל ---------- */
+// שורש .gm-ds.gm-no.home-bg.dlg-dark (בלי gm-home). ה-page glue של העיצוב (B2) מגדיר רקעים עם !important רק כדי לשטח את בלוקי
+// קוביית השלב (none/transparent) ואת כרטיס ה"פנינה" של העיצוב (body .app :is(.card,...)). נטרולי הדליפה: scripts/new-order-bg-audit.
+const NO_CSS = read('../app/components/new-order/css/new-order.css');
+const noRules = parseCss(NO_CSS);
+const NO_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-no)']);
+const PEARL_RE = /^linear-gradient\(135deg,rgba\(255,252,247,\.62\)/;
+t('new-order.css: כל כלל בהיקף .gm-ds.gm-no (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of noRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-no(\s|$)/.test(s) && !NO_OUT_OF_SCOPE_OK.has(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('new-order.css: אין רקע לבן קשיח לבלוקים; !important על רקע רק לשיטוח (none/transparent), לכרטיס הפנינה, לאריח האייקון (.ico) של העיצוב או לכותרת הטבלה בחלון התפוסה (.rtbl>thead>tr>th, globals.css כופה רקע על כל th)', () => {
+  const bad = [];
+  for (const r of noRules) {
+    for (const d of setsProp(r, /^background(-color|-image)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+      if (isImportant(d) && !/^(none|transparent)$/.test(v) && !PEARL_RE.test(v.replace(/\s+/g, '')) && !/ \.ico\[class\]$/.test(r.sel) && !/\.rtbl>thead>tr>th$/.test(r.sel)) bad.push('!important: ' + r.sel + ' ' + v.slice(0, 40));
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+t('new-order.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(noRules, 'new-order.css'), []);
+});
+const hasNo = (selRe, propRe, { important = false, valueRe } = {}) => noRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('new-order.css: נטרול דליפות - גופן, field margin, צבע/גבול שדה (.inp.inp), ריפוד לחצן חזרה/ibtn, גופן שאלת השלב', () => {
+  assert.ok(hasNo(/\.gm-ds\.gm-no :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'חסר font-family:inherit!important ללחצנים/שדות');
+  assert.ok(hasNo(/\.gm-ds\.gm-no :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }), 'חסר font-family:inherit!important לכותרות');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.hero-t \.hero-q$/, /^font-family$/, { important: true, valueRe: /FB Melatef/ }), 'שאלת השלב חייבת לגבור על כלל הכותרות');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.field$/, /^margin-bottom$/, { valueRe: /^0/ }), 'חסר איפוס margin-bottom של .field');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.no-app \.inp\.inp$/, /^color$/), 'חסר צבע טקסט לשדה (design-overrides.css צובע בחום)');
+  assert.ok(hasNo(/^\.gm-ds\.gm-no \.back$/, /^padding$/) && hasNo(/^\.gm-ds\.gm-no \.ibtn$/, /^padding$/), 'חסר ריפוד ברירת מחדל ללחצן חזרה / ibtn');
+  assert.ok(/input:not\(\[type="checkbox"\]\)/.test(OVERRIDES), 'design-overrides.css: כלל ה-input הכללי כבר לא קיים - אפשר להסיר את .inp.inp');
+});
+t('אשף הזמנה חדשה: שורש gm-ds gm-no home-bg dlg-dark, בלי gm-home, בלי alert/confirm של הדפדפן, בלי title=', () => {
+  const dir = '../app/components/new-order/';
+  const files = ['NewOrderA5.js', 'NewOrderSwitch.js', 'NoUi.js', 'NoDialogs.js', 'NoSuggest.js', 'NoHebrewCalendar.js', 'useNewOrderController.js', 'StepCustomer.js', 'StepDates.js', 'StepDelivery.js', 'StepItems.js', 'StepSummary.js', 'StepPayment.js', 'newOrderLogic.js'];
+  const all = files.map((f) => read(dir + f)).join(String.fromCharCode(10));
+  assert.ok(/className="gm-ds gm-no home-bg dlg-dark"/.test(read(dir + 'NewOrderA5.js')), 'שורש הדף');
+  assert.ok(!/gm-home/.test(all.replace(/\/\/.*$/gm, '')), 'gm-home בקוד האשף');
+  assert.ok(!/window\.(alert|confirm|customConfirm|customAuthPrompt|prompt)|alert\(/.test(all.replace(/\/\/.*$/gm, '')), 'חלון דפדפן בקוד האשף');
+  assert.ok(!/<[a-z][a-z0-9]*[^>]*\stitle=/.test(all), 'title= על אלמנט DOM (טולטיפ דפדפן) במקום data-tip');
+  const font = read(dir + 'css/new-order-font.css').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+  assert.ok(/^@font-face\{[^}]*\}$/.test(font), 'קובץ הגופן מכיל רק @font-face');
 });
 
 /* ---------- 10. "סיכום נוכחות" (app/components/attendance/attendance.css, 4.10.2026) ---------- */
@@ -890,6 +1186,41 @@ t('הגדרות: השורש gm-ds gm-st home-bg dlg-dark, בלי gm-home; אין
   }
   // .tp-c (תאי בוחר השעה) לבנים בעיצוב
   assert.deepEqual(bad.filter((s) => !/\.tp-c/.test(s)), []);
+});
+
+/* ---------- כספים והתראות בחיפוש המתקדם (5.10.2026) ---------- */
+const CLS_PRE = String.fromCharCode(92) + '.'; // regex: נקודה ליטרלית
+const CLS_POST = String.fromCharCode(92) + 'b'; // regex: גבול מילה
+const selRules = parseCss(HOME_CSS).filter((r) => /select\.inp/.test(r.sel));
+t('כספים: בורר "סטטוס הזמנה" (select.inp) — כלל אחד בהיקף .gm-ds.gm-home, בלי !important, בלי hex / תמונה, רק משתני --gm-*', () => {
+  assert.ok(selRules.length >= 1, 'חסר כלל select.inp ב-home.css');
+  for (const r of selRules) {
+    for (const sel of splitSel(r.sel)) assert.ok(/^\.gm-ds\.gm-home(\.gm-home)? /.test(sel), 'מחוץ להיקף: ' + sel);
+    assert.deepEqual(decls(r.body).filter((d) => isImportant(d)).map((d) => d.prop), ['background-image', 'background-position', 'background-size', 'background-repeat'], '!important רק על מאפייני החץ המצויר (הפלטה מאפסת אותם דרך #dlg בסלקטור)');
+    assert.ok(!/#[0-9a-f]{3,8}\b|url\(/i.test(r.body), 'hex / תמונה ב-' + r.sel);
+    for (const m of r.body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה שאינו gm-: --' + m[1]);
+    assert.ok(/appearance:\s*none/.test(r.body), 'בלי appearance:none חץ הדפדפן מצטרף לחץ המצויר');
+  }
+  assert.deepEqual(mediaBeforeBase(selRules, 'home.css (select)'), []);
+});
+t('כספים והתראות: הקומפוננטות משתמשות רק במחלקות שכבר בפלטה (advs / advgrid / advflags / advfl / field / inpw / inp / chip) ובאייקוני sprite', () => {
+  const ADV = read('../app/components/home/HomeAdvanced.js');
+  const RES = read('../app/components/home/HomeAdvResults.js');
+  const CFG = read('../app/components/home/homeAdvConfig.js');
+  for (const c of ['advs', 'advgrid', 'advflags', 'advfl', 'className="field"', 'className="inpw"', 'className="inp"']) assert.ok(ADV.includes(c), c);
+  // כל מחלקה שהקומפוננטה החדשה מזכירה קיימת בפלטה או ב-home.css
+  for (const c of ['advs', 'advgrid', 'advflags', 'advfl', 'inpw', 'chip', 'rlink', 'lrow']) {
+    assert.ok(new RegExp(CLS_PRE + c + CLS_POST).test(PALETTE) || new RegExp(CLS_PRE + c + CLS_POST).test(HOME_CSS), 'אין כלל ל-.' + c);
+  }
+  // צ'יפים בתוצאות הכספים וההתראות הם מחלקות פלטה קיימות
+  for (const c of ['amtd', 'amtc', 'red', 'amber', 'gold', 'rose', 'blue']) assert.ok(new RegExp(CLS_PRE + 'chip' + CLS_PRE + c + CLS_POST).test(PALETTE), 'אין .chip.' + c + ' בפלטה');
+  // כל אייקון שהתחומים החדשים מבקשים קיים ב-sprite
+  const SPRITE = read('../app/components/menu/spriteSymbols.js');
+  for (const i of ['bell', 'wallet', 'card', 'flag', 'bank', 'alert', 'undo', 'bag', 'user', 'pencil', 'list', 'file', 'mail']) assert.ok(SPRITE.includes('["' + i + '"'), 'אין אייקון ' + i);
+  assert.ok(!/<img|\.svg['"]/.test(ADV + RES), 'בלי תמונות / קבצי svg חיצוניים');
+  assert.ok(!/window\.(alert|confirm|prompt)|\balert\(|\bconfirm\(/.test(ADV + RES + CFG), 'בלי alert/confirm של הדפדפן');
+  assert.ok(!/<(button|a|span|div|li|label|input|select|svg|bdi)[^>]*\stitle=/.test(ADV + RES), 'טולטיפ דרך data-tip, לא title= על אלמנט');
+  assert.ok(!/טוגל/.test(ADV + RES + CFG + read('../lib/advAlerts.js') + read('../app/api/a5/adv-alerts/route.js')), 'בלי הלועזית "טוגל"');
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

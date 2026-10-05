@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { checkAuth } from '../../../../lib/auth';
+import { checkAuth, getSessionEmployee } from '../../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
+import { resolveExtraDay } from '@/lib/extraDayGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,7 @@ async function fetchOrderItemsWithDress(orderId) {
   });
 }
 import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
+import { isDeliveryJoinEnabled, saveDeliveryJoin, releaseOrderJoins } from '../../../../lib/deliveryJoin';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
@@ -66,6 +68,11 @@ import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus }
 import { verifyManagerPin } from '../../../../lib/managerAuth';
 import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
 import { canApproveDebt } from '@/lib/permissions';
+import { getApprovalMode, resolveDebtApprover, enforceOrderPutApprovals, releaseApprovalClaims, commitApprovalClaims } from '@/lib/approvalGate';
+import {
+  STOCK_SHORTAGE_CODE, CONFLICT_CODE, MANUAL_CHARGE_PERMISSION,
+  A5_CARD_VARIANT, diffOrderUpdate
+} from '@/lib/history/orderEvents';
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
 
@@ -266,7 +273,21 @@ function parseSafeDate(val) {
   return null;
 }
 
-export async function PUT(request, { params }) {
+// Approval tokens claimed by this request (lib/approvalGate.js) are handed back when the save does not succeed, so the worker is not
+// asked for the manager's code a second time after a conflict / validation error.
+export async function PUT(request, ctx) {
+  const claims = [];
+  let succeeded = false;
+  try {
+    const res = await putOrder(request, ctx, claims);
+    succeeded = !!res && res.status < 400;
+    return res;
+  } finally {
+    if (!succeeded) releaseApprovalClaims(claims); // commitApprovalClaims() already emptied the list when the transaction committed
+  }
+}
+
+async function putOrder(request, { params }, claims) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
@@ -294,6 +315,14 @@ export async function PUT(request, { params }) {
     }
 
     const data = await request.json();
+
+    // S2: "יום השכרה נוסף" משתנה רק כש-enable_rental_extension דלוק (ערך זהה לשמור = מותר; ההזמנות הישנות שולחות את הערך כמו שהוא)
+    if (data.extraDay !== undefined) {
+      const gate = resolveExtraDay({ enabledSetting: (await getCachedSetting('enable_rental_extension'))?.value, requested: data.extraDay, current: existingOrder.extraDay });
+      if (!gate.ok) {
+        return NextResponse.json({ error: 'יום השכרה נוסף אינו מופעל בהגדרות הגמ"ח', message: 'יום השכרה נוסף אינו מופעל בהגדרות הגמ"ח', code: 'EXTRA_DAY_DISABLED' }, { status: 400 });
+      }
+    }
 
     // אכיפה שרתית של שדות חובה במשלוח (עיר/כתובת) - אותה לוגיקה בדיוק כמו POST /api/orders
     // (lib/deliveryValidation.js), אבל רק כשמשלוח באמת משתנה בבקשה הזו - לא על כל שמירה
@@ -323,8 +352,18 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // The approver named in debtApprovedBy must really hold feature:debt_approval (lib/permissions.js).
-    if (data.debtApprovedBy && !(await canApproveDebt(data.debtApprovedBy))) {
+    // Debt approval. The approver is read FROM the signed approvalToken that POST /api/auth/verify-pin issued after the typed
+    // code matched (bound to this order, the logged-in employee and the debt_approval kind; single use) - not from a CLAIMED
+    // id in the body. approval_tokens_required OFF (default) still accepts the legacy `debtApprovedBy` id (deprecation log);
+    // ON refuses it. Either way the approver must really hold feature:debt_approval right now (lib/permissions.js).
+    // docs/server-approval-hardening.md
+    const approvalMode = await getApprovalMode();
+    const debtApproval = await resolveDebtApprover({ orderId: parsedOrderId, token: data.debtApprovalToken, bareId: data.debtApprovedBy, claims, mode: approvalMode });
+    if (!debtApproval.ok) {
+      return NextResponse.json({ error: debtApproval.error, code: debtApproval.code, approvalKind: debtApproval.kind }, { status: debtApproval.status });
+    }
+    const debtApprover = debtApproval.approverId;
+    if (debtApprover && !(await canApproveDebt(debtApprover))) {
       return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
     }
 
@@ -334,7 +373,8 @@ export async function PUT(request, { params }) {
     // בלי אימות זהות. בלי החריג הזה, כל לחיצה על "חתם על תקנון" (הבאדג' בכרטיס ההזמנה,
     // ר' OrderPrintMenu.js / ModernPaymentsManager.js) נכשלת תמיד כש-require_id_for_edit_cancel
     // מופעל, כי אף אחד מהמסכים ששולחים את ה-PUT הקטן הזה לא אוסף ת״ז.
-    const SIGNATURE_ONLY_KEYS = new Set(['hasSignedRegulations', 'updatedAt', 'overwriteConflict']);
+    // cardVariant: the new order card (A5) marks its bodies with it - not a content change.
+    const SIGNATURE_ONLY_KEYS = new Set(['hasSignedRegulations', 'updatedAt', 'overwriteConflict', 'cardVariant']);
     const isSignatureOnlyUpdate = data.hasSignedRegulations !== undefined
       && Object.keys(data).every(k => SIGNATURE_ONLY_KEYS.has(k));
 
@@ -429,7 +469,9 @@ export async function PUT(request, { params }) {
 
       // If server is strictly newer by more than 1 second
       if (serverUpdate > clientUpdate + 1000) {
+        // code: lets the new order card tell a real conflict (R12) apart from a stock shortage (R48) - both 409
         return NextResponse.json({
+          code: CONFLICT_CODE,
           error: 'Data Collision',
           message: 'הזמנה זו עודכנה בשרת לאחר הסנכרון האחרון שלך. כדי למנוע דריסת נתונים, אנא רענן את העמוד ושלב את השינויים שלך.',
           serverUpdatedAt: existingOrder.updatedAt,
@@ -539,7 +581,9 @@ export async function PUT(request, { params }) {
           }
           
           if (!validationResult.valid) {
+            // Same 409 as always (the legacy card is unchanged); code tells it apart from the data-collision 409
             return NextResponse.json({
+              code: STOCK_SHORTAGE_CODE,
               error: 'אחד או יותר מהפריטים שניסית לעדכן אינם זמינים במלאי בתאריכים החדשים.',
               validationErrors: validationResult.errors
             }, { status: 409 });
@@ -573,7 +617,7 @@ export async function PUT(request, { params }) {
       // המצב הקודם של ההתחייבויות — כדי לזהות ביטול/שחזור ולרשום אותו ביומן בשם מפורש
       prisma.paymentObligation.findMany({
         where: { orderId: parsedOrderId },
-        select: { id: true, isDeleted: true }
+        select: { id: true, isDeleted: true, isManual: true, amount: true, description: true }
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
@@ -600,6 +644,25 @@ export async function PUT(request, { params }) {
         }
       }
     }
+    // R35 / AMB-16 (new order card only): adding a manual charge, or editing / deleting / restoring a stored
+    // manual one (amount, description or isDeleted changes), needs
+    // feature:manual_charge_add - the logged-in employee holds it, or an approver typed their code
+    // (manualChargeApproverId/manualChargeApproverPin, re-verified here like managerPin/orderDateApproverPin).
+    // Bodies WITHOUT cardVariant:'a5' are the legacy card ("הוסף חיוב" / delivery-charge buttons, no approval
+    // step) and keep today's behavior until that card is retired.
+    // Hardening: with approval_permissions_enforced ON the same gate covers EVERY body (the cardVariant field was the only switch - a direct
+    // call simply left it out), stored non-manual lines can no longer be soft-deleted without it, and deleting / changing a stored
+    // payment needs feature:manual_payment_credit_add (or an approver token). All of it lives in lib/approvalGate.js.
+    const approvalsCheck = await enforceOrderPutApprovals({
+      data, orderId: parsedOrderId, storedObligations, storedPayments, mode: approvalMode, claims,
+      loadSessionEmployee: getSessionEmployee,
+      isA5Body: data.cardVariant === A5_CARD_VARIANT,
+      typedManualChargePinOk: () => verifyManagerPin(data.manualChargeApproverId, data.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION),
+    });
+    if (!approvalsCheck.ok) {
+      return NextResponse.json(approvalsCheck.body, { status: approvalsCheck.status });
+    }
+
     const storedPaymentById = new Map(storedPayments.map(p => [p.id, p]));
     const storedObligationById = new Map(storedObligations.map(o => [o.id, o]));
 
@@ -658,9 +721,12 @@ export async function PUT(request, { params }) {
       const parsedOrderDate = parseSafeDate(data.orderDate);
 
       // 1. Update general order details
-      const order = await tx.order.update({
-        where: { orderId: parsedOrderId },
-        data: {
+      // R49 (W2b): הצטרפות למשלוח קיים (`deliveryJoin`) לא עמודה ב-Order - היא נשמרת בטבלת DeliveryJoin אחרי הטרנזקציה הזו
+      // (ר' lib/deliveryJoin.js ו"הצטרפות למשלוח קיים" ליד applyDeliveryCharge למטה), ולכן לא עוברת כאן.
+      // UPDATE_ORDER with {field:{from,to}} against the row loaded before the transaction (AMB-19) instead of
+      // the extension's generic UPDATE (new values only, a row on every save). A save that changes no column
+      // writes no history row at all (auditAs with empty changes - see app/lib/prisma.js).
+      const orderUpdateData = {
           totalAmount: data.totalAmount !== undefined && data.totalAmount !== null ? (parseFloat(data.totalAmount) || 0) : undefined,
           orderDate: parsedOrderDate,
           eventDate: parsedEventDate,
@@ -685,8 +751,11 @@ export async function PUT(request, { params }) {
           ...(data.extraDay !== undefined ? { extraDay: (data.extraDay === 'before' || data.extraDay === 'after') ? data.extraDay : null } : {}),
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
-        }
-      });
+      };
+      const order = await tx.order.update(auditAs('UPDATE_ORDER', {
+        where: { orderId: parsedOrderId },
+        data: orderUpdateData
+      }, diffOrderUpdate(existingOrder, orderUpdateData)));
 
       // 2. Update order items (alterations, size, deletions) and create new items
       let addedItem = false;
@@ -882,7 +951,7 @@ export async function PUT(request, { params }) {
       }
 
       // 6. Record debt approval if provided
-      if (data.debtApprovedBy) {
+      if (debtApprover) {
         const currentTotalPaid = data.payments ? data.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
         const currentTotalRequired = data.totalAmount || 0;
         const currentDebt = currentTotalRequired - currentTotalPaid;
@@ -895,13 +964,14 @@ export async function PUT(request, { params }) {
             entityId: parsedOrderId.toString(),
             action: 'DEBT_APPROVED',
             changesJson: JSON.stringify({ approvedDebtAmount: currentDebt }),
-            employeeId: data.debtApprovedBy
+            employeeId: debtApprover
           }
         });
       }
 
       return order;
     }, { timeout: 30000, maxWait: 15000 });
+    commitApprovalClaims(claims); // the save is committed: the tokens stay spent even if the recalculation below fails
 
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);
@@ -911,6 +981,33 @@ export async function PUT(request, { params }) {
     // אחרי recalculateOrderObligations: ה-diff שם מוחק כל התחייבות לא-ידנית שאינה חלק
     // מ-computeOrderObligations (שלא מכיר משלוחים בכלל), כולל התחייבות משלוח שכבר קיימת -
     // כך שהקריאה כאן גם יוצרת אותה כשחסרה וגם משחזרת אותה בכל שמירה אחרי שנמחקה.
+    // הצטרפות למשלוח קיים (enable_delivery_join, R49 - W2b): נשמרת לפני חישוב החיוב כדי שיחושב במחיר ההצטרפות. כיבוי המשלוח
+    // בהזמנה מסיר גם את ההצטרפות שלה. הטבלה חסרה (DDL-1 טרם הורץ) = no-op בשקט (lib/deliveryJoin.js); כישלון לא מפיל את השמירה.
+    // כישלון בשמירת ההצטרפות לא מפיל את השמירה, אבל גם לא שקט (סקירה, סעיף 3): joinError (עברית) חוזר בתשובה והכרטיס מציג אותו -
+    // אחרת ה-PUT היה מחזיר 200 עם תצוגה מוזלת בכרטיס אך חיוב מלא בפועל.
+    // כיבוי המשלוח בשורש עם מצטרפים משחרר אותם (סעיף 4) - ומחשבים להם מחדש את חיוב המשלוח (חזרה למחיר מלא).
+    let joinError = null;
+    let releasedJoiners = [];
+    if (data.deliveryJoin !== undefined || data.isDelivery === false) {
+      try {
+        if (await isDeliveryJoinEnabled()) {
+          if (data.isDelivery === false) releasedJoiners = await releaseOrderJoins(parsedOrderId);
+          else if (data.deliveryJoin) {
+            const joinResult = await saveDeliveryJoin(parsedOrderId, data.deliveryJoin);
+            if (!joinResult.ok) {
+              joinError = joinResult.error || 'ההצטרפות למשלוח לא נשמרה';
+              console.error(`Order ${parsedOrderId}: delivery join not saved:`, joinResult.error);
+            }
+          }
+        }
+      } catch (joinFailure) {
+        joinError = 'ההצטרפות למשלוח לא נשמרה בגלל תקלה - ההזמנה נשמרה בלעדיה. יש לנסות שוב';
+        console.error(`Order ${parsedOrderId}: delivery join failed:`, joinFailure);
+      }
+    }
+    for (const releasedId of releasedJoiners) {
+      try { await applyDeliveryCharge(releasedId); } catch (e) { console.error(`Order ${releasedId}: delivery charge after join release failed:`, e); }
+    }
     await applyDeliveryCharge(parsedOrderId);
 
     // Fetch the fully updated order to return to the client.
@@ -1018,7 +1115,7 @@ export async function PUT(request, { params }) {
       return ob;
     });
     
-    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds };
+    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds, ...(joinError ? { joinError } : {}) };
 
     return NextResponse.json(finalOrder);
   } catch (error) {
@@ -1176,6 +1273,16 @@ export async function DELETE(request, { params }) {
         ]
       });
     });
+
+    // R49 (W2b, סקירה סעיף 4): הזמנה שבוטלה יוצאת מהמשלוח - שורת ההצטרפות שלה נמחקת, ואם היא שורש עם מצטרפים הם משוחררים וחיוב
+    // המשלוח שלהם מחושב מחדש (מחיר מלא). כשל כאן לא מפיל את הביטול. טבלה חסרה (DDL-1) = no-op.
+    try {
+      for (const releasedId of await releaseOrderJoins(parsedOrderId)) {
+        try { await applyDeliveryCharge(releasedId); } catch (e) { console.error(`Order ${releasedId}: delivery charge after join release failed:`, e); }
+      }
+    } catch (joinFailure) {
+      console.error(`Order ${parsedOrderId}: releasing delivery join on cancel failed:`, joinFailure);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

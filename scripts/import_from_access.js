@@ -20,6 +20,15 @@
  *   node scripts/import_from_access.js --write           # Actually writes to PROD.
  *   node scripts/import_from_access.js --write --limit=500   # cap rows/table (testing).
  *   node scripts/import_from_access.js --db-path="C:\...\file.accdb"  # override source path.
+ *   node scripts/import_from_access.js --skip-pricelist    # skip the PriceList (מחירים) upsert (same: SKIP_PRICELIST=1).
+ *
+ * PRICELIST SKIP (report 87ba8e3d, Neve Yaakov = org2): processPriceList() overwrites every Access-sourced PriceList
+ * field on each run, which wiped prices the org2 owner had edited in the app. So the PriceList step is SKIPPED when:
+ *   - --skip-pricelist is passed, or env SKIP_PRICELIST=1, or
+ *   - the target is org2: env IMPORT_ORG=2, or the connection host equals the host of DATABASE_URL_ORG2 /
+ *     PROD_DATABASE_URL_ORG2 (process env or this repo's .env).
+ * Org1 behavior is unchanged (PriceList is still imported by default). Force it back on for org2 with
+ * --include-pricelist or IMPORT_PRICELIST=1 (an explicit skip flag still wins over the force flag).
  *
  * Reads PROD_DATABASE_URL from .env at the repo root (same pattern as
  * scratch/apply_fix.mjs) and connects a raw PrismaClient directly to it -
@@ -225,6 +234,30 @@ if (!prodUrlMatch) {
   process.exit(1);
 }
 const prisma = new PrismaClient({ datasources: { db: { url: prodUrlMatch[1] } } });
+
+// ---------------------------------------------------------------------------
+// PriceList skip flag (see "PRICELIST SKIP" in the header). The importer has no org concept of its own (it reads
+// PROD_DATABASE_URL from the root .env), so org2 is recognised by IMPORT_ORG=2 or by the target host matching an
+// org2 connection string (DATABASE_URL_ORG2 / PROD_DATABASE_URL_ORG2). Only the host is compared/printed.
+// ---------------------------------------------------------------------------
+function dbHostOf(url) { return (String(url || '').match(/@([^/?]+)/) || [])[1] || ''; }
+function isOrg2Target(targetUrl) {
+  if (process.env.IMPORT_ORG === '2') return true;
+  if (process.env.IMPORT_ORG === '1') return false;
+  const targetHost = dbHostOf(targetUrl);
+  if (!targetHost) return false;
+  const org2Urls = [process.env.DATABASE_URL_ORG2, process.env.PROD_DATABASE_URL_ORG2];
+  const fromEnvFile = envText.match(/^(?:PROD_)?DATABASE_URL_ORG2="?([^"\r\n]+)"?$/mg) || [];
+  for (const line of fromEnvFile) org2Urls.push(line.replace(/^[^=]+=/, '').replace(/^"|"$/g, ''));
+  return org2Urls.some((u) => dbHostOf(u) === targetHost);
+}
+const SKIP_PRICELIST_FLAG = args.includes('--skip-pricelist') || process.env.SKIP_PRICELIST === '1';
+const FORCE_PRICELIST = args.includes('--include-pricelist') || process.env.IMPORT_PRICELIST === '1';
+const TARGET_IS_ORG2 = isOrg2Target(prodUrlMatch[1]);
+const SKIP_PRICELIST = SKIP_PRICELIST_FLAG || (TARGET_IS_ORG2 && !FORCE_PRICELIST);
+const SKIP_PRICELIST_REASON = SKIP_PRICELIST_FLAG
+  ? '--skip-pricelist / SKIP_PRICELIST=1'
+  : 'target is org2 (Neve Yaakov) - app-edited prices must not be overwritten; pass --include-pricelist to force';
 
 // ---------------------------------------------------------------------------
 // Access connection (ADODB/OLEDB COM, x64 cscript - the 32-bit provider is
@@ -1276,7 +1309,13 @@ async function main() {
   summary.subRecords = await processOrderSubRecords(summary.order.needsSubRecordIds);
   summary.shift = await processShifts();
   summary.systemSetting = await processSystemSettings();
-  summary.priceList = await processPriceList();
+  if (SKIP_PRICELIST) {
+    console.log('\n--- PriceList (מחירים) ---');
+    console.log(`  SKIPPED: ${SKIP_PRICELIST_REASON}`);
+    summary.priceList = { accessCount: 0, toCreate: 0, toUpdate: 0, skipped: true };
+  } else {
+    summary.priceList = await processPriceList();
+  }
 
   console.log('\n' + '='.repeat(78));
   console.log(`SUMMARY  (mode: ${WRITE ? 'WRITE' : 'DRY RUN'})`);
@@ -1285,6 +1324,7 @@ async function main() {
     const s = summary[key];
     console.log(`${key.padEnd(13)} access=${s.accessCount}  create=${s.toCreate}  update=${s.toUpdate}` +
       (s.written !== undefined ? `  written=${s.written}` : '') +
+      (s.skipped ? '  SKIPPED' : '') +
       (s.failed && s.failed.length ? `  FAILED=${s.failed.length}` : ''));
   }
   const sr = summary.subRecords;

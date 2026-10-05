@@ -34,6 +34,7 @@ function matchField(value, cond) {
     if (op === 'in') { if (!expected.some((x) => matchField(value, x))) return false; continue; }
     if (op === 'notIn') { if (expected.some((x) => matchField(value, x))) return false; continue; }
     if (value === null || value === undefined) return false;
+    if (op === 'contains' && !String(value).includes(String(expected))) return false;
     if (op === 'gte' && cmp(value, expected) < 0) return false;
     if (op === 'lte' && cmp(value, expected) > 0) return false;
     if (op === 'gt' && cmp(value, expected) <= 0) return false;

@@ -31,12 +31,12 @@ async function t(name, fn) {
 }
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
 const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
-const BOTH = ['shell', 'home', ...NEW_SCREENS];
+const BOTH = ['shell', 'home', 'order_card', 'customer_card', ...NEW_SCREENS]; // סדר הרשומה: order_card, customer_card אחרי home
 
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
   assert.equal(new Set(UI_SCREEN_IDS).size, UI_SCREEN_IDS.length);
-  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', ...NEW_SCREENS]);
+  assert.deepEqual(UI_SCREEN_IDS, ['shell', 'home', 'order_card', 'customer_card', 'employee_card', 'new_order', ...NEW_SCREENS]);
   for (const e of UI_SCREEN_REGISTRY) {
     assert.match(e.id, /^[a-z][a-z_]{1,30}$/, e.id);
     assert.ok(typeof e.label === 'string' && /[֐-׿]/.test(e.label), `${e.id}: label בעברית`);
@@ -49,9 +49,9 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
   assert.deepEqual(UI_SCREENS, UI_SCREEN_IDS, 'lib/uiVariant.js נגזר מהרשומה');
   assert.equal(UI_VARIANT_SETTING_KEY_LIST.length, UI_SCREEN_IDS.length);
 });
-await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board; order_card / customer_card עוד לא', () => {
+await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / order_card / customer_card; employee_card / new_order עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['order_card', 'customer_card', 'employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['employee_card', 'new_order']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
 });
@@ -107,7 +107,8 @@ await t('ברירת מחדל לפי תפקיד: מתכנת (2) -> חדש בכל 
     assert.equal(resolveUiVariant(id, { roleId: 2 }), expectProg, id);
     for (const r of [0, 1, 3, 5, null, undefined, '2', NaN]) assert.equal(resolveUiVariant(id, { roleId: r }), 'legacy', `${id} role ${String(r)}`);
   }
-  assert.equal(resolveUiVariant('order_card', { roleId: 2 }), 'legacy', 'אין עדיין כרטיס הזמנה חדש');
+  assert.equal(resolveUiVariant('order_card', { roleId: 2 }), 'a5', 'כרטיס ההזמנה החדש קיים (newExists): המתכנת מקבל אותו כברירת מחדל');
+  for (const r of [0, 1, 3, null, undefined]) assert.equal(resolveUiVariant('order_card', { roleId: r }), 'legacy', `order_card role ${String(r)}: ברירת מחדל ישן לכולם חוץ מהמתכנת`);
   assert.deepEqual(resolveUiVariants({}), Object.fromEntries(UI_SCREEN_IDS.map((s) => [s, 'legacy'])));
 });
 await t('הגדרת ארגון גוברת על ברירת המחדל לפי תפקיד (בשני הכיוונים)', () => {
@@ -160,7 +161,7 @@ const fakePrisma = () => { const calls = []; return { calls, employee: { update:
 await t('SELF_SWITCH_SCREENS מהרשומה; canSelfSwitchScreen רק להנהלה ראשית / מתכנת', () => {
   assert.deepEqual([...SELF_SWITCH_SCREENS], BOTH);
   for (const s of BOTH) { assert.ok(canSelfSwitchScreen(0, s)); assert.ok(canSelfSwitchScreen(2, s)); assert.ok(!canSelfSwitchScreen(1, s)); assert.ok(!canSelfSwitchScreen(null, s)); }
-  for (const s of ['order_card', 'customer_card', 'login', 'schedule', '__proto__']) assert.ok(!canSelfSwitchScreen(2, s), s);
+  for (const s of ['employee_card', 'login', 'schedule', '__proto__']) assert.ok(!canSelfSwitchScreen(2, s), s);
   assert.ok(!isManagementRole('0'));
   assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })).screens, BOTH);
 });
@@ -189,7 +190,7 @@ await t('POST: מנהל סניף / עובד -> 403 בכל ערך; מסך לא מ
     const r = await applyUiVariantRequest({ screen, body: { value }, employee: emp({ roleId }), prisma: fp });
     assert.equal(r.status, 403, `${screen}/${roleId}/${value}`); assert.equal(fp.calls.length, 0);
   }
-  for (const screen of ['order_card', 'customer_card', 'login', 'schedule', '', '__proto__', 'PROFILE']) {
+  for (const screen of ['employee_card', 'login', 'schedule', '', '__proto__', 'PROFILE']) {
     const fp = fakePrisma();
     const r = await applyUiVariantRequest({ screen, body: { value: 'a5' }, employee: emp({ roleId: 2 }), prisma: fp });
     assert.equal(r.status, 400, screen); assert.equal(fp.calls.length, 0);
@@ -215,7 +216,8 @@ await t('shouldShowVariantToggle: רק לרשאי, רק במסך עם שתי ג�
   assert.ok(!ok('profile', '/profile', false)); assert.ok(!ok('profile', '/profile', 'true'));
   assert.ok(!ok('attendance', '/employees/abc/attendance'), 'אין גרסה ישנה לעריכת עובד');
   assert.ok(!ok('admin_hub', '/admin/settings')); assert.ok(!ok('profile', '/'));
-  assert.ok(!ok('order_card', '/orders/5')); assert.ok(!ok('customer_card', '/customers/5'));
+  assert.ok(ok('order_card', '/orders/5')); assert.ok(!ok('order_card', '/orders/new'), 'מסך ההזמנה החדשה הוא דף אחר'); assert.ok(!ok('order_card', '/orders'));
+  assert.ok(ok('customer_card', '/customers/5')); assert.ok(!ok('customer_card', '/orders/5'));
   for (const p of ['/customer-interface', '/punch-clock', '/print/order/5', '/dashboard/dresses/5/print']) { assert.ok(!ok('shell', p), p); assert.ok(!ok('error_report', p), p); }
 });
 const TOGGLE = read('app/components/variant/PageVariantToggle.js');
@@ -354,6 +356,7 @@ const RESTORED = [
   ['f3b1f771^1', 'app/my-hours/page.js', 'app/my-hours/LegacyMyHoursPage.js'],
   ['c944cb95', 'app/components/ErrorReportButton.js', 'app/components/LegacyErrorReportButton.js'],
   ['c944cb95', 'app/board/page.js', 'app/board/LegacyBoardPage.js'], // הלוח החודשי הישן (feature/board-new-design-2026-10-04)
+  ['ea579b00', 'app/orders/new/page.js', 'app/orders/new/LegacyNewOrderPage.js'], // אשף "הזמנה חדשה" הישן כפי ש-main מכיל אותו (כולל תיקוני ה-hotfix של lib/newOrderPayments)
 ];
 const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' }).trim();
 let gitOk = true;
@@ -374,10 +377,18 @@ export default function AdminHubPage({ showSite = false }) {
     ['id="profile-fullName" name="fullName" value={profile.fullName || \'\'} onChange={handleChange} autoComplete="new-password" />', 'id="profile-fullName" value={`${profile.firstName || \'\'} ${profile.lastName || \'\'}`.trim()} disabled readOnly />'],
   ],
 };
+// קבצים ישנים שנערכו בכוונה אחרי השחזור (דיווחי נווה יעקב 5.10.2026 - הגמח עדיין על העיצוב הישן, ותיקונים חייבים לשבת גם בעותק הזה):
+//  - LegacyNewOrderPage.js: מתג הסתרת "הערה לתשלום" (hide_order_payment_note), מתג allow_abroad_long_stay_orders (הסתרת לשוניות חו"ל/תפוסה ארוכה),
+//    כפתור/חלונית "הוסף משלוח" בשלבים 3-5 עם שורת חיוב המשלוח, "טוען מידות…", בלי גלילה פנימית בסיכום, ושליחת customerCity ל-/api/orders/calculate.
+//    במקום השוואה ל-blob בהיסטוריה (שאי אפשר לכוון אליו אחרי העריכה) נעול כאן ה-hash של הקובץ עצמו: כל עריכה נוספת בו מחייבת עדכון מודע של השורה.
+const PINNED_BLOBS = {
+  'app/orders/new/LegacyNewOrderPage.js': '60e2b3d957f8f060da1daad47f83c4f728c7f492',
+};
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
   if (!gitOk) { console.log('         (אין היסטוריית git מלאה - דילוג)'); return; }
   for (const [rev, from, to] of RESTORED) {
+    if (PINNED_BLOBS[to]) { assert.equal(git('hash-object', to), PINNED_BLOBS[to], `${to}: הקובץ השתנה מאז הנעילה - עדכנו את PINNED_BLOBS אחרי בדיקה`); continue; }
     const edits = RESTORED_EXCEPTIONS[to];
     if (!edits) { assert.equal(git('hash-object', to), git('rev-parse', `${rev}:${from}`), to); continue; }
     let blob = norm(execFileSync('git', ['show', `${rev}:${from}`], { cwd: ROOT, encoding: 'utf8' }));

@@ -1,0 +1,403 @@
+const handleExit = async (destinationHref) => {
+    // מסך יעד כשלא צוין destinationHref מפורש (כפתור "חזור" הרגיל) - מותנה ב-
+    // order_edit_redirect_screen, ברירת מחדל "orders_list" = ההתנהגות הקודמת.
+    const fallbackExitHref = resolveOrderRedirectHref(orderEditRedirectScreen, {
+      orderId: order.orderId,
+      customerId: order.customerId,
+    });
+    // צפייה בלבד — אין שום שינוי לשמור, ולכן יוצאים מיד בלי PUT לשרת (שמריץ חישוב
+    // תמחור מלא, כותב ל-AuditLog ומקפיץ updatedAt על כל יציאה). בקרת החוב ביציאה
+    // רלוונטית רק כשנוצר/השתנה חוב בכרטיס הזה, וזה תמיד עובר דרך שמירה (handleSave
+    // כבר דורש שם אישור מנהל כשהחוב השתנה מאז הפתיחה) או דרך מסלול השמירה שלמטה.
+    if (!hasUnsavedChanges && !pendingDebtBlockRef.current) {
+      if (destinationHref) {
+        router.push(destinationHref);
+      } else {
+        // כפתור "חזור" מוצהר כ"חזרה לרשימת ההזמנות" (ר' title ב-ModernOrderCard) - יעד
+        // קבוע, לא היסטוריית דפדפן. router.back() היה שקט לגמרי (בלי שום ניווט) כשהכרטיס
+        // נפתח בלי היסטוריית ניווט קודמת בטאב (קישור ישיר/רענון) - שני דיווחי משתמש
+        // "כפתור חזור לא מגיב" (2026-09-09).
+        router.push(fallbackExitHref);
+      }
+      return;
+    }
+    // pendingDebtBlockRef=true אומר שהשמירה כבר קרתה בפועל בניסיון היציאה הקודם (רק
+    // נחסמה יציאה בגלל חוב חדש שטרם טופל) - אין כאן שום "שינוי לא שמור" אמיתי להציע
+    // עליו "בטל" (בחירה כזו הייתה עוקפת את בדיקת אישור המנהל שלמטה בלי שום סיבה טובה),
+    // אז מדלגים ישר לבדיקת החוב במקום לשאול שוב אם לשמור.
+    if (hasUnsavedChanges && !pendingDebtBlockRef.current) {
+      const choice = await window.customThreeWayConfirm(
+        'ישנם שינויים שלא נשמרו בהזמנה! האם ברצונך לשמור אותם לפני היציאה?',
+        'שינויים לא נשמרו'
+      );
+      if (choice === 'cancel' || !choice) return;
+      if (choice === 'discard') {
+        if (destinationHref) {
+          router.push(destinationHref);
+        } else {
+          router.push(fallbackExitHref);
+        }
+        return;
+      }
+    }
+    const exitSummaryConfirmResult = await confirmSaveSummaryIfNeeded(order);
+    if (!exitSummaryConfirmResult.proceed) return;
+    if (exitSummaryConfirmResult.previewObligations) {
+      setObligations(exitSummaryConfirmResult.previewObligations);
+    }
+
+    let exitDebtApprovedBy = typeof debtApproved === 'string' ? debtApproved : null;
+    // דיווח לקוח (הגמח הראשי): יציאה מהכרטיס דרשה אישור מנהל גם כשהחוב היה קיים מראש ולא
+    // השתנה בעריכה הזו (למשל שינוי הערה בלבד) - בניגוד לכפתור "שמירה" למעלה, שכבר מדלג על
+    // האישור במקרה הזה (debtUnchangedSinceOpen). ליישר את שני המסלולים לאותה התנהגות.
+    // exitSummaryConfirmResult.previewTotal, כשקיים, הוא התצוגה המקדימה המדויקת שזה עתה
+    // התקבלה (כולל משלוח) - ר' אותה הערה ב-handleSave.
+    const exitCurrentDebt = (exitSummaryConfirmResult.previewTotal !== undefined ? exitSummaryConfirmResult.previewTotal : totalRequired) - totalPaid;
+    const exitDebtUnchangedSinceOpen = openedDebt !== null
+      && Math.round(exitCurrentDebt * 100) === Math.round(openedDebt * 100);
+    if (exitCurrentDebt > 0 && !exitDebtUnchangedSinceOpen && !exitDebtApprovedBy) {
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מאשר הזמנה ללא תשלום');
+      if (!authResult || !authResult.pin) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return;
+        }
+        setDebtApproved(authResult.employeeId);
+        exitDebtApprovedBy = authResult.employeeId;
+      } catch (err) {
+        alert('שגיאה באימות קוד עובד/מנהל.');
+        return;
+      }
+    }
+
+    // Save changes before exiting
+    setSaving(true);
+    try {
+      // Perform the same save operation as the manual save button
+      const submittedLocalIds = items
+        .filter(it => it._localId && it.dressModelId && it.sizeText)
+        .map(it => it._localId);
+
+      const res = await putOrder({
+          orderId: order.orderId,
+          customerId: order.customerId,
+          eventDate: order.eventDate,
+          eventDateHebrew: order.eventDateHebrew,
+          returnDate: order.returnDate,
+          isAbroad: order.isAbroad,
+          isWeekdayEvent: order.isWeekdayEvent,
+          fromDate: order.fromDate,
+          toDate: order.toDate,
+          customSpacing: order.customSpacing !== undefined ? order.customSpacing : null,
+          notes: order.notes,
+          internalNotes: order.internalNotes,
+          isDelivery: order.isDelivery,
+          deliveryDirection: order.deliveryDirection,
+          deliveryAddress: order.deliveryAddress,
+          deliveryCity: order.deliveryCity,
+          deliveryOneDayBefore: order.deliveryOneDayBefore,
+          status: order.status,
+          hasSignedRegulations: order.hasSignedRegulations,
+          updatedAt: order.updatedAt,
+          items: items,
+          obligations: obligations,
+          payments: payments,
+          debtApprovedBy: exitDebtApprovedBy,
+          totalAmount: (() => {
+            const itemsSum = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
+            const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+            return itemsSum > 0 ? itemsSum : (obligationsSum > 0 ? obligationsSum : (order.totalAmount || 0));
+          })()
+      });
+
+      // המשתמש בחר לטעון מחדש מהשרת במקום לדרוס — נשארים בכרטיס כדי שיבדוק ויחליט.
+      if (!res) {
+        setSaving(false);
+        alert('הנתונים נטענו מחדש מהשרת. בדוק את ההזמנה ושמור שוב לפני היציאה.');
+        return;
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        setSaving(false);
+        alert((errorData && errorData.message) ? errorData.message : 'שגיאה בשמירה');
+        return;
+      }
+
+      setSaving(false);
+
+      try {
+        const updatedOrder = await res.clone().json();
+        const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+        const freshRequired = (updatedOrder.totalAmount && updatedOrder.totalAmount > 0)
+          ? updatedOrder.totalAmount
+          : (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+        const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+        const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
+
+        // דיווח נווה יעקב (6124472b): הוספת משלוח לא עדכנה את ה-state המקומי (חיוב
+        // המשלוח נוצר רק בצד השרת, בתוך ה-PUT שזה עתה הצליח - ר' applyDeliveryCharge),
+        // כך שבדיקת החוב שלמעלה (exitCurrentDebt, על בסיס state ישן) לא תפסה את החוב
+        // החדש, וזה איפשר לצאת מהכרטיס בלי לשלם ובלי שום התראה. בודקים שוב מול הנתונים
+        // העדכניים שחזרו זה עתה מהשרת (המקור היחיד המהימן למשלוח) לפני שבאמת עוזבים -
+        // אם נוצר חוב חדש שעדיין לא אושר, לא יוצאים: מסנכרנים את ה-state לנתונים
+        // הטריים ונשארים בטאב תשלומים. pendingDebtBlockRef מבטיח שניסיון יציאה נוסף לא
+        // ינצל את "אין שינויים שלא נשמרו" כדי לעקוף את בדיקת החוב הרגילה בפעם הבאה.
+        if (freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01 && !exitDebtApprovedBy) {
+          setOrder(updatedOrder);
+          const mergedItems = mergePendingItems(updatedOrder.items || [], items, submittedLocalIds);
+          setItems(mergedItems);
+          setObligations(updatedOrder.obligations || []);
+          setPayments(updatedOrder.payments || []);
+          setRefunds(updatedOrder.refunds || []);
+          savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
+          pendingDebtBlockRef.current = true;
+          setActiveTab('payments');
+          // בנווה יעקב (enableEditSummaryConfirm) מציגים את חלונית "השלמת תשלום" הצפה
+          // במקום alert() רגיל - ר' paymentContinueAmount למעלה. שאר הגמחים ממשיכים לקבל
+          // את ה-alert הרגיל, בלי שינוי התנהגות.
+          if (enableEditSummaryConfirm) {
+            setPaymentContinueAmount(freshDebtNow);
+          } else {
+            alert(`השינויים נשמרו, אך נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} (למשל בעבור משלוח או פריט שנוסף). לא ניתן לצאת מהכרטיס לפני שמשלימים את הגבייה, או יוצאים באישור מנהל - נשארת בטאב תשלומים.`);
+          }
+          return;
+        }
+
+        // זיכוי אוטומטי (syncPendingCreditRefund בצד השרת) בלי פרטי בנק - פותחים מיד את
+        // חלון פרטי הבנק, בדיוק כמו ב-handleSave למעלה. עד עכשיו זה קרה רק ב-handleSave -
+        // יציאה דרך "חזור" בלי שמירה מפורשת קודמת (זרימת עבודה סבירה מאוד: לבטל פריט
+        // ומיד לצאת) פספסה את זה לגמרי, והעובד גילה את הזיכוי הממתין רק מאוחר יותר בטאב
+        // זיכויים - בדיוק מה שהתכונה הזו נועדה למנוע. נפתח לכל היותר פעם אחת בניסיון
+        // יציאה (bankDetailsPromptedOnExitRef): זה לא חוסם כמו בדיקת החוב למעלה - אם
+        // העובד סוגר את החלון בלי פרטי בנק (למשל אין לו אותם כרגע), לא לוכדים אותו לצמיתות.
+        const newAutoRefundNeedsBank = (updatedOrder.refunds || []).some(r =>
+          !r.isDeleted && !r.isExecuted && r.isAutoGenerated && (!r.bankName?.trim() || !r.bankBranch?.trim())
+        );
+        if (newAutoRefundNeedsBank && !bankDetailsPromptedOnExitRef.current) {
+          bankDetailsPromptedOnExitRef.current = true;
+          setOrder(updatedOrder);
+          const mergedItems = mergePendingItems(updatedOrder.items || [], items, submittedLocalIds);
+          setItems(mergedItems);
+          setObligations(updatedOrder.obligations || []);
+          setPayments(updatedOrder.payments || []);
+          setRefunds(updatedOrder.refunds || []);
+          savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
+          setActiveTab('payments');
+          setTimeout(() => paymentsManagerRef.current?.openPendingAutoRefundBankModal(), 60);
+          return;
+        }
+
+        // התראת מידע בלבד (לא חוסמת) - יתרת זכות סימטרית ל"יתרת חוב", אבל בלי שום דבר
+        // לאשר: בקשת הזיכוי האוטומטית כבר נוצרה/עודכנה בצד השרת (syncPendingCreditRefund
+        // רץ בתוך ה-PUT שזה עתה הצליח) - כאן רק מוודאים שהעובד רואה שמגיע ללקוח זיכוי.
+        // (אם הגענו לכאן עם newAutoRefundNeedsBank===true זה כי כבר פתחנו את חלון הבנק
+        // בניסיון יציאה קודם ולא רוצים לפתוח אותו שוב - אבל עדיין שווה להזכיר את הסכום.)
+        const creditNow = Math.round((freshPaid - freshRequired) * 100) / 100;
+        if (creditNow > 0) {
+          alert(`שים לב: ללקוח מגיע זיכוי של ₪${creditNow.toLocaleString('he-IL')} עבור הזמנה זו.\nבקשת זיכוי ממתינה נרשמה אוטומטית בטאב "זיכויים".`);
+        }
+      } catch (e) {
+        console.error('Failed to check debt/credit balance on exit', e);
+      }
+
+      pendingDebtBlockRef.current = false;
+      if (destinationHref) {
+        router.push(destinationHref);
+      } else {
+        router.push(fallbackExitHref);
+      }
+    } catch (err) {
+      setSaving(false);
+      alert('שגיאה בשמירה: ' + (err.message || 'נסה שוב'));
+    }
+  };
+  handleExitRef.current = handleExit;
+
+  // מבטל את כל השינויים שלא נשמרו (הוספה/הסרה של פריטים, תשלומים, התחייבויות, שינויי תאריכים/הערות וכו')
+  // ומחזיר את הכרטיס למצב האחרון שנשמר בשרת.
+  const buildChangeSummary = () => {
+    const snap = savedSnapshotRef.current;
+    if (!snap) return [];
+    return buildDraftSummary(snap, { order, items, obligations, payments });
+  };
+
+  // גרסה מקובצת עם איקון + כיתוב קצר לכל שינוי, לתצוגה במודל אישור "ביטול שינויים".
+  const buildChangeRows = () => {
+    const snap = savedSnapshotRef.current;
+    if (!snap) return [];
+    return buildDraftRows(snap, { order, items, obligations, payments });
+  };
+
+  // שחזור טיוטה מקומית מביקור קודם — מחזיר את כל מצב העריכה שנשמר ב-localStorage
+  // ומסמן "שינויים שלא נשמרו", כאילו המשתמש מעולם לא עזב. אם ההזמנה השתנתה בשרת
+  // מאז, השמירה תעבור דרך דיאלוג ההתנגשות הרגיל (putOrder / 409).
+  const handleRestoreDraft = () => {
+    const d = pendingDraft;
+    if (!d || !d.state) return;
+    setOrder(d.state.order);
+    setItems(d.state.items || []);
+    setObligations(d.state.obligations || []);
+    setPayments(d.state.payments || []);
+    setRefunds(d.state.refunds || []);
+    setPendingDraft(null);
+    setHasUnsavedChanges(true);
+    setSaveMessage('השינויים מהביקור הקודם שוחזרו. לחץ "שמור שינויים" לשמירה, או על כפתור הביטול כדי לוותר עליהם.');
+    setTimeout(() => setSaveMessage(''), 7000);
+  };
+
+  const handleDiscardDraft = async () => {
+    const confirmed = window.customConfirm
+      ? await window.customConfirm('למחוק את השינויים שלא נשמרו מהביקור הקודם? פעולה זו אינה הפיכה.')
+      : window.confirm('למחוק את השינויים שלא נשמרו מהביקור הקודם?');
+    if (!confirmed) return;
+    clearOrderDraft(order.orderId);
+    setPendingDraft(null);
+  };
+
+  const handleCancelChanges = async () => {
+    const snap = savedSnapshotRef.current;
+    if (!hasUnsavedChanges || !snap) {
+      alert('אין שינויים לביטול.');
+      return;
+    }
+
+    const changes = buildChangeSummary();
+    const rows = buildChangeRows();
+    const confirmed = await window.customConfirm(
+      <div>
+        <p style={{ margin: '0 0 14px', color: 'var(--text-2)', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          פעולה זו תבטל את כל השינויים שלא נשמרו בהזמנה זו, ותחזיר אותה למצב האחרון שנשמר:
+        </p>
+        {rows.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+            {rows.map((r, i) => (
+              <span key={i} className="chip" style={{ alignSelf: 'flex-start' }}>
+                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href={r.icon} /></svg>
+                {r.text}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.92rem', color: 'var(--text-3)', fontStyle: 'italic' }}>שינויים שלא נשמרו</div>
+        )}
+      </div>
+    );
+    if (!confirmed) return;
+
+    setOrder(snap.order);
+    setItems(snap.items);
+    setObligations(snap.obligations);
+    setPayments(snap.payments);
+    setRefunds(snap.refunds);
+    setHasUnsavedChanges(false);
+
+    // הביטול עצמו הוא מקומי בלבד, ולכן בלי הרישום הזה הפעולה לא מופיעה בשום היסטוריה.
+    // נשלח אחרי השחזור ובלי await — כישלון ברישום לא אמור לעכב או לבטל את השחזור עצמו.
+    fetch(`/api/orders/${id}/cancel-changes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changes })
+    }).catch(err => console.error('Failed to log cancelled changes', err));
+    setSaveMessage(changes.length > 0 ? `בוטלו השינויים: ${changes.join(', ')}` : 'השינויים בוטלו.');
+    setTimeout(() => setSaveMessage(''), 5000);
+  };
+
+  // מחיקת ההזמנה — אותה פעולה בדיוק כמו איקון המחיקה בטבלת ההזמנות (מחיקה רכה + אותם תנאי חסימה).
+  const handleDeleteOrder = async () => {
+    const status = calculateOrderStatus({ ...order, items }, { draftsAsDeleted });
+    if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
+      alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
+      return;
+    }
+    if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?'))) return;
+    // 14 - אם דרוש ת״ז, בקש לפני ביטול
+    // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה, ר' הערה ב-requestZeout
+    let zeoutForDelete = null;
+    if (zeoutVerificationNeeded) {
+      zeoutForDelete = await requestZeout();
+      if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
+    }
+    // 27 - חסימת מחיקת מושכר חלקי בצד לקוח
+    if (!allowEditPartially && items.some(i => !i.isDeleted && i.isTaken)) {
+      alert('לא ניתן לבטל הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}`, {
+        method: 'DELETE',
+        headers: { ...(zeoutForDelete ? { 'x-zeout': zeoutForDelete, 'Content-Type': 'application/json' } : {}) },
+        ...(zeoutForDelete ? { body: JSON.stringify({ zeout: zeoutForDelete }) } : {})
+      });
+      if (res.ok) {
+        router.push('/orders');
+      } else {
+        const data = await res.json().catch(() => null);
+        alert((data && data.error) || 'שגיאה במחיקת הזמנה');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה במחיקת הזמנה');
+    }
+  };
+
+  const isLocked = isPastEvent && !isUnlocked;
+
+  const handleUnlock = async () => {
+    const authResult = await window.customAuthPrompt("הזמנה זו נעולה כי תאריך האירוע עבר. נדרש אישור מנהל לעריכה. אנא בחר מנהל והזן סיסמה:", 'feature:locked_order_edit');
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:locked_order_edit' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        return;
+      }
+      setIsUnlocked(true);
+    } catch (err) {
+      alert('שגיאה באימות קוד מנהל.');
+    }
+  };
+
+  // שינוי סטטוס חתימה על תקנון מכפתור הטופ-בר בעיצוב המודרני (עם אישור) - PUT קטן
+  // משלו (בדיוק כמו OrderPrintMenu.js/confirmSigned) ולא דרך handleSave המלא: אישור
+  // שהלקוח חתם על נייר הוא לא עריכת תוכן ההזמנה, ואין סיבה שהוא יגרור בדיקות שלא
+  // קשורות (בקשת ת״ז, אישור חוב, אישור מנהל לביטול פריט...) שחלות על שמירת ההזמנה הכללית.
+  const handleToggleSignature = async () => {
+    const nowYes = !order.hasSignedRegulations;
+    const msg = nowYes ? 'האם הלקוח חתם על תקנון ההשכרה?' : 'האם לסמן שהלקוח לא חתם על התקנון?';
+    const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
+    if (!confirmed) return;
+    try {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hasSignedRegulations: nowYes })
+      });
+      if (res.ok) {
+        handlePrintMenuOrderUpdate({ hasSignedRegulations: nowYes });
+      } else {
+        alert('שגיאה בשמירת אישור החתימה');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת בשמירת אישור החתימה');
+    }
+  };
+
+  // סריקה מהירה מהסיידבר — עוברים לטאב הפריטים ומבצעים שם השכרה/החזרה
+  
