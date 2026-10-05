@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { chargeNedarimPlus } from '../../lib/nedarim';
-import prisma from '../../lib/prisma'; // Optional: if you need to fetch mosadId from settings
+import prisma, { getActingEmployeeId } from '../../lib/prisma'; // Optional: if you need to fetch mosadId from settings
+import chargeReceipts from '../../../lib/chargeReceipts';
+import { approvalSecret } from '../../../lib/approvalGate';
 import { checkAuth } from '../../../lib/auth';
 import { decryptSecret, isEncryptedSecret } from '../../../lib/secretCrypto';
 
@@ -89,6 +91,21 @@ export async function POST(request) {
       // 2 - endpoint ייעודי לרינת לב אם זוהה (chargeNedarimPlus יתעלם אם לא תומך - fallback רגיל)
       ...(rinatLevOverride ? { customEndpoint: rinatLevOverride } : {}),
     });
+
+    // A successful charge also returns a signed receipt (lib/chargeReceipts.js): the clients send it with POST /api/payments, which
+    // under approval_permissions_enforced un-gates a credit-card row ONLY when it carries a receipt for this order/amount/employee.
+    // An extra field nobody else reads; a failure to sign must never turn a real charge into an error.
+    if (result && result.success) {
+      try {
+        const chargeReceipt = chargeReceipts.createChargeReceipt(
+          { orderId: data.orderId, amount: amount, confirmation: result.confirmation, actorEmployeeId: await getActingEmployeeId() },
+          approvalSecret(),
+        );
+        if (chargeReceipt) return NextResponse.json({ ...result, chargeReceipt });
+      } catch (e) {
+        console.error('Nedarim: charge receipt not issued');
+      }
+    }
 
     return NextResponse.json(result);
   } catch (error) {

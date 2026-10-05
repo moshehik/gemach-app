@@ -628,7 +628,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           installments: parseInt(creditCardData.installments) || 1,
           notes: finalNotes,
           zeout: customer.idNumber || customer.zeout || '',
-          email: customer.email || ''
+          email: customer.email || '',
+          orderId // the server signs the charge receipt for THIS order (nedarim ignores the field)
         })
       });
 
@@ -663,7 +664,9 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               orderId,
               amount: added.amount,
               paymentMethod: added.paymentMethod,
-              notes: added.notes
+              notes: added.notes,
+              // signed by POST /api/nedarim - what lets a card row through when the server enforces payment permissions
+              ...(data.chargeReceipt ? { chargeReceipt: data.chargeReceipt } : {})
             })
           });
           if (saveRes.ok) savedPayment = await saveRes.json();

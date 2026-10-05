@@ -120,6 +120,8 @@ const verifyPin = await L('app/api/auth/verify-pin/route.js');
 const debtRoute = await L('app/api/orders/[id]/debt-approval/route.js');
 const paymentsRoute = await L('app/api/payments/route.js');
 const refundRoute = await L('app/api/refunds/[id]/route.js');
+const nedarimRoute = await L('app/api/nedarim/route.js');
+const CR = require(path.join(PROJ, 'lib', 'chargeReceipts.js'));
 const orderRoute = await L('app/api/orders/[id]/route.js');
 const auditRoute = await L('app/api/audit/route.js');
 const deliveriesRoute = await L('app/api/deliveries/route.js');
@@ -188,6 +190,7 @@ beforeEach(() => {
   invalidateRequireLoginCache();
   invalidatePermissionCache();
   T.resetApprovalTokenUse();
+  CR.resetChargeReceiptUse();
   RateLimit.resetEventRateLimit();
   globalThis.__AUTH_TOKEN = null;
   globalThis.__AUTH_ROLE = 5;
@@ -619,7 +622,7 @@ test('H3 ON: a debt token does not unlock payment deletion (kind), and a stolen 
 const postPayment = (body) => paymentsRoute.POST(req(body));
 const putRefund = (body, id = 'ref-1') => refundRoute.PUT(req(body), params(id));
 
-test('POST /payments: OFF unchanged; ON a manual method needs the permission or a token; credit-card rows (saved after the charge) are never gated', async () => {
+test('POST /payments: OFF unchanged; ON a manual method needs the permission or a token; a card-labelled row needs a charge receipt (see the receipt tests below)', async () => {
   globalThis.__MOCK_WRITABLE = ['payment', 'orderItem'];
   loginAs('emp-worker');
   await postPayment({ orderId: 501, amount: 10, paymentMethod: 'מזומן' }).catch(() => {});
@@ -634,9 +637,9 @@ test('POST /payments: OFF unchanged; ON a manual method needs the permission or 
   assert.equal((await postPayment({ orderId: 501, amount: 10, paymentMethod: "צ'ק" })).status, 403);
   assert.equal(callsTo('payment', 'create').length, 0);
 
-  await postPayment({ orderId: 501, amount: 10, paymentMethod: 'אשראי' }).catch(() => {});
-  assert.equal(callsTo('payment', 'create').length, 1, 'credit rows pass');
-  globalThis.__MOCK_CALLS = [];
+  const fakeCard = await postPayment({ orderId: 501, amount: 10, paymentMethod: 'אשראי' });
+  assert.equal(fakeCard.status, 403, 'the word אשראי alone proves nothing: a card-labelled row without a charge receipt is gated like cash');
+  assert.equal(callsTo('payment', 'create').length, 0);
 
   const tok = (await mint({ level: 'feature:manual_payment_credit_add' })).__json.approvalToken;
   loginAs('emp-worker');
@@ -680,6 +683,190 @@ test('PUT /refunds/[id]: marking a credit done / undoing it needs the permission
   const ok = await putRefund({ isExecuted: true, approvalToken: tok }).catch(() => ({ status: 500 }));
   assert.notEqual(ok.status, 403, 'token accepted');
   for (const c of globalThis.__MOCK_CALLS) assert.ok(!JSON.stringify(c.args || {}).includes('approvalToken'), 'approvalToken is never written to a table');
+});
+
+// ============================================================================================ charge receipts (card rows) - finding 1
+test('receipt: round trip, no card data inside, tamper / wrong secret / expiry / other domain refused, bound to order + amount + actor, single use', () => {
+  const good = CR.createChargeReceipt({ orderId: 501, amount: 120.5, confirmation: 'C-77', actorEmployeeId: 'emp-worker' }, SECRET, NOW);
+  assert.match(good, /^c1\.[\w-]+\.[\w-]+$/);
+  const r = CR.inspectChargeReceipt(good, SECRET, NOW + 1000);
+  assert.equal(r.ok, true);
+  assert.deepEqual(Object.keys(r.payload).sort(), ['ac', 'am', 'cf', 'exp', 'iat', 'n', 'o']);
+  assert.equal(CR.inspectChargeReceipt(good, 'other-gemach-secret', NOW).ok, false, 'another gemach');
+  const [v, , sig] = good.split('.');
+  const forged = Buffer.from(JSON.stringify({ ...r.payload, am: 9999 })).toString('base64url');
+  assert.equal(CR.inspectChargeReceipt(`${v}.${forged}.${sig}`, SECRET, NOW).ok, false, 'amount edited');
+  assert.equal(CR.inspectChargeReceipt(good, SECRET, NOW + 61 * 60 * 1000).reason, 'expired');
+  assert.equal(CR.inspectChargeReceipt(mk(), SECRET, NOW).ok, false, 'an approval token is not a receipt');
+  assert.equal(T.inspectApprovalToken(good, SECRET, NOW).ok, false, 'a receipt is not an approval token');
+  assert.equal(CR.inspectChargeReceipt(AT.createSessionToken({ id: 'emp-worker', roleId: 5 }, SECRET), SECRET, NOW).ok, false, 'nor a session cookie');
+  const ok = { orderId: 501, amount: 120.5, actorEmployeeId: 'emp-worker' };
+  assert.equal(CR.matchChargeReceipt(r.payload, ok).ok, true);
+  assert.equal(CR.matchChargeReceipt(r.payload, { ...ok, orderId: 502 }).reason, 'order');
+  assert.equal(CR.matchChargeReceipt(r.payload, { ...ok, amount: 120.6 }).reason, 'amount');
+  assert.equal(CR.matchChargeReceipt(r.payload, { ...ok, amount: 5 }).reason, 'amount', 'a smaller payment is not the charge either');
+  assert.equal(CR.matchChargeReceipt(r.payload, { ...ok, actorEmployeeId: 'emp-worker2' }).reason, 'actor');
+  assert.equal(CR.claimChargeReceipt(r.payload, NOW), true);
+  assert.equal(CR.claimChargeReceipt(r.payload, NOW), false, 'single use');
+  CR.releaseChargeReceipt(r.payload);
+  assert.equal(CR.claimChargeReceipt(r.payload, NOW), true, 'handed back');
+  assert.equal(CR.createChargeReceipt({ orderId: 501, amount: 0 }, SECRET), null);
+  assert.equal(CR.createChargeReceipt({ orderId: 501, amount: 10 }, null), null);
+});
+
+async function nedarimCharge({ orderId = 501, amount = 100, ok = true, as = 'emp-worker' } = {}) {
+  const realFetch = globalThis.fetch;
+  const prevMosad = process.env.NEDARIM_MOSAD_ID;
+  const savedAuth = [globalThis.__AUTH_TOKEN, globalThis.__AUTH_ROLE];
+  process.env.NEDARIM_MOSAD_ID = '1234';
+  loginAs(as);
+  // the real Nedarim endpoint is never contacted: fetch is replaced for the duration of the call
+  globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify(ok ? { Status: 'OK', Confirmation: 'C-1' } : { Status: 'Error', Message: 'declined' }) });
+  try {
+    const res = await nedarimRoute.POST(req({ clientName: 'x', cardNumber: '4580000000000000', tokef: '1228', amount, installments: 1, notes: 'n', ...(orderId ? { orderId } : {}) }));
+    return res.__json;
+  } finally {
+    globalThis.fetch = realFetch;
+    [globalThis.__AUTH_TOKEN, globalThis.__AUTH_ROLE] = savedAuth;
+    if (prevMosad === undefined) delete process.env.NEDARIM_MOSAD_ID; else process.env.NEDARIM_MOSAD_ID = prevMosad;
+  }
+}
+
+test('nedarim: a successful charge also returns a signed receipt for this order / amount / employee; a declined charge returns none; no card number in it', async () => {
+  const ok = await nedarimCharge({});
+  assert.equal(ok.success, true);
+  assert.equal(ok.confirmation, 'C-1', 'the old answer fields are untouched');
+  const p = CR.inspectChargeReceipt(ok.chargeReceipt, SECRET).payload;
+  assert.equal(p.o, 501); assert.equal(p.am, 100); assert.equal(p.ac, 'emp-worker'); assert.equal(p.cf, 'C-1');
+  assert.ok(!Buffer.from(ok.chargeReceipt.split('.')[1], 'base64url').toString().includes('4580'), 'no card data in the receipt');
+  const declined = await nedarimCharge({ ok: false });
+  assert.equal(declined.success, false);
+  assert.ok(!('chargeReceipt' in declined));
+});
+
+test('POST /payments ON: a card row WITH the receipt of a real charge passes for a worker without the permission; the receipt is single use and never written to the DB', async () => {
+  globalThis.__MOCK_WRITABLE = ['payment', 'orderItem'];
+  setFlags(undefined, true);
+  const { chargeReceipt } = await nedarimCharge({ amount: 100 });
+  loginAs('emp-worker');
+  await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', notes: '{}', chargeReceipt }).catch(() => {});
+  assert.equal(callsTo('payment', 'create').length, 1, 'saved');
+  assert.ok(!JSON.stringify(callsTo('payment', 'create')[0].args).includes(chargeReceipt), 'the receipt is not stored');
+  globalThis.__MOCK_CALLS = [];
+  const replay = await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt });
+  assert.equal(replay.status, 403, 'a second card row from the same charge is refused');
+  assert.equal(callsTo('payment', 'create').length, 0);
+});
+
+test('POST /payments ON: a receipt cannot be reused for another order, a bigger amount or another employee, nor forged - and a cash row never accepts a receipt as permission', async () => {
+  setFlags(undefined, true);
+  const { chargeReceipt } = await nedarimCharge({ amount: 100 });
+  loginAs('emp-worker');
+  assert.equal((await postPayment({ orderId: 502, amount: 100, paymentMethod: 'אשראי', chargeReceipt })).status, 403, 'other order');
+  assert.equal((await postPayment({ orderId: 501, amount: 5000, paymentMethod: 'אשראי', chargeReceipt })).status, 403, 'bigger amount');
+  assert.equal((await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt: chargeReceipt.slice(0, -3) + 'abc' })).status, 403, 'forged');
+  assert.equal((await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt: 'a1.x.y' })).status, 403, 'garbage');
+  loginAs('emp-worker2');
+  assert.equal((await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt })).status, 403, 'copied to another session');
+  loginAs('emp-worker');
+  assert.equal(callsTo('payment', 'create').length, 0);
+  assert.equal((await postPayment({ orderId: 501, amount: 100, paymentMethod: 'מזומן', chargeReceipt })).status, 403, 'cash + a receipt is still cash');
+  // none of the refusals consumed the receipt
+  globalThis.__MOCK_WRITABLE = ['payment', 'orderItem'];
+  await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt }).catch(() => {});
+  assert.equal(callsTo('payment', 'create').length, 1, 'the right order + amount + employee still works');
+});
+
+test('POST /payments: an employee WITH the permission saves a card row with no receipt; OFF flags = card rows pass exactly as before (a bad receipt is ignored)', async () => {
+  globalThis.__MOCK_WRITABLE = ['payment', 'orderItem'];
+  loginAs('emp-mgr', 1);
+  setFlags(undefined, true);
+  await postPayment({ orderId: 501, amount: 10, paymentMethod: 'אשראי' }).catch(() => {});
+  assert.equal(callsTo('payment', 'create').length, 1, 'permitted employee, no receipt needed');
+  globalThis.__MOCK_CALLS = [];
+  installDb(); invalidateSettingsCache(); // both flags OFF again
+  globalThis.__MOCK_WRITABLE = ['payment', 'orderItem'];
+  loginAs('emp-worker');
+  await postPayment({ orderId: 501, amount: 10, paymentMethod: 'אשראי' }).catch(() => {});
+  await postPayment({ orderId: 501, amount: 10, paymentMethod: 'אשראי (מעקף מתכנת)', chargeReceipt: 'garbage' }).catch(() => {});
+  assert.equal(callsTo('payment', 'create').length, 2, 'OFF: nothing is gated');
+});
+
+test('POST /payments ON: a receipt claimed by a request that then fails is handed back (the worker can retry the save)', async () => {
+  setFlags(undefined, true);
+  const { chargeReceipt } = await nedarimCharge({ amount: 100 });
+  loginAs('emp-worker');
+  // payment.create throws (the table is not writable in the mock) - the claim must be released
+  await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt }).catch(() => {});
+  globalThis.__MOCK_CALLS = [];
+  globalThis.__MOCK_WRITABLE = ['payment', 'orderItem'];
+  await postPayment({ orderId: 501, amount: 100, paymentMethod: 'אשראי', chargeReceipt }).catch(() => {});
+  assert.equal(callsTo('payment', 'create').length, 1);
+});
+
+test('static: the two card flows send orderId to /api/nedarim and the receipt on to /api/payments', () => {
+  const nc = src('app/components/order-card/hooks/usePaymentActions.js');
+  assert.match(nc, /orderId: s\.order\?\.orderId \}\)/);
+  assert.match(nc, /\.\.\.\(data\.chargeReceipt \? \{ chargeReceipt: data\.chargeReceipt \} : \{\}\)/);
+  const mpm = src('components/orders/modern/ModernPaymentsManager.js');
+  assert.match(mpm, /\.\.\.\(data\.chargeReceipt \? \{ chargeReceipt: data\.chargeReceipt \} : \{\}\)/);
+  assert.match(mpm, /orderId \/\/ the server signs the charge receipt/);
+  for (const f of ['lib/chargeReceipts.js', 'app/api/nedarim/route.js', 'app/api/payments/route.js', 'lib/approvalGate.js']) {
+    for (const line of src(f).split('\n')) if (/console\.(log|warn|error)/.test(line)) assert.ok(!/receipt/i.test(line.replace(/'[^']*'/g, '')), `${f}: ${line.trim()}`);
+  }
+});
+
+// ============================================================================================ refunds without an order / batches over 100 - finding 2
+test('no-order sentinel: only the manual_payment_credit kind, only alone; real-order tokens never carry it', () => {
+  const N = T.NO_ORDER_ID;
+  assert.equal(typeof N, 'number');
+  assert.ok(T.createApprovalToken({ approverId: 'emp-mgr', kind: T.KINDS.MANUAL_PAYMENT_CREDIT, orderIds: [N], actorEmployeeId: 'emp-worker' }, SECRET, NOW));
+  assert.equal(mk({ kind: T.KINDS.DEBT_APPROVAL, orderIds: [N] }), null, 'no debt token for it');
+  assert.equal(mk({ kind: T.KINDS.MANUAL_CHARGE, orderIds: [N] }), null);
+  assert.equal(mk({ kind: T.KINDS.MANUAL_PAYMENT_CREDIT, orderIds: [N, 501] }), null, 'not mixed with real orders');
+  const real = mk({ kind: T.KINDS.MANUAL_PAYMENT_CREDIT, orderIds: [501] });
+  assert.equal(T.matchApprovalPayload(T.inspectApprovalToken(real, SECRET, NOW).payload, ex({ kind: T.KINDS.MANUAL_PAYMENT_CREDIT, orderId: N })).reason, 'order');
+});
+
+test('PUT /refunds/[id] ON, refund WITHOUT an order: a worker without the permission is no longer in a dead end - a sentinel token unlocks it; a real-order token does not', async () => {
+  setFlags(undefined, true);
+  globalThis.__MOCK_DB.refund.push({ id: 'ref-noorder', orderId: null, customerId: 'c1', amount: 50, isExecuted: false, isDeleted: false, bankName: 'x', bankBranch: '1' });
+  loginAs('emp-worker');
+  const refused = await putRefund({ isExecuted: true }, 'ref-noorder');
+  assert.equal(refused.status, 403);
+  assert.equal(refused.__json.approvalKind, 'manual_payment_credit', 'the client is told which approval to ask for');
+  const realTok = (await mint({ level: 'feature:manual_payment_credit_add', orderId: 501 })).__json.approvalToken;
+  loginAs('emp-worker');
+  assert.equal((await putRefund({ isExecuted: true, approvalToken: realTok }, 'ref-noorder')).status, 403, 'a token for an order is not a no-order approval');
+  const minted = await mint({ level: 'feature:manual_payment_credit_add', orderId: T.NO_ORDER_ID });
+  assert.ok(minted.__json.approvalToken, 'verify-pin issues the sentinel token for the manual payment/credit level');
+  const tok = minted.__json.approvalToken;
+  loginAs('emp-worker');
+  const ok = await putRefund({ isExecuted: true, approvalToken: tok }, 'ref-noorder').catch(() => ({ status: 500 }));
+  assert.notEqual(ok.status, 403, 'accepted');
+  // and the sentinel token cannot unlock an execution on a refund that HAS an order
+  const tok2 = (await mint({ level: 'feature:manual_payment_credit_add', orderId: T.NO_ORDER_ID })).__json.approvalToken;
+  loginAs('emp-worker');
+  assert.equal((await putRefund({ isExecuted: true, approvalToken: tok2 }, 'ref-1')).status, 403);
+});
+
+test('verify-pin: the sentinel is refused for the debt and manual-charge levels; a batch of 100 gets a token, 101 gets none (the client now chunks)', async () => {
+  assert.equal((await mint({ level: DEBT, orderId: T.NO_ORDER_ID })).__json.approvalToken, undefined);
+  assert.equal((await mint({ level: 'feature:manual_charge_add', orderId: T.NO_ORDER_ID })).__json.approvalToken, undefined);
+  const ids = (n) => Array.from({ length: n }, (_, i) => 2000 + i);
+  assert.ok((await mint({ level: DEBT, orderId: undefined, extra: { orderIds: ids(100) } })).__json.approvalToken, '100 orders: one token');
+  assert.equal((await mint({ level: DEBT, orderId: undefined, extra: { orderIds: ids(101) } })).__json.approvalToken, undefined, '101 orders: no token (why the client must chunk)');
+});
+
+test('static: refunds page asks one code, then one signed token per chunk of orders, and sends the sentinel for a no-order credit', () => {
+  const page = src('app/refunds/page.js');
+  assert.match(page, /verifyPinForOrders\('[^']*', 'feature:debt_approval', confirmModal\.orderIds\)/);
+  assert.match(page, /for \(const \{ orderIds: chunkIds, approvalToken \} of auth\.approvals\)/);
+  assert.match(page, /\|\| NO_ORDER_APPROVAL_ID/);
+  assert.ok(!/refundOrderId\s*\?\s*sendWithApproval/.test(page), 'no more "send without approval when the credit has no order"');
+  const moc = src('components/orders/modern/mocAuth.js');
+  assert.match(moc, /export const verifyPinForOrders/);
+  assert.match(moc, /for \(const chunk of chunkOrderIds\(orderIds\)\)/);
 });
 
 // ============================================================================================ wiring / static guards
@@ -759,30 +946,38 @@ test('H5: /api/deliveries needs page:deliveries or page:orders (customer names /
   assert.equal((await deliveriesRoute.GET(auditReq('?date=2026-11-10'))).status, 401);
 });
 
-test('H6: /api/orders/events caps one employee at 1000 rows a minute (429, nothing written), other employees are unaffected; a failed write gives its rows back', async () => {
+test('H6: /api/orders/events caps one employee at 5000 rows a minute (429, nothing written), other employees are unaffected; a day-print sized burst fits', async () => {
   const post = (body) => eventsRoute.POST(req(body));
   globalThis.__MOCK_DB.employee.push({ id: 'emp-w3', roleId: 5, isActive: true, firstName: 'ג', lastName: 'ד', password: OTHER_HASH });
   loginAs('emp-worker', 5);
   const doc = { action: 'ORDER_PRINTED', meta: { doc: 'order' } };
   const ids = Array.from({ length: 200 }, (_, i) => 1000 + i);
   globalThis.__MOCK_DB.order.push(...ids.map((n) => ({ id: 'u' + n, orderId: n, isDeleted: false, items: [], obligations: [], payments: [] })));
-  for (let i = 0; i < 5; i++) assert.equal((await post({ orderIds: ids, ...doc })).status, 200, 'five full batches = 1000 rows');
+  // a 150-order day printed as a 12-page document = 1800 rows (one row per order per page, 200 orders per request) - well inside the cap
+  for (let i = 0; i < 9; i++) assert.equal((await post({ orderIds: ids, ...doc })).status, 200, `day-print chunk ${i}`);
+  assert.equal(auditRows().length, 1800);
+  for (let i = 9; i < RateLimit.MAX_ROWS_PER_WINDOW / 200; i++) assert.equal((await post({ orderIds: ids, ...doc })).status, 200, `full batches up to the cap (${i})`);
   const over = await post({ orderIds: [501], ...doc });
   assert.equal(over.status, 429);
   assert.equal(over.__json.code, 'RATE_LIMITED');
-  assert.equal(auditRows().length, 1000, 'nothing written by the refused request');
+  assert.equal(auditRows().length, RateLimit.MAX_ROWS_PER_WINDOW, 'nothing written by the refused request');
   loginAs('emp-w3', 5);
   assert.equal((await post({ orderIds: [501], ...doc })).status, 200, 'another employee has their own window');
   // a window that has passed starts over
   assert.equal(RateLimit.admitEvents({ actorId: 'emp-worker', count: 1, now: Date.now() + 61 * 1000 }).ok, true);
 });
 
-test('H6: the limiter counts rows, hands them back on release, and treats anonymous (open mode) as one actor', () => {
+test('H6: the limiter counts rows, hands them back on release, and treats anonymous (open mode) as one shared actor with its own, larger cap', () => {
   const t = 1_000_000;
-  assert.equal(RateLimit.admitEvents({ actorId: 'a', count: 1000, now: t }).ok, true);
+  const cap = RateLimit.MAX_ROWS_PER_WINDOW;
+  assert.equal(cap, 5000, 'sized for a multi-page day print, still protective');
+  assert.equal(RateLimit.admitEvents({ actorId: 'a', count: cap, now: t }).ok, true);
   assert.equal(RateLimit.admitEvents({ actorId: 'a', count: 1, now: t + 1 }).ok, false);
   RateLimit.releaseEvents({ actorId: 'a', count: 10 });
   assert.equal(RateLimit.admitEvents({ actorId: 'a', count: 10, now: t + 2 }).ok, true);
-  assert.equal(RateLimit.admitEvents({ actorId: null, count: 1000, now: t }).ok, true);
+  // open mode: everyone is 'anonymous' - one bucket, bigger than a named employee's
+  assert.ok(RateLimit.MAX_ROWS_ANONYMOUS > cap);
+  assert.equal(RateLimit.admitEvents({ actorId: null, count: RateLimit.MAX_ROWS_ANONYMOUS, now: t }).ok, true);
   assert.equal(RateLimit.admitEvents({ actorId: undefined, count: 1, now: t }).ok, false);
+  assert.equal(RateLimit.admitEvents({ actorId: 'someone-else', count: cap, now: t }).ok, true, 'named employees do not share the anonymous bucket');
 });

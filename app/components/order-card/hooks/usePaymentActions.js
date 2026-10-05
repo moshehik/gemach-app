@@ -481,7 +481,8 @@ export function createPaymentActions(env) {
       const response = await f('/api/nedarim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nedarimBody({ customer: s.order?.customer, obligations: s.obligations, orderId: s.order?.orderId, card }))
+        // orderId: the server signs the charge receipt for THIS order (nedarim ignores the field)
+        body: JSON.stringify({ ...nedarimBody({ customer: s.order?.customer, obligations: s.obligations, orderId: s.order?.orderId, card }), orderId: s.order?.orderId })
       });
       const data = await response.json();
       if (!data.success) return { ok: false, error: data.error || 'שגיאה בחיוב הכרטיס' };
@@ -492,7 +493,8 @@ export function createPaymentActions(env) {
         const saveRes = await f('/api/payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId: s.order?.orderId, amount: added.amount, paymentMethod: added.paymentMethod, notes: added.notes })
+          // chargeReceipt: signed by POST /api/nedarim - what lets a card row through when the server enforces payment permissions
+          body: JSON.stringify({ orderId: s.order?.orderId, amount: added.amount, paymentMethod: added.paymentMethod, notes: added.notes, ...(data.chargeReceipt ? { chargeReceipt: data.chargeReceipt } : {}) })
         });
         if (saveRes.ok) savedPayment = await saveRes.json();
       } catch { /* savedPayment נשאר null */ }

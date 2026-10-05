@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getHebrewDateString } from '@/lib/hebrewDate';
-import { verifyPin } from '@/components/orders/modern/mocAuth';
+import { verifyPin, verifyPinForOrders } from '@/components/orders/modern/mocAuth';
 import { sendWithApproval } from '@/lib/approvalClient';
+import { NO_ORDER_APPROVAL_ID } from '@/lib/approvalTokenStore';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { REFUNDS_PAGE_SIZE } from '@/app/lib/prefetchRoutes';
 
@@ -350,21 +351,24 @@ export default function RefundsPage() {
   };
 
   const confirmApproveSelected = async () => {
-    // orderIds: האסימון החתום מקושר לכל ההזמנות שנבחרו (חד-פעמי לכל הזמנה)
-    const auth = await verifyPin('אישור תשלום עבור החובות שנבחרו דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval', { orderIds: confirmModal.orderIds });
+    // קוד אחד, אבל אסימון חתום לכל קבוצה של עד 100 הזמנות (תקרת האסימון בשרת; בחירה גדולה יותר פשוט לא קיבלה אסימון בכלל).
+    // כל אסימון חד-פעמי לכל הזמנה בקבוצה שלו.
+    const auth = await verifyPinForOrders('אישור תשלום עבור החובות שנבחרו דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval', confirmModal.orderIds);
     if (!auth) return;
     setIsApproving(true);
     try {
       const ids = confirmModal.orderIds;
-      for (const orderId of ids) {
-        const res = await fetch(`/api/orders/${orderId}/debt-approval`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employeeId: auth.employeeId, ...(auth.approvalToken ? { approvalToken: auth.approvalToken } : {}) })
-        });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => null);
-          throw new Error((errData && errData.error) || `שגיאה באישור הזמנה #${orderId}`);
+      for (const { orderIds: chunkIds, approvalToken } of auth.approvals) {
+        for (const orderId of chunkIds) {
+          const res = await fetch(`/api/orders/${orderId}/debt-approval`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employeeId: auth.employeeId, ...(approvalToken ? { approvalToken } : {}) })
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => null);
+            throw new Error((errData && errData.error) || `שגיאה באישור הזמנה #${orderId}`);
+          }
         }
       }
       await fetchApprovalsForOrders(ids);
@@ -464,10 +468,9 @@ export default function RefundsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isExecuted, ...extra })
     });
-    const refundOrderId = Number((refunds.find(r => r.id === id) || {}).orderId) || 0;
-    return refundOrderId
-      ? sendWithApproval(send, { orderId: refundOrderId, kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' })
-      : send({});
+    // a credit without an order (Refund.orderId null) is approved under the "no order" sentinel - the server expects exactly that
+    const refundOrderId = Number((refunds.find(r => r.id === id) || {}).orderId) || NO_ORDER_APPROVAL_ID;
+    return sendWithApproval(send, { orderId: refundOrderId, kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' });
   };
 
   const executeRefund = async (id) => {

@@ -237,10 +237,10 @@ test('new card PUT: the existing manual-charge retry still sends the typed code 
 });
 
 // ------------------------------------------------------------------------------------------------ the new card's payment actions
-function payHarness(respond, approveAnswer = null) {
+function payHarness(respond, approveAnswer = null, totals = {}) {
   const calls = [];
   const orderId = 53375;
-  const state = { order: { orderId }, payments: [], refunds: [], settings: L.parseSettings([]), dirty: false, totals: {} };
+  const state = { order: { orderId }, payments: [], refunds: [], settings: L.parseSettings([]), dirty: false, totals };
   const env = {
     fetch: async (url, opts = {}) => { const body = opts.body ? JSON.parse(opts.body) : undefined; calls.push({ url, method: opts.method || 'GET', body }); const r = respond(url, body, calls.length) || {}; return jsonRes(r.status ?? 200, r.body ?? {}); },
     get: () => state,
@@ -296,6 +296,40 @@ test('payments: executeRefund carries the token and re-asks on 403; the body kee
   assert.deepEqual(puts.map(c => c.body), [{ isExecuted: true }, { isExecuted: true, approvalToken: 'tok-r' }]);
 });
 
+test('payments: chargeCard sends the order id to /api/nedarim and passes the signed charge receipt on to POST /api/payments', async () => {
+  const h = payHarness((u) => (u === '/api/nedarim'
+    ? { body: { success: true, confirmation: 'C1', rawResponse: '{"Status":"OK"}', chargeReceipt: 'c1.rcpt.sig' } }
+    : u === '/api/payments' ? { body: { id: 'p1', amount: 100 } } : { body: {} }), null, { balance: 100 });
+  const r = await h.actions.chargeCard({ cardNumber: '4580 1234 5678 9012', tokef: '12/28', installments: 1, notes: '', amount: '100' });
+  assert.equal(r.ok, true);
+  assert.equal(r.persisted, true);
+  assert.equal(h.calls.find(c => c.url === '/api/nedarim').body.orderId, h.orderId);
+  assert.equal(h.calls.find(c => c.url === '/api/payments').body.chargeReceipt, 'c1.rcpt.sig');
+});
+
+test('payments: with no receipt in the charge answer (a server without one) the POST /api/payments body is exactly the old one', async () => {
+  const h = payHarness((u) => (u === '/api/nedarim'
+    ? { body: { success: true, confirmation: 'C1', rawResponse: '{"Status":"OK"}' } }
+    : u === '/api/payments' ? { body: { id: 'p1', amount: 100 } } : { body: {} }), null, { balance: 100 });
+  await h.actions.chargeCard({ cardNumber: '4580 1234 5678 9012', tokef: '12/28', installments: 1, notes: '', amount: '100' });
+  assert.deepEqual(Object.keys(h.calls.find(c => c.url === '/api/payments').body).sort(), ['amount', 'notes', 'orderId', 'paymentMethod']);
+});
+
+// ------------------------------------------------------------------------------------------------ chunks of at most 100 orders / no-order credits
+test('store: chunkOrderIds splits a big selection into chunks of <= 100 (order kept, duplicates and junk dropped); the constants mirror the server', () => {
+  const ids = Array.from({ length: 250 }, (_, i) => 1000 + i);
+  const chunks = Store.chunkOrderIds([...ids, 1000, null, 'x', 0, -4]);
+  assert.deepEqual(chunks.map(c => c.length), [100, 100, 50]);
+  assert.deepEqual(chunks.flat(), ids);
+  assert.deepEqual(Store.chunkOrderIds([5]), [[5]]);
+  assert.deepEqual(Store.chunkOrderIds([]), []);
+  assert.equal(Store.chunkOrderIds(Array.from({ length: 100 }, (_, i) => i + 1)).length, 1);
+  assert.equal(Store.chunkOrderIds(Array.from({ length: 101 }, (_, i) => i + 1)).length, 2);
+  const server = read('lib/approvalTokens.js');
+  assert.equal(Number(server.match(/const NO_ORDER_ID = (\d+);/)[1]), Store.NO_ORDER_APPROVAL_ID);
+  assert.equal(Number(server.match(/const MAX_ORDERS_PER_TOKEN = (\d+);/)[1]), Store.MAX_ORDERS_PER_APPROVAL);
+});
+
 // ------------------------------------------------------------------------------------------------ static guards
 test('static: OcApproval returns the token; the controller stores it per level/order and exposes peek/clear; no token or code in a log line', () => {
   const a = read('app/components/order-card/OcApproval.js');
@@ -317,9 +351,10 @@ test('static: every legacy sender of a debt approver now asks verify-pin for the
   assert.match(legacy, /sendWithApproval\(\(extra\) => send\(\{ \.\.\.base, \.\.\.extra \}\)/);
   assert.match(legacy, /sendApproved\(\{ \.\.\.payload, overwriteConflict: true \}\)/, 'the overwrite retry carries tokens too');
   const refunds = read('app/refunds/page.js');
-  assert.match(refunds, /'feature:debt_approval', \{ orderIds: confirmModal\.orderIds \}/);
+  assert.match(refunds, /verifyPinForOrders\('[^']*', 'feature:debt_approval', confirmModal\.orderIds\)/, 'one code, one token per chunk of at most 100 orders');
   assert.match(refunds, /'feature:debt_approval', \{ orderId \}/);
-  assert.equal((refunds.match(/\.\.\.\(auth\.approvalToken \? \{ approvalToken: auth\.approvalToken \} : \{\}\)/g) || []).length, 2, 'POST + DELETE debt-approval');
+  assert.equal((refunds.match(/\.\.\.\(auth\.approvalToken \? \{ approvalToken: auth\.approvalToken \} : \{\}\)/g) || []).length, 1, 'DELETE debt-approval (single order)');
+  assert.equal((refunds.match(/\.\.\.\(approvalToken \? \{ approvalToken \} : \{\}\)/g) || []).length, 1, 'POST debt-approval, token of the chunk the order is in');
   assert.match(refunds, /putRefundExecution\(id, true\)/);
   assert.match(refunds, /putRefundExecution\(id, false\)/);
   const mpm = read('components/orders/modern/ModernPaymentsManager.js');

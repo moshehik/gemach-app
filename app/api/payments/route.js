@@ -4,13 +4,16 @@ import { recalculateOrderObligations } from '@/lib/pricingEngine';
 import { syncPendingCreditRefund } from '@/lib/creditRefundSync';
 import { paymentsGrantPermanentHold } from '@/lib/inventoryHold';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
-import { getApprovalMode, requireApprovalPermission, releaseApprovalClaims, commitApprovalClaims, KINDS } from '@/lib/approvalGate';
+import { getApprovalMode, requireApprovalPermission, claimChargeReceiptFor, releaseApprovalClaims, commitApprovalClaims, KINDS } from '@/lib/approvalGate';
+import { getActingEmployeeId } from '@/app/lib/prisma';
 
-// A manual payment (cash / transfer / check - anything that is not a credit-card row, which the Nedarim flow saves right after
-// the charge) is the "manual payment" of feature:manual_payment_credit_add. Enforced here only when approval_permissions_enforced
-// is ON: the logged-in employee holds the permission, or `approvalToken` (verify-pin, kind manual_payment_credit, this order) comes along.
-// docs/server-approval-hardening.md
-const isManualPaymentMethod = (method) => !String(method || 'מזומן').includes('אשראי');
+// A payment row is the "manual payment" of feature:manual_payment_credit_add - EXCEPT a credit-card row that is the record of a charge
+// that really went through: POST /api/nedarim answers a successful charge with a signed `chargeReceipt` (lib/chargeReceipts.js: this
+// order, this amount, this employee, single use) and the clients send it back here. The word 'אשראי' in the method proves nothing
+// (anybody can type it), so a card-labelled row WITHOUT a valid receipt is gated like cash. Enforced only when
+// approval_permissions_enforced is ON: the logged-in employee holds the permission, or `approvalToken` (verify-pin, kind
+// manual_payment_credit, this order) comes along. docs/server-approval-hardening.md
+const isCardMethod = (method) => String(method || 'מזומן').includes('אשראי');
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -37,7 +40,10 @@ export async function POST(request) {
     }
 
     const approvalMode = await getApprovalMode();
-    if (approvalMode.permissionsEnforced && isManualPaymentMethod(data.paymentMethod)) {
+    const provenCardCharge = approvalMode.permissionsEnforced && isCardMethod(data.paymentMethod) && claimChargeReceiptFor({
+      receipt: data.chargeReceipt, orderId: parsedOrderId, amount: parseFloat(data.amount), claims, mode: approvalMode, actorId: await getActingEmployeeId(),
+    });
+    if (approvalMode.permissionsEnforced && !provenCardCharge) {
       const gate = await requireApprovalPermission({
         kind: KINDS.MANUAL_PAYMENT_CREDIT, orderId: parsedOrderId, token: data.approvalToken, claims, mode: approvalMode,
         sessionEmployee: await getSessionEmployee(),

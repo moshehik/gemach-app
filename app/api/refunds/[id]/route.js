@@ -3,6 +3,7 @@ import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth, getSessionEmployee } from '@/lib/auth';
 import { getApprovalMode, requireApprovalPermission, releaseApprovalClaims, commitApprovalClaims, KINDS } from '@/lib/approvalGate';
+import approvalTokens from '@/lib/approvalTokens';
 import { sendSystemEmail } from '@/lib/mailer';
 import { renderRefundExecutedEmailHtml } from '@/lib/emailTemplates';
 import { emailSubject } from '@/lib/emailCatalog';
@@ -11,7 +12,9 @@ import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Marking a credit as done (isExecuted true) creates the reverse payment and mails the customer; undoing it deletes that payment. With
 // approval_permissions_enforced ON both need feature:manual_payment_credit_add: the logged-in employee holds it, or `approvalToken`
-// (verify-pin, kind manual_payment_credit, for THIS refund's order) comes along. docs/server-approval-hardening.md
+// (verify-pin, kind manual_payment_credit, for THIS refund's order) comes along. A credit with NO order (Refund.orderId is nullable)
+// is approved with a token bound to approvalTokens.NO_ORDER_ID instead (the client asks verify-pin for that sentinel).
+// docs/server-approval-hardening.md
 export async function PUT(request, ctx) {
   const claims = [];
   let succeeded = false;
@@ -58,7 +61,7 @@ async function putRefund(request, { params }, claims) {
       const approvalMode = await getApprovalMode();
       if (approvalMode.permissionsEnforced) {
         const gate = await requireApprovalPermission({
-          kind: KINDS.MANUAL_PAYMENT_CREDIT, orderId: existingRefund.orderId, token: body.approvalToken, claims, mode: approvalMode,
+          kind: KINDS.MANUAL_PAYMENT_CREDIT, orderId: existingRefund.orderId || approvalTokens.NO_ORDER_ID, token: body.approvalToken, claims, mode: approvalMode,
           sessionEmployee: await getSessionEmployee(),
         });
         if (!gate.ok) {
