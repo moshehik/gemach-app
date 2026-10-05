@@ -226,8 +226,8 @@ await t('עזרים קטנים: תאריך כניסה, ראשי תיבות, "ה�
 
 console.log('קטגוריות ההרשאות (EC-09)');
 const configurable = PERMISSION_CATALOG.filter((i) => !i.notConfigurable);
-await t('37 השורות הניתנות להגדרה: כל אחת בקטגוריה אחת בדיוק (ואף אחת לא ב"אחר")', () => {
-  assert.equal(configurable.length, 37);
+await t('38 השורות הניתנות להגדרה: כל אחת בקטגוריה אחת בדיוק (ואף אחת לא ב"אחר")', () => {
+  assert.equal(configurable.length, 38);
   const seen = new Map();
   for (const c of PERM_CATEGORIES) for (const k of c.keys) { assert.equal(seen.has(k), false, `${k} בשתי קטגוריות`); seen.set(k, c.id); }
   for (const item of configurable) assert.ok(seen.has(item.key), `${item.key} ללא קטגוריה`);
@@ -238,7 +238,7 @@ await t('groupPermissionItems: 8-10 קבוצות (החלטת הבעלים המע
   const groups = groupPermissionItems(configurable);
   assert.ok(groups.length >= 8 && groups.length <= 10, `קבוצות: ${groups.length}`);
   const flat = groups.flatMap((g) => g.items.map((i) => i.key));
-  assert.equal(flat.length, 37); assert.equal(new Set(flat).size, 37);
+  assert.equal(flat.length, 38); assert.equal(new Set(flat).size, 38);
   assert.ok(groups.every((g) => g.items.length > 0 && g.title && g.icon));
   const extra = groupPermissionItems([...configurable, { key: 'feature:future_thing' }]);
   assert.equal(extra.at(-1).id, 'other'); assert.equal(extra.at(-1).items[0].key, 'feature:future_thing');

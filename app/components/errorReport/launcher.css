@@ -11,8 +11,14 @@
 .gm-er-launch .er-fab .er-tip{position:absolute;inset-inline-end:62px;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,#12305a,#0a2242);color:#fff;border-radius:12px;padding:6px 12px;font-size:14px;line-height:1.5;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
 .gm-er-launch .er-fab:hover .er-tip,.gm-er-launch .er-fab:focus-within .er-tip{opacity:1}
 @media (max-width:640px){
-  .gm-er-launch .er-fab{bottom:84px;transform:translateX(calc(100% - 14px))}
-  .gm-er-launch .er-fab:hover,.gm-er-launch .er-fab:focus-within,.gm-er-launch .er-fab.reveal{transform:translateX(-14px)}
+  /* הבעלים 5.10.2026: בטלפון הכפתור קבוע (לא מציץ מהקצה) מעל כוכב ה-AI (44px, bottom 20px, inline-start 20px) ומיושר איתו: אותו גודל ואותו קו מרכז. */
+  .gm-er-launch .er-fab{bottom:76px;inset-inline-start:20px;transform:none;opacity:1}
+  .gm-er-launch .er-fab:hover,.gm-er-launch .er-fab:focus-within,.gm-er-launch .er-fab.reveal{transform:none}
+  .gm-er-launch .er-fab button{width:44px;height:44px}
+  .gm-er-launch .er-fab .er-tip{display:none}
 }
 @media (prefers-reduced-motion:reduce){.gm-er-launch .er-fab{transition:none}}
 @media print{.gm-er-launch{display:none!important}}
+/* הבעלים 5.10.2026: להסתיר את לשונית הדיווח הצפה במחשב - הדיווח נשאר באיקון בסרגל (מעטפת ישנה) / בתפריט הצד (מעטפת חדשה) ובכוכב. */
+/* במסכים צרים (טלפון) נשארת, כי איקון תפריט הצד מוסתר שם. */
+@media (min-width:641px){.gm-er-launch{display:none}}
