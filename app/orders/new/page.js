@@ -971,6 +971,8 @@ export default function NewOrderPage() {
         isAbroad: order.isAbroad,
         isDelivery: order.isDelivery,
         deliveryCity: order.deliveryCity,
+        // נפילה-לאחור של עיר המשלוח לעיר הלקוח גם בחישוב השרת - ר' resolveEffectiveDeliveryCity
+        customerCity: order.selectedCustomer?.city || '',
         deliveryDirection: order.deliveryDirection
       })
     })
@@ -983,7 +985,7 @@ export default function NewOrderPage() {
         setCalculating(false);
       })
       .catch(() => setCalculating(false));
-  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection]);
 
   const totalAmount = calculatedData.totalAmount;
 
