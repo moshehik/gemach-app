@@ -178,4 +178,69 @@ await t('differential: rendered client sanitizer == lib/redactSensitive on a cor
   }
 });
 
+await t('rendered script parses as a classic script with acorn (ES2018) when acorn is available', async () => {
+  let acorn;
+  try { acorn = (await import('acorn')); } catch { console.log('         (acorn not installed - skipped)'); return; }
+  acorn.parse(rendered, { ecmaVersion: 2018, sourceType: 'script' });
+});
+
+await t('SystemSetting-style bodies: no plaintext secret survives (POST /api/settings dropped; same array elsewhere masked)', async () => {
+  const env = makeEnv();
+  const items = [{ key: 'nedarim_plus_token', value: 'PLAINTEXT-TOKEN-1' }, { key: 'neon_api_key', value: 'napi_PLAINTEXT2' }, { key: 'yemot_api_token', value: 'PLAINTEXT-3' }, { key: 'store_name', value: 'Gemach' }];
+  const e1 = await call(env, '/api/settings', { employeeId: 'e1', pin: '1234', items });
+  assert.ok(e1 && !e1.requestQuery);
+  const e2 = await call(env, '/api/some-other', { employeeId: 'e1', pin: '1234', items });
+  assert.ok(!e2.requestQuery.includes('PLAINTEXT') && !e2.requestQuery.includes('1234'));
+  assert.ok(e2.requestQuery.includes('Gemach'));
+  const e3 = await call(env, '/api/a5/settings', items);
+  assert.ok(!e3.requestQuery);
+});
+
+await t('gmk_ keys, Bearer tokens and JSON-in-a-string are masked under neutral keys', async () => {
+  const env = makeEnv();
+  const key = 'gmk_' + 'a1B2c3D4e5F6g7H8i9';
+  const e = await call(env, '/api/x', { note: 'k=' + key, h: 'Bearer abc.def', payload: JSON.stringify({ pin: '9876', n: 1 }) });
+  for (const leak of [key, 'abc.def', '9876']) assert.ok(!e.requestQuery.includes(leak), leak);
+});
+
+await t('binary bodies (Uint8Array / ArrayBuffer / Blob) log nothing; URLSearchParams body is sanitized; oversized text dropped', async () => {
+  const env = makeEnv();
+  const send = async (body) => { await env.fetch('/api/upload', { method: 'POST', body }); return env.queue.at(-1); };
+  assert.ok(!(await send(new Uint8Array([1, 2, 3]))).requestQuery);
+  assert.ok(!(await send(new ArrayBuffer(8))).requestQuery);
+  assert.ok(!(await send(new Blob(['pin=1234']))).requestQuery);
+  const up = await send(new URLSearchParams({ a: '1', pin: '1234' }));
+  assert.ok(up.requestQuery.includes('a=1') && !up.requestQuery.includes('1234'));
+  assert.ok(!(await call(env, '/api/x', '{"a":"' + 'x '.repeat(100001) + '"}')).requestQuery);
+});
+
+await t('duplicated query params and #fragment in the queued pageUrl / body', async () => {
+  const env = makeEnv();
+  const e = await call(env, '/api/orders?a=1&pin=1&pin=2#token=abc');
+  assert.ok(!e.pageUrl.includes('#') && !/pin=[0-9]/.test(e.pageUrl), e.pageUrl);
+  assert.ok(!/pin=[0-9]/.test(e.requestQuery) && !e.requestQuery.includes('token'), e.requestQuery);
+});
+
+await t('differential (round 2): new rules match lib on a second corpus', async () => {
+  const env = makeEnv();
+  const key = 'gmk_' + 'a1B2c3D4e5F6g7H8i9';
+  const bodies = [
+    [{ key: 'nedarim_plus_token', value: 'T' }, { key: 'x', value: 'y' }], { items: [{ name: 'pwd', val: 'z' }], pin: '1' },
+    { a: key, b: 'Bearer q.w-e', c: 'bearer x' }, { p: JSON.stringify({ pin: '1', zeout: '2', ok: 3 }), q: '{"pin":"12', r: '[טיוטה]' },
+    { p: JSON.stringify({ a: 'xx '.repeat(200) }), pinCode: 1, pinned: 1, pinMode: 'x', userPwd: 'x', ccv2: 3 },
+    '?pin=1&pin=2&a=1&a=2', '?a=1#token=abc', 'a=Bearer%20abc&b=2', '?p=' + encodeURIComponent('{"pin":"5"}'),
+    'see ' + key, 'Authorization: Bearer abc',
+  ];
+  for (const b of bodies) for (const u of ['/api/orders', '/api/other/1']) {
+    const text = typeof b === 'string' ? b : JSON.stringify(b);
+    const entry = await call(env, u, text);
+    const expected = redactRequestQuery(text, u);
+    assert.equal(entry.requestQuery ? entry.requestQuery.slice(0, 4000) : null, expected ? expected.slice(0, 4000) : null, `${u} ${text.slice(0, 60)}`);
+  }
+  for (const u of ['/api/orders?a=1&pin=1&pin=2#token=abc', '/api/x/' + key + '?a=1', '/api/x#frag', '/api/settings?a=1', '/api/x?t=Bearer%20abcdef']) {
+    const entry = await call(env, u);
+    assert.equal(entry.pageUrl, redactUrl(u), u);
+  }
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}`);
