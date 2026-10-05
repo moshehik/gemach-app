@@ -38,6 +38,7 @@ import {
 } from '../../../lib/ai/aiCommon';
 import { downloadRecording } from '../../../lib/driveBridgeServer';
 import { getFeatureRestrictionConfig, buildRestrictionPromptBlock, isRestrictionEnabled } from '../../../lib/ai/restrictionsConfig';
+import { detectBarcodePrompt, answerBarcode } from '../../../lib/ai/barcodeLookup';
 
 // הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
 // serverless - ר' Phase 4 בתוכנית.
@@ -166,6 +167,19 @@ async function handleAiPost(req) {
       } catch (mediaErr) {
         console.error('AI media analysis error:', mediaErr);
         return NextResponse.json({ response: 'מצטער, נתקלתי בשגיאה בעת ניתוח הצילום/ההקלטה. אנא נסה שוב.', data: null, sqlQuery: null });
+      }
+    }
+
+    // ברקוד (7 ספרות, או "ברקוד N") נענה בקוד, לפני המודל: בלי זה המודל פירש "6323401" כמספר הזמנה והחזיר "לא נמצאו רשומות עבור מספר ההזמנה".
+    // ההרשאות (התחברות + feature:ai + hide_ai_features) כבר נבדקו בראש הפונקציה; הענף קורא רק מה שה-AI ממילא קורא, בלי פרטי לקוח / כספים (ר' lib/ai/barcodeLookup.js).
+    // כשל במסד = ממשיכים לנתיב הרגיל (המודל, עם כללי S16-S20 בפרומפט) במקום להחזיר שגיאה.
+    const barcodeQuery = detectBarcodePrompt(prompt);
+    if (barcodeQuery) {
+      try {
+        const out = await answerBarcode(barcodeQuery, { prisma, getBulkAvailableInventory, formatDate: (key) => humanizeResultDates(key) });
+        return NextResponse.json({ response: out.response, data: out.data, sqlQuery: null });
+      } catch (barcodeErr) {
+        console.error('AI barcode branch failed, falling back to the model:', barcodeErr);
       }
     }
 

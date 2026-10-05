@@ -30,3 +30,6 @@ const proxy = new Proxy({}, {
 });
 export default proxy;
 export const prisma = proxy;
+// permissions.js (imported by lib/ai/aiCommon.js) also needs these named exports of app/lib/prisma.js; the harness never writes, so identity / null.
+export const auditAs = (action, args) => args;
+export const getActingEmployeeId = async () => null;
