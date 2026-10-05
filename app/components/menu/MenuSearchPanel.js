@@ -16,6 +16,7 @@ import { useSavedSearches } from '../search/savedSearches';
 import { DeleteDialog, SaveIconButton } from '../search/ShortcutsUi';
 import { actionTarget, keywordInsert, menuAllowedPaths, saveCandidate } from '@/lib/quickShortcuts';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
+import { classifyQuery } from '@/lib/searchNormalize';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
 import { Ic, SnLi } from './menuParts';
@@ -223,7 +224,10 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   const hasSaveText = !!saveText;
   const loadSaved = saved.load;
   useEffect(() => { if (hasSaveText) loadSaved(); }, [hasSaveText, loadSaved]); // נטען רק כשיש מה לשמור, לא בעליית הדף
-  const isBarcode = /^\d{7}$/.test(term); // ברקוד תקין = בדיוק 7 ספרות (מס' הזמנה 5 ספרות, טלפון 9+)
+  // ברקוד מלא = 7 ספרות (או "ברקוד N"), לפי classifyQuery - אותו כלל כמו בכל החיפושים (5-6 ספרות = מס' הזמנה קודם, לא ברקוד מלא)
+  const termCls = useMemo(() => classifyQuery(term), [term]);
+  const barcodeDigits = termCls.kind === 'barcode' && termCls.barcode && termCls.barcode.complete ? termCls.barcode.digits : '';
+  const isBarcode = !!barcodeDigits;
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
 
   // החזרה מהירה בברקוד - אותו מנגנון כמו TopbarSearch.js (postReturnScan מטפל גם באישור מנהל להחזרה מוקדמת)
@@ -231,7 +235,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
     if (qr.busy) return;
     setQr({ busy: true, text: '', err: false });
     try {
-      const { res, data } = await postReturnScan({ barcode: term });
+      const { res, data } = await postReturnScan({ barcode: barcodeDigits });
       if (res.ok) {
         setQr({ busy: false, text: '', err: false });
         onGo(() => {
@@ -390,7 +394,7 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
         <SaveIconButton text={q} saved={saved} />
       </div>
       <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
-        {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${term}` : ''))}
+        {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${barcodeDigits}` : ''))}
       </div>
       {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>}
       {saved.confirm && <DeleteDialog key={saved.confirm.id} confirm={saved.confirm} onConfirm={saved.confirmDelete} onCancel={saved.cancelDelete} skin="menu" />}

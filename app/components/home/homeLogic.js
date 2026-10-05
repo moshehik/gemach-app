@@ -115,14 +115,20 @@ export function applyScope(res, scope) {
 }
 
 /**
- * טקסט חופשי → שדות החיפוש המתקדם לקטגוריות "החזרות" / "תיקונים" (אין להן חיפוש כללי): ספרות בלבד, 7 ויותר = טלפון (פרטי לקוח),
+ * טקסט חופשי → שדות החיפוש המתקדם לקטגוריות "החזרות" / "תיקונים" (אין להן חיפוש כללי): ספרות בלבד לפי classifyQuery (טלפון = פרטי לקוח; 7-8 ספרות = ברקוד, בהחזרות בלבד),
  * פחות מזה = קוד הזמנה; אחרת שם לקוח. מחזיר null לטקסט ריק. (חיפוש לפי ברקוד/דגם בקטגוריות האלה — דרך "חיפוש מתקדם".)
  */
-export function scopedAdvFields(text) {
+export function scopedAdvFields(text, focus) {
   const t = str(text).trim().slice(0, MAX_Q_CHARS);
   if (!t) return null;
   const digits = t.replace(/[\s-]/g, '');
-  if (/^\d+$/.test(digits)) return digits.length >= 7 ? { cinfo: digits } : { oid: digits };
+  if (/^\d+$/.test(digits)) {
+    // אותו סיווג ספרות כמו בכל החיפושים (classifyQuery): טלפון = פרטי לקוח; 1-6 ספרות = קוד הזמנה; 7-8 ספרות = ברקוד (תחום ההחזרות מכיר "ברקוד"; בתיקונים אין חיפוש ברקוד - קוד הזמנה כמו קודם, ללא תוצאה)
+    const c = classifyQuery(digits);
+    if (c.kind === 'phone') return { cinfo: digits };
+    if (c.kind === 'barcode' && focus === 'returns') return { item: digits };
+    return c.kind === 'number' ? { cinfo: digits } : { oid: digits };
+  }
   return { name: t };
 }
 

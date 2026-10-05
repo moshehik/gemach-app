@@ -10,7 +10,7 @@ import {
   HOME_SCOPES, HOME_RECENT_VALUES, parseHomeParams, homeDirectiveKey, homeScopeTitle, SCOPE_TITLE_REST, applyScope, scopedAdvFields,
   RENTAL_STATE_STYLE, rentalStatus,
 } from '../app/components/home/homeLogic.js';
-import { isBarcodeLikeQuery } from '../lib/quickSearchResults.js';
+import { isBarcodeLikeQuery, combineQuickSearchResults } from '../lib/quickSearchResults.js';
 import { HOME_NAV_EVENT, homeNavTarget } from '../lib/menu/homeNav.js';
 import { QUICK_PREFIXES, detectQuickPrefix, filterPrefixRows, resolveQuickPrefix, splitMatch } from '../lib/quickPrefix.js';
 import { buildMineModel, buildWhoChips, mineTableRecords, mineExportRecords, mineSheetSections, MINE_TABLE_COLUMNS, whenLabelHe, MINE_POPOVER_LIMIT, MINE_URL } from '../lib/myRecentActivityView.js';
@@ -220,6 +220,13 @@ t('טבלה + Excel של השכרות: הזמנה, לקוח, תאריך עברי
 t('זיהוי חיפוש-ברקוד (משותף לשרת ולחיפוש המהיר): ספרות בלבד, 5 ומעלה', () => {
   for (const yes of ['5511205', '12345', ' 5511205 ']) assert.equal(isBarcodeLikeQuery(yes), true, yes);
   for (const no of ['1234', 'ddddd', 'd{5,}', '55112a5', '551 1205', '', null, 'כהן']) assert.equal(isBarcodeLikeQuery(no), false, String(no));
+});
+t('חיפוש מהיר: 7 ספרות = הפריט שנמצא לפי ברקוד קודם; 5-6 ספרות = ההזמנה קודם והברקוד אחריה (אותו כלל כמו classifyQuery)', () => {
+  const data = { orders: [{ orderId: 25734, firstName: 'א' }], customers: [{ id: 'c1' }], rentals: [{ orderId: 777, barcode: '6323401', isTaken: true, isReturned: false }, { orderId: 888, barcode: '2573401' }] };
+  assert.deepEqual(combineQuickSearchResults(data, '6323401').map((x) => x.orderId || x.id), [777, 25734, 'c1']);
+  assert.deepEqual(combineQuickSearchResults({ ...data, rentals: [{ orderId: 888, barcode: '1257340' }] }, '25734').map((x) => x.orderId || x.id), [25734, 888, 'c1']);
+  assert.deepEqual(combineQuickSearchResults(data, 'ברקוד 6323401').map((x) => x.orderId || x.id), [777, 25734, 'c1'], 'מילת מפתח מפורשת');
+  assert.equal(combineQuickSearchResults(data, '2573').length, 2, '4 ספרות = מספר הזמנה בלבד, בלי פריטי ברקוד');
 });
 t('מיון: מספרים לפי ערך, טקסט בעברית, לא משנה את המקור', () => {
   const recs = [{ cells: ['x', '#10'] }, { cells: ['y', '#9'] }, { cells: ['z', '#100'] }];
@@ -818,6 +825,9 @@ t('scopedAdvFields (החזרות / תיקונים): שם לקוח / טלפון (
   assert.deepEqual(scopedAdvFields('כהן רחל'), { name: 'כהן רחל' });
   assert.deepEqual(scopedAdvFields('052-1234567'), { cinfo: '0521234567' });
   assert.deepEqual(scopedAdvFields('52103'), { oid: '52103' });
+  assert.deepEqual(scopedAdvFields('5511205', 'returns'), { item: '5511205' }, '7 ספרות = ברקוד, לא טלפון');
+  assert.deepEqual(scopedAdvFields('5511205', 'alterations'), { oid: '5511205' });
+  assert.deepEqual(scopedAdvFields('501234567'), { cinfo: '501234567' });
   assert.equal(scopedAdvFields('  '), null); assert.equal(scopedAdvFields(undefined), null);
   assert.equal(HOME_SCOPES.returns.via, 'adv'); assert.equal(HOME_SCOPES.returns.focus, 'returns'); assert.equal(HOME_SCOPES.alterations.focus, 'alterations');
   assert.ok(ADV_FOCI.returns && ADV_FOCI.alterations, 'תחומי החיפוש המתקדם קיימים');

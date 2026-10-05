@@ -192,7 +192,7 @@ export default function HomeA5() {
      המתקדם שלהן (אותו שרת, אותה הרשאה) לפי הטקסט: שם לקוח / טלפון / קוד הזמנה (scopedAdvFields). לא חיפוש לפי ברקוד או דגם. */
   const runScopedAdv = useCallback(async (query, sc, my) => {
     const focus = HOME_SCOPES[sc].focus;
-    const fields = scopedAdvFields(query);
+    const fields = scopedAdvFields(query, focus);
     if (!fields) { setLoading(false); return; }
     const form = { ...emptyAdv(focus), ...fields };
     try {
