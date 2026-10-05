@@ -5,7 +5,7 @@ import { canOpenPage } from '@/lib/permissions';
 import { attachEmployeeNames } from '@/app/lib/auditLog';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { resolveOrderRef } from '@/lib/history/orderHistory';
-import { buildOrderJournal, parseShiftDefinitions } from '@/lib/history/orderJournal';
+import { buildOrderJournal, parseShiftDefinitions, itemRentalActors } from '@/lib/history/orderJournal';
 import { computeOrderStages, dayKeyOf, dayLabels } from '@/lib/schedule/orderStages';
 import { resolveScheduleSettings } from '@/lib/schedule/settings';
 import { listOrderMarks } from '@/lib/schedule/marks';
@@ -122,6 +122,7 @@ export async function GET(request, { params }) {
       closed: !!closed,
       closedBy: closedBy || null, // 'return' | 'cancelled' | null - הציר העליון (OcStepper) מציג הזמנה שהוחזרה כגמורה והזמנה מבוטלת בלי שלב ממתין
       journal: journal.nodes,
+      itemActors: itemRentalActors(auditRows, items), // מי לקח / מי החזיר לכל פריט (מאותן שורות יומן, בלי שאילתה נוספת)
       marksAvailable: !!marksRes.available,
       canMark: !!marksRes.available,
     });
