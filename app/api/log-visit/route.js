@@ -30,7 +30,7 @@ export async function POST(request) {
         requestQuery: e.requestQuery ? redactRequestQuery(String(e.requestQuery).slice(0, 4000), e.pageUrl) : null,
         responseSize: typeof e.responseSize === 'number' ? e.responseSize : null,
         executionTime: typeof e.executionTime === 'number' ? e.executionTime : null,
-        // חותמת הזמן של הקליינט נשמרת (האצווה נשלחת עד ~20 שנ' אחרי הפעולה) - רק אם סבירה
+        // חותמת הזמן של הקליינט נשמרת (האצווה נשלחת עד ~60 שנ' אחרי הפעולה) - רק אם סבירה
         timestamp: typeof e.ts === 'number' && e.ts <= now + 60000 && e.ts >= now - 15 * 60000 ? new Date(e.ts) : undefined,
       }));
 
