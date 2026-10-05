@@ -62,3 +62,6 @@ const prisma = {
 };
 
 export default prisma;
+
+// lib/permissions.js imports auditAs (audit-log helper) - in the shim it just returns the args untouched
+export function auditAs(action, args) { return args; }

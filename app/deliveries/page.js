@@ -7,6 +7,7 @@ import HebrewDatePicker from '@/components/HebrewDatePicker';
 import HebrewDateRangePicker from '@/components/HebrewDateRangePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { getHebrewDateString, getHebrewWeekdayFullName, getIsraelTodayKey } from '@/lib/hebrewDate';
 
 // "היום" לפי שעון ישראל (לא לפי אזור הזמן של המכשיר) - תואם את /api/deliveries.
@@ -116,7 +117,8 @@ export default function DeliveriesPage() {
   };
 
   useEffect(() => {
-    fetch('/api/settings', { cache: 'no-store' }).then(r => r.json()).then(arr => {
+    // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה למסך משכה שוב את כל ההגדרות (~66KB).
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).then(arr => {
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'delivery_table_range_enabled')?.value : null;
       if (v === 'true') setRangeEnabled(true);
       if (Array.isArray(arr) && arr.find(s => s.key === 'deliveries_select_by_event_date')?.value === 'true') setByEventDate(true);

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import SettingQuickPanel from './SettingQuickPanel';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { CopyChip, splitCopyable, renderCopyable } from './CopyableText';
 import useElementPicker, { ElementPickerOverlay } from './useElementPicker';
 import useScreenRecorder from './useScreenRecorder';
@@ -144,8 +145,9 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   };
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json())
+    // /api/settings משותף (מטמון apiCache, 5 דק') - לפני כן כל טעינת דף משכה את כל ההגדרות (~66KB) שוב רק בשביל מפתח אחד.
+    // קריאת אתחול: נשמרת ב-sessionStorage של הלשונית לפי רשימת המותרים (lib/apiCachePersist.js), בלי קשר למי שקורא ראשון
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then((data) => {
         if (!Array.isArray(data)) return;
         const s = data.find((x) => x.key === 'ai_screen_recording_enabled');

@@ -373,6 +373,12 @@ export default function AdminHubPage({ showSite = false }) {
   const visibleCards = showSite ? cards : cards.filter((card) => card.href !== '/admin/site');`],
     ['{cards.map((card) => (', '{visibleCards.map((card) => ('],
   ],
+  // CPU 5.10.2026: קריאת /api/settings בכפתור הישן עברה למטמון המשותף (fetchSharedJson, 5 דק') - בלי זה כל טעינת דף משכה 66KB בשביל דגל אחד.
+  'app/components/LegacyErrorReportButton.js': [
+    ["import { getHebrewDateString } from '../../lib/hebrewDate';\n", "import { getHebrewDateString } from '../../lib/hebrewDate';\nimport { fetchSharedJson, TTL } from '../../lib/apiCache';\n"],
+    ["    fetch('/api/settings')\n      .then(r => r.json())\n      .then(data => {\n        if (!Array.isArray(data)) return;\n        const s = data.find(x => x.key === 'error_report_handled_at_bottom');",
+     "    // /api/settings משותף (מטמון apiCache, 5 דק') - לפני כן כל טעינת דף משכה את כל ההגדרות (~66KB) שוב רק בשביל מפתח אחד.\n    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })\n      .then(data => {\n        if (!Array.isArray(data)) return;\n        const s = data.find(x => x.key === 'error_report_handled_at_bottom');"],
+  ],
   'app/profile/LegacyProfilePage.js': [
     ['id="profile-fullName" name="fullName" value={profile.fullName || \'\'} onChange={handleChange} autoComplete="new-password" />', 'id="profile-fullName" value={`${profile.firstName || \'\'} ${profile.lastName || \'\'}`.trim()} disabled readOnly />'],
   ],

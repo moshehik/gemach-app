@@ -368,6 +368,7 @@ export default async function RootLayout({ children }) {
       data-font={!lightChrome ? fontAttr : undefined}
       data-density={!lightChrome ? densityAttr : undefined}
       data-text-scale={!lightChrome ? textScaleAttr : undefined}
+      data-gm-uid={isAuthenticated ? String(authToken.value) : undefined} /* מי מחובר (מהעוגייה החתומה): מפתח ההפרדה של lib/apiCachePersist.js - מטמון sessionStorage של קריאות האתחול לא נקרא לעולם עבור עובד אחר */
       suppressHydrationWarning
     >
       <head>

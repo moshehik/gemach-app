@@ -8,6 +8,7 @@ import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHisto
 import EmployeePermissionsPanel from '@/app/components/permissions/EmployeePermissionsPanel';
 import { usePopup } from '@/app/components/PopupProvider';
 import { requestJson, describeFailure } from '@/lib/employeeCardSave';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function EmployeePage({ params }) {
   const router = useRouter();
@@ -63,8 +64,8 @@ export default function EmployeePage({ params }) {
   const [showProfileImage, setShowProfileImage] = useState(true);
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
+    // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה לכרטיס משכה שוב את כל ההגדרות (~66KB) בשביל דגל אחד.
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         const s = Array.isArray(data) ? data.find(x => x.key === 'show_employee_profile_image') : null;
         if (s) setShowProfileImage(s.value !== 'false');

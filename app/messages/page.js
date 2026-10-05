@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { cacheNamespace, fetchJson } from '@/app/lib/pageCache';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 // #24/#25 — הודעות "בין משמרות" ו"להנהלה" ממומשות כאן כשני טאבים ייעודיים,
 // כשתיהן שידור-לכולם על גבי Notification.category ('shift_handover' / 'management').
@@ -118,7 +119,8 @@ export default function MessagesPage() {
         fetchJson('/api/notifications', { cache: 'no-store' }),
         fetchJson('/api/employees', { cache: 'no-store' }),
         fetchJson('/api/me', { cache: 'no-store' }),
-        fetchJson('/api/settings', { cache: 'no-store' })
+        // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה למסך משכה שוב את כל ההגדרות (~66KB)
+        fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       ]);
 
       messagesCache.set(MESSAGES_CACHE_KEY, { notifData, empData, meData, settingsData });

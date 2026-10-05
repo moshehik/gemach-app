@@ -1,6 +1,6 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
-import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
+import { getAllCachedSettings, getCachedSetting, invalidateSettingsCache } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +44,9 @@ export async function POST(req) {
         type: 'json'
       }
     });
+
+    // ui_labels_mapping is part of the GET /api/settings list (30s server cache) - drop it so the next read sees the new labels
+    invalidateSettingsCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {

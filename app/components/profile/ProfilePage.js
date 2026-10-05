@@ -12,7 +12,7 @@ import '@/design-system/components.css';
 import './profile.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { invalidate } from '@/lib/apiCache';
+import { invalidate, fetchSharedJson, TTL } from '@/lib/apiCache';
 import AutoClockSwitch from '@/app/components/login/AutoClockSwitch';
 import { HomeSprite } from '../home/HomeParts';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
@@ -115,8 +115,8 @@ export default function ProfilePage() {
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
+    // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה לפרופיל משכה שוב את כל ההגדרות (~66KB) בשביל דגל אחד.
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         const s = Array.isArray(data) ? data.find(x => x.key === 'show_employee_profile_image') : null;
         if (s) setShowProfileImage(s.value !== 'false');

@@ -18,7 +18,7 @@ export default function BulkEmailPage() {
 
   const checkToggle = async () => {
     try {
-      const res = await fetch('/api/settings', { cache: 'no-store' });
+      const res = await fetch('/api/settings?fresh=1', { cache: 'no-store' }); // fresh=1: עוקף את מטמון השרת (30 שנ') - מסך הגדרות/תכנון חייב להציג מה ששמור
       const arr = await res.json();
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'bulk_email_by_event_date')?.value : null;
       setEnabled(v === 'true');

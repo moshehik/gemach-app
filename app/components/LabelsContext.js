@@ -17,6 +17,7 @@ export function LabelsProvider({ children, initialLabels = {} }) {
     const unsubscribe = subscribe('/api/settings/labels', () => {
       fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC }).then(applyLabels).catch(() => {});
     });
+    // קריאת אתחול: נשמרת ב-sessionStorage של הלשונית לפי רשימת המותרים (lib/apiCachePersist.js), בלי קשר למי שקורא ראשון
     fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC })
       .then(applyLabels)
       .catch((err) => console.warn('Failed to fetch UI labels:', err?.message || err))

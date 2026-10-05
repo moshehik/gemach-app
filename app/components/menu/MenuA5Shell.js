@@ -60,6 +60,7 @@ export default function MenuA5Shell({
     const apply = (data) => {
       if (data && data.success) { setMe(data.employee); setShift(data.activeShift || null); }
     };
+    // קריאת אתחול: נשמרת ב-sessionStorage של הלשונית לפי רשימת המותרים (lib/apiCachePersist.js), בלי קשר למי שקורא ראשון
     fetchSharedJson('/api/me', { ttl: TTL.STATIC })
       .then(apply)
       .catch((err) => {

@@ -10,6 +10,7 @@ import {
   writeThemeCookie,
 } from '../lib/designPrefs';
 import { splitServerPrefs } from '@/lib/designPrefsSchema';
+import { readPersistedFresh, writePersisted } from '@/lib/apiCache';
 
 // Mounted once from RootLayout for authenticated sessions. Makes the DB
 // (Employee.themeColor JSON, via /api/me/design-prefs) the source of truth
@@ -30,11 +31,21 @@ export default function DesignPrefsSync() {
     let cancelled = false;
     let cookieRebuilt = false;
     let pendingPush = Promise.resolve(); // ההגירה החד-פעמית (PUT) חייבת להסתיים לפני רענון הדף
-    fetch('/api/me/design-prefs')
-      .then((res) => {
-        cookieRebuilt = res.headers.get('x-design-prefs-cookie') === 'rebuilt';
-        return res.ok ? res.json() : null;
-      })
+    // CPU 5.10.2026: תשובה של פחות מ-60 שנ' (אותו עובד, אותה לשונית - sessionStorage, lib/apiCachePersist.js) משרתת את הטעינה
+    // המלאה הבאה בלי רשת. כשפונים לשרת (הכותרת x-design-prefs-cookie נקראת כמו קודם) התשובה נשמרת לפעם הבאה. תשובה מהאחסון לא
+    // מחליפה את בניית העוגייה: זו כבר נבנתה/אומתה בקריאה שיצרה אותה, לפני פחות מדקה.
+    const stored = readPersistedFresh('/api/me/design-prefs');
+    (stored !== undefined
+      ? Promise.resolve(stored)
+      : fetch('/api/me/design-prefs')
+        .then((res) => {
+          cookieRebuilt = res.headers.get('x-design-prefs-cookie') === 'rebuilt';
+          return res.ok ? res.json() : null;
+        })
+        .then((d) => {
+          if (d && d.success && d.employeeId) writePersisted('/api/me/design-prefs', d);
+          return d;
+        }))
       .then((data) => {
         if (cancelled || !data || !data.success || !data.employeeId) return;
         const employeeId = data.employeeId;

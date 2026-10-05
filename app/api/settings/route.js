@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES, getSessionEmployee } from '@/lib/auth';
-import { invalidateSettingsCache } from '@/lib/settingsCache';
+import { invalidateSettingsCache, getCachedSettingsList } from '@/lib/settingsCache';
 import { validateNumericSetting, validateSelectSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
@@ -17,19 +17,17 @@ export const dynamic = 'force-dynamic';
 // read by pages that render before/without login, such as the public
 // customer-interface kiosk page and the labels fetched on initial layout
 // mount. Writing settings is admin-only (see POST below).
-export async function GET() {
+//
+// CPU 5.10.2026: the rows come from a 30s per-instance server cache (lib/settingsCache.js getCachedSettingsList - the SAME
+// findMany: BRAND_LOGO / backup_requested_at excluded, category asc + id asc) instead of a full findMany + 66KB serialize on every
+// call. It is dropped by invalidateSettingsCache() right after every write here (POST) and in the other settings writers; other warm
+// instances converge within 30s. `?fresh=1` bypasses it (settings-editing screens that must show exactly what was just saved).
+// Everything user-dependent below (secret masking, non_working_days_extra notes) is applied per request on top of the cached rows.
+export async function GET(request) {
   try {
-    const settings = await prisma.systemSetting.findMany({
-      where: {
-        key: {
-          notIn: ['BRAND_LOGO', 'backup_requested_at'] // backup_requested_at is an internal flag (app/api/admin/backups/trigger), not an admin-editable setting
-        }
-      },
-      orderBy: [
-        { category: 'asc' },
-        { id: 'asc' }
-      ]
-    });
+    let fresh = false;
+    try { fresh = !!request && new URL(request.url).searchParams.get('fresh') === '1'; } catch { /* no url (direct call) */ }
+    const settings = await getCachedSettingsList({ fresh });
     let masked = settings.map(s =>
       SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s
     );

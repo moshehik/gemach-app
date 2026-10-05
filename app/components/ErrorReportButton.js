@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { unreadCount as countUnread } from './errorReport/erModel';
+import { invalidate } from '../../lib/apiCache';
 import { useUiVariant } from './UiVariantContext';
 import LegacyErrorReportFrame from './variant/LegacyErrorReportFrame';
 
@@ -52,6 +53,7 @@ function ErrorReportButtonNew({ trigger } = {}) {
   // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי הפעם הראשונה מפסיקים לגמרי
   const authFailedRef = useRef(false);
   const fetchSeqRef = useRef(0);
+  const lastUnreadRef = useRef(null); // מונה "לא נקראו" האחרון - שינוי בו (בדיקה קלה) מבטל את הרשימה המלאה במטמון (ErrorReportWindow)
 
   // { light: true } - הבדיקה ברקע (פאנל סגור): רק השדות הדרושים למונה "לא נקראו" (docs/neon-quota-error-report-poll-2026-09-17.md).
   // הקריאה המלאה (רשימה, תגובות, צרופות) נעשית בחלון עצמו כשהוא פתוח, ומעדכנת כאן את המונה דרך onData.
@@ -71,7 +73,10 @@ function ErrorReportButtonNew({ trigger } = {}) {
         if (seq !== fetchSeqRef.current) return;
         if (data.success) {
           const prog = data.isProgrammer || false;
-          setUnread(countUnread(data.reports || [], prog));
+          const n = countUnread(data.reports || [], prog);
+          if (lastUnreadRef.current !== null && lastUnreadRef.current !== n) invalidate('/api/error-report'); // מישהו הוסיף/קרא דיווח או תגובה: הרשימה במטמון ישנה
+          lastUnreadRef.current = n;
+          setUnread(n);
           setPerms({ known: true, isProgrammer: prog, isManager: data.isManager ?? data.isProgrammer ?? false });
         }
       }
@@ -82,7 +87,8 @@ function ErrorReportButtonNew({ trigger } = {}) {
 
   const onData = useCallback((list, prog) => {
     ++fetchSeqRef.current;
-    setUnread(countUnread(list || [], prog));
+    lastUnreadRef.current = countUnread(list || [], prog);
+    setUnread(lastUnreadRef.current);
   }, []);
 
   useEffect(() => {

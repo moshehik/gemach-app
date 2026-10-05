@@ -150,7 +150,7 @@ await t('"העתק פרטי מערכת" - אותו טקסט כמו קודם', ()
 
 console.log('חוזה ה-API (נשמר מהחלון הישן)');
 await t('GET /api/error-report (מלא, בחלון) ו-?light=1 (בדיקה תקופתית, בכפתור) - 120 שנ\', רק כשסגור והטאב גלוי, 401 עוצר', () => {
-  has(WIN, /fetch\('\/api\/error-report'\)/, 'GET מלא');
+  has(WIN, /fetchFreshJson\('\/api\/error-report', \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/, 'GET מלא (דרך מטמון 60 שנ - scripts/cpu-reduction-tests/error-report-cache.test.mjs)');
   has(BTN, /fetch\('\/api\/error-report\?light=1'\)/, 'GET light');
   has(BTN, /setInterval\(\(\) => fetchLight\(\), 120000\)/, 'כל 120 שנ\'');
   has(BTN, /visibilitychange/, 'עצירה בטאב מוסתר');
@@ -178,7 +178,7 @@ await t('תגובה, סקיצה (אשר/דחה + הערה, iframe sandbox), סו
   has(WIN, /body: JSON\.stringify\(\{ enabled: !agentLoopEnabled \}\)/, 'PATCH enabled');
   has(WIN, /body: JSON\.stringify\(\{ deployEnabled: !deployEnabled \}\)/, 'PATCH deployEnabled');
   for (const k of ['error_report_handled_at_bottom', 'error_report_human_button_enabled', 'ai_screen_recording_enabled']) assert.ok(WIN.includes(k), k);
-  has(WIN, /fetch\('\/api\/settings'\)/, 'settings');
+  has(WIN, /fetchSharedJson\('\/api\/settings', \{ ttl: TTL\.STATIC \}\)/, 'settings (מטמון משותף, apiCache)');
 });
 await t('צירוף: סימון אלמנט (useElementPicker + captureElement), צילום מסך (captureViewport), קובץ (3MB), הסרטה (דרייב) והקלטת פעולות', () => {
   for (const s of ['useElementPicker(', 'captureElement(el)', 'captureViewport()', 'MAX_ATTACHMENT_FILES_TOTAL_BYTES', 'isAllowedAttachmentFile', 'ATTACHMENT_FILE_INPUT_ACCEPT', 'prepareScreenRecordingUpload(\'error-report\')', 'uploadScreenRecording(blob, prepared, \'error-report\')', '`gdrive:${fileId}`', 'actionRecorder.start()', 'formatActionSteps(actionRecorder.stop())', 'data-no-record="true"', 'לא נרשמו פעולות — נסה שוב']) assert.ok(WIN.includes(s), s);

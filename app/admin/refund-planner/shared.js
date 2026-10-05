@@ -94,7 +94,7 @@ export function useLivePolicy() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/settings', { cache: 'no-store' });
+        const res = await fetch('/api/settings?fresh=1', { cache: 'no-store' }); // fresh=1: עוקף את מטמון השרת (30 שנ') - מסך הגדרות/תכנון חייב להציג מה ששמור
         if (!res.ok) throw new Error('bad status');
         const rows = await res.json();
         if (cancelled) return;
