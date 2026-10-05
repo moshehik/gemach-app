@@ -614,13 +614,16 @@ test('PUT /api/orders/[id] (static): STOCK_SHORTAGE / CONFLICT codes on the SAME
   const conflict = s.slice(s.indexOf('code: CONFLICT_CODE'), s.indexOf('code: CONFLICT_CODE') + 400);
   assert.match(conflict, /error: 'Data Collision'[\s\S]*\{ status: 409 \}/);
   assert.equal((s.match(/status: 409/g) || []).length, 2, 'no new 409');
-  assert.match(s, /if \(data\.cardVariant === A5_CARD_VARIANT\) \{\s*const manualCharges = detectManualChargeChanges\(data\.obligations, storedObligations\);/);
-  assert.match(s, /hasPermission\(sessionEmployee, MANUAL_CHARGE_PERMISSION\)\)\)\s*\|\| \(await verifyManagerPin\(data\.manualChargeApproverId, data\.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION\)\)/);
-  assert.match(s, /code: MANUAL_CHARGE_APPROVAL_REQUIRED_CODE[\s\S]{0,200}status: 403/);
+  // the manual-charge gate moved into lib/approvalGate.js (hardening 2026-10-05): a5 bodies are ALWAYS gated, other bodies once approval_permissions_enforced is ON
+  assert.match(s, /isA5Body: data\.cardVariant === A5_CARD_VARIANT/);
+  assert.match(s, /typedManualChargePinOk: \(\) => verifyManagerPin\(data\.manualChargeApproverId, data\.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION\)/);
+  const gate = src('lib/approvalGate.js');
+  assert.match(gate, /const manual = detectManualChargeChanges\(data\.obligations, storedObligations\);/);
+  assert.match(gate, /\(hasManualChargeChange\(manual\) && \(isA5Body \|\| m\.permissionsEnforced\)\)/);
+  assert.match(gate, /code: MANUAL_CHARGE_APPROVAL_REQUIRED_CODE/);
   assert.match(s, /select: \{ id: true, isDeleted: true, isManual: true, amount: true, description: true \}/);
-  assert.match(s, /if \(hasManualChargeChange\(manualCharges\)\) \{/);
   // the gate runs BEFORE the transaction (no reads inside $transaction)
-  assert.ok(s.indexOf('detectManualChargeChanges(data.obligations') < s.indexOf('prisma.$transaction(async (tx)'));
+  assert.ok(s.indexOf('enforceOrderPutApprovals({') < s.indexOf('prisma.$transaction(async (tx)'));
   // the signature-only PUT (legacy + new card) still skips the id checks when the new card tags its body
   assert.match(s, /SIGNATURE_ONLY_KEYS = new Set\(\['hasSignedRegulations', 'updatedAt', 'overwriteConflict', 'cardVariant'\]\)/);
   // AMB-19: the order row is written through auditAs('UPDATE_ORDER', ..., diffOrderUpdate(existingOrder, data))

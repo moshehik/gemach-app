@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { canApproveDebt } from '@/lib/permissions';
+import { resolveDebtApprover, releaseApprovalClaims } from '@/lib/approvalGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,21 @@ export const dynamic = 'force-dynamic';
 // ב-app/lib/prisma.js). מסך זיכויים/חובות קורא לנתיב הקטן הזה כדי לאשר/לבטל אישור
 // שורת חוב בודדת בלי לשלוח את כל מטען ההזמנה (items/payments/obligations/updatedAt)
 // שממילא לא משתנה כאן.
+//
+// הקשחה (docs/server-approval-hardening.md): המאשר נלקח מ-`approvalToken` החתום ש-POST /api/auth/verify-pin החזיר אחרי שהקוד
+// הוקלד באמת (מקושר להזמנה, לעובד המחובר ולסוג "אישור חוב", תקף 5 דקות, חד-פעמי) - לא מ-`employeeId` שבגוף הבקשה. כשההגדרה
+// approval_tokens_required כבויה (ברירת מחדל) `employeeId` הישן עדיין מתקבל כמו קודם (עם שורת deprecation בלי סודות);
+// כשדלוקה - נדרש טוקן.
+
+// מפענח את המאשר של הבקשה; { approverId } או { response } (תשובת שגיאה מוכנה). claims = טוקנים שנתפסו (מוחזרים אם הבקשה נכשלת).
+async function resolveApprover(request, orderId, claims) {
+  const body = await request.json().catch(() => ({}));
+  const r = await resolveDebtApprover({ orderId, token: body.approvalToken, bareId: body.employeeId, claims });
+  if (!r.ok) return { response: NextResponse.json({ error: r.error, code: r.code }, { status: r.status }) };
+  if (!r.approverId) return { response: NextResponse.json({ error: 'נדרש מזהה עובד מאשר' }, { status: 400 }) };
+  if (!(await canApproveDebt(r.approverId))) return { response: NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 }) };
+  return { approverId: r.approverId };
+}
 
 async function loadOrderBalance(orderId) {
   const order = await prisma.order.findUnique({
@@ -35,14 +51,16 @@ async function loadOrderBalance(orderId) {
 
 export async function POST(request, { params }) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const claims = [];
+  let done = false;
   try {
     const { id } = await params;
     const orderId = parseInt(id, 10);
     if (isNaN(orderId)) return NextResponse.json({ error: 'מספר הזמנה לא תקין' }, { status: 400 });
 
-    const { employeeId } = await request.json();
-    if (!employeeId) return NextResponse.json({ error: 'נדרש מזהה עובד מאשר' }, { status: 400 });
-    if (!(await canApproveDebt(employeeId))) return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
+    const approver = await resolveApprover(request, orderId, claims);
+    if (approver.response) return approver.response;
+    const employeeId = approver.approverId;
 
     const balance = await loadOrderBalance(orderId);
     if (!balance) return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
@@ -60,23 +78,28 @@ export async function POST(request, { params }) {
       }
     });
 
+    done = true;
     return NextResponse.json({ success: true, log, remaining: balance.remaining });
   } catch (error) {
     console.error('Error approving debt:', error);
     return NextResponse.json({ error: 'שגיאה באישור החוב' }, { status: 500 });
+  } finally {
+    if (!done) releaseApprovalClaims(claims);
   }
 }
 
 export async function DELETE(request, { params }) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const claims = [];
+  let done = false;
   try {
     const { id } = await params;
     const orderId = parseInt(id, 10);
     if (isNaN(orderId)) return NextResponse.json({ error: 'מספר הזמנה לא תקין' }, { status: 400 });
 
-    const { employeeId } = await request.json();
-    if (!employeeId) return NextResponse.json({ error: 'נדרש מזהה עובד מאשר' }, { status: 400 });
-    if (!(await canApproveDebt(employeeId))) return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
+    const approver = await resolveApprover(request, orderId, claims);
+    if (approver.response) return approver.response;
+    const employeeId = approver.approverId;
 
     const order = await prisma.order.findUnique({ where: { orderId }, select: { orderId: true } });
     if (!order) return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
@@ -94,9 +117,12 @@ export async function DELETE(request, { params }) {
       }
     });
 
+    done = true;
     return NextResponse.json({ success: true, log });
   } catch (error) {
     console.error('Error cancelling debt approval:', error);
     return NextResponse.json({ error: 'שגיאה בביטול אישור החוב' }, { status: 500 });
+  } finally {
+    if (!done) releaseApprovalClaims(claims);
   }
 }

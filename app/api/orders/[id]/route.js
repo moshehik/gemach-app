@@ -67,10 +67,11 @@ import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus } from '../../../../lib/orderReservation';
 import { verifyManagerPin } from '../../../../lib/managerAuth';
 import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
-import { canApproveDebt, hasPermission } from '@/lib/permissions';
+import { canApproveDebt } from '@/lib/permissions';
+import { getApprovalMode, resolveDebtApprover, enforceOrderPutApprovals, releaseApprovalClaims, commitApprovalClaims } from '@/lib/approvalGate';
 import {
-  STOCK_SHORTAGE_CODE, CONFLICT_CODE, MANUAL_CHARGE_PERMISSION, MANUAL_CHARGE_APPROVAL_REQUIRED_CODE,
-  A5_CARD_VARIANT, detectManualChargeChanges, hasManualChargeChange, diffOrderUpdate
+  STOCK_SHORTAGE_CODE, CONFLICT_CODE, MANUAL_CHARGE_PERMISSION,
+  A5_CARD_VARIANT, diffOrderUpdate
 } from '@/lib/history/orderEvents';
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
@@ -272,7 +273,21 @@ function parseSafeDate(val) {
   return null;
 }
 
-export async function PUT(request, { params }) {
+// Approval tokens claimed by this request (lib/approvalGate.js) are handed back when the save does not succeed, so the worker is not
+// asked for the manager's code a second time after a conflict / validation error.
+export async function PUT(request, ctx) {
+  const claims = [];
+  let succeeded = false;
+  try {
+    const res = await putOrder(request, ctx, claims);
+    succeeded = !!res && res.status < 400;
+    return res;
+  } finally {
+    if (!succeeded) releaseApprovalClaims(claims); // commitApprovalClaims() already emptied the list when the transaction committed
+  }
+}
+
+async function putOrder(request, { params }, claims) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
@@ -337,8 +352,18 @@ export async function PUT(request, { params }) {
       }
     }
 
-    // The approver named in debtApprovedBy must really hold feature:debt_approval (lib/permissions.js).
-    if (data.debtApprovedBy && !(await canApproveDebt(data.debtApprovedBy))) {
+    // Debt approval. The approver is read FROM the signed approvalToken that POST /api/auth/verify-pin issued after the typed
+    // code matched (bound to this order, the logged-in employee and the debt_approval kind; single use) - not from a CLAIMED
+    // id in the body. approval_tokens_required OFF (default) still accepts the legacy `debtApprovedBy` id (deprecation log);
+    // ON refuses it. Either way the approver must really hold feature:debt_approval right now (lib/permissions.js).
+    // docs/server-approval-hardening.md
+    const approvalMode = await getApprovalMode();
+    const debtApproval = await resolveDebtApprover({ orderId: parsedOrderId, token: data.debtApprovalToken, bareId: data.debtApprovedBy, claims, mode: approvalMode });
+    if (!debtApproval.ok) {
+      return NextResponse.json({ error: debtApproval.error, code: debtApproval.code }, { status: debtApproval.status });
+    }
+    const debtApprover = debtApproval.approverId;
+    if (debtApprover && !(await canApproveDebt(debtApprover))) {
       return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
     }
 
@@ -626,19 +651,17 @@ export async function PUT(request, { params }) {
     // (manualChargeApproverId/manualChargeApproverPin, re-verified here like managerPin/orderDateApproverPin).
     // Bodies WITHOUT cardVariant:'a5' are the legacy card ("הוסף חיוב" / delivery-charge buttons, no approval
     // step) and keep today's behavior until that card is retired.
-    if (data.cardVariant === A5_CARD_VARIANT) {
-      const manualCharges = detectManualChargeChanges(data.obligations, storedObligations);
-      if (hasManualChargeChange(manualCharges)) {
-        const sessionEmployee = await getSessionEmployee();
-        const allowed = (sessionEmployee && (await hasPermission(sessionEmployee, MANUAL_CHARGE_PERMISSION)))
-          || (await verifyManagerPin(data.manualChargeApproverId, data.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION));
-        if (!allowed) {
-          return NextResponse.json({
-            code: MANUAL_CHARGE_APPROVAL_REQUIRED_CODE,
-            error: 'הוספה או מחיקה של חיוב ידני מותרת רק למי שהוגדר כמאשר חיוב ידני (או באישור שלו).'
-          }, { status: 403 });
-        }
-      }
+    // Hardening: with approval_permissions_enforced ON the same gate covers EVERY body (the cardVariant field was the only switch - a direct
+    // call simply left it out), stored non-manual lines can no longer be soft-deleted without it, and deleting / changing a stored
+    // payment needs feature:manual_payment_credit_add (or an approver token). All of it lives in lib/approvalGate.js.
+    const approvalsCheck = await enforceOrderPutApprovals({
+      data, orderId: parsedOrderId, storedObligations, storedPayments, mode: approvalMode, claims,
+      loadSessionEmployee: getSessionEmployee,
+      isA5Body: data.cardVariant === A5_CARD_VARIANT,
+      typedManualChargePinOk: () => verifyManagerPin(data.manualChargeApproverId, data.manualChargeApproverPin, MANUAL_CHARGE_PERMISSION),
+    });
+    if (!approvalsCheck.ok) {
+      return NextResponse.json(approvalsCheck.body, { status: approvalsCheck.status });
     }
 
     const storedPaymentById = new Map(storedPayments.map(p => [p.id, p]));
@@ -930,7 +953,7 @@ export async function PUT(request, { params }) {
       }
 
       // 6. Record debt approval if provided
-      if (data.debtApprovedBy) {
+      if (debtApprover) {
         const currentTotalPaid = data.payments ? data.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
         const currentTotalRequired = data.totalAmount || 0;
         const currentDebt = currentTotalRequired - currentTotalPaid;
@@ -943,13 +966,14 @@ export async function PUT(request, { params }) {
             entityId: parsedOrderId.toString(),
             action: 'DEBT_APPROVED',
             changesJson: JSON.stringify({ approvedDebtAmount: currentDebt }),
-            employeeId: data.debtApprovedBy
+            employeeId: debtApprover
           }
         });
       }
 
       return order;
     }, { timeout: 30000, maxWait: 15000 });
+    commitApprovalClaims(claims); // the save is committed: the tokens stay spent even if the recalculation below fails
 
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);
