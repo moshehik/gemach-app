@@ -504,3 +504,31 @@ test('D7/D2/R48 טקסטים: discardSub, EXIT_ROWS_MAX, stockLineNote, STOCK_HI
   assert.equal(R.stockLineNote(true), 'היחידה תפוסה בגלל ציפוף הימים');
   assert.ok(/ציפוף/.test(R.STOCK_HINT));
 });
+
+// דוח ההשוואה F11: "בטל שינויים" בחלון הסיכום (D1) - discardAll({confirmed:true}), בלי שמירה ובלי חלון אישור שני
+test('D1 סיכום → "בטל שינויים": השינויים מבוטלים (מצב = snapshot), אין PUT, אין חלון DiscardDialog, נרשם cancel-changes; "חזרה לעריכה" משאיר את השינוי', async () => {
+  const st = baseState();
+  const SET = [{ key: 'enable_order_edit_summary_confirm', value: 'true' }];
+  const orig = st.order.notes;
+  const respond = okPut()(st);
+  let h = realFlows({ settings: SET, edit: withNotes, answers: { Summary: 'discard' }, respond });
+  assert.equal(h.state.order.notes, 'שונה');
+  const x1 = actionsFor(h.oc);
+  await x1.a.primary('save');
+  assert.equal(h.state.order.notes, orig, 'חזר למצב שנשמר');
+  assert.equal(h.oc.dirty, false);
+  assert.equal(h.calls.filter((c) => c.method === 'PUT').length, 0, 'לא נשמר');
+  assert.deepEqual(h.opened.map(([C]) => C), ['Summary'], 'בלי חלון אישור שני');
+  assert.equal(h.calls.filter((c) => c.url.endsWith('/cancel-changes') && c.method === 'POST').length, 1, 'נרשם ביומן כמו "בטל שינויים" ברייל');
+  h = realFlows({ settings: SET, edit: withNotes, answers: { Summary: false }, respond });
+  await actionsFor(h.oc).a.primary('save');
+  assert.equal(h.state.order.notes, 'שונה', 'חזרה לעריכה: השינוי נשאר');
+  assert.equal(h.calls.filter((c) => c.method === 'PUT').length, 0);
+});
+
+test('D1: חלון הסיכום - שלושה כפתורים כמו בעיצוב (שמור/תשלום/זיכוי, בטל שינויים, חזרה לעריכה)', async () => {
+  const src = (await import('node:fs')).readFileSync((await import('node:path')).join(process.env.PROJ, 'app/components/order-card/dialogs/OcSummaryDialog.js'), 'utf8');
+  const i1 = src.indexOf('act="do-save"'); const i2 = src.lastIndexOf('act="discard-close"'); const i3 = src.indexOf('חזרה לעריכה</DlgBtn>');
+  assert.ok(i1 > 0 && i2 > i1 && i3 > i2, 'סדר: ראשי, בטל שינויים, חזרה לעריכה');
+  assert.match(src, /<DlgBtn icon="undo" act="discard-close" onClick=\{\(\) => close\('discard'\)\}>בטל שינויים<\/DlgBtn>/);
+});
