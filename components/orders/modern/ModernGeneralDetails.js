@@ -32,6 +32,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [isEditingDelivery, setIsEditingDelivery] = useState(!!order?.isDelivery && !order?.deliveryCity);
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
   const [enableRentalExtension, setEnableRentalExtension] = useState(false);
+  // 1cbaf995 / fdce699f: allow_abroad_long_stay_orders = 'false' מסתיר את בורר "אירוע רגיל / חו"ל" (ברירת מחדל: מוצג)
+  const [allowAbroadSetting, setAllowAbroadSetting] = useState(true);
 
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -41,6 +43,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         if (setting && !isNaN(parseInt(setting.value, 10))) setSystemDefaultSpacing(parseInt(setting.value, 10));
         const extSetting = arr.find(s => s.key === 'enable_rental_extension');
         setEnableRentalExtension(!!extSetting && extSetting.value === 'true');
+        const abroadSetting = arr.find(s => s.key === 'allow_abroad_long_stay_orders');
+        setAllowAbroadSetting(!(abroadSetting && abroadSetting.value === 'false'));
       })
       .catch(() => {});
   }, []);
@@ -323,6 +327,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              {(allowAbroadSetting || isAbroad) ? (
               <div className="pill-tabs">
                 <button
                   type="button"
@@ -347,6 +352,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                   אירוע חו"ל
                 </button>
               </div>
+              ) : <span />}
               <button type="button" className="btn btn-ghost btn-icon-only" title="סיים עריכה" onClick={() => setIsEditingEvent(false)}>
                 <svg className="icon"><use href="#i-check" /></svg>
               </button>

@@ -141,6 +141,14 @@ export default function NewOrderPage() {
 
   const [settings, setSettings] = useState({});
 
+  // דיווחים 1cbaf995 / fdce699f: נווה יעקב לא מזמינים חו"ל / תפוסה ארוכה. ברירת מחדל (חסר/כל ערך שאינו 'false') = מוצג כמו תמיד.
+  const allowAbroad = settings.allow_abroad_long_stay_orders !== 'false';
+  // כשההגדרה כבויה האשף תמיד במצב אירוע רגיל (תאריך בודד) - גם אם ה-state כבר הוגדר כ-isAbroad.
+  useEffect(() => {
+    if (allowAbroad) return;
+    setOrder(prev => (prev.isAbroad || prev.fromDate || prev.toDate) ? { ...prev, isAbroad: false, fromDate: '', toDate: '' } : prev);
+  }, [allowAbroad, order.isAbroad, order.fromDate, order.toDate]);
+
   // ערי המשלוח לבחירה בשדה "עיר משלוח" - מתוך מפתחות ה-JSON של delivery_price_by_city
   // (הערים שבאמת מוגדר להן מחיר משלוח), ולא מתוך כל ערי הלקוחות הכלליות - ר' דיווח
   // org2 9090b43a. נופל חזרה לרשימת ערי הלקוחות אם ההגדרה עוד לא הוגדרת/ריקה, כדי
@@ -753,6 +761,7 @@ export default function NewOrderPage() {
   const handleDateChangeWithValidation = async (fieldOrUpdates, valueIfField) => {
     const isMulti = typeof fieldOrUpdates === 'object';
     const updates = isMulti ? fieldOrUpdates : { [fieldOrUpdates]: valueIfField };
+    if (!allowAbroad && (updates.isAbroad || 'fromDate' in updates || 'toDate' in updates)) return; // 1cbaf995 / fdce699f
 
     if (order.isAbroad) {
       const fromDateVal = 'fromDate' in updates ? updates.fromDate : order.fromDate;
@@ -2047,6 +2056,7 @@ export default function NewOrderPage() {
           <div style={{ maxWidth: '520px', margin: '0 auto' }}>
             <h2>מתי האירוע?</h2>
 
+            {allowAbroad && (
             <div className="pill-tabs" style={{ marginBottom: '14px' }}>
               <button
                 type="button"
@@ -2061,9 +2071,10 @@ export default function NewOrderPage() {
                 onClick={() => handleDateChangeWithValidation('isAbroad', true)}
               >חו&quot;ל / תפוסה ארוכה</button>
             </div>
+            )}
 
             <div className="card card-pad">
-              {!order.isAbroad ? (
+              {(!order.isAbroad || !allowAbroad) ? (
                 <div className="field">
                   <label>תאריך אירוע <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
