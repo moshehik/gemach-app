@@ -18,20 +18,49 @@
 /* --------------------------------------------------------------------------
    1. טיפוגרפיה — דריסת גופנים שנכפו inline
    חלק מהמסכים כפו fontFamily: 'system-ui' וכדומה, מה שביטל את גופני המערכת.
+   (f52ab4f4 / cabe10ef) כללי ברירת המחדל חלים רק כשאין data-font על <html> (או "קלאסי");
+   אחרת ה-!important שלהם ביטל את בורר הגופנים ב-/display-settings.
    -------------------------------------------------------------------------- */
-body,
-button,
-input,
-select,
-textarea,
-[style*="system-ui"],
-[style*="Segoe UI"],
-[style*="-apple-system"] {
+:root:not([data-font]) body,
+:root:not([data-font]) button,
+:root:not([data-font]) input,
+:root:not([data-font]) select,
+:root:not([data-font]) textarea,
+:root:not([data-font]) [style*="system-ui"],
+:root:not([data-font]) [style*="Segoe UI"],
+:root:not([data-font]) [style*="-apple-system"],
+:root[data-font="classic"] body,
+:root[data-font="classic"] button,
+:root[data-font="classic"] input,
+:root[data-font="classic"] select,
+:root[data-font="classic"] textarea,
+:root[data-font="classic"] [style*="system-ui"],
+:root[data-font="classic"] [style*="Segoe UI"],
+:root[data-font="classic"] [style*="-apple-system"] {
   font-family: 'Assistant', 'Heebo', sans-serif !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
+:root:not([data-font]) h1, :root:not([data-font]) h2, :root:not([data-font]) h3,
+:root:not([data-font]) h4, :root:not([data-font]) h5, :root:not([data-font]) h6 {
   font-family: 'Frank Ruhl Libre', 'Assistant', serif !important;
+}
+
+/* גופן שנבחר ב-/display-settings: טקסט לפי --font וכותרות לפי --font-heading
+   ("קלאסי" משנה רק כותרות - הטקסט נשאר Assistant, לכן מוחרג כאן). */
+:root[data-font]:not([data-font="classic"]) body,
+:root[data-font]:not([data-font="classic"]) button,
+:root[data-font]:not([data-font="classic"]) input,
+:root[data-font]:not([data-font="classic"]) select,
+:root[data-font]:not([data-font="classic"]) textarea,
+:root[data-font]:not([data-font="classic"]) [style*="system-ui"],
+:root[data-font]:not([data-font="classic"]) [style*="Segoe UI"],
+:root[data-font]:not([data-font="classic"]) [style*="-apple-system"] {
+  font-family: var(--font) !important;
+}
+
+:root[data-font] h1, :root[data-font] h2, :root[data-font] h3,
+:root[data-font] h4, :root[data-font] h5, :root[data-font] h6 {
+  font-family: var(--font-heading) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -191,8 +220,16 @@ table tbody td {
 
 table thead th {
   color: var(--text-muted) !important;
-  font-family: 'Assistant', sans-serif !important;
   letter-spacing: 0.01em;
+}
+
+:root:not([data-font]) table thead th,
+:root[data-font="classic"] table thead th {
+  font-family: 'Assistant', sans-serif !important;
+}
+
+:root[data-font]:not([data-font="classic"]) table thead th {
+  font-family: var(--font) !important;
 }
 
 /* --------------------------------------------------------------------------
