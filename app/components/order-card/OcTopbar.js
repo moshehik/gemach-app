@@ -6,6 +6,7 @@
 // נעולה" → "שחרר באישור מנהל" (feature:locked_order_edit); A1/A2/R6 — Excel/הורדה/הדפסה-ומייל הם slots של W7; R42 — שורת הסריקה
 // (slot של W3) במרכז; מחיקת הזמנה (D9) → oc.deleteOrder. הטולטיפים ב-data-tip (לא title).
 import OcIcon, { XlGlyph } from './OcIcon';
+import PageVariantToggle from '../variant/PageVariantToggle';
 import { DlgBtn, DlgButtons, DlgHead } from './OcUi';
 
 function LockedDialog({ close }) {
@@ -63,6 +64,8 @@ export default function OcTopbar({ oc, ui, slots }) {
           </>
         ) : null}
       </div>
+      {/* "חזרה לתצוגה הישנה" (4.10.2026): רק להנהלה ראשית / מתכנת (הרשומה order_card ב-lib/uiVariantScreens.js); הטולטיפ - usePageTooltip של הדף (data-tip) */}
+      <PageVariantToggle screen="order_card" placement="header" systemTip />
     </div>
   );
 }

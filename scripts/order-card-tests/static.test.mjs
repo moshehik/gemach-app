@@ -33,7 +33,9 @@ test('page.js דק → OrderCardSwitch; ה-Switch: legacy כברירת מחדל,
   const sw = read(path.join(OC, 'OrderCardSwitch.js'));
   assert.ok(sw.includes("useUiVariant('order_card')"));
   assert.ok(/dynamic\(\(\) => import\('\.\/OrderCardA5'\), \{ ssr: false \}\)/.test(sw));
-  assert.ok(/variant !== 'a5'\) return <LegacyOrderPage params=\{params\} \/>/.test(sw));
+  assert.ok(/variant !== 'a5'\) return <VariantFrame screen="order_card" variant="legacy"><LegacyOrderPage params=\{params\} \/><\/VariantFrame>/.test(sw), 'הישן עטוף ב-VariantFrame (אייקון המעבר בפינה)');
+  assert.ok(/<VariantFrame screen="order_card" variant="a5"><A5Route params=\{params\} \/><\/VariantFrame>/.test(sw));
+  assert.ok(/<PageVariantToggle screen="order_card" placement="header" systemTip \/>/.test(read(path.join(OC, 'OcTopbar.js'))), 'האייקון "חזרה לתצוגה הישנה" בכותרת הכרטיס החדש');
   assert.ok(!/components\.css/.test(sw + page), 'ה-CSS של הפלטה נטען רק בתוך המודול הדינמי');
   assert.deepEqual(grepAll(/data-ui-order-card/), []);
 });

@@ -69,9 +69,9 @@ t('הגדרות: הגדרת ארגון וגם עקיפה אישית גוברות
   assert.equal(resolveUiVariant('settings', { roleId: 0, userVariants: { settings: 'a5' } }), 'a5');
   assert.equal(resolveUiVariant('settings', { roleId: 2, settings: rows({ ui_variant_settings: 'bogus' }) }), 'a5', 'ערך ארגון לא תקין נופל לברירת המחדל לפי תפקיד');
 });
-t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים שהגרסה החדשה שלהם קיימת (newExists); כרטיסי הזמנה / לקוח / עובד נשארים ישנים', () => {
-  for (const s of ['order_card', 'customer_card', 'employee_card']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'legacy', s);
-  for (const s of ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'a5', s);
+t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים שהגרסה החדשה שלהם קיימת (newExists); כרטיס הזמנה חדש (5.10.2026); כרטיסי לקוח / עובד נשארים ישנים', () => {
+  for (const s of ['customer_card', 'employee_card']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'legacy', s);
+  for (const s of ['shell', 'home', 'order_card', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'a5', s);
   for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 0 }), 'legacy', 'הנהלה ראשית: ' + s);
 });
 
