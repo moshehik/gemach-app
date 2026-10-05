@@ -31,7 +31,8 @@ export default function UserMenu({ hideInternalMessaging = false }) {
   useEffect(() => {
     // מטמון משותף — אותה קריאת /api/me משרתת גם את PopupProvider ודפים נוספים.
     // 401 (לא מחובר) נזרק כשגיאה מהמטמון ומטופל כ"אורח" בדיוק כמו קודם.
-    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+    // persist: קריאת אתחול - נשמרת ב-sessionStorage של הלשונית (lib/apiCachePersist.js): טעינה מלאה תוך 60 שנ' לא פונה לרשת
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })
       .then(data => {
         if (data && data.success) {
           setUser(data.employee);

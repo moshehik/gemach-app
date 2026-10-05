@@ -15,9 +15,10 @@ export function LabelsProvider({ children, initialLabels = {} }) {
     // Shared cache: served instantly on repeat navigations, auto-refreshed
     // when labels are saved (mutations to /api/settings invalidate this key).
     const unsubscribe = subscribe('/api/settings/labels', () => {
-      fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC }).then(applyLabels).catch(() => {});
+      fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC, persist: true }).then(applyLabels).catch(() => {});
     });
-    fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC })
+    // persist: קריאת אתחול - נשמרת ב-sessionStorage של הלשונית (lib/apiCachePersist.js): טעינה מלאה תוך 60 שנ' לא פונה לרשת
+    fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC, persist: true })
       .then(applyLabels)
       .catch((err) => console.warn('Failed to fetch UI labels:', err?.message || err))
       .finally(() => { if (alive) setLoading(false); });

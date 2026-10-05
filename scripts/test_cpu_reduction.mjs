@@ -31,7 +31,7 @@ const MIGRATED = [
 for (const f of MIGRATED) {
   await t(`${f}: fetchSharedJson('/api/settings', { ttl: TTL.STATIC }) ובלי fetch גולמי`, () => {
     const src = stripComments(read(f));
-    assert.match(src, /fetchSharedJson\('\/api\/settings', \{ ttl: TTL\.STATIC \}\)/);
+    assert.match(src, /fetchSharedJson\('\/api\/settings', \{ ttl: TTL\.STATIC(, persist: true)? \}\)/);
     assert.match(src, /import \{[^}]*fetchSharedJson[^}]*TTL[^}]*\} from '(@\/lib|\.\.\/\.\.\/lib|\.\.\/\.\.\/\.\.\/lib)\/apiCache'/);
     assert.doesNotMatch(src, /fetch\('\/api\/settings'/);
   });
@@ -46,6 +46,31 @@ const INTENTIONALLY_RAW = [
 ];
 await t('הקבצים שנשארו גולמיים בכוונה עדיין קיימים (הרשימה לא התיישנה)', () => {
   for (const f of INTENTIONALLY_RAW) assert.ok(read(f).length > 0, f);
+});
+
+console.log('3. קריאות האתחול נשמרות ב-sessionStorage - רק במקומות שבחרנו (opt-in), רק ל-4 הכתובות');
+const PERSIST_SITES = [
+  ['app/components/AIFloatingWidget.js', "fetchSharedJson('/api/settings', { ttl: TTL.STATIC, persist: true })"],
+  ['app/components/LabelsContext.js', "fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC, persist: true })"],
+  ['app/components/UserMenu.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })"],
+  ['app/components/menu/MenuA5Shell.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })"],
+  ['app/components/PopupProvider.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })"],
+];
+for (const [f, snippet] of PERSIST_SITES) await t(`${f}: persist:true על קריאת האתחול`, () => assert.ok(stripComments(read(f)).includes(snippet)));
+await t('persist:true מופיע רק באתרי האתחול שנבחרו (אף קובץ אחר בקוד האפליקציה לא מפעיל אותו)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const out = execFileSync('git', ['grep', '-l', 'persist: true', '--', 'app', 'components', 'lib', 'hooks'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
+  const allowed = [...PERSIST_SITES.map((s) => s[0]), 'lib/apiCache.js'].sort();
+  assert.deepEqual(out.filter((f) => !allowed.includes(f)), []);
+});
+await t('app/layout.js מרנדר data-gm-uid רק למחובר, מהעוגייה המאומתת', () => {
+  assert.match(read('app/layout.js'), /data-gm-uid=\{isAuthenticated \? String\(authToken\.value\) : undefined\}/);
+});
+await t("DesignPrefsSync: קורא מהאחסון (60 שנ') ושומר רק תשובה תקינה; הכותרת x-design-prefs-cookie עדיין נקראת בקריאת רשת", () => {
+  const src = stripComments(read('app/components/DesignPrefsSync.js'));
+  assert.match(src, /readPersistedFresh\('\/api\/me\/design-prefs'\)/);
+  assert.match(src, /if \(d && d\.success && d\.employeeId\) writePersisted\('\/api\/me\/design-prefs', d\)/);
+  assert.match(src, /res\.headers\.get\('x-design-prefs-cookie'\) === 'rebuilt'/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

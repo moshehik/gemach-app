@@ -60,7 +60,8 @@ export default function MenuA5Shell({
     const apply = (data) => {
       if (data && data.success) { setMe(data.employee); setShift(data.activeShift || null); }
     };
-    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+    // persist: קריאת אתחול - נשמרת ב-sessionStorage של הלשונית (lib/apiCachePersist.js): טעינה מלאה תוך 60 שנ' לא פונה לרשת
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })
       .then(apply)
       .catch((err) => {
         if (!((err && err.message) || '').includes('HTTP 401')) console.warn('menu: /api/me failed', err && err.message);
