@@ -6,6 +6,7 @@ import { checkAuth, getSessionEmployee } from '../../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 import { resolveExtraDay } from '@/lib/extraDayGate';
+import { syncCustomerSignatureFromOrder } from '@/lib/customerSignature';
 
 export const dynamic = 'force-dynamic';
 
@@ -1009,6 +1010,15 @@ async function putOrder(request, { params }, claims) {
       try { await applyDeliveryCharge(releasedId); } catch (e) { console.error(`Order ${releasedId}: delivery charge after join release failed:`, e); }
     }
     await applyDeliveryCharge(parsedOrderId);
+
+    // חתימה על התקנון בהזמנה (false->true) מסמנת גם את הלקוח, אם עוד לא חתום (lib/customerSignature.js). מחוץ ל-$transaction,
+    // וכשל כאן לא מכשיל את שמירת ההזמנה. לפני שליפת ההזמנה הסופית כדי שה-customer שבתשובה כבר יכלול את החתימה.
+    await syncCustomerSignatureFromOrder({
+      prisma, auditAs,
+      customerId: existingOrder.customerId,
+      orderWasSigned: !!existingOrder.hasSignedRegulations,
+      orderIsSigned: data.hasSignedRegulations === true,
+    });
 
     // Fetch the fully updated order to return to the client.
     // These queries are independent of each other - fetch them concurrently.

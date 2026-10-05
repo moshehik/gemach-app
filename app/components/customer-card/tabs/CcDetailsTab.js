@@ -3,7 +3,7 @@
 // לשונית "פרטים" (העיצוב: pDetailsView / pDetailsEdit). ברירת מחדל תצוגה בלבד; העיפרון בכותרת הכרטיס פותח עריכה ו-✓ סוגר אותה
 // (בלי לשמור - השמירה רק במסילה). החלטות הבעלים: שם פרטי + שם משפחה (אין "שם מלא"), רחוב + מספר בית (אין "כתובת מגורים"),
 // כוכביות לפי customer_required_fields, העתקת מייל צפה, "השלם ל-@gmail.com", הצעות עיר/רחוב ברשימה נגללת, מתג "מאשר/ת קבלת
-// דיוורים" (marketingConsent, מוסתר לפי hide_marketing_consent_field), חתימה על תקנון (נגזרת מההזמנות עד שתהיה עמודה), הערות -
+// דיוורים" (marketingConsent, מוסתר לפי hide_marketing_consent_field), חתימה על תקנון (שמורה ברמת הלקוחה; נגזרת מהזמנות רק ללקוחה שעוד לא נשמרה לה חתימה), הערות -
 // שורות אוטומטיות כקישורים להזמנה (לא מודגשות) + תיבת הערות שנערכת גם בתצוגה ונשמרת רק דרך "שמור" במסילה, ופרטי חשבון הבנק
 // לזיכויים (J1 ב': בלי לשונית "זיכויים ופרטי בנק" נפרדת). בלי "פרטים מתקדמים" (אמצעי קשר / תזכורת - לא להכניס).
 
@@ -75,13 +75,19 @@ export default function CcDetailsTab({ cc, ui }) {
   );
 
   const sigText = sig.signed ? `חתמה${signatureOrderText(sig)}${sig.at ? ` · ${getHebrewDateString(sig.at)}` : ''}` : 'טרם נחתם';
+  // חתימה שנגזרת מהזמנה (עוד לא נשמרה ברמת הלקוחה) וכרטיס לצפייה בלבד (לקוחה מחוקה) - הלחצן לא משנה דבר (aria-disabled + הסבר)
+  const sigLocked = cc.readOnly || sig.derived;
+  const sigTip = cc.readOnly ? 'כרטיס לצפייה בלבד' : sig.derived ? 'החתימה נרשמה בהזמנה ועוד לא נשמרה ברמת הלקוחה' : (sig.signed ? 'ביטול החתימה (נשמר ב"שמור")' : 'סימון חתימה (נשמר ב"שמור")');
+  const toggleSig = () => {
+    if (sigLocked) { ui.toast('info', cc.readOnly ? 'הכרטיס לצפייה בלבד' : 'החתימה נרשמה בהזמנה', cc.readOnly ? '' : 'עדיין לא נשמרה ברמת הלקוחה'); return; }
+    setField('hasSignedRegulations', !cur.hasSignedRegulations);
+  };
   const termsCard = (
     <div className="card">
       <div className="card-h"><div className="ico gold"><CcIcon name="note" size="lg" /></div><h2>תקנון ועדכונים</h2></div>
       <div className="row wrap cc-gap14">
-        <button type="button" className={`btn tgl${sig.signed ? ' on' : ''}`} id="termsBtn" aria-pressed={sig.signed} aria-disabled="true"
-          data-tip="החתימה נרשמת היום בכל הזמנה; חתימה ברמת הלקוחה תופעל אחרי עדכון מסד הנתונים"
-          onClick={() => ui.toast('info', 'החתימה על התקנון נרשמת בהזמנה', 'חתימה ברמת הלקוחה תופעל אחרי עדכון מסד הנתונים')}>
+        <button type="button" className={`btn tgl${sig.signed ? ' on' : ''}`} id="termsBtn" data-f="hasSignedRegulations" aria-pressed={sig.signed} aria-disabled={sigLocked ? 'true' : undefined}
+          data-tip={sigTip} onClick={toggleSig}>
           {sig.signed ? <CcIcon name="check" size="sm" className="evck" anim={false} /> : null}<CcIcon name="sig" size="sm" />חתמה על התקנון
         </button>
         <span className="faint">{sigText}</span>

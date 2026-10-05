@@ -96,7 +96,7 @@
 .gm-ds.gm-cc .app .btn.cc-gmail .dtico .ic{width:16px;height:16px}
 .gm-ds.gm-cc .app .btn.cc-gmail:is(:hover,:focus-visible) .ic{color:#fff;stroke:#fff}
 
-/* לחצן "חתמה על התקנון": נגזר מההזמנות (אין עמודה ברמת לקוח עדיין) - נראה כמו בעיצוב, בלי שינוי בלחיצה */
+/* לחצן "חתמה על התקנון": נעול (aria-disabled) כשהחתימה נגזרת מהזמנה בלבד או בכרטיס לצפייה בלבד - נראה כמו בעיצוב, בלי שינוי בלחיצה */
 .gm-ds.gm-cc #termsBtn[aria-disabled=true]{cursor:default}
 
 /* ===== הערות (הבעלים notes: "משום מה הכל מודגש" - השורות האוטומטיות בטקסט רגיל) ===== */
