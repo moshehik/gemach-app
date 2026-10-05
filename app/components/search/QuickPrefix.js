@@ -16,7 +16,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getHistory } from '@/lib/historyManager';
 import { filterPrefixRows, resolveQuickPrefix, splitMatch } from '@/lib/quickPrefix';
-import { buildActionsModel, buildSavedModel, defaultSaveLabel, SAVED_TEXT } from '@/lib/quickShortcuts';
+import { buildActionsModel, buildKeywordsModel, buildSavedModel, defaultSaveLabel, SAVED_TEXT } from '@/lib/quickShortcuts';
 import { unsavedOrderIds } from '../home/homeAdvConfig';
 import { buildMineModel, buildWhoChips } from '@/lib/myRecentActivityView';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
@@ -402,12 +402,13 @@ function ShortcutList({ qp, count }) {
       {m.state === 'unavailable' && <li className="advo none" role="status">{m.none}<small>{m.sub}</small></li>}
       {shortcutRows(qp)}
       {m.state === 'ok' && m.none && <li className="advo none" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</li>}
-      {m.state !== 'unavailable' && <li className="mine-note" role="note"><QIc id="lock" /><span>{m.note}</span></li>}
+      {m.state !== 'unavailable' && <li className="mine-note" role="note"><QIc id={m.noteIcon || 'lock'} /><span>{m.note}</span></li>}
     </ul>
   );
 }
 const ActionsList = ({ qp }) => <ShortcutList qp={qp} count={false} />;
 const SavedList = ({ qp }) => <ShortcutList qp={qp} count />;
+const KeywordsList = ({ qp }) => <ShortcutList qp={qp} count={false} />; // '%': אותן שורות; הבחירה מכניסה את המילה לשדה (onPick של הקורא: keywordInsert)
 
 /* רישום המקורות המרוחקים של הקידומות: source (lib/quickPrefix.js QUICK_PREFIXES) -> { buildModel({ ctx, term }) => { items, ... }, List }.
    buildModel הוא מודל טהור (כמו buildMineModel / buildActionsModel / buildSavedModel); List הוא הציור בחלונית הבית. ctx = הנתונים של המקור
@@ -417,4 +418,5 @@ export const PREFIX_SOURCES = {
   mine: { buildModel: ({ ctx, term }) => buildMineModel({ state: ctx.state, data: ctx.data }, { term, whoName: ctx.whoName, whoId: ctx.who }), List: MineList },
   actions: { buildModel: ({ ctx, term }) => buildActionsModel({ allowed: ctx.allowed, draftCount: ctx.draftCount, term }), List: ActionsList },
   saved: { buildModel: ({ ctx, term }) => buildSavedModel({ state: ctx.state, list: ctx.list, last: ctx.last, term }), List: SavedList },
+  keywords: { buildModel: ({ term }) => buildKeywordsModel({ term }), List: KeywordsList }, // מקור סטטי: אין ctx (אין נתונים חיצוניים)
 };

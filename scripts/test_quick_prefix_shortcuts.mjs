@@ -5,9 +5,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { QUICK_PREFIXES, detectQuickPrefix, resolveQuickPrefix } from '../lib/quickPrefix.js';
 import {
-  SAVED_SEARCH_LIMIT, SAVED_LABEL_MAX, SAVED_QUERY_MAX, SHORTCUT_GUIDE, guideRows, QUICK_ACTIONS, actionTarget, draftTail, buildActionsModel,
+  SAVED_SEARCH_LIMIT, SAVED_LABEL_MAX, SAVED_QUERY_MAX, SHORTCUT_GUIDE, guideRows, QUICK_ACTIONS, actionTarget, draftTail, buildActionsModel, buildKeywordsModel, keywordInsert, KEYWORDS_TEXT,
   menuAllowedPaths, saveCandidate, defaultSaveLabel, isQuerySaved, buildSavedModel, savePayload, SAVED_TEXT, ACTIONS_TEXT,
 } from '../lib/quickShortcuts.js';
+import { KEYWORD_GUIDE, classifyQuery, parseKeywords } from '../lib/searchNormalize.js';
 import { buildMenuTree, flattenMenuTree, NAV_PAGE_KEYS } from '../lib/menu/buildMenuTree.js';
 import { parseHomeParams, homeDirectiveKey, HOME_RUN_VALUES } from '../app/components/home/homeLogic.js';
 import { buildAdvRequest, emptyAdv, advSummaryParts, unsavedOrderIds } from '../app/components/home/homeAdvConfig.js';
@@ -20,8 +21,9 @@ function t(name, fn) {
 const src = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
 console.log("קידומות: '#' ו-'$' ברישום");
-t("QUICK_PREFIXES: '@' '&' '#' '$' - כל אחת עם source משלה; כתו ראשון בלבד", () => {
-  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$']);
+t("QUICK_PREFIXES: '@' '&' '#' '$' '%' - כל אחת עם source משלה; כתו ראשון בלבד", () => {
+  assert.deepEqual(Object.keys(QUICK_PREFIXES), ['@', '&', '#', '$', '%']);
+  assert.equal(QUICK_PREFIXES['%'].source, 'keywords'); assert.equal(QUICK_PREFIXES['%'].id, 'keywords'); assert.equal(detectQuickPrefix('%מידה').term, 'מידה'); assert.equal(detectQuickPrefix('100%'), null, "'%' באמצע לא קידומת");
   assert.equal(QUICK_PREFIXES['#'].source, 'actions'); assert.equal(QUICK_PREFIXES['$'].source, 'saved');
   assert.equal(detectQuickPrefix('#').prefix, '#'); assert.equal(detectQuickPrefix('# טיוט ').term, 'טיוט');
   assert.equal(detectQuickPrefix('$כהן').def.id, 'saved');
@@ -170,11 +172,13 @@ t('isQuerySaved: אותה שאילתה בדיוק (אחרי קיצוץ) = שמו
 });
 
 console.log('מדריך הקיצורים (PFX-07)');
-t('ארבע שורות @ # $ & עם שם והסבר; "&" נעלמת בלי הרשאה (mineUsable=false)', () => {
-  assert.deepEqual(SHORTCUT_GUIDE.map((g) => g.ch), ['@', '#', '$', '&']);
+t('חמש שורות @ # $ & % עם שם והסבר; "&" נעלמת בלי הרשאה (mineUsable=false), "%" תמיד', () => {
+  assert.deepEqual(SHORTCUT_GUIDE.map((g) => g.ch), ['@', '#', '$', '&', '%']);
   assert.ok(SHORTCUT_GUIDE.every((g) => g.title && g.sub));
-  assert.deepEqual(guideRows().map((g) => g.ch), ['@', '#', '$', '&']);
-  assert.deepEqual(guideRows({ mineUsable: false }).map((g) => g.ch), ['@', '#', '$']);
+  assert.deepEqual(guideRows().map((g) => g.ch), ['@', '#', '$', '&', '%']);
+  assert.deepEqual(guideRows({ mineUsable: false }).map((g) => g.ch), ['@', '#', '$', '%']);
+  const pct = SHORTCUT_GUIDE.find((g) => g.ch === '%');
+  assert.equal(pct.title, 'מילות מפתח'); assert.ok(/מידה/.test(pct.sub) && /דגם/.test(pct.sub) && /ברקוד/.test(pct.sub) && /תאריך/.test(pct.sub), 'ההסבר מונה את המילים');
   for (const g of SHORTCUT_GUIDE) assert.ok(QUICK_PREFIXES[g.ch], 'כל סימן במדריך הוא קידומת רשומה');
 });
 
@@ -290,6 +294,71 @@ t('CSS: בטלפון כפתור "קיצורים" אייקון בלבד (PFX-11 �
   assert.ok(/pfx-help-t \{ display: none; \}/.test(home));
   const menu = src('../app/components/menu/menu.css');
   assert.ok(/@media \(hover:none\),\(max-width:767px\)\{\.gm-ds\.gm-menu \.pfx-menu \.pfx-del\{opacity:1\}\}/.test(menu));
+});
+
+console.log("'%' - מילות מפתח (רשימת מה אפשר להקליד; בחירה מכניסה את המילה לשדה)");
+t("buildKeywordsModel: שורה לכל פריט ב-KEYWORD_GUIDE (מקור אחד עם המנתח), לפי הסדר, עם אייקון / כותרת / הסבר / דוגמה", () => {
+  const m = buildKeywordsModel({});
+  assert.equal(m.state, 'ok'); assert.equal(m.head, 'מילות מפתח'); assert.equal(m.count, KEYWORD_GUIDE.length); assert.equal(m.items.length, 7);
+  assert.deepEqual(m.items.map((r) => r.id), KEYWORD_GUIDE.map((k) => k.id));
+  assert.deepEqual(m.items.map((r) => r.title), ['מידה', 'דגם', 'תאריך עברי', 'תאריך', 'ברקוד', 'מספר הזמנה', 'טלפון']);
+  assert.deepEqual(m.items.map((r) => r.example), ['מידה 2', 'דגם 3', 'כז תשרי', '5/10', '6323401', '25734', '050-1234567']);
+  for (const r of m.items) { assert.equal(r.type, 'keyword'); assert.ok(r.icon && r.title && r.sub && r.tail === r.example, r.id); assert.ok(r.key.startsWith('kw:'), r.key); assert.ok(!('labels' in r)); }
+  assert.deepEqual(new Set(m.items.map((r) => r.key)).size, m.items.length, 'מפתחות ייחודיים');
+  assert.equal(m.noteIcon, 'info'); assert.equal(m.none, ''); assert.equal(m.note, KEYWORDS_TEXT.note);
+});
+t("buildKeywordsModel: סינון לפי מה שהוקלד אחרי '%' (תווית / דוגמה / מילים מזוהות, לא ההסבר), בלי התאמה = הודעה", () => {
+  assert.deepEqual(buildKeywordsModel({ term: 'מידה' }).items.map((r) => r.id), ['size']);
+  assert.deepEqual(buildKeywordsModel({ term: ' תאריך ' }).items.map((r) => r.id), ['hebrewDate', 'gregorianDate']);
+  assert.deepEqual(buildKeywordsModel({ term: 'נייד' }).items.map((r) => r.id), ['phone'], 'מילה מזוהה (נייד) בלי להופיע בתווית');
+  assert.deepEqual(buildKeywordsModel({ term: '5/10' }).items.map((r) => r.id), ['gregorianDate']);
+  assert.deepEqual(buildKeywordsModel({ term: 'מדה' }).items.map((r) => r.id), ['size'], 'האיות החלופי מדה');
+  const none = buildKeywordsModel({ term: 'zzz' });
+  assert.equal(none.items.length, 0); assert.equal(none.none, KEYWORDS_TEXT.none); assert.equal(none.count, 0);
+  assert.equal(buildKeywordsModel().items.length, 7); assert.equal(buildKeywordsModel({ term: null }).items.length, 7);
+});
+t("keywordInsert: יש מילה = המילה והסמן בסופה; אין מילה (תאריך) = הדוגמה כולה מסומנת; קלט חריג בטוח", () => {
+  const byId = (id) => buildKeywordsModel({}).items.find((r) => r.id === id);
+  assert.deepEqual(keywordInsert(byId('size')), { text: 'מידה ', start: 5, end: 5 });
+  assert.deepEqual(keywordInsert(byId('model')), { text: 'דגם ', start: 4, end: 4 });
+  assert.deepEqual(keywordInsert(byId('barcode')), { text: 'ברקוד ', start: 6, end: 6 });
+  assert.deepEqual(keywordInsert(byId('orderNumber')), { text: 'הזמנה ', start: 6, end: 6 });
+  assert.deepEqual(keywordInsert(byId('phone')), { text: 'טלפון ', start: 6, end: 6 });
+  assert.deepEqual(keywordInsert(byId('hebrewDate')), { text: 'כז תשרי', start: 0, end: 7 });
+  assert.deepEqual(keywordInsert(byId('gregorianDate')), { text: '5/10', start: 0, end: 4 });
+  assert.deepEqual(keywordInsert(null), { text: '', start: 0, end: 0 }); assert.deepEqual(keywordInsert({}), { text: '', start: 0, end: 0 });
+});
+t("הרשימה מבטיחה רק מה שהמנתח מבין: כל דוגמה מסווגת, ו-insert + ערך מזוהה (מידה 2 / דגם 3 / ברקוד ... / הזמנה ... / טלפון ...)", () => {
+  assert.equal(classifyQuery('מידה 2').kind, 'sizeKeyword'); assert.equal(classifyQuery('דגם 3').kind, 'modelKeyword');
+  assert.equal(classifyQuery('כז תשרי').kind, 'date'); assert.equal(classifyQuery('כז תשרי').date.calendar, 'hebrew');
+  assert.equal(classifyQuery('5/10').kind, 'date'); assert.equal(classifyQuery('5/10').date.calendar, 'gregorian');
+  assert.equal(classifyQuery('6323401').kind, 'barcode'); assert.equal(classifyQuery('25734').kind, 'orderNumber'); assert.equal(classifyQuery('050-1234567').kind, 'phone');
+  for (const r of buildKeywordsModel({}).items.filter((x) => x.insert)) {
+    const typed = r.insert + ({ size: '2', model: '3', barcode: '6323401', orderNumber: '25734', phone: '0501234567' })[r.id];
+    const kw = parseKeywords(typed);
+    assert.equal(kw.count, 1, r.id + ': ' + typed); assert.equal(kw.rest, '', r.id);
+    assert.equal(kw[{ size: 'size', model: 'model', barcode: 'barcode', orderNumber: 'orderNumber', phone: 'phone' }[r.id]] !== null, true, r.id);
+  }
+});
+t("'%' בשורת חיפוש לא נשמר כחיפוש שמור (כמו # $ & @), אבל '100%' כן; ושורת '%' נשארת ללא חיפוש שרת (מוצגת כרשימה)", () => {
+  assert.equal(saveCandidate('%'), ''); assert.equal(saveCandidate('%מידה'), ''); assert.equal(saveCandidate(' %מידה'), '');
+  assert.equal(saveCandidate('100%'), '100%'); assert.equal(saveCandidate('כהן %'), 'כהן %');
+  assert.equal(resolveQuickPrefix('%').prefix, '%'); assert.equal(resolveQuickPrefix('%', { prefixes: ['&', '#', '$', '%'] }).def.source, 'keywords');
+  assert.equal(resolveQuickPrefix('%', { prefixes: ['&', '#', '$'] }), null, 'מקום שלא מפעיל');
+  for (const flags of [{ mineUsable: false }, { actionsUsable: false }, { savedUsable: false }]) assert.equal(resolveQuickPrefix('%מידה', flags).prefix, '%', "'%' לא תלויה במקורות של קידומות אחרות");
+  assert.equal(resolveQuickPrefix('%מידה', { enabled: false }), null, 'בחיפוש חכם (enabled=false) % היא טקסט');
+});
+t("חיווט '%': PREFIX_SOURCES.keywords (מקור סטטי), דף הבית ותפריט מכניסים את המילה לשדה בלי ניווט ובלי חיפוש, אייקון הערה info", () => {
+  const qp = src('../app/components/search/QuickPrefix.js');
+  assert.ok(/keywords: \{ buildModel: \(\{ term \}\) => buildKeywordsModel\(\{ term \}\), List: KeywordsList \}/.test(qp));
+  assert.ok(/<QIc id=\{m\.noteIcon \|\| 'lock'\} \/>/.test(qp), 'הערת התחתית: info ל-% (מנעול לשאר)');
+  const home = src('../app/components/home/HomeA5.js');
+  assert.ok(/if \(row\.type === 'keyword'\) \{[\s\S]{0,260}keywordInsert\(row\)[\s\S]{0,120}setQ\(k\.text\)[\s\S]{0,260}setSelectionRange\(k\.start, k\.end\)[\s\S]{0,80}return;/.test(home), 'בבית: setQ + סמן / בחירה, בלי runSearch');
+  assert.ok(/import \{[^}]*keywordInsert[^}]*\} from '@\/lib\/quickShortcuts'/.test(home));
+  const menu = src('../app/components/menu/MenuSearchPanel.js');
+  assert.ok(/if \(row\.type === 'keyword'\) \{[\s\S]{0,200}search\.setQ\(k\.text\)[\s\S]{0,260}setSelectionRange\(k\.start, k\.end\)[\s\S]{0,80}return;/.test(menu), 'בתפריט: אותו דבר, בלי onGo');
+  assert.ok(/<Ic n=\{m\.noteIcon \|\| 'lock'\} \/>/.test(menu));
+  assert.ok(!/QUICK_PREFIXES\['%'\][\s\S]{0,30}source: 'mine'/.test(src('../lib/quickPrefix.js')));
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');
