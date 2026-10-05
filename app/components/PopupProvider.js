@@ -18,7 +18,7 @@ const approverLevelLabel = (level) => {
 // או התחברות/התנתקות (בניגוד למטמון המקומי הישן שלא התעדכן לעולם).
 const loadAuthData = () => Promise.all([
   fetchSharedJson('/api/employees', { ttl: TTL.STATIC }).catch(() => []),
-  fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true }).catch(() => null) // persist: קריאת אתחול (lib/apiCachePersist.js)
+  fetchSharedJson('/api/me', { ttl: TTL.STATIC }).catch(() => null) // קריאת אתחול (נשמרת ב-sessionStorage, lib/apiCachePersist.js)
 ]);
 
 export function PopupProvider({ children }) {

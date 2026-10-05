@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import LoginGate from './login/LoginGate';
-import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { clearAdminRecentsStorage } from '@/lib/menu/adminRecents';
 
 export default function UserMenu({ hideInternalMessaging = false }) {
@@ -31,14 +31,17 @@ export default function UserMenu({ hideInternalMessaging = false }) {
   useEffect(() => {
     // מטמון משותף — אותה קריאת /api/me משרתת גם את PopupProvider ודפים נוספים.
     // 401 (לא מחובר) נזרק כשגיאה מהמטמון ומטופל כ"אורח" בדיוק כמו קודם.
-    // persist: קריאת אתחול - נשמרת ב-sessionStorage של הלשונית (lib/apiCachePersist.js): טעינה מלאה תוך 60 שנ' לא פונה לרשת
-    fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })
-      .then(data => {
-        if (data && data.success) {
-          setUser(data.employee);
-          setActiveShift(data.activeShift);
-        }
-      })
+    // קריאת אתחול: נשמרת ב-sessionStorage של הלשונית לפי רשימת המותרים (lib/apiCachePersist.js), בלי קשר למי שקורא ראשון
+    const apply = (data) => {
+      if (data && data.success) {
+        setUser(data.employee);
+        setActiveShift(data.activeShift);
+      }
+    };
+    // מנוי למטמון (כמו MenuA5Shell): רענון ברקע של תשובה שנשמרה / כניסה-יציאה בשעון (invalidate) מצייר מחדש את המשתמש והמשמרת
+    const unsubscribe = subscribe('/api/me', () => apply(readCache('/api/me')));
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+      .then(apply)
       .catch(err => {
         // 401 = לא מחובר (מצב אורח רגיל) — לא שגיאה אמיתית.
         if (!(err?.message || '').includes('HTTP 401')) {
@@ -46,6 +49,7 @@ export default function UserMenu({ hideInternalMessaging = false }) {
         }
       })
       .finally(() => setLoading(false));
+    return unsubscribe;
   }, []);
 
   useEffect(() => {

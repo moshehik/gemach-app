@@ -48,29 +48,37 @@ await t('הקבצים שנשארו גולמיים בכוונה עדיין קיי
   for (const f of INTENTIONALLY_RAW) assert.ok(read(f).length > 0, f);
 });
 
-console.log('3. קריאות האתחול נשמרות ב-sessionStorage - רק במקומות שבחרנו (opt-in), רק ל-4 הכתובות');
-const PERSIST_SITES = [
-  ['app/components/AIFloatingWidget.js', "fetchSharedJson('/api/settings', { ttl: TTL.STATIC, persist: true })"],
-  ['app/components/LabelsContext.js', "fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC, persist: true })"],
-  ['app/components/UserMenu.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })"],
-  ['app/components/menu/MenuA5Shell.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })"],
-  ['app/components/PopupProvider.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC, persist: true })"],
+console.log('3. קריאות האתחול נשמרות ב-sessionStorage - לפי רשימת מותרים (4 כתובות), בלי תלות במי שקורא ראשון');
+const BOOT_SITES = [
+  ['app/components/AIFloatingWidget.js', "fetchSharedJson('/api/settings', { ttl: TTL.STATIC })"],
+  ['app/components/LabelsContext.js', "fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC })"],
+  ['app/components/UserMenu.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC })"],
+  ['app/components/menu/MenuA5Shell.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC })"],
+  ['app/components/PopupProvider.js', "fetchSharedJson('/api/me', { ttl: TTL.STATIC })"],
 ];
-for (const [f, snippet] of PERSIST_SITES) await t(`${f}: persist:true על קריאת האתחול`, () => assert.ok(stripComments(read(f)).includes(snippet)));
-await t('persist:true מופיע רק באתרי האתחול שנבחרו (אף קובץ אחר בקוד האפליקציה לא מפעיל אותו)', async () => {
-  const { execFileSync } = await import('node:child_process');
-  const out = execFileSync('git', ['grep', '-l', 'persist: true', '--', 'app', 'components', 'lib', 'hooks'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean).sort();
-  const allowed = [...PERSIST_SITES.map((s) => s[0]), 'lib/apiCache.js'].sort();
-  assert.deepEqual(out.filter((f) => !allowed.includes(f)), []);
+for (const [f, snippet] of BOOT_SITES) await t(`${f}: קריאת האתחול דרך fetchSharedJson (בלי דגל persist - הרשימה היא ה-opt-in)`, () => assert.ok(stripComments(read(f)).includes(snippet)));
+await t('אין דגל persist:true בקוד האפליקציה; apiCache מחליט לפי isPersistable בלבד', () => {
+  const api = stripComments(read('lib/apiCache.js'));
+  assert.match(api, /if \(isPersistable\(url\)\) \{[^]*?getPersistStore\(\)\?\.read\(url\)/);
+  assert.match(api, /if \(isPersistable\(url\)\) getPersistStore\(\)\?\.write\(url, data, time\)/);
+  assert.doesNotMatch(api, /persistUrls/);
 });
 await t('app/layout.js מרנדר data-gm-uid רק למחובר, מהעוגייה המאומתת', () => {
   assert.match(read('app/layout.js'), /data-gm-uid=\{isAuthenticated \? String\(authToken\.value\) : undefined\}/);
 });
-await t("DesignPrefsSync: קורא מהאחסון (60 שנ') ושומר רק תשובה תקינה; הכותרת x-design-prefs-cookie עדיין נקראת בקריאת רשת", () => {
+await t("DesignPrefsSync: קורא מהאחסון (חלון המפתח) ושומר רק תשובה תקינה; הכותרת x-design-prefs-cookie עדיין נקראת בקריאת רשת", () => {
   const src = stripComments(read('app/components/DesignPrefsSync.js'));
   assert.match(src, /readPersistedFresh\('\/api\/me\/design-prefs'\)/);
   assert.match(src, /if \(d && d\.success && d\.employeeId\) writePersisted\('\/api\/me\/design-prefs', d\)/);
   assert.match(src, /res\.headers\.get\('x-design-prefs-cookie'\) === 'rebuilt'/);
+});
+await t('מסכי עריכת הגדרות קוראים GET /api/settings עם ?fresh=1', () => {
+  for (const [f, re] of [
+    ['app/admin/settings/SettingsClient.js', /fetch\('\/api\/settings\?fresh=1'\)/],
+    ['app/components/settings-sim/SettingsSimPage.js', /fetch\('\/api\/settings\?fresh=1'/],
+    ['app/admin/bulk-email/page.js', /fetch\('\/api\/settings\?fresh=1'/],
+    ['app/admin/refund-planner/shared.js', /fetch\('\/api\/settings\?fresh=1'/],
+  ]) assert.match(stripComments(read(f)), re, f);
 });
 
 console.log('5. רשימת דיווחי התקלות (לא ה-light) במטמון 60 שנ\'');

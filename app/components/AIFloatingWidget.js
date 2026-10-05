@@ -146,8 +146,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   useEffect(() => {
     // /api/settings משותף (מטמון apiCache, 5 דק') - לפני כן כל טעינת דף משכה את כל ההגדרות (~66KB) שוב רק בשביל מפתח אחד.
-    // persist: קריאת אתחול (בכל טעינת דף) - נשמרת ב-sessionStorage של הלשונית (lib/apiCachePersist.js): טעינה מלאה תוך 60 שנ' לא פונה לרשת
-    fetchSharedJson('/api/settings', { ttl: TTL.STATIC, persist: true })
+    // קריאת אתחול: נשמרת ב-sessionStorage של הלשונית לפי רשימת המותרים (lib/apiCachePersist.js), בלי קשר למי שקורא ראשון
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then((data) => {
         if (!Array.isArray(data)) return;
         const s = data.find((x) => x.key === 'ai_screen_recording_enabled');
