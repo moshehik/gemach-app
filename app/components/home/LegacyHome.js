@@ -8,6 +8,7 @@ import { HDate } from '@hebcal/core';
 import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 import SettingQuickPanel from '../SettingQuickPanel';
 import { CopyChip, splitCopyable, renderCopyable } from '../CopyableText';
+import { hebFromInstant } from './homeDates';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -661,7 +662,11 @@ export default function HomeDashboard() {
                       <Link key={r.id} href={`/orders/${r.orderId}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700 }}>{r.catalogName || r.description}</div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}{typeof r.isTaken === 'boolean' ? ` • ${r.isTaken && !r.isReturned ? 'מושכר עכשיו' : r.isReturned ? 'הוחזר' : 'טרם נלקח'}` : ''}</div>
+                          {/* ברקוד אחד חוזר בהשכרות רבות: ההזמנה, הלקוחה ותאריך האירוע (עברי בלבד) מבדילים בין השורות; חלק חסר לא מוצג */}
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)', marginTop: '1px' }}>
+                            {[r.orderId ? `הזמנה #${r.orderId}` : '', [r.firstName, r.lastName].filter(Boolean).join(' '), (r.eventDateHebrew || '').trim() || hebFromInstant(r.eventDate)].filter(Boolean).join(' • ')}
+                          </div>
                         </div>
                         <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
                       </Link>

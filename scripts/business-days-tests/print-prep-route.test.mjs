@@ -22,7 +22,7 @@ const closedDays = (...ranges) => {
 const TWO_WEEKS = closedDays(['2026-11-02', '2026-11-08'], ['2026-11-09', '2026-11-15']); // two closed weeks
 const CLOSED_WEEK = closedDays(['2026-11-02', '2026-11-08']);
 
-const EVENTS = [...eachKey('2026-08-15', '2027-03-31')];
+const EVENTS = [...eachKey('2026-08-15', '2027-05-31')];
 const orders = EVENTS.map((k, i) => ({ orderId: 5000 + i, isDeleted: false, status: null, eventDate: new Date(`${k}T00:00:00.000Z`), eventKey: k }));
 const idOf = new Map(orders.map((o) => [o.eventKey, o.orderId]));
 
@@ -42,8 +42,13 @@ const expected = (from, to, cfg) => {
 
 test('pure function: valid keys give a derived end, invalid ones fall back to null (no regex involved)', () => {
   const cfg = B.parseNonWorkingDaysSetting(TWO_WEEKS);
-  assert.ok(B.printPrepWindowEndKey('2026-10-01', '2026-10-01', null), 'valid key must be accepted');
-  assert.equal(B.printPrepWindowEndKey('2026-10-01', '2026-10-01', null), B.eventRangeForOffset('2026-10-01', '2026-10-01', -3, null).endKey);
+  assert.ok(B.printPrepWindowEndKey('2026-10-06', '2026-10-06', null), 'valid key must be accepted');
+  assert.equal(B.printPrepWindowEndKey('2026-10-06', '2026-10-06', null), B.eventRangeForOffset('2026-10-06', '2026-10-06', -3, null).endKey);
+  // v2: Thu 1.10.2026 is chol hamoed (closed) - no working day in the range => null, and the route keeps its fixed
+  // window (no order can have a chol-hamoed prep day anyway: prep days are working days by construction)
+  assert.equal(B.printPrepWindowEndKey('2026-10-01', '2026-10-01', null), null, 'chol hamoed day: no working target day');
+  assert.equal(B.printPrepWindowEndKey('2026-09-27', '2026-10-03', null), null, 'whole Sukkot stretch: null');
+  assert.equal(B.printPrepWindowEndKey('2026-09-27', '2026-10-04', null), B.eventRangeForOffset('2026-10-04', '2026-10-04', -3, null).endKey, 'range ending on a working day: derived from that day');
   for (const bad of ['dddd-dd-dd', 'garbage', '', null, undefined, '2026-02-30', '2026-10-01T05:00:00Z', '26-10-01']) {
     assert.equal(B.printPrepWindowEndKey(bad, '2026-10-01', cfg), null, `from=${bad}`);
     assert.equal(B.printPrepWindowEndKey('2026-10-01', bad, cfg), null, `to=${bad}`);
@@ -92,6 +97,26 @@ test('print-prep route: ranges, a single closed week and no owner list', { skip:
   for (const d of ['2026-09-10', '2026-11-05', '2026-12-31']) {
     assert.deepEqual([...(await call(`date=${d}`)).body.orderIds].sort((a, b) => a - b), expected(d, d, null), d);
   }
+});
+
+test('print-prep route, NO owner list: chol hamoed (v2) alone pushes events beyond the old fixed +12 window; the derived window returns them', { skip: !PROD_TZ && 'see above' }, async () => {
+  setup(null);
+  let beyondOld = 0;
+  // Sukkot 5787 (chol hamoed 27.9 - 2.10.2026) and Pesach 5787 (chol hamoed 23.4 - 27.4.2027)
+  for (const d of [...eachKey('2026-09-15', '2026-10-10'), ...eachKey('2027-04-12', '2027-05-10')]) {
+    const { status, body } = await call(`date=${d}`);
+    assert.equal(status, 200, d);
+    const want = expected(d, d, null);
+    assert.deepEqual([...body.orderIds].sort((a, b) => a - b), want, `prep day ${d}`);
+    for (const id of want) { const ev = orders.find((o) => o.orderId === id).eventKey; if (ev > addKey(d, 12)) beyondOld++; }
+  }
+  // Mon 19.4.2027 is the prep day of Sun 2.5.2027 (13 calendar days: erev Pesach, Pesach, chol hamoed, Pesach VII, Fri, Sat)
+  const pesach = await call('date=2027-04-19');
+  assert.ok(pesach.body.orderIds.includes(idOf.get('2027-05-02')), 'event Sun 2.5.2027 (13 days out) is returned for prep day Mon 19.4.2027');
+  assert.ok(beyondOld >= 1, `${beyondOld} orders beyond +12 days under the default rule`);
+  // a chol-hamoed prep day has no orders at all (prep days are working days)
+  for (const d of ['2026-09-28', '2026-09-30', '2027-04-25']) assert.deepEqual((await call(`date=${d}`)).body.orderIds, [], `${d} chol hamoed`);
+  console.log(`# INFO print-prep route, default rule: ${beyondOld} orders beyond the old +12 day window (chol hamoed) all returned`);
 });
 
 test('print-prep route: bad input is rejected / event mode untouched', { skip: !PROD_TZ && 'see above' }, async () => {

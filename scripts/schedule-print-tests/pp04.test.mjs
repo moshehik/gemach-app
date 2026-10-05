@@ -23,7 +23,7 @@ test('registry: ready, slim sticker sheet, alterations gate, header + item barco
 test('one sticker per pending alteration item; fields and sort order match labelsRep() of the design', async () => {
   const { payload } = await g2Payload(['PP-04']);
   const pg = payload.pages[0];
-  assert.equal(pg.pageCode, 'ALL-REP-261001');
+  assert.equal(pg.pageCode, 'ALL-REP-261015');
   const d = pg.data;
   assert.equal(d.title, 'מדבקות תיקון');
   assert.equal(d.sub, 'מדבקה לכל שמלה');
@@ -38,7 +38,7 @@ test('one sticker per pending alteration item; fields and sort order match label
   assert.equal(s.name, 'חנה גולדברג');
   assert.equal(s.fix, 'אורך: הארכה 3');
   assert.equal(s.det, 'לשמור על התחרה בשולי השמלה');
-  assert.match(s.eventShort, /תשרי$/);
+  assert.equal(s.eventShort, 'ד׳ חשוון', 'event 15.10.2026 = ד׳ חשוון');
   const both = d.labels.find((l) => l.fix.includes('צוואר') && l.fix.includes('אורך'));
   assert.match(both.fix, /^צוואר: הצרה \d \| אורך: /, 'same text as the existing labels page (neck | length | sleeve)');
 });

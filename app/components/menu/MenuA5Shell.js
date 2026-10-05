@@ -30,11 +30,12 @@ import BellBody, { useNotifications } from './MenuBell';
 import { UserButton, UserPanelBody, userDisplay } from './MenuUserPanel';
 import ManagerMessageDialog from './ManagerMessageDialog';
 import useNavHistory from './useNavHistory';
+import useAdminRecents from './useAdminRecents';
 import SearchKeySync from '../search/SearchKeySync';
 
 const CLOSED = { id: null, pin: false, peek: false };
 export default function MenuA5Shell({
-  menuTree: tree,
+  menuTree: serverTree,
   authToken,
   isProgrammer,
   hideInternalMessaging,
@@ -42,6 +43,9 @@ export default function MenuA5Shell({
   children,
 }) {
   const pathname = usePathname();
+  // פאנל "ניהול" המקוצר: העץ מהשרת + "כלי ניהול שנפתחו לאחרונה" מהדפדפן (useAdminRecents). כל שאר המעטפת (ריחוף, מגירת נייד,
+  // חיפוש בתפריט, הדגשה) עובדת על העץ הזה.
+  const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);
   const [queryString, setQueryString] = useState(''); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
   const popup = usePopup();
   const showAlert = popup && popup.showAlert;
@@ -178,9 +182,10 @@ export default function MenuA5Shell({
       console.warn('Logout error:', (err && err.message) || 'Failed to fetch');
     } finally {
       nav.clearOnLogout();
+      clearAdminRecents();
       window.location.href = '/';
     }
-  }, [nav]);
+  }, [nav, clearAdminRecents]);
 
   // "האתר הישן" (זמני): עקיפה אישית shell=legacy, בכיוון אחד בלבד (השרת מקבל רק 'legacy' / null), ואז טעינה מלאה.
   const handleOldSite = useCallback(async () => {

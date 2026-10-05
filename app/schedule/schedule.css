@@ -156,6 +156,12 @@
 .gm-ds.gm-lz .lz-hrow .lz-all:disabled:not(:hover):not(:focus-visible){background:var(--gold-light);color:var(--navy);border-color:var(--gold-b);box-shadow:none}
 .gm-ds.gm-lz .lz-hrow .lz-all .ic{width:18px;height:18px}
 .gm-ds.gm-lz .chip.st-today{background:#ebdfd3;border:1px solid #d6c4b0;color:var(--navy-900);font-weight:700}
+/* "N התראות" בכותרת שלב (החלטת הבעלים 4.10.2026, SCH-CHIP-ALERTS; עיצוב 1122, 1124) */
+.gm-ds.gm-lz .chip.st-bad{background:#f4a68c;border:1px solid #e8785a;color:var(--navy-900);font-weight:600}
+.gm-ds.gm-lz .chip.st-bad .ic{color:inherit}
+/* "יום לא עובד" ליד מתג שורות/טבלה (החלטת הבעלים 4.10.2026, SCH-CHIP-NWD): תגית 14 (chip gray) של הפלטה, במיקום של
+   התצוגה שאושרה (margin-inline-start:10px; align-self:center מעבר ל-gap של השורה) */
+.gm-ds.gm-lz .lz-hb .lz-offday{margin-inline-start:10px;align-self:center}
 /* הכרטיס: מסגרת כחולה כהה ופנים פנינה (עיצוב 1144-1145; ה-!important דורס את כלל ה"זכוכית" הלבנה של הפלטה) */
 .gm-ds.gm-lz .lz-st{margin-top:0;--cpx:28px;--cpy:20px;padding:var(--cpy) var(--cpx);overflow:visible;background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)!important}
 .gm-ds.gm-lz .lz-st>.lz-pbar{margin:0 0 17px;height:8px;border-radius:999px;background:color-mix(in srgb,var(--navy) 14%,#fff);overflow:hidden;position:relative}

@@ -18,7 +18,7 @@ import {
 } from '../lib/history/sanitize.js';
 import {
   CUSTOMER_ONLY_FIELD_LABELS, CUSTOMER_SHARED_FIELD_LABELS, CUSTOMER_FIELD_LABELS,
-  formatFieldValue, formatMoney, shorten,
+  formatFieldValue, formatMoney, shorten, isHiddenAuditKey, HIDDEN_AUDIT_KEYS,
 } from '../lib/history/labels.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -412,6 +412,26 @@ test('the labels missing from FIELD_TRANSLATIONS are spread into it; shared copi
   for (const k of Object.keys(CUSTOMER_ONLY_FIELD_LABELS)) assert.equal(literal[k], undefined, `${k} is also defined literally - would be a duplicate`);
 });
 
+
+// Q9 review D1/D2: the retired isWeekdayEvent column still rides in every order CREATE audit row.
+test('Q9-D1: isWeekdayEvent is a hidden audit key and every generic history renderer filters it', () => {
+  assert.equal(isHiddenAuditKey('isWeekdayEvent'), true);
+  assert.equal(isHiddenAuditKey('isAbroad'), false);
+  assert.ok(HIDDEN_AUDIT_KEYS.has('isWeekdayEvent'));
+  const root = path.join(here, '..');
+  assert.equal(fs.readFileSync(path.join(root, 'components', 'HistoryViewer.js'), 'utf8').includes("'isWeekdayEvent'"), false, 'no label may be re-added');
+  for (const rel of ['components/HistoryViewer.js', 'components/modern/ChangesChips.js', 'components/orders/RentalReturnModal.js', 'components/orders/modern/ModernItemsManager.js']) {
+    const src = fs.readFileSync(path.join(root, rel), 'utf8');
+    assert.ok(src.includes('isHiddenAuditKey') && src.includes("lib/history/labels'"), rel + ' must import isHiddenAuditKey');
+    assert.ok(src.includes('if (isHiddenAuditKey(key)) return false;') || src.includes('|| isHiddenAuditKey(key)) continue;'), rel + ' must skip hidden keys');
+  }
+});
+
+test('Q9-D2: customer orders tab shows the event date for abroad orders without a full date range', () => {
+  const src = fs.readFileSync(path.join(here, '..', 'components', 'customers', 'modern', 'ModernCustomerOrdersTab.js'), 'utf8');
+  assert.ok(src.includes('order.isAbroad && order.fromDate && order.toDate ? ('), 'range branch needs both dates');
+  assert.equal(src.includes('{order.isAbroad ? ('), false);
+});
 
 // ---------------------------------------------------------------------------------------------------
 // Review fixes (foundation review B1-B5, R7-R12, R15, R16): each block failed against the previous code.

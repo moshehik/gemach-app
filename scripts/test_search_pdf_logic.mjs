@@ -52,7 +52,8 @@ t('sectionsFromGeneral: לקוחות / הזמנות / פריטים, רק מה ש
   assert.deepEqual(s.map((x) => x.label), ['לקוחות', 'הזמנות', 'פריטים']);
   assert.deepEqual(s[0].cols.map((c) => c.h), ['שם', 'טלפון', 'עיר']);
   assert.deepEqual(s[1].cols.map((c) => c.h), ['שם', 'מס׳ הזמנה', 'תאריך אירוע', 'סטטוס']);
-  assert.deepEqual(s[2].cols.map((c) => c.h), ['דגם', 'ברקוד', 'מידה']);
+  assert.deepEqual(s[2].cols.map((c) => c.h), ['דגם', 'ברקוד', 'מידה', 'מס׳ הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס']);
+  assert.deepEqual(s[2].cols.map((c) => !!c.ltr), [false, true, false, true, false, false, false]);
   assert.equal(s[1].rows[0][1], '#40000');
   assert.equal(s[1].rows[0][3], 'פעיל'); // סטטוס ריק = "פעיל" (כמו במסך)
   assert.equal(sectionsFromGeneral(applyScope(mk(2, 3, 1), 'customers')).length, 1, 'סינון לקטגוריה = מקטע אחד');
@@ -60,6 +61,29 @@ t('sectionsFromGeneral: לקוחות / הזמנות / פריטים, רק מה ש
   // אין סכומים ופרטי תשלום בדף (מידע שלא מוצג בשורת התוצאה)
   const all = JSON.stringify(s);
   assert.ok(!/totalAmount|סכום|₪/.test(all));
+});
+
+t('פריטים (ברקוד שחוזר בכמה השכרות): לכל השכרה הזמנה, לקוחה, תאריך עברי ומצב; חסר = תא ריק', () => {
+  const res = normalizeSearch({ rentals: [
+    { orderId: 52001, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: true, isReturned: false, firstName: 'רחל', lastName: 'כהן', eventDateHebrew: 'ט״ו תשרי תשפ״ז', eventDate: '2026-10-03T00:00:00.000Z' },
+    { orderId: 47310, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: true, isReturned: true, firstName: 'לאה', lastName: null, eventDateHebrew: null, eventDate: '2025-06-11T21:00:00.000Z' },
+    { orderId: 39002, catalogName: '551', barcode: '5511205', sizeText: '12', isTaken: false, isReturned: false },
+  ] });
+  const [sec] = sectionsFromGeneral(res);
+  assert.equal(sec.label, 'פריטים');
+  assert.equal(sec.rows.length, 3);
+  assert.deepEqual(sec.rows[0], ['551', '5511205', '12', '#52001', 'רחל כהן', 'ט״ו תשרי תשפ״ז', 'מושכר עכשיו']);
+  assert.equal(sec.rows[1][3], '#47310');
+  assert.equal(sec.rows[1][6], 'הוחזר');
+  assert.match(sec.rows[1][5], / סיוו?ן תשפ״ה$/, 'תאריך מחושב מ-eventDate — עברי');
+  assert.deepEqual(sec.rows[2].slice(3), ['#39002', '', '', 'טרם נלקח']);
+  // תאריך עברי בלבד בעמודת התאריך
+  for (const r of sec.rows) assert.ok(!/\d/.test(r[5]), 'תאריך לועזי: ' + r[5]);
+  // נכנס בעמוד לאורך, שורה אחת לכל השכרה, ומופיע ב-HTML
+  const sheet = buildSearchSheet({ sections: [sec], query: '5511205', now: NOW });
+  assert.equal(sheet.landscape, false);
+  assert.ok(sheet.html.includes('#52001') && sheet.html.includes('רחל כהן') && sheet.html.includes('מושכר עכשיו'));
+  assert.ok(!/eventDate|2025-06|2026-10-03/.test(sheet.html), 'אין תאריך לועזי גולמי בדף');
 });
 
 t('sectionFromRecords: מסיר עמודות _action ורגישות, קובע ltr לטלפונים, שתי שורות לטקסט ארוך', () => {

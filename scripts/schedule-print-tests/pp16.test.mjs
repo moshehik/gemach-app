@@ -1,6 +1,6 @@
 // PP-16 "דף קבלת החזרות": build() (טהור), ה-extra manretDetail (שאילתות, איחורים, מצב הפריטים), ה-API (הרשאות, שורות Excel),
-// והלשון מול סימון הלו״ז. נתוני הדמה: scripts/schedule-tests/fixtures.mjs - "היום" חמישי 1.10.2026; ביום הזה שלב 8 = 1013, 1014 (הוחזר לא תקין),
-// 1015; באיחור: 2004 (מועד 22.9 אחרי גלגול, 9 ימים) ו-1017 (24.9, 7 ימים). לא באיחור: 1018 (לא נלקחה), 1010 (משלוח חזור), 2002/2003/2006 (עתידיות).
+// והלשון מול סימון הלו״ז. נתוני הדמה: scripts/schedule-tests/fixtures.mjs - "היום" חמישי 15.10.2026; ביום הזה שלב 8 = 1013, 1014 (הוחזר לא תקין),
+// 1015; באיחור: 2004 (מועד 22.9 אחרי גלגול, 23 ימים) ו-1017 (8.10, 7 ימים). לא באיחור: 1018 (לא נלקחה), 1010 (משלוח חזור), 2002/2003/2006 (עתידיות).
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -31,7 +31,7 @@ function setup({ orders = ORDERS, extra = {} } = {}) {
 }
 beforeEach(() => setup());
 
-async function payloadFor(date = '2026-10-01', opts = {}) {
+async function payloadFor(date = '2026-10-15', opts = {}) {
   const day = await getScheduleDay({ date, user: { id: 'emp-head', roleId: 0 }, now: NOW, ...(opts.day || {}) });
   const extras = await loadExtras(day, [def]);
   return { day, extras, payload: buildPrintPayload({ day, keys: ['PP-16'], extras, gmach: { name: 'ג', address: '', phone: '' }, printedBy: 'ט', now: NOW }) };
@@ -48,7 +48,7 @@ test('registry: PP-16 is ready, MRT per family + ALL-MRT on the header, no extra
 test('data: families of the day (sorted by family name) + the late ones (most late first), per-item rows, MRT code per family', async () => {
   const { payload } = await payloadFor();
   const p = payload.pages[0];
-  assert.equal(p.pageCode, 'ALL-MRT-261001');
+  assert.equal(p.pageCode, 'ALL-MRT-261015');
   const d = p.data;
   assert.equal(d.title, 'דף קבלת החזרות');
   assert.equal(d.sub, 'מי מחזירה בסניף היום · פירוט לכל פריט');
@@ -56,7 +56,7 @@ test('data: families of the day (sorted by family name) + the late ones (most la
   assert.equal(d.sections[0].label, 'מחזירות היום');
   assert.deepEqual(d.sections[0].blocks.map((b) => b.orderId), [1013, 1014, 1015], 'לב, מור, נוי (he order of the family name)');
   assert.deepEqual(d.sections[0].blocks.map((b) => b.name), ['משפחת לב', 'משפחת מור', 'משפחת נוי']);
-  assert.deepEqual(d.sections[1].blocks.map((b) => [b.orderId, b.lateDays]), [[2004, 9], [1017, 7]], 'late: most late first; 2004 due 20.9 rolls to Tue 22.9');
+  assert.deepEqual(d.sections[1].blocks.map((b) => [b.orderId, b.lateDays]), [[2004, 23], [1017, 7]], 'late: most late first; 2004 due 20.9 (erev Yom Kippur) rolls to Tue 22.9 -> 23 days on 15.10');
   assert.equal(d.sections[1].label, 'באיחור');
   assert.equal(d.totals.returns, 5);
   assert.equal(d.totals.items, 5);
@@ -86,7 +86,7 @@ test('item state uses the schedule marks wording: "הוחזר" / "הוחזר ל�
   assert.equal(d.rows.find((b) => b.orderId === 1014).items[0].state, 'הוחזר לא תקין', '1014: isReturned + returnedOk=false');
   assert.equal(d.rows.find((b) => b.orderId === 1013).items[0].state, '');
   // returned OK, and "returned" by returnDate alone (legacy import: flag not normalised) - same rule as the schedule (itemReturned)
-  const orders = ORDERS.map((o) => (o.orderId === 1013 ? { ...o, items: [{ ...o.items[0], isReturned: true, returnedOk: true }, { ...o.items[0], id: 'it-x', isReturned: false, returnDate: new Date('2026-10-01T05:00:00Z'), returnedOk: true }, { ...o.items[0], id: 'it-y' }] } : o));
+  const orders = ORDERS.map((o) => (o.orderId === 1013 ? { ...o, items: [{ ...o.items[0], isReturned: true, returnedOk: true }, { ...o.items[0], id: 'it-x', isReturned: false, returnDate: new Date('2026-10-15T05:00:00Z'), returnedOk: true }, { ...o.items[0], id: 'it-y' }] } : o));
   setup({ orders });
   const again = (await payloadFor()).payload.pages[0].data.rows.find((b) => b.orderId === 1013);
   assert.deepEqual(again.items.map((i) => i.state).sort(), ['', 'הוחזר', 'הוחזר'].sort());
@@ -121,22 +121,22 @@ test('extras: ONE OrderItem query (orderId in the stage rows, isDeleted=false), 
 
 test('late: not for a printed day in the past; not for delivery returns (stage 9), never-taken orders, future due dates; branch filter applies', async () => {
   // a day before "today": no late query at all (return state is of now, "late then" is unknowable)
-  const past = await payloadFor('2026-09-30');
+  const past = await payloadFor('2026-10-14');
   assert.deepEqual(past.payload.pages[0].data.sections.map((s) => s.key), ['today']);
   assert.equal(globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args.take === LATE_SCAN_MAX + 1).length, 0);
-  // 1018 never taken, 1010 delivery round trip, 2002/2003/2006 due in the future: none of them is late on 1.10
+  // 1018 never taken, 1010 delivery round trip, 2002/2003/2006 due in the future: none of them is late on 15.10
   const { payload } = await payloadFor();
   const lateIds = payload.pages[0].data.sections[1].blocks.map((b) => b.orderId);
   for (const id of [1018, 1010, 2002, 2003, 2006, 1022]) assert.ok(!lateIds.includes(id), String(id));
-  // a future printed day: 2004/1017 are still late (relative to that day), 2002 (due 18.10) is late on 20.10
-  const future = await payloadFor('2026-10-20');
+  // a future printed day: 2004/1017 are still late (relative to that day), 2002 (due 1.11) is late on 3.11
+  const future = await payloadFor('2026-11-03');
   const fl = future.payload.pages[0].data.sections.find((s) => s.key === 'late').blocks;
-  assert.ok(fl.find((b) => b.orderId === 2004).lateDays > 9);
-  assert.ok(fl.some((b) => b.orderId === 2002), 'due Sun 18.10 -> late on 20.10');
+  assert.ok(fl.find((b) => b.orderId === 2004).lateDays > 23);
+  assert.ok(fl.some((b) => b.orderId === 2002), 'due Sun 1.11 -> late on 3.11');
   // branch filter: only orders of that branch (Order.branch), like the stage rows
   const branchOrders = ORDERS.map((o) => (o.orderId === 1017 ? { ...o, branch: 'נווה יעקב' } : o));
   setup({ orders: branchOrders });
-  const day = await getScheduleDay({ date: '2026-10-01', branch: 'נווה יעקב', user: { id: 'emp-head', roleId: 0 }, now: NOW });
+  const day = await getScheduleDay({ date: '2026-10-15', branch: 'נווה יעקב', user: { id: 'emp-head', roleId: 0 }, now: NOW });
   globalThis.__MOCK_CALLS.length = 0;
   const x = await loadManretDetail(day);
   assert.deepEqual(x.late.map((l) => l.orderId), [1017]);
@@ -146,14 +146,14 @@ test('late: not for a printed day in the past; not for delivery returns (stage 9
 });
 
 test('late: an item taken only by takenDate (isTaken false) counts; due date + days late come from lib/lateReturn.js', async () => {
-  const orders = ORDERS.map((o) => (o.orderId === 1017 ? { ...o, items: [{ ...o.items[0], isTaken: false, takenDate: new Date('2026-09-20T08:00:00Z') }] } : o));
+  const orders = ORDERS.map((o) => (o.orderId === 1017 ? { ...o, items: [{ ...o.items[0], isTaken: false, takenDate: new Date('2026-10-04T08:00:00Z') }] } : o));
   setup({ orders });
   const { day } = await payloadFor();
   const x = await loadManretDetail(day);
   const l = x.late.find((r) => r.orderId === 1017);
   assert.ok(l, 'takenDate alone = taken');
   const { getLateReturnInfo } = await L('lib/lateReturn.js');
-  const info = getLateReturnInfo(ORDERS.find((o) => o.orderId === 1017), 1, { now: new Date('2026-10-01T09:00:00Z') });
+  const info = getLateReturnInfo(ORDERS.find((o) => o.orderId === 1017), 1, { now: new Date('2026-10-15T09:00:00Z') });
   assert.equal(l.dueKey, info.dueKey);
   assert.equal(l.daysLate, info.daysLate);
 });
@@ -161,8 +161,8 @@ test('late: an item taken only by takenDate (isTaken false) counts; due date + d
 test('late: more than LATE_MAX late orders -> the most late are kept, lateTruncated is set and printed as a notice', async () => {
   const extraLate = [];
   for (let i = 0; i < LATE_MAX + 20; i++) {
-    // events on Israel days 25.9 back to 27.8 (21:00Z = Israel midnight of the NEXT day); all taken, none returned -> all late
-    const ev = new Date(Date.UTC(2026, 8, 24 - (i % 30), 21, 0, 0));
+    // events on Israel days 9.10 back to 10.9 (21:00Z = Israel midnight of the NEXT day); all taken, none returned -> all late
+    const ev = new Date(Date.UTC(2026, 8, 38 - (i % 30), 21, 0, 0));
     extraLate.push({ ...ORDERS.find((o) => o.orderId === 1017), orderId: 50000 + i, eventDate: ev, items: [{ ...ORDERS.find((o) => o.orderId === 1017).items[0], id: 'x' + i }] });
   }
   setup({ orders: [...ORDERS, ...extraLate] });
@@ -178,7 +178,7 @@ test('late: more than LATE_MAX late orders -> the most late are kept, lateTrunca
   const { getLateReturnInfo } = await L('lib/lateReturn.js');
   for (const o of [...ORDERS, ...extraLate]) {
     if (kept.has(o.orderId) || !(o.orderId >= 50000)) continue;
-    const info = getLateReturnInfo(o, 1, { now: new Date('2026-10-01T09:00:00Z') });
+    const info = getLateReturnInfo(o, 1, { now: new Date('2026-10-15T09:00:00Z') });
     assert.ok(info.daysLate <= minKept, `dropped ${o.orderId} (${info.daysLate}) is not later than kept min ${minKept}`);
   }
   const { printNotices } = await L('lib/schedule/print/notices.js');
@@ -239,7 +239,7 @@ test('toRows: one row per item, numbers stay numbers, Excel sheet accepts it', a
   assert.equal(r14['קבוצה'], 'מחזירות היום');
   assert.equal(r14['ברקוד'], 'MRT-1014');
   assert.equal(typeof r14['מידה'], 'number');
-  assert.equal(rows.find((r) => r['הזמנה'] === 2004)['ימי איחור'], 9);
+  assert.equal(rows.find((r) => r['הזמנה'] === 2004)['ימי איחור'], 23);
   const wb = buildScheduleWorkbook(XLSX, [{ sheetName: PP16.SHEET_NAME, rows }]);
   assert.equal(wb.SheetNames[0], 'קבלת החזרות');
   assert.equal(wb.Sheets['קבלת החזרות'].B2.t, 'n');
@@ -250,23 +250,23 @@ test('toRows: one row per item, numbers stay numbers, Excel sheet accepts it', a
 test('API: any employee with page:schedule may print it (no money, no extra page key); blocked department gets 403; rows export counts items', async () => {
   const get = (qs) => route.GET({ url: 'http://localhost/api/schedule/print' + qs });
   globalThis.__AUTH_TOKEN = 'emp-worker-blocked';
-  assert.equal((await get('?page=PP-16&date=2026-10-01')).status, 403);
+  assert.equal((await get('?page=PP-16&date=2026-10-15')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const r = await get('?page=PP-16&date=2026-10-01');
+  const r = await get('?page=PP-16&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const p = r.__json.pages[0];
   assert.equal(p.key, 'PP-16');
-  assert.equal(p.pageCode, 'ALL-MRT-261001');
+  assert.equal(p.pageCode, 'ALL-MRT-261015');
   assert.equal(p.def.barcode.rows, 'order');
-  // (the route uses the real clock: 1.10 is a past day by now, so only the day's own returns - the late list needs "today" = the mock NOW)
+  // (the route uses the real clock, not the mock NOW, so the late list depends on when the test runs - only the day's own returns are asserted)
   assert.equal(p.data.totals.today, 3);
   // JSON-safe (functions never ride the payload)
   assert.doesNotThrow(() => JSON.stringify(p.data));
   assert.ok(!('lateText' in p.data));
   // Excel = management only (JDG-04, same rule as the XL button); the worker gets 403, head management the rows
-  assert.equal((await get('?page=PP-16&date=2026-10-01&format=rows')).status, 403);
+  assert.equal((await get('?page=PP-16&date=2026-10-15&format=rows')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const rows = await get('?page=PP-16&date=2026-10-01&format=rows');
+  const rows = await get('?page=PP-16&date=2026-10-15&format=rows');
   assert.equal(rows.status, 200);
   assert.equal(rows.__json.sheets[0].sheetName, 'קבלת החזרות');
   assert.equal(rows.__json.total, p.data.totals.items);

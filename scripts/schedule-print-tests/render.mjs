@@ -41,7 +41,7 @@ const long = process.argv.includes('long');
 // checks that the sheet/page-break/@page rules of table pages, sticker pages (named page) and per-order pages coexist: page counters
 // run 1..N through the whole document, the footer is on every page, and every selected page's title is in the PDF
 const combined = process.argv.includes('combined');
-const DAY = '2026-10-01';
+const DAY = '2026-10-15'; // = DAY of scripts/schedule-tests/fixtures.mjs
 
 // Leak scan, run in the page under BOTH media (screen = the wizard's preview/iframe, print = paper): the sheet must stay black on white
 // with greys only - a saturated background/border/text colour, light text on white, or a gradient image is a theme token leaking in

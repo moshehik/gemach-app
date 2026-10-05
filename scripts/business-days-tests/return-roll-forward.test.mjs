@@ -5,7 +5,9 @@
 // and lib/schedule (stage 8) share ONE helper, rollForwardToWorkingDay in lib/businessDays.js.
 // Claims proven (in every process timezone the runner uses - UTC, Israel, Los Angeles, Kiritimati):
 //  1. Known answers: Fri 16.10.2026 -> Sun 18.10; Shabbat -> Sunday; erev Yom Kippur -> Tue 22.9; Yom Kippur -> Tue;
-//     owner-closed day -> the day after; a working day is unchanged; an owner "open" override keeps the date.
+//     owner-closed day -> the day after; a working day is unchanged. Non-working days v2 (port 4.10.2026): chol
+//     hamoed is closed too, so an explicit date in/before Sukkot or Pesach rolls past the whole stretch, and the
+//     retired v1 "open" status is ignored (a closed day can never be opened - owner NWD-Q04).
 //  2. daysLate is counted from the rolled day (toDate Fri 16.10 seen on 25.10 = 7 days, not 9), incl. 00:30 Israel.
 //  3. Parity: lib/lateReturn.getExpectedReturnKey == lib/schedule returnDueKey / rollForwardToWorkingDay on a sweep of
 //     120 consecutive explicit dates (both fields, both storage forms), with and without owner-marked days; the
@@ -38,9 +40,13 @@ const KNOWN = [
   ['2026-09-20', '2026-09-22', 'erev Yom Kippur (Sun 20.9) -> Tue 22.9 (Mon 21.9 is YK)'],
   ['2026-09-21', '2026-09-22', 'Yom Kippur (Mon 21.9) -> Tue 22.9'],
   ['2026-09-18', '2026-09-22', 'Fri 18.9 -> Sat, erev YK, YK all closed -> Tue 22.9'],
-  ['2026-10-02', '2026-10-04', 'Fri 2.10 = Hoshana Raba / erev Shmini Atzeret -> Sun 4.10 (chol hamoed is a working day)'],
+  ['2026-10-02', '2026-10-04', 'Fri 2.10 = Hoshana Raba / erev Shmini Atzeret -> Sun 4.10'],
+  ['2026-09-27', '2026-10-04', 'v2: Sun 27.9 = chol hamoed Sukkot -> the whole stretch is closed -> Sun 4.10'],
+  ['2026-09-29', '2026-10-04', 'v2: Tue 29.9 = chol hamoed -> Sun 4.10'],
+  ['2026-09-24', '2026-09-24', 'Thu 24.9 (day before erev Sukkot): a working day is unchanged'],
   ['2026-10-03', '2026-10-04', 'Shmini Atzeret on Shabbat 3.10 -> Sun 4.10'],
-  ['2026-04-01', '2026-04-05', 'erev Pesach (Wed 1.4.2026) -> Pesach Thu, Fri, Sat -> Sun 5.4'],
+  ['2026-04-01', '2026-04-09', 'erev Pesach (Wed 1.4.2026) -> Pesach Thu 2.4, chol hamoed Fri 3.4 - Tue 7.4 (v2: closed), Pesach VII Wed 8.4 -> Thu 9.4'],
+  ['2026-04-05', '2026-04-09', 'v2: Sun 5.4 = chol hamoed Pesach -> Thu 9.4'],
   ['2026-05-22', '2026-05-24', 'Shavuot on Friday 22.5.2026 -> Sun 24.5'],
   ['2026-10-23', '2026-10-25', 'Fri 23.10 -> Sun 25.10 (the DST fall-back day itself)'],
   ['2026-10-24', '2026-10-25', 'Shabbat 24.10 -> Sun 25.10 (DST fall-back day)'],
@@ -70,7 +76,7 @@ test('known answers: explicit toDate/returnDate on a closed day rolls to the nex
   assert.deepEqual(returnDueKeys({ toDate: stored('2026-10-16') }, { nonWorkingDays: null }), { raw: '2026-10-16', due: '2026-10-18' });
 });
 
-test('owner-marked days: closed day rolls to the day after (and over a closed run); "open" override keeps the explicit date', () => {
+test('owner-marked days: closed day rolls to the day after (and over a closed run); the retired v1 "open" status is ignored', () => {
   // Tue 13.10 closed -> Wed 14.10; Tue-Thu 13-15.10 closed + Fri/Sat -> Sun 18.10
   const one = owner([{ date: '2026-10-13', note: 'ספירת מלאי' }]);
   const run = owner(['2026-10-13', '2026-10-14', '2026-10-15']);
@@ -83,14 +89,18 @@ test('owner-marked days: closed day rolls to the day after (and over a closed ru
     assert.equal(returnDueKey(o, { nonWorkingDays: one }), '2026-10-14');
     assert.equal(returnDueKey(o, { nonWorkingDays: run }), '2026-10-18');
   }
-  // the owner opens Friday 16.10 -> the explicit Friday stays Friday everywhere
+  // a v1 "open" entry for Friday 16.10 is ignored under v2 (owner NWD-Q04: a closed day cannot be opened) -> still Sunday
   const open = owner([{ date: '2026-10-16', status: 'open' }]);
+  assert.equal(open.ignoredOpen, 1);
   const fri = { eventDate: stored('2026-10-14'), toDate: stored('2026-10-16') };
-  assert.equal(LR.getExpectedReturnKey(fri, open), '2026-10-16');
-  assert.equal(returnDueKey(fri, { nonWorkingDays: open }), '2026-10-16');
+  assert.equal(LR.getExpectedReturnKey(fri, open), '2026-10-18');
+  assert.equal(returnDueKey(fri, { nonWorkingDays: open }), '2026-10-18');
   assert.equal(LR.getExpectedReturnKey(fri, null), '2026-10-18');
-  // closed wins over open for the same date (parseNonWorkingDaysSetting rule) - rolled
   assert.equal(LR.getExpectedReturnKey(fri, owner([{ date: '2026-10-16', status: 'open' }, { date: '2026-10-16' }])), '2026-10-18');
+  // v2 range and recurring Hebrew date roll an explicit date too: range Tue 13 - Thu 15.10 -> Sun 18.10
+  const rng = B.parseNonWorkingDaysSetting('{"version":2,"ranges":[{"from":"2026-10-13","to":"2026-10-15"}]}');
+  assert.equal(LR.getExpectedReturnKey({ eventDate: stored('2026-10-12'), toDate: stored('2026-10-13') }, rng), '2026-10-18');
+  assert.equal(returnDueKey({ eventDate: stored('2026-10-12'), toDate: stored('2026-10-13') }, { nonWorkingDays: rng }), '2026-10-18');
 });
 
 test('daysLate is counted from the ROLLED day: toDate Fri 16.10.2026 is 7 days late on 25.10 (not 9), 6 on 24.10; dueKey/dueDate = the rolled day', () => {
@@ -169,8 +179,12 @@ test('inverse: rolledSourceRange / rolledSourceKeysForDay = exactly the dates th
   assert.deepEqual(B.rolledSourceRange('2026-10-15', null), { startKey: '2026-10-15', endKey: '2026-10-15' });
   assert.deepEqual(B.rolledSourceRange('2026-09-22', null), { startKey: '2026-09-18', endKey: '2026-09-22' }, 'Tue after YK collects Fri..Mon');
   assert.equal(B.rolledSourceRange('2026-10-16', null), null);
-  assert.deepEqual(B.rolledSourceRange('2026-10-16', cfg), { startKey: '2026-10-16', endKey: '2026-10-16' }, 'owner opened Friday');
-  assert.deepEqual(B.rolledSourceRange('2026-10-18', cfg), { startKey: '2026-10-17', endKey: '2026-10-18' }, 'Sunday then collects Shabbat only');
+  assert.equal(B.rolledSourceRange('2026-10-16', cfg), null, 'a v1 "open" Friday stays closed under v2');
+  assert.deepEqual(B.rolledSourceRange('2026-10-18', cfg), { startKey: '2026-10-16', endKey: '2026-10-18' }, 'Sunday still collects Fri + Shabbat');
+  // v2 long closed runs: the whole Sukkot / Pesach stretch (erev chag .. last chag day) rolls onto one day
+  assert.deepEqual(B.rolledSourceRange('2026-10-04', null), { startKey: '2026-09-25', endKey: '2026-10-04' }, 'Sun 4.10 collects erev Sukkot Fri 25.9 .. Shmini Atzeret Sat 3.10');
+  assert.deepEqual(B.rolledSourceRange('2026-04-09', null), { startKey: '2026-04-01', endKey: '2026-04-09' }, 'Thu 9.4 collects erev Pesach Wed 1.4 .. Pesach VII Wed 8.4');
+  for (const k of eachKey('2026-09-28', '2026-10-03')) assert.equal(B.rolledSourceRange(k, null), null, `${k} (chol hamoed / chag) collects nothing`);
   // a Date instant is accepted too (Israeli day)
   assert.deepEqual(B.rolledSourceRange(new Date('2026-10-17T21:00:00Z'), null), { startKey: '2026-10-16', endKey: '2026-10-18' });
 });

@@ -70,7 +70,16 @@
 "sn-bug": 68,
 "sn-chart": 69,
 "sn-history": 70,
-"sn-inv": 71
+"sn-inv": 71,
+"camera": 72,
+"video": 73,
+"cursor-rec": 74,
+"archive": 75,
+"inbox": 76,
+"sparkles": 77,
+"crosshair": 78,
+"more": 79,
+"download": 80
 },
 "tip": {
 "tt|חיפוש עמוד, הזמנה או לקוח": 1,

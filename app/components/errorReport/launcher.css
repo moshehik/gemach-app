@@ -1,0 +1,18 @@
+/* הכפתור הצף של "דיווח על שגיאות" (ErrorReportButton.js) - נטען בכל דף, ולכן קטן ועצמאי: בלי .gm-ds ובלי components.css,
+   רק טוקני הפלטה (--gm-*, מוגדרים גלובלית ב-design-system/tokens.css). הערכים מהסקיצה המאושרת (er2-add.css: .er-fab).
+   שקט כברירת מחדל - רק סרגל דק וחצי שקוף בשולי המסך (ימין, RTL); בריחוף / מיקוד מקלדת גולש פנימה; במגע: נגיעה ראשונה חושפת. */
+.gm-er-launch .er-fab{position:fixed;bottom:96px;inset-inline-start:0;z-index:890;display:flex;align-items:center;transform:translateX(calc(100% - 16px));opacity:.5;transition:transform .28s var(--gm-ease),opacity .2s;font-family:var(--gm-font)}
+.gm-er-launch .er-fab:hover,.gm-er-launch .er-fab:focus-within,.gm-er-launch .er-fab.reveal{transform:translateX(-14px);opacity:1}
+.gm-er-launch .er-fab button{position:relative;width:52px;height:52px;padding:0;margin:0;border-radius:50%;border:1.5px solid var(--gm-gold-d);background:var(--gm-gbtn);color:#000;display:grid;place-items:center;cursor:pointer;box-shadow:0 14px 28px -10px rgba(10,34,66,.65);min-height:0;min-width:0}
+.gm-er-launch .er-fab button .ic{width:24px;height:24px;fill:none;color:inherit;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gm-er-launch .er-fab button:focus-visible{outline:2px solid var(--gm-navy);outline-offset:2px;box-shadow:0 0 0 5px var(--gm-gold)}
+.gm-er-launch .er-fab .er-ndot{position:absolute;top:6px;inset-inline-end:6px;width:10px;height:10px;border-radius:50%;background:#fa9e84;box-shadow:0 0 0 2px var(--gm-navy-900);pointer-events:none}
+.gm-er-launch .er-fab.hide{visibility:hidden;pointer-events:none}
+.gm-er-launch .er-fab .er-tip{position:absolute;inset-inline-end:62px;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,#12305a,#0a2242);color:#fff;border-radius:12px;padding:6px 12px;font-size:14px;line-height:1.5;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
+.gm-er-launch .er-fab:hover .er-tip,.gm-er-launch .er-fab:focus-within .er-tip{opacity:1}
+@media (max-width:640px){
+  .gm-er-launch .er-fab{bottom:84px;transform:translateX(calc(100% - 14px))}
+  .gm-er-launch .er-fab:hover,.gm-er-launch .er-fab:focus-within,.gm-er-launch .er-fab.reveal{transform:translateX(-14px)}
+}
+@media (prefers-reduced-motion:reduce){.gm-er-launch .er-fab{transition:none}}
+@media print{.gm-er-launch{display:none!important}}

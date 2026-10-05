@@ -41,7 +41,7 @@ test('only orders with balance > 0, nearest event first, deleted payments ignore
   assert.deepEqual([r1001.total, r1001.paid, r1001.balance], [1200, 400, 800]);
   const r7003 = d.rows.find((r) => r.orderId === 7003);
   assert.deepEqual([r7003.total, r7003.paid, r7003.balance], [600, 250, 350], 'the deleted 100 is not counted');
-  assert.equal(d.rows[0].daysToEvent, 3, '1.10 -> 4.10');
+  assert.equal(d.rows[0].daysToEvent, 3, '15.10 -> 18.10');
   assert.equal(r1001.daysToEvent, 14);
   assert.equal(d.rows[3].daysToEvent, null);
   assert.equal(d.totals.orders, 4);
@@ -50,8 +50,8 @@ test('only orders with balance > 0, nearest event first, deleted payments ignore
   assert.match(d.sum, /^₪2,550 · סה״כ לגבייה$/);
   assert.equal(d.stats[0].value, 4);
   assert.equal(d.stats[1].label, 'הקרובה ביותר:');
-  assert.equal(d.stats[1].value, 'כ״ג תשרי', '4.10.2026 = כ״ג תשרי');
-  assert.equal(d.rows[0].eventHebrew, 'יום ראשון כ״ג תשרי');
+  assert.equal(d.stats[1].value, 'ז׳ חשוון', '18.10.2026 = ז׳ חשוון');
+  assert.equal(d.rows[0].eventHebrew, 'יום ראשון ז׳ חשוון');
   assert.equal(d.empty, false);
 });
 
@@ -75,7 +75,7 @@ test('toRows: Hebrew columns, numbers stay numbers, Gregorian + Hebrew date, no 
   const rows = PP02.toRows(payload.pages[0].data);
   assert.equal(rows.length, 4);
   assert.deepEqual(Object.keys(rows[0]), ['הזמנה', 'לקוחה', 'טלפון', 'תאריך אירוע', 'תאריך עברי', 'ימים לאירוע', 'חיוב', 'שולם', 'יתרה לגבייה']);
-  assert.equal(rows[0]['תאריך אירוע'], '04/10/2026');
+  assert.equal(rows[0]['תאריך אירוע'], '18/10/2026');
   assert.equal(typeof rows[0]['יתרה לגבייה'], 'number');
   assert.equal(rows[3]['ימים לאירוע'], null);
   assert.equal(PP02.SHEET_NAME, 'סיכום יתרות לגבייה');
@@ -83,12 +83,12 @@ test('toRows: Hebrew columns, numbers stay numbers, Gregorian + Hebrew date, no 
 
 test('API: 403 without the orders page permission, 200 for head management; one extras query, scoped to the stage orders', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  const denied = await get('?page=PP-02&date=2026-10-01');
+  const denied = await get('?page=PP-02&date=2026-10-15');
   assert.equal(denied.status, 403);
   assert.equal(denied.__json.page, 'PP-02');
 
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-02&date=2026-10-01');
+  const r = await get('?page=PP-02&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   assert.equal(r.__json.pages[0].key, 'PP-02');
   assert.equal(r.__json.pages[0].data.rows.length, 4);
@@ -96,7 +96,7 @@ test('API: 403 without the orders page permission, 200 for head management; one 
   assert.equal(calls.length, 1, 'one orderInfo query');
   assert.ok(calls[0].args.where.orderId.in.includes(7002));
 
-  const x = await get('?page=PP-02&date=2026-10-01&format=rows');
+  const x = await get('?page=PP-02&date=2026-10-15&format=rows');
   assert.equal(x.status, 200);
   assert.equal(x.__json.sheets[0].sheetName, 'סיכום יתרות לגבייה');
   assert.equal(x.__json.sheets[0].rows.length, 4);

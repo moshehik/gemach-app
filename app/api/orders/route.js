@@ -689,7 +689,7 @@ export async function POST(request) {
         return NextResponse.json({ error: `לא ניתן להזמין יותר מ-${max} שמלות בהזמנה אחת (ניסית ${activeItems.length}).` }, { status: 400 });
       }
     } catch {}
-    const isCustomDuration = data.isAbroad || data.isWeekdayEvent;
+    const isCustomDuration = !!data.isAbroad;
     const hasDates = isCustomDuration ? (data.fromDate && data.toDate) : !!data.eventDate;
 
     // The client sends the collected payments as `paymentsList`; older callers sent a single
@@ -757,11 +757,10 @@ export async function POST(request) {
       const hideSpacingSetting = await getCachedSetting('hide_custom_spacing');
       if (hideSpacingSetting?.value === 'true') effectiveCustomSpacing = null;
     } catch {}
-    // isAbroad/isWeekdayEvent orders use fromDate/toDate instead of a single eventDate in the
-    // UI (ר' orders/new/page.js:1117) - both must fall back to fromDate here too, or pickup-date
-    // calculations downstream (email/print, which derive pickup from eventDate) silently break
-    // for isWeekdayEvent orders (previously only isAbroad got this treatment).
-    const effectiveEventDateRaw = (data.isAbroad || data.isWeekdayEvent) && data.fromDate ? data.fromDate : data.eventDate;
+    // isAbroad orders use fromDate/toDate instead of a single eventDate in the
+    // UI (ר' orders/new/page.js) - fall back to fromDate here too, or pickup-date
+    // calculations downstream (email/print, which derive pickup from eventDate) silently break.
+    const effectiveEventDateRaw = data.isAbroad && data.fromDate ? data.fromDate : data.eventDate;
     const orderData = {
       customerId: data.customerId || null,
       totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
@@ -771,7 +770,6 @@ export async function POST(request) {
       returnDate: data.returnDate ? new Date(data.returnDate) : null,
       employeeId: data.employeeId || loggedInEmployeeId || null,
       isAbroad: data.isAbroad ?? false,
-      isWeekdayEvent: data.isWeekdayEvent ?? false,
       fromDate: data.fromDate ? new Date(data.fromDate) : null,
       toDate: data.toDate ? new Date(data.toDate) : null,
       customSpacing: effectiveCustomSpacing,
@@ -1023,7 +1021,7 @@ export async function POST(request) {
           // מועד לקיחה/החזרה - אותו חישוב בדיוק כמו app/api/orders/[id]/email/route.js
           // ו-app/print/order/page.js: לקיחה = יומיים-עסקים לפני האירוע (מדלג שישי/שבת/חג),
           // החזרה = toDate/returnDate או יום העבודה הראשון אחרי האירוע. הלקיחה והחזרה לפי הכלל האחיד
-          // "יום לא עובד" (שישי/שבת/חג/ערב חג/ימים שהבעלים סימן - lib/businessDays.js).
+          // "יום לא עובד" (שישי/שבת/חג/חול המועד/ערב חג/ימים שהבעלים סימן - lib/businessDays.js).
           const nonWorkingDays = await getNonWorkingDaysConfig();
           const pickupDate = updatedOrder.eventDate ? subtractBusinessDays(updatedOrder.eventDate, 2, nonWorkingDays) : null;
           const returnByDate = getExpectedReturnDate(updatedOrder, nonWorkingDays);

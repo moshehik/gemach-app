@@ -18,7 +18,8 @@ import { LzPortalRoot } from './LzPortal';
 
 // דף "לו״ז יומי". המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, ה-HTML בשורות 1627-1642): כותרת "לוח זמנים" +
 // אייקון בורר היום; כלי XL/הורדה/הדפסה בקצה השמאלי של שורת הכותרת; ציר השלבים מימין; בעמודת התוכן מתג שורות/טבלה
-// ואז מקטעי השלבים. אין בדף שום טקסט שהעיצוב לא מגדיר. הנתונים: GET /api/schedule (docs/schedule-page-logic-spec.md).
+// ואז מקטעי השלבים. אין בדף שום טקסט שהעיצוב או הבעלים לא הגדירו (החלטות 4.10.2026: שבב "יום לא עובד" ליד המתג,
+// "N התראות" בכותרת שלב). הנתונים: GET /api/schedule (docs/schedule-page-logic-spec.md).
 //
 // סימון "בוצע" (מחובר): marks = useStageMarks({ data, setData }) - עדכון אופטימי, POST /api/schedule/marks, החזרה לאחור
 //   בשגיאה, טוסט (MarkDialogs.js). עובר ל-StageSection כאובייקט אחד; החוזה המלא בראש StageSection.js / StageRow.js /
@@ -320,6 +321,10 @@ export default function ScheduleDay({
                   <ScheduleIcon name="table" />
                 </button>
               </div>
+              {/* שבב "יום לא עובד" (החלטת הבעלים 4.10.2026, SCH-CHIP-NWD = א'): ליד המתג, תגית 14 (chip gray) כמו
+                  בתצוגה שאושרה. הקביעה מהשרת בלבד - data.nonWorkingDay מהכלל האחיד ב-lib/businessDays.js (שישי, שבת, חג,
+                  ערב חג, ימים שהבעלים סימן; יום שהבעלים פתח - לא). הדף לא מחשב ימים בעצמו. */}
+              {!loading && data && data.nonWorkingDay ? <span className="chip gray lz-offday">יום לא עובד</span> : null}
               {branchesEnabled && branches.length ? (
                 <div className="lz-dtools">
                   <BranchSeg branches={branches} value={branch} onChange={changeBranch} />

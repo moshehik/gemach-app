@@ -16,6 +16,7 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
+import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -56,15 +57,15 @@ export default function NewOrderPage() {
     if (targetStep === 1) return true;
     if (targetStep === 2) return !!order.customerId;
     if (targetStep === 3) {
-      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled;
     }
     if (targetStep === 4) {
-      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled && order.items.length > 0;
     }
     if (targetStep === 5) {
-      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled && order.items.length > 0;
     }
     return false;
@@ -81,7 +82,6 @@ export default function NewOrderPage() {
     eventDateHebrew: '',
     returnDate: '',
     isAbroad: false,
-    isWeekdayEvent: false,
     fromDate: '',
     toDate: '',
     notes: '',
@@ -358,7 +358,7 @@ export default function NewOrderPage() {
         
         const newPayment = {
           amount: paymentAmount,
-          method: payment.method,
+          method: creditMethodForCharge(payment.method, paymentMethodOptions),
           notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes
         };
         const updatedList = [...paymentsList, newPayment];
@@ -783,7 +783,6 @@ export default function NewOrderPage() {
             items: activeItems,
             eventDate: proposedOrder.eventDate,
             isAbroad: proposedOrder.isAbroad,
-            isWeekdayEvent: proposedOrder.isWeekdayEvent,
             fromDate: proposedOrder.fromDate,
             toDate: proposedOrder.toDate,
             customSpacing: proposedOrder.customSpacing,
@@ -850,10 +849,7 @@ export default function NewOrderPage() {
     // בעבר זה חסם לגמרי הוספה לסל אם סומן תיקון בלי הערות טקסט חופשי - הלקוח (הגמח הראשי)
     // דיווח שזה מונע ממנו להוסיף פריט עם תיקון לסל. במקום לחסום, ממלאים הערות ברירת מחדל
     // מהתיוג שכבר סומן (צוואר/שרוול/אורך) כדי שהתופרת עדיין תדע מה נדרש.
-    const itemToAdd = { ...newItem };
-    if (settings.enable_alterations !== 'false' && (itemToAdd.neckAlteration || itemToAdd.sleeveAlteration || itemToAdd.lengthAlteration) && (!itemToAdd.repairs || !itemToAdd.repairs.trim())) {
-      itemToAdd.repairs = describeAlterations(itemToAdd);
-    }
+    const itemToAdd = withDefaultAlterationDetails(newItem, settings.enable_alterations !== 'false');
 
     // בדיקת זמינות אחרונה ברגע הלחיצה (לא רק ברגע הסימון) - המלאי המקומי (availableSizes)
     // כבר מתעדכן live בכל שינוי ל-order.items, אבל בין הסימון ללחיצה על "הוספה" יכול לעבור זמן.
@@ -895,10 +891,10 @@ export default function NewOrderPage() {
       quantity: 1,
       basePrice: prices[idx]?.basePrice || 0,
       finalPrice: prices[idx]?.basePrice || 0,
-      repairs: newItem.repairs,
-      neckAlteration: newItem.neckAlteration,
-      sleeveAlteration: newItem.sleeveAlteration,
-      lengthAlteration: newItem.lengthAlteration
+      repairs: itemToAdd.repairs,
+      neckAlteration: itemToAdd.neckAlteration,
+      sleeveAlteration: itemToAdd.sleeveAlteration,
+      lengthAlteration: itemToAdd.lengthAlteration
     }));
 
     setOrder(prev => ({
@@ -947,7 +943,7 @@ export default function NewOrderPage() {
       dressModelId: itemToEdit.dressModelId || '',
       selectedSizes: itemToEdit.sizeText ? [itemToEdit.sizeText] : [],
       quantity: itemToEdit.quantity || 1,
-      repairs: itemToEdit.repairs || '',
+      repairs: repairsForEdit(itemToEdit),
       dressName: itemToEdit.dressName || '',
       neckAlteration: itemToEdit.neckAlteration || false,
       sleeveAlteration: itemToEdit.sleeveAlteration || false,
@@ -973,7 +969,6 @@ export default function NewOrderPage() {
         items: order.items,
         eventDate: order.eventDate,
         isAbroad: order.isAbroad,
-        isWeekdayEvent: order.isWeekdayEvent,
         isDelivery: order.isDelivery,
         deliveryCity: order.deliveryCity,
         deliveryDirection: order.deliveryDirection
@@ -988,7 +983,7 @@ export default function NewOrderPage() {
         setCalculating(false);
       })
       .catch(() => setCalculating(false));
-  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
 
   const totalAmount = calculatedData.totalAmount;
 
@@ -1004,7 +999,7 @@ export default function NewOrderPage() {
   // draft is a safety net, and blocking the screen over it would be worse than losing it.
   useEffect(() => {
     const activeItems = (order.items || []).filter(i => !i.isDeleted);
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     if (draftSealedRef.current || !order.customerId || !hasDates || activeItems.length === 0) return;
 
     const timer = setTimeout(() => {
@@ -1021,7 +1016,6 @@ export default function NewOrderPage() {
               eventDateHebrew: order.eventDateHebrew,
               returnDate: order.returnDate,
               isAbroad: order.isAbroad,
-              isWeekdayEvent: order.isWeekdayEvent,
               fromDate: order.fromDate,
               toDate: order.toDate,
               notes: order.notes,
@@ -1043,7 +1037,7 @@ export default function NewOrderPage() {
 
     return () => clearTimeout(timer);
   }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad,
-      order.isWeekdayEvent, order.fromDate, order.toDate, order.notes, order.customSpacing,
+      order.fromDate, order.toDate, order.notes, order.customSpacing,
       order.items, totalAmount]);
 
   // מגן מפני איבוד נתונים בלחיצת "אחורה" בדפדפן (דיווח לקוח: "כשעושים אחורה בדפדפן הוא
@@ -1098,13 +1092,44 @@ export default function NewOrderPage() {
     return () => document.removeEventListener('keydown', onKey);
   }, [showQuickSwipeModal, showCreditModal, capacityModalItem, isProcessingCredit, saving]);
 
+  // בדיקת רמת אישור מנהל לתשלום (משותפת לסיום ולפיצול). true = אפשר להמשיך.
+  const requestPaymentApproval = async () => {
+    if (paymentApprovalLevelRequiresPrompt(settings)) {
+      // 2026-09-22: ההגדרה קובעת אם החלונית מופיעה בכלל; מי שרשאי לאשר נקבע בהרשאה
+      // feature:payment_exit_approval (ברירת המחדל נגזרת מרמת ההגדרה: עובד / מנהל / מנהל סניף ומעלה,
+      // ושורת הרשאה ב-/admin/permissions גוברת) - הבורר וה-verify-pin מכריעים באותה הכרעה.
+      const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
+      if (!authResult || !authResult.pin) {
+        alert('אישור תשלום בוטל.');
+        return false;
+      }
+
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:payment_exit_approval' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return false;
+        }
+      } catch (err) {
+        alert('שגיאה באימות קוד מנהל.');
+        return false;
+      }
+    }
+    return true;
+  };
+
   const saveOrder = async () => {
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     if (!order.customerId) return alert('יש לבחור לקוח');
     if (!String(order.selectedCustomer?.phone1 || '').trim() && !String(order.selectedCustomer?.phone2 || '').trim()) {
       return alert('לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון. יש להשלים מספר טלפון בכרטיס הלקוח.');
     }
-    if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
+    if (!hasDates) return alert(order.isAbroad ? 'יש לבחור תאריכים עבור אירוע חו"ל / תפוסה ארוכה' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
     // שדות חובה של משלוח (כתובת כשעיר המשלוח שונה מעיר הלקוח / עיר משלוח כשעיר הלקוח
     // לא ברשימת ערי המשלוח) - נאכף תמיד, לא רק כש-delivery_allow_address_override דולק
@@ -1115,7 +1140,7 @@ export default function NewOrderPage() {
 
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
-    const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
+    const relevantDate = order.isAbroad ? order.fromDate : order.eventDate;
     if (relevantDate && new Date(relevantDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)) {
       const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:past_date_order_approval');
       if (!auth) return;
@@ -1151,33 +1176,7 @@ export default function NewOrderPage() {
     // באישור מנהל" - כולל המקרה הטבעי שבו הסכום נשאר 0 (יציאה בלי גביית תשלום כלל).
     // לפני התיקון הבדיקה הותנתה כולה ב-pAmount > 0, כך שיציאה בלי תשלום דילגה עליה בשקט.
     if (isManagerExitPayment || (pAmount > 0 && !isCreditCardPayment)) {
-      const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
-      if (level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה') {
-        // 2026-09-22: ההגדרה קובעת אם החלונית מופיעה בכלל; מי שרשאי לאשר נקבע בהרשאה
-        // feature:payment_exit_approval (ברירת המחדל נגזרת מרמת ההגדרה: עובד / מנהל / מנהל סניף ומעלה,
-        // ושורת הרשאה ב-/admin/permissions גוברת) - הבורר וה-verify-pin מכריעים באותה הכרעה.
-        const authResult = await window.customAuthPrompt('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
-        if (!authResult || !authResult.pin) {
-          alert('אישור תשלום בוטל.');
-          return;
-        }
-
-        try {
-          const res = await fetch('/api/auth/verify-pin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'feature:payment_exit_approval' })
-          });
-          const data = await res.json();
-          if (!data.success) {
-            alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
-            return;
-          }
-        } catch (err) {
-          alert('שגיאה באימות קוד מנהל.');
-          return;
-        }
-      }
+      if (!(await requestPaymentApproval())) return;
     }
 
     let finalPayments = [...paymentsList];
@@ -1189,11 +1188,12 @@ export default function NewOrderPage() {
     executeSaveOrderForList(finalPayments);
   };
 
-  const handleAddPaymentClick = () => {
-    const pAmount = parseFloat(payment.amount) || 0;
-    if (pAmount <= 0) return alert('יש להזין סכום גדול מ-0');
+  const handleAddPaymentClick = async () => {
+    const check = validateSplitPayment(payment.amount, payment.method);
+    if (!check.ok) return alert(check.error);
+    const pAmount = check.amount;
 
-    if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית')) {
+    if (isCreditMethod(payment.method)) {
         setCreditCardData({
           cardNumber: '',
           tokef: '',
@@ -1266,7 +1266,6 @@ export default function NewOrderPage() {
         eventDateHebrew: order.eventDateHebrew,
         returnDate: order.returnDate,
         isAbroad: order.isAbroad,
-        isWeekdayEvent: order.isWeekdayEvent,
         fromDate: order.fromDate,
         toDate: order.toDate,
         notes: order.notes,
@@ -1339,10 +1338,14 @@ export default function NewOrderPage() {
       }
       // 42 - מסך יעד אחרי יצירת הזמנה, מותנה ב-order_new_redirect_screen (ברירת מחדל
       // "order" = ההתנהגות הקודמת, כרטיס ההזמנה שזה עתה נוצרה).
-      router.push(resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
+      const redirectHref = resolveOrderRedirectHref(settings.order_new_redirect_screen || 'order', {
         orderId: data.orderId,
         customerId: data.customerId,
-      }));
+      });
+      // order_new_redirect_screen = "new_order" (נווה יעקב) מפנה ל-/orders/new - הנתיב הנוכחי. router.push לאותו נתיב
+      // משאיר את הטופס, ו-saving נשאר true ("שומר..." לנצח, והקופאית פותחת קישור חדש בכל פעם) - לכן טעינה מלאה.
+      if (redirectNeedsFullReload(redirectHref, window.location.pathname)) window.location.assign(redirectHref);
+      else router.push(redirectHref);
     } catch (error) {
       console.error(error);
       alert(`שגיאה בשמירת הזמנה: ${error.message}`);
@@ -1382,7 +1385,7 @@ export default function NewOrderPage() {
   }, [flash]);
 
   const activeItems = (order.items || []).filter(i => !i.isDeleted);
-  const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+  const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
   // f82e76c1 - כתובת משלוח הופכת לשדה חובה כשעיר המשלוח שונה מעיר הלקוח (כלומר לא מסתפקים
   // בכתובת המגורים הרגילה שלו) - כדי שלא יישלח משלוח בלי כתובת מדויקת ליעד אחר.
   const deliveryAddressRequired = isDeliveryAddressRequired(order, order.selectedCustomer?.city);
@@ -1406,11 +1409,7 @@ export default function NewOrderPage() {
     newItem.lengthAlteration && `אורך ${newItem.lengthAlteration}`
   ].filter(Boolean).join(', ');
 
-  const describeAlterations = (item) => [
-    item.neckAlteration && 'צוואר',
-    item.sleeveAlteration && 'שרוול',
-    item.lengthAlteration && `אורך (${item.lengthAlteration})`
-  ].filter(Boolean).join(', ') || 'ללא תיקונים';
+  const describeAlterations = describeItemAlterations;
 
   const stepsMeta = [
     {
@@ -2292,7 +2291,7 @@ export default function NewOrderPage() {
 
                     <div className="field" style={{ marginTop: '14px', marginBottom: 0 }}>
                       <label htmlFor="item-repairs">
-                        פירוט לתופרת {alterationsChosen && <span style={{ color: 'var(--danger)' }}>* (חובה)</span>}
+                        פירוט לתופרת {alterationsChosen && <span style={{ color: 'var(--text-3)' }}>(אם ריק - יתמלא אוטומטית מהתיוג)</span>}
                       </label>
                       <input
                         id="item-repairs"
@@ -2303,7 +2302,6 @@ export default function NewOrderPage() {
                         value={newItem.repairs || ''}
                         onChange={handleNewItemChange}
                         placeholder="מה בדיוק לתקן..."
-                        style={{ borderColor: (alterationsChosen && !(newItem.repairs || '').trim()) ? 'var(--danger)' : undefined }}
                       />
                     </div>
                   </NocCollapsible>

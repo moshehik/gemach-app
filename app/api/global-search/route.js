@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { buildMultiWordNameSql, buildFuzzyNameSql } from '@/lib/searchUtils';
+import { isBarcodeLikeQuery } from '@/lib/quickSearchResults';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -18,6 +19,13 @@ export async function GET(request) {
     const isNum = !isNaN(q) && q.trim() !== '';
     const numQ = isNum ? Number(q) : undefined;
     const likeQ = `%${q}%`;
+    // חיפוש שנראה כמו ברקוד (ספרות בלבד, 5+): ברקוד חוזר בהזמנות רבות לאורך השנים, ולכן הפריט
+    // שמושכר עכשיו (נלקח ולא הוחזר) קודם - זה מה שמי שסורקת/מקלידה ברקוד מחפשת. שאר החיפושים כמו קודם.
+    // אותה הגדרה כמו בחיפוש המהיר (lib/quickSearchResults.js). עד 4.10.2026 היה כאן /^d{5,}$/ (בלי הלוכסן
+    // שלפני ה-d) - ביטוי שמתאים רק ל-"ddddd", כך שהמיון "מושכר עכשיו קודם" לא הופעל אף פעם.
+    const rentalsOrderBy = isBarcodeLikeQuery(q)
+      ? `CASE WHEN oi."isTaken" AND NOT oi."isReturned" THEN 0 ELSE 1 END, oi."createdAt" DESC`
+      : `oi."createdAt" DESC`;
 
     // חיפוש שם מלא ("רחל כהן") - $1/likeQ בודק כל שדה מול המחרוזת השלמה, כך ששם
     // פרטי+משפחה יחד (בשני טורים נפרדים) לא היה תואם אף שדה בנפרד. מוסיפים תנאי
@@ -109,13 +117,21 @@ export async function GET(request) {
       // d."dressName"/d."barcodePrefix" are legacy, pre-migration fields (see schema.prisma) —
       // post-migration items carry their name/barcode on DressModel via dressModelId instead,
       // so we join DressModel too and COALESCE both, same relation app/api/orders/route.js uses.
+      // Order + Customer (4.10.2026): one barcode recurs in many rentals over the years, so each row also
+      // carries what tells the rentals apart - event date (Hebrew text + raw date for old rows without it)
+      // and the customer's name. Both joins are 1:1 lookups on unique keys (Order.orderId @unique,
+      // Customer.id PK) and never add or drop rows; the LIMIT below is unchanged.
       prisma.$queryRawUnsafe(`
         SELECT oi."id", oi."orderId", oi."barcode", oi."sizeText", oi."description",
+          oi."isTaken", oi."isReturned",
           COALESCE(d."dressName", dm."name") as "catalogName",
-          COALESCE(d."barcodePrefix", dm."barcodePrefix") as "catalogBarcode"
+          COALESCE(d."barcodePrefix", dm."barcodePrefix") as "catalogBarcode",
+          o."eventDate", o."eventDateHebrew", c."firstName", c."lastName"
         FROM "OrderItem" oi
         LEFT JOIN "DressItem" d ON oi."dressItemId" = d.id
         LEFT JOIN "DressModel" dm ON d."dressModelId" = dm.id
+        LEFT JOIN "Order" o ON o."orderId" = oi."orderId"
+        LEFT JOIN "Customer" c ON o."customerId" = c.id
         WHERE oi."isDeleted" = false
         AND (
           oi.description LIKE $1 OR
@@ -127,7 +143,7 @@ export async function GET(request) {
           oi."orderId" = $2 OR
           oi.id = $3
         )
-        ORDER BY oi."createdAt" DESC
+        ORDER BY ${rentalsOrderBy}
         LIMIT 50
       `, likeQ, isNum ? numQ : -1, q)
     ]);

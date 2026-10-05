@@ -10,8 +10,8 @@ export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
     const data = await request.json();
-    const { items, eventDate, isAbroad, isWeekdayEvent, fromDate, toDate, orderId, customSpacing, simulateIfError } = data;
-    const isCustomDuration = isAbroad || isWeekdayEvent;
+    const { items, eventDate, isAbroad, fromDate, toDate, orderId, customSpacing, simulateIfError } = data;
+    const isCustomDuration = !!isAbroad;
 
     const result = await validateOrderItemsAvailability(items, eventDate, isCustomDuration, fromDate, toDate, orderId, customSpacing);
 

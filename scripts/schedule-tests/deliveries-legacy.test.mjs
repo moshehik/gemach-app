@@ -19,7 +19,7 @@ const LEGACY_ROW_KEYS = [
 ];
 // opt-in only (includeInternalNotes / withScheduleFields): never on a legacy row (review 2.10, blocker 3 -
 // scripts/business-days-tests/deliveries-parity.test.mjs test D checks the row shape byte-for-byte against the old code)
-const NEW_OPTIONAL_KEYS = ['internalNotes', 'street', 'dressCount', 'branch', 'pickupBranch', 'isAbroad', 'isWeekdayEvent', 'extraDay', 'customSpacing', 'fromDate', 'toDate', 'returnCondition'];
+const NEW_OPTIONAL_KEYS = ['internalNotes', 'street', 'dressCount', 'branch', 'pickupBranch', 'isAbroad', 'extraDay', 'customSpacing', 'fromDate', 'toDate', 'returnCondition'];
 const SCHEDULE_KEYS = NEW_OPTIONAL_KEYS.filter((k) => k !== 'internalNotes');
 const SETTINGS_LEGACY = SETTINGS_ORG2.map((s) => (s.key === 'deliveries_select_by_event_date' ? { ...s, value: 'false' } : s));
 const ids = (res) => res.data.map((r) => r.orderId).sort();
@@ -34,7 +34,7 @@ test('default mode (deliveries_select_by_event_date off), NO options: same query
   assert.equal(res.daysBefore, 1);
   assert.equal(res.daysAfter, 1);
   assert.equal(res.selectByEventDate, false);
-  // 1009 out (event 2.10), 1010 + 1022 return (event 30.9), 9001 = DRAFT delivery - the legacy route showed drafts and still does
+  // 1009 out (event 16.10), 1010 + 1022 return (event 14.10), 9001 = DRAFT delivery - the legacy route showed drafts and still does
   assert.deepEqual(ids(res), [1009, 1010, 1022, 9001]);
   assert.deepEqual(res.data.find((r) => r.orderId === 1009).directions, ['out']);
   assert.deepEqual(res.data.find((r) => r.orderId === 1010).directions, ['return']);
@@ -53,18 +53,28 @@ test('default mode (deliveries_select_by_event_date off), NO options: same query
   assert.equal(q.args.where.isDelivery, true);
   const win = (k) => D.dayRange(k);
   // החלונות לפי הכלל האחיד (main אחרי #200, lib/businessDays.js): יום היציאה = אירוע פחות delivery_days_before
-  // ימי עסקים, והחלון הוא ההופכי המלא. חמישי 1.10.2026 + 1 יום עסקים: שישי 2.10 הוא הושענא רבה = ערב שמיני
-  // עצרת ושבת 3.10 הוא החג - שניהם לא ימי עבודה (delivery_skip_weekends כבוי כאן, אבל חג/ערב חג מדולגים
-  // תמיד), ולכן כל אירוע מ-2.10 עד ראשון 4.10 יוצא ביום חמישי. (לפני #200 החלון היה 2.10 בלבד - אירוע
-  // ב-3.10/4.10 לא היה נמצא לעולם, האי-סימטריה שהבעלים אישר לתקן.) חזור: 1.10 פחות יום עסקים = רביעי 30.9.
+  // ימי עסקים, והחלון הוא ההופכי המלא. delivery_skip_weekends כבוי כאן, ולכן שישי/שבת רגילים נספרים כימי משלוח:
+  // חמישי 15.10 + 1 = שישי 16.10, והחלון מתכווץ ליום אחד. חזור: 15.10 פחות יום עסקים = רביעי 14.10.
   assert.deepEqual(q.args.where.OR, [
-    { eventDate: { gte: win('2026-10-02').start, lte: win('2026-10-04').end } }, // outbound: every event whose dispatch day is 1.10
-    { eventDate: { gte: win('2026-09-30').start, lte: win('2026-09-30').end } }, // return: date - delivery_days_after
+    { eventDate: { gte: win('2026-10-16').start, lte: win('2026-10-16').end } }, // outbound: every event whose dispatch day is 15.10
+    { eventDate: { gte: win('2026-10-14').start, lte: win('2026-10-14').end } }, // return: date - delivery_days_after
   ]);
   assert.deepEqual(q.args.orderBy, { eventDate: 'asc' });
   assert.deepEqual(q.args.include.items, { where: { isDeleted: false }, select: { description: true } }, 'legacy item select, byte-for-byte');
   assert.deepEqual(q.args.include.obligations, { where: { isDeleted: false }, select: { description: true } });
   assert.deepEqual(Object.keys(res.data[0]).sort(), [...LEGACY_ROW_KEYS].sort(), 'no key beyond the legacy contract');
+
+  // חג / חול המועד / ערב חג מדולגים תמיד, גם כש-delivery_skip_weekends כבוי (אין משלוח ביום טוב; חול המועד סגור מגרסה 2,
+  // NWD-Q02). חמישי 24.9.2026 הוא יום העבודה האחרון לפני סוכות: שישי 25.9 ערב סוכות, שבת 26.9 סוכות, 27.9-1.10 חול המועד,
+  // שישי 2.10 הושענא רבה = ערב שמיני עצרת, שבת 3.10 שמיני עצרת - ולכן כל אירוע מ-25.9 עד ראשון 4.10 יוצא ב-24.9.
+  // (לפני #200 החלון היה יום האירוע הראשון בלבד - אירוע בחג לא היה נמצא לעולם, האי-סימטריה שהבעלים אישר לתקן.)
+  installDb({ settings: SETTINGS_LEGACY });
+  invalidateSettingsCache();
+  await getDeliveriesForDate(D.keyToLocalMidnight('2026-09-24'));
+  assert.deepEqual(deliveriesQuery().args.where.OR, [
+    { eventDate: { gte: win('2026-09-25').start, lte: win('2026-10-04').end } }, // outbound: 24.9 + 1 delivery day = Sun 4.10
+    { eventDate: { gte: win('2026-09-23').start, lte: win('2026-09-23').end } }, // return: Wed 23.9 + 1 = Thu 24.9
+  ]);
 });
 
 test('withScheduleFields (only lib/schedule/loaders.js passes it): adds the schedule fields + the return-state item columns; byDispatchDate alone does not', async () => {
@@ -84,16 +94,16 @@ test('withScheduleFields (only lib/schedule/loaders.js passes it): adds the sche
 
 test('"select by event date" mode (org2 setting), NO options: event-day query, dispatchDates kept (legacy behaviour of that mode), drafts included', async () => {
   installDb({ settings: SETTINGS_ORG2 });
-  const res = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-02'));
+  const res = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-16'));
   assert.equal(res.selectByEventDate, true);
-  assert.deepEqual(ids(res), [1009, 9001], 'orders whose EVENT is on 2.10 (incl. the draft, as before)');
+  assert.deepEqual(ids(res), [1009, 9001], 'orders whose EVENT is on 16.10 (incl. the draft, as before)');
   const row = res.data.find((r) => r.orderId === 1009);
   assert.deepEqual(row.directions, ['out']);
-  assert.deepEqual(row.dispatchDates, { out: '2026-10-01' }, 'this mode always sent dispatchDates');
+  assert.deepEqual(row.dispatchDates, { out: '2026-10-15' }, 'this mode always sent dispatchDates');
   assert.equal('internalNotes' in row, false);
   const q = deliveriesQuery();
   assert.deepEqual(Object.keys(q.args.where).sort(), ['OR', 'isDeleted', 'isDelivery']);
-  assert.deepEqual(q.args.where.OR, [{ eventDate: { gte: D.dayRange('2026-10-02').start, lte: D.dayRange('2026-10-02').end } }]);
+  assert.deepEqual(q.args.where.OR, [{ eventDate: { gte: D.dayRange('2026-10-16').start, lte: D.dayRange('2026-10-16').end } }]);
 });
 
 test('calling with an empty options object equals calling with no options at all', async () => {
@@ -123,8 +133,8 @@ test('the options are opt-in: only byDispatchDate changes the mode, only include
 test('byDispatchDate: dispatchDates are computed with the unified rule (same helper as the schedule and the print pages)', async () => {
   installDb({ settings: SETTINGS_LEGACY });
   const res = await getDeliveriesForDate(D.keyToLocalMidnight(DAY), { byDispatchDate: true, excludeDrafts: true });
-  assert.deepEqual(res.data.find((r) => r.orderId === 1009).dispatchDates, { out: '2026-10-01' }, 'event Fri 2.10 (erev chag) - 1 business day = Thu 1.10');
-  assert.deepEqual(res.data.find((r) => r.orderId === 1010).dispatchDates, { return: '2026-10-01' }, 'event Wed 30.9 + 1 business day = Thu 1.10');
+  assert.deepEqual(res.data.find((r) => r.orderId === 1009).dispatchDates, { out: '2026-10-15' }, 'event Fri 16.10 - 1 business day = Thu 15.10');
+  assert.deepEqual(res.data.find((r) => r.orderId === 1010).dispatchDates, { return: '2026-10-15' }, 'event Wed 14.10 + 1 business day = Thu 15.10');
 });
 
 test('owner-marked closed day (non_working_days_extra): no delivery leaves or is collected on it - empty result, no DB query; the dispatches move to the neighbouring working days', async () => {
@@ -135,31 +145,36 @@ test('owner-marked closed day (non_working_days_extra): no delivery leaves or is
   assert.equal(deliveriesQuery(), undefined, 'no deliveries query at all on a closed day');
 
   // Outbound is counted BACKWARDS from the event (event - delivery_days_before business days), so a delivery that
-  // would have left on the closed Thursday leaves EARLIER - on Wed 30.9, the last working day before it. Order 1009
-  // (event Fri 2.10, erev chag): 2.10 - 1 business day = Thu 1.10 (closed) -> Wed 30.9.
+  // would have left on the closed Thursday leaves EARLIER - on Wed 14.10, the last working day before it. Order 1009
+  // (event Fri 16.10): 16.10 - 1 business day = Thu 15.10 (closed) -> Wed 14.10.
   invalidateSettingsCache();
-  const wednesday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-09-30'), { byDispatchDate: true, excludeDrafts: true });
-  assert.deepEqual(ids(wednesday), [1009], 'event 2.10 now goes out on Wed 30.9; no return is collected that day (no delivery event on Tue 29.9)');
+  const wednesday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-14'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(wednesday), [1009], 'event 16.10 now goes out on Wed 14.10; no return is collected that day (no delivery event on Tue 13.10)');
   assert.deepEqual(wednesday.data[0].directions, ['out']);
-  assert.deepEqual(wednesday.data[0].dispatchDates, { out: '2026-09-30' });
-  // the outbound window on 30.9 is the full inverse: every event from the closed Thursday through Sun 4.10
+  assert.deepEqual(wednesday.data[0].dispatchDates, { out: '2026-10-14' });
+  // the outbound window on 14.10 is the full inverse: the closed Thursday + Fri 16.10 (a delivery day here, weekends are not skipped)
   const win = (k) => D.dayRange(k);
-  assert.deepEqual(deliveriesQuery().args.where.OR[0], { eventDate: { gte: win('2026-10-01').start, lte: win('2026-10-04').end } });
+  assert.deepEqual(deliveriesQuery().args.where.OR[0], { eventDate: { gte: win('2026-10-15').start, lte: win('2026-10-16').end } });
 
   // Returns are counted FORWARDS (event + delivery_days_after), so the collections that were due on the closed
-  // Thursday move LATER - to Sun 4.10 (Fri 2.10 erev chag + Sat 3.10 chag are closed anyway). Orders 1010 + 1022
-  // (event Wed 30.9, הלוך-חזור): 30.9 + 1 business day = Sun 4.10. 1008 (event Mon 5.10) goes out on Sunday as before.
+  // Thursday move LATER - to the next delivery day. delivery_skip_weekends is off in these settings, so that is Fri 16.10
+  // (only chag / chol hamoed / erev chag / owner days are always skipped). Orders 1010 + 1022 (event Wed 14.10, הלוך-חזור):
+  // 14.10 + 1 business day = Fri 16.10.
   invalidateSettingsCache();
-  const sunday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-04'), { byDispatchDate: true, excludeDrafts: true });
-  assert.deepEqual(ids(sunday), [1008, 1010, 1022]);
-  assert.deepEqual(sunday.data.find((r) => r.orderId === 1010).directions, ['return']);
-  assert.deepEqual(sunday.data.find((r) => r.orderId === 1010).dispatchDates, { return: '2026-10-04' });
-  assert.deepEqual(sunday.data.find((r) => r.orderId === 1008).dispatchDates, { out: '2026-10-04' });
-  assert.ok(!ids(sunday).includes(1009), 'an outbound delivery never moves to after its event');
+  const friday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-16'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(friday), [1010, 1022]);
+  assert.deepEqual(friday.data.find((r) => r.orderId === 1010).directions, ['return']);
+  assert.deepEqual(friday.data.find((r) => r.orderId === 1010).dispatchDates, { return: '2026-10-16' });
+  assert.ok(!ids(friday).includes(1009), 'an outbound delivery never moves to after its event');
+  // 1008 (event Mon 19.10) goes out on Sunday 18.10 as before; nothing is collected on Sunday (no delivery event on Sat 17.10)
+  invalidateSettingsCache();
+  const sunday = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-18'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(sunday), [1008]);
+  assert.deepEqual(sunday.data[0].dispatchDates, { out: '2026-10-18' });
 
-  // without the closed Thursday the same Sunday collects nothing from 30.9 (those returns are on Thu 1.10 - see the default-mode test)
+  // without the closed Thursday the same Friday collects nothing from 14.10 (those returns are on Thu 15.10 - see the default-mode test)
   installDb({ settings: SETTINGS_LEGACY });
   invalidateSettingsCache();
-  const sundayOpen = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-04'), { byDispatchDate: true, excludeDrafts: true });
-  assert.deepEqual(ids(sundayOpen), [1008]);
+  const fridayOpen = await getDeliveriesForDate(D.keyToLocalMidnight('2026-10-16'), { byDispatchDate: true, excludeDrafts: true });
+  assert.deepEqual(ids(fridayOpen), []);
 });

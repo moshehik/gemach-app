@@ -121,12 +121,11 @@ export function subParts(stageKey, row, ctx = {}) {
   }
 }
 
-// דגלי הזמנה שמשנים תאריכים (B21): חו״ל, אמצע שבוע, יום נוסף, מרווח מותאם
+// דגלי הזמנה שמשנים תאריכים (B21): חו״ל, יום נוסף, מרווח מותאם
 export function flagLabels(flags) {
   if (!flags) return [];
   const out = [];
   if (flags.isAbroad) out.push('חו״ל');
-  if (flags.isWeekdayEvent) out.push('אמצע שבוע');
   if (flags.extraDay === 'before') out.push('יום נוסף לפני');
   else if (flags.extraDay === 'after') out.push('יום נוסף אחרי');
   else if (flags.extraDay) out.push('יום נוסף');

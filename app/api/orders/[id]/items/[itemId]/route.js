@@ -134,7 +134,7 @@ export async function PUT(request, { params }) {
     const sizeEditDays = parseSizeEditDays(settingsRaw.find(s => s.key === 'size_edit_until_days_before_event')?.value);
     const gapRule = normalizeGapRule(settingsRaw.find(s => s.key === 'gap_size_price_rule')?.value);
 
-    const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
+    const newOrderIsAbroad = !!order.isAbroad;
     let targetMinDate, targetMaxDate;
     if (newOrderIsAbroad) {
        if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');

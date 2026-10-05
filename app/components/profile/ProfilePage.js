@@ -18,6 +18,7 @@ import { HomeSprite } from '../home/HomeParts';
 import { SPRITE_ID_PREFIX } from '../menu/spriteSymbols';
 import { useA5Shell } from '../menu/A5ShellContext';
 import usePageTooltip from './usePageTooltip';
+import PageVariantToggle from '../variant/PageVariantToggle';
 
 // אייקון מהספרייה של הפלטה (הפניה פנימית ל-sprite המוטמע, כמו Ic בדף הבית) + מחלקות אנימציית הריחוף של הפלטה (ia-<שם> ia-h),
 // כמו בעיצוב המאושר ובאייקוני התפריט (menuParts.js). האנימציה רצה רק בריחוף/מיקוד על האייקון או על הכפתור שמכיל אותו.
@@ -46,6 +47,8 @@ function PageHead({ onBack, sub, children }) {
           {sub || children ? <div className="faint pf-sub">{sub}{children}</div> : null}
         </div>
       </div>
+      {/* "חזרה לתצוגה הישנה" (4.10.2026): מוצג רק להנהלה ראשית / מתכנת; הטולטיפ - usePageTooltip של הדף (data-tip) */}
+      <PageVariantToggle screen="profile" placement="header" systemTip />
     </div>
   );
 }

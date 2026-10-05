@@ -4,7 +4,14 @@ import assert from 'node:assert/strict';
 import {
   buildMenuTree as buildMenuTreeRaw, deriveLegacyFlags, findActive, flattenMenuTree, isJsonSafe,
   REMOVED_HREFS, RESTORED_ITEMS, NOT_BUILT_ITEM_IDS, NAV_PAGE_KEYS, MENU_PAGE_KEYS, ITEM_IDS, TAB_IDS, settingsToMap,
+  composeAdminItems, applyAdminRecents, matchAdminPoolItem, ADMIN_MENU_MAX_ROWS, ADMIN_MENU_RECENTS, ADMIN_POOL_IDS, ADMIN_FIXED_IDS,
+  ADMIN_DEFAULT_IDS, ADMIN_RECENT_TIP, PANEL_ONLY_REMOVED,
 } from '../lib/menu/buildMenuTree.js';
+import {
+  ADMIN_RECENTS_CAP, ADMIN_RECENTS_KEY_PREFIX, adminRecentsKey, recordAdminVisit, adminRecentHrefs, serializeAdminRecents,
+  deserializeAdminRecents, readAdminRecents, writeAdminRecents, clearAdminRecentsStorage,
+} from '../lib/menu/adminRecents.js';
+import { selectHub, accessForRole } from '../lib/adminHubCatalog.js';
 import {
   createNavHistory, visit, back, forward, go, clear, relabel, current, canGoBack, canGoForward,
   previousEntry, nextEntry, position, recentsView, buttonLabels, serializeNavHistory, deserializeNavHistory,
@@ -104,31 +111,39 @@ t('הנהלה ראשית: חמש לשוניות (בית, לוז, לוח חודש
 t('הנהלה ראשית: תפריט בית — בלי הכותרת הקטנה "אחרונים"; כל הפריטים פותחים את דף החיפוש הראשי ("/") עם פרמטר (2.10.2026)', () => {
   const home = tab(HEAD_TREE, 'home');
   assert.deepEqual(home.items.map((x) => x.kind === 'link' ? x.id : x.kind === 'heading' ? `h:${x.label}` : x.kind === 'soon' ? `soon:${x.id}` : '-'),
-    ['home-search', '-', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'recent-all', '-', 'home-adv']);
+    ['home-search', '-', 'recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations', 'recent-all', 'recent-mine', '-', 'home-adv']);
   assert.equal(home.href, '/');
   assert.ok(!home.items.some((x) => x.kind === 'heading'), 'אין כותרת קבוצה בתפריט בית');
   assert.ok(!home.items.some((x) => x.kind === 'soon'), '"שינויים אחרונים" ו"חיפוש מתקדם" כבר לא "בקרוב"');
   const byId = Object.fromEntries(home.items.filter((x) => x.kind === 'link').map((x) => [x.id, x]));
   assert.deepEqual(Object.fromEntries(Object.entries(byId).map(([k, v]) => [k, v.href])), {
     'home-search': '/', 'recent-orders': '/?scope=orders', 'recent-customers': '/?scope=customers', 'recent-rentals': '/?scope=rentals',
-    'recent-returns': '/?scope=returns', 'recent-alterations': '/?scope=alterations', 'recent-all': '/?recent=changes', 'home-adv': '/?adv=1',
+    'recent-returns': '/?scope=returns', 'recent-alterations': '/?scope=alterations', 'recent-all': '/?recent=changes', 'recent-mine': '/?recent=mine', 'home-adv': '/?adv=1',
   });
   assert.deepEqual(['recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations'].map((k) => byId[k].label), ['הזמנות', 'לקוחות', 'השכרות', 'החזרות', 'תיקונים']);
   assert.equal(byId['recent-all'].label, 'שינויים אחרונים'); assert.equal(byId['home-adv'].label, 'חיפוש מתקדם');
+  assert.equal(byId['recent-mine'].label, 'השינויים שלי'); assert.equal(byId['recent-mine'].icon, 'pencil');
   // הפריט נשאר "נוכח" גם בעמוד הישן של הקטגוריה (match), כדי שההדגשה לא תיעלם בעמוד /orders וכו'
   assert.deepEqual(Object.fromEntries(['recent-orders', 'recent-customers', 'recent-rentals', 'recent-returns', 'recent-alterations'].map((k) => [k, byId[k].match])),
     { 'recent-orders': '/orders', 'recent-customers': '/customers', 'recent-rentals': '/rentals#rented', 'recent-returns': '/rentals#returned', 'recent-alterations': '/alterations' });
 });
-t('הנהלה ראשית: תפריט ניהול מלא — עם זיכויים (החלטת הבעלים 1.10) ובלי הקבוצה התחתונה (R11); משלוחים רק עם ההגדרה', () => {
+t('הנהלה ראשית: פאנל "ניהול" מקוצר (4.10.2026) — בלי אחרונים: עובדים, הרשאות, ניהול מחירון | הגדרות מערכת, כל כלי הניהול; השאר במאגר', () => {
   const admin = tab(HEAD_TREE, 'admin');
-  assert.deepEqual(ids(admin.items), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-settings', 'ad-stats', 'ad-info']);
+  assert.deepEqual(ids(admin.items), ['ad-staff', 'ad-perms', 'ad-pricelist', 'ad-settings', 'ad-all']);
   assert.equal(admin.items.filter((x) => x.kind === 'separator').length, 1);
+  assert.equal(admin.items[3].kind, 'separator', 'המפריד לפני השורות הקבועות');
   assert.equal(admin.href, '/admin');
-  assert.equal(admin.items.find((x) => x.id === 'finance').href, '/dashboard');
-  assert.equal(admin.items.find((x) => x.id === 'ad-refunds').href, '/refunds');
+  const by = Object.fromEntries(admin.items.filter((x) => x.id).map((x) => [x.id, x]));
+  assert.deepEqual([by['ad-settings'].label, by['ad-settings'].href], ['הגדרות מערכת', '/admin/settings']);
+  assert.deepEqual([by['ad-all'].label, by['ad-all'].href, by['ad-all'].icon], ['כל כלי הניהול', '/admin', admin.icon]);
+  // מה שיצא מהפאנל נשאר במאגר (חיפוש בתפריט, הדגשת הלשונית, מועמד ל"אחרונים") עם אותם יעדים
+  const pool = Object.fromEntries(admin.pool.map((x) => [x.id, x]));
+  assert.deepEqual(Object.keys(pool), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-nwd', 'ad-perms', 'ad-pricelist', 'ad-stats', 'ad-info']);
+  assert.equal(pool.finance.href, '/dashboard'); assert.equal(pool['ad-refunds'].href, '/refunds');
+  assert.deepEqual(ids(admin.fixed), ['ad-settings', 'ad-all']);
   const neve = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) });
-  assert.deepEqual(ids(tab(neve, 'admin').items), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-deliveries', 'ad-settings', 'ad-stats', 'ad-info']);
-  assert.equal(tab(neve, 'admin').items.find((x) => x.id === 'ad-deliveries').href, '/deliveries');
+  assert.deepEqual(ids(tab(neve, 'admin').items), ['ad-staff', 'ad-perms', 'ad-pricelist', 'ad-settings', 'ad-all']);
+  assert.equal(tab(neve, 'admin').pool.find((x) => x.id === 'ad-deliveries').href, '/deliveries');
 });
 t('הנהלה ראשית: תפריט הזמנה בלי משלוחים (הם תחת "ניהול", לא כאן) ובלי בדיקת מלאי (לא קיים)', () => {
   assert.deepEqual(ids(tab(HEAD_TREE, 'order').items), ['order-new', 'order-kiosk']);
@@ -168,31 +183,50 @@ t('מתכנת: כמו הנהלה + "היסטוריית הודעות מערכת" 
   assert.equal(PROG_TREE.user.items.find((x) => x.id === 'u-hist').action, 'system-messages-history');
   assert.equal(PROG_TREE.meta.prog, true);
 });
+t('תפריט "ניהול": קיצורים ניהול אתר / הרשאות / ניהול מחירון (החלטת הבעלים 4.10.2026) — ניהול אתר למתכנת בלבד', () => {
+  const prog = tab(PROG_TREE, 'admin');
+  assert.deepEqual(ids(prog.items), ['ad-staff', 'ad-perms', 'ad-pricelist', 'ad-settings', 'ad-all']);
+  assert.deepEqual(prog.pool.map((x) => x.id), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-nwd', 'ad-site', 'ad-perms', 'ad-pricelist', 'ad-stats', 'ad-info']);
+  const by = Object.fromEntries(prog.pool.map((x) => [x.id, x]));
+  assert.deepEqual([by['ad-site'].label, by['ad-site'].href], ['ניהול אתר', '/admin/site']);
+  assert.deepEqual([by['ad-perms'].label, by['ad-perms'].href], ['הרשאות', '/admin/permissions']);
+  assert.deepEqual([by['ad-pricelist'].label, by['ad-pricelist'].href], ['ניהול מחירון', '/dashboard/pricelist']);
+  assert.ok(!hrefs(HEAD_TREE).includes('/admin/site'), 'הנהלה ראשית לא רואה את "ניהול אתר"');
+  assert.ok(hrefs(HEAD_TREE).includes('/admin/permissions') && hrefs(HEAD_TREE).includes('/dashboard/pricelist'));
+  const branch = buildMenuTree({ user: BRANCH, permissions: ALL_OPEN, settings: [] });
+  for (const h of ['/admin/site', '/admin/permissions', '/dashboard/pricelist']) assert.ok(!hrefs(branch).includes(h), 'מנהלת סניף: ' + h);
+  const anon = buildMenuTree({ user: null, settings: rows({ require_login: 'false' }) });
+  assert.ok(!hrefs(anon).includes('/admin/site'), 'אורח לא רואה את "ניהול אתר" (gate prog דורש מחובר)');
+  assert.deepEqual(findActive(PROG_TREE, '/admin/permissions'), { tabId: 'admin', itemId: 'ad-perms' });
+  assert.deepEqual(findActive(PROG_TREE, '/admin/site'), { tabId: 'admin', itemId: 'ad-site' });
+});
 
 t('מנהלת סניף עם הרשאת דגמים: "ניהול" מוצג עם דגמים (וזיכויים כשיש הרשאה), בלי href לדף הניהול (D10)', () => {
   const tree = buildMenuTree({ user: BRANCH, permissions: { ...ALL_OPEN, 'page:refunds': false }, settings: [] });
   const admin = tab(tree, 'admin');
-  assert.ok(admin); assert.deepEqual(ids(admin.items), ['ad-models']); assert.equal(admin.href, null); assert.equal(admin.opensMenuOnly, true);
+  assert.ok(admin); assert.deepEqual(ids(admin.items), ['ad-models', 'ad-nwd']); assert.equal(admin.href, null); assert.equal(admin.opensMenuOnly, true);
   assert.ok(!hrefs(tree).includes('/employees')); assert.ok(!hrefs(tree).includes('/dashboard')); assert.ok(!hrefs(tree).includes('/admin/settings'));
   const withRefunds = buildMenuTree({ user: BRANCH, permissions: { ...ALL_OPEN }, settings: [] });
-  assert.deepEqual(ids(tab(withRefunds, 'admin').items), ['ad-models', 'ad-refunds']); assert.equal(tab(withRefunds, 'admin').href, null);
+  assert.deepEqual(ids(tab(withRefunds, 'admin').items), ['ad-models', 'ad-refunds', 'ad-nwd']); assert.equal(tab(withRefunds, 'admin').href, null);
 });
-t('מנהלת סניף בלי הרשאת דגמים/זיכויים/משלוחים: אין לשונית "ניהול" בכלל; עם זיכויים בלבד — "ניהול" עם זיכויים בלבד', () => {
+t('מנהלת סניף בלי הרשאת דגמים/זיכויים/משלוחים: "ניהול" עם "ימי אי-פעילות" בלבד (NW-I9); עם זיכויים בלבד — זיכויים + ימי אי-פעילות', () => {
   const tree = buildMenuTree({ user: BRANCH, permissions: { ...ALL_OPEN, 'page:dresses_catalog': false, 'page:refunds': false }, settings: [] });
-  assert.equal(tab(tree, 'admin'), undefined);
-  // משלוחים מותרים בהרשאה אבל ההגדרה כבויה (הגמ"ח הראשי) → עדיין אין "ניהול"
-  assert.equal(tab(buildMenuTree({ user: BRANCH, permissions: { ...ALL_OPEN, 'page:dresses_catalog': false, 'page:refunds': false, 'page:deliveries': true }, settings: [] }), 'admin'), undefined);
+  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-nwd']); assert.equal(tab(tree, 'admin').href, null); assert.equal(tab(tree, 'admin').opensMenuOnly, true);
+  // משלוחים מותרים בהרשאה אבל ההגדרה כבויה (הגמ"ח הראשי) → עדיין רק "ימי אי-פעילות"
+  assert.deepEqual(ids(tab(buildMenuTree({ user: BRANCH, permissions: { ...ALL_OPEN, 'page:dresses_catalog': false, 'page:refunds': false, 'page:deliveries': true }, settings: [] }), 'admin').items), ['ad-nwd']);
   const refundsOnly = buildMenuTree({ user: BRANCH, permissions: { ...ALL_CLOSED, 'page:refunds': true }, settings: [] });
-  assert.deepEqual(ids(tab(refundsOnly, 'admin').items), ['ad-refunds']); assert.equal(tab(refundsOnly, 'admin').href, null); assert.equal(tab(refundsOnly, 'admin').opensMenuOnly, true);
+  assert.deepEqual(ids(tab(refundsOnly, 'admin').items), ['ad-refunds', 'ad-nwd']); assert.equal(tab(refundsOnly, 'admin').href, null); assert.equal(tab(refundsOnly, 'admin').opensMenuOnly, true);
   // נווה יעקב: משלוחים מופעלים + הרשאת משלוחים → "ניהול" עם משלוחים בלבד
   const deliveriesOnly = buildMenuTree({ user: BRANCH, permissions: { ...ALL_CLOSED, 'page:deliveries': true }, settings: rows({ enable_deliveries: 'true' }) });
-  assert.deepEqual(ids(tab(deliveriesOnly, 'admin').items), ['ad-deliveries']); assert.equal(tab(deliveriesOnly, 'admin').href, null);
+  assert.deepEqual(ids(tab(deliveriesOnly, 'admin').items), ['ad-deliveries', 'ad-nwd']); assert.equal(tab(deliveriesOnly, 'admin').href, null);
 });
 t('עובדת בלי הרשאות (הכול סגור): רק בית (חיפוש כללי) והזמנה (עמדת לקוח); אין לוח חודשי', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_CLOSED, settings: [] });
-  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'order']);
+  // + "ניהול" עם "ימי אי-פעילות" בלבד (NW-I9: הפריט מוצג לכל עובד מחובר, צפייה בלבד)
+  assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'admin', 'order']);
+  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-nwd']);
   // "שינויים אחרונים" (האחרונים של העובדת, מקומי) מוצג לכולן; "חיפוש מתקדם" רק כשמותר לפחות תחום אחד (אין כאן — הכול סגור)
-  assert.deepEqual(ids(tab(tree, 'home').items), ['home-search', 'recent-all']);
+  assert.deepEqual(ids(tab(tree, 'home').items), ['home-search', 'recent-all']); // בלי page:orders אין "השינויים שלי" (אותה הרשאה של דף ההזמנות)
   assert.ok(!tab(tree, 'home').items.some((x) => x.kind === 'soon' || x.kind === 'heading'));
   assert.equal(tab(tree, 'sched').soon, true, 'אין page:schedule → "לוז" בקרוב');
   assert.deepEqual(ids(tab(tree, 'order').items), ['order-kiosk']);
@@ -201,10 +235,43 @@ t('עובדת בלי הרשאות (הכול סגור): רק בית (חיפוש �
 t('עובדת עם הרשאות עמוד פתוחות: בית מלא, לוח לפי page:board, "ניהול" רק עם דגמים/זיכויים (D10: לפי ההרשאה לכל שורה)', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: [] });
   assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
-  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-models', 'ad-refunds']); assert.equal(tab(tree, 'admin').href, null);
+  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-models', 'ad-refunds', 'ad-nwd']); assert.equal(tab(tree, 'admin').href, null);
   assert.deepEqual(ids(tab(tree, 'order').items), ['order-new', 'order-kiosk']);
   const noDresses = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:dresses_catalog': false, 'page:refunds': false }, settings: [] });
-  assert.deepEqual(noDresses.tabs.map((x) => x.id), ['home', 'sched', 'month', 'order']);
+  assert.deepEqual(noDresses.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
+  assert.deepEqual(ids(tab(noDresses, 'admin').items), ['ad-nwd']);
+});
+t('"ימי אי-פעילות" (NWD-Q01 + NW-I9): בניהול אחרי "הגדרות", לכל עובד מחובר (צפייה בלבד למי שאין לו הרשאת עריכה); אורח לא רואה; אין featureKey', () => {
+  const NWD = 'feature:non_working_days_manage';
+  // התפריט המקוצר (4.10.2026): הפריט במאגר הלשונית (ומועמד ל"אחרונים"), לא שורה קבועה בפאנל; אריח במסך /admin
+  const item = tab(HEAD_TREE, 'admin').pool.find((x) => x.id === 'ad-nwd');
+  assert.deepEqual([item.label, item.href, item.icon], ['ימי אי-פעילות', '/non-working-days', 'lock']);
+  assert.deepEqual(findActive(HEAD_TREE, '/non-working-days'), { tabId: 'admin', itemId: 'ad-nwd' });
+  // הנהלה ראשית: גם כשההרשאות לא נטענו
+  assert.ok(ids(tab(buildMenuTree({ user: HEAD, permissions: null, settings: [] }), 'admin').pool).includes('ad-nwd'));
+  // מנהלת סניף / עובדת: הפריט מוצג בלי תלות בהרשאה feature:non_working_days_manage (גם כשההרשאות לא נטענו או סגורות) -
+  // "ניהול" נפתח אצלן רק כתפריט (בלי href), עם הפריט הזה בלבד
+  for (const user of [BRANCH, STAFF]) {
+    for (const permissions of [null, ALL_OPEN, ALL_CLOSED, { ...ALL_CLOSED, [NWD]: false }, { ...ALL_CLOSED, [NWD]: true }]) {
+      const adm = tab(buildMenuTree({ user, permissions, settings: [] }), 'admin');
+      assert.ok(ids(adm.items).includes('ad-nwd'), 'הפריט מוצג');
+      assert.equal(adm.href, null); assert.equal(adm.opensMenuOnly, true);
+    }
+    for (const permissions of [null, ALL_CLOSED, { ...ALL_CLOSED, [NWD]: false }, { ...ALL_CLOSED, [NWD]: true }]) {
+      assert.deepEqual(ids(tab(buildMenuTree({ user, permissions, settings: [] }), 'admin').items), ['ad-nwd'], 'בלי הרשאות עמוד - הפריט היחיד בניהול');
+    }
+  }
+  // אין עוד featureKey בעץ, ולא מפתחות feature נוספים שנטענים לתפריט
+  assert.doesNotMatch(readFileSync(new URL('../lib/menu/buildMenuTree.js', import.meta.url), 'utf8'), /MENU_FEATURE_KEYS/, 'MENU_FEATURE_KEYS הוסר');
+  assert.doesNotMatch(readFileSync(new URL('../lib/menu/buildMenuTree.js', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, ''), /featureKey/);
+  // אורח כשההתחברות חובה: אין "ניהול" בכלל
+  assert.equal(tab(buildMenuTree({ user: null, permissions: null, settings: rows({ require_login: 'true' }) }), 'admin'), undefined);
+  // app/layout.js טוען רק את NAV_PAGE_KEYS ל-resolvePageAccess
+  const LAYOUT = readFileSync(new URL('../app/layout.js', import.meta.url), 'utf8');
+  assert.match(LAYOUT, /resolvePageAccess\(emp\.roleId, authToken\.value, NAV_PAGE_KEYS\)/);
+  assert.doesNotMatch(LAYOUT, /MENU_FEATURE_KEYS/);
+  // אותו מפתח הרשאה (עריכה) כמו ב-lib/businessDays.js (NON_WORKING_DAYS_PERMISSION_KEY) ובקטלוג ההרשאות
+  assert.match(readFileSync(new URL('../lib/businessDays.js', import.meta.url), 'utf8'), /NON_WORKING_DAYS_PERMISSION_KEY = 'feature:non_working_days_manage'/);
 });
 t('עובדת: הודעות פנימיות מוסתרות (hide_internal_messaging) → הפעמון נשאר (לא קשור להודעות), בלי "הודעה למנהל", ופאנל המשתמש לא משתנה', () => {
   const tree = buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true', management_messages: 'true' }) });
@@ -214,7 +281,7 @@ t('עובדת: הודעות פנימיות מוסתרות (hide_internal_messagi
   assert.deepEqual(ids(tree.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-logout']);
   // גם הנהלה ראשית: פעמון קיים, "הודעה למנהל" מוסתרת כשההודעות הפנימיות מוסתרות
   const head = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true', management_messages: 'true' }) });
-  assert.equal(head.rail.bell.show, true); assert.deepEqual(ids(head.rail.bell.rows), ['n-center']);
+  assert.equal(head.rail.bell.show, true); assert.deepEqual(ids(head.rail.bell.rows), [], 'MS-08: גם "פתח מרכז הודעות" מוסתרת כשההודעות הפנימיות מוסתרות');
   // עם הודעות פנימיות פעילות ו-management_messages — השורה חוזרת
   const on = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'false', management_messages: 'true' }) });
   assert.deepEqual(ids(on.rail.bell.rows), ['n-center', 'n-manager-message']);
@@ -272,7 +339,9 @@ t('אורח במצב פתוח (require_login כבוי): כל הלשוניות כ
   const tree = buildMenuTree({ user: null, settings: rows({ require_login: 'false', management_messages: 'true' }) });
   assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   // זיכויים: במצב פתוח התפריט הישן מציג /refunds לאורח (showRefundsTab = !requireLogin) → גם כאן
-  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-settings', 'ad-stats', 'ad-info']);
+  // 'ad-nwd' (ימי אי-פעילות) הוא logged: true (NW-I9) ולכן אורח במצב פתוח לא רואה אותו
+  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-staff', 'ad-perms', 'ad-pricelist', 'ad-settings', 'ad-all']);
+  assert.deepEqual(tab(tree, 'admin').pool.map((x) => x.id), ['ad-models', 'ad-staff', 'finance', 'ad-refunds', 'ad-perms', 'ad-pricelist', 'ad-stats', 'ad-info']);
   assert.ok(!ids(tab(tree, 'home').items).includes('sched'), 'לוז למחוברים בלבד');
   assert.equal(tree.user.logged, false); assert.equal(tree.user.name, 'אורח'); assert.equal(tree.user.initials, 'א');
   assert.deepEqual(ids(tree.user.items), ['u-login']);
@@ -320,14 +389,14 @@ t('מעטפת a5 + דף בית legacy (דגלים עצמאיים): אין קיש
     // (קישורי "היום"/"מחר" של הלוז (/schedule?date=) אינם תלויים בדף הבית - הדף עצמו קורא את הפרמטר)
     assert.ok(!flattenMenuTree(lt).some((x) => x.href && x.href.includes('?') && !x.href.startsWith('/schedule?')), `${name}: אין href עם query`);
     // אותן שורות בדיוק (נראות זהה); רק ה-href וסוג שתי השורות החדשות משתנים
-    assert.deepEqual(ids(tab(lt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), ids(tab(nt, 'home').items).filter((i) => !['recent-all', 'home-adv'].includes(i)), name);
+    assert.deepEqual(ids(tab(lt, 'home').items).filter((i) => !['recent-all', 'recent-mine', 'home-adv'].includes(i)), ids(tab(nt, 'home').items).filter((i) => !['recent-all', 'recent-mine', 'home-adv'].includes(i)), name);
     if (tab(lt, 'home')) assert.ok(!tab(lt, 'home').items.some((x) => x.kind === 'heading'));
   }
   const lt = legacyHome({ user: HEAD, permissions: ALL_OPEN, settings: [] });
   const home = tab(lt, 'home');
   assert.deepEqual(Object.fromEntries(home.items.filter((x) => x.kind === 'link').map((x) => [x.id, x.href])),
     { 'home-search': '/', 'recent-orders': '/orders', 'recent-customers': '/customers', 'recent-rentals': '/rentals#rented', 'recent-returns': '/rentals#returned', 'recent-alterations': '/alterations' });
-  assert.deepEqual(home.items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'home-adv']);
+  assert.deepEqual(home.items.filter((x) => x.kind === 'soon').map((x) => x.id), ['recent-all', 'recent-mine', 'home-adv']);
   for (const x of home.items.filter((i) => i.kind === 'soon')) { assert.equal(x.href, undefined); assert.equal(x.action, undefined); }
   assert.ok(!home.items.some((x) => 'match' in x), 'בלי match כשהקישור הוא הדף הישן עצמו');
   // ברירת מחדל (בלי הדגל) = בטוח: קישורים ישנים
@@ -336,11 +405,12 @@ t('מעטפת a5 + דף בית legacy (דגלים עצמאיים): אין קיש
   assert.ok(hrefs(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] })).includes('/?scope=customers'));
   assert.equal(isJsonSafe(lt), true);
 });
-t('הפריטים שהוסרו (R11) לעולם לא בעץ; /deliveries ו-/refunds כבר לא ברשימת ההסרה (הוחזרו 1.10)', () => {
+t('הפריטים שהוסרו (R11 — מ-4.10 רק דוח הנוכחות) לעולם לא בעץ; /deliveries ו-/refunds (1.10) וקיצורי מסך הניהול (4.10) כבר לא ברשימת ההסרה', () => {
   const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) });
   const all = hrefs(tree);
   for (const h of REMOVED_HREFS) assert.ok(!all.includes(h), h);
   assert.ok(!REMOVED_HREFS.includes('/deliveries')); assert.ok(!REMOVED_HREFS.includes('/refunds'));
+  assert.deepEqual([...REMOVED_HREFS], ['/employees/report']);
   assert.deepEqual(RESTORED_ITEMS.R09.id, 'ad-deliveries'); assert.deepEqual(RESTORED_ITEMS.R09.href, '/deliveries');
   assert.deepEqual(RESTORED_ITEMS.R10.id, 'ad-refunds'); assert.deepEqual(RESTORED_ITEMS.R10.href, '/refunds');
   for (const r of Object.values(RESTORED_ITEMS)) assert.ok(ITEM_IDS.includes(r.id), r.id);
@@ -387,7 +457,7 @@ t('"לוז" (sched): לשונית אחרי "בית" → /schedule רק כש-page
   const live = (tree) => { const t0 = sched(tree); return !!t0 && t0.href === '/schedule' && !t0.soon; };
   const soon = (tree) => { const t0 = sched(tree); return !!t0 && t0.soon === true && t0.href === null && Array.isArray(t0.items) && t0.items.length === 0; };
   const staff = buildMenuTree({ user: STAFF, permissions: { ...ALL_CLOSED, 'page:schedule': true }, settings: [] });
-  assert.ok(live(staff)); assert.equal(sched(staff).label, 'לוז'); assert.deepEqual(staff.tabs.map((x) => x.id), ['home', 'sched', 'order']);
+  assert.ok(live(staff)); assert.equal(sched(staff).label, 'לוז'); assert.deepEqual(staff.tabs.map((x) => x.id), ['home', 'sched', 'admin', 'order']);
   assert.ok(soon(buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] })));
   assert.ok(soon(buildMenuTree({ user: HEAD, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [] })), 'שורת false מסתירה (בקרוב) גם להנהלה');
   // המפתח לא נטען / permissions=null: "בקרוב" לכולם, כולל הנהלה ראשית ומתכנת (הדף אולי עוד לא בפריסה)
@@ -473,10 +543,25 @@ t('פריטים "עדיין לא קיימים": שורה כבויה "בקרוב"
   assert.deepEqual(ids(tab(noNew, 'order').items), ['order-kiosk', 'order-stock'], 'page:orders בלי page:orders_new: בדיקת מלאי כן, הזמנה חדשה לא');
   assert.deepEqual(withStock.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.ok(ids(tab(withStock, 'home').items).includes('recent-all')); assert.ok(ids(tab(withStock, 'home').items).includes('home-adv'));
+  assert.ok(ids(tab(withStock, 'home').items).includes('recent-mine'));
   assert.deepEqual(soonIds(withStock), []);
   // available לא יכול "להדליק" את לוז — הוא נשלט רק ע"י page:schedule
   const forced = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:schedule': false }, settings: [], available: { sched: true } });
   assert.equal(tab(forced, 'sched').soon, true);
+});
+t('"השינויים שלי" (recent-mine): אחרי "שינויים אחרונים", לפי הרשאת page:orders בלבד (כמו דף ההזמנות); בלי דף בית חדש — "בקרוב"', () => {
+  const homeIds = (tree) => ids(tab(tree, 'home').items);
+  const open = homeIds(buildMenuTree({ user: STAFF, permissions: ALL_OPEN, settings: [], homeA5: true }));
+  assert.equal(open.indexOf('recent-mine'), open.indexOf('recent-all') + 1, 'מיד אחרי recent-all');
+  const noOrders = buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders': false }, settings: [], homeA5: true });
+  assert.ok(!homeIds(noOrders).includes('recent-mine'), 'בלי page:orders השורה לא מוצגת');
+  assert.ok(homeIds(noOrders).includes('recent-all'), '"שינויים אחרונים" (מקומי) כן');
+  const legacyOpen = buildMenuTreeRaw({ user: STAFF, permissions: ALL_OPEN, settings: [], homeA5: false });
+  const row = tab(legacyOpen, 'home').items.find((x) => x.id === 'recent-mine');
+  assert.equal(row.kind, 'soon'); assert.equal(row.href, undefined);
+  const noOrdersLegacy = buildMenuTreeRaw({ user: STAFF, permissions: { ...ALL_OPEN, 'page:orders': false }, settings: [], homeA5: false });
+  assert.ok(!tab(noOrdersLegacy, 'home').items.some((x) => x.id === 'recent-mine'));
+  assert.equal(tab(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], homeA5: true }), 'home').items.find((x) => x.id === 'recent-mine').href, '/?recent=mine');
 });
 t('"חיפוש מתקדם" (home-adv): מוצג רק כשמותר לפחות תחום אחד שהחיפוש יכול לעבוד עליו; "שינויים אחרונים" תמיד', () => {
   assert.ok(!NOT_BUILT_ITEM_IDS.includes('recent-all') && !NOT_BUILT_ITEM_IDS.includes('home-adv'));
@@ -494,7 +579,7 @@ t('דגלים מה-layout (flags) גוברים על הנגזרים: showBoardTab
   const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], flags: { showBoardTab: false } });
   assert.equal(tab(tree, 'month'), undefined);
   const u = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ hide_internal_messaging: 'true' }), flags: { hideInternalMessaging: undefined, showBoardTab: undefined } });
-  assert.equal(u.rail.bell.show, true); assert.ok(!ids(u.rail.bell.rows).includes('n-manager-message')); assert.ok(tab(u, 'month'));
+  assert.equal(u.rail.bell.show, true); assert.ok(!ids(u.rail.bell.rows).includes('n-manager-message')); assert.ok(!ids(u.rail.bell.rows).includes('n-center')); assert.ok(tab(u, 'month'));
 });
 t('חוזה a5Shell.flags מ-app/layout.js: עם flags בלבד (בלי settings/permissions) העץ מציג משלוחים/זיכויים/לוח בדיוק לפי הדגלים', () => {
   // אותו אובייקט שה-layout בונה (legacyNavFlags + 6 הנוספים) — אם buildMenuTree יתחיל לקרוא דגל חדש, הבדיקה הזאת תיפול.
@@ -505,12 +590,12 @@ t('חוזה a5Shell.flags מ-app/layout.js: עם flags בלבד (בלי settings
   };
   const tree = buildMenuTree({ user: STAFF, permissions: { 'page:schedule': true }, flags: layoutFlags, settings: { management_messages: 'true', gmach_name: 'נווה' } });
   assert.deepEqual(tree.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
-  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-refunds', 'ad-deliveries']); assert.equal(tab(tree, 'admin').href, null);
+  assert.deepEqual(ids(tab(tree, 'admin').items), ['ad-refunds', 'ad-deliveries', 'ad-nwd']); assert.equal(tab(tree, 'admin').href, null);
   assert.equal(tab(tree, 'sched').href, '/schedule'); assert.ok(ids(tab(tree, 'home').items).includes('recent-alterations'));
   assert.deepEqual(ids(tree.rail.bell.rows), ['n-manager-message'], 'page:messages לא נטען → מרכז הודעות מוסתר לעובדת; הודעה למנהל לפי ההגדרה');
   assert.equal(tree.rail.errorReport.show, true); assert.equal(tree.brand.name, 'נווה');
   const off = buildMenuTree({ user: STAFF, permissions: {}, flags: { ...layoutFlags, showDeliveries: false, showRefundsTab: false, showBoardTab: false, hideErrorReporting: true }, settings: {} });
-  assert.deepEqual(off.tabs.map((x) => x.id), ['home', 'sched', 'order']); assert.equal(off.rail.errorReport.show, false);
+  assert.deepEqual(off.tabs.map((x) => x.id), ['home', 'sched', 'admin', 'order']); assert.equal(off.rail.errorReport.show, false);
   // הדגלים שהעץ קורא — כולם ברשימה (אם deriveLegacyFlags יחזיר מפתח חדש, ה-layout צריך להעביר גם אותו)
   assert.deepEqual(Object.keys(deriveLegacyFlags({ logged: true, roleId: 3, permissions: {}, settings: [] })).sort(), Object.keys(layoutFlags).sort());
 });
@@ -538,7 +623,8 @@ t('כללי isActive של AppShell: "/" רק מדויק, אחרת תחילית, 
   assert.deepEqual(findActive(HEAD_TREE, '/rentals'), { tabId: null, itemId: null });
   assert.deepEqual(findActive(HEAD_TREE, '/board/'), { tabId: 'month', itemId: null });
   assert.deepEqual(findActive(HEAD_TREE, '/admin/settings?x=1'), { tabId: 'admin', itemId: 'ad-settings' });
-  assert.deepEqual(findActive(HEAD_TREE, '/admin/permissions'), { tabId: 'admin', itemId: null });
+  assert.deepEqual(findActive(HEAD_TREE, '/admin/permissions'), { tabId: 'admin', itemId: 'ad-perms' });
+  assert.deepEqual(findActive(HEAD_TREE, '/admin/barcode-invalid'), { tabId: 'admin', itemId: null });
   assert.deepEqual(findActive(HEAD_TREE, '/dashboard/dresses/5'), { tabId: 'admin', itemId: 'ad-models' });
   assert.deepEqual(findActive(HEAD_TREE, '/customers/abc'), { tabId: 'home', itemId: 'recent-customers' });
   assert.deepEqual(findActive(HEAD_TREE, '/profile'), { tabId: null, itemId: null });
@@ -549,6 +635,7 @@ t('כללי isActive של AppShell: "/" רק מדויק, אחרת תחילית, 
   assert.deepEqual(findActive(HEAD_TREE, '/', '', 'scope=returns'), { tabId: 'home', itemId: 'recent-returns' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?adv=1'), { tabId: 'home', itemId: 'home-adv' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?recent=changes'), { tabId: 'home', itemId: 'recent-all' });
+  assert.deepEqual(findActive(HEAD_TREE, '/', '', '?recent=mine'), { tabId: 'home', itemId: 'recent-mine' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', ''), { tabId: 'home', itemId: 'home-search' });
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?q=כהן'), { tabId: 'home', itemId: 'home-search' }, 'פרמטר לא מוכר = חיפוש כללי');
   assert.deepEqual(findActive(HEAD_TREE, '/', '', '?scope=evil'), { tabId: 'home', itemId: 'home-search' }, 'ערך לא מוכר לא מסמן שום פריט');
@@ -891,6 +978,26 @@ t('פאנל החיפוש: אין חיצי אחורה/קדימה ולא "עמוד
   assert.ok(/\.sn-sbox input:focus[^{]*\{[^}]*outline:0!important[^}]*box-shadow:none!important/.test(css), 'אין טבעת פוקוס של האתר הישן על השדה');
 });
 
+t('"השינויים שלי" בחיפוש התפריט: ה-CSS בהיקף .gm-ds.gm-menu בלבד, רק משתני --gm-*, והפאנל עושה את שלושת הדברים: אין בקשת חיפוש ל-&, רק '&' פעילה, Enter על הרשימה לא מריץ חיפוש', () => {
+  const css = readFileSync(new URL('../app/components/menu/menu.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = css.split('}').map((x) => x.trim()).filter((x) => /\.mine-/.test(x.split('{')[0]));
+  assert.ok(rules.length >= 15, 'נמצאו ' + rules.length);
+  for (const r of rules) {
+    const [sel, body] = r.split('{');
+    for (const one of sel.split(',')) assert.ok(/^\s*\.gm-ds\.gm-menu /.test(one), 'מחוץ להיקף: ' + one);
+    for (const m of body.matchAll(/var\(--([a-z0-9-]+)/gi)) assert.ok(m[1].startsWith('gm-'), 'משתנה לא gm-: ' + m[1]);
+    assert.ok(!/!important/.test(body), r);
+  }
+  const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  // חיפוש השרת מושעה רק כשהרשימה עצמה מוצגת (prefixOn של SearchBody: '&' '#' '$'), לא לפי "מתחיל בקידומת" - אחרת: 403 / שורה לא מקוצצת / אחרי Esc = אין רשימה ואין חיפוש
+  const hook = panel.slice(panel.indexOf('export function useMenuSearch'), panel.indexOf('const MENU_PREFIXES'));
+  assert.ok(/term\.length < MIN_CHARS \|\| prefixActive/.test(hook) && /\[debounced, prefixActive\]/.test(hook), 'useMenuSearch לא שולח חיפוש כשהרשימה מוצגת');
+  assert.ok(!/detectQuickPrefix|startsWith\('&'\)/.test(hook), 'ההחלטה לא מתבססת על התו הראשון בלבד');
+  assert.ok(/reportPrefix\(drawer, prefixOn\)/.test(panel) && /const prefixOn = qp\.open && !!qp\.def;/.test(panel) && /const mineOn = prefixOn && qp\.def\.source === 'mine'/.test(panel), 'prefixActive = אותו תנאי שמצייר את הרשימה');
+  assert.ok(/MENU_PREFIXES = \['&', '#', '\$'\]/.test(panel) && /prefixes: MENU_PREFIXES/.test(panel), "בתפריט '&' '#' '$' ('@' ומדריך הקיצורים רק בדף הבית)");
+  assert.ok(/qp\.onKeyDown\(e\);[\s\S]{0,120}if \(e\.defaultPrevented\) return;/.test(panel), 'Enter על רשימת & לא מריץ חיפוש');
+  assert.ok(/nav\.navigate\(href\)/.test(panel) && /row\.url\.startsWith\(MINE_URL\)/.test(panel) && /HOME_NAV_EVENT/.test(panel), '"הכל" פותח /?recent=mine (עם emp של הנהלה)');
+});
 // ---- תוויות עבריות ל"נצפו לאחרונה" (תיקון רוחבי: אף נתיב גולמי באנגלית) ----
 import { pageLabel, hebrewLabelOr, hasPageLabel, ROUTE_LABELS, FALLBACK_PAGE_LABEL } from '../lib/menu/pageLabels.js';
 import { makeEntry } from '../lib/menu/navHistory.js';
@@ -935,4 +1042,234 @@ t('רשומת ניווט / פריט "נצפו לאחרונה" בלי תווית 
   assert.equal(hebrewLabelOr('', '/customers/abc'), 'לקוח');
 });
 
+console.log('תפריט "ניהול" מקוצר — אחרונים + הגדרות מערכת + כל כלי הניהול (4.10.2026)');
+const real = (list) => (list || []).filter((x) => x.kind === 'link' || x.kind === 'action');
+const hubTools = (roleId, opts) => selectHub(accessForRole(roleId, opts)).tools;
+const ADM = (user, recents, extra = {}) => tab(buildMenuTree({ user, permissions: ALL_OPEN, settings: [], adminTools: user ? hubTools(user.roleId) : hubTools(null, { logged: false, requireLogin: false }), adminRecents: recents, ...extra }), 'admin');
+t('קבועים: עד 5 שורות, 3 אחרונים, ברירות מחדל עובדים → הרשאות → מחירון; R13 מתעד את מה שיצא מהפאנל', () => {
+  assert.equal(ADMIN_MENU_MAX_ROWS, 5); assert.equal(ADMIN_MENU_RECENTS, 3);
+  assert.deepEqual([...ADMIN_DEFAULT_IDS], ['ad-staff', 'ad-perms', 'ad-pricelist']);
+  assert.deepEqual([...ADMIN_FIXED_IDS], ['ad-settings', 'ad-all']);
+  for (const id of [...ADMIN_POOL_IDS, ...ADMIN_FIXED_IDS]) assert.ok(ITEM_IDS.includes(id), id);
+  assert.ok(PANEL_ONLY_REMOVED.R13.ids.every((id) => ITEM_IDS.includes(id)));
+  assert.ok(!REMOVED_HREFS.some((h) => ['/dashboard', '/refunds', '/admin/statistics'].includes(h)), 'R13 לא מסיר שום href מהעץ');
+});
+t('כל תפקיד, 0-8 אחרונים: לכל היותר 5 שורות, "כל כלי הניהול" אחרונה כשמותר לפתוח את /admin, בלי כפילויות', () => {
+  const many = ['/admin/statistics', '/refunds', '/admin/backups', '/dashboard', '/admin/ai', '/admin/site', '/employees', '/admin/departments'];
+  for (const user of [HEAD, PROG, BRANCH, STAFF, null]) {
+    for (let n = 0; n <= many.length; n++) {
+      const a = ADM(user, many.slice(0, n));
+      if (!a) continue;
+      const r = real(a.items);
+      assert.ok(r.length <= ADMIN_MENU_MAX_ROWS, `${user && user.roleId} n=${n}: ${r.length}`);
+      assert.equal(new Set(r.map((x) => x.id)).size, r.length, 'כפילות'); assert.equal(new Set(r.map((x) => x.href)).size, r.length, 'כפילות href');
+      if (a.href === '/admin') { assert.equal(r[r.length - 1].id, 'ad-all'); assert.equal(r[r.length - 2].id, 'ad-settings'); }
+      else assert.ok(!r.some((x) => x.id === 'ad-all' || x.id === 'ad-settings'), 'בלי /admin — בלי השורות הקבועות');
+      assert.ok(a.items[a.items.length - 1].kind !== 'separator' && a.items[0].kind !== 'separator');
+    }
+  }
+});
+t('אחרונים: החדש ראשון, עד 3, עם סימון recent וטולטיפ; ברירות מחדל ממלאות את החסר בלי כפילות', () => {
+  const two = ADM(HEAD, ['/admin/statistics', '/refunds']);
+  assert.deepEqual(ids(two.items), ['ad-stats', 'ad-refunds', 'ad-staff', 'ad-settings', 'ad-all']);
+  assert.deepEqual(two.items.slice(0, 3).map((x) => !!x.recent), [true, true, false]);
+  assert.equal(two.items[0].tip, ADMIN_RECENT_TIP);
+  // אחרון שהוא גם ברירת מחדל — לא מופיע פעמיים
+  assert.deepEqual(ids(ADM(HEAD, ['/admin/permissions']).items), ['ad-perms', 'ad-staff', 'ad-pricelist', 'ad-settings', 'ad-all']);
+  // 5 אחרונים → רק 3 הראשונים; כלי קטלוג (שאינו פריט תפריט) עם התווית של מסך /admin
+  const five = ADM(HEAD, ['/admin/backups', '/dashboard', '/admin/ai', '/admin/statistics', '/refunds']);
+  assert.deepEqual(ids(five.items), ['hub-backups', 'finance', 'hub-ai', 'ad-settings', 'ad-all']);
+  assert.deepEqual([five.items[0].label, five.items[0].href, five.items[0].icon], ['גיבוי לדרייב', '/admin/backups', 'table']);
+  // אותו כלי פעמיים / href לא מוכר / ההגדרות (קבועה) / /admin עצמו — לא תופסים מקום
+  assert.deepEqual(ids(ADM(HEAD, ['/admin/ai', '/admin/ai', '/nope', '/admin/settings', '/admin', null, 5, { href: '/refunds' }]).items), ['hub-ai', 'ad-refunds', 'ad-staff', 'ad-settings', 'ad-all']);
+});
+t('שערים לכל תפקיד: אחרון שאינו מותר נזרק (מתכנת → הנהלה, ניהול אתר / כלי מתכנת; מנהלת סניף; עובדת; אורח)', () => {
+  // הנהלה ראשית: "ניהול אתר" וכלי מתכנת (סייר נתונים) לא במאגר → נזרקים
+  assert.deepEqual(ids(ADM(HEAD, ['/admin/site', '/admin/data-explorer', '/admin/statistics']).items), ['ad-stats', 'ad-staff', 'ad-perms', 'ad-settings', 'ad-all']);
+  // מתכנת: מותר
+  assert.deepEqual(ids(ADM(PROG, ['/admin/site', '/admin/data-explorer']).items), ['ad-site', 'hub-data-explorer', 'ad-staff', 'ad-settings', 'ad-all']);
+  // רשימת הו"ק: הנהלה ראשית וגם מתכנת (AH-03, 4.10.2026)
+  assert.equal(ADM(PROG, ['/admin/nedarim-hok-list']).items[0].id, 'hub-nedarim-hok-list');
+  // מערכת העיצוב (AH-02): מתכנת בלבד — הנהלה ראשית לא מקבלת אותה במאגר
+  assert.equal(ADM(PROG, ['/design-system']).items[0].id, 'hub-design-system');
+  assert.equal(ADM(HEAD, ['/design-system']).items[0].id, 'ad-staff');
+  assert.equal(ADM(HEAD, ['/admin/nedarim-hok-list']).items[0].id, 'hub-nedarim-hok-list');
+  // מנהלת סניף: אין /admin, אין הגדרות; רק דגמים/זיכויים (לפי ההרשאה), בלי כלי קטלוג גם אם הוזרקו בטעות
+  const br = tab(buildMenuTree({ user: BRANCH, permissions: ALL_OPEN, settings: [], adminTools: hubTools(0), adminRecents: ['/refunds', '/admin/statistics', '/admin/settings'] }), 'admin');
+  assert.deepEqual(ids(br.items), ['ad-refunds', 'ad-models', 'ad-nwd']); assert.equal(br.href, null); assert.equal(br.opensMenuOnly, true);
+  assert.ok(!br.pool.some((x) => x.id.startsWith('hub-')), 'כלי קטלוג רק עם שער head');
+  // עובדת בלי הרשאת זיכויים: אחרון /refunds נזרק
+  assert.deepEqual(ids(tab(buildMenuTree({ user: STAFF, permissions: { ...ALL_OPEN, 'page:refunds': false }, settings: [], adminRecents: ['/refunds'] }), 'admin').items), ['ad-models', 'ad-nwd']);
+  // אורח כשההתחברות חובה: אין לשונית בכלל, גם עם אחרונים
+  assert.equal(tab(buildMenuTree({ user: null, settings: rows({ require_login: 'true' }), adminRecents: ['/admin/statistics'] }), 'admin'), undefined);
+  // הנהלה עם page:refunds=false מפורש: אחרון /refunds נזרק
+  assert.equal(tab(buildMenuTree({ user: HEAD, permissions: { ...ALL_OPEN, 'page:refunds': false }, settings: [], adminRecents: ['/refunds'] }), 'admin').items[0].id, 'ad-staff');
+});
+t('applyAdminRecents (בלקוח) = buildMenuTree עם אותם אחרונים; לא משנה את הקלט; בלי לשונית ניהול — אותו עץ', () => {
+  const base = buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: [], adminTools: hubTools(2) });
+  const snap = JSON.stringify(base);
+  const rec = ['/admin/ai', '/dashboard/dresses', '/admin/labels'];
+  const viaClient = applyAdminRecents(base, rec);
+  const viaServer = buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: [], adminTools: hubTools(2), adminRecents: rec });
+  assert.deepEqual(tab(viaClient, 'admin').items, tab(viaServer, 'admin').items);
+  assert.equal(JSON.stringify(base), snap, 'הקלט לא השתנה');
+  assert.deepEqual(applyAdminRecents(base, []).tabs.find((x) => x.id === 'admin').items, tab(base, 'admin').items);
+  // (עובדת מחוברת תמיד מקבלת לשונית ניהול עם 'ימי אי-פעילות' (NW-I9), לכן אורח כשההתחברות חובה הוא העץ בלי לשונית ניהול)
+  const noAdmin = buildMenuTree({ user: null, settings: rows({ require_login: 'true' }) });
+  assert.equal(tab(noAdmin, 'admin'), undefined);
+  assert.equal(applyAdminRecents(noAdmin, rec), noAdmin); assert.equal(applyAdminRecents(null, rec), null);
+  assert.ok(isJsonSafe(viaServer));
+});
+t('שום יעד לא נעלם: כל מה שיצא מהשורות הקבועות (R13) הוא אריח במסך /admin לאותו משתמש (הנהלה / מתכנת, עם ובלי משלוחים)', () => {
+  for (const roleId of [0, 2]) for (const deliveriesEnabled of [false, true]) {
+    const settings = deliveriesEnabled ? rows({ enable_deliveries: 'true' }) : [];
+    const tree = buildMenuTree({ user: roleId ? PROG : HEAD, permissions: ALL_OPEN, settings });
+    const hub = new Set(selectHub(accessForRole(roleId), { deliveriesEnabled }).tools.map((x) => x.href));
+    for (const it of tab(tree, 'admin').pool) assert.ok(hub.has(it.href), `${roleId}/${deliveriesEnabled}: ${it.label} (${it.href}) לא במסך /admin`);
+  }
+});
+t('composeAdminItems: קלט חסר / זבל לא זורק', () => {
+  assert.deepEqual(composeAdminItems(), []);
+  assert.deepEqual(composeAdminItems({ pool: [null, {}], fixed: [null], recents: 'x' }), []);
+  assert.deepEqual(ids(composeAdminItems({ pool: [], fixed: [{ id: 'ad-all', kind: 'link', href: '/admin' }] })), ['ad-all']);
+});
+t('המאגר: כלי קטלוג מוזרקים רק עם head, בלי כפילות href מול פריטי התפריט, בלי /admin; חיפוש בתפריט מוצא את כולם', () => {
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], adminTools: [...hubTools(0), { id: 'x', title: 'רע', href: '//evil.com' }, { id: 'y', title: '', href: '/a' }, { id: 'hub', title: 'מסך', href: '/admin' }] });
+  const a = tab(tree, 'admin');
+  const paths = a.pool.map((x) => x.href);
+  assert.equal(new Set(paths).size, paths.length, 'href כפול במאגר');
+  assert.ok(!paths.includes('/admin') && !paths.includes('/admin/settings') && !paths.includes('//evil.com'));
+  assert.equal(a.pool.find((x) => x.href === '/dashboard').id, 'finance', 'פריט התפריט גובר על אריח הקטלוג');
+  assert.equal(a.pool.find((x) => x.href === '/admin/permissions').id, 'ad-perms');
+  const flat = flattenMenuTree(tree);
+  for (const h of ['/admin/statistics', '/refunds', '/admin/backups', '/dashboard/dresses']) assert.equal(flat.find((x) => x.href === h)?.group, 'ניהול', h);
+  assert.equal(new Set(flat.map((x) => x.id)).size, flat.length, 'כפילות בחיפוש');
+});
+t('findActive: "כל כלי הניהול" רק ב-/admin עצמו; כלי שאינו בפאנל עדיין מדגיש את הלשונית', () => {
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], adminTools: hubTools(0) });
+  assert.deepEqual(findActive(tree, '/admin'), { tabId: 'admin', itemId: 'ad-all' });
+  assert.deepEqual(findActive(tree, '/admin/statistics'), { tabId: 'admin', itemId: 'ad-stats' });
+  assert.deepEqual(findActive(tree, '/admin/backups'), { tabId: 'admin', itemId: 'hub-backups' });
+  assert.deepEqual(findActive(tree, '/admin/never-heard-of'), { tabId: 'admin', itemId: null });
+  assert.deepEqual(findActive(tree, '/dashboard/dresses/7'), { tabId: 'admin', itemId: 'ad-models' });
+  assert.deepEqual(findActive(tree, '/admin/settings'), { tabId: 'admin', itemId: 'ad-settings' });
+});
+t('matchAdminPoolItem: ההתאמה הארוכה ביותר; /admin וההגדרות לא נרשמים; נתיב שאינו כלי → null', () => {
+  const tree = buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: [], adminTools: hubTools(2) });
+  const m = (p) => (matchAdminPoolItem(tree, p) || {}).id || null;
+  assert.equal(m('/admin/data-explorer/full-view'), 'hub-data-explorer-full');
+  assert.equal(m('/admin/data-explorer'), 'hub-data-explorer');
+  assert.equal(m('/admin/site-settings/api-keys'), 'hub-api-keys');
+  assert.equal(m('/admin/site'), 'ad-site'); assert.equal(m('/admin/site-settings'), 'hub-site-settings');
+  assert.equal(m('/dashboard/dresses/12'), 'ad-models'); assert.equal(m('/dashboard'), 'finance'); assert.equal(m('/employees/report'), 'ad-staff');
+  assert.equal(m('/admin/statistics?x=1#y'), 'ad-stats');
+  for (const p of ['/admin', '/admin/', '/admin/settings', '/admin/settings/help', '/orders', '/', '', null]) assert.equal(m(p), null, String(p));
+  assert.equal(matchAdminPoolItem(null, '/admin/ai'), null);
+  assert.equal(matchAdminPoolItem(buildMenuTree({ user: STAFF, permissions: ALL_CLOSED, settings: [] }), '/refunds'), null);
+});
+t('adminRecents: החדש ראשון, בלי כפילות, עד 8; נתיב לא תקין לא נרשם; זהות כשאין שינוי', () => {
+  assert.equal(ADMIN_RECENTS_CAP, 8);
+  let l = [];
+  for (let i = 0; i < 12; i++) l = recordAdminVisit(l, `/admin/t${i}`, 1000 + i);
+  assert.equal(l.length, 8); assert.equal(l[0].href, '/admin/t11'); assert.equal(l[7].href, '/admin/t4');
+  const again = recordAdminVisit(l, '/admin/t6', 5000);
+  assert.deepEqual(adminRecentHrefs(again).slice(0, 2), ['/admin/t6', '/admin/t11']); assert.equal(again.length, 8);
+  assert.equal(recordAdminVisit(again, '/admin/t6', 6000), again, 'כבר ראשון');
+  for (const bad of ['', '//evil.com', '/\\evil', 'https://x/y', '/a?b', '/a#b', '/a\tb', null, 5]) assert.equal(recordAdminVisit(again, bad), again, String(bad));
+  assert.deepEqual(recordAdminVisit(null, '/refunds', 1), [{ href: '/refunds', ts: 1 }]);
+});
+t('adminRecents: סריאליזציה סלחנית; מפתח לכל עובד; אחסון חסום/זורק לא שובר; התנתקות מוחקת רק את מפתחות המודול', () => {
+  const l = recordAdminVisit(recordAdminVisit([], '/refunds', 1), '/admin/ai', 2);
+  assert.deepEqual(deserializeAdminRecents(serializeAdminRecents(l)), l);
+  for (const bad of [null, '', '{', '[]', '{"v":2,"list":[]}', 'x'.repeat(9000)]) assert.deepEqual(deserializeAdminRecents(bad), []);
+  assert.deepEqual(deserializeAdminRecents(JSON.stringify({ v: 1, list: [{ href: '/a', ts: 1 }, { href: '/a', ts: 2 }, { href: '//e' }, 7, { href: '/b' }] })), [{ href: '/a', ts: 1 }, { href: '/b', ts: 0 }]);
+  assert.notEqual(adminRecentsKey('emp-a'), adminRecentsKey('emp-b'));
+  assert.equal(adminRecentsKey(null), `${ADMIN_RECENTS_KEY_PREFIX}guest`); assert.equal(adminRecentsKey(7), `${ADMIN_RECENTS_KEY_PREFIX}7`);
+  const m = new Map([['other', '1']]);
+  const fake = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k), key: (i) => [...m.keys()][i] ?? null, get length() { return m.size; } };
+  assert.equal(writeAdminRecents('emp-a', l, fake), true); assert.equal(writeAdminRecents('emp-b', [], fake), true);
+  assert.deepEqual(readAdminRecents('emp-a', fake), l); assert.deepEqual(readAdminRecents('emp-b', fake), []); assert.deepEqual(readAdminRecents('emp-c', fake), []);
+  assert.equal(clearAdminRecentsStorage(fake), 2); assert.deepEqual([...m.keys()], ['other']);
+  const thrower = { getItem: () => { throw new Error('x'); }, setItem: () => { throw new Error('x'); }, removeItem: () => { throw new Error('x'); }, key: () => { throw new Error('x'); }, length: 3 };
+  assert.deepEqual(readAdminRecents('a', thrower), []); assert.equal(writeAdminRecents('a', l, thrower), false); assert.equal(clearAdminRecentsStorage(thrower), 0);
+  assert.deepEqual(readAdminRecents('a', null), []); assert.equal(writeAdminRecents('a', l, {}), false); assert.equal(clearAdminRecentsStorage({}), 0);
+  assert.deepEqual(readAdminRecents('a'), [], 'ב-node אין localStorage');
+});
+
+t('חיווט: app/layout.js מזריק רק כלים מותרים (selectHub); המעטפת מרכיבה את הפאנל מהאחסון ומנקה בהתנתקות; המגירה משתמשת באותו עץ', () => {
+  const src = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const layout = src('../app/layout.js');
+  assert.ok(/adminTools: selectHub\(\s*accessForRole\(emp \? emp\.roleId : null, \{ logged: !!\(isAuthenticated && emp\), requireLogin \}\)/.test(layout), 'layout: adminTools');
+  assert.ok(layout.includes("'nedarim_plus_enabled'"), 'layout: ההגדרה של נדרים פלוס נטענת');
+  assert.ok(/\.value !== 'false', deliveriesEnabled: showDeliveries \},\s*\)\.tools/.test(layout), 'layout: כמו app/admin/page.js — רק "false" מפורש מכבה נדרים; משלוחים לפי enable_deliveries');
+  const shell = src('../app/components/menu/MenuA5Shell.js');
+  assert.ok(shell.includes('const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);'));
+  assert.ok(/nav\.clearOnLogout\(\);\s*clearAdminRecents\(\);/.test(shell), 'ניקוי בהתנתקות');
+  assert.ok(shell.includes('  menuTree: serverTree,'), 'העץ מהשרת לא בשימוש ישיר');
+  const hook = src('../app/components/menu/useAdminRecents.js');
+  assert.ok(/^'use client';/.test(hook));
+  assert.ok(hook.includes('matchAdminPoolItem(tree, pathname)') && hook.includes('applyAdminRecents(tree, adminRecentHrefs(list))'));
+  assert.ok(!/localStorage/.test(hook.replace(/\/\/[^\n]*/g, '')), 'גישה לאחסון רק דרך lib/menu/adminRecents.js (עטוף ב-try)');
+  const lib = src('../lib/menu/adminRecents.js');
+  assert.ok(!/(^|[^.])localStorage\.(get|set|remove)Item/.test(lib), 'בלי גישה ישירה שלא דרך st');
+});
+
+// ---- תיקוני סקירה (4.10.2026): חיפוש לא מוצף, סימון "אחרון", רינדור, התנתקות, אייקון ----
+import { menuRowMatchesTerm } from '../lib/menu/buildMenuTree.js';
+import { sameRecents } from '../lib/menu/adminRecents.js';
+import { TOOLS as TOOLS_FOR_ICON } from '../lib/adminHubCatalog.js';
+t('חיפוש בתפריט: תת-מחרוזת של "ניהול" ("הו","יה","ול","ני") לא מציפה בכלי ניהול; כלי שהוסר נמצא בשמו; קבוצות של לשוניות אחרות עדיין מתאימות', () => {
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [], adminTools: hubTools(0) });
+  const flat = flattenMenuTree(tree);
+  const search = (term) => flat.filter((x) => x.kind === 'link' && x.href && x.group !== 'משתמש' && x.group !== 'התראות' && menuRowMatchesTerm(x, term));
+  for (const term of ['הו', 'יה', 'ול', 'ני', 'ניה', 'יהודית']) {
+    const adminHits = search(term).filter((x) => x.group === 'ניהול');
+    assert.ok(adminHits.every((x) => String(x.label).includes(term)), `"${term}": שורת ניהול הותאמה לפי שם הקבוצה`);
+  }
+  assert.ok(search('הו').filter((x) => x.group === 'ניהול').length < 8, 'לא מציף');
+  assert.ok(search('גיבוי').some((x) => x.href === '/admin/backups'), 'כלי שהוסר מהפאנל נמצא בשמו');
+  assert.ok(search('סטטיסטיקה').some((x) => x.href === '/admin/statistics'));
+  assert.ok(flat.some((x) => x.id === 'ad-all' && x.noGroupMatch) && flat.some((x) => x.group === 'ניהול' && x.noGroupMatch));
+  assert.ok(!flat.filter((x) => x.group !== 'ניהול' && x.kind !== 'tab').some((x) => x.noGroupMatch), 'רק שורות ניהול מסומנות');
+  const ord = flat.find((x) => x.kind === 'link' && x.group && x.group !== 'ניהול' && x.group !== 'משתמש' && x.group !== 'התראות');
+  assert.ok(search(ord.group).some((x) => x.id === ord.id), 'חיפוש לפי שם לשונית אחרת עדיין מוצא את שורותיה');
+  assert.equal(menuRowMatchesTerm(null, 'x'), false); assert.equal(menuRowMatchesTerm({ label: 'a', group: 'b' }, ' '), false);
+  const panel = readFileSync(new URL('../app/components/menu/MenuSearchPanel.js', import.meta.url), 'utf8');
+  assert.ok(panel.includes('menuRowMatchesTerm(x, term)') && !/String\(x\.group\)\.includes\(term\)/.test(panel));
+});
+t('סימון "נפתח לאחרונה": הטולטיפ לא נחתך ב-tipOf גם ל-ad-models/ad-refunds/ad-deliveries, ויש סימון גלוי (אייקון + טקסט לקורא מסך)', () => {
+  const parts = readFileSync(new URL('../app/components/menu/menuParts.js', import.meta.url), 'utf8');
+  const start = parts.indexOf('export function tipOf');
+  const fn = parts.slice(start, parts.indexOf('\n}', start) + 2).replace('export function tipOf', 'function tipOf');
+  const HIDE_TIP_IDS = new Set(['ad-models', 'ad-refunds', 'ad-deliveries', 'sched']);
+  const tipOf = new Function('HIDE_TIP_IDS', `${fn}; return tipOf;`)(HIDE_TIP_IDS);
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }), adminTools: hubTools(0) });
+  const comp = applyAdminRecents(tree, ['/dashboard/dresses', '/refunds', '/deliveries']);
+  const rec = tab(comp, 'admin').items.filter((x) => x.recent);
+  assert.deepEqual(rec.map((x) => x.id), ['ad-models', 'ad-refunds', 'ad-deliveries']);
+  for (const it of rec) assert.equal(tipOf(it), ADMIN_RECENT_TIP, it.id);
+  assert.equal(tipOf({ id: 'ad-models', tip: 'הערת תכנון' }), undefined, 'ברירת מחדל: הערת תכנון עדיין מוסתרת');
+  assert.ok(/item\.recent && !k/.test(parts) && parts.includes('sn-recent') && parts.includes('נפתח לאחרונה') && parts.includes('n="sn-history"'));
+  assert.ok(SPRITE_SYMBOLS.some((x) => x[0] === 'sn-history'));
+  assert.ok(readFileSync(new URL('../app/components/menu/menu.css', import.meta.url), 'utf8').includes('.sn-k.sn-recent'));
+});
+t('useAdminRecents: לא קורא ל-setList עם מערך זהה (אין רינדור מיותר בכל ניווט)', () => {
+  const a = [{ href: '/refunds', ts: 5 }, { href: '/employees', ts: 3 }];
+  assert.ok(sameRecents(a, a) && sameRecents(a, a.map((x) => ({ ...x }))) && sameRecents([], []));
+  assert.ok(!sameRecents(a, [a[0]]) && !sameRecents(a, [a[1], a[0]]) && !sameRecents(a, [a[0], { href: '/employees', ts: 4 }]));
+  assert.ok(!sameRecents(null, []) && !sameRecents([], undefined));
+  const hook = readFileSync(new URL('../app/components/menu/useAdminRecents.js', import.meta.url), 'utf8');
+  assert.ok(hook.includes('setList((prev) => (sameRecents(prev, next) ? prev : next))'));
+});
+t('התנתקות מ-UserMenu הישן מנקה גם את "אחרוני הניהול"', () => {
+  const um = readFileSync(new URL('../app/components/UserMenu.js', import.meta.url), 'utf8');
+  assert.ok(um.includes("import { clearAdminRecentsStorage } from '@/lib/menu/adminRecents';"));
+  const i = um.indexOf("fetch('/api/logout'");
+  assert.ok(i > 0 && um.slice(0, i).includes('clearAdminRecentsStorage();'), 'הניקוי לפני בקשת ההתנתקות');
+});
+t('אייקון משלוחים זהה באריח (מסך /admin) ובתפריט: truck', () => {
+  const tile = TOOLS_FOR_ICON.find((x) => x.id === 'deliveries');
+  const menu = flattenMenuTree(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) })).find((x) => x.id === 'ad-deliveries');
+  assert.equal(menu.icon, 'truck'); assert.equal(menu.icon, tile.icon);
+});
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

@@ -1,0 +1,48 @@
+/* ===== רכיבים מקומיים (לא בעיצוב כי שם הם נתוני דוגמה): מצבי טעינה/שגיאה, שגיאת ולידציה, הבהוב קישור עמוק, עורך הקבוצות ===== */
+@keyframes gm-st-tpIn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes gm-st-spin{to{transform:rotate(360deg)}}
+@keyframes gm-st-flash{0%,100%{box-shadow:none}30%,70%{box-shadow:inset 0 0 0 2px var(--gm-gold),0 0 0 4px rgba(201,162,39,.25)}}
+.gm-ds.gm-st .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.gm-ds.gm-st .st-state{margin-top:40px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.gm-ds.gm-st .st-spin{display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid rgba(15,44,82,.2);border-top-color:var(--gm-navy);animation:gm-st-spin .8s linear infinite}
+.gm-ds.gm-st .st-spin.lg{width:32px;height:32px;border-width:3px}
+.gm-ds.gm-st .st-err{display:block;margin-top:6px;color:var(--gm-rose-700,#b42318);font-size:13px;font-weight:600}
+.gm-ds.gm-st .numw.err{border-color:var(--gm-rose-700,#b42318)}
+.gm-ds.gm-st .st-numcol{display:flex;flex-direction:column;align-items:flex-start;max-width:100%}
+.gm-ds.gm-st .st-secret{width:260px;max-width:100%}
+.gm-ds.gm-st .st-secret .inp{width:100%}
+.gm-ds.gm-st .st-note-in{display:block;margin-top:6px;color:var(--gm-ink3);font-size:13px;line-height:1.45}
+.gm-ds.gm-st .st-row.st-flash{animation:gm-st-flash 1.3s 2;border-radius:12px}
+.gm-ds.gm-st .st-chg{margin-inline-start:8px;vertical-align:2px}
+.gm-ds.gm-st .st-dim .st-slb{opacity:.6}
+.gm-ds.gm-st .panel.st-dim .st-card{opacity:.82}
+.gm-ds.gm-st .st-multi,.gm-ds.gm-st .st-groups{display:flex;flex-direction:column;gap:10px;width:100%}
+.gm-ds.gm-st .st-grp{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px dashed var(--gm-sky-300);border-radius:14px}
+.gm-ds.gm-st .st-grp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;color:var(--gm-ink3);font-weight:600}
+.gm-ds.gm-st .st-sel{width:260px;max-width:100%}
+.gm-ds.gm-st .st-add{display:flex;align-items:center;gap:8px}
+.gm-ds.gm-st .st-add .inp{width:220px;max-width:100%}
+.gm-ds.gm-st .st-ctl{flex-wrap:wrap}
+.gm-ds.gm-st .st-ctl>.st-err{flex-basis:100%}
+.gm-ds.gm-st .st-def small{display:block;font-size:12px;margin-top:2px}
+.gm-ds.gm-st .mfe{text-decoration:none}
+.gm-ds.gm-st .st-list-extra .row{gap:10px;align-items:center}
+/* חלונות: הודעת טעינה/שגיאה ושדה הסיסמה בתוך החלון הכהה */
+.gm-ds.gm-st :is(#dlg,#dlg2) .st-dlg-note{margin:4px 0 12px;text-align:center}
+.gm-ds.gm-st :is(#dlg,#dlg2) .st-auth-emps{justify-content:center;margin:4px 0 12px}
+.gm-ds.gm-st :is(#dlg,#dlg2) .st-auth-pin{display:block;margin:0 0 14px}
+.gm-ds.gm-st :is(#dlg,#dlg2) .st-auth-pin .inp{width:100%;text-align:center}
+.gm-ds.gm-st :is(#dlg,#dlg2) .st-err{text-align:center;color:#f1a596}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-st .st-row.st-flash,.gm-ds.gm-st .st-spin{animation:none}}
+/* נטרולי דליפה שנמצאו בהשוואת הסגנון המחושב (scripts/settings-sim-audit/cmp.mjs): globals.css צובע שדות בחום ומאפס ריפוד לחצנים */
+.gm-ds.gm-st .sizes button{padding-block:1px}
+.gm-ds.gm-st .back{padding:1px 6px}
+/* design-overrides.css: input:not(x4) (0,4,1) צובע גבול קרם לכל שדה; בעיצוב הגבול של .inp הוא --gm-line ובמיקוד --gm-brand */
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp{color:var(--gm-navy-900)}
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp:not(:focus){border-color:var(--gm-line)}
+.gm-ds.gm-st .st-view :is(input,textarea,select).inp:focus{border-color:var(--gm-brand);box-shadow:0 0 0 4px var(--gm-brand-t)}
+/* ברק השורות בטבלת הכיתובים (בפלטה רק בעור דף הבית; כמו admin-hub.css) */
+.gm-ds.gm-st :where(.rtbl tbody tr){background-image:linear-gradient(105deg,transparent,rgba(255,255,255,.9),transparent),linear-gradient(transparent,transparent);background-size:40% 100%,100% 100%;background-repeat:no-repeat;background-position:220% 0,0 0;transition:background-position 0s .15s}
+@media (max-width:640px){.gm-ds.gm-st .st-def small{display:none}}
+/* חיפוש: .gm-ds .li{display:flex} (פלטה) גובר על [hidden] של הדפדפן — בלי זה שורות שלא תואמות נשארות גלויות */
+.gm-ds.gm-st .st-row[hidden]{display:none!important}

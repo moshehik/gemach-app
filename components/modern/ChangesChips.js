@@ -3,6 +3,7 @@
 import React from 'react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { FIELD_TRANSLATIONS } from '../HistoryViewer';
+import { isHiddenAuditKey } from '../../lib/history/labels';
 
 const DANGER_TONE = { bg: 'var(--danger-tint)', color: 'var(--danger)' };
 const SUCCESS_TONE = { bg: 'var(--success-tint)', color: 'var(--success)' };
@@ -53,6 +54,7 @@ export function ChangesChips({ changesJson }) {
   try {
     const changes = typeof changesJson === 'string' ? JSON.parse(changesJson) : changesJson;
     const keys = Object.keys(changes).filter(key => {
+      if (isHiddenAuditKey(key)) return false;
       const change = changes[key];
       if (change && typeof change === 'object' && ('from' in change || 'to' in change)) {
         const isEmptyFrom = change.from === null || change.from === undefined || change.from === '';
