@@ -562,6 +562,11 @@ model PageVisitLog {
   responseSize  Int? // כמות המידע שהוחזר בבתים (Bytes)
   executionTime Int? // משך ביצוע השאילתה במאיות שנייה
   updatedAt     DateTime  @updatedAt
+  // מדידת CPU (docs/cpu-measurement-2026-10-06.md). עמודות אופציונליות - נוספות ב-DB ע"י prisma/migrations-pending/2026-10-06-pagevisitlog-measure.sql
+  // (app/api/log-visit כותב אותן בסובלנות: DB בלי העמודות => נכתב בלעדיהן). לא להריץ db push.
+  serverCpuMs    Int? // x-cpu-ms של תשובת ה-API (מילי-שניות CPU בשרת)
+  navigationType String? // navigate | reload | back_forward | prerender | spa (+ '+newtab')
+  serverBootId   String? // x-boot-id: bootId שונים ביום = cold starts
 
   @@index([employeeId])
   @@index([timestamp])
