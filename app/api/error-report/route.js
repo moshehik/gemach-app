@@ -10,6 +10,7 @@ import { emailSubject } from '../../../lib/emailCatalog';
 import { uploadAttachmentDataUrls } from '../../../lib/attachmentUpload';
 import { hasPermission } from '@/lib/permissions';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { parseTake, loadErrorReportPage, fullReportForClient } from '@/lib/errorReportList';
 
 // שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך המערכת המרכזית (lib/mailer.js) -
 // ניתוב bugs_b_rest_a, יישור RTL ורישום ב-EmailLog. ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
@@ -58,7 +59,30 @@ export async function GET(request) {
     // ~720KB בכל 30 שניות - על נווה יעקב לבד כ-2000 קריאות/יום, ~250MB ליום, שהיה
     // הגורם הדומיננטי (רוב מתוך כ-3.85GB) לחריגת מכסת התעבורה החודשית של נאון
     // (5GB/פרויקט ב-Free) ב-2026-09-17. ר' תיעוד: docs/neon-quota-error-report-poll-2026-09-17.md
-    const isLight = new URL(request.url).searchParams.get('light') === '1';
+    const reqParams = new URL(request.url).searchParams;
+    const isLight = reqParams.get('light') === '1';
+
+    // CPU phase 1B (opt-in, החלון החדש בלבד - בלי הפרמטרים האלה הצורה הישנה המלאה למטה, ל-LegacyErrorReportButton ולקוחות ישנים):
+    //   ?id=<reportId>  דיווח אחד מלא (כל התגובות) - נטען כשפותחים שרשור;  ?take=N[&cursor=]  רשימה רזה בעמודים. ר' lib/errorReportList.js.
+    if (!isLight && reqParams.get('id')) {
+      const one = await prisma.errorReport.findFirst({
+        where: { AND: [whereClause, { id: reqParams.get('id') }] },
+        include: {
+          employee: { select: { firstName: true, lastName: true } },
+          replies: { orderBy: { createdAt: 'asc' }, include: { employee: { select: { firstName: true, lastName: true } } } }
+        }
+      });
+      if (!one) return NextResponse.json({ success: false, error: 'הדיווח לא נמצא' }, { status: 404 });
+      const report = fullReportForClient(one);
+      await attachAiTitles([report], { prisma, getSetting: (k) => getCachedSettingValue(k) });
+      return NextResponse.json({ success: true, report, isProgrammer, isManager });
+    }
+    const take = isLight ? null : parseTake(reqParams.get('take'));
+    if (take) {
+      const pageResult = await loadErrorReportPage({ prisma, whereBase: whereClause, isProgrammer, take, cursor: reqParams.get('cursor') });
+      await attachAiTitles(pageResult.reports, { prisma, getSetting: (k) => getCachedSettingValue(k) });
+      return NextResponse.json({ success: true, reports: pageResult.reports, paging: pageResult.paging, isProgrammer, isManager });
+    }
 
     const reports = await prisma.errorReport.findMany({
       where: whereClause,

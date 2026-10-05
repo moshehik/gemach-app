@@ -8,4 +8,4 @@ import path from 'node:path';
 const here = path.dirname(fileURLToPath(import.meta.url));
 process.env.SPDIR = here;
 process.env.PROJ = process.env.PROJ || path.resolve(here, '..', '..');
-register(pathToFileURL(path.join(here, '..', 'business-days-tests', 'hooks.mjs')).href);
+register(pathToFileURL(path.join(here, 'hooks.mjs')).href);
