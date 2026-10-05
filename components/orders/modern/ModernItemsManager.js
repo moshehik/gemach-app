@@ -63,6 +63,10 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const [settings, setSettings] = useState({});
   const [mounted, setMounted] = useState(false);
   const listEndRef = useRef(null);
+  // אישור מנהל על הזמנה עם חוב (b1a91c78/ef1be7fd): כשההגדרה unpaid_action_approval_once_per_visit דלוקה,
+  // אישור מוצלח נזכר לשארית ביקור הכרטיס (עד החלפת הזמנה) ולא נשאל שוב בכל סריקה/השכרה/החזרה.
+  const unpaidApprovedRef = useRef(false);
+  useEffect(() => { unpaidApprovedRef.current = false; }, [orderId]);
   const [showManualScanModal, setShowManualScanModal] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [selectedItemForScan, setSelectedItemForScan] = useState(null);
@@ -268,7 +272,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       }
     }
 
-    if (!isFullyPaid) {
+    if (!isFullyPaid && !(settings.unpaid_action_approval_once_per_visit === 'true' && unpaidApprovedRef.current)) {
       const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
@@ -286,6 +290,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         alert('שגיאה באימות קוד.');
         return;
       }
+      unpaidApprovedRef.current = true;
     }
 
     // 1. אימות הפריט מול המלאי בשרת
@@ -586,7 +591,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // וגם השחזור בכשלון חייבים להיות פונקציונליים (prev => ...) ולגעת רק בפריט הרלוונטי, אחרת
   // עריכה אחרת שקרתה באותו חלון זמן (למשל שינוי בפריט אחר) עלולה להידרס.
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
-    if (!isFullyPaid && !skipAuth) {
+    if (!isFullyPaid && !skipAuth && !(settings.unpaid_action_approval_once_per_visit === 'true' && unpaidApprovedRef.current)) {
       const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
@@ -604,6 +609,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         console.error(e);
         return;
       }
+      unpaidApprovedRef.current = true;
     }
     const rentPersisted = !!(item.id && !item.isNew);
     onItemsChange(prev => prev.map(i => {
@@ -631,7 +637,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const handleReturn = async (item, skipAuth = false) => {
-    if (!isFullyPaid && !skipAuth) {
+    if (!isFullyPaid && !skipAuth && !(settings.unpaid_action_approval_once_per_visit === 'true' && unpaidApprovedRef.current)) {
       const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור מנהל:", 'feature:unpaid_action_items_tab');
       if (!authResult || !authResult.pin) return;
       try {
@@ -649,6 +655,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         console.error(e);
         return;
       }
+      unpaidApprovedRef.current = true;
     }
     onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i), item.id && !item.isNew ? { persisted: true } : undefined);
 
