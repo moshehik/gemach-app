@@ -266,6 +266,9 @@ export function feeFromPreview(newObligations) {
   const net = (newObligations || []).filter(o => o.orderItemId === PREVIEW_ITEM_ID).reduce((s, o) => s + (Number(o.amount) || 0), 0);
   return Math.max(0, Math.round(net * 100) / 100);
 }
+// "הוחזר" - אותו תנאי שמציג את הצ׳יפ/הסטטוס "הוחזרה" בשורה (statusText) ואת calculateOrderStatus: item.isReturned
+export const isItemReturned = (item) => !!(item && item.isReturned);
+export const returnedAgainMessage = (item, barcode) => `${barcode ? `ברקוד ${barcode} — ` : ''}הפריט ${item ? `"${itemName(item)}" ` : ''}כבר הוחזר, אין צורך לסרוק שוב. לביטול ההחזרה: "בטל החזרה" בשורת הפריט.`;
 export function barcodePlaceholder(item, locked) {
   if (isPendingItem(item)) return 'יש לשמור קודם';
   if (item.isReturned) return 'הפריט הוחזר';
@@ -403,6 +406,7 @@ export function createItemActions(env) {
   // ---- החזרה (MIM.handleReturn) ----
   async function returnItem(item) {
     if (!item || !item.id || item.isNew) return { ok: false };
+    if (isItemReturned(item)) { fail(returnedAgainMessage(item)); return { ok: false }; } // פריט שכבר הוחזר לא מוחזר פעם שנייה
     // השרת רושם returnedOk=true בהחזרה רגילה (rentals/toggle) — כך גם כאן, אחרת השורה הציגה "לא תקין" עד טעינה מחדש
     patchItem(item.id, { isReturned: true, returnDate: new Date(), returnedOk: true });
     let result;
@@ -512,6 +516,13 @@ export function createItemActions(env) {
     // רק פריטים שמורים (לפריט שטרם נשמר אין מה להשכיר בשרת)
     const activeItems = activeItemsOf().filter(i => i.id && !i.isNew);
 
+    // ברקוד של פריט שכבר הוחזר (ואין פריט אחר בהזמנה עם אותו ברקוד שעוד לא הוחזר): הודעה ברורה במקום החזרה שנייה / הודעת נעילה / פנייה לשרת
+    const sameBarcode = activeItems.filter(i => { const b = itemBarcode(i); return b && b === barcode; });
+    if (sameBarcode.length && sameBarcode.every(isItemReturned)) {
+      fail(returnedAgainMessage(sameBarcode[0], barcode));
+      return { ok: false, alreadyReturned: true };
+    }
+
     if (st.isLocked) {
       const isReturnScan = activeItems.some(i => itemBarcode(i) === barcode && i.isTaken && !i.isReturned);
       if (!isReturnScan) {
@@ -552,7 +563,7 @@ export function createItemActions(env) {
     }
 
     // 2. מציאת הפריט המתאים בהזמנה — קודם ברקוד שכבר שויך, אחרת לפי קידומת+מידה
-    let matchedItem = activeItems.find(i => { const b = itemBarcode(i); return b && b === barcode; }) || null;
+    let matchedItem = sameBarcode.find(i => !isItemReturned(i)) || sameBarcode[0] || null;
     let candidates = [];
     if (!matchedItem) {
       candidates = activeItems.filter(i => {
@@ -640,7 +651,8 @@ export function createItemActions(env) {
       }
       return returnItem(item);
     }
-    return { ok: false };
+    fail(returnedAgainMessage(item, barcode || null));
+    return { ok: false, alreadyReturned: true };
   }
 
   // ---- אישור פריט: POST לפריט חדש / PUT לפריט קיים (MIM.handleConfirmItem) ----

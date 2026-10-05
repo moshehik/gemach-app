@@ -16,6 +16,12 @@
    מ-.app של הפלטה (אותו דפוס כמו home.css כלל 1 ו-profile.css) */
 .app-shell .main .content:has(> .gm-ds.gm-oc){max-width:none;margin-inline:0;padding:0}
 
+/* ===== ריווח עליון (הערת הבעלים 2026-10-05: הכרטיס היה צמוד לתפריט העליון והטולטיפ של לחצני הכותרת נבלע מתחתיו) =====
+   אותו היסט עליון כמו שאר העמודים החדשים עם שורת כלים בראש (.lz-app בלו״ז / .bd-app בלוח / .lz-app בימי אי-פעילות): 50px, ו-18px במסך צר
+   (הפלטה נותנת .app רק 14-24px). ה-snav הוא sticky בזרימה (design-system/components.css .snav) - לא מכסה את התוכן, ההיסט הוא האוויר מתחתיו. */
+.gm-ds.gm-oc .oc-app{padding-top:50px}
+@media (max-width:640px){.gm-ds.gm-oc .oc-app{padding-top:18px}}
+
 /* ===== שורת הכותרת ===== */
 /* דליפה: app/design-system.css .topbar (sticky, z-index 5, רקע שקוף-למחצה, blur, קו תחתון, ריפוד 12px 24px) - בעיצוב ה-topbar שקוף,
    יחסי ובלי ריפוד */
@@ -24,6 +30,8 @@
 .gm-ds.gm-oc .oc-app .ttl h1{color:var(--gm-navy-900);letter-spacing:-.3px}
 /* דליפה: globals.css מאפס padding לכל אלמנט - לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
 .gm-ds.gm-oc .back{padding:1px 6px}
+/* סמל נעילה במקום מחיקה (מחיקה חסומה): לא-פעיל - בלי הדגשת לחיצה, עדיין ניתן למיקוד לטולטיפ */
+.gm-ds.gm-oc .topbar .xlbtn.oc-nodel{cursor:not-allowed;opacity:.8}
 /* #hdrChips ריק תמיד (R1) */
 .gm-ds.gm-oc #hdrChips:empty{display:none}
 

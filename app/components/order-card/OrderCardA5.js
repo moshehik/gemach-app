@@ -13,7 +13,7 @@ import './css/oc-payments.css';
 import './css/oc-rail.css';
 import './css/oc-history.css';
 import './css/oc-docs.css';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import usePageTooltip from '@/app/components/profile/usePageTooltip';
 import useOrderCardController from './useOrderCardController';
 import { OcUiProvider, useOcUi } from './OcUi';
@@ -72,6 +72,29 @@ function OrderCardBody({ orderRef }) {
   const ui = useOcUi();
   const oc = useOrderCardController(orderRef, ui, { dialogs: SLOTS });
   const { Rail, DraftBanner, MoneyToast, TopBanners } = SLOTS;
+  const mainRef = useRef(null);
+  const railRef = useRef(null);
+  // הרייל "סיכום" מתחיל בגובה הלוח הראשון (הסקשן הראשון מתחת לשורת הלשוניות), לא בגובה שורת הלשוניות - כמו fit() בעיצוב המאושר
+  // (תצוגות-עיצוב/כרטיס-הזמנה.html: סקריפט "סרגל הסיכום מתחיל בגובה הלוח הראשון" + `.app .rail{margin-top:var(--rail-top,0px)}` מ-1024px;
+  // הכלל בפלטה: design-system/components.css). נמדד מחדש בכל החלפת לשונית (MutationObserver על class) ובשינוי גודל; מתחת ל-1024px אין הסטה.
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    const rail = railRef.current;
+    if (!main || !rail) return undefined;
+    const fit = () => {
+      const p = main.querySelector('.panel.on');
+      if (!p || window.innerWidth < 1024) { rail.style.removeProperty('--rail-top'); return; }
+      const top = p.getBoundingClientRect().top - main.getBoundingClientRect().top;
+      rail.style.setProperty('--rail-top', `${Math.max(0, Math.round(top))}px`);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(main);
+    const mo = new MutationObserver(fit);
+    mo.observe(main, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    window.addEventListener('resize', fit);
+    return () => { ro.disconnect(); mo.disconnect(); window.removeEventListener('resize', fit); };
+  }, [oc.status, oc.tab]);
   return (
     <div className="app oc-app" id="app">
       <OcTopbar oc={oc} ui={ui} slots={SLOTS} />
@@ -87,10 +110,10 @@ function OrderCardBody({ orderRef }) {
           <DraftBanner oc={oc} ui={ui} />
           <TopBanners oc={oc} ui={ui} />
           <div className="layout">
-            <main className="main">
+            <main className="main" ref={mainRef}>
               <OcTabs oc={oc} ui={ui} tabs={TABS} />
             </main>
-            <aside className="rail" id="rail" aria-label="סיכום ההזמנה">
+            <aside className="rail" id="rail" aria-label="סיכום ההזמנה" ref={railRef}>
               <Rail oc={oc} ui={ui} />
             </aside>
           </div>
