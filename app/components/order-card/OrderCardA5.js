@@ -91,12 +91,12 @@ function OrderCardBody({ orderRef }) {
       rail.style.setProperty('--rail-top', `${Math.max(0, Math.round(top))}px`);
     };
     // tall() של העיצוב (כרטיס-הזמנה.html, סקריפט "סרגל הסיכום מתחיל בגובה הלוח הראשון", שורה tall): רייל גבוה מהחלון נדבק עם top שלילי כך שהתחתית שלו
-    // (שמור / בטל שינויים) תמיד נראית: top = min(גובה התפריט העליון + 16, גובה החלון - גובה הרייל - 16). הדמו מסתמך על --snav-h, באתר המשתנה הוא --gm-snav-h (tokens.css).
+    // (שמור / בטל שינויים) תמיד נראית: top = min(גובה התפריט העליון + 16, גובה החלון - גובה הרייל - 16). באתר גובה התפריט העליון הוא הטוקן --gm-snav-h (tokens.css).
     // במסך צר (מתחת ל-1024) הרייל הוא גיליון תחתון קבוע - אין top מוטבע. נמדד מחדש בכל שינוי גודל של הרייל / תוכנו / החלון.
     const tall = () => {
       if (window.innerWidth < 1024) { rail.style.removeProperty('top'); return; }
-      const snav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gm-snav-h')) || 0;
-      rail.style.top = `${Math.min(snav + 16, window.innerHeight - rail.offsetHeight - 16)}px`;
+      const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gm-snav-h')) || 0;
+      rail.style.top = `${Math.min(navH + 16, window.innerHeight - rail.offsetHeight - 16)}px`;
     };
     const both = () => { fit(); tall(); };
     both();

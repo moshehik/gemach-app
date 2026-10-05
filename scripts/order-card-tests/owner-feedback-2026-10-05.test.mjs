@@ -192,7 +192,7 @@ test('הרייל מתחיל בגובה הסקשן הראשון: --rail-top מ-.p
 // דוח ההשוואה (F6): tall() של העיצוב - רייל גבוה מהחלון נדבק כך שהתחתית נראית
 test('tall(): top = min(snav + 16, גובה חלון - גובה רייל - 16) רק מ-1024px; נמדד ב-ResizeObserver של הרייל + MutationObserver על תוכנו + resize; מתנקה', () => {
   const a5 = read(`${OC}/OrderCardA5.js`);
-  assert.match(a5, /rail\.style\.top = `\$\{Math\.min\(snav \+ 16, window\.innerHeight - rail\.offsetHeight - 16\)\}px`/);
+  assert.match(a5, /rail\.style\.top = `\$\{Math\.min\(navH \+ 16, window\.innerHeight - rail\.offsetHeight - 16\)\}px`/);
   assert.match(a5, /getPropertyValue\('--gm-snav-h'\)/);
   assert.match(a5, /if \(window\.innerWidth < 1024\) \{ rail\.style\.removeProperty\('top'\); return; \}/);
   assert.match(a5, /rro\.observe\(rail\)/);
