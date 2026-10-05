@@ -2210,8 +2210,11 @@ export default function NewOrderPage() {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px', minHeight: '38px', alignItems: 'center' }}>
                   {availableSizes.length === 0 ? (
-                    <p className="hint">
-                      {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
+                    // דיווח a2e3f590: בזמן טעינת נתוני המלאי (loadingPreload) הרשימה ריקה - הצגנו בטעות "אין מידות זמינות"
+                    <p className="hint" role="status">
+                      {newItem.dressModelId
+                        ? ((loadingPreload || loadingSizes) ? 'טוען מידות…' : 'אין מידות זמינות לתאריך זה.')
+                        : 'בחר דגם כדי לראות מידות זמינות.'}
                     </p>
                   ) : (
                     availableSizes.map(s => {
@@ -2437,7 +2440,8 @@ export default function NewOrderPage() {
                 <h3 style={{ margin: 0 }}>פריטים ({order.items.length})</h3>
               </div>
 
-              <div style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
+              {/* דיווח 60d5cb50: בלי גלילה פנימית (היה maxHeight:42vh) - הסיכום נפתח כעמוד שלם והעמוד עצמו גולל */}
+              <div role="region" aria-label="רשימת פריטים בהזמנה">
                 {order.items.map((item, idx) => {
                   const calcItem = calculatedData.items[idx];
                   const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
@@ -2495,15 +2499,19 @@ export default function NewOrderPage() {
                     </select>
                   </div>
 
-                  <NocCollapsible title="הערה לתשלום" badge={payment.notes ? 'יש הערה' : null}>
-                    <input
-                      type="text"
-                      className="input"
-                      value={payment.notes}
-                      onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="מספר אישור, פרטי הבנק, שם המשלם..."
-                    />
-                  </NocCollapsible>
+                  {/* דיווח 51f2cc56: נווה יעקב ביקשו להוריד את "הערה לתשלום" לגמרי. ההערה נשמרת על התשלום ומוצגת
+                      ברשימת התשלומים בגמח הראשי, לכן ההסתרה מאחורי הגדרה (ברירת מחדל = מוצג). */}
+                  {settings.hide_order_payment_note !== 'true' && (
+                    <NocCollapsible title="הערה לתשלום" badge={payment.notes ? 'יש הערה' : null}>
+                      <input
+                        type="text"
+                        className="input"
+                        value={payment.notes}
+                        onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="מספר אישור, פרטי הבנק, שם המשלם..."
+                      />
+                    </NocCollapsible>
+                  )}
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
                     <button type="submit" className="btn btn-secondary" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>

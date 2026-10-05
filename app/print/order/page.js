@@ -47,6 +47,9 @@ export default function PrintOrderPage() {
   // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
   const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
   const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
+  // 27f278c7 (נווה יעקב) - print_order_clean_layout: הדפסת הזמנה בודדת "נקייה" ללקוח (בלי "לכבוד:"/"טלפון:"/כתובת לקוח,
+  // הערות פעם אחת, בלי טבלת תשלומים וכו'). כבוי כברירת מחדל = הפלט הקיים. לא חל על הדפסה מרוכזת (isBatch).
+  const [cleanLayoutSetting, setCleanLayoutSetting] = useState(false);
   // 20 - מיון דפי הכנה: משלוחים בנפרד מרגילות (רק כשמדפיסים כמה הזמנות יחד)
   const [sortDeliveriesFirst, setSortDeliveriesFirst] = useState(true);
   // 21 - מפה orderItemId -> { familyName, returnOrderId } לפריטים שסומנו "חסרה"
@@ -87,6 +90,8 @@ export default function PrintOrderPage() {
         if (delSetting && delSetting.value === 'false') setShowDeliveryInPrint(false);
         const sortSetting = settingsData.find(s => s.key === 'print_sort_deliveries_first');
         if (sortSetting && sortSetting.value === 'false') setSortDeliveriesFirst(false);
+        const cleanSetting = settingsData.find(s => s.key === 'print_order_clean_layout');
+        if (cleanSetting && cleanSetting.value === 'true') setCleanLayoutSetting(true);
         const missSetting = settingsData.find(s => s.key === 'print_mark_missing_dresses');
         if (missSetting && missSetting.value === 'false') { setMarkMissingInPrint(false); markMissing = false; }
 
@@ -253,6 +258,8 @@ export default function PrintOrderPage() {
     // שהבעלים סימן - הכלל האחיד של lib/businessDays.js, אותו כלל של התראת האיחור); האיסוף = 2 ימי עסקים לפני.
     const returnByDate = ord ? getExpectedReturnDate(ord, nonWorkingDays) : null;
     const pickupDate = ord?.eventDate ? subtractBusinessDays(ord.eventDate, 2, nonWorkingDays) : null;
+    // 27f278c7: מצב "נקי" רק להדפסת הזמנה בודדת (גיליונות ההכנה המרוכזים נשארים כמו שהם)
+    const clean = cleanLayoutSetting && !isBatch;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -277,7 +284,7 @@ export default function PrintOrderPage() {
               )}
               {returnByDate && (
                 <div className="return-details-box">
-                  <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
+                  <strong>{clean ? 'החזרת השמלות:' : 'פרטי החזרה:'}</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
                     <div className="belt-notice-line">{printSettings.beltNotice}</div>
                   )}
@@ -311,10 +318,11 @@ export default function PrintOrderPage() {
               <div className="order-details-card">
                 {/* Right side: Customer - כולל הערות ההזמנה בשורת פרטי הלקוח (בקשת יא אלול) */}
                 <div>
-                  <strong>לכבוד: {ord.customer?.firstName} {ord.customer?.lastName}</strong><br />
-                  טלפון: <span dir="ltr">{ord.customer?.phone1 || ord.customer?.phone || '-'}</span><br />
-                  כתובת: {ord.customer?.city ? `${ord.customer.city}${ord.customer?.address ? `, ${ord.customer.address}` : ''}` : '-'}<br />
-                  {ord.notes && (
+                  {/* 27f278c7 (clean): בלי "לכבוד:" / "טלפון:", בלי כתובת הלקוח, והערות רק בתיבה הייעודית */}
+                  <strong>{clean ? '' : 'לכבוד: '}{ord.customer?.firstName} {ord.customer?.lastName}</strong><br />
+                  {clean ? '' : 'טלפון: '}<span dir="ltr">{ord.customer?.phone1 || ord.customer?.phone || '-'}</span><br />
+                  {!clean && (<>כתובת: {ord.customer?.city ? `${ord.customer.city}${ord.customer?.address ? `, ${ord.customer.address}` : ''}` : '-'}<br /></>)}
+                  {ord.notes && !clean && (
                     <>הערות להזמנה: {ord.notes}<br /></>
                   )}
                 </div>
@@ -330,7 +338,7 @@ export default function PrintOrderPage() {
                   {/* 13/34 - סימון טלפוני וסניף בהדפסה */}
                   {ord.isPhoneOrder && (<><span style={{ color: '#666' }}>(הזמנה טלפונית)</span><br /></>)}
                   {(ord.branch || ord.pickupBranch) && (
-                    <>סניף: {ord.branch ? `בוצעה ב${ord.branch}` : ''}{ord.branch && ord.pickupBranch ? ' · ' : ''}{ord.pickupBranch ? `איסוף ב${ord.pickupBranch}` : ''}<br /></>
+                    <>סניף: {ord.branch ? (clean ? ord.branch : `בוצעה ב${ord.branch}`) : ''}{ord.branch && ord.pickupBranch ? ' · ' : ''}{ord.pickupBranch ? `איסוף ב${ord.pickupBranch}` : ''}<br /></>
                   )}
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
@@ -340,7 +348,7 @@ export default function PrintOrderPage() {
                   ) : (
                     <>סוג אירוע: אירוע חו&quot;ל</>
                   )}
-                  {ord.notes && (
+                  {ord.notes && !clean && (
                     <><br />הערות: {ord.notes}</>
                   )}
                 </div>
@@ -373,7 +381,7 @@ export default function PrintOrderPage() {
             </td>
           </tr>
           <tr>
-            <th>דגם / תיאור</th>
+            <th>{clean ? 'דגם' : 'דגם / תיאור'}</th>
             <th>מידה</th>
             {enableAlterations && <th>תיקונים</th>}
           </tr>
@@ -448,7 +456,8 @@ export default function PrintOrderPage() {
               {/* בהדפסה מרוכזת (כמה הזמנות יחד, "אשף הדפסה") רבקה לוי ביקשה שכל הזמנה
                   תישאר בדף בודד ובלי פירוט תשלומים - רק סכום קטן (כבר מוצג למעלה בטבלת
                   הסיכום). בהדפסת הזמנה בודדת (הכרטיס הרגיל) נשאר הפירוט המלא כמו קודם. */}
-              {activePayments.length > 0 && !isBatch && (
+              {/* 27f278c7 (clean): טבלת "תשלומים שהתקבלו" יורדת; סיכום לחיוב/שולם/יתרה למעלה נשאר */}
+              {activePayments.length > 0 && !isBatch && !clean && (
                 <div className="payments-section">
                   <h4 className="payments-title">תשלומים שהתקבלו</h4>
                   <table className="print-table" style={{ marginBottom: '30px' }}>
@@ -504,7 +513,7 @@ export default function PrintOrderPage() {
                   השלישית כאן מיותרת שם וגוזלת בדיוק את השורות שדוחפות הזמנה עם הערות
                   + משלוח לעמוד שני (337e5938/075858d6, 2026-09-14). בהדפסת הזמנה בודדת
                   שאינה חלק מ"פירוט הזמנות להכנה" (!isBatch) לא נגעתי - נשאר כמו קודם. */}
-              {ord.notes && !isBatch && (
+              {ord.notes && !isBatch && !clean && (
                 <div className="order-notes-box">
                   <strong>הערות להזמנה: </strong>{ord.notes}
                 </div>
