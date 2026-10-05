@@ -702,7 +702,7 @@ export default function useNewOrderController({ router }) {
       showBusy(false);
       // ההזמנה נשמרה עם רשימת התשלומים הזו - המסך (שנשאר פתוח מאחורי חלון "ההזמנה נשמרה", S08) מציג אותה
       setPaymentsList(finalPaymentsList.filter(x => (parseFloat(x.amount) || 0) > 0 || x.method === NL.MANAGER_EXIT_METHOD));
-      if (settings.auto_print_on_order_create === 'true' && data.orderId) window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank');
+      if (settings.auto_print_on_order_create === 'true' && data.orderId) window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank', 'noopener');
       backGuardArmedRef.current = false;
       setSaved({ orderId: data.orderId, customerId: data.customerId, warning: data.warning || '' });
       ask('success', {}, 1);
@@ -724,7 +724,7 @@ export default function useNewOrderController({ router }) {
     if (typeof window !== 'undefined' && NL.redirectNeedsFullReload(href, window.location.pathname)) window.location.assign(href);
     else router.push(href);
   };
-  const printSaved = () => saved && window.open(`/print/order?orderId=${saved.orderId}&type=order`, '_blank');
+  const printSaved = () => saved && window.open(`/print/order?orderId=${saved.orderId}&type=order`, '_blank', 'noopener');
   const newOrder = () => { if (typeof window !== 'undefined') window.location.assign('/orders/new'); };
 
   const handleExit = async () => {

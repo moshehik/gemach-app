@@ -181,6 +181,8 @@ export function parseSettings(rows) {
     draftsAsDeleted: bool('draft_orders_show_as_deleted', true),
     // AMB-10 (הבעלים): אימות הת״ז לעריכה/ביטול בתוקף רק כשגם "חובה ת״ז ללקוח" דולקת (effectiveRequireIdForEdit)
     requireIdForEdit: effectiveRequireIdForEdit(bool('require_id_for_edit_cancel', false), bool('require_customer_id_number', false)),
+    // customer_id_once_per_order_visit (דיווח 72a80404): כבוי = ת״ז בכל שמירה (כמו תמיד); דולק = פעם אחת לביקור בהזמנה (זיכרון בדף בלבד)
+    customerIdOncePerOrderVisit: bool('customer_id_once_per_order_visit', false),
     allowEditPartially: bool('allow_edit_partially_rented', true),
     requireManagerCodeForItems: bool('require_manager_code_for_item_changes', false),
     enableLocalDrafts: bool('enable_local_order_drafts', true),
@@ -289,6 +291,22 @@ export function computeTotals({ items = [], obligations = [], payments = [], sna
 // ---------------------------------------------------------------------------------------------
 // שערים ותנאים
 // ---------------------------------------------------------------------------------------------
+/** חתימה קצרה של מה ששמור בשרת בהזמנה (פריטים/חיובים/תשלומים/זיכויים) - לזיהוי שינוי ממקום אחר (דיווח f6da1794). */
+export const orderServerSignature = (snap) => {
+  if (!snap) return '';
+  const o = snap.order || snap;
+  // טיוטות חיוב (isDraft) מחושבות בזיכרון ב-GET בלבד ולא קיימות בתשובת ה-PUT - לא חלק מהמצב השמור; מיון - כדי שסדר שאילתה לא ייראה כשינוי
+  const part = (list, pick) => (list || []).filter(x => !x.isDraft).map(pick).sort().join('|');
+  return [
+    o.updatedAt || '',
+    o.status || '',
+    part(snap.items, i => [i.id, i.updatedAt || '', i.isTaken ? 1 : 0, i.isReturned ? 1 : 0, i.isDeleted ? 1 : 0, i.returnDate || ''].join('~')),
+    part(snap.obligations, x => [x.id, x.amount, x.isDeleted ? 1 : 0].join('~')),
+    part(snap.payments, x => [x.id, x.amount, x.isDeleted ? 1 : 0].join('~')),
+    part(snap.refunds, x => [x.id, x.amount, x.isExecuted ? 1 : 0, x.isDeleted ? 1 : 0].join('~'))
+  ].join('#');
+};
+
 export const zeoutVerificationNeeded = (settings, order) => !!(settings && settings.requireIdForEdit) && !!String(order?.customer?.zeout || '').trim();
 
 // הישן: new Date(eventDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) - לפי אזור הזמן של הדפדפן. כאן לפי היום בישראל

@@ -460,3 +460,118 @@ test('סקירה 1: הגנות היציאה פעילות גם כשאין שינ�
     assert.equal(h.nav.length, 0);
   })();
 });
+
+// ---------------------------------------------------------------------------------------------
+// דיווח 72a80404 (נווה יעקב, 5.10.2026): ת״ז פעם אחת לביקור בהזמנה, מאחורי customer_id_once_per_order_visit
+// ---------------------------------------------------------------------------------------------
+const ID_SETTINGS = [{ key: 'require_id_for_edit_cancel', value: 'true' }, { key: 'require_customer_id_number', value: 'true' }];
+const ID_ONCE = [...ID_SETTINGS, { key: 'customer_id_once_per_order_visit', value: 'true' }];
+const idState = () => baseState({ order: { customer: { firstName: 'א', zeout: '123456789' } } });
+const idRespond = (st) => (u) => (u.includes('validate') ? { body: { valid: true } } : serverOk(st));
+const prompts = (h) => h.opened.filter(o => o[0] === 'prompt').length;
+const putsOf = (h) => h.calls.filter(c => c.method === 'PUT');
+
+test('72a80404: ההגדרה כבויה (ברירת מחדל) - ת״ז בכל שמירה, כמו היום', async () => {
+  const st = idState();
+  const h = harness(st, { settings: ID_SETTINGS, edit: withNotes, answers: { prompt: '123456789' }, respond: idRespond(st) });
+  await h.flows.save();
+  h.state.order = { ...h.state.order, notes: 'שונה שוב' };
+  await h.flows.save();
+  assert.equal(putsOf(h).length, 2);
+  assert.equal(prompts(h), 2);
+});
+
+test('72a80404: ההגדרה דולקת - ת״ז נשאלת פעם אחת ונשלחת בכל השמירות (השרת ממשיך לאמת)', async () => {
+  const st = idState();
+  const h = harness(st, { settings: ID_ONCE, edit: withNotes, answers: { prompt: ' 123456789 ' }, respond: idRespond(st) });
+  await h.flows.save();
+  h.state.order = { ...h.state.order, notes: 'שונה שוב' };
+  await h.flows.save();
+  h.state.order = { ...h.state.order, notes: 'שלישית' };
+  await h.flows.save();
+  const puts = putsOf(h);
+  assert.equal(puts.length, 3);
+  assert.equal(prompts(h), 1, 'פעם אחת בלבד');
+  for (const c of puts) { assert.equal(c.headers['x-zeout'], '123456789'); assert.equal(c.body.zeout, '123456789'); }
+});
+
+test('72a80404: השרת דחה את הת״ז (לא תואמת) - הזיכרון נמחק והשמירה הבאה שואלת שוב', async () => {
+  const st = idState();
+  let n = 0;
+  const h = harness(st, { settings: ID_ONCE, edit: withNotes, answers: { prompt: '111111111' }, respond: (u) => {
+    if (u.includes('validate')) return { body: { valid: true } };
+    n += 1;
+    return n === 1 ? { status: 403, body: { error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' } } : serverOk(st);
+  } });
+  await h.flows.save();
+  assert.equal(h.flags.verifiedZeout, null, 'ת״ז שנדחתה לא נזכרת');
+  await h.flows.save();
+  assert.equal(prompts(h), 2);
+});
+
+test('72a80404: שגיאת 403 שאינה ת״ז (למשל אישור מנהל) לא מוחקת את הזיכרון', async () => {
+  const st = idState();
+  const h = harness(st, { settings: ID_ONCE, edit: withNotes, answers: { prompt: '123456789' }, respond: (u) => (u.includes('validate') ? { body: { valid: true } } : { status: 403, body: { error: 'דרוש אישור מנהל' } }) });
+  await h.flows.save();
+  assert.equal(h.flags.verifiedZeout.zeout, '123456789');
+});
+
+test('72a80404: ביטול הזמנה שלמה תמיד שואל מחדש, וחילוף לקוח מבקש ת״ז חדשה', async () => {
+  const st = idState();
+  const h = harness(st, { settings: ID_ONCE, edit: withNotes, answers: { prompt: '123456789' }, respond: (u) => (u.includes('validate') ? { body: { valid: true } } : serverOk(st)) });
+  await h.flows.save();
+  assert.equal(prompts(h), 1);
+  await h.flows.deleteOrder();
+  assert.equal(prompts(h), 2, 'מחיקה = שאלה טרייה');
+  h.state.order = { ...h.state.order, customerId: 'another-customer', notes: 'x' };
+  await h.flows.save();
+  assert.equal(prompts(h), 3, 'לקוח אחר = ת״ז אחרת');
+});
+
+test('72a80404: הישן - אותו זיכרון בדף בלבד (ref), בלי localStorage; ביטול הזמנה שלמה fresh; ה-PUT עדיין נושא ת״ז', () => {
+  const src = LEGACY_SRC;
+  assert.ok(src.includes("data.find(s => s.key === 'customer_id_once_per_order_visit')"));
+  const req = src.slice(src.indexOf('const requestZeout'), src.indexOf('// Fetch Order'));
+  assert.ok(req.includes('verifiedZeoutRef.current') && req.includes('idOncePerOrderVisit') && !/localStorage|sessionStorage/.test(req));
+  assert.ok(src.includes('requestZeout({ fresh: true })'), 'ביטול הזמנה שלמה שואל מחדש');
+  assert.ok(src.includes("headers: { 'Content-Type': 'application/json', ...(zeoutForRequest ? { 'x-zeout': zeoutForRequest } : {}) }"), 'ה-PUT עדיין נושא את הת״ז');
+  assert.ok(/useEffect\(\(\) => \{ verifiedZeoutRef\.current = null; \}, \[id\]\)/.test(src), 'מעבר להזמנה אחרת מנקה');
+});
+
+// ---------------------------------------------------------------------------------------------
+// דיווח f6da1794: רענון כשחוזרים לכרטיס אחרי שינוי ממקום אחר
+// ---------------------------------------------------------------------------------------------
+test('f6da1794: orderServerSignature - החזרת שמלה משנה חתימה, אותו מצב = אותה חתימה', () => {
+  const st = baseState();
+  const snap = (items) => ({ order: st.order, items, obligations: st.obligations, payments: st.payments, refunds: [] });
+  const a = L.orderServerSignature(snap(st.items));
+  assert.equal(a, L.orderServerSignature(JSON.parse(JSON.stringify(snap(st.items)))));
+  const returned = st.items.map((i, k) => (k === 0 ? { ...i, isReturned: true, isTaken: true } : i));
+  assert.notEqual(a, L.orderServerSignature(snap(returned)));
+  assert.equal(L.orderServerSignature(null), '');
+});
+
+test('f6da1794: הישן - בדיקה רק בפוקוס/חזרת לשונית, מרווח 15 שניות, לא דורס שינויים שלא נשמרו', () => {
+  const src = LEGACY_SRC;
+  assert.ok(src.includes('EXTERNAL_CHECK_MIN_GAP_MS = 15000'));
+  assert.ok(src.includes("window.addEventListener('focus', check)") && src.includes("document.addEventListener('visibilitychange', check)"));
+  assert.ok(!/setInterval/.test(src.slice(src.indexOf('const EXTERNAL_CHECK_MIN_GAP_MS'), src.indexOf('const handleRefreshFromElsewhere'))), 'בלי בדיקה מחזורית');
+  assert.ok(src.includes("if (live.dirty || live.busy) { setExternalNotice('dirty'); return; }"), 'שינויים שלא נשמרו = הודעה בלבד');
+  assert.ok(src.includes('ההזמנה עודכנה ממקום אחר — רענן'));
+});
+
+// ---------------------------------------------------------------------------------------------
+// דיווח 2c827b93: לשונית ההדפסה נפתחת בלי opener (תהליך נפרד ב-Chromium)
+// ---------------------------------------------------------------------------------------------
+test('2c827b93: כל פתיחות דף ההדפסה אחרי יצירה/שמירה של הזמנה הן עם noopener', () => {
+  const read = (rel) => fs.readFileSync(process.env.PROJ + '/' + rel, 'utf8');
+  const targets = [
+    ['app/orders/[id]/LegacyOrderPage.js', "window.open(`/print/order?orderId=${updatedOrder.orderId}&type=order`, '_blank', 'noopener')"],
+    ['app/orders/new/LegacyNewOrderPage.js', "window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank', 'noopener')"],
+    ['app/components/new-order/useNewOrderController.js', "window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank', 'noopener')"],
+    ['app/components/new-order/useNewOrderController.js', "window.open(`/print/order?orderId=${saved.orderId}&type=order`, '_blank', 'noopener')"],
+    ['components/orders/OrderPrintMenu.js', "window.open(`/print/order?orderId=${order.orderId}&type=${type}`, '_blank', 'noopener')"],
+    ['app/components/order-card/parts/OcRail.js', "window.open(printUrl(order.orderId), '_blank', 'noopener')"],
+  ];
+  for (const [f, needle] of targets) assert.ok(read(f).includes(needle), f);
+});

@@ -93,7 +93,7 @@ export default function OrderPrintMenu({
   const openPrint = async (type) => {
     setOpen(false);
     if (preConfirm && !(await preConfirm(type))) return;
-    window.open(`/print/order?orderId=${order.orderId}&type=${type}`, '_blank');
+    window.open(`/print/order?orderId=${order.orderId}&type=${type}`, '_blank', 'noopener');
   };
 
   const handleSendEmail = async (type, forcedEmail = null) => {

@@ -1350,7 +1350,8 @@ export default function NewOrderPage() {
       // (כבוי כברירת מחדל = ההתנהגות הקודמת, לפי כלל ההגדרות עם שחזור). אותו נתיב הדפסה
       // בדיוק כמו כפתור "הדפסה ומייל" -> "הזמנה" (OrderPrintMenu.js openPrint('order')).
       if (settings.auto_print_on_order_create === 'true' && data.orderId) {
-        window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank');
+        // noopener - לשונית ההדפסה לא חולקת תהליך עם לשונית המערכת (window.print() בה לא חוסם אותה) - דיווח 2c827b93
+        window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank', 'noopener');
       }
       // 42 - מסך יעד אחרי יצירת הזמנה, מותנה ב-order_new_redirect_screen (ברירת מחדל
       // "order" = ההתנהגות הקודמת, כרטיס ההזמנה שזה עתה נוצרה).

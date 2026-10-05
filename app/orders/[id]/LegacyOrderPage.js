@@ -163,6 +163,23 @@ const obligationIdentityKey = (o) => {
   return `desc:${o.description || ''}`;
 };
 
+// חתימה קצרה של מה ששמור בשרת בהזמנה (פריטים, חיובים, תשלומים, זיכויים) - משמשת לבדיקה אם
+// ההזמנה השתנתה ממקום אחר (למשל החזרת שמלה בלשונית אחרת) בלי להשוות אובייקטים שלמים.
+const orderServerSignature = (snap) => {
+  if (!snap) return '';
+  const o = snap.order || snap;
+  // טיוטות חיוב (isDraft) מחושבות בזיכרון ב-GET בלבד ולא קיימות בתשובת ה-PUT - לא חלק מהמצב השמור; מיון - כדי שסדר שאילתה לא ייראה כשינוי
+  const part = (list, pick) => (list || []).filter(x => !x.isDraft).map(pick).sort().join('|');
+  return [
+    o.updatedAt || '',
+    o.status || '',
+    part(snap.items, i => [i.id, i.updatedAt || '', i.isTaken ? 1 : 0, i.isReturned ? 1 : 0, i.isDeleted ? 1 : 0, i.returnDate || ''].join('~')),
+    part(snap.obligations, x => [x.id, x.amount, x.isDeleted ? 1 : 0].join('~')),
+    part(snap.payments, x => [x.id, x.amount, x.isDeleted ? 1 : 0].join('~')),
+    part(snap.refunds, x => [x.id, x.amount, x.isExecuted ? 1 : 0, x.isDeleted ? 1 : 0].join('~'))
+  ].join('#');
+};
+
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
@@ -243,6 +260,11 @@ export default function OrderDetailsPage({ params }) {
   // (fetchSharedJson('/api/settings')) as that list page, so both surfaces agree on the toggle.
   const [draftsAsDeleted, setDraftsAsDeleted] = useState(true);
   const [requireIdForEdit, setRequireIdForEdit] = useState(false); // 14 - ת״ז לעריכה/ביטול
+  // customer_id_once_per_order_visit - כבוי (ברירת מחדל) = בקשת ת״ז בכל שמירה (ההתנהגות הקודמת).
+  // דולק = הת״ז נשאלת פעם אחת בביקור בהזמנה ונשמרת בזיכרון הדף בלבד (verifiedZeoutRef) עד היציאה מההזמנה;
+  // השרת ממשיך לאמת אותה מול הלקוח בכל שמירה, ולכן אין כאן הקלה באבטחה - רק אין צורך להקליד שוב.
+  const [idOncePerOrderVisit, setIdOncePerOrderVisit] = useState(false);
+  const verifiedZeoutRef = useRef(null); // { customerId, zeout } - לא נכתב ל-localStorage, נמחק ביציאה מההזמנה
   const [allowEditPartially, setAllowEditPartially] = useState(true); // 27 - עריכת מושכר חלקי
   // require_manager_code_for_item_changes - ביטול פריט קיים דורש גם אישור מנהל, בנוסף
   // לת״ז (לא במקומו). ברירת מחדל כבויה = ההתנהגות הקודמת (ת״ז בלבד). הוספת פריט חדש
@@ -281,6 +303,8 @@ export default function OrderDetailsPage({ params }) {
         if (setting) setDraftsAsDeleted(setting.value === 'true');
         const reqId = data.find(s => s.key === 'require_id_for_edit_cancel');
         if (reqId) setRequireIdForEdit(reqId.value === 'true');
+        const idOnce = data.find(s => s.key === 'customer_id_once_per_order_visit');
+        if (idOnce) setIdOncePerOrderVisit(idOnce.value === 'true');
         const allowP = data.find(s => s.key === 'allow_edit_partially_rented');
         if (allowP) setAllowEditPartially(allowP.value === 'true');
         const reqManagerCode = data.find(s => s.key === 'require_manager_code_for_item_changes');
@@ -306,8 +330,12 @@ export default function OrderDetailsPage({ params }) {
   // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה (השרת ממילא לא דורש כשאין - ר' route.js) -
   // אין טעם לבקש קוד שאין מול מה לאמת אותו, וזה היה חוסם לצמיתות הזמנות ישנות בלי ת״ז
   const zeoutVerificationNeeded = requireIdForEdit && !!String(order?.customer?.zeout || '').trim();
-  const requestZeout = async () => {
+  // fresh=true (ביטול הזמנה שלמה) תמיד שואל מחדש, גם כשהת״ז כבר נזכרה בביקור הזה.
+  const requestZeout = async ({ fresh = false } = {}) => {
     if (!zeoutVerificationNeeded) return null;
+    const customerKey = order?.customerId ?? order?.customer?.id ?? null;
+    const remembered = verifiedZeoutRef.current;
+    if (!fresh && idOncePerOrderVisit && remembered && remembered.customerId === customerKey) return remembered.zeout;
     const msg = 'עריכה/ביטול דורשים אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
     let zeout = null;
     if (typeof window !== 'undefined' && window.customPrompt) {
@@ -315,8 +343,12 @@ export default function OrderDetailsPage({ params }) {
     } else if (typeof window !== 'undefined') {
       zeout = window.prompt(msg);
     }
-    return zeout ? String(zeout).trim() : null;
+    const typed = zeout ? String(zeout).trim() : null;
+    if (typed && idOncePerOrderVisit) verifiedZeoutRef.current = { customerId: customerKey, zeout: typed };
+    return typed;
   };
+  // היציאה מההזמנה (הקומפוננטה יורדת) מוחקת את הזיכרון ממילא; מעבר להזמנה אחרת באותו מופע מוחק אותו כאן.
+  useEffect(() => { verifiedZeoutRef.current = null; }, [id]);
 
   // Fetch Order
   useEffect(() => {
@@ -526,25 +558,91 @@ export default function OrderDetailsPage({ params }) {
       const res = await fetch(`/api/orders/${id}`);
       if (!res.ok) return false;
       const data = await res.json();
-      const loadedItems = data.items || [];
-      const loadedObligations = data.obligations || [];
-      const loadedPayments = data.payments || [];
-      const loadedRefunds = data.refunds || [];
-      setOrder(data);
-      setItems(loadedItems);
-      setObligations(loadedObligations);
-      setPayments(loadedPayments);
-      setRefunds(loadedRefunds);
-      savedSnapshotRef.current = { order: data, items: loadedItems, obligations: loadedObligations, payments: loadedPayments, refunds: loadedRefunds };
-      const reloadedTotalRequired = loadedObligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
-      const reloadedTotalPaid = loadedPayments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
-      setOpenedDebt(reloadedTotalRequired - reloadedTotalPaid);
-      setHasUnsavedChanges(false);
+      applyServerData(data);
       return true;
     } catch (err) {
       console.error('Failed to reload order', err);
       return false;
     }
+  };
+
+  // מציג את מה שהגיע מהשרת - אותו מצב טעינה כמו ב-reloadOrderFromServer, בלי בקשה נוספת.
+  const applyServerData = (data) => {
+    const loadedItems = data.items || [];
+    const loadedObligations = data.obligations || [];
+    const loadedPayments = data.payments || [];
+    const loadedRefunds = data.refunds || [];
+    setOrder(data);
+    setItems(loadedItems);
+    setObligations(loadedObligations);
+    setPayments(loadedPayments);
+    setRefunds(loadedRefunds);
+    savedSnapshotRef.current = { order: data, items: loadedItems, obligations: loadedObligations, payments: loadedPayments, refunds: loadedRefunds };
+    const reloadedTotalRequired = loadedObligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+    const reloadedTotalPaid = loadedPayments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+    setOpenedDebt(reloadedTotalRequired - reloadedTotalPaid);
+    setHasUnsavedChanges(false);
+  };
+
+  // כרטיס פתוח שההזמנה שלו השתנתה ממקום אחר (החזרת שמלה בלשונית/חלון אחר וכד') - כשחוזרים אליו
+  // (פוקוס/לשונית נראית) נבדק מול השרת, לכל היותר פעם ב-15 שניות ובקשה אחת. אין שינויים שלא נשמרו =
+  // מתעדכן לבד; יש שינויים שלא נשמרו = לא נדרס, רק מוצגת הודעה עם כפתור רענון. בלי בדיקה מחזורית ברקע.
+  const EXTERNAL_CHECK_MIN_GAP_MS = 15000;
+  const liveStateRef = useRef({ dirty: false, busy: false });
+  const externalCheckAtRef = useRef(0);
+  const externalCheckBusyRef = useRef(false);
+  const externalNoticeTimerRef = useRef(null);
+  const [externalNotice, setExternalNotice] = useState(null); // null | 'dirty' | 'applied'
+  useEffect(() => {
+    liveStateRef.current = {
+      dirty: hasUnsavedChanges || items.some(it => !it.id && it._localId),
+      busy: saving || isLivePreviewing || !!summaryConfirmData
+    };
+  });
+  useEffect(() => { if (!hasUnsavedChanges) setExternalNotice(prev => (prev === 'dirty' ? null : prev)); }, [hasUnsavedChanges]);
+  useEffect(() => {
+    if (!id || loading) return undefined;
+    const check = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (externalCheckBusyRef.current || now - externalCheckAtRef.current < EXTERNAL_CHECK_MIN_GAP_MS) return;
+      externalCheckBusyRef.current = true;
+      externalCheckAtRef.current = now;
+      try {
+        const res = await fetch(`/api/orders/${id}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const snap = savedSnapshotRef.current;
+        if (!snap || orderServerSignature(data) === orderServerSignature(snap)) return;
+        const live = liveStateRef.current;
+        if (live.dirty || live.busy) { setExternalNotice('dirty'); return; }
+        // חלון פתוח (תשלום, אישור וכד') - לא מחליפים את הנתונים מתחתיו; הבדיקה תיעשה שוב בפוקוס הבא.
+        if (typeof document !== 'undefined' && document.querySelector('.modal-backdrop')) { externalCheckAtRef.current = 0; return; }
+        applyServerData(data);
+        setExternalNotice('applied');
+        clearTimeout(externalNoticeTimerRef.current);
+        externalNoticeTimerRef.current = setTimeout(() => setExternalNotice(prev => (prev === 'applied' ? null : prev)), 5000);
+      } catch (err) {
+        console.error('External-change check failed', err);
+      } finally {
+        externalCheckBusyRef.current = false;
+      }
+    };
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      window.removeEventListener('focus', check);
+      document.removeEventListener('visibilitychange', check);
+      clearTimeout(externalNoticeTimerRef.current);
+    };
+  }, [id, loading]);
+
+  const handleRefreshFromElsewhere = async () => {
+    const ok = window.customConfirm
+      ? await window.customConfirm('הרענון ימחק את השינויים שלא נשמרו בכרטיס. לרענן?')
+      : window.confirm('הרענון ימחק את השינויים שלא נשמרו בכרטיס. לרענן?');
+    if (!ok) return;
+    if (await reloadOrderFromServer()) setExternalNotice(null);
   };
 
   // שולח את ההזמנה לשרת ומטפל בהתנגשות נתונים (409). בלי הטיפול הזה המשתמש נתקע:
@@ -589,6 +687,8 @@ export default function OrderDetailsPage({ params }) {
     const res = await sendApproved(payload);
     if (res.status === 401 || res.status === 403 || res.status === 400) {
       const errData = await res.clone().json().catch(() => null);
+      // השרת דחה את הת״ז (חסרה/לא תואמת) - מפסיקים לזכור אותה, ובשמירה הבאה תישאל מחדש.
+      if (zeoutForRequest && /תעודת (הזהות|זהות)/.test(errData?.error || '')) verifiedZeoutRef.current = null;
       if (typeof window !== 'undefined') alert(errData?.error || 'שגיאת אימות תעודת זהות.');
       return res;
     }
@@ -978,7 +1078,9 @@ export default function OrderDetailsPage({ params }) {
           ? await window.customConfirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?')
           : window.confirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?');
         if (wantsPrint) {
-          window.open(`/print/order?orderId=${updatedOrder.orderId}&type=order`, '_blank');
+          // noopener - לשונית ההדפסה לא מחוברת ללשונית הכרטיס (בדפדפני Chromium לשונית פתוחה עם opener חולקת תהליך
+          // עם הלשונית שפתחה אותה, ו-window.print() בה חוסם גם את הכרטיס - דיווח 2c827b93)
+          window.open(`/print/order?orderId=${updatedOrder.orderId}&type=order`, '_blank', 'noopener');
         }
       }
     } catch (err) {
@@ -1387,7 +1489,7 @@ export default function OrderDetailsPage({ params }) {
     // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה, ר' הערה ב-requestZeout
     let zeoutForDelete = null;
     if (zeoutVerificationNeeded) {
-      zeoutForDelete = await requestZeout();
+      zeoutForDelete = await requestZeout({ fresh: true });
       if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
     }
     // 27 - חסימת מחיקת מושכר חלקי בצד לקוח
@@ -1752,6 +1854,25 @@ export default function OrderDetailsPage({ params }) {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* ההזמנה השתנתה ממקום אחר (למשל החזרת שמלה בלשונית אחרת): או שהכרטיס התעדכן לבד, או (כשיש שינויים שלא נשמרו)
+          הודעה לא חוסמת עם כפתור רענון - ר' בדיקת השינוי החיצוני למעלה. */}
+      {externalNotice === 'applied' && (
+        <div className="callout callout-info" role="status" style={{ marginBottom: '14px' }}>
+          <svg className="icon"><use href="#i-refresh" /></svg>
+          <strong>הכרטיס עודכן - ההזמנה השתנתה ממקום אחר.</strong>
+        </div>
+      )}
+      {externalNotice === 'dirty' && (
+        <div className="callout callout-warning" role="status" style={{ marginBottom: '14px', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <svg className="icon"><use href="#i-alert-tri" /></svg>
+          <strong>ההזמנה עודכנה ממקום אחר — רענן</strong>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleRefreshFromElsewhere}>
+            <svg className="icon"><use href="#i-refresh" /></svg>
+            רענן
+          </button>
+        </div>
       )}
 
       {/* באנר טיוטה מקומית: שינויים שלא נשמרו מביקור קודם בכרטיס (למשל דפדפן שנסגר).
