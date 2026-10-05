@@ -52,7 +52,7 @@ export async function load(url, ctx, next) {
   if (url === 'mock:permissions') return mod('const T=globalThis.__T; export const canOpenPage=async(k)=>{T.asked.push(k);return T.pages.has(k);}; export const canOpenAnyPage=async(ks)=>{T.asked.push(ks.join("|"));return ks.some((k)=>T.pages.has(k));};');
   if (url === 'mock:settings') return mod('const T=globalThis.__T; export const getAllCachedSettings=async()=>{ if (T.settingsFail) throw new Error("settings down"); return Object.entries(T.settings).map(([key,value])=>({key,value})); }; export const getCachedSetting=async(k)=>T.settings[k]!==undefined?{key:k,value:T.settings[k]}:null;');
   if (url === 'mock:deliveries') return mod('export const getDeliveriesForDate=async()=>({data:[]});');
-  if (url === 'mock:capacity') return mod('export const GET=async()=>new Response(JSON.stringify({inStock:0,occupiedCount:0,reserve:0,occupiedOrders:[]}),{status:200});');
+  if (url === 'mock:capacity') return mod('export const GET=async(r)=>{const c=globalThis.__T.capacity;return new Response(JSON.stringify(c?c(new URL(r.url)):{inStock:0,occupiedCount:0,reserve:0,occupiedOrders:[]}),{status:200});};');
   if (url === 'mock:next-server') return mod('export class NextResponse { static json(body, init){ return new Response(JSON.stringify(body), { status:(init&&init.status)||200, headers:{"content-type":"application/json"} }); } }');
   if (url === 'mock:next-headers') return mod('export const cookies=async()=>({get(){return undefined}});');
   return next(url, ctx);
@@ -124,6 +124,7 @@ function resetT() {
   Object.assign(T, {
     authed: true, head: false, pages: new Set(), asked: [], settings: {}, settingsFail: false,
     orders: [], refunds: [], employees: [], rawRows: [], rawFail: false, calls: [], raw: [], orderFail: null,
+    models: [], dressItems: [], capacity: null,
   });
 }
 resetT();
@@ -134,6 +135,16 @@ T.prisma = {
   },
   refund: { findMany: async (args) => { count('refund.findMany', args); return runFind(T.refunds, args); } },
   employee: { findMany: async (args) => { count('employee.findMany', args); return runFind(T.employees, args); } },
+  dressModel: { findMany: async (args) => { count('dressModel.findMany', args); return runFind(T.models, args); } },
+  dressItem: {
+    findMany: async (args) => { count('dressItem.findMany', args); return runFind(T.dressItems, args); },
+    groupBy: async (args) => {
+      count('dressItem.groupBy', args);
+      const m = new Map();
+      for (const r of T.dressItems.filter((x) => evalWhere(x, args.where))) m.set(r.sizeText, (m.get(r.sizeText) || 0) + 1);
+      return [...m].map(([sizeText, n]) => ({ sizeText, _count: { _all: n } }));
+    },
+  },
   $queryRaw: async (strings, ...values) => {
     count('$queryRaw', { sql: strings.join('?'), values });
     T.raw.push({ sql: strings.join('?'), values });
@@ -669,6 +680,98 @@ await t('שגיאת DB -> 500 עם הודעה כללית בעברית', async ()
   const { status, body } = await fin('flags=fn_debt');
   assert.equal(status, 500);
   assert.equal(body.error, 'שגיאה בחיפוש המתקדם');
+});
+
+// ---------------------------------------------------------------- דיווחים 27b0f8a5 / 113e5c37 (נווה יעקב, 5.10.2026)
+console.log('adv-b דגמים: מידה = המידה עצמה בלבד (27b0f8a5)');
+const mdl = (id, name, prefix, sizes) => ({ id, name, barcodePrefix: prefix, isDeleted: false, items: sizes.map((s) => ({ quantity: 1, isDeleted: false, sizeText: s, inRepair: false, dressBarcode: null })) });
+const modelsCall = async (qs) => { const res = await advb.GET(req('/api/a5/adv-b?focus=models&' + qs)); return { status: res.status, body: await res.json() }; };
+await t('מידה 38 לא מוצאת דגם שיש לו רק 38.1 / 38.2 / 138 / 380', async () => {
+  allow('page:dresses_catalog'); T.head = true;
+  T.models = [mdl(1, 'שמלה א', 501, ['38.1', '38.2']), mdl(2, 'שמלה ב', 502, ['138', '380', '3']), mdl(3, 'שמלה ג', 503, ['38']), mdl(4, 'שמלה ד', 504, ['38.1', '38'])];
+  const { status, body } = await modelsCall('size=38');
+  assert.equal(status, 200);
+  assert.deepEqual(body.rows.map((r) => r[0]).sort(), ['שמלה ג', 'שמלה ד'], 'רק דגמים שיש להם בדיוק מידה 38');
+  const d = body.rows.find((r) => r[0] === 'שמלה ד');
+  assert.equal(d[2], '1', 'הכמות סופרת רק את פריט המידה 38 (לא 38.1)');
+});
+await t('"6" ו-"06" ו-" 06" הן אותה מידה, אבל לא 06.1 / 16 / 60', async () => {
+  allow('page:dresses_catalog'); T.head = true;
+  T.models = [mdl(1, 'א', 1, ['06']), mdl(2, 'ב', 2, ['6']), mdl(3, 'ג', 3, [' 06']), mdl(4, 'ד', 4, ['06.1']), mdl(5, 'ה', 5, ['16']), mdl(6, 'ו', 6, ['60'])];
+  for (const typed of ['6', '06', ' 6 ']) {
+    const { body } = await modelsCall('size=' + encodeURIComponent(typed));
+    assert.deepEqual(body.rows.map((r) => r[0]).sort(), ['א', 'ב', 'ג'], 'הוקלד "' + typed + '"');
+  }
+  const dotted = await modelsCall('size=06.1');
+  assert.deepEqual(dotted.body.rows.map((r) => r[0]), ['ד'], 'מי שמקלידה 06.1 מקבלת את המידה העשרונית');
+});
+await t('גמ"ח ראשי (מספרים בלבד, "06" עם אפס): "6" מוצאת 06, "3" לא מוצאת 30..38', async () => {
+  allow('page:dresses_catalog'); T.head = true;
+  T.models = [mdl(1, 'א', 1, ['06', '38']), mdl(2, 'ב', 2, ['30', '32', '36', '10'])];
+  assert.deepEqual((await modelsCall('size=6')).body.rows.map((r) => r[0]), ['א']);
+  assert.deepEqual((await modelsCall('size=3')).body.rows.map((r) => r[0]), []);
+  assert.deepEqual((await modelsCall('size=38')).body.rows.map((r) => r[0]), ['א']);
+});
+await t('הסינון נעשה בשאילתה עצמה (in = כתיבים מדויקים), לא contains', async () => {
+  allow('page:dresses_catalog'); T.head = true;
+  T.models = [mdl(1, 'א', 1, ['38'])];
+  await modelsCall('size=38');
+  const q = JSON.stringify(T.calls.find((c) => c.name === 'dressModel.findMany').args.where);
+  assert.ok(q.includes('"sizeText":{"in":[') && !q.includes('"sizeText":{"contains"'), q.slice(0, 300));
+});
+
+console.log('adv-b תפוסה: ברקוד רק כשהשמלה כבר יצאה למשפחה (113e5c37)');
+const capCall = async (qs) => { const res = await advb.GET(req('/api/a5/adv-b?focus=capacity&' + qs)); return { status: res.status, body: await res.json() }; };
+const capOrder = (id, o = {}) => ({ id, orderId: id, internalOrderId: 'u' + id, customerName: 'רחל כהן', eventDate: dayStart(2), returnDate: null, eventDateHebrew: 'כ״ג תשרי תשפ״ז', quantity: 1, barcodes: [], ...o });
+await t('הזמנה שהשמלה יצאה בה: הברקוד במערך barcodes; הזמנה שעוד לא נלקחה: מחרוזת ריקה (לא ממציאים ברקוד); מבנה העמודות לא משתנה', async () => {
+  allow('page:orders');
+  T.models = [{ id: 9, name: 'דגם 557', barcodePrefix: 557, isDeleted: false }];
+  const o1 = capOrder(70001, { barcodes: ['5570601'] });
+  const o2 = capOrder(70002, { barcodes: [] });
+  T.orders = [{ orderId: 70001, customer: { phone1: '0524418210', firstName: 'רחל', lastName: 'כהן' } }, { orderId: 70002, customer: { phone1: '0501234567', firstName: 'לאה', lastName: 'לוי' } }];
+  T.capacity = (u) => { assert.equal(u.searchParams.get('size'), '06'); return { inStock: 3, reserve: 0, occupiedCount: 2, occupiedOrders: [o1, o2] }; };
+  const { status, body } = await capCall('model=557&size=06&from=' + todayKey);
+  assert.equal(status, 200);
+  assert.deepEqual(body.cols, ['שם', 'תאריך אירוע', 'כמות', 'טלפון'], 'העמודות כמו קודם (גם /a5 הסטטי מסתמך עליהן)');
+  assert.equal(body.rows.length, 2);
+  const byLink = Object.fromEntries(body.links.map((l, i) => [l, body.rows[i]]));
+  const bcByLink = Object.fromEntries(body.links.map((l, i) => [l, body.barcodes[i]]));
+  assert.equal(bcByLink['/orders/70001'], '5570601');
+  assert.equal(bcByLink['/orders/70002'], '', 'לא יצאה - בלי ברקוד');
+  assert.equal(body.barcodes.length, body.rows.length);
+  assert.equal(body.rows.every((r) => r.length === 4), true, 'אין תא ברקוד בשורות');
+});
+await t('כמה שמלות באותה הזמנה (כמה מידות/צמדים): ברקודים ייחודיים מחוברים בפסיק', async () => {
+  allow('page:orders');
+  T.models = [{ id: 9, name: 'דגם 557', barcodePrefix: 557, isDeleted: false }];
+  T.orders = [{ orderId: 70003, customer: { phone1: '', firstName: 'ש', lastName: 'ג' } }];
+  T.capacity = () => ({ inStock: 1, reserve: 0, occupiedCount: 2, occupiedOrders: [capOrder(70003, { quantity: 2, barcodes: ['5570601', '5570602', '5570601'] })] });
+  const { body } = await capCall('model=557&size=06&from=' + todayKey);
+  assert.equal(body.rows[0][2], '2');
+  assert.equal(body.barcodes[0], '5570601, 5570602');
+  assert.equal(body.rows[0].length, 4);
+});
+await t('אין דגם תואם: התשובה הריקה עם אותן עמודות', async () => {
+  allow('page:orders');
+  T.models = [];
+  const { body } = await capCall('model=999&from=' + todayKey);
+  assert.deepEqual(body.cols, ['שם', 'תאריך אירוע', 'כמות', 'טלפון']);
+  assert.deepEqual(body.rows, []);
+});
+
+console.log('הצעות מידה (/api/a5/options): בלי 38.1 / 38.2 כשמקלידים 38 (27b0f8a5)');
+const opt = await import('../app/api/a5/options/route.js');
+const sizeOpts = async (typed) => { const res = await opt.GET(req('/api/a5/options?key=size&focus=capacity&typed=' + encodeURIComponent(typed))); return { status: res.status, body: await res.json() }; };
+const di = (s) => ({ isDeleted: false, sizeText: s });
+await t('"38" מציעה 38 בלבד; "38." מציעה את העשרוניות; בלי טקסט — בלי עשרוניות', async () => {
+  allow('page:orders');
+  T.dressItems = ['38', '38', '38.1', '38.2', '36', '06', '06.1', '380'].map(di);
+  const a = await sizeOpts('38');
+  assert.equal(a.status, 200);
+  assert.deepEqual(a.body.options, ['38', '380']);
+  assert.deepEqual((await sizeOpts('38.')).body.options, ['38.1', '38.2']);
+  assert.deepEqual((await sizeOpts('06')).body.options, ['06']);
+  assert.deepEqual((await sizeOpts('')).body.options.sort(), ['06', '36', '38', '380'].sort());
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ', WITH FAILURES' : ''}`);
