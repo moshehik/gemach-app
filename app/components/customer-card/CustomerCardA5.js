@@ -20,7 +20,7 @@ import CcRail from './CcRail';
 import CcRich, { RichLine } from './CcRich';
 import useCustomerCard from './useCustomerCard';
 import useFreshKeys from './useFreshKeys';
-import { orderEventIso, orderRequired, signatureState, sortOrders } from './customerCardLogic';
+import { orderEventIso, orderRequired, signatureOrderText, signatureState, sortOrders } from './customerCardLogic';
 import CcDetailsTab from './tabs/CcDetailsTab';
 import CcOrdersTab from './tabs/CcOrdersTab';
 import CcPaymentsTab from './tabs/CcPaymentsTab';
@@ -151,7 +151,7 @@ function useRichRender(cc) {
     if (t === 'sig') {
       const s = signatureState(cc.cur);
       return s.signed
-        ? <RichLine icon="note">{`נחתם בהזמנה #${s.orderId}${s.at ? ` · ${getHebrewDateString(s.at)}` : ''}`}</RichLine>
+        ? <RichLine icon="note">{`נחתם${signatureOrderText(s)}${s.at ? ` · ${getHebrewDateString(s.at)}` : ''}`}</RichLine>
         : <RichLine icon="x">לא נחתם באף הזמנה</RichLine>;
     }
     if (t === 'orders') {

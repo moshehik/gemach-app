@@ -100,6 +100,28 @@ await t('CC-O6: בלי העמודות החתימה נגזרת מההזמנות, 
   assert.ok(!/hasSignedRegulations|regulationsSignedAt/.test(code(read('app/api/customers/[id]/route.js'))), 'השרת לא כותב את העמודות');
 });
 
+// ---- חתימה: החלקים הבטוחים של ההפעלה העתידית (SIGNATURE-FLIP-PLAN) - בלי נגיעה בסכמה / ב-PUT ----
+await t('CC-O6b: אין "#null" בטקסט החתימה (חתימה ברמת לקוח בלי הזמנה מקושרת), והשלושה משתמשים ב-signatureOrderText', () => {
+  assert.equal(logic.signatureOrderText({ signed: true, orderId: 7 }), ' בהזמנה #7');
+  for (const s of [{ orderId: null }, { orderId: undefined }, {}, null, undefined]) assert.equal(logic.signatureOrderText(s), '', JSON.stringify(s));
+  // כשהדגל יידלק (orderId null) - אין "#null" בשום משטח; בטוח גם כרגע (נגזר: יש orderId)
+  for (const f of [`${CC}/tabs/CcDetailsTab.js`, `${CC}/CustomerCardA5.js`, 'app/print/customer/page.js']) {
+    const src = code(read(f));
+    assert.match(src, /signatureOrderText/, f);
+    assert.ok(!/בהזמנה #\$\{(sig|s)\.orderId\}|נחתם בהזמנה #/.test(src), `${f}: נשאר "#orderId" ישיר`);
+  }
+});
+await t('CC-O6b: תוויות ההיסטוריה של שני שדות החתימה קיימות (בלי מפתח גולמי), והסכמה עוד לא נגעה', async () => {
+  const labels = await import('../../lib/history/labels.js');
+  assert.equal(labels.CUSTOMER_ONLY_FIELD_LABELS.hasSignedRegulations, 'חתימה על התקנון');
+  assert.equal(labels.CUSTOMER_ONLY_FIELD_LABELS.regulationsSignedAt, 'מועד החתימה על התקנון');
+  assert.equal(logic.SIGNATURE_COLUMNS_READY, false, 'ההפעלה היא צעד נפרד (SIGNATURE-FLIP-PLAN)');
+  const schema = read('prisma/schema.prisma');
+  const start = schema.indexOf('model Customer {');
+  const model = schema.slice(start, schema.indexOf('}', start));
+  assert.ok(!/regulationsSignedAt|hasSignedRegulations/.test(model), 'schema.prisma לא אמור להכיל את העמודות לפני ההפעלה');
+});
+
 // ---- CC-O7: ערך ההגדרה לכל ארגון מחושב מהגדרות החובה הקיימות ----
 await t('CC-O7: computeCustomerRequiredFieldsFromLegacy - בסיס + require_* + mandatory_fields', () => {
   const f = lib.computeCustomerRequiredFieldsFromLegacy;

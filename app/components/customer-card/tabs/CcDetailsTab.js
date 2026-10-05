@@ -12,7 +12,7 @@ import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import CcIcon from '../CcIcon';
 import { CcEmailInput, CcInput, Tip, ViewRow } from '../CcFields';
-import { isStarred, joinNotes, signatureState, splitNotes } from '../customerCardLogic';
+import { isStarred, joinNotes, signatureOrderText, signatureState, splitNotes } from '../customerCardLogic';
 
 function EditBtn({ on, onClick, hidden }) {
   if (hidden) return null;
@@ -74,7 +74,7 @@ export default function CcDetailsTab({ cc, ui }) {
     </div>
   );
 
-  const sigText = sig.signed ? `חתמה בהזמנה #${sig.orderId}${sig.at ? ` · ${getHebrewDateString(sig.at)}` : ''}` : 'טרם נחתם';
+  const sigText = sig.signed ? `חתמה${signatureOrderText(sig)}${sig.at ? ` · ${getHebrewDateString(sig.at)}` : ''}` : 'טרם נחתם';
   const termsCard = (
     <div className="card">
       <div className="card-h"><div className="ico gold"><CcIcon name="note" size="lg" /></div><h2>תקנון ועדכונים</h2></div>

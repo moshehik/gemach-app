@@ -289,6 +289,9 @@ export function signatureState(customer) {
   return { signed: !!signedOrder, at: signedOrder ? (signedOrder.orderDate || null) : null, orderId: signedOrder ? signedOrder.orderId : null, derived: true };
 }
 
+/** "בהזמנה #N" לטקסט החתימה, ריק כשאין הזמנה מקושרת (חתימה ברמת לקוח אחרי הפעלת העמודות: orderId הוא null) - כך לא מוצג "#null". */
+export const signatureOrderText = (sig) => (sig && sig.orderId !== null && sig.orderId !== undefined ? ` בהזמנה #${sig.orderId}` : '');
+
 // ---------- סמני לשוניות (C-A5, J6) ----------
 export function tabMarkers({ customer, requiredKeys = [], balance = 0 }) {
   const out = {};

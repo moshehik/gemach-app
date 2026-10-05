@@ -13,7 +13,7 @@ import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { paymentNoteSummary } from '@/lib/history/sanitize';
 import {
-  accountSummary, displayName, orderEventIso, orderItemModels, orderPaid, orderRequired, paymentRows, sortOrders, splitNotes, signatureState,
+  accountSummary, displayName, orderEventIso, orderItemModels, orderPaid, orderRequired, paymentRows, sortOrders, splitNotes, signatureOrderText, signatureState,
 } from '@/app/components/customer-card/customerCardLogic';
 import { logCustomerEvent } from '@/app/components/customer-card/ccEvents';
 import { CUSTOMER_DOC_LABELS } from '@/lib/history/customerEvents';
@@ -117,7 +117,7 @@ export default function PrintCustomerPage() {
       content = (
         <>
           <h2>פרטי לקוחה</h2>
-          {kv([...contactRows, ['תעודת זהות', c.zeout], ['מספר לקוח', c.legacyId || ''], ['אישור דיוור', c.marketingConsent ? 'מאושר' : 'לא מאושר'], ['חתימה על תקנון', sig.signed ? `נחתם בהזמנה #${sig.orderId}` : 'טרם נחתם']])}
+          {kv([...contactRows, ['תעודת זהות', c.zeout], ['מספר לקוח', c.legacyId || ''], ['אישור דיוור', c.marketingConsent ? 'מאושר' : 'לא מאושר'], ['חתימה על תקנון', sig.signed ? `נחתם${signatureOrderText(sig)}` : 'טרם נחתם']])}
           {(manual.trim() || auto.length) ? (
             <>
               <h2>הערות</h2>
