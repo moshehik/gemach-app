@@ -79,7 +79,7 @@ export async function GET(request) {
     for (const x of [...items, ...pays]) if (x.order && x.order.id) { knownUuids.add(x.order.id); lookups.uuidToNumber.set(x.order.id, x.orderId); }
     const orderRows = knownUuids.size
       ? await prisma.auditLog.findMany({
-        where: { employeeId: who, entityType: 'Order', action: { in: ['CREATE', 'UPDATE'] }, entityId: { in: [...knownUuids] }, createdAt: { gte: since } },
+        where: { employeeId: who, entityType: 'Order', action: { in: ['CREATE', 'UPDATE', 'UPDATE_ORDER'] }, entityId: { in: [...knownUuids] }, createdAt: { gte: since } },
         orderBy, take: L.extraAuditRows, select: { ...select, changesJson: true },
       })
       : [];

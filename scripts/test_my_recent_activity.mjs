@@ -198,6 +198,18 @@ await t('pickCandidates (טיוטה): CREATE 10:00, שמירה סופית (טי�
   assert.equal(c.created[0].at, Date.parse(at(25)), 'רגע היצירה = השמירה הסופית, לא תחילת הטיוטה');
   assert.deepEqual(c.changed, []);
 });
+await t('pickCandidates (טיוטה): השמירה הסופית נכתבת כ-UPDATE_ORDER (PUT /api/orders/[id] מאז W0) - אותה תוצאה כמו UPDATE', () => {
+  const at = (m, sec = 0) => new Date(Date.UTC(2026, 9, 4, 7, 0 + m, sec)).toISOString();
+  const rows = [
+    { id: 'r1', entityType: 'Order', action: 'CREATE', createdAt: at(0), orderNumber: 7, changesJson: JSON.stringify({ status: 'טיוטה' }) },
+    { id: 'r2', entityType: 'Order', action: 'UPDATE_ORDER', createdAt: at(25), orderNumber: 7, changesJson: JSON.stringify({ status: { from: 'טיוטה', to: 'פעילה' } }) },
+    { id: 'r3', entityType: 'OrderItem', action: 'CREATE', createdAt: at(25, 1), orderNumber: 7 },
+  ];
+  const c = lib.pickCandidates(rows);
+  assert.deepEqual(c.created.map((x) => x.orderNumber), [7]);
+  assert.equal(c.created[0].at, Date.parse(at(25)), 'רגע היצירה = השמירה הסופית (UPDATE_ORDER), לא תחילת הטיוטה');
+  assert.deepEqual(c.changed, []);
+});
 await t('pickCandidates (טיוטה): שמירות טיוטה באמצע הן חלק מהיצירה; ערך סטטוס פשוט (בלי from) מזוהה לפי ה-CREATE; עריכה אחרי השמירה הסופית היא שינוי', () => {
   const at = (m, sec = 0) => new Date(Date.UTC(2026, 9, 4, 7, 0 + m, sec)).toISOString();
   const rows = [
