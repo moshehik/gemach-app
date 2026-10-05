@@ -385,7 +385,7 @@ export default async function RootLayout({ children }) {
 
   // תור ל-/api/log-visit: לפני זה כל קריאת /api/* יצרה POST נוסף משלה (כל קריאה = 2
   // invocations ב-Vercel + 2-3 שאילתות DB), ועל תוכנית Free זה בזבז גם מכסת invocations
-  // וגם תעבורת Neon. עכשיו הרשומות נאספות ונשלחות יחד: כל ~20 שנ', מיד ב-25 רשומות,
+  // וגם תעבורת Neon. עכשיו הרשומות נאספות ונשלחות יחד: כל ~60 שנ' (cpu-phase0; היה 20), מיד ב-25 רשומות,
   // ובסגירת הדף/מעבר לרקע (sendBeacon). ר' docs/vercel-resource-audit-2026-09-20.md.
   var visitQueue = [];
   var visitFlushTimer = null;
@@ -434,7 +434,7 @@ export default async function RootLayout({ children }) {
     entry.ts = Date.now();
     visitQueue.push(entry);
     if (visitQueue.length >= 25) { flushVisitQueue(false); return; }
-    if (!visitFlushTimer) visitFlushTimer = setTimeout(function() { flushVisitQueue(false); }, 20000);
+    if (!visitFlushTimer) visitFlushTimer = setTimeout(function() { flushVisitQueue(false); }, 60000);
   };
   document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') flushVisitQueue(true); });
   window.addEventListener('pagehide', function() { flushVisitQueue(true); });
