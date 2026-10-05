@@ -53,11 +53,15 @@ test('A27 / R23: בלי "לפי הגדרות הגמ״ח", בלי "ס״מ", בל�
   assert.match(add, /placeholder="אורך"/, 'R23: "אורך" בלי סוגריים');
 });
 
-test('A10: כל לחצני הסרגל (רשימה / טבלה / פרטי תיקונים / מחוקים) מאותו רכיב ובאותה מחלקה btn tgl, ✓ כשנבחר; אין מתג vsw', () => {
+// עודכן 2026-10-05 (הערת בעלים): רשימה/טבלה = מתג דו-מצבי אחד (.vsw, OcViewSwitch) כמו בהיסטוריה/בכרטיס הלקוח, לא שני לחצנים נפרדים;
+// פרטי תיקונים ומחוקים נשארים לחצני btn tgl (✓ כשנבחר) מאותו רכיב BarToggle.
+test('A10: פרטי תיקונים / מחוקים מאותו BarToggle (btn tgl, ✓ כשנבחר); רשימה/טבלה = מתג vsw דו-מצבי משותף', () => {
   const tab = CODE['tabs/OcItemsTab.js'];
   const bar = tab.slice(tab.indexOf('<div className="hres-bar">'), tab.indexOf('<div className="hres">'));
-  assert.equal((bar.match(/<BarToggle /g) || []).length, 4);
-  assert.ok(!/<button/.test(bar), 'כל הלחצנים דרך BarToggle');
+  assert.equal((bar.match(/<BarToggle /g) || []).length, 2);
+  assert.ok(!/<button/.test(bar), 'כל הלחצנים דרך BarToggle / OcViewSwitch');
+  assert.match(bar, /<OcViewSwitch value=\{view\} onChange=\{setView\} act="view" \/>/);
+  assert.ok(!/view-list|view-table/.test(bar.replace(/act="view"/, '')), 'אין עוד שני BarToggle נפרדים לרשימה/טבלה');
   assert.match(bar, /<BarToggle id="delToggle"/);
   assert.match(tab, /className=\{`btn tgl oc-bt\$\{on \? ' on' : ''\}`\}/);
   assert.match(tab, /\{on \? <OcIcon name="check" size="sm" className="evck" \/> : null\}/);
