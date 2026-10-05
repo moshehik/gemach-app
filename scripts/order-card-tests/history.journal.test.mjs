@@ -273,3 +273,65 @@ test('שמות משמרות: buildOrderJournal מעביר את ההגדרות ל
   assert.equal(nodes(named).pay.shift.title, 'משמרת ערב · 16:00–24:00', 'צומת התשלום (17:30) = ערב');
   assert.deepEqual(buildOrderJournal({ ...base, shiftDefinitions: [] }), plain, 'הגדרות ריקות = בדיוק כמו בלי');
 });
+
+// ---- 2026-10-05, דיווח הבעלים (צילום): הזמנה שהוחזרה (החזרה ידנית היום 15:00) נשארה על "הכנה" כ"שלב הנוכחי" עם "סמן הכנה בוצעה" ----
+const RET_ORDER = {
+  ...ORDER,
+  items: [{ id: 'a1', sleeveAlteration: 0, isTaken: true, takenDate: IL('2026-10-06', '11:00'), isReturned: true, returnDate: IL('2026-10-11', '15:00'), returnedOk: true },
+    { id: 'a2', sleeveAlteration: 0, isTaken: true, takenDate: IL('2026-10-06', '11:00'), isReturned: true, returnDate: IL('2026-10-11', '15:00'), returnedOk: true }],
+};
+const RET_AUDIT = [
+  { entityType: 'Order', entityId: 'x', action: 'CREATE', createdAt: IL('2026-09-23', '10:12'), employeeName: 'רחל כהן' },
+  { entityType: 'OrderItem', entityId: 'a1', action: 'RETURN_RENTAL', createdAt: IL('2026-10-11', '15:00'), employeeName: 'דוד לוי' },
+  { entityType: 'OrderItem', entityId: 'a2', action: 'RETURN_RENTAL', createdAt: IL('2026-10-11', '15:00'), employeeName: 'דוד לוי' },
+];
+
+test('צילום הבעלים: הזמנה שהוחזרה (הכנה בעבר ולא סומנה, אירוע בעבר, החזרה היום) -> אין שלב נוכחי, אין סימון הכנה', () => {
+  const todayKey = '2026-10-11';
+  const old = computeOrderStages(RET_ORDER, { schedule: ORG_MAIN, todayKey });
+  assert.equal(old.currentKey, 'prep', 'ברירת המחדל (לו״ז/ללא אפשרות) לא השתנתה');
+  const r = computeOrderStages(RET_ORDER, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
+  assert.equal(byKey(r, 'manret').done, true);
+  assert.equal(r.closed, true);
+  assert.equal(r.currentKey, null);
+  assert.ok(r.stages.every((s) => !s.current));
+  const prep = byKey(r, 'prep');
+  assert.equal(prep.done, false);
+  assert.equal(prep.markable, false, 'לא מוצע "סמן הכנה בוצעה"');
+  assert.equal(prep.closedByReturn, true);
+  const j = buildOrderJournal({ order: { orderId: 53375, orderDate: RET_ORDER.orderDate }, stages: r.stages, auditRows: RET_AUDIT, items: RET_ORDER.items, payments: [], todayKey });
+  assert.equal(j.currentKey, null);
+  assert.ok(j.nodes.every((n) => !n.current), 'אף צומת ביומן לא "נוכחי"');
+  const man = j.nodes.find((n) => n.key === 'manret');
+  assert.equal(man.done, true);
+  assert.equal(man.when.time, '15:00');
+  assert.equal(man.who, 'דוד לוי');
+});
+
+test('שלב ההחזרה סומן בלו״ז (בלי עובדת הפריטים) = סגור; משלוח חזור בוצע = סגור', () => {
+  const marked = computeOrderStages(ORDER, { schedule: ORG_MAIN, todayKey: '2026-10-12', closeWhenReturned: true,
+    marks: [{ stageKey: 'manret', dayKey: '2026-10-11', done: true, markedAt: IL('2026-10-11', '15:00'), markedBy: 'דוד לוי' }] });
+  assert.equal(marked.currentKey, null);
+  assert.equal(byKey(marked, 'prep').closedByReturn, true);
+  const del = computeOrderStages({ ...RET_ORDER, isDelivery: true, deliveryDirection: 'הלוך-חזור' }, { schedule: ORG_NEVE, todayKey: '2026-10-12', closeWhenReturned: true });
+  assert.equal(byKey(del, 'dback').done, true);
+  assert.equal(del.currentKey, null);
+});
+
+test('מקרי גבול: אין החזרה = הכנה נשארת נוכחית; החזרה חלקית לא סוגרת; הזמנה מבוטלת סגורה; ריק לא נחשב "הוחזר"', () => {
+  const todayKey = '2026-10-11';
+  const none = computeOrderStages(ORDER, { schedule: ORG_MAIN, todayKey: '2026-10-04', closeWhenReturned: true });
+  assert.equal(none.currentKey, 'prep');
+  assert.equal(none.closed, false);
+  assert.ok(byKey(none, 'prep').markable && !byKey(none, 'prep').closedByReturn);
+  const partial = computeOrderStages({ ...RET_ORDER, items: [RET_ORDER.items[0], { id: 'a2', sleeveAlteration: 0, isTaken: true }] }, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
+  assert.equal(partial.closed, false, 'return of one of two items is not a closed order');
+  assert.equal(partial.currentKey, 'prep');
+  const cancelled = computeOrderStages({ ...ORDER, isDeleted: true }, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
+  assert.equal(cancelled.closed, true);
+  assert.equal(cancelled.currentKey, null);
+  const empty = computeOrderStages({ ...ORDER, items: [] }, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
+  assert.equal(empty.closed, false, 'no items is not "all returned"');
+  const deletedOnly = computeOrderStages({ ...RET_ORDER, items: [...RET_ORDER.items, { id: 'z', isDeleted: true }] }, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
+  assert.equal(deletedOnly.closed, true, 'a deleted item does not keep the order open');
+});

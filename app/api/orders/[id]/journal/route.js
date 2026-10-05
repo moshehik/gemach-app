@@ -68,7 +68,8 @@ export async function GET(request, { params }) {
     const schedule = resolveScheduleSettings(map);
     const delivery = { daysBefore: intOr(map.delivery_days_before, 1), daysAfter: intOr(map.delivery_days_after, 1), skipWeekends: map.delivery_skip_weekends === 'true' };
 
-    const { stages, currentKey } = computeOrderStages({ ...order, items }, { schedule, delivery, marks: marksRes.marks || [], todayKey });
+    // closeWhenReturned: הזמנה שהוחזרה במלואה / שבוטלה = בלי "שלב נוכחי" ובלי הצעת סימון הכנה (lib/schedule/orderStages.js)
+    const { stages, currentKey, closed } = computeOrderStages({ ...order, items }, { schedule, delivery, marks: marksRes.marks || [], todayKey, closeWhenReturned: true });
 
     // audit rows that say who did a stage (creation, repairs, rental, return, payment)
     const or = [{ entityType: 'Order', entityId: { in: [order.id, String(order.orderId)] }, action: 'CREATE' }];
@@ -118,6 +119,7 @@ export async function GET(request, { params }) {
       today: dayLabels(todayKey),
       stages: stages.map(publicStage),
       currentKey,
+      closed: !!closed,
       journal: journal.nodes,
       marksAvailable: !!marksRes.available,
       canMark: !!marksRes.available,
