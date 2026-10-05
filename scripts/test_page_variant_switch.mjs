@@ -31,7 +31,7 @@ async function t(name, fn) {
 }
 const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
 const NEW_SCREENS = ['profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'];
-const BOTH = ['shell', 'home', 'order_card', 'customer_card', ...NEW_SCREENS]; // סדר הרשומה: order_card, customer_card אחרי home
+const BOTH = ['shell', 'home', 'order_card', 'customer_card', 'new_order', ...NEW_SCREENS]; // סדר הרשומה: order_card, customer_card אחרי home; new_order (6.10.2026) אחרי customer_card (employee_card ביניהם, עדיין בלי חדש)
 
 console.log('1. הרשומה המרכזית');
 await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך, מפתח הגדרה ui_variant_<id>', () => {
@@ -49,9 +49,9 @@ await t('מזהים ייחודיים, שדות חובה, נתיבים כמערך
   assert.deepEqual(UI_SCREENS, UI_SCREEN_IDS, 'lib/uiVariant.js נגזר מהרשומה');
   assert.equal(UI_VARIANT_SETTING_KEY_LIST.length, UI_SCREEN_IDS.length);
 });
-await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / order_card / customer_card; employee_card / new_order עוד לא', () => {
+await t('המצב היום: שתי הגרסאות קיימות ב-shell / home / profile / admin_hub / attendance / error_report / board / order_card / customer_card / new_order (6.10.2026); employee_card עוד לא', () => {
   for (const id of BOTH) assert.equal(hasBothVersions(id), true, id);
-  for (const id of ['employee_card', 'new_order']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
+  for (const id of ['employee_card']) { assert.equal(hasBothVersions(id), false, id); assert.equal(getScreenEntry(id).newExists, false); }
   assert.deepEqual(selfSwitchableScreenIds(), BOTH);
   assert.equal(getScreenEntry('__proto__'), null); assert.equal(getScreenEntry('constructor'), null); assert.equal(getScreenEntry('SHELL'), null);
 });
@@ -86,6 +86,39 @@ await t('employee_card: /employees/:id לא תופס את /employees/attendance 
   assert.equal(roleDefaultVariant('employee_card', 2), 'legacy', 'מתכנת לא מקבל את הכרטיס החדש כברירת מחדל עד שהבעלים מאשר');
   assert.equal(resolveUiVariant('employee_card', { roleId: 0, settings: rows({ ui_variant_employee_card: 'a5' }) }), 'a5', 'הגדרת ארגון עדיין מדליקה');
   assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'employee_card', pathname: '/employees/abc' }), false, 'newExists:false -> אין אייקון');
+});
+await t('new_order (6.10.2026): /orders/new שייך רק ל-new_order ו-/orders/:id רק ל-order_card; מתכנת - חדש כברירת מחדל, כל השאר ישן; אייקון רק להנהלה / מתכנת ורק ב-/orders/new', async () => {
+  const e = getScreenEntry('new_order');
+  assert.equal(e.newExists, true); assert.equal(e.selfSwitch, true); assert.equal(e.legacyExists, true);
+  assert.deepEqual([...e.routes], ['/orders/new']);
+  assert.equal(screenMatchesPath('new_order', '/orders/new'), true);
+  assert.equal(screenMatchesPath('new_order', '/orders/new/'), true);
+  assert.equal(screenMatchesPath('new_order', '/orders/new?customerId=5'), true);
+  assert.equal(screenMatchesPath('order_card', '/orders/new'), false, 'excludeRoutes של order_card');
+  assert.equal(screenMatchesPath('order_card', '/orders/123'), true);
+  assert.equal(screenMatchesPath('new_order', '/orders/123'), false);
+  assert.equal(screenMatchesPath('new_order', '/orders'), false);
+  for (const roleId of [0, 1, 3, null, undefined]) assert.equal(roleDefaultVariant('new_order', roleId), 'legacy', `role ${String(roleId)}`);
+  assert.equal(roleDefaultVariant('new_order', 2), 'a5');
+  assert.equal(resolveUiVariant('new_order', { roleId: 2, settings: rows({ ui_variant_new_order: 'legacy' }) }), 'legacy', 'הגדרת ארגון גוברת');
+  assert.equal(resolveUiVariant('new_order', { roleId: 0, settings: rows({ ui_variant_new_order: 'a5' }) }), 'a5');
+  for (const roleId of [0, 2]) {
+    assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'new_order', pathname: '/orders/new' }), true);
+    assert.ok(canSelfSwitchScreen(roleId, 'new_order'));
+  }
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: false, screen: 'new_order', pathname: '/orders/new' }), false);
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'new_order', pathname: '/orders/123' }), false, 'לא בכרטיס ההזמנה');
+  assert.equal(shouldShowVariantToggle({ canSelfSwitch: true, screen: 'order_card', pathname: '/orders/new' }), false, 'לא של order_card באשף ההזמנה החדשה');
+  const L = await import('../lib/pageVariantToggle.js');
+  assert.deepEqual(L.toggleLabelsFor('new_order'), { toNew: 'מעבר לאשף ההזמנה החדש', toOld: 'חזרה לאשף ההזמנה הישן' });
+});
+await t('new_order: NewOrderSwitch עוטף ב-VariantFrame (פינה בישן), האשף החדש מציג PageVariantToggle בכותרת, הקובץ הישן לא נוגע', () => {
+  const sw = code(read('app/components/new-order/NewOrderSwitch.js'));
+  assert.match(sw, /variant !== 'a5'\) return <VariantFrame screen="new_order" variant="legacy"><LegacyNewOrderPage \/><\/VariantFrame>/);
+  assert.match(sw, /return <VariantFrame screen="new_order" variant="a5"><NewOrderA5 \/><\/VariantFrame>/);
+  const a5 = code(read('app/components/new-order/NewOrderA5.js'));
+  assert.match(a5, /<PageVariantToggle screen="new_order" placement="header" systemTip \/>/);
+  assert.ok(!/useCanSelfSwitch|VariantFrame/.test(code(read('app/orders/new/LegacyNewOrderPage.js'))), 'הקובץ הישן נשאר קפוא (אין בו כלום מהמעבר)');
 });
 await t('matchRoute / switchTargetFor', () => {
   assert.ok(matchRoute('/orders/:id', '/orders/12')); assert.ok(matchRoute('/orders/:id', '/orders/12/?x=1'));

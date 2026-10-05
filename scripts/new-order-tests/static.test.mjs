@@ -17,18 +17,21 @@ const CODE = ALL.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 const VIEW = ['NewOrderA5.js', 'StepCustomer.js', 'StepDates.js', 'StepDelivery.js', 'StepItems.js', 'StepSummary.js', 'StepPayment.js', 'NoDialogs.js', 'NoHebrewCalendar.js']
   .map(read).join('\n').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-test('המתג: מסך new_order, ברירת מחדל legacy, לא ניתן להחלפה עצמית, page.js עטיפה דקה', () => {
+test('המתג: מסך new_order, ברירת מחדל legacy (חדש למתכנת בלבד, 6.10.2026), ניתן להחלפה עצמית, page.js עטיפה דקה', () => {
   assert.ok(UI_SCREENS.includes('new_order'));
   assert.equal(UI_VARIANT_SETTING_KEYS.new_order, 'ui_variant_new_order');
   assert.equal(resolveUiVariant('new_order', {}), 'legacy');
   assert.equal(resolveUiVariant('new_order', { settings: [{ key: 'ui_variant_new_order', value: 'a5' }] }), 'a5');
-  assert.ok(!SELF_SWITCH_SCREENS.includes('new_order'));
+  assert.equal(resolveUiVariant('new_order', { roleId: 2 }), 'a5', 'מתכנת - חדש כברירת מחדל');
+  for (const r of [0, 1, 3, null]) assert.equal(resolveUiVariant('new_order', { roleId: r }), 'legacy', `role ${r}`);
+  assert.ok(SELF_SWITCH_SCREENS.includes('new_order'));
   const page = fs.readFileSync(path.join(process.env.PROJ, 'app/orders/new/page.js'), 'utf8');
   assert.match(page, /NewOrderSwitch/);
   assert.ok(page.split('\n').length < 20, 'page.js חייב להישאר עטיפה דקה');
   const sw = read('NewOrderSwitch.js');
   assert.match(sw, /useUiVariant\('new_order'\)/);
-  assert.match(sw, /if \(variant !== 'a5'\) return <LegacyNewOrderPage \/>/);
+  assert.match(sw, /variant !== 'a5'\) return <VariantFrame screen="new_order" variant="legacy"><LegacyNewOrderPage \/><\/VariantFrame>/);
+  assert.match(read('NewOrderA5.js'), /<PageVariantToggle screen="new_order" placement="header" systemTip \/>/);
   // הקובץ הישן הועבר כמו שהוא - עדיין מייצא את הדף עם אותה פונקציה
   assert.match(LEGACY_SRC, /export default function NewOrderPage\(\)/);
 });
