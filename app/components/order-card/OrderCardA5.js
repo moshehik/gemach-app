@@ -15,6 +15,7 @@ import './css/oc-history.css';
 import './css/oc-docs.css';
 import { useLayoutEffect, useRef, useState } from 'react';
 import usePageTooltip from '@/app/components/profile/usePageTooltip';
+import useIconAnim from './hooks/useIconAnim';
 import useOrderCardController from './useOrderCardController';
 import { OcUiProvider, useOcUi } from './OcUi';
 import { OcPortalRoot } from './OcPortal';
@@ -33,6 +34,8 @@ export default function OrderCardA5({ orderRef }) {
   const [portalEl, setPortalEl] = useState(null);
   // המעטפת A5 מטפלת בטולטיפים רק באזור הכותרת שלה - הכרטיס מטפל בשלו תמיד (כמו הפרופיל)
   usePageTooltip(rootRef, ttRef, false);
+  // אנימציות האייקונים של העיצוב (ריחוף + כניסה) - כל ה-CSS בפלטה, רק הוספת המחלקות (ICON-ANIM בדמו)
+  useIconAnim(rootRef);
   return (
     <div className="gm-ds gm-oc home-bg dlg-dark" dir="rtl" ref={rootRef}>
       <OcSprite />

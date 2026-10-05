@@ -213,3 +213,32 @@ test('PageVariantToggle בכותרת: מחוץ לזרימה (absolute) ברוו�
   assert.match(strip(read(`${OC}/OcTopbar.js`)), /<PageVariantToggle screen="order_card" placement="header" systemTip \/>/, 'הרכיב עצמו לא השתנה');
   assert.match(read('app/components/variant/pageVariantToggle.css'), /\.gm-pvt\{position:relative;display:inline-flex/);
 });
+
+// דוח ההשוואה F7: אנימציות האייקונים של העיצוב (ICON-ANIM) - אותו מנגנון, ה-CSS בפלטה
+test('useIconAnim: prepIcon מוסיף ia-<שם> + ia-h (לא בהקשרי .gl/.cl-i/.cart-t), אחת לאייקון; מזהה מ-#gmi-<שם>', async () => {
+  const H = await P(`${OC}/hooks/useIconAnim.js`);
+  const mk = (href, skip = false) => { const cls = new Set(); return { cls, querySelector: () => (href === null ? null : { getAttribute: (a) => (a === 'href' ? href : null) }), classList: { add: (c) => cls.add(c) }, closest: (sel) => (skip && /\.gl/.test(sel) ? {} : null) }; };
+  const a = mk('#gmi-card');
+  assert.equal(H.prepIcon(a), 'card');
+  assert.deepEqual([...a.cls].sort(), ['ia-card', 'ia-h']);
+  assert.equal(H.prepIcon(a), 'card');
+  assert.equal(a.cls.size, 2, 'אחת לאייקון');
+  const g = mk('#gmi-user', true);
+  H.prepIcon(g);
+  assert.deepEqual([...g.cls], ['ia-user'], 'בהקשר .gl אין ia-h (כמו SKIP_H בדמו)');
+  assert.equal(H.prepIcon(mk(null)), '');
+  assert.equal(H.iconIdOf(mk('#gmi-truck')), 'truck');
+});
+
+test('useIconAnim: מחובר לשורש הכרטיס; MutationObserver + ia-in מדורג (14 לפעימה) + ia-dr לאייקוני ציור; מכבד reduced-motion; CSS רק בפלטה', () => {
+  const hook = strip(read(`${OC}/hooks/useIconAnim.js`));
+  assert.match(hook, /new MutationObserver/);
+  assert.match(hook, /const cap = first \? 1e9 : \(now - last < 250 \? 0 : 14\)/);
+  assert.match(hook, /DRAW\.has\(id\)\) s\.classList\.add\('ia-dr'\)/);
+  assert.match(hook, /prefers-reduced-motion: reduce/);
+  assert.match(hook, /e\.animationName === 'gm-ia-in' \|\| e\.animationName === 'gm-ia-draw'/);
+  assert.match(strip(read(`${OC}/OrderCardA5.js`)), /useIconAnim\(rootRef\);/);
+  const ds = read('design-system/components.css');
+  for (const s of ['@keyframes gm-ia-in{', '.gm-ds svg.ic.ia-in{animation:gm-ia-in', '.gm-ds svg.ic.ia-h:hover:not(#_){animation:var(--ia-a)', '.gm-ds svg.ic.ia-in,.gm-ds svg.ic.ia-h{animation:none!important}']) assert.ok(ds.includes(s), s);
+  assert.ok(/@media \(prefers-reduced-motion:reduce\)\{\s*\.gm-ds svg\.ic\.ia-in,\.gm-ds svg\.ic\.ia-h/.test(ds), 'prefers-reduced-motion בפלטה');
+});
