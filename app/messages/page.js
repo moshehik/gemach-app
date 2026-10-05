@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { cacheNamespace, fetchJson } from '@/app/lib/pageCache';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { pollAfterAction } from '@/lib/pollClient';
 
 // #24/#25 — הודעות "בין משמרות" ו"להנהלה" ממומשות כאן כשני טאבים ייעודיים,
 // כשתיהן שידור-לכולם על גבי Notification.category ('shift_handover' / 'management').
@@ -151,6 +152,7 @@ export default function MessagesPage() {
         // העדכון בוצע רק ב-state המקומי — מפנים את העותק במטמון כדי שכניסה
         // חוזרת לדף לא תציג לרגע את המצב הישן (לא-נקרא)
         messagesCache.delete(MESSAGES_CACHE_KEY);
+        pollAfterAction(); // הפעמון/הנקודה האדומה במעטפת: רענון מיידי של המונה (lib/pollClient.js)
       }
     } catch (err) {
       console.error(err);
@@ -172,6 +174,7 @@ export default function MessagesPage() {
         setShiftNoteText('');
         messagesCache.delete(MESSAGES_CACHE_KEY);
         fetchData();
+        pollAfterAction();
       } else {
         setError(data.error || 'שגיאה בשליחת ההודעה');
       }
@@ -197,6 +200,7 @@ export default function MessagesPage() {
         setManagementNoteText('');
         messagesCache.delete(MESSAGES_CACHE_KEY);
         fetchData();
+        pollAfterAction();
       } else {
         setError(data.error || 'שגיאה בשליחת ההודעה');
       }
@@ -240,6 +244,7 @@ export default function MessagesPage() {
       if (res.ok) {
         // Refresh to easily re-categorize items across tabs
         fetchData();
+        pollAfterAction();
       }
     } catch (err) {
       console.error('Error toggling archive:', err);
