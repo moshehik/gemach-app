@@ -135,6 +135,15 @@ async function queryOrdersList(searchParams, opts) {
     // a future booking still sitting in "בקרוב" with a balance.
     const isUnpaidQuery = filterStatus === 'unpaid' || filterStatus === 'unpaid_all' || filterStatus === 'unpaid_approved';
 
+    // CPU phase 1B (2026-10-06) - המלצה בלבד, לא שונה כאן: שני המסלולים המיוחדים (isUnpaidQuery ו-isSmartRentalsSort = /rentals?forRentals=true&sort=eventDateSmart)
+    // טוענים את *כל* ההזמנות התואמות ל-JS בכל קריאה (isUnpaidQuery: גם כל התשלומים של כל הזמנה; הסמארט: orderId+eventDate של כל הטבלה בטווח) ורק אז
+    // חותכים עמוד. זה עלות CPU/העברה לינארית בגודל הטבלה. כיוון מומלץ (משימה נפרדת, בזהירות - התוצאה חייבת להישאר זהה שורה-שורה):
+    //   * smart sort: ORDER BY בשאילתת SQL אחת - CASE WHEN eventDate >= startOfTodayIsrael THEN 0 WHEN eventDate IS NOT NULL THEN 1 ELSE 2 END,
+    //     אחריו eventDate ASC (קדימה) / DESC (עבר), עם skip/take; "מחר/היום" לפי getIsraelDaysUntil == גבול היום הישראלי (getIsraelDayRange(todayKey).start) ולכן ניתן לביטוי כ-where.
+    //   * unpaid: סכום שולם ב-SQL (SUM(Payment.amount) WHERE isDeleted=false GROUP BY orderId) מול totalAmount - הצורה העמודית מונעת טעינת payments לכל הזמנה.
+    //   * אינדקס מומלץ (לבדוק EXPLAIN ב-Neon לפני DDL, בשני ה-DB): Order(isDeleted, eventDate) - כיום יש רק אינדקסים נפרדים על eventDate ועל isDeleted.
+    // docs/cpu-phase1b-slim-2026-10-06.md, סעיף 6.
+
     // תחילת "היום" לפי שעון ישראל (לא setHours על new Date() - השרת ב-UTC, ובין 00:00 ל-03:00
     // שעון ישראל זה היה "אתמול": הזמנה של אתמול נשארה בטאב "בקרוב" ולא ירדה לארכיון).
     const todayKey = getIsraelTodayKey();
