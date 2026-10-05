@@ -788,6 +788,12 @@ t('oc-history.css: אין רקע לבן קשיח ואין !important על רקע
   assert.ok(!/[a-z0-9]-\*\//i.test(OC_HIST_CSS));
 });
 const hasOcHist = (selRe, propRe, valueRe) => ocHistRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => !valueRe || valueRe.test(d.value)));
+t('oc-items.css: בורר תקין/לא תקין של פריט שהוחזר (.oc-cond) - בהיקף .gm-ds.gm-oc, בלי רקע קשיח, רק גודל/ריפוד', () => {
+  assert.ok(hasOcItems(/\.seg\.pill\.oc-cond$/, /^flex$/), 'מכל הבורר');
+  assert.ok(hasOcItems(/\.seg\.pill\.oc-cond button$/, /^padding$/), 'ריפוד לחצני הבורר (הפלטה נותנת 10px 16px)');
+  const bad = ocItemsRules.filter((r) => /\.oc-(cond|retchip)/.test(r.sel)).flatMap((r) => setsProp(r, /^background(-color|-image)?$/).map((d) => `${r.sel} { ${d.prop}: ${d.value} }`));
+  assert.deepEqual(bad, []);
+});
 t('oc-history.css: נטרולי הדליפה - שדה החיפוש שקוף בלי גבול/רדיוס, ריפוד לחצן הניקוי, מסגרת הסינון הפתוח, מטא השלבים', () => {
   assert.ok(hasOcHist(/input#hfQ/, /^background$/, /^transparent/), 'רקע שדה החיפוש');
   assert.ok(hasOcHist(/input#hfQ/, /^border$/, /^0/), 'גבול שדה החיפוש');
