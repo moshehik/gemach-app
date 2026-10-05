@@ -40,7 +40,9 @@ import { getIsraelTodayDate } from '@/lib/hebrewDate';
 
 // מטמון SWR משותף - ר' app/lib/pageCache.js. 'board' = ההזמנות (אותו namespace ומפתח כמו ה-prefetch ב-prefetchRoutes.js);
 // 'board-stages' = מוני השלבים לחודש.
-const boardCache = cacheNamespace('board');
+// CPU phase 1B: הלוח החדש טוען את GET /api/board/orders (רק מה שסימן האיחור צריך) ושומר ב-namespace נפרד - 'board' נשאר של הלוח הישן
+// (LegacyBoardPage.js + ה-prefetch ב-prefetchRoutes.js), שמצפה לצורת התשובה המלאה של /api/orders.
+const boardCache = cacheNamespace('board-slim');
 const stagesCache = cacheNamespace('board-stages');
 const MOBILE_MQ = '(max-width:720px)';
 const STAGES_DEBOUNCE_MS = 300;
@@ -99,7 +101,7 @@ export default function BoardPage() {
       } else {
         setLoading(true);
       }
-      const res = await fetch(`/api/orders?${queryParams.toString()}`, { signal: controller.signal });
+      const res = await fetch(`/api/board/orders?${queryParams.toString()}`, { signal: controller.signal });
       const data = await res.json();
       boardCache.set(cacheKey, data);
       if (data.data) setOrders(data.data);
