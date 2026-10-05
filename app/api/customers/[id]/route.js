@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { checkAuth } from '../../../../lib/auth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { validateCustomerFieldFormats } from '@/lib/customerValidation';
-import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
+import { validateCustomerFieldFormats, validateCustomerBankFields } from '@/lib/customerValidation';
+import { requiredFieldErrors, requiredFieldsFromSettings, customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS } from '@/lib/customerRequiredFields';
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
 import { deleteBlockers } from '@/lib/customerAccount';
@@ -88,6 +88,8 @@ export async function PUT(request, { params }) {
     }
 
     const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
+    // שדות הבנק נשמרים בעריכה רק כשההגדרה customer_bank_fields_enabled פעילה (ברירת מחדל: כבוי, וגם כשהקריאה להגדרות נכשלת).
+    let bankOn = false;
 
     // 4 - אכיפה בעריכת לקוח קיים (גם ב-API, לא רק ב-UI). require_customer_email/
     // require_full_address הוסרו מכאן (דיווח תקלה 48ff7055, 2026-09-22) - הן חלות
@@ -100,6 +102,7 @@ export async function PUT(request, { params }) {
     try {
       const allSettings = await getAllCachedSettings();
       const sMap = new Map(allSettings.map(s => [s.key, s.value]));
+      bankOn = customerBankFieldsEnabled(sMap);
       const errors = [];
       if (sMap.get('hide_marketing_consent_field') !== 'true' && sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
@@ -130,6 +133,8 @@ export async function PUT(request, { params }) {
       }
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));
+      // תבנית שדות הבנק - רק על מה שהשתנה מהערך השמור (ערך ישן לא תקין לא חוסם שמירה של שדה אחר)
+      if (bankOn) errors.push(...validateCustomerBankFields(body, CUSTOMER_BANK_FIELD_KEYS.filter((k) => body[k] !== undefined && String(body[k] ?? '').trim() !== String(oldCustomer[k] ?? '').trim())));
 
       // 5 - חסימת כפילות ת"ז בין לקוחות (ר' אותה בדיקה ב-POST /api/customers) - כאן
       // מוציאים את הלקוח הנוכחי עצמו (NOT: { id }) כדי לא לחסום שמירה בלי שינוי בת"ז.
@@ -174,6 +179,9 @@ export async function PUT(request, { params }) {
       hokBankAccount: body.hokBankAccount !== undefined ? (body.hokBankAccount || null) : undefined,
       hokConsent: body.hokConsent !== undefined ? !!body.hokConsent : undefined,
     };
+
+    // שדות הבנק כבויים בארגון: לא נכתבים (הכרטיס לא מציג אותם; ערך קיים נשאר כמו שהוא)
+    if (!bankOn) for (const k of CUSTOMER_BANK_FIELD_KEYS) delete data[k];
 
     // 2. Compute changes (before the write, so they can be handed to the audit extension)
     const changes = {};

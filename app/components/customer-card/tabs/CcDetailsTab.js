@@ -114,7 +114,7 @@ export default function CcDetailsTab({ cc, ui }) {
     </div>
   );
 
-  const bankCard = editCust && !cc.readOnly ? (
+  const bankCard = !cc.bankEnabled ? null : editCust && !cc.readOnly ? (
     <div className="card dfields">
       <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2></div>
       <div className="grid2">

@@ -82,7 +82,7 @@ t('לא נבנו הפריטים שהבעלים דחה: אמצעי קשר מוע�
 t('שדות החובה מההגדרות נאכפים בכל שמירה (עריכה ולקוח חדש) ובשרת לגוף a5', () => {
   const ctl = read(`${CC_DIR}/useCustomerCard.js`);
   assert.match(ctl, /requiredFieldsFromSettings\(settings\)/);
-  assert.match(ctl, /validateForSave\(cur, \{ requiredKeys, isNew: false, settings \}\)/);
+  assert.match(ctl, /validateForSave\(cur, \{ requiredKeys, isNew: false, settings, saved \}\)/);
   const nw = read(`${CC_DIR}/NewCustomerA5.js`);
   assert.match(nw, /validateForSave\(c, \{ requiredKeys, isNew: true, settings \}\)/);
   for (const r of ['app/api/customers/[id]/route.js', 'app/api/customers/route.js']) {

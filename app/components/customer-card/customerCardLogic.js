@@ -5,9 +5,9 @@
 
 import { normalizeEmail } from '../../../lib/emailUtils.js';
 import {
-  validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup,
+  validateCustomerFieldFormats, validateCustomerBankFields, parseFieldGroups, unsatisfiedFieldGroupErrors, isFieldRequiredByGroup,
 } from '../../../lib/customerValidation.js';
-import { missingRequiredFields, requiredFieldLabel } from '../../../lib/customerRequiredFields.js';
+import { missingRequiredFields, requiredFieldLabel, customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS } from '../../../lib/customerRequiredFields.js';
 
 export const CARD_VARIANT = 'a5';
 
@@ -100,8 +100,11 @@ export function buildSavePayload(customer) {
 export function newCustomerInitial() {
   return { firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', notes: '' };
 }
-export function buildNewCustomerPayload(customer) {
-  return buildSavePayload(customer);
+/** bankEnabled === false (שדות הבנק כבויים בארגון) - שדות הבנק לא נשלחים בכלל; כל ערך אחר משאיר את הגוף כמו שהיה. */
+export function buildNewCustomerPayload(customer, { bankEnabled } = {}) {
+  const payload = buildSavePayload(customer);
+  if (bankEnabled === false) for (const k of CUSTOMER_BANK_FIELD_KEYS) delete payload[k];
+  return payload;
 }
 
 /** ביטול חסימה - PATCH /api/customers/[id] (זהה לישן). */
@@ -163,10 +166,11 @@ export const mailSubjectFor = (customer) => `כרטיס לקוח · ${displayNam
 // ---------- ולידציה לפני שמירה ----------
 /**
  * @param {object} c אובייקט הלקוח הנוכחי
- * @param {{requiredKeys:string[], isNew?:boolean, settings?:object}} o
+ * @param {{requiredKeys:string[], isNew?:boolean, settings?:object, saved?:object}} o  saved = הלקוח השמור (בעריכה): בדיקת תבנית שדות הבנק
+ *   רק על מה שהשתנה ממנו (ערך ישן לא תקין לא חוסם); בלקוח חדש - על כל מה שהוזן. שדות הבנק נבדקים רק כשהם פעילים (customer_bank_fields_enabled).
  * @returns {{ok:boolean, errors:string[], field:string|null, missing:string[]}}
  */
-export function validateForSave(c, { requiredKeys = [], isNew = false, settings = {} } = {}) {
+export function validateForSave(c, { requiredKeys = [], isNew = false, settings = {}, saved = null } = {}) {
   const errors = [];
   let field = null;
   const missing = missingRequiredFields(c, requiredKeys);
@@ -195,6 +199,14 @@ export function validateForSave(c, { requiredKeys = [], isNew = false, settings 
       else if (fmt.some((e) => e.includes('טלפון'))) field = 'phone2';
       else if (fmt.some((e) => e.includes('דוא"ל'))) field = 'email';
       else if (fmt.some((e) => e.includes('תעודת'))) field = 'zeout';
+    }
+  }
+  if (customerBankFieldsEnabled(settings)) {
+    const changed = isNew || !saved ? null : CUSTOMER_BANK_FIELD_KEYS.filter((k) => !sameValue(k, saved[k], c[k]));
+    const bankErrs = validateCustomerBankFields(c, changed);
+    if (bankErrs.length) {
+      errors.push(...bankErrs);
+      if (!field) field = CUSTOMER_BANK_FIELD_KEYS.find((k) => validateCustomerBankFields(c, [k]).length) || null;
     }
   }
   return { ok: errors.length === 0, errors, field, missing };

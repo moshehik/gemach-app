@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { addHistory } from '@/lib/historyManager';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { getHebrewDateString, getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
-import { requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
+import { requiredFieldsFromSettings, customerBankFieldsEnabled } from '@/lib/customerRequiredFields';
 import {
   accountSummary, deleteBlockers, paymentApprovalLevel, buildPaymentPayload, buildSavePayload, computeChanges, customerXlsxSheets, displayName, manualPaymentMethods,
   nameOk, openCharges, safeFileBase, tabMarkers, undoField, unblockPayload, validateForSave, CARD_FIELD_KEYS,
@@ -90,6 +90,8 @@ export default function useCustomerCard(customerId, ui) {
   // לקוחה שנמחקה (Customer.isDeleted) - הכרטיס לצפייה בלבד: בלי עריכה, בלי מחיקה, בלי תשלום (פס "נמחק" בראש הדף)
   const readOnly = !!saved?.isDeleted;
   const paymentsEnabled = settings.allow_additional_payment_on_order === 'true';
+  // שדות הבנק בכרטיס מוצגים רק כשההגדרה customer_bank_fields_enabled פעילה (ברירת מחדל: כבוי)
+  const bankEnabled = customerBankFieldsEnabled(settings);
   const methods = useMemo(() => manualPaymentMethods(settings), [settings]);
 
   // אזהרת דפדפן בסגירת לשונית עם שינויים שלא נשמרו
@@ -182,7 +184,7 @@ export default function useCustomerCard(customerId, ui) {
   // שמירה: ולידציה → חלון סיכום (כהה) → PUT → חלון "הכרטיס נשמר". מחזיר true כשנשמר.
   const save = useCallback(async ({ fromExit = false } = {}) => {
     if (!dirty || saving) return !dirty;
-    const v = validateForSave(cur, { requiredKeys, isNew: false, settings });
+    const v = validateForSave(cur, { requiredKeys, isNew: false, settings, saved });
     if (!v.ok) {
       setTab('details');
       setEditCust(true);
@@ -203,7 +205,7 @@ export default function useCustomerCard(customerId, ui) {
       if (next === 'list') router.push('/customers');
     }
     return true;
-  }, [dirty, saving, cur, requiredKeys, settings, ui, changes, resetToSaved, putCustomer, printDoc, router]);
+  }, [dirty, saving, cur, saved, requiredKeys, settings, ui, changes, resetToSaved, putCustomer, printDoc, router]);
   useEffect(() => { doSaveRef.current = () => save(); }, [save]);
 
   // יציאה: בלי שינויים - חזרה; עם שינויים - "שינויים שלא נשמרו" (שמור / צא בלי לשמור / חזרה לעריכה)
@@ -374,7 +376,7 @@ export default function useCustomerCard(customerId, ui) {
 
   return {
     customerId, status, saved, cur, refunds, settings, me, tab, setTab, editCust, setEditCust,
-    requiredKeys, changes, dirty, account, charges, markers, isHeadManagement, paymentsEnabled, methods, saving, readOnly, paying,
+    requiredKeys, bankEnabled, changes, dirty, account, charges, markers, isHeadManagement, paymentsEnabled, methods, saving, readOnly, paying,
     redoCount: redoStack.length, historyTick,
     setField, undo, redo, discardAll, save, exit, unblock, deleteCustomer, pay, openMail,
     exportXlsx, downloadCard, printDoc, printOrder, reload: load,

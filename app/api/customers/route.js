@@ -3,9 +3,9 @@ import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { validateCustomerFieldFormats, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
+import { validateCustomerFieldFormats, validateCustomerBankFields, parseFieldGroups, unsatisfiedFieldGroupErrors } from '@/lib/customerValidation';
 import { buildMultiWordNameCondition } from '@/lib/searchUtils';
-import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
+import { requiredFieldErrors, requiredFieldsFromSettings, customerBankFieldsEnabled, CUSTOMER_BANK_FIELD_KEYS } from '@/lib/customerRequiredFields';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -118,10 +118,14 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
+    // שדות הבנק של הלקוח נשמרים רק כשההגדרה customer_bank_fields_enabled פעילה (ברירת מחדל: כבוי, וגם כשהקריאה להגדרות נכשלת);
+    // כבוי = הם מתעלמים מהגוף ולא נחשבים כחובה (requiredFieldsFromSettings).
+    let bankOn = false;
     // 4 - אכיפת שדות חובה (strict_mandatory_fields + require_*), גם ב-API (לא רק ב-UI)
     try {
       const allSettings = await getAllCachedSettings();
       const sMap = new Map(allSettings.map(s => [s.key, s.value]));
+      bankOn = customerBankFieldsEnabled(sMap);
       const errors = [];
       if (sMap.get('require_customer_email') === 'true') {
         const rawEmail = String(body.email || (body.emailSuffix && String(body.emailSuffix).includes('@') ? body.emailSuffix : '') || '').trim();
@@ -174,6 +178,7 @@ export async function POST(request) {
       }
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));
+      if (bankOn) errors.push(...validateCustomerBankFields(body));
 
       // 5 - חסימת כפילות ת"ז בין לקוחות: המערכת אפשרה עד כה לשמור 2 לקוחות עם אותה
       // תעודת זהות. ת"ז אמורה להיות ייחודית ללקוח (בניגוד לטלפון, שיכול להיות משותף
@@ -220,6 +225,8 @@ export async function POST(request) {
         notes: body.notes,
         zeout: body.zeout || body.idNumber || null, // 14 - ת״ז לעריכה/ביטול
         marketingConsent: !!body.marketingConsent, // 4 - אישור דיוור
+        // שדות בנק לזיכויים - רק כשההגדרה customer_bank_fields_enabled פעילה
+        ...(bankOn ? Object.fromEntries(CUSTOMER_BANK_FIELD_KEYS.map((k) => [k, String(body[k] ?? '').trim() || null])) : {}),
         // 3 - הו"ק (שדות אופציונליים, נשמרים רק אם נשלחו)
         ...(body.hokBankName !== undefined ? { hokBankName: body.hokBankName || null } : {}),
         ...(body.hokBankBranch !== undefined ? { hokBankBranch: body.hokBankBranch || null } : {}),

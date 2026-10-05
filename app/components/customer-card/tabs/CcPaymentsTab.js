@@ -41,11 +41,13 @@ export default function CcPaymentsTab({ cc }) {
         {bal > 0 && charges.length && !cc.readOnly ? (
           <button type="button" className="btn primary cc-mt24" data-act="pay-now" disabled={cc.paying} onClick={() => cc.pay()}><CcIcon name="card" />{payLabel} <bdi dir="ltr">{money(bal)}</bdi></button>
         ) : null}
-        <div className="cc-bankline faint sm">
-          <CcIcon name="bank" size="sm" anim={false} />
-          <span>פרטי בנק לזיכויים: {bank || 'לא הוזנו'}</span>
-          <button type="button" className="cc-linkbtn" hidden={cc.readOnly} onClick={() => { cc.setTab('details'); cc.setEditCust(true); }}>עריכה</button>
-        </div>
+        {cc.bankEnabled ? (
+          <div className="cc-bankline faint sm">
+            <CcIcon name="bank" size="sm" anim={false} />
+            <span>פרטי בנק לזיכויים: {bank || 'לא הוזנו'}</span>
+            <button type="button" className="cc-linkbtn" hidden={cc.readOnly} onClick={() => { cc.setTab('details'); cc.setEditCust(true); }}>עריכה</button>
+          </div>
+        ) : null}
       </div>
 
       <div className="card">
