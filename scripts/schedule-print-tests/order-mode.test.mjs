@@ -1,5 +1,5 @@
 // מצב הזמנה בודדת של דפי הלו״ז (W7: A3 דף הכנה PP-07, A4 תעודת משלוח PP-12; ?orderId=N): התאמה לחוזה, שערים, 400/404, גרסה ב׳ בכפייה,
-// הדף נבנה מההזמנה עצמה בלי קשר ליום, ואירוע ORDER_PRINTED של דף ההדפסה עומד בחוזה W0 (parseEventsRequest). נתוני הדמה של הלו״ז (1.10.2026).
+// הדף נבנה מההזמנה עצמה בלי קשר ליום, ואירוע ORDER_PRINTED של דף ההדפסה עומד בחוזה W0 (parseEventsRequest). נתוני הדמה של הלו״ז (15.10.2026; הועברו בשבועיים בהחלטת ימים-לא-עובדים v2, ר' scripts/schedule-tests/fixtures.mjs).
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -73,14 +73,14 @@ test('PP-12 להזמנה אחת: תעודה אחת בלבד, יום היציאה
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const { meta, pages } = r.__json;
   assert.equal(meta.orderId, 1009);
-  assert.equal(meta.date, '2026-10-01', 'יום היציאה (אירוע 2.10 פחות יום עסקים), לא ה-date שנשלח');
+  assert.equal(meta.date, '2026-10-15', 'יום היציאה (אירוע 16.10 פחות יום עסקים), לא ה-date שנשלח');
   assert.equal(pages.length, 1);
   const d = pages[0].data;
   assert.deepEqual(d.orders.map((o) => o.orderId), [1009]);
   assert.equal(d.orders[0].code, 'DOT-1009');
   assert.equal(d.orders[0].name, 'דבורה חן');
   assert.equal(d.orders[0].city, 'בית שמש');
-  assert.equal(d.orders[0].dispatchGreg, '01/10/2026');
+  assert.equal(d.orders[0].dispatchGreg, '15/10/2026');
   assert.equal(d.orders[0].dressCount, 2);
   assert.equal(d.sum, 'תעודה אחת · 2 שמלות');
 });
@@ -107,7 +107,7 @@ test('PP-07 להזמנה אחת: גרסה ב׳ בכפייה (גם עם version=a
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   const { meta, pages } = r.__json;
   assert.equal(meta.orderId, 1005);
-  assert.equal(meta.date, '2026-10-01', 'אירוע ג׳ 6.10 פחות 3 ימי עסקים (שישי/שבת חג) = ה׳ 1.10');
+  assert.equal(meta.date, '2026-10-15', 'אירוע ג׳ 20.10 פחות 3 ימי עסקים (שישי/שבת סגורים) = ה׳ 15.10');
   const p = pages[0];
   assert.equal(p.key, 'PP-07');
   assert.equal(p.version, 'b');
@@ -119,11 +119,11 @@ test('PP-07 להזמנה אחת: גרסה ב׳ בכפייה (גם עם version=a
   assert.equal(p.data.sub, 'הזמנה אחת בכל עמוד');
 });
 
-test('PP-07 להזמנה שאינה ביום ההכנה היום (1001: אירוע 15.10): עדיין נבנה מההזמנה עצמה', async () => {
+test('PP-07 להזמנה שאינה ביום ההכנה היום (1001: אירוע 29.10): עדיין נבנה מההזמנה עצמה', async () => {
   const a = await get('?page=PP-07&orderId=1001');
   assert.equal(a.status, 200);
   assert.deepEqual(a.__json.pages[0].data.rows.map((x) => x.orderId), [1001]);
-  assert.equal(a.__json.meta.date, '2026-10-12', 'ב׳ 12.10: האירוע בחצות ישראלית של ה׳ 15.10, פחות 3 ימי עסקים');
+  assert.equal(a.__json.meta.date, '2026-10-26', 'ב׳ 26.10: האירוע בחצות ישראלית של ה׳ 29.10, פחות 3 ימי עסקים');
 });
 
 test('הזמנה מחוקה (1019) או טיוטה (1004 / 9001 במשלוח): 404 בעברית ברורה בכל דף - אין מה להדפיס ואין נתונים שעליהם נרשם ORDER_PRINTED', async () => {
@@ -173,7 +173,7 @@ test('שערים: 401 בלי התחברות, 403 בלי page:schedule, 403 ל-PP
 });
 
 test('בלי orderId שום דבר לא משתנה: meta.orderId = null, הדפסת יום רגילה עם כל ההזמנות, גרסה לפי הפרמטר', async () => {
-  const r = await get('?page=PP-07&date=2026-10-01&version=a');
+  const r = await get('?page=PP-07&date=2026-10-15&version=a');
   assert.equal(r.status, 200);
   assert.equal(r.__json.meta.orderId, null);
   assert.equal(r.__json.pages[0].version, 'a');
@@ -181,7 +181,7 @@ test('בלי orderId שום דבר לא משתנה: meta.orderId = null, הדפ�
 });
 
 test('ייצוא שורות (format=rows) של דף הכנה ללא orderId נשאר כמו קודם', async () => {
-  const r = await get('?page=PP-07&date=2026-10-01&format=rows');
+  const r = await get('?page=PP-07&date=2026-10-15&format=rows');
   assert.equal(r.status, 200);
   assert.ok(r.__json.total >= 1);
   assert.equal(typeof payloadToRows, 'function');
@@ -234,7 +234,7 @@ test('collectPrintedOrderIds: כל ההזמנות שמופיעות בדף (rows 
   const known = new Set(ORDERS.map((o) => o.orderId));
   const keys = PRINT_PAGES.filter((p) => p.status === 'ready').map((p) => p.key);
   assert.equal(keys.length, 15);
-  const r = await get('?page=' + keys.join(',') + '&date=2026-10-01');
+  const r = await get('?page=' + keys.join(',') + '&date=2026-10-15');
   assert.equal(r.status, 200, JSON.stringify(r.__json).slice(0, 300));
   let withOrders = 0;
   for (const p of r.__json.pages) {
