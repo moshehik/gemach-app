@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { verifyPin } from '@/components/orders/modern/mocAuth';
+import { sendWithApproval } from '@/lib/approvalClient';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { REFUNDS_PAGE_SIZE } from '@/app/lib/prefetchRoutes';
 
@@ -349,7 +350,8 @@ export default function RefundsPage() {
   };
 
   const confirmApproveSelected = async () => {
-    const auth = await verifyPin('אישור תשלום עבור החובות שנבחרו דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval');
+    // orderIds: האסימון החתום מקושר לכל ההזמנות שנבחרו (חד-פעמי לכל הזמנה)
+    const auth = await verifyPin('אישור תשלום עבור החובות שנבחרו דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval', { orderIds: confirmModal.orderIds });
     if (!auth) return;
     setIsApproving(true);
     try {
@@ -358,7 +360,7 @@ export default function RefundsPage() {
         const res = await fetch(`/api/orders/${orderId}/debt-approval`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employeeId: auth.employeeId })
+          body: JSON.stringify({ employeeId: auth.employeeId, ...(auth.approvalToken ? { approvalToken: auth.approvalToken } : {}) })
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => null);
@@ -377,14 +379,14 @@ export default function RefundsPage() {
 
   const undoDebtApproval = async (orderId) => {
     if (!(await window.customConfirm('לבטל את אישור יתרת החוב עבור הזמנה זו? ניתן יהיה לאשר שוב בכל עת.'))) return;
-    const auth = await verifyPin('ביטול אישור חוב דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval');
+    const auth = await verifyPin('ביטול אישור חוב דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'feature:debt_approval', { orderId });
     if (!auth) return;
     setIsApproving(true);
     try {
       const res = await fetch(`/api/orders/${orderId}/debt-approval`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: auth.employeeId })
+        body: JSON.stringify({ employeeId: auth.employeeId, ...(auth.approvalToken ? { approvalToken: auth.approvalToken } : {}) })
       });
       if (!res.ok) throw new Error('שגיאה בביטול אישור החוב');
       await fetchApprovalsForOrders([orderId]);
@@ -454,6 +456,20 @@ export default function RefundsPage() {
     fetchRefunds();
   }, []);
 
+  // סימון זיכוי כבוצע / ביטול הסימון. השרת אוכף feature:manual_payment_credit_add רק כש-approval_permissions_enforced דלוק בגמ"ח הזה
+  // (docs/server-approval-hardening.md): מי שאינו מורשה מקבל 403 + approvalKind ← חלון קוד המאשר ושליחה חוזרת עם אסימון. כבוי = בדיוק כמו קודם.
+  const putRefundExecution = (id, isExecuted) => {
+    const send = (extra) => fetch(`/api/refunds/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isExecuted, ...extra })
+    });
+    const refundOrderId = Number((refunds.find(r => r.id === id) || {}).orderId) || 0;
+    return refundOrderId
+      ? sendWithApproval(send, { orderId: refundOrderId, kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' })
+      : send({});
+  };
+
   const executeRefund = async (id) => {
     if (!(await window.customConfirm('האם אתה בטוח שברצונך לסמן זיכוי זה כ"בוצע"?\nפעולה זו תיצור תשלום הפכי (מינוס) בכרטיס ההזמנה המקושר.'))) {
       return;
@@ -461,11 +477,7 @@ export default function RefundsPage() {
 
     setIsProcessing(true);
     try {
-      const res = await fetch(`/api/refunds/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isExecuted: true })
-      });
+      const res = await putRefundExecution(id, true);
 
       const updatedRefund = await res.json();
       if (!res.ok) throw new Error(updatedRefund?.error || 'Failed to execute refund');
@@ -486,11 +498,7 @@ export default function RefundsPage() {
 
     setIsProcessing(true);
     try {
-      const res = await fetch(`/api/refunds/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isExecuted: false })
-      });
+      const res = await putRefundExecution(id, false);
 
       if (!res.ok) throw new Error('Failed to undo refund execution');
 

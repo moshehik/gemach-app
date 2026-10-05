@@ -419,11 +419,14 @@ const jsonOf = async (res) => { try { return await res.json(); } catch { return 
  * @param {object} env.edit                 oc.edit
  * @param {(order:object)=>void} env.applyServerOrder
  * @param {(kind:string, reason:string)=>Promise<object|null>} env.approve
+ * @param {(kind:string)=>string|null} [env.peekApprovalToken]   אסימון אישור חתום טרי מהאישור האחרון (hardening 2026-10-05) - נשלח עם POST /api/payments / PUT /api/refunds/{id}
  * @param {(o:{confirmed:boolean})=>Promise<boolean>} env.toggleSignature
  * @param {object} env.ui                   useOcUi()
  */
 export function createPaymentActions(env) {
   const f = (...a) => env.fetch(...a);
+  const peekToken = (kind) => (env.peekApprovalToken ? env.peekApprovalToken(kind) : null);
+  const clearToken = (kind) => { if (env.clearApprovalToken) env.clearApprovalToken(kind); };
   const st = () => env.get();
   let chargeInFlight = false;
   let manualInFlight = false;
@@ -533,13 +536,23 @@ export function createPaymentActions(env) {
     }
     manualInFlight = true;
     try {
-      const res = await f('/api/payments', {
+      const postManual = (token) => f('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(additionalPaymentBody({ orderId: st().order?.orderId, amount, paymentMethod, notes }))
+        body: JSON.stringify({ ...additionalPaymentBody({ orderId: st().order?.orderId, amount, paymentMethod, notes }), ...(token ? { approvalToken: token } : {}) })
       });
-      const data = await res.json();
+      const sentToken = peekToken(MANUAL_PAYMENT_CREDIT_KEY);
+      let res = await postManual(sentToken);
+      let data = await res.json();
+      // השרת אוכף (approval_permissions_enforced) והאסימון פג / חסר: אישור מחדש ושליחה אחת חוזרת (מי שמורשה בעצמו לא מגיע לכאן)
+      if (res.status === 403 && data && data.approvalKind === 'manual_payment_credit' && env.approve) {
+        const auth = await env.approve(MANUAL_PAYMENT_CREDIT_KEY, 'הוספת תשלום/זיכוי ידני דורשת קוד מאשר.');
+        if (!auth) return { ok: false, cancelled: true };
+        res = await postManual(auth.approvalToken || null);
+        data = await res.json();
+      }
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת התשלום');
+      clearToken(MANUAL_PAYMENT_CREDIT_KEY); // חד-פעמי: גם האסימון של האישור החוזר
       await syncSavedPayment(data);
       return { ok: true, amount: money2(amount), method: paymentMethod || 'מזומן', persisted: true };
     } catch (e) {
@@ -598,15 +611,26 @@ export function createPaymentActions(env) {
     const blocked = unsavedCardBlock();
     if (blocked) return blocked;
     try {
-      const res = await f(`/api/refunds/${refundId}`, {
+      const putExecuted = (token) => f(`/api/refunds/${refundId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isExecuted: true })
+        body: JSON.stringify({ isExecuted: true, ...(token ? { approvalToken: token } : {}) })
       });
+      const sentToken = peekToken(REFUND_EXECUTE_APPROVAL_KEY);
+      let res = await putExecuted(sentToken);
+      if (res.status === 403 && env.approve) {
+        const data403 = await jsonOf(res);
+        if (data403 && data403.approvalKind === 'manual_payment_credit') {
+          const auth = await env.approve(REFUND_EXECUTE_APPROVAL_KEY, 'סימון זיכוי כבוצע יוצר תשלום הפכי בהזמנה ושולח הודעה ללקוח - נדרש אישור מנהל.');
+          if (!auth) return { ok: false, cancelled: true };
+          res = await putExecuted(auth.approvalToken || null);
+        }
+      }
       if (!res.ok) {
         const data = await jsonOf(res);
         throw new Error((data && data.error) || 'Failed to approve refund');
       }
+      clearToken(REFUND_EXECUTE_APPROVAL_KEY);
       await refetchApply();
       return { ok: true };
     } catch (e) {
@@ -725,6 +749,8 @@ export default function usePaymentActions(oc, ui, D) {
       try { ocRef.current.applyServerOrder(order); } finally { setTimeout(() => { syncingRef.current = false; }, 0); }
     },
     approve: (kind, reason) => ocRef.current.approve(kind, reason),
+    peekApprovalToken: (kind) => (ocRef.current.peekApprovalToken ? ocRef.current.peekApprovalToken(kind) : null),
+    clearApprovalToken: (kind) => { if (ocRef.current.clearApprovalToken) ocRef.current.clearApprovalToken(kind); },
     toggleSignature: (o) => ocRef.current.toggleSignature(o),
     ui,
   }), [ui]);

@@ -24,8 +24,10 @@ import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/order
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
   zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
-  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, restoreSavedAutoObligations, undoDropsUnsavedCardCharge, unsavedCardChargeMessage, debtBlockShouldClear
+  exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, restoreSavedAutoObligations, undoDropsUnsavedCardCharge, unsavedCardChargeMessage, debtBlockShouldClear, approvalLevelOf
 } from './orderCardLogic';
+
+import { stashApprovalToken as stashToken, peekApprovalToken as peekToken, clearApprovalToken as clearToken } from '@/lib/approvalTokenStore';
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
 import OcApprovalDialog from './OcApproval';
@@ -282,8 +284,18 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   }, [dirty, order, items, obligations, payments, refunds, pendingDraft, settings.enableLocalDrafts]);
 
   // ---------- אישור מנהל ----------
+  // אסימוני אישור חתומים (hardening 2026-10-05): verify-pin מחזיר approvalToken; הוא נשמר ב-lib/approvalTokenStore (לפי רמת האישור וההזמנה)
+  // ונשלח עם הבקשה שצורכת אותו (PUT של ההזמנה / POST /api/payments / PUT /api/refunds/{id}). תקף 5 דקות בשרת; בלקוח לא שולחים אסימון מעל 4.5 דקות.
+  const peekApprovalToken = useCallback((kind) => peekToken(approvalLevelOf(kind).requiredLevel, stateRef.current.order?.orderId), []);
+  const clearApprovalToken = useCallback((kind) => clearToken(approvalLevelOf(kind).requiredLevel, stateRef.current.order?.orderId), []);
   const approve = useCallback((kind, reason) => ui.openDialog(OcApprovalDialog, { kind, reason, orderId: stateRef.current.order?.orderId }, { layer: 2, labelledBy: 'oc-appr-t', className: 'oc-appr' })
-    .then(r => { if (r) bumpHistory(); return r || null; }), [ui, bumpHistory]);
+    .then(r => {
+      if (r) {
+        bumpHistory();
+        if (r.approvalToken) stashToken(approvalLevelOf(kind).requiredLevel, stateRef.current.order?.orderId, r.approvalToken);
+      }
+      return r || null;
+    }), [ui, bumpHistory]);
 
   // ---------- זרימות ----------
   const flowsRef = useRef(null);
@@ -317,6 +329,8 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
       setDebtApproved,
       flags: flagsProxy,
       approve,
+      peekApprovalToken,
+      clearApprovalToken,
       navigate,
       emit,
       bumpHistory,
@@ -324,7 +338,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     });
     flowsRef.current = f;
     return f;
-  }, [ui, dialogs, orderRef, setSnapshot, flagsProxy, approve, navigate, emit, bumpHistory, clearRedo]);
+  }, [ui, dialogs, orderRef, setSnapshot, flagsProxy, approve, peekApprovalToken, clearApprovalToken, navigate, emit, bumpHistory, clearRedo]);
   useEffect(() => { exitRef.current = flows.exit; }, [flows]);
 
   // ---------- "לשמור קודם" (סקירת אינטגרציה C2) ----------
@@ -464,7 +478,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     save: flows.save, exit: flows.exit, reload: flows.reload, applyServerOrder: flows.applyServerOrder, patchOrder, syncItems, patchServer: flows.patchServer,
     deleteOrder: flows.deleteOrder, toggleSignature: flows.toggleSignature, unlock, relock,
     drafts: { pending: pendingDraft, restore: restoreDraft, discard: discardDraft },
-    historyVersion, bumpHistory, logEvent, approve, approveDebt, announceDebtLeft,
+    historyVersion, bumpHistory, logEvent, approve, peekApprovalToken, clearApprovalToken, approveDebt, announceDebtLeft,
     tab, setTab, goPayments, saving, inventoryCache, on, pendingDebtBlock,
     requestZeout: flows.requestZeout, ensureSaved,
     orderRef,

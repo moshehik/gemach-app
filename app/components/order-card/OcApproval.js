@@ -139,7 +139,8 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
       const data = await res.json().catch(() => ({}));
       if (data && data.success) {
         const emp = (emps || []).find(e => String(e.id) === String(sel));
-        close({ employeeId: data.employeeId || sel, employeeName: data.employeeName || (emp ? `${emp.firstName} ${emp.lastName}` : ''), pin });
+        // approvalToken (hardening 2026-10-05): חתום בשרת, מקושר להזמנה/לעובד המחובר/לסוג האישור, תקף 5 דקות, חד-פעמי - הקוד עצמו לא בתוכו.
+        close({ employeeId: data.employeeId || sel, employeeName: data.employeeName || (emp ? `${emp.firstName} ${emp.lastName}` : ''), pin, ...(data.approvalToken ? { approvalToken: data.approvalToken } : {}) });
         return;
       }
       tries.current += 1;

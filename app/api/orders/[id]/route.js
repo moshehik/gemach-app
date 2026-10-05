@@ -360,7 +360,7 @@ async function putOrder(request, { params }, claims) {
     const approvalMode = await getApprovalMode();
     const debtApproval = await resolveDebtApprover({ orderId: parsedOrderId, token: data.debtApprovalToken, bareId: data.debtApprovedBy, claims, mode: approvalMode });
     if (!debtApproval.ok) {
-      return NextResponse.json({ error: debtApproval.error, code: debtApproval.code }, { status: debtApproval.status });
+      return NextResponse.json({ error: debtApproval.error, code: debtApproval.code, approvalKind: debtApproval.kind }, { status: debtApproval.status });
     }
     const debtApprover = debtApproval.approverId;
     if (debtApprover && !(await canApproveDebt(debtApprover))) {

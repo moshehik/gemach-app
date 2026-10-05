@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { sendWithApproval } from '../../../lib/approvalClient';
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
@@ -279,16 +280,18 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     setIsProcessing(true);
     setAdditionalPaymentError('');
     try {
-      const res = await fetch('/api/payments', {
+      // approvalToken: אישור קוד המאשר שנתן הכפתור המאוחד (lib/approvalTokenStore) - נדרש רק כשהשרת אוכף (approval_permissions_enforced); אחרת מתעלמים ממנו.
+      const res = await sendWithApproval((extra) => fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
           amount,
           paymentMethod: additionalPaymentData.paymentMethod || 'מזומן',
-          notes: additionalPaymentData.notes || ''
+          notes: additionalPaymentData.notes || '',
+          ...extra
         })
-      });
+      }), { orderId: Number(orderId), kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת התשלום');
       onPaymentsChange([...payments, data]);
@@ -304,11 +307,11 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     if (!(await window.customConfirm('האם לאשר ביצוע זיכוי זה? הפעולה תיצור תשלום הפכי להזמנה.'))) return;
     setIsProcessing(true);
     try {
-      const res = await fetch(`/api/refunds/${refundId}`, {
+      const res = await sendWithApproval((extra) => fetch(`/api/refunds/${refundId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isExecuted: true })
-      });
+        body: JSON.stringify({ isExecuted: true, ...extra })
+      }), { orderId: Number(orderId), kinds: ['manual_payment_credit'], fieldFor: () => 'approvalToken' });
       if (!res.ok) throw new Error('Failed to approve refund');
       alert('הזיכוי אושר ובוצע בהצלחה.');
 

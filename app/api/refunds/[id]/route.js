@@ -62,7 +62,7 @@ async function putRefund(request, { params }, claims) {
           sessionEmployee: await getSessionEmployee(),
         });
         if (!gate.ok) {
-          return NextResponse.json({ error: 'סימון זיכוי כבוצע (או ביטול הסימון) מותר רק למי שהוגדר כמאשר תשלום/זיכוי ידני (או באישור שלו בקוד).', code: gate.code }, { status: gate.status });
+          return NextResponse.json({ error: 'סימון זיכוי כבוצע (או ביטול הסימון) מותר רק למי שהוגדר כמאשר תשלום/זיכוי ידני (או באישור שלו בקוד).', code: gate.code, approvalKind: gate.kind }, { status: gate.status });
         }
       }
     }
