@@ -32,7 +32,7 @@ t('חוזה ה-API: GET/PUT /api/me/profile (גוף = אובייקט הפרופ�
   has(PAGE, /body: JSON\.stringify\(profile\)/, 'גוף השמירה הוא אובייקט הפרופיל כמו שהוא');
   has(PAGE, /fetch\(`\/api\/employees\/\$\{profile\.id\}\/password`, \{\s*method: 'POST'/, 'POST /api/employees/<id>/password');
   has(PAGE, /JSON\.stringify\(\{ oldPassword: oldPasswordInput, newPassword: newPasswordInput \}\)/, 'שדות הסיסמה oldPassword/newPassword');
-  has(PAGE, /fetch\('\/api\/settings'\)/, 'GET /api/settings');
+  has(PAGE, /fetchSharedJson\('\/api\/settings', \{ ttl: TTL\.STATIC \}\)/, 'GET /api/settings (מטמון משותף)');
   has(PAGE, /show_employee_profile_image/, 'ההגדרה show_employee_profile_image');
   has(PAGE, /invalidate\(\['\/api\/me'\]\)/, 'invalidate([\'/api/me\']) אחרי שמירה');
 });
