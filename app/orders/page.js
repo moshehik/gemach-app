@@ -647,6 +647,7 @@ export default function OrdersPage() {
                       startDate={advFilters.eventDateFrom}
                       endDate={advFilters.eventDateTo}
                       onChange={(start, end) => setAdvFilters(p => ({ ...p, eventDateFrom: start, eventDateTo: end }))}
+                      autoApplyOnRange
                     />
                   </div>
 
