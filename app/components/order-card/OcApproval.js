@@ -162,7 +162,7 @@ export default function OcApprovalDialog({ kind, reason, orderId, close, fetchIm
     <>
       <h2 id="oc-appr-t">אישור מנהל</h2>
       <div className="sub">{reason || 'נדרש אישור מנהל'}</div>
-      <div className="mfld">
+      <div className="mfld oc-appr-fld">
         <span className="lbl" id="oc-appr-emps-l"><OcIcon name="user" size="sm" />שם משתמש</span>
         <ApproverPicker emps={emps} sel={sel} labelId="oc-appr-emps-l" onPick={(id) => { setSel(String(id)); setTimeout(() => codeRef.current && codeRef.current.focus(), 0); }} />
       </div>

@@ -99,7 +99,9 @@
 .gm-ds.gm-oc .oc-appr-sel > .faint{flex:1;min-width:0;font-size:14px}
 .gm-ds.gm-oc .oc-appr-sel .oc-appr-chev{margin-inline-start:auto;flex:none;transition:transform 150ms}
 .gm-ds.gm-oc .oc-appr-sel[aria-expanded="true"] .oc-appr-chev{transform:rotate(180deg)}
-.gm-ds.gm-oc .oc-appr-pick .advlist{z-index:60}
+/* הרשימה הפתוחה מעל שאר החלון: לילדי #dlg2 יש אנימציית כניסה (הקשר ערימה משלהם) - המעטפת מקבלת z-index, והרשימה אטומה */
+.gm-ds.gm-oc .oc-appr-fld{position:relative;z-index:5}
+.gm-ds.gm-oc .oc-appr-pick .advlist{z-index:60;background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
 .gm-ds.gm-oc .oc-appr-pick .advo-t small{font-size:13px}
 .gm-ds.gm-oc .oc-appr-code{margin-top:14px}
 .gm-ds.gm-oc .oc-appr .amsg{margin-top:6px}

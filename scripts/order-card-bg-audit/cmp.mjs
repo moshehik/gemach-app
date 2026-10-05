@@ -81,6 +81,7 @@ APPROVED_STAGE.push(...['40', '41', '42', '43', '44', '45', '46', '47', '48'].fl
   [n, /^HIST>div\.card\.stg(>|$)/, 'D2: כרטיס "שלבי ההזמנה" אוחד עם יומן ההזמנה (בדגמה כרטיס נפרד)'],
   [n, /^HIST>div\.(done|fut|cur\.fut)\.prc>div\.prc-body>div\.(prc-t|prc-m)( \[(w|h)\])?$|^HIST>div\.prc-body>div\.prc-t>(b|small) \[w\]$|^HIST>div\.prc-body>div\.prc-m>button|^HIST>div\.prc-m>button\.btn\.sm(>svg\.ic\.sm)?$/, 'D2: שורות היומן נושאות עכשיו גם את ה-meta של השלב (מאוחד); רוחבי טקסט/prc-m שונים מהשורות בדגמה'],
   [n, /^HIST>div\.card\.proc( |>div\.prc-l )\[h\]$/, 'D2: בתרחיש האמיתי היומן מציג גם את השלבים "תיקונים" ו"הכנה" (השרת בונה צומת לכל שלב); בדגמה לא'],
+  [n, /^HIST>(div\.card\.proc>)?div\.prc-l>div\.(done|fut)\.prc(>div\.prc-(rail|body))? \[h\]$/, 'D2: במסך צר ה-meta של השלב (צ״יפ/לחצן) עובר לשורה שנייה בתוך השורה המאוחדת - גובה שורות היומן גדול מהדגמה'],
 ]));
 // D7: בורר המאשר בחלון האישור הכהה = combobox עם רשימה נגללת נפתחת (.advlist), לא כל המורשים כשורות/כרטיסי .opt כמו בדגמה
 APPROVED_STAGE.push(...['08-approval', '09-approval-picked'].map((st) => [st, /^DLG2>(div\.mfld>div(\.dbtns(>button\.opt)?|>button\.inp)?|div\.dbtns>button\.opt(>svg\.ic\.lg|>div)?|button\.opt>div>(b|small)|div>button\.inp>(svg\.ic\.sm|span(\.faint)?)|button\.inp>span>(b|small)|div>button\.inp|div>div|div\.dbtns)( |$)/, 'D7 (בעלים): בחירת מאשר מרשימה נגללת נפתחת של המערכת במקום הצגת כל השמות']));

@@ -138,6 +138,7 @@ const STAGES = [
     const n = await p.$$eval('#dlg2 [role="option"]', (e) => e.length); // סגור = אין אפשרויות על המסך
     await clickAt('#dlg2 .oc-appr-sel'); await sleep(250);
     const opts = await p.$$eval('#dlg2 .advlist [role="option"]', (e) => e.length);
+    const scrolls = await p.$eval('#dlg2 .advlist', (el) => el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === 'auto');
     await p.keyboard.press('Escape'); await sleep(250);
     const afterEsc1 = await p.evaluate(() => ({ list: !!document.querySelector('#dlg2 .advlist'), dlg: !!document.querySelector('#scrim2.on #dlg2') }));
     await clickAt('#dlg2 .oc-appr-sel'); await sleep(200); await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter'); await sleep(250);
@@ -145,7 +146,7 @@ const STAGES = [
     await p.keyboard.press('Escape'); await sleep(300);
     const closed = await p.evaluate(() => !document.querySelector('#scrim2.on #dlg2'));
     checks.push(['D7: הבורר סגור כברירת מחדל - אין רשימת עובדים על המסך', n === 0]);
-    checks.push(['D7: לחיצה פותחת רשימה נגללת עם כל המורשים (4)', opts === 4]);
+    checks.push([`D7: לחיצה פותחת רשימה נגללת (max-height) עם כל 6 המורשים - הרשימה גוללת בתוך עצמה (נמצאו ${opts})`, opts === 6 && scrolls]);
     checks.push(['D7: Esc סוגר רק את הרשימה והחלון נשאר פתוח', !afterEsc1.list && afterEsc1.dlg]);
     checks.push(['D7: חץ + Enter בוחרים מאשר, הרשימה נסגרת והשם מוצג', !picked.list && picked.name.length > 0]);
     checks.push(['D7: Esc שני (רשימה סגורה) סוגר את החלון', closed]);
