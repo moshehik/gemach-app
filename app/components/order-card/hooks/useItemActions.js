@@ -71,6 +71,29 @@ export function statusText(i, order, mode = 'active') {
   return outOn ? 'טרם נמסרה' : 'טרם נלקחה';
 }
 
+// "מי לקח / מי החזיר" בשורת הפריט (הערת הבעלים 2026-10-05): תאריך+שעה מהפריט עצמו (takenDate / returnDate - גם אחרי פעולה אופטימית שעוד לא נטענה מחדש),
+// והעובדת מ-journal.itemActors (נגזר משורות CONFIRM_RENTAL / RETURN_RENTAL ביומן, GET /api/orders/[id]/journal). בלי עובדת מזוהה - רק התאריך; בלי שניהם - אין שורה.
+// התוויות כמו statusText: בהזמנה עם משלוח הלוך "מסירה", עם משלוח חזור "איסוף".
+export function rentalActorLines(item, order, actors) {
+  if (!item || isPendingItem(item)) return [];
+  const dir = order?.deliveryDirection || '';
+  const outOn = !!order?.isDelivery && dir !== 'חזור';
+  const backOn = !!order?.isDelivery && dir !== 'הלוך';
+  const a = (actors && item.id && actors[String(item.id)]) || {};
+  const line = (key, label, on, date, actor) => {
+    if (!on) return null;
+    const at = date || (actor && actor.at) || null;
+    const when = at ? dayTimeOf(at) : '';
+    const who = actor && actor.who ? actor.who : '';
+    const text = [when, who].filter(Boolean).join(' · ');
+    return text ? { key, label, text } : null;
+  };
+  return [
+    line('took', outOn ? 'מסירה' : 'לקיחה', item.isTaken, item.takenDate, a.took),
+    line('returned', backOn ? 'איסוף' : 'החזרה', item.isReturned, item.returnDate, a.returned),
+  ].filter(Boolean);
+}
+
 // פריט ממוגרר מ-Access: createdAt קפוא (רגע המיגרציה) → תאריך ההזמנה (A11, ר' lib/pricingCalc getItemAddReference)
 export function addedAtOf(item, order) {
   if (!item) return null;
@@ -266,6 +289,9 @@ export function feeFromPreview(newObligations) {
   const net = (newObligations || []).filter(o => o.orderItemId === PREVIEW_ITEM_ID).reduce((s, o) => s + (Number(o.amount) || 0), 0);
   return Math.max(0, Math.round(net * 100) / 100);
 }
+// "הוחזר" - אותו תנאי שמציג את הצ׳יפ/הסטטוס "הוחזרה" בשורה (statusText) ואת calculateOrderStatus: item.isReturned
+export const isItemReturned = (item) => !!(item && item.isReturned);
+export const returnedAgainMessage = (item, barcode) => `${barcode ? `ברקוד ${barcode} — ` : ''}הפריט ${item ? `"${itemName(item)}" ` : ''}כבר הוחזר, אין צורך לסרוק שוב. לביטול ההחזרה: "בטל החזרה" בשורת הפריט.`;
 export function barcodePlaceholder(item, locked) {
   if (isPendingItem(item)) return 'יש לשמור קודם';
   if (item.isReturned) return 'הפריט הוחזר';
@@ -403,6 +429,7 @@ export function createItemActions(env) {
   // ---- החזרה (MIM.handleReturn) ----
   async function returnItem(item) {
     if (!item || !item.id || item.isNew) return { ok: false };
+    if (isItemReturned(item)) { fail(returnedAgainMessage(item)); return { ok: false }; } // פריט שכבר הוחזר לא מוחזר פעם שנייה
     // השרת רושם returnedOk=true בהחזרה רגילה (rentals/toggle) — כך גם כאן, אחרת השורה הציגה "לא תקין" עד טעינה מחדש
     patchItem(item.id, { isReturned: true, returnDate: new Date(), returnedOk: true });
     let result;
@@ -512,7 +539,13 @@ export function createItemActions(env) {
     // רק פריטים שמורים (לפריט שטרם נשמר אין מה להשכיר בשרת)
     const activeItems = activeItemsOf().filter(i => i.id && !i.isNew);
 
+    // ברקוד של פריט שכבר הוחזר (ואין פריט אחר בהזמנה עם אותו ברקוד שעוד לא הוחזר). בהזמנה פתוחה ההודעה "כבר הוחזר" של הישן (בסוף הפונקציה,
+    // אחרי verify-item - זוגיות); בהזמנה נעולה הודעת הנעילה הייתה מטעה לפריט שהוחזר, ולכן כאן ההודעה הברורה
+    const sameBarcode = activeItems.filter(i => { const b = itemBarcode(i); return b && b === barcode; });
+    const allSameReturned = sameBarcode.length > 0 && sameBarcode.every(isItemReturned);
+
     if (st.isLocked) {
+      if (allSameReturned) { fail(returnedAgainMessage(sameBarcode[0], barcode)); return { ok: false, alreadyReturned: true }; }
       const isReturnScan = activeItems.some(i => itemBarcode(i) === barcode && i.isTaken && !i.isReturned);
       if (!isReturnScan) {
         fail('ההזמנה נעולה (תאריך האירוע עבר) — ניתן לבצע החזרה בלבד. השכרה דורשת שחרור באישור מנהל.');
@@ -552,7 +585,7 @@ export function createItemActions(env) {
     }
 
     // 2. מציאת הפריט המתאים בהזמנה — קודם ברקוד שכבר שויך, אחרת לפי קידומת+מידה
-    let matchedItem = activeItems.find(i => { const b = itemBarcode(i); return b && b === barcode; }) || null;
+    let matchedItem = sameBarcode.find(i => !isItemReturned(i)) || sameBarcode[0] || null;
     let candidates = [];
     if (!matchedItem) {
       candidates = activeItems.filter(i => {
@@ -640,7 +673,8 @@ export function createItemActions(env) {
       }
       return returnItem(item);
     }
-    return { ok: false };
+    fail(returnedAgainMessage(item, barcode || null));
+    return { ok: false, alreadyReturned: true };
   }
 
   // ---- אישור פריט: POST לפריט חדש / PUT לפריט קיים (MIM.handleConfirmItem) ----

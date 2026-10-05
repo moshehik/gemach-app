@@ -18,7 +18,14 @@ test('הלשונית רשומה ב-tabs/index.js (שורת W6) ונטענת מח
   assert.match(idx, /history: OcHistoryTab,/);
   const tab = strip(read('app/components/order-card/tabs/OcHistoryTab.js'));
   assert.match(tab, /oc\.historyVersion/);
-  assert.match(tab, /\/api\/orders\/\$\{orderId\}\/journal/);
+  // הסקירה: היומן נטען פעם אחת ב-OrderCardA5 (OcStepper.useOrderJournalData) ומשותף דרך OcJournalContext - לשונית ההיסטוריה לא טוענת אותו שוב
+  assert.ok(!/\/journal/.test(tab.replace(/OcJournalContext|הקשר/g, '')), 'אין fetch של journal בלשונית');
+  assert.match(tab, /const journal = useOcJournal\(\);/);
+  assert.match(tab, /\/api\/orders\/\$\{orderId\}\/history\?all=1/);
+  assert.match(read('app/components/order-card/OcStepper.js'), /fetch\(`\/api\/orders\/\$\{orderId\}\/journal`/);
+  const a5 = read('app/components/order-card/OrderCardA5.js');
+  assert.equal((a5.match(/useOrderJournalData\(oc\)/g) || []).length, 1, 'טעינה אחת לכרטיס');
+  assert.match(read('app/components/order-card/OcStepper.js'), /\[oc\.status, orderId, oc\.historyVersion\]/, 'מתרענן בכל כתיבה (historyVersion)');
   assert.match(tab, /\/api\/orders\/\$\{orderId\}\/history\?all=1/);
   assert.match(tab, /oc\.bumpHistory\(\)/, 'a schedule mark from the card refreshes the feed');
 });
@@ -118,8 +125,26 @@ test('D2: כרטיס אחד (OcJournalCard) לשלבים + יומן; אין OcSt
   for (const f of W6_UI) assert.ok(!/עורך ההזמנה|בוצעה על ידי|עובדים פעילים בהזמנה/.test(strip(read(f))), `${f}: no separate order-editor / performed-by card`);
 });
 
+// החלטת הבעלים 2026-10-05: אין צ׳יפ "נרשמה" / "מידע בלבד"; הזמנה שהוחזרה = בלי "טרם בוצע" / "סמן הכנה" / "השלב הנוכחי" (closedByReturn)
+test('יומן: הוסרו צ׳יפי "נרשמה" ו"מידע בלבד"; השלבים הסגורים בהחזרה בלי meta; הנתיב מעביר closeWhenReturned', () => {
+  const card = strip(read('app/components/order-card/parts/OcJournalCard.js'));
+  assert.ok(!/נרשמה|מידע בלבד|INFO_CHIP/.test(card), 'info-only chips are gone');
+  assert.match(card, /s\.infoOnly \|\| s\.closedByReturn\) return null/);
+  assert.match(card, /meta \? <div className="prc-m">/, 'no empty .prc-m wrapper');
+  assert.match(card, /n\.current \? <span className="chip gray prc-cur">השלב הנוכחי/, 'the current-stage chip stays (status, not info-only)');
+  const route = strip(read('app/api/orders/[id]/journal/route.js'));
+  assert.match(route, /closeWhenReturned: true/);
+});
+
 test('D3: כרטיס היומן מציג כפתור משמרת רק כשהצומת נושא shift (אין חזרה לכותרת "משמרת · HH:MM")', () => {
   const card = strip(read('app/components/order-card/parts/OcJournalCard.js'));
   assert.match(card, /doneBy && n\.shift \? <ShiftButton/);
   assert.ok(!/משמרת ·/.test(card));
+});
+
+test('לשונית היסטוריה: אין כותרת "מותאם" / "הפרטים המלאים של כל השינויים" מעל "פעולות ושינויים" (בעלים 2026-10-05)', () => {
+  const tab = strip(read('app/components/order-card/tabs/OcHistoryTab.js'));
+  assert.ok(!/מותאם|הפרטים המלאים של כל השינויים|sect-h|oc-sect-t/.test(tab));
+  assert.ok(!/oc-sect-t/.test(read('app/components/order-card/css/oc-history.css')));
+  assert.match(read('app/components/order-card/parts/OcHistoryFeed.js'), /<h2>פעולות ושינויים<\/h2>/, 'the feed card carries its own title');
 });

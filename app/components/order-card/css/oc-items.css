@@ -72,3 +72,8 @@
 .gm-ds.gm-oc .oc-bcval{margin:0 0 14px;font-weight:700;font-size:16px}
 .gm-ds.gm-oc .oc-choose{margin-bottom:16px}
 .gm-ds.gm-oc :is(#dlg,#dlg2) .oc-alt .inp{border-radius:14px}
+
+/* פריט שהוחזר (OcBarcodeRow, הערת הבעלים 2026-10-05): בורר תקין/לא תקין קומפקטי בשורה אחת עם הצ׳יפ ו"בטל החזרה" (ghost) */
+.gm-ds.gm-oc .app .seg.pill.oc-cond{flex:none;width:auto;min-width:0}
+.gm-ds.gm-oc .app .seg.pill.oc-cond button{flex:1 1 auto;padding:5px 14px;min-height:0;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.gm-ds.gm-oc .app .oc-retchip{flex:none}

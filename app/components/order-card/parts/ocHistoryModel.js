@@ -44,10 +44,39 @@ export function categoryCount(entries, k, q = '') {
   return (entries || []).filter((e) => (k === 'all' || inCategory(e, k)) && matchesWords(e, words)).length;
 }
 
-/** "כז תשרי" מתוך 'כז תשרי תשפ"ז' (התאריך העברי בלי השנה - hDateShort בדגימה) */
+// אות-מספר עברית (גימטריה) בלי סימני גרש -> עם סימנים כמו gematriya של @hebcal/core שבה משתמש כרטיס האירוע: "כח" -> "כ״ח", "ל" -> "ל׳", "טו" -> "ט״ו", "תשפז" לא רלוונטי
+// (השנה מגיעה כבר עם " / ' ומומרת). דוח ההשוואה F12: ביומן ובהיסטוריה הוצג "כח תשרי" ובכרטיס האירוע "כ״ח" - תבנית אחת (הדמו: "י״ב תשרי", "כ״ז תשרי תשפ״ז").
+const GEM_RE = /^[א-ת]{1,4}$/;
+export function gershayim(token) {
+  const t = String(token || '');
+  if (/[״׳"']/.test(t)) return t.replace(/"/g, '״').replace(/'/g, '׳');
+  if (!GEM_RE.test(t)) return t;
+  return t.length === 1 ? `${t}׳` : `${t.slice(0, -1)}״${t.slice(-1)}`;
+}
+// טוקן שנה עברית: מתחיל ב-ת (עם ה' אופציונלית) ומכיל גרש/גרשיים לפני האות האחרונה - 'תשפ"ז' / 'תשפ״ז' / 'התשפ״ז'. שמות חודשים (תשרי, תמוז, טבת) בלי סימן - לא שנה.
+// לא מזהים לפי מספר המילים: heShort של שנה מעוברת הוא 'יג אדר א'' (שלוש מילים בלי שנה).
+export const isHebrewYearToken = (t) => /^ה?ת[א-ת]*["״׳'][א-ת]$/.test(String(t || ''));
+
+/** 'כח תשרי תשפ"ז' -> 'כ״ח תשרי תשפ״ז'; 'יג אדר א' תשפ"ז' -> 'י״ג אדר א׳ תשפ״ז' (היום והשנה בגרשיים; החודש כמות שהוא) */
+export function hebrewWithGershayim(dateHe) {
+  const p = String(dateHe || '').trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return '';
+  const out = p.map((t, i) => (i === 0 || /^[א-ת]["'׳]$/.test(t) ? gershayim(t) : t));
+  const last = p.length - 1;
+  if (last > 0 && isHebrewYearToken(p[last])) out[last] = gershayim(p[last]);
+  return out.join(' ');
+}
+
+/**
+ * היום והחודש בלי השנה, היום בגרשיים: 'כז תשרי תשפ"ז' -> 'כ״ז תשרי'; heShort (בלי שנה) נשאר כמות שהוא: 'יג אדר א'' -> 'י״ג אדר א׳' (לא 'י״ג אדר').
+ * השנה נחתכת רק כשהטוקן האחרון הוא שנה (isHebrewYearToken), לא לפי מספר המילים.
+ */
 export function shortHebrew(dateHe) {
-  const p = String(dateHe || '').trim().split(/\s+/);
-  return p.length > 2 ? p.slice(0, -1).join(' ') : p.join(' ');
+  const p = String(dateHe || '').trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return '';
+  const rest = p.slice(1);
+  if (rest.length && isHebrewYearToken(rest[rest.length - 1])) rest.pop();
+  return [gershayim(p[0]), ...rest.map((t) => (/^[א-ת]["'׳]$/.test(t) ? gershayim(t) : t))].join(' ');
 }
 
 /** "היום" / "מחר" / "אתמול" / "יום ה' כז תשרי" - יום ישראלי מול היום הישראלי (שני מפתחות YYYY-MM-DD) */
@@ -59,7 +88,7 @@ export function relativeDayLabel(dayKey, todayKey, labels) {
     if (d === -1) return 'אתמול';
   }
   if (!labels) return '';
-  return [labels.wdFull || labels.wd, labels.heShort || shortHebrew(labels.he)].filter(Boolean).join(' ');
+  return [labels.wdFull || labels.wd, shortHebrew(labels.heShort || labels.he)].filter(Boolean).join(' ');
 }
 function ymd(key) {
   const [y, m, d] = String(key).split('-').map(Number);

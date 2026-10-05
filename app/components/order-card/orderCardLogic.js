@@ -305,6 +305,22 @@ export const isPartiallyRentedBlocked = (settings, items) => !settings.allowEdit
 
 export const DELETE_BLOCKED_STATUSES = ['הוחזר', 'הוחזר חלקי', 'הושכר', 'הושכר חלקי'];
 
+/**
+ * האם אי אפשר למחוק את ההזמנה (הכלל של השרת + deleteOrderCore בזרימות): היסטוריית השכרה (סטטוס הושכר/הושכר חלקי/הוחזר/הוחזר חלקי -
+ * שרת: פריט isTaken||isReturned = 400 "Cannot delete order with rental history"), או הגדרה allow_edit_partially_rented כבויה עם פריט שנלקח.
+ * נעילת ההזמנה (תאריך אירוע שעבר, isLocked) כשלעצמה לא חוסמת מחיקה - רק בפועל כמעט כל הזמנה כזו כבר הושכרה/הוחזרה.
+ * @returns {null|{code:'rental'|'partial-setting', text:string}} null = המחיקה מותרת (בכפוף לאישור ת״ז/אישור המחיקה)
+ */
+export function deleteBlockReason({ statusText, settings, items = [] } = {}) {
+  if (DELETE_BLOCKED_STATUSES.includes(statusText)) {
+    return { code: 'rental', text: 'לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר' };
+  }
+  if (settings && isPartiallyRentedBlocked(settings, items)) {
+    return { code: 'partial-setting', text: 'לא ניתן לבטל הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented)' };
+  }
+  return null;
+}
+
 // :683-692 — מחזיר טקסט שגיאה או null
 export function validateRepairs(items = []) {
   for (const item of items) {

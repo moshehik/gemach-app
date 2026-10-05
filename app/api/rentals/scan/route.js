@@ -313,14 +313,22 @@ export async function PUT(request) {
     }
 
     const idStr = String(unreturnedItemId);
-    const item = await prisma.orderItem.update({
-      where: { id: idStr },
-      data: {
-        isReturned: true,
-        returnedOk: true,
-        returnDate: new Date()
+    // החזרה מההשכרה הקודמת: נרשמת כ-RETURN_RENTAL (ולא כ"עדכון" גנרי) עם העובדת המבצעת - כך "מי החזיר" נגזר גם כאן (lib/history/orderJournal.js itemRentalActors)
+    const before = await prisma.orderItem.findUnique({ where: { id: idStr }, select: { isReturned: true, returnedOk: true, returnDate: true } });
+    if (!before) {
+      return NextResponse.json({ error: 'פריט לא נמצא' }, { status: 404 });
+    }
+    const returnedAt = new Date();
+    const item = await prisma.orderItem.update(auditAs(
+      'RETURN_RENTAL',
+      { where: { id: idStr }, data: { isReturned: true, returnedOk: true, returnDate: returnedAt } },
+      {
+        isReturned: { from: before.isReturned, to: true },
+        returnedOk: { from: before.returnedOk, to: true },
+        returnDate: { from: before.returnDate, to: returnedAt },
+        note: 'החזרה מהשכרה קודמת בסריקת השכרה חדשה'
       }
-    });
+    ));
 
     // We should also update DressItem location to 'חנות'
     if (item.dressItemId) {

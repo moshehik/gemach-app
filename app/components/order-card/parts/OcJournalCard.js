@@ -11,10 +11,10 @@ import OcPortal from '../OcPortal';
 import { fmtMoney } from '../orderCardLogic';
 import { relativeDayLabel } from './ocHistoryModel';
 
-const INFO_CHIP = { order: 'נרשמה', event: 'מידע בלבד' };
-
 // כרטיס אחד (D2, החלטת הבעלים 2026-10-05): "שלבי ההזמנה" + "יומן הזמנה" אוחדו לרשימה אחת. שורה לכל שלב + "תשלום" (החדש למעלה): שם השלב,
-// מתי / מי (היומן), לחצן "עובדים במשמרת" (רק כשהוגדרו משמרות - D3), וה-meta של השלב (מידע בלבד / טרם בוצע / "סמן הכנה בוצעה" / "בטל סימון").
+// מתי / מי (היומן), לחצן "עובדים במשמרת" (רק כשהוגדרו משמרות - D3), וה-meta של השלב (טרם בוצע / "סמן הכנה בוצעה" / "בטל סימון").
+// החלטת הבעלים 2026-10-05: אין צ׳יפ "נרשמה" (שורת ההזמנה) ולא "מידע בלבד" (שורת האירוע) - שלב מידע-בלבד בלי meta כלל.
+// הזמנה שהוחזרה במלואה / שבוטלה (stage.closedByReturn): אין "השלב הנוכחי", אין "סמן הכנה בוצעה" ואין "טרם בוצע" - אין פעולה ממתינה.
 export default function OcJournalCard({ nodes, stages, todayKey, canMark, busyKey, onMark }) {
   const list = [...(nodes || [])].reverse(); // החדש למעלה (כמו בדגימה)
   const byKey = new Map((stages || []).map((s) => [s.key, s]));
@@ -33,7 +33,7 @@ export default function OcJournalCard({ nodes, stages, todayKey, canMark, busyKe
 
 function StageMeta({ s, canMark, busy, onMark }) {
   const markable = s.markable && canMark;
-  if (s.infoOnly) return <span className="chip gray">{INFO_CHIP[s.key] || 'מידע בלבד'}</span>;
+  if (s.infoOnly || s.closedByReturn) return null;
   if (markable && !s.done) {
     return (
       <button type="button" className="btn sm" data-act="prep-mark" disabled={busy} onClick={() => onMark && onMark(s, true)}>
@@ -56,6 +56,7 @@ function JournalRow({ n, stage, todayKey, canMark, busy, onMark }) {
   const dayKey = n.when ? n.when.dayKey : (n.plannedDay && n.plannedDay.dayKey);
   const rel = relativeDayLabel(dayKey, todayKey, day);
   const doneBy = n.done && n.when;
+  const meta = stage ? StageMeta({ s: stage, canMark, busy, onMark }) : null;
   return (
     <div className={`prc ${n.done ? 'done' : 'fut'}${n.current ? ' cur' : ''}`} aria-current={n.current ? 'step' : undefined} data-node={n.key} data-stage={stage ? stage.key : undefined}>
       <div className="prc-rail"><span className="prc-i"><OcIcon name={n.done ? 'check' : n.icon} /></span></div>
@@ -69,7 +70,7 @@ function JournalRow({ n, stage, todayKey, canMark, busy, onMark }) {
             {n.key === 'pay' && n.paid > 0 ? <> · שולם <bdi dir="ltr">{fmtMoney(n.paid)}</bdi></> : null}
           </small>
         </div>
-        {stage ? <div className="prc-m"><StageMeta s={stage} canMark={canMark} busy={busy} onMark={onMark} /></div> : null}
+        {meta ? <div className="prc-m">{meta}</div> : null}
         {n.current ? <span className="chip gray prc-cur">השלב הנוכחי</span> : null}
         {doneBy && n.shift ? <ShiftButton shift={n.shift} /> : null}
       </div>

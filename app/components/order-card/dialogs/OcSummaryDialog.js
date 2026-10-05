@@ -1,11 +1,12 @@
 'use client';
 
 // OcSummaryDialog — D1 "סיכום" לפני שמירה (+R14: סה״כ לתשלום / שולם עד כה / יתרה). נפתח ע"י הבקר (slot SummaryDialog) כשההגדרה
-// enable_order_edit_summary_confirm דולקת (נווה); בגמ"ח בלי ההגדרה אין חלון סיכום (כמו בישן). close(true) = להמשיך לשמירה, close(false) = חזרה לעריכה.
+// enable_order_edit_summary_confirm דולקת (נווה); בגמ"ח בלי ההגדרה אין חלון סיכום (כמו בישן). close(true) = להמשיך לשמירה, close(false) = חזרה לעריכה, close('discard') = ביטול כל השינויים.
 //
 // מפת פורט: summaryDlg + בלוק r14 של שכבת הסקירה (תצוגות-עיצוב/כרטיס-הזמנה.html) ← חלון הסיכום של הישן (LegacyOrderPage.js:1605-1694).
-// הלחצן הראשי נושא את התווית של הלחצן ברייל (תשלום / זיכוי / שמור; ביציאה "שמור וצא"). "בטל שינויים" של העיצוב לא כאן -
-// הוא ברייל, והבקר מצפה ל-true|false בלבד (REQUESTS-W5 #2).
+// הלחצן הראשי נושא את התווית של הלחצן ברייל (תשלום / זיכוי / שמור; ביציאה "שמור וצא"). "בטל שינויים" (דוח ההשוואה F11, הערת הבעלים 2026-10-05):
+// לחצן שלישי כמו בעיצוב (summaryDlg: data-act="discard-close", ביניים בין "שמור" ל"חזרה לעריכה") - close('discard') → הבקר מבצע discardAll({confirmed:true})
+// (אותה זרימת ביטול כמו "בטל שינויים" ברייל, כולל POST cancel-changes ליומן) בלי חלון אישור שני, והשמירה לא ממשיכה.
 
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
 import { Row, ChangeRow, NetBlock, Money } from './ocDialogParts';
@@ -33,6 +34,7 @@ export default function OcSummaryDialog({ intent = 'save', changes = [], totalRe
       <NetBlock net={m.net} />
       <DlgButtons>
         <DlgBtn kind="primary" icon={p.icon} act="do-save" autoFocus onClick={() => close(true)}>{p.text}</DlgBtn>
+        <DlgBtn icon="undo" act="discard-close" onClick={() => close('discard')}>בטל שינויים</DlgBtn>
         <DlgBtn kind="ghost" icon="pencil" onClick={() => close(false)}>חזרה לעריכה</DlgBtn>
       </DlgButtons>
     </>

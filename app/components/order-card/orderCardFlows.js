@@ -202,6 +202,11 @@ export function createOrderCardFlows(env) {
         savedObligationKeys: new Set((st.snapshot?.obligations || []).filter(so => !so.isDeleted).map(so => obligationIdentityKey(so))),
         changes: changesOf(st.snapshot, st)
       });
+      if (ok === 'discard') {
+        // "בטל שינויים" בתוך חלון הסיכום (העיצוב: discard-close): ביטול כל השינויים בלי חלון אישור נוסף ובלי להמשיך לשמירה
+        await discardAll({ confirmed: true });
+        return { proceed: false, discarded: true };
+      }
       if (!ok) return { proceed: false };
     }
     return { proceed: true, previewObligations, previewTotal };

@@ -16,6 +16,12 @@
    מ-.app של הפלטה (אותו דפוס כמו home.css כלל 1 ו-profile.css) */
 .app-shell .main .content:has(> .gm-ds.gm-oc){max-width:none;margin-inline:0;padding:0}
 
+/* ===== ריווח עליון (הערת הבעלים 2026-10-05: הכרטיס היה צמוד לתפריט העליון והטולטיפ של לחצני הכותרת נבלע מתחתיו) =====
+   אותו היסט עליון כמו שאר העמודים החדשים עם שורת כלים בראש (.lz-app בלו״ז / .bd-app בלוח / .lz-app בימי אי-פעילות): 50px, ו-18px במסך צר
+   (הפלטה נותנת .app רק 14-24px). ה-snav הוא sticky בזרימה (design-system/components.css .snav) - לא מכסה את התוכן, ההיסט הוא האוויר מתחתיו. */
+.gm-ds.gm-oc .oc-app{padding-top:50px}
+@media (max-width:640px){.gm-ds.gm-oc .oc-app{padding-top:18px}}
+
 /* ===== שורת הכותרת ===== */
 /* דליפה: app/design-system.css .topbar (sticky, z-index 5, רקע שקוף-למחצה, blur, קו תחתון, ריפוד 12px 24px) - בעיצוב ה-topbar שקוף,
    יחסי ובלי ריפוד */
@@ -24,6 +30,11 @@
 .gm-ds.gm-oc .oc-app .ttl h1{color:var(--gm-navy-900);letter-spacing:-.3px}
 /* דליפה: globals.css מאפס padding לכל אלמנט - לחצן החזרה בעיצוב נושא את ריפוד ברירת המחדל של הדפדפן */
 .gm-ds.gm-oc .back{padding:1px 6px}
+/* סמל נעילה במקום מחיקה (מחיקה חסומה): לא-פעיל - בלי הדגשת לחיצה, עדיין ניתן למיקוד לטולטיפ */
+.gm-ds.gm-oc .topbar .xlbtn.oc-nodel{cursor:not-allowed;opacity:.8}
+/* דוח ההשוואה F13: אייקון "ישן / חדש" (PageVariantToggle, רק להנהלה ראשית / מתכנת) דחף את קבוצת הכלים מ-x=44 ל-x=98. בעיצוב אין אותו - לכן הוא יוצא מהזרימה
+   ויושב ברווח העליון שמעל הכותרת (הריפוד העליון של .oc-app, 50px), בקצה הכלים; הכלים נשארים במקום שבעיצוב. במסך צר (ריפוד 18px) הוא נשאר בזרימה. */
+@media (min-width:641px){.gm-ds.gm-oc .oc-app .topbar > .gm-pvt{position:absolute;top:-46px;inset-inline-end:0}}
 /* #hdrChips ריק תמיד (R1) */
 .gm-ds.gm-oc #hdrChips:empty{display:none}
 
@@ -33,8 +44,11 @@
 @media (min-width:1100px){.gm-ds.gm-oc .topbar > #sbar{position:absolute;inset:auto;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:46px}}
 @media (max-width:1099px){.gm-ds.gm-oc .topbar > #sbar{width:100%;order:5;flex:1 1 100%}}
 
-/* A5 (שכבת הסקירה, מאושר): הציר העליון עם כרטיסים עשירים הוסר - שלבי ההזמנה בראש לשונית היסטוריה */
-.gm-ds.gm-oc #stepper{display:none!important}
+/* ציר האירוע (.stepper) חזר (הערת הבעלים 2026-10-05, OcStepper): בעיצוב המאושר #stepper{display:none!important} הוא רק של שכבת הסקירה (שורה 5231) -
+   בכרטיס אין כלל הסתרה; ה-CSS של הצמתים בפלטה. מרווח עליון מעל הציר: בעיצוב `.app .stepper{margin-top:...}` של הפלטה (18px) */
+/* דליפה: app/design-system.css .stepper{display:flex;align-items:center;margin-bottom:22px} (הסטפר הישן של האתר, ילדי .step) - בעיצוב .stepper בלוק רגיל
+   שמכיל את .tlx (גריד); בלי זה העמודות מתכווצות לרוחב אחד */
+.gm-ds.gm-oc .stepper{display:block;align-items:normal;margin-bottom:0}
 
 /* ===== לוחות: פנים "פנינה" ומסגרות כחול כהה (בלוקים pearl-faces / navy-frames בעיצוב) =====
    הפלטה משאירה את ה"זכוכית" הלבנה 30% (!important) של בלוק oc-panels; בעיצוב pearl-faces בא אחריו ודורס אותו */

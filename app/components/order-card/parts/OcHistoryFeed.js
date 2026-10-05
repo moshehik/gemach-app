@@ -7,6 +7,7 @@
 // .hres-bar (.hres-n, .vsw, .hres-x) + .hfeed. תאריכים עבריים בלבד; סכומים ב-<bdi dir="ltr">.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import OcIcon, { XlGlyph } from '../OcIcon';
+import OcViewSwitch from '../OcViewSwitch';
 import { fmtMoney, fmtSignedMoney } from '../orderCardLogic';
 import { downloadRowsAsXlsx } from '@/lib/xlsxExport';
 import {
@@ -164,11 +165,7 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
       </div>
       <div className="hres-bar">
         <span className="hres-n">תוצאות <b id="hfN">{list.length}</b></span>
-        <div className={`vsw${view === 'table' ? ' t' : ''}`} role="group" aria-label="מצב תצוגה">
-          <span className="vknob" aria-hidden="true" />
-          <button type="button" className={`vopt${view === 'table' ? '' : ' on'}`} aria-label="תצוגת רשימה" data-tip="רשימה" aria-pressed={view !== 'table'} onClick={() => setView('list')}><OcIcon name="rows" /></button>
-          <button type="button" className={`vopt${view === 'table' ? ' on' : ''}`} aria-label="תצוגת טבלה" data-tip="טבלה" aria-pressed={view === 'table'} onClick={() => setView('table')}><OcIcon name="table" /></button>
-        </div>
+        <OcViewSwitch value={view} onChange={setView} />
         <span className="hres-x">
           <button type="button" className="xlbtn xlg" data-hx="excel" aria-label="ייצוא ל-Excel" data-tip="ייצוא ההיסטוריה לקובץ Excel" disabled={!!busy} onClick={() => exportAs('excel')}><XlGlyph kind="excel" /></button>
           <button type="button" className="xlbtn xld" data-hx="download" aria-label="הורדה" data-tip="הורדת ההיסטוריה כקובץ" disabled={!!busy} onClick={() => exportAs('download')}><XlGlyph kind="download" /></button>

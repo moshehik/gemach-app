@@ -2,13 +2,14 @@
 
 // OcBarcodeRow — שורת הברקוד בשורת פריט פתוחה (R25/R26/R27, העיצוב: hv-r.hv-act "ברקוד" + שכבת הסקירה pv-bcin): שדה הזנת ברקוד
 // (כמו בחלון "השכרה והחזרה") שמבצע השכרה לפריט ממתין / החזרה לפריט מושכר, "בטל השכרה", "בטל החזרה", ומצב החזרה תקין / לא תקין.
+// פריט שהוחזר (הערת הבעלים 2026-10-05): בלי שדה ברקוד - צ׳יפ "הוחזרה" (התאריך והעובדת בשורת "החזרה" של הפרטים - לא חוזרים כאן) + בורר תקין/לא תקין + "בטל החזרה" כפעולה משנית אחת.
 // בלי "סמן כנלקחה/כנמסרה/כהוחזרה" ובלי קישור לכרטיס דגם (הערת הבעלים ל-R25). בהזמנה נעולה (R3): השכרה וביטול השכרה חסומים;
 // החזרה, ביטול החזרה ומצב החזרה זמינים (כמו בישן :1023-1040).
 // OcItemChooserDialog — "לאיזה פריט לשייך את הברקוד?" (MIM :1200-1255) כחלון כהה של הכרטיס.
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
 import { DlgBtn, DlgButtons, DlgHead } from '../OcUi';
-import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder } from '../hooks/useItemActions';
+import { hasRepairOf, isPendingItem, itemBarcode, itemName, barcodePlaceholder, isItemReturned } from '../hooks/useItemActions';
 
 const NO_FILL = { autoComplete: 'off', 'data-lpignore': 'true', 'data-1p-ignore': true, 'data-form-type': 'other' };
 
@@ -18,7 +19,7 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
   const [busy, setBusy] = useState(false);
   const pending = isPendingItem(item);
   const ph = barcodePlaceholder(item, locked);
-  const inputOff = busy || pending || item.isReturned || (!item.isTaken && locked);
+  const inputOff = busy || pending || isItemReturned(item) || (!item.isTaken && locked);
   const own = itemBarcode(item);
   const okCond = item.returnedOk !== false;
   const go = async (fn) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
@@ -27,6 +28,41 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
     const r = await actions.barcodeForItem(item, v);
     if (r && r.ok) setVal('');
   });
+  const returned = isItemReturned(item);
+  const badCond = () => go(async () => {
+    if (!ui || item.returnedOk === false) return actions.setReturnCondition(item, false);
+    const note = await ui.openDialog(OcCondBadDialog, { item });
+    if (note === null || note === undefined) return null;
+    return actions.setReturnCondition(item, false, { note });
+  });
+  // הערת הבעלים 2026-10-05: בפריט שהוחזר לא ברור אם ההחזרה הצליחה (שני לחצנים פעילים + שדה ברקוד). עכשיו: מצב אחד ברור - צ׳יפ "הוחזרה" עם התאריך,
+  // בורר תקין / לא תקין (קבוצת רדיו אחת), ופעולה משנית אחת "בטל החזרה" (ghost). שדה הברקוד לא מוצג כלל לפריט שהוחזר. (המקור המאושר, R26/R27, הציג
+  // שדה מנוטרל + שני לחצני tgl + "בטל החזרה" btn sm - הוחלף לבקשת הבעלים.)
+  if (returned) {
+    return (
+      <div className="hv-r hv-act oc-bcrow oc-bcret" data-state="returned">
+        <small>ברקוד</small>
+        <b className="hv-btns">
+          <span className={`chip ${okCond ? 'green' : 'amber'} oc-retchip`} role="status" data-act="returned-chip">
+            <OcIcon name={okCond ? 'check' : 'alert'} size="sm" />{okCond ? 'הוחזרה' : 'הוחזרה · לא תקין'}
+          </span>
+          <div className="seg pill oc-cond" role="radiogroup" aria-label="מצב ההחזרה" style={{ '--n': 2, '--i': okCond ? 0 : 1 }}>
+            <span className="pth" aria-hidden="true" />
+            <button type="button" role="radio" aria-checked={okCond} className={okCond ? 'on' : ''} data-act="cond-ok" disabled={busy} onClick={() => go(() => actions.setReturnCondition(item, true))}>
+              <OcIcon name="check" size="sm" />תקין
+            </button>
+            <button type="button" role="radio" aria-checked={!okCond} className={okCond ? '' : 'on'} data-act="cond-bad" disabled={busy} onClick={badCond}>
+              <OcIcon name="alert" size="sm" />לא תקין
+            </button>
+          </div>
+          <button type="button" className="btn sm ghost" data-act="undoret" disabled={busy} onClick={() => go(() => actions.cancelReturn(item))}>
+            <OcIcon name="undo" size="sm" />בטל החזרה
+          </button>
+          {own ? <span className="faint oc-bch">ברקוד <bdi dir="ltr">{own}</bdi></span> : null}
+        </b>
+      </div>
+    );
+  }
   return (
     <div className="hv-r hv-act oc-bcrow">
       <small>ברקוד</small>
@@ -47,29 +83,9 @@ export default function OcBarcodeRow({ item, actions, locked, ui }) {
             {...NO_FILL}
           />
         </div>
-        {item.isReturned ? (
-          <>
-            <button type="button" className={`btn sm tgl${okCond ? ' on' : ''}`} data-act="cond-ok" aria-pressed={okCond} disabled={busy} onClick={() => go(() => actions.setReturnCondition(item, true))}>
-              <OcIcon name="check" size="sm" />תקין
-            </button>
-            <button type="button" className={`btn sm tgl${okCond ? '' : ' on'}`} data-act="cond-bad" aria-pressed={!okCond} disabled={busy} onClick={() => go(async () => {
-              if (!ui || item.returnedOk === false) return actions.setReturnCondition(item, false);
-              const note = await ui.openDialog(OcCondBadDialog, { item });
-              if (note === null || note === undefined) return null;
-              return actions.setReturnCondition(item, false, { note });
-            })}>
-              <OcIcon name="alert" size="sm" />לא תקין
-            </button>
-          </>
-        ) : null}
-        {item.isTaken && !item.isReturned && !locked ? (
+        {item.isTaken && !locked ? (
           <button type="button" className="btn sm" data-act="undorent" disabled={busy} onClick={() => go(() => actions.cancelRent(item))}>
             <OcIcon name="undo" size="sm" />בטל השכרה
-          </button>
-        ) : null}
-        {item.isReturned ? (
-          <button type="button" className="btn sm" data-act="undoret" disabled={busy} onClick={() => go(() => actions.cancelReturn(item))}>
-            <OcIcon name="undo" size="sm" />בטל החזרה
           </button>
         ) : null}
         {own && !pending ? <span className="faint oc-bch">ברקוד <bdi dir="ltr">{own}</bdi></span> : null}

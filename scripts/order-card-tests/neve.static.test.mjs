@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const PROJ = process.env.PROJ;
 const read = (p) => fs.readFileSync(path.join(PROJ, p), 'utf8').split('\r\n').join('\n');
@@ -182,4 +183,31 @@ test('סקירה 2/8/9 (ממשק): ביטול הצטרפות לא מתאימה, 
   const tab = read(`${OC}/tabs/OcDeliveryTab.js`);
   assert.match(tab, /const joined = !!order\.deliveryJoinedTo;/);
   assert.equal((tab.match(/disabled=\{joined\}/g) || []).length, 2);
+});
+
+// הערת הבעלים 2026-10-05: "למה המשלוח לא בלשונית נפרדת בנווה". הקוד תקין - הלשונית דורשת enable_deliveries וגם delivery_separate_tab = 'true';
+// השורה לא נוצרה ב-DB של נווה (הענף שלה לא מוזג) ולכן גם לא היה מתג במסך ההגדרות. סקריפט seed (dry-run) מוסיף אותה (org2=true, org1=false).
+test('לשונית משלוח נפרדת: שער אחד (enable_deliveries && delivery_separate_tab), ברירת מחדל כבוי, אותו תוכן בלשונית או בתוך "פרטים" (לא כפול)', async () => {
+  const tabs = strip(read(`${OC}/OcTabs.js`));
+  assert.match(tabs, /t\.id !== 'delivery' \|\| \(settings\.enableDeliveries && settings\.deliverySeparateTab\)/);
+  const logic = read(`${OC}/orderCardLogic.js`);
+  assert.match(logic, /deliverySeparateTab: bool\('delivery_separate_tab', false\)/);
+  assert.match(logic, /enableDeliveries: bool\('enable_deliveries', false\)/);
+  const details = strip(read(`${OC}/tabs/OcDetailsTab.js`));
+  assert.match(details, /s\.enableDeliveries && !s\.deliverySeparateTab \? <OcDeliveryCards/, 'בתוך "פרטים" רק כשאין לשונית נפרדת');
+  assert.match(strip(read(`${OC}/tabs/OcDeliveryTab.js`)), /export default function OcDeliveryTab\(\{ oc, ui \}\) \{\s*return <OcDeliveryCards oc=\{oc\} ui=\{ui\} \/>;/);
+  const { parseSettings } = await import(pathToFileURL(path.join(PROJ, OC, 'orderCardLogic.js')).href);
+  const on = parseSettings([{ key: 'enable_deliveries', value: 'true' }, { key: 'delivery_separate_tab', value: 'true' }]);
+  assert.equal(on.enableDeliveries && on.deliverySeparateTab, true);
+  const missing = parseSettings([{ key: 'enable_deliveries', value: 'true' }]);
+  assert.equal(missing.deliverySeparateTab, false, 'שורה חסרה = כבוי (המצב בנווה היום)');
+  assert.equal(parseSettings([]).deliverySeparateTab, false);
+});
+
+test('seed delivery_separate_tab: דרך seedBoolSetting (בדיקת host, dry-run כברירת מחדל), org2=true, בלי כתיבה ישירה', () => {
+  const s = read('scripts/seed_delivery_separate_tab_setting.js');
+  assert.match(s, /require\('\.\/lib\/seed-bool-setting'\)/);
+  assert.match(s, /key: 'delivery_separate_tab'/);
+  assert.match(s, /trueForOrg: 2/);
+  assert.ok(!/systemSetting\.(create|update|upsert)/.test(s), 'הכתיבה רק דרך העזר עם --write');
 });

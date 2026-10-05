@@ -4,7 +4,7 @@
 //  - "הוסף פריט" (btn navy) → חלונית "הוספת שמלה" (OcAddItemPanel, A27/R23). מוסתר בהזמנה נעולה (R3) וכשהמכסה max_items_per_order
 //    מלאה — בלי הודעה (R32).
 //  - פס "ההזמנה נעולה" מתחת לכותרת כשתאריך האירוע עבר ולא שוחרר (R3).
-//  - סרגל (A10): "פריטים N" · רשימה / טבלה · פרטי תיקונים (כש-enable_alterations) · מחוקים — כל הלחצנים באותו גובה ובסגנון לחצן
+//  - סרגל (A10): "פריטים N" · מתג רשימה/טבלה דו-מצבי (OcViewSwitch, כמו בהיסטוריה/כרטיס הלקוח) · פרטי תיקונים (כש-enable_alterations) · מחוקים — כל הלחצנים באותו גובה ובסגנון לחצן
 //    "מחוקים" (btn tgl, ✓ כשנבחר — הערת הבעלים). טבלה = תצוגה בלבד, עם מיון עמודות.
 //  - רשימה: OcItemRow (R25–R30, A11). מחוקים: רשימה נפרדת עם "שחזור".
 //  - חלונות: עריכה (R24), פרטים והיסטוריה (R28), תפוסה (R29), בחירת פריט לברקוד (R25) — כולם דרך ui.openDialog (כהים).
@@ -12,6 +12,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import OcIcon from '../OcIcon';
+import OcViewSwitch from '../OcViewSwitch';
 import { fmtMoney } from '../orderCardLogic';
 import useItemActions, { altText, alterationsEnabled, creatorIdOf, itemName, itemPrice, quotaFull, statusText, IT_COLS, sortItems } from '../hooks/useItemActions';
 import OcItemRow from '../parts/OcItemRow';
@@ -150,8 +151,7 @@ export default function OcItemsTab({ oc, ui }) {
       {showAdd ? <OcAddItemPanel oc={oc} ui={ui} actions={actions} open={addOpen} onClose={() => setAddOpen(false)} altEnabled={altEnabled} /> : null}
       <div className="hres-bar">
         <span className="hres-n">פריטים <b>{list.length}</b></span>
-        <BarToggle on={!tbl} icon="rows" act="view-list" onClick={() => setView('list')}>רשימה</BarToggle>
-        <BarToggle on={tbl} icon="table" act="view-table" onClick={() => setView('table')}>טבלה</BarToggle>
+        <OcViewSwitch value={view} onChange={setView} act="view" />
         {altEnabled ? <BarToggle on={altShow} icon="scissors" act="altshow" onClick={() => setAltShow(v => !v)}>פרטי תיקונים</BarToggle> : null}
         {del.length || sub === 'del' ? <BarToggle id="delToggle" on={sub === 'del'} act="deltoggle" onClick={() => setSub(s => (s === 'del' ? 'active' : 'del'))}>מחוקים</BarToggle> : null}
       </div>

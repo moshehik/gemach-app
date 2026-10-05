@@ -77,7 +77,8 @@ test('תאריכים עבריים בלבד: אין toLocaleDateString / toLocale
 });
 
 test('A28: אין רכיבי מעטפת של הדגימה (snav/nbArea/siteFoot/demoBar/pv-)', () => {
-  assert.deepEqual(grepAll(/\b(snav|nbArea|siteFoot|demoBar|demoTog)\b|["' ]pv-[a-z]/), []);
+  // --gm-snav-h = משתנה גובה התפריט העליון של הפלטה (tall() ב-OrderCardA5) - לא רכיב מעטפת של הדגימה
+  assert.deepEqual(Object.entries(CODE).filter(([, s]) => /\b(snav|nbArea|siteFoot|demoBar|demoTog)\b|["' ]pv-[a-z]/.test(s.split('--gm-snav-h').join(''))).map(([f]) => f), []);
 });
 
 test('הסרות מתוך §B שלא יחזרו בטעות (R17, R30, R31, A14, A27, R23)', () => {
@@ -201,7 +202,8 @@ test('CSS: נטרולי הדליפה של §D.2 קיימים ב-oc-base.css', ()
   assert.ok(has(/thead tr th/, /^background-color$/, /!important/), 'כותרת טבלה');
   assert.ok(has(/\.card/, /^background$/, /linear-gradient\(135deg,rgba\(255,252,247/), 'פנינה במקום זכוכית');
   assert.ok(has(/#sbar/, /^display$/, /!important/), 'R42: .sbar גלוי');
-  assert.ok(has(/#stepper/, /^display$/, /none!important/), 'A5: סטפר מוסתר');
+  assert.ok(!has(/#stepper/, /^display$/, /none/), 'ציר האירוע חזר (בעלים 2026-10-05): אין כלל הסתרה של #stepper');
+  assert.ok(has(/\.stepper$/, /^display$/, /^block$/), 'דליפה: .stepper של האתר (display:flex) מנוטרל');
   assert.ok(has(/\.oc-appr-sel$/, /^min-height$/), 'D12/D7: בורר המאשר (רשימה נגללת נפתחת)');
 });
 

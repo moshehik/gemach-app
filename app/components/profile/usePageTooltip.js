@@ -20,8 +20,11 @@ export default function usePageTooltip(rootRef, ttRef, shellHandlesHover) {
       const h = tt.offsetHeight;
       let x = r.left + r.width / 2 - w / 2;
       x = Math.max(10, Math.min(window.innerWidth - w - 10, x));
+      // הטולטיפ לא נכנס מתחת לתפריט העליון (#snav הדביק, z-index 95): אם מעל האייקון אין מקום מתחת לקצה התחתון שלו - מתהפך מתחת לאייקון
+      const nav = document.getElementById('snav');
+      const minTop = Math.max(8, nav ? Math.round(nav.getBoundingClientRect().bottom) + 8 : 0);
       let y = r.top - h - 10;
-      if (y < 8) y = r.bottom + 10;
+      if (y < minTop) y = r.bottom + 10;
       tt.style.left = `${x}px`;
       tt.style.top = `${y}px`;
     };

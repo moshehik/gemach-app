@@ -13,8 +13,9 @@ import './css/oc-payments.css';
 import './css/oc-rail.css';
 import './css/oc-history.css';
 import './css/oc-docs.css';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import usePageTooltip from '@/app/components/profile/usePageTooltip';
+import useIconAnim from './hooks/useIconAnim';
 import useOrderCardController from './useOrderCardController';
 import { OcUiProvider, useOcUi } from './OcUi';
 import { OcPortalRoot } from './OcPortal';
@@ -22,6 +23,8 @@ import { OcSprite } from './OcIcon';
 import OcIcon from './OcIcon';
 import OcTopbar from './OcTopbar';
 import OcTabs from './OcTabs';
+import OcStepper, { useOrderJournalData } from './OcStepper';
+import { OcJournalContext } from './OcJournalContext';
 import { TABS } from './tabs';
 import { SLOTS } from './slots';
 
@@ -31,6 +34,8 @@ export default function OrderCardA5({ orderRef }) {
   const [portalEl, setPortalEl] = useState(null);
   // המעטפת A5 מטפלת בטולטיפים רק באזור הכותרת שלה - הכרטיס מטפל בשלו תמיד (כמו הפרופיל)
   usePageTooltip(rootRef, ttRef, false);
+  // אנימציות האייקונים של העיצוב (ריחוף + כניסה) - כל ה-CSS בפלטה, רק הוספת המחלקות (ICON-ANIM בדמו)
+  useIconAnim(rootRef);
   return (
     <div className="gm-ds gm-oc home-bg dlg-dark" dir="rtl" ref={rootRef}>
       <OcSprite />
@@ -72,11 +77,48 @@ function OrderCardBody({ orderRef }) {
   const ui = useOcUi();
   const oc = useOrderCardController(orderRef, ui, { dialogs: SLOTS });
   const { Rail, DraftBanner, MoneyToast, TopBanners } = SLOTS;
+  const journalData = useOrderJournalData(oc);
+  const mainRef = useRef(null);
+  const railRef = useRef(null);
+  // הרייל "סיכום" מתחיל בגובה הלוח הראשון (הסקשן הראשון מתחת לשורת הלשוניות), לא בגובה שורת הלשוניות - כמו fit() בעיצוב המאושר
+  // (תצוגות-עיצוב/כרטיס-הזמנה.html: סקריפט "סרגל הסיכום מתחיל בגובה הלוח הראשון" + `.app .rail{margin-top:var(--rail-top,0px)}` מ-1024px;
+  // הכלל בפלטה: design-system/components.css). נמדד מחדש בכל החלפת לשונית (MutationObserver על class) ובשינוי גודל; מתחת ל-1024px אין הסטה.
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    const rail = railRef.current;
+    if (!main || !rail) return undefined;
+    const fit = () => {
+      const p = main.querySelector('.panel.on');
+      if (!p || window.innerWidth < 1024) { rail.style.removeProperty('--rail-top'); return; }
+      const top = p.getBoundingClientRect().top - main.getBoundingClientRect().top;
+      rail.style.setProperty('--rail-top', `${Math.max(0, Math.round(top))}px`);
+    };
+    // tall() של העיצוב (כרטיס-הזמנה.html, סקריפט "סרגל הסיכום מתחיל בגובה הלוח הראשון", שורה tall): רייל גבוה מהחלון נדבק עם top שלילי כך שהתחתית שלו
+    // (שמור / בטל שינויים) תמיד נראית: top = min(גובה התפריט העליון + 16, גובה החלון - גובה הרייל - 16). באתר גובה התפריט העליון הוא הטוקן --gm-snav-h (tokens.css).
+    // במסך צר (מתחת ל-1024) הרייל הוא גיליון תחתון קבוע - אין top מוטבע. נמדד מחדש בכל שינוי גודל של הרייל / תוכנו / החלון.
+    const tall = () => {
+      if (window.innerWidth < 1024) { rail.style.removeProperty('top'); return; }
+      const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gm-snav-h')) || 0;
+      rail.style.top = `${Math.min(navH + 16, window.innerHeight - rail.offsetHeight - 16)}px`;
+    };
+    const both = () => { fit(); tall(); };
+    both();
+    const ro = new ResizeObserver(both);
+    ro.observe(main);
+    const rro = new ResizeObserver(tall);
+    rro.observe(rail);
+    const mo = new MutationObserver(fit);
+    mo.observe(main, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    const rmo = new MutationObserver(tall);
+    rmo.observe(rail, { childList: true, subtree: true, characterData: true });
+    window.addEventListener('resize', both);
+    return () => { ro.disconnect(); rro.disconnect(); mo.disconnect(); rmo.disconnect(); window.removeEventListener('resize', both); rail.style.removeProperty('top'); };
+  }, [oc.status, oc.tab]);
   return (
     <div className="app oc-app" id="app">
       <OcTopbar oc={oc} ui={ui} slots={SLOTS} />
-      {/* A5: הסטפר העליון הוסר (שלבי ההזמנה בראש לשונית היסטוריה, W6) - נשאר מוסתר כמו בעיצוב */}
-      <div className="stepper" id="stepper" aria-hidden="true" />
+      {/* ציר האירוע (.stepper) חזר בהערת הבעלים 2026-10-05 - בדיוק כמו renderTimeline() בעיצוב; נתוני אמת מה-journal (OcStepper) */}
+      <OcStepper oc={oc} data={journalData} />
       {oc.status === 'loading' ? (
         <div className="layout oc-layout-msg"><main className="main"><div className="card oc-loading" role="status"><span className="spinner" aria-hidden="true" />טוען נתוני הזמנה...</div></main></div>
       ) : oc.status === 'notfound' ? (
@@ -87,10 +129,12 @@ function OrderCardBody({ orderRef }) {
           <DraftBanner oc={oc} ui={ui} />
           <TopBanners oc={oc} ui={ui} />
           <div className="layout">
-            <main className="main">
-              <OcTabs oc={oc} ui={ui} tabs={TABS} />
+            <main className="main" ref={mainRef}>
+              <OcJournalContext.Provider value={journalData}>
+                <OcTabs oc={oc} ui={ui} tabs={TABS} />
+              </OcJournalContext.Provider>
             </main>
-            <aside className="rail" id="rail" aria-label="סיכום ההזמנה">
+            <aside className="rail" id="rail" aria-label="סיכום ההזמנה" ref={railRef}>
               <Rail oc={oc} ui={ui} />
             </aside>
           </div>
