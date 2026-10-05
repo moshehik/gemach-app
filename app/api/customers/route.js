@@ -1,3 +1,4 @@
+import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
@@ -12,7 +13,7 @@ import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
 
-export async function GET(request) {
+async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
@@ -146,7 +147,7 @@ async function queryCustomersList(searchParams, opts) {
   }
 }
 
-export async function POST(request) {
+async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
@@ -265,3 +266,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 });
   }
 }
+
+// cpu-measure (docs/cpu-measurement-2026-10-06.md): Server-Timing/x-cpu-ms/x-boot-id on the response
+const GET_timed = withCpuTiming(GET);
+export { GET_timed as GET };
+const POST_timed = withCpuTiming(POST);
+export { POST_timed as POST };

@@ -1,3 +1,4 @@
+import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../lib/prisma';
@@ -11,7 +12,7 @@ import { emailSubject } from '../../../lib/emailCatalog';
 // #24/#25 — קטגוריות הודעה מותרות. כל ערך אחר (כולל undefined) = הודעה כללית.
 const ALLOWED_CATEGORIES = ['shift_handover', 'management'];
 
-export async function GET(request) {
+async function GET(request) {
   try {
     const cookieStore = await cookies();
     const token = getVerifiedAuthCookie(cookieStore);
@@ -190,3 +191,7 @@ export async function POST(request) {
     return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+
+// cpu-measure (docs/cpu-measurement-2026-10-06.md): Server-Timing/x-cpu-ms/x-boot-id on the response
+const GET_timed = withCpuTiming(GET);
+export { GET_timed as GET };
