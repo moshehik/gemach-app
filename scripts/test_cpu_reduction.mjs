@@ -82,13 +82,14 @@ await t('מסכי עריכת הגדרות קוראים GET /api/settings עם ?f
 });
 
 console.log('5. רשימת דיווחי התקלות (לא ה-light) במטמון 60 שנ\'');
-await t('ErrorReportWindow קורא את הרשימה דרך fetchFreshJson (60 שנ\'), בלי GET גולמי; הבדיקה הקלה נשארה fetch גולמי ב-ErrorReportButton', () => {
+await t('ErrorReportWindow קורא את הרשימה דרך fetchFreshJson (60 שנ\'), בלי GET גולמי; הבדיקה הקלה בכפתור עברה לדוגם המשותף', () => {
   const win = stripComments(read('app/components/errorReport/ErrorReportWindow.js'));
   assert.match(win, /fetchFreshJson\('\/api\/error-report', \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/);
   assert.match(win, /const REPORTS_LIST_MAX_AGE_MS = 60 \* 1000;/);
   assert.doesNotMatch(win, /fetch\('\/api\/error-report'\)/);
   const btn = stripComments(read('app/components/ErrorReportButton.js'));
-  assert.match(btn, /fetch\('\/api\/error-report\?light=1'\)/);
+  assert.match(btn, /usePollSnapshot\(true\)/); // הבדיקה הקלה עברה לדוגם המשותף (GET /api/poll, lib/pollClient.js)
+  assert.doesNotMatch(btn, /fetch\('\/api\/error-report'\)/);
   assert.match(btn, /invalidate\('\/api\/error-report'\)/);
 });
 
