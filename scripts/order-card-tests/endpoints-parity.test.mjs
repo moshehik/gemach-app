@@ -560,6 +560,16 @@ test('f6da1794: הישן - בדיקה רק בפוקוס/חזרת לשונית, �
   assert.ok(src.includes('ההזמנה עודכנה ממקום אחר — רענן'));
 });
 
+test('f6da1794: הבדיקה מאחורי order_card_refresh_on_return (כבוי = כמו תמיד) - בכרטיס הישן ובחדש', () => {
+  assert.equal(L.parseSettings([]).refreshOnReturn, false, 'ברירת מחדל = כבוי');
+  assert.equal(L.parseSettings([{ key: 'order_card_refresh_on_return', value: 'true' }]).refreshOnReturn, true);
+  const src = LEGACY_SRC;
+  assert.ok(src.includes("data.find(s => s.key === 'order_card_refresh_on_return')"));
+  assert.ok(src.includes('if (!id || loading || !refreshOnReturn) return undefined;'), 'הישן: בלי ההגדרה אין האזנה לפוקוס');
+  const ctl = fs.readFileSync(process.env.PROJ + '/app/components/order-card/useOrderCardController.js', 'utf8');
+  assert.ok(ctl.includes("if (!orderRef || status !== 'ready' || !settings.refreshOnReturn) return undefined;"), 'החדש: בלי ההגדרה אין האזנה לפוקוס');
+});
+
 // ---------------------------------------------------------------------------------------------
 // דיווח 2c827b93: לשונית ההדפסה נפתחת בלי opener (תהליך נפרד ב-Chromium)
 // ---------------------------------------------------------------------------------------------

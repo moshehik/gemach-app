@@ -264,6 +264,8 @@ export default function OrderDetailsPage({ params }) {
   // דולק = הת״ז נשאלת פעם אחת בביקור בהזמנה ונשמרת בזיכרון הדף בלבד (verifiedZeoutRef) עד היציאה מההזמנה;
   // השרת ממשיך לאמת אותה מול הלקוח בכל שמירה, ולכן אין כאן הקלה באבטחה - רק אין צורך להקליד שוב.
   const [idOncePerOrderVisit, setIdOncePerOrderVisit] = useState(false);
+  // order_card_refresh_on_return - כבוי (ברירת מחדל) = הכרטיס הפתוח לא בודק שינוי ממקום אחר (ההתנהגות הקודמת); דולק = בדיקה כשחוזרים אליו.
+  const [refreshOnReturn, setRefreshOnReturn] = useState(false);
   const verifiedZeoutRef = useRef(null); // { customerId, zeout } - לא נכתב ל-localStorage, נמחק ביציאה מההזמנה
   const [allowEditPartially, setAllowEditPartially] = useState(true); // 27 - עריכת מושכר חלקי
   // require_manager_code_for_item_changes - ביטול פריט קיים דורש גם אישור מנהל, בנוסף
@@ -305,6 +307,8 @@ export default function OrderDetailsPage({ params }) {
         if (reqId) setRequireIdForEdit(reqId.value === 'true');
         const idOnce = data.find(s => s.key === 'customer_id_once_per_order_visit');
         if (idOnce) setIdOncePerOrderVisit(idOnce.value === 'true');
+        const refreshOnRet = data.find(s => s.key === 'order_card_refresh_on_return');
+        if (refreshOnRet) setRefreshOnReturn(refreshOnRet.value === 'true');
         const allowP = data.find(s => s.key === 'allow_edit_partially_rented');
         if (allowP) setAllowEditPartially(allowP.value === 'true');
         const reqManagerCode = data.find(s => s.key === 'require_manager_code_for_item_changes');
@@ -601,7 +605,7 @@ export default function OrderDetailsPage({ params }) {
   });
   useEffect(() => { if (!hasUnsavedChanges) setExternalNotice(prev => (prev === 'dirty' ? null : prev)); }, [hasUnsavedChanges]);
   useEffect(() => {
-    if (!id || loading) return undefined;
+    if (!id || loading || !refreshOnReturn) return undefined;
     const check = async () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       const now = Date.now();
@@ -635,7 +639,7 @@ export default function OrderDetailsPage({ params }) {
       document.removeEventListener('visibilitychange', check);
       clearTimeout(externalNoticeTimerRef.current);
     };
-  }, [id, loading]);
+  }, [id, loading, refreshOnReturn]);
 
   const handleRefreshFromElsewhere = async () => {
     const ok = window.customConfirm

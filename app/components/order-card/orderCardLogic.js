@@ -183,6 +183,8 @@ export function parseSettings(rows) {
     requireIdForEdit: effectiveRequireIdForEdit(bool('require_id_for_edit_cancel', false), bool('require_customer_id_number', false)),
     // customer_id_once_per_order_visit (דיווח 72a80404): כבוי = ת״ז בכל שמירה (כמו תמיד); דולק = פעם אחת לביקור בהזמנה (זיכרון בדף בלבד)
     customerIdOncePerOrderVisit: bool('customer_id_once_per_order_visit', false),
+    // order_card_refresh_on_return (דיווח f6da1794): כבוי = הכרטיס לא בודק שינוי ממקום אחר (כמו תמיד); דולק = בדיקה/עדכון כשחוזרים לכרטיס
+    refreshOnReturn: bool('order_card_refresh_on_return', false),
     allowEditPartially: bool('allow_edit_partially_rented', true),
     requireManagerCodeForItems: bool('require_manager_code_for_item_changes', false),
     enableLocalDrafts: bool('enable_local_order_drafts', true),

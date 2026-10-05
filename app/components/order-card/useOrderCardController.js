@@ -349,7 +349,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
   // בדיקה בפוקוס/חזרת הלשונית בלבד, לכל היותר פעם ב-15 שניות ובקשה אחת (בלי בדיקה מחזורית). אין שינויים שלא נשמרו =
   // מתעדכן לבד; יש = לא נדרס, רק הודעה עם כפתור רענון.
   useEffect(() => {
-    if (!orderRef || status !== 'ready') return undefined;
+    if (!orderRef || status !== 'ready' || !settings.refreshOnReturn) return undefined; // order_card_refresh_on_return (כבוי = כמו תמיד)
     let lastAt = 0;
     let busy = false;
     let gone = false;
@@ -387,7 +387,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     window.addEventListener('focus', check);
     document.addEventListener('visibilitychange', check);
     return () => { gone = true; window.removeEventListener('focus', check); document.removeEventListener('visibilitychange', check); };
-  }, [orderRef, status, ui]);
+  }, [orderRef, status, ui, settings.refreshOnReturn]);
 
   // ---------- "לשמור קודם" (סקירת אינטגרציה C2) ----------
   // פעולה שמסנכרנת את הכרטיס מהשרת (הוספת/עריכת פריט, זיכוי, חישוב מחדש - oc.applyServerOrder) דורסת כל שינוי מקומי שלא נשמר (הערות, תאריך,

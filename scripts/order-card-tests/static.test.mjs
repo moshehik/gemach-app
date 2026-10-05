@@ -23,8 +23,9 @@ const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map((
 // = app/orders/[id]/page.js של main ב-32d00e0c (אחרי c4d6e619: isWeekdayEvent הוסר; 1215fb9b/8830bc63: פריטי ברקוד לא מלכלכים את הכרטיס, חיוב ידני)
 // + הקשחת אישורים (fix/server-approval-hardening-2026-10-05, lib/approvalClient.js): הדף הישן שולח אסימוני אישור חתומים - אותו מקום שלח מזהה מאשר גולמי; אין שום שינוי אחר.
 // + דיווחי נווה יעקב 5.10.2026 (fix-reports/neve-order-card-2026-10-05): 72a80404 (ת״ז פעם אחת לביקור, מאחורי customer_id_once_per_order_visit), f6da1794 (רענון כשחוזרים לכרטיס אחרי שינוי ממקום אחר), 2c827b93 (window.open של ההדפסה עם noopener).
+// + בדיקת הרענון של f6da1794 עברה מאחורי order_card_refresh_on_return (כבוי כברירת מחדל = כמו קודם; ביקורת F, 6.10.2026).
 // כל שינוי עתידי בדף הישן חייב לעדכן את הערך הזה במכוון (והבדיקות ב-approval-tokens.client.test.mjs מגדירות מה השתנה).
-const LEGACY_SHA256_LF = '8c29d9923ff98d2e31726de5c1cff3b537ef6752a19a2d397afa74b73412cfb3';
+const LEGACY_SHA256_LF = '94417f055195a40261d2db28f2beaec061b774faa59fdbef4d48ba752423ac2a';
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
   const s = read(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js')).replace(/\r\n/g, '\n');
   assert.equal(crypto.createHash('sha256').update(s).digest('hex'), LEGACY_SHA256_LF);
