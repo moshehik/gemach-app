@@ -171,7 +171,9 @@ console.log('listSearch: תאריכים');
 t('hebrewDateKeyRanges: חודש-יום עם שנה / בלי שנה / חודש בלבד / אדר', () => {
   const day = LS.hebrewDateKeyRanges(SN.parseHebrewDate('כז תשרי תשפ"ז'));
   eq(day.length, 1); eq(day[0][0], day[0][1]);
-  eq(HD.getHebrewDateString(HD.getIsraelDayRange(day[0][0]).start).startsWith('כז תשרי'), true);
+  // getHebrewDateString קורא את אזור הזמן המקומי של התהליך, ולכן ממירים צהרי-יום מקומיים של המפתח (אותו תאריך קלנדרי בכל אזור זמן) ולא את תחילת היום הישראלי
+  const [ky, km, kd] = day[0][0].split('-').map(Number);
+  eq(HD.getHebrewDateString(new Date(ky, km - 1, kd, 12)).startsWith('כז תשרי'), true);
   eq(LS.hebrewDateKeyRanges(SN.parseHebrewDate('כז תשרי'), { nowYear: 5786 }).length, 11, 'ללא שנה: 11 שנים');
   const month = LS.hebrewDateKeyRanges(SN.parseHebrewDate('תשרי תשפ"ז'));
   eq(month.length, 1); ok(month[0][1] > month[0][0]);
