@@ -361,7 +361,11 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
           type="search"
           value={q}
           placeholder="חיפוש עמוד, הזמנה או לקוח…"
-          autoComplete="nope"
+          name={`${idPrefix}-search`}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           data-lpignore="true"
           data-1p-ignore
           data-form-type="other"
