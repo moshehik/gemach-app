@@ -167,6 +167,9 @@ export default function NewOrderPage() {
     }
   }, [settings.delivery_price_by_city]);
 
+  // דיווחים ac8afab7 / 1913c29a / caab5f84: חלון "הוסף/עריכת משלוח" בשלבים 3-5. null = סגור; אחרת צילום מצב שדות
+  // המשלוח ברגע הפתיחה, כדי ש"ביטול" יחזיר את המצב הקודם. אותם שדות ואותו state (order) כמו בשלב 2.
+  const [deliveryModal, setDeliveryModal] = useState(null);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
   const [swipeInput, setSwipeInput] = useState('');
@@ -958,7 +961,7 @@ export default function NewOrderPage() {
 
   useEffect(() => {
     if (order.items.length === 0) {
-      setCalculatedData({ totalAmount: 0, items: [] });
+      setCalculatedData({ totalAmount: 0, items: [], deliveryAmount: 0 });
       return;
     }
     setCalculating(true);
@@ -978,7 +981,9 @@ export default function NewOrderPage() {
       .then(data => {
         setCalculatedData({
           totalAmount: data.totalAmount || 0,
-          items: data.calculatedItems || []
+          items: data.calculatedItems || [],
+          // אותו מספר שכבר כלול ב-totalAmount (השרת מוסיף אותו) - רק לתצוגה בשלבים 3-5 (ac8afab7)
+          deliveryAmount: data.deliveryAmount || 0
         });
         setCalculating(false);
       })
@@ -1393,6 +1398,107 @@ export default function NewOrderPage() {
   const totalPaid = paymentsList.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
   const remaining = Math.max(0, totalAmount - totalPaid);
   const repairsTotal = (calculatedData.items || []).reduce((acc, i) => acc + (parseFloat(i.repairsCost) || 0), 0);
+
+  // ac8afab7 / 1913c29a / caab5f84 - משלוח לאורך כל האשף. שדות המשלוח (אותו state ואותו JSX) מוצגים גם בשלב 2 וגם בחלון.
+  const deliveryEnabled = settings.enable_deliveries === 'true';
+  const deliveryAmount = calculatedData.deliveryAmount || 0;
+  const renderDeliveryFields = () => (
+    <div className="form-grid" style={{ marginTop: 8 }}>
+      <div className="field">
+        <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!order.isDelivery} onChange={e => setOrder(prev => ({ ...prev, isDelivery: e.target.checked }))} />
+          <span>הזמנת משלוח</span>
+        </label>
+      </div>
+      {order.isDelivery && (
+        <>
+          <div className="field">
+            <label>כיוון משלוח</label>
+            <select className="select" value={order.deliveryDirection} onChange={e => setOrder(prev => ({ ...prev, deliveryDirection: e.target.value }))}>
+              <option value="הלוך">הלוך</option>
+              <option value="חזור">חזור</option>
+              <option value="הלוך-חזור">הלוך-חזור</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+            <select id="delivery-city" className="select" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}>
+              <option value="">בחר עיר…</option>
+              {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
+              <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
+              </p>
+            )}
+          </div>
+          {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
+            <div className="field">
+              <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+              <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
+              {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
+                <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                  עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
+                </p>
+              )}
+            </div>
+          )}
+          {settings.delivery_one_day_before_option === 'true' && (
+            <div className="field">
+              <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => setOrder(prev => ({ ...prev, deliveryOneDayBefore: e.target.checked }))} />
+                <span>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
+              </label>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+  // שורת חיוב המשלוח (אותו מספר שכלול ב-totalAmount). variant 'sum' = בכרטיס הסיכום של שלב 5.
+  const renderDeliveryChargeRow = (variant) => (deliveryEnabled && order.isDelivery) ? (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: variant === 'sum' ? '6px 2px' : '10px 4px 0' }}>
+      <span className="hint" style={{ color: 'var(--text-3)' }}>
+        {variant === 'sum' ? 'מתוכם משלוח' : 'משלוח'}{order.deliveryCity ? ` · ${order.deliveryCity}` : ''} · {order.deliveryDirection}
+      </span>
+      {!order.deliveryCity
+        ? <span className="hint" style={{ color: 'var(--danger)' }}>יש לבחור עיר משלוח</span>
+        : activeItems.length === 0
+          ? <span className="hint" style={{ color: 'var(--text-3)' }}>יחושב אחרי הוספת פריטים</span>
+          : <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{deliveryAmount.toLocaleString('he-IL')}</strong>}
+    </div>
+  ) : null;
+  const openDeliveryModal = () => {
+    setDeliveryModal({
+      isDelivery: !!order.isDelivery,
+      deliveryDirection: order.deliveryDirection,
+      deliveryCity: order.deliveryCity,
+      deliveryAddress: order.deliveryAddress,
+      deliveryOneDayBefore: order.deliveryOneDayBefore
+    });
+    // "הוסף משלוח" מדליק את המשלוח מיד, כדי שהשדות יופיעו; "ביטול" מחזיר את המצב שנשמר למעלה.
+    if (!order.isDelivery) setOrder(prev => ({ ...prev, isDelivery: true }));
+  };
+  const cancelDeliveryModal = () => {
+    if (deliveryModal) setOrder(prev => ({ ...prev, ...deliveryModal }));
+    setDeliveryModal(null);
+  };
+  // אותה בדיקה כמו שער שלב 2 ו-saveOrder - שלבים 3+ עוקפים את שער שלב 2.
+  const saveDeliveryModal = () => {
+    const err = validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities);
+    if (err) { alert(err); return; }
+    setDeliveryModal(null);
+  };
+  const renderDeliveryButton = () => deliveryEnabled ? (
+    <button
+      type="button"
+      className="btn btn-secondary"
+      style={{ width: '100%', padding: '14px 16px', fontSize: '15px', fontWeight: 700 }}
+      onClick={openDeliveryModal}
+    >
+      <svg className="icon"><use href="#i-truck" /></svg> {order.isDelivery ? 'עריכת משלוח' : 'הוסף משלוח'}
+    </button>
+  ) : null;
 
   const eventDateLabel = order.isAbroad
     ? (order.fromDate && order.toDate ? `${getHebrewDateString(order.fromDate)} — ${getHebrewDateString(order.toDate)}` : '')
@@ -2092,59 +2198,7 @@ export default function NewOrderPage() {
                     שהכרטיס כולו מוצג (delivery_show_in_order, שער נפרד לטלפוני/סניף). בלי
                     התנאי הזה האפשרות הופיעה גם כשהמשלוחים כבויים לגמרי (דיווח תקלה e8dc2860,
                     2026-09-22), בשונה מכרטיס העריכה של הזמנה קיימת שכבר נעלם לגמרי כשכבוי. */}
-                {settings.enable_deliveries === 'true' && (
-                <div className="form-grid" style={{ marginTop: 8 }}>
-                  <div className="field">
-                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                      <input type="checkbox" checked={!!order.isDelivery} onChange={e => setOrder(prev => ({ ...prev, isDelivery: e.target.checked }))} />
-                      <span>הזמנת משלוח</span>
-                    </label>
-                  </div>
-                  {order.isDelivery && (
-                    <>
-                      <div className="field">
-                        <label>כיוון משלוח</label>
-                        <select className="select" value={order.deliveryDirection} onChange={e => setOrder(prev => ({ ...prev, deliveryDirection: e.target.value }))}>
-                          <option value="הלוך">הלוך</option>
-                          <option value="חזור">חזור</option>
-                          <option value="הלוך-חזור">הלוך-חזור</option>
-                        </select>
-                      </div>
-                      <div className="field">
-                        <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                        <select id="delivery-city" className="select" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}>
-                          <option value="">בחר עיר…</option>
-                          {[...new Set([...(order.deliveryCity ? [order.deliveryCity] : []), ...deliveryCityOptions])].map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        {deliveryCityRequired && !String(order.deliveryCity || '').trim() && (
-                          <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                            עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.
-                          </p>
-                        )}
-                      </div>
-                      {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
-                        <div className="field">
-                          <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                          <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                          {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
-                            <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
-                              עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {settings.delivery_one_day_before_option === 'true' && (
-                        <div className="field">
-                          <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                            <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => setOrder(prev => ({ ...prev, deliveryOneDayBefore: e.target.checked }))} />
-                            <span>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
-                          </label>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                )}
+                {settings.enable_deliveries === 'true' && renderDeliveryFields()}
               </div>
               )}
             </div>
@@ -2368,6 +2422,7 @@ export default function NewOrderPage() {
                       ))}
                     </div>
 
+                    {renderDeliveryChargeRow()}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '10px' }}>
                       <span style={{ fontWeight: 700, fontSize: '13.5px' }}>סה&quot;כ</span>
                       <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--primary-solid)', fontVariantNumeric: 'tabular-nums' }}>
@@ -2378,6 +2433,8 @@ export default function NewOrderPage() {
                 )}
               </div>
             </div>
+
+            {deliveryEnabled && <div style={{ marginTop: 16 }}>{renderDeliveryButton()}</div>}
 
             {/* הערות כלליות להזמנה - גם כאן (בנוסף לשלב 2), כי דיווח תקלה 9c358793 (2026-09-22)
                 חזר פעמיים על כך שבזמן הוספת פריטים (שלב זה) לא רואים אפשרות להקליד הערה חופשית -
@@ -2463,6 +2520,7 @@ export default function NewOrderPage() {
                 })}
               </div>
 
+              {renderDeliveryChargeRow()}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '10px' }}>
                 <span style={{ fontWeight: 700, fontSize: '13.5px' }}>סה&quot;כ לתשלום</span>
                 <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--primary-solid)', fontVariantNumeric: 'tabular-nums' }}>
@@ -2470,6 +2528,7 @@ export default function NewOrderPage() {
                 </span>
               </div>
             </div>
+            {deliveryEnabled && <div style={{ marginTop: 16 }}>{renderDeliveryButton()}</div>}
           </div>
         )}
 
@@ -2538,6 +2597,7 @@ export default function NewOrderPage() {
 
               <div>
                 <div className="card card-pad" style={{ marginBottom: '16px' }}>
+                  {renderDeliveryChargeRow('sum')}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
                     <span className="hint" style={{ color: 'var(--text-3)' }}>סה&quot;כ חיובים</span>
                     <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{(totalAmount || 0).toLocaleString('he-IL')}</strong>
@@ -2551,6 +2611,8 @@ export default function NewOrderPage() {
                     <strong style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>₪{remaining.toLocaleString('he-IL')}</strong>
                   </div>
                 </div>
+
+                {deliveryEnabled && <div style={{ marginBottom: '16px' }}>{renderDeliveryButton()}</div>}
 
                 <div className="card card-pad">
                   <div className="card-title-row" style={{ marginBottom: '10px' }}>
@@ -2602,6 +2664,32 @@ export default function NewOrderPage() {
       </NewOrderShell>
 
       {/* ==================== מודלים ==================== */}
+
+      {/* ac8afab7 / 1913c29a / caab5f84 - הוסף/עריכת משלוח בשלבים 3-5: אותם שדות ואותו state כמו בשלב 2 */}
+      {deliveryModal && deliveryEnabled && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) cancelDeliveryModal(); }}
+        >
+          <div className="modal" style={{ maxWidth: '460px' }} role="dialog" aria-modal="true" aria-label="משלוח">
+            <div className="modal-head">
+              <strong>משלוח</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={cancelDeliveryModal}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              {renderDeliveryFields()}
+              {renderDeliveryChargeRow('sum')}
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={cancelDeliveryModal}>ביטול</button>
+              <button type="button" className="btn btn-primary" onClick={saveDeliveryModal}>שמור</button>
+            </div>
+          </div>
+        </div>
+      )}
       {capacityModalItem && (
         <ItemCapacityModal
           item={capacityModalItem}
