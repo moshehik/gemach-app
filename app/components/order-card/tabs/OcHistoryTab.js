@@ -1,7 +1,7 @@
 'use client';
 
 // לשונית "היסטוריה" של כרטיס ההזמנה החדש (W6, PLAN §C): מלמעלה למטה כמו pHistory() בדגימה -
-//   1. "יומן הזמנה" (A20 + שלבי ההזמנה A5 - אוחדו לכרטיס אחד, D2 2026-10-05) parts/OcJournalCard.js ← GET /api/orders/[id]/journal (journal + stages)
+//   1. "יומן הזמנה" (A20 + שלבי ההזמנה A5 - אוחדו לכרטיס אחד, D2 2026-10-05) parts/OcJournalCard.js ← הקשר OcJournalContext ← GET /api/orders/[id]/journal (journal + stages; נטען ב-OrderCardA5)
 //   2. "פעולות ושינויים" (בלי כותרת "מותאם" - הוסרה, בעלים 2026-10-05) (R41/A21/A22) parts/OcHistoryFeed.js ← GET /api/orders/[id]/history?all=1
 // טעינה: בפעם הראשונה שהלשונית מוצגת (כל הלשוניות מורכבות תמיד - לא טוענים היסטוריה לכל פתיחת כרטיס), ומחדש בכל שינוי של
 // oc.historyVersion (עולה אחרי כל כתיבה בשרת - שמירה, פעולה מיידית, תשלום, אישור, ייצוא; W1) - כשהלשונית מוצגת, ואם לא - בפעם
@@ -9,12 +9,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import OcIcon from '../OcIcon';
 import OcJournalCard from '../parts/OcJournalCard';
+import { useOcJournal } from '../OcJournalContext';
 import OcHistoryFeed from '../parts/OcHistoryFeed';
 import { hebrewWithGershayim } from '../parts/ocHistoryModel';
 
 export default function OcHistoryTab({ oc, ui, active }) {
   const orderId = oc.order && oc.order.orderId;
-  const [journal, setJournal] = useState(null);
+  // היומן (journal + stages) נטען פעם אחת ב-OrderCardA5 (useOrderJournalData: פעם בפתיחה ובכל oc.historyVersion) ומשותף עם הציר העליון ושורות הפריטים -
+  // לשונית ההיסטוריה לא טוענת אותו שוב; רק את הפיד
+  const journal = useOcJournal();
   const [feed, setFeed] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,15 +31,10 @@ export default function OcHistoryTab({ oc, ui, active }) {
     setLoading(true);
     setError(false);
     try {
-      const [jr, hr] = await Promise.all([
-        fetch(`/api/orders/${orderId}/journal`, { cache: 'no-store' }),
-        fetch(`/api/orders/${orderId}/history?all=1`, { cache: 'no-store' }),
-      ]);
+      const hr = await fetch(`/api/orders/${orderId}/history?all=1`, { cache: 'no-store' });
       if (seq !== seqRef.current) return;
-      const j = jr.ok ? await jr.json() : null;
       const h = hr.ok ? await hr.json() : null;
       if (seq !== seqRef.current) return;
-      setJournal(j);
       setFeed(h);
       setError(!h);
     } catch {

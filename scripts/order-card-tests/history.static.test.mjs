@@ -18,7 +18,14 @@ test('הלשונית רשומה ב-tabs/index.js (שורת W6) ונטענת מח
   assert.match(idx, /history: OcHistoryTab,/);
   const tab = strip(read('app/components/order-card/tabs/OcHistoryTab.js'));
   assert.match(tab, /oc\.historyVersion/);
-  assert.match(tab, /\/api\/orders\/\$\{orderId\}\/journal/);
+  // הסקירה: היומן נטען פעם אחת ב-OrderCardA5 (OcStepper.useOrderJournalData) ומשותף דרך OcJournalContext - לשונית ההיסטוריה לא טוענת אותו שוב
+  assert.ok(!/\/journal/.test(tab.replace(/OcJournalContext|הקשר/g, '')), 'אין fetch של journal בלשונית');
+  assert.match(tab, /const journal = useOcJournal\(\);/);
+  assert.match(tab, /\/api\/orders\/\$\{orderId\}\/history\?all=1/);
+  assert.match(read('app/components/order-card/OcStepper.js'), /fetch\(`\/api\/orders\/\$\{orderId\}\/journal`/);
+  const a5 = read('app/components/order-card/OrderCardA5.js');
+  assert.equal((a5.match(/useOrderJournalData\(oc\)/g) || []).length, 1, 'טעינה אחת לכרטיס');
+  assert.match(read('app/components/order-card/OcStepper.js'), /\[oc\.status, orderId, oc\.historyVersion\]/, 'מתרענן בכל כתיבה (historyVersion)');
   assert.match(tab, /\/api\/orders\/\$\{orderId\}\/history\?all=1/);
   assert.match(tab, /oc\.bumpHistory\(\)/, 'a schedule mark from the card refreshes the feed');
 });
