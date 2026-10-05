@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
+import { SearchNotices, SearchEmptyHint } from '../../components/SearchNotices';
 
 import { useLabels } from '@/app/components/LabelsContext';
 import { cacheNamespace } from '@/app/lib/pageCache';
@@ -41,6 +42,8 @@ export default function CustomersPage() {
   const [order, setOrder] = useState('desc');
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  // הודעות החיפוש מהשרת (api/customers -> notices): מקלדת אנגלית / שמות דומים
+  const [searchNotices, setSearchNotices] = useState([]);
 
   const [advFilters, setAdvFilters] = useState({
     firstName: '', lastName: '', phone: '', city: '', email: ''
@@ -76,6 +79,7 @@ export default function CustomersPage() {
         setCustomers(cachedData.data || []);
         setTotalPages(cachedData.totalPages || 1);
         setTotalCount(cachedData.total || 0);
+        setSearchNotices(cachedData.notices || []);
         setLoading(false); // UI becomes interactive instantly
       }
 
@@ -92,6 +96,7 @@ export default function CustomersPage() {
         setCustomers(data.data || []);
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.total || 0);
+        setSearchNotices(data.notices || []);
       }
     } catch (e) {
       console.error(e);
@@ -339,6 +344,8 @@ export default function CustomersPage() {
         )}
       </div>
 
+      {!isAiModeActive && searchNotices.length > 0 && <SearchNotices notices={searchNotices} />}
+
       {loading && customers.length === 0 ? (
         <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
       ) : (
@@ -368,6 +375,16 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
+                {customers.length === 0 && (
+                  <tr>
+                    <td colSpan={6}>
+                      <SearchEmptyHint
+                        title={search ? `לא נמצאו לקוחות עבור "${search}"` : 'אין לקוחות להצגה'}
+                        hint={search ? 'אפשר לחפש לפי שם (גם שם מלא), טלפון בכל צורה (050-1234567 / +972...), עיר או דוא"ל' : ''}
+                      />
+                    </td>
+                  </tr>
+                )}
                 {customers.map(customer => (
                   <tr key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)}>
                     <td className={customer.legacyId ? 'cell-primary' : 'cell-primary cell-muted'}>{customer.legacyId || 'חדש'}</td>

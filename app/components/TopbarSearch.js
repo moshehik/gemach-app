@@ -189,6 +189,13 @@ export default function TopbarSearch() {
                     role="button"
                     tabIndex={0}
                     onClick={() => handleResultClick(item)}
+                    // הפעלה במקלדת (Enter / רווח) - קודם השורות היו role="button" עם onClick בלבד
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        handleResultClick(item);
+                      }
+                    }}
                   >
                     <div className="kpi-icon" style={{ background: isOrder ? 'var(--info-tint)' : 'var(--success-tint)', color: isOrder ? 'var(--info)' : 'var(--success)' }}>
                       <svg className="icon"><use href={isOrder ? '#i-file' : '#i-user'} /></svg>
