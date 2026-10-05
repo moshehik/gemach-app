@@ -2,11 +2,12 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { onActiveInterval } from '@/lib/idleGuard';
+import { usePollSnapshot } from '@/lib/usePoll';
+import { pollRefresh, pollAfterAction, NAV_REFRESH_MAX_AGE_MS, OPEN_REFRESH_MAX_AGE_MS } from '@/lib/pollClient';
 
 export default function NotificationBell({ employeeId }) {
   const [notifications, setNotifications] = useState([]);
-  // מונה "לא נקראו" מהבדיקה הקלה (?light=1). הרשימה המלאה נטענת רק בפתיחת הפעמון.
+  // מונה "לא נקראו" מהדוגם המשותף (GET /api/poll, lib/pollClient.js). הרשימה המלאה נטענת רק בפתיחת הפעמון.
   const [unreadFromPoll, setUnreadFromPoll] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
@@ -29,37 +30,23 @@ export default function NotificationBell({ employeeId }) {
       .catch(err => console.error('Failed to fetch notifications:', err));
   };
 
-  // בדיקה קלה לנקודה האדומה - מונה בלבד, בלי תוכן ההודעות (ר' ההערה ב-app/api/notifications/route.js).
-  const fetchUnreadCount = () => {
-    if (!employeeId) return;
-    fetch('/api/notifications?light=1')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && typeof data.unreadCount === 'number') {
-          setUnreadFromPoll(data.unreadCount);
-          // הפעמון סגור - רשימה שנטענה קודם כבר עלולה להיות מיושנת, אז המונה העדכני הוא מקור האמת
-          if (!isOpenRef.current) setNotifications([]);
-        }
-      })
-      .catch(() => {});
-  };
-
+  // בדיקה קלה לנקודה האדומה - מונה בלבד, בלי תוכן ההודעות. טיימר אחד לטאב (5 דקות, רק בטאב גלוי ופעיל) ובקשה אחת
+  // GET /api/poll שמשותפת גם לכפתור דיווח התקלות (lib/pollClient.js, docs/cpu-phase1a-poll-2026-10-06.md).
+  const snap = usePollSnapshot(!!employeeId);
   useEffect(() => {
-    fetchUnreadCount();
-    // 120 שנ' (היה 60, ורשימה מלאה): כל טיק הוא invocation + שאילתת DB לכל טאב פתוח.
-    // lib/idleGuard.js: הדגימה רצה רק בטאב גלוי עם פעילות משתמש ב-30 הדקות האחרונות (טאב מוסתר או שנשכח פתוח נעצר),
-    // ובחזרה (גלוי / תזוזה) נשלחת דגימה מיידית אחת (resumeStaleMs: 0) ואז חוזרים לקצב הרגיל.
-    return onActiveInterval(fetchUnreadCount, 120000, { resumeStaleMs: 0 });
-  }, [employeeId]);
+    const nf = snap.notifications;
+    if (!nf.known) return;
+    setUnreadFromPoll(nf.unread);
+    // הפעמון סגור - רשימה שנטענה קודם כבר עלולה להיות מיושנת, אז המונה העדכני הוא מקור האמת
+    if (!isOpenRef.current) setNotifications([]);
+  }, [snap.notifications]);
 
   // NotificationBell lives once in AppShell and never remounts on client-side
-  // navigation, so reads marked on /messages (a separate fetch/state) would
-  // otherwise sit stale here for up to the 60s poll interval. Re-sync on every
-  // route change and whenever the dropdown is opened so the dot/count reflect
-  // reads made elsewhere without waiting for the interval.
+  // navigation, so reads marked elsewhere would otherwise sit stale here until the next poll.
+  // Re-sync on route change (skipped if we polled in the last minute; /messages itself refreshes
+  // right after its own read/archive actions via pollAfterAction) and when the dropdown is opened.
   useEffect(() => {
-    // מונה בלבד - הרשימה המלאה נטענת בפתיחת הפעמון (הכפתור למטה)
-    fetchUnreadCount();
+    if (employeeId) pollRefresh({ maxAgeMs: NAV_REFRESH_MAX_AGE_MS });
   }, [pathname]);
 
   useEffect(() => {
@@ -89,6 +76,7 @@ export default function NotificationBell({ employeeId }) {
       if (res.ok) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         setUnreadFromPoll(prev => Math.max(0, prev - 1));
+        pollAfterAction(); // רענון מיידי של המונה המשותף (עוקף מטמון שרת)
       }
     } catch (err) {
       console.error(err);
@@ -106,7 +94,7 @@ export default function NotificationBell({ employeeId }) {
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
-      <button type="button" className="icon-btn" onClick={() => { if (!isOpen) fetchNotifications(); setIsOpen(!isOpen); }} title="התראות">
+      <button type="button" className="icon-btn" onClick={() => { if (!isOpen) { fetchNotifications(); pollRefresh({ maxAgeMs: OPEN_REFRESH_MAX_AGE_MS }); } setIsOpen(!isOpen); }} title="התראות">
         <svg className="icon"><use href="#i-bell" /></svg>
         {unreadCount > 0 && <span className="dot" />}
       </button>
