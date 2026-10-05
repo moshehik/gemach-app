@@ -473,10 +473,20 @@ await t('נתיבים: /employees/attendance ו-/employees/<id>/attendance (תח
   assert.match(read('app/employees/report/page.js'), /redirect\('\/employees\/attendance'\)/);
   assert.match(read('app/employees/layout.js'), /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/, 'השער של /employees לא השתנה');
   assert.ok(existsSync(path.join(PROJ, 'app/attendance/print/page.js')));
-  assert.ok(!existsSync(path.join(PROJ, 'app/api/employees/attendance/route.js')), 'ה-API הישן שהוסר חזר');
+  // 4.10.2026 ("ישן / חדש"): /api/employees/attendance קיים שוב רק כנתיב תאימות לממשק הישן המשוחזר, על השער המוקשח של
+  // "סיכום נוכחות" (getAttendanceViewer + decideReadAccess scope:'month') - לא המטפל הישן (checkAuth + checkPageAccess).
+  if (existsSync(path.join(PROJ, 'app/api/employees/attendance/route.js'))) {
+    const compat = read('app/api/employees/attendance/route.js');
+    assert.match(compat, /getAttendanceViewer\(\)/, 'compat: השער המוקשח');
+    assert.match(compat, /decideReadAccess\(\{[^}]*scope: 'month' \}\)/, 'compat: הנהלה בלבד כמו scope=month');
+    assert.ok(!/checkAuth|checkPageAccess/.test(compat), 'ה-API הישן (checkAuth + checkPageAccess) חזר');
+    assert.ok(!/password|pinHash|include:/.test(compat), 'compat: רק השדות שהממשק הישן קורא');
+  }
   const emp = read('app/employees/page.js');
   assert.match(emp, /router\.push\('\/employees\/attendance'\)/, 'לשונית "נוכחות" מובילה לדף החדש');
+  // הלשונית הישנה חיה רק בעותק המשוחזר LegacyEmployeesPage.js (נבחר לפי useUiVariant('attendance')), לא בדף החדש עצמו
   assert.ok(!/print-area|employee-page|ExportButtons|\/api\/employees\/attendance/.test(emp), 'קוד הלשונית הישנה נשאר');
+  assert.match(emp, /useUiVariant\('attendance'\)/, 'בחירה ישן / חדש');
   assert.ok(!/components\.css/.test(SW + read('app/my-hours/page.js')), 'ה-CSS של הפלטה נטען רק מתוך AttendancePage');
   assert.match(PAGE, /import '@\/design-system\/components\.css'/);
 });
@@ -513,7 +523,8 @@ await t('החלטות הבעלים בממשק: XL ושכר להנהלה בלבד
   assert.match(PAGE, /'עריכת הנוכחות שלי'|עריכת הנוכחות שלי/);
   assert.match(WIZ, /downloadPdf\(/);
   assert.match(WIZ, /printNow\(\);\n/, 'גיבוי: הדפסה רגילה כשה-PDF נכשל');
-  assert.match(read('app/employees/[id]/page.js'), /get\('tab'\)/, 'כרטיס העובד נפתח על לשונית ההיסטוריה');
+  // כרטיס העובד: ה-page.js רק מחליף בין הישן לחדש (EmployeeCardSwitch) - קריאת ?tab= נמצאת בשני הכרטיסים
+  for (const f of ['app/employees/[id]/LegacyEmployeeCardPage.js', 'app/components/employee-card/EmployeeCardA5.js']) assert.match(read(f), /get\('tab'\)/, `כרטיס העובד נפתח על לשונית ההיסטוריה (${f})`);
 });
 await t('CSS: כל כלל בהיקף .gm-ds.gm-at (חוץ מהמעטפת :has) ובלי */ בתוך הערה', () => {
   const rules = CSS.replace(/\/\*[\s\S]*?\*\//g, '').split('}').map((r) => r.split('{')[0].trim()).filter((sel) => sel && !sel.startsWith('@'));

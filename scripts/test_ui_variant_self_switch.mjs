@@ -38,14 +38,15 @@ await ta('isManagementRole: 0 ו-2 בלבד (כמו isHeadManagement ב-layout);
   assert.equal(isManagementRole(0), true); assert.equal(isManagementRole(2), true);
   for (const bad of [1, 3, -1, null, undefined, '0', '2', 'admin', NaN, [], {}, true, false]) assert.equal(isManagementRole(bad), false, String(bad));
 });
-await ta('מסכים מותרים: shell ו-home בלבד', () => {
-  assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home']);
-  for (const s of ['shell', 'home']) assert.equal(isSelfSwitchScreen(s), true);
-  for (const s of ['order_card', 'customer_card', 'new_order', '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
+// 4.10.2026: הרשימה נגזרת מ-lib/uiVariantScreens.js (selfSwitch + שתי הגרסאות קיימות) - נוספו 4 המסכים של אותו יום.
+await ta('מסכים מותרים: shell, home + המסכים של 4.10.2026 (מהרשומה)', () => {
+  assert.deepEqual([...SELF_SWITCH_SCREENS], ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']);
+  for (const s of ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(isSelfSwitchScreen(s), true);
+  for (const s of ['order_card', 'customer_card', 'employee_card', 'new_order', '', null, undefined, '__proto__', 'constructor', 'SHELL', ['shell'], 5]) assert.equal(isSelfSwitchScreen(s), false, String(s));
 });
 await ta('describeSelfSwitch: הנהלה / מתכנת רואים את הסעיף; מנהל סניף, עובד, אורח לא', () => {
-  assert.deepEqual(describeSelfSwitch(emp({ roleId: 0 })), { canSelfSwitch: true, screens: ['shell', 'home'] });
-  assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })), { canSelfSwitch: true, screens: ['shell', 'home'] });
+  assert.deepEqual(describeSelfSwitch(emp({ roleId: 0 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'] });
+  assert.deepEqual(describeSelfSwitch(emp({ roleId: 2 })), { canSelfSwitch: true, screens: ['shell', 'home', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings'] });
   for (const e of [emp({ roleId: 1 }), emp({ roleId: 5 }), emp({ roleId: null }), null]) assert.deepEqual(describeSelfSwitch(e), { canSelfSwitch: false, screens: [] });
 });
 
@@ -115,7 +116,7 @@ await ta('הרשאה לפי התפקיד ב-DB, לא לפי הגוף: roleId / i
 
 console.log('מסכים אחרים, יעד אחר, ערכים עוינים');
 await ta('order_card / customer_card / מסכים לא מוכרים נדחים (גם להנהלה), בלי כתיבה', async () => {
-  for (const screen of ['order_card', 'customer_card', 'new_order', 'foo', '', '__proto__', 'constructor', undefined, null, 'SHELL']) {
+  for (const screen of ['order_card', 'customer_card', 'employee_card', 'new_order', 'foo', '', '__proto__', 'constructor', undefined, null, 'SHELL']) {
     const r = await call(screen, { value: 'a5' }, emp());
     assert.equal(r.status, 400, String(screen)); assert.equal(r.fp.calls.length, 0);
   }

@@ -37,7 +37,16 @@ const prisma = {
   systemSetting: {
     findMany: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'findMany', args }); return [...globalThis.__SETTINGS]; },
     findUnique: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'findUnique', args }); return globalThis.__SETTINGS.find((s) => s.key === args.where.key) || null; },
+    upsert: async (args) => {
+      globalThis.__MOCK_CALLS.push({ model: 'systemSetting', op: 'upsert', args });
+      const row = globalThis.__SETTINGS.find((s) => s.key === args.where.key);
+      if (row) Object.assign(row, args.update); else globalThis.__SETTINGS.push({ key: args.where.key, ...args.create });
+      return row;
+    },
   },
+  // app/api/settings/route.js POST (settings-route.test.mjs): upsert writes into the same in-memory list
+  // (key lookups above read it back), employee.findUnique only for the pin-confirmation fallback
+  employee: { findUnique: async () => null },
   // lib/inventory.js checkMissingDressForItem (return-dates.test.mjs): stock units + units currently out
   dressItem: { findMany: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'dressItem', op: 'findMany', args }); return [...(globalThis.__DRESS_ITEMS || [])]; } },
   orderItem: { findMany: async (args) => { globalThis.__MOCK_CALLS.push({ model: 'orderItem', op: 'findMany', args }); return [...(globalThis.__ORDER_ITEMS || [])]; } },

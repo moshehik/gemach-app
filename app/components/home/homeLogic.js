@@ -3,14 +3,15 @@
 // (scripts/test_home_logic.mjs). מקור הלוגיקה: public/a5/adapters/ai.js ו-public/a5/index.html
 // (אב-טיפוס מחובר); הכללים של הדף הישן: app/components/home/LegacyHome.js.
 
-export const DEFAULT_TITLE = 'ברוכים הבאים לגמ״ח';
+import { hebFromInstant } from './homeDates.js';
 
 const str = (v) => (v === null || v === undefined ? '' : String(v));
 
 /* ---------- כותרת ---------- */
 
 // כותרת הדף בשתי שורות: { hi, q }. hi = "שלום [שם]," (סלמון), q = השורה השנייה (כחול).
-//  - הגדרה ריקה → "ברוכים הבאים לגמ״ח" בשורה אחת (החלטת הבעלים).
+//  - הגדרה ריקה → הברכה המעוצבת המותאמת אישית (DESIGNED_TITLE: "שלום [שם]," + "מה תרצי לחפש?"), כמו בנוסח המוסכם (GQ-02 / HM-05;
+//    התשובה הקודמת גוברת על "ברוכים הבאים לגמ״ח").
 //  - הגדרה בצורת "שלום! מה תרצי לחפש?" → מפוצלת בסימן הקריאה; "שלום" הופך ל"שלום [שם פרטי]," כשיש עובדת מחוברת
 //    (כמו homeTitleHtml בעיצוב).
 //  - הגדרה אחרת (בלי "!") ועובדת מחוברת → "שלום [שם]," ומתחת טקסט ההגדרה (ר' V1-RELEASE-PLAN, החלטה על פריט 11).
@@ -33,9 +34,9 @@ export function isLegacyDefaultTitle(title) {
 }
 
 export function buildGreeting(rawTitle, firstName) {
-  const t = isLegacyDefaultTitle(rawTitle) ? DESIGNED_TITLE : str(rawTitle).trim();
+  const trimmed = str(rawTitle).trim();
+  const t = isLegacyDefaultTitle(rawTitle) || !trimmed ? DESIGNED_TITLE : trimmed;
   const name = str(firstName).trim();
-  if (!t) return { hi: null, q: DEFAULT_TITLE };
   const m = /^([^!]*)!\s*(.*)$/.exec(t);
   if (m && m[2]) {
     let hi = m[1].trim();
@@ -48,7 +49,7 @@ export function buildGreeting(rawTitle, firstName) {
 
 /* ---------- קישורים מתפריט "בית" (2.10.2026): פרמטרים בטוחים ---------- */
 
-// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes (ר' lib/menu/buildMenuTree.js).
+// פריטי התפריט "בית" פותחים את דף החיפוש הראשי עם פרמטר: /?scope=<קטגוריה> | /?adv=1 | /?recent=changes | /?recent=mine (ר' lib/menu/buildMenuTree.js).
 // הפרמטרים נבדקים מול רשימה סגורה: ערך לא מוכר נזרק ולעולם לא מוצג/מוחדר לדף (הכותרת והתוויות נלקחות מהטבלה למטה, לא מהכתובת).
 // via: 'search' = החיפוש הכללי (/api/global-search מחזיר לקוחות / הזמנות / פריטי השכרה) והסינון נעשה על התשובה;
 //      'adv' = אין קטגוריה כזאת בחיפוש הכללי — מריצים את תחום החיפוש המתקדם המתאים (/api/a5/adv, adv-b) לפי שם / טלפון / קוד הזמנה.
@@ -59,17 +60,18 @@ export const HOME_SCOPES = Object.freeze({
   returns: Object.freeze({ label: 'החזרות', only: 'בהחזרות', icon: 'undo', via: 'adv', focus: 'returns' }),
   alterations: Object.freeze({ label: 'תיקונים', only: 'בתיקונים', icon: 'scissors', via: 'adv', focus: 'alterations' }),
 });
-export const HOME_RECENT_VALUES = Object.freeze(['changes']);
+export const HOME_RECENT_VALUES = Object.freeze(['changes', 'mine']); // changes = רשימת '@' (האחרונים שלי); mine = "השינויים שלי" (תצוגת התוצאות של '&')
+export const HOME_RUN_VALUES = Object.freeze(['debts', 'unsaved']); // /?run= : פעולות "#" שנפתחות בתצוגת תוצאות (חובות = ממתינים לתשלום; unsaved = טיוטות בעמדה) - רשימה סגורה
 const MAX_PARAMS_CHARS = 2000;
 const MAX_Q_CHARS = 200;
 
 /**
  * פרמטרי הכתובת של דף הבית → { scope, adv, recent, q, any }. רשימה סגורה: scope = אחד ממפתחות HOME_SCOPES, adv = '1' בדיוק,
- * recent = 'changes' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
+ * recent = 'changes' | 'mine' בדיוק (בהתנגשות: adv על recent על scope); q = טקסט חיפוש (נחתך ל-200 תווים, ריק = null). כל השאר מתעלמים ממנו. any = יש הוראה חוקית (scope/adv/recent).
  * @param {string|URLSearchParams} search מחרוזת query (עם או בלי '?')
  */
 export function parseHomeParams(search) {
-  const out = { scope: null, adv: false, recent: null, q: null, any: false };
+  const out = { scope: null, adv: false, recent: null, run: null, q: null, emp: null, any: false };
   let params;
   try {
     params = search instanceof URLSearchParams ? search : new URLSearchParams(str(search).slice(0, MAX_PARAMS_CHARS).replace(/^\?/, ''));
@@ -79,17 +81,23 @@ export function parseHomeParams(search) {
   if (params.get('adv') === '1') out.adv = true;
   const recent = params.get('recent');
   if (recent !== null && HOME_RECENT_VALUES.includes(recent)) out.recent = recent;
+  const run = params.get('run');
+  if (run !== null && HOME_RUN_VALUES.includes(run)) out.run = run;
   const q = params.get('q');
   if (q !== null && q.trim()) out.q = q.slice(0, MAX_Q_CHARS);
+  // emp = מזהה העובדת שהנהלה בחרה ב"השינויים שלי" (רק יחד עם recent=mine; השרת הוא שמחליט אם מותר - בלי הרשאה חוזרים לרשימה של עצמה)
+  const emp = params.get('emp');
+  if (emp !== null && out.recent === 'mine' && /^[A-Za-z0-9_-]{1,64}$/.test(emp)) out.emp = emp;
   // הוראה אחת בכל פעם: adv עדיף על recent, ו-recent על scope (כדי שהכתובת, הכותרת והדגשת התפריט יתאימו זה לזה)
-  if (out.adv) { out.recent = null; out.scope = null; } else if (out.recent) out.scope = null;
-  out.any = !!(out.scope || out.adv || out.recent);
+  if (out.adv) { out.recent = null; out.run = null; out.scope = null; out.emp = null; } else if (out.recent) { out.run = null; out.scope = null; } else if (out.run) out.scope = null;
+  if (out.recent !== 'mine') out.emp = null;
+  out.any = !!(out.scope || out.adv || out.recent || out.run);
   return out;
 }
 
 /** כותרת הקטגוריה: { label, rest } = "<קטגוריה> - מה תרצי לחפש?"; null לקטגוריה לא מוכרת. התווית רק מהטבלה, לא מהקלט. */
 /** מפתח יציב להוראה (לזיהוי "אותה הוראה שכבר הוחלה"). */
-export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' : dir.recent ? 'recent:' + dir.recent : dir.scope ? 'scope:' + dir.scope : '');
+export const homeDirectiveKey = (dir) => (dir.adv ? 'adv' : dir.recent ? 'recent:' + dir.recent + (dir.emp ? ':' + dir.emp : '') : dir.run ? 'run:' + dir.run : dir.scope ? 'scope:' + dir.scope : '');
 
 export const SCOPE_TITLE_REST = 'מה תרצי לחפש?';
 export function homeScopeTitle(scope) {
@@ -148,12 +156,16 @@ export function normalizeSearch(d) {
     uuid: o.id,
     url: '/orders/' + o.orderId,
   }));
+  // ברקוד אחד חוזר בהשכרות רבות לאורך השנים (4.10.2026): לכל פריט גם הלקוחה ותאריך האירוע של ההזמנה, כדי שאפשר
+  // יהיה להבדיל בין השורות. תאריך עברי בלבד: הטקסט השמור בהזמנה, ואם אין (נתונים ישנים) — חישוב מ-eventDate לפי יום ישראלי.
   const rentals = (data.rentals || []).map((r) => ({
     n: str(r.catalogName || r.description),
     b: str(r.barcode || r.catalogBarcode),
     s: str(r.sizeText),
     orderId: r.orderId,
     url: '/orders/' + r.orderId,
+    cn: [r.firstName, r.lastName].map((x) => str(x).trim()).filter(Boolean).join(' '),
+    h: str(r.eventDateHebrew).trim() || hebFromInstant(r.eventDate),
     ...(typeof r.isTaken === 'boolean' ? { rs: rentalStateLabel(r) } : {}),
   }));
   return { customers, orders, rentals };
@@ -173,24 +185,40 @@ export function orderStatus(st) {
   return { cls: s ? s[0] : '', icon: s ? s[1] : 'clock', label: st || 'פעיל' };
 }
 
+// מצב פריט (rentalStateLabel) → תגית כמו סטטוס ההזמנה: [מחלקה, אייקון]. מה שלא מוכר — בלי תגית.
+export const RENTAL_STATE_STYLE = {
+  'מושכר עכשיו': ['', 'bag'],
+  'הוחזר': ['ok', 'check'],
+  'טרם נלקח': ['', 'clock'],
+};
+export function rentalStatus(label) {
+  const s = Object.prototype.hasOwnProperty.call(RENTAL_STATE_STYLE, label) ? RENTAL_STATE_STYLE[label] : null;
+  return s ? { cls: s[0], icon: s[1], label } : null;
+}
+
 // רשימה מאוחדת אחת (לקוחות, הזמנות, פריטים) — כל שורה מציינת מה היא
 export function unifiedRows(res) {
   if (!res) return [];
   return [
     ...res.customers.map((x) => ({ key: 'c' + x.id, kind: 'לקוח', icon: 'user', title: x.n, url: x.url, phone: x.p, city: x.c })),
     ...res.orders.map((x) => ({ key: 'o' + x.uuid + '-' + x.id, kind: 'הזמנה', icon: 'file', title: x.n, url: x.url, orderId: x.id, eventHeb: x.h, status: orderStatus(x.st) })),
-    ...res.rentals.map((x, i) => ({ key: 'r' + i + '-' + x.orderId + '-' + x.b, kind: 'פריט', icon: 'dress', title: x.n, url: x.url, barcode: x.b, size: x.s, state: x.rs || '' })),
+    ...res.rentals.map((x, i) => ({
+      key: 'r' + i + '-' + x.orderId + '-' + x.b, kind: 'פריט', icon: 'dress', title: x.n, url: x.url, barcode: x.b, size: x.s, state: x.rs || '',
+      orderId: x.orderId, customer: x.cn || '', eventHeb: x.h || '', status: rentalStatus(x.rs),
+    })),
   ];
 }
 
-export const TABLE_COLUMNS = ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'תאריך אירוע', 'סטטוס / מידה'];
+// "הזמנה" ו"לקוח" (4.10.2026) — רק לשורות פריט: ההזמנה שבה הפריט הושכר ושם הלקוחה (בשורת הזמנה המספר כבר ב"מזהה" והשם ב"שם").
+export const TABLE_COLUMNS = ['סוג', 'שם', 'טלפון', 'עיר', 'מזהה / ברקוד', 'הזמנה', 'לקוח', 'תאריך אירוע', 'סטטוס / מידה'];
 
 // שורות הטבלה (מערך תאים לכל שורה, באותו סדר כמו TABLE_COLUMNS) + קישור לשורה
 export function tableRecords(rows) {
   return rows.map((r) => {
-    if (r.kind === 'לקוח') return { url: r.url, cells: ['לקוח', r.title, r.phone, r.city, '', '', ''] };
-    if (r.kind === 'הזמנה') return { url: r.url, cells: ['הזמנה', r.title, '', '', '#' + r.orderId, r.eventHeb, r.status.label] };
-    return { url: r.url, cells: ['פריט', r.title, '', '', r.barcode, '', r.size ? 'מידה ' + r.size : ''] };
+    if (r.kind === 'לקוח') return { url: r.url, cells: ['לקוח', r.title, r.phone, r.city, '', '', '', '', ''] };
+    if (r.kind === 'הזמנה') return { url: r.url, cells: ['הזמנה', r.title, '', '', '#' + r.orderId, '', '', r.eventHeb, r.status.label] };
+    const st = [r.state, r.size ? 'מידה ' + r.size : ''].filter(Boolean).join(' · ');
+    return { url: r.url, cells: ['פריט', r.title, '', '', r.barcode, r.orderId ? '#' + r.orderId : '', r.customer || '', r.eventHeb || '', st] };
   });
 }
 

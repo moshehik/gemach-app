@@ -1,0 +1,41 @@
+/* PageVariantToggle (app/components/variant/PageVariantToggle.js) — אייקון המעבר "ישן / חדש". נטען בכל דף שבו האייקון מוצג,
+   ולכן קטן ועצמאי: בלי .gm-ds ובלי components.css, רק טוקני הפלטה (--gm-*, מוגדרים גלובלית ב-design-system/tokens.css).
+   כל הכללים תחת .gm-pvt (בלי סלקטורים גלובליים, בלי body[data-ui-*]). הערכים: לחצן אייקון עגול של הפלטה
+   (רקע --gm-gbtn, מסגרת שחורה 1.5px, אייקון בצבע הדיו, מעבר עכבר כמו .ibtn של הפלטה), טולטיפ כמו .pl-tt. */
+.gm-pvt{position:relative;display:inline-flex;align-items:center;flex:none;font-family:var(--gm-font);line-height:1;vertical-align:middle}
+.gm-pvt .gm-pvt-btn{box-sizing:border-box;width:40px;height:40px;min-width:0;min-height:0;margin:0;padding:0;border-radius:50%;border:1.5px solid #000;background:var(--gm-gbtn);color:#000;display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,244,196,.7);transition:transform .15s,box-shadow .15s,background .15s;font:inherit;-webkit-tap-highlight-color:transparent}
+.gm-pvt .gm-pvt-btn:hover{background:linear-gradient(135deg,#c9a227,#9a7a1f);transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(15,44,82,.45)}
+.gm-pvt .gm-pvt-btn:active{transform:none;box-shadow:none}
+.gm-pvt .gm-pvt-btn:focus-visible{outline:3px solid var(--gm-navy);outline-offset:3px}
+.gm-pvt .gm-pvt-btn:disabled{cursor:progress;opacity:.7;transform:none}
+.gm-pvt .gm-pvt-ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+
+/* טולטיפ משלו (בדפים הישנים / בפינה אין מי שמטפל ב-data-tip) - המראה של .pl-tt בפלטה */
+.gm-pvt .gm-pvt-tt{position:absolute;bottom:calc(100% + 10px);inset-inline-end:0;z-index:2;background:var(--gm-navy);color:#fff;font-size:14px;font-weight:400;line-height:1.45;padding:9px 13px;border-radius:12px;white-space:nowrap;box-shadow:var(--gm-sh-lg);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s}
+.gm-pvt.gm-pvt-owntip:hover .gm-pvt-tt,.gm-pvt.gm-pvt-owntip:focus-within .gm-pvt-tt{opacity:1;transform:none}
+.gm-pvt .gm-pvt-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* פינה קבועה בדפים הישנים: שמאל-למטה (ב-RTL inline-end). ימין-למטה תפוסים: כפתור ה-AI (20px) והכפתור הצף של הדיווח (96px). */
+.gm-pvt.gm-pvt-corner{position:fixed;bottom:20px;inset-inline-end:20px;z-index:880}
+/* מרווח בסוף דף ישן כשהאייקון בפינה מוצג (VariantFrame) - גלילה עד הסוף לא משאירה תוכן מתחת לאייקון */
+.gm-pvt-spacer{height:76px}
+/* מעל החלון הישן של דיווח השגיאות (z-index 999999) */
+.gm-pvt.gm-pvt-overlay{position:fixed;bottom:20px;inset-inline-end:20px;z-index:1000000}
+/* בסרגל הכותרת של דף חדש: נדחף לקצה השורה (שמאל ב-RTL) */
+.gm-pvt.gm-pvt-header{margin-inline-start:auto}
+/* בכותרת חלון הדיווח החדש: בגודל הלחצנים הקטנים של החלון */
+.gm-pvt.gm-pvt-window .gm-pvt-btn{width:32px;height:32px}
+.gm-pvt.gm-pvt-window .gm-pvt-ic{width:16px;height:16px}
+/* דף הבית החדש (אין לו סרגל כותרת): פינה עליונה של אזור החיפוש, טולטיפ מתחת */
+.gm-pvt.gm-pvt-hero{position:absolute;top:12px;inset-inline-end:16px;z-index:3}
+.gm-pvt.gm-pvt-hero .gm-pvt-tt{bottom:auto;top:calc(100% + 10px)}
+/* בסרגל העליון של המעטפת הישנה: קטן יותר, טולטיפ מתחת */
+.gm-pvt.gm-pvt-topbar .gm-pvt-btn{width:34px;height:34px}
+.gm-pvt.gm-pvt-topbar .gm-pvt-ic{width:18px;height:18px}
+.gm-pvt.gm-pvt-topbar .gm-pvt-tt{bottom:auto;top:calc(100% + 10px)}
+
+@media (max-width:640px){
+  .gm-pvt.gm-pvt-corner,.gm-pvt.gm-pvt-overlay{bottom:16px;inset-inline-end:16px}
+}
+@media (prefers-reduced-motion:reduce){.gm-pvt .gm-pvt-btn,.gm-pvt .gm-pvt-tt{transition:none}}
+@media print{.gm-pvt,.gm-pvt-spacer{display:none!important}}

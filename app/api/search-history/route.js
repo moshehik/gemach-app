@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { isMissingTableError } from '@/lib/prismaMissingTable';
 
 // Smart quick-search `@` trigger (docs/smart-quick-search-plan-2026-09-27.md, Part 2) -
 // the current employee's own free-text search history, server-side only (shared/kiosk
@@ -54,6 +55,8 @@ export async function GET() {
 
     return NextResponse.json({ history: deduped });
   } catch (error) {
+    // SearchHistory table not created in this database yet (no DDL from here): empty list + `unavailable`, never a 500
+    if (isMissingTableError(error)) return NextResponse.json({ history: [], unavailable: true });
     console.error('Error fetching search history:', error);
     return NextResponse.json({ error: 'Failed to fetch search history' }, { status: 500 });
   }
@@ -98,8 +101,14 @@ export async function POST(request) {
       where: { employeeId, id: { notIn: keepIds } },
     });
 
+    // Rows whose employee was deleted (employeeId null) belong to nobody and would otherwise live forever: clear them opportunistically.
+    // Best-effort - a failure here must not fail the recording itself.
+    await prisma.searchHistory.deleteMany({ where: { employeeId: null } }).catch(() => {});
+
     return NextResponse.json({ success: true, entry: created });
   } catch (error) {
+    // recording is best-effort: a missing table answers 200 { success: false, unavailable: true } (no console noise in the browser)
+    if (isMissingTableError(error)) return NextResponse.json({ success: false, unavailable: true });
     console.error('Error recording search history:', error);
     return NextResponse.json({ error: 'Failed to record search history' }, { status: 500 });
   }

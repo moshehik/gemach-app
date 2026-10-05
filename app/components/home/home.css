@@ -30,14 +30,6 @@
 .gm-ds .priv-dlg .priv-body ul {
   padding-inline-start: 20px;
 }
-/* שדה מילוי שטרם הושלם בנוסח — מסומן בולט כדי שלא יפורסם כטקסט סופי */
-.gm-ds .priv-ph {
-  background: var(--gm-gold-300, #f1dc8f);
-  color: #000;
-  border-radius: 4px;
-  padding: 0 4px;
-  font-weight: 600;
-}
 
 /* שלד טעינה לכותרת הברכה (עד שהגדרות הארגון נטענו) — שומר על גובה הכותרת בלי קפיצה */
 .gm-ds.gm-home .hero-t:empty,
@@ -77,6 +69,10 @@
   box-shadow: none;
   outline: 0;
 }
+
+/* 3א) כפתור ה-X (ניקוי) בשורת שאלת ההמשך של החיפוש החכם הוא .ibtn (display:grid בפלטה) ולכן התכונה hidden לא הסתירה אותו והוא הוצג גם בשדה ריק
+      (4.10.2026). בשאר שורות החיפוש (.inpx) יש כלל זהה: .inpx[hidden]{display:none!important}. ה-X מופיע רק כשיש טקסט. */
+.gm-ds.gm-home .scan .ibtn[hidden] { display: none !important; }
 
 /* 4) גופן: design-overrides.css כופה Assistant ב-!important על button/input/select/textarea, ו-globals.css כופה "Frank Ruhl Libre" על h1-h6
       (הכותרת "שלום ..." והכותרות בתחתית יצאו בסריף) - גם הוא ב-!important (app/design-overrides.css), ולכן גם כאן. מחזירים לירושה מ-Rubik של העיצוב. */
@@ -174,3 +170,102 @@
        והמרווח בין השורות בא רק מה-gap של .advgrid, ולכן בדף האמיתי כל שורה הייתה גבוהה ב-14px (צעד 100 במקום 86). חל גם על בדיקת מלאי (בעיצוב שלה
        אותו אפס, נמדד 1280 ו-375). אותו נטרול כמו .gm-pf ב-profile.css. */
 .gm-ds.gm-home .advp .field { margin-bottom: 0; }
+
+/* 15) "השינויים שלי" (4.10.2026): הקידומת '&' בשורת החיפוש (חלונית ul.advlist.mine-list, כמו '@') ותצוגת התוצאות המלאה /?recent=mine (כרטיס .res-one.recent.mine-view).
+       אותו מראה בדיוק כמו תצוגות-עיצוב\השינויים-שלי.html (הרכיבים: advlist / advo / sn-li של הפלטה, ללא צבע וגופן חדשים): כותרת חלק (.advo-h), אריח אייקון, שורת שם + "הזמנה #N · מה השתנה · מתי",
+       שורת "הצג הכל", הערת פרטיות. הרשימה הקצרה גבוהה מהברירת מחדל של הפלטה (216px) כי יש בה שני חלקים. */
+.gm-ds.gm-home .advlist.mine-list { max-height: min(340px, 52vh); }
+.gm-ds.gm-home .mine-list .advo-h { direction: rtl; position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--gm-ink3); background: linear-gradient(180deg, rgba(255, 255, 255, .98) 70%, rgba(255, 255, 255, 0)); pointer-events: none; }
+.gm-ds.gm-home .mine-list .advo-h b { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; background: var(--gm-gold-100); color: var(--gm-gold-700); font-size: 12px; display: grid; place-items: center; }
+.gm-ds.gm-home .mine-list .advo.mine-o { gap: 12px; }
+.gm-ds.gm-home .mine-list .advo.mine-o::before { display: none; }
+.gm-ds.gm-home .mine-list .advo.mine-o:hover .sn-li,
+.gm-ds.gm-home .mine-list .advo.mine-o.act .sn-li { background: var(--gm-gbtn); color: var(--gm-navy-900); }
+.gm-ds.gm-home .mine-list .advo.mine-more .sn-li { background: var(--gm-sky-100); color: var(--gm-navy-700); }
+.gm-ds.gm-home .mine-list .advo .sn-k { margin-inline-start: auto; font-size: 12px; color: var(--gm-ink3); white-space: nowrap; }
+.gm-ds.gm-home .mine-list .advo.none { flex-direction: column; align-items: center; gap: 2px; text-align: center; padding: 14px; }
+.gm-ds.gm-home .mine-list .advo.none small { font-size: 12.5px; line-height: 1.5; }
+.gm-ds.gm-home .mine-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; text-align: start; }
+.gm-ds.gm-home .mine-t b { font-weight: 600; line-height: 1.35; }
+.gm-ds.gm-home .mine-t small { font-size: 12.5px; line-height: 1.4; color: var(--gm-ink3); font-weight: 400; overflow-wrap: anywhere; }
+.gm-ds.gm-home .mine-t bdi { unicode-bidi: isolate; }
+.gm-ds.gm-home .mine-t mark { background: transparent; color: var(--gm-gold-d); font-weight: 700; }
+.gm-ds.gm-home .mine-note { direction: rtl; display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; color: var(--gm-ink3); padding: 8px 12px 4px; margin-top: 6px; border-top: 1px dashed rgba(184, 145, 47, .45); list-style: none; }
+.gm-ds.gm-home .mine-note .ic { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--gm-navy-500); }
+.gm-ds.gm-home .mine-view .mine-big { font-size: 19px; margin-top: 8px; color: var(--gm-ink); }
+.gm-ds.gm-home .mine-view .mine-sec + .mine-sec { margin-top: 6px; }
+.gm-ds.gm-home .mine-view .mine-sec-h { display: flex; align-items: center; gap: 8px; padding: 10px 4px 6px; font-size: 13px; font-weight: 600; color: var(--gm-ink3); }
+.gm-ds.gm-home .mine-view .mine-sec-h b { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 999px; background: var(--gm-gold-100); color: var(--gm-gold-700); font-size: 12px; display: grid; place-items: center; }
+.gm-ds.gm-home .mine-view .mine-nt { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; color: var(--gm-ink3); padding: 10px 4px 2px; margin-top: 6px; border-top: 1px dashed rgba(184, 145, 47, .45); }
+.gm-ds.gm-home .mine-view .mine-nt .ic { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--gm-navy-500); }
+.gm-ds.gm-home .mine-view .rlink .t .ln bdi { unicode-bidi: isolate; }
+/* "הכל" בצד שמאל של כותרת החלונית (MY-01) ובורר העובדת להנהלה (MY-04 ב): .mine-head = שורה אחת, direction:rtl כדי שהשבבים יהיו מימין והכפתור משמאל (בלי order). */
+.gm-ds.gm-home .mine-list .mine-head { direction: rtl; position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 6px 8px; margin: 0; list-style: none; background: rgba(255, 255, 255, .98); border-bottom: 1px solid rgba(15, 44, 82, .08); }
+.gm-ds.gm-home .mine-who { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; flex: 1; max-height: 92px; overflow-y: auto; }
+/* שבבי העובדות באותו גובה כמו כפתור "הכל" (40px, כמו כפתורי הכדור .advact) */
+.gm-ds.gm-home .mine-who .chip { box-sizing: border-box; min-height: 40px; height: 40px; padding: 0 16px; font-size: 14px; border-radius: 999px; cursor: pointer; }
+.gm-ds.gm-home .mine-who .chip.gold { border-color: var(--gm-gold); font-weight: 600; }
+.gm-ds.gm-home .mine-who .chip.gray:hover { background: var(--gm-gbtn); color: var(--gm-navy-900); }
+.gm-ds.gm-home .mine-list .mine-all { margin-inline-start: auto; flex: none; min-height: 40px; height: 40px; box-sizing: border-box; padding: 0 18px; border-radius: 999px; font-size: 15px; font-weight: 600; gap: 8px; }
+.gm-ds.gm-home .mine-list .mine-all .ic { width: 16px; height: 16px; }
+/* החלונית יושבת בתוך .scan: הכלל של הפלטה ".hero .scan .btn" (עיגול 48x48 לכפתור החיפוש) היה הופך גם את "הכל" לעיגול; כאן הוא כפתור גלולה רגיל של האתר (כמו .advact .btn) */
+.gm-ds.gm-home .hero .scan .mine-list .mine-all { width: auto; min-height: 40px; height: 40px; box-sizing: border-box; padding: 0 18px; border-radius: 999px; font-size: 15px; font-weight: 600; gap: 8px; }
+.gm-ds.gm-home .mine-list .mine-all.act { outline: 3px solid var(--gm-navy); outline-offset: 2px; }
+.gm-ds.gm-home .mine-view .mine-who-bar { padding: 2px 4px 10px; max-height: none; }
+.gm-ds.gm-home .mine-view .mine-who-name { font-weight: 500; color: var(--gm-ink3); }
+
+/* 16) קיצורי החיפוש (5.10.2026; עיצוב מאושר: תצוגות-עיצוב/חיפוש-קיצורים.html, החלטות PFX-01..11): רשימות '#' (פעולות מהירות) ו-'$' (חיפושים שמורים) הן אותה
+      חלונית ul.advlist.mine-list של '&' (בלוק 15), ולכן כאן רק מה שמיוחד להן: שורה מושבתת, שדה שם ל"שמור חיפוש", X למחיקה, אייקון שמירה ליד ה-X, כפתור "קיצורים"
+      וחלונות (מדריך + אישור מחיקה). בלי צבע / גופן חדשים: רק משתני --gm-* ורכיבי הפלטה (advlist, inp, btn, inpx, ibtn, cmode-b, sw, dlg כהה). */
+.gm-ds.gm-home .pfx-list .advo.dis,
+.gm-ds.gm-home .pfx-list .advo.dis .mine-t small { color: var(--gm-ink3); }
+.gm-ds.gm-home .pfx-list .advo.dis .sn-li { background: var(--gm-sky-50); color: var(--gm-ink3); }
+.gm-ds.gm-home .pfx-list .advo-h { white-space: nowrap; }
+.gm-ds.gm-home .pfx-form-li { list-style: none; }
+.gm-ds.gm-home .pfx-form { direction: rtl; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; margin: 2px 0; border-radius: 12px; list-style: none; text-align: start; background: linear-gradient(90deg, rgba(241, 220, 143, .42), rgba(247, 236, 196, .3)); }
+.gm-ds.gm-home .pfx-lbl { font-size: 13px; font-weight: 600; color: var(--gm-ink2); }
+.gm-ds.gm-home .pfx-ctx { font-size: 12.5px; line-height: 1.4; color: var(--gm-ink3); overflow-wrap: anywhere; }
+.gm-ds.gm-home .pfx-acts { display: flex; gap: 8px; align-items: center; }
+.gm-ds.gm-home .pfx-err { font-size: 13px; font-weight: 600; color: var(--gm-red); }
+.gm-ds.gm-home .pfx-err:empty { display: none; }
+/* השדה בתוך .scan: כלל 3 למעלה (שדה שקוף בלי גבול) היה הופך גם אותו ל"שדה בתוך שדה" - כאן הוא שדה טקסט רגיל של הפלטה (inp) */
+.gm-ds.gm-home .scan .pfx-form input.inp:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) { flex: none; width: 100%; box-sizing: border-box; min-height: 44px; height: 44px; padding: 0 16px; border: 2px solid var(--gm-gold-b); border-radius: 12px; background: var(--gm-surface); font-size: 15px; outline: 0; }
+.gm-ds.gm-home .scan .pfx-form input.inp:focus { box-shadow: 0 0 0 3px rgba(201, 162, 39, .3); }
+/* ".hero .scan .btn" של הפלטה הופך כל כפתור בתוך השורה לעיגול 48x48 (כפתור החיפוש) - בטופס אלה כפתורי גלולה רגילים */
+.gm-ds.gm-home .hero .scan .pfx-acts .btn { width: auto; height: auto; min-height: 38px; padding: 0 18px; border-radius: 999px; font-size: 15px; gap: 6px; flex: none; white-space: nowrap; }
+.gm-ds.gm-home .hero .scan .pfx-acts .btn .ic { width: 16px; height: 16px; }
+.gm-ds.gm-home .pfx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* X למחיקת חיפוש שמור: מופיע בריחוף, בשורה מסומנת (חצים) ובמיקוד מקלדת; במגע ובנייד תמיד */
+.gm-ds.gm-home .pfx-list .pfx-del { flex: none; margin-inline-start: 2px; opacity: 0; transition: opacity 150ms, background-color 150ms, color 150ms; }
+.gm-ds.gm-home .pfx-list .advo:hover .pfx-del,
+.gm-ds.gm-home .pfx-list .advo.act .pfx-del,
+.gm-ds.gm-home .pfx-list .pfx-del:focus-visible { opacity: 1; }
+.gm-ds.gm-home .pfx-list .pfx-del:hover,
+.gm-ds.gm-home .pfx-list .pfx-del:focus-visible { background: var(--gm-rose-100); color: var(--gm-rose-700); }
+/* אייקון שמירה ליד ה-X (ibtn של הפלטה): זהב כשהחיפוש כבר שמור, ✓ לרגע אחרי שמירה */
+.gm-ds.gm-home .pfx-save svg.ic { transition: transform 200ms var(--gm-ease), color 150ms; }
+.gm-ds.gm-home .hero .scan .pfx-save[data-st="saved"],
+.gm-ds.gm-home .hero .scan .pfx-save[data-st="done"] { color: var(--gm-gold-d); }
+.gm-ds.gm-home .hero .scan .pfx-save[data-st="saved"]:hover { color: var(--gm-navy); }
+.gm-ds.gm-home .pfx-save[data-st="done"] svg.ic { transform: scale(1.18); }
+/* כפתור "קיצורים" (cmode-b) מימין ל"לחיפוש חכם"; בטלפון אייקון בלבד (PFX-11 ב) */
+@media (max-width: 767px) {
+  .gm-ds.gm-home .hero .cmode .pfx-help { width: 34px; padding: 0; justify-content: center; }
+  .gm-ds.gm-home .hero .cmode .pfx-help .pfx-help-t { display: none; }
+}
+/* חלונות (מועברים ל-body, עטיפה .gm-ds.gm-home.dlg-dark.pfx-dlg-root בלי תיבה משלה כדי שלא תכסה את הדף) */
+.gm-ds.gm-home.pfx-dlg-root { display: contents; }
+.gm-ds.gm-home #dlg.pfxhelp { max-width: 440px; }
+.gm-ds.gm-home #dlg.pfxdel { max-width: 400px; }
+.gm-ds.gm-home #dlg.pfxdel h2 { font-size: 19px; overflow-wrap: anywhere; }
+/* "ביטול" (btn ghost) בחלון הכהה: הפלטה צובעת אותו נייבי כהה על רקע כהה - הצבע של החלון הכהה (--k-ghost, כמו בעיצוב המאושר) */
+.gm-ds.gm-home #dlg.pfxdel .dbtns .btn.ghost,
+.gm-ds.gm-home #dlg.pfxdel .dbtns .btn.ghost:hover,
+.gm-ds.gm-home #dlg.pfxdel .dbtns .btn.ghost:focus-visible { color: var(--k-ghost); }
+.gm-ds.gm-home #dlg .chg .c .btn.sm { flex: none; margin-inline-start: auto; min-width: 64px; justify-content: center; }
+.gm-ds.gm-home #dlg .pfx-key { display: grid; place-items: center; border-radius: 12px; font-size: 20px; font-weight: 700; direction: ltr; line-height: 1; }
+.gm-ds.gm-home #dlg .pfx-tg { display: flex; align-items: center; gap: 12px; margin: 8px 0 18px; cursor: pointer; }
+.gm-ds.gm-home #dlg .pfx-tg b { font-weight: 600; }
+.gm-ds.gm-home #dlg .pfx-tg .sw i { background: rgba(169, 210, 240, .3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.gm-ds.gm-home #dlg .pfx-tg .sw input:checked + i { background: var(--gm-gold); box-shadow: none; }
+.gm-ds.gm-home #dlg .pfx-tg .sw input:focus-visible + i { box-shadow: 0 0 0 3px var(--gm-gold-300); }

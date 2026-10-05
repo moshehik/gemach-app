@@ -19,7 +19,7 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 // ever populated for the abroad/multi-day flow (see Order.toDate), and there's no
 // SystemSetting for a standard return hour. Best-effort: use the order's actual
 // toDate/returnDate when set (abroad/long-term orders), otherwise fall back to the
-// first working day after the event (Fri/Sat/holiday/erev chag/owner-marked days - the
+// first working day after the event (Fri/Sat/holiday/chol hamoed/erev chag/owner-marked days - the
 // unified rule of lib/businessDays.js via getExpectedReturnDate in lib/lateReturn.js, the
 // same computation as the late-return check, so both stay in sync).
 
@@ -28,7 +28,7 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 const STANDARD_RETURN_HOUR = '13:00';
 
 // יום/שעת קבלת השמלות מראש (בקשה בדיווח 4d4456ce, 2026-09-09): 2 ימי-עסקים לפני
-// האירוע (מדלג שישי/שבת/חג/ערב חג/ימים שהבעלים סימן - subtractBusinessDays ב-lib/businessDays.js),
+// האירוע (מדלג שישי/שבת/חג/חול המועד/ערב חג/ימים שהבעלים סימן - subtractBusinessDays ב-lib/businessDays.js),
 // בטווח שעות קבוע שנשלף מהגדרת standard_pickup_hours (הגדרות מערכת > הדפסה); זהו
 // רק ה-fallback אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_PICKUP_HOURS = '20:00-21:30';
@@ -335,7 +335,7 @@ export default function PrintOrderPage() {
                   {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
                     <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
                   )}
-                  {(!ord.isWeekdayEvent && !ord.isAbroad) ? (
+                  {!ord.isAbroad ? (
                     <>תאריך אירוע: {ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין')}</>
                   ) : (
                     <>סוג אירוע: אירוע חו&quot;ל</>

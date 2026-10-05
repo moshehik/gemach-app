@@ -59,6 +59,8 @@ async function fresh() {
   await p.evaluate(() => { window.scrollTo(0, 0); });
 }
 const type = async (txt) => { await p.click('#sq'); await p.type('#sq', txt); };
+const onlyFloat = process.argv[5] === 'float'; // node stages.mjs real 1280 light float = רק שלבי הכותרת הצפה (36-37)
+if (!onlyFloat) {
 // 1 start
 await fresh(); await p.mouse.move(5, 5); await snap('01-start');
 await p.hover('.hero .scan'); await snap('02-start-hover-pill');
@@ -116,8 +118,78 @@ if (which === 'real') {
   await capOpen(); await capFill('תקלה'); await capGo(); await sleep(900); await p.mouse.move(5, 5); await snap('34-cap-error');
   await p.evaluate(() => { window.__capOk = true; }); await clickText(p, 'לנסות שוב'); await sleep(1500); await p.mouse.move(5, 5); await snap('35-cap-retry-ok'); await p.evaluate(() => { window.__capOk = false; });
 }
+// חיפוש ברקוד (4.10.2026, בדף האמיתי בלבד — אין שלב כזה בעיצוב): שלוש השכרות של אותו פריט, לכל אחת שורה שנייה — הזמנה · לקוחה · תאריך עברי · מצב
+if (which === 'real') {
+  await fresh(); await type('5511205'); await p.keyboard.press('Enter'); await sleep(2200); await p.mouse.move(5, 5); await p.evaluate(() => document.activeElement && document.activeElement.blur()); await snap('36-barcode-results');
+  await clickText(p, '', '.vopt[aria-label="מצב טבלה"]'); await sleep(500); await p.mouse.move(5, 5); await snap('37-barcode-table');
+}
+} // !onlyFloat
+
+/* 36-37: הכותרת הצפה של החיפוש החכם (4.10.2026, "הכותרת לא צפה כמו בקובץ הדמו"). בעיצוב: כשכותרת כרטיס השיחה (.advp.aiw>.card-h) יוצאת מתחת
+   לסרגל העליון, מופיע עותק מכווץ שלה (.card-h.aibar, position:fixed, ישירות תחת body) 8px מתחת לסרגל, צר ב-34px מכל צד, ו"חיפוש חכם" עולה לשורת
+   הכפתורים; הוא נעלם כשהכרטיס נגמר. נמדד ביחס לסרגל ולכותרת (לא בפיקסלים מוחלטים), בשיחה קצרה ובשיחה ארוכה. בדף האמיתי אין סרגל ב-harness,
+   ולכן מוזרק סרגל דביק בגובה --gm-snav-h (כמו .snav של MenuA5Shell). */
+const FLOAT = () => {
+  const nav = document.querySelector('.snav'); const nb = nav ? Math.max(0, nav.getBoundingClientRect().bottom) : 0;
+  const ch = document.querySelector('.advp.aiw>.card-h:not(.aibar)'); const bar = document.querySelector('.card-h.aibar');
+  if (!ch) return { err: 'no chat head' };
+  const R = (el) => el.getBoundingClientRect(); const hr = R(ch), cr = R(ch.parentElement);
+  const o = { sy: Math.round(scrollY), nb: Math.round(nb), chBottomRel: Math.round(hr.bottom - nb), cardBottomRel: Math.round(cr.bottom - nb) };
+  if (!bar) return { ...o, bar: null };
+  const br = R(bar), cs = getComputedStyle(bar), h2 = bar.querySelector('h2'), hs = h2 && getComputedStyle(h2);
+  const wrap = bar.parentElement; let host = wrap; while (host && host.parentElement !== document.body) host = host.parentElement;
+  const kids = [...bar.children].map((c) => ({ k: c.tagName === 'H2' ? 'h2:' + c.textContent.trim() : (c.getAttribute('aria-label') || c.className), x: Math.round(R(c).left + R(c).width / 2), y: Math.round(R(c).top + R(c).height / 2) }))
+    .sort((a, b) => (Math.round(a.y / 20) - Math.round(b.y / 20)) || b.x - a.x).map((c) => c.k); // RTL: מימין לשמאל
+  return { ...o, on: bar.classList.contains('on'), op: cs.opacity, vis: cs.visibility, tf: cs.transform, pos: cs.position, z: cs.zIndex, pe: cs.pointerEvents,
+    topRel: Math.round(br.top - nb), h: Math.round(br.height), leftOff: Math.round(br.left - hr.left), rightOff: Math.round(hr.right - br.right), wDiff: Math.round(hr.width - br.width),
+    pad: cs.padding, rad: cs.borderTopLeftRadius, bi: cs.backgroundImage.replace(/ /g, '').slice(0, 60), bf: cs.backdropFilter, bd: cs.borderTopColor.replace(/ /g, '') + '/' + cs.borderTopWidth, wrap: wrap.className,
+    underBody: !!host, h2: hs && { fs: hs.fontSize, fw: hs.fontWeight, col: hs.color.replace(/ /g, ''), order: hs.order, ms: hs.marginInlineStart, flex: hs.flex }, kids };
+};
+const float = {};
+const floatRun = async (label, followUps) => {
+  await fresh();
+  if (which === 'real') await p.evaluate(() => { const h = document.createElement('header'); h.className = 'snav'; h.style.cssText = 'position:sticky;top:0;z-index:950;height:var(--gm-snav-h,64px);background:#0a2242'; document.body.prepend(h); });
+  await clickText(p, 'לחיפוש חכם'); await type('הזמנות של כהן'); await p.keyboard.press('Enter'); await sleep(2500);
+  for (let i = 0; i < followUps; i++) { const fi = await p.$('#fuQ'); if (!fi) break; await fi.click(); await fi.type('עוד הזמנות ' + i); await p.keyboard.press('Enter'); await sleep(2300); }
+  // בדף הדמו יש מתחת לכרטיס תוכן (לוח בקרה, כותרת תחתונה) ולכן אפשר לגלול אל מעבר לסוף הכרטיס; ב-harness של הדף האמיתי אין, מוסיפים מרווח
+  if (which === 'real') await p.evaluate(() => { const sp = document.createElement('div'); sp.style.cssText = 'height:1800px'; document.body.appendChild(sp); });
+  await p.mouse.move(5, 5); await p.evaluate(() => document.activeElement && document.activeElement.blur());
+  // מיקומי גלילה ביחס לכותרת ולתחתית הכרטיס: למעלה / הכותרת עוד גלויה / הכותרת יצאה / אמצע / ממש לפני סוף הכרטיס / אחרי הסוף
+  const abs = await p.evaluate(() => { const ch = document.querySelector('.advp.aiw>.card-h'); const nav = document.querySelector('.snav'); const nh = nav ? nav.getBoundingClientRect().height : 0;
+    const hb = ch.getBoundingClientRect().bottom + scrollY, cb = ch.parentElement.getBoundingClientRect().bottom + scrollY; return { hb, cb, nh }; });
+  const pts = { top: 0, headVisible: abs.hb - abs.nh - 20, headGone: abs.hb - abs.nh + 10, mid: abs.cb - abs.nh - 300, cardEndOn: abs.cb - abs.nh - 80, cardEndOff: abs.cb - abs.nh - 60, past: abs.cb };
+  const res = {};
+  for (const [k, y] of Object.entries(pts)) {
+    await p.evaluate((y) => window.scrollTo(0, Math.max(0, y)), y); await sleep(450);
+    res[k] = await p.evaluate(FLOAT);
+    if (k === 'headGone' || k === 'mid') await p.screenshot({ path: `${OUT}/${which}-${width}-${theme}-${label}-${k}.png` });
+  }
+  float[label] = res;
+};
+await floatRun('36-ai-float-short', 0);
+await floatRun('37-ai-float-long', 4);
+fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-float.json`, JSON.stringify(float, null, 1));
+
+/* 38: ה-X (ניקוי) בשורת שאלת ההמשך של החיפוש החכם (4.10.2026): ריק = אין X (כמו בשאר שורות החיפוש); הקלדה = X; לחיצה על X = השדה ריק וה-X נעלם. */
+{
+  await fresh();
+  await clickText(p, 'לחיפוש חכם'); await type('הזמנות של כהן'); await p.keyboard.press('Enter'); await sleep(2500);
+  const X = '.fu .scan .ibtn[aria-label="ניקוי הטקסט"]';
+  const st = () => p.evaluate((X) => { const b = document.querySelector(X); const i = document.querySelector('#fuQ'); if (!b || !i) return { err: 'missing' }; const r = b.getBoundingClientRect();
+    return { value: i.value, shown: getComputedStyle(b).display !== 'none' && r.width > 0 && r.height > 0, hiddenAttr: b.hidden }; }, X);
+  const fu = {};
+  fu.empty = await st();
+  await p.click('#fuQ'); await p.type('#fuQ', 'עוד'); fu.typed = await st();
+  await p.click(X); await sleep(150); fu.afterClear = await st();
+  fu.focusAfterClear = await p.evaluate(() => document.activeElement && document.activeElement.id);
+  await p.type('#fuQ', 'א'); await p.keyboard.press('Backspace'); fu.typedThenErased = await st();
+  fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-fuclear.json`, JSON.stringify(fu, null, 1));
+  console.log('fuclear', which, JSON.stringify(fu));
+}
+if (!onlyFloat) {
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}.json`, JSON.stringify(results, null, 1));
 fs.writeFileSync(`${OUT}/${which}-${width}-${theme}-layout.json`, JSON.stringify(layout, null, 1));
+}
 console.log('done', which, Object.keys(results).length);
 await b.close(); if (s) s.close();
 process.exit(0);

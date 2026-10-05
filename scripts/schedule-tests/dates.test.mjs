@@ -114,8 +114,10 @@ test('the schedule has NO calendar rule of its own: dates.js exports no weekday/
   for (const kept of ['isNonWorkingDay', 'dayStatus', 'addBusinessDays', 'sourceKeysForDay', 'rollForwardToWorkingDay', 'rolledSourceKeysForDay']) assert.equal(typeof D[kept], 'function', kept);
 });
 
-test('isNonWorkingDay / dayStatus come from the unified helper: Fri, Shabbat, chag, erev chag (owner: "the gemach does not work on erev chag") - timezone independent', () => {
-  assert.equal(D.isNonWorkingDay('2026-10-01'), false, 'Thu 1.10 (chol hamoed Sukkot - a working day under rule v1; v2 will close chol hamoed and this line must change)');
+test('isNonWorkingDay / dayStatus come from the unified helper: Fri, Shabbat, chag, chol hamoed, erev chag (owner: "the gemach does not work on erev chag"; v2 NWD-Q02: chol hamoed closed) - timezone independent', () => {
+  assert.equal(D.isNonWorkingDay('2026-10-01'), true, 'Thu 1.10 = chol hamoed Sukkot - closed under rule v2 (NWD-Q02, 1.10.2026)');
+  assert.equal(D.isNonWorkingDay('2026-09-27'), true, 'Sun 27.9 = first day of chol hamoed Sukkot (v2)');
+  assert.equal(D.isNonWorkingDay('2026-09-24'), false, 'Thu 24.9 = 13 Tishrei, the last working day before Sukkot');
   assert.equal(D.isNonWorkingDay('2026-10-02'), true, 'Fri 2.10 = Hoshana Raba = erev Shmini Atzeret');
   assert.equal(D.isNonWorkingDay('2026-10-03'), true, 'Shabbat 3.10 = Shmini Atzeret');
   assert.equal(D.isNonWorkingDay('2026-10-04'), false, 'Sun 4.10');
@@ -124,16 +126,23 @@ test('isNonWorkingDay / dayStatus come from the unified helper: Fri, Shabbat, ch
   assert.equal(D.isNonWorkingDay('2026-04-02'), true, 'Pesach I 5786');
   assert.equal(D.isNonWorkingDay('2026-04-07'), true, 'erev Pesach VII (20 Nisan)');
   assert.equal(D.isNonWorkingDay('2026-04-08'), true, 'Pesach VII');
-  assert.equal(D.isNonWorkingDay('2026-04-05'), false, 'chol hamoed Pesach that is not an erev chag - working under rule v1');
+  assert.equal(D.isNonWorkingDay('2026-04-05'), true, 'chol hamoed Pesach that is not an erev chag - closed under rule v2');
   // weekday erev chag examples for 5787: Sun 20.9.2026 erev Yom Kippur, Wed 21.4.2027 erev Pesach, Thu 10.6.2027 erev Shavuot
   for (const key of ['2026-09-20', '2027-04-21', '2027-06-10']) assert.equal(D.isNonWorkingDay(key), true, key + ' (erev chag, weekday)');
 
-  assert.deepEqual(D.dayStatus('2026-10-01'), { key: '2026-10-01', working: true, reasons: [], titles: [], note: null });
+  const thu = D.dayStatus('2026-10-01');
+  assert.equal(thu.working, false);
+  assert.deepEqual(thu.reasons, ['chol_hamoed'], 'chol hamoed is its own reason (not chag, not erev chag)');
+  assert.equal(thu.titles.length, 1);
+  assert.match(thu.titles[0], /סכות.*חוה״מ/);
+  assert.equal(thu.note, null);
+  assert.deepEqual(D.dayStatus('2026-10-15'), { key: '2026-10-15', working: true, reasons: [], titles: [], note: null, recurring: null }, 'a plain Thursday (the fixture "today"); recurring = v2 field (owner\'s fixed Hebrew dates)');
   const fri = D.dayStatus('2026-10-02');
   assert.equal(fri.working, false);
-  assert.deepEqual(fri.reasons, ['friday', 'erev_chag']);
-  assert.equal(fri.titles.length, 1);
-  assert.match(fri.titles[0], /^ערב .*שמיני עצרת/);
+  assert.deepEqual(fri.reasons, ['friday', 'chol_hamoed', 'erev_chag'], 'Hoshana Raba is both the last day of chol hamoed and erev Shmini Atzeret');
+  assert.equal(fri.titles.length, 2);
+  assert.match(fri.titles[0], /הושענא רבה/);
+  assert.match(fri.titles[1], /^ערב .*שמיני עצרת/);
   const sat = D.dayStatus('2026-10-03');
   assert.deepEqual(sat.reasons, ['shabbat', 'chag']);
   assert.match(sat.titles[0], /שמיני עצרת/);
@@ -161,13 +170,20 @@ test('owner-marked days (non_working_days_extra) are non-working for the schedul
   }
 });
 
-test('addBusinessDays: both directions through the helper; Fri/Sat/chag/erev chag skipped; owner-marked day skipped', () => {
-  assert.equal(D.addBusinessDays('2026-10-01', 1), '2026-10-04'); // Thu -> Fri (erev chag) + Shabbat (chag) skipped -> Sun
-  assert.equal(D.addBusinessDays('2026-10-04', -1), '2026-10-01'); // Sun -> Thu
+test('addBusinessDays: both directions through the helper; Fri/Sat/chag/chol hamoed/erev chag skipped; owner-marked day skipped', () => {
+  assert.equal(D.addBusinessDays('2026-10-01', 1), '2026-10-04'); // Thu (chol hamoed) -> Fri (Hoshana Raba, erev chag) + Shabbat (chag) skipped -> Sun
+  assert.equal(D.addBusinessDays('2026-10-15', 1), '2026-10-18'); // a plain Thu -> Fri/Sat skipped -> Sun
+  assert.equal(D.addBusinessDays('2026-10-18', -1), '2026-10-15'); // Sun -> Thu
+  // v2: backwards from Sun 4.10 the whole of Sukkot is closed - Shmini Atzeret, Hoshana Raba, chol hamoed 27.9-1.10,
+  // Sukkot I (Shabbat 26.9), erev Sukkot (Fri 25.9) - so the previous business day is Thu 24.9
+  assert.equal(D.addBusinessDays('2026-10-04', -1), '2026-09-24');
   assert.equal(D.addBusinessDays('2026-10-01', 0), '2026-10-01');
   assert.equal(D.addBusinessDays('2026-10-03', 0), '2026-10-03'); // event on Shabbat stays
-  assert.equal(D.addBusinessDays('2026-09-30', 2), '2026-10-04'); // Wed -> Thu(1) -> Fri/Sat skipped -> Sun(2)
-  assert.equal(D.addBusinessDays('2026-09-30', 3), '2026-10-05');
+  assert.equal(D.addBusinessDays('2026-09-30', 2), '2026-10-05'); // Wed (chol hamoed) -> Thu 1.10 (chol hamoed) .. Sat 3.10 skipped -> Sun(1) -> Mon(2)
+  assert.equal(D.addBusinessDays('2026-09-30', 3), '2026-10-06');
+  assert.equal(D.addBusinessDays('2026-10-14', 2), '2026-10-18'); // a plain Wed -> Thu(1) -> Fri/Sat skipped -> Sun(2)
+  assert.equal(D.addBusinessDays('2026-10-14', 3), '2026-10-19');
+  assert.equal(D.addBusinessDays('2026-09-24', 1), '2026-10-04', 'Thu 24.9 -> the next working day after Sukkot is Sun 4.10 (9 closed days)');
   assert.equal(D.addBusinessDays('2026-09-20', 1), '2026-09-22', 'erev YK -> YK skipped -> Tue');
   assert.equal(D.addBusinessDays('2026-09-19', 1), '2026-09-22', 'Sat -> Sun (erev YK) + Mon (YK) skipped -> Tue');
   const cfg = owner(['2026-10-05']);
@@ -200,25 +216,49 @@ test('stage 8 parity for EXPLICIT dates: rollForwardToWorkingDay(toDate) === get
     }
     key = D.addCalendarDays(key, 1);
   }
-  // the owner's "open" override on Fri 16.10 keeps the explicit date in both places
-  assert.equal(D.rollForwardToWorkingDay('2026-10-16', cfg), '2026-10-16');
-  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-10-16T00:00:00.000Z' }, cfg), '2026-10-16');
+  // the v1 "open" override on Fri 16.10 is IGNORED since v2 (owner NWD-Q04: a closed day can never be opened) - it is
+  // read, counted in ignoredOpen, and the Friday stays closed: the explicit date rolls to Sunday in both places
+  assert.equal(cfg.ignoredOpen, 1);
+  assert.equal(cfg.closed.has('2026-10-16'), false, 'the "open" row adds nothing to the closed set either');
+  assert.equal(D.isNonWorkingDay('2026-10-16', cfg), true);
+  assert.equal(D.rollForwardToWorkingDay('2026-10-16', cfg), '2026-10-18');
+  assert.equal(LR.getExpectedReturnKey({ toDate: '2026-10-16T00:00:00.000Z' }, cfg), '2026-10-18');
   assert.equal(LR.getExpectedReturnKey({ toDate: '2026-10-16T00:00:00.000Z' }), '2026-10-18');
 });
 
-test('addBusinessDays backward 3 days equals the existing getPrintPrepDate rule (no owner list) on 90 consecutive days', () => {
+// The print pages / e-mails take the prep date from getPrintPrepDateWithConfig (lib/businessDays.js); the old
+// getPrintPrepDate (lib/hebrewDate.js, Fri/Sat/chag/erev chag only) is no longer called by production code. v2 closes
+// chol hamoed, so the two agree everywhere EXCEPT when the 3-day count crosses chol hamoed - there v2 is earlier.
+test('addBusinessDays backward 3 days equals getPrintPrepDateWithConfig (print/e-mail prep date) on 90 consecutive days; vs the old getPrintPrepDate it differs exactly where the count crosses chol hamoed', () => {
+  const keyOf = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  // a chol hamoed day that v1 COUNTED (not Fri/Shabbat, not erev chag like Hoshana Raba) in [fromKey, toKey)
+  const cholHamoedBetween = (fromKey, toKey) => {
+    for (let k = fromKey; k < toKey; k = D.addCalendarDays(k, 1)) if (B.isCholHamoedKey(k) && !B.isWeekendKey(k) && !B.isErevChagKey(k)) return true;
+    return false;
+  };
   let key = '2026-09-01';
+  let differ = 0;
   for (let i = 0; i < 90; i++) {
     const ours = D.addBusinessDays(key, -3);
-    const theirs = H.getPrintPrepDate(D.keyToLocalMidnight(key));
-    const theirsKey = `${theirs.getFullYear()}-${String(theirs.getMonth() + 1).padStart(2, '0')}-${String(theirs.getDate()).padStart(2, '0')}`;
-    assert.equal(ours, theirsKey, 'prep date for event ' + key);
+    assert.equal(ours, keyOf(B.getPrintPrepDateWithConfig(key, null)), 'prep date for event ' + key);
+    const legacy = keyOf(H.getPrintPrepDate(D.keyToLocalMidnight(key)));
+    if (cholHamoedBetween(legacy, key)) {
+      differ++;
+      assert.ok(ours < legacy, 'event ' + key + ': v2 prep (' + ours + ') must be EARLIER than the v1 one (' + legacy + ')');
+    } else {
+      assert.equal(ours, legacy, 'event ' + key + ' (no chol hamoed in the window): same as the old rule');
+    }
     key = D.addCalendarDays(key, 1);
   }
+  // events 28.9 - 6.10.2026: the v1 count stopped on chol hamoed 27.9-1.10; e.g. event Tue 6.10 -> v1 Thu 1.10, v2 Thu 24.9
+  assert.equal(D.addBusinessDays('2026-10-06', -3), '2026-09-24');
+  assert.ok(differ > 0, 'the window does cross Sukkot 5787');
 });
 
-test('Pesach 5786: prep date skips chag AND erev chag (owner decision)', () => {
-  assert.equal(D.addBusinessDays('2026-04-09', -3), '2026-03-31'); // Apr 8 (chag) + Apr 7 (erev) + Apr 2 (chag) + Apr 1 (erev) skipped
+test('Pesach 5786: prep date skips chag, chol hamoed AND erev chag (owner decisions)', () => {
+  // Thu 9.4 back: Apr 8 (Pesach VII) + Apr 7 (chol hamoed + erev) + Apr 3-6 (chol hamoed, Fri/Shabbat) + Apr 2 (Pesach I) +
+  // Apr 1 (erev Pesach) skipped -> Tue 31.3 (1), Mon 30.3 (2), Sun 29.3 (3). (Under v1, chol hamoed Sun 5.4 / Mon 6.4 counted -> 31.3.)
+  assert.equal(D.addBusinessDays('2026-04-09', -3), '2026-03-29');
 });
 
 test('isWithinReasonableRange: +-3 calendar years around today', () => {
@@ -235,14 +275,21 @@ test('isWithinReasonableRange: +-3 calendar years around today', () => {
 });
 
 test('sourceKeysForDay: which event dates land on the requested day (inverse of the unified rule)', () => {
-  // prep (-3 business days) on Thu 2026-10-01: Fri Oct 2 (erev chag) + Shabbat/Shmini Atzeret Oct 3 are skipped
-  assert.deepEqual(D.sourceKeysForDay('2026-10-01', -3), ['2026-10-06']);
-  // pickup (-2) on Oct 1 <- event Mon Oct 5
-  assert.deepEqual(D.sourceKeysForDay('2026-10-01', -2), ['2026-10-05']);
-  // manual return (+1) on Thu Oct 1 <- event Wed Sep 30
-  assert.deepEqual(D.sourceKeysForDay('2026-10-01', 1), ['2026-09-30']);
-  // manual return on Sun Oct 4 <- events Thu Oct 1, Fri Oct 2, Sat Oct 3 (all map to the next working day)
-  assert.deepEqual(D.sourceKeysForDay('2026-10-04', 1), ['2026-10-01', '2026-10-02', '2026-10-03']);
+  // v2: Thu 1.10 is chol hamoed - closed, so nothing is prepared / picked up / returned on it
+  for (const off of [-3, -2, 1]) assert.deepEqual(D.sourceKeysForDay('2026-10-01', off), [], 'chol hamoed 1.10, offset ' + off);
+  // prep (-3 business days) on a plain Thursday 15.10: Fri 16.10 + Shabbat 17.10 skipped -> event Tue 20.10
+  assert.deepEqual(D.sourceKeysForDay('2026-10-15', -3), ['2026-10-20']);
+  // pickup (-2) on Thu 15.10 <- event Mon 19.10
+  assert.deepEqual(D.sourceKeysForDay('2026-10-15', -2), ['2026-10-19']);
+  // manual return (+1) on Thu 15.10 <- event Wed 14.10
+  assert.deepEqual(D.sourceKeysForDay('2026-10-15', 1), ['2026-10-14']);
+  // manual return on Sun 18.10 <- events Thu 15.10, Fri 16.10, Sat 17.10 (all map to the next working day)
+  assert.deepEqual(D.sourceKeysForDay('2026-10-18', 1), ['2026-10-15', '2026-10-16', '2026-10-17']);
+  // over Sukkot (v2): the last working day before it, Thu 24.9, prepares the events of Tue 6.10 and picks up those of
+  // Mon 5.10; Sun 4.10 takes back every event from Thu 24.9 through Shmini Atzeret (10 days)
+  assert.deepEqual(D.sourceKeysForDay('2026-09-24', -3), ['2026-10-06']);
+  assert.deepEqual(D.sourceKeysForDay('2026-09-24', -2), ['2026-10-05']);
+  assert.deepEqual(D.sourceKeysForDay('2026-10-04', 1), ['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03']);
   assert.deepEqual(D.sourceKeysForDay('2026-10-01', 0), ['2026-10-01']);
   // a non-working day is never the target of a count: nothing is prepared / picked up / returned on it
   assert.deepEqual(D.sourceKeysForDay('2026-10-03', -3), []);
@@ -250,15 +297,17 @@ test('sourceKeysForDay: which event dates land on the requested day (inverse of 
   assert.deepEqual(D.sourceKeysForDay('2026-10-03', 0), ['2026-10-03'], 'offset 0 (event day) is the day itself, even on Shabbat');
   // every returned key really maps back to the day
   for (const k of D.sourceKeysForDay('2026-09-24', -3)) assert.equal(D.addBusinessDays(k, -3), '2026-09-24');
-  // owner-marked Monday 5.10: pickup (-2) on Thu 1.10 now also covers events on the closed Monday itself and on Tuesday
+  for (const k of D.sourceKeysForDay('2026-10-04', 1)) assert.equal(D.addBusinessDays(k, 1), '2026-10-04');
+  // owner-marked Monday 5.10: pickup (-2) on Thu 24.9 (the working day before it, over Sukkot) now also covers events on
+  // the closed Monday itself and on Tuesday
   const cfg = owner(['2026-10-05']);
-  assert.deepEqual(D.sourceKeysForDay('2026-10-01', -2, cfg), ['2026-10-05', '2026-10-06']);
-  assert.deepEqual(D.sourceKeysForDay('2026-10-01', -3, cfg), ['2026-10-07']);
+  assert.deepEqual(D.sourceKeysForDay('2026-09-24', -2, cfg), ['2026-10-05', '2026-10-06']);
+  assert.deepEqual(D.sourceKeysForDay('2026-09-24', -3, cfg), ['2026-10-07']);
   assert.deepEqual(D.sourceKeysForDay('2026-10-05', -2, cfg), [], 'the closed Monday itself has no pickups');
-  // returns (+1) with the closed Monday: Thu-Sat events still come back on Sun 4.10 (Sunday itself stays open), and
-  // Tue 6.10 collects only the events whose NEXT working day is Tuesday - Sunday's (Monday is closed) and the closed
-  // Monday's own. Thu 1.10 does NOT map to 6.10: addBusinessDays('2026-10-01', 1, cfg) is Sunday, not Tuesday.
-  assert.deepEqual(D.sourceKeysForDay('2026-10-04', 1, cfg), ['2026-10-01', '2026-10-02', '2026-10-03'], 'Sun 4.10 is unchanged by the closed Monday');
+  // returns (+1) with the closed Monday: Thu 24.9 - Sat 3.10 events still come back on Sun 4.10 (Sunday itself stays
+  // open), and Tue 6.10 collects only the events whose NEXT working day is Tuesday - Sunday's (Monday is closed) and the
+  // closed Monday's own. Thu 1.10 does NOT map to 6.10: addBusinessDays('2026-10-01', 1, cfg) is Sunday, not Tuesday.
+  assert.deepEqual(D.sourceKeysForDay('2026-10-04', 1, cfg), D.sourceKeysForDay('2026-10-04', 1), 'Sun 4.10 is unchanged by the closed Monday');
   assert.deepEqual(D.sourceKeysForDay('2026-10-06', 1, cfg), ['2026-10-04', '2026-10-05'], 'returns due Tue 6.10: Sunday events + the closed Monday itself');
   assert.deepEqual(D.sourceKeysForDay('2026-10-05', 1, cfg), [], 'nothing is returned on the closed Monday');
   for (const k of D.sourceKeysForDay('2026-10-06', 1, cfg)) assert.equal(D.addBusinessDays(k, 1, cfg), '2026-10-06');
@@ -269,15 +318,18 @@ test('sourceKeysForDay: which event dates land on the requested day (inverse of 
 test('owner decision 2.10.2026: a return never lands on a closed day - rollForwardToWorkingDay / rolledSourceKeysForDay', () => {
   // a working day is itself
   assert.equal(D.rollForwardToWorkingDay('2026-10-15'), '2026-10-15', 'Thu 15.10');
-  assert.equal(D.rollForwardToWorkingDay('2026-10-01'), '2026-10-01');
+  assert.equal(D.rollForwardToWorkingDay('2026-09-24'), '2026-09-24', 'Thu 24.9');
+  // chol hamoed (v2) rolls like any closed day: Thu 1.10 -> Sun 4.10 (Fri 2.10 + Shabbat 3.10 closed as well)
+  assert.equal(D.rollForwardToWorkingDay('2026-10-01'), '2026-10-04');
+  assert.equal(D.rollForwardToWorkingDay('2026-09-27'), '2026-10-04', 'first day of chol hamoed -> Sun 4.10');
   // Fri / Shabbat -> Sunday
   assert.equal(D.rollForwardToWorkingDay('2026-10-16'), '2026-10-18', 'Fri 16.10 -> Sun 18.10');
   assert.equal(D.rollForwardToWorkingDay('2026-10-17'), '2026-10-18', 'Shabbat 17.10 -> Sun 18.10');
   // erev Yom Kippur (Sun 20.9) and Yom Kippur (Mon 21.9) -> Tue 22.9
   assert.equal(D.rollForwardToWorkingDay('2026-09-20'), '2026-09-22');
   assert.equal(D.rollForwardToWorkingDay('2026-09-21'), '2026-09-22');
-  // Shabbat 26.9 = Sukkot I -> Sun 27.9 (chol hamoed, working under rule v1)
-  assert.equal(D.rollForwardToWorkingDay('2026-09-26'), '2026-09-27');
+  // Shabbat 26.9 = Sukkot I -> Sun 4.10: chol hamoed 27.9-1.10 is closed under rule v2 (it was Sun 27.9 under v1)
+  assert.equal(D.rollForwardToWorkingDay('2026-09-26'), '2026-10-04');
   // owner-marked day
   const cfg = owner([{ date: '2026-10-13', note: 'ספירת מלאי' }]);
   assert.equal(D.rollForwardToWorkingDay('2026-10-13', cfg), '2026-10-14');
@@ -286,7 +338,9 @@ test('owner decision 2.10.2026: a return never lands on a closed day - rollForwa
 
   // the inverse: the day itself + the closed run before it; [] on a closed day
   assert.deepEqual(D.rolledSourceKeysForDay('2026-10-18'), ['2026-10-16', '2026-10-17', '2026-10-18']);
-  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-04'), ['2026-10-02', '2026-10-03', '2026-10-04'], 'Hoshana Raba + Shmini Atzeret roll to Sunday');
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-04'), ['2026-09-25', '2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'],
+    'v2: erev Sukkot (Fri 25.9), Sukkot I, chol hamoed, Hoshana Raba and Shmini Atzeret all roll to Sun 4.10');
+  assert.deepEqual(D.rolledSourceKeysForDay('2026-10-01'), [], 'chol hamoed is closed: nothing rolls onto it');
   assert.deepEqual(D.rolledSourceKeysForDay('2026-10-15'), ['2026-10-15']);
   assert.deepEqual(D.rolledSourceKeysForDay('2026-10-17'), [], 'Shabbat');
   assert.deepEqual(D.rolledSourceKeysForDay('2026-10-13', cfg), []);

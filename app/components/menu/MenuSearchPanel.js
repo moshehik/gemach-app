@@ -6,9 +6,15 @@
 // "הצג את כל התוצאות" -> /?q=. החזרה מהירה בברקוד: ברקוד בן 7 ספרות + Enter מחזיר את הפריט המושכר (כמו תיבת "החזרה מהירה"
 // של העיצוב הישן, TopbarSearch.js); אם אין פריט מושכר בברקוד - נשארים בחיפוש ומוצגות התוצאות עם הסיבה (דיווח df035847).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useDebounce from '@/hooks/useDebounce';
 import { flattenMenuTree } from '@/lib/menu/buildMenuTree';
+import { MINE_URL } from '@/lib/myRecentActivityView';
+import { HOME_NAV_EVENT } from '@/lib/menu/homeNav';
+import { MineRowBody, MineWho, SavedDelButton, SaveForm, ShortcutRowBody, useDraftCount, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
+import { useSavedSearches } from '../search/savedSearches';
+import { DeleteDialog, SaveIconButton } from '../search/ShortcutsUi';
+import { actionTarget, menuAllowedPaths, saveCandidate } from '@/lib/quickShortcuts';
 import { combineQuickSearchResults } from '@/lib/quickSearchResults';
 import { postReturnScan } from '@/components/orders/returnScanClient';
 import { usePopup } from '@/app/components/PopupProvider';
@@ -20,6 +26,12 @@ const MIN_CHARS = 2;
 /** מצב החיפוש - מוחזק במעטפת כדי שהפאנל בסרגל והמגירה בנייד יישארו מסונכרנים. */
 export function useMenuSearch() {
   const [q, setQ] = useState('');
+  // רשימת קידומת ('&' "השינויים שלי", '#' פעולות מהירות, '$' חיפושים שמורים) מוצגת במקום תוצאות החיפוש - ורק אז חיפוש השרת מושעה. ההחלטה היא
+  // של הרשימה עצמה (SearchBody: prefixOn, אותו תנאי שמצייר אותה: הקידומת פעילה, שורה לא מקוצצת, כתו ראשון, הרשימה פתוחה) ומדווחת לכאן;
+  // המגירה (נייד) גוברת על הפאנל כשהיא פתוחה.
+  const [prefixSlots, setPrefixSlots] = useState({ panel: false, drawer: null });
+  const setPrefixActive = useCallback((drawer, on) => setPrefixSlots((p) => { const k = drawer ? 'drawer' : 'panel'; return p[k] === on ? p : { ...p, [k]: on }; }), []);
+  const prefixActive = prefixSlots.drawer !== null ? prefixSlots.drawer : prefixSlots.panel;
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [searching, setSearching] = useState(false);
@@ -28,7 +40,7 @@ export function useMenuSearch() {
   // COPIED FROM TopbarSearch.js
   useEffect(() => {
     const term = debounced.trim();
-    if (term.length < MIN_CHARS) {
+    if (term.length < MIN_CHARS || prefixActive) {
       setResults([]);
       setTotal(0);
       setSearching(false);
@@ -52,15 +64,158 @@ export function useMenuSearch() {
       .catch(() => { if (!cancelled) { setResults([]); setTotal(0); } })
       .finally(() => { if (!cancelled) setSearching(false); });
     return () => { cancelled = true; };
-  }, [debounced]);
+  }, [debounced, prefixActive]);
 
-  return { q, setQ, results, total, searching, pending: q.trim() !== debounced.trim(), reset: () => setQ('') };
+  return { q, setQ, setPrefixActive, results, total, searching, pending: q.trim() !== debounced.trim(), reset: () => setQ('') };
+}
+
+// קידומות בשורת החיפוש: '&' = "השינויים שלי" (ההזמנות שיצרתי והשינויים שעשיתי), '#' = פעולות מהירות (לפי הרשאות), '$' = חיפושים שמורים - אותן רשימות
+// כמו בדף הבית (hook ומודלים משותפים: components/search/QuickPrefix.js, lib/myRecentActivityView.js, lib/quickShortcuts.js). '@' נשארת בדף הבית.
+// מדריך הקיצורים (כפתור "קיצורים") רק בדף הבית (PFX-08) - בחיפוש התפריט אין אותו.
+const MENU_PREFIXES = ['&', '#', '$'];
+
+function MineMenuList({ qp }) {
+  const m = qp.mineModel;
+  if (!m) return null;
+  let n = -1;
+  const row = (r) => {
+    n += 1;
+    const i = n;
+    return (
+      <a
+        key={r.key}
+        id={`${qp.listId}-o${i}`}
+        className={`sn-link mine-o${r.type === 'all' ? ' mine-more' : ''}${i === qp.act ? ' act' : ''}`}
+        role="option"
+        aria-selected={i === qp.act}
+        href={r.url || '#'}
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={(e) => { e.preventDefault(); qp.pick(r); }}
+      ><MineRowBody r={r} term={qp.term} /></a>
+    );
+  };
+  const mine = qp.mine;
+  const all = m.state === 'ok' ? m.more : null;
+  const allIdx = m.items.length - 1;
+  return (
+    <div className="mine-menu" id={qp.listId} role="listbox" aria-label={qp.def.listLabel}>
+      {(all || (mine && mine.chips.length > 0)) && (
+        <div className="mine-head" role="presentation">
+          <MineWho chips={mine ? mine.chips : []} setWho={mine ? mine.setWho : () => {}} />
+          {all && (
+            <button
+              type="button"
+              id={`${qp.listId}-o${allIdx}`}
+              role="option"
+              aria-selected={qp.act === allIdx}
+              className={`btn sm mine-all${qp.act === allIdx ? ' act' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => qp.pick(all)}
+            >{all.title}<Ic n="arrl" /></button>
+          )}
+        </div>
+      )}
+      {m.state === 'loading' && <div className="sn-empty" role="status">{m.none}</div>}
+      {m.state === 'error' && <div className="sn-empty" role="alert">{m.none}<small>{m.sub}</small></div>}
+      {m.state === 'error' && m.items.map(row)}
+      {m.state !== 'loading' && m.state !== 'error' && m.sections.map((s) => (
+        <div key={s.key}>
+          <div className="sn-st" role="presentation">{s.head}<bdi className="sn-cnt">{s.count}</bdi></div>
+          {s.rows.map(row)}
+        </div>
+      ))}
+      {m.state === 'ok' && m.none && <div className="sn-empty" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</div>}
+      <div className="mine-note" role="note"><Ic n="lock" /><span>{m.note}</span></div>
+    </div>
+  );
+}
+
+// רשימת '#' / '$' בתפריט (וגם במגירה): אותן שורות כמו בדף הבית (ShortcutRowBody), בעטיפה של sn-link
+function ShortcutMenuList({ qp }) {
+  const m = qp.model;
+  if (!m) return null;
+  const saved = qp.saved;
+  const isSaved = qp.def.source === 'saved';
+  return (
+    <div className="mine-menu pfx-menu" id={qp.listId} role="listbox" aria-label={qp.def.listLabel}>
+      <div className="sn-st" role="presentation">{m.head}{isSaved && m.state === 'ok' ? <bdi className="sn-cnt">{m.count}</bdi> : null}</div>
+      {m.state === 'loading' && <div className="sn-empty" role="status">{m.none}</div>}
+      {(m.state === 'error' || m.state === 'unavailable') && <div className="sn-empty" role="status">{m.none}<small>{m.sub}</small></div>}
+      {m.items.map((r, i) => {
+        if (r.type === 'save' && saved && saved.saving) return <div key="form"><SaveForm qp={qp} menu /></div>;
+        const row = (
+          <a
+            key={r.key}
+            id={`${qp.listId}-o${i}`}
+            className={`sn-link mine-o pfx-o${i === qp.act ? ' act' : ''}${r.disabled ? ' dis' : ''}`}
+            role="option"
+            aria-selected={i === qp.act}
+            aria-disabled={r.disabled ? true : undefined}
+            href="#"
+            tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => { e.preventDefault(); qp.pick(r); }}
+          ><ShortcutRowBody r={r} term={qp.term} /></a>
+        );
+        return r.type === 'saved' ? <div className="pfx-row" key={r.key}>{row}<SavedDelButton r={r} saved={saved} /></div> : row;
+      })}
+      {m.state === 'ok' && m.none && <div className="sn-empty" role="presentation">{m.none}{m.sub ? <small>{m.sub}</small> : null}</div>}
+      {m.state !== 'unavailable' && <div className="mine-note" role="note"><Ic n="lock" /><span>{m.note}</span></div>}
+    </div>
+  );
 }
 
 export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer = false, onGo, onClearRecents, inputRef }) {
   const q = search.q;
   const term = q.trim();
   const popup = usePopup();
+  const mineData = useMyActivity();
+  const showToast = popup && popup.showAlert;
+  const saved = useSavedSearches({
+    toast: (title, text, kind) => { if (showToast) showToast(text ? `${title}: ${text}` : title, kind === 'error' ? 'error' : kind === 'info' ? 'info' : 'success'); },
+    focusInput: () => { if (inputRef && inputRef.current) inputRef.current.focus(); },
+  });
+  const draftCount = useDraftCount(q.startsWith('#'));
+  const allowed = useMemo(() => menuAllowedPaths(flattenMenuTree(tree)), [tree]); // התפריט כבר מסונן לפי ההרשאות: שורה בו = מותר
+  const actions = useMemo(() => ({ allowed, draftCount }), [allowed, draftCount]);
+  const qp = useQuickPrefix({
+    q,
+    rows: [],
+    mine: mineData,
+    actions,
+    saved,
+    prefixes: MENU_PREFIXES,
+    listId: `${idPrefix}-qp`,
+    onPick: (row) => {
+      if (row.type === 'action') {
+        const tg = actionTarget(row.action);
+        if (!tg) return;
+        if (tg.kind === 'nav') onGo(() => nav.navigate(tg.url), true);
+        else onGo(() => { nav.navigate(tg.url); window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href: tg.url } })); }, true); // /?run=debts|unsaved: תוצאות בדף הבית
+      } else if (row.type === 'saved') {
+        const href = `/?q=${encodeURIComponent(row.query)}`;
+        onGo(() => nav.navigate(href), true);
+      } else if (row.type === 'all') {
+        const href = typeof row.url === 'string' && row.url.startsWith(MINE_URL) ? row.url : MINE_URL; // /?recent=mine[&emp=<id>]: הבחירה של הנהלה נשמרת
+        onGo(() => { nav.navigate(href); window.dispatchEvent(new CustomEvent(HOME_NAV_EVENT, { detail: { href } })); }, true);
+      } else if (row.url) {
+        onGo(() => nav.navigate(row.url), true);
+      }
+    },
+  });
+  const prefixOn = qp.open && !!qp.def;
+  const mineOn = prefixOn && qp.def.source === 'mine';
+  const reportPrefix = search.setPrefixActive;
+  useEffect(() => {
+    if (!reportPrefix) return undefined;
+    reportPrefix(drawer, prefixOn);
+    return () => reportPrefix(drawer, drawer ? null : false); // המגירה נסגרת = מחזירה את ההחלטה לפאנל
+  }, [reportPrefix, drawer, prefixOn]);
+  const saveText = saveCandidate(q);
+  const hasSaveText = !!saveText;
+  const loadSaved = saved.load;
+  useEffect(() => { if (hasSaveText) loadSaved(); }, [hasSaveText, loadSaved]); // נטען רק כשיש מה לשמור, לא בעליית הדף
   const isBarcode = /^\d{7}$/.test(term); // ברקוד תקין = בדיוק 7 ספרות (מס' הזמנה 5 ספרות, טלפון 9+)
   const [qr, setQr] = useState({ busy: false, text: '', err: false });
 
@@ -92,17 +247,19 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
   };
 
   const pages = useMemo(() => {
-    if (!term) return [];
+    if (!term || prefixOn) return [];
     return flattenMenuTree(tree).filter((x) => (
       x.kind === 'link' && x.href && x.group !== 'משתמש' && x.group !== 'התראות'
-      && (String(x.label).includes(term) || String(x.group).includes(term))
+      && menuRowMatchesTerm(x, term)
     ));
-  }, [tree, term]);
+  }, [tree, term, prefixOn]);
 
   const role = menu ? 'menuitem' : undefined;
 
   let list;
-  if (!term) {
+  if (prefixOn) {
+    list = null; // רשימת הקידומת מצויירת במקום .sn-res (MineMenuList / ShortcutMenuList)
+  } else if (!term) {
     list = (
       <>
         <div className="sn-st" style={{ display: 'flex', alignItems: 'center' }}>
@@ -203,7 +360,12 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
           data-form-type="other"
           aria-label="חיפוש עמוד, הזמנה או לקוח"
           onChange={(e) => { if (qr.text) setQr({ busy: false, text: '', err: false }); search.setQ(e.target.value); }}
+          {...qp.inputProps}
+          onFocus={qp.onFocus}
+          onBlur={qp.onBlur}
           onKeyDown={(e) => {
+            qp.onKeyDown(e); // '&': חצים / Enter / Esc של הרשימה (Enter עליה לא מריץ חיפוש)
+            if (e.defaultPrevented) return;
             if (e.key !== 'Enter') return;
             if (isBarcode) {
               e.preventDefault();
@@ -214,11 +376,13 @@ export default function SearchBody({ idPrefix, search, nav, tree, menu, drawer =
             }
           }}
         />
+        <SaveIconButton text={q} saved={saved} />
       </div>
       <div className={`sn-msg${qr.err ? ' err' : ''}`} role="status" aria-live="polite">
         {qr.busy ? 'מחזיר…' : (qr.text || (isBarcode ? `Enter - החזרה מהירה של ברקוד ${term}` : ''))}
       </div>
-      <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>
+      {mineOn ? <MineMenuList qp={qp} /> : prefixOn ? <ShortcutMenuList qp={qp} /> : <div className="sn-res" role={menu ? 'menu' : undefined}>{list}</div>}
+      {saved.confirm && <DeleteDialog key={saved.confirm.id} confirm={saved.confirm} onConfirm={saved.confirmDelete} onCancel={saved.cancelDelete} skin="menu" />}
     </>
   );
 }

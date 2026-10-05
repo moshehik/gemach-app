@@ -59,11 +59,11 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
     handleChange(updates);
   };
 
-  const isAbroad = !!(order.isAbroad || order.isWeekdayEvent);
+  const isAbroad = !!order.isAbroad;
 
   // יום השכרה נוסף (feature request #?, נווה יעקב) — הוספת יום לפני הלקיחה או אחרי
   // ההחזרה, בתוספת 50% מסך ההזמנה (מחושב אוטומטית ב-pricingEngine לפי order.extraDay).
-  // מוגבל להזמנות עם טווח תאריכים מפורש (isAbroad/isWeekdayEvent) — להזמנה רגילה אין
+  // מוגבל להזמנות עם טווח תאריכים מפורש (isAbroad) — להזמנה רגילה אין
   // toDate/fromDate אמיתיים לזוז (התקופה נגזרת מ-eventDate + חוצץ המלאי).
   const shiftDateStr = (dateStr, deltaDays) => {
     if (!dateStr) return dateStr;
@@ -330,7 +330,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                   onClick={() => {
                     if (!isAbroad) return;
                     // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
-                    changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
+                    changeDates({ isAbroad: false, fromDate: null, toDate: null, returnDate: null });
                   }}
                 >
                   אירוע רגיל
@@ -341,7 +341,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                   onClick={() => {
                     if (isAbroad) return;
                     // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
-                    changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
+                    changeDates({ isAbroad: true, eventDate: null, eventDateHebrew: null });
                   }}
                 >
                   אירוע חו"ל

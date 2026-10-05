@@ -1,5 +1,5 @@
 // PP-12 "תעודות משלוח": כל הזמנה בעמוד A4 משלה (perOrderPage 'always'), ברקוד הכותרת DOT-<הזמנה> לכל תעודה, בלי ברקוד בתוך התעודה,
-// כל הנתונים של "נתונים לשקית" הישן (PQ-06), שער page:deliveries, toRows. נתוני הדמה (1.10.2026) וסינתטיים.
+// כל הנתונים של "נתונים לשקית" הישן (PQ-06), שער page:deliveries, toRows. נתוני הדמה (15.10.2026) וסינתטיים.
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
@@ -34,14 +34,14 @@ test('registry: ready, every order on its own page (all versions), deliveries ga
 
 test('route gate: 403 without page:deliveries, 200 for head management', async () => {
   globalThis.__AUTH_TOKEN = 'emp-worker';
-  assert.equal((await get('?page=PP-12&date=2026-10-01')).status, 403);
+  assert.equal((await get('?page=PP-12&date=2026-10-15')).status, 403);
   globalThis.__AUTH_TOKEN = 'emp-head';
-  assert.equal((await get('?page=PP-12&date=2026-10-01')).status, 200);
+  assert.equal((await get('?page=PP-12&date=2026-10-15')).status, 200);
 });
 
 test('route: one note per outbound delivery of the day with everything the old bag print had (PQ-06)', async () => {
   globalThis.__AUTH_TOKEN = 'emp-head';
-  const r = await get('?page=PP-12&date=2026-10-01');
+  const r = await get('?page=PP-12&date=2026-10-15');
   const d = r.__json.pages[0].data;
   assert.equal(d.title, 'תעודת משלוח');
   assert.deepEqual(d.orders.map((o) => o.orderId), [1009]);
@@ -50,10 +50,10 @@ test('route: one note per outbound delivery of the day with everything the old b
   assert.equal(o.name, 'דבורה חן');
   assert.equal(o.city, 'בית שמש');
   assert.equal(o.phone1, '050-1111111');
-  assert.equal(o.eventFull, 'יום שישי כ״א תשרי תשפ״ז');
-  assert.equal(o.eventGreg, '02/10/2026');
-  assert.equal(o.dispatchFull, 'יום חמישי כ׳ תשרי');
-  assert.equal(o.dispatchGreg, '01/10/2026');
+  assert.equal(o.eventFull, 'יום שישי ה׳ חשוון תשפ״ז');
+  assert.equal(o.eventGreg, '16/10/2026');
+  assert.equal(o.dispatchFull, 'יום חמישי ד׳ חשוון');
+  assert.equal(o.dispatchGreg, '15/10/2026');
   assert.equal(o.dressCount, 2);
   assert.equal('notes' in o, true);
   assert.equal(d.sum, 'תעודה אחת · 2 שמלות');

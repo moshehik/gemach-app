@@ -60,7 +60,7 @@ try {
   ];
   const orders = spec.map(({ p, event, to }) => ({
     orderId: p.id, status: null, isDeleted: false, orderDate: d('2026-09-01T08:00:00Z'), eventDate: d(event), eventDateHebrew: null, fromDate: null, toDate: to ? d(to) : null, returnDate: null,
-    isAbroad: false, isWeekdayEvent: false, extraDay: null, customSpacing: null, branch: null, pickupBranch: null, notes: '', internalNotes: '', isDelivery: false, deliveryDirection: null,
+    isAbroad: false, extraDay: null, customSpacing: null, branch: null, pickupBranch: null, notes: '', internalNotes: '', isDelivery: false, deliveryDirection: null,
     customer: { firstName: p.first, lastName: p.last, phone1: p.ph, phone2: '', city: p.city, street: p.street, houseNum: null },
     employee: null, obligations: [], items: p.dresses.map((dr, k) => mkItem(p, k, { name: dr.name, pre: dr.pre, size: dr.size })),
   }));

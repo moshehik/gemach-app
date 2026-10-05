@@ -95,6 +95,7 @@ const WHITE_RE = /^(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\b/i;
 const WHITE_OK = [
   '.gm-ds.gm-home .hero .scan', // כדור החיפוש (לבן בעיצוב, בכל מצב: ברירת מחדל / hover / focus)
   '.gm-ds.gm-home :is(.card,.stepper,.itm,.coll[open],.dhero)', // כרטיסים מחוץ למסגרת המשותפת (שגיאה וכד'): surface = לבן בעיצוב
+  '.gm-ds.gm-home .scan .pfx-form input.inp', // שדה שם "שמור חיפוש" בתוך חלונית $: שדה לבן בעיצוב המאושר (תצוגות-עיצוב/חיפוש-קיצורים.html)
 ];
 t('אין רקע לבן קשיח ב-home.css מחוץ לרשימה המאושרת (כדור החיפוש)', () => {
   const bad = [];
@@ -505,7 +506,10 @@ t('הפרופיל: עמודה אחת, בלי עמודה צדדית, בלי שו�
   const page = read('../app/components/profile/ProfilePage.js');
   const auto = read('../app/components/login/AutoClockSwitch.js');
   assert.ok(!/pf-side|<aside|className="rail/.test(page + PROFILE_CSS), 'עמודה צדדית חזרה');
-  assert.ok(!/בלי לחיצה על/.test(page + auto), 'שורת העזר של מתג הכניסה האוטומטית חזרה');
+  // 4.10.2026 ("ישן / חדש"): שורת העזר קיימת רק בענף של הדף הישן (useUiVariant('profile') === 'legacy'), לא במראה החדש
+  const autoNew = auto.slice(auto.indexOf('<div className="pf-pref">'));
+  assert.ok(auto.includes('<div className="pf-pref">') && /profileVariant === 'legacy'/.test(auto), 'המראה החדש / ענף הישן');
+  assert.ok(!/בלי לחיצה על/.test(page + autoNew), 'שורת העזר של מתג הכניסה האוטומטית חזרה');
   assert.ok(!/window\.alert/.test(page), 'window.alert חזר (הודעות בטוסט)');
   assert.ok(!/gm-home/.test(page), 'שורש הדף לא יכול לשאת gm-home (ראו docs/ui-fidelity-schedule.md)');
 });
@@ -560,6 +564,41 @@ t('מסך הניהול: בלי מונה, בלי window.alert, ושורש בלי 
   assert.ok(!/gm-home/.test(page), 'gm-home בשורש');
 });
 
+/* ---------- 11ב. הלוח החודשי (app/components/board/board.css) + חלון "אין הרשאה" החדש (app/components/gate/gate.css) ---------- */
+// שורש הלוח: .gm-ds.gm-lz.gm-bd - schedule.css חל עליו (כולל נטרולי הגופן של design-overrides.css, סעיף 6ב), ו-board.css מוסיף רק
+// בהיקף .gm-ds.gm-bd. נבדק: היקף, אין @media לפני הכלל הרגיל (הבאג שנמצא בעיצוב עצמו - ר' ההערה ב-board.css על .lz-pr),
+// אין !important על רקע, השורש בלי gm-home, ונטרול שדה החיפוש מול design-overrides.css (input:not(x4)).
+const BOARD_CSS = read('../app/components/board/board.css');
+const boardRules = parseCss(BOARD_CSS);
+const BOARD_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-bd)']); // ביטול ריפוד המעטפת לדף מלא-רוחב, כמו profile.css
+t('board.css: כל כלל בהיקף .gm-ds.gm-bd (חוץ מביטול ריפוד המעטפת)', () => {
+  const bad = [];
+  for (const r of boardRules) for (const x of splitSel(r.sel)) if (!/^\.gm-ds\.gm-bd(\s|$|\.|#)/.test(x) && !BOARD_OUT_OF_SCOPE_OK.has(x)) bad.push(x);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('board.css: אין דריסת @media לפני הכלל הלא-מותנה, ואין !important על רקע/גבול', () => {
+  assert.deepEqual(mediaBeforeBase(boardRules, 'board.css'), []);
+  const bad = [];
+  for (const r of boardRules) if (setsProp(r, /^(background(-color|-image)?|border(-color)?|box-shadow)$/).some(isImportant)) bad.push(r.sel);
+  assert.deepEqual(bad, []);
+});
+t('הלוח: השורש .gm-ds.gm-lz.gm-bd (schedule.css מנטרל את הגופנים), בלי gm-home; שדה החיפוש מנוטרל מול design-overrides.css', () => {
+  const page = read('../app/components/board/BoardPage.js');
+  assert.match(page, /className="gm-ds gm-lz gm-bd home-bg dlg-dark"/);
+  assert.ok(!/gm-home/.test(page), 'gm-home על שורש הלוח');
+  assert.ok(boardRules.some((r) => /input#bdQ:not\(\[type="checkbox"\]\):not\(\[type="radio"\]\)/.test(r.sel) && setsProp(r, /^background$/).length && setsProp(r, /^box-shadow$/).length), 'חסר נטרול רקע/טבעת לשדה החיפוש');
+  assert.ok(boardRules.some((r) => /#mToday$/.test(r.sel) && setsProp(r, /^height$/).some((d) => d.value === '28px')), 'S04: "החודש הנוכחי" בגובה המתג (28px)');
+});
+const GATE_CSS = read('../app/components/gate/gate.css');
+const gateRules = parseCss(GATE_CSS);
+t('gate.css: היקף .gm-ds.gm-login.gm-gate (חלון "אין הרשאה" = החלון הכהה של דף הכניסה), בלי צבעים משלו', () => {
+  const bad = [];
+  for (const r of gateRules) for (const x of splitSel(r.sel)) if (!/^\.gm-ds\.gm-login\.gm-gate(\s|$)/.test(x) && x !== '.app-shell .main .content:has(> .gm-ds.gm-gate)') bad.push(x);
+  assert.deepEqual(bad, []);
+  assert.ok(!gateRules.some((r) => setsProp(r, /^(background(-color|-image)?|color|border-color)$/).length), 'gate.css לא מגדיר צבעים - הכול מ-login.css');
+  assert.deepEqual(mediaBeforeBase(gateRules, 'gate.css'), []);
+});
+
 /* ---------- 9. כפתור הורדת PDF + דף ההדפסה של התוצאות (searchPdf.js): בלי CSS חדש בדף הבית, בלי דליפת רקע ---------- */
 // כפתור ה-PDF הוא כפתור ההורדה הקיים של הפלטה (xlbtn xld) — רק התווית והפעולה השתנו. כל עיצוב חדש לכפתור = כלל חדש ב-home.css = סיכון דליפה.
 t('כפתור הורדת PDF: אותו כפתור פלטה (xlbtn xld), בלי מחלקה/סגנון חדש ובלי כלל xld ב-home.css', () => {
@@ -580,7 +619,7 @@ t('searchPdf.js: דף ההדפסה בלי משתני ערכת נושא ועם ר
 });
 
 
-/* ---------- 12. אשף "הזמנה חדשה" (app/components/new-order/css/new-order.css): אותו משטר היקף כמו הפרופיל ---------- */
+/* ---------- 15. אשף "הזמנה חדשה" (app/components/new-order/css/new-order.css): אותו משטר היקף כמו הפרופיל ---------- */
 // שורש .gm-ds.gm-no.home-bg.dlg-dark (בלי gm-home). ה-page glue של העיצוב (B2) מגדיר רקעים עם !important רק כדי לשטח את בלוקי
 // קוביית השלב (none/transparent) ואת כרטיס ה"פנינה" של העיצוב (body .app :is(.card,...)). נטרולי הדליפה: scripts/new-order-bg-audit.
 const NO_CSS = read('../app/components/new-order/css/new-order.css');
@@ -734,6 +773,172 @@ t('errorReport.css: הוראות הבעלים 4.10.2026 - כפתורים עגו�
   assert.ok(!erRules.some((r) => /\.er3-acts/.test(r.sel) && setsProp(r, /^(width|height|border-radius|background|border)$/).length && !/\.on|:disabled/.test(r.sel)), 'הכפתור העגול לא מעוצב מחדש - רק הפלטה (.tools .xlbtn.xlp)');
   assert.ok(hasEr(/\.er3-bh b/, /^color$/, { valueRe: /var\(--er-name\)/ }) && /--er-name:var\(--eg-tx\)/.test(ER_CSS) && /--er-name:var\(--gm-gold-300\)/.test(ER_CSS), 'שמות בזהב של הפלטה');
   assert.ok(!/er3-menu|\.menu\b|er3-mw/.test(ER_CSS), 'כללי תפריט ⋯');
+});
+
+/* ---------- כותרת צפה של החיפוש החכם (4.10.2026, "הכותרת לא צפה כמו בדמו") ---------- */
+const CHAT_JS = read('../app/components/home/HomeChat.js');
+t('חיפוש חכם: כללי הכותרת הצפה (.aibar) בפלטה - fixed, מוסתרת עד .on, ללא דריסה בדף', () => {
+  const rs = parseCss(PALETTE).filter((r) => /\.gm-ds\.gm-home \.advp\.aiw>\.card-h\.aibar/.test(r.sel));
+  assert.ok(rs.some((r) => /position:\s*fixed/.test(r.body) && /opacity:\s*0/.test(r.body) && /visibility:\s*hidden/.test(r.body)), 'מצב מוסתר, position:fixed');
+  assert.ok(rs.some((r) => /\.on$/.test(r.sel) && /opacity:\s*1/.test(r.body) && /visibility:\s*visible/.test(r.body)), 'מצב .on');
+  assert.ok(!parseCss(HOME_CSS).some((r) => /aibar/.test(r.sel)), 'home.css לא דורס את הכותרת הצפה');
+});
+t('HomeChat: הכותרת הצפה מרונדרת ב-portal ל-body (אבות עם backdrop-filter שוברים fixed), בשני עוטפים .gm-ds.gm-home > .advp.aiw > .card-h.aibar', () => {
+  assert.match(CHAT_JS, /createPortal\(/);
+  assert.match(CHAT_JS, /document\.body/);
+  assert.match(CHAT_JS, /className="gm-ds gm-home"[^>]*style=\{FLOAT_WRAP_STYLE\}/);
+  assert.match(CHAT_JS, /className="advp aiw" style=\{FLOAT_WRAP_STYLE\}/);
+  assert.match(CHAT_JS, /FLOAT_WRAP_STYLE = \{ display: 'contents' \}/);
+  assert.match(CHAT_JS, /className="card-h aibar"/);
+});
+t('HomeChat: ההיגיון כמו בדמו - 8px מתחת לסרגל, צר ב-34px מכל צד, "on" כשהכותרת יצאה ועד סוף הכרטיס, מאזין לגלילה/שינוי גודל', () => {
+  assert.match(CHAT_JS, /side = 34/);
+  assert.match(CHAT_JS, /inset = 14/);
+  assert.match(CHAT_JS, /Math\.min\(nb \+ 8, cr\.bottom - bh - inset\)/);
+  assert.match(CHAT_JS, /classList\.toggle\('on', hr\.bottom < nb \+ 4 && cr\.bottom > nb \+ bh \+ inset \+ 8\)/);
+  assert.match(CHAT_JS, /addEventListener\('scroll'/);
+  assert.match(CHAT_JS, /addEventListener\('resize'/);
+  assert.match(CHAT_JS, /querySelector\('\.snav'\)/);
+});
+
+t('חיפוש חכם: ה-X בשורת שאלת ההמשך מוצג רק כשיש טקסט (.ibtn[hidden] מוסתר; hidden={!fu}; פוקוס חוזר לשדה)', () => {
+  assert.ok(parseCss(HOME_CSS).some((r) => r.sel.trim() === '.gm-ds.gm-home .scan .ibtn[hidden]' && /display:\s*none\s*!important/.test(r.body)), 'כלל .scan .ibtn[hidden] ב-home.css (הפלטה נותנת ל-.ibtn display:grid ולכן hidden לא עבד)');
+  assert.match(CHAT_JS, /aria-label="ניקוי הטקסט"[^>]*hidden=\{!fu\}/);
+  assert.match(CHAT_JS, /setFu\(''\); if \(fuRef\.current\) fuRef\.current\.focus\(\)/);
+});
+
+/* ---------- 12. אייקון המעבר "ישן / חדש" (app/components/variant/pageVariantToggle.css, 4.10.2026) ---------- */
+// נטען בכל דף שבו האייקון מוצג - גם בדפים הישנים (בלי components.css) ובמעטפת הישנה - ולכן קטן, עצמאי ובהיקף .gm-pvt בלבד.
+// בדיקת המראה בדפדפן: scripts/variant-toggle-audit (computed style בדף חדש ובדף ישן, 1280 / 375).
+const PVT_CSS = read('../app/components/variant/pageVariantToggle.css');
+const pvtRules = parseCss(PVT_CSS);
+t('pageVariantToggle.css: כל כלל בהיקף .gm-pvt, בלי הפלטה (.gm-ds), בלי data-ui-*, בלי */ בתוך הערה', () => {
+  const bad = [];
+  for (const r of pvtRules) for (const s of splitSel(r.sel)) if (!/^\.gm-pvt(?![\w-])/.test(s) && s !== '.gm-pvt-spacer') bad.push(s); // + המרווח בסוף דף ישן
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+  const code = PVT_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/\.gm-ds|gm-home|data-ui-|!important(?![^{}]*display:none)/.test(code.replace(/@media print\{[^}]*\}\}?/, '')), 'תלות בפלטה / data-ui / !important');
+  assert.ok(pvtRules.length > 10, 'הכללים נקראו');
+});
+t('pageVariantToggle.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(pvtRules, 'pageVariantToggle.css'), []);
+});
+t('pageVariantToggle.css: לחצן אייקון עגול של הפלטה - עיגול, רקע --gm-gbtn, מסגרת שחורה 1.5px, פוקוס נייבי; פינה בצד שמאל (inline-end) מתחת ל-AI/דיווח', () => {
+  const has = (selRe, propRe, valueRe) => pvtRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => valueRe.test(d.value)));
+  assert.ok(has(/^\.gm-pvt \.gm-pvt-btn$/, /^border-radius$/, /^50%/), 'עגול');
+  assert.ok(has(/^\.gm-pvt \.gm-pvt-btn$/, /^background$/, /var\(--gm-gbtn\)/), 'רקע זהב של הפלטה');
+  assert.ok(has(/^\.gm-pvt \.gm-pvt-btn$/, /^border$/, /^1\.5px solid #000/), 'מסגרת');
+  assert.ok(has(/:focus-visible/, /^outline$/, /var\(--gm-navy\)/), 'פוקוס');
+  assert.ok(has(/^\.gm-pvt\.gm-pvt-corner$/, /^inset-inline-end$/, /^20px/), 'פינה שמאלית (ימין תפוס ע"י AI + הדיווח)');
+  assert.ok(has(/^\.gm-pvt\.gm-pvt-overlay$/, /^z-index$/, /^1000000/), 'מעל החלון הישן של הדיווח (999999)');
+});
+
+/* ---------- 13. "השינויים שלי" (& ו-/?recent=mine, 4.10.2026): בלוק 15 ב-home.css ---------- */
+const mineRules = parseCss(HOME_CSS).filter((r) => /\.mine-/.test(r.sel));
+t('השינויים שלי: הכללים קיימים, כולם בהיקף .gm-ds.gm-home, בלי !important, ורק משתני הפלטה --gm-* (בלי var(--navy)... של דף הדמו)', () => {
+  assert.ok(mineRules.length >= 20, 'נמצאו ' + mineRules.length);
+  const bad = [];
+  for (const r of mineRules) {
+    for (const sel of splitSel(r.sel)) if (!/^\.gm-ds\.gm-home /.test(sel)) bad.push(sel);
+    if (/!important/.test(r.body)) bad.push('!important ב-' + r.sel);
+    for (const m of r.body.matchAll(/var\(--([a-z0-9-]+)/gi)) if (!m[1].startsWith('gm-')) bad.push('משתנה שאינו gm-: --' + m[1]);
+  }
+  assert.deepEqual(bad, [], bad.join(' | '));
+});
+t('השינויים שלי: אין דריסת @media לפני הכלל הלא-מותנה, וה-CSS של החלונית לא מגדיר צבע / גופן חדש (רק rgba של הזהב / הלבן שכבר בפלטה, בלי font-family)', () => {
+  assert.deepEqual(mediaBeforeBase(mineRules, 'home.css (mine)'), []);
+  for (const r of mineRules) {
+    assert.ok(!/font-family|#[0-9a-f]{3,8}/i.test(r.body), 'צבע hex / גופן חדש ב-' + r.sel);
+  }
+});
+t('השינויים שלי: הקומפוננטות משתמשות באותם מחלקות (mine-list / mine-o / mine-t / mine-note / mine-view) ובאייקוני sprite בלבד', () => {
+  const QP = read('../app/components/search/QuickPrefix.js');
+  const HM = read('../app/components/home/HomeMine.js');
+  for (const c of ['advlist mine-list', 'advo mine-o', 'mine-t', 'mine-note', 'advo-h']) assert.ok(QP.includes(c), c);
+  for (const c of ['mine-view', 'mine-sec-h', 'mine-nt', 'mine-big']) assert.ok(HM.includes(c), c);
+  for (const c of ['advlist.mine-list', 'mine-list .advo-h', 'mine-view .mine-sec-h', 'mine-view .mine-nt', 'mine-view .mine-big', 'mine-note', 'mine-t ', 'mine-list .mine-head', 'mine-who .chip', 'mine-list .mine-all']) assert.ok(HOME_CSS.includes(c), 'חסר כלל: ' + c);
+  for (const c of ['XlButtons', 'ViewSwitch', 'ResultsTable', 'li rlink lrow', 'card res-one recent mine-view']) assert.ok(HM.includes(c), 'HomeMine משתמש ברכיבי תוצאות החיפוש: ' + c);
+  assert.ok(QP.includes('mine-head') && QP.includes('mine-all') && QP.includes('MineWho'), 'כותרת החלונית: שבבי עובדת + "הכל"');
+  assert.ok(!/<img|\.svg['"]/.test(QP + HM), 'בלי תמונות / קבצי svg חיצוניים');
+});
+
+/* ---------- 14. "כרטיס עובד (ניהול)" (app/components/employee-card/employee-card.css, 4.10.2026) ---------- */
+// אותו משטר כמו הפרופיל / סיכום הנוכחות: כל כלל בהיקף .gm-ds.gm-ec, שורש בלי gm-home, נטרולי הדליפות של globals / design-overrides במקום,
+// ובלי כלל גלובלי. בדיקת נאמנות מלאה מול העיצוב: scripts/employee-card-audit (run.mjs, API מדומה, פורט 5203).
+const EC_CSS = read('../app/components/employee-card/employee-card.css');
+const ecRules = parseCss(EC_CSS);
+const EC_OUT_OF_SCOPE_OK = new Set(['.app-shell .main .content:has(> .gm-ds.gm-ec)', 'body *']); // body * = כלל ההדפסה (visibility) כמו בכרטיס הישן
+t('employee-card.css: כל כלל בהיקף .gm-ds.gm-ec (חוץ מביטול ריפוד המעטפת וכלל ההדפסה), בלי .gm-home', () => {
+  const bad = [];
+  for (const r of ecRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-ec(?![\w-])/.test(s) && !EC_OUT_OF_SCOPE_OK.has(s) && !/^(from|to|\d+%)$/.test(s)) bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+  assert.ok(!/gm-home/.test(EC_CSS.replace(/\/\*[\s\S]*?\*\//g, '')), 'gm-home בכרטיס');
+});
+t('employee-card.css: אין רקע לבן קשיח מחוץ לרשימה; !important על רקע רק בכרטיס הפנינה, בכותרות הטבלה ובהדפסה', () => {
+  const OK = new Set(['.gm-ds.gm-ec .card', '.gm-ds.gm-ec .rtbl>thead>tr>th', '.gm-ds.gm-ec .rtbl>thead>tr.per>th', '.gm-ds.gm-ec .print-area', '.gm-ds.gm-ec .print-area .card', '.gm-ds.gm-ec .print-area .rtbl>thead>tr>th', '.gm-ds.gm-ec .rtbl td', '.gm-ds.gm-ec .rtbl th']);
+  const bad = [];
+  for (const r of ecRules) {
+    for (const d of setsProp(r, /^background(-color)?$/)) {
+      const v = d.value.replace(/!important/i, '').trim();
+      if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
+    }
+    // !important שקוף (כללי הנייד של העיצוב: השורה הופכת לכרטיס בלי רקע תא) מותר
+    if (setsProp(r, /^background(-color|-image)?$/).some((d) => isImportant(d) && !/^transparent\s*!important$/i.test(d.value))) for (const s of splitSel(r.sel)) if (!OK.has(s.replace(/\s+/g, ' ')) && !/^\.gm-ds\.gm-ec \.rtbl>?\s*(tbody|tr|td|th|thead)/.test(s) && !/^\.gm-ds\.gm-ec \.rtbl[ ,]/.test(s) && !/\.rtbl/.test(s)) bad.push('!important: ' + s);
+  }
+  assert.deepEqual(bad, []);
+});
+t('employee-card.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(ecRules, 'employee-card.css'), []);
+});
+const hasEc = (selRe, propRe, { important = false, valueRe } = {}) => ecRules.some((r) => selRe.test(r.sel) && setsProp(r, propRe).some((d) => (!important || isImportant(d)) && (!valueRe || valueRe.test(d.value))));
+t('employee-card.css: נטרול דליפות - גופן (!important), כותרות הטבלה (>), field margin, צבע שדה, ריפוד לחצני אייקון, כרטיס הפנינה, לשונית, רדיוס שדות בחלון כהה', () => {
+  assert.ok(hasEc(/\.gm-ds\.gm-ec :is\(button,input,select,textarea\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasEc(/\.gm-ds\.gm-ec :is\(h1,h2,h3,h4,h5,h6\)/, /^font-family$/, { important: true, valueRe: /^inherit/ }));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.rtbl>thead>tr>th$/, /^background-color$/, { important: true }), 'כותרת הטבלה (globals כופה קרם)');
+  assert.ok(!ecRules.some((r) => /\.rtbl thead tr th/.test(r.sel)), 'נטרול כותרת הטבלה בלי >');
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.field$/, /^margin-bottom$/, { valueRe: /^0/ }));
+  assert.ok(hasEc(/\.gm-ds\.gm-ec input\.inp:not\(:disabled\)/, /^color$/));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec :is\(\.back,\.ibtn\)$/, /^padding$/));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.card$/, /^background$/, { important: true }));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.tab$/, /^margin-inline-end$/, { valueRe: /^0/ }), '.tab{margin-inline-end:22px} הגלובלי');
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec :is\(#dlg,#dlg2\) \.inp$/, /^border-radius$/, { valueRe: /^14px/ }), 'input:not(...) הגלובלי (0,4,1) דורס את רדיוס .inp בחלונות');
+});
+t('employee-card.css: EC-12 - הכרטיס הצר 1040px וכפתור השמירה 420px', () => {
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.app\.ec$/, /^max-width$/, { valueRe: /^1040px/ }));
+  assert.ok(hasEc(/^\.gm-ds\.gm-ec \.ec-save \.btn$/, /^max-width$/, { valueRe: /^420px/ }));
+});
+t('כרטיס עובד: שורש בלי gm-home, בלי title= על רכיבי הכרטיס (טולטיפ data-tip), בלי window.alert / confirm', () => {
+  const dir = '../app/components/employee-card/';
+  const src = ['EmployeeCardA5.js', 'EcUi.js', 'EcApproval.js', 'EcAttendance.js', 'EcHistory.js', 'EcMail.js', 'EcPermissions.js'].map((f) => read(dir + f));
+  // בלי הערות (בלוק רק בתחילת שורה: accept="image/*" אינו הערה)
+  const joined = src.join('\n').replace(/^\s*\/\*[\s\S]*?\*\//gm, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(/className="gm-ds gm-ec home-bg dlg-dark"/.test(joined));
+  assert.ok(!/gm-home/.test(joined));
+  assert.ok(!/title=/.test(joined), 'אין title= מקורי באף רכיב של הכרטיס (גם לא על label/קישור/מתג): data-tip בלבד');
+  assert.ok(!/window\.(alert|confirm|prompt)\(/.test(joined));
+  assert.ok(!/@import/.test(EC_CSS));
+});
+
+/* ---------- הגדרות מערכת / אתר / שינוי שמות בעיצוב "סימולציה" (app/components/settings-sim/settings-sim.css) ---------- */
+const ST_CSS = read('../app/components/settings-sim/settings-sim.css');
+const stRules = parseCss(ST_CSS);
+t('settings-sim.css: כל כלל בהיקף .gm-ds.gm-st (חוץ מנטרול הריפוד של המעטפת סביב השורש)', () => {
+  const bad = [];
+  for (const r of stRules) for (const s of splitSel(r.sel)) if (!/^\.gm-ds\.gm-st(\s|\.|:|$)/.test(s) && s !== '.app-shell .main .content:has(> .gm-ds.gm-st)') bad.push(s);
+  assert.deepEqual(bad, [], 'כללים מחוץ להיקף: ' + bad.join(' | '));
+});
+t('settings-sim.css: אין דריסת @media לפני הכלל הלא-מותנה', () => {
+  assert.deepEqual(mediaBeforeBase(stRules, 'settings-sim.css'), []);
+});
+t('הגדרות: השורש gm-ds gm-st home-bg dlg-dark, בלי gm-home; אין רקע לבן קשיח חדש ב-settings-sim.css', () => {
+  assert.match(read('../app/components/settings-sim/SettingsSimPage.js'), /className="gm-ds gm-st home-bg dlg-dark"/);
+  const bad = [];
+  for (const r of stRules) for (const d of setsProp(r, /^background(-color)?$/)) {
+    const v = d.value.replace(/!important/i, '').trim();
+    if (WHITE_RE.test(v) || /var\(--gm-surface\)/.test(v)) bad.push(r.sel);
+  }
+  // .tp-c (תאי בוחר השעה) לבנים בעיצוב
+  assert.deepEqual(bad.filter((s) => !/\.tp-c/.test(s)), []);
 });
 
 console.log(String.fromCharCode(10) + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total');

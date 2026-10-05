@@ -34,9 +34,12 @@ import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import StickyTableHeaders from './components/StickyTableHeaders';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
+import { readSignedDesignPrefs } from './lib/designPrefsCookie';
 import { UiVariantProvider } from './components/UiVariantContext';
 import { resolveUiVariants, sanitizeUiVariants, UI_VARIANT_SETTING_KEY_LIST } from '@/lib/uiVariant';
+import { isManagementRole } from '@/lib/uiVariantSelfSwitch';
 import { buildMenuTree, NAV_PAGE_KEYS } from '@/lib/menu/buildMenuTree';
+import { selectHub, accessForRole } from '@/lib/adminHubCatalog';
 import versionData from './version.json';
 
 export default async function RootLayout({ children }) {
@@ -79,7 +82,7 @@ export default async function RootLayout({ children }) {
   // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
   // גדול ולכן נשלח ללקוח רק כ-!!value (ר' menuTree למטה), לעולם לא הערך עצמו.
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', 'nedarim_plus_enabled', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -257,16 +260,11 @@ export default async function RootLayout({ children }) {
   // whichever employee last edited /display-settings silently override the
   // next employee's own choices (previously these lived only in the
   // browser-wide `gemachDesignPrefs` localStorage key). Written by
-  // app/display-settings/page.js as `designPrefs_<employeeId>`, JSON-encoded.
-  const designPrefsCookie = authToken?.value ? cookieStore.get(`designPrefs_${authToken.value}`) : null;
-  let employeeDesignPrefs = null;
-  if (designPrefsCookie?.value) {
-    try {
-      employeeDesignPrefs = JSON.parse(decodeURIComponent(designPrefsCookie.value));
-    } catch (e) {
-      employeeDesignPrefs = null;
-    }
-  }
+  // the server (GET/PUT /api/me/design-prefs, POST /api/me/ui-variant/*) as the httpOnly cookie `designPrefs_<employeeId>`,
+  // HMAC-signed and bound to the employee id (lib/designPrefsSig.js, GQ-01b 2026-10-04). A missing / unsigned legacy /
+  // forged / foreign / expired cookie reads as null ("no cookie" -> defaults, never an error); DesignPrefsSync then
+  // rebuilds a signed cookie from the DB (Employee.themeColor).
+  const employeeDesignPrefs = authToken?.value ? readSignedDesignPrefs(cookieStore, authToken.value) : null;
   // Same "off value = omit the attribute" convention as applyAttr() in
   // app/display-settings/page.js and the no-FOUC bootstrap script below.
   const paletteAttr = employeeDesignPrefs?.palette && employeeDesignPrefs.palette !== 'wine' ? employeeDesignPrefs.palette : undefined;
@@ -297,13 +295,17 @@ export default async function RootLayout({ children }) {
 
   // דגלי "ישן / A5" לכל מסך (lib/uiVariant.js): עקיפה אישית (uiVariants בעוגיית designPrefs_<id>,
   // מראה של Employee.themeColor) > הגדרת הארגון ui_variant_<screen> (מאותה קריאת הגדרות בלי שאילתה
-  // נוספת) > 'legacy'. קיוסק / שעון נוכחות / הדפסה: המעטפת תמיד 'legacy'. בלי אף ערך מוגדר הכול
-  // 'legacy' והאתר נראה בדיוק כמו קודם.
+  // נוספת) > ברירת מחדל לפי תפקיד (החלטת הבעלים 4.10.2026: מתכנת -> החדש בכל מסך שיש לו גרסה חדשה, כל השאר -> הישן;
+  // lib/uiVariantScreens.js). קיוסק / שעון נוכחות / הדפסה: המעטפת תמיד 'legacy'.
   const uiVariants = resolveUiVariants({
     userVariants: sanitizeUiVariants(employeeDesignPrefs?.uiVariants),
     settings,
     pathname: requestPathname,
+    roleId: isAuthenticated && emp && typeof emp.roleId === 'number' ? emp.roleId : null,
   });
+  // אייקון המעבר "ישן / חדש" (PageVariantToggle) מוצג רק למי שרשאי להחליף לעצמו (הנהלה ראשית / מתכנת). ה-roleId כבר נקרא
+  // למעלה (עוגיית auth_session או השאילתה הקיימת) — אין כאן שאילתה נוספת. ה-POST בודק שוב מה-DB.
+  const canSelfSwitchVariant = !!(isAuthenticated && emp && isManagementRole(emp.roleId));
 
   // עץ התפריט של המעטפת החדשה (lib/menu/buildMenuTree.js): נבנה רק כשהמעטפת 'a5' - בלי דגל אין כאן שום עבודה
   // והאתר זהה לקודם (menuTree=null). אותם דגלי נראות שמזינים את התפריט הישן (legacyNavFlags) + הגדרות והרשאות
@@ -320,6 +322,13 @@ export default async function RootLayout({ children }) {
       homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
       // דפים שהיו "בקרוב" בעיצוב ונבנו בפועל (lib/menu/buildMenuTree.js, notBuilt): בדיקת מלאי - /stock-check (2.10.2026).
       available: { 'order-stock': true },
+      // פאנל "ניהול" המקוצר (4.10.2026): כלי מסך /admin שמותרים למשתמש הזה — אותו סינון כמו app/admin/page.js (selectHub;
+      // accessForRole = אותם כללים כמו checkPageAccess: מחובר לפי roleId, אורח רק כשההתחברות לא חובה), מהנתונים שכבר נטענו
+      // למעלה (בלי שאילתה). רק הכלים המותרים נשלחים ללקוח (מאגר הלשונית), לעולם לא הקטלוג המלא. ר' docs/admin-menu-short-2026-10-04.md.
+      adminTools: selectHub(
+        accessForRole(emp ? emp.roleId : null, { logged: !!(isAuthenticated && emp), requireLogin }),
+        { nedarimEnabled: settings.find((s) => s.key === 'nedarim_plus_enabled')?.value !== 'false', deliveriesEnabled: showDeliveries },
+      ).tools,
     })
     : null;
 
@@ -683,8 +692,9 @@ function cpCssText(vars) {
         data-ui-order-card={uiVariants.order_card}
         data-ui-customer-card={uiVariants.customer_card}
         data-ui-new-order={uiVariants.new_order}
+        data-ui-employee-card={uiVariants.employee_card}
       >
-        <UiVariantProvider value={uiVariants}>
+        <UiVariantProvider value={uiVariants} canSelfSwitch={canSelfSwitchVariant}>
         <LoginVariantProvider value={loginVariant}>
         <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">

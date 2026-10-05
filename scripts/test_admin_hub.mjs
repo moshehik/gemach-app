@@ -1,6 +1,6 @@
 // בדיקת חוזה סטטית ל"מסך ניהול ראשי" (/admin) בעיצוב החדש (4.10.2026): מוודאת שכל החלטה של הבעלים
 // (scratch/admin-hub-build/answers-admin-cards.json — הועתקה לכאן כטבלה) מיושמת: כל נתיב "כן" מופיע כאריח, כל נתיב "לא / להסיר /
-// לא להכניס" לא מופיע, מטריצת תפקידים לכל אריח, ברירת מחדל אריחים, חיפוש בלי מונה, 9 קטגוריות, ושהשערים בדפים עצמם קיימים.
+// לא להכניס" לא מופיע, מטריצת תפקידים לכל אריח, ברירת מחדל אריחים, חיפוש בלי מונה, 10 קטגוריות, ושהשערים בדפים עצמם קיימים.
 // בלי DB, רשת ודפדפן. הרצה: node scripts/test_admin_hub.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 // בדיקה חזותית מול העיצוב: scripts/admin-hub-audit (run.mjs = השוואת computed style, interact.mjs = התנהגות ותפקידים בדפדפן).
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ const ROUTE = read('../app/admin/page.js');
 const SWITCH = read('../app/components/admin-hub/AdminHubSwitch.js');
 const PAGE = read('../app/components/admin-hub/AdminHubPage.js');
 const CSS = read('../app/components/admin-hub/admin-hub.css');
-const AUTH = read('../lib/auth.js');
+const AUTH = read('../lib/roles.js');
 
 let passed = 0;
 function t(name, fn) {
@@ -29,34 +29,52 @@ const YES = {
   '/admin/settings': 'head', '/admin/site': 'dev', '/admin/permissions': 'head', '/dashboard/pricelist': 'head',
   '/admin/ai': 'head', '/admin/statistics': 'head', '/admin/ai-history': 'head', '/dashboard': 'head',
   '/admin/inventory-alerts': 'head', '/admin/recalculations': 'head', '/admin/departments': 'head', '/admin/refund-policy': 'head',
-  '/admin/labels': 'dev', '/admin/trusted-devices': 'head', '/admin/data-explorer': 'dev', '/admin/data-explorer/full-view': 'dev',
+  '/admin/labels': 'dev', '/design-system': 'dev', '/admin/trusted-devices': 'head', '/admin/data-explorer': 'dev', '/admin/data-explorer/full-view': 'dev',
   '/admin/access-import': 'dev', '/admin/setup-new-machine': 'head', '/admin/data-history': 'head', '/admin/database': 'dev',
   '/admin/backups': 'head', '/admin/site-settings': 'dev', '/admin/site-settings/api-keys': 'dev', '/admin/site-settings/email-logs': 'dev',
   '/admin/email-test': 'head', '/management/history': 'head', '/admin/ai-restrictions': 'dev', '/admin/barcode-invalid': 'head',
-  '/admin/bulk-email': 'head', '/admin/nedarim-hok-list': 'headOnly', '/admin/nedarim-hok-search': 'head', '/admin/nedarim-hok-edit': 'head',
+  '/admin/bulk-email': 'head', '/admin/nedarim-hok-list': 'head', '/admin/nedarim-hok-search': 'head', '/admin/nedarim-hok-edit': 'head',
   '/admin/nedarim-payments-recent': 'head', '/admin/nedarim-hok-test': 'head',
+  // 4.10.2026 (תפריט "ניהול" מקוצר): מה שיצא מהשורות הקבועות של התפריט חייב להיות במסך — "כל השאר בתוך דף הניהול"
+  '/refunds': 'head', '/dashboard/dresses': 'head', '/employees': 'head', '/deliveries': 'head',
 };
-const NO = ['/api/customers/emails', '/admin/refund-planner', '/admin/audit-system', '/management/database', '/design-system/',
+// אריחים שנוספו אחרי תשובות מסך הניהול, כל אחד עם ההחלטה שלו. השער בדף עצמו שונה מ-head (ר' OWN_PAGE_GATE).
+const ADDED_LATER = {
+  '/non-working-days': 'head', // "ימי אי-פעילות" - החלטות-non-working-days.json NWD-Q01 "פריט בניהול" (1.10.2026), נבנה 4.10.2026
+};
+// דפים שהשער שלהם אינו checkPageAccess(הנהלה) בכוונה, והשער שהם כן אוכפים
+const OWN_PAGE_GATE = {
+  // פתוח למחוברים (צפייה); עריכה לפי feature:non_working_days_manage (פירוש 9) - נאכף ב-GET /api/non-working-days (canEdit) וב-POST /api/settings
+  '/non-working-days': /if \(!\(await checkAuth\(\)\)\) return <NoAccessMessage \/>/,
+};
+Object.assign(YES, ADDED_LATER);
+const NO = ['/api/customers/emails', '/admin/refund-planner', '/admin/audit-system', '/management/database',
   '/admin/refund-simulator', '/admin/settings/help'];
-const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה'];
+const CAT_NAMES = ['הגדרות ומיתוג', 'תמחור וחישובים', 'נדרים פלוס - הוראות קבע', 'תובנות ודוחות', 'בקרה ואבטחה', 'נתונים והיסטוריה', 'גיבוי ושחזור', 'מיילים', 'ייבוא והתקנה', 'עבודה שוטפת'];
 
 t('הנתיב /admin דק: השרת מחשב את השערים עם checkPageAccess ומעביר רק את הכלים המותרים; הדף נטען ב-dynamic', () => {
   has(ROUTE, /checkPageAccess\(HEAD_MANAGEMENT_ROLES\)/, 'שער הנהלה');
   has(ROUTE, /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/, 'שער מתכנת');
-  has(ROUTE, /checkPageAccess\(GATE_ROLES\.headOnly\)/, 'שער "רק מנהל ראשי"');
-  has(ROUTE, /selectHub\(\{ head, dev, headOnly \}, \{ nedarimEnabled: nedarim \}\)/, 'selectHub על תוצאות השערים');
+  assert.ok(!/headOnly/.test(ROUTE), 'אין עוד שער "רק מנהל ראשי" (AH-03: רשימת הו״ק פתוחה גם למתכנת)');
+  has(ROUTE, /selectHub\(\{ head, dev \}, \{ nedarimEnabled: nedarim, deliveriesEnabled: deliveries \}\)/, 'selectHub על תוצאות השערים');
   has(ROUTE, /<AdminHubSwitch tools=\{tools\} categories=\{categories\}/, 'מעביר רק את הכלים והקטגוריות המותרים');
   has(SWITCH, /dynamic\(\(\) => import\('\.\/AdminHubPage'\), \{ ssr: false \}\)/, 'dynamic');
   assert.ok(!/components\.css/.test(ROUTE + SWITCH), 'ה-CSS של הפלטה נטען רק מתוך AdminHubPage');
   has(PAGE, /import '@\/design-system\/components\.css'/, 'AdminHubPage מייבא את הפלטה');
-  assert.ok(!/EmailListCard|AdminHubA5Cards|list-card/.test(ROUTE + PAGE), 'שרידי המסך הישן');
-  assert.ok(!exists('../app/admin/EmailListCard.js') && !exists('../app/components/menu/AdminHubA5Cards.js'), 'קבצי המסך הישן נמחקו');
+  // 4.10.2026 ("ישן / חדש", docs/page-variant-switch-2026-10-04.md): המסך הישן שוחזר כ-LegacyAdminPage.js (+ EmailListCard /
+  // AdminHubA5Cards בנתיבים המקוריים) ונבחר בשרת לפי getRequestUiVariant('admin_hub'). המסך החדש עצמו בלי שרידים ישנים,
+  // והנתיב מייבא את הישן רק דרך LegacyAdminPage. השחזור זהה ל-git (scripts/test_page_variant_switch.mjs).
+  assert.ok(!/EmailListCard|AdminHubA5Cards|list-card/.test(PAGE), 'שרידי המסך הישן במסך החדש');
+  const routeCode = ROUTE.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert.ok(!/EmailListCard|AdminHubA5Cards|list-card/.test(routeCode), 'הנתיב מייבא את הישן רק דרך LegacyAdminPage');
+  has(ROUTE, /import LegacyAdminPage from '\.\/LegacyAdminPage'/, 'המסך הישן המשוחזר');
+  has(ROUTE, /getRequestUiVariant\('admin_hub'\)/, 'בחירה בשרת');
 });
 
 t('מערכי התפקיד של השערים זהים ל-lib/auth.js (HEAD_MANAGEMENT_ROLES / DEVELOPER_ONLY_ROLES)', () => {
   assert.deepEqual([...GATE_ROLES.head], JSON.parse(/HEAD_MANAGEMENT_ROLES = (\[[^\]]*\])/.exec(AUTH)[1]));
   assert.deepEqual([...GATE_ROLES.dev], JSON.parse(/DEVELOPER_ONLY_ROLES = (\[[^\]]*\])/.exec(AUTH)[1]));
-  assert.deepEqual([...GATE_ROLES.headOnly], [0]);
+  assert.deepEqual(GATES, ['head', 'dev'], 'אין שער headOnly (AH-03)');
   for (const x of TOOLS) assert.ok(GATES.includes(x.gate), `${x.id}: שער לא מוכר ${x.gate}`);
 });
 
@@ -77,7 +95,14 @@ t('כל נתיב "לא" / "להסיר" / "לא להכניס" לא מופיע ב�
     assert.ok(EXCLUDED_ROUTES[h], `${h} חסר בתיעוד EXCLUDED_ROUTES`);
   }
   assert.ok(!/FullEmailListModal|customers\/emails/.test(PAGE), 'חלון רשימת המיילים');
-  assert.ok(!exists('../components/FullEmailListModal.js') && !exists('../app/api/customers/emails/route.js'), 'חלון רשימת המיילים וה-API שלו (בלי שימוש) נמחקו');
+  // 4.10.2026: החלון חזר רק כחלק מהמסך הישן המשוחזר; ה-API הוא נתיב תאימות מוקשח (הנהלה ראשית / מתכנת בלבד, נכשל סגור) -
+  // לא המטפל הישן שאפשר לכל עובד מחובר (checkAuth בלבד).
+  if (exists('../app/api/customers/emails/route.js')) {
+    const api = read('../app/api/customers/emails/route.js');
+    has(api, /getSessionEmployee\(\)/, 'emails API: עובד מחובר פעיל');
+    has(api, /HEAD_MANAGEMENT_ROLES\.includes\(me\.roleId\)/, 'emails API: הנהלה ראשית / מתכנת בלבד');
+    assert.ok(!/checkAuth/.test(api), 'emails API: לא השער הישן (checkAuth בלבד)');
+  }
   // אריח מחירון אחד (שני האריחים הישנים הובילו לאותו דף), התיאור מאחד את שני הכיתובים הקיימים
   assert.equal(TOOLS.filter((x) => x.href === '/dashboard/pricelist').length, 1);
   assert.match(byHref('/dashboard/pricelist').desc, /צפייה והדפסה/);
@@ -86,12 +111,15 @@ t('כל נתיב "לא" / "להסיר" / "לא להכניס" לא מופיע ב�
 t('כל אריח מוביל לדף קיים באפליקציה', () => {
   for (const x of TOOLS) {
     const f = `../app${x.href}/page.js`;
-    assert.ok(exists(f), `${x.href}: אין ${f}`);
+    // AH-02: /design-system הוא route handler (הפניה לדף הסטטי), לא page.js
+    assert.ok(exists(f) || (x.href === '/design-system' && exists('../app/design-system/route.js') && exists('../public/design-system/index.html')), `${x.href}: אין ${f}`);
   }
 });
 
-t('9 קטגוריות בשמות של העיצוב; "זיכויים" מוזגה ל"תמחור וחישובים"; "הרשאות" ראשון ב"הגדרות ומיתוג"', () => {
-  assert.equal(CATEGORIES.length, 9);
+t('9 קטגוריות בשמות של העיצוב + "עבודה שוטפת" בסוף (4.10); "זיכויים" מוזגה ל"תמחור וחישובים"; "הרשאות" ראשון ב"הגדרות ומיתוג"', () => {
+  assert.equal(CATEGORIES.length, 10);
+  assert.equal(byHref('/refunds').cat, 'pricing', 'זיכויים וחובות — בקטגוריה שהבעלים מיזג אליה את "זיכויים"');
+  assert.deepEqual(TOOLS.filter((x) => x.cat === 'daily').map((x) => x.href), ['/dashboard/dresses', '/employees', '/deliveries']);
   assert.deepEqual(CATEGORIES.map((c) => c.title), CAT_NAMES);
   for (const c of CATEGORIES) assert.ok(TOOLS.some((x) => x.cat === c.id), `קטגוריה ריקה ${c.title}`);
   for (const x of TOOLS) assert.ok(CATEGORIES.some((c) => c.id === x.cat), `${x.id}: קטגוריה לא קיימת`);
@@ -104,17 +132,19 @@ t('9 קטגוריות בשמות של העיצוב; "זיכויים" מוזגה 
 t('מטריצת תפקידים: הנהלה ראשית / מתכנת / מנהלת סניף / עובדת / אורח (פתוח וסגור)', () => {
   const head = visibleToolIds(accessForRole(0));
   const prog = visibleToolIds(accessForRole(2));
-  const ids = (g) => TOOLS.filter((x) => g.includes(x.gate)).map((x) => x.id);
-  assert.deepEqual(head, ids(['head', 'headOnly']), 'הנהלה ראשית');
+  // בלי הגדרות הארגון: אריח עם needs (משלוחים) מוסתר — כשל-סגור
+  const ids = (g) => TOOLS.filter((x) => g.includes(x.gate) && !x.needs).map((x) => x.id);
+  assert.deepEqual(head, ids(['head']), 'הנהלה ראשית');
   assert.deepEqual(prog, ids(['head', 'dev']), 'מתכנת');
-  assert.ok(head.includes('nedarim-hok-list') && !prog.includes('nedarim-hok-list'), 'רשימת הו״ק: רק מנהל ראשי');
+  assert.ok(head.includes('nedarim-hok-list') && prog.includes('nedarim-hok-list'), 'רשימת הו״ק: הנהלה ראשית וגם מתכנת (AH-03)');
+  assert.ok(prog.includes('design-system') && !head.includes('design-system'), 'מערכת העיצוב: רק מתכנת (AH-02)');
   for (const id of ['site', 'site-settings', 'api-keys', 'labels', 'ai-restrictions', 'data-explorer', 'data-explorer-full', 'database', 'email-logs', 'access-import']) {
     assert.ok(prog.includes(id) && !head.includes(id), `${id}: רק מתכנת`);
   }
   assert.deepEqual(visibleToolIds(accessForRole(1)), [], 'מנהלת סניף (ממילא נחסמת ב-app/admin/layout.js)');
   assert.deepEqual(visibleToolIds(accessForRole(5)), [], 'עובדת');
   assert.deepEqual(visibleToolIds(accessForRole(null, { logged: false, requireLogin: true })), [], 'אורח כשההתחברות חובה');
-  assert.equal(visibleToolIds(accessForRole(null, { logged: false, requireLogin: false })).length, TOOLS.length, 'אורח במצב פתוח = כמו checkPageAccess (עובר כל שער)');
+  assert.equal(visibleToolIds(accessForRole(null, { logged: false, requireLogin: false }), { deliveriesEnabled: true }).length, TOOLS.length, 'אורח במצב פתוח = כמו checkPageAccess (עובר כל שער)');
   assert.deepEqual(visibleToolIds(null), [], 'בלי מידע — כלום');
 });
 
@@ -123,14 +153,25 @@ t('מה שנשלח לדפדפן: רק הכלים המותרים, בלי שדה �
   assert.deepEqual(head.tools.map((x) => x.id), visibleToolIds(accessForRole(0)));
   assert.ok(head.tools.every((x) => !('gate' in x)), 'שדה gate נשלח');
   assert.ok(!head.tools.some((x) => TOOLS.find((y) => y.id === x.id).gate === 'dev'), 'כלי מתכנת נשלח להנהלה');
-  assert.equal(head.categories.length, 9);
+  assert.equal(head.categories.length, 10);
+  assert.ok(head.tools.every((x) => !('pageKey' in x) && !('needs' in x)), 'שדות פנימיים נשלחו');
   assert.deepEqual(selectHub(accessForRole(1)), { tools: [], categories: [] });
+});
+
+t('משלוחים: האריח רק כש-enable_deliveries === "true" (כמו התפריט); בלי ההגדרה / כל ערך אחר — מוסתר', () => {
+  assert.ok(!visibleToolIds(accessForRole(0)).includes('deliveries'));
+  assert.ok(!visibleToolIds(accessForRole(0), { deliveriesEnabled: 'true' }).includes('deliveries'), 'רק true בוליאני');
+  assert.ok(visibleToolIds(accessForRole(0), { deliveriesEnabled: true }).includes('deliveries'));
+  assert.ok(!visibleToolIds(accessForRole(1), { deliveriesEnabled: true }).includes('deliveries'), 'מנהלת סניף — אין /admin');
+  has(ROUTE, /getCachedSetting\('enable_deliveries'\)/, 'קריאת ההגדרה בשרת');
+  has(ROUTE, /return !!\(s && s\.value === 'true'\)/, 'רק "true" מפורש מדליק');
+  has(ROUTE, /selectHub\(\{ head, dev \}, \{ nedarimEnabled: nedarim, deliveriesEnabled: deliveries \}\)/);
 });
 
 t('nedarim_plus_enabled === "false" מסתיר את קטגוריית נדרים פלוס (בשרת); כל ערך אחר — מוצגת', () => {
   const off = selectHub(accessForRole(0), { nedarimEnabled: false });
   assert.ok(!off.tools.some((x) => x.cat === 'nedarim') && !off.categories.some((c) => c.id === 'nedarim'));
-  assert.equal(off.categories.length, 8);
+  assert.equal(off.categories.length, 9);
   assert.ok(selectHub(accessForRole(0), {}).tools.some((x) => x.cat === 'nedarim'), 'ברירת מחדל: מוצגת');
   has(ROUTE, /getCachedSetting\('nedarim_plus_enabled'\)/, 'קריאת ההגדרה בשרת');
   has(ROUTE, /return !\(s && s\.value === 'false'\)/, 'רק "false" מפורש מכבה (כמו app/orders/new/page.js)');
@@ -156,7 +197,8 @@ t('קוד הלקוח לא מייבא (גם לא בעקיפין) את הקטלו�
   };
   const FORBIDDEN_FILES = ['lib/adminHubCatalog.js', 'lib/auth.js', 'lib/authTokens.js', 'lib/settingsCache.js', 'app/lib/prisma.js', 'lib/prisma.js', 'lib/permissions.js'];
   const FORBIDDEN_SPECS = [/^next\/headers$/, /^@prisma\/client/, /^server-only$/, /^node:/];
-  const entries = ['app/components/admin-hub/AdminHubSwitch.js', 'app/components/admin-hub/AdminHubPage.js'];
+  // + המעטפת החדשה: פאנל "ניהול" המקוצר מקבל מהשרת רק את הכלים המותרים (app/layout.js), לעולם לא את הקטלוג
+  const entries = ['app/components/admin-hub/AdminHubSwitch.js', 'app/components/admin-hub/AdminHubPage.js', 'app/components/menu/MenuA5Shell.js', 'app/components/menu/useAdminRecents.js'];
   for (const e of entries) assert.ok(/^\s*'use client'/.test(src(e)), `${e} אמור להיות 'use client'`);
   const problems = [];
   for (const entry of entries) {
@@ -186,14 +228,20 @@ t('השערים בדפים עצמם: כל אריח "מתכנת בלבד" מוב�
     for (let i = parts.length; i >= 1; i--) { const f = `../app/${parts.slice(0, i).join('/')}/layout.js`; if (exists(f)) out.push(read(f)); }
     return out;
   };
-  for (const x of TOOLS.filter((y) => y.gate === 'dev')) {
+  // AH-02: /design-system הוא קובץ סטטי ציבורי (public/design-system) שלא השתנה בכוונה — רק האריח למתכנת, לא הדף; לכן פטור משער-דף
+  for (const x of TOOLS.filter((y) => y.gate === 'dev' && y.href !== '/design-system')) {
     assert.ok(layoutsFor(x.href).some((src) => /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/.test(src)), `${x.href}: הדף לא בשער מתכנת`);
   }
   // /dashboard: השער בתוך page.js עצמו (layout משותף היה חוסם גם את /dashboard/dresses)
-  for (const x of TOOLS) {
+  // (גם כאן /design-system פטור — AH-02: קובץ סטטי ציבורי בכוונה; השער הוא רק על האריח)
+  for (const x of TOOLS.filter((y) => y.href !== '/design-system')) {
     const srcs = [...layoutsFor(x.href), ...(x.href === '/dashboard' ? [read('../app/dashboard/page.js')] : [])];
+    if (OWN_PAGE_GATE[x.href]) { assert.ok(srcs.some((src) => OWN_PAGE_GATE[x.href].test(src)), `${x.href}: השער של הדף חסר`); continue; }
+    // דף בשער הרשאות (PageGate page:*): הנהלה ראשית / מתכנת תמיד עוברים (ALWAYS_ALLOWED_ROLE_IDS = שער head), אז האריח בשער head מדויק
+    if (x.pageKey) { assert.equal(x.gate, 'head'); assert.ok(srcs.some((src) => src.includes(`<PageGate pageKey="${x.pageKey}">`)), `${x.href}: אין PageGate ${x.pageKey}`); continue; }
     assert.ok(srcs.some((src) => /checkPageAccess\((HEAD_MANAGEMENT_ROLES|DEVELOPER_ONLY_ROLES)\)/.test(src)), `${x.href}: הדף בלי שער הנהלה`);
   }
+  assert.deepEqual(JSON.parse(/ALWAYS_ALLOWED_ROLE_IDS = (\[[^\]]*\])/.exec(read('../lib/permissionsMetadata.js'))[1]), [...GATE_ROLES.head], 'הנהלה עוברת כל page:*');
   const site = read('../app/admin/site/layout.js');
   has(site, /checkPageAccess\(DEVELOPER_ONLY_ROLES\)/, '/admin/site: שער מתכנת');
   has(site, /redirect\('\/admin'\)/, '/admin/site: מי שאינו מתכנת מועבר למסך החדש');
@@ -218,7 +266,7 @@ t('חיפוש בלי מונה: שדה .hf-s מסנן לפי כותרת, תיאו
   const all = selectHub(accessForRole(2));
   const g = (q) => groupTools(all.tools, all.categories, q);
   assert.deepEqual(g('גיבוי').map((x) => x.category.id), ['backup']);
-  assert.deepEqual(g('נדרים פלוס').flatMap((x) => x.tools).length, 4, 'שם קטגוריה מחזיר את כל הקטגוריה (מתכנת: בלי רשימת הו״ק)');
+  assert.deepEqual(g('נדרים פלוס').flatMap((x) => x.tools).length, 5, 'שם קטגוריה מחזיר את כל הקטגוריה (מתכנת: כולל רשימת הו״ק, AH-03)');
   assert.deepEqual(g('overbooking').flatMap((x) => x.tools.map((y) => y.id)), ['inventory-alerts'], 'בלי תלות ברישיות');
   assert.deepEqual(g('zzzz'), []);
   assert.equal(groupTools([all.tools[0]], all.categories, '').length, 1, 'רק הכלים שהועברו');
@@ -227,7 +275,7 @@ t('חיפוש בלי מונה: שדה .hf-s מסנן לפי כותרת, תיאו
   assert.equal(normSearch('הו"ק'), normSearch('הו״ק'));
   assert.equal(normSearch("ת'ז"), normSearch('ת׳ז'));
   assert.equal(normSearch('“הו”ק'), normSearch('"הו"ק'));
-  assert.deepEqual(g('הו"ק').flatMap((x) => x.tools.map((y) => y.id)), ['nedarim-hok-search', 'nedarim-hok-edit']);
+  assert.deepEqual(g('הו"ק').flatMap((x) => x.tools.map((y) => y.id)), ['nedarim-hok-list', 'nedarim-hok-search', 'nedarim-hok-edit']); // AH-03: רשימת הו״ק פתוחה גם למתכנת (accessForRole(2))
   assert.ok(toolMatches({ title: 'בדיקה', desc: 'ת׳ז' }, "ת'ז"), 'גרש עברי מול גרש רגיל');
   has(PAGE, /לא נמצאו כלים התואמים לחיפוש/, 'מצב ריק');
 });

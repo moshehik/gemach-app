@@ -33,7 +33,7 @@ export const DFLAGS = [['dl_out', 'הלוך', 'truck'], ['dl_back', 'חזור', 
 export const AFLAGS = [['al_len', 'אורך', 'sliders'], ['al_fix', 'תיקון', 'scissors'], ['al_sleeve', 'שרוול', 'dress'], ['al_done', 'בוצע תיקון', 'flag']];
 export const MFLAGS = [['md_inactive', 'לא פעיל', 'lock'], ['md_repair', 'בתיקון', 'scissors'], ['md_delmodel', 'דגם מחוק', 'trash'], ['md_delitem', 'פריט מחוק', 'trash']];
 export const EFLAGS = [['em_active', 'פעיל', 'users'], ['em_inactive', 'לא פעיל', 'lock']];
-const OEVENT_FLAGS = (packing) => [['holiday', 'אירוע חול', 'cal'], ...(packing ? [['packing', 'ציפוף ימים', 'list', 'כמות ימים']] : []), ['delivery', 'משלוח', 'truck'], ['repairs', 'תיקונים', 'scissors']];
+const OEVENT_FLAGS = (packing) => [['abroad', 'חו״ל / תפוסה ארוכה', 'cal'], ...(packing ? [['packing', 'ציפוף ימים', 'list', 'כמות ימים']] : []), ['delivery', 'משלוח', 'truck'], ['repairs', 'תיקונים', 'scissors']];
 const OITEM_FLAGS = [['itRepairs', 'תיקונים', 'scissors']];
 
 // שדה: [מפתח, תווית, אייקון, טקסט בשדה]
@@ -180,7 +180,7 @@ export function normalizeAdvResponse(r) {
 
 // תווית שדות הסיכום (מי ביקש מה)
 const OLBL = { amount: 'סכום משוער', cemp: 'עובד (זיכוי)', ordst: 'סטטוס הזמנה', branch: 'סניף', city: 'עיר משלוח', oid: 'קוד הזמנה', name: 'שם לקוח', phone: 'טלפון', cinfo: 'פרטי לקוח', emp: 'עובד מבצע', model: 'דגם', size: 'מידה', item: 'ברקוד' };
-const ALL_FLAGS = [...ADV_FLAGS, ...ORD_CHECK, ...RCHK, ...DFLAGS, ...AFLAGS, ...MFLAGS, ...EFLAGS, ['holiday', 'אירוע חול'], ['packing', 'ציפוף ימים'], ['delivery', 'משלוח'], ['repairs', 'תיקונים'], ['itRepairs', 'תיקונים']];
+const ALL_FLAGS = [...ADV_FLAGS, ...ORD_CHECK, ...RCHK, ...DFLAGS, ...AFLAGS, ...MFLAGS, ...EFLAGS, ['abroad', 'חו״ל / תפוסה ארוכה'], ['packing', 'ציפוף ימים'], ['delivery', 'משלוח'], ['repairs', 'תיקונים'], ['itRepairs', 'תיקונים']];
 const ALL_OST = [...OST, ...RST, ...RTN, ...DST, ...AST];
 const SUMMARY_FOCI = ['orders', 'rentals', 'returns', 'deliveries', 'alterations', 'capacity', 'models'];
 
