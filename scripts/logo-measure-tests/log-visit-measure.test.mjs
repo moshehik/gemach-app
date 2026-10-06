@@ -99,7 +99,7 @@ test('לא מחובר => 401', async () => {
 });
 
 test('נתיב של פחות ממילי-שנייה לא מתעגל ל-0 (עשירית מילי-שנייה נשמרת)', async () => {
-  await post({ entries: [{ pageUrl: '/api/me', serverCpuMs: '0.4' }, { pageUrl: '/api/me', serverCpuMs: 0.06 }] });
+  await post({ entries: [{ pageUrl: '/api/orders', serverCpuMs: '0.4' }, { pageUrl: '/api/orders', serverCpuMs: 0.06 }] });
   assert.equal(globalThis.__VISITS[0].serverCpuMs, 0.4);
   assert.equal(globalThis.__VISITS[1].serverCpuMs, 0.1);
 });
