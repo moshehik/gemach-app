@@ -961,7 +961,7 @@ test('תיעוד: docs/refund-questionnaire.md כולל את ארבעת הקיש
   assert.ok(d.includes('שרשור דיווח-תקלה אחד לכל גמ"ח') && d.includes('בלי טבלה חדשה, בלי שינוי סכימה ובלי DDL'));
   assert.ok(d.includes('policy-questionnaire:refunds-2026-10b') && d.includes('needsHuman = true') && d.includes('עדכון') && d.includes('localStorage'));
   assert.ok(d.includes('מי יכולה לענות ומי רואה') && d.includes('מנהלות רגילות'));
-  assert.ok(!/אביגיל|אהובה|רחלי|יוסי/.test(d), 'אין שמות עובדות במסמך');
+  assert.ok(!STAFF_NAMES.some((n) => hasName(d, n)), 'אין שמות עובדות במסמך');
   assert.ok(src('CLAUDE.md').includes('docs/refund-questionnaire.md'));
   assert.ok(src('CLAUDE.md').includes('There is no table, no schema change and no DDL'));
 });
