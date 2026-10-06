@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -61,6 +62,9 @@ export async function POST(request) {
     const createLogs = prisma.auditLog.createMany({ data: auditLogs });
 
     await prisma.$transaction([updateItems, updateLocations, createLogs]);
+
+    // הכנה אוטומטית אחרי הלקיחה הגורפת (אחרי הטרנזקציה; נכשל בשקט)
+    await autoMarkPrepForOrder(parseInt(orderId));
 
     return NextResponse.json({ success: true, count: pendingItems.length });
   } catch (error) {
