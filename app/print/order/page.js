@@ -7,6 +7,7 @@ import { getHebrewDateString, getHebrewWeekdayLabel, getIsraelTodayDate } from '
 import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WORKING_CONFIG, subtractBusinessDays } from '../../../lib/businessDays';
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
 import { printPageEventBodies } from '../../../lib/history/orderEvents';
+import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -229,7 +230,7 @@ export default function PrintOrderPage() {
         {sleeve && <span className="repair-chip" title="תיקון שרוול"><Scissors size={12} /> שרוול</span>}
         {length && <span className="repair-chip" title="קיצור אורך"><Ruler size={12} /> {length} ס״מ</span>}
         {item.alterationDone && <span className="repair-chip done" title="התיקון בוצע"><Check size={12} /> בוצע</span>}
-        {item.alterationDetails && <span style={{ flexBasis: '100%', fontSize: '0.78em', color: '#888' }}>{item.alterationDetails}</span>}
+        {detailsWithoutMarker(item.alterationDetails) && <span style={{ flexBasis: '100%', fontSize: '0.78em', color: '#888' }}>{detailsWithoutMarker(item.alterationDetails)}</span>}
       </span>
     );
   };

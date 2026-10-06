@@ -106,3 +106,21 @@ test('לו״ז / מסך התיקונים / כתיבה ידנית: doneVia altera
   assert.match(put, /stored && !!item\.alterationDone !== !!stored\.alterationDone && hasEstimateMarker\(item\.alterationDetails\) \? stripEstimateMarker\(item\.alterationDetails\) : item\.alterationDetails/);
   assert.match(read('lib/history/orderHistory.js'), /ch\.estimated === true \? `תיקון נרשם כבוצע \(משוער\) בלקיחה: \$\{label\}`/);
 });
+
+// ---- review fix 1: הסמן הפנימי לא מגיע ללקוח (מייל / הדפסת הזמנה) ולא לייצוא מסך התיקונים ----
+test('הסמן לא נחשף ללקוח: מייל ההזמנה והדפסת ההזמנה מדפיסים detailsWithoutMarker; במייל גם escape; מסך התיקונים (צ׳יפ / אקסל / PDF) בלי הסמן', () => {
+  const email = strip(read('app/api/orders/[id]/email/route.js'));
+  assert.match(email, /const altDetails = detailsWithoutMarker\(item\.alterationDetails\);/);
+  assert.match(email, /if \(altDetails\) html \+= `<span[^`]*\$\{escapeHtml\(altDetails\)\}<\/span>`;/);
+  assert.ok(!/\$\{item\.alterationDetails\}/.test(email), 'אין הדפסה גולמית של alterationDetails במייל');
+  const print = strip(read('app/print/order/page.js'));
+  assert.match(print, /\{detailsWithoutMarker\(item\.alterationDetails\) && <span[^>]*>\{detailsWithoutMarker\(item\.alterationDetails\)\}<\/span>\}/);
+  assert.ok(!/\{item\.alterationDetails\}/.test(print));
+  const page = strip(read('app/alterations/page.js'));
+  assert.equal((page.match(/alterationDetails: detailsWithoutMarker\(item\.alterationDetails\)/g) || []).length, 2, 'אקסל + PDF');
+  assert.match(page, /\{detailsWithoutMarker\(item\.alterationDetails\) && <span className="chip">\{detailsWithoutMarker\(item\.alterationDetails\)\}<\/span>\}/);
+  assert.ok(!/\{item\.alterationDetails\}/.test(page));
+  // הפונקציה עצמה: משפט בלבד -> ריק (לא מציגים אלמנט ריק), טקסט אדם נשאר
+  assert.equal(E.detailsWithoutMarker(E.ESTIMATE_NOTE), '');
+  assert.equal(E.detailsWithoutMarker(`לקצר <b>5</b>\n${E.ESTIMATE_NOTE}`), 'לקצר <b>5</b>');
+});

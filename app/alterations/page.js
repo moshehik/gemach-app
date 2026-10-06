@@ -11,7 +11,7 @@ import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
-import { alterationDoneLabel, isAlterationEstimated, ESTIMATE_TIP } from '@/lib/alterationEstimate';
+import { alterationDoneLabel, isAlterationEstimated, ESTIMATE_TIP, detailsWithoutMarker } from '@/lib/alterationEstimate';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const alterationsCache = cacheNamespace('alterations');
@@ -239,7 +239,7 @@ export default function AlterationsPage() {
         neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
         lengthAlterationText: item.lengthAlteration && String(item.lengthAlteration).trim() !== '' && item.lengthAlteration !== 'null' && item.lengthAlteration !== '0' ? item.lengthAlteration : '',
         sleeveAlterationText: item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '',
-        alterationDetails: item.alterationDetails || ''
+        alterationDetails: detailsWithoutMarker(item.alterationDetails)
       }));
     } catch (e) {
       console.error(e);
@@ -313,7 +313,7 @@ export default function AlterationsPage() {
               neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
               lengthAlterationText: item.lengthAlteration && String(item.lengthAlteration).trim() !== '' && item.lengthAlteration !== 'null' && item.lengthAlteration !== '0' ? item.lengthAlteration : '',
               sleeveAlterationText: item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '',
-              alterationDetails: item.alterationDetails || ''
+              alterationDetails: detailsWithoutMarker(item.alterationDetails)
             }))}
             filename="תפירות"
             columns={[
@@ -492,8 +492,8 @@ export default function AlterationsPage() {
                             {item.neckAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>צוואר: הצרה {item.neckAlteration}</span>}
                             {item.sleeveAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
                             {item.lengthAlteration && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>אורך: {item.lengthAlteration}</span>}
-                            {item.alterationDetails && <span className="chip">{item.alterationDetails}</span>}
-                            {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span className="cell-muted">-</span>}
+                            {detailsWithoutMarker(item.alterationDetails) && <span className="chip">{detailsWithoutMarker(item.alterationDetails)}</span>}
+                            {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !detailsWithoutMarker(item.alterationDetails) && <span className="cell-muted">-</span>}
                           </div>
                         </td>
                         <td>

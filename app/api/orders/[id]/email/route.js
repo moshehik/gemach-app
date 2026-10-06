@@ -6,7 +6,8 @@ import { subtractBusinessDays, israelLocalDate } from '../../../../../lib/busine
 import { getNonWorkingDaysConfig } from '../../../../../lib/businessDaysServer';
 import { getExpectedReturnDate } from '../../../../../lib/lateReturn';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
-import { renderOrderCardEmailHtml, renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
+import { renderOrderCardEmailHtml, renderGenericEmailHtml, escapeHtml } from '../../../../../lib/emailTemplates';
+import { detailsWithoutMarker } from '@/lib/alterationEstimate';
 import { parseQuickMail, isSafeRecipient, quickDriveFolderId, sanitizeQuickAttachments, sanitizeOrderMailAttachments } from '@/lib/orderQuickMail';
 import { PRINT_ORDER_PAGE_KEYS } from '@/lib/printAccessKeys';
 import { normalizeAttachments, postToMailer, buildGasPayload } from '@/lib/mailer';
@@ -55,7 +56,8 @@ const renderRepairChipsHtml = (item) => {
   if (sleeve) html += chip('scissors', 'שרוול');
   if (length) html += chip('ruler', `${length} ס״מ`);
   if (item.alterationDone) html += chip('check', 'בוצע', 'background:#e8f5e9;color:#2e7d32;');
-  if (item.alterationDetails) html += `<span style="flex-basis:100%;font-size:11px;color:#888;">${item.alterationDetails}</span>`;
+  const altDetails = detailsWithoutMarker(item.alterationDetails); // בלי הסמן הפנימי "בוצע (משוער)" - לא לתצוגת לקוח
+  if (altDetails) html += `<span style="flex-basis:100%;font-size:11px;color:#888;">${escapeHtml(altDetails)}</span>`;
   html += '</span>';
   return html;
 };
