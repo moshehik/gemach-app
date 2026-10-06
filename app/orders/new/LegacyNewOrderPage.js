@@ -16,6 +16,8 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
+import { sendWithApproval } from '../../../lib/approvalClient';
+import { offerCreditOffset } from '../../../lib/creditOfferClient';
 import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
@@ -1346,6 +1348,15 @@ export default function NewOrderPage() {
       // The order is saved even when the pricing engine failed afterwards - show what went
       // wrong but still open it, so nobody saves a second copy thinking the first was lost.
       if (data.warning) alert(data.warning);
+      // קיזוז זיכוי פתוח של הלקוחה מחוב שנשאר בהזמנה החדשה (דיווח 679a860b, lib/creditOffset.js), מאחורי customer_credit_offset_prompt - כבוי כברירת מחדל.
+      // שאלה אחת; השרת מחשב חוב וזיכויים ושואל קוד מאשר. אין חוב / אין זיכוי פתוח = לא נשאל כלום. כשל כאן לא עוצר את הפתיחה של ההזמנה.
+      if (settings.customer_credit_offset_prompt === 'true' && data.orderId) {
+        try {
+          await offerCreditOffset({ orderId: data.orderId, confirm: (m) => window.customConfirm(m), sendWithApproval });
+        } catch (offsetErr) {
+          console.error('credit offset offer failed', offsetErr);
+        }
+      }
       // 4 - הדפסה אוטומטית עם סיום יצירת הזמנה, מותנה ב-auto_print_on_order_create
       // (כבוי כברירת מחדל = ההתנהגות הקודמת, לפי כלל ההגדרות עם שחזור). אותו נתיב הדפסה
       // בדיוק כמו כפתור "הדפסה ומייל" -> "הזמנה" (OrderPrintMenu.js openPrint('order')).

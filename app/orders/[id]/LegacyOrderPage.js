@@ -16,6 +16,7 @@ import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/order
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval, stashApprovalToken, DEBT_APPROVAL_LEVEL } from '../../../lib/approvalClient';
+import { offerCreditOffset } from '../../../lib/creditOfferClient';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -272,6 +273,9 @@ export default function OrderDetailsPage({ params }) {
   // order_edit_redirect_screen - מסך היעד כשיוצאים מהכרטיס (handleExit) בלי יעד מפורש
   // משלו. ברירת מחדל "orders_list" = ההתנהגות הקודמת (חזרה לרשימת ההזמנות).
   const [orderEditRedirectScreen, setOrderEditRedirectScreen] = useState('orders_list');
+  // customer_credit_offset_prompt (דיווח 679a860b, lib/creditOffset.js) - כבוי כברירת מחדל = אין שאלה ואין קיזוז. כשמופעל: אחרי שמירה/יציאה שיצרו חוב
+  // חדש ויש ללקוחה זיכוי פתוח מהזמנה אחרת, נשאלת שאלה אחת "לקזז מהחוב?" (ר' askCreditOffset למטה).
+  const [creditOffsetPromptEnabled, setCreditOffsetPromptEnabled] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -297,6 +301,8 @@ export default function OrderDetailsPage({ params }) {
         if (additionalPaymentSetting) setAllowAdditionalPayment(additionalPaymentSetting.value === 'true');
         const editRedirect = data.find(s => s.key === 'order_edit_redirect_screen');
         if (editRedirect && editRedirect.value) setOrderEditRedirectScreen(editRedirect.value);
+        const creditOffsetSetting = data.find(s => s.key === 'customer_credit_offset_prompt');
+        if (creditOffsetSetting) setCreditOffsetPromptEnabled(creditOffsetSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -675,6 +681,33 @@ export default function OrderDetailsPage({ params }) {
     if (resolve) resolve(confirmed);
   };
 
+  // קיזוז זיכוי פתוח של הלקוחה מחוב שנוצר בשמירה (דיווח 679a860b). השרת הוא הסמכות: מחשב חוב וזיכויים, שואל קוד מאשר (כמו תשלום ידני),
+  // רושם זוג תשלומים אחד בטרנזקציה ומסנכרן את בקשות הזיכוי. כאן רק השאלה ורענון התשלומים והזיכויים בכרטיס (בלי לגעת בשינויים שלא נשמרו).
+  // חוזר { status } כמו offerCreditOffset; כבוי/אין מה לקזז = 'none' בלי שום בקשה לשרת.
+  const askCreditOffset = async (orderIdNow) => {
+    if (!creditOffsetPromptEnabled || !orderIdNow) return { status: 'none' };
+    return offerCreditOffset({ orderId: orderIdNow, confirm: (m) => window.customConfirm(m), sendWithApproval });
+  };
+  const refreshPaymentsAfterOffset = async () => {
+    try {
+      const res = await fetch(`/api/orders/${id}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const loadedPayments = data.payments || [];
+      const loadedRefunds = data.refunds || [];
+      setPayments(loadedPayments);
+      setRefunds(loadedRefunds);
+      setOrder(prev => (prev ? { ...prev, updatedAt: data.updatedAt } : prev));
+      if (savedSnapshotRef.current) {
+        savedSnapshotRef.current = { ...savedSnapshotRef.current, order: { ...savedSnapshotRef.current.order, updatedAt: data.updatedAt }, payments: loadedPayments, refunds: loadedRefunds };
+      }
+      return data;
+    } catch (err) {
+      console.error('Failed to refresh payments after credit offset', err);
+      return null;
+    }
+  };
+
   // Save changes
   const handleSave = async (overrideOrder = null, { promptPrint = false, orderDateApproval = null } = {}) => {
     setSaving(true);
@@ -945,8 +978,21 @@ export default function OrderDetailsPage({ params }) {
       // מהתשובה הטרייה מהשרת (לא מה-state הישן) כדי שיהיה מדויק מיד אחרי השמירה.
       const freshRequired = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
       const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-      const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+      let freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
       const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
+      // קיזוז זיכוי פתוח (מאחורי customer_credit_offset_prompt): נשאל רק כשהשמירה הזו יצרה חוב חדש. אחרי קיזוז החוב מחושב מחדש מהשרת.
+      let creditOffsetApplied = 0;
+      if (creditOffsetPromptEnabled && freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01) {
+        const offset = await askCreditOffset(updatedOrder.orderId);
+        if (offset.status === 'applied') {
+          creditOffsetApplied = offset.amount || 0;
+          const refreshed = await refreshPaymentsAfterOffset();
+          if (refreshed) {
+            const paidAfter = (refreshed.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+            freshDebtNow = Math.round((freshRequired - paidAfter) * 100) / 100;
+          }
+        }
+      }
       const newDebtCreatedBySave = freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01;
       // בנווה יעקב (enableEditSummaryConfirm), כשהשמירה הזו יצרה חוב, חלונית "השלמת תשלום"
       // (paymentContinueAmount, במרכז המסך - ר' הרינדור למטה) היא ההודעה הבאה שהעובד רואה -
@@ -961,9 +1007,10 @@ export default function OrderDetailsPage({ params }) {
       }
 
       if (!showsPaymentContinuePrompt) {
+        const offsetNote = creditOffsetApplied > 0 ? ` קוזזו ₪${creditOffsetApplied.toLocaleString('he-IL')} מזיכוי פתוח של הלקוחה.` : '';
         setSaveMessage(newDebtCreatedBySave
-          ? `השינויים נשמרו בהצלחה! נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} - עברת אוטומטית לטאב תשלומים להשלמת הגבייה.`
-          : 'השינויים נשמרו בהצלחה!');
+          ? `השינויים נשמרו בהצלחה!${offsetNote} נוצר חיוב חדש של ₪${freshDebtNow.toLocaleString('he-IL')} - עברת אוטומטית לטאב תשלומים להשלמת הגבייה.`
+          : `השינויים נשמרו בהצלחה!${offsetNote}`);
         setTimeout(() => setSaveMessage(''), newDebtCreatedBySave ? 7000 : 3000);
         setShowSaveSuccessOverlay(true);
         setTimeout(() => setShowSaveSuccessOverlay(false), 5000);
@@ -1199,13 +1246,27 @@ export default function OrderDetailsPage({ params }) {
       setSaving(false);
 
       try {
-        const updatedOrder = await res.clone().json();
-        const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+        let updatedOrder = await res.clone().json();
+        let freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
         const freshRequired = (updatedOrder.totalAmount && updatedOrder.totalAmount > 0)
           ? updatedOrder.totalAmount
           : (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
-        const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+        let freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
         const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
+
+        // קיזוז זיכוי פתוח (מאחורי customer_credit_offset_prompt) - אותה שאלה כמו ב-handleSave, לפני שבודקים אם נשאר חוב שחוסם יציאה.
+        // אחרי קיזוז התשלומים והזיכויים בנתונים הטריים מתעדכנים מהשרת, כך שהבדיקות שמתחת מתייחסות למצב האמיתי.
+        if (creditOffsetPromptEnabled && freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01) {
+          const offset = await askCreditOffset(updatedOrder.orderId);
+          if (offset.status === 'applied') {
+            const refreshed = await refreshPaymentsAfterOffset();
+            if (refreshed) {
+              updatedOrder = { ...updatedOrder, payments: refreshed.payments || [], refunds: refreshed.refunds || [] };
+              freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+              freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
+            }
+          }
+        }
 
         // דיווח נווה יעקב (6124472b): הוספת משלוח לא עדכנה את ה-state המקומי (חיוב
         // המשלוח נוצר רק בצד השרת, בתוך ה-PUT שזה עתה הצליח - ר' applyDeliveryCharge),

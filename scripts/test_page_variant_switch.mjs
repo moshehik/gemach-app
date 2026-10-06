@@ -388,7 +388,8 @@ export default function AdminHubPage({ showSite = false }) {
 //    כפתור/חלונית "הוסף משלוח" בשלבים 3-5 עם שורת חיוב המשלוח, "טוען מידות…", בלי גלילה פנימית בסיכום, ושליחת customerCity ל-/api/orders/calculate.
 //    במקום השוואה ל-blob בהיסטוריה (שאי אפשר לכוון אליו אחרי העריכה) נעול כאן ה-hash של הקובץ עצמו: כל עריכה נוספת בו מחייבת עדכון מודע של השורה.
 const PINNED_BLOBS = {
-  'app/orders/new/LegacyNewOrderPage.js': '60e2b3d957f8f060da1daad47f83c4f728c7f492',
+  // + קיזוז זיכוי פתוח אחרי יצירת הזמנה עם חוב (דיווח 679a860b, מאחורי customer_credit_offset_prompt; כבוי = אפס שינוי)
+  'app/orders/new/LegacyNewOrderPage.js': '92c9002486c252387757de654f4c8fceb92ce29e',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
