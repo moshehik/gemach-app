@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
-import { describeLogoResult } from '@/lib/logoFormat';
+import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle from './WebBackupModeToggle';
@@ -670,13 +670,13 @@ export default function SettingsClient({ mode = 'general' }) {
         body: formData,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'שגיאה בהעלאת הלוגו');
+      const { ok, data, error } = await readLogoUploadResponse(res);
+      if (!ok) throw new Error(error);
 
       setSaveMessage(`הלוגו עודכן בהצלחה! ${describeLogoResult(data)} מרענן תצוגה...`);
       localStorage.setItem('logo_timestamp', data.timestamp);
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
-      setTimeout(() => setSaveMessage(null), 3000);
+      setTimeout(() => setSaveMessage(null), 9000); // ההודעה כוללת לפני/אחרי של הדחיסה - משאירים אותה מספיק זמן לקריאה
     } catch (err) {
       setError(err.message);
     } finally {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { describeLogoResult } from '@/lib/logoFormat';
+import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 
 export default function LogoSettings() {
@@ -24,8 +24,8 @@ export default function LogoSettings() {
         body: formData,
       });
 
-      const data = await res.json();
-      if (res.ok) {
+      const { ok, data, error } = await readLogoUploadResponse(res);
+      if (ok) {
         setMessage(`הלוגו הועלה בהצלחה! ${describeLogoResult(data)}`.trim());
         
         // Update local storage so other components know to fetch the new logo
@@ -34,7 +34,7 @@ export default function LogoSettings() {
         // Dispatch event for components in the same window
         window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
       } else {
-        setMessage(data.error || 'שגיאה בהעלאת הלוגו');
+        setMessage(error);
       }
     } catch (err) {
       console.error(err);

@@ -106,8 +106,15 @@ test('לוגו: שלושת מסכי ההעלאה מציגים לפני/אחרי 
     const s = read(f);
     assert.match(s, /describeLogoResult\(data\)/, f);
     assert.match(s, /prepareLogoFile\(file\)/, f);
+    assert.match(s, /readLogoUploadResponse\(res\)/, f);
+    assert.ok(!/await res\.json\(\)/.test(s.slice(s.indexOf('/api/upload-logo'), s.indexOf('/api/upload-logo') + 400)), `${f}: upload response must go through readLogoUploadResponse (413 is not JSON)`);
     assert.ok(!/logoCompress/.test(s), `${f} must not import the server-side (sharp) module`);
   }
+  const prep = read('lib/logoClientPrep.js');
+  assert.match(prep, /PREP_MAX_PX = 1024/);
+  assert.match(prep, /'image\/jpeg'/);
+  assert.ok(!/toBlob\(canvas, 'image\/png'/.test(prep), 'no PNG re-encode (can exceed the 4.5MB request limit)');
+  assert.match(read('app/admin/settings/SettingsClient.js'), /setSaveMessage\(null\), 9000\)/);
   const sc = read('scripts/compress_brand_logo.js');
   assert.match(sc, /const write = rest\.includes\('--write'\)/);
   assert.match(sc, /--write requires both --expect-host/);

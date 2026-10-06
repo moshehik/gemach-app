@@ -22,7 +22,7 @@ import { useLabels } from '../LabelsContext';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_CLEAR_MARKER } from '@/app/lib/secretSettingKeys';
 import { getHebrewDateString } from '@/lib/hebrewDate';
-import { describeLogoResult } from '@/lib/logoFormat';
+import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import {
   buildViewModel, NAMES_TABS, DEFAULT_LABELS, applyChange, revertChange, pruneUnchanged, buildPayload,
@@ -86,8 +86,8 @@ function LogoBlock({ onDone, onError }) {
       const fd = new FormData();
       fd.append('file', await prepareLogoFile(file));
       const res = await fetch('/api/upload-logo', { method: 'POST', body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'שגיאה בהעלאת הלוגו');
+      const { ok, data, error } = await readLogoUploadResponse(res);
+      if (!ok) throw new Error(error);
       try { window.localStorage.setItem('logo_timestamp', data.timestamp); } catch { /* */ }
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
       setStamp(String(data.timestamp));

@@ -111,3 +111,22 @@ test('תצוגה: formatBytes / describeLogoResult', () => {
   assert.match(LF.describeLogoResult({ originalBytes: 2600000, storedBytes: 40000, width: 512, height: 300 }), /2\.5MB ← 39KB \(512×300\)/);
   assert.equal(LF.describeLogoResult({}), '');
 });
+
+test('readLogoUploadResponse: הצלחה, שגיאת שרת בעברית, 413 של הפלטפורמה (גוף שאינו JSON), וקוד לא צפוי', async () => {
+  const ok = await LF.readLogoUploadResponse(new Response(JSON.stringify({ success: true, timestamp: 1 }), { status: 200 }));
+  assert.equal(ok.ok, true); assert.equal(ok.data.timestamp, 1);
+  const bad = await LF.readLogoUploadResponse(new Response(JSON.stringify({ error: 'הקובץ אינו תמונה תקינה' }), { status: 400 }));
+  assert.equal(bad.ok, false); assert.equal(bad.error, 'הקובץ אינו תמונה תקינה');
+  const platform413 = await LF.readLogoUploadResponse(new Response('Request Entity Too Large', { status: 413 }));
+  assert.equal(platform413.ok, false); assert.match(platform413.error, /גדול מדי/);
+  const weird = await LF.readLogoUploadResponse(new Response('<html>oops</html>', { status: 502 }));
+  assert.equal(weird.ok, false); assert.match(weird.error, /502/);
+});
+
+test('SVG קטן (24x24 אינטרינזי) מורחב ליעד 512px ולא נשאר 24px', async () => {
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#c81e5a"/></svg>');
+  const r = await LC.compressLogoBuffer(svg);
+  assert.ok(Math.max(r.width, r.height) >= 480, `got ${r.width}x${r.height}`);
+  assert.ok(Math.max(r.width, r.height) <= 512);
+  assert.equal((await sharp(r.buffer).metadata()).hasAlpha, true);
+});
