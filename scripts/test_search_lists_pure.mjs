@@ -143,6 +143,16 @@ t('מילות מפתח: מידה / דגם', () => {
   p = P('דגם שמלת ורד'); eq([p.kw.model, p.kw.modelIsPrefix], ['שמלת ורד', false]);
   p = P('מידה 2 רחל'); eq(p.kw.rest, 'רחל');
 });
+t('כמה מידות / דגמים ברשימות: "מידה 4,6 דגם 511 ו455" - איחוד כתיבי המידות וכל הקידומות (in)', () => {
+  const p = P('מידה 4,6 דגם 511 ו455');
+  eq([...p.kw.sizeList].filter((x) => x.trim() === x).sort(), ['04', '004', '06', '006', '4', '6'].sort());
+  eq(p.kw.prefixes, [511, 455]);
+  const o = LS.orderSearchCondition(p, {});
+  const s = JSON.stringify(o);
+  ok(s.includes('"barcodePrefix":{"in":[511,455]}'), s.slice(0, 300));
+  eq(LS.dressSearchAlternatives(p)[0].AND[0], { barcodePrefix: { in: [511, 455] } });
+  eq(P('דגם 3 מידה 02').kw.prefixes, [3]);
+});
 t('תאריכים: עברי / לועזי', () => {
   let p = P('כז תשרי'); ok(p.hebrewDate); eq(p.hebrewDate.day, 27); eq(p.gregorianDate, null); eq(p.nameText, null);
   p = P('5/10'); ok(p.gregorianDate); eq([p.gregorianDate.day, p.gregorianDate.month], [5, 10]); eq(p.nameText, null);
