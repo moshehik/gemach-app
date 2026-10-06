@@ -125,10 +125,20 @@ t('נרמול: שדות רגישים של השרת (ת"ז, בנק, הערות פ
   }
 });
 t('נרמול: קלט ריק/חסר', () => {
-  const EMPTY_RES = { customers: [], orders: [], rentals: [], inventory: [], inventoryTruncated: false, dateChips: null };
+  const EMPTY_RES = { customers: [], orders: [], rentals: [], inventory: [], inventoryTruncated: false, notices: [], dateChips: null };
   assert.deepEqual(normalizeSearch(null), EMPTY_RES);
   assert.deepEqual(normalizeSearch({}), EMPTY_RES);
   assert.equal(resultsCount(null), 0);
+});
+t('נרמול: הודעות מהשרת (נחתך / ערכים נזרקו / תאריך לא קיים) - סוגים מוכרים בלבד, טקסט בלבד', () => {
+  const n = normalizeSearch({ notices: [
+    { kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }, { kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' },
+    { kind: 'hack', text: 'x' }, { kind: 'valuesDropped', text: '' }, { kind: 'valuesDropped', text: 5 }, null, 'str',
+  ] }).notices;
+  assert.deepEqual(n, [{ kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }, { kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' }]);
+  assert.deepEqual(normalizeSearch({ notices: 'x' }).notices, []);
+  const res = readFileSync(new URL('../app/components/home/HomeResults.js', import.meta.url), 'utf8');
+  assert.ok(/res && Array\.isArray\(res\.notices\)/.test(res) && /data-notice-kind=\{n\.kind\}/.test(res), 'HomeResults מציג את ההודעות (גם בלי תוצאות)');
 });
 t('נרמול: מצב פריט (מושכר עכשיו / הוחזר / טרם נלקח) רק כשהשרת שלח את הדגלים', () => {
   const r = normalizeSearch({ rentals: [{ orderId: 1, barcode: 'B', isTaken: true, isReturned: false }, { orderId: 2, barcode: 'B', isTaken: true, isReturned: true }, { orderId: 3, barcode: 'B', isTaken: false, isReturned: false }, { orderId: 4, barcode: 'B' }] });

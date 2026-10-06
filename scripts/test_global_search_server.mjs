@@ -454,6 +454,150 @@ await t('תאריך בשאילתת מילות מפתח: הזמינות לאות�
 });
 
 // ---------------------------------------------------------------- extras: צ'יפים של הלו"ז
+console.log('מילות מפתח: תאריך עברי = המופע הקרוב מהיום, כמה דגמים / מידות, תווית עברית');
+const { HDate } = await import('@hebcal/core');
+const greg = (d, m, y) => { const g = new HDate(d, m, y).greg(); return `${g.getFullYear()}-${String(g.getMonth() + 1).padStart(2, '0')}-${String(g.getDate()).padStart(2, '0')}`; };
+const at = (iso) => new Date(iso + 'T09:00:00Z');
+await t('תאריך הזמינות = המופע הקרוב מהיום והלאה (היום נחשב); עם / בלי המילה "תאריך"; כל הכתיבים', () => {
+  // היום 6.10.2026 = כ"ה תשרי תשפ"ז (5787, שנה מעוברת)
+  const d = (q, today = '2026-10-06') => planGlobalSearch(q, { now: at(today) }).date;
+  const wantCheshvan20 = greg(20, 8, 5787); // 2026-10-31
+  assert.equal(wantCheshvan20, '2026-10-31');
+  for (const q of ['מידה 4 תאריך כ חשוון', 'מידה 4 כ חשוון', 'מידה 4 תאריך כ׳ חשוון', "מידה 4 כ' חשוון", 'דגם 3 מידה 4 תאריך כ חשון']) assert.equal(d(q).key, wantCheshvan20, q);
+  assert.equal(d('מידה 4 ב חשוון').key, greg(2, 8, 5787), 'ב חשוון = היום השני');
+  assert.equal(d('מידה 4 כ״ב חשוון').key, greg(22, 8, 5787));
+  assert.equal(d('מידה 4 ט״ו בשבט').key, greg(15, 11, 5787));
+  assert.equal(d('מידה 4 תאריך ט"ו בשבט').key, greg(15, 11, 5787));
+  // תאריך שכבר עבר השנה -> השנה הבאה (לא הקרוב-ביותר שבעבר): כ תשרי ב-6.10.2026 = כ תשרי תשפ"ח
+  assert.equal(d('מידה 4 כ תשרי').key, greg(20, 7, 5788));
+  assert.equal(greg(20, 7, 5788) > '2026-10-06', true);
+  // היום עצמו נחשב (כ חשוון, ב-31.10.2026); יום אחרי = השנה הבאה
+  assert.equal(d('מידה 4 כ חשוון', '2026-10-31').key, '2026-10-31');
+  assert.equal(d('מידה 4 כ חשוון', '2026-11-01').key, greg(20, 8, 5788));
+  // שנה מפורשת: אותה שנה בלבד (גם אם עברה)
+  assert.equal(d('מידה 4 כ חשוון תשפ״ז').key, wantCheshvan20);
+  assert.equal(d('מידה 4 כ חשוון תשפ״ו').key, greg(20, 8, 5786), 'שנה מפורשת שעברה: אין מופע עתידי - התאריך עצמו');
+});
+await t('אדר בשנה מעוברת / פשוטה: המופע הקרוב', () => {
+  const d = (q, today) => planGlobalSearch(q, { now: at(today) }).date;
+  // 5787 מעוברת: אדר א' ואדר ב'. "יד אדר" = הקרוב מביניהם
+  assert.equal(d('מידה 4 יד אדר', '2027-01-15').key, greg(14, 12, 5787), "לפני אדר א': אדר א'");
+  assert.equal(d('מידה 4 יד אדר', '2027-03-01').key, greg(14, 13, 5787), "אחרי אדר א': אדר ב'");
+  assert.equal(d('מידה 4 יד אדר ב', '2027-03-01').key, greg(14, 13, 5787));
+  assert.equal(d('מידה 4 יד אדר א', '2027-01-15').key, greg(14, 12, 5787));
+  // 5788 פשוטה: אדר אחד; "אדר ב" רק בשנה מעוברת הבאה (5790)
+  assert.equal(d('מידה 4 יד אדר', '2028-01-10').key, greg(14, 12, 5788));
+  assert.equal(d('מידה 4 יד אדר ב', '2028-01-10').key, greg(14, 13, 5790));
+});
+await t('התאריך נפתר לפי היום הישראלי של now (לא אזור הזמן של התהליך)', () => {
+  // 23:30 UTC ב-5.10.2026 = 02:30 ב-6.10 בישראל: "כה תשרי" = היום (6.10), לא שנה הבאה
+  const now = new Date('2026-10-05T23:30:00Z');
+  assert.equal(planGlobalSearch('מידה 4 כה תשרי', { now }).date.key, '2026-10-06');
+  assert.equal(planGlobalSearch('מידה 4 כ חשוון', { now }).date.key, '2026-10-31');
+});
+await t('תווית עברית לכותרת הזמינות: "יום ד׳ י״ז חשוון תשפ״ז" / "שבת כ׳ חשוון תשפ״ז"; בלי ספרות לועזיות', () => {
+  assert.equal(gs.hebrewDateLabel('2026-10-28'), 'יום ד׳ י״ז חשוון תשפ״ז');
+  assert.equal(gs.hebrewDateLabel('2026-10-31'), 'שבת כ׳ חשוון תשפ״ז');
+  assert.equal(gs.hebrewDateLabel('2027-03-12'), 'יום ו׳ ג׳ אדר ב׳ תשפ״ז');
+  assert.equal(gs.hebrewDateLabel('2026-10-06'), 'יום ג׳ כ״ה תשרי תשפ״ז');
+  for (const k of ['2026-10-28', '2026-10-31', '2027-03-12']) assert.ok(!/\d/.test(gs.hebrewDateLabel(k)), 'אין ספרות לועזיות בתווית');
+});
+await t('"מידה 4 תאריך כ חשוון": שורת המלאי מחושבת לתאריך ההוא ובכותרת התאריך העברי (לא "היום")', async () => {
+  reset([]);
+  T.models = [{ id: 'm-5', name: 'חמש', barcodePrefix: 5 }]; T.sizeTexts = ['04', '6']; T.modelIdsBySize = ['m-5'];
+  T.bulk = () => ({ 'm-5': { '04': { available: 1, total: 2, booked: 1 }, '6': { available: 1, total: 1, booked: 0 } } });
+  const r = await run('מידה 4 תאריך כ חשוון', { extras: true });
+  assert.equal(T.bulkCalls[0].d.toISOString(), '2026-10-31T12:00:00.000Z');
+  assert.equal(r.inventory[0].date, '2026-10-31');
+  assert.equal(r.inventory[0].dateLabel, 'שבת כ׳ חשוון תשפ״ז');
+  assert.deepEqual(r.inventory[0].sizes.map((s) => s.size), ['04']);
+});
+await t('כמה דגמים ומידות: "מידה 4,6 דגם 511 ו455" - שורה לכל דגם עם המידות, קריאת מלאי אחת לכולם, שליפת דגמים אחת', async () => {
+  reset([]);
+  T.models = [{ id: 'm-455', name: 'ארבע', barcodePrefix: 455 }, { id: 'm-511', name: 'חמש', barcodePrefix: 511 }];
+  T.bulk = () => ({
+    'm-455': { '4': { available: 1, total: 1, booked: 0 }, '6': { available: 0, total: 1, booked: 1 }, '8': { available: 9, total: 9, booked: 0 } },
+    'm-511': { '04': { available: 2, total: 3, booked: 1 }, '12': { available: 5, total: 5, booked: 0 } },
+  });
+  const r = await run('מידה 4,6 דגם 511 ו455 כ חשוון', { extras: true });
+  assert.equal(T.bulkCalls.length, 1, 'getBulk פעם אחת');
+  assert.deepEqual([...T.bulkCalls[0].ids].sort(), ['m-455', 'm-511']);
+  assert.equal(T.bulkCalls[0].d.toISOString(), '2026-10-31T12:00:00.000Z');
+  assert.equal(r.inventory.length, 2);
+  const by = Object.fromEntries(r.inventory.map((x) => [x.modelCode, x.sizes.map((s) => s.size)]));
+  assert.deepEqual(by, { 455: ['4', '6'], 511: ['04'] }, '8 / 12 לא מוצגות; 6 לא קיימת בדגם 511');
+  const find = T.calls.filter(([n]) => n === 'dressModel.findMany');
+  assert.equal(find.length, 1, 'שליפת דגמים אחת');
+  const or = find[0][1].where.OR;
+  assert.ok(or.some((c) => c.barcodePrefix === 511) && or.some((c) => c.barcodePrefix === 455));
+  assert.ok(T.sql.every((x) => /FROM "Order" o/.test(x.sql)), 'בלי טקסט חופשי: רק שאילתת ההזמנות של אותו יום (התאריך), בלי לקוחות / פריטים');
+});
+await t('רק מידות מרובות בלי דגם: "מידה 4,6" - דגמים שיש להם אחת מהמידות', async () => {
+  reset([]);
+  T.sizeTexts = ['04', '6', '12', '40']; T.modelIdsBySize = ['m-1'];
+  T.models = [{ id: 'm-1', name: 'אחת', barcodePrefix: 1 }];
+  T.bulk = () => ({ 'm-1': { '04': { available: 1, total: 1, booked: 0 }, '6': { available: 1, total: 1, booked: 0 }, '12': { available: 1, total: 1, booked: 0 } } });
+  const r = await run('מידה 4,6', { extras: true });
+  const gb = T.calls.find(([n, a]) => n === 'dressItem.groupBy' && a.by[0] === 'dressModelId');
+  assert.deepEqual([...gb[1].where.sizeText.in].sort(), ['04', '6'], 'רק 04 ו-6 (לא 12 / 40)');
+  assert.deepEqual(r.inventory[0].sizes.map((s) => s.size), ['04', '6']);
+});
+await t('שמות ו"ו": "ורד כהן" / "ויקי" / "ו455" לא מפעילים מלאי ולא מחפשים מילת מפתח', async () => {
+  for (const q of ['ורד כהן', 'ויקי', 'ו455', 'דבורה ושרה']) {
+    reset([]);
+    const p = planGlobalSearch(q, { now: NOW });
+    assert.equal(p.keywords, null, q); assert.equal(p.wantsInventory, false, q);
+    const r = await run(q, { extras: true });
+    assert.deepEqual(r.inventory, [], q); assert.equal(T.bulkCalls.length, 0, q);
+  }
+});
+
+await t('אדר א׳ / ב׳ מפורש שאין לו מופע בחלון הרגיל: החלון מורחב עד 4 שנים קדימה', () => {
+  const d = (q, today) => planGlobalSearch(q, { now: at(today) }).date;
+  // 10.4.2027 (5787, אחרי אדר ב׳): אדר ב׳ הבא הוא 5790 (14 אדר ב׳ תשץ = 19.3.2030)
+  assert.equal(d('מידה 4 יד אדר ב', '2027-04-10').key, greg(14, 13, 5790));
+  assert.equal(d('מידה 4 יד אדר ב', '2027-04-10').key, '2030-03-19');
+  assert.equal(d('מידה 4 יד אדר א', '2027-04-10').key, greg(14, 12, 5790));
+  assert.equal(d('מידה 4 יד אדר ב', '2030-04-01').key, greg(14, 13, 5793), 'אחרי אדר ב׳ 5790 - 5793');
+  assert.equal(planGlobalSearch('מידה 4 יד אדר ב', { now: at('2027-04-10') }).dateInvalid, false);
+});
+await t('יום שלא קיים בחודש (שנה מפורשת / אדר בלי א׳ ב׳): dateInvalid + הודעה "התאריך לא קיים בחודש הזה", בלי מלאי להיום', async () => {
+  for (const q of ['מידה 4 ל חשוון תשפו', 'מידה 4 תאריך ל חשוון תשפ״ו', 'מידה 4 ל אדר', 'דגם 3 ל אייר']) {
+    reset([]);
+    T.models = [{ id: 'm-5', name: 'חמש', barcodePrefix: 5 }]; T.sizeTexts = ['04']; T.modelIdsBySize = ['m-5']; T.bulk = () => ({ 'm-5': { '04': { available: 1, total: 1, booked: 0 } } });
+    const p = planGlobalSearch(q, { now: NOW });
+    assert.equal(p.dateInvalid, true, q);
+    const r = await run(q, { extras: true });
+    assert.deepEqual(r.inventory, [], q + ': אין מלאי "להיום" בשקט'); assert.equal(T.bulkCalls.length, 0, q);
+    assert.deepEqual(r.notices, [{ kind: 'dateInvalid', text: 'התאריך לא קיים בחודש הזה' }], q);
+  }
+  // תקף: אין הודעה
+  reset([]);
+  assert.equal(planGlobalSearch('מידה 4 ל חשוון', { now: NOW }).dateInvalid, false, 'בלי שנה: 30 חשוון קיים בחלק מהשנים');
+  assert.equal(planGlobalSearch('מידה 4 ל אדר א', { now: NOW }).dateInvalid, false, 'אדר א׳ = 30 יום');
+  // בלי מילות מפתח: "ל חשוון תשפו" - הודעה; חיפוש הזמנות לא מחזיר "הכול"
+  reset([]);
+  const r2 = await run('ל חשוון תשפו', { extras: true });
+  assert.deepEqual(r2.notices.map((n) => n.kind), ['dateInvalid']);
+  assert.deepEqual(r2.orders, []);
+});
+await t('הודעות: נחתך ל-20 שורות ("מוצגים 20 הראשונים"), ערכים מעבר ל-10 נזרקו ("נלקחו 10 הערכים הראשונים"); בלי הודעות כשהכול תקין; לא בלי extras', async () => {
+  reset([]);
+  T.models = Array.from({ length: 25 }, (_, i) => ({ id: 'm' + i, name: 'ד' + i, barcodePrefix: 100 + i }));
+  T.bulk = (d, ids) => Object.fromEntries(ids.map((id) => [id, { '34': { available: 1, total: 1, booked: 0 } }]));
+  const r = await run('דגם ד', { extras: true });
+  assert.deepEqual(r.notices, [{ kind: 'inventoryTruncated', text: 'מוצגים 20 הראשונים - דייקו את החיפוש' }]);
+  assert.equal('notices' in (await run('דגם ד')), false, 'בלי extras אין notices (תאימות לצרכנים ישנים)');
+  reset([]);
+  T.models = [{ id: 'm-1', name: 'אחת', barcodePrefix: 1 }]; T.bulk = () => ({ 'm-1': { '34': { available: 1, total: 1, booked: 0 } } });
+  const many = 'מידה 34 דגם ' + Array.from({ length: 12 }, (_, i) => i + 1).join(',');
+  const p = planGlobalSearch(many, { now: NOW });
+  assert.equal(p.keywords.valuesDropped, true); assert.equal(p.keywords.models.length, 10);
+  const r3 = await run(many, { extras: true });
+  assert.deepEqual(r3.notices.map((n) => n.kind), ['valuesDropped']);
+  assert.deepEqual((await run('מידה 34 דגם 1,2', { extras: true })).notices, []);
+});
+
 console.log('צ\'יפים של הלו"ז');
 const DAY = {
   date: '2026-10-08', dateHebrew: 'כ״ז תשרי תשפ״ז', weekday: 'יום חמישי', nonWorkingDay: false, dayStatus: { titles: [] },

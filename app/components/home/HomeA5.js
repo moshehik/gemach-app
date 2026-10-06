@@ -15,6 +15,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useRouter } from 'next/navigation';
 import SettingQuickPanel from '../SettingQuickPanel';
 import { Ic, HomeSprite } from './HomeParts';
+import usePageTooltip from '../profile/usePageTooltip';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import HomeResults from './HomeResults';
 import HomeChat from './HomeChat';
@@ -123,6 +124,17 @@ export default function HomeA5() {
   const seq = useRef(0);
   const toastTimer = useRef(null);
   const inputRef = useRef(null);
+  const rootRef = useRef(null);
+  const ttRef = useRef(null);
+  usePageTooltip(rootRef, ttRef, false);
+  // לחיצה על אייקון השמירה (נוגעים במסך מגע: ריחוף מדומה מציג את הטולטיפ) - הטולטיפ נסגר, וההודעה "החיפוש נשמר" לוקחת את מקומו
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const hide = (e) => { if (e.target.closest && e.target.closest('.pfx-save') && ttRef.current) ttRef.current.classList.remove('on'); };
+    root.addEventListener('click', hide, true);
+    return () => root.removeEventListener('click', hide, true);
+  }, []);
   const [pendingRun, setPendingRun] = useState(null); // /?run=: ההרצה מתבצעת באפקט שמוגדר אחרי runQuick (באפקט הפתיחה runQuick עוד לא קיים)
   const lastQuery = useRef({ text: '', ai: false });
   const advFailed = useRef(false); // כרטיס השגיאה נולד מחיפוש מתקדם — "לנסות שוב" מריץ אותו שוב (ולא את החיפוש הכללי האחרון)
@@ -683,8 +695,10 @@ export default function HomeA5() {
   }), [boot]);
 
   return (
-    <div className="gm-ds gm-home home-bg">
+    <div className="gm-ds gm-home home-bg" ref={rootRef}>
       <HomeSprite />
+      {/* טולטיפ הדף (.pl-tt): ריחוף / מיקוד מקלדת על [data-tip] - כולל אייקון "שמירת חיפוש". המעטפת (MenuA5Shell) מטפלת בטולטיפים רק בסרגל העליון, לא בתוכן הדף */}
+      <div className="pl-tt" role="tooltip" ref={ttRef} />
       <Suspense fallback={null}><SearchKeySync onKey={setSpKey} /></Suspense>
       <section className={`hero${heroEnter && !compact ? ' hero-enter' : ''}${compact ? ' hero-compact' : ''}`} aria-label="חיפוש">
         {/* "חזרה לתצוגה הישנה" (4.10.2026): רק להנהלה ראשית / מתכנת. לדף הבית אין סרגל כותרת - פינה עליונה של אזור החיפוש */}

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
-const TZS = { 'UTC': [0, 0], 'Asia/Jerusalem': [-120, -180], 'America/New_York': [300, 240] }; // היסט דקות: ינואר, יולי
+const TZS = { 'UTC': [0, 0], 'Asia/Jerusalem': [-120, -180], 'America/New_York': [300, 240], 'America/Los_Angeles': [480, 420], 'Pacific/Kiritimati': [-840, -840] }; // היסט דקות: ינואר, יולי
 
 if (!process.env.SEARCH_TZ_CHILD) {
   let failed = false;
@@ -27,7 +27,7 @@ const S = await import('../lib/searchNormalize.js');
 const {
   cleanQuery, foldHebrew, escapeLike, sizeKey, isNumericSizeKey, sizeMatches, sizeSpellings, sizeSqlMatcher, phoneKey, phoneEquivalentKeys,
   phoneMatches, parseBarcodeDigits, parseGregorianDate, israelDayKey, gregorianMatches, gregorianCandidateKeys, HEBREW_MONTH_TABLE,
-  hebrewMonthFromName, parseHebrewDayToken, parseHebrewYearToken, parseHebrewDate, hebrewDateMatchesStored, hebrewDateSqlParts, KEYWORD_GUIDE,
+  hebrewMonthFromName, parseHebrewDayToken, parseHebrewYearToken, parseHebrewDate, isImpossibleHebrewDate, hebrewDateMatchesStored, hebrewDateSqlParts, KEYWORD_GUIDE,
   parseKeywords, classifyQuery, SHORTCUT_CHARS, matchHighlight,
 } = S;
 const { normalizeSizeKey } = await import('../lib/sizeSort.js');
@@ -529,10 +529,11 @@ t('אין חפיפה אקראית: כל הספרות עד 14 תווים מקבל
 console.log('KEYWORD_GUIDE');
 t('מבנה ומקור אחד לאמת מול המנתח', () => {
   ok(Object.isFrozen(KEYWORD_GUIDE)); eq(new Set(KEYWORD_GUIDE.map((e) => e.id)).size, KEYWORD_GUIDE.length);
-  eq(KEYWORD_GUIDE.map((e) => e.id), ['size', 'model', 'hebrewDate', 'gregorianDate', 'barcode', 'orderNumber', 'phone']);
+  eq(KEYWORD_GUIDE.map((e) => e.id), ['size', 'model', 'multiModel', 'multiSize', 'hebrewDate', 'combo', 'barcode', 'orderNumber', 'phone']);
+  for (const e of KEYWORD_GUIDE) ok(!/\d{1,2}[/.]\d{1,2}/.test(e.example + ' ' + e.hint), 'המדריך בעברית בלבד - בלי תאריך לועזי: ' + e.id);
   for (const e of KEYWORD_GUIDE) {
     ok(Object.isFrozen(e)); ok(typeof e.label === 'string' && /[א-ת]/.test(e.label), e.id); ok(e.example && e.hint && typeof e.insert === 'string', e.id);
-    ok(e.keyword || e.free, e.id);
+    ok(e.keyword || e.free || ['multiModel', 'multiSize', 'combo'].includes(e.id), e.id); // שורות דוגמה בלבד: שילובים של מילות המפתח
     if (e.keyword) {
       eq(e.insert, `${e.labels[0]} `, e.id);
       const text = e.example.startsWith(e.labels[0]) ? e.example : `${e.labels[0]} ${e.example}`;
@@ -545,11 +546,63 @@ t('דוגמאות המדריך מסווגות כמו שהן מבטיחות', () 
   const ex = (id) => KEYWORD_GUIDE.find((e) => e.id === id).example;
   eq(classifyQuery(ex('size')).kind, 'sizeKeyword'); eq(classifyQuery(ex('model')).kind, 'modelKeyword');
   const h = classifyQuery(ex('hebrewDate')); eq([h.kind, h.date.calendar], ['date', 'hebrew']);
-  const g = classifyQuery(ex('gregorianDate')); eq([g.kind, g.date.calendar], ['date', 'gregorian']);
+  const mm = classifyQuery(ex('multiModel')); eq([mm.kind, mm.keywords.models], ['modelKeyword', ['511', '455']]);
+  const ms = classifyQuery(ex('multiSize')); eq([ms.kind, ms.keywords.sizes], ['sizeKeyword', ['4', '6']]);
+  const cb = classifyQuery(ex('combo')); eq([cb.kind, cb.keywords.sizes, cb.keywords.models, cb.keywords.rest], ['mixedKeyword', ['4'], ['511'], 'כ חשוון']);
+  ok(parseHebrewDate(cb.keywords.rest), 'הדוגמה המשולבת כוללת תאריך עברי');
   eq(classifyQuery(ex('barcode')).kind, 'barcode'); eq(classifyQuery(ex('orderNumber')).kinds[0], 'orderNumber'); eq(classifyQuery(ex('phone')).kind, 'phone');
   eq(classifyQuery(`ברקוד ${ex('barcode')}`).kind, 'barcode');
 });
 t('SHORTCUT_CHARS כולל את הקיימים ואת %', () => { eq([...SHORTCUT_CHARS].sort(), ['#', '$', '%', '&', '@']); });
+
+// ------------------------------------------------------------------------------------------------------------------------
+console.log('רשימות ערכים: מידה 4,6 / דגם 511 ו455 (רק בהקשר מילת מפתח) ושמות בטוחים');
+t('פסיק / סלאש / פלוס / "ו" צמודה לספרות - מידות ודגמים מרובים', () => {
+  const k = (q) => { const r = parseKeywords(q); return [r.sizes, r.models, r.rest]; };
+  eq(k('מידה 4,6'), [['4', '6'], [], '']); eq(k('מידה 4 ו6'), [['4', '6'], [], '']); eq(k('מידה 4/6'), [['4', '6'], [], '']); eq(k('מידה 4+6'), [['4', '6'], [], '']);
+  eq(k('מידה 4 , 6'), [['4', '6'], [], '']); eq(k('מידה 4, 6'), [['4', '6'], [], '']); eq(k('מידה 4 ,6'), [['4', '6'], [], '']);
+  eq(k('דגם 511,455'), [[], ['511', '455'], '']); eq(k('דגם 511 ו455'), [[], ['511', '455'], '']); eq(k('דגם 511 + 455'), [[], ['511', '455'], '']);
+  eq(k('מידה 4 דגם 511 ו455'), [['4'], ['511', '455'], '']); eq(k('מידה 4,6 דגם 511,455'), [['4', '6'], ['511', '455'], '']);
+  eq(k('דגם 511 ו455 כ חשוון'), [[], ['511', '455'], 'כ חשוון']); eq(k('מידה 4 ו6 דגם 3 תאריך ב חשוון'), [['4', '6'], ['3'], 'ב חשוון']);
+  eq(k('מידה 38-40 ו42'), [['38-40', '42'], [], '']); eq(k('מידה 4 ו6 ו8'), [['4', '6', '8'], [], '']); eq(k('מידה 4 ו6 שרה'), [['4', '6'], [], 'שרה']);
+  const first = parseKeywords('מידה 4 ו6 דגם 511 ו455'); eq([first.size, first.model, first.sizeKeys], ['4', '511', ['4', '6']]);
+});
+t('תקרה של 10 ערכים', () => {
+  const r = parseKeywords('מידה ' + Array.from({ length: 14 }, (_, i) => i + 2).join(','));
+  eq(r.sizes.length, 10); eq(r.rest, '');
+  eq(parseKeywords('דגם ' + Array.from({ length: 12 }, (_, i) => 100 + i).join(' ו')).models.length, 10);
+});
+t('דגל valuesDropped: ערכים מעבר ל-10 נזרקו (מידות / דגמים); בדיוק 10 = לא', () => {
+  eq(parseKeywords('מידה ' + Array.from({ length: 11 }, (_, i) => i + 2).join(',')).valuesDropped, true);
+  eq(parseKeywords('דגם ' + Array.from({ length: 11 }, (_, i) => 100 + i).join(' ו')).valuesDropped, true);
+  eq(parseKeywords('מידה ' + Array.from({ length: 10 }, (_, i) => i + 2).join(',')).valuesDropped, false);
+  eq(parseKeywords('מידה 4 דגם 3').valuesDropped, false); eq(parseKeywords('ורד כהן').valuesDropped, false);
+});
+t('isImpossibleHebrewDate: יום שלא קיים בחודש ("ל אדר" / "ל אייר" / "ל טבת") - רק כשבפועל נראה כמו תאריך', () => {
+  for (const q of ['ל אדר', 'ל אייר', 'ל טבת', 'ל תמוז', 'ל אלול', 'ל אדר ב']) ok(isImpossibleHebrewDate(q), q);
+  for (const q of ['ל חשוון', 'ל אדר א', 'ל כסלו', 'ל תשרי', 'כ חשוון', 'ורד כהן', 'ל', 'ל כהן', '', null]) ok(!isImpossibleHebrewDate(q), String(q));
+  ok(!isImpossibleHebrewDate('ל חשוון תשפו'), 'פענוח תקין (היום קיים בחלק מהשנים) - הבדיקה לפי שנה בתוכנית החיפוש');
+});
+t('בטיחות שמות: "ו" לעולם לא "וגם" בטקסט חופשי או לפני אותיות', () => {
+  for (const q of ['ורד כהן', 'ויקי', 'ויקטוריה', 'ו455', 'ו 455', 'כהן ו455', 'דבורה ושרה', 'ורד ו6']) {
+    const r = parseKeywords(q); eq([r.any, r.sizes, r.models, r.rest], [false, [], [], q], q);
+    eq(classifyQuery(q).kind === 'text' || classifyQuery(q).kind === 'orderNumber', true, q + ' ' + classifyQuery(q).kind);
+  }
+  eq(parseKeywords('מידה 4 ו אבג').sizes, ['4']); eq(parseKeywords('מידה 4 ו אבג').rest, 'ו אבג');
+  eq(parseKeywords('מידה 4 ורד').rest, 'ורד'); eq(parseKeywords('מידה 4 ורד').sizes, ['4'], 'ו לפני אותיות = לא מפריד');
+  eq(parseKeywords('מידה 4 ויקטוריה').rest, 'ויקטוריה');
+  eq(parseKeywords('דגם 511 ורד').models, ['511']); eq(parseKeywords('דגם 511 ורד').rest, 'ורד');
+  eq(parseKeywords('דגם ורד ו455').models, ['ורד ו455'], 'דגם בשם: כל מה שאחרי המילה הוא שם (כמו קודם)');
+  eq(parseKeywords('מידה 4 5/10').rest, '5/10', 'אסימון תאריך בלי מפריד לא נבלע ברשימה');
+});
+t('המילה "תאריך" לפני תאריך עברי: סימון בלבד (עם / בלי מילות מפתח)', () => {
+  eq(parseKeywords('מידה 4 תאריך כ חשוון').rest, 'כ חשוון'); eq(parseKeywords('מידה 4 כ חשוון').rest, 'כ חשוון');
+  eq(parseKeywords('מידה 4 תאריך ב חשוון').rest, 'ב חשוון'); eq(parseKeywords('מידה 4 תאריך כ״ב חשוון').rest, 'כ"ב חשוון');
+  eq(parseKeywords('מידה 4 תאריך ט״ו בשבט').rest, 'ט"ו בשבט');
+  eq(parseKeywords('מידה 4 תאריך הקבלה').rest, 'תאריך הקבלה', 'תאריך שאינו תאריך נשאר טקסט');
+  const c = classifyQuery('תאריך כ חשוון'); eq([c.kind, c.date.calendar, c.date.day, c.date.monthKey], ['date', 'hebrew', 20, 'Cheshvan']);
+  eq(classifyQuery('תאריך 5/10').kind, 'date'); eq(classifyQuery('תאריך כהן').kind, 'text');
+});
 
 // ------------------------------------------------------------------------------------------------------------------------
 console.log('matchHighlight');

@@ -247,6 +247,26 @@ t('אייקון שמירה (PFX-09): i-bookmark (סימנייה, אייקון 81
   assert.ok(/!loading && <SaveIconButton text=\{q\} saved=\{saved\} ibtn \/>/.test(home), 'ליד ה-X בשדה הבית');
   assert.ok(/<SaveIconButton text=\{q\} saved=\{saved\} \/>/.test(src('../app/components/menu/MenuSearchPanel.js')), 'בשדה התפריט / המגירה (אותו SearchBody)');
 });
+t('אייקון "שמירת חיפוש": טולטיפ (data-tip) בטקסט ברור, שם נגיש, מצב "כבר שמור" - ומנגנון הטולטיפ חי בדף הבית ובפאנל החיפוש של התפריט', () => {
+  assert.equal(SAVED_TEXT.saveIconTip, 'שמירת החיפוש הזה לשימוש חוזר - יופיע ברשימת החיפושים השמורים (הקיצור $)');
+  assert.equal(SAVED_TEXT.savedIconTip, 'החיפוש הזה כבר שמור ברשימת החיפושים השמורים (הקיצור $) - אפשר למחוק אותו משם');
+  assert.equal(SAVED_TEXT.saveIconLabel, 'שמירת חיפוש'); assert.equal(SAVED_TEXT.savedIconLabel, 'החיפוש הזה שמור');
+  const ui = src('../app/components/search/ShortcutsUi.js');
+  assert.ok(/aria-label=\{label\}/.test(ui) && /data-tip=\{tip\}/.test(ui), 'aria-label + data-tip על הכפתור');
+  assert.ok(/isSaved \? SAVED_TEXT\.savedIconTip : SAVED_TEXT\.saveIconTip/.test(ui), 'טקסט שונה כשהחיפוש כבר שמור');
+  // דף הבית: אין מעטפת שמטפלת בטולטיפים בתוכן הדף - HomeA5 מפעיל את אותו hook כמו שאר דפי A5 (usePageTooltip), עם .pl-tt, והטולטיפ נסגר בלחיצה על האייקון
+  const home = src('../app/components/home/HomeA5.js');
+  assert.ok(/import usePageTooltip from '\.\.\/profile\/usePageTooltip'/.test(home) && /usePageTooltip\(rootRef, ttRef, false\)/.test(home), 'hook הטולטיפ בבית');
+  assert.ok(/<div className="gm-ds gm-home home-bg" ref=\{rootRef\}>/.test(home) && /<div className="pl-tt" role="tooltip" ref=\{ttRef\} \/>/.test(home), 'שורש + אלמנט הטולטיפ');
+  assert.ok(/closest\('\.pfx-save'\)/.test(home), 'נסגר בלחיצה על אייקון השמירה');
+  const hook = src('../app/components/profile/usePageTooltip.js');
+  assert.ok(/mouseover/.test(hook) && /focusin/.test(hook) && /:focus-visible/.test(hook) && /Escape/.test(hook), 'ריחוף + מיקוד מקלדת (focus-visible) + Escape');
+  // תפריט עליון: הטולטיפים של הסרגל מוסתרים כשפאנל החיפוש פתוח, אבל טולטיפ של כפתור בתוך תיבת החיפוש (שמירה) מוצג
+  assert.ok(/tt\.classList\.toggle\('tt-sbox', !!el\.closest\('\.sn-sbox'\)\)/.test(src('../app/components/menu/MenuA5Shell.js')));
+  assert.ok(/\.pl-tt:not\(\.tt-sbox\)\{display:none!important\}/.test(src('../app/components/menu/menu.css')));
+  // אין כפתור שמירה בחיפוש המתקדם של הבית (HomeAdvanced) - האייקון קיים רק בשדה הראשי ובשדה התפריט
+  assert.ok(!/SaveIconButton|pfx-save/.test(src('../app/components/home/HomeAdvanced.js')));
+});
 t('מחיקה: X לכל שורה, אישור בחלון כהה, "אל תשאל שוב" עד רענון (tooltip), מקש Delete על שורה מסומנת', () => {
   const qp = src('../app/components/search/QuickPrefix.js');
   assert.ok(/e\.key === 'Delete' && askDelete && act >= 0 && items\[act\] && items\[act\]\.type === 'saved'/.test(qp));
@@ -299,23 +319,25 @@ t('CSS: בטלפון כפתור "קיצורים" אייקון בלבד (PFX-11 �
 console.log("'%' - מילות מפתח (רשימת מה אפשר להקליד; בחירה מכניסה את המילה לשדה)");
 t("buildKeywordsModel: שורה לכל פריט ב-KEYWORD_GUIDE (מקור אחד עם המנתח), לפי הסדר, עם אייקון / כותרת / הסבר / דוגמה", () => {
   const m = buildKeywordsModel({});
-  assert.equal(m.state, 'ok'); assert.equal(m.head, 'מילות מפתח'); assert.equal(m.count, KEYWORD_GUIDE.length); assert.equal(m.items.length, 7);
+  assert.equal(m.state, 'ok'); assert.equal(m.head, 'מילות מפתח'); assert.equal(m.count, KEYWORD_GUIDE.length); assert.equal(m.items.length, 9);
   assert.deepEqual(m.items.map((r) => r.id), KEYWORD_GUIDE.map((k) => k.id));
-  assert.deepEqual(m.items.map((r) => r.title), ['מידה', 'דגם', 'תאריך עברי', 'תאריך', 'ברקוד', 'מספר הזמנה', 'טלפון']);
-  assert.deepEqual(m.items.map((r) => r.example), ['מידה 2', 'דגם 3', 'כז תשרי', '5/10', '6323401', '25734', '050-1234567']);
+  assert.deepEqual(m.items.map((r) => r.title), ['מידה', 'דגם', 'כמה דגמים', 'כמה מידות', 'תאריך עברי', 'מלאי ליום מסוים', 'ברקוד', 'מספר הזמנה', 'טלפון']);
+  assert.deepEqual(m.items.map((r) => r.example), ['מידה 2', 'דגם 3', 'דגם 511,455', 'מידה 4,6', 'כז תשרי', 'מידה 4 דגם 511 כ חשוון', '6323401', '25734', '050-1234567']);
+  for (const r of m.items) assert.ok(!/\d{1,2}[/.]\d{1,2}/.test(r.example + ' ' + r.sub), 'המדריך בעברית בלבד (בלי תאריך לועזי): ' + r.id);
   for (const r of m.items) { assert.equal(r.type, 'keyword'); assert.ok(r.icon && r.title && r.sub && r.tail === r.example, r.id); assert.ok(r.key.startsWith('kw:'), r.key); assert.ok(!('labels' in r)); }
   assert.deepEqual(new Set(m.items.map((r) => r.key)).size, m.items.length, 'מפתחות ייחודיים');
   assert.equal(m.noteIcon, 'info'); assert.equal(m.none, ''); assert.equal(m.note, KEYWORDS_TEXT.note);
 });
 t("buildKeywordsModel: סינון לפי מה שהוקלד אחרי '%' (תווית / דוגמה / מילים מזוהות, לא ההסבר), בלי התאמה = הודעה", () => {
-  assert.deepEqual(buildKeywordsModel({ term: 'מידה' }).items.map((r) => r.id), ['size']);
-  assert.deepEqual(buildKeywordsModel({ term: ' תאריך ' }).items.map((r) => r.id), ['hebrewDate', 'gregorianDate']);
+  assert.deepEqual(buildKeywordsModel({ term: 'מידה' }).items.map((r) => r.id), ['size', 'multiSize', 'combo']);
+  assert.deepEqual(buildKeywordsModel({ term: ' תאריך ' }).items.map((r) => r.id), ['hebrewDate']);
+  assert.deepEqual(buildKeywordsModel({ term: 'חשוון' }).items.map((r) => r.id), ['combo']);
   assert.deepEqual(buildKeywordsModel({ term: 'נייד' }).items.map((r) => r.id), ['phone'], 'מילה מזוהה (נייד) בלי להופיע בתווית');
-  assert.deepEqual(buildKeywordsModel({ term: '5/10' }).items.map((r) => r.id), ['gregorianDate']);
+  assert.deepEqual(buildKeywordsModel({ term: '5/10' }).items.map((r) => r.id), [], 'אין שורת תאריך לועזי במדריך (התאריכים בעברית)');
   assert.deepEqual(buildKeywordsModel({ term: 'מדה' }).items.map((r) => r.id), ['size'], 'האיות החלופי מדה');
   const none = buildKeywordsModel({ term: 'zzz' });
   assert.equal(none.items.length, 0); assert.equal(none.none, KEYWORDS_TEXT.none); assert.equal(none.count, 0);
-  assert.equal(buildKeywordsModel().items.length, 7); assert.equal(buildKeywordsModel({ term: null }).items.length, 7);
+  assert.equal(buildKeywordsModel().items.length, 9); assert.equal(buildKeywordsModel({ term: null }).items.length, 9);
 });
 t("keywordInsert: יש מילה = המילה והסמן בסופה; אין מילה (תאריך) = הדוגמה כולה מסומנת; קלט חריג בטוח", () => {
   const byId = (id) => buildKeywordsModel({}).items.find((r) => r.id === id);
@@ -325,7 +347,9 @@ t("keywordInsert: יש מילה = המילה והסמן בסופה; אין מי�
   assert.deepEqual(keywordInsert(byId('orderNumber')), { text: 'הזמנה ', start: 6, end: 6 });
   assert.deepEqual(keywordInsert(byId('phone')), { text: 'טלפון ', start: 6, end: 6 });
   assert.deepEqual(keywordInsert(byId('hebrewDate')), { text: 'כז תשרי', start: 0, end: 7 });
-  assert.deepEqual(keywordInsert(byId('gregorianDate')), { text: '5/10', start: 0, end: 4 });
+  assert.deepEqual(keywordInsert(byId('multiModel')), { text: 'דגם 511,455', start: 0, end: 11 });
+  assert.deepEqual(keywordInsert(byId('multiSize')), { text: 'מידה 4,6', start: 0, end: 8 });
+  assert.deepEqual(keywordInsert(byId('combo')), { text: 'מידה 4 דגם 511 כ חשוון', start: 0, end: 22 });
   assert.deepEqual(keywordInsert(null), { text: '', start: 0, end: 0 }); assert.deepEqual(keywordInsert({}), { text: '', start: 0, end: 0 });
 });
 t("הרשימה מבטיחה רק מה שהמנתח מבין: כל דוגמה מסווגת, ו-insert + ערך מזוהה (מידה 2 / דגם 3 / ברקוד ... / הזמנה ... / טלפון ...)", () => {

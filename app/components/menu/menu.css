@@ -64,7 +64,8 @@
 .gm-ds.gm-menu .sn-res{max-height:min(42vh,300px);overflow-y:auto;overscroll-behavior:contain}
 .gm-ds.gm-menu .sn-drawer .sn-msg{padding-inline:4px}
 .gm-ds.gm-menu .sn-drawer .sn-res{max-height:none}
-.gm-ds.gm-menu:has(.sn-item[data-sn=search].open) .pl-tt{display:none!important}
+.gm-ds.gm-menu:has(.sn-item[data-sn=search].open) .pl-tt:not(.tt-sbox){display:none!important}
+/* .tt-sbox: טולטיפ של כפתור בתוך תיבת החיפוש (אייקון "שמירת חיפוש") מוצג גם כשפאנל החיפוש פתוח; שאר הטולטיפים של הסרגל מוסתרים כשהוא פתוח (z-index 970 למטה, מעל הפאנל) */
 
 /* מונה על ההמבורגר */
 .gm-ds.gm-menu .sn-burger{position:relative}
