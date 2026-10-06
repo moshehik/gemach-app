@@ -1,9 +1,9 @@
 // בדיקות לשאלון המדיניות (ביטולים וזיכויים) להנהלות: lib/policyQuestionnaire/*, המייל, החיווט של ה-API והדפים.
+// התשובות נשמרות בשרשור דיווח-תקלה (ErrorReport + ErrorReportReply) - בלי טבלה ובלי DDL; כאן הכול מול Prisma מדומה בזיכרון.
 // ללא DB, ללא רשת, ללא שליחת מייל. הרצה: node scripts/test_policy_questionnaire.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 // בדיקת הרינדור בצד שרת (SSR) צריכה react-dom + typescript (node_modules של הפרויקט, או NODE_PATH); בלעדיהם היא מדולגת ומודפס SKIP.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,12 +14,13 @@ import {
 import {
   UNDECIDED, OTHER, UNDECIDED_LABEL, OTHER_LABEL, UNANSWERED_LABEL, MAX_TEXT, KNOWN_SITE_ORIGINS,
   flattenQuestions, findQuestion, stripReportIds, optionsForQuestion, publicQuestion, publicQuestionnaire,
-  isQuestionVisible, visibleQuestions, normalizeAnswer, sanitizeAnswers, mergeAnswers, pruneHidden, isAnswered,
-  computeProgress, validateSubmission, answerLabel, summarize, tallyResponses, formatIsraelDateTime, buildPlainText,
-  buildAllPlainText, isUpdateEmail, needsEmail, hasPendingChanges, resolveSiteOrigin, answerUrl, resultsUrl, classifyDbError,
-  describeResponse, normalizeRespondent, isNotEnabledError, notEnabledPayload, NOT_ENABLED_TABLE_MESSAGE, NOT_ENABLED_OWNER_HINT,
+  isQuestionVisible, visibleQuestions, normalizeAnswer, sanitizeAnswers, pruneHidden, isAnswered,
+  computeProgress, validateSubmission, answerLabel, summarize, tallyResponses, formatIsraelDateTime,
+  resolveSiteOrigin, answerUrl, resultsUrl, classifyDbError, normalizeRespondent,
+  THREAD_TITLE, threadMarker, buildThreadIntro, renderSubmissionText, parseSubmissionText, isSubmissionText, groupSubmissions, joinSubmissionTexts,
 } from '../lib/policyQuestionnaire/logic.js';
 import { buildQuestionnaireEmail } from '../lib/policyQuestionnaire/email.js';
+import { draftKey, browserStorage, saveDraft, loadDraft, clearDraft } from '../lib/policyQuestionnaire/draft.js';
 import { EMAIL_CATALOG, emailSubject } from '../lib/emailCatalog.js';
 import { escapeHtml } from '../lib/emailTemplates.js';
 import { currentOrg, ORG_MAIN, ORG_NEVE_YAAKOV } from '../lib/orgIdentity.js';
@@ -310,26 +311,11 @@ test('computeProgress: סופר רק שאלות גלויות', () => {
   assert.deepEqual(computeProgress(NEVE, { ...completeAnswers(NEVE), 'n4.2': { choice: 1 } }), { answered: 13, total: 14 });
 });
 
-test('mergeAnswers: מחליף לפי שאלה, משאיר את השאר, null מוחק, אידמפוטנטי', () => {
-  const base = { 'n1.1': { choice: 0, otherText: '', comment: '' }, 'n1.2': { choice: 1, otherText: '', comment: 'א' } };
-  const inc = { 'n1.2': { choice: UNDECIDED }, 'n1.3': { choice: 0, comment: 'ב' }, bogus: { choice: 0 } };
-  const merged = mergeAnswers(NEVE, base, inc);
-  assert.deepEqual(merged, {
-    'n1.1': { choice: 0, otherText: '', comment: '' },
-    'n1.2': { choice: UNDECIDED, otherText: '', comment: '' },
-    'n1.3': { choice: 0, otherText: '', comment: 'ב' },
-  });
-  assert.deepEqual(mergeAnswers(NEVE, merged, inc), merged, 'מיזוג חוזר = אותה תוצאה');
-  assert.deepEqual(mergeAnswers(NEVE, base, { 'n1.1': null }), { 'n1.2': base['n1.2'] });
-  assert.deepEqual(mergeAnswers(NEVE, base, undefined), base);
-  assert.deepEqual(mergeAnswers(NEVE, undefined, undefined), {});
-});
-
-test('שליחה חוזרת אידמפוטנטית: אותן תשובות -> אותה שורה; עדכון בודד משנה רק אותו', () => {
+test('שליחה חוזרת אידמפוטנטית: אותן תשובות -> אותן תשובות; עדכון בודד משנה רק אותו', () => {
   const first = pruneHidden(NEVE, sanitizeAnswers(NEVE, completeAnswers(NEVE)));
   const again = pruneHidden(NEVE, sanitizeAnswers(NEVE, first));
   assert.deepEqual(again, first);
-  const edited = pruneHidden(NEVE, mergeAnswers(NEVE, first, { 'n1.1': { choice: 2 } }));
+  const edited = pruneHidden(NEVE, sanitizeAnswers(NEVE, { ...first, 'n1.1': { choice: 2 } }));
   assert.equal(edited['n1.1'].choice, 2);
   assert.deepEqual({ ...edited, 'n1.1': first['n1.1'] }, first);
   assert.equal(validateSubmission(NEVE, edited, { name: 'דנה' }).ok, true);
@@ -382,20 +368,6 @@ test('tallyResponses: ספירה לכל אפשרות, לא נענתה, ושאל�
   assert.equal(t43.counts.find((c) => c.value === 0).count, 1);
 });
 
-test('buildPlainText / buildAllPlainText: כל התשובות, אחר, הערה, שם ותאריך', () => {
-  const a = { ...completeAnswers(NEVE), 'n1.1': { choice: OTHER, otherText: 'שבעה ימים', comment: 'הערה ראשונה' } };
-  const txt = buildPlainText(NEVE, a, { gmachName: 'נווה יעקב', respondentName: 'דנה לוי', respondentRole: 'הנהלה', status: 'submitted', submittedAt: '2026-10-05T21:30:00Z' });
-  assert.ok(txt.includes('דנה לוי, הנהלה'));
-  assert.ok(txt.includes('אחר: שבעה ימים'));
-  assert.ok(txt.includes('הערה: הערה ראשונה'));
-  assert.ok(txt.includes('נענו 13 מתוך 13 שאלות'));
-  assert.ok(txt.includes('06.10.2026 00:30'));
-  for (const q of visibleQuestions(NEVE, a)) assert.ok(txt.includes(q.text_he), q.id);
-  const all = buildAllPlainText(NEVE, [{ respondentName: 'א', answers: a, status: 'submitted' }, { respondentName: 'ב', answers: {}, status: 'draft' }]);
-  assert.ok(all.includes('נענה על ידי: א') && all.includes('נענה על ידי: ב') && all.includes('טיוטה'));
-  assert.ok(buildAllPlainText(NEVE, []).includes('עדיין אין תשובות'));
-});
-
 test('formatIsraelDateTime: שעון ישראל (קיץ/חורף) ותאריך לא תקין', () => {
   assert.equal(formatIsraelDateTime('2026-10-05T21:30:00Z'), '06.10.2026 00:30');
   assert.equal(formatIsraelDateTime('2026-12-01T10:00:00Z'), '01.12.2026 12:00');
@@ -404,26 +376,8 @@ test('formatIsraelDateTime: שעון ישראל (קיץ/חורף) ותאריך �
 });
 
 // ---------------------------------------------------------------------------
-// מצב שורה, מייל "עודכן", קישורים, שגיאות DB
+// קישורים
 // ---------------------------------------------------------------------------
-test('מצב שורה: needsEmail / hasPendingChanges / isUpdateEmail / describeResponse', () => {
-  const t0 = '2026-10-06T10:00:00.000Z';
-  const t1 = '2026-10-06T10:00:05.000Z';
-  const t2 = '2026-10-06T10:05:00.000Z';
-  assert.equal(needsEmail({ status: 'draft' }), false);
-  assert.equal(needsEmail({ status: 'submitted', submittedAt: t0, emailedAt: null }), true);
-  assert.equal(needsEmail({ status: 'submitted', submittedAt: t0, emailedAt: t1 }), false);
-  assert.equal(needsEmail({ status: 'submitted', submittedAt: t2, emailedAt: t1 }), true, 'נשלחה גרסה חדשה אחרי המייל');
-  assert.equal(hasPendingChanges({ status: 'submitted', submittedAt: t0, updatedAt: t0 }), false);
-  assert.equal(hasPendingChanges({ status: 'submitted', submittedAt: t0, updatedAt: t2 }), true);
-  assert.equal(hasPendingChanges({ status: 'draft', submittedAt: null, updatedAt: t2 }), false);
-  assert.equal(isUpdateEmail({ emailedAt: null, submittedAt: t0 }), false);
-  assert.equal(isUpdateEmail({ emailedAt: t0, submittedAt: t2 }), true);
-  assert.equal(describeResponse(null), null);
-  const d = describeResponse({ status: 'submitted', submittedAt: t0, updatedAt: t2, emailedAt: null, emailError: 'x' });
-  assert.deepEqual([d.pendingChanges, d.needsEmail, d.emailError], [true, true, 'x']);
-});
-
 test('resolveSiteOrigin: כותרות בקשה, הגנה מהזרקה, משתנה סביבה, כתובת ידועה', () => {
   assert.equal(resolveSiteOrigin({ forwardedHost: 'gmach-neve-yaakov.vercel.app', forwardedProto: 'https' }), 'https://gmach-neve-yaakov.vercel.app');
   assert.equal(resolveSiteOrigin({ host: 'gemach-app-uyh4-beryl.vercel.app' }), 'https://gemach-app-uyh4-beryl.vercel.app');
@@ -437,16 +391,6 @@ test('resolveSiteOrigin: כותרות בקשה, הגנה מהזרקה, משתנ�
   assert.equal(KNOWN_SITE_ORIGINS.org2, 'https://gmach-neve-yaakov.vercel.app');
   assert.equal(resultsUrl('https://x.app'), 'https://x.app/refund-questionnaire/answers');
   assert.equal(answerUrl('https://x.app'), 'https://x.app/refund-questionnaire');
-});
-
-test('classifyDbError: טבלה חסרה / התעוררות / אחר', () => {
-  assert.equal(classifyDbError({ code: 'P2021' }), 'missing_table');
-  assert.equal(classifyDbError({ message: 'relation "PolicyQuestionnaireResponse" does not exist' }), 'missing_table');
-  assert.equal(classifyDbError({ code: 'P1001' }), 'transient');
-  assert.equal(classifyDbError({ code: 'P2024' }), 'transient');
-  assert.equal(classifyDbError({ message: "Can't reach database server at ep-x.neon.tech" }), 'transient');
-  assert.equal(classifyDbError({ message: 'syntax error at or near "FROM"' }), 'other');
-  assert.equal(classifyDbError(null), 'other');
 });
 
 // ---------------------------------------------------------------------------
@@ -498,14 +442,15 @@ test('מייל: נושא, גוף טקסט ו-HTML מכילים את כל התש�
     assert.ok(mail.html.includes('06.10.2026 00:30'));
     assert.ok(!/<script/i.test(mail.html));
     assert.ok(!mail.html.includes('עודכן'), 'שליחה ראשונה בלי תגית עודכן');
-    assert.ok(!mail.body.includes(' (עודכן)'));
+    assert.ok(!mail.body.includes('עדכון - זו גרסה'));
+    assert.ok(mail.body.includes('שרשור "📋 שאלון מדיניות ביטולים וזיכויים"'), 'מזכיר שהתשובות גם בשרשור');
   }
 });
 
 test('מייל "עודכן": נושא עם (עודכן), גוף ו-HTML מסומנים', () => {
   const mail = buildQuestionnaireEmail({ qn: NEVE, response: sampleResponse(NEVE), updated: true, origin: 'https://gmach-neve-yaakov.vercel.app' });
   assert.ok(mail.subject.endsWith(' (עודכן)'));
-  assert.ok(mail.body.includes('(עודכן)'));
+  assert.ok(mail.body.includes('עדכון - זו גרסה מעודכנת'));
   assert.ok(mail.html.includes('עודכן'));
 });
 
@@ -526,37 +471,148 @@ test('מייל: שאלה מותנית מוסתרת לא נשלחת במייל', 
 });
 
 // ---------------------------------------------------------------------------
-// חיווט (בדיקות סטטיות של הקבצים)
+// השרשור: הדפסת התשובות לטקסט של תגובה, פענוח חזרה, וקיבוץ לפי משיבה
 // ---------------------------------------------------------------------------
-test('חיווט: ה-API מחייב הנהלה ראשית/מתכנת ולא סומך על employeeId מהלקוח', () => {
-  for (const f of ['app/api/policy-questionnaire/route.js', 'app/api/policy-questionnaire/resend/route.js', 'app/api/policy-questionnaire/answers/route.js']) {
-    const s = src(f);
-    assert.ok(s.includes('requireHeadManagement'), f);
-    assert.ok(!/body\.employeeId|body\.employee\b|searchParams/.test(s), `${f}: מזהה מהלקוח`);
-    assert.ok(!/\$transaction/.test(s), f);
+function variedAnswers(qn) {
+  const out = {};
+  const qs = flattenQuestions(qn);
+  qs.forEach((q, i) => {
+    const n = q.options_he.length;
+    const kind = i % 4;
+    out[q.id] = {
+      choice: kind === 0 ? 0 : kind === 1 ? n - 1 : kind === 2 ? UNDECIDED : (q.allowOther ? OTHER : 0),
+      otherText: kind === 3 && q.allowOther ? `פירוט ${q.id}` : '',
+      comment: i % 3 === 0 ? `הערה ל-${q.id}` : '',
+    };
+  });
+  return out;
+}
+
+test('שרשור: הדפסה ופענוח הלוך-חזור על כל תשובה אפשרית בשני הגמחים (אפשרות, אחר, לא החלטנו, הערה)', () => {
+  for (const qn of [MAIN, NEVE]) {
+    const answers = pruneHidden(qn, sanitizeAnswers(qn, variedAnswers(qn)));
+    const text = renderSubmissionText(qn, answers, { respondentName: 'דנה לוי', respondentRole: 'הנהלה ראשית', submittedAt: '2026-10-05T21:30:00Z', updated: false });
+    const parsed = parseSubmissionText(qn, text);
+    assert.deepEqual(parsed.answers, answers, `${qn.orgKey} round trip`);
+    assert.deepEqual(parsed.unparsed, []);
+    assert.equal(parsed.respondentName, 'דנה לוי');
+    assert.equal(parsed.respondentRole, 'הנהלה ראשית');
+    assert.equal(parsed.updated, false);
+    assert.equal(parsed.sentAtText, '06.10.2026 00:30');
+    // כל שאלה גלויה, כל תשובה וכל הערה מופיעות בטקסט
+    for (const q of visibleQuestions(qn, answers)) {
+      assert.ok(text.includes(`${q.id} ${q.text_he}`), `question ${q.id}`);
+      assert.ok(text.includes(`תשובה: ${answerLabel(q, answers[q.id])}`), `answer ${q.id}`);
+      if (answers[q.id].comment) assert.ok(text.includes(`הערה: ${answers[q.id].comment}`), `comment ${q.id}`);
+    }
   }
-  const access = src('lib/policyQuestionnaire/access.js');
-  assert.ok(access.includes("checkAuth('הנהלה ראשית')"));
-  assert.ok(access.includes('getSessionEmployee'));
-  assert.ok(access.includes('HEAD_MANAGEMENT_ROLES'));
-  assert.ok(access.includes('roleId === 2'), 'source לבעלים בלבד');
-  const post = src('app/api/policy-questionnaire/route.js');
-  assert.ok(post.includes('validateSubmission') && post.includes('emailSent'), 'POST בודק תקינות ומחזיר emailSent');
-  assert.ok(post.includes('sendQuestionnaireEmailAndRecord'));
 });
 
-test('חיווט: שער הדפים checkPageAccess(HEAD_MANAGEMENT_ROLES) + NoAccessMessage, כמו app/admin', () => {
-  const layout = src('app/refund-questionnaire/layout.js');
-  assert.ok(layout.includes('checkPageAccess(HEAD_MANAGEMENT_ROLES)'));
-  assert.ok(layout.includes('NoAccessMessage'));
-  assert.ok(layout.includes("./refund-questionnaire.css"));
-  assert.ok(existsSync(path.join(root, 'app/refund-questionnaire/page.js')));
-  assert.ok(existsSync(path.join(root, 'app/refund-questionnaire/answers/page.js')));
-  assert.ok(src('app/refund-questionnaire/answers/page.js').includes('requireHeadManagement'));
-  assert.ok(src('app/refund-questionnaire/answers/page.js').includes('requireHeadManagement({ page: true })'), 'דף שרת בלי checkAuth (לא ניתן לכתוב עוגיות מדף)');
+test('שרשור: כל אפשרות של כל שאלה (כולל "אחר" ו"לא החלטנו") נפענחת בחזרה לאותו אינדקס', () => {
+  for (const qn of [MAIN, NEVE]) {
+    for (const q of flattenQuestions(qn)) {
+      for (const o of optionsForQuestion(q)) {
+        const a = { choice: o.value, otherText: o.kind === 'other' ? 'טקסט אחר' : '', comment: '' };
+        const text = renderSubmissionText(qn, { [q.id]: a }, { respondentName: 'א' });
+        // שאלה מותנית (n4.3) מוצגת רק כשהשולטת נענתה; הבדיקה הזו על השאלות הגלויות בלי תשובה אחרת
+        if (!isQuestionVisible(qn, q, { [q.id]: a })) continue;
+        assert.deepEqual(parseSubmissionText(qn, text).answers[q.id], a, `${q.id} / ${o.label}`);
+      }
+    }
+  }
 });
 
-// ---- הטבלה: בלי DDL בקוד האפליקציה; יצירה ידנית בלבד (SQL + סקריפט עם dry-run ובדיקת זהות) ----
+test('שרשור: טקסט רב-שורתי ב"אחר" ובהערה (כולל שורה ריקה ושורה שנראית כמו שאלה) נשמר, ושאלה מוסתרת לא נכתבת', () => {
+  const answers = {
+    'n1.1': { choice: OTHER, otherText: 'שורה א\nשורה ב', comment: 'הערה א\n\nn1.2 זה לא שאלה\nתשובה: גם זה לא' },
+    'n1.2': { choice: 0, otherText: '', comment: '' },
+    'n4.2': { choice: 0, otherText: '', comment: '' },
+    'n4.3': { choice: 0, otherText: '', comment: '' }, // מוסתרת: n4.2 = 0
+  };
+  const text = renderSubmissionText(NEVE, pruneHidden(NEVE, answers), { respondentName: 'דנה' });
+  assert.ok(!text.includes(`n4.3 ${findQuestion(NEVE, 'n4.3').text_he}`), 'n4.3 לא נכתבת');
+  const p = parseSubmissionText(NEVE, text);
+  assert.deepEqual(p.answers['n1.1'], { choice: OTHER, otherText: 'שורה א\nשורה ב', comment: 'הערה א\n\nn1.2 זה לא שאלה\nתשובה: גם זה לא' });
+  assert.equal(p.answers['n1.2'].choice, 0);
+  assert.ok(!('n4.3' in p.answers));
+  assert.deepEqual(p.unparsed, []);
+});
+
+test('שרשור: שליחה חוזרת מסומנת "עדכון"; שליחה ראשונה לא; הכותרת מזהה תגובת תשובות', () => {
+  const a = completeAnswers(NEVE);
+  const first = renderSubmissionText(NEVE, a, { respondentName: 'דנה', updated: false });
+  const second = renderSubmissionText(NEVE, a, { respondentName: 'דנה', updated: true });
+  assert.ok(first.startsWith(`${THREAD_TITLE} - נווה יעקב\n`));
+  assert.ok(!first.includes('עדכון'));
+  assert.ok(second.split('\n')[1].startsWith('עדכון'));
+  assert.equal(parseSubmissionText(NEVE, first).updated, false);
+  assert.equal(parseSubmissionText(NEVE, second).updated, true);
+  assert.equal(isSubmissionText(first), true);
+  assert.equal(isSubmissionText('תגובה חופשית של מתכנת'), false);
+  assert.equal(isSubmissionText(''), false);
+  assert.equal(parseSubmissionText(NEVE, 'תגובה חופשית'), null);
+});
+
+test('שרשור: תשובה שנוסחה לא מזוהה (אחרי שינוי נוסח אפשרות) מדווחת ב-unparsed ולא נכנסת לתשובות', () => {
+  const a = completeAnswers(NEVE);
+  const text = renderSubmissionText(NEVE, a, { respondentName: 'דנה' }).replace(`תשובה: ${findQuestion(NEVE, 'n1.1').options_he[0]}`, 'תשובה: נוסח שלא קיים במאגר');
+  const p = parseSubmissionText(NEVE, text);
+  assert.deepEqual(p.unparsed, ['n1.1']);
+  assert.ok(!('n1.1' in p.answers));
+  assert.equal(p.answers['n1.2'].choice, 0);
+});
+
+test('שרשור: threadMarker, כותרת קבועה ותוכן פותח', () => {
+  assert.equal(THREAD_TITLE, '📋 שאלון מדיניות ביטולים וזיכויים');
+  assert.equal(threadMarker(QUESTIONNAIRE_KEY), 'policy-questionnaire:refunds-2026-10');
+  assert.notEqual(threadMarker('refunds-2027-01'), threadMarker(QUESTIONNAIRE_KEY));
+  const intro = buildThreadIntro(NEVE);
+  assert.ok(intro.startsWith(THREAD_TITLE) && intro.includes('נווה יעקב') && intro.includes('/refund-questionnaire/answers') && intro.includes('עדכון'));
+});
+
+test('groupSubmissions: לפי משיבה, האחרונה במלואה + גרסאות קודמות מהחדשה לישנה, מדלג על תגובות חופשיות, החדשה ראשונה', () => {
+  const mk = (id, employeeId, createdAt, o = {}) => ({
+    id, employeeId, employeeName: o.employeeName || '', createdAt,
+    text: o.text || renderSubmissionText(NEVE, o.answers || completeAnswers(NEVE), { respondentName: o.name || 'דנה', respondentRole: 'הנהלה', submittedAt: createdAt, updated: !!o.updated }),
+  });
+  const replies = [
+    mk('r3', 'e1', '2026-10-06T10:00:00Z', { updated: true, answers: { ...completeAnswers(NEVE), 'n1.1': { choice: 1, otherText: '', comment: '' } } }),
+    mk('r1', 'e1', '2026-10-06T08:00:00Z'),
+    mk('r2', 'e2', '2026-10-06T09:00:00Z', { name: 'רבקה' }),
+    { id: 'free', employeeId: 'e2', employeeName: 'רבקה', createdAt: '2026-10-06T11:00:00Z', text: 'שאלה חופשית מהמתכנת' },
+    mk('r4', null, '2026-10-06T07:00:00Z', { name: 'ללא מזהה' }),
+  ];
+  const groups = groupSubmissions(NEVE, replies);
+  assert.deepEqual(groups.map((g) => g.name), ['דנה', 'רבקה', 'ללא מזהה']);
+  const d = groups[0];
+  assert.equal(d.count, 2);
+  assert.equal(d.latest.id, 'r3');
+  assert.equal(d.latest.updated, true);
+  assert.equal(d.latest.answers['n1.1'].choice, 1);
+  assert.deepEqual(d.earlier.map((e) => e.id), ['r1']);
+  assert.equal(groups[1].count, 1, 'תגובה חופשית לא נספרת');
+  assert.equal(groups[1].latest.id, 'r2');
+  assert.deepEqual(groupSubmissions(NEVE, []), []);
+  assert.deepEqual(groupSubmissions(NEVE, null), []);
+  // tally על השליחה האחרונה של כל משיבה
+  const tally = tallyResponses(NEVE, groups.map((g) => g.latest));
+  assert.equal(tally.find((t) => t.id === 'n1.1').total, 3);
+  assert.equal(tally.find((t) => t.id === 'n1.1').counts.find((c) => c.value === 1).count, 1);
+  assert.equal(joinSubmissionTexts(['א', '', 'ב']), 'א\n\n------------------------------\n\nב');
+});
+
+test('classifyDbError: התעוררות / אחר (אין יותר "טבלה חסרה")', () => {
+  assert.equal(classifyDbError({ code: 'P1001' }), 'transient');
+  assert.equal(classifyDbError({ code: 'P2024' }), 'transient');
+  assert.equal(classifyDbError({ message: "Can't reach database server at ep-x.neon.tech" }), 'transient');
+  assert.equal(classifyDbError({ message: 'syntax error at or near "FROM"' }), 'other');
+  assert.equal(classifyDbError({ code: 'P2021' }), 'other');
+  assert.equal(classifyDbError(null), 'other');
+});
+
+// ---------------------------------------------------------------------------
+// אין טבלה / סכימה / DDL (החלטת הבעלים 2026-10-06: התשובות בשרשור דיווח-תקלה)
+// ---------------------------------------------------------------------------
 const FEATURE_DIRS = ['lib/policyQuestionnaire', 'app/api/policy-questionnaire', 'app/refund-questionnaire'];
 function featureFiles() {
   const out = [];
@@ -570,201 +626,107 @@ function featureFiles() {
   return out;
 }
 const DDL_RE = /\b(?:CREATE|ALTER|DROP|TRUNCATE|RENAME)\s+(?:OR\s+REPLACE\s+)?(?:UNIQUE\s+)?(?:TABLE|INDEX|SCHEMA|DATABASE|COLUMN|VIEW|TYPE|EXTENSION|CONSTRAINT|SEQUENCE|FUNCTION|TRIGGER)\b/i;
-const SQL_REL = 'prisma/migrations-pending/2026-10-06-policy-questionnaire-response.sql';
-const APPLY_REL = 'scripts/apply_policy_questionnaire_table.js';
-const applyScript = createRequire(import.meta.url)(path.join(root, APPLY_REL));
 
-test('אין DDL בשום קובץ של הפיצ\'ר (lib/policyQuestionnaire, app/api/policy-questionnaire, app/refund-questionnaire): לא CREATE/ALTER/DROP, לא ensureTable', () => {
+test('אין DDL ואין SQL גולמי בשום קובץ של הפיצ\'ר, וה-store כותב רק דרך prisma.errorReport / prisma.errorReportReply', () => {
   const files = featureFiles();
-  assert.ok(files.length >= 14, `נמצאו ${files.length} קבצים`);
+  assert.ok(files.length >= 12, `נמצאו ${files.length} קבצים`);
   for (const f of files) {
     const s = src(f); // כולל הערות: גם בהערות אסור (הבדיקה מחמירה בכוונה)
     assert.ok(!DDL_RE.test(s), `${f}: מכיל משפט DDL`);
     assert.ok(!/ensureTable|createTable|tableReady|CREATE TABLE/i.test(s), `${f}: שאריות יצירה עצלנית`);
-    assert.ok(!/\$executeRaw/.test(s), `${f}: $executeRaw (הפיצ'ר כותב רק ב-INSERT/UPDATE ... RETURNING דרך $queryRawUnsafe)`);
+    assert.ok(!/\$executeRaw|\$queryRaw/.test(s), `${f}: SQL גולמי`);
     assert.ok(!/\$transaction\(/.test(s), `${f}: $transaction`);
+    assert.ok(!/PolicyQuestionnaireResponse|policyQuestionnaireResponse|not_enabled|NotEnabled/.test(s), `${f}: שארית של הטבלה`);
   }
-  // הבדיקה עצמה תופסת: מחרוזות DDL לדוגמה
   for (const bad of ['CREATE TABLE IF NOT EXISTS "X" (id int)', 'create unique index i on t(a)', 'ALTER TABLE "X" ADD COLUMN y int', 'DROP TABLE "X"']) assert.ok(DDL_RE.test(bad), bad);
-  assert.ok(!DDL_RE.test('SELECT * FROM "PolicyQuestionnaireResponse" WHERE "orgKey" = $1'));
+  const store = src('lib/policyQuestionnaire/store.js');
+  assert.ok(store.includes('prisma.errorReport.create') && store.includes('prisma.errorReportReply.create') && store.includes('prisma.errorReport.update'));
+  assert.ok(!/auditLog/i.test(store.replace(/\/\/.*$/gm, '')), 'אין כתיבת AuditLog ידנית');
+  assert.ok(store.includes("@/app/lib/prisma"), 'הלקוח המשותף (עם תוסף ה-AuditLog)');
 });
 
-test('store: SQL גולמי בלבד (SELECT/INSERT/UPDATE), בלי prisma.<model>, בלי AuditLog ידני, מנסה שוב רק על התעוררות', () => {
-  const s = src('lib/policyQuestionnaire/store.js');
-  assert.ok(s.includes('$queryRawUnsafe'));
-  assert.ok(!/prisma\.policyQuestionnaire/i.test(s));
-  assert.ok(!/auditLog/i.test(s.replace(/\/\/.*$/gm, '')), 'אין כתיבת AuditLog ידנית');
-  assert.ok(!/prisma\.\$executeRaw`/.test(s));
-  for (const col of ['id', 'questionnaireKey', 'orgKey', 'employeeId', 'respondentName', 'respondentRole', 'answers', 'status', 'submittedAt', 'emailedAt', 'emailError', 'createdAt', 'updatedAt']) {
-    assert.ok(s.includes(`"${col}"`), `עמודה ${col}`);
+test('אין שום שאריות של הטבלה: סכימה, תוסף ה-AuditLog, SQL ממתין, סקריפט הרצה, SQLite והסנכרון הלא מקוון', () => {
+  for (const f of ['prisma/schema.prisma', 'prisma/schema.local.prisma', 'prisma/schema-sqlite.prisma', 'app/lib/prisma.js', 'lib/offlineSync.js']) {
+    if (!existsSync(path.join(root, f))) continue;
+    assert.ok(!/PolicyQuestionnaire|policyQuestionnaire/.test(src(f)), `${f}: שארית של שאלון המדיניות`);
   }
-  assert.ok(s.includes("ON CONFLICT (\"questionnaireKey\", \"employeeId\")"), 'שורה אחת לכל (שאלון, עובדת)');
-  assert.ok(s.includes("kind === 'missing_table'") && s.includes("kind === 'transient'"));
-  assert.ok(/if \(kind === 'missing_table'\) throw/.test(s), 'טבלה חסרה = עצירה מיידית, בלי ניסיון חוזר');
-  assert.ok(!/UNIQUE_INDEX/.test(s));
-});
-
-test('SQL הממתין: קיים, תוספת בלבד (CREATE ... IF NOT EXISTS), טבלה + אינדקס ייחודי (questionnaireKey, employeeId), בלי משפט הרסני', () => {
-  assert.ok(existsSync(path.join(root, SQL_REL)));
-  const text = src(SQL_REL);
-  const stmts = applyScript.assertAdditiveOnly(applyScript.statementsOf(text));
-  assert.equal(stmts.length, 2, 'משפט טבלה + משפט אינדקס');
-  assert.ok(/^CREATE TABLE IF NOT EXISTS "PolicyQuestionnaireResponse"/.test(stmts[0]));
-  assert.ok(/^CREATE UNIQUE INDEX IF NOT EXISTS "PolicyQuestionnaireResponse_questionnaireKey_employeeId_key" ON "PolicyQuestionnaireResponse"\("questionnaireKey", "employeeId"\)$/.test(stmts[1]));
-  for (const s of stmts) assert.ok(!/\b(DROP|ALTER|DELETE|TRUNCATE|UPDATE|INSERT|GRANT|REVOKE)\b/i.test(s), s.slice(0, 40));
-  // ה-DROP היחיד בקובץ הוא שורת הערה ("ביטול - לא להריץ")
-  const uncommented = text.split(/\r?\n/).filter((l) => !l.trim().startsWith('--')).join('\n');
-  assert.ok(!/\b(DROP|ALTER|DELETE|TRUNCATE)\b/i.test(uncommented), 'DROP/ALTER רק בהערה');
-  assert.ok(text.includes('לא הורץ על אף DB') && text.includes('אישור מפורש'));
-});
-
-test('assertAdditiveOnly: דוחה DROP / ALTER / DELETE / CREATE בלי IF NOT EXISTS / משפט לא מוכר / קובץ ריק', () => {
-  const bad = ['DROP TABLE "PolicyQuestionnaireResponse"', 'ALTER TABLE "PolicyQuestionnaireResponse" ADD COLUMN x int', 'DELETE FROM "PolicyQuestionnaireResponse"',
-    'CREATE TABLE "PolicyQuestionnaireResponse" (id int)', 'TRUNCATE "PolicyQuestionnaireResponse"', 'UPDATE "SystemSetting" SET value = 1',
-    'CREATE TABLE IF NOT EXISTS "X" (id int); DROP TABLE "Order"'];
-  for (const b of bad) assert.throws(() => applyScript.assertAdditiveOnly(applyScript.statementsOf(b)), /ABORT/, b);
-  assert.throws(() => applyScript.assertAdditiveOnly([]), /ABORT/);
-  assert.doesNotThrow(() => applyScript.assertAdditiveOnly(applyScript.statementsOf('-- comment\nCREATE INDEX IF NOT EXISTS "i" ON "t"("a");')));
-});
-
-test('סקריפט ההרצה: dry-run כברירת מחדל, --write מפורש, --org חובה, דגל לא מוכר = עצירה', () => {
-  assert.throws(() => applyScript.parseArgs([]), /--org=1\|2 is required/);
-  assert.throws(() => applyScript.parseArgs(['--write']), /--org=1\|2 is required/);
-  assert.throws(() => applyScript.parseArgs(['--org=3']), /must be 1 or 2/);
-  assert.throws(() => applyScript.parseArgs(['--org=1', '--force']), /unknown argument/);
-  assert.throws(() => applyScript.parseArgs(['--org=1', '--write', '--no-connect']), /cannot be combined/);
-  assert.deepEqual(applyScript.parseArgs(['--org=1']), { org: 1, dbEnv: null, write: false, noConnect: false });
-  assert.deepEqual(applyScript.parseArgs(['--org=2', '--db-env=x.env']), { org: 2, dbEnv: 'x.env', write: false, noConnect: false });
-  assert.equal(applyScript.parseArgs(['--org=2', '--write']).write, true);
-  const s = src(APPLY_REL);
-  assert.ok(s.indexOf('if (!write)') > 0 && s.indexOf('if (!write)') < s.indexOf('$transaction('), 'ה-dry-run חוזר לפני ההרצה');
-  assert.ok((s.match(/\$executeRawUnsafe/g) || []).length === 1 && s.indexOf('$executeRawUnsafe') > s.indexOf('$transaction('), 'כתיבה רק בתוך הטרנזקציה של --write');
-  assert.ok(!/['"]DATABASE_URL['"]|env\.DATABASE_URL|resolveDbUrl/.test(s.replace(/\/\/.*$/gm, '')), 'אין נפילה ל-DATABASE_URL');
-});
-
-test('סקריפט ההרצה: בדיקת זהות - host שונה בין הגמחים, שני המשתנים חובה, בלי DATABASE_URL, gmach_name מתאים לגמח', () => {
-  const A = 'postgresql://u:p@ep-main.neon.tech/db';
-  const B = 'postgresql://u:p@ep-neve.neon.tech/db';
-  assert.throws(() => applyScript.pickConnection(1, null, { DATABASE_URL: A }), /NO fallback to DATABASE_URL/);
-  assert.throws(() => applyScript.pickConnection(1, null, { PROD_DATABASE_URL: A }), /PROD_DATABASE_URL_ORG2 not set/);
-  assert.throws(() => applyScript.pickConnection(2, null, { PROD_DATABASE_URL_ORG2: B }), /PROD_DATABASE_URL not set/);
-  assert.throws(() => applyScript.pickConnection(1, null, { PROD_DATABASE_URL: A, PROD_DATABASE_URL_ORG2: A }), /equals the other org's host/);
-  const c1 = applyScript.pickConnection(1, null, { PROD_DATABASE_URL: A, PROD_DATABASE_URL_ORG2: B });
-  const c2 = applyScript.pickConnection(2, null, { PROD_DATABASE_URL: A, PROD_DATABASE_URL_ORG2: B });
-  assert.equal(c1.host, 'ep-main.neon.tech');
-  assert.equal(c2.host, 'ep-neve.neon.tech');
-  assert.equal(c1.varName, 'PROD_DATABASE_URL');
-  assert.equal(c2.varName, 'PROD_DATABASE_URL_ORG2');
-  const MAIN_NAME = 'מכובד- השכרת שמלות';
-  const NEVE_NAME = 'גמ"ח שמלות נווה יעקב';
-  assert.equal(applyScript.gmachNameMatchesOrg(MAIN_NAME, 1), true);
-  assert.equal(applyScript.gmachNameMatchesOrg(MAIN_NAME, 2), false);
-  assert.equal(applyScript.gmachNameMatchesOrg(NEVE_NAME, 2), true);
-  assert.equal(applyScript.gmachNameMatchesOrg(NEVE_NAME, 1), false);
-  assert.equal(applyScript.gmachNameMatchesOrg(null, 1), false);
-  assert.equal(applyScript.gmachNameMatchesOrg('', 2), false);
-  assert.equal(applyScript.gmachNameMatchesOrg('גמ"ח שמלות', 1), false);
-  const s = src(APPLY_REL);
-  assert.ok(s.includes("gmach_name") && s.includes('ABORT: gmach_name'));
-});
-
-test('סקריפט ההרצה כתהליך: --no-connect מדפיס SQL ולא מתחבר; בלי --org / עם דגל לא מוכר / --write עם --no-connect = שגיאה', () => {
-  const run = (...args) => spawnSync(process.execPath, [path.join(root, APPLY_REL), ...args], { encoding: 'utf8', env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot } });
-  const ok = run('--org=1', '--no-connect');
-  assert.equal(ok.status, 0, ok.stderr);
-  assert.ok(ok.stdout.includes('dry-run') && ok.stdout.includes('CREATE TABLE IF NOT EXISTS "PolicyQuestionnaireResponse"') && ok.stdout.includes('no database connection was opened'));
-  const none = run();
-  assert.equal(none.status, 1);
-  assert.ok(none.stderr.includes('--org=1|2 is required'));
-  assert.equal(run('--org=1', '--wat').status, 1);
-  const both = run('--org=1', '--write', '--no-connect');
-  assert.equal(both.status, 1);
-  assert.ok(!both.stdout.includes('CREATE TABLE'), 'שום SQL לא הודפס/הורץ לפני העצירה');
-});
-
-test('schema.prisma: המודל PolicyQuestionnaireResponse תואם לעמודות ה-SQL, מסומן "never db push", ו-AuditLog מדלג עליו', () => {
-  const schema = src('prisma/schema.prisma');
-  const block = schema.split(/^model PolicyQuestionnaireResponse \{/m)[1].split(/^\}/m)[0];
-  const fields = block.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('//') && !l.startsWith('@@')).map((l) => l.split(/\s+/)[0]);
-  const sql = src(SQL_REL);
-  const uncommentedSql = sql.split(/\r?\n/).filter((l) => !l.trim().startsWith('--')).join('\n');
-  const tableSql = uncommentedSql.split('CREATE TABLE IF NOT EXISTS')[1].split(' (\n')[1].split(');')[0];
-  const cols = [...tableSql.matchAll(/^\s+"(\w+)"\s/gm)].map((m) => m[1]);
-  assert.deepEqual(fields, cols, 'אותן עמודות באותו סדר ב-schema וב-SQL');
-  assert.ok(block.includes('@@unique([questionnaireKey, employeeId])'));
-  assert.ok(schema.includes('created via prisma/migrations-pending, never db push'));
-  assert.ok(schema.includes('2026-10-06-policy-questionnaire-response.sql'));
-  assert.ok(/model === 'PolicyQuestionnaireResponse'/.test(src('app/lib/prisma.js')), 'ברשימת הדילוג של תוסף ה-AuditLog');
-  // לא נוסף לרשימות של SQLite / סנכרון לא מקוון (טבלת ענן בלבד)
-  assert.ok(!/PolicyQuestionnaireResponse/.test(src('prisma/schema.local.prisma')) && !/policyQuestionnaireResponse/.test(src('lib/offlineSync.js')));
-});
-
-test('דפי הפיצ\'ר: תוויות עברית לתפריט (pageLabels) לשני הדפים', () => {
-  const labels = src('lib/menu/pageLabels.js');
-  assert.ok(labels.includes("'/refund-questionnaire': 'שאלון ביטולים וזיכויים'"));
-  assert.ok(labels.includes("'/refund-questionnaire/answers': 'תשובות שאלון ביטולים וזיכויים'"));
-});
-
-test('מצב "עדיין לא הופעל": classifyDbError/isNotEnabledError מזהים 42P01 / P2021 / P2010 עטוף, ולא מבלבלים עם שגיאה אחרת', () => {
-  const p2010 = Object.assign(new Error('Raw query failed. Code: `42P01`. Message: `relation "PolicyQuestionnaireResponse" does not exist`'), { code: 'P2010', meta: { code: '42P01', message: 'relation "PolicyQuestionnaireResponse" does not exist' } });
-  for (const e of [{ code: '42P01' }, { code: 'P2021' }, p2010, { code: 'P2010', meta: { code: '42P01' } },
-    new Error('The table `public.PolicyQuestionnaireResponse` does not exist in the current database.'), { kind: 'missing_table' },
-    { code: 'P2010', cause: { code: '42P01' } }]) {
-    assert.equal(isNotEnabledError(e), true, JSON.stringify(e));
-  }
-  for (const e of [null, undefined, new Error('boom'), { code: 'P1001' }, { code: 'P2010', meta: { code: '22P02' }, message: 'invalid input syntax for type json' }, { kind: 'transient' }]) {
-    assert.equal(isNotEnabledError(e), false, JSON.stringify(e));
-  }
-  const p = notEnabledPayload();
-  assert.deepEqual(p, { ok: false, code: 'not_enabled', error: 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.' });
-  assert.equal(NOT_ENABLED_TABLE_MESSAGE, 'הטבלה עדיין לא נוצרה.');
-  assert.ok(NOT_ENABLED_OWNER_HINT.includes('apply_policy_questionnaire_table.js') && NOT_ENABLED_OWNER_HINT.includes('--write') && NOT_ENABLED_OWNER_HINT.includes('אישור מפורש'));
-});
-
-test('חיווט: הקליינט מטפל ב-not_enabled (מצב notEnabled, בלי טופס), והדפים/המסלולים משתמשים ב-isNotEnabledError', () => {
-  const c = src('app/refund-questionnaire/RefundQuestionnaireClient.js');
-  assert.ok(c.includes("data.code === NOT_ENABLED_CODE") && c.includes("setPhase('notEnabled')") && c.includes('<NotEnabledForm />'));
-  assert.ok(src('app/refund-questionnaire/answers/page.js').includes('isNotEnabledError(e)') && src('app/refund-questionnaire/answers/page.js').includes('NotEnabledResults'));
-  for (const f of ['app/api/policy-questionnaire/route.js', 'app/api/policy-questionnaire/answers/route.js', 'app/api/policy-questionnaire/resend/route.js']) {
-    assert.ok(src(f).includes('isNotEnabledError') && src(f).includes('notEnabledPayload'), f);
+  const pending = path.join(root, 'prisma/migrations-pending');
+  if (existsSync(pending)) assert.deepEqual(readdirSync(pending).filter((n) => /questionnaire/i.test(n)), [], 'אין SQL ממתין לשאלון');
+  assert.ok(!existsSync(path.join(root, 'scripts/apply_policy_questionnaire_table.js')));
+  assert.ok(!existsSync(path.join(root, 'app/refund-questionnaire/NotEnabled.js')));
+  for (const f of ['CLAUDE.md', 'docs/refund-questionnaire.md']) {
+    const s = src(f).split('\n').filter((l) => /questionnaire|שאלון/i.test(l)).join('\n');
+    assert.ok(!/apply_policy_questionnaire_table|migrations-pending\/2026-10-06-policy|CREATE TABLE/.test(s), `${f}: תיעוד של הטבלה הישנה`);
   }
 });
 
-test('תיעוד: docs/refund-questionnaire.md מסביר את ההרצה הידנית, ה-dry-run, האישור והמצב "לא הופעל"; CLAUDE.md לא כותב "lazily"', () => {
-  const d = src('docs/refund-questionnaire.md');
-  assert.ok(d.includes('prisma/migrations-pending/2026-10-06-policy-questionnaire-response.sql'));
-  assert.ok(d.includes('scripts/apply_policy_questionnaire_table.js') && d.includes('--org=1') && d.includes('--org=2') && d.includes('--write') && d.includes('dry-run'));
-  assert.ok(d.includes('אישור מפורש') && d.includes('השאלון עדיין לא הופעל') && d.includes('הטבלה עדיין לא נוצרה'));
-  assert.ok(d.includes('שום דבר לא רץ אוטומטית'));
-  assert.ok(!/נוצרת עצלנית|CREATE TABLE IF NOT EXISTS ב-`lib/.test(d), 'התיאור הישן של יצירה עצלנית הוסר');
-  const claude = src('CLAUDE.md');
-  assert.ok(!/created lazily|lazily created|נוצרת עצלנית/i.test(claude.split('\n').filter((l) => /questionnaire/i.test(l)).join('\n')));
-  assert.ok(claude.includes('apply_policy_questionnaire_table.js'));
+test('מייל: החלטה - מסלול התגובה הרגיל לא שולח מייל, ולכן מייל השאלון הוא היחיד (מסלול אחד, בלי כפילות)', () => {
+  const reply = src('app/api/error-report/reply/route.js');
+  assert.ok(!/sendSystemEmail|mailer|sendProgrammerEmail|emailTemplates/.test(reply), 'אם זה ישתנה - יש להסיר את מייל השאלון (ר\' docs/refund-questionnaire.md, "המייל לבעלים")');
+  // המסלול היחיד ששולח מייל בפיצ'ר: notify.js (ולא ה-store, לא הדפים, לא ה-API של התוצאות)
+  const senders = featureFiles().filter((f) => /sendSystemEmail/.test(src(f)));
+  assert.deepEqual(senders, ['lib/policyQuestionnaire/notify.js']);
+  assert.ok(!/mailer|sendQuestionnaireEmail/.test(src('lib/policyQuestionnaire/store.js')));
+  assert.equal((src('app/api/policy-questionnaire/route.js').match(/sendQuestionnaireEmail\(/g) || []).length, 1, 'POST שולח פעם אחת');
+  assert.ok(!/sendQuestionnaireEmail/.test(src('app/api/policy-questionnaire/answers/route.js')));
+  // השרשור לא נכתב דרך המסלולים הרגילים (שולחים "דיווח תקלה חדש" ו-repository_dispatch)
+  for (const f of featureFiles()) assert.ok(!/api\/error-report|repository_dispatch|GH_DISPATCH/.test(src(f).replace(/\/\/.*$/gm, '')), f);
+  const md = src('docs/refund-questionnaire.md');
+  assert.ok(md.includes('המייל האוטומטי היחיד') && md.includes('לא שולח שום מייל'));
+  assert.ok(src('EMAILS.md').includes('policyQuestionnaireSubmitted'));
 });
 
-test('חיווט: הקליינט עם RTL, התקדמות "ענית על X מתוך Y", "נשמר", אישור שליחה, עדכון וניסיון חוזר למייל', () => {
+test('נראות השרשור בחלון הדיווחים (כפי שנקרא בקוד): מתכנת רואה הכול, אחרים רק דיווחים על שמם; תגובה של לא-מתכנת לא שולחת מייל', () => {
+  const list = src('app/api/error-report/route.js');
+  assert.ok(list.includes("const isProgrammer = employee.roleId === 2;") && list.includes("const whereClause = isProgrammer ? {} : { employeeId: employee.id };"),
+    'אם כללי הנראות ישתנו - לעדכן את docs/refund-questionnaire.md, "מי יכולה לענות ומי רואה"');
+  const store = src('lib/policyQuestionnaire/store.js');
+  assert.ok(/employeeId,\s+time:/.test(store), 'השרשור נפתח על שם מי ששלחה ראשונה');
+});
+
+test('הרשאות וחיווט: ה-API מחייב הנהלה ראשית/מתכנת, לא סומך על employeeId מהלקוח, בלי PUT ובלי שמירה אוטומטית בשרת', () => {
+  for (const f of ['app/api/policy-questionnaire/route.js', 'app/api/policy-questionnaire/resend/route.js', 'app/api/policy-questionnaire/answers/route.js']) {
+    const s = src(f);
+    assert.ok(s.includes('requireHeadManagement'), f);
+    assert.ok(!/body\.employeeId|body\.employee\b|searchParams/.test(s), `${f}: מזהה מהלקוח`);
+  }
+  const route = src('app/api/policy-questionnaire/route.js');
+  assert.ok(/export async function GET/.test(route) && /export async function POST/.test(route) && !/export async function (PUT|PATCH|DELETE)/.test(route));
+  const access = src('lib/policyQuestionnaire/access.js');
+  assert.ok(access.includes("checkAuth('הנהלה ראשית')") && access.includes('getSessionEmployee') && access.includes('HEAD_MANAGEMENT_ROLES'));
+  assert.ok(access.includes('roleId === 2'), 'source לבעלים בלבד');
+  assert.ok(route.includes('validateSubmission') && route.includes('emailSent'));
+  const layout = src('app/refund-questionnaire/layout.js');
+  assert.ok(layout.includes('checkPageAccess(HEAD_MANAGEMENT_ROLES)') && layout.includes('NoAccessMessage') && layout.includes('./refund-questionnaire.css'));
+  assert.ok(src('app/refund-questionnaire/answers/page.js').includes('requireHeadManagement({ page: true })'), 'דף שרת בלי checkAuth (לא ניתן לכתוב עוגיות מדף)');
+  assert.ok(src('lib/menu/pageLabels.js').includes("'/refund-questionnaire': 'שאלון ביטולים וזיכויים'") && src('lib/menu/pageLabels.js').includes("'/refund-questionnaire/answers': 'תשובות שאלון ביטולים וזיכויים'"));
+});
+
+test('חיווט: הקליינט עם RTL, טיוטה בדפדפן בלבד, אישור שליחה, עדכון וניסיון חוזר למייל', () => {
   const c = src('app/refund-questionnaire/RefundQuestionnaireClient.js');
   assert.ok((c.match(/dir="rtl"/g) || []).length >= 4);
-  assert.ok(c.includes('ענית על'));
-  assert.ok(c.includes("saved: 'נשמר'"));
-  assert.ok(c.includes('לשלוח את התשובות?'));
-  assert.ok(c.includes('עדכון התשובות'));
-  assert.ok(c.includes('התשובות נשמרו, המייל לא נשלח - ננסה שוב'));
-  assert.ok(c.includes('/resend'));
+  assert.ok(c.includes('ענית על') && c.includes('לשלוח את התשובות?') && c.includes('עדכון התשובות'));
+  assert.ok(c.includes('התשובות נשמרו, המייל לא נשלח - ננסה שוב') && c.includes('/resend'));
+  assert.ok(c.includes('הטיוטה נשמרת רק בדפדפן הזה עד השליחה'));
+  assert.ok(!/method:\s*'PUT'|'PUT'/.test(c), 'אין שמירה אוטומטית בשרת');
+  assert.ok(c.includes('lib/policyQuestionnaire/draft'));
   assert.ok(c.includes('דוגמה') && c.includes('היום אצלכן') && c.includes('למה שואלים'));
   assert.ok(!/\.source(?![A-Za-z])|"source"/.test(c), 'הקליינט לא נוגע ב-source');
+  const draft = src('lib/policyQuestionnaire/draft.js');
+  const fnBodies = draft.split('export function').slice(1);
+  for (const body of fnBodies.filter((b) => !b.startsWith(' draftKey'))) assert.ok(/try \{/.test(body), 'כל גישה לאחסון בתוך try/catch');
   const a = src('app/refund-questionnaire/answers/AnswersClient.js');
-  assert.ok(a.includes('dir="rtl"') && a.includes('העתק הכל') && a.includes('window.print') && a.includes('print-hide'));
+  assert.ok(a.includes('dir="rtl"') && a.includes('העתק הכל') && a.includes('window.print') && a.includes('print-hide') && a.includes('גרסאות קודמות') && a.includes('<details'));
 });
 
-test('חיווט: דוגמת מייל קיימת ב-emailSamples ושורה 17 ב-EMAILS.md', () => {
+test('חיווט: דוגמת מייל קיימת ב-emailSamples ושורה 17 ב-EMAILS.md; הקטלוג מפרט שהוא המייל היחיד', () => {
   assert.ok(src('lib/emailSamples.js').includes("case 'policyQuestionnaireSubmitted'"));
   const md = src('EMAILS.md');
-  assert.ok(md.includes('policyQuestionnaireSubmitted'));
-  assert.ok(md.includes('טבלת כל המיילים (17)'));
+  assert.ok(md.includes('policyQuestionnaireSubmitted') && md.includes('טבלת כל המיילים (17)'));
+  assert.ok(EMAIL_CATALOG.policyQuestionnaireSubmitted.trigger.includes('המייל היחיד'));
 });
 
-test('תיעוד: docs/refund-questionnaire.md כולל את ארבעת הקישורים המלאים ואת רשימת ההושמטים; CLAUDE.md מצביע עליו', () => {
+test('תיעוד: docs/refund-questionnaire.md כולל את ארבעת הקישורים, איפה התשובות נשמרות, מי רואה, וההושמטים; CLAUDE.md מצביע עליו', () => {
   const d = src('docs/refund-questionnaire.md');
   for (const u of [
     'https://gemach-app-uyh4-beryl.vercel.app/refund-questionnaire',
@@ -773,403 +735,64 @@ test('תיעוד: docs/refund-questionnaire.md כולל את ארבעת הקיש
     'https://gmach-neve-yaakov.vercel.app/refund-questionnaire/answers',
   ]) assert.ok(d.includes(u), u);
   for (const o of OMITTED_TOPICS) assert.ok(d.includes(o.topic_he), o.topic_he.slice(0, 30));
+  assert.ok(d.includes('שרשור דיווח-תקלה אחד לכל גמ"ח') && d.includes('בלי טבלה חדשה, בלי שינוי סכימה ובלי DDL'));
+  assert.ok(d.includes('policy-questionnaire:refunds-2026-10') && d.includes('needsHuman = true') && d.includes('עדכון') && d.includes('localStorage'));
+  assert.ok(d.includes('מי יכולה לענות ומי רואה') && d.includes('מנהלות רגילות'));
   assert.ok(src('CLAUDE.md').includes('docs/refund-questionnaire.md'));
+  assert.ok(src('CLAUDE.md').includes('There is no table, no schema change and no DDL'));
 });
 
 // ---------------------------------------------------------------------------
-// רינדור בצד שרת (SSR) של רכיבי הטופס - מדולג אם אין react-dom / typescript
+// טיוטות בדפדפן (localStorage מדומה)
 // ---------------------------------------------------------------------------
-async function ssrSmoke() {
-  const req = createRequire(path.join(root, 'package.json'));
-  let ReactDOMServer; let React; let ts; let Module;
-  try {
-    ReactDOMServer = req('react-dom/server');
-    React = req('react');
-    ts = req('typescript');
-    Module = req('node:module');
-  } catch {
-    console.log('SKIP ssr: react-dom/typescript לא זמינים (הגדירו NODE_PATH ל-node_modules)');
-    return;
-  }
-  const origResolve = Module._resolveFilename;
-  Module._resolveFilename = function patched(request, ...rest) {
-    if (typeof request === 'string' && request.startsWith('@/')) request = path.join(root, request.slice(2));
-    return origResolve.call(this, request, ...rest);
-  };
-  const origJs = Module._extensions['.js'];
-  Module._extensions['.js'] = function hook(module, filename) {
-    const norm = filename.split(path.sep).join('/');
-    if (norm.startsWith(root.split(path.sep).join('/')) && !norm.includes('/node_modules/')) {
-      const code = readFileSync(filename, 'utf8');
-      const out = ts.transpileModule(code, { fileName: filename.replace(/\.js$/, '.jsx'), compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
-      module._compile(out.outputText, filename);
-      return;
-    }
-    origJs(module, filename);
-  };
-  try {
-    const { FormView, DoneView } = req(path.join(root, 'app/refund-questionnaire/RefundQuestionnaireClient.js'));
-    const AnswersClient = req(path.join(root, 'app/refund-questionnaire/answers/AnswersClient.js')).default;
-    const h = React.createElement;
-    const noop = () => {};
-
-    for (const [label, qn0] of [['org1', MAIN], ['org2', NEVE]]) {
-      const qn = publicQuestionnaire(qn0);
-      const answers = { ...completeAnswers(qn0, 0) };
-      const first = visibleQuestions(qn0, answers)[0].id;
-      answers[first] = { choice: OTHER, otherText: 'תשובה אחרת', comment: 'הערה כלשהי' };
-      const base = {
-        qn, answers, name: 'דנה לוי', role: 'הנהלה', saveState: 'saved', saveError: '', showErrors: false, editingSent: false, serverState: null,
-        submitError: '', submitting: false, confirmOpen: false, openComments: {}, setOpenComments: noop, changeName: noop, changeRole: noop,
-        setAnswer: noop, requestSubmit: noop, doSubmit: noop, setConfirmOpen: noop,
-      };
-      const html = ReactDOMServer.renderToStaticMarkup(h(FormView, base));
-      assert.ok(html.includes('dir="rtl"'), `${label} rtl`);
-      assert.ok(html.includes(qn.gmachName));
-      assert.equal((html.match(/id="rq-q-[^"]*" class="rq-card/g) || []).length, visibleQuestions(qn0, answers).length, `${label}: כרטיס לכל שאלה גלויה`);
-      assert.ok(html.includes(`ענית על ${visibleQuestions(qn0, answers).length} מתוך ${visibleQuestions(qn0, answers).length}`.replace(/ /g, ' ')) || html.includes('ענית על'), 'progress');
-      assert.ok(html.includes('נשמר'));
-      assert.ok(html.includes(UNDECIDED_LABEL) && html.includes('דוגמה:') && html.includes('היום אצלכן:') && html.includes('למה שואלים:'));
-      assert.ok(html.includes('תשובה אחרת') && html.includes('הערה כלשהי'));
-      assert.ok(!html.includes('"source"') && !flattenQuestions(qn0).some((q) => html.includes(q.source)), 'source לא מוצג');
-      assert.ok(!FORBIDDEN.some(([, re]) => re.test(html.replace(/<[^>]*>/g, ' '))), 'אין מילים אסורות בטקסט המרונדר');
-      assert.ok(html.includes('>שליחה<'));
-      // מצב שגיאות + חלון אישור
-      const withErr = ReactDOMServer.renderToStaticMarkup(h(FormView, { ...base, answers: {}, showErrors: true, confirmOpen: true, name: '' }));
-      assert.ok(withErr.includes('rq-missing') && withErr.includes('נא לבחור תשובה') && withErr.includes('נא למלא שם') && withErr.includes('לשלוח את התשובות?'));
-    }
-    // n4.3 מרונדרת רק כשהיא גלויה
-    const neveQ = publicQuestionnaire(NEVE);
-    const formProps = (answers) => ({ qn: neveQ, answers, name: 'ד', role: '', saveState: 'idle', saveError: '', showErrors: false, editingSent: false, serverState: null, submitError: '', submitting: false, confirmOpen: false, openComments: {}, setOpenComments: noop, changeName: noop, changeRole: noop, setAnswer: noop, requestSubmit: noop, doSubmit: noop, setConfirmOpen: noop });
-    const q43 = findQuestion(NEVE, 'n4.3').text_he;
-    assert.ok(!ReactDOMServer.renderToStaticMarkup(h(FormView, formProps({ 'n4.2': { choice: 0 } }))).includes(q43));
-    assert.ok(ReactDOMServer.renderToStaticMarkup(h(FormView, formProps({ 'n4.2': { choice: 1 } }))).includes(q43));
-
-    const done = ReactDOMServer.renderToStaticMarkup(h(DoneView, { qn: neveQ, answers: completeAnswers(NEVE), name: 'דנה', mail: { emailSent: false, emailError: 'x' }, retrying: false, retryEmail: noop, startEditing: noop }));
-    assert.ok(done.includes('התשובות נשמרו, המייל לא נשלח - ננסה שוב') && done.includes('ניסיון חוזר') && done.includes('עדכון התשובות') && done.includes('dir="rtl"'));
-    const done2 = ReactDOMServer.renderToStaticMarkup(h(DoneView, { qn: neveQ, answers: completeAnswers(NEVE), name: 'דנה', mail: { emailSent: true }, retrying: false, retryEmail: noop, startEditing: noop }));
-    assert.ok(done2.includes('נשלחו במייל לבעלים') && !done2.includes('המייל לא נשלח'));
-
-    const responses = [
-      { id: 'r1', respondentName: 'דנה', respondentRole: 'הנהלה', answers: completeAnswers(NEVE, 0), status: 'submitted', submittedAt: '2026-10-05T21:30:00Z', updatedAt: '2026-10-05T21:30:00Z', needsEmail: true, emailError: 'boom', pendingChanges: false },
-      { id: 'r2', respondentName: 'רבקה', respondentRole: '', answers: { 'n1.1': { choice: OTHER, otherText: 'אחר מיוחד' } }, status: 'draft', submittedAt: null, updatedAt: '2026-10-05T22:00:00Z', needsEmail: false, emailError: null, pendingChanges: false },
-    ];
-    const ownerQn = publicQuestionnaire(NEVE, { includeSource: true });
-    const ans = ReactDOMServer.renderToStaticMarkup(h(AnswersClient, { questionnaire: ownerQn, responses }));
-    assert.ok(ans.includes('dir="rtl"') && ans.includes('העתק הכל') && ans.includes('הדפסה') && ans.includes('דנה') && ans.includes('רבקה') && ans.includes('אחר: אחר מיוחד') && ans.includes('טיוטה') && ans.includes('המייל לא נשלח'));
-    assert.ok(ans.includes('מקור:'), 'הבעלים רואה מקור');
-    const ansNoSrc = ReactDOMServer.renderToStaticMarkup(h(AnswersClient, { questionnaire: neveQ, responses }));
-    assert.ok(!ansNoSrc.includes('מקור:'));
-    const empty = ReactDOMServer.renderToStaticMarkup(h(AnswersClient, { questionnaire: neveQ, responses: [] }));
-    assert.ok(empty.includes('עדיין אף אחת לא התחילה לענות'));
-    passed += 1;
-    console.log('ok ssr smoke: FormView/DoneView/AnswersClient מרונדרים לשני הגמחים');
-  } catch (e) {
-    failed += 1;
-    failures.push(`SSR smoke\n    ${String(e && e.stack).split('\n').slice(0, 6).join('\n    ')}`);
-  } finally {
-    Module._resolveFilename = origResolve;
-    Module._extensions['.js'] = origJs;
-  }
+function fakeStorage() {
+  const m = new Map();
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: (k) => { m.delete(k); }, _m: m };
 }
+test('טיוטה: מפתח לפי שאלון ועובדת; שמירה, טעינה (עם ניקוי מול השאלון) ומחיקה', () => {
+  assert.equal(draftKey(QUESTIONNAIRE_KEY, 'emp-1'), 'rq-draft:refunds-2026-10:emp-1');
+  assert.notEqual(draftKey(QUESTIONNAIRE_KEY, 'emp-1'), draftKey(QUESTIONNAIRE_KEY, 'emp-2'));
+  const st = fakeStorage();
+  const key = draftKey(QUESTIONNAIRE_KEY, 'emp-1');
+  assert.equal(loadDraft(st, key, NEVE), null, 'אין טיוטה');
+  assert.equal(saveDraft(st, key, { answers: { 'n1.1': { choice: 1, otherText: '', comment: 'א' }, bogus: { choice: 0 } }, name: ' דנה ', role: 'הנהלה' }, 12345), true);
+  const d = loadDraft(st, key, NEVE);
+  assert.deepEqual(d.answers, { 'n1.1': { choice: 1, otherText: '', comment: 'א' } }, 'מזהה לא מוכר נזרק');
+  assert.equal(d.name, 'דנה');
+  assert.equal(d.role, 'הנהלה');
+  assert.equal(d.savedAt, 12345);
+  assert.equal(clearDraft(st, key), true);
+  assert.equal(loadDraft(st, key, NEVE), null);
+  assert.equal(st._m.size, 0);
+});
+
+test('טיוטה: הדף עובד בלי אחסון - אחסון חסום/זורק/ריק/פגום/גרסה אחרת לא זורקים ומחזירים ברירת מחדל', () => {
+  const key = draftKey(QUESTIONNAIRE_KEY, 'emp-1');
+  const thrower = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('quota'); }, removeItem: () => { throw new Error('denied'); } };
+  assert.equal(saveDraft(thrower, key, { answers: {} }), false);
+  assert.equal(loadDraft(thrower, key, NEVE), null);
+  assert.equal(clearDraft(thrower, key), false);
+  assert.equal(saveDraft(null, key, { answers: {} }), false);
+  assert.equal(loadDraft(null, key, NEVE), null);
+  assert.equal(clearDraft(undefined, key), false);
+  const st = fakeStorage();
+  st.setItem(key, '{not json');
+  assert.equal(loadDraft(st, key, NEVE), null);
+  st.setItem(key, JSON.stringify({ v: 99, answers: { 'n1.1': { choice: 0 } } }));
+  assert.equal(loadDraft(st, key, NEVE), null, 'גרסה אחרת');
+  st.setItem(key, JSON.stringify({ v: 1, answers: {}, name: '', role: '' }));
+  assert.equal(loadDraft(st, key, NEVE), null, 'טיוטה ריקה');
+  assert.equal(browserStorage(), null, 'ב-node אין window');
+});
 
 // ---------------------------------------------------------------------------
-// ה-API המלא (route handlers אמיתיים + notify אמיתי) מול store בזיכרון, auth מדומה ומייל מדומה.
-// אין DB, אין רשת, אין שליחת מייל אמיתית. מדולג אם typescript לא זמין.
-// ---------------------------------------------------------------------------
-async function routesSmoke() {
-  const req = createRequire(path.join(root, 'package.json'));
-  let ts; let Module;
-  try { ts = req('typescript'); Module = req('node:module'); } catch {
-    console.log('SKIP routes: typescript לא זמין (הגדירו NODE_PATH ל-node_modules)');
-    return;
-  }
-
-  // ---- דמויות ----
-  const state = { missingTable: null, rawError: null, user: null, owners: [], mails: [], mailBehavior: () => ({ success: true }), clock: 0, rows: new Map(), employeeName: { firstName: 'דנה', lastName: 'לוי', fullName: null } };
-  const tick = () => new Date(Date.UTC(2026, 9, 6, 8, 0, 0) + (state.clock += 1000)).toISOString();
-  const key = (k, e) => `${k}|${e}`;
-  const failIfMissing = () => {
-    if (state.missingTable === 'store') throw new memStore.PolicyQuestionnaireDbError('missing_table');
-    if (state.missingTable === 'raw') throw state.rawError();
-    if (state.missingTable === 'other') throw new memStore.PolicyQuestionnaireDbError('other');
-  };
-  const memStore = {
-    PolicyQuestionnaireDbError: class PolicyQuestionnaireDbError extends Error { constructor(kind) { super(kind); this.kind = kind; this.userMessage = kind === 'missing_table' ? 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.' : 'שגיאת מסד'; } },
-    async getResponse(k, e) { failIfMissing(); const r = state.rows.get(key(k, e)); return r ? JSON.parse(JSON.stringify(r)) : null; },
-    async listResponses(k, orgKey) { failIfMissing(); return [...state.rows.values()].filter((r) => r.questionnaireKey === k && r.orgKey === orgKey).map((r) => JSON.parse(JSON.stringify(r))); },
-    async saveDraft({ questionnaireKey, orgKey, employeeId, name, role, answers }) { failIfMissing();
-      const k = key(questionnaireKey, employeeId); const now = tick(); const ex = state.rows.get(k);
-      const row = ex ? { ...ex, respondentName: name, respondentRole: role, answers, updatedAt: now } : { id: `id-${k}`, questionnaireKey, orgKey, employeeId, respondentName: name, respondentRole: role, answers, status: 'draft', submittedAt: null, emailedAt: null, emailError: null, createdAt: now, updatedAt: now };
-      state.rows.set(k, row); return JSON.parse(JSON.stringify(row));
-    },
-    async submitResponse({ questionnaireKey, orgKey, employeeId, name, role, answers }) { failIfMissing();
-      const k = key(questionnaireKey, employeeId); const now = tick(); const ex = state.rows.get(k);
-      const row = { id: `id-${k}`, questionnaireKey, orgKey, employeeId, respondentName: name, respondentRole: role, answers, status: 'submitted', submittedAt: now, emailedAt: ex ? ex.emailedAt : null, emailError: null, createdAt: ex ? ex.createdAt : now, updatedAt: now };
-      state.rows.set(k, row); return JSON.parse(JSON.stringify(row));
-    },
-    async recordEmailResult(id, { sent, error }) { failIfMissing();
-      const row = [...state.rows.values()].find((r) => r.id === id); const now = tick();
-      if (sent) row.emailedAt = now; row.emailError = error || null; return JSON.parse(JSON.stringify(row));
-    },
-  };
-  const stubs = {
-    '@/lib/policyQuestionnaire/store': memStore,
-    '@/app/lib/prisma': { __esModule: true, default: { employee: {
-      findMany: async () => state.owners.map((email) => ({ email })),
-      findUnique: async () => state.employeeName,
-    } } },
-    '@/lib/auth': {
-      HEAD_MANAGEMENT_ROLES: [0, 2],
-      checkAuth: async () => !!state.user && [0, 2].includes(state.user.roleId),
-      getSessionEmployee: async () => (state.user ? { id: state.user.id, roleId: state.user.roleId, isActive: true } : null),
-    },
-    '@/lib/mailer': { sendSystemEmail: async (o) => { state.mails.push(o); return state.mailBehavior(o); } },
-    'next/server': { NextResponse: { json: (body, init) => new Response(JSON.stringify(body), { status: (init && init.status) || 200, headers: { 'content-type': 'application/json' } }) } },
-  };
-
-  const origResolve = Module._resolveFilename;
-  const origLoad = Module._load;
-  const origJs = Module._extensions['.js'];
-  const rootNorm = root.split(path.sep).join('/');
-  Module._load = function patchedLoad(request, ...rest) {
-    if (Object.prototype.hasOwnProperty.call(stubs, request)) return stubs[request];
-    return origLoad.call(this, request, ...rest);
-  };
-  Module._resolveFilename = function patchedResolve(request, ...rest) {
-    if (typeof request === 'string' && request.startsWith('@/') && !Object.prototype.hasOwnProperty.call(stubs, request)) request = path.join(root, request.slice(2));
-    return origResolve.call(this, request, ...rest);
-  };
-  Module._extensions['.js'] = function hook(module, filename) {
-    const norm = filename.split(path.sep).join('/');
-    if (norm.startsWith(rootNorm) && !norm.includes('/node_modules/')) {
-      const out = ts.transpileModule(readFileSync(filename, 'utf8'), { fileName: filename.replace(/\.js$/, '.jsx'), compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
-      module._compile(out.outputText, filename);
-      return;
-    }
-    origJs(module, filename);
-  };
-  const savedOrg = process.env.GEMACH_ORG;
-  process.env.GEMACH_ORG = 'neve-yaakov';
-  const call = async (handler, method, body, headers = {}) => {
-    const request = new Request('https://gmach-neve-yaakov.vercel.app/api/policy-questionnaire', {
-      method, headers: { host: 'gmach-neve-yaakov.vercel.app', 'content-type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const res = await handler(request);
-    return { status: res.status, json: await res.json() };
-  };
-
-  try {
-    const main = req(path.join(root, 'app/api/policy-questionnaire/route.js'));
-    const resend = req(path.join(root, 'app/api/policy-questionnaire/resend/route.js'));
-    const answersRoute = req(path.join(root, 'app/api/policy-questionnaire/answers/route.js'));
-    const full = completeAnswers(NEVE, 0);
-    const link = 'https://gmach-neve-yaakov.vercel.app/refund-questionnaire/answers';
-
-    // הרשאות
-    state.user = null;
-    assert.equal((await call(main.GET, 'GET')).status, 401, 'אנונימי');
-    state.user = { id: 'emp-branch', roleId: 1 };
-    assert.equal((await call(main.GET, 'GET')).status, 403, 'מנהל סניף');
-    assert.equal((await call(main.PUT, 'PUT', { answers: full })).status, 403);
-    assert.equal((await call(main.POST, 'POST', { answers: full, name: 'x' })).status, 403);
-    assert.equal((await call(resend.POST, 'POST')).status, 403);
-    assert.equal((await call(answersRoute.GET, 'GET')).status, 403);
-    assert.equal(state.rows.size, 0, 'שום שורה לא נכתבה');
-
-    // GET ראשון: השאלון של נווה יעקב בלבד, בלי source, שם ותפקיד מראש
-    state.user = { id: 'emp-1', roleId: 0 };
-    state.owners = ['owner@example.com'];
-    const g = await call(main.GET, 'GET');
-    assert.equal(g.status, 200);
-    assert.equal(g.json.questionnaire.gmachName, 'נווה יעקב');
-    assert.equal(flattenQuestions(g.json.questionnaire).length, 14);
-    assert.ok(!JSON.stringify(g.json).includes('"source"'));
-    assert.equal(g.json.respondent.name, 'דנה לוי');
-    assert.equal(g.json.respondent.role, 'הנהלה ראשית');
-    assert.equal(g.json.response, null);
-
-    // שמירה אוטומטית: מיזוג, טיוטה, לא סומכים על employeeId מהלקוח
-    const p1 = await call(main.PUT, 'PUT', { answers: { 'n1.1': { choice: 1 }, bogus: { choice: 0 } }, name: 'דנה לוי', role: 'הנהלה', employeeId: 'emp-ATTACKER' });
-    assert.equal(p1.status, 200);
-    assert.ok(state.rows.has(key(QUESTIONNAIRE_KEY, 'emp-1')) && !state.rows.has(key(QUESTIONNAIRE_KEY, 'emp-ATTACKER')));
-    const p2 = await call(main.PUT, 'PUT', { answers: { 'n1.2': { choice: UNDECIDED } } });
-    assert.equal(p2.json.response.status, 'draft');
-    const row = state.rows.get(key(QUESTIONNAIRE_KEY, 'emp-1'));
-    assert.deepEqual(Object.keys(row.answers).sort(), ['n1.1', 'n1.2']);
-    assert.equal(row.respondentRole, 'הנהלה');
-
-    // שליחה לא תקינה: חסר הכול / אחר בלי טקסט
-    const bad = await call(main.POST, 'POST', { answers: { 'n1.1': { choice: 0 } }, name: 'דנה' });
-    assert.equal(bad.status, 400);
-    assert.ok(bad.json.errors.length >= 10 && state.mails.length === 0);
-    assert.equal(state.rows.get(key(QUESTIONNAIRE_KEY, 'emp-1')).status, 'draft', 'נשארת טיוטה');
-    const badOther = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: OTHER, otherText: '  ' } }, name: 'דנה' });
-    assert.equal(badOther.status, 400);
-    assert.deepEqual(badOther.json.errors, [{ questionId: 'n1.1', code: 'other_text_missing' }]);
-    const noName = await call(main.POST, 'POST', { answers: full, name: ' ', role: '' });
-    assert.equal(noName.status, 200, 'השם נשמר מהטיוטה (הנהלה) ולכן תקין');
-
-    // שליחה ראשונה (הכול תקין) - מייל אחד לבעלים, ללא "עודכן"
-    state.rows.clear(); state.mails.length = 0;
-    state.owners = ['owner@example.com', 'OWNER@example.com', 'second@example.com'];
-    const ok1 = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: OTHER, otherText: 'שבעה ימים', comment: 'הערה' }, 'n4.3': { choice: 1 } }, name: 'דנה לוי', role: 'הנהלה ראשית' });
-    assert.equal(ok1.status, 200);
-    assert.equal(ok1.json.success, true);
-    assert.equal(ok1.json.emailSent, true);
-    assert.deepEqual(state.mails.map((m) => m.to), ['owner@example.com', 'second@example.com'], 'נמענים בלי כפילויות');
-    assert.equal(state.mails[0].subject, 'שאלון מדיניות ביטולים וזיכויים - נווה יעקב - דנה לוי');
-    assert.ok(state.mails[0].body.includes(link) && state.mails[0].html.includes(link));
-    assert.ok(state.mails[0].body.includes('אחר: שבעה ימים'));
-    assert.ok(!state.mails[0].body.includes(findQuestion(NEVE, 'n4.3').text_he), 'n4.3 מוסתרת (n4.2=אין קיזוז) נגזמה');
-    const saved = state.rows.get(key(QUESTIONNAIRE_KEY, 'emp-1'));
-    assert.equal(saved.status, 'submitted');
-    assert.ok(saved.emailedAt && !saved.answers['n4.3'], 'נשמר בלי התשובה המוסתרת');
-    assert.equal(ok1.json.response.pendingChanges, false);
-    assert.equal(ok1.json.response.needsEmail, false);
-
-    // עריכה אחרי שליחה: נשמרת כטיוטה-על-גבי-שליחה, מסומנת "יש שינויים"; שליחה חוזרת = (עודכן)
-    const edit = await call(main.PUT, 'PUT', { answers: { 'n1.1': { choice: 0 } } });
-    assert.equal(edit.json.response.status, 'submitted');
-    assert.equal(edit.json.response.pendingChanges, true);
-    state.mails.length = 0;
-    const ok2 = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: 0 } }, name: 'דנה לוי', role: 'הנהלה ראשית' });
-    assert.equal(ok2.json.emailSent, true);
-    assert.equal(state.mails.length, 2);
-    assert.ok(state.mails[0].subject.endsWith(' (עודכן)'), state.mails[0].subject);
-    assert.equal(state.rows.size, 1, 'אותה שורה - אין כפילות');
-    assert.equal(ok2.json.response.pendingChanges, false);
-
-    // כשל מייל: התשובות נשמרות, emailSent=false, ניסיון חוזר אחר כך
-    state.mails.length = 0;
-    state.mailBehavior = () => ({ success: false, message: 'Apps Script down' });
-    const fail = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: 2 } }, name: 'דנה לוי', role: 'הנהלה ראשית' });
-    assert.equal(fail.status, 200);
-    assert.equal(fail.json.success, true);
-    assert.equal(fail.json.emailSent, false);
-    assert.ok(fail.json.emailError.includes('Apps Script down'));
-    assert.equal(state.rows.get(key(QUESTIONNAIRE_KEY, 'emp-1')).answers['n1.1'].choice, 2, 'התשובות לא אבדו');
-    assert.equal(fail.json.response.needsEmail, true);
-    state.mailBehavior = () => ({ success: true });
-    state.mails.length = 0;
-    const retry = await call(resend.POST, 'POST');
-    assert.equal(retry.json.emailSent, true);
-    assert.equal(state.mails.length, 2);
-    assert.ok(state.mails[0].subject.endsWith(' (עודכן)'), 'כבר נשלח מייל על גרסה קודמת');
-    assert.equal(retry.json.response.needsEmail, false);
-    const again = await call(resend.POST, 'POST');
-    assert.equal(again.json.alreadySent, true);
-    assert.equal(state.mails.length, 2, 'אין שליחה כפולה');
-
-    // אין נמענים / המייל זורק
-    state.owners = [];
-    await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: 1 } }, name: 'דנה לוי' });
-    const noOwner = await call(resend.POST, 'POST');
-    assert.equal(noOwner.json.emailSent, false);
-    assert.ok(noOwner.json.emailError.includes('כתובת מייל'));
-    state.owners = ['owner@example.com'];
-    state.mailBehavior = () => { throw new Error('boom'); };
-    const thrown = await call(resend.POST, 'POST');
-    assert.equal(thrown.status, 200);
-    assert.equal(thrown.json.emailSent, false);
-    state.mailBehavior = () => ({ success: true });
-
-    // resend בלי שליחה קודמת
-    state.user = { id: 'emp-2', roleId: 2 };
-    const none = await call(resend.POST, 'POST');
-    assert.equal(none.status, 400);
-
-    // תוצאות: הנהלה רואה בלי source, מתכנת (הבעלים) רואה source
-    state.user = { id: 'emp-1', roleId: 0 };
-    const r0 = await call(answersRoute.GET, 'GET');
-    assert.equal(r0.status, 200);
-    assert.equal(r0.json.responses.length, 1);
-    assert.ok(!JSON.stringify(r0.json).includes('"source"'));
-    state.user = { id: 'emp-2', roleId: 2 };
-    const r2 = await call(answersRoute.GET, 'GET');
-    assert.ok(flattenQuestions(r2.json.questionnaire).every((q) => q.source), 'הבעלים רואה מקור');
-    assert.equal(r2.json.responses[0].respondentName, 'דנה לוי');
-
-    // הטבלה עוד לא נוצרה (store זורק missing_table, או שגיאת Prisma גולמית 42P01 / P2010): אף מסלול לא נופל ב-500,
-    // שום שורה לא נכתבת, שום מייל לא נשלח, ושום נתון לא מומצא
-    const rowsBefore = JSON.stringify([...state.rows.entries()]);
-    state.mails.length = 0;
-    const rawP2010 = () => Object.assign(new Error('Raw query failed. Code: `42P01`. Message: `relation "PolicyQuestionnaireResponse" does not exist`'), { code: 'P2010', meta: { code: '42P01' } });
-    for (const mode of ['store', 'raw']) {
-      state.missingTable = mode;
-      state.rawError = rawP2010;
-      state.user = { id: 'emp-1', roleId: 0 };
-      const mg = await call(main.GET, 'GET');
-      assert.equal(mg.status, 200, `${mode}: GET 200 (לא 500)`);
-      assert.equal(mg.json.ok, false);
-      assert.equal(mg.json.code, 'not_enabled');
-      assert.equal(mg.json.error, 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.');
-      assert.ok(!('questionnaire' in mg.json) && !('answers' in mg.json), 'אין נתונים מומצאים');
-      for (const [label, res] of [
-        ['PUT', await call(main.PUT, 'PUT', { answers: full, name: 'דנה' })],
-        ['POST', await call(main.POST, 'POST', { answers: full, name: 'דנה לוי', role: 'הנהלה' })],
-      ]) {
-        assert.equal(res.status, 503, `${mode}: ${label} 503 נקי`);
-        assert.equal(res.json.ok, false, label);
-        assert.equal(res.json.code, 'not_enabled', label);
-        assert.equal(res.json.saved, false, label);
-        assert.ok(!res.json.success && !res.json.emailSent, `${label}: לא מדווח הצלחה`);
-      }
-      const rs = await call(resend.POST, 'POST');
-      assert.equal(rs.status, 503);
-      assert.equal(rs.json.code, 'not_enabled');
-      assert.equal(rs.json.emailSent, false);
-      // דף התוצאות (ה-API): 200 + not_enabled; הוראות ההפעלה רק למתכנת (הבעלים)
-      const a0 = await call(answersRoute.GET, 'GET');
-      assert.equal(a0.status, 200);
-      assert.equal(a0.json.code, 'not_enabled');
-      assert.equal(a0.json.tableMessage, 'הטבלה עדיין לא נוצרה.');
-      assert.equal(a0.json.ownerHint, null, 'הנהלה לא מקבלת הוראות טכניות');
-      state.user = { id: 'emp-2', roleId: 2 };
-      const a2 = await call(answersRoute.GET, 'GET');
-      assert.equal(a2.status, 200);
-      assert.ok(a2.json.ownerHint.includes('apply_policy_questionnaire_table.js') && a2.json.ownerHint.includes('--write'));
-    }
-    assert.equal(JSON.stringify([...state.rows.entries()]), rowsBefore, 'שום שורה לא נכתבה או שונתה');
-    assert.equal(state.mails.length, 0, 'שום מייל לא נשלח');
-    // הרשאות עדיין נבדקות לפני כל גישה למסד (טבלה חסרה לא מדלגת על ההרשאה)
-    state.user = { id: 'emp-branch', roleId: 1 };
-    assert.equal((await call(main.GET, 'GET')).status, 403);
-    // שגיאת מסד אחרת (לא טבלה חסרה) ממשיכה להיות שגיאה אמיתית ולא "לא הופעל"
-    state.missingTable = 'other';
-    state.user = { id: 'emp-1', roleId: 0 };
-    const og = await call(main.GET, 'GET');
-    assert.equal(og.status, 503);
-    assert.notEqual(og.json.code, 'not_enabled');
-    state.missingTable = null;
-    state.user = { id: 'emp-1', roleId: 0 };
-    assert.equal((await call(main.GET, 'GET')).status, 200, 'אחרי שהטבלה קיימת - הכול חוזר לעבוד');
-
-    // גוף לא תקין
-    state.user = { id: 'emp-1', roleId: 0 };
-    const rawBad = await main.PUT(new Request('https://x.vercel.app/api/policy-questionnaire', { method: 'PUT', body: '{not json' }));
-    assert.equal(rawBad.status, 400);
-    passed += 1;
-    console.log('ok routes smoke: הרשאות, שמירה, תקינות, מייל מדומה, עדכון, כשל מייל וניסיון חוזר, וטבלה חסרה (not_enabled) בכל המסלולים');
-  } catch (e) {
-    failed += 1;
-    failures.push(`Routes smoke\n    ${String(e && e.stack).split('\n').slice(0, 7).join('\n    ')}`);
-  } finally {
-    Module._resolveFilename = origResolve;
-    Module._load = origLoad;
-    Module._extensions['.js'] = origJs;
-    if (savedOrg === undefined) delete process.env.GEMACH_ORG; else process.env.GEMACH_ORG = savedOrg;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// הטבלה חסרה: ה-store האמיתי מול prisma מדומה שזורק שגיאת "טבלה לא קיימת", ודפי השרת האמיתיים. אין DB, אין רשת.
+// עזרים לבדיקות עם Prisma מדומה: שרשור בזיכרון (ErrorReport + ErrorReportReply). אין DB, אין רשת, אין שליחת מייל אמיתית.
 // ---------------------------------------------------------------------------
 async function withTsHooks(stubs, fn) {
   const req = createRequire(path.join(root, 'package.json'));
   let ts; let Module;
   try { ts = req('typescript'); Module = req('node:module'); } catch {
-    console.log('SKIP missing-table smoke: typescript לא זמין (הגדירו NODE_PATH ל-node_modules)');
+    console.log('SKIP (typescript לא זמין - הגדירו NODE_PATH ל-node_modules)');
     return false;
   }
   const origResolve = Module._resolveFilename;
@@ -1193,7 +816,15 @@ async function withTsHooks(stubs, fn) {
     }
     origJs(module, filename);
   };
+  const clearCache = () => {
+    for (const k of Object.keys(Module._cache)) {
+      const n = k.split(path.sep).join('/');
+      if (n.startsWith(rootNorm) && !n.includes('/node_modules/')) delete Module._cache[k];
+    }
+  };
+  clearCache(); // כל בדיקה טוענת את מודולי הפיצ'ר מחדש מול ה-Prisma המדומה שלה
   try { await fn(req); } finally {
+    clearCache();
     Module._resolveFilename = origResolve;
     Module._load = origLoad;
     Module._extensions['.js'] = origJs;
@@ -1201,121 +832,475 @@ async function withTsHooks(stubs, fn) {
   return true;
 }
 
-async function storeMissingTableSmoke() {
-  const calls = [];
-  let behavior = () => { throw new Error('unset'); };
-  const fakePrisma = { __esModule: true, default: { $queryRawUnsafe: async (sql, ...params) => { calls.push({ sql, params }); return behavior(sql, params); } } };
-  const p2010 = () => Object.assign(new Error('Raw query failed. Code: `42P01`. Message: `relation "PolicyQuestionnaireResponse" does not exist`'), { code: 'P2010', meta: { code: '42P01', message: 'relation "PolicyQuestionnaireResponse" does not exist' } });
-  const ran = await withTsHooks({ '@/app/lib/prisma': fakePrisma }, async (req) => {
+function makeFakePrisma() {
+  const state = { reports: [], replies: [], clock: 0, seq: 0, ops: [], failNext: null, owners: [], employees: {} };
+  const now = () => new Date(Date.UTC(2026, 9, 6, 8, 0, 0) + (state.clock += 1000));
+  const matches = (row, where = {}) => Object.entries(where).every(([k, v]) => {
+    if (v && typeof v === 'object' && 'startsWith' in v) return String(row[k] ?? '').startsWith(v.startsWith);
+    return row[k] === v;
+  });
+  const sortBy = (rows, orderBy) => {
+    if (!orderBy) return rows;
+    const [[k, dir]] = Object.entries(orderBy);
+    return [...rows].sort((a, b) => (dir === 'desc' ? -1 : 1) * (new Date(a[k]) - new Date(b[k])));
+  };
+  const project = (row, select) => {
+    if (!select) return { ...row };
+    const out = {};
+    for (const k of Object.keys(select)) {
+      if (k === 'employee') { const e = state.employees[row.employeeId]; out.employee = e ? { ...e } : null; } else if (select[k]) out[k] = row[k];
+    }
+    return out;
+  };
+  const maybeFail = (op) => {
+    state.ops.push(op);
+    if (state.failNext && state.failNext.op === op) { const e = state.failNext.error; state.failNext = null; throw e; }
+  };
+  const forbidden = (name) => () => { throw new Error(`forbidden prisma call: ${name}`); };
+  const prisma = {
+    errorReport: {
+      async findFirst({ where, orderBy, select }) { maybeFail('report.findFirst'); const rows = sortBy(state.reports.filter((r) => matches(r, where)), orderBy); return rows.length ? project(rows[0], select) : null; },
+      async create({ data }) { maybeFail('report.create'); const t = now(); const row = { id: `rep-${++state.seq}`, isHandled: false, createdAt: t, updatedAt: t, attachmentUrls: null, ...data }; state.reports.push(row); return { ...row }; },
+      async update({ where, data }) { maybeFail('report.update'); const row = state.reports.find((r) => r.id === where.id); if (!row) throw new Error('not found'); Object.assign(row, data); return { ...row }; },
+    },
+    errorReportReply: {
+      async findFirst({ where, orderBy, select }) { maybeFail('reply.findFirst'); const rows = sortBy(state.replies.filter((r) => matches(r, where)), orderBy); return rows.length ? project(rows[0], select) : null; },
+      async findMany({ where, orderBy, select }) { maybeFail('reply.findMany'); return sortBy(state.replies.filter((r) => matches(r, where)), orderBy).map((r) => project(r, select)); },
+      async count({ where }) { maybeFail('reply.count'); return state.replies.filter((r) => matches(r, where)).length; },
+      async create({ data, select }) { maybeFail('reply.create'); const row = { id: `rpl-${++state.seq}`, createdAt: now(), attachmentUrls: null, sketchHtml: null, ...data }; state.replies.push(row); return select ? project(row, select) : { ...row }; },
+    },
+    employee: {
+      async findMany() { return state.owners.map((email) => ({ email })); },
+      async findUnique({ where }) { return state.employees[where.id] || null; },
+    },
+    $transaction: forbidden('$transaction'),
+    $queryRawUnsafe: forbidden('$queryRawUnsafe'),
+    $executeRawUnsafe: forbidden('$executeRawUnsafe'),
+    $queryRaw: forbidden('$queryRaw'),
+    $executeRaw: forbidden('$executeRaw'),
+    auditLog: new Proxy({}, { get() { throw new Error('manual AuditLog write is forbidden'); } }),
+  };
+  return { state, prisma };
+}
+
+async function storeSmoke() {
+  const { state, prisma } = makeFakePrisma();
+  const ran = await withTsHooks({ '@/app/lib/prisma': { __esModule: true, default: prisma } }, async (req) => {
     try {
       const store = req(path.join(root, 'lib/policyQuestionnaire/store.js'));
-      const args = { questionnaireKey: QUESTIONNAIRE_KEY, orgKey: 'org2', employeeId: 'emp-1', name: 'דנה', role: 'הנהלה', answers: { 'n1.1': { choice: 0 } } };
-      const ops = [
-        ['getResponse', () => store.getResponse(QUESTIONNAIRE_KEY, 'emp-1')],
-        ['listResponses', () => store.listResponses(QUESTIONNAIRE_KEY, 'org2')],
-        ['saveDraft', () => store.saveDraft(args)],
-        ['submitResponse', () => store.submitResponse(args)],
-        ['recordEmailResult', () => store.recordEmailResult('id-1', { sent: true, error: null })],
-      ];
-      for (const mk of [p2010, () => Object.assign(new Error('relation "PolicyQuestionnaireResponse" does not exist'), { code: '42P01' }), () => Object.assign(new Error('The table `public.PolicyQuestionnaireResponse` does not exist in the current database.'), { code: 'P2021' })]) {
-        for (const [name, op] of ops) {
-          calls.length = 0;
-          behavior = () => { throw mk(); };
-          let err;
-          try { await op(); } catch (e) { err = e; }
-          assert.ok(err instanceof store.PolicyQuestionnaireDbError, `${name}: PolicyQuestionnaireDbError`);
-          assert.equal(err.kind, 'missing_table', name);
-          assert.equal(err.userMessage, 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.', name);
-          assert.equal(calls.length, 1, `${name}: ניסיון אחד בלבד - בלי לולאת ניסיונות ובלי ניסיון ליצור את הטבלה`);
-          assert.ok(!calls.some((c) => DDL_RE.test(c.sql)), `${name}: אף משפט DDL לא נשלח`);
-          assert.ok(calls.every((c) => /^\s*(SELECT|INSERT|UPDATE)\b/i.test(c.sql)), `${name}: רק SELECT/INSERT/UPDATE`);
-        }
-      }
-      // התעוררות Neon: ניסיון חוזר אחד (בלי DDL) ואז הצלחה
-      calls.length = 0;
-      let n = 0;
-      behavior = () => { n += 1; if (n === 1) throw Object.assign(new Error("Can't reach database server"), { code: 'P1001' }); return []; };
+      const respondent = { name: 'דנה לוי', role: 'הנהלה ראשית' };
+      const answers = pruneHidden(NEVE, completeAnswers(NEVE, 0));
+      const args = { qn: NEVE, questionnaireKey: QUESTIONNAIRE_KEY, respondent, answers };
+
+      assert.deepEqual(await store.listSubmissions(QUESTIONNAIRE_KEY), { threadId: null, replies: [] }, 'אין שרשור עד השליחה הראשונה');
+      assert.equal(await store.getLastSubmission(QUESTIONNAIRE_KEY, 'emp-1'), null);
+      assert.equal(state.reports.length, 0, 'קריאה לא יוצרת שרשור');
+
+      // שליחה ראשונה: שרשור חדש + תגובה
+      const s1 = await store.submitAnswers({ ...args, employeeId: 'emp-1' });
+      assert.equal(state.reports.length, 1);
+      assert.equal(state.replies.length, 1);
+      const th = state.reports[0];
+      assert.equal(th.title, '📋 שאלון מדיניות ביטולים וזיכויים');
+      assert.equal(th.queryParams, 'policy-questionnaire:refunds-2026-10');
+      assert.equal(th.url, '/refund-questionnaire');
+      assert.equal(th.status, 'OPEN');
+      assert.equal(th.employeeId, 'emp-1', 'השרשור על שם מי ששלחה ראשונה');
+      assert.equal(th.needsHuman, true, 'בוט התיקונים מדלג');
+      assert.equal(th.isReadByProgrammer, false, 'המתכנת רואה "לא נקרא"');
+      assert.equal(th.isReadByUser, true);
+      assert.ok(th.userText.startsWith(THREAD_TITLE) && th.userText.includes('נווה יעקב'));
+      const r1 = state.replies[0];
+      assert.equal(r1.errorReportId, th.id);
+      assert.equal(r1.employeeId, 'emp-1');
+      assert.equal(r1.isProgrammer, false);
+      assert.equal(r1.isQuestion, false);
+      assert.equal(r1.text, s1.text);
+      assert.equal(s1.updated, false);
+      assert.ok(!r1.text.split('\n')[1].startsWith('עדכון'));
+      assert.deepEqual(parseSubmissionText(NEVE, r1.text).answers, answers, 'כל התשובות ברות פענוח מהתגובה');
+      for (const q of visibleQuestions(NEVE, answers)) assert.ok(r1.text.includes(`${q.id} ${q.text_he}`) && r1.text.includes(answerLabel(q, answers[q.id])));
+
+      // שליחה חוזרת (אידמפוטנטיות): אותו שרשור, תגובה חדשה מסומנת "עדכון", התגובה הישנה לא נערכת
+      const before = JSON.stringify(state.replies[0]);
+      const s2 = await store.submitAnswers({ ...args, employeeId: 'emp-1', answers: { ...answers, 'n1.1': { choice: 2, otherText: '', comment: '' } } });
+      assert.equal(state.reports.length, 1, 'לא נוצר שרשור שני');
+      assert.equal(state.replies.length, 2);
+      assert.equal(JSON.stringify(state.replies[0]), before, 'תגובה ישנה לא נערכה');
+      assert.equal(s2.threadId, s1.threadId);
+      assert.equal(s2.updated, true);
+      assert.ok(state.replies[1].text.split('\n')[1].startsWith('עדכון'));
+      assert.equal(parseSubmissionText(NEVE, state.replies[1].text).updated, true);
+      assert.equal(parseSubmissionText(NEVE, state.replies[1].text).answers['n1.1'].choice, 2);
+
+      // משיבה אחרת: אותו שרשור (ה-employeeId שלו לא משתנה), שליחה ראשונה שלה = בלי "עדכון"
+      th.isReadByProgrammer = true; th.needsHuman = false; th.status = 'ARCHIVED'; th.isHandled = true;
+      const s3 = await store.submitAnswers({ ...args, employeeId: 'emp-2', respondent: { name: 'רבקה', role: 'הנהלה ראשית' } });
+      assert.equal(state.reports.length, 1);
+      assert.equal(state.reports[0].employeeId, 'emp-1');
+      assert.equal(s3.updated, false);
+      assert.equal(state.reports[0].isReadByProgrammer, false, 'שליחה חדשה מסמנת שרשור כלא נקרא');
+      assert.equal(state.reports[0].needsHuman, true, 'הדגל נקבע מחדש (מתכנת שענה מאפס אותו)');
+      assert.equal(state.reports[0].status, 'OPEN', 'שרשור בארכיון חוזר לפתוח');
+      assert.equal(state.reports[0].isHandled, false);
+
+      // קריאות
+      const last = await store.getLastSubmission(QUESTIONNAIRE_KEY, 'emp-1');
+      assert.equal(last.count, 2);
+      assert.equal(last.id, state.replies[1].id);
+      assert.equal(await store.getLastSubmission(QUESTIONNAIRE_KEY, 'emp-nobody'), null);
+      // תגובה חופשית בשרשור (למשל של המתכנת) לא נספרת כשליחה
+      state.replies.push({ id: 'free', errorReportId: th.id, employeeId: 'prog', isProgrammer: true, text: 'שאלה חופשית', isQuestion: true, createdAt: new Date(Date.UTC(2026, 9, 6, 9, 0, 0)) });
+      const list = await store.listSubmissions(QUESTIONNAIRE_KEY);
+      assert.equal(list.threadId, th.id);
+      assert.equal(list.replies.length, 3);
+      assert.ok(list.replies.every((r) => r.text.startsWith(THREAD_TITLE)));
+      assert.deepEqual(list.replies.map((r) => r.employeeId), ['emp-1', 'emp-1', 'emp-2']);
+      // סבב אחר = שרשור אחר
+      assert.equal(await store.getLastSubmission('refunds-2099-01', 'emp-1'), null);
+
+      // שני שרשורים שנוצרו בטעות באותו רגע: ממשיכים בוותיק
+      state.reports.push({ ...state.reports[0], id: 'rep-dup', createdAt: new Date(Date.UTC(2026, 9, 7)) });
+      assert.equal((await store.listSubmissions(QUESTIONNAIRE_KEY)).threadId, th.id);
+
+      // עמידות: התעוררות של Neon בקריאה = ניסיון חוזר אחד; שגיאה אחרת = בלי ניסיון חוזר; כתיבה לא מנוסה שוב
+      state.ops.length = 0;
+      state.failNext = { op: 'report.findFirst', error: Object.assign(new Error("Can't reach database server"), { code: 'P1001' }) };
       const t0 = Date.now();
-      assert.equal(await store.getResponse(QUESTIONNAIRE_KEY, 'emp-1'), null);
-      assert.equal(calls.length, 2, 'ניסיון חוזר אחד על התעוררות');
+      assert.ok((await store.listSubmissions(QUESTIONNAIRE_KEY)).threadId);
       assert.ok(Date.now() - t0 >= 1400, 'השהיה לפני הניסיון החוזר');
-      assert.ok(calls.every((c) => !DDL_RE.test(c.sql)));
-      // התעוררות שנמשכת: נכשל אחרי שני ניסיונות בלבד, כ-transient
-      calls.length = 0;
-      behavior = () => { throw Object.assign(new Error('Timed out fetching a new connection'), { code: 'P2024' }); };
-      let e2;
-      try { await store.getResponse(QUESTIONNAIRE_KEY, 'emp-1'); } catch (e) { e2 = e; }
-      assert.equal(e2.kind, 'transient');
-      assert.equal(calls.length, 2);
-      // שגיאה אחרת: בלי ניסיון חוזר
-      calls.length = 0;
-      behavior = () => { throw new Error('syntax error at or near "FROM"'); };
-      let e3;
-      try { await store.getResponse(QUESTIONNAIRE_KEY, 'emp-1'); } catch (e) { e3 = e; }
-      assert.equal(e3.kind, 'other');
-      assert.equal(calls.length, 1);
+      assert.equal(state.ops.filter((o) => o === 'report.findFirst').length, 2);
+      state.failNext = { op: 'report.findFirst', error: new Error('boom') };
+      let err;
+      try { await store.listSubmissions(QUESTIONNAIRE_KEY); } catch (e) { err = e; }
+      assert.ok(err instanceof store.PolicyQuestionnaireDbError && err.kind === 'other' && err.userMessage.includes('נסו שוב'));
+      state.failNext = { op: 'reply.create', error: Object.assign(new Error("Can't reach database server"), { code: 'P1001' }) };
+      state.ops.length = 0;
+      let werr;
+      try { await store.submitAnswers({ ...args, employeeId: 'emp-1' }); } catch (e) { werr = e; }
+      assert.ok(werr instanceof store.PolicyQuestionnaireDbError && werr.kind === 'transient');
+      assert.equal(state.ops.filter((o) => o === 'reply.create').length, 1, 'כתיבה לא מנוסה שוב אוטומטית');
+      assert.equal(state.replies.filter((r) => r.employeeId === 'emp-1').length, 2, 'לא נוספה תגובה');
+
+      // כשל בעדכון דגלי השרשור לא מבטל שליחה שכבר נשמרה
+      const nBefore = state.replies.length;
+      state.failNext = { op: 'report.update', error: new Error('flags failed') };
+      const s4 = await store.submitAnswers({ ...args, employeeId: 'emp-2', respondent: { name: 'רבקה', role: '' } });
+      assert.equal(state.replies.length, nBefore + 1);
+      assert.equal(s4.updated, true);
       passed += 1;
-      console.log('ok store smoke: טבלה חסרה (42P01 / P2021 / P2010) = missing_table בניסיון אחד ובלי DDL; התעוררות = ניסיון חוזר אחד');
+      console.log('ok store smoke: find-or-create, אידמפוטנטיות, "עדכון", דגלי השרשור, קריאות, ניסיון חוזר רק בקריאה');
     } catch (e) {
       failed += 1;
-      failures.push(`Store missing-table smoke\n    ${String(e && e.stack).split('\n').slice(0, 7).join('\n    ')}`);
+      failures.push(`Store smoke\n    ${String(e && e.stack).split('\n').slice(0, 8).join('\n    ')}`);
     }
   });
   return ran;
 }
 
-async function pagesMissingTableSmoke() {
-  const state = { roleId: 2, results: () => { throw Object.assign(new Error('relation "PolicyQuestionnaireResponse" does not exist'), { code: '42P01' }); } };
-  class PolicyQuestionnaireDbError extends Error { constructor(kind) { super(kind); this.kind = kind; this.userMessage = 'שגיאת מסד'; } }
+async function routesSmoke() {
+  const { state: db, prisma } = makeFakePrisma();
+  const sys = { user: null, mails: [], mailBehavior: () => ({ success: true }) };
+  db.employees = { 'emp-1': { firstName: 'דנה', lastName: 'לוי', fullName: null }, 'emp-2': { firstName: 'רבקה', lastName: 'כהן', fullName: null } };
+  db.owners = ['owner@example.com'];
   const stubs = {
-    '@/lib/policyQuestionnaire/access': {
-      requireHeadManagement: async () => ({ ok: true, employee: { id: 'emp-1', roleId: state.roleId, name: 'דנה', roleLabel: '' } }),
-      loadResultsPayload: async () => state.results(),
+    '@/app/lib/prisma': { __esModule: true, default: prisma },
+    '@/lib/auth': {
+      HEAD_MANAGEMENT_ROLES: [0, 2],
+      checkAuth: async () => !!sys.user && [0, 2].includes(sys.user.roleId),
+      getSessionEmployee: async () => (sys.user ? { id: sys.user.id, roleId: sys.user.roleId, isActive: true } : null),
     },
-    '@/lib/policyQuestionnaire/store': { PolicyQuestionnaireDbError },
-    'next/link': { __esModule: true, default: ({ href, children }) => createRequire(path.join(root, 'package.json'))('react').createElement('a', { href }, children) },
+    '@/lib/mailer': { sendSystemEmail: async (o) => { sys.mails.push(o); return sys.mailBehavior(o); } },
+    'next/server': { NextResponse: { json: (body, init) => new Response(JSON.stringify(body), { status: (init && init.status) || 200, headers: { 'content-type': 'application/json' } }) } },
   };
+  const savedOrg = process.env.GEMACH_ORG;
+  process.env.GEMACH_ORG = 'neve-yaakov';
+  const ran = await withTsHooks(stubs, async (req) => {
+    const call = async (handler, method, body) => {
+      const request = new Request('https://gmach-neve-yaakov.vercel.app/api/policy-questionnaire', {
+        method, headers: { host: 'gmach-neve-yaakov.vercel.app', 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const res = await handler(request);
+      return { status: res.status, json: await res.json() };
+    };
+    try {
+      const main = req(path.join(root, 'app/api/policy-questionnaire/route.js'));
+      const resend = req(path.join(root, 'app/api/policy-questionnaire/resend/route.js'));
+      const answersRoute = req(path.join(root, 'app/api/policy-questionnaire/answers/route.js'));
+      const full = completeAnswers(NEVE, 0);
+      const link = 'https://gmach-neve-yaakov.vercel.app/refund-questionnaire/answers';
+      assert.equal(main.PUT, undefined, 'אין שמירה אוטומטית בשרת');
+
+      // הרשאות: אנונימי / מנהלת רגילה = שום כתיבה, שום מייל
+      sys.user = null;
+      assert.equal((await call(main.GET, 'GET')).status, 401);
+      assert.equal((await call(main.POST, 'POST', { answers: full, name: 'x' })).status, 401);
+      sys.user = { id: 'emp-branch', roleId: 1 };
+      for (const [h, m, b] of [[main.GET, 'GET'], [main.POST, 'POST', { answers: full, name: 'x' }], [resend.POST, 'POST'], [answersRoute.GET, 'GET']]) assert.equal((await call(h, m, b)).status, 403);
+      assert.equal(db.reports.length + db.replies.length, 0, 'שום דבר לא נכתב');
+      assert.equal(sys.mails.length, 0);
+
+      // GET ראשון: השאלון של נווה יעקב בלבד, בלי source, שם ותפקיד מראש, בלי תשובות
+      sys.user = { id: 'emp-1', roleId: 0 };
+      const g = await call(main.GET, 'GET');
+      assert.equal(g.status, 200);
+      assert.equal(g.json.questionnaire.gmachName, 'נווה יעקב');
+      assert.equal(flattenQuestions(g.json.questionnaire).length, 14);
+      assert.ok(!JSON.stringify(g.json).includes('"source"'));
+      assert.equal(g.json.respondent.name, 'דנה לוי');
+      assert.equal(g.json.respondent.role, 'הנהלה ראשית');
+      assert.deepEqual(g.json.answers, {});
+      assert.equal(g.json.submission, null);
+      assert.equal(g.json.questionnaireKey, 'refunds-2026-10');
+      assert.equal(db.reports.length, 0, 'GET לא יוצר שרשור');
+
+      // שליחה לא תקינה: שום כתיבה ושום מייל
+      const bad = await call(main.POST, 'POST', { answers: { 'n1.1': { choice: 0 } }, name: 'דנה' });
+      assert.equal(bad.status, 400);
+      assert.ok(bad.json.errors.length >= 10);
+      assert.equal((await call(main.POST, 'POST', { name: 'דנה' })).status, 400, 'בלי answers');
+      assert.equal((await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: OTHER, otherText: '  ' } }, name: 'דנה' })).status, 400);
+      assert.equal(db.reports.length + db.replies.length, 0);
+      assert.equal(sys.mails.length, 0);
+      const rawBad = await main.POST(new Request('https://x.vercel.app/api/policy-questionnaire', { method: 'POST', body: '{not json' }));
+      assert.equal(rawBad.status, 400);
+
+      // שליחה ראשונה: שרשור + תגובה אחת + מייל אחד לכל נמען (בלי כפילויות)
+      db.owners = ['owner@example.com', 'OWNER@example.com', 'second@example.com'];
+      const ok1 = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: OTHER, otherText: 'שבעה ימים', comment: 'הערה' }, 'n4.3': { choice: 1 }, bogus: { choice: 0 } }, name: 'דנה לוי', role: 'הנהלה ראשית', employeeId: 'emp-ATTACKER' });
+      assert.equal(ok1.status, 200);
+      assert.equal(ok1.json.success, true);
+      assert.equal(ok1.json.emailSent, true);
+      assert.equal(db.reports.length, 1);
+      assert.equal(db.replies.length, 1);
+      assert.equal(db.replies[0].employeeId, 'emp-1', 'הזהות מהעוגייה, לא מהגוף');
+      assert.equal(db.reports[0].employeeId, 'emp-1');
+      assert.deepEqual(sys.mails.map((m) => m.to), ['owner@example.com', 'second@example.com'], 'מייל אחד לכל נמען, בלי כפילויות');
+      assert.equal(sys.mails[0].subject, 'שאלון מדיניות ביטולים וזיכויים - נווה יעקב - דנה לוי');
+      assert.ok(sys.mails[0].body.includes(link) && sys.mails[0].html.includes(link));
+      assert.ok(sys.mails[0].body.includes('אחר: שבעה ימים'));
+      assert.ok(sys.mails[0].body.startsWith(db.replies[0].text.split('\n')[0]), 'גוף המייל הוא אותו טקסט של התגובה');
+      assert.ok(db.replies[0].text.includes('תשובה: אחר: שבעה ימים') && db.replies[0].text.includes('הערה: הערה'));
+      assert.ok(!db.replies[0].text.includes(`n4.3 ${findQuestion(NEVE, 'n4.3').text_he}`), 'n4.3 מוסתרת (n4.2=אין קיזוז) נגזמה');
+      assert.ok(!db.replies[0].text.includes('bogus'));
+      assert.ok(!sys.mails[0].body.includes('עדכון - זו גרסה'));
+      assert.equal(ok1.json.updated, false);
+
+      // GET אחרי שליחה: השליחה האחרונה נקראת מהשרשור (לעדכון התשובות)
+      const g2 = await call(main.GET, 'GET');
+      assert.equal(g2.json.answers['n1.1'].choice, OTHER);
+      assert.equal(g2.json.answers['n1.1'].otherText, 'שבעה ימים');
+      assert.equal(g2.json.answers['n1.1'].comment, 'הערה');
+      assert.equal(g2.json.submission.count, 1);
+      assert.equal(g2.json.respondent.name, 'דנה לוי');
+      // משיבה אחרת לא רואה את התשובות של דנה
+      sys.user = { id: 'emp-2', roleId: 0 };
+      const g3 = await call(main.GET, 'GET');
+      assert.deepEqual(g3.json.answers, {});
+      assert.equal(g3.json.submission, null);
+      assert.equal(g3.json.respondent.name, 'רבקה כהן');
+      sys.user = { id: 'emp-1', roleId: 0 };
+
+      // שליחה חוזרת: אותו שרשור, תגובה חדשה "עדכון", מייל "(עודכן)"
+      sys.mails.length = 0;
+      const ok2 = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: 0 } }, name: 'דנה לוי', role: 'הנהלה ראשית' });
+      assert.equal(ok2.json.updated, true);
+      assert.equal(db.reports.length, 1, 'שרשור אחד לגמ"ח');
+      assert.equal(db.replies.length, 2);
+      assert.ok(db.replies[1].text.split('\n')[1].startsWith('עדכון'));
+      assert.equal(sys.mails.length, 2);
+      assert.ok(sys.mails[0].subject.endsWith(' (עודכן)'));
+      assert.equal((await call(main.GET, 'GET')).json.submission.count, 2);
+
+      // כשל מייל: התשובות כבר בשרשור, emailSent=false; ניסיון חוזר שולח שוב את האחרונה בלבד ואינו כותב בשרשור
+      sys.mails.length = 0;
+      sys.mailBehavior = () => ({ success: false, message: 'Apps Script down' });
+      const fail = await call(main.POST, 'POST', { answers: { ...full, 'n1.1': { choice: 2 } }, name: 'דנה לוי', role: 'הנהלה ראשית' });
+      assert.equal(fail.status, 200);
+      assert.equal(fail.json.success, true);
+      assert.equal(fail.json.emailSent, false);
+      assert.ok(fail.json.emailError.includes('Apps Script down'));
+      assert.equal(db.replies.length, 3, 'התשובות לא אבדו');
+      sys.mailBehavior = () => ({ success: true });
+      sys.mails.length = 0;
+      const repliesBefore = db.replies.length;
+      const retry = await call(resend.POST, 'POST');
+      assert.equal(retry.json.emailSent, true);
+      assert.equal(sys.mails.length, 2);
+      assert.ok(sys.mails[0].subject.endsWith(' (עודכן)'));
+      assert.ok(sys.mails[0].body.includes(findQuestion(NEVE, 'n1.1').options_he[2]), 'השליחה האחרונה');
+      assert.equal(db.replies.length, repliesBefore, 'ניסיון חוזר לא כותב בשרשור');
+      // אין נמענים / המייל זורק
+      db.owners = [];
+      const noOwner = await call(resend.POST, 'POST');
+      assert.equal(noOwner.json.emailSent, false);
+      assert.ok(noOwner.json.emailError.includes('כתובת מייל'));
+      db.owners = ['owner@example.com'];
+      sys.mailBehavior = () => { throw new Error('boom'); };
+      const thrown = await call(resend.POST, 'POST');
+      assert.equal(thrown.status, 200);
+      assert.equal(thrown.json.emailSent, false);
+      sys.mailBehavior = () => ({ success: true });
+      // resend בלי שליחה קודמת
+      sys.user = { id: 'emp-2', roleId: 2 };
+      assert.equal((await call(resend.POST, 'POST')).status, 400);
+
+      // תוצאות: הנהלה רואה בלי source; מתכנת (הבעלים) רואה source; כולן מקובצות לפי משיבה
+      db.replies.push({ id: 'free', errorReportId: db.reports[0].id, employeeId: 'prog', isProgrammer: true, text: 'שאלה חופשית', isQuestion: true, createdAt: new Date(Date.UTC(2026, 9, 6, 12, 0, 0)) });
+      await call(main.POST, 'POST', { answers: full, name: 'רבקה כהן', role: 'הנהלה' }); // כרגע המשתמשת היא emp-2 (roleId 2)
+      sys.user = { id: 'emp-1', roleId: 0 };
+      const r0 = await call(answersRoute.GET, 'GET');
+      assert.equal(r0.status, 200);
+      assert.equal(r0.json.threadFound, true);
+      assert.deepEqual(r0.json.respondents.map((r) => r.name).sort(), ['דנה לוי', 'רבקה כהן']);
+      const dana = r0.json.respondents.find((r) => r.name === 'דנה לוי');
+      assert.equal(dana.count, 3);
+      assert.equal(dana.earlier.length, 2);
+      assert.ok(dana.latest.text.startsWith(THREAD_TITLE) && dana.latest.answers['n1.1'].choice === 2);
+      assert.ok(dana.earlier.every((e) => e.text && !('answers' in e)));
+      assert.ok(!JSON.stringify(r0.json).includes('"source"'));
+      assert.ok(!JSON.stringify(r0.json).includes('שאלה חופשית'), 'תגובה חופשית בשרשור לא נכנסת לתוצאות');
+      sys.user = { id: 'emp-2', roleId: 2 };
+      const r2 = await call(answersRoute.GET, 'GET');
+      assert.ok(flattenQuestions(r2.json.questionnaire).every((q) => q.source), 'הבעלים רואה מקור');
+
+      // הגמ"ח הראשי: אותו קוד, השאלות של מכובד, שרשור משלו (DB נפרד)
+      process.env.GEMACH_ORG = 'main';
+      const mainDb = makeFakePrisma();
+      Object.assign(db, { reports: mainDb.state.reports, replies: mainDb.state.replies });
+      sys.user = { id: 'emp-1', roleId: 0 };
+      const gm = await call(main.GET, 'GET');
+      assert.equal(gm.json.questionnaire.gmachName, 'מכובד');
+      assert.equal(flattenQuestions(gm.json.questionnaire).length, 8);
+      const okm = await call(main.POST, 'POST', { answers: completeAnswers(MAIN), name: 'דנה', role: '' });
+      assert.equal(okm.status, 200);
+      assert.ok(db.replies[0].text.includes('מכובד') && db.replies[0].text.includes('m1.1 '));
+      assert.ok(sys.mails.at(-1).subject.includes('מכובד'));
+      process.env.GEMACH_ORG = 'neve-yaakov';
+
+      // שגיאת מסד: הודעה בעברית, בלי 500 גולמי
+      db.failNext = { op: 'report.findFirst', error: new Error('boom') };
+      const dbErr = await call(main.GET, 'GET');
+      assert.equal(dbErr.status, 503);
+      assert.ok(dbErr.json.error.includes('נסו שוב'));
+      passed += 1;
+      console.log('ok routes smoke: הרשאות, שרשור אחד, "עדכון", מייל אחד, כשל מייל וניסיון חוזר, תוצאות לפי משיבה, שני גמחים');
+    } catch (e) {
+      failed += 1;
+      failures.push(`Routes smoke\n    ${String(e && e.stack).split('\n').slice(0, 8).join('\n    ')}`);
+    }
+  });
+  if (savedOrg === undefined) delete process.env.GEMACH_ORG; else process.env.GEMACH_ORG = savedOrg;
+  return ran;
+}
+
+// ---------------------------------------------------------------------------
+// רינדור בצד שרת (SSR) של הרכיבים והדפים - מדולג אם אין react-dom / typescript
+// ---------------------------------------------------------------------------
+async function ssrSmoke() {
+  const noop = () => {};
+  const stubs = {
+    'next/link': { __esModule: true, default: ({ href, children }) => createRequire(path.join(root, 'package.json'))('react').createElement('a', { href }, children) },
+    '@/lib/policyQuestionnaire/access': {
+      requireHeadManagement: async () => ({ ok: true, employee: { id: 'emp-1', roleId: 2, name: 'דנה', roleLabel: '' } }),
+      loadResultsPayload: async () => ssrState.payload(),
+    },
+    '@/lib/policyQuestionnaire/store': { PolicyQuestionnaireDbError: class extends Error { constructor(k) { super(k); this.kind = k; this.userMessage = 'שגיאת מסד'; } } },
+  };
+  const ssrState = { payload: () => null };
   const ran = await withTsHooks(stubs, async (req) => {
     try {
       const ReactDOMServer = req('react-dom/server');
+      const React = req('react');
+      const h = React.createElement;
       const render = (el) => ReactDOMServer.renderToStaticMarkup(el);
+      const { FormView, DoneView } = req(path.join(root, 'app/refund-questionnaire/RefundQuestionnaireClient.js'));
+      const AnswersClient = req(path.join(root, 'app/refund-questionnaire/answers/AnswersClient.js')).default;
+
+      for (const [label, qn0] of [['org1', MAIN], ['org2', NEVE]]) {
+        const qn = publicQuestionnaire(qn0);
+        const answers = { ...completeAnswers(qn0, 0) };
+        const first = visibleQuestions(qn0, answers)[0].id;
+        answers[first] = { choice: OTHER, otherText: 'תשובה אחרת', comment: 'הערה כלשהי' };
+        const base = {
+          qn, answers, name: 'דנה לוי', role: 'הנהלה', saveState: 'saved', showErrors: false, editingSent: false, submission: null, draftInfo: null, discardDraft: noop,
+          submitError: '', submitting: false, confirmOpen: false, openComments: {}, setOpenComments: noop, changeName: noop, changeRole: noop,
+          setAnswer: noop, requestSubmit: noop, doSubmit: noop, setConfirmOpen: noop,
+        };
+        const html = render(h(FormView, base));
+        assert.ok(html.includes('dir="rtl"'), `${label} rtl`);
+        assert.ok(html.includes(qn.gmachName));
+        assert.equal((html.match(/id="rq-q-[^"]*" class="rq-card/g) || []).length, visibleQuestions(qn0, answers).length, `${label}: כרטיס לכל שאלה גלויה`);
+        assert.ok(html.includes('ענית על') && html.includes('נשמר בדפדפן'));
+        assert.ok(html.includes('הטיוטה נשמרת רק בדפדפן הזה עד השליחה'));
+        assert.ok(html.includes(UNDECIDED_LABEL) && html.includes('דוגמה:') && html.includes('היום אצלכן:') && html.includes('למה שואלים:'));
+        assert.ok(html.includes('תשובה אחרת') && html.includes('הערה כלשהי'));
+        assert.ok(!html.includes('"source"') && !flattenQuestions(qn0).some((q) => html.includes(q.source)), 'source לא מוצג');
+        assert.ok(!FORBIDDEN.some(([, re]) => re.test(html.replace(/<[^>]*>/g, ' '))), 'אין מילים אסורות בטקסט המרונדר');
+        assert.ok(html.includes('>שליחה<'));
+        const withErr = render(h(FormView, { ...base, answers: {}, showErrors: true, confirmOpen: true, name: '' }));
+        assert.ok(withErr.includes('rq-missing') && withErr.includes('נא לבחור תשובה') && withErr.includes('נא למלא שם') && withErr.includes('לשלוח את התשובות?'));
+        // שחזור טיוטה, עדכון אחרי שליחה, ואחסון חסום
+        const restored = render(h(FormView, { ...base, draftInfo: { savedAt: Date.UTC(2026, 9, 6, 8, 0) }, editingSent: true, submission: { submittedAt: '2026-10-05T21:30:00Z', count: 1 } }));
+        assert.ok(restored.includes('שוחזרה טיוטה שנשמרה בדפדפן הזה') && restored.includes('מחיקת הטיוטה והתחלה מחדש') && restored.includes('06.10.2026 00:30') && restored.includes('התשובות כבר נשלחו פעם אחת'));
+        const noStore = render(h(FormView, { ...base, saveState: 'nostore' }));
+        assert.ok(noStore.includes('הדפדפן לא מאפשר לשמור טיוטה'));
+      }
+      const neveQ = publicQuestionnaire(NEVE);
+      const formProps = (answers) => ({ qn: neveQ, answers, name: 'ד', role: '', saveState: 'idle', showErrors: false, editingSent: false, submission: null, draftInfo: null, discardDraft: noop, submitError: '', submitting: false, confirmOpen: false, openComments: {}, setOpenComments: noop, changeName: noop, changeRole: noop, setAnswer: noop, requestSubmit: noop, doSubmit: noop, setConfirmOpen: noop });
+      const q43 = findQuestion(NEVE, 'n4.3').text_he;
+      assert.ok(!render(h(FormView, formProps({ 'n4.2': { choice: 0 } }))).includes(q43));
+      assert.ok(render(h(FormView, formProps({ 'n4.2': { choice: 1 } }))).includes(q43));
+
+      const done = render(h(DoneView, { qn: neveQ, answers: completeAnswers(NEVE), name: 'דנה', mail: { emailSent: false, emailError: 'x' }, submission: { submittedAt: '2026-10-05T21:30:00Z', count: 1 }, retrying: false, retryEmail: noop, startEditing: noop }));
+      assert.ok(done.includes('התשובות נשמרו, המייל לא נשלח - ננסה שוב') && done.includes('ניסיון חוזר') && done.includes('עדכון התשובות') && done.includes('dir="rtl"') && done.includes('נשלח ב-06.10.2026 00:30'));
+      const done2 = render(h(DoneView, { qn: neveQ, answers: completeAnswers(NEVE), name: 'דנה', mail: { emailSent: true }, submission: null, retrying: false, retryEmail: noop, startEditing: noop }));
+      assert.ok(done2.includes('נשלחו במייל לבעלים') && !done2.includes('המייל לא נשלח'));
+      const done3 = render(h(DoneView, { qn: neveQ, answers: completeAnswers(NEVE), name: 'דנה', mail: null, submission: { submittedAt: '2026-10-05T21:30:00Z', count: 2, partial: true }, retrying: false, retryEmail: noop, startEditing: noop }));
+      assert.ok(done3.includes('אלה התשובות האחרונות ששלחת') && done3.includes('לא נטענו מחדש') && !done3.includes('המייל לא נשלח'));
+
+      // דף התוצאות (רכיב + דף שרת)
+      const ownerQn = publicQuestionnaire(NEVE, { includeSource: true });
+      const mk = (id, employeeId, createdAt, o = {}) => ({ id, employeeId, employeeName: '', createdAt, text: renderSubmissionText(NEVE, o.answers || completeAnswers(NEVE, 0), { respondentName: o.name || 'דנה', respondentRole: 'הנהלה', submittedAt: createdAt, updated: !!o.updated }) });
+      const groups = groupSubmissions(NEVE, [
+        mk('a1', 'e1', '2026-10-06T08:00:00Z'),
+        mk('a2', 'e1', '2026-10-06T10:00:00Z', { updated: true, answers: { ...completeAnswers(NEVE, 0), 'n1.1': { choice: OTHER, otherText: 'אחר מיוחד', comment: '' } } }),
+        mk('b1', 'e2', '2026-10-06T09:00:00Z', { name: 'רבקה' }),
+      ]);
+      const respondents = groups.map((g) => ({ key: g.key, name: g.name, role: g.role, count: g.count, latest: g.latest, earlier: g.earlier.map((e) => ({ id: e.id, createdAt: e.createdAt, text: e.text, updated: e.updated })) }));
+      const ans = render(h(AnswersClient, { questionnaire: ownerQn, respondents, threadFound: true }));
+      assert.ok(ans.includes('dir="rtl"') && ans.includes('העתק הכל') && ans.includes('הדפסה') && ans.includes('דנה') && ans.includes('רבקה') && ans.includes('אחר: אחר מיוחד'));
+      assert.ok(ans.includes('גרסאות קודמות (1)') && ans.includes('<details') && ans.includes('2 שליחות'), 'האחרונה במלואה + גרסאות קודמות מקופלות');
+      assert.ok(ans.includes('עדכון') && ans.includes(THREAD_TITLE) && ans.includes("דיווח על שגיאות"));
+      assert.ok(ans.includes('מקור:'), 'הבעלים רואה מקור');
+      assert.ok(!render(h(AnswersClient, { questionnaire: neveQ, respondents, threadFound: true })).includes('מקור:'));
+      const empty = render(h(AnswersClient, { questionnaire: neveQ, respondents: [], threadFound: false }));
+      assert.ok(empty.includes('עדיין אף אחת לא שלחה תשובות') && empty.includes('השרשור ייווצר בשליחה הראשונה'));
+      // שליחה שלא כל תשובותיה זוהו: מוצג הטקסט המלא
+      const partialGroups = groupSubmissions(NEVE, [{ id: 'p1', employeeId: 'e3', employeeName: '', createdAt: '2026-10-06T08:00:00Z', text: renderSubmissionText(NEVE, completeAnswers(NEVE, 0), { respondentName: 'שרה' }).replace(`תשובה: ${findQuestion(NEVE, 'n1.1').options_he[0]}`, 'תשובה: נוסח ישן') }]);
+      const partialHtml = render(h(AnswersClient, { questionnaire: neveQ, threadFound: true, respondents: partialGroups.map((g) => ({ key: g.key, name: g.name, role: g.role, count: g.count, latest: g.latest, earlier: [] })) }));
+      assert.ok(partialHtml.includes('לא כל התשובות זוהו') && partialHtml.includes('נוסח ישן') && partialHtml.includes('rq-raw'));
+
       const page = req(path.join(root, 'app/refund-questionnaire/answers/page.js')).default;
-      // הבעלים (מתכנת): "הטבלה עדיין לא נוצרה" + שורת ההוראות
-      state.roleId = 2;
-      const owner = render(await page());
-      assert.ok(owner.includes('dir="rtl"') && owner.includes('הטבלה עדיין לא נוצרה.') && owner.includes('השאלון עדיין לא הופעל'), 'מצב ריק לבעלים');
-      assert.ok(owner.includes('apply_policy_questionnaire_table.js') && owner.includes('--write'), 'שורת הוראות ההפעלה');
-      assert.ok(!owner.includes('שגיאת מסד') && !owner.includes('callout-danger') && !owner.includes('אירעה שגיאה'), 'לא מוצגת שגיאה');
-      // הנהלה (0): אותה הודעה בלי שורת ההוראות הטכנית
-      state.roleId = 0;
-      const mgmt = render(await page());
-      assert.ok(mgmt.includes('הטבלה עדיין לא נוצרה.') && !mgmt.includes('apply_policy_questionnaire_table.js'));
-      // PolicyQuestionnaireDbError מסוג missing_table (מה שה-store האמיתי זורק) מזוהה גם הוא
-      state.results = () => { throw new PolicyQuestionnaireDbError('missing_table'); };
-      assert.ok(render(await page()).includes('הטבלה עדיין לא נוצרה.'));
-      // שגיאה אחרת (לא טבלה חסרה) ממשיכה להציג שגיאה אמיתית, לא "לא הופעל"
-      state.results = () => { throw new PolicyQuestionnaireDbError('transient'); };
-      const other = render(await page());
-      assert.ok(other.includes('callout-danger') && other.includes('שגיאת מסד') && !other.includes('הטבלה עדיין לא נוצרה'));
-      // דף המילוי: המצב הידידותי (הקליינט עובר אליו כש-GET מחזיר not_enabled)
-      const { NotEnabledForm } = req(path.join(root, 'app/refund-questionnaire/NotEnabled.js'));
-      const form = render(req('react').createElement(NotEnabledForm));
-      assert.ok(form.includes('dir="rtl"') && form.includes('השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.') && !/<form|<input|<button/.test(form), 'הודעה בלבד, בלי טופס');
-      assert.ok(!FORBIDDEN.some(([, re]) => re.test(form.replace(/<[^>]*>/g, ' '))), 'אין מילים אסורות בהודעה');
+      ssrState.payload = () => ({ questionnaire: ownerQn, threadFound: true, respondents });
+      const pageHtml = render(await page());
+      assert.ok(pageHtml.includes('דנה') && pageHtml.includes('העתק הכל'));
+      ssrState.payload = () => { throw new (stubs['@/lib/policyQuestionnaire/store'].PolicyQuestionnaireDbError)('transient'); };
+      const errHtml = render(await page());
+      assert.ok(errHtml.includes('callout-danger') && errHtml.includes('שגיאת מסד'));
       passed += 1;
-      console.log('ok pages smoke: דף התשובות והדף הריק מציגים "לא הופעל" / "הטבלה עדיין לא נוצרה" ולא שגיאה');
+      console.log('ok ssr smoke: FormView/DoneView/AnswersClient/דף התוצאות מרונדרים לשני הגמחים');
     } catch (e) {
       failed += 1;
-      failures.push(`Pages missing-table smoke\n    ${String(e && e.stack).split('\n').slice(0, 7).join('\n    ')}`);
+      failures.push(`SSR smoke\n    ${String(e && e.stack).split('\n').slice(0, 8).join('\n    ')}`);
     }
   });
   return ran;
 }
 
-await ssrSmoke();
+await storeSmoke();
 await routesSmoke();
-await storeMissingTableSmoke();
-await pagesMissingTableSmoke();
+await ssrSmoke();
 
 console.log(`\n${passed} passed, ${failed} failed; forbidden-word hits: ${forbiddenHits.length}`);
 if (failed) {

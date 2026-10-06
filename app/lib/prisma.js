@@ -168,9 +168,7 @@ const createPrismaClient = (url) => {
             delete args.__audit;
           }
 
-          // PolicyQuestionnaireResponse (שאלון המדיניות): הקוד ניגש אליה ב-SQL גולמי בלבד (lib/policyQuestionnaire/store.js), אז התוסף
-          // לא רואה אותה בכלל; השורה כאן היא רשת ביטחון - שאם מישהו יוסיף prisma.policyQuestionnaireResponse.* לא ייכתב רעש ל-AuditLog.
-          if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift' || model === 'BackupRun' || model === 'SearchHistory' || model === 'SavedSearch' || model === 'PolicyQuestionnaireResponse') {
+          if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift' || model === 'BackupRun' || model === 'SearchHistory' || model === 'SavedSearch') {
             return query(args);
           }
 

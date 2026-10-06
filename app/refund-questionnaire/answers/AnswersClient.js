@@ -2,22 +2,23 @@
 
 import { useState } from 'react';
 import {
-  summarize, tallyResponses, buildAllPlainText, formatIsraelDateTime, computeProgress,
+  summarize, tallyResponses, joinSubmissionTexts, formatIsraelDateTime, computeProgress, THREAD_TITLE,
 } from '@/lib/policyQuestionnaire/logic';
 
-// דף התוצאות לבעלים: סיכום ספירות לכל שאלה (לפי התשובות ששלחו), ואז כל משיבה עם כל התשובות וההערות שלה.
-// "העתק הכל" מעתיק טקסט פשוט של כולן; "הדפסה" משתמשת בכללי ההדפסה המשותפים (הכפתורים והתפריט מוסתרים).
-export default function AnswersClient({ questionnaire, responses }) {
+// דף התוצאות לבעלים: סיכום ספירות לכל שאלה (לפי השליחה האחרונה של כל משיבה), ואז כל משיבה עם כל התשובות וההערות של השליחה האחרונה שלה,
+// ו"גרסאות קודמות" מקופלות (הטקסט המלא של כל שליחה ישנה). התשובות נקראות מתגובות השרשור של השאלון בחלון דיווחי התקלות (ר' lib/policyQuestionnaire/store.js).
+// "העתק הכל" מעתיק את הטקסט המלא של השליחה האחרונה של כל משיבה; "הדפסה" משתמשת בכללי ההדפסה המשותפים (הכפתורים והתפריט מוסתרים).
+export default function AnswersClient({ questionnaire, respondents, threadFound }) {
   const [copied, setCopied] = useState('');
-  const submitted = responses.filter((r) => r.status === 'submitted');
-  const drafts = responses.filter((r) => r.status !== 'submitted');
-  const tally = tallyResponses(questionnaire, submitted);
+  const latestSubs = respondents.map((r) => r.latest);
+  const tally = tallyResponses(questionnaire, latestSubs);
   const showSource = questionnaire.sections.some((s) => s.questions.some((q) => q.source));
   const sourceById = new Map();
   questionnaire.sections.forEach((s) => s.questions.forEach((q) => { if (q.source) sourceById.set(q.id, q.source); }));
+  const updatesCount = respondents.reduce((n, r) => n + Math.max(0, r.count - 1), 0);
 
   const copyAll = async () => {
-    const text = buildAllPlainText(questionnaire, [...submitted, ...drafts]);
+    const text = joinSubmissionTexts(respondents.map((r) => r.latest.text));
     try {
       await navigator.clipboard.writeText(text);
       setCopied('ok');
@@ -43,27 +44,29 @@ export default function AnswersClient({ questionnaire, responses }) {
     <div className="rq-root rq-wide" dir="rtl">
       <div className="rq-head">
         <h1>תשובות השאלון - {questionnaire.gmachName}</h1>
-        <p>כאן מופיעות התשובות של ההנהלות בשאלון הביטולים והזיכויים. כל תשובה נשמרת מיד, וגם אם עוד לא נשלחה סופית היא מופיעה כאן כטיוטה.</p>
+        <p>כאן מופיעות התשובות של ההנהלות בשאלון הביטולים והזיכויים, לפי השליחה האחרונה של כל אחת. כל שליחה נשמרת גם בשרשור "{THREAD_TITLE}" בחלון "דיווח על שגיאות" (אצל המתכנת, ואצל מי שמילאה ראשונה בגמ"ח הזה), ושליחה חוזרת נוספת שם כעדכון חדש.</p>
       </div>
 
       <div className="rq-stats">
-        <div className="rq-stat"><b>{submitted.length}</b>שלחו תשובות</div>
-        <div className="rq-stat"><b>{drafts.length}</b>טיוטות (עוד לא נשלחו)</div>
+        <div className="rq-stat"><b>{respondents.length}</b>שלחו תשובות</div>
+        <div className="rq-stat"><b>{updatesCount}</b>עדכונים אחרי השליחה הראשונה</div>
         <div className="rq-stat"><b>{tally.length}</b>שאלות</div>
       </div>
 
       <div className="rq-toolbar print-hide">
-        <button type="button" className="btn btn-primary" onClick={copyAll} disabled={responses.length === 0}>העתק הכל</button>
+        <button type="button" className="btn btn-primary" onClick={copyAll} disabled={respondents.length === 0}>העתק הכל</button>
         <button type="button" className="btn btn-secondary" onClick={() => window.print()}>הדפסה</button>
         {copied === 'ok' && <span className="rq-save ok">הועתק</span>}
         {copied === 'fail' && <span className="rq-save err">ההעתקה נכשלה - אפשר לסמן ידנית ולהעתיק</span>}
       </div>
 
-      {responses.length === 0 && <div className="rq-card rq-empty">עדיין אף אחת לא התחילה לענות.</div>}
+      {respondents.length === 0 && (
+        <div className="rq-card rq-empty">{threadFound ? 'עדיין אף אחת לא שלחה תשובות.' : 'עדיין אף אחת לא שלחה תשובות, והשרשור ייווצר בשליחה הראשונה.'}</div>
+      )}
 
-      {responses.length > 0 && (
+      {respondents.length > 0 && (
         <>
-          <h2 className="rq-section-title">סיכום לפי שאלה{submitted.length ? ` (לפי ${submitted.length} שלחו)` : ''}</h2>
+          <h2 className="rq-section-title">סיכום לפי שאלה{` (לפי ${respondents.length} משיבות)`}</h2>
           {tally.map((t) => {
             const max = Math.max(1, ...t.counts.map((c) => c.count));
             return (
@@ -85,27 +88,33 @@ export default function AnswersClient({ questionnaire, responses }) {
           })}
 
           <h2 className="rq-section-title">התשובות של כל משיבה</h2>
-          {[...submitted, ...drafts].map((r) => {
-            const sections = summarize(questionnaire, r.answers || {});
-            const prog = computeProgress(questionnaire, r.answers || {});
-            const sentAt = formatIsraelDateTime(r.submittedAt);
-            const savedAt = formatIsraelDateTime(r.updatedAt);
+          {respondents.map((r) => {
+            const sub = r.latest;
+            const sections = summarize(questionnaire, sub.answers || {});
+            const prog = computeProgress(questionnaire, sub.answers || {});
+            const sentAt = formatIsraelDateTime(sub.createdAt);
+            const partial = sub.unparsed && sub.unparsed.length > 0;
             return (
-              <div className="rq-card rq-resp" key={r.id}>
+              <div className="rq-card rq-resp" key={r.key}>
                 <div className="rq-resp-head">
                   <div>
-                    <h3 className="rq-resp-name">{r.respondentName || 'ללא שם'}{r.respondentRole ? ` - ${r.respondentRole}` : ''}</h3>
+                    <h3 className="rq-resp-name">{r.name || 'ללא שם'}{r.role ? ` - ${r.role}` : ''}</h3>
                     <div className="rq-resp-meta">
-                      {r.status === 'submitted' ? `נשלח ב-${sentAt}` : `טיוטה, נשמרה ב-${savedAt}`} · נענו {prog.answered} מתוך {prog.total}
-                      {r.status === 'submitted' && r.pendingChanges ? ' · יש שינויים שעוד לא נשלחו' : ''}
+                      נשלח ב-{sentAt} · נענו {prog.answered} מתוך {prog.total}
+                      {r.count > 1 ? ` · ${r.count} שליחות (האחרונה מוצגת)` : ''}
                     </div>
                   </div>
                   <div>
-                    {r.status === 'submitted' ? <span className="badge badge-success">נשלח</span> : <span className="badge badge-warning">טיוטה</span>}
-                    {r.status === 'submitted' && r.needsEmail && <span className="badge badge-danger" style={{ marginInlineStart: 6 }}>המייל לא נשלח</span>}
+                    <span className="badge badge-success">נשלח</span>
+                    {sub.updated && <span className="badge badge-warning" style={{ marginInlineStart: 6 }}>עדכון</span>}
                   </div>
                 </div>
-                {r.emailError && r.needsEmail && <div className="rq-resp-meta">שגיאת מייל: {r.emailError}</div>}
+                {partial && (
+                  <div className="rq-resp-meta" role="alert">
+                    לא כל התשובות זוהו (ייתכן שניסוח של שאלה או אפשרות השתנה מאז). הטקסט המלא של השליחה מוצג למטה:
+                    <pre className="rq-raw" dir="rtl">{sub.text}</pre>
+                  </div>
+                )}
                 {sections.map((s) => (s.items.length > 0 && (
                   <table className="rq-table" key={s.title}>
                     <thead><tr><th style={{ width: '48%' }}>{s.title}</th><th>תשובה</th></tr></thead>
@@ -122,6 +131,17 @@ export default function AnswersClient({ questionnaire, responses }) {
                     </tbody>
                   </table>
                 )))}
+                {r.earlier.length > 0 && (
+                  <details className="rq-earlier print-hide">
+                    <summary>גרסאות קודמות ({r.earlier.length})</summary>
+                    {r.earlier.map((e) => (
+                      <div key={e.id}>
+                        <div className="rq-resp-meta">נשלח ב-{formatIsraelDateTime(e.createdAt)}{e.updated ? ' (עדכון)' : ''}</div>
+                        <pre className="rq-raw" dir="rtl">{e.text}</pre>
+                      </div>
+                    ))}
+                  </details>
+                )}
               </div>
             );
           })}

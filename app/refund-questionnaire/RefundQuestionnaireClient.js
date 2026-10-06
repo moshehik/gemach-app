@@ -2,18 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  optionsForQuestion, visibleQuestions, computeProgress, isAnswered, validateSubmission, summarize, pruneHidden,
+  optionsForQuestion, visibleQuestions, computeProgress, isAnswered, validateSubmission, summarize, pruneHidden, formatIsraelDateTime,
   OTHER,
-  NOT_ENABLED_CODE,
 } from '@/lib/policyQuestionnaire/logic';
-import { NotEnabledForm } from './NotEnabled';
+import { draftKey, browserStorage, saveDraft, loadDraft, clearDraft } from '@/lib/policyQuestionnaire/draft';
 
 // טופס השאלון להנהלות (עברית, RTL, נייד קודם). כל הלוגיקה (תצוגה מותנית, תקינות, התקדמות) ב-lib/policyQuestionnaire/logic.js.
-// שמירה אוטומטית (PUT) אחרי כל שינוי בהשהיה של פחות משנייה; שליחה סופית (POST) אחרי שלב אישור; אחרי שליחה אפשר לעדכן.
-// בעיית מייל לא מאבדת תשובות: מוצגת הודעה עם כפתור "ניסיון חוזר" (POST /api/policy-questionnaire/resend).
+// אין שמירה בשרת עד לשליחה: הטיוטה נשמרת רק בדפדפן הזה (localStorage, lib/policyQuestionnaire/draft.js) אחרי כל שינוי, ונמחקת בשליחה סופית (POST).
+// הדף עובד גם כשהאחסון חסום (אז רק מציגים שאי אפשר לשמור טיוטה). אחרי שליחה: מסך תודה, ו"עדכון התשובות" טוען את השליחה האחרונה מהשרת
+// (נקראת מהשרשור) לטופס, כך ששליחה חוזרת מתחילה ממנה. בעיית מייל לא מאבדת תשובות: הודעה עם כפתור "ניסיון חוזר" (POST /api/policy-questionnaire/resend).
 
 const API = '/api/policy-questionnaire';
-const SAVE_DELAY_MS = 800;
+const SAVE_DELAY_MS = 500;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function callApi(method, body, url = API) {
@@ -35,15 +35,15 @@ async function callApi(method, body, url = API) {
 }
 
 export default function RefundQuestionnaireClient() {
-  const [phase, setPhase] = useState('loading'); // loading | error | notEnabled | form | done
+  const [phase, setPhase] = useState('loading'); // loading | error | form | done
   const [loadError, setLoadError] = useState('');
   const [qn, setQn] = useState(null);
   const [answers, setAnswers] = useState({});
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-  const [serverState, setServerState] = useState(null);
-  const [saveState, setSaveState] = useState('idle'); // idle | pending | saving | saved | error
-  const [saveError, setSaveError] = useState('');
+  const [submission, setSubmission] = useState(null); // { submittedAt, count, updated, partial } | null - השליחה האחרונה בשרת
+  const [saveState, setSaveState] = useState('idle'); // idle | saved | nostore
+  const [draftInfo, setDraftInfo] = useState(null); // { savedAt } כשהטופס שוחזר מטיוטה בדפדפן
   const [showErrors, setShowErrors] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -56,8 +56,10 @@ export default function RefundQuestionnaireClient() {
   const latest = useRef({ answers, name, role });
   useEffect(() => { latest.current = { answers, name, role }; });
   const timer = useRef(null);
-  const inflight = useRef(false);
-  const queued = useRef(false);
+  const keyRef = useRef('');
+  const storageRef = useRef(null);
+  const lastSent = useRef({ answers: {}, name: '', role: '' });
+  const frozen = useRef(false); // אחרי שליחה סופית לא כותבים טיוטה (כדי שלא תחזור אחרי שנמחקה)
 
   const load = useCallback(async () => {
     setPhase('loading');
@@ -69,24 +71,32 @@ export default function RefundQuestionnaireClient() {
       } catch (e) {
         if (e.status === 503) { await sleep(1500); data = await callApi('GET'); } else throw e; // התעוררות של מסד הנתונים: ניסיון חוזר אחד
       }
-      if (data && data.ok === false && data.code === NOT_ENABLED_CODE) { // הטבלה עוד לא נוצרה: מצב ידידותי, בלי טופס שלא יישמר
-        setPhase('notEnabled');
-        return;
-      }
       setQn(data.questionnaire);
-      setAnswers(data.answers || {});
-      setName(data.respondent?.name || '');
-      setRole(data.respondent?.role || '');
-      setServerState(data.response || null);
+      const sent = { answers: data.answers || {}, name: data.respondent?.name || '', role: data.respondent?.role || '' };
+      lastSent.current = sent;
+      keyRef.current = draftKey(data.questionnaireKey, data.me?.id || '');
+      storageRef.current = browserStorage();
+      setSubmission(data.submission || null);
+      const draft = loadDraft(storageRef.current, keyRef.current, data.questionnaire);
+      const start = draft ? { answers: draft.answers, name: draft.name || sent.name, role: draft.role || sent.role } : sent;
+      setAnswers(start.answers);
+      setName(start.name);
+      setRole(start.role);
       const opened = {};
-      Object.entries(data.answers || {}).forEach(([id, a]) => { if (a && a.comment) opened[id] = true; });
+      Object.entries(start.answers).forEach(([id, a]) => { if (a && a.comment) opened[id] = true; });
       setOpenComments(opened);
-      const submitted = data.response && data.response.status === 'submitted';
-      if (submitted && !data.response.pendingChanges) {
-        setMail({ emailSent: !data.response.needsEmail, emailError: data.response.emailError });
+      frozen.current = false;
+      if (draft) {
+        setDraftInfo({ savedAt: draft.savedAt });
+        setEditingSent(!!data.submission);
+        setPhase('form');
+      } else if (data.submission) {
+        setDraftInfo(null);
+        setMail(null);
         setPhase('done');
       } else {
-        setEditingSent(!!(submitted && data.response.pendingChanges));
+        setDraftInfo(null);
+        setEditingSent(false);
         setPhase('form');
       }
     } catch (e) {
@@ -97,52 +107,29 @@ export default function RefundQuestionnaireClient() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ---- שמירה אוטומטית ----
-  const save = useCallback(async () => {
-    if (inflight.current) { queued.current = true; return; }
-    inflight.current = true;
-    try {
-      // לולאה (ולא קריאה רקורסיבית): שינוי שנוסף בזמן שמירה נשמר מיד אחריה, עד שאין עוד מה לשמור
-      do {
-        queued.current = false;
-        setSaveState('saving');
-        const snap = latest.current;
-        try {
-          const json = await callApi('PUT', { answers: snap.answers, name: snap.name, role: snap.role });
-          setServerState(json.response || null);
-          setSaveError('');
-          setSaveState(queued.current ? 'saving' : 'saved');
-        } catch (e) {
-          setSaveError(e.message || '');
-          setSaveState('error');
-          queued.current = false; // עריכה הבאה תפעיל ניסיון חדש
-        }
-      } while (queued.current);
-    } finally {
-      inflight.current = false;
-    }
+  // ---- טיוטה בדפדפן ----
+  const persist = useCallback(() => {
+    if (frozen.current || !keyRef.current) return;
+    const ok = saveDraft(storageRef.current, keyRef.current, latest.current);
+    setSaveState(ok ? 'saved' : 'nostore');
   }, []);
 
   const scheduleSave = useCallback(() => {
-    setSaveState('pending');
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => { timer.current = null; save(); }, SAVE_DELAY_MS);
-  }, [save]);
+    timer.current = setTimeout(() => { timer.current = null; persist(); }, SAVE_DELAY_MS);
+  }, [persist]);
 
-  // סגירת הלשונית באמצע השהיה: שולחים מה שנשאר (keepalive)
+  // סגירת הלשונית באמצע השהיה: שומרים מיד מה שנשאר (האחסון סינכרוני)
   useEffect(() => {
-    const onHide = () => {
+    const flush = () => {
       if (!timer.current) return;
       clearTimeout(timer.current);
       timer.current = null;
-      const snap = latest.current;
-      try {
-        fetch(API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(snap), keepalive: true });
-      } catch { /* אין מה לעשות */ }
+      persist();
     };
-    window.addEventListener('pagehide', onHide);
-    return () => { window.removeEventListener('pagehide', onHide); if (timer.current) clearTimeout(timer.current); };
-  }, []);
+    window.addEventListener('pagehide', flush);
+    return () => { window.removeEventListener('pagehide', flush); if (timer.current) clearTimeout(timer.current); };
+  }, [persist]);
 
   const setAnswer = (qid, patch) => {
     setAnswers((prev) => ({ ...prev, [qid]: { choice: null, otherText: '', comment: '', ...(prev[qid] || {}), ...patch } }));
@@ -151,12 +138,20 @@ export default function RefundQuestionnaireClient() {
   const changeName = (v) => { setName(v); scheduleSave(); };
   const changeRole = (v) => { setRole(v); scheduleSave(); };
 
-  // ---- שליחה ----
-  const waitIdle = async () => {
+  const discardDraft = () => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    for (let i = 0; i < 100 && inflight.current; i += 1) await sleep(100);
+    clearDraft(storageRef.current, keyRef.current);
+    const sent = lastSent.current;
+    setAnswers(sent.answers);
+    setName(sent.name);
+    setRole(sent.role);
+    setDraftInfo(null);
+    setSaveState('idle');
+    setShowErrors(false);
+    if (submission) { setEditingSent(false); setPhase('done'); }
   };
 
+  // ---- שליחה ----
   const requestSubmit = () => {
     setSubmitError('');
     const pruned = pruneHidden(qn, answers);
@@ -174,12 +169,17 @@ export default function RefundQuestionnaireClient() {
   const doSubmit = async () => {
     setSubmitting(true);
     setSubmitError('');
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     try {
-      await waitIdle();
       const json = await callApi('POST', { answers: pruneHidden(qn, answers), name, role });
-      setAnswers(json.answers || answers);
-      setServerState(json.response || null);
+      frozen.current = true;
+      clearDraft(storageRef.current, keyRef.current);
+      const sentAnswers = json.answers || answers;
+      lastSent.current = { answers: sentAnswers, name: json.respondent?.name || name, role: json.respondent?.role || role };
+      setAnswers(sentAnswers);
+      setSubmission({ submittedAt: json.submittedAt, count: ((submission && submission.count) || 0) + 1, updated: !!json.updated, partial: false });
       setMail({ emailSent: !!json.emailSent, emailError: json.emailError || null });
+      setDraftInfo(null);
       setConfirmOpen(false);
       setEditingSent(false);
       setShowErrors(false);
@@ -189,7 +189,7 @@ export default function RefundQuestionnaireClient() {
     } catch (e) {
       setConfirmOpen(false);
       if (e.status === 400) setShowErrors(true);
-      setSubmitError(e.message || 'השליחה נכשלה. התשובות נשמרו כטיוטה - נסו שוב.');
+      setSubmitError(e.message || 'השליחה נכשלה. התשובות עדיין בטיוטה בדפדפן הזה - נסו שוב.');
     } finally {
       setSubmitting(false);
     }
@@ -200,7 +200,6 @@ export default function RefundQuestionnaireClient() {
     try {
       const json = await callApi('POST', null, `${API}/resend`);
       setMail({ emailSent: !!json.emailSent, emailError: json.emailError || null });
-      setServerState(json.response || serverState);
     } catch (e) {
       setMail({ emailSent: false, emailError: e.message });
     } finally {
@@ -208,7 +207,16 @@ export default function RefundQuestionnaireClient() {
     }
   };
 
+  // "עדכון התשובות": הטופס נפתח עם השליחה האחרונה (שנטענה מהשרת) וממנה ממשיכים
   const startEditing = () => {
+    frozen.current = false;
+    const sent = lastSent.current;
+    setAnswers(sent.answers);
+    setName(sent.name);
+    setRole(sent.role);
+    const opened = {};
+    Object.entries(sent.answers).forEach(([id, a]) => { if (a && a.comment) opened[id] = true; });
+    setOpenComments(opened);
     setEditingSent(true);
     setSaveState('idle');
     setPhase('form');
@@ -223,7 +231,6 @@ export default function RefundQuestionnaireClient() {
       </div>
     );
   }
-  if (phase === 'notEnabled') return <NotEnabledForm />;
   if (phase === 'error') {
     return (
       <div className="rq-root" dir="rtl">
@@ -234,13 +241,14 @@ export default function RefundQuestionnaireClient() {
   }
 
   if (phase === 'done') {
-    return <DoneView qn={qn} answers={answers} name={name} mail={mail} retrying={retrying} retryEmail={retryEmail} startEditing={startEditing} />;
+    return <DoneView qn={qn} answers={answers} name={name} mail={mail} submission={submission} retrying={retrying} retryEmail={retryEmail} startEditing={startEditing} />;
   }
 
   return (
     <FormView
-      qn={qn} answers={answers} name={name} role={role} saveState={saveState} saveError={saveError} showErrors={showErrors}
-      editingSent={editingSent} serverState={serverState} submitError={submitError} submitting={submitting} confirmOpen={confirmOpen}
+      qn={qn} answers={answers} name={name} role={role} saveState={saveState} showErrors={showErrors}
+      editingSent={editingSent} submission={submission} draftInfo={draftInfo} discardDraft={discardDraft}
+      submitError={submitError} submitting={submitting} confirmOpen={confirmOpen}
       openComments={openComments} setOpenComments={setOpenComments} changeName={changeName} changeRole={changeRole}
       setAnswer={setAnswer} requestSubmit={requestSubmit} doSubmit={doSubmit} setConfirmOpen={setConfirmOpen}
     />
@@ -248,7 +256,7 @@ export default function RefundQuestionnaireClient() {
 }
 
 /** מסך התודה וסיכום התשובות (מיוצא לבדיקות רינדור). */
-export function DoneView({ qn, answers, name, mail, retrying, retryEmail, startEditing }) {
+export function DoneView({ qn, answers, name, mail, submission, retrying, retryEmail, startEditing }) {
   const sections = summarize(qn, answers);
   const prog = computeProgress(qn, answers);
   return (
@@ -258,15 +266,22 @@ export function DoneView({ qn, answers, name, mail, retrying, retryEmail, startE
         <h1>תודה, התשובות נשלחו</h1>
         <p style={{ margin: '0 0 6px', color: 'var(--text-2)' }}>
           {name ? `${name}, ` : ''}ענית על {prog.answered} מתוך {prog.total} שאלות של {qn.gmachName}.
+          {submission && submission.submittedAt ? ` נשלח ב-${formatIsraelDateTime(submission.submittedAt)}.` : ''}
         </p>
       </div>
+      {submission && submission.partial && (
+        <div className="callout callout-info rq-banner">חלק מהתשובות ששלחת בעבר לא נטענו מחדש (ייתכן שניסוח של שאלה השתנה). אפשר לבחור אותן שוב אחרי "עדכון התשובות".</div>
+      )}
       {mail && mail.emailSent && (
         <div className="callout callout-success rq-banner">התשובות נשמרו ונשלחו במייל לבעלים.</div>
+      )}
+      {!mail && (
+        <div className="callout callout-info rq-banner">אלה התשובות האחרונות ששלחת. אם משהו השתנה, לחצי על "עדכון התשובות".</div>
       )}
       {mail && !mail.emailSent && (
         <div className="callout callout-warning rq-banner" role="alert" style={{ flexDirection: 'column' }}>
           <div><b>התשובות נשמרו, המייל לא נשלח - ננסה שוב.</b></div>
-          <div>התשובות שלכן בטוחות וגלויות לבעלים באתר. אפשר ללחוץ על הכפתור כדי לנסות לשלוח את המייל עכשיו.</div>
+          <div>התשובות שלכן נשמרו וגלויות לבעלים באתר. אפשר ללחוץ על הכפתור כדי לנסות לשלוח את המייל עכשיו.</div>
           <div><button type="button" className="btn btn-primary btn-sm" onClick={retryEmail} disabled={retrying}>{retrying ? 'שולח...' : 'ניסיון חוזר לשליחת המייל'}</button></div>
         </div>
       )}
@@ -291,7 +306,7 @@ export function DoneView({ qn, answers, name, mail, retrying, retryEmail, startE
 
 /** טופס השאלון עצמו (מיוצא לבדיקות רינדור). */
 export function FormView({
-  qn, answers, name, role, saveState, saveError, showErrors, editingSent, serverState, submitError, submitting, confirmOpen,
+  qn, answers, name, role, saveState, showErrors, editingSent, submission, draftInfo, discardDraft, submitError, submitting, confirmOpen,
   openComments, setOpenComments, changeName, changeRole, setAnswer, requestSubmit, doSubmit, setConfirmOpen,
 }) {
   const vis = visibleQuestions(qn, answers);
@@ -302,10 +317,8 @@ export function FormView({
   const nameMissing = showErrors && !name.trim();
   const saveText = {
     idle: '',
-    pending: 'ממתין לשמירה...',
-    saving: 'שומר...',
-    saved: 'נשמר',
-    error: 'השמירה נכשלה - ננסה שוב',
+    saved: 'נשמר בדפדפן',
+    nostore: 'הדפדפן לא מאפשר לשמור טיוטה - כדאי להשלים ולשלוח בבת אחת',
   }[saveState];
 
   return (
@@ -318,8 +331,15 @@ export function FormView({
 
       {editingSent && (
         <div className="callout callout-info rq-banner">
-          התשובות כבר נשלחו פעם אחת. אפשר לשנות אותן, ובסוף ללחוץ שוב על "שליחה" כדי שהבעלים יקבלו את הגרסה המעודכנת.
-          {serverState && serverState.pendingChanges ? ' יש שינויים שעוד לא נשלחו.' : ''}
+          התשובות כבר נשלחו פעם אחת{submission && submission.submittedAt ? ` (${formatIsraelDateTime(submission.submittedAt)})` : ''}. אפשר לשנות אותן, ובסוף ללחוץ שוב על "שליחה" כדי שהבעלים יקבלו את הגרסה המעודכנת.
+        </div>
+      )}
+      {draftInfo && (
+        <div className="callout callout-warning rq-banner" role="status">
+          <div>
+            שוחזרה טיוטה שנשמרה בדפדפן הזה{draftInfo.savedAt ? ` (${formatIsraelDateTime(new Date(draftInfo.savedAt))})` : ''}.
+            {' '}<button type="button" className="btn btn-ghost btn-sm" onClick={discardDraft}>מחיקת הטיוטה והתחלה מחדש</button>
+          </div>
         </div>
       )}
 
@@ -341,11 +361,10 @@ export function FormView({
       <div className="rq-progress" role="status" aria-live="polite">
         <div className="rq-progress-row">
           <span>ענית על {prog.answered} מתוך {prog.total}</span>
-          <span className={`rq-save ${saveState === 'saved' ? 'ok' : saveState === 'error' ? 'err' : ''}`}>
-            {saveText}{saveState === 'error' && saveError ? ` (${saveError})` : ''}
-          </span>
+          <span className={`rq-save ${saveState === 'saved' ? 'ok' : saveState === 'nostore' ? 'err' : ''}`}>{saveText}</span>
         </div>
         <div className="rq-bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
+        <div className="rq-resp-meta">הטיוטה נשמרת רק בדפדפן הזה עד השליחה.</div>
       </div>
 
       {qn.sections.map((section) => {
@@ -418,7 +437,7 @@ export function FormView({
         <div className="rq-confirm" role="dialog" aria-modal="true" aria-labelledby="rq-confirm-title">
           <div className="rq-confirm-box">
             <h2 id="rq-confirm-title">לשלוח את התשובות?</h2>
-            <p>התשובות יישלחו לבעלים במייל. אחרי השליחה עדיין אפשר ללחוץ על "עדכון התשובות" ולשלוח שוב.</p>
+            <p>התשובות יישלחו לבעלים במייל ויישמרו באתר. אחרי השליחה עדיין אפשר ללחוץ על "עדכון התשובות" ולשלוח שוב.</p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-primary" onClick={doSubmit} disabled={submitting}>{submitting ? 'שולח...' : 'כן, לשלוח'}</button>
               <button type="button" className="btn btn-secondary" onClick={() => setConfirmOpen(false)} disabled={submitting}>חזרה לשאלון</button>

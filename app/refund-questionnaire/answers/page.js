@@ -1,14 +1,12 @@
 import Link from 'next/link';
 import { requireHeadManagement, loadResultsPayload } from '@/lib/policyQuestionnaire/access';
 import { PolicyQuestionnaireDbError } from '@/lib/policyQuestionnaire/store';
-import { isNotEnabledError } from '@/lib/policyQuestionnaire/logic';
 import AnswersClient from './AnswersClient';
-import { NotEnabledResults } from '../NotEnabled';
 
 export const metadata = { title: 'תשובות שאלון ביטולים וזיכויים' };
 export const dynamic = 'force-dynamic';
 
-// דף התוצאות של שאלון המדיניות: כל התשובות של הגמ"ח הזה, ספירה לכל שאלה, העתקה והדפסה.
+// דף התוצאות של שאלון המדיניות: התשובות של כל משיבה בגמ"ח הזה (נקראות משרשור השאלון), ספירה לכל שאלה, העתקה והדפסה.
 // נטען ישירות בשרת (אותו loadResultsPayload של GET /api/policy-questionnaire/answers), הרשאה: הנהלה ראשית (0) ומתכנת (2).
 export default async function RefundQuestionnaireAnswersPage() {
   const who = await requireHeadManagement({ page: true });
@@ -27,8 +25,6 @@ export default async function RefundQuestionnaireAnswersPage() {
   try {
     payload = await loadResultsPayload(who.employee);
   } catch (e) {
-    // הטבלה עוד לא נוצרה (נוצרת ידנית באישור הבעלים בלבד): "הטבלה עדיין לא נוצרה" + שורת ההוראות לבעלים, לא שגיאה
-    if (isNotEnabledError(e)) return <NotEnabledResults isOwner={who.employee.roleId === 2} />;
     const msg = e instanceof PolicyQuestionnaireDbError ? e.userMessage : 'אירעה שגיאה בטעינת התשובות. נסו לרענן את הדף.';
     if (!(e instanceof PolicyQuestionnaireDbError)) console.error('policy-questionnaire answers page error:', e);
     return (
@@ -37,5 +33,5 @@ export default async function RefundQuestionnaireAnswersPage() {
       </div>
     );
   }
-  return <AnswersClient questionnaire={payload.questionnaire} responses={payload.responses} />;
+  return <AnswersClient questionnaire={payload.questionnaire} respondents={payload.respondents} threadFound={payload.threadFound} />;
 }
