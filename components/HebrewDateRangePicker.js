@@ -51,7 +51,11 @@ export default function HebrewDateRangePicker({
   className,
   style,
   placeholderStart = 'מתאריך...',
-  placeholderEnd = 'עד תאריך...'
+  placeholderEnd = 'עד תאריך...',
+  // אופציונלי (ברירת מחדל כבויה = ההתנהגות הישנה בכל המסכים): ברגע שנבחר התאריך השני בלחיצה על הלוח, הבחירה
+  // נשמרת והלוח נסגר - בלי "אישור בחירה" (דיווח 4ef34be4, נווה יעקב). לחיצה אחת בלבד (יום בודד) וקיצורי "בחירה
+  // מהירה" עדיין מחכים ל"אישור בחירה" כרגיל.
+  autoApplyOnRange = false
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -120,8 +124,16 @@ export default function HebrewDateRangePicker({
       // בחר תאריך מוקדם מההתחלה — מתהפכים
       setTempEnd(tempStart);
       setTempStart(isoStr);
+      if (autoApplyOnRange) {
+        onChange(isoStr, tempStart);
+        setIsOpen(false);
+      }
     } else {
       setTempEnd(isoStr);
+      if (autoApplyOnRange) {
+        onChange(tempStart, isoStr);
+        setIsOpen(false);
+      }
     }
   };
 
