@@ -8,40 +8,11 @@
 // הכרטיס העשיר (data-rich בעיצוב, #rt): ריחוף / מיקוד מקלדת / הקשה במגע; .pl-rt ב-portal (כמו טולטיפ המשמרת ביומן); מעל הצומת, ומתהפך מתחתיו כשאין מקום
 // (גם מתחת לתפריט העליון הדביק #snav). סמנטיקה: role=list / listitem, aria-current="step" בצומת הנוכחי, aria-describedby לכרטיס.
 // הנתונים (data) נטענים ב-OrderCardA5 (useOrderJournalData) ומשותפים עם שורות הפריטים (OcJournalContext). טעינה: אחרי שהכרטיס מוכן ובכל oc.historyVersion (עולה אחרי כל כתיבה בשרת); כישלון = אין ציר (הכרטיס עובד בלעדיו).
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import OcIcon from './OcIcon';
 import OcPortal from './OcPortal';
+import OcRichCard from './OcRichCard';
 import { buildStepper } from './parts/ocStepperLogic';
-
-function placeRich(r, w, h) {
-  const vw = document.documentElement.clientWidth;
-  const vh = window.innerHeight;
-  const gap = 8;
-  const nav = document.querySelector('[data-sticky-nav]');
-  const minTop = Math.max(8, nav ? Math.round(nav.getBoundingClientRect().bottom) + 8 : 0);
-  const cx = r.left + r.width / 2;
-  const x = Math.max(8, Math.min(vw - w - 8, cx - w / 2));
-  let y = r.top - gap - h;
-  let side = 't';
-  if (y < minTop) { y = r.bottom + gap; side = 'b'; }
-  y = Math.max(8, Math.min(vh - h - 8, y));
-  return { x, y, side, arrowLeft: Math.max(14, Math.min(w - 14, cx - x)) };
-}
-
-function RichCard({ id, rows, anchor }) {
-  const ref = useRef(null);
-  const [pos, setPos] = useState(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (el) setPos(placeRich(anchor, el.offsetWidth, el.offsetHeight));
-  }, [anchor, rows]);
-  return (
-    <div ref={ref} id={id} className={`pl-rt${pos ? ' on' : ''}`} role="tooltip" data-side={pos ? pos.side : undefined} style={{ left: pos ? pos.x : 0, top: pos ? pos.y : 0 }}>
-      {rows.map((r, i) => <div className="rr1" key={i}><OcIcon name={r.icon} size="sm" /><span>{r.text}</span></div>)}
-      <i className="ra" style={pos ? { left: pos.arrowLeft, top: '' } : undefined} />
-    </div>
-  );
-}
 
 export function useOrderJournalData(oc) {
   const orderId = oc.order && oc.order.orderId;
@@ -146,7 +117,7 @@ export default function OcStepper({ oc, data }) {
           })}
         </div>
       </div>
-      {rich ? <OcPortal><RichCard id={descId} rows={rich.rows} anchor={rich.anchor} /></OcPortal> : null}
+      {rich ? <OcPortal><OcRichCard id={descId} rows={rich.rows} anchor={rich.anchor} mode="above" /></OcPortal> : null}
     </>
   );
 }

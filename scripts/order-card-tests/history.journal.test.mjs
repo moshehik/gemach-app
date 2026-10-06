@@ -376,3 +376,92 @@ test('shortHebrew / hebrewWithGershayim: אדר א׳/ב׳ (שנה מעוברת),
   assert.equal(H.shortHebrew(l.heShort), H.shortHebrew(l.he), 'heShort ו-he נותנים אותו יום וחודש');
   assert.equal(H.relativeDayLabel('2027-02-19', '2027-02-01', l), `${l.wdFull} ${H.shortHebrew(l.heShort)}`);
 });
+
+// ---- בעלים 2026-10-06: "אם הושכר, ההכנה (והתיקונים) נרשמות אוטומטית כבוצעו" - הסקה לתצוגה (inferPrepWhenTaken, רק היומן/הציר) ----
+const TAKEN_ITEMS = [{ id: 'a1', sleeveAlteration: 0, isTaken: true, takenDate: IL('2026-10-05', '21:53') }, { id: 'a2', sleeveAlteration: 0, isTaken: true, takenDate: IL('2026-10-05', '21:53') }];
+test('צילום הבעלים: איסוף בוצע (נלקח), הכנה לא סומנה, האירוע עבר -> הכנה בוצעה (מוסקת), השלב הנוכחי = החזרה, בלי כפתור סימון', () => {
+  const o = { ...ORDER, items: TAKEN_ITEMS };
+  const todayKey = '2026-10-09';
+  const plain = computeOrderStages(o, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true });
+  assert.equal(plain.currentKey, 'prep', 'ברירת מחדל (בלי האפשרות) לא משתנה');
+  const r = computeOrderStages(o, { schedule: ORG_MAIN, todayKey, closeWhenReturned: true, inferPrepWhenTaken: true });
+  const prep = byKey(r, 'prep');
+  assert.equal(byKey(r, 'pick').done, true);
+  assert.equal(prep.done, true);
+  assert.equal(prep.doneVia, 'inferred');
+  assert.equal(prep.markable, false, 'אין "סמן הכנה בוצעה"');
+  assert.equal(r.currentKey, 'manret');
+  const j = buildOrderJournal({ order: { orderId: 53375, orderDate: o.orderDate }, stages: r.stages, auditRows: [], items: o.items, payments: [], todayKey });
+  const pn = j.nodes.find((n) => n.key === 'prep');
+  assert.equal(pn.done, true);
+  assert.equal(pn.when, null, 'אין מי/מתי להכנה מוסקת');
+  assert.equal(j.currentKey, 'manret');
+});
+
+test('הסקה: לקיחה חלקית (פריט אחד) מספיקה להכנה; האיסוף עצמו עדיין ממתין; ללא לקיחה כלל - הכנה נשארת נוכחית', () => {
+  const partial = { ...ORDER, items: [TAKEN_ITEMS[0], { id: 'a2', sleeveAlteration: 0 }] };
+  const r = computeOrderStages(partial, { schedule: ORG_MAIN, todayKey: '2026-10-06', inferPrepWhenTaken: true });
+  assert.equal(byKey(r, 'prep').done, true);
+  assert.equal(byKey(r, 'pick').done, false);
+  assert.equal(r.currentKey, 'pick');
+  const none = computeOrderStages(ORDER, { schedule: ORG_MAIN, todayKey: '2026-10-06', inferPrepWhenTaken: true });
+  assert.equal(none.currentKey, 'prep');
+  assert.equal(byKey(none, 'prep').inferred, undefined);
+  const eventOnly = computeOrderStages(ORDER, { schedule: ORG_MAIN, todayKey: '2026-10-20', inferPrepWhenTaken: true });
+  assert.equal(byKey(eventOnly, 'prep').done, false, 'אירוע שחלף (מידע בלבד) לא מסיק הכנה');
+});
+
+test('הסקה: תיקונים נחשבים בוצעו כשנלקח; סימון קיים לא נדרס; שלב מסומן לפני כן נשאר mark', () => {
+  const alt = { ...ORDER, items: [{ id: 'a1', sleeveAlteration: 1, isTaken: true }, { id: 'a2', sleeveAlteration: 0 }] };
+  const r = computeOrderStages(alt, { schedule: ORG_MAIN, todayKey: '2026-10-06', inferPrepWhenTaken: true });
+  assert.ok(byKey(r, 'repair'), 'שלב תיקונים קיים בהזמנה עם תיקון');
+  assert.equal(byKey(r, 'repair').done, true);
+  assert.equal(byKey(r, 'repair').doneVia, 'inferred');
+  const marks = [{ stageKey: 'prep', dayKey: '2026-10-05', done: true, markedAt: IL('2026-10-05', '11:20'), markedBy: 'רחל כהן' }];
+  const m = computeOrderStages({ ...ORDER, items: TAKEN_ITEMS }, { schedule: ORG_MAIN, marks, todayKey: '2026-10-09', inferPrepWhenTaken: true });
+  assert.equal(byKey(m, 'prep').doneVia, 'mark', 'סימון אמיתי נשמר');
+  assert.equal(byKey(m, 'prep').mark.markedBy, 'רחל כהן');
+});
+
+test('הסקה: משלוח הלוך (נלקח) / חו״ל / מבוטלת / הוחזרה', () => {
+  const del = { ...ORDER, isDelivery: true, deliveryDirection: 'הלוך-חזור', items: TAKEN_ITEMS };
+  const r = computeOrderStages(del, { schedule: ORG_NEVE, delivery: { daysBefore: 2, daysAfter: 1 }, todayKey: '2026-10-07', inferPrepWhenTaken: true });
+  assert.equal(byKey(r, 'dout').done, true, 'משלוח הלוך בוצע (כל הפריטים נלקחו)');
+  assert.equal(byKey(r, 'prep').done, true);
+  assert.equal(r.currentKey, 'dback');
+  const abroad = { ...ORDER, isAbroad: true, fromDate: IL('2026-10-06'), toDate: IL('2026-10-14'), eventDate: IL('2026-10-06'), items: TAKEN_ITEMS };
+  const a = computeOrderStages(abroad, { schedule: ORG_MAIN, todayKey: '2026-10-08', inferPrepWhenTaken: true });
+  assert.equal(byKey(a, 'prep').done, true);
+  assert.equal(a.currentKey, 'manret');
+  const cancelled = computeOrderStages({ ...ORDER, isDeleted: true, items: TAKEN_ITEMS }, { schedule: ORG_MAIN, todayKey: '2026-10-09', closeWhenReturned: true, inferPrepWhenTaken: true });
+  assert.equal(byKey(cancelled, 'prep').done, false, 'מבוטלת: אין הסקה');
+  assert.equal(cancelled.currentKey, null);
+  const returned = computeOrderStages({ ...ORDER, items: RET_ORDER.items }, { schedule: ORG_MAIN, todayKey: '2026-10-11', closeWhenReturned: true, inferPrepWhenTaken: true });
+  assert.equal(byKey(returned, 'prep').done, true);
+  assert.equal(returned.closed, true);
+  assert.equal(returned.currentKey, null);
+});
+
+test('הנתיב /journal מעביר inferPrepWhenTaken; הלו״ז / prep-mark לא', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const rd = (p) => fs.readFileSync(path.join(process.env.PROJ, p), 'utf8');
+  assert.match(rd('app/api/orders/[id]/journal/route.js'), /closeWhenReturned: true, inferPrepWhenTaken: true/);
+  assert.ok(!/inferPrepWhenTaken/.test(rd('app/api/orders/[id]/prep-mark/route.js')));
+  assert.ok(!/inferPrepWhenTaken/.test(rd('lib/schedule/loaders.js')));
+});
+
+test('הסקה: סימון הכנה שבוטל (done=false) גובר על ההסקה - הכנה נשארת "טרם בוצע" עם לחצן הסימון, כמו בלו״ז; לכן גם ה"בטל סימון" של סימון אוטומטי משאיר את הכרטיס והלו״ז מאוחדים', () => {
+  const o = { ...ORDER, items: TAKEN_ITEMS };
+  const cancelled = [{ stageKey: 'prep', dayKey: '2026-10-05', done: false, markedAt: IL('2026-10-05', '21:53'), markedBy: 'רחל כהן' }];
+  const r = computeOrderStages(o, { schedule: ORG_MAIN, marks: cancelled, todayKey: '2026-10-09', closeWhenReturned: true, inferPrepWhenTaken: true });
+  assert.equal(byKey(r, 'prep').done, false);
+  assert.equal(byKey(r, 'prep').inferred, undefined);
+  assert.equal(byKey(r, 'prep').markable, true, 'לחצן "סמן הכנה בוצעה" חוזר');
+  assert.equal(r.currentKey, 'prep');
+  // סימון בוצע + סימון מבוטל לשלב אחר (תיקונים) לא משפיע על הכנה
+  const other = computeOrderStages(o, { schedule: ORG_MAIN, marks: [{ stageKey: 'repair', dayKey: '2026-10-05', done: false }], todayKey: '2026-10-09', inferPrepWhenTaken: true });
+  assert.equal(byKey(other, 'prep').done, true);
+  // בלי האפשרות - אין שינוי
+  assert.equal(computeOrderStages(o, { schedule: ORG_MAIN, marks: cancelled, todayKey: '2026-10-09' }).currentKey, 'prep');
+});

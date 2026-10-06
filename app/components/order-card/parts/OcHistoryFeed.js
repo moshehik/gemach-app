@@ -11,7 +11,7 @@ import OcViewSwitch from '../OcViewSwitch';
 import { fmtMoney, fmtSignedMoney } from '../orderCardLogic';
 import { downloadRowsAsXlsx } from '@/lib/xlsxExport';
 import {
-  filterCategories, visibleEntries, categoryCount, searchWords, shortHebrew, ROW_CATEGORY_LABEL, sortTableRows,
+  filterCategories, effectiveSelection, visibleEntries, categoryCount, searchWords, shortHebrew, ROW_CATEGORY_LABEL, sortTableRows,
   exportRows, EXPORT_COLUMNS, historyPrintPath, historyFileBase,
 } from './ocHistoryModel';
 import OcHistoryTable from './OcHistoryTable';
@@ -29,9 +29,12 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   const selRef = useRef(null);
   const trigRef = useRef(null);
   const all = useMemo(() => entries || [], [entries]);
-  const cats = useMemo(() => filterCategories(all), [all]);
+  // בחירה בפועל: בלי קטגוריות שהתרוקנו (אחרי רענון) - אין סינון נסתר; התפריט מציג רק קטגוריות עם ספירה > 0 (בעלים 2026-10-06)
+  const effSel = useMemo(() => effectiveSelection(all, sel), [all, sel]);
+  const cats = useMemo(() => filterCategories(all, { q, keep: effSel }), [all, q, effSel]);
   const words = useMemo(() => searchWords(q), [q]);
-  const list = useMemo(() => visibleEntries(all, { selected: sel, q }), [all, sel, q]);
+  const list = useMemo(() => visibleEntries(all, { selected: effSel, q }), [all, effSel, q]);
+  useEffect(() => { if (effSel.length !== sel.length) setSel(effSel); }, [effSel, sel.length]);
   const orderId = oc.order && oc.order.orderId;
 
   // סגירת תפריט הסינון בלחיצה מחוץ לו / Escape
@@ -59,8 +62,9 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   }, [menuOpen]);
 
   const toggle = useCallback((k) => setSel((s) => (k === 'all' ? [] : (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]))), []);
-  const allKeys = cats.map((c) => c[0]);
-  const allOn = allKeys.length > 0 && allKeys.every((k) => sel.includes(k));
+  // "סמן הכל" = כל הקטגוריות עם שורות בהיסטוריה (ספירה > 0 בלי קשר לחיפוש) - לא רק מה שגלוי תחת חיפוש פעיל, אחרת אחרי ניקוי החיפוש נראות שאר הקטגוריות כלא נבחרות ושורותיהן מוסתרות
+  const allKeys = useMemo(() => filterCategories(all).map((c) => c[0]), [all]);
+  const allOn = allKeys.length > 0 && allKeys.every((k) => effSel.includes(k));
   const resetAll = () => { setSel([]); setQ(''); };
 
   const focusOption = (n) => {
@@ -126,7 +130,7 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
 
   const nameOf = Object.fromEntries(cats.map((c) => [c[0], c[1]]));
   const iconOf = Object.fromEntries(cats.map((c) => [c[0], c[2]]));
-  const pills = sel.length && sel.length <= 3 ? sel : [];
+  const pills = effSel.length && effSel.length <= 3 ? effSel : [];
 
   return (
     <div className="card hist">
@@ -138,14 +142,15 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
           <button type="button" className={`hf-cl${q ? ' on' : ''}`} aria-label="ניקוי חיפוש" onClick={() => setQ('')}><OcIcon name="x" /></button>
           <div className={`hf-sel${menuOpen ? ' on' : ''}`} ref={selRef}>
             <button type="button" className="hf-t" ref={trigRef} aria-haspopup="listbox" aria-expanded={menuOpen} aria-controls="hfList" onClick={() => setMenuOpen((v) => !v)}>
-              <OcIcon name="sliders" /><span className="hf-lbl">סינון</span><span className={`hf-bdg${sel.length ? ' has' : ''}`}>{sel.length || ''}</span><OcIcon name="chev" className="hf-chv" />
+              <OcIcon name="sliders" /><span className="hf-lbl">סינון</span><span className={`hf-bdg${effSel.length ? ' has' : ''}`}>{effSel.length || ''}</span><OcIcon name="chev" className="hf-chv" />
             </button>
             <div className="hf-scrim" onClick={() => setMenuOpen(false)} />
             <div className="hf-p">
-              <div className="hf-all"><button type="button" className="hf-allb" onClick={() => setSel(allOn ? [] : allKeys.slice())}>{allOn ? 'הסר הכל' : 'סמן הכל'}</button></div>
-              <div className="hf-l" id="hfList" role="listbox" aria-multiselectable="true" aria-label="סינון היסטוריה" onKeyDown={onListKey}>
+              {cats.length ? <div className="hf-all"><button type="button" className="hf-allb" onClick={() => setSel(allOn ? [] : allKeys.slice())}>{allOn ? 'הסר הכל' : 'סמן הכל'}</button></div> : null}
+              {!cats.length ? <div className="empty" role="status">אין רישומים לסינון</div> : null}
+              <div className="hf-l" id="hfList" hidden={!cats.length} role="listbox" aria-multiselectable="true" aria-label="סינון היסטוריה" onKeyDown={onListKey}>
                 {cats.map(([k, l, i], n) => (
-                  <div key={k} className="hf-o" role="option" id={`hfo-${k}`} tabIndex={n === cur ? 0 : -1} style={{ '--k': n }} aria-selected={sel.includes(k)}
+                  <div key={k} className="hf-o" role="option" id={`hfo-${k}`} tabIndex={n === cur ? 0 : -1} style={{ '--k': n }} aria-selected={effSel.includes(k)}
                     onClick={() => { setCur(n); toggle(k); }} onFocus={() => setCur(n)}>
                     <span className="hf-ck"><OcIcon name="check" /></span><span className="hf-oi"><OcIcon name={i} /></span><span className="hf-ol">{l}</span><span className="hf-oc">{categoryCount(all, k, q)}</span>
                   </div>

@@ -244,3 +244,18 @@ test('useIconAnim: מחובר לשורש הכרטיס; MutationObserver + ia-in 
   for (const s of ['@keyframes gm-ia-in{', '.gm-ds svg.ic.ia-in{animation:gm-ia-in', '.gm-ds svg.ic.ia-h:hover:not(#_){animation:var(--ia-a)', '.gm-ds svg.ic.ia-in,.gm-ds svg.ic.ia-h{animation:none!important}']) assert.ok(ds.includes(s), s);
   assert.ok(/@media \(prefers-reduced-motion:reduce\)\{\s*\.gm-ds svg\.ic\.ia-in,\.gm-ds svg\.ic\.ia-h/.test(ds), 'prefers-reduced-motion בפלטה');
 });
+
+// החלטת הבעלים 2026-10-06: ברקוד הפריט לא מוצג בפריט שטרם נלקח
+test('שורת הברקוד: הטקסט "ברקוד <מספר>" של הפריט מוצג רק מרגע הלקיחה (ובשורת ההחזרה); בפריט שמור בלבד אין אותו, שדה הסריקה נשאר; אין הדפסה אחרת של הברקוד בשורה/פרטים', () => {
+  const code = strip(read(`${OC}/parts/OcBarcodeRow.js`));
+  const liveStart = code.indexOf('  return (\n    <div className="hv-r hv-act oc-bcrow">');
+  const live = code.slice(liveStart, code.indexOf('export function OcCondBadDialog'));
+  assert.match(live, /\{own && !pending && item\.isTaken \? <span className="faint oc-bch">/);
+  assert.match(live, /<input/, 'שדה הסריקה נשאר');
+  const ret = code.slice(code.indexOf('if (returned) {'), liveStart);
+  assert.match(ret, /\{own \? <span className="faint oc-bch">/, 'בשורת ההחזרה הברקוד מוצג');
+  for (const f of ['parts/OcItemRow.js', 'parts/OcItemDetailsDialog.js', 'tabs/OcItemsTab.js']) assert.ok(!/itemBarcode\(/.test(strip(read(`${OC}/${f}`))), `${f}: אין הצגת ברקוד שמור`);
+  assert.ok(!/barcode\}/.test(strip(read(`${OC}/hooks/useItemActions.js`)).split('barcodePlaceholder')[1].slice(0, 400)), 'הפלייסהולדר לא מכיל ברקוד');
+  // ברקוד מוסתר ביומן הפריט (שדה פנימי)
+  assert.match(read(`${OC}/hooks/useItemActions.js`), /HIDDEN_HISTORY_FIELDS = \[[^\]]*'barcode'/);
+});

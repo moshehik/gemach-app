@@ -69,7 +69,7 @@ export async function GET(request, { params }) {
     const delivery = { daysBefore: intOr(map.delivery_days_before, 1), daysAfter: intOr(map.delivery_days_after, 1), skipWeekends: map.delivery_skip_weekends === 'true' };
 
     // closeWhenReturned: הזמנה שהוחזרה במלואה / שבוטלה = בלי "שלב נוכחי" ובלי הצעת סימון הכנה (lib/schedule/orderStages.js)
-    const { stages, currentKey, closed, closedBy } = computeOrderStages({ ...order, items }, { schedule, delivery, marks: marksRes.marks || [], todayKey, closeWhenReturned: true });
+    const { stages, currentKey, closed, closedBy } = computeOrderStages({ ...order, items }, { schedule, delivery, marks: marksRes.marks || [], todayKey, closeWhenReturned: true, inferPrepWhenTaken: true });
 
     // audit rows that say who did a stage (creation, repairs, rental, return, payment)
     const or = [{ entityType: 'Order', entityId: { in: [order.id, String(order.orderId)] }, action: 'CREATE' }];

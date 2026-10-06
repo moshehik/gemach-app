@@ -148,3 +148,12 @@ test('לשונית היסטוריה: אין כותרת "מותאם" / "הפרט�
   assert.ok(!/oc-sect-t/.test(read('app/components/order-card/css/oc-history.css')));
   assert.match(read('app/components/order-card/parts/OcHistoryFeed.js'), /<h2>פעולות ושינויים<\/h2>/, 'the feed card carries its own title');
 });
+
+test('יומן (בעלים 2026-10-06): אין צ׳יפ "טרם בוצע"; נשארים רק "השלב הנוכחי" (צ׳יפ אפור), "סמן הכנה בוצעה" / "בטל סימון" וה-✓ של שלב שבוצע', () => {
+  const card = strip(read('app/components/order-card/parts/OcJournalCard.js'));
+  assert.ok(!/טרם בוצע|chip amber/.test(card));
+  assert.equal((card.match(/className="chip /g) || []).length, 1, 'צ׳יפ אחד בלבד בשורות היומן');
+  assert.match(card, /n\.current \? <span className="chip gray prc-cur">השלב הנוכחי/);
+  assert.match(card, /data-act="prep-mark"/);
+  assert.match(card, /OcIcon name=\{n\.done \? 'check' : n\.icon\}/, '✓ מסמן שבוצע; בלעדיו טרם בוצע');
+});
