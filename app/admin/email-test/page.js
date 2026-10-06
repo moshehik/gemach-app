@@ -99,14 +99,14 @@ export default function EmailTestPage() {
           />
         </div>
         <div className="hint">
-          כל הדוגמאות מסומנות ב-&quot;[דוגמה]&quot; בנושא, נשלחות רק לכתובת הזו, ונרשמות ביומן המיילים. שים לב: לחשבון Gmail יש מכסת שליחה יומית, ושליחת כל 16 הסוגים בנפרד צורכת 16 הודעות ממנה, ו&quot;שלח את כולם במייל אחד&quot; צורכת הודעה אחת. שתי הדוגמאות עם צרופות מצרפות מסמך אמיתי של הזמנה אחרונה כלשהי במערכת.
+          כל הדוגמאות מסומנות ב-&quot;[דוגמה]&quot; בנושא, נשלחות רק לכתובת הזו, ונרשמות ביומן המיילים. שים לב: לחשבון Gmail יש מכסת שליחה יומית, ושליחת כל 17 הסוגים בנפרד צורכת 17 הודעות ממנה, ו&quot;שלח את כולם במייל אחד&quot; צורכת הודעה אחת. שתי הדוגמאות עם צרופות מצרפות מסמך אמיתי של הזמנה אחרונה כלשהי במערכת.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-primary" disabled={busy || !emailValid || selectedIds.length === 0} onClick={() => sendMany(selectedIds)}>
             {busy ? 'שולח...' : `שלח את המסומנים (${selectedIds.length})`}
           </button>
-          <button type="button" className="btn btn-primary" disabled={types.length === 0} onClick={() => openPreview('ALL', 'כל 16 המיילים')}>
-            צפייה בכל 16 המיילים
+          <button type="button" className="btn btn-primary" disabled={types.length === 0} onClick={() => openPreview('ALL', 'כל 17 המיילים')}>
+            צפייה בכל 17 המיילים
           </button>
           <button type="button" className="btn" disabled={busy || !emailValid || types.length === 0} onClick={() => sendMany(['ALL'])}>
             {status.ALL?.state === 'sending' ? 'שולח...' : 'שלח את כולם במייל אחד (עם צרופות)'}
