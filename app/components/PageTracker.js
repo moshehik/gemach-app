@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { nextNavigationType } from '@/lib/navMeta';
 
 export default function PageTracker() {
   const pathname = usePathname();
@@ -15,11 +16,13 @@ export default function PageTracker() {
     if (pathname.startsWith('/api') || pathname.startsWith('/_next')) return;
 
     const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
+    // סוג הניווט (navigate/reload/back_forward/spa, +newtab) - נחשב פעם אחת למעבר הדף הזה (ר' lib/navMeta.js)
+    const navigationType = nextNavigationType();
 
     const logVisit = async (errorMsg = null) => {
       // התור המשותף מ-app/layout.js (אצווה אחת כל ~20 שנ') - במקום POST נפרד לכל ניווט.
       if (typeof window !== 'undefined' && typeof window.__queueVisitLog === 'function') {
-        window.__queueVisitLog({ pageUrl: url, loadingError: errorMsg });
+        window.__queueVisitLog({ pageUrl: url, loadingError: errorMsg, navigationType });
         return;
       }
       try {
@@ -31,7 +34,8 @@ export default function PageTracker() {
           keepalive: true,
           body: JSON.stringify({
             pageUrl: url,
-            loadingError: errorMsg
+            loadingError: errorMsg,
+            navigationType
           }),
         });
       } catch (e) {

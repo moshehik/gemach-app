@@ -1,3 +1,4 @@
+import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES, getSessionEmployee } from '@/lib/auth';
@@ -24,7 +25,7 @@ export const dynamic = 'force-dynamic';
 // call. It is dropped by invalidateSettingsCache() right after every write here (POST) and in the other settings writers; other warm
 // instances converge within 30s. `?fresh=1` bypasses it (settings-editing screens that must show exactly what was just saved).
 // Everything user-dependent below (secret masking, non_working_days_extra notes) is applied per request on top of the cached rows.
-export async function GET(request) {
+async function GET(request) {
   try {
     let fresh = false;
     try { fresh = !!request && new URL(request.url).searchParams.get('fresh') === '1'; } catch { /* no url (direct call) */ }
@@ -195,3 +196,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
   }
 }
+
+// cpu-measure (docs/cpu-measurement-2026-10-06.md): Server-Timing/x-cpu-ms/x-boot-id on the response
+const GET_timed = withCpuTiming(GET);
+export { GET_timed as GET };

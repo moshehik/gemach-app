@@ -1,3 +1,4 @@
+import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
@@ -5,7 +6,7 @@ import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request) {
+async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
@@ -196,3 +197,7 @@ export async function GET(request) {
     );
   }
 }
+
+// cpu-measure (docs/cpu-measurement-2026-10-06.md): Server-Timing/x-cpu-ms/x-boot-id on the response
+const GET_timed = withCpuTiming(GET);
+export { GET_timed as GET };

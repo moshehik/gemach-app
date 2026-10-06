@@ -1,3 +1,4 @@
+import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import prisma from '@/app/lib/prisma';
@@ -19,7 +20,7 @@ const SETTING_KEYS = [
 const NAV_PAGE_KEYS = ['page:refunds', 'page:dresses_catalog', 'page:board', 'page:orders', 'page:orders_new', 'page:rentals', 'page:customers', 'page:deliveries', 'page:alterations'];
 const ROLE_LABEL = { 0: 'הנהלה ראשית', 1: 'מנהל סניף', 2: 'מתכנת' };
 
-export async function GET() {
+async function GET() {
   try {
     const cookieStore = await cookies();
     const token = getVerifiedAuthCookie(cookieStore);
@@ -97,3 +98,7 @@ export async function GET() {
     return NextResponse.json({ error: 'boot failed' }, { status: 500 });
   }
 }
+
+// cpu-measure (docs/cpu-measurement-2026-10-06.md): Server-Timing/x-cpu-ms/x-boot-id on the response
+const GET_timed = withCpuTiming(GET);
+export { GET_timed as GET };

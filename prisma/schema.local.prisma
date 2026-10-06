@@ -410,6 +410,10 @@ model PageVisitLog {
   responseSize Int? // ׳›׳׳•׳× ׳”׳׳™׳“׳¢ ׳©׳”׳•׳—׳–׳¨ ׳‘׳‘׳×׳™׳ (Bytes)
   executionTime Int? // ׳׳©׳ ׳‘׳™׳¦׳•׳¢ ׳”׳©׳׳™׳׳×׳” ׳‘׳׳׳™׳•׳× ׳©׳ ׳™׳™׳”
   updatedAt    DateTime  @updatedAt
+  // מדידת CPU (docs/cpu-measurement-2026-10-06.md) - עמודות אופציונליות; במסד מקומי נוספות עם db push
+  serverCpuMs    Float?
+  navigationType String?
+  serverBootId   String?
 
   @@index([employeeId])
   @@index([timestamp])

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
+import { prepareLogoFile } from '@/lib/logoClientPrep';
 
 export default function LogoSettings() {
   const [file, setFile] = useState(null);
@@ -15,16 +17,16 @@ export default function LogoSettings() {
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', await prepareLogoFile(file));
 
       const res = await fetch('/api/upload-logo', {
         method: 'POST',
         body: formData,
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setMessage('הלוגו הועלה בהצלחה!');
+      const { ok, data, error } = await readLogoUploadResponse(res);
+      if (ok) {
+        setMessage(`הלוגו הועלה בהצלחה! ${describeLogoResult(data)}`.trim());
         
         // Update local storage so other components know to fetch the new logo
         localStorage.setItem('logo_timestamp', data.timestamp);
@@ -32,7 +34,7 @@ export default function LogoSettings() {
         // Dispatch event for components in the same window
         window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
       } else {
-        setMessage(data.error || 'שגיאה בהעלאת הלוגו');
+        setMessage(error);
       }
     } catch (err) {
       console.error(err);

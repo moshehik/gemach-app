@@ -63,6 +63,12 @@ export async function GET(request) {
       orderBy: { [sort]: order },
       skip,
       take: limit,
+      // select מפורש (בלי עמודות המדידה serverCpuMs/navigationType/serverBootId): הקוד נפרס לפני ה-DDL שלהן, וקריאה בלי select
+      // מבקשת את כל עמודות המודל ותיכשל (P2022) ב-DB שעוד אין בו אותן. ר' docs/cpu-measurement-2026-10-06.md.
+      select: {
+        id: true, legacyId: true, pageUrl: true, employeeId: true, employeeName: true, timestamp: true,
+        loadingError: true, isGuest: true, requestQuery: true, responseSize: true, executionTime: true, updatedAt: true,
+      },
     });
     // שורות ישנות (לפני התיקון) עלולות להכיל סיסמאות/PIN/ת"ז בטקסט גלוי - לעולם לא מחזירים אותן לקליינט.
     const data = rows.map((r) => ({
