@@ -53,14 +53,21 @@ export function createOrderCardFlows(env) {
   const f = (...a) => env.fetch(...a);
   const toastError = (msg) => ui.toast('error', msg || 'שגיאה בשמירת הנתונים.', '');
 
-  async function requestZeout() {
+  // customer_id_once_per_order_visit: כשדולק, הת״ז שהוקלדה נזכרת (env.flags.verifiedZeout, בזיכרון הכרטיס בלבד - לא נשמרת בשום מקום)
+  // עד היציאה מההזמנה; השרת ממשיך לאמת אותה בכל שמירה. fresh=true (ביטול הזמנה שלמה) תמיד שואל מחדש.
+  async function requestZeout({ fresh = false } = {}) {
     const { settings, order } = env.get();
     if (!zeoutVerificationNeeded(settings, order)) return null;
+    const customerKey = order?.customerId ?? order?.customer?.id ?? null;
+    const remembered = env.flags && env.flags.verifiedZeout;
+    if (!fresh && settings.customerIdOncePerOrderVisit && remembered && remembered.customerId === customerKey) return remembered.zeout;
     const v = await ui.prompt({
       title: 'אימות תעודת זהות', sub: 'עריכה/ביטול דורשים אימות תעודת זהות של הלקוח. נא להזין ת״ז:',
       label: 'תעודת זהות', icon: 'file', inputMode: 'numeric', dir: 'ltr', placeholder: '000000000', okText: 'אישור', cancelText: 'ביטול'
     });
-    return v ? String(v).trim() : null;
+    const typed = v ? String(v).trim() : null;
+    if (typed && settings.customerIdOncePerOrderVisit && env.flags) env.flags.verifiedZeout = { customerId: customerKey, zeout: typed };
+    return typed;
   }
 
   async function reload() {
@@ -150,6 +157,8 @@ export function createOrderCardFlows(env) {
     }
     if (res.status === 401 || res.status === 403 || res.status === 400) {
       const errData = await jsonOf(res);
+      // השרת דחה את הת״ז (חסרה/לא תואמת) - מפסיקים לזכור אותה, ובשמירה הבאה תישאל מחדש
+      if (zeoutForRequest && env.flags && /תעודת (הזהות|זהות)/.test(errData?.error || '')) env.flags.verifiedZeout = null;
       await ui.alert({ title: 'השמירה נכשלה', sub: errData?.error || 'שגיאת אימות תעודת זהות.', kind: 'error' });
       return { res, handled: true };
     }
@@ -468,7 +477,7 @@ export function createOrderCardFlows(env) {
     if (!(await ui.confirm({ title: 'מחיקת הזמנה', sub: 'האם אתה בטוח שברצונך למחוק הזמנה זו?', okText: 'מחק הזמנה', icon: 'trash' }))) return false;
     let zeoutForDelete = null;
     if (zeoutVerificationNeeded(st.settings, order)) {
-      zeoutForDelete = await requestZeout();
+      zeoutForDelete = await requestZeout({ fresh: true });
       if (!zeoutForDelete) { ui.toast('error', 'ביטול בוטל - לא הוזנה תעודת זהות.', ''); return false; }
     }
     if (!st.settings.allowEditPartially && st.items.some(i => !i.isDeleted && i.isTaken)) {

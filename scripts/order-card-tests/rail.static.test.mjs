@@ -70,7 +70,7 @@ test('הרייל: לחצנים וחיווט - data-act של הפלטה, ביטו
   assert.ok(/actions\.wallet\(\)/.test(rail));
   assert.ok(/disabled=\{busy\}/.test(rail), 'לחצנים מנוטרלים בזמן שמירה (oc.saving)');
   assert.ok(/classList\.toggle\('open', open\)/.test(rail), '.rail.open לגיליון התחתון');
-  assert.ok(/window\.open\(printUrl\(order\.orderId\), '_blank'\)/.test(rail), 'R9: הדפסה דרך printUrl');
+  assert.ok(/window\.open\(printUrl\(order\.orderId\), '_blank', 'noopener'\)/.test(rail), 'R9: הדפסה דרך printUrl');
   assert.ok(!/window\.open/.test(ALL_CODE.replace(rail, '')), 'window.open רק ברייל (D6 הדפסה)');
 });
 

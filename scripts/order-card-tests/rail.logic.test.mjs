@@ -127,7 +127,7 @@ test('D6 ≡ היעדים של הגדרת היציאה (lib/orderRedirectScreens
 });
 
 test('R9 printUrl ≡ window.open של הישן אחרי שמירה', () => {
-  const m = /window\.open\(`(\/print\/order\?[^`]*)`, '_blank'\)/.exec(LEGACY_SRC);
+  const m = /window\.open\(`(\/print\/order\?[^`]*)`, '_blank'(?:, 'noopener')?\)/.exec(LEGACY_SRC);
   assert.ok(m, 'window.open של ההדפסה בישן');
   const legacy = compile(['updatedOrder'], `return \`${m[1]}\`;`);
   for (const id of [1, 53375, 99999999]) assert.equal(R.printUrl(id), legacy({ orderId: id }));
