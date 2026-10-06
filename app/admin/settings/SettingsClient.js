@@ -6,7 +6,7 @@ import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
 import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
-import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY } from '@/lib/customerRequiredFields';
+import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY, CUSTOMER_BANK_FIELDS_ENABLED_KEY, isBankFieldKey } from '@/lib/customerRequiredFields';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
@@ -59,6 +59,9 @@ const ENFORCEABLE_FIELD_KEYS = ['firstName', 'lastName', 'phone1', 'email', 'cit
 // שדות החובה של כרטיס הלקוח החדש (customer_required_fields, lib/customerRequiredFields.js): אותו פיקר, רשימת השדות של הכרטיס,
 // והערך נכתב כמפתחות שדה. "נקה הכל" נשמר כ-none (ערך ריק = ברירת המחדל: שם פרטי, שם משפחה, טלפון).
 const CUSTOMER_CARD_REQUIRED_PICKER_FIELDS = REQUIRABLE_CUSTOMER_FIELDS.map(f => ({ key: f.key, name: f.label, alias: f.key }));
+// כשההגדרה customer_bank_fields_enabled כבויה (ברירת מחדל) שדות הבנק לא מוצעים בפיקר (והשרת/הכרטיס מתעלמים מהם גם אם נשארו מסומנים).
+const CUSTOMER_CARD_REQUIRED_PICKER_FIELDS_NO_BANK = CUSTOMER_CARD_REQUIRED_PICKER_FIELDS.filter(f => !isBankFieldKey(f.key));
+const CUSTOMER_CARD_REQUIRED_BANK_OFF_NOTE = ' שדות הבנק (שם בנק, סניף, מספר חשבון, שם בעל החשבון) מוסתרים כאן כי ההגדרה "הצג שדות בנק בכרטיס לקוח ובלקוח חדש" כבויה - הפעילו אותה כדי לאפשר לסמן אותם כחובה.';
 const CUSTOMER_CARD_REQUIRED_HINT = 'שדה מסומן חוסם שמירה של כרטיס הלקוח (עריכה וגם לקוח חדש) כל עוד הוא ריק, עם כוכבית ליד השדה. נבדק גם בשרת. חל על כרטיס הלקוח החדש בלבד.';
 
 function CustomerFieldsCheckboxPicker({ value, onChange, elementName, fieldList, hint, emptyValue = '' }) {
@@ -912,6 +915,8 @@ export default function SettingsClient({ mode = 'general' }) {
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
             const isCustomerRequiredSetting = setting.key === CUSTOMER_REQUIRED_FIELDS_KEY;
+            // מצב ההגדרה customer_bank_fields_enabled (כולל שינוי שעוד לא נשמר) - קובע אם שדות הבנק מוצעים בפיקר שלמעלה
+            const bankFieldsOn = isCustomerRequiredSetting && String(modified[CUSTOMER_BANK_FIELDS_ENABLED_KEY] !== undefined ? modified[CUSTOMER_BANK_FIELDS_ENABLED_KEY] : (settings.find(s => s.key === CUSTOMER_BANK_FIELDS_ENABLED_KEY)?.value ?? '')).trim().toLowerCase() === 'true';
             const isFieldGroupsSetting = setting.key === 'mandatory_field_groups';
             const isSelectSetting = setting.type === 'select' || Object.prototype.hasOwnProperty.call(SETTINGS_SELECT_OPTIONS, setting.key);
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
@@ -980,8 +985,8 @@ export default function SettingsClient({ mode = 'general' }) {
                     <CustomerFieldsCheckboxPicker
                       value={rawValue || ''}
                       elementName="שדה_SettingsClient_customer_required"
-                      fieldList={CUSTOMER_CARD_REQUIRED_PICKER_FIELDS}
-                      hint={CUSTOMER_CARD_REQUIRED_HINT}
+                      fieldList={bankFieldsOn ? CUSTOMER_CARD_REQUIRED_PICKER_FIELDS : CUSTOMER_CARD_REQUIRED_PICKER_FIELDS_NO_BANK}
+                      hint={bankFieldsOn ? CUSTOMER_CARD_REQUIRED_HINT : CUSTOMER_CARD_REQUIRED_HINT + CUSTOMER_CARD_REQUIRED_BANK_OFF_NOTE}
                       emptyValue="none"
                       onChange={(val) => handleChange(setting.key, val)}
                     />

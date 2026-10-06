@@ -11,7 +11,7 @@ import './customer-card.css';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
+import { requiredFieldsFromSettings, customerBankFieldsEnabled } from '@/lib/customerRequiredFields';
 import { parseFieldGroups } from '@/lib/customerValidation';
 import usePageTooltip from '@/app/components/profile/usePageTooltip';
 import CcIcon, { CcSprite } from './CcIcon';
@@ -57,6 +57,8 @@ function NewBody() {
       .catch(() => {});
   }, []);
   const requiredKeys = requiredFieldsFromSettings(settings);
+  // שדות הבנק רק כשההגדרה customer_bank_fields_enabled פעילה (ברירת מחדל: כבוי) - וכבויה גם לא חובה (requiredFieldsFromSettings)
+  const bankEnabled = customerBankFieldsEnabled(settings);
   const set = (k) => (v) => setC((p) => ({ ...p, [k]: v }));
   const star = (k) => isStarred(k, c, { requiredKeys, isNew: true, settings });
   const groups = parseFieldGroups(settings.mandatory_field_groups);
@@ -72,7 +74,7 @@ function NewBody() {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildNewCustomerPayload(c)) });
+      const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildNewCustomerPayload(c, { bankEnabled })) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { ui.toast('error', data.error || data.message || 'שגיאה בשמירת נתונים'); return; }
       if (data.id) {
@@ -120,6 +122,17 @@ function NewBody() {
                 </div>
               ) : null}
             </div>
+            {bankEnabled ? (
+              <div className="card dfields">
+                <div className="card-h"><div className="ico teal"><CcIcon name="bank" size="lg" /></div><h2>פרטי חשבון בנק לזיכויים</h2></div>
+                <div className="grid2">
+                  <CcInput id="nBkName" field="bankName" label="שם בנק" icon="bank" value={c.bankName} onChange={set('bankName')} placeholder="למשל: לאומי" required={star('bankName')} />
+                  <CcInput id="nBkBranch" field="bankBranch" label="סניף" icon="bank" value={c.bankBranch} onChange={set('bankBranch')} placeholder="מספר סניף" mode="numeric" dir="ltr" required={star('bankBranch')} />
+                  <CcInput id="nBkAcc" field="bankAccount" label="מספר חשבון" icon="bank" value={c.bankAccount} onChange={set('bankAccount')} mode="numeric" dir="ltr" required={star('bankAccount')} />
+                  <CcInput id="nBkOwner" field="bankAccountName" label="שם בעל החשבון" icon="user" value={c.bankAccountName} onChange={set('bankAccountName')} required={star('bankAccountName')} />
+                </div>
+              </div>
+            ) : null}
             <div className="card">
               <div className="card-h"><div className="ico plum"><CcIcon name="note" size="lg" /></div><h2>הערות ללקוחה <Tip text="מוצג בחלון ההזמנה ומיועד לצוות בלבד" /></h2></div>
               <textarea className="inp" id="notes" data-f="notes" placeholder="כתבו כאן הערה…" value={c.notes} onChange={(e) => setC((p) => ({ ...p, notes: e.target.value }))} aria-label="הערות ללקוחה" />
