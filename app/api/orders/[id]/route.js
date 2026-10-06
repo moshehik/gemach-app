@@ -75,6 +75,7 @@ import {
 } from '@/lib/history/orderEvents';
 import { isRentalBarcodeMatchEnforced } from '@/lib/rentalBarcodeGuard';
 import { checkBarcodeMatchesItem, describeMismatch } from '@/lib/rentalBarcodeMatch';
+import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -803,7 +804,8 @@ async function putOrder(request, { params }, claims) {
                   neckAlteration: normalizedNeck,
                   sleeveAlteration: normalizedSleeve,
                   lengthAlteration: normalizedLength,
-                  alterationDetails: item.alterationDetails,
+                  // שינוי ידני של "תיקון בוצע" (alterationDone שונה ממה ששמור) מסיר את הסמן "בוצע (משוער)" מהטקסט (lib/alterationEstimate.js); הרישום האוטומטי בלקיחה לא עובר כאן
+                  alterationDetails: stored && !!item.alterationDone !== !!stored.alterationDone && hasEstimateMarker(item.alterationDetails) ? stripEstimateMarker(item.alterationDetails) : item.alterationDetails,
                   alterationDone: item.alterationDone,
                   isDeleted: item.isDeleted,
                   deletedAt: deletedAtVal,

@@ -68,3 +68,41 @@ test('חיווט הכרטיס: שיקוף מקומי בלקיחה (estimateOnTak
   assert.match(row, /detailsWithoutMarker\(item\.alterationDetails\)/);
   assert.equal(E.ESTIMATE_TIP, 'נרשם אוטומטית בלקיחה - לא סומן ידנית');
 });
+
+// ---- תצוגה במקומות נוספים: יומן / לו״ז / מסך התיקונים / כתיבה ידנית ----
+const ST = await import(pathToFileURL(path.join(PROJ, 'lib/schedule/orderStages.js')).href);
+const SET = await import(pathToFileURL(path.join(PROJ, 'lib/schedule/settings.js')).href);
+const IL = (key, hhmm = '00:00') => { const [h, m] = hhmm.split(':').map(Number); const [y, mo, d] = key.split('-').map(Number); return new Date(Date.UTC(y, mo - 1, d, h - 3, m)); };
+
+test('יומן: שלב "תיקונים" שבוצע בגלל סמן משוער מסומן estimated; סימון אדם בלו״ז / תיקון ידני - לא', () => {
+  const base = { orderId: 1, orderDate: IL('2026-09-23'), eventDate: IL('2026-10-08'), isAbroad: false, isDelivery: false };
+  const sched = SET.resolveScheduleSettings({ enable_alterations: 'true' });
+  const est = ST.computeOrderStages({ ...base, items: [{ id: 'a', neckAlteration: 1, alterationDone: true, alterationDetails: E.ESTIMATE_NOTE, isTaken: true }] }, { schedule: sched, todayKey: '2026-10-06' });
+  const rep = est.stages.find((s) => s.key === 'repair');
+  assert.ok(rep, 'שלב תיקונים קיים');
+  assert.equal(rep.done, true);
+  assert.equal(rep.estimated, true);
+  const man = ST.computeOrderStages({ ...base, items: [{ id: 'a', neckAlteration: 1, alterationDone: true, alterationDetails: 'ידני', isTaken: true }] }, { schedule: sched, todayKey: '2026-10-06' });
+  assert.equal(man.stages.find((s) => s.key === 'repair').estimated, false);
+  const marked = ST.computeOrderStages({ ...base, items: [{ id: 'a', neckAlteration: 1, alterationDone: true, alterationDetails: E.ESTIMATE_NOTE }] }, { schedule: sched, todayKey: '2026-10-06', marks: [{ stageKey: 'repair', dayKey: '2026-10-05', done: true, markedAt: IL('2026-10-05', '10:00'), markedBy: 'רחל' }] });
+  assert.equal(marked.stages.find((s) => s.key === 'repair').estimated, false, 'סימון אדם בלו״ז גובר');
+  assert.match(strip(read('app/components/order-card/parts/OcJournalCard.js')), /stage && stage\.estimated \? <> <span className="faint" data-tip=\{ESTIMATE_TIP\}>\(משוער\)<\/span><\/> : null/);
+  assert.match(strip(read('app/api/orders/[id]/journal/route.js')), /alterationDetails: true, alterationDone: true,/);
+});
+
+test('לו״ז / מסך התיקונים / כתיבה ידנית: doneVia alterationEstimated + טקסט, תווית במסך התיקונים, הסרת הסמן בסימון ידני (לו״ז, שמירת הזמנה)', () => {
+  const loaders = strip(read('lib/schedule/loaders.js'));
+  assert.match(loaders, /estimated: isAlterationEstimated\(it\)/);
+  assert.match(loaders, /row\.estimatedDone = row\.done && altItems\.some\(\(it\) => isAlterationEstimated\(it\)\)/);
+  assert.match(strip(read('lib/schedule/marks.js')), /row\.doneVia = stage\.key === 'repair' && row\.estimatedDone \? 'alterationEstimated'/);
+  assert.match(read('app/components/schedule/MarkDialogs.js'), /alterationEstimated: 'לפי מסך התיקונים \(משוער - נרשם אוטומטית בלקיחה\)'/);
+  const page = strip(read('app/alterations/page.js'));
+  assert.match(page, /alterationStatus: alterationDoneLabel\(item\) \|\| 'ממתין'/);
+  assert.match(page, /title=\{isAlterationEstimated\(item\) \? ESTIMATE_TIP : undefined\}/);
+  const marks = strip(read('lib/schedule/marks.js'));
+  assert.match(marks, /\(wanted && hasEstimateMarker\(it\.alterationDetails\)\)/);
+  assert.match(marks, /stripEstimateMarker\(it\.alterationDetails\)/);
+  const put = strip(read('app/api/orders/[id]/route.js'));
+  assert.match(put, /stored && !!item\.alterationDone !== !!stored\.alterationDone && hasEstimateMarker\(item\.alterationDetails\) \? stripEstimateMarker\(item\.alterationDetails\) : item\.alterationDetails/);
+  assert.match(read('lib/history/orderHistory.js'), /ch\.estimated === true \? `תיקון נרשם כבוצע \(משוער\) בלקיחה: \$\{label\}`/);
+});

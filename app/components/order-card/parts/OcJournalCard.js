@@ -10,6 +10,7 @@ import OcIcon from '../OcIcon';
 import OcPortal from '../OcPortal';
 import { fmtMoney } from '../orderCardLogic';
 import { relativeDayLabel } from './ocHistoryModel';
+import { ESTIMATE_TIP } from '@/lib/alterationEstimate';
 
 // כרטיס אחד (D2, החלטת הבעלים 2026-10-05): "שלבי ההזמנה" + "יומן הזמנה" אוחדו לרשימה אחת. שורה לכל שלב + "תשלום" (החדש למעלה): שם השלב,
 // מתי / מי (היומן), לחצן "עובדים במשמרת" (רק כשהוגדרו משמרות - D3), וה-meta של השלב ("סמן הכנה בוצעה" / "בטל סימון"; בלי צ׳יפ "טרם בוצע").
@@ -62,7 +63,7 @@ function JournalRow({ n, stage, todayKey, canMark, busy, onMark }) {
       <div className="prc-rail"><span className="prc-i"><OcIcon name={n.done ? 'check' : n.icon} /></span></div>
       <div className="prc-body">
         <div className="prc-t">
-          <b>{n.label}</b>
+          <b>{n.label}</b>{stage && stage.estimated ? <> <span className="faint" data-tip={ESTIMATE_TIP}>(משוער)</span></> : null}
           <small>
             {rel}
             {doneBy && n.when.time ? <> · <bdi>{n.when.time}</bdi></> : null}

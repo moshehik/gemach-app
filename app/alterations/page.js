@@ -11,6 +11,7 @@ import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
+import { alterationDoneLabel, isAlterationEstimated, ESTIMATE_TIP } from '@/lib/alterationEstimate';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const alterationsCache = cacheNamespace('alterations');
@@ -234,7 +235,7 @@ export default function AlterationsPage() {
           ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
           : (item.description || item.dressItem?.dressName),
         eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
-        alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין',
+        alterationStatus: alterationDoneLabel(item) || 'ממתין',
         neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
         lengthAlterationText: item.lengthAlteration && String(item.lengthAlteration).trim() !== '' && item.lengthAlteration !== 'null' && item.lengthAlteration !== '0' ? item.lengthAlteration : '',
         sleeveAlterationText: item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '',
@@ -308,7 +309,7 @@ export default function AlterationsPage() {
                 ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
                 : (item.description || item.dressItem?.dressName),
               eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
-              alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין',
+              alterationStatus: alterationDoneLabel(item) || 'ממתין',
               neckAlterationText: item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '',
               lengthAlterationText: item.lengthAlteration && String(item.lengthAlteration).trim() !== '' && item.lengthAlteration !== 'null' && item.lengthAlteration !== '0' ? item.lengthAlteration : '',
               sleeveAlterationText: item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '',
@@ -497,7 +498,7 @@ export default function AlterationsPage() {
                         </td>
                         <td>
                           {isDone ? (
-                            <span className="badge badge-success">בוצע</span>
+                            <span className="badge badge-success" title={isAlterationEstimated(item) ? ESTIMATE_TIP : undefined}>{alterationDoneLabel(item)}</span>
                           ) : (
                             <span className="badge badge-warning">ממתין</span>
                           )}
