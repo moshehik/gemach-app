@@ -1881,6 +1881,12 @@ export default function OrderDetailsPage({ params }) {
                 onObligationsChange={(val) => { setObligations(val); setHasUnsavedChanges(true); }}
                 onPaymentsChange={(val) => { setPayments(val); setHasUnsavedChanges(true); }}
                 onRefundsChange={(val) => { setRefunds(val); setHasUnsavedChanges(true); }}
+                // כפתורי "הוסף חיוב משלוח" מסמנים גם את ההזמנה כמשלוח (delivery_leg_button_marks_order, כבוי כברירת מחדל) - אותו
+                // עדכון כמו onOrderChange של לשונית הפרטים: שדות ההזמנה בלבד, נשמרים בשמירה הרגילה (putOrder).
+                onOrderChange={(val) => {
+                  setOrder(prev => (typeof val === 'function' ? val(prev) : val));
+                  setHasUnsavedChanges(true);
+                }}
                 totalRequired={totalRequired}
                 totalPaid={totalPaid}
                 customer={order.customer}

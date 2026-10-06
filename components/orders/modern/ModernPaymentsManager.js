@@ -6,6 +6,10 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { sendWithApproval } from '../../../lib/approvalClient';
+import {
+  planDeliveryLeg, needsAddressQuestion, canUseSavedAddress, customerSavedAddress, customerCityKey, defaultAddressChoice,
+  validateOtherAddress, buildDeliveryFields, deliveryLegPrice, deliveryLegAmounts, priceTableCities
+} from '../../../lib/deliveryLegButton';
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
@@ -83,7 +87,7 @@ function getObligationIcon(obs) {
  * (כולל העברה מהירה בקורא מגנטי), בקשות זיכוי וזיכויים ממתינים.
  * חשוף דרך ref: openCreditModal() — אייקון החוב בטופ-בר פותח את חלון נדרים.
  */
-const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated, onSignRegulations, isLivePreviewing = false }, ref) {
+const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated, onSignRegulations, isLivePreviewing = false, onOrderChange }, ref) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
 
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -131,12 +135,23 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   // עד שההגדרות נטענו לא מציגים תג/אריח זיכוי בכלל - אחרת ברירת המחדל (כשהגדרה חסרה) הייתה
   // מהבהבת לרגע גם בגמח שכיבה את הזיכוי.
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  // כפתורי "הוסף חיוב משלוח הלוך/חזור" מסמנים גם את ההזמנה כמשלוח ושואלים V/X לכתובת (דיווחים org2 a6e5fb70, e2c072b7).
+  // dialog = null | { leg, showForm, canSaved, city, address, error } ; fallbackCities = רשימת ערים כשטבלת מחירי הערים ריקה.
+  const [deliveryLegDialog, setDeliveryLegDialog] = useState(null);
+  const [fallbackCities, setFallbackCities] = useState([]);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
   const [selectedObligationDetails, setSelectedObligationDetails] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (!deliveryLegDialog || priceTableCities(settings.delivery_price_by_city).length > 0 || fallbackCities.length > 0) return;
+    fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
+      .then(data => setFallbackCities(data?.cities || []))
+      .catch(() => {});
+  }, [deliveryLegDialog, settings.delivery_price_by_city, fallbackCities.length]);
 
   useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -756,6 +771,42 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     onObligationsChange([...obligations, added]);
   };
 
+  // delivery_leg_button_marks_order (כבוי = כמו קודם: הכפתורים רק מוסיפים שורת חיוב). כשדלוק (נווה יעקב) הכפתור מסמן את
+  // ההזמנה כמשלוח (isDelivery + כיוון מאוחד + עיר/כתובת) דרך onOrderChange - שמירה רגילה, והשרת (applyDeliveryCharge) מחשב
+  // את חיוב המשלוח. שורה ידנית נוספת רק כשכבר קיימת שורת משלוח ידנית (ר' lib/deliveryLegButton.js) - אחרת היה חיוב כפול.
+  const legMarksOrder = settings.delivery_leg_button_marks_order === 'true' && typeof onOrderChange === 'function';
+  const priceCityList = priceTableCities(settings.delivery_price_by_city);
+  const savedAddress = customerSavedAddress(customer);
+  const canSaved = canUseSavedAddress(customer, settings.delivery_price_by_city);
+  // המחיר שמופיע בתיאור הכפתור (מצב דלוק): מחיר עיר ההזמנה, ובלי עיר - מחיר עיר הלקוחה (V), כדי שיתאים למה שיחויב בפועל.
+  const legTitlePrice = order.deliveryCity ? deliveryPrice : deliveryLegPrice(customerCityKey(customer?.city, settings.delivery_price_by_city) || '', settings.delivery_price_by_city, settings.delivery_price);
+
+  const applyDeliveryLeg = (leg, choice, city, address) => {
+    const plan = planDeliveryLeg({ order, obligations, leg });
+    if (plan.disabled) return;
+    const fields = buildDeliveryFields({ direction: plan.direction, choice, customer, deliveryPriceByCity: settings.delivery_price_by_city, city, address });
+    onOrderChange(prev => ({ ...prev, ...fields }));
+    if (plan.needsManualLine) {
+      const effectiveCity = fields.deliveryCity !== undefined ? fields.deliveryCity : order.deliveryCity;
+      onObligationsChange([...obligations, {
+        isNew: true,
+        description: `משלוח ${leg}`,
+        amount: deliveryLegPrice(effectiveCity, settings.delivery_price_by_city, settings.delivery_price),
+        isManual: true,
+        createdAt: new Date().toISOString()
+      }]);
+    }
+    setDeliveryLegDialog(null);
+  };
+
+  const onDeliveryLegClick = (leg) => {
+    if (!legMarksOrder) { addDeliveryObligation(`משלוח ${leg}`); return; }
+    if (planDeliveryLeg({ order, obligations, leg }).disabled) return;
+    if (!needsAddressQuestion(order, customer?.city)) { applyDeliveryLeg(leg, 'keep'); return; }
+    const choice = defaultAddressChoice({ order, customer, canSaved });
+    setDeliveryLegDialog({ leg, showForm: choice === 'other', canSaved, city: order.deliveryCity || '', address: order.deliveryAddress || '', error: '' });
+  };
+
   const activeObligations = obligations.filter(o => !o.isDeleted);
   const activePayments = payments.filter(p => !p.isDeleted);
   const pendingRefunds = refunds.filter(r => !r.isDeleted && !r.isExecuted);
@@ -862,18 +913,22 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                disabled={hasActiveObligationWithDescription('משלוח הלוך')}
-                onClick={() => addDeliveryObligation('משלוח הלוך')}
-                title={hasActiveObligationWithDescription('משלוח הלוך') ? 'כבר קיים חיוב משלוח הלוך פעיל בהזמנה זו' : `הוספת חיוב משלוח הלוך בסך ₪${deliveryPrice}`}
+                disabled={legMarksOrder ? planDeliveryLeg({ order, obligations, leg: 'הלוך' }).disabled : hasActiveObligationWithDescription('משלוח הלוך')}
+                onClick={() => onDeliveryLegClick('הלוך')}
+                title={legMarksOrder
+                  ? (planDeliveryLeg({ order, obligations, leg: 'הלוך' }).disabled ? 'ההזמנה כבר מסומנת כמשלוח הלוך וקיים חיוב פעיל' : `סימון ההזמנה כמשלוח הלוך והוספת חיוב בסך ₪${legTitlePrice}`)
+                  : (hasActiveObligationWithDescription('משלוח הלוך') ? 'כבר קיים חיוב משלוח הלוך פעיל בהזמנה זו' : `הוספת חיוב משלוח הלוך בסך ₪${deliveryPrice}`)}
               >
                 <svg className="icon"><use href="#i-box" /></svg>הוסף חיוב משלוח הלוך
               </button>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                disabled={hasActiveObligationWithDescription('משלוח חזור')}
-                onClick={() => addDeliveryObligation('משלוח חזור')}
-                title={hasActiveObligationWithDescription('משלוח חזור') ? 'כבר קיים חיוב משלוח חזור פעיל בהזמנה זו' : `הוספת חיוב משלוח חזור בסך ₪${deliveryPrice}`}
+                disabled={legMarksOrder ? planDeliveryLeg({ order, obligations, leg: 'חזור' }).disabled : hasActiveObligationWithDescription('משלוח חזור')}
+                onClick={() => onDeliveryLegClick('חזור')}
+                title={legMarksOrder
+                  ? (planDeliveryLeg({ order, obligations, leg: 'חזור' }).disabled ? 'ההזמנה כבר מסומנת כמשלוח חזור וקיים חיוב פעיל' : `סימון ההזמנה כמשלוח חזור והוספת חיוב בסך ₪${legTitlePrice}`)
+                  : (hasActiveObligationWithDescription('משלוח חזור') ? 'כבר קיים חיוב משלוח חזור פעיל בהזמנה זו' : `הוספת חיוב משלוח חזור בסך ₪${deliveryPrice}`)}
               >
                 <svg className="icon"><use href="#i-box" /></svg>הוסף חיוב משלוח חזור
               </button>
@@ -1219,6 +1274,88 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
             </div>
           </div>
         </div>,
+        document.body
+      )}
+
+      {/* ===== שאלת V/X לכתובת המשלוח (delivery_leg_button_marks_order) ===== */}
+      {mounted && legMarksOrder && deliveryLegDialog && createPortal(
+        (() => {
+          const d = deliveryLegDialog;
+          const plan = planDeliveryLeg({ order, obligations, leg: d.leg });
+          const savedKey = customerCityKey(customer?.city, settings.delivery_price_by_city);
+          const amountCity = d.showForm ? d.city : (savedKey || order.deliveryCity || '');
+          const amounts = deliveryLegAmounts({ plan, city: amountCity, deliveryPriceByCity: settings.delivery_price_by_city, deliveryPrice: settings.delivery_price });
+          const cityOptions = [...new Set([...(d.city ? [d.city] : []), ...(priceCityList.length ? priceCityList : fallbackCities)])];
+          const close = () => setDeliveryLegDialog(null);
+          const confirmOther = () => {
+            const err = validateOtherAddress({ city: d.city, address: d.address });
+            if (err) { setDeliveryLegDialog({ ...d, error: err }); return; }
+            applyDeliveryLeg(d.leg, 'other', d.city, d.address);
+          };
+          return (
+            <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+              <div className="modal" style={{ margin: 0, maxWidth: '460px', width: '95%' }} role="dialog" aria-label={`חיוב משלוח ${d.leg}`}>
+                <div className="modal-head">
+                  <strong>חיוב משלוח {d.leg}</strong>
+                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={close}>
+                    <svg className="icon"><use href="#i-x" /></svg>
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <p className="hint" style={{ margin: '0 0 10px', color: 'var(--text-2)' }}>
+                    ההזמנה תסומן כהזמנת משלוח ({plan.direction}) ותופיע ברשימת המשלוחים.
+                  </p>
+                  <div style={{ fontWeight: 700, marginBottom: '6px' }}>לכתובת הרגילה של הלקוחה או לכתובת אחרת?</div>
+                  {d.canSaved ? (
+                    <div className="hint" style={{ marginBottom: '10px', color: 'var(--text-2)' }}>הכתובת הרגילה: {savedAddress.text}</div>
+                  ) : (
+                    <div className="hint" style={{ marginBottom: '10px', color: 'var(--danger)' }}>
+                      אין ללקוחה כתובת רגילה שאפשר לחייב לפיה (עיר מחוץ לרשימת ערי המשלוח או בלי רחוב) - יש להקליד כתובת למשלוח.
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {d.canSaved && (
+                      <button type="button" className="btn btn-primary" onClick={() => applyDeliveryLeg(d.leg, 'saved')}>
+                        <svg className="icon"><use href="#i-check" /></svg>הכתובת הרגילה
+                      </button>
+                    )}
+                    <button type="button" className={`btn ${d.showForm ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setDeliveryLegDialog({ ...d, showForm: true, error: '' })}>
+                      <svg className="icon"><use href="#i-x" /></svg>כתובת אחרת
+                    </button>
+                  </div>
+                  {d.showForm && (
+                    <div className="form-grid" style={{ marginTop: '12px' }}>
+                      <div className="field">
+                        <label htmlFor="delivery-leg-city">עיר משלוח</label>
+                        <select id="delivery-leg-city" className="select" value={d.city} onChange={e => setDeliveryLegDialog({ ...d, city: e.target.value, error: '' })}>
+                          <option value="">בחר עיר…</option>
+                          {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label htmlFor="delivery-leg-address">כתובת (רחוב ומספר)</label>
+                        <input id="delivery-leg-address" type="text" className="input" value={d.address} placeholder="רחוב ומספר בית" onChange={e => setDeliveryLegDialog({ ...d, address: e.target.value, error: '' })} />
+                      </div>
+                    </div>
+                  )}
+                  {d.error && <p className="hint" style={{ color: 'var(--danger)', margin: '8px 0 0' }}>{d.error}</p>}
+                  <p className="hint" style={{ margin: '12px 0 0', color: 'var(--text-2)' }}>
+                    {plan.markOnly
+                      ? 'חיוב המשלוח כבר קיים בהזמנה - ההזמנה רק תסומן כמשלוח.'
+                      : plan.needsManualLine
+                        ? `יתווסף חיוב משלוח ${d.leg} בסך ₪${amounts.adds}.`
+                        : `חיוב המשלוח (${plan.direction}): ₪${amounts.total}.`}
+                    {' '}השינוי נשמר רק בלחיצה על "שמור שינויים".
+                  </p>
+                </div>
+                <div className="modal-foot">
+                  <button type="button" className="btn btn-secondary" onClick={close}>ביטול</button>
+                  {d.showForm && <button type="button" className="btn btn-primary" onClick={confirmOther}>אישור</button>}
+                </div>
+              </div>
+            </div>
+          );
+        })(),
         document.body
       )}
 
