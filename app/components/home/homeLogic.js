@@ -181,8 +181,18 @@ export function normalizeSearch(d) {
     customers, orders, rentals,
     inventory: (data.inventory || []).map(normalizeInventoryRow).filter(Boolean),
     inventoryTruncated: !!data.inventoryTruncated,
+    notices: normalizeNotices(data.notices),
     dateChips: normalizeDateChips(data.dateChips),
   };
+}
+
+// הודעות קצרות מהשרת מעל התוצאות (תוצאות נחתכו / ערכים נזרקו / תאריך לא קיים): רשימה סגורה של סוגים, טקסט בלבד (לא HTML)
+const NOTICE_KINDS = new Set(['inventoryTruncated', 'valuesDropped', 'dateInvalid']);
+export function normalizeNotices(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((n) => n && typeof n === 'object' && NOTICE_KINDS.has(n.kind) && typeof n.text === 'string' && n.text.trim())
+    .map((n) => ({ kind: n.kind, text: n.text.trim().slice(0, 120) }));
 }
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);

@@ -115,6 +115,7 @@ export default function HomeResults({ res, none, table, onTable, onExport, note,
   const records = useMemo(() => tableRecords(rows), [rows]);
   const hq = useMemo(() => highlightQuery(query), [query]);
   const chips = !none && res && res.dateChips ? res.dateChips : null;
+  const notices = res && Array.isArray(res.notices) ? res.notices : []; // גם במצב "אין תוצאות" (למשל תאריך שלא קיים)
   const shown = more ? rows : rows.slice(0, LIMIT);
   const trio = rows.length
     ? (
@@ -150,6 +151,13 @@ export default function HomeResults({ res, none, table, onTable, onExport, note,
         </h2>
         {trio}
       </div>
+      {notices.length > 0 && (
+        <div role="status" aria-live="polite" data-search-notices="1">
+          {notices.map((n) => (
+            <div key={n.kind} className="muted" data-notice-kind={n.kind} style={{ padding: '6px 16px' }}><Ic id="info" size="sm" /> <span>{n.text}</span></div>
+          ))}
+        </div>
+      )}
       {chips ? <DateChips d={chips} /> : null}
       {rows.length > 0 && (
         <div className="vbar"><ViewSwitch table={table} onChange={onTable} /></div>

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
-const TZS = { 'UTC': [0, 0], 'Asia/Jerusalem': [-120, -180], 'America/New_York': [300, 240] }; // היסט דקות: ינואר, יולי
+const TZS = { 'UTC': [0, 0], 'Asia/Jerusalem': [-120, -180], 'America/New_York': [300, 240], 'America/Los_Angeles': [480, 420], 'Pacific/Kiritimati': [-840, -840] }; // היסט דקות: ינואר, יולי
 
 if (!process.env.SEARCH_TZ_CHILD) {
   let failed = false;
@@ -27,7 +27,7 @@ const S = await import('../lib/searchNormalize.js');
 const {
   cleanQuery, foldHebrew, escapeLike, sizeKey, isNumericSizeKey, sizeMatches, sizeSpellings, sizeSqlMatcher, phoneKey, phoneEquivalentKeys,
   phoneMatches, parseBarcodeDigits, parseGregorianDate, israelDayKey, gregorianMatches, gregorianCandidateKeys, HEBREW_MONTH_TABLE,
-  hebrewMonthFromName, parseHebrewDayToken, parseHebrewYearToken, parseHebrewDate, hebrewDateMatchesStored, hebrewDateSqlParts, KEYWORD_GUIDE,
+  hebrewMonthFromName, parseHebrewDayToken, parseHebrewYearToken, parseHebrewDate, isImpossibleHebrewDate, hebrewDateMatchesStored, hebrewDateSqlParts, KEYWORD_GUIDE,
   parseKeywords, classifyQuery, SHORTCUT_CHARS, matchHighlight,
 } = S;
 const { normalizeSizeKey } = await import('../lib/sizeSort.js');
@@ -571,6 +571,17 @@ t('תקרה של 10 ערכים', () => {
   const r = parseKeywords('מידה ' + Array.from({ length: 14 }, (_, i) => i + 2).join(','));
   eq(r.sizes.length, 10); eq(r.rest, '');
   eq(parseKeywords('דגם ' + Array.from({ length: 12 }, (_, i) => 100 + i).join(' ו')).models.length, 10);
+});
+t('דגל valuesDropped: ערכים מעבר ל-10 נזרקו (מידות / דגמים); בדיוק 10 = לא', () => {
+  eq(parseKeywords('מידה ' + Array.from({ length: 11 }, (_, i) => i + 2).join(',')).valuesDropped, true);
+  eq(parseKeywords('דגם ' + Array.from({ length: 11 }, (_, i) => 100 + i).join(' ו')).valuesDropped, true);
+  eq(parseKeywords('מידה ' + Array.from({ length: 10 }, (_, i) => i + 2).join(',')).valuesDropped, false);
+  eq(parseKeywords('מידה 4 דגם 3').valuesDropped, false); eq(parseKeywords('ורד כהן').valuesDropped, false);
+});
+t('isImpossibleHebrewDate: יום שלא קיים בחודש ("ל אדר" / "ל אייר" / "ל טבת") - רק כשבפועל נראה כמו תאריך', () => {
+  for (const q of ['ל אדר', 'ל אייר', 'ל טבת', 'ל תמוז', 'ל אלול', 'ל אדר ב']) ok(isImpossibleHebrewDate(q), q);
+  for (const q of ['ל חשוון', 'ל אדר א', 'ל כסלו', 'ל תשרי', 'כ חשוון', 'ורד כהן', 'ל', 'ל כהן', '', null]) ok(!isImpossibleHebrewDate(q), String(q));
+  ok(!isImpossibleHebrewDate('ל חשוון תשפו'), 'פענוח תקין (היום קיים בחלק מהשנים) - הבדיקה לפי שנה בתוכנית החיפוש');
 });
 t('בטיחות שמות: "ו" לעולם לא "וגם" בטקסט חופשי או לפני אותיות', () => {
   for (const q of ['ורד כהן', 'ויקי', 'ויקטוריה', 'ו455', 'ו 455', 'כהן ו455', 'דבורה ושרה', 'ורד ו6']) {
