@@ -37,6 +37,7 @@ const toggle = await L('app/api/rentals/toggle/route.js');
 const retScan = await L('app/api/returns/scan/route.js');
 const confirm = await L('app/api/rentals/confirm/route.js');
 const auto = await L('lib/schedule/autoPrepMark.js');
+const marksMod0 = await L('lib/schedule/marks.js');
 
 const post = (body, method = 'POST') => ({ method, url: 'http://x/api', headers: new Map(), json: async () => body });
 const FUTURE_EVENT = new Date(Date.now() + 10 * 864e5);
@@ -46,6 +47,8 @@ const audits = () => globalThis.__MOCK_DB.auditLog;
 const as = (id) => { globalThis.__AUTH_TOKEN = id; };
 
 beforeEach(() => {
+  auto.resetAutoPrepMemo();
+  marksMod0.resetMarksTableState();
   globalThis.__MOCK_CALLS = [];
   globalThis.__MOCK_BEFORE_WRITE = undefined;
   globalThis.__MOCK_WRITABLE = ['orderItem', 'auditLog', 'dressItem', 'scheduleStageMark'];
@@ -86,12 +89,14 @@ test('אישור גורף (rentals/confirm) ושורת ההחזרה (returns/sca
   assert.equal(marks().length, 1);
   assert.equal(marks()[0].markedById, 'emp-david');
   globalThis.__MOCK_DB.scheduleStageMark = [];
+  auto.resetAutoPrepMemo();
   as('emp-sara');
   const r = await retScan.POST(post({ barcode: '3136010', orderId: 53375 }));
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   assert.equal(marks().length, 1);
   assert.equal(marks()[0].markedById, 'emp-sara');
   globalThis.__MOCK_DB.scheduleStageMark = [];
+  auto.resetAutoPrepMemo();
   globalThis.__MOCK_DB.order[0].items[0].isTaken = true;
   const t = await toggle.POST(post({ itemId: 'it1', action: 'return' }));
   assert.equal(t.status, 200);
@@ -104,8 +109,10 @@ test('סימון קיים של אדם (גם "בוטל") לא נדרס; הזמנ�
   assert.equal(marks().length, 1);
   assert.equal(marks()[0].done, false, 'הביטול של האדם נשמר');
   globalThis.__MOCK_DB.scheduleStageMark = [];
+  auto.resetAutoPrepMemo();
   assert.deepEqual(await auto.autoMarkPrepForOrder(53375, { userId: null }), { status: 'marked', dayKey: marks()[0].dayKey });
   globalThis.__MOCK_DB.scheduleStageMark = [];
+  auto.resetAutoPrepMemo();
   globalThis.__MOCK_DB.order[0].items.forEach((i) => { i.isTaken = false; i.takenDate = null; });
   assert.equal((await auto.autoMarkPrepForOrder(53375)).status, 'not-taken');
   globalThis.__MOCK_DB.order[0].items[0].isTaken = true;
@@ -143,7 +150,7 @@ test('כללי הריפו: בלי $transaction ובלי כתיבת AuditLog יד
   assert.ok(/writeMark\(/.test(src));
   const cancel = fs.readFileSync(path.join(PROJ, 'app/api/rentals/cancel/route.js'), 'utf8');
   assert.ok(!/scheduleStageMark|autoPrepMark/.test(cancel), 'ביטול השכרה לא מבטל את הסימון');
-  for (const f of ['app/api/rentals/toggle/route.js', 'app/api/rentals/confirm/route.js', 'app/api/returns/scan/route.js']) assert.match(fs.readFileSync(path.join(PROJ, f), 'utf8'), /autoMarkPrepForOrder\(/);
+  for (const f of ['app/api/rentals/toggle/route.js', 'app/api/rentals/confirm/route.js', 'app/api/returns/scan/route.js']) assert.match(fs.readFileSync(path.join(PROJ, f), 'utf8'), /autoMarkPrepBounded\(/);
 });
 
 test('שורת היומן של סימון אוטומטי נושאת auto:true + source:auto ב-changes (ההיסטוריה מתייגת לפי זה); סימון ידני בלעדיהם', async () => {
@@ -158,4 +165,57 @@ test('שורת היומן של סימון אוטומטי נושאת auto:true + 
   await marksMod.writeMark({ orderId: 53375, stageKey: 'repair', dayKey: '2026-10-05', wanted: true, source: 'row', userId: 'emp-rachel', now: new Date(), stageLabel: 'תיקונים' });
   const manual = JSON.parse(audits()[before].changesJson);
   assert.ok(!('auto' in manual) && !('source' in manual));
+});
+
+test('ביצועים: זיכרון קצר-טווח - הזמנה מסומנת / בלי שלב הכנה לא מבצעת findFirst/findUnique נוספים; טבלה חסרה = מטמון 5 דקות (אין ניסיון חוזר)', async () => {
+  const reads = () => globalThis.__MOCK_CALLS.filter((c) => c.model === 'scheduleStageMark' || c.model === 'order').length;
+  assert.equal((await auto.autoMarkPrepForOrder(53375, { userId: 'emp-a' })).status, 'marked');
+  const afterFirst = reads();
+  assert.ok(afterFirst >= 2);
+  assert.equal((await auto.autoMarkPrepForOrder(53375, { userId: 'emp-a' })).status, 'exists');
+  assert.equal(reads(), afterFirst, 'הקריאה השנייה: אפס שאילתות');
+  auto.resetAutoPrepMemo();
+  globalThis.__MOCK_DB.scheduleStageMark = [];
+  auto.resetAutoPrepMemo();
+  globalThis.__MOCK_DB.order[0].eventDate = null;
+  assert.equal((await auto.autoMarkPrepForOrder(53375, { userId: 'emp-a' })).status, 'no-prep-stage');
+  const n = reads();
+  assert.equal((await auto.autoMarkPrepForOrder(53375, { userId: 'emp-a' })).status, 'no-prep-stage');
+  assert.equal(reads(), n, 'no-prep-stage זכור - בלי שאילתות');
+  // טבלה חסרה: ניסיון אחד, אחריו מטמון
+  auto.resetAutoPrepMemo();
+  delete globalThis.__MOCK_DB.scheduleStageMark;
+  const origErr = console.error;
+  console.error = () => {};
+  try {
+    assert.equal((await auto.autoMarkPrepForOrder(53375, { userId: 'emp-a' })).status, 'no-table');
+    const m = globalThis.__MOCK_CALLS.length;
+    assert.equal((await auto.autoMarkPrepForOrder(53375, { userId: 'emp-a' })).status, 'no-table');
+    assert.equal(globalThis.__MOCK_CALLS.length, m, 'מטמון הטבלה החסרה: אפס שאילתות');
+  } finally { console.error = origErr; }
+});
+
+test('autoMarkPrepBounded: לא מוסיף השהיה - עבודה איטית מחזירה timeout אחרי ה-bound; עבודה מהירה מחזירה את התוצאה; מזהה העובדת נקרא לפני ה-await הראשון', async () => {
+  globalThis.__MOCK_BEFORE_WRITE = () => { const t = Date.now(); while (Date.now() - t < 5) { /* busy */ } };
+  const fast = await auto.autoMarkPrepBounded(53375, { userId: 'emp-a' }, 1500);
+  assert.equal(fast.status, 'marked');
+  globalThis.__MOCK_BEFORE_WRITE = undefined;
+  globalThis.__MOCK_DB.scheduleStageMark = [];
+  auto.resetAutoPrepMemo();
+  auto.resetAutoPrepMemo();
+  const slowDb = globalThis.__MOCK_DB.order;
+  // findFirst איטי: עוטפים את שדה הסימונים ב-getter שמחכה
+  const t0 = Date.now();
+  const slow = await Promise.race([
+    auto.autoMarkPrepBounded('53375', { userId: 'emp-a', now: new Date() }, 30),
+    new Promise((r) => setTimeout(() => r({ status: 'never' }), 1000)),
+  ]);
+  assert.ok(['marked', 'timeout'].includes(slow.status));
+  assert.ok(Date.now() - t0 < 900, 'חזר בתוך ה-bound');
+  assert.ok(slowDb);
+  const src = fs.readFileSync(path.join(PROJ, 'lib/schedule/autoPrepMark.js'), 'utf8');
+  const body = src.slice(src.indexOf('export async function autoMarkPrepForOrder'));
+  assert.ok(body.indexOf('await getActingEmployeeId()') < body.indexOf('await prisma.'), 'עוגיית העובדת לפני כל שאילתה');
+  assert.match(src, /Promise\.race\(\[work, limit\]\)/);
+  assert.match(src, /AUTO_PREP_TIMEOUT_MS = 1500/);
 });

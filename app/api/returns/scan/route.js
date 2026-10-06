@@ -2,7 +2,7 @@
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
-import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
+import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 
 // ברקוד תקין הוא ספרות/אותיות בלבד. הקלדה/הדבקה מתוך מסך RTL יכולה להכניס תווים בלתי נראים
@@ -162,7 +162,7 @@ export async function POST(request) {
     }
 
     // החזרה = בוודאי נלקח: הכנה אוטומטית אם עוד לא סומנה (נכשל בשקט)
-    await autoMarkPrepForOrder(updatedItem.orderId);
+    await autoMarkPrepBounded(updatedItem.orderId);
 
     return NextResponse.json({
       success: true, 
