@@ -2,15 +2,16 @@
 
 // פעמון ההתראות של המעטפת החדשה: hook (מונה + רשימה) וגוף הפאנל (nf-w, פלטה: באנר 56/58/114, nf-row 105/116/122/164).
 // הלוגיקה של הרשת מועתקת מ-NotificationBell.js (// COPIED FROM) ולא משתנה:
-//   - מונה "לא נקראו" = GET /api/notifications?light=1 כל 120 שנ', מושהה כשהטאב מוסתר, ובכל ניווט.
+//   - מונה "לא נקראו" = הדוגם המשותף (GET /api/poll, lib/pollClient.js) כל 5 דקות, מושהה כשהטאב מוסתר / שנשכח פתוח, וברענון בניווט.
+//     כפתור דיווח התקלות משתתף באותה בקשה (בקשה אחת לטאב). אחרי פעולה של המשתמש (סימון/ארכיון) - רענון מיידי (pollAfterAction).
 //   - הרשימה המלאה (GET /api/notifications) נטענת רק כשהפעמון נפתח - לא בטעינת הדף (מכסת Neon).
 // נוספו (החלטות הבעלים, Q6): "סמן הכל כנקרא" ו"ניקוי" (= ארכיון פר-משתמש, לא מחיקה) דרך { all: true }.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Ic, MenuRow, relativeTime } from './menuParts';
-import { onActiveInterval } from '@/lib/idleGuard';
+import { usePollSnapshot } from '@/lib/usePoll';
+import { pollRefresh, pollAfterAction, NAV_REFRESH_MAX_AGE_MS, OPEN_REFRESH_MAX_AGE_MS } from '@/lib/pollClient';
 
-const POLL_MS = 120000; // COPIED FROM NotificationBell.js - אסור לשנות (מכסת Neon)
 const SHOW = 5;
 const MAX = 20;
 
@@ -33,19 +34,6 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
 
   useEffect(() => { openRef.current = isOpen; }, [isOpen]);
 
-  const fetchCount = useCallback(() => {
-    if (!enabled || !employeeId) return;
-    fetch('/api/notifications?light=1')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && typeof data.unreadCount === 'number') {
-          setPollCount(data.unreadCount);
-          if (!openRef.current) setList(null);
-        }
-      })
-      .catch(() => {});
-  }, [enabled, employeeId]);
-
   const loadList = useCallback(() => {
     if (!enabled || !employeeId) return;
     setLoading(true);
@@ -58,20 +46,23 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
       .finally(() => setLoading(false));
   }, [enabled, employeeId]);
 
-  // COPIED FROM NotificationBell.js: polling + visibilitychange
+  // המונה מהדוגם המשותף (מנוי = טיימר אחד לטאב + בקשה אחת גם לכפתור דיווח התקלות; מושהה במוסתר/idle, ר' lib/pollClient.js).
+  const snap = usePollSnapshot(!!(enabled && employeeId));
   useEffect(() => {
-    if (!enabled || !employeeId) return undefined;
-    fetchCount();
-    // lib/idleGuard.js: רץ רק בטאב גלוי עם פעילות משתמש ב-30 הדקות האחרונות; בחזרה - דגימה מיידית אחת.
-    return onActiveInterval(fetchCount, POLL_MS, { resumeStaleMs: 0 });
-  }, [enabled, employeeId, fetchCount]);
+    const nf = snap.notifications;
+    if (!nf.known) return;
+    setPollCount(nf.unread);
+    if (!openRef.current) setList(null);
+  }, [snap.notifications]);
 
-  // רענון המונה בכל ניווט (מונה בלבד; הרשימה נטענת רק בפתיחה).
-  useEffect(() => { fetchCount(); }, [pathname, fetchCount]);
-
-  // פתיחת הפעמון = טעינת הרשימה (לא יותר מפעם בכל פתיחה).
+  // רענון המונה בכל ניווט (מונה בלבד; הרשימה נטענת רק בפתיחה). מדלגים אם דגמנו בדקה האחרונה.
   useEffect(() => {
-    if (isOpen) loadList();
+    if (enabled && employeeId) pollRefresh({ maxAgeMs: NAV_REFRESH_MAX_AGE_MS });
+  }, [pathname, enabled, employeeId]);
+
+  // פתיחת הפעמון = טעינת הרשימה (לא יותר מפעם בכל פתיחה) + רענון המונה המשותף אם התיישן.
+  useEffect(() => {
+    if (isOpen) { loadList(); pollRefresh({ maxAgeMs: OPEN_REFRESH_MAX_AGE_MS }); }
   }, [isOpen, loadList]);
 
   const active = (list || []).filter((n) => !n.isArchived);
@@ -96,6 +87,7 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
     if (!r.ok) return fail('סימון ההתראה כנקראה נכשל');
     setList((prev) => (prev ? prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)) : prev));
     setPollCount((c) => Math.max(0, c - 1));
+    pollAfterAction();
     return undefined;
   }, []);
 
@@ -103,6 +95,7 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
     const r = await postJson('/api/notifications/archive', { notificationId: id, archive: true }).catch(() => ({ ok: false }));
     if (!r.ok) return fail('הסרת ההתראה נכשלה');
     setList((prev) => (prev ? prev.map((n) => (n.id === id ? { ...n, isArchived: true } : n)) : prev));
+    pollAfterAction();
     return undefined;
   }, []);
 
@@ -111,6 +104,7 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
     if (!r.ok) return fail('סימון הכל כנקרא נכשל');
     setList((prev) => (prev ? prev.map((n) => ({ ...n, isRead: true })) : prev));
     setPollCount(0);
+    pollAfterAction();
     return undefined;
   }, []);
 
@@ -119,6 +113,7 @@ export function useNotifications({ enabled, employeeId, pathname, isOpen, onErro
     if (!r.ok) return fail('הניקוי נכשל');
     setList((prev) => (prev ? prev.map((n) => ({ ...n, isArchived: true })) : prev));
     setPollCount(0);
+    pollAfterAction();
     return undefined;
   }, []);
 

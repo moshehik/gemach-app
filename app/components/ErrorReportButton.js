@@ -5,7 +5,7 @@
 //   * app/components/menu/MenuA5Shell.js (A5): <ErrorReportButton trigger={({ onOpen, unreadCount }) => ...} /> - אייקון החרק (#snErr).
 // החלון עצמו (עיצוב B שאושר 4.10.2026: כרטיס צף + פאנל "פניות שלי", בנייד גיליון תחתון) נמצא ב-errorReport/ErrorReportWindow.js
 // ונטען בעצלות בפתיחה הראשונה. כאן נשארים רק: הכפתור, הכפתור הצף השקט בשולי המסך, הבדיקה התקופתית הקלה של "לא נקראו"
-// (?light=1 כל 120 שנ', רק כשהחלון סגור והטאב גלוי) ורישום 5 הלחצנים האחרונים (lastButtons שנשלח בדיווח).
+// (דוגם משותף: GET /api/poll כל 5 דקות בטאב גלוי ופעיל, בקשה אחת גם לפעמון - lib/pollClient.js) ורישום 5 הלחצנים האחרונים (lastButtons שנשלח בדיווח).
 // החלון הישן (1441 שורות, עד 4.10.2026) שוחזר כ-LegacyErrorReportButton.js ומוצג לפי מסך "ישן / חדש" error_report (ר' למטה).
 import './errorReport/launcher.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -13,7 +13,8 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { unreadCount as countUnread } from './errorReport/erModel';
 import { invalidate } from '../../lib/apiCache';
-import { onActiveInterval } from '@/lib/idleGuard';
+import { usePollSnapshot } from '@/lib/usePoll';
+import { pollAfterAction } from '@/lib/pollClient';
 import { useUiVariant } from './UiVariantContext';
 import LegacyErrorReportFrame from './variant/LegacyErrorReportFrame';
 
@@ -48,60 +49,45 @@ function ErrorReportButtonNew({ trigger } = {}) {
   const [command, setCommand] = useState(null);
   const [unread, setUnread] = useState(0);
   const [perms, setPerms] = useState({ known: false, isProgrammer: false, isManager: false });
-  const [authFailed, setAuthFailed] = useState(false);
   const [fabReveal, setFabReveal] = useState(false);
   const fabTimer = useRef(null);
-  // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי הפעם הראשונה מפסיקים לגמרי
-  const authFailedRef = useRef(false);
-  const fetchSeqRef = useRef(0);
+  // הבדיקה התקופתית הקלה = הדוגם המשותף (lib/pollClient.js): בקשה אחת GET /api/poll לטאב, בלי תלות בפעמון.
+  // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה מחזירה 401, והדוגם מפסיק לדגום (snap.authFailed).
+  const snap = usePollSnapshot(true);
+  const authFailed = snap.authFailed && !snap.errorReports.known;
+  const appliedRevRef = useRef(0); // הגרסה האחרונה של הדוגם שכבר הוחלה (או שהחלון הפתוח עקף אותה)
+  const latestRevRef = useRef(0);
+  const wasOpenRef = useRef(false);
   const lastUnreadRef = useRef(null); // מונה "לא נקראו" האחרון - שינוי בו (בדיקה קלה) מבטל את הרשימה המלאה במטמון (ErrorReportWindow)
 
-  // { light: true } - הבדיקה ברקע (פאנל סגור): רק השדות הדרושים למונה "לא נקראו" (docs/neon-quota-error-report-poll-2026-09-17.md).
-  // הקריאה המלאה (רשימה, תגובות, צרופות) נעשית בחלון עצמו כשהוא פתוח, ומעדכנת כאן את המונה דרך onData.
-  const fetchLight = useCallback(async () => {
-    if (authFailedRef.current) return;
-    const seq = ++fetchSeqRef.current;
-    try {
-      const res = await fetch('/api/error-report?light=1');
-      if (res.status === 401) {
-        authFailedRef.current = true;
-        setAuthFailed(true);
-        return;
-      }
-      if (res.ok) {
-        const data = await res.json();
-        // תוצאה ישנה לא דורסת קריאה מלאה שחזרה אחריה
-        if (seq !== fetchSeqRef.current) return;
-        if (data.success) {
-          const prog = data.isProgrammer || false;
-          const n = countUnread(data.reports || [], prog);
-          if (lastUnreadRef.current !== null && lastUnreadRef.current !== n) invalidate('/api/error-report'); // מישהו הוסיף/קרא דיווח או תגובה: הרשימה במטמון ישנה
-          lastUnreadRef.current = n;
-          setUnread(n);
-          setPerms({ known: true, isProgrammer: prog, isManager: data.isManager ?? data.isProgrammer ?? false });
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching reports:', err);
-    }
-  }, []);
+  // תוצאת הדוגם (מונה "לא נקראו" + הרשאות) מוחלת רק כשהחלון סגור: כשהוא פתוח הקריאה המלאה שלו (onData) היא מקור האמת,
+  // ותוצאה ישנה יותר מהקריאה המלאה לא דורסת אותה (appliedRevRef). הקריאה המלאה (רשימה, תגובות, צרופות) נעשית בחלון עצמו.
+  useEffect(() => {
+    latestRevRef.current = snap.errorReports.rev;
+    const er = snap.errorReports;
+    if (!er.known || isOpen || er.rev <= appliedRevRef.current) return;
+    appliedRevRef.current = er.rev;
+    const n = er.unread;
+    if (lastUnreadRef.current !== null && lastUnreadRef.current !== n) invalidate('/api/error-report'); // מישהו הוסיף/קרא דיווח או תגובה: הרשימה במטמון ישנה
+    lastUnreadRef.current = n;
+    setUnread(n);
+    setPerms({ known: true, isProgrammer: er.isProgrammer, isManager: er.isManager });
+  }, [snap.errorReports, isOpen]);
 
   const onData = useCallback((list, prog) => {
-    ++fetchSeqRef.current;
+    appliedRevRef.current = latestRevRef.current;
     lastUnreadRef.current = countUnread(list || [], prog);
     setUnread(lastUnreadRef.current);
   }, []);
 
+  // סגירת החלון = הייתה פעילות (סימון כנקרא, תגובה, דיווח חדש, ארכיון): רענון מיידי אחד של המונה המשותף (עוקף מטמון שרת).
   useEffect(() => {
-    if (!mounted || isOpen) return undefined;
-    // טאב ברקע / ממוזער / שנשכח פתוח (30 דקות בלי פעילות) לא בודק בכלל; כשחוזרים אליו - בדיקה מיידית אחת.
-    // 120 שנ' (מכסות Vercel/Neon, ר' docs/vercel-resource-audit-2026-09-20.md ו-docs/idle-tab-guard-2026-10-06.md).
-    return onActiveInterval(() => fetchLight(), 120000, { resumeStaleMs: 0 });
-  }, [mounted, isOpen, fetchLight]);
+    if (wasOpenRef.current && !isOpen) pollAfterAction();
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     setMounted(true);
-    fetchLight();
     // 5 הלחצנים האחרונים שנלחצו בעמוד - נשלחים בדיווח (lastButtons) כמו קודם
     const handleGlobalClick = (e) => {
       let target = e.target;
@@ -124,7 +110,7 @@ function ErrorReportButtonNew({ trigger } = {}) {
       document.removeEventListener('click', handleGlobalClick);
       clearTimeout(fabTimer.current);
     };
-  }, [fetchLight]);
+  }, []);
 
   const toggle = (e, mode) => {
     const anchor = e && e.currentTarget ? e.currentTarget : null;
