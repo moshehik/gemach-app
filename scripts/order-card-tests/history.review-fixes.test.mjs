@@ -108,3 +108,39 @@ test('W6-MARK: דף ההדפסה / הטבלה מושכים את שם הקטגו�
   assert.ok(/ORDER_HISTORY_CATEGORIES\.map\(c => c\[0\]\)/.test(route), 'קטגוריות תקפות נגזרות מהמערך');
   assert.ok(ORDER_HISTORY_CATEGORIES.some((c) => c[0] === 'gen'));
 });
+
+// בעלים 2026-10-06: תפריט הסינון מציג רק קטגוריות עם ספירה > 0; בחירה של קטגוריה שהתרוקנה לא משאירה סינון נסתר
+test('filterCategories: רק קטגוריות עם שורות; סל נוסף רק כשיש שורה; keep משאיר נבחרת שהחיפוש רוקן; effectiveSelection מתעלם מריקות', async () => {
+  const M = await import('@/app/components/order-card/parts/ocHistoryModel.js');
+  const e = (cat, text, icon) => ({ id: text, ts: '2026-10-01T10:00:00Z', cat, icon: icon || 'list', text });
+  const entries = [e('items', 'נוסף פריט A'), e('items', 'נוסף פריט B'), e('pay', 'תשלום 100'), e('gen', 'הערה', 'list'), e('gen', 'חתימה', 'sig')];
+  assert.deepEqual(M.filterCategories(entries).map((c) => c[0]), ['items', 'pay', 'gen', 'sig']);
+  assert.deepEqual(M.filterCategories([]).map((c) => c[0]), [], 'הכל אפס - אין קטגוריות (מצב ריק)');
+  assert.ok(M.filterCategories(entries).every((c) => M.categoryCount(entries, c[0]) > 0));
+  // חיפוש מרוקן קטגוריות - הן נעלמות מהרשימה, אלא אם נבחרו (keep) והן קיימות בכלל
+  assert.deepEqual(M.filterCategories(entries, { q: 'תשלום' }).map((c) => c[0]), ['pay']);
+  assert.deepEqual(M.filterCategories(entries, { q: 'תשלום', keep: ['items'] }).map((c) => c[0]), ['items', 'pay']);
+  assert.deepEqual(M.filterCategories(entries, { q: 'תשלום', keep: ['del'] }).map((c) => c[0]), ['pay'], 'keep של קטגוריה שאין בה שורות בכלל - לא מוצגת');
+  // בחירה שהתרוקנה אחרי רענון: מתעלמים ממנה, וההיסטוריה לא נעלמת
+  const eff = M.effectiveSelection(entries, ['del', 'pay', 'dates']);
+  assert.deepEqual(eff, ['pay']);
+  assert.equal(M.visibleEntries(entries, { selected: M.effectiveSelection(entries, ['del']) }).length, entries.length, 'בחירה ריקה אחרי ניפוי = הכל גלוי');
+  assert.equal(M.visibleEntries(entries, { selected: ['del'] }).length, 0, 'בלי ניפוי הבחירה הנסתרת הייתה מסתירה הכל');
+  // סמן הכל = רק הקטגוריות הגלויות
+  const allKeys = M.filterCategories(entries).map((c) => c[0]);
+  assert.ok(!allKeys.includes('del') && !allKeys.includes('dates') && !allKeys.includes('docs'));
+});
+
+test('OcHistoryFeed: תפריט הסינון - effectiveSelection לתג/כפתורים/סמן הכל; מצב ריק במקום תפריט ריק; ניפוי בחירה ישנה', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const src = fs.readFileSync(path.join(process.env.PROJ, 'app/components/order-card/parts/OcHistoryFeed.js'), 'utf8');
+  assert.match(src, /const effSel = useMemo\(\(\) => effectiveSelection\(all, sel\), \[all, sel\]\);/);
+  assert.match(src, /filterCategories\(all, \{ q, keep: effSel \}\)/);
+  assert.match(src, /visibleEntries\(all, \{ selected: effSel, q \}\)/);
+  assert.match(src, /useEffect\(\(\) => \{ if \(effSel\.length !== sel\.length\) setSel\(effSel\); \}/);
+  assert.match(src, /allKeys\.every\(\(k\) => effSel\.includes\(k\)\)/);
+  assert.match(src, /\{effSel\.length \|\| ''\}/);
+  assert.match(src, /\{!cats\.length \? <div className="empty" role="status">אין רישומים לסינון<\/div> : null\}/);
+  assert.match(src, /\{cats\.length \? <div className="hf-all">/);
+});

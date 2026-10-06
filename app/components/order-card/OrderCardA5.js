@@ -14,7 +14,9 @@ import './css/oc-rail.css';
 import './css/oc-history.css';
 import './css/oc-docs.css';
 import { useLayoutEffect, useRef, useState } from 'react';
-import usePageTooltip from '@/app/components/profile/usePageTooltip';
+import useCardTooltips from './hooks/useCardTooltips';
+import OcRichTips from './OcRichTips';
+import { displayLine } from './parts/ocRailLogic';
 import useIconAnim from './hooks/useIconAnim';
 import useOrderCardController from './useOrderCardController';
 import { OcUiProvider, useOcUi } from './OcUi';
@@ -33,7 +35,8 @@ export default function OrderCardA5({ orderRef }) {
   const ttRef = useRef(null);
   const [portalEl, setPortalEl] = useState(null);
   // המעטפת A5 מטפלת בטולטיפים רק באזור הכותרת שלה - הכרטיס מטפל בשלו תמיד (כמו הפרופיל)
-  usePageTooltip(rootRef, ttRef, false);
+  // הטולטיפ הפשוט (#tt בדמו): ריחוף/מיקוד/מגע/.tip/tipify/aria-describedby + היפוך מתחת לתפריט העליון - hooks/useCardTooltips.js (הכרטיסים העשירים: OcRichTips + OcStepper)
+  useCardTooltips(rootRef, ttRef);
   // אנימציות האייקונים של העיצוב (ריחוף + כניסה) - כל ה-CSS בפלטה, רק הוספת המחלקות (ICON-ANIM בדמו)
   useIconAnim(rootRef);
   return (
@@ -41,11 +44,11 @@ export default function OrderCardA5({ orderRef }) {
       <OcSprite />
       <OcPortalRoot.Provider value={portalEl}>
         <OcUiProvider>
-          <OrderCardBody orderRef={orderRef} />
+          <OrderCardBody orderRef={orderRef} rootRef={rootRef} />
         </OcUiProvider>
       </OcPortalRoot.Provider>
       <div className="oc-portal" ref={setPortalEl} />
-      <div className="pl-tt" role="tooltip" ref={ttRef} />
+      <div className="pl-tt" id="oc-pl-tt" role="tooltip" ref={ttRef} />
     </div>
   );
 }
@@ -73,7 +76,7 @@ function StateBanner({ oc }) {
   );
 }
 
-function OrderCardBody({ orderRef }) {
+function OrderCardBody({ orderRef, rootRef }) {
   const ui = useOcUi();
   const oc = useOrderCardController(orderRef, ui, { dialogs: SLOTS });
   const { Rail, DraftBanner, MoneyToast, TopBanners } = SLOTS;
@@ -119,6 +122,7 @@ function OrderCardBody({ orderRef }) {
       <OcTopbar oc={oc} ui={ui} slots={SLOTS} />
       {/* ציר האירוע (.stepper) חזר בהערת הבעלים 2026-10-05 - בדיוק כמו renderTimeline() בעיצוב; נתוני אמת מה-journal (OcStepper) */}
       <OcStepper oc={oc} data={journalData} />
+      <OcRichTips rootRef={rootRef} getCtx={() => ({ order: oc.order, items: oc.items, payments: oc.payments, balance: oc.totals && oc.totals.savedBalance, changes: (oc.changes || []).map((c) => ({ ...c, note: displayLine(c).note })) })} />
       {oc.status === 'loading' ? (
         <div className="layout oc-layout-msg"><main className="main"><div className="card oc-loading" role="status"><span className="spinner" aria-hidden="true" />טוען נתוני הזמנה...</div></main></div>
       ) : oc.status === 'notfound' ? (

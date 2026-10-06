@@ -93,3 +93,9 @@ export function placeTip(r, w, h, { vw, vh, navBottom = 0 }, mode = 'above', gap
   const y = Math.max(8, Math.min(vh - h - 8, r.top + r.height / 2 - h / 2));
   return { x, y, side, arrowTop: Math.max(14, Math.min(h - 14, r.top + r.height / 2 - y)) };
 }
+
+/** קצה תחתון של התפריט העליון הדביק (מסומן data-sticky-nav במעטפת A5); 0 כשאין */
+export const navBottomOf = () => {
+  const nav = typeof document !== 'undefined' ? document.querySelector('[data-sticky-nav]') : null;
+  return nav ? nav.getBoundingClientRect().bottom : 0;
+};

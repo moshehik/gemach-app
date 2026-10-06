@@ -1,15 +1,10 @@
 'use client';
 
 // OcRichCard - הכרטיס העשיר (#rt בדמו = .pl-rt בפלטה): .rr1 לכל שורה (אייקון + טקסט), חץ .ra, role=tooltip. משותף לציר העליון ולסרגל הסיכום (gold).
-// מיקום: placeTip (parts/ocTipLogic.js) - 'above' לצמתי הציר, 'side' לשאר; מתהפך מתחת לתפריט העליון ([data-sticky-nav]). anchor = getBoundingClientRect של העוגן.
+// מיקום: placeTip (parts/ocTipLogic.js) - 'above' לצמתי הציר, 'side' לשאר; מתהפך מתחת לתפריט העליון (navBottomOf: [data-sticky-nav]). anchor = getBoundingClientRect של העוגן.
 import { useLayoutEffect, useRef, useState } from 'react';
 import OcIcon from './OcIcon';
-import { placeTip } from './parts/ocTipLogic';
-
-export const navBottomOf = () => {
-  const nav = typeof document !== 'undefined' ? document.querySelector('[data-sticky-nav]') : null;
-  return nav ? nav.getBoundingClientRect().bottom : 0;
-};
+import { placeTip, navBottomOf } from './parts/ocTipLogic';
 
 export default function OcRichCard({ id, rows, anchor, mode = 'above', gold = false }) {
   const ref = useRef(null);

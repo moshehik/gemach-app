@@ -7,8 +7,7 @@
 //  - נגישות (מעבר לדמו): aria-describedby מהרכיב לטולטיפ (role=tooltip, id) בזמן ההצגה.
 //  - prefers-reduced-motion: ה-transition של .pl-tt בפלטה מבוטל שם; כאן אין אנימציה משלנו.
 import { useEffect } from 'react';
-import { ICON_TIP, tipLabelFor, placeTip } from '../parts/ocTipLogic';
-import { navBottomOf } from '../OcRichCard';
+import { ICON_TIP, tipLabelFor, placeTip, navBottomOf } from '../parts/ocTipLogic';
 
 const TIP_ID = 'oc-pl-tt';
 const iconOf = (b) => { const u = b.querySelector('use'); return u ? (u.getAttribute('href') || '').replace(/^#/, '').replace('gmi-', '') : ''; };

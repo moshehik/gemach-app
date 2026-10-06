@@ -15,9 +15,18 @@ const CATEGORY_NAME = Object.fromEntries(HISTORY_CATEGORIES.map((c) => [c[0], c[
 
 export const inCategory = (e, k) => (EXTRA_ICON[k] ? e.icon === EXTRA_ICON[k] : e.cat === k);
 
-/** הקטגוריות לתפריט הסינון: חמש הקבועות + הסלים הנוספים שיש להם שורות */
-export function filterCategories(entries) {
-  return HISTORY_CATEGORIES.concat(HISTORY_EXTRAS.filter(([k]) => (entries || []).some((e) => inCategory(e, k))));
+/**
+ * הקטגוריות לתפריט הסינון (בעלים 2026-10-06: "רק קטגוריות שהספירה שלהן גדולה מ-0"): כל הקטגוריות (הקבועות + הסלים הנוספים) שיש בהן שורה אחת לפחות
+ * בתוצאות החיפוש הנוכחיות; קטגוריה שנבחרה כרגע (keep) ויש לה שורות בכלל נשארת גלויה גם כשהחיפוש מרוקן אותה, כדי שאפשר יהיה להסיר אותה.
+ */
+export function filterCategories(entries, { q = '', keep = [] } = {}) {
+  const base = HISTORY_CATEGORIES.concat(HISTORY_EXTRAS);
+  return base.filter(([k]) => categoryCount(entries, k, q) > 0 || (keep.includes(k) && categoryCount(entries, k, '') > 0));
+}
+
+/** הבחירה בפועל: קטגוריות שנבחרו וקיימות (יש בהן שורות בכלל). קטגוריה שהתרוקנה אחרי רענון לא משאירה סינון נסתר שמסתיר הכל. */
+export function effectiveSelection(entries, selected = []) {
+  return (selected || []).filter((k) => categoryCount(entries, k, '') > 0);
 }
 
 export function searchWords(q) {

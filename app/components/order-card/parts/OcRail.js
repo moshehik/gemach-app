@@ -174,14 +174,14 @@ export default function OcRail({ oc, ui }) {
     <div className="rcard cart" ref={rootRef}>
       <div className="sec-h"><OcIcon name="list" size="sm" /><span>סיכום</span></div>
       <div className="glance">
-        <button type="button" className={`gl sig ${signed ? 'yes' : 'no'}`} data-act="sig" data-tip={signed ? 'הלקוח חתם על התקנון - לחצו לשינוי' : 'הלקוח לא חתם על התקנון - לחצו לשינוי'} aria-label={`${signed ? 'חתום' : 'לא חתום'} - חתימה על תקנון`} onClick={() => oc.toggleSignature()}>
+        <button type="button" className={`gl sig ${signed ? 'yes' : 'no'}`} data-act="sig" data-rich="sig" aria-label={`${signed ? 'חתום' : 'לא חתום'} - חתימה על תקנון`} onClick={() => oc.toggleSignature()}>
           <OcIcon name={signed ? 'check' : 'x'} /><span className="gv">{signed ? 'חתום' : 'לא חתום'}</span>
         </button>
         {order && order.isDelivery ? (
-          <span className="gl del" role="img" tabIndex={0} aria-label={`משלוח ${order.deliveryDirection || ''}`.trim()}><OcIcon name="truck" /><span className="gv">{order.deliveryDirection || 'משלוח'}</span></span>
+          <span className="gl del" role="img" tabIndex={0} data-rich="del" aria-label={`משלוח ${order.deliveryDirection || ''}`.trim()}><OcIcon name="truck" /><span className="gv">{order.deliveryDirection || 'משלוח'}</span></span>
         ) : null}
-        <span className="gl itm-c" role="img" tabIndex={0} aria-label={nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}><OcIcon name="dress" /><span className="gv">{nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}</span></span>
-        <span className={`gl pay ${chip.cls}`} role="button" tabIndex={0} data-act="wallet" data-tip="מצב תשלום - לחצו למעבר לתשלומים" aria-label="מצב תשלום" onClick={() => actions.wallet()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.wallet(); } }}>
+        <span className="gl itm-c" role="img" tabIndex={0} data-rich="items" aria-label={nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}><OcIcon name="dress" /><span className="gv">{nAct === 1 ? 'פריט אחד' : `${nAct} פריטים`}</span></span>
+        <span className={`gl pay ${chip.cls}`} role="button" tabIndex={0} data-act="wallet" data-rich="pay" aria-label="מצב תשלום" onClick={() => actions.wallet()} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); actions.wallet(); } }}>
           <OcIcon name="card" /><span className="gv">{chip.cls === 'ok' ? chip.label : <>{chip.label} <Money n={chip.amount} /></>}</span>
         </span>
       </div>
@@ -203,7 +203,7 @@ export default function OcRail({ oc, ui }) {
               {changes.map((c) => {
                 const line = displayLine(c);
                 return (
-                  <div className={`cl enter${leaving === c.key ? ' leaving' : ''}`} key={c.key} data-key={c.key} tabIndex={0}>
+                  <div className={`cl enter${leaving === c.key ? ' leaving' : ''}`} key={c.key} data-key={c.key} data-rich={`chg|${c.key}`} tabIndex={0}>
                     <div className="cl-i"><OcIcon name={c.icon} /></div>
                     <div className="cl-t"><span><Emph text={line.text} /></span>{line.note ? <small>{line.note}</small> : null}{c.amt ? <em className={c.amt > 0 ? 'p' : 'm'}><Money n={c.amt} signed /></em> : null}</div>
                     <button type="button" className="cl-u" data-act="undo" data-k={c.key} data-ico="bk" data-tip="ביטול השינוי" aria-label="ביטול השינוי" disabled={busy} onClick={() => undo(c.key)}><OcIcon name="bk" size="sm" anim className={iconClass('bk')} /></button>
