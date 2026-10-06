@@ -49,7 +49,7 @@ test('1: handleAddPaymentClick ב-controller נשען על paymentAddDecision ו
   assert.match(body, /NL\.paymentAddDecision\(settings, payment\.method, payment\.amount\)/);
   assert.ok(!/verifyPin\(|payment_exit_approval|'approve'/.test(body), 'אין בקשת אישור בפיצול');
   assert.match(body, /reason === 'manager-exit'/);
-  const save = /const saveOrder = async \(\) => \{([\s\S]*?)\n {2}\};/.exec(CTL);
+  const save = /const saveOrderInner = async \(\) => \{([\s\S]*?)\n {2}\};/.exec(CTL); // saveOrder wraps saveOrderInner (double-click lock, 2026-10-06)
   assert.ok(save && /NL\.paymentApprovalRequired\(settings, payment\.method, pAmount\)/.test(save[1]) && /'feature:payment_exit_approval'/.test(save[1]), 'Q3b: האישור ביציאה באישור מנהל נבדק בסיום');
 });
 test('1: בסיום ההזמנה "יציאה באישור מנהל" עדיין נרשמת בסכום 0 (השרת סופר אותה כאישור, לא ככסף)', () => {

@@ -7,7 +7,7 @@
 // R23: דגם "ללא שם" מוצג בקוד; הקוד מוצג בנפרד רק כשהוא שונה מהשם (בנווה יעקב הם זהים). Q8: "פירוט לתופרת * (חובה)" נאכף.
 // R21 (להסיר): אין "הערות כלליות להזמנה" בשלב הזה.
 import { Blk, ClearX, Field, Ic, Note, OneCard, SubH, money } from './NoUi';
-import { DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
+import { CalcErrorNote, DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
 import { alterationDetailsRequired, alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, moneyTxt } from './newOrderLogic';
 
 function hl(s, q) {
@@ -151,6 +151,7 @@ function Cart({ ctl }) {
           );
         }) : <div className="empty">טרם הוספת פריטים להזמנה</div>}
       </div>
+      <CalcErrorNote ctl={ctl} />
       <DeliveryChargeLine ctl={ctl} />
       <DeliveryEditButton ctl={ctl} from="items" />
     </Blk>

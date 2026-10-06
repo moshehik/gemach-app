@@ -16,6 +16,17 @@ export function DeliveryEditButton({ ctl, from, marginTop = 14 }) {
   );
 }
 
+// סקירה 6.10.2026: חישוב המחיר נכשל (רשת / שרת) - הסכום לא ידוע, שמירה וחיוב חסומים עד "נסה שוב"
+export function CalcErrorNote({ ctl }) {
+  if (!ctl.calcError) return null;
+  return (
+    <div className="empty" role="alert" style={{ textAlign: 'start', display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 12 }}>
+      <span><Ic n="alert" c="sm" /> חישוב המחיר נכשל. לא ניתן לשמור הזמנה או לחייב עד שהחישוב יצליח.</span>
+      <button type="button" className="btn sm" onClick={ctl.retryCalc}><Ic n="refresh" c="sm" />נסה שוב</button>
+    </div>
+  );
+}
+
 // אותו מספר שכבר כלול בסה"כ (deliveryAmount מ-/api/orders/calculate) - רק לתצוגה
 export function DeliveryChargeLine({ ctl }) {
   const o = ctl.order;

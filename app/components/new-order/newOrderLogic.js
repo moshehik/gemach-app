@@ -119,8 +119,8 @@ export const computePaymentMethodOptions = (settingsObj) => {
 export const MANAGER_EXIT_METHOD = 'יציאה באישור מנהל';
 // מקור אמת אחד עם האשף הישן (lib/newOrderPayments.js, תיקוני ה-hotfix של main): אשראי פנימי, אמצעי החיוב שנשמר אחרי חיוב כרטיס
 // (נשמרת האופציה שנבחרה) וקביעת תקינות "אישור תשלום / פיצול". מיוצאים מכאן כדי שהקוד והבדיקות של האשף יישענו עליהם.
-import { isCreditMethod, creditMethodForCharge, validateSplitPayment, paymentApprovalLevelRequiresPrompt, redirectNeedsFullReload } from '../../../lib/newOrderPayments';
-export { isCreditMethod, creditMethodForCharge, validateSplitPayment, redirectNeedsFullReload };
+import { isCreditMethod, creditMethodForCharge, validateSplitPayment, paymentApprovalLevelRequiresPrompt, redirectNeedsFullReload, repairsForEdit } from '../../../lib/newOrderPayments';
+export { isCreditMethod, creditMethodForCharge, validateSplitPayment, redirectNeedsFullReload, repairsForEdit };
 // האייקון של כל אמצעי בבורר .methods (כמו METHOD_ICON בעיצוב)
 export const methodIcon = (m) => (m.includes('אשראי') ? 'card' : m.includes('מזומן') ? 'cash' : m.includes('העברה') ? 'bank' : m.includes('צ') ? 'cheque' : 'lock');
 
@@ -322,6 +322,8 @@ export function prepareItemForAdd(settings, newItem) {
     if (alterationDetailsRequired(settings)) return { error: 'יש למלא "פירוט לתופרת" לפני ההוספה לסל.' };
     itemToAdd.repairs = describeAlterations(itemToAdd);
   }
+  // סקירה 6.10.2026: פירוט לתופרת שייך לתיקון שסומן. אם כל התיקונים בוטלו (למשל בעריכת פריט) - לא שולחים פירוט ישן / אוטומטי ('צוואר').
+  if (!alterationsChosen(itemToAdd)) itemToAdd.repairs = '';
   return { itemToAdd };
 }
 
@@ -362,6 +364,23 @@ export const roundMoney = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // D1: השוואת סכומים באגורות - רעש נקודה צפה (350 * 1.1 = 385.00000000000006) לא יחסום הזמנה ששולמה במלואה.
 export const toAgorot = (n) => Math.round((Number(n) || 0) * 100);
 export const paidInFull = (total, paid) => toAgorot(paid) >= toAgorot(total);
+// סקירה 6.10.2026: תשובת /api/orders/calculate תקינה רק עם totalAmount מספרי סופי (תשובת שגיאה {error} / גוף ריק = לא תקין)
+export const isValidCalculation = (data) => !!data && typeof data === 'object' && data.totalAmount !== null && data.totalAmount !== undefined && Number.isFinite(Number(data.totalAmount));
+// בזמן חישוב מחיר / אחרי חישוב שנכשל אסור לשמור הזמנה, לרשום תשלום או לחייב כרטיס (הסכום ישן / לא ידוע). null = מותר.
+export const calcBlockMessage = ({ calculating, calcError }) => {
+  if (calcError) return { title: 'חישוב המחיר נכשל', detail: 'לא ניתן להמשיך עד שהחישוב יצליח. יש ללחוץ על "נסה שוב" (בדקו את החיבור לרשת).' };
+  if (calculating) return { title: 'המחיר עדיין מחושב', detail: 'יש להמתין לסיום החישוב ולנסות שוב.' };
+  return null;
+};
+// חיוב בכרטיס: סכום חייב להיות גדול מ-0 ולא גבוה מיתרת התשלום (חיוב יתר בכרטיס לא ניתן לתיקון בשקט). null = תקין.
+export const cardAmountError = (amount, remaining) => {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || toAgorot(n) <= 0) return 'סכום החיוב חייב להיות גדול מ-0.';
+  if (toAgorot(n) > toAgorot(remaining)) return `סכום החיוב (${roundMoney(n)} ₪) גבוה מיתרת התשלום (${roundMoney(remaining)} ₪). יש לתקן את הסכום.`;
+  return null;
+};
+// תשלום שאינו אשראי שחורג מהיתרה: נרשם, אבל מוצגת אזהרה
+export const isOverpayment = (amount, remaining) => toAgorot(amount) > toAgorot(remaining);
 // S06: מחיר כל אפשרות תיקון בנפרד (שלושה פריטי בדיקה למידה הראשונה המסומנת, ההפרש = repairsCost)
 export function buildAltProbeBody(order, newItem, sizeText) {
   const base = { dressModelId: newItem.dressModelId, sizeText, quantity: 1 };

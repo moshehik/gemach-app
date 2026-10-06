@@ -44,6 +44,12 @@ export default function useNewOrderController({ router }) {
   const [loadingPreload, setLoadingPreload] = useState(false);
   const [calculatedData, setCalculatedData] = useState({ totalAmount: 0, items: [], deliveryAmount: 0 });
   const [calculating, setCalculating] = useState(false);
+  const [calcError, setCalcError] = useState(false); // סקירה 6.10.2026: /api/orders/calculate נכשל / לא 200 - הסכום לא ידוע, אסור לשמור / לחייב
+  const [calcTick, setCalcTick] = useState(0);
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  const savingCustomerRef = useRef(false);
+  const saveOrderBusyRef = useRef(false);
+  const saveExecRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [newCustomer, setNewCustomer] = useState(() => ({ ...NL.EMPTY_NEW_CUSTOMER }));
   const [newCustomerError, setNewCustomerError] = useState(null); // R05: הודעת השרת בשמירת לקוח חדש {field, text}
@@ -229,7 +235,14 @@ export default function useNewOrderController({ router }) {
     goStep('dates');
   };
 
+  // כפל לחיצה / Enter על "שמור לקוח והמשך" לא יוצר שני לקוחות: בקשה אחת בכל רגע (גם בזמן חלון אישור מנהל)
   const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
+    if (savingCustomerRef.current) return;
+    savingCustomerRef.current = true;
+    setSavingCustomer(true);
+    try { await saveNewCustomerInner(skipDuplicateCheck); } finally { savingCustomerRef.current = false; setSavingCustomer(false); }
+  };
+  const saveNewCustomerInner = async (skipDuplicateCheck = false) => {
     setNewCustomerError(null);
     const missingFields = missingOf(newCustomer);
     if (missingFields.length > 0) { say('info', `יש למלא: ${missingFields.map(k => NL.CUSTOMER_FIELD_LABELS[k]).join(', ')}`); return; }
@@ -470,7 +483,7 @@ export default function useNewOrderController({ router }) {
     setPickedModel({ id: itemToEdit.dressModelId, name: itemToEdit.dressName, barcodePrefix: modelCodes[itemToEdit.dressModelId] });
     setNewItem({
       dressModelId: itemToEdit.dressModelId || '', selectedSizes: itemToEdit.sizeText ? [itemToEdit.sizeText] : [], quantity: itemToEdit.quantity || 1,
-      repairs: itemToEdit.repairs || '', dressName: itemToEdit.dressName || '', neckAlteration: itemToEdit.neckAlteration || false,
+      repairs: NL.repairsForEdit(itemToEdit), dressName: itemToEdit.dressName || '', neckAlteration: itemToEdit.neckAlteration || false,
       sleeveAlteration: itemToEdit.sleeveAlteration || false, lengthAlteration: itemToEdit.lengthAlteration || '', preserveSize: true
     });
     removeItem(index);
@@ -479,14 +492,30 @@ export default function useNewOrderController({ router }) {
 
   // ---------- חישוב מחיר ----------
   useEffect(() => {
-    if (order.items.length === 0) { setCalculatedData({ totalAmount: 0, items: [], deliveryAmount: 0 }); return; }
+    if (order.items.length === 0) { setCalculatedData({ totalAmount: 0, items: [], deliveryAmount: 0 }); setCalcError(false); setCalculating(false); return undefined; }
+    let off = false; // תשובה מאוחרת של חישוב קודם לא דורסת חישוב חדש
     setCalculating(true);
+    setCalcError(false);
     fetch('/api/orders/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(NL.buildCalculateBody(order)) })
-      .then(res => res.json())
-      .then(data => { setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 }); setCalculating(false); })
-      .catch(() => setCalculating(false));
+      .then(res => { if (!res.ok) throw new Error(`calculate ${res.status}`); return res.json(); })
+      .then(data => {
+        if (off) return;
+        if (!NL.isValidCalculation(data)) throw new Error('calculate: bad response');
+        setCalculatedData({ totalAmount: NL.roundMoney(data.totalAmount), items: data.calculatedItems || [], deliveryAmount: data.deliveryAmount || 0 });
+        setCalculating(false);
+      })
+      .catch(() => {
+        if (off) return;
+        // הסכום לא ידוע: מאפסים (לא משאירים סכום ישן) ומסמנים שגיאה - שמירה / חיוב נחסמים עד "נסה שוב"
+        setCalculatedData({ totalAmount: 0, items: [], deliveryAmount: 0 });
+        setCalcError(true);
+        setCalculating(false);
+      });
+    return () => { off = true; };
      
-  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isDelivery, order.deliveryCity, order.selectedCustomer?.city, order.deliveryDirection, calcTick]);
+  const retryCalc = () => setCalcTick(t => t + 1);
+  const calcBlock = NL.calcBlockMessage({ calculating, calcError });
   const totalAmount = calculatedData.totalAmount;
 
   useEffect(() => {
@@ -538,6 +567,11 @@ export default function useNewOrderController({ router }) {
       window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
     }
   }, [order.customerId, order.items, newCustomer, phoneSearchInput, saved]);
+  // PageVariantToggle (lib/pageVariantToggle.js isPageDirty): פונקציה = ההכרעה היחידה. מלוכלך רק כשהוזנה הזמנה ועדיין לא נשמרה (hasStartedOrderRef כולל !saved).
+  useEffect(() => {
+    window.__gmDirty = () => hasStartedOrderRef.current;
+    return () => { window.__gmDirty = false; };
+  }, []);
   // ממצא סקירה 7: בזמן חיוב אשראי / שמירה לא מציעים לצאת - יציאה אז משאירה כרטיס שחויב בלי הזמנה שנשמרה
   const busyRef = useRef(false);
   useEffect(() => { busyRef.current = saving || isProcessingCredit; }, [saving, isProcessingCredit]);
@@ -559,6 +593,7 @@ export default function useNewOrderController({ router }) {
   // ממצאי סקירה 1: "יציאה באישור מנהל" אינה תשלום ₪ (נרשמת רק בסיום ההזמנה, בסכום 0); תשלום מפוצל (גם מזומן) עובר דרך
   // אישור PAYMENT_APPROVAL_LEVEL כמו הרישום הסופי. ההכרעה: NL.paymentAddDecision.
   const handleAddPaymentClick = async () => {
+    if (calcBlock) { say('info', calcBlock.title, calcBlock.detail); return; }
     const decision = NL.paymentAddDecision(settings, payment.method, payment.amount);
     if (decision.action === 'reject') {
       if (decision.reason === 'manager-exit') say('info', '"יציאה באישור מנהל" אינה תשלום', 'כדי לסיים בלי תשלום מלא בחר בה וסיים בלחיצה על "סיום ויצירת ההזמנה" (תתבקש לאשר). לרישום תשלום בחר אמצעי אחר.');
@@ -568,9 +603,11 @@ export default function useNewOrderController({ router }) {
     if (decision.action === 'credit') { openCredit(payment.notes); return; }
     const method = payment.method;
     const notes = payment.notes;
+    const over = NL.isOverpayment(decision.amount, NL.roundMoney(totalAmount - NL.sumPaid(paymentsList)));
     setPaymentsList(prev => [...prev, { amount: decision.amount, method, notes }]);
     setPayment(prev => ({ ...prev, notes: '' }));
-    say('ok', 'התשלום נרשם', `${NL.moneyTxt(decision.amount)} · ${method}`);
+    if (over) say('info', 'התשלום נרשם - שימו לב: הסכום גבוה מיתרת התשלום', `${NL.moneyTxt(decision.amount)} · ${method}. אם זו טעות, אפשר להסיר את התשלום מהרשימה.`);
+    else say('ok', 'התשלום נרשם', `${NL.moneyTxt(decision.amount)} · ${method}`);
   };
   const removePayment = (index) => {
     const target = paymentsList[index];
@@ -589,6 +626,9 @@ export default function useNewOrderController({ router }) {
       return;
     }
     const paymentAmount = parseFloat(creditCardData.amount);
+    if (calcBlock) { setCreditError(`${calcBlock.title}. ${calcBlock.detail}`); return; }
+    const amountError = NL.cardAmountError(paymentAmount, NL.roundMoney(totalAmount - NL.sumPaid(paymentsList)));
+    if (amountError) { setCreditError(amountError); return; }
     setIsProcessingCredit(true);
     setCreditError('');
     showBusy(true, 'credit');
@@ -634,8 +674,15 @@ export default function useNewOrderController({ router }) {
     showBusy(false);
   };
 
+  // כפל לחיצה על "סיום" (גם בזמן חלון אישור מנהל) לא מריץ שתי שמירות במקביל
   const saveOrder = async () => {
+    if (saveOrderBusyRef.current) return;
+    saveOrderBusyRef.current = true;
+    try { await saveOrderInner(); } finally { saveOrderBusyRef.current = false; }
+  };
+  const saveOrderInner = async () => {
     setSaveError(null);
+    if (calcBlock) { say('info', calcBlock.title, calcBlock.detail); return; }
     if (!order.customerId) { say('info', 'יש לבחור לקוח'); return; }
     if (!String((order.selectedCustomer && order.selectedCustomer.phone1) || '').trim() && !String((order.selectedCustomer && order.selectedCustomer.phone2) || '').trim()) {
       say('info', 'לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון.', 'יש להשלים מספר טלפון בכרטיס הלקוח.'); return;
@@ -663,17 +710,19 @@ export default function useNewOrderController({ router }) {
       const authResult = await verifyPin('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
       if (!authResult) { say('info', 'אישור תשלום בוטל.'); return; }
     }
-    executeSaveOrderForList(NL.buildFinalPayments(paymentsList, payment));
+    await executeSaveOrderForList(NL.buildFinalPayments(paymentsList, payment));
   };
 
   const executeSaveOrderForList = async (finalPaymentsList, force = false) => {
+    if (saveExecRef.current) return; // שמירה אחת בכל רגע (כפל לחיצה / חיוב אשראי שנגמר בזמן לחיצה על "סיום")
+    saveExecRef.current = true;
     pendingSavePaymentsRef.current = finalPaymentsList;
     setSaveError(null);
     setSaving(true);
     showBusy(true, 'save');
     draftSealedRef.current = true;
     await draftQueueRef.current;
-    const abandonSave = () => { draftSealedRef.current = false; setSaving(false); showBusy(false); };
+    const abandonSave = () => { draftSealedRef.current = false; saveExecRef.current = false; setSaving(false); showBusy(false); };
     try {
       const itemsToSave = NL.buildItemsToSave(order, calculatedData.items);
       const hokDetailsPayload = NL.buildHokDetailsPayload(settings, order, newCustomer);
@@ -805,7 +854,7 @@ export default function useNewOrderController({ router }) {
     order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf,
     newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel, modelCodes,
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
-    calculatedData, calculating, totalAmount, activeItems, datesFilled, rangePending, setRangePending,
+    calculatedData, calculating, calcError, retryCalc, savingCustomer, totalAmount, activeItems, datesFilled, rangePending, setRangePending,
     deliveryCityOptions, deliveryAddressRequired, deliveryCityRequired, deliveryError, deliveryEnabled, deliveryEdit, openDeliveryEdit, closeDeliveryEdit,
     paymentMethodOptions, payment, setPayment, paymentsList, removePayment, totalPaid, remaining, handleAddPaymentClick, openCredit,
     creditCardData, setCreditCardData, creditError, isProcessingCredit, handleProcessCreditCard,

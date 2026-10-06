@@ -4,7 +4,7 @@
 // אותה התנהגות כמו בישן: אופני התשלום מ-ALLOWED_PAYMENT_METHODS (בלי אשראי כשנדרים כבוי), "אישור תשלום" רושם/פותח אשראי,
 // "חיוב אשראי" רק כש-nedarim_plus_enabled לא 'false', חיוב שבוצע לא ניתן להסרה. R27/R31/R28 - ב-controller.
 import { Blk, Ic, OneCard, SubH, money } from './NoUi';
-import { DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
+import { CalcErrorNote, DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
 import { isChargedPayment, methodIcon, moneyTxt } from './newOrderLogic';
 
 export default function StepPayment({ ctl }) {
@@ -28,6 +28,7 @@ export default function StepPayment({ ctl }) {
             <div className="pbar"><i style={{ width: `${pct}%` }} /></div>
           </div>
         </div>
+        <CalcErrorNote ctl={ctl} />
         <DeliveryChargeLine ctl={ctl} />
         <DeliveryEditButton ctl={ctl} from="payment" />
       </Blk>
