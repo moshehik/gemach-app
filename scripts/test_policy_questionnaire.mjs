@@ -2,7 +2,8 @@
 // ללא DB, ללא רשת, ללא שליחת מייל. הרצה: node scripts/test_policy_questionnaire.mjs   (יוצא עם קוד 1 אם משהו נכשל)
 // בדיקת הרינדור בצד שרת (SSR) צריכה react-dom + typescript (node_modules של הפרויקט, או NODE_PATH); בלעדיהם היא מדולגת ומודפס SKIP.
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +17,7 @@ import {
   isQuestionVisible, visibleQuestions, normalizeAnswer, sanitizeAnswers, mergeAnswers, pruneHidden, isAnswered,
   computeProgress, validateSubmission, answerLabel, summarize, tallyResponses, formatIsraelDateTime, buildPlainText,
   buildAllPlainText, isUpdateEmail, needsEmail, hasPendingChanges, resolveSiteOrigin, answerUrl, resultsUrl, classifyDbError,
-  describeResponse, normalizeRespondent,
+  describeResponse, normalizeRespondent, isNotEnabledError, notEnabledPayload, NOT_ENABLED_TABLE_MESSAGE, NOT_ENABLED_OWNER_HINT,
 } from '../lib/policyQuestionnaire/logic.js';
 import { buildQuestionnaireEmail } from '../lib/policyQuestionnaire/email.js';
 import { EMAIL_CATALOG, emailSubject } from '../lib/emailCatalog.js';
@@ -555,19 +556,190 @@ test('חיווט: שער הדפים checkPageAccess(HEAD_MANAGEMENT_ROLES) + NoA
   assert.ok(src('app/refund-questionnaire/answers/page.js').includes('requireHeadManagement({ page: true })'), 'דף שרת בלי checkAuth (לא ניתן לכתוב עוגיות מדף)');
 });
 
-test('חיווט: הטבלה נוצרת עצלנית ב-SQL גולמי, אילוץ ייחוד, בלי Prisma model ובלי $transaction', () => {
+// ---- הטבלה: בלי DDL בקוד האפליקציה; יצירה ידנית בלבד (SQL + סקריפט עם dry-run ובדיקת זהות) ----
+const FEATURE_DIRS = ['lib/policyQuestionnaire', 'app/api/policy-questionnaire', 'app/refund-questionnaire'];
+function featureFiles() {
+  const out = [];
+  const walk = (rel) => {
+    for (const name of readdirSync(path.join(root, rel))) {
+      const r = `${rel}/${name}`;
+      if (statSync(path.join(root, r)).isDirectory()) walk(r); else if (/\.(js|jsx|mjs|ts|tsx)$/.test(name)) out.push(r);
+    }
+  };
+  FEATURE_DIRS.forEach(walk);
+  return out;
+}
+const DDL_RE = /\b(?:CREATE|ALTER|DROP|TRUNCATE|RENAME)\s+(?:OR\s+REPLACE\s+)?(?:UNIQUE\s+)?(?:TABLE|INDEX|SCHEMA|DATABASE|COLUMN|VIEW|TYPE|EXTENSION|CONSTRAINT|SEQUENCE|FUNCTION|TRIGGER)\b/i;
+const SQL_REL = 'prisma/migrations-pending/2026-10-06-policy-questionnaire-response.sql';
+const APPLY_REL = 'scripts/apply_policy_questionnaire_table.js';
+const applyScript = createRequire(import.meta.url)(path.join(root, APPLY_REL));
+
+test('אין DDL בשום קובץ של הפיצ\'ר (lib/policyQuestionnaire, app/api/policy-questionnaire, app/refund-questionnaire): לא CREATE/ALTER/DROP, לא ensureTable', () => {
+  const files = featureFiles();
+  assert.ok(files.length >= 14, `נמצאו ${files.length} קבצים`);
+  for (const f of files) {
+    const s = src(f); // כולל הערות: גם בהערות אסור (הבדיקה מחמירה בכוונה)
+    assert.ok(!DDL_RE.test(s), `${f}: מכיל משפט DDL`);
+    assert.ok(!/ensureTable|createTable|tableReady|CREATE TABLE/i.test(s), `${f}: שאריות יצירה עצלנית`);
+    assert.ok(!/\$executeRaw/.test(s), `${f}: $executeRaw (הפיצ'ר כותב רק ב-INSERT/UPDATE ... RETURNING דרך $queryRawUnsafe)`);
+    assert.ok(!/\$transaction\(/.test(s), `${f}: $transaction`);
+  }
+  // הבדיקה עצמה תופסת: מחרוזות DDL לדוגמה
+  for (const bad of ['CREATE TABLE IF NOT EXISTS "X" (id int)', 'create unique index i on t(a)', 'ALTER TABLE "X" ADD COLUMN y int', 'DROP TABLE "X"']) assert.ok(DDL_RE.test(bad), bad);
+  assert.ok(!DDL_RE.test('SELECT * FROM "PolicyQuestionnaireResponse" WHERE "orgKey" = $1'));
+});
+
+test('store: SQL גולמי בלבד (SELECT/INSERT/UPDATE), בלי prisma.<model>, בלי AuditLog ידני, מנסה שוב רק על התעוררות', () => {
   const s = src('lib/policyQuestionnaire/store.js');
-  assert.ok(s.includes('CREATE TABLE IF NOT EXISTS'));
-  assert.ok(/CREATE UNIQUE INDEX IF NOT EXISTS/.test(s) && s.includes('"questionnaireKey", "employeeId"'));
+  assert.ok(s.includes('$queryRawUnsafe'));
+  assert.ok(!/prisma\.policyQuestionnaire/i.test(s));
+  assert.ok(!/auditLog/i.test(s.replace(/\/\/.*$/gm, '')), 'אין כתיבת AuditLog ידנית');
+  assert.ok(!/prisma\.\$executeRaw`/.test(s));
   for (const col of ['id', 'questionnaireKey', 'orgKey', 'employeeId', 'respondentName', 'respondentRole', 'answers', 'status', 'submittedAt', 'emailedAt', 'emailError', 'createdAt', 'updatedAt']) {
     assert.ok(s.includes(`"${col}"`), `עמודה ${col}`);
   }
-  assert.ok(s.includes('$queryRawUnsafe') && s.includes('$executeRawUnsafe'));
-  assert.ok(!/prisma\.policyQuestionnaire/i.test(s));
-  assert.ok(!/\$transaction\(/.test(s));
-  assert.ok(!/auditLog/i.test(s.replace(/\/\/.*$/gm, '')), 'אין כתיבת AuditLog ידנית');
-  assert.ok(!/prisma\.\$executeRaw`/.test(s));
-  assert.ok(!existsSync(path.join(root, 'prisma/migrations-pending/policy-questionnaire.sql')) || true);
+  assert.ok(s.includes("ON CONFLICT (\"questionnaireKey\", \"employeeId\")"), 'שורה אחת לכל (שאלון, עובדת)');
+  assert.ok(s.includes("kind === 'missing_table'") && s.includes("kind === 'transient'"));
+  assert.ok(/if \(kind === 'missing_table'\) throw/.test(s), 'טבלה חסרה = עצירה מיידית, בלי ניסיון חוזר');
+  assert.ok(!/UNIQUE_INDEX/.test(s));
+});
+
+test('SQL הממתין: קיים, תוספת בלבד (CREATE ... IF NOT EXISTS), טבלה + אינדקס ייחודי (questionnaireKey, employeeId), בלי משפט הרסני', () => {
+  assert.ok(existsSync(path.join(root, SQL_REL)));
+  const text = src(SQL_REL);
+  const stmts = applyScript.assertAdditiveOnly(applyScript.statementsOf(text));
+  assert.equal(stmts.length, 2, 'משפט טבלה + משפט אינדקס');
+  assert.ok(/^CREATE TABLE IF NOT EXISTS "PolicyQuestionnaireResponse"/.test(stmts[0]));
+  assert.ok(/^CREATE UNIQUE INDEX IF NOT EXISTS "PolicyQuestionnaireResponse_questionnaireKey_employeeId_key" ON "PolicyQuestionnaireResponse"\("questionnaireKey", "employeeId"\)$/.test(stmts[1]));
+  for (const s of stmts) assert.ok(!/\b(DROP|ALTER|DELETE|TRUNCATE|UPDATE|INSERT|GRANT|REVOKE)\b/i.test(s), s.slice(0, 40));
+  // ה-DROP היחיד בקובץ הוא שורת הערה ("ביטול - לא להריץ")
+  const uncommented = text.split(/\r?\n/).filter((l) => !l.trim().startsWith('--')).join('\n');
+  assert.ok(!/\b(DROP|ALTER|DELETE|TRUNCATE)\b/i.test(uncommented), 'DROP/ALTER רק בהערה');
+  assert.ok(text.includes('לא הורץ על אף DB') && text.includes('אישור מפורש'));
+});
+
+test('assertAdditiveOnly: דוחה DROP / ALTER / DELETE / CREATE בלי IF NOT EXISTS / משפט לא מוכר / קובץ ריק', () => {
+  const bad = ['DROP TABLE "PolicyQuestionnaireResponse"', 'ALTER TABLE "PolicyQuestionnaireResponse" ADD COLUMN x int', 'DELETE FROM "PolicyQuestionnaireResponse"',
+    'CREATE TABLE "PolicyQuestionnaireResponse" (id int)', 'TRUNCATE "PolicyQuestionnaireResponse"', 'UPDATE "SystemSetting" SET value = 1',
+    'CREATE TABLE IF NOT EXISTS "X" (id int); DROP TABLE "Order"'];
+  for (const b of bad) assert.throws(() => applyScript.assertAdditiveOnly(applyScript.statementsOf(b)), /ABORT/, b);
+  assert.throws(() => applyScript.assertAdditiveOnly([]), /ABORT/);
+  assert.doesNotThrow(() => applyScript.assertAdditiveOnly(applyScript.statementsOf('-- comment\nCREATE INDEX IF NOT EXISTS "i" ON "t"("a");')));
+});
+
+test('סקריפט ההרצה: dry-run כברירת מחדל, --write מפורש, --org חובה, דגל לא מוכר = עצירה', () => {
+  assert.throws(() => applyScript.parseArgs([]), /--org=1\|2 is required/);
+  assert.throws(() => applyScript.parseArgs(['--write']), /--org=1\|2 is required/);
+  assert.throws(() => applyScript.parseArgs(['--org=3']), /must be 1 or 2/);
+  assert.throws(() => applyScript.parseArgs(['--org=1', '--force']), /unknown argument/);
+  assert.throws(() => applyScript.parseArgs(['--org=1', '--write', '--no-connect']), /cannot be combined/);
+  assert.deepEqual(applyScript.parseArgs(['--org=1']), { org: 1, dbEnv: null, write: false, noConnect: false });
+  assert.deepEqual(applyScript.parseArgs(['--org=2', '--db-env=x.env']), { org: 2, dbEnv: 'x.env', write: false, noConnect: false });
+  assert.equal(applyScript.parseArgs(['--org=2', '--write']).write, true);
+  const s = src(APPLY_REL);
+  assert.ok(s.indexOf('if (!write)') > 0 && s.indexOf('if (!write)') < s.indexOf('$transaction('), 'ה-dry-run חוזר לפני ההרצה');
+  assert.ok((s.match(/\$executeRawUnsafe/g) || []).length === 1 && s.indexOf('$executeRawUnsafe') > s.indexOf('$transaction('), 'כתיבה רק בתוך הטרנזקציה של --write');
+  assert.ok(!/['"]DATABASE_URL['"]|env\.DATABASE_URL|resolveDbUrl/.test(s.replace(/\/\/.*$/gm, '')), 'אין נפילה ל-DATABASE_URL');
+});
+
+test('סקריפט ההרצה: בדיקת זהות - host שונה בין הגמחים, שני המשתנים חובה, בלי DATABASE_URL, gmach_name מתאים לגמח', () => {
+  const A = 'postgresql://u:p@ep-main.neon.tech/db';
+  const B = 'postgresql://u:p@ep-neve.neon.tech/db';
+  assert.throws(() => applyScript.pickConnection(1, null, { DATABASE_URL: A }), /NO fallback to DATABASE_URL/);
+  assert.throws(() => applyScript.pickConnection(1, null, { PROD_DATABASE_URL: A }), /PROD_DATABASE_URL_ORG2 not set/);
+  assert.throws(() => applyScript.pickConnection(2, null, { PROD_DATABASE_URL_ORG2: B }), /PROD_DATABASE_URL not set/);
+  assert.throws(() => applyScript.pickConnection(1, null, { PROD_DATABASE_URL: A, PROD_DATABASE_URL_ORG2: A }), /equals the other org's host/);
+  const c1 = applyScript.pickConnection(1, null, { PROD_DATABASE_URL: A, PROD_DATABASE_URL_ORG2: B });
+  const c2 = applyScript.pickConnection(2, null, { PROD_DATABASE_URL: A, PROD_DATABASE_URL_ORG2: B });
+  assert.equal(c1.host, 'ep-main.neon.tech');
+  assert.equal(c2.host, 'ep-neve.neon.tech');
+  assert.equal(c1.varName, 'PROD_DATABASE_URL');
+  assert.equal(c2.varName, 'PROD_DATABASE_URL_ORG2');
+  const MAIN_NAME = 'מכובד- השכרת שמלות';
+  const NEVE_NAME = 'גמ"ח שמלות נווה יעקב';
+  assert.equal(applyScript.gmachNameMatchesOrg(MAIN_NAME, 1), true);
+  assert.equal(applyScript.gmachNameMatchesOrg(MAIN_NAME, 2), false);
+  assert.equal(applyScript.gmachNameMatchesOrg(NEVE_NAME, 2), true);
+  assert.equal(applyScript.gmachNameMatchesOrg(NEVE_NAME, 1), false);
+  assert.equal(applyScript.gmachNameMatchesOrg(null, 1), false);
+  assert.equal(applyScript.gmachNameMatchesOrg('', 2), false);
+  assert.equal(applyScript.gmachNameMatchesOrg('גמ"ח שמלות', 1), false);
+  const s = src(APPLY_REL);
+  assert.ok(s.includes("gmach_name") && s.includes('ABORT: gmach_name'));
+});
+
+test('סקריפט ההרצה כתהליך: --no-connect מדפיס SQL ולא מתחבר; בלי --org / עם דגל לא מוכר / --write עם --no-connect = שגיאה', () => {
+  const run = (...args) => spawnSync(process.execPath, [path.join(root, APPLY_REL), ...args], { encoding: 'utf8', env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot } });
+  const ok = run('--org=1', '--no-connect');
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.ok(ok.stdout.includes('dry-run') && ok.stdout.includes('CREATE TABLE IF NOT EXISTS "PolicyQuestionnaireResponse"') && ok.stdout.includes('no database connection was opened'));
+  const none = run();
+  assert.equal(none.status, 1);
+  assert.ok(none.stderr.includes('--org=1|2 is required'));
+  assert.equal(run('--org=1', '--wat').status, 1);
+  const both = run('--org=1', '--write', '--no-connect');
+  assert.equal(both.status, 1);
+  assert.ok(!both.stdout.includes('CREATE TABLE'), 'שום SQL לא הודפס/הורץ לפני העצירה');
+});
+
+test('schema.prisma: המודל PolicyQuestionnaireResponse תואם לעמודות ה-SQL, מסומן "never db push", ו-AuditLog מדלג עליו', () => {
+  const schema = src('prisma/schema.prisma');
+  const block = schema.split(/^model PolicyQuestionnaireResponse \{/m)[1].split(/^\}/m)[0];
+  const fields = block.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('//') && !l.startsWith('@@')).map((l) => l.split(/\s+/)[0]);
+  const sql = src(SQL_REL);
+  const uncommentedSql = sql.split(/\r?\n/).filter((l) => !l.trim().startsWith('--')).join('\n');
+  const tableSql = uncommentedSql.split('CREATE TABLE IF NOT EXISTS')[1].split(' (\n')[1].split(');')[0];
+  const cols = [...tableSql.matchAll(/^\s+"(\w+)"\s/gm)].map((m) => m[1]);
+  assert.deepEqual(fields, cols, 'אותן עמודות באותו סדר ב-schema וב-SQL');
+  assert.ok(block.includes('@@unique([questionnaireKey, employeeId])'));
+  assert.ok(schema.includes('created via prisma/migrations-pending, never db push'));
+  assert.ok(schema.includes('2026-10-06-policy-questionnaire-response.sql'));
+  assert.ok(/model === 'PolicyQuestionnaireResponse'/.test(src('app/lib/prisma.js')), 'ברשימת הדילוג של תוסף ה-AuditLog');
+  // לא נוסף לרשימות של SQLite / סנכרון לא מקוון (טבלת ענן בלבד)
+  assert.ok(!/PolicyQuestionnaireResponse/.test(src('prisma/schema.local.prisma')) && !/policyQuestionnaireResponse/.test(src('lib/offlineSync.js')));
+});
+
+test('דפי הפיצ\'ר: תוויות עברית לתפריט (pageLabels) לשני הדפים', () => {
+  const labels = src('lib/menu/pageLabels.js');
+  assert.ok(labels.includes("'/refund-questionnaire': 'שאלון ביטולים וזיכויים'"));
+  assert.ok(labels.includes("'/refund-questionnaire/answers': 'תשובות שאלון ביטולים וזיכויים'"));
+});
+
+test('מצב "עדיין לא הופעל": classifyDbError/isNotEnabledError מזהים 42P01 / P2021 / P2010 עטוף, ולא מבלבלים עם שגיאה אחרת', () => {
+  const p2010 = Object.assign(new Error('Raw query failed. Code: `42P01`. Message: `relation "PolicyQuestionnaireResponse" does not exist`'), { code: 'P2010', meta: { code: '42P01', message: 'relation "PolicyQuestionnaireResponse" does not exist' } });
+  for (const e of [{ code: '42P01' }, { code: 'P2021' }, p2010, { code: 'P2010', meta: { code: '42P01' } },
+    new Error('The table `public.PolicyQuestionnaireResponse` does not exist in the current database.'), { kind: 'missing_table' },
+    { code: 'P2010', cause: { code: '42P01' } }]) {
+    assert.equal(isNotEnabledError(e), true, JSON.stringify(e));
+  }
+  for (const e of [null, undefined, new Error('boom'), { code: 'P1001' }, { code: 'P2010', meta: { code: '22P02' }, message: 'invalid input syntax for type json' }, { kind: 'transient' }]) {
+    assert.equal(isNotEnabledError(e), false, JSON.stringify(e));
+  }
+  const p = notEnabledPayload();
+  assert.deepEqual(p, { ok: false, code: 'not_enabled', error: 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.' });
+  assert.equal(NOT_ENABLED_TABLE_MESSAGE, 'הטבלה עדיין לא נוצרה.');
+  assert.ok(NOT_ENABLED_OWNER_HINT.includes('apply_policy_questionnaire_table.js') && NOT_ENABLED_OWNER_HINT.includes('--write') && NOT_ENABLED_OWNER_HINT.includes('אישור מפורש'));
+});
+
+test('חיווט: הקליינט מטפל ב-not_enabled (מצב notEnabled, בלי טופס), והדפים/המסלולים משתמשים ב-isNotEnabledError', () => {
+  const c = src('app/refund-questionnaire/RefundQuestionnaireClient.js');
+  assert.ok(c.includes("data.code === NOT_ENABLED_CODE") && c.includes("setPhase('notEnabled')") && c.includes('<NotEnabledForm />'));
+  assert.ok(src('app/refund-questionnaire/answers/page.js').includes('isNotEnabledError(e)') && src('app/refund-questionnaire/answers/page.js').includes('NotEnabledResults'));
+  for (const f of ['app/api/policy-questionnaire/route.js', 'app/api/policy-questionnaire/answers/route.js', 'app/api/policy-questionnaire/resend/route.js']) {
+    assert.ok(src(f).includes('isNotEnabledError') && src(f).includes('notEnabledPayload'), f);
+  }
+});
+
+test('תיעוד: docs/refund-questionnaire.md מסביר את ההרצה הידנית, ה-dry-run, האישור והמצב "לא הופעל"; CLAUDE.md לא כותב "lazily"', () => {
+  const d = src('docs/refund-questionnaire.md');
+  assert.ok(d.includes('prisma/migrations-pending/2026-10-06-policy-questionnaire-response.sql'));
+  assert.ok(d.includes('scripts/apply_policy_questionnaire_table.js') && d.includes('--org=1') && d.includes('--org=2') && d.includes('--write') && d.includes('dry-run'));
+  assert.ok(d.includes('אישור מפורש') && d.includes('השאלון עדיין לא הופעל') && d.includes('הטבלה עדיין לא נוצרה'));
+  assert.ok(d.includes('שום דבר לא רץ אוטומטית'));
+  assert.ok(!/נוצרת עצלנית|CREATE TABLE IF NOT EXISTS ב-`lib/.test(d), 'התיאור הישן של יצירה עצלנית הוסר');
+  const claude = src('CLAUDE.md');
+  assert.ok(!/created lazily|lazily created|נוצרת עצלנית/i.test(claude.split('\n').filter((l) => /questionnaire/i.test(l)).join('\n')));
+  assert.ok(claude.includes('apply_policy_questionnaire_table.js'));
 });
 
 test('חיווט: הקליינט עם RTL, התקדמות "ענית על X מתוך Y", "נשמר", אישור שליחה, עדכון וניסיון חוזר למייל', () => {
@@ -714,24 +886,29 @@ async function routesSmoke() {
   }
 
   // ---- דמויות ----
-  const state = { user: null, owners: [], mails: [], mailBehavior: () => ({ success: true }), clock: 0, rows: new Map(), employeeName: { firstName: 'דנה', lastName: 'לוי', fullName: null } };
+  const state = { missingTable: null, rawError: null, user: null, owners: [], mails: [], mailBehavior: () => ({ success: true }), clock: 0, rows: new Map(), employeeName: { firstName: 'דנה', lastName: 'לוי', fullName: null } };
   const tick = () => new Date(Date.UTC(2026, 9, 6, 8, 0, 0) + (state.clock += 1000)).toISOString();
   const key = (k, e) => `${k}|${e}`;
+  const failIfMissing = () => {
+    if (state.missingTable === 'store') throw new memStore.PolicyQuestionnaireDbError('missing_table');
+    if (state.missingTable === 'raw') throw state.rawError();
+    if (state.missingTable === 'other') throw new memStore.PolicyQuestionnaireDbError('other');
+  };
   const memStore = {
-    PolicyQuestionnaireDbError: class PolicyQuestionnaireDbError extends Error { constructor(kind) { super(kind); this.kind = kind; this.userMessage = 'שגיאת מסד'; } },
-    async getResponse(k, e) { const r = state.rows.get(key(k, e)); return r ? JSON.parse(JSON.stringify(r)) : null; },
-    async listResponses(k, orgKey) { return [...state.rows.values()].filter((r) => r.questionnaireKey === k && r.orgKey === orgKey).map((r) => JSON.parse(JSON.stringify(r))); },
-    async saveDraft({ questionnaireKey, orgKey, employeeId, name, role, answers }) {
+    PolicyQuestionnaireDbError: class PolicyQuestionnaireDbError extends Error { constructor(kind) { super(kind); this.kind = kind; this.userMessage = kind === 'missing_table' ? 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.' : 'שגיאת מסד'; } },
+    async getResponse(k, e) { failIfMissing(); const r = state.rows.get(key(k, e)); return r ? JSON.parse(JSON.stringify(r)) : null; },
+    async listResponses(k, orgKey) { failIfMissing(); return [...state.rows.values()].filter((r) => r.questionnaireKey === k && r.orgKey === orgKey).map((r) => JSON.parse(JSON.stringify(r))); },
+    async saveDraft({ questionnaireKey, orgKey, employeeId, name, role, answers }) { failIfMissing();
       const k = key(questionnaireKey, employeeId); const now = tick(); const ex = state.rows.get(k);
       const row = ex ? { ...ex, respondentName: name, respondentRole: role, answers, updatedAt: now } : { id: `id-${k}`, questionnaireKey, orgKey, employeeId, respondentName: name, respondentRole: role, answers, status: 'draft', submittedAt: null, emailedAt: null, emailError: null, createdAt: now, updatedAt: now };
       state.rows.set(k, row); return JSON.parse(JSON.stringify(row));
     },
-    async submitResponse({ questionnaireKey, orgKey, employeeId, name, role, answers }) {
+    async submitResponse({ questionnaireKey, orgKey, employeeId, name, role, answers }) { failIfMissing();
       const k = key(questionnaireKey, employeeId); const now = tick(); const ex = state.rows.get(k);
       const row = { id: `id-${k}`, questionnaireKey, orgKey, employeeId, respondentName: name, respondentRole: role, answers, status: 'submitted', submittedAt: now, emailedAt: ex ? ex.emailedAt : null, emailError: null, createdAt: ex ? ex.createdAt : now, updatedAt: now };
       state.rows.set(k, row); return JSON.parse(JSON.stringify(row));
     },
-    async recordEmailResult(id, { sent, error }) {
+    async recordEmailResult(id, { sent, error }) { failIfMissing();
       const row = [...state.rows.values()].find((r) => r.id === id); const now = tick();
       if (sent) row.emailedAt = now; row.emailError = error || null; return JSON.parse(JSON.stringify(row));
     },
@@ -913,12 +1090,67 @@ async function routesSmoke() {
     assert.ok(flattenQuestions(r2.json.questionnaire).every((q) => q.source), 'הבעלים רואה מקור');
     assert.equal(r2.json.responses[0].respondentName, 'דנה לוי');
 
+    // הטבלה עוד לא נוצרה (store זורק missing_table, או שגיאת Prisma גולמית 42P01 / P2010): אף מסלול לא נופל ב-500,
+    // שום שורה לא נכתבת, שום מייל לא נשלח, ושום נתון לא מומצא
+    const rowsBefore = JSON.stringify([...state.rows.entries()]);
+    state.mails.length = 0;
+    const rawP2010 = () => Object.assign(new Error('Raw query failed. Code: `42P01`. Message: `relation "PolicyQuestionnaireResponse" does not exist`'), { code: 'P2010', meta: { code: '42P01' } });
+    for (const mode of ['store', 'raw']) {
+      state.missingTable = mode;
+      state.rawError = rawP2010;
+      state.user = { id: 'emp-1', roleId: 0 };
+      const mg = await call(main.GET, 'GET');
+      assert.equal(mg.status, 200, `${mode}: GET 200 (לא 500)`);
+      assert.equal(mg.json.ok, false);
+      assert.equal(mg.json.code, 'not_enabled');
+      assert.equal(mg.json.error, 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.');
+      assert.ok(!('questionnaire' in mg.json) && !('answers' in mg.json), 'אין נתונים מומצאים');
+      for (const [label, res] of [
+        ['PUT', await call(main.PUT, 'PUT', { answers: full, name: 'דנה' })],
+        ['POST', await call(main.POST, 'POST', { answers: full, name: 'דנה לוי', role: 'הנהלה' })],
+      ]) {
+        assert.equal(res.status, 503, `${mode}: ${label} 503 נקי`);
+        assert.equal(res.json.ok, false, label);
+        assert.equal(res.json.code, 'not_enabled', label);
+        assert.equal(res.json.saved, false, label);
+        assert.ok(!res.json.success && !res.json.emailSent, `${label}: לא מדווח הצלחה`);
+      }
+      const rs = await call(resend.POST, 'POST');
+      assert.equal(rs.status, 503);
+      assert.equal(rs.json.code, 'not_enabled');
+      assert.equal(rs.json.emailSent, false);
+      // דף התוצאות (ה-API): 200 + not_enabled; הוראות ההפעלה רק למתכנת (הבעלים)
+      const a0 = await call(answersRoute.GET, 'GET');
+      assert.equal(a0.status, 200);
+      assert.equal(a0.json.code, 'not_enabled');
+      assert.equal(a0.json.tableMessage, 'הטבלה עדיין לא נוצרה.');
+      assert.equal(a0.json.ownerHint, null, 'הנהלה לא מקבלת הוראות טכניות');
+      state.user = { id: 'emp-2', roleId: 2 };
+      const a2 = await call(answersRoute.GET, 'GET');
+      assert.equal(a2.status, 200);
+      assert.ok(a2.json.ownerHint.includes('apply_policy_questionnaire_table.js') && a2.json.ownerHint.includes('--write'));
+    }
+    assert.equal(JSON.stringify([...state.rows.entries()]), rowsBefore, 'שום שורה לא נכתבה או שונתה');
+    assert.equal(state.mails.length, 0, 'שום מייל לא נשלח');
+    // הרשאות עדיין נבדקות לפני כל גישה למסד (טבלה חסרה לא מדלגת על ההרשאה)
+    state.user = { id: 'emp-branch', roleId: 1 };
+    assert.equal((await call(main.GET, 'GET')).status, 403);
+    // שגיאת מסד אחרת (לא טבלה חסרה) ממשיכה להיות שגיאה אמיתית ולא "לא הופעל"
+    state.missingTable = 'other';
+    state.user = { id: 'emp-1', roleId: 0 };
+    const og = await call(main.GET, 'GET');
+    assert.equal(og.status, 503);
+    assert.notEqual(og.json.code, 'not_enabled');
+    state.missingTable = null;
+    state.user = { id: 'emp-1', roleId: 0 };
+    assert.equal((await call(main.GET, 'GET')).status, 200, 'אחרי שהטבלה קיימת - הכול חוזר לעבוד');
+
     // גוף לא תקין
     state.user = { id: 'emp-1', roleId: 0 };
     const rawBad = await main.PUT(new Request('https://x.vercel.app/api/policy-questionnaire', { method: 'PUT', body: '{not json' }));
     assert.equal(rawBad.status, 400);
     passed += 1;
-    console.log('ok routes smoke: הרשאות, שמירה, תקינות, מייל מדומה, עדכון, כשל מייל וניסיון חוזר');
+    console.log('ok routes smoke: הרשאות, שמירה, תקינות, מייל מדומה, עדכון, כשל מייל וניסיון חוזר, וטבלה חסרה (not_enabled) בכל המסלולים');
   } catch (e) {
     failed += 1;
     failures.push(`Routes smoke\n    ${String(e && e.stack).split('\n').slice(0, 7).join('\n    ')}`);
@@ -930,8 +1162,160 @@ async function routesSmoke() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// הטבלה חסרה: ה-store האמיתי מול prisma מדומה שזורק שגיאת "טבלה לא קיימת", ודפי השרת האמיתיים. אין DB, אין רשת.
+// ---------------------------------------------------------------------------
+async function withTsHooks(stubs, fn) {
+  const req = createRequire(path.join(root, 'package.json'));
+  let ts; let Module;
+  try { ts = req('typescript'); Module = req('node:module'); } catch {
+    console.log('SKIP missing-table smoke: typescript לא זמין (הגדירו NODE_PATH ל-node_modules)');
+    return false;
+  }
+  const origResolve = Module._resolveFilename;
+  const origLoad = Module._load;
+  const origJs = Module._extensions['.js'];
+  const rootNorm = root.split(path.sep).join('/');
+  Module._load = function patchedLoad(request, ...rest) {
+    if (Object.prototype.hasOwnProperty.call(stubs, request)) return stubs[request];
+    return origLoad.call(this, request, ...rest);
+  };
+  Module._resolveFilename = function patchedResolve(request, ...rest) {
+    if (typeof request === 'string' && request.startsWith('@/') && !Object.prototype.hasOwnProperty.call(stubs, request)) request = path.join(root, request.slice(2));
+    return origResolve.call(this, request, ...rest);
+  };
+  Module._extensions['.js'] = function hook(module, filename) {
+    const norm = filename.split(path.sep).join('/');
+    if (norm.startsWith(rootNorm) && !norm.includes('/node_modules/')) {
+      const out = ts.transpileModule(readFileSync(filename, 'utf8'), { fileName: filename.replace(/\.js$/, '.jsx'), compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } });
+      module._compile(out.outputText, filename);
+      return;
+    }
+    origJs(module, filename);
+  };
+  try { await fn(req); } finally {
+    Module._resolveFilename = origResolve;
+    Module._load = origLoad;
+    Module._extensions['.js'] = origJs;
+  }
+  return true;
+}
+
+async function storeMissingTableSmoke() {
+  const calls = [];
+  let behavior = () => { throw new Error('unset'); };
+  const fakePrisma = { __esModule: true, default: { $queryRawUnsafe: async (sql, ...params) => { calls.push({ sql, params }); return behavior(sql, params); } } };
+  const p2010 = () => Object.assign(new Error('Raw query failed. Code: `42P01`. Message: `relation "PolicyQuestionnaireResponse" does not exist`'), { code: 'P2010', meta: { code: '42P01', message: 'relation "PolicyQuestionnaireResponse" does not exist' } });
+  const ran = await withTsHooks({ '@/app/lib/prisma': fakePrisma }, async (req) => {
+    try {
+      const store = req(path.join(root, 'lib/policyQuestionnaire/store.js'));
+      const args = { questionnaireKey: QUESTIONNAIRE_KEY, orgKey: 'org2', employeeId: 'emp-1', name: 'דנה', role: 'הנהלה', answers: { 'n1.1': { choice: 0 } } };
+      const ops = [
+        ['getResponse', () => store.getResponse(QUESTIONNAIRE_KEY, 'emp-1')],
+        ['listResponses', () => store.listResponses(QUESTIONNAIRE_KEY, 'org2')],
+        ['saveDraft', () => store.saveDraft(args)],
+        ['submitResponse', () => store.submitResponse(args)],
+        ['recordEmailResult', () => store.recordEmailResult('id-1', { sent: true, error: null })],
+      ];
+      for (const mk of [p2010, () => Object.assign(new Error('relation "PolicyQuestionnaireResponse" does not exist'), { code: '42P01' }), () => Object.assign(new Error('The table `public.PolicyQuestionnaireResponse` does not exist in the current database.'), { code: 'P2021' })]) {
+        for (const [name, op] of ops) {
+          calls.length = 0;
+          behavior = () => { throw mk(); };
+          let err;
+          try { await op(); } catch (e) { err = e; }
+          assert.ok(err instanceof store.PolicyQuestionnaireDbError, `${name}: PolicyQuestionnaireDbError`);
+          assert.equal(err.kind, 'missing_table', name);
+          assert.equal(err.userMessage, 'השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.', name);
+          assert.equal(calls.length, 1, `${name}: ניסיון אחד בלבד - בלי לולאת ניסיונות ובלי ניסיון ליצור את הטבלה`);
+          assert.ok(!calls.some((c) => DDL_RE.test(c.sql)), `${name}: אף משפט DDL לא נשלח`);
+          assert.ok(calls.every((c) => /^\s*(SELECT|INSERT|UPDATE)\b/i.test(c.sql)), `${name}: רק SELECT/INSERT/UPDATE`);
+        }
+      }
+      // התעוררות Neon: ניסיון חוזר אחד (בלי DDL) ואז הצלחה
+      calls.length = 0;
+      let n = 0;
+      behavior = () => { n += 1; if (n === 1) throw Object.assign(new Error("Can't reach database server"), { code: 'P1001' }); return []; };
+      const t0 = Date.now();
+      assert.equal(await store.getResponse(QUESTIONNAIRE_KEY, 'emp-1'), null);
+      assert.equal(calls.length, 2, 'ניסיון חוזר אחד על התעוררות');
+      assert.ok(Date.now() - t0 >= 1400, 'השהיה לפני הניסיון החוזר');
+      assert.ok(calls.every((c) => !DDL_RE.test(c.sql)));
+      // התעוררות שנמשכת: נכשל אחרי שני ניסיונות בלבד, כ-transient
+      calls.length = 0;
+      behavior = () => { throw Object.assign(new Error('Timed out fetching a new connection'), { code: 'P2024' }); };
+      let e2;
+      try { await store.getResponse(QUESTIONNAIRE_KEY, 'emp-1'); } catch (e) { e2 = e; }
+      assert.equal(e2.kind, 'transient');
+      assert.equal(calls.length, 2);
+      // שגיאה אחרת: בלי ניסיון חוזר
+      calls.length = 0;
+      behavior = () => { throw new Error('syntax error at or near "FROM"'); };
+      let e3;
+      try { await store.getResponse(QUESTIONNAIRE_KEY, 'emp-1'); } catch (e) { e3 = e; }
+      assert.equal(e3.kind, 'other');
+      assert.equal(calls.length, 1);
+      passed += 1;
+      console.log('ok store smoke: טבלה חסרה (42P01 / P2021 / P2010) = missing_table בניסיון אחד ובלי DDL; התעוררות = ניסיון חוזר אחד');
+    } catch (e) {
+      failed += 1;
+      failures.push(`Store missing-table smoke\n    ${String(e && e.stack).split('\n').slice(0, 7).join('\n    ')}`);
+    }
+  });
+  return ran;
+}
+
+async function pagesMissingTableSmoke() {
+  const state = { roleId: 2, results: () => { throw Object.assign(new Error('relation "PolicyQuestionnaireResponse" does not exist'), { code: '42P01' }); } };
+  class PolicyQuestionnaireDbError extends Error { constructor(kind) { super(kind); this.kind = kind; this.userMessage = 'שגיאת מסד'; } }
+  const stubs = {
+    '@/lib/policyQuestionnaire/access': {
+      requireHeadManagement: async () => ({ ok: true, employee: { id: 'emp-1', roleId: state.roleId, name: 'דנה', roleLabel: '' } }),
+      loadResultsPayload: async () => state.results(),
+    },
+    '@/lib/policyQuestionnaire/store': { PolicyQuestionnaireDbError },
+    'next/link': { __esModule: true, default: ({ href, children }) => createRequire(path.join(root, 'package.json'))('react').createElement('a', { href }, children) },
+  };
+  const ran = await withTsHooks(stubs, async (req) => {
+    try {
+      const ReactDOMServer = req('react-dom/server');
+      const render = (el) => ReactDOMServer.renderToStaticMarkup(el);
+      const page = req(path.join(root, 'app/refund-questionnaire/answers/page.js')).default;
+      // הבעלים (מתכנת): "הטבלה עדיין לא נוצרה" + שורת ההוראות
+      state.roleId = 2;
+      const owner = render(await page());
+      assert.ok(owner.includes('dir="rtl"') && owner.includes('הטבלה עדיין לא נוצרה.') && owner.includes('השאלון עדיין לא הופעל'), 'מצב ריק לבעלים');
+      assert.ok(owner.includes('apply_policy_questionnaire_table.js') && owner.includes('--write'), 'שורת הוראות ההפעלה');
+      assert.ok(!owner.includes('שגיאת מסד') && !owner.includes('callout-danger') && !owner.includes('אירעה שגיאה'), 'לא מוצגת שגיאה');
+      // הנהלה (0): אותה הודעה בלי שורת ההוראות הטכנית
+      state.roleId = 0;
+      const mgmt = render(await page());
+      assert.ok(mgmt.includes('הטבלה עדיין לא נוצרה.') && !mgmt.includes('apply_policy_questionnaire_table.js'));
+      // PolicyQuestionnaireDbError מסוג missing_table (מה שה-store האמיתי זורק) מזוהה גם הוא
+      state.results = () => { throw new PolicyQuestionnaireDbError('missing_table'); };
+      assert.ok(render(await page()).includes('הטבלה עדיין לא נוצרה.'));
+      // שגיאה אחרת (לא טבלה חסרה) ממשיכה להציג שגיאה אמיתית, לא "לא הופעל"
+      state.results = () => { throw new PolicyQuestionnaireDbError('transient'); };
+      const other = render(await page());
+      assert.ok(other.includes('callout-danger') && other.includes('שגיאת מסד') && !other.includes('הטבלה עדיין לא נוצרה'));
+      // דף המילוי: המצב הידידותי (הקליינט עובר אליו כש-GET מחזיר not_enabled)
+      const { NotEnabledForm } = req(path.join(root, 'app/refund-questionnaire/NotEnabled.js'));
+      const form = render(req('react').createElement(NotEnabledForm));
+      assert.ok(form.includes('dir="rtl"') && form.includes('השאלון עדיין לא הופעל. ההנהלה תעדכן כשהוא יהיה זמין.') && !/<form|<input|<button/.test(form), 'הודעה בלבד, בלי טופס');
+      assert.ok(!FORBIDDEN.some(([, re]) => re.test(form.replace(/<[^>]*>/g, ' '))), 'אין מילים אסורות בהודעה');
+      passed += 1;
+      console.log('ok pages smoke: דף התשובות והדף הריק מציגים "לא הופעל" / "הטבלה עדיין לא נוצרה" ולא שגיאה');
+    } catch (e) {
+      failed += 1;
+      failures.push(`Pages missing-table smoke\n    ${String(e && e.stack).split('\n').slice(0, 7).join('\n    ')}`);
+    }
+  });
+  return ran;
+}
+
 await ssrSmoke();
 await routesSmoke();
+await storeMissingTableSmoke();
+await pagesMissingTableSmoke();
 
 console.log(`\n${passed} passed, ${failed} failed; forbidden-word hits: ${forbiddenHits.length}`);
 if (failed) {

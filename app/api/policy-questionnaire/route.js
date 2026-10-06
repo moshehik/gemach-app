@@ -4,6 +4,7 @@ import { getResponse, saveDraft, submitResponse, PolicyQuestionnaireDbError } fr
 import { sendQuestionnaireEmailAndRecord, originFromRequest } from '@/lib/policyQuestionnaire/notify';
 import {
   publicQuestionnaire, sanitizeAnswers, mergeAnswers, pruneHidden, validateSubmission, normalizeRespondent, describeResponse,
+  isNotEnabledError, notEnabledPayload,
 } from '@/lib/policyQuestionnaire/logic';
 
 export const dynamic = 'force-dynamic';
@@ -14,10 +15,16 @@ export const dynamic = 'force-dynamic';
 //   POST - שליחה סופית: בדיקת תקינות לכל שאלה גלויה, שמירה כ-submitted ושליחת מייל לבעלים. כשל במייל לא מאבד תשובות:
 //          מחזירים success עם emailSent:false (והדף מציע ניסיון חוזר ב-POST /api/policy-questionnaire/resend).
 // הזהות (employeeId) נלקחת תמיד מהעוגייה המאומתת בשרת, אף פעם לא מגוף הבקשה.
+// הטבלה PolicyQuestionnaireResponse נוצרת ידנית בלבד (prisma/migrations-pending, scripts/apply_policy_questionnaire_table.js). כל עוד היא לא קיימת:
+//   GET מחזיר 200 עם { ok:false, code:'not_enabled', error } (הדף מציג "השאלון עדיין לא הופעל"); PUT/POST מחזירים 503 עם אותו גוף ו-saved:false.
+//   שום דבר לא נשמר, שום מייל לא נשלח ושום נתון לא מומצא; אין ניסיון ליצור את הטבלה.
 
 const MAX_BODY_CHARS = 200000;
 
-function dbFail(e) {
+function dbFail(e, { read = false } = {}) {
+  if (isNotEnabledError(e)) {
+    return NextResponse.json(read ? notEnabledPayload() : { ...notEnabledPayload(), saved: false }, { status: read ? 200 : 503 });
+  }
   if (e instanceof PolicyQuestionnaireDbError) {
     return NextResponse.json({ error: e.userMessage, code: e.kind === 'transient' ? 'db_unreachable' : 'db_error' }, { status: 503 });
   }
@@ -52,7 +59,7 @@ export async function GET() {
       response: describeResponse(row),
     });
   } catch (e) {
-    return dbFail(e);
+    return dbFail(e, { read: true });
   }
 }
 

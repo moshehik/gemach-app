@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   optionsForQuestion, visibleQuestions, computeProgress, isAnswered, validateSubmission, summarize, pruneHidden,
   OTHER,
+  NOT_ENABLED_CODE,
 } from '@/lib/policyQuestionnaire/logic';
+import { NotEnabledForm } from './NotEnabled';
 
 // טופס השאלון להנהלות (עברית, RTL, נייד קודם). כל הלוגיקה (תצוגה מותנית, תקינות, התקדמות) ב-lib/policyQuestionnaire/logic.js.
 // שמירה אוטומטית (PUT) אחרי כל שינוי בהשהיה של פחות משנייה; שליחה סופית (POST) אחרי שלב אישור; אחרי שליחה אפשר לעדכן.
@@ -33,7 +35,7 @@ async function callApi(method, body, url = API) {
 }
 
 export default function RefundQuestionnaireClient() {
-  const [phase, setPhase] = useState('loading'); // loading | error | form | done
+  const [phase, setPhase] = useState('loading'); // loading | error | notEnabled | form | done
   const [loadError, setLoadError] = useState('');
   const [qn, setQn] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -66,6 +68,10 @@ export default function RefundQuestionnaireClient() {
         data = await callApi('GET');
       } catch (e) {
         if (e.status === 503) { await sleep(1500); data = await callApi('GET'); } else throw e; // התעוררות של מסד הנתונים: ניסיון חוזר אחד
+      }
+      if (data && data.ok === false && data.code === NOT_ENABLED_CODE) { // הטבלה עוד לא נוצרה: מצב ידידותי, בלי טופס שלא יישמר
+        setPhase('notEnabled');
+        return;
       }
       setQn(data.questionnaire);
       setAnswers(data.answers || {});
@@ -217,6 +223,7 @@ export default function RefundQuestionnaireClient() {
       </div>
     );
   }
+  if (phase === 'notEnabled') return <NotEnabledForm />;
   if (phase === 'error') {
     return (
       <div className="rq-root" dir="rtl">

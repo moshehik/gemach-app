@@ -910,3 +910,31 @@ model DeliveryJoin {
 
   @@index([joinedToOrderId])
 }
+
+// תשובות שאלון המדיניות להנהלות (ביטולים וזיכויים) - /refund-questionnaire, /refund-questionnaire/answers.
+// created via prisma/migrations-pending, never db push: הטבלה נוצרת רק ב-SQL הידני
+// prisma/migrations-pending/2026-10-06-policy-questionnaire-response.sql (הרצה: scripts/apply_policy_questionnaire_table.js,
+// dry-run כברירת מחדל, --write רק באישור מפורש של הבעלים בזמן ההרצה). אין שום DDL בקוד האפליקציה. עד שהטבלה קיימת
+// הדפים והמסלולים מציגים "השאלון עדיין לא הופעל" ולא נופלים (42P01 / P2021 / P2010 נתפסים ב-lib/policyQuestionnaire/store.js).
+// הקוד ניגש אליה ב-SQL גולמי בלבד ($queryRawUnsafe) - לא דרך prisma.policyQuestionnaireResponse - ולכן אין שורות ב-AuditLog;
+// המודל מוצהר כאן כדי שהסכימה תתאר את המסד, והוא ברשימת המודלים שהתוסף של ה-AuditLog מדלג עליהם (app/lib/prisma.js).
+// id נוצר בקוד (randomUUID), updatedAt נקבע בקוד (בלי @updatedAt, כמו DeliveryJoin). שורה אחת לכל (שאלון, עובדת).
+//   questionnaireKey - מפתח הסבב (QUESTIONNAIRE_KEY, כרגע 'refunds-2026-10'); orgKey - 'org1' | 'org2'
+//   answers          - { <מזהה שאלה>: { choice, otherText, comment } }; status - 'draft' | 'submitted'
+model PolicyQuestionnaireResponse {
+  id               String    @id
+  questionnaireKey String
+  orgKey           String
+  employeeId       String // Employee.id, בלי @relation (כמו ScheduleStageMark / DeliveryJoin)
+  respondentName   String    @default("")
+  respondentRole   String    @default("")
+  answers          Json      @default("{}")
+  status           String    @default("draft")
+  submittedAt      DateTime? @db.Timestamptz(6)
+  emailedAt        DateTime? @db.Timestamptz(6)
+  emailError       String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([questionnaireKey, employeeId])
+}

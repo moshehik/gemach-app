@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireHeadManagement, currentQuestionnaire, QUESTIONNAIRE_KEY } from '@/lib/policyQuestionnaire/access';
 import { getResponse, PolicyQuestionnaireDbError } from '@/lib/policyQuestionnaire/store';
 import { sendQuestionnaireEmailAndRecord, originFromRequest } from '@/lib/policyQuestionnaire/notify';
-import { describeResponse, isUpdateEmail, needsEmail } from '@/lib/policyQuestionnaire/logic';
+import { describeResponse, isUpdateEmail, needsEmail, isNotEnabledError, notEnabledPayload } from '@/lib/policyQuestionnaire/logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +27,8 @@ export async function POST(request) {
       response: describeResponse(mail.row),
     });
   } catch (e) {
+    // הטבלה עוד לא נוצרה: אין מה לשלוח ושום דבר לא נכתב - תשובה נקייה במקום 500
+    if (isNotEnabledError(e)) return NextResponse.json({ ...notEnabledPayload(), emailSent: false }, { status: 503 });
     if (e instanceof PolicyQuestionnaireDbError) return NextResponse.json({ error: e.userMessage }, { status: 503 });
     console.error('policy-questionnaire resend error:', e);
     return NextResponse.json({ error: 'אירעה שגיאה בלתי צפויה. נסו שוב בעוד רגע.' }, { status: 500 });

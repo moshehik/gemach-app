@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { requireHeadManagement, loadResultsPayload } from '@/lib/policyQuestionnaire/access';
 import { PolicyQuestionnaireDbError } from '@/lib/policyQuestionnaire/store';
+import { isNotEnabledError } from '@/lib/policyQuestionnaire/logic';
 import AnswersClient from './AnswersClient';
+import { NotEnabledResults } from '../NotEnabled';
 
 export const metadata = { title: 'תשובות שאלון ביטולים וזיכויים' };
 export const dynamic = 'force-dynamic';
@@ -25,6 +27,8 @@ export default async function RefundQuestionnaireAnswersPage() {
   try {
     payload = await loadResultsPayload(who.employee);
   } catch (e) {
+    // הטבלה עוד לא נוצרה (נוצרת ידנית באישור הבעלים בלבד): "הטבלה עדיין לא נוצרה" + שורת ההוראות לבעלים, לא שגיאה
+    if (isNotEnabledError(e)) return <NotEnabledResults isOwner={who.employee.roleId === 2} />;
     const msg = e instanceof PolicyQuestionnaireDbError ? e.userMessage : 'אירעה שגיאה בטעינת התשובות. נסו לרענן את הדף.';
     if (!(e instanceof PolicyQuestionnaireDbError)) console.error('policy-questionnaire answers page error:', e);
     return (
