@@ -501,7 +501,7 @@ t('סיכום סינונים: תוויות, תאריכים עבריים, סימ�
   assert.deepEqual(advSummaryParts(r, 'returns'), ['תאריך החזרה ' + hebText('2026-10-06')]);
 });
 t('נרמול תשובת adv', () => {
-  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], truncated: false, scanTruncated: false, total: 0, cap: 0, counts: null, gaps: [], capstats: null, failed: [], tags: [] });
+  assert.deepEqual(normalizeAdvResponse(null), { cols: [], rows: [], links: [], al: [], namesRev: [], barcodes: [], truncated: false, scanTruncated: false, total: 0, cap: 0, counts: null, gaps: [], capstats: null, failed: [], tags: [] });
   assert.equal(normalizeAdvResponse({ truncated: 1, gaps: ['x'] }).truncated, true);
   assert.deepEqual(normalizeAdvResponse({ gaps: ['x'] }).gaps, ['x']);
 });
@@ -565,12 +565,30 @@ t('תפוסה: מגבלת צמדי דגם/מידה בשרת מוחזרת כ-400 
   const home = readFileSync(new URL('../app/components/home/HomeA5.js', import.meta.url), 'utf8');
   assert.ok(/e\.status === 403 \|\| e\.status === 400/.test(home) && home.includes("e.status === 403 ? '' : e.message"), '400 = טוסט עם הודעת השרת, הטופס נשאר פתוח');
 });
-t('תפוסה: שורת הסיכום — דגם, מידה ותאריכים עבריים (כמו advApply בעיצוב)', () => {
+t('תפוסה: שורת הסיכום המקוצרת (הסקיצה שאושרה, 113e5c37) — "557-06, תאריך - תאריך", תאריכים עבריים בלבד', () => {
+  const n = { ...emptyAdv('capacity'), model: '557', size: '06', from: '2026-10-06', to: '2026-10-08' };
+  assert.deepEqual(advSummaryParts(n, 'capacity'), ['557-06', hebText('2026-10-06') + ' - ' + hebText('2026-10-08')]);
+  assert.equal(advSummaryParts(n, 'capacity').join(', '), '557-06, ' + hebText('2026-10-06') + ' - ' + hebText('2026-10-08'));
+  // בלי המילים "דגם / מידה / תאריכים"
+  assert.ok(!/דגם|מידה|תאריכים/.test(advSummaryParts(n, 'capacity').join(' ')));
+  // שם דגם (לא מספר) + מידה: לא "שמלת תחרה-36"
   const a = { ...emptyAdv('capacity'), model: 'שמלת תחרה', size: '36', from: '2026-10-06', to: '2026-10-08' };
-  assert.deepEqual(advSummaryParts(a, 'capacity'), ['דגם שמלת תחרה', 'מידה 36', 'תאריכים ' + hebText('2026-10-06') + ' עד ' + hebText('2026-10-08')]);
-  assert.deepEqual(advSummaryParts({ ...emptyAdv('capacity'), model: '549' }, 'capacity'), ['דגם 549']);
+  assert.deepEqual(advSummaryParts(a, 'capacity'), ['שמלת תחרה, מידה 36', hebText('2026-10-06') + ' - ' + hebText('2026-10-08')]);
+  // בלי מידה / בלי תאריך / תאריך אחד
+  assert.deepEqual(advSummaryParts({ ...emptyAdv('capacity'), model: '549' }, 'capacity'), ['549']);
+  assert.deepEqual(advSummaryParts({ ...emptyAdv('capacity'), model: '549', size: '38', from: '2026-10-06' }, 'capacity'), ['549-38', hebText('2026-10-06')]);
   assert.deepEqual(advSummaryParts(emptyAdv('capacity'), 'capacity'), []);
   assert.ok(!/\d{4}-\d{2}/.test(advSummaryParts(a, 'capacity').join(' ')), 'בלי תאריך לועזי');
+  // שאר התחומים לא השתנו
+  assert.deepEqual(advSummaryParts({ ...emptyAdv('models'), model: '557', size: '06' }, 'models'), ['דגם 557', 'מידה 06']);
+});
+t('תוצאות תפוסה: בלי תג "תפוסה" בשורות (113e5c37), ברקוד רק כשיש (לא מקף ולא תא ריק)', () => {
+  const res = readFileSync(new URL('../app/components/home/HomeAdvResults.js', import.meta.url), 'utf8');
+  assert.ok(res.includes("focus === 'capacity' ? [null, null] : rowTag(focus, data, i)") && res.includes('{tag && <div className="ic-b">'), 'התג מוסתר בתפוסה בלבד');
+  assert.ok(res.includes("data.barcodes[i] ? [...r, 'ברקוד ' + data.barcodes[i]] : r"), 'תא ברקוד רק כשיש ברקוד (בלי מקף / תא ריק)');
+  assert.deepEqual(normalizeAdvResponse({ rows: [], barcodes: ['5570601', '', null, ' 12 '] }).barcodes, ['5570601', '', '', '12'], 'barcodes מנורמל');
+  assert.deepEqual(normalizeAdvResponse({ rows: [] }).barcodes, [], 'בלי barcodes בתשובה (שאר התחומים) = ריק');
+  assert.deepEqual(ADV_TAG.capacity, ['תפוסה', 'box'], 'ההגדרה עצמה (תג התחום) לא השתנתה');
 });
 t('תפוסה: נרמול התשובה — capstats (במלאי / בתפוסה / רזרבה), שורות ועמודות של השרת', () => {
   const d = normalizeAdvResponse({

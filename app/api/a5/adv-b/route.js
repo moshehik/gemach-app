@@ -357,6 +357,7 @@ async function finance(p, flags, gaps) {
 }
 
 /* ---------------- תפוסה ---------------- */
+const CAP_COLS = ['שם', 'תאריך אירוע', 'כמות', 'טלפון'];
 async function capacity(p, req, gaps) {
   const model = s(p.model);
   if (!model) return { error: 'נדרש דגם לחיפוש תפוסה', status: 400 };
@@ -370,7 +371,7 @@ async function capacity(p, req, gaps) {
   const exact = models.filter((m) => m.name === model || m.barcodePrefix === num);
   if (exact.length) models = exact;
   const prefixes = [...new Set(models.map((m) => m.barcodePrefix))];
-  if (!prefixes.length) return { rows: [], capstats: { stock: 0, busy: 0, res: 0 }, cols: ['שם', 'תאריך אירוע', 'כמות', 'טלפון'] };
+  if (!prefixes.length) return { rows: [], capstats: { stock: 0, busy: 0, res: 0 }, cols: CAP_COLS };
   let sizes = s(p.size) ? [s(p.size)] : (await prisma.dressItem.findMany({ where: { barcodePrefix: { in: prefixes }, isDeleted: false, sizeText: { not: null } }, distinct: ['barcodePrefix', 'sizeText'], select: { barcodePrefix: true, sizeText: true } }));
   const pairs = s(p.size) ? prefixes.map((x) => [x, s(p.size)]) : sizes.map((x) => [x.barcodePrefix, x.sizeText]);
   // כל צמד = 3 שאילתות (מלאי/רזרבה/תפוסה על כל פריטי ההזמנה של הדגם); 60 צמדים בזה-אחר-זה נמדדו
@@ -393,8 +394,9 @@ async function capacity(p, req, gaps) {
     for (const d of results) {
       stats.stock += d.inStock; stats.busy += d.occupiedCount; stats.res += d.reserve;
       for (const o of d.occupiedOrders || []) {
-        const cur = occ.get(o.orderId) || { ...o, quantity: 0 };
+        const cur = occ.get(o.orderId) || { ...o, quantity: 0, barcodes: [] };
         cur.quantity += o.quantity; occ.set(o.orderId, cur);
+        for (const b of o.barcodes || []) if (!cur.barcodes.includes(b)) cur.barcodes.push(b); // רק שמלות שכבר יצאו למשפחה (ר' /api/inventory/capacity)
       }
     }
   }
@@ -406,8 +408,8 @@ async function capacity(p, req, gaps) {
   const truncated = list.length > LIMIT;
   list = list.slice(0, LIMIT);
   return {
-    rows: list.map((o) => ({ link: `/orders/${o.orderId}`, cells: [o.customerName === 'לא ידוע' ? '' : o.customerName, hebNoYear(o), String(o.quantity), phoneBy.get(o.orderId) || ''], nameRev: o.customerName === 'לא ידוע' ? '' : (nameRevBy.get(o.orderId) || '') })),
-    capstats: stats, truncated, cols: ['שם', 'תאריך אירוע', 'כמות', 'טלפון'],
+    rows: list.map((o) => ({ link: `/orders/${o.orderId}`, cells: [o.customerName === 'לא ידוע' ? '' : o.customerName, hebNoYear(o), String(o.quantity), phoneBy.get(o.orderId) || ''], barcode: (o.barcodes || []).join(', '), nameRev: o.customerName === 'לא ידוע' ? '' : (nameRevBy.get(o.orderId) || '') })),
+    capstats: stats, truncated, cols: CAP_COLS,
   };
 }
 
@@ -511,6 +513,8 @@ export async function GET(request) {
       al: [],
       namesRev: rows.map((x) => x.nameRev || ''),
       ...(r.capstats ? { capstats: r.capstats } : {}),
+      // תפוסה: ברקוד השמלה לכל שורה - רק כשהשמלה כבר יצאה למשפחה, אחרת מחרוזת ריקה (לא ממציאים ברקוד; דיווח 113e5c37). מערך נפרד, לא עמודה: מבנה העמודות והשורות לא משתנה
+      ...(focus === 'capacity' ? { barcodes: rows.map((x) => x.barcode || '') } : {}),
       truncated: !!r.truncated,
       gaps: [...gaps],
     });

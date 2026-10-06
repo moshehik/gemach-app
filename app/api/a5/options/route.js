@@ -131,6 +131,8 @@ async function sizes(typed) {
   const where = { isDeleted: false };
   if (typed) where.OR = [...new Set([typed, ...sizeSpellings(typed)])].map((s) => ({ sizeText: { startsWith: s } }));
   else where.sizeText = { not: null };
+  // מידות עשרוניות (38.1, 38.2, 06.1) הן מידות נפרדות ולא "האפשרויות" של 38 - לא מוצעות כשמקלידים "38"; מופיעות רק כשמקלידים נקודה ("38."). דיווח 27b0f8a5
+  if (!typed.includes('.')) where.AND = [{ NOT: { sizeText: { contains: '.' } } }];
   const rows = await prisma.dressItem.groupBy({ by: ['sizeText'], where, _count: { _all: true }, orderBy: { _count: { sizeText: 'desc' } }, take: POOL });
   const groups = new Map(); // מפתח מידה -> { display, count }
   for (const r of rows) {

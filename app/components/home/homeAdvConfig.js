@@ -227,6 +227,7 @@ export function normalizeAdvResponse(r) {
     links: (d.links || []).map(safeInternalRoute), // קישור לא פנימי הופך לריק (השורה נשארת בלי קישור)
     al: d.al || [],
     namesRev: d.namesRev || [],
+    barcodes: Array.isArray(d.barcodes) ? d.barcodes.map((b) => (typeof b === 'string' ? b.trim() : '')) : [], // תפוסה בלבד: ברקוד לכל שורה, ריק = השמלה עוד לא יצאה למשפחה
     truncated: !!d.truncated,
     scanTruncated: !!d.scanTruncated,
     total: Number.isFinite(Number(d.total)) && Number(d.total) > 0 ? Math.round(Number(d.total)) : 0,
@@ -251,6 +252,18 @@ export function advSummaryParts(adv, focus) {
   const f = ADV_FOCI[focus];
   const p = [];
   if (!f) return p;
+  // תפוסה (הסקיצה שאושרה, דיווח 113e5c37): "557-06, כ״ג תשרי תשפ״ז - כ״ז תשרי תשפ״ז" במקום "דגם 557, מידה 06, תאריכים ... עד ...".
+  // רק מה שנשלח לשרת בתחום הזה (דגם / מידה / תאריכים); קוד דגם מספרי + מידה = "557-06", שם דגם + מידה = "שמלת תחרה, מידה 06".
+  if (focus === 'capacity' && A.model && A.model.trim()) {
+    const model = A.model.trim();
+    const size = (A.size || '').trim();
+    if (!size) p.push(model);
+    else if (/^\d+$/.test(model)) p.push(model + '-' + size);
+    else p.push(model + ', מידה ' + size);
+    const dates = [A.from, A.to].filter(Boolean).map(hebText).join(' - ');
+    if (dates) p.push(dates);
+    return p;
+  }
   const labels = {};
   f.blocks.forEach((b) => (b.keys || []).forEach(([k, l]) => { labels[k] = l; }));
   // שדות שמופיעים בבלוקי "קבועים" (ordinfo/oitems...) מקבלים תווית מ-OLBL
