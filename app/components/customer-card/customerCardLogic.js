@@ -11,9 +11,11 @@ import { missingRequiredFields, requiredFieldLabel } from '../../../lib/customer
 
 export const CARD_VARIANT = 'a5';
 
-// חתימה על התקנון ברמת לקוח: אין עמודות ב-Customer עדיין (prisma/migrations-pending/2026-10-04-customer-signed-regulations.sql).
-// עד שהן ייווצרו - תצוגה נגזרת לקריאה בלבד מההזמנות (Order.hasSignedRegulations). להדליק רק אחרי הרצת ה-SQL ועדכון ה-PUT.
-export const SIGNATURE_COLUMNS_READY = false;
+// חתימה על התקנון ברמת לקוח: העמודות Customer.hasSignedRegulations / regulationsSignedAt (prisma/migrations-pending/
+// 2026-10-04-customer-signed-regulations.sql) קיימות בשני ה-DB וב-schema.prisma. כבוי = הכרטיס מציג חתימה נגזרת מההזמנות בלבד
+// (Order.hasSignedRegulations); דלוק = החתימה השמורה ברמת הלקוח, עם נפילה להזמנות ללקוחות שעדיין לא נשמרה להם חתימה (ר' signatureState).
+// rollback: להחזיר ל-false - הנתונים נשארים והכרטיס חוזר לנגזר.
+export const SIGNATURE_COLUMNS_READY = true;
 
 // ---------- שדות הכרטיס ----------
 // השדות שהכרטיס עורך (תת-קבוצה של ה-data של PUT /api/customers/[id]). "שם מלא" ו"כתובת מגורים" יחידים לא קיימים (הבעלים:
@@ -29,6 +31,8 @@ export const CARD_FIELDS = [
   { key: 'city', label: 'עיר', icon: 'pin', cat: 'cust' },
   { key: 'zeout', label: 'תעודת זהות', icon: 'file', cat: 'cust' },
   { key: 'marketingConsent', label: 'מאשר/ת קבלת דיוורים', icon: 'mail', cat: 'cust', bool: true },
+  // חתימה על התקנון (CC-O6): נערכת כמו כל שדה (טיוטה -> "שמור"); regulationsSignedAt לא כאן - מחושב בשרת בלבד.
+  { key: 'hasSignedRegulations', label: 'חתימה על התקנון', icon: 'sig', cat: 'cust', bool: true, boolLabels: ['לא חתום', 'חתום'] },
   { key: 'notes', label: 'הערות', icon: 'note', cat: 'cust' },
   { key: 'bankName', label: 'שם בנק', icon: 'bank', cat: 'pay' },
   { key: 'bankBranch', label: 'סניף', icon: 'bank', cat: 'pay' },
@@ -60,7 +64,7 @@ export function sameValue(key, a, b) {
 const short = (v, max = 26) => { const s = clean(v); return s.length > max ? `${s.slice(0, max)}…` : s; };
 export function showValue(key, v) {
   const meta = FIELD.get(key);
-  if (meta && meta.bool) return v ? 'מאושר' : 'לא מאושר';
+  if (meta && meta.bool) return (meta.boolLabels || ['לא מאושר', 'מאושר'])[v ? 1 : 0];
   return isBlank(v) ? 'ריק' : short(v);
 }
 
@@ -91,9 +95,19 @@ export function undoField(cur, saved, field) {
 export function legacySavePayload(customer) {
   return { ...customer, email: normalizeEmail(customer.email, customer.emailSuffix) };
 }
-/** הגוף של הכרטיס החדש = בדיוק הישן + cardVariant (אכיפת customer_required_fields בשרת). */
-export function buildSavePayload(customer) {
-  return { ...legacySavePayload(customer), cardVariant: CARD_VARIANT };
+/**
+ * הגוף של הכרטיס החדש = בדיוק הישן + cardVariant (אכיפת customer_required_fields בשרת), פרט לחתימה: שני שדות החתימה (hasSignedRegulations /
+ * regulationsSignedAt) מוסרים מהגוף תמיד, ורק כשהמשתמשת שינתה את החתימה בטיוטה (cur מול saved) נשלחים hasSignedRegulations + signatureEdit:true.
+ * כך כרטיס ישן/פתוח לא יכול לבטל בטעות חתימה שנרשמה בינתיים (המטען נושא את הערך כפי שנטען). saved חסר (יצירת לקוחה) = בלי עריכת חתימה.
+ */
+export function buildSavePayload(customer, saved) {
+  const { hasSignedRegulations, regulationsSignedAt, ...rest } = legacySavePayload(customer);
+  const body = { ...rest, cardVariant: CARD_VARIANT };
+  if (saved && !sameValue('hasSignedRegulations', saved.hasSignedRegulations, hasSignedRegulations)) {
+    body.hasSignedRegulations = !!hasSignedRegulations;
+    body.signatureEdit = true;
+  }
+  return body;
 }
 
 /** טופס לקוח חדש: אותו אובייקט פתיחה כמו בישן (LegacyCustomerPage.js, id === 'new'). */
@@ -280,13 +294,28 @@ export function deliveryText(o) {
   return [o.deliveryDirection || 'משלוח', o.deliveryCity || o.deliveryAddress].filter(Boolean).join(' · ');
 }
 
-// ---------- חתימה (נגזרת מההזמנות עד שתהיה עמודה ב-Customer) ----------
-export function signatureState(customer) {
-  if (SIGNATURE_COLUMNS_READY && customer && typeof customer.hasSignedRegulations === 'boolean') {
-    return { signed: customer.hasSignedRegulations, at: customer.regulationsSignedAt || null, orderId: null, derived: false };
-  }
+// ---------- חתימה: שמורה ברמת הלקוח, עם נפילה להזמנות ללקוחות שעוד לא נשמרה להם חתימה ----------
+function signatureFromOrders(customer) {
   const signedOrder = sortOrders(customer?.orders || []).find((o) => !o.isDeleted && o.hasSignedRegulations);
   return { signed: !!signedOrder, at: signedOrder ? (signedOrder.orderDate || null) : null, orderId: signedOrder ? signedOrder.orderId : null, derived: true };
+}
+/**
+ * מצב החתימה של הלקוחה. derived:true = נגזר מהזמנה (לקריאה בלבד בכרטיס - הלחצן לא משנה כלום).
+ *  - הדגל השמור true -> חתומה (at = החותמת מהשרת, orderId תמיד null: החתימה ברמת הלקוחה).
+ *  - הדגל השמור false והחותמת קיימת -> החתימה בוטלה בכוונה; לא חוזרים להזמנות (אחרת אי אפשר לבטל חתימה כשיש הזמנה חתומה).
+ *  - הדגל השמור false בלי חותמת -> לא נשמרה חתימה מעולם (לא עבר backfill): נופלים להזמנות.
+ *  - אין הדגל במטען (שרת/קליינט ישן) או שהדגל כבוי -> נגזר מההזמנות בלבד.
+ */
+export function signatureState(customer, { columnsReady = SIGNATURE_COLUMNS_READY } = {}) {
+  if (columnsReady && customer && typeof customer.hasSignedRegulations === 'boolean') {
+    if (customer.hasSignedRegulations) return { signed: true, at: customer.regulationsSignedAt || null, orderId: null, derived: false };
+    if (!customer.regulationsSignedAt) {
+      const fallback = signatureFromOrders(customer);
+      if (fallback.signed) return fallback;
+    }
+    return { signed: false, at: null, orderId: null, derived: false };
+  }
+  return signatureFromOrders(customer);
 }
 
 /** "בהזמנה #N" לטקסט החתימה, ריק כשאין הזמנה מקושרת (חתימה ברמת לקוח אחרי הפעלת העמודות: orderId הוא null) - כך לא מוצג "#null". */

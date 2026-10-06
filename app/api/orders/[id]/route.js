@@ -6,6 +6,7 @@ import { checkAuth, getSessionEmployee } from '../../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { validateDeliveryFields } from '@/lib/deliveryValidation';
 import { resolveExtraDay } from '@/lib/extraDayGate';
+import { syncCustomerSignatureFromOrder } from '@/lib/customerSignature';
 
 export const dynamic = 'force-dynamic';
 
@@ -972,6 +973,17 @@ async function putOrder(request, { params }, claims) {
       return order;
     }, { timeout: 30000, maxWait: 15000 });
     commitApprovalClaims(claims); // the save is committed: the tokens stay spent even if the recalculation below fails
+
+    // חתימה על התקנון בהזמנה (false->true) מסמנת גם את הלקוח, אם עוד לא חתום (lib/customerSignature.js). מיד אחרי ה-commit ולפני כל
+    // שלב המשך (חישוב התחייבויות / חיוב משלוח): כך שתקלה מאוחרת יותר לא "צורכת" את המעבר false->true בלי שהסנכרון קרה. מחוץ ל-$transaction,
+    // וכשל כאן לא מכשיל את שמירת ההזמנה. הזמנה מחוקה לא מסנכרנת (רק הזמנות פעילות, כמו ה-backfill).
+    await syncCustomerSignatureFromOrder({
+      prisma, auditAs,
+      customerId: existingOrder.customerId,
+      orderWasSigned: !!existingOrder.hasSignedRegulations,
+      orderIsSigned: data.hasSignedRegulations === true,
+      orderIsDeleted: !!(existingOrder.isDeleted || (updatedOrder && updatedOrder.isDeleted)),
+    });
 
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);

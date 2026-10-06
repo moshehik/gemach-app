@@ -12,6 +12,7 @@ import {
 import { EXPORT_MAX_ROWS } from '@/lib/exportLimits';
 import { findCustomerIdsByPhone, findFuzzyCustomerIds } from '@/lib/searchDb';
 import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerRequiredFields';
+import { planSignatureWrite, readSignatureFlag } from '@/lib/customerSignature';
 
 async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -230,6 +231,13 @@ async function POST(request) {
       console.error('mandatory check failed (fail-open)', e);
     }
 
+    // חתימה על התקנון ביצירת לקוח - רק מהכרטיס החדש (cardVariant:'a5'); החותמת מהשרת, לעולם לא מהגוף (lib/customerSignature.js)
+    const requestedSignature = readSignatureFlag(body);
+    if (requestedSignature === 'invalid') {
+      return NextResponse.json({ error: 'ערך חתימה על התקנון לא תקין' }, { status: 400 });
+    }
+    const signaturePlan = planSignatureWrite({ requested: requestedSignature, current: null, now: new Date() });
+
     // Auto-generate a short legacyId for new customers so it displays nicely
     const maxCustomer = await prisma.customer.findFirst({
       where: { legacyId: { not: null } },
@@ -258,6 +266,7 @@ async function POST(request) {
         ...(body.hokBankBranch !== undefined ? { hokBankBranch: body.hokBankBranch || null } : {}),
         ...(body.hokBankAccount !== undefined ? { hokBankAccount: body.hokBankAccount || null } : {}),
         ...(body.hokConsent !== undefined ? { hokConsent: !!body.hokConsent } : {}),
+        ...(signaturePlan ? signaturePlan.data : {}),
       }
     });
     return NextResponse.json(newCustomer);

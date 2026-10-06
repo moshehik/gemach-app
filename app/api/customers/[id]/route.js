@@ -8,6 +8,7 @@ import { requiredFieldErrors, requiredFieldsFromSettings } from '@/lib/customerR
 import { verifyManagerPin } from '@/lib/managerAuth';
 import { getIsraelTodayKey, getIsraelDateKey } from '@/lib/hebrewDate';
 import { deleteBlockers } from '@/lib/customerAccount';
+import { customerRowHasSignatureColumns, planSignatureWrite, readSignatureFlag } from '@/lib/customerSignature';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -88,6 +89,17 @@ export async function PUT(request, { params }) {
     }
 
     const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
+
+    // חתימה על התקנון ברמת הלקוח (lib/customerSignature.js): רק מהכרטיס החדש (cardVariant:'a5'), והחותמת מחושבת כאן בשרת - שום
+    // regulationsSignedAt מהגוף לא נקרא. הכרטיס הישן שולח את כל אובייקט הלקוח כולל הדגל הישן, ולכן הוא לא נכתב ממנו.
+    const requestedSignature = readSignatureFlag(body);
+    if (requestedSignature === 'invalid') {
+      return NextResponse.json({ error: 'ערך חתימה על התקנון לא תקין' }, { status: 400 });
+    }
+    if (requestedSignature !== undefined && !customerRowHasSignatureColumns(oldCustomer)) {
+      // קליינט/DB בלי העמודות: מסרבים במפורש במקום להחזיר הצלחה שלא נשמרה
+      return NextResponse.json({ error: 'חתימה על התקנון אינה זמינה בשרת הזה', code: 'SIGNATURE_UNAVAILABLE' }, { status: 503 });
+    }
 
     // 4 - אכיפה בעריכת לקוח קיים (גם ב-API, לא רק ב-UI). require_customer_email/
     // require_full_address הוסרו מכאן (דיווח תקלה 48ff7055, 2026-09-22) - הן חלות
@@ -183,6 +195,13 @@ export async function PUT(request, { params }) {
         changes[key] = { from: oldCustomer[key], to: data[key] };
       }
     });
+
+    // חתימה: אחרי לולאת ההשוואה כדי שביומן תיכתב שורה אחת ("חתימה על התקנון") ולא גם שורה למועד החתימה (אובייקט Date)
+    const signaturePlan = planSignatureWrite({ requested: requestedSignature, current: oldCustomer, now: new Date() });
+    if (signaturePlan) {
+      Object.assign(data, signaturePlan.data);
+      Object.assign(changes, signaturePlan.changes);
+    }
 
     // 3. Perform the update. הפירוט "לפני ← אחרי" עובר לתוסף היומן דרך auditAs, כך שנרשמת
     // שורת היסטוריה אחת בלבד (וכלום, כששמרו בלי לשנות) — במקום שורה גנרית עם צילום כל
