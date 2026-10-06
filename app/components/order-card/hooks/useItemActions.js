@@ -24,6 +24,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { describeMismatch } from '@/lib/rentalBarcodeMatch';
+import { alterationDoneLabel, estimateOnTake } from '@/lib/alterationEstimate';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
@@ -56,7 +57,8 @@ export function altText(i) {
   const a = [isChecked(i?.neckAlteration) && 'צוואר', isChecked(i?.sleeveAlteration) && 'שרוול'].filter(Boolean);
   if (!a.length && !(i?.lengthAlteration && String(i.lengthAlteration).trim() !== '')) return '';
   const parts = a.length ? a.join(', ') : 'אורך';
-  return `תיקון: ${parts}${i.alterationDone ? ' · בוצע' : ''}`;
+  const done = alterationDoneLabel(i); // '' / 'בוצע' / 'בוצע (משוער)' (המשפט המשוער ב-alterationDetails - lib/alterationEstimate.js)
+  return `תיקון: ${parts}${done ? ` · ${done}` : ''}`;
 }
 
 // סטטוס הפריט במילים (העיצוב itemStatTxt: נלקחה/נמסרה, הוחזרה/נאספה לפי כיוון המשלוח) + מצב החזרה של הישן (renderStatusBadge)
@@ -410,7 +412,9 @@ export function createItemActions(env) {
     if (!item || !item.id || item.isNew) return { ok: false };
     if (env.get().isLocked) { fail('ההזמנה נעולה (תאריך האירוע עבר) — ניתן לבצע החזרה בלבד. השכרה דורשת שחרור באישור מנהל.'); return { ok: false }; }
     const takenDate = new Date();
-    patchItem(item.id, { isTaken: true, takenDate, ...(barcodeToAssign ? { barcode: barcodeToAssign } : {}) });
+    // שיקוף מקומי של מה שהשרת כותב בלקיחה (תיקון שלא סומן = בוצע (משוער), lib/alterationEstimate.js estimateOnTake) - כדי ששמירה מאוחרת של ההזמנה לא תחזיר alterationDone=false
+    const altPatch = estimateOnTake(item);
+    patchItem(item.id, { isTaken: true, takenDate, ...(altPatch || {}), ...(barcodeToAssign ? { barcode: barcodeToAssign } : {}) });
     let result;
     try {
       result = await postRent(item.id, barcodeToAssign);
@@ -419,7 +423,7 @@ export function createItemActions(env) {
     }
     if (!result.ok) {
       fail(result.message || 'שגיאה בשמירת סטטוס השכרה');
-      patchItem(item.id, { isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode });
+      patchItem(item.id, { isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode, ...(altPatch ? { alterationDone: item.alterationDone, alterationDetails: item.alterationDetails } : {}) });
       return { ok: false };
     }
     bump();

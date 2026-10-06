@@ -31,6 +31,7 @@ import { stashApprovalToken as stashToken, peekApprovalToken as peekToken, clear
 import { createOrderCardFlows } from './orderCardFlows';
 import { postOrderEvent, newClientEventId } from './ocEvents';
 import OcApprovalDialog from './OcApproval';
+import { hasEstimateMarker, stripEstimateMarker } from '@/lib/alterationEstimate';
 
 /**
  * @typedef {object} OrderCardController
@@ -368,7 +369,8 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     addLocalItem: (partial = {}) => { markEdited(); const _localId = partial._localId || newLocalId(); setItems(prev => [...prev, { ...partial, _localId }]); return _localId; },
     removeLocalItem: (localId) => { markEdited(); setItems(prev => prev.filter(it => it.id || it._localId !== localId)); },
     markItemDeleted: (id, b = true) => { markEdited(); setItems(prev => prev.map(it => ((it.id && it.id === id) || (!it.id && it._localId === id) ? { ...it, isDeleted: !!b } : it))); },
-    setAltDone: (id, b) => { markEdited(); setItems(prev => prev.map(it => (it.id === id ? { ...it, alterationDone: !!b } : it))); },
+    // סימון / ביטול סימון ידני מסיר את הסמן "משוער" מהטקסט (lib/alterationEstimate.js) - אדם קבע את המצב
+    setAltDone: (id, b) => { markEdited(); setItems(prev => prev.map(it => (it.id === id ? { ...it, alterationDone: !!b, ...(hasEstimateMarker(it.alterationDetails) ? { alterationDetails: stripEstimateMarker(it.alterationDetails) } : {}) } : it))); },
     setObligations: (val) => { markEdited(); setObligations(prev => withLocalIds(typeof val === 'function' ? val(prev) : val)); },
     setPayments: (val) => { markEdited(); setPayments(prev => withLocalIds(typeof val === 'function' ? val(prev) : val)); },
     setRefunds: (val) => { setRefunds(prev => (typeof val === 'function' ? val(prev) : val)); },

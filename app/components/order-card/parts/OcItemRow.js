@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import OcIcon from '../OcIcon';
 import { fmtMoney } from '../orderCardLogic';
+import { ESTIMATE_TIP, detailsWithoutMarker, isAlterationEstimated } from '@/lib/alterationEstimate';
 import { useOcJournal } from '../OcJournalContext';
 import OcBarcodeRow from './OcBarcodeRow';
 import { altText, hasRepairOf, isPendingItem, itemName, itemPrice, statusText, addedText, rentalActorLines } from '../hooks/useItemActions';
@@ -22,6 +23,7 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
   const status = statusText(item, oc.order, mode);
   const alt = altEnabled ? altText(item) : '';
   const hasAlt = hasRepairOf(item);
+  const altEst = isAlterationEstimated(item); // בוצע (משוער) - נרשם אוטומטית בלקיחה (lib/alterationEstimate.js)
   const price = <bdi dir="ltr">{fmtMoney(itemPrice(item))}</bdi>;
   const detId = `det-${key}`;
   const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } };
@@ -40,14 +42,14 @@ export default function OcItemRow({ item, mode, oc, ui, actions, open, onToggle,
           <div className="hv-r"><small>דגם</small><b><bdi>{itemName(item)}</bdi></b></div>
           <div className="hv-r"><small>מידה</small><b>{item.sizeText || '—'}</b></div>
           <div className="hv-r"><small>סטטוס</small><b>{status}</b></div>
-          {alt ? <div className="hv-r"><small>תיקון</small><b>{alt.replace('תיקון: ', '')}</b></div> : null}
+          {alt ? <div className="hv-r"><small>תיקון</small><b>{alt.replace('תיקון: ', '')}{altEst ? <button type="button" className="tip" data-tip={ESTIMATE_TIP} aria-label={ESTIMATE_TIP}><OcIcon name="info" size="sm" /></button> : null}</b></div> : null}
           <div className="hv-r"><small>מחיר</small><b>{price}</b></div>
           <div className="hv-r"><small>פרטי הוספה</small><b>{addedText(item, oc.order, creatorName)}</b></div>
           {mode !== 'del' ? actorLines.map((l) => <div className="hv-r" key={l.key} data-actor={l.key}><small>{l.label}</small><b>{l.text}</b></div>) : null}
           {altEnabled && (hasAlt || altShow) ? (
             <>
               <div className="hv-r"><small>אורך</small><b>{item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : '—'}</b></div>
-              <div className="hv-r"><small>פירוט</small><b>{item.alterationDetails || item.repairs || '—'}</b></div>
+              <div className="hv-r"><small>פירוט</small><b>{detailsWithoutMarker(item.alterationDetails) || item.repairs || '—'}</b></div>
             </>
           ) : null}
           {mode === 'del' ? (
