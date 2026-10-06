@@ -150,7 +150,8 @@ await t('"העתק פרטי מערכת" - אותו טקסט כמו קודם', ()
 
 console.log('חוזה ה-API (נשמר מהחלון הישן)');
 await t('GET /api/error-report (מלא, בחלון) ו-?light=1 (בדיקה תקופתית, בכפתור) - 120 שנ\', רק כשסגור והטאב גלוי, 401 עוצר', () => {
-  has(WIN, /fetchFreshJson\('\/api\/error-report', \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/, 'GET מלא (דרך מטמון 60 שנ - scripts/cpu-reduction-tests/error-report-cache.test.mjs)');
+  has(WIN, /fetchFreshJson\(REPORTS_LIST_URL, \{ maxAge: REPORTS_LIST_MAX_AGE_MS \}\)/, 'GET מלא (דרך מטמון 60 שנ - scripts/cpu-reduction-tests/error-report-cache.test.mjs; CPU phase 1B: REPORTS_LIST_URL = /api/error-report?take=50, עמודים רזים)');
+  has(WIN, /const REPORTS_LIST_URL = `\/api\/error-report\?take=\$\{REPORTS_PAGE_SIZE\}`;/, 'כתובת הרשימה בעמודים');
   // Phase 1A (6.10.2026): הבדיקה הקלה עברה לדוגם המשותף lib/pollClient.js (GET /api/poll, כל 300 שנ', בקשה אחת גם לפעמון);
   // הנתיב הישן ?light=1 נשאר בשרת לתאימות לאחור ולעותק הקפוא. ר' scripts/poll-client.test.mjs ו-scripts/poll-endpoint.test.mjs.
   has(BTN, /usePollSnapshot\(true\)/, 'מנוי לדוגם המשותף');

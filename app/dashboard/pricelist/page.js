@@ -22,7 +22,10 @@ export default function PricelistManagement() {
   const fetchPricelists = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/pricelists');
+      // CPU phase 1B: GET /api/pricelists נושא Cache-Control (private, max-age=60) - מסך העריכה קורא cache:'reload' (עוקף את מטמון הדפדפן ומרענן אותו),
+      // אחרת רענון אחרי שמירה/מחיקה היה יכול להחזיר רשימה ישנה; וגם רשימת הקטגוריות (/categories) מתרעננת באותו אופן לשאר הדפים.
+      const res = await fetch('/api/pricelists', { cache: 'reload' });
+      fetch('/api/pricelists/categories', { cache: 'reload' }).catch(() => {});
       if (res.ok) {
         const data = await res.json();
         setPricelists(data);

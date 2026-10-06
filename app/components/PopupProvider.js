@@ -17,7 +17,7 @@ const approverLevelLabel = (level) => {
 // חלונית אישור מנהל/עובד נפתחת מיד, והרשימה מתרעננת אוטומטית אחרי עריכת עובדים
 // או התחברות/התנתקות (בניגוד למטמון המקומי הישן שלא התעדכן לעולם).
 const loadAuthData = () => Promise.all([
-  fetchSharedJson('/api/employees', { ttl: TTL.STATIC }).catch(() => []),
+  fetchSharedJson('/api/employees?slim=1', { ttl: TTL.STATIC }).catch(() => []),
   fetchSharedJson('/api/me', { ttl: TTL.STATIC }).catch(() => null) // קריאת אתחול (נשמרת ב-sessionStorage, lib/apiCachePersist.js)
 ]);
 

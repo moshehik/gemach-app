@@ -55,7 +55,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     // Fetch employees for filter
-    fetch('/api/employees')
+    fetch('/api/employees?slim=1')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

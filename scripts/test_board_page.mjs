@@ -141,8 +141,8 @@ await t('E01 (הוסר, החלטת הבעלים 5.10): אין תיבת חיפו�
   hasNot(UIC, /bdQ|hf-cl|input::placeholder|search-cancel-button|\.hf-s>svg/);
   has(PAGE, /buildBoardMonthParams\(selectedDate\)/);
   has(PAGE, /<BoardStageFilter\b/);
-  // ההזמנות עדיין נטענות (סימן "איחור החזרה"): fetch של /api/orders + isOrderLate נשארו
-  has(PAGE, /fetch\(`\/api\/orders\?\$\{queryParams\.toString\(\)\}`/);
+  // ההזמנות עדיין נטענות (סימן "איחור החזרה"): fetch + isOrderLate נשארו. CPU phase 1B: מנתיב הלוח הרזה /api/board/orders (לא /api/orders המלא)
+  has(PAGE, /fetch\(`\/api\/board\/orders\?\$\{queryParams\.toString\(\)\}`/);
   has(PARTS, /isOrderLate\(/);
 });
 
@@ -292,11 +292,11 @@ await t('אין window.alert / window.confirm / prompt של הדפדפן ואי�
 });
 
 await t('E21/E18: טעינה כמו קודם - חודש עברי ±14 יום, מטמון SWR, ביטול בקשה קודמת, "טוען נתונים..."', () => {
-  has(PAGE, /cacheNamespace\('board'\)/);
+  has(PAGE, /cacheNamespace\('board-slim'\)/); // CPU phase 1B: namespace נפרד מהלוח הישן ('board')
   has(PAGE, /boardCache\.has\(cacheKey\)/);
   has(PAGE, /activeOrdersRequestRef\.current\.abort\(\)/);
   has(PAGE, /if \(err\.name === 'AbortError'\) return;/);
-  has(PAGE, /fetch\(`\/api\/orders\?\$\{queryParams\.toString\(\)\}`, \{ signal: controller\.signal \}\)/);
+  has(PAGE, /fetch\(`\/api\/board\/orders\?\$\{queryParams\.toString\(\)\}`, \{ signal: controller\.signal \}\)/);
   has(PAGE, /useState\(true\)/);
   has(PAGE, /טוען נתונים\.\.\./);
   has(PAGE, /className="mspin"/);

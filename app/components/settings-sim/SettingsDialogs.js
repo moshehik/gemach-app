@@ -123,7 +123,7 @@ export function AuthDialog({ open, root, error, busy, onSubmit, onCancel }) {
     setPin('');
     setLoadErr(null);
     const ctrl = new AbortController();
-    fetch('/api/employees', { signal: ctrl.signal, credentials: 'same-origin', cache: 'no-store' })
+    fetch('/api/employees?slim=1', { signal: ctrl.signal, credentials: 'same-origin', cache: 'no-store' })
       .then(async (r) => { const d = await r.json().catch(() => null); if (!r.ok) throw new Error((d && d.error) || 'שגיאה בטעינת רשימת המנהלים'); return d; })
       .then((d) => {
         const all = (Array.isArray(d) ? d : []).filter((e) => e && e.isActive !== false);

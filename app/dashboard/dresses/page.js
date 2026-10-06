@@ -176,7 +176,9 @@ export default function DressesManagement() {
     if (!await window.customConfirm(`האם אתה בטוח שברצונך להחזיר לפעילות את הדגם ${dress.barcodePrefix || dress.name}?`)) return;
 
     // Check if the reason it's inactive is because of items
-    const hasActiveItems = dress.items && dress.items.length > 0 && dress.items.some(i => !i.notInUse && !i.isDeleted);
+    const hasActiveItems = dress.activeItemsCount !== undefined
+      ? dress.activeItemsCount > 0
+      : (dress.items && dress.items.length > 0 && dress.items.some(i => !i.notInUse && !i.isDeleted));
     if (!hasActiveItems) {
         alert('שימו לב: לדגם זה אין פריטים פעילים במלאי. כדי שהדגם יהיה פעיל לחלוטין, יש להיכנס לכרטיס השמלה ולהוסיף פריטים או להחזירם לשימוש.');
     }
@@ -391,7 +393,10 @@ export default function DressesManagement() {
                     </td>
                   </tr>
                 ) : filteredDresses.map(dress => {
-                  const isInactive = (!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo;
+                  // fields=summary מחזיר ספירות (itemsCount / inUseItemsCount) במקום items; תשובה ישנה מהמטמון עדיין נקראת מ-items
+                  const hasInUseItems = dress.inUseItemsCount !== undefined ? dress.inUseItemsCount > 0 : !!dress.items?.some(i => !i.notInUse);
+                  const nonDeletedItemsCount = dress.itemsCount !== undefined ? dress.itemsCount : (dress.items?.filter(i => !i.isDeleted).length || 0);
+                  const isInactive = !hasInUseItems || dress.exitDateFromRepo;
                   const imgSrc = getImageSource(dress);
                   // תא של 44px לא צריך את תמונת המקור — מנסים קודם את ה-thumb
                   // (קיים רק להעלאות חדשות); onError נופל חזרה למקור ורק אז מוותר.
@@ -440,7 +445,7 @@ export default function DressesManagement() {
                         </td>
                       )}
                       <td className={dress.isDeleted ? 'cell-muted' : undefined}>{formatHebrewDate(dress.entryDateToRepo)}</td>
-                      <td className={dress.isDeleted ? 'cell-muted' : undefined}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
+                      <td className={dress.isDeleted ? 'cell-muted' : undefined}>{nonDeletedItemsCount}</td>
                       <td>
                         <div className="row-actions">
                           <Link href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary btn-sm">כרטיס שמלה</Link>

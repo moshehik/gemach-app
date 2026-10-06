@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { cleanQuery, parseBarcodeDigits } from '@/lib/searchNormalize';
+import { cachedJson } from '@/lib/httpCache';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -38,7 +39,8 @@ export async function GET(request) {
       orderBy: { name: 'asc' }
     });
 
-    return NextResponse.json({ models });
+    // CPU phase 1B: private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js). בוררי הדגמים של ההזמנה קוראים דרך apiCache (no-store).
+    return cachedJson(request, { models });
   } catch (error) {
     console.error('Error fetching models:', error);
     return NextResponse.json({ error: 'Failed to fetch models' }, { status: 500 });

@@ -2,6 +2,7 @@
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings, getCachedSetting, invalidateSettingsCache } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
+import { cachedJson } from '@/lib/httpCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,15 +10,17 @@ export const dynamic = 'force-dynamic';
 // this on every page mount (including public/pre-login pages such as
 // app/customer-interface) to resolve UI label text. Writing labels is
 // admin-only (see POST below).
-export async function GET() {
+export async function GET(request) {
   try {
     const setting = await getCachedSetting('ui_labels_mapping');
 
+    // CPU phase 1B: private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js). הכתיבה (POST למטה) מבטלת את מטמון השרת; מטמון האפליקציה (apiCache)
+    // קורא no-store ולכן רואה את התוויות החדשות מיד.
     if (!setting || !setting.value) {
-      return NextResponse.json({});
+      return cachedJson(request, {});
     }
 
-    return NextResponse.json(JSON.parse(setting.value));
+    return cachedJson(request, JSON.parse(setting.value));
   } catch (error) {
     console.error('Error fetching UI labels:', error);
     return NextResponse.json({}, { status: 500 });

@@ -482,7 +482,9 @@ export default function CustomerInventoryViewer() {
     // דיווח 9b7fe2af - models 316/333/417) never reaches the public kiosk - while a
     // model that still has real active items just booked out for this date is still
     // returned (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570).
-    fetch(`/api/dresses${dateQuery}&filterStatus=active`)
+    // fields=kiosk (CPU phase 1B): פריטים מקובצים לפי (מידה, isUnusable, זמין) עם count - אותו מידע שהקיוסק קורא, בלי ~13K שורות פריט.
+    // בלי הפרמטר השרת מחזיר את הצורה הישנה (קוד ישן/מטמון ישן ממשיכים לעבוד: item.count חסר = 1).
+    fetch(`/api/dresses${dateQuery}&filterStatus=active&fields=kiosk`)
       .then(res => res.json())
       .then(data => {
         // דגמים ללא אף פריט בכלל (שרידי יבוא ריקים, לא "מלאי אפס") גם לא אמורים
@@ -505,7 +507,7 @@ export default function CustomerInventoryViewer() {
   }, [selectedDate]);
 
   useEffect(() => {
-    fetch('/api/employees')
+    fetch('/api/employees?slim=1')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEmployees(data);
@@ -764,8 +766,9 @@ export default function CustomerInventoryViewer() {
       const st = item.sizeText || 'כללי';
       if (!sizeMap.has(st)) sizeMap.set(st, { available: 0, total: 0 });
       const info = sizeMap.get(st);
-      info.total += 1;
-      if (item.quantity > 0) info.available += 1;
+      const n = item.count || 1; // fields=kiosk מקבץ פריטים זהים לשורה עם count; בצורה הישנה אין count = פריט אחד
+      info.total += n;
+      if (item.quantity > 0) info.available += n;
     });
     const sizesArray = Array.from(sizeMap.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
     const totalAvailable = sizesArray.reduce((s, [, d]) => s + d.available, 0);
@@ -801,8 +804,9 @@ export default function CustomerInventoryViewer() {
         if (!sizeMap.has(st)) sizeMap.set(st, { available: 0 });
         const info = sizeMap.get(st);
         if (item.quantity > 0) {
-          info.available += 1;
-          totalAvailable += 1;
+          const n = item.count || 1; // fields=kiosk: שורה מקובצת
+          info.available += n;
+          totalAvailable += n;
         }
       });
 

@@ -118,7 +118,7 @@ export default function MessagesPage() {
       // fetchJson מאחד בקשות GET מקבילות לאותו URL (ראה pageCache.js)
       const [notifData, empData, meData, settingsData] = await Promise.all([
         fetchJson('/api/notifications', { cache: 'no-store' }),
-        fetchJson('/api/employees', { cache: 'no-store' }),
+        fetchJson('/api/employees?slim=1', { cache: 'no-store' }),
         fetchJson('/api/me', { cache: 'no-store' }),
         // /api/settings משותף (מטמון apiCache, 5 דק') - בלי זה כל כניסה למסך משכה שוב את כל ההגדרות (~66KB)
         fetchSharedJson('/api/settings', { ttl: TTL.STATIC })

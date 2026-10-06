@@ -30,6 +30,9 @@ const NARROW_PX = 640; // גיליון תחתון
 const SPLIT_PX = 900; // פאנל: רשימה + שרשור זה לצד זה
 const CARD_W = 392;
 const REPORTS_LIST_MAX_AGE_MS = 60 * 1000; // הרשימה המלאה במטמון המשותף (fetchFreshJson) - ראה fetchReports
+// CPU phase 1B: הרשימה נטענת בעמודים רזים (בלי תגובות/צרופות; ר' lib/errorReportList.js) והשרשור המלא נטען כשפותחים אותו (?id=)
+const REPORTS_PAGE_SIZE = 50;
+const REPORTS_LIST_URL = `/api/error-report?take=${REPORTS_PAGE_SIZE}`;
 const TOAST_MS = { info: 2600, other: 6500 };
 const hebrewDateTime = (d) => `${getHebrewDateString(d)} ${new Date(d).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
 const isTouch = () => typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover:none)').matches;
@@ -61,6 +64,12 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
 
   // ---- נתונים ----
   const [reports, setReports] = useState([]);
+  const [paging, setPaging] = useState(null); // { hasMore, nextCursor, total, archivedTotal } מהשרת; null = השרת החזיר את הצורה הישנה (בלי עמודים)
+  const reportsRef = useRef([]); // עותק עדכני של reports לקריאה בתוך callbacks (מיזוג רשימה חדשה עם שרשורים שכבר נטענו)
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const detailBusyRef = useRef(new Set()); // מזהי דיווחים שהשרשור המלא שלהם בטעינה
+  const [detailFailed, setDetailFailed] = useState(null); // מזהה דיווח שטעינת השרשור שלו נכשלה
   const [isProgrammer, setIsProgrammer] = useState(!!perms?.isProgrammer);
   const [isManager, setIsManager] = useState(!!(perms?.isManager ?? perms?.isProgrammer));
   const [settings, setSettings] = useState({ handledAtBottom: true, humanButtonEnabled: true, recordingEnabled: false });
@@ -151,7 +160,7 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
       // וכך גם שינוי במונה "לא נקראו" בבדיקה הקלה (ErrorReportButton). הבדיקה הקלה (?light=1) לא עוברת כאן.
       let data;
       try {
-        data = await fetchFreshJson('/api/error-report', { maxAge: REPORTS_LIST_MAX_AGE_MS });
+        data = await fetchFreshJson(REPORTS_LIST_URL, { maxAge: REPORTS_LIST_MAX_AGE_MS });
       } catch (e) {
         const m = (e && e.message) || '';
         if (m.includes('HTTP 401')) { authFailedRef.current = true; return null; }
@@ -160,9 +169,13 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
       }
       if (seq !== fetchSeqRef.current) return null;
       if (data.success) {
-        const list = [...(data.reports || [])]; // עותק: הרשימה במטמון משותפת ואסור שתשתנה במקום
+        const incoming = [...(data.reports || [])]; // עותק: הרשימה במטמון משותפת ואסור שתשתנה במקום
         const prog = data.isProgrammer || false;
+        // שרשורים שכבר נטענו במלואם נשמרים (בלי הבהוב ובלי אובדן גלילה) כל עוד לא נוספה בהם תגובה חדשה
+        const list = M.mergeReportLists(reportsRef.current, incoming);
+        reportsRef.current = list;
         setReports(list);
+        setPaging(data.paging || null);
         setIsProgrammer(prog);
         setIsManager(data.isManager ?? data.isProgrammer ?? false);
         onData && onData(list, prog);
@@ -173,6 +186,57 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
     }
     return null;
   }, [onData]);
+
+  useEffect(() => { reportsRef.current = reports; }, [reports]);
+
+  // עמוד נוסף של הרשימה (כפתור "טען עוד פניות", וגם אוטומטית בזמן חיפוש - כדי שהחיפוש יחפש בכל הפניות)
+  const loadMore = useCallback(async () => {
+    if (!paging || !paging.hasMore || !paging.nextCursor || loadingMoreRef.current || authFailedRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`${REPORTS_LIST_URL}&cursor=${encodeURIComponent(paging.nextCursor)}`, { cache: 'no-store' });
+      if (res.status === 401) { authFailedRef.current = true; return; }
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success) {
+        setReports((prev) => {
+          const seen = new Set(prev.map((r) => r.id));
+          return [...prev, ...(data.reports || []).filter((r) => !seen.has(r.id))];
+        });
+        setPaging((p) => ({ ...(p || {}), ...(data.paging || {}), total: p && p.total, archivedTotal: p && p.archivedTotal }));
+      }
+    } catch (err) {
+      console.error('Error loading more reports:', err);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [paging]);
+
+  // השרשור המלא של דיווח (כל התגובות, הצרופות, lastButtons) - נטען רק כשפותחים אותו; הרשימה מכילה רק את התגובה האחרונה
+  const loadDetail = useCallback(async (id) => {
+    if (!id || detailBusyRef.current.has(id) || authFailedRef.current) return;
+    detailBusyRef.current.add(id);
+    setDetailFailed((f) => (f === id ? null : f));
+    try {
+      const res = await fetch(`/api/error-report?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      if (res.status === 401) { authFailedRef.current = true; return; }
+      const data = res.ok ? await res.json() : null;
+      if (data && data.success && data.report) {
+        // סימון "נקרא" שנעשה מקומית (openThread) לא נדרס בתשובה שיצאה לפניו
+        setReports((prev) => prev.map((r) => (r.id === id ? { ...data.report, isReadByProgrammer: r.isReadByProgrammer, isReadByUser: r.isReadByUser, repliesCount: (data.report.replies || []).length } : r)));
+        if ((data.report.replies || []).length > 4) toBottomRef.current = true;
+      } else {
+        setDetailFailed(id);
+      }
+    } catch (err) {
+      console.error('Error loading report thread:', err);
+      setDetailFailed(id);
+    } finally {
+      detailBusyRef.current.delete(id);
+    }
+  }, []);
 
   useEffect(() => {
     // /api/settings משותף (מטמון apiCache, 5 דק') - לפני כן כל טעינת דף משכה את כל ההגדרות (~66KB) שוב רק בשביל מפתח אחד.
@@ -525,6 +589,16 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
   // ===================================================================== thread actions
   const selected = useMemo(() => reports.find((r) => r.id === selId) || null, [reports, selId]);
   const patchSelected = (id, fn) => setReports((prev) => prev.map((r) => (r.id === id ? fn(r) : r)));
+  // שרשור שנבחר (בלחיצה, או אוטומטית ברוחב מלא) וטרם נטען במלואו - טוענים אותו
+  const selectedId = selected ? selected.id : null;
+  const selectedPartial = !!(selected && selected.partial);
+  useEffect(() => { if (selectedId && selectedPartial) loadDetail(selectedId); }, [selectedId, selectedPartial, loadDetail]);
+  // חיפוש פעיל והרשימה עוד לא נטענה כולה: טוענים עמוד אחר עמוד, כדי שהחיפוש יחפש בכל הפניות
+  // (וגם בלשונית הארכיון, עד שיש בה עמוד שלם - בעמוד הראשון יושבים בעיקר הפתוחים)
+  const archivedLoaded = reports.reduce((n, r) => n + (r.status === 'ARCHIVED' ? 1 : 0), 0);
+  useEffect(() => {
+    if (paging && paging.hasMore && (q.trim() || (archTab && archivedLoaded < REPORTS_PAGE_SIZE))) loadMore();
+  }, [q, archTab, archivedLoaded, paging, loadMore]);
 
   const openThread = async (report) => {
     setSelId(report.id);
@@ -534,7 +608,7 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
     setReplySteps('');
     setReplyQ(false);
     setSkReject(null);
-    toBottomRef.current = (report.replies || []).length > 4;
+    toBottomRef.current = (typeof report.repliesCount === 'number' ? report.repliesCount : (report.replies || []).length) > 4;
     const needMarkRead = M.isUnread(report, isProgrammer);
     if (needMarkRead) {
       setReports((prev) => prev.map((r) => (r.id === report.id ? {
@@ -652,6 +726,7 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
   };
 
   const copyDetails = (report) => {
+    if (report.partial) { showToast('השרשור עדיין נטען - נסו שוב בעוד רגע', 'info'); return; } // שורה רזה: חסרים lastButtons/queryParams
     const details = M.systemDetailsText(report, getHebrewDateString);
     navigator.clipboard.writeText(details).then(() => showToast('הפרטים הועתקו ללוח!', 'success')).catch(() => showToast('ההעתקה נכשלה', 'error'));
   };
@@ -736,6 +811,8 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
   // ===================================================================== list derivations
   const openGroups = useMemo(() => M.groupOpenReports(reports, { isProgrammer, handledAtBottom: settings.handledAtBottom }), [reports, isProgrammer, settings.handledAtBottom]);
   const archived = useMemo(() => M.archivedReports(reports), [reports]);
+  // בעמודים: מספר הארכיון הכולל מהשרת (ברשימה נטענים רק חלק מהם)
+  const archivedCount = Math.max(archived.length, (paging && paging.archivedTotal) || 0);
   const baseRows = archTab ? archived : [...openGroups.top, ...openGroups.others];
   const rows = M.filterBySearch(baseRows, q);
   const waiting = M.waitingCount(reports, isProgrammer);
@@ -930,9 +1007,14 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
           <div className="er3-s"><Ic n="search" cls="sm" /><input type="text" id="erQ" value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש בפניות" autoComplete="off" data-lpignore="true" aria-label="חיפוש בפניות" /></div>
         ) : null}
         <div className="er3-rows">{body}</div>
-        {(archived.length || archTab) ? (
+        {paging && paging.hasMore ? (
+          <button type="button" className="er3-lnk" disabled={loadingMore} onClick={loadMore}>
+            {loadingMore ? 'טוען…' : 'טען עוד פניות'}
+          </button>
+        ) : null}
+        {(archivedCount || archTab) ? (
           <button type="button" className="er3-lnk" onClick={() => { setQ(''); setArchTab(!archTab); setSelId(null); setThreadOnly(false); }}>
-            {archTab ? 'חזרה לפניות' : `ארכיון (${archived.length})`}
+            {archTab ? 'חזרה לפניות' : `ארכיון (${archivedCount})`}
           </button>
         ) : null}
       </>
@@ -990,7 +1072,9 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
   const threadBody = (r) => {
     const t = M.displayTitle(r);
     const quiet = M.quietLine(r, isProgrammer);
-    const reps = r.replies || [];
+    // r.partial = שורה רזה מהרשימה (תגובה אחרונה בלבד, בלי צרופות) - השרשור המלא נטען ב-loadDetail; עד אז מוצג מחוון טעינה
+    const isPartial = !!r.partial;
+    const reps = isPartial ? [] : (r.replies || []);
     const humanAfter = M.showHumanButton(r, { isProgrammer, humanButtonEnabled: settings.humanButtonEnabled });
     const archivedR = r.status === 'ARCHIVED';
     return (
@@ -1010,7 +1094,13 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
         </div>
         <div className="er3-scroll" ref={scrollRef}>
           <div className="er3-msgs">
-            {bubble('report', { who: M.senderName(null, r), date: r.createdAt, text: r.userText, cls: ' me0', extra: chips(r.attachmentUrls) })}
+            {isPartial ? (
+              <div className="er3-empty">
+                {detailFailed === r.id
+                  ? <><p>לא הצלחנו לטעון את הפנייה</p><button type="button" className="er3-lnk" onClick={() => loadDetail(r.id)}>נסו שוב</button></>
+                  : <><Spin /><p>טוען את הפנייה…</p></>}
+              </div>
+            ) : bubble('report', { who: M.senderName(null, r), date: r.createdAt, text: r.userText, cls: ' me0', extra: chips(r.attachmentUrls) })}
             {reps.map((rep, i) => {
               const extra = (
                 <>
@@ -1035,7 +1125,7 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
             })}
           </div>
         </div>
-        <div className="er-reply er3-reply">
+        {isPartial ? null : <div className="er-reply er3-reply">
           <Composer
             id="erRt" rows={2} label="תגובה" reply textareaRef={replyRef}
             placeholder={isProgrammer && replyQ ? 'הקלד תגובה (שאלה פתוחה למדווח)...' : 'הקלד תגובה...'}
@@ -1047,7 +1137,7 @@ export default function ErrorReportWindow({ command, perms, onOpenChange, onData
           />
           {thumbs('reply', replyAtts)}
           {stepsChip(replySteps, () => setReplySteps(''))}
-        </div>
+        </div>}
       </>
     );
   };

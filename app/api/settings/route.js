@@ -10,6 +10,7 @@ import { NON_WORKING_DAYS_SETTING_KEY, NON_WORKING_DAYS_PERMISSION_KEY, isNonWor
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { hasPermission } from '@/lib/permissions';
 import { SETTINGS_HEBREW_NAMES } from '@/lib/settingsMetadata';
+import { cachedJson, REFERENCE_CACHE_CONTROL, NO_STORE } from '@/lib/httpCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,9 @@ export async function GET(request) {
     if (nwd && typeof nwd.value === 'string' && nwd.value.includes('"note"') && !(await checkAuth())) {
       masked = masked.map(s => (s === nwd ? { ...s, value: stripNonWorkingDaysNotes(s.value) } : s));
     }
-    return NextResponse.json(masked);
+    // CPU phase 1B: דפדפן - private, max-age=60, swr=300 + ETag/304 (lib/httpCache.js); ?fresh=1 (מסכי עריכה) = no-store. private + Vary: Cookie כי התשובה
+    // תלויה בהתחברות (הערות ימי אי-הפעילות מוסרות מאורח) - לעולם לא מטמון משותף בין משתמשים.
+    return cachedJson(request, masked, { cacheControl: fresh ? NO_STORE : REFERENCE_CACHE_CONTROL });
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });

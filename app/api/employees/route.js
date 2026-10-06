@@ -22,10 +22,20 @@ export async function GET(request) {
     // (checkAuth() = a verified login session, or anybody at all while require_login is OFF - open mode.)
     const requesterIsAuthenticated = !!(await checkAuth());
     const all = requesterIsAuthenticated && searchParams.get('all') === 'true';
+    // ?slim=1 (CPU phase 1B, 2026-10-06) - למסכי בחירה (חלונות אישור, בוררי עובד, הודעות, קיוסק): רק מה שהם קוראים (id, שם, isActive, roleId,
+    // department.name, approvals, canApproveWithoutPayment) במקום כל עמודות העובד (טלפון, כתובת, שכר, themeColor, תמונה...) - 107-148KB לקריאה.
+    // בלי הפרמטר, וגם עם all=true (דפי העובדים, כולל העותק הישן הקפוא) - הצורה המלאה כמו קודם.
+    const slim = !all && searchParams.get('slim') === '1';
 
+    // הקורא האנונימי (מסך כניסה / שעון נוכחות / קיוסק) מקבל רק id + שמות + isActive (ר' למטה) - אין סיבה למשוך את שאר העמודות מה-DB.
+    const query = !requesterIsAuthenticated
+      ? { select: { id: true, legacyId: true, firstName: true, lastName: true, fullName: true, isActive: true } }
+      : slim
+        ? { select: { id: true, firstName: true, lastName: true, fullName: true, isActive: true, roleId: true, department: { select: { roleId: true, name: true } } } }
+        : { include: { department: true } };
     const employees = await prisma.employee.findMany({
       where: all ? {} : { isActive: true },
-      include: { department: true },
+      ...query,
       orderBy: [
         { lastName: { sort: 'asc', nulls: 'last' } },
         { firstName: { sort: 'asc', nulls: 'last' } }
@@ -61,7 +71,9 @@ export async function GET(request) {
       ...emp,
       ...(isLoggedIn ? { needsPasswordReset: !!password && !password.startsWith('$2') } : {}),
       canApproveWithoutPayment: !!debtApprovalByEmployee.get(emp.id),
-      approvals: Object.fromEntries(approverKeys.map((key, i) => [key, !!approverMaps[i].get(emp.id)]))
+      // slim: רק המפתחות שאושרו (true) - כל הצרכנים בודקים e.approvals[key] כערך אמת (filterApprovers, PopupProvider, SendEmailModal), מפתח חסר = לא מאושר;
+      // בלי זה כל עובד נושא ~20 מפתחות עם false (רוב ה-slim).
+      approvals: Object.fromEntries(approverKeys.map((key, i) => [key, !!approverMaps[i].get(emp.id)]).filter(([, ok]) => !slim || ok))
     }));
 
     return NextResponse.json(safeEmployees);
