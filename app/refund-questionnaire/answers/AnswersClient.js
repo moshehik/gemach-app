@@ -12,9 +12,6 @@ export default function AnswersClient({ questionnaire, respondents, threadFound 
   const [copied, setCopied] = useState('');
   const latestSubs = respondents.map((r) => r.latest);
   const tally = tallyResponses(questionnaire, latestSubs);
-  const showSource = questionnaire.sections.some((s) => s.questions.some((q) => q.source));
-  const sourceById = new Map();
-  questionnaire.sections.forEach((s) => s.questions.forEach((q) => { if (q.source) sourceById.set(q.id, q.source); }));
   const updatesCount = respondents.reduce((n, r) => n + Math.max(0, r.count - 1), 0);
 
   const copyAll = async () => {
@@ -71,7 +68,7 @@ export default function AnswersClient({ questionnaire, respondents, threadFound 
             const max = Math.max(1, ...t.counts.map((c) => c.count));
             return (
               <div className="rq-card" key={t.id}>
-                <p className="rq-tally-q">{t.text}</p>
+                <p className="rq-tally-q">{t.text}{t.multi ? ' (אפשר היה לסמן כמה)' : ''}</p>
                 {t.counts.map((c) => (
                   <div className="rq-tally-row" key={String(c.value)}>
                     <div>
@@ -82,7 +79,6 @@ export default function AnswersClient({ questionnaire, respondents, threadFound 
                   </div>
                 ))}
                 {t.unanswered > 0 && <div className="rq-resp-meta">לא נענתה: {t.unanswered}</div>}
-                {showSource && sourceById.get(t.id) && <div className="rq-resp-meta">מקור: {sourceById.get(t.id)}</div>}
               </div>
             );
           })}
@@ -123,7 +119,7 @@ export default function AnswersClient({ questionnaire, respondents, threadFound 
                         <tr key={it.id}>
                           <td>{it.text}</td>
                           <td className={`rq-ans${it.answered ? '' : ' rq-none'}`}>
-                            {it.answerText}
+                            {it.answerLines.map((l, i) => <div key={i}>{it.multi ? `• ${l}` : l}</div>)}
                             {it.comment && <div className="rq-comment-line">הערה: {it.comment}</div>}
                           </td>
                         </tr>

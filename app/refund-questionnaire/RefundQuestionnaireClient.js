@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   optionsForQuestion, visibleQuestions, computeProgress, isAnswered, validateSubmission, summarize, pruneHidden, formatIsraelDateTime,
-  OTHER,
+  OTHER, isMulti, emptyAnswer, toggleMultiChoice, isOptionOn, selectionHint,
 } from '@/lib/policyQuestionnaire/logic';
 import { draftKey, browserStorage, saveDraft, loadDraft, clearDraft } from '@/lib/policyQuestionnaire/draft';
 
@@ -131,8 +131,14 @@ export default function RefundQuestionnaireClient() {
     return () => { window.removeEventListener('pagehide', flush); if (timer.current) clearTimeout(timer.current); };
   }, [persist]);
 
-  const setAnswer = (qid, patch) => {
-    setAnswers((prev) => ({ ...prev, [qid]: { choice: null, otherText: '', comment: '', ...(prev[qid] || {}), ...patch } }));
+  // q = השאלה (כדי לדעת אם היא בחירה-אחת או מרובת-בחירה); patch = שדות לעדכון (choice / otherText / comment)
+  const setAnswer = (q, patch) => {
+    setAnswers((prev) => ({ ...prev, [q.id]: { ...emptyAnswer(q), ...(prev[q.id] || {}), ...patch } }));
+    scheduleSave();
+  };
+  // שאלה מרובת-בחירה: סימון / ביטול סימון של אפשרות (אינדקס | 'other' | 'undecided')
+  const toggleAnswer = (q, value) => {
+    setAnswers((prev) => ({ ...prev, [q.id]: toggleMultiChoice(q, prev[q.id], value) }));
     scheduleSave();
   };
   const changeName = (v) => { setName(v); scheduleSave(); };
@@ -250,7 +256,7 @@ export default function RefundQuestionnaireClient() {
       editingSent={editingSent} submission={submission} draftInfo={draftInfo} discardDraft={discardDraft}
       submitError={submitError} submitting={submitting} confirmOpen={confirmOpen}
       openComments={openComments} setOpenComments={setOpenComments} changeName={changeName} changeRole={changeRole}
-      setAnswer={setAnswer} requestSubmit={requestSubmit} doSubmit={doSubmit} setConfirmOpen={setConfirmOpen}
+      setAnswer={setAnswer} toggleAnswer={toggleAnswer} requestSubmit={requestSubmit} doSubmit={doSubmit} setConfirmOpen={setConfirmOpen}
     />
   );
 }
@@ -294,7 +300,7 @@ export function DoneView({ qn, answers, name, mail, submission, retrying, retryE
           {s.items.map((it) => (
             <div className="rq-summary-item" key={it.id}>
               <div className="rq-summary-q">{it.text}</div>
-              <div className="rq-summary-a">{it.answerText}</div>
+              <div className="rq-summary-a">{it.answerLines.map((l, i) => <div key={i}>{it.multi ? `• ${l}` : l}</div>)}</div>
               {it.comment && <div className="rq-summary-c">הערה: {it.comment}</div>}
             </div>
           ))}
@@ -307,7 +313,7 @@ export function DoneView({ qn, answers, name, mail, submission, retrying, retryE
 /** טופס השאלון עצמו (מיוצא לבדיקות רינדור). */
 export function FormView({
   qn, answers, name, role, saveState, showErrors, editingSent, submission, draftInfo, discardDraft, submitError, submitting, confirmOpen,
-  openComments, setOpenComments, changeName, changeRole, setAnswer, requestSubmit, doSubmit, setConfirmOpen,
+  openComments, setOpenComments, changeName, changeRole, setAnswer, toggleAnswer, requestSubmit, doSubmit, setConfirmOpen,
 }) {
   const vis = visibleQuestions(qn, answers);
   const prog = computeProgress(qn, answers);
@@ -375,7 +381,8 @@ export function FormView({
             <h2 className="rq-section-title">{section.title_he}</h2>
             {section.intro_he && <p className="rq-section-intro">{section.intro_he}</p>}
             {qs.map((q) => {
-              const a = answers[q.id] || { choice: null, otherText: '', comment: '' };
+              const multi = isMulti(q);
+              const a = answers[q.id] || emptyAnswer(q);
               const done = isAnswered(a);
               const opts = optionsForQuestion(q);
               const commentOpen = openComments[q.id] || !!a.comment;
@@ -385,35 +392,37 @@ export function FormView({
                     <span className="rq-qnum" aria-hidden="true">{visIndex.get(q.id)}</span>
                     <h3 className="rq-q" id={`rq-label-${q.id}`}>{q.text_he}</h3>
                   </div>
-                  <div className="rq-example"><b>דוגמה: </b>{q.example_he}</div>
-                  <p className="rq-today"><b>היום אצלכן: </b>{q.today_he}</p>
-                  <div className="rq-opts" role="radiogroup" aria-labelledby={`rq-label-${q.id}`}>
+                  {q.example_he && <div className="rq-example"><b>דוגמה: </b>{q.example_he}</div>}
+                  {q.today_he && <p className="rq-today"><b>כך זה עובד היום ב{qn.gmachName} (לידיעה בלבד): </b>{q.today_he}</p>}
+                  <div className="rq-hint">{selectionHint(q)}</div>
+                  <div className="rq-opts" role={multi ? 'group' : 'radiogroup'} aria-labelledby={`rq-label-${q.id}`}>
                     {opts.map((o) => {
-                      const on = a.choice === o.value;
+                      const on = isOptionOn(a, o.value);
                       return (
                         <label key={String(o.value)} className={`rq-opt${on ? ' on' : ''}${o.kind === 'undecided' ? ' soft' : ''}`}>
-                          <input type="radio" name={`rq-${q.id}`} checked={on} onChange={() => setAnswer(q.id, { choice: o.value })} />
+                          {multi
+                            ? <input type="checkbox" name={`rq-${q.id}`} checked={on} onChange={() => toggleAnswer(q, o.value)} />
+                            : <input type="radio" name={`rq-${q.id}`} checked={on} onChange={() => setAnswer(q, { choice: o.value })} />}
                           <span>{o.label}</span>
                         </label>
                       );
                     })}
                   </div>
-                  {a.choice === OTHER && (
+                  {isOptionOn(a, OTHER) && (
                     <div className="rq-other">
-                      <input className="input" placeholder="כתבו כאן את התשובה שלכן" value={a.otherText || ''} maxLength={2000} onChange={(e) => setAnswer(q.id, { otherText: e.target.value })} aria-label="פירוט לתשובה אחר" />
+                      <input className="input" placeholder="כתבו כאן את התשובה שלכן" value={a.otherText || ''} maxLength={2000} onChange={(e) => setAnswer(q, { otherText: e.target.value })} aria-label="פירוט לתשובה אחר" />
                     </div>
                   )}
                   {missingIds.has(q.id) && (
-                    <div className="rq-err" role="alert">{a.choice === OTHER ? 'נא לכתוב את התשובה בשדה "אחר".' : 'נא לבחור תשובה.'}</div>
+                    <div className="rq-err" role="alert">{isOptionOn(a, OTHER) ? 'נא לכתוב את התשובה בשדה "אחר".' : (multi ? 'נא לסמן לפחות תשובה אחת.' : 'נא לבחור תשובה.')}</div>
                   )}
                   {commentOpen ? (
                     <div className="rq-comment">
-                      <textarea className="textarea" placeholder="הערה (לא חובה)" value={a.comment || ''} maxLength={2000} onChange={(e) => setAnswer(q.id, { comment: e.target.value })} aria-label="הערה לשאלה" />
+                      <textarea className="textarea" placeholder="הערה (לא חובה)" value={a.comment || ''} maxLength={2000} onChange={(e) => setAnswer(q, { comment: e.target.value })} aria-label="הערה לשאלה" />
                     </div>
                   ) : (
                     <button type="button" className="btn btn-ghost btn-sm rq-comment-toggle" onClick={() => setOpenComments((p) => ({ ...p, [q.id]: true }))}>+ הוספת הערה</button>
                   )}
-                  {q.sourceNote_he && <p className="rq-why"><b>למה שואלים: </b>{q.sourceNote_he}</p>}
                 </div>
               );
             })}

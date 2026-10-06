@@ -75,6 +75,7 @@
 .rq-today { font-size: 13.5px; line-height: 1.75; color: var(--text-2); margin: 0 0 12px; }
 .rq-today b { color: var(--text); }
 
+.rq-hint { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 0 0 8px; }
 .rq-opts { display: flex; flex-direction: column; gap: 8px; }
 .rq-opt {
   display: flex; align-items: flex-start; gap: 10px;
@@ -90,7 +91,7 @@
 .rq-opt:hover { border-color: var(--border-strong); }
 .rq-opt.on { border-color: var(--primary-solid); background: var(--primary-tint); font-weight: 700; }
 .rq-opt.soft { color: var(--text-2); }
-.rq-opt input[type="radio"] { width: 20px; height: 20px; margin: 3px 0 0; flex: 0 0 auto; accent-color: var(--primary-solid); }
+.rq-opt input[type="radio"], .rq-opt input[type="checkbox"] { width: 20px; height: 20px; margin: 3px 0 0; flex: 0 0 auto; accent-color: var(--primary-solid); }
 .rq-other { margin: 8px 0 0; }
 
 .rq-comment-toggle { margin-top: 10px; font-size: 13px; }
