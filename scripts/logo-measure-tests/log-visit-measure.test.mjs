@@ -20,16 +20,16 @@ beforeEach(() => {
 });
 test.afterEach(() => { console.warn = warn; });
 
-test('שדות מדידה תקינים נשמרים (serverCpuMs מעוגל ל-int, navigationType, serverBootId)', async () => {
+test('שדות מדידה תקינים נשמרים (serverCpuMs בדיוק עשירית, navigationType, serverBootId)', async () => {
   const res = await post({ entries: [
     { pageUrl: '/orders', navigationType: 'navigate+newtab' },
-    { pageUrl: '/api/orders?limit=50', executionTime: 120, responseSize: 900, serverCpuMs: '12.6', serverBootId: 'a1b2c3d4e5f6' },
+    { pageUrl: '/api/orders?limit=50', executionTime: 120, responseSize: 900, serverCpuMs: '12.64', serverBootId: 'a1b2c3d4e5f6' },
   ] });
   assert.equal((await res.json()).success, true);
   const [a, b] = globalThis.__VISITS;
   assert.equal(a.navigationType, 'navigate+newtab');
   assert.equal(a.serverCpuMs, undefined);
-  assert.equal(b.serverCpuMs, 13);
+  assert.equal(b.serverCpuMs, 12.6);
   assert.equal(b.serverBootId, 'a1b2c3d4e5f6');
   assert.equal(b.employeeName, 'דנה כהן');
 });
@@ -96,4 +96,10 @@ test('isMissingMeasureColumnError: P2022, הודעת Postgres, ו-Unknown argume
 test('לא מחובר => 401', async () => {
   globalThis.__AUTH = false;
   assert.equal((await post({ pageUrl: '/x' })).status, 401);
+});
+
+test('נתיב של פחות ממילי-שנייה לא מתעגל ל-0 (עשירית מילי-שנייה נשמרת)', async () => {
+  await post({ entries: [{ pageUrl: '/api/me', serverCpuMs: '0.4' }, { pageUrl: '/api/me', serverCpuMs: 0.06 }] });
+  assert.equal(globalThis.__VISITS[0].serverCpuMs, 0.4);
+  assert.equal(globalThis.__VISITS[1].serverCpuMs, 0.1);
 });

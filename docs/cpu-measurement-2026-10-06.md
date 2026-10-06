@@ -19,6 +19,10 @@
 - `app/api/logo/route.js`: ETag (מ-updatedAt + אורך) ותשובת 304, פענוח base64 נשמר בזיכרון האינסטנס, ופענוח mime רק מראש המחרוזת (לא regex על 2.5MB).
   מדיניות המטמון הארוכה הקיימת (`public, max-age=31536000, immutable`) נשמרה. לוגו ישן וגדול (>300KB) מוגש איתה בתוספת הכותרת `x-logo-oversize: 1`.
 
+**אבטחה (אחרי סקירה):** העלאת הלוגו דורשת `checkAuth('הנהלה ראשית')` (הנהלה ראשית/מתכנת, כמו `POST /api/settings`; כל מסכי ההעלאה תחת `/admin`) - היא מפעילה `sharp` (CPU של שניות) ומחליפה את לוגו המערכת.
+`/api/logo` מגיש רק `image/png|webp|jpeg|gif` (שורה ישנה עם SVG/HTML -> 415) ותמיד עם `X-Content-Type-Options: nosniff` ו-`Content-Security-Policy: default-src 'none'; sandbox`.
+SVG שמועלה עכשיו נרסטר ל-512px (density מותאם) ונשמר כ-PNG/WebP. קובץ מעל 3.5MB מוקטן בדפדפן ל-1024px (JPEG, או WebP כשיש שקיפות); תשובת 413 של הפלטפורמה (לא JSON) מוצגת כהודעה בעברית.
+
 **המרה חד-פעמית של הלוגו הקיים** (לא הורצה): `scripts/compress_brand_logo.js`.
 ```
 # 1. dry-run (קריאה בלבד): מדפיס host, gmach_name, לפני/אחרי, ושומר תצוגה מקדימה ב-scratch/brand-logo-backups/
@@ -40,13 +44,23 @@ node scripts/compress_brand_logo.js --org=1 --write --expect-host=... --expect-n
 | bootId של האינסטנס שענה | `lib/bootInfo.js` (על `globalThis`, אחד לתהליך), כותרת `x-boot-id` | `PageVisitLog.serverBootId` |
 | סוג הניווט של הדף | `lib/navMeta.js` ← `PageTracker` | `PageVisitLog.navigationType` (שורות הדפים) |
 
-- **CPU**: `process.cpuUsage()` הוא של התהליך כולו ואינסטנס משרת כמה בקשות במקביל, ולכן ה-CPU מחולק בין הבקשות הפעילות בכל פרוסת זמן
-  (הסכום על פני הבקשות = ה-CPU האמיתי של התהליך, בלי ספירה כפולה). בקשה בודדת (`x-cpu-conc: 1`) מדויקת. מגבלה: CPU של רינדור דפים או עבודה אחרת
-  שלא עטופה, ושרצה במקביל, נספר לבקשה הפעילה. הערך מעוגל למילי-שנייה שלמה בטבלה.
+- **CPU - חסם עליון, לא ערך מדויק**: `process.cpuUsage()` הוא של התהליך כולו ואינסטנס משרת כמה בקשות במקביל, ולכן ה-CPU מחולק בין הבקשות הפעילות בכל פרוסת זמן
+  (הסכום על פני הבקשות = ה-CPU של התהליך בזמן שהיה handler עטוף פעיל, בלי ספירה כפולה). **כל CPU של עבודה שאינה עטופה - רינדור דפים (RSC / `layout.js`),
+  נתיבי API לא עטופים, GC, טיימרים - שרץ על אותו אינסטנס בזמן שבקשה עטופה פעילה, מיוחס לבקשה העטופה.** לכן `serverCpuMs` ו-`x-cpu-conc` הם חסם עליון על ה-CPU של הנתיב;
+  הערך קרוב לאמת רק ל-`x-cpu-conc: 1` בלי רינדור במקביל. (`x-cpu-conc` נשמר רק בכותרת התשובה, לא בטבלה; בבדיקה ידנית אפשר לראות אותו ב-DevTools.)
+  הערך נשמר בטבלה בדיוק של עשירית מילי-שנייה (`DOUBLE PRECISION`), כך שנתיב של פחות ממילי-שנייה לא מתעגל ל-0.
 - **navigationType**: `navigate` / `reload` / `back_forward` / `prerender` לטעינת מסמך, בסיומת `+newtab` כשנראה שנפתח בלשונית חדשה
   (`window.opener`, או היסטוריה באורך 1 בלי referrer); כל מעבר דף נוסף באותו מסמך (ניווט פנימי של Next) הוא `spa`.
 - **x-boot-id**: בנוסף `GET /api/health/boot` (מחובר בלבד) מחזיר `bootId/bootAt/uptimeSec/requestsSinceBoot/region/deployment`.
   `/api/health` הציבורי לא שונה.
+
+### הערה: NOISY_VISIT_PATHS של ענף phase0 מדלל את הנתונים
+הענף `perf/phase0` מוסיף ל-`/api/log-visit` רשימת "רעש" (`lib/visitLog.js`, `NOISY_VISIT_PATHS`): שורות של `/api/me`, `/api/settings`, `/api/settings/labels`,
+`/api/me/design-prefs`, `/api/version` נזרקות לפני הכתיבה. לכן אחרי המיזוג `/api/me` ו-`/api/settings` (שעטופים כאן) **לא ייצרו שורות מדידה**, וספירת ה-cold starts
+(`count(DISTINCT "serverBootId")`) תהיה מוטה כלפי מטה: `/api/me` הוא בדרך כלל הקריאה הראשונה של כל טעינת דף, ולכן הוא זה שהיה "נתקל" באינסטנס קר ראשון.
+מה עושים: (א) לספור cold starts משורות של נתיבים אחרים (`/api/orders`, `/api/customers`, `/api/inventory/preload`...) - רק שאינסטנס שענה רק על נתיבים רועשים לא ייספר; או
+(ב) לפטור שורות שנושאות `serverBootId` מרשימת הרעש ב-`lib/visitLog.js` (שינוי קטן ב-`isNoisyVisitUrl` / בקורא שלו - לא נעשה כאן כדי לא לגעת בקבצי phase0).
+בנוסף `GET /api/health/boot` (מחובר) מאפשר בדיקה ידנית של bootId בלי תלות בלוג.
 
 ### נתיבים עטופים
 orders (GET, POST), customers (GET, POST), inventory/preload, settings (GET), me (GET), notifications (GET), a5/boot, health/boot.
@@ -59,7 +73,9 @@ orders (GET, POST), customers (GET, POST), inventory/preload, settings (GET), me
    ל-5 דקות (אחר כך בודק שוב, כך שאחרי ה-DDL הכתיבה מתחילה לבד). `/api/history` עבר ל-`select` מפורש כדי שלא ייכשל ב-DB בלי העמודות.
 2. DDL (אחרי אישור, בכל DB בנפרד - MAIN, NEVE, TEST - עם בדיקת זהות gmach_name + host):
    קודם `prisma/migrations-pending/2026-10-06-pagevisitlog-measure-check.sql` (SELECT בלבד), אחר כך `2026-10-06-pagevisitlog-measure.sql`
-   (`ADD COLUMN IF NOT EXISTS` x3, nullable, בלי DEFAULT - שינוי מטא-דאטה בלבד, אין שכתוב טבלה). אין להריץ `prisma db push`.
+   (`SET lock_timeout = '5s'` ואז `ADD COLUMN IF NOT EXISTS` x3, nullable, בלי DEFAULT - שינוי מטא-דאטה בלבד, אין שכתוב טבלה; `serverCpuMs` הוא `DOUBLE PRECISION`). אין להריץ `prisma db push`.
+   סקריפטי הפיתוח `scripts/refresh_local_from_prod.js` ו-`scripts/sync_prod_to_test.js` קוראים `PageVisitLog` עם `select` של העמודות הישנות בלבד (לא נכשלים ב-DB שעוד אין בו את העמודות),
+   ו-`prisma/schema.local.prisma` / `schema-sqlite.prisma` קיבלו את שלוש העמודות האופציונליות (מסד אופליין מקבל אותן ב-`npm run offline:db-push`; עד אז `log-visit` כותב בלעדיהן).
 3. אחרי ה-DDL אפשר להריץ `npx prisma generate` מקומית (בבילד של Vercel זה קורה לבד).
 
 ### איך קוראים את הנתונים (Postgres, קריאה בלבד)
@@ -112,7 +128,9 @@ FROM "PageVisitLog" WHERE "pageUrl" NOT LIKE '/api/%' AND "navigationType" IS NO
 GROUP BY 1 ORDER BY reloads DESC LIMIT 20;
 ```
 
-**4. התאמה לדשבורד Vercel:** `sum("serverCpuMs")` ליום מול ה-CPU של Vercel לאותו יום. הפער הצפוי: רינדור דפים (RSC/`layout.js`), `/api/poll`
+**4. התאמה לדשבורד Vercel:** `sum("serverCpuMs")` ליום מול ה-CPU של Vercel לאותו יום. **זהירות בהשוואה:** `serverCpuMs` הוא חסם עליון לכל נתיב בנפרד
+(עבודה לא-עטופה שרצה במקביל מיוחסת לנתיב העטוף), ובו בזמן הסכום חסר את כל מה שלא נרשם בלוג. לכן אי אפשר להניח שסכום הנתיבים קטן/שווה לדשבורד או להפך; משווים מגמות
+ויחסים בין נתיבים, לא מספרים מוחלטים. הפער הצפוי: רינדור דפים (RSC/`layout.js`), `/api/poll`
 ו-`light=1` (לא נרשמים), וקריאות שאבדו ב-`sendBeacon`. אם `cpu_ms_total` של הנתיבים העטופים הוא חלק קטן מהדשבורד - עיקר העומס הוא ברינדור/בנתיבים הלא-עטופים.
 
 ### עלות צפויה

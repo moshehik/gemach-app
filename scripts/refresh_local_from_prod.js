@@ -92,6 +92,14 @@ const MODELS = [
   { name: 'queryLog', delta: 'updatedAt' },
 ];
 
+// PageVisitLog: select מפורש של העמודות הישנות בלבד. עמודות המדידה (serverCpuMs/navigationType/serverBootId, docs/cpu-measurement-2026-10-06.md)
+// נוספות ל-DB בנפרד בכל סביבה (DDL ידני) - קריאה בלי select מבקשת את כולן ונכשלת (P2022) ב-DB שעוד אין בו אותן.
+const PAGE_VISIT_LOG_SELECT = {
+  id: true, legacyId: true, pageUrl: true, employeeId: true, employeeName: true, timestamp: true, loadingError: true,
+  isGuest: true, requestQuery: true, responseSize: true, executionTime: true, updatedAt: true,
+};
+const SELECT_BY_MODEL = { pageVisitLog: PAGE_VISIT_LOG_SELECT };
+
 const OVERLAP_MS = 60 * 60 * 1000; // re-pull the last hour to absorb clock skew; upserts make it harmless
 const PAGE = 1000;
 
@@ -153,6 +161,7 @@ async function refreshModel({ name, delta, uniqueBy }) {
       where,
       orderBy: { id: 'asc' },
       take: PAGE,
+      ...(SELECT_BY_MODEL[name] ? { select: SELECT_BY_MODEL[name] } : {}),
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     }));
     if (rows.length === 0) break;

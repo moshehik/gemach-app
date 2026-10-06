@@ -564,7 +564,7 @@ model PageVisitLog {
   updatedAt     DateTime  @updatedAt
   // מדידת CPU (docs/cpu-measurement-2026-10-06.md). עמודות אופציונליות - נוספות ב-DB ע"י prisma/migrations-pending/2026-10-06-pagevisitlog-measure.sql
   // (app/api/log-visit כותב אותן בסובלנות: DB בלי העמודות => נכתב בלעדיהן). לא להריץ db push.
-  serverCpuMs    Int? // x-cpu-ms של תשובת ה-API (מילי-שניות CPU בשרת)
+  serverCpuMs    Float? // x-cpu-ms של תשובת ה-API (מילי-שניות CPU בשרת, בדיוק עשירית)
   navigationType String? // navigate | reload | back_forward | prerender | spa (+ '+newtab')
   serverBootId   String? // x-boot-id: bootId שונים ביום = cold starts
 

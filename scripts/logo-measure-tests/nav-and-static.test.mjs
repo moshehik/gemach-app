@@ -89,14 +89,15 @@ test('סכימה + SQL: שלוש העמודות האופציונליות, idempo
   const schema = read('prisma/schema.prisma');
   const start = schema.indexOf('model PageVisitLog');
   const model = schema.slice(start, schema.indexOf('\n}', start));
-  assert.match(model, /serverCpuMs\s+Int\?/);
+  assert.match(model, /serverCpuMs\s+Float\?/);
   assert.match(model, /navigationType\s+String\?/);
   assert.match(model, /serverBootId\s+String\?/);
   const live = (t) => t.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
   const sql = live(read('prisma/migrations-pending/2026-10-06-pagevisitlog-measure.sql'));
   assert.equal((sql.match(/ADD COLUMN IF NOT EXISTS/g) || []).length, 3);
   assert.ok(!/DEFAULT/i.test(sql) && !/\b(DROP|UPDATE|DELETE|TRUNCATE|CREATE)\b/i.test(sql));
-  assert.match(sql, /"serverCpuMs"\s+INTEGER/); assert.match(sql, /"navigationType"\s+TEXT/); assert.match(sql, /"serverBootId"\s+TEXT/);
+  assert.match(sql, /SET lock_timeout = '5s';/);
+  assert.match(sql, /"serverCpuMs"\s+DOUBLE PRECISION/); assert.match(sql, /"navigationType"\s+TEXT/); assert.match(sql, /"serverBootId"\s+TEXT/);
   const chk = live(read('prisma/migrations-pending/2026-10-06-pagevisitlog-measure-check.sql'));
   assert.ok(!/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b/i.test(chk), 'check file is read-only');
 });

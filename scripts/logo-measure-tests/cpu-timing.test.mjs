@@ -34,12 +34,14 @@ test('handler שמחכה (I/O): wall גבוה, CPU נמוך', async () => {
 test('מקביליות: ה-CPU מתחלק בין הבקשות הפעילות (הסכום = ה-CPU האמיתי, לא כפול), ו-conc=2', async () => {
   const busy = CT.withCpuTiming(async () => { await sleep(5); burn(80); return json({}); });
   const idle = CT.withCpuTiming(async () => { await sleep(150); return json({}); });
+  const u0 = process.cpuUsage();
   const [rb, ri] = await Promise.all([busy(new Request('http://x/1')), idle(new Request('http://x/2'))]);
   const cb = parseFloat(rb.headers.get('x-cpu-ms')); const ci = parseFloat(ri.headers.get('x-cpu-ms'));
   assert.equal(rb.headers.get('x-cpu-conc'), '2');
   assert.equal(ri.headers.get('x-cpu-conc'), '2');
   assert.ok(cb + ci >= 60, `sum ${cb + ci} should cover the ~80ms burned`);
-  assert.ok(cb + ci < 130, `sum ${cb + ci} must not double count (naive per-request deltas would give ~160)`);
+  const u = process.cpuUsage(u0); const proc = (u.user + u.system) / 1000;
+  assert.ok(cb + ci <= proc + 3, `sum ${cb + ci} must not exceed the process CPU ${proc} (no double counting; naive per-request deltas would give ~2x)`);
 });
 
 test('חריגה עוברת הלאה ולא משאירה בקשה "פעילה"', async () => {

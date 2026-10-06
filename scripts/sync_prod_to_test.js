@@ -12,6 +12,14 @@ if (!prodUrl || !testUrl) {
 const prod = new PrismaClient({ datasourceUrl: prodUrl });
 const test = new PrismaClient({ datasourceUrl: testUrl });
 
+// PageVisitLog: select מפורש של העמודות הישנות בלבד. עמודות המדידה (serverCpuMs/navigationType/serverBootId, docs/cpu-measurement-2026-10-06.md)
+// נוספות ל-DB בנפרד בכל סביבה (DDL ידני) - קריאה בלי select מבקשת את כולן ונכשלת (P2022) ב-DB שעוד אין בו אותן.
+const PAGE_VISIT_LOG_SELECT = {
+  id: true, legacyId: true, pageUrl: true, employeeId: true, employeeName: true, timestamp: true, loadingError: true,
+  isGuest: true, requestQuery: true, responseSize: true, executionTime: true, updatedAt: true,
+};
+const SELECT_BY_MODEL = { pageVisitLog: PAGE_VISIT_LOG_SELECT };
+
 async function syncTable(tableName, orderByField = 'id') {
   console.log(`Syncing ${tableName}...`);
   try {
@@ -25,7 +33,8 @@ async function syncTable(tableName, orderByField = 'id') {
       const records = await prod[tableName].findMany({
         orderBy: { [orderByField]: 'asc' },
         skip,
-        take
+        take,
+        ...(SELECT_BY_MODEL[tableName] ? { select: SELECT_BY_MODEL[tableName] } : {}),
       });
       
       if (records.length === 0) break;

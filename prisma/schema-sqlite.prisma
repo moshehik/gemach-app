@@ -294,6 +294,10 @@ model PageVisitLog {
   timestamp    DateTime  @default(now()) // Exact time of visit
   loadingError String?   // Details of any error that occurred
   isGuest      Boolean   @default(false)
+  // מדידת CPU (docs/cpu-measurement-2026-10-06.md) - עמודות אופציונליות; במסד מקומי נוספות עם db push
+  serverCpuMs    Float?
+  navigationType String?
+  serverBootId   String?
 
   @@index([employeeId])
 }

@@ -42,8 +42,11 @@ async function main() {
 
   const url = resolveDbUrl(org);
   const host = hostOf(url);
-  const otherHost = hostOf(resolveDbUrl(org === 1 ? 2 : 1));
-  if (!host || host === otherHost) throw new Error(`SAFETY ABORT: org${org} host "${host}" is empty or equals the other org's host "${otherHost}"`);
+  // ה-host חייב להיות שונה מה-host של הגמח השני. אם אין URL לגמח השני (למשל DATABASE_URL_ORG2 לא מוגדר במחשב הזה) אי אפשר לבדוק -
+  // לא נכשלים על זה ב-dry-run (קריאה בלבד), ובכתיבה הזיהוי הוא --expect-host + --expect-name (חובה) מול ה-DB עצמו.
+  let otherHost = null;
+  try { otherHost = hostOf(resolveDbUrl(org === 1 ? 2 : 1)); } catch (e) { console.warn(`note: no DB URL for org${org === 1 ? 2 : 1} on this machine - skipping the "other org host differs" check (${e.message})`); }
+  if (!host || (otherHost !== null && host === otherHost)) throw new Error(`SAFETY ABORT: org${org} host "${host}" is empty or equals the other org's host "${otherHost}"`);
   console.log(`org${org} DB host: ${host} | mode: ${write ? 'WRITE' : 'dry-run'}`);
 
   const prisma = new PrismaClient({ datasources: { db: { url } } });
