@@ -100,7 +100,7 @@ test('חיווט: useCardTooltips (hover/focus/touch 1.4s/.tip 3.5s/Escape/scrol
   for (const s of ["'mouseover'", "'focusin'", "'touchstart'", "'click'", "e.key === 'Escape'", "'scroll'", 'show(b, 1400)', 'show(tp, 3500)', "setAttribute('aria-describedby'", 'new MutationObserver']) assert.ok(h.includes(s), s);
   assert.match(h, /placeTip\(.*'above', 10\)/);
   const r = strip(read(`${OC}/OcRichTips.js`));
-  assert.match(r, /isTouchDevice(/);
+  assert.match(r, /isTouchDevice\(/);
   assert.match(r, /closest\('\.rail'\)/);
   assert.match(r, /mode="side"/);
   assert.match(r, /!t\.closest\('\.tlx'\)/, 'צמתי הציר מטופלים ב-OcStepper');
