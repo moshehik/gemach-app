@@ -150,7 +150,7 @@ function installDb(extraSettings = []) {
       { id: 'emp-worker', roleId: 5, isActive: true, firstName: 'עובדת', lastName: 'רגילה', password: OTHER_HASH },
       { id: 'emp-worker2', roleId: 5, isActive: true, firstName: 'עובדת', lastName: 'שנייה', password: OTHER_HASH },
       { id: 'emp-mgr', roleId: 1, isActive: true, firstName: 'מנהלת', lastName: 'סניף', password: PIN_HASH },
-      { id: 'emp-mgr-noperm', roleId: 1, isActive: true, firstName: 'מנהלת', lastName: 'ללא', password: PIN_HASH },
+      { id: 'emp-mgr-noperm', roleId: 5, isActive: true, firstName: 'מנהלת', lastName: 'ללא', password: PIN_HASH },
       { id: 'emp-head', roleId: 0, isActive: true, firstName: 'הנהלה', lastName: 'ראשית', password: PIN_HASH },
     ],
     systemSetting: [{ key: 'require_login', value: 'true' }, ...extraSettings],
@@ -446,7 +446,7 @@ test('debt-approval ON: a real token is accepted once; replay, expiry, wrong ord
 test('debt-approval ON: permission revoked inside the 5 minutes = refused (the approver is re-checked at use time)', async () => {
   setFlags(true);
   const tok = (await mint({})).__json.approvalToken;
-  globalThis.__MOCK_DB.employeePermissionOverride = [];
+  globalThis.__MOCK_DB.employeePermissionOverride = [{ employeeId: 'emp-mgr', key: 'feature:debt_approval', value: 'false' }];
   invalidatePermissionCache();
   loginAs('emp-worker');
   assert.equal((await postDebt({ approvalToken: tok })).status, 403);
