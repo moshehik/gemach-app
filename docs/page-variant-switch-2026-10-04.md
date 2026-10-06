@@ -25,6 +25,7 @@
 | `home` | דף הבית | `/` | LegacyHome | HomeA5 | (קיים) |
 | `order_card` | כרטיס הזמנה | `/orders/:id` | כן | **כן** (5.10.2026, ענף feature/order-card-a5; OrderCardSwitch) | הכרטיס החדש: app/components/order-card, הישן: LegacyOrderPage.js (= page.js של main) |
 | `customer_card` | כרטיס לקוח | `/customers/:id` | כן | **עוד לא** | ענף feature/customer-card-a5-2026-10-04 |
+| `new_order` | הזמנה חדשה | `/orders/new` | `app/orders/new/LegacyNewOrderPage.js` (נעול ב-PINNED_BLOBS) | **כן** (6.10.2026; NewOrderSwitch, `app/components/new-order`) | מתכנת - חדש כברירת מחדל, כל השאר ישן; הנהלה ראשית / מתכנת מחליפים באייקון (בכותרת האשף החדש, ובפינה בישן דרך VariantFrame). פירוט: docs/new-order-programmer-default-2026-10-06.md |
 | `profile` | הפרופיל שלי | `/profile` | `app/profile/LegacyProfilePage.js` | ProfilePage | `7917382f^:app/profile/page.js` |
 | `admin_hub` | מסך ניהול ראשי | `/admin` | `app/admin/LegacyAdminPage.js` (+ EmailListCard, menu/AdminHubA5Cards, components/FullEmailListModal בנתיבים המקוריים) | AdminHubPage | `079fc226^1` |
 | `attendance` | נוכחות | `/employees`, `/employees/attendance`, `/employees/report`, `/my-hours` | `app/employees/LegacyEmployeesPage.js`, `app/employees/report/LegacyReportPage.js`, `app/my-hours/LegacyMyHoursPage.js` | AttendancePage | `f3b1f771^1` |
