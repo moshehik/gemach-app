@@ -450,3 +450,18 @@ test('הנתיב /journal מעביר inferPrepWhenTaken; הלו״ז / prep-mark 
   assert.ok(!/inferPrepWhenTaken/.test(rd('app/api/orders/[id]/prep-mark/route.js')));
   assert.ok(!/inferPrepWhenTaken/.test(rd('lib/schedule/loaders.js')));
 });
+
+test('הסקה: סימון הכנה שבוטל (done=false) גובר על ההסקה - הכנה נשארת "טרם בוצע" עם לחצן הסימון, כמו בלו״ז; לכן גם ה"בטל סימון" של סימון אוטומטי משאיר את הכרטיס והלו״ז מאוחדים', () => {
+  const o = { ...ORDER, items: TAKEN_ITEMS };
+  const cancelled = [{ stageKey: 'prep', dayKey: '2026-10-05', done: false, markedAt: IL('2026-10-05', '21:53'), markedBy: 'רחל כהן' }];
+  const r = computeOrderStages(o, { schedule: ORG_MAIN, marks: cancelled, todayKey: '2026-10-09', closeWhenReturned: true, inferPrepWhenTaken: true });
+  assert.equal(byKey(r, 'prep').done, false);
+  assert.equal(byKey(r, 'prep').inferred, undefined);
+  assert.equal(byKey(r, 'prep').markable, true, 'לחצן "סמן הכנה בוצעה" חוזר');
+  assert.equal(r.currentKey, 'prep');
+  // סימון בוצע + סימון מבוטל לשלב אחר (תיקונים) לא משפיע על הכנה
+  const other = computeOrderStages(o, { schedule: ORG_MAIN, marks: [{ stageKey: 'repair', dayKey: '2026-10-05', done: false }], todayKey: '2026-10-09', inferPrepWhenTaken: true });
+  assert.equal(byKey(other, 'prep').done, true);
+  // בלי האפשרות - אין שינוי
+  assert.equal(computeOrderStages(o, { schedule: ORG_MAIN, marks: cancelled, todayKey: '2026-10-09' }).currentKey, 'prep');
+});
