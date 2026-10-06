@@ -10,8 +10,12 @@ const nextConfig = {
   // runtime fs calls, which Vercel's static file tracing can't see - without this the
   // deployed function is missing /var/task/node_modules/@sparticuz/chromium/bin entirely
   // and every PDF request 500s with "The input directory ... does not exist".
+  // Every route that calls renderPdf (lib/pdf.js) needs the include - guarded by scripts/pdf-tests/server-pdf.test.mjs.
+  // (Inferred 2026-10-05 from the size of the 6 logged production failures: they match "Failed to launch the browser process", i.e. these
+  // files were probably in the function and the binary was extracted; see docs/server-pdf-verification-2026-10-05.md. Keep this include regardless.)
   outputFileTracingIncludes: {
     '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/admin/email-test': ['./node_modules/@sparticuz/chromium/bin/**/*'],
   },
 
   // עמדות ברשת המקומית ניגשות לשרת דרך ה-IP של המחשב ולא דרך localhost.

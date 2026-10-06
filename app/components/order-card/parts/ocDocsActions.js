@@ -10,7 +10,7 @@ import {
   mailRequestBody, MAX_QUICK_FILES, docAttachmentOf, extraAttachmentOf, docFileName, paymentsPageHtml, receiptPageHtml, modelPhotosPageHtml, orderExportSheets, orderEmailOf, isValidEmail,
 } from './ocDocsLogic';
 import { loadModelPhotos } from './ocDocsImages';
-import { orderPrintPath } from '../../../../lib/schedule/print/orderMode';
+import { orderPrintPath, parseOrderIdParam } from '../../../../lib/schedule/print/orderMode';
 
 const jsonOf = async (res) => { try { return await res.json(); } catch { return {}; } };
 
@@ -154,6 +154,24 @@ export async function downloadOrderPdf({ oc, orderId, fetchImpl = fetch, pdf }) 
   await client.downloadPdf({ html, filename: fileName.replace(/\.pdf$/, '') }, fileName);
   await oc.logEvent('ORDER_PDF_DOWNLOADED', { doc: 'order', fileName });
   return { ok: true, fileName };
+}
+
+/** כשל של שרת ה-PDF (ולא של קריאת ה-HTML של ההזמנה / התחברות / רשת): השגיאה מ-pdfClient נושאת stage (גוף ה-500 של /api/pdf) או status >= 500 */
+export const isServerPdfFailure = (e) => !!e && (!!e.stage || Number(e.status) >= 500);
+
+/**
+ * גיבוי להורדת PDF שנכשלה בשרת (/api/pdf): אותו דף ההדפסה של ההזמנה בלשונית חדשה - הוא פותח את חלון ההדפסה של הדפדפן ושם בוחרים "שמירה כ-PDF"
+ * (אותו דפוס כמו HomeA5 / AttendanceWizard). הדף רושם ORDER_PRINTED בעצמו. מחזיר { ok, path }; ok=false = החלון נחסם (חוסם חלונות קופצים -
+ * הקריאה מגיעה אחרי המתנה לשרת, כבר לא בתוך הלחיצה) - הקורא מציג כפתור "פתיחה" שהלחיצה עליו כן מותרת.
+ */
+export function openOrderPrintFallback({ orderId, open }) {
+  const id = parseOrderIdParam(orderId);
+  if (!id) return { ok: false, path: null };
+  const path = `/print/order?orderId=${id}&type=order`;
+  const opener = open || (typeof window !== 'undefined' ? window.open.bind(window) : null);
+  let w = null;
+  try { w = opener ? opener(path, '_blank') : null; } catch { w = null; }
+  return { ok: !!w, path };
 }
 
 /** A1: ייצוא ההזמנה ל-Excel (גיליון לכל מקטע, RTL, תאריכים עבריים) + ORDER_XLSX_EXPORTED. מקור: מצב השרת האחרון (מה שנשמר). */

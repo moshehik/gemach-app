@@ -7,6 +7,13 @@
 // pagination or selectable text. This module never builds a PDF itself; it just calls the
 // route and hands back a Blob/base64 string.
 
+// First non-empty line of the server's `detail`, capped - toasts/alerts must stay readable.
+export function shortDetail(detail, max = 300) {
+  if (typeof detail !== 'string') return '';
+  const line = detail.split(/\r?\n/).map((l) => l.trim()).find(Boolean) || '';
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
 async function requestPdf(payload) {
   const res = await fetch('/api/pdf', {
     method: 'POST',
@@ -15,13 +22,25 @@ async function requestPdf(payload) {
   });
   if (!res.ok) {
     let message = 'שגיאה ביצירת ה-PDF';
+    let full = '';
+    let stage = '';
     try {
       const data = await res.json();
       if (data?.error) message = data.error;
+      // The server's technical reason (e.g. "Failed to launch the browser process") is appended - short, one
+      // line - so a failed click shows the real cause instead of only the generic Hebrew sentence.
+      const detail = shortDetail(data?.detail);
+      stage = typeof data?.stage === 'string' ? data.stage : '';
+      if (typeof data?.detail === 'string') full = data.detail;
+      if (detail) message += ` (${stage ? `${stage}: ` : ''}${detail})`;
     } catch {
       // response wasn't JSON (e.g. a platform-level error page) - keep the default message
     }
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = res.status;
+    if (full) error.detail = full; // the whole server-side reason (not shortened) for logs / diagnostics
+    if (stage) error.stage = stage;
+    throw error;
   }
   return res.blob();
 }

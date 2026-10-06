@@ -12,7 +12,7 @@
 //   await ui.choose({title, sub, body, choices:[{key,text,icon,kind:'primary'|'plain'|'ghost'|'danger'}]}) → key | null
 //   await ui.prompt({title, sub, label, icon, type, inputMode, dir, placeholder, defaultValue, okText, cancelText, validate}) → string | null
 //   await ui.alert({title, sub, body, okText, kind:'info'|'error'})                     → undefined
-//   ui.toast(kind:'info'|'charge'|'credit'|'error', big, small?, action?:{text, icon?, onClick})   ; ui.hideToast()
+//   ui.toast(kind:'info'|'charge'|'credit'|'error', big, small?, action?:{text, icon?, onClick}, opts?:{ms})   ; ui.hideToast()   (opts.ms = משך הצגה מותאם, ברירת מחדל לפי kind)
 //   await ui.openDialog(Component, props, {layer:1|2, className, dismissable, badge})   → מה שהרכיב העביר ל-close(result)
 //        badge:false = בלי תג האייקון העגול בראש החלון (ברירת מחדל: יש, כמו בעיצוב)
 //        הרכיב מקבל {...props, close}. Escape / לחיצה על הרקע = close(null) (אלא אם dismissable:false).
@@ -204,13 +204,14 @@ export function OcUiProvider({ children }) {
     outTimer.current = setTimeout(() => { setToast(null); setToastOut(false); }, 270);
   }, []);
 
-  const showToast = useCallback((kind, big, small, action) => {
+  const showToast = useCallback((kind, big, small, action, opts) => {
     const k = TOAST_MS[kind] ? kind : 'info';
+    const ms = opts && Number(opts.ms) > 0 ? Number(opts.ms) : TOAST_MS[k];
     clearTimeout(toastTimer.current);
     clearTimeout(outTimer.current);
     setToastOut(false);
-    setToast({ kind: k, big, small: small || '', action: action || null, n: Date.now() });
-    toastTimer.current = setTimeout(() => hideToast(), TOAST_MS[k]);
+    setToast({ kind: k, big, small: small || '', action: action || null, ms, n: Date.now() });
+    toastTimer.current = setTimeout(() => hideToast(), ms);
   }, [hideToast]);
   useEffect(() => () => { clearTimeout(toastTimer.current); clearTimeout(outTimer.current); }, []);
 
@@ -306,7 +307,7 @@ export function OcUiProvider({ children }) {
           aria-live="polite"
           data-kind={toast ? toast.kind : undefined}
           className={toast ? `${toast.kind}${toastOut ? ' out' : ' on pulse'}` : ''}
-          style={toast ? { '--tdur': `${TOAST_MS[toast.kind]}ms` } : undefined}
+          style={toast ? { '--tdur': `${toast.ms || TOAST_MS[toast.kind]}ms` } : undefined}
           key={toast ? toast.n : 'none'}
           onClick={(e) => { if (toast && !(e.target.closest && e.target.closest('.tbtn'))) hideToast(); }}
         >
