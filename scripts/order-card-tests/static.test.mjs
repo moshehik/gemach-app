@@ -25,8 +25,9 @@ const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map((
 // + דיווחי נווה יעקב 5.10.2026 (fix-reports/neve-order-card-2026-10-05): 72a80404 (ת״ז פעם אחת לביקור, מאחורי customer_id_once_per_order_visit), f6da1794 (רענון כשחוזרים לכרטיס אחרי שינוי ממקום אחר), 2c827b93 (window.open של ההדפסה עם noopener).
 // + בדיקת הרענון של f6da1794 עברה מאחורי order_card_refresh_on_return (כבוי כברירת מחדל = כמו קודם; ביקורת F, 6.10.2026).
 // + (fix-reports/neve-delivery-button-2026-10-06, דיווחים a6e5fb70/e2c072b7) prop חדש onOrderChange ללשונית התשלומים - כפתורי "הוסף חיוב משלוח" מסמנים גם את ההזמנה כמשלוח, מאחורי delivery_leg_button_marks_order (כבוי כברירת מחדל = ללא שינוי).
+// + קיזוז זיכוי פתוח (fix-reports/neve-credit-offset-2026-10-06, דיווח 679a860b): askCreditOffset/refreshPaymentsAfterOffset + שאלה אחרי שמירה/יציאה שיצרו חוב, מאחורי customer_credit_offset_prompt (כבוי = אפס שינוי).
 // כל שינוי עתידי בדף הישן חייב לעדכן את הערך הזה במכוון (והבדיקות ב-approval-tokens.client.test.mjs מגדירות מה השתנה).
-const LEGACY_SHA256_LF = 'e5f8cecefa2389980c23dc2a688a4b12ed9259fd5d5efda14aa9d0e5170d49e5';
+const LEGACY_SHA256_LF = '559f528ee52ff699092dc24374df77cb76618ccd438f5e51172bf14cf548c01a';
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
   const s = read(path.join(PROJ, 'app/orders/[id]/LegacyOrderPage.js')).replace(/\r\n/g, '\n');
   assert.equal(crypto.createHash('sha256').update(s).digest('hex'), LEGACY_SHA256_LF);

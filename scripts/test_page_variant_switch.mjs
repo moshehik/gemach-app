@@ -426,7 +426,8 @@ export default function AdminHubPage({ showSite = false }) {
 //    + window.open של ההדפסה האוטומטית עם 'noopener' (דיווח 2c827b93, 5.10.2026).
 //    במקום השוואה ל-blob בהיסטוריה (שאי אפשר לכוון אליו אחרי העריכה) נעול כאן ה-hash של הקובץ עצמו: כל עריכה נוספת בו מחייבת עדכון מודע של השורה.
 const PINNED_BLOBS = {
-  'app/orders/new/LegacyNewOrderPage.js': '2b779d0494a8897f6703467ddb4811051a70189d',
+  // + קיזוז זיכוי פתוח אחרי יצירת הזמנה עם חוב (דיווח 679a860b, מאחורי customer_credit_offset_prompt; כבוי = אפס שינוי)
+  'app/orders/new/LegacyNewOrderPage.js': '3115d966ad5c93fecc3e10c20f3f15039d2087c6',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

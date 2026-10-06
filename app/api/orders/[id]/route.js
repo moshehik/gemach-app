@@ -68,6 +68,8 @@ import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus }
 import { verifyManagerPin } from '../../../../lib/managerAuth';
 import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
 import { canApproveDebt } from '@/lib/permissions';
+import { syncPendingCreditRefund } from '@/lib/creditRefundSync';
+import { reverseCreditOffsetsForOrder } from '@/lib/creditOffsetServer';
 import { getApprovalMode, resolveDebtApprover, enforceOrderPutApprovals, releaseApprovalClaims, commitApprovalClaims } from '@/lib/approvalGate';
 import {
   STOCK_SHORTAGE_CODE, CONFLICT_CODE, MANUAL_CHARGE_PERMISSION,
@@ -1282,6 +1284,14 @@ export async function DELETE(request, { params }) {
       }
     } catch (joinFailure) {
       console.error(`Order ${parsedOrderId}: releasing delivery join on cancel failed:`, joinFailure);
+    }
+
+    // קיזוז זיכוי (customer_credit_offset_prompt, lib/creditOffset.js): הזיכוי שקוזז לתוך ההזמנה שנמחקה חוזר להזמנה שממנה בא, בתנועות הפוכות -
+    // אחרת הכסף נשאר תקוע בהזמנה מחוקה בלי בקשת זיכוי. בלי תשלומי קיזוז בהזמנה זה לא עושה כלום; כשל כאן לא מפיל את הביטול.
+    try {
+      await reverseCreditOffsetsForOrder({ prisma, orderId: parsedOrderId, syncPendingCreditRefund });
+    } catch (offsetFailure) {
+      console.error(`Order ${parsedOrderId}: reversing credit offsets on cancel failed:`, offsetFailure);
     }
 
     return NextResponse.json({ success: true });
