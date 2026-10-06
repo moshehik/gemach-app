@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import OverdueOrdersModal from './OverdueOrdersModal';
+import { onActiveInterval } from '@/lib/idleGuard';
+import { overdueCheckKey, isOverdueCheckFresh } from '@/lib/overdueReminders';
 
 const HOUR_MS = 60 * 60 * 1000;
 const LAST_SHOWN_KEY = 'overdueRemindersLastShownAt';
@@ -37,8 +39,14 @@ export default function OverdueRemindersWatcher({ authToken }) {
       try {
         const lastShownAt = Number(sessionStorage.getItem(LAST_SHOWN_KEY) || 0);
         if (Date.now() - lastShownAt < HOUR_MS) return;
+        // cpu-phase0: בדיקה שנעשתה לפני פחות מ-55 דק' (גם אם לא נמצאו איחורים) לא חוזרת בכל טעינת דף. סימון לכל עובד.
+        const checkKey = overdueCheckKey(authToken);
+        let lastCheckedRaw = null;
+        try { lastCheckedRaw = sessionStorage.getItem(checkKey); } catch (e) { /* storage חסום - בודקים כרגיל */ }
+        if (isOverdueCheckFresh(lastCheckedRaw)) return;
         const res = await fetch('/api/orders/overdue', { cache: 'no-store' });
         if (!res.ok) return;
+        try { sessionStorage.setItem(checkKey, String(Date.now())); } catch (e) { /* best-effort */ }
         const data = await res.json();
         if (cancelled) return;
         if (Array.isArray(data.orders) && data.orders.length > 0) {
@@ -52,10 +60,11 @@ export default function OverdueRemindersWatcher({ authToken }) {
 
     checkAndAlert();
 
-    const interval = setInterval(checkAndAlert, HOUR_MS);
+    // lib/idleGuard.js: טאב מוסתר / שנשכח פתוח לא שולף ולא מקפיץ חלונית לאף אחד; בחזרה - בדיקה אחת אם עברה שעה.
+    const stopInterval = onActiveInterval(checkAndAlert, HOUR_MS);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      stopInterval();
     };
   }, [authToken]);
 

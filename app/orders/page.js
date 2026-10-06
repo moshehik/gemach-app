@@ -17,6 +17,7 @@ import { fetchSharedJson, readCache, subscribe, TTL } from '../../lib/apiCache';
 import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
 import { listOrderDrafts } from '@/app/lib/orderDrafts';
 import { SearchNotices, ScopeNote, SearchEmptyHint } from '../../components/SearchNotices';
+import { onActiveInterval } from '@/lib/idleGuard';
 
 // מיפוי סטטוס טקסטואלי (calculateOrderStatus/calculatePaymentStatus ב-lib/orderStatus.js, משותף
 // לכמה עמודים) אל מחלקת ה-badge של מערכת העיצוב "אריג" כאן בעמוד ההזמנות בלבד — לא נוגעים בעוזר המשותף עצמו.
@@ -174,8 +175,8 @@ export default function OrdersPage() {
   const [nowTick, setNowTick] = useState(null);
   useEffect(() => {
     setNowTick(Date.now());
-    const id = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(id);
+    // lib/idleGuard.js: אין רינדור מחדש כל שנייה של כל הרשימה בטאב מוסתר / שנשכח פתוח (עומס דפדפן, לא שרת); בחזרה - טיק מיידי
+    return onActiveInterval(() => setNowTick(Date.now()), 1000, { resumeStaleMs: 0 });
   }, []);
 
   // טיוטות מקומיות של שינויים שלא נשמרו בכרטיסי הזמנה (app/lib/orderDrafts.js) —

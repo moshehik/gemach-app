@@ -4,19 +4,25 @@ import { cookies } from 'next/headers';
 import { checkAuth } from '../../../lib/auth';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { redactRequestQuery, redactUrl } from '@/lib/redactSensitive';
+import { isNoisyVisitUrl, createEmployeeNameCache } from '@/lib/visitLog';
 
+// cpu-phase0: שם העובד נשמר בזיכרון האינסטנס (30 דק') במקום findUnique בכל אצווה. הזהות עצמה (id) כבר מאומתת ב-HMAC
+// (getVerifiedAuthCookie מחייב עוגיית auth_session חתומה שתואמת ל-auth_token) - רק השם דורש DB, ורק פעם אחת.
+const employeeNames = createEmployeeNameCache({
+  load: (id) => prisma.employee.findUnique({ where: { id }, select: { firstName: true, lastName: true } }),
+});
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
-    // שני צורות גוף: { entries: [...] } - האצווה שה-interceptor ב-app/layout.js שולח (כל ~20 שנ'
+    // שני צורות גוף: { entries: [...] } - האצווה שה-interceptor ב-app/layout.js שולח (כל ~60 שנ'
     // או בסגירת הדף), או רשומה בודדת { pageUrl, ... } - דפי ההדפסה (app/print/*) עדיין שולחים כך.
     const rawEntries = Array.isArray(body?.entries) ? body.entries : [body];
     const now = Date.now();
     const entries = rawEntries
       .slice(0, 50)
-      .filter((e) => e && typeof e.pageUrl === 'string' && e.pageUrl)
+      .filter((e) => e && typeof e.pageUrl === 'string' && e.pageUrl && !isNoisyVisitUrl(e.pageUrl))
       .map((e) => ({
         // הגנה בעומק: גם אם קליינט ישן/זדוני שולח סיסמה או PIN - לא נשמרים ב-DB (ר' lib/redactSensitive.js)
         pageUrl: redactUrl(e.pageUrl).slice(0, 2000),
@@ -24,11 +30,13 @@ export async function POST(request) {
         requestQuery: e.requestQuery ? redactRequestQuery(String(e.requestQuery).slice(0, 4000), e.pageUrl) : null,
         responseSize: typeof e.responseSize === 'number' ? e.responseSize : null,
         executionTime: typeof e.executionTime === 'number' ? e.executionTime : null,
-        // חותמת הזמן של הקליינט נשמרת (האצווה נשלחת עד ~20 שנ' אחרי הפעולה) - רק אם סבירה
+        // חותמת הזמן של הקליינט נשמרת (האצווה נשלחת עד ~60 שנ' אחרי הפעולה) - רק אם סבירה
         timestamp: typeof e.ts === 'number' && e.ts <= now + 60000 && e.ts >= now - 15 * 60000 ? new Date(e.ts) : undefined,
       }));
 
     if (entries.length === 0) {
+      // כל השורות היו רעש אתחול (NOISY_VISIT_PATHS) - לא שגיאה, פשוט אין מה לכתוב
+      if (rawEntries.some((e) => e && typeof e.pageUrl === 'string' && isNoisyVisitUrl(e.pageUrl))) return NextResponse.json({ success: true, skipped: true });
       return NextResponse.json({ success: false, message: 'URL is required' }, { status: 400 });
     }
 
@@ -43,14 +51,11 @@ export async function POST(request) {
       // auth_token is the Employee's UUID `id`, not a numeric legacyId - store it as-is
       // (PageVisitLog.employeeId is a String field), don't parseInt it.
       const candidateId = authCookie.value;
-      const emp = await prisma.employee.findUnique({
-        where: { id: candidateId },
-        select: { firstName: true, lastName: true }
-      });
-      if (emp) {
+      const cachedName = await employeeNames.get(candidateId);
+      if (cachedName) {
         employeeId = candidateId;
         isGuest = false;
-        employeeName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `עובד ${candidateId}`;
+        employeeName = cachedName;
       }
     }
 

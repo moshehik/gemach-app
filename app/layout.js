@@ -6,7 +6,7 @@ import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
 import { resolvePageAccess } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
-import { getAllCachedSettings } from '@/lib/settingsCache';
+import { getAllCachedSettings, hasBrandLogo } from '@/lib/settingsCache';
 
 export const metadata = {
   title: 'גמ"ח שמלות - קטלוג וניהול',
@@ -81,8 +81,10 @@ export default async function RootLayout({ children }) {
   // management_messages / gmach_name / gmach_subtitle / BRAND_LOGO: מפתחות שהמעטפת החדשה (lib/menu/buildMenuTree.js)
   // צריכה — מאותה קריאת מטמון אחת (getAllCachedSettings, TTL 30 שנ'), בלי שאילתה נוספת. BRAND_LOGO הוא base64
   // גדול ולכן נשלח ללקוח רק כ-!!value (ר' menuTree למטה), לעולם לא הערך עצמו.
-  const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', 'nedarim_plus_enabled', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
+  // 6.10.2026 (cpu-phase0): getAllCachedSettings כבר לא טוען את BRAND_LOGO (2.5MB); "יש לוגו" מגיע מ-hasBrandLogo() (שאילתה
+  // זעירה ממוטמנת) ומוזרק כשורת-סימון { key: 'BRAND_LOGO', value: '1' } - הצרכנים (menuTree, loginVariant) בודקים רק length > 0.
+  const settingsPromise = Promise.all([getAllCachedSettings(), hasBrandLogo().catch(() => false)]).then(([all, logoPresent]) =>
+    [...all, ...(logoPresent ? [{ key: 'BRAND_LOGO', value: '1' }] : [])].filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'enable_unreturned_orders_popup', 'management_messages', 'gmach_name', 'gmach_subtitle', 'BRAND_LOGO', 'login_page_new', 'nedarim_plus_enabled', ...UI_VARIANT_SETTING_KEY_LIST].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -383,7 +385,7 @@ export default async function RootLayout({ children }) {
 
   // תור ל-/api/log-visit: לפני זה כל קריאת /api/* יצרה POST נוסף משלה (כל קריאה = 2
   // invocations ב-Vercel + 2-3 שאילתות DB), ועל תוכנית Free זה בזבז גם מכסת invocations
-  // וגם תעבורת Neon. עכשיו הרשומות נאספות ונשלחות יחד: כל ~20 שנ', מיד ב-25 רשומות,
+  // וגם תעבורת Neon. עכשיו הרשומות נאספות ונשלחות יחד: כל ~60 שנ' (cpu-phase0; היה 20), מיד ב-25 רשומות,
   // ובסגירת הדף/מעבר לרקע (sendBeacon). ר' docs/vercel-resource-audit-2026-09-20.md.
   var visitQueue = [];
   var visitFlushTimer = null;
@@ -432,7 +434,7 @@ export default async function RootLayout({ children }) {
     entry.ts = Date.now();
     visitQueue.push(entry);
     if (visitQueue.length >= 25) { flushVisitQueue(false); return; }
-    if (!visitFlushTimer) visitFlushTimer = setTimeout(function() { flushVisitQueue(false); }, 20000);
+    if (!visitFlushTimer) visitFlushTimer = setTimeout(function() { flushVisitQueue(false); }, 60000);
   };
   document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') flushVisitQueue(true); });
   window.addEventListener('pagehide', function() { flushVisitQueue(true); });
