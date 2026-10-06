@@ -6,7 +6,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import OcPortal from './OcPortal';
 import OcRichCard from './OcRichCard';
-import { parseRichSpec, railRichRows } from './parts/ocTipLogic';
+import { parseRichSpec, railRichRows, isTouchDevice, richClickDecision } from './parts/ocTipLogic';
 
 export default function OcRichTips({ rootRef, getCtx }) {
   const [rich, setRich] = useState(null); // { el, rows, anchor, gold }
@@ -31,17 +31,17 @@ export default function OcRichTips({ rootRef, getCtx }) {
       setRich({ el, rows, anchor: el.getBoundingClientRect(), gold: !!el.closest('.rail') });
     };
     const richOf = (e) => { const t = e.target.closest ? e.target.closest('[data-rich]') : null; return t && !t.closest('.tlx') ? t : null; };
-    const over = (e) => { const t = richOf(e); if (t && t !== curRef.current) show(t); };
-    const out = (e) => { const t = richOf(e); if (t && !(e.relatedTarget && t.contains(e.relatedTarget))) hide(); };
-    const fin = (e) => { const t = richOf(e); if (t) show(t); };
-    const fout = (e) => { if (richOf(e)) hide(); };
+    // מכשיר מגע: אירועי העכבר הסינתטיים אחרי הקשה (mouseover/out) וה-focus שהקשה מעבירה לא מציגים / סוגרים - רק ה-click (שתי הקשות) מנהל את הכרטיס
+    const touch = () => isTouchDevice(typeof window !== 'undefined' ? window.matchMedia : null);
+    const over = (e) => { if (touch()) return; const t = richOf(e); if (t && t !== curRef.current) show(t); };
+    const out = (e) => { if (touch()) return; const t = richOf(e); if (t && !(e.relatedTarget && t.contains(e.relatedTarget))) hide(); };
+    const fin = (e) => { if (touch()) return; const t = richOf(e); if (t) show(t); };
+    const fout = (e) => { if (touch()) return; if (richOf(e)) hide(); };
     const click = (e) => {
       const t = richOf(e);
-      const isTouch = window.matchMedia && window.matchMedia('(hover:none)').matches;
-      const inBtn = e.target.closest && e.target.closest('button');
-      if (t && isTouch && (!inBtn || inBtn === t)) {
-        if (curRef.current !== t) { show(t); e.preventDefault(); e.stopPropagation(); } else if (!inBtn) hide();
-      } else if (!t) hide();
+      const btn = e.target.closest ? e.target.closest('button') : null;
+      const d = richClickDecision({ touch: touch(), onAnchor: !!t, inButton: !!btn, buttonIsAnchor: btn === t, isCurrent: curRef.current === t });
+      if (d === 'show') { show(t); e.preventDefault(); e.stopPropagation(); } else if (d === 'hide') hide();
     };
     const key = (e) => { if (e.key === 'Escape' && curRef.current) hide(); };
     root.addEventListener('mouseover', over);

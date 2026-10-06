@@ -100,7 +100,7 @@ test('חיווט: useCardTooltips (hover/focus/touch 1.4s/.tip 3.5s/Escape/scrol
   for (const s of ["'mouseover'", "'focusin'", "'touchstart'", "'click'", "e.key === 'Escape'", "'scroll'", 'show(b, 1400)', 'show(tp, 3500)', "setAttribute('aria-describedby'", 'new MutationObserver']) assert.ok(h.includes(s), s);
   assert.match(h, /placeTip\(.*'above', 10\)/);
   const r = strip(read(`${OC}/OcRichTips.js`));
-  assert.match(r, /\(hover:none\)/);
+  assert.match(r, /isTouchDevice(/);
   assert.match(r, /closest\('\.rail'\)/);
   assert.match(r, /mode="side"/);
   assert.match(r, /!t\.closest\('\.tlx'\)/, 'צמתי הציר מטופלים ב-OcStepper');
@@ -126,4 +126,24 @@ test('הרייל: ארבעת האריחים ושורות השינויים הם �
   assert.match(rail, /data-act="redo" data-ico="redo" data-tip="החזר ביטול"/);
   const css = read('design-system/components.css');
   assert.ok(css.includes('.gm-ds .pl-rt.gold{') && css.includes('.gm-ds .pl-tt{'));
+});
+
+test('מגע: isTouchDevice (matchMedia(hover:none)) ו-richClickDecision - שתי הקשות: ראשונה מציגה (בלי פעולה), שנייה סוגרת / מפעילה לחצן; בעכבר אין התערבות', () => {
+  const mm = (matches) => (q) => ({ matches: q === '(hover:none)' ? matches : false });
+  assert.equal(T.isTouchDevice(mm(true)), true);
+  assert.equal(T.isTouchDevice(mm(false)), false);
+  assert.equal(T.isTouchDevice(null), false);
+  assert.equal(T.isTouchDevice(undefined), false);
+  const d = (o) => T.richClickDecision({ touch: true, onAnchor: true, inButton: false, buttonIsAnchor: false, isCurrent: false, ...o });
+  assert.equal(d({}), 'show', 'הקשה ראשונה על אריח שאינו לחצן: מציגה');
+  assert.equal(d({ isCurrent: true }), 'hide', 'הקשה שנייה על אריח שאינו לחצן: סוגרת');
+  assert.equal(d({ inButton: true, buttonIsAnchor: true }), 'show', 'הקשה ראשונה על אריח-לחצן (חתימה / תשלום): מציגה ולא מפעילה');
+  assert.equal(d({ inButton: true, buttonIsAnchor: true, isCurrent: true }), 'none', 'הקשה שנייה על אריח-לחצן: הפעולה רצה');
+  assert.equal(d({ inButton: true, buttonIsAnchor: false }), 'none', 'לחצן פנימי אחר (בטל שינוי) מתנהג כרגיל');
+  assert.equal(d({ onAnchor: false }), 'hide', 'הקשה מחוץ לעוגן סוגרת');
+  assert.equal(d({ touch: false }), 'none', 'בעכבר: אין התערבות');
+  assert.equal(d({ touch: false, onAnchor: false }), 'hide');
+  const r = strip(read(`${OC}/OcRichTips.js`));
+  for (const h of ['const over = (e) => { if (touch()) return;', 'const out = (e) => { if (touch()) return;', 'const fin = (e) => { if (touch()) return;', 'const fout = (e) => { if (touch()) return;']) assert.ok(r.includes(h), h);
+  assert.match(r, /richClickDecision\(\{ touch: touch\(\)/);
 });

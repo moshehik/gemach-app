@@ -99,3 +99,19 @@ export const navBottomOf = () => {
   const nav = typeof document !== 'undefined' ? document.querySelector('[data-sticky-nav]') : null;
   return nav ? nav.getBoundingClientRect().bottom : 0;
 };
+
+/** מכשיר מגע (אין ריחוף): matchMedia('(hover:none)'). mm = window.matchMedia (או דמה בבדיקות). */
+export const isTouchDevice = (mm) => !!(typeof mm === 'function' && mm('(hover:none)') && mm('(hover:none)').matches);
+
+/**
+ * החלטת הקשה על כרטיס עשיר (click בדמו, שורה 4207): במגע - הקשה ראשונה על העוגן מציגה (ולא מפעילה פעולה שאינה לחצן), הקשה שנייה על עוגן שאינו לחצן סוגרת,
+ * ועל לחצן שכבר מוצג - הפעולה רצה (לא מונעים). בעכבר - אין התערבות ב-click (הריחוף מציג). הקשה מחוץ לעוגן סוגרת.
+ * @returns {'show'|'hide'|'none'}  show = להציג ולמנוע את הפעולה (preventDefault + stopPropagation)
+ */
+export function richClickDecision({ touch, onAnchor, inButton, buttonIsAnchor, isCurrent }) {
+  if (!onAnchor) return 'hide';
+  if (!touch) return 'none';
+  if (inButton && !buttonIsAnchor) return 'none'; // לחצן פנימי אחר - מתנהג כרגיל
+  if (!isCurrent) return 'show';
+  return inButton ? 'none' : 'hide';
+}
