@@ -92,7 +92,7 @@ test('API: 403 without the orders page permission, 200 for head management; one 
   assert.equal(r.status, 200, JSON.stringify(r.__json));
   assert.equal(r.__json.pages[0].key, 'PP-02');
   assert.equal(r.__json.pages[0].data.rows.length, 4);
-  const calls = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments);
+  const calls = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments && c.args.where && c.args.where.orderId);
   assert.equal(calls.length, 1, 'one orderInfo query');
   assert.ok(calls[0].args.where.orderId.in.includes(7002));
 

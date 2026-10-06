@@ -66,7 +66,7 @@ test('route: dispatch-day rows of stage 5 (order 1009, no street -> missing addr
   assert.equal(p.data.totals.missingAddress, 1);
   assert.equal(p.data.sum, 'משלוח אחד · 2 שמלות');
   // no extra query: the only Order reads are the schedule's own (stage scans + getDeliveriesForDate)
-  const extraQ = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments);
+  const extraQ = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments && c.args.where && c.args.where.orderId);
   assert.equal(extraQ.length, 0);
   const deliveryQ = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.where && c.args.where.isDelivery === true);
   assert.equal(deliveryQ.length, 1, 'lib/deliveries.js ran once for the whole request');

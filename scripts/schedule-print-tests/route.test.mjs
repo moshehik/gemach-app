@@ -126,8 +126,8 @@ test('PP-01 (general orders report): 403 for an employee without page:orders, 20
   assert.equal(p.data.totals.paid, 400);
   assert.equal(p.data.totals.balance, 800);
   assert.equal(p.data.stats.length, 5);
-  // the extras query ran once, only for the orders of the page
-  const calls = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments);
+  // the extras query ran once, only for the orders of the page (the stage-1 loader query also selects payments since 7f3ee630 - it is keyed by orderDate, not by orderId.in)
+  const calls = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments && c.args.where && c.args.where.orderId && c.args.where.orderId.in);
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].args.where.orderId.in.sort(), [1001, 1002].sort());
 });

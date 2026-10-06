@@ -71,7 +71,7 @@ test('orderBalance extra: one query, only the stage-6 orders, no payments query 
   const { extras } = await payloadFor(['PP-13']);
   assert.deepEqual(Object.keys(extras), ['orderBalance']);
   assert.deepEqual(Object.keys(extras.orderBalance).map(Number).sort(), [1007, 7011, 7012, 7013].sort());
-  const calls = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments);
+  const calls = globalThis.__MOCK_CALLS.filter((c) => c.model === 'order' && c.args && c.args.select && c.args.select.payments && c.args.where && c.args.where.orderId);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].method, 'findMany');
   assert.ok(!('take' in calls[0].args) || calls[0].args.take > 0);
