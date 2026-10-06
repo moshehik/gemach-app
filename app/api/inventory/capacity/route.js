@@ -98,6 +98,9 @@ export async function GET(request) {
       },
       select: {
         quantity: true,
+        // ברקוד השמלה שיצאה למשפחה (חיפוש מתקדם > תפוסה, דיווח 113e5c37): רק פריט שכבר נלקח (isTaken) ויש לו ברקוד
+        barcode: true,
+        isTaken: true,
         order: {
           select: {
             id: true,
@@ -129,9 +132,12 @@ export async function GET(request) {
     validOccupiedOrders.forEach(item => {
       const orderId = item.order.orderId;
       const quantity = item.quantity || 1;
-      
+      const bc = item.isTaken && typeof item.barcode === 'string' ? item.barcode.trim() : '';
+
       if (groupedOrdersMap.has(orderId)) {
-        groupedOrdersMap.get(orderId).quantity += quantity;
+        const g = groupedOrdersMap.get(orderId);
+        g.quantity += quantity;
+        if (bc && !g.barcodes.includes(bc)) g.barcodes.push(bc);
       } else {
         groupedOrdersMap.set(orderId, {
           id: orderId,
@@ -141,7 +147,8 @@ export async function GET(request) {
           eventDate: item.order.eventDate,
           returnDate: item.order.returnDate,
           eventDateHebrew: item.order.eventDateHebrew,
-          quantity: quantity
+          quantity: quantity,
+          barcodes: bc ? [bc] : []
         });
       }
     });

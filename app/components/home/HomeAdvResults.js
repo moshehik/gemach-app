@@ -32,7 +32,11 @@ const nameOf = (r) => {
 export default function HomeAdvResults({ data, focus, summary, table, onTable, onEdit, onReopenClear, onClose, onExport }) {
   const [more, setMore] = useState(false);
   const alerts = useMemo(() => new Set(data.al || []), [data.al]);
-  const rows = data.rows;
+  // תפוסה: "ברקוד N" נוסף לסוף השורה רק כשיש ברקוד (השמלה כבר יצאה למשפחה) - אחרת לא תא ריק ולא מקף (דיווח 113e5c37)
+  const rows = useMemo(
+    () => (focus === 'capacity' && data.barcodes && data.barcodes.length ? data.rows.map((r, i) => (data.barcodes[i] ? [...r, 'ברקוד ' + data.barcodes[i]] : r)) : data.rows),
+    [data.rows, data.barcodes, focus],
+  );
   const shown = more ? rows : rows.slice(0, LIMIT);
 
   const info = useMemo(() => rows.map((r, i) => {
@@ -101,12 +105,13 @@ export default function HomeAdvResults({ data, focus, summary, table, onTable, o
           ) : (
             <div className="list" aria-label="תוצאות החיפוש">
               {shown.map((r, i) => {
-                const [tag, icon] = rowTag(focus, data, i);
+                // תפוסה: בלי תג "תפוסה" בשורה (דיווח 113e5c37); שאר התחומים — התג כרגיל
+                const [tag, icon] = focus === 'capacity' ? [null, null] : rowTag(focus, data, i);
                 const al = alerts.has(i);
                 const url = data.links && data.links[i];
                 const inner = (
                   <>
-                    <div className="ic-b"><Ic id={icon} /><span className="rlbl">{tag}</span></div>
+                    {tag && <div className="ic-b"><Ic id={icon} /><span className="rlbl">{tag}</span></div>}
                     <div className="t">
                       <b>{nameOf(r) || <span className="faint">ללא שם</span>}{al && <span className="adot" data-tip="יש התראה" />}</b>
                       <span className="ln"><Joined cells={r.slice(1)} /></span>
