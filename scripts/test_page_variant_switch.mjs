@@ -423,9 +423,10 @@ export default function AdminHubPage({ showSite = false }) {
 // קבצים ישנים שנערכו בכוונה אחרי השחזור (דיווחי נווה יעקב 5.10.2026 - הגמח עדיין על העיצוב הישן, ותיקונים חייבים לשבת גם בעותק הזה):
 //  - LegacyNewOrderPage.js: מתג הסתרת "הערה לתשלום" (hide_order_payment_note), מתג allow_abroad_long_stay_orders (הסתרת לשוניות חו"ל/תפוסה ארוכה),
 //    כפתור/חלונית "הוסף משלוח" בשלבים 3-5 עם שורת חיוב המשלוח, "טוען מידות…", בלי גלילה פנימית בסיכום, ושליחת customerCity ל-/api/orders/calculate.
+//    + window.open של ההדפסה האוטומטית עם 'noopener' (דיווח 2c827b93, 5.10.2026).
 //    במקום השוואה ל-blob בהיסטוריה (שאי אפשר לכוון אליו אחרי העריכה) נעול כאן ה-hash של הקובץ עצמו: כל עריכה נוספת בו מחייבת עדכון מודע של השורה.
 const PINNED_BLOBS = {
-  'app/orders/new/LegacyNewOrderPage.js': '60e2b3d957f8f060da1daad47f83c4f728c7f492',
+  'app/orders/new/LegacyNewOrderPage.js': '2b779d0494a8897f6703467ddb4811051a70189d',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

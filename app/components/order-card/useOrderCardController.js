@@ -23,7 +23,7 @@ import { DRAFT_ORDER_STATUS } from '@/lib/orderReservation';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '@/app/lib/orderDrafts';
 import {
   parseSettings, computeTotals, changesOf, captureChange, revertChange, applyCaptured, isPastEventDate, openedDebtOf,
-  zeoutVerificationNeeded, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
+  zeoutVerificationNeeded, orderServerSignature, pricingInputsChanged, buildPreviewBody, buildDraftSummary, buildDraftRows, newLocalId, fmtMoney,
   exitGuardActive, withLocalIds, requiredOf, paidOf, syncSnapshotItems, restoreSavedAutoObligations, undoDropsUnsavedCardCharge, unsavedCardChargeMessage, debtBlockShouldClear, approvalLevelOf
 } from './orderCardLogic';
 
@@ -93,7 +93,7 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
 
   const snapshotRef = useRef(null);
   const initialLockChecked = useRef(false);
-  const flagsRef = useRef({ pendingDebtBlock: false, bankPromptedOnExit: false, approvedDebtLevel: null });
+  const flagsRef = useRef({ pendingDebtBlock: false, bankPromptedOnExit: false, approvedDebtLevel: null, verifiedZeout: null });
   const hadUnsavedRef = useRef(false);
   const previewSeqRef = useRef(0);
   const listenersRef = useRef(new Map());
@@ -309,6 +309,8 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     set bankPromptedOnExit(v) { flagsRef.current.bankPromptedOnExit = !!v; },
     get approvedDebtLevel() { return flagsRef.current.approvedDebtLevel; },
     set approvedDebtLevel(v) { flagsRef.current.approvedDebtLevel = v; },
+    get verifiedZeout() { return flagsRef.current.verifiedZeout; },
+    set verifiedZeout(v) { flagsRef.current.verifiedZeout = v; },
   }), [setPendingDebtBlock]);
 
   // חסימת היציאה בגלל חוב חדש מסתיימת כשהחוב השמור שולם (ר' debtBlockShouldClear)
@@ -340,6 +342,52 @@ export default function useOrderCardController(orderRef, ui, { dialogs = {} } = 
     return f;
   }, [ui, dialogs, orderRef, setSnapshot, flagsProxy, approve, peekApprovalToken, clearApprovalToken, navigate, emit, bumpHistory, clearRedo]);
   useEffect(() => { exitRef.current = flows.exit; }, [flows]);
+  // הזיכרון של "ת״ז פעם אחת לביקור" נמחק במעבר להזמנה אחרת (ביציאה מההזמנה הכרטיס יורד ממילא)
+  useEffect(() => { flagsRef.current.verifiedZeout = null; }, [orderRef]);
+
+  // דיווח f6da1794: הזמנה שהשתנתה ממקום אחר (למשל החזרת שמלה בלשונית אחרת) מתעדכנת בכרטיס הפתוח כשחוזרים אליו.
+  // בדיקה בפוקוס/חזרת הלשונית בלבד, לכל היותר פעם ב-15 שניות ובקשה אחת (בלי בדיקה מחזורית). אין שינויים שלא נשמרו =
+  // מתעדכן לבד; יש = לא נדרס, רק הודעה עם כפתור רענון.
+  useEffect(() => {
+    if (!orderRef || status !== 'ready' || !settings.refreshOnReturn) return undefined; // order_card_refresh_on_return (כבוי = כמו תמיד)
+    let lastAt = 0;
+    let busy = false;
+    let gone = false;
+    const check = async () => {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (busy || now - lastAt < 15000) return;
+      busy = true;
+      lastAt = now;
+      try {
+        const res = await fetch(`/api/orders/${orderRef}`, { cache: 'no-store' });
+        if (!res.ok || gone) return;
+        const data = await res.json();
+        const st = stateRef.current;
+        if (!st.snapshot || orderServerSignature(data) === orderServerSignature(st.snapshot)) return;
+        const f = flowsRef.current;
+        const dirtyNow = changesOf(st.snapshot, { order: st.order, items: st.items, obligations: st.obligations, payments: st.payments }).length > 0
+          || st.items.some(it => !it.id && it._localId);
+        if (dirtyNow || !f || f.isBusy()) {
+          ui.toast('info', 'ההזמנה עודכנה ממקום אחר — רענן', 'יש שינויים שלא נשמרו, ולכן הכרטיס לא עודכן לבד.', {
+            text: 'רענן',
+            onClick: async () => {
+              if (await ui.confirm({ title: 'רענון הכרטיס', sub: 'הרענון ימחק את השינויים שלא נשמרו בכרטיס. לרענן?', okText: 'רענן', icon: 'check' })) await flowsRef.current.reload();
+            }
+          });
+          return;
+        }
+        if (await f.reload()) ui.toast('info', 'הכרטיס עודכן', 'ההזמנה השתנתה ממקום אחר.');
+      } catch (err) {
+        console.error('External-change check failed', err);
+      } finally {
+        busy = false;
+      }
+    };
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', check);
+    return () => { gone = true; window.removeEventListener('focus', check); document.removeEventListener('visibilitychange', check); };
+  }, [orderRef, status, ui, settings.refreshOnReturn]);
 
   // ---------- "לשמור קודם" (סקירת אינטגרציה C2) ----------
   // פעולה שמסנכרנת את הכרטיס מהשרת (הוספת/עריכת פריט, זיכוי, חישוב מחדש - oc.applyServerOrder) דורסת כל שינוי מקומי שלא נשמר (הערות, תאריך,

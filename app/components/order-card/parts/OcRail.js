@@ -56,7 +56,7 @@ export default function OcRail({ oc, ui }) {
       head: successHead({ kind, amount, method }), orderId: order.orderId, customerName: customerNameOf(order), targets,
     }, { badge: false, labelledBy: 'oc-dlg-t' });
     if (choice === 'nav' && targets.primary.href) await ocRef.current.exit(targets.primary.href);
-    else if (choice === 'print' && typeof window !== 'undefined') window.open(printUrl(order.orderId), '_blank');
+    else if (choice === 'print' && typeof window !== 'undefined') window.open(printUrl(order.orderId), '_blank', 'noopener');
   }, [ui]);
 
   // getOc/showSuccess קוראים את ocRef רק בתוך handler / אירוע (אף פעם לא ברינדור); הקומפיילר של React לא יודע לראות את זה דרך createRailActions
