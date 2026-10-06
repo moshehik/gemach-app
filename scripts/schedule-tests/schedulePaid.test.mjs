@@ -53,5 +53,15 @@ test('stage 1 row: paid order whose isPaid flag is false (the real Neve case) sh
   const q = globalThis.__MOCK_CALLS.find((c) => c.model === 'order' && c.args.where.orderDate);
   assert.equal(q.args.where.isPaid, undefined);
   assert.deepEqual(q.args.select.payments, { where: { isDeleted: false }, select: { amount: true } }, 'one relation select, no extra query');
-  assert.equal(q.args.select.isPaid, undefined, 'the stale flag is no longer read');
+  assert.equal(q.args.select.isPaid, true, 'the legacy flag is selected only as a fallback for orders without payment rows');
+});
+
+test('legacy isPaid fallback: imported order with isPaid=true and NO payment rows shows paid; any payment row makes the payments decide', () => {
+  assert.deepEqual(orderPaymentView(500, [], true), { totalPaid: 0, balance: 0, payStatus: 'paid' });
+  assert.deepEqual(orderPaymentView(500, undefined, true), { totalPaid: 0, balance: 0, payStatus: 'paid' });
+  assert.equal(orderPaymentView(500, [pay(500, true)], true).payStatus, 'paid', 'only deleted payments: still the legacy flag');
+  assert.equal(orderPaymentView(500, [pay(100)], true).payStatus, 'partial', 'real payments decide, the stale flag is ignored');
+  assert.equal(orderPaymentView(500, [], false).payStatus, 'unpaid', 'the real Neve case: flag false, no payments');
+  assert.equal(orderPaymentView(500, [], undefined).payStatus, 'unpaid');
+  assert.equal(orderPaymentView(null, [], true).payStatus, null, 'no amount: nothing to show even if flagged');
 });
