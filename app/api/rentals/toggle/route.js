@@ -4,7 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
-import { autoMarkAlterationForItem } from '@/lib/schedule/autoAlterationDone';
+import { autoMarkAlterationForItem, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
 import { isAlterationEstimated, stripEstimateMarker } from '@/lib/alterationEstimate';
 
@@ -104,7 +104,9 @@ export async function POST(request) {
     const afterTasks = [];
     if ((action === 'rent' || action === 'return') && before.order) afterTasks.push(() => autoMarkPrepForOrder(before.order.orderId, { userId: actorId }));
     if (action === 'rent') afterTasks.push(() => autoMarkAlterationForItem(itemId));
-    await runAfterResponse(afterTasks, { actorId });
+    // הגדרה כבויה (ברירת מחדל) = בדיוק ההתנהגות הקודמת: ההכנה נרשמת לפני התשובה (מוגבל 1.5ש'); רק כשהתכונה דולקת - אחרי התשובה
+    const altOn = await isAutoAlterationEnabled();
+    await runAfterResponse(afterTasks, { actorId, ...(altOn ? {} : { afterFn: null }) });
 
     return NextResponse.json({ success: true, item: updatedItem });
   } catch (error) {

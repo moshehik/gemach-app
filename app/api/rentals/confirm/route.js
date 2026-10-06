@@ -2,7 +2,7 @@
 import prisma, { getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
-import { autoMarkAlterationsForItems } from '@/lib/schedule/autoAlterationDone';
+import { autoMarkAlterationsForItems, isAutoAlterationEnabled } from '@/lib/schedule/autoAlterationDone';
 import { runAfterResponse } from '@/lib/schedule/afterResponse';
 
 export async function POST(request) {
@@ -69,10 +69,11 @@ export async function POST(request) {
 
     // אחרי הטרנזקציה, במקביל ובלי להאט את התשובה (after(); נכשל בשקט): הכנה אוטומטית + תיקונים של הפריטים שאושרו עכשיו בלבד (לא כל פריטי ההזמנה): בוצע (משוער)
     const confirmedItemIds = pendingItems.map((item) => item.id);
+    const altOn = await isAutoAlterationEnabled(); // כבויה = ריצה לפני התשובה כמו קודם
     await runAfterResponse([
       () => autoMarkPrepForOrder(parseInt(orderId), { userId: confirmedBy }),
       () => autoMarkAlterationsForItems(confirmedItemIds),
-    ], { actorId: confirmedBy });
+    ], { actorId: confirmedBy, ...(altOn ? {} : { afterFn: null }) });
 
     return NextResponse.json({ success: true, count: pendingItems.length });
   } catch (error) {
