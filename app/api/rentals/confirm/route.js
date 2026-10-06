@@ -2,6 +2,7 @@
 import prisma, { getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
+import { autoMarkAlterationsForOrderBounded } from '@/lib/schedule/autoAlterationDone';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -65,6 +66,8 @@ export async function POST(request) {
 
     // הכנה אוטומטית אחרי הלקיחה הגורפת (אחרי הטרנזקציה; נכשל בשקט)
     await autoMarkPrepBounded(parseInt(orderId));
+    // תיקונים של הפריטים שנלקחו: בוצע (משוער)
+    await autoMarkAlterationsForOrderBounded(parseInt(orderId));
 
     return NextResponse.json({ success: true, count: pendingItems.length });
   } catch (error) {

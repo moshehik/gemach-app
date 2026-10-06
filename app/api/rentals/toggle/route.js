@@ -4,6 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
 import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
+import { autoMarkAlterationBounded } from '@/lib/schedule/autoAlterationDone';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
 // אפשר יהיה לראות במפורש מתי בוצעה השכרה, החזרה, ביטול השכרה או ביטול החזרה.
@@ -85,6 +86,8 @@ export async function POST(request) {
 
     // לקיחה (או החזרה - אז בוודאי נלקח): נרשמת הכנה אוטומטית אם עוד לא סומנה (lib/schedule/autoPrepMark.js; נכשל בשקט, אחרי הכתיבה, מחוץ לכל טרנזקציה)
     if ((action === 'rent' || action === 'return') && before.order) await autoMarkPrepBounded(before.order.orderId);
+    // לקיחה בלבד (לא החזרה): תיקון שלא סומן נרשם "בוצע (משוער)" - lib/schedule/autoAlterationDone.js (נכשל בשקט, מוגבל בזמן)
+    if (action === 'rent') await autoMarkAlterationBounded(itemId);
 
     return NextResponse.json({ success: true, item: updatedItem });
   } catch (error) {
