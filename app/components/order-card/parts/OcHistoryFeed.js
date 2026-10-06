@@ -62,7 +62,8 @@ export default function OcHistoryFeed({ oc, ui, entries, loading, error, onRetry
   }, [menuOpen]);
 
   const toggle = useCallback((k) => setSel((s) => (k === 'all' ? [] : (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]))), []);
-  const allKeys = cats.map((c) => c[0]);
+  // "סמן הכל" = כל הקטגוריות עם שורות בהיסטוריה (ספירה > 0 בלי קשר לחיפוש) - לא רק מה שגלוי תחת חיפוש פעיל, אחרת אחרי ניקוי החיפוש נראות שאר הקטגוריות כלא נבחרות ושורותיהן מוסתרות
+  const allKeys = useMemo(() => filterCategories(all).map((c) => c[0]), [all]);
   const allOn = allKeys.length > 0 && allKeys.every((k) => effSel.includes(k));
   const resetAll = () => { setSel([]); setQ(''); };
 

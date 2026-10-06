@@ -144,3 +144,23 @@ test('OcHistoryFeed: תפריט הסינון - effectiveSelection לתג/כפת�
   assert.match(src, /\{!cats\.length \? <div className="empty" role="status">אין רישומים לסינון<\/div> : null\}/);
   assert.match(src, /\{cats\.length \? <div className="hf-all">/);
 });
+
+test('סמן הכל תחת חיפוש פעיל: מסמן את כל הקטגוריות עם שורות (לא רק את הגלויות); אחרי ניקוי החיפוש כולן נבחרות ושורותיהן גלויות', async () => {
+  const M = await import('@/app/components/order-card/parts/ocHistoryModel.js');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const e = (cat, text) => ({ id: text, ts: '2026-10-01T10:00:00Z', cat, icon: 'list', text });
+  const entries = [e('items', 'נוסף פריט A'), e('pay', 'תשלום 100'), e('gen', 'הערה')];
+  const q = 'תשלום';
+  const visibleUnderSearch = M.filterCategories(entries, { q }).map((c) => c[0]);
+  assert.deepEqual(visibleUnderSearch, ['pay']);
+  const allKeys = M.filterCategories(entries).map((c) => c[0]);
+  assert.deepEqual(allKeys, ['items', 'pay', 'gen'], 'סמן הכל = כל הקטגוריות עם ספירה > 0 בלי קשר לחיפוש');
+  const sel = M.effectiveSelection(entries, allKeys);
+  assert.deepEqual(sel, allKeys);
+  assert.equal(M.visibleEntries(entries, { selected: sel, q }).length, 1, 'תחת חיפוש: רק מה שמתאים');
+  assert.equal(M.visibleEntries(entries, { selected: sel, q: '' }).length, 3, 'אחרי ניקוי החיפוש: כל השורות גלויות וכל הקטגוריות נבחרות');
+  const src = fs.readFileSync(path.join(process.env.PROJ, 'app/components/order-card/parts/OcHistoryFeed.js'), 'utf8');
+  assert.match(src, /const allKeys = useMemo\(\(\) => filterCategories\(all\)\.map\(\(c\) => c\[0\]\), \[all\]\);/);
+  assert.match(src, /setSel\(allOn \? \[\] : allKeys\.slice\(\)\)/);
+});
