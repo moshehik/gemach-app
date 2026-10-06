@@ -26,7 +26,7 @@ const rows = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value })
 
 console.log('resolution order');
 t('בלי כלום: כל המסכים legacy', () => {
-  // 4.10.2026: נוספו profile / admin_hub / attendance / error_report (lib/uiVariantScreens.js) + board (5.10.2026) + employee_card (newExists:false) + new_order (newExists:false, 5.10.2026) + settings (5.10.2026) - בלי roleId כולם legacy.
+  // 4.10.2026: נוספו profile / admin_hub / attendance / error_report (lib/uiVariantScreens.js) + board (5.10.2026) + employee_card (newExists:false) + new_order (newExists:false עד 5.10.2026; מ-6.10.2026 newExists:true - למתכנת a5, ר' בדיקת ברירת המחדל לפי תפקיד) + settings (5.10.2026) - בלי roleId כולם legacy.
   assert.deepEqual(resolveUiVariants({}), { shell: 'legacy', home: 'legacy', order_card: 'legacy', customer_card: 'legacy', employee_card: 'legacy', new_order: 'legacy', profile: 'legacy', admin_hub: 'legacy', attendance: 'legacy', error_report: 'legacy', board: 'legacy', settings: 'legacy' });
   assert.deepEqual(resolveUiVariants(), resolveUiVariants({}));
 });
@@ -69,9 +69,9 @@ t('הגדרות: הגדרת ארגון וגם עקיפה אישית גוברות
   assert.equal(resolveUiVariant('settings', { roleId: 0, userVariants: { settings: 'a5' } }), 'a5');
   assert.equal(resolveUiVariant('settings', { roleId: 2, settings: rows({ ui_variant_settings: 'bogus' }) }), 'a5', 'ערך ארגון לא תקין נופל לברירת המחדל לפי תפקיד');
 });
-t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים שהגרסה החדשה שלהם קיימת (newExists); כרטיסי הזמנה ולקוח החדשים קיימים (newExists); כרטיס עובד / הזמנה חדשה נשארים ישנים; כרטיס הלקוח החדש קיים (newExists) ולכן a5 למתכנת בלבד', () => {
-  for (const s of ['employee_card', 'new_order']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'legacy', s);
-  for (const s of ['shell', 'home', 'order_card', 'customer_card', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'a5', s);
+t('ברירת המחדל לפי תפקיד: מתכנת חדש רק במסכים שהגרסה החדשה שלהם קיימת (newExists); כרטיסי הזמנה ולקוח החדשים קיימים (newExists); כרטיס עובד נשאר ישן (הזמנה חדשה - חדש למתכנת מ-6.10.2026); כרטיס הלקוח החדש קיים (newExists) ולכן a5 למתכנת בלבד', () => {
+  for (const s of ['employee_card']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'legacy', s);
+  for (const s of ['shell', 'home', 'order_card', 'customer_card', 'new_order', 'profile', 'admin_hub', 'attendance', 'error_report', 'board', 'settings']) assert.equal(resolveUiVariant(s, { roleId: 2 }), 'a5', s);
   for (const s of UI_SCREENS) assert.equal(resolveUiVariant(s, { roleId: 0 }), 'legacy', 'הנהלה ראשית: ' + s);
 });
 

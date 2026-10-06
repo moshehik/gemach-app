@@ -11,7 +11,8 @@
  *     node scripts/set-ui-variant.js --screen shell --value a5 --scope user --employee <id|legacyId> --confirm-host <...> [--apply]
  *     node scripts/set-ui-variant.js --screen shell --clear   --scope user --employee <id|legacyId> --confirm-host <...> --apply  (הסרת העקיפה)
  *
- *   --screen  shell | home | order_card | customer_card | profile | admin_hub | attendance | error_report | board
+ *   --screen  shell | home | order_card | customer_card | employee_card | new_order | profile | admin_hub | attendance | error_report | board | settings
+ *             (new_order = "הזמנה חדשה", /orders/new: מ-6.10.2026 חדש כברירת מחדל למתכנת בלבד; --value a5 --scope org מדליק לכל הארגון, --value legacy מכריח ישן גם למתכנת)
  *             (= המסכים ברשומה lib/uiVariantScreens.js; scripts/test_page_variant_switch.mjs בודק שהרשימות זהות)
  *   בלי שורה בארגון ובלי עקיפה אישית: ברירת המחדל לפי תפקיד (מתכנת - חדש, כל השאר - ישן; החלטת הבעלים 4.10.2026).
  *   --value   legacy | a5

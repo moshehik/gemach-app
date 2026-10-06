@@ -13,6 +13,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { HomeSprite } from '../home/HomeParts';
 import usePageTooltip from '../profile/usePageTooltip';
+import PageVariantToggle from '../variant/PageVariantToggle';
 import { Ic, NoBanner, NoPortal, NoPortalRoot } from './NoUi';
 import {
   ApprovalDialog, BackGuardDialog, BusyDialog, ConfirmDialog, CreditDialog, DialogFrame, DuplicateCustomerDialog, DuplicateOrderDialog,
@@ -203,7 +204,10 @@ export default function NewOrderA5() {
           <div className="topbar">
             <button type="button" className="back" aria-label="יציאה מהמסך" data-tip="יציאה מהמסך" onClick={ctl.handleExit} disabled={ctl.saving || ctl.isProcessingCredit}><Ic n="back" /></button>
             <div className="ttl"><h1><bdi>הזמנה חדשה</bdi></h1></div>
-            <div className="tools" />
+            <div className="tools">
+              {/* "חזרה לאשף הישן" (6.10.2026): רק להנהלה ראשית / מתכנת (הרשומה new_order ב-lib/uiVariantScreens.js); הטולטיפ - usePageTooltip של הדף (data-tip) */}
+              <PageVariantToggle screen="new_order" placement="header" systemTip />
+            </div>
           </div>
           {banner ? <NoBanner key={banner.id} id={banner.id} title={banner.title} text={banner.text} rows={banner.rows}
             onClose={() => (ctl.saveError ? ctl.setSaveError(null) : setWarnClosed(ctl.saved.orderId))} /> : null}
