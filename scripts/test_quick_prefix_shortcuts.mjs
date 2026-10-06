@@ -247,6 +247,26 @@ t('אייקון שמירה (PFX-09): i-bookmark (סימנייה, אייקון 81
   assert.ok(/!loading && <SaveIconButton text=\{q\} saved=\{saved\} ibtn \/>/.test(home), 'ליד ה-X בשדה הבית');
   assert.ok(/<SaveIconButton text=\{q\} saved=\{saved\} \/>/.test(src('../app/components/menu/MenuSearchPanel.js')), 'בשדה התפריט / המגירה (אותו SearchBody)');
 });
+t('אייקון "שמירת חיפוש": טולטיפ (data-tip) בטקסט ברור, שם נגיש, מצב "כבר שמור" - ומנגנון הטולטיפ חי בדף הבית ובפאנל החיפוש של התפריט', () => {
+  assert.equal(SAVED_TEXT.saveIconTip, 'שמירת החיפוש הזה לשימוש חוזר - יופיע ברשימת החיפושים השמורים (הקיצור $)');
+  assert.equal(SAVED_TEXT.savedIconTip, 'החיפוש הזה כבר שמור ברשימת החיפושים השמורים (הקיצור $) - אפשר למחוק אותו משם');
+  assert.equal(SAVED_TEXT.saveIconLabel, 'שמירת חיפוש'); assert.equal(SAVED_TEXT.savedIconLabel, 'החיפוש הזה שמור');
+  const ui = src('../app/components/search/ShortcutsUi.js');
+  assert.ok(/aria-label=\{label\}/.test(ui) && /data-tip=\{tip\}/.test(ui), 'aria-label + data-tip על הכפתור');
+  assert.ok(/isSaved \? SAVED_TEXT\.savedIconTip : SAVED_TEXT\.saveIconTip/.test(ui), 'טקסט שונה כשהחיפוש כבר שמור');
+  // דף הבית: אין מעטפת שמטפלת בטולטיפים בתוכן הדף - HomeA5 מפעיל את אותו hook כמו שאר דפי A5 (usePageTooltip), עם .pl-tt, והטולטיפ נסגר בלחיצה על האייקון
+  const home = src('../app/components/home/HomeA5.js');
+  assert.ok(/import usePageTooltip from '\.\.\/profile\/usePageTooltip'/.test(home) && /usePageTooltip\(rootRef, ttRef, false\)/.test(home), 'hook הטולטיפ בבית');
+  assert.ok(/<div className="gm-ds gm-home home-bg" ref=\{rootRef\}>/.test(home) && /<div className="pl-tt" role="tooltip" ref=\{ttRef\} \/>/.test(home), 'שורש + אלמנט הטולטיפ');
+  assert.ok(/closest\('\.pfx-save'\)/.test(home), 'נסגר בלחיצה על אייקון השמירה');
+  const hook = src('../app/components/profile/usePageTooltip.js');
+  assert.ok(/mouseover/.test(hook) && /focusin/.test(hook) && /:focus-visible/.test(hook) && /Escape/.test(hook), 'ריחוף + מיקוד מקלדת (focus-visible) + Escape');
+  // תפריט עליון: הטולטיפים של הסרגל מוסתרים כשפאנל החיפוש פתוח, אבל טולטיפ של כפתור בתוך תיבת החיפוש (שמירה) מוצג
+  assert.ok(/tt\.classList\.toggle\('tt-sbox', !!el\.closest\('\.sn-sbox'\)\)/.test(src('../app/components/menu/MenuA5Shell.js')));
+  assert.ok(/\.pl-tt:not\(\.tt-sbox\)\{display:none!important\}/.test(src('../app/components/menu/menu.css')));
+  // אין כפתור שמירה בחיפוש המתקדם של הבית (HomeAdvanced) - האייקון קיים רק בשדה הראשי ובשדה התפריט
+  assert.ok(!/SaveIconButton|pfx-save/.test(src('../app/components/home/HomeAdvanced.js')));
+});
 t('מחיקה: X לכל שורה, אישור בחלון כהה, "אל תשאל שוב" עד רענון (tooltip), מקש Delete על שורה מסומנת', () => {
   const qp = src('../app/components/search/QuickPrefix.js');
   assert.ok(/e\.key === 'Delete' && askDelete && act >= 0 && items\[act\] && items\[act\]\.type === 'saved'/.test(qp));

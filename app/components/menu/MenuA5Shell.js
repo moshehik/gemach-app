@@ -416,6 +416,7 @@ export default function MenuA5Shell({
     const show = (el) => {
       cur = el;
       tt.textContent = el.getAttribute('data-tip');
+      tt.classList.toggle('tt-sbox', !!el.closest('.sn-sbox')); // כפתורי תיבת החיפוש (שמירה / ניקוי): הטולטיפ מוצג גם כשפאנל החיפוש פתוח (menu.css)
       tt.classList.add('on');
       const r = el.getBoundingClientRect();
       const w = tt.offsetWidth;
