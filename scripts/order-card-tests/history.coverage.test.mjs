@@ -656,3 +656,17 @@ test('פעולה ברמת ההזמנה שאין לה מיפוי: שורה כלל
   assert.equal(itm.cat, 'items');
   assert.equal(r.counts.categories.gen, 1);
 });
+
+test('H29b הכנה אוטומטית בלקיחה (auto:true): "הכנה נרשמה אוטומטית בלקיחה" תחת שם העובדת, לא "סומן \'בוצע\' בלו״ז"; סימון ידני נשאר כמקודם', () => {
+  const base = (extra) => JSON.stringify({ orderId: ORDER_NO, scheduleStage: 'הכנה', scheduleDay: '2026-10-05', done: { from: null, to: true }, ...extra });
+  H.h29b = [
+    row({ entityType: 'ScheduleStageMark', entityId: 'mkA', action: 'SCHEDULE_STAGE_DONE', changesJson: base({ auto: true, source: 'auto' }) }),
+    row({ entityType: 'ScheduleStageMark', entityId: 'mkB', action: 'SCHEDULE_STAGE_DONE', changesJson: base({}) }),
+  ];
+  const r = feed(H.h29b);
+  assertClean(r, 'H29b');
+  const a = one(r, 'הכנה נרשמה אוטומטית בלקיחה', 'H29b');
+  assert.equal(a.who, EMP.name);
+  assertBucket(r, a, SCHEDULE_MARK_CAT);
+  one(r, "סומן 'בוצע' בלו״ז · הכנה", 'H29b');
+});

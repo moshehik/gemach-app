@@ -145,3 +145,17 @@ test('כללי הריפו: בלי $transaction ובלי כתיבת AuditLog יד
   assert.ok(!/scheduleStageMark|autoPrepMark/.test(cancel), 'ביטול השכרה לא מבטל את הסימון');
   for (const f of ['app/api/rentals/toggle/route.js', 'app/api/rentals/confirm/route.js', 'app/api/returns/scan/route.js']) assert.match(fs.readFileSync(path.join(PROJ, f), 'utf8'), /autoMarkPrepForOrder\(/);
 });
+
+test('שורת היומן של סימון אוטומטי נושאת auto:true + source:auto ב-changes (ההיסטוריה מתייגת לפי זה); סימון ידני בלעדיהם', async () => {
+  await toggle.POST(post({ itemId: 'it1', action: 'rent' }));
+  const a = audits().find((x) => x.action === 'SCHEDULE_STAGE_DONE');
+  const c = JSON.parse(a.changesJson);
+  assert.equal(c.auto, true);
+  assert.equal(c.source, 'auto');
+  assert.equal(c.scheduleStage, 'הכנה');
+  const marksMod = await L('lib/schedule/marks.js');
+  const before = audits().length;
+  await marksMod.writeMark({ orderId: 53375, stageKey: 'repair', dayKey: '2026-10-05', wanted: true, source: 'row', userId: 'emp-rachel', now: new Date(), stageLabel: 'תיקונים' });
+  const manual = JSON.parse(audits()[before].changesJson);
+  assert.ok(!('auto' in manual) && !('source' in manual));
+});
