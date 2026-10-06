@@ -176,12 +176,12 @@ test('OcStepper: markup של renderTimeline (stepper > tlx > tx > dot / tt / tod
   assert.match(c, /<div className="tt">/);
   assert.match(c, /<div className="today" style=\{\{ '--f': n\.f\.toFixed\(2\) \}\}>/);
   assert.match(c, /className="tip pinm" aria-label="היום"/);
-  assert.match(c, /role="tooltip"/);
+  assert.match(strip(read('app/components/order-card/OcRichCard.js')), /role="tooltip"/, 'הכרטיס העשיר משותף (OcRichCard)');
   assert.match(c, /aria-describedby=\{rich && rich\.key === n\.k \? descId : undefined\}/);
   for (const ev of ['onMouseEnter', 'onMouseLeave', 'onFocus', 'onBlur', 'onClick']) assert.ok(c.includes(ev), ev);
   assert.match(c, /e\.key === 'Escape'/);
   assert.match(c, /matchMedia\('\(hover:none\)'\)/, 'מגע: הקשה פותחת/סוגרת');
-  assert.match(c, /document\.querySelector\('\[data-sticky-nav\]'\)/, 'לא נבלע מתחת לתפריט העליון');
+  assert.match(strip(read('app/components/order-card/parts/ocTipLogic.js')), /document\.querySelector\('\[data-sticky-nav\]'\)/, 'לא נבלע מתחת לתפריט העליון (navBottomOf)');
   assert.ok(!/title=/.test(c) && !/window\.(alert|confirm)/.test(c));
   const a5 = strip(read('app/components/order-card/OrderCardA5.js'));
   assert.match(a5, /<OcStepper oc=\{oc\} data=\{journalData\} \/>/);
