@@ -186,7 +186,7 @@ function NewTab({ ctl }) {
       {s.hok_enabled === 'true' ? <HokCard value={{ bankName: n.hokBankName, bankBranch: n.hokBankBranch, bankAccount: n.hokBankAccount, consent: n.hokConsent }} onChange={(k, v) => set(`hok${k}`)(v)} /> : null}
       {err && !err.field ? <Note style={{ marginTop: 14 }}>{err.text}</Note> : null}
       <div className="row" style={{ marginTop: 24 }}>
-        <button type="button" className="btn primary" onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />שמור לקוח והמשך</button>
+        <button type="button" className="btn primary" disabled={ctl.savingCustomer} aria-busy={ctl.savingCustomer} onClick={() => ctl.handleSaveNewCustomerAndProceed()}><Ic n="check" />{ctl.savingCustomer ? 'שומר...' : 'שמור לקוח והמשך'}</button>
       </div>
     </>
   );

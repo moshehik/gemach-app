@@ -362,6 +362,10 @@ await t('לפני טעינה מחדש: דף מלוכלך -> חלונית האי�
   assert.equal(L.isPageDirty({ win: { __gmDirty: true }, doc: doc([]) }), true, 'window.__gmDirty');
   assert.equal(L.isPageDirty({ win: { __gmDirty: () => true }, doc: doc([]) }), true, '__gmDirty כפונקציה');
   assert.equal(L.isPageDirty({ win: { __gmDirty: () => { throw new Error('x'); } }, doc: doc([]) }), false);
+  // 6.10.2026 (האשף החדש של הזמנה חדשה): פונקציה היא ההכרעה הסופית - false גובר על עריכה אמיתית ועל בקרה ששונתה (אחרי שמירה); boolean false עדיין ממשיך לבדיקות הכלליות
+  assert.equal(L.isPageDirty({ win: { __gmDirty: () => false }, doc: doc([ctl({ value: 'x' })]), userEdited: true }), false, '__gmDirty כפונקציה שמחזירה false גובר');
+  assert.equal(L.isPageDirty({ win: { __gmDirty: false }, doc: doc([]), userEdited: true }), true, 'boolean false לא גובר (SettingsSimPage)');
+  assert.equal(L.isPageDirty({ win: { __gmDirty: () => { throw new Error('x'); } }, doc: doc([]), userEdited: true }), true, 'פונקציה שזורקת - נופלים לבדיקות הכלליות');
   assert.equal(L.isPageDirty({ win: {}, doc: doc([]), userEdited: true }), true, 'עריכה אמיתית (בקרה מבוקרת)');
   assert.equal(L.UNSAVED_CONFIRM_MESSAGE, 'יש שינויים שלא נשמרו - לעבור בכל זאת?');
   const c = code(TOGGLE);
