@@ -398,37 +398,119 @@ export default async function RootLayout({ children }) {
       originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: payload }).catch(function(){});
     } catch (e) {}
   }
-  var AUTH_EP = /\\/api\\/(login|logout|auth(\\/|$)|attendance|dev\\/agent-login|employees\\/[^/?]+\\/(reset-)?password)|\\/api\\/history$/i;
+  // אבטחה: גוף בקשה הוא לא לוג ניטרלי - ב-login/PIN/נוכחות הוא מכיל סיסמאות, ובשאר הנתיבים ת"ז / בנק / אשראי / צרופות base64.
+  // לכן כאן (לפני שהרשומה נכנסת לתור) endpoint של אימות לא נרשם עם גוף כלל, ובשאר הנתיבים שדות רגישים מוסתרים.
+  // המקבילה בשרת: lib/redactSensitive.js (+ app/api/log-visit) - לשמור זהות; scripts/test_redact_sensitive.mjs בודק שוויון.
+  // חשוב: בלי backslash בביטויים (משתמשים ב-[/] ו-[0-9]) - בתוך template string רצף backslash+slash קורס לסלאש בודד ושובר את הביטוי בשקט (באג PR #188).
+  var AUTH_EP = /[/]api[/](login([/]|$)|logout([/]|$)|auth([/]|$)|attendance([/]|$)|dev[/]agent-login|admin[/]api-keys|employees[/][^/?]+[/](reset-|set-)?password|(a5[/]|admin[/]backups[/])?settings([/]|$))|[/]api[/](history|logs)$/i;
+  // (AUTH_EP חייב להיות ראשון: scripts/order-events.test.mjs ו-review2 חותכים את הסקריפט מ-'var AUTH_EP' ועד __queueVisitLog)
+  var REDACTED = '[מוסתר]';
+  var BASE64_RUN = /^[A-Za-z0-9+/=_-]{256,}$/;
+  var TEXT_SECRET = /pass|secret|token|pin|pwd|otp|authorization|bearer|gmk_|credential|apikey|zeout|idnumber|iban|bank|card|cvv|cvc|ccv|filecontent|base64|data:/i;
+  var BARE_DIGITS = /^["']?[0-9][0-9 -]{2,}["']?$/;
+  var GMK_RE = /gmk_[A-Za-z0-9]{16,}/g;
+  var BEARER_RE = /Bearer[ ]+[A-Za-z0-9._~+/=-]+/gi;
+  var PAIR_NAME_PROPS = ['key', 'name', 'field', 'setting', 'settingkey'];
+  var PAIR_VALUE_PROPS = ['value', 'val', 'newvalue', 'oldvalue', 'defaultvalue'];
+  var MAX_BODY_LEN = 200000;
+  function isAuthEndpoint(u) {
+    try { return AUTH_EP.test(new URL(String(u), 'http://x').pathname); } catch (e) { return AUTH_EP.test(String(u)); }
+  }
   function isSensitiveKey(key) {
     var k = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
-    return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1 || k.indexOf('otp') !== -1 || k === 'code' || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k)
-      || k.indexOf('zeout') !== -1 || k.indexOf('idnumber') !== -1 || k.indexOf('iban') !== -1 || k.indexOf('bank') === 0 || (k.indexOf('card') === 0 && k !== 'cardvariant') || k.indexOf('filecontent') !== -1 || k.indexOf('base64') !== -1;
+    return k.indexOf('pass') !== -1 || k.indexOf('secret') !== -1 || k.indexOf('token') !== -1 || k.indexOf('authorization') !== -1
+      || k.indexOf('credential') !== -1 || k.indexOf('apikey') !== -1 || k.indexOf('privatekey') !== -1 || k.indexOf('otp') !== -1
+      || k === 'code' || k === 'jwt' || k === 'ssn'
+      || k.indexOf('pwd') !== -1
+      || (k.indexOf('pin') === 0 && k.indexOf('pinned') !== 0 && k !== 'pinmode')
+      || /(pin|pincode|pinhash|authcode|smscode|verificationcode|resetcode|verifycode)$/.test(k)
+      || k.indexOf('zeout') !== -1 || k.indexOf('idnumber') !== -1 || k.indexOf('teudat') !== -1 || k.indexOf('nationalid') !== -1
+      || k.indexOf('iban') !== -1 || k.indexOf('bank') === 0 || k.indexOf('accountnumber') !== -1
+      || k.indexOf('creditcard') !== -1 || k.indexOf('ccnumber') !== -1 || k.indexOf('cvv') !== -1 || k.indexOf('cvc') !== -1 || k.indexOf('ccv') !== -1
+      || (k.indexOf('card') === 0 && k !== 'cardvariant')
+      || k.indexOf('filecontent') !== -1 || k.indexOf('base64') !== -1;
   }
-  function redactValue(v, d) {
-    if (d > 6) return v;
-    if (Array.isArray(v)) return v.map(function(x) { return redactValue(x, d + 1); });
-    if (v && typeof v === 'object') {
-      var out = {};
-      Object.keys(v).forEach(function(k) { out[k] = isSensitiveKey(k) ? '[מוסתר]' : redactValue(v[k], d + 1); });
-      return out;
-    }
-    return v;
+  function maskPatterns(s) {
+    return s.replace(GMK_RE, REDACTED).replace(BEARER_RE, 'Bearer ' + REDACTED);
   }
-  function sanitizeRequestQuery(text, endpoint) {
-    if (AUTH_EP.test(endpoint)) return '';
-    var t = String(text).trim();
-    if (t.charAt(0) === '{' || t.charAt(0) === '[') {
-      try { return JSON.stringify(redactValue(JSON.parse(t), 0)); } catch (e) { return ''; }
-    }
-    if (t.charAt(0) === '?' || t.indexOf('=') !== -1) {
+  function redactString(s, depth, inStr) {
+    if (s.length > 20 && /^data:[^,]*;base64,/i.test(s)) return REDACTED;
+    if (s.length >= 256 && BASE64_RUN.test(s)) return REDACTED;
+    var t = s;
+    var tt = s.trim();
+    if (!inStr && (tt.charAt(0) === '{' || tt.charAt(0) === '[')) {
       try {
-        var p = new URLSearchParams(t.charAt(0) === '?' ? t.slice(1) : t);
-        var ch = false;
-        Array.from(p.keys()).forEach(function(k) { if (isSensitiveKey(k)) { p.set(k, '[מוסתר]'); ch = true; } });
-        return ch ? '?' + p.toString() : t;
-      } catch (e) { return ''; }
+        t = JSON.stringify(redactValue(JSON.parse(tt), (depth || 0) + 1, true));
+        if (t.length > 300) return REDACTED;
+      } catch (e) {
+        if (TEXT_SECRET.test(tt)) return REDACTED;
+      }
     }
-    return /pass|secret|token|pin|otp|authorization|zeout|idnumber|iban|bank|filecontent|base64/i.test(t) ? '' : t;
+    t = maskPatterns(t);
+    return t.length > 300 ? t.slice(0, 300) + '…[נחתך]' : t;
+  }
+  function redactValue(v, d, inStr) {
+    if (typeof v === 'string') return redactString(v, d, inStr);
+    if (!v || typeof v !== 'object') return v;
+    if (d > 6) return REDACTED;
+    if (Array.isArray(v)) return v.map(function(x) { return redactValue(x, d + 1, inStr); });
+    var keys = Object.keys(v);
+    var pairSecret = keys.some(function(k) { return PAIR_NAME_PROPS.indexOf(k.toLowerCase()) !== -1 && typeof v[k] === 'string' && isSensitiveKey(v[k]); });
+    var out = {};
+    keys.forEach(function(k) {
+      out[k] = isSensitiveKey(k) || (pairSecret && PAIR_VALUE_PROPS.indexOf(k.toLowerCase()) !== -1) ? REDACTED : redactValue(v[k], d + 1, inStr);
+    });
+    return out;
+  }
+  function redactQs(qs) {
+    var hashAt = qs.indexOf('#');
+    var ch = hashAt !== -1;
+    var body = hashAt === -1 ? qs : qs.slice(0, hashAt);
+    var p = new URLSearchParams(body.charAt(0) === '?' ? body.slice(1) : body);
+    var out = new URLSearchParams();
+    p.forEach(function(v, k) {
+      var next = isSensitiveKey(k) ? REDACTED : redactString(v, 0, false);
+      if (next !== v) ch = true;
+      out.append(k, next);
+    });
+    return ch ? '?' + out.toString() : body;
+  }
+  // כשל כלשהו => '' (לא נרשם גוף) - לעולם לא נופלים חזרה לטקסט הגולמי
+  function sanitizeRequestQuery(text, endpoint) {
+    try {
+      if (isAuthEndpoint(endpoint)) return '';
+      var s = String(text);
+      if (s.length > MAX_BODY_LEN) return '';
+      var t = s.trim();
+      if (t.charAt(0) === '{' || t.charAt(0) === '[') {
+        try { return JSON.stringify(redactValue(JSON.parse(t), 0, false)); } catch (e) { return TEXT_SECRET.test(t) ? '' : s; }
+      }
+      if (BARE_DIGITS.test(t) || redactString(t, 0, false) === REDACTED) return '';
+      if (t.charAt(0) === '?' || t.indexOf('=') !== -1) return redactQs(t);
+      return TEXT_SECRET.test(t) ? '' : redactString(s, 0, false);
+    } catch (e) { return ''; }
+  }
+  function sanitizeUrl(u) {
+    try {
+      var s = String(u);
+      var h = s.indexOf('#');
+      if (h !== -1) s = s.slice(0, h);
+      var i = s.indexOf('?');
+      if (i === -1) return maskPatterns(s);
+      if (isAuthEndpoint(s)) return s.slice(0, i);
+      return maskPatterns(s.slice(0, i)) + redactQs(s.slice(i));
+    } catch (e) { var j = String(u).split('#')[0]; var q = j.indexOf('?'); return q === -1 ? j : j.slice(0, q); }
+  }
+  // גוף בקשה כטקסט: מחרוזת / URLSearchParams / אובייקט רגיל בלבד. בינארי (Uint8Array, ArrayBuffer, Blob, FormData, זרם) - לא נרשם כלום
+  function requestBodyText(b) {
+    try {
+      if (typeof b === 'string') return b;
+      if (b === null || typeof b !== 'object') return '';
+      var tag = Object.prototype.toString.call(b);
+      if (tag === '[object URLSearchParams]') return b.toString();
+      if (ArrayBuffer.isView(b) || tag === '[object ArrayBuffer]' || tag === '[object SharedArrayBuffer]' || tag === '[object Blob]' || tag === '[object File]' || tag === '[object FormData]' || tag === '[object ReadableStream]') return '';
+      return JSON.stringify(b);
+    } catch (e) { return ''; }
   }
   window.__queueVisitLog = function(entry) {
     entry.ts = Date.now();
@@ -452,10 +534,8 @@ export default async function RootLayout({ children }) {
           var endpoint = parsedUrl.pathname;
           var requestQuery = parsedUrl.search;
           if (!requestQuery && args[1] && args[1].body) {
-            requestQuery = typeof args[1].body === 'string' ? args[1].body : JSON.stringify(args[1].body);
+            requestQuery = requestBodyText(args[1].body);
           }
-          // אבטחה: גוף בקשה הוא לא לוג ניטרלי - ב-login/PIN/נוכחות הוא מכיל סיסמאות. לא נרשם כלל שם,
-          // ובשאר הנתיבים שדות רגישים מוסתרים (המקבילה בשרת: lib/redactSensitive.js - לשמור מסונכרנות).
           if (requestQuery) requestQuery = sanitizeRequestQuery(requestQuery, endpoint);
           window.__GLOBAL_LAST_API_CALL__ = url;
           window.__LAST_API_CALLS__ = window.__LAST_API_CALLS__ || {};
@@ -463,7 +543,7 @@ export default async function RootLayout({ children }) {
           window.__LAST_API_METADATA__ = window.__LAST_API_METADATA__ || {};
           window.__LAST_API_METADATA__[url] = { responseSize: respSize, executionTime: execTime, timestamp: new Date().toISOString() };
           window.dispatchEvent(new CustomEvent('agy_api_call', { detail: { url: url, endpoint: endpoint, requestQuery: requestQuery, responseSize: respSize, executionTime: execTime } }));
-          window.__queueVisitLog({ pageUrl: url, requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime });
+          window.__queueVisitLog({ pageUrl: sanitizeUrl(url), requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime });
         } catch(e) {}
       };
 

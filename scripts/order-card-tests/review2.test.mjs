@@ -311,7 +311,8 @@ test('S5: הסקריפט המרונדר של app/layout.js (אחרי עיבוד 
   assert.ok(!template.includes('${'), 'אין אינטרפולציות בסקריפט');
   const rendered = new Function('return `' + template.replace(/\r\n/g, '\n') + '`')(); // = מה ש-React מזריק ל-<script>
   // הרגקס של נקודות הקצה נשאר תקין אחרי עיבוד התבנית (באג ה-collapse של \/ → /)
-  assert.ok(rendered.includes(String.raw`var AUTH_EP = /\/api\/(login|logout|auth(\/|$)|attendance`), 'ה-regex ב-rendered שומר סלאש מוברח (לא קורס ל-//)');
+  assert.ok(rendered.includes('var AUTH_EP = /[/]api[/](login'), 'ה-regex ב-rendered כתוב בלי backslash ([/]) - אין מה שיקרוס ל-//');
+  assert.ok(!/var AUTH_EP = \/\//.test(rendered), 'לא קרס להערת //');
   const logs = [];
   const win = {
     location: { origin: 'http://x', pathname: '/orders/1' },

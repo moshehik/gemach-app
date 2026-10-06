@@ -24,7 +24,7 @@ export async function POST(request) {
       .slice(0, 50)
       .filter((e) => e && typeof e.pageUrl === 'string' && e.pageUrl && !isNoisyVisitUrl(e.pageUrl))
       .map((e) => ({
-        // הגנה בעומק: גם אם קליינט ישן/זדוני שולח סיסמה או PIN - לא נשמרים ב-DB (ר' lib/redactSensitive.js)
+        // הגנה בעומק: גם אם קליינט ישן/זדוני שולח סיסמה, PIN או ת"ז - לא נשמרים ב-DB (ר' lib/redactSensitive.js)
         pageUrl: redactUrl(e.pageUrl).slice(0, 2000),
         loadingError: e.loadingError ? String(e.loadingError).slice(0, 2000) : null,
         requestQuery: e.requestQuery ? redactRequestQuery(String(e.requestQuery).slice(0, 4000), e.pageUrl) : null,

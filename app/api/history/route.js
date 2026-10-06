@@ -23,18 +23,16 @@ export async function GET(request) {
     if (search) {
       where.OR = [
         { pageUrl: { contains: search } },
-        // לא מאפשרים חיפוש בתוך גופים שעלולים להכיל סודות (אחרת החיפוש משמש כאורקל לניחוש סיסמאות/PIN)
+        // לא מאפשרים חיפוש בתוך גופים שעלולים להכיל סודות (אחרת החיפוש משמש כאורקל לניחוש סיסמאות/PIN/ת"ז בשורות ישנות)
         {
           requestQuery: { contains: search },
           NOT: [
             { pageUrl: { contains: '/api/login' } },
             { pageUrl: { contains: '/api/auth/' } },
             { pageUrl: { contains: '/api/attendance' } },
-            { requestQuery: { contains: 'assword', mode: 'insensitive' } },
-            { requestQuery: { contains: '"pin', mode: 'insensitive' } },
-            { requestQuery: { contains: 'authPin', mode: 'insensitive' } },
-            { requestQuery: { contains: 'secret', mode: 'insensitive' } },
-            { requestQuery: { contains: 'token', mode: 'insensitive' } },
+            ...['assword', '"pin', 'authPin', 'secret', 'token', 'zeout', 'idNumber', 'iban', 'bank', 'card', 'base64'].map((w) => ({
+              requestQuery: { contains: w, mode: 'insensitive' },
+            })),
           ],
         },
         { loadingError: { contains: search } },
@@ -66,7 +64,7 @@ export async function GET(request) {
       skip,
       take: limit,
     });
-    // שורות ישנות (לפני התיקון) עלולות להכיל סיסמאות/PIN בטקסט גלוי - לעולם לא מחזירים אותן לקליינט.
+    // שורות ישנות (לפני התיקון) עלולות להכיל סיסמאות/PIN/ת"ז בטקסט גלוי - לעולם לא מחזירים אותן לקליינט.
     const data = rows.map((r) => ({
       ...r,
       pageUrl: redactUrl(r.pageUrl),
