@@ -150,7 +150,9 @@ test('כללי הריפו: בלי $transaction ובלי כתיבת AuditLog יד
   assert.ok(/writeMark\(/.test(src));
   const cancel = fs.readFileSync(path.join(PROJ, 'app/api/rentals/cancel/route.js'), 'utf8');
   assert.ok(!/scheduleStageMark|autoPrepMark/.test(cancel), 'ביטול השכרה לא מבטל את הסימון');
-  for (const f of ['app/api/rentals/toggle/route.js', 'app/api/rentals/confirm/route.js', 'app/api/returns/scan/route.js']) assert.match(fs.readFileSync(path.join(PROJ, f), 'utf8'), /autoMarkPrepBounded\(/);
+  // toggle / confirm: אחרי התשובה (after() דרך runAfterResponse, במקביל לתיקון המשוער); returns/scan: bounded כמקודם
+  for (const f of ['app/api/rentals/toggle/route.js', 'app/api/rentals/confirm/route.js']) { const s = fs.readFileSync(path.join(PROJ, f), 'utf8'); assert.match(s, /autoMarkPrepForOrder\(/); assert.match(s, /runAfterResponse\(/); }
+  assert.match(fs.readFileSync(path.join(PROJ, 'app/api/returns/scan/route.js'), 'utf8'), /autoMarkPrepBounded\(/);
 });
 
 test('שורת היומן של סימון אוטומטי נושאת auto:true + source:auto ב-changes (ההיסטוריה מתייגת לפי זה); סימון ידני בלעדיהם', async () => {

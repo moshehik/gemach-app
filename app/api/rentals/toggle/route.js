@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import prisma, { auditAs } from '../../../lib/prisma';
+import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 import { checkEarlyReturn } from '@/lib/earlyReturnGuard';
-import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
-import { autoMarkAlterationBounded } from '@/lib/schedule/autoAlterationDone';
+import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
+import { autoMarkAlterationForItem } from '@/lib/schedule/autoAlterationDone';
+import { runAfterResponse } from '@/lib/schedule/afterResponse';
+import { isAlterationEstimated, stripEstimateMarker } from '@/lib/alterationEstimate';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
 // אפשר יהיה לראות במפורש מתי בוצעה השכרה, החזרה, ביטול השכרה או ביטול החזרה.
@@ -17,6 +19,8 @@ const AUDIT_ACTIONS = {
 };
 
 export async function POST(request) {
+  // העובד נקרא לפני כל await (העוגייה זמינה רק בהקשר הבקשה; העבודה שאחרי התשובה רצה ב-after() שבו cookies() אסור) - lib/schedule/afterResponse.js
+  const actorPromise = getActingEmployeeId();
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { itemId, action, barcode, returnedOk, overridePin, overrideEmployeeId } = await request.json();
@@ -49,6 +53,7 @@ export async function POST(request) {
       where: { id: String(itemId) },
       select: {
         isTaken: true, takenDate: true, isReturned: true, returnedOk: true, returnDate: true, barcode: true,
+        alterationDone: true, alterationDetails: true,
         ...RENTAL_MATCH_ITEM_SELECT,
         order: { select: { orderId: true, eventDate: true } }
       }
@@ -72,10 +77,18 @@ export async function POST(request) {
       overrideNote = guard.auditNote;
     }
 
+    // ביטול השכרה של פריט שהתיקון שלו נרשם אוטומטית ("בוצע (משוער)") - הרישום המשוער מתבטל איתו; סימון של אדם (בלי הסמן) לא נוגעים בו
+    const revertsEstimate = action === 'undoRent' && isAlterationEstimated(before);
+    if (revertsEstimate) {
+      updateData.alterationDone = false;
+      updateData.alterationDetails = stripEstimateMarker(before.alterationDetails);
+    }
+
     const changes = {};
     for (const [field, to] of Object.entries(updateData)) {
       changes[field] = { from: before[field] ?? null, to: to ?? null };
     }
+    if (revertsEstimate) changes.estimated = { from: true, to: false };
     if (overrideNote) changes.note = overrideNote;
 
     const updatedItem = await prisma.orderItem.update(auditAs(
@@ -84,10 +97,14 @@ export async function POST(request) {
       changes
     ));
 
-    // לקיחה (או החזרה - אז בוודאי נלקח): נרשמת הכנה אוטומטית אם עוד לא סומנה (lib/schedule/autoPrepMark.js; נכשל בשקט, אחרי הכתיבה, מחוץ לכל טרנזקציה)
-    if ((action === 'rent' || action === 'return') && before.order) await autoMarkPrepBounded(before.order.orderId);
-    // לקיחה בלבד (לא החזרה): תיקון שלא סומן נרשם "בוצע (משוער)" - lib/schedule/autoAlterationDone.js (נכשל בשקט, מוגבל בזמן)
-    if (action === 'rent') await autoMarkAlterationBounded(itemId);
+    // אחרי הכתיבה, מחוץ לכל טרנזקציה, במקביל ובלי להאט את התשובה (after() של Next; מחוץ להקשר בקשה - ריצה מקומית מוגבלת בזמן; נכשל בשקט תמיד):
+    //  - לקיחה (או החזרה - אז בוודאי נלקח): נרשמת הכנה אוטומטית אם עוד לא סומנה (lib/schedule/autoPrepMark.js)
+    //  - לקיחה בלבד (לא החזרה): תיקון שלא סומן נרשם "בוצע (משוער)" - lib/schedule/autoAlterationDone.js (רק כשauto_alteration_done_on_take === 'true')
+    const actorId = await actorPromise;
+    const afterTasks = [];
+    if ((action === 'rent' || action === 'return') && before.order) afterTasks.push(() => autoMarkPrepForOrder(before.order.orderId, { userId: actorId }));
+    if (action === 'rent') afterTasks.push(() => autoMarkAlterationForItem(itemId));
+    await runAfterResponse(afterTasks, { actorId });
 
     return NextResponse.json({ success: true, item: updatedItem });
   } catch (error) {
