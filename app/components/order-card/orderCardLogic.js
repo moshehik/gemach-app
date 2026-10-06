@@ -32,6 +32,7 @@
 // itemLabel, fmtMoney, hebDateOf.
 
 import { getHebrewDateString, getIsraelDateKey, getIsraelTodayKey } from '../../../lib/hebrewDate';
+import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
 import { extraDayUpdates, isRangeEvent } from './parts/ocDetailsLogic'; // W2a: ביטול 'יום השכרה נוסף' מזיז את התאריכים בחזרה (סקירת W2a, סעיף 3)
 
 // ---------------------------------------------------------------------------------------------
@@ -199,6 +200,8 @@ export function parseSettings(rows) {
     enableDressLocationAlert: bool('enable_dress_location_alert', false),
     orderQuickMailEnabled: bool('order_quick_mail_enabled', false),
     enableAlterations: bool('enable_alterations', false),
+    // SystemSetting auto_alteration_done_on_take (ברירת מחדל כבוי): בלקיחה התיקון נרשם "בוצע (משוער)" - השרת (lib/schedule/autoAlterationDone.js) והשיקוף המקומי בכרטיס נשלטים באותה הגדרה, רק 'true'
+    autoAlterationDoneOnTake: has('auto_alteration_done_on_take') && raw.auto_alteration_done_on_take === 'true',
     enableRentalExtension: bool('enable_rental_extension', false),
     hideCustomSpacing: bool('hide_custom_spacing', false),
     requireCustomerIdNumber: bool('require_customer_id_number', false),
@@ -326,7 +329,8 @@ export function validateRepairs(items = []) {
   for (const item of items) {
     if (!item.isDeleted) {
       const hasRepair = item.neckAlteration || item.sleeveAlteration || (item.lengthAlteration && item.lengthAlteration.trim() !== '');
-      if (hasRepair && (!item.alterationDetails || item.alterationDetails.trim() === '')) {
+      // הפירוט נבדק בלי הסמן הפנימי "בוצע (משוער)" - סמן בלבד לא נחשב פירוט שהוזן
+      if (hasRepair && detailsWithoutMarker(item.alterationDetails).trim() === '') {
         return 'חובה להזין פירוט תיקון עבור כל פריט שיש לו תיקון מסומן (צוואר, שרוול או אורך).';
       }
     }

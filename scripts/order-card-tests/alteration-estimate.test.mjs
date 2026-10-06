@@ -57,7 +57,7 @@ test('תוויות: alterationDoneLabel / isAlterationEstimated / altText בכר
 
 test('חיווט הכרטיס: שיקוף מקומי בלקיחה (estimateOnTake) + החזרה לאחור בכישלון; סימון ידני מסיר את הסמן; שורת הפריט מציגה טולטיפ וטקסט בלי המשפט', () => {
   const act = strip(read('app/components/order-card/hooks/useItemActions.js'));
-  assert.match(act, /const altPatch = estimateOnTake\(item\);/);
+  assert.match(act, /const altPatch = autoAlterationOnTake\(env\.get\(\)\.settings\) \? estimateOnTake\(item\) : null;/);
   assert.match(act, /\.\.\.\(altPatch \|\| \{\}\)/);
   assert.match(act, /\.\.\.\(altPatch \? \{ alterationDone: item\.alterationDone, alterationDetails: item\.alterationDetails \} : \{\}\)/);
   const ctl = strip(read('app/components/order-card/useOrderCardController.js'));
