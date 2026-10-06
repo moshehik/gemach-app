@@ -18,7 +18,7 @@ function fmtWhen(iso) {
   } catch { return ''; }
 }
 
-const VIA_TEXT = { alterationDone: 'לפי מסך התיקונים', isTaken: 'לפי ההשכרה (הפריטים נלקחו)', isReturned: 'לפי החזרת הפריטים' };
+const VIA_TEXT = { alterationDone: 'לפי מסך התיקונים', alterationEstimated: 'לפי מסך התיקונים (משוער - נרשם אוטומטית בלקיחה)', isTaken: 'לפי ההשכרה (הפריטים נלקחו)', isReturned: 'לפי החזרת הפריטים' };
 
 // הטולטיפ של "בוצע" דלוק (B18, מאושר: "סומן ע״י … ב-…") + טקסט העיצוב לביטול
 export function doneTip(state) {

@@ -24,6 +24,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { describeMismatch } from '@/lib/rentalBarcodeMatch';
+import { alterationDoneLabel, estimateOnTake, detailsWithoutMarker } from '@/lib/alterationEstimate';
 import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '@/lib/orderItemEditWindow';
 import { normalizeGapRule } from '@/lib/priceRows';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
@@ -56,7 +57,8 @@ export function altText(i) {
   const a = [isChecked(i?.neckAlteration) && 'צוואר', isChecked(i?.sleeveAlteration) && 'שרוול'].filter(Boolean);
   if (!a.length && !(i?.lengthAlteration && String(i.lengthAlteration).trim() !== '')) return '';
   const parts = a.length ? a.join(', ') : 'אורך';
-  return `תיקון: ${parts}${i.alterationDone ? ' · בוצע' : ''}`;
+  const done = alterationDoneLabel(i); // '' / 'בוצע' / 'בוצע (משוער)' (המשפט המשוער ב-alterationDetails - lib/alterationEstimate.js)
+  return `תיקון: ${parts}${done ? ` · ${done}` : ''}`;
 }
 
 // סטטוס הפריט במילים (העיצוב itemStatTxt: נלקחה/נמסרה, הוחזרה/נאספה לפי כיוון המשלוח) + מצב החזרה של הישן (renderStatusBadge)
@@ -197,6 +199,8 @@ export function quotaFull(settings, items) {
   return (items || []).filter(i => !i.isDeleted).length >= max;
 }
 // R23: תיקונים פעילים כש-enable_alterations אינו 'false' (MIM :145 — חסר = פעיל)
+// תיקון משוער בלקיחה - אותה הגדרה כמו בשרת (lib/schedule/autoAlterationDone.js): רק 'true' מפעיל (ברירת מחדל כבוי)
+export const autoAlterationOnTake = (settings) => (settings && typeof settings.get === 'function' ? settings.get('auto_alteration_done_on_take', null) : null) === 'true';
 export const alterationsEnabled = (settings) => (settings && typeof settings.get === 'function' ? settings.get('enable_alterations', null) : null) !== 'false';
 
 // MIM :490-510 — הפריט כפי שהוא נכנס לעריכה (אותם שדות כמו בישן; גוף ה-PUT לפריט = הטיוטה הזו)
@@ -410,7 +414,9 @@ export function createItemActions(env) {
     if (!item || !item.id || item.isNew) return { ok: false };
     if (env.get().isLocked) { fail('ההזמנה נעולה (תאריך האירוע עבר) — ניתן לבצע החזרה בלבד. השכרה דורשת שחרור באישור מנהל.'); return { ok: false }; }
     const takenDate = new Date();
-    patchItem(item.id, { isTaken: true, takenDate, ...(barcodeToAssign ? { barcode: barcodeToAssign } : {}) });
+    // שיקוף מקומי של מה שהשרת כותב בלקיחה (תיקון שלא סומן = בוצע (משוער), lib/alterationEstimate.js estimateOnTake) - כדי ששמירה מאוחרת של ההזמנה לא תחזיר alterationDone=false
+    const altPatch = autoAlterationOnTake(env.get().settings) ? estimateOnTake(item) : null;
+    patchItem(item.id, { isTaken: true, takenDate, ...(altPatch || {}), ...(barcodeToAssign ? { barcode: barcodeToAssign } : {}) });
     let result;
     try {
       result = await postRent(item.id, barcodeToAssign);
@@ -419,7 +425,7 @@ export function createItemActions(env) {
     }
     if (!result.ok) {
       fail(result.message || 'שגיאה בשמירת סטטוס השכרה');
-      patchItem(item.id, { isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode });
+      patchItem(item.id, { isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode, ...(altPatch ? { alterationDone: item.alterationDone, alterationDetails: item.alterationDetails } : {}) });
       return { ok: false };
     }
     bump();
@@ -704,7 +710,7 @@ export function createItemActions(env) {
     const hasModelIdentity = !!(item.dressModelId || item.barcodePrefix || item.dressItem?.dressModelId || item.dressItem?.barcodePrefix);
     if (!item.sizeText || !hasModelIdentity) { fail('יש לבחור דגם ומידה לפני האישור'); return { ok: false }; }
     const hasRepair = item.neckAlteration || item.sleeveAlteration || (item.lengthAlteration && item.lengthAlteration.trim() !== '');
-    if (alterationsEnabled(st.settings) && hasRepair && (!item.alterationDetails || item.alterationDetails.trim() === '')) {
+    if (alterationsEnabled(st.settings) && hasRepair && detailsWithoutMarker(item.alterationDetails).trim() === '') {
       fail('חובה להזין פירוט תיקון כאשר נבחר תיקון');
       return { ok: false };
     }
@@ -748,7 +754,7 @@ export function createItemActions(env) {
     const newItem = newItemOf(draft, localId, new Date().toISOString());
     // בדיקות האישור לפני שהשורה נכנסת (כדי לא להשאיר שורה ריקה כשהפירוט חסר)
     const hasRepair = newItem.neckAlteration || newItem.sleeveAlteration || (newItem.lengthAlteration && newItem.lengthAlteration.trim() !== '');
-    if (alterationsEnabled(st.settings) && hasRepair && (!newItem.alterationDetails || newItem.alterationDetails.trim() === '')) {
+    if (alterationsEnabled(st.settings) && hasRepair && detailsWithoutMarker(newItem.alterationDetails).trim() === '') {
       fail('חובה להזין פירוט תיקון כאשר נבחר תיקון');
       return { ok: false };
     }

@@ -36,6 +36,14 @@ import { hebrewPhoneticKey } from '@/lib/hebrewPhonetic';
 // ייתכנו כמה עותקים של הקובץ הזה בזיכרון, בעוד הלקוח עצמו משותף (נשמר על globalThis למטה).
 const txStorage = globalThis.__prismaTxStorage || (globalThis.__prismaTxStorage = new AsyncLocalStorage());
 
+// עובד מבצע מפורש לעבודה שרצה אחרי שהתשובה נשלחה (after() של Next): שם cookies() אסור בראוטים ("used cookies() inside after()"),
+// ובלי זה שורת היומן הייתה נרשמת בלי עובד. הקורא קורא את העובד לפני כל await (getActingEmployeeId) ועוטף את העבודה ב-runAsActor.
+// על globalThis מאותה סיבה כמו txStorage (כמה עותקי מודול בזיכרון).
+const actorStorage = globalThis.__prismaActorStorage || (globalThis.__prismaActorStorage = new AsyncLocalStorage());
+export function runAsActor(employeeId, fn) {
+  return actorStorage.run({ employeeId: employeeId || null }, fn);
+}
+
 /**
  * מוסיף לקריאת Prisma רגילה תיאור מפורש לרישום ההיסטוריה, למשל:
  *
@@ -65,6 +73,8 @@ export function auditAs(action, args, changes) {
  * בעצמם (updateMany, שאינו עובר דרך התוסף) ירשמו גם הם מי ביצע את הפעולה.
  */
 export async function getActingEmployeeId() {
+  const override = actorStorage.getStore();
+  if (override) return override.employeeId;
   try {
     const cookieStore = await cookies();
     const token = getVerifiedAuthCookie(cookieStore)?.value;
@@ -254,7 +264,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 8;
+const CLIENT_SETUP_VERSION = 9;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {

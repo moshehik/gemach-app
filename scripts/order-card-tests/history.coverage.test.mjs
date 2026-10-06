@@ -670,3 +670,14 @@ test('H29b הכנה אוטומטית בלקיחה (auto:true): "הכנה נרש�
   assertBucket(r, a, SCHEDULE_MARK_CAT);
   one(r, "סומן 'בוצע' בלו״ז · הכנה", 'H29b');
 });
+
+test('H11b תיקון שנרשם אוטומטית בלקיחה (estimated:true): "תיקון נרשם כבוצע (משוער) בלקיחה" ב-items + סל "תיקונים"; סימון רגיל נשאר "תיקון סומן כבוצע"', () => {
+  H.h11b = [
+    row({ entityType: 'OrderItem', entityId: ITEM2, action: 'ALTERATION_DONE', changesJson: JSON.stringify({ alterationDone: { from: false, to: true }, estimated: true, note: 'נרשם אוטומטית בלקיחה - ביצוע משוער' }) }),
+  ];
+  const r = feed(H.h11b);
+  assertClean(r, 'H11b');
+  const e = one(r, 'תיקון נרשם כבוצע (משוער) בלקיחה: דגם 3087, מידה 36', 'H11b');
+  assertBucket(r, e, 'items', 'fix');
+  assert.equal(e.who, EMP.name);
+});

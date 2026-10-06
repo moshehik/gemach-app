@@ -203,3 +203,4 @@ export function auditAs(action, args, changes) {
   return { ...args, __audit: { action, changes } };
 }
 export async function getActingEmployeeId() { return null; }
+export function runAsActor(employeeId, fn) { return fn(); }

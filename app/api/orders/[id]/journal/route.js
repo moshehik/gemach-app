@@ -45,7 +45,7 @@ export async function GET(request, { params }) {
         isDelivery: true, deliveryDirection: true, deliveryOneDayBefore: true,
         items: {
           select: {
-            id: true, isDeleted: true, neckAlteration: true, sleeveAlteration: true, lengthAlteration: true, alterationDone: true,
+            id: true, isDeleted: true, neckAlteration: true, sleeveAlteration: true, lengthAlteration: true, alterationDetails: true, alterationDone: true,
             isTaken: true, takenDate: true, isReturned: true, returnDate: true, returnedOk: true,
           },
         },

@@ -1,9 +1,13 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { autoMarkPrepBounded } from '@/lib/schedule/autoPrepMark';
+import { autoMarkPrepForOrder } from '@/lib/schedule/autoPrepMark';
+import { autoMarkAlterationsForItems } from '@/lib/schedule/autoAlterationDone';
+import { runAfterResponse } from '@/lib/schedule/afterResponse';
 
 export async function POST(request) {
+  // העובד נקרא לפני כל await (ר' rentals/toggle ו-lib/schedule/afterResponse.js)
+  const actorPromise = getActingEmployeeId();
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { orderId } = await request.json();
@@ -47,7 +51,7 @@ export async function POST(request) {
       data: { location: 'מושכר' }
     });
 
-    const confirmedBy = await getActingEmployeeId();
+    const confirmedBy = await actorPromise;
     const auditLogs = pendingItems.map(item => ({
       entityType: 'OrderItem',
       entityId: item.id,
@@ -63,8 +67,12 @@ export async function POST(request) {
 
     await prisma.$transaction([updateItems, updateLocations, createLogs]);
 
-    // הכנה אוטומטית אחרי הלקיחה הגורפת (אחרי הטרנזקציה; נכשל בשקט)
-    await autoMarkPrepBounded(parseInt(orderId));
+    // אחרי הטרנזקציה, במקביל ובלי להאט את התשובה (after(); נכשל בשקט): הכנה אוטומטית + תיקונים של הפריטים שאושרו עכשיו בלבד (לא כל פריטי ההזמנה): בוצע (משוער)
+    const confirmedItemIds = pendingItems.map((item) => item.id);
+    await runAfterResponse([
+      () => autoMarkPrepForOrder(parseInt(orderId), { userId: confirmedBy }),
+      () => autoMarkAlterationsForItems(confirmedItemIds),
+    ], { actorId: confirmedBy });
 
     return NextResponse.json({ success: true, count: pendingItems.length });
   } catch (error) {
