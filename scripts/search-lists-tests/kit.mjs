@@ -49,7 +49,7 @@ export async function load(url, ctx, next) {
   if (url === 'mock:permissions') return mod('const T=globalThis.__T; export const canOpenPage=async(k)=>{T.asked.push(k);return T.pages.has(k);}; export const canOpenAnyPage=async(ks)=>ks.some((k)=>T.pages.has(k));');
   if (url === 'mock:settings') return mod('const T=globalThis.__T; export const getAllCachedSettings=async()=>Object.entries(T.settings).map(([key,value])=>({key,value})); export const getCachedSetting=async(k)=>T.settings[k]!==undefined?{key:k,value:T.settings[k]}:null;');
   if (url === 'mock:capacityMock') return mod('export const GET=async()=>new Response(JSON.stringify({inStock:0,occupiedCount:0,reserve:0,occupiedOrders:[]}),{status:200});');
-  if (url === 'mock:next-server') return mod('export class NextResponse { static json(body, init){ return new Response(JSON.stringify(body), { status:(init&&init.status)||200, headers:{"content-type":"application/json"} }); } }');
+  if (url === 'mock:next-server') return mod('export class NextResponse extends Response { static json(body, init){ return new Response(JSON.stringify(body), { status:(init&&init.status)||200, headers:{"content-type":"application/json"} }); } }');
   if (url === 'mock:next-headers') return mod('export const cookies=async()=>({get(){return undefined}});');
   return next(url, ctx);
 }

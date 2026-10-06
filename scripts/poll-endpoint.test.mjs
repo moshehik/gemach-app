@@ -242,7 +242,7 @@ test('סטטי: /api/poll - no-store, X-Poll-Limited, אימות חתום, טו�
   assert.match(route, /searchParams\.get\('fresh'\) === '1'/);
   // הנתיבים הישנים: עדיין מטפלים ב-light=1 כמו קודם
   const er = read('app/api/error-report/route.js');
-  assert.match(er, /searchParams\.get\('light'\) === '1'/);
+  assert.match(er, /(?:searchParams|reqParams)\.get\('light'\) === '1'/);
   assert.match(er, /select: \{ id: true, status: true, isReadByProgrammer: true, isReadByUser: true \}/);
   const nf = read('app/api/notifications/route.js');
   assert.match(nf, /searchParams\.get\('light'\) === '1'/);

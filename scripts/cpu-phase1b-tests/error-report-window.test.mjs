@@ -99,5 +99,7 @@ test('static: the frozen legacy window and the light poll still call the old URL
   assert.match(legacy, /fetch\(light \? '\/api\/error-report\?light=1' : '\/api\/error-report'\)/);
   assert.ok(!/take=|error-report\?id=/.test(legacy));
   const btn = read('app/components/ErrorReportButton.js');
-  assert.match(btn, /fetch\('\/api\/error-report\?light=1'\)/);
+  // Phase 1A: the button no longer fetches ?light=1 itself; it subscribes to the shared poller
+  assert.match(btn, /usePollSnapshot\(true\)/);
+  assert.ok(!/fetch\('\/api\/error-report\?light=1'\)/.test(btn), 'button must not poll on its own any more');
 });
