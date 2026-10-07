@@ -573,6 +573,20 @@ export function stepOpenInfo(order) {
   };
 }
 
+// שער כניסה לשלב (מקור יחיד ל-go() ולטופס הרציף): stepOpenInfo + כלל הישן "אחרי שלב המשלוח לא נפתח כל עוד שדות המשלוח לא תקינים" (deliveryError)
+// + customerConfirmed: בטופס הרציף בחירת לקוח ברשימה (pickFromList) רק קובעת לקוח; הבדיקות שבלחיצה על "המשך" (חסימה / חריגה) חייבות לעבור לפני
+// שהשלבים הבאים נפתחים. באשף customerConfirmed תמיד true (הניווט עובר ב-proceedToStep2 ממילא) - התוצאה זהה לחלוטין לבדיקה שהייתה ב-go().
+export const LOCK_REASON_CUSTOMER_UNCONFIRMED = 'יש לאשר את הלקוח (לחיצה על "המשך") תחילה';
+export function stepGate(order, ctx, key) {
+  const { deliveryError = '', customerConfirmed = true } = ctx || {};
+  const info = stepOpenInfo(order)[key];
+  if (!info) return { open: false, reason: '' };
+  if (!info.open) return { open: false, reason: info.reason };
+  if (key !== 'customer' && !customerConfirmed) return { open: false, reason: LOCK_REASON_CUSTOMER_UNCONFIRMED };
+  if (STEP_KEYS.indexOf(key) > STEP_KEYS.indexOf('delivery') && deliveryError) return { open: false, reason: deliveryError };
+  return { open: true, reason: '' };
+}
+
 // סכום כספי לתצוגה: שקלים שלמים בלי אגורות; כשיש אגורות (מחיר/תשלום לא שלם) - שתי ספרות אחרי הנקודה, כדי שלא יוסתרו
 export const moneyAmount = (n) => {
   const v = Math.abs(Number(n) || 0);

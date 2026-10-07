@@ -289,3 +289,42 @@
   .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr)}
   .gm-ds.gm-no .pay-side{position:static}
 }
+
+/* ===== טופס רציף בעמוד אחד נגלל (ההגדרה new_order_layout='continuous', LayoutContinuous.js): אותם רכיבי שלב, כל השלבים כגושים בזה אחר זה ===== */
+.gm-ds.gm-no .no-app.no-flowapp{max-width:1000px!important}
+/* פס התקדמות דק ונדבק: אותו מראה כמו פסי האשף (.pbars/.pb), מספר העמודות לפי מספר הגושים המוצגים (--n), לחיצה על פריט = גלילה לגוש */
+.gm-ds.gm-no .no-app .pbars.mini{grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:8px;position:sticky;top:calc(var(--gm-snav-h,0px) + 8px);z-index:20;margin-top:14px;padding:10px 12px 4px;border-radius:16px;background:rgba(255,255,255,.86);border:1px solid var(--sky-300);box-shadow:0 8px 24px -16px rgba(15,44,82,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.gm-ds.gm-no .pbars.mini .pb{gap:4px}
+.gm-ds.gm-no .pbars.mini .pb-d{padding:4px 6px;align-items:center}
+.gm-ds.gm-no .pbars.mini .pb-t b{font-size:13px}
+.gm-ds.gm-no .pbars.mini .pb.lock .pb-d{opacity:.55}
+.gm-ds.gm-no .no-flow{display:flex;flex-direction:column;gap:48px;margin-top:28px}
+.gm-ds.gm-no .no-sec{width:100%;max-width:680px;min-width:0;margin-inline:auto;scroll-margin-top:calc(var(--gm-snav-h,0px) + 84px)}
+.gm-ds.gm-no .no-sec.wide{max-width:none}
+.gm-ds.gm-no .no-sec-h{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin:0 0 18px}
+.gm-ds.gm-no .no-sec-n{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--navy);color:var(--gm-gold-300);font-size:18px;font-weight:700}
+/* כותרת הגוש = שאלת השלב של האשף (אותו גופן), קטנה יותר מכותרת-הענק של האשף; h2 - הכלל הכללי של h1-h6 דורש !important */
+.gm-ds.gm-no .no-sec-t{margin:0;flex:1;min-width:0;font-family:'FB Melatef','Suez One',serif!important;font-size:64px;font-weight:700;line-height:1;color:var(--navy-900);overflow-wrap:anywhere}
+.gm-ds.gm-no .no-sec-lock{display:inline-flex;align-items:center;gap:6px;margin-inline-start:auto;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.7);border:1px solid var(--sky-300);font-size:14px;font-weight:500;color:var(--ink2)}
+/* גוש נעול: גלוי אך מעומעם, חתוך ו-inert (המאפיין בקוד) עד שתנאי הנעילה של האשף מתקיימים */
+.gm-ds.gm-no .no-sec-body{transition:opacity .3s}
+.gm-ds.gm-no .no-sec.locked .no-sec-body{max-height:190px;overflow:hidden;opacity:.5;pointer-events:none;user-select:none;-webkit-mask-image:linear-gradient(#000 35%,transparent);mask-image:linear-gradient(#000 35%,transparent)}
+.gm-ds.gm-no .no-sec.locked .no-sec-n{background:var(--sky-300);color:var(--navy-900)}
+.gm-ds.gm-no .no-sec.locked .no-sec-t{opacity:.6}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .no-sec-body{transition:none}}
+/* "המשך" בתחתית הגוש: לחצן יחיד בקצה (שמאל ב-RTL, כמו באשף); בגוש התשלום ביטול + סיום משני הצדדים */
+.gm-ds.gm-no .no-sec-nav{margin-top:28px;gap:16px}
+.gm-ds.gm-no .no-sec-nav.row.spread{justify-content:flex-end}
+.gm-ds.gm-no .no-sec-nav.row.spread:has(>.btn+.btn){justify-content:space-between}
+.gm-ds.gm-no .no-flow .pay-side{top:calc(var(--gm-snav-h,0px) + 92px)}
+@media (max-width:760px){
+  .gm-ds.gm-no .no-flow{gap:36px}
+  .gm-ds.gm-no .no-flow .pay-side{top:auto}
+}
+@media (max-width:520px){
+  .gm-ds.gm-no .no-sec-t{font-size:46px}
+  .gm-ds.gm-no .no-sec-n{width:34px;height:34px;font-size:16px}
+  .gm-ds.gm-no .no-app .pbars.mini{gap:4px;padding:8px 6px 2px}
+  .gm-ds.gm-no .pbars.mini .pb-t b{font-size:11px;overflow-wrap:normal}
+  .gm-ds.gm-no .pbars.mini .pb-d{padding:4px 2px}
+}

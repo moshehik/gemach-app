@@ -18,6 +18,9 @@ const SETTINGS = {
   delivery_price_by_city: JSON.stringify({ 'ירושלים': 60, 'בית שמש': 80, 'בני ברק': 70 }), inventory_hold_minutes: '15',
   hide_marketing_consent_field: org2 ? 'false' : 'true', require_customer_id_number: org2 ? 'true' : 'false', require_id_for_edit_cancel: 'true',
   auto_email_on_order_create: 'true', mailing_list_auto_sync: 'true',
+  // ?layout=continuous: הטופס הרציף בעמוד אחד (new_order_layout); בלי הפרמטר - אשף שלבים כמו תמיד. ?nodelivery=1: משלוח / סניפים / טלפוני כבויים
+  ...(qs.get('layout') === 'continuous' ? { new_order_layout: 'continuous' } : {}),
+  ...(qs.get('nodelivery') === '1' ? { enable_deliveries: 'false', track_branch_on_order: 'false', phone_order_marker_enabled: 'false', branches_enabled: 'false' } : {}),
 };
 const CUSTOMERS = [
   { id: 'c1', firstName: 'מרים', lastName: 'אברמוביץ', phone1: '052-3341290', phone2: '02-5812234', email: 'miriam.a@gmail.com', city: 'ירושלים', street: 'עמוס', houseNum: '12' },

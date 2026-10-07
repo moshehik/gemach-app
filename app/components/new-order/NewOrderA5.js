@@ -21,30 +21,10 @@ import {
 } from './NoDialogs';
 import { CapacitySearchDialog, ItemCapacityDialog } from './NoCapacity';
 import useNewOrderController from './useNewOrderController';
-import StepCustomer from './StepCustomer';
-import StepDates from './StepDates';
-import StepDelivery from './StepDelivery';
-import StepItems from './StepItems';
-import StepSummary from './StepSummary';
-import StepPayment from './StepPayment';
-import { STEP_KEYS, STEP_META, getCustomerFullName, moneyTxt, plural } from './newOrderLogic';
-import { hebrewParts } from '../schedule/hebrewCalendar';
-
-const STEP_VIEW = { customer: StepCustomer, dates: StepDates, delivery: StepDelivery, items: StepItems, summary: StepSummary, payment: StepPayment };
-const shortHeb = (k) => { if (!k) return ''; const h = hebrewParts(k); return `${h.dl} ${h.m}`; };
-
-function stepSummaries(ctl) {
-  const o = ctl.order;
-  const c = o.selectedCustomer;
-  return {
-    customer: o.customerId ? getCustomerFullName(c) : '',
-    dates: o.isAbroad ? (o.fromDate && o.toDate ? `${shortHeb(o.fromDate)} — ${shortHeb(o.toDate)}` : '') : shortHeb(o.eventDate),
-    delivery: o.isDelivery ? `${o.deliveryDirection} · ${o.deliveryCity || (c && c.city) || ''}` : (o.isPhoneOrder ? 'הזמנה טלפונית' : 'ללא משלוח'),
-    items: ctl.activeItems.length ? `${ctl.activeItems.length} פריטים · ${moneyTxt(ctl.totalAmount)}` : '',
-    summary: 'הושלם',
-    payment: ctl.totalPaid > 0 ? `שולם ${moneyTxt(ctl.totalPaid)}` : 'רישום תשלום וסיום',
-  };
-}
+import { STEP_KEYS, STEP_META, getCustomerFullName, plural } from './newOrderLogic';
+import { shortHeb, stepNextAction, stepSummaries } from './layoutLogic';
+import { STEP_VIEW } from './stepViews';
+import LayoutContinuous from './LayoutContinuous';
 
 function ProgressBars({ ctl }) {
   const sums = stepSummaries(ctl);
@@ -94,13 +74,7 @@ function Nav({ ctl, top = false }) {
       </div>
     );
   }
-  const next = {
-    customer: ['המשך', !ctl.order.customerId, ctl.proceedToStep2],
-    dates: ['המשך למשלוח', !ctl.datesFilled, () => ctl.go(2)],
-    delivery: ['המשך לבחירת פריטים', !!ctl.deliveryError, () => ctl.go(3)],
-    items: ['המשך לסיכום', ctl.activeItems.length === 0, () => ctl.go(4)],
-    summary: ['המשך לתשלום', false, () => ctl.go(5)],
-  }[k];
+  const next = stepNextAction(ctl, k); // אותה פעולת "המשך" גם בגושי הטופס הרציף (layoutLogic)
   return (
     <>
       <div className={cls} data-sec="nav">
@@ -130,6 +104,26 @@ function bannerFor(err, warning) {
   }
   if (warning) return { id: `w:${warning}`, title: 'ההזמנה נשמרה, עם אזהרה', text: 'יש לעיין בפירוט', rows: [{ t: warning, i: 'info' }] };
   return null;
+}
+
+// צורת "אשף שלבים" (ברירת מחדל, new_order_layout חסר / 'wizard'): פסי התקדמות, שאלת השלב, שורת ניווט עליונה, השלב הנוכחי ושורת ניווט תחתונה.
+// הצורה האחרת (LayoutContinuous.js, 'continuous') מציגה את אותם רכיבי שלב (stepViews.js) בעמוד אחד נגלל - אותו controller, אותן חלונות.
+function LayoutWizard({ ctl }) {
+  const View = STEP_VIEW[ctl.stepKey];
+  const question = useMemo(() => STEP_META[ctl.stepKey].q, [ctl.stepKey]);
+  return (
+    <>
+      <ProgressBars ctl={ctl} />
+      <div className="hero-t" id="heroT"><h2 className="hero-q">{question}</h2></div>
+      <Nav ctl={ctl} top />
+      <div className="no-panels">
+        <section className="panel on" id={`p${ctl.step + 1}`}>
+          <div className="sec" data-sec={ctl.stepKey}><View ctl={ctl} /></div>
+        </section>
+      </div>
+      <Nav ctl={ctl} />
+    </>
+  );
 }
 
 function Dialog({ ctl, layer }) {
@@ -192,19 +186,18 @@ export default function NewOrderA5() {
   const [warnClosed, setWarnClosed] = useState(null); // אזהרת "נשמרה" שנסגרה (לפי מספר ההזמנה)
   const setRoot = useCallback((el) => { rootRef.current = el; setRootEl(el); }, []);
   usePageTooltip(rootRef, ttRef, false);
-  const View = STEP_VIEW[ctl.stepKey];
-  const question = useMemo(() => STEP_META[ctl.stepKey].q, [ctl.stepKey]);
+  const continuous = ctl.layout === 'continuous';
   const t = ctl.toast;
   const savedWarning = ctl.saved && ctl.saved.warning && warnClosed !== ctl.saved.orderId ? ctl.saved.warning : '';
   const banner = bannerFor(ctl.saveError, savedWarning);
   // #app.wide של העיצוב: שלב הפריטים (חיפוש + סל בשתי עמודות) ושלב התשלום כשכבר נרשם תשלום (עמודת "תשלומים שנרשמו") רחבים יותר
-  const wide = ctl.stepKey === 'items' || (ctl.stepKey === 'payment' && ctl.paymentsList.length > 0);
+  const wide = !continuous && (ctl.stepKey === 'items' || (ctl.stepKey === 'payment' && ctl.paymentsList.length > 0));
 
   return (
     <div className="gm-ds gm-no home-bg dlg-dark" dir="rtl" ref={setRoot}>
       <NoPortalRoot.Provider value={rootEl}>
         <HomeSprite />
-        <div className={`app no-app${wide ? ' wide' : ''}`} id="app">
+        <div className={`app no-app${wide ? ' wide' : ''}${continuous ? ' no-flowapp' : ''}`} id="app">
           <div className="topbar">
             <button type="button" className="back" aria-label="יציאה מהמסך" data-tip="יציאה מהמסך" onClick={ctl.handleExit} disabled={ctl.saving || ctl.isProcessingCredit}><Ic n="back" /></button>
             <div className="ttl"><h1><bdi>הזמנה חדשה</bdi></h1></div>
@@ -215,15 +208,9 @@ export default function NewOrderA5() {
           </div>
           {banner ? <NoBanner key={banner.id} id={banner.id} title={banner.title} text={banner.text} rows={banner.rows}
             onClose={() => (ctl.saveError ? ctl.setSaveError(null) : setWarnClosed(ctl.saved.orderId))} /> : null}
-          <ProgressBars ctl={ctl} />
-          <div className="hero-t" id="heroT"><h2 className="hero-q">{question}</h2></div>
-          <Nav ctl={ctl} top />
-          <div className="no-panels">
-            <section className="panel on" id={`p${ctl.step + 1}`}>
-              <div className="sec" data-sec={ctl.stepKey}><View ctl={ctl} /></div>
-            </section>
-          </div>
-          <Nav ctl={ctl} />
+          {continuous ? <LayoutContinuous ctl={ctl} /> : <LayoutWizard ctl={ctl} />}
+          {/* אחרי שמירה גם הטופס הרציף מציג את שורת "לכרטיס ההזמנה / הזמנה חדשה" (אותה Nav) */}
+          {continuous && ctl.saved ? <Nav ctl={ctl} /> : null}
         </div>
         <NoPortal>
           {t ? (
