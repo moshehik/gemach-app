@@ -43,8 +43,11 @@ jobs:
       - run: npm ci
       - name: Download latest backup from Drive
         run: node scripts/verify_backup.js download ${{ matrix.org }} /tmp/backup.sql.gz
-      - name: Create schema (prisma db push) in scratch Postgres
-        run: npx prisma db push --schema=prisma/schema.prisma --skip-generate --accept-data-loss
+      - name: Create schema (pg_trgm extension + prisma db push) in scratch Postgres
+        run: |
+          # schema.prisma כולל אינדקסי trigram (gin_trgm_ops) - בלי התוסף prisma db push נכשל על מסד ריק
+          psql "$VERIFY_PG_URL" -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"
+          npx prisma db push --schema=prisma/schema.prisma --skip-generate --accept-data-loss
         env:
           DATABASE_URL: postgresql://postgres:verify@localhost:5432/verify
       - name: Restore data (gunzip | psql, ON_ERROR_STOP)

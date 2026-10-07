@@ -200,6 +200,7 @@ existing task's enabled state either way.
    you're restoring to) from the versioned Prisma schema:
 
    ```bash
+   psql "<target-connection-string>" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"   # required: the schema has trigram (gin_trgm_ops) indexes
    DATABASE_URL="<target-connection-string>" npx prisma db push --schema=prisma/schema.prisma
    ```
 
