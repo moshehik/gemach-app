@@ -6,6 +6,7 @@ import ScheduleIcon, { LocalSprite } from './ScheduleIcon';
 import { useA5Shell } from '@/app/components/menu/A5ShellContext';
 import StageRail from './StageRail';
 import StageSection from './StageSection';
+import UpdatedSection from './UpdatedSection';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { PageTools } from './ScheduleToolbarSlots';
@@ -152,6 +153,7 @@ export default function ScheduleDay({
   const [date, setDate] = useState(null); // null = "היום" לפי השרת (שעון ישראל)
   const [branch, setBranch] = useState('');
   const [filter, setFilter] = useState(null);
+  const [updatedCount, setUpdatedCount] = useState(null); // מונה "הזמנות שעודכנו" - null עד שהמקטע נטען (טעינה עצלה)
   const [view, setView] = useState('rows');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -309,7 +311,7 @@ export default function ScheduleDay({
         </div>
 
         <div className="lz-layout">
-          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan} />
+          <StageRail data={data} loading={loading} filter={filter} onFilter={setFilter} onScan={onScan} updatedCount={updatedCount} />
           <div className="lz-main">
             <div className="hres-bar lz-hb" id="hb">
               <div className={'vsw' + (view === 'table' ? ' t' : '')} id="vsw" role="group" aria-label="מצב תצוגה">
@@ -352,23 +354,28 @@ export default function ScheduleDay({
                 </div>
               ) : loading || !data ? (
                 <ScheduleSkeleton />
-              ) : visible.length ? (
-                visible.map((s) => (
-                  <StageSection
-                    key={s.key}
-                    stage={s}
-                    view={view}
-                    marks={marks}
-                    canMarkAll={allowMarkAll}
-                    dayLabel={data.dateHebrew}
-                    {...tools}
-                  />
-                ))
               ) : (
-                <div className="empty" role="status">
-                  <ScheduleIcon name="cal" className="lg" />
-                  <div className="lz-empty-t">{allTotal === 0 ? 'אין פעולות מתוכננות ביום הזה' : 'אין פריטים שתואמים לסינון'}</div>
-                </div>
+                <>
+                  {visible.length ? (
+                    visible.map((s) => (
+                      <StageSection
+                        key={s.key}
+                        stage={s}
+                        view={view}
+                        marks={marks}
+                        canMarkAll={allowMarkAll}
+                        dayLabel={data.dateHebrew}
+                        {...tools}
+                      />
+                    ))
+                  ) : filter === 'updated' ? null : (
+                    <div className="empty" role="status">
+                      <ScheduleIcon name="cal" className="lg" />
+                      <div className="lz-empty-t">{allTotal === 0 ? 'אין פעולות מתוכננות ביום הזה' : 'אין פריטים שתואמים לסינון'}</div>
+                    </div>
+                  )}
+                  <UpdatedSection key={data.date + '|' + branch} date={data.date} branch={branch} onCount={setUpdatedCount} hidden={!!filter && filter !== 'updated'} />
+                </>
               )}
             </div>
           </div>

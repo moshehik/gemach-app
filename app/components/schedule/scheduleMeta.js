@@ -16,6 +16,32 @@ export const STAGE_META = {
   dback: { label: 'משלוח חזור', plural: 'משלוחי חזור', icon: 'truck', color: '--c-dback' },
 };
 
+// "הזמנות שעודכנו" (UpdatedSection.js): מקטע מידע אחרון בדף ובציר; לא שלב של השרת ולכן לא ב-STAGE_META/STAGE_ORDER
+export const UPDATED_META = { key: 'updated', label: 'הזמנות שעודכנו', icon: 'pencil', color: '--c-order' };
+
+// שעה בשעון ישראל (HH:MM) מרגע ISO
+export function timeText(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' });
+}
+
+// קטעי שורת "הזמנה שעודכנה": אירוע, מה השתנה (נוסף/נערך/בוטל פריט, תשלום, זיכוי) והשעה האחרונה - אייקון + ערך קצר
+export function updatedItems(row) {
+  const items = [];
+  const n = (c, one, many) => (c === 1 ? one : c + ' ' + many);
+  if (row.eventDateHebrew) items.push({ icon: 'cal', text: row.eventDateHebrew, tip: 'תאריך האירוע' });
+  if (row.itemsAdded) items.push({ icon: 'plus', text: row.itemsAdded === 1 ? 'נוסף פריט' : 'נוספו ' + row.itemsAdded + ' פריטים', tip: 'פריטים שנוספו להזמנה' });
+  if (row.itemsEdited) items.push({ icon: 'pencil', text: row.itemsEdited === 1 ? 'נערך פריט' : 'נערכו ' + row.itemsEdited + ' פריטים', tip: 'פריטים שנערכו' });
+  if (row.itemsRemoved) items.push({ icon: 'trash', text: row.itemsRemoved === 1 ? 'בוטל פריט' : 'בוטלו ' + row.itemsRemoved + ' פריטים', tip: 'פריטים שבוטלו' });
+  if (row.paymentCount) items.push({ icon: 'cash', text: (row.paymentCount > 1 ? n(row.paymentCount, '', 'תשלומים') + ' · ' : '') + formatMoney(row.paymentTotal), tip: 'תשלום שנוסף' });
+  if (row.refundCount) items.push({ icon: 'cash', text: row.refundCount === 1 ? 'זיכוי' : row.refundCount + ' זיכויים', tip: 'זיכוי שנרשם' });
+  const t = timeText(row.lastAt);
+  if (t) items.push({ icon: 'clock', text: t, tip: 'העדכון האחרון' });
+  return items;
+}
+
 // טקסטי הטולטיפ של לחצני הסימון - בדיוק כמו בעיצוב (לוז-יומי.html, שורות 1976-1978, 1996). אין טקסטים אחרים.
 export const MARK_TIPS = {
   mark: 'סמן כבוצע',

@@ -41,7 +41,7 @@ test('no schedule component references an external sprite.svg# (content filters 
 test('every icon name used by the schedule page exists in the inline sprite (spriteSymbols.js)', () => {
   const names = iconNames();
   assert.ok(names.size >= 15, 'scan found only ' + names.size + ' icon names');
-  for (const n of ['rows', 'table', 'alert', 'shield', 'refresh', 'cal', 'gift', 'chev', 'arrr', 'arrl', 'scan', 'wallet', 'pin', 'check', 'gear']) assert.ok(names.has(n), 'scan missed ' + n);
+  for (const n of ['rows', 'table', 'alert', 'shield', 'refresh', 'cal', 'gift', 'chev', 'arrr', 'arrl', 'scan', 'cash', 'clock', 'pin', 'check', 'gear']) assert.ok(names.has(n), 'scan missed ' + n);
   for (const [n, f] of names) assert.ok(SPRITE_IDS.has(n), `icon "${n}" used in ${f} is missing from spriteSymbols.js`);
 });
 

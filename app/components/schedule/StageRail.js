@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ScheduleIcon from './ScheduleIcon';
-import { STAGE_META, STAGE_ORDER, stageLabel } from './scheduleMeta';
+import { STAGE_META, STAGE_ORDER, UPDATED_META, stageLabel } from './scheduleMeta';
 
 // ציר שלבי היום (צד ימין) - כמו renderTL בעיצוב (לוז-יומי.html, שורות 1633, 1956-1971): כותרת "שלבי היום", שורת
 // הברקוד (ניווט 48, S05/D2), ואז "הכל" + שורה לכל שלב: אייקון עם מונה "לביצוע" ורוד על הפינה, שם השלב, משולש
@@ -11,7 +11,7 @@ import { STAGE_META, STAGE_ORDER, stageLabel } from './scheduleMeta';
 // אין בציר "מי במשמרת": המיקום שהבעלים אישר ל-B02 הוא טולטיפ על שבב המשמרת בסרגל העליון, לא רכיב בציר.
 //
 // חוזה לסוכן הברקוד/הסימון: onScan(code) נקרא ב-Enter בשדה הברקוד. בלי handler השדה מרונדר כבוי (disabled) באותו מראה.
-export default function StageRail({ data, loading, filter, onFilter, onScan }) {
+export default function StageRail({ data, loading, filter, onFilter, onScan, updatedCount = null }) {
   const [code, setCode] = useState('');
   const byKey = {};
   if (data) data.stages.forEach((s) => { byKey[s.key] = s; });
@@ -113,6 +113,25 @@ export default function StageRail({ data, loading, filter, onFilter, onScan }) {
               </button>
             );
           })}
+          {data ? (
+            <button
+              type="button"
+              className={'st-stab lz-stab' + (updatedCount === 0 ? ' fut' : '') + (filter === 'updated' ? ' on' : '')}
+              style={{ '--pc': 'var(' + UPDATED_META.color + ')' }}
+              aria-pressed={filter === 'updated'}
+              onClick={() => onFilter('updated')}
+              data-tip={UPDATED_META.label + (updatedCount == null ? '' : ': ' + updatedCount) + ' · לחיצה לסינון'}
+            >
+              <span className="st-sic">
+                <ScheduleIcon name={UPDATED_META.icon} />
+                {updatedCount ? <span className="sn-badge lz-rem" role="img" aria-label={updatedCount + ' הזמנות שעודכנו'}>{updatedCount}</span> : null}
+              </span>
+              <span className="st-slb">
+                <span className="lz-nm">{UPDATED_META.label}</span>
+              </span>
+              <span className="st-sgo"><ScheduleIcon name="chev" className="sm" /></span>
+            </button>
+          ) : null}
         </nav>
       </div>
     </aside>
