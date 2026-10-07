@@ -6,6 +6,7 @@ import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
 import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
 import { calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
+import { modelMatchesQuery } from '@/lib/kioskModelSearch';
 import './kiosk.css';
 
 // 32/33 - קיוסק לקוח: מותנה ב-kiosk_customer_self_service / kiosk_allow_self_order (כבוי = מוסתר/דורש התחברות)
@@ -289,6 +290,7 @@ export default function CustomerInventoryViewer() {
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState(1);
   const [search, setSearch] = useState('');
+  const [modelQuery, setModelQuery] = useState(''); // שדה "חיפוש דגם" הקטן (kiosk_model_search)
   const [showZeroSizes, setShowZeroSizes] = useState(false);
   const [viewMode, setViewMode] = useState('rows');
   const [zoomPopoverOpen, setZoomPopoverOpen] = useState(false);
@@ -346,6 +348,10 @@ export default function CustomerInventoryViewer() {
   const aiEnabled = settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true';
   const kioskSelfServiceOn = settings.kiosk_customer_self_service === 'true';
   const kioskAllowOrder = settings.kiosk_allow_self_order === 'true';
+  // kiosk_sticky_date_bar (דיווחים ea8a2ed1, b2bda17b, 998381ee, 59ffb080) ו-kiosk_model_search (7983b79d, b2cf3796, e6f564d6),
+  // נווה יעקב: ברירת מחדל (השורה חסרה / false) = המסך כמו שהיה.
+  const stickyDate = settings.kiosk_sticky_date_bar === 'true';
+  const modelSearchOn = settings.kiosk_model_search === 'true';
 
   useEffect(() => {
     fetch('/api/settings')
@@ -688,6 +694,7 @@ export default function CustomerInventoryViewer() {
   const displayDresses = useMemo(() => {
     let list = dresses.filter(d => {
       if (selectedCategories.length > 0 && !selectedCategories.includes(d.priceCategory)) return false;
+      if (modelSearchOn && !modelMatchesQuery(d, modelQuery)) return false;
 
       if (selectedSizes.length > 0) {
         const hasSelectedSize = d.items?.some(item => {
@@ -729,7 +736,7 @@ export default function CustomerInventoryViewer() {
       return nameA.localeCompare(nameB, undefined, { numeric: true });
     });
     return list;
-  }, [dresses, search, selectedCategories, selectedSizes]);
+  }, [dresses, search, selectedCategories, selectedSizes, modelQuery, modelSearchOn]);
 
   // Distinct sizes across the whole (unfiltered) inventory, for the sidebar
   // quick-filter chips — each with the number of models carrying that size
@@ -997,8 +1004,32 @@ export default function CustomerInventoryViewer() {
     </div>
   );
 
+  // שדה חיפוש דגם קטן, למעלה משמאל: בשלב 1 בשורת הכותרת; בשלב 2 בתוך פס התאריך הדביק (כשהוא דלוק) כדי שיישאר גלוי בגלילה, אחרת בשורת הכותרת.
+  const dateBarOn = stickyDate && stage === 2;
+  const modelSearchBox = modelSearchOn ? (
+    <div className="ka-model-search" data-agy-id="kiosk_model_search">
+      <svg className="icon"><use href="#i-search" /></svg>
+      <input
+        data-agy-id="kiosk_model_search_input"
+        type="text"
+        inputMode="search"
+        autoComplete="off"
+        aria-label="חיפוש דגם"
+        placeholder="חיפוש דגם"
+        value={modelQuery}
+        onChange={e => setModelQuery(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (stage === 1) setStage(2); } }}
+      />
+      {modelQuery && (
+        <button type="button" className="ka-model-search-x" title="ניקוי" onClick={() => setModelQuery('')}>
+          <svg className="icon"><use href="#i-x" /></svg>
+        </button>
+      )}
+    </div>
+  ) : null;
+
   return (
-    <div data-agy-id="customer_inventory_main_container" className="katelier">
+    <div data-agy-id="customer_inventory_main_container" className={`katelier${stickyDate ? ' ka-sd' : ''}`}>
 
       {/* אייקונים שקיימים במוקאפ אך לא בספרייט הגלובלי (IconSprite.js) */}
       <svg style={{ display: 'none' }} aria-hidden="true">
@@ -1029,6 +1060,7 @@ export default function CustomerInventoryViewer() {
               שלב 2 · קטלוג ותוצאות
             </button>
           </div>
+          {!dateBarOn && modelSearchBox}
         </div>
 
         {stage === 2 && (
@@ -1037,10 +1069,12 @@ export default function CustomerInventoryViewer() {
               <svg className="icon"><use href="#i-bag" /></svg>
               קטלוג שמלות זמינות
             </h2>
-            <span className="ka-date-chip">
-              <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-calendar" /></svg>
-              {getHebrewDateString(new Date(selectedDate))} ({(new Date(selectedDate)).toLocaleDateString('he-IL')})
-            </span>
+            {!stickyDate && (
+              <span className="ka-date-chip">
+                <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-calendar" /></svg>
+                {getHebrewDateString(new Date(selectedDate))} ({(new Date(selectedDate)).toLocaleDateString('he-IL')})
+              </span>
+            )}
             <span data-agy-id="catalog_results_count" className="ka-count-line">
               {displayDresses.length} דגמים · <span className="good">{grandTotalItems} פנויות</span>
             </span>
@@ -1300,6 +1334,21 @@ export default function CustomerInventoryViewer() {
       {/* Stage 2: Inventory Grid */}
       {stage === 2 && (
         <section>
+          {dateBarOn && (
+            <div className="ka-datebar" data-agy-id="kiosk_sticky_date_bar">
+              <svg className="icon"><use href="#i-calendar" /></svg>
+              <div className="ka-datebar-main">
+                <span className="ka-datebar-label">התאריך שבחרתם לבדיקת המלאי</span>
+                <span className="ka-datebar-date">{getHebrewDateString(new Date(selectedDate))}</span>
+              </div>
+              <span className="ka-datebar-dow">{new Date(selectedDate).toLocaleDateString('he-IL', { weekday: 'long' })}</span>
+              <button type="button" className="ka-datebar-change" data-agy-id="kiosk_change_date_btn" onClick={() => setStage(1)}>
+                <svg className="icon"><use href="#i-calendar" /></svg>
+                שינוי תאריך
+              </button>
+              {modelSearchBox}
+            </div>
+          )}
           {aiEnabled && isAiChatVisible && (
             <div style={{ marginBottom: '20px' }}>
               {renderAiChatCard(() => setIsAiChatVisible(false))}
@@ -1388,7 +1437,7 @@ export default function CustomerInventoryViewer() {
                 </div>
 
                 <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
-                  onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
+                  onClick={() => { setSearch(''); setModelQuery(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                   <svg className="icon"><use href="#i-x" /></svg>
                   נקה את כל הסינונים
                 </button>
@@ -1408,7 +1457,7 @@ export default function CustomerInventoryViewer() {
                   <h4>לא נמצאו דגמים מתאימים</h4>
                   <p>נסו לנקות את החיפוש או את סינון הקטגוריה</p>
                   <button data-agy-id="empty_state_clear_btn" type="button" className="ka-btn-mini"
-                    onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
+                    onClick={() => { setSearch(''); setModelQuery(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                     נקה סינון ונסה שוב
                   </button>
                 </div>

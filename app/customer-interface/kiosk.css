@@ -428,6 +428,38 @@ table.ka-data tbody tr:hover{background:var(--paper)}
 .ka-link-btn .icon{width:16px; height:16px}
 .ka-modal-hint{font-size:12px; color:var(--ink-faint); margin-bottom:14px}
 
+/* ---------- kiosk_model_search: שדה חיפוש דגם קטן (דיווחים 7983b79d, b2cf3796, e6f564d6) ---------- */
+.ka-model-search{
+  display:flex; align-items:center; gap:6px; width:190px; height:38px; padding:0 12px; border-radius:999px;
+  background:var(--paper); border:1px solid var(--line); flex-shrink:0;
+}
+.ka-model-search:focus-within{border-color:var(--terracotta); background:#fff}
+.ka-model-search > .icon{width:15px; height:15px; color:var(--ink-faint)}
+.ka-model-search input{flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:14px; color:var(--ink); padding:0}
+.ka-model-search-x{display:flex; align-items:center; justify-content:center; width:22px; height:22px; border:none; background:transparent; color:var(--ink-faint); border-radius:50%; padding:0}
+.ka-model-search-x .icon{width:13px; height:13px}
+
+/* ---------- kiosk_sticky_date_bar: התאריך שנבחר, גדול וצמוד לראש המסך בגלילה (דיווחים ea8a2ed1, b2bda17b, 998381ee, 59ffb080) ----------
+   top = גובה הסרגל הגלובלי (אותו משתנה שמשמש את כותרות הטבלאות; 0 כשהקיוסק נעול והסרגל מוסתר). z-index מעל כותרות הטבלה (35). */
+.ka-datebar{
+  position:sticky; top:var(--navbar-height,0px); z-index:40; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin:0 0 16px; padding:10px 20px; background:var(--card); border:1px solid var(--gold); border-radius:var(--radius-lg); box-shadow:var(--shadow-md);
+}
+.ka-datebar > .icon{width:26px; height:26px; color:var(--terracotta)}
+.ka-datebar-main{display:flex; flex-direction:column; line-height:1.15}
+.ka-datebar-label{font-size:12px; font-weight:700; color:var(--ink-faint)}
+.ka-datebar-date{font-size:26px; font-weight:800; color:var(--terracotta-deep)}
+.ka-datebar-dow{font-size:15px; font-weight:700; color:var(--ink-soft)}
+.ka-datebar-change{
+  display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px; border:1.5px solid var(--terracotta);
+  background:#fff; color:var(--terracotta-deep); font-weight:800; font-size:14px;
+}
+.ka-datebar-change:hover{background:var(--gold-soft)}
+.ka-datebar-change .icon{width:15px; height:15px}
+.ka-datebar .ka-model-search{margin-inline-start:auto}
+/* פאנל הסינון הדביק יורד מתחת לפס התאריך */
+.ka-sd .ka-filter-panel{top:calc(var(--navbar-height,0px) + 90px); max-height:calc(100vh - 110px - var(--navbar-height,0px))}
+
 @media (max-width:900px){
   .katelier{padding:16px 14px 40px}
   .ka-layout{grid-template-columns:1fr}
