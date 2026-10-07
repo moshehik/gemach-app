@@ -17,6 +17,7 @@ import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFiel
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
 import CustomerCompleteModal from './CustomerCompleteModal';
 import { isInlineCustomerEditOn } from '../../../lib/customerInlineEdit';
+import { isAutoNextStepOn, stepSignature, isStepComplete, shouldScheduleAutoNext, canFireAutoNext, nextStepOf, AUTO_NEXT_STEP_DELAY_MS } from '../../../lib/newOrderAutoNextStep';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval } from '../../../lib/approvalClient';
 import { offerCreditOffset } from '../../../lib/creditOfferClient';
@@ -1664,6 +1665,61 @@ export default function NewOrderPage() {
   };
 
   const busy = saving || isProcessingCredit;
+
+  // דיווח 3bded746 (מאחורי new_order_auto_next_step; כבוי = רק כפתור "המשך"): מעבר אוטומטי לשלב הבא כשהשלב הושלם - רק 1->2 ו-2->3.
+  // "הושלם" = אותו תנאי של כפתור "המשך" (+ תנאים שמרניים), ר' lib/newOrderAutoNextStep.js. מעבר רק אחרי שינוי אמיתי של נתוני השלב,
+  // אחרי השהיה קצרה בלי פעולת משתמש, ובלי חלון/הודעת שגיאה/הקלדה פתוחים. כניסה לשלב או "חזור" לא גורמים לקפיצה.
+  const autoNextOn = isAutoNextStepOn(settings);
+  const autoSig = stepSignature(step, order);
+  const autoPrevRef = useRef({ step, sig: autoSig });
+  const autoUserActedRef = useRef(false);
+  const autoCtxRef = useRef(null);
+  const autoCtx = autoNextOn ? {
+    complete: isStepComplete(step, {
+      customerId: order.customerId,
+      customerBlocked: !!(order.selectedCustomer && order.selectedCustomer.isBlocked),
+      customerMissingCount: order.selectedCustomer
+        ? getMissingMandatoryCustomerFields(order.selectedCustomer).length + getUnsatisfiedFieldGroups(order.selectedCustomer, parseFieldGroups(settings.mandatory_field_groups)).length
+        : 1,
+      hokFieldsOpen: settings.hok_enabled === 'true',
+      isAbroad: order.isAbroad, eventDate: order.eventDate, fromDate: order.fromDate, toDate: order.toDate,
+      deliveryError: validateDeliveryFields(order, order.selectedCustomer?.city, deliveryPriceCities),
+      branchPending: settings.track_branch_on_order === 'true' && !order.branch && !order.isPhoneOrder,
+    }),
+    stateOverlay: duplicateCustomers.length > 0 || !!customerEditFor || !!deliveryModal || showExitConfirm || !!duplicateOrderWarning
+      || pendingSpacingChange !== null || showSpacingCapacitySearch || !!capacityModalItem || showCreditModal || showQuickSwipeModal
+      || !!(flash && flash.type === 'err'),
+    busy: saving || isProcessingCredit || isCheckingPhone,
+  } : null;
+  useEffect(() => { autoCtxRef.current = autoCtx; }); // הערך העדכני לרגע המעבר (בלי כתיבה ל-ref בזמן רינדור)
+  useEffect(() => {
+    const prev = autoPrevRef.current;
+    const cur = { step, sig: autoSig };
+    autoPrevRef.current = cur;
+    if (!shouldScheduleAutoNext(autoNextOn, prev, cur)) return undefined;
+    autoUserActedRef.current = false;
+    const onUser = () => { autoUserActedRef.current = true; };
+    document.addEventListener('pointerdown', onUser, true);
+    document.addEventListener('keydown', onUser, true);
+    const scheduledStep = step;
+    const timer = setTimeout(() => {
+      const c = autoCtxRef.current;
+      const el = document.activeElement;
+      const tag = el && el.tagName;
+      const typing = scheduledStep === 2 && !!el && (tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
+        || (tag === 'INPUT' && !['button', 'checkbox', 'radio', 'submit'].includes(el.type)));
+      const overlayOpen = !!(c && c.stateOverlay) || !!document.querySelector('.modal-backdrop, .toast.error');
+      if (c && canFireAutoNext({
+        enabled: true, scheduledStep, currentStep: scheduledStep, complete: c.complete,
+        overlayOpen, busy: c.busy, typing, userActed: autoUserActedRef.current,
+      })) setStep(s => (s === scheduledStep ? nextStepOf(s) : s));
+    }, AUTO_NEXT_STEP_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('pointerdown', onUser, true);
+      document.removeEventListener('keydown', onUser, true);
+    };
+  }, [step, autoSig, autoNextOn]);
 
   // 3 - פרטי הוראת קבע כשנבחר לקוח קיים (טלפון/חיפוש-שם) - אותם שדות/תוויות בדיוק
   // כמו ב"פרטים נוספים" של לקוח חדש (ר' newCustomer.hok* למטה), רק ששומרים אותם על
