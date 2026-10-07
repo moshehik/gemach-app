@@ -5,7 +5,7 @@ import LoginGate from './login/LoginGate';
 import { fetchSharedJson, readCache, subscribe, TTL } from '@/lib/apiCache';
 import { clearAdminRecentsStorage } from '@/lib/menu/adminRecents';
 
-export default function UserMenu({ hideInternalMessaging = false }) {
+export default function UserMenu({ hideInternalMessaging = false, checkOverdueOnLogout = false }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [activeShift, setActiveShift] = useState(null);
@@ -74,9 +74,10 @@ export default function UserMenu({ hideInternalMessaging = false }) {
     // בכניסה/כל שעה (ר' OverdueRemindersWatcher.js) - דיאלוג חוסם (window.customConfirm,
     // לא alert/toast) כדי שבאמת תספיק לראות אותו לפני שהעמוד מתרענן; best-effort - אם
     // השרת/הרשת לא זמינים כרגע, לא חוסמים את ההתנתקות עצמה.
+    // רק בגמח שמפעיל את חלונית "הזמנות שלא הוחזרו" (נווה יעקב) ולא למתכנת - checkOverdueOnLogout מחושב ב-AppShell.
     try {
-      const overdueRes = await fetch('/api/orders/overdue', { cache: 'no-store' });
-      if (overdueRes.ok) {
+      const overdueRes = checkOverdueOnLogout ? await fetch('/api/orders/overdue', { cache: 'no-store' }) : null;
+      if (overdueRes && overdueRes.ok) {
         const overdueData = await overdueRes.json();
         if (Array.isArray(overdueData.orders) && overdueData.orders.length > 0) {
           const proceed = await window.customConfirm(

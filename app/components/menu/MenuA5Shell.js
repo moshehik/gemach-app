@@ -164,9 +164,10 @@ export default function MenuA5Shell({
 
   // COPIED FROM UserMenu.js handleLogout (+ ניקוי היסטוריית הניווט של הטאב, כדי ששמות לקוחות לא ידלפו לעובדת הבאה).
   const handleLogout = useCallback(async () => {
+    // רק בגמח שמפעיל את חלונית "הזמנות שלא הוחזרו" (נווה יעקב) ולא למתכנת - כמו UserMenu.js.
     try {
-      const overdueRes = await fetch('/api/orders/overdue', { cache: 'no-store' });
-      if (overdueRes.ok) {
+      const overdueRes = showOverdueRemindersPopup && !isProgrammer ? await fetch('/api/orders/overdue', { cache: 'no-store' }) : null;
+      if (overdueRes && overdueRes.ok) {
         const overdueData = await overdueRes.json();
         if (Array.isArray(overdueData.orders) && overdueData.orders.length > 0 && window.customConfirm) {
           const proceed = await window.customConfirm(
@@ -188,7 +189,7 @@ export default function MenuA5Shell({
       clearAdminRecents();
       window.location.href = '/';
     }
-  }, [nav, clearAdminRecents]);
+  }, [nav, clearAdminRecents, showOverdueRemindersPopup, isProgrammer]);
 
   // "האתר הישן" (זמני): עקיפה אישית shell=legacy, בכיוון אחד בלבד (השרת מקבל רק 'legacy' / null), ואז טעינה מלאה.
   const handleOldSite = useCallback(async () => {
