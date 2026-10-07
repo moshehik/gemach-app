@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ScheduleIcon from './ScheduleIcon';
-import { STAGE_META, STAGE_ORDER } from './scheduleMeta';
+import { STAGE_META, STAGE_ORDER, stageLabel } from './scheduleMeta';
 
 // ציר שלבי היום (צד ימין) - כמו renderTL בעיצוב (לוז-יומי.html, שורות 1633, 1956-1971): כותרת "שלבי היום", שורת
 // הברקוד (ניווט 48, S05/D2), ואז "הכל" + שורה לכל שלב: אייקון עם מונה "לביצוע" ורוד על הפינה, שם השלב, משולש
@@ -82,7 +82,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan }) {
               else if (isInfo) line = total + ' ' + s.plural;
               else line = 'לביצוע ' + total + ' · בוצע ' + done;
             }
-            const label = s ? s.label : meta.label;
+            const label = s ? stageLabel(s) : meta.label;
             const tip = s ? label + ': ' + line + (alerts ? ' · ' + alerts + ' התראות' : '') + (s.shiftLabel ? ' · משמרת ' + s.shiftLabel : '') + ' · לחיצה לסינון' : label;
             const showBadge = !!(s && total);
             return (
@@ -108,7 +108,7 @@ export default function StageRail({ data, loading, filter, onFilter, onScan }) {
                 <span className="st-slb">
                   <span className="lz-nm">{label}</span>
                 </span>
-                {alerts ? <span className="sn-badge lz-al2" role="img" aria-label={alerts + ' התראות'}>{alerts}</span> : null}
+                {alerts ? <span className="sn-badge lz-al2" role="img" aria-label={alerts + ' התראות'}>!</span> : null}
                 <span className="st-sgo"><ScheduleIcon name="chev" className="sm" /></span>
               </button>
             );

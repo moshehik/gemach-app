@@ -5,10 +5,10 @@ import ScheduleIcon from './ScheduleIcon';
 import StageRow, { StageTableRow } from './StageRow';
 import { MarkAllButton } from './MarkControls';
 import { SectionTools } from './ScheduleToolbarSlots';
-import { STAGE_META } from './scheduleMeta';
+import { STAGE_META, stageLabel } from './scheduleMeta';
 
 // מקטע שלב אחד - כמו cardHTML בעיצוב (לוז-יומי.html, שורות 1990-1998): כותרת (אייקון זהב + שם), לחצן "הכל בוצע"
-// (וי כפול, לחצן 34/54/72), שבבים ("N התראות", משמרת, שעות איסוף), כלי הדפסה/הורדה/XL בקצה השמאלי; מתחת כרטיס עם פס התקדמות
+// (וי כפול, לחצן 34/54/72), שבבים ("N התראות", משמרת; שבב "שעות איסוף" הוסר 7.10.2026), כלי הדפסה/הורדה/XL בקצה השמאלי; מתחת כרטיס עם פס התקדמות
 // ושורות / טבלה. שורות עם התראה ראשונות (visibleItems בעיצוב), אחריהן לביצוע, ובסוף מה שבוצע; הסדר של השרת נשמר
 // בתוך כל קבוצה.
 //
@@ -26,7 +26,7 @@ function rankRow(stage, row, known) {
   return 1;
 }
 
-function StageSection({ stage, view, pickupHours, marks, canMarkAll = true, dayLabel, onExport, onDownload, onPrint, canExport = true }) {
+function StageSection({ stage, view, marks, canMarkAll = true, dayLabel, onExport, onDownload, onPrint, canExport = true }) {
   const meta = STAGE_META[stage.key] || STAGE_META.order;
   const { total } = stage.counts;
   const marking = !!(marks && marks.available);
@@ -46,7 +46,7 @@ function StageSection({ stage, view, pickupHours, marks, canMarkAll = true, dayL
       <div className="lz-hrow">
         <h2 className="adm-h">
           <span className="adm-hi"><ScheduleIcon name={meta.icon} /></span>
-          {stage.label}
+          {stageLabel(stage)}
         </h2>
         {showAll ? (
           <MarkAllButton stage={stage} pending={pending} busy={marking && marks.isBusy(stage.key, 'all')} onMarkAll={marking ? marks.onMarkAll : null} dayLabel={dayLabel} />
@@ -54,7 +54,6 @@ function StageSection({ stage, view, pickupHours, marks, canMarkAll = true, dayL
         <div className="lz-chips">
           {alertRows ? <span className="chip st-bad"><ScheduleIcon name="alert" />{alertRows} התראות</span> : null}
           {stage.shiftLabel ? <span className="chip st-today">{'משמרת ' + stage.shiftLabel}</span> : null}
-          {stage.key === 'pick' && pickupHours ? <span className="chip st-today">{'שעות איסוף ' + pickupHours}</span> : null}
         </div>
         <SectionTools stageKey={stage.key} onExport={onExport} onDownload={onDownload} onPrint={onPrint} canExport={canExport} />
       </div>

@@ -6,7 +6,7 @@
 export const STAGE_ORDER = ['order', 'repair', 'prep', 'dout', 'pick', 'event', 'manret', 'dback'];
 
 export const STAGE_META = {
-  order: { label: 'הזמנה', plural: 'הזמנות', icon: 'file', color: '--c-order', info: true },
+  order: { label: 'הזמנות חדשות', plural: 'הזמנות', icon: 'file', color: '--c-order', info: true },
   repair: { label: 'תיקונים', plural: 'תיקונים', icon: 'scissors', color: '--c-repair' },
   prep: { label: 'הכנה', plural: 'הכנות', icon: 'bag', color: '--c-prep' },
   dout: { label: 'משלוח הלוך', plural: 'משלוחי הלוך', icon: 'truck', color: '--c-dout' },
@@ -147,10 +147,79 @@ export function flagLabels(flags) {
   return out;
 }
 
+// "איחור (3 ימים)" - בלי "לא סומן כבוצע" (החלטת הבעלים 7.10.2026); שאר ההתראות כפי שהשרת שולח
 export function alertText(alert) {
   if (!alert) return '';
-  if (alert.code === 'late_not_done' && alert.daysLate > 0) {
-    return alert.label + ' (' + (alert.daysLate === 1 ? 'יום אחד' : alert.daysLate + ' ימים') + ')';
+  if (alert.code === 'late_not_done') {
+    return alert.daysLate > 0 ? 'איחור (' + (alert.daysLate === 1 ? 'יום אחד' : alert.daysLate + ' ימים') + ')' : 'איחור';
   }
   return alert.label || '';
+}
+
+// שם השלב בכותרת המקטע ובציר: שלב 1 = הזמנות שנרשמו באותו יום, לכן "הזמנות חדשות" (השרת שולח "הזמנה")
+const STAGE_LABEL_OVERRIDE = { order: 'הזמנות חדשות' };
+export function stageLabel(stage) {
+  return (stage && STAGE_LABEL_OVERRIDE[stage.key]) || (stage && stage.label) || '';
+}
+
+// שורת הפרטים בקיצור (תצוגת שורות): כל קטע = אייקון + ערך קצר, בלי הכיתובים ("אירוע", "סה״כ", "שולם", "נרשמה ע״י",
+// "שמלה אחת בהזמנה"...). text ריק = אייקון בלבד (למשל וי של "שולם"); tip = ההסבר שנחשף בריחוף ולקוראי מסך.
+export function subItems(stageKey, row, ctx = {}) {
+  const items = [];
+  const add = (icon, text, tip) => { if (text || icon) items.push({ icon, text: text || '', tip }); };
+  const cnt = itemsCountText(row.dressCount);
+  const dress = () => { if (cnt) add('dress', cnt, 'פריטים בהזמנה'); };
+  const branch = row.branch || '';
+  const addr = formatAddress(row.address);
+  switch (stageKey) {
+    case 'order': {
+      add('cal', row.eventDateHebrew || '—', 'תאריך האירוע');
+      const money = formatMoney(row.totalAmount);
+      if (money) add('cash', money, 'סה״כ להזמנה');
+      const st = row.payStatus === undefined ? (row.isPaid ? 'paid' : 'unpaid') : row.payStatus;
+      if (st === 'paid') add('check', '', 'שולם');
+      else { const pay = payText(row); if (pay) add(null, pay, 'מצב תשלום'); }
+      dress();
+      if (row.registeredBy) add('user', row.registeredBy, 'נרשמה ע״י');
+      return items;
+    }
+    case 'repair': {
+      const kinds = (row.items || []).map(alterationSummary).filter(Boolean);
+      const uniq = [...new Set(kinds.join(', ').split(', ').filter(Boolean))];
+      add('scissors', uniq.length ? uniq.join(', ') : 'תיקון', 'סוג התיקון');
+      dress();
+      return items;
+    }
+    case 'prep':
+      if (branch) add('pin', branch, 'סניף');
+      dress();
+      return items;
+    case 'dout':
+      add('truck', addr || 'כתובת חסרה', 'כתובת המשלוח');
+      dress();
+      return items;
+    case 'pick': {
+      const pb = row.pickupBranch || branch;
+      if (pb) add('pin', pb, 'איסוף בסניף'); else add('userck', 'איסוף מקומי', 'איסוף מקומי');
+      dress();
+      return items;
+    }
+    case 'event':
+      add('cal', row.eventDateHebrew || '—', 'תאריך האירוע');
+      dress();
+      return items;
+    case 'manret': {
+      if (!ctx.tbl && row.customer && row.customer.phone1) add('phone', row.customer.phone1, 'טלפון');
+      if (addr) add('pin', addr, 'כתובת');
+      dress();
+      return items;
+    }
+    case 'dback':
+      add('truck', addr || 'כתובת חסרה', 'איסוף מהכתובת');
+      dress();
+      return items;
+    default:
+      dress();
+      return items;
+  }
 }

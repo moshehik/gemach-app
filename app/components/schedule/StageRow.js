@@ -4,7 +4,7 @@ import { memo, useState } from 'react';
 import ScheduleIcon from './ScheduleIcon';
 import { MarkButton } from './MarkControls';
 import {
-  STAGE_META, subText, subParts, flagLabels, alertText, itemText, alterationSummary, formatAddress,
+  STAGE_META, subText, subItems, flagLabels, alertText, itemText, alterationSummary, formatAddress,
 } from './scheduleMeta';
 
 // שורת לו״ז אחת (שורות / טבלה). המראה = העיצוב המאושר (תצוגות-עיצוב/לוז-יומי.html, rowHTML/trHTML/statusHTML, שורות
@@ -34,7 +34,7 @@ function AlertChip({ row }) {
   );
 }
 
-// שבבי מידע במיקום שהבעלים אישר: דגלי ההזמנה בשורת האירוע בלבד (B21), "חיוב משלוח קיים" בשורות המשלוח (B08)
+// שבבי מידע: דגלי ההזמנה בשורת האירוע בלבד (B21). שבב "חיוב משלוח קיים" (B08) הוסר בהחלטת הבעלים 7.10.2026.
 function InfoChips({ stage, row }) {
   const flags = stage.key === 'event' ? flagLabels(row.flags) : [];
   return (
@@ -42,9 +42,6 @@ function InfoChips({ stage, row }) {
       {flags.map((f) => (
         <span key={f} className="chip gray lz-flag" data-tip="דגל הזמנה שמשפיע על התאריכים">{f}</span>
       ))}
-      {(stage.key === 'dout' || stage.key === 'dback') && row.chargeExists ? (
-        <span className="chip gray lz-flag" data-tip="כבר נוסף חיוב משלוח להזמנה"><ScheduleIcon name="wallet" />חיוב משלוח קיים</span>
-      ) : null}
     </>
   );
 }
@@ -137,8 +134,14 @@ function StageRow({ stage, row, onMarkDone, doneState, dayLabel }) {
           <button type="button" className="lz-tbtn" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
             <b>{name} <bdi>#{row.orderId}</bdi></b>
             <span className="ln">
-              {subParts(stage.key, row).map((part, i) => (
-                <span key={i} className="lz-p">{i > 0 ? ' · ' : ''}<span className="lz-pn">{part}</span></span>
+              {subItems(stage.key, row).map((part, i) => (
+                <span key={i} className="lz-p" data-tip={part.tip}>
+                  {i > 0 ? ' · ' : ''}
+                  <span className="lz-pn">
+                    {part.icon ? <ScheduleIcon name={part.icon} className="sm" /> : null}
+                    {part.text ? <bdi>{part.text}</bdi> : <span className="sr-only">{part.tip}</span>}
+                  </span>
+                </span>
               ))}
             </span>
           </button>

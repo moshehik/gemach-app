@@ -187,6 +187,8 @@
 .gm-ds.gm-lz .lz-tbtn b{display:block}
 .gm-ds.gm-lz .lz-tbtn .ln{display:block}
 .gm-ds.gm-lz .lz-pn{display:inline-block;max-width:100%}
+.gm-ds.gm-lz .lz-pn .ic{width:15px;height:15px;vertical-align:-3px;margin-inline-end:4px;color:var(--ink3)}
+.gm-ds.gm-lz .lz-pn .ic:last-child{margin-inline-end:0}
 .gm-ds.gm-lz .lz-act{display:flex;align-items:center;gap:8px;margin-inline-start:auto;flex:0 1 auto;min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-end}
 .gm-ds.gm-lz .lz-act .chip{margin:0;max-width:100%}
 .gm-ds.gm-lz .lz-rc{margin-inline-end:2px}
