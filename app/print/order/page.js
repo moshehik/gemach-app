@@ -8,6 +8,7 @@ import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WOR
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
 import { printPageEventBodies } from '../../../lib/history/orderEvents';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
+import { fitOrdersToOnePage } from '../../../lib/printFitOnePage';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -59,6 +60,10 @@ export default function PrintOrderPage() {
   // 27f278c7 (נווה יעקב) - print_order_clean_layout: הדפסת הזמנה בודדת "נקייה" ללקוח (בלי "לכבוד:"/"טלפון:"/כתובת לקוח,
   // הערות פעם אחת, בלי טבלת תשלומים וכו'). כבוי כברירת מחדל = הפלט הקיים. לא חל על הדפסה מרוכזת (isBatch).
   const [cleanLayoutSetting, setCleanLayoutSetting] = useState(false);
+  // 6f173798 + 7d921d3b (נווה יעקב) - print_order_fit_one_page: כל הזמנה מודפסת תמיד בעמוד אחד (מצמצמים מסגרות/ריווחים,
+  // ואם צריך מקטינים את הכתב לפי כמות התוכן - lib/printFitOnePage.js). כבוי כברירת מחדל = ההדפסה כמו קודם.
+  const [fitOnePageSetting, setFitOnePageSetting] = useState(false);
+  const containerRef = useRef(null);
   // 20 - מיון דפי הכנה: משלוחים בנפרד מרגילות (רק כשמדפיסים כמה הזמנות יחד)
   const [sortDeliveriesFirst, setSortDeliveriesFirst] = useState(true);
   // 21 - מפה orderItemId -> { familyName, returnOrderId } לפריטים שסומנו "חסרה"
@@ -106,6 +111,8 @@ export default function PrintOrderPage() {
         if (sortSetting && sortSetting.value === 'false') setSortDeliveriesFirst(false);
         const cleanSetting = settingsData.find(s => s.key === 'print_order_clean_layout');
         if (cleanSetting && cleanSetting.value === 'true') setCleanLayoutSetting(true);
+        const fitSetting = settingsData.find(s => s.key === 'print_order_fit_one_page');
+        if (fitSetting && fitSetting.value === 'true') setFitOnePageSetting(true);
         const missSetting = settingsData.find(s => s.key === 'print_mark_missing_dresses');
         if (missSetting && missSetting.value === 'false') { setMarkMissingInPrint(false); markMissing = false; }
 
@@ -155,6 +162,17 @@ export default function PrintOrderPage() {
     }
   }, [orderIdParam]);
 
+  // print_order_fit_one_page: התאמה לעמוד אחד - מיד אחרי הטעינה (כדי שגם התצוגה תהיה כמו ההדפסה), אחרי שהגופן נטען,
+  // ושוב רגע לפני כל הדפסה (גם הדפסה ידנית Ctrl+P). מדידה מחדש בטוחה: lib/printFitOnePage.js מאפס לפני שהוא מודד.
+  useEffect(() => {
+    if (!fitOnePageSetting || loading || error || orders.length === 0) return undefined;
+    const run = () => { try { fitOrdersToOnePage(containerRef.current); } catch (e) { console.error(e); } };
+    run();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(run).catch(() => {});
+    window.addEventListener('beforeprint', run);
+    return () => window.removeEventListener('beforeprint', run);
+  }, [fitOnePageSetting, loading, error, orders, missingMap, printSettings]);
+
   useEffect(() => {
     // Auto trigger print when loaded
     if (!loading && !error && orders.length > 0) {
@@ -185,6 +203,7 @@ export default function PrintOrderPage() {
       }
 
       const timer = setTimeout(() => {
+        if (fitOnePageSetting) { try { fitOrdersToOnePage(containerRef.current); } catch (e) { console.error(e); } }
         window.print();
       }, 1000);
       return () => clearTimeout(timer);
@@ -300,7 +319,7 @@ export default function PrintOrderPage() {
       // column headers are placed in a <thead> and repeat on every printed page when the
       // item list overflows to page 2+, and a spacer <tfoot> keeps the last row of each page
       // clear of the page edge. Mirrors the pagination trick used by print/alterations.
-      <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: 0 }}>
+      <table className="print-table" data-fit-section="" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: 0 }}>
         <thead style={{ display: 'table-header-group', border: 'none' }}>
           <tr>
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
@@ -683,6 +702,10 @@ export default function PrintOrderPage() {
             break-after: avoid-page;
             page-break-after: avoid;
           }
+        }
+        /* כללי הדפסה מרוכזת (.batch-print) - מחוץ ל-@media print כדי שמדידת ההתאמה לעמוד אחד (lib/printFitOnePage.js,
+           print_order_fit_one_page) על המסך תראה בדיוק את הגבהים שיודפסו. בהדפסה עצמה אין שינוי; על המסך הדף הזה
+           הוא רק מה שמאחורי חלון ההדפסה. */
           /* הדפסה מרוכזת (בקשת רבקה לוי, 2026-09-10): לפי נהלי הגמ"ח כמות הפריטים
              בהזמנה בד"כ קטנה, אז צמצום הריווחים כאן אמור לרוב לספיק כדי שכל הזמנה
              תיכנס לעמוד בודד - זו לא אכיפה קשיחה (לא חותכים תוכן), רק פינוי מקום. */
@@ -733,7 +756,73 @@ export default function PrintOrderPage() {
             margin-top: 12px !important;
             padding-top: 6px !important;
           }
+        /* print_order_fit_one_page - מדידה: אותו רוחב כמו בעמוד המודפס (A4 פחות שוליים 10 מ"מ מכל צד), בלי ריפוד/מסגרת של התצוגה */
+        .print-container.fit-measure {
+          width: 190mm !important;
+          max-width: none !important;
+          margin: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
         }
+        .print-container.fit-measure:not(.batch-print) {
+          padding: 0 !important;
+        }
+        /* print_order_fit_one_page - המראה הבסיסי כשההגדרה פעילה (דיווח 7d921d3b: "עיצוב גרפי נאה, בלי הרבה מסגרות למעלה"):
+           שלוש שורות ההנחיות שבראש הדף בלי מסגרות וריבועים, לוגו וכותרת קטנים יותר, ריווחים מתונים. */
+        .fit-on .return-details-box {
+          border: none;
+          background: none;
+          border-radius: 0;
+          padding: 2px 0;
+          margin-bottom: 4px;
+          text-align: right;
+          font-size: 14px;
+        }
+        .fit-on .belt-notice-line { margin-top: 3px; font-size: 12.5px; }
+        .fit-on .print-header { padding-bottom: 10px; margin-bottom: 16px; }
+        .fit-on .print-header-content img { height: 46px !important; margin-bottom: 4px !important; }
+        .fit-on .print-header-content h1 { font-size: 24px; margin-bottom: 4px; }
+        .fit-on .order-details-card { margin-bottom: 16px; line-height: 1.6; }
+        .fit-on .order-notes-box { padding: 6px 12px; margin-bottom: 10px; }
+        .fit-on .print-table th, .fit-on .print-table td { padding: 8px 14px; }
+        .fit-on .print-table { margin-bottom: 14px; }
+        .fit-on .summary-section { margin-bottom: 14px; }
+        .fit-on .terms { margin-bottom: 14px; padding-top: 10px; }
+        .fit-on .print-footer { margin-top: 14px; padding-top: 8px; }
+        .fit-on > table > tfoot > tr > td > div { height: 12px !important; }
+        /* שלב "מצומצם" של ההתאמה לעמוד אחד: בלי מסגרות/רקעים מיותרים, לוגו וכותרת קטנים, ריווחים קטנים */
+        .fit-compact .return-details-box {
+          border: none !important;
+          background: none !important;
+          padding: 1px 0 !important;
+          margin-bottom: 2px !important;
+          font-size: 13px !important;
+          text-align: right !important;
+        }
+        .fit-compact .belt-notice-line { margin-top: 2px !important; font-size: 12px !important; }
+        .fit-compact .bsd { margin-bottom: 2px !important; font-size: 11px !important; }
+        .fit-compact .print-header { padding-bottom: 4px !important; margin-bottom: 8px !important; }
+        .fit-compact .print-header-content img { height: 34px !important; margin-bottom: 2px !important; }
+        .fit-compact .print-header-content h1 { font-size: 20px !important; margin: 0 0 2px 0 !important; }
+        .fit-compact .company-details { margin-top: 2px !important; font-size: 11px !important; }
+        .fit-compact .order-details-card { margin-bottom: 8px !important; font-size: 13px !important; line-height: 1.45 !important; }
+        .fit-compact .order-notes-box { padding: 4px 8px !important; margin: 0 0 6px 0 !important; font-size: 13px !important; }
+        .fit-compact .rental-notes-box { padding: 4px 8px !important; margin-bottom: 4px !important; font-size: 12.5px !important; }
+        .fit-compact > thead > tr:last-child > th,
+        .fit-compact > tbody:first-of-type > tr > td,
+        .fit-compact .payments-section th,
+        .fit-compact .payments-section td { padding: 4px 10px !important; font-size: 12.5px !important; }
+        .fit-compact .print-table, .fit-compact .payments-section .print-table { margin-bottom: 6px !important; }
+        .fit-compact .payments-title { margin: 0 0 4px 0 !important; font-size: 13px !important; }
+        .fit-compact .summary-section { margin: 4px 0 6px 0 !important; }
+        .fit-compact .summary-table td { padding: 3px 10px !important; font-size: 13px !important; }
+        .fit-compact .summary-table .total td { font-size: 15px !important; }
+        .fit-compact .terms { margin-bottom: 6px !important; padding-top: 6px !important; font-size: 12px !important; line-height: 1.4 !important; }
+        .fit-compact .rental-footer-title { font-size: 14px !important; margin: 0 0 4px 0 !important; }
+        .fit-compact .rental-footer-sign { font-size: 13px !important; }
+        .fit-compact .rental-footer-note { margin-top: 3px !important; font-size: 11.5px !important; }
+        .fit-compact .print-footer { margin-top: 6px !important; padding-top: 4px !important; }
+        .fit-compact > tfoot > tr > td > div { height: 6px !important; }
         .bsd {
           text-align: right;
           font-size: 13px;
@@ -980,10 +1069,11 @@ export default function PrintOrderPage() {
 
       <div
         data-agy-id="print-order-container"
+        ref={containerRef}
         // Signals to app/api/pdf/route.js's Puppeteer render (page.goto() + waitForSelector)
         // that data has finished loading and the DOM reflects its final state.
         data-print-ready={loading ? undefined : 'true'}
-        className={`print-container${isBatch ? ' batch-print' : ''}`}
+        className={`print-container${isBatch ? ' batch-print' : ''}${fitOnePageSetting ? ' fit-on' : ''}`}
       >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>
