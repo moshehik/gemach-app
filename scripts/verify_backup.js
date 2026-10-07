@@ -6,6 +6,7 @@
  *
  * usage:
  *   node scripts/verify_backup.js download <org> <destFile.sql.gz>
+ *   node scripts/verify_backup.js align    <org>      (מוסיף עמודות שקיימות רק ב-DB החי; דורש VERIFY_PG_URL)
  *   node scripts/verify_backup.js compare  <org>      (דורש VERIFY_PG_URL - המסד ששוחזר)
  *
  * השוואה: לכל טבלה - ספירה + hash מצטבר (md5 של כל השורות, לפי עמודות ממוינות). הבדלים נבדקים
@@ -45,6 +46,35 @@ async function download(org, dest) {
   if (!gen) throw new Error('כותרת הגיבוי לא נמצאה (הקובץ לא נראה כמו גיבוי)');
   fs.writeFileSync(META, JSON.stringify({ org, name: f.name, size, generated: gen, driveCreated: f.createdTime }));
   console.log('backup header generated at', gen);
+}
+
+/**
+ * סחף סכימה ידוע (ר' docs/branches-and-worktrees.md): בעמודות שקיימות ב-DB החי אבל לא ב-schema.prisma
+ * (כרגע ErrorReport.isArchivedByUser) הגיבוי מכיל נתונים, ושחזור על סכימת prisma בלבד נכשל.
+ * כאן מוסיפים למסד הזמני כל עמודה חסרה כזו (לפי הסוג בחי) לפני טעינת הנתונים, ומדווחים עליה.
+ */
+async function align(org) {
+  const live = new Client({ connectionString: resolveDbUrl(org) });
+  const rest = new Client({ connectionString: process.env.VERIFY_PG_URL });
+  await live.connect();
+  await rest.connect();
+  const cols = `select c.relname t, a.attname n, format_type(a.atttypid,a.atttypmod) ty, pg_get_expr(d.adbin,d.adrelid) def
+    from pg_attribute a join pg_class c on c.oid=a.attrelid left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum
+    where c.relnamespace='public'::regnamespace and c.relkind='r' and a.attnum>0 and not a.attisdropped`;
+  const [L, R] = [(await live.query(cols)).rows, (await rest.query(cols)).rows];
+  const have = new Set(R.map((r) => r.t + '.' + r.n));
+  const tables = new Set(R.map((r) => r.t));
+  let added = 0;
+  for (const c of L) {
+    if (!tables.has(c.t)) { console.log(`SCHEMA DRIFT: table ${c.t} exists in live but not in schema.prisma`); continue; }
+    if (have.has(c.t + '.' + c.n)) continue;
+    console.log(`SCHEMA DRIFT: column ${c.t}.${c.n} (${c.ty}) exists in live DB but not in prisma/schema.prisma - adding to scratch DB`);
+    await rest.query(`ALTER TABLE ${q(c.t)} ADD COLUMN ${q(c.n)} ${c.ty}${c.def ? ' DEFAULT ' + c.def : ''}`);
+    added++;
+  }
+  console.log(`aligned: ${added} extra column(s) added`);
+  await live.end();
+  await rest.end();
 }
 
 async function compare(org) {
@@ -107,6 +137,7 @@ async function compare(org) {
   const [mode, orgArg, dest] = process.argv.slice(2);
   const org = Number(orgArg);
   if (mode === 'download') await download(org, dest);
+  else if (mode === 'align') await align(org);
   else if (mode === 'compare') await compare(org);
-  else throw new Error('usage: download <org> <dest> | compare <org>');
+  else throw new Error('usage: download <org> <dest> | align <org> | compare <org>');
 })().catch((e) => { console.error('ERROR', e); process.exit(1); });

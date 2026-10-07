@@ -50,6 +50,8 @@ jobs:
           npx prisma db push --schema=prisma/schema.prisma --skip-generate --accept-data-loss
         env:
           DATABASE_URL: postgresql://postgres:verify@localhost:5432/verify
+      - name: Add columns that exist only in the live DB (known schema drift)
+        run: node scripts/verify_backup.js align ${{ matrix.org }}
       - name: Restore data (gunzip | psql, ON_ERROR_STOP)
         run: |
           gunzip -c /tmp/backup.sql.gz | psql "$VERIFY_PG_URL" -v ON_ERROR_STOP=1 -q -o /dev/null

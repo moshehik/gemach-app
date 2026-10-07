@@ -204,6 +204,10 @@ existing task's enabled state either way.
    DATABASE_URL="<target-connection-string>" npx prisma db push --schema=prisma/schema.prisma
    ```
 
+   **Known schema drift:** both production DBs have `ErrorReport.isArchivedByUser`, which is NOT in `prisma/schema.prisma`
+   (see `docs/branches-and-worktrees.md`) - the dump contains it, so before loading add it by hand:
+   `ALTER TABLE "ErrorReport" ADD COLUMN "isArchivedByUser" boolean;` (type as in the live DB; `scripts/verify_backup.js align` does this automatically).
+
 2. Load the data from a dump file with `psql` (get `psql`/`pg_dump` via the PostgreSQL
    installer if this machine still doesn't have it - or run this step from any machine that
    does, pointed at the target connection string):
