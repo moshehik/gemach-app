@@ -257,7 +257,9 @@ await t('לא נכללים: אירוע עתידי, הכל הוחזר, פריט �
 });
 await t('סף האיחור נקרא מההגדרות (late_return_threshold_days)', async () => {
   allow('page:orders');
-  T.orders = [order({ eventDate: dayStart(-12) })];
+  // 30 יום אחורה ולא 12: ההחזרה הצפויה מתגלגלת ליום עבודה הבא (חגי תשרי / שבת), ובתאריכי חג 12 ימים נותנים רק ~3 ימי איחור - מתחת לסף 7 והבדיקה נשברה לפי התאריך.
+  // 30 מכסה בביטחון בכל תקופה את שני הספים (7 < איחור < 60), כלומר המשמעות של הבדיקה לא השתנתה
+  T.orders = [order({ eventDate: dayStart(-30) })];
   T.settings = { late_return_threshold_days: '7' };
   const a = await call('/api/a5/adv-alerts?focus=alerts&flags=ar_late');
   T.settings = { late_return_threshold_days: '60' };

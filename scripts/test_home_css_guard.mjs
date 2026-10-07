@@ -302,9 +302,9 @@ t('לוז: השבבים שהבעלים הגדיר ב-4.10.2026 - בנוסח המ
   assert.equal(sec.split(al).length - 1, 1, 'שבב "N התראות" חסר / שונה נוסח');
   assert.ok(/\{alertRows \? <span className="chip st-bad">/.test(sec), 'השבב מוצג רק כשיש התראות בשלב');
   assert.equal((all.match(/chip st-bad/g) || []).length, 1, 'chip st-bad מופיע במקום נוסף בדף');
-  // בכותרת השלב רק השבבים שהוגדרו: התראות, משמרת (S08), שעות איסוף (B13)
+  // בכותרת השלב רק השבבים שהוגדרו: התראות, משמרת (S08). שבב "שעות איסוף" (B13) הוסר בהחלטת הבעלים 7.10.2026 (b5051623: "remove ... the pickup-hours chip")
   const chipClasses = [...sec.matchAll(/className="(chip[^"]*)"/g)].map((m) => m[1]).sort();
-  assert.deepEqual(chipClasses, ['chip st-bad', 'chip st-today', 'chip st-today'], 'שבב לא מוגדר נוסף לכותרת השלב');
+  assert.deepEqual(chipClasses, ['chip st-bad', 'chip st-today'], 'שבב לא מוגדר נוסף לכותרת השלב');
   const dayChips = [...day.matchAll(/className="(chip[^"]*)"/g)].map((m) => m[1]);
   assert.deepEqual(dayChips, ['chip gray lz-offday'], 'שבב לא מוגדר נוסף לשורת המתג');
   assert.ok(hasSched(/\.gm-ds\.gm-lz \.chip\.st-bad$/, /^background$/, { valueRe: /^#f4a68c$/ }), 'schedule.css: חסר צבע st-bad של העיצוב (1122)');
