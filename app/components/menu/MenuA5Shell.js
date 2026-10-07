@@ -33,6 +33,7 @@ import NoticeBarArea, { NoticeBarProvider, useNoticeBarState } from './NoticeBar
 import useNavHistory from './useNavHistory';
 import useAdminRecents from './useAdminRecents';
 import SearchKeySync from '../search/SearchKeySync';
+import ShellFooter from './ShellFooter';
 
 const CLOSED = { id: null, pin: false, peek: false };
 export default function MenuA5Shell({
@@ -780,6 +781,8 @@ export default function MenuA5Shell({
             <div className="content">{children}</div>
           </div>
         </div>
+        {/* תחתית האתר הכחולה - בסוף הגלילה בכל דף (דף הבית מציג את שלו) */}
+        <ShellFooter tree={tree} />
       </div>
       </NoticeBarProvider>
     </A5ShellProvider>
