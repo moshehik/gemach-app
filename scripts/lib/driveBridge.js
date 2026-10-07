@@ -19,7 +19,11 @@
 
 'use strict';
 
-const BRIDGE_TIMEOUT_MS = 55000;
+// 4 ניסיונות x 30s: תשובה איטית אך תקינה של הגשר נמדדה עד ~19s, ובקשה תקועה לא תחזור לעולם.
+const BRIDGE_ATTEMPT_TIMEOUT_MS = 30000;
+const BRIDGE_ATTEMPTS = 4;
+
+class BridgeAppError extends Error {}
 
 function cfg() {
   const url = (process.env.DRIVE_BRIDGE_URL || '').trim();
@@ -63,39 +67,40 @@ async function callBridge(action, payload = {}) {
     throw new Error('גשר הדרייב לא מוגדר (חסרים DRIVE_BRIDGE_URL / DRIVE_BRIDGE_SECRET)');
   }
   const body = JSON.stringify({ secret, action, ...payload });
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), BRIDGE_TIMEOUT_MS);
-  try {
-    let lastErr = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      let res, text;
-      try {
-        ({ res, text } = await fetchOnceThroughRedirect(url, body, ctrl.signal));
-      } catch (e) {
-        if (e.name === 'AbortError') throw e;
-        lastErr = e;
-        continue;
-      }
+  // טיימר נפרד לכל ניסיון (לא טיימר אחד לכל הניסיונות ביחד): גוגל אפס-סקריפט לפעמים
+  // "נתקע" על בקשה בודדת בלי להשיב, ובקשה חדשה מיד אחריה חוזרת תוך שניות (נמדד
+  // 07.10.2026: 19s / תקוע 55s / 2.9s / 1.2s). כל הפעולות כאן אידמפוטנטיות
+  // (archive_ping / archive_token), ולכן בטוח לנסות שוב גם אחרי timeout.
+  let lastErr = null;
+  for (let attempt = 1; attempt <= BRIDGE_ATTEMPTS; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), BRIDGE_ATTEMPT_TIMEOUT_MS);
+    try {
+      const { res, text } = await fetchOnceThroughRedirect(url, body, ctrl.signal);
       let json;
       try {
         json = JSON.parse(text);
       } catch {
         lastErr = new Error(`תשובה לא תקינה מהגשר (${res.status}): ${text.slice(0, 200)}`);
-        if (attempt < 3) await sleep(500 * attempt);
+        if (attempt < BRIDGE_ATTEMPTS) await sleep(500 * attempt);
         continue;
       }
       if (!res.ok || json.ok === false) {
-        throw new Error(json.error || `שגיאת גשר (${res.status})`);
+        throw new BridgeAppError(json.error || `שגיאת גשר (${res.status})`);
       }
       return json;
+    } catch (e) {
+      if (e instanceof BridgeAppError) throw e; // תשובה עניינית מהגשר (סוד שגוי וכו') - לא עוזר לנסות שוב
+      lastErr = e.name === 'AbortError' ? new Error('גשר הדרייב לא ענה בזמן (timeout)') : e;
+      if (attempt < BRIDGE_ATTEMPTS) {
+        console.warn(`[driveBridge] ${action}: ניסיון ${attempt}/${BRIDGE_ATTEMPTS} נכשל (${lastErr.message}) - מנסה שוב`);
+        await sleep(1000 * attempt);
+      }
+    } finally {
+      clearTimeout(t);
     }
-    throw lastErr || new Error('שגיאת גשר לא ידועה');
-  } catch (e) {
-    if (e.name === 'AbortError') throw new Error('גשר הדרייב לא ענה בזמן (timeout)');
-    throw e;
-  } finally {
-    clearTimeout(t);
   }
+  throw lastErr || new Error('שגיאת גשר לא ידועה');
 }
 
 /** מוצא/יוצר את תיקיית ה-root של הארגון בדרייב (לפי שם). */
