@@ -273,6 +273,20 @@
 .gm-ds.gm-no :is(.items-cart,.pay-side) .list{border-top:0}
 .gm-ds.gm-no :is(.items-cart,.pay-side) .li:last-child{border-bottom:0}
 .gm-ds.gm-no .items-cart .row.spread{flex-wrap:wrap}
+/* כרטיס "הוספת פריט" (.addstep של העיצוב): דגם -> מידה -> תיקונים -> שורת הוספה, בקצב אחד; האריחים ברשת ברוחב מלא */
+.gm-ds.gm-no .addstep{display:block;margin-top:28px}
+.gm-ds.gm-no .sub-h+.addstep{margin-top:0}
+.gm-ds.gm-no .addstep>.lbl{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.gm-ds.gm-no .addstep>.lbl>.ibtn{margin-inline-start:auto;width:36px;height:36px;border-radius:10px}
+.gm-ds.gm-no .addstep .field{margin-top:12px}
+.gm-ds.gm-no .items-main .sizes{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0}
+.gm-ds.gm-no .items-main .sizes button{width:auto;min-width:0;height:48px;padding:0;border-radius:12px;font-size:16px;font-weight:600;justify-content:center}
+.gm-ds.gm-no .items-main .altopts .opt{min-height:76px;padding:12px 14px;gap:10px}
+.gm-ds.gm-no .items-main .altopts .opt b{font-size:16px}
+.gm-ds.gm-no .addbar2{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:28px;padding-top:20px;border-top:1px solid var(--sky-200)}
+.gm-ds.gm-no .addsum small{display:block;color:var(--ink3);font-size:14px;line-height:1.2}
+.gm-ds.gm-no .addsum b{font-size:22px;font-weight:700;color:var(--navy-900);line-height:1.3}
+.gm-ds.gm-no .addbar2 .btn{min-width:200px}
 /* שלב התשלום: עמודת "תשלומים שנרשמו" נדבקת בגלילה, רק כשיש תשלום (.has-side) */
 .gm-ds.gm-no .pay-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;width:100%}
 .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:40px}
@@ -327,4 +341,15 @@
   .gm-ds.gm-no .no-app .pbars.mini{gap:4px;padding:8px 6px 2px}
   .gm-ds.gm-no .pbars.mini .pb-t b{font-size:11px;overflow-wrap:normal}
   .gm-ds.gm-no .pbars.mini .pb-d{padding:4px 2px}
+}
+
+/* ===== סבב התאמות לעיצוב העדכני (7.10.2026): שורת "הזמנת משלוח" בכותרת אחידה, כרטיס הפריטים בנייד ===== */
+/* מודל הכותרות האחיד של העיצוב: אריח אייקון 36px / רדיוס 10 / גוון sky-100 / אייקון navy 20px, כותרת 17px / 600 - גם בשורת "הזמנת משלוח" (.dhero) */
+.gm-ds.gm-no .app .one .dhero{gap:12px;align-items:center}
+.gm-ds.gm-no .app .one .dhero>.ico{width:36px;height:36px;min-width:36px;border-radius:10px;background:var(--sky-100);color:var(--navy);flex:none;box-shadow:none}
+.gm-ds.gm-no .app .one .dhero.off>.ico{background:var(--sky-100)}
+.gm-ds.gm-no .app .one .dhero>.ico .ic{width:20px;height:20px;color:var(--navy);stroke:var(--navy)}
+.gm-ds.gm-no .app .one .dhero b.big{font-size:17px;font-weight:600;line-height:1.3;color:var(--navy-900);margin:0}
+@media (max-width:560px){
+  .gm-ds.gm-no .items-main .sizes{grid-template-columns:repeat(4,minmax(0,1fr))}
 }

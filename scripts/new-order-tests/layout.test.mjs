@@ -201,3 +201,18 @@ test('גוש התשלום בטופס הרציף: אותו לחצן סיום כמ
   assert.match(cont, /const busy = ctl\.saving \|\| ctl\.isProcessingCredit;/);
   assert.match(strip(read('NewOrderA5.js')), /\{continuous && ctl\.saved \? <Nav ctl=\{ctl\} \/> : null\}/);
 });
+
+test('התאמות לעיצוב העדכני: הפריטים בקלף אחד עם שתי העמודות, "הוספת פריט" עם שדה דגם, סוג הזמנה בגלולה (אותו isPhoneOrder), בלי "שלב N מתוך" ובלי מה שהבעלים הסיר', () => {
+  const items = strip(read('StepItems.js'));
+  assert.match(items, /<OneCard>\s*<div className="items-split">\s*<div className="items-main"><AddItem ctl=\{ctl\} \/><\/div>\s*<div className="items-cart"><Cart ctl=\{ctl\} \/><\/div>/);
+  assert.equal((items.match(/<OneCard>/g) || []).length, 1, 'קלף אחד בלבד');
+  assert.match(items, /title="הוספת פריט"/);
+  assert.match(items, /קוד: \$\{code\}/);
+  assert.ok(!/הדגם שנבחר|pickedModel" style|N פנויות|פנויות|אזל<|החל מ|הערות כלליות/.test(items.replace(/אזלו/g, '')), 'החלטות הבעלים');
+  const del = strip(read('StepDelivery.js'));
+  assert.match(del, /<SegPill id="orderSeg"[^>]*value=\{!!o\.isPhoneOrder\} onChange=\{\(v\) => set\(\{ isPhoneOrder: v, branch: v \? '' : o\.branch \}\)\}/);
+  assert.ok(!/noPhoneOrder/.test(del), 'המתג הוחלף');
+  const all = ['NewOrderA5.js', 'LayoutContinuous.js', 'StepDates.js'].map(read).join('\n');
+  assert.ok(!/hero-step|מתוך \d|מתוך \$\{/.test(all), 'שורת "שלב N מתוך 6" הוסרה בהחלטת בעלים');
+  assert.ok(!/greg|לועזי/i.test(strip(read('StepDates.js'))), 'תאריכים עבריים בלבד - בלי תאריך לועזי בכותרת התאריך');
+});
