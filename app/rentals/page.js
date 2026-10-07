@@ -139,6 +139,7 @@ export default function RentalsPage() {
   const [sort, setSort] = useState('eventDateSmart');
   const [order, setOrder] = useState('desc');
   const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף
+  const [advSearchLabel, setAdvSearchLabel] = useState(false); // adv_search_button_label (דיווח 2f8bce90): כיתוב ליד אייקון החיפוש המתקדם
   const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
   const [nonWorkingDays, setNonWorkingDays] = useState(EMPTY_NON_WORKING_CONFIG);
   useEffect(() => {
@@ -148,6 +149,8 @@ export default function RentalsPage() {
       if (v === 'true') { setSort('eventDate'); setOrder('desc'); }
       const hide = Array.isArray(arr) ? arr.find(s => s.key === 'hide_custom_spacing')?.value : null;
       if (hide === 'true') setHideCustomSpacing(true);
+      const advLabel = Array.isArray(arr) ? arr.find(s => s.key === 'adv_search_button_label')?.value : null;
+      if (advLabel === 'true') setAdvSearchLabel(true);
       const threshold = Array.isArray(arr) ? arr.find(s => s.key === 'late_return_threshold_days')?.value : null;
       if (threshold) setLateReturnThresholdDays(Number(threshold) || LATE_RETURN_THRESHOLD_DAYS);
       // ימים ללא פעילות שהבעלים סימן (ניהול היומן) - משלימים את שישי/שבת/חג/ערב חג במועד ההחזרה הצפוי
@@ -375,8 +378,9 @@ export default function RentalsPage() {
           <div className="page-desc">סה&quot;כ רשומות: {loading ? '...' : totalCount}</div>
         </div>
         <div className="page-actions">
-          <button type="button" className="btn btn-secondary btn-icon-only" title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
+          <button type="button" className={`btn btn-secondary${advSearchLabel ? '' : ' btn-icon-only'}`} title="חיפוש מתקדם" onClick={() => setShowAdvSearch(true)}>
             <svg className="icon"><use href="#i-list" /></svg>
+            {advSearchLabel && 'חיפוש מתקדם'}
           </button>
           <ExportButtons
             data={orders.map(o => ({
