@@ -220,6 +220,9 @@ export default function OrdersPage() {
   // ההדפסה פותח עבור נווה יעקב ויצא ללא הגדרה שמפרידה בין הגמחים. ברירת מחדל false כדי
   // לשמר את ההתנהגות הקודמת (בלי האפשרות הזו) אצל כל גמח שלא הפעיל את המפתח בפירוש.
   const [enableBatchPrintPrep, setEnableBatchPrintPrep] = useState(false);
+  // orders_list_sticky_layout (דיווחים 9c389667, 7681043a - נווה יעקב): כבוי (ברירת מחדל) = כל הדף גולל כמו תמיד; דולק = הכותרת, החיפוש, הלשוניות וכותרות
+  // הטבלה נשארים במקומם ורק רשימת ההזמנות גוללת (בתוך קופסה בגובה המסך), הרווחים בטבלה מצומצמים והשורות יכולות לרדת שורה במקום לגלול הצידה. ר' .orders-fit ב-globals.css.
+  const [ordersStickyLayout, setOrdersStickyLayout] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +245,8 @@ export default function OrdersPage() {
         if (allowPartialSetting) setAllowEditPartially(allowPartialSetting.value === 'true');
         const batchPrintSetting = data.find(s => s.key === 'enable_batch_print_prep');
         if (batchPrintSetting) setEnableBatchPrintPrep(batchPrintSetting.value === 'true');
+        const stickyLayoutSetting = data.find(s => s.key === 'orders_list_sticky_layout');
+        if (stickyLayoutSetting) setOrdersStickyLayout(stickyLayoutSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -497,7 +502,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <>
+    <div className={ordersStickyLayout ? 'orders-fit' : undefined} style={ordersStickyLayout ? undefined : { display: 'contents' }}>
       <div className="page-head">
         <div>
           <h1>ניהול הזמנות</h1>
@@ -843,7 +848,7 @@ export default function OrdersPage() {
                 return (
                   <tr key={order.orderId} className={rowClassName} style={{ cursor: 'pointer', ...rowStyle }} onClick={() => router.push(`/orders/${order.orderId}`)}>
                     <td className="cell-primary" style={{ color: isUnpaid ? 'var(--danger)' : (isPending ? 'var(--accent)' : undefined) }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="orders-id-cell" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>#{order.orderId}</span>
                         {unsavedDraft && (
                           <span
@@ -879,7 +884,7 @@ export default function OrdersPage() {
                       ₪{order.totalPaid}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
+                      <div className="orders-status-cell" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
                         <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(order, { draftsAsDeleted }))}`}>{calculateOrderStatus(order, { draftsAsDeleted })}</span>
                         <span className={`badge ${getPaymentBadgeClass(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0))}`}>{calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)}</span>
                       </div>
@@ -1062,6 +1067,6 @@ export default function OrdersPage() {
         </div>,
         document.body
       )}
-    </>
+    </div>
   );
 }

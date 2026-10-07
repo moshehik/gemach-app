@@ -2496,3 +2496,73 @@ table.data thead tr th {
   }
 }
 
+
+/*
+  רשימת ההזמנות במסך אחד (orders_list_sticky_layout, דיווחים 9c389667 + 7681043a - נווה יעקב).
+  כבוי = הכללים כאן לא פעילים בכלל (העטיפה בעמוד היא display:contents). דולק: העטיפה .orders-fit בגובה המסך; הכותרת, החיפוש, הלשוניות
+  וכותרות העמודות קבועים, ורק .table-scroll (גוף הטבלה) גולל - הסיכום והעימוד נשארים בתחתית הקופסה.
+  --of-zoom: "גודל הטקסט" האישי (design-system.css) מגדיל את כל .app-shell ב-zoom, ויחידות vh בתוך אלמנט מוגדל מוכפלות גם הן -
+  לכן מחלקים בו. --of-chrome: גובה הסרגל העליון + ריווח התוכן באותן יחידות (במעטפת החדשה הסרגל מחוץ ל-zoom ולכן נחלק גם הוא).
+*/
+.orders-fit {
+  --of-zoom: 1;
+  --of-chrome: 104px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh / var(--of-zoom) - var(--of-chrome));
+  height: calc(100dvh / var(--of-zoom) - var(--of-chrome));
+  min-height: 360px;
+}
+:root[data-text-scale="small"] .orders-fit { --of-zoom: 0.9; }
+:root[data-text-scale="large"] .orders-fit { --of-zoom: 1.12; }
+:root[data-text-scale="xlarge"] .orders-fit { --of-zoom: 1.28; }
+.a5-shell .orders-fit { --of-chrome: calc(var(--gm-snav-h, 64px) / var(--of-zoom) + 36px); }
+/* בלי ריווח תחתון גדול של .content - אחרת הדף עצמו גולל קצת בלי סיבה */
+.content:has(> .orders-fit) { padding-bottom: 12px; }
+.orders-fit > * { flex: none; }
+.orders-fit > .table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.orders-fit > .table-wrap > .table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.orders-fit > .table-wrap > .table-foot {
+  flex: none;
+  position: static;
+  box-shadow: none;
+}
+/* החלק העליון (כותרת, חיפוש, לשוניות) צפוף יותר כדי שיישאר מקום לרשימה עצמה */
+.orders-fit .page-head { margin-bottom: 10px; gap: 8px; }
+.orders-fit .page-head > div:first-child { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.orders-fit .toolbar { margin-bottom: 8px; }
+.orders-fit .pill-tabs { margin-bottom: 10px !important; }
+.orders-fit table.data { table-layout: auto; }
+.orders-fit table.data thead tr th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 3 !important;
+  background-color: var(--surface-alt) !important;
+  box-shadow: inset 0 -1px 0 var(--border) !important;
+  border-bottom: none !important;
+  padding: 8px 10px;
+  white-space: normal;
+}
+.orders-fit table.data tbody td { padding: 7px 10px; }
+.orders-fit .orders-id-cell { flex-wrap: wrap; gap: 4px !important; }
+.orders-fit .orders-status-cell { flex-wrap: wrap !important; gap: 4px !important; }
+.orders-fit .row-actions { gap: 2px; flex-wrap: nowrap; }
+@media (max-width: 760px) {
+  /* במסך צר הדף חוזר לגלול כמו תמיד */
+  .orders-fit { display: block; height: auto; min-height: 0; }
+  .orders-fit > .table-wrap { display: block; }
+  .orders-fit > .table-wrap > .table-scroll { overflow-x: auto; overflow-y: visible; }
+  .orders-fit > .table-wrap > .table-foot { position: sticky; }
+}
