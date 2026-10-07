@@ -431,7 +431,11 @@ const PINNED_BLOBS = {
   // + order_inline_customer_edit (דיווח f96f3952): "עריכת פרטי לקוח" נפתח כחלון באותו מסך (CustomerCompleteModal.js) כשהמתג דולק; כבוי = אפס שינוי
   // + Q19: אחרי השלמת פרטי לקוח שנבחר מהרשימה - המשך אוטומטי לשלב 2 (אותו מתג)
   // + new_order_auto_next_step (דיווח 3bded746): מעבר אוטומטי 1->2 / 2->3 כשהשלב הושלם (lib/newOrderAutoNextStep.js); כבוי = אפס שינוי
-  'app/orders/new/LegacyNewOrderPage.js': '42e418c1f56ea9f13c0e34c996af1b7b467c53af',
+  // + לוח 3 חודשים / בלי הדגשת התאריך הקודם בבחירת תאריך אירוע (דיווחים c9d3be3f/f0c19c53, מאחורי new_order_calendar_three_months + new_order_date_hide_selected_highlight; כבוי = אפס שינוי)
+  // + כפתור "כתובת שונה למשלוח" במקום בחירת עיר שנייה (דיווח 87c7a432, מאחורי delivery_different_address_button; כבוי = אפס שינוי)
+  // + המשך אוטומטי כשתשלום שאינו אשראי משלים את הסכום המלא (דיווח 67c0d652, מאחורי new_order_auto_finish_when_paid; כבוי = אפס שינוי)
+  // + מעבר אוטומטי לשדה הבא בשדות באורך קבוע / אחרי בחירת עיר ורחוב (דיווח c89234ec, מאחורי auto_advance_fixed_fields; כבוי = אפס שינוי)
+  'app/orders/new/LegacyNewOrderPage.js': '930ebe629608495783215e0b304838dde2208638',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

@@ -497,7 +497,7 @@ for (const [name, item, settingsRows, items] of [
   test(`מחיקה/שחזור: ${name} — אותה תוצאה ואותה הודעה`, async () => {
     const changes = [];
     const alerts = [];
-    const legacyToggle = mimFunction('toggleDeleted', { items, alert: (m) => alerts.push(m), settings: Object.fromEntries(settingsRows), window: { customConfirm: async () => true }, handleItemChange: (i, f, v) => changes.push([items[i].id, f, v]) });
+    const legacyToggle = mimFunction('toggleDeleted', { items, alert: (m) => alerts.push(m), settings: Object.fromEntries(settingsRows), window: { customConfirm: async () => true }, handleItemChange: (i, f, v) => changes.push([items[i].id, f, v]), onItemDeleted: undefined });
     await legacyToggle(0);
     const me = mine({ items, settings: settingsRows.map(([key, value]) => ({ key, value })), queues: {} });
     await me.act.toggleDeleted(me.state.items[0]);

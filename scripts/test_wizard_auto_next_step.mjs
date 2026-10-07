@@ -170,8 +170,9 @@ await t('העמוד: ייבוא, hook אחד, מאזינים נוקים, אין 
 await t('הגדרה רשומה: שם + הערה + רשימת הזמנות + בוליאני + מסך הגדרות; seed: נווה true, הראשי false (ברירת מחדל)', () => {
   const meta = read('lib/settingsMetadata.js');
   assert.equal((meta.match(/^  new_order_auto_next_step: /gm) || []).length, 2, 'שם + הערה');
-  assert.match(meta, /'order_inline_customer_edit', 'new_order_auto_next_step',\n    'customer_required_fields'/);
-  assert.match(meta, /'order_inline_customer_edit', 'new_order_auto_next_step',\n  \/\/ R49/);
+  // המפתח מופיע בדיוק פעם אחת בכל אחת משתי הרשימות (SETTINGS_ORDER ו-SETTINGS_BOOLEAN_KEYS) - לא נעול למיקום צמוד, כי ענפי שחרור אחרים מוסיפים מפתחות באותן שורות
+  assert.equal((meta.match(/'new_order_auto_next_step',/g) || []).length, 2, 'SETTINGS_ORDER + SETTINGS_BOOLEAN_KEYS');
+  assert.match(meta, /'order_inline_customer_edit', 'new_order_auto_next_step',/);
   const sim = read('lib/settingsSimLayout.js');
   assert.match(sim, /'order_inline_customer_edit', 'new_order_auto_next_step', 'order_new_redirect_screen'/);
   assert.match(sim, /new_order_auto_next_step: \{ icon: 'check' \}/);
