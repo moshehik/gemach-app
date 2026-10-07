@@ -289,19 +289,22 @@
 .gm-ds.gm-no .addbar2 .btn{min-width:200px}
 /* שלב התשלום: עמודת "תשלומים שנרשמו" נדבקת בגלילה, רק כשיש תשלום (.has-side) */
 .gm-ds.gm-no .pay-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;width:100%}
-.gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:40px}
-.gm-ds.gm-no .pay-main{display:flex;flex-direction:column;gap:24px;min-width:0}
-.gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start;background:rgba(255,255,255,.78);border:1px solid var(--sky-300);border-radius:18px;padding:20px 20px 12px;box-shadow:0 8px 24px -14px rgba(15,44,82,.35)}
+.gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:24px}
+.gm-ds.gm-no .pay-main{display:flex;flex-direction:column;min-width:0}
+.gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start}
+/* בתוך הקלף האחד: הבלוקים של הטופס מופרדים בקו מקווקו (כמו .one-body>.blk+.blk בשלבים האחרים - כאן הם בתוך .pay-main) */
+.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
 /* קו מפריד דק בין הבחירה לסל (בעיצוב אחרי fix-2026-10-01 - בלי כרטיס סביב הסל) */
 @media (min-width:761px){
   .gm-ds.gm-no .items-main{align-self:stretch;border-inline-end:1px solid var(--sky-300);padding-inline-end:24px}
+  .gm-ds.gm-no .pay-split.has-side .pay-main{align-self:stretch;border-inline-end:1px solid var(--sky-300);padding-inline-end:24px}
 }
 /* מתחת ל-761px: עמודה אחת, הסל / התשלומים מתחת */
 @media (max-width:760px){
   .gm-ds.gm-no .items-split{grid-template-columns:minmax(0,1fr)}
   .gm-ds.gm-no .items-cart{border-top:1px solid var(--sky-300);padding-top:24px}
   .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr)}
-  .gm-ds.gm-no .pay-side{position:static}
+  .gm-ds.gm-no .pay-side{position:static;border-top:1px solid var(--sky-300);padding-top:24px}
 }
 
 /* ===== טופס רציף בעמוד אחד נגלל (ההגדרה new_order_layout='continuous', LayoutContinuous.js): אותם רכיבי שלב, כל השלבים כגושים בזה אחר זה ===== */
@@ -353,3 +356,7 @@
 @media (max-width:560px){
   .gm-ds.gm-no .items-main .sizes{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
+/* שלב המשלוח: שורת "הזמנת משלוח" - הריפוד התחתון של .dhero (הפלטה) לא מתווסף לקו המפריד שאחריה; "יום לפני": הלחצן מתכווץ והעזרה נשארת לידו (בנייד) */
+.gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
+.gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
+.gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}

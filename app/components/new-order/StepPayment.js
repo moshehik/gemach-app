@@ -3,8 +3,8 @@
 // שלב 6 "תשלום וסיום" - R.payment בעיצוב: מצב תשלום (.bal + .pbar), רישום תשלום (.amtin + .methods + הערה), תשלומים שנרשמו.
 // אותה התנהגות כמו בישן: אופני התשלום מ-ALLOWED_PAYMENT_METHODS (בלי אשראי כשנדרים כבוי), "אישור תשלום" רושם/פותח אשראי,
 // "חיוב אשראי" רק כש-nedarim_plus_enabled לא 'false', חיוב שבוצע לא ניתן להסרה. R27/R31/R28 - ב-controller.
-// פריסה (העיצוב העדכני B2): "תשלומים שנרשמו" הם עמודת צד (.pay-side, נדבקת בגלילה) משמאל - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת.
-// מתחת ל-761px העמודה מתחת. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
+// פריסה (העיצוב העדכני B2): קלף אחד (.card.one) עם שתי עמודות - הטופס (.pay-main) מימין ו"תשלומים שנרשמו" (.pay-side, נדבקת בגלילה) משמאל,
+// עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
 import { Blk, Ic, OneCard, SubH, money } from './NoUi';
 import { CalcErrorNote, DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
 import { isChargedPayment, methodIcon, moneyTxt } from './newOrderLogic';
@@ -24,9 +24,9 @@ export default function StepPayment({ ctl }) {
     <div className="muted sm" style={{ marginTop: 12 }}><Ic n="info" c="sm" /> נותרה יתרה של {moneyTxt(bal)}. סיום ההזמנה ללא תשלום מלא אפשרי רק אם בוחרים &quot;יציאה באישור מנהל&quot; מתוך רשימת &quot;אופן תשלום&quot; למעלה (ולא בכפתור נפרד) - זה יבקש קוד וסיסמת מנהל.</div>
   ) : null;
   return (
-    <div className={`pay-split${hasPays ? ' has-side' : ''}`}>
-      <div className="pay-main">
-        <OneCard>
+    <OneCard>
+      <div className={`pay-split${hasPays ? ' has-side' : ''}`}>
+        <div className="pay-main">
           <Blk>
             <SubH icon="wallet" tone="green" title="מצב תשלום" />
             <div className="bal">
@@ -67,11 +67,10 @@ export default function StepPayment({ ctl }) {
             </div>
             {!hasPays ? balNote : null}
           </Blk>
-        </OneCard>
-      </div>
-      {hasPays ? (
-        <div className="pay-side one"><div className="one-body">
-          <Blk>
+        </div>
+        {hasPays ? (
+          <div className="pay-side">
+            <Blk>
             <SubH icon="list" tone="gold" title="תשלומים שנרשמו" />
             <div className="list">
               {ctl.paymentsList.map((x, i) => (
@@ -84,10 +83,11 @@ export default function StepPayment({ ctl }) {
                 </div>
               ))}
             </div>
-            {balNote}
-          </Blk>
-        </div></div>
-      ) : null}
-    </div>
+              {balNote}
+            </Blk>
+          </div>
+        ) : null}
+      </div>
+    </OneCard>
   );
 }

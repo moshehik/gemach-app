@@ -216,3 +216,14 @@ test('התאמות לעיצוב העדכני: הפריטים בקלף אחד ע�
   assert.ok(!/hero-step|מתוך \d|מתוך \$\{/.test(all), 'שורת "שלב N מתוך 6" הוסרה בהחלטת בעלים');
   assert.ok(!/greg|לועזי/i.test(strip(read('StepDates.js'))), 'תאריכים עבריים בלבד - בלי תאריך לועזי בכותרת התאריך');
 });
+
+test('שלב התשלום: קלף אחד (.card.one) עם הטופס ו"תשלומים שנרשמו" בתוכו, בלי פאנל נפרד', () => {
+  const pay = strip(read('StepPayment.js'));
+  assert.equal((pay.match(/<OneCard>/g) || []).length, 1);
+  assert.match(pay, /<OneCard>\s*<div className=\{`pay-split\$\{hasPays \? ' has-side' : ''\}`\}>\s*<div className="pay-main">/);
+  assert.match(pay, /<div className="pay-side">/);
+  const css = fs.readFileSync(path.join(DIR, 'css/new-order.css'), 'utf8');
+  const side = css.match(/\.gm-ds\.gm-no \.pay-side\{[^}]*\}/)[0];
+  assert.ok(!/background|border:|box-shadow|padding:/.test(side), 'ל-.pay-side אין עוד כרטיס משלו');
+  assert.match(css, /\.gm-ds\.gm-no \.pay-split\.has-side \.pay-main\{[^}]*border-inline-end:1px solid/);
+});
