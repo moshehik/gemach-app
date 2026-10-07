@@ -67,7 +67,10 @@ export default function ModernOrderCard({
   tabContents,
   // draft_orders_show_as_deleted (SystemSetting) - see lib/orderStatus.js calculateOrderStatus;
   // when on, an autosaved-but-never-finished order shows this badge as "מחוק" instead of "טיוטה".
-  draftsAsDeleted = false
+  draftsAsDeleted = false,
+  // order_card_save_in_footer (דיווח 7681043a, נווה יעקב): כבוי = כפתור "שמור שינויים" למעלה בראש הדף כמו תמיד; דולק = הכפתור בפס תחתון
+  // (בדיוק כמו "סיום ויצירת ההזמנה" באשף הזמנה חדשה: אותו פס, אותו צד), כדי שלא יצטרכו לחפש את השלב הבא.
+  saveInFooter = false
 }) {
   const [scanValue, setScanValue] = useState('');
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -114,6 +117,25 @@ export default function ModernOrderCard({
       if (confirmed) onLock();
     }
   };
+
+  const saveButton = (
+    <button
+      type="button"
+      className="btn btn-primary"
+      title={saveNeedsApproval ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל` : 'שמור שינויים'}
+      onClick={() => onSave()}
+      disabled={saving}
+    >
+      {saving ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+      שמור שינויים
+      {!saving && saveNeedsApproval && (
+        <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>
+          <svg className="icon" style={{ width: '10px', height: '10px' }}><use href="#i-shield" /></svg>
+          ₪{debt.toLocaleString('he-IL')}
+        </span>
+      )}
+    </button>
+  );
 
   return (
     <>
@@ -181,22 +203,7 @@ export default function ModernOrderCard({
             <svg className="icon"><use href="#i-refresh" /></svg>
           </button>
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            title={saveNeedsApproval ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל` : 'שמור שינויים'}
-            onClick={() => onSave()}
-            disabled={saving}
-          >
-            {saving ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
-            שמור שינויים
-            {!saving && saveNeedsApproval && (
-              <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>
-                <svg className="icon" style={{ width: '10px', height: '10px' }}><use href="#i-shield" /></svg>
-                ₪{debt.toLocaleString('he-IL')}
-              </span>
-            )}
-          </button>
+          {!saveInFooter && saveButton}
 
           <button type="button" className="btn btn-ghost" title="שמירה וחזרה לרשימת ההזמנות" onClick={() => onExit()}>
             <svg className="icon"><use href="#i-arrow-end" /></svg>
@@ -280,6 +287,15 @@ export default function ModernOrderCard({
           {tabContents[tab.id]}
         </div>
       ))}
+
+      {/* פס תחתון (order_card_save_in_footer): אותו מבנה כמו פוטר הניווט של אשף "הזמנה חדשה" (components/orders/new/NewOrderShell.js) - הכפתור הראשי בקצה
+          כמו "סיום ויצירת ההזמנה" (ב-RTL: הקצה השמאלי), כך שהשלב הבא תמיד באותו מקום. */}
+      {saveInFooter && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+          <span style={{ flex: 1 }} />
+          {saveButton}
+        </div>
+      )}
 
       {/* מודל אישור שחרור נעילה (הזמנה שתאריך האירוע שלה עבר) */}
       {showUnlockModal && typeof document !== 'undefined' && createPortal(

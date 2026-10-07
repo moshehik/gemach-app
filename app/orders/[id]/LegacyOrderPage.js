@@ -297,6 +297,15 @@ export default function OrderDetailsPage({ params }) {
   // order_edit_redirect_screen - מסך היעד כשיוצאים מהכרטיס (handleExit) בלי יעד מפורש
   // משלו. ברירת מחדל "orders_list" = ההתנהגות הקודמת (חזרה לרשימת ההזמנות).
   const [orderEditRedirectScreen, setOrderEditRedirectScreen] = useState('orders_list');
+  // order_card_save_in_footer (דיווח 7681043a) - כבוי (ברירת מחדל) = "שמור שינויים" למעלה בראש הדף; דולק = בפס תחתון כמו "סיום ויצירת ההזמנה" (ר' ModernOrderCard).
+  const [saveInFooter, setSaveInFooter] = useState(false);
+  // order_edit_fewer_confirmations (דיווח c43a2b84) - כבוי (ברירת מחדל) = כל החלונות כמו תמיד. דולק: (1) שאלת ההדפסה אחרי שמירה מתמזגת לתוך חלון "סיכום ההזמנה לפני שמירה"
+  // (תיבת סימון במקום חלון אישור נוסף; רק כש-enable_order_edit_summary_confirm דולק), (2) לחיצה על "שמור שינויים" כשאין שום שינוי שלא נשמר לא פותחת שוב סיכום+ת"ז+שמירה -
+  // רק שאלת הדפסה אחת. אף אישור אבטחה/כסף (ת"ז, קוד מאשר, חוב, מחיקת פריט, התנגשות) לא נוגעים בו.
+  const [fewerConfirmations, setFewerConfirmations] = useState(false);
+  // תיבת "להדפיס אחרי השמירה" בחלון הסיכום (רק כש-fewerConfirmations): state להצגה + ref כדי שה-resolver של ה-Promise יקרא את הערך העדכני.
+  const [summaryPrintAfter, setSummaryPrintAfter] = useState(false);
+  const summaryPrintAfterRef = useRef(false);
   // customer_credit_offset_prompt (דיווח 679a860b, lib/creditOffset.js) - כבוי כברירת מחדל = אין שאלה ואין קיזוז. כשמופעל: אחרי שמירה/יציאה שיצרו חוב
   // חדש ויש ללקוחה זיכוי פתוח מהזמנה אחרת, נשאלת שאלה אחת "לקזז מהחוב?" (ר' askCreditOffset למטה).
   const [creditOffsetPromptEnabled, setCreditOffsetPromptEnabled] = useState(false);
@@ -331,6 +340,10 @@ export default function OrderDetailsPage({ params }) {
         if (editRedirect && editRedirect.value) setOrderEditRedirectScreen(editRedirect.value);
         const creditOffsetSetting = data.find(s => s.key === 'customer_credit_offset_prompt');
         if (creditOffsetSetting) setCreditOffsetPromptEnabled(creditOffsetSetting.value === 'true');
+        const saveInFooterSetting = data.find(s => s.key === 'order_card_save_in_footer');
+        if (saveInFooterSetting) setSaveInFooter(saveInFooterSetting.value === 'true');
+        const fewerConfirmSetting = data.find(s => s.key === 'order_edit_fewer_confirmations');
+        if (fewerConfirmSetting) setFewerConfirmations(fewerConfirmSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -723,7 +736,7 @@ export default function OrderDetailsPage({ params }) {
   // "נעלם" בדיווח 6124472b. מחזיר גם previewObligations/previewTotal כדי שהקורא
   // (handleSave/handleExit) יוכל להשתמש בהם ישירות בבדיקת החוב שאחריו, במקום ב-state
   // הישן (totalRequired מה-closure הנוכחי לא מתעדכן רק מ-setObligations כאן).
-  const confirmSaveSummaryIfNeeded = async (currentOrder) => {
+  const confirmSaveSummaryIfNeeded = async (currentOrder, { offerPrint = false } = {}) => {
     if (!enableEditSummaryConfirm || !currentOrder?.orderId) return { proceed: true };
 
     let previewObligations = obligations;
@@ -758,11 +771,15 @@ export default function OrderDetailsPage({ params }) {
     }
 
     return new Promise(resolve => {
+      summaryPrintAfterRef.current = false;
+      setSummaryPrintAfter(false);
       summaryConfirmResolverRef.current = (confirmed) => {
         setSummaryConfirmData(null);
-        resolve(confirmed ? { proceed: true, previewObligations, previewTotal } : { proceed: false });
+        // printAfter מוחזר רק כשהחלון הציע את תיבת ההדפסה (order_edit_fewer_confirmations) - אחרת undefined והשאלה הרגילה אחרי השמירה נשארת.
+        resolve(confirmed ? { proceed: true, previewObligations, previewTotal, ...(offerPrint ? { printAfter: summaryPrintAfterRef.current } : {}) } : { proceed: false });
       };
       setSummaryConfirmData({
+        offerPrint,
         obligations: previewObligations,
         totalRequired: previewTotal,
         totalPaid,
@@ -822,6 +839,16 @@ export default function OrderDetailsPage({ params }) {
     if (!currentOrder) {
       setSaving(false);
       alert('שגיאה: נתוני ההזמנה לא טוענו כראוי');
+      return;
+    }
+
+    // order_edit_fewer_confirmations (דיווח c43a2b84): לחיצה מפורשת על "שמור שינויים" כשאין שום שינוי שלא נשמר (למשל אחרי שפריט נוסף ונשמר בלחיצה על "אישור" בשורה שלו) -
+    // לא פותחים שוב סיכום + ת"ז + שמירה בשרת. נשארת שאלה אחת: להדפיס. אין כאן שום כתיבה לשרת, ולכן אין אישור שנחלש.
+    if (fewerConfirmations && promptPrint && !overrideOrder && !hasUnsavedChanges && !pendingDebtBlockRef.current && !items.some(it => !it.id && it._localId)) {
+      setSaving(false);
+      const noChangeMsg = 'אין שינויים חדשים לשמירה - הכול כבר נשמר. להדפיס את ההזמנה?';
+      const wantsPrintNoChange = window.customConfirm ? await window.customConfirm(noChangeMsg) : window.confirm(noChangeMsg);
+      if (wantsPrintNoChange) window.open(`/print/order?orderId=${currentOrder.orderId}&type=order`, '_blank', 'noopener');
       return;
     }
 
@@ -891,7 +918,7 @@ export default function OrderDetailsPage({ params }) {
       }
     }
 
-    const summaryConfirmResult = await confirmSaveSummaryIfNeeded(currentOrder);
+    const summaryConfirmResult = await confirmSaveSummaryIfNeeded(currentOrder, { offerPrint: fewerConfirmations && promptPrint });
     if (!summaryConfirmResult.proceed) {
       setSaving(false);
       return;
@@ -1125,9 +1152,12 @@ export default function OrderDetailsPage({ params }) {
       // אפשרות מפורשת להדפיס את הכרטיס המעודכן - במקום שהמשתמשת תצטרך לזכור
       // ללחוץ בעצמה על תפריט ההדפסה (OrderPrintMenu.js) בכרטיס שנשאר פתוח.
       if (promptPrint) {
-        const wantsPrint = window.customConfirm
-          ? await window.customConfirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?')
-          : window.confirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?');
+        // הבחירה כבר נעשתה בחלון הסיכום (order_edit_fewer_confirmations) - לא שואלים שוב.
+        const wantsPrint = summaryConfirmResult.printAfter !== undefined
+          ? summaryConfirmResult.printAfter
+          : window.customConfirm
+            ? await window.customConfirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?')
+            : window.confirm('השינויים נשמרו בהצלחה! להדפיס את ההזמנה המעודכנת?');
         if (wantsPrint) {
           // noopener - לשונית ההדפסה לא מחוברת ללשונית הכרטיס (בדפדפני Chromium לשונית פתוחה עם opener חולקת תהליך
           // עם הלשונית שפתחה אותה, ו-window.print() בה חוסם גם את הכרטיס - דיווח 2c827b93)
@@ -1851,6 +1881,16 @@ export default function OrderDetailsPage({ params }) {
                     לאחר האישור תישמר ההזמנה ותועבר אוטומטית לטאב תשלומים להשלמת הגבייה.
                   </div>
                 )}
+                {summaryConfirmData.offerPrint && (
+                  <label className="checkbox-row" style={{ cursor: 'pointer', marginTop: '10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={summaryPrintAfter}
+                      onChange={(e) => { summaryPrintAfterRef.current = e.target.checked; setSummaryPrintAfter(e.target.checked); }}
+                    />
+                    <span>להדפיס את ההזמנה אחרי השמירה</span>
+                  </label>
+                )}
               </div>
             </div>
             <div className="modal-foot">
@@ -1986,6 +2026,7 @@ export default function OrderDetailsPage({ params }) {
           order={order}
           items={items}
           draftsAsDeleted={draftsAsDeleted}
+          saveInFooter={saveInFooter}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           totalRequired={totalRequired}
