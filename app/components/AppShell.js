@@ -242,7 +242,7 @@ export default function AppShell({
             <PageVariantToggle screen="shell" placement="topbar" />
             {!hideErrorReporting && <ErrorReportButton />}
             {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
-            <UserMenu hideInternalMessaging={hideInternalMessaging} />
+            <UserMenu hideInternalMessaging={hideInternalMessaging} checkOverdueOnLogout={!!showOverdueRemindersPopup && !isProgrammer} />
           </div>
         </div>
 
