@@ -193,6 +193,8 @@ export default function NewOrderPage() {
   const [isProcessingCredit, setIsProcessingCredit] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [creditProcessedConfirmation, setCreditProcessedConfirmation] = useState(null);
+  // 67c0d652 (נווה יעקב): אחרי רישום תשלום שמשלים את הסכום המלא - המשך אוטומטי (new_order_auto_finish_when_paid), ר' handleAddPaymentClick
+  const [autoFinishPending, setAutoFinishPending] = useState(false);
 
   // The order number Nedarim Plus was told about. It is claimed from the server before the
   // first charge (the order itself does not exist yet at that point) and handed back on save,
@@ -1224,6 +1226,12 @@ export default function NewOrderPage() {
     } else {
         setPaymentsList(prev => [...prev, { amount: pAmount, method: payment.method, notes: payment.notes }]);
         setPayment(prev => ({ ...prev, notes: '' }));
+        // 67c0d652: התשלום הזה משלים בדיוק את הסכום (לא יותר) - ממשיכים לסיום כמו אחרי חיוב אשראי מלא (אותן בדיקות של saveOrder)
+        const paidAfter = paymentsList.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0) + pAmount;
+        if (settings.new_order_auto_finish_when_paid === 'true' && totalAmount > 0 && Math.round(paidAfter * 100) === Math.round(totalAmount * 100)) {
+          setFlash({ type: 'ok', text: 'התשלום מלא - ההזמנה נוצרת...' });
+          setAutoFinishPending(true);
+        }
     }
   };
 
@@ -1411,6 +1419,15 @@ export default function NewOrderPage() {
     const timer = setTimeout(() => setFlash(null), 2800);
     return () => clearTimeout(timer);
   }, [flash]);
+
+  // 67c0d652: מחכים שהסכום לתשלום יתאפס אחרי הרישום (אפקט היתרה למעלה), ואז saveOrder הרגיל - אותן בדיקות (לקוח, טלפון, תאריכים, משלוח)
+  useEffect(() => {
+    if (!autoFinishPending || saving) return;
+    if ((parseFloat(payment.amount) || 0) > 0) return;
+    setAutoFinishPending(false);
+    saveOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFinishPending, payment.amount, saving]);
 
   const activeItems = (order.items || []).filter(i => !i.isDeleted);
   const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
