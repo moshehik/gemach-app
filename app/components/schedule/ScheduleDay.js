@@ -358,7 +358,6 @@ export default function ScheduleDay({
                     key={s.key}
                     stage={s}
                     view={view}
-                    pickupHours={data.settings && data.settings.pickupHours}
                     marks={marks}
                     canMarkAll={allowMarkAll}
                     dayLabel={data.dateHebrew}

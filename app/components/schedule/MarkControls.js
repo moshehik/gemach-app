@@ -74,7 +74,7 @@ export function MarkButton({ stage, row, doneState, onMarkDone, dayLabel }) {
   if (done) {
     return (
       <>
-        {rk && cond ? (cond === 'ok' ? <span className="chip green lz-rc">תקין</span> : <span className="chip rose lz-rc">לא תקין</span>) : null}
+        {rk && cond && cond !== 'ok' ? <span className="chip rose lz-rc">לא תקין</span> : null}
         <button type="button" className="btn tgl lz-mark on" aria-pressed="true" data-tip={doneTip(doneState)} disabled={disabled} aria-busy={busy || undefined} onClick={confirm(false)}>
           <ScheduleIcon name="check" className="sm evck" />בוצע
         </button>

@@ -186,7 +186,9 @@
 .gm-ds.gm-lz .lz-tbtn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .gm-ds.gm-lz .lz-tbtn b{display:block}
 .gm-ds.gm-lz .lz-tbtn .ln{display:block}
-.gm-ds.gm-lz .lz-pn{display:inline-block;max-width:100%}
+.gm-ds.gm-lz .lz-pn{display:inline-flex;align-items:center;gap:.3em;max-width:100%;vertical-align:middle}
+/* אייקוני שורת הפרטים: בגודל הכתב (em), ממורכזים לגובה השורה ובצבע הכתב עצמו */
+.gm-ds.gm-lz .lz-pn .ic{flex:none;width:1.15em;height:1.15em;color:inherit;stroke:currentColor}
 .gm-ds.gm-lz .lz-act{display:flex;align-items:center;gap:8px;margin-inline-start:auto;flex:0 1 auto;min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-end}
 .gm-ds.gm-lz .lz-act .chip{margin:0;max-width:100%}
 .gm-ds.gm-lz .lz-rc{margin-inline-end:2px}
