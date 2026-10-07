@@ -8,6 +8,7 @@ import { NON_WORKING_DAYS_SETTING_KEY, parseNonWorkingDaysSetting, EMPTY_NON_WOR
 import { getExpectedReturnDate } from '../../../lib/lateReturn';
 import { printPageEventBodies } from '../../../lib/history/orderEvents';
 import { detailsWithoutMarker } from '../../../lib/alterationEstimate';
+import { manualCustomerNotes } from '../../../lib/customerNotesForPrint';
 
 // One id per page load - the events route ignores a repeat with the same id (React dev double effects,
 // a reload of the same tab is a new load = a new print, as it should be).
@@ -59,6 +60,9 @@ export default function PrintOrderPage() {
   // 27f278c7 (נווה יעקב) - print_order_clean_layout: הדפסת הזמנה בודדת "נקייה" ללקוח (בלי "לכבוד:"/"טלפון:"/כתובת לקוח,
   // הערות פעם אחת, בלי טבלת תשלומים וכו'). כבוי כברירת מחדל = הפלט הקיים. לא חל על הדפסה מרוכזת (isBatch).
   const [cleanLayoutSetting, setCleanLayoutSetting] = useState(false);
+  // b61a7ca5 (נווה יעקב) - print_prep_customer_notes: בהדפסת הכנה (הדפסה מרוכזת, "פירוט הזמנות להכנה") להדפיס בגדול גם את
+  // הערות הלקוח (Customer.notes, השורות הידניות). כבוי כברירת מחדל = ההדפסה כמו קודם. לא חל על הדפסת הזמנה בודדת (זה הדף שהלקוח מקבל).
+  const [prepCustomerNotesSetting, setPrepCustomerNotesSetting] = useState(false);
   // 20 - מיון דפי הכנה: משלוחים בנפרד מרגילות (רק כשמדפיסים כמה הזמנות יחד)
   const [sortDeliveriesFirst, setSortDeliveriesFirst] = useState(true);
   // 21 - מפה orderItemId -> { familyName, returnOrderId } לפריטים שסומנו "חסרה"
@@ -106,6 +110,8 @@ export default function PrintOrderPage() {
         if (sortSetting && sortSetting.value === 'false') setSortDeliveriesFirst(false);
         const cleanSetting = settingsData.find(s => s.key === 'print_order_clean_layout');
         if (cleanSetting && cleanSetting.value === 'true') setCleanLayoutSetting(true);
+        const prepNotesSetting = settingsData.find(s => s.key === 'print_prep_customer_notes');
+        if (prepNotesSetting && prepNotesSetting.value === 'true') setPrepCustomerNotesSetting(true);
         const missSetting = settingsData.find(s => s.key === 'print_mark_missing_dresses');
         if (missSetting && missSetting.value === 'false') { setMarkMissingInPrint(false); markMissing = false; }
 
@@ -294,6 +300,7 @@ export default function PrintOrderPage() {
     const pickupDate = ord?.eventDate ? subtractBusinessDays(ord.eventDate, 2, nonWorkingDays) : null;
     // 27f278c7: מצב "נקי" רק להדפסת הזמנה בודדת (גיליונות ההכנה המרוכזים נשארים כמו שהם)
     const clean = cleanLayoutSetting && !isBatch;
+    const prepCustomerNotes = prepCustomerNotesSetting && isBatch ? manualCustomerNotes(ord?.customer?.notes) : '';
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -395,6 +402,14 @@ export default function PrintOrderPage() {
               {ord.notes && (
                 <div className="order-notes-box">
                   <strong>הערות להזמנה: </strong>{ord.notes}
+                </div>
+              )}
+
+              {/* b61a7ca5 - הערות הלקוח בהדפסת הכנה: תיבה בולטת בכתב גדול, מיד אחרי פרטי ההזמנה (לפני רשימת הפריטים) */}
+              {prepCustomerNotes && (
+                <div className="customer-notes-big">
+                  <div className="customer-notes-big-label">הערות הלקוח:</div>
+                  {prepCustomerNotes}
                 </div>
               )}
 
@@ -925,6 +940,27 @@ export default function PrintOrderPage() {
           margin: 0 0 15px 0;
           font-size: 15px;
           color: #333;
+        }
+        /* b61a7ca5 - הערות הלקוח בהדפסת הכנה: גדול ובולט, שורות נשמרות כמו שנכתבו */
+        .customer-notes-big {
+          border: 3px solid #111;
+          border-radius: 6px;
+          padding: 8px 14px 10px;
+          margin: 0 0 14px 0;
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 1.35;
+          color: #000;
+          background: #fff;
+          white-space: pre-wrap;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .customer-notes-big-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #444;
+          margin-bottom: 2px;
         }
         .rental-footer-title {
           font-size: 16px;
