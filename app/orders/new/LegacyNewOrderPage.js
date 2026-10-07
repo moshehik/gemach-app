@@ -18,6 +18,7 @@ import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupError
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval } from '../../../lib/approvalClient';
 import { offerCreditOffset } from '../../../lib/creditOfferClient';
+import { isCardNumberComplete, isExpiryComplete, isMobilePhoneComplete, justCompleted, isDatalistPick, focusField } from '../../../lib/autoAdvance';
 import { isCreditMethod, validateSplitPayment, redirectNeedsFullReload, paymentApprovalLevelRequiresPrompt, describeItemAlterations, withDefaultAlterationDetails, creditMethodForCharge, repairsForEdit } from '../../../lib/newOrderPayments';
 
 export const getCustomerFullName = (c) => {
@@ -292,6 +293,8 @@ export default function NewOrderPage() {
 
     const raw = val.replace(/[^0-9]/g, '');
     setCreditCardData(prev => ({ ...prev, cardNumber: raw.match(/.{1,4}/g)?.join(' ') || '' }));
+    // c89234ec (נווה יעקב, auto_advance_fixed_fields): 16 ספרות מלאות -> תוקף
+    if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isCardNumberComplete, creditCardData.cardNumber, raw)) focusField('cc-exp');
   };
 
   const handleTokefChange = (e) => {
@@ -301,6 +304,8 @@ export default function NewOrderPage() {
       formatted = `${raw.substring(0, 2)}/${raw.substring(2, 4)}`;
     }
     setCreditCardData(prev => ({ ...prev, tokef: formatted }));
+    // c89234ec: תוקף MM/YY מלא -> סכום
+    if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isExpiryComplete, creditCardData.tokef, formatted)) focusField('cc-amount');
   };
 
   const handleProcessCreditCard = async () => {
@@ -1957,7 +1962,7 @@ export default function NewOrderPage() {
                 </div>
                 <div className="field">
                   <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => { setNewCustomer(prev => ({ ...prev, phone1: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone1, e.target.value)) focusField('cust-phone2'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                 </div>
 
                 {/* טלפון נוסף/אימייל: השדה היחיד שבאמת תמיד חובה הוא require_customer_email
@@ -1967,7 +1972,7 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף {isFieldRequiredByGroup('phone2', newCustomer, parseFieldGroups(settings.mandatory_field_groups)) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => { setNewCustomer(prev => ({ ...prev, phone2: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && justCompleted(isMobilePhoneComplete, newCustomer.phone2, e.target.value)) focusField('cust-email'); }} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל {(settings.require_customer_email === 'true' || isFieldMandatoryFromPicker('email') || isFieldRequiredByGroup('email', newCustomer, parseFieldGroups(settings.mandatory_field_groups))) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
@@ -2002,14 +2007,14 @@ export default function NewOrderPage() {
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('city')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => { setNewCustomer(prev => ({ ...prev, city: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.cities)) focusField('cust-street'); }} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-city-list">
                         {customerLocations.cities.map(c => <option key={c} value={c} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-street">רחוב {(settings.require_full_address === 'true' || isFieldMandatoryFromPicker('street')) && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
+                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => { setNewCustomer(prev => ({ ...prev, street: e.target.value })); if (settings.auto_advance_fixed_fields === 'true' && isDatalistPick(e.nativeEvent, e.target.value, customerLocations.streets)) focusField('cust-house'); }} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-street-list">
                         {customerLocations.streets.map(s => <option key={s} value={s} />)}
                       </datalist>
