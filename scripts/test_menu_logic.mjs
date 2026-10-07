@@ -177,6 +177,14 @@ t('מותג: לוגו מ-/api/logo, שם מההגדרות, גרסה בטולטי
 });
 
 const PROG_TREE = buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: [] });
+t('טולטיפ "התנתקות" (בודקת קודם משפחות באיחור) רק כשהבדיקה ביציאה פעילה: ההגדרה מופעלת ולא למתכנת', () => {
+  const tipOf = (tree) => tree.user.items.find((x) => x.id === 'u-logout').tip;
+  const on = rows({ enable_unreturned_orders_popup: 'true' });
+  assert.equal(tipOf(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: on })), 'בודקת קודם אם יש משפחות באיחור, ואז יוצאת');
+  assert.equal(tipOf(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_unreturned_orders_popup: 'false' }) })), undefined);
+  assert.equal(tipOf(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: [] })), undefined);
+  assert.equal(tipOf(buildMenuTree({ user: PROG, permissions: ALL_OPEN, settings: on })), undefined);
+});
 t('מתכנת: כמו הנהלה + "היסטוריית הודעות מערכת" בפאנל המשתמש (R05)', () => {
   assert.deepEqual(PROG_TREE.tabs.map((x) => x.id), ['home', 'sched', 'month', 'admin', 'order']);
   assert.deepEqual(ids(PROG_TREE.user.items), ['u-profile', 'u-punch', 'u-hours', 'u-hist', 'u-logout']);

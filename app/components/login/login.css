@@ -32,7 +32,7 @@
 
 /* ---- הבמה ---- */
 .gm-ds.gm-login .lg-stage{min-height:calc(100vh - 64px);display:grid;place-items:center;padding:32px 16px 48px}
-.gm-ds.gm-login .lg-wrap{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:stretch;gap:20px;min-width:0}
+.gm-ds.gm-login .lg-wrap{width:100%;max-width:504px;display:flex;flex-direction:column;align-items:stretch;gap:20px;min-width:0}
 .gm-ds.gm-login .lg-hero{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.85)}
 .gm-ds.gm-login .lg-hero h1{margin:0;font-size:clamp(46px,11vw,64px);line-height:1.05;font-weight:400;color:var(--gm-navy-900);text-wrap:balance;min-height:1.05em}
 .gm-ds.gm-login .lg-hero p{margin:0;font-size:17px;color:var(--gm-ink2);font-weight:500}
@@ -124,7 +124,7 @@
 /* ---- הכניסה כחלון על דף מבוקש (L06) ---- */
 .gm-ds.gm-login .scrim{z-index:9999;padding:16px}
 .gm-ds.gm-login .scrim.lg-dscrim{z-index:10001}
-.gm-ds.gm-login .mdl{width:100%;max-width:440px;max-height:calc(100dvh - 32px);overflow:auto;border-radius:24px;background:#fff;border:1px solid rgba(15,44,82,.18);box-shadow:0 24px 60px -12px rgba(15,44,82,.45);animation:lg-dlgIn .2s ease}
+.gm-ds.gm-login .mdl{width:100%;max-width:504px;max-height:calc(100dvh - 32px);overflow:auto;border-radius:24px;background:#fff;border:1px solid rgba(15,44,82,.18);box-shadow:0 24px 60px -12px rgba(15,44,82,.45);animation:lg-dlgIn .2s ease}
 @keyframes lg-dlgIn{from{opacity:0;transform:scale(.96) translateY(6px)}}
 .gm-ds.gm-login .mhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 18px;border-bottom:1px solid var(--gm-sky-100);font-weight:600;font-size:17px;color:var(--gm-navy-900)}
 .gm-ds.gm-login .mhead strong{display:flex;align-items:center;gap:8px;font-weight:600}
