@@ -430,7 +430,8 @@ const PINNED_BLOBS = {
   // + חלון "כמה לקוחות עם מספר טלפון זה": אזור גלילה לרשימה (דיווח 7a6d97c6, תיקון באג - בלי מתג)
   // + order_inline_customer_edit (דיווח f96f3952): "עריכת פרטי לקוח" נפתח כחלון באותו מסך (CustomerCompleteModal.js) כשהמתג דולק; כבוי = אפס שינוי
   // + Q19: אחרי השלמת פרטי לקוח שנבחר מהרשימה - המשך אוטומטי לשלב 2 (אותו מתג)
-  'app/orders/new/LegacyNewOrderPage.js': '4c3fe9f6fcdcc3429c2d65c4563784f1195dedbc',
+  // + new_order_auto_next_step (דיווח 3bded746): מעבר אוטומטי 1->2 / 2->3 כשהשלב הושלם (lib/newOrderAutoNextStep.js); כבוי = אפס שינוי
+  'app/orders/new/LegacyNewOrderPage.js': '42e418c1f56ea9f13c0e34c996af1b7b467c53af',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
