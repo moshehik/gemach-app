@@ -87,7 +87,7 @@ export default function OcPayDialog({ api, source = 'pay-now', amount, approved 
 
   // R7: שער התקנון לפני אשראי. true = מותר להמשיך
   const regsGate = async () => {
-    if (api.oc.order?.hasSignedRegulations) return true;
+    if ((api.oc.snapshot?.order ?? api.oc.order)?.hasSignedRegulations) return true;
     const yes = await api.ui.openDialog(OcRegsDialog, {}, { layer: 2, labelledBy: 'oc-regs-t' });
     if (!yes) return false;
     const ok = await api.actions.signRegulations();

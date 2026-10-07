@@ -1,5 +1,12 @@
 # System Changes Log
 
+## 2026-10-07: New order card - signing the regulations is now a pending change in the left rail (PENDING MERGE, branch `feature/order-card-pending-sig-size-2026-10-07`)
+
+- **Behavior:** in the A5 order card, clicking "חתם על התקנון" on an editable order no longer saves immediately. It flips the local value, appears in the left changes rail ("סומנה חתימה על התקנון"), can be undone per row, and is saved by "שמור" together with the other changes (the general PUT already carries `hasSignedRegulations`). No confirm dialog for this click - the rail is the confirmation.
+- **Unchanged on purpose:** gates that need a SAVED signature (print/mail menu, card-charge/pay dialog, credit) still persist immediately via `toggleSignature({confirmed:true})`; they now test the server snapshot instead of the local value, and `confirmed:true` always means "set signed" (it no longer flips a locally-signed order back). A locked order (event date passed, not unlocked) keeps the old confirm + instant small PUT, because the general save is blocked there and the server allows a signature-only PUT.
+- **Files:** `app/components/order-card/orderCardFlows.js`, `parts/OcPrintMenu.js`, `hooks/usePaymentActions.js`, `dialogs/OcPayDialog.js`; tests `scripts/order-card-tests/{docs.static,endpoints-parity,review2}.test.mjs` (4 updated, 3 new). All order-card tests pass in UTC / Asia/Jerusalem / America/New_York. Not browser-verified.
+- **Not done (separate task, see `docs/order-card-pending-item-edits-plan-2026-10-07.md`):** item size / alteration edits still save instantly.
+
 ## 2026-10-05: Vercel Fluid Active CPU - shared cache for /api/settings reads in always-mounted components (both gemachs)
 
 - **Cause analysis:** the free-tier CPU alert (75% of 4h) is driven by busy Neve Yaakov working days (4.10: 11.3K API calls, ~600MB JSON for 7 users), not by background polling or the print-center agent (that project now lives in another Vercel account). Details and the measurements: `docs/vercel-cpu-usage-analysis-2026-10-05.md`.
