@@ -2096,7 +2096,13 @@ export default function NewOrderPage() {
               {(!order.isAbroad || !allowAbroad) ? (
                 <div className="field">
                   <label>תאריך אירוע <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
+                  {/* f0c19c53 / c9d3be3f (נווה יעקב): לוח 3 חודשים ובלי הדגשת התאריך הקודם - מאחורי מתגים, כבוי = הלוח הקודם */}
+                  <HebrewDatePicker
+                    value={order.eventDate}
+                    onChange={(date) => handleDateChangeWithValidation('eventDate', date)}
+                    threeMonths={settings.new_order_calendar_three_months === 'true'}
+                    hideSelectedHighlight={settings.new_order_date_hide_selected_highlight === 'true'}
+                  />
                 </div>
               ) : (
                 <div className="field">

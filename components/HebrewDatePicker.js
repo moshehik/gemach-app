@@ -30,7 +30,12 @@ export default function HebrewDatePicker({
   className,
   style,
   iconOnly = false,
-  monthYearOnly = false
+  monthYearOnly = false,
+  // דיווחים נווה יעקב f0c19c53 / c9d3be3f (הזמנה חדשה): שני מצבים אופציונליים, ברירת מחדל = ההתנהגות הקודמת בדיוק.
+  //  threeMonths - לוח של 3 חודשים רצופים (כמו מסך עמדת הלקוח); הבחירה בלחיצה על יום (בלי בורר "יום" ובלי "אישור").
+  //  hideSelectedHighlight - בלי הדגשת "היום הנבחר" (היום-בחודש של התאריך הקודם הודגש בכחול בכל חודש שמדפדפים אליו); גם בו הבחירה רק בלחיצה על יום.
+  threeMonths = false,
+  hideSelectedHighlight = false
 }) {
   const actualValue = value || selectedDate;
   const isCompactMode = iconOnly || monthYearOnly;
@@ -179,6 +184,42 @@ export default function HebrewDatePicker({
   const todayAbs = React.useMemo(() => {
     try { return new HDate().abs(); } catch (e) { return null; }
   }, [isOpen]);
+
+  // מצב "בחירה בלחיצה בלבד" (threeMonths / hideSelectedHighlight): בחירת יום מהלוח מחילה מיד; אין בורר יום ואין "אישור" שמחיל יום בלתי נראה
+  const clickOnly = threeMonths || hideSelectedHighlight;
+  const selectedAbs = React.useMemo(() => {
+    try {
+      if (!actualValue) return null;
+      const d = new Date(actualValue);
+      return isNaN(d.getTime()) ? null : new HDate(d).abs();
+    } catch (e) { return null; }
+  }, [actualValue]);
+  const applyHDate = (hd) => {
+    try {
+      const greg = hd.greg();
+      const monthStr = String(greg.getMonth() + 1).padStart(2, '0');
+      const dayStr = String(greg.getDate()).padStart(2, '0');
+      onChange(`${greg.getFullYear()}-${monthStr}-${dayStr}`);
+      setIsOpen(false);
+    } catch (e) {
+      console.error('Invalid Hebrew date', e);
+    }
+  };
+  // 3 חודשים רצופים החל מהחודש המוצג (hMonth/hYear)
+  const threeMonthsList = React.useMemo(() => {
+    if (!threeMonths || !isOpen || !hYear || !hMonth) return [];
+    const list = [];
+    try {
+      let cur = new HDate(1, hMonth, hYear);
+      for (let i = 0; i < 3; i++) {
+        const m = cur.getMonth();
+        const y = cur.getFullYear();
+        list.push({ month: m, year: y, label: getMonthsForYear(y).find(x => x.value === m)?.label || '' });
+        cur = cur.add(HDate.daysInMonth(m, y), 'd');
+      }
+    } catch (e) { return []; }
+    return list;
+  }, [threeMonths, isOpen, hMonth, hYear]);
 
   const goToPrevYear = () => {
     const newYear = hYear - 1;
@@ -375,12 +416,14 @@ export default function HebrewDatePicker({
             style={{ position: 'fixed', inset: 0, zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => setIsOpen(false)}
           >
-            <div className="datepicker animate-fade-in" style={{ width: '320px', maxWidth: '94vw', maxHeight: '88vh', overflowY: 'auto' }}
+            <div className="datepicker animate-fade-in" style={{ width: threeMonths ? 'min(94vw, 900px)' : '320px', maxWidth: '94vw', maxHeight: '88vh', overflowY: 'auto' }}
               onClick={(e) => e.stopPropagation()}
             >
             {/* Header */}
             <div className="datepicker-head">
-              <strong>{currentMonthLabel} {hYear ? gematriya(hYear) : ''}</strong>
+              <strong>{threeMonths && threeMonthsList.length === 3
+                ? `${threeMonthsList[0].label} ${gematriya(threeMonthsList[0].year)} - ${threeMonthsList[2].label} ${gematriya(threeMonthsList[2].year)}`
+                : `${currentMonthLabel} ${hYear ? gematriya(hYear) : ''}`}</strong>
               <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                 <div className="datepicker-nav">
                   <button data-agy-id="hebrew_date_picker_prev_month_btn" type="button" onClick={() => {
@@ -414,7 +457,8 @@ export default function HebrewDatePicker({
               </div>
             </div>
 
-          <div className="form-grid cols-3" style={{ gap: '8px', marginBottom: '12px' }}>
+          <div className={clickOnly ? 'form-grid' : 'form-grid cols-3'} style={{ gap: '8px', marginBottom: '12px' }}>
+            {!clickOnly && (
             <div className="field" style={{ margin: 0 }}>
               <label>יום</label>
               <select
@@ -428,6 +472,7 @@ export default function HebrewDatePicker({
                 ))}
               </select>
             </div>
+            )}
 
             <div className="field" style={{ margin: 0 }}>
               <label>חודש</label>
@@ -470,6 +515,55 @@ export default function HebrewDatePicker({
             </div>
           </div>
 
+          {threeMonths ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px' }}>
+              {threeMonthsList.map(({ month, year, label }) => {
+                let blanks = 0;
+                let dim = 0;
+                try {
+                  blanks = new HDate(1, month, year).greg().getDay();
+                  dim = HDate.daysInMonth(month, year);
+                } catch (e) { /* חודש לא תקין - נשאר ריק */ }
+                let monthSedra = null;
+                try { monthSedra = new Sedra(year, true); } catch (e) { /* בלי פרשות */ }
+                return (
+                  <div key={`${year}-${month}`}>
+                    <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '13px', marginBottom: '6px' }}>{label} {gematriya(year)}</div>
+                    <div className="datepicker-weekdays">
+                      <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div>
+                      <div style={{ color: 'var(--primary-solid)' }}>ש'</div>
+                    </div>
+                    <div className="datepicker-grid">
+                      {Array.from({ length: blanks }).map((_, i) => <div key={`b${i}`} />)}
+                      {Array.from({ length: dim }, (_, i) => i + 1).map(d => {
+                        const hdDay = new HDate(d, month, year);
+                        const abs = hdDay.abs();
+                        const isSelected = !hideSelectedHighlight && selectedAbs !== null && abs === selectedAbs;
+                        const isToday = todayAbs !== null && abs === todayAbs;
+                        let parasha = '';
+                        try {
+                          if (monthSedra && hdDay.greg().getDay() === 6) {
+                            const lk = monthSedra.lookup(hdDay);
+                            parasha = lk && lk.parsha ? lk.parsha.map(p => Locale.gettext(p, 'he-x-NoNikud')).join('-') : '';
+                          }
+                        } catch (e) { /* בלי פרשה */ }
+                        return (
+                          <div
+                            key={d}
+                            onClick={() => applyHDate(hdDay)}
+                            className={`datepicker-day${isSelected ? ' selected' : ''}${isToday && !isSelected ? ' today' : ''}`}
+                          >
+                            <span>{HEBREW_DAYS[d]}</span>
+                            {parasha && <span className="g-num">{parasha}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (<>
           <div className="datepicker-weekdays">
             <div>א'</div>
             <div>ב'</div>
@@ -503,7 +597,7 @@ export default function HebrewDatePicker({
                              }
                          }
                       } catch(e) {}
-                      const isSelected = d === hDay;
+                      const isSelected = !hideSelectedHighlight && d === hDay;
                       return (
                       <div
                         key={d}
@@ -523,6 +617,7 @@ export default function HebrewDatePicker({
               }
             })()}
           </div>
+          </>)}
 
             {/* Action Footer */}
             <div className="datepicker-foot">
@@ -533,6 +628,7 @@ export default function HebrewDatePicker({
               >
                 ביטול
               </button>
+              {!clickOnly && (
               <button
                 data-agy-id="hebrew_date_picker_apply_btn"
                 type="button"
@@ -540,6 +636,7 @@ export default function HebrewDatePicker({
               >
                 אישור
               </button>
+              )}
             </div>
           </div>
           </div>,
