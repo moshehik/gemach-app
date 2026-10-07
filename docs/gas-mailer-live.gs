@@ -13,8 +13,11 @@
  * תיקון (3) 2026-10-05: שם השולח דינמי - data.senderName (נשלח מ-lib/mailer.js postToMailer, לפי ההגדרה
  * gmach_name של האתר ששלח). בלי השדה (מערכות אחרות) - ברירת המחדל 'גמ"ח שמלות' כמו קודם.
  *
- * !!! הקובץ הזה עדיין לא נפרס. פריסה = clasp push + clasp deploy -i <deploymentId> (גרסה חדשה לאותו
- * URL של /exec). זה משנה סקריפט חי שמשרת גם מערכות אחרות - נדרש אישור מפורש של הבעלים. !!!
+ * *** פרוס (גרסה 18, 2026-10-07) ל-deployment AKfycbyBDsY2mF7h9... (ה-fallback ב-lib/mailer.js). פריסה חוזרת = clasp push +
+ * clasp version + clasp deploy -i <deploymentId> -V <n> (אותו URL). הסקריפט משרת גם מערכות אחרות - שינויים רק תואמי-אחור. ***
+ *
+ *
+ * תיקון (4) 2026-10-07: אידמפוטנטיות (data.requestId) + doGet (status/quota) - ר' הבלוק בסוף הקובץ ו-postToMailer ב-lib/mailer.js.
  *
  * (docs/gas-mail-drive.gs הוא סקריפט אחר, מורחב עם דרייב, שלא פרוס - ר' CLAUDE.md "Cloud backup".)
  */
@@ -25,7 +28,7 @@ function senderName_(data) {
   return n ? n.substring(0, 100) : 'גמ"ח שמלות';
 }
 
-function doPost(e) {
+function legacyPost_(e) {
   try {
     // פענוח הנתונים שנשלחו בבקשת ה-POST
     var data = JSON.parse(e.postData.contents);
@@ -112,4 +115,75 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": err.toString()}))
                          .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+// ===========================================================================
+// == תיקון 2026-10-07 (4) == אידמפוטנטיות + doGet (נבנה בעקבות 89 מיילי הזמנה שנרשמו ככישלון בנווה יעקב)
+//
+// הבעיה: לפעמים גוגל מחזירה ללקוח דף שגיאה HTML ("Script function not found: doGet"), דף 404 או ניתוק
+// חיבור - גם כשהמייל כבר נשלח. הלקוח (האתר) לא יכול לדעת אם המייל יצא, ולכן אי אפשר לנסות שוב בלי סכנת כפילות.
+//
+// הפתרון (תאימות לאחור מלאה): בקשה שמכילה data.requestId נבדקת מול מטמון הסקריפט:
+//   - requestId שכבר הסתיים בהצלחה  -> מוחזרת הצלחה בלי לשלוח שוב.
+//   - requestId שנמצא כרגע בשליחה  -> מוחזר {status:"pending"} (הלקוח ישאל שוב).
+//   - אחרת -> שולחים כרגיל, ובהצלחה שומרים את התוצאה (6 שעות).
+// בקשה בלי requestId (מערכות אחרות שמשתמשות באותו סקריפט) - בדיוק כמו קודם.
+// doGet?action=status&requestId=... מחזיר את מצב הבקשה (success / pending / unknown) כדי שהלקוח יוכל לברר
+// אם מייל שנראה כנכשל כבר נשלח, ו-doGet?action=quota מחזיר את מכסת המיילים היומית שנותרה.
+// ===========================================================================
+var IDEMP_DONE_TTL_ = 21600;   // 6 שעות - המקסימום ש-CacheService מאפשר
+var IDEMP_PENDING_TTL_ = 600;  // שליחה שנתקעה (קריסה) משוחררת אחרי 10 דקות
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.action === "status" && p.requestId) {
+    var v = CacheService.getScriptCache().get("req:" + String(p.requestId).slice(0, 80));
+    if (!v) return json_({ status: "unknown", requestId: p.requestId });
+    try { return json_(JSON.parse(v)); } catch (err) { return json_({ status: "unknown", requestId: p.requestId }); }
+  }
+  if (p.action === "quota") {
+    return json_({ status: "ok", remainingDailyQuota: MailApp.getRemainingDailyQuota() });
+  }
+  return json_({ status: "ok", service: "gemach-mailer", idempotency: true, version: 18 });
+}
+
+function doPost(e) {
+  var id = "";
+  try {
+    var data = JSON.parse(e.postData.contents);
+    id = data && data.requestId ? String(data.requestId).slice(0, 80) : "";
+  } catch (err) {
+    id = "";
+  }
+  if (!id) return legacyPost_(e); // מערכות אחרות - ללא שינוי
+
+  var cache = CacheService.getScriptCache();
+  var key = "req:" + id;
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(8000);
+    var existing = cache.get(key);
+    if (existing) {
+      var st = {};
+      try { st = JSON.parse(existing); } catch (err2) {}
+      if (st.status === "success") return json_({ status: "success", requestId: id, duplicate: true });
+      if (st.status === "pending") return json_({ status: "pending", requestId: id });
+    }
+    cache.put(key, JSON.stringify({ status: "pending", requestId: id, t: Date.now() }), IDEMP_PENDING_TTL_);
+  } catch (lockErr) {
+    // לא הצלחנו לקבל נעילה - ממשיכים בלי הגנה מכפילות (עדיף לשלוח מאשר לא לשלוח)
+  } finally {
+    try { lock.releaseLock(); } catch (err3) {}
+  }
+
+  var out = legacyPost_(e);
+  var ok = false;
+  try { ok = JSON.parse(out.getContent()).status === "success"; } catch (err4) {}
+  if (ok) cache.put(key, JSON.stringify({ status: "success", requestId: id, t: Date.now() }), IDEMP_DONE_TTL_);
+  else cache.remove(key); // שגיאה ודאית - מותר לנסות שוב
+  return out;
 }

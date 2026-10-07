@@ -11,7 +11,9 @@ import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFiel
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
 import { isInlineCustomerEditOn } from '@/lib/customerInlineEdit';
 import { resolveOrderRedirectHref, ORDER_REDIRECT_SCREENS } from '@/lib/orderRedirectScreens';
+import { resolveNewOrderLayout } from '@/lib/newOrderLayout';
 import * as NL from './newOrderLogic';
+import { scrollToSection } from './layoutLogic';
 
 const TOAST_MS = 2600;
 const TOAST_LONG_MS = 6500;
@@ -57,6 +59,11 @@ export default function useNewOrderController({ router }) {
   const [paymentsList, setPaymentsList] = useState([]);
   const [payment, setPayment] = useState({ amount: '', method: 'אשראי', notes: '' });
   const [settings, setSettings] = useState({});
+  // צורת הטופס (new_order_layout; חסר / לא מוכר = אשף, בדיוק ההתנהגות הקיימת). בטופס הרציף כל השלבים בעמוד אחד: go() / goStep() גוללים לגוש השלב
+  // במקום להחליף שלב, ו-step הוא "השלב האחרון שנוּוט אליו". confirmedCustomerId: הלקוח שעבר את "המשך" (חסימה / חריגה) - ר' NL.stepGate
+  const layout = resolveNewOrderLayout(settings.new_order_layout);
+  const continuous = layout === 'continuous';
+  const [confirmedCustomerId, setConfirmedCustomerId] = useState(null);
   const [creditCardData, setCreditCardData] = useState({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: '' });
   const [isProcessingCredit, setIsProcessingCredit] = useState(false);
   const [creditError, setCreditError] = useState('');
@@ -202,7 +209,13 @@ export default function useNewOrderController({ router }) {
     return !!authResult;
   };
 
-  const goStep = (key) => { setStep(NL.STEP_KEYS.indexOf(key)); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  // מעבר לשלב: באשף גוללים למעלה (השלב מוחלף); בטופס הרציף גוללים חלק לגוש השלב (scrollToSection - כבוד ל-prefers-reduced-motion). משותף ל-goStep / go / editItem
+  const jumpTo = (key) => {
+    if (typeof window === 'undefined') return;
+    if (continuous && scrollToSection(key)) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const goStep = (key) => { setStep(NL.STEP_KEYS.indexOf(key)); jumpTo(key); };
 
   const handleUseExistingCustomer = async (existingCustomer) => {
     if (!await confirmBlockedCustomerOverride(existingCustomer)) return;
@@ -227,6 +240,7 @@ export default function useNewOrderController({ router }) {
       }
     }
     setOrder(prev => ({ ...prev, customerId: existingCustomer.id, selectedCustomer: existingCustomer }));
+    setConfirmedCustomerId(existingCustomer.id);
     closeDupCustomer();
     goStep('dates');
   };
@@ -253,6 +267,7 @@ export default function useNewOrderController({ router }) {
   const proceedToStep2 = async () => {
     if (!order.customerId) { say('info', 'יש לבחור לקוח'); return; }
     if (!await confirmBlockedCustomerOverride(order.selectedCustomer)) return;
+    setConfirmedCustomerId(order.customerId);
     goStep('dates');
   };
 
@@ -290,6 +305,7 @@ export default function useNewOrderController({ router }) {
       if (res.ok) {
         closeDupCustomer();
         setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
+        setConfirmedCustomerId(data.id);
         say('ok', 'כרטיס לקוח נוצר', NL.getCustomerFullName(data));
         goStep('dates');
       } else {
@@ -401,8 +417,10 @@ export default function useNewOrderController({ router }) {
   };
 
   // ---------- פריטים ----------
+  // רשימת הדגמים נטענת כשהפריטים על המסך: באשף - בשלב הפריטים; בטופס הרציף - כשגוש הפריטים נפתח (אותו שער כמו go())
+  const itemsListWanted = continuous ? NL.stepGate(order, { customerConfirmed: !!order.customerId && confirmedCustomerId === order.customerId }, 'items').open : stepKey === 'items';
   useEffect(() => {
-    if (stepKey !== 'items' || pickedModel) return undefined;
+    if (!itemsListWanted || pickedModel) return undefined;
     let off = false;
     const t = setTimeout(() => {
       fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(modelQuery.trim())}&hasActiveItems=true`, { ttl: TTL.REFERENCE })
@@ -410,7 +428,7 @@ export default function useNewOrderController({ router }) {
         .catch(() => { if (!off) setModelList([]); });
     }, 300);
     return () => { off = true; clearTimeout(t); };
-  }, [stepKey, modelQuery, pickedModel]);
+  }, [itemsListWanted, modelQuery, pickedModel]);
 
   const pickModel = (model) => {
     setAddError('');
@@ -508,7 +526,7 @@ export default function useNewOrderController({ router }) {
       sleeveAlteration: itemToEdit.sleeveAlteration || false, lengthAlteration: itemToEdit.lengthAlteration || '', preserveSize: true
     });
     removeItem(index);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    jumpTo('items');
   };
 
   // ---------- חישוב מחיר ----------
@@ -845,6 +863,12 @@ export default function useNewOrderController({ router }) {
   const [deliveryEdit, setDeliveryEdit] = useState(null); // { to: מפתח שלב החזרה, snap: שדות המשלוח לפני העריכה }
   const openDeliveryEdit = (from) => {
     if (!deliveryEnabled || saved) return;
+    if (continuous) {
+      // בטופס הרציף שדות המשלוח כבר בעמוד: מדליקים את המשלוח וגוללים אליהם - בלי מצב עריכה נפרד (ביטול / "שמור וחזור")
+      if (!order.isDelivery) setOrder(prev => ({ ...prev, isDelivery: true }));
+      jumpTo('delivery');
+      return;
+    }
     setDeliveryEdit({
       to: from,
       snap: { isDelivery: !!order.isDelivery, deliveryDirection: order.deliveryDirection, deliveryCity: order.deliveryCity, deliveryAddress: order.deliveryAddress, deliveryOneDayBefore: order.deliveryOneDayBefore },
@@ -867,19 +891,22 @@ export default function useNewOrderController({ router }) {
   // יציאה משלב המשלוח בדרך אחרת (פס התקדמות) מסיימת את מצב העריכה; השינויים נשמרים (go() ממילא חוסם משלוח לא תקין)
   useEffect(() => { if (deliveryEdit && stepKey !== 'delivery') setDeliveryEdit(null); }, [deliveryEdit, stepKey]);
 
+  // שער כניסה לשלב - NL.stepGate: תנאי stepOpenInfo + "הישן נעל את 'המשך לבחירת פריטים' כל עוד שדות המשלוח לא תקינים" (+ אישור הלקוח בטופס הרציף).
+  // המקור היחיד גם ל-go() וגם לנעילה הוויזואלית של גושי הטופס הרציף
+  const customerConfirmed = !continuous || (!!order.customerId && confirmedCustomerId === order.customerId);
+  const gate = (key) => NL.stepGate(order, { deliveryError, customerConfirmed }, key);
   const go = (idx) => {
     const key = NL.STEP_KEYS[idx];
     if (!key) return;
-    if (!openInfo[key].open) { say('info', openInfo[key].reason); return; }
-    // הישן נעל את "המשך לבחירת פריטים" כל עוד שדות המשלוח לא תקינים
-    if (idx > NL.STEP_KEYS.indexOf('delivery') && deliveryError) { say('info', deliveryError); return; }
+    const g = gate(key);
+    if (!g.open) { say('info', g.reason); return; }
     setStep(idx);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    jumpTo(key);
   };
 
   return {
     // מצב
-    step, stepKey, setStep, go, goStep, openInfo, settings, todayKey, allowAbroad,
+    step, stepKey, setStep, go, goStep, openInfo, settings, todayKey, allowAbroad, layout, gate,
     searchMode, setSearchMode, phoneSearchInput, setPhoneSearchInput, isCheckingPhone, foundCustomersFromPhone, setFoundCustomersFromPhone, pickedFound, setPickedFound,
     listQuery, setListQuery, listResults, listLoading, pickFromList,
     order, setOrder, newCustomer, setNewCustomer, newCustomerError, setNewCustomerError, customerLocations, fieldGroups, missingOf,
