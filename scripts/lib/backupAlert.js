@@ -54,7 +54,7 @@ async function resolveRecipients(prisma) {
     // דוחה אותן ("אימייל לא חוקי") והיו גורמות לכך שלא יישלח כלום בכלל.
     progs.forEach((p) => {
       const e = (p.email || '').trim();
-      if (EMAIL_RE.test(e)) out.add(e);
+      if (EMAIL_RE.test(e)) out.add(e.toLowerCase());
       else if (e) console.warn(`[backup-alert] skipping invalid programmer email "${e}"`);
     });
   } catch (e) {
@@ -62,7 +62,7 @@ async function resolveRecipients(prisma) {
   }
   const extra = (process.env.BACKUP_ALERT_EMAIL || '').split(/[,;\s]+/).filter(Boolean);
   // כתובת ה-env היא רשת ביטחון: משמשת תמיד כשאין מתכנת ב-DB, ובנוסף אליהם אם הוגדרה.
-  extra.filter((e) => EMAIL_RE.test(e)).forEach((e) => out.add(e));
+  extra.filter((e) => EMAIL_RE.test(e)).forEach((e) => out.add(e.toLowerCase()));
   return [...out];
 }
 
