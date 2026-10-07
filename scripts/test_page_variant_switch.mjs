@@ -427,7 +427,8 @@ export default function AdminHubPage({ showSite = false }) {
 //    במקום השוואה ל-blob בהיסטוריה (שאי אפשר לכוון אליו אחרי העריכה) נעול כאן ה-hash של הקובץ עצמו: כל עריכה נוספת בו מחייבת עדכון מודע של השורה.
 const PINNED_BLOBS = {
   // + קיזוז זיכוי פתוח אחרי יצירת הזמנה עם חוב (דיווח 679a860b, מאחורי customer_credit_offset_prompt; כבוי = אפס שינוי)
-  'app/orders/new/LegacyNewOrderPage.js': '3115d966ad5c93fecc3e10c20f3f15039d2087c6',
+  // + חלון "כמה לקוחות עם מספר טלפון זה": אזור גלילה לרשימה (דיווח 7a6d97c6, תיקון באג - בלי מתג)
+  'app/orders/new/LegacyNewOrderPage.js': '00d58d45269e2c9b6841b31e7a1b0e985d925b12',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
