@@ -68,6 +68,8 @@ export default function useNewOrderController({ router }) {
   const pendingSavePaymentsRef = useRef(null);
   const [saveError, setSaveError] = useState(null); // R29: {title, lines?, spacingNote?, detail?}
   const [saved, setSaved] = useState(null); // {orderId, customerId, warning}
+  // 67c0d652 (נווה יעקב): המשך אוטומטי אחרי רישום תשלום שמשלים בדיוק את הסכום (new_order_auto_finish_when_paid)
+  const [autoFinishPending, setAutoFinishPending] = useState(false);
   const [addPreview, setAddPreview] = useState(null); // S06: { total, alt: {neck, sleeve, len} }
   const [addError, setAddError] = useState('');
   const [rangePending, setRangePending] = useState(null);
@@ -627,6 +629,7 @@ export default function useNewOrderController({ router }) {
     setPayment(prev => ({ ...prev, notes: '' }));
     if (over) say('info', 'התשלום נרשם - שימו לב: הסכום גבוה מיתרת התשלום', `${NL.moneyTxt(decision.amount)} · ${method}. אם זו טעות, אפשר להסיר את התשלום מהרשימה.`);
     else say('ok', 'התשלום נרשם', `${NL.moneyTxt(decision.amount)} · ${method}`);
+    if (settings.new_order_auto_finish_when_paid === 'true' && totalAmount > 0 && NL.toAgorot(NL.sumPaid(paymentsList) + decision.amount) === NL.toAgorot(totalAmount)) setAutoFinishPending(true);
   };
   const removePayment = (index) => {
     const target = paymentsList[index];
@@ -731,6 +734,15 @@ export default function useNewOrderController({ router }) {
     }
     await executeSaveOrderForList(NL.buildFinalPayments(paymentsList, payment));
   };
+
+  // 67c0d652: אחרי שהסכום לתשלום התאפס (אפקט היתרה) - saveOrder הרגיל, אותן בדיקות
+  useEffect(() => {
+    if (!autoFinishPending || saving) return;
+    if ((parseFloat(payment.amount) || 0) > 0) return;
+    setAutoFinishPending(false);
+    saveOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFinishPending, payment.amount, saving]);
 
   const executeSaveOrderForList = async (finalPaymentsList, force = false) => {
     if (saveExecRef.current) return; // שמירה אחת בכל רגע (כפל לחיצה / חיוב אשראי שנגמר בזמן לחיצה על "סיום")
