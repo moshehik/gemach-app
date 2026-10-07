@@ -180,6 +180,8 @@ export default function NewOrderPage() {
   // דיווחים ac8afab7 / 1913c29a / caab5f84: חלון "הוסף/עריכת משלוח" בשלבים 3-5. null = סגור; אחרת צילום מצב שדות
   // המשלוח ברגע הפתיחה, כדי ש"ביטול" יחזיר את המצב הקודם. אותם שדות ואותו state (order) כמו בשלב 2.
   const [deliveryModal, setDeliveryModal] = useState(null);
+  // 87c7a432 (נווה יעקב): "כתובת שונה למשלוח" נפתחה (delivery_different_address_button) - ר' renderDeliveryFields
+  const [deliveryOtherOpen, setDeliveryOtherOpen] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
   const [swipeInput, setSwipeInput] = useState('');
@@ -1425,6 +1427,14 @@ export default function NewOrderPage() {
   // ac8afab7 / 1913c29a / caab5f84 - משלוח לאורך כל האשף. שדות המשלוח (אותו state ואותו JSX) מוצגים גם בשלב 2 וגם בחלון.
   const deliveryEnabled = settings.enable_deliveries === 'true';
   const deliveryAmount = calculatedData.deliveryAmount || 0;
+  // 87c7a432 (נווה יעקב): הזמנת משלוח ללקוחה שעירה כבר ברשימת ערי המשלוח - בלי לבחור עיר שוב. עיר ריקה = חיוב לפי עיר הלקוחה
+  // (delivery_charge_customer_city_fallback), לכן הכפתור פועל רק כששני המתגים דולקים; אחרת - השדה "עיר משלוח" כמו קודם.
+  const customerCityForDelivery = String(order.selectedCustomer?.city || '').trim();
+  const deliveryAddressButtonOn = settings.delivery_different_address_button === 'true'
+    && settings.delivery_charge_customer_city_fallback === 'true'
+    && !!customerCityForDelivery && deliveryPriceCities.includes(customerCityForDelivery);
+  const deliveryDifferentOpen = deliveryAddressButtonOn && (deliveryOtherOpen || !!order.deliveryCity || !!order.deliveryAddress);
+  const deliveryUseSavedAddress = deliveryAddressButtonOn && !deliveryDifferentOpen;
   const renderDeliveryFields = () => (
     <div className="form-grid" style={{ marginTop: 8 }}>
       <div className="field">
@@ -1443,6 +1453,17 @@ export default function NewOrderPage() {
               <option value="הלוך-חזור">הלוך-חזור</option>
             </select>
           </div>
+          {deliveryUseSavedAddress ? (
+            <div className="field">
+              <label>כתובת משלוח</label>
+              <p className="hint" style={{ margin: '0 0 8px' }}>
+                המשלוח יגיע לכתובת הלקוחה: {[[order.selectedCustomer?.street, order.selectedCustomer?.houseNum].filter(Boolean).join(' '), customerCityForDelivery].filter(Boolean).join(', ')}
+              </p>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDeliveryOtherOpen(true)}>
+                כתובת שונה למשלוח
+              </button>
+            </div>
+          ) : (<>
           <div className="field">
             <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר){deliveryCityRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
             <select id="delivery-city" className="select" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}>
@@ -1455,7 +1476,7 @@ export default function NewOrderPage() {
               </p>
             )}
           </div>
-          {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
+          {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired || deliveryDifferentOpen) && (
             <div className="field">
               <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
               <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
@@ -1466,6 +1487,18 @@ export default function NewOrderPage() {
               )}
             </div>
           )}
+          {deliveryDifferentOpen && (
+            <div className="field">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => { setDeliveryOtherOpen(false); setOrder(prev => ({ ...prev, deliveryCity: '', deliveryAddress: '' })); }}
+              >
+                חזרה לכתובת הלקוחה
+              </button>
+            </div>
+          )}
+          </>)}
           {settings.delivery_one_day_before_option === 'true' && (
             <div className="field">
               <label className="checkbox-row" style={{ cursor: 'pointer' }}>
@@ -1508,6 +1541,7 @@ export default function NewOrderPage() {
     if (!order.isDelivery) setOrder(prev => ({ ...prev, isDelivery: true }));
   };
   const cancelDeliveryModal = () => {
+    setDeliveryOtherOpen(false);
     if (deliveryModal) setOrder(prev => ({ ...prev, ...deliveryModal }));
     setDeliveryModal(null);
   };
