@@ -2802,8 +2802,10 @@ export default function NewOrderPage() {
           style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(e) => { if (e.target === e.currentTarget) setDuplicateCustomers([]); }}
         >
-          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-title">
-            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
+          {/* דיווח 7a6d97c6: .modal (design-system.css) הוא עמודת flex עם max-height:90vh ו-overflow:hidden, ובחלון הזה כל הילדים ישירים - בלי אזור גלילה.
+              כשיש הרבה לקוחות עם אותו טלפון הרשימה נחתכה ולא היה אפשר לגלול. עכשיו הרשימה בלבד גוללת (כותרת + כפתורי "ביטול"/"צור לקוח חדש" נשארים גלויים). */}
+          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-title" style={{ maxHeight: 'min(90vh, calc(100vh - 68px))' }}>
+            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)', flexShrink: 0 }}>
               <svg className="icon"><use href="#i-alert-tri" /></svg>
             </div>
             <h3 id="dup-title">{duplicateCustomers.length > 1 ? 'כמה לקוחות עם מספר טלפון זה' : 'לקוח קיים במערכת'}</h3>
@@ -2812,6 +2814,7 @@ export default function NewOrderPage() {
                 ? 'נמצאו כמה לקוחות עם מספר הטלפון שהוזן. אפשר להשתמש באחד מהכרטיסים הקיימים, או ליצור כרטיס נוסף.'
                 : 'הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.'}
             </p>
+            <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
             {duplicateCustomers.map((duplicateCustomer, idx) => (
               <div key={duplicateCustomer.id} className="card card-pad" style={{ textAlign: 'start', marginBottom: idx === duplicateCustomers.length - 1 ? '20px' : '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
@@ -2852,6 +2855,7 @@ export default function NewOrderPage() {
                 </div>
               </div>
             ))}
+            </div>
             <div className="confirm-actions" style={{ flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setDuplicateCustomers([])}>ביטול</button>
               <button type="button" className="btn btn-danger-ghost" onClick={() => handleSaveNewCustomerAndProceed(true)}>צור לקוח חדש בכל זאת</button>
