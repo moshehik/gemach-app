@@ -650,7 +650,7 @@ export default function NewOrderPage() {
   };
 
   // דיווח f96f3952 (מאחורי order_inline_customer_edit; כבוי = הקישור הקיים שנפתח בכרטיסייה נפרדת): "עריכת פרטי לקוח" פותח חלון באותו מסך עם
-  // השדות שחסרים בלבד; אחרי שמירה הלקוח מתעדכן ונבחר אוטומטית ('use' = כמו "כן, זה הלקוח"; 'update' = לקוח שכבר נבחר - רק מתעדכן).
+  // השדות שחסרים בלבד; אחרי שמירה הלקוח מתעדכן ונבחר אוטומטית ('use' = כמו "כן, זה הלקוח"; 'update' = לקוח שכבר נבחר מהרשימה - מתעדכן וממשיך לשלב הבא).
   const openInlineCustomerEdit = (e, customer, mode) => {
     if (!isInlineCustomerEditOn(settings)) return;
     if (getMissingMandatoryCustomerFields(customer).length === 0 && getUnsatisfiedFieldGroups(customer, parseFieldGroups(settings.mandatory_field_groups)).length === 0) return; // אין מה להשלים - נשאר הקישור לכרטיס המלא
@@ -662,8 +662,11 @@ export default function NewOrderPage() {
     setCustomerEditFor(null);
     setFoundCustomersFromPhone(prev => prev.map(c => (c.id === updated.id ? updated : c)));
     setDuplicateCustomers(prev => prev.map(c => (c.id === updated.id ? updated : c)));
-    if (mode === 'update') setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
-    else await handleUseExistingCustomer(updated);
+    if (mode === 'update') {
+      // לקוח שנבחר מרשימת החיפוש לפי שם ופרטיו הושלמו - ממשיכים אוטומטית לשלב הבא (כמו בחיפוש טלפון); בדיקת לקוח חסום כמו ב"המשך"
+      setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
+      if (await confirmBlockedCustomerOverride(updated)) setStep(2);
+    } else await handleUseExistingCustomer(updated);
   };
 
   const proceedToStep2 = async () => {
@@ -2889,7 +2892,7 @@ export default function NewOrderPage() {
           customer={customerEditFor.customer}
           missingKeys={getMissingMandatoryCustomerFields(customerEditFor.customer)}
           groups={getUnsatisfiedFieldGroups(customerEditFor.customer, parseFieldGroups(settings.mandatory_field_groups))}
-          saveLabel={customerEditFor.mode === 'update' ? 'שמור' : undefined}
+          saveLabel={customerEditFor.mode === 'update' ? 'שמור והמשך' : undefined}
           onSaved={handleCustomerEditSaved}
           onClose={() => setCustomerEditFor(null)}
         />

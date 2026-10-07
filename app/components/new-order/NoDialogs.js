@@ -322,7 +322,7 @@ export function CompleteCustomerDialog({ customer, missingKeys, groups, mode, cl
       ))}
       {serverError ? <Note style={{ marginTop: 12 }}>{serverError}</Note> : null}
       <Btns>
-        <button type="button" className="btn primary lg block" onClick={submit} disabled={busy} aria-busy={busy}><Ic n="check" />{busy ? 'שומר...' : (mode === 'update' ? 'שמור' : 'שמור ובחר את הלקוח')}</button>
+        <button type="button" className="btn primary lg block" onClick={submit} disabled={busy} aria-busy={busy}><Ic n="check" />{busy ? 'שומר...' : (mode === 'update' ? 'שמור והמשך' : 'שמור ובחר את הלקוח')}</button>
         <button type="button" className="btn ghost block" onClick={() => close(null)} disabled={busy}><Ic n="x" c="sm" />ביטול</button>
       </Btns>
     </>

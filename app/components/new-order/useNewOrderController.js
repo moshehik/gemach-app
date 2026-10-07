@@ -231,7 +231,7 @@ export default function useNewOrderController({ router }) {
   const closeDupCustomer = () => { if (dlg[1] && dlg[1].type === 'dupCustomer') answer(1, undefined); };
 
   // דיווח f96f3952 (מאחורי order_inline_customer_edit; כבוי = הקישור הקיים שנפתח בכרטיסייה נפרדת): "עריכת פרטי לקוח" פותח חלון באותו מסך עם
-  // השדות שחסרים בלבד; אחרי שמירה הלקוח מתעדכן ונבחר אוטומטית (mode 'use' = כמו "כן, זה הלקוח"; 'update' = לקוח שכבר נבחר - רק מתעדכן).
+  // השדות שחסרים בלבד; אחרי שמירה הלקוח מתעדכן ונבחר אוטומטית (mode 'use' = כמו "כן, זה הלקוח"; 'update' = לקוח שכבר נבחר מהרשימה - מתעדכן וממשיך לשלב הבא).
   const inlineCustomerEdit = isInlineCustomerEditOn(settings);
   const editCustomerInline = async (customer, mode = 'use') => {
     const missingKeys = missingOf(customer);
@@ -241,8 +241,11 @@ export default function useNewOrderController({ router }) {
     if (!updated) return; // בוטל
     setFoundCustomersFromPhone(prev => prev.map(c => (c.id === updated.id ? updated : c)));
     setPickedFound(prev => (prev && prev.id === updated.id ? updated : prev));
-    if (mode === 'update') setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
-    else await handleUseExistingCustomer(updated);
+    if (mode === 'update') {
+      // לקוח שנבחר מהרשימה ופרטיו הושלמו - ממשיכים אוטומטית לשלב התאריכים (כמו בחיפוש טלפון); בדיקת לקוח חסום כמו ב"המשך"
+      setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
+      if (await confirmBlockedCustomerOverride(updated)) goStep('dates');
+    } else await handleUseExistingCustomer(updated);
   };
 
   const proceedToStep2 = async () => {

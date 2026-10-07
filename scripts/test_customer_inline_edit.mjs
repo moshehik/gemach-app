@@ -147,6 +147,13 @@ await t('האשף החדש: הכפתור רק כש-inlineCustomerEdit; אחרת 
   const ctl = read('app/components/new-order/useNewOrderController.js');
   assert.match(ctl, /const inlineCustomerEdit = isInlineCustomerEditOn\(settings\);/);
 });
+await t('Q19 (f96f3952): לקוח שנבחר מהרשימה (mode update) ופרטיו הושלמו - ממשיך אוטומטית לשלב הבא בשני האשפים, אחרי בדיקת לקוח חסום', () => {
+  const old = read('app/orders/new/LegacyNewOrderPage.js');
+  assert.match(old, /if \(mode === 'update'\) \{[\s\S]{0,400}if \(await confirmBlockedCustomerOverride\(updated\)\) setStep\(2\);[\s\S]{0,40}\} else await handleUseExistingCustomer\(updated\);/);
+  const ctl = read('app/components/new-order/useNewOrderController.js');
+  assert.match(ctl, /if \(mode === 'update'\) \{[\s\S]{0,400}if \(await confirmBlockedCustomerOverride\(updated\)\) goStep\('dates'\);[\s\S]{0,40}\} else await handleUseExistingCustomer\(updated\);/);
+  assert.match(read('app/components/new-order/NoDialogs.js'), /mode === 'update' \? 'שמור והמשך'/);
+});
 await t('ההגדרה רשומה: שם + הערה + רשימת הזמנות + בוליאני + מסך הגדרות; סקריפט seed קיים (בדיקה בטקסט - הכיסוי המלא ב-test_settings_sim.mjs)', () => {
   const meta = read('lib/settingsMetadata.js');
   assert.match(meta, /^  order_inline_customer_edit: '.+',$/gm);
