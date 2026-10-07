@@ -7,6 +7,7 @@ import { useA5Shell } from '@/app/components/menu/A5ShellContext';
 import StageRail from './StageRail';
 import StageSection from './StageSection';
 import UpdatedSection from './UpdatedSection';
+import ScrollTopButton from './ScrollTopButton';
 import HebrewDayPicker from './HebrewDayPicker';
 import ScheduleSkeleton from './ScheduleSkeleton';
 import { PageTools } from './ScheduleToolbarSlots';
@@ -383,6 +384,7 @@ export default function ScheduleDay({
       </div>
       {/* הטוסט אח של .app (#toast בעיצוב, שורה 1654) */}
       <MarkToast toast={marks.toast} onClose={marks.dismissToast} />
+      <ScrollTopButton />
       {/* האשף בתוך .gm-ds.gm-lz (ה-CSS שלו תחום לשם - print/PrintWizard.css); היום והסניף = מה שמוצג בדף */}
       {wiz ? (
         <PrintWizard
