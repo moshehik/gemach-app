@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
-import { computeOrderObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
+import { computeOrderObligations, computeOrderObligationsWithLegacyPolicy, buildLegacyAwarePreviewObligations, computeDeliveryObligationPreview } from '@/lib/pricingCalc';
 import { isOrderJoinValid } from '@/lib/deliveryJoin';
 import { resolveExtraDay } from '@/lib/extraDayGate';
 
@@ -27,6 +27,7 @@ const SETTING_KEYS = [
   'swap_pairing_window_minutes',
   'instant_undo_minutes',
   'gap_size_price_rule',
+  'legacy_item_lines_replaced_on_recalc',
   'delivery_price_by_city',
   'delivery_price',
   'enable_delivery_join',
@@ -107,13 +108,31 @@ export async function POST(request, { params }) {
       .filter(i => i.isDeleted)
       .map(i => (i.deletedAt ? i : { ...i, deletedAt: now }));
 
-    const { newObligations, totalValid } = computeOrderObligations({
+    const computeArgs = {
       order: effectiveOrder,
       items: activeItems,
       deletedItems,
       priceList,
       settings
-    });
+    };
+    let newObligations;
+    let totalValid;
+    // הזמנה ישנה מהאקסס (legacy_item_lines_replaced_on_recalc, ברירת מחדל כבוי = כמו קודם): אותה מדיניות בדיוק כמו בשמירה
+    // (computeOrderObligationsWithLegacyPolicy ב-lib/pricingCalc.js, שגם recalculateOrderObligations משתמשת בה) - שמלה שלא השתנתה
+    // נשארת במחיר הישן ששולם, והסכום שמוצג כאן הוא הסכום שיישמר. הכרטיסים (הישן והחדש) מחליפים את כל שורות ה-productId בשורות
+    // שחוזרות מכאן, ולכן שורה ישנה שנשארת בשמירה חוזרת גם היא (buildLegacyAwarePreviewObligations).
+    if (settings.find(s => s.key === 'legacy_item_lines_replaced_on_recalc')?.value === 'true') {
+      const manualObligations = await prisma.paymentObligation.findMany({
+        where: { orderId: parsedOrderId, isManual: true, isDeleted: false }
+      });
+      const withPolicy = computeOrderObligationsWithLegacyPolicy(computeArgs, manualObligations);
+      newObligations = buildLegacyAwarePreviewObligations({
+        newObligations: withPolicy.newObligations, manualObligations, kept: withPolicy.kept, replaced: withPolicy.replaced
+      });
+      totalValid = withPolicy.totalValid;
+    } else {
+      ({ newObligations, totalValid } = computeOrderObligations(computeArgs));
+    }
 
     // חיוב משלוח (ר' applyDeliveryCharge ב-lib/pricingEngine.js) לא חלק מ-computeOrderObligations
     // בכלל - הוא מחושב רק בפועל בתוך ה-PUT האמיתי. בלעדיו, תצוגה מקדימה של הזמנה קיימת
