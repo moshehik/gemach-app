@@ -15,6 +15,8 @@ import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '../../../lib/deliveryValidation';
 import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels, isFieldRequiredByGroup } from '../../../lib/customerValidation';
+import CustomerCompleteModal from './CustomerCompleteModal';
+import { isInlineCustomerEditOn } from '../../../lib/customerInlineEdit';
 import { resolveOrderRedirectHref } from '../../../lib/orderRedirectScreens';
 import { sendWithApproval } from '../../../lib/approvalClient';
 import { offerCreditOffset } from '../../../lib/creditOfferClient';
@@ -132,6 +134,7 @@ export default function NewOrderPage() {
   });
 
   const [duplicateCustomers, setDuplicateCustomers] = useState([]);
+  const [customerEditFor, setCustomerEditFor] = useState(null); // order_inline_customer_edit (f96f3952): { customer, mode: 'use' | 'update' }
 
   const [paymentsList, setPaymentsList] = useState([]);
 
@@ -644,6 +647,26 @@ export default function NewOrderPage() {
     setOrder(prev => ({ ...prev, customerId: existingCustomer.id, selectedCustomer: existingCustomer }));
     setStep(2);
     setDuplicateCustomers([]);
+  };
+
+  // דיווח f96f3952 (מאחורי order_inline_customer_edit; כבוי = הקישור הקיים שנפתח בכרטיסייה נפרדת): "עריכת פרטי לקוח" פותח חלון באותו מסך עם
+  // השדות שחסרים בלבד; אחרי שמירה הלקוח מתעדכן ונבחר אוטומטית ('use' = כמו "כן, זה הלקוח"; 'update' = לקוח שכבר נבחר מהרשימה - מתעדכן וממשיך לשלב הבא).
+  const openInlineCustomerEdit = (e, customer, mode) => {
+    if (!isInlineCustomerEditOn(settings)) return;
+    if (getMissingMandatoryCustomerFields(customer).length === 0 && getUnsatisfiedFieldGroups(customer, parseFieldGroups(settings.mandatory_field_groups)).length === 0) return; // אין מה להשלים - נשאר הקישור לכרטיס המלא
+    e.preventDefault();
+    setCustomerEditFor({ customer, mode });
+  };
+  const handleCustomerEditSaved = async (updated) => {
+    const mode = customerEditFor ? customerEditFor.mode : 'use';
+    setCustomerEditFor(null);
+    setFoundCustomersFromPhone(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+    setDuplicateCustomers(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+    if (mode === 'update') {
+      // לקוח שנבחר מרשימת החיפוש לפי שם ופרטיו הושלמו - ממשיכים אוטומטית לשלב הבא (כמו בחיפוש טלפון); בדיקת לקוח חסום כמו ב"המשך"
+      setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
+      if (await confirmBlockedCustomerOverride(updated)) setStep(2);
+    } else await handleUseExistingCustomer(updated);
   };
 
   const proceedToStep2 = async () => {
@@ -1840,8 +1863,8 @@ export default function NewOrderPage() {
                             <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
                             חסר ללקוח: {parts.join(', ')}.
                           </p>
-                          <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
-                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)
+                          <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" onClick={(e) => openInlineCustomerEdit(e, foundCustomer, 'use')}>
+                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח{isInlineCustomerEditOn(settings) ? '' : ' (נפתח בכרטיסייה נפרדת)'}
                           </a>
                         </div>
                       );
@@ -1852,7 +1875,7 @@ export default function NewOrderPage() {
                         <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
                       </button>
                       {(getMissingMandatoryCustomerFields(foundCustomer).length > 0 || getUnsatisfiedFieldGroups(foundCustomer, parseFieldGroups(settings.mandatory_field_groups)).length > 0) && (
-                        <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, minWidth: '160px' }}>
+                        <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, minWidth: '160px' }} onClick={(e) => openInlineCustomerEdit(e, foundCustomer, 'use')}>
                           <svg className="icon"><use href="#i-edit" /></svg> עריכת פרטי לקוח
                         </a>
                       )}
@@ -1897,7 +1920,7 @@ export default function NewOrderPage() {
                           <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
                         )}
                         {' '}
-                        <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="hint" style={{ fontWeight: 600 }}>
+                        <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="hint" style={{ fontWeight: 600 }} onClick={(e) => openInlineCustomerEdit(e, order.selectedCustomer, 'update')}>
                           <svg className="icon" style={{ width: '13px', height: '13px', verticalAlign: 'middle' }}><use href="#i-edit" /></svg> עריכה
                         </a>
                       </strong>
@@ -1920,8 +1943,8 @@ export default function NewOrderPage() {
                           <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 8px' }}>
                             חסר ללקוח: {parts.join(', ')}.
                           </p>
-                          <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
-                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)
+                          <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" onClick={(e) => openInlineCustomerEdit(e, order.selectedCustomer, 'update')}>
+                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח{isInlineCustomerEditOn(settings) ? '' : ' (נפתח בכרטיסייה נפרדת)'}
                           </a>
                         </div>
                       );
@@ -2844,7 +2867,7 @@ export default function NewOrderPage() {
                       <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
                       חסר ללקוח: {parts.join(', ')}.
                       {' '}
-                      <a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                      <a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }} onClick={(e) => openInlineCustomerEdit(e, duplicateCustomer, 'use')}>
                         עריכת פרטי לקוח
                       </a>
                     </p>
@@ -2862,6 +2885,17 @@ export default function NewOrderPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {customerEditFor && (
+        <CustomerCompleteModal
+          customer={customerEditFor.customer}
+          missingKeys={getMissingMandatoryCustomerFields(customerEditFor.customer)}
+          groups={getUnsatisfiedFieldGroups(customerEditFor.customer, parseFieldGroups(settings.mandatory_field_groups))}
+          saveLabel={customerEditFor.mode === 'update' ? 'שמור והמשך' : undefined}
+          onSaved={handleCustomerEditSaved}
+          onClose={() => setCustomerEditFor(null)}
+        />
       )}
 
       {duplicateOrderWarning && (

@@ -16,7 +16,7 @@ import usePageTooltip from '../profile/usePageTooltip';
 import PageVariantToggle from '../variant/PageVariantToggle';
 import { Ic, NoBanner, NoPortal, NoPortalRoot } from './NoUi';
 import {
-  ApprovalDialog, BackGuardDialog, BusyDialog, ConfirmDialog, CreditDialog, DialogFrame, DuplicateCustomerDialog, DuplicateOrderDialog,
+  ApprovalDialog, BackGuardDialog, BusyDialog, CompleteCustomerDialog, ConfirmDialog, CreditDialog, DialogFrame, DuplicateCustomerDialog, DuplicateOrderDialog,
   ExitDialog, MessageDialog, SpacingDialog, StockShortageDialog, SuccessDialog, SwipeDialog, successChips,
 } from './NoDialogs';
 import { CapacitySearchDialog, ItemCapacityDialog } from './NoCapacity';
@@ -146,7 +146,9 @@ function Dialog({ ctl, layer }) {
     case 'backGuard': body = <BackGuardDialog close={close} />; backdrop = () => close(false); break;
     case 'exit': body = <ExitDialog {...p} close={close} />; backdrop = () => close(false); break;
     case 'spacing': body = <SpacingDialog close={close} />; break;
-    case 'dupCustomer': body = <DuplicateCustomerDialog customers={p.customers} settings={ctl.settings} onUse={ctl.handleUseExistingCustomer} onCreate={() => ctl.handleSaveNewCustomerAndProceed(true)} close={close} />; break;
+    case 'dupCustomer': body = <DuplicateCustomerDialog customers={p.customers} settings={ctl.settings} onUse={ctl.handleUseExistingCustomer} onCreate={() => ctl.handleSaveNewCustomerAndProceed(true)}
+      onEdit={ctl.inlineCustomerEdit ? (c) => ctl.editCustomerInline(c, 'use') : null} close={close} />; break;
+    case 'completeCustomer': body = <CompleteCustomerDialog {...p} close={close} />; backdrop = null; break;
     case 'dupOrder': body = <DuplicateOrderDialog existingOrderId={p.existingOrderId} close={close} />; backdrop = null; break;
     case 'credit':
       body = <CreditDialog data={ctl.creditCardData} setData={ctl.setCreditCardData} error={ctl.creditError} processing={ctl.isProcessingCredit} onCharge={ctl.handleProcessCreditCard}

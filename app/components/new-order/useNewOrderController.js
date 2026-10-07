@@ -8,7 +8,8 @@ import { calculateDynamicAvailability } from '@/lib/clientInventory';
 import { getIsraelTodayKey } from '@/lib/hebrewDate';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { isDeliveryAddressRequired, isDeliveryCityRequired, validateDeliveryFields } from '@/lib/deliveryValidation';
-import { parseFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
+import { parseFieldGroups, getUnsatisfiedFieldGroups, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
+import { isInlineCustomerEditOn } from '@/lib/customerInlineEdit';
 import { resolveOrderRedirectHref, ORDER_REDIRECT_SCREENS } from '@/lib/orderRedirectScreens';
 import * as NL from './newOrderLogic';
 
@@ -228,6 +229,24 @@ export default function useNewOrderController({ router }) {
     goStep('dates');
   };
   const closeDupCustomer = () => { if (dlg[1] && dlg[1].type === 'dupCustomer') answer(1, undefined); };
+
+  // דיווח f96f3952 (מאחורי order_inline_customer_edit; כבוי = הקישור הקיים שנפתח בכרטיסייה נפרדת): "עריכת פרטי לקוח" פותח חלון באותו מסך עם
+  // השדות שחסרים בלבד; אחרי שמירה הלקוח מתעדכן ונבחר אוטומטית (mode 'use' = כמו "כן, זה הלקוח"; 'update' = לקוח שכבר נבחר מהרשימה - מתעדכן וממשיך לשלב הבא).
+  const inlineCustomerEdit = isInlineCustomerEditOn(settings);
+  const editCustomerInline = async (customer, mode = 'use') => {
+    const missingKeys = missingOf(customer);
+    const groups = getUnsatisfiedFieldGroups(customer, fieldGroups);
+    if (!missingKeys.length && !groups.length) return;
+    const updated = await ask('completeCustomer', { customer, missingKeys, groups, mode });
+    if (!updated) return; // בוטל
+    setFoundCustomersFromPhone(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+    setPickedFound(prev => (prev && prev.id === updated.id ? updated : prev));
+    if (mode === 'update') {
+      // לקוח שנבחר מהרשימה ופרטיו הושלמו - ממשיכים אוטומטית לשלב התאריכים (כמו בחיפוש טלפון); בדיקת לקוח חסום כמו ב"המשך"
+      setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
+      if (await confirmBlockedCustomerOverride(updated)) goStep('dates');
+    } else await handleUseExistingCustomer(updated);
+  };
 
   const proceedToStep2 = async () => {
     if (!order.customerId) { say('info', 'יש לבחור לקוח'); return; }
@@ -861,7 +880,7 @@ export default function useNewOrderController({ router }) {
     saving, saveError, setSaveError, saveOrder, saved, draftOrderId,
     capacityItem, setCapacityItem, showCapacitySearch, setShowCapacitySearch,
     // פעולות
-    handleCheckPhone, handleUseExistingCustomer, proceedToStep2, handleSaveNewCustomerAndProceed,
+    handleCheckPhone, handleUseExistingCustomer, inlineCustomerEdit, editCustomerInline, proceedToStep2, handleSaveNewCustomerAndProceed,
     handleDateChangeWithValidation, handleSpacingChange, handleExit, goTarget, printSaved, newOrder, targetLabel,
     // ממשק
     toast, setToast, say, dlg, ask, answer,
