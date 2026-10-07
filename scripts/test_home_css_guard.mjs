@@ -910,7 +910,7 @@ t('new-order.css: נטרול דליפות - גופן, field margin, צבע/גב�
 });
 t('אשף הזמנה חדשה: שורש gm-ds gm-no home-bg dlg-dark, בלי gm-home, בלי alert/confirm של הדפדפן, בלי title=', () => {
   const dir = '../app/components/new-order/';
-  const files = ['NewOrderA5.js', 'NewOrderSwitch.js', 'NoUi.js', 'NoDialogs.js', 'NoSuggest.js', 'NoHebrewCalendar.js', 'useNewOrderController.js', 'StepCustomer.js', 'StepDates.js', 'StepDelivery.js', 'StepItems.js', 'StepSummary.js', 'StepPayment.js', 'newOrderLogic.js'];
+  const files = ['NewOrderA5.js', 'NewOrderSwitch.js', 'NoUi.js', 'NoDialogs.js', 'NoSuggest.js', 'NoHebrewCalendar.js', 'useNewOrderController.js', 'StepCustomer.js', 'StepDates.js', 'StepDelivery.js', 'StepItems.js', 'StepSummary.js', 'StepPayment.js', 'newOrderLogic.js', 'LayoutContinuous.js', 'layoutLogic.js', 'stepViews.js'];
   const all = files.map((f) => read(dir + f)).join(String.fromCharCode(10));
   assert.ok(/className="gm-ds gm-no home-bg dlg-dark"/.test(read(dir + 'NewOrderA5.js')), 'שורש הדף');
   assert.ok(!/gm-home/.test(all.replace(/\/\/.*$/gm, '')), 'gm-home בקוד האשף');

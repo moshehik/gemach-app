@@ -1,11 +1,13 @@
 'use client';
 
-// שלב 4 "אילו פריטים?" - window.R.items של B2 (נבנה מאפס בעיצוב): חיפוש דגם (.scan) + רשימת הצעות סטטית (.advlist.advstatic),
-// הדגם שנבחר, אריחי מידה (.sizes), תיקונים (.altbox/.altopts/.opt.lenopt - G4), שורת הוספה (.addbar), והסל (.list).
+// שלב 4 "אילו פריטים?" - window.R.items של B2 (נבנה מאפס בעיצוב): כרטיס "הוספת פריט" (.addstep): "דגם" (שדה עם הדגם שנבחר + X) + רשימת הצעות
+// סטטית (.advlist.advstatic), "מידה" (רשת אריחים .sizes), "תיקונים" (.altopts/.opt.lenopt - G4), שורת הוספה (.addbar2), והסל (.list).
 // R19 (להסיר): בלי "N פנויות" ובלי "אזל" בקו חוצה - מידה שאזלה היא אריח כבוי. R20 (אושר): "(בודק זמינות...)", "אין מידות זמינות
 // לתאריך זה.", "מחשב מחירים...". S05 (לא להכניס): בלי קטגוריה ו"החל מ-₪". S06 (להכניס): מחיר ליד כל תיקון + "להוספה: ₪N".
 // R23: דגם "ללא שם" מוצג בקוד; הקוד מוצג בנפרד רק כשהוא שונה מהשם (בנווה יעקב הם זהים). Q8: "פירוט לתופרת * (חובה)" נאכף.
 // R21 (להסיר): אין "הערות כלליות להזמנה" בשלב הזה.
+// פריסה (העיצוב העדכני B2, בלוק fix-2026-10-01): קלף אחד (.card.one) עם שתי עמודות - בחירת הפריט (.items-main) מימין והסל (.items-cart) משמאל
+// (קצה ה-RTL), עם קו מפריד דק ביניהן (761px ומעלה); מתחת ל-761px הסל מתחת לבחירה, באותו קלף. הלוגיקה והחלטות הבעלים - ללא שינוי.
 import { Blk, ClearX, Field, Ic, Note, OneCard, SubH, money } from './NoUi';
 import { CalcErrorNote, DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
 import { alterationDetailsRequired, alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, moneyTxt } from './newOrderLogic';
@@ -16,31 +18,25 @@ function hl(s, q) {
   return i < 0 ? s : <>{s.slice(0, i)}<mark>{q}</mark>{s.slice(i + q.length)}</>;
 }
 
-function PickModel({ ctl }) {
+// "דגם": שדה אחד. כשנבחר דגם הוא מציג "שם · קוד: N" (בעיצוב) ו-X מנקה; הקלדה מחליפה דגם. הרשימה הסטטית מוצגת כל עוד לא נבחר דגם
+function ModelField({ ctl }) {
   const m = ctl.pickedModel;
   const q = ctl.modelQuery.trim();
   const list = ctl.modelList;
+  const code = m ? modelCodeSuffix(m) : '';
   return (
-    <Blk>
-      <SubH icon="dress" title={m ? 'הדגם שנבחר' : 'איזו שמלה?'} />
-      <div className="scan">
-        <Ic n="search" />
-        <input id="noModelQ" placeholder="חפש דגם לפי שם או קוד..." autoComplete="off" aria-label={m ? 'חיפוש דגם - אפשר לערוך כדי להחליף דגם' : 'חיפוש דגם'}
-          value={m ? displayModelName(m) : ctl.modelQuery}
+    <div className="addstep">
+      <div className="lbl with-ic"><Ic n="dress" c="sm" />דגם</div>
+      <div className="inpw ico-in">
+        <Ic n="search" c="sm" />
+        <input className="inp" id="noModelQ" placeholder="חפש דגם לפי שם או קוד..." autoComplete="off" aria-label={m ? 'חיפוש דגם - אפשר לערוך כדי להחליף דגם' : 'חיפוש דגם'}
+          value={m ? `${displayModelName(m)}${code ? ` · קוד: ${code}` : ''}` : ctl.modelQuery}
           onFocus={(e) => { if (m) e.target.select(); }}
           onChange={(e) => { if (m) ctl.pickModel(null); ctl.setModelQuery(e.target.value); }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ctl.resolveTypedModel(); } }} />
         <ClearX show={!!(m || ctl.modelQuery)} tip={m ? 'ניקוי והחלפת דגם' : undefined} onClear={() => { ctl.pickModel(null); ctl.setModelQuery(''); }} />
       </div>
-      {m ? (
-        <div className="hres" id="pickedModel" style={{ marginTop: 16 }}><div className="hgrp">
-          <article className="hrow irow open"><div className="li rlink lrow">
-            <div className="ic-b"><Ic n="dress" /></div>
-            <div className="t"><b>{displayModelName(m)}</b>{modelCodeSuffix(m) ? <span className="ln">דגם <bdi>{modelCodeSuffix(m)}</bdi></span> : null}</div>
-            <span className="go" aria-hidden="true"><Ic n="check" c="sm" /></span>
-          </div></article>
-        </div></div>
-      ) : (
+      {m ? null : (
         <ul className="advlist advstatic" id="modelList" role="listbox" aria-label="דגמים">
           {list === null ? <li className="advo none" role="presentation">טוען דגמים...</li>
             : list.length ? list.map((x, i) => (
@@ -52,7 +48,7 @@ function PickModel({ ctl }) {
             )) : <li className="advo none" role="presentation">לא נמצאו דגמים</li>}
         </ul>
       )}
-    </Blk>
+    </div>
   );
 }
 
@@ -68,26 +64,29 @@ function SizesAndAlt({ ctl }) {
   const required = alterationDetailsRequired(s);
   const label = it.selectedSizes.length > 1 ? `הוסף ${it.selectedSizes.length} פריטים לסל` : 'הוסף לסל';
   return (
-    <Blk>
-      <SubH icon="tag" tone="blue" title="מידה">
-        {checking ? <span className="muted sm">(בודק זמינות...)</span> : null}
-        <button type="button" className="ibtn" data-tip="רענן זמינות מלאי" aria-label="רענן זמינות מלאי" onClick={ctl.refreshInventory} disabled={checking}><Ic n="refresh" c="sm" /></button>
-      </SubH>
-      {sizes.length === 0 ? (
-        <div className="muted sm">{checking ? 'בודק זמינות...' : 'אין מידות זמינות לתאריך זה.'}</div>
-      ) : (
-        <div className="sizes" id="addSizes">
-          {sizes.map(z => {
-            const normal = (z.withNormalBuffer && z.withNormalBuffer.availableQuantity) ?? z.availableQuantity ?? 0;
-            const avail = z.withCustomSpacing ? z.withCustomSpacing.availableQuantity : normal;
-            const on = it.selectedSizes.includes(z.sizeText);
-            return <button key={z.sizeText} type="button" className={on ? 'on' : ''} disabled={!(avail > 0)} aria-pressed={on} onClick={() => ctl.toggleSizeSelection(z.sizeText)}>{z.sizeText}</button>;
-          })}
+    <>
+      <div className="addstep">
+        <div className="lbl with-ic">
+          <Ic n="tag" c="sm" />מידה
+          <span className="muted sm" style={{ fontWeight: 400 }}>{checking ? '(בודק זמינות...)' : 'אפשר לסמן כמה'}</span>
+          <button type="button" className="ibtn" data-tip="רענן זמינות מלאי" aria-label="רענן זמינות מלאי" onClick={ctl.refreshInventory} disabled={checking}><Ic n="refresh" c="sm" /></button>
         </div>
-      )}
+        {sizes.length === 0 ? (
+          <div className="muted sm">{checking ? 'בודק זמינות...' : 'אין מידות זמינות לתאריך זה.'}</div>
+        ) : (
+          <div className="sizes" id="addSizes">
+            {sizes.map(z => {
+              const normal = (z.withNormalBuffer && z.withNormalBuffer.availableQuantity) ?? z.availableQuantity ?? 0;
+              const avail = z.withCustomSpacing ? z.withCustomSpacing.availableQuantity : normal;
+              const on = it.selectedSizes.includes(z.sizeText);
+              return <button key={z.sizeText} type="button" className={on ? 'on' : ''} disabled={!(avail > 0)} aria-pressed={on} onClick={() => ctl.toggleSizeSelection(z.sizeText)}>{z.sizeText}</button>;
+            })}
+          </div>
+        )}
+      </div>
       {alt ? (
-        <div className="altbox">
-          <div className="lbl" style={{ margin: '0 0 10px' }}><Ic n="scissors" c="sm" /> תיקונים</div>
+        <div className="addstep">
+          <div className="lbl with-ic"><Ic n="scissors" c="sm" />תיקונים<span className="muted sm" style={{ fontWeight: 400 }}>לא חובה</span></div>
           <div className="altopts">
             <button type="button" className={`opt${it.neckAlteration ? ' on' : ''}`} aria-pressed={!!it.neckAlteration} onClick={() => ctl.setNewItemField('neckAlteration', !it.neckAlteration)}>
               {it.neckAlteration ? <Ic n="check" c="sm evck" /> : null}<Ic n="scissors" c="lg" /><div><b>צוואר</b>{priceTag('neck')}</div>
@@ -110,10 +109,22 @@ function SizesAndAlt({ ctl }) {
         </div>
       ) : null}
       {ctl.addError ? <Note style={{ marginTop: 16 }}>{ctl.addError}</Note> : null}
-      <div className="row spread wrap addbar">
-        <span className="muted">{it.selectedSizes.length ? <>להוספה: <b>{pv ? money(pv.total) : '...'}</b></> : 'סמנו מידה אחת או יותר'}</span>
+      {/* .addbar2 של העיצוב: "להוספה" + המחיר החי (S06) משמאל לכותרת, הלחצן בקצה */}
+      <div className="addbar2 addbar">
+        <div className="addsum"><small>{it.selectedSizes.length ? 'להוספה' : 'מחיר'}</small><b>{it.selectedSizes.length ? (pv ? money(pv.total) : '...') : '—'}</b></div>
         <button type="button" className="btn primary lg" disabled={!it.selectedSizes.length} onClick={ctl.addItemToOrder}><Ic n="plus" />{label}</button>
       </div>
+    </>
+  );
+}
+
+// כרטיס "הוספת פריט": כותרת + דגם, ואחרי בחירת דגם - מידה / תיקונים / שורת הוספה
+function AddItem({ ctl }) {
+  return (
+    <Blk>
+      <SubH icon="dress" title="הוספת פריט" />
+      <ModelField ctl={ctl} />
+      {ctl.pickedModel ? <SizesAndAlt ctl={ctl} /> : null}
     </Blk>
   );
 }
@@ -159,11 +170,13 @@ function Cart({ ctl }) {
 }
 
 export default function StepItems({ ctl }) {
+  // קלף אחד (.card.one) עם שתי העמודות בתוכו וקו מפריד דק ביניהן (בעיצוב: .card.one > .one-body > .items-split)
   return (
     <OneCard>
-      <PickModel ctl={ctl} />
-      {ctl.pickedModel ? <SizesAndAlt ctl={ctl} /> : null}
-      <Cart ctl={ctl} />
+      <div className="items-split">
+        <div className="items-main"><AddItem ctl={ctl} /></div>
+        <div className="items-cart"><Cart ctl={ctl} /></div>
+      </div>
     </OneCard>
   );
 }

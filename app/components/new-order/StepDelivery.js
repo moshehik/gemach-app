@@ -9,6 +9,11 @@ import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, Tip, NO_F
 import NoSuggest from './NoSuggest';
 import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility } from './newOrderLogic';
 
+const ORDER_TYPES = [
+  { v: false, label: 'הזמנה רגילה', icon: 'user', tip: 'הזמנה טלפונית וסניף ביצוע מוציאים זה את זה' },
+  { v: true, label: 'הזמנה טלפונית', icon: 'phone', tip: 'הזמנה טלפונית וסניף ביצוע מוציאים זה את זה' },
+];
+
 export default function StepDelivery({ ctl }) {
   const s = ctl.settings;
   const o = ctl.order;
@@ -40,9 +45,10 @@ export default function StepDelivery({ ctl }) {
           <SubH icon="phone" title="אופן ההזמנה" />
           <div className="grid2">
             {s.phone_order_marker_enabled === 'true' ? (
-              <div className="trow">
-                <Switch id="noPhoneOrder" checked={o.isPhoneOrder} label="הזמנה טלפונית" onChange={(v) => set({ isPhoneOrder: v, branch: v ? '' : o.branch })} />
-                <b>הזמנה טלפונית</b><Tip t="הזמנה טלפונית וסניף ביצוע מוציאים זה את זה" />
+              <div className="field">
+                <div className="lbl with-ic"><Ic n="phone" c="sm" />סוג הזמנה</div>
+                {/* בורר גלולה בן שתי אפשרויות (בעיצוב: #orderSeg) - אותו state ואותו handler כמו המתג שהיה (isPhoneOrder; טלפונית וסניף ביצוע מוציאים זה את זה) */}
+                <SegPill id="orderSeg" label="סוג הזמנה" options={ORDER_TYPES} value={!!o.isPhoneOrder} onChange={(v) => set({ isPhoneOrder: v, branch: v ? '' : o.branch })} />
               </div>
             ) : null}
             {s.track_branch_on_order === 'true' ? (

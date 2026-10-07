@@ -126,6 +126,13 @@ if (!D) await safe('x5-capacity-board-occ', async () => { await click('#dlg2 .hc
 await safe('15c-capacity-closed', async () => (D ? js(() => closeDlg(2)) : click('#dlg2 .btn.ghost')));
 await safe('16-summary', async () => (D ? js(() => go(5)) : click(NEXT)));
 await safe('17-payment', async () => (D ? js(() => go(6)) : click(NEXT)));
+// פריסת שתי עמודות: תשלום חלקי נרשם -> עמודת "תשלומים שנרשמו" (.pay-side) משמאל; אחר כך מסירים אותו כדי ששלבי 18-20 יישארו זהים (רק בדף האמיתי)
+if (!D) await safe('x6-payment-side', async () => {
+  await clickText('#methods button', 'מזומן');
+  await p.$eval('#noPayAmt', (el) => { el.focus(); el.select(); }); await p.keyboard.type('100'); await sleep(200);
+  await clickText('.btn.green', 'אישור תשלום'); await sleep(500);
+});
+if (!D) { await click('.pay-side .ibtn[aria-label="הסר תשלום"]').catch(() => {}); }
 await safe('18-credit', async () => (D ? js(() => document.querySelector('[data-act="credit"]').click()) : clickText('.btn.navy', 'חיוב אשראי')));
 await safe('19-exit', async () => {
   if (D) await js(() => { closeDlg(); OC.exitDlg(); });

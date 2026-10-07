@@ -248,3 +248,115 @@
 .gm-ds.gm-no .no-banner .nb-r span{padding-top:3px}
 /* כותרת הטבלה: globals.css כופה על כל <th> רקע קרם וצל (!important), design-overrides גופן - בעיצוב כחול כהה וזהב (כמו attendance.css) */
 .gm-ds.gm-no .dlg .rtbl>thead>tr>th{position:static!important;background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;outline:0;border-bottom:0!important}
+
+/* ===== פריסת שתי עמודות (העיצוב העדכני B2, בלוק fix-2026-10-01): הסל משמאל בשלב הפריטים, "תשלומים שנרשמו" משמאל בשלב התשלום ===== */
+/* #app.wide של העיצוב: שלבי שתי העמודות רחבים יותר מהשלבים הרגילים (680px) */
+.gm-ds.gm-no .no-app.wide{max-width:1000px!important}
+/* שורת הניווט העליונה (.navtop) - אותם לחצנים כמו התחתונה, צמודה מעל השלב (בעיצוב: margin-bottom:16px) */
+.gm-ds.gm-no .no-app .no-nav.navtop{margin-top:20px;margin-bottom:0}
+.gm-ds.gm-no .no-app .navtop+.no-panels{margin-top:16px}
+/* שלב הפריטים: עמודת הבחירה (מימין ב-RTL) + הסל (משמאל, ~280px) */
+.gm-ds.gm-no .items-split{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start;width:100%;position:relative}
+.gm-ds.gm-no .items-main{display:flex;flex-direction:column;gap:24px;min-width:0}
+.gm-ds.gm-no .items-cart{min-width:0}
+/* בעמודה הרחבה החיפוש / השדות / רשימת ההצעות ממלאים את הרוחב (בקובייה הבודדת הם 440px) */
+.gm-ds.gm-no .items-main .scan,.gm-ds.gm-no .items-main .inpw,.gm-ds.gm-no .items-main .field,.gm-ds.gm-no .items-main .advlist.advstatic{max-width:none;width:100%}
+/* הסל: שורות קומפקטיות, הפעולות בשורה משלהן; תשלומים שנרשמו: אייקון, פרטים, הסרה */
+.gm-ds.gm-no .items-cart .li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px 12px;align-items:start;padding:14px 0}
+.gm-ds.gm-no .items-cart .li>.row{grid-column:1/-1;justify-content:flex-start;gap:8px}
+.gm-ds.gm-no .items-cart .li .ibtn{width:36px;height:36px;border-radius:10px}
+.gm-ds.gm-no .pay-side .li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px 12px;align-items:start;padding:14px 0}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li .t{min-width:0}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li .t b{font-size:16px;line-height:1.35;overflow-wrap:anywhere}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li .t .a{font-size:17px;font-weight:700;margin-top:4px}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .sub-h{flex-wrap:wrap;padding-bottom:16px;margin-bottom:8px;border-bottom:1px solid var(--sky-300)}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .list{border-top:0}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li:last-child{border-bottom:0}
+.gm-ds.gm-no .items-cart .row.spread{flex-wrap:wrap}
+/* כרטיס "הוספת פריט" (.addstep של העיצוב): דגם -> מידה -> תיקונים -> שורת הוספה, בקצב אחד; האריחים ברשת ברוחב מלא */
+.gm-ds.gm-no .addstep{display:block;margin-top:28px}
+.gm-ds.gm-no .sub-h+.addstep{margin-top:0}
+.gm-ds.gm-no .addstep>.lbl{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.gm-ds.gm-no .addstep>.lbl>.ibtn{margin-inline-start:auto;width:36px;height:36px;border-radius:10px}
+.gm-ds.gm-no .addstep .field{margin-top:12px}
+.gm-ds.gm-no .items-main .sizes{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0}
+.gm-ds.gm-no .items-main .sizes button{width:auto;min-width:0;height:48px;padding:0;border-radius:12px;font-size:16px;font-weight:600;justify-content:center}
+.gm-ds.gm-no .items-main .altopts .opt{min-height:76px;padding:12px 14px;gap:10px}
+.gm-ds.gm-no .items-main .altopts .opt b{font-size:16px}
+.gm-ds.gm-no .addbar2{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:28px;padding-top:20px;border-top:1px solid var(--sky-200)}
+.gm-ds.gm-no .addsum small{display:block;color:var(--ink3);font-size:14px;line-height:1.2}
+.gm-ds.gm-no .addsum b{font-size:22px;font-weight:700;color:var(--navy-900);line-height:1.3}
+.gm-ds.gm-no .addbar2 .btn{min-width:200px}
+/* שלב התשלום: עמודת "תשלומים שנרשמו" נדבקת בגלילה, רק כשיש תשלום (.has-side) */
+.gm-ds.gm-no .pay-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;width:100%}
+.gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:24px}
+.gm-ds.gm-no .pay-main{display:flex;flex-direction:column;min-width:0}
+.gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start}
+/* בתוך הקלף האחד: הבלוקים של הטופס מופרדים בקו מקווקו (כמו .one-body>.blk+.blk בשלבים האחרים - כאן הם בתוך .pay-main) */
+.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
+/* קו מפריד דק בין הבחירה לסל (בעיצוב אחרי fix-2026-10-01 - בלי כרטיס סביב הסל) */
+@media (min-width:761px){
+  .gm-ds.gm-no .items-main{align-self:stretch;border-inline-end:1px solid var(--sky-300);padding-inline-end:24px}
+  .gm-ds.gm-no .pay-split.has-side .pay-main{align-self:stretch;border-inline-end:1px solid var(--sky-300);padding-inline-end:24px}
+}
+/* מתחת ל-761px: עמודה אחת, הסל / התשלומים מתחת */
+@media (max-width:760px){
+  .gm-ds.gm-no .items-split{grid-template-columns:minmax(0,1fr)}
+  .gm-ds.gm-no .items-cart{border-top:1px solid var(--sky-300);padding-top:24px}
+  .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr)}
+  .gm-ds.gm-no .pay-side{position:static;border-top:1px solid var(--sky-300);padding-top:24px}
+}
+
+/* ===== טופס רציף בעמוד אחד נגלל (ההגדרה new_order_layout='continuous', LayoutContinuous.js): אותם רכיבי שלב, כל השלבים כגושים בזה אחר זה ===== */
+.gm-ds.gm-no .no-app.no-flowapp{max-width:1000px!important}
+/* פס התקדמות דק ונדבק: אותו מראה כמו פסי האשף (.pbars/.pb), מספר העמודות לפי מספר הגושים המוצגים (--n), לחיצה על פריט = גלילה לגוש */
+.gm-ds.gm-no .no-app .pbars.mini{grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:8px;position:sticky;top:calc(var(--gm-snav-h,0px) + 8px);z-index:20;margin-top:14px;padding:10px 12px 4px;border-radius:16px;background:rgba(255,255,255,.86);border:1px solid var(--sky-300);box-shadow:0 8px 24px -16px rgba(15,44,82,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.gm-ds.gm-no .pbars.mini .pb{gap:4px}
+.gm-ds.gm-no .pbars.mini .pb-d{padding:4px 6px;align-items:center}
+.gm-ds.gm-no .pbars.mini .pb-t b{font-size:13px}
+.gm-ds.gm-no .pbars.mini .pb.lock .pb-d{opacity:.55}
+.gm-ds.gm-no .no-flow{display:flex;flex-direction:column;gap:48px;margin-top:28px}
+.gm-ds.gm-no .no-sec{width:100%;max-width:680px;min-width:0;margin-inline:auto;scroll-margin-top:calc(var(--gm-snav-h,0px) + 84px)}
+.gm-ds.gm-no .no-sec.wide{max-width:none}
+.gm-ds.gm-no .no-sec-h{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin:0 0 18px}
+.gm-ds.gm-no .no-sec-n{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--navy);color:var(--gm-gold-300);font-size:18px;font-weight:700}
+/* כותרת הגוש = שאלת השלב של האשף (אותו גופן), קטנה יותר מכותרת-הענק של האשף; h2 - הכלל הכללי של h1-h6 דורש !important */
+.gm-ds.gm-no .no-sec-t{margin:0;flex:1;min-width:0;font-family:'FB Melatef','Suez One',serif!important;font-size:64px;font-weight:700;line-height:1;color:var(--navy-900);overflow-wrap:anywhere}
+.gm-ds.gm-no .no-sec-lock{display:inline-flex;align-items:center;gap:6px;margin-inline-start:auto;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.7);border:1px solid var(--sky-300);font-size:14px;font-weight:500;color:var(--ink2)}
+/* גוש נעול: גלוי אך מעומעם, חתוך ו-inert (המאפיין בקוד) עד שתנאי הנעילה של האשף מתקיימים */
+.gm-ds.gm-no .no-sec-body{transition:opacity .3s}
+.gm-ds.gm-no .no-sec.locked .no-sec-body{max-height:190px;overflow:hidden;opacity:.5;pointer-events:none;user-select:none;-webkit-mask-image:linear-gradient(#000 35%,transparent);mask-image:linear-gradient(#000 35%,transparent)}
+.gm-ds.gm-no .no-sec.locked .no-sec-n{background:var(--sky-300);color:var(--navy-900)}
+.gm-ds.gm-no .no-sec.locked .no-sec-t{opacity:.6}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .no-sec-body{transition:none}}
+/* "המשך" בתחתית הגוש: לחצן יחיד בקצה (שמאל ב-RTL, כמו באשף); בגוש התשלום ביטול + סיום משני הצדדים */
+.gm-ds.gm-no .no-sec-nav{margin-top:28px;gap:16px}
+.gm-ds.gm-no .no-sec-nav.row.spread{justify-content:flex-end}
+.gm-ds.gm-no .no-sec-nav.row.spread:has(>.btn+.btn){justify-content:space-between}
+.gm-ds.gm-no .no-flow .pay-side{top:calc(var(--gm-snav-h,0px) + 92px)}
+@media (max-width:760px){
+  .gm-ds.gm-no .no-flow{gap:36px}
+  .gm-ds.gm-no .no-flow .pay-side{top:auto}
+}
+@media (max-width:520px){
+  .gm-ds.gm-no .no-sec-t{font-size:46px}
+  .gm-ds.gm-no .no-sec-n{width:34px;height:34px;font-size:16px}
+  .gm-ds.gm-no .no-app .pbars.mini{gap:4px;padding:8px 6px 2px}
+  .gm-ds.gm-no .pbars.mini .pb-t b{font-size:11px;overflow-wrap:normal}
+  .gm-ds.gm-no .pbars.mini .pb-d{padding:4px 2px}
+}
+
+/* ===== סבב התאמות לעיצוב העדכני (7.10.2026): שורת "הזמנת משלוח" בכותרת אחידה, כרטיס הפריטים בנייד ===== */
+/* מודל הכותרות האחיד של העיצוב: אריח אייקון 36px / רדיוס 10 / גוון sky-100 / אייקון navy 20px, כותרת 17px / 600 - גם בשורת "הזמנת משלוח" (.dhero) */
+.gm-ds.gm-no .app .one .dhero{gap:12px;align-items:center}
+.gm-ds.gm-no .app .one .dhero>.ico{width:36px;height:36px;min-width:36px;border-radius:10px;background:var(--sky-100);color:var(--navy);flex:none;box-shadow:none}
+.gm-ds.gm-no .app .one .dhero.off>.ico{background:var(--sky-100)}
+.gm-ds.gm-no .app .one .dhero>.ico .ic{width:20px;height:20px;color:var(--navy);stroke:var(--navy)}
+.gm-ds.gm-no .app .one .dhero b.big{font-size:17px;font-weight:600;line-height:1.3;color:var(--navy-900);margin:0}
+@media (max-width:560px){
+  .gm-ds.gm-no .items-main .sizes{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+/* שלב המשלוח: שורת "הזמנת משלוח" - הריפוד התחתון של .dhero (הפלטה) לא מתווסף לקו המפריד שאחריה; "יום לפני": הלחצן מתכווץ והעזרה נשארת לידו (בנייד) */
+.gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
+.gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
+.gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}
