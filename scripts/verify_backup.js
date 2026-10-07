@@ -92,7 +92,8 @@ async function compare(org) {
   if (missingTables.length) notes.push(`טבלאות חיות שחסרות במסד המשוחזר: ${missingTables.join(', ')}`);
 
   const colsOf = async (c, t) => (await c.query(`select column_name n from information_schema.columns where table_schema='public' and table_name=$1 order by column_name`, [t])).rows.map((r) => r.n);
-  let totalRows = 0, totalExplained = 0, totalUnexplained = 0;
+  const tsColsOf = async (c, t) => (await c.query(`select column_name n from information_schema.columns where table_schema='public' and table_name=$1 and data_type like 'timestamp%'`, [t])).rows.map((r) => r.n);
+  let totalRows = 0, totalExplained = 0, totalUnexplained = 0, deletedLater = 0;
   const report = [];
 
   for (const t of lt.filter((x) => rt.includes(x))) {
@@ -106,26 +107,31 @@ async function compare(org) {
     totalRows += a.c;
     if (a.m === b.m && a.c === b.c) { report.push(`OK        ${t.padEnd(26)} ${a.c} שורות זהות`); continue; }
 
-    const opt = (col, alias) => (common.includes(col) ? `${q(col)}::text ${alias}` : `null ${alias}`);
-    const rows = `select id::text id, ${expr} h, ${opt('updatedAt', 'u')}, ${opt('createdAt', 'cr')}, ${opt('timestamp', 'ts')} from ${q(t)}`;
+    // כל עמודות הזמן של הטבלה: שורה "מוסברת" אם אחת מהן מאוחרת מרגע הגיבוי (נוצרה/עודכנה אחריו)
+    const tsCols = (await tsColsOf(live, t)).filter((c) => common.includes(c));
+    const mx = tsCols.length ? `greatest(${tsCols.map((c) => `coalesce(${q(c)},'-infinity')`).join(', ')})::text` : 'null';
+    const rows = `select id::text id, ${expr} h, ${mx} mx from ${q(t)}`;
     const [LA, RA] = [new Map((await live.query(rows)).rows.map((r) => [r.id, r])), new Map((await rest.query(rows)).rows.map((r) => [r.id, r]))];
     let explained = 0, unexplained = 0;
     const samples = [];
-    const after = (r) => [r.u, r.cr, r.ts].filter(Boolean).some((x) => new Date(x.replace(' ', 'T') + 'Z') > new Date(cutoff.getTime() - 5000));
+    // BackupRun: שורת הריצה שמבצעת את הגיבוי עצמו נראית בקובץ כ-'running' ובחי כ-'ok' - תמיד מוסבר
+    const slack = t === 'BackupRun' ? 180000 : 5000;
+    const after = (r) => r.mx && new Date(r.mx.replace(' ', 'T') + 'Z') > new Date(cutoff.getTime() - slack);
     for (const [id, r] of LA) {
       const o = RA.get(id);
       if (!o) { if (after(r)) explained++; else { unexplained++; samples.push(`חסר בשחזור: ${id}`); } }
       else if (o.h !== r.h) { if (after(r)) explained++; else { unexplained++; samples.push(`שונה: ${id}`); } }
     }
-    for (const id of RA.keys()) if (!LA.has(id)) { unexplained++; samples.push(`קיים בשחזור ולא בחי: ${id}`); }
+    // שורה שקיימת בגיבוי ולא בחי = נמחקה בחי אחרי הגיבוי (מחיקה אין לה חותמת זמן) - אזהרה, לא כשל
+    for (const id of RA.keys()) if (!LA.has(id)) { deletedLater++; samples.push(`נמחקה בחי אחרי הגיבוי (אזהרה): ${id}`); }
     totalExplained += explained;
     totalUnexplained += unexplained;
-    report.push(`${unexplained ? 'DIFF      ' : 'OK(delta) '} ${t.padEnd(26)} חי=${a.c} משוחזר=${b.c} | שינויים אחרי הגיבוי (מוסברים): ${explained} | לא מוסברים: ${unexplained}${samples.length ? ' | ' + samples.slice(0, 5).join('; ') : ''}`);
+    report.push(`${unexplained ? "DIFF      " : "OK(delta) "} ${t.padEnd(26)} חי=${a.c} משוחזר=${b.c} | שינויים אחרי הגיבוי (מוסברים): ${explained} | לא מוסברים: ${unexplained}${samples.length ? ' | ' + samples.slice(0, 5).join('; ') : ''}`);
   }
   console.log('\n===== תוצאות אימות org' + org + ' =====');
   console.log(`קובץ: ${meta.name} (${meta.size} bytes), נוצר ${meta.generated}`);
   report.forEach((l) => console.log(l));
-  console.log(`\nסה"כ שורות חיות: ${totalRows} | הבדלים מוסברים (אחרי הגיבוי): ${totalExplained} | לא מוסברים: ${totalUnexplained}`);
+  console.log(`\nסה"כ שורות חיות: ${totalRows} | הבדלים מוסברים (אחרי הגיבוי): ${totalExplained} | לא מוסברים: ${totalUnexplained} | נמחקו בחי אחרי הגיבוי (אזהרה): ${deletedLater}`);
   notes.forEach((i) => console.log('הערה: ' + i));
   await live.end();
   await rest.end();
