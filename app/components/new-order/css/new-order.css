@@ -248,3 +248,44 @@
 .gm-ds.gm-no .no-banner .nb-r span{padding-top:3px}
 /* כותרת הטבלה: globals.css כופה על כל <th> רקע קרם וצל (!important), design-overrides גופן - בעיצוב כחול כהה וזהב (כמו attendance.css) */
 .gm-ds.gm-no .dlg .rtbl>thead>tr>th{position:static!important;background-color:var(--gm-navy)!important;color:var(--gm-gold-300)!important;font-family:inherit!important;letter-spacing:normal;box-shadow:none!important;outline:0;border-bottom:0!important}
+
+/* ===== פריסת שתי עמודות (העיצוב העדכני B2, בלוק fix-2026-10-01): הסל משמאל בשלב הפריטים, "תשלומים שנרשמו" משמאל בשלב התשלום ===== */
+/* #app.wide של העיצוב: שלבי שתי העמודות רחבים יותר מהשלבים הרגילים (680px) */
+.gm-ds.gm-no .no-app.wide{max-width:1000px!important}
+/* שורת הניווט העליונה (.navtop) - אותם לחצנים כמו התחתונה, צמודה מעל השלב (בעיצוב: margin-bottom:16px) */
+.gm-ds.gm-no .no-app .no-nav.navtop{margin-top:20px;margin-bottom:0}
+.gm-ds.gm-no .no-app .navtop+.no-panels{margin-top:16px}
+/* שלב הפריטים: עמודת הבחירה (מימין ב-RTL) + הסל (משמאל, ~280px) */
+.gm-ds.gm-no .items-split{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start;width:100%;position:relative}
+.gm-ds.gm-no .items-main{display:flex;flex-direction:column;gap:24px;min-width:0}
+.gm-ds.gm-no .items-cart{min-width:0}
+/* בעמודה הרחבה החיפוש / השדות / רשימת ההצעות ממלאים את הרוחב (בקובייה הבודדת הם 440px) */
+.gm-ds.gm-no .items-main .scan,.gm-ds.gm-no .items-main .inpw,.gm-ds.gm-no .items-main .field,.gm-ds.gm-no .items-main .advlist.advstatic{max-width:none;width:100%}
+/* הסל: שורות קומפקטיות, הפעולות בשורה משלהן; תשלומים שנרשמו: אייקון, פרטים, הסרה */
+.gm-ds.gm-no .items-cart .li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px 12px;align-items:start;padding:14px 0}
+.gm-ds.gm-no .items-cart .li>.row{grid-column:1/-1;justify-content:flex-start;gap:8px}
+.gm-ds.gm-no .items-cart .li .ibtn{width:36px;height:36px;border-radius:10px}
+.gm-ds.gm-no .pay-side .li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px 12px;align-items:start;padding:14px 0}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li .t{min-width:0}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li .t b{font-size:16px;line-height:1.35;overflow-wrap:anywhere}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li .t .a{font-size:17px;font-weight:700;margin-top:4px}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .sub-h{flex-wrap:wrap;padding-bottom:16px;margin-bottom:8px;border-bottom:1px solid var(--sky-300)}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .list{border-top:0}
+.gm-ds.gm-no :is(.items-cart,.pay-side) .li:last-child{border-bottom:0}
+.gm-ds.gm-no .items-cart .row.spread{flex-wrap:wrap}
+/* שלב התשלום: עמודת "תשלומים שנרשמו" נדבקת בגלילה, רק כשיש תשלום (.has-side) */
+.gm-ds.gm-no .pay-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;width:100%}
+.gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:40px}
+.gm-ds.gm-no .pay-main{display:flex;flex-direction:column;gap:24px;min-width:0}
+.gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start;background:rgba(255,255,255,.78);border:1px solid var(--sky-300);border-radius:18px;padding:20px 20px 12px;box-shadow:0 8px 24px -14px rgba(15,44,82,.35)}
+/* קו מפריד דק בין הבחירה לסל (בעיצוב אחרי fix-2026-10-01 - בלי כרטיס סביב הסל) */
+@media (min-width:761px){
+  .gm-ds.gm-no .items-main{align-self:stretch;border-inline-end:1px solid var(--sky-300);padding-inline-end:24px}
+}
+/* מתחת ל-761px: עמודה אחת, הסל / התשלומים מתחת */
+@media (max-width:760px){
+  .gm-ds.gm-no .items-split{grid-template-columns:minmax(0,1fr)}
+  .gm-ds.gm-no .items-cart{border-top:1px solid var(--sky-300);padding-top:24px}
+  .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr)}
+  .gm-ds.gm-no .pay-side{position:static}
+}

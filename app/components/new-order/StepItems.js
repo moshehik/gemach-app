@@ -6,6 +6,8 @@
 // לתאריך זה.", "מחשב מחירים...". S05 (לא להכניס): בלי קטגוריה ו"החל מ-₪". S06 (להכניס): מחיר ליד כל תיקון + "להוספה: ₪N".
 // R23: דגם "ללא שם" מוצג בקוד; הקוד מוצג בנפרד רק כשהוא שונה מהשם (בנווה יעקב הם זהים). Q8: "פירוט לתופרת * (חובה)" נאכף.
 // R21 (להסיר): אין "הערות כלליות להזמנה" בשלב הזה.
+// פריסה (העיצוב העדכני B2, בלוק fix-2026-10-01): בדסקטופ (761px ומעלה) שתי עמודות - בחירת הפריט (.items-main) מימין והסל (.items-cart) משמאל
+// (קצה ה-RTL), עם קו מפריד דק בין העמודות ובלי כרטיס סביב הסל; מתחת ל-761px הסל מתחת לבחירה. הלוגיקה והרכיבים - ללא שינוי.
 import { Blk, ClearX, Field, Ic, Note, OneCard, SubH, money } from './NoUi';
 import { CalcErrorNote, DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
 import { alterationDetailsRequired, alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, moneyTxt } from './newOrderLogic';
@@ -160,10 +162,15 @@ function Cart({ ctl }) {
 
 export default function StepItems({ ctl }) {
   return (
-    <OneCard>
-      <PickModel ctl={ctl} />
-      {ctl.pickedModel ? <SizesAndAlt ctl={ctl} /> : null}
-      <Cart ctl={ctl} />
-    </OneCard>
+    <div className="items-split">
+      <div className="items-main">
+        <OneCard>
+          <PickModel ctl={ctl} />
+          {ctl.pickedModel ? <SizesAndAlt ctl={ctl} /> : null}
+        </OneCard>
+      </div>
+      {/* .one נותן לעמודת הסל את אותם כללי כותרת/בלוק של קוביית השלב (.sub-h, .blk) בלי כרטיס "פנינה" סביבה */}
+      <div className="items-cart one"><div className="one-body"><Cart ctl={ctl} /></div></div>
+    </div>
   );
 }

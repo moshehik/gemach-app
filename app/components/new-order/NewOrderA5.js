@@ -71,12 +71,14 @@ function ProgressBars({ ctl }) {
   );
 }
 
-function Nav({ ctl }) {
+// שורת הניווט מופיעה פעמיים (כמו בעיצוב העדכני B2): מעל השלב (top - .navtop) ומתחתיו - אותם לחצנים ואותה לוגיקה
+function Nav({ ctl, top = false }) {
   const k = ctl.stepKey;
   const busy = ctl.saving || ctl.isProcessingCredit;
+  const cls = `row spread wrap no-nav${top ? ' navtop' : ''}`;
   if (ctl.saved) {
     return (
-      <div className="row spread wrap no-nav" data-sec="nav">
+      <div className={cls} data-sec="nav">
         <button type="button" className="btn" onClick={ctl.goTarget}><Ic n="file" c="sm" />{ctl.targetLabel}</button>
         <button type="button" className="btn primary" onClick={ctl.newOrder}><Ic n="plus" />הזמנה חדשה</button>
       </div>
@@ -86,7 +88,7 @@ function Nav({ ctl }) {
   if (k === 'delivery' && ctl.deliveryEdit) {
     const back = STEP_META[ctl.deliveryEdit.to];
     return (
-      <div className="row spread wrap no-nav" data-sec="nav">
+      <div className={cls} data-sec="nav">
         <button type="button" className="btn ghost" onClick={() => ctl.closeDeliveryEdit(false)}><Ic n="x" c="sm" />ביטול</button>
         <button type="button" className="btn primary" disabled={!!ctl.deliveryError} onClick={() => ctl.closeDeliveryEdit(true)}><Ic n="check" />שמור וחזור ל{back ? back.l : 'שלב הקודם'}</button>
       </div>
@@ -101,7 +103,7 @@ function Nav({ ctl }) {
   }[k];
   return (
     <>
-      <div className="row spread wrap no-nav" data-sec="nav">
+      <div className={cls} data-sec="nav">
         {ctl.step > 0
           ? <button type="button" className="btn" disabled={busy} onClick={() => ctl.setStep(ctl.step - 1)}><Ic n="arrr" />חזור</button>
           : <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול</button>}
@@ -195,12 +197,14 @@ export default function NewOrderA5() {
   const t = ctl.toast;
   const savedWarning = ctl.saved && ctl.saved.warning && warnClosed !== ctl.saved.orderId ? ctl.saved.warning : '';
   const banner = bannerFor(ctl.saveError, savedWarning);
+  // #app.wide של העיצוב: שלב הפריטים (חיפוש + סל בשתי עמודות) ושלב התשלום כשכבר נרשם תשלום (עמודת "תשלומים שנרשמו") רחבים יותר
+  const wide = ctl.stepKey === 'items' || (ctl.stepKey === 'payment' && ctl.paymentsList.length > 0);
 
   return (
     <div className="gm-ds gm-no home-bg dlg-dark" dir="rtl" ref={setRoot}>
       <NoPortalRoot.Provider value={rootEl}>
         <HomeSprite />
-        <div className="app no-app" id="app">
+        <div className={`app no-app${wide ? ' wide' : ''}`} id="app">
           <div className="topbar">
             <button type="button" className="back" aria-label="יציאה מהמסך" data-tip="יציאה מהמסך" onClick={ctl.handleExit} disabled={ctl.saving || ctl.isProcessingCredit}><Ic n="back" /></button>
             <div className="ttl"><h1><bdi>הזמנה חדשה</bdi></h1></div>
@@ -213,6 +217,7 @@ export default function NewOrderA5() {
             onClose={() => (ctl.saveError ? ctl.setSaveError(null) : setWarnClosed(ctl.saved.orderId))} /> : null}
           <ProgressBars ctl={ctl} />
           <div className="hero-t" id="heroT"><h2 className="hero-q">{question}</h2></div>
+          <Nav ctl={ctl} top />
           <div className="no-panels">
             <section className="panel on" id={`p${ctl.step + 1}`}>
               <div className="sec" data-sec={ctl.stepKey}><View ctl={ctl} /></div>
