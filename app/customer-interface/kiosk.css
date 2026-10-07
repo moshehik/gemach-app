@@ -341,6 +341,24 @@ body.hide-gregorian-calendar .ka-cal-day .g{display:none}
 .ka-size-pill.avail{background:var(--sage-soft); color:var(--sage)}
 .ka-size-pill.out{background:var(--brick-soft); color:var(--brick); text-decoration:line-through; opacity:.75}
 
+/* ---------- kiosk_size_qty_contrast (דיווח 81b0b4b1): מידה מול כמות פנויה ----------
+   המידה = טקסט כהה גדול על כרטיס לבן עם מסגרת; הכמות = עיגול ירוק מלא עם מספר לבן וקטן יותר.
+   הכול תחת .ka-sq, כך שכשההגדרה כבויה שום דבר מכאן לא חל. */
+.ka-sq .ka-size-pill{
+  display:inline-flex; align-items:center; gap:9px; padding:4px 5px 4px 14px; border-radius:999px;
+  background:#fff; border:2px solid var(--ka-qty-bg,#3E6B4A); color:var(--ink); font-size:18px; font-weight:800; line-height:1.1;
+}
+.ka-sq .ka-size-pill .ka-sz{letter-spacing:.01em}
+.ka-sq .ka-size-pill .ka-qty,
+.ka-sq .ka-sq-legend-qty{
+  min-width:26px; height:26px; padding:0 8px; border-radius:999px; background:var(--ka-qty-bg,#3E6B4A); color:#fff;
+  font-size:13px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; line-height:1;
+}
+.ka-sq .ka-size-pill.out{background:#fff; border-color:var(--brick-soft); color:var(--ink-faint); opacity:1; text-decoration:none}
+.ka-sq .ka-size-pill.out .ka-sz{text-decoration:line-through}
+.ka-sq .ka-size-pill.out .ka-qty{background:var(--brick)}
+.ka-sq .ka-sq-legend{display:flex; align-items:center; gap:8px; margin:0 0 12px; font-size:12.5px; font-weight:700; color:var(--ink-soft)}
+
 /* list view */
 .ka-results-list{display:flex; flex-direction:column; gap:12px}
 .ka-dress-row{

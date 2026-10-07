@@ -997,8 +997,20 @@ export default function CustomerInventoryViewer() {
     </div>
   );
 
+  // kiosk_size_qty_contrast (דיווח 81b0b4b1, נווה יעקב): המידה והכמות הפנויה ממנה נראות שונות בחדות (צבע + גודל גופן), כדי שלא יתבלבלו.
+  // ברירת מחדל (השורה חסרה / false) = התצוגה הקודמת, בדיוק כמו שהייתה.
+  const sizeQtyContrast = settings.kiosk_size_qty_contrast === 'true';
+  const renderSizePillInner = (sName, available) => (sizeQtyContrast ? (
+    <>
+      <span className="ka-sz">{sName}</span>
+      <span className="ka-qty">{available}</span>
+    </>
+  ) : (
+    <>{sName} <span style={{ opacity: 0.75 }}>· {available}</span></>
+  ));
+
   return (
-    <div data-agy-id="customer_inventory_main_container" className="katelier">
+    <div data-agy-id="customer_inventory_main_container" className={`katelier${sizeQtyContrast ? ' ka-sq' : ''}`}>
 
       {/* אייקונים שקיימים במוקאפ אך לא בספרייט הגלובלי (IconSprite.js) */}
       <svg style={{ display: 'none' }} aria-hidden="true">
@@ -1397,6 +1409,12 @@ export default function CustomerInventoryViewer() {
 
             {/* Catalog content */}
             <div style={{ minWidth: 0 }}>
+              {sizeQtyContrast && !loading && displayDresses.length > 0 && (
+                <div className="ka-sq-legend">
+                  <span className="ka-sq-legend-qty">1</span>
+                  המספר בעיגול הירוק הוא כמה שמלות פנויות באותה מידה
+                </div>
+              )}
               {loading ? (
                 <div className="ka-state-box">
                   <div className="ka-spinner" />
@@ -1450,7 +1468,7 @@ export default function CustomerInventoryViewer() {
                                     onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
                                     title={`מידה ${sName}: ${sData.available} פנויות`}
                                     style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                    {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
+                                    {renderSizePillInner(sName, sData.available)}
                                   </span>
                                 ))}
                               </div>
@@ -1510,7 +1528,7 @@ export default function CustomerInventoryViewer() {
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
+                                {renderSizePillInner(sName, sData.available)}
                               </span>
                             ))
                           )}
@@ -1565,7 +1583,7 @@ export default function CustomerInventoryViewer() {
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} <span style={{ opacity: 0.75 }}>· {sData.available}</span>
+                                {renderSizePillInner(sName, sData.available)}
                               </span>
                             ))
                           )}
