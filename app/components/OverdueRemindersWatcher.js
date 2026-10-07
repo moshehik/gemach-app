@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import OverdueOrdersModal from './OverdueOrdersModal';
+import { useNoticeBar } from './menu/NoticeBar';
 import { onActiveInterval } from '@/lib/idleGuard';
 import { overdueCheckKey, isOverdueCheckFresh } from '@/lib/overdueReminders';
 
@@ -28,14 +29,78 @@ const LAST_SHOWN_KEY = 'overdueRemindersLastShownAt';
 // דיווח (2026-09-16): המרה מ-window.customConfirm הטקסטואלי למודל אמיתי
 // (OverdueOrdersModal) כדי לאפשר מיון השורות לפי מספר הזמנה וקישור/אייקון נקי
 // לכניסה לכל הזמנה - customConfirm (PopupProvider.js) מציג רק טקסט, ללא JSX.
+//
+// המעטפת החדשה (A5, החלטה OD-16 + תצוגת העיצוב): במקום החלון - פס התראה כחול מתחת לסרגל העליון (menu/NoticeBar.js),
+// עם שורה לחיצה לכל הזמנה. מעטפת ה-legacy ממשיכה להציג את החלון כמו קודם. הלוגיקה (שעה, sessionStorage, סף האיחור) זהה.
+export const OVERDUE_NOTICE_ID = 'overdue-orders';
+
+// מצב הפס (sessionStorage, לכל עובד): { at: מתי נשלף, orders, dismissedAt }. פס לא חוסם, ולכן ריענון דף מחזיר אותו מהמצב השמור
+// (בלי בקשה חדשה) כל עוד לא נסגר בשעה האחרונה; סגירה (X) נזכרת שעה, ואז הבדיקה השעתית מציגה אותו שוב - "כל שעה להקפיץ תזכורת".
+export const overdueBarKey = (authToken) => `overdueBarState:${authToken || ''}`;
+
+export function buildOverdueNotice(orders, onClose) {
+  const sorted = [...orders].sort((a, b) => a.orderId - b.orderId);
+  return {
+    id: OVERDUE_NOTICE_ID,
+    kind: 'warning',
+    title: `הזמנות שלא הוחזרו (${sorted.length})`,
+    detail: 'מועד ההחזרה של המשפחות האלה עבר',
+    rows: sorted.map((o) => ({
+      icon: 'file',
+      text: `הזמנה ${o.orderId} · ${o.customerName} · ${o.daysLate} ימי איחור`,
+      href: `/orders/${o.orderId}`,
+    })),
+    onClose,
+  };
+}
+
 export default function OverdueRemindersWatcher({ authToken }) {
   const [orders, setOrders] = useState(null);
+  const bar = useNoticeBar();
+  const barRef = useRef(bar);
+  barRef.current = bar; // eslint-disable-line react-hooks/refs
 
   useEffect(() => {
     if (!authToken) return undefined;
 
     let cancelled = false;
+    const barKey = overdueBarKey(authToken);
+    const readBarState = () => {
+      try { return JSON.parse(sessionStorage.getItem(barKey) || 'null'); } catch (e) { return null; }
+    };
+    const writeBarState = (st) => {
+      try { sessionStorage.setItem(barKey, JSON.stringify(st)); } catch (e) { /* storage חסום - best-effort */ }
+    };
+    // המעטפת החדשה: פס התראה במקום חלון. אותה בדיקה שעתית, אבל מצב "נסגר" נשמר (ולא "הוצג"), כך שריענון לא מעלים את הפס ולא מקפיץ סתם.
+    const checkBar = async () => {
+      try {
+        const st = readBarState();
+        const fresh = st && Array.isArray(st.orders) && isOverdueCheckFresh(String(st.at));
+        let orders = fresh ? st.orders : null;
+        if (!fresh) {
+          const res = await fetch('/api/orders/overdue', { cache: 'no-store' });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (cancelled) return;
+          orders = Array.isArray(data.orders) ? data.orders : [];
+          writeBarState({ at: Date.now(), orders, dismissedAt: null });
+        }
+        const dismissedAt = fresh ? Number(st.dismissedAt || 0) : 0;
+        if (orders.length === 0 || (dismissedAt && Date.now() - dismissedAt < HOUR_MS)) {
+          if (barRef.current) barRef.current.dismiss(OVERDUE_NOTICE_ID);
+          return;
+        }
+        barRef.current.add(buildOverdueNotice(orders, () => {
+          const cur = readBarState() || { at: Date.now(), orders };
+          writeBarState({ ...cur, dismissedAt: Date.now() });
+        }));
+      } catch (e) {
+        // best-effort בלבד - לא חוסם כלום אם השרת/הרשת לא זמינים כרגע.
+      }
+    };
+
     const checkAndAlert = async () => {
+      if (barRef.current) return checkBar();
       try {
         const lastShownAt = Number(sessionStorage.getItem(LAST_SHOWN_KEY) || 0);
         if (Date.now() - lastShownAt < HOUR_MS) return;

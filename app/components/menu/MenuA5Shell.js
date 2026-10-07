@@ -29,6 +29,7 @@ import SearchBody, { useMenuSearch } from './MenuSearchPanel';
 import BellBody, { useNotifications } from './MenuBell';
 import { UserButton, UserPanelBody, userDisplay } from './MenuUserPanel';
 import ManagerMessageDialog from './ManagerMessageDialog';
+import NoticeBarArea, { NoticeBarProvider, useNoticeBarState } from './NoticeBar';
 import useNavHistory from './useNavHistory';
 import useAdminRecents from './useAdminRecents';
 import SearchKeySync from '../search/SearchKeySync';
@@ -47,6 +48,7 @@ export default function MenuA5Shell({
   // חיפוש בתפריט, הדגשה) עובדת על העץ הזה.
   const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);
   const [queryString, setQueryString] = useState(''); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
+  const notices = useNoticeBarState(); // פס ההתראות הכחול מתחת לסרגל (NoticeBar.js)
   const popup = usePopup();
   const showAlert = popup && popup.showAlert;
   const rail = tree.rail || {};
@@ -478,6 +480,7 @@ export default function MenuA5Shell({
 
   return (
     <A5ShellProvider value={{ menuTree: tree }}>
+      <NoticeBarProvider value={notices.api}>
       <div className="a5-shell">
         {showOverdueRemindersPopup && <OverdueRemindersWatcher authToken={authToken} />}
         {!hideInternalMessaging && <ShiftMessageWatcher authToken={authToken} />}
@@ -758,6 +761,7 @@ export default function MenuA5Shell({
             </div>
           </header>
           <div id="snScrim" className={drawerOpen ? 'on' : ''} onClick={() => setDrawerOpen(false)} />
+          <NoticeBarArea items={notices.items} api={notices.api} />
           <div className="pl-tt" role="tooltip" ref={ttRef} />
           {tree.meta && tree.meta.managementMessages && !hideInternalMessaging && tree.user && tree.user.logged && (
             <ManagerMessageDialog
@@ -776,6 +780,7 @@ export default function MenuA5Shell({
           </div>
         </div>
       </div>
+      </NoticeBarProvider>
     </A5ShellProvider>
   );
 }
