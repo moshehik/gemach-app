@@ -4,6 +4,7 @@
 // אותם שערים כמו בישן: "אופן ההזמנה" לפי phone_order_marker_enabled / track_branch_on_order / branches_enabled; המשלוח לפי
 // enable_deliveries (ובתנאי שכרטיס "משלוח / סניף / טלפוני" מוצג: דגלי טלפוני/סניף או delivery_show_in_order !== 'false'); כתובת שונה לפי delivery_allow_address_override או כשהיא חובה; "יום לפני" לפי delivery_one_day_before_option.
 // S04 (לא להכניס): אין שורת "דמי משלוח" כאן. R15 (אושר): סניף הביצוע נזכר במחשב הזה (localStorage, ב-controller ובשינוי כאן).
+import { useState } from 'react';
 import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, Tip, NO_FILL } from './NoUi';
 import NoSuggest from './NoSuggest';
 import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility } from './newOrderLogic';
@@ -16,6 +17,14 @@ export default function StepDelivery({ ctl }) {
   const branches = branchListOf(s);
   const set = (patch) => ctl.setOrder(prev => ({ ...prev, ...patch }));
   const cityOptions = [...new Set([...(o.deliveryCity ? [o.deliveryCity] : []), ...ctl.deliveryCityOptions])];
+  // 87c7a432 (נווה יעקב): כמו הישן - delivery_different_address_button + delivery_charge_customer_city_fallback + עיר הלקוחה ברשימת ערי המשלוח:
+  // בלי בחירת עיר שוב; כתובת הלקוחה וכפתור "כתובת שונה למשלוח" שפותח עיר + כתובת. כבוי = השדות כמו קודם.
+  const [otherOpen, setOtherOpen] = useState(false);
+  const custCity = String((o.selectedCustomer && o.selectedCustomer.city) || '').trim();
+  const addressButtonOn = s.delivery_different_address_button === 'true' && s.delivery_charge_customer_city_fallback === 'true'
+    && !!custCity && ctl.deliveryRateCities.includes(custCity);
+  const differentOpen = addressButtonOn && (otherOpen || !!o.deliveryCity || !!o.deliveryAddress);
+  const useSavedAddress = addressButtonOn && !differentOpen;
 
   if (!showMode && !showDelivery) {
     return (
@@ -76,18 +85,28 @@ export default function StepDelivery({ ctl }) {
               <Blk className={`card dfields${o.isDelivery ? '' : ' off'}`} inert={!o.isDelivery}>
                 <SubH icon="pin" title="יעד" />
                 <div className="grid2">
+                  {useSavedAddress ? (
+                    <Field label="כתובת משלוח" icon="pin">
+                      <div className="hint">המשלוח יגיע לכתובת הלקוחה: {[[o.selectedCustomer.street, o.selectedCustomer.houseNum].filter(Boolean).join(' '), custCity].filter(Boolean).join(', ')}</div>
+                      <button type="button" className="btn" id="delOtherAddrBtn" style={{ marginTop: 8 }} onClick={() => setOtherOpen(true)}><Ic n="pin" c="sm" />כתובת שונה למשלוח</button>
+                    </Field>
+                  ) : (<>
                   <Field label={<>עיר משלוח (לחישוב מחיר){ctl.deliveryCityRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelCity">
                     {/* כמו ה-select בישן: רק ערים מהרשימה (delivery_price_by_city, או ערי הלקוחות כשהיא ריקה) - ערך שהוקלד ואינו ברשימה מתנקה ביציאה מהשדה */}
                     <NoSuggest id="noDelCity" value={o.deliveryCity || ''} options={cityOptions} onChange={(v) => set({ deliveryCity: v })}
                       onBlurValue={(v) => { if (v && !cityOptions.includes(v)) set({ deliveryCity: '' }); }} inputProps={{ placeholder: 'עיר' }} />
                     <ClearX show={!!o.deliveryCity} onClear={() => set({ deliveryCity: '' })} />
                   </Field>
-                  {(s.delivery_allow_address_override === 'true' || ctl.deliveryAddressRequired) ? (
+                  {(s.delivery_allow_address_override === 'true' || ctl.deliveryAddressRequired || differentOpen) ? (
                     <Field label={<>כתובת משלוח שונה{ctl.deliveryAddressRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelAddr">
                       <input className="inp" id="noDelAddr" placeholder="כתובת למשלוח (שונה ממגורים)" autoComplete="off" {...NO_FILL} value={o.deliveryAddress || ''} onChange={(e) => set({ deliveryAddress: e.target.value })} />
                       <ClearX show={!!o.deliveryAddress} onClear={() => set({ deliveryAddress: '' })} />
                     </Field>
                   ) : null}
+                  {differentOpen ? (
+                    <div className="row"><button type="button" className="btn ghost" id="delBackAddrBtn" onClick={() => { setOtherOpen(false); set({ deliveryCity: '', deliveryAddress: '' }); }}>חזרה לכתובת הלקוחה</button></div>
+                  ) : null}
+                  </>)}
                 </div>
                 <div id="delMsgs">
                   {ctl.deliveryCityRequired && !String(o.deliveryCity || '').trim() ? <Note style={{ marginTop: 12 }}>עיר המגורים של הלקוח אינה ברשימת ערי המשלוח - יש לבחור עיר משלוח.</Note> : null}

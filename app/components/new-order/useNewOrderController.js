@@ -874,7 +874,7 @@ export default function useNewOrderController({ router }) {
     newItem, setNewItemField, toggleSizeSelection, modelQuery, setModelQuery, modelList, pickedModel, pickModel, resolveTypedModel, modelCodes,
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
     calculatedData, calculating, calcError, retryCalc, savingCustomer, totalAmount, activeItems, datesFilled, rangePending, setRangePending,
-    deliveryCityOptions, deliveryAddressRequired, deliveryCityRequired, deliveryError, deliveryEnabled, deliveryEdit, openDeliveryEdit, closeDeliveryEdit,
+    deliveryCityOptions, deliveryRateCities: deliveryPriceCities, deliveryAddressRequired, deliveryCityRequired, deliveryError, deliveryEnabled, deliveryEdit, openDeliveryEdit, closeDeliveryEdit,
     paymentMethodOptions, payment, setPayment, paymentsList, removePayment, totalPaid, remaining, handleAddPaymentClick, openCredit,
     creditCardData, setCreditCardData, creditError, isProcessingCredit, handleProcessCreditCard,
     saving, saveError, setSaveError, saveOrder, saved, draftOrderId,
