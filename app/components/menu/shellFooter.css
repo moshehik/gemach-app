@@ -1,0 +1,38 @@
+/* תחתית האתר בכל דפי המעטפת (ShellFooter.js). הכללים של .site-foot עצמם בפלטה (design-system/components.css, .gm-ds .site-foot);
+   כאן רק מה שדף הבית מוסיף ב-home.css בהיקף .gm-home - שורה כבויה "בקרוב", כפתורים בתחתית, חלון מדיניות הפרטיות - והחזרת
+   הגופן שכללי הגלובלי הישן כופים ב-!important על כפתורים וכותרות. */
+
+.gm-ds.gm-shellfoot { display: block; }
+.gm-ds.gm-shellfoot :is(button, input, select, textarea) { font-family: inherit !important; }
+.gm-ds.gm-shellfoot :is(h1, h2, h3, h4, h5, h6) { font-family: inherit !important; letter-spacing: normal; }
+
+.gm-ds.gm-shellfoot .site-foot .sf-soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: default;
+}
+.gm-ds.gm-shellfoot .site-foot .sf-soon .ic { color: rgba(255, 255, 255, 0.4); }
+.gm-ds.gm-shellfoot .site-foot .sf-badge {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 220, 143, 0.55);
+  color: var(--gm-gold-300);
+}
+.gm-ds.gm-shellfoot .site-foot .sf-col button.lnk { gap: 10px; }
+
+/* חלון מדיניות הפרטיות */
+.gm-ds.gm-shellfoot .dlg.priv-dlg { max-width: 640px; display: flex; flex-direction: column; gap: 0; }
+.gm-ds.gm-shellfoot .priv-dlg .priv-body { overflow-y: auto; max-height: min(56vh, 520px); padding-inline-end: 6px; margin-bottom: 16px; line-height: 1.65; }
+.gm-ds.gm-shellfoot .priv-dlg .priv-body h3 { margin: 16px 0 4px; font-size: 16px; font-weight: 600; color: var(--gm-navy); }
+.gm-ds.gm-shellfoot .priv-dlg .priv-body p,
+.gm-ds.gm-shellfoot .priv-dlg .priv-body ul { margin: 0 0 8px; color: var(--gm-ink2); }
+.gm-ds.gm-shellfoot .priv-dlg .priv-body ul { padding-inline-start: 20px; }
+
+@media print { .gm-ds.gm-shellfoot { display: none !important; } }
