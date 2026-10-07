@@ -58,3 +58,4 @@ jobs:
           echo "restore finished OK"
       - name: Compare restored data with live DB
         run: node scripts/verify_backup.js compare ${{ matrix.org }}
+# verify run 10:27
