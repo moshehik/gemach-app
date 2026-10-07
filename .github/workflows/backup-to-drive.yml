@@ -57,4 +57,5 @@ jobs:
           DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
           DRIVE_BRIDGE_URL: ${{ secrets.DRIVE_BRIDGE_URL }}
           DRIVE_BRIDGE_SECRET: ${{ secrets.DRIVE_BRIDGE_SECRET }}
+          BACKUP_ALERT_EMAIL: ${{ secrets.BACKUP_ALERT_EMAIL }}
         run: node scripts/cloud_backup.js
