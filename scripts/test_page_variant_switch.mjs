@@ -428,7 +428,8 @@ export default function AdminHubPage({ showSite = false }) {
 const PINNED_BLOBS = {
   // + קיזוז זיכוי פתוח אחרי יצירת הזמנה עם חוב (דיווח 679a860b, מאחורי customer_credit_offset_prompt; כבוי = אפס שינוי)
   // + חלון "כמה לקוחות עם מספר טלפון זה": אזור גלילה לרשימה (דיווח 7a6d97c6, תיקון באג - בלי מתג)
-  'app/orders/new/LegacyNewOrderPage.js': '00d58d45269e2c9b6841b31e7a1b0e985d925b12',
+  // + order_inline_customer_edit (דיווח f96f3952): "עריכת פרטי לקוח" נפתח כחלון באותו מסך (CustomerCompleteModal.js) כשהמתג דולק; כבוי = אפס שינוי
+  'app/orders/new/LegacyNewOrderPage.js': 'b9ea196783cf3bb5483250ed32ada6dc41c03106',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {

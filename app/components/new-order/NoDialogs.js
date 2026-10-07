@@ -5,9 +5,10 @@
 // אף חלון כאן לא משתמש ב-window.alert / confirm / customConfirm / customAuthPrompt.
 import { useEffect, useId, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { Ic, Note, NO_FILL } from './NoUi';
+import { Ic, Note, NO_FILL, Switch } from './NoUi';
 import { getCustomerFullName, getMissingMandatoryCustomerFields, CUSTOMER_FIELD_LABELS, cardNumberInput, tokefInput, parseSwipe, plural, moneyTxt } from './newOrderLogic';
 import { parseFieldGroups, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
+import { buildCompletionPlan, initialValues, validateCompletion, saveCustomerCompletion, groupLabel } from '@/lib/customerInlineEdit';
 
 // ---------- מסגרת ----------
 // D7 (נגישות): aria-labelledby לכותרת החלון (ה-h1/h2/h3 הראשון בתוכו), מלכודת פוקוס (Tab / Shift+Tab נשארים בתוך החלון)
@@ -228,7 +229,7 @@ export function SpacingDialog({ close }) {
 }
 
 // לקוח קיים לפי טלפון (חלון "לקוח קיים במערכת")
-export function DuplicateCustomerDialog({ customers, settings, onUse, onCreate, close }) {
+export function DuplicateCustomerDialog({ customers, settings, onUse, onCreate, onEdit, close }) {
   const groups = parseFieldGroups(settings.mandatory_field_groups);
   return (
     <>
@@ -245,7 +246,9 @@ export function DuplicateCustomerDialog({ customers, settings, onUse, onCreate, 
               <div className="t">
                 <b>{getCustomerFullName(c)}</b>{c.isBlocked ? <> <span className="chip red">לקוח חסום</span></> : null}
                 <div className="faint sm">טלפון: <bdi>{c.phone1}{c.phone2 ? ` | ${c.phone2}` : ''}</bdi> · עיר: {c.city || 'לא צוינה'}</div>
-                {missing.length ? <div className="faint sm">חסר ללקוח: {missing.join(', ')}. <a href={`/customers/${c.id}`} target="_blank" rel="noreferrer" className="lnk">עריכת פרטי לקוח</a></div> : null}
+                {missing.length ? <div className="faint sm">חסר ללקוח: {missing.join(', ')}. {onEdit
+                  ? <button type="button" className="btn sm" onClick={() => onEdit(c)}><Ic n="pencil" c="sm" />עריכת פרטי לקוח</button>
+                  : <a href={`/customers/${c.id}`} target="_blank" rel="noreferrer" className="lnk">עריכת פרטי לקוח</a>}</div> : null}
                 <div style={{ marginTop: 8 }}><button type="button" className="btn sm" onClick={() => onUse(c)}><Ic n="check" c="sm" />השתמש בלקוח הזה</button></div>
               </div>
             </div>
@@ -255,6 +258,72 @@ export function DuplicateCustomerDialog({ customers, settings, onUse, onCreate, 
       <Btns style={{ marginTop: 16 }}>
         <button type="button" className="btn block" onClick={onCreate}><Ic n="plus" c="sm" />צור לקוח חדש בכל זאת</button>
         <button type="button" className="btn ghost block" onClick={() => close()}><Ic n="x" c="sm" />ביטול</button>
+      </Btns>
+    </>
+  );
+}
+
+// השלמת פרטי לקוח קיים באותו מסך (דיווח f96f3952, מאחורי order_inline_customer_edit): רק השדות שחסרים, שמירה דרך PUT /api/customers/[id],
+// ואז close(הלקוח המעודכן) - הבקר בוחר אותו אוטומטית. הלוגיקה ב-lib/customerInlineEdit.js (משותפת לאשף הישן). Escape / "ביטול" = close(null).
+export function CompleteCustomerDialog({ customer, missingKeys, groups, mode, close }) {
+  const [plan] = useState(() => buildCompletionPlan(missingKeys, groups));
+  const [values, setValues] = useState(() => initialValues(plan));
+  const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const busyRef = useRef(false);
+  const check = validateCompletion(plan, values, customer);
+  const name = getCustomerFullName(customer);
+  const set = (k, v) => { setServerError(''); setValues(prev => ({ ...prev, [k]: v })); };
+  const submit = async () => {
+    if (busyRef.current) return;
+    setTried(true);
+    if (!check.ok) return;
+    busyRef.current = true; setBusy(true); setServerError('');
+    try {
+      close(await saveCustomerCompletion(customer, values));
+    } catch (e) {
+      setServerError(e.message || 'שגיאה בשמירת פרטי הלקוח');
+      busyRef.current = false; setBusy(false);
+    }
+  };
+  const onKeyDown = (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); submit(); } };
+  return (
+    <>
+      <h2>השלמת פרטי לקוח</h2>
+      <div className="sub"><b>{name}</b> - חסרים רק הפרטים האלה. אחרי השמירה הלקוח יתעדכן ויבחר אוטומטית להמשך ההזמנה.</div>
+      {plan.fields.map((f, i) => {
+        const id = `noCc_${f.key}`;
+        const err = tried && check.errors[f.key];
+        const errEl = err ? <div className="muted sm no-ferr" id={`${id}_err`} role="alert"><Ic n="alert" c="sm" />{err}</div> : null;
+        if (f.kind === 'switch') {
+          return (
+            <div className="mfld" key={f.key} style={i ? { marginTop: 12 } : undefined}>
+              <div className="trow"><Switch id={id} checked={values[f.key]} onChange={(v) => set(f.key, v)} label={f.label} /><span>{f.label}{f.required ? ' *' : ''}</span></div>
+              {errEl}
+            </div>
+          );
+        }
+        return (
+          <div className="mfld" key={f.key} style={i ? { marginTop: 12 } : undefined}>
+            <label className="lbl with-ic" htmlFor={id}>{f.label}{f.required ? ' *' : ''}</label>
+            <div className="inpw">
+              <input className="inp" id={id} dir={f.ltr ? 'ltr' : undefined} type={f.kind === 'tel' ? 'tel' : 'text'} autoComplete="off" {...NO_FILL}
+                inputMode={f.kind === 'tel' ? 'tel' : f.kind === 'digits' ? 'numeric' : f.kind === 'email' ? 'email' : undefined}
+                value={values[f.key]} data-autofocus={i === 0 ? 'true' : undefined} onKeyDown={onKeyDown} onChange={(e) => set(f.key, e.target.value)}
+                aria-invalid={err ? 'true' : undefined} aria-describedby={err ? `${id}_err` : undefined} />
+            </div>
+            {errEl}
+          </div>
+        );
+      })}
+      {plan.groups.map((g) => (
+        <Note key={g.join('|')} className={tried && check.groupErrors.length ? 'no-grp' : 'empty'} style={{ marginTop: 12 }}>יש למלא לפחות אחד מבין: {groupLabel(g)}.</Note>
+      ))}
+      {serverError ? <Note style={{ marginTop: 12 }}>{serverError}</Note> : null}
+      <Btns>
+        <button type="button" className="btn primary lg block" onClick={submit} disabled={busy} aria-busy={busy}><Ic n="check" />{busy ? 'שומר...' : (mode === 'update' ? 'שמור' : 'שמור ובחר את הלקוח')}</button>
+        <button type="button" className="btn ghost block" onClick={() => close(null)} disabled={busy}><Ic n="x" c="sm" />ביטול</button>
       </Btns>
     </>
   );

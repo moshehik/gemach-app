@@ -34,13 +34,15 @@ function CustRow({ c, open, onClick }) {
   );
 }
 
-function MissLine({ c, ctl }) {
+function MissLine({ c, ctl, mode = 'use' }) {
   const parts = [...ctl.missingOf(c).map(k => CUSTOMER_FIELD_LABELS[k]), ...unsatisfiedFieldGroupShortLabels(c, ctl.fieldGroups)];
   if (!parts.length) return null;
   return (
     <Note style={{ marginTop: 14 }}>
       חסר ללקוח: {parts.join(', ')}.
-      <div style={{ marginTop: 6 }}><a href={`/customers/${c.id}`} target="_blank" rel="noreferrer" className="lnk">עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)<Ic n="ext" c="sm" /></a></div>
+      <div style={{ marginTop: 6 }}>{ctl.inlineCustomerEdit
+        ? <button type="button" className="btn sm" onClick={() => ctl.editCustomerInline(c, mode)}><Ic n="pencil" c="sm" />עריכת פרטי לקוח</button>
+        : <a href={`/customers/${c.id}`} target="_blank" rel="noreferrer" className="lnk">עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)<Ic n="ext" c="sm" /></a>}</div>
     </Note>
   );
 }
@@ -88,7 +90,9 @@ function PhoneTab({ ctl }) {
             {one && ctl.settings.hok_enabled === 'true' ? <HokCard value={orderHok(ctl)} onChange={setOrderHok(ctl)} /> : null}
             <div className="row wrap" style={{ marginTop: 14, gap: 10 }}>
               <button type="button" className="btn primary" disabled={!sel} onClick={() => sel && ctl.handleUseExistingCustomer(sel)}><Ic n="check" />כן, זה הלקוח</button>
-              {anyMissing && (sel || one) ? <a className="btn" href={`/customers/${(sel || one).id}`} target="_blank" rel="noreferrer"><Ic n="pencil" c="sm" />עריכת פרטי לקוח</a> : null}
+              {anyMissing && (sel || one) ? (ctl.inlineCustomerEdit
+                ? <button type="button" className="btn" onClick={() => ctl.editCustomerInline(sel || one, 'use')}><Ic n="pencil" c="sm" />עריכת פרטי לקוח</button>
+                : <a className="btn" href={`/customers/${(sel || one).id}`} target="_blank" rel="noreferrer"><Ic n="pencil" c="sm" />עריכת פרטי לקוח</a>) : null}
               <button type="button" className="btn ghost" onClick={() => { ctl.setNewCustomer(prev => ({ ...prev, phone1: ctl.phoneSearchInput.trim() })); ctl.setFoundCustomersFromPhone([]); ctl.setSearchMode('new'); }}><Ic n="plus" c="sm" />אף אחד מאלה - לקוח חדש</button>
             </div>
           </>
@@ -112,7 +116,7 @@ function ListTab({ ctl }) {
         <div style={{ marginTop: 16 }}>
           <div className="lbl">נבחר</div>
           <div className="hres"><div className="hgrp"><CustRow c={c} open /></div></div>
-          <MissLine c={c} ctl={ctl} />
+          <MissLine c={c} ctl={ctl} mode="update" />
           {ctl.settings.hok_enabled === 'true' ? <HokCard value={orderHok(ctl)} onChange={setOrderHok(ctl)} /> : null}
         </div>
       ) : (
