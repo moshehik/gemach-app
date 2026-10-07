@@ -506,6 +506,7 @@ model OrderItem {
   @@index([barcode])
   @@index([isDeleted])
   @@index([createdAt])
+  @@index([updatedAt]) // 2026-10-07: "הזמנות שעודכנו" בלו״ז (lib/schedule/updatedOrders.js); נוצר ישירות בשני ה-DB (CREATE INDEX CONCURRENTLY OrderItem_updatedAt_idx)
   @@index([isTaken])
   @@index([isReturned])
   @@index([takenDate])
