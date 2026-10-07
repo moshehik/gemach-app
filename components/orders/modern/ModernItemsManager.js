@@ -54,7 +54,7 @@ const dedupeAuditLogs = (logs) => {
  * חשוף דרך ref: scan(barcode) — סריקת ברקוד מהסיידבר מבצעת השכרה/החזרה
  * (כולל אימות מלאי בשרת וטיפול בפריט שלא הוחזר מהזמנה קודמת).
  */
-const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, totalRequired, totalPaid, locked = false }, ref) {
+const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, onItemDeleted, inventoryCache, totalRequired, totalPaid, locked = false }, ref) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [showAlterations, setShowAlterations] = useState(true);
   const [detailsModalItem, setDetailsModalItem] = useState(null);
@@ -250,7 +250,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const totalPrice = activeItems.reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
   useImperativeHandle(ref, () => ({
-    scan: (barcode) => handleBarcodeScan(barcode)
+    scan: (barcode) => handleBarcodeScan(barcode),
+    // order_card_defer_payment_prompt: כפתור "הוספת פריט נוסף" בהודעת החיוב החדש (LegacyOrderPage) פותח שורה חדשה כמו "הוסף פריט"
+    addItem: () => handleAddItem()
   }));
 
   // סריקת ברקוד (מהסיידבר) — משכירה פריט ממתין או מחזירה פריט מושכר.
@@ -554,6 +556,8 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       : 'האם אתה בטוח שברצונך למחוק פריט זה?');
     if (!confirmed) return;
     handleItemChange(index, 'isDeleted', !isCurrentlyDeleted);
+    // order_card_save_after_item_delete (דיווח 5cf81871): הכרטיס מעביר את זה לשמירה הרגילה (handleSave) - רק מחיקה של פריט שכבר נשמר בהזמנה, לא ביטול שורה חדשה.
+    if (!isCurrentlyDeleted && item.id && onItemDeleted) onItemDeleted(item);
   };
 
   const handleAddItem = () => {

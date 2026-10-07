@@ -197,6 +197,7 @@ export default function OrderDetailsPage({ params }) {
   // מחזיק תמיד את הגרסה העדכנית של handleExit (המוגדר בהמשך הקומפוננטה) כדי שניתן יהיה
   // לקרוא לו מ-useEffect שמוגדר לפני ה-early return, בלי לשבור את סדר ה-hooks.
   const handleExitRef = useRef(null);
+  const handleSaveRef = useRef(null);
   // מסומן ל-true כשיציאה נחסמה כי השמירה שקדמה לה יצרה חוב חדש שהעובד עדיין לא טיפל
   // בו (ר' handleExit) - מבטיח שניסיון יציאה חוזר לא ינצל את קיצור הדרך "אין שינויים
   // שלא נשמרו" כדי לצאת בשקט בלי שעובר דרך בדיקת החוב הרגילה.
@@ -213,6 +214,15 @@ export default function OrderDetailsPage({ params }) {
   // "פשוט שמר בלי לבקש תשלום" - לא היה מספיק ברור). number = סכום היתרה לתשלום, מציג;
   // null = סגורה. ר' handleSave/handleExit למטה.
   const [paymentContinueAmount, setPaymentContinueAmount] = useState(null);
+  // order_card_defer_payment_prompt (דיווחים b45fd22e + 96bcbf45) - כבוי (ברירת מחדל) = אחרי כל פריט שנוסף וגרם לחוב חדש (נווה יעקב, enable_order_edit_summary_confirm) הכרטיס עובר
+  // מיד לטאב תשלומים ופותח את חלונית "השלמת תשלום", כמו תמיד. דולק = נשארים בטאב הפריטים (אפשר להוסיף פריט אחרי פריט), מוצגת הודעת חיוב עם כפתורים, וחלון התשלום נפתח
+  // אוטומטית כשעוברים ללשונית אחרת או כשיוצאים מההזמנה. deferredDebtPrompt = יש חיוב חדש שחלון התשלום שלו מחכה.
+  const [deferPaymentPrompt, setDeferPaymentPrompt] = useState(false);
+  const [deferredDebtPrompt, setDeferredDebtPrompt] = useState(false);
+  // order_card_save_after_item_delete (דיווח 5cf81871) - כבוי (ברירת מחדל) = מחיקת פריט היא שינוי מקומי שנשמר רק ב"שמור שינויים". דולק = אחרי שמאשרים מחיקת פריט שכבר נשמר
+  // מופעלת מיד השמירה הרגילה (handleSave, עם כל האישורים שלה: סיכום, ת"ז, אישור מנהל), ואם נוצר זיכוי בלי פרטי בנק נפתח מיד חלון פרטי הבנק (כמו אחרי שמירה ידנית).
+  const [saveAfterItemDelete, setSaveAfterItemDelete] = useState(false);
+  const [autoSaveAfterDelete, setAutoSaveAfterDelete] = useState(false);
   // מחזיק את פונקציית ה-resolve של ה-Promise שמחזירה confirmSaveSummaryIfNeeded, כדי
   // שכפתורי החלון (שמעבר לרינדור הזה) יוכלו "לענות" לקריאה שממתינה ב-handleSave/handleExit.
   const summaryConfirmResolverRef = useRef(null);
@@ -338,6 +348,10 @@ export default function OrderDetailsPage({ params }) {
         if (additionalPaymentSetting) setAllowAdditionalPayment(additionalPaymentSetting.value === 'true');
         const editRedirect = data.find(s => s.key === 'order_edit_redirect_screen');
         if (editRedirect && editRedirect.value) setOrderEditRedirectScreen(editRedirect.value);
+        const deferPaymentSetting = data.find(s => s.key === 'order_card_defer_payment_prompt');
+        if (deferPaymentSetting) setDeferPaymentPrompt(deferPaymentSetting.value === 'true');
+        const saveAfterDeleteSetting = data.find(s => s.key === 'order_card_save_after_item_delete');
+        if (saveAfterDeleteSetting) setSaveAfterItemDelete(saveAfterDeleteSetting.value === 'true');
         const creditOffsetSetting = data.find(s => s.key === 'customer_credit_offset_prompt');
         if (creditOffsetSetting) setCreditOffsetPromptEnabled(creditOffsetSetting.value === 'true');
         const saveInFooterSetting = data.find(s => s.key === 'order_card_save_in_footer');
@@ -348,6 +362,13 @@ export default function OrderDetailsPage({ params }) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // order_card_save_after_item_delete: ה-flag נדלק באותו אירוע שבו הפריט סומן כמחוק, ולכן הרינדור הזה כבר כולל את הפריט המחוק - handleSaveRef מצביע על handleSave של הרינדור הזה.
+  useEffect(() => {
+    if (!autoSaveAfterDelete) return;
+    setAutoSaveAfterDelete(false);
+    if (handleSaveRef.current) handleSaveRef.current(null, { promptPrint: false });
+  }, [autoSaveAfterDelete]);
 
   // 14 - בקשת ת״ז לפני עריכה/ביטול (prompt פשוט, מותנה ב-require_id_for_edit_cancel)
   // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה (השרת ממילא לא דורש כשאין - ר' route.js) -
@@ -1133,6 +1154,7 @@ export default function OrderDetailsPage({ params }) {
       // הנה מה שנשאר לעשות" בלי צורך בהודעת הצלחה נפרדת שרק מסיטה את הפוקוס ממנה.
       const showsPaymentContinuePrompt = newDebtCreatedBySave && enableEditSummaryConfirm;
       if (newDebtCreatedBySave) {
+        setDeferredDebtPrompt(false); // החלון כבר נפתח כאן (או שהשמירה מעבירה לתשלומים) - לא לפתוח אותו שוב בהחלפת לשונית
         setActiveTab('payments');
         if (showsPaymentContinuePrompt) setPaymentContinueAmount(freshDebtNow);
       }
@@ -1208,10 +1230,31 @@ export default function OrderDetailsPage({ params }) {
       const freshDebtNow = Math.round((freshRequired - freshPaid) * 100) / 100;
       const openedDebtRounded = openedDebt !== null ? Math.round(openedDebt * 100) / 100 : 0;
       if (freshDebtNow > 0 && freshDebtNow > openedDebtRounded + 0.01) {
-        setActiveTab('payments');
-        setPaymentContinueAmount(freshDebtNow);
+        if (deferPaymentPrompt) {
+          // order_card_defer_payment_prompt: לא קופצים לתשלומים באמצע הוספת פריטים - החלון נפתח כשעוברים לשונית/יוצאים (handleTabChange/handleExit), וההודעה בטאב הפריטים מזכירה.
+          setDeferredDebtPrompt(true);
+        } else {
+          setActiveTab('payments');
+          setPaymentContinueAmount(freshDebtNow);
+        }
       }
     }
+  };
+
+  // order_card_defer_payment_prompt: מעבר לשונית. כשיש חיוב חדש שממתין והעובדת עוברת ללשונית אחרת מהפריטים - נפתחת חלונית "השלמת תשלום" (אלא אם עברה בעצמה לתשלומים).
+  const handleTabChange = (tab) => {
+    if (deferredDebtPrompt && tab !== 'items') {
+      setDeferredDebtPrompt(false);
+      const debtNow = Math.round((totalRequired - totalPaid) * 100) / 100;
+      if (tab !== 'payments' && debtNow > 0) setPaymentContinueAmount(debtNow);
+    }
+    setActiveTab(tab);
+  };
+  const openDeferredPayment = () => {
+    setDeferredDebtPrompt(false);
+    setActiveTab('payments');
+    const debtNow = Math.round((totalRequired - totalPaid) * 100) / 100;
+    if (debtNow > 0) setPaymentContinueAmount(debtNow);
   };
 
   // עדכון "טלאי" חלקי של ההזמנה מ-OrderPrintMenu (ר' components/orders/OrderPrintMenu.js) —
@@ -1245,6 +1288,16 @@ export default function OrderDetailsPage({ params }) {
   const createdDate = order.orderDate || order.createdAt;
 
   const handleExit = async (destinationHref) => {
+    // order_card_defer_payment_prompt: חיוב חדש שחלון התשלום שלו עוד לא נפתח - פותחים אותו עכשיו ונשארים בכרטיס (פעם אחת; יציאה נוספת ממשיכה כרגיל).
+    if (deferredDebtPrompt) {
+      setDeferredDebtPrompt(false);
+      const debtOnExit = Math.round((totalRequired - totalPaid) * 100) / 100;
+      if (debtOnExit > 0) {
+        setActiveTab('payments');
+        setPaymentContinueAmount(debtOnExit);
+        return;
+      }
+    }
     // מסך יעד כשלא צוין destinationHref מפורש (כפתור "חזור" הרגיל) - מותנה ב-
     // order_edit_redirect_screen, ברירת מחדל "orders_list" = ההתנהגות הקודמת.
     const fallbackExitHref = resolveOrderRedirectHref(orderEditRedirectScreen, {
@@ -1482,6 +1535,7 @@ export default function OrderDetailsPage({ params }) {
     }
   };
   handleExitRef.current = handleExit;
+  handleSaveRef.current = handleSave;
 
   // מבטל את כל השינויים שלא נשמרו (הוספה/הסרה של פריטים, תשלומים, התחייבויות, שינויי תאריכים/הערות וכו')
   // ומחזיר את הכרטיס למצב האחרון שנשמר בשרת.
@@ -2028,7 +2082,7 @@ export default function OrderDetailsPage({ params }) {
           draftsAsDeleted={draftsAsDeleted}
           saveInFooter={saveInFooter}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           totalRequired={totalRequired}
           totalPaid={totalPaid}
           openedDebt={openedDebt}
@@ -2066,6 +2120,16 @@ export default function OrderDetailsPage({ params }) {
               />
             ),
             items: (
+              <>
+              {deferredDebtPrompt && (Math.round((totalRequired - totalPaid) * 100) / 100) > 0 && (
+                <div className="callout callout-warning" role="status" style={{ marginBottom: '14px', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <svg className="icon"><use href="#i-coin" /></svg>
+                  <strong>נוצר חיוב חדש: ₪{(Math.round((totalRequired - totalPaid) * 100) / 100).toLocaleString('he-IL')}</strong>
+                  <span>אפשר להמשיך להוסיף פריטים. חלון התשלום ייפתח כשתעברו ללשונית אחרת או כשתצאו מההזמנה.</span>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={openDeferredPayment}>לתשלום עכשיו</button>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => itemsManagerRef.current?.addItem()}>הוספת פריט נוסף</button>
+                </div>
+              )}
               <ModernItemsManager
                 ref={itemsManagerRef}
                 locked={isLocked}
@@ -2091,10 +2155,12 @@ export default function OrderDetailsPage({ params }) {
                   setHasUnsavedChanges(true);
                 }}
                 onOrderUpdated={handleOrderUpdate}
+                onItemDeleted={saveAfterItemDelete ? () => setAutoSaveAfterDelete(true) : undefined}
                 inventoryCache={inventoryCache}
                 totalRequired={totalRequired}
                 totalPaid={totalPaid}
               />
+              </>
             ),
             payments: (
               <ModernPaymentsManager

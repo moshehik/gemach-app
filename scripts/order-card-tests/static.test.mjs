@@ -27,6 +27,7 @@ const grepAll = (re) => Object.entries(CODE).filter(([, s]) => re.test(s)).map((
 // + (fix-reports/neve-delivery-button-2026-10-06, דיווחים a6e5fb70/e2c072b7) prop חדש onOrderChange ללשונית התשלומים - כפתורי "הוסף חיוב משלוח" מסמנים גם את ההזמנה כמשלוח, מאחורי delivery_leg_button_marks_order (כבוי כברירת מחדל = ללא שינוי).
 // + קיזוז זיכוי פתוח (fix-reports/neve-credit-offset-2026-10-06, דיווח 679a860b): askCreditOffset/refreshPaymentsAfterOffset + שאלה אחרי שמירה/יציאה שיצרו חוב, מאחורי customer_credit_offset_prompt (כבוי = אפס שינוי).
 // + (fix-reports/neve-order-card-save-flow-2026-10-07, דיווחים 7681043a/c43a2b84): הגדרות order_card_save_in_footer + order_edit_fewer_confirmations (כבויות = אפס שינוי): כפתור שמירה בפס תחתון, שאלת ההדפסה בתוך חלון הסיכום, שמירה בלי שינויים = שאלת הדפסה בלבד.
+// + (fix-reports/neve-order-card-payment-bank-prompts-2026-10-07, דיווחים 96bcbf45/b45fd22e/5cf81871): הגדרות order_card_defer_payment_prompt (חלון תשלום בסיום הוספת פריטים: handleTabChange/openDeferredPayment/הודעה בטאב הפריטים) + order_card_save_after_item_delete (מחיקת פריט שמורה → handleSave הרגיל → חלון בנק) - כבויות = אפס שינוי.
 // כל שינוי עתידי בדף הישן חייב לעדכן את הערך הזה במכוון (והבדיקות ב-approval-tokens.client.test.mjs מגדירות מה השתנה).
 const LEGACY_SHA256_LF = 'ba5d1696e543f2f7949a8ced38a6691c738d9a66278c6af914063c1ca62b4c63';
 test('LegacyOrderPage.js זהה מילולית לדף הקודם (קפוא, PLAN §D.1)', () => {
