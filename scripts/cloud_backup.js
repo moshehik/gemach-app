@@ -54,6 +54,7 @@ const { Client } = require('pg');
 const { PrismaClient } = require('@prisma/client');
 const { resolveDbUrl } = require('./lib/db-env');
 const driveBridge = require('./lib/driveBridge');
+const { notifyBackupFailure } = require('./lib/backupAlert');
 
 const DAILY_KEEP = 14;
 const WEEKLY_KEEP = 8;
@@ -296,10 +297,13 @@ async function runOrgBackup(org) {
       console.log(`[org${org}] no database URL configured, skipping (expected until Neve Yaakov's DB secret is added).`);
       return;
     }
+    await notifyBackupFailure(null, { org, stage: 'חיבור למסד הנתונים (חסר כתובת DB)', error: e });
     throw e;
   }
 
   const prisma = new PrismaClient({ datasourceUrl: dbUrl });
+  let lastOkForAlert = null;
+  let triggerForAlert = null;
   try {
     const settings = await prisma.systemSetting.findMany({ where: { key: { in: SETTING_KEYS } } });
     const val = (key, fallback = null) => settings.find((s) => s.key === key)?.value ?? fallback;
@@ -315,6 +319,7 @@ async function runOrgBackup(org) {
     const requestedAt = requestedAtRaw ? new Date(requestedAtRaw) : null;
 
     const lastOk = await prisma.backupRun.findFirst({ where: { status: 'ok' }, orderBy: { startedAt: 'desc' } });
+    lastOkForAlert = lastOk ? lastOk.startedAt : null;
     const hoursSinceLastOk = lastOk ? (Date.now() - lastOk.startedAt.getTime()) / 3600000 : Infinity;
     // A pending "immediate" click (duePending) always runs, even if the automatic
     // toggle is off - backup_enabled only gates the schedule, not the manual button.
@@ -330,6 +335,7 @@ async function runOrgBackup(org) {
     }
 
     const trigger = duePending ? 'manual' : 'schedule';
+    triggerForAlert = trigger;
     if (duePending) {
       // Clear the flag before attempting: a failed upload shouldn't retry-loop
       // every 15 minutes just because the flag is still set - the admin can
@@ -387,7 +393,12 @@ async function runOrgBackup(org) {
         },
       });
       console.error(`[org${org}] FAILED: ${err.message}`);
+      await notifyBackupFailure(prisma, { org, stage: 'הפקת הגיבוי / העלאה לדרייב', error: err, trigger, lastOkAt: lastOk ? lastOk.startedAt : null });
     }
+  } catch (err) {
+    // כשל לפני שנרשמה שורת BackupRun (למשל ה-DB לא נגיש / מכסת Neon): גם על זה מתריעים
+    await notifyBackupFailure(prisma, { org, stage: 'לפני תחילת הגיבוי (חיבור/קריאת הגדרות)', error: err, trigger: triggerForAlert, lastOkAt: lastOkForAlert });
+    throw err;
   } finally {
     await prisma.$disconnect();
   }

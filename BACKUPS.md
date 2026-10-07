@@ -51,6 +51,21 @@ originally-planned per-org GAS mailer routing).
   `scripts/lib/driveBridge.js`'s header comment for where to find them again if they ever need
   rotating), and Vercel env vars `GH_DISPATCH_TOKEN`/`GH_DISPATCH_REPO` on both projects.
 
+### התראת מייל על כשל גיבוי (2026-10-07)
+
+כל כשל גיבוי (הפקה/העלאה לדרייב, או כשל לפני שנרשמה שורת `BackupRun` - למשל DB לא נגיש / חריגת מכסה) שולח
+מייל לכל המתכנתים הפעילים (`roleId=2` עם כתובת תקינה) + לכתובת הסוד `BACKUP_ALERT_EMAIL` (רשת ביטחון,
+נשלח גם כשאין מתכנת עם מייל ב-DB). הלוגיקה ב-[scripts/lib/backupAlert.js](scripts/lib/backupAlert.js), נשלח דרך אותו Apps Script
+של כל מיילי המערכת ונרשם ב-`EmailLog`. מוגבל למייל אחד לכל ארגון ב-3 שעות (ה-workflow רץ כל 15 דק' וגיבוי שנכשל
+מנסה שוב). שים לב: ריצת ה-workflow נשארת ירוקה גם כשגיבוי של ארגון נכשל (הכשל נרשם ב-`BackupRun`) - ההתראה היא
+המנגנון שמודיע. אם GitHub עצמו מפסיק להריץ את ה-workflow לא ייווצר שום מייל (יש רק הודעות GitHub הרגילות).
+
+### אימות גיבוי - שחזור אמיתי והשוואה (2026-10-07)
+
+[.github/workflows/verify-backup.yml](.github/workflows/verify-backup.yml) (הפעלה ידנית): מוריד את הגיבוי האחרון של כל ארגון
+מהדרייב, משחזר אותו בנוהל המתועד כאן (`prisma db push` ואז `gunzip | psql -v ON_ERROR_STOP=1`) למסד Postgres זמני על ה-runner,
+ומשווה שורה-שורה (md5) מול ה-DB החי. הבדלים מוסברים רק על ידי שינוי אחרי רגע הגיבוי; כל הבדל אחר = כישלון.
+
 ### Why this replaced the old local Task Scheduler job
 
 The old job (Layer 2 below) only ever covered the main gemach (Neve Yaakov had **no** backup at

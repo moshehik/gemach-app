@@ -41,6 +41,7 @@
 | 14 | דיווח תקלה חדש | `errorReportNew` | דיווח תקלה | כל המתכנתים (roleId=2) | דיווח תקלה ממערכת הגמח - לטיפול AI | - | ללא | `app/api/error-report/route.js` |
 | 15 | התבקש מענה אנושי | `errorReportHumanRequested` | דגל "מענה אנושי" | המתכנתים | <שם> מבקש/ת מענה אנושי - דיווח תקלה | - | ללא | `app/api/error-report/route.js` |
 | 16 | סיכום שינויי קוד ממתינים | `agentDigest` | Cron פעמיים ביום (לא שבת/חג) | המתכנתים | N שינויים ממתינים לאישור מיזוג - מערכת הגמ"ח | `agent_digest_email_enabled` (גמח ראשי בלבד) | ללא | `lib/agentDigest.js` |
+| 17 | כשל בגיבוי | (מחוץ לקטלוג - נשלח מ-GitHub Actions) | `scripts/cloud_backup.js` נכשל | המתכנתים + סוד `BACKUP_ALERT_EMAIL` | כשל בגיבוי הנתונים - <שם הגמח> | - | ללא | `scripts/lib/backupAlert.js` |
 | 17 | שאלון מדיניות ביטולים וזיכויים הוגש | `policyQuestionnaireSubmitted` | הנהלה לוחצת "שליחה" בשאלון `/refund-questionnaire` (גם "עודכן" בשליחה חוזרת, וניסיון חוזר ידני אם המייל לא יצא). המייל האוטומטי **היחיד** על תשובות השאלון: התשובות נשמרות גם כתגובה בשרשור דיווחי התקלות, אבל כתיבה ישירה מ-`lib/policyQuestionnaire/store.js` לא עוברת במסלול התגובה הרגיל (שאינו שולח מייל בכלל), ולכן אין כפילות | המתכנתים הפעילים עם מייל (הבעלים) | שאלון מדיניות ביטולים וזיכויים - <גמ"ח> - <משיבה> (+ " (עודכן)") | - | ללא | `app/api/policy-questionnaire/route.js`, `app/api/policy-questionnaire/resend/route.js`, `lib/policyQuestionnaire/notify.js` |
 
 כל 17 המיילים נרשמים ב-`EmailLog` - כולל דיווחי התקלה וההודעות הפנימיות, שעד 2026-09-22 לא
