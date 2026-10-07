@@ -27,15 +27,15 @@
 ## עצי עבודה (worktrees)
 
 - **לא עובדים בצ'קאאוט הראשי** (`C:\Users\moshe\Desktop\גמח שמלות חדש\gemach-app`): הוא בדרך כלל על ענף של סשן אחר, עם שינויים שלא נשמרו, ושרת הפיתוח המשותף (פורט 3000) רץ ממנו.
-- לכל משימה עץ עבודה משלה בנתיב `C:\Users\moshe\Desktop\wt-<name>`, שנוצר מ-`origin/main`:
+- לכל משימה עץ עבודה משלה בנתיב `C:\wt\wt-<name>`, שנוצר מ-`origin/main`:
 
   ```bash
-  git -C "C:/Users/moshe/Desktop/גמח שמלות חדש/gemach-app" worktree add -b <branch> "C:/Users/moshe/Desktop/wt-<name>" origin/main
+  git -C "C:/Users/moshe/Desktop/גמח שמלות חדש/gemach-app" worktree add -b <branch> "C:/wt/wt-<name>" origin/main
   ```
 - **`node_modules`** — junction לתיקייה של הצ'קאאוט הראשי (לא מתקינים מחדש):
 
   ```bat
-  mklink /J "C:\Users\moshe\Desktop\wt-<name>\node_modules" "C:\Users\moshe\Desktop\גמח שמלות חדש\gemach-app\node_modules"
+  mklink /J "C:\wt\wt-<name>\node_modules" "C:\Users\moshe\Desktop\גמח שמלות חדש\gemach-app\node_modules"
   ```
 - **`.env` ו-`.env.local`** — מעתיקים מהצ'קאאוט הראשי (הם לא ב-git).
 - **`.active-db`** — לכל עץ עבודה קובץ משלו (ב-git הוא שמור עם `prod`). שרת פיתוח שרץ מעץ העבודה קורא את הקובץ שבעץ, ולכן אפשר לבדוק מול TEST בעץ נפרד בלי להזיז את השרת המשותף. זכרו: `prod` = נתוני האמת של הגמ"ח הראשי.
