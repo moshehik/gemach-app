@@ -1,0 +1,57 @@
+# אימות גיבוי ענני - שחזור אמיתי של הגיבוי האחרון (מהדרייב) למסד Postgres זמני + השוואה שורה-שורה
+# מול ה-DB החי, לכל אחד משני הגמחים. הנוהל זהה לנוהל השחזור המתועד ב-BACKUPS.md:
+# prisma db push (סכימה) ואז gunzip | psql (נתונים). ר' scripts/verify_backup.js.
+# מופעל ידנית (workflow_dispatch) - לא רץ לבד ולא כותב לשום DB חי (קריאה בלבד: hash מצטבר לכל טבלה).
+name: Verify backup (אימות גיבוי)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        org: [1, 2]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: verify
+          POSTGRES_DB: verify
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
+      DRIVE_BRIDGE_URL: ${{ secrets.DRIVE_BRIDGE_URL }}
+      DRIVE_BRIDGE_SECRET: ${{ secrets.DRIVE_BRIDGE_SECRET }}
+      VERIFY_PG_URL: postgresql://postgres:verify@localhost:5432/verify
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Download latest backup from Drive
+        run: node scripts/verify_backup.js download ${{ matrix.org }} /tmp/backup.sql.gz
+      - name: Create schema (pg_trgm extension + prisma db push) in scratch Postgres
+        run: |
+          # schema.prisma כולל אינדקסי trigram (gin_trgm_ops) - בלי התוסף prisma db push נכשל על מסד ריק
+          psql "$VERIFY_PG_URL" -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"
+          npx prisma db push --schema=prisma/schema.prisma --skip-generate --accept-data-loss
+        env:
+          DATABASE_URL: postgresql://postgres:verify@localhost:5432/verify
+      - name: Add columns that exist only in the live DB (known schema drift)
+        run: node scripts/verify_backup.js align ${{ matrix.org }}
+      - name: Restore data (gunzip | psql, ON_ERROR_STOP)
+        run: |
+          gunzip -c /tmp/backup.sql.gz | psql "$VERIFY_PG_URL" -v ON_ERROR_STOP=1 -q -o /dev/null
+          echo "restore finished OK"
+      - name: Compare restored data with live DB
+        run: node scripts/verify_backup.js compare ${{ matrix.org }}
