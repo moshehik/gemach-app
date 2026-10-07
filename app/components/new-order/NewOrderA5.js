@@ -152,7 +152,7 @@ function Dialog({ ctl, layer }) {
     case 'dupOrder': body = <DuplicateOrderDialog existingOrderId={p.existingOrderId} close={close} />; backdrop = null; break;
     case 'credit':
       body = <CreditDialog data={ctl.creditCardData} setData={ctl.setCreditCardData} error={ctl.creditError} processing={ctl.isProcessingCredit} onCharge={ctl.handleProcessCreditCard}
-        onSwipe={() => ctl.ask('swipe', {}, 2)} close={close} />;
+        onSwipe={() => ctl.ask('swipe', {}, 2)} close={close} autoAdvance={ctl.settings.auto_advance_fixed_fields === 'true'} />;
       backdrop = ctl.isProcessingCredit ? null : () => close(null);
       break;
     case 'swipe':

@@ -6,6 +6,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 import { Ic, Note, NO_FILL, Switch } from './NoUi';
+import { isCardNumberComplete, isExpiryComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, getMissingMandatoryCustomerFields, CUSTOMER_FIELD_LABELS, cardNumberInput, tokefInput, parseSwipe, plural, moneyTxt } from './newOrderLogic';
 import { parseFieldGroups, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
 import { buildCompletionPlan, initialValues, validateCompletion, saveCustomerCompletion, groupLabel } from '@/lib/customerInlineEdit';
@@ -345,7 +346,7 @@ export function DuplicateOrderDialog({ existingOrderId, close }) {
 }
 
 // ---------- חיוב אשראי (נדרים פלוס) - R28: השגיאה בתוך החלון ----------
-export function CreditDialog({ data, setData, error, processing, onCharge, onSwipe, close }) {
+export function CreditDialog({ data, setData, error, processing, onCharge, onSwipe, close, autoAdvance = false }) {
   // Enter בכל שדה = "בצע חיוב" (כמו ה-form בישן)
   const onKeyDown = (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !processing) { e.preventDefault(); onCharge(); } };
   return (
@@ -359,12 +360,12 @@ export function CreditDialog({ data, setData, error, processing, onCharge, onSwi
         <div className="mfld">
           <label className="lbl with-ic" htmlFor="noCcNum"><Ic n="card" c="sm" />מספר כרטיס אשראי (או העברה בקורא)</label>
           <div className="inpw"><input className="inp" id="noCcNum" onKeyDown={onKeyDown} dir="ltr" inputMode="numeric" placeholder="0000 0000 0000 0000" autoComplete="cc-number" maxLength={19}
-            value={data.cardNumber} data-autofocus="true" onChange={(e) => { const v = cardNumberInput(e.target.value, data.tokef); setData(p => ({ ...p, ...v })); }} /></div>
+            value={data.cardNumber} data-autofocus="true" onChange={(e) => { const v = cardNumberInput(e.target.value, data.tokef); setData(p => ({ ...p, ...v })); if (autoAdvance && justCompleted(isCardNumberComplete, data.cardNumber, v.cardNumber)) focusField('noCcExp'); }} /></div>
         </div>
         <div className="grid2" style={{ marginTop: 12 }}>
           <div className="mfld">
             <label className="lbl with-ic" htmlFor="noCcExp"><Ic n="cal" c="sm" />תוקף (MM/YY)</label>
-            <div className="inpw"><input className="inp" id="noCcExp" onKeyDown={onKeyDown} dir="ltr" placeholder="12/25" autoComplete="cc-exp" maxLength={5} value={data.tokef} onChange={(e) => setData(p => ({ ...p, tokef: tokefInput(e.target.value) }))} /></div>
+            <div className="inpw"><input className="inp" id="noCcExp" onKeyDown={onKeyDown} dir="ltr" placeholder="12/25" autoComplete="cc-exp" maxLength={5} value={data.tokef} onChange={(e) => { const t = tokefInput(e.target.value); setData(p => ({ ...p, tokef: t })); if (autoAdvance && justCompleted(isExpiryComplete, data.tokef, t)) focusField('noCcAmt'); }} /></div>
           </div>
           <div className="mfld">
             <label className="lbl with-ic" htmlFor="noCcAmt"><Ic n="wallet" c="sm" />סכום לחיוב (₪)</label>

@@ -6,6 +6,7 @@
 // R06: "מאשר/ת קבלת דיוורים" - הנוסח של כרטיס הלקוח/ההזמנה; מוסתר כש-hide_marketing_consent_field = 'true' (הגמ"ח הראשי).
 import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, Tip, NO_FILL } from './NoUi';
 import NoSuggest, { emailSuggestions } from './NoSuggest';
+import { isMobilePhoneComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
 import { isFieldRequiredByGroup, unsatisfiedFieldGroupErrors, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
 
@@ -149,6 +150,9 @@ function NewTab({ ctl }) {
   const errFor = (f) => (err && err.field === f ? <div className="muted sm no-ferr"><Ic n="alert" c="sm" />{err.text}</div> : null);
   const groupErrors = unsatisfiedFieldGroupErrors(n, ctl.fieldGroups);
   const addrReq = (k) => s.require_full_address === 'true' || isFieldMandatoryFromPicker(s, k);
+  // c89234ec (auto_advance_fixed_fields): נייד מלא -> השדה הבא; עיר/רחוב שנבחרו מהרשימה -> הרחוב / מספר הבית
+  const aa = s.auto_advance_fixed_fields === 'true';
+  const phoneAdvance = (k, nextId) => ({ onChange: (e) => { set(k)(e.target.value); if (aa && justCompleted(isMobilePhoneComplete, n[k], e.target.value)) focusField(nextId); } });
   const inp = (k, extra = {}) => ({ className: 'inp', autoComplete: 'off', ...NO_FILL, value: n[k] || '', onChange: (e) => set(k)(e.target.value), onKeyDown: onEnter, ...extra });
   return (
     <>
@@ -161,8 +165,8 @@ function NewTab({ ctl }) {
       <div className="grid2 col1">
         <Field label="שם פרטי *" icon="user" htmlFor="noNcFirst"><input id="noNcFirst" {...inp('firstName')} /></Field>
         <Field label="שם משפחה *" icon="user" htmlFor="noNcLast"><input id="noNcLast" {...inp('lastName')} /></Field>
-        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1')} /></Field>
-        <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2')} /></Field>
+        <Field label="טלפון *" icon="phone" htmlFor="noNcPhone" after={errFor('phone1')}><input id="noNcPhone" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone1', phoneAdvance('phone1', 'noNcPhone2'))} /></Field>
+        <Field label={`טלפון נוסף${star(isFieldRequiredByGroup('phone2', n, ctl.fieldGroups))}`} icon="phone" htmlFor="noNcPhone2" after={errFor('phone2')}><input id="noNcPhone2" type="tel" dir="ltr" placeholder="נייד או קווי" {...inp('phone2', phoneAdvance('phone2', 'noNcEmail'))} /></Field>
         <Field label={`אימייל${star(s.require_customer_email === 'true' || isFieldMandatoryFromPicker(s, 'email') || isFieldRequiredByGroup('email', n, ctl.fieldGroups))}`} icon="mail" htmlFor="noNcEmail"
           after={<>
             {n.email && !n.email.includes('@') ? <div style={{ marginTop: 8 }}><button type="button" className="btn sm" onClick={() => set('email')(`${n.email}@gmail.com`)}><Ic n="mail" c="sm" />השלם ל- @gmail.com</button></div> : null}
@@ -174,8 +178,8 @@ function NewTab({ ctl }) {
       </div>
       <div className="ncmore">
         <div className="grid2 col1">
-          <Field label={`עיר מגורים${star(addrReq('city'))}`} icon="pin" htmlFor="noNcCity"><NoSuggest id="noNcCity" value={n.city} onChange={set('city')} options={ctl.customerLocations.cities} inputProps={{ onKeyDown: onEnter }} /></Field>
-          <Field label={`רחוב${star(addrReq('street'))}`} icon="pin" htmlFor="noNcStreet"><NoSuggest id="noNcStreet" value={n.street || ''} onChange={set('street')} options={ctl.customerLocations.streets} inputProps={{ onKeyDown: onEnter }} /></Field>
+          <Field label={`עיר מגורים${star(addrReq('city'))}`} icon="pin" htmlFor="noNcCity"><NoSuggest id="noNcCity" value={n.city} onChange={set('city')} options={ctl.customerLocations.cities} onPick={aa ? () => focusField('noNcStreet') : undefined} inputProps={{ onKeyDown: onEnter }} /></Field>
+          <Field label={`רחוב${star(addrReq('street'))}`} icon="pin" htmlFor="noNcStreet"><NoSuggest id="noNcStreet" value={n.street || ''} onChange={set('street')} options={ctl.customerLocations.streets} onPick={aa ? () => focusField('noNcHouse') : undefined} inputProps={{ onKeyDown: onEnter }} /></Field>
           <Field label={`מספר בית${star(addrReq('houseNum'))}`} icon="home" htmlFor="noNcHouse"><input id="noNcHouse" {...inp('houseNum')} /></Field>
           <Field
             label={<>תעודת זהות{s.require_customer_id_number === 'true' ? ' *' : (s.require_id_for_edit_cancel === 'true' ? <> <span className="muted sm">(לעריכה/ביטול עתידי)</span></> : null)}</>}
