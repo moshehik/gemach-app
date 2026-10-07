@@ -1,5 +1,15 @@
 # System Changes Log
 
+## 2026-10-07: Day schedule (/schedule) - shorter chips and detail line, "הזמנות חדשות", and a new lazy "הזמנות שעודכנו" section (both gemachs)
+
+- **Chips removed** (owner request): "חיוב משלוח קיים" on delivery rows, "שעות איסוף 20:00-21:30" on the pickup section, and "תקין" on returns ("לא תקין" stays). The late alert now reads "איחור (3 ימים)" instead of "באיחור - לא סומן כבוצע (3 ימים)".
+- **Right rail:** the alert triangle shows "!" only when there are alerts; the number appears once, on the stage icon.
+- **Stage 1 is titled "הזמנות חדשות"** (it lists the orders registered that same day).
+- **Detail line shortened** (rows view; table view unchanged): icon + short value - calendar + date, money icon + amount, a check mark instead of "שולם", dress icon + "2 פריטים", user icon + the registering employee, pin + branch, truck + address, scissors + repair kind... Icons are sized in em and centered on the text.
+- **New last section "הזמנות שעודכנו"** (also the last entry in the rail): existing orders (registered on another day) where an item was added / edited / cancelled or a payment was added that day. It is loaded lazily from its own endpoint, `GET /api/schedule/updated`, only when it comes near the screen or is picked in the rail, so the normal page load pays nothing extra; short server cache (30s today / 5min past days).
+- **DB (applied by hand on both PROD DBs on 2026-10-07, before the code):** `CREATE INDEX CONCURRENTLY IF NOT EXISTS "OrderItem_updatedAt_idx" ON "OrderItem" ("updatedAt")`; also in `schema.prisma`. A restored/new database needs it too (without it the query still works, only slower).
+- Known limit: item edits are detected from `OrderItem.updatedAt`, which also moves on pickup/return scans - rows taken/returned that day are ignored. Full detail: `docs/schedule-page-logic-spec.md` (last section). Files: `app/components/schedule/*`, `app/api/schedule/updated/route.js`, `lib/schedule/updatedOrders.js`, `lib/schedule/updatedRows.js`. PRs: #228 (merged), #230.
+
 ## 2026-10-05: Vercel Fluid Active CPU - shared cache for /api/settings reads in always-mounted components (both gemachs)
 
 - **Cause analysis:** the free-tier CPU alert (75% of 4h) is driven by busy Neve Yaakov working days (4.10: 11.3K API calls, ~600MB JSON for 7 users), not by background polling or the print-center agent (that project now lives in another Vercel account). Details and the measurements: `docs/vercel-cpu-usage-analysis-2026-10-05.md`.
