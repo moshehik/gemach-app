@@ -1,0 +1,30 @@
+/* עמודי שגיאה (ErrorPage.js): כרטיס זכוכית שקופה, מדליה ואייקונים מונפשים. כל הכללים בהיקף .gm-ds.gm-err, רק טוקני --gm-*. */
+.gm-ds.gm-err{min-height:calc(100vh - 140px);display:grid;place-items:center;padding:72px 16px 40px;font-family:"Rubik","Heebo",system-ui,sans-serif}
+.gm-ds.gm-err .e-card{position:relative;width:min(640px,100%);text-align:center;padding:58px 36px 32px;border-radius:var(--gm-r);color:var(--gm-ink);
+  background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.6);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);
+  box-shadow:0 18px 50px -22px rgba(10,34,66,.45),inset 0 1px 0 rgba(255,255,255,.7)}
+.gm-ds.gm-err .e-medal{position:absolute;top:-40px;inset-inline:0;margin:auto;width:80px;height:80px;border-radius:50%;background:var(--gm-navy);color:var(--gm-gold-300);display:grid;place-items:center;
+  animation:gm-err-float 3.6s ease-in-out infinite,gm-err-ring 2.8s ease-in-out infinite}
+.gm-ds.gm-err .e-medal .icon{width:36px;height:36px;transform-origin:50% 60%;animation:gm-err-wiggle 4.2s ease-in-out infinite}
+.gm-ds.gm-err .e-code{font-size:96px;line-height:1;font-weight:800;letter-spacing:.04em;margin:6px 0 0;background:linear-gradient(180deg,var(--gm-navy-700),var(--gm-navy-900));-webkit-background-clip:text;background-clip:text;color:transparent;unicode-bidi:isolate}
+.gm-ds.gm-err .e-orn{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px auto 14px;color:var(--gm-gold)}
+.gm-ds.gm-err .e-orn::before,.gm-ds.gm-err .e-orn::after{content:"";height:2px;width:64px;background:linear-gradient(90deg,transparent,var(--gm-gold))}
+.gm-ds.gm-err .e-orn::after{transform:scaleX(-1)}
+.gm-ds.gm-err .e-orn i{width:9px;height:9px;transform:rotate(45deg);background:var(--gm-gbtn);border-radius:2px}
+.gm-ds.gm-err h1{margin:0;font-size:27px;font-weight:800;color:var(--gm-ink)}
+.gm-ds.gm-err .e-sub{margin:8px auto 0;max-width:470px;font-size:16.5px;color:var(--gm-ink2)}
+.gm-ds.gm-err .e-acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:26px}
+.gm-ds.gm-err .e-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:11px 26px;font:600 15.5px/1.2 inherit;font-family:inherit;text-decoration:none;cursor:pointer;transition:transform .18s var(--gm-ease),box-shadow .18s,background .18s}
+.gm-ds.gm-err .e-btn .icon{width:20px;height:20px;flex:none;transition:transform .25s var(--gm-ease)}
+.gm-ds.gm-err .e-btn.primary{background:var(--gm-gbtn);color:#000;border:1.5px solid var(--gm-gbtn-d);box-shadow:0 8px 18px -10px rgba(15,44,82,.7)}
+.gm-ds.gm-err .e-btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 22px -10px rgba(15,44,82,.8)}
+.gm-ds.gm-err .e-btn.primary:hover .icon{transform:translateY(-2px) scale(1.15)}
+.gm-ds.gm-err .e-btn.ghost{background:rgba(255,255,255,.22);color:var(--gm-navy);border:1.5px solid rgba(15,44,82,.55)}
+.gm-ds.gm-err .e-btn.ghost:hover{background:rgba(255,255,255,.4);transform:translateY(-2px)}
+.gm-ds.gm-err .e-btn.ghost:hover .icon{transform:translateX(4px)}
+.gm-ds.gm-err .e-btn:focus-visible{outline:3px solid var(--gm-gold);outline-offset:2px}
+@keyframes gm-err-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes gm-err-ring{0%,100%{box-shadow:0 0 0 5px #fff,0 0 0 8px var(--gm-gold),0 12px 26px -8px rgba(10,34,66,.6)}50%{box-shadow:0 0 0 5px #fff,0 0 0 13px rgba(201,162,39,.35),0 16px 30px -8px rgba(10,34,66,.55)}}
+@keyframes gm-err-wiggle{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(-9deg)}80%{transform:rotate(8deg)}90%{transform:rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-err *{animation:none!important;transition:none!important}}
+@media (max-width:640px){.gm-ds.gm-err{padding-top:64px}.gm-ds.gm-err .e-card{padding:56px 20px 24px}.gm-ds.gm-err .e-code{font-size:72px}.gm-ds.gm-err h1{font-size:23px}}
