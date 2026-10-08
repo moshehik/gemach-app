@@ -68,8 +68,7 @@ function Section({ ctl, k, n, skipDelivery }) {
     <section className={`no-sec${locked ? ' locked' : ''}`} id={id} data-sec-key={k} aria-labelledby={`${id}-t`}>
       <header className="no-sec-h">
         <span className="no-sec-n" aria-hidden="true">{String(n).padStart(2, '0')}</span>
-        <h2 className="no-sec-t" id={`${id}-t`}>{STEP_META[k].q}</h2>
-        {locked ? <span className="no-sec-lock" role="note"><Ic n="lock" c="sm" />{g.reason || 'יש להשלים את השלב הקודם'}</span> : null}
+        <h2 className="no-sec-t" id={`${id}-t`}>{STEP_META[k].q}{locked ? <span className="no-sec-dots" aria-hidden="true"> ...</span> : null}</h2>
       </header>
       <div className="no-sec-body" inert={locked}>
         <div className="sec" data-sec={k}><View ctl={ctl} /></div>

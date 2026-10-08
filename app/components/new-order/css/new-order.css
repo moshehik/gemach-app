@@ -339,10 +339,10 @@
 .gm-ds.gm-no .no-sec-n{flex:none;font-family:'FB Melatef','Suez One',serif;font-size:64px;font-weight:700;line-height:1;color:var(--navy-900);opacity:.28;font-variant-numeric:lining-nums;direction:ltr;user-select:none}
 /* כותרת הגוש = שאלת השלב של האשף (אותו גופן), קטנה יותר מכותרת-הענק של האשף; h2 - הכלל הכללי של h1-h6 דורש !important */
 .gm-ds.gm-no .no-sec-t{margin:0;flex:1;min-width:0;font-family:'FB Melatef','Suez One',serif!important;font-size:64px;font-weight:700;line-height:1;color:var(--navy-900);overflow-wrap:anywhere}
-.gm-ds.gm-no .no-sec-lock{display:inline-flex;align-items:center;gap:6px;margin-inline-start:auto;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.7);border:1px solid var(--sky-300);font-size:14px;font-weight:500;color:var(--ink2)}
-/* גוש נעול: גלוי אך מעומעם, חתוך ו-inert (המאפיין בקוד) עד שתנאי הנעילה של האשף מתקיימים */
+/* גוש נעול: רק המספר והכותרת עם "..." (בלי תגית ובלי תוכן) עד שתנאי הנעילה של האשף מתקיימים; הגוף נשאר inert בקוד */
 .gm-ds.gm-no .no-sec-body{transition:opacity .3s}
-.gm-ds.gm-no .no-sec.locked .no-sec-body{max-height:190px;overflow:hidden;opacity:.5;pointer-events:none;user-select:none;-webkit-mask-image:linear-gradient(#000 35%,transparent);mask-image:linear-gradient(#000 35%,transparent)}
+.gm-ds.gm-no .no-sec.locked .no-sec-body{display:none}
+.gm-ds.gm-no .no-sec-dots{letter-spacing:2px}
 .gm-ds.gm-no .no-sec.locked .no-sec-n{opacity:.16}
 .gm-ds.gm-no .no-sec.locked .no-sec-t{opacity:.6}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-no .no-sec-body{transition:none}}
