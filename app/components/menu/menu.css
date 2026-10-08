@@ -14,6 +14,10 @@
 /* מקום לסרגל העליון: אזור התוכן (שמשתמש ב-class-ים של המעטפת הישנה) מתחיל מתחתיו. */
 .a5-shell .app-shell.a5-body{min-height:calc(100vh - var(--gm-snav-h,64px));min-height:calc(100dvh - var(--gm-snav-h,64px))}
 
+/* שורות התראות לא מתכווצות: .nf-list הוא עמודת flex עם max-height ול-.nf-row יש overflow:hidden (min-height אוטומטי = 0),
+   לכן כשיש כמה התראות ארוכות השורות נדחסו והטקסט נחתך באמצע במקום שהרשימה תיגלל. */
+.gm-ds.gm-menu .nf-list .nf-row{flex:none}
+
 .gm-ds.gm-menu .snav [hidden],.gm-ds.gm-menu .sn-drawer [hidden]{display:none!important}
 
 /* לשונית = קישור אמיתי + חץ קטן (.sn-cv) שפותח את התפריט בריחוף / מגע / מקלדת */
