@@ -111,7 +111,9 @@ test('הקובץ המשותף: go() בהקשר wizard לא גולל לגוש (ג
   assert.match(ctl, /\? NL\.stepGate\([^)]*\)[^:]*\.open : stepKey === 'items'/);
   assert.match(ctl, /const layout = resolveNewOrderLayout\(settings\.new_order_layout\)/);
   // אישור הלקוח נקבע רק במסלולים שעוברים את בדיקות "המשך"
-  assert.equal((ctl.match(/setConfirmedCustomerId\(/g) || []).length, 3, '3 מסלולי המשך (קיים / רשימה / חדש)');
+  // + בחירה ברשימה בטופס הרציף (confirmPickedCustomer - אין לחצן "המשך") והשלמת פרטי לקוח שנבחר (editCustomerInline)
+  assert.equal((ctl.match(/setConfirmedCustomerId\(/g) || []).length, 5, '5 מסלולי אישור (קיים / רשימה-רציף / חדש / המשך / השלמת פרטים)');
+  assert.match(ctl, /if \(continuous\) confirmPickedCustomer\(c\);/);
 });
 
 test('שלבים מוצגים בטופס הרציף: משלוח רק כש-showMode / showDelivery של השער הקיים; בלי שינוי בסדר', () => {
