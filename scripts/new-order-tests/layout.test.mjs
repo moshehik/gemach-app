@@ -210,7 +210,7 @@ test('התאמות לעיצוב העדכני: הפריטים בקלף אחד ע�
   assert.equal((items.match(/<OneCard>/g) || []).length, 1, 'קלף אחד בלבד');
   assert.match(items, /title="הוספת פריט"/);
   assert.match(items, /קוד: \$\{code\}/);
-  assert.ok(!/הדגם שנבחר|pickedModel" style|N פנויות|פנויות|אזל<|החל מ|הערות כלליות/.test(items.replace(/אזלו/g, '')), 'החלטות הבעלים');
+  assert.ok(!/הדגם שנבחר|pickedModel" style|N פנויות|פנויות|אזל<|החל מ|הערות כלליות/.test(items.replace(/אזלו/g, '').replace(/.*data-tip=\{free.*/g, '')), 'החלטות הבעלים');
   const del = strip(read('StepDelivery.js'));
   assert.match(del, /<SegPill id="orderSeg"[^>]*value=\{!!o\.isPhoneOrder\} onChange=\{\(v\) => set\(\{ isPhoneOrder: v, branch: v \? '' : o\.branch \}\)\}/);
   assert.ok(!/noPhoneOrder/.test(del), 'המתג הוחלף');

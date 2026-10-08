@@ -203,11 +203,11 @@ export function NoCombo({ id, label, value, options, onChange, placeholder = '',
   };
   return (
     <div className={`cb${open ? ' open' : ''}`} ref={rootRef} onKeyDown={onKey}>
-      <button type="button" className="cb-t" id={id} role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="cb-t" id={id} role="combobox" aria-haspopup="listbox" aria-controls={`${id}-list`} aria-expanded={open ? 'true' : 'false'} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)}>
         <span className={`cb-v${cur ? '' : ' cb-ph'}`}>{cur ? cur[1] : placeholder}</span><Ic n="chev" c="sm" />
       </button>
       <div className="cb-p" hidden={!open || disabled}>
-        <ul className="cb-l" role="listbox" aria-label={label} ref={listRef}>
+        <ul className="cb-l" id={`${id}-list`} role="listbox" aria-label={label} ref={listRef}>
           {list.map(([v, l], i) => {
             const sel = String(v) === String(value);
             return (
