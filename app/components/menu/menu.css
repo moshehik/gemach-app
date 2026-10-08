@@ -35,6 +35,18 @@
 .gm-ds.gm-menu .sn-k.sn-recent{display:inline-flex;align-items:center}
 .gm-ds.gm-menu .sn-k.sn-recent .ic{width:14px;height:14px}
 .gm-ds.gm-menu .sn-search .sn-link,.gm-ds.gm-menu .sn-search .sn-link .sn-k{white-space:normal}
+/* סיכה צפה בשורות פאנל "ניהול" (8.10.2026): כפתור אח של הקישור, צף בקצה השורה; נראה בריחוף / מיקוד / מגע ותמיד כשהכלי נעוץ */
+.gm-ds.gm-menu .sn-pinrow{position:relative}
+.gm-ds.gm-menu .sn-pinrow .sn-link{padding-inline-end:46px}
+.gm-ds.gm-menu .sn-pin{position:absolute;inset-inline-end:8px;top:50%;translate:0 -50%;z-index:1;width:30px;height:30px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;color:var(--gm-ink3);cursor:pointer;opacity:0;transition:opacity .15s,background-color .15s,color .15s,transform .15s var(--gm-ease)}
+.gm-ds.gm-menu .sn-pin .ic{width:17px;height:17px;transform:rotate(35deg);transition:transform .2s var(--gm-ease)}
+.gm-ds.gm-menu .sn-pinrow:hover .sn-pin,.gm-ds.gm-menu .sn-pinrow:focus-within .sn-pin,.gm-ds.gm-menu .sn-pinrow.is-pinned .sn-pin{opacity:1}
+.gm-ds.gm-menu .sn-pin:hover,.gm-ds.gm-menu .sn-pin:focus-visible{background:var(--gm-gbtn);color:var(--gm-navy-900);outline:0}
+.gm-ds.gm-menu .sn-pin:focus-visible{box-shadow:0 0 0 3px var(--gm-gold)}
+.gm-ds.gm-menu .sn-pin:hover .ic{transform:rotate(0)}
+.gm-ds.gm-menu .sn-pinrow.is-pinned .sn-pin{color:var(--gm-gold-d)}
+.gm-ds.gm-menu .sn-pinrow.is-pinned .sn-pin .ic{transform:rotate(0)}
+@media (hover:none),(max-width:767px){.gm-ds.gm-menu .sn-pin{opacity:1}}
 .gm-ds.gm-menu .sn-search .sn-link{min-width:0}
 .gm-ds.gm-menu .sn-link:disabled{opacity:.55;cursor:default}
 
