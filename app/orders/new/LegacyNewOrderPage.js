@@ -2167,7 +2167,7 @@ export default function NewOrderPage() {
                     <div className="field" style={{ marginTop: 10 }}>
                       <label className="checkbox-row" style={{ cursor: 'pointer' }}>
                         <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
-                        <span>מאשר/ת קבלת דיוורים ועדכונים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
+                        <span>מאשר/ת קבלת דיוורים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
                       </label>
                     </div>
                   )}

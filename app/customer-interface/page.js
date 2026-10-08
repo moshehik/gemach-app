@@ -1304,7 +1304,7 @@ export default function CustomerInventoryViewer() {
                           style={{ width: '17px', height: '17px', accentColor: 'var(--terracotta)' }}
                           checked={regForm.marketingConsent}
                           onChange={e => setRegForm(p => ({ ...p, marketingConsent: e.target.checked }))} />
-                        מאשר/ת קבלת דיוור ועדכונים {settings.require_marketing_consent === 'true' && '*'}
+                        מאשר/ת קבלת דיוורים {settings.require_marketing_consent === 'true' && '*'}
                       </label>
                     )}
 
