@@ -2,7 +2,8 @@
    כאן רק מה שדף הבית מוסיף ב-home.css בהיקף .gm-home - שורה כבויה "בקרוב", כפתורים בתחתית, חלון מדיניות הפרטיות - והחזרת
    הגופן שכללי הגלובלי הישן כופים ב-!important על כפתורים וכותרות. */
 
-.gm-ds.gm-shellfoot { display: block; }
+/* ב-.gm-ds הבסיס יש min-height:100vh, display:flex ורקע - בלי איפוס כאן נוסף מתחת לפס הכחול מסך ריק בגובה חלון (תקלה בכל הדפים). */
+.gm-ds.gm-shellfoot { display: block; min-height: 0; background: none !important; background-image: none !important; }
 .gm-ds.gm-shellfoot :is(button, input, select, textarea) { font-family: inherit !important; }
 .gm-ds.gm-shellfoot :is(h1, h2, h3, h4, h5, h6) { font-family: inherit !important; letter-spacing: normal; }
 
@@ -36,3 +37,7 @@
 .gm-ds.gm-shellfoot .priv-dlg .priv-body ul { padding-inline-start: 20px; }
 
 @media print { .gm-ds.gm-shellfoot { display: none !important; } }
+
+/* מתחת לתחתית הכחולה אין שום דבר: רקע הקנבס (מה שנחשף בגלילת-יתר / כשהדף קצר מהחלון) כחול כהה כמו התחתית, כך שלא נראה פס בהיר. */
+html:has(.a5-shell) { background-color: var(--gm-navy, #0f2c52); }
+@media print { html:has(.a5-shell) { background-color: transparent; } }

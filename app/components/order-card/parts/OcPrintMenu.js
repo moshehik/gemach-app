@@ -55,7 +55,7 @@ export default function OcPrintMenu({ oc, ui }) {
 
   const toggle = async () => {
     if (open) { setOpen(false); return; }
-    if (needsRegulationsGate(oc.order)) {
+    if (needsRegulationsGate(order)) {
       const signed = await ui.confirm({ title: 'חתימה על תקנון', sub: 'האם הלקוח חתם על התקנון?', okText: 'כן, חתם', cancelText: 'לא (ביטול)', icon: 'check' });
       if (!signed) return;
       const saved = await oc.toggleSignature({ confirmed: true });

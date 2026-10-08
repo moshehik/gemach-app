@@ -299,13 +299,45 @@ test('מחיקת הזמנה: DELETE /api/orders/<orderId> (בלי גוף; עם �
 test('חתימה על תקנון: PUT /api/orders/<id> {hasSignedRegulations, updatedAt} (בדיקת 409 בשרת), updatedAt מהתשובה נשמר', async () => {
   const st = baseState();
   const h = harness(st, { respond: () => ({ body: { ...st.order, hasSignedRegulations: true, updatedAt: '2026-10-04T11:00:00.000Z' } }) });
-  assert.equal(await h.flows.toggleSignature(), true);
+  assert.equal(await h.flows.toggleSignature({ confirmed: true }), true);
   assert.deepEqual([h.calls[0].method, h.calls[0].url, h.calls[0].body], ['PUT', `/api/orders/${ROUTE_ID}`, { hasSignedRegulations: true, updatedAt: st.order.updatedAt }]);
   assert.equal(h.state.order.hasSignedRegulations, true);
   assert.equal(h.state.order.updatedAt, '2026-10-04T11:00:00.000Z');
   assert.equal(h.state.snapshot.order.hasSignedRegulations, true, 'נשמר - לא "שינוי" ברייל');
   const sig = LEGACY_SRC.slice(LEGACY_SRC.indexOf('const handleToggleSignature'), LEGACY_SRC.indexOf('const handleQuickScan'));
   assert.ok(sig.includes('fetch(`/api/orders/${id}`') && sig.includes("method: 'PUT'") && sig.includes('JSON.stringify({ hasSignedRegulations: nowYes })'));
+});
+
+test('חתימה על תקנון בהזמנה פתוחה: שינוי שלא נשמר - בלי PUT, נכנס לבאנר השינויים וניתן לביטול', async () => {
+  const st = baseState();
+  const h = harness(st, { respond: () => ({ body: {} }) });
+  assert.equal(await h.flows.toggleSignature(), true);
+  assert.equal(h.calls.length, 0, 'לא נשמר בשרת');
+  assert.equal(h.state.order.hasSignedRegulations, true);
+  assert.equal(!!h.state.snapshot.order.hasSignedRegulations, !!st.order.hasSignedRegulations, 'ה-snapshot לא השתנה');
+  const ch = L.changesOf(h.state.snapshot, h.state);
+  assert.ok(ch.some(c => c.key === 'sig'), 'מופיע ברייל');
+  const back = L.revertChange(h.state, h.state.snapshot, 'sig');
+  assert.equal(!!back.order.hasSignedRegulations, !!h.state.snapshot.order.hasSignedRegulations, 'ביטול מחזיר למצב השמור');
+});
+
+test('חתימה על תקנון - שער (confirmed:true) תמיד שומר "חתום" בשרת, גם כשבמצב המקומי כבר סומן חתום', async () => {
+  const st = baseState();
+  const h = harness(st, { respond: () => ({ body: { ...st.order, hasSignedRegulations: true, updatedAt: '2026-10-04T11:00:00.000Z' } }) });
+  await h.flows.toggleSignature();
+  assert.equal(h.calls.length, 0);
+  assert.equal(await h.flows.toggleSignature({ confirmed: true }), true);
+  assert.deepEqual(h.calls[0].body.hasSignedRegulations, true, 'לא הופך את החתימה');
+  assert.equal(h.state.snapshot.order.hasSignedRegulations, true);
+});
+
+test('חתימה על תקנון בהזמנה נעולה (תאריך האירוע עבר): נשמרת מיד אחרי אישור, כמו קודם', async () => {
+  const st = baseState();
+  const h = harness(st, { edit: (s) => { s.isPastEvent = true; s.isUnlocked = false; }, respond: () => ({ body: { ...st.order, hasSignedRegulations: true, updatedAt: '2026-10-04T11:00:00.000Z' } }) });
+  assert.equal(await h.flows.toggleSignature(), true);
+  assert.equal(h.opened.filter(o => o[0] === 'confirm').length, 1, 'חלון אישור');
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.state.snapshot.order.hasSignedRegulations, true);
 });
 
 test('טעינה מחדש: GET /api/orders/<id> ומאפס snapshot ו-openedDebt', async () => {
@@ -399,7 +431,7 @@ test('סקירה 2: ביציאה - אישור ישן שלא מכסה את החו
 test('סקירה 3: חתימה - 409 → שליחה חוזרת עם overwriteConflict ושמירת updatedAt הישן ב-state', async () => {
   const st = baseState();
   const h = harness(st, { respond: (u, o, n) => (n === 1 ? { status: 409, body: { code: 'CONFLICT' } } : { body: { ...st.order, hasSignedRegulations: true, updatedAt: '2026-10-04T12:00:00.000Z' } }) });
-  assert.equal(await h.flows.toggleSignature(), true);
+  assert.equal(await h.flows.toggleSignature({ confirmed: true }), true);
   assert.equal(h.calls.length, 2);
   assert.deepEqual(h.calls[1].body, { hasSignedRegulations: true, updatedAt: st.order.updatedAt, overwriteConflict: true });
   assert.equal(h.state.order.updatedAt, st.order.updatedAt, 'השינוי של המשתמש האחר יזוהה בשמירה הבאה');

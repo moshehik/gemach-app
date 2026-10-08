@@ -827,12 +827,17 @@ export default function HomeA5() {
       <div className="app" id="app">
         <section className="panel on home-p" aria-label="תוכן עמוד הבית">
           {view === 'error' && (
-            <div className="card">
-              <div className="empty" role="status">
-                <Ic id="alert" size="lg" />
-                <div className="big" style={{ fontSize: 19, marginTop: 8, color: 'var(--ink)' }}>החיפוש לא הצליח</div>
-                <div className="muted">{errStatus === 401 ? 'פג תוקף הכניסה. יש להתחבר מחדש.' : 'אין חיבור לשרת כרגע.'}</div>
-                <div style={{ marginTop: 16 }}>
+            // הודעת שגיאת חיפוש (8.10.2026): מדליון זהב על כחול, כותרת, הסבר, קוד תקלה וכפתורי פעולה. 401 = פג תוקף הכניסה → "להתחברות מחדש"
+            // (רענון הדף מציג את מסך הכניסה); כל שגיאה אחרת = "לנסות שוב".
+            <div className="card err-card" role="alert">
+              <div className="err-medal"><Ic id={errStatus === 401 ? 'lock' : 'alert'} size="lg" /></div>
+              <div className="err-title">החיפוש לא הצליח</div>
+              <div className="err-sub">{errStatus === 401 ? 'פג תוקף הכניסה. יש להתחבר מחדש.' : 'אין חיבור לשרת כרגע.'}</div>
+              <div className="err-code">{errStatus ? `קוד ${errStatus}` : 'אין חיבור'}</div>
+              <div className="err-acts">
+                {errStatus === 401 ? (
+                  <button type="button" className="btn primary" onClick={() => window.location.reload()}><Ic id="user" />להתחברות מחדש</button>
+                ) : (
                   <button
                     type="button"
                     className="btn primary"
@@ -841,7 +846,7 @@ export default function HomeA5() {
                       runSearch(lastQuery.current.text || q, { ai: lastQuery.current.ai });
                     }}
                   ><Ic id="refresh" />לנסות שוב</button>
-                </div>
+                )}
               </div>
             </div>
           )}

@@ -55,7 +55,7 @@ test('אישור מנהל במייל דרך oc.approve (feature:customer_email_a
 
 test('שער התקנון: נפתח לפני התפריט כשלא נחתם ושומר דרך oc.toggleSignature({confirmed:true}) (R7)', () => {
   const s = strip(read('parts/OcPrintMenu.js'));
-  assert.match(s, /needsRegulationsGate\(oc\.order\)/);
+  assert.match(s, /needsRegulationsGate\(order\)/);
   assert.match(s, /oc\.toggleSignature\(\{ confirmed: true \}\)/);
   assert.match(s, /okText: 'כן, חתם'/);
 });

@@ -416,7 +416,12 @@ export default function HomeDashboard() {
               <input
                 type="text"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  // מחיקת כל הטקסט ידנית = אותה פעולה כמו לחיצה על ה-X: חזרה למצב ההתחלתי
+                  if (v === '') clearSearch();
+                  else setSearchInput(v);
+                }}
                 placeholder="דוגמא משפחת כהן..."
                 disabled={loadingSearch}
               />

@@ -11,6 +11,7 @@ import useActionRecorder from './useActionRecorder';
 import { captureElement, captureViewport, dataUrlToParts } from '../../lib/clientCapture';
 import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
 import { formatActionSteps } from '../../lib/actionRecorderCore';
+import { useUiVariant } from './UiVariantContext';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -43,6 +44,8 @@ function extractOpenLinks(content) {
 }
 
 export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
+  // במעטפת החדשה (A5) הכפתור והחלונית בכחול-זהב של האתר (class ai-a5, globals.css) במקום צבע הערכה הישנה (--primary-solid).
+  const a5Class = useUiVariant('shell') === 'a5' ? ' ai-a5' : '';
   const pathname = usePathname();
   // ממותג לפי עובד/ת - בלי זה, מחשב משותף (עמדת גמ"ח) מציג לעובדת הבאה שמתחברת
   // את היסטוריית הצ'אט של הקודמת, כי localStorage הוא ברמת הדפדפן ולא נוקה בהתנתקות.
@@ -471,7 +474,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       <>
         <button data-element-name="כפתור_AIFloatingWidget_2"
           type="button"
-          className="print-hide ai-widget-fab"
+          className={`print-hide ai-widget-fab${a5Class}`}
           onClick={() => setIsOpen(true)}
           style={{
             position: 'fixed',
@@ -506,7 +509,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   return (
     <>
-      <div className="print-hide card ai-widget-panel" style={{
+      <div className={`print-hide card ai-widget-panel${a5Class}`} style={{
         position: 'fixed',
         bottom: '20px',
         insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
@@ -522,7 +525,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         transition: 'all 0.3s ease'
       }}>
         {/* Header */}
-        <div style={{
+        <div className="ai-widget-head" style={{
           backgroundColor: 'var(--primary-solid)',
           color: 'var(--text-on-primary)',
           padding: '12px 16px',
