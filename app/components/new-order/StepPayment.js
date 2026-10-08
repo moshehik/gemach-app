@@ -45,7 +45,7 @@ export default function StepPayment({ ctl }) {
             <div className="bal">
               <div><div className="faint sm">{bal > 0 ? 'יתרה' : 'שולם במלואו'}</div><div className="n" style={{ color: bal > 0 ? 'var(--gm-red)' : 'var(--gm-green)' }}>{money(bal)}</div></div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div className="row spread sm muted"><span>שולם {money(paid)}</span><span>סה&quot;כ חיובים {money(tot)}</span></div>
+                <div className="row spread sm muted"><span>שולם {money(paid)}</span></div>
                 <div className="pbar"><i style={{ width: `${pct}%` }} /></div>
               </div>
             </div>
