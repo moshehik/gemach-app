@@ -6,7 +6,7 @@
 // פריסה (העיצוב העדכני B2): קלף אחד (.card.one) עם שתי עמודות - הטופס (.pay-main) מימין ו"תשלומים שנרשמו" (.pay-side, נדבקת בגלילה) משמאל,
 // עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
 import { Blk, Ic, OneCard, SubH, Tip, money } from './NoUi';
-import { CalcErrorNote, DeliveryChargeLine } from './NoDeliveryBits';
+import { CalcErrorNote } from './NoDeliveryBits';
 import { isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
 
 const AMT_STEP = 10;
@@ -50,7 +50,6 @@ export default function StepPayment({ ctl }) {
               </div>
             </div>
             <CalcErrorNote ctl={ctl} />
-            <DeliveryChargeLine ctl={ctl} />
           </Blk>
           <Blk>
             <SubH icon="card" tone="blue" title="רישום תשלום" />
