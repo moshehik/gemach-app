@@ -2582,3 +2582,38 @@ table.data thead tr th {
   .orders-fit > .table-wrap > .table-scroll { overflow-x: auto; overflow-y: visible; }
   .orders-fit > .table-wrap > .table-foot { position: sticky; }
 }
+
+/* כוכב ה-AI (AIFloatingWidget) במעטפת החדשה A5 (8.10.2026): כחול כהה + זהב של האתר במקום צבע הערכה הישנה (--primary, בורדו).
+   ה-class ai-a5 מתווסף רק כש-useUiVariant('shell') === 'a5'. בלי !important: הרכיב צובע דרך משתנים (--primary-solid / --accent),
+   אז דריסת המשתנים בתוך הכפתור והחלונית מספיקה גם לכפתורי btn-primary שבחלונית. */
+.ai-widget-fab.ai-a5,
+.ai-widget-panel.ai-a5 {
+  --primary: var(--gm-navy);
+  --primary-solid: var(--gm-navy);
+  --primary-hover: var(--gm-navy-700);
+  --text-on-primary: #fff;
+  --accent: var(--gm-gold);
+}
+.ai-widget-fab.ai-a5 {
+  color: var(--gm-gold-300) !important;
+  border: 2px solid var(--gm-gold) !important;
+  box-shadow: 0 8px 22px rgba(10, 34, 66, .35), 0 0 0 4px rgba(201, 162, 39, .18) !important;
+  transition: transform .2s, background .2s, color .2s, box-shadow .2s !important;
+}
+.ai-widget-fab.ai-a5:hover,
+.ai-widget-fab.ai-a5:focus-visible {
+  background: var(--gm-gbtn) !important;
+  color: var(--gm-navy-900) !important;
+  box-shadow: 0 10px 26px rgba(10, 34, 66, .4), 0 0 0 5px rgba(201, 162, 39, .28) !important;
+  outline: 0;
+}
+.ai-widget-panel.ai-a5 {
+  border: 1px solid var(--gm-line);
+  border-radius: var(--gm-r);
+  box-shadow: 0 18px 44px rgba(10, 34, 66, .28) !important;
+}
+.ai-widget-panel.ai-a5 .ai-widget-head {
+  background: linear-gradient(135deg, var(--gm-navy-900), var(--gm-navy-700)) !important;
+  border-bottom: 3px solid var(--gm-gold);
+}
+.ai-widget-panel.ai-a5 .ai-widget-head svg.icon { color: var(--gm-gold-300); }

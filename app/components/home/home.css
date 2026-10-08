@@ -323,3 +323,13 @@
 .gm-ds.gm-home .res-one .dchips-r { display: flex; flex-wrap: wrap; gap: 8px; }
 .gm-ds.gm-home .res-one .dchips-r .chip b { font-weight: 700; }
 .gm-ds.gm-home .res-one .dchip-al { margin-inline-start: 6px; font-weight: 700; color: var(--gm-gold-700); }
+
+/* הודעת שגיאת חיפוש (8.10.2026, HomeA5 view==='error'): מדליון כחול עם טבעת זהב, כותרת, הסבר, קוד תקלה וכפתור. אותו מראה כמו דפי התקלות
+   בתצוגות-עיצוב\דפי-תקלות. טוקני הפלטה בלבד (--gm-*), בלי צבע חדש. */
+.gm-ds.gm-home .err-card { text-align: center; padding: 34px 24px 30px; border: 2px solid var(--gm-navy); border-radius: var(--gm-r); box-shadow: 0 14px 34px rgba(10, 34, 66, .16); }
+.gm-ds.gm-home .err-medal { width: 68px; height: 68px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; background: var(--gm-navy); color: var(--gm-gold-300); box-shadow: 0 0 0 4px var(--gm-surface), 0 0 0 6px var(--gm-gold); }
+.gm-ds.gm-home .err-medal .ic { width: 30px; height: 30px; }
+.gm-ds.gm-home .err-title { font-size: 21px; font-weight: 800; color: var(--gm-ink); }
+.gm-ds.gm-home .err-sub { margin-top: 6px; font-size: 15px; color: var(--gm-ink2); }
+.gm-ds.gm-home .err-code { display: inline-block; margin-top: 12px; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--gm-ink3); background: var(--gm-sky-50); border: 1px solid var(--gm-line); unicode-bidi: plaintext; }
+.gm-ds.gm-home .err-acts { margin-top: 18px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
