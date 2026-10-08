@@ -1,5 +1,11 @@
 # System Changes Log
 
+## 2026-10-08: AI star + search-failed message in the site colors, admin-menu pin
+
+- **AI star (floating button + panel)** in the new shell (A5) now uses the site's navy/gold palette instead of the old burgundy theme color (`ai-a5` class, `app/globals.css`). The old shell is unchanged.
+- **Home search-failed message** redesigned: navy medallion with gold ring, title, explanation, error-code chip and a retry button (a "re-login" button on 401).
+- **Home search clear:** deleting the search text by hand now returns to the initial state, same as the X button.
+
 ## 2026-10-07: Day schedule (/schedule) - shorter chips and detail line, "הזמנות חדשות", and a new lazy "הזמנות שעודכנו" section (both gemachs)
 
 - **Chips removed** (owner request): "חיוב משלוח קיים" on delivery rows, "שעות איסוף 20:00-21:30" on the pickup section, and "תקין" on returns ("לא תקין" stays). The late alert now reads "איחור (3 ימים)" instead of "באיחור - לא סומן כבוצע (3 ימים)".
@@ -9,6 +15,13 @@
 - **New last section "הזמנות שעודכנו"** (also the last entry in the rail): existing orders (registered on another day) where an item was added / edited / cancelled or a payment was added that day. It is loaded lazily from its own endpoint, `GET /api/schedule/updated`, only when it comes near the screen or is picked in the rail, so the normal page load pays nothing extra; short server cache (30s today / 5min past days).
 - **DB (applied by hand on both PROD DBs on 2026-10-07, before the code):** `CREATE INDEX CONCURRENTLY IF NOT EXISTS "OrderItem_updatedAt_idx" ON "OrderItem" ("updatedAt")`; also in `schema.prisma`. A restored/new database needs it too (without it the query still works, only slower).
 - Known limit: item edits are detected from `OrderItem.updatedAt`, which also moves on pickup/return scans - rows taken/returned that day are ignored. Full detail: `docs/schedule-page-logic-spec.md` (last section). Files: `app/components/schedule/*`, `app/api/schedule/updated/route.js`, `lib/schedule/updatedOrders.js`, `lib/schedule/updatedRows.js`. PRs: #228 (merged), #230.
+
+## 2026-10-07: New order card - signing the regulations is now a pending change in the left rail
+
+- **Behavior:** in the A5 order card, clicking "חתם על התקנון" on an editable order no longer saves immediately. It flips the local value, appears in the left changes rail ("סומנה חתימה על התקנון"), can be undone per row, and is saved by "שמור" together with the other changes (the general PUT already carries `hasSignedRegulations`). No confirm dialog for this click - the rail is the confirmation.
+- **Unchanged on purpose:** gates that need a SAVED signature (print/mail menu, card-charge/pay dialog, credit) still persist immediately via `toggleSignature({confirmed:true})`; they now test the server snapshot instead of the local value, and `confirmed:true` always means "set signed" (it no longer flips a locally-signed order back). A locked order (event date passed, not unlocked) keeps the old confirm + instant small PUT, because the general save is blocked there and the server allows a signature-only PUT.
+- **Files:** `app/components/order-card/orderCardFlows.js`, `parts/OcPrintMenu.js`, `hooks/usePaymentActions.js`, `dialogs/OcPayDialog.js`; tests `scripts/order-card-tests/{docs.static,endpoints-parity,review2}.test.mjs` (4 updated, 3 new). All order-card tests pass in UTC / Asia/Jerusalem / America/New_York. Not browser-verified.
+- **Not done (separate task, see `docs/order-card-pending-item-edits-plan-2026-10-07.md`):** item size / alteration edits still save instantly.
 
 ## 2026-10-05: Vercel Fluid Active CPU - shared cache for /api/settings reads in always-mounted components (both gemachs)
 

@@ -105,7 +105,8 @@ test('C7: חיוב ידני שנמחק מקומית נשאר (isDeleted) ב-stat
 test('C7: חתימה - לחיצה כפולה פותחת חלון אישור אחד בלבד', async () => {
   let confirms = 0; let release;
   const gate = new Promise((r) => { release = r; });
-  const h = harness(baseState(), { respond: () => ({ body: {} }), uiOver: { confirm: async () => { confirms++; await gate; return false; } } });
+  // הזמנה נעולה (תאריך האירוע עבר): רק שם החתימה עדיין נשמרת מיד אחרי חלון אישור
+  const h = harness(baseState(), { edit: (s) => { s.isPastEvent = true; s.isUnlocked = false; }, respond: () => ({ body: {} }), uiOver: { confirm: async () => { confirms++; await gate; return false; } } });
   const a = h.flows.toggleSignature(); const b = h.flows.toggleSignature();
   release();
   assert.equal(await b, false);
