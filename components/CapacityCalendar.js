@@ -147,6 +147,8 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
             holidays = dayEvents.filter(e => {
               const flags = e.getFlags();
               if (flags & 8192) return false;
+              const name = e.render('he');
+              if (name.includes('בנות') || name.includes('מעשר בהמה') || name.includes('סליחות')) return false;
               return (flags & 1) || (flags & 524288) || (flags & 2097152) || (flags & 16384) || (flags & 256) || (flags & 1024);
             }).map(e => e.render('he'));
           } catch (e) {}

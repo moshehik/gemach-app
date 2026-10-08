@@ -5,9 +5,11 @@
 // "חיוב אשראי" רק כש-nedarim_plus_enabled לא 'false', חיוב שבוצע לא ניתן להסרה. R27/R31/R28 - ב-controller.
 // פריסה (העיצוב העדכני B2): קלף אחד (.card.one) עם שתי עמודות - הטופס (.pay-main) מימין ו"תשלומים שנרשמו" (.pay-side, נדבקת בגלילה) משמאל,
 // עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
-import { Blk, Ic, OneCard, SubH, money } from './NoUi';
+import { Blk, Ic, OneCard, SubH, Tip, money } from './NoUi';
 import { CalcErrorNote, DeliveryChargeLine } from './NoDeliveryBits';
-import { isChargedPayment, methodIcon, moneyTxt } from './newOrderLogic';
+import { isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
+
+const AMT_STEP = 10;
 
 export default function StepPayment({ ctl }) {
   const s = ctl.settings;
@@ -19,10 +21,21 @@ export default function StepPayment({ ctl }) {
   const busy = ctl.saving || ctl.isProcessingCredit || !!ctl.saved;
   const hasPays = ctl.paymentsList.length > 0;
   // Enter בסכום / בהערה = "אישור תשלום" (כמו ה-form בישן ו-keydown בעיצוב)
+  // סכום התשלום: אי אפשר לעבור את היתרה לתשלום (bal); +/- בקפיצות של AMT_STEP, בלי חיצי הדפדפן
+  const maxPay = Math.max(0, Math.round(bal * 100) / 100);
+  const setAmount = (v) => ctl.setPayment(prev => ({ ...prev, amount: v }));
+  const curAmt = parseFloat(p.amount) || 0;
+  const stepAmount = (dir) => setAmount(String(Math.min(maxPay, Math.max(0, Math.round((curAmt + dir * AMT_STEP) * 100) / 100))));
+  const typeAmount = (raw) => { const n = parseFloat(raw); setAmount(Number.isFinite(n) && n > maxPay ? String(maxPay) : raw); };
+  // בחירת אשראי פותחת את חלון החיוב מיד (בלי כפתור נפרד); לחיצה חוזרת על האריח פותחת אותו שוב. בלי סכום - רק נבחר, ו-Enter בשדה הסכום פותח
+  const isCredit = isCreditMethod(p.method);
+  const pickMethod = (m) => {
+    ctl.setPayment(prev => ({ ...prev, method: m }));
+    if (isCreditMethod(m) && !busy && curAmt > 0) ctl.openCredit(p.notes);
+  };
   const enter = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) ctl.handleAddPaymentClick(); } };
-  const balNote = bal > 0 ? (
-    <div className="muted sm" style={{ marginTop: 12 }}><Ic n="info" c="sm" /> נותרה יתרה של {moneyTxt(bal)}. סיום ההזמנה ללא תשלום מלא אפשרי רק אם בוחרים &quot;יציאה באישור מנהל&quot; מתוך רשימת &quot;אופן תשלום&quot; למעלה (ולא בכפתור נפרד) - זה יבקש קוד וסיסמת מנהל.</div>
-  ) : null;
+  // נוסח מקוצר בטולטיפ (במקום שורת הסבר): סיום בלי תשלום מלא רק דרך "יציאה באישור מנהל" ברשימת אופן התשלום
+  const balTip = bal > 0 ? `יתרה ${moneyTxt(bal)}. סיום בלי תשלום מלא: "יציאה באישור מנהל" (דורש קוד וסיסמת מנהל).` : '';
   return (
     <OneCard>
       <div className={`pay-split${hasPays ? ' has-side' : ''}`}>
@@ -42,12 +55,17 @@ export default function StepPayment({ ctl }) {
           <Blk>
             <SubH icon="card" tone="blue" title="רישום תשלום" />
             <label className="lbl" htmlFor="noPayAmt">סכום לתשלום כעת (₪)</label>
-            <div className="amtin"><span>₪</span><input id="noPayAmt" type="number" inputMode="decimal" step="any" value={p.amount} onKeyDown={enter} onChange={(e) => ctl.setPayment(prev => ({ ...prev, amount: e.target.value }))} /></div>
-            <div className="lbl" style={{ marginTop: 14 }}>אופן תשלום</div>
-            <div className="methods" id="methods" role="radiogroup" aria-label="אופן תשלום">
+            <div className="amtin">
+              <button type="button" className="numb dn" aria-label="הפחתה" tabIndex={-1} disabled={curAmt <= 0} onClick={() => stepAmount(-1)}><Ic n="minus" c="sm" /></button>
+              <span>₪</span><input id="noPayAmt" type="number" inputMode="decimal" step="any" min="0" max={maxPay} value={p.amount} onKeyDown={enter} onChange={(e) => typeAmount(e.target.value)} />
+              <button type="button" className="numb up" aria-label="הוספה" tabIndex={-1} disabled={curAmt >= maxPay} onClick={() => stepAmount(1)}><Ic n="plus" c="sm" /></button>
+            </div>
+            <div className="lbl" style={{ marginTop: 14 }}>אופן תשלום{balTip ? <> <Tip t={balTip} /></> : null}</div>
+            {/* אמצעי התשלום באריחי .opt זה לצד זה, כמו כפתורי התיקונים (צוואר / שרוול / אורך) */}
+            <div className="altopts" id="methods" role="radiogroup" aria-label="אופן תשלום">
               {ctl.paymentMethodOptions.map(m => (
-                <button key={m} type="button" role="radio" aria-checked={p.method === m} className={p.method === m ? 'on' : ''} onClick={() => ctl.setPayment(prev => ({ ...prev, method: m }))}>
-                  <Ic n={methodIcon(m)} c="lg" />{m}
+                <button key={m} type="button" role="radio" aria-checked={p.method === m} className={`opt${p.method === m ? ' on' : ''}`} onClick={() => pickMethod(m)}>
+                  {p.method === m ? <Ic n="check" c="sm evck" /> : null}<Ic n={methodIcon(m)} c="lg" /><div><b>{m}</b></div>
                 </button>
               ))}
             </div>
@@ -60,11 +78,11 @@ export default function StepPayment({ ctl }) {
                 </div>
               </details>
             ) : null}
-            <div className="row wrap" style={{ gap: 10, marginTop: 16 }}>
-              <button type="button" className="btn green" disabled={busy} onClick={ctl.handleAddPaymentClick}><Ic n="check" />אישור תשלום / פיצול</button>
-              {s.nedarim_plus_enabled !== 'false' ? <button type="button" className="btn navy" disabled={busy} onClick={() => ctl.openCredit(p.notes)}><Ic n="card" />חיוב אשראי</button> : null}
-            </div>
-            {!hasPays ? balNote : null}
+            {isCredit ? null : (
+              <div className="row wrap" style={{ gap: 10, marginTop: 16 }}>
+                <button type="button" className="btn green" disabled={busy} onClick={ctl.handleAddPaymentClick}><Ic n="check" />רישום תשלום</button>
+              </div>
+            )}
           </Blk>
         </div>
         {hasPays ? (
@@ -82,7 +100,6 @@ export default function StepPayment({ ctl }) {
                 </div>
               ))}
             </div>
-              {balNote}
             </Blk>
           </div>
         ) : null}

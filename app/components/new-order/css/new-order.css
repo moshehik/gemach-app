@@ -53,7 +53,7 @@
 .gm-ds.gm-no .pb-t b{font-size:13px}}
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-no .pb-bar i{transition:none}}
 .gm-ds.gm-no .one-body{display:flex;flex-direction:column}
-.gm-ds.gm-no .one-body>.blk+.blk{margin-top:22px;padding-top:22px;border-top:1px dashed var(--line)}
+.gm-ds.gm-no .one-body>.blk+.blk{margin-top:28px;padding-top:28px;border-top:2px solid var(--sky-300)}
 .gm-ds.gm-no .app .one .blk:is(.card,.gm-ds.gm-no .dfields,.gm-ds.gm-no .cust,.gm-ds.gm-no .items-card,.gm-ds.gm-no .coll,.gm-ds.gm-no .stepper){background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding-inline:0!important}
 .gm-ds.gm-no .app .one .blk:is(.card,.gm-ds.gm-no .dfields,.gm-ds.gm-no .cust,.gm-ds.gm-no .items-card){padding-block:0!important;margin:0!important}
 .gm-ds.gm-no .one .sub-h{display:flex;align-items:center;gap:10px;margin:0 0 14px}
@@ -96,7 +96,7 @@
 .gm-ds.gm-no .one .inpw{max-width:440px}
 .gm-ds.gm-no .app .one .blk.dhero{background:none!important;border:0!important;box-shadow:none!important;padding-inline:0!important;border-radius:0!important}
 @media (max-width:520px){.gm-ds.gm-no .one .btn{white-space:normal;text-align:start;height:auto;min-height:44px}}
-.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
+.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk{margin-top:30px!important;padding-top:30px!important;border-top:2px solid var(--sky-300)!important}
 .gm-ds.gm-no .app .one .stepper{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin-top:0!important}
 .gm-ds.gm-no .app .one .stepper::after{display:none!important}
 .gm-ds.gm-no .app .one .coll{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;border-top:1px dashed var(--line)!important;padding-inline:0!important}
@@ -197,6 +197,17 @@
 .gm-ds.gm-no :is(#dlg,#dlg2) .inp.inp{border-radius:14px}
 /* "סכום לתשלום כעת": השדה בתוך .amtin שקוף כמו בעיצוב (design-overrides צובע רקע/גבול/רדיוס לכל input) */
 .gm-ds.gm-no .no-app .amtin>input:not(.x){border:0;background:transparent;border-radius:0;padding:1px 2px;color:var(--gm-ink);box-shadow:none}
+/* סכום לתשלום: +/- עגולים של הפלטה (כמו .numw בהגדרות) במקום חיצי הדפדפן; לא עוברים את היתרה (max בשדה) */
+.gm-ds.gm-no .no-app .amtin>input::-webkit-inner-spin-button,.gm-ds.gm-no .no-app .amtin>input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.gm-ds.gm-no .no-app .amtin>input{-moz-appearance:textfield;appearance:textfield}
+.gm-ds.gm-no .amtin .numb{flex:none;width:40px;height:40px;padding:0;border-radius:50%;border:0;background:rgba(15,44,82,.08);color:var(--gm-navy);display:grid;place-items:center;cursor:pointer;transition:background-color .15s,transform .15s var(--gm-ease)}
+.gm-ds.gm-no .amtin .numb .ic{width:18px;height:18px;stroke-width:2.2}
+.gm-ds.gm-no .amtin .numb:not(:disabled):hover,.gm-ds.gm-no .amtin .numb:focus-visible{background:var(--gm-gbtn);color:#000;outline:0}
+.gm-ds.gm-no .amtin .numb:not(:disabled):active{transform:scale(.92)}
+.gm-ds.gm-no .amtin .numb:disabled{opacity:.35;cursor:not-allowed}
+/* אמצעי התשלום באריחי .opt (כמו התיקונים) */
+.gm-ds.gm-no .pay-main .altopts .opt{min-height:64px;padding:12px 14px;gap:10px;align-items:center}
+.gm-ds.gm-no .pay-main .altopts .opt b{font-size:16px}
 .gm-ds.gm-no .no-app .inp.inp:focus{border-color:var(--gm-brand)}
 /* שאלת השלב (.hero-t) ממורכזת עם הילה לבנה - הכלל של דף הבית שהעיצוב מכיל (ב-components.css רק תחת gm-home) */
 .gm-ds.gm-no .hero-t{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;text-shadow:0 1px 20px rgba(255,255,255,.8);overflow-wrap:anywhere}
@@ -262,9 +273,10 @@
 /* בעמודה הרחבה החיפוש / השדות / רשימת ההצעות ממלאים את הרוחב (בקובייה הבודדת הם 440px) */
 .gm-ds.gm-no .items-main .scan,.gm-ds.gm-no .items-main .inpw,.gm-ds.gm-no .items-main .field,.gm-ds.gm-no .items-main .advlist.advstatic{max-width:none;width:100%}
 /* הסל: שורות קומפקטיות, הפעולות בשורה משלהן; תשלומים שנרשמו: אייקון, פרטים, הסרה */
-.gm-ds.gm-no .items-cart .li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:8px 12px;align-items:start;padding:14px 0}
-.gm-ds.gm-no .items-cart .li>.row{grid-column:1/-1;justify-content:flex-start;gap:8px}
-.gm-ds.gm-no .items-cart .li .ibtn{width:36px;height:36px;border-radius:10px}
+/* כפתורי הפעולה (תפוסה / עריכה / הסרה): עיגולי הפלטה בצד שמאל, מול הדגם והמידה */
+.gm-ds.gm-no .items-cart .li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px 12px;align-items:start;padding:14px 0}
+.gm-ds.gm-no .items-cart .li>.row{grid-column:3;justify-content:flex-end;gap:6px!important}
+.gm-ds.gm-no .items-cart .li .ibtn{width:34px;height:34px;border-radius:50%;padding:0;display:grid;place-items:center}
 .gm-ds.gm-no .pay-side .li{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:8px 12px;align-items:start;padding:14px 0}
 .gm-ds.gm-no :is(.items-cart,.pay-side) .li .t{min-width:0}
 .gm-ds.gm-no :is(.items-cart,.pay-side) .li .t b{font-size:16px;line-height:1.35;overflow-wrap:anywhere}
@@ -279,8 +291,11 @@
 .gm-ds.gm-no .addstep>.lbl{display:flex;align-items:center;gap:8px;margin:0 0 12px}
 .gm-ds.gm-no .addstep>.lbl>.ibtn{margin-inline-start:auto;width:36px;height:36px;border-radius:10px}
 .gm-ds.gm-no .addstep .field{margin-top:12px}
-.gm-ds.gm-no .items-main .sizes{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0}
-.gm-ds.gm-no .items-main .sizes button{width:auto;min-width:0;height:48px;padding:0;border-radius:12px;font-size:16px;font-weight:600;justify-content:center}
+.gm-ds.gm-no .items-main .sizes{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+/* אריחי מידה קטנים בסגנון הפלטה (.addpanel .sizes): עיגול 40px, מסגרת כחולה, ריחוף זהב עדין, נבחר = כחול מלא */
+.gm-ds.gm-no .items-main .sizes button{width:auto;min-width:40px;height:40px;padding:0 10px;border-radius:999px;font-size:15px;font-weight:600;justify-content:center;border:1.5px solid var(--gm-navy)}
+.gm-ds.gm-no .items-main .sizes button:not(.on):not([aria-disabled=true]):hover{background:color-mix(in srgb,var(--gm-gold) 18%,transparent)}
+.gm-ds.gm-no .items-main .sizes button[aria-disabled=true]{opacity:.45;cursor:not-allowed;border-color:var(--gm-line)}
 .gm-ds.gm-no .items-main .altopts .opt{min-height:76px;padding:12px 14px;gap:10px}
 .gm-ds.gm-no .items-main .altopts .opt b{font-size:16px}
 .gm-ds.gm-no .addbar2{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:28px;padding-top:20px;border-top:1px solid var(--sky-200)}
@@ -293,7 +308,7 @@
 .gm-ds.gm-no .pay-main{display:flex;flex-direction:column;min-width:0}
 .gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start}
 /* בתוך הקלף האחד: הבלוקים של הטופס מופרדים בקו מקווקו (כמו .one-body>.blk+.blk בשלבים האחרים - כאן הם בתוך .pay-main) */
-.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{margin-top:26px!important;padding-top:26px!important;border-top:1px dashed var(--line)!important}
+.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{margin-top:30px!important;padding-top:30px!important;border-top:2px solid var(--sky-300)!important}
 /* קו מפריד דק בין הבחירה לסל (בעיצוב אחרי fix-2026-10-01 - בלי כרטיס סביב הסל) */
 @media (min-width:761px){
   .gm-ds.gm-no .items-main{align-self:stretch;border-inline-end:1px solid var(--sky-300);padding-inline-end:24px}
@@ -309,11 +324,13 @@
 
 /* ===== טופס רציף בעמוד אחד נגלל (ההגדרה new_order_layout='continuous', LayoutContinuous.js): אותם רכיבי שלב, כל השלבים כגושים בזה אחר זה ===== */
 .gm-ds.gm-no .no-app.no-flowapp{max-width:1000px!important}
-/* פס התקדמות דק ונדבק: אותו מראה כמו פסי האשף (.pbars/.pb), מספר העמודות לפי מספר הגושים המוצגים (--n), לחיצה על פריט = גלילה לגוש */
-.gm-ds.gm-no .no-app .pbars.mini{grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:8px;position:sticky;top:calc(var(--gm-snav-h,0px) + 8px);z-index:20;margin-top:14px;padding:10px 12px 4px;border-radius:16px;background:rgba(255,255,255,.86);border:1px solid var(--sky-300);box-shadow:0 8px 24px -16px rgba(15,44,82,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+/* פס התקדמות דק ונדבק: הגוון והזכוכית של הכותרת הצפה של "חיפוש חכם" בדף הבית (.aibar); אותו מראה כמו פסי האשף (.pbars/.pb), מספר העמודות לפי מספר הגושים המוצגים (--n), לחיצה על פריט = גלילה לגוש */
+.gm-ds.gm-no .no-app .pbars.mini{grid-template-columns:repeat(var(--n,6),minmax(0,1fr));gap:8px;position:sticky;top:calc(var(--gm-snav-h,0px) + 8px);z-index:20;margin-top:14px;padding:10px 12px 4px;border-radius:20px;background:linear-gradient(135deg,rgba(232,186,156,.66) 0%,rgba(222,166,132,.66) 55%,rgba(228,176,144,.66) 100%);border:1px solid rgba(170,100,60,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 10px 22px -14px rgba(190,100,40,.5);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .gm-ds.gm-no .pbars.mini .pb{gap:4px}
 .gm-ds.gm-no .pbars.mini .pb-d{padding:4px 6px;align-items:center}
 .gm-ds.gm-no .pbars.mini .pb-t b{font-size:13px}
+.gm-ds.gm-no .pbars.mini .pb-t b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
+.gm-ds.gm-no .pbars.mini .pb-t{min-width:0}
 .gm-ds.gm-no .pbars.mini .pb.lock .pb-d{opacity:.55}
 .gm-ds.gm-no .no-flow{display:flex;flex-direction:column;gap:48px;margin-top:28px}
 .gm-ds.gm-no .no-sec{width:100%;max-width:680px;min-width:0;margin-inline:auto;scroll-margin-top:calc(var(--gm-snav-h,0px) + 84px)}
@@ -353,9 +370,6 @@
 .gm-ds.gm-no .app .one .dhero.off>.ico{background:var(--sky-100)}
 .gm-ds.gm-no .app .one .dhero>.ico .ic{width:20px;height:20px;color:var(--navy);stroke:var(--navy)}
 .gm-ds.gm-no .app .one .dhero b.big{font-size:17px;font-weight:600;line-height:1.3;color:var(--navy-900);margin:0}
-@media (max-width:560px){
-  .gm-ds.gm-no .items-main .sizes{grid-template-columns:repeat(4,minmax(0,1fr))}
-}
 /* שלב המשלוח: שורת "הזמנת משלוח" - הריפוד התחתון של .dhero (הפלטה) לא מתווסף לקו המפריד שאחריה; "יום לפני": הלחצן מתכווץ והעזרה נשארת לידו (בנייד) */
 .gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
