@@ -326,6 +326,8 @@ export default async function RootLayout({ children }) {
       homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
       // דפים שהיו "בקרוב" בעיצוב ונבנו בפועל (lib/menu/buildMenuTree.js, notBuilt): בדיקת מלאי - /stock-check (2.10.2026).
       available: { 'order-stock': true },
+      // כלי ניהול שהעובד/ת נעץ/נעצה בפאנל "ניהול" (סיכה, 8.10.2026): מהעוגייה החתומה (מראה של Employee.themeColor) - בלי שאילתה.
+      adminPins: employeeDesignPrefs?.adminPins,
       // פאנל "ניהול" המקוצר (4.10.2026): כלי מסך /admin שמותרים למשתמש הזה — אותו סינון כמו app/admin/page.js (selectHub;
       // accessForRole = אותם כללים כמו checkPageAccess: מחובר לפי roleId, אורח רק כשההתחברות לא חובה), מהנתונים שכבר נטענו
       // למעלה (בלי שאילתה). רק הכלים המותרים נשלחים ללקוח (מאגר הלשונית), לעולם לא הקטלוג המלא. ר' docs/admin-menu-short-2026-10-04.md.

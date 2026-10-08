@@ -10,7 +10,10 @@ import {
 import {
   ADMIN_RECENTS_CAP, ADMIN_RECENTS_KEY_PREFIX, adminRecentsKey, recordAdminVisit, adminRecentHrefs, serializeAdminRecents,
   deserializeAdminRecents, readAdminRecents, writeAdminRecents, clearAdminRecentsStorage,
+  toggleAdminPin, sanitizeAdminPins, samePins,
 } from '../lib/menu/adminRecents.js';
+import { sanitizeDesignPrefs, mergeDesignPrefs, splitServerPrefs } from '../lib/designPrefsSchema.js';
+import { DESIGN_PREFS_COOKIE_FIELDS, pickCookiePrefs, signDesignPrefsCookie, readDesignPrefsFromCookie } from '../lib/designPrefsSig.js';
 import { selectHub, accessForRole } from '../lib/adminHubCatalog.js';
 import {
   createNavHistory, visit, back, forward, go, clear, relabel, current, canGoBack, canGoForward,
@@ -1203,12 +1206,12 @@ t('חיווט: app/layout.js מזריק רק כלים מותרים (selectHub); 
   assert.ok(layout.includes("'nedarim_plus_enabled'"), 'layout: ההגדרה של נדרים פלוס נטענת');
   assert.ok(/\.value !== 'false', deliveriesEnabled: showDeliveries \},\s*\)\.tools/.test(layout), 'layout: כמו app/admin/page.js — רק "false" מפורש מכבה נדרים; משלוחים לפי enable_deliveries');
   const shell = src('../app/components/menu/MenuA5Shell.js');
-  assert.ok(shell.includes('const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);'));
+  assert.ok(shell.includes('const { tree, clearOnLogout: clearAdminRecents, togglePin } = useAdminRecents(serverTree);'));
   assert.ok(/nav\.clearOnLogout\(\);\s*clearAdminRecents\(\);/.test(shell), 'ניקוי בהתנתקות');
   assert.ok(shell.includes('  menuTree: serverTree,'), 'העץ מהשרת לא בשימוש ישיר');
   const hook = src('../app/components/menu/useAdminRecents.js');
   assert.ok(/^'use client';/.test(hook));
-  assert.ok(hook.includes('matchAdminPoolItem(tree, pathname)') && hook.includes('applyAdminRecents(tree, adminRecentHrefs(list))'));
+  assert.ok(hook.includes('matchAdminPoolItem(tree, pathname)') && hook.includes('applyAdminRecents(tree, adminRecentHrefs(list), pins)'));
   assert.ok(!/localStorage/.test(hook.replace(/\/\/[^\n]*/g, '')), 'גישה לאחסון רק דרך lib/menu/adminRecents.js (עטוף ב-try)');
   const lib = src('../lib/menu/adminRecents.js');
   assert.ok(!/(^|[^.])localStorage\.(get|set|remove)Item/.test(lib), 'בלי גישה ישירה שלא דרך st');
@@ -1274,4 +1277,102 @@ t('אייקון משלוחים זהה באריח (מסך /admin) ובתפריט:
   const menu = flattenMenuTree(buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({ enable_deliveries: 'true' }) })).find((x) => x.id === 'ad-deliveries');
   assert.equal(menu.icon, 'truck'); assert.equal(menu.icon, tile.icon);
 });
+// ---------------------------------------------------------------------------------------------------------------
+// נעיצה: סיכה צפה על שורה בפאנל "ניהול", נשמרת לכל עובד ב-DB (8.10.2026)
+// ---------------------------------------------------------------------------------------------------------------
+console.log('\nנעיצה בפאנל "ניהול" (סיכה צפה, לכל עובד)');
+const PIN_POOL = [
+  { id: 'ad-staff', kind: 'link', label: 'עובדים', href: '/employees' },
+  { id: 'ad-perms', kind: 'link', label: 'הרשאות', href: '/admin/permissions' },
+  { id: 'ad-pricelist', kind: 'link', label: 'מחירון', href: '/dashboard/pricelist' },
+  { id: 'ad-models', kind: 'link', label: 'דגמים', href: '/dashboard/dresses' },
+  { id: 'ad-refunds', kind: 'link', label: 'זיכויים', href: '/refunds' },
+  { id: 'ad-stats', kind: 'link', label: 'סטטיסטיקה', href: '/admin/statistics' },
+];
+const PIN_FIXED = [
+  { id: 'ad-settings', kind: 'link', label: 'הגדרות מערכת', href: '/admin/settings' },
+  { id: 'ad-all', kind: 'link', label: 'כל כלי הניהול', href: '/admin' },
+];
+const linkIds = (arr) => arr.filter((x) => x.kind === 'link').map((x) => x.id);
+t('נעוץ תקוע למעלה, לפני "אחרונים"; אחרונים ממלאים רק את מה שנשאר מ-3', () => {
+  const items = composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED, recents: ['/refunds', '/employees'], pins: ['/admin/statistics'] });
+  assert.deepEqual(linkIds(items), ['ad-stats', 'ad-refunds', 'ad-staff', 'ad-settings', 'ad-all']);
+  assert.equal(items[0].pinned, true); assert.equal(items[0].pinnable, true); assert.ok(!items[0].recent);
+  assert.equal(items[1].recent, true); assert.ok(!items[1].pinned);
+  assert.ok(items.filter((x) => x.kind === 'link').slice(-2).every((x) => !x.pinnable), 'שורות קבועות אינן ניתנות לנעיצה');
+});
+t('שלושה נעוצים ומעלה = בלי אחרונים; חמישה נעוצים = חמש שורות + קבועות; סדר הנעיצה נשמר', () => {
+  const three = composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED, recents: ['/refunds'], pins: ['/dashboard/dresses', '/employees', '/admin/statistics'] });
+  assert.deepEqual(linkIds(three), ['ad-models', 'ad-staff', 'ad-stats', 'ad-settings', 'ad-all']);
+  const order = PIN_POOL.slice(0, 5).map((x) => x.href).reverse();
+  const five = composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED, pins: order });
+  assert.deepEqual(five.filter((x) => x.pinned).map((x) => x.href), order);
+});
+t('נעוץ שאינו במאגר (הרשאה בוטלה / כלי לא קיים) נזרק בלי לשבור; כפילות ונתיב לא תקין נזרקים', () => {
+  const items = composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED, pins: ['/admin/site', '/employees', '/employees', 'javascript:1', '//evil.com', null] });
+  assert.deepEqual(items.filter((x) => x.pinned).map((x) => x.id), ['ad-staff']);
+  assert.deepEqual(linkIds(composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED, pins: 'x' })), linkIds(composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED })));
+});
+t('בלי נעוצים: אותן שורות כמו קודם', () => {
+  const a = composeAdminItems({ pool: PIN_POOL, fixed: PIN_FIXED, recents: ['/refunds'] });
+  assert.deepEqual(linkIds(a), ['ad-refunds', 'ad-staff', 'ad-perms', 'ad-settings', 'ad-all']);
+  assert.ok(a.every((x) => !x.pinned));
+});
+t('buildMenuTree: ctx.adminPins נכנס לפאנל ול-tab.pins; הרשאות לא מורחבות (נעוץ אסור לא מופיע)', () => {
+  const tree = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({}), adminPins: ['/dashboard/dresses', '/admin/zzz'] });
+  const adm = tab(tree, 'admin');
+  assert.deepEqual(adm.pins, ['/dashboard/dresses', '/admin/zzz']);
+  assert.equal(adm.items[0].id, 'ad-models'); assert.equal(adm.items[0].pinned, true);
+  assert.ok(!adm.items.some((x) => x.href === '/admin/zzz'), 'נעוץ שאינו במאגר לא מוצג');
+  const branch = tab(buildMenuTree({ user: BRANCH, permissions: ALL_OPEN, settings: rows({}), adminPins: ['/admin/permissions'] }), 'admin');
+  assert.ok(!branch || !branch.items.some((x) => x.href === '/admin/permissions'), 'מנהלת סניף לא מקבלת כלי הנהלה דרך נעיצה');
+});
+t('applyAdminRecents(tree, recents, pins) = buildMenuTree עם אותן נעיצות', () => {
+  const base = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({}) });
+  const viaClient = applyAdminRecents(base, ['/refunds'], ['/admin/statistics']);
+  const viaServer = buildMenuTree({ user: HEAD, permissions: ALL_OPEN, settings: rows({}), adminRecents: ['/refunds'], adminPins: ['/admin/statistics'] });
+  assert.deepEqual(tab(viaClient, 'admin').items, tab(viaServer, 'admin').items);
+  assert.deepEqual(tab(applyAdminRecents(base, [], []), 'admin').items, tab(base, 'admin').items);
+});
+t('toggleAdminPin / sanitizeAdminPins: נעיצה, שחרור, מכסה 5, נתיבים לא תקינים', () => {
+  let r = toggleAdminPin([], '/employees'); assert.deepEqual(r, { pins: ['/employees'], changed: true, full: false });
+  r = toggleAdminPin(r.pins, '/refunds'); assert.deepEqual(r.pins, ['/employees', '/refunds']);
+  r = toggleAdminPin(r.pins, '/employees'); assert.deepEqual(r, { pins: ['/refunds'], changed: true, full: false });
+  const five = ['/a', '/b', '/c', '/d', '/e'];
+  assert.deepEqual(toggleAdminPin(five, '/f'), { pins: five, changed: false, full: true });
+  assert.deepEqual(toggleAdminPin(five, '/c').pins, ['/a', '/b', '/d', '/e']);
+  assert.equal(toggleAdminPin(['/a'], 'x?y').changed, false);
+  assert.deepEqual(sanitizeAdminPins(['/a', '/a', '//x', 5, { href: '/b' }, '/c', '/d', '/e', '/f', '/g']), ['/a', '/b', '/c', '/d', '/e']);
+  assert.deepEqual(sanitizeAdminPins(['/' + 'x'.repeat(100)]), [], 'נתיב ארוך נדחה (העוגייה החתומה מוגבלת)');
+  assert.deepEqual(sanitizeAdminPins('nope'), []); assert.ok(samePins(['/a'], ['/a'])); assert.ok(!samePins(['/a', '/b'], ['/b', '/a']));
+});
+t('העדפות עובד: adminPins עובר sanitize/מיזוג, נשמר בעוגייה החתומה, מערך ריק משחרר הכול, ולא חוסם הגירת localStorage', () => {
+  const s1 = sanitizeDesignPrefs({ palette: 'wine', adminPins: ['/employees', 'bad', '/employees'] });
+  assert.deepEqual(s1.adminPins, ['/employees']);
+  const merged = mergeDesignPrefs({ v: 1, palette: 'wine', adminPins: ['/employees'] }, { mode: 'dark' });
+  assert.deepEqual(merged.adminPins, ['/employees'], 'עדכון שלא מזכיר נעיצות משאיר אותן');
+  assert.deepEqual(mergeDesignPrefs(merged, { adminPins: ['/refunds'] }).adminPins, ['/refunds']);
+  assert.ok(!('adminPins' in mergeDesignPrefs(merged, { adminPins: [] })), 'מערך ריק = שחרור כל הנעיצות');
+  assert.ok(DESIGN_PREFS_COOKIE_FIELDS.includes('adminPins'));
+  assert.deepEqual(pickCookiePrefs({ palette: 'wine', mode: 'dark', adminPins: ['/employees'] }), { palette: 'wine', adminPins: ['/employees'] });
+  const sp = splitServerPrefs({ v: 1, adminPins: ['/employees'] });
+  assert.equal(sp.hasPrefs, false); assert.ok(!('adminPins' in sp.prefs));
+  assert.equal(readDesignPrefsFromCookie(signDesignPrefsCookie('k1', { adminPins: ['/employees'] }, 'secret'), 'k1', 'secret').adminPins[0], '/employees');
+});
+t('חיווט הנעיצה: layout מזריק מהעוגייה, ה-hook שומר ב-PUT /api/me/design-prefs עם החזרה אחורה בכשל, ה-UI בפאנל ובמגירה, localStorage לא נושא נעיצות', () => {
+  const layout = readFileSync(new URL('../app/layout.js', import.meta.url), 'utf8');
+  assert.ok(layout.includes('adminPins: employeeDesignPrefs?.adminPins'));
+  const hook = readFileSync(new URL('../app/components/menu/useAdminRecents.js', import.meta.url), 'utf8');
+  assert.ok(hook.includes("fetch('/api/me/design-prefs'") && hook.includes("method: 'PUT'") && hook.includes('JSON.stringify({ adminPins: r.pins })'));
+  assert.ok(hook.includes('saveChain') && hook.includes('setPins(before)'));
+  const shell = readFileSync(new URL('../app/components/menu/MenuA5Shell.js', import.meta.url), 'utf8');
+  assert.equal((shell.match(/onTogglePin=\{tab\.id === 'admin' \? onTogglePin : undefined\}/g) || []).length, 2, 'פאנל ריחוף + מגירת נייד');
+  const parts = readFileSync(new URL('../app/components/menu/menuParts.js', import.meta.url), 'utf8');
+  assert.ok(parts.includes('sn-pinrow') && parts.includes('aria-pressed') && parts.includes('it.pinnable'));
+  const lp = readFileSync(new URL('../app/lib/designPrefs.js', import.meta.url), 'utf8');
+  assert.ok(lp.includes('adminPins: _strippedPins'), 'readLocalPrefs/writeLocalPrefs מסירים adminPins');
+  const css = readFileSync(new URL('../app/components/menu/menu.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.sn-pin{') && css.includes('.sn-pinrow.is-pinned .sn-pin{'));
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (WITH FAILURES)' : ''}`);

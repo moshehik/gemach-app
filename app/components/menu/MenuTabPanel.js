@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { Ic, MenuRows, SOON_LABEL } from './menuParts';
 
-export default function MenuTabItem({ tab, active, activeItemId, open, handlers, onNavigate, onAction }) {
+export default function MenuTabItem({ tab, active, activeItemId, open, handlers, onNavigate, onAction, onTogglePin }) {
   if (tab.soon) {
     // לשונית "בקרוב" (למשל "לוז" כשאין הרשאה / הדף עוד לא קיים): לא קישור, לא ניתנת למיקוד, בלי תפריט.
     return (
@@ -72,7 +72,7 @@ export default function MenuTabItem({ tab, active, activeItemId, open, handlers,
       {hasMenu && (
         <div className="sn-panel" role="menu" aria-label={tab.label}>
           <div className="hf-l" role="group" aria-label={tab.label}>
-            <MenuRows items={tab.items} menu activeItemId={activeItemId} onNavigate={onNavigate} onAction={onAction} />
+            <MenuRows items={tab.items} menu activeItemId={activeItemId} onNavigate={onNavigate} onAction={onAction} onTogglePin={onTogglePin} />
           </div>
         </div>
       )}

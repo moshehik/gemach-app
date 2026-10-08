@@ -41,7 +41,7 @@ t('סבב מלא: sign -> verify מחזיר את אותן העדפות (רק ש�
 t('שדות שאינם בעוגייה (mode / savedPalettes / autoClockIn / שדות זרים) לא נכנסים', () => {
   const c = sign(A, { ...PREFS, mode: 'dark', savedPalettes: [{ id: 'x', name: 'n', primary: '#000000', accent: '#ffffff' }], autoClockIn: true, evil: 1 });
   assert.deepEqual(verify(c).prefs, PREFS);
-  assert.deepEqual(DESIGN_PREFS_COOKIE_FIELDS, ['palette', 'font', 'density', 'textScale', 'customColors', 'uiVariants']);
+  assert.deepEqual(DESIGN_PREFS_COOKIE_FIELDS, ['palette', 'font', 'density', 'textScale', 'customColors', 'uiVariants', 'adminPins']);
 });
 t('sanitize לפני החתימה: ערכים לא תקינים נזרקים (uiVariants עם מסך / ערך לא מוכר)', () => {
   const r = verify(sign(A, { palette: 'rose', uiVariants: { shell: 'a5', login: 'a5', home: 'evil' } }));

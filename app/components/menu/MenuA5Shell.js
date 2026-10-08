@@ -47,7 +47,7 @@ export default function MenuA5Shell({
   const pathname = usePathname();
   // פאנל "ניהול" המקוצר: העץ מהשרת + "כלי ניהול שנפתחו לאחרונה" מהדפדפן (useAdminRecents). כל שאר המעטפת (ריחוף, מגירת נייד,
   // חיפוש בתפריט, הדגשה) עובדת על העץ הזה.
-  const { tree, clearOnLogout: clearAdminRecents } = useAdminRecents(serverTree);
+  const { tree, clearOnLogout: clearAdminRecents, togglePin } = useAdminRecents(serverTree);
   const [queryString, setQueryString] = useState(''); // פריטי "בית" הם /?scope=... — ההדגשה תלויה גם ב-query (findActive)
   const notices = useNoticeBarState(); // פס ההתראות הכחול מתחת לסרגל (NoticeBar.js)
   const popup = usePopup();
@@ -213,6 +213,15 @@ export default function MenuA5Shell({
     const el = wrapRef.current && wrapRef.current.querySelector(selector);
     if (el) el.click();
   };
+
+  // סיכה צפה בשורות פאנל "ניהול": נעיצה / שחרור נשמרים לעובד ב-DB (useAdminRecents). הפאנל נשאר פתוח כדי שאפשר יהיה לנעוץ עוד.
+  const onTogglePin = useCallback((item) => {
+    if (!item || !item.href) return;
+    togglePin(item.href).then((r) => {
+      if (r === 'full') notify('אפשר לנעוץ עד 5 כלים. שחרר/י נעיצה קיימת כדי לנעוץ כלי נוסף.', 'info');
+      else if (r === 'error') notify('שמירת הנעיצה נכשלה. נסו שוב.', 'error');
+    });
+  }, [togglePin, notify]);
 
   const onAction = useCallback((item) => {
     closeAll();
@@ -522,6 +531,7 @@ export default function MenuA5Shell({
                   handlers={handlers}
                   onNavigate={onNavigate}
                   onAction={onAction}
+                  onTogglePin={tab.id === 'admin' ? onTogglePin : undefined}
                 />
               ))}
             </nav>
@@ -724,7 +734,7 @@ export default function MenuA5Shell({
                           <Ic n="chev" />
                         </button>
                       </div>
-                      <div className="sn-ab"><div><MenuRows items={tab.items} activeItemId={act.itemId} onNavigate={onNavigate} onAction={onAction} /></div></div>
+                      <div className="sn-ab"><div><MenuRows items={tab.items} activeItemId={act.itemId} onNavigate={onNavigate} onAction={onAction} onTogglePin={tab.id === 'admin' ? onTogglePin : undefined} /></div></div>
                     </div>
                   );
                 })}

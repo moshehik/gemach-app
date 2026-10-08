@@ -27,10 +27,11 @@ export const STORAGE_KEY = 'gemachDesignPrefs';
 export const DESIGN_PREFS_EVENT = 'gemach-design-prefs-applied';
 
 // localStorage משותף לכל העובדים בדפדפן, ולכן `uiVariants` (עקיפות "ישן / A5" פר-עובד, lib/uiVariant.js)
-// אף פעם לא נכתב אליו ולא נקרא ממנו — הוא חי רק ב-DB של העובד וב-designPrefs_<id> cookie שלו.
+// אף פעם לא נכתב אליו ולא נקרא ממנו — הוא חי רק ב-DB של העובד וב-designPrefs_<id> cookie שלו. אותו כלל ל-`adminPins`
+// (כלי ניהול שהעובד נעץ בתפריט, 8.10.2026): נעיצה של עובד אחד לא אמורה לעבור לעובד אחר באותו דפדפן.
 function withoutUiVariants(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
-  const { uiVariants: _stripped, ...rest } = raw;
+  const { uiVariants: _stripped, adminPins: _strippedPins, ...rest } = raw;
   return rest;
 }
 
