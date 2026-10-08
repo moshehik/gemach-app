@@ -374,9 +374,18 @@
 .gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}
-/* תיבת בחירה (סניף ביצוע / איסוף / עיר): רקע כמו שדות הטקסט (.inp = --gm-surface) ולא לבן קשיח */
-.gm-ds.gm-no .no-app .cb-t{background:var(--gm-surface)}
+/* תיבת בחירה (סניף ביצוע / איסוף / עיר): רקע הפנינה של הטופס (כמו הכרטיסים) ולא לבן קשיח */
+.gm-ds.gm-no .no-app .cb-t{background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)}
 /* שלב המשלוח: בלי קו מפריד מתחת לשורת "הזמנת משלוח" */
 .gm-ds.gm-no .app .one .one-body>.blk.blk.dhero+.blk{border-top:0!important;padding-top:0!important;margin-top:18px!important}
 /* שלב המשלוח: אריחי האייקון של הכותרות (הזמנת משלוח / כיוון / יעד) בלי רקע */
 .gm-ds.gm-no .app .one .dfields .sub-h .ico[class],.gm-ds.gm-no .app .one .dhero>.ico,.gm-ds.gm-no .app .one .dhero.off>.ico{background:none!important}
+/* שלב המשלוח, כתובת הלקוחה: שורה אחת - הכתובת מימין, "כתובת שונה" מצד שמאל (לחצן משני, בלי מילוי זהב) */
+.gm-ds.gm-no .one .no-addr{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1.5px solid var(--gm-line);border-radius:14px}
+.gm-ds.gm-no .one .no-addr-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.gm-ds.gm-no .one .no-addr-t small{font-size:13px;color:var(--gm-ink3)}
+.gm-ds.gm-no .one .no-addr-t b{font-size:16px;font-weight:600;color:var(--navy-900);overflow-wrap:anywhere}
+.gm-ds.gm-no .one .no-addr>.btn{background:transparent!important;border:1.5px solid var(--sky-300)!important;color:var(--navy)!important;box-shadow:none!important;flex:none}
+/* לחצן-מתג מסומן ("משלוח יוצא יום לפני"): כחול כהה עם טקסט בהיר, גם במעבר עכבר */
+.gm-ds.gm-no .no-app .btn.tgl.on,.gm-ds.gm-no .no-app .btn.tgl.on:hover{background:var(--gm-navy);border-color:var(--gm-navy);color:var(--gm-gold-100)}
+.gm-ds.gm-no .no-app .btn.tgl.on .evck{color:var(--gm-gold-300);stroke:currentColor}
