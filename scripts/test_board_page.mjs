@@ -86,7 +86,9 @@ await t('BD-O1 / F13: /board מאחורי המתג ישן/חדש לפי הריש
   has(LAYOUT, /BoardGateSwitch legacy=\{<NoAccessMessage \/>\} next=\{<BoardGate \/>\}/);
   // הלוח הישן = הבלוב של app/board/page.js כפי שהיה לפני הלוח החדש (c944cb95, main) - בייט-לבייט
   const blob = execFileSync('git', ['show', 'c944cb95:app/board/page.js'], { cwd: path.resolve(HERE, '..'), maxBuffer: 1 << 26 });
-  assert.ok(blob.equals(readFileSync(new URL('../app/board/LegacyBoardPage.js', import.meta.url))), 'LegacyBoardPage.js שונה מהבלוב ב-main');
+  // בייט-לבייט עד סיומות שורה: ב-checkout של Windows (core.autocrlf=true) הקובץ בעץ העבודה CRLF והבלוב ב-git LF - אותו תוכן
+  const legacy = Buffer.from(readFileSync(new URL('../app/board/LegacyBoardPage.js', import.meta.url)).toString('latin1').replace(/\r\n/g, '\n'), 'latin1');
+  assert.ok(blob.equals(legacy), 'LegacyBoardPage.js שונה מהבלוב ב-main');
 });
 
 await t('E07/E02/E03/E04/E05/E06: אשף ההדפסה, חיפוש חכם, סטטיסטיקה, חיפוש גלובלי, חיפוש מתקדם ומקרא הסטטוס - הוסרו', () => {
