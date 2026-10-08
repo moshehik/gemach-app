@@ -7,7 +7,7 @@ import NeonUsageCard from './NeonUsageCard';
 import { describeLogoResult, readLogoUploadResponse } from '@/lib/logoFormat';
 import { prepareLogoFile } from '@/lib/logoClientPrep';
 import { REQUIRABLE_CUSTOMER_FIELDS, CUSTOMER_REQUIRED_FIELDS_KEY, CUSTOMER_BANK_FIELDS_ENABLED_KEY, isBankFieldKey } from '@/lib/customerRequiredFields';
-import WebBackupModeToggle from './WebBackupModeToggle';
+import WebBackupModeToggle, { DeviceBackupViewToggle } from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
@@ -812,6 +812,7 @@ export default function SettingsClient({ mode = 'general' }) {
 
           {activeTab === 'מסד נתונים' && (
             <>
+              <DeviceBackupViewToggle />
               <WebBackupModeToggle />
               <NeonUsageCard />
             </>
