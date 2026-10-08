@@ -31,6 +31,9 @@ export const getCustomerFullName = (c) => {
   return `${f} ${l}`.trim() || 'לקוח ללא שם';
 };
 
+// רוחב אחיד לכל שלבי האשף (כמו שלב 4 - סיכום), כדי שהמסך לא יקפוץ בין שלב לשלב
+const STEP_WIDTH_STYLE = { maxWidth: '640px', margin: '0 auto' };
+
 // אופציות "אופן תשלום" לשלב התשלום של האשף - נגזר גם ברינדור (paymentMethodOptions למטה)
 // וגם ברגע טעינת ההגדרות (כדי לסנכרן את payment.method ההתחלתי, ר' שם) כדי שלא יהיו שתי
 // מימושים שעלולים לסטות זה מזה. כשסליקת נדרים פלוס כבויה בהגדרות (nedarim_plus_enabled),
@@ -1717,7 +1720,7 @@ export default function NewOrderPage() {
       setShowExitConfirm(true);
       return;
     }
-    router.push('/orders');
+    router.push('/'); // יציאה מהזמנה חדשה -> דף הבית (לא רשימת ההזמנות)
   };
 
   const busy = saving || isProcessingCredit;
@@ -1834,9 +1837,7 @@ export default function NewOrderPage() {
                 <svg className="icon"><use href="#i-chevron-end" /></svg> חזור
               </button>
             )}
-            {step === 1 && (
-              <button type="button" className="btn btn-ghost" onClick={handleExit} disabled={busy}>ביטול</button>
-            )}
+            <button type="button" className="btn btn-ghost" onClick={handleExit} disabled={busy}>ביטול הזמנה</button>
             <span style={{ flex: 1 }} />
             {step === 1 && (
               <button type="button" className="btn btn-primary" onClick={proceedToStep2} disabled={!order.customerId}>
@@ -1868,7 +1869,7 @@ export default function NewOrderPage() {
       >
         {/* ==================== שלב 1 · לקוח ==================== */}
         {step === 1 && (
-          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+          <div style={STEP_WIDTH_STYLE}>
             <h2>מי הלקוח?</h2>
 
             <div className="tabs">
@@ -2020,6 +2021,7 @@ export default function NewOrderPage() {
                       setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }));
                     }}
                     placeholder="חפש לקוח לפי שם, טלפון, עיר..."
+                    requireSearch
                   />
                 </div>
                 {order.selectedCustomer && (
@@ -2207,7 +2209,7 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 2 · תאריכים ==================== */}
         {step === 2 && (
-          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+          <div style={STEP_WIDTH_STYLE}>
             <h2>מתי האירוע?</h2>
 
             {allowAbroad && (
@@ -2378,7 +2380,7 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 3 · פריטים ==================== */}
         {step === 3 && (
-          <div>
+          <div style={STEP_WIDTH_STYLE}>
             <h2>אילו פריטים?</h2>
 
             <div className="two-col">
@@ -2629,7 +2631,7 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 4 · סיכום ==================== */}
         {step === 4 && (
-          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+          <div style={STEP_WIDTH_STYLE}>
             <h2>סיכום</h2>
 
             <div className="card card-pad" style={{ marginBottom: '16px' }}>
@@ -2699,13 +2701,12 @@ export default function NewOrderPage() {
                 </span>
               </div>
             </div>
-            {deliveryEnabled && <div style={{ marginTop: 16 }}>{renderDeliveryButton()}</div>}
           </div>
         )}
 
         {/* ==================== שלב 5 · תשלום ==================== */}
         {step === 5 && (
-          <div>
+          <div style={STEP_WIDTH_STYLE}>
             <h2>תשלום וסיום</h2>
 
             <div className="two-col">
@@ -2929,7 +2930,7 @@ export default function NewOrderPage() {
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => setShowExitConfirm(false)}>המשך בהזמנה</button>
-              <button type="button" className="btn btn-primary" onClick={() => router.push('/orders')}>
+              <button type="button" className="btn btn-primary" onClick={() => router.push('/')}>
                 {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
               </button>
             </div>

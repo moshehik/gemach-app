@@ -832,7 +832,7 @@ export default function useNewOrderController({ router }) {
       if (!leave) return;
     }
     backGuardArmedRef.current = false;
-    router.push('/orders');
+    router.push('/'); // יציאה -> דף הבית
   };
 
   // Escape סוגר את החלון העליון (לא בזמן חיוב/שמירה - כמו בישן)
