@@ -571,7 +571,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           <div style={{ display: 'flex', gap: '4px' }}>
             <button data-element-name="כפתור_AIFloatingWidget_5"
               type="button"
-              className="btn btn-ghost btn-icon-only btn-sm"
+              className={`btn btn-ghost btn-icon-only btn-sm${showHistory ? ' is-on' : ''}`}
               onClick={() => setShowHistory(!showHistory)}
               style={{ color: showHistory ? 'var(--accent)' : 'var(--text-on-primary)' }}
               title="היסטוריית שיחות"
