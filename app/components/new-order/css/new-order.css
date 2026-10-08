@@ -374,3 +374,7 @@
 .gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}
+/* תיבת בחירה (סניף ביצוע / איסוף / עיר): רקע כמו שדות הטקסט (.inp = --gm-surface) ולא לבן קשיח */
+.gm-ds.gm-no .no-app .cb-t{background:var(--gm-surface)}
+/* שלב המשלוח: בלי קו מפריד מתחת לשורת "הזמנת משלוח" */
+.gm-ds.gm-no .app .one .one-body>.blk.blk.dhero+.blk{border-top:0!important;padding-top:0!important;margin-top:18px!important}

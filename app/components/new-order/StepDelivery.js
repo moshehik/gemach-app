@@ -72,7 +72,7 @@ export default function StepDelivery({ ctl }) {
           <Blk className={`dhero${o.isDelivery ? '' : ' off'}`}>
             <div className="ico"><Ic n="truck" c="lg" /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="trow"><Switch id="noDelOn" checked={o.isDelivery} label="הזמנת משלוח" onChange={(v) => set({ isDelivery: v })} /><b className="big">הזמנת משלוח</b><Tip t="משלוח אחד בלבד להזמנה" /></div>
+              <div className="trow"><Switch id="noDelOn" checked={o.isDelivery} label="הזמנת משלוח" onChange={(v) => set({ isDelivery: v })} /><b className="big">הזמנת משלוח</b></div>
             </div>
           </Blk>
           {/* בקשת הבעלים 9.10.2026: כרטיסי הכיוון והיעד מוצגים רק כשהמשלוח מסומן (בעיצוב המקורי הם הוצגו תמיד, מעומעמים) */}
