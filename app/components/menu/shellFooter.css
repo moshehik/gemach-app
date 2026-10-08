@@ -37,3 +37,7 @@
 .gm-ds.gm-shellfoot .priv-dlg .priv-body ul { padding-inline-start: 20px; }
 
 @media print { .gm-ds.gm-shellfoot { display: none !important; } }
+
+/* מתחת לתחתית הכחולה אין שום דבר: רקע הקנבס (מה שנחשף בגלילת-יתר / כשהדף קצר מהחלון) כחול כהה כמו התחתית, כך שלא נראה פס בהיר. */
+html:has(.a5-shell) { background-color: var(--gm-navy, #0f2c52); }
+@media print { html:has(.a5-shell) { background-color: transparent; } }
