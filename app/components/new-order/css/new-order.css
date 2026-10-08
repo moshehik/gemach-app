@@ -403,3 +403,5 @@
 .gm-ds.gm-no .pay-main #methods{max-width:440px}
 /* תיבת בחירה בתוך חלון (מאשר / מידה): רשימה צפה מודרנית של האתר במקום ה-select של הדפדפן; גובה מוגבל כדי שלא תחרוג מהחלון */
 .gm-ds.gm-no .dlg .cb-l{max-height:220px}
+/* חיפוש לקוח מהרשימה: הטקסט (וה-placeholder) במרכז המסגרת */
+.gm-ds.gm-no .app .one #noListQ{text-align:center}
