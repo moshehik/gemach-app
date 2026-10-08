@@ -1438,6 +1438,10 @@ export default function NewOrderPage() {
   // ===== מצב תצוגה של המסך החדש (הודעות, אישור יציאה) =====
   const [flash, setFlash] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  // ביטול הזמנה = מחיקת הטיוטה: שלב 0 = חלון היציאה הרגיל, 1 = "בטוח?" לפני מחיקה
+  const [deleteDraftStage, setDeleteDraftStage] = useState(0);
+  const [deletingDraft, setDeletingDraft] = useState(false);
+  const [deleteDraftError, setDeleteDraftError] = useState('');
   const lastFlashedDraftRef = useRef(null);
 
   // חיווי שקט על שמירת הטיוטה — בלי זה האוטו-סייב לא נראה בשום מקום במסך.
@@ -1705,6 +1709,27 @@ export default function NewOrderPage() {
     setPaymentsList(prev => prev.filter((_, i) => i !== index));
   };
 
+  const closeExitConfirm = () => { setShowExitConfirm(false); setDeleteDraftStage(0); setDeleteDraftError(''); };
+
+  // מחיקת טיוטה אחרי אישור כפול. זה אותו DELETE /api/orders/[id] של ביטול הזמנה (מחיקה רכה + רישום ביומן).
+  // לא מוצע כשכבר בוצע חיוב אשראי בפועל - כסף שיצא לא נמחק מכאן.
+  const deleteDraftAndExit = async () => {
+    if (!draftOrderId || deletingDraft) return;
+    setDeletingDraft(true);
+    setDeleteDraftError('');
+    try {
+      const res = await fetch(`/api/orders/${draftOrderId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'מחיקת הטיוטה נכשלה');
+      }
+      router.push('/');
+    } catch (err) {
+      setDeleteDraftError(err.message || 'מחיקת הטיוטה נכשלה');
+      setDeletingDraft(false);
+    }
+  };
+
   const handleExit = () => {
     if (activeItems.length > 0 || order.customerId) {
       setShowExitConfirm(true);
@@ -1714,6 +1739,7 @@ export default function NewOrderPage() {
   };
 
   const busy = saving || isProcessingCredit;
+  const canDeleteDraft = !!draftOrderId && !paymentsList.some(isChargedPayment);
 
   // דיווח 3bded746 (מאחורי new_order_auto_next_step; כבוי = רק כפתור "המשך"): מעבר אוטומטי לשלב הבא כשהשלב הושלם - רק 1->2 ו-2->3.
   // "הושלם" = אותו תנאי של כפתור "המשך" (+ תנאים שמרניים), ר' lib/newOrderAutoNextStep.js. מעבר רק אחרי שינוי אמיתי של נתוני השלב,
@@ -2900,27 +2926,48 @@ export default function NewOrderPage() {
         <div
           className="modal-backdrop"
           style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !deletingDraft) closeExitConfirm(); }}
         >
           <div className="modal" style={{ maxWidth: '420px' }} role="dialog" aria-modal="true">
             <div className="modal-head">
-              <strong>יציאה מההזמנה</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setShowExitConfirm(false)}>
+              <strong>{deleteDraftStage === 1 ? 'מחיקת ההזמנה' : 'יציאה מההזמנה'}</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" disabled={deletingDraft} onClick={closeExitConfirm}>
                 <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
             <div className="modal-body">
-              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
-                {draftOrderId
-                  ? `ההזמנה שמורה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים, ואפשר להמשיך אותה מרשימת ההזמנות.`
-                  : 'ההזמנה עדיין לא נשמרה. יציאה עכשיו תמחק את מה שהוזן במסך.'}
-              </p>
+              {deleteDraftStage === 1 ? (
+                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
+                  <strong>האם אתה בטוח?</strong> הטיוטה #{draftOrderId} עם {activeItems.length} פריטים תימחק, והפריטים בה ישוחררו. אי אפשר להחזיר אותה מהמסך הזה.
+                </p>
+              ) : (
+                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
+                  {draftOrderId
+                    ? `ההזמנה שמורה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים, ואפשר להמשיך אותה מרשימת ההזמנות.`
+                    : 'ההזמנה עדיין לא נשמרה. יציאה עכשיו תמחק את מה שהוזן במסך.'}
+                </p>
+              )}
+              {deleteDraftError && <p role="alert" style={{ margin: '10px 0 0', color: 'var(--danger)', fontSize: '13px' }}>{deleteDraftError}</p>}
             </div>
             <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowExitConfirm(false)}>המשך בהזמנה</button>
-              <button type="button" className="btn btn-primary" onClick={() => router.push('/')}>
-                {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
-              </button>
+              {deleteDraftStage === 1 ? (
+                <>
+                  <button type="button" className="btn btn-secondary" disabled={deletingDraft} onClick={() => { setDeleteDraftStage(0); setDeleteDraftError(''); }}>לא, חזור</button>
+                  <button type="button" className="btn btn-primary" style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }} disabled={deletingDraft} aria-busy={deletingDraft} onClick={deleteDraftAndExit}>
+                    {deletingDraft ? <><span className="spinner" /> מוחק...</> : 'כן, מחק את ההזמנה'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-secondary" onClick={closeExitConfirm}>המשך בהזמנה</button>
+                  {canDeleteDraft && (
+                    <button type="button" className="btn btn-secondary" style={{ color: 'var(--danger)' }} onClick={() => setDeleteDraftStage(1)}>מחק את ההזמנה</button>
+                  )}
+                  <button type="button" className="btn btn-primary" onClick={() => router.push('/')}>
+                    {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
