@@ -2450,6 +2450,7 @@ table.data thead tr th {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   animation: backup-mode-blink 1.4s ease-in-out infinite;
   pointer-events: none;
+  width: max-content; /* בלי זה left:50% מצמצם את הרוחב למחצית המסך והטקסט נשבר */
   max-width: calc(100vw - 24px);
   text-align: center;
 }

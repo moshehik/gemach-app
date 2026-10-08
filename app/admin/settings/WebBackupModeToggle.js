@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import DeviceBackupAccessEditor from '@/app/components/DeviceBackupAccessEditor';
 
 // Admin-only switch for app/api/admin/db-mode — points the LIVE deployed site
 // (all visitors, not just this admin) at the TEST/backup database instead of
@@ -70,6 +71,7 @@ export function DeviceBackupViewToggle() {
           {onBackup && <span className="badge badge-danger" style={{ fontSize: '11.5px' }}>המחשב הזה במצב גיבוי</span>}
         </div>
       ) : null}
+      {state?.isProgrammer && state.available ? <DeviceBackupAccessEditor /> : null}
       {error && (
         <div className="callout callout-danger" style={{ marginTop: '12px', alignItems: 'center' }}>
           <svg className="icon"><use href="#i-alert-circle" /></svg>

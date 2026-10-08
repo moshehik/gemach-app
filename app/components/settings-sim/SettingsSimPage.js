@@ -29,6 +29,7 @@ import {
   firstValidationError, validationError, shownValue, cutTxt, rowMatches, normSearch, tabForDeepLink,
 } from '@/lib/settingsSimLayout';
 import SettingRow from './SettingRow';
+import DeviceBackupAccessEditor from '../DeviceBackupAccessEditor';
 import { Ic, ConfirmDialog, UnsavedDialog, AuthDialog, Toast } from './SettingsDialogs';
 
 const TITLES = { sys: 'הגדרות מערכת', site: 'הגדרות אתר', names: 'שינוי שמות' };
@@ -277,6 +278,7 @@ function DeviceDbViewRow({ root }) {
           {err ? <small className="st-err" role="alert">{err}</small> : null}
         </div>
       </div>
+      {st?.isProgrammer && st.available ? <div className="li" style={{ display: 'block' }}><DeviceBackupAccessEditor /></div> : null}
       <ConfirmDialog
         open={!!ask}
         root={root}
