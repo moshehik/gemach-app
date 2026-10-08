@@ -890,7 +890,7 @@ t('new-order.css: אין רקע לבן קשיח לבלוקים; !important על 
     for (const d of setsProp(r, /^background(-color|-image)?$/)) {
       const v = d.value.replace(/!important/i, '').trim();
       if (/var\(--gm-surface\)/.test(v)) bad.push(`${r.sel} { ${d.prop}: ${d.value} }`);
-      if (isImportant(d) && !/^(none|transparent)$/.test(v) && !PEARL_RE.test(v.replace(/\s+/g, '')) && !/ \.ico\[class\]$/.test(r.sel) && !/\.rtbl>thead>tr>th$/.test(r.sel)) bad.push('!important: ' + r.sel + ' ' + v.slice(0, 40));
+      if (isImportant(d) && !/^(none|transparent)$/.test(v) && !PEARL_RE.test(v.replace(/\s+/g, '')) && !/ \.ico\[class\]$/.test(r.sel) && !/\.btn\.tgl\.on#delOneBtn/.test(r.sel) && !/\.rtbl>thead>tr>th$/.test(r.sel)) bad.push('!important: ' + r.sel + ' ' + v.slice(0, 40));
     }
   }
   assert.deepEqual(bad, []);

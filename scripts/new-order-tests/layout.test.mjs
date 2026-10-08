@@ -188,10 +188,11 @@ test('הטופס הרציף: גוש נעול הוא inert ומציג רמז; ה�
   const cont = read('LayoutContinuous.js');
   assert.match(cont, /<div className="no-sec-body" inert=\{locked\}>/);
   assert.match(cont, /<div className="no-flow" id="noFlow" inert=\{!!ctl\.saved\}>/);
-  assert.match(cont, /יש להשלים את השלב הקודם/);
-  assert.match(cont, /className="pbars mini"/);
+  assert.ok(!/יש להשלים את השלב הקודם|no-sec-lock/.test(cont), 'גוש נעול בלי תגית - רק כותרת ו-"..."');
+  assert.match(cont, /no-sec-dots/);
+  assert.match(cont, /className=\{`pbars mini\$\{stuck \? ' stuck' : ''\}`\}/);
   const css = fs.readFileSync(path.join(DIR, 'css/new-order.css'), 'utf8');
-  assert.match(css, /\.gm-ds\.gm-no \.no-sec\.locked \.no-sec-body\{[^}]*opacity:\.5/);
+  assert.match(css, /\.gm-ds\.gm-no \.no-sec\.locked \.no-sec-body\{display:none\}/);
   assert.match(css, /prefers-reduced-motion:reduce\)\{\.gm-ds\.gm-no \.no-sec-body\{transition:none\}/);
   assert.match(css, /\.gm-ds\.gm-no \.items-split\{display:grid;grid-template-columns:minmax\(0,1fr\) 280px/);
   assert.match(css, /@media \(max-width:760px\)\{[^@]*\.items-split\{grid-template-columns:minmax\(0,1fr\)\}/);

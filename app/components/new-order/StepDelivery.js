@@ -5,7 +5,7 @@
 // enable_deliveries (ובתנאי שכרטיס "משלוח / סניף / טלפוני" מוצג: דגלי טלפוני/סניף או delivery_show_in_order !== 'false'); כתובת שונה לפי delivery_allow_address_override או כשהיא חובה; "יום לפני" לפי delivery_one_day_before_option.
 // S04 (לא להכניס): אין שורת "דמי משלוח" כאן. R15 (אושר): סניף הביצוע נזכר במחשב הזה (localStorage, ב-controller ובשינוי כאן).
 import { useState } from 'react';
-import { Blk, ClearX, Field, Ic, Note, NoCombo, OneCard, SegPill, SubH, Switch, Tip, NO_FILL } from './NoUi';
+import { Blk, ClearX, Field, Ic, Note, NoCombo, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest from './NoSuggest';
 import { DELIVERY_DIRECTIONS, branchListOf, deliveryStepVisibility } from './newOrderLogic';
 
@@ -72,7 +72,7 @@ export default function StepDelivery({ ctl }) {
           <Blk className={`dhero${o.isDelivery ? '' : ' off'}`}>
             <div className="ico"><Ic n="truck" c="lg" /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="trow"><Switch id="noDelOn" checked={o.isDelivery} label="הזמנת משלוח" onChange={(v) => set({ isDelivery: v })} /><b className="big">הזמנת משלוח</b><Tip t="משלוח אחד בלבד להזמנה" /></div>
+              <div className="trow"><Switch id="noDelOn" checked={o.isDelivery} label="הזמנת משלוח" onChange={(v) => set({ isDelivery: v })} /><b className="big">הזמנת משלוח</b></div>
             </div>
           </Blk>
           {/* בקשת הבעלים 9.10.2026: כרטיסי הכיוון והיעד מוצגים רק כשהמשלוח מסומן (בעיצוב המקורי הם הוצגו תמיד, מעומעמים) */}
@@ -86,8 +86,10 @@ export default function StepDelivery({ ctl }) {
                 <div className="grid2">
                   {useSavedAddress ? (
                     <Field label="כתובת משלוח" icon="pin">
-                      <div className="hint">המשלוח יגיע לכתובת הלקוחה: {[[o.selectedCustomer.street, o.selectedCustomer.houseNum].filter(Boolean).join(' '), custCity].filter(Boolean).join(', ')}</div>
-                      <button type="button" className="btn" id="delOtherAddrBtn" style={{ marginTop: 8 }} onClick={() => setOtherOpen(true)}><Ic n="pin" c="sm" />כתובת שונה למשלוח</button>
+                      <div className="no-addr">
+                        <div className="no-addr-t"><small>כתובת הלקוחה</small><b>{[[o.selectedCustomer.street, o.selectedCustomer.houseNum].filter(Boolean).join(' '), custCity].filter(Boolean).join(', ')}</b></div>
+                        <button type="button" className="btn sm" id="delOtherAddrBtn" onClick={() => setOtherOpen(true)}><Ic n="pin" c="sm" />כתובת שונה</button>
+                      </div>
                     </Field>
                   ) : (<>
                   <Field label={<>עיר משלוח (לחישוב מחיר){ctl.deliveryCityRequired ? ' *' : ''}</>} icon="pin" htmlFor="noDelCity">
@@ -116,7 +118,6 @@ export default function StepDelivery({ ctl }) {
                     <button type="button" className={`btn tgl${o.deliveryOneDayBefore ? ' on' : ''}`} id="delOneBtn" aria-pressed={!!o.deliveryOneDayBefore} onClick={() => set({ deliveryOneDayBefore: !o.deliveryOneDayBefore })}>
                       {o.deliveryOneDayBefore ? <Ic n="check" c="sm evck" /> : null}<Ic n="truck" c="sm" />משלוח יוצא יום לפני האירוע (במקום יומיים)
                     </button>
-                    <Tip t="ברירת מחדל: יומיים לפני" />
                   </div>
                 ) : null}
               </Blk>

@@ -7,12 +7,31 @@
 //  - "המשך" בתחתית כל גוש = אותה פעולה כמו שורת הניווט של האשף (stepNextAction -> ctl.go), וה-go() גולל חלק לגוש הבא (כבוד ל-prefers-reduced-motion);
 //  - פס התקדמות דק ונדבק (.pbars.mini): אותו מראה כמו פסי האשף, לחיצה על פריט = ctl.go(מפתח) (גלילה לגוש, או הודעת הנעילה).
 // הכותרת, הבאנר, החלונות, הטוסט, מתג הישן/חדש ומגני הטיוטה (window.__gmDirty / popstate) נשארים ב-NewOrderA5 ללא שינוי.
+import { useEffect, useRef, useState } from 'react';
 import { Ic } from './NoUi';
 import { STEP_KEYS, STEP_META } from './newOrderLogic';
 import { STEP_VIEW } from './stepViews';
 import { sectionDomId, sectionDoneFlags, sectionProgress, stepNextAction, stepSummaries, visibleSectionKeys } from './layoutLogic';
 
 function MiniProgress({ ctl, progress }) {
+  // הפס נדבק בגלילה: לפני כן (במקומו הטבעי) מראה בהיר ושקוף, ורק כשהוא נדבק לראש המסך (class stuck) מקבל את הגוון החם
+  const ref = useRef(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof window === 'undefined') return undefined;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const top = parseFloat(window.getComputedStyle(el).top) || 0;
+      setStuck(window.scrollY > 0 && el.getBoundingClientRect().top <= top + 1);
+    };
+    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(check); };
+    check();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => { window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); if (raf) window.cancelAnimationFrame(raf); };
+  }, []);
   // כיתוב לפי ההזמנה: שלב שהושלם מציג את מה שמולא בו (שם הלקוח, התאריך, המשלוח, "N פריטים · ₪", "שולם ₪"); אחרת - שם השלב
   const sums = stepSummaries(ctl);
   const captionOf = (key, state) => {
@@ -21,7 +40,7 @@ function MiniProgress({ ctl, progress }) {
     return state === 'done' && sums[key] ? sums[key] : STEP_META[key].l;
   };
   return (
-    <div className="pbars mini" id="noMiniBars" aria-label="התקדמות ההזמנה" style={{ '--n': progress.length }}>
+    <div ref={ref} className={`pbars mini${stuck ? ' stuck' : ''}`} id="noMiniBars" aria-label="התקדמות ההזמנה" style={{ '--n': progress.length }}>
       {progress.map(({ key, state }) => {
         const meta = STEP_META[key];
         const g = ctl.gate(key);
@@ -68,8 +87,7 @@ function Section({ ctl, k, n, skipDelivery }) {
     <section className={`no-sec${locked ? ' locked' : ''}`} id={id} data-sec-key={k} aria-labelledby={`${id}-t`}>
       <header className="no-sec-h">
         <span className="no-sec-n" aria-hidden="true">{String(n).padStart(2, '0')}</span>
-        <h2 className="no-sec-t" id={`${id}-t`}>{STEP_META[k].q}</h2>
-        {locked ? <span className="no-sec-lock" role="note"><Ic n="lock" c="sm" />{g.reason || 'יש להשלים את השלב הקודם'}</span> : null}
+        <h2 className="no-sec-t" id={`${id}-t`}>{STEP_META[k].q}{locked ? <span className="no-sec-dots" aria-hidden="true"> ...</span> : null}</h2>
       </header>
       <div className="no-sec-body" inert={locked}>
         <div className="sec" data-sec={k}><View ctl={ctl} /></div>
