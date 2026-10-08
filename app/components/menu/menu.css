@@ -18,6 +18,12 @@
    לכן כשיש כמה התראות ארוכות השורות נדחסו והטקסט נחתך באמצע במקום שהרשימה תיגלל. */
 .gm-ds.gm-menu .nf-list .nf-row{flex:none}
 
+/* פאנל ההתראות בסרגל (לא מגירת הנייד) מוגבל לגובה החלון: בלי זה, עם כמה התראות ארוכות הפאנל ירד מתחת לקצה המסך ושורות הפעולה שבתחתיתו נחתכו.
+   הרשימה היא זו שמתכווצת ונגללת; הכותרת, הכפתורים והשורות שאחריה נשארים במלוא גובהם. */
+.gm-ds.gm-menu .sn-bell .nf-w{max-height:calc(100vh - var(--gm-snav-h,64px) - 60px);max-height:calc(100dvh - var(--gm-snav-h,64px) - 60px)}
+.gm-ds.gm-menu .sn-bell .nf-w>:not(.nf-list){flex:none}
+.gm-ds.gm-menu .sn-bell .nf-list{flex:1 1 auto;min-height:72px}
+
 .gm-ds.gm-menu .snav [hidden],.gm-ds.gm-menu .sn-drawer [hidden]{display:none!important}
 
 /* לשונית = קישור אמיתי + חץ קטן (.sn-cv) שפותח את התפריט בריחוף / מגע / מקלדת */
