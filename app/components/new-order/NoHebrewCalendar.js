@@ -10,10 +10,13 @@ import { HDate, HebrewCalendar, Sedra, Locale, flags } from '@hebcal/core';
 import { Ic } from './NoUi';
 import { addDays, dow, fromKey, hebrewLong, hebrewMonthTitle, hebrewParts, monthLength, monthStart, nextMonthStart, prevMonthStart, WEEKDAYS_SHORT } from '../schedule/hebrewCalendar';
 
-// אילו אירועים מסומנים (S03 "חגים וצומות"): חג, חול המועד, ערב חג, צום גדול/קטן, חג קטן (חנוכה, פורים, ט"ו בשבט...) ויום עצמאות/זיכרון.
-// לא מסומנים: ראש חודש, שבתות מיוחדות, יום כיפור קטן, בה"ב, ספירת העומר. (ברירת מחדל - ר' NOTES.md, שאלה פתוחה)
-const HOLIDAY_MASK = flags.CHAG | flags.CHOL_HAMOED | flags.EREV | flags.MAJOR_FAST | flags.MINOR_FAST | flags.MINOR_HOLIDAY | flags.MODERN_HOLIDAY;
-const EXCLUDE_MASK = flags.YOM_KIPPUR_KATAN | flags.BEHAB | flags.ROSH_CHODESH | flags.SPECIAL_SHABBAT;
+// אילו אירועים מסומנים (S03 "חגים וצומות"): חג, חול המועד, ערב חג, צום גדול/קטן, חג קטן (חנוכה, פורים, ט"ו בשבט...) - רק מועדי ישראל
+// המקובלים במגזר החרדי (בקשת הבעלים 9.10.2026, בכל הלוחות באתר): בלי ימי המדינה (עצמאות, זיכרון, שואה, ירושלים, הרצל, סיגד, רבין...)
+// ובלי "חג הבנות", "ראש השנה למעשר בהמה", "סליחות" - אותו סינון כמו בלוח הדף הקודם והלוח החודשי.
+// לא מסומנים: ראש חודש, שבתות מיוחדות, יום כיפור קטן, בה"ב, ספירת העומר.
+const HOLIDAY_MASK = flags.CHAG | flags.CHOL_HAMOED | flags.EREV | flags.MAJOR_FAST | flags.MINOR_FAST | flags.MINOR_HOLIDAY;
+const EXCLUDE_MASK = flags.YOM_KIPPUR_KATAN | flags.BEHAB | flags.ROSH_CHODESH | flags.SPECIAL_SHABBAT | flags.MODERN_HOLIDAY;
+const EXCLUDE_NAMES = ['בנות', 'מעשר בהמה', 'סליחות'];
 
 const holCache = {};
 export function holidaysOn(key) {
@@ -21,7 +24,7 @@ export function holidaysOn(key) {
   let out = [];
   try {
     const evs = HebrewCalendar.getHolidaysOnDate(new HDate(fromKey(key)), true) || [];
-    out = evs.filter(e => (e.getFlags() & HOLIDAY_MASK) && !(e.getFlags() & EXCLUDE_MASK)).map(e => e.render('he-x-NoNikud'));
+    out = evs.filter(e => (e.getFlags() & HOLIDAY_MASK) && !(e.getFlags() & EXCLUDE_MASK) && !EXCLUDE_NAMES.some(n => e.render('he-x-NoNikud').includes(n))).map(e => e.render('he-x-NoNikud'));
   } catch { out = []; }
   holCache[key] = out;
   return out;

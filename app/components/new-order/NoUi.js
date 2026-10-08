@@ -162,3 +162,62 @@ export function NoPortal({ children }) {
   const root = useContext(NoPortalRoot);
   return root ? createPortal(children, root) : children;
 }
+
+// בורר הרשימה של הפלטה (.cb - תיבת הבחירה של האתר) במקום <select> של הדפדפן: רשימה צפה, וי על הנבחר,
+// חיצים / Enter / Escape במקלדת, סגירה בלחיצה בחוץ. options = [[value, label], ...]; האפשרות עם הערך הריק מוצגת כ-placeholder וחוזרת לערך ריק.
+export function NoCombo({ id, label, value, options, onChange, placeholder = '', disabled = false }) {
+  const [open, setOpen] = useState(false);
+  const [act, setAct] = useState(-1);
+  const rootRef = useRef(null);
+  const listRef = useRef(null);
+  const list = options.map(([v, l]) => [v, v === '' ? placeholder : l]);
+  const cur = String(value) === '' ? null : list.find(([v]) => String(v) === String(value));
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc, true);
+    const sel = listRef.current && listRef.current.querySelector('.cb-o.sel');
+    if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+    return () => document.removeEventListener('mousedown', onDoc, true);
+  }, [open]);
+  const pick = (v) => {
+    setOpen(false); setAct(-1);
+    if (String(v) !== String(value)) onChange(v);
+    const t = rootRef.current && rootRef.current.querySelector('.cb-t');
+    if (t) t.focus();
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape' && open) { e.preventDefault(); e.stopPropagation(); setOpen(false); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const curIdx = list.findIndex(([v]) => String(v) === String(value));
+      if (!open) { setOpen(true); setAct(curIdx); return; }
+      const base = act >= 0 ? act : curIdx;
+      const n = (base + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length;
+      setAct(n);
+      const el = listRef.current && listRef.current.children[n];
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    if (e.key === 'Enter' && open && act >= 0 && list[act]) { e.preventDefault(); pick(list[act][0]); }
+  };
+  return (
+    <div className={`cb${open ? ' open' : ''}`} ref={rootRef} onKeyDown={onKey}>
+      <button type="button" className="cb-t" id={id} role="combobox" aria-haspopup="listbox" aria-controls={`${id}-list`} aria-expanded={open ? 'true' : 'false'} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)}>
+        <span className={`cb-v${cur ? '' : ' cb-ph'}`}>{cur ? cur[1] : placeholder}</span><Ic n="chev" c="sm" />
+      </button>
+      <div className="cb-p" hidden={!open || disabled}>
+        <ul className="cb-l" id={`${id}-list`} role="listbox" aria-label={label} ref={listRef}>
+          {list.map(([v, l], i) => {
+            const sel = String(v) === String(value);
+            return (
+              <li key={String(v)} className={`cb-o${sel ? ' sel' : ''}${i === act ? ' act' : ''}`} role="option" aria-selected={sel} style={{ '--i': i }} onClick={() => pick(v)}>
+                <span className="cb-x"><b>{l}</b></span>{sel ? <span className="cb-ck"><Ic n="check" c="sm" /></span> : null}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
+}

@@ -8,8 +8,9 @@
 // R21 (להסיר): אין "הערות כלליות להזמנה" בשלב הזה.
 // פריסה (העיצוב העדכני B2, בלוק fix-2026-10-01): קלף אחד (.card.one) עם שתי עמודות - בחירת הפריט (.items-main) מימין והסל (.items-cart) משמאל
 // (קצה ה-RTL), עם קו מפריד דק ביניהן (761px ומעלה); מתחת ל-761px הסל מתחת לבחירה, באותו קלף. הלוגיקה והחלטות הבעלים - ללא שינוי.
+import { useState } from 'react';
 import { Blk, ClearX, Field, Ic, Note, OneCard, SubH, money } from './NoUi';
-import { CalcErrorNote, DeliveryChargeLine, DeliveryEditButton } from './NoDeliveryBits';
+import { CalcErrorNote, DeliveryChargeLine } from './NoDeliveryBits';
 import { alterationDetailsRequired, alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, moneyTxt } from './newOrderLogic';
 
 function hl(s, q) {
@@ -18,8 +19,9 @@ function hl(s, q) {
   return i < 0 ? s : <>{s.slice(0, i)}<mark>{q}</mark>{s.slice(i + q.length)}</>;
 }
 
-// "דגם": שדה אחד. כשנבחר דגם הוא מציג "שם · קוד: N" (בעיצוב) ו-X מנקה; הקלדה מחליפה דגם. הרשימה הסטטית מוצגת כל עוד לא נבחר דגם
+// "דגם": שדה אחד. כשנבחר דגם הוא מציג "שם · קוד: N" (בעיצוב) ו-X מנקה; הקלדה מחליפה דגם. הרשימה נפתחת רק בלחיצה / מיקוד בשדה (ונסגרת ביציאה ממנו, ב-Escape ובבחירה) ורק כל עוד לא נבחר דגם
 function ModelField({ ctl }) {
+  const [open, setOpen] = useState(false);
   const m = ctl.pickedModel;
   const q = ctl.modelQuery.trim();
   const list = ctl.modelList;
@@ -31,17 +33,19 @@ function ModelField({ ctl }) {
         <Ic n="search" c="sm" />
         <input className="inp" id="noModelQ" placeholder="חפש דגם לפי שם או קוד..." autoComplete="off" aria-label={m ? 'חיפוש דגם - אפשר לערוך כדי להחליף דגם' : 'חיפוש דגם'}
           value={m ? `${displayModelName(m)}${code ? ` · קוד: ${code}` : ''}` : ctl.modelQuery}
-          onFocus={(e) => { if (m) e.target.select(); }}
-          onChange={(e) => { if (m) ctl.pickModel(null); ctl.setModelQuery(e.target.value); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); ctl.resolveTypedModel(); } }} />
+          onFocus={(e) => { setOpen(true); if (m) e.target.select(); }}
+          onClick={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          onChange={(e) => { setOpen(true); if (m) ctl.pickModel(null); ctl.setModelQuery(e.target.value); }}
+          onKeyDown={(e) => { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false); } else if (e.key === 'Enter') { e.preventDefault(); setOpen(false); ctl.resolveTypedModel(); } }} />
         <ClearX show={!!(m || ctl.modelQuery)} tip={m ? 'ניקוי והחלפת דגם' : undefined} onClear={() => { ctl.pickModel(null); ctl.setModelQuery(''); }} />
       </div>
-      {m ? null : (
-        <ul className="advlist advstatic" id="modelList" role="listbox" aria-label="דגמים">
+      {m || !open ? null : (
+        <ul className="advlist advstatic" id="modelList" role="listbox" aria-label="דגמים" onMouseDown={(e) => e.preventDefault()}>
           {list === null ? <li className="advo none" role="presentation">טוען דגמים...</li>
             : list.length ? list.map((x, i) => (
-              <li key={x.id} role="option" aria-selected="false" id={`mdl${i}`} className="advo" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); ctl.pickModel(x); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') ctl.pickModel(x); }}>
+              <li key={x.id} role="option" aria-selected="false" id={`mdl${i}`} className="advo" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); setOpen(false); ctl.pickModel(x); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { setOpen(false); ctl.pickModel(x); } }}>
                 <span className="advo-t">{hl(displayModelName(x), q)}</span>
                 {modelCodeSuffix(x) ? <span className="muted sm" style={{ marginInlineStart: 'auto' }}><bdi>{hl(modelCodeSuffix(x), q)}</bdi></span> : null}
               </li>
@@ -69,7 +73,6 @@ function SizesAndAlt({ ctl }) {
         <div className="lbl with-ic">
           <Ic n="tag" c="sm" />מידה
           <span className="muted sm" style={{ fontWeight: 400 }}>{checking ? '(בודק זמינות...)' : 'אפשר לסמן כמה'}</span>
-          <button type="button" className="ibtn" data-tip="רענן זמינות מלאי" aria-label="רענן זמינות מלאי" onClick={ctl.refreshInventory} disabled={checking}><Ic n="refresh" c="sm" /></button>
         </div>
         {sizes.length === 0 ? (
           <div className="muted sm">{checking ? 'בודק זמינות...' : 'אין מידות זמינות לתאריך זה.'}</div>
@@ -79,7 +82,9 @@ function SizesAndAlt({ ctl }) {
               const normal = (z.withNormalBuffer && z.withNormalBuffer.availableQuantity) ?? z.availableQuantity ?? 0;
               const avail = z.withCustomSpacing ? z.withCustomSpacing.availableQuantity : normal;
               const on = it.selectedSizes.includes(z.sizeText);
-              return <button key={z.sizeText} type="button" className={on ? 'on' : ''} disabled={!(avail > 0)} aria-pressed={on} onClick={() => ctl.toggleSizeSelection(z.sizeText)}>{z.sizeText}</button>;
+              const free = avail > 0;
+              // הכמות הפנויה בטולטיפ של הפלטה (data-tip) ולא על האריח; מידה שאזלה היא aria-disabled (ולא disabled) כדי שהטולטיפ ימשיך לעבוד עליה
+              return <button key={z.sizeText} type="button" className={on ? 'on' : ''} aria-disabled={!free || undefined} aria-pressed={on} data-tip={free ? `פנויות: ${avail}` : 'אין פנוי בתאריך זה'} onClick={() => { if (free) ctl.toggleSizeSelection(z.sizeText); }}>{z.sizeText}</button>;
             })}
           </div>
         )}
@@ -164,7 +169,6 @@ function Cart({ ctl }) {
       </div>
       <CalcErrorNote ctl={ctl} />
       <DeliveryChargeLine ctl={ctl} />
-      <DeliveryEditButton ctl={ctl} from="items" />
     </Blk>
   );
 }

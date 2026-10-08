@@ -58,7 +58,8 @@ test('פריטים שהבעלים הסיר (R01, R10, R11, R19, R21, S01, S02, S
   assert.ok(!/href=\{`\/orders\/\$\{draftOrderId\}`\}/.test(VIEW), 'R01 קישור טיוטה בשורה העליונה');
   assert.ok(!/בחירה מהירה|3 חודשים/.test(VIEW), 'R10 בחירה מהירה לטווח');
   assert.ok(!/>החודש<|בחירת חודש ושנה/.test(VIEW), 'R11 קפיצה לחודש / בחירת חודש ושנה');
-  assert.ok(!/פנויות|· אזל|line-through/.test(VIEW), 'R19 מספר פנויות / אזל');
+  // R19 + בקשת הבעלים 9.10.2026: הכמות הפנויה מותרת רק בטולטיפ של האריח (שורת data-tip={free ...}), לא כטקסט על האריח
+  assert.ok(!/פנויות|· אזל|line-through/.test(VIEW.replace(/.*data-tip=\{free.*/g, '')), 'R19 מספר פנויות / אזל');
   assert.ok(!/notes/.test(read('StepItems.js').replace(/\/\/.*$/gm, '')) && !/הערות כלליות/.test(read('StepItems.js').replace(/\/\/.*$/gm, '')), 'R21 הערות בשלב הפריטים');
   assert.ok(!/class(Name)?="card cust"/.test(VIEW), 'S02 כרטיס לקוח שנבחר עם 5 שדות');
   assert.ok(!/דמי משלוח/.test(read('StepDelivery.js').replace(/\/\/.*$/gm, '')), 'S04 דמי משלוח בשלב המשלוח');

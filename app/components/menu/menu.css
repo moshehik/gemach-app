@@ -11,6 +11,19 @@
 .gm-ds.gm-menu .snav{z-index:950}
 .gm-ds.gm-menu #snScrim{z-index:940}
 
+/* חלוניות צפות (דיאלוגים, מדריך הקיצורים, תצוגות מקדימות, בוררי גיליון): ברירת המחדל של הפלטה (.scrim=100, #scrim2=140, hf-scrim/hf-p=118/120, .tpop=120, .pv=300) נמוכה מהסרגל (950),
+   ולכן הסרגל העליון נשאר מעל החלונית והיא "נפלה מתחתיו". כולן עוברות מעל הסרגל (1000+) ומתחת לחלונות הקופצים של האתר/דיווח תקלה (1020 ומעלה); הסימון html + :not(.gm-login) מנצח את כללי הפלטה
+   (.gm-ds.gm-home .scrim וכו') בלי !important ובלי לגעת בכניסה (9999). הטולטיפים (.pl-tt/.pl-rt) מעל החלוניות, אחרת היו מוסתרים מאחוריהן. */
+html .gm-ds:not(.gm-login) .scrim{z-index:1000}
+html .gm-ds:not(.gm-login) :is(#scrim2,.lz-wscrim){z-index:1010}
+html .gm-ds.gm-at .pv{z-index:1000}
+html .gm-ds.gm-st .tpop{z-index:1020}
+html .gm-ds:not(.gm-login) :is(.pl-tt,.pl-rt){z-index:1030}
+@media (max-width:640px){
+  html .gm-ds.gm-ds.gm-ds.gm-ds .hf-scrim{z-index:1000}
+  html .gm-ds.gm-ds.gm-ds.gm-ds .hf-p{z-index:1001}
+}
+
 /* מקום לסרגל העליון: אזור התוכן (שמשתמש ב-class-ים של המעטפת הישנה) מתחיל מתחתיו. */
 .a5-shell .app-shell.a5-body{min-height:calc(100vh - var(--gm-snav-h,64px));min-height:calc(100dvh - var(--gm-snav-h,64px))}
 

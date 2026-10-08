@@ -10,21 +10,29 @@
 import { Ic } from './NoUi';
 import { STEP_KEYS, STEP_META } from './newOrderLogic';
 import { STEP_VIEW } from './stepViews';
-import { sectionDomId, sectionDoneFlags, sectionProgress, stepNextAction, visibleSectionKeys } from './layoutLogic';
+import { sectionDomId, sectionDoneFlags, sectionProgress, stepNextAction, stepSummaries, visibleSectionKeys } from './layoutLogic';
 
 function MiniProgress({ ctl, progress }) {
+  // כיתוב לפי ההזמנה: שלב שהושלם מציג את מה שמולא בו (שם הלקוח, התאריך, המשלוח, "N פריטים · ₪", "שולם ₪"); אחרת - שם השלב
+  const sums = stepSummaries(ctl);
+  const captionOf = (key, state) => {
+    if (key === 'summary') return STEP_META[key].l;
+    if (key === 'payment') return ctl.totalPaid > 0 ? sums.payment : STEP_META[key].l;
+    return state === 'done' && sums[key] ? sums[key] : STEP_META[key].l;
+  };
   return (
     <div className="pbars mini" id="noMiniBars" aria-label="התקדמות ההזמנה" style={{ '--n': progress.length }}>
       {progress.map(({ key, state }) => {
         const meta = STEP_META[key];
         const g = ctl.gate(key);
         const go = () => ctl.go(STEP_KEYS.indexOf(key));
+        const caption = captionOf(key, state);
         return (
           <div key={key} className={`pb ${state}${g.open ? '' : ' lock'}`}>
             <div className="pb-bar" role="progressbar" aria-label={meta.l} aria-valuemin={0} aria-valuemax={1} aria-valuenow={state === 'done' ? 1 : 0}><i /></div>
-            <div className="pb-d" role="button" tabIndex={0} aria-disabled={!g.open || undefined} data-tip={g.open ? `מעבר אל ${meta.l}` : g.reason}
+            <div className="pb-d" role="button" tabIndex={0} aria-disabled={!g.open || undefined} data-tip={g.open ? (caption === meta.l ? `מעבר אל ${meta.l}` : `${meta.l}: ${caption}`) : g.reason}
               onClick={go} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }}>
-              <Ic n={meta.i} c="sm" /><span className="pb-t"><b>{meta.l}</b></span>
+              <Ic n={meta.i} c="sm" /><span className="pb-t"><b>{caption}</b></span>
             </div>
           </div>
         );

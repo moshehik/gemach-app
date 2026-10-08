@@ -179,6 +179,8 @@ export default function useNewOrderController({ router }) {
   // "מהרשימה" (Q4 = התנהגות האתר: בחירה ברשימה רק קובעת לקוח; נבדקת רק החסימה, בלחיצה על "המשך")
   useEffect(() => {
     if (searchMode !== 'name' || order.selectedCustomer) return undefined;
+    // בלי טקסט חיפוש לא מביאים ולא מציגים שמות כלל (בקשת נווה יעקב 8.10.2026)
+    if (!listQuery.trim()) { setListResults([]); setListLoading(false); return undefined; }
     const ctl = new AbortController();
     const t = setTimeout(async () => {
       setListLoading(true);
@@ -835,11 +837,26 @@ export default function useNewOrderController({ router }) {
   const handleExit = async () => {
     const activeItems = (order.items || []).filter(i => !i.isDeleted);
     if (!saved && (activeItems.length > 0 || order.customerId)) {
-      const leave = await ask('exit', { draftOrderId, itemsCount: activeItems.length });
+      // חיוב אשראי שכבר בוצע (נדרים) - לא מציעים מחיקה: כסף שיצא לא נמחק מכאן
+      const canDelete = !!draftOrderId && !paymentsList.some(NL.isChargedPayment);
+      const leave = await ask('exit', { draftOrderId, itemsCount: activeItems.length, canDelete });
       if (!leave) return;
+      if (leave === 'delete') {
+        // אותו DELETE /api/orders/[id] של ביטול הזמנה (מחיקה רכה + רישום ביומן); החלון כבר ביקש אישור כפול
+        try {
+          const res = await fetch(`/api/orders/${draftOrderId}`, { method: 'DELETE' });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'מחיקת הטיוטה נכשלה');
+          }
+        } catch (err) {
+          say('info', 'ההזמנה לא נמחקה', err.message || 'מחיקת הטיוטה נכשלה');
+          return;
+        }
+      }
     }
     backGuardArmedRef.current = false;
-    router.push('/orders');
+    router.push('/'); // יציאה -> דף הבית
   };
 
   // Escape סוגר את החלון העליון (לא בזמן חיוב/שמירה - כמו בישן)

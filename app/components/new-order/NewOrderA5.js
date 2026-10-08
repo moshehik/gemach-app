@@ -80,7 +80,8 @@ function Nav({ ctl, top = false }) {
       <div className={cls} data-sec="nav">
         {ctl.step > 0
           ? <button type="button" className="btn" disabled={busy} onClick={() => ctl.setStep(ctl.step - 1)}><Ic n="arrr" />חזור</button>
-          : <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול</button>}
+          : <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול הזמנה</button>}
+        {ctl.step > 0 ? <button type="button" className="btn ghost" disabled={busy} onClick={ctl.handleExit}><Ic n="x" c="sm" />ביטול הזמנה</button> : null}
         {next
           ? <button type="button" className="btn primary" disabled={next[1]} onClick={next[2]}><Ic n="arrl" />{next[0]}</button>
           : <button type="button" className="btn primary" disabled={busy} aria-busy={ctl.saving} onClick={ctl.saveOrder}><Ic n="check" />{ctl.saving ? 'שומר...' : 'סיום ויצירת ההזמנה'}</button>}
@@ -193,7 +194,8 @@ export default function NewOrderA5() {
   const savedWarning = ctl.saved && ctl.saved.warning && warnClosed !== ctl.saved.orderId ? ctl.saved.warning : '';
   const banner = bannerFor(ctl.saveError, savedWarning);
   // #app.wide של העיצוב: שלב הפריטים (חיפוש + סל בשתי עמודות) ושלב התשלום כשכבר נרשם תשלום (עמודת "תשלומים שנרשמו") רחבים יותר
-  const wide = !continuous && (ctl.stepKey === 'items' || (ctl.stepKey === 'payment' && ctl.paymentsList.length > 0));
+  // 8.10.2026 (נווה יעקב): כל השלבים ברוחב שלב הפריטים, כדי שהמסך לא יקפוץ בין שלב לשלב
+  const wide = !continuous;
 
   return (
     <div className="gm-ds gm-no home-bg dlg-dark" dir="rtl" ref={setRoot}>

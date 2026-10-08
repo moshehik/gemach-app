@@ -5,7 +5,7 @@
 // (deliveryAmount מאותה תשובת /api/orders/calculate שכבר נכנסה לסה"כ). מועדי הלקיחה/ההחזרה: pickupReturnKeys (newOrderLogic) -
 // אותם כללים כמו השרת (lib/businessDays, lib/lateReturn, delivery_days_before, ימים שהבעלים סגר ב-non_working_days_extra).
 import { Blk, Ic, OneCard, SubH, money } from './NoUi';
-import { CalcErrorNote, DeliveryEditButton } from './NoDeliveryBits';
+import { CalcErrorNote } from './NoDeliveryBits';
 import { alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, pickupReturnKeys, spacingLabel } from './newOrderLogic';
 import { hebrewLong, hebrewParts } from '../schedule/hebrewCalendar';
 
@@ -67,7 +67,6 @@ export default function StepSummary({ ctl }) {
             </div>
           ) : null}
         </div>
-        <DeliveryEditButton ctl={ctl} from="summary" />
         <CalcErrorNote ctl={ctl} />
         <div className="status ok" style={{ marginTop: 14 }}><Ic n="check" c="lg" /><div><small>סה&quot;כ לתשלום</small><div className="n">{money(ctl.totalAmount)}</div></div></div>
       </Blk>
