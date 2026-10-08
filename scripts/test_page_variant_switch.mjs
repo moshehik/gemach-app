@@ -435,7 +435,8 @@ const PINNED_BLOBS = {
   // + כפתור "כתובת שונה למשלוח" במקום בחירת עיר שנייה (דיווח 87c7a432, מאחורי delivery_different_address_button; כבוי = אפס שינוי)
   // + המשך אוטומטי כשתשלום שאינו אשראי משלים את הסכום המלא (דיווח 67c0d652, מאחורי new_order_auto_finish_when_paid; כבוי = אפס שינוי)
   // + מעבר אוטומטי לשדה הבא בשדות באורך קבוע / אחרי בחירת עיר ורחוב (דיווח c89234ec, מאחורי auto_advance_fixed_fields; כבוי = אפס שינוי)
-  'app/orders/new/LegacyNewOrderPage.js': '930ebe629608495783215e0b304838dde2208638',
+  // + נוסח הסכמת הדיוור המאוחד "מאשר/ת קבלת דיוורים" (R06, PR #249) - טקסט בלבד
+  'app/orders/new/LegacyNewOrderPage.js': 'a9c14fc0f36cb3b5ae0341cd869b7596f85849fe',
 };
 const norm = (x) => x.replace(/\r\n/g, '\n');
 await t('כל קובץ ישן זהה בדיוק ל-blob בהיסטוריה (git hash-object מול git rev-parse <commit>:<path>); חריגים: רק התחליפים המתועדים', () => {
