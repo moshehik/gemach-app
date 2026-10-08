@@ -386,6 +386,9 @@
 .gm-ds.gm-no .one .no-addr-t small{font-size:13px;color:var(--gm-ink3)}
 .gm-ds.gm-no .one .no-addr-t b{font-size:16px;font-weight:600;color:var(--navy-900);overflow-wrap:anywhere}
 .gm-ds.gm-no .one .no-addr>.btn{background:transparent!important;border:1.5px solid var(--sky-300)!important;color:var(--navy)!important;box-shadow:none!important;flex:none}
-/* לחצן-מתג מסומן ("משלוח יוצא יום לפני"): כחול כהה עם טקסט בהיר, גם במעבר עכבר */
-.gm-ds.gm-no .no-app .btn.tgl.on,.gm-ds.gm-no .no-app .btn.tgl.on:hover{background:var(--gm-navy);border-color:var(--gm-navy);color:var(--gm-gold-100)}
-.gm-ds.gm-no .no-app .btn.tgl.on .evck{color:var(--gm-gold-300);stroke:currentColor}
+/* רשימת ההצעות של "דגם": נפתחת צמודה מתחת לשדה ומרחפת מעל הכרטיס (לא דוחפת ולא מגדילה את המסגרת) */
+.gm-ds.gm-no .items-main .mdl-wrap{position:relative}
+.gm-ds.gm-no .items-main .mdl-wrap>.advlist.advstatic{position:absolute;top:calc(100% + 4px);inset-inline:0;margin-top:0;z-index:40;max-height:264px;overflow-y:auto}
+/* לחצן-מתג מסומן ("משלוח יוצא יום לפני"): כחול כהה עם טקסט בהיר - הפלטה כופה #delOneBtn שקוף עם !important, לכן !important גם כאן */
+.gm-ds.gm-no .app .btn.tgl.on#delOneBtn,.gm-ds.gm-no .app .btn.tgl.on#delOneBtn:hover{background:var(--gm-navy)!important;border-color:var(--gm-navy)!important;color:var(--gm-gold-100)!important}
+.gm-ds.gm-no .app .btn.tgl.on#delOneBtn .evck{color:var(--gm-gold-300);stroke:currentColor}

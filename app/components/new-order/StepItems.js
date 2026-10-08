@@ -29,6 +29,7 @@ function ModelField({ ctl }) {
   return (
     <div className="addstep">
       <div className="lbl with-ic"><Ic n="dress" c="sm" />דגם</div>
+      <div className="mdl-wrap">
       <div className="inpw ico-in">
         <Ic n="search" c="sm" />
         <input className="inp" id="noModelQ" placeholder="חפש דגם לפי שם או קוד..." autoComplete="off" aria-label={m ? 'חיפוש דגם - אפשר לערוך כדי להחליף דגם' : 'חיפוש דגם'}
@@ -52,6 +53,7 @@ function ModelField({ ctl }) {
             )) : <li className="advo none" role="presentation">לא נמצאו דגמים</li>}
         </ul>
       )}
+      </div>
     </div>
   );
 }
