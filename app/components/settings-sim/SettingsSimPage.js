@@ -29,6 +29,7 @@ import {
   firstValidationError, validationError, shownValue, cutTxt, rowMatches, normSearch, tabForDeepLink,
 } from '@/lib/settingsSimLayout';
 import SettingRow from './SettingRow';
+import DeviceBackupAccessEditor from '../DeviceBackupAccessEditor';
 import { Ic, ConfirmDialog, UnsavedDialog, AuthDialog, Toast } from './SettingsDialogs';
 
 const TITLES = { sys: 'הגדרות מערכת', site: 'הגדרות אתר', names: 'שינוי שמות' };
@@ -212,6 +213,83 @@ function DbModeRow({ root, onToast, dirty, onSwitched }) {
         icon="refresh"
         destructive
         onYes={apply}
+        onNo={() => setAsk(null)}
+      />
+    </>
+  );
+}
+
+/** מצב גיבוי למחשב הזה בלבד (GET/POST /api/admin/db-view): עוגייה חתומה בדפדפן, שאר המחשבים נשארים על הנתונים האמיתיים. */
+function DeviceDbViewRow({ root }) {
+  const [st, setSt] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(null);
+  const load = useCallback(async () => {
+    setErr(null);
+    try {
+      const res = await fetch('/api/admin/db-view', { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `שגיאה ${res.status}`);
+      setSt(json);
+    } catch (e) { setErr(e.message || 'שגיאה בטעינת המצב'); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const onBackup = st?.device === 'backup';
+  const request = (next) => {
+    if ((next === 'backup') === onBackup) return;
+    setErr(null);
+    if (next === 'real') apply(next); else setAsk(next);
+  };
+  const apply = async (next) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/admin/db-view', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: next }) });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `שגיאה ${res.status}`);
+      try { window.sessionStorage.clear(); } catch { /* מצב פרטי */ }
+      window.location.reload(); // מטמוני הלקוח שייכים למסד הקודם
+    } catch (e) { setErr(e.message || 'שגיאה בהחלפת המסד'); setBusy(false); setAsk(null); }
+  };
+  if (st && !st.available) return null; // אין מסד גיבוי בסביבה הזו
+  return (
+    <>
+      {onBackup ? (
+        <Banner kind="warning" heading="המחשב הזה במצב גיבוי" text="רק הדפדפן הזה עובד מול מסד הגיבוי (נתונים לא אמיתיים). שאר המחשבים רואים ושומרים בנתונים האמיתיים." />
+      ) : null}
+      <div className="li st-row st-ctlrow">
+        <div className="ic-b"><Ic id="shield" /></div>
+        <div className="t">
+          <b className="st-lb">
+            נתוני גיבוי במחשב הזה בלבד
+            <button type="button" className="tip" aria-label="עזרה: נתוני גיבוי במחשב הזה" data-ico="info" data-tip="רק הדפדפן הזה יעבוד מול מסד הגיבוי; כל שאר המחשבים ימשיכו לראות את הנתונים האמיתיים. נשמר ליממה או עד חזרה לאמיתי. מוצג פס אדום מהבהב בראש המסך במחשב הזה."><Ic id="info" plain /></button>
+          </b>
+          <small>לא משפיע על שאר המשתמשים — רק על המחשב הזה</small>
+        </div>
+        <div className="st-ctl">
+          {st === null && !err ? <small className="faint">טוען מצב נוכחי…</small> : st ? (
+            <div className="seg pill" role="radiogroup" aria-label="נתוני גיבוי במחשב הזה" style={{ '--n': 2, '--i': onBackup ? 1 : 0 }}>
+              <span className="pth" aria-hidden="true" />
+              <button type="button" role="radio" aria-checked={!onBackup} className={!onBackup ? 'on' : undefined} disabled={busy} onClick={() => request('real')}>אמיתי</button>
+              <button type="button" role="radio" aria-checked={onBackup} className={onBackup ? 'on' : undefined} disabled={busy} onClick={() => request('backup')}>גיבוי</button>
+            </div>
+          ) : null}
+          {err ? <small className="st-err" role="alert">{err}</small> : null}
+        </div>
+      </div>
+      {st?.isProgrammer && st.available ? <div className="li" style={{ display: 'block' }}><DeviceBackupAccessEditor /></div> : null}
+      <ConfirmDialog
+        open={!!ask}
+        root={root}
+        busy={busy}
+        heading="להעביר את המחשב הזה למסד הגיבוי?"
+        sub="רק המחשב הזה יציג וישמור נתונים במסד הגיבוי (לא אמיתי); שאר המחשבים ימשיכו לראות את הנתונים האמיתיים. ההתחברות תיבדק מחדש מול מסד הגיבוי."
+        okLabel="מעבר לגיבוי"
+        okIcon="refresh"
+        icon="refresh"
+        destructive
+        onYes={() => apply('backup')}
         onNo={() => setAsk(null)}
       />
     </>
@@ -702,7 +780,7 @@ export default function SettingsSimPage({ view = 'sys' }) {
     let special = null;
     if (s.special === 'logo') special = <LogoBlock onDone={(t, sub) => setToast({ title: t, sub, icon: 'check' })} onError={(m) => setErrorBanner({ title: 'העלאת הלוגו נכשלה', text: m })} />;
     if (s.special === 'permissions') special = <PermissionsRow />;
-    if (s.special === 'dbmode') special = <DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} />;
+    if (s.special === 'dbmode') special = <><DeviceDbViewRow root={portalRoot} /><DbModeRow root={portalRoot} onToast={setToast} dirty={dirty} onSwitched={() => { simCache.clear(); load(); }} /></>;
     if (s.special === 'neon') special = <NeonRows />;
     if (q && special && !shownRows.length) return null;
     return (

@@ -23,7 +23,8 @@ const nextConfig = {
   allowedDevOrigins: ['10.0.0.2', '10.0.0.2:3000', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000'],
   // דף A5 (עמוד הבית החדש) הוא קובץ סטטי ב-public/a5; מגישים אותו גם בכתובת /a5 (וגם /a5?page=dash)
   async rewrites() {
-    return [{ source: '/a5', destination: '/a5/index.html' }];
+    // /landing = דף הנחיתה (דוגמית עיצוב מונפשת של עמוד הבית, נתוני דמה), קובץ סטטי ב-public/landing
+    return [{ source: '/a5', destination: '/a5/index.html' }, { source: '/landing', destination: '/landing/index.html' }];
   },
   // eslint: {
   //   ignoreDuringBuilds: true,

@@ -700,7 +700,8 @@ export function createPaymentActions(env) {
 
   /** R7 לפני אשראי: "כן, חתם" נשמר מיד (PUT קטן של הבקר). */
   async function signRegulations() {
-    if (st().order?.hasSignedRegulations) return true;
+    // חתימה שסומנה ועוד לא נשמרה (שינוי בבאנר) לא מספיקה: הדפים והחיוב נשענים על מצב השרת
+    if ((st().snapshot?.order ?? st().order)?.hasSignedRegulations) return true;
     return env.toggleSignature({ confirmed: true });
   }
 

@@ -3,6 +3,7 @@ import './design-overrides.css';
 import './design-system.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
+import { isDeviceBackupRequest } from '@/lib/dbMode';
 import { readVerifiedSession } from '@/lib/auth';
 import { resolvePageAccess } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
@@ -23,6 +24,7 @@ import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
 import PreviewModeBanner from './components/PreviewModeBanner';
+import BackupModeBanner from './components/BackupModeBanner';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
 import { LabelsProvider } from './components/LabelsContext';
@@ -324,6 +326,8 @@ export default async function RootLayout({ children }) {
       homeA5: uiVariants.home === 'a5', // ui_variant_home עצמאי מ-ui_variant_shell: קישורי "בית" עם פרמטרים רק כשהדף החדש מטפל בהם
       // דפים שהיו "בקרוב" בעיצוב ונבנו בפועל (lib/menu/buildMenuTree.js, notBuilt): בדיקת מלאי - /stock-check (2.10.2026).
       available: { 'order-stock': true },
+      // כלי ניהול שהעובד/ת נעץ/נעצה בפאנל "ניהול" (סיכה, 8.10.2026): מהעוגייה החתומה (מראה של Employee.themeColor) - בלי שאילתה.
+      adminPins: employeeDesignPrefs?.adminPins,
       // פאנל "ניהול" המקוצר (4.10.2026): כלי מסך /admin שמותרים למשתמש הזה — אותו סינון כמו app/admin/page.js (selectHub;
       // accessForRole = אותם כללים כמו checkPageAccess: מחובר לפי roleId, אורח רק כשההתחברות לא חובה), מהנתונים שכבר נטענו
       // למעלה (בלי שאילתה). רק הכלים המותרים נשלחים ללקוח (מאגר הלשונית), לעולם לא הקטלוג המלא. ר' docs/admin-menu-short-2026-10-04.md.
@@ -819,6 +823,7 @@ function cpCssText(vars) {
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
           <DevEnvBanner data-element-name="רכיב_layout_3" />
           <PreviewModeBanner />
+          <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
         <Suspense data-element-name="רכיב_layout_5" fallback={null}>
           <PageTracker data-element-name="רכיב_layout_6" />

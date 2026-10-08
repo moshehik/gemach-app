@@ -8,6 +8,7 @@ import { HDate } from '@hebcal/core';
 import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 import SettingQuickPanel from '../SettingQuickPanel';
 import { CopyChip, splitCopyable, renderCopyable } from '../CopyableText';
+import useBackupSwitchCommand from './useBackupSwitchCommand';
 import { hebFromInstant } from './homeDates';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
@@ -55,6 +56,7 @@ const QUICK_LINKS = [
 ];
 
 export default function HomeDashboard() {
+  const tryBackupCommand = useBackupSwitchCommand(); // "עבור למסד הגיבוי" בשורת החיפוש (למורשים בלבד)
   const router = useRouter();
   const chatEndRef = useRef(null);
 
@@ -184,6 +186,7 @@ export default function HomeDashboard() {
   // ל-state של searchInput להתעדכן קודם.
   const performGlobalSearch = async (queryText) => {
     if (!queryText || !queryText.trim()) return;
+    if (await tryBackupCommand(queryText)) return; // "עבור למסד הגיבוי" (למורשים בלבד) - לא חיפוש
 
     setLoadingSearch(true);
     setAiMessages([]);
@@ -413,7 +416,12 @@ export default function HomeDashboard() {
               <input
                 type="text"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  // מחיקת כל הטקסט ידנית = אותה פעולה כמו לחיצה על ה-X: חזרה למצב ההתחלתי
+                  if (v === '') clearSearch();
+                  else setSearchInput(v);
+                }}
                 placeholder="דוגמא משפחת כהן..."
                 disabled={loadingSearch}
               />

@@ -25,6 +25,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { runOfflineSync } from '@/lib/offlineSync';
 import { getVerifiedAuthCookie } from '@/lib/authTokens';
 import { hebrewPhoneticKey } from '@/lib/hebrewPhonetic';
+import { readDeviceBackupFlag } from '@/lib/dbMode';
 
 // Tracks the active interactive-transaction client (if any) for the current
 // async execution context, so writes made inside `prisma.$transaction(async tx => ...)`
@@ -349,12 +350,20 @@ export async function setWebBackupMode(enabled) {
   globalForPrisma.webDbModeState.fetchedAt = Date.now();
 }
 
+// Which database THIS request really talks to: 'test' (backup) or 'prod'. Same decision the proxy makes below, so
+// banners and status endpoints can never disagree with where the queries actually go.
+export function getEffectiveDbMode() {
+  const devTest = process.env.NODE_ENV === 'development' && globalForPrisma.activeDbMode === 'test';
+  const webTest = globalForPrisma.webDbModeState.mode === 'test';
+  return ((devTest || webTest || readDeviceBackupFlag()) && globalForPrisma.prismaTest) ? 'test' : 'prod';
+}
+
 const prismaProxy = new Proxy({}, {
   get(target, prop) {
     ensureWebDbModeFresh();
     const devTest = process.env.NODE_ENV === 'development' && globalForPrisma.activeDbMode === 'test';
     const webTest = globalForPrisma.webDbModeState.mode === 'test';
-    const isTest = (devTest || webTest) && globalForPrisma.prismaTest;
+    const isTest = (devTest || webTest || readDeviceBackupFlag()) && globalForPrisma.prismaTest;
     const activeClient = isTest ? globalForPrisma.prismaTest : globalForPrisma.prismaProd;
 
     // Interactive transactions stash their `tx` client in AsyncLocalStorage for the duration

@@ -11,6 +11,7 @@ import useActionRecorder from './useActionRecorder';
 import { captureElement, captureViewport, dataUrlToParts } from '../../lib/clientCapture';
 import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
 import { formatActionSteps } from '../../lib/actionRecorderCore';
+import { useUiVariant } from './UiVariantContext';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -25,6 +26,34 @@ function extractOpenSettingKeys(content) {
   }
   const displayText = content.replace(tagRegex, '').trim();
   return { displayText, keys };
+}
+
+// תא בטבלת הנתונים: חותמת זמן גולמית מהמסד ("2026-10-07T10:55:33.912Z") מוצגת כתאריך ושעה לפי שעון ישראל, "07/10/2026 13:55".
+// חצות בישראל (כך נשמרים תאריכי אירוע: 21:00/22:00 UTC) = תאריך בלבד; "YYYY-MM-DD" = תאריך בלבד. כל ערך אחר נשאר כמו שהוא.
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+const IL_PARTS = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+function formatTableCell(value) {
+  if (typeof value !== 'string') return value;
+  const v = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [y, m, d] = v.split('-'); return `${d}/${m}/${y}`; }
+  if (!ISO_DATETIME_RE.test(v)) return value;
+  const dt = new Date(v);
+  if (isNaN(dt.getTime())) return value;
+  const p = Object.fromEntries(IL_PARTS.formatToParts(dt).map((x) => [x.type, x.value]));
+  const date = `${p.day}/${p.month}/${p.year}`;
+  return p.hour === '00' && p.minute === '00' ? date : `${date} ${p.hour}:${p.minute}`;
+}
+
+// מפריד התגית [FILTER:term] שה-AI מוסיף בסוף תשובה על דגם / צבע / מידה / ברקוד (app/api/ai/route.js, "SMART FILTERING"). במסך
+// הלקוח התגית הופכת לכפתור סינון; כאן אין רשימה לסנן, ולכן היא לא מוצגת כטקסט גולמי (8.10.2026) אלא הופכת לכפתור שמריץ את
+// המונח בחיפוש של דף הבית (/?q=, שני דפי הבית תומכים בו).
+function extractFilterTerm(content) {
+  if (typeof content !== 'string') return { displayText: content, term: '' };
+  const tagRegex = /\[FILTER:([^\]]*)\]/g;
+  let term = '';
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) term = match[1].trim();
+  return { displayText: content.replace(tagRegex, '').trim(), term };
 }
 
 // מפריד תגיות [OPEN_LINK:route|תווית] שה-AI מוסיף (app/api/ai/route.js, ACTION:
@@ -43,6 +72,8 @@ function extractOpenLinks(content) {
 }
 
 export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
+  // במעטפת החדשה (A5) הכפתור והחלונית בכחול-זהב של האתר (class ai-a5, globals.css) במקום צבע הערכה הישנה (--primary-solid).
+  const a5Class = useUiVariant('shell') === 'a5' ? ' ai-a5' : '';
   const pathname = usePathname();
   // ממותג לפי עובד/ת - בלי זה, מחשב משותף (עמדת גמ"ח) מציג לעובדת הבאה שמתחברת
   // את היסטוריית הצ'אט של הקודמת, כי localStorage הוא ברמת הדפדפן ולא נוקה בהתנתקות.
@@ -471,7 +502,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       <>
         <button data-element-name="כפתור_AIFloatingWidget_2"
           type="button"
-          className="print-hide ai-widget-fab"
+          className={`print-hide ai-widget-fab${a5Class}`}
           onClick={() => setIsOpen(true)}
           style={{
             position: 'fixed',
@@ -506,7 +537,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   return (
     <>
-      <div className="print-hide card ai-widget-panel" style={{
+      <div className={`print-hide card ai-widget-panel${a5Class}`} style={{
         position: 'fixed',
         bottom: '20px',
         insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
@@ -522,7 +553,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         transition: 'all 0.3s ease'
       }}>
         {/* Header */}
-        <div style={{
+        <div className="ai-widget-head" style={{
           backgroundColor: 'var(--primary-solid)',
           color: 'var(--text-on-primary)',
           padding: '12px 16px',
@@ -625,14 +656,15 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             <div className="chat-thread">
               {messages.map((msg, idx) => {
                 const { displayText: afterSettings, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
-                const { displayText, links: openLinks } = extractOpenLinks(afterSettings);
+                const { displayText: afterLinks, links: openLinks } = extractOpenLinks(afterSettings);
+                const { displayText, term: filterTerm } = extractFilterTerm(afterLinks);
                 return (
                   <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                     <button
                       type="button"
                       className={`bubble-copy-btn${copiedIdx === idx ? ' copied' : ''}`}
                       title="העתק"
-                      onClick={() => copyBubbleText(idx, msg.content)}
+                      onClick={() => copyBubbleText(idx, displayText)}
                     >
                       <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
                     </button>
@@ -663,6 +695,18 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                             פתח הגדרה
                           </button>
                         ))}
+                      </div>
+                    )}
+                    {filterTerm && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        <a
+                          href={`/?q=${encodeURIComponent(filterTerm)}`}
+                          onClick={(e) => navigateInApp(e, `/?q=${encodeURIComponent(filterTerm)}`)}
+                          className="btn btn-secondary btn-sm"
+                        >
+                          <svg className="icon"><use href="#i-search" /></svg>
+                          חפש "{filterTerm}" בחיפוש
+                        </a>
                       </div>
                     )}
                     {openLinks.length > 0 && (
@@ -804,7 +848,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
       {/* Table Modal */}
       {showTableModal && modalTableData && (
-        <div className="modal-backdrop" style={{
+        <div className={`modal-backdrop ai-table-modal${a5Class}`} style={{
           position: 'fixed',
           inset: 0,
           display: 'flex',
@@ -844,7 +888,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                       {modalTableData.map((row, i) => (
                         <tr key={i}>
                           {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
-                            <td key={h}>{renderCopyable(row[h])}</td>
+                            <td key={h}>{renderCopyable(formatTableCell(row[h]))}</td>
                           ))}
                           {modalTableData.some(r => r._actionUrl) && (
                             <td>

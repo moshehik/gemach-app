@@ -1,6 +1,7 @@
 import { withCpuTiming } from '@/lib/cpuTiming';
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { DEVICE_BACKUP_EMPLOYEES_KEY } from '@/lib/deviceBackupAccess';
 import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES, getSessionEmployee } from '@/lib/auth';
 import { invalidateSettingsCache, getCachedSettingsList } from '@/lib/settingsCache';
 import { validateNumericSetting, validateSelectSetting } from '../../lib/settingsValidation';
@@ -95,6 +96,11 @@ export async function POST(request) {
 
     if (!Array.isArray(data)) {
       return NextResponse.json({ error: 'Invalid data format, expected array' }, { status: 400 });
+    }
+
+    // רשימת העובדים שמורשים להפעיל מצב גיבוי במחשב שלהם - המתכנת בלבד (lib/deviceBackupAccess.js)
+    if (data.some((item) => item && item.key === DEVICE_BACKUP_EMPLOYEES_KEY) && !(await checkAuth('מתכנת'))) {
+      return NextResponse.json({ error: 'Unauthorized. Developer access required.' }, { status: 403 });
     }
 
     for (const item of data) {

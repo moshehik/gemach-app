@@ -200,6 +200,13 @@ export default function useNewOrderController({ router }) {
   const pickFromList = (c) => {
     if (!c) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }
     setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }));
+    // בטופס הרציף אין לחצן "המשך" - בחירה ברשימה מאשרת את הלקוח (בדיקת חסום כמו ב-proceedToStep2) והגוש הבא נפתח
+    if (continuous) confirmPickedCustomer(c);
+  };
+  const confirmPickedCustomer = async (c) => {
+    if (!await confirmBlockedCustomerOverride(c)) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }
+    setConfirmedCustomerId(c.id);
+    goStep('dates');
   };
 
   const confirmBlockedCustomerOverride = async (customer) => {
@@ -262,7 +269,7 @@ export default function useNewOrderController({ router }) {
     if (mode === 'update') {
       // לקוח שנבחר מהרשימה ופרטיו הושלמו - ממשיכים אוטומטית לשלב התאריכים (כמו בחיפוש טלפון); בדיקת לקוח חסום כמו ב"המשך"
       setOrder(prev => ({ ...prev, customerId: updated.id, selectedCustomer: updated }));
-      if (await confirmBlockedCustomerOverride(updated)) goStep('dates');
+      if (await confirmBlockedCustomerOverride(updated)) { setConfirmedCustomerId(updated.id); goStep('dates'); }
     } else await handleUseExistingCustomer(updated);
   };
 

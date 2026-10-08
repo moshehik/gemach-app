@@ -2,7 +2,8 @@
    כאן רק מה שדף הבית מוסיף ב-home.css בהיקף .gm-home - שורה כבויה "בקרוב", כפתורים בתחתית, חלון מדיניות הפרטיות - והחזרת
    הגופן שכללי הגלובלי הישן כופים ב-!important על כפתורים וכותרות. */
 
-.gm-ds.gm-shellfoot { display: block; }
+/* ב-.gm-ds הבסיס יש min-height:100vh, display:flex ורקע - בלי איפוס כאן נוסף מתחת לפס הכחול מסך ריק בגובה חלון (תקלה בכל הדפים). */
+.gm-ds.gm-shellfoot { display: block; min-height: 0; background: none !important; background-image: none !important; }
 .gm-ds.gm-shellfoot :is(button, input, select, textarea) { font-family: inherit !important; }
 .gm-ds.gm-shellfoot :is(h1, h2, h3, h4, h5, h6) { font-family: inherit !important; letter-spacing: normal; }
 

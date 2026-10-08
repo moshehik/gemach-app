@@ -529,8 +529,18 @@ export function createOrderCardFlows(env) {
   }
 
   async function toggleSignatureCore({ confirmed = false } = {}) {
-    const order = env.get().order;
-    const nowYes = !order.hasSignedRegulations;
+    const st = env.get();
+    const order = st.order;
+    // שער (confirmed:true) תמיד אומר "נחתם" - לא הופך: ייתכן שבמצב המקומי כבר סומן חתום (שינוי שלא נשמר) והשרת עדיין לא יודע
+    const nowYes = confirmed ? true : !order.hasSignedRegulations;
+    // לחיצה ישירה על "חתם על התקנון" בהזמנה פתוחה לעריכה = שינוי שלא נשמר: נכנס לבאנר השינויים (שמור / ביטול / החזר ביטול) ונשמר בשמירה
+    // הכללית, כמו שאר שדות ההזמנה. נשמר מיד בשרת רק כשהקורא הוא שער שדורש חתימה שמורה (confirmed:true - תפריט הדפסה/מייל, זיכוי, תשלום),
+    // או בהזמנה נעולה (תאריך האירוע עבר): שם השמירה הכללית חסומה, והשרת מתיר במפורש PUT של חתימה בלבד.
+    const isLocked = !!st.isPastEvent && !st.isUnlocked;
+    if (!confirmed && !isLocked) {
+      env.set.order(prev => (prev ? { ...prev, hasSignedRegulations: nowYes } : prev));
+      return true;
+    }
     if (!confirmed) {
       const msg = nowYes ? 'האם הלקוח חתם על תקנון ההשכרה?' : 'האם לסמן שהלקוח לא חתם על התקנון?';
       const ok = await ui.confirm({ title: 'חתימה על תקנון', sub: msg, okText: nowYes ? 'כן, חתם' : 'כן, לא חתם', icon: 'sig' });

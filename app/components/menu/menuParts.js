@@ -131,14 +131,47 @@ export function MenuRow({ item, menu = false, active = false, onNavigate, onActi
   );
 }
 
+/** סיכת נעיצה (נעץ): מצולעת מלאה כשהכלי נעוץ. currentColor, בלי תלות בספריית האייקונים. */
+function PinIcon({ filled }) {
+  return (
+    <svg className="ic sn-pin-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+      fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3.5h6l-1 5.2 3.2 3.3v1.5H12.8V20h-1.6v-6.5H6.8V12L10 8.7 9 3.5z" />
+    </svg>
+  );
+}
+
+/**
+ * שורה עם סיכה צפה (פאנל "ניהול", 8.10.2026): הקישור + כפתור נעיצה אחיו (לא בתוך ה-<a>: כפתור בתוך קישור אינו HTML תקין).
+ * הסיכה צפה בקצה השורה: נראית בריחוף / במיקוד / במגע, ותמיד כשהכלי נעוץ.
+ */
+function PinnableRow({ item, onTogglePin, children }) {
+  const pinned = !!item.pinned;
+  return (
+    <div className={`sn-pinrow${pinned ? ' is-pinned' : ''}`}>
+      {children}
+      <button
+        type="button"
+        className="sn-pin"
+        aria-pressed={pinned ? 'true' : 'false'}
+        aria-label={pinned ? `שחרר נעיצה: ${item.label}` : `נעץ בתפריט: ${item.label}`}
+        data-tip={pinned ? 'שחרר נעיצה' : 'נעץ בתפריט'}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(item); }}
+      >
+        <PinIcon filled={pinned} />
+      </button>
+    </div>
+  );
+}
+
 /** רשימת שורות מהעץ (קישור / פעולה / מפריד / כותרת). */
-export function MenuRows({ items, menu = false, activeItemId, onNavigate, onAction }) {
+export function MenuRows({ items, menu = false, activeItemId, onNavigate, onAction, onTogglePin }) {
   return (
     <>
       {(items || []).map((it, i) => {
         if (it.kind === 'separator') return <div key={`s${i}`} className="sn-sep" />;
         if (it.kind === 'heading') return <div key={`h${i}`} className="sn-st">{it.label}</div>;
-        return (
+        const row = (
           <MenuRow
             key={it.id || i}
             item={it}
@@ -148,6 +181,9 @@ export function MenuRows({ items, menu = false, activeItemId, onNavigate, onActi
             onAction={onAction}
           />
         );
+        return onTogglePin && it.pinnable && it.kind === 'link'
+          ? <PinnableRow key={it.id || i} item={it} onTogglePin={onTogglePin}>{row}</PinnableRow>
+          : row;
       })}
     </>
   );

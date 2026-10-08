@@ -10,7 +10,7 @@ import { Ic } from './HomeParts';
 import { PRIVACY_TITLE, PRIVACY_SUB, buildPrivacySections } from './privacyPolicyText';
 import { hebrewVersionStamp } from '@/lib/hebrewStamp';
 
-const LINK_ICON = { orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', guide: 'info', report: 'alert', profile: 'user', display: 'sun' };
+const LINK_ICON = { landing: 'home', orders: 'file', customers: 'users', dresses: 'dress', dashboard: 'wallet', guide: 'info', report: 'alert', profile: 'user', display: 'sun' };
 
 // כפתור "דיווח על תקלה" של הסרגל החדש (MenuA5Shell: button#snErr[data-sn-err]). בדף הבית עם סרגל ישן אין לו כפתור כזה -
 // אז הפריט מוצג "בקרוב" (לא קישור) במקום כפתור שלא עושה כלום.
@@ -43,6 +43,7 @@ export function HomeFooter({ groups, name, version, date, onPrivacy }) {
                   : <SoonItem key={l.key} link={l} />;
               }
               if (l.soon || !l.href) return <SoonItem key={l.key} link={l} />;
+              if (l.newTab) return <a key={l.key} href={l.href} target="_blank" rel="noopener"><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</a>;
               return <Link key={l.key} href={l.href}><Ic id={LINK_ICON[l.key] || 'file'} size="sm" />{l.label}</Link>;
             })}
             {g.privacy && (

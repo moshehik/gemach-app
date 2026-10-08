@@ -44,6 +44,7 @@ function MiniProgress({ ctl, progress }) {
 function SectionFooter({ ctl, k, skipDelivery }) {
   if (ctl.saved) return null;
   const busy = ctl.saving || ctl.isProcessingCredit;
+  // בלי לחצני "המשך" בין הגושים: גוש נפתח מעצמו (ctl.gate) מיד כשהקודם מולא. נשאר רק גוש התשלום - ביטול + סיום ההזמנה
   const next = stepNextAction(ctl, k, { skipDelivery });
   if (!next) {
     // גוש התשלום: סיום ההזמנה (אותו לחצן כמו בשלב האחרון של האשף)
@@ -54,11 +55,7 @@ function SectionFooter({ ctl, k, skipDelivery }) {
       </div>
     );
   }
-  return (
-    <div className="row spread wrap no-sec-nav">
-      <button type="button" className="btn primary" disabled={next[1]} onClick={next[2]}><Ic n="arrl" />{next[0]}</button>
-    </div>
-  );
+  return null;
 }
 
 function Section({ ctl, k, n, skipDelivery }) {
@@ -66,12 +63,11 @@ function Section({ ctl, k, n, skipDelivery }) {
   const g = ctl.gate(k);
   const locked = !g.open;
   const id = sectionDomId(k);
-  // שלבי שתי העמודות (פריטים + סל; תשלום + "תשלומים שנרשמו") רחבים יותר משאר הגושים - כמו #app.wide באשף
-  const wide = k === 'items' || (k === 'payment' && ctl.paymentsList.length > 0);
+  // כל הגושים באותו רוחב (רוחב שלב הפריטים, 4) - המיכל .no-flowapp קובע אותו
   return (
-    <section className={`no-sec${locked ? ' locked' : ''}${wide ? ' wide' : ''}`} id={id} data-sec-key={k} aria-labelledby={`${id}-t`}>
+    <section className={`no-sec${locked ? ' locked' : ''}`} id={id} data-sec-key={k} aria-labelledby={`${id}-t`}>
       <header className="no-sec-h">
-        <span className="no-sec-n" aria-hidden="true">{n}</span>
+        <span className="no-sec-n" aria-hidden="true">{String(n).padStart(2, '0')}</span>
         <h2 className="no-sec-t" id={`${id}-t`}>{STEP_META[k].q}</h2>
         {locked ? <span className="no-sec-lock" role="note"><Ic n="lock" c="sm" />{g.reason || 'יש להשלים את השלב הקודם'}</span> : null}
       </header>

@@ -22,6 +22,7 @@ import HomeChat from './HomeChat';
 import HomeAdvanced from './HomeAdvanced';
 import HomeAdvResults from './HomeAdvResults';
 import HomeMine from './HomeMine';
+import useBackupSwitchCommand from './useBackupSwitchCommand';
 import { HomeFooter, PrivacyDialog } from './HomeFooter';
 import { buildSearchSheet, sectionsFromGeneral, sectionFromRecords } from './searchPdf';
 import { QuickPrefixList, useDraftCount, useLocalRecentRows, useMyActivity, useQuickPrefix } from '../search/QuickPrefix';
@@ -90,6 +91,7 @@ function replaceUrl(qs) {
 
 export default function HomeA5() {
   const router = useRouter();
+  const tryBackupCommand = useBackupSwitchCommand(); // "עבור למסד הגיבוי" בשורת החיפוש (למורשים בלבד)
   const [boot, setBoot] = useState(null);
   const [bootDone, setBootDone] = useState(false);
   const [version, setVersion] = useState(null);
@@ -231,6 +233,7 @@ export default function HomeA5() {
   const runSearch = useCallback(async (text, { ai = false } = {}) => {
     const query = String(text || '').trim();
     if (!query) return;
+    if (!ai && await tryBackupCommand(query)) return; // פקודת מעבר למסד הגיבוי - לא חיפוש
     lastQuery.current = { text: query, ai };
     advFailed.current = false;
     if (!ai) rememberSearch(query); // "החיפוש האחרון" לשמירה ב-$ + היסטוריית החיפושים של העובדת (שקט; לא תלוי בהצלחת החיפוש)
@@ -266,7 +269,7 @@ export default function HomeA5() {
       setErrStatus(e && e.status ? e.status : 0);
       setView('error');
     }
-  }, [askAi, persist, runScopedAdv]);
+  }, [askAi, persist, runScopedAdv, tryBackupCommand]);
 
   const followUp = useCallback(async (text) => {
     const my = ++seq.current;
@@ -824,12 +827,17 @@ export default function HomeA5() {
       <div className="app" id="app">
         <section className="panel on home-p" aria-label="תוכן עמוד הבית">
           {view === 'error' && (
-            <div className="card">
-              <div className="empty" role="status">
-                <Ic id="alert" size="lg" />
-                <div className="big" style={{ fontSize: 19, marginTop: 8, color: 'var(--ink)' }}>החיפוש לא הצליח</div>
-                <div className="muted">{errStatus === 401 ? 'פג תוקף הכניסה. יש להתחבר מחדש.' : 'אין חיבור לשרת כרגע.'}</div>
-                <div style={{ marginTop: 16 }}>
+            // הודעת שגיאת חיפוש (8.10.2026): מדליון זהב על כחול, כותרת, הסבר, קוד תקלה וכפתורי פעולה. 401 = פג תוקף הכניסה → "להתחברות מחדש"
+            // (רענון הדף מציג את מסך הכניסה); כל שגיאה אחרת = "לנסות שוב".
+            <div className="card err-card" role="alert">
+              <div className="err-medal"><Ic id={errStatus === 401 ? 'lock' : 'alert'} size="lg" /></div>
+              <div className="err-title">החיפוש לא הצליח</div>
+              <div className="err-sub">{errStatus === 401 ? 'פג תוקף הכניסה. יש להתחבר מחדש.' : 'אין חיבור לשרת כרגע.'}</div>
+              <div className="err-code">{errStatus ? `קוד ${errStatus}` : 'אין חיבור'}</div>
+              <div className="err-acts">
+                {errStatus === 401 ? (
+                  <button type="button" className="btn primary" onClick={() => window.location.reload()}><Ic id="user" />להתחברות מחדש</button>
+                ) : (
                   <button
                     type="button"
                     className="btn primary"
@@ -838,7 +846,7 @@ export default function HomeA5() {
                       runSearch(lastQuery.current.text || q, { ai: lastQuery.current.ai });
                     }}
                   ><Ic id="refresh" />לנסות שוב</button>
-                </div>
+                )}
               </div>
             </div>
           )}
