@@ -374,3 +374,5 @@
 .gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}
+/* חיפוש לקוח מהרשימה: הטקסט (וה-placeholder) במרכז המסגרת */
+.gm-ds.gm-no .app .one #noListQ{text-align:center}
