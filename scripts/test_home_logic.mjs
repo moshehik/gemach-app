@@ -403,9 +403,10 @@ t('קישורי תחתית: כל פריטי העיצוב מופיעים; לא נ
   const soonKeys = (g) => g.links.filter((l) => l.soon).map((l) => l.key);
   let g = footerGroups({ navGroups: nav, isHead: false, authenticated: true });
   assert.deepEqual(g.map((x) => x.h), ['ניווט מהיר', 'עזרה', 'החשבון שלי']);
-  assert.deepEqual(keys(g[0]), ['orders', 'customers', 'dresses', 'dashboard']);
+  assert.deepEqual(keys(g[0]), ['orders', 'customers', 'dresses', 'dashboard', 'landing']);
   assert.deepEqual(soonKeys(g[0]), ['dresses', 'dashboard'], 'שמלות (אין הרשאה) וסיכום כספי (לא הנהלה) = בקרוב');
   assert.equal(g[0].links[0].href, '/orders'); assert.equal(g[0].links[0].soon, undefined);
+  assert.equal(g[0].links[4].href, '/landing'); assert.equal(g[0].links[4].newTab, true, 'דף הנחיתה נפתח בלשונית חדשה'); assert.equal(g[0].links[4].soon, undefined);
   assert.deepEqual(keys(g[1]), ['guide', 'report']);
   assert.equal(g[1].links[0].soon, true, 'מדריך למשתמש: אין דף');
   assert.equal(g[1].links[1].action, 'report'); assert.equal(g[1].links[1].href, undefined);
@@ -415,7 +416,7 @@ t('קישורי תחתית: כל פריטי העיצוב מופיעים; לא נ
   assert.deepEqual(soonKeys(g[0]), []);
   assert.equal(g[0].links[3].href, '/dashboard');
   g = footerGroups({ navGroups: null, isHead: false, authenticated: false });
-  assert.deepEqual(soonKeys(g[0]), ['orders', 'customers', 'dresses', 'dashboard']);
+  assert.deepEqual(soonKeys(g[0]), ['orders', 'customers', 'dresses', 'dashboard', 'landing']);
   assert.deepEqual(soonKeys(g[2]), ['profile', 'display']);
   assert.equal(g[2].privacy, true, 'מדיניות פרטיות תמיד זמינה');
   // שורת "בקרוב" לעולם לא נושאת href (לא קישור)
