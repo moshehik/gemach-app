@@ -2617,3 +2617,55 @@ table.data thead tr th {
   border-bottom: 3px solid var(--gm-gold);
 }
 .ai-widget-panel.ai-a5 .ai-widget-head svg.icon { color: var(--gm-gold-300); }
+
+/* טבלת הנתונים של עוזר ה-AI ("הצג טבלה") במעטפת החדשה A5 (8.10.2026): חלון וטבלה בעיצוב הפלטה (כמו .rtbl של דף הבית) במקום
+   .modal / table.data הישנים. ה-class ai-a5 נקבע ב-AIFloatingWidget רק כש-useUiVariant('shell') === 'a5'. */
+.ai-table-modal.ai-a5 { background: rgba(10, 34, 66, .55) !important; }
+.ai-table-modal.ai-a5 .modal {
+  border: 2px solid var(--gm-navy); border-radius: var(--gm-r); background: #fff; overflow: hidden;
+  box-shadow: 0 20px 60px -15px rgba(10, 34, 66, .6);
+}
+.ai-table-modal.ai-a5 .modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px;
+  background: linear-gradient(135deg, var(--gm-navy-900), var(--gm-navy-700)); color: #fff; border-bottom: 3px solid var(--gm-gold);
+}
+.ai-table-modal.ai-a5 .modal-head strong { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.ai-table-modal.ai-a5 .modal-head .icon { width: 20px; height: 20px; color: var(--gm-gold-300); }
+.ai-table-modal.ai-a5 .modal-head .btn { background: transparent; border: 0; color: #fff; box-shadow: none; }
+.ai-table-modal.ai-a5 .modal-head .btn:hover { background: rgba(255, 255, 255, .12); color: var(--gm-gold-300); }
+.ai-table-modal.ai-a5 .table-wrap { border: 1px solid var(--gm-line); border-radius: 12px; overflow: hidden; background: #fff; box-shadow: none; }
+.ai-table-modal.ai-a5 table.data { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ai-table-modal.ai-a5 .modal .table-wrap table.data thead tr th,
+.ai-table-modal.ai-a5 table.data th {
+  background: var(--gm-navy) !important; color: var(--gm-gold-300) !important; font-weight: 600; text-align: start; padding: 12px 14px; border: 0; white-space: nowrap;
+}
+.ai-table-modal.ai-a5 table.data td { padding: 12px 14px; border: 0; border-bottom: 1px solid var(--gm-sky-100); color: var(--gm-ink); vertical-align: top; overflow-wrap: anywhere; background: transparent; }
+.ai-table-modal.ai-a5 table.data tbody tr:last-child td { border-bottom: 0; }
+.ai-table-modal.ai-a5 table.data tbody tr:hover td { background: linear-gradient(90deg, rgba(241, 220, 143, .34), rgba(212, 176, 74, .26) 55%, rgba(247, 236, 196, .38)); }
+.ai-table-modal.ai-a5 table.data td .btn {
+  background: var(--gm-gbtn); color: #000; border: 1.5px solid var(--gm-gbtn-d); border-radius: 12px; font-weight: 600; box-shadow: none; text-decoration: none;
+}
+.ai-table-modal.ai-a5 table.data td .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -8px rgba(15, 44, 82, .6); }
+
+/* עוזר ה-AI במעטפת החדשה: גופן הפלטה (Rubik) במקום Assistant הישן, שדות וכפתורים בצבעי האתר (8.10.2026).
+   design-overrides.css כופה גופן על שדות / כפתורים / טבלאות ב-!important, ולכן גם כאן. */
+.ai-widget-panel.ai-a5, .ai-widget-panel.ai-a5 *:not(svg):not(svg *),
+.ai-widget-fab.ai-a5, .ai-table-modal.ai-a5, .ai-table-modal.ai-a5 *:not(svg):not(svg *) {
+  font-family: "Rubik", "Heebo", system-ui, sans-serif !important;
+}
+.ai-widget-panel.ai-a5 input[type="text"], .ai-widget-panel.ai-a5 textarea {
+  border: 1.5px solid var(--gm-line); background: #fff; color: var(--gm-ink); box-shadow: none;
+}
+.ai-widget-panel.ai-a5 input[type="text"]:focus, .ai-widget-panel.ai-a5 textarea:focus {
+  border-color: var(--gm-gold); box-shadow: 0 0 0 3px rgba(201, 162, 39, .28); outline: 0;
+}
+.ai-widget-panel.ai-a5 .btn-secondary, .ai-widget-panel.ai-a5 .btn-ghost {
+  background: #fff; color: var(--gm-navy); border: 1.5px solid var(--gm-line);
+}
+.ai-widget-panel.ai-a5 .btn-secondary:hover, .ai-widget-panel.ai-a5 .btn-ghost:hover {
+  background: var(--gm-gold-100, #ffece5); border-color: var(--gm-gold); color: var(--gm-navy-900);
+}
+.ai-widget-panel.ai-a5 .bubble.assistant a.btn { background: var(--gm-gbtn); color: #000; border: 1.5px solid var(--gm-gbtn-d); text-decoration: none; }
+.ai-widget-panel.ai-a5 .bubble.assistant a.btn:hover { filter: brightness(1.05); }
+.ai-widget-panel.ai-a5 .bubble.user { background: var(--gm-navy); color: #fff; }
+.ai-widget-panel.ai-a5 .bubble.assistant { background: var(--gm-sky-50); border-color: var(--gm-line); color: var(--gm-ink); }
