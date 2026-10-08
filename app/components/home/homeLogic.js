@@ -623,6 +623,8 @@ export function footerGroups({ navGroups, isHead, authenticated }) {
     L('לקוחות', 'customers', '/customers', hrefs.has('/customers')),
     L('שמלות', 'dresses', '/dashboard/dresses', hrefs.has('/dashboard/dresses')),
     L('סיכום כספי', 'dashboard', '/dashboard', !!isHead),
+    // דף הנחיתה (דוגמית עיצוב מונפשת, נתוני דמה): קובץ סטטי מחוץ ל-Next, נפתח בלשונית חדשה. לכל משתמשת מחוברת
+    { ...L('דף הבית החדש', 'landing', '/landing', !!authenticated), newTab: true },
   ];
   // "מדריך למשתמש": אין עדיין דף כזה באתר. "דיווח על תקלה": פעולה (לא קישור) - הרכיב מפעיל את כפתור הדיווח של הסרגל כשהוא קיים, אחרת "בקרוב".
   const help = [
