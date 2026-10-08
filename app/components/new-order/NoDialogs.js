@@ -199,7 +199,21 @@ export function BackGuardDialog({ close }) {
 }
 
 // יציאה מההזמנה (כפתור היציאה / "ביטול")
-export function ExitDialog({ draftOrderId, itemsCount, close }) {
+export function ExitDialog({ draftOrderId, itemsCount, canDelete, close }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  // "ביטול הזמנה" = מחיקת הטיוטה, אחרי אישור כפול (לחצן + "האם אתה בטוח?")
+  if (confirmDelete) {
+    return (
+      <>
+        <h2>מחיקת ההזמנה</h2>
+        <div className="sub"><b>האם אתה בטוח?</b> הטיוטה #{draftOrderId} עם {itemsCount} פריטים תימחק, והפריטים בה ישוחררו. אי אפשר להחזיר אותה מהמסך הזה.</div>
+        <Btns>
+          <button type="button" className="btn primary lg block" onClick={() => setConfirmDelete(false)}><Ic n="x" c="sm" />לא, חזור</button>
+          <button type="button" className="btn block" style={{ color: 'var(--gm-red)' }} onClick={() => close('delete')}><Ic n="trash" c="sm" />כן, מחק את ההזמנה</button>
+        </Btns>
+      </>
+    );
+  }
   return (
     <>
       <h2>יציאה מההזמנה</h2>
@@ -209,6 +223,7 @@ export function ExitDialog({ draftOrderId, itemsCount, close }) {
       <Btns>
         <button type="button" className="btn primary lg block" onClick={() => close(false)}><Ic n="pencil" c="sm" />המשך בהזמנה</button>
         <button type="button" className="btn block" onClick={() => close(true)}><Ic n="x" c="sm" />{draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}</button>
+        {canDelete ? <button type="button" className="btn ghost block" style={{ color: 'var(--gm-red)' }} onClick={() => setConfirmDelete(true)}><Ic n="trash" c="sm" />מחק את ההזמנה</button> : null}
       </Btns>
     </>
   );

@@ -120,6 +120,8 @@ function ListTab({ ctl }) {
           <MissLine c={c} ctl={ctl} mode="update" />
           {ctl.settings.hok_enabled === 'true' ? <HokCard value={orderHok(ctl)} onChange={setOrderHok(ctl)} /> : null}
         </div>
+      ) : !ctl.listQuery.trim() ? (
+        <div className="empty" style={{ marginTop: 14 }}>הקלד שם, טלפון או עיר כדי לחפש לקוח.</div>
       ) : (
         <div className="hres" style={{ marginTop: 14 }}>
           <div className="hres-bar"><span className="hres-n">לקוחות <b>{list.length}</b></span>{ctl.listLoading ? <span className="muted sm">טוען...</span> : null}</div>

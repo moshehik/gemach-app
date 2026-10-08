@@ -31,9 +31,6 @@ export const getCustomerFullName = (c) => {
   return `${f} ${l}`.trim() || 'לקוח ללא שם';
 };
 
-// רוחב אחיד לכל שלבי האשף (כמו שלב 4 - סיכום), כדי שהמסך לא יקפוץ בין שלב לשלב
-const STEP_WIDTH_STYLE = { maxWidth: '640px', margin: '0 auto' };
-
 // אופציות "אופן תשלום" לשלב התשלום של האשף - נגזר גם ברינדור (paymentMethodOptions למטה)
 // וגם ברגע טעינת ההגדרות (כדי לסנכרן את payment.method ההתחלתי, ר' שם) כדי שלא יהיו שתי
 // מימושים שעלולים לסטות זה מזה. כשסליקת נדרים פלוס כבויה בהגדרות (nedarim_plus_enabled),
@@ -1438,10 +1435,6 @@ export default function NewOrderPage() {
   // ===== מצב תצוגה של המסך החדש (הודעות, אישור יציאה) =====
   const [flash, setFlash] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  // ביטול הזמנה = מחיקת הטיוטה: שלב 0 = חלון היציאה הרגיל, 1 = "בטוח?" לפני מחיקה
-  const [deleteDraftStage, setDeleteDraftStage] = useState(0);
-  const [deletingDraft, setDeletingDraft] = useState(false);
-  const [deleteDraftError, setDeleteDraftError] = useState('');
   const lastFlashedDraftRef = useRef(null);
 
   // חיווי שקט על שמירת הטיוטה — בלי זה האוטו-סייב לא נראה בשום מקום במסך.
@@ -1604,6 +1597,16 @@ export default function NewOrderPage() {
     if (err) { alert(err); return; }
     setDeliveryModal(null);
   };
+  const renderDeliveryButton = () => deliveryEnabled ? (
+    <button
+      type="button"
+      className="btn btn-secondary"
+      style={{ width: '100%', padding: '14px 16px', fontSize: '15px', fontWeight: 700 }}
+      onClick={openDeliveryModal}
+    >
+      <svg className="icon"><use href="#i-truck" /></svg> {order.isDelivery ? 'עריכת משלוח' : 'הוסף משלוח'}
+    </button>
+  ) : null;
 
   const eventDateLabel = order.isAbroad
     ? (order.fromDate && order.toDate ? `${getHebrewDateString(order.fromDate)} — ${getHebrewDateString(order.toDate)}` : '')
@@ -1709,37 +1712,15 @@ export default function NewOrderPage() {
     setPaymentsList(prev => prev.filter((_, i) => i !== index));
   };
 
-  const closeExitConfirm = () => { setShowExitConfirm(false); setDeleteDraftStage(0); setDeleteDraftError(''); };
-
-  // מחיקת טיוטה אחרי אישור כפול. זה אותו DELETE /api/orders/[id] של ביטול הזמנה (מחיקה רכה + רישום ביומן).
-  // לא מוצע כשכבר בוצע חיוב אשראי בפועל - כסף שיצא לא נמחק מכאן.
-  const deleteDraftAndExit = async () => {
-    if (!draftOrderId || deletingDraft) return;
-    setDeletingDraft(true);
-    setDeleteDraftError('');
-    try {
-      const res = await fetch(`/api/orders/${draftOrderId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'מחיקת הטיוטה נכשלה');
-      }
-      router.push('/');
-    } catch (err) {
-      setDeleteDraftError(err.message || 'מחיקת הטיוטה נכשלה');
-      setDeletingDraft(false);
-    }
-  };
-
   const handleExit = () => {
     if (activeItems.length > 0 || order.customerId) {
       setShowExitConfirm(true);
       return;
     }
-    router.push('/'); // יציאה מהזמנה חדשה -> דף הבית (לא רשימת ההזמנות)
+    router.push('/orders');
   };
 
   const busy = saving || isProcessingCredit;
-  const canDeleteDraft = !!draftOrderId && !paymentsList.some(isChargedPayment);
 
   // דיווח 3bded746 (מאחורי new_order_auto_next_step; כבוי = רק כפתור "המשך"): מעבר אוטומטי לשלב הבא כשהשלב הושלם - רק 1->2 ו-2->3.
   // "הושלם" = אותו תנאי של כפתור "המשך" (+ תנאים שמרניים), ר' lib/newOrderAutoNextStep.js. מעבר רק אחרי שינוי אמיתי של נתוני השלב,
@@ -1853,7 +1834,9 @@ export default function NewOrderPage() {
                 <svg className="icon"><use href="#i-chevron-end" /></svg> חזור
               </button>
             )}
-            <button type="button" className="btn btn-ghost" onClick={handleExit} disabled={busy}>ביטול הזמנה</button>
+            {step === 1 && (
+              <button type="button" className="btn btn-ghost" onClick={handleExit} disabled={busy}>ביטול</button>
+            )}
             <span style={{ flex: 1 }} />
             {step === 1 && (
               <button type="button" className="btn btn-primary" onClick={proceedToStep2} disabled={!order.customerId}>
@@ -1885,7 +1868,7 @@ export default function NewOrderPage() {
       >
         {/* ==================== שלב 1 · לקוח ==================== */}
         {step === 1 && (
-          <div style={STEP_WIDTH_STYLE}>
+          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
             <h2>מי הלקוח?</h2>
 
             <div className="tabs">
@@ -2037,7 +2020,6 @@ export default function NewOrderPage() {
                       setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }));
                     }}
                     placeholder="חפש לקוח לפי שם, טלפון, עיר..."
-                    requireSearch
                   />
                 </div>
                 {order.selectedCustomer && (
@@ -2225,7 +2207,7 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 2 · תאריכים ==================== */}
         {step === 2 && (
-          <div style={STEP_WIDTH_STYLE}>
+          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
             <h2>מתי האירוע?</h2>
 
             {allowAbroad && (
@@ -2396,7 +2378,7 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 3 · פריטים ==================== */}
         {step === 3 && (
-          <div style={STEP_WIDTH_STYLE}>
+          <div>
             <h2>אילו פריטים?</h2>
 
             <div className="two-col">
@@ -2623,6 +2605,7 @@ export default function NewOrderPage() {
               </div>
             </div>
 
+            {deliveryEnabled && <div style={{ marginTop: 16 }}>{renderDeliveryButton()}</div>}
 
             {/* הערות כלליות להזמנה - גם כאן (בנוסף לשלב 2), כי דיווח תקלה 9c358793 (2026-09-22)
                 חזר פעמיים על כך שבזמן הוספת פריטים (שלב זה) לא רואים אפשרות להקליד הערה חופשית -
@@ -2646,7 +2629,7 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 4 · סיכום ==================== */}
         {step === 4 && (
-          <div style={STEP_WIDTH_STYLE}>
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
             <h2>סיכום</h2>
 
             <div className="card card-pad" style={{ marginBottom: '16px' }}>
@@ -2716,12 +2699,13 @@ export default function NewOrderPage() {
                 </span>
               </div>
             </div>
+            {deliveryEnabled && <div style={{ marginTop: 16 }}>{renderDeliveryButton()}</div>}
           </div>
         )}
 
         {/* ==================== שלב 5 · תשלום ==================== */}
         {step === 5 && (
-          <div style={STEP_WIDTH_STYLE}>
+          <div>
             <h2>תשלום וסיום</h2>
 
             <div className="two-col">
@@ -2799,6 +2783,7 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
+                {deliveryEnabled && <div style={{ marginBottom: '16px' }}>{renderDeliveryButton()}</div>}
 
                 <div className="card card-pad">
                   <div className="card-title-row" style={{ marginBottom: '10px' }}>
@@ -2926,48 +2911,27 @@ export default function NewOrderPage() {
         <div
           className="modal-backdrop"
           style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget && !deletingDraft) closeExitConfirm(); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}
         >
           <div className="modal" style={{ maxWidth: '420px' }} role="dialog" aria-modal="true">
             <div className="modal-head">
-              <strong>{deleteDraftStage === 1 ? 'מחיקת ההזמנה' : 'יציאה מההזמנה'}</strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" disabled={deletingDraft} onClick={closeExitConfirm}>
+              <strong>יציאה מההזמנה</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setShowExitConfirm(false)}>
                 <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
             <div className="modal-body">
-              {deleteDraftStage === 1 ? (
-                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
-                  <strong>האם אתה בטוח?</strong> הטיוטה #{draftOrderId} עם {activeItems.length} פריטים תימחק, והפריטים בה ישוחררו. אי אפשר להחזיר אותה מהמסך הזה.
-                </p>
-              ) : (
-                <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
-                  {draftOrderId
-                    ? `ההזמנה שמורה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים, ואפשר להמשיך אותה מרשימת ההזמנות.`
-                    : 'ההזמנה עדיין לא נשמרה. יציאה עכשיו תמחק את מה שהוזן במסך.'}
-                </p>
-              )}
-              {deleteDraftError && <p role="alert" style={{ margin: '10px 0 0', color: 'var(--danger)', fontSize: '13px' }}>{deleteDraftError}</p>}
+              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
+                {draftOrderId
+                  ? `ההזמנה שמורה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים, ואפשר להמשיך אותה מרשימת ההזמנות.`
+                  : 'ההזמנה עדיין לא נשמרה. יציאה עכשיו תמחק את מה שהוזן במסך.'}
+              </p>
             </div>
             <div className="modal-foot">
-              {deleteDraftStage === 1 ? (
-                <>
-                  <button type="button" className="btn btn-secondary" disabled={deletingDraft} onClick={() => { setDeleteDraftStage(0); setDeleteDraftError(''); }}>לא, חזור</button>
-                  <button type="button" className="btn btn-primary" style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }} disabled={deletingDraft} aria-busy={deletingDraft} onClick={deleteDraftAndExit}>
-                    {deletingDraft ? <><span className="spinner" /> מוחק...</> : 'כן, מחק את ההזמנה'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button type="button" className="btn btn-secondary" onClick={closeExitConfirm}>המשך בהזמנה</button>
-                  {canDeleteDraft && (
-                    <button type="button" className="btn btn-secondary" style={{ color: 'var(--danger)' }} onClick={() => setDeleteDraftStage(1)}>מחק את ההזמנה</button>
-                  )}
-                  <button type="button" className="btn btn-primary" onClick={() => router.push('/')}>
-                    {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
-                  </button>
-                </>
-              )}
+              <button type="button" className="btn btn-secondary" onClick={() => setShowExitConfirm(false)}>המשך בהזמנה</button>
+              <button type="button" className="btn btn-primary" onClick={() => router.push('/orders')}>
+                {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
+              </button>
             </div>
           </div>
         </div>

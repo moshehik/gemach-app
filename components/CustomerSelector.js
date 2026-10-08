@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import useDebounce from '@/hooks/useDebounce';
 
-export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false, requireSearch = false }) {
+export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {
   const [query, setQuery] = useState('');
   const [customers, setCustomers] = useState([]);
   // הודעת חיפוש מהשרת (api/customers -> notices): מקלדת אנגלית / שמות דומים
@@ -91,18 +91,13 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
       }
     };
 
-    // requireSearch (הזמנה חדשה, "מהרשימה"): בלי טקסט חיפוש לא מביאים ולא מציגים שמות בכלל
-    if (requireSearch && !debouncedQueryEffective.trim()) {
-      setCustomers([]);
-      setNotice('');
-      setLoading(false);
-    } else if (isOpen || debouncedQueryEffective) {
-      // Only search if user types or opens dropdown
+    // Only search if user types or opens dropdown
+    if (isOpen || debouncedQueryEffective) {
       fetchCustomers();
     }
 
     return () => controller.abort();
-  }, [debouncedQueryEffective, isOpen, requireSearch]);
+  }, [debouncedQueryEffective, isOpen]);
 
   // Set initial text if value exists
   useEffect(() => {
@@ -146,7 +141,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
 
   const dropdownContent = (
     <>
-      {isOpen && customers.length > 0 && !(requireSearch && !debouncedQueryEffective.trim()) && (
+      {isOpen && customers.length > 0 && (
         <div ref={dropdownRef} style={{ ...dropdownBaseStyle, maxHeight: '250px', overflowY: 'auto' }}>
           {notice && (
             <div role="status" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
