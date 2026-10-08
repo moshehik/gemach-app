@@ -7,6 +7,8 @@ import { Ic, money } from './NoUi';
 
 export function DeliveryEditButton({ ctl, from, marginTop = 14 }) {
   if (!ctl.deliveryEnabled || ctl.saved) return null;
+  // בטופס הרציף כל השלבים בעמוד אחד: "הוסף / עריכת משלוח" מופיע פעם אחת בלבד - בסיכום
+  if (ctl.layout === 'continuous' && from !== 'summary') return null;
   return (
     <div style={{ marginTop }}>
       <button type="button" className="btn lg" style={{ width: '100%', fontWeight: 700 }} disabled={ctl.saving || ctl.isProcessingCredit} onClick={() => ctl.openDeliveryEdit(from)}>
