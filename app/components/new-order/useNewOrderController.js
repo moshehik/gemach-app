@@ -736,8 +736,17 @@ export default function useNewOrderController({ router }) {
       managerExitApprovedRef.current = false;
     }
     setPayment(prev => ({ ...prev, method: m }));
+    // אמצעי תשלום רגיל (מזומן / העברה / צ'ק - לא אשראי, שפותח את חלון החיוב, ולא יציאה באישור מנהל): חלון אישור, ובאישור התשלום נרשם
+    // (אין לחצן "רישום תשלום"). בלי סכום - רק נבחר והודעה. הרישום עצמו ב-handleAddPaymentClick אחרי שה-state התעדכן (addAfterSelect)
+    if (m !== NL.MANAGER_EXIT_METHOD && !NL.isCreditMethod(m)) {
+      const amt = parseFloat(payment.amount) || 0;
+      if (amt <= 0) { say('info', 'יש להזין סכום גדול מ-0'); return true; }
+      const ok = await ask('confirm', { title: `אישור תשלום ב${m}`, message: `לאשר תשלום ב${m} בסך ${NL.moneyTxt(amt)}?`, ok: 'אשר תשלום' });
+      if (ok) setAddAfterSelect(true);
+    }
     return true;
   };
+  const [addAfterSelect, setAddAfterSelect] = useState(false);
 
   const saveOrder = async () => {
     if (saveOrderBusyRef.current) return;
@@ -776,6 +785,13 @@ export default function useNewOrderController({ router }) {
     }
     await executeSaveOrderForList(NL.buildFinalPayments(paymentsList, payment));
   };
+
+  useEffect(() => {
+    if (!addAfterSelect) return;
+    setAddAfterSelect(false);
+    handleAddPaymentClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addAfterSelect]);
 
   // 67c0d652: אחרי שהסכום לתשלום התאפס (אפקט היתרה) - saveOrder הרגיל, אותן בדיקות
   useEffect(() => {
