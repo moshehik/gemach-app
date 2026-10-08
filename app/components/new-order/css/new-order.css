@@ -343,7 +343,8 @@
 .gm-ds.gm-no .no-sec-t{margin:0;flex:1;min-width:0;font-family:'FB Melatef','Suez One',serif!important;font-size:64px;font-weight:700;line-height:1;color:var(--navy-900);overflow-wrap:anywhere}
 /* גוש נעול: רק המספר והכותרת עם "..." (בלי תגית ובלי תוכן) עד שתנאי הנעילה של האשף מתקיימים; הגוף נשאר inert בקוד */
 .gm-ds.gm-no .no-sec-body{transition:opacity .3s}
-.gm-ds.gm-no .no-sec.locked .no-sec-body{display:none}
+.gm-ds.gm-no .no-sec.locked .no-sec-body{display:none}
+
 .gm-ds.gm-no .no-sec-dots{letter-spacing:2px}
 .gm-ds.gm-no .no-sec.locked .no-sec-n{opacity:.16}
 .gm-ds.gm-no .no-sec.locked .no-sec-t{opacity:.6}
