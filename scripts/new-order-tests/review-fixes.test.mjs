@@ -290,7 +290,8 @@ test('6: ApprovalDialog - אין בחירה מראש של המאשר הראשו�
   assert.ok(eff, 'אפקט טעינת המאשרים');
   assert.ok(!/list\[0\]/.test(eff[1]), 'בחירה אוטומטית של list[0]');
   assert.match(eff[1], /cur && list\.some\(e => e\.id === cur\.id\)\) setSel\(String\(cur\.id\)\)/);
-  assert.match(dlg, /<option key="" value="">/, 'אפשרות ריקה "בחר ..."');
+  assert.match(dlg, /<NoCombo id="noPinWho"[\s\S]*?options=\{\[\['', ''\]/, 'אפשרות ריקה "בחר ..." (placeholder של NoCombo)');
+  assert.ok(!/<select/.test(dlg), 'בלי select של הדפדפן בחלון האישור');
   assert.match(strip(read('NewOrderA5.js')), /ctl\.answer\(layer, r, d\.id\)/);
   assert.match(CTL, /createDialogManager/);
 });

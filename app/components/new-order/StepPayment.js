@@ -6,7 +6,7 @@
 // פריסה (העיצוב העדכני B2): קלף אחד (.card.one) עם שתי עמודות - הטופס (.pay-main) מימין ו"תשלומים שנרשמו" (.pay-side, נדבקת בגלילה) משמאל,
 // עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
 import { Blk, Ic, OneCard, SubH, Tip, money } from './NoUi';
-import { CalcErrorNote, DeliveryChargeLine } from './NoDeliveryBits';
+import { CalcErrorNote } from './NoDeliveryBits';
 import { isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
 
 const AMT_STEP = 10;
@@ -28,12 +28,11 @@ export default function StepPayment({ ctl }) {
   const stepAmount = (dir) => setAmount(String(Math.min(maxPay, Math.max(0, Math.round((curAmt + dir * AMT_STEP) * 100) / 100))));
   const typeAmount = (raw) => { const n = parseFloat(raw); setAmount(Number.isFinite(n) && n > maxPay ? String(maxPay) : raw); };
   // בחירת אשראי פותחת את חלון החיוב מיד (בלי כפתור נפרד); לחיצה חוזרת על האריח פותחת אותו שוב. בלי סכום - רק נבחר, ו-Enter בשדה הסכום פותח
-  const isCredit = isCreditMethod(p.method);
-  const pickMethod = (m) => {
-    ctl.setPayment(prev => ({ ...prev, method: m }));
+  const pickMethod = async (m) => {
+    if (!await ctl.selectPaymentMethod(m)) return; // "יציאה באישור מנהל" - הקפצת קוד מנהל מיד; בלי אישור לא נבחרת
     if (isCreditMethod(m) && !busy && curAmt > 0) ctl.openCredit(p.notes);
   };
-  const enter = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) ctl.handleAddPaymentClick(); } };
+  const enter = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) pickMethod(p.method); } }; // Enter = לחיצה על האופן שנבחר (חלון אישור / חיוב אשראי) - אין לחצן רישום
   // נוסח מקוצר בטולטיפ (במקום שורת הסבר): סיום בלי תשלום מלא רק דרך "יציאה באישור מנהל" ברשימת אופן התשלום
   const balTip = bal > 0 ? `יתרה ${moneyTxt(bal)}. סיום בלי תשלום מלא: "יציאה באישור מנהל" (דורש קוד וסיסמת מנהל).` : '';
   return (
@@ -45,12 +44,11 @@ export default function StepPayment({ ctl }) {
             <div className="bal">
               <div><div className="faint sm">{bal > 0 ? 'יתרה' : 'שולם במלואו'}</div><div className="n" style={{ color: bal > 0 ? 'var(--gm-red)' : 'var(--gm-green)' }}>{money(bal)}</div></div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div className="row spread sm muted"><span>שולם {money(paid)}</span><span>סה&quot;כ חיובים {money(tot)}</span></div>
+                <div className="row spread sm muted"><span>שולם {money(paid)}</span></div>
                 <div className="pbar"><i style={{ width: `${pct}%` }} /></div>
               </div>
             </div>
             <CalcErrorNote ctl={ctl} />
-            <DeliveryChargeLine ctl={ctl} />
           </Blk>
           <Blk>
             <SubH icon="card" tone="blue" title="רישום תשלום" />
@@ -78,11 +76,6 @@ export default function StepPayment({ ctl }) {
                 </div>
               </details>
             ) : null}
-            {isCredit ? null : (
-              <div className="row wrap" style={{ gap: 10, marginTop: 16 }}>
-                <button type="button" className="btn green" disabled={busy} onClick={ctl.handleAddPaymentClick}><Ic n="check" />רישום תשלום</button>
-              </div>
-            )}
           </Blk>
         </div>
         {hasPays ? (

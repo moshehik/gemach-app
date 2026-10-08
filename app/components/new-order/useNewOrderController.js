@@ -53,6 +53,7 @@ export default function useNewOrderController({ router }) {
   const savingCustomerRef = useRef(false);
   const saveOrderBusyRef = useRef(false);
   const saveExecRef = useRef(false);
+  const managerExitApprovedRef = useRef(false); // אישור מנהל שניתן כבר בבחירת "יציאה באישור מנהל" - לא נשאל שוב בסיום
   const [saving, setSaving] = useState(false);
   const [newCustomer, setNewCustomer] = useState(() => ({ ...NL.EMPTY_NEW_CUSTOMER }));
   const [newCustomerError, setNewCustomerError] = useState(null); // R05: הודעת השרת בשמירת לקוח חדש {field, text}
@@ -724,6 +725,29 @@ export default function useNewOrderController({ router }) {
   };
 
   // כפל לחיצה על "סיום" (גם בזמן חלון אישור מנהל) לא מריץ שתי שמירות במקביל
+  // בחירת אופן תשלום: "יציאה באישור מנהל" מקפיצה מיד את הזנת הקוד והסיסמה (אותו אישור feature:payment_exit_approval שנבדק בסיום);
+  // בלי אישור האופן לא נבחר. אחרי אישור, הסיום לא שואל שוב כל עוד נשאר באותו אופן.
+  const selectPaymentMethod = async (m) => {
+    if (m === NL.MANAGER_EXIT_METHOD && payment.method !== m) {
+      const authResult = await verifyPin('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
+      if (!authResult) { say('info', 'אישור תשלום בוטל.'); return false; }
+      managerExitApprovedRef.current = true;
+    } else if (m !== NL.MANAGER_EXIT_METHOD) {
+      managerExitApprovedRef.current = false;
+    }
+    setPayment(prev => ({ ...prev, method: m }));
+    // אמצעי תשלום רגיל (מזומן / העברה / צ'ק - לא אשראי, שפותח את חלון החיוב, ולא יציאה באישור מנהל): חלון אישור, ובאישור התשלום נרשם
+    // (אין לחצן "רישום תשלום"). בלי סכום - רק נבחר והודעה. הרישום עצמו ב-handleAddPaymentClick אחרי שה-state התעדכן (addAfterSelect)
+    if (m !== NL.MANAGER_EXIT_METHOD && !NL.isCreditMethod(m)) {
+      const amt = parseFloat(payment.amount) || 0;
+      if (amt <= 0) { say('info', 'יש להזין סכום גדול מ-0'); return true; }
+      const ok = await ask('confirm', { title: `אישור תשלום ב${m}`, message: `לאשר תשלום ב${m} בסך ${NL.moneyTxt(amt)}?`, ok: 'אשר תשלום' });
+      if (ok) setAddAfterSelect(true);
+    }
+    return true;
+  };
+  const [addAfterSelect, setAddAfterSelect] = useState(false);
+
   const saveOrder = async () => {
     if (saveOrderBusyRef.current) return;
     saveOrderBusyRef.current = true;
@@ -755,12 +779,19 @@ export default function useNewOrderController({ router }) {
     }
     if (pAmount > 0 && isCreditCardPayment) { openCredit(''); return; }
     // Q3b (החלטת בעלים): "יציאה באישור מנהל" תמיד דורשת אישור (feature:payment_exit_approval), בלי תלות ב-PAYMENT_APPROVAL_LEVEL; תשלום רגיל - לפי הרמה כמו בישן
-    if (NL.paymentApprovalRequired(settings, payment.method, pAmount)) {
+    if (NL.paymentApprovalRequired(settings, payment.method, pAmount) && !(isManagerExitPayment && managerExitApprovedRef.current)) {
       const authResult = await verifyPin('יציאה מהזמנה בלי תשלום מלא דורשת אישור של מי שהורשה לכך. אנא בחר משתמש והזן סיסמה:', 'feature:payment_exit_approval');
       if (!authResult) { say('info', 'אישור תשלום בוטל.'); return; }
     }
     await executeSaveOrderForList(NL.buildFinalPayments(paymentsList, payment));
   };
+
+  useEffect(() => {
+    if (!addAfterSelect) return;
+    setAddAfterSelect(false);
+    handleAddPaymentClick();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addAfterSelect]);
 
   // 67c0d652: אחרי שהסכום לתשלום התאפס (אפקט היתרה) - saveOrder הרגיל, אותן בדיקות
   useEffect(() => {
@@ -938,7 +969,7 @@ export default function useNewOrderController({ router }) {
     availableSizes, loadingSizes, loadingPreload, refreshInventory, addPreview, addError, addItemToOrder, confirmRemoveItem, editItem,
     calculatedData, calculating, calcError, retryCalc, savingCustomer, totalAmount, activeItems, datesFilled, rangePending, setRangePending,
     deliveryCityOptions, deliveryRateCities: deliveryPriceCities, deliveryAddressRequired, deliveryCityRequired, deliveryError, deliveryEnabled, deliveryEdit, openDeliveryEdit, closeDeliveryEdit,
-    paymentMethodOptions, payment, setPayment, paymentsList, removePayment, totalPaid, remaining, handleAddPaymentClick, openCredit,
+    paymentMethodOptions, payment, setPayment, selectPaymentMethod, paymentsList, removePayment, totalPaid, remaining, handleAddPaymentClick, openCredit,
     creditCardData, setCreditCardData, creditError, isProcessingCredit, handleProcessCreditCard,
     saving, saveError, setSaveError, saveOrder, saved, draftOrderId,
     capacityItem, setCapacityItem, showCapacitySearch, setShowCapacitySearch,
