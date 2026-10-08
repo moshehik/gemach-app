@@ -29,8 +29,8 @@ export default function StepPayment({ ctl }) {
   const typeAmount = (raw) => { const n = parseFloat(raw); setAmount(Number.isFinite(n) && n > maxPay ? String(maxPay) : raw); };
   // בחירת אשראי פותחת את חלון החיוב מיד (בלי כפתור נפרד); לחיצה חוזרת על האריח פותחת אותו שוב. בלי סכום - רק נבחר, ו-Enter בשדה הסכום פותח
   const isCredit = isCreditMethod(p.method);
-  const pickMethod = (m) => {
-    ctl.setPayment(prev => ({ ...prev, method: m }));
+  const pickMethod = async (m) => {
+    if (!await ctl.selectPaymentMethod(m)) return; // "יציאה באישור מנהל" - הקפצת קוד מנהל מיד; בלי אישור לא נבחרת
     if (isCreditMethod(m) && !busy && curAmt > 0) ctl.openCredit(p.notes);
   };
   const enter = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!busy) ctl.handleAddPaymentClick(); } };
