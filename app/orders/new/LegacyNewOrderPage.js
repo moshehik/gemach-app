@@ -1600,16 +1600,6 @@ export default function NewOrderPage() {
     if (err) { alert(err); return; }
     setDeliveryModal(null);
   };
-  const renderDeliveryButton = () => deliveryEnabled ? (
-    <button
-      type="button"
-      className="btn btn-secondary"
-      style={{ width: '100%', padding: '14px 16px', fontSize: '15px', fontWeight: 700 }}
-      onClick={openDeliveryModal}
-    >
-      <svg className="icon"><use href="#i-truck" /></svg> {order.isDelivery ? 'עריכת משלוח' : 'הוסף משלוח'}
-    </button>
-  ) : null;
 
   const eventDateLabel = order.isAbroad
     ? (order.fromDate && order.toDate ? `${getHebrewDateString(order.fromDate)} — ${getHebrewDateString(order.toDate)}` : '')
@@ -2607,7 +2597,6 @@ export default function NewOrderPage() {
               </div>
             </div>
 
-            {deliveryEnabled && <div style={{ marginTop: 16 }}>{renderDeliveryButton()}</div>}
 
             {/* הערות כלליות להזמנה - גם כאן (בנוסף לשלב 2), כי דיווח תקלה 9c358793 (2026-09-22)
                 חזר פעמיים על כך שבזמן הוספת פריטים (שלב זה) לא רואים אפשרות להקליד הערה חופשית -
@@ -2784,7 +2773,6 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                {deliveryEnabled && <div style={{ marginBottom: '16px' }}>{renderDeliveryButton()}</div>}
 
                 <div className="card card-pad">
                   <div className="card-title-row" style={{ marginBottom: '10px' }}>
