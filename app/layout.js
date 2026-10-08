@@ -3,6 +3,7 @@ import './design-overrides.css';
 import './design-system.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
+import { isDeviceBackupRequest } from '@/lib/dbMode';
 import { readVerifiedSession } from '@/lib/auth';
 import { resolvePageAccess } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
@@ -23,6 +24,7 @@ import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
 import PreviewModeBanner from './components/PreviewModeBanner';
+import BackupModeBanner from './components/BackupModeBanner';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
 import { LabelsProvider } from './components/LabelsContext';
@@ -819,6 +821,7 @@ function cpCssText(vars) {
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
           <DevEnvBanner data-element-name="רכיב_layout_3" />
           <PreviewModeBanner />
+          <BackupModeBanner active={globalThis.webDbModeState?.mode === 'test'} device={isDeviceBackupRequest()} />
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
         <Suspense data-element-name="רכיב_layout_5" fallback={null}>
           <PageTracker data-element-name="רכיב_layout_6" />

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
+import { currentDbModeTag } from '@/lib/dbMode';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { getUpdatedOrders } from '@/lib/schedule/updatedOrders';
@@ -15,7 +16,7 @@ const cacheNow = (globalThis.__scheduleUpdatedCacheNow ||= createRangeCache({ tt
 const cachePast = (globalThis.__scheduleUpdatedCachePast ||= createRangeCache({ ttlMs: 300000, max: 40 }));
 function dbTag() {
   const h = createHash('sha256').update(process.env.DATABASE_URL || '').digest('hex').slice(0, 16);
-  return h + ':' + (globalThis.activeDbMode || 'prod') + ':' + ((globalThis.webDbModeState && globalThis.webDbModeState.mode) || 'prod');
+  return h + ':' + currentDbModeTag();
 }
 
 // GET /api/schedule/updated?date=YYYY-MM-DD[&branch=] — "הזמנות שעודכנו" ביום (lib/schedule/updatedOrders.js).

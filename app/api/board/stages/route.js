@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { canOpenPage } from '@/lib/permissions';
 import { createHash } from 'node:crypto';
+import { currentDbModeTag } from '@/lib/dbMode';
 import { getScheduleRangeSummary } from '@/lib/schedule/range';
 import { createRangeCache, rangeCacheKey } from '@/lib/schedule/rangeCache';
 
@@ -12,7 +13,7 @@ const cache = (globalThis.__boardStagesCache ||= createRangeCache());
 function dbTag() {
   const url = process.env.DATABASE_URL || '';
   const h = createHash('sha256').update(url).digest('hex').slice(0, 16);
-  return h + ':' + (globalThis.activeDbMode || 'prod') + ':' + ((globalThis.webDbModeState && globalThis.webDbModeState.mode) || 'prod');
+  return h + ':' + currentDbModeTag();
 }
 
 export const dynamic = 'force-dynamic';
