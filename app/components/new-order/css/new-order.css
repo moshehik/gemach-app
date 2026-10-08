@@ -399,3 +399,5 @@
 @media (prefers-reduced-motion:reduce){.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{animation:none;border-image:linear-gradient(90deg,var(--gm-gold-d),var(--gm-gold-rich-h),var(--gm-gold-d)) 1}}
 /* אופני תשלום: באותו רוחב של שדה "סכום לתשלום כעת" (440px) */
 .gm-ds.gm-no .pay-main #methods{max-width:440px}
+/* תיבת בחירה בתוך חלון (מאשר / מידה): רשימה צפה מודרנית של האתר במקום ה-select של הדפדפן; גובה מוגבל כדי שלא תחרוג מהחלון */
+.gm-ds.gm-no .dlg .cb-l{max-height:220px}

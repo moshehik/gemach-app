@@ -5,7 +5,7 @@
 // אף חלון כאן לא משתמש ב-window.alert / confirm / customConfirm / customAuthPrompt.
 import { useEffect, useId, useRef, useState } from 'react';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
-import { Ic, Note, NO_FILL, Switch } from './NoUi';
+import { Ic, Note, NoCombo, NO_FILL, Switch } from './NoUi';
 import { isCardNumberComplete, isExpiryComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, getMissingMandatoryCustomerFields, CUSTOMER_FIELD_LABELS, cardNumberInput, tokefInput, parseSwipe, plural, moneyTxt } from './newOrderLogic';
 import { parseFieldGroups, unsatisfiedFieldGroupShortLabels } from '@/lib/customerValidation';
@@ -120,12 +120,9 @@ export function ApprovalDialog({ message, level, close, fetchImpl }) {
       <div className="sub">{lines(message)}</div>
       <div className="mfld">
         <label className="lbl with-ic" htmlFor="noPinWho"><Ic n="user" c="sm" />בחר {noun}</label>
-        <div className="inpw">
-          <select className="inp" id="noPinWho" value={sel} onChange={(e) => setSel(e.target.value)} disabled={emps === null || emps.length === 0}>
-            {emps === null ? <option value="">טוען רשימת עובדים...</option> : emps.length === 0 ? <option value="">אין עובדים מורשים לפי מסך ההרשאות</option>
-              : [<option key="" value="">{`בחר ${noun}...`}</option>, ...emps.map(e => <option key={e.id} value={String(e.id)}>{`${e.firstName || ''} ${e.lastName || ''}`.trim()}</option>)]}
-          </select>
-        </div>
+        <NoCombo id="noPinWho" label={`בחר ${noun}`} value={sel} onChange={setSel} disabled={emps === null || emps.length === 0}
+          placeholder={emps === null ? 'טוען רשימת עובדים...' : emps.length === 0 ? 'אין עובדים מורשים לפי מסך ההרשאות' : `בחר ${noun}...`}
+          options={[['', ''], ...(emps || []).map(e => [String(e.id), `${e.firstName || ''} ${e.lastName || ''}`.trim()])]} />
       </div>
       <div className="mfld" style={{ marginTop: 12 }}>
         <label className="lbl with-ic" htmlFor="noPinCode"><Ic n="lock" c="sm" />סיסמת {noun}</label>

@@ -8,7 +8,7 @@
 // החלון נטען ב-portal לשורש הדף (NoPortal) בתוך DialogFrame - הוא לא חלון עם תשובה (ask) אלא מצב של הבקר (capacityItem / showCapacitySearch).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getIsraelTodayKey } from '../../../lib/hebrewDate';
-import { Ic, Note, SegPill } from './NoUi';
+import { Ic, Note, NoCombo, SegPill } from './NoUi';
 import NoHebrewCalendar, { holidaysOn, parshaOn } from './NoHebrewCalendar';
 import { DialogFrame } from './NoDialogs';
 import * as C from './noCapacityLogic';
@@ -381,12 +381,9 @@ export function CapacitySearchDialog({ onClose }) {
         </div>
         <div className="mfld" style={{ marginTop: 12 }}>
           <label className="lbl with-ic" htmlFor="noCapSize"><Ic n="tag" c="sm" />מידה</label>
-          <div className="inpw">
-            <select className="inp" id="noCapSize" value={size} onChange={(e) => setSize(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); performSearch(); } }} disabled={!barcodePrefix || sizes.length === 0}>
-              <option value="">{!barcodePrefix ? 'בחר דגם תחילה' : (sizes.length === 0 ? 'אין מידות לדגם' : 'בחר מידה...')}</option>
-              {sizes.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          <NoCombo id="noCapSize" label="מידה" value={size} onChange={setSize} disabled={!barcodePrefix || sizes.length === 0}
+            placeholder={!barcodePrefix ? 'בחר דגם תחילה' : (sizes.length === 0 ? 'אין מידות לדגם' : 'בחר מידה...')}
+            options={[['', ''], ...sizes.map((s) => [s, s])]} />
         </div>
         <div className="mfld" style={{ marginTop: 12 }}>
           <span className="lbl with-ic"><Ic n="cal" c="sm" />טווח תאריכים</span>
