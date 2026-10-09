@@ -306,7 +306,8 @@
 .gm-ds.gm-no .pay-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;width:100%}
 .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:24px}
 .gm-ds.gm-no .pay-main{display:flex;flex-direction:column;min-width:0}
-.gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start}
+/* "תשלומים שנרשמו": קבוע במקומו בתוך הקלף (לא צף / נדבק בגלילה - בקשת הבעלים 9.10.2026) */
+.gm-ds.gm-no .pay-side{position:static;min-width:0;align-self:start}
 /* בתוך הקלף האחד: הבלוקים של הטופס מופרדים בקו מקווקו (כמו .one-body>.blk+.blk בשלבים האחרים - כאן הם בתוך .pay-main) */
 .gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{margin-top:30px!important;padding-top:30px!important;border-top:2px solid var(--sky-300)!important}
 /* קו מפריד דק בין הבחירה לסל (בעיצוב אחרי fix-2026-10-01 - בלי כרטיס סביב הסל) */
@@ -353,10 +354,8 @@
 .gm-ds.gm-no .no-sec-nav{margin-top:28px;gap:16px}
 .gm-ds.gm-no .no-sec-nav.row.spread{justify-content:flex-end}
 .gm-ds.gm-no .no-sec-nav.row.spread:has(>.btn+.btn){justify-content:space-between}
-.gm-ds.gm-no .no-flow .pay-side{top:calc(var(--gm-snav-h,0px) + 92px)}
 @media (max-width:760px){
   .gm-ds.gm-no .no-flow{gap:36px}
-  .gm-ds.gm-no .no-flow .pay-side{top:auto}
 }
 @media (max-width:520px){
   .gm-ds.gm-no .no-sec-t{font-size:46px}
