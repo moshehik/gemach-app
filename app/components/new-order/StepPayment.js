@@ -58,7 +58,7 @@ export default function StepPayment({ ctl }) {
             <label className="lbl" htmlFor="noPayAmt">סכום לתשלום כעת (₪)</label>
             <div className="amtin">
               <button type="button" className="numb dn" aria-label="הפחתה" tabIndex={-1} disabled={curAmt <= 0} onClick={() => stepAmount(-1)}><Ic n="minus" c="sm" /></button>
-              <span>₪</span><input id="noPayAmt" type="number" inputMode="decimal" step="any" min="0" max={maxPay} value={p.amount} onKeyDown={enter} onChange={(e) => typeAmount(e.target.value)} />
+              <input id="noPayAmt" type="number" inputMode="decimal" step="any" min="0" max={maxPay} value={p.amount} onKeyDown={enter} onChange={(e) => typeAmount(e.target.value)} />
               <button type="button" className="numb up" aria-label="הוספה" tabIndex={-1} disabled={curAmt >= maxPay} onClick={() => stepAmount(1)}><Ic n="plus" c="sm" /></button>
             </div>
             <div className="lbl" style={{ marginTop: 14 }}>אופן תשלום{balTip ? <> <Tip t={balTip} /></> : null}</div>
