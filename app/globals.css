@@ -2617,6 +2617,20 @@ table.data thead tr th {
   border-bottom: 3px solid var(--gm-gold);
 }
 .ai-widget-panel.ai-a5 .ai-widget-head svg.icon { color: var(--gm-gold-300); }
+/* כפתורי הכותרת של עוזר ה-AI (היסטוריה / שיחה חדשה / הגדל / סגור) = כפתור האייקון של הפלטה בשורת הניווט הכחולה (.sn-ib): עגול, שקוף, אייקון לבן,
+   ריחוף - רקע לבן שקוף ואייקון זהב. מצב "פתוח" (היסטוריה מוצגת) כמו ריחוף. !important כי .btn-ghost של A5 (רקע לבן + מסגרת) והצבע ה-inline של הרכיב חזקים יותר. */
+.ai-widget-panel.ai-a5 .ai-widget-head .btn.btn-icon-only {
+  width: 36px; height: 36px; min-width: 36px; padding: 0; border-radius: 50% !important;
+  background: transparent !important; border: 0 !important; box-shadow: none !important;
+  color: rgba(255, 255, 255, .92) !important; display: grid; place-items: center;
+  transition: color .2s, background .2s, transform .2s;
+}
+.ai-widget-panel.ai-a5 .ai-widget-head .btn.btn-icon-only:hover,
+.ai-widget-panel.ai-a5 .ai-widget-head .btn.btn-icon-only:focus-visible {
+  background: rgba(255, 255, 255, .1) !important; color: var(--gm-gold-300) !important; transform: translateY(-2px); outline: 0;
+}
+.ai-widget-panel.ai-a5 .ai-widget-head .btn.btn-icon-only svg.icon { width: 20px; height: 20px; color: inherit; }
+.ai-widget-panel.ai-a5 .ai-widget-head .btn.btn-icon-only.is-on { background: rgba(255, 255, 255, .1) !important; color: var(--gm-gold-300) !important; }
 
 /* טבלת הנתונים של עוזר ה-AI ("הצג טבלה") במעטפת החדשה A5 (8.10.2026): חלון וטבלה בעיצוב הפלטה (כמו .rtbl של דף הבית) במקום
    .modal / table.data הישנים. ה-class ai-a5 נקבע ב-AIFloatingWidget רק כש-useUiVariant('shell') === 'a5'. */
