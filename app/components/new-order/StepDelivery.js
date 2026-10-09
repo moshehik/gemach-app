@@ -55,7 +55,6 @@ export default function StepDelivery({ ctl }) {
               <Field label="סניף ביצוע" icon="pin" htmlFor="noBranchSel">
                 <NoCombo id="noBranchSel" label="סניף ביצוע" placeholder={o.isPhoneOrder ? 'לא רלוונטי בהזמנה טלפונית' : 'בחר סניף...'} disabled={!!o.isPhoneOrder} value={o.branch || ''} options={[['', ''], ...branches.map(b => [b, b])]} onChange={(val) => {
                   set({ branch: val, isPhoneOrder: val ? false : o.isPhoneOrder });
-                  try { if (val) localStorage.setItem('gemach_last_order_branch', val); } catch { /* אין גישה */ }
                 }} />
               </Field>
             ) : null}
