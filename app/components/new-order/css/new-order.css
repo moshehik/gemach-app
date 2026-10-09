@@ -395,11 +395,11 @@
 /* לחצן-מתג מסומן ("משלוח יוצא יום לפני"): כחול כהה עם טקסט בהיר - הפלטה כופה #delOneBtn שקוף עם !important, לכן !important גם כאן */
 .gm-ds.gm-no .app .btn.tgl.on#delOneBtn,.gm-ds.gm-no .app .btn.tgl.on#delOneBtn:hover{background:var(--gm-navy)!important;border-color:var(--gm-navy)!important;color:var(--gm-gold-100)!important}
 .gm-ds.gm-no .app .btn.tgl.on#delOneBtn .evck{color:var(--gm-gold-300);stroke:currentColor}
-/* קו מפריד בין בלוקים בקלף האחד (למשל "פרטי ההזמנה" / "פריטים"): קו זהב עבה (4px) עם ברק שנע לאורכו; --no-ln = מיקום הברק (@property כדי שיונפש). בלי תנועה (prefers-reduced-motion) - קו זהב קבוע */
+/* קו מפריד בין בלוקים בקלף האחד (למשל "פרטי ההזמנה" / "פריטים"): קו זהב בהיר עבה (4px) שדוהה בקצוות (שקוף בשני הקצוות) עם ברק שנע לאורכו; --no-ln = מיקום הברק (@property כדי שיונפש). בלי תנועה (prefers-reduced-motion) - קו זהב קבוע */
 @property --no-ln{syntax:'<percentage>';inherits:false;initial-value:-25%}
 @keyframes no-ln-sweep{from{--no-ln:-25%}to{--no-ln:125%}}
-.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{border-top:4px solid transparent!important;border-image:linear-gradient(90deg,var(--gm-gold-d) 0%,var(--gm-gold-d) calc(var(--no-ln) - 25%),var(--gm-gold-rich-h) var(--no-ln),var(--gm-gold-d) calc(var(--no-ln) + 25%),var(--gm-gold-d) 100%) 1!important;animation:no-ln-sweep 3.6s linear infinite}
-@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{animation:none;border-image:linear-gradient(90deg,var(--gm-gold-d),var(--gm-gold-rich-h),var(--gm-gold-d)) 1!important}}
+.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{border-top:4px solid transparent!important;border-image:linear-gradient(90deg,transparent 0%,var(--gm-gold-300) 14%,var(--gm-gold-300) calc(var(--no-ln) - 25%),var(--gm-gold-100) var(--no-ln),var(--gm-gold-300) calc(var(--no-ln) + 25%),var(--gm-gold-300) 86%,transparent 100%) 1!important;animation:no-ln-sweep 3.6s linear infinite}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{animation:none;border-image:linear-gradient(90deg,transparent 0%,var(--gm-gold-300) 20%,var(--gm-gold-100) 50%,var(--gm-gold-300) 80%,transparent 100%) 1!important}}
 /* אופני תשלום: באותו רוחב של שדה "סכום לתשלום כעת" (440px) */
 .gm-ds.gm-no .pay-main #methods{max-width:440px}
 /* תיבת בחירה בתוך חלון (מאשר / מידה): רשימה צפה מודרנית של האתר במקום ה-select של הדפדפן; גובה מוגבל כדי שלא תחרוג מהחלון */
