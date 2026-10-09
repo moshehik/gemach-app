@@ -762,6 +762,13 @@ export default function HomeA5() {
               {!joined && modeButtons && <div className="hero-row">{modeButtons}</div>}
             </form>
           )}
+          {/* שורת "למצגת הסבר" (9.10.2026): קישור לדף הנחיתה /landing (נפתח בלשונית חדשה, כמו הקישור שבתחתית הדף); רק בדף הבית הריק, לא בתוצאות / בחיפוש מתקדם */}
+          {!noBar && view === 'start' && showGuide && (
+            <a className="tour-line" href="/landing" target="_blank" rel="noopener">
+              <span className="tour-ic"><Ic id="sparkle" size="sm" /></span>
+              <span className="tour-t">למצגת הסבר על האתר <b>לחצי כאן</b></span>
+            </a>
+          )}
           {view === 'adv' && (
             <HomeAdvanced
               adv={adv}

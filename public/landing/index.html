@@ -867,6 +867,14 @@ svg.ic.ia-h:hover:not(#_){animation:var(--ia-a) var(--ia-d) var(--ia-t) 1;transf
         <svg class="hr-swoosh" viewBox="0 0 320 24" aria-hidden="true" preserveAspectRatio="none"><path class="pen" pathLength="1" style="--d:1" d="M6 15C60 5 110 20 165 11S270 6 314 13" stroke="var(--rose-500)" stroke-width="4"/><path class="pen" pathLength="1" style="--d:1.5" d="M60 21C120 15 190 22 250 18" stroke="var(--gold)" stroke-width="3"/></svg>
       </h1>
 
+      <div class="hr-intro" id="hr-intro">
+        <p class="hr-it" id="hr-it" aria-label="מבינים איך האתר עובד! לחצי על הכפתורים והתחילי…">
+          <span class="hr-l1" aria-hidden="true"><span class="hr-tx" id="hr-t1"></span></span>
+          <span class="hr-l2" aria-hidden="true"><span class="hr-tx" id="hr-t2"></span><i class="hr-caret"></i></span>
+        </p>
+        <button class="hr-snd" id="hr-snd" type="button" data-st="wait" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg><span>לחצי להפעלת צליל</span></button>
+      </div>
+
       <div class="hr-hin" data-rv style="--i:2">
         <form class="hr-srch" id="hr-form" autocomplete="off" role="search">
           <div class="hr-jshell" id="hr-jshell">
@@ -1081,7 +1089,7 @@ var hero=$('#top'),nav=$('#hr-nav'),cue=$('.hr-cue');
 
 /* nav frosted on scroll */
 var sc=false;
-function onScroll(){var y=window.scrollY||0,s=y>24;if(s!==sc){sc=s;nav.classList.toggle('sc',s)}if(cue)cue.classList.toggle('gone',y>140)}
+function onScroll(){var y=window.scrollY||0,s=y>24;if(s!==sc){sc=s;if(nav)nav.classList.toggle('sc',s)}if(cue)cue.classList.toggle('gone',y>140)}
 addEventListener('scroll',onScroll,{passive:true});onScroll();
 
 /* shift pill */
@@ -1138,8 +1146,111 @@ bSmart.addEventListener('click',function(){press(bSmart);setMode(mode==='smart'?
 bAdv.addEventListener('click',function(){press(bAdv);bar.classList.remove('spring');void bar.offsetWidth;bar.classList.add('spring');setTimeout(function(){bar.classList.remove('spring')},760);
   var a=document.getElementById('adv');if(a)setTimeout(function(){a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})},260)});
 sync();typer(HINTS.quick);
-setTimeout(function(){eng.run(false);openFrame(true)},RM?0:1100);
 
+})();
+</script>
+<style>
+/* ---------- hero intro: typed line + soft sounds (mouse move) ---------- */
+.hr-main{min-height:0!important}
+.hr-main .hero-t{margin-bottom:6px}
+.hr-main .hr-hin{margin-top:6px}
+.hr-worlds{margin-top:clamp(26px,4vw,56px)}
+.hr-intro{position:relative;text-align:center;max-width:760px;margin:0 auto clamp(18px,2.6vw,28px);padding-top:2px}
+.hr-it{margin:0;line-height:1.3;text-shadow:0 1px 2px rgba(255,255,255,.9),0 0 22px rgba(255,255,255,.85);min-height:calc(2.7em + 6px)}
+.hr-l1,.hr-l2{display:block;min-height:1.3em}
+.hr-l1{font-size:clamp(22px,3.7vw,36px);font-weight:700;color:var(--navy)}
+.hr-l2{font-size:clamp(18px,2.8vw,27px);font-weight:500;color:var(--rose-700);margin-top:2px}
+.hr-l1 .hr-tx{background:linear-gradient(100deg,transparent 0,var(--gold-300) 8%,var(--gold-100) 100%) no-repeat 0 86%/0% 52%;padding:0 .14em;margin:0 -.14em;transition:background-size .9s var(--ease) .1s;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.hr-intro.done .hr-l1 .hr-tx{background-size:100% 52%}
+.hr-caret{display:inline-block;width:3px;height:.95em;margin-inline-start:4px;vertical-align:-.1em;border-radius:2px;background:var(--gold);animation:hrCaret .9s steps(1) infinite}
+.hr-intro.done .hr-caret{animation:hrCaret .9s steps(1) 4,hrCaretOff .4s ease 3.6s forwards}
+@keyframes hrCaret{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes hrCaretOff{to{opacity:0}}
+.hr-snd{display:inline-flex;align-items:center;gap:8px;margin-top:12px;height:34px;padding:0 15px 0 13px;border-radius:999px;border:1.5px solid var(--gold-b);background:rgba(255,255,255,.72);color:var(--navy);font-size:14px;font-weight:500;box-shadow:0 8px 20px -14px rgba(15,44,82,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:background .2s,color .2s,transform .25s var(--ease-back),box-shadow .2s}
+.hr-snd:hover{background:var(--navy);color:#fff;transform:translateY(-2px)}
+.hr-snd:active{transform:scale(.93)}
+.hr-snd svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hr-snd .x{display:none}.hr-snd[data-st="off"] .x{display:inline}.hr-snd[data-st="off"] .w{display:none}
+.hr-snd[data-st="wait"]{animation:hrSndPulse 2.4s ease-in-out infinite}
+@keyframes hrSndPulse{0%,100%{box-shadow:0 8px 20px -14px rgba(15,44,82,.5),0 0 0 0 rgba(201,162,39,.5)}50%{box-shadow:0 8px 20px -14px rgba(15,44,82,.5),0 0 0 8px rgba(201,162,39,0)}}
+.hr-sp{position:absolute;z-index:3;width:var(--s,12px);height:var(--s,12px);margin:calc(var(--s,12px)/-2) 0 0 calc(var(--s,12px)/-2);pointer-events:none;border-radius:50%;background:radial-gradient(circle,#fff 0,var(--c,var(--gold-300)) 45%,transparent 72%);animation:hrSp 1s ease-out forwards}
+@keyframes hrSp{0%{opacity:0;transform:scale(.3)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx,0),var(--dy,-34px)) scale(1.1)}}
+.hr-call .hr-wb{animation:hrCall .9s var(--ease-back) calc(var(--i,1)*.13s) 1 both}
+@keyframes hrCall{0%{transform:scale(1)}35%{transform:scale(1.18) rotate(-6deg)}70%{transform:scale(.96) rotate(3deg)}100%{transform:scale(1)}}
+@media (max-width:700px){.hr-l1{font-size:clamp(21px,6vw,28px)}.hr-l2{font-size:clamp(17px,4.8vw,22px)}.hr-snd{font-size:13px;height:32px}}
+</style>
+<script>
+(function(){
+'use strict';
+var RM=window.GM?GM.reduced():matchMedia('(prefers-reduced-motion:reduce)').matches;
+var hero=document.getElementById('top'),intro=document.getElementById('hr-intro'),t1=document.getElementById('hr-t1'),t2=document.getElementById('hr-t2'),
+    caret=intro&&intro.querySelector('.hr-caret'),chip=document.getElementById('hr-snd'),worlds=document.querySelector('.hr-worlds');
+if(!hero||!intro||!t1||!t2||!chip)return;
+var L1='מבינים איך האתר עובד!',L2='לחצי על הכפתורים והתחילי…';
+
+/* ---- sound: tiny WebAudio synth, pentatonic bells + a soft echo ---- */
+var AC=window.AudioContext||window.webkitAudioContext,ctx=null,master=null,st='wait';
+var SCALE=[523.25,587.33,659.25,783.99,880,1046.5,1174.66,1318.51];
+try{if(localStorage.getItem('gmLandingSnd')==='off')st='off'}catch(e){}
+var LABEL={wait:'לחצי להפעלת צליל',on:'צליל פעיל',off:'צליל כבוי'};
+function paint(){chip.dataset.st=st;chip.setAttribute('aria-pressed',st==='on'?'true':'false');chip.querySelector('span').textContent=LABEL[st]}
+function ensure(){
+  if(!AC)return false;
+  if(!ctx){try{ctx=new AC()}catch(e){return false}
+    master=ctx.createGain();master.gain.value=.55;master.connect(ctx.destination);
+    var dl=ctx.createDelay(.6),fb=ctx.createGain(),wet=ctx.createGain();dl.delayTime.value=.24;fb.gain.value=.3;wet.gain.value=.35;
+    master.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(ctx.destination)}
+  if(ctx.state==='suspended')ctx.resume();
+  return true}
+function live(){return st==='on'&&ctx&&ctx.state==='running'}
+function tone(f,when,dur,vol,type){
+  if(!live())return;var t=ctx.currentTime+(when||0),o=ctx.createOscillator(),g=ctx.createGain();
+  o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.05)}
+function bell(i,vol){var f=SCALE[((i%8)+8)%8];tone(f,0,.7,vol||.07);tone(f*2,0,.35,(vol||.07)*.22,'triangle')}
+function tick(){if(!live())return;tone(1500+Math.random()*700,0,.05,.035,'triangle')}
+function arp(){[0,2,4,6].forEach(function(n,k){var f=SCALE[n];tone(f,k*.09,.6,.07);tone(f*2,k*.09,.3,.015,'triangle')})}
+function setSt(s,quiet){st=s;try{localStorage.setItem('gmLandingSnd',s==='off'?'off':'on')}catch(e){}paint();if(s==='on'&&!quiet)arp()}
+paint();
+chip.addEventListener('click',function(e){e.stopPropagation();
+  if(st==='off'){ensure();setSt('on')}
+  else if(st==='wait'){if(ensure()){setSt('on');setTimeout(arp,40)}}
+  else setSt('off')});
+/* browsers only allow sound after a click / tap / key: the first one switches it on (unless it was muted) */
+function firstGesture(e){
+  if(chip.contains(e.target))return;
+  removeEventListener('pointerdown',firstGesture,true);removeEventListener('keydown',firstGesture,true);
+  if(st!=='off'&&ensure()){st='on';paint();setTimeout(function(){if(live())arp()},60)}}
+addEventListener('pointerdown',firstGesture,true);addEventListener('keydown',firstGesture,true);
+
+/* ---- typing ---- */
+function typeInto(el,s,done){
+  if(caret)el.parentNode.appendChild(caret);
+  if(RM){el.textContent=s;return done&&done()}
+  var i=0;(function step(){i++;el.textContent=s.slice(0,i);var ch=s.charAt(i-1);if(ch!==' ')tick();
+    if(i<s.length)setTimeout(step,ch==='!'?260:38+Math.random()*42);else done&&done()})()}
+function finish(){intro.classList.add('done');if(worlds)worlds.classList.add('hr-call');if(live())arp()}
+setTimeout(function(){typeInto(t1,L1,function(){setTimeout(function(){typeInto(t2,L2,finish)},RM?0:380)})},RM?0:700);
+
+/* ---- mouse move: soft bell + a little glitter ---- */
+if(!RM){
+  var lx=-999,ly=-999,lt=0,cols=['var(--gold-300)','var(--rose-300)','#fff','var(--gold)'];
+  hero.addEventListener('pointermove',function(e){
+    var now=performance.now();if(now-lt<95)return;
+    var dx=e.clientX-lx,dy=e.clientY-ly;if(dx*dx+dy*dy<2800)return;
+    lx=e.clientX;ly=e.clientY;lt=now;
+    var r=hero.getBoundingClientRect(),s=document.createElement('i');s.className='hr-sp';
+    s.style.left=(e.clientX-r.left)+'px';s.style.top=(e.clientY-r.top)+'px';
+    s.style.setProperty('--s',(8+Math.random()*10).toFixed(0)+'px');s.style.setProperty('--c',cols[(Math.random()*cols.length)|0]);
+    s.style.setProperty('--dx',((Math.random()-.5)*40).toFixed(0)+'px');s.style.setProperty('--dy',(-20-Math.random()*30).toFixed(0)+'px');
+    s.addEventListener('animationend',function(){s.remove()});hero.appendChild(s);
+    if(hero.querySelectorAll('.hr-sp').length>28)hero.querySelector('.hr-sp').remove();
+    bell(Math.floor(e.clientX/Math.max(innerWidth,1)*8),.05)});
+}
+/* the world buttons ring when touched */
+if(worlds)Array.prototype.forEach.call(worlds.querySelectorAll('.hr-w'),function(a,k){
+  var ring=function(){bell(1+k*2,.08)};a.addEventListener('mouseenter',ring);a.addEventListener('focus',ring);
+  a.addEventListener('click',function(){if(live()){tone(SCALE[k+2],0,.5,.08);tone(SCALE[k+4],.08,.6,.07)}})});
 })();
 </script>
 
