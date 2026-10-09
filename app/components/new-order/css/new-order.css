@@ -306,7 +306,8 @@
 .gm-ds.gm-no .pay-split{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start;width:100%}
 .gm-ds.gm-no .pay-split.has-side{grid-template-columns:minmax(0,1fr) 320px;column-gap:24px}
 .gm-ds.gm-no .pay-main{display:flex;flex-direction:column;min-width:0}
-.gm-ds.gm-no .pay-side{position:sticky;top:calc(var(--gm-snav-h,0px) + 16px);min-width:0;align-self:start}
+/* "תשלומים שנרשמו": קבוע במקומו בתוך הקלף (לא צף / נדבק בגלילה - בקשת הבעלים 9.10.2026) */
+.gm-ds.gm-no .pay-side{position:static;min-width:0;align-self:start}
 /* בתוך הקלף האחד: הבלוקים של הטופס מופרדים בקו מקווקו (כמו .one-body>.blk+.blk בשלבים האחרים - כאן הם בתוך .pay-main) */
 .gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{margin-top:30px!important;padding-top:30px!important;border-top:2px solid var(--sky-300)!important}
 /* קו מפריד דק בין הבחירה לסל (בעיצוב אחרי fix-2026-10-01 - בלי כרטיס סביב הסל) */
@@ -353,10 +354,8 @@
 .gm-ds.gm-no .no-sec-nav{margin-top:28px;gap:16px}
 .gm-ds.gm-no .no-sec-nav.row.spread{justify-content:flex-end}
 .gm-ds.gm-no .no-sec-nav.row.spread:has(>.btn+.btn){justify-content:space-between}
-.gm-ds.gm-no .no-flow .pay-side{top:calc(var(--gm-snav-h,0px) + 92px)}
 @media (max-width:760px){
   .gm-ds.gm-no .no-flow{gap:36px}
-  .gm-ds.gm-no .no-flow .pay-side{top:auto}
 }
 @media (max-width:520px){
   .gm-ds.gm-no .no-sec-t{font-size:46px}
@@ -377,8 +376,8 @@
 .gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}
-/* תיבת בחירה (סניף ביצוע / איסוף / עיר): רקע הפנינה של הטופס (כמו הכרטיסים) ולא לבן קשיח */
-.gm-ds.gm-no .no-app .cb-t{background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)}
+/* תיבת בחירה (סניף ביצוע / איסוף / עיר): בדיוק כמו שדות הטקסט של הטופס - גובה 44px, פינות גלולה, מילוי לבן שקוף (rgba(255,255,255,.3)) */
+.gm-ds.gm-no .no-app .cb-t{min-height:44px;height:44px;padding-block:0;border-radius:999px;background:rgba(255,255,255,.3)}
 /* שלב המשלוח: בלי קו מפריד מתחת לשורת "הזמנת משלוח" */
 .gm-ds.gm-no .app .one .one-body>.blk.blk.dhero+.blk{border-top:0!important;padding-top:0!important;margin-top:18px!important}
 /* שלב המשלוח: אריחי האייקון של הכותרות (הזמנת משלוח / כיוון / יעד) בלי רקע */
@@ -395,11 +394,11 @@
 /* לחצן-מתג מסומן ("משלוח יוצא יום לפני"): כחול כהה עם טקסט בהיר - הפלטה כופה #delOneBtn שקוף עם !important, לכן !important גם כאן */
 .gm-ds.gm-no .app .btn.tgl.on#delOneBtn,.gm-ds.gm-no .app .btn.tgl.on#delOneBtn:hover{background:var(--gm-navy)!important;border-color:var(--gm-navy)!important;color:var(--gm-gold-100)!important}
 .gm-ds.gm-no .app .btn.tgl.on#delOneBtn .evck{color:var(--gm-gold-300);stroke:currentColor}
-/* קו מפריד בין בלוקים בקלף האחד (למשל "פרטי ההזמנה" / "פריטים"): קו זהב עבה (4px) עם ברק שנע לאורכו; --no-ln = מיקום הברק (@property כדי שיונפש). בלי תנועה (prefers-reduced-motion) - קו זהב קבוע */
+/* קו מפריד בין בלוקים בקלף האחד (למשל "פרטי ההזמנה" / "פריטים"): קו זהב בהיר עבה (4px) שדוהה בקצוות (שקוף בשני הקצוות) עם ברק שנע לאורכו; --no-ln = מיקום הברק (@property כדי שיונפש). בלי תנועה (prefers-reduced-motion) - קו זהב קבוע */
 @property --no-ln{syntax:'<percentage>';inherits:false;initial-value:-25%}
 @keyframes no-ln-sweep{from{--no-ln:-25%}to{--no-ln:125%}}
-.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{border-top:4px solid transparent!important;border-image:linear-gradient(90deg,var(--gm-gold-d) 0%,var(--gm-gold-d) calc(var(--no-ln) - 25%),var(--gm-gold-rich-h) var(--no-ln),var(--gm-gold-d) calc(var(--no-ln) + 25%),var(--gm-gold-d) 100%) 1!important;animation:no-ln-sweep 3.6s linear infinite}
-@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{animation:none;border-image:linear-gradient(90deg,var(--gm-gold-d),var(--gm-gold-rich-h),var(--gm-gold-d)) 1!important}}
+.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{border-top:4px solid transparent!important;border-image:linear-gradient(90deg,transparent 0%,var(--gm-gold-300) 14%,var(--gm-gold-300) calc(var(--no-ln) - 25%),var(--gm-gold-100) var(--no-ln),var(--gm-gold-300) calc(var(--no-ln) + 25%),var(--gm-gold-300) 86%,transparent 100%) 1!important;animation:no-ln-sweep 3.6s linear infinite}
+@media (prefers-reduced-motion:reduce){.gm-ds.gm-no .app .one .one-body>.blk.blk+.blk,.gm-ds.gm-no .app .one .pay-main>.blk.blk+.blk{animation:none;border-image:linear-gradient(90deg,transparent 0%,var(--gm-gold-300) 20%,var(--gm-gold-100) 50%,var(--gm-gold-300) 80%,transparent 100%) 1!important}}
 /* אופני תשלום: באותו רוחב של שדה "סכום לתשלום כעת" (440px) */
 .gm-ds.gm-no .pay-main #methods{max-width:440px}
 /* תיבת בחירה בתוך חלון (מאשר / מידה): רשימה צפה מודרנית של האתר במקום ה-select של הדפדפן; גובה מוגבל כדי שלא תחרוג מהחלון */

@@ -4,7 +4,7 @@
 // S01 + S02 (לא להכניס): אין בדיקות חוסרים בבחירה מהרשימה ואין כרטיס "לקוח שנבחר" עם 5 שדות - שורת הלקוח + "חסר ללקוח" כמו באתר.
 // R03: הודעת "חובה למלא לפחות אחד מבין" בגוון הסלמון של ההתראה ובגודל רגיל (no-grp). R05: הודעת השרת מתחת לשדה.
 // R06: "מאשר/ת קבלת דיוורים" - הנוסח של כרטיס הלקוח/ההזמנה; מוסתר כש-hide_marketing_consent_field = 'true' (הגמ"ח הראשי).
-import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, Tip, NO_FILL } from './NoUi';
+import { Blk, ClearX, Field, Ic, Note, OneCard, SegPill, SubH, Switch, NO_FILL } from './NoUi';
 import NoSuggest, { emailSuggestions } from './NoSuggest';
 import { isMobilePhoneComplete, justCompleted, focusField } from '@/lib/autoAdvance';
 import { getCustomerFullName, CUSTOMER_FIELD_LABELS, isFieldMandatoryFromPicker } from './newOrderLogic';
@@ -79,8 +79,7 @@ function PhoneTab({ ctl }) {
         <ClearX show={!!ctl.phoneSearchInput} onClear={() => { ctl.setPhoneSearchInput(''); ctl.setFoundCustomersFromPhone([]); }} />
       </Field>
       <div className="row wrap" style={{ marginTop: 24, gap: 16, alignItems: 'center' }}>
-        <button type="button" className="btn navy" onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
-        <Tip t="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." />
+        <button type="button" className="btn navy" data-tip="מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן." onClick={ctl.handleCheckPhone} disabled={ctl.isCheckingPhone}><Ic n="search" />{ctl.isCheckingPhone ? 'מחפש...' : 'בדיקה והמשך'}</button>
       </div>
       <div id="phoneRes" style={{ marginTop: 16 }}>
         {res.length ? (

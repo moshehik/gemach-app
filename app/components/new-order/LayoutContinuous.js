@@ -35,7 +35,7 @@ function MiniProgress({ ctl, progress }) {
   // כיתוב לפי ההזמנה: שלב שהושלם מציג את מה שמולא בו (שם הלקוח, התאריך, המשלוח, "N פריטים · ₪", "שולם ₪"); אחרת - שם השלב
   const sums = stepSummaries(ctl);
   const captionOf = (key, state) => {
-    if (key === 'summary') return STEP_META[key].l;
+    if (key === 'summary') return ctl.activeItems.length ? `${STEP_META[key].l} · ${sums.summary}` : STEP_META[key].l; // "סיכום · ₪1,200"
     if (key === 'payment') return ctl.totalPaid > 0 ? sums.payment : STEP_META[key].l;
     return state === 'done' && sums[key] ? sums[key] : STEP_META[key].l;
   };
