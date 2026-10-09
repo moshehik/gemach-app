@@ -561,14 +561,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
             <svg data-element-name="רכיב_AIFloatingWidget_4" className="icon" style={{ width: '20px', height: '20px' }}>
               <use href="#i-star" />
             </svg>
-            <span style={{ fontWeight: 'bold' }}>עוזר AI</span>
-            {chatTitle(messages) ? <span data-testid="ai-chat-title" style={{ opacity: 0.85, fontSize: '0.85rem', maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {chatTitle(messages)}</span> : null}
+            <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', flex: 'none' }}>עוזר AI</span>
+            {chatTitle(messages) ? <span data-testid="ai-chat-title" style={{ opacity: 0.85, fontSize: '0.85rem', flex: '0 1 auto', minWidth: 0, maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {chatTitle(messages)}</span> : null}
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '4px', flex: 'none' }}>
             <button data-element-name="כפתור_AIFloatingWidget_5"
               type="button"
               className={`btn btn-ghost btn-icon-only btn-sm${showHistory ? ' is-on' : ''}`}
@@ -595,9 +595,9 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               title={isExpanded ? 'הקטן' : 'הגדל'}
             >
               {isExpanded ? (
-                <svg data-element-name="רכיב_AIFloatingWidget_10" className="icon" style={{ transform: 'rotate(180deg)' }}><use href="#i-expand" /></svg>
+                <svg data-element-name="רכיב_AIFloatingWidget_10" className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" /></svg>
               ) : (
-                <svg data-element-name="רכיב_AIFloatingWidget_11" className="icon"><use href="#i-expand" /></svg>
+                <svg data-element-name="רכיב_AIFloatingWidget_11" className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
               )}
             </button>
             <button data-element-name="כפתור_AIFloatingWidget_12"

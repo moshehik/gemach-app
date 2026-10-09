@@ -10,7 +10,7 @@
 // (קצה ה-RTL), עם קו מפריד דק ביניהן (761px ומעלה); מתחת ל-761px הסל מתחת לבחירה, באותו קלף. הלוגיקה והחלטות הבעלים - ללא שינוי.
 import { useState } from 'react';
 import { Blk, ClearX, Field, Ic, Note, OneCard, SubH, money } from './NoUi';
-import { CalcErrorNote, DeliveryChargeLine } from './NoDeliveryBits';
+import { CalcErrorNote } from './NoDeliveryBits';
 import { alterationDetailsRequired, alterationsChosen, describeAlterations, displayModelName, modelCodeSuffix, moneyTxt } from './newOrderLogic';
 
 function hl(s, q) {
@@ -170,7 +170,6 @@ function Cart({ ctl }) {
         }) : <div className="empty">טרם הוספת פריטים להזמנה</div>}
       </div>
       <CalcErrorNote ctl={ctl} />
-      <DeliveryChargeLine ctl={ctl} />
     </Blk>
   );
 }

@@ -334,32 +334,32 @@
 .gm-ds.gm-home .err-code { display: inline-block; margin-top: 12px; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--gm-ink3); background: var(--gm-sky-50); border: 1px solid var(--gm-line); unicode-bidi: plaintext; }
 .gm-ds.gm-home .err-acts { margin-top: 18px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
-/* שורת "למצגת הסבר על האתר - לחצי כאן" מתחת לשורת החיפוש (9.10.2026): כמוסה בצבעי הפלטה (נייבי / זהב / ורוד), נקודת אור מתנוצצת בריחוף */
-.gm-ds.gm-home .hero .tour-line {
+/* שורת "למצגת הסבר על האתר - לחצי כאן" בתחתית הדף, מעט מעל הפס הכחול (9.10.2026): כמוסה בצבעי הפלטה (נייבי / זהב / ורוד), נקודת אור מתנוצצת בריחוף */
+.gm-ds.gm-home .tour-line {
   position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: max-content; max-width: 100%; margin: 14px auto 0; padding: 7px 8px 7px 18px;
+  width: max-content; max-width: calc(100% - 32px); margin: 28px auto 14px; padding: 7px 8px 7px 18px;
   border-radius: 999px; border: 1.5px solid var(--gm-gold); background: rgba(255, 255, 255, .72);
   color: var(--gm-navy); font-size: 15px; font-weight: 500; text-decoration: none; overflow: hidden;
   box-shadow: 0 8px 22px -14px rgba(15, 44, 82, .45);
   transition: background 200ms var(--gm-ease), color 200ms, transform 200ms var(--gm-ease), box-shadow 200ms;
 }
-.gm-ds.gm-home .hero .tour-line .tour-ic {
+.gm-ds.gm-home .tour-line .tour-ic {
   display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 50%;
   background: var(--gm-gold-100); color: var(--gm-gold-d); transition: background 200ms, color 200ms, transform 400ms var(--gm-ease);
 }
-.gm-ds.gm-home .hero .tour-line .tour-t b { font-weight: 700; border-bottom: 2px solid var(--gm-gold); }
-.gm-ds.gm-home .hero .tour-line::after {
+.gm-ds.gm-home .tour-line .tour-t b { font-weight: 700; border-bottom: 2px solid var(--gm-gold); }
+.gm-ds.gm-home .tour-line::after {
   content: ""; position: absolute; inset-block: 0; width: 40%; inset-inline-start: -60%;
   background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .85), transparent); transform: skewX(-18deg); pointer-events: none;
 }
-.gm-ds.gm-home .hero .tour-line:hover,
-.gm-ds.gm-home .hero .tour-line:focus-visible { background: var(--gm-navy); color: var(--gm-surface); transform: translateY(-2px); box-shadow: 0 14px 28px -14px rgba(15, 44, 82, .6); }
-.gm-ds.gm-home .hero .tour-line:hover .tour-ic,
-.gm-ds.gm-home .hero .tour-line:focus-visible .tour-ic { background: var(--gm-gold); color: var(--gm-navy); transform: rotate(-14deg) scale(1.08); }
-.gm-ds.gm-home .hero .tour-line:hover .tour-t b,
-.gm-ds.gm-home .hero .tour-line:focus-visible .tour-t b { border-bottom-color: var(--gm-gold-300); }
-.gm-ds.gm-home .hero .tour-line:hover::after { animation: tour-shine 900ms var(--gm-ease); }
-.gm-ds.gm-home .hero .tour-line:active { transform: scale(.97); }
+.gm-ds.gm-home .tour-line:hover,
+.gm-ds.gm-home .tour-line:focus-visible { background: var(--gm-navy); color: var(--gm-surface); transform: translateY(-2px); box-shadow: 0 14px 28px -14px rgba(15, 44, 82, .6); }
+.gm-ds.gm-home .tour-line:hover .tour-ic,
+.gm-ds.gm-home .tour-line:focus-visible .tour-ic { background: var(--gm-gold); color: var(--gm-navy); transform: rotate(-14deg) scale(1.08); }
+.gm-ds.gm-home .tour-line:hover .tour-t b,
+.gm-ds.gm-home .tour-line:focus-visible .tour-t b { border-bottom-color: var(--gm-gold-300); }
+.gm-ds.gm-home .tour-line:hover::after { animation: tour-shine 900ms var(--gm-ease); }
+.gm-ds.gm-home .tour-line:active { transform: scale(.97); }
 @keyframes tour-shine { from { inset-inline-start: -60%; } to { inset-inline-start: 130%; } }
-@media (max-width: 767px) { .gm-ds.gm-home .hero .tour-line { font-size: 14px; padding-inline-start: 14px; } }
-@media (prefers-reduced-motion: reduce) { .gm-ds.gm-home .hero .tour-line, .gm-ds.gm-home .hero .tour-line * { transition: none; animation: none !important; } }
+@media (max-width: 767px) { .gm-ds.gm-home .tour-line { font-size: 14px; padding-inline-start: 14px; } }
+@media (prefers-reduced-motion: reduce) { .gm-ds.gm-home .tour-line, .gm-ds.gm-home .tour-line * { transition: none; animation: none !important; } }
