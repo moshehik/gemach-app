@@ -531,6 +531,11 @@ export function deliveryCityOptionsOf(settings, customerCities) {
   return cities.length ? cities : (customerCities || []);
 }
 export const branchListOf = (settings) => String((settings || {}).branch_list || '').split(',').map(s => s.trim()).filter(Boolean);
+// ברירת המחדל של "סניף ביצוע" (ההגדרה default_order_branch): רק אם שמה מופיע ברשימת הסניפים; אחרת '' (בלי ברירת מחדל)
+export const defaultOrderBranchOf = (settings) => {
+  const d = String((settings || {}).default_order_branch || '').trim();
+  return d && branchListOf(settings).includes(d) ? d : '';
+};
 // כמו בישן (LegacyNewOrderPage ~2030): כל הכרטיס "משלוח / סניף / טלפוני" מוצג כשאחד מדגלי הטלפוני/סניף דלוק או
 // delivery_show_in_order !== 'false'; "הזמנת משלוח" בתוכו דורשת גם enable_deliveries === 'true'. אופן ההזמנה - לפי הדגלים עצמם.
 export function deliveryStepVisibility(s) {
