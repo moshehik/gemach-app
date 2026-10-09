@@ -133,14 +133,13 @@ export default function useNewOrderController({ router }) {
     setOrder(prev => ((prev.isAbroad || prev.fromDate || prev.toDate) ? { ...prev, isAbroad: false, fromDate: '', toDate: '' } : prev));
   }, [allowAbroad, order.isAbroad, order.fromDate, order.toDate]);
 
-  // R15 (אושר): סניף ביצוע נזכר מההזמנה הקודמת במחשב הזה
+  // סניף ביצוע: ברירת המחדל נקבעת בהגדרה default_order_branch (ניהול -> סניפים) ולא נזכרת יותר מההזמנה הקודמת במחשב (9.10.2026, בקשת הבעלים).
+  // רק אם הוגדרה, ושמה מופיע ברשימת הסניפים (branch_list); ריק = בלי ברירת מחדל. הבחירה הידנית בהזמנה נשארת.
+  const defaultOrderBranch = NL.defaultOrderBranchOf(settings);
   useEffect(() => {
-    if (settings.track_branch_on_order !== 'true') return;
-    let remembered = '';
-    try { remembered = localStorage.getItem('gemach_last_order_branch') || ''; } catch { /* אין גישה ל-localStorage */ }
-    if (!remembered) return;
-    setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: remembered });
-  }, [settings.track_branch_on_order]);
+    if (settings.track_branch_on_order !== 'true' || !defaultOrderBranch) return;
+    setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: defaultOrderBranch });
+  }, [settings.track_branch_on_order, defaultOrderBranch]);
 
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
