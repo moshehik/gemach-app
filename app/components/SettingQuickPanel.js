@@ -4,6 +4,14 @@ import { useState, useEffect } from 'react';
 import { invalidateSettings } from '@/app/lib/pageCache';
 import { validateNumericSetting } from '@/app/lib/settingsValidation';
 import { toDisplayValue } from '@/lib/settingsMetadata';
+import { createPortal } from 'react-dom';
+import '@/design-system/components.css';
+import './new-order/css/new-order-font.css';
+import './new-order/css/new-order.css';
+import './ai-widget/ai-dialogs.css';
+import { DialogFrame } from './new-order/NoDialogs';
+import { Ic, Note, NoCombo, Switch } from './new-order/NoUi';
+import { MenuSprite } from './menu/menuParts';
 
 // פאנל עריכה מהיר להגדרה בודדת - נפתח מכפתור [OPEN_SETTING:key] שעוזר ה-AI
 // (app/api/ai/route.js, ACTION: SETTINGS_GUIDE) מוסיף לתשובתו כשהוא מזהה שמדובר
@@ -22,7 +30,8 @@ import { toDisplayValue } from '@/lib/settingsMetadata';
 // ועדיף תצוגה-בלבד נכונה על פני עריכה גולמית שעלולה לשבש ערך JSON/רשימה.
 const READ_ONLY_FIELD_TYPES = ['department', 'mandatoryFields', 'customerRequiredFields', 'fieldGroups', 'secret', 'timestamp'];
 
-export default function SettingQuickPanel({ settingKey, onClose }) {
+// dark: החלון בעיצוב החדש הכהה של הפלטה (כשנפתח מחלונית עוזר ה-AI); askApproval(message, level) = חלון אישור הרשאה כהה במקום customAuthPrompt
+export default function SettingQuickPanel({ settingKey, onClose, dark = false, askApproval }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [entry, setEntry] = useState(null);
@@ -94,10 +103,8 @@ export default function SettingQuickPanel({ settingKey, onClose }) {
       // אותו נפילה-לאחור בדיוק כמו SettingsClient.js: אם אין קוקי הרשאה מספיק,
       // נדרש אישור הנהלה ראשית/מתכנת נקודתי בסיסמה לפני שהשמירה בפועל מתבצעת.
       if (res.status === 401) {
-        const authResult = await window.customAuthPrompt(
-          `שינוי ההגדרה "${entry.name}" דורש אישור הנהלה ראשית/מתכנת. אנא בחר מנהל והזן סיסמה:`,
-          'הנהלה ראשית'
-        );
+        const authMsg = `שינוי ההגדרה "${entry.name}" דורש אישור הנהלה ראשית/מתכנת. אנא בחר מנהל והזן סיסמה:`;
+        const authResult = askApproval ? await askApproval(authMsg, 'הנהלה ראשית') : await window.customAuthPrompt(authMsg, 'הנהלה ראשית');
         if (!authResult || !authResult.pin) {
           setSaving(false);
           setSaveMessage({ type: 'error', text: 'השמירה בוטלה: נדרש אישור הנהלה ראשית/מתכנת.' });
@@ -121,6 +128,54 @@ export default function SettingQuickPanel({ settingKey, onClose }) {
       setSaving(false);
     }
   };
+
+  if (dark && typeof document !== 'undefined') {
+    return createPortal(
+      <div className="gm-ds gm-no dlg-dark ai-dlg-root" dir="rtl">
+        <MenuSprite />
+        <DialogFrame layer={1} onBackdrop={onClose}>
+          <h2><Ic n="gear" />{entry ? entry.name : 'הגדרת מערכת'}</h2>
+          {loading ? <div className="sub">טוען הגדרה...</div> : null}
+          {!loading && error ? <Note>{error}</Note> : null}
+          {!loading && entry ? (
+            <>
+              <div className="sub">{[entry.location, entry.description].filter(Boolean).join(' · ')}</div>
+              {entry.fieldType === 'boolean' ? (
+                <div className="trow" style={{ marginTop: 14 }}>
+                  <Switch id="qsBool" checked={value === 'true'} label={entry.name} onChange={(v) => setValue(v ? 'true' : 'false')} />
+                  <b>{value === 'true' ? 'פעיל' : 'כבוי'}</b>
+                </div>
+              ) : entry.fieldType === 'select' ? (
+                <div style={{ marginTop: 14 }}><NoCombo id="qsSel" label={entry.name} value={value} onChange={setValue} options={(entry.options || []).map(o => [o.value, o.label])} /></div>
+              ) : entry.fieldType === 'multiline' ? (
+                <textarea className="inp" style={{ marginTop: 14, minHeight: 100 }} value={value} onChange={(e) => setValue(e.target.value)} />
+              ) : entry.fieldType === 'number' ? (
+                <div style={{ marginTop: 14 }}>
+                  <input type="number" className="inp" value={value} onChange={(e) => setValue(e.target.value)} />
+                  {numberError ? <Note style={{ marginTop: 8 }}>{numberError}</Note> : null}
+                </div>
+              ) : isReadOnly ? (
+                <div style={{ marginTop: 14 }}>
+                  <input type="text" className="inp" value={value} disabled readOnly />
+                  <div className="sub" style={{ marginTop: 8 }}>הגדרה זו כוללת בורר ייעודי (או שהיא סודית/לקריאה בלבד) - לעריכה יש לפתוח את עמוד ההגדרות המלא למטה.</div>
+                </div>
+              ) : (
+                <input type="text" className="inp" style={{ marginTop: 14 }} value={value} onChange={(e) => setValue(e.target.value)} />
+              )}
+              {saveMessage ? <Note icon={saveMessage.type === 'error' ? 'alert' : 'check'} style={{ marginTop: 12 }}>{saveMessage.text}</Note> : null}
+              <div className="dbtns" style={{ marginTop: 20 }}>
+                {!isReadOnly ? <button type="button" className="btn primary lg block" disabled={saving} aria-busy={saving} onClick={handleSave}><Ic n="check" />{saving ? 'שומר...' : 'שמור שינוי'}</button> : null}
+                <a className="btn ghost block" href={fullSettingsUrl}><Ic n="ext" c="sm" />פתח בעמוד ההגדרות המלא</a>
+                <button type="button" className="btn ghost block" onClick={onClose}><Ic n="x" c="sm" />סגירה</button>
+              </div>
+            </>
+          ) : null}
+          {!loading && !entry ? <div className="dbtns" style={{ marginTop: 20 }}><button type="button" className="btn ghost block" onClick={onClose}><Ic n="x" c="sm" />סגירה</button></div> : null}
+        </DialogFrame>
+      </div>,
+      document.body
+    );
+  }
 
   return (
     <div

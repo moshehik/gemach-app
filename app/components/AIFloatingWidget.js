@@ -12,6 +12,7 @@ import { captureElement, captureViewport, dataUrlToParts } from '../../lib/clien
 import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
 import { formatActionSteps } from '../../lib/actionRecorderCore';
 import { useUiVariant } from './UiVariantContext';
+import { useAiDialogs } from './ai-widget/AiDialogs';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -86,8 +87,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [showTableModal, setShowTableModal] = useState(false);
-  const [modalTableData, setModalTableData] = useState(null);
+  const aiDlg = useAiDialogs(); // חלוניות קופצות בעיצוב הכהה החדש (הודעה / אישור / טבלה) - במקום alert / customConfirm / מודאל לבן
   const [openSettingKey, setOpenSettingKey] = useState(null);
 
   const [isListening, setIsListening] = useState(false);
@@ -168,7 +168,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       if (!stepsText) {
         setPendingRecordingUrl(null);
         setPendingRecordingMeta(null);
-        alert('העלאת ההסרטה נכשלה.');
+        aiDlg.notify('העלאת ההסרטה נכשלה.', { title: 'הסרטת המסך' });
       }
     } finally {
       setIsUploadingRecording(false);
@@ -407,7 +407,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   };
 
   const clearChat = async () => {
-    if (await window.customConfirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?')) {
+    if (await aiDlg.confirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?', { title: 'ניקוי השיחה', ok: 'נקה' })) {
       startNewChat();
     }
   };
@@ -419,7 +419,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         <button data-element-name="כפתור_AIFloatingWidget_1"
           type="button"
           className="btn btn-secondary btn-sm"
-          onClick={() => { setModalTableData(tableData); setShowTableModal(true); }}
+          onClick={() => aiDlg.showTable(tableData, { render: (v) => renderCopyable(formatTableCell(v)), onNavigate: navigateInApp })}
         >
           <svg className="icon"><use href="#i-grid" /></svg>
           הצג טבלה
@@ -439,7 +439,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("הדפדפן שלך אינו תומך בהקלטת קול.");
+      aiDlg.notify("הדפדפן שלך אינו תומך בהקלטת קול.", { title: 'הקלטת קול' });
       return;
     }
 
@@ -468,7 +468,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         'audio-capture': 'לא נמצא מיקרופון זמין במחשב זה.',
         'network': 'שגיאת רשת בזיהוי הקול. נסו שוב.',
       };
-      alert(messages[event.error] || 'אירעה שגיאה בהקלטת הקול. נסו שוב.');
+      aiDlg.notify(messages[event.error] || 'אירעה שגיאה בהקלטת הקול. נסו שוב.', { title: 'הקלטת קול' });
     };
 
     recognition.onend = () => {
@@ -846,76 +846,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       </div>
       <ElementPickerOverlay isPicking={elementPicker.isPicking} hoverRect={elementPicker.hoverRect} />
 
-      {/* Table Modal */}
-      {showTableModal && modalTableData && (
-        <div className={`modal-backdrop ai-table-modal${a5Class}`} style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 100000,
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div className="modal" style={{ maxWidth: 900, width: '90%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-grid" /></svg>
-                נתונים ({modalTableData.length} שורות)
-              </strong>
-              <button data-element-name="כפתור_AIFloatingWidget_21"
-                type="button"
-                className="btn btn-ghost btn-icon-only btn-sm"
-                onClick={() => setShowTableModal(false)}
-              >
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-
-            <div style={{ padding: '18px 22px', overflow: 'auto', flex: 1 }}>
-              <div className="table-wrap">
-                <div className="table-scroll">
-                  <table className="data">
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                      <tr>
-                        {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
-                          <th key={h}>{h}</th>
-                        ))}
-                        {modalTableData.some(r => r._actionUrl) && <th>פעולות</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {modalTableData.map((row, i) => (
-                        <tr key={i}>
-                          {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
-                            <td key={h}>{renderCopyable(formatTableCell(row[h]))}</td>
-                          ))}
-                          {modalTableData.some(r => r._actionUrl) && (
-                            <td>
-                              {row._actionUrl && row._actionLabel ? (
-                                <a
-                                  href={row._actionUrl}
-                                  onClick={(e) => { setShowTableModal(false); navigateInApp(e, row._actionUrl); }}
-                                  className="btn btn-secondary btn-sm"
-                                >
-                                  {row._actionLabel}
-                                </a>
-                              ) : null}
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {aiDlg.host}
 
       {openSettingKey && (
-        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
+        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} dark askApproval={aiDlg.approve} />
       )}
     </>
   );
