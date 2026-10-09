@@ -12,6 +12,7 @@ import { captureElement, captureViewport, dataUrlToParts } from '../../lib/clien
 import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
 import { formatActionSteps } from '../../lib/actionRecorderCore';
 import { useUiVariant } from './UiVariantContext';
+import { useAiDialogs } from './ai-widget/AiDialogs';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -86,8 +87,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
-  const [showTableModal, setShowTableModal] = useState(false);
-  const [modalTableData, setModalTableData] = useState(null);
+  const aiDlg = useAiDialogs(); // חלוניות קופצות בעיצוב הכהה החדש (הודעה / אישור / טבלה) - במקום alert / customConfirm / מודאל לבן
   const [openSettingKey, setOpenSettingKey] = useState(null);
 
   const [isListening, setIsListening] = useState(false);
@@ -168,7 +168,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       if (!stepsText) {
         setPendingRecordingUrl(null);
         setPendingRecordingMeta(null);
-        alert('העלאת ההסרטה נכשלה.');
+        aiDlg.notify('העלאת ההסרטה נכשלה.', { title: 'הסרטת המסך' });
       }
     } finally {
       setIsUploadingRecording(false);
@@ -407,7 +407,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   };
 
   const clearChat = async () => {
-    if (await window.customConfirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?')) {
+    if (await aiDlg.confirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?', { title: 'ניקוי השיחה', ok: 'נקה' })) {
       startNewChat();
     }
   };
@@ -419,7 +419,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         <button data-element-name="כפתור_AIFloatingWidget_1"
           type="button"
           className="btn btn-secondary btn-sm"
-          onClick={() => { setModalTableData(tableData); setShowTableModal(true); }}
+          onClick={() => aiDlg.showTable(tableData, { render: (v) => renderCopyable(formatTableCell(v)), onNavigate: navigateInApp })}
         >
           <svg className="icon"><use href="#i-grid" /></svg>
           הצג טבלה
@@ -439,7 +439,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("הדפדפן שלך אינו תומך בהקלטת קול.");
+      aiDlg.notify("הדפדפן שלך אינו תומך בהקלטת קול.", { title: 'הקלטת קול' });
       return;
     }
 
@@ -468,7 +468,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         'audio-capture': 'לא נמצא מיקרופון זמין במחשב זה.',
         'network': 'שגיאת רשת בזיהוי הקול. נסו שוב.',
       };
-      alert(messages[event.error] || 'אירעה שגיאה בהקלטת הקול. נסו שוב.');
+      aiDlg.notify(messages[event.error] || 'אירעה שגיאה בהקלטת הקול. נסו שוב.', { title: 'הקלטת קול' });
     };
 
     recognition.onend = () => {
@@ -561,14 +561,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
             <svg data-element-name="רכיב_AIFloatingWidget_4" className="icon" style={{ width: '20px', height: '20px' }}>
               <use href="#i-star" />
             </svg>
-            <span style={{ fontWeight: 'bold' }}>עוזר AI</span>
-            {chatTitle(messages) ? <span data-testid="ai-chat-title" style={{ opacity: 0.85, fontSize: '0.85rem', maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {chatTitle(messages)}</span> : null}
+            <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', flex: 'none' }}>עוזר AI</span>
+            {chatTitle(messages) ? <span data-testid="ai-chat-title" style={{ opacity: 0.85, fontSize: '0.85rem', flex: '0 1 auto', minWidth: 0, maxWidth: '170px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {chatTitle(messages)}</span> : null}
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '4px', flex: 'none' }}>
             <button data-element-name="כפתור_AIFloatingWidget_5"
               type="button"
               className={`btn btn-ghost btn-icon-only btn-sm${showHistory ? ' is-on' : ''}`}
@@ -595,9 +595,9 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
               title={isExpanded ? 'הקטן' : 'הגדל'}
             >
               {isExpanded ? (
-                <svg data-element-name="רכיב_AIFloatingWidget_10" className="icon" style={{ transform: 'rotate(180deg)' }}><use href="#i-expand" /></svg>
+                <svg data-element-name="רכיב_AIFloatingWidget_10" className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" /></svg>
               ) : (
-                <svg data-element-name="רכיב_AIFloatingWidget_11" className="icon"><use href="#i-expand" /></svg>
+                <svg data-element-name="רכיב_AIFloatingWidget_11" className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
               )}
             </button>
             <button data-element-name="כפתור_AIFloatingWidget_12"
@@ -846,76 +846,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       </div>
       <ElementPickerOverlay isPicking={elementPicker.isPicking} hoverRect={elementPicker.hoverRect} />
 
-      {/* Table Modal */}
-      {showTableModal && modalTableData && (
-        <div className={`modal-backdrop ai-table-modal${a5Class}`} style={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 100000,
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div className="modal" style={{ maxWidth: 900, width: '90%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-grid" /></svg>
-                נתונים ({modalTableData.length} שורות)
-              </strong>
-              <button data-element-name="כפתור_AIFloatingWidget_21"
-                type="button"
-                className="btn btn-ghost btn-icon-only btn-sm"
-                onClick={() => setShowTableModal(false)}
-              >
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-
-            <div style={{ padding: '18px 22px', overflow: 'auto', flex: 1 }}>
-              <div className="table-wrap">
-                <div className="table-scroll">
-                  <table className="data">
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                      <tr>
-                        {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
-                          <th key={h}>{h}</th>
-                        ))}
-                        {modalTableData.some(r => r._actionUrl) && <th>פעולות</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {modalTableData.map((row, i) => (
-                        <tr key={i}>
-                          {Object.keys(modalTableData[0]).filter(h => !h.startsWith('_action')).map(h => (
-                            <td key={h}>{renderCopyable(formatTableCell(row[h]))}</td>
-                          ))}
-                          {modalTableData.some(r => r._actionUrl) && (
-                            <td>
-                              {row._actionUrl && row._actionLabel ? (
-                                <a
-                                  href={row._actionUrl}
-                                  onClick={(e) => { setShowTableModal(false); navigateInApp(e, row._actionUrl); }}
-                                  className="btn btn-secondary btn-sm"
-                                >
-                                  {row._actionLabel}
-                                </a>
-                              ) : null}
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {aiDlg.host}
 
       {openSettingKey && (
-        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
+        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} dark askApproval={aiDlg.approve} />
       )}
     </>
   );

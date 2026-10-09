@@ -1,0 +1,8 @@
+/* חלוניות עוזר ה-AI (AiDialogs.js): החלון הרחב של טבלת הנתונים; כל השאר מגיע מפלטת הדיאלוגים הכהים (#dlg2 ב-.dlg-dark). */
+.gm-ds.gm-no.ai-dlg-root #scrim{z-index:99998}
+.gm-ds.gm-no.ai-dlg-root #scrim2{z-index:100000}
+.gm-ds.gm-no.ai-dlg-root .dlg.ai-wide{max-width:min(960px,94vw);width:100%}
+.gm-ds.gm-no.ai-dlg-root .dlg h2{display:flex;align-items:center;gap:10px}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table{max-height:min(60vh,520px);overflow:auto;margin-top:14px;border-radius:12px}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table .rtbl{width:100%}
+.gm-ds.gm-no.ai-dlg-root .ai-dlg-table td{overflow-wrap:anywhere}
