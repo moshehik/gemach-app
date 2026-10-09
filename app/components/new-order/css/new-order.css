@@ -377,8 +377,8 @@
 .gm-ds.gm-no .app .one .blk.dhero{padding-bottom:0}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn){flex-wrap:nowrap}
 .gm-ds.gm-no .one .row.wrap:has(>#delOneBtn)>#delOneBtn{min-width:0}
-/* תיבת בחירה (סניף ביצוע / איסוף / עיר): רקע הפנינה של הטופס (כמו הכרטיסים) ולא לבן קשיח */
-.gm-ds.gm-no .no-app .cb-t{background:linear-gradient(135deg,rgba(255,252,247,.62) 0%,rgba(246,238,232,.5) 55%,rgba(251,244,238,.6) 100%)}
+/* תיבת בחירה (סניף ביצוע / איסוף / עיר): בדיוק כמו שדות הטקסט של הטופס - גובה 44px, פינות גלולה, מילוי לבן שקוף (rgba(255,255,255,.3)) */
+.gm-ds.gm-no .no-app .cb-t{min-height:44px;height:44px;padding-block:0;border-radius:999px;background:rgba(255,255,255,.3)}
 /* שלב המשלוח: בלי קו מפריד מתחת לשורת "הזמנת משלוח" */
 .gm-ds.gm-no .app .one .one-body>.blk.blk.dhero+.blk{border-top:0!important;padding-top:0!important;margin-top:18px!important}
 /* שלב המשלוח: אריחי האייקון של הכותרות (הזמנת משלוח / כיוון / יעד) בלי רקע */
