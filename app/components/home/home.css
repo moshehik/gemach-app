@@ -353,7 +353,7 @@
   background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .85), transparent); transform: skewX(-18deg); pointer-events: none;
 }
 .gm-ds.gm-home .hero .tour-line:hover,
-.gm-ds.gm-home .hero .tour-line:focus-visible { background: var(--gm-navy); color: #fff; transform: translateY(-2px); box-shadow: 0 14px 28px -14px rgba(15, 44, 82, .6); }
+.gm-ds.gm-home .hero .tour-line:focus-visible { background: var(--gm-navy); color: var(--gm-surface); transform: translateY(-2px); box-shadow: 0 14px 28px -14px rgba(15, 44, 82, .6); }
 .gm-ds.gm-home .hero .tour-line:hover .tour-ic,
 .gm-ds.gm-home .hero .tour-line:focus-visible .tour-ic { background: var(--gm-gold); color: var(--gm-navy); transform: rotate(-14deg) scale(1.08); }
 .gm-ds.gm-home .hero .tour-line:hover .tour-t b,
