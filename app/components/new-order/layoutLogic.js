@@ -17,7 +17,7 @@ export function stepSummaries(ctl) {
     dates: o.isAbroad ? (o.fromDate && o.toDate ? `${shortHeb(o.fromDate)} — ${shortHeb(o.toDate)}` : '') : shortHeb(o.eventDate),
     delivery: o.isDelivery ? `${o.deliveryDirection} · ${o.deliveryCity || (c && c.city) || ''}` : (o.isPhoneOrder ? 'הזמנה טלפונית' : 'ללא משלוח'),
     items: ctl.activeItems.length ? `${ctl.activeItems.length} פריטים · ${moneyTxt(ctl.totalAmount)}` : '',
-    summary: 'הושלם',
+    summary: ctl.activeItems.length ? moneyTxt(ctl.totalAmount) : 'הושלם', // הסכום לתשלום (כמו הפריטים והתשלום - מוצג בפס ההתקדמות)
     payment: ctl.totalPaid > 0 ? `שולם ${moneyTxt(ctl.totalPaid)}` : 'רישום תשלום וסיום',
   };
 }
