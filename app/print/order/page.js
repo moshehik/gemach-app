@@ -600,7 +600,7 @@ export default function PrintOrderPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@500;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap');
 
         body {
           background-color: #fafafa !important;
@@ -628,7 +628,7 @@ export default function PrintOrderPage() {
           padding: 45px 50px;
           border: 1px solid #efefef;
           box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-          font-family: 'David Libre', 'Times New Roman', Georgia, serif;
+          font-family: 'Rubik', 'Heebo', Arial, sans-serif;
           color: #444;
           direction: rtl;
         }
@@ -647,7 +647,7 @@ export default function PrintOrderPage() {
             @bottom-center {
               content: "עמוד " counter(page) " מתוך " counter(pages);
               direction: rtl;
-              font-family: 'David Libre', 'Times New Roman', Georgia, serif;
+              font-family: 'Rubik', 'Heebo', Arial, sans-serif;
               font-size: 10px;
               color: #666;
             }
@@ -854,7 +854,7 @@ export default function PrintOrderPage() {
         }
         .print-header-content h1 {
           margin: 0 0 8px 0;
-          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-family: 'Rubik', 'Heebo', Arial, sans-serif;
           font-size: 30px;
           color: #262626;
           font-weight: 700;
@@ -1090,7 +1090,7 @@ export default function PrintOrderPage() {
         }
         /* 20 - כותרת חטיבה (משלוח/רגיל) בהדפסה מרוכזת של כמה הזמנות */
         .prep-group-divider {
-          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-family: 'Rubik', 'Heebo', Arial, sans-serif;
           font-size: 22px;
           font-weight: 700;
           color: #262626;
@@ -1100,6 +1100,47 @@ export default function PrintOrderPage() {
           border-radius: 4px;
           padding: 12px;
           margin: 0 0 24px 0;
+        }
+
+        /* ===== עיצוב חדש של האתר (9.10.2026): גופן Rubik, נייבי וזהב של הפלטה. ערכי צבע קבועים (בחלון ההדפסה אין :root של האתר).
+           על המסך: רקע התמונה של האתר והמסמך ככרטיס מעוגל; בנייר: אותו מסמך בלי מסגרת וצל, כותרות נייבי וקווי זהב. ===== */
+        body {
+          background: #f6d9cb url(/design-system/home-bg.jpg) center bottom / cover no-repeat fixed !important;
+        }
+        .print-container {
+          border: 2px solid #0f2c52;
+          border-radius: 16px;
+          box-shadow: 0 20px 50px -22px rgba(10, 34, 66, 0.55);
+          color: #1d2f4a;
+        }
+        .print-header { border-bottom: 3px solid #c9a227; }
+        .print-header-content h1 { color: #0f2c52; font-weight: 800; }
+        .print-header-content h2 { color: #4d6787; }
+        .company-details { color: #4d6787; }
+        .order-details-card strong { color: #0f2c52; }
+        .print-table { border: 1px solid #bcc2c8; border-radius: 10px; }
+        .print-table th {
+          background-color: #eef0f2 !important;
+          color: #0f2c52;
+          font-weight: 700;
+          border-bottom: 2px solid #b8912f !important;
+        }
+        .print-table tbody tr:nth-child(even) { background-color: #f7f8f9; }
+        .summary-table .total { background-color: #eef0f2; }
+        .summary-table .total td { color: #0f2c52; font-weight: 800; }
+        .payments-title, .rental-footer-title, .terms strong { color: #0f2c52; }
+        .return-details-box { border: 1.5px solid #0f2c52; border-radius: 10px; background-color: #eef0f2; }
+        .return-details-box strong { color: #0f2c52; }
+        .order-notes-box { border: 1px solid #c9a227; background-color: #fff6df; border-radius: 10px; }
+        .prep-group-divider { color: #0f2c52; background: #eef0f2; border: 1px solid #bcc2c8; border-radius: 10px; }
+        .repair-chip { background: #eef0f2; color: #0f2c52; }
+        @media print {
+          html, body { background: #fff !important; background-image: none !important; }
+          .print-container { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
+          .print-table th, .summary-table .total, .return-details-box, .prep-group-divider {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
       `}</style>
 
