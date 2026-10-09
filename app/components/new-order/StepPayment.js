@@ -7,7 +7,10 @@
 // עם קו מפריד דק ביניהן - רק כשכבר נרשם תשלום; בלי תשלומים העמוד בעמודה אחת. מתחת ל-761px העמודה מתחת, באותו קלף. הערת "נותרה יתרה..." נשארת תמיד: ליד התשלומים כשיש, ומתחת לרישום התשלום כשאין.
 import { Blk, Ic, OneCard, SubH, Tip, money } from './NoUi';
 import { CalcErrorNote } from './NoDeliveryBits';
-import { isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
+import { MANAGER_EXIT_METHOD, isChargedPayment, isCreditMethod, methodIcon, moneyTxt } from './newOrderLogic';
+
+// כיתוב האריח במילה אחת (הערך עצמו - payment.method - לא משתנה: הוא נשמר בהזמנה ומשמש את הלוגיקה והשרת)
+const methodWord = (m) => (isCreditMethod(m) ? 'אשראי' : m === MANAGER_EXIT_METHOD ? 'יציאה' : m);
 
 const AMT_STEP = 10;
 
@@ -62,8 +65,8 @@ export default function StepPayment({ ctl }) {
             {/* אמצעי התשלום באריחי .opt זה לצד זה, כמו כפתורי התיקונים (צוואר / שרוול / אורך) */}
             <div className="altopts" id="methods" role="radiogroup" aria-label="אופן תשלום">
               {ctl.paymentMethodOptions.map(m => (
-                <button key={m} type="button" role="radio" aria-checked={p.method === m} className={`opt${p.method === m ? ' on' : ''}`} onClick={() => pickMethod(m)}>
-                  {p.method === m ? <Ic n="check" c="sm evck" /> : null}<Ic n={methodIcon(m)} c="lg" /><div><b>{m}</b></div>
+                <button key={m} type="button" role="radio" aria-label={m} aria-checked={p.method === m} className={`opt${p.method === m ? ' on' : ''}`} onClick={() => pickMethod(m)}>
+                  {p.method === m ? <Ic n="check" c="sm evck" /> : null}<Ic n={methodIcon(m)} c="lg" /><div><b>{methodWord(m)}</b></div>
                 </button>
               ))}
             </div>
