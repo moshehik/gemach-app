@@ -293,8 +293,9 @@ export default function ScheduleDay({
   const [wiz, setWiz] = useState(null);
   const closeWiz = useCallback(() => setWiz(null), []);
   // לחצני הכותרת (בלי stageKey) = האשף המלא; לחצני המקטע (עם stageKey) = חלונית מהירה לדפי אותו שלב בלבד
+  // הפעולה נקבעת כאן ולא באשף (אין בו בורר הדפסה/הורדה/קובץ): הדפסה = הדפסה, הורדה = PDF, XL = Excel (לחצן ה-XL מוסתר לעובדת, JDG-04)
   const openPrint = useCallback(({ stageKey } = {}) => setWiz({ mode: 'print', format: 'xlsx', initialTab: stageKey || null, quick: !!stageKey }), []);
-  const openDownload = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: stageKey ? 'pdf' : 'xlsx', initialTab: stageKey || null, quick: !!stageKey }), []);
+  const openDownload = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: 'pdf', initialTab: stageKey || null, quick: !!stageKey }), []);
   const openExport = useCallback(({ stageKey } = {}) => setWiz({ mode: 'download', format: 'xlsx', initialTab: stageKey || null, quick: !!stageKey }), []);
   const tools = { onExport: onExport || openExport, onDownload: onDownload || openDownload, onPrint: onPrint || openPrint, canExport: allowExport };
 
